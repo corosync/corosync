@@ -670,7 +670,7 @@ static void *pthread_ipc_consumer (void *conn)
 #endif
 
 	for (;;) {
-		ipc_sem_wait (conn_info->control_buffer, SEMAPHORE_REQUEST_OR_FLUSH_OR_EXIT);
+		ipc_sem_wait (conn_info->control_buffer, SEMAPHORE_REQUEST_OR_FLUSH_OR_EXIT, IPC_SEMWAIT_NOFILE);
 		if (ipc_thread_active (conn_info) == 0) {
 			coroipcs_refcount_dec (conn_info);
 			pthread_exit (0);
@@ -681,7 +681,7 @@ static void *pthread_ipc_consumer (void *conn)
 		ipc_sem_getvalue (conn_info->control_buffer, SEMAPHORE_REQUEST, &sem_value);
 		if (sem_value > 0) {
 		
-			res = ipc_sem_wait (conn_info->control_buffer, SEMAPHORE_REQUEST);
+			res = ipc_sem_wait (conn_info->control_buffer, SEMAPHORE_REQUEST, IPC_SEMWAIT_NOFILE);
 		} else {
 			continue;
 		}
@@ -691,7 +691,6 @@ static void *pthread_ipc_consumer (void *conn)
 		 * There is no new message to process, continue for loop
 		 */
 		if (new_message == 0) {
-printf ("continuing\n");
 			continue;
 		}
 
