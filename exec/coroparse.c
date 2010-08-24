@@ -229,34 +229,6 @@ static int parser_check_item_uidgid(struct objdb_iface_ver0 *objdb,
 	return 1;
 }
 
-static int parser_check_item_service(struct objdb_iface_ver0 *objdb,
-			hdb_handle_t parent_handle,
-			int type,
-			const char *name,
-			const char **error_string)
-{
-	if (type == PCHECK_ADD_SUBSECTION) {
-		if (parent_handle != OBJECT_PARENT_HANDLE) {
-			*error_string = "service: Can't add second level subsection";
-			return 0;
-		}
-
-		if (strcmp (name, "service") != 0) {
-			*error_string = "service: Can't add subsection different then service";
-			return 0;
-		}
-	}
-
-	if (type == PCHECK_ADD_ITEM) {
-		if (!(strcmp (name, "name") == 0 || strcmp (name, "ver") == 0)) {
-			*error_string = "service: Only name and ver are allowed items";
-			return 0;
-		}
-	}
-
-	return 1;
-}
-
 static int read_uidgid_files_into_objdb(
 	struct objdb_iface_ver0 *objdb,
 	const char **error_string)
@@ -352,7 +324,7 @@ static int read_service_files_into_objdb(
 			fp = fopen (filename, "r");
 			if (fp == NULL) continue;
 
-			res = parse_section(fp, objdb, OBJECT_PARENT_HANDLE, error_string, parser_check_item_service);
+			res = parse_section(fp, objdb, OBJECT_PARENT_HANDLE, error_string, NULL);
 
 			fclose (fp);
 
