@@ -852,7 +852,7 @@ static int corosync_security_valid (int euid, int egid)
 
 	if (corosync_not_enough_fds_left) {
 		errno = EMFILE;
-		return (0);
+		return 0;
 	}
 
 	if (euid == 0 || egid == 0) {
