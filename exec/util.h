@@ -65,6 +65,27 @@ enum e_ais_done {
 	AIS_DONE_ALREADY_RUNNING = 18,
 };
 
+static inline cs_error_t hdb_error_to_cs (int res)		\
+{								\
+	if (res == 0) {						\
+		return (CS_OK);					\
+	} else {						\
+		if (errno == EBADF) {				\
+			return (CS_ERR_BAD_HANDLE);		\
+		} else						\
+		if (errno == ENOMEM) {				\
+			return (CS_ERR_NO_MEMORY);		\
+		} else						\
+		if (errno == EMFILE) {				\
+			return (CS_ERR_NO_RESOURCES);		\
+		} else						\
+		if (errno == EACCES) {				\
+			return (CS_ERR_SECURITY);		\
+		}						\
+		return (CS_ERR_LIBRARY);			\
+	}							\
+}
+
 /*
  * Compare two names.  returns non-zero on match.
  */

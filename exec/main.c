@@ -933,7 +933,8 @@ static int corosync_security_valid (int euid, int egid)
 	struct list_head *iter;
 
 	if (corosync_not_enough_fds_left) {
-		return 0;
+		errno = EMFILE;
+		return (0);
 	}
 
 	if (euid == 0 || egid == 0) {
@@ -950,6 +951,7 @@ static int corosync_security_valid (int euid, int egid)
 			return (1);
 	}
 
+	errno = EACCES;
 	return (0);
 }
 

@@ -48,6 +48,12 @@ static inline cs_error_t hdb_error_to_cs (int res)		\
 		} else						\
 		if (errno == ENOMEM) {				\
 			return (CS_ERR_NO_MEMORY);		\
+		} else						\
+		if (errno == EMFILE) {				\
+			return (CS_ERR_NO_RESOURCES);		\
+		} else						\
+		if (errno == EACCES) {				\
+			return (CS_ERR_SECURITY);		\
 		}						\
 		return (CS_ERR_LIBRARY);			\
 	}							\
