@@ -85,6 +85,7 @@
 #else
 #include <sys/sem.h>
 #endif
+#include "util.h"
 
 #ifndef MSG_NOSIGNAL
 #define MSG_NOSIGNAL 0
@@ -760,14 +761,14 @@ retry_send:
 	return (0);
 }
 
-static int
+static cs_error_t
 req_setup_recv (
 	struct conn_info *conn_info)
 {
 	int res;
 	struct msghdr msg_recv;
 	struct iovec iov_recv;
-	int authenticated = 0;
+	cs_error_t auth_res = CS_ERR_LIBRARY;
 
 #ifdef COROSYNC_LINUX
 	struct cmsghdr *cmsg;
@@ -803,7 +804,7 @@ retry_recv:
 		goto retry_recv;
 	} else
 	if (res == -1 && errno != EAGAIN) {
-		return (0);
+		return (CS_ERR_LIBRARY);
 	} else
 	if (res == 0) {
 #if defined(COROSYNC_SOLARIS) || defined(COROSYNC_BSD) || defined(COROSYNC_DARWIN)
@@ -811,9 +812,9 @@ retry_recv:
 		 * EOF is detected when recvmsg return 0.
 		 */
 		ipc_disconnect (conn_info);
-		return 0;
+		return (CS_ERR_LIBRARY);
 #else
-		return (-1);
+		return (CS_ERR_SECURITY);
 #endif
 	}
 	conn_info->setup_bytes_read += res;
@@ -836,7 +837,9 @@ retry_recv:
 			egid = ucred_getegid (uc);
 			conn_info->client_pid = ucred_getpid (uc);
 			if (api->security_valid (euid, egid)) {
-				authenticated = 1;
+				auth_res = CS_OK;
+			} else {
+				auth_res = hdb_error_to_cs(errno);
 			}
 			ucred_free(uc);
 		}
@@ -858,7 +861,9 @@ retry_recv:
 		egid = -1;
 		if (getpeereid (conn_info->fd, &euid, &egid) == 0) {
 			if (api->security_valid (euid, egid)) {
-				authenticated = 1;
+				auth_res = CS_OK;
+			} else {
+				auth_res = hdb_error_to_cs(errno);
 			}
 		}
 	}
@@ -873,29 +878,36 @@ retry_recv:
 	if (cred) {
 		conn_info->client_pid = cred->pid;
 		if (api->security_valid (cred->uid, cred->gid)) {
-			authenticated = 1;
+			auth_res = CS_OK;
+		} else {
+			auth_res = hdb_error_to_cs(errno);
 		}
 	}
 
 #else /* no credentials */
-	authenticated = 1;
- 	log_printf (LOGSYS_LEVEL_ERROR, "Platform does not support IPC authentication.  Using no authentication\n");
+	auth_res = CS_OK;
+	log_printf (LOGSYS_LEVEL_ERROR, "Platform does not support IPC authentication.  Using no authentication\n");
 #endif /* no credentials */
 
-	if (authenticated == 0) {
-		log_printf (LOGSYS_LEVEL_ERROR, "Invalid IPC credentials.\n");
+	if (auth_res != CS_OK) {
 		ipc_disconnect (conn_info);
-		return (-1);
- 	}
+		if (auth_res == CS_ERR_NO_RESOURCES) {
+			log_printf (LOGSYS_LEVEL_ERROR,
+				"Not enough file desciptors for IPC connection.\n");
+		} else {
+			log_printf (LOGSYS_LEVEL_ERROR, "Invalid IPC credentials.\n");
+		}
+		return auth_res;
+	}
 
 	if (conn_info->setup_bytes_read == sizeof (mar_req_setup_t)) {
 #ifdef COROSYNC_LINUX
 		setsockopt(conn_info->fd, SOL_SOCKET, SO_PASSCRED,
 			&off, sizeof (off));
 #endif
-		return (1);
+		return (CS_OK);
 	}
-	return (0);
+	return (CS_ERR_LIBRARY);
 }
 
 static void ipc_disconnect (struct conn_info *conn_info)
@@ -1575,10 +1587,10 @@ int coroipcs_handler_dispatch (
 		 * send OK
 		 */
 		res = req_setup_recv (conn_info);
-		if (res == -1) {
-			req_setup_send (conn_info, CS_ERR_SECURITY);
+		if (res != CS_OK && res != CS_ERR_LIBRARY) {
+			req_setup_send (conn_info, res);
 		}
-		if (res != 1) {
+		if (res != CS_OK) {
 			return (0);
 		}
 
