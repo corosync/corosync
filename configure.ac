@@ -264,7 +264,7 @@ case "$host_os" in
 		AC_DEFINE_UNQUOTED([COROSYNC_LINUX], [1],
 				   [Compiling for Linux platform])
 		OS_CFLAGS=""
-		OS_CPPFLAGS=""
+		OS_CPPFLAGS="-D_GNU_SOURCE"
 		OS_LDFLAGS=""
 		OS_DYFLAGS="-rdynamic"
 		DARWIN_OPTS=""
