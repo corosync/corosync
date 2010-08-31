@@ -36,10 +36,13 @@
 
 #include <corosync/hdb.h>
 #include <pthread.h>
+#include <stdlib.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+typedef void (*poll_low_fds_event_fn) (int32_t not_enough, int32_t fds_available);
 
 typedef void * poll_timer_handle;
 
@@ -72,6 +75,10 @@ int poll_dispatch_modify (
 int poll_dispatch_delete (
 	hdb_handle_t handle,
 	int fd);
+
+int poll_low_fds_event_set(
+	hdb_handle_t handle,
+	poll_low_fds_event_fn fn);
 
 int poll_timer_add (
 	hdb_handle_t handle,

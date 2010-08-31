@@ -139,6 +139,8 @@ static sem_t corosync_exit_sem;
 
 static const char *corosync_lock_file = LOCALSTATEDIR"/run/corosync.pid";
 
+static int32_t corosync_not_enough_fds_left = 0;
+
 static void serialize_unlock (void);
 
 hdb_handle_t corosync_poll_handle_get (void)
@@ -847,6 +849,11 @@ static coroipcs_handler_fn_lvalue corosync_handler_fn_get (unsigned int service,
 static int corosync_security_valid (int euid, int egid)
 {
 	struct list_head *iter;
+
+	if (corosync_not_enough_fds_left) {
+		return 0;
+	}
+
 	if (euid == 0 || egid == 0) {
 		return (1);
 	}
@@ -1204,6 +1211,17 @@ static void corosync_stats_init (void)
 		OBJDB_VALUETYPE_UINT64);
 }
 
+static void main_low_fds_event(int32_t not_enough, int32_t fds_available)
+{
+	corosync_not_enough_fds_left = not_enough;
+	if (not_enough) {
+		log_printf(LOGSYS_LEVEL_WARNING, "refusing new connections (fds_available:%d)\n",
+			fds_available);
+	} else {
+		log_printf(LOGSYS_LEVEL_NOTICE, "allowing new connections (fds_available:%d)\n",
+			fds_available);
+	}
+}
 
 static void main_service_ready (void)
 {
@@ -1578,6 +1596,7 @@ int main (int argc, char **argv, char **envp)
 		sched_priority);
 
 	corosync_poll_handle = poll_create ();
+	poll_low_fds_event_set(corosync_poll_handle, main_low_fds_event);
 
 	/*
 	 * Sleep for a while to let other nodes in the cluster
