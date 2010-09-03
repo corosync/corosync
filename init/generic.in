@@ -12,9 +12,8 @@
 #
 ### BEGIN INIT INFO
 # Provides:		corosync
-# Required-Start:	$network
-# Should-Start:		$syslog
-# Required-Stop:	$network
+# Required-Start:	$network $syslog
+# Required-Stop:	$network $syslog
 # Default-Start:
 # Default-Stop:
 # Short-Description:	Starts and stops Corosync Cluster Engine.
