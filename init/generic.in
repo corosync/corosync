@@ -6,7 +6,7 @@
 #
 # License: Revised BSD
 
-# chkconfig: - 20 20
+# chkconfig: - 20 80
 # description: Corosync Cluster Engine
 # processname: corosync
 #
