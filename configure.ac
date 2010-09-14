@@ -227,6 +227,10 @@ AC_ARG_ENABLE([debug],
 	[  --enable-debug          : enable debug build. ],
 	[ default="no" ])
 
+AC_ARG_ENABLE([user-flags],
+	[  --enable-user-flags     : rely on user environment. ],
+	[ default="no" ])
+
 AC_ARG_ENABLE([coverage],
 	[  --enable-coverage       : coverage analysis of the codebase. ],
 	[ default="no" ])
@@ -454,6 +458,13 @@ if test "x${enable_fatal_warnings}" = xyes && \
 	PACKAGE_FEATURES="$PACKAGE_FEATURES fatal-warnings"
 else
 	WERROR_CFLAGS=""
+fi
+
+# don't add addtional cflags
+if test "x${enable_user_flags}" = xyes; then
+  OPT_CFLAGS=""
+  GDB_FLAGS=""
+  EXTRA_WARNINGS=""
 fi
 
 # final build of *FLAGS
