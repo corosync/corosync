@@ -216,15 +216,15 @@ LIB_SONAME_IMPORT([votequorum])
 
 # local options
 AC_ARG_ENABLE([ansi],
-	[  --enable-ansi           : force to build with ANSI standards. ],
+	[  --enable-ansi                   : force to build with ANSI standards. ],
 	[ default="no" ])
 
 AC_ARG_ENABLE([fatal-warnings],
-	[  --enable-fatal-warnings : enable fatal warnings. ],
+	[  --enable-fatal-warnings         : enable fatal warnings. ],
 	[ default="no" ])
 
 AC_ARG_ENABLE([debug],
-	[  --enable-debug          : enable debug build. ],
+	[  --enable-debug                  : enable debug build. ],
 	[ default="no" ])
 
 AC_ARG_ENABLE([user-flags],
@@ -232,7 +232,7 @@ AC_ARG_ENABLE([user-flags],
 	[ default="no" ])
 
 AC_ARG_ENABLE([coverage],
-	[  --enable-coverage       : coverage analysis of the codebase. ],
+	[  --enable-coverage               : coverage analysis of the codebase. ],
 	[ default="no" ])
 
 AC_ARG_ENABLE([small-memory-footprint],
@@ -240,20 +240,20 @@ AC_ARG_ENABLE([small-memory-footprint],
 	[ default="no" ])
 
 AC_ARG_ENABLE([nss],
-	[  --enable-nss            : Network Security Services encryption. ],,
+	[  --enable-nss                    : Network Security Services encryption. ],,
 	[ enable_nss="yes" ])
 
 AC_ARG_ENABLE([testagents],
-	[  --enable-testagents            : Install Test Agents. ],,
+	[  --enable-testagents             : Install Test Agents. ],,
 	[ default="no" ])
 
 AC_ARG_ENABLE([rdma],
-	[  --enable-rdma           : Infiniband RDMA transport support ],,
+	[  --enable-rdma                   : Infiniband RDMA transport support ],,
 	[ enable_rdma="no" ])
 AM_CONDITIONAL(BUILD_RDMA, test x$enable_rdma = xyes)
 
 AC_ARG_ENABLE([augeas],
-	[  --enable-augeas           : Install the augeas lens for corosync.conf ],,
+	[  --enable-augeas                 : Install the augeas lens for corosync.conf ],,
 	[ enable_augeas="no" ])
 AM_CONDITIONAL(INSTALL_AUGEAS, test x$enable_augeas = xyes)
 
