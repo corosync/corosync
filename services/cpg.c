@@ -1031,10 +1031,6 @@ static void message_handler_req_exec_cpg_downlist(
 			req_exec_cpg_downlist->left_nodes, downlist_state);
 		return;
 	}
-	else {
-		log_printf (LOGSYS_LEVEL_INFO, "downlist received left_list: %d",
-			req_exec_cpg_downlist->left_nodes);
-	}
 
 	stored_msg = malloc (sizeof (struct downlist_msg));
 	stored_msg->sender_nodeid = nodeid;
