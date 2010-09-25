@@ -672,6 +672,7 @@ static int _clear_object(struct object_instance *instance)
 	int res;
 	struct object_instance *find_instance = NULL;
 	struct object_key *object_key = NULL;
+	struct object_tracker *tracker_pt = NULL;
 
 	for (list = instance->key_head.next;
 	     list != &instance->key_head; ) {
@@ -685,6 +686,19 @@ static int _clear_object(struct object_instance *instance)
 		free(object_key->key_name);
 		free(object_key->value);
 		free(object_key);
+	}
+
+	for (list = instance->track_head.next;
+		list != &instance->track_head;) {
+
+		tracker_pt = list_entry (list,
+			struct object_tracker, object_list);
+
+		list = list->next;
+
+		list_del(&tracker_pt->tracker_list);
+		list_del(&tracker_pt->object_list);
+		free(tracker_pt);
 	}
 
 	for (list = instance->child_head.next;
