@@ -199,8 +199,8 @@ static int _object_notify_deleted_children(struct object_instance *parent_pt)
 }
 
 static void object_created_notification(
-	hdb_handle_t object_handle,
 	hdb_handle_t parent_object_handle,
+	hdb_handle_t object_handle,
 	const void *name_pt, size_t name_len)
 {
 	struct list_head * list;
@@ -221,8 +221,8 @@ static void object_created_notification(
 			if (((obj_handle == parent_object_handle) ||
 				 (tracker_pt->depth == OBJECT_TRACK_DEPTH_RECURSIVE)) &&
 				(tracker_pt->object_create_notify_fn != NULL)) {
-				tracker_pt->object_create_notify_fn(object_handle,
-					parent_object_handle,
+				tracker_pt->object_create_notify_fn(parent_object_handle,
+					object_handle,
 					name_pt, name_len,
 					tracker_pt->data_pt);
 			}
@@ -438,8 +438,9 @@ static int object_create (
 	hdb_handle_put (&object_instance_database, *object_handle);
 
 	hdb_handle_put (&object_instance_database, parent_object_handle);
-	object_created_notification(object_instance->object_handle,
+	object_created_notification(
 		object_instance->parent_handle,
+		object_instance->object_handle,
 		object_instance->object_name,
 		object_instance->object_name_len);
 	objdb_unlock();
