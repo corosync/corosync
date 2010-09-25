@@ -81,18 +81,18 @@ typedef void (*object_key_change_notify_fn_t)(
 	const void *key_value_pt, size_t key_value_len,
 	void *priv_data_pt);
 
-typedef void (*object_create_notify_fn_t) (unsigned int parent_object_handle,
-hdb_handle_t object_handle,
-const void *name_pt, size_t name_len,
-void *priv_data_pt);
+typedef void (*object_create_notify_fn_t) (hdb_handle_t parent_object_handle,
+	hdb_handle_t object_handle,
+	const void *name_pt, size_t name_len,
+	void *priv_data_pt);
 
-typedef void (*object_destroy_notify_fn_t) (unsigned int parent_object_handle,
-					    const void *name_pt,
-					    size_t name_len,
-											void *priv_data_pt);
+typedef void (*object_destroy_notify_fn_t) (hdb_handle_t parent_object_handle,
+	const void *name_pt,
+	size_t name_len,
+	void *priv_data_pt);
 
 typedef void (*object_reload_notify_fn_t) (objdb_reload_notify_type_t, int flush,
-											void *priv_data_pt);
+	void *priv_data_pt);
 
 struct object_valid {
 	char *object_name;
