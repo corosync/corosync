@@ -876,6 +876,7 @@ static int test8 (pid_t pid, pid_t old_pid, int test_n) {
 	hdb_handle_t res_handle, proc_handle, pid_handle;
 	size_t value_len;
 	uint64_t tstamp1, tstamp2;
+	int32_t msec_diff;
 	char key_value[256];
 	unsigned int instance_id;
 	char tmp_obj[PATH_MAX];
@@ -1008,8 +1009,8 @@ static int test8 (pid_t pid, pid_t old_pid, int test_n) {
 			return (2);
 		}
 
-		if (value_len != strlen ("registered") || memcmp (key_value, "registered", value_len) != 0) {
-			printf ("State key is not \"registered\".\n");
+		if (value_len != strlen ("stopped") || memcmp (key_value, "stopped", value_len) != 0) {
+			printf ("State key is not \"stopped\".\n");
 			return (2);
 		}
 
@@ -1026,8 +1027,8 @@ static int test8 (pid_t pid, pid_t old_pid, int test_n) {
 			return (2);
 		}
 
-		if (value_len != strlen ("started") || memcmp (key_value, "started", value_len) != 0) {
-			printf ("State key is not \"started\".\n");
+		if (value_len != strlen ("running") || memcmp (key_value, "running", value_len) != 0) {
+			printf ("State key is not \"running\".\n");
 			return (2);
 		}
 
@@ -1044,8 +1045,8 @@ static int test8 (pid_t pid, pid_t old_pid, int test_n) {
 			return (2);
 		}
 
-		if (value_len != strlen ("registered") || memcmp (key_value, "registered", value_len) != 0) {
-			printf ("State key is not \"registered\".\n");
+		if (value_len != strlen ("stopped") || memcmp (key_value, "stopped", value_len) != 0) {
+			printf ("State key is not \"stopped\".\n");
 			return (2);
 		}
 
@@ -1058,8 +1059,8 @@ static int test8 (pid_t pid, pid_t old_pid, int test_n) {
 			return (2);
 		}
 
-		if (value_len != strlen ("registered") || memcmp (key_value, "registered", value_len) != 0) {
-			printf ("State key is not \"registered\".\n");
+		if (value_len != strlen ("stopped") || memcmp (key_value, "stopped", value_len) != 0) {
+			printf ("State key is not \"stopped\".\n");
 			return (2);
 		}
 
@@ -1076,8 +1077,8 @@ static int test8 (pid_t pid, pid_t old_pid, int test_n) {
 			return (2);
 		}
 
-		if (value_len != strlen ("started") || memcmp (key_value, "started", value_len) != 0) {
-			printf ("State key is not \"started\".\n");
+		if (value_len != strlen ("running") || memcmp (key_value, "running", value_len) != 0) {
+			printf ("State key is not \"running\".\n");
 			return (2);
 		}
 
@@ -1093,7 +1094,7 @@ static int test8 (pid_t pid, pid_t old_pid, int test_n) {
 				fprintf (stderr, "Can't send hc. Error %d\n", err);
 				return 2;
 			}
-			err = confdb_key_get_typed (cdb_handle, pid_handle, "hc_last", &tstamp1, &value_len, &cdbtype);
+			err = confdb_key_get_typed (cdb_handle, pid_handle, "last_updated", &tstamp1, &value_len, &cdbtype);
 			if (err != CS_OK) {
 				printf ("Could not get \"state\" key: %d.\n", err);
 				return (2);
@@ -1106,13 +1107,15 @@ static int test8 (pid_t pid, pid_t old_pid, int test_n) {
 				return 2;
 			}
 			sleep (1);
-			err = confdb_key_get_typed (cdb_handle, pid_handle, "hc_last", &tstamp2, &value_len, &cdbtype);
+			err = confdb_key_get_typed (cdb_handle, pid_handle, "last_updated", &tstamp2, &value_len, &cdbtype);
 			if (err != CS_OK) {
 				printf ("Could not get \"state\" key: %d.\n", err);
 				return (2);
 			}
-			if (tstamp2 - tstamp1 < 500 || tstamp2 - tstamp1 > 2000) {
-				printf ("Difference %d is not within <500, 2000> interval.\n", (int)(tstamp2 - tstamp1));
+			msec_diff = (tstamp2 - tstamp1)/CS_TIME_NS_IN_MSEC;
+
+			if (msec_diff < 500 || msec_diff > 2000) {
+				printf ("Difference %d is not within <500, 2000> interval.\n", msec_diff);
 				return (2);
 			}
 
@@ -1129,8 +1132,8 @@ static int test8 (pid_t pid, pid_t old_pid, int test_n) {
 				return (2);
 			}
 
-			if (value_len != strlen ("registered") || memcmp (key_value, "registered", value_len) != 0) {
-				printf ("State key is not \"registered\".\n");
+			if (value_len != strlen ("stopped") || memcmp (key_value, "stopped", value_len) != 0) {
+				printf ("State key is not \"stopped\".\n");
 				return (2);
 			}
 
@@ -1297,8 +1300,8 @@ static int test9 (pid_t pid, pid_t old_pid, int test_n) {
 				return (2);
 			}
 
-			if (value_len != strlen ("registered") || memcmp (key_value, "registered", value_len) != 0) {
-				printf ("State key is not \"registered\".\n");
+			if (value_len != strlen ("stopped") || memcmp (key_value, "stopped", value_len) != 0) {
+				printf ("State key is not \"stopped\".\n");
 				return (2);
 			}
 
@@ -1315,8 +1318,8 @@ static int test9 (pid_t pid, pid_t old_pid, int test_n) {
 				return (2);
 			}
 
-			if (value_len != strlen ("started") || memcmp (key_value, "started", value_len) != 0) {
-				printf ("State key is not \"started\".\n");
+			if (value_len != strlen ("running") || memcmp (key_value, "running", value_len) != 0) {
+				printf ("State key is not \"running\".\n");
 				return (2);
 			}
 

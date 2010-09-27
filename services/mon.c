@@ -44,15 +44,11 @@
 #include <corosync/lcr/lcr_comp.h>
 #include <corosync/engine/coroapi.h>
 #include <corosync/list.h>
-#include <corosync/totem/coropoll.h>
 #include <corosync/engine/logsys.h>
 #include "../exec/fsm.h"
 
 
 LOGSYS_DECLARE_SUBSYS ("MON");
-
-#undef ENTER
-#define ENTER() log_printf (LOGSYS_LEVEL_INFO, "%s", __func__)
 
 /*
  * Service Interfaces required by service_message_handler struct
@@ -60,11 +56,11 @@ LOGSYS_DECLARE_SUBSYS ("MON");
 static int mon_exec_init_fn (
 	struct corosync_api_v1 *corosync_api);
 
-hdb_handle_t mon_poll = 0;
 static struct corosync_api_v1 *api;
 static hdb_handle_t resources_obj;
-static pthread_t mon_poll_thread;
-#define MON_DEFAULT_PERIOD 3
+#define MON_DEFAULT_PERIOD 3000
+#define MON_MIN_PERIOD 500
+#define MON_MAX_PERIOD (120 * CS_TIME_MS_IN_SEC)
 
 struct corosync_service_engine mon_service_engine = {
 	.name			= "corosync resource monitoring service",
@@ -90,10 +86,10 @@ static DECLARE_LIST_INIT (confchg_notify);
 struct resource_instance {
 	hdb_handle_t handle;
 	const char *name;
-	poll_timer_handle timer_handle;
+	corosync_timer_handle_t timer_handle;
 	void (*update_stats_fn) (void *data);
 	struct cs_fsm fsm;
-	int32_t period;
+	uint64_t period;
 	objdb_value_types_t max_type;
 	union {
 		int32_t int32;
@@ -127,15 +123,15 @@ static struct resource_instance load_15min_inst = {
 static void mon_config_changed (struct cs_fsm* fsm, int32_t event, void * data);
 static void mon_resource_failed (struct cs_fsm* fsm, int32_t event, void * data);
 
-const char * mon_ok_str = "ok";
+const char * mon_running_str = "running";
 const char * mon_failed_str = "failed";
 const char * mon_failure_str = "failure";
-const char * mon_disabled_str = "disabled";
+const char * mon_stopped_str = "stopped";
 const char * mon_config_changed_str = "config_changed";
 
 enum mon_resource_state {
-	MON_S_DISABLED,
-	MON_S_OK,
+	MON_S_STOPPED,
+	MON_S_RUNNING,
 	MON_S_FAILED
 };
 enum mon_resource_event {
@@ -144,12 +140,12 @@ enum mon_resource_event {
 };
 
 struct cs_fsm_entry mon_fsm_table[] = {
-	{ MON_S_DISABLED,	MON_E_CONFIG_CHANGED,	mon_config_changed,	{MON_S_DISABLED, MON_S_OK, -1} },
-	{ MON_S_DISABLED,	MON_E_FAILURE,		NULL,			{-1} },
-	{ MON_S_OK,		MON_E_CONFIG_CHANGED,	mon_config_changed,	{MON_S_OK, MON_S_DISABLED, -1} },
-	{ MON_S_OK,		MON_E_FAILURE,		mon_resource_failed,	{MON_S_FAILED, -1} },
-	{ MON_S_FAILED,		MON_E_CONFIG_CHANGED,	mon_config_changed,	{MON_S_OK, MON_S_DISABLED, -1} },
-	{ MON_S_FAILED,		MON_E_FAILURE,		NULL,			{-1} },
+	{ MON_S_STOPPED, MON_E_CONFIG_CHANGED,	mon_config_changed,	{MON_S_STOPPED, MON_S_RUNNING, -1} },
+	{ MON_S_STOPPED, MON_E_FAILURE,		NULL,			{-1} },
+	{ MON_S_RUNNING, MON_E_CONFIG_CHANGED,	mon_config_changed,	{MON_S_RUNNING, MON_S_STOPPED, -1} },
+	{ MON_S_RUNNING, MON_E_FAILURE,		mon_resource_failed,	{MON_S_FAILED, -1} },
+	{ MON_S_FAILED,  MON_E_CONFIG_CHANGED,	mon_config_changed,	{MON_S_RUNNING, MON_S_STOPPED, -1} },
+	{ MON_S_FAILED,  MON_E_FAILURE,		NULL,			{-1} },
 };
 
 /*
@@ -202,11 +198,11 @@ static const char * mon_res_state_to_str(struct cs_fsm* fsm,
 	int32_t state)
 {
 	switch (state) {
-	case MON_S_DISABLED:
-		return mon_disabled_str;
+	case MON_S_STOPPED:
+		return mon_stopped_str;
 		break;
-	case MON_S_OK:
-		return mon_ok_str;
+	case MON_S_RUNNING:
+		return mon_running_str;
 		break;
 	case MON_S_FAILED:
 		return mon_failed_str;
@@ -227,6 +223,24 @@ static const char * mon_res_event_to_str(struct cs_fsm* fsm,
 		break;
 	}
 	return NULL;
+}
+
+static cs_error_t str_to_uint64_t(const char* str, uint64_t *out_value, uint64_t min, uint64_t max)
+{
+	char *endptr;
+
+	errno = 0;
+        *out_value = strtol(str, &endptr, 0);
+
+        /* Check for various possible errors */
+	if (errno != 0 || endptr == str) {
+		return CS_ERR_INVALID_PARAM;
+	}
+
+	if (*out_value > max || *out_value < min) {
+		return CS_ERR_INVALID_PARAM;
+	}
+	return CS_OK;
 }
 
 static void mon_fsm_state_set (struct cs_fsm* fsm,
@@ -256,7 +270,7 @@ static void mon_config_changed (struct cs_fsm* fsm, int32_t event, void * data)
 	char *str;
 	size_t str_len;
 	objdb_value_types_t type;
-	int32_t tmp_value;
+	uint64_t tmp_value;
 	int32_t res;
 
 	ENTER();
@@ -266,14 +280,22 @@ static void mon_config_changed (struct cs_fsm* fsm, int32_t event, void * data)
 			(void**)&str, &str_len,
 			&type);
 	if (res == 0) {
-		tmp_value = strtol (str, NULL, 0);
-		if (tmp_value > 0 && tmp_value < 120) {
-			if (inst->period != tmp_value) {
-				inst->period = tmp_value;
-			}
+		if (str_to_uint64_t(str, &tmp_value, MON_MIN_PERIOD, MON_MAX_PERIOD) == CS_OK) {
+			log_printf (LOGSYS_LEVEL_DEBUG,
+				"poll_period changing from:%"PRIu64" to %"PRIu64".",
+				inst->period, tmp_value);
+			inst->period = tmp_value;
+		} else {
+			log_printf (LOGSYS_LEVEL_WARNING,
+				"Could NOT use poll_period:%s ms for resource %s",
+				str, inst->name);
 		}
 	}
 
+	if (inst->timer_handle) {
+		api->timer_delete(inst->timer_handle);
+		inst->timer_handle = 0;
+	}
 	res = api->object_key_get_typed (inst->handle, "max",
 			(void**)&str, &str_len, &type);
 	if (res != 0) {
@@ -283,7 +305,7 @@ static void mon_config_changed (struct cs_fsm* fsm, int32_t event, void * data)
 		if (inst->max_type == OBJDB_VALUETYPE_DOUBLE) {
 			inst->max.dbl = INT32_MAX;
 		}
-		mon_fsm_state_set (fsm, MON_S_DISABLED, inst);
+		mon_fsm_state_set (fsm, MON_S_STOPPED, inst);
 	} else {
 		if (inst->max_type == OBJDB_VALUETYPE_INT32) {
 			inst->max.int32 = strtol (str, NULL, 0);
@@ -291,21 +313,13 @@ static void mon_config_changed (struct cs_fsm* fsm, int32_t event, void * data)
 		if (inst->max_type == OBJDB_VALUETYPE_DOUBLE) {
 			inst->max.dbl = strtod (str, NULL);
 		}
-		mon_fsm_state_set (fsm, MON_S_OK, inst);
+		mon_fsm_state_set (fsm, MON_S_RUNNING, inst);
+		/*
+		 * run the updater, incase the period has shortened
+		 * and to start the timer.
+		 */
+		inst->update_stats_fn (inst);
 	}
-
-	if (mon_poll == 0) {
-		return;
-	}
-	poll_timer_delete (mon_poll, inst->timer_handle);
-	/*
-	 * run the updater, incase the period has shortened
-	 */
-	inst->update_stats_fn (inst);
-	poll_timer_add (mon_poll,
-		inst->period * 1000, NULL,
-		inst->update_stats_fn,
-		&inst->timer_handle);
 }
 
 void mon_resource_failed (struct cs_fsm* fsm, int32_t event, void * data)
@@ -384,20 +398,18 @@ static void mem_update_stats_fn (void *data)
 			"current", strlen("current"),
 			&new_value, sizeof(new_value));
 
-		timestamp = time (NULL);
+		timestamp = cs_timestamp_get();
 
 		api->object_key_replace (inst->handle,
 			"last_updated", strlen("last_updated"),
-			&timestamp, sizeof(time_t));
+			&timestamp, sizeof(uint64_t));
 
-		if (new_value > inst->max.int32) {
+		if (new_value > inst->max.int32 && inst->fsm.curr_state != MON_S_FAILED) {
 			cs_fsm_process (&inst->fsm, MON_E_FAILURE, inst);
 		}
 	}
-	poll_timer_add (mon_poll,
-		inst->period * 1000, inst,
-		inst->update_stats_fn,
-		&inst->timer_handle);
+	api->timer_add_duration(inst->period * MILLI_2_NANO_SECONDS,
+		inst, inst->update_stats_fn, &inst->timer_handle);
 }
 
 static double min15_loadavg_get(void)
@@ -431,53 +443,28 @@ static void load_update_stats_fn (void *data)
 	int32_t res = 0;
 	double min15 = min15_loadavg_get();
 
-	if (min15 < 0) {
+	if (min15 > 0) {
+		res = api->object_key_replace (inst->handle,
+			"current", strlen("current"),
+			&min15, sizeof (min15));
+		if (res != 0) {
+			log_printf (LOGSYS_LEVEL_ERROR, "replace current failed: %d", res);
+		}
+		timestamp = cs_timestamp_get();
+
+		res = api->object_key_replace (inst->handle,
+			"last_updated", strlen("last_updated"),
+			&timestamp, sizeof(uint64_t));
+		if (res != 0) {
+			log_printf (LOGSYS_LEVEL_ERROR, "replace last_updated failed: %d", res);
+		}
+		if (min15 > inst->max.dbl && inst->fsm.curr_state != MON_S_FAILED) {
+			cs_fsm_process (&inst->fsm, MON_E_FAILURE, &inst);
+		}
 	}
-	res = api->object_key_replace (inst->handle,
-		"current", strlen("current"),
-		&min15, sizeof (min15));
-	if (res != 0)
-		log_printf (LOGSYS_LEVEL_ERROR, "replace current failed: %d", res);
 
-	timestamp = cs_timestamp_get();
-
-	res = api->object_key_replace (inst->handle,
-		"last_updated", strlen("last_updated"),
-		&timestamp, sizeof(uint64_t));
-	if (res != 0)
-		log_printf (LOGSYS_LEVEL_ERROR, "replace last_updated failed: %d", res);
-
-	if (min15 > inst->max.dbl) {
-		cs_fsm_process (&inst->fsm, MON_E_FAILURE, &inst);
-	}
-
-	poll_timer_add (mon_poll,
-		inst->period * 1000, inst,
-		inst->update_stats_fn,
-		&inst->timer_handle);
-}
-
-static void *mon_thread_handler (void * unused)
-{
-#ifdef HAVE_LIBSTATGRAB
-	sg_init();
-#endif /* HAVE_LIBSTATGRAB */
-	mon_poll = poll_create ();
-
-	poll_timer_add (mon_poll,
-		memory_used_inst.period * 1000,
-		&memory_used_inst,
-		memory_used_inst.update_stats_fn,
-		&memory_used_inst.timer_handle);
-
-	poll_timer_add (mon_poll,
-		load_15min_inst.period * 1000,
-		&load_15min_inst,
-		load_15min_inst.update_stats_fn,
-		&load_15min_inst.timer_handle);
-	poll_run (mon_poll);
-
-	return NULL;
+	api->timer_add_duration(inst->period * MILLI_2_NANO_SECONDS,
+		inst, inst->update_stats_fn, &inst->timer_handle);
 }
 
 static int object_find_or_create (
@@ -511,6 +498,23 @@ static int object_find_or_create (
 	return ret;
 }
 
+static void mon_object_destroyed(
+	hdb_handle_t parent_object_handle,
+	const void *name_pt, size_t name_len,
+	void *priv_data_pt)
+{
+	struct resource_instance* inst = (struct resource_instance*)priv_data_pt;
+
+	if (inst) {
+		log_printf (LOGSYS_LEVEL_WARNING,
+			"resource \"%s\" deleted from objdb!",
+			inst->name);
+
+		cs_fsm_process (&inst->fsm, MON_E_CONFIG_CHANGED, inst);
+	}
+}
+
+
 static void mon_key_change_notify (object_change_type_t change_type,
 	hdb_handle_t parent_object_handle,
 	hdb_handle_t object_handle,
@@ -521,8 +525,8 @@ static void mon_key_change_notify (object_change_type_t change_type,
 {
 	struct resource_instance* inst = (struct resource_instance*)priv_data_pt;
 
-	if ((strcmp ((char*)key_name_pt, "max") == 0) ||
-		(strcmp ((char*)key_name_pt, "poll_period") == 0)) {
+	if ((strncmp ((char*)key_name_pt, "max", key_len) == 0) ||
+		(strncmp ((char*)key_name_pt, "poll_period", key_len) == 0)) {
 		ENTER();
 		cs_fsm_process (&inst->fsm, MON_E_CONFIG_CHANGED, inst);
 	}
@@ -532,14 +536,13 @@ static void mon_instance_init (hdb_handle_t parent, struct resource_instance* in
 {
 	int32_t res;
 	char mon_period_str[32];
+	char *str;
 	size_t mon_period_len;
 	objdb_value_types_t mon_period_type;
-	int32_t tmp_value;
+	uint64_t tmp_value;
 	int32_t zero_32 = 0;
 	time_t zero_64 = 0;
 	double zero_double = 0;
-
-	ENTER();
 
 	object_find_or_create (parent,
 		&inst->handle,
@@ -557,15 +560,15 @@ static void mon_instance_init (hdb_handle_t parent, struct resource_instance* in
 
 	api->object_key_create_typed (inst->handle,
 		"last_updated", &zero_64,
-		sizeof (time_t), OBJDB_VALUETYPE_INT64);
+		sizeof (uint64_t), OBJDB_VALUETYPE_UINT64);
 
 	api->object_key_create_typed (inst->handle,
-		"state", mon_disabled_str, strlen (mon_disabled_str),
+		"state", mon_stopped_str, strlen (mon_stopped_str),
 		OBJDB_VALUETYPE_STRING);
 
 	inst->fsm.name = inst->name;
 	inst->fsm.curr_entry = 0;
-	inst->fsm.curr_state = MON_S_DISABLED;
+	inst->fsm.curr_state = MON_S_STOPPED;
 	inst->fsm.table = mon_fsm_table;
 	inst->fsm.entries = sizeof(mon_fsm_table) / sizeof(struct cs_fsm_entry);
 	inst->fsm.state_to_str = mon_res_state_to_str;
@@ -573,10 +576,10 @@ static void mon_instance_init (hdb_handle_t parent, struct resource_instance* in
 
 	res = api->object_key_get_typed (inst->handle,
 			"poll_period",
-			(void**)&mon_period_str, &mon_period_len,
+			(void**)&str, &mon_period_len,
 			&mon_period_type);
 	if (res != 0) {
-		mon_period_len = snprintf (mon_period_str, 32, "%d",
+		mon_period_len = snprintf (mon_period_str, 32, "%"PRIu64"",
 			inst->period);
 		api->object_key_create_typed (inst->handle,
 			"poll_period", &mon_period_str,
@@ -584,20 +587,19 @@ static void mon_instance_init (hdb_handle_t parent, struct resource_instance* in
 			OBJDB_VALUETYPE_STRING);
 	}
 	else {
-		tmp_value = strtol (mon_period_str, NULL, 0);
-		if (tmp_value > 0 && tmp_value < 120)
+		if (str_to_uint64_t(str, &tmp_value, MON_MIN_PERIOD, MON_MAX_PERIOD) == CS_OK) {
 			inst->period = tmp_value;
+		} else {
+			log_printf (LOGSYS_LEVEL_WARNING,
+				"Could NOT use poll_period:%s ms for resource %s",
+				str, inst->name);
+		}
 	}
 	cs_fsm_process (&inst->fsm, MON_E_CONFIG_CHANGED, inst);
 
-	poll_timer_add (mon_poll,
-		inst->period * 1000, inst,
-		inst->update_stats_fn,
-		&inst->timer_handle);
-
-	api->object_track_start (inst->handle, OBJECT_TRACK_DEPTH_ONE,
+	api->object_track_start (inst->handle, OBJECT_TRACK_DEPTH_RECURSIVE,
 		mon_key_change_notify,
-		NULL, NULL, NULL, NULL);
+		NULL, mon_object_destroyed, NULL, inst);
 
 }
 
@@ -607,11 +609,14 @@ static int mon_exec_init_fn (
 	hdb_handle_t obj;
 	hdb_handle_t parent;
 
+#ifdef HAVE_LIBSTATGRAB
+	sg_init();
+#endif /* HAVE_LIBSTATGRAB */
+
 #ifdef COROSYNC_SOLARIS
 	logsys_subsys_init();
 #endif
 	api = corosync_api;
-	ENTER();
 
 	object_find_or_create (OBJECT_PARENT_HANDLE,
 		&resources_obj,
@@ -625,9 +630,6 @@ static int mon_exec_init_fn (
 
 	mon_instance_init (parent, &memory_used_inst);
 	mon_instance_init (parent, &load_15min_inst);
-
-
-	pthread_create (&mon_poll_thread, NULL, mon_thread_handler, NULL);
 
 	return 0;
 }

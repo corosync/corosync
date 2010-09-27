@@ -39,7 +39,7 @@
 #include <sys/ioctl.h>
 #include <linux/types.h>
 #include <linux/watchdog.h>
-#include <linux/reboot.h>
+#include <sys/reboot.h>
 
 #include <corosync/corotypes.h>
 #include <corosync/corodefs.h>
@@ -60,12 +60,12 @@ typedef enum {
 struct resource {
 	hdb_handle_t handle;
 	char *recovery;
-	char name[128];
+	char name[CS_MAX_NAME_LENGTH];
 	time_t last_updated;
 	struct cs_fsm fsm;
 
 	corosync_timer_handle_t check_timer;
-	uint32_t check_timeout;
+	uint64_t check_timeout;
 };
 
 LOGSYS_DECLARE_SUBSYS("WD");
@@ -79,20 +79,23 @@ static int wd_exec_exit_fn (void);
 static void wd_resource_check_fn (void* resource_ref);
 
 static struct corosync_api_v1 *api;
-#define WD_DEFAULT_TIMEOUT 6
-static uint32_t watchdog_timeout = WD_DEFAULT_TIMEOUT;
-static uint32_t tickle_timeout = (WD_DEFAULT_TIMEOUT / 2);
+#define WD_DEFAULT_TIMEOUT_SEC 6
+#define WD_DEFAULT_TIMEOUT_MS (WD_DEFAULT_TIMEOUT_SEC * CS_TIME_MS_IN_SEC)
+#define WD_MIN_TIMEOUT_MS 500
+#define WD_MAX_TIMEOUT_MS (120 * CS_TIME_MS_IN_SEC)
+static uint32_t watchdog_timeout = WD_DEFAULT_TIMEOUT_SEC;
+static uint64_t tickle_timeout = (WD_DEFAULT_TIMEOUT_MS / 2);
 static int dog = -1;
 static corosync_timer_handle_t wd_timer;
 static hdb_handle_t resources_obj;
 static int watchdog_ok = 1;
 
 struct corosync_service_engine wd_service_engine = {
-	.name			= "corosync self-fencing service",
+	.name			= "corosync watchdog service",
 	.id			= WD_SERVICE,
 	.priority		= 1,
 	.private_data_size	= 0,
-	.flow_control		= CS_LIB_FLOW_CONTROL_REQUIRED,
+	.flow_control		= CS_LIB_FLOW_CONTROL_NOT_REQUIRED,
 	.lib_init_fn		= NULL,
 	.lib_exit_fn		= NULL,
 	.lib_engine		= NULL,
@@ -115,9 +118,9 @@ static void wd_config_changed (struct cs_fsm* fsm, int32_t event, void * data);
 static void wd_resource_failed (struct cs_fsm* fsm, int32_t event, void * data);
 
 enum wd_resource_state {
-	WD_S_GOOD,
+	WD_S_RUNNING,
 	WD_S_FAILED,
-	WD_S_DISABLED
+	WD_S_STOPPED
 };
 
 enum wd_resource_event {
@@ -125,19 +128,19 @@ enum wd_resource_event {
 	WD_E_CONFIG_CHANGED
 };
 
-const char * wd_ok_str			= "ok";
+const char * wd_running_str		= "running";
 const char * wd_failed_str		= "failed";
 const char * wd_failure_str		= "failure";
-const char * wd_disabled_str		= "disabled";
+const char * wd_stopped_str		= "stopped";
 const char * wd_config_changed_str	= "config_changed";
 
 struct cs_fsm_entry wd_fsm_table[] = {
-	{ WD_S_DISABLED,	WD_E_CONFIG_CHANGED,	wd_config_changed,	{WD_S_DISABLED, WD_S_GOOD, -1} },
-	{ WD_S_DISABLED,	WD_E_FAILURE,		NULL,			{-1} },
-	{ WD_S_GOOD,		WD_E_CONFIG_CHANGED,	wd_config_changed,	{WD_S_GOOD, WD_S_DISABLED, -1} },
-	{ WD_S_GOOD,		WD_E_FAILURE,		wd_resource_failed,	{WD_S_FAILED, -1} },
-	{ WD_S_FAILED,		WD_E_CONFIG_CHANGED,	wd_config_changed,	{WD_S_GOOD, WD_S_DISABLED, -1} },
-	{ WD_S_FAILED,		WD_E_FAILURE,		NULL,			{-1} },
+	{ WD_S_STOPPED,	WD_E_CONFIG_CHANGED,	wd_config_changed,	{WD_S_STOPPED, WD_S_RUNNING, -1} },
+	{ WD_S_STOPPED,	WD_E_FAILURE,		NULL,			{-1} },
+	{ WD_S_RUNNING,	WD_E_CONFIG_CHANGED,	wd_config_changed,	{WD_S_RUNNING, WD_S_STOPPED, -1} },
+	{ WD_S_RUNNING,	WD_E_FAILURE,		wd_resource_failed,	{WD_S_FAILED, -1} },
+	{ WD_S_FAILED,	WD_E_CONFIG_CHANGED,	wd_config_changed,	{WD_S_RUNNING, WD_S_STOPPED, -1} },
+	{ WD_S_FAILED,	WD_E_FAILURE,		NULL,			{-1} },
 };
 
 /*
@@ -217,15 +220,33 @@ static int object_find_or_create (
 	return ret;
 }
 
+static cs_error_t str_to_uint64_t(const char* str, uint64_t *out_value, uint64_t min, uint64_t max)
+{
+	char *endptr;
+
+	errno = 0;
+        *out_value = strtol(str, &endptr, 0);
+
+        /* Check for various possible errors */
+	if (errno != 0 || endptr == str) {
+		return CS_ERR_INVALID_PARAM;
+	}
+
+	if (*out_value > max || *out_value < min) {
+		return CS_ERR_INVALID_PARAM;
+	}
+	return CS_OK;
+}
+
 static const char * wd_res_state_to_str(struct cs_fsm* fsm,
 	int32_t state)
 {
 	switch (state) {
-	case WD_S_DISABLED:
-		return wd_disabled_str;
+	case WD_S_STOPPED:
+		return wd_stopped_str;
 		break;
-	case WD_S_GOOD:
-		return wd_ok_str;
+	case WD_S_RUNNING:
+		return wd_running_str;
 		break;
 	case WD_S_FAILED:
 		return wd_failed_str;
@@ -249,17 +270,18 @@ static const char * wd_res_event_to_str(struct cs_fsm* fsm,
 }
 
 /*
- * returns (0 == OK, 1 == failed)
+ * returns (CS_TRUE == OK, CS_FALSE == failed)
  */
-static int32_t wd_resource_has_failed (struct resource *ref)
+static int32_t wd_resource_state_is_ok (struct resource *ref)
 {
 	hdb_handle_t resource = ref->handle;
 	int res;
 	char* state;
 	size_t state_len;
 	objdb_value_types_t type;
-	time_t *last_updated;
-	time_t my_time;
+	uint64_t *last_updated;
+	uint64_t my_time;
+	uint64_t allowed_period;
 	size_t last_updated_len;
 
 	res = api->object_key_get_typed (resource,
@@ -267,29 +289,39 @@ static int32_t wd_resource_has_failed (struct resource *ref)
 	if (res != 0) {
 		/* key does not exist.
 		*/
-		return 1;
+		return CS_FALSE;
 	}
 	res = api->object_key_get_typed (resource,
 		"state", (void**)&state, &state_len, &type);
 	if (res != 0 ||	strncmp (state, "disabled", strlen ("disabled")) == 0) {
 		/* key does not exist.
 		*/
-		return 1;
+		return CS_FALSE;
+	}
+	if (*last_updated == 0) {
+		/* initial value */
+		return CS_TRUE;
 	}
 
-	my_time = time (NULL);
+	my_time = cs_timestamp_get();
 
-	if ((*last_updated + ref->check_timeout) < my_time) {
-		log_printf (LOGSYS_LEVEL_INFO, "delayed %ld + %d < %ld",
-			*last_updated, ref->check_timeout, my_time);
-		return 1;
+	/*
+	 * Here we check that the monitor has written a timestamp within the poll_period
+	 * plus a grace factor of (0.5 * poll_period).
+	 */
+	allowed_period = (ref->check_timeout * MILLI_2_NANO_SECONDS * 3) / 2;
+	if ((*last_updated + allowed_period) < my_time) {
+		log_printf (LOGSYS_LEVEL_ERROR,
+			"last_updated %"PRIu64" ms too late, period:%"PRIu64".",
+			(uint64_t)(my_time/MILLI_2_NANO_SECONDS - ((*last_updated + allowed_period) / MILLI_2_NANO_SECONDS)),
+			ref->check_timeout);
+		return CS_FALSE;
 	}
 
-	if ((*last_updated + ref->check_timeout) < my_time ||
-		strcmp (state, "bad") == 0) {
-		return 1;
+	if (strcmp (state, wd_failed_str) == 0) {
+		return CS_FALSE;
 	}
-	return 0;
+	return CS_TRUE;
 }
 
 static void wd_config_changed (struct cs_fsm* fsm, int32_t event, void * data)
@@ -298,18 +330,34 @@ static void wd_config_changed (struct cs_fsm* fsm, int32_t event, void * data)
 	size_t len;
 	char *state;
 	objdb_value_types_t type;
-	char mon_period_str[32];
-	int32_t tmp_value;
+	char *str;
+	uint64_t tmp_value;
+	uint64_t next_timeout;
 	struct resource *ref = (struct resource*)data;
+
+	next_timeout = ref->check_timeout;
 
 	res = api->object_key_get_typed (ref->handle,
 			"poll_period",
-			(void**)&mon_period_str, &len,
+			(void**)&str, &len,
 			&type);
 	if (res == 0) {
-		tmp_value = strtol (mon_period_str, NULL, 0);
-		if (tmp_value > 0 && tmp_value < 120)
-			ref->check_timeout = (tmp_value * 5)/4;
+		if (str_to_uint64_t(str, &tmp_value, WD_MIN_TIMEOUT_MS, WD_MAX_TIMEOUT_MS) == CS_OK) {
+			log_printf (LOGSYS_LEVEL_DEBUG,
+				"poll_period changing from:%"PRIu64" to %"PRIu64".",
+				ref->check_timeout, tmp_value);
+			/*
+			 * To easy in the transition between poll_period's we are going
+			 * to make the first timeout the bigger of the new and old value.
+			 * This is to give the monitoring system time to adjust.
+			 */
+			next_timeout = CS_MAX(tmp_value, ref->check_timeout);
+			ref->check_timeout = tmp_value;
+		} else {
+			log_printf (LOGSYS_LEVEL_WARNING,
+				"Could NOT use poll_period:%s ms for resource %s",
+				str, ref->name);
+		}
 	}
 
 	res = api->object_key_get_typed (ref->handle,
@@ -319,7 +367,7 @@ static void wd_config_changed (struct cs_fsm* fsm, int32_t event, void * data)
 		 */
 		log_printf (LOGSYS_LEVEL_WARNING,
 			"resource %s missing a recovery key.", ref->name);
-		cs_fsm_state_set(&ref->fsm, WD_S_DISABLED, ref);
+		cs_fsm_state_set(&ref->fsm, WD_S_STOPPED, ref);
 		return;
 	}
 	res = api->object_key_get_typed (ref->handle,
@@ -329,19 +377,21 @@ static void wd_config_changed (struct cs_fsm* fsm, int32_t event, void * data)
 		*/
 		log_printf (LOGSYS_LEVEL_WARNING,
 			"resource %s missing a state key.", ref->name);
-		cs_fsm_state_set(&ref->fsm, WD_S_DISABLED, ref);
+		cs_fsm_state_set(&ref->fsm, WD_S_STOPPED, ref);
 		return;
 	}
-
-	cs_fsm_state_set(&ref->fsm, WD_S_GOOD, ref);
-
 	if (ref->check_timer) {
 		api->timer_delete(ref->check_timer);
+		ref->check_timer = NULL;
 	}
-	api->timer_add_duration((unsigned long long)ref->check_timeout*1000000000,
-		ref,
-		wd_resource_check_fn, &ref->check_timer);
 
+	if (strcmp(wd_stopped_str, state) == 0) {
+		cs_fsm_state_set(&ref->fsm, WD_S_STOPPED, ref);
+	} else {
+		api->timer_add_duration(next_timeout * MILLI_2_NANO_SECONDS,
+			ref, wd_resource_check_fn, &ref->check_timer);
+		cs_fsm_state_set(&ref->fsm, WD_S_RUNNING, ref);
+	}
 }
 
 static void wd_resource_failed (struct cs_fsm* fsm, int32_t event, void * data)
@@ -350,6 +400,7 @@ static void wd_resource_failed (struct cs_fsm* fsm, int32_t event, void * data)
 
 	if (ref->check_timer) {
 		api->timer_delete(ref->check_timer);
+		ref->check_timer = NULL;
 	}
 
 	log_printf (LOGSYS_LEVEL_CRIT, "%s resource \"%s\" failed!",
@@ -359,10 +410,10 @@ static void wd_resource_failed (struct cs_fsm* fsm, int32_t event, void * data)
 		watchdog_ok = 0;
 	}
 	else if (strcmp (ref->recovery, "reboot") == 0) {
-		//reboot(LINUX_REBOOT_MAGIC1, LINUX_REBOOT_MAGIC2, LINUX_REBOOT_CMD_RESTART, NULL);
+		reboot(RB_AUTOBOOT);
 	}
 	else if (strcmp (ref->recovery, "shutdown") == 0) {
-		//reboot(LINUX_REBOOT_MAGIC1, LINUX_REBOOT_MAGIC2, LINUX_REBOOT_CMD_POWER_OFF, NULL);
+		reboot(RB_POWER_OFF);
 	}
 	cs_fsm_state_set(fsm, WD_S_FAILED, data);
 }
@@ -377,13 +428,10 @@ static void wd_key_changed(object_change_type_t change_type,
 {
 	struct resource* ref = (struct resource*)priv_data_pt;
 
-	if (strcmp(key_name_pt, "last_updated") == 0 ||
-		strcmp(key_name_pt, "current") == 0) {
+	if (strncmp(key_name_pt, "last_updated", key_len) == 0 ||
+		strncmp(key_name_pt, "current", key_len) == 0) {
 		return;
 	}
-//	log_printf (LOGSYS_LEVEL_WARNING,
-//		"watchdog resource key changed: %s.%s=%s ref=%p.",
-//		(char*)object_name_pt, (char*)key_name_pt, (char*)key_value_pt, ref);
 
 	if (ref == NULL) {
 		return;
@@ -398,13 +446,14 @@ static void wd_object_destroyed(
 {
 	struct resource* ref = (struct resource*)priv_data_pt;
 
-	log_printf (LOGSYS_LEVEL_WARNING,
-			"watchdog resource \"%s\" deleted from objdb!",
-			(char*)name_pt);
-
 	if (ref) {
+		log_printf (LOGSYS_LEVEL_WARNING,
+			"resource \"%s\" deleted from objdb!",
+			ref->name);
+
 		api->timer_delete(ref->check_timer);
 		ref->check_timer = NULL;
+		free(ref);
 	}
 }
 
@@ -412,33 +461,31 @@ static void wd_resource_check_fn (void* resource_ref)
 {
 	struct resource* ref = (struct resource*)resource_ref;
 
-	log_printf (LOGSYS_LEVEL_INFO,
-			"checking watchdog resource \"%s\".",
-			ref->name);
-	if (wd_resource_has_failed (ref) ) {
+	if (wd_resource_state_is_ok (ref) == CS_FALSE) {
 		cs_fsm_process(&ref->fsm, WD_E_FAILURE, ref);
-		log_printf (LOGSYS_LEVEL_CRIT,
-			"watchdog resource \"%s\" failed!",
-			(char*)ref->name);
 		return;
 	}
-	api->timer_add_duration((unsigned long long)ref->check_timeout*1000000000,
+	api->timer_add_duration(ref->check_timeout*MILLI_2_NANO_SECONDS,
 		ref, wd_resource_check_fn, &ref->check_timer);
 }
 
-
-static void wd_resource_create (hdb_handle_t resource_obj)
+/*
+ * return 0   - fully configured
+ * return -1  - partially configured
+ */
+static int32_t wd_resource_create (hdb_handle_t resource_obj)
 {
 	int res;
 	size_t len;
 	char *state;
 	objdb_value_types_t type;
-	char mon_period_str[32];
-	int32_t tmp_value;
+	char period_str[32];
+	char *str;
+	uint64_t tmp_value;
 	struct resource *ref = malloc (sizeof (struct resource));
 
 	ref->handle = resource_obj;
-	ref->check_timeout = WD_DEFAULT_TIMEOUT;
+	ref->check_timeout = WD_DEFAULT_TIMEOUT_MS;
 	ref->check_timer = NULL;
 	api->object_name_get (resource_obj,
 		ref->name,
@@ -448,30 +495,33 @@ static void wd_resource_create (hdb_handle_t resource_obj)
 	ref->fsm.table = wd_fsm_table;
 	ref->fsm.entries = sizeof(wd_fsm_table) / sizeof(struct cs_fsm_entry);
 	ref->fsm.curr_entry = 0;
-	ref->fsm.curr_state = WD_S_DISABLED;
+	ref->fsm.curr_state = WD_S_STOPPED;
 	ref->fsm.state_to_str = wd_res_state_to_str;
 	ref->fsm.event_to_str = wd_res_event_to_str;
 	api->object_priv_set (resource_obj, NULL);
 
 	res = api->object_key_get_typed (resource_obj,
 			"poll_period",
-			(void**)&mon_period_str, &len,
+			(void**)&str, &len,
 			&type);
 	if (res != 0) {
-		log_printf (LOGSYS_LEVEL_ERROR, "%s : %d",__func__, res);
-		len = snprintf (mon_period_str, 32, "%d", ref->check_timeout);
+		len = snprintf (period_str, 32, "%"PRIu64"", ref->check_timeout);
 		api->object_key_create_typed (resource_obj,
-			"poll_period", &mon_period_str,
+			"poll_period", &period_str,
 			len,
 			OBJDB_VALUETYPE_STRING);
 	}
 	else {
-		tmp_value = strtol (mon_period_str, NULL, 0);
-		if (tmp_value > 0 && tmp_value < 120)
-			ref->check_timeout = (tmp_value * 5)/4;
+		if (str_to_uint64_t(str, &tmp_value, WD_MIN_TIMEOUT_MS, WD_MAX_TIMEOUT_MS) == CS_OK) {
+			ref->check_timeout = tmp_value;
+		} else {
+			log_printf (LOGSYS_LEVEL_WARNING,
+				"Could NOT use poll_period:%s ms for resource %s",
+				str, ref->name);
+		}
 	}
 
-	api->object_track_start (resource_obj, OBJECT_TRACK_DEPTH_ONE,
+	api->object_track_start (resource_obj, OBJECT_TRACK_DEPTH_RECURSIVE,
 			wd_key_changed, NULL, wd_object_destroyed,
 			NULL, ref);
 
@@ -482,7 +532,7 @@ static void wd_resource_create (hdb_handle_t resource_obj)
 		 */
 		log_printf (LOGSYS_LEVEL_WARNING,
 			"resource %s missing a recovery key.", ref->name);
-		return;
+		return -1;
 	}
 	res = api->object_key_get_typed (resource_obj,
 		"state", (void*)&state, &len, &type);
@@ -491,7 +541,7 @@ static void wd_resource_create (hdb_handle_t resource_obj)
 		*/
 		log_printf (LOGSYS_LEVEL_WARNING,
 			"resource %s missing a state key.", ref->name);
-		return;
+		return -1;
 	}
 
 	res = api->object_key_get_typed (resource_obj,
@@ -502,11 +552,16 @@ static void wd_resource_create (hdb_handle_t resource_obj)
 		ref->last_updated = 0;
 	}
 
-	api->timer_add_duration((unsigned long long)ref->check_timeout*1000000000,
+	/*
+	 * delay the first check to give the monitor time to start working.
+	 */
+	tmp_value = CS_MAX(ref->check_timeout * 2, WD_DEFAULT_TIMEOUT_MS);
+	api->timer_add_duration(tmp_value * MILLI_2_NANO_SECONDS,
 		ref,
 		wd_resource_check_fn, &ref->check_timer);
 
-	cs_fsm_state_set(&ref->fsm, WD_S_GOOD, ref);
+	cs_fsm_state_set(&ref->fsm, WD_S_RUNNING, ref);
+	return 0;
 }
 
 
@@ -515,15 +570,16 @@ static void wd_tickle_fn (void* arg)
 	ENTER();
 
 	if (watchdog_ok) {
-		if (dog > 0)
+		if (dog > 0) {
 			ioctl(dog, WDIOC_KEEPALIVE, &watchdog_ok);
+		}
+		api->timer_add_duration(tickle_timeout*MILLI_2_NANO_SECONDS, NULL,
+			wd_tickle_fn, &wd_timer);
 	}
 	else {
 		log_printf (LOGSYS_LEVEL_ALERT, "NOT tickling the watchdog!");
 	}
 
-	api->timer_add_duration((unsigned long long)tickle_timeout*1000000000, NULL,
-				wd_tickle_fn, &wd_timer);
 }
 
 static void wd_resource_object_created(hdb_handle_t parent_object_handle,
@@ -540,7 +596,7 @@ static void wd_scan_resources (void)
 	hdb_handle_t obj_finder2;
 	hdb_handle_t resource_type;
 	hdb_handle_t resource;
-	int res;
+	int res_count = 0;
 
 	ENTER();
 
@@ -549,12 +605,8 @@ static void wd_scan_resources (void)
 		"resources", strlen ("resources"),
 		&obj_finder);
 
-	res = api->object_find_next (obj_finder, &resources_obj);
+	api->object_find_next (obj_finder, &resources_obj);
 	api->object_find_destroy (obj_finder);
-	if (res != 0) {
-		log_printf (LOGSYS_LEVEL_INFO, "no resources.");
-		return;
-	}
 
 	/* this will be the system or process level
 	 */
@@ -573,7 +625,9 @@ static void wd_scan_resources (void)
 		while (api->object_find_next (obj_finder2,
 				&resource) == 0) {
 
-			wd_resource_create (resource);
+			if (wd_resource_create (resource) == 0) {
+				res_count++;
+			}
 		}
 		api->object_find_destroy (obj_finder2);
 
@@ -582,22 +636,22 @@ static void wd_scan_resources (void)
 			NULL, NULL);
 	}
 	api->object_find_destroy (obj_finder);
+	if (res_count == 0) {
+		log_printf (LOGSYS_LEVEL_INFO, "no resources configured.");
+	}
 }
 
 
 static void watchdog_timeout_apply (uint32_t new)
 {
 	struct watchdog_info ident;
+	uint32_t original_timeout = watchdog_timeout;
 
-	if (new < 2) {
-		watchdog_timeout = 2;
+	if (new == original_timeout) {
+		return;
 	}
-	else if (new > 120) {
-		watchdog_timeout = 120;
-	}
-	else {
-		watchdog_timeout = new;
-	}
+
+	watchdog_timeout = new;
 
 	if (dog > 0) {
 		ioctl(dog, WDIOC_GETSUPPORT, &ident);
@@ -608,10 +662,24 @@ static void watchdog_timeout_apply (uint32_t new)
 		}
 		ioctl(dog, WDIOC_GETTIMEOUT, &watchdog_timeout);
 	}
-	tickle_timeout = watchdog_timeout / 2;
 
-	log_printf (LOGSYS_LEVEL_DEBUG, "The Watchdog timeout is %d seconds\n", watchdog_timeout);
-	log_printf (LOGSYS_LEVEL_DEBUG, "The tickle timeout is %d seconds\n", tickle_timeout);
+	if (watchdog_timeout == new) {
+		tickle_timeout = (watchdog_timeout * CS_TIME_MS_IN_SEC)/ 2;
+
+		/* reset the tickle timer in case it was reduced.
+		 */
+		api->timer_delete (wd_timer);
+		api->timer_add_duration(tickle_timeout*MILLI_2_NANO_SECONDS, NULL,
+			wd_tickle_fn, &wd_timer);
+
+		log_printf (LOGSYS_LEVEL_DEBUG, "The Watchdog timeout is %d seconds\n", watchdog_timeout);
+		log_printf (LOGSYS_LEVEL_DEBUG, "The tickle timeout is %"PRIu64" ms\n", tickle_timeout);
+	} else {
+		log_printf (LOGSYS_LEVEL_WARNING,
+			"Could not change the Watchdog timeout from %d to %d seconds\n",
+			original_timeout, new);
+	}
+
 }
 
 static int setup_watchdog(void)
@@ -658,20 +726,21 @@ static void wd_top_level_key_changed(object_change_type_t change_type,
 	const void *key_value_pt, size_t key_value_len,
 	void *priv_data_pt)
 {
-	uint32_t tmp_value;
+	uint64_t tmp_value;
+	int32_t tmp_value_32;
 
 	ENTER();
 	if (change_type != OBJECT_KEY_DELETED &&
 		strncmp ((char*)key_name_pt, "watchdog_timeout", key_value_len) == 0) {
-		tmp_value = strtol (key_value_pt, NULL, 0);
-		watchdog_timeout_apply (tmp_value);
+		if (str_to_uint64_t(key_value_pt, &tmp_value, 2, 120) == CS_OK) {
+			tmp_value_32 = tmp_value;
+			watchdog_timeout_apply (tmp_value_32);
+		}
 	}
 	else {
-		watchdog_timeout_apply (WD_DEFAULT_TIMEOUT);
+		watchdog_timeout_apply (WD_DEFAULT_TIMEOUT_SEC);
 	}
-	log_printf (LOGSYS_LEVEL_INFO, "new(%d) tickle_timeout: %d", change_type, tickle_timeout);
 }
-
 
 static void watchdog_timeout_get_initial (void)
 {
@@ -679,7 +748,8 @@ static void watchdog_timeout_get_initial (void)
 	char watchdog_timeout_str[32];
 	size_t watchdog_timeout_len;
 	objdb_value_types_t watchdog_timeout_type;
-	uint32_t tmp_value;
+	uint32_t tmp_value_32;
+	uint64_t tmp_value;
 
 	ENTER();
 
@@ -688,7 +758,7 @@ static void watchdog_timeout_get_initial (void)
 			(void**)&watchdog_timeout_str, &watchdog_timeout_len,
 			&watchdog_timeout_type);
 	if (res != 0) {
-		watchdog_timeout_apply (WD_DEFAULT_TIMEOUT);
+		watchdog_timeout_apply (WD_DEFAULT_TIMEOUT_SEC);
 
 		watchdog_timeout_len = snprintf (watchdog_timeout_str, 32, "%d", watchdog_timeout);
 		api->object_key_create_typed (resources_obj,
@@ -697,8 +767,12 @@ static void watchdog_timeout_get_initial (void)
 			OBJDB_VALUETYPE_STRING);
 	}
 	else {
-		tmp_value = strtol (watchdog_timeout_str, NULL, 0);
-		watchdog_timeout_apply (tmp_value);
+		if (str_to_uint64_t(watchdog_timeout_str, &tmp_value, 2, 120) == CS_OK) {
+			tmp_value_32 = tmp_value;
+			watchdog_timeout_apply (tmp_value_32);
+		} else {
+			watchdog_timeout_apply (WD_DEFAULT_TIMEOUT_SEC);
+		}
 	}
 
 	api->object_track_start (resources_obj, OBJECT_TRACK_DEPTH_ONE,
@@ -734,7 +808,7 @@ static int wd_exec_init_fn (
 
 	wd_scan_resources();
 
-	api->timer_add_duration((unsigned long long)tickle_timeout*1000000000, NULL,
+	api->timer_add_duration(tickle_timeout*MILLI_2_NANO_SECONDS, NULL,
 				wd_tickle_fn, &wd_timer);
 
 	return 0;

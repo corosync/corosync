@@ -64,8 +64,8 @@
 #include <signal.h>
 
 #define SAM_CONFDB_S_FAILED		"failed"
-#define SAM_CONFDB_S_REGISTERED		"registered"
-#define SAM_CONFDB_S_STARTED		"started"
+#define SAM_CONFDB_S_REGISTERED		"stopped"
+#define SAM_CONFDB_S_STARTED		"running"
 #define SAM_CONFDB_S_Q_WAIT		"waiting for quorum"
 
 #define SAM_RP_MASK_Q(pol)	(pol & (~SAM_RECOVERY_POLICY_QUORUM))
@@ -145,7 +145,6 @@ static cs_error_t sam_confdb_update_key (enum sam_confdb_key_t key, const char *
 	cs_error_t err;
 	const char *svalue;
 	uint64_t hc_period, last_hc;
-	struct timeval tv;
 	const char *ssvalue[] = { [SAM_RECOVERY_POLICY_QUIT] = "quit", [SAM_RECOVERY_POLICY_RESTART] = "restart" };
 
 	switch (key) {
@@ -161,19 +160,15 @@ static cs_error_t sam_confdb_update_key (enum sam_confdb_key_t key, const char *
 		hc_period = sam_internal_data.time_interval;
 
 		if ((err = confdb_key_create_typed (sam_internal_data.confdb_handle, sam_internal_data.confdb_pid_handle,
-			"hc_period", &hc_period, sizeof (uint64_t), CONFDB_VALUETYPE_UINT64)) != CS_OK) {
+			"poll_period", &hc_period, sizeof (hc_period), CONFDB_VALUETYPE_UINT64)) != CS_OK) {
 			goto exit_error;
 		}
 		break;
 	case SAM_CONFDB_KEY_LAST_HC:
-		if (gettimeofday (&tv, NULL) == -1) {
-			last_hc = 0;
-		} else {
-			last_hc = ((uint64_t)tv.tv_sec * 1000) + ((uint64_t)tv.tv_usec / 1000);
-		}
+		last_hc = cs_timestamp_get();
 
 		if ((err = confdb_key_create_typed (sam_internal_data.confdb_handle, sam_internal_data.confdb_pid_handle,
-			"hc_last", &last_hc, sizeof (uint64_t), CONFDB_VALUETYPE_UINT64)) != CS_OK) {
+			"last_updated", &last_hc, sizeof (last_hc), CONFDB_VALUETYPE_UINT64)) != CS_OK) {
 			goto exit_error;
 		}
 		break;
