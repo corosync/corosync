@@ -32,6 +32,7 @@ Copyright (c) 2010 Red Hat, Inc.
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 
+import random
 from UserDict import UserDict
 from cts.CTStests import *
 from corosync import CpgTestAgent
@@ -706,7 +707,7 @@ class SamTest1(CoroTest):
         if 'OK' in res:
             return self.success()
         else:
-            return self.failure('sam test 1 failed')
+            return self.failure(self.name + ' failed')
 
 ###################################################################
 class SamTest2(CoroTest):
@@ -720,21 +721,7 @@ class SamTest2(CoroTest):
         if 'OK' in res:
             return self.success()
         else:
-            return self.failure('sam test 2 failed')
-
-###################################################################
-class SamTest3(CoroTest):
-    def __init__(self, cm):
-        CoroTest.__init__(self, cm)
-        self.name="SamTest3"
-
-    def __call__(self, node):
-        self.incr("calls")
-        res = self.CM.sam_agent[node].test3()
-        if 'OK' in res:
-            return self.success()
-        else:
-            return self.failure('sam test 3 failed')
+            return self.failure(self.name + ' failed')
 
 ###################################################################
 class SamTest4(CoroTest):
@@ -748,8 +735,79 @@ class SamTest4(CoroTest):
         if 'OK' in res:
             return self.success()
         else:
-            return self.failure('sam test 4 failed')
+            return self.failure(self.name + ' failed')
 
+###################################################################
+class SamTest5(CoroTest):
+    def __init__(self, cm):
+        CoroTest.__init__(self, cm)
+        self.name="SamTest5"
+
+    def __call__(self, node):
+        self.incr("calls")
+        res = self.CM.sam_agent[node].test5()
+        if 'OK' in res:
+            return self.success()
+        else:
+            return self.failure(self.name + ' failed')
+
+###################################################################
+class SamTest6(CoroTest):
+    def __init__(self, cm):
+        CoroTest.__init__(self, cm)
+        self.name="SamTest6"
+
+    def __call__(self, node):
+        self.incr("calls")
+        res = self.CM.sam_agent[node].test6()
+        if 'OK' in res:
+            return self.success()
+        else:
+            return self.failure(self.name + ' failed')
+
+###################################################################
+class SamTestQuorum(CoroTest):
+    def __init__(self, cm):
+        CoroTest.__init__(self, cm)
+        self.name="SamTestQuorum"
+        self.config['quorum/provider'] = 'testquorum'
+        self.config['quorum/quorate'] = '1'
+
+    def __call__(self, node):
+        self.incr("calls")
+        res = self.CM.sam_agent[node].test_quorum()
+        if 'OK' in res:
+            return self.success()
+        else:
+            return self.failure(self.name + ' failed')
+
+###################################################################
+class SamTest8(CoroTest):
+    def __init__(self, cm):
+        CoroTest.__init__(self, cm)
+        self.name="SamTest8"
+
+    def __call__(self, node):
+        self.incr("calls")
+        res = self.CM.sam_agent[node].test8()
+        if 'OK' in res:
+            return self.success()
+        else:
+            return self.failure(self.name + ' failed')
+
+###################################################################
+class SamTest9(CoroTest):
+    def __init__(self, cm):
+        CoroTest.__init__(self, cm)
+        self.name="SamTest9"
+
+    def __call__(self, node):
+        self.incr("calls")
+        res = self.CM.sam_agent[node].test9()
+        if 'OK' in res:
+            return self.success()
+        else:
+            return self.failure(self.name + ' failed')
 
 class QuorumState(object):
     def __init__(self, cm, node):
@@ -1065,6 +1123,373 @@ class GenStopAllBeekhof(CoroTest):
         self.CM.log("%s ALL good            (waited %d secs)" % (self.name, waited))
         return self.success()
 
+###################################################################
+class NoWDConfig(CoroTest):
+    '''Assertion: no config == no watchdog
+Setup: no config, kmod inserted
+1] make sure watchdog is not enabled
+'''
+    def __init__(self, cm):
+        CoroTest.__init__(self,cm)
+        self.name="NoWDConfig"
+        self.need_all_up = False
+
+    def config_valid(self, config):
+        return not config.has_key('resources')
+
+    def __call__(self, node):
+        '''Perform the 'NoWDConfig' test. '''
+        self.incr("calls")
+
+        self.CM.StopaCM(node)
+        pats = []
+        pats.append("%s .*no resources configured." % node)
+        w = self.create_watch(pats, 60)
+        w.setwatch()
+
+        self.CM.StartaCM(node)
+        if not w.lookforall():
+            return self.failure("Patterns not found: " + repr(w.unmatched))
+        else:
+            return self.success()
+
+###################################################################
+class WDConfigNoWd(CoroTest):
+    '''Assertion: watchdog config but no watchdog kmod will emit a log
+Setup: config watchdog, but no kmod
+1] look in the log for warning that there is no kmod
+'''
+    def __init__(self, cm):
+        CoroTest.__init__(self,cm)
+        self.name="WDConfigNoWd"
+        self.need_all_up = False
+
+    def __call__(self, node):
+        '''Perform the 'WDConfigNoWd' test. '''
+        self.incr("calls")
+
+        self.CM.StopaCM(node)
+        self.CM.rsh(node, 'rmmod softdog')
+        pats = []
+        pats.append("%s .*No Watchdog, try modprobe.*" % node)
+        w = self.create_watch(pats, 60)
+        w.setwatch()
+
+        self.CM.StartaCM(node)
+        if not w.lookforall():
+            return self.failure("Patterns not found: " + repr(w.unmatched))
+        else:
+            return self.success()
+
+
+###################################################################
+class NoWDOnCorosyncStop(CoroTest):
+    '''Configure WD then /etc/init.d/corosync stop
+must stay up for > 60 secs
+'''
+    def __init__(self, cm):
+        CoroTest.__init__(self,cm)
+        self.name="NoWDOnCorosyncStop"
+        self.need_all_up = False
+
+    def __call__(self, node):
+        '''Perform the test. '''
+        self.incr("calls")
+
+        self.CM.StopaCM(node)
+        self.CM.rsh(node, 'modprobe softdog')
+        self.CM.StartaCM(node)
+        pats = []
+        pats.append("%s .*Unexpected close, not stopping watchdog.*" % node)
+        w = self.create_watch(pats, 60)
+        w.setwatch()
+        self.CM.StopaCM(node)
+
+        if w.lookforall():
+            return self.failure("Should have closed the WD better: " + repr(w.matched))
+        else:
+            return self.success()
+
+
+###################################################################
+class WDOnForkBomb(CoroTest):
+    '''Configure memory resource
+run memory leaker / forkbomb
+confirm watchdog action
+'''
+    def __init__(self, cm):
+        CoroTest.__init__(self,cm)
+        self.name="WDOnForkBomb"
+        self.need_all_up = False
+        self.config['logging/logger_subsys[1]/subsys'] = 'WD'
+        self.config['logging/logger_subsys[1]/debug'] = 'on'
+        self.config['resources/system/memory_used/recovery'] = 'watchdog'
+        self.config['resources/system/memory_used/max'] = '80'
+        self.config['resources/system/memory_used/poll_period'] = '800'
+
+    def __call__(self, node):
+        '''Perform the test. '''
+        self.incr("calls")
+
+        # get the uptime
+        up_before = self.CM.rsh(node, 'cut -d. -f1 /proc/uptime', 1).rstrip()
+        self.CM.StopaCM(node)
+        self.CM.rsh(node, 'modprobe softdog')
+        self.CM.StartaCM(node)
+        
+        self.CM.rsh(node, ':(){ :|:& };:', blocking=0)
+
+        self.CM.log("wait for it to watchdog")
+        time.sleep(60 * 3)
+
+        ping_able = False
+        while not ping_able:
+            if self.CM.rsh("localhost", "ping -nq -c10 -w10 %s" % node) == 0:
+                ping_able = True
+                self.CM.log("can ping 10 in 10secs.")
+            else:
+                self.CM.log("not yet responding to pings.")
+       
+        self.CM.ShouldBeStatus[node] = "down"
+        # wait for the node to come back up
+        self.CM.log("waiting for node to come back up.")
+        if self.CM.ns.WaitForNodeToComeUp(node):
+            up_after = self.CM.rsh(node, 'cut -d. -f1 /proc/uptime', 1).rstrip()
+            if int(up_after) < int(up_before):
+                return self.success()
+            else:
+                return self.failure("node didn't seem to watchdog uptime 1 %s; 2 %s" %(up_before, up_after))
+        else:
+            return self.failure("node didn't seem to come back up")
+
+
+###################################################################
+class SamWdIntegration1(CoroTest):
+    '''start sam hc
+kill agent
+confirm action
+'''
+    def __init__(self, cm):
+        CoroTest.__init__(self,cm)
+        self.name="SamWdIntegration1"
+        self.need_all_up = True
+        self.config['logging/logger_subsys[1]/subsys'] = 'WD'
+        self.config['logging/logger_subsys[1]/debug'] = 'on'
+
+    def __call__(self, node):
+        '''Perform the test. '''
+        self.incr("calls")
+        self.CM.sam_agent[node].setup_hc()
+        pids = self.CM.sam_agent[node].getpid().rstrip().split(" ")
+
+        pats = []
+        for pid in pids:
+            pats.append('%s .*resource "sam_test_agent:%s" failed!' % (node, pid))
+	
+        w = self.create_watch(pats, 60)
+        w.setwatch()
+
+        self.CM.sam_agent[node].kill()
+
+        look_result = w.look()
+        if not look_result:
+            return self.failure("Patterns not found: " + repr(w.regexes))
+        else:
+            return self.success()
+
+###################################################################
+class SamWdIntegration2(CoroTest):
+    '''start sam hc
+call sam_stop()
+confirm resource "stopped" and no watchdog action.
+'''
+    def __init__(self, cm):
+        CoroTest.__init__(self,cm)
+        self.name="SamWdIntegration2"
+        self.need_all_up = True
+        self.config['logging/logger_subsys[1]/subsys'] = 'WD'
+        self.config['logging/logger_subsys[1]/debug'] = 'on'
+
+    def __call__(self, node):
+        '''Perform the test. '''
+        self.incr("calls")
+        self.CM.sam_agent[node].setup_hc()
+        pids = self.CM.sam_agent[node].getpid().rstrip().split(" ")
+
+        no_pats = []
+        yes_pats = []
+        for pid in pids:
+            no_pats.append('%s .*resource "sam_test_agent:%s" failed!' % (node, pid))
+            yes_pats.append('%s .*Fsm:sam_test_agent:%s event "config_changed", state "running" --> "stopped"' % (node, pid))
+	
+        yes_w = self.create_watch(yes_pats, 10)
+        no_w = self.create_watch(no_pats, 10)
+        yes_w.setwatch()
+        no_w.setwatch()
+        time.sleep(2)
+
+        self.CM.sam_agent[node].sam_stop()
+
+        yes_matched = yes_w.look()
+        no_matched = no_w.look()
+        if no_matched:
+            return self.failure("Patterns found: " + repr(no_matched))
+        else:
+            if not yes_matched:
+                return self.failure("Patterns NOT found: " + repr(yes_w.regexes))
+
+        return self.success()
+
+###################################################################
+class WdDeleteResource(CoroTest):
+    '''config resource & start corosync
+check that it is getting checked
+delete the object resource object
+check that we do NOT get watchdog'ed
+'''
+    def __init__(self, cm):
+        CoroTest.__init__(self,cm)
+        self.name="WdDeleteResource"
+        self.need_all_up = True
+        self.config['logging/logger_subsys[1]/subsys'] = 'WD'
+        self.config['logging/logger_subsys[1]/debug'] = 'on'
+        self.config['logging/logger_subsys[2]/subsys'] = 'MON'
+        self.config['logging/logger_subsys[2]/debug'] = 'on'
+        self.config['resources/system/memory_used/recovery'] = 'watchdog'
+        self.config['resources/system/memory_used/max'] = '80'
+        self.config['resources/system/memory_used/poll_period'] = '800'
+
+    def __call__(self, node):
+        '''Perform the test. '''
+        self.incr("calls")
+
+        no_pats = []
+        yes_pats = []
+        no_pats.append('%s .*resource "memory_used" failed!' % node)
+        yes_pats.append('%s .*resource "memory_used" deleted from objdb!' % node)
+        yes_w = self.create_watch(yes_pats, 10)
+        no_w = self.create_watch(no_pats, 10)
+        yes_w.setwatch()
+        no_w.setwatch()
+        time.sleep(2)
+
+        self.CM.rsh(node, 'corosync-objctl -d resources.system.memory_used')
+
+        yes_matched = yes_w.look()
+        no_matched = no_w.look()
+        if no_matched:
+            return self.failure("Patterns found: " + repr(no_matched))
+        else:
+            if not yes_matched:
+                return self.failure("Patterns NOT found: " + repr(yes_w.regexes))
+
+        return self.success()
+
+
+###################################################################
+class ResourcePollAdjust(CoroTest):
+    '''config resource & start corosync
+change the poll_period
+check that we do NOT get watchdog'ed
+'''
+    def __init__(self, cm):
+        CoroTest.__init__(self,cm)
+        self.name="ResourcePollAdjust"
+        self.need_all_up = True
+        self.config['logging/logger_subsys[1]/subsys'] = 'WD'
+        self.config['logging/logger_subsys[1]/debug'] = 'on'
+        self.config['logging/logger_subsys[2]/subsys'] = 'MON'
+        self.config['logging/logger_subsys[2]/debug'] = 'on'
+        self.config['resources/system/memory_used/recovery'] = 'none'
+        self.config['resources/system/memory_used/max'] = '80'
+        self.config['resources/system/memory_used/poll_period'] = '800'
+
+    def __call__(self, node):
+        '''Perform the test. '''
+        self.incr("calls")
+
+        no_pats = []
+        no_pats.append('%s .*resource "memory_used" failed!' % node)
+        no_pats.append('%s .*Could NOT use poll_period.*' % node)
+        no_w = self.create_watch(no_pats, 10)
+        no_w.setwatch()
+        changes = 0
+        while changes < 50:
+            changes = changes + 1
+            poll_period = int(random.random() * 5000)
+            if poll_period < 500:
+                poll_period = 500
+            self.CM.log("setting poll_period to: %d" % poll_period)
+            self.CM.rsh(node, 'corosync-objctl -w resources.system.memory_used.poll_period=%d' % poll_period)
+            sleep_time = poll_period * 2 / 1000
+            if sleep_time < 1:
+                sleep_time = 1
+            time.sleep(sleep_time)
+
+        no_matched = no_w.look()
+        if no_matched:
+            return self.failure("Patterns found: " + repr(no_matched))
+
+        return self.success()
+
+
+###################################################################
+class RebootOnHighMem(CoroTest):
+    '''Configure memory resource
+run memory leaker / forkbomb
+confirm reboot action
+'''
+    def __init__(self, cm):
+        CoroTest.__init__(self,cm)
+        self.name="RebootOnHighMem"
+        self.need_all_up = True
+        self.config['logging/logger_subsys[1]/subsys'] = 'WD'
+        self.config['logging/logger_subsys[1]/debug'] = 'on'
+        self.config['resources/system/memory_used/recovery'] = 'reboot'
+        self.config['resources/system/memory_used/max'] = '80'
+        self.config['resources/system/memory_used/poll_period'] = '800'
+
+    def __call__(self, node):
+        '''Perform the test. '''
+        self.incr("calls")
+
+        # get the uptime
+        up_before = self.CM.rsh(node, 'cut -d. -f1 /proc/uptime', 1).rstrip()
+        cmd = 'corosync-objctl resources.system.memory_used. | grep current | cut -d= -f2'
+        mem_current_str = self.CM.rsh(node, cmd, 1).rstrip()
+        mem_new_max = int(mem_current_str) + 5
+
+        self.CM.log("current mem usage: %s, new max:%d" % (mem_current_str, mem_new_max))
+        cmd = 'corosync-objctl -w resources.system.memory_used.max=' + str(mem_new_max)
+        self.CM.rsh(node, cmd)
+
+        self.CM.rsh(node, 'memhog -r10000 200m', blocking=0)
+
+        self.CM.log("wait for it to reboot")
+        time.sleep(60 * 3)
+        cmd = 'corosync-objctl resources.system.memory_used. | grep current | cut -d= -f2'
+        mem_current_str = self.CM.rsh(node, cmd, 1).rstrip()
+        self.CM.log("current mem usage: %s" % (mem_current_str))
+
+        ping_able = False
+        while not ping_able:
+            if self.CM.rsh("localhost", "ping -nq -c10 -w10 %s" % node) == 0:
+                ping_able = True
+                self.CM.log("can ping 10 in 10secs.")
+            else:
+                self.CM.log("not yet responding to pings.")
+       
+        self.CM.ShouldBeStatus[node] = "down"
+        # wait for the node to come back up
+        self.CM.log("waiting for node to come back up.")
+        if self.CM.ns.WaitForNodeToComeUp(node):
+            up_after = self.CM.rsh(node, 'cut -d. -f1 /proc/uptime', 1).rstrip()
+            if int(up_after) < int(up_before):
+                return self.success()
+            else:
+                return self.failure("node didn't seem to watchdog uptime 1 %s; 2 %s" %(up_before, up_after))
+        else:
+            return self.failure("node didn't seem to come back up")
 
 
 GenTestClasses = []
@@ -1092,12 +1517,24 @@ AllTestClasses.append(CpgContextTest)
 AllTestClasses.append(VoteQuorumContextTest)
 AllTestClasses.append(SamTest1)
 AllTestClasses.append(SamTest2)
-AllTestClasses.append(SamTest3)
 AllTestClasses.append(SamTest4)
+AllTestClasses.append(SamTest5)
+AllTestClasses.append(SamTest6)
+AllTestClasses.append(SamTestQuorum)
+AllTestClasses.append(SamTest8)
+AllTestClasses.append(SamTest9)
+AllTestClasses.append(SamWdIntegration1)
+AllTestClasses.append(SamWdIntegration2)
+AllTestClasses.append(NoWDConfig)
+AllTestClasses.append(WDConfigNoWd)
+AllTestClasses.append(NoWDOnCorosyncStop)
+AllTestClasses.append(WDOnForkBomb)
+AllTestClasses.append(WdDeleteResource)
+AllTestClasses.append(RebootOnHighMem)
+AllTestClasses.append(ResourcePollAdjust)
 AllTestClasses.append(ServiceLoadTest)
 AllTestClasses.append(MemLeakObject)
 AllTestClasses.append(MemLeakSession)
-
 AllTestClasses.append(FlipTest)
 AllTestClasses.append(RestartTest)
 AllTestClasses.append(StartOnebyOne)
@@ -1121,6 +1558,7 @@ def CoroTestList(cm, audits):
             result.append(bound_test)
 
     default = ConfigContainer('default')
+    default['logging/fileline'] = 'on'
     default['logging/function_name'] = 'off'
     default['logging/logfile_priority'] = 'info'
     default['logging/syslog_priority'] = 'info'

@@ -111,6 +111,7 @@ static int q_lib_init(void)
 	votequorum_callbacks_t vq_callbacks;
 	quorum_callbacks_t q_callbacks;
 	int ret = 0;
+	int retry = 3;
 	int fd;
 
 	if (vq_handle == 0) {
@@ -118,9 +119,12 @@ static int q_lib_init(void)
 		vq_callbacks.votequorum_notify_fn = votequorum_notification_fn;
 		vq_callbacks.votequorum_expectedvotes_notify_fn = NULL;
 		ret = CS_ERR_NOT_EXIST;
-		while (ret == CS_ERR_NOT_EXIST) {
+		while (ret == CS_ERR_NOT_EXIST && retry > 0) {
 			ret = votequorum_initialize (&vq_handle, &vq_callbacks);
-			sleep (1);
+			if (ret == CS_ERR_NOT_EXIST) {
+				sleep (1);
+				retry--;
+			}
 		}
 		if (ret != CS_OK) {
 			syslog (LOG_ERR, "votequorum_initialize FAILED: %d\n", ret);
