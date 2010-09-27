@@ -116,6 +116,7 @@ dist_man_MANS = \
 	sam_hc_callback_register.3 \
 	sam_hc_send.3 \
 	sam_initialize.3 \
+	sam_mark_failed.3 \
 	sam_overview.8 \
 	sam_register.3 \
 	sam_start.3 \

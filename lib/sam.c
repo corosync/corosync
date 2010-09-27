@@ -42,6 +42,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/time.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <errno.h>
@@ -50,6 +51,7 @@
 #include <corosync/coroipc_types.h>
 #include <corosync/coroipcc.h>
 #include <corosync/corodefs.h>
+#include <corosync/confdb.h>
 #include <corosync/hdb.h>
 #include <corosync/quorum.h>
 
@@ -60,6 +62,15 @@
 #include <stdio.h>
 #include <sys/wait.h>
 #include <signal.h>
+
+#define SAM_CONFDB_S_FAILED		"failed"
+#define SAM_CONFDB_S_REGISTERED		"registered"
+#define SAM_CONFDB_S_STARTED		"started"
+#define SAM_CONFDB_S_Q_WAIT		"waiting for quorum"
+
+#define SAM_RP_MASK_Q(pol)	(pol & (~SAM_RECOVERY_POLICY_QUORUM))
+#define SAM_RP_MASK_C(pol)	(pol & (~SAM_RECOVERY_POLICY_CONFDB))
+#define SAM_RP_MASK(pol)	(pol & (~(SAM_RECOVERY_POLICY_QUORUM | SAM_RECOVERY_POLICY_CONFDB)))
 
 enum sam_internal_status_t {
 	SAM_INTERNAL_STATUS_NOT_INITIALIZED = 0,
@@ -75,6 +86,7 @@ enum sam_command_t {
 	SAM_COMMAND_HB,
 	SAM_COMMAND_DATA_STORE,
 	SAM_COMMAND_WARN_SIGNAL_SET,
+	SAM_COMMAND_MARK_FAILED,
 };
 
 enum sam_reply_t {
@@ -87,6 +99,13 @@ enum sam_parent_action_t {
 	SAM_PARENT_ACTION_RECOVERY,
 	SAM_PARENT_ACTION_QUIT,
 	SAM_PARENT_ACTION_CONTINUE
+};
+
+enum sam_confdb_key_t {
+	SAM_CONFDB_KEY_RECOVERY,
+	SAM_CONFDB_KEY_HC_PERIOD,
+	SAM_CONFDB_KEY_LAST_HC,
+	SAM_CONFDB_KEY_STATE,
 };
 
 static struct {
@@ -109,10 +128,155 @@ static struct {
 	size_t user_data_size;
 	size_t user_data_allocated;
 
+	pthread_mutex_t lock;
+
 	quorum_handle_t quorum_handle;
 	uint32_t quorate;
 	int quorum_fd;
+
+	confdb_handle_t confdb_handle;
+	hdb_handle_t confdb_pid_handle;
 } sam_internal_data;
+
+extern const char *__progname;
+
+static cs_error_t sam_confdb_update_key (enum sam_confdb_key_t key, const char *value)
+{
+	cs_error_t err;
+	const char *svalue;
+	uint64_t hc_period, last_hc;
+	struct timeval tv;
+	const char *ssvalue[] = { [SAM_RECOVERY_POLICY_QUIT] = "quit", [SAM_RECOVERY_POLICY_RESTART] = "restart" };
+
+	switch (key) {
+	case SAM_CONFDB_KEY_RECOVERY:
+		svalue = ssvalue[SAM_RP_MASK (sam_internal_data.recovery_policy)];
+
+		if ((err = confdb_key_create_typed (sam_internal_data.confdb_handle, sam_internal_data.confdb_pid_handle,
+			"recovery", svalue, strlen ((const char *)svalue), CONFDB_VALUETYPE_STRING)) != CS_OK) {
+			goto exit_error;
+		}
+		break;
+	case SAM_CONFDB_KEY_HC_PERIOD:
+		hc_period = sam_internal_data.time_interval;
+
+		if ((err = confdb_key_create_typed (sam_internal_data.confdb_handle, sam_internal_data.confdb_pid_handle,
+			"hc_period", &hc_period, sizeof (uint64_t), CONFDB_VALUETYPE_UINT64)) != CS_OK) {
+			goto exit_error;
+		}
+		break;
+	case SAM_CONFDB_KEY_LAST_HC:
+		if (gettimeofday (&tv, NULL) == -1) {
+			last_hc = 0;
+		} else {
+			last_hc = ((uint64_t)tv.tv_sec * 1000) + ((uint64_t)tv.tv_usec / 1000);
+		}
+
+		if ((err = confdb_key_create_typed (sam_internal_data.confdb_handle, sam_internal_data.confdb_pid_handle,
+			"hc_last", &last_hc, sizeof (uint64_t), CONFDB_VALUETYPE_UINT64)) != CS_OK) {
+			goto exit_error;
+		}
+		break;
+	case SAM_CONFDB_KEY_STATE:
+		svalue = value;
+		if ((err = confdb_key_create_typed (sam_internal_data.confdb_handle, sam_internal_data.confdb_pid_handle,
+			"state", svalue, strlen ((const char *)svalue), CONFDB_VALUETYPE_STRING)) != CS_OK) {
+			goto exit_error;
+		}
+		break;
+	}
+
+	return (CS_OK);
+
+exit_error:
+	return (err);
+}
+
+static cs_error_t sam_confdb_destroy_pid_obj (void)
+{
+	return (confdb_object_destroy (sam_internal_data.confdb_handle, sam_internal_data.confdb_pid_handle));
+}
+
+static cs_error_t sam_confdb_register (void)
+{
+	const char *obj_name;
+	cs_error_t err;
+	confdb_handle_t confdb_handle;
+	hdb_handle_t resource_handle, process_handle, pid_handle, obj_handle;
+	hdb_handle_t *res_handle;
+	char tmp_obj[PATH_MAX];
+	int i;
+
+	if ((err = confdb_initialize (&confdb_handle, NULL)) != CS_OK) {
+		return (err);
+	}
+
+	for (i = 0; i < 3; i++) {
+		switch (i) {
+		case 0:
+			obj_name = "resources";
+			obj_handle = OBJECT_PARENT_HANDLE;
+			res_handle = &resource_handle;
+			break;
+		case 1:
+			obj_name = "process";
+			obj_handle = resource_handle;
+			res_handle = &process_handle;
+			break;
+		case 2:
+			if (snprintf (tmp_obj, sizeof (tmp_obj), "%s:%d", __progname, getpid ()) >= sizeof (tmp_obj)) {
+				snprintf (tmp_obj, sizeof (tmp_obj), "%d", getpid ());
+			}
+
+			obj_name = tmp_obj;
+			obj_handle = process_handle;
+			res_handle = &pid_handle;
+			break;
+		}
+
+		if ((err = confdb_object_find_start (confdb_handle, obj_handle)) != CS_OK) {
+			goto finalize_error;
+		}
+
+		if ((err = confdb_object_find (confdb_handle, obj_handle, obj_name, strlen (obj_name),
+			res_handle)) != CS_OK) {
+			if (err == CONFDB_ERR_ACCESS) {
+				/*
+				 * Try to create object
+				 */
+				if ((err = confdb_object_create (confdb_handle, obj_handle, obj_name,
+					strlen (obj_name), res_handle)) != CS_OK) {
+					goto finalize_error;
+				}
+			} else {
+				goto finalize_error;
+			}
+		} else  {
+			if ((err = confdb_object_find_destroy (confdb_handle, obj_handle)) != CS_OK) {
+				goto finalize_error;
+			}
+		}
+	}
+
+	sam_internal_data.confdb_pid_handle = pid_handle;
+	sam_internal_data.confdb_handle = confdb_handle;
+
+	if ((err = sam_confdb_update_key (SAM_CONFDB_KEY_RECOVERY, NULL)) != CS_OK) {
+		goto destroy_finalize_error;
+	}
+
+	if ((err = sam_confdb_update_key (SAM_CONFDB_KEY_HC_PERIOD, NULL)) != CS_OK) {
+		goto destroy_finalize_error;
+	}
+
+	return (CS_OK);
+
+destroy_finalize_error:
+	sam_confdb_destroy_pid_obj ();
+finalize_error:
+	confdb_finalize (confdb_handle);
+	return (err);
+}
 
 static void quorum_notification_fn (
         quorum_handle_t handle,
@@ -135,8 +299,8 @@ cs_error_t sam_initialize (
 		return (CS_ERR_BAD_HANDLE);
 	}
 
-	if (recovery_policy != SAM_RECOVERY_POLICY_QUIT && recovery_policy != SAM_RECOVERY_POLICY_RESTART &&
-	    recovery_policy != SAM_RECOVERY_POLICY_QUORUM_QUIT && recovery_policy != SAM_RECOVERY_POLICY_QUORUM_RESTART) {
+	if (SAM_RP_MASK (recovery_policy) != SAM_RECOVERY_POLICY_QUIT &&
+	    SAM_RP_MASK (recovery_policy) != SAM_RECOVERY_POLICY_RESTART) {
 		return (CS_ERR_INVALID_PARAM);
 	}
 
@@ -177,6 +341,8 @@ cs_error_t sam_initialize (
 	sam_internal_data.user_data = NULL;
 	sam_internal_data.user_data_size = 0;
 	sam_internal_data.user_data_allocated = 0;
+
+	pthread_mutex_init (&sam_internal_data.lock, NULL);
 
 	return (CS_OK);
 
@@ -290,7 +456,11 @@ cs_error_t sam_data_getsize (size_t *size)
 		return (CS_ERR_BAD_HANDLE);
 	}
 
+	pthread_mutex_lock (&sam_internal_data.lock);
+
 	*size = sam_internal_data.user_data_size;
+
+	pthread_mutex_unlock (&sam_internal_data.lock);
 
 	return (CS_OK);
 }
@@ -299,6 +469,10 @@ cs_error_t sam_data_restore (
 	void *data,
 	size_t size)
 {
+	cs_error_t err;
+
+	err = CS_OK;
+
 	if (data == NULL) {
 		return (CS_ERR_INVALID_PARAM);
 	}
@@ -310,17 +484,30 @@ cs_error_t sam_data_restore (
 		return (CS_ERR_BAD_HANDLE);
 	}
 
+	pthread_mutex_lock (&sam_internal_data.lock);
+
 	if (sam_internal_data.user_data_size == 0) {
-		return (CS_OK);
+		err = CS_OK;
+
+		goto error_unlock;
 	}
 
 	if (size < sam_internal_data.user_data_size) {
-		return (CS_ERR_INVALID_PARAM);
+		err = CS_ERR_INVALID_PARAM;
+
+		goto error_unlock;
 	}
 
 	memcpy (data, sam_internal_data.user_data, sam_internal_data.user_data_size);
 
+	pthread_mutex_unlock (&sam_internal_data.lock);
+
 	return (CS_OK);
+
+error_unlock:
+	pthread_mutex_unlock (&sam_internal_data.lock);
+
+	return (err);
 }
 
 cs_error_t sam_data_store (
@@ -343,28 +530,36 @@ cs_error_t sam_data_store (
 		size = 0;
 	}
 
+	pthread_mutex_lock (&sam_internal_data.lock);
+
 	if (sam_internal_data.am_i_child) {
 		/*
 		 * We are child so we must send data to parent
 		 */
 		command = SAM_COMMAND_DATA_STORE;
 		if (sam_safe_write (sam_internal_data.child_fd_out, &command, sizeof (command)) != sizeof (command)) {
-			return (CS_ERR_LIBRARY);
+			err = CS_ERR_LIBRARY;
+
+			goto error_unlock;
 		}
 
 		if (sam_safe_write (sam_internal_data.child_fd_out, &size, sizeof (size)) != sizeof (size)) {
-			return (CS_ERR_LIBRARY);
+			err = CS_ERR_LIBRARY;
+
+			goto error_unlock;
 		}
 
 		if (data != NULL && sam_safe_write (sam_internal_data.child_fd_out, data, size) != size) {
-			return (CS_ERR_LIBRARY);
+			err = CS_ERR_LIBRARY;
+
+			goto error_unlock;
 		}
 
 		/*
 		 * And wait for reply
 		 */
 		if ((err = sam_read_reply (sam_internal_data.child_fd_in)) != CS_OK) {
-			return (err);
+			goto error_unlock;
 		}
 	}
 
@@ -379,7 +574,9 @@ cs_error_t sam_data_store (
 	} else {
 		if (sam_internal_data.user_data_allocated < size) {
 			if ((new_data = realloc (sam_internal_data.user_data, size)) == NULL) {
-				return (CS_ERR_NO_MEMORY);
+				err = CS_ERR_NO_MEMORY;
+
+				goto error_unlock;
 			}
 
 			sam_internal_data.user_data_allocated = size;
@@ -392,30 +589,53 @@ cs_error_t sam_data_store (
 		memcpy (sam_internal_data.user_data, data, size);
 	}
 
+	pthread_mutex_unlock (&sam_internal_data.lock);
+
 	return (CS_OK);
+
+error_unlock:
+	pthread_mutex_unlock (&sam_internal_data.lock);
+
+	return (err);
 }
 
 cs_error_t sam_start (void)
 {
 	char command;
 	cs_error_t err;
+	sam_recovery_policy_t recpol;
 
 	if (sam_internal_data.internal_status != SAM_INTERNAL_STATUS_REGISTERED) {
 		return (CS_ERR_BAD_HANDLE);
 	}
 
+	recpol = sam_internal_data.recovery_policy;
+
+	if (recpol & SAM_RECOVERY_POLICY_QUORUM || recpol & SAM_RECOVERY_POLICY_CONFDB) {
+		pthread_mutex_lock (&sam_internal_data.lock);
+	}
+
 	command = SAM_COMMAND_START;
 
-	if (sam_safe_write (sam_internal_data.child_fd_out, &command, sizeof (command)) != sizeof (command))
-		return (CS_ERR_LIBRARY);
+	if (sam_safe_write (sam_internal_data.child_fd_out, &command, sizeof (command)) != sizeof (command)) {
+		if (recpol & SAM_RECOVERY_POLICY_QUORUM || recpol & SAM_RECOVERY_POLICY_CONFDB) {
+			pthread_mutex_unlock (&sam_internal_data.lock);
+		}
 
-	if (sam_internal_data.recovery_policy & SAM_RECOVERY_POLICY_QUORUM) {
+		return (CS_ERR_LIBRARY);
+	}
+
+	if (recpol & SAM_RECOVERY_POLICY_QUORUM || recpol & SAM_RECOVERY_POLICY_CONFDB) {
 		/*
 		 * Wait for parent reply
 		 */
 		if ((err = sam_read_reply (sam_internal_data.child_fd_in)) != CS_OK) {
+			pthread_mutex_unlock (&sam_internal_data.lock);
+
 			return (err);
 		}
+
+		pthread_mutex_unlock (&sam_internal_data.lock);
 	}
 
 	if (sam_internal_data.hc_callback)
@@ -430,6 +650,7 @@ cs_error_t sam_start (void)
 cs_error_t sam_stop (void)
 {
 	char command;
+	cs_error_t err;
 
 	if (sam_internal_data.internal_status != SAM_INTERNAL_STATUS_STARTED) {
 		return (CS_ERR_BAD_HANDLE);
@@ -437,8 +658,30 @@ cs_error_t sam_stop (void)
 
 	command = SAM_COMMAND_STOP;
 
-	if (sam_safe_write (sam_internal_data.child_fd_out, &command, sizeof (command)) != sizeof (command))
+	if (sam_internal_data.recovery_policy & SAM_RECOVERY_POLICY_CONFDB) {
+		pthread_mutex_lock (&sam_internal_data.lock);
+	}
+
+	if (sam_safe_write (sam_internal_data.child_fd_out, &command, sizeof (command)) != sizeof (command)) {
+		if (sam_internal_data.recovery_policy & SAM_RECOVERY_POLICY_CONFDB) {
+			pthread_mutex_unlock (&sam_internal_data.lock);
+		}
+
 		return (CS_ERR_LIBRARY);
+	}
+
+	if (sam_internal_data.recovery_policy & SAM_RECOVERY_POLICY_CONFDB) {
+		/*
+		 * Wait for parent reply
+		 */
+		if ((err = sam_read_reply (sam_internal_data.child_fd_in)) != CS_OK) {
+			pthread_mutex_unlock (&sam_internal_data.lock);
+
+			return (err);
+		}
+
+		pthread_mutex_unlock (&sam_internal_data.lock);
+	}
 
 	if (sam_internal_data.hc_callback)
 		if (sam_safe_write (sam_internal_data.cb_wpipe_fd, &command, sizeof (command)) != sizeof (command))
@@ -489,6 +732,26 @@ exit_error:
 	return (CS_OK);
 }
 
+cs_error_t sam_mark_failed (void)
+{
+	char command;
+
+	if (sam_internal_data.internal_status != SAM_INTERNAL_STATUS_STARTED &&
+	    sam_internal_data.internal_status != SAM_INTERNAL_STATUS_REGISTERED) {
+		return (CS_ERR_BAD_HANDLE);
+	}
+
+	if (!(sam_internal_data.recovery_policy & SAM_RECOVERY_POLICY_CONFDB)) {
+		return (CS_ERR_INVALID_PARAM);
+	}
+
+	command = SAM_COMMAND_MARK_FAILED;
+
+	if (sam_safe_write (sam_internal_data.child_fd_out, &command, sizeof (command)) != sizeof (command))
+		return (CS_ERR_LIBRARY);
+
+	return (CS_OK);
+}
 
 cs_error_t sam_warn_signal_set (int warn_signal)
 {
@@ -501,25 +764,31 @@ cs_error_t sam_warn_signal_set (int warn_signal)
 		return (CS_ERR_BAD_HANDLE);
 	}
 
+	pthread_mutex_lock (&sam_internal_data.lock);
+
 	if (sam_internal_data.am_i_child) {
 		/*
 		 * We are child so we must send data to parent
 		 */
 		command = SAM_COMMAND_WARN_SIGNAL_SET;
 		if (sam_safe_write (sam_internal_data.child_fd_out, &command, sizeof (command)) != sizeof (command)) {
-			return (CS_ERR_LIBRARY);
+			err = CS_ERR_LIBRARY;
+
+			goto error_unlock;
 		}
 
 		if (sam_safe_write (sam_internal_data.child_fd_out, &warn_signal, sizeof (warn_signal)) !=
 		   sizeof (warn_signal)) {
-			return (CS_ERR_LIBRARY);
+			err = CS_ERR_LIBRARY;
+
+			goto error_unlock;
 		}
 
 		/*
 		 * And wait for reply
 		 */
 		if ((err = sam_read_reply (sam_internal_data.child_fd_in)) != CS_OK) {
-			return (err);
+			goto error_unlock;
 		}
 	}
 
@@ -528,14 +797,51 @@ cs_error_t sam_warn_signal_set (int warn_signal)
 	 */
 	sam_internal_data.warn_signal = warn_signal;
 
+	pthread_mutex_unlock (&sam_internal_data.lock);
+
 	return (CS_OK);
+
+error_unlock:
+	pthread_mutex_unlock (&sam_internal_data.lock);
+
+	return (err);
 }
+
+static cs_error_t sam_parent_reply_send (
+	cs_error_t err,
+	int parent_fd_in,
+	int parent_fd_out)
+{
+	char reply;
+
+	if (err == CS_OK) {
+		reply = SAM_REPLY_OK;
+
+		if (sam_safe_write (parent_fd_out, &reply, sizeof (reply)) != sizeof (reply)) {
+			err = CS_ERR_LIBRARY;
+			goto error_reply;
+		}
+
+		return (CS_OK);
+	}
+
+error_reply:
+	reply = SAM_REPLY_ERROR;
+	if (sam_safe_write (parent_fd_out, &reply, sizeof (reply)) != sizeof (reply)) {
+		return (CS_ERR_LIBRARY);
+	}
+	if (sam_safe_write (parent_fd_out, &err, sizeof (err)) != sizeof (err)) {
+		return (CS_ERR_LIBRARY);
+	}
+
+	return (err);
+}
+
 
 static cs_error_t sam_parent_warn_signal_set (
 	int parent_fd_in,
 	int parent_fd_out)
 {
-	char reply;
 	char *user_data;
 	int warn_signal;
 	cs_error_t err;
@@ -553,34 +859,26 @@ static cs_error_t sam_parent_warn_signal_set (
 		goto error_reply;
 	}
 
-	reply = SAM_REPLY_OK;
-	if (sam_safe_write (parent_fd_out, &reply, sizeof (reply)) != sizeof (reply)) {
-		err = CS_ERR_LIBRARY;
-		goto error_reply;
-	}
 
-	return (CS_OK);
+	return (sam_parent_reply_send (CS_OK, parent_fd_in, parent_fd_out));
 
 error_reply:
-	reply = SAM_REPLY_ERROR;
-	if (sam_safe_write (parent_fd_out, &reply, sizeof (reply)) != sizeof (reply)) {
-		return (CS_ERR_LIBRARY);
-	}
-	if (sam_safe_write (parent_fd_out, &err, sizeof (err)) != sizeof (err)) {
-		return (CS_ERR_LIBRARY);
-	}
-
-	return (err);
+	return (sam_parent_reply_send (err, parent_fd_in, parent_fd_out));
 }
 
 static cs_error_t sam_parent_wait_for_quorum (
 	int parent_fd_in,
 	int parent_fd_out)
 {
-	char reply;
 	cs_error_t err;
 	struct pollfd pfds[2];
 	int poll_err;
+
+	if (sam_internal_data.recovery_policy & SAM_RECOVERY_POLICY_CONFDB) {
+		if ((err = sam_confdb_update_key (SAM_CONFDB_KEY_STATE, SAM_CONFDB_S_Q_WAIT)) != CS_OK) {
+			goto error_reply;
+		}
+	}
 
 	/*
 	 * Update current quorum
@@ -630,24 +928,44 @@ static cs_error_t sam_parent_wait_for_quorum (
 		}
 	}
 
-	reply = SAM_REPLY_OK;
-	if (sam_safe_write (parent_fd_out, &reply, sizeof (reply)) != sizeof (reply)) {
-		err = CS_ERR_LIBRARY;
+	if (sam_internal_data.recovery_policy & SAM_RECOVERY_POLICY_CONFDB) {
+		if ((err = sam_confdb_update_key (SAM_CONFDB_KEY_STATE, SAM_CONFDB_S_STARTED)) != CS_OK) {
+			goto error_reply;
+		}
+	}
+
+	return (sam_parent_reply_send (CS_OK, parent_fd_in, parent_fd_out));
+
+error_reply:
+	if (sam_internal_data.recovery_policy & SAM_RECOVERY_POLICY_CONFDB) {
+		sam_confdb_update_key (SAM_CONFDB_KEY_STATE, SAM_CONFDB_S_REGISTERED);
+	}
+
+	return (sam_parent_reply_send (err, parent_fd_in, parent_fd_out));
+}
+
+static cs_error_t sam_parent_confdb_state_set (
+	int parent_fd_in,
+	int parent_fd_out,
+	int state)
+{
+	cs_error_t err;
+	const char *state_s;
+
+	if (state == 1) {
+		state_s = SAM_CONFDB_S_STARTED;
+	} else {
+		state_s = SAM_CONFDB_S_REGISTERED;
+	}
+
+	if ((err = sam_confdb_update_key (SAM_CONFDB_KEY_STATE, state_s)) != CS_OK) {
 		goto error_reply;
 	}
 
-	return (CS_OK);
+	return (sam_parent_reply_send (CS_OK, parent_fd_in, parent_fd_out));
 
 error_reply:
-	reply = SAM_REPLY_ERROR;
-	if (sam_safe_write (parent_fd_out, &reply, sizeof (reply)) != sizeof (reply)) {
-		return (CS_ERR_LIBRARY);
-	}
-	if (sam_safe_write (parent_fd_out, &err, sizeof (err)) != sizeof (err)) {
-		return (CS_ERR_LIBRARY);
-	}
-
-	return (err);
+	return (sam_parent_reply_send (err, parent_fd_in, parent_fd_out));
 }
 
 static cs_error_t sam_parent_kill_child (
@@ -675,12 +993,26 @@ static cs_error_t sam_parent_kill_child (
 	return (CS_OK);
 }
 
+static cs_error_t sam_parent_mark_child_failed (
+	int *action,
+	pid_t child_pid)
+{
+	sam_recovery_policy_t recpol;
+
+	recpol = sam_internal_data.recovery_policy;
+
+	sam_internal_data.term_send = 1;
+	sam_internal_data.recovery_policy = SAM_RECOVERY_POLICY_QUIT |
+	    (SAM_RP_MASK_C (recpol) ? SAM_RECOVERY_POLICY_CONFDB : 0) |
+	    (SAM_RP_MASK_Q (recpol) ? SAM_RECOVERY_POLICY_QUORUM : 0);
+
+	return (sam_parent_kill_child (action, child_pid));
+}
 
 static cs_error_t sam_parent_data_store (
 	int parent_fd_in,
 	int parent_fd_out)
 {
-	char reply;
 	char *user_data;
 	ssize_t size;
 	cs_error_t err;
@@ -711,28 +1043,14 @@ static cs_error_t sam_parent_data_store (
 		goto free_error_reply;
 	}
 
-	reply = SAM_REPLY_OK;
-	if (sam_safe_write (parent_fd_out, &reply, sizeof (reply)) != sizeof (reply)) {
-		err = CS_ERR_LIBRARY;
-		goto free_error_reply;
-	}
-
 	free (user_data);
 
-	return (CS_OK);
+	return (sam_parent_reply_send (CS_OK, parent_fd_in, parent_fd_out));
 
 free_error_reply:
 	free (user_data);
 error_reply:
-	reply = SAM_REPLY_ERROR;
-	if (sam_safe_write (parent_fd_out, &reply, sizeof (reply)) != sizeof (reply)) {
-		return (CS_ERR_LIBRARY);
-	}
-	if (sam_safe_write (parent_fd_out, &err, sizeof (err)) != sizeof (err)) {
-		return (CS_ERR_LIBRARY);
-	}
-
-	return (err);
+	return (sam_parent_reply_send (err, parent_fd_in, parent_fd_out));
 }
 
 static enum sam_parent_action_t sam_parent_handler (
@@ -749,10 +1067,12 @@ static enum sam_parent_action_t sam_parent_handler (
 	struct pollfd pfds[2];
 	nfds_t nfds;
 	cs_error_t err;
+	sam_recovery_policy_t recpol;
 
 	status = 0;
 
 	action = SAM_PARENT_ACTION_CONTINUE;
+	recpol = sam_internal_data.recovery_policy;
 
 	while (action == SAM_PARENT_ACTION_CONTINUE) {
 		pfds[0].fd = parent_fd_in;
@@ -766,7 +1086,7 @@ static enum sam_parent_action_t sam_parent_handler (
 			time_interval = -1;
 		}
 
-		if (sam_internal_data.recovery_policy & SAM_RECOVERY_POLICY_QUORUM) {
+		if (recpol & SAM_RECOVERY_POLICY_QUORUM) {
 			pfds[nfds].fd = sam_internal_data.quorum_fd;
 			pfds[nfds].events = POLLIN;
 			pfds[nfds].revents = 0;
@@ -820,6 +1140,10 @@ static enum sam_parent_action_t sam_parent_handler (
 					goto action_exit;
 				}
 
+				if (recpol & SAM_RECOVERY_POLICY_CONFDB) {
+					sam_confdb_update_key (SAM_CONFDB_KEY_LAST_HC, NULL);
+				}
+
 				/*
 				 * We have read command
 				 */
@@ -829,11 +1153,18 @@ static enum sam_parent_action_t sam_parent_handler (
 						/*
 						 *  Not started yet
 						 */
-						if (sam_internal_data.recovery_policy & SAM_RECOVERY_POLICY_QUORUM) {
+						if (recpol & SAM_RECOVERY_POLICY_QUORUM) {
 							if (sam_parent_wait_for_quorum (parent_fd_in,
 							    parent_fd_out) != CS_OK) {
 								continue;
 							}
+						}
+
+						if (recpol & SAM_RECOVERY_POLICY_CONFDB) {
+							if (sam_parent_confdb_state_set (parent_fd_in,
+							    parent_fd_out, 1) != CS_OK) {
+								continue;
+							    }
 						}
 
 						status = 1;
@@ -844,6 +1175,13 @@ static enum sam_parent_action_t sam_parent_handler (
 						/*
 						 *  Started
 						 */
+						if (recpol & SAM_RECOVERY_POLICY_CONFDB) {
+							if (sam_parent_confdb_state_set (parent_fd_in,
+							    parent_fd_out, 0) != CS_OK) {
+								continue;
+							    }
+						}
+
 						status = 0;
 					}
 					break;
@@ -852,6 +1190,10 @@ static enum sam_parent_action_t sam_parent_handler (
 					break;
 				case SAM_COMMAND_WARN_SIGNAL_SET:
 					sam_parent_warn_signal_set (parent_fd_in, parent_fd_out);
+					break;
+				case SAM_COMMAND_MARK_FAILED:
+					status = 1;
+					sam_parent_mark_child_failed (&action, child_pid);
 					break;
 				}
 			} /* if (pfds[0].revents != 0) */
@@ -882,11 +1224,23 @@ cs_error_t sam_register (
 	pid_t pid;
 	int pipe_error;
 	int pipe_fd_out[2], pipe_fd_in[2];
-	enum sam_parent_action_t action;
+	enum sam_parent_action_t action, old_action;
 	int child_status;
+	sam_recovery_policy_t recpol;
 
 	if (sam_internal_data.internal_status != SAM_INTERNAL_STATUS_INITIALIZED) {
 		return (CS_ERR_BAD_HANDLE);
+	}
+
+	recpol = sam_internal_data.recovery_policy;
+
+	if (recpol & SAM_RECOVERY_POLICY_CONFDB) {
+		/*
+		 * Register to objdb
+		 */
+		if ((error = sam_confdb_register ()) != CS_OK) {
+			goto error_exit;
+		}
 	}
 
 	error = CS_OK;
@@ -903,6 +1257,12 @@ cs_error_t sam_register (
 
 			error = CS_ERR_LIBRARY;
 			goto error_exit;
+		}
+
+		if (recpol & SAM_RECOVERY_POLICY_CONFDB) {
+			if ((error = sam_confdb_update_key (SAM_CONFDB_KEY_STATE, SAM_CONFDB_S_REGISTERED)) != CS_OK) {
+				goto error_exit;
+			}
 		}
 
 		sam_internal_data.instance_id++;
@@ -937,6 +1297,8 @@ cs_error_t sam_register (
 			sam_internal_data.am_i_child = 1;
 			sam_internal_data.internal_status = SAM_INTERNAL_STATUS_REGISTERED;
 
+			pthread_mutex_init (&sam_internal_data.lock, NULL);
+
 			goto error_exit;
 		} else {
 			/*
@@ -961,19 +1323,33 @@ cs_error_t sam_register (
 			while (waitpid (pid, &child_status, 0) == -1 && errno == EINTR)
 				;
 
+			old_action = action;
+
 			if (action == SAM_PARENT_ACTION_RECOVERY) {
-				if (sam_internal_data.recovery_policy == SAM_RECOVERY_POLICY_QUIT ||
-				    sam_internal_data.recovery_policy == SAM_RECOVERY_POLICY_QUORUM_QUIT)
+				if (SAM_RP_MASK (sam_internal_data.recovery_policy) == SAM_RECOVERY_POLICY_QUIT)
 					action = SAM_PARENT_ACTION_QUIT;
 			}
 
+
 			if (action == SAM_PARENT_ACTION_QUIT) {
-				if (sam_internal_data.recovery_policy & SAM_RECOVERY_POLICY_QUORUM) {
+				if (recpol & SAM_RECOVERY_POLICY_QUORUM) {
 					quorum_finalize (sam_internal_data.quorum_handle);
+				}
+
+				if (recpol & SAM_RECOVERY_POLICY_CONFDB) {
+					if (old_action == SAM_PARENT_ACTION_RECOVERY) {
+						/*
+						 * Mark as failed
+						 */
+						sam_confdb_update_key (SAM_CONFDB_KEY_STATE, SAM_CONFDB_S_FAILED);
+					} else {
+						sam_confdb_destroy_pid_obj ();
+					}
 				}
 
 				exit (WEXITSTATUS (child_status));
 			}
+
 
 		}
 	}

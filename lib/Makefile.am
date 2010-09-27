@@ -62,7 +62,7 @@ libvotequorum_a_SOURCES	= votequorum.c
 libconfdb_a_SOURCES	= confdb.c sa-confdb.c
 libconfdb_a_LIBADD	= ../lcr/lcr_ifact.o
 CONFDB_LINKER_ADD	= $(OS_DYFLAGS) $(OS_LDL)
-SAM_LINKER_ADD		= -L. -lquorum
+SAM_LINKER_ADD		= -L. -lquorum -lconfdb
 libcoroipcc_a_SOURCES	= coroipcc.c
 libsam_a_SOURCES	= sam.c
 

@@ -66,7 +66,7 @@ confdb_test_agent_LDADD =  -lconfdb -lcoroipcc ../../exec/coropoll.o
 confdb_test_agent_LDFLAGS =  -L../../lib 
 
 sam_test_agent_SOURCES = sam_test_agent.c common_test_agent.c
-sam_test_agent_LDADD =  -lsam -lquorum -lcoroipcc ../../exec/coropoll.o
+sam_test_agent_LDADD =  -lsam -lquorum -lcoroipcc  -lconfdb ../../exec/coropoll.o
 sam_test_agent_LDFLAGS =  -L../../lib 
 
 votequorum_test_agent_SOURCES = votequorum_test_agent.c common_test_agent.c
