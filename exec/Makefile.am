@@ -75,7 +75,7 @@ noinst_HEADERS		= apidef.h crypto.h mainconfig.h main.h tsafe.h \
 			  quorum.h service.h sync.h timer.h tlist.h totemconfig.h \
 			  totemmrp.h totemnet.h totemudp.h totemiba.h totemrrp.h \
 			  totemsrp.h util.h vsf.h wthread.h schedwrk.h \
-			  evil.h syncv2.h
+			  evil.h syncv2.h fsm.h
 
 EXTRA_DIST		= $(LCRSO_SRC)
 
