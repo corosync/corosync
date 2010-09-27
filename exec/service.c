@@ -85,6 +85,18 @@ static struct default_service default_services[] = {
 		.name			 = "corosync_pload",
 		.ver			 = 0,
 	},
+#ifdef HAVE_MONITORING
+	{
+		.name			 = "corosync_mon",
+		.ver			 = 0,
+	},
+#endif
+#ifdef HAVE_WATCHDOG
+	{
+		.name			 = "corosync_wd",
+		.ver			 = 0,
+	},
+#endif
 	{
 		.name			 = "corosync_quorum",
 		.ver			 = 0,

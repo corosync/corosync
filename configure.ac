@@ -252,6 +252,16 @@ AC_ARG_ENABLE([rdma],
 	[ enable_rdma="no" ])
 AM_CONDITIONAL(BUILD_RDMA, test x$enable_rdma = xyes)
 
+AC_ARG_ENABLE([monitoring],
+	[  --enable-monitoring              : resource monitoring ],,
+	[ default="no" ])
+AM_CONDITIONAL(BUILD_MONITORING, test x$enable_monitoring = xyes)
+
+AC_ARG_ENABLE([watchdog],
+	[  --enable-watchdog                   : Watchdog support ],,
+	[ edefault="no" ])
+AM_CONDITIONAL(BUILD_WATCHDOG, test x$enable_watchdog = xyes)
+
 AC_ARG_ENABLE([augeas],
 	[  --enable-augeas                 : Install the augeas lens for corosync.conf ],,
 	[ enable_augeas="no" ])
@@ -277,6 +287,7 @@ AC_ARG_WITH([socket-dir],
 # THIS SECTION MUST DIE!
 CP=cp
 OS_LDL="-ldl"
+have_linux="no"
 case "$host_os" in
 	*linux*)
 		AC_DEFINE_UNQUOTED([COROSYNC_LINUX], [1],
@@ -286,6 +297,7 @@ case "$host_os" in
 		OS_LDFLAGS=""
 		OS_DYFLAGS="-rdynamic"
 		DARWIN_OPTS=""
+		have_linux="yes"
 	;;
 	darwin*)
 		AC_DEFINE_UNQUOTED([COROSYNC_DARWIN], [1],
@@ -385,6 +397,30 @@ if test "x${enable_rdma}" = xyes; then
 	PKG_CHECK_MODULES([ibverbs],[ibverbs])
 	AC_DEFINE_UNQUOTED([HAVE_RDMA], 1, [have rdmacm])
 	PACKAGE_FEATURES="$PACKAGE_FEATURES rdma"
+fi
+
+if test "x${enable_monitoring}" = xyes; then
+
+	AC_CHECK_LIB([statgrab], [sg_get_mem_stats], have_libstatgrab="yes", have_libstatgrab="no")
+
+	if test "x${have_libstatgrab}" = xyes; then
+		AC_DEFINE_UNQUOTED([HAVE_LIBSTATGRAB], 1, [have libstatgrab])
+		statgrab_LIBS="-lstatgrab"
+	else
+		if test "x${have_linux}" = xno; then
+			AC_MSG_ERROR(monitoring requires libstatgrab on non-linux systems)
+		fi
+	fi
+	AC_SUBST([statgrab_LIBS])
+	AC_DEFINE_UNQUOTED([HAVE_MONITORING], 1, [have resource monitoring])
+	PACKAGE_FEATURES="$PACKAGE_FEATURES monitoring"
+fi
+
+if test "x${enable_watchdog}" = xyes; then
+	AC_CHECK_HEADER(linux/watchdog.h,,AC_MSG_ERROR(watchdog requires linux/watchdog.h))
+	AC_CHECK_HEADER(linux/reboot.h,,AC_MSG_ERROR(watchdog requires linux/reboot.h))
+	AC_DEFINE_UNQUOTED([HAVE_WATCHDOG], 1, [have watchdog])
+	PACKAGE_FEATURES="$PACKAGE_FEATURES watchdog"
 fi
 
 if test "x${enable_augeas}" = xyes; then

@@ -38,6 +38,12 @@ INCLUDES		= -I$(top_builddir)/include -I$(top_srcdir)/include \
 			  -I$(top_srcdir)/include/corosync
 
 SERVICE_LCRSO		= evs cfg cpg confdb pload
+if BUILD_WATCHDOG
+SERVICE_LCRSO		+= wd
+endif
+if BUILD_MONITORING
+SERVICE_LCRSO		+= mon
+endif
 
 QUORUM_LCRSO		= votequorum testquorum
 
