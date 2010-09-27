@@ -453,6 +453,10 @@ int totem_config_validate (
 				error_reason =  "Not all bind address belong to the same IP family";
 				goto parse_error;
 			}
+			if (totemip_is_mcast (&totem_config->interfaces[i].mcast_addr) != 0) {
+				error_reason = "mcastaddr is not a correct multicast address.";
+				goto parse_error;
+			}
 		}
 	}
 

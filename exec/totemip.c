@@ -123,6 +123,24 @@ void totemip_copy_endian_convert(struct totem_ip_address *addr1,
 	memcpy(addr1->addr, addr2->addr, TOTEMIP_ADDRLEN);
 }
 
+/*
+ * Multicast address range is 224.0.0.0 to 239.255.255.255 this
+ * translates to the first 4 bits == 1110 (0xE).
+ * http://en.wikipedia.org/wiki/Multicast_address
+ */
+int32_t totemip_is_mcast(struct totem_ip_address *ip_addr)
+{
+	uint32_t addr = 0;
+
+	if (ip_addr->family == AF_INET) {
+		addr = ntohl(*(int32_t*)ip_addr->addr);
+		if ((addr >> 28) != 0xE) {
+			return -1;
+		}
+	}
+	return 0;
+}
+
 /* For sorting etc. params are void * for qsort's benefit */
 int totemip_compare(const void *a, const void *b)
 {
