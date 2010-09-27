@@ -68,6 +68,7 @@ struct totem_ip_address
 extern int totemip_equal(const struct totem_ip_address *addr1,
 			 const struct totem_ip_address *addr2);
 extern int totemip_compare(const void *a, const void *b);
+extern int totemip_is_mcast(struct totem_ip_address *addr);
 extern void totemip_copy(struct totem_ip_address *addr1,
 			 const struct totem_ip_address *addr2);
 extern void totemip_copy_endian_convert(struct totem_ip_address *addr1,
