@@ -26,7 +26,7 @@ echo 'running autogen ...'
 ./autogen.sh
 
 echo 'running configure ...'
-./configure 
+./configure --enable-testagents --enable-watchdog --enable-monitoring
 
 echo 'building source rpm'
 rm -f *.src.rpm
@@ -47,10 +47,8 @@ fi
 RPM_DIR=/var/lib/mock/$TARGET/result
 rm -f $RPM_DIR/corosync*.rpm
 
-echo "running mock init ($TARGET)"
-$MOCK -r $TARGET --init 
 echo "running mock rebuild ($SRPM)"
-$MOCK -v -r $TARGET --rebuild $SRPM --with testagents
+$MOCK -v -r $TARGET --no-clean --rebuild $SRPM --with testagents --with watchdog --with monitoring
 
 if [ -z "$TEST_NODES" ]
 then
