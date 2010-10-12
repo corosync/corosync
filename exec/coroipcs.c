@@ -547,6 +547,13 @@ static inline int conn_info_destroy (struct conn_info *conn_info)
 	list_del (&conn_info->list);
 	pthread_mutex_unlock (&conn_info->mutex);
 
+	/*
+	 * Let library know, that connection is now closed
+	 */
+	conn_info->control_buffer->ipc_closed = 1;
+	ipc_sem_post (conn_info->control_buffer, SEMAPHORE_RESPONSE);
+	ipc_sem_post (conn_info->control_buffer, SEMAPHORE_DISPATCH);
+
 #if _POSIX_THREAD_PROCESS_SHARED > 0
 	sem_destroy (&conn_info->control_buffer->sem_request_or_flush_or_exit);
 	sem_destroy (&conn_info->control_buffer->sem_request);
