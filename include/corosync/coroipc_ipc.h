@@ -92,6 +92,7 @@ struct control_buffer {
 #else
 	int semid;
 #endif
+	int ipc_closed;
 };
 
 enum res_init_types {
@@ -202,7 +203,11 @@ retry_sem_wait:
 		if (res == -1) {
 			return (CS_ERR_LIBRARY);
 		}
-	} else { 
+	} else {
+		if (control_buffer->ipc_closed) {
+			return (CS_ERR_LIBRARY);
+		}
+
 		timeout.tv_sec = time(NULL) + IPC_SEMWAIT_TIMEOUT;
 		timeout.tv_nsec = 0;
 
@@ -241,6 +246,10 @@ retry_poll:
 			goto retry_sem_timedwait;
 		} else
 		if (res == -1) {
+			return (CS_ERR_LIBRARY);
+		}
+
+		if (res == 0 && control_buffer->ipc_closed) {
 			return (CS_ERR_LIBRARY);
 		}
 	}
