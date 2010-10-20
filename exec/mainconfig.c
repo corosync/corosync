@@ -528,21 +528,25 @@ static int corosync_main_config_read_logging (
 				object_logger_subsys_handle,
 				"name", &value)) {
 
-				if ((strcmp(value, "corosync") == 0) &&
-				   (!objdb_get_string (objdb,
-					object_logger_subsys_handle,
-					"subsys", &value))) {
-
-					if (corosync_main_config_set (objdb,
-							object_logger_subsys_handle,
-							value,
-							&error_reason) < 0) {
-						goto parse_error;
+				if (strcmp(value, "corosync") == 0) {
+					if (!objdb_get_string (objdb,
+						object_logger_subsys_handle,
+						"subsys", &value)) {
+						if (corosync_main_config_set (objdb,
+								object_logger_subsys_handle,
+								value,
+								&error_reason) < 0) {
+							goto parse_error;
+						}
 					}
-				}
-				else {
-					error_reason = "subsys required for logging_daemon directive";
-					goto parse_error;
+					else {
+						if (corosync_main_config_set (objdb,
+								object_logger_subsys_handle,
+								NULL,
+								&error_reason) < 0) {
+							goto parse_error;
+						}
+					}
 				}
 			}
 			else {

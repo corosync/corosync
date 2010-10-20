@@ -3448,23 +3448,6 @@ static int message_handler_orf_token (
 		 * Discard retransmitted tokens
 		 */
 		if (sq_lte_compare (token->token_seq, instance->my_token_seq)) {
-			/*
-			 * If this processor receives a retransmitted token, it is sure
-		 	 * the previous processor is still alive.  As a result, it can
-			 * reset its token timeout.  If some processor previous to that
-			 * has failed, it will eventually not execute a reset of the
-			 * token timeout, and will cause a reconfiguration to occur.
-			 */
-			reset_token_timeout (instance);
-
-			if ((forward_token)
-				&& instance->use_heartbeat) {
-				reset_heartbeat_timeout(instance);
-			}
-			else {
-				cancel_heartbeat_timeout(instance);
-			}
-
 			return (0); /* discard token */
 		}
 		last_aru = instance->my_last_aru;
@@ -3757,10 +3740,6 @@ static int message_handler_mcast (
 	}
 #endif
 
-        if (srp_addr_equal (&mcast_header.system_from, &instance->my_id) == 0) {
-		cancel_token_retransmit_timeout (instance);
-	}
-
 	/*
 	 * If the message is foreign execute the switch below
 	 */
@@ -3904,12 +3883,15 @@ static int message_handler_memb_merge_detect (
 	return (0);
 }
 
-static int memb_join_process (
+static void memb_join_process (
 	struct totemsrp_instance *instance,
 	const struct memb_join *memb_join)
 {
 	struct srp_addr *proc_list;
 	struct srp_addr *failed_list;
+	int gather_entered = 0;
+	int fail_minus_memb_entries = 0;
+	struct srp_addr fail_minus_memb[PROCESSOR_COUNT_MAX];
 
 	proc_list = (struct srp_addr *)memb_join->end_of_memb_join;
 	failed_list = proc_list + memb_join->proc_list_entries;
@@ -3919,7 +3901,8 @@ static int memb_join_process (
 	memb_set_print ("faillist", failed_list, memb_join->failed_list_entries);
 	memb_set_print ("my_proclist", instance->my_proc_list, instance->my_proc_list_entries);
 	memb_set_print ("my_faillist", instance->my_failed_list, instance->my_failed_list_entries);
-*/
+-*/
+
 	if (memb_set_equal (proc_list,
 		memb_join->proc_list_entries,
 		instance->my_proc_list,
@@ -3942,7 +3925,7 @@ static int memb_join_process (
 				memb_state_commit_token_create (instance);
 
 				memb_state_commit_enter (instance);
-				return (0);
+				return;
 		}
 		if (memb_consensus_agreed (instance) &&
 			memb_lowest_in_config (instance)) {
@@ -3951,7 +3934,7 @@ static int memb_join_process (
 
 			memb_state_commit_enter (instance);
 		} else {
-			return (0);
+			return;
 		}
 	} else
 	if (memb_set_subset (proc_list,
@@ -3964,12 +3947,12 @@ static int memb_join_process (
 		instance->my_failed_list,
 		instance->my_failed_list_entries)) {
 
-		return (0);
+		return;
 	} else
 	if (memb_set_subset (&memb_join->system_from, 1,
 		instance->my_failed_list, instance->my_failed_list_entries)) {
 
-		return (0);
+		return;
 	} else {
 		memb_set_merge (proc_list,
 			memb_join->proc_list_entries,
@@ -3983,14 +3966,42 @@ static int memb_join_process (
 				&memb_join->system_from, 1,
 				instance->my_failed_list, &instance->my_failed_list_entries);
 		} else {
-			memb_set_merge (failed_list,
-				memb_join->failed_list_entries,
-				instance->my_failed_list, &instance->my_failed_list_entries);
+			if (memb_set_subset (
+				&memb_join->system_from, 1,
+				instance->my_memb_list,
+				instance->my_memb_entries)) {
+
+				if (memb_set_subset (
+					&memb_join->system_from, 1,
+					instance->my_failed_list,
+					instance->my_failed_list_entries) == 0) {
+
+					memb_set_merge (failed_list,
+						memb_join->failed_list_entries,
+						instance->my_failed_list, &instance->my_failed_list_entries);
+				} else {
+					memb_set_subtract (fail_minus_memb,
+						&fail_minus_memb_entries,
+						failed_list,
+						memb_join->failed_list_entries,
+						instance->my_memb_list,
+						instance->my_memb_entries);
+
+					memb_set_merge (fail_minus_memb,
+						fail_minus_memb_entries,
+						instance->my_failed_list,
+						&instance->my_failed_list_entries);
+				}
+			}
 		}
 		memb_state_gather_enter (instance, 11);
-		return (1); /* gather entered */
+		gather_entered = 1;
 	}
-	return (0); /* gather not entered */
+	if (gather_entered == 0 &&
+		instance->memb_state == MEMB_STATE_OPERATIONAL) {
+
+		memb_state_gather_enter (instance, 12);
+	}
 }
 
 static void memb_join_endian_convert (const struct memb_join *in, struct memb_join *out)
@@ -4121,7 +4132,6 @@ static int message_handler_memb_join (
 {
 	const struct memb_join *memb_join;
 	struct memb_join *memb_join_convert = alloca (msg_len);
-	int gather_entered;
 
 	if (endian_conversion_needed) {
 		memb_join = memb_join_convert;
@@ -4144,11 +4154,7 @@ static int message_handler_memb_join (
 	}
 	switch (instance->memb_state) {
 		case MEMB_STATE_OPERATIONAL:
-			gather_entered = memb_join_process (instance,
-				memb_join);
-			if (gather_entered == 0) {
-				memb_state_gather_enter (instance, 12);
-			}
+			memb_join_process (instance, memb_join);
 			break;
 
 		case MEMB_STATE_GATHER:

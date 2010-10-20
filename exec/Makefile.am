@@ -59,7 +59,7 @@ libcoroipcs_a_SOURCES	= $(COROIPCS_SRC)
 corosync_SOURCES 	= main.c util.c sync.c apidef.c service.c \
 			  timer.c totemconfig.c mainconfig.c quorum.c schedwrk.c \
 			  ../lcr/lcr_ifact.c evil.c syncv2.c
-corosync_LDADD	  	= -ltotem_pg -llogsys -lcoroipcs
+corosync_LDADD	  	= -ltotem_pg -llogsys -lcoroipcs $(statgrab_LIBS)
 corosync_DEPENDENCIES	= libtotem_pg.so.$(SONAME) liblogsys.so.$(SONAME) libcoroipcs.so.$(SONAME)
 corosync_LDFLAGS	= $(OS_DYFLAGS) -L./
 
@@ -75,13 +75,13 @@ noinst_HEADERS		= apidef.h crypto.h mainconfig.h main.h tsafe.h \
 			  quorum.h service.h sync.h timer.h tlist.h totemconfig.h \
 			  totemmrp.h totemnet.h totemudp.h totemiba.h totemrrp.h \
 			  totemsrp.h util.h vsf.h wthread.h schedwrk.h \
-			  evil.h syncv2.h
+			  evil.h syncv2.h fsm.h
 
 EXTRA_DIST		= $(LCRSO_SRC)
 
 if BUILD_DARWIN
 %.lcrso: %.o
-	$(CC) $(CFLAGS) -L$(top_builddir)/exec -llogsys -bundle -bind_at_load -bundle_loader ./corosync $^ -o $@
+	$(CC) $(LDFLAGS) $(CFLAGS) -L$(top_builddir)/exec -llogsys -bundle -bind_at_load -bundle_loader ./corosync $^ -o $@
 
 libtotem_pg.so.$(SONAME): $(TOTEM_OBJS)
 	$(CC) $(LDFLAGS) $(DARWIN_OPTS) $(TOTEM_OBJS) -o $@ -lpthread
@@ -102,46 +102,46 @@ else
 
 if BUILD_SOLARIS
 %.lcrso: %.o
-	$(LD) -G $^ -o $@
+	$(LD) $(LDFLAGS) -G $^ -o $@
 
 libtotem_pg.so.$(SONAME): $(TOTEM_OBJS)
-	$(LD) -G $(TOTEM_OBJS) -o $@ -lpthread
+	$(LD) $(LDFLAGS) -G $(TOTEM_OBJS) -o $@ -lpthread
 	ln -sf libtotem_pg.so.$(SONAME) libtotem_pg.so
 	ln -sf libtotem_pg.so.$(SONAME) libtotem_pg.so.$(SOMAJOR)
 
 liblogsys.so.$(SONAME): $(LOGSYS_OBJS)
-	$(LD) -G $(LOGSYS_OBJS) -o $@ -lpthread
+	$(LD) $(LDFLAGS) -G $(LOGSYS_OBJS) -o $@ -lpthread
 	ln -sf liblogsys.so.$(SONAME) liblogsys.so
 	ln -sf liblogsys.so.$(SONAME) liblogsys.so.$(SOMAJOR)
 
 libcoroipcs.so.$(SONAME): $(COROIPCS_OBJS)
-	$(LD) -G $(COROIPCS_OBJS) -o $@ -lpthread
+	$(LD) $(LDFLAGS) -G $(COROIPCS_OBJS) -o $@ -lpthread
 	ln -sf libcoroipcs.so.$(SONAME) libcoroipcs.so
 	ln -sf libcoroipcs.so.$(SONAME) libcoroipcs.so.$(SOMAJOR)
 
 else
 
 %.lcrso: %.o
-	$(CC) $(CFLAGS) $(COVERAGE_LCRSO_EXTRA_LDFLAGS) -shared -Wl,-soname=$@ $^ -o $@
+	$(CC) $(LDFLAGS) $(CFLAGS) $(COVERAGE_LCRSO_EXTRA_LDFLAGS) -shared -Wl,-soname=$@ $^ -o $@
 
 libtotem_pg.so.$(SONAME): $(TOTEM_OBJS)
 	$(CC) -shared -o $@ \
 		-Wl,-soname=libtotem_pg.so.$(SOMAJOR) \
-		$^ $(LDFLAGS) $(nss_LIBS) $(rdmacm_LIBS) $(ibverbs_LIBS) -lpthread
+		$(LDFLAGS) $^ $(nss_LIBS) $(rdmacm_LIBS) $(ibverbs_LIBS) -lpthread
 	ln -sf libtotem_pg.so.$(SONAME) libtotem_pg.so
 	ln -sf libtotem_pg.so.$(SONAME) libtotem_pg.so.$(SOMAJOR)
 
 liblogsys.so.$(SONAME): $(LOGSYS_OBJS)
 	$(CC) -shared -o $@ \
 		-Wl,-soname=liblogsys.so.$(SOMAJOR) \
-		$^ $(LDFLAGS) -lpthread
+		$(LDFLAGS) $^ -lpthread
 	ln -sf liblogsys.so.$(SONAME) liblogsys.so
 	ln -sf liblogsys.so.$(SONAME) liblogsys.so.$(SOMAJOR)
 
 libcoroipcs.so.$(SONAME): $(COROIPCS_OBJS)
 	$(CC) -shared -o $@ \
 		-Wl,-soname=libcoroipcs.so.$(SOMAJOR) \
-		$^ $(LDFLAGS) -lpthread
+		$(LDFLAGS) $^ -lpthread
 	ln -sf libcoroipcs.so.$(SONAME) libcoroipcs.so
 	ln -sf libcoroipcs.so.$(SONAME) libcoroipcs.so.$(SOMAJOR)
 

@@ -35,6 +35,9 @@
 #define COROIPC_IPC_H_DEFINED
 
 #include <unistd.h>
+#include <poll.h>
+#include <time.h>
+#include "corotypes.h"
 #include "config.h"
 
 /*
@@ -52,7 +55,16 @@
 
 #if _POSIX_THREAD_PROCESS_SHARED > 0
 #include <semaphore.h>
+#else
+#include <sys/sem.h>
 #endif
+
+/*
+ * Define sem_wait timeout (real timeout will be (n-1;n) )
+ */
+#define IPC_SEMWAIT_TIMEOUT 2
+
+#define IPC_SEMWAIT_NOFILE 0
 
 enum req_init_types {
 	MESSAGE_REQ_RESPONSE_INIT = 0,
@@ -60,21 +72,27 @@ enum req_init_types {
 };
 
 #define MESSAGE_REQ_CHANGE_EUID		1
-#define MESSAGE_REQ_OUTQ_FLUSH		2
 
-#define MESSAGE_RES_OUTQ_EMPTY         0
-#define MESSAGE_RES_OUTQ_NOT_EMPTY     1
-#define MESSAGE_RES_ENABLE_FLOWCONTROL 2
-#define MESSAGE_RES_OUTQ_FLUSH_NR      3
+enum ipc_semaphore_identifiers {
+	SEMAPHORE_REQUEST_OR_FLUSH_OR_EXIT 	= 0,
+	SEMAPHORE_REQUEST			= 1,
+	SEMAPHORE_RESPONSE			= 2,
+	SEMAPHORE_DISPATCH			= 3
+};
 
 struct control_buffer {
 	unsigned int read;
 	unsigned int write;
+	int flow_control_enabled;
 #if _POSIX_THREAD_PROCESS_SHARED > 0
-	sem_t sem0;
-	sem_t sem1;
-	sem_t sem2;
+	sem_t sem_request_or_flush_or_exit;
+	sem_t sem_response;
+	sem_t sem_dispatch;
+	sem_t sem_request;
+#else
+	int semid;
 #endif
+	int ipc_closed;
 };
 
 enum res_init_types {
@@ -84,10 +102,10 @@ enum res_init_types {
 typedef struct {
 	int service __attribute__((aligned(8)));
 	unsigned long long semkey __attribute__((aligned(8)));
-	char control_file[64] __attribute__((aligned(8)));
-	char request_file[64] __attribute__((aligned(8)));
-	char response_file[64] __attribute__((aligned(8)));
-	char dispatch_file[64] __attribute__((aligned(8)));
+	char control_file[PATH_MAX] __attribute__((aligned(8)));
+	char request_file[PATH_MAX] __attribute__((aligned(8)));
+	char response_file[PATH_MAX] __attribute__((aligned(8)));
+	char dispatch_file[PATH_MAX] __attribute__((aligned(8)));
 	size_t control_size __attribute__((aligned(8)));
 	size_t request_size __attribute__((aligned(8)));
 	size_t response_size __attribute__((aligned(8)));
@@ -144,5 +162,217 @@ struct coroipcs_zc_header {
 #define ZC_ALLOC_HEADER		0xFFFFFFFF
 #define ZC_FREE_HEADER		0xFFFFFFFE
 #define ZC_EXECUTE_HEADER	0xFFFFFFFD
+
+static inline cs_error_t
+ipc_sem_wait (
+	struct control_buffer *control_buffer,
+	enum ipc_semaphore_identifiers sem_id,
+	int fd)
+{
+#if _POSIX_THREAD_PROCESS_SHARED < 1
+	struct sembuf sop;
+#else
+	struct timespec timeout;
+	struct pollfd pfd;
+	sem_t *sem = NULL;
+#endif
+	int res;
+
+#if _POSIX_THREAD_PROCESS_SHARED > 0
+	switch (sem_id) {
+	case SEMAPHORE_REQUEST_OR_FLUSH_OR_EXIT:
+		sem = &control_buffer->sem_request_or_flush_or_exit;
+		break;
+	case SEMAPHORE_RESPONSE:
+		sem = &control_buffer->sem_request;
+		break;
+	case SEMAPHORE_DISPATCH:
+		sem = &control_buffer->sem_response;
+		break;
+	case SEMAPHORE_REQUEST:
+		sem = &control_buffer->sem_dispatch;
+		break;
+	}
+
+	if (fd == IPC_SEMWAIT_NOFILE) {
+retry_sem_wait:
+		res = sem_wait (sem);
+		if (res == -1 && errno == EINTR) {
+			goto retry_sem_wait;
+		} else
+		if (res == -1) {
+			return (CS_ERR_LIBRARY);
+		}
+	} else {
+		if (control_buffer->ipc_closed) {
+			return (CS_ERR_LIBRARY);
+		}
+
+		timeout.tv_sec = time(NULL) + IPC_SEMWAIT_TIMEOUT;
+		timeout.tv_nsec = 0;
+
+retry_sem_timedwait:
+		res = sem_timedwait (sem, &timeout);
+		if (res == -1 && errno == ETIMEDOUT) {
+			pfd.fd = fd;
+			pfd.events = 0;
+
+			/*
+			 * Determine if server has failed (ERR_LIBRARY) or
+			 * is just performing slowly or in configuration change
+			 * (retry sem op)
+			 */
+			 
+retry_poll:
+			res = poll (&pfd, 1, 0);
+			if (res == -1 && errno == EINTR) {
+				goto retry_poll;
+			} else
+			if (res == -1) {
+				return (CS_ERR_LIBRARY);
+			}
+
+			if (res == 1) {
+				if (pfd.revents == POLLERR ||
+					pfd.revents == POLLHUP ||
+					pfd.revents == POLLNVAL) {
+
+					return (CS_ERR_LIBRARY);
+				}
+			}
+                	goto retry_sem_timedwait;
+		} else
+		if (res == -1 && errno == EINTR) {
+			goto retry_sem_timedwait;
+		} else
+		if (res == -1) {
+			return (CS_ERR_LIBRARY);
+		}
+
+		if (res == 0 && control_buffer->ipc_closed) {
+			return (CS_ERR_LIBRARY);
+		}
+	}
+#else
+	sop.sem_num = sem_id;
+	sop.sem_op = -1;
+	sop.sem_flg = 0;
+
+retry_semop:
+	res = semop (control_buffer->semid, &sop, 1);
+	if (res == -1 && errno == EINTR) {
+		return (CS_ERR_TRY_AGAIN);
+		goto retry_semop;
+	} else
+	if (res == -1 && errno == EACCES) {
+		return (CS_ERR_TRY_AGAIN);
+	} else
+	if (res == -1) {
+		return (CS_ERR_LIBRARY);
+	}
+#endif
+	return (CS_OK);
+}
+
+static inline cs_error_t
+ipc_sem_post (
+	struct control_buffer *control_buffer,
+	enum ipc_semaphore_identifiers sem_id)
+{
+#if _POSIX_THREAD_PROCESS_SHARED < 1
+	struct sembuf sop;
+#else
+	sem_t *sem = NULL;
+#endif
+	int res;
+	
+#if _POSIX_THREAD_PROCESS_SHARED > 0
+	switch (sem_id) {
+	case SEMAPHORE_REQUEST_OR_FLUSH_OR_EXIT:
+		sem = &control_buffer->sem_request_or_flush_or_exit;
+		break;
+	case SEMAPHORE_RESPONSE:
+		sem = &control_buffer->sem_request;
+		break;
+	case SEMAPHORE_DISPATCH:
+		sem = &control_buffer->sem_response;
+		break;
+	case SEMAPHORE_REQUEST:
+		sem = &control_buffer->sem_dispatch;
+		break;
+	}
+
+	res = sem_post (sem);
+	if (res == -1) {
+		return (CS_ERR_LIBRARY);
+	}
+#else
+	sop.sem_num = sem_id;
+	sop.sem_op = 1;
+	sop.sem_flg = 0;
+
+retry_semop:
+	res = semop (control_buffer->semid, &sop, 1);
+	if (res == -1 && errno == EINTR) {
+		goto retry_semop;
+	} else
+	if (res == -1) {
+		return (CS_ERR_LIBRARY);
+	}
+#endif
+	return (CS_OK);
+}
+
+static inline cs_error_t
+ipc_sem_getvalue (
+	struct control_buffer *control_buffer,
+	enum ipc_semaphore_identifiers sem_id,
+	int *sem_value)
+{
+#if _POSIX_THREAD_PROCESS_SHARED < 1
+	struct sembuf sop;
+	int sem_value_hold;
+#else
+	sem_t *sem = NULL;
+	int res;
+#endif
+	
+#if _POSIX_THREAD_PROCESS_SHARED > 0
+	switch (sem_id) {
+	case SEMAPHORE_REQUEST_OR_FLUSH_OR_EXIT:
+		sem = &control_buffer->sem_request_or_flush_or_exit;
+		break;
+	case SEMAPHORE_RESPONSE:
+		sem = &control_buffer->sem_request;
+		break;
+	case SEMAPHORE_DISPATCH:
+		sem = &control_buffer->sem_response;
+		break;
+	case SEMAPHORE_REQUEST:
+		sem = &control_buffer->sem_dispatch;
+		break;
+	}
+
+	res = sem_getvalue (sem, sem_value);
+	if (res == -1) {
+		return (CS_ERR_LIBRARY);
+	}
+#else
+	sop.sem_num = sem_id;
+	sop.sem_op = 1;
+	sop.sem_flg = 0;
+
+retry_semctl:
+	sem_value_hold = semctl (control_buffer->semid, sem_id, GETVAL);
+	if (sem_value_hold == -1 && errno == EINTR) {
+		goto retry_semctl;
+	} else
+	if (sem_value_hold == -1) {
+		return (CS_ERR_LIBRARY);
+	}
+	*sem_value = sem_value_hold;
+#endif
+	return (CS_OK);
+}
 
 #endif /* COROIPC_IPC_H_DEFINED */

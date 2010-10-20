@@ -453,6 +453,10 @@ int totem_config_validate (
 				error_reason =  "Not all bind address belong to the same IP family";
 				goto parse_error;
 			}
+			if (totemip_is_mcast (&totem_config->interfaces[i].mcast_addr) != 0) {
+				error_reason = "mcastaddr is not a correct multicast address.";
+				goto parse_error;
+			}
 		}
 	}
 
@@ -561,13 +565,6 @@ int totem_config_validate (
 		snprintf (local_error_reason, sizeof(local_error_reason),
 			"The consensus timeout parameter (%d ms) may not be less then (%d ms).",
 			totem_config->consensus_timeout, MINIMUM_TIMEOUT);
-		goto parse_error;
-	}
-
-	if (totem_config->consensus_timeout < 1.2 * totem_config->token_timeout) {
-		snprintf (local_error_reason, sizeof(local_error_reason),
-			"The consensus timeout parameter (%d ms) must be atleast 1.2 * token (%d ms).",
-			totem_config->consensus_timeout, (int) ((float)1.2 * totem_config->token_timeout));
 		goto parse_error;
 	}
 

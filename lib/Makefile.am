@@ -62,7 +62,7 @@ libvotequorum_a_SOURCES	= votequorum.c
 libconfdb_a_SOURCES	= confdb.c sa-confdb.c
 libconfdb_a_LIBADD	= ../lcr/lcr_ifact.o
 CONFDB_LINKER_ADD	= $(OS_DYFLAGS) $(OS_LDL)
-SAM_LINKER_ADD		= -L. -lquorum
+SAM_LINKER_ADD		= -L. -lquorum -lconfdb
 libcoroipcc_a_SOURCES	= coroipcc.c
 libsam_a_SOURCES	= sam.c
 
@@ -108,7 +108,7 @@ libcoroipcc.so.$(SONAME): coroipcc.o
 	$(CC) -shared -o $@ \
 		-Wl,-soname=libcoroipcc.so.$(SOMAJOR) \
 		-Wl,-version-script=$(srcdir)/libcoroipcc.versions \
-		$^ $(LDFLAGS) $(AM_LDFLAGS)
+		$(LDFLAGS) $^ $(AM_LDFLAGS)
 	ln -sf libcoroipcc.so.$(SONAME) libcoroipcc.so
 	ln -sf libcoroipcc.so.$(SONAME) libcoroipcc.so.$(SOMAJOR)
 

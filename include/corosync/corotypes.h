@@ -40,6 +40,8 @@
 #else
 #include <sys/types.h>
 #endif
+#include <time.h>
+#include <sys/time.h>
 
 typedef int64_t cs_time_t;
 
@@ -47,6 +49,7 @@ typedef int64_t cs_time_t;
 #define CS_TRUE !CS_FALSE
 #define CS_MAX_NAME_LENGTH 256
 #define CS_TIME_END    ((cs_time_t)0x7FFFFFFFFFFFFFFFULL)
+#define CS_MAX(x, y) (((x) > (y)) ? (x) : (y))
 
 typedef struct {
    uint16_t length;
@@ -101,6 +104,33 @@ typedef enum {
    CS_ERR_TOO_MANY_GROUPS = 30,
    CS_ERR_SECURITY = 100
 } cs_error_t;
+
+
+#define CS_TIME_MS_IN_SEC   1000ULL
+#define CS_TIME_US_IN_SEC   1000000ULL
+#define CS_TIME_NS_IN_SEC   1000000000ULL
+#define CS_TIME_US_IN_MSEC  1000ULL
+#define CS_TIME_NS_IN_MSEC  1000000ULL
+#define CS_TIME_NS_IN_USEC  1000ULL
+static inline uint64_t cs_timestamp_get(void)
+{
+	uint64_t result;
+
+#if defined _POSIX_MONOTONIC_CLOCK && _POSIX_MONOTONIC_CLOCK >= 0
+	struct timespec ts;
+
+	clock_gettime (CLOCK_MONOTONIC, &ts);
+	result = (ts.tv_sec * CS_TIME_NS_IN_SEC) + (uint64_t)ts.tv_nsec;
+#else
+	struct timeval time_from_epoch;
+
+	gettimeofday (&time_from_epoch, 0);
+	result = ((time_from_epoch.tv_sec * CS_TIME_NS_IN_SEC) +
+		(time_from_epoch.tv_usec * CS_TIME_NS_IN_USEC));
+#endif
+
+	return result;
+}
 
 
 /*
@@ -177,4 +207,5 @@ typedef enum {
 #define QUORUM_ERR_SECURITY			CS_ERR_SECURITY
 #define quorum_error_t cs_error_t
 
-#endif
+#endif /* COROTYPES_H_DEFINED */
+

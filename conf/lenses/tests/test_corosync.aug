@@ -50,7 +50,21 @@ quorum {
     quorumdev_poll: 2
     leaving_timeout: 2
     disallowed: 0
+    quorate: 1
     two_node: 0
+}
+
+resources {
+	system {
+		memory_used {
+			recovery: reboot
+			max: 80
+		}
+		load_15min {
+			recovery: watchdog
+			max: 8.56
+		}
+	}
 }
 
 uidgid {
@@ -109,7 +123,17 @@ test Corosync.lns get conf =
     { "quorumdev_poll" = "2" }
     { "leaving_timeout" = "2" }
     { "disallowed" = "0" }
+    { "quorate" = "1" }
     { "two_node" = "0" } }
+  { }
+    { "resources"
+	  { "system"
+		{ "memory_used"
+			{ "recovery" = "reboot" }
+			{ "max" = "80" } }
+		{ "load_15min"
+			{ "recovery" = "watchdog" }
+			{ "max" = "8.56" } } } }
   { }
   { "uidgid"
     { "uid" = "0" }

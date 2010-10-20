@@ -42,6 +42,8 @@
 #include <string.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <sys/time.h>
+#include <sys/resource.h>
 
 #include <corosync/hdb.h>
 #include <corosync/totem/coropoll.h>
@@ -63,6 +65,8 @@ struct poll_instance {
 	struct timerlist timerlist;
 	int stop_requested;
 	int pipefds[2];
+	poll_low_fds_event_fn low_fds_event_fn;
+	int32_t not_enough_fds;
 };
 
 DECLARE_HDB_DATABASE (poll_instance_database,NULL);
@@ -92,6 +96,7 @@ hdb_handle_t poll_create (void)
 	poll_instance->ufds = 0;
 	poll_instance->poll_entry_count = 0;
 	poll_instance->stop_requested = 0;
+	poll_instance->not_enough_fds = 0;
 	timerlist_init (&poll_instance->timerlist);
 
 	res = pipe (poll_instance->pipefds);
@@ -380,6 +385,75 @@ error_exit:
 	return (res);
 }
 
+int poll_low_fds_event_set(
+	hdb_handle_t handle,
+	poll_low_fds_event_fn fn)
+{
+	struct poll_instance *poll_instance;
+
+	if (hdb_handle_get (&poll_instance_database, handle,
+		(void *)&poll_instance) != 0) {
+		return -ENOENT;
+	}
+
+	poll_instance->low_fds_event_fn = fn;
+
+	hdb_handle_put (&poll_instance_database, handle);
+	return 0;
+}
+
+/* logs, std(in|out|err), pipe */
+#define POLL_FDS_USED_MISC 50
+
+static void poll_fds_usage_check(struct poll_instance *poll_instance)
+{
+	struct rlimit lim;
+	static int32_t socks_limit = 0;
+	int32_t send_event = 0;
+	int32_t socks_used = 0;
+	int32_t socks_avail = 0;
+	int32_t i;
+
+	if (socks_limit == 0) {
+		if (getrlimit(RLIMIT_NOFILE, &lim) == -1) {
+			char error_str[100];
+			strerror_r(errno, error_str, 100);
+			printf("getrlimit: %s\n", error_str);
+			return;
+		}
+		socks_limit = lim.rlim_cur;
+		socks_limit -= POLL_FDS_USED_MISC;
+		if (socks_limit < 0) {
+			socks_limit = 0;
+		}
+	}
+
+	for (i = 0; i < poll_instance->poll_entry_count; i++) {
+		if (poll_instance->poll_entries[i].ufd.fd != -1) {
+			socks_used++;
+		}
+	}
+	socks_avail = socks_limit - socks_used;
+	if (socks_avail < 0) {
+		socks_avail = 0;
+	}
+	send_event = 0;
+	if (poll_instance->not_enough_fds) {
+		if (socks_avail > 2) {
+			poll_instance->not_enough_fds = 0;
+			send_event = 1;
+		}
+	} else {
+		if (socks_avail <= 1) {
+			poll_instance->not_enough_fds = 1;
+			send_event = 1;
+		}
+	}
+	if (send_event) {
+		poll_instance->low_fds_event_fn(poll_instance->not_enough_fds,
+			socks_avail);
+	}
+}
 
 int poll_run (
 	hdb_handle_t handle)
@@ -403,6 +477,7 @@ rebuild_poll:
 				&poll_instance->poll_entries[i].ufd,
 				sizeof (struct pollfd));
 		}
+		poll_fds_usage_check(poll_instance);
 		expire_timeout_msec = timerlist_msec_duration_to_expire (&poll_instance->timerlist);
 
 		if (expire_timeout_msec != -1 && expire_timeout_msec > 0xFFFFFFFF) {

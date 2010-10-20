@@ -6,15 +6,14 @@
 #
 # License: Revised BSD
 
-# chkconfig: - 20 20
+# chkconfig: - 20 80
 # description: Corosync Cluster Engine
 # processname: corosync
 #
 ### BEGIN INIT INFO
 # Provides:		corosync
-# Required-Start:	$network
-# Should-Start:		$syslog
-# Required-Stop:	$network
+# Required-Start:	$network $syslog
+# Required-Stop:	$network $syslog
 # Default-Start:
 # Default-Stop:
 # Short-Description:	Starts and stops Corosync Cluster Engine.
@@ -90,7 +89,6 @@ start()
 		sleep 2
 		if status $prog > /dev/null 2>&1; then
 			touch $LOCK_FILE
-			pidof $prog > @LOCALSTATEDIR@/run/$prog.pid
 			success
 		else
 			failure
@@ -100,9 +98,26 @@ start()
 	echo
 }
 
+executed_by_cman()
+{
+	[ -f @LOCALSTATEDIR@/run/cman.pid ] || return 0
+
+	read cman_pid foo < @LOCALSTATEDIR@/run/cman.pid
+	if [ "$(pidof $prog)" == "$cman_pid" ];then
+		echo -n "$desc was executed by cman"
+		failure
+		echo
+		return 1
+	fi
+
+	return 0
+}
+
 stop()
 {
 	! status $prog > /dev/null 2>&1 && return
+
+	! executed_by_cman && return
 
 	echo -n "Signaling $desc ($prog) to terminate: "
 	kill -TERM $(pidof $prog) > /dev/null 2>&1
@@ -116,7 +131,6 @@ stop()
 	done
 
 	rm -f $LOCK_FILE
-	rm -f @LOCALSTATEDIR@/run/$prog.pid
 	success
 	echo
 }

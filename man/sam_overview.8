@@ -32,7 +32,7 @@
 .\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 .\" * THE POSSIBILITY OF SUCH DAMAGE.
 .\" */
-.TH "SAM_OVERVIEW" 8 "30/04/2010" "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
+.TH "SAM_OVERVIEW" 8 "21/05/2010" "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
 
 .SH NAME
 .P
@@ -133,6 +133,38 @@ One can in such case use files, databases, ... or much simpler in memory solutio
 presented by \fBsam_data_store(3)\fR, \fBsam_data_restore(3)\fR and \fBsam_data_getsize(3)\fR
 functions.
 
+.SH Confdb integration
+.P
+SAM has policy flag used for confdb system integration (\fISAM_RECOVERY_POLICY_CONFDB\fR).
+If process is registered with this flag, new confdb object PROCESS_NAME:PID is created with following
+keys:
+.RS
+.IP \(bu 3
+\fIrecovery\fR - will be quit or restart depending on policy
+.IP \(bu 3
+\fIpoll_period\fR - period of health checking in milliseconds
+.IP \(bu 3
+\fIlast_updated\fR - Timestamp (in nanoseconds) of the last health check.
+.IP \(bu 3
+\fIstate\fR - state of process (can be one of registered, started, failed, waiting for quorum)
+.RE
+
+.P
+Object is automatically deleted if process exits with stopped health checking.
+
+.P
+Confdb integration with corosync wathdog can be used in implicit and explicit way.
+
+.P
+Implicit way is achieved by setting recovery policy to QUIT and let process exit with started health checking.
+If this happened, object is not deleted and corosync watchdog will take required action.
+
+.P
+Explicit way is usefull for situations, when developer can deal with some non-fatal fall of application.
+This mode is achieved by setting policy to RESTART and using SAM same as without Confdb integration.
+If real fail is needed (like too many restarts at all, per/sec, ...), it's possible to use \fBsam_mark_failed(3)\fR
+and let corosync watchdog take required action.
+
 .SH BUGS
 .SH "SEE ALSO"
 .BR sam_initialize (3),
@@ -140,6 +172,7 @@ functions.
 .BR sam_data_restore (3),
 .BR sam_data_store (3),
 .BR sam_finalize (3),
+.BR sam_mark_failed (3),
 .BR sam_start (3),
 .BR sam_stop (3),
 .BR sam_register (3),

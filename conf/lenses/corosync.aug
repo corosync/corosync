@@ -89,7 +89,7 @@ let common_logging =
    |kv "logfile_priority" /alert|crit|debug|emerg|err|info|notice|warning/
    |kv "syslog_priority" /alert|crit|debug|emerg|err|info|notice|warning/
    |kv "syslog_facility" /daemon|local0|local1|local2|local3|local4|local5|local6|local7/
-   |qstr /logfile|tags/
+   |qstr /logfile|trace/
 
 (* A logger_subsys subsection *)
 let logger_subsys =
@@ -110,6 +110,35 @@ let logging =
   section "logging" setting
 
 
+(* The resource section *)
+let common_resource =
+   kv "max" Rx.decimal
+   |kv "poll_period" Rx.integer
+   |kv "recovery" /reboot|shutdown|watchdog|none/
+
+let memory_used =
+    let setting =
+    common_resource in
+  section "memory_used" setting
+
+
+let load_15min =
+    let setting =
+    common_resource in
+  section "load_15min" setting
+
+let system =
+    let setting =
+     load_15min
+     |memory_used in
+   section "system" setting
+
+(* The resources section *)
+let resources =
+  let setting =
+    system in
+  section "resources" setting
+
 (* The amf section *)
 let amf =
   let setting =
@@ -125,6 +154,7 @@ let quorum =
    |kv "quorumdev_poll" Rx.integer
    |kv "leaving_timeout" Rx.integer
    |kv "disallowed" Rx.integer
+   |kv "quorate" Rx.integer
    |kv "two_node" Rx.integer in
   section "quorum" setting
 
@@ -140,6 +170,6 @@ let uidgid =
    qstr /uid|gid/ in
   section "uidgid" setting
 
-let lns = (comment|empty|compatibility|totem|quorum|logging|amf|service|uidgid)*
+let lns = (comment|empty|compatibility|totem|quorum|logging|resources|amf|service|uidgid)*
 
 let xfm = transform lns (incl "/etc/corosync/corosync.conf")

@@ -39,7 +39,9 @@ EXTRA_DIST		= index.html
 dist_man_MANS = \
 	corosync.conf.5 \
 	confdb_overview.8 \
+	corosync.8 \
 	corosync-objctl.8 \
+	corosync-blackbox.8 \
 	corosync-keygen.8 \
 	corosync-cfgtool.8 \
 	corosync-cpgtool.8 \
@@ -114,6 +116,7 @@ dist_man_MANS = \
 	sam_hc_callback_register.3 \
 	sam_hc_send.3 \
 	sam_initialize.3 \
+	sam_mark_failed.3 \
 	sam_overview.8 \
 	sam_register.3 \
 	sam_start.3 \

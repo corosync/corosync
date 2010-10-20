@@ -5,6 +5,8 @@
 # Invoke "rpmbuild --without <feature>" or "rpmbuild --with <feature>"
 # to disable or enable specific features
 %bcond_with testagents
+%bcond_with watchdog
+%bcond_with monitoring
 
 Name: corosync
 Summary: The Corosync Cluster Engine and Application Programming Interfaces
@@ -38,6 +40,7 @@ BuildRoot: %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 %prep
 %setup -q -n %{name}-%{version}
 
+%build
 %if %{buildtrunk}
 ./autogen.sh
 %endif
@@ -51,10 +54,15 @@ export rdmacm_LIBS=-lrdmacm \
 %if %{with testagents}
 	--enable-testagents \
 %endif
+%if %{with watchdog}
+	--enable-watchdog \
+%endif
+%if %{with monitoring}
+	--enable-monitoring \
+%endif
 	--enable-rdma \
 	--with-initddir=%{_initrddir}
 
-%build
 make %{_smp_mflags}
 
 %install
@@ -76,7 +84,9 @@ This package contains the Corosync Cluster Engine Executive, several default
 APIs and libraries, default configuration files, and an init script.
 
 %post
-/sbin/chkconfig --add corosync || :
+if [ $1 -eq 1 ]; then
+	/sbin/chkconfig --add corosync || :
+fi
 
 %preun
 if [ $1 -eq 0 ]; then
@@ -113,8 +123,17 @@ fi
 %{_libexecdir}/lcrso/quorum_testquorum.lcrso
 %{_libexecdir}/lcrso/vsf_quorum.lcrso
 %{_libexecdir}/lcrso/vsf_ykd.lcrso
+%if %{with watchdog}
+%{_libexecdir}/lcrso/service_wd.lcrso
+%endif
+%if %{with monitoring}
+%{_libexecdir}/lcrso/service_mon.lcrso
+%endif
 %dir %{_localstatedir}/lib/corosync
+%dir %{_localstatedir}/log/cluster
 %{_mandir}/man8/corosync_overview.8*
+%{_mandir}/man8/corosync.8*
+%{_mandir}/man8/corosync-blackbox.8*
 %{_mandir}/man8/corosync-objctl.8*
 %{_mandir}/man8/corosync-keygen.8*
 %{_mandir}/man8/corosync-cfgtool.8*

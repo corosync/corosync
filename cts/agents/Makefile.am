@@ -58,7 +58,7 @@ endif
 noinst_HEADERS          = common_test_agent.h
 
 cpg_test_agent_SOURCES = cpg_test_agent.c common_test_agent.c
-cpg_test_agent_LDADD =  -lcpg -lcoroipcc ../../exec/coropoll.o ../../exec/crypto.o
+cpg_test_agent_LDADD =  -lcpg -lcfg -lcoroipcc ../../exec/coropoll.o ../../exec/crypto.o
 cpg_test_agent_LDFLAGS =  -L../../lib -L.
 
 confdb_test_agent_SOURCES = confdb_test_agent.c common_test_agent.c
@@ -66,7 +66,7 @@ confdb_test_agent_LDADD =  -lconfdb -lcoroipcc ../../exec/coropoll.o
 confdb_test_agent_LDFLAGS =  -L../../lib 
 
 sam_test_agent_SOURCES = sam_test_agent.c common_test_agent.c
-sam_test_agent_LDADD =  -lsam -lquorum -lcoroipcc ../../exec/coropoll.o
+sam_test_agent_LDADD =  -lsam -lquorum -lcoroipcc  -lconfdb ../../exec/coropoll.o
 sam_test_agent_LDFLAGS =  -L../../lib 
 
 votequorum_test_agent_SOURCES = votequorum_test_agent.c common_test_agent.c
@@ -76,7 +76,7 @@ votequorum_test_agent_LDFLAGS =  -L../../lib
 if BUILD_DARWIN
 
 service_%.lcrso: %.o
-	$(CC) $(CFLAGS) -L$(top_builddir)/exec -llogsys -bundle -bundle_loader $(top_builddir)/exec/corosync $^ -o $@
+	$(CC) $(LDFLAGS) $(CFLAGS) -L$(top_builddir)/exec -llogsys -bundle -bundle_loader $(top_builddir)/exec/corosync $^ -o $@
 
 else
 if BUILD_SOLARIS
@@ -87,7 +87,7 @@ service_%.lcrso: %.o
 else
 
 service_%.lcrso: %.o
-	$(CC) $(CFLAGS) $(COVERAGE_LCRSO_EXTRA_LDFLAGS) -shared -Wl,-soname=$@ $^ -o $@
+	$(CC) $(LDFLAGS) $(CFLAGS) $(COVERAGE_LCRSO_EXTRA_LDFLAGS) -shared -Wl,-soname=$@ $^ -o $@
 endif
 endif
 

@@ -336,7 +336,7 @@ char *crypt(const char *key, const char *salt)
 		if (real_crypt == NULL) {
 			real_crypt = _get_real_func_ ("crypt");
 		}
-		return real_crypt (salt);
+		return real_crypt (key, salt);
 	}
 	assert(0);
 	return NULL;
@@ -404,7 +404,7 @@ void encrypt(char block[64], int edflag)
 		if (real_encrypt == NULL) {
 			real_encrypt = _get_real_func_ ("encrypt");
 		}
-		return real_encrypt (edflag);
+		return real_encrypt (block, edflag);
 	}
 	assert(0);
 }

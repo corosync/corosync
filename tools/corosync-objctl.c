@@ -130,6 +130,14 @@ static void print_key (char *key_name, void *value, size_t value_len, confdb_val
 			printf ("%s=%"PRIu64"\n", key_name,
 					  *(uint64_t*)value);
 			break;
+		case CONFDB_VALUETYPE_FLOAT:
+			printf ("%s=%f\n", key_name,
+					  *(float*)value);
+			break;
+		case CONFDB_VALUETYPE_DOUBLE:
+			printf ("%s=%f\n", key_name,
+					  *(double*)value);
+			break;
 		case CONFDB_VALUETYPE_STRING:
 			printf ("%s=%s\n", key_name, (char*)value);
 			break;

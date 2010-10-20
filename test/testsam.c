@@ -38,6 +38,7 @@
 
 #include <config.h>
 
+#include <limits.h>
 #include <sys/types.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -49,6 +50,8 @@
 #include <signal.h>
 #include <string.h>
 #include <sys/wait.h>
+
+extern const char *__progname;
 
 static int test2_sig_delivered = 0;
 static int test5_hc_cb_count = 0;
@@ -864,9 +867,554 @@ static int test7 (void) {
 	return (2);
 }
 
+/*
+ * Test confdb integration + quit policy
+ */
+static int test8 (pid_t pid, pid_t old_pid, int test_n) {
+	confdb_handle_t cdb_handle;
+	cs_error_t err;
+	hdb_handle_t res_handle, proc_handle, pid_handle;
+	size_t value_len;
+	uint64_t tstamp1, tstamp2;
+	int32_t msec_diff;
+	char key_value[256];
+	unsigned int instance_id;
+	char tmp_obj[PATH_MAX];
+	confdb_value_types_t cdbtype;
+
+	err = confdb_initialize (&cdb_handle, NULL);
+	if (err != CS_OK) {
+		printf ("Could not initialize Cluster Configuration Database API instance error %d. Test skipped\n", err);
+		return (1);
+	}
+
+	printf ("%s test %d\n", __FUNCTION__, test_n);
+
+	if (test_n == 2) {
+		/*
+		 * Object should not exist
+		 */
+		printf ("%s Testing if object exists (it shouldn't)\n", __FUNCTION__);
+
+		err = confdb_object_find_start(cdb_handle, OBJECT_PARENT_HANDLE);
+		if (err != CS_OK) {
+			printf ("Could not start object_find %d.\n", err);
+			return (2);
+		}
+
+		err = confdb_object_find(cdb_handle, OBJECT_PARENT_HANDLE, "resources", strlen("resources"), &res_handle);
+		if (err != CS_OK) {
+			printf ("Could not object_find \"resources\": %d.\n", err);
+			return (2);
+		}
+
+		err = confdb_object_find_start(cdb_handle, res_handle);
+		if (err != CS_OK) {
+			printf ("Could not start object_find %d.\n", err);
+			return (2);
+		}
+
+		err = confdb_object_find(cdb_handle, res_handle, "process", strlen("process"), &proc_handle);
+		if (err != CS_OK) {
+			printf ("Could not object_find \"process\": %d.\n", err);
+			return (2);
+		}
+
+		if (snprintf (tmp_obj, sizeof (tmp_obj), "%s:%d", __progname, pid) >= sizeof (tmp_obj)) {
+			snprintf (tmp_obj, sizeof (tmp_obj), "%d", pid);
+		}
+
+		err = confdb_object_find_start(cdb_handle, proc_handle);
+		if (err != CS_OK) {
+			printf ("Could not start object_find %d.\n", err);
+			return (2);
+		}
+
+		err = confdb_object_find(cdb_handle, proc_handle, tmp_obj, strlen(tmp_obj), &pid_handle);
+		if (err == CS_OK) {
+			printf ("Could find object \"%s\": %d.\n", tmp_obj, err);
+			return (2);
+		}
+	}
+
+	if (test_n == 1 || test_n == 2) {
+		printf ("%s: initialize\n", __FUNCTION__);
+		err = sam_initialize (2000, SAM_RECOVERY_POLICY_QUIT | SAM_RECOVERY_POLICY_CONFDB);
+		if (err != CS_OK) {
+			fprintf (stderr, "Can't initialize SAM API. Error %d\n", err);
+			return 2;
+		}
+
+		printf ("%s: register\n", __FUNCTION__);
+		err = sam_register (&instance_id);
+		if (err != CS_OK) {
+			fprintf (stderr, "Can't register. Error %d\n", err);
+			return 2;
+		}
+
+		err = confdb_object_find_start(cdb_handle, OBJECT_PARENT_HANDLE);
+		if (err != CS_OK) {
+			printf ("Could not start object_find %d.\n", err);
+			return (2);
+		}
+
+		err = confdb_object_find(cdb_handle, OBJECT_PARENT_HANDLE, "resources", strlen("resources"), &res_handle);
+		if (err != CS_OK) {
+			printf ("Could not object_find \"resources\": %d.\n", err);
+			return (2);
+		}
+
+		err = confdb_object_find_start(cdb_handle, res_handle);
+		if (err != CS_OK) {
+			printf ("Could not start object_find %d.\n", err);
+			return (2);
+		}
+
+		err = confdb_object_find(cdb_handle, res_handle, "process", strlen("process"), &proc_handle);
+		if (err != CS_OK) {
+			printf ("Could not object_find \"process\": %d.\n", err);
+			return (2);
+		}
+
+		if (snprintf (tmp_obj, sizeof (tmp_obj), "%s:%d", __progname, pid) >= sizeof (tmp_obj)) {
+			snprintf (tmp_obj, sizeof (tmp_obj), "%d", pid);
+		}
+
+		err = confdb_object_find_start(cdb_handle, proc_handle);
+		if (err != CS_OK) {
+			printf ("Could not start object_find %d.\n", err);
+			return (2);
+		}
+
+		err = confdb_object_find(cdb_handle, proc_handle, tmp_obj, strlen(tmp_obj), &pid_handle);
+		if (err != CS_OK) {
+			printf ("Could not object_find \"%s\": %d.\n", tmp_obj, err);
+			return (2);
+		}
+
+		err = confdb_key_get(cdb_handle, pid_handle, "recovery", strlen("recovery"), key_value, &value_len);
+		if (err != CS_OK) {
+			printf ("Could not get \"recovery\" key: %d.\n", err);
+			return (2);
+		}
+
+		if (value_len != strlen ("quit") || memcmp (key_value, "quit", value_len) != 0) {
+			printf ("Recovery key \"%s\" is not \"watchdog\".\n", key_value);
+			return (2);
+		}
+
+		err = confdb_key_get(cdb_handle, pid_handle, "state", strlen("state"), key_value, &value_len);
+		if (err != CS_OK) {
+			printf ("Could not get \"state\" key: %d.\n", err);
+			return (2);
+		}
+
+		if (value_len != strlen ("stopped") || memcmp (key_value, "stopped", value_len) != 0) {
+			printf ("State key is not \"stopped\".\n");
+			return (2);
+		}
+
+		printf ("%s iid %d: start\n", __FUNCTION__, instance_id);
+		err = sam_start ();
+		if (err != CS_OK) {
+			fprintf (stderr, "Can't start hc. Error %d\n", err);
+			return 2;
+		}
+
+		err = confdb_key_get(cdb_handle, pid_handle, "state", strlen("state"), key_value, &value_len);
+		if (err != CS_OK) {
+			printf ("Could not get \"state\" key: %d.\n", err);
+			return (2);
+		}
+
+		if (value_len != strlen ("running") || memcmp (key_value, "running", value_len) != 0) {
+			printf ("State key is not \"running\".\n");
+			return (2);
+		}
+
+		printf ("%s iid %d: stop\n", __FUNCTION__, instance_id);
+		err = sam_stop ();
+		if (err != CS_OK) {
+			fprintf (stderr, "Can't stop hc. Error %d\n", err);
+			return 2;
+		}
+
+		err = confdb_key_get(cdb_handle, pid_handle, "state", strlen("state"), key_value, &value_len);
+		if (err != CS_OK) {
+			printf ("Could not get \"state\" key: %d.\n", err);
+			return (2);
+		}
+
+		if (value_len != strlen ("stopped") || memcmp (key_value, "stopped", value_len) != 0) {
+			printf ("State key is not \"stopped\".\n");
+			return (2);
+		}
+
+		printf ("%s iid %d: sleeping 5\n", __FUNCTION__, instance_id);
+		sleep (5);
+
+		err = confdb_key_get(cdb_handle, pid_handle, "state", strlen("state"), key_value, &value_len);
+		if (err != CS_OK) {
+			printf ("Could not get \"state\" key: %d.\n", err);
+			return (2);
+		}
+
+		if (value_len != strlen ("stopped") || memcmp (key_value, "stopped", value_len) != 0) {
+			printf ("State key is not \"stopped\".\n");
+			return (2);
+		}
+
+		printf ("%s iid %d: start 2\n", __FUNCTION__, instance_id);
+		err = sam_start ();
+		if (err != CS_OK) {
+			fprintf (stderr, "Can't start hc. Error %d\n", err);
+			return 2;
+		}
+
+		err = confdb_key_get(cdb_handle, pid_handle, "state", strlen("state"), key_value, &value_len);
+		if (err != CS_OK) {
+			printf ("Could not get \"state\" key: %d.\n", err);
+			return (2);
+		}
+
+		if (value_len != strlen ("running") || memcmp (key_value, "running", value_len) != 0) {
+			printf ("State key is not \"running\".\n");
+			return (2);
+		}
+
+		if (test_n == 2) {
+			printf ("%s iid %d: sleeping 5. Should be killed\n", __FUNCTION__, instance_id);
+			sleep (5);
+
+			return (2);
+		} else {
+			printf ("%s iid %d: Test HC\n", __FUNCTION__, instance_id);
+			err = sam_hc_send ();
+			if (err != CS_OK) {
+				fprintf (stderr, "Can't send hc. Error %d\n", err);
+				return 2;
+			}
+			err = confdb_key_get_typed (cdb_handle, pid_handle, "last_updated", &tstamp1, &value_len, &cdbtype);
+			if (err != CS_OK) {
+				printf ("Could not get \"state\" key: %d.\n", err);
+				return (2);
+			}
+			printf ("%s iid %d: Sleep 1\n", __FUNCTION__, instance_id);
+			sleep (1);
+			err = sam_hc_send ();
+			if (err != CS_OK) {
+				fprintf (stderr, "Can't send hc. Error %d\n", err);
+				return 2;
+			}
+			sleep (1);
+			err = confdb_key_get_typed (cdb_handle, pid_handle, "last_updated", &tstamp2, &value_len, &cdbtype);
+			if (err != CS_OK) {
+				printf ("Could not get \"state\" key: %d.\n", err);
+				return (2);
+			}
+			msec_diff = (tstamp2 - tstamp1)/CS_TIME_NS_IN_MSEC;
+
+			if (msec_diff < 500 || msec_diff > 2000) {
+				printf ("Difference %d is not within <500, 2000> interval.\n", msec_diff);
+				return (2);
+			}
+
+			printf ("%s iid %d: stop 2\n", __FUNCTION__, instance_id);
+			err = sam_stop ();
+			if (err != CS_OK) {
+				fprintf (stderr, "Can't stop hc. Error %d\n", err);
+				return 2;
+			}
+
+			err = confdb_key_get(cdb_handle, pid_handle, "state", strlen("state"), key_value, &value_len);
+			if (err != CS_OK) {
+				printf ("Could not get \"state\" key: %d.\n", err);
+				return (2);
+			}
+
+			if (value_len != strlen ("stopped") || memcmp (key_value, "stopped", value_len) != 0) {
+				printf ("State key is not \"stopped\".\n");
+				return (2);
+			}
+
+			printf ("%s iid %d: exiting\n", __FUNCTION__, instance_id);
+			return (0);
+		}
+	}
+
+	if (test_n == 3) {
+		printf ("%s Testing if status is failed\n", __FUNCTION__);
+
+		/*
+		 * Previous should be FAILED
+		 */
+		err = confdb_object_find_start(cdb_handle, OBJECT_PARENT_HANDLE);
+		if (err != CS_OK) {
+			printf ("Could not start object_find %d.\n", err);
+			return (2);
+		}
+
+		err = confdb_object_find(cdb_handle, OBJECT_PARENT_HANDLE, "resources", strlen("resources"), &res_handle);
+		if (err != CS_OK) {
+			printf ("Could not object_find \"resources\": %d.\n", err);
+			return (2);
+		}
+
+		err = confdb_object_find_start(cdb_handle, res_handle);
+		if (err != CS_OK) {
+			printf ("Could not start object_find %d.\n", err);
+			return (2);
+		}
+
+		err = confdb_object_find(cdb_handle, res_handle, "process", strlen("process"), &proc_handle);
+		if (err != CS_OK) {
+			printf ("Could not object_find \"process\": %d.\n", err);
+			return (2);
+		}
+
+		if (snprintf (tmp_obj, sizeof (tmp_obj), "%s:%d", __progname, pid) >= sizeof (tmp_obj)) {
+			snprintf (tmp_obj, sizeof (tmp_obj), "%d", pid);
+		}
+
+		err = confdb_object_find_start(cdb_handle, proc_handle);
+		if (err != CS_OK) {
+			printf ("Could not start object_find %d.\n", err);
+			return (2);
+		}
+
+		err = confdb_object_find(cdb_handle, proc_handle, tmp_obj, strlen(tmp_obj), &pid_handle);
+		if (err != CS_OK) {
+			printf ("Could not object_find \"%s\": %d.\n", tmp_obj, err);
+			return (2);
+		}
+
+		err = confdb_key_get(cdb_handle, pid_handle, "state", strlen("state"), key_value, &value_len);
+		if (err != CS_OK) {
+			printf ("Could not get \"state\" key: %d.\n", err);
+			return (2);
+		}
+
+		if (value_len != strlen ("failed") || memcmp (key_value, "failed", value_len) != 0) {
+			printf ("State key is not \"failed\".\n");
+			return (2);
+		}
+
+		return (0);
+	}
+
+	return (2);
+}
+
+/*
+ * Test confdb integration + restart policy
+ */
+static int test9 (pid_t pid, pid_t old_pid, int test_n) {
+	confdb_handle_t cdb_handle;
+	cs_error_t err;
+	hdb_handle_t res_handle, proc_handle, pid_handle;
+	size_t value_len;
+	char key_value[256];
+	unsigned int instance_id;
+	char tmp_obj[PATH_MAX];
+
+	err = confdb_initialize (&cdb_handle, NULL);
+	if (err != CS_OK) {
+		printf ("Could not initialize Cluster Configuration Database API instance error %d. Test skipped\n", err);
+		return (1);
+	}
+
+	printf ("%s test %d\n", __FUNCTION__, test_n);
+
+	if (test_n == 1) {
+		printf ("%s: initialize\n", __FUNCTION__);
+		err = sam_initialize (2000, SAM_RECOVERY_POLICY_RESTART | SAM_RECOVERY_POLICY_CONFDB);
+		if (err != CS_OK) {
+			fprintf (stderr, "Can't initialize SAM API. Error %d\n", err);
+			return 2;
+		}
+
+		printf ("%s: register\n", __FUNCTION__);
+		err = sam_register (&instance_id);
+		if (err != CS_OK) {
+			fprintf (stderr, "Can't register. Error %d\n", err);
+			return 2;
+		}
+		printf ("%s: iid %d\n", __FUNCTION__, instance_id);
+
+		if (instance_id < 3) {
+			err = confdb_object_find_start(cdb_handle, OBJECT_PARENT_HANDLE);
+			if (err != CS_OK) {
+				printf ("Could not start object_find %d.\n", err);
+				return (2);
+			}
+
+			err = confdb_object_find(cdb_handle, OBJECT_PARENT_HANDLE, "resources", strlen("resources"),
+			    &res_handle);
+			if (err != CS_OK) {
+				printf ("Could not object_find \"resources\": %d.\n", err);
+				return (2);
+			}
+
+			err = confdb_object_find_start(cdb_handle, res_handle);
+			if (err != CS_OK) {
+				printf ("Could not start object_find %d.\n", err);
+				return (2);
+			}
+
+			err = confdb_object_find(cdb_handle, res_handle, "process", strlen("process"), &proc_handle);
+			if (err != CS_OK) {
+				printf ("Could not object_find \"process\": %d.\n", err);
+				return (2);
+			}
+
+			if (snprintf (tmp_obj, sizeof (tmp_obj), "%s:%d", __progname, pid) >= sizeof (tmp_obj)) {
+				snprintf (tmp_obj, sizeof (tmp_obj), "%d", pid);
+			}
+
+			err = confdb_object_find_start(cdb_handle, proc_handle);
+			if (err != CS_OK) {
+				printf ("Could not start object_find %d.\n", err);
+				return (2);
+			}
+
+			err = confdb_object_find(cdb_handle, proc_handle, tmp_obj, strlen(tmp_obj), &pid_handle);
+			if (err != CS_OK) {
+				printf ("Could not object_find \"%s\": %d.\n", tmp_obj, err);
+				return (2);
+			}
+
+			err = confdb_key_get(cdb_handle, pid_handle, "recovery", strlen("recovery"), key_value, &value_len);
+			if (err != CS_OK) {
+				printf ("Could not get \"recovery\" key: %d.\n", err);
+				return (2);
+			}
+
+			if (value_len != strlen ("restart") || memcmp (key_value, "restart", value_len) != 0) {
+				printf ("Recovery key \"%s\" is not \"restart\".\n", key_value);
+				return (2);
+			}
+
+			err = confdb_key_get(cdb_handle, pid_handle, "state", strlen("state"), key_value, &value_len);
+			if (err != CS_OK) {
+				printf ("Could not get \"state\" key: %d.\n", err);
+				return (2);
+			}
+
+			if (value_len != strlen ("stopped") || memcmp (key_value, "stopped", value_len) != 0) {
+				printf ("State key is not \"stopped\".\n");
+				return (2);
+			}
+
+			printf ("%s iid %d: start\n", __FUNCTION__, instance_id);
+			err = sam_start ();
+			if (err != CS_OK) {
+				fprintf (stderr, "Can't start hc. Error %d\n", err);
+				return 2;
+			}
+
+			err = confdb_key_get(cdb_handle, pid_handle, "state", strlen("state"), key_value, &value_len);
+			if (err != CS_OK) {
+				printf ("Could not get \"state\" key: %d.\n", err);
+				return (2);
+			}
+
+			if (value_len != strlen ("running") || memcmp (key_value, "running", value_len) != 0) {
+				printf ("State key is not \"running\".\n");
+				return (2);
+			}
+
+			printf ("%s iid %d: waiting for kill\n", __FUNCTION__, instance_id);
+			sleep (10);
+
+			return (2);
+		}
+
+		if (instance_id == 3) {
+			printf ("%s iid %d: mark failed\n", __FUNCTION__, instance_id);
+			if (err != CS_OK) {
+				fprintf (stderr, "Can't start hc. Error %d\n", err);
+				return 2;
+			}
+			err = sam_mark_failed ();
+			if (err != CS_OK) {
+				fprintf (stderr, "Can't mark failed. Error %d\n", err);
+				return 2;
+			}
+
+			sleep (10);
+
+			return (2);
+		}
+
+		return (2);
+	}
+
+	if (test_n == 2) {
+		printf ("%s Testing if status is failed\n", __FUNCTION__);
+
+		/*
+		 * Previous should be FAILED
+		 */
+		err = confdb_object_find_start(cdb_handle, OBJECT_PARENT_HANDLE);
+		if (err != CS_OK) {
+			printf ("Could not start object_find %d.\n", err);
+			return (2);
+		}
+
+		err = confdb_object_find(cdb_handle, OBJECT_PARENT_HANDLE, "resources", strlen("resources"), &res_handle);
+		if (err != CS_OK) {
+			printf ("Could not object_find \"resources\": %d.\n", err);
+			return (2);
+		}
+
+		err = confdb_object_find_start(cdb_handle, res_handle);
+		if (err != CS_OK) {
+			printf ("Could not start object_find %d.\n", err);
+			return (2);
+		}
+
+		err = confdb_object_find(cdb_handle, res_handle, "process", strlen("process"), &proc_handle);
+		if (err != CS_OK) {
+			printf ("Could not object_find \"process\": %d.\n", err);
+			return (2);
+		}
+
+		if (snprintf (tmp_obj, sizeof (tmp_obj), "%s:%d", __progname, pid) >= sizeof (tmp_obj)) {
+			snprintf (tmp_obj, sizeof (tmp_obj), "%d", pid);
+		}
+
+		err = confdb_object_find_start(cdb_handle, proc_handle);
+		if (err != CS_OK) {
+			printf ("Could not start object_find %d.\n", err);
+			return (2);
+		}
+
+		err = confdb_object_find(cdb_handle, proc_handle, tmp_obj, strlen(tmp_obj), &pid_handle);
+		if (err != CS_OK) {
+			printf ("Could not object_find \"%s\": %d.\n", tmp_obj, err);
+			return (2);
+		}
+
+		err = confdb_key_get(cdb_handle, pid_handle, "state", strlen("state"), key_value, &value_len);
+		if (err != CS_OK) {
+			printf ("Could not get \"state\" key: %d.\n", err);
+			return (2);
+		}
+
+		if (value_len != strlen ("failed") || memcmp (key_value, "failed", value_len) != 0) {
+			printf ("State key is not \"failed\".\n");
+			return (2);
+		}
+
+		return (0);
+	}
+
+	return (2);
+}
+
 int main(int argc, char *argv[])
 {
-	pid_t pid;
+	pid_t pid, old_pid;
 	int err;
 	int stat;
 	int all_passed = 1;
@@ -990,7 +1538,7 @@ int main(int argc, char *argv[])
 
 	if (pid == -1) {
 		fprintf (stderr, "Can't fork\n");
-		return 1;
+		return 2;
 	}
 
 	if (pid == 0) {
@@ -1001,6 +1549,100 @@ int main(int argc, char *argv[])
 
 	waitpid (pid, &stat, 0);
 	fprintf (stderr, "test7 %s\n", (WEXITSTATUS (stat) == 0 ? "passed" : (WEXITSTATUS (stat) == 1 ? "skipped" : "failed")));
+	if (WEXITSTATUS (stat) == 1)
+		no_skipped++;
+	if (WEXITSTATUS (stat) > 1)
+		all_passed = 0;
+
+	pid = fork ();
+
+	if (pid == -1) {
+		fprintf (stderr, "Can't fork\n");
+		return 2;
+	}
+
+	if (pid == 0) {
+		err = test8 (getpid (), 0, 1);
+		sam_finalize ();
+		return (err);
+	}
+
+	waitpid (pid, &stat, 0);
+	old_pid = pid;
+
+	if (WEXITSTATUS (stat) == 0) {
+		pid = fork ();
+
+		if (pid == -1) {
+			fprintf (stderr, "Can't fork\n");
+			return 2;
+		}
+
+		if (pid == 0) {
+			err = test8 (getpid (), old_pid, 2);
+			sam_finalize ();
+			return (err);
+		}
+
+		waitpid (pid, &stat, 0);
+		old_pid = pid;
+
+		if (WEXITSTATUS (stat) == 0) {
+			pid = fork ();
+
+			if (pid == -1) {
+				fprintf (stderr, "Can't fork\n");
+				return 2;
+			}
+
+			if (pid == 0) {
+				err = test8 (old_pid, 0, 3);
+				sam_finalize ();
+				return (err);
+			}
+
+			waitpid (pid, &stat, 0);
+		}
+	}
+
+	if (WEXITSTATUS (stat) == 1)
+		no_skipped++;
+	if (WEXITSTATUS (stat) > 1)
+		all_passed = 0;
+
+	pid = fork ();
+
+	if (pid == -1) {
+		fprintf (stderr, "Can't fork\n");
+		return 2;
+	}
+
+	if (pid == 0) {
+		err = test9 (getpid (), 0, 1);
+		sam_finalize ();
+		return (err);
+	}
+
+	waitpid (pid, &stat, 0);
+	old_pid = pid;
+
+	if (WEXITSTATUS (stat) == 0) {
+		pid = fork ();
+
+		if (pid == -1) {
+			fprintf (stderr, "Can't fork\n");
+			return 2;
+		}
+
+		if (pid == 0) {
+			err = test9 (old_pid, 0, 2);
+			sam_finalize ();
+			return (err);
+		}
+
+		waitpid (pid, &stat, 0);
+	}
+	fprintf (stderr, "test9 %s\n", (WEXITSTATUS (stat) == 0 ? "passed" : (WEXITSTATUS (stat) == 1 ? "skipped" : "failed")));
 	if (WEXITSTATUS (stat) == 1)
 		no_skipped++;
 

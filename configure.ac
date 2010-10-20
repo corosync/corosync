@@ -216,19 +216,23 @@ LIB_SONAME_IMPORT([votequorum])
 
 # local options
 AC_ARG_ENABLE([ansi],
-	[  --enable-ansi           : force to build with ANSI standards. ],
+	[  --enable-ansi                   : force to build with ANSI standards. ],
 	[ default="no" ])
 
 AC_ARG_ENABLE([fatal-warnings],
-	[  --enable-fatal-warnings : enable fatal warnings. ],
+	[  --enable-fatal-warnings         : enable fatal warnings. ],
 	[ default="no" ])
 
 AC_ARG_ENABLE([debug],
-	[  --enable-debug          : enable debug build. ],
+	[  --enable-debug                  : enable debug build. ],
+	[ default="no" ])
+
+AC_ARG_ENABLE([user-flags],
+	[  --enable-user-flags     : rely on user environment. ],
 	[ default="no" ])
 
 AC_ARG_ENABLE([coverage],
-	[  --enable-coverage       : coverage analysis of the codebase. ],
+	[  --enable-coverage               : coverage analysis of the codebase. ],
 	[ default="no" ])
 
 AC_ARG_ENABLE([small-memory-footprint],
@@ -236,20 +240,30 @@ AC_ARG_ENABLE([small-memory-footprint],
 	[ default="no" ])
 
 AC_ARG_ENABLE([nss],
-	[  --enable-nss            : Network Security Services encryption. ],,
+	[  --enable-nss                    : Network Security Services encryption. ],,
 	[ enable_nss="yes" ])
 
 AC_ARG_ENABLE([testagents],
-	[  --enable-testagents            : Install Test Agents. ],,
+	[  --enable-testagents             : Install Test Agents. ],,
 	[ default="no" ])
 
 AC_ARG_ENABLE([rdma],
-	[  --enable-rdma           : Infiniband RDMA transport support ],,
+	[  --enable-rdma                   : Infiniband RDMA transport support ],,
 	[ enable_rdma="no" ])
 AM_CONDITIONAL(BUILD_RDMA, test x$enable_rdma = xyes)
 
+AC_ARG_ENABLE([monitoring],
+	[  --enable-monitoring              : resource monitoring ],,
+	[ default="no" ])
+AM_CONDITIONAL(BUILD_MONITORING, test x$enable_monitoring = xyes)
+
+AC_ARG_ENABLE([watchdog],
+	[  --enable-watchdog                   : Watchdog support ],,
+	[ edefault="no" ])
+AM_CONDITIONAL(BUILD_WATCHDOG, test x$enable_watchdog = xyes)
+
 AC_ARG_ENABLE([augeas],
-	[  --enable-augeas           : Install the augeas lens for corosync.conf ],,
+	[  --enable-augeas                 : Install the augeas lens for corosync.conf ],,
 	[ enable_augeas="no" ])
 AM_CONDITIONAL(INSTALL_AUGEAS, test x$enable_augeas = xyes)
 
@@ -273,15 +287,17 @@ AC_ARG_WITH([socket-dir],
 # THIS SECTION MUST DIE!
 CP=cp
 OS_LDL="-ldl"
+have_linux="no"
 case "$host_os" in
 	*linux*)
 		AC_DEFINE_UNQUOTED([COROSYNC_LINUX], [1],
 				   [Compiling for Linux platform])
 		OS_CFLAGS=""
-		OS_CPPFLAGS=""
+		OS_CPPFLAGS="-D_GNU_SOURCE"
 		OS_LDFLAGS=""
 		OS_DYFLAGS="-rdynamic"
 		DARWIN_OPTS=""
+		have_linux="yes"
 	;;
 	darwin*)
 		AC_DEFINE_UNQUOTED([COROSYNC_DARWIN], [1],
@@ -383,6 +399,30 @@ if test "x${enable_rdma}" = xyes; then
 	PACKAGE_FEATURES="$PACKAGE_FEATURES rdma"
 fi
 
+if test "x${enable_monitoring}" = xyes; then
+
+	AC_CHECK_LIB([statgrab], [sg_get_mem_stats], have_libstatgrab="yes", have_libstatgrab="no")
+
+	if test "x${have_libstatgrab}" = xyes; then
+		AC_DEFINE_UNQUOTED([HAVE_LIBSTATGRAB], 1, [have libstatgrab])
+		statgrab_LIBS="-lstatgrab"
+	else
+		if test "x${have_linux}" = xno; then
+			AC_MSG_ERROR(monitoring requires libstatgrab on non-linux systems)
+		fi
+	fi
+	AC_SUBST([statgrab_LIBS])
+	AC_DEFINE_UNQUOTED([HAVE_MONITORING], 1, [have resource monitoring])
+	PACKAGE_FEATURES="$PACKAGE_FEATURES monitoring"
+fi
+
+if test "x${enable_watchdog}" = xyes; then
+	AC_CHECK_HEADER(linux/watchdog.h,,AC_MSG_ERROR(watchdog requires linux/watchdog.h))
+	AC_CHECK_HEADER(linux/reboot.h,,AC_MSG_ERROR(watchdog requires linux/reboot.h))
+	AC_DEFINE_UNQUOTED([HAVE_WATCHDOG], 1, [have watchdog])
+	PACKAGE_FEATURES="$PACKAGE_FEATURES watchdog"
+fi
+
 if test "x${enable_augeas}" = xyes; then
 	PACKAGE_FEATURES="$PACKAGE_FEATURES augeas"
 fi
@@ -454,6 +494,13 @@ if test "x${enable_fatal_warnings}" = xyes && \
 	PACKAGE_FEATURES="$PACKAGE_FEATURES fatal-warnings"
 else
 	WERROR_CFLAGS=""
+fi
+
+# don't add addtional cflags
+if test "x${enable_user_flags}" = xyes; then
+  OPT_CFLAGS=""
+  GDB_FLAGS=""
+  EXTRA_WARNINGS=""
 fi
 
 # final build of *FLAGS

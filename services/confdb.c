@@ -129,12 +129,12 @@ static void confdb_notify_lib_of_key_change(
 static void confdb_notify_lib_of_new_object(
 	hdb_handle_t parent_object_handle,
 	hdb_handle_t object_handle,
-	const uint8_t *name_pt, size_t name_len,
+	const void *name_pt, size_t name_len,
 	void *priv_data_pt);
 
 static void confdb_notify_lib_of_destroyed_object(
 	hdb_handle_t parent_object_handle,
-	const uint8_t *name_pt, size_t name_len,
+	const void *name_pt, size_t name_len,
 	void *priv_data_pt);
 
 static void confdb_notify_lib_of_reload(
@@ -786,7 +786,7 @@ static void confdb_notify_lib_of_key_change(object_change_type_t change_type,
 
 static void confdb_notify_lib_of_new_object(hdb_handle_t parent_object_handle,
 	hdb_handle_t object_handle,
-	const uint8_t *name_pt, size_t name_len,
+	const void *name_pt, size_t name_len,
 	void *priv_data_pt)
 {
 	struct res_lib_confdb_object_create_callback res;
@@ -804,7 +804,7 @@ static void confdb_notify_lib_of_new_object(hdb_handle_t parent_object_handle,
 
 static void confdb_notify_lib_of_destroyed_object(
 	hdb_handle_t parent_object_handle,
-	const uint8_t *name_pt, size_t name_len,
+	const void *name_pt, size_t name_len,
 	void *priv_data_pt)
 {
 	struct res_lib_confdb_object_destroy_callback res;

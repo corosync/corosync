@@ -231,6 +231,7 @@ static void sync_barrier_handler (unsigned int nodeid, const void *msg)
 	if (memcmp (&my_ring_id, &req_exec_barrier_message->ring_id,
 		sizeof (struct memb_ring_id)) != 0) {
 
+		log_printf (LOGSYS_LEVEL_DEBUG, "barrier for old ring - discarding\n");
 		return;
 	}
 	for (i = 0; i < my_processor_list_entries; i++) {
@@ -296,6 +297,7 @@ static void sync_memb_determine (unsigned int nodeid, const void *msg)
 	if (memcmp (&req_exec_memb_determine_message->ring_id,
 		&my_memb_determine_ring_id, sizeof (struct memb_ring_id)) != 0) {
 
+		log_printf (LOGSYS_LEVEL_DEBUG, "memb determine for old ring - discarding\n");
 		return;
 	}
 
@@ -321,7 +323,7 @@ static void sync_service_build_handler (unsigned int nodeid, const void *msg)
 
 	if (memcmp (&my_ring_id, &req_exec_service_build_message->ring_id,
 		sizeof (struct memb_ring_id)) != 0) {
-
+		log_printf (LOGSYS_LEVEL_DEBUG, "service build for old ring - discarding\n");
 		return;
 	}
 	for (i = 0; i < req_exec_service_build_message->service_list_entries; i++) {
@@ -570,6 +572,7 @@ void sync_v2_start (
         size_t member_list_entries,
         const struct memb_ring_id *ring_id)
 {
+	ENTER();
 	memcpy (&my_ring_id, ring_id, sizeof (struct memb_ring_id));
 
 	if (my_memb_determine) {
@@ -587,7 +590,7 @@ void sync_v2_save_transitional (
         size_t member_list_entries,
         const struct memb_ring_id *ring_id)
 {
-	log_printf (LOGSYS_LEVEL_DEBUG, "saving transitional configuration\n");
+	ENTER();
 	memcpy (my_trans_list, member_list, member_list_entries *
 		sizeof (unsigned int));
 	my_trans_list_entries = member_list_entries;
@@ -595,6 +598,7 @@ void sync_v2_save_transitional (
 
 void sync_v2_abort (void)
 {
+	ENTER();
 	if (my_state == SYNC_PROCESS) {
 		schedwrk_destroy (my_schedwrk_handle);
 		my_service_list[my_processing_idx].sync_abort ();
@@ -608,6 +612,7 @@ void sync_v2_abort (void)
 
 void sync_v2_memb_list_determine (const struct memb_ring_id *ring_id)
 {
+	ENTER();
 	memcpy (&my_memb_determine_ring_id, ring_id,
 		sizeof (struct memb_ring_id));
 
@@ -616,5 +621,7 @@ void sync_v2_memb_list_determine (const struct memb_ring_id *ring_id)
 
 void sync_v2_memb_list_abort (void)
 {
+	ENTER();
 	my_memb_determine_list_entries = 0;
+	memset (&my_memb_determine_ring_id, 0, sizeof (struct memb_ring_id));
 }

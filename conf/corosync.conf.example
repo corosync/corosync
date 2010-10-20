@@ -15,10 +15,10 @@ totem {
 
 logging {
 	fileline: off
-	to_stderr: yes
+	to_stderr: no
 	to_logfile: yes
 	to_syslog: yes
-	logfile: /tmp/corosync.log
+	logfile: /var/log/cluster/corosync.log
 	debug: off
 	timestamp: on
 	logger_subsys {

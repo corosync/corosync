@@ -46,6 +46,7 @@ typedef enum {
 	SAM_RECOVERY_POLICY_QUORUM = 0x08,
 	SAM_RECOVERY_POLICY_QUORUM_QUIT = SAM_RECOVERY_POLICY_QUORUM | SAM_RECOVERY_POLICY_QUIT,
 	SAM_RECOVERY_POLICY_QUORUM_RESTART = SAM_RECOVERY_POLICY_QUORUM | SAM_RECOVERY_POLICY_RESTART,
+	SAM_RECOVERY_POLICY_CONFDB = 0x10,
 } sam_recovery_policy_t;
 
 /*
@@ -205,6 +206,18 @@ cs_error_t sam_data_store (
 	const void *data,
 	size_t size);
 
+/*
+ * Marks child as failed. This can be called only with SAM_RECOVERY_POLICY_CONFDB flag set and
+ * makes sense only for SAM_RECOVERY_POLICY_RESTART. This will kill child without sending warn
+ * signal. Confdb state key will be set to failed.
+ *
+ * - CS_OK in case no problem appeared
+ * - CS_ERR_BAD_HANDLE library was not initialized or was already finalized
+ * - CS_ERR_INVALID_PARAM recovery policy doesn't has SAM_RECOVERY_POLICY_CONFDB flag set
+ * - CS_ERR_LIBRARY if some internal error appeared (communication with parent
+ *   process)
+ */
+cs_error_t sam_mark_failed (void);
 
 #ifdef __cplusplus
 }

@@ -134,7 +134,6 @@ static void sync_confchg_fn (
 static void sync_primary_callback_fn (
         const unsigned int *view_list,
         size_t view_list_entries,
-        int primary_designated,
         const struct memb_ring_id *ring_id);
 
 
@@ -321,17 +320,10 @@ int sync_register (
 static void sync_primary_callback_fn (
 	const unsigned int *view_list,
 	size_t view_list_entries,
-	int primary_designated,
 	const struct memb_ring_id *ring_id)
 {
 	int i;
 
-	if (primary_designated) {
-		log_printf (LOGSYS_LEVEL_DEBUG, "This node is within the primary component and will provide service.\n");
-	} else {
-		log_printf (LOGSYS_LEVEL_DEBUG, "This node is within the non-primary component and will NOT provide any services.\n");
-		return;
-	}
 
 	/*
 	 * Execute configuration change for synchronization service
@@ -479,8 +471,8 @@ static void sync_confchg_fn (
 	memcpy (my_member_list, member_list, member_list_entries * sizeof (unsigned int));
 	my_member_list_entries = member_list_entries;
 
+	sync_aborted ();
 	if (sync_processing && sync_callbacks.sync_abort != NULL) {
-		sync_aborted ();
 		sync_callbacks.sync_abort ();
 		sync_callbacks.sync_activate = NULL;
 	}
@@ -491,6 +483,5 @@ static void sync_confchg_fn (
 	sync_primary_callback_fn (
 		member_list,
 		member_list_entries,
-		1,
 		ring_id);
 }
