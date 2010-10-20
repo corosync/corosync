@@ -56,6 +56,7 @@ typedef enum {
 	ACTION_READ,
 	ACTION_WRITE,
 	ACTION_CREATE,
+	ACTION_CREATE_KEY,
 	ACTION_DELETE,
 	ACTION_PRINT_ALL,
 	ACTION_PRINT_DEFAULT,
@@ -91,6 +92,8 @@ static void tail_object_deleted(confdb_handle_t handle,
 	size_t name_len);
 
 static void create_object(confdb_handle_t handle, char * name_pt);
+static void create_object_key(confdb_handle_t handle, char * name_pt);
+static void destroy_object_key(confdb_handle_t handle, char * name_pt);
 static void write_key(confdb_handle_t handle, char * path_pt);
 static void get_parent_name(const char * name_pt, char * parent_name);
 
@@ -314,6 +317,7 @@ static int print_help(void)
 	printf ("        corosync-objctl -c object%cchild_obj ...           Create Object\n", SEPERATOR);
 	printf ("        corosync-objctl -d object%cchild_obj ...           Delete object\n", SEPERATOR);
 	printf ("        corosync-objctl -w object%cchild_obj.key=value ... Create a key\n", SEPERATOR);
+	printf ("        corosync-objctl -n object%cchild_obj.key=value ... Create a new object with the key\n", SEPERATOR);
 	printf ("        corosync-objctl -t object%cchild_obj ...           Track changes\n", SEPERATOR);
 	printf ("        corosync-objctl -a                                Print all objects\n");
 	printf ("        corosync-objctl -p <filename> Load in config from the specified file.\n");
@@ -550,6 +554,78 @@ static void create_object(confdb_handle_t handle, char * name_pt)
 	}
 }
 
+static void create_object_key(confdb_handle_t handle, char *name_pt)
+{
+	char * obj_name_pt;
+	char * new_obj_name_pt;
+	char * save_pt;
+	hdb_handle_t obj_handle;
+	hdb_handle_t parent_object_handle = OBJECT_PARENT_HANDLE;
+	char tmp_name[OBJ_NAME_SIZE];
+	cs_error_t res;
+	char parent_name[OBJ_NAME_SIZE];
+	char key_name[OBJ_NAME_SIZE];
+	char key_value[OBJ_NAME_SIZE];
+
+	get_parent_name(name_pt, parent_name);
+	get_key(name_pt, key_name, key_value);
+
+	strncpy (tmp_name, parent_name, OBJ_NAME_SIZE);
+	obj_name_pt = strtok_r(tmp_name, SEPERATOR_STR, &save_pt);
+
+	/*
+	 * Create parent object tree
+	 */
+	while (obj_name_pt != NULL) {
+		res = confdb_object_find_start(handle, parent_object_handle);
+		if (res != CS_OK) {
+			fprintf (stderr, "Could not start object_find %d\n", res);
+			exit (EXIT_FAILURE);
+		}
+
+		new_obj_name_pt = strtok_r (NULL, SEPERATOR_STR, &save_pt);
+		res = confdb_object_find(handle, parent_object_handle,
+			 obj_name_pt, strlen (obj_name_pt), &obj_handle);
+		if (res != CS_OK || new_obj_name_pt == NULL) {
+
+			if (validate_name(obj_name_pt) != CS_OK) {
+				fprintf(stderr, "Incorrect object name \"%s\", \"=\" not allowed.\n",
+						obj_name_pt);
+				exit(EXIT_FAILURE);
+			}
+
+			if (debug)
+				printf ("%s:%d: %s\n", __func__,__LINE__, obj_name_pt);
+			res = confdb_object_create (handle,
+				parent_object_handle,
+				obj_name_pt,
+				strlen (obj_name_pt),
+				&obj_handle);
+			if (res != CS_OK) {
+				fprintf(stderr, "Failed to create object \"%s\". Error %d.\n",
+					obj_name_pt, res);
+			}
+		}
+		parent_object_handle = obj_handle;
+		obj_name_pt = new_obj_name_pt;
+	}
+
+	/*
+	 * Create key
+	 */
+	res = confdb_key_create_typed (handle,
+		obj_handle,
+		key_name,
+		key_value,
+		strlen(key_value),
+		CONFDB_VALUETYPE_STRING);
+	if (res != CS_OK) {
+		fprintf(stderr,
+			"Failed to create the key %s=%s. Error %d\n",
+			key_name, key_value, res);
+	}
+}
+
 /* Print "?" in place of any non-printable byte of OBJ. */
 static void print_name (FILE *fp, const void *obj, size_t obj_len)
 {
@@ -724,7 +800,7 @@ int main (int argc, char *argv[]) {
 	action = ACTION_READ;
 
 	for (;;){
-		c = getopt (argc,argv,"hawcvdtp:");
+		c = getopt (argc,argv,"hawncvdtp:");
 		if (c==-1) {
 			break;
 		}
@@ -749,6 +825,9 @@ int main (int argc, char *argv[]) {
 				break;
 			case 'w':
 				action = ACTION_WRITE;
+				break;
+			case 'n':
+				action = ACTION_CREATE_KEY;
 				break;
 			case 't':
 				action = ACTION_TRACK;
@@ -784,6 +863,9 @@ int main (int argc, char *argv[]) {
 				break;
 			case ACTION_CREATE:
 				create_object(handle, argv[optind++]);
+				break;
+			case ACTION_CREATE_KEY:
+				create_object_key(handle, argv[optind++]);
 				break;
 			case ACTION_DELETE:
 				delete_object(handle, argv[optind++]);
