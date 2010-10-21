@@ -34,6 +34,7 @@
 
 #include <config.h>
 
+#include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/socket.h>
@@ -102,15 +103,28 @@ static struct cpg_name group_name = {
 
 
 static unsigned char buffer[200000];
-int main (void)
+int main (int argc, char *argv[])
 {
 	cpg_handle_t handle;
 	cs_error_t result;
-	unsigned int i = 0, j;
+	int i = 0;
+	int j;
 	struct my_msg msg;
 	hash_state sha1_hash;
 	struct iovec iov[2];
-	int res;
+	const char *options = "i:";
+	int iter = 1000;
+	int opt;
+	int run_forever = 1;
+
+	while ((opt = getopt(argc, argv, options)) != -1) {
+		switch (opt) {
+		case 'i':
+			run_forever = 0;
+			iter = atoi(optarg);
+			break;
+		}
+	}
 
 	result = cpg_initialize (&handle, &callbacks);
 	if (result != CS_OK) {
@@ -118,9 +132,9 @@ int main (void)
 		exit (0);
 	}
 
-        res = cpg_join (handle, &group_name);
-        if (res != CS_OK) {
-                printf ("cpg_join failed with result %d\n", res);
+        result = cpg_join (handle, &group_name);
+        if (result != CS_OK) {
+                printf ("cpg_join failed with result %d\n", result);
                 exit (1);
         }
 
@@ -131,7 +145,8 @@ int main (void)
 	/*
 	 * Demonstrate cpg_mcast_joined
 	 */
-	for (i = 0; i < 1000000000; i++) {
+	i = 0;
+	do {
 		msg.msg_size = 100 + rand() % 100000;
 		iov[1].iov_len = msg.msg_size;
 		for (j = 0; j < msg.msg_size; j++) {
@@ -149,7 +164,8 @@ try_again_one:
 			goto try_again_one;
 		}
 		result = cpg_dispatch (handle, CS_DISPATCH_ALL);
-	}
+		i++;
+	} while (run_forever || i < iter);
 
 	cpg_finalize (handle);
 
