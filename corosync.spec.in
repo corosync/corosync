@@ -1,13 +1,15 @@
 %global alphatag @alphatag@
+%global numcomm @numcomm@
+%global dirty @dirty@
 
 Name: corosync
 Summary: The Corosync Cluster Engine and Application Programming Interfaces
 Version: @version@
-Release: 1%{?alphatag:.%{alphatag}}%{?dist}
+Release: 1%{?numcomm:.%{numcomm}}%{?alphatag:.%{alphatag}}%{?dirty:.%{dirty}}%{?dist}
 License: BSD
 Group: System Environment/Base
 URL: http://www.openais.org
-Source0: http://developer.osdl.org/dev/openais/downloads/%{name}-%{version}/%{name}-%{version}.tar.gz
+Source0: http://developer.osdl.org/dev/openais/downloads/%{name}-%{version}/%{name}-%{version}%{?numcomm:.%{numcomm}}%{?alphatag:-%{alphatag}}%{?dirty:-%{dirty}}.tar.gz
 
 # Runtime bits
 Requires: corosynclib = %{version}-%{release}
@@ -30,7 +32,7 @@ BuildRequires: libibverbs-devel librdmacm-devel
 BuildRoot: %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 
 %prep
-%setup -q -n %{name}-%{version}
+%setup -q -n %{name}-%{version}%{?numcomm:.%{numcomm}}%{?alphatag:-%{alphatag}}%{?dirty:-%{dirty}}
 
 %build
 %if %{buildtrunk}
@@ -222,5 +224,5 @@ The Corosync Cluster Engine APIs.
 %{_mandir}/man8/sam_overview.8*
 
 %changelog
-* @date@ Autotools generated version <nobody@nowhere.org> - @version@-1.@alphatag@
+* @date@ Autotools generated version <nobody@nowhere.org> - @version@-1-@numcomm@.@alphatag@.@dirty@
 - Autotools generated version

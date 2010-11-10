@@ -1389,7 +1389,7 @@ int main (int argc, char **argv, char **envp)
 				setprio = 0;
 				break;
 			case 'v':
-				printf ("Corosync Cluster Engine, version '%s' SVN revision '%s'\n", VERSION, SVN_REVISION);
+				printf ("Corosync Cluster Engine, version '%s'\n", VERSION);
 				printf ("Copyright (c) 2006-2009 Red Hat, Inc.\n");
 				return EXIT_SUCCESS;
 
