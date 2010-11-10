@@ -90,7 +90,6 @@
 #include "totemsrp.h"
 #include "totemrrp.h"
 #include "totemnet.h"
-#include "wthread.h"
 
 #include "crypto.h"
 
