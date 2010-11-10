@@ -66,7 +66,6 @@
 #define LOGSYS_UTILS_ONLY 1
 #include <corosync/engine/logsys.h>
 #include "totemudp.h"
-#include "wthread.h"
 
 #include "crypto.h"
 
@@ -128,8 +127,6 @@ struct totemudp_instance {
 	int netif_state_report;
 
 	int netif_bind_state;
-
-	struct worker_thread_group worker_thread_group;
 
 	void *context;
 
@@ -1053,93 +1050,11 @@ static inline void mcast_sendmsg (
 	}
 }
 
-static void totemudp_mcast_thread_state_constructor (
-	void *totemudp_mcast_thread_state_in)
-{
-	struct totemudp_mcast_thread_state *totemudp_mcast_thread_state =
-		(struct totemudp_mcast_thread_state *)totemudp_mcast_thread_state_in;
-	memset (totemudp_mcast_thread_state, 0,
-		sizeof (totemudp_mcast_thread_state));
-
-	rng_make_prng (128, PRNG_SOBER,
-		&totemudp_mcast_thread_state->prng_state, NULL);
-}
-
-
-static void totemudp_mcast_worker_fn (void *thread_state, void *work_item_in)
-{
-	struct work_item *work_item = (struct work_item *)work_item_in;
-	struct totemudp_mcast_thread_state *totemudp_mcast_thread_state =
-		(struct totemudp_mcast_thread_state *)thread_state;
-	struct totemudp_instance *instance = work_item->instance;
-	struct msghdr msg_mcast;
-	unsigned char sheader[sizeof (struct security_header)];
-	int res = 0;
-	size_t buf_len;
-	struct iovec iovec_enc[2];
-	struct iovec iovec;
-	struct sockaddr_storage sockaddr;
-	int addrlen;
-
-	if (instance->totem_config->secauth == 1) {
-		iovec_enc[0].iov_base = (void *)sheader;
-		iovec_enc[0].iov_len = sizeof (struct security_header);
-		iovec_enc[1].iov_base = (void *)work_item->msg;
-		iovec_enc[1].iov_len = work_item->msg_len;
-
-		/*
-		 * Encrypt and digest the message
-		 */
-		encrypt_and_sign_worker (
-			instance,
-			totemudp_mcast_thread_state->iobuf,
-			&buf_len,
-			iovec_enc, 2);
-
-		iovec.iov_base = (void *)totemudp_mcast_thread_state->iobuf;
-		iovec.iov_len = buf_len;
-	} else {
-		iovec.iov_base = (void *)work_item->msg;
-		iovec.iov_len = work_item->msg_len;
-	}
-
-	totemip_totemip_to_sockaddr_convert(&instance->mcast_address,
-		instance->totem_interface->ip_port, &sockaddr, &addrlen);
-
-	msg_mcast.msg_name = &sockaddr;
-	msg_mcast.msg_namelen = addrlen;
-	msg_mcast.msg_iov = &iovec;
-	msg_mcast.msg_iovlen = 1;
-#if !defined(COROSYNC_SOLARIS)
-	msg_mcast.msg_control = 0;
-	msg_mcast.msg_controllen = 0;
-	msg_mcast.msg_flags = 0;
-#else
-	msg_mcast.msg_accrights = NULL;
-	msg_mcast.msg_accrightslen = 0;
-#endif
-
-	/*
-	 * Transmit multicast message
-	 * An error here is recovered by totemudp
-	 */
-	res = sendmsg (instance->totemudp_sockets.mcast_send, &msg_mcast,
-		MSG_NOSIGNAL);
-	if (res < 0) {
-		char error_str[100];
-		strerror_r (errno, error_str, sizeof(error_str));
-		log_printf (instance->totemudp_log_level_debug,
-				"sendmsg(mcast) failed (non-critical): %s\n", error_str);
-	}
-}
-
 int totemudp_finalize (
 	void *udp_context)
 {
 	struct totemudp_instance *instance = (struct totemudp_instance *)udp_context;
 	int res = 0;
-
-	worker_thread_group_exit (&instance->worker_thread_group);
 
 	if (instance->totemudp_sockets.mcast_recv > 0) {
 		close (instance->totemudp_sockets.mcast_recv);
@@ -1790,19 +1705,6 @@ int totemudp_initialize (
 	totemip_copy (&instance->mcast_address, &instance->totem_interface->mcast_addr);
 	memset (instance->iov_buffer, 0, FRAME_SIZE_MAX);
 
-	/*
-	* If threaded send requested, initialize thread group data structure
-	*/
-	if (totem_config->threads) {
-		worker_thread_group_init (
-			&instance->worker_thread_group,
-			totem_config->threads, 128,
-			sizeof (struct work_item),
-			sizeof (struct totemudp_mcast_thread_state),
-			totemudp_mcast_thread_state_constructor,
-			totemudp_mcast_worker_fn);
-	}
-
 	instance->totemudp_poll_handle = poll_handle;
 
 	instance->totem_interface->bindnet.nodeid = instance->totem_config->node_id;
@@ -1880,12 +1782,7 @@ int totemudp_recv_flush (void *udp_context)
 
 int totemudp_send_flush (void *udp_context)
 {
-	struct totemudp_instance *instance = (struct totemudp_instance *)udp_context;
-	int res = 0;
-
-	worker_thread_group_wait (&instance->worker_thread_group);
-
-	return (res);
+	return 0;
 }
 
 int totemudp_token_send (
@@ -1919,19 +1816,9 @@ int totemudp_mcast_noflush_send (
 	unsigned int msg_len)
 {
 	struct totemudp_instance *instance = (struct totemudp_instance *)udp_context;
-	struct work_item work_item;
 	int res = 0;
 
-	if (instance->totem_config->threads) {
-		work_item.msg = msg;
-		work_item.msg_len = msg_len;
-		work_item.instance = instance;
-
-		worker_thread_group_work_add (&instance->worker_thread_group,
-			&work_item);
-	} else {
-		mcast_sendmsg (instance, msg, msg_len);
-	}
+	mcast_sendmsg (instance, msg, msg_len);
 
 	return (res);
 }
