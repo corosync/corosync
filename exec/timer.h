@@ -35,12 +35,11 @@
 #ifndef TIMER_H_DEFINED
 #define TIMER_H_DEFINED
 
-typedef void * corosync_timer_handle;
+#include <stdint.h>
+#include <time.h>
+#include <qb/qbloop.h>
 
-extern int corosync_timer_init (
-        void (*serialize_lock) (void),
-        void (*serialize_unlock) (void),
-	int sched_priority);
+typedef qb_loop_timer_handle corosync_timer_handle;
 
 extern int corosync_timer_add_duration (
 	unsigned long long nanosec_duration,
@@ -56,14 +55,6 @@ extern int corosync_timer_add_absolute (
 
 extern void corosync_timer_delete (corosync_timer_handle handle);
 
-extern void corosync_timer_delete_data (corosync_timer_handle handle);
-
-extern void corosync_timer_lock (void);
-
-extern void corosync_timer_unlock (void);
-
-extern unsigned long long corosync_timer_time_get (void);
-
-extern unsigned long long corosync_timer_expire_time_get (corosync_timer_handle handle);
+extern uint64_t corosync_timer_expire_time_get (corosync_timer_handle handle);
 
 #endif /* TIMER_H_DEFINED */

@@ -37,13 +37,16 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <qb/qbutil.h>
+#include <qb/qbloop.h>
+#include <qb/qbipcs.h>
+
 #include <corosync/corotypes.h>
 #include <corosync/lcr/lcr_ifact.h>
 #include <corosync/totem/totempg.h>
 #include <corosync/totem/totemip.h>
 #include <corosync/totem/totem.h>
 #include <corosync/engine/logsys.h>
-#include <qb/qbipcs.h>
 #include "util.h"
 #include "timer.h"
 #include "sync.h"
@@ -96,7 +99,7 @@ static struct corosync_api_v1 apidef_corosync_api_v1 = {
 	.timer_add_duration = corosync_timer_add_duration,
 	.timer_add_absolute = corosync_timer_add_absolute,
 	.timer_delete = corosync_timer_delete,
-	.timer_time_get = corosync_timer_time_get,
+	.timer_time_get = qb_util_nano_from_epoch_get,
 	.timer_expire_time_get = corosync_timer_expire_time_get,
 	.ipc_source_set = message_source_set,
 	.ipc_source_is_local = message_source_is_local,

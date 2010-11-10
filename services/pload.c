@@ -53,6 +53,7 @@
 #include <assert.h>
 
 #include <qb/qblist.h>
+#include <qb/qbutil.h>
 #include <qb/qbipc_common.h>
 
 #include <corosync/swab.h>
@@ -64,8 +65,6 @@
 #include <corosync/ipc_pload.h>
 #include <corosync/list.h>
 #include <corosync/engine/logsys.h>
-
-#include "../exec/tlist.h"
 
 LOGSYS_DECLARE_SUBSYS ("PLOAD");
 
@@ -363,11 +362,11 @@ static void message_handler_req_exec_pload_mcast (
 
 	last_msg_no = pload_mcast->msg_code;
 	if (msgs_delivered == 0) {
-		tv1 = timerlist_nano_current_get ();
+		tv1 = qb_util_nano_current_get ();
 	}
 	msgs_delivered += 1;
 	if (msgs_delivered == msgs_wanted) {
-		tv2 = timerlist_nano_current_get ();
+		tv2 = qb_util_nano_current_get ();
 		tv_elapsed = tv2 - tv1;
 		sprintf (log_buffer, "%5d Writes %d bytes per write %7.3f seconds runtime, %9.3f TP/S, %9.3f MB/S.\n",
 			msgs_delivered,

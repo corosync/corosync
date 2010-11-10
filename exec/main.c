@@ -1433,11 +1433,6 @@ int main (int argc, char **argv, char **envp)
 	/* callthis after our fork() */
 	tsafe_init (envp);
 
-	corosync_timer_init (
-		serialize_lock,
-		serialize_unlock,
-		sched_priority);
-
 	corosync_poll_handle = qb_loop_create ();
 
 	/*

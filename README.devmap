@@ -289,10 +289,7 @@ exec/sync.{c|h}
 	The synchronization service implementation.
 
 exec/timer.{c|h}
-	Threaded based timer service.
-
-exec/tlist.h
-	Timer list used to expire timers.
+	Threaded based timer service (deprecated - use qb_loop_timer).
 
 exec/totemconfig.{c.h}
 	The totem configuration configurator from data parsed with aisparser

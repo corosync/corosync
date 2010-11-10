@@ -74,12 +74,16 @@
 #include <sys/poll.h>
 #include <limits.h>
 
+#include <qb/qbdefs.h>
+#include <qb/qbutil.h>
+#include <qb/qbloop.h>
+
 #include <corosync/swab.h>
 #include <corosync/cs_queue.h>
 #include <corosync/sq.h>
 #include <corosync/list.h>
 #include <corosync/hdb.h>
-#include <qb/qbloop.h>
+
 #define LOGSYS_UTILS_ONLY 1
 #include <corosync/engine/logsys.h>
 
@@ -89,7 +93,6 @@
 #include "wthread.h"
 
 #include "crypto.h"
-#include "tlist.h"
 
 #define LOCALHOST_IP				inet_addr("127.0.0.1")
 #define QUEUE_RTR_ITEMS_SIZE_MAX		16384 /* allow 16384 retransmit items */
@@ -694,8 +697,8 @@ static int pause_flush (struct totemsrp_instance *instance)
 	uint64_t timestamp_msec;
 	int res = 0;
 
-        now_msec = (timerlist_nano_current_get () / TIMERLIST_NS_IN_MSEC);
-        timestamp_msec = instance->pause_timestamp / TIMERLIST_NS_IN_MSEC;
+        now_msec = (qb_util_nano_current_get () / QB_TIME_NS_IN_MSEC);
+        timestamp_msec = instance->pause_timestamp / QB_TIME_NS_IN_MSEC;
 
 	if ((now_msec - timestamp_msec) > (instance->totem_config->token_timeout / 2)) {
 		log_printf (instance->totemsrp_log_level_notice,
@@ -714,9 +717,9 @@ static int token_event_stats_collector (enum totem_callback_token_type type, con
 {
 	struct totemsrp_instance *instance = (struct totemsrp_instance *)void_instance;
 	uint32_t time_now;
-	unsigned long long nano_secs = timerlist_nano_current_get ();
+	unsigned long long nano_secs = qb_util_nano_current_get ();
 
-	time_now = (nano_secs / TIMERLIST_NS_IN_MSEC);
+	time_now = (nano_secs / QB_TIME_NS_IN_MSEC);
 
 	if (type == TOTEM_CALLBACK_TOKEN_RECEIVED) {
 		/* incr latest token the index */
@@ -1524,7 +1527,7 @@ static void timer_function_pause_timeout (void *data)
 {
 	struct totemsrp_instance *instance = data;
 
-	instance->pause_timestamp = timerlist_nano_current_get ();
+	instance->pause_timestamp = qb_util_nano_current_get ();
 	reset_pause_timeout (instance);
 }
 
@@ -3341,7 +3344,7 @@ static int message_handler_orf_token (
 	unsigned long long tv_current;
 	unsigned long long tv_diff;
 
-	tv_current = timerlist_nano_current_get ();
+	tv_current = qb_util_nano_current_get ();
 	tv_diff = tv_current - tv_old;
 	tv_old = tv_current;
 
@@ -3573,7 +3576,7 @@ printf ("token seq %d\n", token->seq);
 			token_send (instance, token, forward_token);
 
 #ifdef GIVEINFO
-			tv_current = timerlist_nano_current_get ();
+			tv_current = qb_util_nano_current_get ();
 			tv_diff = tv_current - tv_old;
 			tv_old = tv_current;
 			log_printf (instance->totemsrp_log_level_debug,

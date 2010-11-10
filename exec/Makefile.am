@@ -68,7 +68,7 @@ SHARED_LIBS_SO		= $(SHARED_LIBS:%.so.$(SONAME)=%.so)
 SHARED_LIBS_SO_TWO	= $(SHARED_LIBS:%.so.$(SONAME)=%.so.$(SOMAJOR))
 
 noinst_HEADERS		= apidef.h crypto.h mainconfig.h main.h tsafe.h \
-			  quorum.h service.h sync.h timer.h tlist.h totemconfig.h \
+			  quorum.h service.h sync.h timer.h totemconfig.h \
 			  totemmrp.h totemnet.h totemudp.h totemiba.h totemrrp.h \
 			  totemsrp.h util.h vsf.h wthread.h schedwrk.h \
 			  evil.h syncv2.h fsm.h
