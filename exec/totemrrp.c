@@ -62,7 +62,7 @@
 #include <corosync/list.h>
 #include <corosync/hdb.h>
 #include <corosync/swab.h>
-#include <corosync/totem/coropoll.h>
+#include <qb/qbloop.h>
 #define LOGSYS_UTILS_ONLY 1
 #include <corosync/engine/logsys.h>
 
@@ -86,8 +86,8 @@ struct passive_instance {
 	unsigned int *mcast_recv_count;
 	unsigned char token[15000];
 	unsigned int token_len;
-        poll_timer_handle timer_expired_token;
-        poll_timer_handle timer_problem_decrementer;
+        qb_loop_timer_handle timer_expired_token;
+        qb_loop_timer_handle timer_problem_decrementer;
 	void *totemrrp_context;
 	unsigned int token_xmit_iface;
 	unsigned int msg_xmit_iface;
@@ -101,8 +101,8 @@ struct active_instance {
 	unsigned char token[15000];
 	unsigned int token_len;
 	unsigned int last_token_seq;
-        poll_timer_handle timer_expired_token;
-        poll_timer_handle timer_problem_decrementer;
+        qb_loop_timer_handle timer_expired_token;
+        qb_loop_timer_handle timer_problem_decrementer;
 	void *totemrrp_context;
 };
 
@@ -169,7 +169,7 @@ struct rrp_algo {
 };
 
 struct totemrrp_instance {
-	hdb_handle_t poll_handle;
+	qb_loop_t *poll_handle;
 
 	struct totem_interface *interfaces;
 
@@ -668,8 +668,9 @@ static void timer_function_passive_problem_decrementer (void *context)
 static void passive_timer_expired_token_start (
 	struct passive_instance *passive_instance)
 {
-        poll_timer_add (
+        qb_loop_timer_add (
 		passive_instance->rrp_instance->poll_handle,
+		QB_LOOP_MED,
 		passive_instance->rrp_instance->totem_config->rrp_token_expired_timeout,
 		(void *)passive_instance,
 		timer_function_passive_token_expired,
@@ -679,7 +680,7 @@ static void passive_timer_expired_token_start (
 static void passive_timer_expired_token_cancel (
 	struct passive_instance *passive_instance)
 {
-        poll_timer_delete (
+        qb_loop_timer_del (
 		passive_instance->rrp_instance->poll_handle,
 		passive_instance->timer_expired_token);
 }
@@ -688,7 +689,8 @@ static void passive_timer_expired_token_cancel (
 static void passive_timer_problem_decrementer_start (
 	struct passive_instance *passive_instance)
 {
-        poll_timer_add (
+        qb_loop_timer_add (
+		QB_LOOP_MED,
 		passive_instance->rrp_instance->poll_handle,
 		passive_instance->rrp_instance->totem_config->rrp_problem_count_timeout,
 		(void *)passive_instance,
@@ -699,7 +701,7 @@ static void passive_timer_problem_decrementer_start (
 static void passive_timer_problem_decrementer_cancel (
 	struct passive_instance *passive_instance)
 {
-        poll_timer_delete (
+        qb_loop_timer_del (
 		passive_instance->rrp_instance->poll_handle,
 		passive_instance->timer_problem_decrementer);
 }
@@ -1096,8 +1098,9 @@ static void timer_function_active_token_expired (void *context)
 static void active_timer_expired_token_start (
 	struct active_instance *active_instance)
 {
-        poll_timer_add (
+        qb_loop_timer_add (
 		active_instance->rrp_instance->poll_handle,
+		QB_LOOP_MED,
 		active_instance->rrp_instance->totem_config->rrp_token_expired_timeout,
 		(void *)active_instance,
 		timer_function_active_token_expired,
@@ -1107,7 +1110,7 @@ static void active_timer_expired_token_start (
 static void active_timer_expired_token_cancel (
 	struct active_instance *active_instance)
 {
-        poll_timer_delete (
+        qb_loop_timer_del (
 		active_instance->rrp_instance->poll_handle,
 		active_instance->timer_expired_token);
 }
@@ -1115,8 +1118,9 @@ static void active_timer_expired_token_cancel (
 static void active_timer_problem_decrementer_start (
 	struct active_instance *active_instance)
 {
-        poll_timer_add (
+        qb_loop_timer_add (
 		active_instance->rrp_instance->poll_handle,
+		QB_LOOP_MED,
 		active_instance->rrp_instance->totem_config->rrp_problem_count_timeout,
 		(void *)active_instance,
 		timer_function_active_problem_decrementer,
@@ -1126,7 +1130,7 @@ static void active_timer_problem_decrementer_start (
 static void active_timer_problem_decrementer_cancel (
 	struct active_instance *active_instance)
 {
-        poll_timer_delete (
+        qb_loop_timer_del (
 		active_instance->rrp_instance->poll_handle,
 		active_instance->timer_problem_decrementer);
 }
@@ -1451,7 +1455,7 @@ static void rrp_target_set_completed (void *context)
  * Create an instance
  */
 int totemrrp_initialize (
-	hdb_handle_t poll_handle,
+	qb_loop_t *poll_handle,
 	void **rrp_context,
 	struct totem_config *totem_config,
 	void *context,

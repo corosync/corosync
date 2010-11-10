@@ -39,6 +39,7 @@
 #include <sys/uio.h>
 #endif
 #include <corosync/hdb.h>
+#include <qb/qbloop.h>
 #include <corosync/swab.h>
 
 typedef struct {
@@ -602,12 +603,7 @@ struct corosync_api_v1 {
 
 	void (*state_dump) (void);
 
-	/*
-	 * The use of this interface is highly discouraged.
-	 * Please avoid using any of coropoll apis in your service engines.
-	 */
-	hdb_handle_t (*poll_handle_get) (void);
-
+	qb_loop_t *(*poll_handle_get) (void);
 
 	int (*object_key_create_typed) (
 		hdb_handle_t object_handle,

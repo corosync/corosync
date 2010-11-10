@@ -59,13 +59,15 @@
 #include <time.h>
 #include <semaphore.h>
 
+#include <qb/qbdefs.h>
+#include <qb/qbloop.h>
+
 #include <corosync/swab.h>
 #include <corosync/corotypes.h>
 #include <corosync/coroipc_types.h>
 #include <corosync/corodefs.h>
 #include <corosync/list.h>
 #include <corosync/lcr/lcr_ifact.h>
-#include <corosync/totem/coropoll.h>
 #include <corosync/totem/totempg.h>
 #include <corosync/engine/objdb.h>
 #include <corosync/engine/config.h>
@@ -126,7 +128,7 @@ static enum cs_sync_mode minimum_sync_mode;
 
 static int sync_in_process = 1;
 
-static hdb_handle_t corosync_poll_handle;
+static qb_loop_t *corosync_poll_handle;
 
 struct sched_param global_sched_param;
 
@@ -146,7 +148,7 @@ static int32_t corosync_not_enough_fds_left = 0;
 
 static void serialize_unlock (void);
 
-hdb_handle_t corosync_poll_handle_get (void)
+qb_loop_t *corosync_poll_handle_get (void)
 {
 	return (corosync_poll_handle);
 }
@@ -172,7 +174,7 @@ static void unlink_all_completed (void)
 	 */
 	serialize_unlock ();
 	api->timer_delete (corosync_stats_timer_handle);
-	poll_stop (corosync_poll_handle);
+	qb_loop_stop (corosync_poll_handle);
 	totempg_finalize ();
 
 	/*
@@ -1024,7 +1026,6 @@ static void ipc_fatal_error(const char *error_msg) {
 }
 
 static int corosync_poll_handler_accept (
-	hdb_handle_t handle,
 	int fd,
 	int revent,
 	void *context)
@@ -1033,7 +1034,6 @@ static int corosync_poll_handler_accept (
 }
 
 static int corosync_poll_handler_dispatch (
-	hdb_handle_t handle,
 	int fd,
 	int revent,
 	void *context)
@@ -1045,7 +1045,7 @@ static int corosync_poll_handler_dispatch (
 static void corosync_poll_accept_add (
 	int fd)
 {
-	poll_dispatch_add (corosync_poll_handle, fd, POLLIN|POLLNVAL, 0,
+	qb_loop_poll_add (corosync_poll_handle, QB_LOOP_MED, fd, POLLIN|POLLNVAL, 0,
 		corosync_poll_handler_accept);
 }
 
@@ -1053,15 +1053,16 @@ static void corosync_poll_dispatch_add (
 	int fd,
 	void *context)
 {
-	poll_dispatch_add (corosync_poll_handle, fd, POLLIN|POLLNVAL, context,
+	qb_loop_poll_add (corosync_poll_handle, QB_LOOP_MED, fd, POLLIN|POLLNVAL, context,
 		corosync_poll_handler_dispatch);
 }
 
 static void corosync_poll_dispatch_modify (
 	int fd,
-	int events)
+	int events,
+	void *context)
 {
-	poll_dispatch_modify (corosync_poll_handle, fd, events,
+	qb_loop_poll_mod (corosync_poll_handle, QB_LOOP_MED, fd, events, context,
 		corosync_poll_handler_dispatch);
 }
 
@@ -1069,7 +1070,7 @@ static void corosync_poll_dispatch_destroy (
     int fd,
     void *context)
 {
-	poll_dispatch_delete (corosync_poll_handle, fd);
+	qb_loop_poll_del (corosync_poll_handle, fd);
 }
 
 static hdb_handle_t corosync_stats_create_connection (const char* name,
@@ -1734,8 +1735,8 @@ int main (int argc, char **argv, char **envp)
 		serialize_unlock,
 		sched_priority);
 
-	corosync_poll_handle = poll_create ();
-	poll_low_fds_event_set(corosync_poll_handle, main_low_fds_event);
+	corosync_poll_handle = qb_loop_create ();
+	qb_loop_poll_low_fds_event_set(corosync_poll_handle, main_low_fds_event);
 
 	/*
 	 * Sleep for a while to let other nodes in the cluster
@@ -1814,7 +1815,7 @@ int main (int argc, char **argv, char **envp)
 	/*
 	 * Start main processing loop
 	 */
-	poll_run (corosync_poll_handle);
+	qb_loop_run (corosync_poll_handle);
 
 	return EXIT_SUCCESS;
 }

@@ -42,8 +42,8 @@ extern "C" {
 
 #include <netinet/in.h>
 #include "totem.h"
-#include "coropoll.h"
 #include <corosync/hdb.h>
+#include <qb/qbloop.h>
 
 struct totempg_group {
 	const void *group;
@@ -62,7 +62,7 @@ struct totempg_group {
  * Initialize the totem process groups abstraction
  */
 extern int totempg_initialize (
-	hdb_handle_t poll_handle,
+	qb_loop_t* poll_handle,
 	struct totem_config *totem_config
 );
 

@@ -40,16 +40,16 @@ bin_SCRIPTS		= corosync-blackbox
 
 EXTRA_DIST		= $(bin_SCRIPTS)
 
-corosync_pload_LDADD	= -lpload -lcoroipcc
+corosync_pload_LDADD	= -lpload -lcoroipcc $(LIBQB_LIBS)
 corosync_pload_LDFLAGS	= -L../lib
-corosync_objctl_LDADD	= -lconfdb ../lcr/liblcr.a -lcoroipcc
+corosync_objctl_LDADD	= -lconfdb ../lcr/liblcr.a -lcoroipcc $(LIBQB_LIBS)
 corosync_objctl_LDFLAGS	= -L../lib
-corosync_cfgtool_LDADD	= -lcfg -lcoroipcc
+corosync_cfgtool_LDADD	= -lcfg -lcoroipcc $(LIBQB_LIBS)
 corosync_cfgtool_LDFLAGS= -L../lib
-corosync_cpgtool_LDADD	= -lcfg -lcpg -lcoroipcc
+corosync_cpgtool_LDADD	= -lcfg -lcpg -lcoroipcc $(LIBQB_LIBS)
 corosync_cpgtool_LDFLAGS= -L../lib
 corosync_quorumtool_LDADD = -lconfdb -lcfg -lquorum \
-			    -lvotequorum -lcoroipcc ../lcr/liblcr.a
+			    -lvotequorum -lcoroipcc ../lcr/liblcr.a $(LIBQB_LIBS)
 corosync_quorumtool_LDFLAGS = -L../lib
 
 lint:

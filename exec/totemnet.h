@@ -51,7 +51,7 @@
  * Create an instance
  */
 extern int totemnet_initialize (
-	hdb_handle_t poll_handle,
+	qb_loop_t *poll_handle,
 	void **net_context,
 	struct totem_config *totem_config,
 	int interface_no,

@@ -39,7 +39,7 @@
 #define FALSE 0
 #include <corosync/corotypes.h>
 #include <corosync/hdb.h>
-#include <corosync/totem/coropoll.h>
+#include <qb/qbloop.h>
 #include <corosync/totem/totempg.h>
 #include <corosync/engine/objdb.h>
 #include <corosync/engine/config.h>
@@ -65,6 +65,6 @@ extern void corosync_shutdown_request (void);
 
 extern void corosync_state_dump (void);
 
-extern hdb_handle_t corosync_poll_handle_get (void);
+extern qb_loop_t *corosync_poll_handle_get (void);
 
 #endif /* MAIN_H_DEFINED */

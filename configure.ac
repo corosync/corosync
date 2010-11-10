@@ -7,7 +7,7 @@ AC_PREREQ([2.61])
 AC_INIT([corosync], [1.2.8], [openais@lists.osdl.org])
 AM_INIT_AUTOMAKE([-Wno-portability])
 
-AC_CONFIG_SRCDIR([lib/coroipcc.c])
+AC_CONFIG_SRCDIR([lib/cpg.c])
 AC_CONFIG_HEADER([include/corosync/config.h include/corosync/cs_config.h])
 
 AC_CANONICAL_HOST
@@ -72,6 +72,7 @@ AC_CHECK_LIB([pthread], [pthread_create])
 AC_CHECK_LIB([socket], [socket])
 AC_CHECK_LIB([nsl], [t_open])
 AC_CHECK_LIB([rt], [sched_getscheduler])
+PKG_CHECK_MODULES([LIBQB], [libqb])
 
 # Checks for header files.
 AC_FUNC_ALLOCA

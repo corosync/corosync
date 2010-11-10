@@ -37,7 +37,7 @@
 
 #include <sys/types.h>
 #include <sys/socket.h>
-
+#include <qb/qbloop.h>
 #include <corosync/totem/totem.h>
 
 #define TOTEMRRP_NOFLUSH	0
@@ -52,7 +52,7 @@
  * Create an instance
  */
 extern int totemrrp_initialize (
-	hdb_handle_t poll_handle,
+	qb_loop_t *poll_handle,
 	void **rrp_context,
 	struct totem_config *totem_config,
 	void *context,

@@ -56,7 +56,7 @@ extern void totemmrp_log_printf_init (
  * Initialize the group messaging interface
  */
 extern int totemmrp_initialize (
-	hdb_handle_t poll_handle,
+	qb_loop_t *poll_handle,
 	struct totem_config *totem_config,
 	totempg_stats_t *stats,
 

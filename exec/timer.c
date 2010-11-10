@@ -62,7 +62,7 @@
 #include <corosync/coroipc_types.h>
 #include <corosync/list.h>
 #include <corosync/lcr/lcr_ifact.h>
-#include <corosync/totem/coropoll.h>
+#include <qb/qbloop.h>
 #include <corosync/totem/totempg.h>
 #include <corosync/engine/objdb.h>
 #include <corosync/engine/config.h>

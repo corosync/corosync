@@ -35,7 +35,7 @@ AM_CFLAGS		= -fPIC
 
 INCLUDES		= -I$(top_builddir)/include -I$(top_srcdir)/include $(nss_CFLAGS) $(rdmacm_CFLAGS) $(ibverbs_CFLAGS)
 
-TOTEM_SRC		= coropoll.c totemip.c totemnet.c totemudp.c \
+TOTEM_SRC		= totemip.c totemnet.c totemudp.c \
 			  totemrrp.c totemsrp.c totemmrp.c totempg.c \
 			  crypto.c wthread.c tsafe.c
 if BUILD_RDMA
@@ -59,7 +59,7 @@ libcoroipcs_a_SOURCES	= $(COROIPCS_SRC)
 corosync_SOURCES 	= main.c util.c sync.c apidef.c service.c \
 			  timer.c totemconfig.c mainconfig.c quorum.c schedwrk.c \
 			  ../lcr/lcr_ifact.c evil.c syncv2.c
-corosync_LDADD	  	= -ltotem_pg -llogsys -lcoroipcs $(statgrab_LIBS)
+corosync_LDADD	  	= -ltotem_pg -llogsys -lcoroipcs $(statgrab_LIBS) $(LIBQB_LIBS)
 corosync_DEPENDENCIES	= libtotem_pg.so.$(SONAME) liblogsys.so.$(SONAME) libcoroipcs.so.$(SONAME)
 corosync_LDFLAGS	= $(OS_DYFLAGS) -L./
 

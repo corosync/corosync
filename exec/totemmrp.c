@@ -56,7 +56,7 @@
 #include <sys/poll.h>
 
 #include <corosync/totem/totem.h>
-#include <corosync/totem/coropoll.h>
+#include <qb/qbloop.h>
 
 #include "totemmrp.h"
 #include "totemsrp.h"
@@ -116,7 +116,7 @@ void totemmrp_confchg_fn (
  * Initialize the totem multiple ring protocol
  */
 int totemmrp_initialize (
-	hdb_handle_t poll_handle,
+	qb_loop_t *poll_handle,
 	struct totem_config *totem_config,
 	totempg_stats_t *stats,
 

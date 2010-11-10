@@ -100,7 +100,8 @@
 #include <corosync/swab.h>
 #include <corosync/hdb.h>
 #include <corosync/list.h>
-#include <corosync/totem/coropoll.h>
+#include <qb/qbloop.h>
+#include <qb/qbipcs.h>
 #include <corosync/totem/totempg.h>
 #define LOGSYS_UTILS_ONLY 1
 #include <corosync/engine/logsys.h>
@@ -704,7 +705,7 @@ int callback_token_received_fn (enum totem_callback_token_type type,
  * Initialize the totem process group abstraction
  */
 int totempg_initialize (
-	hdb_handle_t poll_handle,
+	qb_loop_t *poll_handle,
 	struct totem_config *totem_config)
 {
 	int res;

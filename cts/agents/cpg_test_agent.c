@@ -47,8 +47,9 @@
 #include <unistd.h>
 #include <fcntl.h>
 
-#include <corosync/totem/coropoll.h>
 #include <corosync/list.h>
+#include <qb/qbdefs.h>
+#include <qb/qbloop.h>
 #include <corosync/cpg.h>
 #include <corosync/cfg.h>
 #include "../../exec/crypto.h"
@@ -318,10 +319,11 @@ static void read_messages (int sock, char* atmost_str)
 
 static void send_some_more_messages_later (void)
 {
-	poll_timer_handle timer_handle;
+	qb_loop_timer_handle timer_handle;
 	cpg_dispatch (cpg_handle, CS_DISPATCH_ALL);
-	poll_timer_add (
+	qb_loop_timer_add (
 		ta_poll_handle_get(),
+		QB_LOOP_MED,
 		300, NULL,
 		send_some_more_messages,
 		&timer_handle);
@@ -550,7 +552,7 @@ static void msg_blaster_zcb (int sock, char* num_to_send_str)
 
 static corosync_cfg_state_notification_t notification_buffer;
 
-static int cfg_dispatch_wrapper_fn (hdb_handle_t handle,
+static int cfg_dispatch_wrapper_fn (
 	int fd,
 	int revents,
 	void *data)
@@ -558,7 +560,7 @@ static int cfg_dispatch_wrapper_fn (hdb_handle_t handle,
 	cs_error_t error;
 	if (revents & POLLHUP || revents & POLLERR) {
 		syslog (LOG_ERR, "%s() got POLLHUP disconnecting from CFG", __func__);
-		poll_dispatch_delete (ta_poll_handle_get(), cfg_fd);
+		qb_loop_poll_del (ta_poll_handle_get(), cfg_fd);
 		close (cfg_fd);
 		cfg_fd = -1;
 		return -1;
@@ -566,7 +568,7 @@ static int cfg_dispatch_wrapper_fn (hdb_handle_t handle,
 	error = corosync_cfg_dispatch (cfg_handle, CS_DISPATCH_ALL);
 	if (error == CS_ERR_LIBRARY) {
 		syslog (LOG_ERR, "%s() got LIB error disconnecting from CFG.", __func__);
-		poll_dispatch_delete (ta_poll_handle_get(), cfg_fd);
+		qb_loop_poll_del (ta_poll_handle_get(), cfg_fd);
 		close (cfg_fd);
 		cfg_fd = -1;
 		return -1;
@@ -574,7 +576,7 @@ static int cfg_dispatch_wrapper_fn (hdb_handle_t handle,
 	return 0;
 }
 
-static int cpg_dispatch_wrapper_fn (hdb_handle_t handle,
+static int cpg_dispatch_wrapper_fn (
 	int fd,
 	int revents,
 	void *data)
@@ -582,7 +584,7 @@ static int cpg_dispatch_wrapper_fn (hdb_handle_t handle,
 	cs_error_t error;
 	if (revents & POLLHUP || revents & POLLERR) {
 		syslog (LOG_ERR, "%s() got POLLHUP disconnecting from CPG", __func__);
-		poll_dispatch_delete (ta_poll_handle_get(), cpg_fd);
+		qb_loop_poll_del (ta_poll_handle_get(), cpg_fd);
 		close (cpg_fd);
 		cpg_fd = -1;
 		return -1;
@@ -590,7 +592,7 @@ static int cpg_dispatch_wrapper_fn (hdb_handle_t handle,
 	error = cpg_dispatch (cpg_handle, CS_DISPATCH_ALL);
 	if (error == CS_ERR_LIBRARY) {
 		syslog (LOG_ERR, "%s() got LIB error disconnecting from CPG", __func__);
-		poll_dispatch_delete (ta_poll_handle_get(), cpg_fd);
+		qb_loop_poll_del (ta_poll_handle_get(), cpg_fd);
 		close (cpg_fd);
 		cpg_fd = -1;
 		return -1;
@@ -660,7 +662,12 @@ static void do_command (int sock, char* func, char*args[], int num_args)
 		}
 
 		cpg_fd_get (cpg_handle, &cpg_fd);
-		poll_dispatch_add (ta_poll_handle_get(), cpg_fd, POLLIN|POLLNVAL, NULL, cpg_dispatch_wrapper_fn);
+		qb_loop_poll_add (ta_poll_handle_get(),
+				QB_LOOP_MED,
+				cpg_fd,
+				POLLIN|POLLNVAL,
+				NULL,
+				cpg_dispatch_wrapper_fn);
 
 	} else if (strcmp ("cpg_local_get", func) == 0) {
 		unsigned int local_nodeid;
@@ -671,7 +678,7 @@ static void do_command (int sock, char* func, char*args[], int num_args)
 	} else if (strcmp ("cpg_finalize", func) == 0) {
 
 		cpg_finalize (cpg_handle);
-		poll_dispatch_delete (ta_poll_handle_get(), cpg_fd);
+		qb_loop_poll_del (ta_poll_handle_get(), cpg_fd);
 		cpg_fd = -1;
 
 	} else if (strcmp ("record_config_events", func) == 0) {
@@ -719,7 +726,12 @@ static void do_command (int sock, char* func, char*args[], int num_args)
 
 		corosync_cfg_state_track (cfg_handle, 0, &notification_buffer);
 
-		poll_dispatch_add (ta_poll_handle_get(), cfg_fd, POLLIN|POLLNVAL, NULL, cfg_dispatch_wrapper_fn);
+		qb_loop_poll_add (ta_poll_handle_get(),
+				  QB_LOOP_MED,
+				  cfg_fd,
+				  POLLIN|POLLNVAL,
+				  NULL,
+				  cfg_dispatch_wrapper_fn);
 	} else {
 		syslog (LOG_ERR,"%s RPC:%s not supported!", __func__, func);
 	}
