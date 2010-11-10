@@ -1,25 +1,145 @@
-The Corosync Cluster Engine Work Items Requiring Attention
-Last Updated: Mar 19, 2009
+------------------------------------------
+The Corosync Cluster Engine Topic Branches
+------------------------------------------
 
-Generic Items
--------------
-* doxygen-ize the include and lib directories.
+--------------------------
+Last Updated: October 2010
+--------------------------
 
-Totem
------
-* Disallow binding to localhost interface in redundant ring configuration.
-* Implement the totem multiring protocol.
+We use topic branches in our git repository to develop new disruptive features
+that define our future roadmap.  This file describes the topic branches
+the developers have interest in investigating further.
 
-Closed Process Groups
----------------------
-* async cpg multicast.
+targets can be: whitetank, needle, or future (3.0+).
+Finished can be: percentage or date merged to master.
 
-IPC
----
-* none.
+------------------------------------------------------------------------------
+topic-libqb
+------------------------------------------------------------------------------
+Main Developer: Angus Salkeld
+Started: September 2010
+Finished: 60%
+target: needle
+Description:
+The libqb project is our effort to remove the core infrastructure required for
+client server operations of corosync from the corosync code base and place
+inside a separate project.
 
-SYNC
-----
-* Forward compatible sync engine.
-* Advanced Synchronization Engine needed to synchronize data without
-  long blocking delays during configuration changes.
+The main purpose of this topic is to investigate integrating corosync with the 
+libqb package that has been refactored.  Part of this effort also involves
+investigation into single threaded operation of the IPC layer without
+peformance penalties.
+
+------------------------------------------------------------------------------
+topic-rr
+------------------------------------------------------------------------------
+Main Developer: Steven Dake
+Started: Not Started
+Finished: 0%
+target: needle
+Description:
+Redundant ring may have quality problems near boundary conditions for sequence
+numbers.  This effort involves qualifying and hardening redundant ring around
+these boundary numbers.  A further stretch goal of this topic is to
+automatically reenable a redundant ring when it has been back in service.
+
+------------------------------------------------------------------------------
+topic-snmp
+------------------------------------------------------------------------------
+Main Developer: Steven Dake
+Started: Not Started
+Finished: 0%
+target: needle
+Description:
+This topic involves investigation of adding SNMP support into Corosync.
+
+------------------------------------------------------------------------------
+topic-udpu
+------------------------------------------------------------------------------
+Main Developer: Steven Dake
+Started: October
+Finished: 80%
+target: needle
+Description:
+The UDPU transport mode offers a mechanism for Corosync to operate in network
+environments where multicast or broadcast are prohibited.  The main mechanism
+it uses to do this is to UDP unicast to each of the target node IP addresses
+listed in the configuation.
+
+------------------------------------------------------------------------------
+topic-onecrypt
+------------------------------------------------------------------------------
+Main Developer: Honza Friesse
+Started: not started
+Finished: 0%
+target: needle
+Description:
+Currently encryption code is located in totemudp.c, totemudpu.c, and iba has
+no encryption support.  This topic merges the encryption code into a new
+file such as totemcrp.c and provides a mechanism for totemnet.c to register
+encrypt and decrypt functions with totem[udp|iba|udpu] and use them as
+requested by the configuration.
+
+------------------------------------------------------------------------------
+topic-netmalloc
+------------------------------------------------------------------------------
+Main Developer: Steven Dake
+Started: not started
+Finished: 0%
+target: needle
+Description:
+The totemiba.c driver must allocate memory and assign it to a protection domain
+in order for an infiniband driver to transmit memory.  In the current
+implementation, totemsrp.c also allocates these same frames.  This results in
+an extra memcpy when transmitting with libibverbs technology.  Memory copies
+are to be avoided.  The simple solution is to have each network driver provide
+a memory allocation function.  When totemsrp wants a free frame, it requests
+it from the network driver.
+
+------------------------------------------------------------------------------
+topic-iazc
+------------------------------------------------------------------------------
+Main Developer: Steven Dake
+Started: not started
+Finished: 0%
+target: needle
+Description:
+The totempg.c file uses alloca/memcpy to deal with misaligned data structures
+to avoid bus errors on hardware which does not support unaligned access.  This
+topic addresses the totempg.c code to avoid memory copies on platforms which
+support unaligned access (x86/x86_64) and use the current alloca/memcpy
+on platforms which don't (pretty much all other processor types).
+
+------------------------------------------------------------------------------
+topic-rdmaud
+------------------------------------------------------------------------------
+Main Developer: Steven Dake
+Started: not started
+Finished: 0%
+target: needle or future
+Description:
+Currently our RDMA code uses librdmacm to setup connections.  We are not 
+certain this extra library is needed, and may be able to use only ibverbs.  If
+this is possible, the totem code may be more reliable, especially around
+failure conditions.
+
+------------------------------------------------------------------------------
+topic-zerocopy
+------------------------------------------------------------------------------
+Main Developer: Steven Dake
+Started: not started
+Finished: 0%
+target: future
+Description:
+Totem has many copies involved in messaging which we would like to investigate
+removing.  Our goal is to deliver wire speed performance for rdma networks,
+and if this can be achieved by our other topic investigations, we may not
+further investigate this topic.  The basic idea of the topic is to handle
+message assembly/fragmentation in libcpg, and have totem be responsible for
+sending these pages that are shared via posix shared memory.
+
+------------------------------------------------------------------------------
+other topics not yet defined:
+* disallow binding to localhost interfae in redundant ring configuation.
+* doxygenize include and lib directories.
+* sort out binding to localhost in general
