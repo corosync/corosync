@@ -87,7 +87,6 @@
 #include "service.h"
 #include "schedwrk.h"
 #include "evil.h"
-#include "tsafe.h"
 
 LOGSYS_DECLARE_SYSTEM ("corosync",
 	LOGSYS_MODE_OUTPUT_STDERR | LOGSYS_MODE_THREADED | LOGSYS_MODE_FORK,
@@ -1429,9 +1428,6 @@ int main (int argc, char **argv, char **envp)
 	if ((flock_err = corosync_flock (corosync_lock_file, getpid ())) != AIS_DONE_EXIT) {
 		corosync_exit_error (flock_err);
 	}
-
-	/* callthis after our fork() */
-	tsafe_init (envp);
 
 	corosync_poll_handle = qb_loop_create ();
 
