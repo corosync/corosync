@@ -59,9 +59,9 @@
 #include <limits.h>
 
 #include <corosync/sq.h>
+#include <corosync/swab.h>
 #include <corosync/list.h>
 #include <corosync/hdb.h>
-#include <corosync/swab.h>
 #include <qb/qbloop.h>
 #define LOGSYS_UTILS_ONLY 1
 #include <corosync/engine/logsys.h>

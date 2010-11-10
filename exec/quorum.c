@@ -51,7 +51,6 @@
 #include <arpa/inet.h>
 
 #include <corosync/corotypes.h>
-#include <corosync/coroipc_types.h>
 #include <corosync/swab.h>
 #include <corosync/totem/totempg.h>
 #include <corosync/totem/totem.h>

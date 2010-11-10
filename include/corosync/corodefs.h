@@ -37,8 +37,6 @@
 
 #include <netinet/in.h>
 
-#define COROSYNC_SOCKET_NAME	"corosync.ipc"
-
 enum corosync_service_types {
 	EVS_SERVICE = 0,
 	CLM_SERVICE = 1,

@@ -67,7 +67,6 @@
 #include <corosync/totem/totempg.h>
 #include <corosync/swab.h>
 #include <corosync/corotypes.h>
-#include <corosync/coroipc_types.h>
 #include <corosync/corodefs.h>
 #include <corosync/list.h>
 #include <corosync/lcr/lcr_ifact.h>
@@ -75,7 +74,7 @@
 #include <corosync/engine/config.h>
 #include <corosync/engine/coroapi.h>
 #include <corosync/engine/logsys.h>
-#include <corosync/coroipcs.h>
+#include <qb/qbipcs.h>
 #include "sync.h"
 #include "evil.h"
 
@@ -255,11 +254,6 @@ enum clm_message_req_types {
 
 #define SA_MAX_NAME_LENGTH 256
 
-typedef struct {
-	int size __attribute__((aligned(8)));
-	int id __attribute__((aligned(8)));
-} mar_req_header_t __attribute__((aligned(8)));
-
 typedef enum {
 	MAR_CLM_AF_INET = 1,
 	MAR_CLM_AF_INET6 = 2
@@ -296,7 +290,7 @@ typedef struct {
 mar_clm_cluster_node_t my_cluster_node;
 
 struct req_exec_clm_nodejoin {
-	mar_req_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_request_header header __attribute__((aligned(8)));
 	mar_clm_cluster_node_t cluster_node __attribute__((aligned(8)));
 };
 
@@ -450,7 +444,7 @@ enum evt_message_req_types {
 };
 
 struct req_evt_chan_command {
-	mar_req_header_t chc_head __attribute__((aligned(8)));
+	struct qb_ipc_request_header chc_head __attribute__((aligned(8)));
 	mar_uint32_t chc_op __attribute__((aligned(8)));
 };
 

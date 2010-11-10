@@ -8,16 +8,4 @@ COROSYNC_QUORUM_1.0 {
 		quorum_initialize;
 		quorum_finalize;
 		quorum_dispatch;
-
-	local:
-		coroipcc_service_connect;
-		coroipcc_service_disconnect;
-		coroipcc_dispatch_flow_control_get;
-		coroipcc_fd_get;
-		coroipcc_dispatch_recv;
-		coroipcc_msg_send_reply_receive;
-		coroipcc_msg_send_reply_receive_in_buf;
-		coroipcc_zcb_alloc;
-		coroipcc_zcb_free;
-		coroipcc_zcb_msg_send_reply_receive;
 };

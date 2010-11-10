@@ -89,41 +89,41 @@ enum res_confdb_types {
 
 
 struct req_lib_confdb_object_create {
-	coroipc_request_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_request_header header __attribute__((aligned(8)));
 	mar_uint64_t parent_object_handle __attribute__((aligned(8)));
 	mar_name_t object_name __attribute__((aligned(8)));
 };
 
 struct res_lib_confdb_object_create {
-	coroipc_response_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_response_header header __attribute__((aligned(8)));
 	mar_uint64_t object_handle __attribute__((aligned(8)));
 };
 
 struct req_lib_confdb_object_destroy {
-	coroipc_request_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_request_header header __attribute__((aligned(8)));
 	mar_uint64_t object_handle __attribute__((aligned(8)));
 };
 
 struct req_lib_confdb_object_parent_get {
-	coroipc_request_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_request_header header __attribute__((aligned(8)));
 	mar_uint64_t object_handle __attribute__((aligned(8)));
 };
 
 struct res_lib_confdb_object_parent_get {
-	coroipc_response_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_response_header header __attribute__((aligned(8)));
 	mar_uint64_t parent_object_handle __attribute__((aligned(8)));
 };
 
 
 struct req_lib_confdb_key_create {
-	coroipc_request_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_request_header header __attribute__((aligned(8)));
 	mar_uint64_t object_handle __attribute__((aligned(8)));
 	mar_name_t key_name __attribute__((aligned(8)));
 	mar_name_t value __attribute__((aligned(8)));
 };
 
 struct req_lib_confdb_key_create_typed {
-	coroipc_request_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_request_header header __attribute__((aligned(8)));
 	mar_uint64_t object_handle __attribute__((aligned(8)));
 	mar_name_t key_name __attribute__((aligned(8)));
 	mar_name_t value __attribute__((aligned(8)));
@@ -131,14 +131,14 @@ struct req_lib_confdb_key_create_typed {
 };
 
 struct req_lib_confdb_key_delete {
-	coroipc_request_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_request_header header __attribute__((aligned(8)));
 	mar_uint64_t object_handle __attribute__((aligned(8)));
 	mar_name_t key_name __attribute__((aligned(8)));
 	mar_name_t value __attribute__((aligned(8)));
 };
 
 struct req_lib_confdb_key_replace {
-	coroipc_request_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_request_header header __attribute__((aligned(8)));
 	mar_uint64_t object_handle __attribute__((aligned(8)));
 	mar_name_t key_name __attribute__((aligned(8)));
 	mar_name_t old_value __attribute__((aligned(8)));
@@ -146,92 +146,92 @@ struct req_lib_confdb_key_replace {
 };
 
 struct req_lib_confdb_object_find {
-	coroipc_request_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_request_header header __attribute__((aligned(8)));
 	mar_uint64_t parent_object_handle __attribute__((aligned(8)));
 	mar_name_t object_name __attribute__((aligned(8)));
 	mar_uint64_t find_handle __attribute__((aligned(8)));
 };
 
 struct res_lib_confdb_object_find {
-	coroipc_response_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_response_header header __attribute__((aligned(8)));
 	mar_uint64_t object_handle __attribute__((aligned(8)));
 	mar_uint64_t find_handle __attribute__((aligned(8)));
 };
 
 struct req_lib_confdb_object_iter {
-	coroipc_request_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_request_header header __attribute__((aligned(8)));
 	mar_uint64_t parent_object_handle __attribute__((aligned(8)));
 	mar_uint64_t find_handle __attribute__((aligned(8)));
 };
 
 struct res_lib_confdb_object_iter {
-	coroipc_response_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_response_header header __attribute__((aligned(8)));
 	mar_name_t object_name __attribute__((aligned(8)));
 	mar_uint64_t object_handle __attribute__((aligned(8)));
 	mar_uint64_t find_handle __attribute__((aligned(8)));
 };
 
 struct req_lib_confdb_key_iter {
-	coroipc_request_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_request_header header __attribute__((aligned(8)));
 	mar_uint64_t parent_object_handle __attribute__((aligned(8)));
 	mar_uint64_t next_entry __attribute__((aligned(8)));
 };
 
 struct res_lib_confdb_key_iter {
-	coroipc_response_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_response_header header __attribute__((aligned(8)));
 	mar_name_t key_name __attribute__((aligned(8)));
 	mar_name_t value __attribute__((aligned(8)));
 };
 struct res_lib_confdb_key_iter_typed {
-	coroipc_response_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_response_header header __attribute__((aligned(8)));
 	mar_name_t key_name __attribute__((aligned(8)));
 	mar_name_t value __attribute__((aligned(8)));
 	mar_int32_t type __attribute__((aligned(8)));
 };
 
 struct req_lib_confdb_key_get {
-	coroipc_request_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_request_header header __attribute__((aligned(8)));
 	mar_uint64_t parent_object_handle __attribute__((aligned(8)));
 	mar_name_t key_name __attribute__((aligned(8)));
 };
 
 struct req_lib_confdb_object_find_destroy {
-	coroipc_request_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_request_header header __attribute__((aligned(8)));
 	mar_uint64_t find_handle __attribute__((aligned(8)));
 };
 
 struct res_lib_confdb_key_get {
-	coroipc_response_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_response_header header __attribute__((aligned(8)));
 	mar_name_t value __attribute__((aligned(8)));
 };
 struct res_lib_confdb_key_get_typed {
-	coroipc_response_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_response_header header __attribute__((aligned(8)));
 	mar_name_t value __attribute__((aligned(8)));
 	mar_int32_t type __attribute__((aligned(8)));
 };
 
 struct res_lib_confdb_key_incdec {
-	coroipc_response_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_response_header header __attribute__((aligned(8)));
 	mar_uint32_t value __attribute__((aligned(8)));
 };
 
 struct res_lib_confdb_write {
-	coroipc_response_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_response_header header __attribute__((aligned(8)));
 	mar_name_t error __attribute__((aligned(8)));
 };
 
 struct req_lib_confdb_reload {
-	coroipc_response_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_response_header header __attribute__((aligned(8)));
 	mar_int32_t flush __attribute__((aligned(8)));
 };
 
 struct res_lib_confdb_reload {
-	coroipc_response_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_response_header header __attribute__((aligned(8)));
 	mar_name_t error __attribute__((aligned(8)));
 };
 
 struct res_lib_confdb_key_change_callback {
-	coroipc_response_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_response_header header __attribute__((aligned(8)));
 	mar_uint64_t change_type __attribute__((aligned(8)));
 	mar_uint64_t parent_object_handle __attribute__((aligned(8)));
 	mar_uint64_t object_handle __attribute__((aligned(8)));
@@ -241,25 +241,25 @@ struct res_lib_confdb_key_change_callback {
 };
 
 struct res_lib_confdb_object_create_callback {
-	coroipc_response_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_response_header header __attribute__((aligned(8)));
 	mar_uint64_t parent_object_handle __attribute__((aligned(8)));
 	mar_uint64_t object_handle __attribute__((aligned(8)));
 	mar_name_t name __attribute__((aligned(8)));
 };
 
 struct res_lib_confdb_object_destroy_callback {
-	coroipc_response_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_response_header header __attribute__((aligned(8)));
 	mar_uint64_t parent_object_handle __attribute__((aligned(8)));
 	mar_name_t name __attribute__((aligned(8)));
 };
 
 struct res_lib_confdb_reload_callback {
-	coroipc_response_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_response_header header __attribute__((aligned(8)));
 	mar_uint32_t type __attribute__((aligned(8)));
 };
 
 struct req_lib_confdb_object_track_start {
-	coroipc_request_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_request_header header __attribute__((aligned(8)));
 	mar_uint64_t object_handle __attribute__((aligned(8)));
 	mar_uint32_t flags __attribute__((aligned(8)));
 };

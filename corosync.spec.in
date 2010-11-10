@@ -187,8 +187,6 @@ This package contains corosync libraries.
 %{_libdir}/libevs.so.*
 %{_libdir}/libtotem_pg.so.*
 %{_libdir}/liblogsys.so.*
-%{_libdir}/libcoroipcc.so.*
-%{_libdir}/libcoroipcs.so.*
 %{_libdir}/libquorum.so.*
 %{_libdir}/libvotequorum.so.*
 %{_libdir}/libpload.so.*
@@ -216,9 +214,6 @@ The Corosync Cluster Engine APIs.
 %dir %{_includedir}/corosync/
 %{_includedir}/corosync/cs_config.h
 %{_includedir}/corosync/corodefs.h
-%{_includedir}/corosync/coroipc_types.h
-%{_includedir}/corosync/coroipcs.h
-%{_includedir}/corosync/coroipcc.h
 %{_includedir}/corosync/cfg.h
 %{_includedir}/corosync/confdb.h
 %{_includedir}/corosync/corotypes.h
@@ -251,8 +246,6 @@ The Corosync Cluster Engine APIs.
 %{_libdir}/libevs.so
 %{_libdir}/libtotem_pg.so
 %{_libdir}/liblogsys.so
-%{_libdir}/libcoroipcc.so
-%{_libdir}/libcoroipcs.so
 %{_libdir}/libquorum.so
 %{_libdir}/libvotequorum.so
 %{_libdir}/libpload.so
@@ -268,7 +261,6 @@ The Corosync Cluster Engine APIs.
 %{_mandir}/man8/confdb_overview.8*
 %{_mandir}/man8/logsys_overview.8*
 %{_mandir}/man8/votequorum_overview.8*
-%{_mandir}/man8/coroipc_overview.8*
 %{_mandir}/man8/sam_overview.8*
 
 %changelog

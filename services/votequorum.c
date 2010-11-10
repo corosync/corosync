@@ -56,7 +56,7 @@
 #include <arpa/inet.h>
 
 #include <corosync/corotypes.h>
-#include <corosync/coroipc_types.h>
+#include <qb/qbipc_common.h>
 #include <corosync/corodefs.h>
 #include <corosync/cfg.h>
 #include <corosync/list.h>
@@ -391,7 +391,7 @@ static void votequorum_init(struct corosync_api_v1 *api,
 }
 
 struct req_exec_quorum_nodeinfo {
-	coroipc_request_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_request_header header __attribute__((aligned(8)));
 	unsigned int first_trans;
 	unsigned int votes;
 	unsigned int expected_votes;
@@ -410,14 +410,14 @@ struct req_exec_quorum_nodeinfo {
 #define RECONFIG_PARAM_LEAVING        3
 
 struct req_exec_quorum_reconfigure {
-	coroipc_request_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_request_header header __attribute__((aligned(8)));
 	unsigned int param;
 	unsigned int nodeid;
 	unsigned int value;
 };
 
 struct req_exec_quorum_killnode {
-	coroipc_request_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_request_header header __attribute__((aligned(8)));
 	unsigned int reason;
 	unsigned int nodeid;
 };

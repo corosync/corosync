@@ -329,8 +329,6 @@ static void send_some_more_messages_later (void)
 		&timer_handle);
 }
 
-
-
 static void send_some_more_messages_zcb (void)
 {
 	msg_t *my_msg;
@@ -395,7 +393,6 @@ static void send_some_more_messages_zcb (void)
 free_buffer:
 	cpg_zcb_free (cpg_handle, zcb_buffer);
 }
-
 
 #define cs_repeat(counter, max, code) do {		\
 	code;						\
@@ -486,8 +483,9 @@ static void send_some_more_messages_normal (void)
 
 static void send_some_more_messages (void * unused)
 {
+	use_zcb = QB_FALSE;
 	if (use_zcb) {
-		send_some_more_messages_zcb ();
+//		send_some_more_messages_zcb ();
 	} else {
 		send_some_more_messages_normal ();
 	}

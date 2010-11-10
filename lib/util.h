@@ -36,27 +36,92 @@
 #ifndef AIS_UTIL_H_DEFINED
 #define AIS_UTIL_H_DEFINED
 
+#include <qb/qbdefs.h>
 #include <errno.h>
 
-static inline cs_error_t hdb_error_to_cs (int res)		\
-{								\
-	if (res == 0) {						\
-		return (CS_OK);					\
-	} else {						\
-		if (errno == EBADF) {				\
-			return (CS_ERR_BAD_HANDLE);		\
-		} else						\
-		if (errno == ENOMEM) {				\
-			return (CS_ERR_NO_MEMORY);		\
-		} else						\
-		if (errno == EMFILE) {				\
-			return (CS_ERR_NO_RESOURCES);		\
-		} else						\
-		if (errno == EACCES) {				\
-			return (CS_ERR_SECURITY);		\
-		}						\
-		return (CS_ERR_LIBRARY);			\
-	}							\
+#define hdb_error_to_cs errno_to_cs
+static inline cs_error_t errno_to_cs (int result)
+{
+	int32_t res;
+	cs_error_t err = CS_ERR_LIBRARY;
+
+	if (result >= 0) {
+		return CS_OK;
+	}
+	res = -result;
+
+	switch (res) {
+	case 0:
+		err = CS_OK;
+		break;
+	case EBADF:
+		err = CS_ERR_BAD_HANDLE;
+		break;
+	case ENOMEM:
+		err = CS_ERR_NO_MEMORY;
+		break;
+	case EAGAIN:
+		err = CS_ERR_TRY_AGAIN;
+		break;
+	case EBADE:
+		err = CS_ERR_FAILED_OPERATION;
+		//err = CS_ERR_BAD_OPERATION;
+		//err = CS_ERR_LIBRARY;
+		break;
+	case ETIME:
+		err = CS_ERR_TIMEOUT;
+		break;
+	case EINVAL:
+		err = CS_ERR_INVALID_PARAM;
+		//err = CS_ERR_BAD_FLAGS;
+		break;
+	case EBUSY:
+		err = CS_ERR_BUSY;
+		break;
+	case EACCES:
+		err = CS_ERR_ACCESS;
+		break;
+	case ECONNREFUSED:
+		err = CS_ERR_SECURITY;
+		break;
+	case EOVERFLOW:
+		err = CS_ERR_NAME_TOO_LONG;
+		break;
+	case EEXIST:
+		err = CS_ERR_EXIST;
+		break;
+	case ENOBUFS:
+		err = CS_ERR_QUEUE_FULL;
+		break;
+	case ENOSPC:
+		err = CS_ERR_NO_SPACE;
+		break;
+	case EINTR:
+		err = CS_ERR_INTERRUPT;
+		break;
+	case ENOENT:
+	case ENODEV:
+		err = CS_ERR_NOT_EXIST;
+		//err = CS_ERR_NAME_NOT_FOUND;
+		//err = CS_ERR_NO_RESOURCES;
+		break;
+	case ENOSYS:
+	case ENOTSUP:
+		err = CS_ERR_NOT_SUPPORTED;
+		break;
+	case EBADMSG:
+		err = CS_ERR_MESSAGE_ERROR;
+		break;
+	case EMSGSIZE:
+	case E2BIG:
+		err = CS_ERR_TOO_BIG;
+		break;
+	default:
+		err = CS_ERR_LIBRARY;
+		break;
+	}
+
+	return err;
 }
 
 #ifdef HAVE_SMALL_MEMORY_FOOTPRINT

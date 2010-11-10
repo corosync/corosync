@@ -41,26 +41,29 @@
 #include <config.h>
 
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/mman.h>
 #include <errno.h>
+#include <limits.h>
 
-#include <corosync/corotypes.h>
-#include <corosync/coroipc_types.h>
-#include <corosync/coroipcc.h>
-#include <corosync/corodefs.h>
+#include <qb/qbdefs.h>
+#include <qb/qbipcc.h>
+
 #include <corosync/hdb.h>
 #include <corosync/list.h>
-
+#include <corosync/corotypes.h>
+#include <corosync/corodefs.h>
 #include <corosync/cpg.h>
 #include <corosync/ipc_cpg.h>
 
 #include "util.h"
 
 struct cpg_inst {
-	hdb_handle_t handle;
+	qb_ipcc_connection_t *c;
 	int finalize;
 	void *context;
 	union {
@@ -74,7 +77,7 @@ DECLARE_HDB_DATABASE(cpg_handle_t_db,NULL);
 
 struct cpg_iteration_instance_t {
 	cpg_iteration_handle_t cpg_iteration_handle;
-	hdb_handle_t conn_handle;
+	qb_ipcc_connection_t *conn;
 	hdb_handle_t executive_iteration_handle;
 	struct list_head list;
 };
@@ -85,6 +88,17 @@ DECLARE_HDB_DATABASE(cpg_iteration_handle_t_db,NULL);
 /*
  * Internal (not visible by API) functions
  */
+
+static cs_error_t
+coroipcc_msg_send_reply_receive (
+	qb_ipcc_connection_t *c,
+	const struct iovec *iov,
+	unsigned int iov_len,
+	void *res_msg,
+	size_t res_len)
+{
+	return errno_to_cs(qb_ipcc_sendv_recv(c, iov, iov_len, res_msg, res_len));
+}
 
 static void cpg_iteration_instance_finalize (struct cpg_iteration_instance_t *cpg_iteration_instance)
 {
@@ -157,14 +171,9 @@ cs_error_t cpg_model_initialize (
 		goto error_destroy;
 	}
 
-	error = coroipcc_service_connect (
-		COROSYNC_SOCKET_NAME,
-		CPG_SERVICE,
-		IPC_REQUEST_SIZE,
-		IPC_RESPONSE_SIZE,
-		IPC_DISPATCH_SIZE,
-		&cpg_inst->handle);
-	if (error != CS_OK) {
+	cpg_inst->c = qb_ipcc_connect ("cpg", IPC_REQUEST_SIZE);
+	if (cpg_inst->c == NULL) {
+		error = errno_to_cs(-errno);
 		goto error_put_destroy;
 	}
 
@@ -235,7 +244,7 @@ cs_error_t cpg_finalize (
 	iov.iov_base = (void *)&req_lib_cpg_finalize;
 	iov.iov_len = sizeof (struct req_lib_cpg_finalize);
 
-	error = coroipcc_msg_send_reply_receive (cpg_inst->handle,
+	error = coroipcc_msg_send_reply_receive (cpg_inst->c,
 		&iov,
 		1,
 		&res_lib_cpg_finalize,
@@ -245,7 +254,7 @@ cs_error_t cpg_finalize (
 		goto error_put;
 	}
 
-	coroipcc_service_disconnect (cpg_inst->handle);
+	qb_ipcc_disconnect(cpg_inst->c);
 
 	cpg_inst_finalize (cpg_inst, handle);
 	hdb_handle_put (&cpg_handle_t_db, handle);
@@ -270,7 +279,7 @@ cs_error_t cpg_fd_get (
 		return (error);
 	}
 
-	error = coroipcc_fd_get (cpg_inst->handle, fd);
+	error = errno_to_cs (qb_ipcc_fd_get (cpg_inst->c, fd));
 
 	hdb_handle_put (&cpg_handle_t_db, handle);
 
@@ -327,7 +336,7 @@ cs_error_t cpg_dispatch (
 	struct res_lib_cpg_deliver_callback *res_cpg_deliver_callback;
 	struct res_lib_cpg_totem_confchg_callback *res_cpg_totem_confchg_callback;
 	struct cpg_inst cpg_inst_copy;
-	coroipc_response_header_t *dispatch_data;
+	struct qb_ipc_response_header *dispatch_data;
 	struct cpg_address member_list[CPG_MEMBERS_MAX];
 	struct cpg_address left_list[CPG_MEMBERS_MAX];
 	struct cpg_address joined_list[CPG_MEMBERS_MAX];
@@ -337,6 +346,8 @@ cs_error_t cpg_dispatch (
 	unsigned int i;
 	struct cpg_ring_id ring_id;
 	uint32_t totem_member_list[CPG_MEMBERS_MAX];
+	int32_t errno_res;
+	char dispatch_buf[IPC_DISPATCH_SIZE];
 
 	error = hdb_error_to_cs (hdb_handle_get (&cpg_handle_t_db, handle, (void *)&cpg_inst));
 	if (error != CS_OK) {
@@ -351,11 +362,14 @@ cs_error_t cpg_dispatch (
 		timeout = 0;
 	}
 
+	dispatch_data = (struct qb_ipc_response_header *)dispatch_buf;
 	do {
-		error = coroipcc_dispatch_get (
-			cpg_inst->handle,
-			(void **)&dispatch_data,
+		errno_res = qb_ipcc_event_recv (
+			cpg_inst->c,
+			dispatch_buf,
+			IPC_DISPATCH_SIZE,
 			timeout);
+		error = errno_to_cs (errno_res);
 		if (error == CS_ERR_BAD_HANDLE) {
 			error = CS_OK;
 			goto error_put;
@@ -378,7 +392,6 @@ cs_error_t cpg_dispatch (
 		 * operate at the same time that cpgFinalize has been called.
 		 */
 		memcpy (&cpg_inst_copy, cpg_inst, sizeof (struct cpg_inst));
-
 		switch (cpg_inst_copy.model_data.model) {
 		case CPG_MODEL_V1:
 			/*
@@ -460,14 +473,12 @@ cs_error_t cpg_dispatch (
 					totem_member_list);
 				break;
 			default:
-				coroipcc_dispatch_put (cpg_inst->handle);
 				error = CS_ERR_LIBRARY;
 				goto error_put;
 				break;
 			} /* - switch (dispatch_data->id) */
 			break; /* case CPG_MODEL_V1 */
 		} /* - switch (cpg_inst_copy.model_data.model) */
-		coroipcc_dispatch_put (cpg_inst->handle);
 
 		/*
 		 * Determine if more messages should be processed
@@ -490,7 +501,7 @@ cs_error_t cpg_join (
 	struct cpg_inst *cpg_inst;
 	struct iovec iov[2];
 	struct req_lib_cpg_join req_lib_cpg_join;
-	struct res_lib_cpg_join res_lib_cpg_join;
+	struct res_lib_cpg_join response;
 
 	error = hdb_error_to_cs (hdb_handle_get (&cpg_handle_t_db, handle, (void *)&cpg_inst));
 	if (error != CS_OK) {
@@ -516,15 +527,15 @@ cs_error_t cpg_join (
 	iov[0].iov_len = sizeof (struct req_lib_cpg_join);
 
 	do {
-		error = coroipcc_msg_send_reply_receive (cpg_inst->handle, iov, 1,
-			&res_lib_cpg_join, sizeof (struct res_lib_cpg_join));
+		error = coroipcc_msg_send_reply_receive (cpg_inst->c, iov, 1,
+			&response, sizeof (struct res_lib_cpg_join));
 
 		if (error != CS_OK) {
 			goto error_exit;
 		}
-	} while (res_lib_cpg_join.header.error == CPG_ERR_BUSY);
+	} while (response.header.error == CPG_ERR_BUSY);
 
-	error = res_lib_cpg_join.header.error;
+	error = response.header.error;
 
 error_exit:
 	hdb_handle_put (&cpg_handle_t_db, handle);
@@ -557,7 +568,7 @@ cs_error_t cpg_leave (
 	iov[0].iov_len = sizeof (struct req_lib_cpg_leave);
 
 	do {
-		error = coroipcc_msg_send_reply_receive (cpg_inst->handle, iov, 1,
+		error = coroipcc_msg_send_reply_receive (cpg_inst->c, iov, 1,
 			&res_lib_cpg_leave, sizeof (struct res_lib_cpg_leave));
 
 		if (error != CS_OK) {
@@ -605,14 +616,14 @@ cs_error_t cpg_membership_get (
 		sizeof (struct cpg_name));
 
 	iov.iov_base = (void *)&req_lib_cpg_membership_get;
-	iov.iov_len = sizeof (coroipc_request_header_t);
+	iov.iov_len = sizeof (struct qb_ipc_request_header);
 
 	do {
-		error = coroipcc_msg_send_reply_receive (cpg_inst->handle, &iov, 1,
-			&res_lib_cpg_membership_get, sizeof (res_lib_cpg_membership_get));
+		error = coroipcc_msg_send_reply_receive (cpg_inst->c, &iov, 1,
+				&res_lib_cpg_membership_get, sizeof (res_lib_cpg_membership_get));
 
- 		if (error != CS_OK) {
- 			goto error_exit;
+		if (error != CS_OK) {
+			goto error_exit;
 		}
 	} while (res_lib_cpg_membership_get.header.error == CPG_ERR_BUSY);
 
@@ -650,13 +661,13 @@ cs_error_t cpg_local_get (
 		return (error);
 	}
 
-	req_lib_cpg_local_get.header.size = sizeof (coroipc_request_header_t);
+	req_lib_cpg_local_get.header.size = sizeof (struct qb_ipc_request_header);
 	req_lib_cpg_local_get.header.id = MESSAGE_REQ_CPG_LOCAL_GET;
 
 	iov.iov_base = (void *)&req_lib_cpg_local_get;
 	iov.iov_len = sizeof (struct req_lib_cpg_local_get);
 
-	error = coroipcc_msg_send_reply_receive (cpg_inst->handle, &iov, 1,
+	error = coroipcc_msg_send_reply_receive (cpg_inst->c, &iov, 1,
 		&res_lib_cpg_local_get, sizeof (res_lib_cpg_local_get));
 
 	if (error != CS_OK) {
@@ -684,12 +695,89 @@ cs_error_t cpg_flow_control_state_get (
 	if (error != CS_OK) {
 		return (error);
 	}
-
-	error = coroipcc_dispatch_flow_control_get (cpg_inst->handle, (unsigned int *)flow_control_state);
+	*flow_control_state = CPG_FLOW_CONTROL_DISABLED;
+	error = CS_OK;
 
 	hdb_handle_put (&cpg_handle_t_db, handle);
 
 	return (error);
+}
+
+static int
+memory_map (char *path, const char *file, void **buf, size_t bytes)
+{
+	int32_t fd;
+	void *addr_orig;
+	void *addr;
+	int32_t res;
+	char *buffer;
+	int32_t i;
+	int32_t written;
+	long page_size; 
+
+	snprintf (path, PATH_MAX, "/dev/shm/%s", file);
+
+	fd = mkstemp (path);
+	if (fd == -1) {
+		snprintf (path, PATH_MAX, LOCALSTATEDIR "/run/%s", file);
+		fd = mkstemp (path);
+		if (fd == -1) {
+			return (-1);
+		}
+	}
+
+	res = ftruncate (fd, bytes);
+	if (res == -1) {
+		goto error_close_unlink;
+	}
+	page_size = sysconf(_SC_PAGESIZE);
+	buffer = malloc (page_size);
+	if (buffer == NULL) {
+		goto error_close_unlink;
+	}
+	memset (buffer, 0, page_size);
+	for (i = 0; i < (bytes / page_size); i++) {
+retry_write:
+		written = write (fd, buffer, page_size);
+		if (written == -1 && errno == EINTR) {
+			goto retry_write;
+		}
+		if (written != page_size) {
+			free (buffer);
+			goto error_close_unlink;
+		}
+	}
+	free (buffer);
+
+	addr_orig = mmap (NULL, bytes, PROT_NONE,
+		MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+
+	if (addr_orig == MAP_FAILED) {
+		goto error_close_unlink;
+	}
+
+	addr = mmap (addr_orig, bytes, PROT_READ | PROT_WRITE,
+		MAP_FIXED | MAP_SHARED, fd, 0);
+
+	if (addr != addr_orig) {
+		goto error_close_unlink;
+	}
+#ifdef COROSYNC_BSD
+	madvise(addr_orig, bytes, MADV_NOSYNC);
+#endif
+
+	res = close (fd);
+	if (res) {
+		return (-1);
+	}
+	*buf = addr_orig;
+
+	return 0;
+
+error_close_unlink:
+	close (fd);
+	unlink(path);
+	return -1;
 }
 
 cs_error_t cpg_zcb_alloc (
@@ -697,6 +785,13 @@ cs_error_t cpg_zcb_alloc (
 	size_t size,
 	void **buffer)
 {
+	void *buf = NULL;
+	char path[128];
+	mar_req_coroipcc_zc_alloc_t req_coroipcc_zc_alloc;
+	struct qb_ipc_response_header res_coroipcs_zc_alloc;
+	size_t map_size;
+	struct iovec iovec;
+	struct coroipcs_zc_header *hdr;
 	cs_error_t error;
 	struct cpg_inst *cpg_inst;
 
@@ -705,10 +800,27 @@ cs_error_t cpg_zcb_alloc (
 		return (error);
 	}
 
-	error = coroipcc_zcb_alloc (cpg_inst->handle,
-		buffer,
-		size,
-		sizeof (struct req_lib_cpg_mcast));
+	map_size = size + sizeof (struct req_lib_cpg_mcast) + sizeof (struct coroipcs_zc_header);
+	assert(memory_map (path, "corosync_zerocopy-XXXXXX", &buf, map_size) != -1);
+
+	req_coroipcc_zc_alloc.header.size = sizeof (mar_req_coroipcc_zc_alloc_t);
+	req_coroipcc_zc_alloc.header.id = MESSAGE_REQ_CPG_ZC_ALLOC;
+	req_coroipcc_zc_alloc.map_size = map_size;
+	strcpy (req_coroipcc_zc_alloc.path_to_file, path);
+
+	iovec.iov_base = (void *)&req_coroipcc_zc_alloc;
+	iovec.iov_len = sizeof (mar_req_coroipcc_zc_alloc_t);
+
+	error = coroipcc_msg_send_reply_receive (
+		cpg_inst->c,
+		&iovec,
+		1,
+		&res_coroipcs_zc_alloc,
+		sizeof (struct qb_ipc_response_header));
+
+	hdr = (struct coroipcs_zc_header *)buf;
+	hdr->map_size = map_size;
+	*buffer = ((char *)buf) + sizeof (struct coroipcs_zc_header);
 
 	hdb_handle_put (&cpg_handle_t_db, handle);
 	*buffer = ((char *)*buffer) + sizeof (struct req_lib_cpg_mcast);
@@ -722,13 +834,32 @@ cs_error_t cpg_zcb_free (
 {
 	cs_error_t error;
 	struct cpg_inst *cpg_inst;
+	mar_req_coroipcc_zc_free_t req_coroipcc_zc_free;
+	struct qb_ipc_response_header res_coroipcs_zc_free;
+	struct iovec iovec;
+	struct coroipcs_zc_header *header = (struct coroipcs_zc_header *)((char *)buffer - sizeof (struct coroipcs_zc_header));
 
 	error = hdb_error_to_cs (hdb_handle_get (&cpg_handle_t_db, handle, (void *)&cpg_inst));
 	if (error != CS_OK) {
 		return (error);
 	}
 
-	coroipcc_zcb_free (cpg_inst->handle, ((char *)buffer) - sizeof (struct req_lib_cpg_mcast));
+	req_coroipcc_zc_free.header.size = sizeof (mar_req_coroipcc_zc_free_t);
+	req_coroipcc_zc_free.header.id = MESSAGE_REQ_CPG_ZC_FREE;
+	req_coroipcc_zc_free.map_size = header->map_size;
+	req_coroipcc_zc_free.server_address = header->server_address;
+
+	iovec.iov_base = (void *)&req_coroipcc_zc_free;
+	iovec.iov_len = sizeof (mar_req_coroipcc_zc_free_t);
+
+	error = coroipcc_msg_send_reply_receive (
+		cpg_inst->c,
+		&iovec,
+		1,
+		&res_coroipcs_zc_free,
+		sizeof (struct qb_ipc_response_header));
+
+	munmap ((void *)header, header->map_size);
 
 	hdb_handle_put (&cpg_handle_t_db, handle);
 
@@ -745,12 +876,14 @@ cs_error_t cpg_zcb_mcast_joined (
 	struct cpg_inst *cpg_inst;
 	struct req_lib_cpg_mcast *req_lib_cpg_mcast;
 	struct res_lib_cpg_mcast res_lib_cpg_mcast;
+	mar_req_coroipcc_zc_execute_t req_coroipcc_zc_execute;
+	struct coroipcs_zc_header *hdr;
+	struct iovec iovec;
 
 	error = hdb_error_to_cs (hdb_handle_get (&cpg_handle_t_db, handle, (void *)&cpg_inst));
 	if (error != CS_OK) {
 		return (error);
 	}
-
 	req_lib_cpg_mcast = (struct req_lib_cpg_mcast *)(((char *)msg) - sizeof (struct req_lib_cpg_mcast));
 	req_lib_cpg_mcast->header.size = sizeof (struct req_lib_cpg_mcast) +
 		msg_len;
@@ -759,11 +892,21 @@ cs_error_t cpg_zcb_mcast_joined (
 	req_lib_cpg_mcast->guarantee = guarantee;
 	req_lib_cpg_mcast->msglen = msg_len;
 
-	error = coroipcc_zcb_msg_send_reply_receive (
-		cpg_inst->handle,
-		req_lib_cpg_mcast,
+	hdr = (struct coroipcs_zc_header *)(((char *)req_lib_cpg_mcast) - sizeof (struct coroipcs_zc_header));
+
+	req_coroipcc_zc_execute.header.size = sizeof (mar_req_coroipcc_zc_execute_t);
+	req_coroipcc_zc_execute.header.id = MESSAGE_REQ_CPG_ZC_EXECUTE;
+	req_coroipcc_zc_execute.server_address = hdr->server_address;
+
+	iovec.iov_base = (void *)&req_coroipcc_zc_execute;
+	iovec.iov_len = sizeof (mar_req_coroipcc_zc_execute_t);
+
+	error = coroipcc_msg_send_reply_receive (
+		cpg_inst->c,
+		&iovec,
+		1,
 		&res_lib_cpg_mcast,
-		sizeof (res_lib_cpg_mcast));
+		sizeof(res_lib_cpg_mcast));
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -788,7 +931,6 @@ cs_error_t cpg_mcast_joined (
 	struct cpg_inst *cpg_inst;
 	struct iovec iov[64];
 	struct req_lib_cpg_mcast req_lib_cpg_mcast;
-	struct res_lib_cpg_mcast res_lib_cpg_mcast;
 	size_t msg_len = 0;
 
 	error = hdb_error_to_cs (hdb_handle_get (&cpg_handle_t_db, handle, (void *)&cpg_inst));
@@ -811,16 +953,14 @@ cs_error_t cpg_mcast_joined (
 	iov[0].iov_len = sizeof (struct req_lib_cpg_mcast);
 	memcpy (&iov[1], iovec, iov_len * sizeof (struct iovec));
 
-	error = coroipcc_msg_send_reply_receive (cpg_inst->handle, iov,
-		iov_len + 1, &res_lib_cpg_mcast, sizeof (res_lib_cpg_mcast));
-
+repeat_send:
+	error = errno_to_cs(qb_ipcc_sendv(cpg_inst->c, iov, iov_len + 1));
 	if (error != CS_OK) {
-		goto error_exit;
+		if (error == CS_ERR_TRY_AGAIN || error == CS_ERR_NO_MEMORY) {
+			goto repeat_send;
+		}
 	}
 
-	error = res_lib_cpg_mcast.header.error;
-
-error_exit:
 	hdb_handle_put (&cpg_handle_t_db, handle);
 
 	return (error);
@@ -871,7 +1011,7 @@ cs_error_t cpg_iteration_initialize(
 		goto error_destroy;
 	}
 
-	cpg_iteration_instance->conn_handle = cpg_inst->handle;
+	cpg_iteration_instance->conn = cpg_inst->c;
 
 	list_init (&cpg_iteration_instance->list);
 
@@ -885,7 +1025,7 @@ cs_error_t cpg_iteration_initialize(
 	iov.iov_base = (void *)&req_lib_cpg_iterationinitialize;
 	iov.iov_len = sizeof (struct req_lib_cpg_iterationinitialize);
 
-	error = coroipcc_msg_send_reply_receive (cpg_inst->handle,
+	error = coroipcc_msg_send_reply_receive (cpg_inst->c,
 		&iov,
 		1,
 		&res_lib_cpg_iterationinitialize,
@@ -923,9 +1063,7 @@ cs_error_t cpg_iteration_next(
 	cs_error_t error;
 	struct cpg_iteration_instance_t *cpg_iteration_instance;
 	struct req_lib_cpg_iterationnext req_lib_cpg_iterationnext;
-	struct res_lib_cpg_iterationnext *res_lib_cpg_iterationnext;
-	struct iovec iov;
-	void *return_address;
+	struct res_lib_cpg_iterationnext res_lib_cpg_iterationnext;
 
 	if (description == NULL) {
 		return CS_ERR_INVALID_PARAM;
@@ -941,27 +1079,25 @@ cs_error_t cpg_iteration_next(
 	req_lib_cpg_iterationnext.header.id = MESSAGE_REQ_CPG_ITERATIONNEXT;
 	req_lib_cpg_iterationnext.iteration_handle = cpg_iteration_instance->executive_iteration_handle;
 
-	iov.iov_base = (void *)&req_lib_cpg_iterationnext;
-	iov.iov_len = sizeof (struct req_lib_cpg_iterationnext);
+	error = errno_to_cs (qb_ipcc_send (cpg_iteration_instance->conn,
+				&req_lib_cpg_iterationnext,
+				req_lib_cpg_iterationnext.header.size));
+	if (error != CS_OK) {
+		goto error_put;
+	}
 
-	error = coroipcc_msg_send_reply_receive_in_buf_get (cpg_iteration_instance->conn_handle,
-		&iov,
-		1,
-		&return_address);
-	res_lib_cpg_iterationnext = return_address;
-
+	error = errno_to_cs (qb_ipcc_recv (cpg_iteration_instance->conn,
+				&res_lib_cpg_iterationnext,
+				sizeof(struct res_lib_cpg_iterationnext)));
 	if (error != CS_OK) {
 		goto error_put;
 	}
 
 	marshall_from_mar_cpg_iteration_description_t(
 			description,
-			&res_lib_cpg_iterationnext->description);
+			&res_lib_cpg_iterationnext.description);
 
-	error = res_lib_cpg_iterationnext->header.error;
-
-	coroipcc_msg_send_reply_receive_in_buf_put(
-			cpg_iteration_instance->conn_handle);
+	error = res_lib_cpg_iterationnext.header.error;
 
 error_put:
 	hdb_handle_put (&cpg_iteration_handle_t_db, handle);
@@ -992,7 +1128,7 @@ cs_error_t cpg_iteration_finalize (
 	iov.iov_base = (void *)&req_lib_cpg_iterationfinalize;
 	iov.iov_len = sizeof (struct req_lib_cpg_iterationfinalize);
 
-	error = coroipcc_msg_send_reply_receive (cpg_iteration_instance->conn_handle,
+	error = coroipcc_msg_send_reply_receive (cpg_iteration_instance->conn,
 		&iov,
 		1,
 		&res_lib_cpg_iterationfinalize,

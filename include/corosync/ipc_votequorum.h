@@ -62,35 +62,35 @@ enum res_votequorum_types {
 };
 
 struct req_lib_votequorum_setvotes {
-        coroipc_request_header_t header __attribute__((aligned(8)));
+        struct qb_ipc_request_header header __attribute__((aligned(8)));
 	unsigned int votes;
 	int nodeid;
 };
 
 struct req_lib_votequorum_qdisk_register {
-        coroipc_request_header_t header __attribute__((aligned(8)));
+        struct qb_ipc_request_header header __attribute__((aligned(8)));
 	unsigned int votes;
 	char name[VOTEQUORUM_MAX_QDISK_NAME_LEN];
 };
 
 struct req_lib_votequorum_qdisk_poll {
-        coroipc_request_header_t header __attribute__((aligned(8)));
+        struct qb_ipc_request_header header __attribute__((aligned(8)));
 	int state;
 };
 
 struct req_lib_votequorum_setexpected {
-        coroipc_request_header_t header __attribute__((aligned(8)));
+        struct qb_ipc_request_header header __attribute__((aligned(8)));
 	unsigned int expected_votes;
 };
 
 struct req_lib_votequorum_trackstart {
-        coroipc_request_header_t header __attribute__((aligned(8)));
+        struct qb_ipc_request_header header __attribute__((aligned(8)));
 	uint64_t context;
 	unsigned int track_flags;
 };
 
 struct req_lib_votequorum_general {
-        coroipc_request_header_t header __attribute__((aligned(8)));
+        struct qb_ipc_request_header header __attribute__((aligned(8)));
 };
 
 #define VOTEQUORUM_REASON_KILL_REJECTED    1
@@ -98,12 +98,12 @@ struct req_lib_votequorum_general {
 #define VOTEQUORUM_REASON_KILL_REJOIN      3
 
 struct req_lib_votequorum_getinfo {
-        coroipc_request_header_t header __attribute__((aligned(8)));
+        struct qb_ipc_request_header header __attribute__((aligned(8)));
 	int nodeid;
 };
 
 struct res_lib_votequorum_status {
-        coroipc_response_header_t header __attribute__((aligned(8)));
+        struct qb_ipc_response_header header __attribute__((aligned(8)));
 };
 
 #define VOTEQUORUM_INFO_FLAG_HASSTATE   1
@@ -112,7 +112,7 @@ struct res_lib_votequorum_status {
 #define VOTEQUORUM_INFO_FLAG_QUORATE    8
 
 struct res_lib_votequorum_getinfo {
-        coroipc_response_header_t header __attribute__((aligned(8)));
+        struct qb_ipc_response_header header __attribute__((aligned(8)));
 	int nodeid;
 	unsigned int votes;
 	unsigned int expected_votes;
@@ -123,7 +123,7 @@ struct res_lib_votequorum_getinfo {
 };
 
 struct res_lib_votequorum_qdisk_getinfo {
-        coroipc_response_header_t header __attribute__((aligned(8)));
+        struct qb_ipc_response_header header __attribute__((aligned(8)));
 	unsigned int votes;
 	unsigned int state;
 	char name[VOTEQUORUM_MAX_QDISK_NAME_LEN];
@@ -135,7 +135,7 @@ struct votequorum_node {
 };
 
 struct res_lib_votequorum_notification {
-	coroipc_response_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_response_header header __attribute__((aligned(8)));
 	mar_uint32_t quorate __attribute__((aligned(8)));
 	mar_uint64_t context __attribute__((aligned(8)));
 	mar_uint32_t node_list_entries __attribute__((aligned(8)));
@@ -143,7 +143,7 @@ struct res_lib_votequorum_notification {
 };
 
 struct res_lib_votequorum_expectedvotes_notification {
-	coroipc_response_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_response_header header __attribute__((aligned(8)));
 	mar_uint64_t context __attribute__((aligned(8)));
 	mar_uint32_t expected_votes __attribute__((aligned(8)));
 };

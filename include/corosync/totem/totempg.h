@@ -160,6 +160,18 @@ extern int totempg_ring_reenable (void);
 extern void totempg_service_ready_register (
 	void (*totem_service_ready) (void));
 
+enum totem_q_level {
+	TOTEM_Q_LEVEL_LOW,
+	TOTEM_Q_LEVEL_GOOD,
+	TOTEM_Q_LEVEL_HIGH,
+	TOTEM_Q_LEVEL_CRITICAL
+};
+
+void totempg_check_q_level(hdb_handle_t handle);
+
+typedef void (*totem_queue_level_changed_fn) (enum totem_q_level level);
+extern void totempg_queue_level_register_callback (totem_queue_level_changed_fn);
+
 #ifdef __cplusplus
 }
 #endif

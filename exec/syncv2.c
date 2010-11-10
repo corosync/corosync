@@ -55,7 +55,7 @@
 #include <corosync/totem/totem.h>
 #include <corosync/lcr/lcr_ifact.h>
 #include <corosync/engine/logsys.h>
-#include <corosync/coroipc_types.h>
+#include <qb/qbipc_common.h>
 #include "schedwrk.h"
 #include "quorum.h"
 #include "sync.h"
@@ -96,19 +96,19 @@ struct processor_entry {
 };
 
 struct req_exec_memb_determine_message {
-	coroipc_request_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_request_header header __attribute__((aligned(8)));
 	struct memb_ring_id ring_id __attribute__((aligned(8)));
 };
 
 struct req_exec_service_build_message {
-	coroipc_request_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_request_header header __attribute__((aligned(8)));
 	struct memb_ring_id ring_id __attribute__((aligned(8)));
 	int service_list_entries __attribute__((aligned(8)));
 	int service_list[128] __attribute__((aligned(8)));
 };
 
 struct req_exec_barrier_message {
-	coroipc_request_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_request_header header __attribute__((aligned(8)));
 	struct memb_ring_id ring_id __attribute__((aligned(8)));
 };
 
@@ -383,7 +383,7 @@ static void sync_deliver_fn (
 	unsigned int msg_len,
 	int endian_conversion_required)
 {
-	coroipc_request_header_t *header = (coroipc_request_header_t *)msg;
+	struct qb_ipc_request_header *header = (struct qb_ipc_request_header *)msg;
 
 	switch (header->id) {
 		case MESSAGE_REQ_SYNC_BARRIER:

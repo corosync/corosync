@@ -36,8 +36,6 @@ get_soname=$(if $($(call uc,$1)_SONAME),$($(call uc,$1)_SONAME),$(SONAME))
 get_major=$(firstword $(subst ., ,$(call get_soname,$1)))
 get_sharedlibs=$(foreach lib,$(SHARED_LIBS_SO:lib%.so=%),lib$(lib).so.$(call get_soname,$(lib)))
 get_sharedlibs_two=$(foreach lib,$(SHARED_LIBS_SO:lib%.so=%),lib$(lib).so.$(call get_major,$(lib)))
-get_explicit_sharedlibs=$(foreach lib,$(EXPLICIT_SHARED_LIBS_SO:lib%.so=%),lib$(lib).so.$(call get_soname,$(lib)))
-get_explicit_sharedlibs_two=$(foreach lib,$(EXPLICIT_SHARED_LIBS_SO:lib%.so=%),lib$(lib).so.$(call get_major,$(lib)))
 get_linker_add=$(if $($(call uc,$1)_LINKER_ADD),$($(call uc,$1)_LINKER_ADD))
 
 MAINTAINERCLEANFILES    = Makefile.in
@@ -48,10 +46,9 @@ AM_LDFLAGS		= -lpthread
 
 INCLUDES		= -I$(top_builddir)/include -I$(top_srcdir)/include
 
-lib_LIBRARIES		= libcpg.a libconfdb.a libevs.a libcfg.a libquorum.a \
-			  libvotequorum.a libpload.a libcoroipcc.a libsam.a
-SHARED_LIBS_SO		= $(filter-out $(EXPLICIT_SHARED_LIBS_SO), $(lib_LIBRARIES:%.a=%.so))
-EXPLICIT_SHARED_LIBS_SO = libcoroipcc.so
+lib_LIBRARIES		= libcpg.a libconfdb.a libquorum.a libevs.a libcfg.a \
+			  libvotequorum.a libpload.a libsam.a
+SHARED_LIBS_SO		= $(lib_LIBRARIES:%.a=%.so)
 
 libcpg_a_SOURCES	= cpg.c
 libcfg_a_SOURCES	= cfg.c
@@ -63,12 +60,11 @@ libconfdb_a_SOURCES	= confdb.c sa-confdb.c
 libconfdb_a_LIBADD	= ../lcr/lcr_ifact.o
 CONFDB_LINKER_ADD	= $(OS_DYFLAGS) $(OS_LDL)
 SAM_LINKER_ADD		= -L. -lquorum -lconfdb
-libcoroipcc_a_SOURCES	= coroipcc.c
 libsam_a_SOURCES	= sam.c
 
 noinst_HEADERS		= sa-confdb.h util.h \
 			  libcfg.versions libconfdb.versions \
-			  libcoroipcc.versions libcpg.versions \
+			  libcpg.versions \
 			  libevs.versions libpload.versions \
 			  libquorum.versions libvotequorum.versions \
 			  libsam.versions
@@ -78,12 +74,7 @@ noinst_HEADERS		= sa-confdb.h util.h \
 
 if BUILD_DARWIN
 
-libcoroipcc.so.$(SONAME): coroipcc.o
-	$(CC) $(LDFLAGS) $(DARWIN_OPTS) coroipcc.o -o $@ $(AM_LDFLAGS)
-	ln -sf libcoroipcc.so.$(SONAME) libcoroipcc.so
-	ln -sf libcoroipcc.so.$(SONAME) libcoroipcc.so.$(SOMAJOR)
-
-lib%.so: lib%.a libcoroipcc.so.$(SONAME)
+lib%.so: lib%.a $(LIBQB_LIBS)
 	$(CC) $(DARWIN_OPTS) $(call get_linker_add,$*) -Wl,-whole-archive $^ -Wl,-no-whole-archive -o $@
 	ln -sf lib$*.so.$(call get_soname,$*) lib$*.so
 	ln -sf lib$*.so.$(call get_soname,$*) lib$*.so.$(call get_major,$*)
@@ -92,35 +83,20 @@ else
 
 if BUILD_SOLARIS
 
-libcoroipcc.so.$(SONAME): coroipcc.o
-	$(LD) $(LDFLAGS) $(SOLARIS_OPTS) -G coroipcc.o -o $@ $(AM_LDFLAGS) -lsocket -lnsl
-	ln -sf libcoroipcc.so.$(SONAME) libcoroipcc.so
-	ln -sf libcoroipcc.so.$(SONAME) libcoroipcc.so.$(SOMAJOR)
-
-lib%.so.$(SONAME): lib%.a libcoroipcc.so.$(SONAME)
+lib%.so.$(SONAME): lib%.a
 	$(LD) $(SOLARIS_OPTS) $(call get_linker_add,$*) -G -whole-archive $^ -no-whole-archive -o $@
 	ln -sf lib$*.so.$(call get_soname,$*) lib$*.so
 	ln -sf lib$*.so.$(call get_soname,$*) lib$*.so.$(call get_major,$*)
 
 else
 
-libcoroipcc.so.$(SONAME): coroipcc.o
-	$(CC) -shared -o $@ \
-		-Wl,-soname=libcoroipcc.so.$(SOMAJOR) \
-		-Wl,-version-script=$(srcdir)/libcoroipcc.versions \
-		$(LDFLAGS) $^ $(AM_LDFLAGS)
-	ln -sf libcoroipcc.so.$(SONAME) libcoroipcc.so
-	ln -sf libcoroipcc.so.$(SONAME) libcoroipcc.so.$(SOMAJOR)
-
-lib%.so: lib%.a libcoroipcc.so.$(SONAME)
-	if [ ! "$@" = "libcoroipcc.so" ] ; then \
+lib%.so: lib%.a
 	$(CC) -shared -o $@.$(call get_soname,$*) \
 		-Wl,-soname=lib$*.so.$(call get_major,$*) \
 		-Wl,-version-script=$(srcdir)/lib$*.versions \
-		-Wl,-whole-archive $^ -Wl,-no-whole-archive $(LDFLAGS) $(AM_LDFLAGS) $(call get_linker_add,$*) ;\
-	ln -sf lib$*.so.$(call get_soname,$*) lib$*.so ;\
-	ln -sf lib$*.so.$(call get_soname,$*) lib$*.so.$(call get_major,$*) ;\
-	fi
+		-Wl,-whole-archive $^ -Wl,-no-whole-archive $(LDFLAGS) $(LIBQB_LIBS) $(AM_LDFLAGS) $(call get_linker_add,$*)
+	ln -sf lib$*.so.$(call get_soname,$*) lib$*.so
+	ln -sf lib$*.so.$(call get_soname,$*) lib$*.so.$(call get_major,$*)
 
 endif
 
@@ -131,8 +107,8 @@ all-local: $(get_explicit_sharedlibs) $(SHARED_LIBS_SO)
 
 install-exec-local:
 	$(INSTALL) -d $(DESTDIR)/$(libdir)
-	$(INSTALL) -m 755 $(get_sharedlibs) $(get_explicit_sharedlibs) $(DESTDIR)/$(libdir)
-	$(CP) -a $(SHARED_LIBS_SO) $(EXPLICIT_SHARED_LIBS_SO) $(get_sharedlibs_two) $(get_explicit_sharedlibs_two) $(DESTDIR)/$(libdir)
+	$(INSTALL) -m 755 $(get_sharedlibs) $(DESTDIR)/$(libdir)
+	$(CP) -a $(SHARED_LIBS_SO) $(get_sharedlibs_two) $(DESTDIR)/$(libdir)
 
 uninstall-local:
 	cd $(DESTDIR)/$(libdir)/ && \

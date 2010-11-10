@@ -45,11 +45,10 @@
 #include <errno.h>
 
 #include <corosync/corotypes.h>
-#include <corosync/coroipc_types.h>
-#include <corosync/coroipcc.h>
 #include <corosync/corodefs.h>
 #include <corosync/hdb.h>
 #include <corosync/list.h>
+#include <qb/qbipcc.h>
 
 #include <corosync/confdb.h>
 #include <corosync/ipc_confdb.h>
@@ -57,9 +56,6 @@
 #include "util.h"
 
 #include "sa-confdb.h"
-
-#undef MIN
-#define MIN(x,y) ((x) < (y) ? (x) : (y))
 
 /* Hold the information for iterators so that
    callers can do recursive tree traversals.
@@ -72,7 +68,7 @@ struct iter_context {
 };
 
 struct confdb_inst {
-	hdb_handle_t handle;
+	qb_ipcc_connection_t *c;
 	int finalize;
 	int standalone;
 	confdb_callbacks_t callbacks;
@@ -147,13 +143,12 @@ cs_error_t confdb_initialize (
 		confdb_inst->standalone = 1;
 	}
 	else {
-		error = coroipcc_service_connect (
-			COROSYNC_SOCKET_NAME,
-			CONFDB_SERVICE,
-			IPC_REQUEST_SIZE,
-			IPC_RESPONSE_SIZE,
-			IPC_DISPATCH_SIZE,
-			&confdb_inst->handle);
+		error = CS_OK;
+		confdb_inst->c = qb_ipcc_connect ("confdb", IPC_REQUEST_SIZE);
+		if (confdb_inst->c == NULL) {
+			error = errno_to_cs(errno);
+			goto error_put_destroy;
+		}
 	}
 	if (error != CS_OK)
 		goto error_put_destroy;
@@ -205,7 +200,7 @@ cs_error_t confdb_finalize (
 	free_context_list(confdb_inst, &confdb_inst->key_iter_head);
 
 	if (!confdb_inst->standalone) {
-		coroipcc_service_disconnect (confdb_inst->handle);
+		qb_ipcc_disconnect (confdb_inst->c);
 	}
 
 	(void)hdb_handle_destroy (&confdb_handle_t_db, handle);
@@ -227,7 +222,7 @@ cs_error_t confdb_fd_get (
 		return (error);
 	}
 
-	error = coroipcc_fd_get (confdb_inst->handle, fd);
+	error = errno_to_cs (qb_ipcc_fd_get (confdb_inst->c, fd));
 
 	(void)hdb_handle_put (&confdb_handle_t_db, handle);
 
@@ -285,7 +280,9 @@ cs_error_t confdb_dispatch (
 	struct res_lib_confdb_object_create_callback *res_object_created_pt;
 	struct res_lib_confdb_object_destroy_callback *res_object_destroyed_pt;
 	struct res_lib_confdb_reload_callback *res_reload_pt;
-	coroipc_response_header_t *dispatch_data;
+	struct qb_ipc_response_header *dispatch_data;
+	char dispatch_buf[IPC_DISPATCH_SIZE];
+	int32_t errno_res;
 
 	error = hdb_error_to_cs(hdb_handle_get (&confdb_handle_t_db, handle, (void *)&confdb_inst));
 	if (error != CS_OK) {
@@ -305,11 +302,14 @@ cs_error_t confdb_dispatch (
 		timeout = 0;
 	}
 
+	dispatch_data = (struct qb_ipc_response_header *)dispatch_buf;
 	do {
-		error = coroipcc_dispatch_get (
-			confdb_inst->handle,
-			(void **)&dispatch_data,
+		errno_res = qb_ipcc_event_recv (
+			confdb_inst->c,
+			dispatch_buf,
+			IPC_DISPATCH_SIZE,
 			timeout);
+		error = errno_to_cs (errno_res);
 		if (error == CS_ERR_BAD_HANDLE) {
 			error = CS_OK;
 			goto error_put;
@@ -397,12 +397,10 @@ cs_error_t confdb_dispatch (
 				break;
 
 			default:
-				coroipcc_dispatch_put (confdb_inst->handle);
 				error = CS_ERR_LIBRARY;
 				goto error_noput;
 				break;
 		}
-		coroipcc_dispatch_put (confdb_inst->handle);
 
 		/*
 		 * Determine if more messages should be processed
@@ -455,12 +453,12 @@ cs_error_t confdb_object_create (
 	iov.iov_base = (char *)&req_lib_confdb_object_create;
 	iov.iov_len = sizeof (struct req_lib_confdb_object_create);
 
-        error = coroipcc_msg_send_reply_receive (
-		confdb_inst->handle,
+        error = errno_to_cs (qb_ipcc_sendv_recv (
+		confdb_inst->c,
 		&iov,
 		1,
                 &res_lib_confdb_object_create,
-		sizeof (struct res_lib_confdb_object_create));
+		sizeof (struct res_lib_confdb_object_create)));
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -483,7 +481,7 @@ cs_error_t confdb_object_destroy (
 	struct confdb_inst *confdb_inst;
 	struct iovec iov;
 	struct req_lib_confdb_object_destroy req_lib_confdb_object_destroy;
-	coroipc_response_header_t res;
+	struct qb_ipc_response_header res;
 
 	error = hdb_error_to_cs(hdb_handle_get (&confdb_handle_t_db, handle, (void *)&confdb_inst));
 	if (error != CS_OK) {
@@ -505,12 +503,12 @@ cs_error_t confdb_object_destroy (
 	iov.iov_base = (char *)&req_lib_confdb_object_destroy;
 	iov.iov_len = sizeof (struct req_lib_confdb_object_destroy);
 
-        error = coroipcc_msg_send_reply_receive (
-		confdb_inst->handle,
+        error = errno_to_cs (qb_ipcc_sendv_recv (
+		confdb_inst->c,
 		&iov,
 		1,
                 &res,
-		sizeof (coroipc_response_header_t));
+		sizeof (struct qb_ipc_response_header)));
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -555,12 +553,12 @@ cs_error_t confdb_object_parent_get (
 	iov.iov_base = (char *)&req_lib_confdb_object_parent_get;
 	iov.iov_len = sizeof (struct req_lib_confdb_object_parent_get);
 
-        error = coroipcc_msg_send_reply_receive (
-		confdb_inst->handle,
+        error = errno_to_cs (qb_ipcc_sendv_recv (
+		confdb_inst->c,
 		&iov,
 		1,
                 &res_lib_confdb_object_parent_get,
-		sizeof (struct res_lib_confdb_object_parent_get));
+		sizeof (struct res_lib_confdb_object_parent_get)));
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -582,7 +580,7 @@ static cs_error_t do_find_destroy(
 	cs_error_t error;
 	struct iovec iov;
 	struct req_lib_confdb_object_find_destroy req_lib_confdb_object_find_destroy;
-	coroipc_response_header_t res;
+	struct qb_ipc_response_header res;
 
 	if (!find_handle)
 		return CS_OK;
@@ -602,12 +600,12 @@ static cs_error_t do_find_destroy(
 	iov.iov_base = (char *)&req_lib_confdb_object_find_destroy;
 	iov.iov_len = sizeof (struct req_lib_confdb_object_find_destroy);
 
-        error = coroipcc_msg_send_reply_receive (
-		confdb_inst->handle,
+        error = errno_to_cs (qb_ipcc_sendv_recv (
+		confdb_inst->c,
 		&iov,
 		1,
                 &res,
-		sizeof (coroipc_response_header_t));
+		sizeof (struct qb_ipc_response_header)));
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -681,7 +679,7 @@ cs_error_t confdb_key_create (
 	struct confdb_inst *confdb_inst;
 	struct iovec iov;
 	struct req_lib_confdb_key_create req_lib_confdb_key_create;
-	coroipc_response_header_t res;
+	struct qb_ipc_response_header res;
 
 	error = hdb_error_to_cs(hdb_handle_get (&confdb_handle_t_db, handle, (void *)&confdb_inst));
 	if (error != CS_OK) {
@@ -709,12 +707,12 @@ cs_error_t confdb_key_create (
 	iov.iov_base = (char *)&req_lib_confdb_key_create;
 	iov.iov_len = sizeof (struct req_lib_confdb_key_create);
 
-        error = coroipcc_msg_send_reply_receive (
-		confdb_inst->handle,
+        error = errno_to_cs (qb_ipcc_sendv_recv (
+		confdb_inst->c,
 		&iov,
 		1,
                 &res,
-		sizeof (res));
+		sizeof (res)));
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -741,7 +739,7 @@ cs_error_t confdb_key_create_typed (
 	struct confdb_inst *confdb_inst;
 	struct iovec iov;
 	struct req_lib_confdb_key_create_typed request;
-	coroipc_response_header_t res;
+	struct qb_ipc_response_header res;
 
 	error = hdb_error_to_cs(hdb_handle_get (&confdb_handle_t_db, handle, (void *)&confdb_inst));
 	if (error != CS_OK) {
@@ -769,12 +767,12 @@ cs_error_t confdb_key_create_typed (
 	iov.iov_base = (char *)&request;
 	iov.iov_len = sizeof (struct req_lib_confdb_key_create_typed);
 
-	error = coroipcc_msg_send_reply_receive (
-		confdb_inst->handle,
+	error = errno_to_cs (qb_ipcc_sendv_recv (
+		confdb_inst->c,
 		&iov,
 		1,
 		&res,
-		sizeof (res));
+		sizeof (res)));
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -802,7 +800,7 @@ cs_error_t confdb_key_delete (
 	struct confdb_inst *confdb_inst;
 	struct iovec iov;
 	struct req_lib_confdb_key_delete req_lib_confdb_key_delete;
-	coroipc_response_header_t res;
+	struct qb_ipc_response_header res;
 
 	error = hdb_error_to_cs(hdb_handle_get (&confdb_handle_t_db, handle, (void *)&confdb_inst));
 	if (error != CS_OK) {
@@ -830,12 +828,12 @@ cs_error_t confdb_key_delete (
 	iov.iov_base = (char *)&req_lib_confdb_key_delete;
 	iov.iov_len = sizeof (struct req_lib_confdb_key_delete);
 
-        error = coroipcc_msg_send_reply_receive (
-		confdb_inst->handle,
+        error = errno_to_cs (qb_ipcc_sendv_recv (
+		confdb_inst->c,
 		&iov,
 		1,
                 &res,
-		sizeof (res));
+		sizeof (res)));
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -887,12 +885,12 @@ cs_error_t confdb_key_get (
 	iov.iov_base = (char *)&req_lib_confdb_key_get;
 	iov.iov_len = sizeof (struct req_lib_confdb_key_get);
 
-        error = coroipcc_msg_send_reply_receive (
-		confdb_inst->handle,
+        error = errno_to_cs (qb_ipcc_sendv_recv (
+		confdb_inst->c,
 		&iov,
 		1,
                 &res_lib_confdb_key_get,
-		sizeof (struct res_lib_confdb_key_get));
+		sizeof (struct res_lib_confdb_key_get)));
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -948,12 +946,12 @@ cs_error_t confdb_key_get_typed (
 	iov.iov_base = (char *)&req_lib_confdb_key_get;
 	iov.iov_len = sizeof (struct req_lib_confdb_key_get);
 
-        error = coroipcc_msg_send_reply_receive (
-		confdb_inst->handle,
+        error = errno_to_cs (qb_ipcc_sendv_recv (
+		confdb_inst->c,
 		&iov,
 		1,
 		&response,
-		sizeof (struct res_lib_confdb_key_get_typed));
+		sizeof (struct res_lib_confdb_key_get_typed)));
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -1010,12 +1008,12 @@ cs_error_t confdb_key_increment (
 	iov.iov_base = (char *)&req_lib_confdb_key_get;
 	iov.iov_len = sizeof (struct req_lib_confdb_key_get);
 
-        error = coroipcc_msg_send_reply_receive (
-		confdb_inst->handle,
+        error = errno_to_cs (qb_ipcc_sendv_recv (
+		confdb_inst->c,
 		&iov,
 		1,
                 &res_lib_confdb_key_incdec,
-		sizeof (struct res_lib_confdb_key_incdec));
+		sizeof (struct res_lib_confdb_key_incdec)));
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -1069,12 +1067,12 @@ cs_error_t confdb_key_decrement (
 	iov.iov_base = (char *)&req_lib_confdb_key_get;
 	iov.iov_len = sizeof (struct req_lib_confdb_key_get);
 
-        error = coroipcc_msg_send_reply_receive (
-		confdb_inst->handle,
+        error = errno_to_cs (qb_ipcc_sendv_recv (
+		confdb_inst->c,
 		&iov,
 		1,
                 &res_lib_confdb_key_incdec,
-		sizeof (struct res_lib_confdb_key_incdec));
+		sizeof (struct res_lib_confdb_key_incdec)));
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -1105,7 +1103,7 @@ cs_error_t confdb_key_replace (
 	struct confdb_inst *confdb_inst;
 	struct iovec iov;
 	struct req_lib_confdb_key_replace req_lib_confdb_key_replace;
-	coroipc_response_header_t res;
+	struct qb_ipc_response_header res;
 
 	error = hdb_error_to_cs(hdb_handle_get (&confdb_handle_t_db, handle, (void *)&confdb_inst));
 	if (error != CS_OK) {
@@ -1135,12 +1133,12 @@ cs_error_t confdb_key_replace (
 	iov.iov_base = (char *)&req_lib_confdb_key_replace;
 	iov.iov_len = sizeof (struct req_lib_confdb_key_replace);
 
-        error = coroipcc_msg_send_reply_receive (
-		confdb_inst->handle,
+        error = errno_to_cs (qb_ipcc_sendv_recv (
+		confdb_inst->c,
 		&iov,
 		1,
                 &res,
-		sizeof (res));
+		sizeof (res)));
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -1307,12 +1305,12 @@ cs_error_t confdb_object_find (
 	iov.iov_base = (char *)&req_lib_confdb_object_find;
 	iov.iov_len = sizeof (struct req_lib_confdb_object_find);
 
-        error = coroipcc_msg_send_reply_receive (
-		confdb_inst->handle,
+        error = errno_to_cs (qb_ipcc_sendv_recv (
+		confdb_inst->c,
 		&iov,
 		1,
                 &res_lib_confdb_object_find,
-		sizeof (struct res_lib_confdb_object_find));
+		sizeof (struct res_lib_confdb_object_find)));
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -1376,12 +1374,12 @@ cs_error_t confdb_object_iter (
 	iov.iov_base = (char *)&req_lib_confdb_object_iter;
 	iov.iov_len = sizeof (struct req_lib_confdb_object_iter);
 
-        error = coroipcc_msg_send_reply_receive (
-		confdb_inst->handle,
+        error = errno_to_cs (qb_ipcc_sendv_recv (
+		confdb_inst->c,
 		&iov,
 		1,
                 &res_lib_confdb_object_iter,
-		sizeof (struct res_lib_confdb_object_iter));
+		sizeof (struct res_lib_confdb_object_iter)));
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -1448,12 +1446,12 @@ cs_error_t confdb_key_iter (
 	iov.iov_base = (char *)&req_lib_confdb_key_iter;
 	iov.iov_len = sizeof (struct req_lib_confdb_key_iter);
 
-        error = coroipcc_msg_send_reply_receive (
-		confdb_inst->handle,
+        error = errno_to_cs (qb_ipcc_sendv_recv (
+		confdb_inst->c,
 		&iov,
 		1,
                 &res_lib_confdb_key_iter,
-		sizeof (struct res_lib_confdb_key_iter));
+		sizeof (struct res_lib_confdb_key_iter)));
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -1524,12 +1522,12 @@ cs_error_t confdb_key_iter_typed (
 	iov.iov_base = (char *)&req_lib_confdb_key_iter;
 	iov.iov_len = sizeof (struct req_lib_confdb_key_iter);
 
-	error = coroipcc_msg_send_reply_receive (
-		confdb_inst->handle,
+	error = errno_to_cs (qb_ipcc_sendv_recv (
+		confdb_inst->c,
 		&iov,
 		1,
 		&response,
-		sizeof (struct res_lib_confdb_key_iter_typed));
+		sizeof (struct res_lib_confdb_key_iter_typed)));
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -1561,7 +1559,7 @@ cs_error_t confdb_write (
 	cs_error_t error;
 	struct confdb_inst *confdb_inst;
 	struct iovec iov;
-	coroipc_request_header_t req;
+	struct qb_ipc_request_header req;
 	struct res_lib_confdb_write res_lib_confdb_write;
 
 	error = hdb_error_to_cs(hdb_handle_get (&confdb_handle_t_db, handle, (void *)&confdb_inst));
@@ -1578,18 +1576,18 @@ cs_error_t confdb_write (
 		goto error_exit;
 	}
 
-	req.size = sizeof (coroipc_request_header_t);
+	req.size = sizeof (struct qb_ipc_request_header);
 	req.id = MESSAGE_REQ_CONFDB_WRITE;
 
 	iov.iov_base = (char *)&req;
-	iov.iov_len = sizeof (coroipc_request_header_t);
+	iov.iov_len = sizeof (struct qb_ipc_request_header);
 
-        error = coroipcc_msg_send_reply_receive (
-		confdb_inst->handle,
+        error = errno_to_cs (qb_ipcc_sendv_recv (
+		confdb_inst->c,
 		&iov,
 		1,
                 &res_lib_confdb_write,
-		sizeof (struct res_lib_confdb_write));
+		sizeof (struct res_lib_confdb_write)));
 
 	if (error != CS_OK) {
 		/* FIXME: set error_text */
@@ -1599,7 +1597,7 @@ cs_error_t confdb_write (
 	error = res_lib_confdb_write.header.error;
 	if (res_lib_confdb_write.error.length) {
 		memcpy(error_text, res_lib_confdb_write.error.value,
-		       MIN(res_lib_confdb_write.error.length,errbuf_len));
+		       QB_MIN(res_lib_confdb_write.error.length,errbuf_len));
 		error_text[errbuf_len-1] = '\0';
 	}
 
@@ -1642,12 +1640,12 @@ cs_error_t confdb_reload (
 	iov.iov_base = (char *)&req_lib_confdb_reload;
 	iov.iov_len = sizeof (req_lib_confdb_reload);
 
-        error = coroipcc_msg_send_reply_receive (
-		confdb_inst->handle,
+        error = errno_to_cs (qb_ipcc_sendv_recv (
+		confdb_inst->c,
 		&iov,
 		1,
                 &res_lib_confdb_reload,
-		sizeof (struct res_lib_confdb_reload));
+		sizeof (struct res_lib_confdb_reload)));
 
 	if (error != CS_OK) {
 		/* FIXME: set error_text */
@@ -1657,7 +1655,7 @@ cs_error_t confdb_reload (
 	error = res_lib_confdb_reload.header.error;
 	if(res_lib_confdb_reload.error.length) {
 		memcpy(error_text, res_lib_confdb_reload.error.value,
-		       MIN(res_lib_confdb_reload.error.length,errbuf_len));
+		       QB_MIN(res_lib_confdb_reload.error.length,errbuf_len));
 		error_text[errbuf_len-1] = '\0';
 	}
 
@@ -1676,7 +1674,7 @@ cs_error_t confdb_track_changes (
 	struct confdb_inst *confdb_inst;
 	struct iovec iov;
 	struct req_lib_confdb_object_track_start req;
-	coroipc_response_header_t res;
+	struct qb_ipc_response_header res;
 
 	error = hdb_error_to_cs(hdb_handle_get (&confdb_handle_t_db, handle, (void *)&confdb_inst));
 	if (error != CS_OK) {
@@ -1696,12 +1694,12 @@ cs_error_t confdb_track_changes (
 	iov.iov_base = (char *)&req;
 	iov.iov_len = sizeof (struct req_lib_confdb_object_track_start);
 
-        error = coroipcc_msg_send_reply_receive (
-		confdb_inst->handle,
+        error = errno_to_cs (qb_ipcc_sendv_recv (
+		confdb_inst->c,
 		&iov,
 		1,
                 &res,
-		sizeof (coroipc_response_header_t));
+		sizeof (struct qb_ipc_response_header)));
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -1720,8 +1718,8 @@ cs_error_t confdb_stop_track_changes (confdb_handle_t handle)
 	cs_error_t error;
 	struct confdb_inst *confdb_inst;
 	struct iovec iov;
-	coroipc_request_header_t req;
-	coroipc_response_header_t res;
+	struct qb_ipc_request_header req;
+	struct qb_ipc_response_header res;
 
 	error = hdb_error_to_cs(hdb_handle_get (&confdb_handle_t_db, handle, (void *)&confdb_inst));
 	if (error != CS_OK) {
@@ -1733,18 +1731,18 @@ cs_error_t confdb_stop_track_changes (confdb_handle_t handle)
 		goto error_exit;
 	}
 
-	req.size = sizeof (coroipc_request_header_t);
+	req.size = sizeof (struct qb_ipc_request_header);
 	req.id = MESSAGE_REQ_CONFDB_TRACK_STOP;
 
 	iov.iov_base = (char *)&req;
-	iov.iov_len = sizeof (coroipc_request_header_t);
+	iov.iov_len = sizeof (struct qb_ipc_request_header);
 
-        error = coroipcc_msg_send_reply_receive (
-		confdb_inst->handle,
+        error = errno_to_cs (qb_ipcc_sendv_recv (
+		confdb_inst->c,
 		&iov,
 		1,
                 &res,
-		sizeof (coroipc_response_header_t));
+		sizeof (struct qb_ipc_response_header)));
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -1757,3 +1755,4 @@ error_exit:
 
 	return (error);
 }
+

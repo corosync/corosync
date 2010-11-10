@@ -55,7 +55,7 @@
 #include <time.h>
 
 #include <corosync/corotypes.h>
-#include <corosync/coroipc_types.h>
+#include <qb/qbipc_common.h>
 #include <corosync/corodefs.h>
 #include <corosync/engine/logsys.h>
 

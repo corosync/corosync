@@ -75,145 +75,145 @@ enum res_lib_cfg_types {
 };
 
 struct req_lib_cfg_statetrack {
-	coroipc_request_header_t header;
+	struct qb_ipc_request_header header;
 	uint8_t track_flags;
 	corosync_cfg_state_notification_t *notification_buffer_address;
 };
 
 struct res_lib_cfg_statetrack {
-	coroipc_response_header_t header;
+	struct qb_ipc_response_header header;
 };
 
 struct req_lib_cfg_statetrackstop {
-	coroipc_request_header_t header;
+	struct qb_ipc_request_header header;
 };
 
 struct res_lib_cfg_statetrackstop {
-	coroipc_response_header_t header;
+	struct qb_ipc_response_header header;
 };
 
 struct req_lib_cfg_administrativestateset {
-	coroipc_request_header_t header;
+	struct qb_ipc_request_header header;
 	cs_name_t comp_name;
 	corosync_cfg_administrative_target_t administrative_target;
 	corosync_cfg_administrative_state_t administrative_state;
 };
 
 struct res_lib_cfg_administrativestateset {
-	coroipc_response_header_t header;
+	struct qb_ipc_response_header header;
 };
 
 struct req_lib_cfg_administrativestateget {
-	coroipc_request_header_t header;
+	struct qb_ipc_request_header header;
 	cs_name_t comp_name;
 	corosync_cfg_administrative_target_t administrative_target;
 	corosync_cfg_administrative_state_t administrative_state;
 };
 
 struct res_lib_cfg_administrativestateget {
-	coroipc_response_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_response_header header __attribute__((aligned(8)));
 };
 
 struct req_lib_cfg_ringstatusget {
-	coroipc_request_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_request_header header __attribute__((aligned(8)));
 };
 
 struct res_lib_cfg_ringstatusget {
-	coroipc_response_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_response_header header __attribute__((aligned(8)));
 	mar_uint32_t interface_count __attribute__((aligned(8)));
 	char interface_name[16][128] __attribute__((aligned(8)));
 	char interface_status[16][512] __attribute__((aligned(8)));
 };
 
 struct req_lib_cfg_ringreenable {
-	coroipc_request_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_request_header header __attribute__((aligned(8)));
 };
 
 struct res_lib_cfg_ringreenable {
-	coroipc_response_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_response_header header __attribute__((aligned(8)));
 };
 
 struct req_lib_cfg_serviceload {
-	coroipc_response_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_response_header header __attribute__((aligned(8)));
 	char service_name[256] __attribute__((aligned(8)));
 	unsigned int service_ver;
 };
 
 struct res_lib_cfg_serviceload {
-	coroipc_response_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_response_header header __attribute__((aligned(8)));
 };
 
 struct req_lib_cfg_serviceunload {
-	coroipc_response_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_response_header header __attribute__((aligned(8)));
 	char service_name[256] __attribute__((aligned(8)));
 	unsigned int service_ver;
 };
 
 struct res_lib_cfg_serviceunload {
-	coroipc_response_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_response_header header __attribute__((aligned(8)));
 };
 
 struct req_lib_cfg_killnode {
-	coroipc_request_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_request_header header __attribute__((aligned(8)));
 	unsigned int nodeid __attribute__((aligned(8)));
 	cs_name_t reason __attribute__((aligned(8)));
 };
 
 struct res_lib_cfg_killnode {
-	coroipc_response_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_response_header header __attribute__((aligned(8)));
 };
 
 struct req_lib_cfg_tryshutdown {
-	coroipc_request_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_request_header header __attribute__((aligned(8)));
 	unsigned int flags;
 };
 
 struct res_lib_cfg_tryshutdown {
-	coroipc_response_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_response_header header __attribute__((aligned(8)));
 };
 
 struct req_lib_cfg_replytoshutdown {
-	coroipc_request_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_request_header header __attribute__((aligned(8)));
 	unsigned int response;
 };
 
 struct res_lib_cfg_replytoshutdown {
-	coroipc_response_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_response_header header __attribute__((aligned(8)));
 };
 
 struct res_lib_cfg_testshutdown {
-	coroipc_response_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_response_header header __attribute__((aligned(8)));
 	unsigned int flags;
 };
 
 struct req_lib_cfg_get_node_addrs {
-        coroipc_request_header_t header __attribute__((aligned(8)));
+        struct qb_ipc_request_header header __attribute__((aligned(8)));
 	unsigned int nodeid;
 };
 
 struct res_lib_cfg_get_node_addrs {
-        coroipc_response_header_t header __attribute__((aligned(8)));
+        struct qb_ipc_response_header header __attribute__((aligned(8)));
 	unsigned int family;
 	unsigned int num_addrs;
 	char addrs[TOTEMIP_ADDRLEN][0];
 };
 
 struct req_lib_cfg_local_get {
-	coroipc_request_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_request_header header __attribute__((aligned(8)));
 };
 
 struct res_lib_cfg_local_get {
-	coroipc_response_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_response_header header __attribute__((aligned(8)));
 	mar_uint32_t local_nodeid __attribute__((aligned(8)));
 };
 
 struct req_lib_cfg_crypto_set {
-	coroipc_response_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_response_header header __attribute__((aligned(8)));
 	mar_uint32_t type __attribute__((aligned(8)));
 };
 
 struct res_lib_cfg_crypto_set {
-	coroipc_response_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_response_header header __attribute__((aligned(8)));
 };
 
 typedef enum {
