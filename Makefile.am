@@ -114,13 +114,24 @@ $(SPEC): $(SPEC).in
 	git update-index --refresh > /dev/null 2>&1 || true && \
 	dirty=`git diff-index --name-only HEAD 2>/dev/null` && \
 	if [ -n "$$dirty" ]; then dirty="dirty"; else dirty=""; fi && \
-	sed \
-		-e "s#@version@#$$rpmver#g" \
-		-e "s#@alphatag@#$$alphatag#g" \
-		-e "s#@numcomm@#$$numcomm#g" \
-		-e "s#@dirty@#$$dirty#g" \
-		-e "s#@date@#$$date#g" \
-	$< > $@-t
+	if [ "$$numcomm" = "0" ]; then \
+		sed \
+			-e "s#@version@#$$rpmver#g" \
+			-e "s#%glo.*alpha.*##g" \
+			-e "s#%glo.*numcomm.*##g" \
+			-e "s#@dirty@#$$dirty#g" \
+			-e "s#@date@#$$date#g" \
+		$< > $@-t; \
+	else \
+		sed \
+			-e "s#@version@#$$rpmver#g" \
+			-e "s#@alphatag@#$$alphatag#g" \
+			-e "s#@numcomm@#$$numcomm#g" \
+			-e "s#@dirty@#$$dirty#g" \
+			-e "s#@date@#$$date#g" \
+		$< > $@-t; \
+	fi; \
+	if [ -z "$$dirty" ]; then sed -i -e "s#%glo.*dirty.*##g" $@-t; fi
 	chmod a-w $@-t
 	mv $@-t $@
 
