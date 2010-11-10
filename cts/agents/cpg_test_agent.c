@@ -327,7 +327,7 @@ static void send_some_more_messages_later (void)
 	qb_loop_timer_add (
 		ta_poll_handle_get(),
 		QB_LOOP_MED,
-		300, NULL,
+		300*QB_TIME_NS_IN_MSEC, NULL,
 		send_some_more_messages,
 		&more_messages_timer_handle);
 }

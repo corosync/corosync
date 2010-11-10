@@ -74,12 +74,16 @@
 #include <sys/poll.h>
 #include <limits.h>
 
+#include <qb/qbdefs.h>
+#include <qb/qbutil.h>
+#include <qb/qbloop.h>
+
 #include <corosync/swab.h>
 #include <corosync/cs_queue.h>
 #include <corosync/sq.h>
 #include <corosync/list.h>
 #include <corosync/hdb.h>
-#include <qb/qbloop.h>
+
 #define LOGSYS_UTILS_ONLY 1
 #include <corosync/engine/logsys.h>
 
@@ -89,8 +93,6 @@
 #include "wthread.h"
 
 #include "crypto.h"
-#include "tlist.h"
-#include "util.h"
 
 #define LOCALHOST_IP				inet_addr("127.0.0.1")
 #define QUEUE_RTR_ITEMS_SIZE_MAX		16384 /* allow 16384 retransmit items */
@@ -702,8 +704,8 @@ static int pause_flush (struct totemsrp_instance *instance)
 	uint64_t timestamp_msec;
 	int res = 0;
 
-        now_msec = (timerlist_nano_current_get () / TIMERLIST_NS_IN_MSEC);
-        timestamp_msec = instance->pause_timestamp / TIMERLIST_NS_IN_MSEC;
+        now_msec = (qb_util_nano_current_get () / QB_TIME_NS_IN_MSEC);
+        timestamp_msec = instance->pause_timestamp / QB_TIME_NS_IN_MSEC;
 
 	if ((now_msec - timestamp_msec) > (instance->totem_config->token_timeout / 2)) {
 		log_printf (instance->totemsrp_log_level_notice,
@@ -722,9 +724,9 @@ static int token_event_stats_collector (enum totem_callback_token_type type, con
 {
 	struct totemsrp_instance *instance = (struct totemsrp_instance *)void_instance;
 	uint32_t time_now;
-	unsigned long long nano_secs = timerlist_nano_current_get ();
+	unsigned long long nano_secs = qb_util_nano_current_get ();
 
-	time_now = (nano_secs / TIMERLIST_NS_IN_MSEC);
+	time_now = (nano_secs / QB_TIME_NS_IN_MSEC);
 
 	if (type == TOTEM_CALLBACK_TOKEN_RECEIVED) {
 		/* incr latest token the index */
@@ -1387,7 +1389,7 @@ static void reset_token_retransmit_timeout (struct totemsrp_instance *instance)
 		instance->timer_orf_token_retransmit_timeout);
 	qb_loop_timer_add (instance->totemsrp_poll_handle,
 		QB_LOOP_MED,
-		instance->totem_config->token_retransmit_timeout,
+		instance->totem_config->token_retransmit_timeout*QB_TIME_NS_IN_MSEC,
 		(void *)instance,
 		timer_function_token_retransmit_timeout,
 		&instance->timer_orf_token_retransmit_timeout);
@@ -1399,7 +1401,7 @@ static void start_merge_detect_timeout (struct totemsrp_instance *instance)
 	if (instance->my_merge_detect_timeout_outstanding == 0) {
 		qb_loop_timer_add (instance->totemsrp_poll_handle,
 			QB_LOOP_MED,
-			instance->totem_config->merge_timeout,
+			instance->totem_config->merge_timeout*QB_TIME_NS_IN_MSEC,
 			(void *)instance,
 			timer_function_merge_detect_timeout,
 			&instance->timer_merge_detect_timeout);
@@ -1453,7 +1455,7 @@ static void reset_pause_timeout (struct totemsrp_instance *instance)
 	qb_loop_timer_del (instance->totemsrp_poll_handle, instance->timer_pause_timeout);
 	qb_loop_timer_add (instance->totemsrp_poll_handle,
 		QB_LOOP_MED,
-		instance->totem_config->token_timeout / 5,
+		instance->totem_config->token_timeout * QB_TIME_NS_IN_MSEC / 5,
 		(void *)instance,
 		timer_function_pause_timeout,
 		&instance->timer_pause_timeout);
@@ -1463,7 +1465,7 @@ static void reset_token_timeout (struct totemsrp_instance *instance) {
 	qb_loop_timer_del (instance->totemsrp_poll_handle, instance->timer_orf_token_timeout);
 	qb_loop_timer_add (instance->totemsrp_poll_handle,
 		QB_LOOP_MED,
-		instance->totem_config->token_timeout,
+		instance->totem_config->token_timeout*QB_TIME_NS_IN_MSEC,
 		(void *)instance,
 		timer_function_orf_token_timeout,
 		&instance->timer_orf_token_timeout);
@@ -1473,7 +1475,7 @@ static void reset_heartbeat_timeout (struct totemsrp_instance *instance) {
         qb_loop_timer_del (instance->totemsrp_poll_handle, instance->timer_heartbeat_timeout);
         qb_loop_timer_add (instance->totemsrp_poll_handle,
 		QB_LOOP_MED,
-                instance->heartbeat_timeout,
+                instance->heartbeat_timeout*QB_TIME_NS_IN_MSEC,
                 (void *)instance,
                 timer_function_heartbeat_timeout,
                 &instance->timer_heartbeat_timeout);
@@ -1497,7 +1499,7 @@ static void start_token_hold_retransmit_timeout (struct totemsrp_instance *insta
 {
 	qb_loop_timer_add (instance->totemsrp_poll_handle,
 		QB_LOOP_MED,
-		instance->totem_config->token_hold_timeout,
+		instance->totem_config->token_hold_timeout*QB_TIME_NS_IN_MSEC,
 		(void *)instance,
 		timer_function_token_hold_retransmit_timeout,
 		&instance->timer_orf_token_hold_retransmit_timeout);
@@ -1547,7 +1549,7 @@ static void timer_function_pause_timeout (void *data)
 {
 	struct totemsrp_instance *instance = data;
 
-	instance->pause_timestamp = timerlist_nano_current_get ();
+	instance->pause_timestamp = qb_util_nano_current_get ();
 	reset_pause_timeout (instance);
 }
 
@@ -1625,7 +1627,7 @@ static void memb_timer_function_state_gather (void *data)
 
 		qb_loop_timer_add (instance->totemsrp_poll_handle,
 			QB_LOOP_MED,
-			instance->totem_config->join_timeout,
+			instance->totem_config->join_timeout*QB_TIME_NS_IN_MSEC,
 			(void *)instance,
 			memb_timer_function_state_gather,
 			&instance->memb_timer_state_gather_join_timeout);
@@ -1875,7 +1877,7 @@ static void memb_state_gather_enter (
 
 	qb_loop_timer_add (instance->totemsrp_poll_handle,
 		QB_LOOP_MED,
-		instance->totem_config->join_timeout,
+		instance->totem_config->join_timeout*QB_TIME_NS_IN_MSEC,
 		(void *)instance,
 		memb_timer_function_state_gather,
 		&instance->memb_timer_state_gather_join_timeout);
@@ -1888,7 +1890,7 @@ static void memb_state_gather_enter (
 
 	qb_loop_timer_add (instance->totemsrp_poll_handle,
 		QB_LOOP_MED,
-		instance->totem_config->consensus_timeout,
+		instance->totem_config->consensus_timeout*QB_TIME_NS_IN_MSEC,
 		(void *)instance,
 		memb_timer_function_gather_consensus_timeout,
 		&instance->memb_timer_state_gather_consensus_timeout);
@@ -3400,7 +3402,7 @@ static int message_handler_orf_token (
 	unsigned long long tv_current;
 	unsigned long long tv_diff;
 
-	tv_current = timerlist_nano_current_get ();
+	tv_current = qb_util_nano_current_get ();
 	tv_diff = tv_current - tv_old;
 	tv_old = tv_current;
 
@@ -3635,7 +3637,7 @@ printf ("token seq %d\n", token->seq);
 			token_send (instance, token, forward_token);
 
 #ifdef GIVEINFO
-			tv_current = timerlist_nano_current_get ();
+			tv_current = qb_util_nano_current_get ();
 			tv_diff = tv_current - tv_old;
 			tv_old = tv_current;
 			log_printf (instance->totemsrp_log_level_debug,

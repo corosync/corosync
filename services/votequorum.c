@@ -55,8 +55,11 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#include <corosync/corotypes.h>
 #include <qb/qbipc_common.h>
+#include <qb/qbdefs.h>
+#include <qb/qbutil.h>
+
+#include <corosync/corotypes.h>
 #include <corosync/corodefs.h>
 #include <corosync/cfg.h>
 #include <corosync/list.h>
@@ -66,9 +69,6 @@
 #include <corosync/engine/coroapi.h>
 #include <corosync/engine/quorum.h>
 #include <corosync/ipc_votequorum.h>
-#include <corosync/list.h>
-
-#include "../exec/tlist.h"
 
 #define VOTEQUORUM_MAJOR_VERSION 7
 #define VOTEQUORUM_MINOR_VERSION 0
@@ -1322,8 +1322,8 @@ static void quorum_device_timer_fn(void *arg)
 	if (!quorum_device || quorum_device->state == NODESTATE_DEAD)
 		return;
 
-	if ( (quorum_device->last_hello / TIMERLIST_NS_IN_SEC) + quorumdev_poll/1000 <
-		(timerlist_nano_current_get () / TIMERLIST_NS_IN_SEC)) {
+	if ( (quorum_device->last_hello / QB_TIME_NS_IN_SEC) + quorumdev_poll/1000 <
+		(qb_util_nano_current_get () / QB_TIME_NS_IN_SEC)) {
 
 		quorum_device->state = NODESTATE_DEAD;
 		log_printf(LOGSYS_LEVEL_INFO, "lost contact with quorum device\n");
@@ -1406,7 +1406,7 @@ static void message_handler_req_lib_votequorum_qdisk_poll (void *conn,
 
 	if (quorum_device) {
 		if (req_lib_votequorum_qdisk_poll->state) {
-			quorum_device->last_hello = timerlist_nano_current_get ();
+			quorum_device->last_hello = qb_util_nano_current_get ();
 			if (quorum_device->state == NODESTATE_DEAD) {
 				quorum_device->state = NODESTATE_MEMBER;
 				recalculate_quorum(0, 0);

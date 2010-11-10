@@ -35,267 +35,62 @@
 
 #include <config.h>
 
-#include <pthread.h>
-#include <pwd.h>
-#include <grp.h>
-#include <sys/types.h>
-#include <sys/poll.h>
-#include <sys/uio.h>
-#include <sys/mman.h>
-#include <sys/socket.h>
-#include <sys/un.h>
-#include <sys/time.h>
-#include <sys/resource.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <errno.h>
-#include <signal.h>
-#include <sched.h>
-#include <time.h>
-
-#include <corosync/swab.h>
-#include <corosync/corotypes.h>
-#include <corosync/list.h>
-#include <corosync/lcr/lcr_ifact.h>
-#include <qb/qbloop.h>
-#include <corosync/totem/totempg.h>
-#include <corosync/engine/objdb.h>
-#include <corosync/engine/config.h>
-#define LOG_SERVICE LOG_SERVICE_IPC
-#include <corosync/engine/logsys.h>
-
-#include "poll.h"
-#include "totemsrp.h"
-#include "mainconfig.h"
-#include "totemconfig.h"
-#include "main.h"
-#include "sync.h"
-#include "tlist.h"
-#include "util.h"
 #include "timer.h"
-
-#define SERVER_BACKLOG 5
-
-static pthread_mutex_t timer_mutex = PTHREAD_MUTEX_INITIALIZER;
-
-static pthread_t expiry_thread;
-
-static struct timerlist timers_timerlist;
-
-static int sched_priority = 0;
-
-static void (*timer_serialize_lock_fn) (void);
-
-static void (*timer_serialize_unlock_fn) (void);
-
-static void *prioritized_timer_thread (void *data);
-
-extern void pthread_exit(void *) __attribute__((noreturn));
-
-/*
- * This thread runs at the highest priority to run system wide timers
- */
-static void *prioritized_timer_thread (void *data)
-{
-	int fds;
-	unsigned long long timeout;
-
-#if defined(HAVE_PTHREAD_SETSCHEDPARAM) && defined(HAVE_SCHED_GET_PRIORITY_MAX)
-	if (sched_priority != 0) {
-		struct sched_param sched_param;
-
-		sched_param.sched_priority = sched_priority;
-		pthread_setschedparam (expiry_thread, SCHED_RR, &sched_param);
-	}
-#endif
-
-	pthread_mutex_unlock (&timer_mutex);
-	for (;;) {
-		timer_serialize_lock_fn ();
-		timeout = timerlist_msec_duration_to_expire (&timers_timerlist);
-		if (timeout != -1 && timeout > 0xFFFFFFFF) {
-			timeout = 0xFFFFFFFE;
-		}
-		timer_serialize_unlock_fn ();
-		fds = poll (NULL, 0, timeout);
-		if (fds < 0 && errno == EINTR) {
-			continue;
-		}
-		if (fds < 0) {
-			return NULL;
-		}
-		pthread_mutex_lock (&timer_mutex);
-		timer_serialize_lock_fn ();
-
-		timerlist_expire (&timers_timerlist);
-
-		timer_serialize_unlock_fn ();
-		pthread_mutex_unlock (&timer_mutex);
-	}
-}
-
-static void sigusr1_handler (int num) {
-#ifdef COROSYNC_SOLARIS
-	/* Rearm the signal facility */
-        signal (num, sigusr1_handler);
-#endif
-}
-
-int corosync_timer_init (
-        void (*serialize_lock_fn) (void),
-        void (*serialize_unlock_fn) (void),
-	int sched_priority_in)
-{
-	int res;
-	pthread_attr_t thread_attr;
-
-	timer_serialize_lock_fn = serialize_lock_fn;
-	timer_serialize_unlock_fn = serialize_unlock_fn;
-	sched_priority = sched_priority_in;
-
-	timerlist_init (&timers_timerlist);
-
-	signal (SIGUSR1, sigusr1_handler);
-
-	pthread_mutex_lock (&timer_mutex);
-	pthread_attr_init (&thread_attr);
-	pthread_attr_setstacksize (&thread_attr, 100000);
-	pthread_attr_setdetachstate (&thread_attr, PTHREAD_CREATE_DETACHED);
-	res = pthread_create (&expiry_thread, &thread_attr,
-		prioritized_timer_thread, NULL);
-	pthread_attr_destroy (&thread_attr);
-
-	return (res);
-}
+#include "main.h"
+#include <qb/qbdefs.h>
+#include <qb/qbutil.h>
 
 int corosync_timer_add_absolute (
-	unsigned long long nanosec_from_epoch,
-	void *data,
-	void (*timer_fn) (void *data),
-	timer_handle *handle)
+		unsigned long long nanosec_from_epoch,
+		void *data,
+		void (*timer_fn) (void *data),
+		corosync_timer_handle_t *handle)
 {
-	int res;
-	int unlock;
-
-	if (pthread_equal (pthread_self(), expiry_thread) != 0) {
-		unlock = 0;
-	} else {
-		unlock = 1;
-		pthread_mutex_lock (&timer_mutex);
-	}
-
-	res = timerlist_add_absolute (
-		&timers_timerlist,
-		timer_fn,
-		data,
-		nanosec_from_epoch,
-		handle);
-
-	if (unlock) {
-		pthread_mutex_unlock (&timer_mutex);
-	}
-
-	pthread_kill (expiry_thread, SIGUSR1);
-
-	return (res);
+	uint64_t expire_time = nanosec_from_epoch - qb_util_nano_current_get();
+	return qb_loop_timer_add(cs_poll_handle_get(),
+				QB_LOOP_MED,
+				 expire_time,
+				 data,
+				 timer_fn,
+				 handle);
 }
 
 int corosync_timer_add_duration (
 	unsigned long long nanosec_duration,
 	void *data,
 	void (*timer_fn) (void *data),
-	timer_handle *handle)
+	corosync_timer_handle_t *handle)
 {
-	int res;
-	int unlock;
-
-	if (pthread_equal (pthread_self(), expiry_thread) != 0) {
-		unlock = 0;
-	} else {
-		unlock = 1;
-		pthread_mutex_lock (&timer_mutex);
-	}
-
-	res = timerlist_add_duration (
-		&timers_timerlist,
-		timer_fn,
-		data,
-		nanosec_duration,
-		handle);
-
-	if (unlock) {
-		pthread_mutex_unlock (&timer_mutex);
-	}
-
-	pthread_kill (expiry_thread, SIGUSR1);
-
-	return (res);
+	return qb_loop_timer_add(cs_poll_handle_get(),
+				QB_LOOP_MED,
+				 nanosec_duration,
+				 data,
+				 timer_fn,
+				 handle);
 }
 
 void corosync_timer_delete (
-	timer_handle th)
+	corosync_timer_handle_t th)
 {
-	int unlock;
-
-	if (th == 0) {
-		return;
-	}
-
-	if (pthread_equal (pthread_self(), expiry_thread) != 0) {
-		unlock = 0;
-	} else {
-		unlock = 1;
-		pthread_mutex_lock (&timer_mutex);
-	}
-
-	timerlist_del (&timers_timerlist, th);
-
-	if (unlock) {
-		pthread_mutex_unlock (&timer_mutex);
-	}
-}
-
-void corosync_timer_lock (void)
-{
-	pthread_mutex_lock (&timer_mutex);
-}
-
-void corosync_timer_unlock (void)
-{
-	pthread_mutex_unlock (&timer_mutex);
-}
-
-unsigned long long corosync_timer_time_get (void)
-{
-	return (timerlist_nano_from_epoch());
+	qb_loop_timer_del(cs_poll_handle_get(), th);
 }
 
 unsigned long long corosync_timer_expire_time_get (
-	timer_handle th)
+	corosync_timer_handle_t th)
 {
-	int unlock;
-	unsigned long long expire;
+	uint64_t expire;
 
 	if (th == 0) {
 		return (0);
 	}
 
-	if (pthread_equal (pthread_self(), expiry_thread) != 0) {
-		unlock = 0;
-	} else {
-		unlock = 1;
-		pthread_mutex_lock (&timer_mutex);
-	}
-
-	expire = timerlist_expire_time (&timers_timerlist, th);
-
-	if (unlock) {
-		pthread_mutex_unlock (&timer_mutex);
-	}
+	expire = qb_loop_timer_expire_time_get(cs_poll_handle_get(), th);
 
 	return (expire);
 }
+
+unsigned long long cs_timer_time_get (void)
+{
+	return qb_util_nano_from_epoch_get();
+}
+

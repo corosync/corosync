@@ -969,14 +969,13 @@ int main_mcast (
 	return (totempg_groups_mcast_joined (corosync_group_handle, iovec, iov_len, guarantee));
 }
 
+static qb_loop_timer_handle recheck_the_q_level_timer;
 void corosync_recheck_the_q_level(void *data)
 {
-	qb_loop_timer_handle tm;
-
 	totempg_check_q_level(corosync_group_handle);
 	if (cs_ipcs_q_level_get() == TOTEM_Q_LEVEL_CRITICAL) {
-		qb_loop_timer_add(corosync_poll_handle_get(), QB_LOOP_MED, 1,
-			NULL, corosync_recheck_the_q_level, &tm);
+		qb_loop_timer_add(cs_poll_handle_get(), QB_LOOP_MED, 1*QB_TIME_NS_IN_MSEC,
+			NULL, corosync_recheck_the_q_level, &recheck_the_q_level_timer);
 	}
 }
 
@@ -1529,11 +1528,6 @@ int main (int argc, char **argv, char **envp)
 
 	/* callthis after our fork() */
 	tsafe_init (envp);
-
-	corosync_timer_init (
-		serialize_lock,
-		serialize_unlock,
-		sched_priority);
 
 	corosync_poll_handle = qb_loop_create ();
 

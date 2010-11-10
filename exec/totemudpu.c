@@ -57,6 +57,7 @@
 #include <sys/poll.h>
 #include <limits.h>
 
+#include <qb/qbdefs.h>
 #include <qb/qbloop.h>
 
 #include <corosync/sq.h>
@@ -1185,7 +1186,7 @@ static void timer_function_netif_check_timeout (
 
 		qb_loop_timer_add (instance->totemudpu_poll_handle,
 			QB_LOOP_MED,
-			instance->totem_config->downcheck_timeout,
+			instance->totem_config->downcheck_timeout*QB_TIME_NS_IN_MSEC,
 			(void *)instance,
 			timer_function_netif_check_timeout,
 			&instance->timer_netif_check_timeout);
@@ -1214,7 +1215,7 @@ static void timer_function_netif_check_timeout (
 		 */
 		qb_loop_timer_add (instance->totemudpu_poll_handle,
 			QB_LOOP_MED,
-			instance->totem_config->downcheck_timeout,
+			instance->totem_config->downcheck_timeout*QB_TIME_NS_IN_MSEC,
 			(void *)instance,
 			timer_function_netif_check_timeout,
 			&instance->timer_netif_check_timeout);
@@ -1256,7 +1257,7 @@ static void timer_function_netif_check_timeout (
 		if (instance->my_memb_entries == 1) {
 			qb_loop_timer_add (instance->totemudpu_poll_handle,
 				QB_LOOP_MED,
-				instance->totem_config->downcheck_timeout,
+				instance->totem_config->downcheck_timeout*QB_TIME_NS_IN_MSEC,
 				(void *)instance,
 				timer_function_netif_check_timeout,
 				&instance->timer_netif_check_timeout);
@@ -1460,7 +1461,7 @@ int totemudpu_initialize (
 	 */
 	qb_loop_timer_add (instance->totemudpu_poll_handle,
 		QB_LOOP_MED,
-		100,
+		100*QB_TIME_NS_IN_MSEC,
 		(void *)instance,
 		timer_function_netif_check_timeout,
 		&instance->timer_netif_check_timeout);
@@ -1492,7 +1493,7 @@ int totemudpu_processor_count_set (
 	if (processor_count == 1) {
 		qb_loop_timer_add (instance->totemudpu_poll_handle,
 			QB_LOOP_MED,
-			instance->totem_config->downcheck_timeout,
+			instance->totem_config->downcheck_timeout*QB_TIME_NS_IN_MSEC,
 			(void *)instance,
 			timer_function_netif_check_timeout,
 			&instance->timer_netif_check_timeout);

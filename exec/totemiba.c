@@ -1317,7 +1317,7 @@ int totemiba_initialize (
 
 	qb_loop_timer_add (instance->totemiba_poll_handle,
 		QB_LOOP_MED,
-		100,
+		100*QB_TIME_NS_IN_NSEC,
 		(void *)instance,
 		timer_function_netif_check_timeout,
 		&instance->timer_netif_check_timeout);

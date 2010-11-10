@@ -45,6 +45,7 @@
 #include <sys/socket.h>
 #include <errno.h>
 
+#include <qb/qbdefs.h>
 #include <qb/qbipcc.h>
 
 #include <corosync/corotypes.h>

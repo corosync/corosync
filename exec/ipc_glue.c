@@ -522,24 +522,24 @@ static int32_t cs_ipcs_msg_process(qb_ipcs_connection_t *c,
 
 static int32_t cs_ipcs_job_add(enum qb_loop_priority p,	void *data, qb_loop_job_dispatch_fn fn)
 {
-	return qb_loop_job_add(corosync_poll_handle_get(), p, data, fn);
+	return qb_loop_job_add(cs_poll_handle_get(), p, data, fn);
 }
 
 static int32_t cs_ipcs_dispatch_add(enum qb_loop_priority p, int32_t fd, int32_t events,
 	void *data, qb_ipcs_dispatch_fn_t fn)
 {
-	return qb_loop_poll_add(corosync_poll_handle_get(), p, fd, events, data, fn);
+	return qb_loop_poll_add(cs_poll_handle_get(), p, fd, events, data, fn);
 }
 
 static int32_t cs_ipcs_dispatch_mod(enum qb_loop_priority p, int32_t fd, int32_t events,
 	void *data, qb_ipcs_dispatch_fn_t fn)
 {
-	return qb_loop_poll_mod(corosync_poll_handle_get(), p, fd, events, data, fn);
+	return qb_loop_poll_mod(cs_poll_handle_get(), p, fd, events, data, fn);
 }
 
 static int32_t cs_ipcs_dispatch_del(int32_t fd)
 {
-	return qb_loop_poll_del(corosync_poll_handle_get(), fd);
+	return qb_loop_poll_del(cs_poll_handle_get(), fd);
 }
 
 static void cs_ipcs_low_fds_event(int32_t not_enough, int32_t fds_available)
@@ -560,11 +560,11 @@ int32_t cs_ipcs_q_level_get(void)
 	return ipc_fc_totem_queue_level;
 }
 
+static qb_loop_timer_handle ipcs_check_for_flow_control_timer;
 static void cs_ipcs_check_for_flow_control(void)
 {
 	int32_t i;
 	int32_t fc_enabled;
-	qb_loop_timer_handle tm;
 
 	for (i = 0; i < SERVICE_HANDLER_MAXIMUM_COUNT; i++) {
 		if (ais_service[i] == NULL) {
@@ -585,8 +585,8 @@ static void cs_ipcs_check_for_flow_control(void)
 		if (fc_enabled) {
 			qb_ipcs_request_rate_limit(ipcs_mapper[i].inst, QB_IPCS_RATE_OFF);
 
-			qb_loop_timer_add(corosync_poll_handle_get(), QB_LOOP_MED, 1,
-			       NULL, corosync_recheck_the_q_level, &tm);
+			qb_loop_timer_add(cs_poll_handle_get(), QB_LOOP_MED, 1*QB_TIME_NS_IN_MSEC,
+			       NULL, corosync_recheck_the_q_level, &ipcs_check_for_flow_control_timer);
 		} else if (ipc_fc_totem_queue_level == TOTEM_Q_LEVEL_LOW) {
 			qb_ipcs_request_rate_limit(ipcs_mapper[i].inst, QB_IPCS_RATE_FAST);
 		} else if (ipc_fc_totem_queue_level == TOTEM_Q_LEVEL_GOOD) {
@@ -710,7 +710,7 @@ void cs_ipcs_init(void)
 
 	api = apidef_get ();
 
-	qb_loop_poll_low_fds_event_set(corosync_poll_handle_get(), cs_ipcs_low_fds_event);
+	qb_loop_poll_low_fds_event_set(cs_poll_handle_get(), cs_ipcs_low_fds_event);
 
 	ipc_subsys_id = _logsys_subsys_create ("IPC");
 	if (ipc_subsys_id < 0) {
