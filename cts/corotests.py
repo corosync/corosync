@@ -1262,7 +1262,7 @@ confirm watchdog action
         self.CM.rsh(node, 'modprobe softdog')
         self.CM.StartaCM(node)
         
-        self.CM.rsh(node, ':(){ :|:& };:', blocking=0)
+        self.CM.rsh(node, ':(){ :|:& };:', synchronous=0)
 
         self.CM.log("wait for it to watchdog")
         time.sleep(60 * 3)
@@ -1488,7 +1488,7 @@ confirm reboot action
         cmd = 'corosync-objctl -w resources.system.memory_used.max=' + str(mem_new_max)
         self.CM.rsh(node, cmd)
 
-        self.CM.rsh(node, 'memhog -r10000 200m', blocking=0)
+        self.CM.rsh(node, 'memhog -r10000 200m', synchronous=0)
 
         self.CM.log("wait for it to reboot")
         time.sleep(60 * 3)
