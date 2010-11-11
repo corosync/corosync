@@ -148,8 +148,6 @@ static int sched_priority = 0;
 
 static unsigned int service_count = 32;
 
-static qb_thread_lock_t *serialize_lock_f;
-
 static struct totem_logging_configuration totem_logging_configuration;
 
 static int num_config_modules;
@@ -173,10 +171,6 @@ static hdb_handle_t object_memb_handle;
 static corosync_timer_handle_t corosync_stats_timer_handle;
 
 static const char *corosync_lock_file = LOCALSTATEDIR"/run/corosync.pid";
-
-static void serialize_unlock (void);
-
-static void serialize_lock (void);
 
 qb_loop_t *cs_poll_handle_get (void)
 {
@@ -214,16 +208,8 @@ void corosync_state_dump (void)
 
 static void unlink_all_completed (void)
 {
-	/*
-	 * The schedwrk_do API takes the global serializer lock
-	 * but doesn't release it because this exit callback is called
-	 * before it finishes.  Since we know we are exiting, we unlock it
-	 * here
-	 */
-	serialize_unlock ();
 	api->timer_delete (corosync_stats_timer_handle);
 	qb_loop_stop (corosync_poll_handle);
-	serialize_lock ();
 }
 
 void corosync_shutdown_request (void)
@@ -271,12 +257,10 @@ static struct totempg_group corosync_group = {
 
 static void serialize_lock (void)
 {
-	qb_thread_lock (serialize_lock_f);
 }
 
 static void serialize_unlock (void)
 {
-	qb_thread_unlock (serialize_lock_f);
 }
 
 static void corosync_sync_completed (void)
@@ -448,7 +432,6 @@ static void confchg_fn (
 	}
 	sync_in_process = 1;
 	cs_ipcs_sync_state_changed(sync_in_process);
-	serialize_lock ();
 	memcpy (&corosync_ring_id, ring_id, sizeof (struct memb_ring_id));
 
 	for (i = 0; i < left_list_entries; i++) {
@@ -468,7 +451,6 @@ static void confchg_fn (
 				joined_list, joined_list_entries, ring_id);
 		}
 	}
-	serialize_unlock ();
 
 	if (abort_activate) {
 		sync_v2_abort ();
@@ -869,21 +851,17 @@ static void deliver_fn (
 	service = id >> 16;
 	fn_id = id & 0xffff;
 
-	serialize_lock();
-
 	if (ais_service[service] == NULL && service == EVT_SERVICE) {
 		evil_deliver_fn (nodeid, service, fn_id, msg,
 			endian_conversion_required);
 	}
 
 	if (!ais_service[service]) {
-		serialize_unlock();
 		return;
 	}
 	if (fn_id >= ais_service[service]->exec_engine_count) {
 		log_printf(LOGSYS_LEVEL_WARNING, "discarded unknown message %d for service %d (max id %d)",
 			fn_id, service, ais_service[service]->exec_engine_count);
-		serialize_unlock();
 		return;
 	}
 
@@ -899,8 +877,6 @@ static void deliver_fn (
 
 	ais_service[service]->exec_engine[fn_id].exec_handler_fn
 		(msg, nodeid);
-
-	serialize_unlock();
 }
 
 void main_get_config_modules(struct config_iface_ver0 ***modules, int *num)
@@ -976,24 +952,9 @@ int corosync_sending_allowed (
 			sending_allowed = QB_TRUE;
 		} else if (pd->reserved_msgs && sync_in_process == 0) {
 			sending_allowed = QB_TRUE;
-		} else {
-			log_printf(LOGSYS_LEVEL_NOTICE,
-				   "no tx: (have quorum) (FC req) reserved:%d sync:%d",
-				   pd->reserved_msgs, sync_in_process);
 		}
-	} else {
-			log_printf(LOGSYS_LEVEL_NOTICE, "no tx: not quorate!");
 	}
 
-/*
-	sending_allowed =
-		(corosync_quorum_is_quorate() == 1 ||
-		ais_service[service]->allow_inquorate == CS_LIB_ALLOW_INQUORATE) &&
-		((ais_service[service]->lib_engine[id].flow_control == CS_LIB_FLOW_CONTROL_NOT_REQUIRED) ||
-		((ais_service[service]->lib_engine[id].flow_control == CS_LIB_FLOW_CONTROL_REQUIRED) &&
-		(pd->reserved_msgs) &&
-		(sync_in_process == 0)));
-*/
 	return (sending_allowed);
 }
 
@@ -1265,8 +1226,6 @@ int main (int argc, char **argv, char **envp)
 	char corosync_lib_dir[PATH_MAX];
 	hdb_handle_t object_runtime_handle;
 	enum e_ais_done flock_err;
-
-	serialize_lock_f = qb_thread_lock_create (QB_THREAD_LOCK_SHORT);
 
 	/* default configuration
 	 */

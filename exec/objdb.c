@@ -103,22 +103,10 @@ struct object_find_instance {
 
 struct objdb_iface_ver0 objdb_iface;
 struct list_head objdb_trackers_head;
-static pthread_mutex_t objdb_mutex;
-static pthread_mutexattr_t objdb_mutex_attr;
 
 DECLARE_HDB_DATABASE (object_instance_database,NULL);
 
 DECLARE_HDB_DATABASE (object_find_instance_database,NULL);
-
-static void objdb_lock(void)
-{
-	pthread_mutex_lock(&objdb_mutex);
-}
-
-static void objdb_unlock(void)
-{
-	pthread_mutex_unlock(&objdb_mutex);
-}
 
 static int objdb_init (void)
 {
@@ -149,11 +137,6 @@ static int objdb_init (void)
 	list_init (&instance->child_list);
 	list_init (&instance->track_head);
 	list_init (&objdb_trackers_head);
-
-	pthread_mutexattr_init(&objdb_mutex_attr);
-
-	pthread_mutexattr_settype(&objdb_mutex_attr, PTHREAD_MUTEX_RECURSIVE);
-	pthread_mutex_init(&objdb_mutex, &objdb_mutex_attr);
 
 	hdb_handle_put (&object_instance_database, handle);
 	return (0);
@@ -371,7 +354,6 @@ static int object_create (
 	int found = 0;
 	int i;
 
-	objdb_lock();
 	res = hdb_handle_get (&object_instance_database,
 		parent_object_handle, (void *)&parent_instance);
 	if (res != 0) {
@@ -445,7 +427,6 @@ static int object_create (
 		object_instance->object_handle,
 		object_instance->object_name,
 		object_instance->object_name_len);
-	objdb_unlock();
 	return (0);
 
 error_put_destroy:
@@ -458,7 +439,6 @@ error_object_put:
 	hdb_handle_put (&object_instance_database, parent_object_handle);
 
 error_exit:
-	objdb_unlock();
 	return (-1);
 }
 
@@ -469,8 +449,6 @@ static int object_priv_set (
 	int res;
 	struct object_instance *object_instance;
 
-	objdb_lock();
-
 	res = hdb_handle_get (&object_instance_database,
 		object_handle, (void *)&object_instance);
 	if (res != 0) {
@@ -480,11 +458,9 @@ static int object_priv_set (
 	object_instance->priv = priv;
 
 	hdb_handle_put (&object_instance_database, object_handle);
-	objdb_unlock();
 	return (0);
 
 error_exit:
-	objdb_unlock();
 	return (-1);
 }
 
@@ -504,8 +480,6 @@ static int object_key_create_typed(
 	size_t key_len = strlen(key_name);
 	size_t expected_size;
 	int test_size_by_type = CS_TRUE;
-
-	objdb_lock();
 
 	res = hdb_handle_get (&object_instance_database,
 		object_handle, (void *)&instance);
@@ -625,7 +599,6 @@ static int object_key_create_typed(
 	object_key_changed_notification(object_handle, key_name, key_len,
 		value, value_len, OBJECT_KEY_CREATED);
 	hdb_handle_put (&object_instance_database, object_handle);
-	objdb_unlock();
 	return (0);
 
 error_put_key:
@@ -638,7 +611,6 @@ error_put:
 	hdb_handle_put (&object_instance_database, object_handle);
 
 error_exit:
-	objdb_unlock();
 	return (-1);
 }
 
@@ -728,12 +700,9 @@ static int object_destroy (
 	struct object_instance *instance;
 	unsigned int res;
 
-	objdb_lock();
-
 	res = hdb_handle_get (&object_instance_database,
 		object_handle, (void *)&instance);
 	if (res != 0) {
-		objdb_unlock();
 		return (res);
 	}
 
@@ -750,7 +719,6 @@ static int object_destroy (
 	hdb_handle_put (&object_instance_database, object_handle);
 	hdb_handle_destroy (&object_instance_database, object_handle);
 
-	objdb_unlock();
 	return (res);
 }
 
@@ -762,7 +730,6 @@ static int object_valid_set (
 	struct object_instance *instance;
 	unsigned int res;
 
-	objdb_lock();
 	res = hdb_handle_get (&object_instance_database,
 		object_handle, (void *)&instance);
 	if (res != 0) {
@@ -774,11 +741,9 @@ static int object_valid_set (
 
 	hdb_handle_put (&object_instance_database, object_handle);
 
-	objdb_unlock();
 	return (0);
 
 error_exit:
-	objdb_unlock();
 	return (-1);
 }
 
@@ -790,7 +755,6 @@ static int object_key_valid_set (
 	struct object_instance *instance;
 	unsigned int res;
 
-	objdb_lock();
 	res = hdb_handle_get (&object_instance_database,
 		object_handle, (void *)&instance);
 	if (res != 0) {
@@ -802,11 +766,9 @@ static int object_key_valid_set (
 
 	hdb_handle_put (&object_instance_database, object_handle);
 
-	objdb_unlock();
 	return (0);
 
 error_exit:
-	objdb_unlock();
 	return (-1);
 }
 
@@ -828,7 +790,6 @@ static int object_find_create (
 	size_t ha_len;
 	size_t ha_used;
 
-	objdb_lock();
 	res = hdb_handle_get (&object_instance_database,
 		object_handle, (void *)&object_instance);
 	if (res != 0) {
@@ -893,7 +854,6 @@ static int object_find_create (
 	hdb_handle_put (&object_instance_database, object_handle);
 	hdb_handle_put (&object_find_instance_database, *object_find_handle);
 
-	objdb_unlock();
 	return (0);
 
 error_ha_free:
@@ -906,7 +866,6 @@ error_put:
 	hdb_handle_put (&object_instance_database, object_handle);
 
 error_exit:
-	objdb_unlock();
 	return (-1);
 }
 
@@ -920,7 +879,6 @@ static int object_find_next (
 	unsigned int found = 0;
         size_t pos;
 
-	objdb_lock();
 	res = hdb_handle_get (&object_find_instance_database,
 		object_find_handle, (void *)&object_find_instance);
 	if (res != 0) {
@@ -954,11 +912,13 @@ static int object_find_next (
 	object_find_instance->handles_array_pos = pos;
 
 	hdb_handle_put (&object_find_instance_database, object_find_handle);
-	objdb_unlock();
-	return (found ? 0 : -1);
+	if (found) {
+		*object_handle = object_instance->object_handle;
+		res = 0;
+	}
+	return (res);
 
 error_exit:
-	objdb_unlock();
 	return (-1);
 }
 
@@ -968,7 +928,6 @@ static int object_find_destroy (
 	struct object_find_instance *object_find_instance;
 	unsigned int res;
 
-	objdb_lock();
 	res = hdb_handle_get (&object_find_instance_database,
 		object_find_handle, (void *)&object_find_instance);
 	if (res != 0) {
@@ -980,11 +939,9 @@ static int object_find_destroy (
 	hdb_handle_put(&object_find_instance_database, object_find_handle);
 	hdb_handle_destroy(&object_find_instance_database, object_find_handle);
 
-	objdb_unlock();
 	return (0);
 
 error_exit:
-	objdb_unlock();
 	return (-1);
 }
 
@@ -1002,7 +959,6 @@ static int object_key_get_typed (
 	int found = 0;
 	size_t key_len = strlen(key_name);
 
-	objdb_lock();
 	res = hdb_handle_get (&object_instance_database,
 		object_handle, (void *)&instance);
 	if (res != 0) {
@@ -1031,11 +987,9 @@ static int object_key_get_typed (
 	}
 
 	hdb_handle_put (&object_instance_database, object_handle);
-	objdb_unlock();
 	return (res);
 
 error_exit:
-	objdb_unlock();
 	return (-1);
 }
 
@@ -1079,7 +1033,6 @@ static int object_key_increment (
 	struct list_head *list;
 	int found = 0;
 
-	objdb_lock();
 	res = hdb_handle_get (&object_instance_database,
 		object_handle, (void *)&instance);
 	if (res != 0) {
@@ -1145,11 +1098,9 @@ static int object_key_increment (
 		object_key_changed_notification (object_handle, key_name, key_len,
 			object_key->value, object_key->value_len, OBJECT_KEY_REPLACED);
 	}
-	objdb_unlock();
 	return (res);
 
 error_exit:
-	objdb_unlock();
 	return (-1);
 }
 
@@ -1165,7 +1116,6 @@ static int object_key_decrement (
 	struct list_head *list;
 	int found = 0;
 
-	objdb_lock();
 	res = hdb_handle_get (&object_instance_database,
 		object_handle, (void *)&instance);
 	if (res != 0) {
@@ -1232,11 +1182,9 @@ static int object_key_decrement (
 		object_key_changed_notification (object_handle, key_name, key_len,
 			object_key->value, object_key->value_len, OBJECT_KEY_REPLACED);
 	}
-	objdb_unlock();
 	return (res);
 
 error_exit:
-	objdb_unlock();
 	return (-1);
 }
 
@@ -1252,7 +1200,6 @@ static int object_key_delete (
 	struct list_head *list;
 	int found = 0;
 
-	objdb_lock();
 	res = hdb_handle_get (&object_instance_database,
 		object_handle, (void *)&instance);
 	if (res != 0) {
@@ -1285,11 +1232,9 @@ static int object_key_delete (
 		object_key_changed_notification(object_handle, key_name, key_len,
 			NULL, 0, OBJECT_KEY_DELETED);
 	}
-	objdb_unlock();
 	return (ret);
 
 error_exit:
-	objdb_unlock();
 	return (-1);
 }
 
@@ -1307,8 +1252,6 @@ static int object_key_replace (
 	struct list_head *list;
 	int found = 0;
 	int value_changed = 0;
-
-	objdb_lock();
 
 	res = hdb_handle_get (&object_instance_database,
 		object_handle, (void *)&instance);
@@ -1392,13 +1335,11 @@ static int object_key_replace (
 		object_key_changed_notification (object_handle, key_name, key_len,
 			new_value, new_value_len, OBJECT_KEY_REPLACED);
 	}
-	objdb_unlock();
 	return (ret);
 
 error_put:
 	hdb_handle_put (&object_instance_database, object_handle);
 error_exit:
-	objdb_unlock();
 	return (-1);
 }
 
@@ -1409,7 +1350,6 @@ static int object_priv_get (
 	int res;
 	struct object_instance *object_instance;
 
-	objdb_unlock();
 	res = hdb_handle_get (&object_instance_database,
 		object_handle, (void *)&object_instance);
 	if (res != 0) {
@@ -1419,11 +1359,9 @@ static int object_priv_get (
 	*priv = object_instance->priv;
 
 	hdb_handle_put (&object_instance_database, object_handle);
-	objdb_unlock();
 	return (0);
 
 error_exit:
-	objdb_unlock();
 	return (-1);
 }
 
@@ -1517,8 +1455,6 @@ static int object_key_iter_reset(hdb_handle_t object_handle)
 	unsigned int res;
 	struct object_instance *instance;
 
-	objdb_lock();
-
 	res = hdb_handle_get (&object_instance_database,
 		object_handle, (void *)&instance);
 	if (res != 0) {
@@ -1527,11 +1463,9 @@ static int object_key_iter_reset(hdb_handle_t object_handle)
 	instance->iter_key_list = &instance->key_head;
 
 	hdb_handle_put (&object_instance_database, object_handle);
-	objdb_unlock();
 	return (0);
 
 error_exit:
-	objdb_unlock();
 	return (-1);
 }
 
@@ -1546,8 +1480,6 @@ static int object_key_iter_typed (hdb_handle_t parent_object_handle,
 	struct object_key *find_key = NULL;
 	struct list_head *list;
 	unsigned int found = 0;
-
-	objdb_lock();
 
 	res = hdb_handle_get (&object_instance_database,
 		parent_object_handle, (void *)&instance);
@@ -1574,11 +1506,9 @@ static int object_key_iter_typed (hdb_handle_t parent_object_handle,
 	}
 
 	hdb_handle_put (&object_instance_database, parent_object_handle);
-	objdb_unlock();
 	return (res);
 
 error_exit:
-	objdb_unlock();
 	return (-1);
 }
 
@@ -1614,8 +1544,6 @@ static int object_key_iter_from(hdb_handle_t parent_object_handle,
 	struct list_head *list;
 	unsigned int found = 0;
 
-	objdb_lock();
-
 	res = hdb_handle_get (&object_instance_database,
 		parent_object_handle, (void *)&instance);
 	if (res != 0) {
@@ -1648,11 +1576,9 @@ static int object_key_iter_from(hdb_handle_t parent_object_handle,
 	}
 
 	hdb_handle_put (&object_instance_database, parent_object_handle);
-	objdb_unlock();
 	return (res);
 
 error_exit:
-	objdb_unlock();
 	return (-1);
 }
 
@@ -1663,12 +1589,9 @@ static int object_parent_get(hdb_handle_t object_handle,
 	struct object_instance *instance;
 	unsigned int res;
 
-	objdb_lock();
-
 	res = hdb_handle_get (&object_instance_database,
 		object_handle, (void *)&instance);
 	if (res != 0) {
-		objdb_unlock();
 		return (res);
 	}
 
@@ -1678,7 +1601,6 @@ static int object_parent_get(hdb_handle_t object_handle,
 		*parent_handle = instance->parent_handle;
 
 	hdb_handle_put (&object_instance_database, object_handle);
-	objdb_unlock();
 
 	return (0);
 }
@@ -1690,11 +1612,9 @@ static int object_name_get(hdb_handle_t object_handle,
 	struct object_instance *instance;
 	unsigned int res;
 
-	objdb_lock();
 	res = hdb_handle_get (&object_instance_database,
 		object_handle, (void *)&instance);
 	if (res != 0) {
-		objdb_unlock();
 		return (res);
 	}
 
@@ -1702,7 +1622,6 @@ static int object_name_get(hdb_handle_t object_handle,
 	*object_name_len = instance->object_name_len;
 
 	hdb_handle_put (&object_instance_database, object_handle);
-	objdb_unlock();
 
 	return (0);
 }
@@ -1801,11 +1720,9 @@ static int object_dump(hdb_handle_t object_handle,
 	struct object_instance *instance;
 	unsigned int res;
 
-	objdb_lock();
 	res = hdb_handle_get (&object_instance_database,
 		object_handle, (void *)&instance);
 	if (res != 0) {
-		objdb_unlock();
 		return (res);
 	}
 
@@ -1813,7 +1730,6 @@ static int object_dump(hdb_handle_t object_handle,
 
 	hdb_handle_put (&object_instance_database, object_handle);
 
-	objdb_unlock();
 	return (res);
 }
 
@@ -1826,18 +1742,14 @@ static int object_write_config(const char **error_string)
 
 	main_get_config_modules(&modules, &num_modules);
 
-	objdb_lock();
-
 	for (i=0; i<num_modules; i++) {
 		if (modules[i]->config_writeconfig) {
 			res = modules[i]->config_writeconfig(&objdb_iface, error_string);
 			if (res) {
-				objdb_unlock();
 				return res;
 			}
 		}
 	}
-	objdb_unlock();
 	return 0;
 }
 
@@ -1851,19 +1763,15 @@ static int object_reload_config(int flush, const char **error_string)
 	main_get_config_modules(&modules, &num_modules);
 	object_reload_notification(OBJDB_RELOAD_NOTIFY_START, flush);
 
-	objdb_lock();
-
 	for (i=0; i<num_modules; i++) {
 		if (modules[i]->config_reloadconfig) {
 			res = modules[i]->config_reloadconfig(&objdb_iface, flush, error_string);
 			if (res) {
 				object_reload_notification(OBJDB_RELOAD_NOTIFY_FAILED, flush);
-				objdb_unlock();
 				return res;
 			}
 		}
 	}
-	objdb_unlock();
 	object_reload_notification(OBJDB_RELOAD_NOTIFY_END, flush);
 	return 0;
 }
