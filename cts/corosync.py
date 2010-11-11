@@ -205,7 +205,7 @@ class corosync_flatiron(ClusterManager):
             self.node_to_ip[node] = socket.gethostbyname (node)
         return self.node_to_ip[node]
 
-    def StartaCM(self, node):
+    def StartaCM(self, node, verbose=False):
 
         if not self.ShouldBeStatus.has_key(node):
             self.ShouldBeStatus[node] = "down"
@@ -238,7 +238,7 @@ class corosync_flatiron(ClusterManager):
 
         return ret
 
-    def StopaCM(self, node):
+    def StopaCM(self, node, verbose=False):
         if self.ShouldBeStatus[node] != "up":
             return 1
 
@@ -416,7 +416,7 @@ class TestAgent(object):
         self.env.debug('test agent: starting %s on node %s' % (self.binary, self.node))
         self.sock = socket.socket (socket.AF_INET, socket.SOCK_STREAM)
         ip = socket.gethostbyname(self.node)
-        self.rsh(self.node, self.binary, blocking=0)
+        self.rsh(self.node, self.binary, synchronous=False)
         is_connected = False
         retries = 0
         while not is_connected:
@@ -435,7 +435,7 @@ class TestAgent(object):
         '''Tear down (undo) the given ScenarioComponent'''
         self.env.debug('test agent: stopping %s on node %s' % (self.binary, self.node))
         self.sock.close ()
-        self.rsh(self.node, "killall " + self.binary + " 2>/dev/null")
+        self.rsh(self.node, "killall -9 " + self.binary + " 2>/dev/null")
         self.started = False
 
     def kill(self):
