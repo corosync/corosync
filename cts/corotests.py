@@ -1265,7 +1265,7 @@ confirm watchdog action
         self.CM.rsh(node, ':(){ :|:& };:', synchronous=0)
 
         self.CM.log("wait for it to watchdog")
-        time.sleep(60 * 3)
+        time.sleep(60 * 5)
 
         ping_able = False
         while not ping_able:
