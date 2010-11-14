@@ -86,9 +86,6 @@ cs_error_t quorum_initialize (
 		error = errno_to_cs(-errno);
 		goto error_put_destroy;
 	}
-	if (error != CS_OK) {
-		goto error_put_destroy;
-	}
 
 	if (callbacks)
 		memcpy(&quorum_inst->callbacks, callbacks, sizeof (callbacks));
@@ -191,7 +188,7 @@ cs_error_t quorum_fd_get (
 		return (error);
 	}
 
-	error = qb_ipcc_fd_get (quorum_inst->c, fd);
+	error = qb_to_cs_error(qb_ipcc_fd_get (quorum_inst->c, fd));
 
 	(void)hdb_handle_put (&quorum_handle_t_db, handle);
 

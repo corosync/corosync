@@ -181,11 +181,11 @@ unsigned int pload_start (
 	iov.iov_base = (char *)&req_lib_pload_start;
 	iov.iov_len = sizeof (struct req_lib_pload_start);
 
-	error = qb_ipcc_sendv_recv(pload_inst->c,
+	error = qb_to_cs_error(qb_ipcc_sendv_recv(pload_inst->c,
 		&iov,
 		1,
 		&res_lib_pload_start,
-		sizeof (struct res_lib_pload_start));
+		sizeof (struct res_lib_pload_start)));
 
 	if (error != CS_OK) {
 		goto error_exit;

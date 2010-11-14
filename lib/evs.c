@@ -103,7 +103,7 @@ evs_error_t evs_initialize (
 
 	evs_inst->c = qb_ipcc_connect ("evs", IPC_REQUEST_SIZE);
 	if (evs_inst->c == NULL) {
-		error = errno_to_cs(-errno);
+		error = qb_to_cs_error(-errno);
 		goto error_put_destroy;
 	}
 	if (error != EVS_OK) {
@@ -242,7 +242,7 @@ evs_error_t evs_dispatch (
 
 	dispatch_data = (struct qb_ipc_response_header *)dispatch_buf;
 	do {
-		error = errno_to_cs (qb_ipcc_event_recv (
+		error = qb_to_cs_error(qb_ipcc_event_recv (
 			evs_inst->c,
 			dispatch_buf,
 			IPC_DISPATCH_SIZE,
@@ -349,8 +349,8 @@ evs_error_t evs_join (
 	iov[1].iov_base = (void*) groups; /* cast away const */
 	iov[1].iov_len = (group_entries * sizeof (struct evs_group));
 
-	error = qb_ipcc_sendv_recv (evs_inst->c, iov, 2,
-		&res_lib_evs_join, sizeof (struct res_lib_evs_join));
+	error = qb_to_cs_error(qb_ipcc_sendv_recv (evs_inst->c, iov, 2,
+		&res_lib_evs_join, sizeof (struct res_lib_evs_join)));
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -390,8 +390,8 @@ evs_error_t evs_leave (
 	iov[1].iov_base = (void *) groups; /* cast away const */
 	iov[1].iov_len = (group_entries * sizeof (struct evs_group));
 
-	error = qb_ipcc_sendv_recv (evs_inst->c, iov, 2,
-		&res_lib_evs_leave, sizeof (struct res_lib_evs_leave));
+	error = qb_to_cs_error(qb_ipcc_sendv_recv (evs_inst->c, iov, 2,
+		&res_lib_evs_leave, sizeof (struct res_lib_evs_leave)));
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -439,10 +439,10 @@ evs_error_t evs_mcast_joined (
 	iov[0].iov_len = sizeof (struct req_lib_evs_mcast_joined);
 	memcpy (&iov[1], iovec, iov_len * sizeof (struct iovec));
 
-	error = qb_ipcc_sendv_recv (evs_inst->c, iov,
+	error = qb_to_cs_error(qb_ipcc_sendv_recv (evs_inst->c, iov,
 		iov_len + 1,
 		&res_lib_evs_mcast_joined,
-		sizeof (struct res_lib_evs_mcast_joined));
+		sizeof (struct res_lib_evs_mcast_joined)));
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -492,10 +492,10 @@ evs_error_t evs_mcast_groups (
 	iov[1].iov_len = (group_entries * sizeof (struct evs_group));
 	memcpy (&iov[2], iovec, iov_len * sizeof (struct iovec));
 
-	error = qb_ipcc_sendv_recv (evs_inst->c, iov,
+	error = qb_to_cs_error(qb_ipcc_sendv_recv (evs_inst->c, iov,
 		iov_len + 2,
 		&res_lib_evs_mcast_groups,
-		sizeof (struct res_lib_evs_mcast_groups));
+		sizeof (struct res_lib_evs_mcast_groups)));
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -532,11 +532,11 @@ evs_error_t evs_membership_get (
 	iov.iov_base = (void *)&req_lib_evs_membership_get;
 	iov.iov_len = sizeof (struct req_lib_evs_membership_get);
 
-	error = qb_ipcc_sendv_recv (evs_inst->c,
+	error = qb_to_cs_error(qb_ipcc_sendv_recv (evs_inst->c,
 		&iov,
 		1,
 		&res_lib_evs_membership_get,
-		sizeof (struct res_lib_evs_membership_get));
+		sizeof (struct res_lib_evs_membership_get)));
 
 	if (error != CS_OK) {
 		goto error_exit;
