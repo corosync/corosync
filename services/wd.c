@@ -334,6 +334,7 @@ static void wd_config_changed (struct cs_fsm* fsm, int32_t event, void * data)
 	uint64_t tmp_value;
 	uint64_t next_timeout;
 	struct resource *ref = (struct resource*)data;
+	char str_copy[256];
 
 	next_timeout = ref->check_timeout;
 
@@ -342,7 +343,9 @@ static void wd_config_changed (struct cs_fsm* fsm, int32_t event, void * data)
 			(void**)&str, &len,
 			&type);
 	if (res == 0) {
-		if (str_to_uint64_t(str, &tmp_value, WD_MIN_TIMEOUT_MS, WD_MAX_TIMEOUT_MS) == CS_OK) {
+		memcpy(str_copy, str, len);
+		str_copy[len] = '\0';
+		if (str_to_uint64_t(str_copy, &tmp_value, WD_MIN_TIMEOUT_MS, WD_MAX_TIMEOUT_MS) == CS_OK) {
 			log_printf (LOGSYS_LEVEL_DEBUG,
 				"poll_period changing from:%"PRIu64" to %"PRIu64".",
 				ref->check_timeout, tmp_value);
@@ -480,6 +483,7 @@ static int32_t wd_resource_create (hdb_handle_t resource_obj)
 	char *state;
 	objdb_value_types_t type;
 	char period_str[32];
+	char str_copy[256];
 	char *str;
 	uint64_t tmp_value;
 	struct resource *ref = malloc (sizeof (struct resource));
@@ -512,7 +516,9 @@ static int32_t wd_resource_create (hdb_handle_t resource_obj)
 			OBJDB_VALUETYPE_STRING);
 	}
 	else {
-		if (str_to_uint64_t(str, &tmp_value, WD_MIN_TIMEOUT_MS, WD_MAX_TIMEOUT_MS) == CS_OK) {
+		memcpy(str_copy, str, len);
+		str_copy[len] = '\0';
+		if (str_to_uint64_t(str_copy, &tmp_value, WD_MIN_TIMEOUT_MS, WD_MAX_TIMEOUT_MS) == CS_OK) {
 			ref->check_timeout = tmp_value;
 		} else {
 			log_printf (LOGSYS_LEVEL_WARNING,
@@ -728,11 +734,14 @@ static void wd_top_level_key_changed(object_change_type_t change_type,
 {
 	uint64_t tmp_value;
 	int32_t tmp_value_32;
+	char str_copy[256];
 
 	ENTER();
 	if (change_type != OBJECT_KEY_DELETED &&
-		strncmp ((char*)key_name_pt, "watchdog_timeout", key_value_len) == 0) {
-		if (str_to_uint64_t(key_value_pt, &tmp_value, 2, 120) == CS_OK) {
+		strncmp ((char*)key_name_pt, "watchdog_timeout", key_len) == 0) {
+		memcpy(str_copy, key_name_pt, key_len);
+		str_copy[key_len] = '\0';
+		if (str_to_uint64_t(str_copy, &tmp_value, 2, 120) == CS_OK) {
 			tmp_value_32 = tmp_value;
 			watchdog_timeout_apply (tmp_value_32);
 		}
