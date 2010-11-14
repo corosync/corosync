@@ -272,6 +272,7 @@ static void mon_config_changed (struct cs_fsm* fsm, int32_t event, void * data)
 	objdb_value_types_t type;
 	uint64_t tmp_value;
 	int32_t res;
+	char str_copy[256];
 
 	ENTER();
 
@@ -280,7 +281,9 @@ static void mon_config_changed (struct cs_fsm* fsm, int32_t event, void * data)
 			(void**)&str, &str_len,
 			&type);
 	if (res == 0) {
-		if (str_to_uint64_t(str, &tmp_value, MON_MIN_PERIOD, MON_MAX_PERIOD) == CS_OK) {
+		memcpy(str_copy, str, str_len);
+		str_copy[str_len] = '\0';
+		if (str_to_uint64_t(str_copy, &tmp_value, MON_MIN_PERIOD, MON_MAX_PERIOD) == CS_OK) {
 			log_printf (LOGSYS_LEVEL_DEBUG,
 				"poll_period changing from:%"PRIu64" to %"PRIu64".",
 				inst->period, tmp_value);
