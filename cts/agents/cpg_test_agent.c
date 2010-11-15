@@ -487,7 +487,7 @@ static void send_some_more_messages_normal (void)
 static void send_some_more_messages (void * unused)
 {
 	if (use_zcb) {
-//		send_some_more_messages_zcb ();
+		send_some_more_messages_zcb ();
 	} else {
 		send_some_more_messages_normal ();
 	}
