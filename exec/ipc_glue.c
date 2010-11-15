@@ -203,7 +203,9 @@ static int32_t cs_ipcs_connection_accept (qb_ipcs_connection_t *c, uid_t euid, g
 	struct list_head *iter;
 	int32_t service = qb_ipcs_service_id_get(c);
 
-	if (ais_service[service] == NULL || ais_service_exiting[service]) {
+	if (ais_service[service] == NULL ||
+		ais_service_exiting[service] ||
+		ipcs_mapper[service].inst == NULL) {
 		return -ENOSYS;
 	}
 
@@ -560,7 +562,7 @@ static void cs_ipcs_check_for_flow_control(void)
 	qb_loop_timer_handle tm;
 
 	for (i = 0; i < SERVICE_HANDLER_MAXIMUM_COUNT; i++) {
-		if (ais_service[i] == NULL) {
+		if (ais_service[i] == NULL || ipcs_mapper[i].inst == NULL) {
 			continue;
 		}
 		fc_enabled = QB_TRUE;
@@ -628,7 +630,7 @@ void cs_ipcs_stats_update(void)
 	struct cs_ipcs_conn_context *cnx;
 
 	for (i = 0; i < SERVICE_HANDLER_MAXIMUM_COUNT; i++) {
-		if (ais_service[i] == NULL) {
+		if (ais_service[i] == NULL || ipcs_mapper[i].inst == NULL) {
 			continue;
 		}
 		qb_ipcs_stats_get(ipcs_mapper[i].inst, &srv_stats, QB_FALSE);
@@ -674,9 +676,16 @@ void cs_ipcs_stats_update(void)
 
 void cs_ipcs_service_init(struct corosync_service_engine *service)
 {
+	if (service->lib_engine_count == 0) {
+		log_printf (LOGSYS_LEVEL_DEBUG,
+			"NOT Initializing IPC on %s [%d]",
+			cs_ipcs_serv_short_name(service->id),
+			service->id);
+		return;
+	}
 	ipcs_mapper[service->id].id = service->id;
 	strcpy(ipcs_mapper[service->id].name, cs_ipcs_serv_short_name(service->id));
-	log_printf (LOGSYS_LEVEL_INFO,
+	log_printf (LOGSYS_LEVEL_DEBUG,
 		"Initializing IPC on %s [%d]",
 		ipcs_mapper[service->id].name,
 		ipcs_mapper[service->id].id);
