@@ -130,10 +130,6 @@ static hdb_handle_t object_memb_handle;
 
 static corosync_timer_handle_t corosync_stats_timer_handle;
 
-static pthread_t corosync_exit_thread;
-
-static sem_t corosync_exit_sem;
-
 static const char *corosync_lock_file = LOCALSTATEDIR"/run/corosync.pid";
 
 static void serialize_unlock (void);
@@ -177,45 +173,20 @@ static void unlink_all_completed (void)
 
 void corosync_shutdown_request (void)
 {
-	static int called = 0;
-	if (called) {
-		return;
-	}
-	if (called == 0) {
-		called = 1;
-	}
-
-	sem_post (&corosync_exit_sem);
-}
-
-static void *corosync_exit_thread_handler (void *arg)
-{
-	sem_wait (&corosync_exit_sem);
-
 	corosync_service_unlink_all (api, unlink_all_completed);
-
-	return arg;
 }
 
-static void sigusr2_handler (int num)
+static int32_t sig_diag_handler (int num, void *data)
 {
 	corosync_state_dump ();
 	logsys_log_rec_store (LOCALSTATEDIR "/lib/corosync/fdata");
+	return 0;
 }
 
-static void sigterm_handler (int num)
+static int32_t sig_exit_handler (int num, void *data)
 {
-	corosync_shutdown_request ();
-}
-
-static void sigquit_handler (int num)
-{
-	corosync_shutdown_request ();
-}
-
-static void sigintr_handler (int num)
-{
-	corosync_shutdown_request ();
+	corosync_service_unlink_all (api, unlink_all_completed);
+	return 0;
 }
 
 static void sigsegv_handler (int num)
@@ -1255,13 +1226,18 @@ int main (int argc, char **argv, char **envp)
 	log_printf (LOGSYS_LEVEL_NOTICE, "Corosync Cluster Engine ('%s'): started and ready to provide service.\n", VERSION);
 	log_printf (LOGSYS_LEVEL_INFO, "Corosync built-in features:" PACKAGE_FEATURES "\n");
 
+	corosync_poll_handle = qb_loop_create ();
 
-	(void)signal (SIGINT, sigintr_handler);
-	(void)signal (SIGUSR2, sigusr2_handler);
+	qb_loop_signal_add(corosync_poll_handle, QB_LOOP_LOW,
+		SIGUSR2, NULL, sig_diag_handler, NULL);
+	qb_loop_signal_add(corosync_poll_handle, QB_LOOP_HIGH,
+		SIGINT, NULL, sig_exit_handler, NULL);
+	qb_loop_signal_add(corosync_poll_handle, QB_LOOP_HIGH,
+		SIGQUIT, NULL, sig_exit_handler, NULL);
+	qb_loop_signal_add(corosync_poll_handle, QB_LOOP_HIGH,
+		SIGTERM, NULL, sig_exit_handler, NULL);
 	(void)signal (SIGSEGV, sigsegv_handler);
 	(void)signal (SIGABRT, sigabrt_handler);
-	(void)signal (SIGQUIT, sigquit_handler);
-	(void)signal (SIGTERM, sigterm_handler);
 #if MSG_NOSIGNAL != 0
 	(void)signal (SIGPIPE, SIG_IGN);
 #endif
@@ -1427,31 +1403,6 @@ int main (int argc, char **argv, char **envp)
 
 	if ((flock_err = corosync_flock (corosync_lock_file, getpid ())) != AIS_DONE_EXIT) {
 		corosync_exit_error (flock_err);
-	}
-
-	corosync_poll_handle = qb_loop_create ();
-
-	/*
-	 * Sleep for a while to let other nodes in the cluster
-	 * understand that this node has been away (if it was
-	 * an corosync restart).
-	 */
-
-// TODO what is this hack for?	usleep(totem_config.token_timeout * 2000);
-
-	/*
-	 * Create semaphore and start "exit" thread
-	 */
-	res = sem_init (&corosync_exit_sem, 0, 0);
-	if (res != 0) {
-		log_printf (LOGSYS_LEVEL_ERROR, "Corosync Executive couldn't create exit thread.\n");
-		corosync_exit_error (AIS_DONE_FATAL_ERR);
-	}
-
-	res = pthread_create (&corosync_exit_thread, NULL, corosync_exit_thread_handler, NULL);
-	if (res != 0) {
-		log_printf (LOGSYS_LEVEL_ERROR, "Corosync Executive couldn't create exit thread.\n");
-		corosync_exit_error (AIS_DONE_FATAL_ERR);
 	}
 
 	/*

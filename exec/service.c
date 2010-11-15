@@ -55,6 +55,7 @@
 #include "service.h"
 
 #include <qb/qbipcs.h>
+#include <qb/qbloop.h>
 
 LOGSYS_DECLARE_SUBSYS ("SERV");
 
@@ -122,9 +123,6 @@ static hdb_handle_t object_internal_configuration_handle;
 static hdb_handle_t object_stats_services_handle;
 
 static void (*service_unlink_all_complete) (void) = NULL;
-
-static hdb_handle_t swrk_service_exit_handle;
-static hdb_handle_t swrk_service_unlink_handle;
 
 static unsigned int default_services_requested (struct corosync_api_v1 *corosync_api)
 {
@@ -473,6 +471,8 @@ static unsigned int service_unlink_and_exit (
 				(void *)&found_service_handle,
 				NULL);
 
+			cs_ipcs_service_destroy (*service_id);
+
 			lcr_ifact_release (*found_service_handle);
 
 			corosync_api->object_destroy (object_service_handle);
@@ -572,17 +572,17 @@ unsigned int corosync_service_defaults_link_and_init (struct corosync_api_v1 *co
  * Declaration of exit_schedwrk_handler, because of cycle
  * (service_exit_schedwrk_handler calls service_unlink_schedwrk_handler, and vice-versa)
  */
-static int service_exit_schedwrk_handler (const void *data);
+static void service_exit_schedwrk_handler (void *data);
 
-static int service_unlink_schedwrk_handler (const void *data) {
+static void service_unlink_schedwrk_handler (void *data) {
 	struct seus_handler_data *cb_data = (struct seus_handler_data *)data;
-	struct corosync_api_v1 *api = (struct corosync_api_v1 *)cb_data->api;
 
 	/*
 	 * Exit all ipc connections dependent on this service
 	 */
-	if (cs_ipcs_service_destroy (cb_data->service_engine) == -1)
-		return -1;
+	if (cs_ipcs_service_destroy (cb_data->service_engine) == -1) {
+		goto redo_this_function;
+	}
 
 	log_printf(LOGSYS_LEVEL_NOTICE,
 		"Service engine unloaded: %s\n",
@@ -592,15 +592,22 @@ static int service_unlink_schedwrk_handler (const void *data) {
 
 	lcr_ifact_release (cb_data->service_handle);
 
-	api->schedwrk_create (
-		&swrk_service_exit_handle,
-		&service_exit_schedwrk_handler,
-		data);
+	qb_loop_job_add(corosync_poll_handle_get(),
+		QB_LOOP_HIGH,
+		data,
+		service_exit_schedwrk_handler);
 
-	return 0;
+	return;
+
+ redo_this_function:
+	qb_loop_job_add(corosync_poll_handle_get(),
+		QB_LOOP_HIGH,
+		data,
+		service_unlink_schedwrk_handler);
+
 }
 
-static int service_exit_schedwrk_handler (const void *data) {
+static void service_exit_schedwrk_handler (void *data) {
 	int res;
 	static int current_priority = 0;
 	static int current_service_engine = 0;
@@ -624,24 +631,26 @@ static int service_exit_schedwrk_handler (const void *data) {
 		&service_handle);
 	if (res == 0) {
 		service_unlink_all_complete();
-		return (res);
+		return;
 	}
 
 	if (res == 1) {
 		cb_data->service_engine = current_service_engine;
 		cb_data->service_handle = service_handle;
 
-		api->schedwrk_create_nolock (
-			&swrk_service_unlink_handle,
-			&service_unlink_schedwrk_handler,
-			data);
-
-		return (0);
+		qb_loop_job_add(corosync_poll_handle_get(),
+			QB_LOOP_HIGH,
+			data,
+			service_unlink_schedwrk_handler);
+		return;
 	}
 
-	return (res);
+	qb_loop_job_add(corosync_poll_handle_get(),
+		QB_LOOP_HIGH,
+		data,
+		service_exit_schedwrk_handler);
 }
-		
+
 void corosync_service_unlink_all (
 	struct corosync_api_v1 *api,
 	void (*unlink_all_complete) (void))
@@ -662,10 +671,10 @@ void corosync_service_unlink_all (
 
 	cb_data.api = api;
 
-	api->schedwrk_create (
-		&swrk_service_exit_handle,
-		&service_exit_schedwrk_handler,
-		&cb_data);
+	qb_loop_job_add(corosync_poll_handle_get(),
+		QB_LOOP_HIGH,
+		&cb_data,
+		service_exit_schedwrk_handler);
 }
 
 struct service_unlink_and_exit_data {
@@ -675,7 +684,7 @@ struct service_unlink_and_exit_data {
 	unsigned int ver;
 };
 
-static int service_unlink_and_exit_schedwrk_handler (void *data)
+static void service_unlink_and_exit_schedwrk_handler (void *data)
 {
 	struct service_unlink_and_exit_data *service_unlink_and_exit_data =
 		data;
@@ -688,8 +697,12 @@ static int service_unlink_and_exit_schedwrk_handler (void *data)
 
 	if (res == 0) {
 		free (service_unlink_and_exit_data);
+	} else {
+		qb_loop_job_add(corosync_poll_handle_get(),
+			QB_LOOP_HIGH,
+			data,
+			service_unlink_and_exit_schedwrk_handler);
 	}
-	return (res);
 }
 
 typedef int (*schedwrk_cast) (const void *);
@@ -706,10 +719,10 @@ unsigned int corosync_service_unlink_and_exit (
 	service_unlink_and_exit_data->api = api;
 	service_unlink_and_exit_data->name = strdup (service_name);
 	service_unlink_and_exit_data->ver = service_ver;
-	
-	api->schedwrk_create (
-		&service_unlink_and_exit_data->handle,
-		(schedwrk_cast)service_unlink_and_exit_schedwrk_handler,
-		service_unlink_and_exit_data);
+
+	qb_loop_job_add(corosync_poll_handle_get(),
+		QB_LOOP_HIGH,
+		service_unlink_and_exit_data,
+		service_unlink_and_exit_schedwrk_handler);
 	return (0);
 }

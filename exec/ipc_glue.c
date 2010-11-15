@@ -191,7 +191,10 @@ static const char* cs_ipcs_serv_short_name(int32_t service_id)
 
 int32_t cs_ipcs_service_destroy(int32_t service_id)
 {
-	qb_ipcs_destroy(ipcs_mapper[service_id].inst);
+	if (ipcs_mapper[service_id].inst) {
+		qb_ipcs_destroy(ipcs_mapper[service_id].inst);
+		ipcs_mapper[service_id].inst = NULL;
+	}
 	return 0;
 }
 
