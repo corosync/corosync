@@ -499,7 +499,7 @@ struct totemsrp_instance {
 
 	unsigned int my_cbl;
 
-	unsigned long long int pause_timestamp;
+	uint64_t pause_timestamp;
 
 	struct memb_commit_token *commit_token;
 
