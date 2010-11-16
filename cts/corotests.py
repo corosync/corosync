@@ -878,6 +878,7 @@ class VoteQuorumGoDown(VoteQuorumBase):
     def __call__(self, node):
         self.incr("calls")
 
+        self.victims = []
         pats = []
         pats.append("%s .*VQ notification quorate: 0" % self.listener)
         pats.append("%s .*NQ notification quorate: 0" % self.listener)
