@@ -555,11 +555,11 @@ int32_t cs_ipcs_q_level_get(void)
 	return ipc_fc_totem_queue_level;
 }
 
+static qb_loop_timer_handle ipcs_check_for_flow_control_timer;
 static void cs_ipcs_check_for_flow_control(void)
 {
 	int32_t i;
 	int32_t fc_enabled;
-	qb_loop_timer_handle tm;
 
 	for (i = 0; i < SERVICE_HANDLER_MAXIMUM_COUNT; i++) {
 		if (ais_service[i] == NULL || ipcs_mapper[i].inst == NULL) {
@@ -581,7 +581,7 @@ static void cs_ipcs_check_for_flow_control(void)
 			qb_ipcs_request_rate_limit(ipcs_mapper[i].inst, QB_IPCS_RATE_OFF);
 
 			qb_loop_timer_add(corosync_poll_handle_get(), QB_LOOP_MED, 1,
-			       NULL, corosync_recheck_the_q_level, &tm);
+			       NULL, corosync_recheck_the_q_level, &ipcs_check_for_flow_control_timer);
 		} else if (ipc_fc_totem_queue_level == TOTEM_Q_LEVEL_LOW) {
 			qb_ipcs_request_rate_limit(ipcs_mapper[i].inst, QB_IPCS_RATE_FAST);
 		} else if (ipc_fc_totem_queue_level == TOTEM_Q_LEVEL_GOOD) {

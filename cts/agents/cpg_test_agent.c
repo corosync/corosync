@@ -317,16 +317,16 @@ static void read_messages (int sock, char* atmost_str)
 	send (sock, big_and_buf, strlen (big_and_buf), 0);
 }
 
+static qb_loop_timer_handle more_msg_timer_handle;
 static void send_some_more_messages_later (void)
 {
-	qb_loop_timer_handle timer_handle;
 	cpg_dispatch (cpg_handle, CS_DISPATCH_ALL);
 	qb_loop_timer_add (
 		ta_poll_handle_get(),
 		QB_LOOP_MED,
 		300, NULL,
 		send_some_more_messages,
-		&timer_handle);
+		&more_msg_timer_handle);
 }
 
 static void send_some_more_messages_zcb (void)

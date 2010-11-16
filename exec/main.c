@@ -817,6 +817,7 @@ int main_mcast (
 	return (totempg_groups_mcast_joined (corosync_group_handle, iovec, iov_len, guarantee));
 }
 
+static qb_loop_timer_handle recheck_the_q_level_timer;
 void corosync_recheck_the_q_level(void *data)
 {
 	qb_loop_timer_handle tm;
@@ -824,7 +825,7 @@ void corosync_recheck_the_q_level(void *data)
 	totempg_check_q_level(corosync_group_handle);
 	if (cs_ipcs_q_level_get() == TOTEM_Q_LEVEL_CRITICAL) {
 		qb_loop_timer_add(corosync_poll_handle_get(), QB_LOOP_MED, 1,
-			NULL, corosync_recheck_the_q_level, &tm);
+			NULL, corosync_recheck_the_q_level, &recheck_the_q_level_timer);
 	}
 }
 
