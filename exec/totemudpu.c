@@ -1337,15 +1337,6 @@ static int totemudpu_build_sockets_ip (
 	}
 
 	/*
-	 * Force reuse
-	 */
-//	 flag = 1;
-//	 if ( setsockopt(instance->token_socket, SOL_SOCKET, SO_REUSEADDR, (char *)&flag, sizeof (flag)) < 0) {
-//	 	perror("setsockopt reuseaddr");
-//		return (-1);
-//	}
-
-	/*
 	 * Bind to unicast socket used for token send/receives
 	 * This has the side effect of binding to the correct interface
 	 */
