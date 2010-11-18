@@ -131,6 +131,8 @@ struct sched_param global_sched_param;
 
 static hdb_handle_t object_connection_handle;
 
+static hdb_handle_t object_memb_handle;
+
 static corosync_timer_handle_t corosync_stats_timer_handle;
 
 static pthread_t corosync_exit_thread;
@@ -355,6 +357,77 @@ static int corosync_sync_v2_callbacks_retrieve (
 }
 
 static struct memb_ring_id corosync_ring_id;
+
+static void member_object_joined (unsigned int nodeid)
+{
+	hdb_handle_t object_find_handle;
+	hdb_handle_t object_node_handle;
+	char * nodeint_str;
+	char nodeid_str[64];
+	unsigned int key_incr_dummy;
+
+	snprintf (nodeid_str, 64, "%d", nodeid);
+
+	objdb->object_find_create (
+		object_memb_handle,
+		nodeid_str,
+		strlen (nodeid_str),
+		&object_find_handle);
+
+	if (objdb->object_find_next (object_find_handle,
+			&object_node_handle) == 0) {
+
+		objdb->object_key_increment (object_node_handle,
+			"join_count", strlen("flap"),
+			&key_incr_dummy);
+
+		objdb->object_key_replace (object_node_handle,
+			"status", strlen("status"),
+			"joined", strlen("joined"));
+	} else {
+		nodeint_str = (char*)api->totem_ifaces_print (nodeid);
+		objdb->object_create (object_memb_handle,
+			&object_node_handle,
+			nodeid_str, strlen (nodeid_str));
+
+		objdb->object_key_create_typed (object_node_handle,
+			"ip",
+			nodeint_str, strlen(nodeint_str),
+			OBJDB_VALUETYPE_STRING);
+		key_incr_dummy = 1;
+		objdb->object_key_create_typed (object_node_handle,
+			"join_count",
+			&key_incr_dummy, sizeof (key_incr_dummy),
+			OBJDB_VALUETYPE_UINT32);
+		objdb->object_key_create_typed (object_node_handle,
+			"status",
+			"joined", strlen("joined"),
+			OBJDB_VALUETYPE_STRING);
+	}
+}
+
+static void member_object_left (unsigned int nodeid)
+{
+	hdb_handle_t object_find_handle;
+	hdb_handle_t object_node_handle;
+	char nodeid_str[64];
+
+	snprintf (nodeid_str, 64, "%u", nodeid);
+
+	objdb->object_find_create (
+		object_memb_handle,
+		nodeid_str,
+		strlen (nodeid_str),
+		&object_find_handle);
+
+	if (objdb->object_find_next (object_find_handle,
+			&object_node_handle) == 0) {
+
+		objdb->object_key_replace (object_node_handle,
+			"status", strlen("status"),
+			"left", strlen("left"));
+	}
+}
 
 static void confchg_fn (
 	enum totem_configuration_type configuration_type,
@@ -623,6 +696,11 @@ static void corosync_totem_stats_init (void)
 		objdb->object_create (stats->mrp->hdr.handle,
 			&stats->mrp->srp->hdr.handle,
 			"srp", strlen ("srp"));
+
+		/* Members object */
+		objdb->object_create (stats->mrp->srp->hdr.handle,
+			&object_memb_handle,
+			"members", strlen ("members"));
 
 		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
 			"orf_token_tx",	&stats->mrp->srp->orf_token_tx,
