@@ -37,6 +37,7 @@ EXTRA_DIST		= autogen.sh conf/corosync.conf.example $(SPEC).in \
 			  build-aux/git-version-gen \
 			  build-aux/gitlog-to-changelog \
 			  build-aux/release.mk \
+			  conf/corosync.conf.example.udpu \
 			  .version
 
 AUTOMAKE_OPTIONS	= foreign

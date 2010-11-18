@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2005 MontaVista Software, Inc.
- * Copyright (c) 2006-2007, 2009 Red Hat, Inc.
+ * Copyright (c) 2006-2010 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -32,27 +32,21 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef TOTEMNET_H_DEFINED
-#define TOTEMNET_H_DEFINED
+#ifndef TOTEMUDPU_H_DEFINED
+#define TOTEMUDPU_H_DEFINED
 
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <corosync/hdb.h>
 
 #include <corosync/totem/totem.h>
-
-#define TOTEMNET_NOFLUSH	0
-#define TOTEMNET_FLUSH		1
-/*
- * Totem Network interface - also does encryption/decryption
- * depends on poll abstraction, POSIX, IPV4
- */
 
 /*
  * Create an instance
  */
-extern int totemnet_initialize (
+extern int totemudpu_initialize (
 	hdb_handle_t poll_handle,
-	void **net_context,
+	void **udpu_context,
 	struct totem_config *totem_config,
 	int interface_no,
 	void *context,
@@ -69,58 +63,58 @@ extern int totemnet_initialize (
 	void (*target_set_completed) (
 		void *context));
 
-extern int totemnet_processor_count_set (
-	void *net_context,
+extern int totemudpu_processor_count_set (
+	void *udpu_context,
 	int processor_count);
 
-extern int totemnet_token_send (
-	void *net_context,
+extern int totemudpu_token_send (
+	void *udpu_context,
 	const void *msg,
 	unsigned int msg_len);
 
-extern int totemnet_mcast_flush_send (
-	void *net_context,
+extern int totemudpu_mcast_flush_send (
+	void *udpu_context,
 	const void *msg,
 	unsigned int msg_len);
 
-extern int totemnet_mcast_noflush_send (
-	void *net_context,
+extern int totemudpu_mcast_noflush_send (
+	void *udpu_context,
 	const void *msg,
 	unsigned int msg_len);
 
-extern int totemnet_recv_flush (void *net_context);
+extern int totemudpu_recv_flush (void *udpu_context);
 
-extern int totemnet_send_flush (void *net_context);
+extern int totemudpu_send_flush (void *udpu_context);
 
-extern int totemnet_iface_check (void *net_context);
+extern int totemudpu_iface_check (void *udpu_context);
 
-extern int totemnet_finalize (void *net_context);
+extern int totemudpu_finalize (void *udpu_context);
 
-extern int totemnet_net_mtu_adjust (void *net_context, struct totem_config *totem_config);
+extern void totemudpu_net_mtu_adjust (void *udpu_context, struct totem_config *totem_config);
 
-extern const char *totemnet_iface_print (void *net_context);
+extern const char *totemudpu_iface_print (void *udpu_context);
 
-extern int totemnet_iface_get (
-	void *net_context,
+extern int totemudpu_iface_get (
+	void *udpu_context,
 	struct totem_ip_address *addr);
 
-extern int totemnet_token_target_set (
-	void *net_context,
+extern int totemudpu_token_target_set (
+	void *udpu_context,
 	const struct totem_ip_address *token_target);
 
-extern int totemnet_crypto_set (
-	void *net_context,
+extern int totemudpu_crypto_set (
+	void *udpu_context,
 	unsigned int type);
 
-extern int totemnet_recv_mcast_empty (
-	void *net_context);
+extern int totemudpu_recv_mcast_empty (
+	void *udpu_context);
 
-extern int totemnet_member_add (
-	void *net_context,
+extern int totemudpu_member_add (
+	void *udpu_context,
 	const struct totem_ip_address *member);
 
-extern int totemnet_member_remove (
-	void *net_context,
+extern int totemudpu_member_remove (
+	void *udpu_context,
 	const struct totem_ip_address *member);
 
-#endif /* TOTEMNET_H_DEFINED */
+#endif /* TOTEMUDPU_H_DEFINED */

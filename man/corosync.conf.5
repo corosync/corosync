@@ -1,6 +1,6 @@
 .\"/*
 .\" * Copyright (c) 2005 MontaVista Software, Inc.
-.\" * Copyright (c) 2006-2009 Red Hat, Inc.
+.\" * Copyright (c) 2006-2010 Red Hat, Inc.
 .\" *
 .\" * All rights reserved.
 .\" *
@@ -77,7 +77,8 @@ option which is required:
 .PP
 Within the
 .B interface
-sub-directive of totem there are four parameters which are required:
+sub-directive of totem there are four parameters which are required.  There is
+one parameter which is optional.
 
 .TP
 ringnumber
@@ -125,6 +126,13 @@ Please note corosync uses two UDP ports mcastport (for mcast receives) and
 mcastport - 1 (for mcast sends).
 If you have multiple clusters on the same network using the same mcastaddr 
 please configure the mcastports with a gap.
+
+.TP
+member
+This specifies a member on the interface and used with the udpu transport only.
+Every node that should be a member of the membership should be specified as
+a separate member directive.  Within the member directive there is a parameter
+memberaddr which specifies the ip address of one of the nodes.
 
 .PP
 .PP
@@ -258,11 +266,13 @@ The default is ykd.  The vsftype can also be set to none.
 .TP
 transport
 This directive controls the transport mechanism used.  If the interface to
-which corosync is binding is Infiniband, you can specify the "iba" option.  Any
-other option is ignored.  Note Infiniband interfaces will use RDMA transport
-techniques and perform at higher bandwidths and lower latency than gige networks.
+which corosync is binding is an RDMA interface such as RoCEE or Infiniband, the
+"iba" parameter may be specified.  To avoid the use of multicast entirely, a
+unicast transport parameter "udpu" can be specified.  This requires specifying
+the list of members that could potentially make up the membership before
+deployment.
 
-The default is udp.  The transport type can also be set to iba.
+The default is udp.  The transport type can also be set to udpu or iba.
 
 Within the
 .B totem

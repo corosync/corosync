@@ -4352,6 +4352,7 @@ void main_iface_change_fn (
 	unsigned int iface_no)
 {
 	struct totemsrp_instance *instance = context;
+	int i;
 
 	totemip_copy (&instance->my_id.addr[iface_no], iface_addr);
 	assert (instance->my_id.addr[iface_no].nodeid);
@@ -4365,6 +4366,12 @@ void main_iface_change_fn (
 			"Created or loaded sequence id %lld.%s for this ring.\n",
 			instance->my_ring_id.seq,
 			totemip_print (&instance->my_ring_id.rep));
+		for (i = 0; i < instance->totem_config->interfaces[iface_no].member_count; i++) {
+			totemsrp_member_add (instance,
+				&instance->totem_config->interfaces[iface_no].member_list[i],
+				iface_no);
+
+		}
 		if (instance->totemsrp_service_ready_fn) {
 			instance->totemsrp_service_ready_fn ();
 		}
@@ -4386,4 +4393,30 @@ void totemsrp_service_ready_register (
 	struct totemsrp_instance *instance = (struct totemsrp_instance *)context;
 
 	instance->totemsrp_service_ready_fn = totem_service_ready;
+}
+
+int totemsrp_member_add (
+        void *context,
+        const struct totem_ip_address *member,
+        int ring_no)
+{
+	struct totemsrp_instance *instance = (struct totemsrp_instance *)context;
+	int res;
+
+	res = totemrrp_member_add (instance->totemrrp_context, member, ring_no);
+
+	return (res);
+}
+
+int totemsrp_member_remove (
+        void *context,
+        const struct totem_ip_address *member,
+        int ring_no)
+{
+	struct totemsrp_instance *instance = (struct totemsrp_instance *)context;
+	int res;
+
+	res = totemrrp_member_remove (instance->totemrrp_context, member, ring_no);
+
+	return (res);
 }
