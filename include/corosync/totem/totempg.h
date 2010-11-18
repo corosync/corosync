@@ -160,6 +160,14 @@ extern int totempg_ring_reenable (void);
 extern void totempg_service_ready_register (
 	void (*totem_service_ready) (void));
 
+extern int totempg_member_add (
+	const struct totem_ip_address *member,
+	int ring_no);
+
+extern int totempg_member_remove (
+	const struct totem_ip_address *member,
+	int ring_no);
+
 #ifdef __cplusplus
 }
 #endif

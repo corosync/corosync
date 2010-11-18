@@ -166,6 +166,17 @@ struct rrp_algo {
 
 	int (*mcast_recv_empty) (
 		struct totemrrp_instance *instance);
+
+	int (*member_add) (
+		struct totemrrp_instance *instance,
+		const struct totem_ip_address *member,
+		unsigned int iface_no);
+
+	int (*member_remove) (
+		struct totemrrp_instance *instance,
+		const struct totem_ip_address *member,
+		unsigned int iface_no);
+
 };
 
 struct totemrrp_instance {
@@ -289,6 +300,15 @@ static void none_ring_reenable (
 static int none_mcast_recv_empty (
 	struct totemrrp_instance *instance);
 
+static int none_member_add (
+	struct totemrrp_instance *instance,
+	const struct totem_ip_address *member,
+	unsigned int iface_no);
+
+static int none_member_remove (
+	struct totemrrp_instance *instance,
+	const struct totem_ip_address *member,
+	unsigned int iface_no);
 /*
  * Passive Replication Forward Declerations
  */
@@ -350,6 +370,15 @@ static void passive_ring_reenable (
 static int passive_mcast_recv_empty (
 	struct totemrrp_instance *instance);
 
+static int passive_member_add (
+	struct totemrrp_instance *instance,
+	const struct totem_ip_address *member,
+	unsigned int iface_no);
+
+static int passive_member_remove (
+	struct totemrrp_instance *instance,
+	const struct totem_ip_address *member,
+	unsigned int iface_no);
 /*
  * Active Replication Forward Definitions
  */
@@ -411,6 +440,16 @@ static void active_ring_reenable (
 static int active_mcast_recv_empty (
 	struct totemrrp_instance *instance);
 
+static int active_member_add (
+	struct totemrrp_instance *instance,
+	const struct totem_ip_address *member,
+	unsigned int iface_no);
+
+static int active_member_remove (
+	struct totemrrp_instance *instance,
+	const struct totem_ip_address *member,
+	unsigned int iface_no);
+
 static void active_timer_expired_token_start (
 	struct active_instance *active_instance);
 
@@ -437,7 +476,9 @@ struct rrp_algo none_algo = {
 	.processor_count_set	= none_processor_count_set,
 	.token_target_set	= none_token_target_set,
 	.ring_reenable		= none_ring_reenable,
-	.mcast_recv_empty	= none_mcast_recv_empty
+	.mcast_recv_empty	= none_mcast_recv_empty,
+	.member_add		= none_member_add,
+	.member_remove		= none_member_remove
 };
 
 struct rrp_algo passive_algo = {
@@ -454,7 +495,9 @@ struct rrp_algo passive_algo = {
 	.processor_count_set	= passive_processor_count_set,
 	.token_target_set	= passive_token_target_set,
 	.ring_reenable		= passive_ring_reenable,
-	.mcast_recv_empty	= passive_mcast_recv_empty
+	.mcast_recv_empty	= passive_mcast_recv_empty,
+	.member_add		= passive_member_add,
+	.member_remove		= passive_member_remove
 };
 
 struct rrp_algo active_algo = {
@@ -471,7 +514,9 @@ struct rrp_algo active_algo = {
 	.processor_count_set	= active_processor_count_set,
 	.token_target_set	= active_token_target_set,
 	.ring_reenable		= active_ring_reenable,
-	.mcast_recv_empty	= active_mcast_recv_empty
+	.mcast_recv_empty	= active_mcast_recv_empty,
+	.member_add		= active_member_add,
+	.member_remove		= active_member_remove
 };
 
 struct rrp_algo *rrp_algos[] = {
@@ -597,6 +642,27 @@ static int none_mcast_recv_empty (
 
 	return (res);
 }
+
+static int none_member_add (
+	struct totemrrp_instance *instance,
+	const struct totem_ip_address *member,
+	unsigned int iface_no)
+{
+	int res;
+	res = totemnet_member_add (instance->net_handles[0], member);
+	return (res);
+}
+
+static int none_member_remove (
+	struct totemrrp_instance *instance,
+	const struct totem_ip_address *member,
+	unsigned int iface_no)
+{
+	int res;
+	res = totemnet_member_remove (instance->net_handles[0], member);
+	return (res);
+}
+
 
 /*
  * Passive Replication Implementation
@@ -947,6 +1013,27 @@ static int passive_mcast_recv_empty (
 	return (msgs_emptied);
 }
 
+static int passive_member_add (
+	struct totemrrp_instance *instance,
+	const struct totem_ip_address *member,
+	unsigned int iface_no)
+{
+	int res;
+	res = totemnet_member_add (instance->net_handles[iface_no], member);
+	return (res);
+}
+
+static int passive_member_remove (
+	struct totemrrp_instance *instance,
+	const struct totem_ip_address *member,
+	unsigned int iface_no)
+{
+	int res;
+	res = totemnet_member_remove (instance->net_handles[iface_no], member);
+	return (res);
+}
+
+
 static void passive_ring_reenable (
 	struct totemrrp_instance *instance)
 {
@@ -1264,6 +1351,26 @@ static void active_send_flush (struct totemrrp_instance *instance)
 	}
 }
 
+static int active_member_add (
+	struct totemrrp_instance *instance,
+	const struct totem_ip_address *member,
+	unsigned int iface_no)
+{
+	int res;
+	res = totemnet_member_add (instance->net_handles[iface_no], member);
+	return (res);
+}
+
+static int active_member_remove (
+	struct totemrrp_instance *instance,
+	const struct totem_ip_address *member,
+	unsigned int iface_no)
+{
+	int res;
+	res = totemnet_member_remove (instance->net_handles[iface_no], member);
+	return (res);
+}
+
 static void active_iface_check (struct totemrrp_instance *instance)
 {
 	struct active_instance *rrp_algo_instance = (struct active_instance *)instance->rrp_algo_instance;
@@ -1550,7 +1657,6 @@ int totemrrp_initialize (
 		totemnet_net_mtu_adjust (instance->net_handles[i], totem_config);
 	}
 
-
 	*rrp_context = instance;
 	return (0);
 
@@ -1707,3 +1813,28 @@ extern int totemrrp_mcast_recv_empty (
 	return (res);
 }
 
+int totemrrp_member_add (
+        void *rrp_context,
+        const struct totem_ip_address *member,
+	int iface_no)
+{
+	struct totemrrp_instance *instance = (struct totemrrp_instance *)rrp_context;
+	int res;
+
+	res = instance->rrp_algo->member_add (instance, member, iface_no);
+
+	return (res);
+}
+
+int totemrrp_member_remove (
+        void *rrp_context,
+        const struct totem_ip_address *member,
+	int iface_no)
+{
+	struct totemrrp_instance *instance = (struct totemrrp_instance *)rrp_context;
+	int res;
+
+	res = instance->rrp_algo->member_remove (instance, member, iface_no);
+
+	return (res);
+}
