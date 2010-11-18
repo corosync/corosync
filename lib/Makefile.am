@@ -107,7 +107,7 @@ libcoroipcc.so.$(SONAME): coroipcc.o
 	$(CC) -shared -o $@ \
 		-Wl,-soname=libcoroipcc.so.$(SOMAJOR) \
 		-Wl,-version-script=$(srcdir)/libcoroipcc.versions \
-		$^ $(LDFLAGS) $(AM_LDFLAGS)
+		$(LDFLAGS) $^ $(AM_LDFLAGS)
 	ln -sf libcoroipcc.so.$(SONAME) libcoroipcc.so
 	ln -sf libcoroipcc.so.$(SONAME) libcoroipcc.so.$(SOMAJOR)
 

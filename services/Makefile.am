@@ -51,10 +51,10 @@ LCRSO_OBJS		= $(SOURCES:%.c=%.o)
 
 if BUILD_DARWIN
 quorum_%.lcrso: %.o
-	$(CC) $(CFLAGS) -L$(top_builddir)/exec -llogsys -bundle -bundle_loader $(top_builddir)/exec/corosync $^ -o $@
+	$(CC) $(LDFLAGS) $(CFLAGS) -L$(top_builddir)/exec -llogsys -bundle -bundle_loader $(top_builddir)/exec/corosync $^ -o $@
 
 service_%.lcrso: %.o
-	$(CC) $(CFLAGS) -L$(top_builddir)/exec -llogsys -bundle -bundle_loader $(top_builddir)/exec/corosync $^ -o $@
+	$(CC) $(LDFLAGS) $(CFLAGS) -L$(top_builddir)/exec -llogsys -bundle -bundle_loader $(top_builddir)/exec/corosync $^ -o $@
 
 else
 
@@ -68,10 +68,10 @@ service_%.lcrso: %.o
 
 else
 quorum_%.lcrso: %.o
-	$(CC) $(CFLAGS) -shared -Wl,-soname=$@ $^ -o $@
+	$(CC) $(LDFLAGS) $(CFLAGS) $(COVERAGE_LCRSO_EXTRA_LDFLAGS) -shared -Wl,-soname=$@ $^ -o $@
 
 service_%.lcrso: %.o
-	$(CC) $(CFLAGS) -shared -Wl,-soname=$@ $^ -o $@
+	$(CC) $(LDFLAGS) $(CFLAGS) $(COVERAGE_LCRSO_EXTRA_LDFLAGS) -shared -Wl,-soname=$@ $^ -o $@
 endif
 
 endif

@@ -81,7 +81,7 @@ EXTRA_DIST		= $(LCRSO_SRC)
 
 if BUILD_DARWIN
 %.lcrso: %.o
-	$(CC) $(CFLAGS) -L$(top_builddir)/exec -llogsys -bundle -bind_at_load -bundle_loader ./corosync $^ -o $@
+	$(CC) $(LDFLAGS) $(CFLAGS) -L$(top_builddir)/exec -llogsys -bundle -bind_at_load -bundle_loader ./corosync $^ -o $@
 
 libtotem_pg.so.$(SONAME): $(TOTEM_OBJS)
 	$(CC) $(LDFLAGS) $(DARWIN_OPTS) $(TOTEM_OBJS) -o $@ -lpthread
@@ -102,46 +102,46 @@ else
 
 if BUILD_SOLARIS
 %.lcrso: %.o
-	$(LD) -G $^ -o $@
+	$(LD) $(LDFLAGS) -G $^ -o $@
 
 libtotem_pg.so.$(SONAME): $(TOTEM_OBJS)
-	$(LD) -G $(TOTEM_OBJS) -o $@ -lpthread
+	$(LD) $(LDFLAGS) -G $(TOTEM_OBJS) -o $@ -lpthread
 	ln -sf libtotem_pg.so.$(SONAME) libtotem_pg.so
 	ln -sf libtotem_pg.so.$(SONAME) libtotem_pg.so.$(SOMAJOR)
 
 liblogsys.so.$(SONAME): $(LOGSYS_OBJS)
-	$(LD) -G $(LOGSYS_OBJS) -o $@ -lpthread
+	$(LD) $(LDFLAGS) -G $(LOGSYS_OBJS) -o $@ -lpthread
 	ln -sf liblogsys.so.$(SONAME) liblogsys.so
 	ln -sf liblogsys.so.$(SONAME) liblogsys.so.$(SOMAJOR)
 
 libcoroipcs.so.$(SONAME): $(COROIPCS_OBJS)
-	$(LD) -G $(COROIPCS_OBJS) -o $@ -lpthread
+	$(LD) $(LDFLAGS) -G $(COROIPCS_OBJS) -o $@ -lpthread
 	ln -sf libcoroipcs.so.$(SONAME) libcoroipcs.so
 	ln -sf libcoroipcs.so.$(SONAME) libcoroipcs.so.$(SOMAJOR)
 
 else
 
 %.lcrso: %.o
-	$(CC) $(CFLAGS) -shared -Wl,-soname=$@ $^ -o $@
+	$(CC) $(LDFLAGS) $(CFLAGS) $(COVERAGE_LCRSO_EXTRA_LDFLAGS) -shared -Wl,-soname=$@ $^ -o $@
 
 libtotem_pg.so.$(SONAME): $(TOTEM_OBJS)
 	$(CC) -shared -o $@ \
 		-Wl,-soname=libtotem_pg.so.$(SOMAJOR) \
-		$^ $(LDFLAGS) $(nss_LIBS) $(rdmacm_LIBS) $(ibverbs_LIBS) -lpthread
+		$(LDFLAGS) $^ $(nss_LIBS) $(rdmacm_LIBS) $(ibverbs_LIBS) -lpthread
 	ln -sf libtotem_pg.so.$(SONAME) libtotem_pg.so
 	ln -sf libtotem_pg.so.$(SONAME) libtotem_pg.so.$(SOMAJOR)
 
 liblogsys.so.$(SONAME): $(LOGSYS_OBJS)
 	$(CC) -shared -o $@ \
 		-Wl,-soname=liblogsys.so.$(SOMAJOR) \
-		$^ $(LDFLAGS) -lpthread
+		$(LDFLAGS) $^ -lpthread
 	ln -sf liblogsys.so.$(SONAME) liblogsys.so
 	ln -sf liblogsys.so.$(SONAME) liblogsys.so.$(SOMAJOR)
 
 libcoroipcs.so.$(SONAME): $(COROIPCS_OBJS)
 	$(CC) -shared -o $@ \
 		-Wl,-soname=libcoroipcs.so.$(SOMAJOR) \
-		$^ $(LDFLAGS) -lpthread
+		$(LDFLAGS) $^ -lpthread
 	ln -sf libcoroipcs.so.$(SONAME) libcoroipcs.so
 	ln -sf libcoroipcs.so.$(SONAME) libcoroipcs.so.$(SOMAJOR)
 

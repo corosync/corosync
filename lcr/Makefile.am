@@ -52,17 +52,17 @@ test_static_SOURCES	= test.c libtest_a.c libtest_b.c uis.c lcr_ifact.c
 if BUILD_DARWIN
 
 %.lcrso: %.o
-	$(CC) $(CFLAGS) -bundle -bundle_loader ./test $^ -o $@
+	$(CC) $(LDFLAGS) $(CFLAGS) -bundle -bundle_loader ./test $^ -o $@
 else
 
 if BUILD_SOLARIS
 
 %.lcrso: %.o
-	$(CC) $(CFLAGS) -shared $^ -o $@
+	$(CC) $(LDFLAGS) $(CFLAGS) -shared $^ -o $@
 else
 
 %.lcrso: %.o
-	$(CC) $(CFLAGS) -shared -Wl,-soname,$@ $^ -o $@
+	$(CC) $(LDFLAGS) $(CFLAGS) -shared -Wl,-soname,$@ $^ -o $@
 
 endif
 
