@@ -1377,3 +1377,10 @@ extern void totempg_service_ready_register (
 	totemmrp_service_ready_register (totem_service_ready);
 }
 
+extern int totempg_member_add (
+	const struct totem_ip_address *member,
+	int ring_no);
+
+extern int totempg_member_remove (
+	const struct totem_ip_address *member,
+	int ring_no);

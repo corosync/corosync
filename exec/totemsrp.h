@@ -120,4 +120,14 @@ void totemsrp_service_ready_register (
 	void *srp_context,
 	void (*totem_service_ready) (void));
 
+extern int totemsrp_member_add (
+	void *srp_context,
+	const struct totem_ip_address *member,
+	int ring_no);
+	
+extern int totemsrp_member_remove (
+	void *srp_context,
+	const struct totem_ip_address *member,
+	int ring_no);
+	
 #endif /* TOTEMSRP_H_DEFINED */

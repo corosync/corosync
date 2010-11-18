@@ -39,6 +39,7 @@
 #include <totemiba.h>
 #endif
 #include <totemudp.h>
+#include <totemudpu.h>
 #include <totemnet.h>
 
 #define LOGSYS_UTILS_ONLY 1
@@ -112,11 +113,19 @@ struct transport {
 
 	int (*recv_mcast_empty) (
 		void *transport_context);
+
+	int (*member_add) (
+		void *transport_context,
+		const struct totem_ip_address *member);
+
+	int (*member_remove) (
+		void *transport_context,
+		const struct totem_ip_address *member);
 };
 
 struct transport transport_entries[] = {
 	{
-		.name = "UDP/IP",
+		.name = "UDP/IP Multicast",
 		.initialize = totemudp_initialize,
 		.processor_count_set = totemudp_processor_count_set,
 		.token_send = totemudp_token_send,
@@ -132,6 +141,26 @@ struct transport transport_entries[] = {
 		.token_target_set = totemudp_token_target_set,
 		.crypto_set = totemudp_crypto_set,
 		.recv_mcast_empty = totemudp_recv_mcast_empty
+	},
+	{
+		.name = "UDP/IP Unicast",
+		.initialize = totemudpu_initialize,
+		.processor_count_set = totemudpu_processor_count_set,
+		.token_send = totemudpu_token_send,
+		.mcast_flush_send = totemudpu_mcast_flush_send,
+		.mcast_noflush_send = totemudpu_mcast_noflush_send,
+		.recv_flush = totemudpu_recv_flush,
+		.send_flush = totemudpu_send_flush,
+		.iface_check = totemudpu_iface_check,
+		.finalize = totemudpu_finalize,
+		.net_mtu_adjust = totemudpu_net_mtu_adjust,
+		.iface_print = totemudpu_iface_print,
+		.iface_get = totemudpu_iface_get,
+		.token_target_set = totemudpu_token_target_set,
+		.crypto_set = totemudpu_crypto_set,
+		.recv_mcast_empty = totemudpu_recv_mcast_empty,
+		.member_add = totemudpu_member_add,
+		.member_remove = totemudpu_member_remove
 	},
 #ifdef HAVE_RDMA
 	{
@@ -192,13 +221,7 @@ static void totemnet_instance_initialize (
 	instance->totemnet_subsys_id = config->totem_logging_configuration.log_subsys_id;
 
 
-	transport = 0;
-
-#ifdef HAVE_RDMA
-	if (config->transport_number == 1) {
-		transport = 1;
-	}
-#endif
+	transport = config->transport_number;
 
 	log_printf (LOGSYS_LEVEL_NOTICE,
 		"Initializing transport (%s).\n", transport_entries[transport].name);
@@ -400,6 +423,38 @@ extern int totemnet_recv_mcast_empty (
 	unsigned int res;
 
 	res = instance->transport->recv_mcast_empty (instance->transport_context);
+
+	return (res);
+}
+
+extern int totemnet_member_add (
+	void *net_context,
+	const struct totem_ip_address *member)
+{
+	struct totemnet_instance *instance = (struct totemnet_instance *)net_context;
+	unsigned int res = 0;
+
+	if (instance->transport->member_add) {
+		res = instance->transport->member_add (
+			instance->transport_context,
+			member);
+	}
+
+	return (res);
+}
+
+extern int totemnet_member_remove (
+	void *net_context,
+	const struct totem_ip_address *member)
+{
+	struct totemnet_instance *instance = (struct totemnet_instance *)net_context;
+	unsigned int res = 0;
+
+	if (instance->transport->member_remove) {
+		res = instance->transport->member_remove (
+			instance->transport_context,
+			member);
+	}
 
 	return (res);
 }

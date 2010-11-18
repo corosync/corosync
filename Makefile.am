@@ -39,6 +39,7 @@ EXTRA_DIST		= autogen.sh conf/corosync.conf.example $(SPEC).in \
 			  build-aux/release.mk \
 			  conf/lenses/tests/test_corosync.aug \
 			  conf/lenses/corosync.aug \
+			  conf/corosync.conf.example.udpu \
 			  .version
 
 AUTOMAKE_OPTIONS	= foreign

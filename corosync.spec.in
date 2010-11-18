@@ -111,6 +111,7 @@ fi
 %dir %{_sysconfdir}/corosync/service.d
 %dir %{_sysconfdir}/corosync/uidgid.d
 %config(noreplace) %{_sysconfdir}/corosync/corosync.conf.example
+%config(noreplace) %{_sysconfdir}/corosync/corosync.conf.example.udpu
 %{_initrddir}/corosync
 %dir %{_libexecdir}/lcrso
 %{_libexecdir}/lcrso/coroparse.lcrso

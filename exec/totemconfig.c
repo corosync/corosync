@@ -270,10 +270,13 @@ extern int totem_config_read (
 	int res = 0;
 	hdb_handle_t object_totem_handle;
 	hdb_handle_t object_interface_handle;
+	hdb_handle_t object_member_handle;
 	const char *str;
 	unsigned int ringnumber = 0;
 	hdb_handle_t object_find_interface_handle;
+	hdb_handle_t object_find_member_handle;
 	const char *transport_type;
+	int member_count = 0;
 
 	res = totem_handle_find (objdb, &object_totem_handle);
 	if (res == -1) {
@@ -349,6 +352,8 @@ printf ("couldn't find totem handle\n");
 		object_find_interface_handle,
 		&object_interface_handle) == 0) {
 
+		member_count = 0;
+
 		objdb_get_int (objdb, object_interface_handle, "ringnumber", &ringnumber);
 
 		/*
@@ -384,6 +389,22 @@ printf ("couldn't find totem handle\n");
 			res = totemip_parse (&totem_config->interfaces[ringnumber].bindnet, str,
 					     totem_config->interfaces[ringnumber].mcast_addr.family);
 		}
+		objdb->object_find_create (
+			object_interface_handle,
+			"member",
+			strlen ("member"),
+			&object_find_member_handle);
+
+		while (objdb->object_find_next (
+			object_find_member_handle,
+			&object_member_handle) == 0) {
+
+			if (!objdb_get_string (objdb, object_member_handle, "memberaddr", &str)) {
+				res = totemip_parse (&totem_config->interfaces[ringnumber].member_list[member_count++], str, 0);
+			}
+		
+		}
+		totem_config->interfaces[ringnumber].member_count = member_count;
 		totem_config->interface_count++;
 	}
 
@@ -391,11 +412,16 @@ printf ("couldn't find totem handle\n");
 
 	add_totem_config_notification(objdb, totem_config, object_totem_handle);
 
-	totem_config->transport_number = 0;
+	totem_config->transport_number = TOTEM_TRANSPORT_UDP;
 	objdb_get_string (objdb, object_totem_handle, "transport", &transport_type);
 	if (transport_type) {
+		if (strcmp (transport_type, "udpu") == 0) {
+			totem_config->transport_number = TOTEM_TRANSPORT_UDPU;
+		}
+	}
+	if (transport_type) {
 		if (strcmp (transport_type, "iba") == 0) {
-			totem_config->transport_number = 1;
+			totem_config->transport_number = TOTEM_TRANSPORT_RDMA;
 		}
 	}
 
@@ -425,7 +451,8 @@ int totem_config_validate (
 		struct totem_ip_address null_addr;
 		memset (&null_addr, 0, sizeof (struct totem_ip_address));
 
-		if (memcmp (&totem_config->interfaces[i].mcast_addr, &null_addr,
+		if ((totem_config->transport_number == 0) &&
+			memcmp (&totem_config->interfaces[i].mcast_addr, &null_addr,
 				sizeof (struct totem_ip_address)) == 0) {
 			error_reason = "No multicast address specified";
 			goto parse_error;
@@ -443,7 +470,7 @@ int totem_config_validate (
 			goto parse_error;
 		}
 
-		if (totem_config->broadcast_use == 0) {
+		if (totem_config->broadcast_use == 0 && totem_config->transport_number == 0) {
 			if (totem_config->interfaces[i].mcast_addr.family != totem_config->interfaces[i].bindnet.family) {
 				error_reason = "Multicast address family does not match bind address family";
 				goto parse_error;
