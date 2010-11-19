@@ -53,7 +53,8 @@ dist_doc_DATA		= LICENSE INSTALL README.devmap \
 
 corosysconfdir		= ${COROSYSCONFDIR}
 
-corosysconf_DATA	= conf/corosync.conf.example
+corosysconf_DATA	= conf/corosync.conf.example \
+			  conf/corosync.conf.example.udpu
 
 if INSTALL_AUGEAS
 corolensdir		= ${datadir}/augeas/lenses
