@@ -51,7 +51,8 @@ dist_doc_DATA		= LICENSE INSTALL README.devmap \
 
 corosysconfdir		= ${COROSYSCONFDIR}
 
-corosysconf_DATA	= conf/corosync.conf.example
+corosysconf_DATA	= conf/corosync.conf.example \
+			  conf/corosync.conf.example.udpu
 
 SUBDIRS			= include lcr lib exec services tools test pkgconfig \
 			  man init
