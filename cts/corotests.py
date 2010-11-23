@@ -405,7 +405,6 @@ class CpgMsgOrderBase(CoroTest):
         ret = CoroTest.setup(self, node)
 
         for n in self.CM.Env["nodes"]:
-            self.total_num_msgs = self.total_num_msgs + self.num_msgs_per_node
             self.CM.cpg_agent[n].clean_start()
             self.CM.cpg_agent[n].cpg_join(self.name)
             self.CM.cpg_agent[n].record_messages()
@@ -420,6 +419,10 @@ class CpgMsgOrderBase(CoroTest):
     def wait_and_validate_order(self):
         msgs = {}
 
+        self.total_num_msgs = 0
+        for n in self.CM.Env["nodes"]:
+            self.total_num_msgs = self.total_num_msgs + self.num_msgs_per_node
+
         for n in self.CM.Env["nodes"]:
             msgs[n] = []
             stopped = False
@@ -427,7 +430,11 @@ class CpgMsgOrderBase(CoroTest):
 
             while len(msgs[n]) < self.total_num_msgs and waited < 360:
 
-                msg = self.CM.cpg_agent[n].read_messages(50)
+                try:
+                    msg = self.CM.cpg_agent[n].read_messages(50)
+                except:
+                    return self.failure('connection to test cpg_agent failed.')
+
                 if not msg == None:
                     msgl = msg.split(";")
 
