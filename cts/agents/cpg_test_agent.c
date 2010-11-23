@@ -95,7 +95,9 @@ static uint32_t my_nodeid;
 static int32_t my_seq;
 static int32_t use_zcb = 0;
 static int32_t my_msgs_to_send;
+static int32_t my_msgs_sent;
 static int32_t total_stored_msgs = 0;
+static int32_t total_msgs_revd = 0;
 static int32_t in_cnchg = 0;
 static int32_t pcmk_test = 0;
 
@@ -177,10 +179,11 @@ static void delivery_callback (
 		err_status_string (status_buf, 20, status));
 	list_add_tail (&log_pt->list, &msg_log_head);
 	total_stored_msgs++;
+	total_msgs_revd++;
 
-//	if ((total_stored_msgs % 100) == 0) {
-//		syslog (LOG_INFO, "%s(); %d", __func__, total_stored_msgs);
-//	}
+	if ((total_msgs_revd % 100) == 0) {
+		syslog (LOG_INFO, "%s(); %d", __func__, total_msgs_revd);
+	}
 
 }
 
@@ -292,8 +295,8 @@ static void read_messages (int sock, char* atmost_str)
 	if (atmost > (HOW_BIG_AND_BUF / LOG_STR_SIZE))
 		atmost = (HOW_BIG_AND_BUF / LOG_STR_SIZE);
 
-	syslog (LOG_DEBUG, "%s() atmost %d; total_stored_msgs:%d",
-		__func__, atmost, total_stored_msgs);
+//	syslog (LOG_DEBUG, "%s() atmost %d; total_stored_msgs:%d",
+//		__func__, atmost, total_stored_msgs);
 	big_and_buf[0] = '\0';
 
 	for (list = msg_log_head.next;
@@ -310,10 +313,11 @@ static void read_messages (int sock, char* atmost_str)
 
 		total_stored_msgs--;
 	}
-	syslog (LOG_DEBUG, "%s() sending %d; total_stored_msgs:%d; len:%d",
-		__func__, packed, total_stored_msgs, (int)strlen (big_and_buf));
 	if (packed == 0) {
 		strcpy (big_and_buf, "None");
+	} else {
+		syslog (LOG_INFO, "%s() sending %d; total_stored_msgs:%d; len:%d",
+			__func__, packed, total_stored_msgs, (int)strlen (big_and_buf));
 	}
 	send (sock, big_and_buf, strlen (big_and_buf), 0);
 }
@@ -389,6 +393,7 @@ static void send_some_more_messages_zcb (void)
 			exit (-2);
 		}
 
+		my_msgs_sent++;
 		my_msgs_to_send--;
 	}
 free_buffer:
@@ -425,7 +430,7 @@ static void send_some_more_messages_normal (void)
 	//syslog (LOG_DEBUG,"%s() send_now:%d", __func__, send_now);
 	my_msg.pid = my_pid;
 	my_msg.nodeid = my_nodeid;
-	payload_size = (rand() % 100000);
+	payload_size = (rand() % 10000);
 	my_msg.size = sizeof (msg_t) + payload_size;
 	my_msg.seq = 0;
 	for (i = 0; i < payload_size; i++) {
@@ -478,8 +483,11 @@ static void send_some_more_messages_normal (void)
 				exit (-2);
 			}
 		}
+		my_msgs_sent++;
 		my_msgs_to_send--;
 	}
+	syslog (LOG_INFO, "%s() sent %d; to send %d.",
+			__func__, my_msgs_sent, my_msgs_to_send);
 }
 
 static void send_some_more_messages (void * unused)
@@ -495,6 +503,7 @@ static void send_some_more_messages (void * unused)
 static void msg_blaster (int sock, char* num_to_send_str)
 {
 	my_msgs_to_send = atoi (num_to_send_str);
+	my_msgs_sent = 0;
 	my_seq = 1;
 	my_pid = getpid();
 
