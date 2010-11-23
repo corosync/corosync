@@ -953,13 +953,7 @@ cs_error_t cpg_mcast_joined (
 	iov[0].iov_len = sizeof (struct req_lib_cpg_mcast);
 	memcpy (&iov[1], iovec, iov_len * sizeof (struct iovec));
 
-repeat_send:
 	error = errno_to_cs(qb_ipcc_sendv(cpg_inst->c, iov, iov_len + 1));
-	if (error != CS_OK) {
-		if (error == CS_ERR_TRY_AGAIN || error == CS_ERR_NO_MEMORY) {
-			goto repeat_send;
-		}
-	}
 
 	hdb_handle_put (&cpg_handle_t_db, handle);
 
