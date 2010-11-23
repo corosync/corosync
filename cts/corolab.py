@@ -118,8 +118,8 @@ class CoroLabEnvironment(CtsLab):
         self["benchmark"] = 0
         self["logrestartcmd"] = "/etc/init.d/rsyslog restart 2>&1 > /dev/null"
         self["Schema"] = "corosync 1.2"
-        self["Stack"] = "corosync (flatiron)"
-        self['CMclass'] = corosync_flatiron
+        self["Stack"] = "corosync (needle)"
+        self['CMclass'] = corosync_needle
         self["stonith-type"] = "external/ssh"
         self["stonith-params"] = "hostlist=all,livedangerously=yes"
         self["at-boot"] = 0  # Does the cluster software start automatically when the node boot 

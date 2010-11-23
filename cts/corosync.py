@@ -94,7 +94,7 @@ class CoroConfig(object):
         return self.new_root + "/etc/corosync/corosync.conf"
 
 ###################################################################
-class corosync_flatiron(ClusterManager):
+class corosync_needle(ClusterManager):
     '''
      bla
     '''
@@ -102,7 +102,7 @@ class corosync_flatiron(ClusterManager):
         ClusterManager.__init__(self, Environment, randseed)
 
         self.update({
-            "Name"           : "corosync(flatiron)",
+            "Name"           : "corosync(needle)",
             "StartCmd"       : CTSvars.INITDIR+"/corosync start",
             "StopCmd"        : CTSvars.INITDIR+"/corosync stop",
             "RereadCmd"      : CTSvars.INITDIR+"/corosync reload",
