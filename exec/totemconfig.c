@@ -373,8 +373,6 @@ printf ("couldn't find totem handle\n");
 					&totem_config->interfaces[ringnumber].mcast_addr,
 					"255.255.255.255", 0);
 			}
-
-
 		}
 
 		/*
@@ -392,6 +390,19 @@ printf ("couldn't find totem handle\n");
 			res = totemip_parse (&totem_config->interfaces[ringnumber].bindnet, str,
 					     totem_config->interfaces[ringnumber].mcast_addr.family);
 		}
+
+		/*
+		 * Get the TTL
+		 */
+		if (totem_config->interfaces[ringnumber].mcast_addr.family == AF_INET6) {
+			totem_config->interfaces[ringnumber].ttl = 255;
+		} else {
+			totem_config->interfaces[ringnumber].ttl = 1;
+		}
+		if (!objdb_get_string (objdb, object_interface_handle, "ttl", &str)) {
+			totem_config->interfaces[ringnumber].ttl = atoi (str);
+		}
+
 		objdb->object_find_create (
 			object_interface_handle,
 			"member",
@@ -463,6 +474,11 @@ int totem_config_validate (
 
 		if (totem_config->interfaces[i].ip_port == 0) {
 			error_reason = "No multicast port specified";
+			goto parse_error;
+		}
+
+		if (totem_config->interfaces[i].ttl > 255 || totem_config->interfaces[i].ttl < 1) {
+			error_reason = "Invalid TTL (should be 1..255)";
 			goto parse_error;
 		}
 

@@ -1642,14 +1642,19 @@ static int totemudp_build_sockets_ip (
 	/*
 	 * Set multicast packets TTL
 	 */
-
-	if ( bindnet_address->family == AF_INET6 )
-	{
-		flag = 255;
+	flag = instance->totem_interface->ttl;
+	if (bindnet_address->family == AF_INET6) {
 		res = setsockopt (sockets->mcast_send, IPPROTO_IPV6, IPV6_MULTICAST_HOPS,
 			&flag, sizeof (flag));
 		if (res == -1) {
-			perror ("setp mcast hops");
+			perror ("set mcast v6 TTL");
+			return (-1);
+		}
+	} else {
+		res = setsockopt(sockets->mcast_send, IPPROTO_IP, IP_MULTICAST_TTL,
+			&flag, sizeof(flag));
+		if (res == -1) {
+			perror ("set mcast v4 TTL");
 			return (-1);
 		}
 	}

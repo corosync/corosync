@@ -10,6 +10,7 @@ totem {
 		bindnetaddr: 192.168.1.1
 		mcastaddr: 226.94.1.1
 		mcastport: 5405
+		ttl: 1
 	}
 }
 
