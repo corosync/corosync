@@ -57,6 +57,7 @@ struct totem_interface {
 	struct totem_ip_address boundto;
 	struct totem_ip_address mcast_addr;
 	uint16_t ip_port;
+	uint16_t ttl;
 	int member_count;
 	struct totem_ip_address member_list[PROCESSOR_COUNT_MAX];
 	

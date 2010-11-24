@@ -128,6 +128,12 @@ If you have multiple clusters on the same network using the same mcastaddr
 please configure the mcastports with a gap.
 
 .TP
+ttl
+This specifies the Time To Live (TTL). If you run your cluster on a routed
+network then the default of "1" will be too small. This option provides
+a way to increase this up to 255.
+
+.TP
 member
 This specifies a member on the interface and used with the udpu transport only.
 Every node that should be a member of the membership should be specified as
