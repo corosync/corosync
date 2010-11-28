@@ -162,11 +162,7 @@ struct totemudpu_instance {
 
 	char iov_buffer[FRAME_SIZE_MAX];
 
-	char iov_buffer_flush[FRAME_SIZE_MAX];
-
 	struct iovec totemudpu_iov_recv;
-
-	struct iovec totemudpu_iov_recv_flush;
 
 	struct list_head member_list;
 
@@ -189,8 +185,6 @@ struct totemudpu_instance {
 	poll_timer_handle timer_netif_check_timeout;
 
 	unsigned int my_memb_entries;
-
-	int flushing;
 
 	struct totem_config *totem_config;
 
@@ -221,9 +215,6 @@ static void totemudpu_instance_initialize (struct totemudpu_instance *instance)
 	instance->totemudpu_iov_recv.iov_base = instance->iov_buffer;
 
 	instance->totemudpu_iov_recv.iov_len = FRAME_SIZE_MAX; //sizeof (instance->iov_buffer);
-	instance->totemudpu_iov_recv_flush.iov_base = instance->iov_buffer_flush;
-
-	instance->totemudpu_iov_recv_flush.iov_len = FRAME_SIZE_MAX; //sizeof (instance->iov_buffer);
 
 	/*
 	 * There is always atleast 1 processor
@@ -242,7 +233,6 @@ do {									\
                 __FUNCTION__, __FILE__, __LINE__,			\
 		(const char *)format, ##args);				\
 } while (0);
-
 
 static int authenticate_and_decrypt_sober (
 	struct totemudpu_instance *instance,
@@ -1083,11 +1073,7 @@ static int net_deliver_fn (
 	unsigned char *msg_offset;
 	unsigned int size_delv;
 
-	if (instance->flushing == 1) {
-		iovec = &instance->totemudpu_iov_recv_flush;
-	} else {
-		iovec = &instance->totemudpu_iov_recv;
-	}
+	iovec = &instance->totemudpu_iov_recv;
 
 	/*
 	 * Receive datagram
@@ -1506,24 +1492,7 @@ int totemudpu_processor_count_set (
 
 int totemudpu_recv_flush (void *udpu_context)
 {
-	struct totemudpu_instance *instance = (struct totemudpu_instance *)udpu_context;
-	struct pollfd ufd;
-	int nfds;
 	int res = 0;
-
-	instance->flushing = 1;
-
-	do {
-		ufd.fd = instance->token_socket;
-		ufd.events = POLLIN;
-		nfds = poll (&ufd, 1, 0);
-		if (nfds == 1 && ufd.revents & POLLIN) {
-		net_deliver_fn (0, instance->token_socket,
-			ufd.revents, instance);
-		}
-	} while (nfds == 1);
-
-	instance->flushing = 0;
 
 	return (res);
 }
@@ -1646,7 +1615,7 @@ extern int totemudpu_recv_mcast_empty (
 	 */
 	msg_recv.msg_name = &system_from;
 	msg_recv.msg_namelen = sizeof (struct sockaddr_storage);
-	msg_recv.msg_iov = &instance->totemudpu_iov_recv_flush;
+	msg_recv.msg_iov = &instance->totemudpu_iov_recv;
 	msg_recv.msg_iovlen = 1;
 #if !defined(COROSYNC_SOLARIS)
 	msg_recv.msg_control = 0;
