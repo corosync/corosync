@@ -27,7 +27,12 @@ Conflicts: openais <= 0.89, openais-devel <= 0.89
 
 # Build bits
 
+%define buildtrunk 0
+%{?_with_buildtrunk: %define buildtrunk 1}
+
+%if %{buildtrunk}
 BuildRequires: autoconf automake
+%endif
 BuildRequires: nss-devel
 BuildRequires: libibverbs-devel librdmacm-devel
 
@@ -37,7 +42,9 @@ BuildRoot: %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 %setup -q -n %{name}-%{version}%{?numcomm:.%{numcomm}}%{?alphatag:-%{alphatag}}%{?dirty:-%{dirty}}
 
 %build
+%if %{buildtrunk}
 ./autogen.sh
+%endif
 
 export ibverbs_CFLAGS=-I/usr/include/infiniband \
 export ibverbs_LIBS=-libverbs \
