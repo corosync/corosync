@@ -1316,6 +1316,8 @@ static int totemudpu_build_sockets_ip (
 	struct sockaddr_storage sockaddr;
 	int addrlen;
 	int res;
+	unsigned int recvbuf_size;
+	unsigned int optlen = sizeof (recvbuf_size);
 
 	/*
 	 * Setup unicast socket
@@ -1354,6 +1356,20 @@ static int totemudpu_build_sockets_ip (
 	if (res == -1) {
 		perror ("bind token socket failed");
 		return (-1);
+	}
+
+	/*
+	 * the token_socket can receive many messages.  Allow a large number
+	 * of receive messages on this socket
+	 */
+	recvbuf_size = MCAST_SOCKET_BUFFER_SIZE;
+	res = setsockopt (instance->token_socket, SOL_SOCKET, SO_RCVBUF,
+		&recvbuf_size, optlen);
+	if (res == -1) {
+		char error_str[100];
+		strerror_r (errno, error_str, 100);
+		log_printf (instance->totemudpu_log_level_notice,
+			"Could not set recvbuf size %s\n", error_str);
 	}
 
 	return 0;
@@ -1682,6 +1698,8 @@ int totemudpu_member_add (
 
 	struct totemudpu_member *new_member;
 	int res;
+	unsigned int sendbuf_size;
+	unsigned int optlen = sizeof (sendbuf_size);
 	char error_str[100];
 
 	new_member = malloc (sizeof (struct totemudpu_member));
@@ -1705,6 +1723,19 @@ int totemudpu_member_add (
 		log_printf (instance->totemudpu_log_level_warning,
 			"Could not set non-blocking operation on token socket: %s\n", error_str);
 		return (-1);
+	}
+
+	/*
+ 	 * These sockets are used to send multicast messages, so their buffers
+ 	 * should be large
+ 	 */
+	sendbuf_size = MCAST_SOCKET_BUFFER_SIZE;
+	res = setsockopt (new_member->fd, SOL_SOCKET, SO_SNDBUF,
+		&sendbuf_size, optlen);
+	if (res == -1) {
+		strerror_r (errno, error_str, 100);
+		log_printf (instance->totemudpu_log_level_notice,
+			"Could not set sendbuf size %s\n", error_str);
 	}
 	return (0);
 }
