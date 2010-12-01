@@ -98,6 +98,7 @@ fi
 %files
 %defattr(-,root,root,-)
 %doc LICENSE SECURITY
+%{_bindir}/corosync-blackbox
 %{_sbindir}/corosync
 %{_sbindir}/corosync-keygen
 %{_sbindir}/corosync-objctl
