@@ -88,13 +88,21 @@ clean-generic:
 $(SPEC): $(SPEC).in
 	rm -f $@-t $@
 	LC_ALL=C date="$(shell date "+%a %b %d %Y")" && \
-	gitver="$(shell git describe --abbrev=4 --match='v*' HEAD 2>/dev/null)" && \
-	rpmver=`echo $$gitver | sed -e "s/^v//" -e "s/-.*//g"` && \
-	alphatag=`echo $$gitver | sed -e "s/.*-//" -e "s/^g//"` && \
-	vtag=`echo $$gitver | sed -e "s/-.*//g"` && \
-	numcomm=`git rev-list $$vtag..HEAD | wc -l` && \
-	git update-index --refresh > /dev/null 2>&1 || true && \
-	dirty=`git diff-index --name-only HEAD 2>/dev/null` && \
+	if [ -f .tarball-version ]; then \
+		gitver="$(shell cat .tarball-version)" && \
+		rpmver=$$gitver && \
+		alphatag="" && \
+		dirty="" && \
+		numcomm="0"; \
+	else \
+		gitver="$(shell git describe --abbrev=4 --match='v*' HEAD 2>/dev/null)" && \
+		rpmver=`echo $$gitver | sed -e "s/^v//" -e "s/-.*//g"` && \
+		alphatag=`echo $$gitver | sed -e "s/.*-//" -e "s/^g//"` && \
+		vtag=`echo $$gitver | sed -e "s/-.*//g"` && \
+		numcomm=`git rev-list $$vtag..HEAD | wc -l` && \
+		git update-index --refresh > /dev/null 2>&1 || true && \
+		dirty=`git diff-index --name-only HEAD 2>/dev/null`; \
+	fi && \
 	if [ -n "$$dirty" ]; then dirty="dirty"; else dirty=""; fi && \
 	if [ "$$numcomm" = "0" ]; then \
 		sed \
