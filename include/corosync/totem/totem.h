@@ -52,6 +52,11 @@
 #define SEND_THREADS_MAX	16
 #define INTERFACE_MAX		2
 
+/*
+ * Maximum number of continuous gather states
+ */
+#define MAX_NO_CONT_GATHER	3
+
 struct totem_interface {
 	struct totem_ip_address bindnet;
 	struct totem_ip_address boundto;
@@ -252,6 +257,7 @@ typedef struct {
 	uint64_t recovery_token_lost;
 	uint64_t consensus_timeouts;
 	uint64_t rx_msg_dropped;
+	uint32_t continuous_gather;
 
 	int earliest_token;
 	int latest_token;
