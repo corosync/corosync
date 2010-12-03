@@ -90,7 +90,7 @@ let common_logging =
    |kv "logfile_priority" /alert|crit|debug|emerg|err|info|notice|warning/
    |kv "syslog_priority" /alert|crit|debug|emerg|err|info|notice|warning/
    |kv "syslog_facility" /daemon|local0|local1|local2|local3|local4|local5|local6|local7/
-   |qstr /logfile|trace/
+   |qstr /logfile|tags/
 
 (* A logger_subsys subsection *)
 let logger_subsys =

@@ -41,6 +41,7 @@ logging {
 	    logfile: /tmp/corosync-msg.log
 		subsys: MSG
 		debug: on
+		tags: enter|trace4
 	}
 }
 
@@ -116,7 +117,8 @@ test Corosync.lns get conf =
 	    { "to_stderr" = "no" }
 	    { "logfile" = "/tmp/corosync-msg.log" }
 		{ "subsys" = "MSG" }
-		{ "debug" = "on" } } }
+		{ "debug" = "on" }
+		{ "tags" = "enter|trace4" } } }
   { }
   { "quorum"
     { "provider" = "corosync_quorum_ykd" }
