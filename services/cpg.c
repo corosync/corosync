@@ -804,10 +804,10 @@ static void downlist_master_choose_and_send (void)
 
 	stored_msg = downlist_master_choose ();
 	if (!stored_msg) {
-		log_printf (LOGSYS_LEVEL_INFO, "NO chosen downlist");
+		log_printf (LOGSYS_LEVEL_DEBUG, "NO chosen downlist");
 		return;
 	}
-	downlist_log(LOGSYS_LEVEL_INFO, "chosen downlist", stored_msg);
+	downlist_log(LOGSYS_LEVEL_DEBUG, "chosen downlist", stored_msg);
 
 	/* send events */
 	for (iter = process_info_list_head.next; iter != &process_info_list_head; ) {
