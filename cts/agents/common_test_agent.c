@@ -236,12 +236,25 @@ static int create_server_sockect (int server_port)
 	return listener;
 }
 
+static int32_t sig_exit_handler (int num, void *data)
+{
+	qb_loop_stop(poll_handle);
+	return 0;
+}
+
 int test_agent_run(int server_port, ta_do_command_fn func)
 {
 	int listener;
 
 	do_command = func;
 	poll_handle = qb_loop_create ();
+
+	qb_loop_signal_add(poll_handle, QB_LOOP_HIGH,
+		SIGINT, NULL, sig_exit_handler, NULL);
+	qb_loop_signal_add(poll_handle, QB_LOOP_HIGH,
+		SIGQUIT, NULL, sig_exit_handler, NULL);
+	qb_loop_signal_add(poll_handle, QB_LOOP_HIGH,
+		SIGTERM, NULL, sig_exit_handler, NULL);
 
 	listener = create_server_sockect (server_port);
 	qb_loop_poll_add (poll_handle,
