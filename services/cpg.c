@@ -789,11 +789,11 @@ static void downlist_master_choose_and_send (void)
 
 	stored_msg = downlist_master_choose ();
 	if (!stored_msg) {
-		log_printf (LOGSYS_LEVEL_INFO, "NO chosen downlist");
+		log_printf (LOGSYS_LEVEL_DEBUG, "NO chosen downlist");
 		return;
 	}
 
-	log_printf (LOGSYS_LEVEL_INFO, "chosen downlist from node %s",
+	log_printf (LOGSYS_LEVEL_DEBUG, "chosen downlist from node %s",
 		api->totem_ifaces_print(stored_msg->sender_nodeid));
 
 	/* send events */
