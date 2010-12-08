@@ -711,7 +711,9 @@ static void do_command (int sock, char* func, char*args[], int num_args)
 
 	} else if (strcmp ("cfg_shutdown", func) == 0) {
 
-		corosync_cfg_try_shutdown (cfg_handle, COROSYNC_CFG_SHUTDOWN_FLAG_REQUEST);
+		syslog (LOG_INFO,"%s calling %s() called!", __func__, func);
+		result = corosync_cfg_try_shutdown (cfg_handle, COROSYNC_CFG_SHUTDOWN_FLAG_REQUEST);
+		syslog (LOG_INFO,"%s() returned %d!", func, result);
 
 	} else if (strcmp ("cfg_initialize",func) == 0) {
 		int retry_count = 0;
@@ -729,10 +731,13 @@ static void do_command (int sock, char* func, char*args[], int num_args)
 			retry_count++;
 			result = corosync_cfg_initialize (&cfg_handle, &cfg_callbacks);
 		}
+		syslog (LOG_INFO,"corosync_cfg_initialize() == %d", result);
 
-		corosync_cfg_fd_get (cfg_handle, &cfg_fd);
+		result = corosync_cfg_fd_get (cfg_handle, &cfg_fd);
+		syslog (LOG_INFO,"corosync_cfg_fd_get() == %d", result);
 
-		corosync_cfg_state_track (cfg_handle, 0, &notification_buffer);
+		result = corosync_cfg_state_track (cfg_handle, 0, &notification_buffer);
+		syslog (LOG_INFO,"corosync_cfg_state_track() == %d", result);
 
 		qb_loop_poll_add (ta_poll_handle_get(),
 				  QB_LOOP_MED,

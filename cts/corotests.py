@@ -1093,6 +1093,9 @@ class GenStopAllBeekhof(CoroTest):
         CoroTest.__init__(self,cm)
         self.name="GenStopAllBeekhof"
         self.need_all_up = True
+        self.config['logging/logger_subsys[1]/subsys'] = 'CFG'
+        self.config['logging/logger_subsys[1]/debug'] = 'on'
+        self.config['logging/logger_subsys[1]/tags'] = 'trace1|enter|leave'
 
     def __call__(self, node):
         '''Perform the 'GenStopAllBeekhof' test. '''
@@ -1101,7 +1104,11 @@ class GenStopAllBeekhof(CoroTest):
         stopping = int(time.time())
         for n in self.CM.Env["nodes"]:
             self.CM.cpg_agent[n].pcmk_test()
+
+        for n in self.CM.Env["nodes"]:
             self.CM.cpg_agent[n].msg_blaster(10000)
+
+        for n in self.CM.Env["nodes"]:
             self.CM.cpg_agent[n].cfg_shutdown()
             self.CM.ShouldBeStatus[n] = "down"
 
