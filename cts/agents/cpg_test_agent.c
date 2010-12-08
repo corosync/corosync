@@ -49,6 +49,7 @@
 
 #include <corosync/list.h>
 #include <qb/qbdefs.h>
+#include <qb/qbutil.h>
 #include <qb/qbloop.h>
 #include <corosync/cpg.h>
 #include <corosync/cfg.h>
@@ -737,11 +738,20 @@ static void do_command (int sock, char* func, char*args[], int num_args)
 	}
 }
 
+static void cs_ipcs_libqb_log_fn(const char *file_name,
+	int32_t file_line,
+	int32_t severity,
+	const char *msg)
+{
+	syslog(severity, "%s:%d %s() %s", file_name, file_line, __func__, msg);
+}
+
 
 int main (int argc, char *argv[])
 {
 	openlog (NULL, LOG_CONS|LOG_PID, LOG_DAEMON);
 
+	qb_util_set_log_function (cs_ipcs_libqb_log_fn);
 	list_init (&msg_log_head);
 	list_init (&config_chg_log_head);
 
