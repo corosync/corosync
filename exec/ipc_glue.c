@@ -588,7 +588,8 @@ static int32_t cs_ipcs_msg_process(qb_ipcs_connection_t *c,
 	struct qb_ipc_response_header response;
 	struct qb_ipc_request_header *request_pt = (struct qb_ipc_request_header *)data;
 	int32_t service = qb_ipcs_service_id_get(c);
-	int32_t send_ok;
+	int32_t send_ok = 0;
+	int32_t is_async_call = QB_FALSE;
 	ssize_t res = -1;
 	int sending_allowed_private_data;
 
@@ -597,25 +598,27 @@ static int32_t cs_ipcs_msg_process(qb_ipcs_connection_t *c,
 			request_pt,
 			&sending_allowed_private_data);
 
+	is_async_call = (service == CPG_SERVICE && request_pt->id == 2);
+
 	/*
 	 * This happens when the message contains some kind of invalid
 	 * parameter, such as an invalid size
 	 */
-	if (send_ok == -1) {
+	if (send_ok == -EINVAL) {
 		response.size = sizeof (response);
 		response.id = 0;
 		response.error = CS_ERR_INVALID_PARAM;
-		log_printf(LOG_INFO, "%s() invalid message! size:%d error:%d",
-					__func__, response.size, response.error);
-		qb_ipcs_response_send (c,
+		if (is_async_call) {
+			log_printf(LOGSYS_LEVEL_INFO, "*** %s() invalid message! size:%d error:%d",
+				__func__, response.size, response.error);
+		} else {
+			qb_ipcs_response_send (c,
 				&response,
 				sizeof (response));
+		}
 		res = -EINVAL;
-	} else {
-		if (send_ok) {
-			ais_service[service]->lib_engine[request_pt->id].lib_handler_fn(c, request_pt);
-			res = 0;
-		} else {
+	} else if (send_ok < 0) {
+		if (!is_async_call) {
 			/*
 			 * Overload, tell library to retry
 			 */
@@ -623,10 +626,20 @@ static int32_t cs_ipcs_msg_process(qb_ipcs_connection_t *c,
 			response.id = 0;
 			response.error = CS_ERR_TRY_AGAIN;
 			qb_ipcs_response_send (c,
-					&response,
-					sizeof (response));
-			res = -ENOBUFS;
+				&response,
+				sizeof (response));
+		} else {
+			log_printf(LOGSYS_LEVEL_WARNING,
+				"*** %s() (%d:%d - %d) %s!",
+				__func__, service, request_pt->id,
+				is_async_call, strerror(-send_ok));
 		}
+		res = -ENOBUFS;
+	}
+
+	if (send_ok) {
+		ais_service[service]->lib_engine[request_pt->id].lib_handler_fn(c, request_pt);
+		res = 0;
 	}
 	corosync_sending_allowed_release (&sending_allowed_private_data);
 	return res;

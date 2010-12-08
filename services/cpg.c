@@ -1651,7 +1651,6 @@ static void message_handler_req_lib_cpg_mcast (void *conn, const void *message)
 
 	struct iovec req_exec_cpg_iovec[2];
 	struct req_exec_cpg_mcast req_exec_cpg_mcast;
-	struct res_lib_cpg_mcast res_lib_cpg_mcast;
 	int msglen = req_lib_cpg_mcast->msglen;
 	int result;
 	cs_error_t error = CPG_ERR_NOT_EXIST;
@@ -1690,13 +1689,10 @@ static void message_handler_req_lib_cpg_mcast (void *conn, const void *message)
 
 		result = api->totem_mcast (req_exec_cpg_iovec, 2, TOTEM_AGREED);
 		assert(result == 0);
+	} else {
+		log_printf(LOGSYS_LEVEL_ERROR, "*** %p can't mcast to group %s state:%d, error:%d\n",
+			conn, group_name.value, cpd->cpd_state, error);
 	}
-
-	res_lib_cpg_mcast.header.size = sizeof(res_lib_cpg_mcast);
-	res_lib_cpg_mcast.header.id = MESSAGE_RES_CPG_MCAST;
-	res_lib_cpg_mcast.header.error = error;
-	api->ipc_response_send (conn, &res_lib_cpg_mcast,
-		sizeof (res_lib_cpg_mcast));
 }
 
 static void message_handler_req_lib_cpg_zc_execute (
