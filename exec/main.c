@@ -940,7 +940,7 @@ int corosync_sending_allowed (
 		corosync_group_handle,
 		&reserve_iovec, 1);
 	if (pd->reserved_msgs == -1) {
-		return (-1);
+		return -EINVAL;
 	}
 
 	sending_allowed = QB_FALSE;
@@ -952,7 +952,13 @@ int corosync_sending_allowed (
 			sending_allowed = QB_TRUE;
 		} else if (pd->reserved_msgs && sync_in_process == 0) {
 			sending_allowed = QB_TRUE;
+		} else if (pd->reserved_msgs == 0) {
+			return -ENOBUFS;
+		} else /* (sync_in_process) */ {
+			return -EINPROGRESS;
 		}
+	} else {
+		return -EHOSTUNREACH;
 	}
 
 	return (sending_allowed);

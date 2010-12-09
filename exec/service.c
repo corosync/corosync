@@ -592,7 +592,7 @@ static void service_unlink_schedwrk_handler (void *data) {
 
 	lcr_ifact_release (cb_data->service_handle);
 
-	qb_loop_job_add(corosync_poll_handle_get(),
+	qb_loop_job_add(cs_poll_handle_get(),
 		QB_LOOP_HIGH,
 		data,
 		service_exit_schedwrk_handler);
@@ -600,7 +600,7 @@ static void service_unlink_schedwrk_handler (void *data) {
 	return;
 
  redo_this_function:
-	qb_loop_job_add(corosync_poll_handle_get(),
+	qb_loop_job_add(cs_poll_handle_get(),
 		QB_LOOP_HIGH,
 		data,
 		service_unlink_schedwrk_handler);
@@ -638,14 +638,14 @@ static void service_exit_schedwrk_handler (void *data) {
 		cb_data->service_engine = current_service_engine;
 		cb_data->service_handle = service_handle;
 
-		qb_loop_job_add(corosync_poll_handle_get(),
+		qb_loop_job_add(cs_poll_handle_get(),
 			QB_LOOP_HIGH,
 			data,
 			service_unlink_schedwrk_handler);
 		return;
 	}
 
-	qb_loop_job_add(corosync_poll_handle_get(),
+	qb_loop_job_add(cs_poll_handle_get(),
 		QB_LOOP_HIGH,
 		data,
 		service_exit_schedwrk_handler);
@@ -671,7 +671,7 @@ void corosync_service_unlink_all (
 
 	cb_data.api = api;
 
-	qb_loop_job_add(corosync_poll_handle_get(),
+	qb_loop_job_add(cs_poll_handle_get(),
 		QB_LOOP_HIGH,
 		&cb_data,
 		service_exit_schedwrk_handler);
@@ -698,7 +698,7 @@ static void service_unlink_and_exit_schedwrk_handler (void *data)
 	if (res == 0) {
 		free (service_unlink_and_exit_data);
 	} else {
-		qb_loop_job_add(corosync_poll_handle_get(),
+		qb_loop_job_add(cs_poll_handle_get(),
 			QB_LOOP_HIGH,
 			data,
 			service_unlink_and_exit_schedwrk_handler);
@@ -720,7 +720,7 @@ unsigned int corosync_service_unlink_and_exit (
 	service_unlink_and_exit_data->name = strdup (service_name);
 	service_unlink_and_exit_data->ver = service_ver;
 
-	qb_loop_job_add(corosync_poll_handle_get(),
+	qb_loop_job_add(cs_poll_handle_get(),
 		QB_LOOP_HIGH,
 		service_unlink_and_exit_data,
 		service_unlink_and_exit_schedwrk_handler);
