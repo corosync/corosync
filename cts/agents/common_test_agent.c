@@ -186,6 +186,8 @@ static int create_server_sockect (int server_port)
 	int rv;
 	struct addrinfo hints, *ai, *p;
 	char server_port_str[16];
+	char addr_str[INET_ADDRSTRLEN];
+	void *ptr;
 
 	/* get a socket and bind it
 	 */
@@ -195,7 +197,7 @@ static int create_server_sockect (int server_port)
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_flags = AI_PASSIVE;
 	if ((rv = getaddrinfo (NULL, server_port_str, &hints, &ai)) != 0) {
-		syslog (LOG_ERR, "%s\n", gai_strerror (rv));
+		syslog (LOG_ERR, "%s", gai_strerror (rv));
 		exit (1);
 	}
 
@@ -209,11 +211,25 @@ static int create_server_sockect (int server_port)
 		 */
 		if (setsockopt (listener, SOL_SOCKET, SO_REUSEADDR,
 				&yes, sizeof(int)) < 0) {
-			syslog (LOG_ERR, "setsockopt() failed: %s\n", strerror (errno));
+			syslog (LOG_ERR, "setsockopt() failed: %s", strerror (errno));
+		}
+
+		switch (p->ai_family)
+		{
+		case AF_INET:
+			ptr = &((struct sockaddr_in *) p->ai_addr)->sin_addr;
+			break;
+		case AF_INET6:
+			ptr = &((struct sockaddr_in6 *) p->ai_addr)->sin6_addr;
+			break;
+		}
+
+		if (inet_ntop(p->ai_family, ptr, addr_str, INET_ADDRSTRLEN) == NULL) {
+			syslog (LOG_ERR, "inet_ntop() failed: %s", strerror (errno));
 		}
 
 		if (bind (listener, p->ai_addr, p->ai_addrlen) < 0) {
-			syslog (LOG_ERR, "bind() failed: %s\n", strerror (errno));
+			syslog (LOG_ERR, "bind(%s) failed: %s\n", addr_str, strerror (errno));
 			close (listener);
 			continue;
 		}
@@ -222,7 +238,7 @@ static int create_server_sockect (int server_port)
 	}
 
 	if (p == NULL) {
-		syslog (LOG_ERR, "failed to bind\n");
+		syslog (LOG_ERR, "failed to bind");
 		exit (2);
 	}
 
