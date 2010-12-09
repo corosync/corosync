@@ -1106,14 +1106,14 @@ class GenStopAllBeekhof(CoroTest):
             self.CM.cpg_agent[n].pcmk_test()
 
         for n in self.CM.Env["nodes"]:
-            self.CM.cpg_agent[n].msg_blaster(10000)
+            self.CM.cpg_agent[n].msg_blaster(1000)
 
         for n in self.CM.Env["nodes"]:
             self.CM.cpg_agent[n].cfg_shutdown()
             self.CM.ShouldBeStatus[n] = "down"
 
         waited = 0
-        max_wait = 60
+        max_wait = 90
 
         still_up = list(self.CM.Env["nodes"])
         while len(still_up) > 0:
@@ -1130,9 +1130,6 @@ class GenStopAllBeekhof(CoroTest):
         
         waited = int(time.time()) - stopping
         if waited > max_wait:
-            for v in still_up:
-                self.CM.log("%s killing corosync on %s" % (self.name, v))
-                self.CM.rsh(v, 'killall -SIGSEGV corosync cpg_test_agent')
             return self.failure("Waited %d secs for nodes: %s to stop" % (waited, str(still_up)))
 
         self.CM.log("%s ALL good            (waited %d secs)" % (self.name, waited))
