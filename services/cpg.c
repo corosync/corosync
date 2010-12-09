@@ -1701,11 +1701,66 @@ static void message_handler_req_lib_cpg_zc_execute (
 {
 	mar_req_coroipcc_zc_execute_t *hdr = (mar_req_coroipcc_zc_execute_t *)message;
 	struct qb_ipc_request_header *header;
+	struct res_lib_cpg_mcast res_lib_cpg_mcast;
+	struct cpg_pd *cpd = (struct cpg_pd *)api->ipc_private_data_get (conn);
+	struct iovec req_exec_cpg_iovec[2];
+	struct req_exec_cpg_mcast req_exec_cpg_mcast;
+	struct req_lib_cpg_mcast *req_lib_cpg_mcast;
+	int result;
+	cs_error_t error = CPG_ERR_NOT_EXIST;
+	struct coroipcs_zc_header *zc_hdr;
+
 	log_printf(LOGSYS_LEVEL_DEBUG, "got ZC mcast request on %p\n", conn);
 
+	zc_hdr = (struct coroipcs_zc_header *)((char *)serveraddr2void(hdr->server_address));
 	header = (struct qb_ipc_request_header *)(((char *)serveraddr2void(hdr->server_address) + sizeof (struct coroipcs_zc_header)));
+	req_lib_cpg_mcast = (struct req_lib_cpg_mcast *)header;
 
-	message_handler_req_lib_cpg_mcast(conn, header);
+	switch (cpd->cpd_state) {
+	case CPD_STATE_UNJOINED:
+		error = CPG_ERR_NOT_EXIST;
+		break;
+	case CPD_STATE_LEAVE_STARTED:
+		error = CPG_ERR_NOT_EXIST;
+		break;
+	case CPD_STATE_JOIN_STARTED:
+		error = CPG_OK;
+		break;
+	case CPD_STATE_JOIN_COMPLETED:
+		error = CPG_OK;
+		break;
+	}
+
+	res_lib_cpg_mcast.header.size = sizeof(res_lib_cpg_mcast);
+	res_lib_cpg_mcast.header.id = MESSAGE_RES_CPG_MCAST;
+	if (error == CPG_OK) {
+		req_exec_cpg_mcast.header.size = sizeof(req_exec_cpg_mcast) + req_lib_cpg_mcast->msglen;
+		req_exec_cpg_mcast.header.id = SERVICE_ID_MAKE(CPG_SERVICE,
+			MESSAGE_REQ_EXEC_CPG_MCAST);
+		req_exec_cpg_mcast.pid = cpd->pid;
+		req_exec_cpg_mcast.msglen = req_lib_cpg_mcast->msglen;
+		api->ipc_source_set (&req_exec_cpg_mcast.source, conn);
+		memcpy(&req_exec_cpg_mcast.group_name, &cpd->group_name,
+			sizeof(mar_cpg_name_t));
+
+		req_exec_cpg_iovec[0].iov_base = (char *)&req_exec_cpg_mcast;
+		req_exec_cpg_iovec[0].iov_len = sizeof(req_exec_cpg_mcast);
+		req_exec_cpg_iovec[1].iov_base = (char *)header + sizeof(struct req_lib_cpg_mcast);
+		req_exec_cpg_iovec[1].iov_len = req_exec_cpg_mcast.msglen;
+
+		result = api->totem_mcast (req_exec_cpg_iovec, 2, TOTEM_AGREED);
+		if (result == 0) {
+			res_lib_cpg_mcast.header.error = CS_OK;
+		} else {
+			res_lib_cpg_mcast.header.error = CS_ERR_TRY_AGAIN;
+		}
+	} else {
+		res_lib_cpg_mcast.header.error = error;
+	}
+
+	api->ipc_response_send (conn, &res_lib_cpg_mcast,
+		sizeof (res_lib_cpg_mcast));
+
 }
 
 static void message_handler_req_lib_cpg_membership (void *conn,

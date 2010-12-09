@@ -97,7 +97,7 @@ coroipcc_msg_send_reply_receive (
 	void *res_msg,
 	size_t res_len)
 {
-	return errno_to_cs(qb_ipcc_sendv_recv(c, iov, iov_len, res_msg, res_len));
+	return qb_to_cs_error(qb_ipcc_sendv_recv(c, iov, iov_len, res_msg, res_len));
 }
 
 static void cpg_iteration_instance_finalize (struct cpg_iteration_instance_t *cpg_iteration_instance)

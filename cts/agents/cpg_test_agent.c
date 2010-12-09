@@ -93,7 +93,7 @@ static struct list_head msg_log_head;
 static pid_t my_pid;
 static uint32_t my_nodeid;
 static int32_t my_seq;
-static int32_t use_zcb = 0;
+static int32_t use_zcb = QB_FALSE;
 static int32_t my_msgs_to_send;
 static int32_t my_msgs_sent;
 static int32_t total_stored_msgs = 0;
@@ -492,7 +492,6 @@ static void send_some_more_messages_normal (void)
 
 static void send_some_more_messages (void * unused)
 {
-	use_zcb = QB_FALSE;
 	if (use_zcb) {
 		send_some_more_messages_zcb ();
 	} else {
@@ -507,7 +506,7 @@ static void msg_blaster (int sock, char* num_to_send_str)
 	my_seq = 1;
 	my_pid = getpid();
 
-	use_zcb = 0;
+	use_zcb = QB_FALSE;
 	total_stored_msgs = 0;
 
 	cpg_local_get (cpg_handle, &my_nodeid);
@@ -544,7 +543,7 @@ static void msg_blaster_zcb (int sock, char* num_to_send_str)
 	my_seq = 1;
 	my_pid = getpid();
 
-	use_zcb = 1;
+	use_zcb = QB_TRUE;
 	total_stored_msgs = 0;
 
 	cpg_local_get (cpg_handle, &my_nodeid);
