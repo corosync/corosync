@@ -106,22 +106,22 @@ struct zcb_mapped {
  *
  *
  *			library accept join error codes
- * UNJOINED		YES(CPG_OK) 			set JOIN_STARTED
- * LEAVE_STARTED	NO(CPG_ERR_BUSY)
- * JOIN_STARTED		NO(CPG_ERR_EXIST)
- * JOIN_COMPlETED	NO(CPG_ERR_EXIST)
+ * UNJOINED		YES(CS_OK) 			set JOIN_STARTED
+ * LEAVE_STARTED	NO(CS_ERR_BUSY)
+ * JOIN_STARTED		NO(CS_ERR_EXIST)
+ * JOIN_COMPlETED	NO(CS_ERR_EXIST)
  *
  *			library accept leave error codes
- * UNJOINED		NO(CPG_ERR_NOT_EXIST)
- * LEAVE_STARTED	NO(CPG_ERR_NOT_EXIST)
- * JOIN_STARTED		NO(CPG_ERR_BUSY)
- * JOIN_COMPLETED	YES(CPG_OK)			set LEAVE_STARTED
+ * UNJOINED		NO(CS_ERR_NOT_EXIST)
+ * LEAVE_STARTED	NO(CS_ERR_NOT_EXIST)
+ * JOIN_STARTED		NO(CS_ERR_BUSY)
+ * JOIN_COMPLETED	YES(CS_OK)			set LEAVE_STARTED
  *
  *			library accept mcast
- * UNJOINED		NO(CPG_ERR_NOT_EXIST)
- * LEAVE_STARTED	NO(CPG_ERR_NOT_EXIST)
- * JOIN_STARTED		YES(CPG_OK)
- * JOIN_COMPLETED	YES(CPG_OK)
+ * UNJOINED		NO(CS_ERR_NOT_EXIST)
+ * LEAVE_STARTED	NO(CS_ERR_NOT_EXIST)
+ * JOIN_STARTED		YES(CS_OK)
+ * JOIN_COMPLETED	YES(CS_OK)
  */
 enum cpd_state {
 	CPD_STATE_UNJOINED,
@@ -594,7 +594,7 @@ static int notify_lib_totem_membership (
 		sizeof(mar_uint32_t) * (member_list_entries);
 	buf = alloca(size);
 	if (!buf)
-		return CPG_ERR_LIBRARY;
+		return CS_ERR_LIBRARY;
 
 	res = (struct res_lib_cpg_totem_confchg_callback *)buf;
 	res->member_list_entries = member_list_entries;
@@ -614,7 +614,7 @@ static int notify_lib_totem_membership (
 		api->ipc_dispatch_send (conn, buf, size);
 	}
 
-	return CPG_OK;
+	return CS_OK;
 }
 
 static int notify_lib_joinlist(
@@ -656,7 +656,7 @@ static int notify_lib_joinlist(
 		sizeof(mar_cpg_address_t) * (count + left_list_entries + joined_list_entries);
 	buf = alloca(size);
 	if (!buf)
-		return CPG_ERR_LIBRARY;
+		return CS_ERR_LIBRARY;
 
 	res = (struct res_lib_cpg_confchg_callback *)buf;
 	res->joined_list_entries = joined_list_entries;
@@ -745,7 +745,7 @@ static int notify_lib_joinlist(
 		}
 	}
 
-	return CPG_OK;
+	return CS_OK;
 }
 
 static struct downlist_msg* downlist_master_choose (void)
@@ -1313,7 +1313,7 @@ static void message_handler_req_lib_cpg_join (void *conn, const void *message)
 	const struct req_lib_cpg_join *req_lib_cpg_join = message;
 	struct cpg_pd *cpd = (struct cpg_pd *)api->ipc_private_data_get (conn);
 	struct res_lib_cpg_join res_lib_cpg_join;
-	cs_error_t error = CPG_OK;
+	cs_error_t error = CS_OK;
 	struct list_head *iter;
 
 	/* Test, if we don't have same pid and group name joined */
@@ -1324,7 +1324,7 @@ static void message_handler_req_lib_cpg_join (void *conn, const void *message)
 			mar_name_compare(&req_lib_cpg_join->group_name, &cpd_item->group_name) == 0) {
 
 			/* We have same pid and group name joined -> return error */
-			error = CPG_ERR_EXIST;
+			error = CS_ERR_EXIST;
 			goto response_send;
 		}
 	}
@@ -1339,14 +1339,14 @@ static void message_handler_req_lib_cpg_join (void *conn, const void *message)
 		if (pi->nodeid == api->totem_nodeid_get () && pi->pid == req_lib_cpg_join->pid &&
 		    mar_name_compare(&req_lib_cpg_join->group_name, &pi->group) == 0) {
 			/* We have same pid and group name joined -> return error */
-			error = CPG_ERR_TRY_AGAIN;
+			error = CS_ERR_TRY_AGAIN;
 			goto response_send;
 		}
 	}
 
 	switch (cpd->cpd_state) {
 	case CPD_STATE_UNJOINED:
-		error = CPG_OK;
+		error = CS_OK;
 		cpd->cpd_state = CPD_STATE_JOIN_STARTED;
 		cpd->pid = req_lib_cpg_join->pid;
 		cpd->flags = req_lib_cpg_join->flags;
@@ -1358,13 +1358,13 @@ static void message_handler_req_lib_cpg_join (void *conn, const void *message)
 			MESSAGE_REQ_EXEC_CPG_PROCJOIN, CONFCHG_CPG_REASON_JOIN);
 		break;
 	case CPD_STATE_LEAVE_STARTED:
-		error = CPG_ERR_BUSY;
+		error = CS_ERR_BUSY;
 		break;
 	case CPD_STATE_JOIN_STARTED:
-		error = CPG_ERR_EXIST;
+		error = CS_ERR_EXIST;
 		break;
 	case CPD_STATE_JOIN_COMPLETED:
-		error = CPG_ERR_EXIST;
+		error = CS_ERR_EXIST;
 		break;
 	}
 
@@ -1379,7 +1379,7 @@ response_send:
 static void message_handler_req_lib_cpg_leave (void *conn, const void *message)
 {
 	struct res_lib_cpg_leave res_lib_cpg_leave;
-	cs_error_t error = CPG_OK;
+	cs_error_t error = CS_OK;
 	struct req_lib_cpg_leave  *req_lib_cpg_leave = (struct req_lib_cpg_leave *)message;
 	struct cpg_pd *cpd = (struct cpg_pd *)api->ipc_private_data_get (conn);
 
@@ -1387,16 +1387,16 @@ static void message_handler_req_lib_cpg_leave (void *conn, const void *message)
 
 	switch (cpd->cpd_state) {
 	case CPD_STATE_UNJOINED:
-		error = CPG_ERR_NOT_EXIST;
+		error = CS_ERR_NOT_EXIST;
 		break;
 	case CPD_STATE_LEAVE_STARTED:
-		error = CPG_ERR_NOT_EXIST;
+		error = CS_ERR_NOT_EXIST;
 		break;
 	case CPD_STATE_JOIN_STARTED:
-		error = CPG_ERR_BUSY;
+		error = CS_ERR_BUSY;
 		break;
 	case CPD_STATE_JOIN_COMPLETED:
-		error = CPG_OK;
+		error = CS_OK;
 		cpd->cpd_state = CPD_STATE_LEAVE_STARTED;
 		cpg_node_joinleave_send (req_lib_cpg_leave->pid,
 			&req_lib_cpg_leave->group_name,
@@ -1653,26 +1653,26 @@ static void message_handler_req_lib_cpg_mcast (void *conn, const void *message)
 	struct req_exec_cpg_mcast req_exec_cpg_mcast;
 	int msglen = req_lib_cpg_mcast->msglen;
 	int result;
-	cs_error_t error = CPG_ERR_NOT_EXIST;
+	cs_error_t error = CS_ERR_NOT_EXIST;
 
 	log_printf(LOGSYS_LEVEL_DEBUG, "got mcast request on %p\n", conn);
 
 	switch (cpd->cpd_state) {
 	case CPD_STATE_UNJOINED:
-		error = CPG_ERR_NOT_EXIST;
+		error = CS_ERR_NOT_EXIST;
 		break;
 	case CPD_STATE_LEAVE_STARTED:
-		error = CPG_ERR_NOT_EXIST;
+		error = CS_ERR_NOT_EXIST;
 		break;
 	case CPD_STATE_JOIN_STARTED:
-		error = CPG_OK;
+		error = CS_OK;
 		break;
 	case CPD_STATE_JOIN_COMPLETED:
-		error = CPG_OK;
+		error = CS_OK;
 		break;
 	}
 
-	if (error == CPG_OK) {
+	if (error == CS_OK) {
 		req_exec_cpg_mcast.header.size = sizeof(req_exec_cpg_mcast) + msglen;
 		req_exec_cpg_mcast.header.id = SERVICE_ID_MAKE(CPG_SERVICE,
 			MESSAGE_REQ_EXEC_CPG_MCAST);
@@ -1707,7 +1707,7 @@ static void message_handler_req_lib_cpg_zc_execute (
 	struct req_exec_cpg_mcast req_exec_cpg_mcast;
 	struct req_lib_cpg_mcast *req_lib_cpg_mcast;
 	int result;
-	cs_error_t error = CPG_ERR_NOT_EXIST;
+	cs_error_t error = CS_ERR_NOT_EXIST;
 	struct coroipcs_zc_header *zc_hdr;
 
 	log_printf(LOGSYS_LEVEL_DEBUG, "got ZC mcast request on %p\n", conn);
@@ -1718,22 +1718,22 @@ static void message_handler_req_lib_cpg_zc_execute (
 
 	switch (cpd->cpd_state) {
 	case CPD_STATE_UNJOINED:
-		error = CPG_ERR_NOT_EXIST;
+		error = CS_ERR_NOT_EXIST;
 		break;
 	case CPD_STATE_LEAVE_STARTED:
-		error = CPG_ERR_NOT_EXIST;
+		error = CS_ERR_NOT_EXIST;
 		break;
 	case CPD_STATE_JOIN_STARTED:
-		error = CPG_OK;
+		error = CS_OK;
 		break;
 	case CPD_STATE_JOIN_COMPLETED:
-		error = CPG_OK;
+		error = CS_OK;
 		break;
 	}
 
 	res_lib_cpg_mcast.header.size = sizeof(res_lib_cpg_mcast);
 	res_lib_cpg_mcast.header.id = MESSAGE_RES_CPG_MCAST;
-	if (error == CPG_OK) {
+	if (error == CS_OK) {
 		req_exec_cpg_mcast.header.size = sizeof(req_exec_cpg_mcast) + req_lib_cpg_mcast->msglen;
 		req_exec_cpg_mcast.header.id = SERVICE_ID_MAKE(CPG_SERVICE,
 			MESSAGE_REQ_EXEC_CPG_MCAST);
@@ -1773,7 +1773,7 @@ static void message_handler_req_lib_cpg_membership (void *conn,
 	int member_count = 0;
 
 	res_lib_cpg_membership_get.header.id = MESSAGE_RES_CPG_MEMBERSHIP;
-	res_lib_cpg_membership_get.header.error = CPG_OK;
+	res_lib_cpg_membership_get.header.error = CS_OK;
 	res_lib_cpg_membership_get.header.size =
 		sizeof (struct req_lib_cpg_membership_get);
 
@@ -1800,7 +1800,7 @@ static void message_handler_req_lib_cpg_local_get (void *conn,
 
 	res_lib_cpg_local_get.header.size = sizeof (res_lib_cpg_local_get);
 	res_lib_cpg_local_get.header.id = MESSAGE_RES_CPG_LOCAL_GET;
-	res_lib_cpg_local_get.header.error = CPG_OK;
+	res_lib_cpg_local_get.header.error = CS_OK;
 	res_lib_cpg_local_get.local_nodeid = api->totem_nodeid_get ();
 
 	api->ipc_response_send (conn, &res_lib_cpg_local_get,
