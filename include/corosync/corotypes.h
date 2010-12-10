@@ -145,9 +145,6 @@ static inline cs_error_t qb_to_cs_error (int result)
 	res = -result;
 
 	switch (res) {
-	case 0:
-		err = CS_OK;
-		break;
 	case EBADF:
 		err = CS_ERR_BAD_HANDLE;
 		break;
@@ -205,6 +202,7 @@ static inline cs_error_t qb_to_cs_error (int result)
 	case E2BIG:
 		err = CS_ERR_TOO_BIG;
 		break;
+	case ENOTCONN:
 	default:
 		err = CS_ERR_LIBRARY;
 		break;
