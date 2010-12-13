@@ -62,6 +62,7 @@
 #include <corosync/list.h>
 #include <corosync/hdb.h>
 #include <corosync/swab.h>
+#include <qb/qbdefs.h>
 #include <qb/qbloop.h>
 #define LOGSYS_UTILS_ONLY 1
 #include <corosync/engine/logsys.h>
@@ -671,7 +672,7 @@ static void passive_timer_expired_token_start (
         qb_loop_timer_add (
 		passive_instance->rrp_instance->poll_handle,
 		QB_LOOP_MED,
-		passive_instance->rrp_instance->totem_config->rrp_token_expired_timeout,
+		passive_instance->rrp_instance->totem_config->rrp_token_expired_timeout*QB_TIME_NS_IN_MSEC,
 		(void *)passive_instance,
 		timer_function_passive_token_expired,
 		&passive_instance->timer_expired_token);
@@ -692,7 +693,7 @@ static void passive_timer_problem_decrementer_start (
         qb_loop_timer_add (
 		QB_LOOP_MED,
 		passive_instance->rrp_instance->poll_handle,
-		passive_instance->rrp_instance->totem_config->rrp_problem_count_timeout,
+		passive_instance->rrp_instance->totem_config->rrp_problem_count_timeout*QB_TIME_NS_IN_MSEC,
 		(void *)passive_instance,
 		timer_function_passive_problem_decrementer,
 		&passive_instance->timer_problem_decrementer);
@@ -1101,7 +1102,7 @@ static void active_timer_expired_token_start (
         qb_loop_timer_add (
 		active_instance->rrp_instance->poll_handle,
 		QB_LOOP_MED,
-		active_instance->rrp_instance->totem_config->rrp_token_expired_timeout,
+		active_instance->rrp_instance->totem_config->rrp_token_expired_timeout*QB_TIME_NS_IN_MSEC,
 		(void *)active_instance,
 		timer_function_active_token_expired,
 		&active_instance->timer_expired_token);
@@ -1121,7 +1122,7 @@ static void active_timer_problem_decrementer_start (
         qb_loop_timer_add (
 		active_instance->rrp_instance->poll_handle,
 		QB_LOOP_MED,
-		active_instance->rrp_instance->totem_config->rrp_problem_count_timeout,
+		active_instance->rrp_instance->totem_config->rrp_problem_count_timeout*QB_TIME_NS_IN_MSEC,
 		(void *)active_instance,
 		timer_function_active_problem_decrementer,
 		&active_instance->timer_problem_decrementer);

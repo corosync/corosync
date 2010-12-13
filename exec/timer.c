@@ -49,7 +49,7 @@ int corosync_timer_add_absolute (
 	uint64_t expire_time = nanosec_from_epoch - qb_util_nano_current_get();
 	return qb_loop_timer_add(corosync_poll_handle_get(),
 				QB_LOOP_MED,
-				 expire_time / QB_TIME_NS_IN_MSEC,
+				 expire_time,
 				 data,
 				 timer_fn,
 				 handle);
@@ -63,7 +63,7 @@ int corosync_timer_add_duration (
 {
 	return qb_loop_timer_add(corosync_poll_handle_get(),
 				QB_LOOP_MED,
-				 nanosec_duration / QB_TIME_NS_IN_MSEC,
+				 nanosec_duration,
 				 data,
 				 timer_fn,
 				 handle);

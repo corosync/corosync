@@ -711,7 +711,7 @@ static void cs_ipcs_check_for_flow_control(void)
 		if (fc_enabled) {
 			qb_ipcs_request_rate_limit(ipcs_mapper[i].inst, QB_IPCS_RATE_OFF);
 
-			qb_loop_timer_add(corosync_poll_handle_get(), QB_LOOP_MED, 1,
+			qb_loop_timer_add(corosync_poll_handle_get(), QB_LOOP_MED, 1*QB_TIME_NS_IN_MSEC,
 			       NULL, corosync_recheck_the_q_level, &ipcs_check_for_flow_control_timer);
 		} else if (ipc_fc_totem_queue_level == TOTEM_Q_LEVEL_LOW) {
 			qb_ipcs_request_rate_limit(ipcs_mapper[i].inst, QB_IPCS_RATE_FAST);
