@@ -800,7 +800,7 @@ void cs_ipcs_stats_update(void)
 				"flow_control_state", strlen("flow_control_state"),
 				&stats.flow_control_state, sizeof(uint32_t));
 
-			qb_ipcs_connection_ref_dec(c);
+			qb_ipcs_connection_unref(c);
 		}
 	}
 }
