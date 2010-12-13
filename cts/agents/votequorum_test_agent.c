@@ -88,6 +88,7 @@ static int vq_dispatch_wrapper_fn (
 		syslog (LOG_ERR, "%s() got LIB error disconnecting from corosync.", __func__);
 		qb_loop_poll_del (ta_poll_handle_get(), fd);
 		close (fd);
+		return -1;
 	}
 	return 0;
 }
@@ -102,6 +103,7 @@ static int q_dispatch_wrapper_fn (
 		syslog (LOG_ERR, "%s() got LIB error disconnecting from corosync.", __func__);
 		qb_loop_poll_del (ta_poll_handle_get(), fd);
 		close (fd);
+		return -1;
 	}
 	return 0;
 }
