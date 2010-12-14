@@ -53,6 +53,7 @@
 
 #include <corosync/corotypes.h>
 #include <corosync/cpg.h>
+#include "../lib/util.h"
 
 #ifndef timersub
 #define timersub(a, b, result)					\
@@ -176,7 +177,7 @@ int main (void) {
 
 	res = cpg_join (handle, &group_name);
 	if (res != CS_OK) {
-		printf ("cpg_join failed with result %d\n", res);
+		printf ("cpg_join failed with result %s\n", cs_strerror(res));
 		exit (1);
 	}
 
@@ -187,7 +188,7 @@ int main (void) {
 
 	res = cpg_finalize (handle);
 	if (res != CS_OK) {
-		printf ("cpg_join failed with result %d\n", res);
+		printf ("cpg_finalize failed with result %s\n", cs_strerror(res));
 		exit (1);
 	}
 	return (0);
