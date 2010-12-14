@@ -44,6 +44,7 @@
 #include <sys/types.h>
 #include <sys/un.h>
 
+#include "../lib/util.h"
 #include <corosync/corotypes.h>
 #include <corosync/confdb.h>
 
@@ -167,17 +168,18 @@ static void print_config_tree(confdb_handle_t handle, hdb_handle_t parent_object
 	/* Show the keys */
 	res = confdb_key_iter_start(handle, parent_object_handle);
 	if (res != CS_OK) {
-		fprintf(stderr, "error resetting key iterator for object "HDB_X_FORMAT" %d\n", parent_object_handle, res);
+		fprintf(stderr, "error resetting key iterator for object "HDB_X_FORMAT" %s\n",
+			parent_object_handle, cs_strerror(res));
 		exit(EXIT_FAILURE);
 	}
 	children_printed = 0;
 
 	while ( (res = confdb_key_iter_typed(handle,
-								   parent_object_handle,
-								   key_name,
-								   key_value,
-								   &key_value_len,
-								   &type)) == CS_OK) {
+				parent_object_handle,
+				key_name,
+				key_value,
+				&key_value_len,
+				&type)) == CS_OK) {
 		key_value[key_value_len] = '\0';
 		if (parent_name != NULL)
 			printf("%s%c", parent_name, SEPERATOR);
@@ -190,7 +192,8 @@ static void print_config_tree(confdb_handle_t handle, hdb_handle_t parent_object
 	/* Show sub-objects */
 	res = confdb_object_iter_start(handle, parent_object_handle);
 	if (res != CS_OK) {
-		fprintf(stderr, "error resetting object iterator for object "HDB_X_FORMAT" %d\n", parent_object_handle, res);
+		fprintf(stderr, "error resetting object iterator for "HDB_X_FORMAT" %s\n",
+			parent_object_handle, cs_strerror(res));
 		exit(EXIT_FAILURE);
 	}
 
@@ -298,7 +301,8 @@ static int print_all(void)
 
 	result = confdb_initialize (&handle, &callbacks);
 	if (result != CS_OK) {
-		fprintf (stderr, "Could not initialize objdb library. Error %d\n", result);
+		fprintf (stderr, "Could not initialize objdb library: %s\n",
+			cs_strerror(result));
 		return 1;
 	}
 
@@ -413,7 +417,8 @@ static cs_error_t find_object (confdb_handle_t handle,
 	while (obj_name_pt != NULL) {
 		res = confdb_object_find_start(handle, parent_object_handle);
 		if (res != CS_OK) {
-			fprintf (stderr, "Could not start object_find %d\n", res);
+			fprintf (stderr, "Could not start object_find %s\n",
+				cs_strerror(res));
 			exit (EXIT_FAILURE);
 		}
 
@@ -493,7 +498,8 @@ static void write_key(confdb_handle_t handle, char * path_pt)
 								  strlen(key_value));
 
 		if (res != CS_OK)
-			fprintf(stderr, "Failed to replace the key %s=%s. Error %d\n", key_name, key_value, res);
+			fprintf(stderr, "Failed to replace the key %s=%s. Error %s\n",
+				key_name, key_value, cs_strerror(res));
 	} else {
 		/* not there, create a new key */
 		res = confdb_key_create_typed (handle,
@@ -503,7 +509,8 @@ static void write_key(confdb_handle_t handle, char * path_pt)
 								 strlen(key_value),
 								 CONFDB_VALUETYPE_STRING);
 		if (res != CS_OK)
-			fprintf(stderr, "Failed to create the key %s=%s. Error %d\n", key_name, key_value, res);
+			fprintf(stderr, "Failed to create the key %s=%s. Error %s\n",
+				key_name, key_value, cs_strerror(res));
 	}
 
 }
@@ -523,7 +530,8 @@ static void create_object(confdb_handle_t handle, char * name_pt)
 	while (obj_name_pt != NULL) {
 		res = confdb_object_find_start(handle, parent_object_handle);
 		if (res != CS_OK) {
-			fprintf (stderr, "Could not start object_find %d\n", res);
+			fprintf (stderr, "Could not start object_find %s\n",
+				cs_strerror(res));
 			exit (EXIT_FAILURE);
 		}
 
@@ -545,8 +553,8 @@ static void create_object(confdb_handle_t handle, char * name_pt)
 										strlen (obj_name_pt),
 										&obj_handle);
 			if (res != CS_OK)
-				fprintf(stderr, "Failed to create object \"%s\". Error %d.\n",
-						obj_name_pt, res);
+				fprintf(stderr, "Failed to create object \"%s\". Error %s.\n",
+						obj_name_pt, cs_strerror(res));
 		}
 
 		parent_object_handle = obj_handle;
@@ -728,15 +736,15 @@ static void track_object(confdb_handle_t handle, char * name_pt)
 	res = find_object (handle, name_pt, FIND_OBJECT_ONLY, &obj_handle);
 
 	if (res != CS_OK) {
-		fprintf (stderr, "Could not find object \"%s\". Error %d\n",
-				 name_pt, res);
+		fprintf (stderr, "Could not find object \"%s\". Error %s\n",
+				 name_pt, cs_strerror(res));
 		return;
 	}
 
 	res = confdb_track_changes (handle, obj_handle, CONFDB_TRACK_DEPTH_RECURSIVE);
 	if (res != CS_OK) {
-		fprintf (stderr, "Could not enable tracking on object \"%s\". Error %d\n",
-				 name_pt, res);
+		fprintf (stderr, "Could not enable tracking on object \"%s\". Error %s\n",
+				 name_pt, cs_strerror(res));
 		return;
 	}
 }
@@ -747,7 +755,8 @@ static void stop_tracking(confdb_handle_t handle)
 
 	res = confdb_stop_track_changes (handle);
 	if (res != CS_OK) {
-		fprintf (stderr, "Could not stop tracking. Error %d\n", res);
+		fprintf (stderr, "Could not stop tracking. Error %s\n",
+			cs_strerror(res));
 		return;
 	}
 }
@@ -762,7 +771,8 @@ static void delete_object(confdb_handle_t handle, char * name_pt)
 		res = confdb_object_destroy (handle, obj_handle);
 
 		if (res != CS_OK)
-			fprintf(stderr, "Failed to find object \"%s\" to delete. Error %d\n", name_pt, res);
+			fprintf(stderr, "Failed to find object \"%s\" to delete. \n  Error %s\n",
+				name_pt, cs_strerror(res));
 	} else {
 		char parent_name[OBJ_NAME_SIZE];
 		char key_name[OBJ_NAME_SIZE];
@@ -774,20 +784,21 @@ static void delete_object(confdb_handle_t handle, char * name_pt)
 		res = find_object (handle, parent_name, FIND_OBJECT_ONLY, &obj_handle);
 
 		if (res != CS_OK) {
-			fprintf(stderr, "Failed to find the key's parent object \"%s\". Error %d\n", parent_name, res);
+			fprintf(stderr, "Failed to find the key's parent object \"%s\". Error %s\n",
+				parent_name, cs_strerror(res));
 			exit (EXIT_FAILURE);
 		}
 
 		res = confdb_key_delete (handle,
-								 obj_handle,
-								 key_name,
-								 strlen(key_name),
-								 key_value,
-								 strlen(key_value));
+			obj_handle,
+			key_name,
+			strlen(key_name),
+			key_value,
+			strlen(key_value));
 
 		if (res != CS_OK)
-			fprintf(stderr, "Failed to delete key \"%s=%s\" from object \"%s\". Error %d\n",
-					key_name, key_value, parent_name, res);
+			fprintf(stderr, "Failed to delete key \"%s=%s\" from object \"%s\".\n   Error %s\n",
+				key_name, key_value, parent_name, cs_strerror(res));
 	}
 }
 
@@ -850,7 +861,8 @@ int main (int argc, char *argv[]) {
 
 	result = confdb_initialize (&handle, &callbacks);
 	if (result != CS_OK) {
-		fprintf (stderr, "Failed to initialize the objdb API. Error %d\n", result);
+		fprintf (stderr, "Failed to initialize the objdb API. Error %s\n",
+			cs_strerror(result));
 		exit (EXIT_FAILURE);
 	}
 	while (optind < argc) {
@@ -883,7 +895,8 @@ int main (int argc, char *argv[]) {
 
 	result = confdb_finalize (handle);
 	if (result != CS_OK) {
-		fprintf (stderr, "Error finalizing objdb API. Error %d\n", result);
+		fprintf (stderr, "Error finalizing objdb API.\n  Error %s\n",
+			cs_strerror(result));
 		exit(EXIT_FAILURE);
 	}
 
