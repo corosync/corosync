@@ -146,7 +146,7 @@ cs_error_t confdb_initialize (
 		error = CS_OK;
 		confdb_inst->c = qb_ipcc_connect ("confdb", IPC_REQUEST_SIZE);
 		if (confdb_inst->c == NULL) {
-			error = errno_to_cs(errno);
+			error = qb_to_cs_error(-errno);
 			goto error_put_destroy;
 		}
 	}
