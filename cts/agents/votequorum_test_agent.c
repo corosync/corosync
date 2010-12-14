@@ -53,6 +53,7 @@
 #include <corosync/votequorum.h>
 #include <corosync/quorum.h>
 #include "common_test_agent.h"
+#include "../../lib/util.h"
 
 static quorum_handle_t q_handle = 0;
 static votequorum_handle_t vq_handle = 0;
@@ -84,10 +85,13 @@ static int vq_dispatch_wrapper_fn (
 	void *data)
 {
 	cs_error_t error = votequorum_dispatch (vq_handle, CS_DISPATCH_ALL);
-	if (error == CS_ERR_LIBRARY) {
-		syslog (LOG_ERR, "%s() got LIB error disconnecting from corosync.", __func__);
+	if (error != CS_OK) {
+		syslog (LOG_ERR, "%s() got %s error, disconnecting.",
+			__func__, cs_strerror(error));
+		votequorum_finalize(vq_handle);
 		qb_loop_poll_del (ta_poll_handle_get(), fd);
 		close (fd);
+		vq_handle = 0;
 		return -1;
 	}
 	return 0;
@@ -99,10 +103,13 @@ static int q_dispatch_wrapper_fn (
 	void *data)
 {
 	cs_error_t error = quorum_dispatch (q_handle, CS_DISPATCH_ALL);
-	if (error == CS_ERR_LIBRARY) {
-		syslog (LOG_ERR, "%s() got LIB error disconnecting from corosync.", __func__);
+	if (error != CS_OK) {
+		syslog (LOG_ERR, "%s() got %s error, disconnecting.",
+			__func__, cs_strerror(error));
+		quorum_finalize(q_handle);
 		qb_loop_poll_del (ta_poll_handle_get(), fd);
 		close (fd);
+		q_handle = 0;
 		return -1;
 	}
 	return 0;
@@ -224,7 +231,6 @@ static void setexpected (int sock, char *arg)
 	snprintf (response, 100, "%s", OK_STR);
 
 send_response:
-	votequorum_finalize (vq_handle);
 	send (sock, response, strlen (response) + 1, 0);
 }
 
@@ -245,7 +251,6 @@ static void setvotes (int sock, char *arg)
 	snprintf (response, 100, "%s", OK_STR);
 
 send_response:
-	votequorum_finalize (vq_handle);
 	send (sock, response, strlen (response), 0);
 }
 
@@ -323,17 +328,29 @@ static void do_command (int sock, char* func, char*args[], int num_args)
 	}
 }
 
+static void my_pre_exit(void)
+{
+	syslog (LOG_INFO, "PRE EXIT");
+	if (vq_handle) {
+		votequorum_finalize(vq_handle);
+		vq_handle = 0;
+	}
+	if (q_handle) {
+		quorum_finalize(q_handle);
+		q_handle = 0;
+	}
+}
 
 int main (int argc, char *argv[])
 {
 	int ret;
 
 	openlog (NULL, LOG_CONS|LOG_PID, LOG_DAEMON);
-	syslog (LOG_ERR, "votequorum_test_agent STARTING");
+	syslog (LOG_INFO, "%s STARTING", __FILE__);
 
 	parse_debug = 1;
-	ret = test_agent_run (9037, do_command);
-	syslog (LOG_ERR, "votequorum_test_agent EXITING");
+	ret = test_agent_run (9037, do_command, my_pre_exit);
+	syslog (LOG_INFO, "EXITING");
 
 	return ret;
 }
