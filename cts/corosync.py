@@ -47,6 +47,8 @@ from cts.CTS import ClusterManager
 from cts.CTSscenarios import ScenarioComponent
 from cts.CTS import RemoteExec
 from cts.CTSvars import CTSvars
+from cts.CTSaudits import ClusterAudit
+from cts.CTSaudits import LogAudit
 
 
 ###################################################################
@@ -329,6 +331,28 @@ class corosync_needle(ClusterManager):
     def Components(self):    
         return None
 
+class ShmLeakAudit(ClusterAudit):
+
+    def __init__(self, cm):
+        self.CM = cm
+
+    def name(self):
+        return "ShmLeakAudit"
+
+    def is_applicable(self):
+        return 1
+
+    def __call__(self):
+        rc = 1
+
+        for node in self.CM.Env["nodes"]:
+            (res, lines) = self.CM.rsh(node, "/usr/share/corosync/tests/shm_leak_audit.sh", None)
+            for line in lines:
+                self.CM.log("%s leaked %s" % (node, line))
+                rc = 0
+
+        return rc
+
 
 ###################################################################
 class TestAgentComponent(ScenarioComponent):
@@ -488,6 +512,7 @@ class TestAgent(object):
         try:
             res = self.read ()
         except RuntimeError, msg:
+            res = None
             self.env.log("send_recv_dynamic: %s(); error: %s" % (self.func_name, msg))
 
         return res
@@ -632,4 +657,18 @@ class VoteQuorumTestAgent(TestAgent):
             TestAgent.start(self)
             self.init()
             self.used = False
+
+AllAuditClasses = []
+AllAuditClasses.append(LogAudit)
+AllAuditClasses.append(ShmLeakAudit)
+
+def CoroAuditList(cm):
+    result = []
+    for auditclass in AllAuditClasses:
+        a = auditclass(cm)
+        if a.is_applicable():
+            result.append(a)
+    return result
+
+
 

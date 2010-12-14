@@ -39,7 +39,6 @@ Copyright (c) 2010 Red Hat, Inc.
 # THE POSSIBILITY OF SUCH DAMAGE.
 
 import sys
-from cts.CTSaudits import AuditList
 from cts.CTSscenarios import *
 from corotests import CoroTestList
 from corosync import *
@@ -274,7 +273,7 @@ if __name__ == '__main__':
 
     # Create the Cluster Manager object
     cm = Environment['CMclass'](Environment)
-    Audits = AuditList(cm)
+    Audits = CoroAuditList(cm)
         
     if Environment["ListTests"] == 1 :
         Tests = CoroTestList(cm, Audits)
