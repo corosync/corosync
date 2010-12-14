@@ -46,8 +46,9 @@ extern int32_t parse_debug;
 #define HOW_BIG_AND_BUF 4096
 
 typedef void (*ta_do_command_fn) (int sock, char* func, char*args[], int num_args);
+typedef void (*pre_exit_fn) (void);
 
-int test_agent_run(int server_port, ta_do_command_fn func);
+int test_agent_run(int server_port, ta_do_command_fn func, pre_exit_fn exit_fn);
 
 qb_loop_t *ta_poll_handle_get(void);
 

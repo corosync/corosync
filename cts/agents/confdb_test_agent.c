@@ -621,17 +621,21 @@ static void do_command (int sock, char* func, char*args[], int num_args)
 	}
 }
 
+static void my_pre_exit(void)
+{
+	syslog (LOG_INFO, "%s PRE EXIT", __FILE__);
+}
 
 int main (int argc, char *argv[])
 {
 	int ret;
 
 	openlog (NULL, LOG_CONS|LOG_PID, LOG_DAEMON);
-	syslog (LOG_ERR, "confdb_test_agent STARTING");
+	syslog (LOG_ERR, "%s STARTING", __FILE__);
 
 	parse_debug = 1;
-	ret = test_agent_run (9035, do_command);
-	syslog (LOG_ERR, "confdb_test_agent EXITING");
+	ret = test_agent_run (9035, do_command, my_pre_exit);
+	syslog (LOG_ERR, "%s EXITING", __FILE__);
 
 	return ret;
 }

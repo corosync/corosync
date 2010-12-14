@@ -1495,11 +1495,11 @@ int main (int argc, char *argv[])
 	int ret;
 
 	openlog (NULL, LOG_CONS|LOG_PID, LOG_DAEMON);
-	syslog (LOG_ERR, "sam_test_agent STARTING");
+	syslog (LOG_INFO, "%s STARTNG", __FILE__);
 
 	parse_debug = 1;
-	ret = test_agent_run (9036, do_command);
-	syslog (LOG_ERR, "sam_test_agent EXITING");
+	ret = test_agent_run (9036, do_command, NULL);
+	syslog (LOG_INFO, "%s EXITING", __FILE__);
 
 	return ret;
 }

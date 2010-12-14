@@ -570,6 +570,8 @@ static int cfg_dispatch_wrapper_fn (
 	cs_error_t error;
 	if (revents & POLLHUP || revents & POLLERR) {
 		syslog (LOG_ERR, "%s() got POLLHUP disconnecting from CFG", __func__);
+		corosync_cfg_finalize(cfg_handle);
+		cfg_handle = 0;
 		qb_loop_poll_del (ta_poll_handle_get(), cfg_fd);
 		close (cfg_fd);
 		cfg_fd = -1;
@@ -578,6 +580,8 @@ static int cfg_dispatch_wrapper_fn (
 	error = corosync_cfg_dispatch (cfg_handle, CS_DISPATCH_ALL);
 	if (error == CS_ERR_LIBRARY) {
 		syslog (LOG_ERR, "%s() got LIB error disconnecting from CFG.", __func__);
+		corosync_cfg_finalize(cfg_handle);
+		cfg_handle = 0;
 		qb_loop_poll_del (ta_poll_handle_get(), cfg_fd);
 		close (cfg_fd);
 		cfg_fd = -1;
@@ -594,6 +598,8 @@ static int cpg_dispatch_wrapper_fn (
 	cs_error_t error;
 	if (revents & POLLHUP || revents & POLLERR) {
 		syslog (LOG_ERR, "%s() got POLLHUP disconnecting from CPG", __func__);
+		cpg_finalize(cpg_handle);
+		cpg_handle = 0;
 		qb_loop_poll_del (ta_poll_handle_get(), cpg_fd);
 		close (cpg_fd);
 		cpg_fd = -1;
@@ -602,6 +608,8 @@ static int cpg_dispatch_wrapper_fn (
 	error = cpg_dispatch (cpg_handle, CS_DISPATCH_ALL);
 	if (error == CS_ERR_LIBRARY) {
 		syslog (LOG_ERR, "%s() got LIB error disconnecting from CPG", __func__);
+		cpg_finalize(cpg_handle);
+		cpg_handle = 0;
 		qb_loop_poll_del (ta_poll_handle_get(), cpg_fd);
 		close (cpg_fd);
 		cpg_fd = -1;
@@ -687,9 +695,14 @@ static void do_command (int sock, char* func, char*args[], int num_args)
 		send (sock, response, strlen (response), 0);
 	} else if (strcmp ("cpg_finalize", func) == 0) {
 
-		cpg_finalize (cpg_handle);
-		qb_loop_poll_del (ta_poll_handle_get(), cpg_fd);
-		cpg_fd = -1;
+		if (cpg_handle > 0) {
+			cpg_finalize (cpg_handle);
+			cpg_handle = 0;
+		}
+		if (cpg_fd > 0) {
+			qb_loop_poll_del (ta_poll_handle_get(), cpg_fd);
+			cpg_fd = -1;
+		}
 
 	} else if (strcmp ("record_config_events", func) == 0) {
 		record_config_events (sock);
@@ -760,15 +773,27 @@ static void cs_ipcs_libqb_log_fn(const char *file_name,
 	syslog(severity, "%s:%d %s() %s", file_name, file_line, __func__, msg);
 }
 
+static void my_pre_exit(void)
+{
+	syslog (LOG_INFO, "%s PRE EXIT", __FILE__);
+	if (cpg_handle > 0) {
+		cpg_finalize (cpg_handle);
+		cpg_handle = 0;
+	}
+}
 
 int main (int argc, char *argv[])
 {
+	int res = 0;
 	openlog (NULL, LOG_CONS|LOG_PID, LOG_DAEMON);
+	syslog (LOG_INFO, "%s STARTING", __FILE__);
 
 	qb_util_set_log_function (cs_ipcs_libqb_log_fn);
 	list_init (&msg_log_head);
 	list_init (&config_chg_log_head);
 
-	return test_agent_run (9034, do_command);
+	res = test_agent_run (9034, do_command, my_pre_exit);
+	syslog (LOG_INFO, "%s EXITING", __FILE__);
+	return res;
 }
 

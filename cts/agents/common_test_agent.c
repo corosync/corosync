@@ -55,12 +55,21 @@ int32_t parse_debug = 0;
 static char big_and_buf_rx[HOW_BIG_AND_BUF];
 ta_do_command_fn do_command;
 static qb_loop_t *poll_handle;
-
+static pre_exit_fn pre_exit = NULL;
 
 qb_loop_t *ta_poll_handle_get(void)
 {
 	return poll_handle;
 }
+
+static void shut_me_down(void)
+{
+	if (pre_exit) {
+		pre_exit();
+	}
+	qb_loop_stop(poll_handle);
+}
+
 
 static void ta_handle_command (int sock, char* msg)
 {
@@ -112,6 +121,11 @@ static int server_process_data_fn (
 	char *cmd;
 	int32_t nbytes;
 
+	if (revents & POLLHUP) {
+		shut_me_down();
+		return -1;
+	}
+
 	if ((nbytes = recv (fd, big_and_buf_rx, sizeof (big_and_buf_rx), 0)) <= 0) {
 		/* got error or connection closed by client */
 		if (nbytes == 0) {
@@ -120,8 +134,8 @@ static int server_process_data_fn (
 		} else {
 			syslog (LOG_ERR,"recv() failed: %s", strerror(errno));
 		}
-		close (fd);
-		qb_loop_stop (ta_poll_handle_get());
+		shut_me_down();
+		return -1;
 	} else {
 		big_and_buf_rx[nbytes] = '\0';
 
@@ -145,6 +159,11 @@ static int server_accept_fn (
 	struct sockaddr_in in_addr;
 	int new_fd;
 	int res;
+
+	if (revents & POLLHUP) {
+		shut_me_down();
+		return -1;
+	}
 
 	addrlen = sizeof (struct sockaddr_in);
 
@@ -254,23 +273,26 @@ static int create_server_sockect (int server_port)
 
 static int32_t sig_exit_handler (int num, void *data)
 {
-	qb_loop_stop(poll_handle);
+	shut_me_down();
 	return 0;
 }
 
-int test_agent_run(int server_port, ta_do_command_fn func)
+int test_agent_run(int server_port, ta_do_command_fn func, pre_exit_fn exit_fn)
 {
 	int listener;
 
 	do_command = func;
+	pre_exit = exit_fn;
 	poll_handle = qb_loop_create ();
 
-	qb_loop_signal_add(poll_handle, QB_LOOP_HIGH,
-		SIGINT, NULL, sig_exit_handler, NULL);
-	qb_loop_signal_add(poll_handle, QB_LOOP_HIGH,
-		SIGQUIT, NULL, sig_exit_handler, NULL);
-	qb_loop_signal_add(poll_handle, QB_LOOP_HIGH,
-		SIGTERM, NULL, sig_exit_handler, NULL);
+	if (exit_fn) {
+		qb_loop_signal_add(poll_handle, QB_LOOP_HIGH,
+			SIGINT, NULL, sig_exit_handler, NULL);
+		qb_loop_signal_add(poll_handle, QB_LOOP_HIGH,
+			SIGQUIT, NULL, sig_exit_handler, NULL);
+		qb_loop_signal_add(poll_handle, QB_LOOP_HIGH,
+			SIGTERM, NULL, sig_exit_handler, NULL);
+	}
 
 	listener = create_server_sockect (server_port);
 	qb_loop_poll_add (poll_handle,
