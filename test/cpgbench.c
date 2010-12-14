@@ -190,7 +190,7 @@ int main (void) {
 
 	res = cpg_finalize (handle);
 	if (res != CS_OK) {
-		printf ("cpg_join failed with result %d\n", res);
+		printf ("cpg_finalize failed with result %d\n", res);
 		exit (1);
 	}
 	return (0);
