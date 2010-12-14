@@ -80,7 +80,7 @@ static inline cs_error_t hdb_error_to_cs (int res)		\
 			return (CS_ERR_NO_RESOURCES);		\
 		} else						\
 		if (res == -EACCES) {				\
-			return (CS_ERR_SECURITY);		\
+			return (CS_ERR_ACCESS);			\
 		}						\
 		return (CS_ERR_LIBRARY);			\
 	}							\

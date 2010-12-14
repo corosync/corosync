@@ -168,9 +168,6 @@ static inline cs_error_t qb_to_cs_error (int result)
 	case EACCES:
 		err = CS_ERR_ACCESS;
 		break;
-	case ECONNREFUSED:
-		err = CS_ERR_SECURITY;
-		break;
 	case EOVERFLOW:
 		err = CS_ERR_NAME_TOO_LONG;
 		break;
@@ -201,6 +198,7 @@ static inline cs_error_t qb_to_cs_error (int result)
 	case E2BIG:
 		err = CS_ERR_TOO_BIG;
 		break;
+	case ECONNREFUSED:
 	case ENOTCONN:
 	default:
 		err = CS_ERR_LIBRARY;
