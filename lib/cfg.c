@@ -289,7 +289,7 @@ corosync_cfg_ring_status_get (
 		&iov,
 		1,
 		&res_lib_cfg_ringstatusget,
-		sizeof (struct res_lib_cfg_ringstatusget)));
+		sizeof (struct res_lib_cfg_ringstatusget), -1));
 
 	*interface_count = res_lib_cfg_ringstatusget.interface_count;
 	*interface_names = malloc (sizeof (char *) * *interface_count);
@@ -369,7 +369,7 @@ corosync_cfg_ring_reenable (
 		&iov,
 		1,
 		&res_lib_cfg_ringreenable,
-		sizeof (struct res_lib_cfg_ringreenable)));
+		sizeof (struct res_lib_cfg_ringreenable), -1));
 
 	(void)hdb_handle_put (&cfg_hdb, cfg_handle);
 
@@ -408,7 +408,7 @@ corosync_cfg_service_load (
 		&iov,
 		1,
 		&res_lib_cfg_serviceload,
-		sizeof (struct res_lib_cfg_serviceload)));
+		sizeof (struct res_lib_cfg_serviceload), -1));
 
 	(void)hdb_handle_put (&cfg_hdb, cfg_handle);
 
@@ -447,7 +447,7 @@ corosync_cfg_service_unload (
 		&iov,
 		1,
 		&res_lib_cfg_serviceunload,
-		sizeof (struct res_lib_cfg_serviceunload)));
+		sizeof (struct res_lib_cfg_serviceunload), -1));
 
 	(void)hdb_handle_put (&cfg_hdb, cfg_handle);
 
@@ -483,7 +483,7 @@ corosync_cfg_state_track (
 		&iov,
 		1,
 		&res_lib_cfg_statetrack,
-		sizeof (struct res_lib_cfg_statetrack)));
+		sizeof (struct res_lib_cfg_statetrack), -1));
 
 	(void)hdb_handle_put (&cfg_hdb, cfg_handle);
 
@@ -516,7 +516,7 @@ corosync_cfg_state_track_stop (
 		&iov,
 		1,
 		&res_lib_cfg_statetrackstop,
-		sizeof (struct res_lib_cfg_statetrackstop)));
+		sizeof (struct res_lib_cfg_statetrackstop), -1));
 
 	(void)hdb_handle_put (&cfg_hdb, cfg_handle);
 
@@ -557,7 +557,7 @@ corosync_cfg_kill_node (
 		&iov,
 		1,
 		&res_lib_cfg_killnode,
-		sizeof (struct res_lib_cfg_killnode)));
+		sizeof (struct res_lib_cfg_killnode), -1));
 
 	error = res_lib_cfg_killnode.header.error;
 
@@ -594,7 +594,7 @@ corosync_cfg_try_shutdown (
 		&iov,
 		1,
 		&res_lib_cfg_tryshutdown,
-		sizeof (struct res_lib_cfg_tryshutdown)));
+		sizeof (struct res_lib_cfg_tryshutdown), -1));
 
 	(void)hdb_handle_put (&cfg_hdb, cfg_handle);
 
@@ -629,7 +629,7 @@ corosync_cfg_replyto_shutdown (
 		&iov,
 		1,
 		&res_lib_cfg_replytoshutdown,
-		sizeof (struct res_lib_cfg_replytoshutdown)));
+		sizeof (struct res_lib_cfg_replytoshutdown), -1));
 
 	return (error);
 }
@@ -665,10 +665,8 @@ cs_error_t corosync_cfg_get_node_addrs (
 
 	error = qb_to_cs_error (qb_ipcc_sendv_recv (
 		cfg_inst->c,
-		&iov,
-		1,
-		response_buf,
-		IPC_RESPONSE_SIZE));
+		&iov, 1,
+		response_buf, IPC_RESPONSE_SIZE, -1));
 	res_lib_cfg_get_node_addrs = (struct res_lib_cfg_get_node_addrs *)response_buf;
 
 	if (error != CS_OK) {
@@ -732,7 +730,7 @@ cs_error_t corosync_cfg_local_get (
 		&iov,
 		1,
 		&res_lib_cfg_local_get,
-		sizeof (struct res_lib_cfg_local_get)));
+		sizeof (struct res_lib_cfg_local_get), -1));
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -776,7 +774,7 @@ corosync_cfg_crypto_set (
 		&iov,
 		1,
 		&res_lib_cfg_crypto_set,
-		sizeof (struct res_lib_cfg_crypto_set)));
+		sizeof (struct res_lib_cfg_crypto_set), -1));
 
 	if (error == CS_OK)
 		error = res_lib_cfg_crypto_set.header.error;

@@ -168,7 +168,7 @@ cs_error_t votequorum_getinfo (
 		&iov,
 		1,
                 &res_lib_votequorum_getinfo,
-		sizeof (struct res_lib_votequorum_getinfo)));
+		sizeof (struct res_lib_votequorum_getinfo), -1));
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -218,7 +218,7 @@ cs_error_t votequorum_setexpected (
 		&iov,
 		1,
                 &res_lib_votequorum_status,
-		sizeof (struct res_lib_votequorum_status)));
+		sizeof (struct res_lib_votequorum_status), -1));
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -261,7 +261,7 @@ cs_error_t votequorum_setvotes (
 		&iov,
 		1,
                 &res_lib_votequorum_status,
-		sizeof (struct res_lib_votequorum_status)));
+		sizeof (struct res_lib_votequorum_status), -1));
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -308,7 +308,7 @@ cs_error_t votequorum_qdisk_register (
 		&iov,
 		1,
                 &res_lib_votequorum_status,
-		sizeof (struct res_lib_votequorum_status)));
+		sizeof (struct res_lib_votequorum_status), -1));
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -350,7 +350,7 @@ cs_error_t votequorum_qdisk_poll (
 		&iov,
 		1,
                 &res_lib_votequorum_status,
-		sizeof (struct res_lib_votequorum_status)));
+		sizeof (struct res_lib_votequorum_status), -1));
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -389,7 +389,7 @@ cs_error_t votequorum_qdisk_unregister (
 		&iov,
 		1,
                 &res_lib_votequorum_status,
-		sizeof (struct res_lib_votequorum_status)));
+		sizeof (struct res_lib_votequorum_status), -1));
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -432,7 +432,7 @@ cs_error_t votequorum_qdisk_getinfo (
 		&iov,
 		1,
                 &res_lib_votequorum_qdisk_getinfo,
-		sizeof (struct res_lib_votequorum_qdisk_getinfo)));
+		sizeof (struct res_lib_votequorum_qdisk_getinfo), -1));
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -476,7 +476,7 @@ cs_error_t votequorum_setstate (
 		&iov,
 		1,
                 &res_lib_votequorum_status,
-		sizeof (struct res_lib_votequorum_status)));
+		sizeof (struct res_lib_votequorum_status), -1));
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -516,7 +516,7 @@ cs_error_t votequorum_leaving (
 		&iov,
 		1,
                 &res_lib_votequorum_status,
-		sizeof (struct res_lib_votequorum_status)));
+		sizeof (struct res_lib_votequorum_status), -1));
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -559,7 +559,7 @@ cs_error_t votequorum_trackstart (
 		&iov,
 		1,
                 &res_lib_votequorum_status,
-		sizeof (struct res_lib_votequorum_status)));
+		sizeof (struct res_lib_votequorum_status), -1));
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -598,7 +598,7 @@ cs_error_t votequorum_trackstop (
 		&iov,
 		1,
                 &res_lib_votequorum_status,
-		sizeof (struct res_lib_votequorum_status)));
+		sizeof (struct res_lib_votequorum_status), -1));
 
 	if (error != CS_OK) {
 		goto error_exit;

@@ -457,7 +457,7 @@ cs_error_t confdb_object_create (
 		&iov,
 		1,
                 &res_lib_confdb_object_create,
-		sizeof (struct res_lib_confdb_object_create)));
+		sizeof (struct res_lib_confdb_object_create), -1));
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -507,7 +507,7 @@ cs_error_t confdb_object_destroy (
 		&iov,
 		1,
                 &res,
-		sizeof (struct qb_ipc_response_header)));
+		sizeof (struct qb_ipc_response_header), -1));
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -557,7 +557,7 @@ cs_error_t confdb_object_parent_get (
 		&iov,
 		1,
                 &res_lib_confdb_object_parent_get,
-		sizeof (struct res_lib_confdb_object_parent_get)));
+		sizeof (struct res_lib_confdb_object_parent_get), -1));
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -604,7 +604,7 @@ static cs_error_t do_find_destroy(
 		&iov,
 		1,
                 &res,
-		sizeof (struct qb_ipc_response_header)));
+		sizeof (struct qb_ipc_response_header), -1));
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -711,7 +711,7 @@ cs_error_t confdb_key_create (
 		&iov,
 		1,
                 &res,
-		sizeof (res)));
+		sizeof (res), -1));
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -771,7 +771,7 @@ cs_error_t confdb_key_create_typed (
 		&iov,
 		1,
 		&res,
-		sizeof (res)));
+		sizeof (res), -1));
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -832,7 +832,7 @@ cs_error_t confdb_key_delete (
 		&iov,
 		1,
                 &res,
-		sizeof (res)));
+		sizeof (res), -1));
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -889,7 +889,7 @@ cs_error_t confdb_key_get (
 		&iov,
 		1,
                 &res_lib_confdb_key_get,
-		sizeof (struct res_lib_confdb_key_get)));
+		sizeof (struct res_lib_confdb_key_get), -1));
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -950,7 +950,7 @@ cs_error_t confdb_key_get_typed (
 		&iov,
 		1,
 		&response,
-		sizeof (struct res_lib_confdb_key_get_typed)));
+		sizeof (struct res_lib_confdb_key_get_typed), -1));
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -1012,7 +1012,7 @@ cs_error_t confdb_key_increment (
 		&iov,
 		1,
                 &res_lib_confdb_key_incdec,
-		sizeof (struct res_lib_confdb_key_incdec)));
+		sizeof (struct res_lib_confdb_key_incdec), -1));
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -1071,7 +1071,7 @@ cs_error_t confdb_key_decrement (
 		&iov,
 		1,
                 &res_lib_confdb_key_incdec,
-		sizeof (struct res_lib_confdb_key_incdec)));
+		sizeof (struct res_lib_confdb_key_incdec), -1));
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -1137,7 +1137,7 @@ cs_error_t confdb_key_replace (
 		&iov,
 		1,
                 &res,
-		sizeof (res)));
+		sizeof (res), -1));
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -1309,7 +1309,7 @@ cs_error_t confdb_object_find (
 		&iov,
 		1,
                 &res_lib_confdb_object_find,
-		sizeof (struct res_lib_confdb_object_find)));
+		sizeof (struct res_lib_confdb_object_find), -1));
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -1378,7 +1378,7 @@ cs_error_t confdb_object_iter (
 		&iov,
 		1,
                 &res_lib_confdb_object_iter,
-		sizeof (struct res_lib_confdb_object_iter)));
+		sizeof (struct res_lib_confdb_object_iter), -1));
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -1450,7 +1450,7 @@ cs_error_t confdb_key_iter (
 		&iov,
 		1,
                 &res_lib_confdb_key_iter,
-		sizeof (struct res_lib_confdb_key_iter)));
+		sizeof (struct res_lib_confdb_key_iter), -1));
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -1526,7 +1526,7 @@ cs_error_t confdb_key_iter_typed (
 		&iov,
 		1,
 		&response,
-		sizeof (struct res_lib_confdb_key_iter_typed)));
+		sizeof (struct res_lib_confdb_key_iter_typed), -1));
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -1586,7 +1586,7 @@ cs_error_t confdb_write (
 		&iov,
 		1,
                 &res_lib_confdb_write,
-		sizeof (struct res_lib_confdb_write)));
+		sizeof (struct res_lib_confdb_write), -1));
 
 	if (error != CS_OK) {
 		/* FIXME: set error_text */
@@ -1644,7 +1644,7 @@ cs_error_t confdb_reload (
 		&iov,
 		1,
                 &res_lib_confdb_reload,
-		sizeof (struct res_lib_confdb_reload)));
+		sizeof (struct res_lib_confdb_reload), -1));
 
 	if (error != CS_OK) {
 		/* FIXME: set error_text */
@@ -1698,7 +1698,7 @@ cs_error_t confdb_track_changes (
 		&iov,
 		1,
                 &res,
-		sizeof (struct qb_ipc_response_header)));
+		sizeof (struct qb_ipc_response_header), -1));
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -1741,7 +1741,7 @@ cs_error_t confdb_stop_track_changes (confdb_handle_t handle)
 		&iov,
 		1,
                 &res,
-		sizeof (struct qb_ipc_response_header)));
+		sizeof (struct qb_ipc_response_header), -1));
 
 	if (error != CS_OK) {
 		goto error_exit;

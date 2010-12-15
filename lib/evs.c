@@ -350,7 +350,7 @@ evs_error_t evs_join (
 	iov[1].iov_len = (group_entries * sizeof (struct evs_group));
 
 	error = qb_to_cs_error(qb_ipcc_sendv_recv (evs_inst->c, iov, 2,
-		&res_lib_evs_join, sizeof (struct res_lib_evs_join)));
+		&res_lib_evs_join, sizeof (struct res_lib_evs_join), -1));
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -391,7 +391,7 @@ evs_error_t evs_leave (
 	iov[1].iov_len = (group_entries * sizeof (struct evs_group));
 
 	error = qb_to_cs_error(qb_ipcc_sendv_recv (evs_inst->c, iov, 2,
-		&res_lib_evs_leave, sizeof (struct res_lib_evs_leave)));
+		&res_lib_evs_leave, sizeof (struct res_lib_evs_leave), -1));
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -442,7 +442,7 @@ evs_error_t evs_mcast_joined (
 	error = qb_to_cs_error(qb_ipcc_sendv_recv (evs_inst->c, iov,
 		iov_len + 1,
 		&res_lib_evs_mcast_joined,
-		sizeof (struct res_lib_evs_mcast_joined)));
+		sizeof (struct res_lib_evs_mcast_joined), -1));
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -495,7 +495,7 @@ evs_error_t evs_mcast_groups (
 	error = qb_to_cs_error(qb_ipcc_sendv_recv (evs_inst->c, iov,
 		iov_len + 2,
 		&res_lib_evs_mcast_groups,
-		sizeof (struct res_lib_evs_mcast_groups)));
+		sizeof (struct res_lib_evs_mcast_groups), -1));
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -536,7 +536,7 @@ evs_error_t evs_membership_get (
 		&iov,
 		1,
 		&res_lib_evs_membership_get,
-		sizeof (struct res_lib_evs_membership_get)));
+		sizeof (struct res_lib_evs_membership_get), -1));
 
 	if (error != CS_OK) {
 		goto error_exit;

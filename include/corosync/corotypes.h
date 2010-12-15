@@ -157,6 +157,7 @@ static inline cs_error_t qb_to_cs_error (int result)
 		err = CS_ERR_FAILED_OPERATION;
 		break;
 	case ETIME:
+	case ETIMEDOUT:
 		err = CS_ERR_TIMEOUT;
 		break;
 	case EINVAL:
