@@ -1433,7 +1433,7 @@ static void reset_pause_timeout (struct totemsrp_instance *instance)
 	qb_loop_timer_del (instance->totemsrp_poll_handle, instance->timer_pause_timeout);
 	qb_loop_timer_add (instance->totemsrp_poll_handle,
 		QB_LOOP_MED,
-		instance->totem_config->token_timeout / 5,
+		instance->totem_config->token_timeout * QB_TIME_NS_IN_MSEC / 5,
 		(void *)instance,
 		timer_function_pause_timeout,
 		&instance->timer_pause_timeout);
