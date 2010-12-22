@@ -133,7 +133,6 @@ static inline uint64_t cs_timestamp_get(void)
 	return result;
 }
 
-#define errno_to_cs qb_to_cs_error
 static inline cs_error_t qb_to_cs_error (int result)
 {
 	int32_t res;

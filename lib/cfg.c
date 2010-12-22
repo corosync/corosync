@@ -98,7 +98,7 @@ corosync_cfg_initialize (
 
 	cfg_inst->c = qb_ipcc_connect ("cfg", IPC_REQUEST_SIZE);
 	if (cfg_inst->c == NULL) {
-		error = errno_to_cs(-errno);
+		error = qb_to_cs_error(-errno);
 		goto error_put_destroy;
 	}
 	if (error != CS_OK) {
@@ -134,7 +134,7 @@ corosync_cfg_fd_get (
 		return (error);
 	}
 
-	error = errno_to_cs (qb_ipcc_fd_get (cfg_inst->c, selection_fd));
+	error = qb_to_cs_error (qb_ipcc_fd_get (cfg_inst->c, selection_fd));
 
 	(void)hdb_handle_put (&cfg_hdb, cfg_handle);
 	return (error);
@@ -169,7 +169,7 @@ corosync_cfg_dispatch (
 
 	dispatch_data = (struct qb_ipc_response_header *)dispatch_buf;
 	do {
-		error = errno_to_cs (qb_ipcc_event_recv (
+		error = qb_to_cs_error (qb_ipcc_event_recv (
 			cfg_inst->c,
 			dispatch_buf,
 			IPC_DISPATCH_SIZE,
@@ -285,7 +285,7 @@ corosync_cfg_ring_status_get (
 	iov.iov_base = (void *)&req_lib_cfg_ringstatusget,
 	iov.iov_len = sizeof (struct req_lib_cfg_ringstatusget),
 
-	error = errno_to_cs (qb_ipcc_sendv_recv(cfg_inst->c,
+	error = qb_to_cs_error (qb_ipcc_sendv_recv(cfg_inst->c,
 		&iov,
 		1,
 		&res_lib_cfg_ringstatusget,
@@ -365,7 +365,7 @@ corosync_cfg_ring_reenable (
 	iov.iov_base = (void *)&req_lib_cfg_ringreenable,
 	iov.iov_len = sizeof (struct req_lib_cfg_ringreenable);
 
-	error = errno_to_cs (qb_ipcc_sendv_recv (cfg_inst->c,
+	error = qb_to_cs_error (qb_ipcc_sendv_recv (cfg_inst->c,
 		&iov,
 		1,
 		&res_lib_cfg_ringreenable,
@@ -404,7 +404,7 @@ corosync_cfg_service_load (
 	iov.iov_base = (void *)&req_lib_cfg_serviceload;
 	iov.iov_len = sizeof (req_lib_cfg_serviceload);
 
-	error = errno_to_cs (qb_ipcc_sendv_recv (cfg_inst->c,
+	error = qb_to_cs_error (qb_ipcc_sendv_recv (cfg_inst->c,
 		&iov,
 		1,
 		&res_lib_cfg_serviceload,
@@ -443,7 +443,7 @@ corosync_cfg_service_unload (
 	iov.iov_base = (void *)&req_lib_cfg_serviceunload;
 	iov.iov_len = sizeof (req_lib_cfg_serviceunload);
 
-	error = errno_to_cs (qb_ipcc_sendv_recv (cfg_inst->c,
+	error = qb_to_cs_error (qb_ipcc_sendv_recv (cfg_inst->c,
 		&iov,
 		1,
 		&res_lib_cfg_serviceunload,
@@ -479,7 +479,7 @@ corosync_cfg_state_track (
 	iov.iov_base = (void *)&req_lib_cfg_statetrack,
 	iov.iov_len = sizeof (struct req_lib_cfg_statetrack),
 
-	error = errno_to_cs (qb_ipcc_sendv_recv (cfg_inst->c,
+	error = qb_to_cs_error (qb_ipcc_sendv_recv (cfg_inst->c,
 		&iov,
 		1,
 		&res_lib_cfg_statetrack,
@@ -512,7 +512,7 @@ corosync_cfg_state_track_stop (
 	iov.iov_base = (void *)&req_lib_cfg_statetrackstop,
 	iov.iov_len = sizeof (struct req_lib_cfg_statetrackstop),
 
-	error = errno_to_cs (qb_ipcc_sendv_recv (cfg_inst->c,
+	error = qb_to_cs_error (qb_ipcc_sendv_recv (cfg_inst->c,
 		&iov,
 		1,
 		&res_lib_cfg_statetrackstop,
@@ -553,7 +553,7 @@ corosync_cfg_kill_node (
 	iov.iov_base = (void *)&req_lib_cfg_killnode;
 	iov.iov_len = sizeof (struct req_lib_cfg_killnode);
 
-	error = errno_to_cs (qb_ipcc_sendv_recv (cfg_inst->c,
+	error = qb_to_cs_error (qb_ipcc_sendv_recv (cfg_inst->c,
 		&iov,
 		1,
 		&res_lib_cfg_killnode,
@@ -590,7 +590,7 @@ corosync_cfg_try_shutdown (
 	iov.iov_base = (void *)&req_lib_cfg_tryshutdown;
 	iov.iov_len = sizeof (req_lib_cfg_tryshutdown);
 
-	error = errno_to_cs (qb_ipcc_sendv_recv (cfg_inst->c,
+	error = qb_to_cs_error (qb_ipcc_sendv_recv (cfg_inst->c,
 		&iov,
 		1,
 		&res_lib_cfg_tryshutdown,
@@ -625,7 +625,7 @@ corosync_cfg_replyto_shutdown (
 	iov.iov_base = (void *)&req_lib_cfg_replytoshutdown;
 	iov.iov_len = sizeof (struct req_lib_cfg_replytoshutdown);
 
-	error = errno_to_cs (qb_ipcc_sendv_recv (cfg_inst->c,
+	error = qb_to_cs_error (qb_ipcc_sendv_recv (cfg_inst->c,
 		&iov,
 		1,
 		&res_lib_cfg_replytoshutdown,
@@ -663,7 +663,7 @@ cs_error_t corosync_cfg_get_node_addrs (
 	iov.iov_base = (char *)&req_lib_cfg_get_node_addrs;
 	iov.iov_len = sizeof (req_lib_cfg_get_node_addrs);
 
-	error = errno_to_cs (qb_ipcc_sendv_recv (
+	error = qb_to_cs_error (qb_ipcc_sendv_recv (
 		cfg_inst->c,
 		&iov,
 		1,
@@ -727,7 +727,7 @@ cs_error_t corosync_cfg_local_get (
 	iov.iov_base = (void *)&req_lib_cfg_local_get;
 	iov.iov_len = sizeof (struct req_lib_cfg_local_get);
 
-	error = errno_to_cs (qb_ipcc_sendv_recv (
+	error = qb_to_cs_error (qb_ipcc_sendv_recv (
 		cfg_inst->c,
 		&iov,
 		1,
@@ -772,7 +772,7 @@ corosync_cfg_crypto_set (
 	iov.iov_base = (void *)&req_lib_cfg_crypto_set;
 	iov.iov_len = sizeof (struct req_lib_cfg_crypto_set);
 
-	error = errno_to_cs (qb_ipcc_sendv_recv (cfg_inst->c,
+	error = qb_to_cs_error (qb_ipcc_sendv_recv (cfg_inst->c,
 		&iov,
 		1,
 		&res_lib_cfg_crypto_set,

@@ -222,7 +222,7 @@ cs_error_t confdb_fd_get (
 		return (error);
 	}
 
-	error = errno_to_cs (qb_ipcc_fd_get (confdb_inst->c, fd));
+	error = qb_to_cs_error (qb_ipcc_fd_get (confdb_inst->c, fd));
 
 	(void)hdb_handle_put (&confdb_handle_t_db, handle);
 
@@ -304,12 +304,11 @@ cs_error_t confdb_dispatch (
 
 	dispatch_data = (struct qb_ipc_response_header *)dispatch_buf;
 	do {
-		errno_res = qb_ipcc_event_recv (
+		error = qb_to_cs_error(qb_ipcc_event_recv (
 			confdb_inst->c,
 			dispatch_buf,
 			IPC_DISPATCH_SIZE,
-			timeout);
-		error = errno_to_cs (errno_res);
+			timeout));
 		if (error == CS_ERR_BAD_HANDLE) {
 			error = CS_OK;
 			goto error_put;
@@ -453,7 +452,7 @@ cs_error_t confdb_object_create (
 	iov.iov_base = (char *)&req_lib_confdb_object_create;
 	iov.iov_len = sizeof (struct req_lib_confdb_object_create);
 
-        error = errno_to_cs (qb_ipcc_sendv_recv (
+        error = qb_to_cs_error (qb_ipcc_sendv_recv (
 		confdb_inst->c,
 		&iov,
 		1,
@@ -503,7 +502,7 @@ cs_error_t confdb_object_destroy (
 	iov.iov_base = (char *)&req_lib_confdb_object_destroy;
 	iov.iov_len = sizeof (struct req_lib_confdb_object_destroy);
 
-        error = errno_to_cs (qb_ipcc_sendv_recv (
+        error = qb_to_cs_error (qb_ipcc_sendv_recv (
 		confdb_inst->c,
 		&iov,
 		1,
@@ -553,7 +552,7 @@ cs_error_t confdb_object_parent_get (
 	iov.iov_base = (char *)&req_lib_confdb_object_parent_get;
 	iov.iov_len = sizeof (struct req_lib_confdb_object_parent_get);
 
-        error = errno_to_cs (qb_ipcc_sendv_recv (
+        error = qb_to_cs_error (qb_ipcc_sendv_recv (
 		confdb_inst->c,
 		&iov,
 		1,
@@ -600,7 +599,7 @@ static cs_error_t do_find_destroy(
 	iov.iov_base = (char *)&req_lib_confdb_object_find_destroy;
 	iov.iov_len = sizeof (struct req_lib_confdb_object_find_destroy);
 
-        error = errno_to_cs (qb_ipcc_sendv_recv (
+        error = qb_to_cs_error (qb_ipcc_sendv_recv (
 		confdb_inst->c,
 		&iov,
 		1,
@@ -707,7 +706,7 @@ cs_error_t confdb_key_create (
 	iov.iov_base = (char *)&req_lib_confdb_key_create;
 	iov.iov_len = sizeof (struct req_lib_confdb_key_create);
 
-        error = errno_to_cs (qb_ipcc_sendv_recv (
+        error = qb_to_cs_error (qb_ipcc_sendv_recv (
 		confdb_inst->c,
 		&iov,
 		1,
@@ -767,7 +766,7 @@ cs_error_t confdb_key_create_typed (
 	iov.iov_base = (char *)&request;
 	iov.iov_len = sizeof (struct req_lib_confdb_key_create_typed);
 
-	error = errno_to_cs (qb_ipcc_sendv_recv (
+	error = qb_to_cs_error (qb_ipcc_sendv_recv (
 		confdb_inst->c,
 		&iov,
 		1,
@@ -828,7 +827,7 @@ cs_error_t confdb_key_delete (
 	iov.iov_base = (char *)&req_lib_confdb_key_delete;
 	iov.iov_len = sizeof (struct req_lib_confdb_key_delete);
 
-        error = errno_to_cs (qb_ipcc_sendv_recv (
+        error = qb_to_cs_error (qb_ipcc_sendv_recv (
 		confdb_inst->c,
 		&iov,
 		1,
@@ -885,7 +884,7 @@ cs_error_t confdb_key_get (
 	iov.iov_base = (char *)&req_lib_confdb_key_get;
 	iov.iov_len = sizeof (struct req_lib_confdb_key_get);
 
-        error = errno_to_cs (qb_ipcc_sendv_recv (
+        error = qb_to_cs_error (qb_ipcc_sendv_recv (
 		confdb_inst->c,
 		&iov,
 		1,
@@ -946,7 +945,7 @@ cs_error_t confdb_key_get_typed (
 	iov.iov_base = (char *)&req_lib_confdb_key_get;
 	iov.iov_len = sizeof (struct req_lib_confdb_key_get);
 
-        error = errno_to_cs (qb_ipcc_sendv_recv (
+        error = qb_to_cs_error (qb_ipcc_sendv_recv (
 		confdb_inst->c,
 		&iov,
 		1,
@@ -1008,7 +1007,7 @@ cs_error_t confdb_key_increment (
 	iov.iov_base = (char *)&req_lib_confdb_key_get;
 	iov.iov_len = sizeof (struct req_lib_confdb_key_get);
 
-        error = errno_to_cs (qb_ipcc_sendv_recv (
+        error = qb_to_cs_error (qb_ipcc_sendv_recv (
 		confdb_inst->c,
 		&iov,
 		1,
@@ -1067,7 +1066,7 @@ cs_error_t confdb_key_decrement (
 	iov.iov_base = (char *)&req_lib_confdb_key_get;
 	iov.iov_len = sizeof (struct req_lib_confdb_key_get);
 
-        error = errno_to_cs (qb_ipcc_sendv_recv (
+        error = qb_to_cs_error (qb_ipcc_sendv_recv (
 		confdb_inst->c,
 		&iov,
 		1,
@@ -1133,7 +1132,7 @@ cs_error_t confdb_key_replace (
 	iov.iov_base = (char *)&req_lib_confdb_key_replace;
 	iov.iov_len = sizeof (struct req_lib_confdb_key_replace);
 
-        error = errno_to_cs (qb_ipcc_sendv_recv (
+        error = qb_to_cs_error (qb_ipcc_sendv_recv (
 		confdb_inst->c,
 		&iov,
 		1,
@@ -1305,7 +1304,7 @@ cs_error_t confdb_object_find (
 	iov.iov_base = (char *)&req_lib_confdb_object_find;
 	iov.iov_len = sizeof (struct req_lib_confdb_object_find);
 
-        error = errno_to_cs (qb_ipcc_sendv_recv (
+        error = qb_to_cs_error (qb_ipcc_sendv_recv (
 		confdb_inst->c,
 		&iov,
 		1,
@@ -1374,7 +1373,7 @@ cs_error_t confdb_object_iter (
 	iov.iov_base = (char *)&req_lib_confdb_object_iter;
 	iov.iov_len = sizeof (struct req_lib_confdb_object_iter);
 
-        error = errno_to_cs (qb_ipcc_sendv_recv (
+        error = qb_to_cs_error (qb_ipcc_sendv_recv (
 		confdb_inst->c,
 		&iov,
 		1,
@@ -1446,7 +1445,7 @@ cs_error_t confdb_key_iter (
 	iov.iov_base = (char *)&req_lib_confdb_key_iter;
 	iov.iov_len = sizeof (struct req_lib_confdb_key_iter);
 
-        error = errno_to_cs (qb_ipcc_sendv_recv (
+        error = qb_to_cs_error (qb_ipcc_sendv_recv (
 		confdb_inst->c,
 		&iov,
 		1,
@@ -1522,7 +1521,7 @@ cs_error_t confdb_key_iter_typed (
 	iov.iov_base = (char *)&req_lib_confdb_key_iter;
 	iov.iov_len = sizeof (struct req_lib_confdb_key_iter);
 
-	error = errno_to_cs (qb_ipcc_sendv_recv (
+	error = qb_to_cs_error (qb_ipcc_sendv_recv (
 		confdb_inst->c,
 		&iov,
 		1,
@@ -1582,7 +1581,7 @@ cs_error_t confdb_write (
 	iov.iov_base = (char *)&req;
 	iov.iov_len = sizeof (struct qb_ipc_request_header);
 
-        error = errno_to_cs (qb_ipcc_sendv_recv (
+        error = qb_to_cs_error (qb_ipcc_sendv_recv (
 		confdb_inst->c,
 		&iov,
 		1,
@@ -1640,7 +1639,7 @@ cs_error_t confdb_reload (
 	iov.iov_base = (char *)&req_lib_confdb_reload;
 	iov.iov_len = sizeof (req_lib_confdb_reload);
 
-        error = errno_to_cs (qb_ipcc_sendv_recv (
+        error = qb_to_cs_error (qb_ipcc_sendv_recv (
 		confdb_inst->c,
 		&iov,
 		1,
@@ -1694,7 +1693,7 @@ cs_error_t confdb_track_changes (
 	iov.iov_base = (char *)&req;
 	iov.iov_len = sizeof (struct req_lib_confdb_object_track_start);
 
-        error = errno_to_cs (qb_ipcc_sendv_recv (
+        error = qb_to_cs_error (qb_ipcc_sendv_recv (
 		confdb_inst->c,
 		&iov,
 		1,
@@ -1737,7 +1736,7 @@ cs_error_t confdb_stop_track_changes (confdb_handle_t handle)
 	iov.iov_base = (char *)&req;
 	iov.iov_len = sizeof (struct qb_ipc_request_header);
 
-        error = errno_to_cs (qb_ipcc_sendv_recv (
+        error = qb_to_cs_error (qb_ipcc_sendv_recv (
 		confdb_inst->c,
 		&iov,
 		1,

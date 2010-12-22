@@ -173,7 +173,7 @@ cs_error_t cpg_model_initialize (
 
 	cpg_inst->c = qb_ipcc_connect ("cpg", IPC_REQUEST_SIZE);
 	if (cpg_inst->c == NULL) {
-		error = errno_to_cs(-errno);
+		error = qb_to_cs_error(-errno);
 		goto error_put_destroy;
 	}
 
@@ -270,7 +270,7 @@ cs_error_t cpg_fd_get (
 		return (error);
 	}
 
-	error = errno_to_cs (qb_ipcc_fd_get (cpg_inst->c, fd));
+	error = qb_to_cs_error (qb_ipcc_fd_get (cpg_inst->c, fd));
 
 	hdb_handle_put (&cpg_handle_t_db, handle);
 
@@ -360,7 +360,7 @@ cs_error_t cpg_dispatch (
 			dispatch_buf,
 			IPC_DISPATCH_SIZE,
 			timeout);
-		error = errno_to_cs (errno_res);
+		error = qb_to_cs_error (errno_res);
 		if (error == CS_ERR_BAD_HANDLE) {
 			error = CS_OK;
 			goto error_put;
@@ -944,7 +944,7 @@ cs_error_t cpg_mcast_joined (
 	iov[0].iov_len = sizeof (struct req_lib_cpg_mcast);
 	memcpy (&iov[1], iovec, iov_len * sizeof (struct iovec));
 
-	error = errno_to_cs(qb_ipcc_sendv(cpg_inst->c, iov, iov_len + 1));
+	error = qb_to_cs_error(qb_ipcc_sendv(cpg_inst->c, iov, iov_len + 1));
 
 	hdb_handle_put (&cpg_handle_t_db, handle);
 
@@ -1064,14 +1064,14 @@ cs_error_t cpg_iteration_next(
 	req_lib_cpg_iterationnext.header.id = MESSAGE_REQ_CPG_ITERATIONNEXT;
 	req_lib_cpg_iterationnext.iteration_handle = cpg_iteration_instance->executive_iteration_handle;
 
-	error = errno_to_cs (qb_ipcc_send (cpg_iteration_instance->conn,
+	error = qb_to_cs_error (qb_ipcc_send (cpg_iteration_instance->conn,
 				&req_lib_cpg_iterationnext,
 				req_lib_cpg_iterationnext.header.size));
 	if (error != CS_OK) {
 		goto error_put;
 	}
 
-	error = errno_to_cs (qb_ipcc_recv (cpg_iteration_instance->conn,
+	error = qb_to_cs_error (qb_ipcc_recv (cpg_iteration_instance->conn,
 				&res_lib_cpg_iterationnext,
 				sizeof(struct res_lib_cpg_iterationnext)));
 	if (error != CS_OK) {

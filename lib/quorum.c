@@ -83,7 +83,7 @@ cs_error_t quorum_initialize (
 	error = CS_OK;
 	quorum_inst->c = qb_ipcc_connect ("quorum", IPC_REQUEST_SIZE);
 	if (quorum_inst->c == NULL) {
-		error = errno_to_cs(-errno);
+		error = qb_to_cs_error(-errno);
 		goto error_put_destroy;
 	}
 
@@ -155,7 +155,7 @@ cs_error_t quorum_getquorate (
 	iov.iov_base = (char *)&req;
 	iov.iov_len = sizeof (req);
 
-       error = errno_to_cs(qb_ipcc_sendv_recv (
+       error = qb_to_cs_error(qb_ipcc_sendv_recv (
 		quorum_inst->c,
 		&iov,
 		1,
@@ -257,7 +257,7 @@ cs_error_t quorum_trackstart (
 	iov.iov_base = (char *)&req_lib_quorum_trackstart;
 	iov.iov_len = sizeof (struct req_lib_quorum_trackstart);
 
-       error = errno_to_cs(qb_ipcc_sendv_recv (
+       error = qb_to_cs_error(qb_ipcc_sendv_recv (
 		quorum_inst->c,
                 &iov,
                 1,
@@ -296,7 +296,7 @@ cs_error_t quorum_trackstop (
 	iov.iov_base = (char *)&req;
 	iov.iov_len = sizeof (req);
 
-       error = errno_to_cs(qb_ipcc_sendv_recv (
+       error = qb_to_cs_error(qb_ipcc_sendv_recv (
 		quorum_inst->c,
                 &iov,
                 1,
@@ -351,7 +351,7 @@ cs_error_t quorum_dispatch (
 
 	dispatch_data = (struct qb_ipc_response_header *)dispatch_buf;
 	do {
-		error = errno_to_cs (qb_ipcc_event_recv (
+		error = qb_to_cs_error (qb_ipcc_event_recv (
 			quorum_inst->c,
 			dispatch_buf,
 			IPC_DISPATCH_SIZE,

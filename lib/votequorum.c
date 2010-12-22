@@ -708,7 +708,7 @@ cs_error_t votequorum_dispatch (
 
 	dispatch_data = (struct qb_ipc_response_header *)dispatch_buf;
 	do {
-		error = errno_to_cs (qb_ipcc_event_recv (
+		error = qb_to_cs_error (qb_ipcc_event_recv (
 			votequorum_inst->c,
 			dispatch_buf,
 			IPC_DISPATCH_SIZE,

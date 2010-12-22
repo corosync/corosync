@@ -90,7 +90,7 @@ unsigned int pload_initialize (
 
 	pload_inst->c = qb_ipcc_connect ("pload", IPC_REQUEST_SIZE);
 	if (pload_inst->c == NULL) {
-		error = errno_to_cs(-errno);
+		error = qb_to_cs_error(-errno);
 		goto error_put_destroy;
 	}
 
