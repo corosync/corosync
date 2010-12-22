@@ -1611,7 +1611,6 @@ int coroipcs_handler_dispatch (
 			ipc_disconnect (conn_info);
 			return (0);
 		}
-		req_setup_send (conn_info, CS_OK);
 
 #if _POSIX_THREAD_PROCESS_SHARED < 1
 		conn_info->semkey = req_setup->semkey;
@@ -1620,25 +1619,46 @@ int coroipcs_handler_dispatch (
 			req_setup->control_file,
 			req_setup->control_size,
 			(void *)&conn_info->control_buffer);
+		if (res == -1) {
+			goto send_setup_response;
+		}
 		conn_info->control_size = req_setup->control_size;
 
 		res = memory_map (
 			req_setup->request_file,
 			req_setup->request_size,
 			(void *)&conn_info->request_buffer);
+		if (res == -1) {
+			goto send_setup_response;
+		}
 		conn_info->request_size = req_setup->request_size;
 
 		res = memory_map (
 			req_setup->response_file,
 			req_setup->response_size,
 			(void *)&conn_info->response_buffer);
+		if (res == -1) {
+			goto send_setup_response;
+		}
 		conn_info->response_size = req_setup->response_size;
 
 		res = circular_memory_map (
 			req_setup->dispatch_file,
 			req_setup->dispatch_size,
 			(void *)&conn_info->dispatch_buffer);
+		if (res == -1) {
+			goto send_setup_response;
+		}
 		conn_info->dispatch_size = req_setup->dispatch_size;
+
+ send_setup_response:
+		if (res == 0) {
+			req_setup_send (conn_info, CS_OK);
+		} else {
+			req_setup_send (conn_info, CS_ERR_LIBRARY);
+			ipc_disconnect (conn_info);
+			return (0);
+		}
 
 		conn_info->service = req_setup->service;
 		conn_info->refcount = 0;
