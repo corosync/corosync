@@ -239,22 +239,13 @@ cs_error_t cpg_finalize (
 		&iov,
 		1,
 		&res_lib_cpg_finalize,
-		sizeof (struct req_lib_cpg_finalize));
-
-	if (error != CS_OK) {
-		goto error_put;
-	}
+		sizeof (struct res_lib_cpg_finalize));
 
 	coroipcc_service_disconnect (cpg_inst->handle);
 
 	cpg_inst_finalize (cpg_inst, handle);
 	hdb_handle_put (&cpg_handle_t_db, handle);
 
-	return (CPG_OK);
-
-error_put:
-	hdb_handle_put (&cpg_iteration_handle_t_db, handle);
-	cpg_inst->finalize = 0;
 	return (error);
 }
 
