@@ -132,8 +132,10 @@ int32_t totemip_is_mcast(struct totem_ip_address *ip_addr)
 {
 	uint32_t addr = 0;
 
+	memcpy (&addr, ip_addr->addr, sizeof (uint32_t));
+
 	if (ip_addr->family == AF_INET) {
-		addr = ntohl(*(int32_t*)ip_addr->addr);
+		addr = ntohl(addr);
 		if ((addr >> 28) != 0xE) {
 			return -1;
 		}
