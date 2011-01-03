@@ -116,4 +116,12 @@ extern int totemmrp_ring_reenable (void);
 extern void totemmrp_service_ready_register (
         void (*totem_service_ready) (void));
 
+extern int totemmrp_member_add (
+	const struct totem_ip_address *member,
+	int ring_no);
+
+extern int totemmrp_member_remove (
+	const struct totem_ip_address *member,
+	int ring_no);
+
 #endif /* TOTEMMRP_H_DEFINED */

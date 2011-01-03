@@ -504,6 +504,7 @@ struct totemsrp_instance {
 	struct memb_commit_token *commit_token;
 
 	totemsrp_stats_t stats;
+
 	void * token_recv_event_handle;
 	void * token_sent_event_handle;
 	char commit_token_storage[9000];
@@ -1798,6 +1799,8 @@ static void memb_state_operational_enter (struct totemsrp_instance *instance)
 	instance->memb_state = MEMB_STATE_OPERATIONAL;
 
 	instance->stats.operational_entered++;
+	instance->stats.continuous_gather = 0;
+
 	instance->my_received_flg = 1;
 
 	reset_pause_timeout (instance);
@@ -1864,6 +1867,15 @@ static void memb_state_gather_enter (
 
 	instance->memb_state = MEMB_STATE_GATHER;
 	instance->stats.gather_entered++;
+	instance->stats.continuous_gather++;
+
+	if (instance->stats.continuous_gather > MAX_NO_CONT_GATHER) {
+		log_printf (instance->totemsrp_log_level_warning,
+			"Totem is unable to form a cluster because of an "
+			"operating system or network fault. The most common "
+			"cause of this message is that the local firewall is "
+			"configured improperly.\n");
+	}
 
 	return;
 }
@@ -1908,6 +1920,7 @@ static void memb_state_commit_enter (
 	reset_token_timeout (instance); // REVIEWED
 
 	instance->stats.commit_entered++;
+	instance->stats.continuous_gather = 0;
 
 	/*
 	 * reset all flow control variables since we are starting a new ring
@@ -2104,6 +2117,8 @@ originated:
 
 	instance->memb_state = MEMB_STATE_RECOVERY;
 	instance->stats.recovery_entered++;
+	instance->stats.continuous_gather = 0;
+
 	return;
 }
 
@@ -4363,6 +4378,7 @@ void main_iface_change_fn (
 	unsigned int iface_no)
 {
 	struct totemsrp_instance *instance = context;
+	int i;
 
 	totemip_copy (&instance->my_id.addr[iface_no], iface_addr);
 	assert (instance->my_id.addr[iface_no].nodeid);
@@ -4376,6 +4392,12 @@ void main_iface_change_fn (
 			"Created or loaded sequence id %lld.%s for this ring.\n",
 			instance->my_ring_id.seq,
 			totemip_print (&instance->my_ring_id.rep));
+		for (i = 0; i < instance->totem_config->interfaces[iface_no].member_count; i++) {
+			totemsrp_member_add (instance,
+				&instance->totem_config->interfaces[iface_no].member_list[i],
+				iface_no);
+
+		}
 		if (instance->totemsrp_service_ready_fn) {
 			instance->totemsrp_service_ready_fn ();
 		}
@@ -4397,4 +4419,30 @@ void totemsrp_service_ready_register (
 	struct totemsrp_instance *instance = (struct totemsrp_instance *)context;
 
 	instance->totemsrp_service_ready_fn = totem_service_ready;
+}
+
+int totemsrp_member_add (
+        void *context,
+        const struct totem_ip_address *member,
+        int ring_no)
+{
+	struct totemsrp_instance *instance = (struct totemsrp_instance *)context;
+	int res;
+
+	res = totemrrp_member_add (instance->totemrrp_context, member, ring_no);
+
+	return (res);
+}
+
+int totemsrp_member_remove (
+        void *context,
+        const struct totem_ip_address *member,
+        int ring_no)
+{
+	struct totemsrp_instance *instance = (struct totemsrp_instance *)context;
+	int res;
+
+	res = totemrrp_member_remove (instance->totemrrp_context, member, ring_no);
+
+	return (res);
 }

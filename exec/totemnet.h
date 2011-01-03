@@ -115,4 +115,12 @@ extern int totemnet_crypto_set (
 extern int totemnet_recv_mcast_empty (
 	void *net_context);
 
+extern int totemnet_member_add (
+	void *net_context,
+	const struct totem_ip_address *member);
+
+extern int totemnet_member_remove (
+	void *net_context,
+	const struct totem_ip_address *member);
+
 #endif /* TOTEMNET_H_DEFINED */

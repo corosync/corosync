@@ -4,7 +4,10 @@
 # bootstrap / init
 AC_PREREQ([2.61])
 
-AC_INIT([corosync], [1.2.8], [openais@lists.osdl.org])
+AC_INIT([corosync],
+	m4_esyscmd([build-aux/git-version-gen .tarball-version]),
+	[openais@lists.osdl.org])
+
 AM_INIT_AUTOMAKE([-Wno-portability])
 
 AC_CONFIG_SRCDIR([lib/cpg.c])
@@ -13,11 +16,6 @@ AC_CONFIG_HEADER([include/corosync/config.h include/corosync/cs_config.h])
 AC_CANONICAL_HOST
 
 AC_LANG([C])
-
-# Define SVN revision
-AC_DEFINE([SVN_REVISION],["m4_esyscmd([svnversion >/dev/null 2>&1 && \
-				       svnversion -n || \
-				       echo -n exported])"], [SVN revision])
 
 dnl Fix default variables - "prefix" variable if not specified
 if test "$prefix" = "NONE"; then

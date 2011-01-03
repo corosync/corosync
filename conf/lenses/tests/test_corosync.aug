@@ -6,17 +6,18 @@ compatibility: whitetank
 totem {
 	version: 2
 	secauth: off
-    crypto_type: nss
-    crypto_accept: new
+	crypto_type: nss
+	crypto_accept: new
 	threads: 0
-    clear_node_high_bit: no
-    rrp_mode: none
-    transport: udp
-    token: 1000
+	clear_node_high_bit: no
+	rrp_mode: none
+	transport: udp
+	token: 1000
 	interface {
 		ringnumber: 0
 		bindnetaddr: 192.168.122.1
 		mcastaddr: 226.94.1.1
+		ttl: 45
 		mcastport: 5405
 	}
 }
@@ -96,6 +97,7 @@ test Corosync.lns get conf =
 		{ "ringnumber" = "0" }
 		{ "bindnetaddr" = "192.168.122.1" }
 		{ "mcastaddr" = "226.94.1.1" }
+		{ "ttl" = "45" }
 		{ "mcastport" = "5405" } } }
   { }
   { "logging"

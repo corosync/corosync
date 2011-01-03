@@ -245,3 +245,25 @@ extern void totemmrp_service_ready_register (
 		totemsrp_context,
 		totem_service_ready);
 }
+
+int totemmrp_member_add (
+        const struct totem_ip_address *member,
+        int ring_no)
+{
+	int res;
+
+	res = totemsrp_member_add (totemsrp_context, member, ring_no);
+
+	return (res);
+}
+
+int totemmrp_member_remove (
+       const struct totem_ip_address *member,
+        int ring_no)
+{
+	int res;
+
+	res = totemsrp_member_remove (totemsrp_context, member, ring_no);
+
+	return (res);
+}

@@ -172,6 +172,14 @@ void totempg_check_q_level(hdb_handle_t handle);
 typedef void (*totem_queue_level_changed_fn) (enum totem_q_level level);
 extern void totempg_queue_level_register_callback (totem_queue_level_changed_fn);
 
+extern int totempg_member_add (
+	const struct totem_ip_address *member,
+	int ring_no);
+
+extern int totempg_member_remove (
+	const struct totem_ip_address *member,
+	int ring_no);
+
 #ifdef __cplusplus
 }
 #endif

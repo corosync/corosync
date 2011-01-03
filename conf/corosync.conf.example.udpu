@@ -1,0 +1,76 @@
+# Please read the corosync.conf.5 manual page
+compatibility: whitetank
+
+totem {
+	version: 2
+	secauth: off
+	interface {
+		member {
+			memberaddr: 10.16.35.101
+		}
+		member {
+			memberaddr: 10.16.35.102
+		}
+		member {
+			memberaddr: 10.16.35.103
+		}
+		member {
+			memberaddr: 10.16.35.104
+		}
+		member {
+			memberaddr: 10.16.35.105
+		}
+		member {
+			memberaddr: 10.16.35.106
+		}
+		member {
+			memberaddr: 10.16.35.107
+		}
+		member {
+			memberaddr: 10.16.35.108
+		}
+		member {
+			memberaddr: 10.16.35.109
+		}
+		member {
+			memberaddr: 10.16.35.110
+		}
+		member {
+			memberaddr: 10.16.35.111
+		}
+		member {
+			memberaddr: 10.16.35.112
+		}
+		member {
+			memberaddr: 10.16.35.113
+		}
+		member {
+			memberaddr: 10.16.35.114
+		}
+		member {
+			memberaddr: 10.16.35.115
+		}
+		member {
+			memberaddr: 10.16.35.116
+		}
+		ringnumber: 0
+		bindnetaddr: 10.16.35.0
+		mcastport: 5405
+		ttl: 1
+	}
+	transport: udpu
+}
+
+logging {
+	fileline: off
+	to_logfile: yes
+	to_syslog: yes
+	debug: on
+	logfile: /var/log/cluster/corosync.log
+	debug: off
+	timestamp: on
+	logger_subsys {
+		subsys: AMF
+		debug: off
+	}
+}

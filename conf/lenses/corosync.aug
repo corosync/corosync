@@ -43,6 +43,7 @@ let interface =
   let setting =
     kv "ringnumber" Rx.integer
     |kv "mcastport" Rx.integer
+    |kv "ttl" Rx.integer
     |qstr /bindnetaddr|mcastaddr/ in
   section "interface" setting
 

@@ -563,6 +563,9 @@ static void corosync_totem_stats_updater (void *data)
 	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
 		"rx_msg_dropped", strlen("rx_msg_dropped"),
 		&stats->mrp->srp->rx_msg_dropped, sizeof (stats->mrp->srp->rx_msg_dropped));
+	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
+		"continuous_gather", strlen("continuous_gather"),
+		&stats->mrp->srp->continuous_gather, sizeof (stats->mrp->srp->continuous_gather));
 
 	total_mtt_rx_token = 0;
 	total_token_holdtime = 0;
@@ -724,6 +727,9 @@ static void corosync_totem_stats_init (void)
 		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
 			"rx_msg_dropped", &zero_64,
 			sizeof (zero_64), OBJDB_VALUETYPE_UINT64);
+		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
+			"continuous_gather", &zero_32,
+			sizeof (zero_32), OBJDB_VALUETYPE_UINT32);
 
 	}
 	/* start stats timer */
@@ -1166,7 +1172,7 @@ int main (int argc, char **argv, char **envp)
 				setprio = 0;
 				break;
 			case 'v':
-				printf ("Corosync Cluster Engine, version '%s' SVN revision '%s'\n", VERSION, SVN_REVISION);
+				printf ("Corosync Cluster Engine, version '%s'\n", VERSION);
 				printf ("Copyright (c) 2006-2009 Red Hat, Inc.\n");
 				return EXIT_SUCCESS;
 

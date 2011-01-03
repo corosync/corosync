@@ -52,11 +52,20 @@
 #define SEND_THREADS_MAX	16
 #define INTERFACE_MAX		2
 
+/*
+ * Maximum number of continuous gather states
+ */
+#define MAX_NO_CONT_GATHER	3
+
 struct totem_interface {
 	struct totem_ip_address bindnet;
 	struct totem_ip_address boundto;
 	struct totem_ip_address mcast_addr;
 	uint16_t ip_port;
+	uint16_t ttl;
+	int member_count;
+	struct totem_ip_address member_list[PROCESSOR_COUNT_MAX];
+	
 };
 
 struct totem_logging_configuration {
@@ -78,6 +87,12 @@ struct totem_logging_configuration {
 
 enum { TOTEM_PRIVATE_KEY_LEN = 128 };
 enum { TOTEM_RRP_MODE_BYTES = 64 };
+
+typedef enum {
+	TOTEM_TRANSPORT_UDP = 0,
+	TOTEM_TRANSPORT_UDPU = 1,
+	TOTEM_TRANSPORT_RDMA = 2
+} totem_transport_t;
 
 struct totem_config {
 	int version;
@@ -164,7 +179,7 @@ struct totem_config {
 	int crypto_crypt_type;
 	int crypto_sign_type;
 
-	int transport_number;
+	totem_transport_t transport_number;
 };
 
 #define TOTEM_CONFIGURATION_TYPE
@@ -240,6 +255,7 @@ typedef struct {
 	uint64_t recovery_token_lost;
 	uint64_t consensus_timeouts;
 	uint64_t rx_msg_dropped;
+	uint32_t continuous_gather;
 
 	int earliest_token;
 	int latest_token;

@@ -1425,3 +1425,10 @@ void totempg_queue_level_register_callback (totem_queue_level_changed_fn fn)
 	totem_queue_level_changed = fn;
 }
 
+extern int totempg_member_add (
+	const struct totem_ip_address *member,
+	int ring_no);
+
+extern int totempg_member_remove (
+	const struct totem_ip_address *member,
+	int ring_no);

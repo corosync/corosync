@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2005 MontaVista Software, Inc.
- * Copyright (c) 2006-2007, 2009 Red Hat, Inc.
+ * Copyright (c) 2006-2010 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -32,29 +32,23 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef TOTEMRRP_H_DEFINED
-#define TOTEMRRP_H_DEFINED
+#ifndef TOTEMUDPU_H_DEFINED
+#define TOTEMUDPU_H_DEFINED
 
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <qb/qbloop.h>
+#include <corosync/hdb.h>
+
 #include <corosync/totem/totem.h>
-
-#define TOTEMRRP_NOFLUSH	0
-#define TOTEMRRP_FLUSH		1
-
-/*
- * Totem Network interface - also does encryption/decryption
- * depends on poll abstraction, POSIX, IPV4
- */
 
 /*
  * Create an instance
  */
-extern int totemrrp_initialize (
-	qb_loop_t *poll_handle,
-	void **rrp_context,
+extern int totemudpu_initialize (
+	hdb_handle_t poll_handle,
+	void **udpu_context,
 	struct totem_config *totem_config,
+	int interface_no,
 	void *context,
 
 	void (*deliver_fn) (
@@ -64,78 +58,63 @@ extern int totemrrp_initialize (
 
 	void (*iface_change_fn) (
 		void *context,
-		const struct totem_ip_address *iface_addr,
-		unsigned int iface_no),
-
-	void (*token_seqid_get) (
-		const void *msg,
-		unsigned int *seqid,
-		unsigned int *token_is),
-
-	unsigned int (*msgs_missing) (void),
+		const struct totem_ip_address *iface_address),
 
 	void (*target_set_completed) (
-		void *context)
-	);
+		void *context));
 
+extern int totemudpu_processor_count_set (
+	void *udpu_context,
+	int processor_count);
 
-extern int totemrrp_processor_count_set (
-	void *rrp_context,
-	unsigned int processor_count);
-
-extern int totemrrp_token_send (
-	void *rrp_context,
+extern int totemudpu_token_send (
+	void *udpu_context,
 	const void *msg,
 	unsigned int msg_len);
 
-extern int totemrrp_mcast_noflush_send (
-	void *rrp_context,
+extern int totemudpu_mcast_flush_send (
+	void *udpu_context,
 	const void *msg,
 	unsigned int msg_len);
 
-extern int totemrrp_mcast_flush_send (
-	void *rrp_context,
+extern int totemudpu_mcast_noflush_send (
+	void *udpu_context,
 	const void *msg,
 	unsigned int msg_len);
 
-extern int totemrrp_recv_flush (
-	void *rrp_context);
+extern int totemudpu_recv_flush (void *udpu_context);
 
-extern int totemrrp_send_flush (
-	void *rrp_context);
+extern int totemudpu_send_flush (void *udpu_context);
 
-extern int totemrrp_token_target_set (
-	void *rrp_context,
-	struct totem_ip_address *target,
-	unsigned int iface_no);
+extern int totemudpu_iface_check (void *udpu_context);
 
-extern int totemrrp_iface_check (void *rrp_context);
+extern int totemudpu_finalize (void *udpu_context);
 
-extern int totemrrp_finalize (void *rrp_context);
+extern void totemudpu_net_mtu_adjust (void *udpu_context, struct totem_config *totem_config);
 
-extern int totemrrp_ifaces_get (
-	void *rrp_context,
-	char ***status,
-	unsigned int *iface_count);
+extern const char *totemudpu_iface_print (void *udpu_context);
 
-extern int totemrrp_crypto_set (
-	void *rrp_context,
+extern int totemudpu_iface_get (
+	void *udpu_context,
+	struct totem_ip_address *addr);
+
+extern int totemudpu_token_target_set (
+	void *udpu_context,
+	const struct totem_ip_address *token_target);
+
+extern int totemudpu_crypto_set (
+	void *udpu_context,
 	unsigned int type);
 
-extern int totemrrp_ring_reenable (
-	void *rrp_context);
+extern int totemudpu_recv_mcast_empty (
+	void *udpu_context);
 
-extern int totemrrp_mcast_recv_empty (
-	void *rrp_context);
+extern int totemudpu_member_add (
+	void *udpu_context,
+	const struct totem_ip_address *member);
 
-extern int totemrrp_member_add (
-        void *net_context,
-        const struct totem_ip_address *member,
-	int iface_no);
+extern int totemudpu_member_remove (
+	void *udpu_context,
+	const struct totem_ip_address *member);
 
-extern int totemrrp_member_remove (
-        void *net_context,
-        const struct totem_ip_address *member,
-	int iface_no);
-
-#endif /* TOTEMRRP_H_DEFINED */
+#endif /* TOTEMUDPU_H_DEFINED */

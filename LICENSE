@@ -7,14 +7,19 @@ available source code, may be exported from the United States under License
 Exception TSU prsuant to 15 C.F.R Section 740.13(e).
 ***
 -----------------------------------------------------------------------------
-The following license applies to every file in this package except for
-the files exec/crypto.c and exec/crypto.h.  The license for these files is
-described later in this document.  Some files are contributed by other authors
-and hence not copyright MontaVista Software.  In this case, the license is
-still as follows:
+The following license applies to every file in this source distribution except
+for the files exec/crypto.c, exec/crypto.h, git-version-gen, and
+gitlog-to-changelog.  The exec/crypto[c|h] file license is described in its
+full content later in this file and are part of the executive runtime and
+components of binary images produced by the source code.
+
+The git* files, which are available under GPLv3 or later,  are only used by
+our release process to generate text file content and are not part of any
+generated binary.
 -----------------------------------------------------------------------------
 
 Copyright (c) 2002-2004 MontaVista Software, Inc.
+Copyright (c) 2005-2010 Red Hat, Inc.
 
 All rights reserved.
 
@@ -43,6 +48,7 @@ INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
 CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 THE POSSIBILITY OF SUCH DAMAGE.
+
 -----------------------------------------------------------------------------
 The corosync project uses software from the LibTomCrypt project
 www.libtomcrypt.org.  This software is contained the files exec/crypto.c and
@@ -57,3 +63,23 @@ no known license status (assumed copyrighted) which is why SAFER,C is shipped
 as disabled.
 
 Tom St Denis
+
+-----------------------------------------------------------------------------
+The corosync project uses software for release processing which generates
+changelogs and version information for the software.  These programs are not
+used by the generated binaries or libraries These files are git-version-gen
+and gitlog-to-changelog.
+-----------------------------------------------------------------------------
+The license for these files is as follows:
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
