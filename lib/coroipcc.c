@@ -932,7 +932,9 @@ retry_ipc_sem_wait:
 	read_idx = ipc_instance->control_buffer->read;
 	header = (coroipc_response_header_t *) &addr[read_idx];
 	ipc_instance->control_buffer->read =
-		(read_idx + header->size) % ipc_instance->dispatch_size;
+		((read_idx + header->size + 7) & 0xFFFFFFF8) %
+			ipc_instance->dispatch_size;
+
 	/*
 	 * Put from dispatch get and also from this call's get
 	 */
