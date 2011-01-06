@@ -36,10 +36,6 @@ typedef uint64_t ulong64;
 #define ENDIAN_LITTLE
 #elif __BYTE_ORDER == __BIG_ENDIAN
 #define ENDIAN_BIG
-#elif _BYTE_ORDER == _LITTLE_ENDIAN
-#define ENDIAN_LITTLE
-#elif _BYTE_ORDER == _BIG_ENDIAN
-#define ENDIAN_BIG
 #else
 #error "cannot detect byte order"
 #endif
