@@ -333,18 +333,17 @@ static void message_handler_req_exec_pload_start (
 
 	start_mcasting ();
 }
-
 #ifndef timersub
-# define timersub(a, b, result)                                               \
-  do {                                                                        \
-    (result)->tv_sec = (a)->tv_sec - (b)->tv_sec;                             \
-    (result)->tv_usec = (a)->tv_usec - (b)->tv_usec;                          \
-    if ((result)->tv_usec < 0) {                                              \
-      --(result)->tv_sec;                                                     \
-      (result)->tv_usec += 1000000;                                           \
-    }                                                                         \
-  } while (0)
-#endif
+#define timersub(a, b, result)					\
+do {								\
+	(result)->tv_sec = (a)->tv_sec - (b)->tv_sec;		\
+	(result)->tv_usec = (a)->tv_usec - (b)->tv_usec;	\
+	if ((result)->tv_usec < 0) {				\
+		--(result)->tv_sec;				\
+		(result)->tv_usec += 1000000;			\
+	}							\
+} while (0)
+#endif /* timersub */
 
 unsigned long long int tv1;
 unsigned long long int tv2;
