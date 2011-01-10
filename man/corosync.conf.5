@@ -432,6 +432,16 @@ processor on receipt of the token.  The max_messages parameter is limited to
 The default is 17 messages.
 
 .TP
+miss_count_const
+This constant defines the maximum number of times on receipt of a token
+a message is checked for retransmission before a retransmission occurs.  This
+parameter is useful to modify for switches that delay multicast packets
+compared to unicast packets.  The default setting works well for nearly all
+modern switches.
+
+The default is 5 messages.
+
+.TP
 rrp_problem_count_timeout
 This specifies the time in milliseconds to wait before decrementing the
 problem count by 1 for a particular ring to ensure a link is not marked

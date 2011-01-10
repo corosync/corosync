@@ -79,6 +79,7 @@
 #define MAX_NETWORK_DELAY			50
 #define WINDOW_SIZE				50
 #define MAX_MESSAGES				17
+#define MISS_COUNT_CONST			5
 #define RRP_PROBLEM_COUNT_TIMEOUT		2000
 #define RRP_PROBLEM_COUNT_THRESHOLD_DEFAULT	10
 #define RRP_PROBLEM_COUNT_THRESHOLD_MIN		5
@@ -219,6 +220,8 @@ static void totem_volatile_config_read (
 	objdb_get_string (objdb, object_totem_handle, "vsftype", &totem_config->vsf_type);
 
 	objdb_get_int (objdb,object_totem_handle, "max_messages", &totem_config->max_messages);
+
+	objdb_get_int (objdb,object_totem_handle, "miss_count_const", &totem_config->miss_count_const);
 }
 
 
@@ -536,6 +539,10 @@ int totem_config_validate (
 
 	if (totem_config->max_messages == 0) {
 		totem_config->max_messages = MAX_MESSAGES;
+	}
+
+	if (totem_config->miss_count_const == 0) {
+		totem_config->miss_count_const = MISS_COUNT_CONST;
 	}
 
 	if (totem_config->token_timeout < MINIMUM_TIMEOUT) {

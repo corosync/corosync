@@ -174,6 +174,8 @@ struct totem_config {
 	int crypto_sign_type;
 
 	totem_transport_t transport_number;
+
+	unsigned int miss_count_const;
 };
 
 #define TOTEM_CONFIGURATION_TYPE
@@ -256,6 +258,9 @@ typedef struct {
 	totemsrp_token_stats_t token[TOTEM_TOKEN_STATS_MAX];
 
 } totemsrp_stats_t;
+
+ 
+ #define TOTEM_CONFIGURATION_TYPE
 
 typedef struct {
 	totem_stats_header_t hdr;
