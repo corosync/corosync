@@ -3,8 +3,10 @@
 *.lcrso
 *.so*
 .deps
+.version
 Makefile
 Makefile.in
+corosync.spec
 aclocal.m4
 autom4te.cache/
 config.guess
