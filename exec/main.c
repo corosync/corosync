@@ -562,6 +562,7 @@ static void corosync_totem_stats_updater (void *data)
 	uint32_t total_token_holdtime;
 	int t, prev;
 	int32_t token_count;
+	uint32_t firewall_enabled_or_nic_failure;
 
 	stats = api->totem_get_stats();
 
@@ -637,6 +638,11 @@ static void corosync_totem_stats_updater (void *data)
 	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
 		"continuous_gather", strlen("continuous_gather"),
 		&stats->mrp->srp->continuous_gather, sizeof (stats->mrp->srp->continuous_gather));
+
+	firewall_enabled_or_nic_failure = (stats->mrp->srp->continuous_gather > MAX_NO_CONT_GATHER ? 1 : 0);
+	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
+		"firewall_enabled_or_nic_failure", strlen("firewall_enabled_or_nic_failure"),
+		&firewall_enabled_or_nic_failure, sizeof (firewall_enabled_or_nic_failure));
 
 	total_mtt_rx_token = 0;
 	total_token_holdtime = 0;
@@ -797,6 +803,9 @@ static void corosync_totem_stats_init (void)
 			sizeof (zero_64), OBJDB_VALUETYPE_UINT64);
 		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
 			"continuous_gather", &zero_32,
+			sizeof (zero_32), OBJDB_VALUETYPE_UINT32);
+		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
+			"firewall_enabled_or_nic_failure", &zero_32,
 			sizeof (zero_32), OBJDB_VALUETYPE_UINT32);
 
 	}
