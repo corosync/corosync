@@ -841,6 +841,10 @@ int totemsrp_initialize (
 		totem_config->window_size, totem_config->max_messages);
 
 	log_printf (instance->totemsrp_log_level_debug,
+		"missed count const (%d messages)\n",
+		totem_config->miss_count_const);
+
+	log_printf (instance->totemsrp_log_level_debug,
 		"send threads (%d threads)\n", totem_config->threads);
 	log_printf (instance->totemsrp_log_level_debug,
 		"RRP token expired timeout (%d ms)\n",
@@ -2435,7 +2439,7 @@ static int orf_token_rtr (
 			strcat (retransmit_msg, value);
 		}
 		strcat (retransmit_msg, "\n");
-		log_printf (instance->totemsrp_log_level_debug,
+		log_printf (instance->totemsrp_log_level_notice,
 			"%s", retransmit_msg);
 	}
 
@@ -2500,6 +2504,20 @@ static int orf_token_rtr (
 		 */
 		res = sq_item_inuse (sort_queue, instance->my_aru + i);
 		if (res == 0) {
+			/*
+			 * Determine how many times we have missed receiving
+			 * this sequence number.  sq_item_miss_count increments
+			 * a counter for the sequence number.  The miss count
+			 * will be returned and compared.  This allows time for
+			 * delayed multicast messages to be received before
+			 * declaring the message is missing and requesting a
+			 * retransmit.
+			 */
+			res = sq_item_miss_count (sort_queue, instance->my_aru + i);
+			if (res < instance->totem_config->miss_count_const) {
+				continue;
+			}
+
 			/*
 			 * Determine if missing message is already in retransmit list
 			 */
