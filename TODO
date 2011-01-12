@@ -46,12 +46,13 @@ automatically reenable a redundant ring when it has been back in service.
 ------------------------------------------------------------------------------
 topic-snmp
 ------------------------------------------------------------------------------
-Main Developer: Steven Dake
+Main Developer: Angus Salkeld
 Started: Not Started
-Finished: 0%
+Finished: 100%
 target: needle
 Description:
 This topic involves investigation of adding SNMP support into Corosync.
+
 
 ------------------------------------------------------------------------------
 topic-udpu

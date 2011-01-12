@@ -1,10 +1,7 @@
-# Copyright (c) 2004 MontaVista Software, Inc.
 # Copyright (c) 2009 Red Hat, Inc.
 #
-# Authors: Steven Dake (sdake@redhat.com)
-#          Fabio M. Di Nitto (fdinitto@redhat.com)
-#
-# All rights reserved.
+# Authors: Andrew Beekhof
+#         Steven Dake (sdake@redhat.com)
 #
 # This software licensed under BSD license, the text of which follows:
 #
@@ -32,33 +29,16 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 
-MAINTAINERCLEANFILES	= Makefile.in
+EXTRA_DIST     = COROSYNC-MIB.txt corosync-signals.conf
 
-EXTRA_DIST		= generic.in notifyd.in
+MAINTAINERCLEANFILES    = Makefile.in
 
-target_INIT		= generic notifyd
+if INSTALL_MIB
+mibdir = $(datadir)/snmp/mibs
+mib_DATA = COROSYNC-MIB.txt
+endif
 
-%: %.in Makefile
-	rm -f $@-t $@
-	sed \
-		-e 's#@''SBINDIR@#$(sbindir)#g' \
-		-e 's#@''SYSCONFDIR@#$(sysconfdir)#g' \
-		-e 's#@''INITDDIR@#$(INITDDIR)#g' \
-		-e 's#@''LOCALSTATEDIR@#$(localstatedir)#g' \
-	    $< > $@-t
-	chmod 0755 $@-t
-	mv $@-t $@
-
-all-local: $(target_INIT)
-
-clean-local:
-	rm -rf $(target_INIT)
-
-install-exec-local:
-	$(INSTALL) -d $(DESTDIR)/$(INITDDIR)
-	$(INSTALL) -m 755 generic $(DESTDIR)/$(INITDDIR)/corosync
-	$(INSTALL) -m 755 notifyd $(DESTDIR)/$(INITDDIR)/corosync-notifyd
-
-uninstall-local:
-	cd $(DESTDIR)/$(INITDDIR) && \
-		rm -f corosync corosync-notifyd
+if INSTALL_DBUSCONF
+dbusdir = $(sysconfdir)/dbus-1/system.d
+dbus_DATA = corosync-signals.conf
+endif

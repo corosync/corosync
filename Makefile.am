@@ -65,7 +65,7 @@ corolenstest_DATA	= conf/lenses/tests/test_corosync.aug
 endif
 
 SUBDIRS			= include lcr lib exec services tools test cts pkgconfig \
-			  man init
+			  man init conf
 
 install-exec-local:
 	$(INSTALL) -d $(DESTDIR)/${COROSYSCONFDIR}/service.d
