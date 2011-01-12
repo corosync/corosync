@@ -1545,8 +1545,8 @@ static char * pid_to_name (pid_t pid, char *out_name, size_t name_len)
 static void coroipcs_init_conn_stats (
 	struct conn_info *conn)
 {
-	char conn_name[42];
-	char proc_name[32];
+	char conn_name[CS_MAX_NAME_LENGTH];
+	char proc_name[CS_MAX_NAME_LENGTH];
 
 	if (conn->client_pid > 0) {
 		if (pid_to_name (conn->client_pid, proc_name, sizeof(proc_name)))
