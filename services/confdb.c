@@ -565,7 +565,7 @@ static void message_handler_req_lib_confdb_object_parent_get (void *conn,
 
 	res_lib_confdb_object_parent_get.parent_object_handle = object_handle;
 	res_lib_confdb_object_parent_get.header.size = sizeof(res_lib_confdb_object_parent_get);
-	res_lib_confdb_object_parent_get.header.id = MESSAGE_RES_CONFDB_OBJECT_CREATE;
+	res_lib_confdb_object_parent_get.header.id = MESSAGE_RES_CONFDB_OBJECT_PARENT_GET;
 	res_lib_confdb_object_parent_get.header.error = ret;
 	api->ipc_response_send(conn, &res_lib_confdb_object_parent_get, sizeof(res_lib_confdb_object_parent_get));
 }
