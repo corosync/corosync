@@ -194,6 +194,12 @@ cs_error_t confdb_object_parent_get (
 	hdb_handle_t object_handle,
 	hdb_handle_t *parent_object_handle);
 
+cs_error_t confdb_object_name_get (
+	confdb_handle_t handle,
+	hdb_handle_t object_handle,
+	char *object_name,
+	size_t *object_name_len);
+
 /*
  * Manipulate keys
  */

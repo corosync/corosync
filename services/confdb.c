@@ -107,6 +107,8 @@ static void message_handler_req_lib_confdb_object_find (void *conn,
 
 static void message_handler_req_lib_confdb_object_parent_get (void *conn,
 							      const void *message);
+static void message_handler_req_lib_confdb_object_name_get (void *conn,
+							      const void *message);
 static void message_handler_req_lib_confdb_write (void *conn,
 						  const void *message);
 static void message_handler_req_lib_confdb_reload (void *conn,
@@ -225,6 +227,10 @@ static struct corosync_lib_handler confdb_lib_engine[] =
 	},
 	{ /* 19 */
 		.lib_handler_fn				= message_handler_req_lib_confdb_key_iter_typed,
+		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
+	},
+	{ /* 20 */
+		.lib_handler_fn				= message_handler_req_lib_confdb_object_name_get,
 		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 };
@@ -570,6 +576,28 @@ static void message_handler_req_lib_confdb_object_parent_get (void *conn,
 	api->ipc_response_send(conn, &res_lib_confdb_object_parent_get, sizeof(res_lib_confdb_object_parent_get));
 }
 
+static void message_handler_req_lib_confdb_object_name_get (void *conn,
+							      const void *message)
+{
+	const struct req_lib_confdb_object_name_get *request = message;
+	struct res_lib_confdb_object_name_get response;
+	int ret = CS_OK;
+	char object_name[CS_MAX_NAME_LENGTH];
+	size_t object_name_len;
+
+	if (api->object_name_get(request->object_handle,
+				object_name, &object_name_len)) {
+		ret = CS_ERR_ACCESS;
+	}
+
+	response.object_name.length = object_name_len;
+	strncpy((char*)response.object_name.value, object_name, CS_MAX_NAME_LENGTH);
+	response.object_name.value[CS_MAX_NAME_LENGTH-1] = '\0';
+	response.header.size = sizeof(response);
+	response.header.id = MESSAGE_RES_CONFDB_OBJECT_NAME_GET;
+	response.header.error = ret;
+	api->ipc_response_send(conn, &response, sizeof(response));
+}
 
 static void message_handler_req_lib_confdb_key_iter (void *conn,
 						     const void *message)

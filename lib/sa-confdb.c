@@ -186,6 +186,14 @@ int confdb_sa_object_parent_get (
 	return objdb->object_parent_get(object_handle, parent_object_handle);
 }
 
+int confdb_sa_object_name_get(
+	hdb_handle_t object_handle,
+	char *object_name,
+	size_t *object_name_len)
+{
+	return objdb->object_name_get(object_handle, object_name, object_name_len);
+}
+
 int confdb_sa_key_create (
 	hdb_handle_t parent_object_handle,
 	const void *key_name,

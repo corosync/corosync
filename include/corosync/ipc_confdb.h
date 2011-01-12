@@ -59,6 +59,7 @@ enum req_confdb_types {
 	MESSAGE_REQ_CONFDB_KEY_CREATE_TYPED = 17,
 	MESSAGE_REQ_CONFDB_KEY_GET_TYPED = 18,
 	MESSAGE_REQ_CONFDB_KEY_ITER_TYPED = 19,
+	MESSAGE_REQ_CONFDB_OBJECT_NAME_GET = 20,
 };
 
 enum res_confdb_types {
@@ -85,6 +86,7 @@ enum res_confdb_types {
 	MESSAGE_RES_CONFDB_KEY_GET_TYPED = 20,
 	MESSAGE_RES_CONFDB_KEY_ITER_TYPED = 21,
 	MESSAGE_RES_CONFDB_RELOAD_CALLBACK = 22,
+	MESSAGE_RES_CONFDB_OBJECT_NAME_GET = 23,
 };
 
 
@@ -114,6 +116,15 @@ struct res_lib_confdb_object_parent_get {
 	mar_uint64_t parent_object_handle __attribute__((aligned(8)));
 };
 
+struct req_lib_confdb_object_name_get {
+	coroipc_request_header_t header __attribute__((aligned(8)));
+	mar_uint64_t object_handle __attribute__((aligned(8)));
+};
+
+struct res_lib_confdb_object_name_get {
+	coroipc_response_header_t header __attribute__((aligned(8)));
+	mar_name_t object_name __attribute__((aligned(8)));
+};
 
 struct req_lib_confdb_key_create {
 	coroipc_request_header_t header __attribute__((aligned(8)));
