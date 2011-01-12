@@ -375,7 +375,7 @@ static void member_object_joined (unsigned int nodeid)
 			&object_node_handle) == 0) {
 
 		objdb->object_key_increment (object_node_handle,
-			"join_count", strlen("flap"),
+			"join_count", strlen("join_count"),
 			&key_incr_dummy);
 
 		objdb->object_key_replace (object_node_handle,
