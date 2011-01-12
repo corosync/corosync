@@ -1,0 +1,9 @@
+#
+# See "man corosync-notifyd" for descriptions of
+# the options below.
+#
+# OPTIONS="-d -s -l -m <snmp manager address>"
+#
+
+OPTIONS=""
+

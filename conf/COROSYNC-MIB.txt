@@ -1,0 +1,186 @@
+COROSYNC-MIB DEFINITIONS ::= BEGIN
+
+--
+-- MIB objects for the corosync
+--
+
+IMPORTS
+    MODULE-IDENTITY,NOTIFICATION-TYPE,
+    Integer32,enterprises                       FROM SNMPv2-SMI
+    TEXTUAL-CONVENTION                          FROM SNMPv2-TC
+    SnmpAdminString                             FROM SNMP-FRAMEWORK-MIB
+    netSnmp                                     FROM NET-SNMP-MIB
+    InetAddressType, InetAddress                FROM INET-ADDRESS-MIB
+;
+
+corosync MODULE-IDENTITY
+    LAST-UPDATED    "200911061318Z"
+    ORGANIZATION    "www.corosync.org"
+    CONTACT-INFO    "name:  Yuki Sato
+                     email: openais@lists.linux-foundation.org"
+    DESCRIPTION     "MIB objects for the corosync"
+    REVISION        "200911061318Z"
+    DESCRIPTION     "First draft"
+    REVISION        "201003251209Z"
+    DESCRIPTION
+        "Private Enterprise Number has been assigned."
+        ::= { enterprises 35488 }
+
+--
+-- top level structure
+--
+corosyncNotice OBJECT IDENTIFIER ::= { corosync 1 }
+
+--
+--  corosync MIB entries
+--
+
+--
+-- Node Information
+--
+corosyncNoticeNodeStatusTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF corosyncNoticeNodeEntry
+    MAX-ACCESS  accessible-for-notify
+    STATUS      current
+    DESCRIPTION
+        "The table contains information about the nodes in the corosync."
+::= { corosyncNotice 1 }
+
+corosyncNoticeNodeEntry OBJECT-TYPE
+    SYNTAX      corosyncNoticeNodeEntry
+    MAX-ACCESS  accessible-for-notify
+    STATUS      current
+    DESCRIPTION
+        "The entry containing information about the iface."
+    INDEX   { corosyncNoticeNodeIndex }
+::= { corosyncNoticeNodeStatusTable 1 }
+
+corosyncNoticeNodeEntry ::= SEQUENCE {
+    corosyncNoticeNodeIndex     Integer32,
+    corosyncNoticeNodeid        Integer32,
+    corosyncNoticeNode          OCTET STRING,
+    corosyncNoticeNodeStatus    INTEGER
+}
+
+corosyncNoticeNodeIndex OBJECT-TYPE
+    SYNTAX      Integer32
+    MAX-ACCESS  accessible-for-notify
+    STATUS      current
+    DESCRIPTION "The unique integer of the node."
+::= { corosyncNoticeNodeEntry 1 }
+
+corosyncNoticeNodeid OBJECT-TYPE
+    SYNTAX      Integer32
+    MAX-ACCESS  accessible-for-notify
+    STATUS      current
+    DESCRIPTION "The id of the node."
+::= { corosyncNoticeNodeEntry 2 }
+
+corosyncNoticeNode OBJECT-TYPE
+    SYNTAX      OCTET STRING (SIZE(1..64))
+    MAX-ACCESS  accessible-for-notify
+    STATUS      current
+    DESCRIPTION
+        "The iface of the node."
+::= { corosyncNoticeNodeEntry 3 }
+
+corosyncNoticeNodeStatus OBJECT-TYPE
+    SYNTAX      INTEGER {
+                unknown (0),
+                joined  (1),
+                left    (2)
+            }
+    MAX-ACCESS  accessible-for-notify
+    STATUS      current
+    DESCRIPTION
+        "The status change of the node."
+::= { corosyncNoticeNodeEntry 4 }
+
+--
+-- Iface(s) Information
+--
+corosyncNoticeIfaceStatusTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF corosyncNoticeIfaceEntry
+    MAX-ACCESS  accessible-for-notify
+    STATUS      current
+    DESCRIPTION
+        "The table describes the iface(s) that are used by the corosync."
+::= { corosyncNotice 2 }
+
+corosyncNoticeIfaceEntry OBJECT-TYPE
+    SYNTAX      corosyncNoticeIfaceEntry
+    MAX-ACCESS  accessible-for-notify
+    STATUS      current
+    DESCRIPTION
+        "The entry containing information about the iface."
+    INDEX   { corosyncNoticeIfaceIndex }
+::= { corosyncNoticeIfaceStatusTable 1 }
+
+corosyncNoticeIfaceEntry ::= SEQUENCE {
+    corosyncNoticeIfaceIndex    INTEGER,
+    corosyncNoticeIface         OCTET STRING,
+    corosyncNoticeIfaceStatus   OCTET STRING
+}
+
+corosyncNoticeIfaceIndex OBJECT-TYPE
+    SYNTAX      Integer32
+    MAX-ACCESS  accessible-for-notify
+    STATUS      current
+    DESCRIPTION
+        "The unique integer of the iface(s)."
+::= { corosyncNoticeIfaceEntry 1 }
+
+corosyncNoticeIface OBJECT-TYPE
+    SYNTAX      OCTET STRING (SIZE(1..64))
+    MAX-ACCESS  accessible-for-notify
+    STATUS      current
+    DESCRIPTION
+        "The iface(s) of the change happened node."
+::= { corosyncNoticeIfaceEntry 2 }
+
+corosyncNoticeIfaceStatus OBJECT-TYPE
+    SYNTAX      INTEGER {
+                unknown (0),
+                up      (1),
+                down    (2),
+                faulty  (3)
+            }
+    MAX-ACCESS accessible-for-notify
+    STATUS      current
+    DESCRIPTION
+        "The status change of the iface."
+::= { corosyncNoticeIfaceEntry 3 }
+
+--corosyncNoticeIfaceStatus OBJECT-TYPE
+--   SYNTAX     OCTET STRING (SIZE(1..1024))
+--   MAX-ACCESS accessible-for-notify
+--   STATUS     current
+--   DESCRIPTION
+--       "The iface(s) status of the change happened node."
+--::= { corosyncNoticeIfaceEntry 3 }
+
+--
+-- Trap Information
+--
+corosyncNoticeTrap OBJECT IDENTIFIER ::= { corosync 100 }
+
+corosyncNoticeNodeTrap NOTIFICATION-TYPE
+    OBJECTS
+        { corosyncNoticeNodeid corosyncNoticeNode corosyncNoticeNodeStatus }
+    STATUS      current
+    DESCRIPTION
+        "The node status change event just happened."
+::= { corosyncNoticeTrap 1 }
+
+corosyncNoticeIfaceTrap NOTIFICATION-TYPE
+    OBJECTS
+        { corosyncNoticeNodeid corosyncNoticeIface corosyncNoticeIfaceStatus }
+    STATUS  current
+    DESCRIPTION
+        "The iface status change event just happened."
+::= { corosyncNoticeTrap 2 }
+
+END
+
+
+

@@ -8,6 +8,8 @@
 %bcond_with testagents
 %bcond_with watchdog
 %bcond_with monitoring
+%bcond_with snmp
+%bcond_with dbus
 
 Name: corosync
 Summary: The Corosync Cluster Engine and Application Programming Interfaces
@@ -35,6 +37,12 @@ BuildRequires: autoconf automake
 %endif
 BuildRequires: nss-devel
 BuildRequires: libibverbs-devel librdmacm-devel
+%if %{with snmp}
+BuildRequires: net-snmp-devel
+%endif
+%if %{with dbus}
+BuildRequires: dbus-devel
+%endif
 
 BuildRoot: %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 
@@ -60,6 +68,12 @@ export rdmacm_LIBS=-lrdmacm \
 %endif
 %if %{with monitoring}
 	--enable-monitoring \
+%endif
+%if %{with snmp}
+	--enable-snmp \
+%endif
+%if %{with dbus}
+	--enable-dbus \
 %endif
 	--enable-rdma \
 	--with-initddir=%{_initrddir}
@@ -107,13 +121,21 @@ fi
 %{_sbindir}/corosync-pload
 %{_sbindir}/corosync-cpgtool
 %{_sbindir}/corosync-quorumtool
+%{_sbindir}/corosync-notifyd
 %{_bindir}/corosync-blackbox
 %dir %{_sysconfdir}/corosync
 %dir %{_sysconfdir}/corosync/service.d
 %dir %{_sysconfdir}/corosync/uidgid.d
 %config(noreplace) %{_sysconfdir}/corosync/corosync.conf.example
 %config(noreplace) %{_sysconfdir}/corosync/corosync.conf.example.udpu
+%if %{with dbus}
+%{_sysconfdir}/dbus-1/system.d/corosync-signals.conf
+%endif
+%if %{with snmp}
+%(_datadir)/snmp/mibs/COROSYNC-MIB.txt
+%endif
 %{_initrddir}/corosync
+%{_initrddir}/corosync-notifyd
 %dir %{_libexecdir}/lcrso
 %{_libexecdir}/lcrso/coroparse.lcrso
 %{_libexecdir}/lcrso/objdb.lcrso
@@ -143,6 +165,7 @@ fi
 %{_mandir}/man8/corosync-cpgtool.8*
 %{_mandir}/man8/corosync-fplay.8*
 %{_mandir}/man8/corosync-pload.8*
+%{_mandir}/man8/corosync-notifyd.8*
 %{_mandir}/man8/corosync-quorumtool.8*
 %{_mandir}/man5/corosync.conf.5*
 
