@@ -70,9 +70,22 @@ __pids_pidof() {
                 pidof -c -o $$ -o $PPID -o %PPID "${1##*/}"
 }
 
+cluster_disabled_at_boot()
+{
+       if grep -q nocluster /proc/cmdline && \
+          [ "$(tty)" = "/dev/console" ]; then
+               echo -e "not configured to run at boot"
+               failure
+               return 1
+       fi
+       return 0
+}
+
 start()
 {
 	echo -n "Starting $desc ($prog): "
+
+	! cluster_disabled_at_boot && return
 
 	# most recent distributions use tmpfs for @LOCALSTATEDIR@/run
 	# to avoid to clean it up on every boot.
