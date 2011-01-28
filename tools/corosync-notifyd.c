@@ -123,16 +123,22 @@ enum snmp_node_status {
 };
 
 #define SNMP_OID_COROSYNC "1.3.6.1.4.1.35488"
-#define SNMP_OID_NOTICE_ROOT SNMP_OID_COROSYNC ".1"
-#define SNMP_OID_NOTICE_NODE_TABLE  SNMP_OID_NOTICE_ROOT ".1"
-#define SNMP_OID_NOTICE_NODE_ENTRY  SNMP_OID_NOTICE_NODE_TABLE ".1"
-#define SNMP_OID_NOTICE_NODE_INDEX  SNMP_OID_NOTICE_NODE_ENTRY ".1"
-#define SNMP_OID_NOTICE_NODE_ID     SNMP_OID_NOTICE_NODE_ENTRY ".2"
-#define SNMP_OID_NOTICE_NODE        SNMP_OID_NOTICE_NODE_ENTRY ".3"
-#define SNMP_OID_NOTICE_NODE_STATE  SNMP_OID_NOTICE_NODE_ENTRY ".4"
+#define SNMP_OID_OBJECT_ROOT		SNMP_OID_COROSYNC ".1"
+#define SNMP_OID_OBJECT_NODE_NAME	SNMP_OID_OBJECT_ROOT ".1"
+#define SNMP_OID_OBJECT_NODE_ID		SNMP_OID_OBJECT_ROOT ".2"
+#define SNMP_OID_OBJECT_NODE_STATUS	SNMP_OID_OBJECT_ROOT ".3"
+#define SNMP_OID_OBJECT_NODE_ADDR	SNMP_OID_OBJECT_ROOT ".4"
 
-#define SNMP_OID_TRAPS_ROOT  SNMP_OID_COROSYNC ".100"
-#define SNMP_OID_TRAPS_NODE  SNMP_OID_TRAPS_ROOT ".1"
+#define SNMP_OID_OBJECT_RINGSEQ		SNMP_OID_OBJECT_ROOT ".20"
+#define SNMP_OID_OBJECT_QUORUM		SNMP_OID_OBJECT_ROOT ".21"
+
+#define SNMP_OID_OBJECT_APP_NAME	SNMP_OID_OBJECT_ROOT ".40"
+#define SNMP_OID_OBJECT_APP_STATUS	SNMP_OID_OBJECT_ROOT ".41"
+
+#define SNMP_OID_TRAPS_ROOT		SNMP_OID_COROSYNC ".0"
+#define SNMP_OID_TRAPS_NODE		SNMP_OID_TRAPS_ROOT ".1"
+#define SNMP_OID_TRAPS_QUORUM		SNMP_OID_TRAPS_ROOT ".2"
+#define SNMP_OID_TRAPS_APP		SNMP_OID_TRAPS_ROOT ".3"
 
 #define CS_TIMESTAMP_STR_LEN 20
 static const char *local_host = "localhost";
@@ -713,9 +719,10 @@ _cs_snmp_node_membership_event(char *nodename, uint32_t nodeid, char *state, cha
 	snmp_add_var (trap_pdu, snmptrap_oid, sizeof (snmptrap_oid) / sizeof (oid), 'o', SNMP_OID_TRAPS_NODE);
 
 	/* Add extries to the trap */
-	add_field (trap_pdu, ASN_INTEGER, SNMP_OID_NOTICE_NODE_ID, (void*)&nodeid, sizeof (nodeid));
-	add_field (trap_pdu, ASN_OCTET_STR, SNMP_OID_NOTICE_NODE, (void*)ip, strlen (ip));
-	add_field (trap_pdu, ASN_INTEGER, SNMP_OID_NOTICE_NODE_STATE, (void*)&node_status, sizeof (node_status));
+	add_field (trap_pdu, ASN_OCTET_STR, SNMP_OID_OBJECT_NODE_NAME, (void*)nodename, strlen (nodename));
+	add_field (trap_pdu, ASN_INTEGER, SNMP_OID_OBJECT_NODE_ID, (void*)&nodeid, sizeof (nodeid));
+	add_field (trap_pdu, ASN_OCTET_STR, SNMP_OID_OBJECT_NODE_ADDR, (void*)ip, strlen (ip));
+	add_field (trap_pdu, ASN_INTEGER, SNMP_OID_OBJECT_NODE_STATUS, (void*)&node_status, sizeof (node_status));
 
 	/* Send and cleanup */
 	ret = snmp_send (session, trap_pdu);
@@ -727,6 +734,49 @@ _cs_snmp_node_membership_event(char *nodename, uint32_t nodeid, char *state, cha
 }
 
 static void
+_cs_snmp_node_quorum_event(char *nodename, uint32_t nodeid,
+			   const char *state)
+{
+	int ret;
+	char csysuptime[20];
+	static oid snmptrap_oid[]  = { 1,3,6,1,6,3,1,1,4,1,0 };
+	static oid sysuptime_oid[] = { 1,3,6,1,2,1,1,3,0 };
+	time_t now = time (NULL);
+
+	netsnmp_pdu *trap_pdu;
+	netsnmp_session *session = snmp_init (snmp_manager);
+	if (session == NULL) {
+		syslog (LOG_NOTICE, "Failed to init SNMP session.\n");
+		return ;
+	}
+
+	trap_pdu = snmp_pdu_create (SNMP_MSG_TRAP2);
+	if (!trap_pdu) {
+		syslog (LOG_NOTICE, "Failed to create SNMP notification.\n");
+		return ;
+	}
+
+	/* send uptime */
+	sprintf (csysuptime, "%ld", now);
+	snmp_add_var (trap_pdu, sysuptime_oid, sizeof (sysuptime_oid) / sizeof (oid), 't', csysuptime);
+	snmp_add_var (trap_pdu, snmptrap_oid, sizeof (snmptrap_oid) / sizeof (oid), 'o', SNMP_OID_TRAPS_NODE);
+
+	/* Add extries to the trap */
+	add_field (trap_pdu, ASN_OCTET_STR, SNMP_OID_OBJECT_NODE_NAME, (void*)nodename, strlen (nodename));
+	add_field (trap_pdu, ASN_INTEGER, SNMP_OID_OBJECT_NODE_ID, (void*)&nodeid, sizeof (nodeid));
+	add_field (trap_pdu, ASN_OCTET_STR, SNMP_OID_OBJECT_QUORUM, (void*)state, strlen (state));
+
+	/* Send and cleanup */
+	ret = snmp_send (session, trap_pdu);
+	if (ret == 0) {
+		/* error */
+		syslog (LOG_ERR, "Could not send SNMP trap");
+		snmp_free_pdu (trap_pdu);
+	}
+}
+
+
+static void
 _cs_snmp_init(void)
 {
 	if (snmp_manager == NULL) {
@@ -735,7 +785,8 @@ _cs_snmp_init(void)
 
 	notifiers[num_notifiers].node_membership_fn =
 		_cs_snmp_node_membership_event;
-	notifiers[num_notifiers].node_quorum_fn = NULL;
+	notifiers[num_notifiers].node_quorum_fn = 
+		_cs_snmp_node_quorum_event;
 	notifiers[num_notifiers].application_connection_fn = NULL;
 	num_notifiers++;
 }
