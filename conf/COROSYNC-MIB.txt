@@ -1,7 +1,7 @@
 COROSYNC-MIB DEFINITIONS ::= BEGIN
 
 --
--- MIB objects for the corosync
+-- MIB objects for Corosync
 --
 
 IMPORTS
@@ -19,7 +19,7 @@ corosync MODULE-IDENTITY
                      email: openais@lists.linux-foundation.org"
     DESCRIPTION     "Add cluster quorum traps, fix smilint errors, and fix notification block ID"
     REVISION        "201101211300Z"
-    DESCRIPTION     "MIB objects for the corosync"
+    DESCRIPTION     "MIB objects for Corosync"
     REVISION        "201003251209Z"
     DESCRIPTION     "First draft"
     REVISION        "200911061318Z"
@@ -35,7 +35,7 @@ corosyncObjects OBJECT IDENTIFIER ::= { corosync 1 }
 corosyncConformance OBJECT IDENTIFIER ::= { corosync 200 }
 
 --
---  corosync MIB entries
+--  Corosync MIB entries
 --
 
 --
@@ -126,7 +126,12 @@ corosyncNoticesNodeStatus NOTIFICATION-TYPE
 		  corosyncObjectsNodeAddress,
 		  corosyncObjectsNodeStatus }
     STATUS      current
-    DESCRIPTION "Node status change."
+    DESCRIPTION
+      "Produced when a node 'corosyncObjectsNodeName' joins or leaves
+       the cluster.
+
+       The notification includes the node name, nodeid, the node's
+       IP address and the status (either 'joined' or 'left')."
 ::= { corosyncNotices 1 }
 
 corosyncNoticesQuorumStatus NOTIFICATION-TYPE
@@ -134,7 +139,11 @@ corosyncNoticesQuorumStatus NOTIFICATION-TYPE
 		  corosyncObjectsNodeID,
 		  corosyncObjectsQuorumStatus }
     STATUS  current
-    DESCRIPTION "Quorum status change."
+    DESCRIPTION
+      "Produced when the quorum state changes.
+
+       The notification also includes the node name, nodeid
+       and the new state (either 'quorate' or 'NOT quorate')."
 ::= { corosyncNotices 2 }
 
 corosyncNoticesAppStatus NOTIFICATION-TYPE
@@ -143,7 +152,12 @@ corosyncNoticesAppStatus NOTIFICATION-TYPE
 		  corosyncObjectsAppName, 
 		  corosyncObjectsAppStatus }
     STATUS  current
-    DESCRIPTION "Application connection status change."
+    DESCRIPTION
+      "Produced when a client application 'corosyncObjectsAppName' connects or
+       disconnects from Corosync.
+
+       The notification also includes the node name, nodeid, the application
+       name and the new state (either 'connected' or 'disconnected')."
 ::= { corosyncNotices 3 }
 
 
@@ -156,7 +170,7 @@ corosyncConformanceGroups OBJECT IDENTIFIER ::= { corosyncConformance 2 }
 
 corosyncCompliance MODULE-COMPLIANCE
     STATUS      current
-    DESCRIPTION "corosync compliance information"
+    DESCRIPTION "Corosync compliance information"
     MODULE    -- this module
     MANDATORY-GROUPS { corosyncObjectGroup, corosyncNotificationGroup }
 ::= { corosyncCompliances 1 }
@@ -172,7 +186,7 @@ corosyncObjectGroup OBJECT-GROUP
 	      corosyncObjectsAppStatus
             }
     STATUS      current
-    DESCRIPTION "corosync Object Conformance Group"
+    DESCRIPTION "Corosync Object Conformance Group"
 ::= { corosyncConformanceGroups 1 }
 
 corosyncNotificationGroup NOTIFICATION-GROUP
@@ -181,7 +195,7 @@ corosyncNotificationGroup NOTIFICATION-GROUP
 		    corosyncNoticesAppStatus
                   }
     STATUS      current
-    DESCRIPTION "corosync Notification Conformance Group"
+    DESCRIPTION "Corosync Notification Conformance Group"
 ::= { corosyncConformanceGroups 2 }
 
 END
