@@ -126,9 +126,6 @@ AC_CONFIG_FILES([Makefile
 		 pkgconfig/Makefile
 		 services/Makefile
 		 test/Makefile
-		 cts/Makefile
-		 cts/agents/Makefile
-		 cts/CTSvars.py
 		 tools/Makefile
 		 conf/Makefile])
 
@@ -569,14 +566,8 @@ AC_SUBST([COVERAGE_LCRSO_EXTRA_LDFLAGS])
 AC_SUBST([OS_DYFLAGS])
 
 AC_SUBST([OS_LDL])
-<<<<<<< HEAD
-
-=======
-AM_CONDITIONAL(INSTALL_TESTAGENTS, test -n "${enable_testagents}")
 AM_CONDITIONAL(INSTALL_MIB, test "${enable_snmp}" = "1")
 AM_CONDITIONAL(INSTALL_DBUSCONF, test "${enable_dbus}" = "1")
-AM_CONDITIONAL(AUGTOOL, test -n "${AUGTOOL}")
->>>>>>> 2a568d6... Add dbus and snmp notifier
 AC_SUBST([NSS_LDFLAGS])
 
 AM_CONDITIONAL(BUILD_DARWIN, test -n "${DARWIN_OPTS}")

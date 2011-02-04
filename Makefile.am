@@ -54,7 +54,7 @@ corosysconfdir		= ${COROSYSCONFDIR}
 corosysconf_DATA	= conf/corosync.conf.example \
 			  conf/corosync.conf.example.udpu
 
-SUBDIRS			= include lcr lib exec services tools test cts pkgconfig \
+SUBDIRS			= include lcr lib exec services tools test pkgconfig \
 			  man init conf
 
 install-exec-local:
