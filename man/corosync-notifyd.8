@@ -1,0 +1,145 @@
+.\"/*
+.\" * Copyright (C) 2010 Red Hat, Inc.
+.\" *
+.\" * All rights reserved.
+.\" *
+.\" * Author: Angus Salkeld <asalkeld@redhat.com>
+.\" *
+.\" * This software licensed under BSD license, the text of which follows:
+.\" *
+.\" * Redistribution and use in source and binary forms, with or without
+.\" * modification, are permitted provided that the following conditions are met:
+.\" *
+.\" * - Redistributions of source code must retain the above copyright notice,
+.\" *   this list of conditions and the following disclaimer.
+.\" * - Redistributions in binary form must reproduce the above copyright notice,
+.\" *   this list of conditions and the following disclaimer in the documentation
+.\" *   and/or other materials provided with the distribution.
+.\" * - Neither the name of Red Hat, Inc. nor the names of its
+.\" *   contributors may be used to endorse or promote products derived from this
+.\" *   software without specific prior written permission.
+.\" *
+.\" * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+.\" * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+.\" * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+.\" * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+.\" * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+.\" * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+.\" * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+.\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+.\" * THE POSSIBILITY OF SUCH DAMAGE.
+.\" */
+.TH COROSYNC-NOTIFYD 8 2011-01-14
+.SH NAME
+corosync-notifyd \- Listen for important corosync events and send dbus and/or snmp traps.
+.SH SYNOPSIS
+.B "corosync-notifyd [\-f] [\-l] [\-o] [\-s] [\-m] [manager] [\-d] [-h]"
+.SH DESCRIPTION
+.B corosync-notifyd
+uses corosync API to listen for important cluster events and can log them,
+generate dbus signals or genterate snmp traps.
+.SH OPTIONS
+.TP
+.B -f
+Start application in foreground.
+.TP
+.B -l
+Log all events.
+.TP
+.B -o
+Print events to stdout (turns on -l).
+.TP
+.B -s
+Send SNMP traps on all events.
+.TP
+.B -m
+Set the SNMP manager address.
+.TP
+.B -d
+Send DBUS signals on all events.
+.TP
+.B -h
+Print this help
+.SH EXAMPLES
+.br
+$ corosync-notifyd -o
+.br
+corosync-notifyd[18505]: troll[23374016] corosync-notify:18505:12 is now connected to corosync
+.br
+corosync-notifyd[18505]: troll[23374016] corosync-notify:18505:13 is now disconnected from corosync
+.br
+corosync-notifyd[18505]: troll[23374016] is now quorate
+.br
+corosync-notifyd[18505]: r2[1550100672] ip:192.168.100.92 joined
+.br
+corosync-notifyd[18505]: r2[1550100672] ip:192.168.100.92 left
+.br
+
+.br
+$ corosync-notifyd -o
+.br
+
+Note this output below is from "dbus-monitor --system"
+
+.br
+signal sender=:1.216 -> dest=(null destination) serial=2 path=/com/redhat/cluster/corosync;
+ interface=com.redhat.cluster.corosync; member=ConnectionStateChange
+.br
+   string "troll"
+.br
+   uint32 23374016
+.br
+   string "corosync-notify:18900:12"
+.br
+   string "connected"
+.br
+signal sender=:1.216 -> dest=(null destination) serial=3 path=/com/redhat/cluster/corosync;
+ interface=com.redhat.cluster.corosync; member=ConnectionStateChange
+.br
+   string "troll"
+.br
+   uint32 23374016
+.br
+   string "corosync-notify:18900:13"
+.br
+   string "disconnected"
+.br
+signal sender=:1.216 -> dest=(null destination) serial=4 path=/com/redhat/cluster/corosync;
+ interface=com.redhat.cluster.corosync; member=QorumStateChange
+.br
+   string "troll"
+.br
+   uint32 23374016
+.br
+   string "quorate"
+.br
+signal sender=:1.216 -> dest=(null destination) serial=5 path=/com/redhat/cluster/corosync;
+ interface=com.redhat.cluster.corosync; member=NodeStateChange
+.br
+   string "r2"
+.br
+   uint32 1550100672
+.br
+   string "192.168.100.92"
+.br
+   string "joined"
+.br
+signal sender=:1.216 -> dest=(null destination) serial=6 path=/com/redhat/cluster/corosync;
+ interface=com.redhat.cluster.corosync; member=NodeStateChange
+.br
+   string "r2"
+.br
+   uint32 1550100672
+.br
+   string "192.168.100.92"
+.br
+   string "left"
+.SH SEE ALSO
+.BR corosync (8),
+.BR corosync-objctl (8),
+.BR dbus-monitor (1),
+.SH AUTHOR
+Angus Salkeld
+.PP

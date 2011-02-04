@@ -123,6 +123,56 @@ balance:~/corosync/trunk% ./configure --enable-rdma
 Hopefully pkgconfig support is added in your distribution's version of
 libibverbs and librdmacm soon if you run into this problem.
 
+-----------------------------------------
+* Building with SNMP/DBUS support *
+-----------------------------------------
+
+You can get SNMP traps on the following corosync events:
+1) node joine/leave
+2) application connect/dissconnect from corosync
+3) quorum gain/lost
+
+There are 2 modes of achieving this DBUS + foghorn and snmp-agentx.
+
+Setting up to get dbus events.
+------------------------------
+foghorn (http://git.fedorahosted.org/git/foghorn.git) converts
+dbus signals into snmp traps. So install foghorn.
+
+$ ./configure --enable-dbus
+$ make && sudo make install
+$ /etc/init.d/corosync start
+$ echo "OPTIONS=\"-d\"" > /etc/sysconfig/corosync-notifyd
+$ /etc/init.d/corosync-notifyd start
+Start foghorn
+
+to see the dbus signals getting sent try:
+$ dbus-monitor --system
+
+Setting up snmp-agentx.
+-----------------------
+If you don't want to use dbus then you can use snmp-agentx.
+
+$ ./configure --enable-snmp
+$ make && sudo make install
+$ /etc/init.d/corosync start
+$ vim /etc/snmp/snmptrapd.conf
+
+Add the following:
+authCommunity   log,execute,net public
+$ /etc/init.d/snmptrapd start
+$ echo "OPTIONS=\"-s\"" > /etc/sysconfig/corosync-notifyd
+$ /etc/init.d/corosync-notifyd start
+
+I start up wireshark to see if there are any snmp traps been sent
+as I am too lazy to setup a manager to receive traps.
+
+run a program that talks to corosync e.g.
+$ corosync-objctl
+
+And you should get traps
+
+
 ------------------------
 * Configuring Corosync *
 ------------------------

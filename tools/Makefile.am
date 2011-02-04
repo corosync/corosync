@@ -30,15 +30,17 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 
 MAINTAINERCLEANFILES    = Makefile.in
-INCLUDES       		= -I$(top_builddir)/include  -I$(top_srcdir)/include
+INCLUDES       		= -I$(top_builddir)/include  -I$(top_srcdir)/include \
+                          -I$(top_builddir)/include/corosync
 
 sbin_PROGRAMS		= corosync-fplay corosync-cfgtool \
 			  corosync-keygen corosync-objctl \
-			  corosync-pload corosync-cpgtool corosync-quorumtool
+			  corosync-pload corosync-cpgtool corosync-quorumtool \
+			  corosync-notifyd
 
 bin_SCRIPTS		= corosync-blackbox
 
-EXTRA_DIST		= $(bin_SCRIPTS)
+EXTRA_DIST		= $(bin_SCRIPTS) corosync-notifyd.sysconfig.example
 
 corosync_pload_LDADD	= -lpload -lcoroipcc
 corosync_pload_LDFLAGS	= -L../lib
@@ -52,5 +54,14 @@ corosync_quorumtool_LDADD = -lconfdb -lcfg -lquorum \
 			    -lvotequorum -lcoroipcc ../lcr/liblcr.a
 corosync_quorumtool_LDFLAGS = -L../lib
 
+corosync_notifyd_LDADD = -L../lib
+corosync_notifyd_LDFLAGS = -lcfg -lconfdb ../lcr/liblcr.a -lcoroipcc \
+			   ../exec/coropoll.o $(DBUS_LIBS) $(SNMPLIBS) \
+			   -lquorum
+corosync_notifyd_CPPFLAGS = $(DBUS_CFLAGS)
+
+
 lint:
-	-splint $(LINT_FLAGS) $(CFLAGS) *.c
+	-splint $(LINT_FLAGS) $(DBUS_CFLAGS) $(INCLUDES) $(CFLAGS) *.c
+
+

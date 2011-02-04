@@ -1,0 +1,147 @@
+#!/bin/bash
+
+# Authors:
+#  Angus Salkeld <asalkeld@redhat.com>
+#
+# License: Revised BSD
+
+# chkconfig: - 23 77
+# description: Corosync Dbus and snmp notifier
+# processname: corosync-notifyd
+#
+### BEGIN INIT INFO
+# Provides:		corosync-notifyd
+# Required-Start:	$corosync $cman
+# Required-Stop:	$corosync $cman
+# Default-Start:
+# Default-Stop:
+# Short-Description:	Starts and stops Corosync Notifier.
+# Description:		Starts and stops Corosync Notifier.
+### END INIT INFO
+
+desc="Corosync Notifier"
+prog="corosync-notifyd"
+
+# set secure PATH
+PATH="/sbin:/bin:/usr/sbin:/usr/bin:@SBINDIR@"
+
+success()
+{
+	echo -ne "[  OK  ]\r"
+}
+
+failure()
+{
+	echo -ne "[FAILED]\r"
+}
+
+status()
+{
+	pid=$(pidof $1 2>/dev/null)
+	rtrn=$?
+	if [ $rtrn -ne 0 ]; then
+		echo "$1 is stopped"
+	else
+		echo "$1 (pid $pid) is running..."
+	fi
+	return $rtrn
+}
+
+# rpm based distros
+if [ -d @SYSCONFDIR@/sysconfig ]; then
+	[ -f @INITDDIR@/functions ] && . @INITDDIR@/functions
+	[ -f @SYSCONFDIR@/sysconfig/$prog ] && . @SYSCONFDIR@/sysconfig/$prog
+	[ -z "$LOCK_FILE" ] && LOCK_FILE="@LOCALSTATEDIR@/lock/subsys/$prog"
+fi
+
+# deb based distros
+if [ -d @SYSCONFDIR@/default ]; then
+	[ -f @SYSCONFDIR@/default/$prog ] && . @SYSCONFDIR@/default/$prog
+	[ -z "$LOCK_FILE" ] && LOCK_FILE="@LOCALSTATEDIR@/lock/$prog"
+fi
+
+# The version of __pids_pidof in /etc/init.d/functions calls pidof with -x
+# This means it matches scripts, including this one.
+# Redefine it here so that status (from the same file) works.
+# Otherwise simultaneous calls to stop() will loop forever
+__pids_pidof() {
+        pidof -c -o $$ -o $PPID -o %PPID "$1" || \
+                pidof -c -o $$ -o $PPID -o %PPID "${1##*/}"
+}
+
+start()
+{
+	echo -n "Starting $desc ($prog): "
+
+	# most recent distributions use tmpfs for @LOCALSTATEDIR@/run
+	# to avoid to clean it up on every boot.
+	# they also assume that init scripts will create
+	# required subdirectories for proper operations
+	mkdir -p @LOCALSTATEDIR@/run
+
+	if status $prog > /dev/null 2>&1; then
+		success
+	else
+		$prog $OPTIONS > /dev/null 2>&1
+
+		# give it time to fail
+		sleep 2
+		if status $prog > /dev/null 2>&1; then
+			touch $LOCK_FILE
+			success
+		else
+			failure
+			rtrn=1
+		fi
+	fi
+	echo
+}
+
+stop()
+{
+	! status $prog > /dev/null 2>&1 && return
+
+	echo -n "Signaling $desc ($prog) to terminate: "
+	kill -TERM $(pidof $prog) > /dev/null 2>&1
+	success
+	echo
+
+	rm -f $LOCK_FILE
+	success
+	echo
+}
+
+restart()
+{
+	stop
+	start
+}
+
+rtrn=0
+
+case "$1" in
+start)
+	start
+;;
+restart|reload|force-reload)
+	restart
+;;
+condrestart|try-restart)
+	if status $prog > /dev/null 2>&1; then
+		restart
+	fi
+;;
+status)
+	status $prog
+	rtrn=$?
+;;
+stop)
+	stop
+;;
+*)
+	echo "usage: $0 {start|stop|restart|reload|force-reload|condrestart|try-restart|status}"
+	rtrn=2
+;;
+esac
+
+exit $rtrn

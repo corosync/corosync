@@ -126,7 +126,11 @@ AC_CONFIG_FILES([Makefile
 		 pkgconfig/Makefile
 		 services/Makefile
 		 test/Makefile
-		 tools/Makefile])
+		 cts/Makefile
+		 cts/agents/Makefile
+		 cts/CTSvars.py
+		 tools/Makefile
+		 conf/Makefile])
 
 ### Local business
 
@@ -237,6 +241,14 @@ AC_ARG_ENABLE([nss],
 	[  --enable-nss            : Network Security Services encryption. ],,
 	[ enable_nss="yes" ])
 
+AC_ARG_ENABLE([dbus],
+	[  --enable-dbus                    : dbus events. ],,
+	[ enable_dbus="no" ])
+
+AC_ARG_ENABLE([testagents],
+	[  --enable-testagents             : Install Test Agents. ],,
+	[ default="no" ])
+
 AC_ARG_ENABLE([rdma],
 	[  --enable-rdma           : Infiniband RDMA transport support ],,
 	[ enable_rdma="no" ])
@@ -256,6 +268,10 @@ AC_ARG_WITH([socket-dir],
 	[  --with-socket-dir=DIR   : corosync socket dir. ],
 	[ SOCKETDIR="$withval" ],
 	[ SOCKETDIR="$localstatedir/run" ])
+
+AC_ARG_ENABLE([snmp],
+       [  --enable-snmp           : SNMP protocol support ],
+       [ default="no" ])
 
 # OS detection
 # THIS SECTION MUST DIE!
@@ -359,12 +375,106 @@ if test "x${enable_nss}" = xyes; then
 	PACKAGE_FEATURES="$PACKAGE_FEATURES nss"
 fi
 
+# Look for dbus-1
+if test "x${enable_dbus}" = xyes; then
+	PKG_CHECK_MODULES([DBUS],[dbus-1])
+	AC_DEFINE_UNQUOTED([HAVE_DBUS], 1, [have dbus])
+	PACKAGE_FEATURES="$PACKAGE_FEATURES dbus"
+fi
+
+if test "x${enable_testagents}" = xyes; then
+	AC_DEFINE_UNQUOTED([HAVE_TESTAGENTS], 1, [have testagents])
+	PACKAGE_FEATURES="$PACKAGE_FEATURES testagents"
+fi
+
 if test "x${enable_rdma}" = xyes; then
 	PKG_CHECK_MODULES([rdmacm],[rdmacm])
 	PKG_CHECK_MODULES([ibverbs],[ibverbs])
 	AC_DEFINE_UNQUOTED([HAVE_RDMA], 1, [have rdmacm])
 	PACKAGE_FEATURES="$PACKAGE_FEATURES rdma"
 fi
+
+if test "x${enable_monitoring}" = xyes; then
+
+	AC_CHECK_LIB([statgrab], [sg_get_mem_stats], have_libstatgrab="yes", have_libstatgrab="no")
+
+	if test "x${have_libstatgrab}" = xyes; then
+		AC_DEFINE_UNQUOTED([HAVE_LIBSTATGRAB], 1, [have libstatgrab])
+		statgrab_LIBS="-lstatgrab"
+	else
+		if test "x${have_linux}" = xno; then
+			AC_MSG_ERROR(monitoring requires libstatgrab on non-linux systems)
+		fi
+	fi
+	AC_SUBST([statgrab_LIBS])
+	AC_DEFINE_UNQUOTED([HAVE_MONITORING], 1, [have resource monitoring])
+	PACKAGE_FEATURES="$PACKAGE_FEATURES monitoring"
+fi
+
+if test "x${enable_watchdog}" = xyes; then
+	AC_CHECK_HEADER(linux/watchdog.h,,AC_MSG_ERROR(watchdog requires linux/watchdog.h))
+	AC_CHECK_HEADER(linux/reboot.h,,AC_MSG_ERROR(watchdog requires linux/reboot.h))
+	AC_DEFINE_UNQUOTED([HAVE_WATCHDOG], 1, [have watchdog])
+	PACKAGE_FEATURES="$PACKAGE_FEATURES watchdog"
+fi
+
+if test "x${enable_augeas}" = xyes; then
+	PACKAGE_FEATURES="$PACKAGE_FEATURES augeas"
+fi
+
+if test "x${enable_snmp}" = xyes; then
+       SNMPCONFIG=""
+       AC_CHECK_HEADERS(net-snmp/net-snmp-config.h)
+
+       if test "x${ac_cv_header_net_snmp_net_snmp_config_h}" != "xyes"; then
+               enable_snmp=no
+       fi
+
+       if test $enable_snmp != no; then
+               AC_PATH_PROGS(SNMPCONFIG, net-snmp-config)
+               if test "X${SNMPCONFIG}" = "X"; then
+                       AC_MSG_RESULT(You need the net_snmp development package to continue.)
+                       enable_snmp=no
+               fi
+       fi
+
+       if test $enable_snmp != no; then
+               AC_MSG_CHECKING(for special snmp libraries)
+               SNMPLIBS=`$SNMPCONFIG --libs`
+               AC_MSG_RESULT($SNMPLIBS)
+       fi
+
+       if test $enable_snmp != no; then
+               savedLibs=$LIBS
+               LIBS="$LIBS $SNMPLIBS"
+               AC_CHECK_FUNCS(netsnmp_transport_open_client)
+               if test $ac_cv_func_netsnmp_transport_open_client != yes; then
+                       AC_CHECK_FUNCS(netsnmp_tdomain_transport)
+                       if test $ac_cv_func_netsnmp_tdomain_transport != yes; then
+                               enable_snmp=no
+                       fi
+               else
+                       AC_DEFINE_UNQUOTED([NETSNMPV54], $NETSNMP_NEW_SUPPORT, [have net-snmp5.4 over])
+               fi
+               LIBS=$savedLibs
+       fi
+
+       AC_MSG_CHECKING(for snmp)
+       AC_MSG_RESULT($enable_snmp)
+   if test $enable_snmp = no; then
+               enable_snmp=0
+               AC_MSG_ERROR(Unable to support SNMP)
+   else
+               enable_snmp=1
+               PACKAGE_FEATURES="$PACKAGE_FEATURES snmp"
+               AC_DEFINE_UNQUOTED([ENABLE_SNMP], $enable_snmp, [Build in support for sending SNMP traps])
+   fi
+else
+       enable_snmp=0
+fi
+AC_SUBST([SNMPLIBS])
+AC_SUBST([SNMP_LCRSO])
+AM_CONDITIONAL(BUILD_SNMP, test "${enable_snmp}" = "1")
 
 # extra warnings
 EXTRA_WARNINGS=""
@@ -459,7 +569,14 @@ AC_SUBST([COVERAGE_LCRSO_EXTRA_LDFLAGS])
 AC_SUBST([OS_DYFLAGS])
 
 AC_SUBST([OS_LDL])
+<<<<<<< HEAD
 
+=======
+AM_CONDITIONAL(INSTALL_TESTAGENTS, test -n "${enable_testagents}")
+AM_CONDITIONAL(INSTALL_MIB, test "${enable_snmp}" = "1")
+AM_CONDITIONAL(INSTALL_DBUSCONF, test "${enable_dbus}" = "1")
+AM_CONDITIONAL(AUGTOOL, test -n "${AUGTOOL}")
+>>>>>>> 2a568d6... Add dbus and snmp notifier
 AC_SUBST([NSS_LDFLAGS])
 
 AM_CONDITIONAL(BUILD_DARWIN, test -n "${DARWIN_OPTS}")
