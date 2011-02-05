@@ -690,7 +690,6 @@ _cs_snmp_node_membership_event(char *nodename, uint32_t nodeid, char *state, cha
 	static oid snmptrap_oid[]  = { 1,3,6,1,6,3,1,1,4,1,0 };
 	static oid sysuptime_oid[] = { 1,3,6,1,2,1,1,3,0 };
 	time_t now = time (NULL);
-	int node_status;
 
 	netsnmp_pdu *trap_pdu;
 	netsnmp_session *session = snmp_init (snmp_manager);
@@ -705,14 +704,6 @@ _cs_snmp_node_membership_event(char *nodename, uint32_t nodeid, char *state, cha
 		return ;
 	}
 
-	if (strcmp(state, "joined") == 0) {
-		node_status = SNMP_NODE_STATUS_JOINED;
-	} else if (strcmp(state, "left") == 0) {
-		node_status = SNMP_NODE_STATUS_LEFT;
-	} else {
-		node_status = SNMP_NODE_STATUS_UNKNOWN;
-	}
-
 	/* send uptime */
 	snprintf (csysuptime, CS_TIMESTAMP_STR_LEN, "%ld", now);
 	snmp_add_var (trap_pdu, sysuptime_oid, sizeof (sysuptime_oid) / sizeof (oid), 't', csysuptime);
@@ -722,7 +713,7 @@ _cs_snmp_node_membership_event(char *nodename, uint32_t nodeid, char *state, cha
 	add_field (trap_pdu, ASN_OCTET_STR, SNMP_OID_OBJECT_NODE_NAME, (void*)nodename, strlen (nodename));
 	add_field (trap_pdu, ASN_INTEGER, SNMP_OID_OBJECT_NODE_ID, (void*)&nodeid, sizeof (nodeid));
 	add_field (trap_pdu, ASN_OCTET_STR, SNMP_OID_OBJECT_NODE_ADDR, (void*)ip, strlen (ip));
-	add_field (trap_pdu, ASN_INTEGER, SNMP_OID_OBJECT_NODE_STATUS, (void*)&node_status, sizeof (node_status));
+	add_field (trap_pdu, ASN_OCTET_STR, SNMP_OID_OBJECT_NODE_STATUS, (void*)state, strlen (state));
 
 	/* Send and cleanup */
 	ret = snmp_send (session, trap_pdu);
