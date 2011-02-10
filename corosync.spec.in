@@ -2,8 +2,6 @@
 %global numcomm @numcomm@
 %global dirty @dirty@
 
-<<<<<<< HEAD
-=======
 # Conditionals
 # Invoke "rpmbuild --without <feature>" or "rpmbuild --with <feature>"
 # to disable or enable specific features
@@ -13,7 +11,6 @@
 %bcond_with snmp
 %bcond_with dbus
 
->>>>>>> 2a568d6... Add dbus and snmp notifier
 Name: corosync
 Summary: The Corosync Cluster Engine and Application Programming Interfaces
 Version: @version@
