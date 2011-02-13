@@ -20,6 +20,8 @@ fi
 
 MOCK=/usr/bin/mock
 
+git clean -xfd
+
 set -e
 
 echo 'running autogen ...'
