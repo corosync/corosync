@@ -139,7 +139,7 @@ class CpgConfigChangeBase(CoroTest):
 
     def wait_for_config_change(self):
         found = False
-        max_timeout = 30 * 60
+        max_timeout = 60 * 15
         waited = 0
         printit = 0
         self.CM.log("Waiting for config change on " + self.listener)
@@ -1098,7 +1098,7 @@ class GenStopAllBeekhof(CoroTest):
             self.CM.ShouldBeStatus[n] = "down"
 
         waited = 0
-        max_wait = 60
+        max_wait = 60 * 15
 
         still_up = list(self.CM.Env["nodes"])
         while len(still_up) > 0:
