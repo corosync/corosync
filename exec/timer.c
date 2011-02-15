@@ -85,8 +85,6 @@ static pthread_mutex_t timer_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static pthread_t expiry_thread;
 
-static pthread_attr_t thread_attr;
-
 static struct timerlist timers_timerlist;
 
 static int sched_priority = 0;
@@ -154,6 +152,7 @@ int corosync_timer_init (
 	int sched_priority_in)
 {
 	int res;
+	pthread_attr_t thread_attr;
 
 	timer_serialize_lock_fn = serialize_lock_fn;
 	timer_serialize_unlock_fn = serialize_unlock_fn;
@@ -169,6 +168,7 @@ int corosync_timer_init (
 	pthread_attr_setdetachstate (&thread_attr, PTHREAD_CREATE_DETACHED);
 	res = pthread_create (&expiry_thread, &thread_attr,
 		prioritized_timer_thread, NULL);
+	pthread_attr_destroy (&thread_attr);
 
 	return (res);
 }

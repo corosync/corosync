@@ -142,7 +142,6 @@ struct conn_info {
 	int fd;
 	pthread_t thread;
 	pid_t client_pid;
-	pthread_attr_t thread_attr;
 	unsigned int service;
 	enum conn_state state;
 	int refcount;
@@ -1571,7 +1570,6 @@ int coroipcs_handler_dispatch (
 	int res;
 	char buf;
 
-
 	if (ipc_thread_exiting (conn_info)) {
 		return conn_info_destroy (conn_info);
 	}
@@ -1588,6 +1586,8 @@ int coroipcs_handler_dispatch (
 	 * Read the header and process it
 	 */
 	if (conn_info->service == SOCKET_SERVICE_INIT && (revent & POLLIN)) {
+		pthread_attr_t thread_attr;
+
 		/*
 		 * Receive in a nonblocking fashion the request
 		 * IF security invalid, send ERR_SECURITY, otherwise
@@ -1684,21 +1684,22 @@ int coroipcs_handler_dispatch (
 		/* create stats objects */
 		coroipcs_init_conn_stats (conn_info);
 
-		pthread_attr_init (&conn_info->thread_attr);
+		pthread_attr_init (&thread_attr);
 		/*
 		* IA64 needs more stack space then other arches
 		*/
 		#if defined(__ia64__)
-		pthread_attr_setstacksize (&conn_info->thread_attr, 400000);
+		pthread_attr_setstacksize (&thread_attr, 400000);
 		#else
-		pthread_attr_setstacksize (&conn_info->thread_attr, 200000);
+		pthread_attr_setstacksize (&thread_attr, 200000);
 		#endif
 
-		pthread_attr_setdetachstate (&conn_info->thread_attr, PTHREAD_CREATE_JOINABLE);
+		pthread_attr_setdetachstate (&thread_attr, PTHREAD_CREATE_JOINABLE);
 		res = pthread_create (&conn_info->thread,
-			&conn_info->thread_attr,
+			&thread_attr,
 			pthread_ipc_consumer,
 			conn_info);
+		pthread_attr_destroy (&thread_attr);
 
 		/*
 		 * Security check - disallow multiple configurations of
