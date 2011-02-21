@@ -1593,6 +1593,8 @@ int logsys_log_rec_store (const char *filename)
 		return (-1);
 	}
 
+	logsys_flt_lock();
+
 	this_write_size = write (fd, &flt_data_size, sizeof(uint32_t));
 	if (this_write_size != sizeof(unsigned int)) {
 		goto error_exit;
@@ -1619,10 +1621,12 @@ int logsys_log_rec_store (const char *filename)
 		goto error_exit;
 	}
 
+	logsys_flt_unlock();
 	close (fd);
 	return (0);
 
 error_exit:
+	logsys_flt_unlock();
 	close (fd);
 	return (-1);
 }
