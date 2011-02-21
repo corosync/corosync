@@ -341,7 +341,9 @@ static struct printer_subsys printer_subsystems[] = {
 static unsigned int printer_subsys_count =
   sizeof (printer_subsystems) / sizeof (struct printer_subsys);
 
-static unsigned int g_record[10000];
+#define G_RECORD_SIZE	10000
+
+static unsigned int g_record[G_RECORD_SIZE];
 
 /*
  * Copy record, dealing with wrapping
@@ -354,6 +356,12 @@ static int logsys_rec_get (int rec_idx) {
 
 	firstcopy = rec_size;
 	secondcopy = 0;
+
+	if (rec_size > G_RECORD_SIZE || rec_size > flt_data_size) {
+		fprintf (stderr, "rec_size too large. Input file is probably corrupted.\n");
+		exit (EXIT_FAILURE);
+	}
+
 	if (firstcopy + rec_idx > flt_data_size) {
 		firstcopy = flt_data_size - rec_idx;
 		secondcopy -= firstcopy - rec_size;
