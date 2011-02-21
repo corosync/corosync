@@ -1642,7 +1642,8 @@ int logsys_log_rec_store (const char *filename)
 	if (written_size != ((flt_data_size + 3) * sizeof (uint32_t))) { 
 		goto error_exit;
 	}
-	
+
+	close (fd);
 	return (0);
 
 error_exit:
