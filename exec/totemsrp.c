@@ -3079,35 +3079,42 @@ static void memb_ring_id_create_or_load (
 	struct memb_ring_id *memb_ring_id)
 {
 	int fd;
-	int res;
-	char filename[256];
-	char error_str[100];
+	int res = 0;
+	char filename[PATH_MAX];
+	char error_str[256];
 
 	snprintf (filename, sizeof(filename), "%s/ringid_%s",
 		rundir, totemip_print (&instance->my_id.addr[0]));
 	fd = open (filename, O_RDONLY, 0700);
-	if (fd > 0) {
-		res = read (fd, &memb_ring_id->seq, sizeof (unsigned long long));
-		assert (res == sizeof (unsigned long long));
+	/*
+	 * If file can be opened and read, read the ring id
+	 */
+	if (fd != -1) {
+		res = read (fd, &memb_ring_id->seq, sizeof (uint64_t));
 		close (fd);
-	} else
-	if (fd == -1 && errno == ENOENT) {
+	}
+	/*
+ 	 * If file could not be opened or read, create a new ring id
+ 	 */
+	if ((fd == -1) || (res != sizeof (uint64_t))) {
 		memb_ring_id->seq = 0;
 		umask(0);
 		fd = open (filename, O_CREAT|O_RDWR, 0700);
-		if (fd >= 0) {
-			res = write (fd, &memb_ring_id->seq, sizeof (unsigned long long));
-			assert (res == sizeof (unsigned long long));
+		if (fd != -1) {
+			res = write (fd, &memb_ring_id->seq, sizeof (uint64_t));
 			close (fd);
+			if (res == -1) {
+				strerror_r (errno, error_str, sizeof (error_str));
+				log_printf (instance->totemsrp_log_level_warning,
+					"Couldn't write ringid file '%s' %s\n",
+					filename, error_str);
+			}
 		} else {
-			strerror_r (errno, error_str, 100);
+			strerror_r (errno, error_str, sizeof (error_str));
 			log_printf (instance->totemsrp_log_level_warning,
-				"Couldn't create %s %s\n", filename, error_str);
+				"Couldn't create ringid file '%s' %s\n",
+				filename, error_str);
 		}
-	} else {
-		strerror_r (errno, error_str, 100);
-		log_printf (instance->totemsrp_log_level_warning,
-			"Couldn't open %s %s\n", filename, error_str);
 	}
 
 	totemip_copy(&memb_ring_id->rep, &instance->my_id.addr[0]);
