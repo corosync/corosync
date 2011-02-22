@@ -502,8 +502,8 @@ int main (void)
 	}
 
 	if (n_read != n_required) {
-		printf ("Warning: read %lu bytes, but expected %lu\n",
-			(unsigned long) n_read, (unsigned long) n_required);
+		printf ("Warning: read %zd bytes, but expected %zu\n",
+			n_read, n_required);
 	}
 
 	rec_idx = flt_data[FDTAIL_INDEX];
