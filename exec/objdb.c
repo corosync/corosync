@@ -342,7 +342,7 @@ static void object_reload_notification(int startstop, int flush)
 	}
 
 	for (list = tmplist.next, tmp = list->next;
-		list != tmplist.prev; list = tmp, tmp = list->next) {
+		list != &tmplist; list = tmp, tmp = list->next) {
 
 		tracker_pt = list_entry (list, struct object_tracker, object_list);
 
