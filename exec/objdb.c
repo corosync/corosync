@@ -714,7 +714,7 @@ static int _clear_object(struct object_instance *instance)
 
 		list_del(&find_instance->child_list);
 		free(find_instance->object_name);
-		free(find_instance);
+		hdb_handle_destroy (&object_instance_database, find_instance->object_handle);
 	}
 
 	return 0;
