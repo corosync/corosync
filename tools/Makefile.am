@@ -54,10 +54,10 @@ corosync_quorumtool_LDADD = -lconfdb -lcfg -lquorum \
 			    -lvotequorum -lcoroipcc ../lcr/liblcr.a
 corosync_quorumtool_LDFLAGS = -L../lib
 
-corosync_notifyd_LDADD = -L../lib
-corosync_notifyd_LDFLAGS = -lcfg -lconfdb ../lcr/liblcr.a -lcoroipcc \
+corosync_notifyd_LDADD = -lcfg -lconfdb ../lcr/liblcr.a -lcoroipcc \
 			   ../exec/coropoll.o $(DBUS_LIBS) $(SNMPLIBS) \
 			   -lquorum
+corosync_notifyd_LDFLAGS = -L../lib
 corosync_notifyd_CPPFLAGS = $(DBUS_CFLAGS)
 
 
