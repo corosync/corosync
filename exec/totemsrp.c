@@ -475,8 +475,6 @@ struct totemsrp_instance {
 
 	unsigned int set_aru;
 
-	int old_ring_state_saved;
-
 	int old_ring_state_aru;
 
 	unsigned int old_ring_state_high_seq_received;
@@ -1395,37 +1393,28 @@ static void cancel_merge_detect_timeout (struct totemsrp_instance *instance)
  */
 static void old_ring_state_save (struct totemsrp_instance *instance)
 {
-	if (instance->old_ring_state_saved == 0) {
-		instance->old_ring_state_saved = 1;
-		memcpy (&instance->my_old_ring_id, &instance->my_ring_id,
-			sizeof (struct memb_ring_id));
-		instance->old_ring_state_aru = instance->my_aru;
-		instance->old_ring_state_high_seq_received = instance->my_high_seq_received;
-		log_printf (instance->totemsrp_log_level_debug,
-			"Saving state aru %x high seq received %x\n",
-			instance->my_aru, instance->my_high_seq_received);
-	}
+	memcpy (&instance->my_old_ring_id, &instance->my_ring_id,
+		sizeof (struct memb_ring_id));
+	instance->old_ring_state_aru = instance->my_aru;
+	instance->old_ring_state_high_seq_received = instance->my_high_seq_received;
+	log_printf (instance->totemsrp_log_level_debug,
+		"Saving state aru %x high seq received %x\n",
+		instance->my_aru, instance->my_high_seq_received);
 }
 
-static void ring_state_restore (struct totemsrp_instance *instance)
+static void old_ring_state_restore (struct totemsrp_instance *instance)
 {
-	if (instance->old_ring_state_saved) {
-		memcpy (&instance->my_ring_id, &instance->my_old_ring_id,
-			sizeof (struct memb_ring_id));
-
-		instance->my_aru = instance->old_ring_state_aru;
-		instance->my_high_seq_received = instance->old_ring_state_high_seq_received;
-		log_printf (instance->totemsrp_log_level_debug,
-			"Restoring instance->my_aru %x my high seq received %x\n",
-			instance->my_aru, instance->my_high_seq_received);
-	}
+	instance->my_aru = instance->old_ring_state_aru;
+	instance->my_high_seq_received = instance->old_ring_state_high_seq_received;
+	log_printf (instance->totemsrp_log_level_debug,
+		"Restoring instance->my_aru %x my high seq received %x\n",
+		instance->my_aru, instance->my_high_seq_received);
 }
 
 static void old_ring_state_reset (struct totemsrp_instance *instance)
 {
 	log_printf (instance->totemsrp_log_level_debug,
 		"Resetting old ring state\n");
-	instance->old_ring_state_saved = 0;
 }
 
 static void reset_pause_timeout (struct totemsrp_instance *instance)
@@ -1527,6 +1516,13 @@ static void timer_function_pause_timeout (void *data)
 	reset_pause_timeout (instance);
 }
 
+static void memb_recovery_state_token_loss (struct totemsrp_instance *instance)
+{
+	old_ring_state_restore (instance);
+	memb_state_gather_enter (instance, 5);
+	instance->stats.recovery_token_lost++;
+}
+
 static void timer_function_orf_token_timeout (void *data)
 {
 	struct totemsrp_instance *instance = data;
@@ -1560,9 +1556,7 @@ static void timer_function_orf_token_timeout (void *data)
 		case MEMB_STATE_RECOVERY:
 			log_printf (instance->totemsrp_log_level_debug,
 				"The token was lost in the RECOVERY state.\n");
-			ring_state_restore (instance);
-			memb_state_gather_enter (instance, 5);
-			instance->stats.recovery_token_lost++;
+			memb_recovery_state_token_loss (instance);
 			break;
 	}
 }
@@ -2364,16 +2358,6 @@ static int orf_token_mcast (
 			break;
 		}
 		message_item = (struct message_item *)cs_queue_item_get (mcast_queue);
-		/* preincrement required by algo */
-		if (instance->old_ring_state_saved &&
-			(instance->memb_state == MEMB_STATE_GATHER ||
-			instance->memb_state == MEMB_STATE_COMMIT)) {
-
-			log_printf (instance->totemsrp_log_level_debug,
-				"not multicasting at seqno is %d\n",
-			token->seq);
-			return (0);
-		}
 
 		message_item->mcast->seq = ++token->seq;
 		message_item->mcast->this_seqno = instance->global_seqno++;
@@ -4222,9 +4206,8 @@ static int message_handler_memb_join (
 
 				memb_join->ring_seq >= instance->my_ring_id.seq) {
 
-				ring_state_restore (instance);
-
 				memb_join_process (instance, memb_join);
+				memb_recovery_state_token_loss (instance);
 				memb_state_gather_enter (instance, 14);
 			}
 			break;
