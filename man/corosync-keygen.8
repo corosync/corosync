@@ -35,7 +35,7 @@
 .SH NAME
 corosync-keygen \- Generate an authentication key for Corosync.
 .SH SYNOPSIS
-.B "corosync-keygen"
+.B "corosync-keygen [\-l]"
 .SH DESCRIPTION
 
 If you want to configure corosync to use cryptographic techniques to ensure authenticity
@@ -62,7 +62,13 @@ If a message "Invalid digest" appears from the corosync executive, the keys
 are not consistent between processors.
 .PP
 .B Note: corosync-keygen
-will ask for user input to assist in generating entropy.
+will ask for user input to assist in generating entropy unless the -l option is used.
+.SH OPTIONS
+.TP
+.B -l
+Use a less secure random data source that will not require user input to help generate
+.br
+entropy.  This may be useful when this utility is used from a script.
 .SH EXAMPLES
 .TP
 Generate the key.

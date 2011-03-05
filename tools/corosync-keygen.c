@@ -39,6 +39,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <getopt.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 
@@ -46,12 +47,45 @@
 
 #define KEYFILE COROSYSCONFDIR "/authkey"
 
-int main (void) {
+static const char usage[] =
+	"Usage: corosync-keygen [-l]\n"
+	"     -l / --less-secure -  Use a less secure random number source\n"
+	"            (/dev/urandom) that is guaranteed not to require user\n"
+	"            input for entropy.  This can be used when this\n"
+	"            application is used from a script.\n";
+
+
+int main (int argc, char *argv[])
+{
 	int authkey_fd;
 	int random_fd;
 	unsigned char key[128];
 	ssize_t res;
 	ssize_t bytes_read;
+	int c;
+	int option_index;
+	int less_secure = 0;
+	static struct option long_options[] = {
+		{ "less-secure", no_argument, NULL, 'l' },
+		{ "help",        no_argument, NULL, 'h' },
+		{ 0,             0,           NULL, 0   },
+	};
+
+	while ((c = getopt_long (argc, argv, "lh",
+			long_options, &option_index)) != -1) {
+		switch (c) {
+		case 'l':
+			less_secure = 1;
+			break;
+		case 'h':
+			printf ("%s\n", usage);
+			exit(0);
+			break;
+		default:
+			printf ("Error parsing command line options.\n");
+			exit (1);
+		}
+	}
 
 	printf ("Corosync Cluster Engine Authentication key generator.\n");
 	if (geteuid() != 0) {
@@ -65,11 +99,16 @@ int main (void) {
 		}
 	}
 
-	printf ("Gathering %lu bits for key from /dev/random.\n", (unsigned long)(sizeof (key) * 8));
-	printf ("Press keys on your keyboard to generate entropy.\n");
-	random_fd = open ("/dev/random", O_RDONLY);
+	if (less_secure) {
+		random_fd = open ("/dev/urandom", O_RDONLY);
+	} else {
+		printf ("Gathering %lu bits for key from /dev/random.\n", (unsigned long)(sizeof (key) * 8));
+		printf ("Press keys on your keyboard to generate entropy.\n");
+		random_fd = open ("/dev/random", O_RDONLY);
+	}
+
 	if (random_fd == -1) {
-		perror ("Is /dev/random present? Opening /dev/random");
+		perror ("Failed to open random source\n");
 		exit (errno);
 	}
 
