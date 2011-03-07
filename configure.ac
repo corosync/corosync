@@ -63,6 +63,8 @@ AC_PROG_RANLIB
 AC_CHECK_PROGS([GROFF], [groff])
 AC_CHECK_PROGS([PKGCONFIG], [pkg-config])
 AC_CHECK_PROGS([AUGTOOL], [augtool])
+AC_CHECK_PROGS([DOT], [dot])
+AC_CHECK_PROGS([DOXYGEN], [doxygen])
 
 # Checks for libraries.
 AC_CHECK_LIB([dl], [dlopen])

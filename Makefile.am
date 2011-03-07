@@ -94,8 +94,19 @@ endif
 lint:
 	for dir in lcr lib exec services tools test; do make -C $$dir lint; done
 
+.PHONY: doxygen
 doxygen:
-	mkdir -p doc/api && doxygen
+	@if [ "$(DOXYGEN)" = "" ] || [ "$(DOT)" = "" ] ; then \
+		echo "*********************************************" ; \
+		echo "***                                       ***" ; \
+		echo "*** You must install doxygen and graphviz ***" ; \
+		echo "*** to generate the API documentation.    ***" ; \
+		echo "***                                       ***" ; \
+		echo "*********************************************" ; \
+		exit 1 ; \
+	else \
+		mkdir -p doc/api && $(DOXYGEN) ; \
+	fi
 
 dist-clean-local:
 	rm -f autoconf automake autoheader test_lense.sh
