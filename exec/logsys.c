@@ -936,7 +936,9 @@ static void logsys_subsys_init (
 			LOGSYS_LOGGER_INIT_DONE;
 	}
 	strncpy (logsys_loggers[subsysid].subsys, subsys,
-		LOGSYS_MAX_SUBSYS_NAMELEN);
+		sizeof (logsys_loggers[subsysid].subsys));
+	logsys_loggers[subsysid].subsys[
+		sizeof (logsys_loggers[subsysid].subsys) - 1] = '\0';
 }
 
 /*
@@ -992,7 +994,8 @@ int _logsys_system_setup(
 			(logsys_loggers[i].init_status ==
 			 LOGSYS_LOGGER_NEEDS_INIT)) {
 				strncpy (tempsubsys, logsys_loggers[i].subsys,
-					LOGSYS_MAX_SUBSYS_NAMELEN);
+					sizeof (tempsubsys));
+				tempsubsys[sizeof (tempsubsys) - 1] = '\0';
 				logsys_subsys_init(tempsubsys, i);
 		}
 	}

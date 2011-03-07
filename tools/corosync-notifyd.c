@@ -336,7 +336,8 @@ _cs_confdb_find_object (confdb_handle_t handle,
 	char tmp_name[CS_MAX_NAME_LENGTH];
 	cs_error_t res = CS_OK;
 
-	strncpy (tmp_name, name_pt, CS_MAX_NAME_LENGTH);
+	strncpy (tmp_name, name_pt, sizeof (tmp_name));
+	tmp_name[sizeof (tmp_name) - 1] = '\0';
 	obj_name_pt = strtok_r(tmp_name, SEPERATOR_STR, &save_pt);
 
 	while (obj_name_pt != NULL) {
@@ -834,7 +835,8 @@ _cs_local_node_info_get(char **nodename, uint32_t *nodeid)
 		corosync_cfg_finalize(cfg_handle);
 		if (rc != CS_OK) {
 			local_nodeid = 0;
-			strncpy(local_nodename, "localhost", CS_MAX_NAME_LENGTH);
+			strncpy(local_nodename, "localhost", sizeof (local_nodename));
+			local_nodename[sizeof (local_nodename) - 1] = '\0';
 		} else {
 			gethostname(local_nodename, CS_MAX_NAME_LENGTH);
 		}
@@ -1003,7 +1005,8 @@ main(int argc, char *argv[])
 				break;
 			case 'm':
 				conf[CS_NTF_SNMP] = 1;
-				strncpy(snmp_manager_buf, optarg, CS_MAX_NAME_LENGTH);
+				strncpy(snmp_manager_buf, optarg, sizeof (snmp_manager_buf));
+				snmp_manager_buf[sizeof (snmp_manager_buf) - 1] = '\0';
 				snmp_manager = snmp_manager_buf;
 				break;
 			case 'o':

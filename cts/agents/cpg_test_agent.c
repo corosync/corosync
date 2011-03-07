@@ -124,6 +124,9 @@ static char* err_status_string (char * buf, size_t buf_len, msg_status_t status)
 		strncpy (buf, "UNKNOWN_ERR", buf_len);
 		break;
 	}
+	if (buf_len > 0) {
+		buf[buf_len - 1] = '\0';
+	}
 	return buf;
 }
 
