@@ -119,7 +119,7 @@ static struct iter_context *find_iter_context(struct list_head *list, hdb_handle
 }
 
 /**
- * @defgroup confdb_corosync
+ * @defgroup confdb_corosync confdb
  * @ingroup corosync
  *
  * @{
@@ -1812,3 +1812,7 @@ error_exit:
 
 	return (error);
 }
+
+/**
+ * @}
+ */
