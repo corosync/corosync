@@ -62,6 +62,10 @@ extern int totemiba_initialize (
 	void (*target_set_completed) (
 		void *context));
 
+extern void *totemiba_buffer_alloc (void);
+
+extern void totemiba_buffer_release (void *ptr);
+
 extern int totemiba_processor_count_set (
 	void *iba_context,
 	int processor_count);

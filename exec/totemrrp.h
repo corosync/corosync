@@ -78,6 +78,12 @@ extern int totemrrp_initialize (
 		void *context)
 	);
 
+extern void *totemrrp_buffer_alloc (
+	void *rrp_context);
+
+extern void totemrrp_buffer_release (
+	void *rrp_context,
+	void *ptr);
 
 extern int totemrrp_processor_count_set (
 	void *rrp_context,

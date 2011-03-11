@@ -69,6 +69,10 @@ extern int totemnet_initialize (
 	void (*target_set_completed) (
 		void *context));
 
+extern void *totemnet_buffer_alloc (void *net_context);
+
+extern void totemnet_buffer_release (void *net_context, void *ptr);
+
 extern int totemnet_processor_count_set (
 	void *net_context,
 	int processor_count);

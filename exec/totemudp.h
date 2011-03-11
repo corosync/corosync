@@ -63,6 +63,10 @@ extern int totemudp_initialize (
 	void (*target_set_completed) (
 		void *context));
 
+extern void *totemudp_buffer_alloc (void);
+
+extern void totemudp_buffer_release (void *ptr);
+
 extern int totemudp_processor_count_set (
 	void *udp_context,
 	int processor_count);

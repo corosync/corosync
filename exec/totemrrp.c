@@ -1665,6 +1665,20 @@ error_destroy:
 	return (res);
 }
 
+void *totemrrp_buffer_alloc (void *rrp_context)
+{
+	struct totemrrp_instance *instance = rrp_context;
+	assert (instance != NULL);
+	return totemnet_buffer_alloc (instance->net_handles[0]);
+}
+
+void totemrrp_buffer_release (void *rrp_context, void *ptr)
+{
+	struct totemrrp_instance *instance = rrp_context;
+	assert (instance != NULL);
+	totemnet_buffer_release (instance->net_handles[0], ptr);
+}
+
 int totemrrp_processor_count_set (
 	void *rrp_context,
 	unsigned int processor_count)

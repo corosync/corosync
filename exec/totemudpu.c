@@ -1497,6 +1497,16 @@ int totemudpu_initialize (
 	return (0);
 }
 
+void *totemudpu_buffer_alloc (void)
+{
+	return malloc (FRAME_SIZE_MAX);
+}
+
+void totemudpu_buffer_release (void *ptr)
+{
+	return free (ptr);
+}
+
 int totemudpu_processor_count_set (
 	void *udpu_context,
 	int processor_count)

@@ -606,6 +606,8 @@ static void timer_function_heartbeat_timeout (void *data);
 static void timer_function_token_retransmit_timeout (void *data);
 static void timer_function_token_hold_retransmit_timeout (void *data);
 static void timer_function_merge_detect_timeout (void *data);
+static void *totemsrp_buffer_alloc (struct totemsrp_instance *instance);
+static void totemsrp_buffer_release (struct totemsrp_instance *instance, void *ptr);
 
 void main_deliver_fn (
 	void *context,
@@ -1356,6 +1358,18 @@ static void memb_set_print (
 }
 #endif
 
+static void *totemsrp_buffer_alloc (struct totemsrp_instance *instance)
+{
+	assert (instance != NULL);
+	return totemrrp_buffer_alloc (instance->totemrrp_context);
+}
+
+static void totemsrp_buffer_release (struct totemsrp_instance *instance, void *ptr)
+{
+	assert (instance != NULL);
+	totemrrp_buffer_release (instance->totemrrp_context, ptr);
+}
+
 static void reset_token_retransmit_timeout (struct totemsrp_instance *instance)
 {
 	poll_timer_delete (instance->totemsrp_poll_handle,
@@ -2067,7 +2081,7 @@ static void memb_state_recovery_enter (
 		messages_originated++;
 		memset (&message_item, 0, sizeof (struct message_item));
 	// TODO	 LEAK
-		message_item.mcast = malloc (FRAME_SIZE_MAX);
+		message_item.mcast = totemsrp_buffer_alloc (instance);
 		assert (message_item.mcast);
 		message_item.mcast->header.type = MESSAGE_TYPE_MCAST;
 		srp_addr_copy (&message_item.mcast->system_from, &instance->my_id);
@@ -2140,7 +2154,7 @@ int totemsrp_mcast (
 	/*
 	 * Allocate pending item
 	 */
-	message_item.mcast = malloc (FRAME_SIZE_MAX);
+	message_item.mcast = totemsrp_buffer_alloc (instance);
 	if (message_item.mcast == 0) {
 		goto error_mcast;
 	}
@@ -2278,7 +2292,7 @@ static void messages_free (
 			instance->last_released + i, &ptr);
 		if (res == 0) {
 			regular_message = ptr;
-			free (regular_message->mcast);
+			totemsrp_buffer_release (instance, regular_message->mcast);
 		}
 		sq_items_release (&instance->regular_sort_queue,
 			instance->last_released + i);
@@ -3823,7 +3837,7 @@ static int message_handler_mcast (
 		 * Allocate new multicast memory block
 		 */
 // TODO LEAK
-		sort_queue_item.mcast = malloc (msg_len);
+		sort_queue_item.mcast = totemsrp_buffer_alloc (instance);
 		if (sort_queue_item.mcast == NULL) {
 			return (-1); /* error here is corrected by the algorithm */
 		}

@@ -1832,6 +1832,16 @@ int totemudp_initialize (
 	return (0);
 }
 
+void *totemudp_buffer_alloc (void)
+{
+	return malloc (FRAME_SIZE_MAX);
+}
+
+void totemudp_buffer_release (void *ptr)
+{
+	return free (ptr);
+}
+
 int totemudp_processor_count_set (
 	void *udp_context,
 	int processor_count)

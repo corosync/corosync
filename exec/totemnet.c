@@ -35,6 +35,8 @@
 
 #include <config.h>
 
+#include <assert.h>
+
 #ifdef HAVE_RDMA
 #include <totemiba.h>
 #endif
@@ -66,6 +68,10 @@ struct transport {
 
 		void (*target_set_completed) (
 			void *context));
+
+	void *(*buffer_alloc) (void);
+
+	void (*buffer_release) (void *ptr);
 
 	int (*processor_count_set) (
 		void *transport_context,
@@ -127,6 +133,8 @@ struct transport transport_entries[] = {
 	{
 		.name = "UDP/IP Multicast",
 		.initialize = totemudp_initialize,
+		.buffer_alloc = totemudp_buffer_alloc,
+		.buffer_release = totemudp_buffer_release,
 		.processor_count_set = totemudp_processor_count_set,
 		.token_send = totemudp_token_send,
 		.mcast_flush_send = totemudp_mcast_flush_send,
@@ -145,6 +153,8 @@ struct transport transport_entries[] = {
 	{
 		.name = "UDP/IP Unicast",
 		.initialize = totemudpu_initialize,
+		.buffer_alloc = totemudpu_buffer_alloc,
+		.buffer_release = totemudpu_buffer_release,
 		.processor_count_set = totemudpu_processor_count_set,
 		.token_send = totemudpu_token_send,
 		.mcast_flush_send = totemudpu_mcast_flush_send,
@@ -166,6 +176,8 @@ struct transport transport_entries[] = {
 	{
 		.name = "Infiniband/IP",
 		.initialize = totemiba_initialize,
+		.buffer_alloc = totemiba_buffer_alloc,
+		.buffer_release = totemiba_buffer_release,
 		.processor_count_set = totemiba_processor_count_set,
 		.token_send = totemiba_token_send,
 		.mcast_flush_send = totemiba_mcast_flush_send,
@@ -294,6 +306,22 @@ int totemnet_initialize (
 error_destroy:
 	free (instance);
 	return (-1);
+}
+
+void *totemnet_buffer_alloc (void *net_context)
+{
+	struct totemnet_instance *instance = net_context;
+	assert (instance != NULL);
+	assert (instance->transport != NULL);
+	return instance->transport->buffer_alloc();
+}
+
+void totemnet_buffer_release (void *net_context, void *ptr)
+{
+	struct totemnet_instance *instance = net_context;
+	assert (instance != NULL);
+	assert (instance->transport != NULL);
+	instance->transport->buffer_release (ptr);
 }
 
 int totemnet_processor_count_set (

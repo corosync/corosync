@@ -1317,6 +1317,16 @@ int totemiba_initialize (
 	return (res);
 }
 
+void *totemiba_buffer_alloc (void)
+{
+	return malloc (MAX_MTU_SIZE);
+}
+
+void totemiba_buffer_release (void *ptr)
+{
+	return free (ptr);
+}
+
 int totemiba_processor_count_set (
 	void *iba_context,
 	int processor_count)
