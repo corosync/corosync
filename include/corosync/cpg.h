@@ -52,15 +52,15 @@ typedef uint64_t cpg_handle_t;
 typedef uint64_t cpg_iteration_handle_t;
 
 typedef enum {
-	CPG_TYPE_UNORDERED, /* not implemented */
-	CPG_TYPE_FIFO,		/* same as agreed */
+	CPG_TYPE_UNORDERED, /**< not implemented */
+	CPG_TYPE_FIFO,      /**< same as agreed */
 	CPG_TYPE_AGREED,
-	CPG_TYPE_SAFE		/* not implemented */
+	CPG_TYPE_SAFE       /**< not implemented */
 } cpg_guarantee_t;
 
 typedef enum {
-	CPG_FLOW_CONTROL_DISABLED,	/* flow control is disabled - new messages may be sent */
-	CPG_FLOW_CONTROL_ENABLED	/* flow control is enabled - new messages should not be sent */
+	CPG_FLOW_CONTROL_DISABLED, /**< flow control is disabled - new messages may be sent */
+	CPG_FLOW_CONTROL_ENABLED   /**< flow control is enabled - new messages should not be sent */
 } cpg_flow_control_state_t;
 
 
@@ -112,7 +112,7 @@ typedef void (*cpg_deliver_fn_t) (
 	const struct cpg_name *group_name,
 	uint32_t nodeid,
 	uint32_t pid,
-	/*
+	/**
 	 * Unlike many "msg" pointers, this one is deliberately *not*
 	 * declared const in order to permit in-place endian conversion.
 	 */
@@ -154,14 +154,14 @@ typedef struct {
 
 /** @} */
 
-/*
+/**
  * Create a new cpg connection
  */
 cs_error_t cpg_initialize (
 	cpg_handle_t *handle,
 	cpg_callbacks_t *callbacks);
 
-/*
+/**
  * Create a new cpg connection, initialize with model
  */
 cs_error_t cpg_model_initialize (
@@ -170,41 +170,46 @@ cs_error_t cpg_model_initialize (
 	cpg_model_data_t *model_data,
 	void *context);
 
-/*
+/**
  * Close the cpg handle
  */
 cs_error_t cpg_finalize (
 	cpg_handle_t handle);
 
-/*
- * Get a file descriptor on which to poll.  cpg_handle_t is NOT a
- * file descriptor and may not be used directly.
+/**
+ * Get a file descriptor on which to poll.
+ *
+ * cpg_handle_t is NOT a file descriptor and may not be used directly.
  */
 cs_error_t cpg_fd_get (
 	cpg_handle_t handle,
 	int *fd);
 
-/*
- * Get and set contexts for a CPG handle
+/**
+ * Get contexts for a CPG handle
  */
 cs_error_t cpg_context_get (
 	cpg_handle_t handle,
 	void **context);
 
+/**
+ * Set contexts for a CPG handle
+ */
 cs_error_t cpg_context_set (
 	cpg_handle_t handle,
 	void *context);
 
 
-/*
+/**
  * Dispatch messages and configuration changes
  */
 cs_error_t cpg_dispatch (
 	cpg_handle_t handle,
 	cs_dispatch_flags_t dispatch_types);
 
-/*
+/**
  * Join one or more groups.
+ *
  * messages multicasted with cpg_mcast_joined will be sent to every
  * group that has been joined on handle handle.  Any message multicasted
  * to a group that has been previously joined will be delivered in cpg_dispatch
@@ -213,17 +218,21 @@ cs_error_t cpg_join (
 	cpg_handle_t handle,
 	const struct cpg_name *group);
 
-/*
+/**
  * Leave one or more groups
  */
 cs_error_t cpg_leave (
 	cpg_handle_t handle,
 	const struct cpg_name *group);
 
-/*
+/**
  * Multicast to groups joined with cpg_join.
- * The iovec described by iovec will be multicasted to all groups joined with
- * the cpg_join interface for handle.
+ *
+ * @param handle
+ * @param guarantee
+ * @param iovec This iovec will be multicasted to all groups joined with
+ *              the cpg_join interface for handle.
+ * @param iov_len
  */
 cs_error_t cpg_mcast_joined (
 	cpg_handle_t handle,
@@ -231,7 +240,7 @@ cs_error_t cpg_mcast_joined (
 	const struct iovec *iovec,
 	unsigned int iov_len);
 
-/*
+/**
  * Get membership information from cpg
  */
 cs_error_t cpg_membership_get (
@@ -263,7 +272,7 @@ cs_error_t cpg_zcb_mcast_joined (
 	void *msg,
 	size_t msg_len);
 
-/*
+/**
  * Iteration
  */
 cs_error_t cpg_iteration_initialize(

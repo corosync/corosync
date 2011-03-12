@@ -52,7 +52,7 @@
 #define SEND_THREADS_MAX	16
 #define INTERFACE_MAX		2
 
-/*
+/**
  * Maximum number of continuous gather states
  */
 #define MAX_NO_CONT_GATHER	3
@@ -65,7 +65,6 @@ struct totem_interface {
 	uint16_t ttl;
 	int member_count;
 	struct totem_ip_address member_list[PROCESSOR_COUNT_MAX];
-	
 };
 
 struct totem_logging_configuration {

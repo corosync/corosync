@@ -32,6 +32,14 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
+
+/**
+ * @file
+ * Totem Network interface - also does encryption/decryption
+ *
+ * depends on poll abstraction, POSIX, IPV4
+ */
+
 #ifndef TOTEMNET_H_DEFINED
 #define TOTEMNET_H_DEFINED
 
@@ -42,12 +50,8 @@
 
 #define TOTEMNET_NOFLUSH	0
 #define TOTEMNET_FLUSH		1
-/*
- * Totem Network interface - also does encryption/decryption
- * depends on poll abstraction, POSIX, IPV4
- */
 
-/*
+/**
  * Create an instance
  */
 extern int totemnet_initialize (

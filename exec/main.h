@@ -32,6 +32,13 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
+
+/**
+ * @file
+ *
+ * @warning DO NOT USE SYMBOLS IN THIS FILE
+ */
+
 #ifndef MAIN_H_DEFINED
 #define MAIN_H_DEFINED
 
@@ -45,9 +52,6 @@
 #include <corosync/engine/config.h>
 #include <corosync/engine/coroapi.h>
 
-/*
- * DO NOT USE SYMBOLS IN THIS FILE
- */
 extern unsigned long long *(*main_clm_get_by_nodeid) (unsigned int node_id);
 
 extern void main_get_config_modules(struct config_iface_ver0 ***modules, int *num);

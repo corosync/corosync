@@ -82,14 +82,23 @@ typedef enum {
 	COROSYNC_CFG_STATETYPE_PRESENCE = 4
 } corosync_cfg_state_type_t;
 
-/* Shutdown types.
-   REQUEST is the normal shutdown. other daemons will be consulted
-   REGARDLESS will tell other daemons but ignore their opinions
-   IMMEDIATE will shut down straight away (but still tell other nodes)
-*/
+/**
+ * Shutdown types.
+ */
 typedef enum {
+	/**
+	 * REQUEST is the normal shutdown.
+	 *        Other daemons will be consulted.
+	 */
 	COROSYNC_CFG_SHUTDOWN_FLAG_REQUEST = 0,
+	/**
+	 * REGARDLESS will tell other daemons but ignore their opinions.
+	 */
 	COROSYNC_CFG_SHUTDOWN_FLAG_REGARDLESS = 1,
+	/**
+	 * IMMEDIATE will shut down straight away
+	 *        (but still tell other nodes).
+	 */
 	COROSYNC_CFG_SHUTDOWN_FLAG_IMMEDIATE = 2,
 } corosync_cfg_shutdown_flags_t;
 
@@ -122,8 +131,9 @@ typedef struct {
 	corosync_cfg_shutdown_callback_t corosync_cfg_shutdown_callback;
 } corosync_cfg_callbacks_t;
 
-/*
+/**
  * A node address. This is a complete sockaddr_in[6]
+ *
  * To explain:
  *  If you cast cna_address to a 'struct sockaddr', the sa_family field
  *  will be AF_INET or AF_INET6. Armed with that knowledge you can then
@@ -133,7 +143,7 @@ typedef struct {
  */
 typedef struct
 {
-	int address_length; /* FIXME: set but never used */
+	int address_length; /**< @todo FIXME: set but never used */
 	char address[sizeof(struct sockaddr_in6)];
 } corosync_cfg_node_address_t;
 

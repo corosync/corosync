@@ -38,7 +38,7 @@
 #include <sys/time.h>
 #include <corosync/corotypes.h>
 
-/*
+/**
  * Get the time of day and convert to nanoseconds
  */
 extern cs_time_t clust_time_now(void);
@@ -86,7 +86,7 @@ static inline cs_error_t hdb_error_to_cs (int res)		\
 	}							\
 }
 
-/*
+/**
  * Compare two names.  returns non-zero on match.
  */
 extern int name_match(cs_name_t *name1, cs_name_t *name2);

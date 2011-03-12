@@ -33,6 +33,13 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+/**
+ * @file
+ * Totem Single Ring Protocol
+ *
+ * depends on poll abstraction, POSIX, IPV4
+ */
+
 #ifndef TOTEMPG_H_DEFINED
 #define TOTEMPG_H_DEFINED
 
@@ -53,12 +60,7 @@ struct totempg_group {
 #define TOTEMPG_AGREED			0
 #define TOTEMPG_SAFE			1
 
-/*
- * Totem Single Ring Protocol
- * depends on poll abstraction, POSIX, IPV4
- */
-
-/*
+/**
  * Initialize the totem process groups abstraction
  */
 extern int totempg_initialize (
@@ -76,7 +78,7 @@ extern int totempg_callback_token_create (void **handle_out,
 
 extern void totempg_callback_token_destroy (void *handle);
 
-/*
+/**
  * Initialize a groups instance
  */
 extern int totempg_groups_initialize (

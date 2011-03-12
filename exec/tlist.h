@@ -243,7 +243,7 @@ static inline void timerlist_post_dispatch (struct timerlist *timerlist, timer_h
 	free (timer);
 }
 
-/*
+/**
  * returns the number of msec until the next timer will expire for use with poll
  */
 static inline unsigned long long timerlist_msec_duration_to_expire (struct timerlist *timerlist)
@@ -280,7 +280,7 @@ static inline unsigned long long timerlist_msec_duration_to_expire (struct timer
 	return (msec_duration_to_expire);
 }
 
-/*
+/**
  * Expires any timers that should be expired
  */
 static inline void timerlist_expire (struct timerlist *timerlist)

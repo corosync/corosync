@@ -40,7 +40,7 @@
 #include <corosync/list.h>
 #include <corosync/engine/coroapi.h>
 
-/*
+/**
  * All service handlers in the AIS
  */
 struct dynamic_service {
@@ -51,7 +51,7 @@ struct dynamic_service {
 };
 #define MAX_DYNAMIC_SERVICES 128
 
-/*
+/**
  * Structure describing cached uidgid item
  */
 struct uidgid_item {

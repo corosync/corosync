@@ -31,27 +31,27 @@
 #ifndef LCR_COMP_H_DEFINED
 #define LCR_COMP_H_DEFINED
 
-/*
+/**
  * LCR Interface
  */
 struct lcr_iface {
-	const char *name;			/* Name of the interface */
-	int version;			/* Version of this interface */
-	int *versions_replace;		/* Versions that this interface can replace */
-	int versions_replace_count;	/* Count of entries in version_replace */
-	char **dependencies;		/* Dependent interfaces */
-	size_t dependency_count;	/* Count of entires in dependencies */
-	int (*constructor) (void *context);	/* Constructor for this interface */
-	void (*destructor) (void *context);	/* Constructor for this interface */
-	void **interfaces;		/* List of functions in interface */
+	const char *name;                   /**< Name of the interface */
+	int version;                        /**< Version of this interface */
+	int *versions_replace;              /**< Versions that this interface can replace */
+	int versions_replace_count;         /**< Count of entries in version_replace */
+	char **dependencies;                /**< Dependent interfaces */
+	size_t dependency_count;            /**< Count of entires in dependencies */
+	int (*constructor) (void *context); /**< Constructor for this interface */
+	void (*destructor) (void *context); /**< Constructor for this interface */
+	void **interfaces;                  /**< List of functions in interface */
 };
 
-/*
+/**
  * LCR Component
  */
 struct lcr_comp {
-	struct lcr_iface *ifaces;	/* List of interfaces in this component */
-	size_t iface_count;		/* size of ifaces list */
+	struct lcr_iface *ifaces; /**< List of interfaces in this component */
+	size_t iface_count;       /**< size of ifaces list */
 };
 
 extern void lcr_component_register (struct lcr_comp *comp);

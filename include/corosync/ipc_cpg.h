@@ -222,7 +222,9 @@ struct res_lib_cpg_mcast {
 	coroipc_response_header_t header __attribute__((aligned(8)));
 };
 
-/* Message from another node */
+/**
+ * Message from another node
+ */
 struct res_lib_cpg_deliver_callback {
 	coroipc_response_header_t header __attribute__((aligned(8)));
 	mar_cpg_name_t group_name __attribute__((aligned(8)));

@@ -92,47 +92,52 @@ typedef struct {
 
 /** @} */
 
-/*
+/**
  * Create a new evs connection
  */
 cs_error_t evs_initialize (
 	evs_handle_t *handle,
 	evs_callbacks_t *callbacks);
 
-/*
+/**
  * Close the evs handle
  */
 cs_error_t evs_finalize (
 	evs_handle_t handle);
 
-/*
- * Get a file descriptor on which to poll.  evs_handle_t is NOT a
- * file descriptor and may not be used directly.
+/**
+ * Get a file descriptor on which to poll.
+ *
+ * evs_handle_t is NOT a file descriptor and may not be used directly.
  */
 cs_error_t evs_fd_get (
 	evs_handle_t handle,
 	int *fd);
 
-/*
- * Get and set contexts for a EVS handle
+/**
+ * Get contexts for a EVS handle
  */
 cs_error_t evs_context_get (
 	evs_handle_t handle,
 	void **context);
 
+/**
+ * Set contexts for a EVS handle
+ */
 cs_error_t evs_context_set (
 	evs_handle_t handle,
 	void *context);
 
-/*
+/**
  * Dispatch messages and configuration changes
  */
 cs_error_t evs_dispatch (
 	evs_handle_t handle,
 	cs_dispatch_flags_t dispatch_types);
 
-/*
+/**
  * Join one or more groups.
+ *
  * messages multicasted with evs_mcast_joined will be sent to every
  * group that has been joined on handle handle.  Any message multicasted
  * to a group that has been previously joined will be delivered in evs_dispatch
@@ -142,7 +147,7 @@ cs_error_t evs_join (
 	const struct evs_group *groups,
 	size_t group_cnt);
 
-/*
+/**
  * Leave one or more groups
  */
 cs_error_t evs_leave (
@@ -150,10 +155,14 @@ cs_error_t evs_leave (
 	const struct evs_group *groups,
 	size_t group_cnt);
 
-/*
+/**
  * Multicast to groups joined with evs_join.
- * The iovec described by iovec will be multicasted to all groups joined with
- * the evs_join interface for handle.
+ *
+ * @param handle
+ * @param guarantee
+ * @param iovec This iovec will be multicasted to all groups joined with
+ *              the evs_join interface for handle.
+ * @param iov_len
  */
 cs_error_t evs_mcast_joined (
 	evs_handle_t handle,
@@ -161,8 +170,9 @@ cs_error_t evs_mcast_joined (
 	const struct iovec *iovec,
 	unsigned int iov_len);
 
-/*
+/**
  * Multicast to specified groups.
+ *
  * Messages will be multicast to groups specified in the api call and not those
  * that have been joined (unless they are in the groups parameter).
  */
@@ -174,7 +184,7 @@ cs_error_t evs_mcast_groups (
 	const struct iovec *iovec,
 	unsigned int iov_len);
 
-/*
+/**
  * Get membership information from evs
  */
 cs_error_t evs_membership_get (

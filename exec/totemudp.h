@@ -41,7 +41,7 @@
 
 #include <corosync/totem/totem.h>
 
-/*
+/**
  * Create an instance
  */
 extern int totemudp_initialize (

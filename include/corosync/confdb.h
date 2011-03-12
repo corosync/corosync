@@ -118,21 +118,21 @@ typedef struct {
 
 /** @} */
 
-/*
+/**
  * Create a new confdb connection
  */
 cs_error_t confdb_initialize (
 	confdb_handle_t *handle,
 	confdb_callbacks_t *callbacks);
 
-/*
+/**
  * Close the confdb handle
  */
 cs_error_t confdb_finalize (
 	confdb_handle_t handle);
 
 
-/*
+/**
  * Write back the configuration
  */
 cs_error_t confdb_write (
@@ -140,7 +140,7 @@ cs_error_t confdb_write (
 	char *error_text,
 	size_t errbuf_len);
 
-/*
+/**
  * Reload the configuration
  */
 cs_error_t confdb_reload (
@@ -149,22 +149,23 @@ cs_error_t confdb_reload (
 	char *error_text,
 	size_t errbuf_len);
 
-/*
- * Get a file descriptor on which to poll.  confdb_handle_t is NOT a
- * file descriptor and may not be used directly.
+/**
+ * Get a file descriptor on which to poll.
+ *
+ * confdb_handle_t is NOT a file descriptor and may not be used directly.
  */
 cs_error_t confdb_fd_get (
 	confdb_handle_t handle,
 	int *fd);
 
-/*
+/**
  * Dispatch configuration changes
  */
 cs_error_t confdb_dispatch (
 	confdb_handle_t handle,
 	cs_dispatch_flags_t dispatch_types);
 
-/*
+/**
  * Change notification
  */
 cs_error_t confdb_track_changes (
@@ -175,7 +176,7 @@ cs_error_t confdb_track_changes (
 cs_error_t confdb_stop_track_changes (
 	confdb_handle_t handle);
 
-/*
+/**
  * Manipulate objects
  */
 cs_error_t confdb_object_create (
@@ -200,7 +201,7 @@ cs_error_t confdb_object_name_get (
 	char *object_name,
 	size_t *object_name_len);
 
-/*
+/**
  * Manipulate keys
  */
 cs_error_t confdb_key_create (
@@ -227,7 +228,7 @@ cs_error_t confdb_key_delete (
 	const void *value,
 	size_t value_len);
 
-/*
+/**
  * Key queries
  */
 cs_error_t confdb_key_get (
@@ -270,10 +271,12 @@ cs_error_t confdb_key_decrement (
 	size_t key_name_len,
 	unsigned int *value);
 
-/*
+/**
  * Object queries
+ *
  * "find" loops through all objects of a given name and is also
  * a quick way of finding a specific object,
+ *
  * "iter" returns each object in sequence.
  */
 cs_error_t confdb_object_find_start (
@@ -306,7 +309,7 @@ cs_error_t confdb_object_iter_destroy(
 	confdb_handle_t handle,
 	hdb_handle_t parent_object_handle);
 
-/*
+/**
  * Key iterator
  */
 cs_error_t confdb_key_iter_start (
@@ -329,14 +332,16 @@ cs_error_t confdb_key_iter_typed (
 	size_t *value_len,
 	confdb_value_types_t *type);
 
-/*
- * Get/set context variable
+/**
+ * Get context variable
  */
-
 cs_error_t confdb_context_get (
 	confdb_handle_t handle,
 	const void **context);
 
+/**
+ * Set context variable
+ */
 cs_error_t confdb_context_set (
 	confdb_handle_t handle,
 	const void *context);

@@ -31,25 +31,26 @@
 #ifndef LCR_CKPT_H_DEFINED
 #define LCR_CKPT_H_DEFINED
 
-/*
+/**
  * Write data of length data_len into the section name for ckpt_handle
  */
 int lcr_ckpt_section_write (void *ckpt_handle, const char *name,
 			    const void *data, size_t data_len);
 
-/*
- * Read the section name into data with data len.  Returned in data_len is the
- * actual data read from ckpt_handle.
+/**
+ * Read the section name into data with data len.
+ *
+ * @retval Returned in data_len is the actual data read from ckpt_handle.
  */
 int lcr_ckpt_section_read (void *ckpt_handle, const char *name,
 			   void *data, size_t *data_len);
 
-/*
+/**
  * Initialize the section iterator to the first section
  */
 int lcr_ckpt_section_iterator_first (void *ckpt_handle);
 
-/*
+/**
  * Get the current section, return it in name, and advance to next section
  */
 int lcr_ckpt_section_iterator_next (void *ckpt_handle, char **name);

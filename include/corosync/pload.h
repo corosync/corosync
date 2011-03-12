@@ -74,22 +74,23 @@ typedef struct {
 
 /** @} */
 
-/*
+/**
  * Create a new pload connection
  */
 pload_error_t pload_initialize (
 	pload_handle_t *handle,
 	pload_callbacks_t *callbacks);
 
-/*
+/**
  * Close the pload handle
  */
 pload_error_t pload_finalize (
 	pload_handle_t handle);
 
-/*
- * Get a file descriptor on which to poll.  pload_handle_t is NOT a
- * file descriptor and may not be used directly.
+/**
+ * Get a file descriptor on which to poll.
+ *
+ * @note pload_handle_t is NOT a file descriptor and may not be used directly.
  */
 pload_error_t pload_fd_get (
 	pload_handle_t handle,

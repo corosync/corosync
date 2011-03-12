@@ -32,16 +32,20 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
+
+/**
+ * @file
+ * Totem Single Ring Protocol
+ *
+ * depends on poll abstraction, POSIX, IPV4
+ */
+
 #ifndef TOTEMMRP_H_DEFINED
 #define TOTEMMRP_H_DEFINED
 
 #include <corosync/totem/totem.h>
 
-/*
- * Totem Single Ring Protocol
- * depends on poll abstraction, POSIX, IPV4
- */
-/*
+/**
  * Initialize the logger
  */
 extern void totemmrp_log_printf_init (
@@ -52,7 +56,7 @@ extern void totemmrp_log_printf_init (
 	int log_level_notice,
 	int log_level_debug);
 
-/*
+/**
  * Initialize the group messaging interface
  */
 extern int totemmrp_initialize (
@@ -74,7 +78,7 @@ extern int totemmrp_initialize (
 
 extern void totemmrp_finalize (void);
 
-/*
+/**
  * Multicast a message
  */
 extern int totemmrp_mcast (
@@ -82,7 +86,7 @@ extern int totemmrp_mcast (
 	unsigned int iov_len,
 	int priority);
 
-/*
+/**
  * Return number of available messages that can be queued
  */
 extern int totemmrp_avail (void);

@@ -40,7 +40,7 @@
 
 #include <corosync/totem/totem.h>
 
-/*
+/**
  * Create an instance
  */
 extern int totemiba_initialize (

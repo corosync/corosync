@@ -31,10 +31,15 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
-/*
+
+/**
+ * @file
+ * Linked list API
+ *
  * This implementation uses the same API as the linux kernel to
  * help us kernel developers easily use the list primatives
  */
+
 #ifndef LIST_H_DEFINED
 #define LIST_H_DEFINED
 

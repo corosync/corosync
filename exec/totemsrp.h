@@ -32,18 +32,21 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
+
+/**
+ * @file
+ * Totem Single Ring Protocol
+ *
+ * depends on poll abstraction, POSIX, IPV4
+ */
+
 #ifndef TOTEMSRP_H_DEFINED
 #define TOTEMSRP_H_DEFINED
 
 #include <corosync/totem/totem.h>
 #include <corosync/totem/coropoll.h>
 
-/*
- * Totem Single Ring Protocol
- * depends on poll abstraction, POSIX, IPV4
- */
-
-/*
+/**
  * Create a protocol instance
  */
 int totemsrp_initialize (
@@ -66,7 +69,7 @@ int totemsrp_initialize (
 
 void totemsrp_finalize (void *srp_context);
 
-/*
+/**
  * Multicast a message
  */
 int totemsrp_mcast (
@@ -75,7 +78,7 @@ int totemsrp_mcast (
 	unsigned int iov_len,
 	int priority);
 
-/*
+/**
  * Return number of available messages that can be queued
  */
 int totemsrp_avail (void *srp_context);

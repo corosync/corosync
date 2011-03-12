@@ -49,173 +49,193 @@ typedef enum {
 	SAM_RECOVERY_POLICY_CONFDB = 0x10,
 } sam_recovery_policy_t;
 
-/*
+/**
  * Callback definition for event driven checking
  */
 typedef int (*sam_hc_callback_t)(void);
 
-/*
- * Create a new SAM connection. This function must be called before any other.
+/**
+ * Create a new SAM connection.
+ *
+ * This function must be called before any other.
  * It is recommended to call it as one of first in application.
  *
  * @param time_interval Time interval in miliseconds of healthcheck. After this time, application
- * will be killed and recovery policy will be taken. This can be zero, which means,
- * that there is no time limit (only fall of application is checked and only then
- * recovery action is taken)
+ *        will be killed and recovery policy will be taken. This can be zero, which means,
+ *        that there is no time limit (only fall of application is checked and only then
+ *        recovery action is taken)
  * @param recovery_policy One of SAM_RECOVERY_POLICY_RESTART, which means, that after
- * timeout application will be killed and new instance will be started.
- * SAM_RECOVERY_POLICY_QUIT will just stop application
- * @return
- * - CS_OK in case no problem appeared
- * - CS_ERR_BAD_HANDLE in case user is trying to initialize initialized instance
- * - CS_ERR_INVALID_PARAM in case recovery_policy had bad value
+ *        timeout application will be killed and new instance will be started.
+ *        SAM_RECOVERY_POLICY_QUIT will just stop application
+ *
+ * @retval CS_OK in case no problem appeared
+ * @retval CS_ERR_BAD_HANDLE in case user is trying to initialize initialized instance
+ * @retval CS_ERR_INVALID_PARAM in case recovery_policy had bad value
  */
 cs_error_t sam_initialize (
         int time_interval,
         sam_recovery_policy_t recovery_policy);
 
-/*
- * Close the SAM handle. This function should be called as late as possible
+/**
+ * Close the SAM handle.
+ *
+ * This function should be called as late as possible.
  * (in reality, if you plan just quit, and checking is stopped, there is no need
  * to call it). Function will stop healtchecking and put library to state, where
  * no new start is possible.
  *
- * @return
- * - CS_OK in case no problem appeared
- * - CS_ERR_BAD_HANDLE library was not initialized by #sam_initialize
+ * @retval CS_OK in case no problem appeared
+ * @retval CS_ERR_BAD_HANDLE library was not initialized by #sam_initialize
  */
 cs_error_t sam_finalize (void);
 
-/*
- * Start healthchecking. From this time, you should call every time_interval
+/**
+ * Start healthchecking.
+ *
+ * From this time, you should call every time_interval
  * sam_hc_send, otherwise, recovery action will be taken.
- * @return
- * - CS_OK in case no problem appeared
- * - CS_ERR_BAD_HANDLE component was not registered by #sam_register
+ *
+ * @retval CS_OK in case no problem appeared
+ * @retval CS_ERR_BAD_HANDLE component was not registered by #sam_register
  */
 cs_error_t sam_start (void);
 
-/*
- * Stop healthchecking. Oposite of #sam_start. You can call sam_start and
- * sam_stop how many times you want.
+/**
+ * Stop healthchecking.
  *
- * @return
- * - CS_OK in case no problem appeared
- * - CS_ERR_BAD_HANDLE healthchecking is not in running state (no sam_start
- *   was called)
+ * Oposite of #sam_start. You can call sam_start and sam_stop how many
+ * times you want.
+ *
+ * @retval CS_OK in case no problem appeared
+ * @retval CS_ERR_BAD_HANDLE healthchecking is not in running state (no sam_start
+ *         was called)
  */
 cs_error_t sam_stop (void);
 
-/*
- * Set warning signal to be send. Default signal is SIGTERM. You can
- * use SIGKILL to emulate NOT sending warning signal and just send
- * SIGKILL.
+/**
+ * Set warning signal to be send.
  *
- * @return
- * - CS_OK in case no problem appeared
- * - CS_ERR_BAD_HANDLE library was not initialized by #sam_initialize or
- *   is finalized
+ * Default signal is SIGTERM. You can use SIGKILL to emulate NOT sending
+ * warning signal and just send SIGKILL.
+ *
+ * @retval CS_OK in case no problem appeared
+ * @retval CS_ERR_BAD_HANDLE library was not initialized by #sam_initialize or
+ *         is finalized
  */
 cs_error_t sam_warn_signal_set (int warn_signal);
 
-/*
- * Register application. This is one of most crucial function. In case, your
+/**
+ * Register application.
+ *
+ * This is one of most crucial function. In case, your
  * application will be restarted, you will always return to point after calling
  * this function. This function can be called only once, and SAM must be initialized
  * by sam_initialize. You can choose any place in your application, where to call
  * this function.
  *
  * @param instance_id NULL or pointer to int memory, where current instance
- * of application will be returned. It's always safe to suppose, that first instance
- * (this means, no recovery action was taken yet) will be always 1 and instance_id
- * will be raising up to MAX_INT (after this, it will fall to 0).
- * @return
- * - CS_OK in case no problem appeared
- * - CS_ERR_BAD_HANDLE in case, you call this function twice, or before sam_init
- * - CS_ERR_LIBRARY internal library call failed. This can be one of pipe or fork
- *   creation. You can get more information from errno
+ *        of application will be returned. It's always safe to suppose, that first instance
+ *        (this means, no recovery action was taken yet) will be always 1 and instance_id
+ *        will be raising up to MAX_INT (after this, it will fall to 0).
+ *
+ * @retval CS_OK in case no problem appeared
+ * @retval CS_ERR_BAD_HANDLE in case, you call this function twice, or before sam_init
+ * @retval CS_ERR_LIBRARY internal library call failed. This can be one of pipe or fork
+ *         creation. You can get more information from errno
  */
 cs_error_t sam_register (
 	unsigned int *instance_id);
 
-/*
- * Send healthcheck confirmation. This should be called after #sam_start
+/**
+ * Send healthcheck confirmation.
  *
- * - CS_OK in case no problem appeared
- * - CS_ERR_BAD_HANDLE healthchecking is not in running state (no sam_start was
- *   called, or called after sam_stop/sam_finalize)
+ * This should be called after #sam_start
+ *
+ * @retval CS_OK in case no problem appeared
+ * @retval CS_ERR_BAD_HANDLE healthchecking is not in running state (no sam_start was
+ *         called, or called after sam_stop/sam_finalize)
  */
 cs_error_t sam_hc_send (void);
 
-/*
- * Register healtcheck callback. After you will call this function, and set
+/**
+ * Register healtcheck callback.
+ *
+ * After you will call this function, and set
  * cb to something else then NULL, SAM is automatically switched from
  * application driven healtchecking to event driven healtchecking. In other
  * words, is not longer needed to call sam_hc_send, but your callback function
  * must return 0 in case of healtchecking is correct, or value different then
  * 0, in case something happend. After next hc iteration, warning signal and
  * after that kill signal is sent back to your application.
+ *
  * @param cb Pointer to healtcheck function, or NULL to switch back to application driven hc
- * @return
- * - CS_OK in case no problem appeared
- * - CS_ERR_BAD_HANDLE in case, you call this function before sam_init or after sam_start
- * - CS_ERR_LIBRARY internal library call failed. This can be one of pipe or pthread
- *   creation.
+ *
+ * @retval CS_OK in case no problem appeared
+ * @retval CS_ERR_BAD_HANDLE in case, you call this function before sam_init or after sam_start
+ * @retval CS_ERR_LIBRARY internal library call failed. This can be one of pipe or pthread
+ *         creation.
  */
 cs_error_t sam_hc_callback_register (sam_hc_callback_t cb);
 
-/*
+/**
  * Return size of stored data.
+ *
  * @param size Pointer to variable, where stored data size is returned. If
- * nothing or NULL is stored, then 0 is returned.
- * @return
- * - CS_OK in case no problem appeared
- * - CS_ERR_BAD_HANDLE in case you call this function before sam_init or after
- *   sam_finalize
- * - CS_ERR_INVALID_PARAM if size parameter is NULL
+ *        nothing or NULL is stored, then 0 is returned.
+ *
+ * @retval CS_OK in case no problem appeared
+ * @retval CS_ERR_BAD_HANDLE in case you call this function before sam_init or after
+ *         sam_finalize
+ * @retval CS_ERR_INVALID_PARAM if size parameter is NULL
  */
 cs_error_t sam_data_getsize (size_t *size);
 
-/*
+/**
  * Return stored data.
+ *
  * @param data Pointer to place, where to store data
  * @param size Allocated size of data
- * @return
- * - CS_OK if no problem appeared
- * - CS_ERR_BAD_HANDLE if you call this function before sam_init or after sam_finalize
- * - CS_ERR_INVALID_PARAM if data is NULL or size is less then currently saved user data length
+ *
+ * @retval CS_OK if no problem appeared
+ * @retval CS_ERR_BAD_HANDLE if you call this function before sam_init or after sam_finalize
+ * @retval CS_ERR_INVALID_PARAM if data is NULL or size is less then currently saved user data length
  */
 cs_error_t sam_data_restore (
 	void *data,
 	size_t size);
 
-/*
- * Store user data. Such stored data survives restart of child.
+/**
+ * Store user data.
+ *
+ * Such stored data survives restart of child.
+ *
  * @param data Data to store. You can use NULL to delete data
  * @param size Size of data to store.
- * @return
- * - CS_OK in case no problem appeared
- * - CS_ERR_BAD_HANDLE if you call this function before sam_init or
- *   after sam_finalize
- * - CS_ERR_NO_MEMORY if data is too large and malloc/realloc was not
- *   sucesfull
- * - CS_ERR_LIBRARY if some internal error appeared (communication with parent
- *   process)
+ *
+ * @retval CS_OK in case no problem appeared
+ * @retval CS_ERR_BAD_HANDLE if you call this function before sam_init or
+ *         after sam_finalize
+ * @retval CS_ERR_NO_MEMORY if data is too large and malloc/realloc was not
+ *         sucesfull
+ * @retval CS_ERR_LIBRARY if some internal error appeared (communication with parent
+ *         process)
  */
 cs_error_t sam_data_store (
 	const void *data,
 	size_t size);
 
-/*
- * Marks child as failed. This can be called only with SAM_RECOVERY_POLICY_CONFDB flag set and
+/**
+ * Marks child as failed.
+ *
+ * This can be called only with SAM_RECOVERY_POLICY_CONFDB flag set and
  * makes sense only for SAM_RECOVERY_POLICY_RESTART. This will kill child without sending warn
  * signal. Confdb state key will be set to failed.
  *
- * - CS_OK in case no problem appeared
- * - CS_ERR_BAD_HANDLE library was not initialized or was already finalized
- * - CS_ERR_INVALID_PARAM recovery policy doesn't has SAM_RECOVERY_POLICY_CONFDB flag set
- * - CS_ERR_LIBRARY if some internal error appeared (communication with parent
- *   process)
+ * @retval CS_OK in case no problem appeared
+ * @retval CS_ERR_BAD_HANDLE library was not initialized or was already finalized
+ * @retval CS_ERR_INVALID_PARAM recovery policy doesn't has SAM_RECOVERY_POLICY_CONFDB flag set
+ * @retval CS_ERR_LIBRARY if some internal error appeared (communication with parent
+ *         process)
  */
 cs_error_t sam_mark_failed (void);
 

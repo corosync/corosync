@@ -60,29 +60,30 @@ typedef struct {
 } quorum_callbacks_t;
 
 
-/*
+/**
  * Create a new quorum connection
  */
 cs_error_t quorum_initialize (
 	quorum_handle_t *handle,
 	quorum_callbacks_t *callbacks);
 
-/*
+/**
  * Close the quorum handle
  */
 cs_error_t quorum_finalize (
 	quorum_handle_t handle);
 
 
-/*
- * Get a file descriptor on which to poll. quorum_handle_t is NOT a
- * file descriptor and may not be used directly.
+/**
+ * Get a file descriptor on which to poll.
+ *
+ * @note quorum_handle_t is NOT a file descriptor and may not be used directly.
  */
 cs_error_t quorum_fd_get (
 	quorum_handle_t handle,
 	int *fd);
 
-/*
+/**
  * Dispatch messages and configuration changes
  */
 cs_error_t quorum_dispatch (
@@ -90,14 +91,16 @@ cs_error_t quorum_dispatch (
 	cs_dispatch_flags_t dispatch_types);
 
 
-/*
+/**
  * Get quorum information.
  */
 cs_error_t quorum_getquorate (
 	quorum_handle_t handle,
 	int *quorate);
 
-/* Track node and quorum changes */
+/**
+ * Track node and quorum changes
+ */
 cs_error_t quorum_trackstart (
 	quorum_handle_t handle,
 	unsigned int flags );

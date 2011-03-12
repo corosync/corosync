@@ -53,15 +53,16 @@ struct sq {
  * Compare a unsigned rollover-safe value to an unsigned rollover-safe value
  */
 
-/*
+/**
  * ADJUST_ROLLOVER_POINT is the value used to determine when a window should be
  *	used to calculate a less-then or less-then-equal comparison.
- *
+ */
+#define ADJUST_ROLLOVER_POINT 0x80000000
+/**
  * ADJUST_ROLLOVER_VALUE is the value by which both values in a comparison are
  *	adjusted if either value in a comparison is greater then
  *	ADJUST_ROLLOVER_POINT.
  */
-#define ADJUST_ROLLOVER_POINT 0x80000000
 #define ADJUST_ROLLOVER_VALUE 0x10000
 
 static inline int sq_lt_compare (unsigned int a, unsigned int b) {
