@@ -133,7 +133,8 @@ AC_CONFIG_FILES([Makefile
 		 cts/agents/Makefile
 		 cts/CTSvars.py
 		 tools/Makefile
-		 conf/Makefile])
+		 conf/Makefile
+                 Doxyfile])
 
 ### Local business
 

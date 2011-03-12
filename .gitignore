@@ -4,6 +4,7 @@
 *.so*
 .deps
 .version
+doc
 Makefile
 Makefile.in
 corosync.spec
