@@ -378,10 +378,7 @@ static inline void records_reclaim (unsigned int idx, unsigned int words)
 
 		words_needed = words + 1;
 		do {
-			unsigned int old_tail;
-
 			words_needed -= flt_data[flt_tail];
-			old_tail = flt_tail;
 			flt_tail =
 				(flt_tail +
 				flt_data[flt_tail]) % (flt_data_size);
@@ -1669,7 +1666,7 @@ void logsys_atexit (void)
 			logsys_wthread_lock();
 
 			res = sem_getvalue (&logsys_print_finished, &value);
-			if (value == 0) {
+			if (res != 0 || value == 0) {
 				logsys_wthread_unlock();
 				return;
 			}

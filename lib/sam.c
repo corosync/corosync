@@ -837,12 +837,10 @@ static cs_error_t sam_parent_warn_signal_set (
 	int parent_fd_in,
 	int parent_fd_out)
 {
-	char *user_data;
 	int warn_signal;
 	cs_error_t err;
 
 	err = CS_OK;
-	user_data = NULL;
 
 	if (sam_safe_read (parent_fd_in, &warn_signal, sizeof (warn_signal)) != sizeof (warn_signal)) {
 		err = CS_ERR_LIBRARY;

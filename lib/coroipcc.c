@@ -372,9 +372,7 @@ error_close_unlink:
 static void
 memory_unmap (void *addr, size_t bytes)
 {
-	int res;
-
-	res = munmap (addr, bytes);
+	(void)munmap (addr, bytes);
 }
 
 void ipc_hdb_destructor (void *context ) {

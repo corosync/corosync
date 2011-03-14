@@ -463,7 +463,6 @@ static void read_quorum_config(hdb_handle_t quorum_handle)
 	unsigned int value = 0;
 	int cluster_members = 0;
 	struct list_head *tmp;
-	struct cluster_node *node;
 
 	log_printf(LOGSYS_LEVEL_INFO, "Reading configuration\n");
 
@@ -487,7 +486,6 @@ static void read_quorum_config(hdb_handle_t quorum_handle)
 	 * two_node mode is invalid if there are more than 2 nodes in the cluster!
 	 */
 	list_iterate(tmp, &cluster_members_list) {
-		node = list_entry(tmp, struct cluster_node, list);
 		cluster_members++;
         }
 

@@ -402,7 +402,6 @@ static void memb_determine_message_transmit (void)
 {
 	struct iovec iovec;
 	struct req_exec_memb_determine_message req_exec_memb_determine_message;
-	int res;
 
 	req_exec_memb_determine_message.header.size = sizeof (struct req_exec_memb_determine_message);
 	req_exec_memb_determine_message.header.id = MESSAGE_REQ_SYNC_MEMB_DETERMINE;
@@ -414,7 +413,7 @@ static void memb_determine_message_transmit (void)
 	iovec.iov_base = (char *)&req_exec_memb_determine_message;
 	iovec.iov_len = sizeof (req_exec_memb_determine_message);
 
-	res = totempg_groups_mcast_joined (sync_group_handle,
+	(void)totempg_groups_mcast_joined (sync_group_handle,
 		&iovec, 1, TOTEMPG_AGREED);
 }
 
@@ -422,7 +421,6 @@ static void barrier_message_transmit (void)
 {
 	struct iovec iovec;
 	struct req_exec_barrier_message req_exec_barrier_message;
-	int res;
 
 	req_exec_barrier_message.header.size = sizeof (struct req_exec_barrier_message);
 	req_exec_barrier_message.header.id = MESSAGE_REQ_SYNC_BARRIER;
@@ -433,14 +431,13 @@ static void barrier_message_transmit (void)
 	iovec.iov_base = (char *)&req_exec_barrier_message;
 	iovec.iov_len = sizeof (req_exec_barrier_message);
 
-	res = totempg_groups_mcast_joined (sync_group_handle,
+	(void)totempg_groups_mcast_joined (sync_group_handle,
 		&iovec, 1, TOTEMPG_AGREED);
 }
 
 static void service_build_message_transmit (struct req_exec_service_build_message *service_build_message)
 {
 	struct iovec iovec;
-	int res;
 
 	service_build_message->header.size = sizeof (struct req_exec_service_build_message);
 	service_build_message->header.id = MESSAGE_REQ_SYNC_SERVICE_BUILD;
@@ -451,7 +448,7 @@ static void service_build_message_transmit (struct req_exec_service_build_messag
 	iovec.iov_base = (void *)service_build_message;
 	iovec.iov_len = sizeof (struct req_exec_service_build_message);
 
-	res = totempg_groups_mcast_joined (sync_group_handle,
+	(void)totempg_groups_mcast_joined (sync_group_handle,
 		&iovec, 1, TOTEMPG_AGREED);
 }
 

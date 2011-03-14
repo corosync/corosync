@@ -323,7 +323,6 @@ static void message_handler_req_evs_leave (void *conn, const void *msg)
 	const struct req_lib_evs_leave *req_lib_evs_leave = msg;
 	struct res_lib_evs_leave res_lib_evs_leave;
 	cs_error_t error = CS_OK;
-	int error_index;
 	int i, j;
 	int found;
 	struct evs_pd *evs_pd = (struct evs_pd *)api->ipc_private_data_get (conn);
@@ -351,7 +350,6 @@ static void message_handler_req_evs_leave (void *conn, const void *msg)
 		}
 		if (found == 0) {
 			error = CS_ERR_NOT_EXIST;
-			error_index = i;
 			break;
 		}
 	}

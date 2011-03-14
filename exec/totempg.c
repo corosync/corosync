@@ -662,7 +662,6 @@ int callback_token_received_fn (enum totem_callback_token_type type,
 {
 	struct totempg_mcast mcast;
 	struct iovec iovecs[3];
-	int res;
 
 	pthread_mutex_lock (&mcast_msg_mutex);
 	if (mcast_packed_msg_count == 0) {
@@ -691,7 +690,7 @@ int callback_token_received_fn (enum totem_callback_token_type type,
 	iovecs[1].iov_len = mcast_packed_msg_count * sizeof (unsigned short);
 	iovecs[2].iov_base = (void *)&fragmentation_data[0];
 	iovecs[2].iov_len = fragment_size;
-	res = totemmrp_mcast (iovecs, 3, 0);
+	(void)totemmrp_mcast (iovecs, 3, 0);
 
 	mcast_packed_msg_count = 0;
 	fragment_size = 0;

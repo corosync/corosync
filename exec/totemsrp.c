@@ -2428,7 +2428,6 @@ static int orf_token_rtr (
 	unsigned int res;
 	unsigned int i, j;
 	unsigned int found;
-	unsigned int total_entries;
 	struct sq *sort_queue;
 	struct rtr_item *rtr_list;
 	unsigned int range = 0;
@@ -2455,8 +2454,6 @@ static int orf_token_rtr (
 		log_printf (instance->totemsrp_log_level_notice,
 			"%s", retransmit_msg);
 	}
-
-	total_entries = orf_token->rtr_list_entries;
 
 	/*
 	 * Retransmit messages on orf_token's RTR list from RTR queue
@@ -2805,12 +2802,7 @@ static int memb_state_commit_token_send_recovery (
 	struct totemsrp_instance *instance,
 	struct memb_commit_token *commit_token)
 {
-	struct srp_addr *addr;
-	struct memb_commit_token_memb_entry *memb_list;
 	unsigned int commit_token_size;
-
-	addr = (struct srp_addr *)commit_token->end_of_commit_token;
-	memb_list = (struct memb_commit_token_memb_entry *)(addr + commit_token->addr_entries);
 
 	commit_token->token_seq++;
 	commit_token_size = sizeof (struct memb_commit_token) +
@@ -2838,12 +2830,7 @@ static int memb_state_commit_token_send_recovery (
 static int memb_state_commit_token_send (
 	struct totemsrp_instance *instance)
 {
-	struct srp_addr *addr;
-	struct memb_commit_token_memb_entry *memb_list;
 	unsigned int commit_token_size;
-
-	addr = (struct srp_addr *)instance->commit_token->end_of_commit_token;
-	memb_list = (struct memb_commit_token_memb_entry *)(addr + instance->commit_token->addr_entries);
 
 	instance->commit_token->token_seq++;
 	commit_token_size = sizeof (struct memb_commit_token) +
@@ -4241,7 +4228,6 @@ static int message_handler_memb_commit_token (
 	int sub_entries;
 
 	struct srp_addr *addr;
-	struct memb_commit_token_memb_entry *memb_list;
 
 	log_printf (instance->totemsrp_log_level_debug,
 		"got commit token\n");
@@ -4253,7 +4239,6 @@ static int message_handler_memb_commit_token (
 	}
 	memb_commit_token = memb_commit_token_convert;
 	addr = (struct srp_addr *)memb_commit_token->end_of_commit_token;
-	memb_list = (struct memb_commit_token_memb_entry *)(addr + memb_commit_token->addr_entries);
 
 #ifdef TEST_DROP_COMMIT_TOKEN_PERCENTAGE
 	if (random()%100 < TEST_DROP_COMMIT_TOKEN_PERCENTAGE) {

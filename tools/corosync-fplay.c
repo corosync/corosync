@@ -378,7 +378,6 @@ static void logsys_rec_print (const void *record)
 	const uint32_t *buf_uint32t = record;
 	uint32_t rec_size;
 	uint32_t rec_ident;
-	uint32_t level;
 	uint32_t line;
 	uint32_t arg_size_idx;
 	unsigned int i;
@@ -386,7 +385,6 @@ static void logsys_rec_print (const void *record)
 	unsigned int rec_idx = 0;
 	uint32_t record_number;
 	unsigned int words_processed;
-	unsigned int found;
 	const char *arguments[64];
 	int arg_count = 0;
 
@@ -394,8 +392,6 @@ static void logsys_rec_print (const void *record)
 	rec_ident = buf_uint32t[rec_idx+1];
 	line = buf_uint32t[rec_idx+2];
 	record_number = buf_uint32t[rec_idx+3];
-
-	level = LOGSYS_DECODE_LEVEL(rec_ident);
 
 	printf ("rec=[%d] ", record_number);
 	arg_size_idx = rec_idx + 4;
@@ -408,7 +404,6 @@ static void logsys_rec_print (const void *record)
 
 	}
 
-	found = 0;
 	for (i = 0; i < printer_subsys_count; i++) {
 		if (strcmp (arguments[0], printer_subsystems[i].subsys) == 0) {
 			for (j = 0; j < printer_subsystems[i].record_printers_count; j++) {

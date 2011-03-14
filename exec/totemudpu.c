@@ -1066,7 +1066,6 @@ static int net_deliver_fn (
 	struct totemudpu_instance *instance = (struct totemudpu_instance *)data;
 	struct msghdr msg_recv;
 	struct iovec *iovec;
-	struct security_header *security_header;
 	struct sockaddr_storage system_from;
 	int bytes_received;
 	int res = 0;
@@ -1104,8 +1103,6 @@ static int net_deliver_fn (
 		log_printf (instance->totemudpu_log_level_security, "Received message is too short...  ignoring %d.\n", bytes_received);
 		return (0);
 	}
-
-	security_header = (struct security_header *)iovec->iov_base;
 
 	iovec->iov_len = bytes_received;
 	if (instance->totem_config->secauth == 1) {
@@ -1167,7 +1164,6 @@ static void timer_function_netif_check_timeout (
 	void *data)
 {
 	struct totemudpu_instance *instance = (struct totemudpu_instance *)data;
-	int res;
 	int interface_up;
 	int interface_num;
 	struct totem_ip_address *bind_address;
@@ -1233,7 +1229,7 @@ static void timer_function_netif_check_timeout (
 	/*
 	 * Create and bind the multicast and unicast sockets
 	 */
-	res = totemudpu_build_sockets (instance,
+	totemudpu_build_sockets (instance,
 		bind_address,
 		&instance->totem_interface->boundto);
 

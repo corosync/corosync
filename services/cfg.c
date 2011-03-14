@@ -833,7 +833,6 @@ static void message_handler_req_lib_cfg_killnode (
 	struct res_lib_cfg_killnode res_lib_cfg_killnode;
 	struct req_exec_cfg_killnode req_exec_cfg_killnode;
 	struct iovec iovec;
-	int res;
 
 	ENTER();
 	req_exec_cfg_killnode.header.size =
@@ -846,7 +845,7 @@ static void message_handler_req_lib_cfg_killnode (
 	iovec.iov_base = (char *)&req_exec_cfg_killnode;
 	iovec.iov_len = sizeof (struct req_exec_cfg_killnode);
 
-	res = api->totem_mcast (&iovec, 1, TOTEM_SAFE);
+	(void)api->totem_mcast (&iovec, 1, TOTEM_SAFE);
 
 	res_lib_cfg_killnode.header.size = sizeof(struct res_lib_cfg_killnode);
 	res_lib_cfg_killnode.header.id = MESSAGE_RES_CFG_KILLNODE;
