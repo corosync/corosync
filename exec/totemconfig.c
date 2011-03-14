@@ -394,11 +394,7 @@ printf ("couldn't find totem handle\n");
 		/*
 		 * Get the TTL
 		 */
-		if (totem_config->interfaces[ringnumber].mcast_addr.family == AF_INET6) {
-			totem_config->interfaces[ringnumber].ttl = 255;
-		} else {
-			totem_config->interfaces[ringnumber].ttl = 1;
-		}
+		totem_config->interfaces[ringnumber].ttl = 1;
 		if (!objdb_get_string (objdb, object_interface_handle, "ttl", &str)) {
 			totem_config->interfaces[ringnumber].ttl = atoi (str);
 		}
@@ -477,8 +473,8 @@ int totem_config_validate (
 			goto parse_error;
 		}
 
-		if (totem_config->interfaces[i].ttl > 255 || totem_config->interfaces[i].ttl < 1) {
-			error_reason = "Invalid TTL (should be 1..255)";
+		if (totem_config->interfaces[i].ttl > 255 || totem_config->interfaces[i].ttl < 0) {
+			error_reason = "Invalid TTL (should be 0..255)";
 			goto parse_error;
 		}
 
