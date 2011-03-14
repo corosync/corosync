@@ -477,6 +477,11 @@ int totem_config_validate (
 			error_reason = "Invalid TTL (should be 0..255)";
 			goto parse_error;
 		}
+		if (totem_config->transport_number != TOTEM_TRANSPORT_UDP &&
+		    totem_config->interfaces[i].ttl != 1) {
+			error_reason = "Can only set ttl on multicast transport types";
+			goto parse_error;
+		}
 
 		if (totem_config->interfaces[i].mcast_addr.family == AF_INET6 &&
 			totem_config->node_id == 0) {
