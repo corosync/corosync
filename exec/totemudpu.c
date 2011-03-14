@@ -1326,26 +1326,6 @@ static int totemudpu_build_sockets_ip (
 	}
 
 	/*
-	 * Set packets TTL
-	 */
-	flag = instance->totem_interface->ttl;
-	if (bindnet_address->family == AF_INET6) {
-		res = setsockopt (instance->token_socket, IPPROTO_IPV6,
-			IPV6_UNICAST_HOPS, &flag, sizeof (flag));
-		if (res == -1) {
-			perror ("set udpu v6 TTL");
-			return (-1);
-		}
-	} else {
-		res = setsockopt(instance->token_socket, IPPROTO_IP, IP_TTL,
-			&flag, sizeof(flag));
-		if (res == -1) {
-			perror ("set udpu v4 TTL");
-			return (-1);
-		}
-	}
-
-	/*
 	 * Bind to unicast socket used for token send/receives
 	 * This has the side effect of binding to the correct interface
 	 */
