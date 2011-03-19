@@ -501,6 +501,8 @@ struct totemsrp_instance {
 
 	totemsrp_stats_t stats;
 
+	uint32_t orf_token_discard;
+	
 	void * token_recv_event_handle;
 	void * token_sent_event_handle;
 	char commit_token_storage[9000];
@@ -662,6 +664,8 @@ static void totemsrp_instance_initialize (struct totemsrp_instance *instance)
 	instance->my_high_seq_received = SEQNO_START_MSG;
 
 	instance->my_high_delivered = SEQNO_START_MSG;
+
+	instance->orf_token_discard = 0;
 
 	instance->commit_token = (struct memb_commit_token *)instance->commit_token_storage;
 }
@@ -1557,6 +1561,7 @@ static void timer_function_orf_token_timeout (void *data)
 			log_printf (instance->totemsrp_log_level_debug,
 				"The token was lost in the RECOVERY state.\n");
 			memb_recovery_state_token_loss (instance);
+			instance->orf_token_discard = 1;
 			break;
 	}
 }
@@ -1809,6 +1814,8 @@ static void memb_state_gather_enter (
 	struct totemsrp_instance *instance,
 	int gather_from)
 {
+	instance->orf_token_discard = 1;
+
 	memb_set_merge (
 		&instance->my_id, 1,
 		instance->my_proc_list, &instance->my_proc_list_entries);
@@ -1938,6 +1945,8 @@ static void memb_state_recovery_enter (
 
 	log_printf (instance->totemsrp_log_level_debug,
 		"entering RECOVERY state.\n");
+
+	instance->orf_token_discard = 0;
 
 	instance->my_high_ring_delivered = 0;
 
@@ -3364,6 +3373,9 @@ static int message_handler_orf_token (
 	"Time since last token %0.4f ms\n", ((float)tv_diff) / 1000000.0);
 #endif
 
+	if (instance->orf_token_discard) {
+		return (0);
+	}
 #ifdef TEST_DROP_ORF_TOKEN_PERCENTAGE
 	if (random()%100 < TEST_DROP_ORF_TOKEN_PERCENTAGE) {
 		return (0);
