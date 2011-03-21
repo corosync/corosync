@@ -365,7 +365,7 @@ static int
 _cs_confdb_dispatch(hdb_handle_t handle,
 	int fd,	int revents, void *data)
 {
-	confdb_dispatch(confdb_handle, CONFDB_DISPATCH_ALL);
+	confdb_dispatch(confdb_handle, CS_DISPATCH_ONE);
 	return 0;
 }
 
@@ -384,7 +384,7 @@ static int
 _cs_quorum_dispatch(hdb_handle_t handle,
 	int fd,	int revents, void *data)
 {
-	quorum_dispatch(quorum_handle, CS_DISPATCH_ALL);
+	quorum_dispatch(quorum_handle, CS_DISPATCH_ONE);
 	return 0;
 }
 
