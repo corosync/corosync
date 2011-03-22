@@ -201,6 +201,9 @@ static void showaddrs_do(int nodeid)
 				saddr = &sin->sin_addr;
 
 			inet_ntop(ss->ss_family, saddr, buf, sizeof(buf));
+			if (i != 0) {
+				printf(" ");
+			}
 			printf("%s", buf);
 		}
 		printf("\n");
