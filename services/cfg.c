@@ -1039,6 +1039,7 @@ static void message_handler_req_lib_cfg_get_node_addrs (void *conn,
 	const struct req_lib_cfg_get_node_addrs *req_lib_cfg_get_node_addrs = msg;
 	struct res_lib_cfg_get_node_addrs *res_lib_cfg_get_node_addrs = (struct res_lib_cfg_get_node_addrs *)buf;
 	unsigned int nodeid = req_lib_cfg_get_node_addrs->nodeid;
+	char *addr_buf;
 
 	if (nodeid == 0)
 		nodeid = api->totem_nodeid_get();
@@ -1051,8 +1052,9 @@ static void message_handler_req_lib_cfg_get_node_addrs (void *conn,
 	res_lib_cfg_get_node_addrs->num_addrs = num_interfaces;
 	if (num_interfaces) {
 		res_lib_cfg_get_node_addrs->family = node_ifs[0].family;
-		for (i = 0; i<num_interfaces; i++) {
-			memcpy(&res_lib_cfg_get_node_addrs->addrs[i][0], node_ifs[i].addr, TOTEMIP_ADDRLEN);
+		for (i = 0, addr_buf = (char *)res_lib_cfg_get_node_addrs->addrs;
+		    i < num_interfaces; i++, addr_buf += TOTEMIP_ADDRLEN) {
+			memcpy(addr_buf, node_ifs[i].addr, TOTEMIP_ADDRLEN);
 		}
 	}
 	else {
