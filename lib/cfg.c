@@ -651,6 +651,7 @@ cs_error_t corosync_cfg_get_node_addrs (
 	int i;
 	struct iovec iov;
 	void *return_address;
+	const char *addr_buf;
 
 	error = hdb_error_to_cs(hdb_handle_get (&cfg_hdb, cfg_handle,
 		(void *)&cfg_instance));
@@ -681,7 +682,9 @@ cs_error_t corosync_cfg_get_node_addrs (
 	if (res_lib_cfg_get_node_addrs->family == AF_INET6)
 		addrlen = sizeof(struct sockaddr_in6);
 
-	for (i=0; i<max_addrs && i<res_lib_cfg_get_node_addrs->num_addrs; i++) {
+	for (i = 0, addr_buf = (char *)res_lib_cfg_get_node_addrs->addrs;
+	    i < max_addrs && i<res_lib_cfg_get_node_addrs->num_addrs;
+	    i++, addr_buf += TOTEMIP_ADDRLEN) {
 		struct sockaddr_in *in;
 		struct sockaddr_in6 *in6;
 
@@ -690,12 +693,12 @@ cs_error_t corosync_cfg_get_node_addrs (
 		if (res_lib_cfg_get_node_addrs->family == AF_INET) {
 			in = (struct sockaddr_in *)addrs[i].address;
 			in->sin_family = AF_INET;
-			memcpy(&in->sin_addr, &res_lib_cfg_get_node_addrs->addrs[i][0], sizeof(struct in_addr));
+			memcpy(&in->sin_addr, addr_buf, sizeof(struct in_addr));
 		}
 		if (res_lib_cfg_get_node_addrs->family == AF_INET6) {
 			in6 = (struct sockaddr_in6 *)addrs[i].address;
 			in6->sin6_family = AF_INET6;
-			memcpy(&in6->sin6_addr, &res_lib_cfg_get_node_addrs->addrs[i][0], sizeof(struct in6_addr));
+			memcpy(&in6->sin6_addr, addr_buf, sizeof(struct in6_addr));
 		}
 	}
 	*num_addrs = res_lib_cfg_get_node_addrs->num_addrs;
