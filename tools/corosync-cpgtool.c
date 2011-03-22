@@ -81,6 +81,9 @@ static void fprint_addrs(FILE *f, int nodeid)
 				saddr = &sin->sin_addr;
 
 			inet_ntop(ss->ss_family, saddr, buf, sizeof(buf));
+			if (i != 0) {
+				fprintf(f, " ");
+			}
 			fprintf(f, "%s", buf);
 		}
 	}
