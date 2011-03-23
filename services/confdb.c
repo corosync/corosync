@@ -40,6 +40,7 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <unistd.h>
+#include <poll.h>
 
 #include <corosync/corotypes.h>
 #include <corosync/coroipc_types.h>
@@ -51,6 +52,7 @@
 #include <corosync/lcr/lcr_comp.h>
 #include <corosync/engine/logsys.h>
 #include <corosync/engine/coroapi.h>
+#include <corosync/totem/coropoll.h>
 
 LOGSYS_DECLARE_SUBSYS ("CONFDB");
 
@@ -65,8 +67,20 @@ m2h (mar_uint64_t *m)
 
 static struct corosync_api_v1 *api;
 
+static int notify_pipe[2];
+
+struct confdb_ipc_message_holder {
+	void *conn;
+	void *msg;
+	size_t mlen;
+};
+
 static int confdb_exec_init_fn (
 	struct corosync_api_v1 *corosync_api);
+static int confdb_exec_exit_fn(void);
+
+static int objdb_notify_dispatch(hdb_handle_t handle,
+		int fd,	int revents, void *data);
 
 static int confdb_lib_init_fn (void *conn);
 static int confdb_lib_exit_fn (void *conn);
@@ -248,6 +262,7 @@ struct corosync_service_engine confdb_service_engine = {
 	.lib_engine				= confdb_lib_engine,
 	.lib_engine_count			= sizeof (confdb_lib_engine) / sizeof (struct corosync_lib_handler),
 	.exec_init_fn				= confdb_exec_init_fn,
+	.exec_exit_fn				= confdb_exec_exit_fn,
 };
 
 /*
@@ -296,6 +311,14 @@ __attribute__ ((constructor)) static void corosync_lcr_component_register (void)
 	lcr_component_register (&confdb_comp_ver0);
 }
 
+static int confdb_exec_exit_fn(void)
+{
+	poll_dispatch_delete(api->poll_handle_get(), notify_pipe[0]);
+	close(notify_pipe[0]);
+	close(notify_pipe[1]);
+	return 0;
+}
+
 static int confdb_exec_init_fn (
 	struct corosync_api_v1 *corosync_api)
 {
@@ -303,7 +326,13 @@ static int confdb_exec_init_fn (
 	logsys_subsys_init();
 #endif
 	api = corosync_api;
-	return 0;
+
+	if (pipe(notify_pipe) != 0) {
+		return -1;
+	}
+
+	return poll_dispatch_add(api->poll_handle_get(), notify_pipe[0],
+		POLLIN, NULL, objdb_notify_dispatch);
 }
 
 static int confdb_lib_init_fn (void *conn)
@@ -782,6 +811,56 @@ static void message_handler_req_lib_confdb_reload (void *conn,
 	api->ipc_response_send(conn, &res_lib_confdb_reload, sizeof(res_lib_confdb_reload));
 }
 
+static int objdb_notify_dispatch(hdb_handle_t handle,
+		int fd,	int revents, void *data)
+{
+	struct confdb_ipc_message_holder holder;
+	ssize_t rc;
+
+	if (revents & POLLHUP) {
+		return -1;
+	}
+retry_read:
+	rc = read(fd, &holder, sizeof(struct confdb_ipc_message_holder));
+	if (rc == -1 && errno == EINTR) {
+		goto retry_read;
+	}
+	if (rc != sizeof(struct confdb_ipc_message_holder)) {
+		return 0;
+	}
+
+	api->ipc_dispatch_send(holder.conn, holder.msg, holder.mlen);
+
+	api->ipc_refcnt_dec(holder.conn);
+
+	free(holder.msg);
+	return 0;
+}
+
+static int32_t ipc_dispatch_send_from_poll_thread(void *conn, const void *msg, size_t mlen)
+{
+	struct confdb_ipc_message_holder holder;
+	ssize_t written;
+
+	api->ipc_refcnt_inc(conn);
+
+	holder.conn = conn;
+	holder.msg = malloc(mlen);
+	memcpy(holder.msg, msg, mlen);
+	holder.mlen = mlen;
+
+retry_write:
+	written = write(notify_pipe[1], &holder, sizeof(struct confdb_ipc_message_holder));
+	if (written == -1 && errno == EINTR) {
+		goto retry_write;
+	}
+	if (written == sizeof(struct confdb_ipc_message_holder)) {
+		return 0;
+	} else {
+		return -1;
+	}
+}
+
 static void confdb_notify_lib_of_key_change(object_change_type_t change_type,
 	hdb_handle_t parent_object_handle,
 	hdb_handle_t object_handle,
@@ -809,7 +888,7 @@ static void confdb_notify_lib_of_key_change(object_change_type_t change_type,
 	memcpy(res.key_value.value, key_value_pt, key_value_len);
 	res.key_value.length = key_value_len;
 
-	api->ipc_dispatch_send(priv_data_pt, &res, sizeof(res));
+	ipc_dispatch_send_from_poll_thread(priv_data_pt, &res, sizeof(res));
 }
 
 static void confdb_notify_lib_of_new_object(hdb_handle_t parent_object_handle,
@@ -827,7 +906,7 @@ static void confdb_notify_lib_of_new_object(hdb_handle_t parent_object_handle,
 	memcpy(res.name.value, name_pt, name_len);
 	res.name.length = name_len;
 
-	api->ipc_dispatch_send(priv_data_pt, &res, sizeof(res));
+	ipc_dispatch_send_from_poll_thread(priv_data_pt, &res, sizeof(res));
 }
 
 static void confdb_notify_lib_of_destroyed_object(
@@ -844,7 +923,7 @@ static void confdb_notify_lib_of_destroyed_object(
 	memcpy(res.name.value, name_pt, name_len);
 	res.name.length = name_len;
 
-	api->ipc_dispatch_send(priv_data_pt, &res, sizeof(res));
+	ipc_dispatch_send_from_poll_thread(priv_data_pt, &res, sizeof(res));
 }
 
 static void confdb_notify_lib_of_reload(objdb_reload_notify_type_t notify_type,
@@ -858,7 +937,7 @@ static void confdb_notify_lib_of_reload(objdb_reload_notify_type_t notify_type,
 	res.header.error = CS_OK;
 	res.type = notify_type;
 
-	api->ipc_dispatch_send(priv_data_pt, &res, sizeof(res));
+	ipc_dispatch_send_from_poll_thread(priv_data_pt, &res, sizeof(res));
 }
 
 
