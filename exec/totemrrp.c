@@ -143,9 +143,6 @@ struct rrp_algo {
 		const void *msg,
 		unsigned int msg_len);
 
-	void (*recv_flush) (
-		struct totemrrp_instance *instance);
-
 	void (*send_flush) (
 		struct totemrrp_instance *instance);
 
@@ -276,9 +273,6 @@ static void none_token_send (
 	const void *msg,
 	unsigned int msg_len);
 
-static void none_recv_flush (
-	struct totemrrp_instance *instance);
-
 static void none_send_flush (
 	struct totemrrp_instance *instance);
 
@@ -345,9 +339,6 @@ static void passive_token_send (
 	struct totemrrp_instance *instance,
 	const void *msg,
 	unsigned int msg_len);
-
-static void passive_recv_flush (
-	struct totemrrp_instance *instance);
 
 static void passive_send_flush (
 	struct totemrrp_instance *instance);
@@ -416,9 +407,6 @@ static void active_token_send (
 	const void *msg,
 	unsigned int msg_len);
 
-static void active_recv_flush (
-	struct totemrrp_instance *instance);
-
 static void active_send_flush (
 	struct totemrrp_instance *instance);
 
@@ -470,7 +458,6 @@ struct rrp_algo none_algo = {
 	.mcast_flush_send	= none_mcast_flush_send,
 	.token_recv		= none_token_recv,
 	.token_send		= none_token_send,
-	.recv_flush		= none_recv_flush,
 	.send_flush		= none_send_flush,
 	.iface_check		= none_iface_check,
 	.processor_count_set	= none_processor_count_set,
@@ -489,7 +476,6 @@ struct rrp_algo passive_algo = {
 	.mcast_flush_send	= passive_mcast_flush_send,
 	.token_recv		= passive_token_recv,
 	.token_send		= passive_token_send,
-	.recv_flush		= passive_recv_flush,
 	.send_flush		= passive_send_flush,
 	.iface_check		= passive_iface_check,
 	.processor_count_set	= passive_processor_count_set,
@@ -508,7 +494,6 @@ struct rrp_algo active_algo = {
 	.mcast_flush_send	= active_mcast_flush_send,
 	.token_recv		= active_token_recv,
 	.token_send		= active_token_send,
-	.recv_flush		= active_recv_flush,
 	.send_flush		= active_send_flush,
 	.iface_check		= active_iface_check,
 	.processor_count_set	= active_processor_count_set,
@@ -592,11 +577,6 @@ static void none_token_send (
 	totemnet_token_send (
 		instance->net_handles[0],
 		msg, msg_len);
-}
-
-static void none_recv_flush (struct totemrrp_instance *instance)
-{
-	totemnet_recv_flush (instance->net_handles[0]);
 }
 
 static void none_send_flush (struct totemrrp_instance *instance)
@@ -928,19 +908,6 @@ static void passive_token_send (
 		instance->net_handles[passive_instance->token_xmit_iface],
 		msg, msg_len);
 
-}
-
-static void passive_recv_flush (struct totemrrp_instance *instance)
-{
-	struct passive_instance *rrp_algo_instance = (struct passive_instance *)instance->rrp_algo_instance;
-	unsigned int i;
-
-	for (i = 0; i < instance->interface_count; i++) {
-		if (rrp_algo_instance->faulty[i] == 0) {
-
-			totemnet_recv_flush (instance->net_handles[i]);
-		}
-	}
 }
 
 static void passive_send_flush (struct totemrrp_instance *instance)
@@ -1325,19 +1292,6 @@ static void active_token_send (
 	}
 }
 
-static void active_recv_flush (struct totemrrp_instance *instance)
-{
-	struct active_instance *rrp_algo_instance = (struct active_instance *)instance->rrp_algo_instance;
-	unsigned int i;
-
-	for (i = 0; i < instance->interface_count; i++) {
-		if (rrp_algo_instance->faulty[i] == 0) {
-
-			totemnet_recv_flush (instance->net_handles[i]);
-		}
-	}
-}
-
 static void active_send_flush (struct totemrrp_instance *instance)
 {
 	struct active_instance *rrp_algo_instance = (struct active_instance *)instance->rrp_algo_instance;
@@ -1698,14 +1652,6 @@ int totemrrp_token_target_set (
 {
 	struct totemrrp_instance *instance = (struct totemrrp_instance *)rrp_context;
 	instance->rrp_algo->token_target_set (instance, addr, iface_no);
-
-	return (0);
-}
-int totemrrp_recv_flush (void *rrp_context)
-{
-	struct totemrrp_instance *instance = (struct totemrrp_instance *)rrp_context;
-
-	instance->rrp_algo->recv_flush (instance);
 
 	return (0);
 }

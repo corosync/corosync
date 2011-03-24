@@ -107,9 +107,6 @@ extern int totemrrp_mcast_flush_send (
 	const void *msg,
 	unsigned int msg_len);
 
-extern int totemrrp_recv_flush (
-	void *rrp_context);
-
 extern int totemrrp_send_flush (
 	void *rrp_context);
 
