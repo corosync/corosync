@@ -1498,13 +1498,6 @@ int totemudpu_processor_count_set (
 	return (res);
 }
 
-int totemudpu_recv_flush (void *udpu_context)
-{
-	int res = 0;
-
-	return (res);
-}
-
 int totemudpu_send_flush (void *udpu_context)
 {
 	int res = 0;
