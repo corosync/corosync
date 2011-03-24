@@ -1713,6 +1713,8 @@ static void memb_state_operational_enter (struct totemsrp_instance *instance)
 	unsigned int trans_memb_list_totemip[PROCESSOR_COUNT_MAX];
 	unsigned int new_memb_list_totemip[PROCESSOR_COUNT_MAX];
 	unsigned int left_list[PROCESSOR_COUNT_MAX];
+	unsigned int i;
+	unsigned int res;
 
 	memb_consensus_reset (instance);
 
@@ -1787,7 +1789,6 @@ static void memb_state_operational_enter (struct totemsrp_instance *instance)
 	 */
 	sq_copy (&instance->regular_sort_queue, &instance->recovery_sort_queue);
 	instance->my_last_aru = SEQNO_START_MSG;
-	sq_items_release (&instance->regular_sort_queue, SEQNO_START_MSG - 1);
 
 	/* When making my_proc_list smaller, ensure that the
 	 * now non-used entries are zero-ed out. There are some suspect
@@ -1804,7 +1805,20 @@ static void memb_state_operational_enter (struct totemsrp_instance *instance)
 
 	instance->my_failed_list_entries = 0;
 	instance->my_high_delivered = instance->my_aru;
-// TODO the recovery messages are leaked
+
+	for (i = 0; i <= instance->my_high_delivered; i++) {
+		void *ptr;
+
+		res = sq_item_get (&instance->regular_sort_queue, i, &ptr);
+		if (res == 0) {
+			struct sort_queue_item *regular_message;
+
+			regular_message = ptr;
+			free (regular_message->mcast);
+		}
+	}
+	sq_items_release (&instance->regular_sort_queue, instance->my_high_delivered);
+	instance->last_released = instance->my_high_delivered;
 
 	log_printf (instance->totemsrp_log_level_debug,
 		"entering OPERATIONAL state.\n");
