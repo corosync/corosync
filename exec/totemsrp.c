@@ -475,6 +475,8 @@ struct totemsrp_instance {
 
 	unsigned int set_aru;
 
+	int old_ring_state_saved;
+
 	int old_ring_state_aru;
 
 	unsigned int old_ring_state_high_seq_received;
@@ -1411,13 +1413,16 @@ static void cancel_merge_detect_timeout (struct totemsrp_instance *instance)
  */
 static void old_ring_state_save (struct totemsrp_instance *instance)
 {
-	memcpy (&instance->my_old_ring_id, &instance->my_ring_id,
-		sizeof (struct memb_ring_id));
-	instance->old_ring_state_aru = instance->my_aru;
-	instance->old_ring_state_high_seq_received = instance->my_high_seq_received;
-	log_printf (instance->totemsrp_log_level_debug,
-		"Saving state aru %x high seq received %x\n",
-		instance->my_aru, instance->my_high_seq_received);
+	if (instance->old_ring_state_saved == 0) {
+		instance->old_ring_state_saved = 1;
+		memcpy (&instance->my_old_ring_id, &instance->my_ring_id,
+			sizeof (struct memb_ring_id));
+		instance->old_ring_state_aru = instance->my_aru;
+		instance->old_ring_state_high_seq_received = instance->my_high_seq_received;
+		log_printf (instance->totemsrp_log_level_debug,
+			"Saving state aru %x high seq received %x\n",
+			instance->my_aru, instance->my_high_seq_received);
+	}
 }
 
 static void old_ring_state_restore (struct totemsrp_instance *instance)
@@ -1433,6 +1438,7 @@ static void old_ring_state_reset (struct totemsrp_instance *instance)
 {
 	log_printf (instance->totemsrp_log_level_debug,
 		"Resetting old ring state\n");
+	instance->old_ring_state_saved = 0;
 }
 
 static void reset_pause_timeout (struct totemsrp_instance *instance)
