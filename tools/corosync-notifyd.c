@@ -275,25 +275,17 @@ _cs_confdb_object_created(confdb_handle_t handle,
 	char parent_name[CS_MAX_NAME_LENGTH];
 	size_t len = 0;
 	char obj_name[CS_MAX_NAME_LENGTH];
-	hdb_handle_t real_parent_object_handle;
 	cs_error_t rc = CS_OK;
 
 	memcpy(obj_name, name_pt, name_len);
 	obj_name[name_len] = '\0';
 
-	rc = confdb_object_parent_get (handle,
-		parent_object_handle, &real_parent_object_handle);
+	rc = confdb_object_name_get (handle,
+		object_handle, parent_name, &len);
+	parent_name[len] = '\0';
 	if (rc != CS_OK) {
-		/* this error is normally from our own cfg connection
-		 * which is short lived.
-		 */
 		return;
 	}
-
-	rc = confdb_object_name_get (handle,
-		real_parent_object_handle, parent_name, &len);
-	parent_name[len] = '\0';
-	assert(rc == CS_OK);
 
 	if (strcmp(parent_name, "connections") == 0) {
 		_cs_application_connection_event(obj_name, "connected");
