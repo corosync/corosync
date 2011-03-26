@@ -70,6 +70,8 @@ enum {
 };
 static int conf[CS_NTF_MAX];
 
+static int32_t _cs_is_quorate = 0;
+
 typedef void (*node_membership_fn_t)(char *nodename, uint32_t nodeid, char *state, char* ip);
 typedef void (*node_quorum_fn_t)(char *nodename, uint32_t nodeid, const char *state);
 typedef void (*application_connection_fn_t)(char *nodename, uint32_t nodeid, char *app_name, const char *state);
@@ -364,6 +366,11 @@ static void _cs_quorum_notification(quorum_handle_t handle,
 	uint32_t quorate, uint64_t ring_seq,
 	uint32_t view_list_entries, uint32_t *view_list)
 {
+	if (_cs_is_quorate == quorate) {
+		return;
+	}
+	_cs_is_quorate = quorate;
+
 	if (quorate) {
 		_cs_node_quorum_event("quorate");
 	} else {
