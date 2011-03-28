@@ -44,12 +44,59 @@
 #include <assert.h>
 
 #include <corosync/corotypes.h>
+#include <corosync/corodefs.h>
 #include <corosync/list.h>
 #include <corosync/engine/logsys.h>
 #include <corosync/coroipc_types.h>
 #include "util.h"
 
 LOGSYS_DECLARE_SUBSYS ("MAIN");
+
+struct service_names {
+	const char *c_name;
+	int32_t c_val;
+};
+
+static struct service_names servicenames[] =
+{
+	{ "EVS", EVS_SERVICE },
+	{ "CLM", CLM_SERVICE },
+	{ "AMF", AMF_SERVICE },
+	{ "CKPT", CKPT_SERVICE },
+	{ "EVT", EVT_SERVICE },
+	{ "LCK", LCK_SERVICE },
+	{ "MSG", MSG_SERVICE },
+	{ "CFG", CFG_SERVICE },
+	{ "CPG", CPG_SERVICE },
+	{ "CMAN", CMAN_SERVICE },
+	{ "PCMK", PCMK_SERVICE },
+	{ "CONFDB", CONFDB_SERVICE },
+	{ "QUORUM", QUORUM_SERVICE },
+	{ "PLOAD", PLOAD_SERVICE },
+	{ "TMR", TMR_SERVICE },
+	{ "VOTEQUORUM", VOTEQUORUM_SERVICE },
+	{ "NTF", NTF_SERVICE },
+	{ "AMF", AMF_V2_SERVICE },
+	{ "TST", TST_SV1_SERVICE },
+	{ "TST", TST_SV2_SERVICE },
+	{ "MON", MON_SERVICE },
+	{ "WD", WD_SERVICE },
+	{ NULL, -1 }
+};
+
+const char * short_service_name_get(uint32_t service_id,
+	char *buf, size_t buf_size)
+{
+	uint32_t i;
+
+	for (i = 0; servicenames[i].c_name != NULL; i++) {
+		if (service_id == servicenames[i].c_val) {
+			return (servicenames[i].c_name);
+		}
+	}
+	snprintf(buf, buf_size, "%d", service_id);
+	return buf;
+}
 
 /*
  * Compare two names.  returns non-zero on match.

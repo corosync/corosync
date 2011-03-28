@@ -97,4 +97,10 @@ void _corosync_out_of_memory_error (void) __attribute__((noreturn));
 extern char *getcs_name_t (cs_name_t *name);
 extern void setcs_name_t (cs_name_t *name, char *str);
 extern int cs_name_tisEqual (cs_name_t *str1, char *str2);
+/**
+ * Get the short name of a service from the service_id.
+ */
+const char * short_service_name_get(uint32_t service_id,
+				    char *buf, size_t buf_size);
+
 #endif /* UTIL_H_DEFINED */
