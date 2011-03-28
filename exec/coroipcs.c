@@ -1547,15 +1547,27 @@ static void coroipcs_init_conn_stats (
 {
 	char conn_name[CS_MAX_NAME_LENGTH];
 	char proc_name[CS_MAX_NAME_LENGTH];
+	char int_str[4];
 
 	if (conn->client_pid > 0) {
-		if (pid_to_name (conn->client_pid, proc_name, sizeof(proc_name)))
-			snprintf (conn_name, sizeof(conn_name), "%s:%d:%d", proc_name, conn->client_pid, conn->fd);
-		else
-			snprintf (conn_name, sizeof(conn_name), "%d:%d", conn->client_pid, conn->fd);
-	} else
-		snprintf (conn_name, sizeof(conn_name), "%d", conn->fd);
-
+		if (pid_to_name (conn->client_pid, proc_name, sizeof(proc_name))) {
+			snprintf (conn_name, sizeof(conn_name),
+				"%s:%s:%d:%d", proc_name,
+				short_service_name_get(conn->service, int_str, 4),
+				conn->client_pid, conn->fd);
+		} else {
+			snprintf (conn_name, sizeof(conn_name),
+				"proc:%s:%d:%d",
+				short_service_name_get(conn->service, int_str, 4),
+				conn->client_pid,
+				conn->fd);
+		}
+	} else {
+		snprintf (conn_name, sizeof(conn_name),
+			"proc:%s:pid:%d",
+			short_service_name_get(conn->service, int_str, 4),
+			conn->fd);
+	}
 	conn->stats_handle = api->stats_create_connection (conn_name, conn->client_pid, conn->fd);
 	api->stats_update_value (conn->stats_handle, "service_id",
 		&conn->service, sizeof(conn->service));
