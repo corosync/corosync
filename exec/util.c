@@ -77,10 +77,6 @@ static struct service_names servicenames[] =
 	{ "VOTEQUORUM", VOTEQUORUM_SERVICE },
 	{ "NTF", NTF_SERVICE },
 	{ "AMF", AMF_V2_SERVICE },
-	{ "TST", TST_SV1_SERVICE },
-	{ "TST", TST_SV2_SERVICE },
-	{ "MON", MON_SERVICE },
-	{ "WD", WD_SERVICE },
 	{ NULL, -1 }
 };
 
