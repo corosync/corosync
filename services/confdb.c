@@ -348,7 +348,7 @@ static int confdb_lib_exit_fn (void *conn)
 	api->object_track_stop(confdb_notify_lib_of_key_change,
 		confdb_notify_lib_of_new_object,
 		confdb_notify_lib_of_destroyed_object,
-		NULL,
+		confdb_notify_lib_of_reload,
 		conn);
 	return (0);
 }
@@ -857,6 +857,7 @@ retry_write:
 	if (written == sizeof(struct confdb_ipc_message_holder)) {
 		return 0;
 	} else {
+		api->ipc_refcnt_dec(conn);
 		return -1;
 	}
 }

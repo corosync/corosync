@@ -528,8 +528,8 @@ static inline int conn_info_destroy (struct conn_info *conn_info)
 	 * Retry library exit function if busy
 	 */
 	if (conn_info->state == CONN_STATE_THREAD_DESTROYED) {
-		api->stats_destroy_connection (conn_info->stats_handle);
 		res = api->exit_fn_get (conn_info->service) (conn_info);
+		api->stats_destroy_connection (conn_info->stats_handle);
 		if (res == -1) {
 			api->serialize_unlock ();
 			return (0);
