@@ -1634,13 +1634,14 @@ int coroipcs_handler_dispatch (
 		req_setup = (mar_req_setup_t *)conn_info->setup_msg;
 		/*
 		 * Is the service registered ?
+		 * Has service init function ?
 		 */
-		if (api->service_available (req_setup->service) == 0) {
+		if (api->service_available (req_setup->service) == 0 ||
+		    api->init_fn_get (req_setup->service) == NULL) {
 			req_setup_send (conn_info, CS_ERR_NOT_EXIST);
 			ipc_disconnect (conn_info);
 			return (0);
 		}
-
 #if _POSIX_THREAD_PROCESS_SHARED < 1
 		conn_info->semkey = req_setup->semkey;
 #endif
