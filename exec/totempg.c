@@ -673,6 +673,7 @@ int callback_token_received_fn (enum totem_callback_token_type type,
 		return (0);
 	}
 	mcast.header.version = 0;
+	mcast.header.type = 0;
 	mcast.fragmented = 0;
 
 	/*

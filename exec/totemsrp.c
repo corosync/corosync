@@ -2191,6 +2191,7 @@ int totemsrp_mcast (
 	/*
 	 * Set mcast header
 	 */
+	memset(message_item.mcast, 0, sizeof (struct mcast));
 	message_item.mcast->header.type = MESSAGE_TYPE_MCAST;
 	message_item.mcast->header.endian_detector = ENDIAN_LOCAL;
 	message_item.mcast->header.encapsulated = MESSAGE_NOT_ENCAPSULATED;
