@@ -4346,13 +4346,6 @@ void main_deliver_fn (
 		return;
 	}
 
-	if ((int)message_header->type >= totemsrp_message_handlers.count) {
-		log_printf (instance->totemsrp_log_level_security, "Type of received message is wrong...  ignoring %d.\n", (int)message_header->type);
-printf ("wrong message type\n");
-		instance->stats.rx_msg_dropped++;
-		return;
-	}
-
 	switch (message_header->type) {
 	case MESSAGE_TYPE_ORF_TOKEN:
 		instance->stats.orf_token_rx++;
@@ -4373,7 +4366,10 @@ printf ("wrong message type\n");
 		instance->stats.token_hold_cancel_rx++;
 		break;
 	default:
-		break;
+		log_printf (instance->totemsrp_log_level_security, "Type of received message is wrong...  ignoring %d.\n", (int)message_header->type);
+printf ("wrong message type\n");
+		instance->stats.rx_msg_dropped++;
+		return;
 	}
 	/*
 	 * Handle incoming message
