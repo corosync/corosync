@@ -584,6 +584,8 @@ static void message_handler_req_exec_cfg_ringreenable (
 			req_exec_cfg_ringreenable->source.conn,
 			&res_lib_cfg_ringreenable,
 			sizeof (struct res_lib_cfg_ringreenable));
+
+		api->ipc_refcnt_dec(req_exec_cfg_ringreenable->source.conn);
 	}
 	LEAVE();
 }
@@ -704,6 +706,7 @@ static void message_handler_req_lib_cfg_ringreenable (
 	req_exec_cfg_ringreenable.header.id = SERVICE_ID_MAKE (CFG_SERVICE,
 		MESSAGE_REQ_EXEC_CFG_RINGREENABLE);
 	api->ipc_source_set (&req_exec_cfg_ringreenable.source, conn);
+	api->ipc_refcnt_inc(conn);
 
 	iovec.iov_base = (char *)&req_exec_cfg_ringreenable;
 	iovec.iov_len = sizeof (struct req_exec_cfg_ringreenable);
