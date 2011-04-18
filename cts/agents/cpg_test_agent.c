@@ -447,7 +447,7 @@ static void send_some_more_messages_normal (void)
 		if (in_cnchg && pcmk_test) {
 			retries = 0;
 			before = time(NULL);
-			cs_repeat(retries, 30, res = cpg_mcast_joined(cpg_handle, CPG_TYPE_AGREED, iov, 1));
+			cs_repeat(retries, 30, res = cpg_mcast_joined(cpg_handle, CPG_TYPE_AGREED, iov, 2));
 			if (retries > 20) {
 				syslog (LOG_ERR, "%s() -> cs_repeat: blocked for :%lu secs.",
 					__func__, (unsigned long)(time(NULL) - before));
