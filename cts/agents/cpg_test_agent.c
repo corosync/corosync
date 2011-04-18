@@ -319,15 +319,15 @@ static void read_messages (int sock, char* atmost_str)
 	send (sock, big_and_buf, strlen (big_and_buf), 0);
 }
 
+static poll_timer_handle more_messages_timer_handle;
 static void send_some_more_messages_later (void)
 {
-	poll_timer_handle timer_handle;
 	cpg_dispatch (cpg_handle, CS_DISPATCH_ALL);
 	poll_timer_add (
 		ta_poll_handle_get(),
 		300, NULL,
 		send_some_more_messages,
-		&timer_handle);
+		&more_messages_timer_handle);
 }
 
 
