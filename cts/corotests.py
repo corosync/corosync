@@ -907,7 +907,7 @@ class VoteQuorumGoDown(VoteQuorumBase):
                 self.failure('unexpected number of expected_votes')
 
             if state.total_votes != nodes_alive:
-                self.failure('unexpected number of total votes:%d, nodes_alive:%d', (state.total_votes, nodes_alive))
+                self.failure('unexpected number of total votes:%d, nodes_alive:%d' % (state.total_votes, nodes_alive))
 
             min = ((len(self.CM.Env["nodes"]) + 2) / 2)
             if min != state.quorum:
