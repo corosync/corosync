@@ -133,7 +133,7 @@ class CoroLabEnvironment(CtsLab):
         self["valgrind-tests"] = 0
         self["unsafe-tests"] = 0
         self["loop-tests"] = 0
-        self["all-once"] = 1
+        self["all-once"] = 0
         self["LogWatcher"] = "remote"
         self["SyslogFacility"] = DefaultFacility
     
