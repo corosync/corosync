@@ -438,7 +438,7 @@ class TestAgent(object):
         '''Tear down (undo) the given ScenarioComponent'''
         self.env.debug('test agent: stopping %s on node %s' % (self.binary, self.node))
         self.sock.close ()
-        self.rsh(self.node, "killall " + self.binary + " 2>/dev/null")
+        self.rsh(self.node, "killall -9 " + self.binary + " 2>/dev/null")
         self.started = False
 
     def kill(self):
