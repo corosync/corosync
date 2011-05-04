@@ -425,8 +425,10 @@ class TestAgent(object):
                 self.sock.connect ((ip, self.port))
                 is_connected = True
             except socket.error, msg:
-                if retries > 5:
-                    self.env.log("Retried " + str(retries) + " times. Error: " + str(msg))
+                if retries > 10:
+                    self.env.log("Tried connecting to %s on node %s %d times. %s" % (self.binary, self.node, retries, str(msg)))
+                if retries > 30:
+                    raise RuntimeError("can't connect to " % self.binary)
                 time.sleep(1)
         self.started = True
         self.used = False
@@ -460,7 +462,7 @@ class TestAgent(object):
         try:
             sent = self.sock.send (real_msg)
         except socket.error, msg:
-            self.env.debug("send(%s): %s; error: %s" % (self.node, real_msg, msg))
+            self.env.log("send(%s): %s; error: %s" % (self.node, real_msg, msg))
 
         if sent == 0:
             raise RuntimeError ("socket connection broken")
@@ -502,7 +504,7 @@ class TestAgent(object):
         try:
             sent = self.sock.send (real_msg)
         except socket.error, msg:
-            self.env.debug("send_dynamic(%s): %s; error: %s" % (self.node, real_msg, msg))
+            self.env.log("send_dynamic(%s): %s; error: %s" % (self.node, real_msg, msg))
 
         if sent == 0:
             raise RuntimeError ("socket connection broken")
