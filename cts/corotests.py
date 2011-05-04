@@ -57,7 +57,7 @@ class CoroTest(CTSTest):
         # setup the authkey
         localauthkey = '/tmp/authkey'
         if not os.path.exists(localauthkey):
-            self.CM.rsh(node, 'corosync-keygen')
+            self.CM.rsh(node, 'corosync-keygen -l')
             self.CM.rsh.cp("%s:%s" % (node, "/etc/corosync/authkey"), localauthkey)
 
         for n in self.CM.Env["nodes"]:
