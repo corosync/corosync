@@ -711,26 +711,41 @@ static int notify_lib_joinlist(
 	return CPG_OK;
 }
 
+static void downlist_log(int loglevel, const char *msg, struct downlist_msg* dl)
+{
+	log_printf (loglevel,
+		    "%s: sender %s; members(old:%d left:%d)",
+		    msg,
+		    api->totem_ifaces_print(dl->sender_nodeid),
+		    dl->old_members,
+		    dl->left_nodes);
+}
+
 static struct downlist_msg* downlist_master_choose (void)
 {
 	struct downlist_msg *cmp;
 	struct downlist_msg *best = NULL;
 	struct list_head *iter;
+	uint32_t cmp_members;
+	uint32_t best_members;
 
 	for (iter = downlist_messages_head.next;
 		iter != &downlist_messages_head;
 		iter = iter->next) {
 
 		cmp = list_entry(iter, struct downlist_msg, list);
+		downlist_log(LOGSYS_LEVEL_DEBUG, "comparing", cmp);
 		if (best == NULL) {
 			best = cmp;
 			continue;
 		}
+		best_members = best->old_members - best->left_nodes;
+		cmp_members = cmp->old_members - cmp->left_nodes;
 
-		if (cmp->old_members < best->old_members) {
+		if (cmp_members < best_members) {
 			continue;
 		}
-		else if (cmp->old_members > best->old_members) {
+		else if (cmp_members > best_members) {
 			best = cmp;
 		}
 		else if (cmp->sender_nodeid < best->sender_nodeid) {
@@ -755,9 +770,7 @@ static void downlist_master_choose_and_send (void)
 		log_printf (LOGSYS_LEVEL_INFO, "NO chosen downlist");
 		return;
 	}
-
-	log_printf (LOGSYS_LEVEL_INFO, "chosen downlist from node %s",
-		api->totem_ifaces_print(stored_msg->sender_nodeid));
+	downlist_log(LOGSYS_LEVEL_INFO, "chosen downlist", stored_msg);
 
 	/* send events */
 	for (iter = process_info_list_head.next; iter != &process_info_list_head; ) {
