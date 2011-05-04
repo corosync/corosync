@@ -1895,7 +1895,13 @@ static void memb_state_gather_enter (
 
 	instance->memb_state = MEMB_STATE_GATHER;
 	instance->stats.gather_entered++;
-	instance->stats.continuous_gather++;
+
+	if (gather_from == 3) {
+		/*
+		 * State 3 means gather, so we are continuously gathering.
+		 */
+		instance->stats.continuous_gather++;
+	}
 
 	if (instance->stats.continuous_gather > MAX_NO_CONT_GATHER) {
 		log_printf (instance->totemsrp_log_level_warning,
