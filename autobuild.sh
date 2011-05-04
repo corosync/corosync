@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# This script is called by auto-build to test
+# This script is called by buildbot to test
 # corosync. It is run continously to help catch regressions.
 #
 # ENVIRONMENT variables that affect it's behaviour:
@@ -10,11 +10,13 @@
 #          possible options.
 #
 
+LOG="echo CTS: "
+
 # required packages
 which mock >/dev/null 2>&1
 if [ $? -ne 0 ]
 then
-	echo 'please install mock (yum install mock).'
+	$LOG 'please install mock (yum install mock).'
         exit 1
 fi
 
@@ -24,37 +26,37 @@ git clean -xfd
 
 set -e
 
-echo 'running autogen ...'
+$LOG 'running autogen ...'
 ./autogen.sh
 
-echo 'running configure ...'
+$LOG 'running configure ...'
 ./configure --enable-testagents --enable-watchdog --enable-monitoring
 
-echo 'building source rpm'
+$LOG 'building source rpm'
 rm -f *.src.rpm
 make srpm 
 SRPM=$(ls *src.rpm)
 
 if [ ! -f $SRPM ]
 then
-	echo $0 no source rpm to build from!
+	$LOG no source rpm to build from!
 	exit 1
 fi
 
 if [ -z "$TARGET" ]
 then
-	TARGET=fedora-12-x86_64
+	TARGET=fedora-14-x86_64
 fi
 
 RPM_DIR=/var/lib/mock/$TARGET/result
 rm -f $RPM_DIR/corosync*.rpm
 
-echo "running mock rebuild ($SRPM)"
+$LOG "running mock rebuild ($SRPM)"
 $MOCK -v -r $TARGET --no-clean --rebuild $SRPM --with testagents --with watchdog --with monitoring
 
 if [ -z "$TEST_NODES" ]
 then
-	echo no test nodes, exiting without running cts.
+	$LOG no test nodes, exiting without running cts.
 	exit 0
 else
 	# start the VMs, or leave them running?
@@ -69,31 +71,30 @@ do
     ;;
     *-devel-*)
     ;;
-#    *debuginfo*)
-#    ;;
     *)
     RPM_LIST="$RPM_LIST $r"
     ;;
   esac
 done
 
-
-echo installing $RPM_LIST
-echo onto the test nodes $TEST_NODES
+$LOG installing $RPM_LIST
+$LOG onto the test nodes $TEST_NODES
 
 # load and install rpm(s) onto the nodes
 for n in $TEST_NODES
 do
+	$LOG "Installing onto $n"
 	ssh $n "rm -rf /tmp/corosync*.rpm"
 	ssh $n "rm -f /etc/corosync/corosync.conf.*"
 	scp $RPM_LIST $n:/tmp/
-        ssh $n "rpm --force -Uvf /tmp/corosync*.rpm"
+        ssh $n "rpm --nodeps --force -Uvf /tmp/corosync*.rpm"
 done
 
-echo 'running test ...'
-rm -f cts.log
+$LOG 'running CTS ...'
+CTS_LOG=$(pwd)/cts.log
+rm -f $CTS_LOG
 pushd cts
 # needs sudo to read /var/log/messages
-sudo -n ./corolab.py --nodes "$TEST_NODES" --outputfile ../cts.log
+	sudo -n ./corolab.py --nodes "$TEST_NODES" --outputfile $CTS_LOG $CTS_ARGS
 popd
 
