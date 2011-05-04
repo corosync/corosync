@@ -180,7 +180,8 @@ class corosync_flatiron(ClusterManager):
 
     def install_all_config(self):
         tmp1 = {}
-        for c in self.new_config:
+        sorted_keys = sorted(self.new_config.keys())
+        for c in sorted_keys:
             self.log('configuring: ' + c + ' = '+ str(self.new_config[c]))
             self.config.set (c, self.new_config[c])
             self.applied_config[c] = self.new_config[c]
