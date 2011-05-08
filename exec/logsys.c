@@ -505,7 +505,7 @@ static void log_printf_to_logs (
 					break;
 
 				case 'l':
-					sprintf (line_no, "%d", file_line);
+					snprintf (line_no, sizeof (line_no), "%d", file_line);
 					normal_p = line_no;
 					syslog_p = line_no;
 					break;
@@ -1241,7 +1241,7 @@ void _logsys_log_vprintf (
 	subsysid = LOGSYS_DECODE_SUBSYSID(rec_ident);
 	level = LOGSYS_DECODE_LEVEL(rec_ident);
 
-	len = vsprintf (logsys_print_buffer, format, ap);
+	len = vsnprintf (logsys_print_buffer, sizeof (logsys_print_buffer), format, ap);
 	if (logsys_print_buffer[len - 1] == '\n') {
 		logsys_print_buffer[len - 1] = '\0';
 		len -= 1;
