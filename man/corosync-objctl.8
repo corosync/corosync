@@ -35,7 +35,7 @@
 .SH NAME
 corosync-objctl \- Configure objects in the Object Database
 .SH SYNOPSIS
-.B "corosync-objctl [\-c|\-w|\-d|\-a|\-t\-h] <OBJECT-SPEC>..."
+.B "corosync-objctl [\-b] [\-c|\-w|\-d|\-a|\-t\-h] <OBJECT-SPEC>..."
 .SH DESCRIPTION
 .B corosync-objctl
 is used to configure objects within the object database at runtime.
@@ -74,6 +74,9 @@ they are printed out. this is kind of like a "tail -f" for the object database.
 .TP
 .B -h
 Print basic usage.
+.TP
+.B -b
+Display binary values in BASH backslash escape sequences format.
 .SH EXAMPLES
 .TP
 Print the objOne object (shouldn't exist yet).
