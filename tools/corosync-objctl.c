@@ -104,7 +104,28 @@ static confdb_callbacks_t callbacks = {
 };
 
 static int debug = 0;
+static int show_binary = 0;
 static int action;
+
+static void print_binary_key (char *value, size_t value_len)
+{
+	size_t i;
+	char c;
+
+	for (i = 0; i < value_len; i++) {
+		c = value[i];
+		if (c >= ' ' && c < 0x7f && c != '\\') {
+			fputc (c, stdout);
+		} else {
+			if (c == '\\') {
+				printf ("\\\\");
+			} else {
+				printf ("\\x%02X", c);
+			}
+		}
+	}
+	printf ("\n");
+}
 
 static void print_key (char *key_name, void *value, size_t value_len, confdb_value_types_t type)
 {
@@ -146,7 +167,12 @@ static void print_key (char *key_name, void *value, size_t value_len, confdb_val
 			break;
 		default:
 		case CONFDB_VALUETYPE_ANY:
-			printf ("%s=**binary**(%d)\n", key_name, type);
+			if (!show_binary) {
+				printf ("%s=**binary**(%d)\n", key_name, type);
+			} else {
+				printf ("%s=", key_name);
+				print_binary_key ((char *)value, value_len);
+			}
 			break;
 	}
 }
@@ -313,13 +339,13 @@ static int print_all(void)
 static int print_help(void)
 {
 	printf("\n");
-	printf ("usage:  corosync-objctl object%ckey ...                    Print an object\n", SEPERATOR);
+	printf ("usage:  corosync-objctl [-b] object%ckey ...               Print an object\n", SEPERATOR);
 	printf ("        corosync-objctl -c object%cchild_obj ...           Create Object\n", SEPERATOR);
 	printf ("        corosync-objctl -d object%cchild_obj ...           Delete object\n", SEPERATOR);
 	printf ("        corosync-objctl -w object%cchild_obj.key=value ... Create a key\n", SEPERATOR);
 	printf ("        corosync-objctl -n object%cchild_obj.key=value ... Create a new object with the key\n", SEPERATOR);
 	printf ("        corosync-objctl -t object%cchild_obj ...           Track changes\n", SEPERATOR);
-	printf ("        corosync-objctl -a                                Print all objects\n");
+	printf ("        corosync-objctl [-b] -a                           Print all objects\n");
 	printf ("        corosync-objctl -p <filename> Load in config from the specified file.\n");
 	printf("\n");
 	return 0;
@@ -800,7 +826,7 @@ int main (int argc, char *argv[]) {
 	action = ACTION_READ;
 
 	for (;;){
-		c = getopt (argc,argv,"hawncvdtp:");
+		c = getopt (argc,argv,"habwncvdtp:");
 		if (c==-1) {
 			break;
 		}
@@ -813,6 +839,9 @@ int main (int argc, char *argv[]) {
 				break;
 			case 'a':
 				action = ACTION_PRINT_ALL;
+				break;
+			case 'b':
+				show_binary++;
 				break;
 			case 'p':
 				return read_in_config_file (optarg);
