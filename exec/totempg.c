@@ -115,6 +115,12 @@ struct totempg_mcast_header {
 	short type;
 };
 
+#if !(defined(__i386__) || defined(__x86_64__))
+/*
+ * Need align on architectures different then i386 or x86_64
+ */
+#define TOTEMPG_NEED_ALIGN 1
+#endif
 
 /*
  * totempg_mcast structure
@@ -374,8 +380,9 @@ static inline void group_endian_convert (
 	int i;
 	char *aligned_msg;
 
+#ifdef TOTEMPG_NEED_ALIGN
 	/*
-	 * Align data structure for sparc and ia64
+	 * Align data structure for not i386 or x86_64
 	 */
 	if ((size_t)msg % 4 != 0) {
 		aligned_msg = alloca(msg_len);
@@ -383,6 +390,9 @@ static inline void group_endian_convert (
 	} else {
 		aligned_msg = msg;
 	}
+#else
+	aligned_msg = msg;
+#endif
 
 	group_len = (unsigned short *)aligned_msg;
 	group_len[0] = swab16(group_len[0]);
@@ -406,12 +416,15 @@ static inline int group_matches (
 	char *group_name;
 	int i;
 	int j;
+#ifdef TOTEMPG_NEED_ALIGN
         struct iovec iovec_aligned = { NULL, 0 };
+#endif
 
 	assert (iov_len == 1);
 
+#ifdef TOTEMPG_NEED_ALIGN
 	/*
-	 * Align data structure for sparc and ia64
+	 * Align data structure for not i386 or x86_64
 	 */
 	if ((size_t)iovec->iov_base % 4 != 0) {
 		iovec_aligned.iov_base = alloca(iovec->iov_len);
@@ -419,7 +432,7 @@ static inline int group_matches (
 		iovec_aligned.iov_len = iovec->iov_len;
 		iovec = &iovec_aligned;
 	}
-
+#endif
 
 	group_len = (unsigned short *)iovec->iov_base;
 	group_name = ((char *)iovec->iov_base) +
@@ -469,15 +482,24 @@ static inline void app_deliver_fn (
 		group_endian_convert (msg, msg_len);
 	}
 
-/*
- * TODO This function needs to be rewritten for proper alignment to avoid 3+ memory copies
- */
 	/*
-	 * Align data structure for sparc and ia64
+	 * TODO: segmentation/assembly need to be redesigned to provide aligned access
+	 * in all cases to avoid memory copies on non386 archs. Probably broke backwars
+	 * compatibility
+	 */
+
+#ifdef TOTEMPG_NEED_ALIGN
+	/*
+	 * Align data structure for not i386 or x86_64
 	 */
 	aligned_iovec.iov_base = alloca(msg_len);
 	aligned_iovec.iov_len = msg_len;
 	memcpy(aligned_iovec.iov_base, msg, msg_len);
+#else
+	aligned_iovec.iov_base = msg;
+	aligned_iovec.iov_len = msg_len;
+#endif
+
 	iovec = &aligned_iovec;
 
 	for (i = 0; i <= totempg_max_handle; i++) {
@@ -489,8 +511,9 @@ static inline void app_deliver_fn (
 				stripped_iovec.iov_len = iovec->iov_len - adjust_iovec;
 				stripped_iovec.iov_base = (char *)iovec->iov_base + adjust_iovec;
 
+#ifdef TOTEMPG_NEED_ALIGN
 				/*
-				 * Align data structure for sparc and ia64
+				 * Align data structure for not i386 or x86_64
 				 */
 				if ((char *)iovec->iov_base + adjust_iovec % 4 != 0) {
 					/*
@@ -502,7 +525,7 @@ static inline void app_deliver_fn (
 						 (char *)iovec->iov_base + adjust_iovec,
 						stripped_iovec.iov_len);
 				}
-
+#endif
 				instance->deliver_fn (
 					nodeid,
 					stripped_iovec.iov_base,
