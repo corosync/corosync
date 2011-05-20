@@ -57,6 +57,11 @@ corosysconf_DATA	= conf/corosync.conf.example \
 SUBDIRS			= include lcr lib exec services tools test pkgconfig \
 			  man init
 
+coverity:
+	cov-build --dir=cov make
+	cov-analyze --dir cov
+	cov-format-errors --dir cov
+
 install-exec-local:
 	$(INSTALL) -d $(DESTDIR)/${COROSYSCONFDIR}/service.d
 	$(INSTALL) -d $(DESTDIR)/${COROSYSCONFDIR}/uidgid.d
