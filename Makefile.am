@@ -67,6 +67,11 @@ endif
 SUBDIRS			= include lcr lib exec services tools test cts pkgconfig \
 			  man init conf
 
+coverity:
+	cov-build --dir=cov make
+	cov-analyze --dir cov
+	cov-format-errors --dir cov
+
 install-exec-local:
 	$(INSTALL) -d $(DESTDIR)/${COROSYSCONFDIR}/service.d
 	$(INSTALL) -d $(DESTDIR)/${COROSYSCONFDIR}/uidgid.d
