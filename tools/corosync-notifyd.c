@@ -1030,7 +1030,11 @@ main(int argc, char *argv[])
 	_cs_check_config();
 
 	if (!conf[CS_NTF_FG]) {
-		daemon(0, 0);
+		if (daemon(0, 0) < 0)
+		{
+			perror("daemon() failed");
+			return EXIT_FAILURE;
+		}
 	}
 
 	num_notifiers = 0;

@@ -1242,7 +1242,7 @@ static void memcpy_dwrap (struct conn_info *conn_info, void *msg, unsigned int l
 	write_idx = conn_info->control_buffer->write;
 
 	memcpy (&conn_info->dispatch_buffer[write_idx], msg, len);
-	conn_info->control_buffer->write = ((write_idx + len + 7) & 0xFFFFFFFF8) % conn_info->dispatch_size;
+	conn_info->control_buffer->write = ((write_idx + len + 7) & 0xFFFFFFF8) % conn_info->dispatch_size;
 }
 
 static void msg_send (void *conn, const struct iovec *iov, unsigned int iov_len,

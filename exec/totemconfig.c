@@ -473,7 +473,7 @@ int totem_config_validate (
 			goto parse_error;
 		}
 
-		if (totem_config->interfaces[i].ttl > 255 || totem_config->interfaces[i].ttl < 0) {
+		if (totem_config->interfaces[i].ttl > 255) {
 			error_reason = "Invalid TTL (should be 0..255)";
 			goto parse_error;
 		}
