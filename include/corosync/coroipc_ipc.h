@@ -157,7 +157,8 @@ struct coroipcs_zc_header {
 	uint64_t server_address;
 };
 
-#define SOCKET_SERVICE_INIT	0xFFFFFFFF
+#define SOCKET_SERVICE_INIT					0xFFFFFFFF
+#define SOCKET_SERVICE_SECURITY_VIOLATION	0xFFFFFFFE
 
 #define ZC_ALLOC_HEADER		0xFFFFFFFF
 #define ZC_FREE_HEADER		0xFFFFFFFE
