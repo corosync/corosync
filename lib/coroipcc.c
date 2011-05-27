@@ -874,6 +874,13 @@ coroipcc_dispatch_get (
 	}
 
 	error = socket_recv (ipc_instance->fd, &buf, 1);
+#if defined(COROSYNC_SOLARIS) || defined(COROSYNC_BSD) || defined(COROSYNC_DARWIN)
+	/* On many OS poll() never returns POLLHUP or POLLERR.
+	 * EOF is detected when recvmsg() return 0.
+	 */
+	if ( error == CS_ERR_LIBRARY )
+		goto error_put;
+#endif
 	assert (error == CS_OK);
 
 	if (shared_mem_dispatch_bytes_left (ipc_instance) > 500000) {
