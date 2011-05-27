@@ -480,6 +480,8 @@ static void priv_drop (void)
 
 static void corosync_tty_detach (void)
 {
+	FILE *r;
+
 	/*
 	 * Disconnect from TTY if this is not a debug run
 	 */
@@ -504,9 +506,18 @@ static void corosync_tty_detach (void)
 	/*
 	 * Map stdin/out/err to /dev/null.
 	 */
-	freopen("/dev/null", "r", stdin);
-	freopen("/dev/null", "a", stderr);
-	freopen("/dev/null", "a", stdout);
+	r = freopen("/dev/null", "r", stdin);
+	if (r == NULL) {
+		corosync_exit_error (AIS_DONE_STD_TO_NULL_REDIR);
+	}
+	r = freopen("/dev/null", "a", stderr);
+	if (r == NULL) {
+		corosync_exit_error (AIS_DONE_STD_TO_NULL_REDIR);
+	}
+	r = freopen("/dev/null", "a", stdout);
+	if (r == NULL) {
+		corosync_exit_error (AIS_DONE_STD_TO_NULL_REDIR);
+	}
 }
 
 static void corosync_mlockall (void)

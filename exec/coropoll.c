@@ -258,7 +258,9 @@ int poll_dispatch_modify (
 			poll_instance->poll_entries[i].dispatch_fn = dispatch_fn;
 			if (change_notify) {
 				char buf = 1;
-				write (poll_instance->pipefds[1], &buf, 1);
+retry_write:
+				if (write (poll_instance->pipefds[1], &buf, 1) < 0 && errno == EINTR )
+					goto retry_write;
 			}
 
 			goto error_put;
@@ -499,7 +501,9 @@ retry_poll:
 
 		if (poll_instance->ufds[0].revents) {
 			char buf;
-			read (poll_instance->ufds[0].fd, &buf, 1);
+retry_read:
+			if (read (poll_instance->ufds[0].fd, &buf, 1) < 0 && errno == EINTR)
+				goto retry_read;
 			goto rebuild_poll;
 		}
 		poll_entry_count = poll_instance->poll_entry_count;
