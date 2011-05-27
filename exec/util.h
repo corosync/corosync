@@ -63,6 +63,7 @@ enum e_ais_done {
 	AIS_DONE_DIR_NOT_PRESENT = 16,
 	AIS_DONE_AQUIRE_LOCK = 17,
 	AIS_DONE_ALREADY_RUNNING = 18,
+	AIS_DONE_STD_TO_NULL_REDIR = 19,
 };
 
 static inline cs_error_t hdb_error_to_cs (int res)		\

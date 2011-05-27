@@ -978,6 +978,7 @@ void setpwent(void)
 	assert(0);
 }
 
+#ifdef HAVE_UTMPX_H
 void setutxent(void)
 {
 	static void (*real_setutxent)(void) = NULL;
@@ -989,6 +990,7 @@ void setutxent(void)
 	}
 	assert(0);
 }
+#endif
 
 char *strerror(int errnum)
 {
