@@ -1724,7 +1724,7 @@ int coroipcs_handler_dispatch (
 		 * the ipc connection
 		 */
 		if (conn_info->service == SOCKET_SERVICE_INIT) {
-			conn_info->service = -1;
+			conn_info->service = SOCKET_SERVICE_SECURITY_VIOLATION;
 		}
 	} else
 	if (revent & POLLIN) {
