@@ -849,6 +849,17 @@ coroipcc_dispatch_get (
 		return (error);
 	}
 
+	if (shared_mem_dispatch_bytes_left (ipc_instance) > (ipc_instance->dispatch_size/2)) {
+		/*
+		 * Notify coroipcs to flush any pending dispatch messages
+		 */
+		res = ipc_sem_post (ipc_instance->control_buffer, SEMAPHORE_REQUEST_OR_FLUSH_OR_EXIT);
+		if (res != CS_OK) {
+			error = CS_ERR_LIBRARY;
+			goto error_put;
+		}
+	}
+
 	*data = NULL;
 
 	ufds.fd = ipc_instance->fd;
@@ -883,7 +894,7 @@ coroipcc_dispatch_get (
 #endif
 	assert (error == CS_OK);
 
-	if (shared_mem_dispatch_bytes_left (ipc_instance) > 500000) {
+	if (shared_mem_dispatch_bytes_left (ipc_instance) > (ipc_instance->dispatch_size/2)) {
 		/*
 		 * Notify coroipcs to flush any pending dispatch messages
 		 */
