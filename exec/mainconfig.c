@@ -614,7 +614,9 @@ static void main_objdb_reload_notify(objdb_reload_notify_type_t type, int flush,
 		/*
 		 * Reload the logsys configuration
 		 */
-		logsys_format_set(NULL);
+		if (logsys_format_set(NULL) == -1) {
+			fprintf (stderr, "Unable to setup logging format.\n");
+		}
 		corosync_main_config_read_logging(global_objdb,
 						  &error_string);
 	}

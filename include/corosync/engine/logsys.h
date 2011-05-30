@@ -316,7 +316,7 @@ static void logsys_system_init (void)					\
 		exit (-1);						\
 	}								\
 									\
-	if (logsys_format_set (format) < 0) {				\
+	if (logsys_format_set (format) == -1) {				\
 		fprintf (stderr,					\
 			"Unable to setup logging format.\n");		\
 		exit (-1);						\
