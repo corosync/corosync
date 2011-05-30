@@ -217,7 +217,7 @@ static void totem_volatile_config_read (
 	objdb_get_int (objdb,object_totem_handle, "max_network_delay", &totem_config->max_network_delay);
 
 	objdb_get_int (objdb,object_totem_handle, "window_size", &totem_config->window_size);
-	objdb_get_string (objdb, object_totem_handle, "vsftype", &totem_config->vsf_type);
+	(void)objdb_get_string (objdb, object_totem_handle, "vsftype", &totem_config->vsf_type);
 
 	objdb_get_int (objdb,object_totem_handle, "max_messages", &totem_config->max_messages);
 
@@ -416,7 +416,8 @@ printf ("couldn't find totem handle\n");
 	add_totem_config_notification(objdb, totem_config, object_totem_handle);
 
 	totem_config->transport_number = TOTEM_TRANSPORT_UDP;
-	objdb_get_string (objdb, object_totem_handle, "transport", &transport_type);
+	(void)objdb_get_string (objdb, object_totem_handle, "transport", &transport_type);
+
 	if (transport_type) {
 		if (strcmp (transport_type, "udpu") == 0) {
 			totem_config->transport_number = TOTEM_TRANSPORT_UDPU;
