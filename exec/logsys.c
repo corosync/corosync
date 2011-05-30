@@ -1338,7 +1338,7 @@ int _logsys_config_subsys_get (const char *subsys)
 void logsys_fork_completed (void)
 {
 	logsys_loggers[LOGSYS_MAX_SUBSYS_COUNT].mode &= ~LOGSYS_MODE_FORK;
-	_logsys_wthread_create ();
+	(void)_logsys_wthread_create ();
 }
 
 int logsys_config_mode_set (const char *subsys, unsigned int mode)
