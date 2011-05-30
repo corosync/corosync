@@ -829,7 +829,12 @@ _cs_local_node_info_get(char **nodename, uint32_t *nodeid)
 	corosync_cfg_handle_t cfg_handle;
 
 	if (local_nodeid == 0) {
-		corosync_cfg_initialize(&cfg_handle, NULL);
+		rc = corosync_cfg_initialize(&cfg_handle, NULL);
+		if (rc != CS_OK) {
+			syslog (LOG_ERR, "Failed to initialize the cfg API. Error %d\n", rc);
+			exit (EXIT_FAILURE);
+		}
+
 		rc = corosync_cfg_local_get (cfg_handle, &local_nodeid);
 		corosync_cfg_finalize(cfg_handle);
 		if (rc != CS_OK) {
