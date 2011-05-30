@@ -1053,7 +1053,7 @@ coroipcc_zcb_alloc (
 {
 	struct ipc_instance *ipc_instance;
 	void *buf = NULL;
-	char path[128];
+	char path[PATH_MAX];
 	unsigned int res;
 	mar_req_coroipcc_zc_alloc_t req_coroipcc_zc_alloc;
 	coroipc_response_header_t res_coroipcs_zc_alloc;
