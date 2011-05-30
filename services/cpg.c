@@ -1009,7 +1009,7 @@ static void do_proc_join(
 		}
 		list_to_add = list;
 	}
-	list_splice (&pi->list, list_to_add);
+	list_add (&pi->list, list_to_add);
 
 	notify_info.pid = pi->pid;
 	notify_info.nodeid = nodeid;
