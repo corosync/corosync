@@ -1052,6 +1052,11 @@ static void message_handler_req_exec_votequorum_nodeinfo (
 	if (new_node || req_exec_quorum_nodeinfo->first_trans || 
 	    old_votes != node->votes || old_expected != node->expected_votes || old_state != node->state)
 		recalculate_quorum(0, 0);
+
+	if (!nodeid) {
+		free(node);
+	}
+
 	LEAVE();
 }
 
