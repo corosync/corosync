@@ -93,9 +93,9 @@ cs_error_t quorum_initialize (
 	}
 
 	if (callbacks)
-		memcpy(&quorum_inst->callbacks, callbacks, sizeof (callbacks));
+		memcpy(&quorum_inst->callbacks, callbacks, sizeof (*callbacks));
 	else
-		memset(&quorum_inst->callbacks, 0, sizeof (callbacks));
+		memset(&quorum_inst->callbacks, 0, sizeof (*callbacks));
 
 	(void)hdb_handle_put (&quorum_handle_t_db, *handle);
 
