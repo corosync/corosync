@@ -254,7 +254,8 @@ static int read_uidgid_files_into_objdb(
 
 	entry = malloc(len);
 	if (entry == NULL) {
-		return 0;
+		res = 0;
+		goto error_exit;
 	}
 
 	for (return_code = readdir_r(dp, entry, &dirent);
@@ -310,7 +311,8 @@ static int read_service_files_into_objdb(
 
 	entry = malloc(len);
 	if (entry == NULL) {
-		return 0;
+		res = 0;
+		goto error_exit;
 	}
 
 	for (return_code = readdir_r(dp, entry, &dirent);
