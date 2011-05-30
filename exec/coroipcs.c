@@ -1597,7 +1597,7 @@ int coroipcs_handler_dispatch (
 	mar_req_setup_t *req_setup;
 	struct conn_info *conn_info = (struct conn_info *)context;
 	int res;
-	char buf;
+	char buf = 0;
 
 	if (ipc_thread_exiting (conn_info)) {
 		return conn_info_destroy (conn_info);
