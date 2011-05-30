@@ -1059,7 +1059,7 @@ static void totemudp_mcast_thread_state_constructor (
 	struct totemudp_mcast_thread_state *totemudp_mcast_thread_state =
 		(struct totemudp_mcast_thread_state *)totemudp_mcast_thread_state_in;
 	memset (totemudp_mcast_thread_state, 0,
-		sizeof (totemudp_mcast_thread_state));
+		sizeof (*totemudp_mcast_thread_state));
 
 	rng_make_prng (128, PRNG_SOBER,
 		&totemudp_mcast_thread_state->prng_state, NULL);
