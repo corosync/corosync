@@ -49,6 +49,9 @@
 #include <corosync/corotypes.h>
 #include <corosync/cpg.h>
 
+#define BUFFER_SIZE	8192
+#define DEFAULT_GROUP_NAME	"GROUP"
+
 static int quit = 0;
 static int show_ip = 0;
 
@@ -181,8 +184,8 @@ int main (int argc, char *argv[]) {
 		group_name.length = strlen(argv[optind])+1;
 	}
 	else {
-		strcpy(group_name.value, "GROUP");
-		group_name.length = 6;
+		strcpy(group_name.value, DEFAULT_GROUP_NAME);
+		group_name.length = strlen(DEFAULT_GROUP_NAME) + 1;
 	}
 
 	result = cpg_initialize (&handle, &callbacks);
@@ -190,9 +193,9 @@ int main (int argc, char *argv[]) {
 		printf ("Could not initialize Cluster Process Group API instance error %d\n", result);
 		exit (1);
 	}
-	cpg_zcb_alloc (handle, 8192, &buffer);
+	cpg_zcb_alloc (handle, BUFFER_SIZE, &buffer);
 	cpg_zcb_free (handle, buffer);
-	cpg_zcb_alloc (handle, 8192, &buffer);
+	cpg_zcb_alloc (handle, BUFFER_SIZE, &buffer);
 
 	result = cpg_local_get (handle, &nodeid);
 	if (result != CS_OK) {
@@ -218,7 +221,7 @@ int main (int argc, char *argv[]) {
 			perror ("select\n");
 		}
 		if (FD_ISSET (STDIN_FILENO, &read_fds)) {
-			fgets_res = fgets(buffer, sizeof(buffer), stdin);
+			fgets_res = fgets(buffer, BUFFER_SIZE, stdin);
 			if (fgets_res == NULL) {
 				cpg_leave(handle, &group_name);
 			}
