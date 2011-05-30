@@ -1314,7 +1314,7 @@ unsigned long rng_get_bytes(unsigned char *buf, unsigned long len,
 int rng_make_prng(int bits, int wprng, prng_state *prng,
                   void (*callback)(void))
 {
-   unsigned char buf[256];
+   unsigned char buf[258];
    int err;
 
    if (bits < 64 || bits > 1024) {
