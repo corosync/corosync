@@ -309,6 +309,10 @@ circular_memory_map (char *path, const char *file, void **buf, size_t bytes)
 	}
 
 	page_size = sysconf(_SC_PAGESIZE);
+	if (page_size == -1) {
+		goto error_close_unlink;
+	}
+
 	buffer = malloc (page_size);
 	if (buffer == NULL) {
 		goto error_close_unlink;
@@ -415,6 +419,10 @@ memory_map (char *path, const char *file, void **buf, size_t bytes)
 		goto error_close_unlink;
 	}
 	page_size = sysconf(_SC_PAGESIZE);
+	if (page_size == -1) {
+		goto error_close_unlink;
+	}
+
 	buffer = malloc (page_size);
 	if (buffer == NULL) {
 		goto error_close_unlink;
