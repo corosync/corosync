@@ -4401,17 +4401,19 @@ void main_iface_change_fn (
 			"Created or loaded sequence id %lld.%s for this ring.\n",
 			instance->my_ring_id.seq,
 			totemip_print (&instance->my_ring_id.rep));
-		for (i = 0; i < instance->totem_config->interfaces[iface_no].member_count; i++) {
-			totemsrp_member_add (instance,
-				&instance->totem_config->interfaces[iface_no].member_list[i],
-				iface_no);
 
-		}
 		if (instance->totemsrp_service_ready_fn) {
 			instance->totemsrp_service_ready_fn ();
 		}
 
 	}
+
+	for (i = 0; i < instance->totem_config->interfaces[iface_no].member_count; i++) {
+		totemsrp_member_add (instance,
+			&instance->totem_config->interfaces[iface_no].member_list[i],
+			iface_no);
+	}
+
 	if (instance->iface_changes >= instance->totem_config->interface_count) {
 		memb_state_gather_enter (instance, 15);
 	}
