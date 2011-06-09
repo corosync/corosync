@@ -708,9 +708,12 @@ static void message_handler_req_lib_confdb_object_iter (void *conn,
 	int ret = CS_OK;
 
 	if (!req_lib_confdb_object_iter->find_handle) {
-		api->object_find_create(req_lib_confdb_object_iter->parent_object_handle,
+		if (api->object_find_create(req_lib_confdb_object_iter->parent_object_handle,
 					NULL, 0,
-					m2h(&res_lib_confdb_object_iter.find_handle));
+					m2h(&res_lib_confdb_object_iter.find_handle)) == -1) {
+			ret = CS_ERR_ACCESS;
+			goto response_send;
+		}
 	}
 	else
 		res_lib_confdb_object_iter.find_handle = req_lib_confdb_object_iter->find_handle;
@@ -721,12 +724,17 @@ static void message_handler_req_lib_confdb_object_iter (void *conn,
 		api->object_find_destroy(res_lib_confdb_object_iter.find_handle);
 	}
 	else {
-		api->object_name_get(res_lib_confdb_object_iter.object_handle,
+		if (api->object_name_get(res_lib_confdb_object_iter.object_handle,
 				     (char *)res_lib_confdb_object_iter.object_name.value,
-				     &object_name_len);
-
-		res_lib_confdb_object_iter.object_name.length = object_name_len;
+				     &object_name_len) == -1) {
+			ret = CS_ERR_ACCESS;
+			goto response_send;
+		} else {
+			res_lib_confdb_object_iter.object_name.length = object_name_len;
+		}
 	}
+
+response_send:
 	res_lib_confdb_object_iter.header.size = sizeof(res_lib_confdb_object_iter);
 	res_lib_confdb_object_iter.header.id = MESSAGE_RES_CONFDB_OBJECT_ITER;
 	res_lib_confdb_object_iter.header.error = ret;
@@ -743,10 +751,13 @@ static void message_handler_req_lib_confdb_object_find (void *conn,
 	int ret = CS_OK;
 
 	if (!req_lib_confdb_object_find->find_handle) {
-		api->object_find_create(req_lib_confdb_object_find->parent_object_handle,
+		if (api->object_find_create(req_lib_confdb_object_find->parent_object_handle,
 					req_lib_confdb_object_find->object_name.value,
 					req_lib_confdb_object_find->object_name.length,
-					m2h(&res_lib_confdb_object_find.find_handle));
+					m2h(&res_lib_confdb_object_find.find_handle)) == -1) {
+			ret = CS_ERR_ACCESS;
+			goto response_send;
+		}
 	}
 	else
 		res_lib_confdb_object_find.find_handle = req_lib_confdb_object_find->find_handle;
@@ -757,6 +768,8 @@ static void message_handler_req_lib_confdb_object_find (void *conn,
 		api->object_find_destroy(res_lib_confdb_object_find.find_handle);
 	}
 
+
+response_send:
 	res_lib_confdb_object_find.header.size = sizeof(res_lib_confdb_object_find);
 	res_lib_confdb_object_find.header.id = MESSAGE_RES_CONFDB_OBJECT_FIND;
 	res_lib_confdb_object_find.header.error = ret;
