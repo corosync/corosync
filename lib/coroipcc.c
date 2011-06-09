@@ -227,15 +227,13 @@ retry_recv:
 			goto res_exit;
 		}
 	}
-#if defined(COROSYNC_SOLARIS) || defined(COROSYNC_BSD) || defined(COROSYNC_DARWIN)
-	/* On many OS poll never return POLLHUP or POLLERR.
-	 * EOF is detected when recvmsg return 0.
+	/*
+	 * EOF is also detected when recvmsg return 0.
 	 */
 	if (result == 0) {
 		res = CS_ERR_LIBRARY;
 		goto res_exit;
 	}
-#endif
 
 	processed += result;
 	if (processed != len) {
