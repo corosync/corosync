@@ -93,10 +93,11 @@ struct object_instance {
 };
 
 struct object_find_instance {
-	struct list_head *find_child_list;
-	struct list_head *child_head;
 	void *object_name;
 	size_t object_len;
+	hdb_handle_t *handles_array;
+	size_t handles_array_size;
+	size_t handles_array_pos;
 };
 
 struct objdb_iface_ver0 objdb_iface;
@@ -818,8 +819,13 @@ static int object_find_create (
 	hdb_handle_t *object_find_handle)
 {
 	unsigned int res;
+	struct object_instance *iter_obj_inst;
 	struct object_instance *object_instance;
 	struct object_find_instance *object_find_instance;
+	struct list_head *list;
+	hdb_handle_t *handles_array, *handles_array_realloc;
+	size_t ha_len;
+	size_t ha_used;
 
 	objdb_lock();
 	res = hdb_handle_get (&object_instance_database,
@@ -839,16 +845,58 @@ static int object_find_create (
 		goto error_destroy;
 	}
 
-	object_find_instance->find_child_list = &object_instance->child_head;
-	object_find_instance->child_head = &object_instance->child_head;
 	object_find_instance->object_name = (char *)object_name;
 	object_find_instance->object_len = object_len;
+
+	ha_len = ha_used = 0;
+	handles_array = NULL;
+
+	for (list = object_instance->child_head.next;
+		list != &object_instance->child_head; list = list->next) {
+
+		iter_obj_inst = list_entry (list, struct object_instance,
+			child_list);
+
+		if (object_find_instance->object_len == 0 ||
+			((iter_obj_inst->object_name_len ==
+			  object_find_instance->object_len) &&
+
+			 (memcmp (iter_obj_inst->object_name,
+				  object_find_instance->object_name,
+				  object_find_instance->object_len) == 0))) {
+
+			/*
+			 * Add handle to list
+			 */
+			if (ha_used + 1 > ha_len) {
+				ha_len = ha_len * 2 + 1;
+				if ((handles_array_realloc =
+				    realloc (handles_array, ha_len * sizeof (hdb_handle_t))) ==
+				    NULL) {
+					goto error_ha_free;
+				}
+				handles_array = handles_array_realloc;
+			}
+
+			handles_array[ha_used] =
+			    iter_obj_inst->object_handle;
+
+			ha_used++;
+		}
+	}
+
+	object_find_instance->handles_array_size = ha_used;
+	object_find_instance->handles_array_pos = 0;
+	object_find_instance->handles_array = handles_array;
 
 	hdb_handle_put (&object_instance_database, object_handle);
 	hdb_handle_put (&object_find_instance_database, *object_find_handle);
 
 	objdb_unlock();
 	return (0);
+
+error_ha_free:
+	free(handles_array);
 
 error_destroy:
 	hdb_handle_destroy (&object_instance_database, *object_find_handle);
@@ -868,8 +916,8 @@ static int object_find_next (
 	unsigned int res;
 	struct object_find_instance *object_find_instance;
 	struct object_instance *object_instance = NULL;
-	struct list_head *list;
 	unsigned int found = 0;
+        size_t pos;
 
 	objdb_lock();
 	res = hdb_handle_get (&object_find_instance_database,
@@ -877,12 +925,16 @@ static int object_find_next (
 	if (res != 0) {
 		goto error_exit;
 	}
-	res = -1;
-	for (list = object_find_instance->find_child_list->next;
-		list != object_find_instance->child_head; list = list->next) {
 
-		object_instance = list_entry (list, struct object_instance,
-			child_list);
+	for (pos = object_find_instance->handles_array_pos; !found &&
+	    pos < object_find_instance->handles_array_size; pos++) {
+		*object_handle = object_find_instance->handles_array[pos];
+
+		res = hdb_handle_get (&object_instance_database,
+			*object_handle, (void *)&object_instance);
+		if (res != 0) {
+			continue;
+		}
 
 		if (object_find_instance->object_len == 0 ||
 			((object_instance->object_name_len ==
@@ -893,17 +945,16 @@ static int object_find_next (
 				  object_find_instance->object_len) == 0))) {
 
 			found = 1;
-			break;
 		}
+
+		hdb_handle_put (&object_instance_database, *object_handle);
 	}
-	object_find_instance->find_child_list = list;
+
+	object_find_instance->handles_array_pos = pos;
+
 	hdb_handle_put (&object_find_instance_database, object_find_handle);
-	if (found) {
-		*object_handle = object_instance->object_handle;
-		res = 0;
-	}
 	objdb_unlock();
-	return (res);
+	return (found ? 0 : -1);
 
 error_exit:
 	objdb_unlock();
@@ -922,6 +973,9 @@ static int object_find_destroy (
 	if (res != 0) {
 		goto error_exit;
 	}
+
+	free(object_find_instance->handles_array);
+
 	hdb_handle_put(&object_find_instance_database, object_find_handle);
 	hdb_handle_destroy(&object_find_instance_database, object_find_handle);
 
