@@ -41,7 +41,7 @@ EXTRA_DIST		= syncv2.c
 if INSTALL_TESTAGENTS
 agentdir = $(datadir)/$(PACKAGE)/tests
 bin_PROGRAMS = $(TEST_AGENTS)
-dist_agent_SCRIPTS = mem_leak_test.sh net_breaker.sh
+dist_agent_SCRIPTS = mem_leak_test.sh net_breaker.sh confdb-dispatch-deadlock.sh
 
 AM_CFLAGS		= -fPIC
 SERVICE_LCRSO		= syncv2
@@ -50,7 +50,7 @@ LCRSO			= $(SERVICE_LCRSO:%=service_%.lcrso)
 LCRSO_OBJS		= $(SOURCES:%.c=%.o)
 else
 noinst_PROGRAMS = $(TEST_AGENTS)
-noinst_SCRIPTS = mem_leak_test.sh net_breaker.sh
+noinst_SCRIPTS = mem_leak_test.sh net_breaker.sh confdb-dispatch-deadlock.sh
 LCRSO =
 LCRSO_OBJS =
 endif

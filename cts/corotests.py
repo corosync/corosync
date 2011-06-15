@@ -629,6 +629,22 @@ class ServiceLoadTest(CoroTest):
 
         return self.success()
 
+class ConfdbDispatchDeadlock(CoroTest):
+    '''
+    run confdb-dispatch-deadlock.sh
+    '''
+    def __init__(self, cm):
+        CoroTest.__init__(self,cm)
+        self.name="ConfdbDispatchDeadlock"
+
+    def __call__(self, node):
+        self.incr("calls")
+
+        result = self.CM.rsh(node, "/usr/share/corosync/tests/confdb-dispatch-deadlock.sh")
+        if result is 0:
+            return self.success()
+        else:
+            return self.failure('Deadlock detected')
 
 ###################################################################
 class ConfdbReplaceTest(CoroTest):
@@ -1544,6 +1560,7 @@ AllTestClasses.append(ResourcePollAdjust)
 AllTestClasses.append(ServiceLoadTest)
 AllTestClasses.append(MemLeakObject)
 AllTestClasses.append(MemLeakSession)
+#AllTestClasses.append(ConfdbDispatchDeadlock)
 AllTestClasses.append(FlipTest)
 AllTestClasses.append(RestartTest)
 AllTestClasses.append(StartOnebyOne)
