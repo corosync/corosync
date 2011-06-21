@@ -265,7 +265,7 @@ AM_CONDITIONAL(BUILD_MONITORING, test x$enable_monitoring = xyes)
 
 AC_ARG_ENABLE([watchdog],
 	[  --enable-watchdog                   : Watchdog support ],,
-	[ edefault="no" ])
+	[ default="no" ])
 AM_CONDITIONAL(BUILD_WATCHDOG, test x$enable_watchdog = xyes)
 
 AC_ARG_ENABLE([augeas],
