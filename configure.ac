@@ -230,7 +230,7 @@ AC_ARG_ENABLE([debug],
 	[ default="no" ])
 
 AC_ARG_ENABLE([user-flags],
-	[  --enable-user-flags     : rely on user environment. ],
+	[  --enable-user-flags             : rely on user environment. ],
 	[ default="no" ])
 
 AC_ARG_ENABLE([coverage],
@@ -246,7 +246,7 @@ AC_ARG_ENABLE([nss],
 	[ enable_nss="yes" ])
 
 AC_ARG_ENABLE([dbus],
-	[  --enable-dbus                    : dbus events. ],,
+	[  --enable-dbus                   : dbus events. ],,
 	[ enable_dbus="no" ])
 
 AC_ARG_ENABLE([testagents],
@@ -259,12 +259,12 @@ AC_ARG_ENABLE([rdma],
 AM_CONDITIONAL(BUILD_RDMA, test x$enable_rdma = xyes)
 
 AC_ARG_ENABLE([monitoring],
-	[  --enable-monitoring              : resource monitoring ],,
+	[  --enable-monitoring             : resource monitoring ],,
 	[ default="no" ])
 AM_CONDITIONAL(BUILD_MONITORING, test x$enable_monitoring = xyes)
 
 AC_ARG_ENABLE([watchdog],
-	[  --enable-watchdog                   : Watchdog support ],,
+	[  --enable-watchdog               : Watchdog support ],,
 	[ default="no" ])
 AM_CONDITIONAL(BUILD_WATCHDOG, test x$enable_watchdog = xyes)
 
@@ -290,7 +290,7 @@ AC_ARG_WITH([socket-dir],
 	[ SOCKETDIR="$localstatedir/run" ])
 
 AC_ARG_ENABLE([snmp],
-       [  --enable-snmp           : SNMP protocol support ],
+       [  --enable-snmp                   : SNMP protocol support ],
        [ default="no" ])
 
 # OS detection
