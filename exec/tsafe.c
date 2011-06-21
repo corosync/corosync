@@ -84,11 +84,7 @@ static void atfork_prepare (void);
 static void atfork_parent (void);
 static void atfork_child (void);
 
-#if defined(HAVE_PTHREAD_SPIN_LOCK)
-static pthread_spinlock_t tsafe_enabled_mutex;
-#else
 static pthread_mutex_t tsafe_enabled_mutex = PTHREAD_MUTEX_INITIALIZER;
-#endif
 
 
 void tsafe_init (char **envp)
@@ -105,10 +101,6 @@ void tsafe_init (char **envp)
 	}
 	coro_environ[size-1] = NULL;
 
-#if defined(HAVE_PTHREAD_SPIN_LOCK)
-	pthread_spin_init (&tsafe_enabled_mutex, 0);
-#endif
-
 	pthread_atfork (atfork_prepare, atfork_parent, atfork_child);
 
 	tsafe_disabled = 1;
@@ -117,20 +109,14 @@ void tsafe_init (char **envp)
 
 static void tsafe_lock (void)
 {
-#if defined(HAVE_PTHREAD_SPIN_LOCK)
-	pthread_spin_lock (&tsafe_enabled_mutex);
-#else
+
 	pthread_mutex_lock (&tsafe_enabled_mutex);
-#endif
 }
 
 static void tsafe_unlock (void)
 {
-#if defined(HAVE_PTHREAD_SPIN_LOCK)
-	pthread_spin_unlock (&tsafe_enabled_mutex);
-#else
+
 	pthread_mutex_unlock (&tsafe_enabled_mutex);
-#endif
 }
 
 void tsafe_off (void)

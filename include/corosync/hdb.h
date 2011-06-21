@@ -74,35 +74,10 @@ struct hdb_handle_database {
 	struct hdb_handle *handles;
 	unsigned int iterator;
         void (*destructor) (void *);
-#if defined(HAVE_PTHREAD_SPIN_LOCK)
-	pthread_spinlock_t lock;
-#else
 	pthread_mutex_t lock;
-#endif
 	unsigned int first_run;
 };
 
-#if defined(HAVE_PTHREAD_SPIN_LOCK)
-static inline void hdb_database_lock (pthread_spinlock_t *spinlock)
-{
-	pthread_spin_lock (spinlock);
-}
-
-static inline void hdb_database_unlock (pthread_spinlock_t *spinlock)
-{
-	pthread_spin_unlock (spinlock);
-}
-static inline void hdb_database_lock_init (pthread_spinlock_t *spinlock)
-{
-	pthread_spin_init (spinlock, 0);
-}
-
-static inline void hdb_database_lock_destroy (pthread_spinlock_t *spinlock)
-{
-	pthread_spin_destroy (spinlock);
-}
-
-#else
 static inline void hdb_database_lock (pthread_mutex_t *mutex)
 {
 	pthread_mutex_lock (mutex);
@@ -121,7 +96,6 @@ static inline void hdb_database_lock_destroy (pthread_mutex_t *mutex)
 {
 	pthread_mutex_destroy (mutex);
 }
-#endif
 
 #define DECLARE_HDB_DATABASE(database_name,destructor_function)		\
 static struct hdb_handle_database (database_name) = {			\
