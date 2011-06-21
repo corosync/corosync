@@ -111,11 +111,7 @@ static int sched_priority = 0;
 
 static unsigned int service_count = 32;
 
-#if defined(HAVE_PTHREAD_SPIN_LOCK)
-static pthread_spinlock_t serialize_spin;
-#else
 static pthread_mutex_t serialize_mutex = PTHREAD_MUTEX_INITIALIZER;
-#endif
 
 static struct totem_logging_configuration totem_logging_configuration;
 
@@ -258,17 +254,6 @@ static struct totempg_group corosync_group = {
 
 
 
-#if defined(HAVE_PTHREAD_SPIN_LOCK)
-static void serialize_lock (void)
-{
-	pthread_spin_lock (&serialize_spin);
-}
-
-static void serialize_unlock (void)
-{
-	pthread_spin_unlock (&serialize_spin);
-}
-#else
 static void serialize_lock (void)
 {
 	pthread_mutex_lock (&serialize_mutex);
@@ -278,7 +263,6 @@ static void serialize_unlock (void)
 {
 	pthread_mutex_unlock (&serialize_mutex);
 }
-#endif
 
 static void corosync_sync_completed (void)
 {
@@ -1511,10 +1495,6 @@ int main (int argc, char **argv, char **envp)
 	char corosync_lib_dir[PATH_MAX];
 	hdb_handle_t object_runtime_handle;
 	enum e_ais_done flock_err;
-
-#if defined(HAVE_PTHREAD_SPIN_LOCK)
-	pthread_spin_init (&serialize_spin, 0);
-#endif
 
  	/* default configuration
 	 */
