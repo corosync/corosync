@@ -192,17 +192,9 @@ static sem_t logsys_thread_start;
 
 static sem_t logsys_print_finished;
 
-#if defined(HAVE_PTHREAD_SPIN_LOCK)
-static pthread_spinlock_t logsys_flt_spinlock;
-#else
 static pthread_mutex_t logsys_flt_mutex = PTHREAD_MUTEX_INITIALIZER;
-#endif
 
-#if defined(HAVE_PTHREAD_SPIN_LOCK)
-static pthread_spinlock_t logsys_wthread_spinlock;
-#else
 static pthread_mutex_t logsys_wthread_mutex = PTHREAD_MUTEX_INITIALIZER;
-#endif
 
 static int logsys_buffer_full = 0;
 
@@ -309,16 +301,6 @@ error_exit:
 	return (error_return);
 }
 
-#if defined(HAVE_PTHREAD_SPIN_LOCK)
-static void logsys_flt_lock (void)
-{
-	pthread_spin_lock (&logsys_flt_spinlock);
-}
-static void logsys_flt_unlock (void)
-{
-	pthread_spin_unlock (&logsys_flt_spinlock);
-}
-#else
 static void logsys_flt_lock (void)
 {
 	pthread_mutex_lock (&logsys_flt_mutex);
@@ -327,18 +309,7 @@ static void logsys_flt_unlock (void)
 {
 	pthread_mutex_unlock (&logsys_flt_mutex);
 }
-#endif
 
-#if defined(HAVE_PTHREAD_SPIN_LOCK)
-static void logsys_wthread_lock (void)
-{
-	pthread_spin_lock (&logsys_wthread_spinlock);
-}
-static void logsys_wthread_unlock (void)
-{
-	pthread_spin_unlock (&logsys_wthread_spinlock);
-}
-#else
 static void logsys_wthread_lock (void)
 {
 	pthread_mutex_lock (&logsys_wthread_mutex);
@@ -347,7 +318,6 @@ static void logsys_wthread_unlock (void)
 {
 	pthread_mutex_unlock (&logsys_wthread_mutex);
 }
-#endif
 
 /*
  * Before any write operation, a reclaim on the buffer area must be executed
@@ -1068,11 +1038,6 @@ int _logsys_rec_init (unsigned int fltsize)
 
 	sem_init (&logsys_print_finished, 0, 0);
 
-#if defined(HAVE_PTHREAD_SPIN_LOCK)
-	pthread_spin_init (&logsys_flt_spinlock, 1);
-	pthread_spin_init (&logsys_wthread_spinlock, 1);
-#endif
-
 	/*
 	 * XXX: kill me for 1.1 because I am a dirty hack
 	 * temporary workaround that will be replaced by supporting
@@ -1090,11 +1055,6 @@ int _logsys_rec_init (unsigned int fltsize)
 	if (res == -1) {
 		sem_destroy (&logsys_thread_start);
 		sem_destroy (&logsys_print_finished);
-#if defined(HAVE_PTHREAD_SPIN_LOCK)
-		pthread_spin_destroy (&logsys_flt_spinlock);
-		pthread_spin_destroy (&logsys_wthread_spinlock);
-#endif
-		return (-1);
 	}
 
 	memset (flt_data, 0, flt_real_size * 2);
