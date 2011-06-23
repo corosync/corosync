@@ -1247,10 +1247,10 @@ static void corosync_setscheduler (void)
 		if (res == -1) {
 			char error_str[100];
 			strerror_r (errno, error_str, 100);
-			global_sched_param.sched_priority = 0;
 			log_printf (LOGSYS_LEVEL_WARNING, "Could not set SCHED_RR at priority %d: %s\n",
 				global_sched_param.sched_priority, error_str);
 
+			global_sched_param.sched_priority = 0;
 			logsys_thread_priority_set (SCHED_OTHER, NULL, 1);
 		} else {
 			/*
