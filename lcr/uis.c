@@ -99,8 +99,16 @@ static void uis_lcr_bind (int *server_fd)
 	res = bind (fd, (struct sockaddr *)&un_addr, AIS_SUN_LEN(&un_addr));
 	if (res) {
 		char error_str[100];
-		strerror_r (errno, error_str, 100);
-		printf ("Could not bind AF_UNIX: %s\n", error_str);
+		const char *error_ptr;
+#ifdef _GNU_SOURCE
+/* The GNU version of strerror_r returns a (char*) that *must* be used */
+		error_ptr = strerror_r(errno, error_str, sizeof(error_str));
+#else
+/* The XSI-compliant strerror_r() return 0 or -1 (in case the buffer is full) */
+		strerror_r(errno, error_str, sizeof(error_str));
+		error_ptr = error_str;
+#endif
+		printf ("Could not bind AF_UNIX: %s\n", error_ptr);
 	}
 	listen (fd, SERVER_BACKLOG);
 	*server_fd = fd;

@@ -49,6 +49,7 @@
 #include <corosync/totem/coropoll.h>
 #include <corosync/list.h>
 #include "tlist.h"
+#include "util.h"
 
 typedef int (*dispatch_fn_t) (hdb_handle_t hdb_handle, int fd, int revents, void *data);
 
@@ -418,9 +419,7 @@ static void poll_fds_usage_check(struct poll_instance *poll_instance)
 
 	if (socks_limit == 0) {
 		if (getrlimit(RLIMIT_NOFILE, &lim) == -1) {
-			char error_str[100];
-			strerror_r(errno, error_str, 100);
-			printf("getrlimit: %s\n", error_str);
+			perror("getrlimit() failed");
 			return;
 		}
 		socks_limit = lim.rlim_cur;
