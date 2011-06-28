@@ -69,6 +69,7 @@
 #include "wthread.h"
 
 #include "crypto.h"
+#include "util.h"
 
 #ifdef HAVE_LIBNSS
 #include <nss.h>
@@ -961,10 +962,8 @@ static inline void ucast_sendmsg (
 	res = sendmsg (instance->totemudp_sockets.mcast_send, &msg_ucast,
 		MSG_NOSIGNAL);
 	if (res < 0) {
-		char error_str[100];
-		strerror_r (errno, error_str, sizeof(error_str));
-		log_printf (instance->totemudp_log_level_debug,
-				"sendmsg(ucast) failed (non-critical): %s\n", error_str);
+		LOGSYS_PERROR (errno, instance->totemudp_log_level_debug,
+			"sendmsg(ucast) failed (non-critical)");
 	}
 }
 
@@ -1046,10 +1045,8 @@ static inline void mcast_sendmsg (
 	res = sendmsg (instance->totemudp_sockets.mcast_send, &msg_mcast,
 		MSG_NOSIGNAL);
 	if (res < 0) {
-		char error_str[100];
-		strerror_r (errno, error_str, sizeof(error_str));
-		log_printf (instance->totemudp_log_level_debug,
-				"sendmsg(mcast) failed (non-critical): %s\n", error_str);
+		LOGSYS_PERROR (errno, instance->totemudp_log_level_debug,
+			"sendmsg(mcast) failed (non-critical)");
 	}
 }
 
@@ -1126,10 +1123,8 @@ static void totemudp_mcast_worker_fn (void *thread_state, void *work_item_in)
 	res = sendmsg (instance->totemudp_sockets.mcast_send, &msg_mcast,
 		MSG_NOSIGNAL);
 	if (res < 0) {
-		char error_str[100];
-		strerror_r (errno, error_str, sizeof(error_str));
-		log_printf (instance->totemudp_log_level_debug,
-				"sendmsg(mcast) failed (non-critical): %s\n", error_str);
+		LOGSYS_PERROR (errno, instance->totemudp_log_level_debug,
+			"sendmsg(mcast) failed (non-critical)");
 	}
 }
 
@@ -1403,12 +1398,9 @@ static void totemudp_traffic_control_set(struct totemudp_instance *instance, int
 {
 #ifdef SO_PRIORITY
 	int prio = 6; /* TC_PRIO_INTERACTIVE */
-	char error_str[100];
 
 	if (setsockopt(sock, SOL_SOCKET, SO_PRIORITY, &prio, sizeof(int))) {
-		strerror_r (errno, error_str, 100);
-		log_printf (instance->totemudp_log_level_warning,
-			"Could not set traffic priority. (%s)\n", error_str);
+		LOGSYS_PERROR (errno, instance->totemudp_log_level_warning, "Could not set traffic priority");
     }
 #endif
 }
@@ -1440,17 +1432,16 @@ static int totemudp_build_sockets_ip (
 	 */
 	sockets->mcast_recv = socket (bindnet_address->family, SOCK_DGRAM, 0);
 	if (sockets->mcast_recv == -1) {
-		perror ("socket");
+		LOGSYS_PERROR (errno, instance->totemudp_log_level_warning,
+			"socket() failed");
 		return (-1);
 	}
 
 	totemip_nosigpipe (sockets->mcast_recv);
 	res = fcntl (sockets->mcast_recv, F_SETFL, O_NONBLOCK);
 	if (res == -1) {
-		char error_str[100];
-		strerror_r (errno, error_str, 100);
-		log_printf (instance->totemudp_log_level_warning,
-			"Could not set non-blocking operation on multicast socket: %s\n", error_str);
+		LOGSYS_PERROR (errno, instance->totemudp_log_level_warning,
+			"Could not set non-blocking operation on multicast socket");
 		return (-1);
 	}
 
@@ -1459,7 +1450,8 @@ static int totemudp_build_sockets_ip (
 	 */
 	 flag = 1;
 	 if ( setsockopt(sockets->mcast_recv, SOL_SOCKET, SO_REUSEADDR, (char *)&flag, sizeof (flag)) < 0) {
-	 	perror("setsockopt reuseaddr");
+		LOGSYS_PERROR (errno, instance->totemudp_log_level_warning,
+				"setsockopt(SO_REUSEADDR) failed");
 		return (-1);
 	}
 
@@ -1470,7 +1462,8 @@ static int totemudp_build_sockets_ip (
 		instance->totem_interface->ip_port, &sockaddr, &addrlen);
 	res = bind (sockets->mcast_recv, (struct sockaddr *)&sockaddr, addrlen);
 	if (res == -1) {
-		perror ("bind mcast recv socket failed");
+		LOGSYS_PERROR (errno, instance->totemudp_log_level_warning,
+				"Unable to bind the socket to receive multicast packets");
 		return (-1);
 	}
 
@@ -1479,17 +1472,16 @@ static int totemudp_build_sockets_ip (
 	 */
 	sockets->mcast_send = socket (bindnet_address->family, SOCK_DGRAM, 0);
 	if (sockets->mcast_send == -1) {
-		perror ("socket");
+		LOGSYS_PERROR (errno, instance->totemudp_log_level_warning,
+			"socket() failed");
 		return (-1);
 	}
 
 	totemip_nosigpipe (sockets->mcast_send);
 	res = fcntl (sockets->mcast_send, F_SETFL, O_NONBLOCK);
 	if (res == -1) {
-		char error_str[100];
-		strerror_r (errno, error_str, 100);
-		log_printf (instance->totemudp_log_level_warning,
-			"Could not set non-blocking operation on multicast socket: %s\n", error_str);
+		LOGSYS_PERROR (errno, instance->totemudp_log_level_warning,
+			"Could not set non-blocking operation on multicast socket");
 		return (-1);
 	}
 
@@ -1498,7 +1490,8 @@ static int totemudp_build_sockets_ip (
 	 */
 	 flag = 1;
 	 if ( setsockopt(sockets->mcast_send, SOL_SOCKET, SO_REUSEADDR, (char *)&flag, sizeof (flag)) < 0) {
-	 	perror("setsockopt reuseaddr");
+		LOGSYS_PERROR (errno, instance->totemudp_log_level_warning,
+			"setsockopt(SO_REUSEADDR) failed");
 		return (-1);
 	}
 
@@ -1506,7 +1499,8 @@ static int totemudp_build_sockets_ip (
 		&sockaddr, &addrlen);
 	res = bind (sockets->mcast_send, (struct sockaddr *)&sockaddr, addrlen);
 	if (res == -1) {
-		perror ("bind mcast send socket failed");
+		LOGSYS_PERROR (errno, instance->totemudp_log_level_warning,
+			"Unable to bind the socket to send multicast packets");
 		return (-1);
 	}
 
@@ -1515,17 +1509,16 @@ static int totemudp_build_sockets_ip (
 	 */
 	sockets->token = socket (bindnet_address->family, SOCK_DGRAM, 0);
 	if (sockets->token == -1) {
-		perror ("socket2");
+		LOGSYS_PERROR (errno, instance->totemudp_log_level_warning,
+			"socket() failed");
 		return (-1);
 	}
 
 	totemip_nosigpipe (sockets->token);
 	res = fcntl (sockets->token, F_SETFL, O_NONBLOCK);
 	if (res == -1) {
-		char error_str[100];
-		strerror_r (errno, error_str, 100);
-		log_printf (instance->totemudp_log_level_warning,
-			"Could not set non-blocking operation on token socket: %s\n", error_str);
+		LOGSYS_PERROR (errno, instance->totemudp_log_level_warning,
+			"Could not set non-blocking operation on token socket");
 		return (-1);
 	}
 
@@ -1534,7 +1527,8 @@ static int totemudp_build_sockets_ip (
 	 */
 	 flag = 1;
 	 if ( setsockopt(sockets->token, SOL_SOCKET, SO_REUSEADDR, (char *)&flag, sizeof (flag)) < 0) {
-	 	perror("setsockopt reuseaddr");
+		LOGSYS_PERROR (errno, instance->totemudp_log_level_warning,
+			"setsockopt(SO_REUSEADDR) failed");
 		return (-1);
 	}
 
@@ -1545,7 +1539,8 @@ static int totemudp_build_sockets_ip (
 	totemip_totemip_to_sockaddr_convert(bound_to, instance->totem_interface->ip_port, &sockaddr, &addrlen);
 	res = bind (sockets->token, (struct sockaddr *)&sockaddr, addrlen);
 	if (res == -1) {
-		perror ("bind token socket failed");
+		LOGSYS_PERROR (errno, instance->totemudp_log_level_warning,
+			"Unable to bind UDP unicast socket");
 		return (-1);
 	}
 
@@ -1580,12 +1575,14 @@ static int totemudp_build_sockets_ip (
 
 		if ((setsockopt(sockets->mcast_recv, SOL_SOCKET,
 			SO_BROADCAST, &broadcast, sizeof (broadcast))) == -1) {
-			perror("setting broadcast option");
+			LOGSYS_PERROR (errno, instance->totemudp_log_level_warning,
+				"setting broadcast option failed");
 			return (-1);
 		}
 		if ((setsockopt(sockets->mcast_send, SOL_SOCKET,
 			SO_BROADCAST, &broadcast, sizeof (broadcast))) == -1) {
-			perror("setting broadcast option");
+			LOGSYS_PERROR (errno, instance->totemudp_log_level_warning,
+				"setting broadcast option failed");
 			return (-1);
 		}
 	} else {
@@ -1597,7 +1594,8 @@ static int totemudp_build_sockets_ip (
 			res = setsockopt (sockets->mcast_recv, IPPROTO_IP, IP_ADD_MEMBERSHIP,
 				&mreq, sizeof (mreq));
 			if (res == -1) {
-				perror ("join ipv4 multicast group failed");
+				LOGSYS_PERROR (errno, instance->totemudp_log_level_warning,
+					"join ipv4 multicast group failed");
 				return (-1);
 			}
 			break;
@@ -1609,7 +1607,8 @@ static int totemudp_build_sockets_ip (
 			res = setsockopt (sockets->mcast_recv, IPPROTO_IPV6, IPV6_JOIN_GROUP,
 				&mreq6, sizeof (mreq6));
 			if (res == -1) {
-				perror ("join ipv6 multicast group failed");
+				LOGSYS_PERROR (errno, instance->totemudp_log_level_warning,
+					"join ipv6 multicast group failed");
 				return (-1);
 			}
 			break;
@@ -1631,7 +1630,8 @@ static int totemudp_build_sockets_ip (
 			&flag, sizeof (flag));
 	}
 	if (res == -1) {
-		perror ("turn off loopback");
+		LOGSYS_PERROR (errno, instance->totemudp_log_level_warning,
+			"Unable to turn on multicast loopback");
 		return (-1);
 	}
 
@@ -1645,7 +1645,8 @@ static int totemudp_build_sockets_ip (
 		res = setsockopt (sockets->mcast_send, IPPROTO_IPV6, IPV6_MULTICAST_HOPS,
 			&flag, sizeof (flag));
 		if (res == -1) {
-			perror ("setp mcast hops");
+			LOGSYS_PERROR (errno, instance->totemudp_log_level_warning,
+				"set mcast v6 TTL failed");
 			return (-1);
 		}
 	}
@@ -1657,24 +1658,28 @@ static int totemudp_build_sockets_ip (
 		case AF_INET:
 		if (setsockopt (sockets->mcast_send, IPPROTO_IP, IP_MULTICAST_IF,
 			&boundto_sin->sin_addr, sizeof (boundto_sin->sin_addr)) < 0) {
-			perror ("cannot select interface");
+			LOGSYS_PERROR (errno, instance->totemudp_log_level_warning,
+				"cannot select interface for multicast packets (send)");
 			return (-1);
 		}
 		if (setsockopt (sockets->mcast_recv, IPPROTO_IP, IP_MULTICAST_IF,
 			&boundto_sin->sin_addr, sizeof (boundto_sin->sin_addr)) < 0) {
-			perror ("cannot select interface");
+			LOGSYS_PERROR (errno, instance->totemudp_log_level_warning,
+				"cannot select interface for multicast packets (recv)");
 			return (-1);
 		}
 		break;
 		case AF_INET6:
 		if (setsockopt (sockets->mcast_send, IPPROTO_IPV6, IPV6_MULTICAST_IF,
 			&interface_num, sizeof (interface_num)) < 0) {
-			perror ("cannot select interface");
+			LOGSYS_PERROR (errno, instance->totemudp_log_level_warning,
+				"cannot select interface for multicast packets (send v6)");
 			return (-1);
 		}
 		if (setsockopt (sockets->mcast_recv, IPPROTO_IPV6, IPV6_MULTICAST_IF,
 			&interface_num, sizeof (interface_num)) < 0) {
-			perror ("cannot select interface");
+			LOGSYS_PERROR (errno, instance->totemudp_log_level_warning,
+				"cannot select interface for multicast packets (recv v6)");
 			return (-1);
 		}
 		break;

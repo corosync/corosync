@@ -66,6 +66,8 @@
 #include <corosync/list.h>
 #include <corosync/engine/logsys.h>
 
+#include "util.h"
+
 #define YIELD_AFTER_LOG_OPS 10
 
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
@@ -906,14 +908,28 @@ static int logsys_config_file_set_unlocked (
 
 	logsys_loggers[subsysid].logfile_fp = fopen (file, "a+");
 	if (logsys_loggers[subsysid].logfile_fp == NULL) {
-		char error_str[100];
-		strerror_r (errno, error_str, 100);
+		int err;
+		char error_str[LOGSYS_MAX_PERROR_MSG_LEN];
+		const char *error_ptr;
+
+		err = errno;
+#ifdef COROSYNC_LINUX
+		/* The GNU version of strerror_r returns a (char*) that *must* be used */
+		error_ptr = strerror_r(err, error_str, sizeof(error_str));
+#else
+		/* The XSI-compliant strerror_r() return 0 or -1 (in case the buffer is full) */
+		if ( strerror_r(err, error_str, sizeof(error_str)) < 0 )
+			error_ptr = "";
+		else
+			error_ptr = error_str;
+#endif
+
 		free(logsys_loggers[subsysid].logfile);
 		logsys_loggers[subsysid].logfile = NULL;
 		snprintf (error_string_response,
 			sizeof(error_string_response),
-			"Can't open logfile '%s' for reason (%s).\n",
-				 file, error_str);
+			"Can't open logfile '%s' for reason: %s (%d).\n",
+				 file, error_ptr, err);
 		*error_string = error_string_response;
 		return (-1);
 	}
