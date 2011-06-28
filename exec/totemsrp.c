@@ -90,6 +90,7 @@
 
 #include "crypto.h"
 #include "tlist.h"
+#include "util.h"
 
 #define LOCALHOST_IP				inet_addr("127.0.0.1")
 #define QUEUE_RTR_ITEMS_SIZE_MAX		16384 /* allow 16384 retransmit items */
@@ -3115,7 +3116,6 @@ static void memb_ring_id_create_or_load (
 	int fd;
 	int res = 0;
 	char filename[PATH_MAX];
-	char error_str[256];
 
 	snprintf (filename, sizeof(filename), "%s/ringid_%s",
 		rundir, totemip_print (&instance->my_id.addr[0]));
@@ -3138,16 +3138,12 @@ static void memb_ring_id_create_or_load (
 			res = write (fd, &memb_ring_id->seq, sizeof (uint64_t));
 			close (fd);
 			if (res == -1) {
-				strerror_r (errno, error_str, sizeof (error_str));
-				log_printf (instance->totemsrp_log_level_warning,
-					"Couldn't write ringid file '%s' %s\n",
-					filename, error_str);
+				LOGSYS_PERROR (errno, instance->totemsrp_log_level_warning,
+					"Couldn't write ringid file '%s'", filename);
 			}
 		} else {
-			strerror_r (errno, error_str, sizeof (error_str));
-			log_printf (instance->totemsrp_log_level_warning,
-				"Couldn't create ringid file '%s' %s\n",
-				filename, error_str);
+			LOGSYS_PERROR (errno, instance->totemsrp_log_level_warning,
+				"Couldn't create ringid file '%s'", filename);
 		}
 	}
 
@@ -3174,11 +3170,9 @@ static void memb_ring_id_set_and_store (
 		fd = open (filename, O_CREAT|O_RDWR, 0777);
 	}
 	if (fd == -1) {
-		char error_str[100];
-		strerror_r(errno, error_str, 100);
-		log_printf (instance->totemsrp_log_level_warning,
-			"Couldn't store new ring id %llx to stable storage (%s)\n",
-				instance->my_ring_id.seq, error_str);
+		LOGSYS_PERROR(errno, instance->totemsrp_log_level_warning,
+			"Couldn't store new ring id %llx to stable storage",
+			instance->my_ring_id.seq);
 		assert (0);
 		return;
 	}

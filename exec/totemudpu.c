@@ -67,6 +67,7 @@
 #include "totemudpu.h"
 
 #include "crypto.h"
+#include "util.h"
 
 #ifdef HAVE_LIBNSS
 #include <nss.h>
@@ -941,10 +942,8 @@ static inline void ucast_sendmsg (
 	 */
 	res = sendmsg (instance->token_socket, &msg_ucast, MSG_NOSIGNAL);
 	if (res < 0) {
-		char error_str[100];
-		strerror_r (errno, error_str, sizeof(error_str));
-		log_printf (instance->totemudpu_log_level_debug,
-				"sendmsg(ucast) failed (non-critical): %s\n", error_str);
+		LOGSYS_PERROR (errno, instance->totemudpu_log_level_debug,
+				"sendmsg(ucast) failed (non-critical)");
 	}
 }
 
@@ -1034,10 +1033,8 @@ static inline void mcast_sendmsg (
 		 */
 		res = sendmsg (member->fd, &msg_mcast, MSG_NOSIGNAL);
 		if (res < 0) {
-			char error_str[100];
-			strerror_r (errno, error_str, sizeof(error_str));
-			log_printf (instance->totemudpu_log_level_debug,
-				"sendmsg(mcast) failed (non-critical): %s\n", error_str);
+			LOGSYS_PERROR (errno, instance->totemudpu_log_level_debug,
+				"sendmsg(mcast) failed (non-critical)");
 		}
 	}
 }
@@ -1283,12 +1280,10 @@ static void totemudpu_traffic_control_set(struct totemudpu_instance *instance, i
 {
 #ifdef SO_PRIORITY
 	int prio = 6; /* TC_PRIO_INTERACTIVE */
-	char error_str[100];
 
 	if (setsockopt(sock, SOL_SOCKET, SO_PRIORITY, &prio, sizeof(int))) {
-		strerror_r (errno, error_str, 100);
-		log_printf (instance->totemudpu_log_level_warning,
-			"Could not set traffic priority. (%s)\n", error_str);
+		LOGSYS_PERROR (errno, instance->totemudpu_log_level_warning,
+			"Could not set traffic priority");
     }
 #endif
 }
@@ -1311,17 +1306,16 @@ static int totemudpu_build_sockets_ip (
 	 */
 	instance->token_socket = socket (bindnet_address->family, SOCK_DGRAM, 0);
 	if (instance->token_socket == -1) {
-		perror ("socket2");
+		LOGSYS_PERROR (errno, instance->totemudpu_log_level_warning,
+			"socket() failed");
 		return (-1);
 	}
 
 	totemip_nosigpipe (instance->token_socket);
 	res = fcntl (instance->token_socket, F_SETFL, O_NONBLOCK);
 	if (res == -1) {
-		char error_str[100];
-		strerror_r (errno, error_str, 100);
-		log_printf (instance->totemudpu_log_level_warning,
-			"Could not set non-blocking operation on token socket: %s\n", error_str);
+		LOGSYS_PERROR (errno, instance->totemudpu_log_level_warning,
+			"Could not set non-blocking operation on token socket");
 		return (-1);
 	}
 
@@ -1332,7 +1326,8 @@ static int totemudpu_build_sockets_ip (
 	totemip_totemip_to_sockaddr_convert(bound_to, instance->totem_interface->ip_port, &sockaddr, &addrlen);
 	res = bind (instance->token_socket, (struct sockaddr *)&sockaddr, addrlen);
 	if (res == -1) {
-		perror ("bind token socket failed");
+		LOGSYS_PERROR (errno, instance->totemudpu_log_level_warning,
+			"bind token socket failed");
 		return (-1);
 	}
 
@@ -1344,10 +1339,8 @@ static int totemudpu_build_sockets_ip (
 	res = setsockopt (instance->token_socket, SOL_SOCKET, SO_RCVBUF,
 		&recvbuf_size, optlen);
 	if (res == -1) {
-		char error_str[100];
-		strerror_r (errno, error_str, 100);
-		log_printf (instance->totemudpu_log_level_notice,
-			"Could not set recvbuf size %s\n", error_str);
+		LOGSYS_PERROR (errno, instance->totemudpu_log_level_notice,
+			"Could not set recvbuf size");
 	}
 
 	return 0;
@@ -1654,7 +1647,6 @@ int totemudpu_member_add (
 	int res;
 	unsigned int sendbuf_size;
 	unsigned int optlen = sizeof (sendbuf_size);
-	char error_str[100];
 
 	new_member = malloc (sizeof (struct totemudpu_member));
 	if (new_member == NULL) {
@@ -1665,17 +1657,15 @@ int totemudpu_member_add (
 	memcpy (&new_member->member, member, sizeof (struct totem_ip_address));
 	new_member->fd = socket (member->family, SOCK_DGRAM, 0);
 	if (new_member->fd == -1) {
-		strerror_r (errno, error_str, 100);
-		log_printf (instance->totemudpu_log_level_warning,
-			"Could not create socket for new member: %s\n", error_str);
+		LOGSYS_PERROR (errno, instance->totemudpu_log_level_warning,
+			"Could not create socket for new member");
 		return (-1);
 	}
 	totemip_nosigpipe (new_member->fd);
 	res = fcntl (new_member->fd, F_SETFL, O_NONBLOCK);
 	if (res == -1) {
-		strerror_r (errno, error_str, 100);
-		log_printf (instance->totemudpu_log_level_warning,
-			"Could not set non-blocking operation on token socket: %s\n", error_str);
+		LOGSYS_PERROR (errno, instance->totemudpu_log_level_warning,
+			"Could not set non-blocking operation on token socket");
 		return (-1);
 	}
 
@@ -1687,9 +1677,8 @@ int totemudpu_member_add (
 	res = setsockopt (new_member->fd, SOL_SOCKET, SO_SNDBUF,
 		&sendbuf_size, optlen);
 	if (res == -1) {
-		strerror_r (errno, error_str, 100);
-		log_printf (instance->totemudpu_log_level_notice,
-			"Could not set sendbuf size %s\n", error_str);
+		LOGSYS_PERROR (errno, instance->totemudpu_log_level_notice,
+			"Could not set sendbuf size");
 	}
 	return (0);
 }
