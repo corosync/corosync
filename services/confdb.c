@@ -315,7 +315,7 @@ __attribute__ ((constructor)) static void corosync_lcr_component_register (void)
 
 static int confdb_exec_exit_fn(void)
 {
-	poll_dispatch_delete(api->poll_handle_get(), notify_pipe[0]);
+	api->poll_dispatch_delete(api->poll_handle_get(), notify_pipe[0]);
 	close(notify_pipe[0]);
 	close(notify_pipe[1]);
 	return 0;
@@ -341,7 +341,7 @@ static int confdb_exec_init_fn (
 		}
 	}
 
-	return poll_dispatch_add(api->poll_handle_get(), notify_pipe[0],
+	return api->poll_dispatch_add(api->poll_handle_get(), notify_pipe[0],
 		POLLIN, NULL, objdb_notify_dispatch);
 }
 
