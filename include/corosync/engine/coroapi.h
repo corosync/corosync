@@ -608,7 +608,6 @@ struct corosync_api_v1 {
 	 */
 	hdb_handle_t (*poll_handle_get) (void);
 
-
 	int (*object_key_create_typed) (
 		hdb_handle_t object_handle,
 		const char *key_name,
@@ -636,6 +635,22 @@ struct corosync_api_v1 {
 		hdb_handle_t *handle,
 		int (schedwrk_fn) (const void *),
 		const void *context);
+
+	int (*poll_dispatch_add) (hdb_handle_t handle,
+		int fd,
+		int events,
+		void *data,
+
+		int (*dispatch_fn) (hdb_handle_t handle,
+			int fd,
+			int revents,
+			void *data));
+
+
+	int (*poll_dispatch_delete) (
+		hdb_handle_t handle,
+		int fd);
+
 };
 
 #define SERVICE_ID_MAKE(a,b) ( ((a)<<16) | (b) )

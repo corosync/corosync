@@ -144,7 +144,9 @@ static struct corosync_api_v1 apidef_corosync_api_v1 = {
 	.fatal_error = _corosync_public_exit_error,
 	.shutdown_request = corosync_shutdown_request,
 	.state_dump = corosync_state_dump,
-	.poll_handle_get = corosync_poll_handle_get
+	.poll_handle_get = corosync_poll_handle_get,
+	.poll_dispatch_add = poll_dispatch_add,
+	.poll_dispatch_delete = poll_dispatch_delete
 };
 
 void apidef_init (struct objdb_iface_ver0 *objdb) {
