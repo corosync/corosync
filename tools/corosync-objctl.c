@@ -93,7 +93,6 @@ static void tail_object_deleted(confdb_handle_t handle,
 
 static void create_object(confdb_handle_t handle, char * name_pt);
 static void create_object_key(confdb_handle_t handle, char * name_pt);
-static void destroy_object_key(confdb_handle_t handle, char * name_pt);
 static void write_key(confdb_handle_t handle, char * path_pt);
 static void get_parent_name(const char * name_pt, char * parent_name);
 

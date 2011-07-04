@@ -1299,7 +1299,6 @@ static int totemudpu_build_sockets_ip (
 	int res;
 	unsigned int recvbuf_size;
 	unsigned int optlen = sizeof (recvbuf_size);
-	int flag;
 
 	/*
 	 * Setup unicast socket
