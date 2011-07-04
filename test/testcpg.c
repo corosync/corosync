@@ -34,6 +34,7 @@
 
 #include <config.h>
 
+#include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
@@ -140,7 +141,7 @@ static void TotemConfchgCallback (
 {
 	int i;
 
-	printf("\nTotemConfchgCallback: ringid (%u.%llu)\n", ring_id.nodeid, ring_id.seq);
+	printf("\nTotemConfchgCallback: ringid (%u.%"PRIu64")\n", ring_id.nodeid, ring_id.seq);
 
 	printf("active processors %lu: ",
 	       (unsigned long int) member_list_entries);
