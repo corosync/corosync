@@ -10,7 +10,7 @@
 %bcond_with monitoring
 %bcond_with snmp
 %bcond_with dbus
-%bcond_without rdma
+%bcond_with rdma
 
 Name: corosync
 Summary: The Corosync Cluster Engine and Application Programming Interfaces
