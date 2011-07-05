@@ -10,6 +10,7 @@
 %bcond_with monitoring
 %bcond_with snmp
 %bcond_with dbus
+%bcond_without rdma
 
 Name: corosync
 Summary: The Corosync Cluster Engine and Application Programming Interfaces
@@ -36,7 +37,9 @@ Conflicts: openais <= 0.89, openais-devel <= 0.89
 BuildRequires: autoconf automake
 %endif
 BuildRequires: nss-devel
+%if %{with rdma}
 BuildRequires: libibverbs-devel librdmacm-devel
+%endif
 %if %{with snmp}
 BuildRequires: net-snmp-devel
 %endif
@@ -75,7 +78,9 @@ export rdmacm_LIBS=-lrdmacm \
 %if %{with dbus}
 	--enable-dbus \
 %endif
+%if %{with rdma}
 	--enable-rdma \
+%endif
 	--with-initddir=%{_initrddir}
 
 make %{_smp_mflags}
