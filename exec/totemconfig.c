@@ -83,6 +83,7 @@
 #define RRP_PROBLEM_COUNT_TIMEOUT		2000
 #define RRP_PROBLEM_COUNT_THRESHOLD_DEFAULT	10
 #define RRP_PROBLEM_COUNT_THRESHOLD_MIN		5
+#define RRP_AUTORECOVERY_CHECK_TIMEOUT		1000
 
 static char error_string_response[512];
 static struct objdb_iface_ver0 *global_objdb;
@@ -211,6 +212,8 @@ static void totem_volatile_config_read (
 	objdb_get_int (objdb,object_totem_handle, "rrp_problem_count_timeout", &totem_config->rrp_problem_count_timeout);
 
 	objdb_get_int (objdb,object_totem_handle, "rrp_problem_count_threshold", &totem_config->rrp_problem_count_threshold);
+
+	objdb_get_int (objdb,object_totem_handle, "rrp_autorecovery_check_timeout", &totem_config->rrp_autorecovery_check_timeout);
 
 	objdb_get_int (objdb,object_totem_handle, "heartbeat_failures_allowed", &totem_config->heartbeat_failures_allowed);
 
@@ -680,6 +683,10 @@ int totem_config_validate (
 			"The RRP token expired timeout parameter (%d ms) may not be less then (%d ms).",
 			totem_config->rrp_token_expired_timeout, MINIMUM_TIMEOUT);
 		goto parse_error;
+	}
+
+	if (totem_config->rrp_autorecovery_check_timeout == 0) {
+		totem_config->rrp_autorecovery_check_timeout = RRP_AUTORECOVERY_CHECK_TIMEOUT;
 	}
 
 	if (strcmp (totem_config->rrp_mode, "none") == 0) {
