@@ -864,6 +864,9 @@ int totemsrp_initialize (
 		"RRP threshold (%d problem count)\n",
 		totem_config->rrp_problem_count_threshold);
 	log_printf (instance->totemsrp_log_level_debug,
+		"RRP automatic recovery check timeout (%d ms)\n",
+		totem_config->rrp_autorecovery_check_timeout);
+	log_printf (instance->totemsrp_log_level_debug,
 		"RRP mode set to %s.\n", instance->totem_config->rrp_mode);
 
 	log_printf (instance->totemsrp_log_level_debug,
@@ -1054,7 +1057,8 @@ int totemsrp_ring_reenable (
 {
 	struct totemsrp_instance *instance = (struct totemsrp_instance *)srp_context;
 
-	totemrrp_ring_reenable (instance->totemrrp_context);
+	totemrrp_ring_reenable (instance->totemrrp_context,
+		instance->totem_config->interface_count);
 
 	return (0);
 }

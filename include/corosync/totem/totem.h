@@ -142,6 +142,8 @@ struct totem_config {
 
 	unsigned int rrp_problem_count_threshold;
 
+	unsigned int rrp_autorecovery_check_timeout;
+
 	char rrp_mode[TOTEM_RRP_MODE_BYTES];
 
 	struct totem_logging_configuration totem_logging_configuration;

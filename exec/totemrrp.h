@@ -129,7 +129,8 @@ extern int totemrrp_crypto_set (
 	unsigned int type);
 
 extern int totemrrp_ring_reenable (
-	void *rrp_context);
+	void *rrp_context,
+	unsigned int iface_no);
 
 extern int totemrrp_mcast_recv_empty (
 	void *rrp_context);

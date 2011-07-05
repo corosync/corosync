@@ -159,7 +159,8 @@ struct rrp_algo {
 		unsigned int iface_no);
 
 	void (*ring_reenable) (
-		struct totemrrp_instance *instance);
+		struct totemrrp_instance *instance,
+		unsigned int iface_no);
 
 	int (*mcast_recv_empty) (
 		struct totemrrp_instance *instance);
@@ -237,7 +238,13 @@ struct totemrrp_instance {
 
 	int processor_count;
 
+	int my_nodeid;
+
 	struct totem_config *totem_config;
+
+	void *deliver_fn_context[INTERFACE_MAX];
+
+	poll_timer_handle timer_active_test_ring_timeout[INTERFACE_MAX];
 };
 
 /*
@@ -289,7 +296,8 @@ static void none_token_target_set (
 	unsigned int iface_no);
 
 static void none_ring_reenable (
-	struct totemrrp_instance *instance);
+	struct totemrrp_instance *instance,
+	unsigned int iface_no);
 
 static int none_mcast_recv_empty (
 	struct totemrrp_instance *instance);
@@ -356,7 +364,8 @@ static void passive_token_target_set (
 	unsigned int iface_no);
 
 static void passive_ring_reenable (
-	struct totemrrp_instance *instance);
+	struct totemrrp_instance *instance,
+	unsigned int iface_no);
 
 static int passive_mcast_recv_empty (
 	struct totemrrp_instance *instance);
@@ -423,7 +432,8 @@ static void active_token_target_set (
 	unsigned int iface_no);
 
 static void active_ring_reenable (
-	struct totemrrp_instance *instance);
+	struct totemrrp_instance *instance,
+	unsigned int iface_no);
 
 static int active_mcast_recv_empty (
 	struct totemrrp_instance *instance);
@@ -449,6 +459,28 @@ static void active_timer_problem_decrementer_start (
 
 static void active_timer_problem_decrementer_cancel (
 	struct active_instance *active_instance);
+
+/*
+ * 0-5 reserved for totemsrp.c
+ */
+#define MESSAGE_TYPE_RING_TEST_ACTIVE		6
+#define MESSAGE_TYPE_RING_TEST_ACTIVATE		7
+
+#define ENDIAN_LOCAL				0xff22
+
+struct message_header {
+	char type;
+	char encapsulated;
+	unsigned short endian_detector;
+	int ring_number;
+	int nodeid_activator;
+} __attribute__((packed));
+
+struct deliver_fn_context {
+	struct totemrrp_instance *instance;
+	void *context;
+	int iface_no;
+};
 
 struct rrp_algo none_algo = {
 	.name			= "none",
@@ -521,6 +553,47 @@ do {									\
 		__FUNCTION__, __FILE__, __LINE__,			\
 		format, ##args);					\
 } while (0);
+
+static void test_active_msg_endian_convert(const struct message_header *in, struct message_header *out)
+{
+	out->type = in->type;
+	out->encapsulated = in->encapsulated;
+	out->endian_detector = ENDIAN_LOCAL;
+	out->ring_number = swab32 (in->ring_number);
+	out->nodeid_activator = swab32(in->nodeid_activator);
+}
+
+static void timer_function_test_ring_timeout (void *context)
+{
+	struct deliver_fn_context *deliver_fn_context = (struct deliver_fn_context *)context;
+	struct totemrrp_instance *rrp_instance = deliver_fn_context->instance;
+	unsigned int *faulty = NULL;
+	int iface_no = deliver_fn_context->iface_no;
+	struct message_header msg = {
+		.type = MESSAGE_TYPE_RING_TEST_ACTIVE,
+		.endian_detector = ENDIAN_LOCAL,
+	};
+
+	if (strcmp(rrp_instance->totem_config->rrp_mode, "active") == 0)
+		faulty = ((struct active_instance *)(rrp_instance->rrp_algo_instance))->faulty;
+	if (strcmp(rrp_instance->totem_config->rrp_mode, "passive") == 0)
+		faulty = ((struct passive_instance *)(rrp_instance->rrp_algo_instance))->faulty;
+
+	assert (faulty != NULL);
+
+	if (faulty[iface_no] == 1) {
+		msg.ring_number = iface_no;
+		msg.nodeid_activator = rrp_instance->my_nodeid;
+		totemnet_token_send (
+			rrp_instance->net_handles[iface_no],
+			&msg, sizeof (struct message_header));
+		poll_timer_add (rrp_instance->poll_handle,
+			rrp_instance->totem_config->rrp_autorecovery_check_timeout,
+			(void *)deliver_fn_context,
+			timer_function_test_ring_timeout,
+			&rrp_instance->timer_active_test_ring_timeout[iface_no]);
+	}
+}
 
 /*
  * None Replication Implementation
@@ -606,7 +679,8 @@ static void none_token_target_set (
 }
 
 static void none_ring_reenable (
-	struct totemrrp_instance *instance)
+	struct totemrrp_instance *instance,
+	unsigned int iface_no)
 {
 	/*
 	 * No operation
@@ -797,8 +871,14 @@ static void passive_mcast_recv (
 			(max - passive_instance->mcast_recv_count[i] >
 			rrp_instance->totem_config->rrp_problem_count_threshold)) {
 			passive_instance->faulty[i] = 1;
+			poll_timer_add (rrp_instance->poll_handle,
+				rrp_instance->totem_config->rrp_autorecovery_check_timeout,
+				rrp_instance->deliver_fn_context[i],
+				timer_function_test_ring_timeout,
+				&rrp_instance->timer_active_test_ring_timeout[i]);
+
 			sprintf (rrp_instance->status[i],
-				"Marking ringid %u interface %s FAULTY - administrative intervention required.",
+				"Marking ringid %u interface %s FAULTY",
 				i,
 				totemnet_iface_print (rrp_instance->net_handles[i]));
 			log_printf (
@@ -880,8 +960,14 @@ static void passive_token_recv (
 			(max - passive_instance->token_recv_count[i] >
 			rrp_instance->totem_config->rrp_problem_count_threshold)) {
 			passive_instance->faulty[i] = 1;
+			poll_timer_add (rrp_instance->poll_handle,
+				rrp_instance->totem_config->rrp_autorecovery_check_timeout,
+				rrp_instance->deliver_fn_context[i],
+				timer_function_test_ring_timeout,
+				&rrp_instance->timer_active_test_ring_timeout[i]);
+
 			sprintf (rrp_instance->status[i],
-				"Marking seqid %d ringid %u interface %s FAULTY - administrative intervention required.",
+				"Marking seqid %d ringid %u interface %s FAULTY",
 				token_seq,
 				i,
 				totemnet_iface_print (rrp_instance->net_handles[i]));
@@ -1002,7 +1088,8 @@ static int passive_member_remove (
 
 
 static void passive_ring_reenable (
-	struct totemrrp_instance *instance)
+	struct totemrrp_instance *instance,
+	unsigned int iface_no)
 {
 	struct passive_instance *rrp_algo_instance = (struct passive_instance *)instance->rrp_algo_instance;
 
@@ -1010,8 +1097,13 @@ static void passive_ring_reenable (
 		instance->interface_count);
 	memset (rrp_algo_instance->token_recv_count, 0, sizeof (unsigned int) *
 		instance->interface_count);
-	memset (rrp_algo_instance->faulty, 0, sizeof (unsigned int) *
-		instance->interface_count);
+
+	if (iface_no == instance->interface_count) {
+		memset (rrp_algo_instance->faulty, 0, sizeof (unsigned int) *
+			instance->interface_count);
+	} else {
+		rrp_algo_instance->faulty[iface_no] = 0;
+	}
 }
 
 /*
@@ -1128,8 +1220,14 @@ static void timer_function_active_token_expired (void *context)
 		if (active_instance->counter_problems[i] >= rrp_instance->totem_config->rrp_problem_count_threshold)
 		{
 			active_instance->faulty[i] = 1;
+			poll_timer_add (rrp_instance->poll_handle,
+				rrp_instance->totem_config->rrp_autorecovery_check_timeout,
+				rrp_instance->deliver_fn_context[i],
+				timer_function_test_ring_timeout,
+				&rrp_instance->timer_active_test_ring_timeout[i]);
+
 			sprintf (rrp_instance->status[i],
-				"Marking seqid %d ringid %u interface %s FAULTY - administrative intervention required.",
+				"Marking seqid %d ringid %u interface %s FAULTY",
 				active_instance->last_token_seq,
 				i,
 				totemnet_iface_print (rrp_instance->net_handles[i]));
@@ -1233,7 +1331,7 @@ static void active_mcast_noflush_send (
 }
 
 static void active_token_recv (
-	struct totemrrp_instance *instance,
+	struct totemrrp_instance *rrp_instance,
 	unsigned int iface_no,
 	void *context,
 	const void *msg,
@@ -1241,13 +1339,13 @@ static void active_token_recv (
 	unsigned int token_seq)
 {
 	int i;
-	struct active_instance *active_instance = (struct active_instance *)instance->rrp_algo_instance;
+	struct active_instance *active_instance = (struct active_instance *)rrp_instance->rrp_algo_instance;
 
-	active_instance->totemrrp_context = context; // this should be in totemrrp_instance ?
+	active_instance->totemrrp_context = context;
 	if (token_seq > active_instance->last_token_seq) {
 		memcpy (active_instance->token, msg, msg_len);
 		active_instance->token_len = msg_len;
-		for (i = 0; i < instance->interface_count; i++) {
+		for (i = 0; i < rrp_instance->interface_count; i++) {
 			active_instance->last_token_recv[i] = 0;
 		}
 
@@ -1259,7 +1357,7 @@ static void active_token_recv (
 
 	if (token_seq == active_instance->last_token_seq) {
 		active_instance->last_token_recv[iface_no] = 1;
-		for (i = 0; i < instance->interface_count; i++) {
+		for (i = 0; i < rrp_instance->interface_count; i++) {
 			if ((active_instance->last_token_recv[i] == 0) &&
 				active_instance->faulty[i] == 0) {
 				return; /* don't deliver token */
@@ -1267,7 +1365,7 @@ static void active_token_recv (
 		}
 		active_timer_expired_token_cancel (active_instance);
 
-		instance->totemrrp_deliver_fn (
+		rrp_instance->totemrrp_deliver_fn (
 			context,
 			msg,
 			msg_len);
@@ -1383,23 +1481,24 @@ static int active_mcast_recv_empty (
 }
 
 static void active_ring_reenable (
-	struct totemrrp_instance *instance)
+	struct totemrrp_instance *instance,
+	unsigned int iface_no)
 {
 	struct active_instance *rrp_algo_instance = (struct active_instance *)instance->rrp_algo_instance;
 
-	memset (rrp_algo_instance->last_token_recv, 0, sizeof (unsigned int) *
-		instance->interface_count);
-	memset (rrp_algo_instance->faulty, 0, sizeof (unsigned int) *
-		instance->interface_count);
-	memset (rrp_algo_instance->counter_problems, 0, sizeof (unsigned int) *
-		instance->interface_count);
+	if (iface_no == instance->interface_count) {
+		memset (rrp_algo_instance->last_token_recv, 0, sizeof (unsigned int) *
+			instance->interface_count);
+		memset (rrp_algo_instance->faulty, 0, sizeof (unsigned int) *
+			instance->interface_count);
+		memset (rrp_algo_instance->counter_problems, 0, sizeof (unsigned int) *
+			instance->interface_count);
+	} else {
+		rrp_algo_instance->last_token_recv[iface_no] = 0;
+		rrp_algo_instance->faulty[iface_no] = 0;
+		rrp_algo_instance->counter_problems[iface_no] = 0;
+	}
 }
-
-struct deliver_fn_context {
-	struct totemrrp_instance *instance;
-	void *context;
-	int iface_no;
-};
 
 static void totemrrp_instance_initialize (struct totemrrp_instance *instance)
 {
@@ -1441,18 +1540,71 @@ void rrp_deliver_fn (
 	unsigned int token_is;
 
 	struct deliver_fn_context *deliver_fn_context = (struct deliver_fn_context *)context;
+	struct totemrrp_instance *rrp_instance = deliver_fn_context->instance;
+	const struct message_header *hdr = msg;
+	struct message_header tmp_msg, activate_msg;
 
-	deliver_fn_context->instance->totemrrp_token_seqid_get (
+	memset(&tmp_msg, 0, sizeof(struct message_header));
+	memset(&activate_msg, 0, sizeof(struct message_header));
+
+	rrp_instance->totemrrp_token_seqid_get (
 		msg,
 		&token_seqid,
 		&token_is);
 
+	if (hdr->type == MESSAGE_TYPE_RING_TEST_ACTIVE) {
+		log_printf (
+			rrp_instance->totemrrp_log_level_debug,
+			"received message requesting test of ring now active\n");
+
+		if (hdr->endian_detector != ENDIAN_LOCAL) {
+			test_active_msg_endian_convert(hdr, &tmp_msg);
+			hdr = &tmp_msg;
+		}
+
+		if (hdr->nodeid_activator == rrp_instance->my_nodeid) {
+			/*
+			 * Send an activate message
+			 */
+			activate_msg.type = MESSAGE_TYPE_RING_TEST_ACTIVATE;
+			activate_msg.endian_detector = ENDIAN_LOCAL;
+			activate_msg.ring_number = hdr->ring_number;
+			activate_msg.nodeid_activator = rrp_instance->my_nodeid;
+			totemnet_token_send (
+				rrp_instance->net_handles[deliver_fn_context->iface_no],
+				&activate_msg, sizeof (struct message_header));
+		} else {
+			/*
+			 * Send a ring test message
+			 */
+			totemnet_token_send (
+				rrp_instance->net_handles[deliver_fn_context->iface_no],
+				msg, msg_len);
+		}
+	} else 
+	if (hdr->type == MESSAGE_TYPE_RING_TEST_ACTIVATE) {
+		log_printf (
+			rrp_instance->totemrrp_log_level_notice,
+			"Automatically recovered ring %d\n", hdr->ring_number);
+
+		if (hdr->endian_detector != ENDIAN_LOCAL) {
+			test_active_msg_endian_convert(hdr, &tmp_msg);
+			hdr = &tmp_msg;
+		}
+
+		totemrrp_ring_reenable (rrp_instance, deliver_fn_context->iface_no);
+		if (hdr->nodeid_activator != rrp_instance->my_nodeid) {
+			totemnet_token_send (
+				rrp_instance->net_handles[deliver_fn_context->iface_no],
+				msg, msg_len);
+		}
+	} else 
 	if (token_is) {
 		/*
 		 * Deliver to the token receiver for this rrp algorithm
 		 */
-		deliver_fn_context->instance->rrp_algo->token_recv (
-			deliver_fn_context->instance,
+		rrp_instance->rrp_algo->token_recv (
+			rrp_instance,
 			deliver_fn_context->iface_no,
 			deliver_fn_context->context,
 			msg,
@@ -1462,8 +1614,8 @@ void rrp_deliver_fn (
 		/*
 		 * Deliver to the mcast receiver for this rrp algorithm
 		 */
-		deliver_fn_context->instance->rrp_algo->mcast_recv (
-			deliver_fn_context->instance,
+		rrp_instance->rrp_algo->mcast_recv (
+			rrp_instance,
 			deliver_fn_context->iface_no,
 			deliver_fn_context->context,
 			msg,
@@ -1477,6 +1629,7 @@ void rrp_iface_change_fn (
 {
 	struct deliver_fn_context *deliver_fn_context = (struct deliver_fn_context *)context;
 
+	deliver_fn_context->instance->my_nodeid = iface_addr->nodeid;
 	deliver_fn_context->instance->totemrrp_iface_change_fn (
 		deliver_fn_context->context,
 		iface_addr,
@@ -1597,6 +1750,7 @@ int totemrrp_initialize (
 		deliver_fn_context->instance = instance;
 		deliver_fn_context->context = context;
 		deliver_fn_context->iface_no = i;
+		instance->deliver_fn_context[i] = (void *)deliver_fn_context;
 
 		totemnet_initialize (
 			poll_handle,
@@ -1746,17 +1900,27 @@ int totemrrp_crypto_set (
 }
 
 
+/*
+ * iface_no indicates the interface number [0, ..., interface_count-1] of the
+ * specific ring which will be reenabled. We specify iface_no == interface_count
+ * means reenabling all the rings.
+ */
 int totemrrp_ring_reenable (
-        void *rrp_context)
+        void *rrp_context,
+	unsigned int iface_no)
 {
 	struct totemrrp_instance *instance = (struct totemrrp_instance *)rrp_context;
 	int res = 0;
 	unsigned int i;
 
-	instance->rrp_algo->ring_reenable (instance);
+	instance->rrp_algo->ring_reenable (instance, iface_no);
 
-	for (i = 0; i < instance->interface_count; i++) {
-		sprintf (instance->status[i], "ring %d active with no faults", i);
+	if (iface_no == instance->interface_count) {
+		for (i = 0; i < instance->interface_count; i++) {
+			sprintf (instance->status[i], "ring %d active with no faults", i);
+		}
+	} else {
+		sprintf (instance->status[iface_no], "ring %d active with no faults", iface_no);
 	}
 
 	return (res);
