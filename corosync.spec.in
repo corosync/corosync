@@ -57,10 +57,12 @@ BuildRoot: %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 ./autogen.sh
 %endif
 
+%if %{with rdma}
 export ibverbs_CFLAGS=-I/usr/include/infiniband \
 export ibverbs_LIBS=-libverbs \
 export rdmacm_CFLAGS=-I/usr/include/rdma \
 export rdmacm_LIBS=-lrdmacm \
+%endif
 %{configure} \
 	--enable-nss \
 %if %{with testagents}
