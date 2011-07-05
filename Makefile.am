@@ -92,7 +92,7 @@ clean-generic:
 
 $(SPEC): $(SPEC).in
 	rm -f $@-t $@
-	LC_ALL=C date="$(shell date "+%a %b %d %Y")" && \
+	date="$(shell LC_ALL=C date "+%a %b %d %Y")" && \
 	if [ -f .tarball-version ]; then \
 		gitver="$(shell cat .tarball-version)" && \
 		rpmver=$$gitver && \
@@ -159,7 +159,7 @@ gen_start_date = 2000-01-01
 .PHONY: gen-ChangeLog
 gen-ChangeLog:
 	if test -d .git; then						\
-		$(top_srcdir)/build-aux/gitlog-to-changelog		\
+		LC_ALL=C $(top_srcdir)/build-aux/gitlog-to-changelog		\
 			--since=$(gen_start_date) > $(distdir)/cl-t;	\
 		rm -f $(distdir)/ChangeLog;				\
 		mv $(distdir)/cl-t $(distdir)/ChangeLog;		\
