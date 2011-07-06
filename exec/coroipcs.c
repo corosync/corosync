@@ -117,17 +117,6 @@ struct zcb_mapped {
 	size_t size;
 };
 
-#if _POSIX_THREAD_PROCESS_SHARED < 1
-#if defined(_SEM_SEMUN_UNDEFINED)
-union semun {
-	int val;
-	struct semid_ds *buf;
-	unsigned short int *array;
-	struct seminfo *__buf;
-};
-#endif
-#endif
-
 
 enum conn_state {
 	CONN_STATE_THREAD_INACTIVE = 0,
