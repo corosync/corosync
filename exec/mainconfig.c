@@ -39,6 +39,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <unistd.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -568,11 +569,20 @@ parse_error:
 
 static int uid_determine (const char *req_user)
 {
+	int pw_uid = 0;
 	struct passwd passwd;
 	struct passwd* pwdptr = &passwd;
 	struct passwd* temp_pwd_pt;
-	char pwdbuffer[200];
-	int  pwdlinelen = sizeof(pwdbuffer);
+	char *pwdbuffer;
+	int  pwdlinelen;
+
+	pwdlinelen = sysconf (_SC_GETPW_R_SIZE_MAX);
+
+	if (pwdlinelen == -1) {
+		pwdlinelen = 256;
+	}
+
+	pwdbuffer = malloc (pwdlinelen);
 
 	if ((getpwnam_r (req_user, pwdptr, pwdbuffer, pwdlinelen, &temp_pwd_pt)) != 0) {
 		log_printf (LOGSYS_LEVEL_ERROR,
@@ -580,8 +590,10 @@ static int uid_determine (const char *req_user)
 			req_user);
 		corosync_exit_error (AIS_DONE_UID_DETERMINE);
 	}
+	pw_uid = passwd.pw_uid;
+	free (pwdbuffer);
 
-	return passwd.pw_uid;
+	return pw_uid;
 }
 
 static int gid_determine (const char *req_group)
@@ -590,8 +602,16 @@ static int gid_determine (const char *req_group)
 	struct group group;
 	struct group * grpptr = &group;
 	struct group * temp_grp_pt;
-	char grpbuffer[200];
-	int  grplinelen = sizeof(grpbuffer);
+	char *grpbuffer;
+	int  grplinelen;
+
+	grplinelen = sysconf (_SC_GETGR_R_SIZE_MAX);
+
+	if (grplinelen == -1) {
+		grplinelen = 256;
+	}
+
+	grpbuffer = malloc (grplinelen);
 
 	if ((getgrnam_r (req_group, grpptr, grpbuffer, grplinelen, &temp_grp_pt)) != 0) {
 		log_printf (LOGSYS_LEVEL_ERROR,
@@ -600,6 +620,8 @@ static int gid_determine (const char *req_group)
 		corosync_exit_error (AIS_DONE_GID_DETERMINE);
 	}
 	ais_gid = group.gr_gid;
+	free (grpbuffer);
+
 	return ais_gid;
 }
 
