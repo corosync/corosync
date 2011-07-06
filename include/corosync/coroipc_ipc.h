@@ -57,6 +57,15 @@
 #include <semaphore.h>
 #else
 #include <sys/sem.h>
+
+#if defined(_SEM_SEMUN_UNDEFINED)
+union semun {
+  int val;
+  struct semid_ds *buf;
+  unsigned short int *array;
+  struct seminfo *__buf;
+};
+#endif
 #endif
 
 /*
@@ -331,8 +340,8 @@ ipc_sem_getvalue (
 	int *sem_value)
 {
 #if _POSIX_THREAD_PROCESS_SHARED < 1
-	struct sembuf sop;
 	int sem_value_hold;
+	union semun semun;
 #else
 	sem_t *sem = NULL;
 	int res;
@@ -359,12 +368,8 @@ ipc_sem_getvalue (
 		return (CS_ERR_LIBRARY);
 	}
 #else
-	sop.sem_num = sem_id;
-	sop.sem_op = 1;
-	sop.sem_flg = 0;
-
 retry_semctl:
-	sem_value_hold = semctl (control_buffer->semid, sem_id, GETVAL);
+	sem_value_hold = semctl (control_buffer->semid, sem_id, GETVAL, semun);
 	if (sem_value_hold == -1 && errno == EINTR) {
 		goto retry_semctl;
 	} else
