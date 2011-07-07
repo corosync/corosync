@@ -1791,7 +1791,7 @@ static void memb_state_operational_enter (struct totemsrp_instance *instance)
 		sizeof (struct srp_addr) * instance->my_memb_entries);
 
 	instance->my_failed_list_entries = 0;
-	instance->my_high_delivered = instance->my_aru;
+	instance->my_high_delivered = instance->my_high_seq_received;
 
 	for (i = 0; i <= instance->my_high_delivered; i++) {
 		void *ptr;
