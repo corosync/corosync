@@ -271,6 +271,7 @@ static inline struct send_buf *mcast_send_buf_get (
 		2048, IBV_ACCESS_LOCAL_WRITE);
 	if (send_buf->mr == NULL) {
 		log_printf (LOGSYS_LEVEL_ERROR, "couldn't register memory range\n");
+		free (send_buf);
 		return (NULL);
 	}
 	list_init (&send_buf->list_all);
@@ -307,6 +308,7 @@ static inline struct send_buf *token_send_buf_get (
 		2048, IBV_ACCESS_LOCAL_WRITE);
 	if (send_buf->mr == NULL) {
 		log_printf (LOGSYS_LEVEL_ERROR, "couldn't register memory range\n");
+		free (send_buf);
 		return (NULL);
 	}
 	list_init (&send_buf->list_all);
