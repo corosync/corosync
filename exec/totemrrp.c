@@ -468,6 +468,22 @@ static void active_timer_problem_decrementer_cancel (
 
 #define ENDIAN_LOCAL				0xff22
 
+/*
+ * Rollover handling:
+ *
+ * ARR_SEQNO_START_TOKEN is the starting sequence number of last seen sequence
+ * for a token for active redundand ring.  This should remain zero, unless testing
+ * overflow in which case 07fffff00 or 0xffffff00 are good starting values.
+ * It should be same as on defined in totemsrp.c
+ */
+
+#define ARR_SEQNO_START_TOKEN 0x0
+
+/*
+ * These can be used ot test different rollover points
+ * #define ARR_SEQNO_START_MSG 0xfffffe00
+ */
+
 struct message_header {
 	char type;
 	char encapsulated;
@@ -1154,6 +1170,8 @@ void *active_instance_initialize (
 
 	instance->rrp_instance = rrp_instance;
 
+	instance->last_token_seq = ARR_SEQNO_START_TOKEN - 1;
+
 error_exit:
 	return ((void *)instance);
 }
@@ -1342,7 +1360,7 @@ static void active_token_recv (
 	struct active_instance *active_instance = (struct active_instance *)rrp_instance->rrp_algo_instance;
 
 	active_instance->totemrrp_context = context;
-	if (token_seq > active_instance->last_token_seq) {
+	if (sq_lt_compare (active_instance->last_token_seq, token_seq)) {
 		memcpy (active_instance->token, msg, msg_len);
 		active_instance->token_len = msg_len;
 		for (i = 0; i < rrp_instance->interface_count; i++) {
@@ -1353,6 +1371,10 @@ static void active_token_recv (
 		active_timer_expired_token_start (active_instance);
 	}
 
+	/*
+	 * This doesn't follow spec because the spec assumes we will know
+	 * when token resets occur.
+	 */
 	active_instance->last_token_seq = token_seq;
 
 	if (token_seq == active_instance->last_token_seq) {
