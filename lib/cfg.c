@@ -648,7 +648,6 @@ cs_error_t corosync_cfg_get_node_addrs (
 	int addrlen = 0;
 	int i;
 	struct iovec iov;
-	void *return_address;
 	const char *addr_buf;
 	char response_buf[IPC_RESPONSE_SIZE];
 

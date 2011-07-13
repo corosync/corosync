@@ -43,8 +43,10 @@
 #include <poll.h>
 #include <assert.h>
 
-#include <corosync/corotypes.h>
+#include <qb/qbloop.h>
 #include <qb/qbipc_common.h>
+
+#include <corosync/corotypes.h>
 #include <corosync/corodefs.h>
 #include <corosync/cfg.h>
 #include <corosync/list.h>
@@ -88,6 +90,8 @@ static int confdb_exec_exit_fn(void);
 static int fd_set_nonblocking(int fd);
 
 static int objdb_notify_dispatch(int fd, int revents, void *data);
+
+
 
 static int confdb_lib_init_fn (void *conn);
 static int confdb_lib_exit_fn (void *conn);

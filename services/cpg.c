@@ -1721,11 +1721,9 @@ static void message_handler_req_lib_cpg_zc_execute (
 	struct req_lib_cpg_mcast *req_lib_cpg_mcast;
 	int result;
 	cs_error_t error = CS_ERR_NOT_EXIST;
-	struct coroipcs_zc_header *zc_hdr;
 
 	log_printf(LOGSYS_LEVEL_DEBUG, "got ZC mcast request on %p\n", conn);
 
-	zc_hdr = (struct coroipcs_zc_header *)((char *)serveraddr2void(hdr->server_address));
 	header = (struct qb_ipc_request_header *)(((char *)serveraddr2void(hdr->server_address) + sizeof (struct coroipcs_zc_header)));
 	req_lib_cpg_mcast = (struct req_lib_cpg_mcast *)header;
 

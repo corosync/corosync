@@ -112,7 +112,7 @@ static int objdb_init (void)
 {
 	hdb_handle_t handle;
 	struct object_instance *instance;
-	unsigned int res;
+	int res;
 
 	res = hdb_handle_create (&object_instance_database,
 		sizeof (struct object_instance), &handle);
@@ -192,11 +192,12 @@ static void object_created_notification(
 	struct object_instance * obj_pt;
 	struct object_tracker * tracker_pt;
 	hdb_handle_t obj_handle = object_handle;
-	unsigned int res;
 
 	do {
-		res = hdb_handle_get (&object_instance_database,
-			obj_handle, (void *)&obj_pt);
+		if (hdb_handle_get (&object_instance_database,
+			obj_handle, (void *)&obj_pt) != 0) {
+			return;
+		}
 
 		for (list = obj_pt->track_head.next;
 			list != &obj_pt->track_head; list = list->next) {
@@ -226,11 +227,12 @@ static void object_pre_deletion_notification(hdb_handle_t object_handle,
 	struct object_instance * obj_pt;
 	struct object_tracker * tracker_pt;
 	hdb_handle_t obj_handle = object_handle;
-	unsigned int res;
 
 	do {
-		res = hdb_handle_get (&object_instance_database,
-			obj_handle, (void *)&obj_pt);
+		if (hdb_handle_get (&object_instance_database,
+			obj_handle, (void *)&obj_pt) != 0) {
+			return;
+		}
 
 		for (list = obj_pt->track_head.next;
 			list != &obj_pt->track_head; list = list->next) {
@@ -265,11 +267,12 @@ static void object_key_changed_notification(hdb_handle_t object_handle,
 	struct object_instance * owner_pt = NULL;
 	struct object_tracker * tracker_pt;
 	hdb_handle_t obj_handle = object_handle;
-	unsigned int res;
 
 	do {
-		res = hdb_handle_get (&object_instance_database,
-			obj_handle, (void *)&obj_pt);
+		if (hdb_handle_get (&object_instance_database,
+			obj_handle, (void *)&obj_pt) != 0) {
+			return;
+		}
 
 		if (owner_pt == NULL)
 			owner_pt = obj_pt;
@@ -302,10 +305,11 @@ static void object_reload_notification(int startstop, int flush)
 	struct object_instance * obj_pt;
 	struct object_tracker * tracker_pt;
 	struct object_tracker * tmptracker_pt;
-	unsigned int res;
 
-	res = hdb_handle_get (&object_instance_database,
-		OBJECT_PARENT_HANDLE, (void *)&obj_pt);
+	if (hdb_handle_get (&object_instance_database,
+		OBJECT_PARENT_HANDLE, (void *)&obj_pt) != 0) {
+		return;
+	}
 
 	/*
 	 * Make a copy of the list
@@ -350,7 +354,7 @@ static int object_create (
 {
 	struct object_instance *object_instance;
 	struct object_instance *parent_instance;
-	unsigned int res;
+	int res;
 	int found = 0;
 	int i;
 
@@ -473,7 +477,7 @@ static int object_key_create_typed(
 {
 	struct object_instance *instance;
 	struct object_key *object_key;
-	unsigned int res;
+	int res;
 	struct list_head *list;
 	int found = 0;
 	int i;
@@ -698,7 +702,7 @@ static int object_destroy (
 	hdb_handle_t object_handle)
 {
 	struct object_instance *instance;
-	unsigned int res;
+	int res;
 
 	res = hdb_handle_get (&object_instance_database,
 		object_handle, (void *)&instance);
@@ -728,7 +732,7 @@ static int object_valid_set (
 	size_t object_valid_list_entries)
 {
 	struct object_instance *instance;
-	unsigned int res;
+	int res;
 
 	res = hdb_handle_get (&object_instance_database,
 		object_handle, (void *)&instance);
@@ -753,7 +757,7 @@ static int object_key_valid_set (
 	size_t object_key_valid_list_entries)
 {
 	struct object_instance *instance;
-	unsigned int res;
+	int res;
 
 	res = hdb_handle_get (&object_instance_database,
 		object_handle, (void *)&instance);
@@ -781,7 +785,7 @@ static int object_find_create (
 	size_t object_len,
 	hdb_handle_t *object_find_handle)
 {
-	unsigned int res;
+	int res;
 	struct object_instance *iter_obj_inst;
 	struct object_instance *object_instance;
 	struct object_find_instance *object_find_instance;
@@ -873,10 +877,10 @@ static int object_find_next (
 	hdb_handle_t object_find_handle,
 	hdb_handle_t *object_handle)
 {
-	unsigned int res;
+	int res;
 	struct object_find_instance *object_find_instance;
 	struct object_instance *object_instance = NULL;
-	unsigned int found = 0;
+	int found = 0;
         size_t pos;
 
 	res = hdb_handle_get (&object_find_instance_database,
@@ -915,6 +919,8 @@ static int object_find_next (
 	if (found) {
 		*object_handle = object_instance->object_handle;
 		res = 0;
+	} else {
+		res = -1;
 	}
 	return (res);
 
@@ -926,7 +932,7 @@ static int object_find_destroy (
 	hdb_handle_t object_find_handle)
 {
 	struct object_find_instance *object_find_instance;
-	unsigned int res;
+	int res;
 
 	res = hdb_handle_get (&object_find_instance_database,
 		object_find_handle, (void *)&object_find_instance);
@@ -952,7 +958,7 @@ static int object_key_get_typed (
 	size_t *value_len,
 	objdb_value_types_t * type)
 {
-	unsigned int res = 0;
+	int res = 0;
 	struct object_instance *instance;
 	struct object_key *object_key = NULL;
 	struct list_head *list;
@@ -1027,7 +1033,7 @@ static int object_key_increment (
 	size_t key_len,
 	unsigned int *value)
 {
-	unsigned int res = 0;
+	int res = 0;
 	struct object_instance *instance;
 	struct object_key *object_key = NULL;
 	struct list_head *list;
@@ -1110,7 +1116,7 @@ static int object_key_decrement (
 	size_t key_len,
 	unsigned int *value)
 {
-	unsigned int res = 0;
+	int res = 0;
 	struct object_instance *instance;
 	struct object_key *object_key = NULL;
 	struct list_head *list;
@@ -1193,7 +1199,7 @@ static int object_key_delete (
 	const void *key_name,
 	size_t key_len)
 {
-	unsigned int res;
+	int res;
 	int ret = 0;
 	struct object_instance *instance;
 	struct object_key *object_key = NULL;
@@ -1245,7 +1251,7 @@ static int object_key_replace (
 	const void *new_value,
 	size_t new_value_len)
 {
-	unsigned int res;
+	int res;
 	int ret = 0;
 	struct object_instance *instance;
 	struct object_key *object_key = NULL;
@@ -1452,7 +1458,7 @@ static int _dump_object(struct object_instance *instance, FILE *file, int depth)
 
 static int object_key_iter_reset(hdb_handle_t object_handle)
 {
-	unsigned int res;
+	int res;
 	struct object_instance *instance;
 
 	res = hdb_handle_get (&object_instance_database,
@@ -1475,7 +1481,7 @@ static int object_key_iter_typed (hdb_handle_t parent_object_handle,
 	size_t *value_len,
 	objdb_value_types_t *type)
 {
-	unsigned int res;
+	int res;
 	struct object_instance *instance;
 	struct object_key *find_key = NULL;
 	struct list_head *list;
@@ -1538,7 +1544,7 @@ static int object_key_iter_from(hdb_handle_t parent_object_handle,
 	size_t *value_len)
 {
 	unsigned int pos = 0;
-	unsigned int res;
+	int res;
 	struct object_instance *instance;
 	struct object_key *find_key = NULL;
 	struct list_head *list;
@@ -1587,7 +1593,7 @@ static int object_parent_get(hdb_handle_t object_handle,
 	hdb_handle_t *parent_handle)
 {
 	struct object_instance *instance;
-	unsigned int res;
+	int res;
 
 	res = hdb_handle_get (&object_instance_database,
 		object_handle, (void *)&instance);
@@ -1610,7 +1616,7 @@ static int object_name_get(hdb_handle_t object_handle,
 	size_t *object_name_len)
 {
 	struct object_instance *instance;
-	unsigned int res;
+	int res;
 
 	res = hdb_handle_get (&object_instance_database,
 		object_handle, (void *)&instance);
@@ -1636,7 +1642,7 @@ static int object_track_start(hdb_handle_t object_handle,
 	void * priv_data_pt)
 {
 	struct object_instance *instance;
-	unsigned int res;
+	int res;
 	struct object_tracker * tracker_pt;
 
 	res = hdb_handle_get (&object_instance_database,
@@ -1676,7 +1682,7 @@ static void object_track_stop(object_key_change_notify_fn_t key_change_notify_fn
 	struct object_tracker * obj_tracker_pt = NULL;
 	struct list_head *list, *tmp_list;
 	struct list_head *obj_list, *tmp_obj_list;
-	unsigned int res;
+	int res;
 
 	/* go through the global list and find all the trackers to stop */
 	for (list = objdb_trackers_head.next, tmp_list = list->next;
@@ -1718,7 +1724,7 @@ static int object_dump(hdb_handle_t object_handle,
 	FILE *file)
 {
 	struct object_instance *instance;
-	unsigned int res;
+	int res;
 
 	res = hdb_handle_get (&object_instance_database,
 		object_handle, (void *)&instance);

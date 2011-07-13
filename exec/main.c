@@ -833,16 +833,13 @@ static void deliver_fn (
 	int32_t service;
 	int32_t fn_id;
 	uint32_t id;
-	uint32_t size;
 	uint32_t key_incr_dummy;
 
 	header = msg;
 	if (endian_conversion_required) {
 		id = swab32 (header->id);
-		size = swab32 (header->size);
 	} else {
 		id = header->id;
-		size = header->size;
 	}
 
 	/*

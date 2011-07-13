@@ -206,7 +206,7 @@ static int create_server_sockect (int server_port)
 	struct addrinfo hints, *ai, *p;
 	char server_port_str[16];
 	char addr_str[INET_ADDRSTRLEN];
-	void *ptr;
+	void *ptr = NULL;
 
 	/* get a socket and bind it
 	 */

@@ -1140,12 +1140,10 @@ int sha1_done(hash_state * md, unsigned char *hash)
 int hmac_init(hmac_state *hmac, int hash, const unsigned char *key, unsigned long keylen)
 {
     unsigned char buf[128];
-    unsigned long hashsize;
     unsigned long i;
     int err;
 
     hmac->hash = hash;
-    hashsize   = hash_descriptor[hash]->hashsize;
 
     /* valid key length? */
 	assert (keylen > 0);

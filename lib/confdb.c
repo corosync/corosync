@@ -1809,3 +1809,6 @@ error_exit:
 	return (error);
 }
 
+/**
+ * @}
+ */
