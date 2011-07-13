@@ -37,7 +37,7 @@ Conflicts: openais <= 0.89, openais-devel <= 0.89
 %if %{buildtrunk}
 BuildRequires: autoconf automake
 %endif
-BuildRequires: nss-devel
+BuildRequires: nss-devel libqb-devel
 %if %{with rdma}
 BuildRequires: libibverbs-devel librdmacm-devel
 %endif
@@ -131,7 +131,6 @@ fi
 %files
 %defattr(-,root,root,-)
 %doc LICENSE SECURITY
-%{_bindir}/corosync-blackbox
 %{_sbindir}/corosync
 %{_sbindir}/corosync-keygen
 %{_sbindir}/corosync-objctl
@@ -309,7 +308,6 @@ The Corosync Cluster Engine APIs.
 %{_mandir}/man8/cpg_overview.8*
 %{_mandir}/man8/evs_overview.8*
 %{_mandir}/man8/confdb_overview.8*
-%{_mandir}/man8/logsys_overview.8*
 %{_mandir}/man8/votequorum_overview.8*
 %{_mandir}/man8/sam_overview.8*
 

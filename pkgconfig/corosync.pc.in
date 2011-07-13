@@ -8,5 +8,5 @@ socketdir=@COROSOCKETDIR@
 Name: corosync
 Version: @LIBVERSION@
 Description: corosync
-Requires:
+Requires: libqb
 Cflags: -I${includedir}
