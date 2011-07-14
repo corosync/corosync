@@ -777,7 +777,7 @@ cs_error_t cpg_zcb_alloc (
 	void **buffer)
 {
 	void *buf = NULL;
-	char path[128];
+	char path[PATH_MAX];
 	mar_req_coroipcc_zc_alloc_t req_coroipcc_zc_alloc;
 	struct qb_ipc_response_header res_coroipcs_zc_alloc;
 	size_t map_size;
