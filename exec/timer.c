@@ -131,13 +131,13 @@ static void *prioritized_timer_thread (void *data)
 		if (fds < 0) {
 			return NULL;
 		}
-		pthread_mutex_lock (&timer_mutex);
 		timer_serialize_lock_fn ();
+		pthread_mutex_lock (&timer_mutex);
 
 		timerlist_expire (&timers_timerlist);
 
-		timer_serialize_unlock_fn ();
 		pthread_mutex_unlock (&timer_mutex);
+		timer_serialize_unlock_fn ();
 	}
 }
 
