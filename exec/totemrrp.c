@@ -335,6 +335,11 @@ static void passive_mcast_flush_send (
 	const void *msg,
 	unsigned int msg_len);
 
+static void passive_monitor (
+	struct totemrrp_instance *rrp_instance,
+	unsigned int iface_no,
+	int is_token_recv_count);
+
 static void passive_token_recv (
 	struct totemrrp_instance *instance,
 	unsigned int iface_no,
@@ -483,6 +488,14 @@ static void active_timer_problem_decrementer_cancel (
  * These can be used ot test different rollover points
  * #define ARR_SEQNO_START_MSG 0xfffffe00
  */
+
+/*
+ * Threshold value when recv_count for passive rrp should be adjusted.
+ * Set this value to some smaller for testing of adjusting proper
+ * functionality. Also keep in mind that this value must be smaller
+ * then rrp_problem_count_threshold
+ */
+#define PASSIVE_RECV_COUNT_THRESHOLD		(INT_MAX / 2)
 
 struct message_header {
 	char type;
@@ -841,50 +854,92 @@ static void passive_timer_problem_decrementer_cancel (
 }
 */
 
-
-static void passive_mcast_recv (
+/*
+ * Monitor function implementation from rrp paper.
+ * rrp_instance is passive rrp instance, iface_no is interface with received messgae/token and
+ * is_token_recv_count is boolean variable which donates if message is token (>1) or regular
+ * message (= 0)
+ */
+static void passive_monitor (
 	struct totemrrp_instance *rrp_instance,
 	unsigned int iface_no,
-	void *context,
-	const void *msg,
-	unsigned int msg_len)
+	int is_token_recv_count)
 {
 	struct passive_instance *passive_instance = (struct passive_instance *)rrp_instance->rrp_algo_instance;
+	unsigned int *recv_count;
 	unsigned int max;
 	unsigned int i;
-
-	rrp_instance->totemrrp_deliver_fn (
-		context,
-		msg,
-		msg_len);
-
-	if (rrp_instance->totemrrp_msgs_missing() == 0 &&
-		passive_instance->timer_expired_token) {
-		/*
-		 * Delivers the last token
-		 */
-		rrp_instance->totemrrp_deliver_fn (
-			passive_instance->totemrrp_context,
-			passive_instance->token,
-			passive_instance->token_len);
-		passive_timer_expired_token_cancel (passive_instance);
-	}
+	unsigned int min_all, min_active;
 
 	/*
 	 * Monitor for failures
-	 * TODO doesn't handle wrap-around of the mcast recv count
 	 */
-	passive_instance->mcast_recv_count[iface_no] += 1;
+	if (is_token_recv_count) {
+		recv_count = passive_instance->token_recv_count;
+	} else {
+		recv_count = passive_instance->mcast_recv_count;
+	}
+
+	recv_count[iface_no] += 1;
+
 	max = 0;
 	for (i = 0; i < rrp_instance->interface_count; i++) {
-		if (max < passive_instance->mcast_recv_count[i]) {
-			max = passive_instance->mcast_recv_count[i];
+		if (max < recv_count[i]) {
+			max = recv_count[i];
+		}
+	}
+
+	/*
+	 * Max is larger then threshold -> start adjusting process
+	 */
+	if (max > PASSIVE_RECV_COUNT_THRESHOLD) {
+		min_all = min_active = recv_count[iface_no];
+
+		for (i = 0; i < rrp_instance->interface_count; i++) {
+			if (recv_count[i] < min_all) {
+				min_all = recv_count[i];
+			}
+
+			if (passive_instance->faulty[i] == 0 &&
+			    recv_count[i] < min_active) {
+				min_active = recv_count[i];
+			}
+		}
+
+		if (min_all > 0) {
+			/*
+			 * There is one or more faulty device with recv_count > 0
+			 */
+			for (i = 0; i < rrp_instance->interface_count; i++) {
+				recv_count[i] -= min_all;
+			}
+		} else {
+			/*
+			 * No faulty device with recv_count > 0, adjust only active
+			 * devices
+			 */
+			for (i = 0; i < rrp_instance->interface_count; i++) {
+				if (passive_instance->faulty[i] == 0) {
+					recv_count[i] -= min_active;
+				}
+			}
+		}
+
+		/*
+		 * Find again max
+		 */
+		max = 0;
+
+		for (i = 0; i < rrp_instance->interface_count; i++) {
+			if (max < recv_count[i]) {
+				max = recv_count[i];
+			}
 		}
 	}
 
 	for (i = 0; i < rrp_instance->interface_count; i++) {
 		if ((passive_instance->faulty[i] == 0) &&
-			(max - passive_instance->mcast_recv_count[i] >
+			(max - recv_count[i] >
 			rrp_instance->totem_config->rrp_problem_count_threshold)) {
 			passive_instance->faulty[i] = 1;
 			poll_timer_add (rrp_instance->poll_handle,
@@ -903,6 +958,35 @@ static void passive_mcast_recv (
 				rrp_instance->status[i]);
 		}
 	}
+}
+
+static void passive_mcast_recv (
+	struct totemrrp_instance *rrp_instance,
+	unsigned int iface_no,
+	void *context,
+	const void *msg,
+	unsigned int msg_len)
+{
+	struct passive_instance *passive_instance = (struct passive_instance *)rrp_instance->rrp_algo_instance;
+
+	rrp_instance->totemrrp_deliver_fn (
+		context,
+		msg,
+		msg_len);
+
+	if (rrp_instance->totemrrp_msgs_missing() == 0 &&
+		passive_instance->timer_expired_token) {
+		/*
+		 * Delivers the last token
+		 */
+		rrp_instance->totemrrp_deliver_fn (
+			passive_instance->totemrrp_context,
+			passive_instance->token,
+			passive_instance->token_len);
+		passive_timer_expired_token_cancel (passive_instance);
+	}
+
+	passive_monitor (rrp_instance, iface_no, 0);
 }
 
 static void passive_mcast_flush_send (
@@ -943,8 +1027,6 @@ static void passive_token_recv (
 	unsigned int token_seq)
 {
 	struct passive_instance *passive_instance = (struct passive_instance *)rrp_instance->rrp_algo_instance;
-	unsigned int max;
-	unsigned int i;
 
 	passive_instance->totemrrp_context = context; // this should be in totemrrp_instance ? TODO
 
@@ -959,40 +1041,7 @@ static void passive_token_recv (
 
 	}
 
-	/*
-	 * Monitor for failures
-	 * TODO doesn't handle wrap-around of the token
-	 */
-	passive_instance->token_recv_count[iface_no] += 1;
-	max = 0;
-	for (i = 0; i < rrp_instance->interface_count; i++) {
-		if (max < passive_instance->token_recv_count[i]) {
-			max = passive_instance->token_recv_count[i];
-		}
-	}
-
-	for (i = 0; i < rrp_instance->interface_count; i++) {
-		if ((passive_instance->faulty[i] == 0) &&
-			(max - passive_instance->token_recv_count[i] >
-			rrp_instance->totem_config->rrp_problem_count_threshold)) {
-			passive_instance->faulty[i] = 1;
-			poll_timer_add (rrp_instance->poll_handle,
-				rrp_instance->totem_config->rrp_autorecovery_check_timeout,
-				rrp_instance->deliver_fn_context[i],
-				timer_function_test_ring_timeout,
-				&rrp_instance->timer_active_test_ring_timeout[i]);
-
-			sprintf (rrp_instance->status[i],
-				"Marking seqid %d ringid %u interface %s FAULTY",
-				token_seq,
-				i,
-				totemnet_iface_print (rrp_instance->net_handles[i]));
-			log_printf (
-				rrp_instance->totemrrp_log_level_error,
-				"%s",
-				rrp_instance->status[i]);
-		}
-	}
+	passive_monitor (rrp_instance, iface_no, 1);
 }
 
 static void passive_token_send (
