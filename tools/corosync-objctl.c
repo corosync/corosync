@@ -406,7 +406,8 @@ static cs_error_t find_object (confdb_handle_t handle,
 	char tmp_name[OBJ_NAME_SIZE];
 	cs_error_t res = CS_OK;
 
-	strncpy (tmp_name, name_pt, OBJ_NAME_SIZE);
+	strncpy (tmp_name, name_pt, sizeof (tmp_name));
+	tmp_name[sizeof (tmp_name) - 1] = '\0';
 	obj_name_pt = strtok_r(tmp_name, SEPERATOR_STR, &save_pt);
 
 	while (obj_name_pt != NULL) {
@@ -516,7 +517,8 @@ static void create_object(confdb_handle_t handle, char * name_pt)
 	char tmp_name[OBJ_NAME_SIZE];
 	cs_error_t res;
 
-	strncpy (tmp_name, name_pt, OBJ_NAME_SIZE);
+	strncpy (tmp_name, name_pt, sizeof (tmp_name));
+	tmp_name[sizeof (tmp_name) - 1] = '\0';
 	obj_name_pt = strtok_r(tmp_name, SEPERATOR_STR, &save_pt);
 
 	while (obj_name_pt != NULL) {
@@ -569,7 +571,8 @@ static void create_object_key(confdb_handle_t handle, char *name_pt)
 	get_parent_name(name_pt, parent_name);
 	get_key(name_pt, key_name, key_value);
 
-	strncpy (tmp_name, parent_name, OBJ_NAME_SIZE);
+	strncpy (tmp_name, parent_name, sizeof (tmp_name));
+	tmp_name[sizeof (tmp_name) - 1] = '\0';
 	obj_name_pt = strtok_r(tmp_name, SEPERATOR_STR, &save_pt);
 
 	/*

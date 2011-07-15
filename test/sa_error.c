@@ -46,6 +46,9 @@ int get_sa_error(cs_error_t error, char *str, int len)
 		return -1;
 	}
 	strncpy(str, sa_error_list[error], len);
+	if (len > 0) {
+		str[len - 1] = '\0';
+	}
 	return 0;
 }
 
