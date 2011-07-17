@@ -143,7 +143,7 @@ void _corosync_exit_error (
 	log_printf (LOGSYS_LEVEL_ERROR, "Corosync Cluster Engine exiting "
 		"with status %d at %s:%u.\n", err, file, line);
 
-	logsys_atexit ();
+	qb_log_fini();
 	exit (err);
 }
 

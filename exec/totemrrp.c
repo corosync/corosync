@@ -228,11 +228,12 @@ struct totemrrp_instance {
 	int totemrrp_subsys_id;
 
 	void (*totemrrp_log_printf) (
-		unsigned int rec_ident,
+		int level,
+		int subsys,
 		const char *function,
 		const char *file,
 		int line,
-		const char *format, ...)__attribute__((format(printf, 5, 6)));
+		const char *format, ...)__attribute__((format(printf, 6, 7)));
 
 	void **net_handles;
 
@@ -589,14 +590,12 @@ struct rrp_algo *rrp_algos[] = {
 
 #define RRP_ALGOS_COUNT 3
 
-#define log_printf(level, format, args...)				\
-do {									\
-	rrp_instance->totemrrp_log_printf (				\
-		LOGSYS_ENCODE_RECID(level,				\
-				    rrp_instance->totemrrp_subsys_id,	\
-				    LOGSYS_RECID_LOG),			\
-		__FUNCTION__, __FILE__, __LINE__,			\
-		format, ##args);					\
+#define log_printf(level, format, args...)			\
+do {								\
+	rrp_instance->totemrrp_log_printf (			\
+		level, rrp_instance->totemrrp_subsys_id,	\
+		__FUNCTION__, __FILE__, __LINE__,		\
+		format, ##args);				\
 } while (0);
 
 static void test_active_msg_endian_convert(const struct message_header *in, struct message_header *out)

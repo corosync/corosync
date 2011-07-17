@@ -69,12 +69,13 @@ struct totem_interface {
 
 struct totem_logging_configuration {
 	void (*log_printf) (
-		unsigned int rec_ident,
+		int level,
+		int subsys,
 		const char *function_name,
 		const char *file_name,
 		int file_line,
 		const char *format,
-		...) __attribute__((format(printf, 5, 6)));
+		...) __attribute__((format(printf, 6, 7)));
 
 	int log_level_security;
 	int log_level_error;
@@ -147,14 +148,6 @@ struct totem_config {
 	char rrp_mode[TOTEM_RRP_MODE_BYTES];
 
 	struct totem_logging_configuration totem_logging_configuration;
-
-	void (*log_rec) (
-		int subsysid,
-		const char *function_name,
-		const char *file_name,
-		int file_line,
-		unsigned int rec_ident,
-		...);
 
 	unsigned int secauth;
 

@@ -176,6 +176,8 @@ unsigned int corosync_service_link_and_init (
 	char object_name[32];
 	char *name_sufix;
 	uint64_t zero_64 = 0;
+	void* _start;
+	void* _stop;
 
 	/*
 	 * reference the service interface
@@ -202,6 +204,13 @@ unsigned int corosync_service_link_and_init (
 	service = iface_ver0->corosync_get_service_engine_ver0();
 
 	ais_service[service->id] = service;
+
+	/* begin */
+	_start = lcr_ifact_addr_get(handle, "__start___verbose");
+	_stop = lcr_ifact_addr_get(handle, "__stop___verbose");
+	qb_log_callsites_register(_start, _stop);
+	/* end */
+
 	if (service->config_init_fn) {
 		res = service->config_init_fn (corosync_api);
 	}

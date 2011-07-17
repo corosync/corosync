@@ -96,6 +96,7 @@
 #include <semaphore.h>
 
 #include <qb/qbdefs.h>
+#include <qb/qblog.h>
 #include <qb/qbloop.h>
 #include <qb/qbutil.h>
 #include <qb/qbipcs.h>
@@ -131,14 +132,9 @@
 #endif
 
 LOGSYS_DECLARE_SYSTEM ("corosync",
-	LOGSYS_MODE_OUTPUT_STDERR | LOGSYS_MODE_THREADED | LOGSYS_MODE_FORK,
-	0,
-	NULL,
-	LOG_INFO,
+	LOGSYS_MODE_OUTPUT_STDERR,
 	LOG_DAEMON,
-	LOG_INFO,
-	NULL,
-	IPC_LOGSYS_SIZE);
+	LOG_INFO);
 
 LOGSYS_DECLARE_SUBSYS ("MAIN");
 
@@ -220,7 +216,7 @@ void corosync_shutdown_request (void)
 static int32_t sig_diag_handler (int num, void *data)
 {
 	corosync_state_dump ();
-	logsys_log_rec_store (LOCALSTATEDIR "/lib/corosync/fdata");
+	qb_log_blackbox_write_to_file(LOCALSTATEDIR "/lib/corosync/fdata");
 	return 0;
 }
 
@@ -233,16 +229,16 @@ static int32_t sig_exit_handler (int num, void *data)
 static void sigsegv_handler (int num)
 {
 	(void)signal (SIGSEGV, SIG_DFL);
-	logsys_atexit();
-	logsys_log_rec_store (LOCALSTATEDIR "/lib/corosync/fdata");
+	qb_log_blackbox_write_to_file(LOCALSTATEDIR "/lib/corosync/fdata");
+	qb_log_fini();
 	raise (SIGSEGV);
 }
 
 static void sigabrt_handler (int num)
 {
 	(void)signal (SIGABRT, SIG_DFL);
-	logsys_atexit();
-	logsys_log_rec_store (LOCALSTATEDIR "/lib/corosync/fdata");
+	qb_log_blackbox_write_to_file(LOCALSTATEDIR "/lib/corosync/fdata");
+	qb_log_fini();
 	raise (SIGABRT);
 }
 
@@ -1033,6 +1029,39 @@ static void corosync_setscheduler (void)
 #endif
 }
 
+static void
+_logsys_log_printf(int level, int subsys,
+		const char *function_name,
+		const char *file_name,
+		int file_line,
+		const char *format,
+		...) __attribute__((format(printf, 6, 7)));
+
+static void
+_logsys_log_printf(int level, int subsys,
+		const char *function_name,
+		const char *file_name,
+		int file_line,
+		const char *format, ...)
+{
+	va_list ap;
+	char buf[QB_LOG_MAX_LEN];
+	size_t len;
+
+	va_start(ap, format);
+	len = vsnprintf(buf, sizeof(buf), format, ap);
+	va_end(ap);
+
+	if (buf[len - 1] == '\n') {
+		buf[len - 1] = '\0';
+		len -= 1;
+	}
+
+	qb_log_from_external_source(function_name, file_name,
+				    format, level, file_line,
+				    subsys, buf);
+}
+
 static void fplay_key_change_notify_fn (
 	object_change_type_t change_type,
 	hdb_handle_t parent_object_handle,
@@ -1044,7 +1073,7 @@ static void fplay_key_change_notify_fn (
 {
 	if (key_len == strlen ("dump_flight_data") &&
 		memcmp ("dump_flight_data", key_name_pt, key_len) == 0) {
-		logsys_log_rec_store (LOCALSTATEDIR "/lib/corosync/fdata");
+		qb_log_blackbox_write_to_file (LOCALSTATEDIR "/lib/corosync/fdata");
 	}
 	if (key_len == strlen ("dump_state") &&
 		memcmp ("dump_state", key_name_pt, key_len) == 0) {
@@ -1405,21 +1434,14 @@ int main (int argc, char **argv, char **envp)
 	}
 
 	totem_config.totem_logging_configuration = totem_logging_configuration;
-	totem_config.totem_logging_configuration.log_subsys_id =
-		_logsys_subsys_create ("TOTEM");
-
-	if (totem_config.totem_logging_configuration.log_subsys_id < 0) {
-		log_printf (LOGSYS_LEVEL_ERROR,
-			"Unable to initialize TOTEM logging subsystem\n");
-		corosync_exit_error (AIS_DONE_MAINCONFIGREAD);
-	}
-
+	totem_config.totem_logging_configuration.log_subsys_id = _logsys_subsys_create("TOTEM", "totem");
 	totem_config.totem_logging_configuration.log_level_security = LOGSYS_LEVEL_WARNING;
 	totem_config.totem_logging_configuration.log_level_error = LOGSYS_LEVEL_ERROR;
 	totem_config.totem_logging_configuration.log_level_warning = LOGSYS_LEVEL_WARNING;
 	totem_config.totem_logging_configuration.log_level_notice = LOGSYS_LEVEL_NOTICE;
 	totem_config.totem_logging_configuration.log_level_debug = LOGSYS_LEVEL_DEBUG;
 	totem_config.totem_logging_configuration.log_printf = _logsys_log_printf;
+	logsys_config_apply();
 
 	res = corosync_main_config_compatibility_read (objdb,
 		&minimum_sync_mode,
@@ -1448,7 +1470,7 @@ int main (int argc, char **argv, char **envp)
 	if (background) {
 		corosync_tty_detach ();
 	}
-	logsys_fork_completed();
+	qb_log_thread_start();
 
 	if ((flock_err = corosync_flock (corosync_lock_file, getpid ())) != AIS_DONE_EXIT) {
 		corosync_exit_error (flock_err);

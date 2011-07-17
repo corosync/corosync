@@ -36,18 +36,16 @@
 
 #include <stdio.h>
 #include <stdint.h>
+#include <assert.h>
 
 #include <corosync/engine/logsys.h>
 
 LOGSYS_DECLARE_SYSTEM ("logtest_t2",
 	LOGSYS_MODE_OUTPUT_STDERR | LOGSYS_MODE_THREADED,
-	0,
-	NULL,
-	LOGSYS_LEVEL_INFO,
 	LOG_DAEMON,
-	LOGSYS_LEVEL_INFO,
-	NULL,
-	1000000);
+	LOGSYS_LEVEL_INFO);
+
+LOGSYS_DECLARE_SUBSYS("MAIN");
 
 int
 main(int argc, char **argv)
@@ -57,21 +55,25 @@ main(int argc, char **argv)
 	 */
 	logsys_config_mode_set (NULL, LOGSYS_MODE_OUTPUT_STDERR | LOGSYS_MODE_THREADED);
 
+
 	log_printf(LOGSYS_LEVEL_NOTICE, "Hello, world!\n");
 	log_printf(LOGSYS_LEVEL_DEBUG, "If you see this, the logger's busted\n");
 
 	logsys_config_logfile_priority_set (NULL, LOGSYS_LEVEL_ALERT);
+	logsys_config_apply();
 
 	log_printf(LOGSYS_LEVEL_DEBUG, "If you see this, the logger's busted\n");
 	log_printf(LOGSYS_LEVEL_CRIT, "If you see this, the logger's busted\n");
 	log_printf(LOGSYS_LEVEL_ALERT, "Alert 1\n");
 
 	logsys_config_logfile_priority_set (NULL, LOGSYS_LEVEL_NOTICE);
+	logsys_config_apply();
 
 	log_printf(LOGSYS_LEVEL_CRIT, "Crit 1\n");
 	log_printf(LOGSYS_LEVEL_INFO, "If you see this, the logger's busted\n");
 
 	logsys_config_logfile_priority_set (NULL, LOGSYS_LEVEL_DEBUG);
+	logsys_config_apply();
 
 	log_printf(LOGSYS_LEVEL_DEBUG, "Debug 1\n");
 

@@ -44,6 +44,9 @@ int lcr_ifact_reference (
 	void **interface,
 	void *context);
 
+void *lcr_ifact_addr_get(hdb_handle_t iface_handle,
+			 const char* symbol_name);
+
 int lcr_ifact_release (
 	hdb_handle_t handle);
 

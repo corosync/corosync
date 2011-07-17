@@ -756,7 +756,7 @@ static int read_keyfile (
 
 	fd = open (key_location, O_RDONLY);
 	if (fd == -1) {
-		LOGSYS_STRERROR_R (error_ptr, errno, error_str, sizeof(error_str));
+		error_ptr = qb_strerror_r(errno, error_str, sizeof(error_str));
 		snprintf (error_string_response, sizeof(error_string_response),
 			"Could not open %s: %s\n",
 			 key_location, error_ptr);
@@ -768,7 +768,7 @@ static int read_keyfile (
 	close (fd);
 
 	if (res == -1) {
-		LOGSYS_STRERROR_R (error_ptr, saved_errno, error_str, sizeof(error_str));
+		error_ptr = qb_strerror_r (saved_errno, error_str, sizeof(error_str));
 		snprintf (error_string_response, sizeof(error_string_response),
 			"Could not read %s: %s\n",
 			 key_location, error_ptr);

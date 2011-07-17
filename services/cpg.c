@@ -748,9 +748,9 @@ static int notify_lib_joinlist(
 	return CS_OK;
 }
 
-static void downlist_log(int loglevel, const char *msg, struct downlist_msg* dl)
+static void downlist_log(const char *msg, struct downlist_msg* dl)
 {
-	log_printf (loglevel,
+	log_printf (LOG_DEBUG,
 		    "%s: sender %s; members(old:%d left:%d)",
 		    msg,
 		    api->totem_ifaces_print(dl->sender_nodeid),
@@ -771,7 +771,7 @@ static struct downlist_msg* downlist_master_choose (void)
 		iter = iter->next) {
 
 		cmp = list_entry(iter, struct downlist_msg, list);
-		downlist_log(LOGSYS_LEVEL_DEBUG, "comparing", cmp);
+		downlist_log("comparing", cmp);
 		if (best == NULL) {
 			best = cmp;
 			continue;
@@ -807,7 +807,7 @@ static void downlist_master_choose_and_send (void)
 		log_printf (LOGSYS_LEVEL_DEBUG, "NO chosen downlist");
 		return;
 	}
-	downlist_log(LOGSYS_LEVEL_DEBUG, "chosen downlist", stored_msg);
+	downlist_log("chosen downlist", stored_msg);
 
 	/* send events */
 	for (iter = process_info_list_head.next; iter != &process_info_list_head; ) {

@@ -185,7 +185,7 @@ int sync_v2_init (
 		NULL);
 	if (res == -1) {
 		log_printf (LOGSYS_LEVEL_ERROR,
-			"Couldn't initialize groups interface.\n");
+			"Couldn't initialize groups interface.");
 		return (-1);
 	}
 

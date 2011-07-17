@@ -204,12 +204,13 @@ struct totemnet_instance {
 	struct transport *transport;
 
         void (*totemnet_log_printf) (
-                unsigned int rec_ident,
+                int level,
+		int subsys,
                 const char *function,
                 const char *file,
                 int line,
                 const char *format,
-                ...)__attribute__((format(printf, 5, 6)));
+                ...)__attribute__((format(printf, 6, 7)));
 
         int totemnet_subsys_id;
 };
@@ -217,9 +218,8 @@ struct totemnet_instance {
 #define log_printf(level, format, args...)				\
 do {									\
 	instance->totemnet_log_printf (					\
-		LOGSYS_ENCODE_RECID(level,				\
+		level,							\
 		instance->totemnet_subsys_id,				\
-		LOGSYS_RECID_LOG),					\
 		__FUNCTION__, __FILE__, __LINE__,			\
 		(const char *)format, ##args);				\
 } while (0);

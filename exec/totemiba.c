@@ -210,14 +210,13 @@ union u {
 	void *v;
 };
 
-#define log_printf(level, format, args...)				\
-do {									\
-        instance->totemiba_log_printf (					\
-		LOGSYS_ENCODE_RECID(level,				\
-				    instance->totemiba_subsys_id,	\
-				    LOGSYS_RECID_LOG),			\
-                __FUNCTION__, __FILE__, __LINE__,			\
-		(const char *)format, ##args);				\
+#define log_printf(level, format, args...)			\
+do {								\
+        instance->totemiba_log_printf (				\
+			level,					\
+			instance->totemiba_subsys_id,		\
+			__FUNCTION__, __FILE__, __LINE__,	\
+			(const char *)format, ##args);		\
 } while (0);
 
 struct recv_buf {

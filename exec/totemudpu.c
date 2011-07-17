@@ -154,12 +154,13 @@ struct totemudpu_instance {
 	int totemudpu_subsys_id;
 
 	void (*totemudpu_log_printf) (
-		unsigned int rec_ident,
+		int level,
+		int subsys,
 		const char *function,
 		const char *file,
 		int line,
 		const char *format,
-		...)__attribute__((format(printf, 5, 6)));
+		...)__attribute__((format(printf, 6, 7)));
 
 	void *udpu_context;
 
@@ -227,15 +228,22 @@ static void totemudpu_instance_initialize (struct totemudpu_instance *instance)
 	list_init (&instance->member_list);
 }
 
-#define log_printf(level, format, args...)				\
-do {									\
-        instance->totemudpu_log_printf (					\
-		LOGSYS_ENCODE_RECID(level,				\
-				    instance->totemudpu_subsys_id,	\
-				    LOGSYS_RECID_LOG),			\
-                __FUNCTION__, __FILE__, __LINE__,			\
-		(const char *)format, ##args);				\
+#define log_printf(level, format, args...)		\
+do {							\
+        instance->totemudpu_log_printf (		\
+		level, instance->totemudpu_subsys_id,	\
+                __FUNCTION__, __FILE__, __LINE__,	\
+		(const char *)format, ##args);		\
 } while (0);
+#define LOGSYS_PERROR(err_num, level, fmt, args...)						\
+do {												\
+	char _error_str[LOGSYS_MAX_PERROR_MSG_LEN];						\
+	const char *_error_ptr = qb_strerror_r(err_num, _error_str, sizeof(_error_str));	\
+        instance->totemudpu_log_printf (							\
+		level, instance->totemudpu_subsys_id,						\
+                __FUNCTION__, __FILE__, __LINE__,						\
+		fmt ": %s (%d)\n", ##args, _error_ptr, err_num);				\
+	} while(0)
 
 static int authenticate_and_decrypt_sober (
 	struct totemudpu_instance *instance,

@@ -36,6 +36,7 @@
 
 #include <stdio.h>
 #include <syslog.h>
+#include <assert.h>
 
 #include <corosync/engine/logsys.h>
 

@@ -49,7 +49,10 @@
 #include <ctype.h>
 #include <poll.h>
 #include <signal.h>
-#include <syslog.h>
+
+#include <qb/qbdefs.h>
+#include <qb/qbloop.h>
+#include <qb/qblog.h>
 
 #include <qb/qbdefs.h>
 #include <qb/qbloop.h>
@@ -200,7 +203,7 @@ static int32_t _cs_ip_to_hostname(char* ip, char* name_out)
 	rc = getnameinfo((struct sockaddr*)&sa, sizeof(sa),
 			name_out, CS_MAX_NAME_LENGTH, NULL, 0, 0);
 	if (rc != 0) {
-		syslog (LOG_ERR, "error looking up %s : %s\n", ip, gai_strerror(rc));
+		qb_log(LOG_ERR, 0, "error looking up %s : %s", ip, gai_strerror(rc));
 		return -EINVAL;
 	}
 	return 0;
@@ -339,7 +342,7 @@ _cs_confdb_find_object (confdb_handle_t handle,
 	while (obj_name_pt != NULL) {
 		res = confdb_object_find_start(handle, parent_object_handle);
 		if (res != CS_OK) {
-			syslog (LOG_ERR, "Could not start object_find %d\n", res);
+			qb_log(LOG_ERR, 0, "Could not start object_find %d", res);
 			exit (EXIT_FAILURE);
 		}
 
@@ -399,7 +402,7 @@ _cs_quorum_init(void)
 
 	rc = quorum_initialize (&quorum_handle, &quorum_callbacks);
 	if (rc != CS_OK) {
-		syslog(LOG_ERR, "Could not connect to corosync(quorum)");
+		qb_log(LOG_ERR, "Could not connect to corosync(quorum)");
 		return;
 	}
 	quorum_fd_get(quorum_handle, &fd);
@@ -449,7 +452,7 @@ _cs_dbus_node_quorum_event(char *nodename, uint32_t nodeid, const char *state)
 	int ret = -1;
 
 	if (err_set) {
-		syslog (LOG_ERR, "%s\n", _err);
+		qb_log(LOG_ERR, "%s", _err);
 		err_set = 0;
 	}
 
@@ -469,7 +472,7 @@ _cs_dbus_node_quorum_event(char *nodename, uint32_t nodeid, const char *state)
 	if (!(msg = dbus_message_new_signal(DBUS_CS_PATH,
 					    DBUS_CS_IFACE,
 					    "QuorumStateChange"))) {
-		syslog (LOG_ERR, "%s(%d) error\n", __func__, __LINE__);
+		qb_log(LOG_ERR, "error creating dbus signal");
 		goto out_unlock;
 	}
 
@@ -478,7 +481,7 @@ _cs_dbus_node_quorum_event(char *nodename, uint32_t nodeid, const char *state)
 			DBUS_TYPE_UINT32, &nodeid,
 			DBUS_TYPE_STRING, &state,
 			DBUS_TYPE_INVALID)) {
-		syslog (LOG_ERR, "%s(%d) error\n", __func__, __LINE__);
+		qb_log(LOG_ERR, "error adding args to quorum signal");
 		goto out_unlock;
 	}
 
@@ -486,11 +489,9 @@ _cs_dbus_node_quorum_event(char *nodename, uint32_t nodeid, const char *state)
 	ret = 0;
 
 out_unlock:
-	if (ret == -1) {
-		syslog (LOG_ERR, "%s() error\n", __func__);
-	}
-	if (msg)
+	if (msg) {
 		dbus_message_unref(msg);
+	}
 out_free:
 	return;
 }
@@ -502,7 +503,7 @@ _cs_dbus_node_membership_event(char *nodename, uint32_t nodeid, char *state, cha
 	int ret = -1;
 
 	if (err_set) {
-		syslog (LOG_ERR, "%s\n", _err);
+		qb_log(LOG_ERR, "%s", _err);
 		err_set = 0;
 	}
 
@@ -522,7 +523,7 @@ _cs_dbus_node_membership_event(char *nodename, uint32_t nodeid, char *state, cha
 	if (!(msg = dbus_message_new_signal(DBUS_CS_PATH,
 					    DBUS_CS_IFACE,
 					    "NodeStateChange"))) {
-		syslog (LOG_ERR, "%s(%d) error\n", __func__, __LINE__);
+		qb_log(LOG_ERR, "error creating NodeStateChange signal");
 		goto out_unlock;
 	}
 
@@ -532,7 +533,7 @@ _cs_dbus_node_membership_event(char *nodename, uint32_t nodeid, char *state, cha
 			DBUS_TYPE_STRING, &ip,
 			DBUS_TYPE_STRING, &state,
 			DBUS_TYPE_INVALID)) {
-		syslog (LOG_ERR, "%s(%d) error\n", __func__, __LINE__);
+		qb_log(LOG_ERR, "error adding args to NodeStateChange signal");
 		goto out_unlock;
 	}
 
@@ -540,11 +541,9 @@ _cs_dbus_node_membership_event(char *nodename, uint32_t nodeid, char *state, cha
 	ret = 0;
 
 out_unlock:
-	if (ret == -1) {
-		syslog (LOG_ERR, "%s() error\n", __func__);
-	}
-	if (msg)
+	if (msg) {
 		dbus_message_unref(msg);
+	}
 out_free:
 	return;
 }
@@ -556,7 +555,7 @@ _cs_dbus_application_connection_event(char *nodename, uint32_t nodeid, char *app
 	int ret = -1;
 
 	if (err_set) {
-		syslog (LOG_ERR, "%s\n", _err);
+		qb_log(LOG_ERR, "%s", _err);
 		err_set = 0;
 	}
 
@@ -576,7 +575,7 @@ _cs_dbus_application_connection_event(char *nodename, uint32_t nodeid, char *app
 	if (!(msg = dbus_message_new_signal(DBUS_CS_PATH,
 				DBUS_CS_IFACE,
 				"ConnectionStateChange"))) {
-		syslog (LOG_ERR, "%s(%d) error\n", __func__, __LINE__);
+		qb_log(LOG_ERR, "error creating ConnectionStateChange signal");
 		goto out_unlock;
 	}
 
@@ -586,7 +585,7 @@ _cs_dbus_application_connection_event(char *nodename, uint32_t nodeid, char *app
 			DBUS_TYPE_STRING, &app_name,
 			DBUS_TYPE_STRING, &state,
 			DBUS_TYPE_INVALID)) {
-		syslog (LOG_ERR, "%s(%d) error\n", __func__, __LINE__);
+		qb_log(LOG_ERR, "error adding args to ConnectionStateChange signal");
 		goto out_unlock;
 	}
 
@@ -594,8 +593,9 @@ _cs_dbus_application_connection_event(char *nodename, uint32_t nodeid, char *app
 	ret = 0;
 
 out_unlock:
-	if (msg)
+	if (msg) {
 		dbus_message_unref(msg);
+	}
 out_free:
 	return;
 }
@@ -663,7 +663,7 @@ static netsnmp_session *snmp_init (const char *target)
 		NULL, NULL);
 
 	if (session == NULL) {
-		syslog(LOG_ERR, "Could not create snmp transport");
+		qb_log(LOG_ERR, 0, "Could not create snmp transport");
 	}
 	return (session);
 }
@@ -694,13 +694,13 @@ _cs_snmp_node_membership_event(char *nodename, uint32_t nodeid, char *state, cha
 	netsnmp_pdu *trap_pdu;
 	netsnmp_session *session = snmp_init (snmp_manager);
 	if (session == NULL) {
-		syslog (LOG_NOTICE, "Failed to init SNMP session.\n");
+		qb_log(LOG_NOTICE, "Failed to init SNMP session.");
 		return ;
 	}
 
 	trap_pdu = snmp_pdu_create (SNMP_MSG_TRAP2);
 	if (!trap_pdu) {
-		syslog (LOG_NOTICE, "Failed to create SNMP notification.\n");
+		qb_log(LOG_NOTICE, "Failed to create SNMP notification.");
 		return ;
 	}
 
@@ -719,7 +719,7 @@ _cs_snmp_node_membership_event(char *nodename, uint32_t nodeid, char *state, cha
 	ret = snmp_send (session, trap_pdu);
 	if (ret == 0) {
 		/* error */
-		syslog (LOG_ERR, "Could not send SNMP trap");
+		qb_log(LOG_ERR, "Could not send SNMP trap");
 		snmp_free_pdu (trap_pdu);
 	}
 }
@@ -737,13 +737,13 @@ _cs_snmp_node_quorum_event(char *nodename, uint32_t nodeid,
 	netsnmp_pdu *trap_pdu;
 	netsnmp_session *session = snmp_init (snmp_manager);
 	if (session == NULL) {
-		syslog (LOG_NOTICE, "Failed to init SNMP session.\n");
+		qb_log(LOG_NOTICE, "Failed to init SNMP session.");
 		return ;
 	}
 
 	trap_pdu = snmp_pdu_create (SNMP_MSG_TRAP2);
 	if (!trap_pdu) {
-		syslog (LOG_NOTICE, "Failed to create SNMP notification.\n");
+		qb_log(LOG_NOTICE, "Failed to create SNMP notification.");
 		return ;
 	}
 
@@ -761,7 +761,7 @@ _cs_snmp_node_quorum_event(char *nodename, uint32_t nodeid,
 	ret = snmp_send (session, trap_pdu);
 	if (ret == 0) {
 		/* error */
-		syslog (LOG_ERR, "Could not send SNMP trap");
+		qb_log(LOG_ERR, "Could not send SNMP trap");
 		snmp_free_pdu (trap_pdu);
 	}
 }
@@ -787,16 +787,16 @@ _cs_snmp_init(void)
 static void
 _cs_syslog_node_membership_event(char *nodename, uint32_t nodeid, char *state, char* ip)
 {
-	syslog (LOG_NOTICE, "%s[%d] ip:%s %s\n", nodename, nodeid, ip, state);
+	qb_log(LOG_NOTICE, "%s[%d] ip:%s %s", nodename, nodeid, ip, state);
 }
 
 static void
 _cs_syslog_node_quorum_event(char *nodename, uint32_t nodeid, const char *state)
 {
 	if (strcmp(state, "quorate") == 0) {
-		syslog (LOG_NOTICE, "%s[%d] is now %s\n", nodename, nodeid, state);
+		qb_log(LOG_NOTICE, "%s[%d] is now %s", nodename, nodeid, state);
 	} else {
-		syslog (LOG_NOTICE, "%s[%d] has lost quorum\n", nodename, nodeid);
+		qb_log(LOG_NOTICE, "%s[%d] has lost quorum", nodename, nodeid);
 	}
 }
 
@@ -804,9 +804,9 @@ static void
 _cs_syslog_application_connection_event(char *nodename, uint32_t nodeid, char* app_name, const char *state)
 {
 	if (strcmp(state, "connected") == 0) {
-		syslog (LOG_ERR, "%s[%d] %s is now %s to corosync\n", nodename, nodeid, app_name, state);
+		qb_log(LOG_NOTICE, "%s[%d] %s is now %s to corosync", nodename, nodeid, app_name, state);
 	} else {
-		syslog (LOG_ERR, "%s[%d] %s is now %s from corosync\n", nodename, nodeid, app_name, state);
+		qb_log(LOG_NOTICE, "%s[%d] %s is now %s from corosync", nodename, nodeid, app_name, state);
 	}
 }
 
@@ -897,7 +897,7 @@ _cs_confdb_init(void)
 
 	rc = confdb_initialize (&confdb_handle, &callbacks);
 	if (rc != CS_OK) {
-		syslog (LOG_ERR, "Failed to initialize the objdb API. Error %d\n", rc);
+		qb_log(LOG_ERR, "Failed to initialize the objdb API. Error %d", rc);
 		exit (EXIT_FAILURE);
 	}
 	confdb_fd_get(confdb_handle, &conf_fd);
@@ -908,30 +908,30 @@ _cs_confdb_init(void)
 	rc = _cs_confdb_find_object (confdb_handle, "runtime.connections.",
 		&obj_handle);
 	if (rc != CS_OK) {
-		syslog (LOG_ERR,
-			"Failed to find the connections object. Error %d\n", rc);
+		qb_log(LOG_ERR,
+			"Failed to find the connections object. Error %d", rc);
 		exit (EXIT_FAILURE);
 	}
 
 	rc = confdb_track_changes (confdb_handle, obj_handle,
 		CONFDB_TRACK_DEPTH_ONE);
 	if (rc != CS_OK) {
-		syslog (LOG_ERR,
-			"Failed to track the connections object. Error %d\n", rc);
+		qb_log(LOG_ERR,
+			"Failed to track the connections object. Error %d", rc);
 		exit (EXIT_FAILURE);
 	}
 	rc = _cs_confdb_find_object(confdb_handle,
 		"runtime.totem.pg.mrp.srp.members.", &obj_handle);
 	if (rc != CS_OK) {
-		syslog (LOG_ERR, "Failed to find the object. Error %d\n", rc);
+		qb_log(LOG_ERR, "Failed to find the object. Error %d", rc);
 		exit (EXIT_FAILURE);
 	}
 
 	rc = confdb_track_changes(confdb_handle,
 		obj_handle, CONFDB_TRACK_DEPTH_RECURSIVE);
 	if (rc != CS_OK) {
-		syslog (LOG_ERR,
-			"Failed to track the object. Error %d\n", rc);
+		qb_log(LOG_ERR,
+			"Failed to track the object. Error %d", rc);
 		exit (EXIT_FAILURE);
 	}
 }
@@ -946,33 +946,33 @@ _cs_confdb_finalize(void)
 static void
 _cs_check_config(void)
 {
-	if (conf[CS_NTF_LOG] == 0 &&
-		conf[CS_NTF_STDOUT] == 0 &&
-		conf[CS_NTF_SNMP] == 0 &&
-		conf[CS_NTF_DBUS] == 0) {
-		syslog(LOG_ERR, "no event type enabled, see corosync-notifyd -h, exiting.");
+	if (conf[CS_NTF_LOG] == QB_FALSE &&
+		conf[CS_NTF_STDOUT] == QB_FALSE &&
+		conf[CS_NTF_SNMP] == QB_FALSE &&
+		conf[CS_NTF_DBUS] == QB_FALSE) {
+		qb_log(LOG_ERR, "no event type enabled, see corosync-notifyd -h, exiting.");
 		exit(EXIT_FAILURE);
 	}
 
 #ifndef ENABLE_SNMP
 	if (conf[CS_NTF_SNMP]) {
-		syslog(LOG_ERR, "Not compiled with SNMP support enabled, exiting.");
+		qb_log(LOG_ERR, "Not compiled with SNMP support enabled, exiting.");
 		exit(EXIT_FAILURE);
 	}
 #endif
 #ifndef HAVE_DBUS
 	if (conf[CS_NTF_DBUS]) {
-		syslog(LOG_ERR, "Not compiled with DBus support enabled, exiting.");
+		qb_log(LOG_ERR, "Not compiled with DBus support enabled, exiting.");
 		exit(EXIT_FAILURE);
 	}
 #endif
 
 	if (conf[CS_NTF_STDOUT] && !conf[CS_NTF_FG]) {
-		syslog(LOG_ERR, "configured to print to stdout and run in the background, exiting");
+		qb_log(LOG_ERR, "configured to print to stdout and run in the background, exiting");
 		exit(EXIT_FAILURE);
 	}
 	if (conf[CS_NTF_SNMP] && conf[CS_NTF_DBUS]) {
-		syslog(LOG_ERR, "configured to send snmp traps and dbus signals - are you sure?.");
+		qb_log(LOG_ERR, "configured to send snmp traps and dbus signals - are you sure?.");
 	}
 }
 
@@ -994,35 +994,35 @@ main(int argc, char *argv[])
 {
 	int ch;
 
-	conf[CS_NTF_FG] = 0;
-	conf[CS_NTF_LOG] = 0;
-	conf[CS_NTF_STDOUT] = 0;
-	conf[CS_NTF_SNMP] = 0;
-	conf[CS_NTF_DBUS] = 0;
+	conf[CS_NTF_FG] = QB_FALSE;
+	conf[CS_NTF_LOG] = QB_FALSE;
+	conf[CS_NTF_STDOUT] = QB_FALSE;
+	conf[CS_NTF_SNMP] = QB_FALSE;
+	conf[CS_NTF_DBUS] = QB_FALSE;
 
 	while ((ch = getopt (argc, argv, "floshdm:")) != EOF) {
 		switch (ch) {
 			case 'f':
-				conf[CS_NTF_FG] = 1;
+				conf[CS_NTF_FG] = QB_TRUE;
 				break;
 			case 'l':
-				conf[CS_NTF_LOG] = 1;
+				conf[CS_NTF_LOG] = QB_TRUE;
 				break;
 			case 'm':
-				conf[CS_NTF_SNMP] = 1;
+				conf[CS_NTF_SNMP] = QB_TRUE;
 				strncpy(snmp_manager_buf, optarg, sizeof (snmp_manager_buf));
 				snmp_manager_buf[sizeof (snmp_manager_buf) - 1] = '\0';
 				snmp_manager = snmp_manager_buf;
 				break;
 			case 'o':
-				conf[CS_NTF_LOG] = 1;
-				conf[CS_NTF_STDOUT] = 1;
+				conf[CS_NTF_LOG] = QB_TRUE;
+				conf[CS_NTF_STDOUT] = QB_TRUE;
 				break;
 			case 's':
-				conf[CS_NTF_SNMP] = 1;
+				conf[CS_NTF_SNMP] = QB_TRUE;
 				break;
 			case 'd':
-				conf[CS_NTF_DBUS] = 1;
+				conf[CS_NTF_DBUS] = QB_TRUE;
 				break;
 			case 'h':
 			default:
@@ -1031,10 +1031,12 @@ main(int argc, char *argv[])
 		}
 	}
 
+	qb_log_init("notifyd", LOG_DAEMON, LOG_INFO);
+
 	if (conf[CS_NTF_STDOUT]) {
-		openlog(NULL, LOG_PID|LOG_PERROR, LOG_DAEMON);
-	} else {
-		openlog(NULL, LOG_PID, LOG_DAEMON);
+		qb_log_filter_ctl(QB_LOG_STDERR, QB_LOG_FILTER_ADD,
+			  QB_LOG_FILTER_FILE, "*", LOG_DEBUG);
+		qb_log_ctl(QB_LOG_STDERR, QB_LOG_CONF_ENABLED, conf[CS_NTF_STDOUT]);
 	}
 	_cs_check_config();
 

@@ -192,7 +192,7 @@ static int corosync_main_config_format_set (
 		if (strcmp (value, "on") == 0) {
 			if (!insert_into_buffer(new_format_buffer,
 					sizeof(new_format_buffer),
-					" %f:%l", "s]")) {
+					" %f:%l", "g]")) {
 				err = logsys_format_set(new_format_buffer);
 			} else
 			if (!insert_into_buffer(new_format_buffer,
@@ -217,7 +217,7 @@ static int corosync_main_config_format_set (
 			} else
 			if (!insert_into_buffer(new_format_buffer,
 					sizeof(new_format_buffer),
-					" %n", "s]")) {
+					" %n", "g]")) {
 				err = logsys_format_set(new_format_buffer);
 			}
 		} else
@@ -325,7 +325,7 @@ static int corosync_main_config_set (
 	 * handling requirements
 	 */
 	if (subsys != NULL) {
-		if (_logsys_subsys_create(subsys) < 0) {
+		if (_logsys_subsys_create(subsys, NULL) < 0) {
 			error_reason = "unable to create new logging subsystem";
 			goto parse_error;
 		}
@@ -559,6 +559,7 @@ static int corosync_main_config_read_logging (
 	}
 	objdb->object_find_destroy (object_find_handle);
 
+	logsys_config_apply();
 	return 0;
 
 parse_error:

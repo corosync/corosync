@@ -54,6 +54,7 @@
 #include <corosync/lcr/lcr_comp.h>
 #include <corosync/engine/objdb.h>
 #include <corosync/engine/config.h>
+#include <qb/qbutil.h>
 #define LOGSYS_UTILS_ONLY 1
 #include <corosync/engine/logsys.h>
 
@@ -363,8 +364,7 @@ static int read_config_file_into_objdb(
 	fp = fopen (filename, "r");
 	if (fp == NULL) {
 		char error_str[100];
-		const char *error_ptr;
-		LOGSYS_STRERROR_R (error_ptr, errno, error_str, sizeof(error_str));
+		const char *error_ptr = qb_strerror_r(errno, error_str, sizeof(error_str));
 		snprintf (error_reason, sizeof(error_string_response),
 			"Can't read file %s reason = (%s)\n",
 			 filename, error_ptr);

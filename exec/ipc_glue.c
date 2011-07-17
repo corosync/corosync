@@ -67,7 +67,6 @@
 LOGSYS_DECLARE_SUBSYS ("MAIN");
 
 static struct corosync_api_v1 *api = NULL;
-static int ipc_subsys_id = -1;
 static int32_t ipc_not_enough_fds_left = 0;
 static int32_t ipc_fc_is_quorate; /* boolean */
 static int32_t ipc_fc_totem_queue_level; /* percentage used */
@@ -779,22 +778,6 @@ void cs_ipcs_sync_state_changed(int32_t sync_in_process)
 	cs_ipcs_check_for_flow_control();
 }
 
-static void cs_ipcs_libqb_log_fn(const char *file_name,
-	int32_t file_line,
-	int32_t severity,
-	const char *msg)
-{
-	int32_t level = severity;
-	if (severity > LOG_DEBUG) {
-		level = LOGSYS_LEVEL_DEBUG;
-	}
-
-	_logsys_log_printf (LOGSYS_ENCODE_RECID(level,
-			ipc_subsys_id,
-			LOGSYS_RECID_LOG),
-		__func__, file_name, file_line, "%s", msg);
-}
-
 void cs_ipcs_stats_update(void)
 {
 	int32_t i;
@@ -890,15 +873,6 @@ void cs_ipcs_init(void)
 	api = apidef_get ();
 
 	qb_loop_poll_low_fds_event_set(cs_poll_handle_get(), cs_ipcs_low_fds_event);
-
-	ipc_subsys_id = _logsys_subsys_create ("IPC");
-	if (ipc_subsys_id < 0) {
-		log_printf (LOGSYS_LEVEL_ERROR,
-			"Could not initialize IPC logging subsystem\n");
-		corosync_exit_error (AIS_DONE_INIT_SERVICES);
-	}
-
-	qb_util_set_log_function (cs_ipcs_libqb_log_fn);
 
 	api->quorum_register_callback (cs_ipcs_fc_quorum_changed, NULL);
 	totempg_queue_level_register_callback (cs_ipcs_totem_queue_level_changed);

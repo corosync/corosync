@@ -456,6 +456,30 @@ found:
 
 static unsigned int lcr_initialized = 0;
 
+void *lcr_ifact_addr_get(hdb_handle_t iface_handle,
+			 const char* symbol_name)
+{
+	struct lcr_iface_instance *iface_instance;
+	struct lcr_component_instance *instance;
+	void *ptr;
+
+	hdb_handle_get (&lcr_iface_instance_database,
+		iface_handle, (void *)&iface_instance);
+
+	hdb_handle_get (&lcr_component_instance_database,
+		iface_instance->component_handle, (void *)&instance);
+
+	ptr = dlsym(instance->dl_handle, symbol_name);
+
+	hdb_handle_put(&lcr_component_instance_database,
+		iface_instance->component_handle);
+
+	hdb_handle_put (&lcr_iface_instance_database,
+		iface_handle);
+	return ptr;
+}
+
+
 int lcr_ifact_reference (
 	hdb_handle_t *iface_handle,
 	const char *iface_name,

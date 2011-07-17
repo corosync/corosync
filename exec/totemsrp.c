@@ -438,11 +438,12 @@ struct totemsrp_instance {
 	int totemsrp_subsys_id;
 
 	void (*totemsrp_log_printf) (
-		unsigned int rec_ident,
+		int level,
+		int sybsys,
 		const char *function,
 		const char *file,
 		int line,
-		const char *format, ...)__attribute__((format(printf, 5, 6)));;
+		const char *format, ...)__attribute__((format(printf, 6, 7)));;
 
 	enum memb_state memb_state;
 
@@ -639,15 +640,22 @@ struct message_handlers totemsrp_message_handlers = {
 
 static const char *rundir = NULL;
 
-#define log_printf(level, format, args...)				\
-do {									\
-	instance->totemsrp_log_printf (					\
-		LOGSYS_ENCODE_RECID(level,				\
-				   instance->totemsrp_subsys_id,	\
-				   LOGSYS_RECID_LOG),			\
-		__FUNCTION__, __FILE__, __LINE__,			\
-		format, ##args);					\
+#define log_printf(level, format, args...)		\
+do {							\
+	instance->totemsrp_log_printf (			\
+		level, instance->totemsrp_subsys_id,	\
+		__FUNCTION__, __FILE__, __LINE__,	\
+		format, ##args);			\
 } while (0);
+#define LOGSYS_PERROR(err_num, level, fmt, args...)						\
+do {												\
+	char _error_str[LOGSYS_MAX_PERROR_MSG_LEN];						\
+	const char *_error_ptr = qb_strerror_r(err_num, _error_str, sizeof(_error_str));	\
+        instance->totemsrp_log_printf (								\
+		level, instance->totemsrp_subsys_id,						\
+                __FUNCTION__, __FILE__, __LINE__,						\
+		fmt ": %s (%d)\n", ##args, _error_ptr, err_num);				\
+	} while(0)
 
 static void totemsrp_instance_initialize (struct totemsrp_instance *instance)
 {
