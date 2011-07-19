@@ -138,7 +138,7 @@ fi
 %{_sysconfdir}/dbus-1/system.d/corosync-signals.conf
 %endif
 %if %{with snmp}
-%(_datadir)/snmp/mibs/COROSYNC-MIB.txt
+%{_datadir}/snmp/mibs/COROSYNC-MIB.txt
 %endif
 %{_initrddir}/corosync
 %{_initrddir}/corosync-notifyd
