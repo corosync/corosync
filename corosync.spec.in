@@ -18,8 +18,8 @@ Version: @version@
 Release: 1%{?numcomm:.%{numcomm}}%{?alphatag:.%{alphatag}}%{?dirty:.%{dirty}}%{?dist}
 License: BSD
 Group: System Environment/Base
-URL: http://www.openais.org
-Source0: http://developer.osdl.org/dev/openais/downloads/%{name}-%{version}/%{name}-%{version}%{?numcomm:.%{numcomm}}%{?alphatag:-%{alphatag}}%{?dirty:-%{dirty}}.tar.gz
+URL: http://ftp.corosync.org
+Source0: ftp://ftp:user@ftp.corosync.org/downloads/%{name}-%{version}/%{name}-%{version}%{?numcomm:.%{numcomm}}%{?alphatag:-%{alphatag}}%{?dirty:-%{dirty}}.tar.gz
 
 # Runtime bits
 Requires: corosynclib = %{version}-%{release}
