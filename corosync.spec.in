@@ -92,6 +92,11 @@ rm -rf %{buildroot}
 
 make install DESTDIR=%{buildroot}
 
+%if %{with dbus}
+mkdir -p -m 0700 %{buildroot}/%{_sysconfdir}/dbus-1/system.d
+install -m 644 %{_builddir}/%{name}-%{version}/conf/corosync-signals.conf %{buildroot}/%{_sysconfdir}/dbus-1/system.d/corosync-signals.conf
+%endif
+
 ## tree fixup
 # drop static libs
 rm -f %{buildroot}%{_libdir}/*.a
