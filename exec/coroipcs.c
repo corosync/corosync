@@ -704,6 +704,7 @@ static void *pthread_ipc_consumer (void *conn)
 		 * parameter, such as an invalid size
 		 */
 		if (send_ok == -1) {
+			api->stats_increment_value (conn_info->stats_handle, "invalid_request");
 			coroipc_response_header.size = sizeof (coroipc_response_header_t);
 			coroipc_response_header.id = 0;
 			coroipc_response_header.error = CS_ERR_INVALID_PARAM;
@@ -720,6 +721,7 @@ static void *pthread_ipc_consumer (void *conn)
 			/*
 			 * Overload, tell library to retry
 			 */
+			api->stats_increment_value (conn_info->stats_handle, "overload");
 			coroipc_response_header.size = sizeof (coroipc_response_header_t);
 			coroipc_response_header.id = 0;
 			coroipc_response_header.error = CS_ERR_TRY_AGAIN;

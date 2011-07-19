@@ -278,6 +278,8 @@ typedef struct {
 typedef struct {
 	totem_stats_header_t hdr;
 	totemmrp_stats_t *mrp;
+	uint32_t msg_reserved;
+	uint32_t msg_queue_avail;
 } totempg_stats_t;
 
 #endif /* TOTEM_H_DEFINED */

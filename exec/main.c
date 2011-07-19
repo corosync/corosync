@@ -601,6 +601,13 @@ static void corosync_totem_stats_updater (void *data)
 
 	stats = api->totem_get_stats();
 
+	objdb->object_key_replace (stats->hdr.handle,
+		"msg_reserved", strlen("msg_reserved"),
+		&stats->msg_reserved, sizeof (stats->msg_reserved));
+	objdb->object_key_replace (stats->hdr.handle,
+		"msg_queue_avail", strlen("msg_queue_avail"),
+		&stats->msg_queue_avail, sizeof (stats->msg_queue_avail));
+
 	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
 		"orf_token_tx", strlen("orf_token_tx"),
 		&stats->mrp->srp->orf_token_tx, sizeof (stats->mrp->srp->orf_token_tx));
@@ -752,6 +759,13 @@ static void corosync_totem_stats_init (void)
 		objdb->object_create (stats->mrp->hdr.handle,
 			&stats->mrp->srp->hdr.handle,
 			"srp", strlen ("srp"));
+
+		objdb->object_key_create_typed (stats->hdr.handle,
+			"msg_reserved", &stats->msg_reserved,
+			sizeof (stats->msg_reserved), OBJDB_VALUETYPE_UINT32);
+		objdb->object_key_create_typed (stats->hdr.handle,
+			"msg_queue_avail", &stats->msg_queue_avail,
+			sizeof (stats->msg_queue_avail), OBJDB_VALUETYPE_UINT32);
 
 		/* Members object */
 		objdb->object_create (stats->mrp->srp->hdr.handle,
@@ -1197,6 +1211,16 @@ static hdb_handle_t corosync_stats_create_connection (const char* name,
 
 	objdb->object_key_create_typed (object_handle,
 		"queue_size",
+		&zero_64, sizeof (zero_64),
+		OBJDB_VALUETYPE_UINT64);
+
+	objdb->object_key_create_typed (object_handle,
+		"invalid_request",
+		&zero_64, sizeof (zero_64),
+		OBJDB_VALUETYPE_UINT64);
+
+	objdb->object_key_create_typed (object_handle,
+		"overload",
 		&zero_64, sizeof (zero_64),
 		OBJDB_VALUETYPE_UINT64);
 
