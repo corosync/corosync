@@ -956,6 +956,7 @@ static int msg_count_send_ok (
 	int avail = 0;
 
 	avail = totemmrp_avail ();
+	totempg_stats.msg_queue_avail = avail;
 
 	return ((avail - totempg_reserved) > msg_count);
 }
@@ -980,6 +981,7 @@ static int send_reserve (
 
 	msg_count = (msg_size / (totempg_totem_config->net_mtu - sizeof (struct totempg_mcast) - 16)) + 1;
 	totempg_reserved += msg_count;
+	totempg_stats.msg_reserved = totempg_reserved;
 
 	return (msg_count);
 }
@@ -988,6 +990,7 @@ static void send_release (
 	int msg_count)
 {
 	totempg_reserved -= msg_count;
+	totempg_stats.msg_reserved = totempg_reserved;
 }
 
 int totempg_callback_token_create (
