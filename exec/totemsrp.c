@@ -508,7 +508,7 @@ struct totemsrp_instance {
 	
 	void * token_recv_event_handle;
 	void * token_sent_event_handle;
-	char commit_token_storage[9000];
+	char commit_token_storage[40000];
 };
 
 struct message_handlers {
@@ -2976,7 +2976,7 @@ static void memb_state_commit_token_create (
 
 static void memb_join_message_send (struct totemsrp_instance *instance)
 {
-	char memb_join_data[10000];
+	char memb_join_data[40000];
 	struct memb_join *memb_join = (struct memb_join *)memb_join_data;
 	char *addr;
 	unsigned int addr_idx;
@@ -3028,7 +3028,7 @@ static void memb_join_message_send (struct totemsrp_instance *instance)
 
 static void memb_leave_message_send (struct totemsrp_instance *instance)
 {
-	char memb_join_data[10000];
+	char memb_join_data[40000];
 	struct memb_join *memb_join = (struct memb_join *)memb_join_data;
 	char *addr;
 	unsigned int addr_idx;
