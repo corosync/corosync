@@ -184,6 +184,8 @@ static int32_t corosync_not_enough_fds_left = 0;
 
 static void serialize_unlock (void);
 
+static void serialize_lock (void);
+
 hdb_handle_t corosync_poll_handle_get (void)
 {
 	return (corosync_poll_handle);
@@ -211,14 +213,7 @@ static void unlink_all_completed (void)
 	serialize_unlock ();
 	api->timer_delete (corosync_stats_timer_handle);
 	poll_stop (corosync_poll_handle);
-	totempg_finalize ();
-
-	/*
-	 * Remove pid lock file
-	 */
-	unlink (corosync_lock_file);
-
-	corosync_exit_error (AIS_DONE_EXIT);
+	serialize_lock ();
 }
 
 void corosync_shutdown_request (void)
@@ -1887,6 +1882,17 @@ int main (int argc, char **argv, char **envp)
 	 */
 	poll_run (corosync_poll_handle);
 
+	/*
+	 * Exit was requested
+	 */
+	totempg_finalize ();
+
+	/*
+	 * Remove pid lock file
+	 */
+	unlink (corosync_lock_file);
+
+	corosync_exit_error (AIS_DONE_EXIT);
+
 	return EXIT_SUCCESS;
 }
-
