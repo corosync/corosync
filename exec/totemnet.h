@@ -96,6 +96,8 @@ extern int totemnet_mcast_noflush_send (
 	const void *msg,
 	unsigned int msg_len);
 
+extern int totemnet_recv_flush (void *net_context);
+
 extern int totemnet_send_flush (void *net_context);
 
 extern int totemnet_iface_check (void *net_context);

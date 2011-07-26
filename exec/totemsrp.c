@@ -3444,6 +3444,8 @@ static int message_handler_orf_token (
 	}
 #endif
 
+	totemrrp_recv_flush (instance->totemrrp_context);
+
 	/*
 	 * Determine if we should hold (in reality drop) the token
 	 */
