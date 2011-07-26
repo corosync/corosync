@@ -1331,6 +1331,16 @@ int totemiba_processor_count_set (
 	return (res);
 }
 
+int totemiba_recv_flush (void *iba_context)
+{
+	struct totemiba_instance *instance = (struct totemiba_instance *)iba_context;
+	int res = 0;
+
+	instance = NULL;
+
+	return (res);
+}
+
 int totemiba_send_flush (void *iba_context)
 {
 	struct totemiba_instance *instance = (struct totemiba_instance *)iba_context;
