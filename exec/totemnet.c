@@ -87,6 +87,8 @@ struct transport {
 		const void *msg,
 		unsigned int msg_len);
 
+	int (*recv_flush) (void *transport_context);
+
 	int (*send_flush) (void *transport_context);
 
 	int (*iface_check) (void *transport_context);
@@ -129,6 +131,7 @@ struct transport transport_entries[] = {
 		.token_send = totemudp_token_send,
 		.mcast_flush_send = totemudp_mcast_flush_send,
 		.mcast_noflush_send = totemudp_mcast_noflush_send,
+		.recv_flush = totemudp_recv_flush,
 		.send_flush = totemudp_send_flush,
 		.iface_check = totemudp_iface_check,
 		.finalize = totemudp_finalize,
@@ -146,6 +149,7 @@ struct transport transport_entries[] = {
 		.token_send = totemudpu_token_send,
 		.mcast_flush_send = totemudpu_mcast_flush_send,
 		.mcast_noflush_send = totemudpu_mcast_noflush_send,
+		.recv_flush = totemudpu_recv_flush,
 		.send_flush = totemudpu_send_flush,
 		.iface_check = totemudpu_iface_check,
 		.finalize = totemudpu_finalize,
@@ -166,6 +170,7 @@ struct transport transport_entries[] = {
 		.token_send = totemiba_token_send,
 		.mcast_flush_send = totemiba_mcast_flush_send,
 		.mcast_noflush_send = totemiba_mcast_noflush_send,
+		.recv_flush = totemiba_recv_flush,
 		.send_flush = totemiba_send_flush,
 		.iface_check = totemiba_iface_check,
 		.finalize = totemiba_finalize,
@@ -299,6 +304,16 @@ int totemnet_processor_count_set (
 	int res = 0;
 
 	res = instance->transport->processor_count_set (instance->transport_context, processor_count);
+	return (res);
+}
+
+int totemnet_recv_flush (void *net_context)
+{
+	struct totemnet_instance *instance = (struct totemnet_instance *)net_context;
+	int res = 0;
+
+	res = instance->transport->recv_flush (instance->transport_context);
+
 	return (res);
 }
 

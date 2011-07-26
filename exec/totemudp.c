@@ -1173,7 +1173,11 @@ static int net_deliver_fn (
 	unsigned char *msg_offset;
 	unsigned int size_delv;
 
-	iovec = &instance->totemudp_iov_recv;
+	if (instance->flushing == 1) {
+		iovec = &instance->totemudp_iov_recv_flush;
+	} else {
+		iovec = &instance->totemudp_iov_recv;
+	}
 
 	/*
 	 * Receive datagram
@@ -1845,6 +1849,30 @@ int totemudp_processor_count_set (
 			timer_function_netif_check_timeout,
 			&instance->timer_netif_check_timeout);
 	}
+
+	return (res);
+}
+
+int totemudp_recv_flush (void *udp_context)
+{
+	struct totemudp_instance *instance = (struct totemudp_instance *)udp_context;
+	struct pollfd ufd;
+	int nfds;
+	int res = 0;
+
+	instance->flushing = 1;
+
+	do {
+		ufd.fd = instance->totemudp_sockets.mcast_recv;
+		ufd.events = POLLIN;
+		nfds = poll (&ufd, 1, 0);
+		if (nfds == 1 && ufd.revents & POLLIN) {
+		net_deliver_fn (0, instance->totemudp_sockets.mcast_recv,
+			ufd.revents, instance);
+		}
+	} while (nfds == 1);
+
+	instance->flushing = 0;
 
 	return (res);
 }
