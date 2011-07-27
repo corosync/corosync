@@ -86,6 +86,15 @@ struct ipc_instance {
 	pthread_mutex_t mutex;
 };
 
+struct ipc_path_data {
+	mar_req_setup_t req_setup;
+	mar_res_setup_t res_setup;
+	char control_map_path[PATH_MAX];
+	char request_map_path[PATH_MAX];
+	char response_map_path[PATH_MAX];
+	char dispatch_map_path[PATH_MAX];
+};
+
 void ipc_hdb_destructor (void *context);
 
 DECLARE_HDB_DATABASE(ipc_hdb,ipc_hdb_destructor);
@@ -581,12 +590,7 @@ coroipcc_service_connect (
 	union semun semun;
 #endif
 	int sys_res;
-	mar_req_setup_t req_setup;
-	mar_res_setup_t res_setup;
-	char control_map_path[PATH_MAX];
-	char request_map_path[PATH_MAX];
-	char response_map_path[PATH_MAX];
-	char dispatch_map_path[PATH_MAX];
+	struct ipc_path_data *path_data;
 
 	res = hdb_error_to_cs (hdb_handle_create (&ipc_hdb,
 		sizeof (struct ipc_instance), handle));
@@ -599,8 +603,6 @@ coroipcc_service_connect (
 		return (res);
 	}
 
-	res_setup.error = CS_ERR_LIBRARY;
-
 #if defined(COROSYNC_SOLARIS)
 	request_fd = socket (PF_UNIX, SOCK_STREAM, 0);
 #else
@@ -612,6 +614,14 @@ coroipcc_service_connect (
 #ifdef SO_NOSIGPIPE
 	socket_nosigpipe (request_fd);
 #endif
+
+	path_data = malloc (sizeof(*path_data));
+	if (path_data == NULL) {
+		goto error_connect;
+	}
+	memset(path_data, 0, sizeof(*path_data));
+
+	path_data->res_setup.error = CS_ERR_LIBRARY;
 
 	memset (&address, 0, sizeof (struct sockaddr_un));
 	address.sun_family = AF_UNIX;
@@ -632,7 +642,7 @@ coroipcc_service_connect (
 	}
 
 	sys_res = memory_map (
-		control_map_path,
+		path_data->control_map_path,
 		"control_buffer-XXXXXX",
 		(void *)&ipc_instance->control_buffer,
 		8192);
@@ -642,7 +652,7 @@ coroipcc_service_connect (
 	}
 
 	sys_res = memory_map (
-		request_map_path,
+		path_data->request_map_path,
 		"request_buffer-XXXXXX",
 		(void *)&ipc_instance->request_buffer,
 		request_size);
@@ -652,7 +662,7 @@ coroipcc_service_connect (
 	}
 
 	sys_res = memory_map (
-		response_map_path,
+		path_data->response_map_path,
 		"response_buffer-XXXXXX",
 		(void *)&ipc_instance->response_buffer,
 		response_size);
@@ -662,7 +672,7 @@ coroipcc_service_connect (
 	}
 
 	sys_res = circular_memory_map (
-		dispatch_map_path,
+		path_data->dispatch_map_path,
 		"dispatch_buffer-XXXXXX",
 		(void *)&ipc_instance->dispatch_buffer,
 		dispatch_size);
@@ -717,33 +727,33 @@ coroipcc_service_connect (
 	/*
 	 * Initialize IPC setup message
 	 */
-	req_setup.service = service;
-	strcpy (req_setup.control_file, control_map_path);
-	strcpy (req_setup.request_file, request_map_path);
-	strcpy (req_setup.response_file, response_map_path);
-	strcpy (req_setup.dispatch_file, dispatch_map_path);
-	req_setup.control_size = 8192;
-	req_setup.request_size = request_size;
-	req_setup.response_size = response_size;
-	req_setup.dispatch_size = dispatch_size;
+	path_data->req_setup.service = service;
+	strcpy (path_data->req_setup.control_file, path_data->control_map_path);
+	strcpy (path_data->req_setup.request_file, path_data->request_map_path);
+	strcpy (path_data->req_setup.response_file, path_data->response_map_path);
+	strcpy (path_data->req_setup.dispatch_file, path_data->dispatch_map_path);
+	path_data->req_setup.control_size = 8192;
+	path_data->req_setup.request_size = request_size;
+	path_data->req_setup.response_size = response_size;
+	path_data->req_setup.dispatch_size = dispatch_size;
 
 #if _POSIX_THREAD_PROCESS_SHARED < 1
-	req_setup.semkey = semkey;
+	path_data->req_setup.semkey = semkey;
 #endif
 
-	res = socket_send (request_fd, &req_setup, sizeof (mar_req_setup_t));
+	res = socket_send (request_fd, &path_data->req_setup, sizeof (mar_req_setup_t));
 	if (res != CS_OK) {
 		goto error_exit;
 	}
-	res = socket_recv (request_fd, &res_setup, sizeof (mar_res_setup_t));
+	res = socket_recv (request_fd, &path_data->res_setup, sizeof (mar_res_setup_t));
 	if (res != CS_OK) {
 		goto error_exit;
 	}
 
 	ipc_instance->fd = request_fd;
 
-	if (res_setup.error == CS_ERR_TRY_AGAIN) {
-		res = res_setup.error;
+	if (path_data->res_setup.error == CS_ERR_TRY_AGAIN) {
+		res = path_data->res_setup.error;
 		goto error_exit;
 	}
 
@@ -756,7 +766,9 @@ coroipcc_service_connect (
 
 	hdb_handle_put (&ipc_hdb, *handle);
 
-	return (res_setup.error);
+	res = path_data->res_setup.error;
+	free(path_data);
+	return (res);
 
 error_exit:
 #if _POSIX_THREAD_PROCESS_SHARED < 1
@@ -775,6 +787,7 @@ error_connect:
 
 	hdb_handle_destroy (&ipc_hdb, *handle);
 	hdb_handle_put (&ipc_hdb, *handle);
+	free(path_data);
 
 	return (res);
 }
