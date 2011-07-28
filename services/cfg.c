@@ -379,6 +379,7 @@ static int send_shutdown(void)
 {
 	struct req_exec_cfg_shutdown req_exec_cfg_shutdown;
 	struct iovec iovec;
+	int result;
 
 	ENTER();
 	req_exec_cfg_shutdown.header.size =
@@ -389,10 +390,10 @@ static int send_shutdown(void)
 	iovec.iov_base = (char *)&req_exec_cfg_shutdown;
 	iovec.iov_len = sizeof (struct req_exec_cfg_shutdown);
 
-	assert (api->totem_mcast (&iovec, 1, TOTEM_SAFE) == 0);
+	result = api->totem_mcast (&iovec, 1, TOTEM_SAFE);
 
 	LEAVE();
-	return 0;
+	return (result);
 }
 
 static void send_test_shutdown(void *only_conn, void *exclude_conn, int status)
@@ -426,6 +427,9 @@ static void send_test_shutdown(void *only_conn, void *exclude_conn, int status)
 
 static void check_shutdown_status(void)
 {
+	int result;
+	cs_error_t error = CS_OK;
+
 	ENTER();
 
 	/*
@@ -448,9 +452,17 @@ static void check_shutdown_status(void)
 		    shutdown_flags == CFG_SHUTDOWN_FLAG_REGARDLESS) {
 			TRACE1("shutdown confirmed");
 
+			/*
+			 * Tell other nodes we are going down
+			 */
+			result = send_shutdown();
+			if (result == -1) {
+				error = CS_ERR_TRY_AGAIN;
+			}
+
 			res_lib_cfg_tryshutdown.header.size = sizeof(struct res_lib_cfg_tryshutdown);
 			res_lib_cfg_tryshutdown.header.id = MESSAGE_RES_CFG_TRYSHUTDOWN;
-			res_lib_cfg_tryshutdown.header.error = CS_OK;
+			res_lib_cfg_tryshutdown.header.error = error;
 
 			/*
 			 * Tell originator that shutdown was confirmed
@@ -459,10 +471,6 @@ static void check_shutdown_status(void)
 						    sizeof(res_lib_cfg_tryshutdown));
 			shutdown_con = NULL;
 
-			/*
-			 * Tell other nodes we are going down
-			 */
-			send_shutdown();
 
 		}
 		else {
@@ -698,7 +706,9 @@ static void message_handler_req_lib_cfg_ringreenable (
 	const void *msg)
 {
 	struct req_exec_cfg_ringreenable req_exec_cfg_ringreenable;
+	struct res_lib_cfg_ringreenable res_lib_cfg_ringreenable;
 	struct iovec iovec;
+	int result;
 
 	ENTER();
 	req_exec_cfg_ringreenable.header.size =
@@ -711,7 +721,19 @@ static void message_handler_req_lib_cfg_ringreenable (
 	iovec.iov_base = (char *)&req_exec_cfg_ringreenable;
 	iovec.iov_len = sizeof (struct req_exec_cfg_ringreenable);
 
-	assert (api->totem_mcast (&iovec, 1, TOTEM_SAFE) == 0);
+	result = api->totem_mcast (&iovec, 1, TOTEM_SAFE);
+
+	if (result == -1) {
+		res_lib_cfg_ringreenable.header.id = MESSAGE_RES_CFG_RINGREENABLE;
+		res_lib_cfg_ringreenable.header.size = sizeof (struct res_lib_cfg_ringreenable);
+		res_lib_cfg_ringreenable.header.error = CS_ERR_TRY_AGAIN;
+		api->ipc_response_send (
+			conn,
+			&res_lib_cfg_ringreenable,
+			sizeof (struct res_lib_cfg_ringreenable));
+
+		api->ipc_refcnt_dec(conn);
+	}
 
 	LEAVE();
 }
@@ -836,7 +858,8 @@ static void message_handler_req_lib_cfg_killnode (
 	struct res_lib_cfg_killnode res_lib_cfg_killnode;
 	struct req_exec_cfg_killnode req_exec_cfg_killnode;
 	struct iovec iovec;
-	int res;
+	int result;
+	cs_error_t error = CS_OK;
 
 	ENTER();
 	req_exec_cfg_killnode.header.size =
@@ -849,11 +872,14 @@ static void message_handler_req_lib_cfg_killnode (
 	iovec.iov_base = (char *)&req_exec_cfg_killnode;
 	iovec.iov_len = sizeof (struct req_exec_cfg_killnode);
 
-	res = api->totem_mcast (&iovec, 1, TOTEM_SAFE);
+	result = api->totem_mcast (&iovec, 1, TOTEM_SAFE);
+	if (result == -1) {
+		error = CS_ERR_TRY_AGAIN;
+	}
 
 	res_lib_cfg_killnode.header.size = sizeof(struct res_lib_cfg_killnode);
 	res_lib_cfg_killnode.header.id = MESSAGE_RES_CFG_KILLNODE;
-	res_lib_cfg_killnode.header.error = CS_OK;
+	res_lib_cfg_killnode.header.error = error;
 
 	api->ipc_response_send(conn, &res_lib_cfg_killnode,
 				    sizeof(res_lib_cfg_killnode));
@@ -869,6 +895,8 @@ static void message_handler_req_lib_cfg_tryshutdown (
 	struct cfg_info *ci = (struct cfg_info *)api->ipc_private_data_get (conn);
 	const struct req_lib_cfg_tryshutdown *req_lib_cfg_tryshutdown = msg;
 	struct list_head *iter;
+	int result;
+	cs_error_t error = CS_OK;
 
 	ENTER();
 
@@ -878,11 +906,14 @@ static void message_handler_req_lib_cfg_tryshutdown (
 		/*
 		 * Tell other nodes
 		 */
-		send_shutdown();
+		result = send_shutdown();
+		if (result == -1) {
+			error = CS_ERR_TRY_AGAIN;
+		}
 
 		res_lib_cfg_tryshutdown.header.size = sizeof(struct res_lib_cfg_tryshutdown);
 		res_lib_cfg_tryshutdown.header.id = MESSAGE_RES_CFG_TRYSHUTDOWN;
-		res_lib_cfg_tryshutdown.header.error = CS_OK;
+		res_lib_cfg_tryshutdown.header.error = error;
 		api->ipc_response_send(conn, &res_lib_cfg_tryshutdown,
 					    sizeof(res_lib_cfg_tryshutdown));
 
@@ -937,9 +968,14 @@ static void message_handler_req_lib_cfg_tryshutdown (
 	if (shutdown_expected == 0) {
 		struct res_lib_cfg_tryshutdown res_lib_cfg_tryshutdown;
 
+		result = send_shutdown();
+		if (result == -1) {
+			error = CS_ERR_TRY_AGAIN;
+		}
+
 		res_lib_cfg_tryshutdown.header.size = sizeof(struct res_lib_cfg_tryshutdown);
 		res_lib_cfg_tryshutdown.header.id = MESSAGE_RES_CFG_TRYSHUTDOWN;
-		res_lib_cfg_tryshutdown.header.error = CS_OK;
+		res_lib_cfg_tryshutdown.header.error = error;
 
 		/*
 		 * Tell originator that shutdown was confirmed
@@ -947,7 +983,6 @@ static void message_handler_req_lib_cfg_tryshutdown (
 		api->ipc_response_send(conn, &res_lib_cfg_tryshutdown,
 				       sizeof(res_lib_cfg_tryshutdown));
 
-		send_shutdown();
 		LEAVE();
 		return;
 	}
@@ -1089,7 +1124,8 @@ static void message_handler_req_lib_cfg_crypto_set (
 	struct res_lib_cfg_crypto_set res_lib_cfg_crypto_set;
 	struct req_exec_cfg_crypto_set req_exec_cfg_crypto_set;
 	struct iovec iovec;
-	int ret = CS_ERR_INVALID_PARAM;
+	cs_error_t error = CS_ERR_INVALID_PARAM;
+	int result;
 
 	req_exec_cfg_crypto_set.header.size =
 		sizeof (struct req_exec_cfg_crypto_set);
@@ -1105,13 +1141,17 @@ static void message_handler_req_lib_cfg_crypto_set (
 
 		iovec.iov_base = (char *)&req_exec_cfg_crypto_set;
 		iovec.iov_len = sizeof (struct req_exec_cfg_crypto_set);
-		assert (api->totem_mcast (&iovec, 1, TOTEM_SAFE) == 0);
-		ret = CS_OK;
+		result = api->totem_mcast (&iovec, 1, TOTEM_SAFE);
+		if (result == -1) {
+			error = CS_ERR_TRY_AGAIN;
+		} else {
+			error = CS_OK;
+		}
 	}
 
 	res_lib_cfg_crypto_set.header.size = sizeof(res_lib_cfg_crypto_set);
 	res_lib_cfg_crypto_set.header.id = MESSAGE_RES_CFG_CRYPTO_SET;
-	res_lib_cfg_crypto_set.header.error = ret;
+	res_lib_cfg_crypto_set.header.error = error;
 
 	api->ipc_response_send(conn, &res_lib_cfg_crypto_set,
 		sizeof(res_lib_cfg_crypto_set));
