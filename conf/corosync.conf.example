@@ -17,11 +17,19 @@ totem {
 	interface {
                 # Rings must be consecutively numbered, starting at 0.
 		ringnumber: 0
-		# This is the *network* address of the interface to
-		# bind to. This ensures that you can use identical
-		# instances of this configuration file across all your
-		# cluster nodes, without having to modify this option.
+		# This is normally the *network* address of the
+		# interface to bind to. This ensures that you can use
+		# identical instances of this configuration file
+		# across all your cluster nodes, without having to
+		# modify this option.
 		bindnetaddr: 192.168.1.0
+		# However, if you have multiple physical network
+		# interfaces configured for the same subnet, then the
+		# network address alone is not sufficient to identify
+		# the interface Corosync should bind to. In that case,
+		# configure the *host* address of the interface
+		# instead:
+		# bindnetaddr: 192.168.1.1
 		# When selecting a multicast address, consider RFC
 		# 2365 (which, among other things, specifies that
 		# 239.255.x.x addresses are left to the discretion of
