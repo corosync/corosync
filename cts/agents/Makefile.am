@@ -58,19 +58,19 @@ endif
 noinst_HEADERS          = common_test_agent.h
 
 cpg_test_agent_SOURCES = cpg_test_agent.c common_test_agent.c
-cpg_test_agent_LDADD =  -lcpg -lcfg -lcoroipcc ../../exec/crypto.o $(LIBQB_LIBS)
+cpg_test_agent_LDADD =  -lcpg -lcfg ../../exec/crypto.o $(LIBQB_LIBS)
 cpg_test_agent_LDFLAGS =  -L../../lib -L.
 
 confdb_test_agent_SOURCES = confdb_test_agent.c common_test_agent.c
-confdb_test_agent_LDADD =  -lconfdb -lcoroipcc $(LIBQB_LIBS)
+confdb_test_agent_LDADD =  -lconfdb $(LIBQB_LIBS)
 confdb_test_agent_LDFLAGS =  -L../../lib 
 
 sam_test_agent_SOURCES = sam_test_agent.c common_test_agent.c
-sam_test_agent_LDADD =  -lsam -lquorum -lcoroipcc  -lconfdb $(LIBQB_LIBS)
+sam_test_agent_LDADD =  -lsam -lquorum -lconfdb $(LIBQB_LIBS)
 sam_test_agent_LDFLAGS =  -L../../lib 
 
 votequorum_test_agent_SOURCES = votequorum_test_agent.c common_test_agent.c
-votequorum_test_agent_LDADD =  -lvotequorum -lquorum -lcoroipcc $(LIBQB_LIBS)
+votequorum_test_agent_LDADD =  -lvotequorum -lquorum $(LIBQB_LIBS)
 votequorum_test_agent_LDFLAGS =  -L../../lib 
 
 if BUILD_DARWIN

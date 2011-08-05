@@ -164,6 +164,8 @@ static int totempg_reserved = 1;
 
 static unsigned int totempg_size_limit;
 
+static totem_queue_level_changed_fn totem_queue_level_changed = NULL;
+
 /*
  * Function and data used to log messages
  */
@@ -244,6 +246,7 @@ struct totempg_group_instance {
 	struct totempg_group *groups;
 
 	int groups_cnt;
+	int32_t q_level;
 };
 
 DECLARE_HDB_DATABASE (totempg_groups_instance_database,NULL);
@@ -1061,6 +1064,7 @@ int totempg_groups_initialize (
 	instance->confchg_fn = confchg_fn;
 	instance->groups = 0;
 	instance->groups_cnt = 0;
+	instance->q_level = QB_LOOP_MED;
 
 
 	hdb_handle_put (&totempg_groups_instance_database, *handle);
@@ -1178,6 +1182,42 @@ error_exit:
 	return (res);
 }
 
+static void check_q_level(struct totempg_group_instance *instance)
+{
+	int32_t old_level;
+	int32_t percent_used = 0;
+
+	old_level = instance->q_level;
+	percent_used = 100 - (totemmrp_avail () * 100 / 800); /*(1024*1024/1500)*/
+
+	if (percent_used > 90 && instance->q_level != TOTEM_Q_LEVEL_CRITICAL) {
+		instance->q_level = TOTEM_Q_LEVEL_CRITICAL;
+	} else if (percent_used < 30 && instance->q_level != TOTEM_Q_LEVEL_LOW) {
+		instance->q_level = TOTEM_Q_LEVEL_LOW;
+	} else if (percent_used > 40 && percent_used < 60 && instance->q_level != TOTEM_Q_LEVEL_GOOD) {
+		instance->q_level = TOTEM_Q_LEVEL_GOOD;
+	} else if (percent_used > 70 && percent_used < 80 && instance->q_level != TOTEM_Q_LEVEL_HIGH) {
+		instance->q_level = TOTEM_Q_LEVEL_HIGH;
+	}
+	if (totem_queue_level_changed && old_level != instance->q_level) {
+		totem_queue_level_changed(instance->q_level);
+	}
+
+}
+
+void totempg_check_q_level(qb_handle_t handle)
+{
+	struct totempg_group_instance *instance;
+
+	if (hdb_handle_get (&totempg_groups_instance_database, handle,
+			(void *)&instance) != 0) {
+		return;
+	}
+	check_q_level(instance);
+
+	hdb_handle_put (&totempg_groups_instance_database, handle);
+}
+
 int totempg_groups_joined_reserve (
 	hdb_handle_t handle,
 	const struct iovec *iovec,
@@ -1203,6 +1243,8 @@ int totempg_groups_joined_reserve (
 	for (i = 0; i < iov_len; i++) {
 		size += iovec[i].iov_len;
 	}
+	check_q_level(instance);
+
 	if (size >= totempg_size_limit) {
 		reserved = -1;
 		goto error_put;
@@ -1402,6 +1444,11 @@ extern void totempg_service_ready_register (
 	void (*totem_service_ready) (void))
 {
 	totemmrp_service_ready_register (totem_service_ready);
+}
+
+void totempg_queue_level_register_callback (totem_queue_level_changed_fn fn)
+{
+	totem_queue_level_changed = fn;
 }
 
 extern int totempg_member_add (

@@ -85,4 +85,42 @@ extern int cs_poll_dispatch_delete (
 		int fd);
 
 
+extern int corosync_sending_allowed (
+	unsigned int service,
+	unsigned int id,
+	const void *msg,
+	void *sending_allowed_private_data);
+
+extern void corosync_sending_allowed_release (void *sending_allowed_private_data);
+
+extern void corosync_recheck_the_q_level(void *data);
+
+extern void cs_ipcs_init(void);
+
+extern void cs_ipcs_service_init(struct corosync_service_engine *service);
+
+extern void cs_ipcs_stats_update(void);
+
+extern int32_t cs_ipcs_service_destroy(int32_t service_id);
+
+extern int32_t cs_ipcs_q_level_get(void);
+
+extern int cs_ipcs_dispatch_send(void *conn, const void *msg, size_t mlen);
+extern int cs_ipcs_dispatch_iov_send (void *conn,
+	const struct iovec *iov,
+	unsigned int iov_len);
+
+extern int cs_ipcs_response_send(void *conn, const void *msg, size_t mlen);
+extern int cs_ipcs_response_iov_send (void *conn,
+	const struct iovec *iov,
+	unsigned int iov_len);
+
+extern void cs_ipcs_sync_state_changed(int32_t sync_in_process);
+
+extern void *cs_ipcs_private_data_get(void *conn);
+
+extern void cs_ipc_refcnt_inc(void *conn);
+
+extern void cs_ipc_refcnt_dec(void *conn);
+
 #endif /* MAIN_H_DEFINED */

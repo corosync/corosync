@@ -36,6 +36,7 @@
 
 #include <inttypes.h>
 #include <corosync/corotypes.h>
+#include <qb/qbipc_common.h>
 #include <corosync/mar_gen.h>
 
 enum req_lib_evs_types {
@@ -57,14 +58,14 @@ enum res_lib_evs_types {
 };
 
 struct res_evs_deliver_callback {
-	coroipc_response_header_t header;
+	struct qb_ipc_response_header header;
 	unsigned int local_nodeid;
 	size_t msglen;
 	char msg[0];
 };
 
 struct res_evs_confchg_callback {
-	coroipc_response_header_t header;
+	struct qb_ipc_response_header header;
 	size_t member_list_entries;
 	size_t left_list_entries;
 	size_t joined_list_entries;
@@ -74,38 +75,38 @@ struct res_evs_confchg_callback {
 };
 
 struct req_lib_evs_join {
-	coroipc_response_header_t header;
+	struct qb_ipc_response_header header;
 	size_t group_entries;
 	struct evs_group groups[0];
 };
 
 struct res_lib_evs_join {
-	coroipc_response_header_t header;
+	struct qb_ipc_response_header header;
 };
 
 struct req_lib_evs_leave {
-	coroipc_response_header_t header;
+	struct qb_ipc_response_header header;
 	size_t group_entries;
 	struct evs_group groups[0];
 };
 
 struct res_lib_evs_leave {
-	coroipc_response_header_t header;
+	struct qb_ipc_response_header header;
 };
 
 struct req_lib_evs_mcast_joined {
-	coroipc_response_header_t header;
+	struct qb_ipc_response_header header;
 	evs_guarantee_t guarantee;
 	size_t msg_len;
 	char msg[0];
 };
 
 struct res_lib_evs_mcast_joined {
-	coroipc_response_header_t header;
+	struct qb_ipc_response_header header;
 };
 
 struct req_lib_evs_mcast_groups {
-	coroipc_response_header_t header;
+	struct qb_ipc_response_header header;
 	evs_guarantee_t guarantee;
 	size_t msg_len;
 	size_t group_entries;
@@ -113,12 +114,12 @@ struct req_lib_evs_mcast_groups {
 };
 
 struct res_lib_evs_mcast_groups {
-	coroipc_response_header_t header;
+	struct qb_ipc_response_header header;
 };
 
 
 struct req_exec_evs_mcast {
-	coroipc_request_header_t header;
+	struct qb_ipc_request_header header;
 	size_t group_entries;
 	size_t msg_len;
 	struct evs_group groups[0];
@@ -126,11 +127,11 @@ struct req_exec_evs_mcast {
 };
 
 struct req_lib_evs_membership_get {
-	coroipc_request_header_t header;
+	struct qb_ipc_request_header header;
 };
 
 struct res_lib_evs_membership_get {
-	coroipc_response_header_t header;
+	struct qb_ipc_response_header header;
 	unsigned int local_nodeid;
 	unsigned int member_list[PROCESSOR_COUNT_MAX];
 	size_t member_list_entries;

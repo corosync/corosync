@@ -46,16 +46,16 @@ enum res_lib_evs_types {
 };
 
 struct res_lib_pload_start {
-	coroipc_response_header_t header;
+	struct qb_ipc_response_header header;
 	unsigned int dataset[1024];
 };
 
 struct res_lib_pload_mcast {
-	coroipc_response_header_t header;
+	struct qb_ipc_response_header header;
 };
 
 struct req_lib_pload_start {
-	coroipc_request_header_t header;
+	struct qb_ipc_request_header header;
 	unsigned int msg_code;
 	unsigned int msg_size;
 	unsigned int msg_count;
@@ -63,7 +63,7 @@ struct req_lib_pload_start {
 };
 
 struct req_lib_pload_mcast {
-	coroipc_request_header_t header;
+	struct qb_ipc_request_header header;
 	unsigned int code;
 };
 

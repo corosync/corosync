@@ -92,7 +92,7 @@ static struct list_head msg_log_head;
 static pid_t my_pid;
 static uint32_t my_nodeid;
 static int32_t my_seq;
-static int32_t use_zcb = 0;
+static int32_t use_zcb = QB_FALSE;
 static int32_t my_msgs_to_send;
 static int32_t total_stored_msgs = 0;
 static int32_t in_cnchg = 0;
@@ -332,8 +332,6 @@ static void send_some_more_messages_later (void)
 		&more_messages_timer_handle);
 }
 
-
-
 static void send_some_more_messages_zcb (void)
 {
 	msg_t *my_msg;
@@ -398,7 +396,6 @@ static void send_some_more_messages_zcb (void)
 free_buffer:
 	cpg_zcb_free (cpg_handle, zcb_buffer);
 }
-
 
 #define cs_repeat(counter, max, code) do {		\
 	code;						\
@@ -490,7 +487,7 @@ static void send_some_more_messages_normal (void)
 static void send_some_more_messages (void * unused)
 {
 	if (use_zcb) {
-		send_some_more_messages_zcb ();
+//		send_some_more_messages_zcb ();
 	} else {
 		send_some_more_messages_normal ();
 	}
@@ -502,7 +499,7 @@ static void msg_blaster (int sock, char* num_to_send_str)
 	my_seq = 1;
 	my_pid = getpid();
 
-	use_zcb = 0;
+	use_zcb = QB_FALSE;
 	total_stored_msgs = 0;
 
 	cpg_local_get (cpg_handle, &my_nodeid);
@@ -539,7 +536,7 @@ static void msg_blaster_zcb (int sock, char* num_to_send_str)
 	my_seq = 1;
 	my_pid = getpid();
 
-	use_zcb = 1;
+	use_zcb = QB_TRUE;
 	total_stored_msgs = 0;
 
 	cpg_local_get (cpg_handle, &my_nodeid);

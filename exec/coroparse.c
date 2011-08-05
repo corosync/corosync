@@ -231,6 +231,7 @@ static int parser_check_item_uidgid(struct objdb_iface_ver0 *objdb,
 	return 1;
 }
 
+
 static int read_uidgid_files_into_objdb(
 	struct objdb_iface_ver0 *objdb,
 	const char **error_string)

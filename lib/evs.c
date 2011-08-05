@@ -47,10 +47,9 @@
 #include <sys/socket.h>
 #include <errno.h>
 
+#include <qb/qbipcc.h>
 
 #include <corosync/corotypes.h>
-#include <corosync/coroipc_types.h>
-#include <corosync/coroipcc.h>
 #include <corosync/corodefs.h>
 #include <corosync/hdb.h>
 
@@ -59,11 +58,8 @@
 
 #include "util.h"
 
-#undef MIN
-#define MIN(x,y) ((x) < (y) ? (x) : (y))
-
 struct evs_inst {
-	hdb_handle_t handle;
+	qb_ipcc_connection_t *c;
 	int finalize;
 	evs_callbacks_t callbacks;
 	void *context;
@@ -105,13 +101,11 @@ evs_error_t evs_initialize (
 		goto error_destroy;
 	}
 
-	error = coroipcc_service_connect (
-		COROSYNC_SOCKET_NAME,
-		EVS_SERVICE,
-		IPC_REQUEST_SIZE,
-		IPC_RESPONSE_SIZE,
-		IPC_DISPATCH_SIZE,
-		&evs_inst->handle);
+	evs_inst->c = qb_ipcc_connect ("evs", IPC_REQUEST_SIZE);
+	if (evs_inst->c == NULL) {
+		error = qb_to_cs_error(-errno);
+		goto error_put_destroy;
+	}
 	if (error != EVS_OK) {
 		goto error_put_destroy;
 	}
@@ -153,7 +147,7 @@ evs_error_t evs_finalize (
 
 	evs_inst->finalize = 1;
 
-	coroipcc_service_disconnect (evs_inst->handle);
+	qb_ipcc_disconnect (evs_inst->c);
 
 	hdb_handle_destroy (&evs_handle_t_db, handle);
 
@@ -174,7 +168,7 @@ evs_error_t evs_fd_get (
 		return (error);
 	}
 
-	coroipcc_fd_get (evs_inst->handle, fd);
+	qb_ipcc_fd_get (evs_inst->c, fd);
 
 	hdb_handle_put (&evs_handle_t_db, handle);
 
@@ -230,7 +224,8 @@ evs_error_t evs_dispatch (
 	struct res_evs_confchg_callback *res_evs_confchg_callback;
 	struct res_evs_deliver_callback *res_evs_deliver_callback;
 	evs_callbacks_t callbacks;
-	coroipc_response_header_t *dispatch_data;
+	struct qb_ipc_response_header *dispatch_data;
+	char dispatch_buf[IPC_DISPATCH_SIZE];
 
 	error = hdb_error_to_cs(hdb_handle_get (&evs_handle_t_db, handle, (void *)&evs_inst));
 	if (error != CS_OK) {
@@ -245,11 +240,13 @@ evs_error_t evs_dispatch (
 		timeout = 0;
 	}
 
+	dispatch_data = (struct qb_ipc_response_header *)dispatch_buf;
 	do {
-		error = coroipcc_dispatch_get (
-			evs_inst->handle,
-			(void **)&dispatch_data,
-			timeout);
+		error = qb_to_cs_error(qb_ipcc_event_recv (
+			evs_inst->c,
+			dispatch_buf,
+			IPC_DISPATCH_SIZE,
+			timeout));
 		if (error == CS_ERR_BAD_HANDLE) {
 			error = CS_OK;
 			goto error_put;
@@ -308,12 +305,10 @@ evs_error_t evs_dispatch (
 			break;
 
 		default:
-			coroipcc_dispatch_put (evs_inst->handle);
 			error = CS_ERR_LIBRARY;
 			goto error_put;
 			break;
 		}
-		coroipcc_dispatch_put (evs_inst->handle);
 
 		/*
 		 * Determine if more messages should be processed
@@ -354,8 +349,8 @@ evs_error_t evs_join (
 	iov[1].iov_base = (void*) groups; /* cast away const */
 	iov[1].iov_len = (group_entries * sizeof (struct evs_group));
 
-	error = coroipcc_msg_send_reply_receive (evs_inst->handle, iov, 2,
-		&res_lib_evs_join, sizeof (struct res_lib_evs_join));
+	error = qb_to_cs_error(qb_ipcc_sendv_recv (evs_inst->c, iov, 2,
+		&res_lib_evs_join, sizeof (struct res_lib_evs_join), -1));
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -395,8 +390,8 @@ evs_error_t evs_leave (
 	iov[1].iov_base = (void *) groups; /* cast away const */
 	iov[1].iov_len = (group_entries * sizeof (struct evs_group));
 
-	error = coroipcc_msg_send_reply_receive (evs_inst->handle, iov, 2,
-		&res_lib_evs_leave, sizeof (struct res_lib_evs_leave));
+	error = qb_to_cs_error(qb_ipcc_sendv_recv (evs_inst->c, iov, 2,
+		&res_lib_evs_leave, sizeof (struct res_lib_evs_leave), -1));
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -444,10 +439,10 @@ evs_error_t evs_mcast_joined (
 	iov[0].iov_len = sizeof (struct req_lib_evs_mcast_joined);
 	memcpy (&iov[1], iovec, iov_len * sizeof (struct iovec));
 
-	error = coroipcc_msg_send_reply_receive (evs_inst->handle, iov,
+	error = qb_to_cs_error(qb_ipcc_sendv_recv (evs_inst->c, iov,
 		iov_len + 1,
 		&res_lib_evs_mcast_joined,
-		sizeof (struct res_lib_evs_mcast_joined));
+		sizeof (struct res_lib_evs_mcast_joined), -1));
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -497,10 +492,10 @@ evs_error_t evs_mcast_groups (
 	iov[1].iov_len = (group_entries * sizeof (struct evs_group));
 	memcpy (&iov[2], iovec, iov_len * sizeof (struct iovec));
 
-	error = coroipcc_msg_send_reply_receive (evs_inst->handle, iov,
+	error = qb_to_cs_error(qb_ipcc_sendv_recv (evs_inst->c, iov,
 		iov_len + 2,
 		&res_lib_evs_mcast_groups,
-		sizeof (struct res_lib_evs_mcast_groups));
+		sizeof (struct res_lib_evs_mcast_groups), -1));
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -537,11 +532,11 @@ evs_error_t evs_membership_get (
 	iov.iov_base = (void *)&req_lib_evs_membership_get;
 	iov.iov_len = sizeof (struct req_lib_evs_membership_get);
 
-	error = coroipcc_msg_send_reply_receive (evs_inst->handle,
+	error = qb_to_cs_error(qb_ipcc_sendv_recv (evs_inst->c,
 		&iov,
 		1,
 		&res_lib_evs_membership_get,
-		sizeof (struct res_lib_evs_membership_get));
+		sizeof (struct res_lib_evs_membership_get), -1));
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -555,7 +550,7 @@ evs_error_t evs_membership_get (
 	if (local_nodeid) {
 		*local_nodeid = res_lib_evs_membership_get.local_nodeid;
  	}
-	*member_list_entries = MIN (*member_list_entries,
+	*member_list_entries = QB_MIN (*member_list_entries,
 				    res_lib_evs_membership_get.member_list_entries);
 	if (member_list) {
 		memcpy (member_list, &res_lib_evs_membership_get.member_list,

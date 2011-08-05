@@ -48,8 +48,7 @@
 #include <errno.h>
 
 #include <corosync/corotypes.h>
-#include <corosync/coroipc_types.h>
-#include <corosync/coroipcc.h>
+#include <qb/qbipcc.h>
 #include <corosync/corodefs.h>
 #include <corosync/confdb.h>
 #include <corosync/hdb.h>

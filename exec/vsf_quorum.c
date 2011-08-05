@@ -55,7 +55,7 @@
 #include <time.h>
 
 #include <corosync/corotypes.h>
-#include <corosync/coroipc_types.h>
+#include <qb/qbipc_common.h>
 #include <corosync/corodefs.h>
 #include <corosync/swab.h>
 #include <corosync/list.h>
@@ -440,7 +440,7 @@ static void message_handler_req_lib_quorum_trackstart (void *conn,
 						       const void *msg)
 {
 	const struct req_lib_quorum_trackstart *req_lib_quorum_trackstart = msg;
-	coroipc_response_header_t res;
+	struct qb_ipc_response_header res;
 	struct quorum_pd *quorum_pd = (struct quorum_pd *)corosync_api->ipc_private_data_get (conn);
 
 	log_printf(LOGSYS_LEVEL_DEBUG, "got trackstart request on %p\n", conn);
@@ -471,12 +471,12 @@ static void message_handler_req_lib_quorum_trackstart (void *conn,
 	res.size = sizeof(res);
 	res.id = MESSAGE_RES_QUORUM_TRACKSTART;
 	res.error = CS_OK;
-	corosync_api->ipc_response_send(conn, &res, sizeof(coroipc_response_header_t));
+	corosync_api->ipc_response_send(conn, &res, sizeof(struct qb_ipc_response_header));
 }
 
 static void message_handler_req_lib_quorum_trackstop (void *conn, const void *msg)
 {
-	coroipc_response_header_t res;
+	struct qb_ipc_response_header res;
 	struct quorum_pd *quorum_pd = (struct quorum_pd *)corosync_api->ipc_private_data_get (conn);
 
 	log_printf(LOGSYS_LEVEL_DEBUG, "got trackstop request on %p\n", conn);
@@ -494,5 +494,5 @@ static void message_handler_req_lib_quorum_trackstop (void *conn, const void *ms
 	res.size = sizeof(res);
 	res.id = MESSAGE_RES_QUORUM_TRACKSTOP;
 	res.error = CS_OK;
-	corosync_api->ipc_response_send(conn, &res, sizeof(coroipc_response_header_t));
+	corosync_api->ipc_response_send(conn, &res, sizeof(struct qb_ipc_response_header));
 }

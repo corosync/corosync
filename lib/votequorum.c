@@ -45,10 +45,9 @@
 #include <sys/socket.h>
 #include <errno.h>
 
+#include <qb/qbipcc.h>
 
 #include <corosync/corotypes.h>
-#include <corosync/coroipc_types.h>
-#include <corosync/coroipcc.h>
 #include <corosync/corodefs.h>
 #include <corosync/hdb.h>
 
@@ -58,7 +57,7 @@
 #include "util.h"
 
 struct votequorum_inst {
-	hdb_handle_t handle;
+	qb_ipcc_connection_t *c;
 	int finalize;
 	void *context;
 	votequorum_callbacks_t callbacks;
@@ -83,13 +82,11 @@ cs_error_t votequorum_initialize (
 		goto error_destroy;
 	}
 
-	error = coroipcc_service_connect (
-		COROSYNC_SOCKET_NAME,
-		VOTEQUORUM_SERVICE,
-		IPC_REQUEST_SIZE,
-		IPC_RESPONSE_SIZE,
-		IPC_DISPATCH_SIZE,
-		 &votequorum_inst->handle);
+	votequorum_inst->c = qb_ipcc_connect ("votequorum", IPC_REQUEST_SIZE);
+	if (votequorum_inst->c == NULL) {
+		error = qb_to_cs_error(-errno);
+		goto error_put_destroy;
+	}
 	if (error != CS_OK) {
 		goto error_put_destroy;
 	}
@@ -132,7 +129,7 @@ cs_error_t votequorum_finalize (
 
 	votequorum_inst->finalize = 1;
 
-	coroipcc_service_disconnect (votequorum_inst->handle);
+	qb_ipcc_disconnect (votequorum_inst->c);
 
 	hdb_handle_destroy (&votequorum_handle_t_db, handle);
 
@@ -165,12 +162,12 @@ cs_error_t votequorum_getinfo (
 	iov.iov_base = (char *)&req_lib_votequorum_getinfo;
 	iov.iov_len = sizeof (struct req_lib_votequorum_getinfo);
 
-        error = coroipcc_msg_send_reply_receive (
-		votequorum_inst->handle,
+        error = qb_to_cs_error(qb_ipcc_sendv_recv (
+		votequorum_inst->c,
 		&iov,
 		1,
                 &res_lib_votequorum_getinfo,
-		sizeof (struct res_lib_votequorum_getinfo));
+		sizeof (struct res_lib_votequorum_getinfo), -1));
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -215,12 +212,12 @@ cs_error_t votequorum_setexpected (
 	iov.iov_base = (char *)&req_lib_votequorum_setexpected;
 	iov.iov_len = sizeof (struct req_lib_votequorum_setexpected);
 
-        error = coroipcc_msg_send_reply_receive (
-		votequorum_inst->handle,
+        error = qb_to_cs_error(qb_ipcc_sendv_recv (
+		votequorum_inst->c,
 		&iov,
 		1,
                 &res_lib_votequorum_status,
-		sizeof (struct res_lib_votequorum_status));
+		sizeof (struct res_lib_votequorum_status), -1));
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -258,12 +255,12 @@ cs_error_t votequorum_setvotes (
 	iov.iov_base = (char *)&req_lib_votequorum_setvotes;
 	iov.iov_len = sizeof (struct req_lib_votequorum_setvotes);
 
-        error = coroipcc_msg_send_reply_receive (
-		votequorum_inst->handle,
+        error = qb_to_cs_error(qb_ipcc_sendv_recv (
+		votequorum_inst->c,
 		&iov,
 		1,
                 &res_lib_votequorum_status,
-		sizeof (struct res_lib_votequorum_status));
+		sizeof (struct res_lib_votequorum_status), -1));
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -305,12 +302,12 @@ cs_error_t votequorum_qdisk_register (
 	iov.iov_base = (char *)&req_lib_votequorum_qdisk_register;
 	iov.iov_len = sizeof (struct req_lib_votequorum_qdisk_register);
 
-        error = coroipcc_msg_send_reply_receive (
-		votequorum_inst->handle,
+        error = qb_to_cs_error(qb_ipcc_sendv_recv (
+		votequorum_inst->c,
 		&iov,
 		1,
                 &res_lib_votequorum_status,
-		sizeof (struct res_lib_votequorum_status));
+		sizeof (struct res_lib_votequorum_status), -1));
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -347,12 +344,12 @@ cs_error_t votequorum_qdisk_poll (
 	iov.iov_base = (char *)&req_lib_votequorum_qdisk_poll;
 	iov.iov_len = sizeof (struct req_lib_votequorum_qdisk_poll);
 
-        error = coroipcc_msg_send_reply_receive (
-		votequorum_inst->handle,
+        error = qb_to_cs_error(qb_ipcc_sendv_recv (
+		votequorum_inst->c,
 		&iov,
 		1,
                 &res_lib_votequorum_status,
-		sizeof (struct res_lib_votequorum_status));
+		sizeof (struct res_lib_votequorum_status), -1));
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -386,12 +383,12 @@ cs_error_t votequorum_qdisk_unregister (
 	iov.iov_base = (char *)&req_lib_votequorum_general;
 	iov.iov_len = sizeof (struct req_lib_votequorum_general);
 
-        error = coroipcc_msg_send_reply_receive (
-		votequorum_inst->handle,
+        error = qb_to_cs_error(qb_ipcc_sendv_recv (
+		votequorum_inst->c,
 		&iov,
 		1,
                 &res_lib_votequorum_status,
-		sizeof (struct res_lib_votequorum_status));
+		sizeof (struct res_lib_votequorum_status), -1));
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -429,12 +426,12 @@ cs_error_t votequorum_qdisk_getinfo (
 	iov.iov_base = (char *)&req_lib_votequorum_general;
 	iov.iov_len = sizeof (struct req_lib_votequorum_general);
 
-        error = coroipcc_msg_send_reply_receive (
-		votequorum_inst->handle,
+        error = qb_to_cs_error(qb_ipcc_sendv_recv (
+		votequorum_inst->c,
 		&iov,
 		1,
                 &res_lib_votequorum_qdisk_getinfo,
-		sizeof (struct res_lib_votequorum_qdisk_getinfo));
+		sizeof (struct res_lib_votequorum_qdisk_getinfo), -1));
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -473,12 +470,12 @@ cs_error_t votequorum_setstate (
 	iov.iov_base = (char *)&req_lib_votequorum_general;
 	iov.iov_len = sizeof (struct req_lib_votequorum_general);
 
-        error = coroipcc_msg_send_reply_receive (
-		votequorum_inst->handle,
+        error = qb_to_cs_error(qb_ipcc_sendv_recv (
+		votequorum_inst->c,
 		&iov,
 		1,
                 &res_lib_votequorum_status,
-		sizeof (struct res_lib_votequorum_status));
+		sizeof (struct res_lib_votequorum_status), -1));
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -513,12 +510,12 @@ cs_error_t votequorum_leaving (
 	iov.iov_base = (char *)&req_lib_votequorum_general;
 	iov.iov_len = sizeof (struct req_lib_votequorum_general);
 
-        error = coroipcc_msg_send_reply_receive (
-		votequorum_inst->handle,
+        error = qb_to_cs_error(qb_ipcc_sendv_recv (
+		votequorum_inst->c,
 		&iov,
 		1,
                 &res_lib_votequorum_status,
-		sizeof (struct res_lib_votequorum_status));
+		sizeof (struct res_lib_votequorum_status), -1));
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -556,12 +553,12 @@ cs_error_t votequorum_trackstart (
 	iov.iov_base = (char *)&req_lib_votequorum_trackstart;
 	iov.iov_len = sizeof (struct req_lib_votequorum_trackstart);
 
-        error = coroipcc_msg_send_reply_receive (
-		votequorum_inst->handle,
+        error = qb_to_cs_error(qb_ipcc_sendv_recv (
+		votequorum_inst->c,
 		&iov,
 		1,
                 &res_lib_votequorum_status,
-		sizeof (struct res_lib_votequorum_status));
+		sizeof (struct res_lib_votequorum_status), -1));
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -595,12 +592,12 @@ cs_error_t votequorum_trackstop (
 	iov.iov_base = (char *)&req_lib_votequorum_general;
 	iov.iov_len = sizeof (struct req_lib_votequorum_general);
 
-        error = coroipcc_msg_send_reply_receive (
-		votequorum_inst->handle,
+        error = qb_to_cs_error(qb_ipcc_sendv_recv (
+		votequorum_inst->c,
 		&iov,
 		1,
                 &res_lib_votequorum_status,
-		sizeof (struct res_lib_votequorum_status));
+		sizeof (struct res_lib_votequorum_status), -1));
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -666,7 +663,7 @@ cs_error_t votequorum_fd_get (
                 return (error);
         }
 
-	error = coroipcc_fd_get (votequorum_inst->handle, fd);
+	error = qb_to_cs_error(qb_ipcc_fd_get (votequorum_inst->c, fd));
 
 	(void)hdb_handle_put (&votequorum_handle_t_db, handle);
 
@@ -682,9 +679,10 @@ cs_error_t votequorum_dispatch (
 	int cont = 1; /* always continue do loop except when set to 0 */
 	struct votequorum_inst *votequorum_inst;
 	votequorum_callbacks_t callbacks;
-	coroipc_response_header_t *dispatch_data;
+	struct qb_ipc_response_header *dispatch_data;
 	struct res_lib_votequorum_notification *res_lib_votequorum_notification;
 	struct res_lib_votequorum_expectedvotes_notification *res_lib_votequorum_expectedvotes_notification;
+	char dispatch_buf[IPC_DISPATCH_SIZE];
 
 	if (dispatch_types != CS_DISPATCH_ONE &&
 		dispatch_types != CS_DISPATCH_ALL &&
@@ -707,11 +705,13 @@ cs_error_t votequorum_dispatch (
 		timeout = 0;
 	}
 
+	dispatch_data = (struct qb_ipc_response_header *)dispatch_buf;
 	do {
-		error = coroipcc_dispatch_get (
-			votequorum_inst->handle,
-			(void **)&dispatch_data,
-			timeout);
+		error = qb_to_cs_error (qb_ipcc_event_recv (
+			votequorum_inst->c,
+			dispatch_buf,
+			IPC_DISPATCH_SIZE,
+			timeout));
 		if (error == CS_ERR_BAD_HANDLE) {
 			error = CS_OK;
 			goto error_put;
@@ -766,12 +766,10 @@ cs_error_t votequorum_dispatch (
 			break;
 
 		default:
-			coroipcc_dispatch_put (votequorum_inst->handle);
 			error = CS_ERR_LIBRARY;
 			goto error_put;
 			break;
 		}
-		coroipcc_dispatch_put (votequorum_inst->handle);
 
 		/*
 		 * Determine if more messages should be processed

@@ -31,6 +31,7 @@
 #include <config.h>
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <dlfcn.h>
 #include <dirent.h>
 #include <errno.h>
@@ -43,8 +44,6 @@
 #include <corosync/hdb.h>
 #include <corosync/lcr/lcr_comp.h>
 #include <corosync/lcr/lcr_ifact.h>
-#include <corosync/hdb.h>
-#include <stdlib.h>
 
 struct lcr_component_instance {
 	struct lcr_iface *ifaces;

@@ -41,9 +41,10 @@
 #include <errno.h>
 #include <unistd.h>
 #include <poll.h>
+#include <assert.h>
 
 #include <corosync/corotypes.h>
-#include <corosync/coroipc_types.h>
+#include <qb/qbipc_common.h>
 #include <corosync/corodefs.h>
 #include <corosync/cfg.h>
 #include <corosync/list.h>
@@ -411,7 +412,7 @@ static void message_handler_req_lib_confdb_object_destroy (void *conn,
 {
 	const struct req_lib_confdb_object_destroy *req_lib_confdb_object_destroy
 	  = message;
-	coroipc_response_header_t res;
+	struct qb_ipc_response_header res;
 	int ret = CS_OK;
 
 	if (api->object_destroy(req_lib_confdb_object_destroy->object_handle))
@@ -428,7 +429,7 @@ static void message_handler_req_lib_confdb_object_find_destroy (void *conn,
 {
 	const struct req_lib_confdb_object_find_destroy
 	  *req_lib_confdb_object_find_destroy = message;
-	coroipc_response_header_t res;
+	struct qb_ipc_response_header res;
 	int ret = CS_OK;
 
 	if (api->object_find_destroy(req_lib_confdb_object_find_destroy->find_handle))
@@ -446,7 +447,7 @@ static void message_handler_req_lib_confdb_key_create (void *conn,
 {
 	const struct req_lib_confdb_key_create *req_lib_confdb_key_create
 	  = message;
-	coroipc_response_header_t res;
+	struct qb_ipc_response_header res;
 	int ret = CS_OK;
 
 	if (api->object_key_create(req_lib_confdb_key_create->object_handle,
@@ -467,7 +468,7 @@ static void message_handler_req_lib_confdb_key_create_typed (void *conn,
 {
 	const struct req_lib_confdb_key_create_typed *req_lib_confdb_key_create
 	  = message;
-	coroipc_response_header_t res;
+	struct qb_ipc_response_header res;
 	int ret = CS_OK;
 
 	if (api->object_key_create_typed(req_lib_confdb_key_create->object_handle,
@@ -581,7 +582,7 @@ static void message_handler_req_lib_confdb_key_replace (void *conn,
 {
 	const struct req_lib_confdb_key_replace *req_lib_confdb_key_replace
 	  = message;
-	coroipc_response_header_t res;
+	struct qb_ipc_response_header res;
 	int ret = CS_OK;
 
 	if (api->object_key_replace(req_lib_confdb_key_replace->object_handle,
@@ -602,7 +603,7 @@ static void message_handler_req_lib_confdb_key_delete (void *conn,
 {
 	const struct req_lib_confdb_key_delete *req_lib_confdb_key_delete
 	  = message;
-	coroipc_response_header_t res;
+	struct qb_ipc_response_header res;
 	int ret = CS_OK;
 
 	if (api->object_key_delete(req_lib_confdb_key_delete->object_handle,
@@ -1056,7 +1057,7 @@ static void message_handler_req_lib_confdb_track_start (void *conn,
 							const void *message)
 {
 	const struct req_lib_confdb_object_track_start *req = message;
-	coroipc_response_header_t res;
+	struct qb_ipc_response_header res;
 
 	api->object_track_start(req->object_handle,
 		req->flags,
@@ -1074,7 +1075,7 @@ static void message_handler_req_lib_confdb_track_start (void *conn,
 static void message_handler_req_lib_confdb_track_stop (void *conn,
 						       const void *message)
 {
-	coroipc_response_header_t res;
+	struct qb_ipc_response_header res;
 
 	api->object_track_stop(confdb_notify_lib_of_key_change,
 		confdb_notify_lib_of_new_object,

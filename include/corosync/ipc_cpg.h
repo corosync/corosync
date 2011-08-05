@@ -36,6 +36,7 @@
 #define IPC_CPG_H_DEFINED
 
 #include <netinet/in.h>
+#include <qb/qbipc_common.h>
 #include <corosync/corotypes.h>
 #include <corosync/mar_gen.h>
 
@@ -48,7 +49,10 @@ enum req_cpg_types {
 	MESSAGE_REQ_CPG_ITERATIONINITIALIZE = 5,
 	MESSAGE_REQ_CPG_ITERATIONNEXT = 6,
 	MESSAGE_REQ_CPG_ITERATIONFINALIZE = 7,
-	MESSAGE_REQ_CPG_FINALIZE = 8
+	MESSAGE_REQ_CPG_FINALIZE = 8,
+	MESSAGE_REQ_CPG_ZC_ALLOC = 9,
+	MESSAGE_REQ_CPG_ZC_FREE = 10,
+	MESSAGE_REQ_CPG_ZC_EXECUTE = 11,
 };
 
 enum res_cpg_types {
@@ -66,6 +70,9 @@ enum res_cpg_types {
 	MESSAGE_RES_CPG_ITERATIONFINALIZE = 11,
 	MESSAGE_RES_CPG_FINALIZE = 12,
 	MESSAGE_RES_CPG_TOTEM_CONFCHG_CALLBACK = 13,
+	MESSAGE_RES_CPG_ZC_ALLOC = 14,
+	MESSAGE_RES_CPG_ZC_FREE = 15,
+	MESSAGE_RES_CPG_ZC_EXECUTE = 16,
 };
 
 enum lib_cpg_confchg_reason {
@@ -164,69 +171,69 @@ static inline void marshall_from_mar_cpg_ring_id_t (
 }
 
 struct req_lib_cpg_join {
-	coroipc_request_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_request_header header __attribute__((aligned(8)));
 	mar_cpg_name_t group_name __attribute__((aligned(8)));
 	mar_uint32_t pid __attribute__((aligned(8)));
 	mar_uint32_t flags __attribute__((aligned(8)));
 };
 
 struct res_lib_cpg_join {
-	coroipc_response_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_response_header header __attribute__((aligned(8)));
 };
 
 struct req_lib_cpg_finalize {
-	coroipc_request_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_request_header header __attribute__((aligned(8)));
 };
 
 struct res_lib_cpg_finalize {
-	coroipc_response_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_response_header header __attribute__((aligned(8)));
 };
 
 struct req_lib_cpg_trackstart {
-	coroipc_request_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_request_header header __attribute__((aligned(8)));
 	mar_cpg_name_t group_name __attribute__((aligned(8)));
 	mar_uint32_t pid __attribute__((aligned(8)));
 };
 
 struct res_lib_cpg_trackstart {
-	coroipc_response_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_response_header header __attribute__((aligned(8)));
 };
 
 struct req_lib_cpg_trackstop {
-	coroipc_request_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_request_header header __attribute__((aligned(8)));
 	mar_cpg_name_t group_name __attribute__((aligned(8)));
 	mar_uint32_t pid __attribute__((aligned(8)));
 };
 
 struct res_lib_cpg_trackstop {
-	coroipc_response_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_response_header header __attribute__((aligned(8)));
 };
 
 struct req_lib_cpg_local_get {
-	coroipc_request_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_request_header header __attribute__((aligned(8)));
 };
 
 struct res_lib_cpg_local_get {
-	coroipc_response_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_response_header header __attribute__((aligned(8)));
 	mar_uint32_t local_nodeid __attribute__((aligned(8)));
 };
 
 struct req_lib_cpg_mcast {
-	coroipc_response_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_response_header header __attribute__((aligned(8)));
 	mar_uint32_t guarantee __attribute__((aligned(8)));
 	mar_uint32_t msglen __attribute__((aligned(8)));
 	mar_uint8_t message[] __attribute__((aligned(8)));
 };
 
 struct res_lib_cpg_mcast {
-	coroipc_response_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_response_header header __attribute__((aligned(8)));
 };
 
 /**
  * Message from another node
  */
 struct res_lib_cpg_deliver_callback {
-	coroipc_response_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_response_header header __attribute__((aligned(8)));
 	mar_cpg_name_t group_name __attribute__((aligned(8)));
 	mar_uint32_t msglen __attribute__((aligned(8)));
 	mar_uint32_t nodeid __attribute__((aligned(8)));
@@ -235,23 +242,23 @@ struct res_lib_cpg_deliver_callback {
 };
 
 struct res_lib_cpg_flowcontrol_callback {
-	coroipc_response_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_response_header header __attribute__((aligned(8)));
 	mar_uint32_t flow_control_state __attribute__((aligned(8)));
 };
 
 struct req_lib_cpg_membership_get {
-	coroipc_request_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_request_header header __attribute__((aligned(8)));
 	mar_cpg_name_t group_name __attribute__((aligned(8)));
 };
 
 struct res_lib_cpg_membership_get {
-	coroipc_response_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_response_header header __attribute__((aligned(8)));
 	mar_uint32_t member_count __attribute__((aligned(8)));
 	mar_cpg_address_t member_list[PROCESSOR_COUNT_MAX];
 };
 
 struct res_lib_cpg_confchg_callback {
-	coroipc_response_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_response_header header __attribute__((aligned(8)));
 	mar_cpg_name_t group_name __attribute__((aligned(8)));
 	mar_uint32_t member_list_entries __attribute__((aligned(8)));
 	mar_uint32_t joined_list_entries __attribute__((aligned(8)));
@@ -262,50 +269,71 @@ struct res_lib_cpg_confchg_callback {
 };
 
 struct res_lib_cpg_totem_confchg_callback {
-	coroipc_response_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_response_header header __attribute__((aligned(8)));
 	mar_cpg_ring_id_t ring_id __attribute__((aligned(8)));
 	mar_uint32_t member_list_entries __attribute__((aligned(8)));
 	mar_uint32_t member_list[];
 };
 
 struct req_lib_cpg_leave {
-	coroipc_request_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_request_header header __attribute__((aligned(8)));
 	mar_cpg_name_t group_name __attribute__((aligned(8)));
 	mar_uint32_t pid __attribute__((aligned(8)));
 };
 
 struct res_lib_cpg_leave {
-	coroipc_response_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_response_header header __attribute__((aligned(8)));
 };
 
 struct req_lib_cpg_iterationinitialize {
-	coroipc_request_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_request_header header __attribute__((aligned(8)));
 	mar_cpg_name_t group_name __attribute__((aligned(8)));
 	mar_uint32_t iteration_type __attribute__((aligned(8)));
 };
 
 struct res_lib_cpg_iterationinitialize {
-	coroipc_response_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_response_header header __attribute__((aligned(8)));
 	hdb_handle_t iteration_handle __attribute__((aligned(8)));
 };
 
 struct req_lib_cpg_iterationnext {
-	coroipc_request_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_request_header header __attribute__((aligned(8)));
 	hdb_handle_t iteration_handle __attribute__((aligned(8)));
 };
 
 struct res_lib_cpg_iterationnext {
-	coroipc_response_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_response_header header __attribute__((aligned(8)));
 	mar_cpg_iteration_description_t description __attribute__((aligned(8)));
 };
 
 struct req_lib_cpg_iterationfinalize {
-	coroipc_request_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_request_header header __attribute__((aligned(8)));
 	hdb_handle_t iteration_handle __attribute__((aligned(8)));
 };
 
 struct res_lib_cpg_iterationfinalize {
-	coroipc_response_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_response_header header __attribute__((aligned(8)));
 };
 
+typedef struct {
+        struct qb_ipc_request_header header __attribute__((aligned(8)));
+        size_t map_size __attribute__((aligned(8)));
+        char path_to_file[128] __attribute__((aligned(8)));
+} mar_req_coroipcc_zc_alloc_t __attribute__((aligned(8)));
+
+typedef struct {
+        struct qb_ipc_request_header header __attribute__((aligned(8)));
+        size_t map_size __attribute__((aligned(8)));
+	uint64_t server_address __attribute__((aligned(8)));
+} mar_req_coroipcc_zc_free_t __attribute__((aligned(8)));
+
+typedef struct {
+        struct qb_ipc_request_header header __attribute__((aligned(8)));
+	uint64_t server_address __attribute__((aligned(8)));
+} mar_req_coroipcc_zc_execute_t __attribute__((aligned(8)));
+
+struct coroipcs_zc_header {
+	int map_size;
+	uint64_t server_address;
+};
 #endif /* IPC_CPG_H_DEFINED */

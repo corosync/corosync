@@ -97,10 +97,11 @@
 
 #include <qb/qbdefs.h>
 #include <qb/qbloop.h>
+#include <qb/qbutil.h>
+#include <qb/qbipcs.h>
 
 #include <corosync/swab.h>
 #include <corosync/corotypes.h>
-#include <corosync/coroipc_types.h>
 #include <corosync/corodefs.h>
 #include <corosync/list.h>
 #include <corosync/lcr/lcr_ifact.h>
@@ -108,7 +109,6 @@
 #include <corosync/engine/objdb.h>
 #include <corosync/engine/config.h>
 #include <corosync/engine/logsys.h>
-#include <corosync/coroipcs.h>
 
 #include "quorum.h"
 #include "totemsrp.h"
@@ -117,7 +117,6 @@
 #include "main.h"
 #include "sync.h"
 #include "syncv2.h"
-#include "tlist.h"
 #include "timer.h"
 #include "util.h"
 #include "apidef.h"
@@ -150,7 +149,7 @@ static int sched_priority = 0;
 
 static unsigned int service_count = 32;
 
-static pthread_mutex_t serialize_mutex = PTHREAD_MUTEX_INITIALIZER;
+static qb_thread_lock_t *serialize_lock_f;
 
 static struct totem_logging_configuration totem_logging_configuration;
 
@@ -170,8 +169,6 @@ static qb_loop_t *corosync_poll_handle;
 
 struct sched_param global_sched_param;
 
-static hdb_handle_t object_connection_handle;
-
 static hdb_handle_t object_memb_handle;
 
 static corosync_timer_handle_t corosync_stats_timer_handle;
@@ -181,8 +178,6 @@ static pthread_t corosync_exit_thread;
 static sem_t corosync_exit_sem;
 
 static const char *corosync_lock_file = LOCALSTATEDIR"/run/corosync.pid";
-
-static int32_t corosync_not_enough_fds_left = 0;
 
 static void serialize_unlock (void);
 
@@ -313,16 +308,14 @@ static struct totempg_group corosync_group = {
 	.group_len	= 1
 };
 
-
-
 static void serialize_lock (void)
 {
-	pthread_mutex_lock (&serialize_mutex);
+	qb_thread_lock (serialize_lock_f);
 }
 
 static void serialize_unlock (void)
 {
-	pthread_mutex_unlock (&serialize_mutex);
+	qb_thread_unlock (serialize_lock_f);
 }
 
 static void corosync_sync_completed (void)
@@ -330,6 +323,8 @@ static void corosync_sync_completed (void)
 	log_printf (LOGSYS_LEVEL_NOTICE,
 		"Completed service synchronization, ready to provide service.\n");
 	sync_in_process = 0;
+
+	cs_ipcs_sync_state_changed(sync_in_process);
 }
 
 static int corosync_sync_callbacks_retrieve (int sync_id,
@@ -491,6 +486,7 @@ static void confchg_fn (
 		abort_activate = 1;
 	}
 	sync_in_process = 1;
+	cs_ipcs_sync_state_changed(sync_in_process);
 	serialize_lock ();
 	memcpy (&corosync_ring_id, ring_id, sizeof (struct memb_ring_id));
 
@@ -737,6 +733,9 @@ static void corosync_totem_stats_updater (void *data)
 			"avg_backlog_calc", strlen("avg_backlog_calc"),
 			&avg_backlog_calc, sizeof (avg_backlog_calc));
 	}
+
+	cs_ipcs_stats_update();
+
 	api->timer_add_duration (1500 * MILLI_2_NANO_SECONDS, NULL,
 		corosync_totem_stats_updater,
 		&corosync_stats_timer_handle);
@@ -887,17 +886,20 @@ static void deliver_fn (
 	unsigned int msg_len,
 	int endian_conversion_required)
 {
-	const coroipc_request_header_t *header;
-	int service;
-	int fn_id;
-	unsigned int id;
-	unsigned int key_incr_dummy;
+	const struct qb_ipc_request_header *header;
+	int32_t service;
+	int32_t fn_id;
+	uint32_t id;
+	uint32_t size;
+	uint32_t key_incr_dummy;
 
 	header = msg;
 	if (endian_conversion_required) {
 		id = swab32 (header->id);
+		size = swab32 (header->size);
 	} else {
 		id = header->id;
+		size = header->size;
 	}
 
 	/*
@@ -951,10 +953,10 @@ int main_mcast (
         unsigned int iov_len,
         unsigned int guarantee)
 {
-	const coroipc_request_header_t *req = iovec->iov_base;
-	int service;
-	int fn_id;
-	unsigned int key_incr_dummy;
+	const struct qb_ipc_request_header *req = iovec->iov_base;
+	int32_t service;
+	int32_t fn_id;
+	uint32_t key_incr_dummy;
 
 	service = req->id >> 16;
 	fn_id = req->id & 0xffff;
@@ -965,6 +967,85 @@ int main_mcast (
 	}
 
 	return (totempg_groups_mcast_joined (corosync_group_handle, iovec, iov_len, guarantee));
+}
+
+void corosync_recheck_the_q_level(void *data)
+{
+	qb_loop_timer_handle tm;
+
+	totempg_check_q_level(corosync_group_handle);
+	if (cs_ipcs_q_level_get() == TOTEM_Q_LEVEL_CRITICAL) {
+		qb_loop_timer_add(corosync_poll_handle_get(), QB_LOOP_MED, 1,
+			NULL, corosync_recheck_the_q_level, &tm);
+	}
+}
+
+struct sending_allowed_private_data_struct {
+	int reserved_msgs;
+};
+
+
+int corosync_sending_allowed (
+	unsigned int service,
+	unsigned int id,
+	const void *msg,
+	void *sending_allowed_private_data)
+{
+	struct sending_allowed_private_data_struct *pd =
+		(struct sending_allowed_private_data_struct *)sending_allowed_private_data;
+	struct iovec reserve_iovec;
+	struct qb_ipc_request_header *header = (struct qb_ipc_request_header *)msg;
+	int sending_allowed;
+
+	reserve_iovec.iov_base = (char *)header;
+	reserve_iovec.iov_len = header->size;
+
+	pd->reserved_msgs = totempg_groups_joined_reserve (
+		corosync_group_handle,
+		&reserve_iovec, 1);
+	if (pd->reserved_msgs == -1) {
+		return (-1);
+	}
+
+	sending_allowed = QB_FALSE;
+	if (corosync_quorum_is_quorate() == 1 ||
+	    ais_service[service]->allow_inquorate == CS_LIB_ALLOW_INQUORATE) {
+		// we are quorate
+		// now check flow control
+		if (ais_service[service]->lib_engine[id].flow_control == CS_LIB_FLOW_CONTROL_NOT_REQUIRED) {
+			sending_allowed = QB_TRUE;
+		} else if (pd->reserved_msgs && sync_in_process == 0) {
+			sending_allowed = QB_TRUE;
+		} else {
+			log_printf(LOGSYS_LEVEL_NOTICE,
+				   "no tx: (have quorum) (FC req) reserved:%d sync:%d",
+				   pd->reserved_msgs, sync_in_process);
+		}
+	} else {
+			log_printf(LOGSYS_LEVEL_NOTICE, "no tx: not quorate!");
+	}
+
+/*
+	sending_allowed =
+		(corosync_quorum_is_quorate() == 1 ||
+		ais_service[service]->allow_inquorate == CS_LIB_ALLOW_INQUORATE) &&
+		((ais_service[service]->lib_engine[id].flow_control == CS_LIB_FLOW_CONTROL_NOT_REQUIRED) ||
+		((ais_service[service]->lib_engine[id].flow_control == CS_LIB_FLOW_CONTROL_REQUIRED) &&
+		(pd->reserved_msgs) &&
+		(sync_in_process == 0)));
+*/
+	return (sending_allowed);
+}
+
+void corosync_sending_allowed_release (void *sending_allowed_private_data)
+{
+	struct sending_allowed_private_data_struct *pd =
+		(struct sending_allowed_private_data_struct *)sending_allowed_private_data;
+
+	if (pd->reserved_msgs == -1) {
+		return;
+	}
+	totempg_groups_joined_release (pd->reserved_msgs);
 }
 
 int message_source_is_local (const mar_message_source_t *source)
@@ -988,330 +1069,6 @@ void message_source_set (
 	source->conn = conn;
 }
 
-/*
- * Provides the glue from corosync to the IPC Service
- */
-static int corosync_private_data_size_get (unsigned int service)
-{
-	return (ais_service[service]->private_data_size);
-}
-
-static coroipcs_init_fn_lvalue corosync_init_fn_get (unsigned int service)
-{
-	return (ais_service[service]->lib_init_fn);
-}
-
-static coroipcs_exit_fn_lvalue corosync_exit_fn_get (unsigned int service)
-{
-	return (ais_service[service]->lib_exit_fn);
-}
-
-static coroipcs_handler_fn_lvalue corosync_handler_fn_get (unsigned int service, unsigned int id)
-{
-	return (ais_service[service]->lib_engine[id].lib_handler_fn);
-}
-
-
-static int corosync_security_valid (int euid, int egid)
-{
-	struct list_head *iter;
-
-	if (corosync_not_enough_fds_left) {
-		errno = EMFILE;
-		return (0);
-	}
-
-	if (euid == 0 || egid == 0) {
-		return (1);
-	}
-
-	for (iter = uidgid_list_head.next; iter != &uidgid_list_head;
-		iter = iter->next) {
-
-		struct uidgid_item *ugi = list_entry (iter, struct uidgid_item,
-			list);
-
-		if (euid == ugi->uid || egid == ugi->gid)
-			return (1);
-	}
-
-	errno = EACCES;
-	return (0);
-}
-
-static int corosync_service_available (unsigned int service)
-{
-	return (ais_service[service] != NULL && !ais_service_exiting[service]);
-}
-
-struct sending_allowed_private_data_struct {
-	int reserved_msgs;
-};
-
-static int corosync_sending_allowed (
-	unsigned int service,
-	unsigned int id,
-	const void *msg,
-	void *sending_allowed_private_data)
-{
-	struct sending_allowed_private_data_struct *pd =
-		(struct sending_allowed_private_data_struct *)sending_allowed_private_data;
-	struct iovec reserve_iovec;
-	coroipc_request_header_t *header = (coroipc_request_header_t *)msg;
-	int sending_allowed;
-
-	reserve_iovec.iov_base = (char *)header;
-	reserve_iovec.iov_len = header->size;
-
-	pd->reserved_msgs = totempg_groups_joined_reserve (
-		corosync_group_handle,
-		&reserve_iovec, 1);
-	if (pd->reserved_msgs == -1) {
-		return (-1);
-	}
-
-	sending_allowed =
-		(corosync_quorum_is_quorate() == 1 ||
-		ais_service[service]->allow_inquorate == CS_LIB_ALLOW_INQUORATE) &&
-		((ais_service[service]->lib_engine[id].flow_control == CS_LIB_FLOW_CONTROL_NOT_REQUIRED) ||
-		((ais_service[service]->lib_engine[id].flow_control == CS_LIB_FLOW_CONTROL_REQUIRED) &&
-		(pd->reserved_msgs) &&
-		(sync_in_process == 0)));
-
-	return (sending_allowed);
-}
-
-static void corosync_sending_allowed_release (void *sending_allowed_private_data)
-{
-	struct sending_allowed_private_data_struct *pd =
-		(struct sending_allowed_private_data_struct *)sending_allowed_private_data;
-
-	if (pd->reserved_msgs == -1) {
-		return;
-	}
-	totempg_groups_joined_release (pd->reserved_msgs);
-}
-
-static int ipc_subsys_id = -1;
-
-
-static void ipc_fatal_error(const char *error_msg) __attribute__((noreturn));
-
-static void ipc_fatal_error(const char *error_msg) {
-       _logsys_log_printf (
-		LOGSYS_ENCODE_RECID(LOGSYS_LEVEL_ERROR,
-				    ipc_subsys_id,
-				    LOGSYS_RECID_LOG),
-		__FUNCTION__, __FILE__, __LINE__,
-                "%s", error_msg);
-	exit(EXIT_FAILURE);
-}
-
-static int corosync_poll_handler_accept (
-	int fd,
-	int revent,
-	void *context)
-{
-	return (coroipcs_handler_accept (fd, revent, context));
-}
-
-static int corosync_poll_handler_dispatch (
-	int fd,
-	int revent,
-	void *context)
-{
-	return (coroipcs_handler_dispatch (fd, revent, context));
-}
-
-
-static void corosync_poll_accept_add (
-	int fd)
-{
-	qb_loop_poll_add (corosync_poll_handle, QB_LOOP_MED, fd, POLLIN|POLLNVAL, 0,
-		corosync_poll_handler_accept);
-}
-
-static void corosync_poll_dispatch_add (
-	int fd,
-	void *context)
-{
-	qb_loop_poll_add (corosync_poll_handle, QB_LOOP_MED, fd, POLLIN|POLLNVAL, context,
-		corosync_poll_handler_dispatch);
-}
-
-static void corosync_poll_dispatch_modify (
-	int fd,
-	int events,
-	void *context)
-{
-	qb_loop_poll_mod (corosync_poll_handle, QB_LOOP_MED, fd, events, context,
-		corosync_poll_handler_dispatch);
-}
-
-static void corosync_poll_dispatch_destroy (
-    int fd,
-    void *context)
-{
-	qb_loop_poll_del (corosync_poll_handle, fd);
-}
-
-static hdb_handle_t corosync_stats_create_connection (const char* name,
-                       const pid_t pid, const int fd)
-{
-	uint32_t zero_32 = 0;
-	uint64_t zero_64 = 0;
-	unsigned int key_incr_dummy;
-	hdb_handle_t object_handle;
-
-	objdb->object_key_increment (object_connection_handle,
-		"active", strlen("active"),
-		&key_incr_dummy);
-
-
-	objdb->object_create (object_connection_handle,
-		&object_handle,
-		name,
-		strlen (name));
-
-	objdb->object_key_create_typed (object_handle,
-		"service_id",
-		&zero_32, sizeof (zero_32),
-		OBJDB_VALUETYPE_UINT32);
-
-	objdb->object_key_create_typed (object_handle,
-		"client_pid",
-		&pid, sizeof (pid),
-		OBJDB_VALUETYPE_INT32);
-
-	objdb->object_key_create_typed (object_handle,
-		"responses",
-		&zero_64, sizeof (zero_64),
-		OBJDB_VALUETYPE_UINT64);
-
-	objdb->object_key_create_typed (object_handle,
-		"dispatched",
-		&zero_64, sizeof (zero_64),
-		OBJDB_VALUETYPE_UINT64);
-
-	objdb->object_key_create_typed (object_handle,
-		"requests",
-		&zero_64, sizeof (zero_64),
-		OBJDB_VALUETYPE_INT64);
-
-	objdb->object_key_create_typed (object_handle,
-		"sem_retry_count",
-		&zero_64, sizeof (zero_64),
-		OBJDB_VALUETYPE_UINT64);
-
-	objdb->object_key_create_typed (object_handle,
-		"send_retry_count",
-		&zero_64, sizeof (zero_64),
-		OBJDB_VALUETYPE_UINT64);
-
-	objdb->object_key_create_typed (object_handle,
-		"recv_retry_count",
-		&zero_64, sizeof (zero_64),
-		OBJDB_VALUETYPE_UINT64);
-
-	objdb->object_key_create_typed (object_handle,
-		"flow_control",
-		&zero_32, sizeof (zero_32),
-		OBJDB_VALUETYPE_UINT32);
-
-	objdb->object_key_create_typed (object_handle,
-		"flow_control_count",
-		&zero_64, sizeof (zero_64),
-		OBJDB_VALUETYPE_UINT64);
-
-	objdb->object_key_create_typed (object_handle,
-		"queue_size",
-		&zero_64, sizeof (zero_64),
-		OBJDB_VALUETYPE_UINT64);
-
-	objdb->object_key_create_typed (object_handle,
-		"invalid_request",
-		&zero_64, sizeof (zero_64),
-		OBJDB_VALUETYPE_UINT64);
-
-	objdb->object_key_create_typed (object_handle,
-		"overload",
-		&zero_64, sizeof (zero_64),
-		OBJDB_VALUETYPE_UINT64);
-
-	return object_handle;
-}
-
-static void corosync_stats_destroy_connection (hdb_handle_t handle)
-{
-	unsigned int key_incr_dummy;
-
-	objdb->object_destroy (handle);
-
-	objdb->object_key_increment (object_connection_handle,
-		"closed", strlen("closed"),
-		&key_incr_dummy);
-	objdb->object_key_decrement (object_connection_handle,
-		"active", strlen("active"),
-		&key_incr_dummy);
-}
-
-static void corosync_stats_update_value (hdb_handle_t handle,
-	const char *name, const void *value,
-	size_t value_len)
-{
-	objdb->object_key_replace (handle,
-		name, strlen(name),
-		value, value_len);
-}
-
-static void corosync_stats_increment_value (hdb_handle_t handle,
-	const char* name)
-{
-	unsigned int key_incr_dummy;
-
-	objdb->object_key_increment (handle,
-		name, strlen(name),
-		&key_incr_dummy);
-}
-static void corosync_stats_decrement_value (hdb_handle_t handle,
-	const char* name)
-{
-	unsigned int key_incr_dummy;
-
-	objdb->object_key_decrement (handle,
-		name, strlen(name),
-		&key_incr_dummy);
-}
-
-static struct coroipcs_init_state_v2 ipc_init_state_v2 = {
-	.socket_name			= COROSYNC_SOCKET_NAME,
-	.sched_policy			= SCHED_OTHER,
-	.sched_param			= &global_sched_param,
-	.malloc				= malloc,
-	.free				= free,
-	.log_printf			= _logsys_log_printf,
-	.fatal_error			= ipc_fatal_error,
-	.security_valid			= corosync_security_valid,
-	.service_available		= corosync_service_available,
-	.private_data_size_get		= corosync_private_data_size_get,
-	.serialize_lock			= serialize_lock,
-	.serialize_unlock		= serialize_unlock,
-	.sending_allowed		= corosync_sending_allowed,
-	.sending_allowed_release	= corosync_sending_allowed_release,
-	.poll_accept_add		= corosync_poll_accept_add,
-	.poll_dispatch_add		= corosync_poll_dispatch_add,
-	.poll_dispatch_modify		= corosync_poll_dispatch_modify,
-	.poll_dispatch_destroy		= corosync_poll_dispatch_destroy,
-	.init_fn_get			= corosync_init_fn_get,
-	.exit_fn_get			= corosync_exit_fn_get,
-	.handler_fn_get			= corosync_handler_fn_get,
-	.stats_create_connection	= corosync_stats_create_connection,
-	.stats_destroy_connection	= corosync_stats_destroy_connection,
-	.stats_update_value		= corosync_stats_update_value,
-	.stats_increment_value		= corosync_stats_increment_value,
-	.stats_decrement_value		= corosync_stats_decrement_value,
-};
-
 static void corosync_setscheduler (void)
 {
 #if defined(HAVE_PTHREAD_SETSCHEDPARAM) && defined(HAVE_SCHED_GET_PRIORITY_MAX) && defined(HAVE_SCHED_SETSCHEDULER)
@@ -1329,10 +1086,6 @@ static void corosync_setscheduler (void)
 			global_sched_param.sched_priority = 0;
 			logsys_thread_priority_set (SCHED_OTHER, NULL, 1);
 		} else {
-			/*
-			 * Turn on SCHED_RR in ipc system
-			 */
-			ipc_init_state_v2.sched_policy = SCHED_RR;
 
 			/*
 			 * Turn on SCHED_RR in logsys system
@@ -1407,49 +1160,10 @@ static void corosync_fplay_control_init (void)
 		NULL, NULL, NULL, NULL);
 }
 
-static void corosync_stats_init (void)
-{
-	hdb_handle_t object_find_handle;
-	hdb_handle_t object_runtime_handle;
-	uint64_t zero_64 = 0;
-
-	objdb->object_find_create (OBJECT_PARENT_HANDLE,
-		"runtime", strlen ("runtime"),
-		&object_find_handle);
-
-	if (objdb->object_find_next (object_find_handle,
-			&object_runtime_handle) != 0) {
-		return;
-	}
-
-	/* Connection objects */
-	objdb->object_create (object_runtime_handle,
-		&object_connection_handle,
-		"connections", strlen ("connections"));
-
-	objdb->object_key_create_typed (object_connection_handle,
-		"active", &zero_64, sizeof (zero_64),
-		OBJDB_VALUETYPE_UINT64);
-	objdb->object_key_create_typed (object_connection_handle,
-		"closed", &zero_64, sizeof (zero_64),
-		OBJDB_VALUETYPE_UINT64);
-}
-
-static void main_low_fds_event(int32_t not_enough, int32_t fds_available)
-{
-	corosync_not_enough_fds_left = not_enough;
-	if (not_enough) {
-		log_printf(LOGSYS_LEVEL_WARNING, "refusing new connections (fds_available:%d)\n",
-			fds_available);
-	} else {
-		log_printf(LOGSYS_LEVEL_NOTICE, "allowing new connections (fds_available:%d)\n",
-			fds_available);
-	}
-}
-
 static void main_service_ready (void)
 {
 	int res;
+
 	/*
 	 * This must occur after totempg is initialized because "this_ip" must be set
 	 */
@@ -1459,7 +1173,7 @@ static void main_service_ready (void)
 		corosync_exit_error (AIS_DONE_INIT_SERVICES);
 	}
 	evil_init (api);
-	corosync_stats_init ();
+	cs_ipcs_init();
 	corosync_totem_stats_init ();
 	corosync_fplay_control_init ();
 	if (minimum_sync_mode == CS_SYNC_V2) {
@@ -1592,7 +1306,9 @@ int main (int argc, char **argv, char **envp)
 	hdb_handle_t object_runtime_handle;
 	enum e_ais_done flock_err;
 
- 	/* default configuration
+	serialize_lock_f = qb_thread_lock_create (QB_THREAD_LOCK_SHORT);
+
+	/* default configuration
 	 */
 	background = 1;
 	setprio = 1;
@@ -1820,7 +1536,6 @@ int main (int argc, char **argv, char **envp)
 		sched_priority);
 
 	corosync_poll_handle = qb_loop_create ();
-	qb_loop_poll_low_fds_event_set(corosync_poll_handle, main_low_fds_event);
 
 	/*
 	 * Sleep for a while to let other nodes in the cluster
@@ -1885,16 +1600,6 @@ int main (int argc, char **argv, char **envp)
 	schedwrk_init (
 		serialize_lock,
 		serialize_unlock);
-
-	ipc_subsys_id = _logsys_subsys_create ("IPC");
-	if (ipc_subsys_id < 0) {
-		log_printf (LOGSYS_LEVEL_ERROR,
-			"Could not initialize IPC logging subsystem\n");
-		corosync_exit_error (AIS_DONE_INIT_SERVICES);
-	}
-
-	ipc_init_state_v2.log_subsys_id = ipc_subsys_id;
-	coroipcs_ipc_init_v2 (&ipc_init_state_v2);
 
 	/*
 	 * Start main processing loop

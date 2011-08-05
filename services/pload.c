@@ -50,10 +50,13 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <string.h>
+#include <assert.h>
+
+#include <qb/qblist.h>
+#include <qb/qbipc_common.h>
 
 #include <corosync/swab.h>
 #include <corosync/corotypes.h>
-#include <corosync/coroipc_types.h>
 #include <corosync/corodefs.h>
 #include <corosync/lcr/lcr_comp.h>
 #include <corosync/mar_gen.h>
@@ -116,7 +119,7 @@ static unsigned int msgs_sent = 0;
 static struct corosync_api_v1 *api;
 
 struct req_exec_pload_start {
-	coroipc_request_header_t header;
+	struct qb_ipc_request_header header;
 	unsigned int msg_code;
 	unsigned int msg_count;
 	unsigned int msg_size;
@@ -124,7 +127,7 @@ struct req_exec_pload_start {
 };
 
 struct req_exec_pload_mcast {
-	coroipc_request_header_t header;
+	struct qb_ipc_request_header header;
 	unsigned int msg_code;
 };
 

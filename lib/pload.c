@@ -41,9 +41,9 @@
 #include <sys/socket.h>
 #include <errno.h>
 
+#include <qb/qbipcc.h>
+
 #include <corosync/corotypes.h>
-#include <corosync/coroipcc.h>
-#include <corosync/coroipc_types.h>
 #include <corosync/corodefs.h>
 #include <corosync/hdb.h>
 
@@ -53,7 +53,7 @@
 #include "util.h"
 
 struct pload_inst {
-	hdb_handle_t handle;
+	qb_ipcc_connection_t *c;
 	unsigned int finalize;
 };
 
@@ -88,14 +88,9 @@ unsigned int pload_initialize (
 		goto error_destroy;
 	}
 
-	error = coroipcc_service_connect (
-		COROSYNC_SOCKET_NAME,
-		PLOAD_SERVICE,
-		IPC_REQUEST_SIZE,
-		IPC_RESPONSE_SIZE,
-		IPC_DISPATCH_SIZE,
-		&pload_inst->handle);
-	if (error != CS_OK) {
+	pload_inst->c = qb_ipcc_connect ("pload", IPC_REQUEST_SIZE);
+	if (pload_inst->c == NULL) {
+		error = qb_to_cs_error(-errno);
 		goto error_put_destroy;
 	}
 
@@ -132,7 +127,7 @@ unsigned int pload_finalize (
 
 	pload_inst->finalize = 1;
 
-	coroipcc_service_disconnect(pload_inst->handle);
+	qb_ipcc_disconnect(pload_inst->c);
 
 	(void)hdb_handle_destroy (&pload_handle_t_db, handle);
 
@@ -153,7 +148,7 @@ unsigned int pload_fd_get (
 		return (error);
 	}
 
-	coroipcc_fd_get (pload_inst->handle, fd);
+	qb_ipcc_fd_get (pload_inst->c, fd);
 
 	(void)hdb_handle_put (&pload_handle_t_db, handle);
 
@@ -186,11 +181,11 @@ unsigned int pload_start (
 	iov.iov_base = (char *)&req_lib_pload_start;
 	iov.iov_len = sizeof (struct req_lib_pload_start);
 
-	error = coroipcc_msg_send_reply_receive(pload_inst->handle,
+	error = qb_to_cs_error(qb_ipcc_sendv_recv(pload_inst->c,
 		&iov,
 		1,
 		&res_lib_pload_start,
-		sizeof (struct res_lib_pload_start));
+		sizeof (struct res_lib_pload_start), -1));
 
 	if (error != CS_OK) {
 		goto error_exit;

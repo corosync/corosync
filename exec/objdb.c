@@ -39,6 +39,7 @@
 
 #include <stdio.h>
 #include <errno.h>
+#include <string.h>
 
 #include <pthread.h>
 
@@ -48,7 +49,7 @@
 #include <corosync/engine/objdb.h>
 #include <corosync/engine/config.h>
 #include <corosync/corotypes.h>
-#include <corosync/coroipc_types.h>
+#include <qb/qbipc_common.h>
 
 #include "main.h"
 

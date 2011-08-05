@@ -53,15 +53,13 @@
 
 #include <corosync/swab.h>
 #include <corosync/corotypes.h>
-#include <corosync/coroipc_types.h>
+#include <qb/qbipc_common.h>
 #include <corosync/corodefs.h>
 #include <corosync/lcr/lcr_comp.h>
 #include <corosync/mar_gen.h>
 #include <corosync/engine/coroapi.h>
 #include <corosync/list.h>
 #include <corosync/engine/logsys.h>
-
-#include "../exec/tlist.h"
 
 LOGSYS_DECLARE_SUBSYS ("TST2");
 

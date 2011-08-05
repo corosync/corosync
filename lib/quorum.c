@@ -44,9 +44,8 @@
 #include <sys/socket.h>
 #include <errno.h>
 
+#include <qb/qbipcc.h>
 #include <corosync/corotypes.h>
-#include <corosync/coroipc_types.h>
-#include <corosync/coroipcc.h>
 #include <corosync/corodefs.h>
 #include <corosync/hdb.h>
 
@@ -56,7 +55,7 @@
 #include "util.h"
 
 struct quorum_inst {
-	hdb_handle_t handle;
+	qb_ipcc_connection_t *c;
 	int finalize;
 	const void *context;
 	quorum_callbacks_t callbacks;
@@ -81,14 +80,10 @@ cs_error_t quorum_initialize (
 		goto error_destroy;
 	}
 
-	error = coroipcc_service_connect (
-		COROSYNC_SOCKET_NAME,
-		QUORUM_SERVICE,
-		IPC_REQUEST_SIZE,
-		IPC_RESPONSE_SIZE,
-		IPC_DISPATCH_SIZE,
-		&quorum_inst->handle);
-	if (error != CS_OK) {
+	error = CS_OK;
+	quorum_inst->c = qb_ipcc_connect ("quorum", IPC_REQUEST_SIZE);
+	if (quorum_inst->c == NULL) {
+		error = qb_to_cs_error(-errno);
 		goto error_put_destroy;
 	}
 
@@ -130,7 +125,7 @@ cs_error_t quorum_finalize (
 
 	quorum_inst->finalize = 1;
 
-	coroipcc_service_disconnect (quorum_inst->handle);
+	qb_ipcc_disconnect (quorum_inst->c);
 
 	(void)hdb_handle_destroy (&quorum_handle_t_db, handle);
 
@@ -146,7 +141,7 @@ cs_error_t quorum_getquorate (
 	cs_error_t error;
 	struct quorum_inst *quorum_inst;
 	struct iovec iov;
-	coroipc_request_header_t req;
+	struct qb_ipc_request_header req;
 	struct res_lib_quorum_getquorate res_lib_quorum_getquorate;
 
 	error = hdb_error_to_cs(hdb_handle_get (&quorum_handle_t_db, handle, (void *)&quorum_inst));
@@ -160,12 +155,12 @@ cs_error_t quorum_getquorate (
 	iov.iov_base = (char *)&req;
 	iov.iov_len = sizeof (req);
 
-       error = coroipcc_msg_send_reply_receive (
-		quorum_inst->handle,
+       error = qb_to_cs_error(qb_ipcc_sendv_recv (
+		quorum_inst->c,
 		&iov,
 		1,
 		&res_lib_quorum_getquorate,
-		sizeof (struct res_lib_quorum_getquorate));
+		sizeof (struct res_lib_quorum_getquorate), -1));
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -193,7 +188,7 @@ cs_error_t quorum_fd_get (
 		return (error);
 	}
 
-	error = coroipcc_fd_get (quorum_inst->handle, fd);
+	error = qb_to_cs_error(qb_ipcc_fd_get (quorum_inst->c, fd));
 
 	(void)hdb_handle_put (&quorum_handle_t_db, handle);
 
@@ -248,7 +243,7 @@ cs_error_t quorum_trackstart (
 	struct quorum_inst *quorum_inst;
 	struct iovec iov;
 	struct req_lib_quorum_trackstart req_lib_quorum_trackstart;
-	coroipc_response_header_t res;
+	struct qb_ipc_response_header res;
 
 	error = hdb_error_to_cs(hdb_handle_get (&quorum_handle_t_db, handle, (void *)&quorum_inst));
 	if (error != CS_OK) {
@@ -262,12 +257,12 @@ cs_error_t quorum_trackstart (
 	iov.iov_base = (char *)&req_lib_quorum_trackstart;
 	iov.iov_len = sizeof (struct req_lib_quorum_trackstart);
 
-       error = coroipcc_msg_send_reply_receive (
-		quorum_inst->handle,
+       error = qb_to_cs_error(qb_ipcc_sendv_recv (
+		quorum_inst->c,
                 &iov,
                 1,
                 &res,
-                sizeof (res));
+                sizeof (res), -1));
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -287,8 +282,8 @@ cs_error_t quorum_trackstop (
 	cs_error_t error;
 	struct quorum_inst *quorum_inst;
 	struct iovec iov;
-	coroipc_request_header_t req;
-	coroipc_response_header_t res;
+	struct qb_ipc_request_header req;
+	struct qb_ipc_response_header res;
 
 	error = hdb_error_to_cs(hdb_handle_get (&quorum_handle_t_db, handle, (void *)&quorum_inst));
 	if (error != CS_OK) {
@@ -301,12 +296,12 @@ cs_error_t quorum_trackstop (
 	iov.iov_base = (char *)&req;
 	iov.iov_len = sizeof (req);
 
-       error = coroipcc_msg_send_reply_receive (
-		quorum_inst->handle,
+       error = qb_to_cs_error(qb_ipcc_sendv_recv (
+		quorum_inst->c,
                 &iov,
                 1,
                 &res,
-                sizeof (res));
+                sizeof (res), -1));
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -329,7 +324,8 @@ cs_error_t quorum_dispatch (
 	int cont = 1; /* always continue do loop except when set to 0 */
 	struct quorum_inst *quorum_inst;
 	quorum_callbacks_t callbacks;
-	coroipc_response_header_t *dispatch_data;
+	struct qb_ipc_response_header *dispatch_data;
+	char dispatch_buf[IPC_DISPATCH_SIZE];
 	struct res_lib_quorum_notification *res_lib_quorum_notification;
 
 	if (dispatch_types != CS_DISPATCH_ONE &&
@@ -353,11 +349,13 @@ cs_error_t quorum_dispatch (
 		timeout = 0;
 	}
 
+	dispatch_data = (struct qb_ipc_response_header *)dispatch_buf;
 	do {
-		error = coroipcc_dispatch_get (
-			quorum_inst->handle,
-			(void **)&dispatch_data,
-			timeout);
+		error = qb_to_cs_error (qb_ipcc_event_recv (
+			quorum_inst->c,
+			dispatch_buf,
+			IPC_DISPATCH_SIZE,
+			timeout));
 		if (error == CS_ERR_BAD_HANDLE) {
 			error = CS_OK;
 			goto error_put;
@@ -399,12 +397,10 @@ cs_error_t quorum_dispatch (
 			break;
 
 		default:
-			coroipcc_dispatch_put (quorum_inst->handle);
 			error = CS_ERR_LIBRARY;
 			goto error_put;
 			break;
 		}
-		coroipcc_dispatch_put (quorum_inst->handle);
 
 		/*
 		 * Determine if more messages should be processed

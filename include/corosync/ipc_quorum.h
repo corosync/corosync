@@ -51,18 +51,18 @@ enum res_quorum_types {
 };
 
 struct req_lib_quorum_trackstart {
-        coroipc_request_header_t header __attribute__((aligned(8)));
+        struct qb_ipc_request_header header __attribute__((aligned(8)));
 	unsigned int track_flags;
 };
 
 
 struct res_lib_quorum_getquorate {
-        coroipc_response_header_t header __attribute__((aligned(8)));
+        struct qb_ipc_response_header header __attribute__((aligned(8)));
 	mar_uint32_t quorate;
 };
 
 struct res_lib_quorum_notification {
-	coroipc_response_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_response_header header __attribute__((aligned(8)));
 	mar_int32_t quorate __attribute__((aligned(8)));
 	mar_uint64_t ring_seq __attribute__((aligned(8)));
 	mar_uint32_t view_list_entries __attribute__((aligned(8)));

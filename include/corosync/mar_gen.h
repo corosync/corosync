@@ -178,7 +178,7 @@ static inline void swab_mar_size_t (mar_size_t *to_swab)
 	swab_mar_uint64_t (to_swab);
 }
 
-static inline void swab_coroipc_request_header_t (coroipc_request_header_t *to_swab)
+static inline void swab_coroipc_request_header_t (struct qb_ipc_request_header *to_swab)
 {
 	swab_mar_int32_t (&to_swab->size);
 	swab_mar_int32_t (&to_swab->id);

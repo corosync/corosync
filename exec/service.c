@@ -43,7 +43,6 @@
 #include <corosync/totem/totem.h>
 
 #include <corosync/corotypes.h>
-#include <corosync/coroipc_types.h>
 #include "mainconfig.h"
 #include "util.h"
 #include <corosync/engine/logsys.h>
@@ -55,7 +54,7 @@
 #include <corosync/engine/coroapi.h>
 #include "service.h"
 
-#include <corosync/coroipcs.h>
+#include <qb/qbipcs.h>
 
 LOGSYS_DECLARE_SUBSYS ("SERV");
 
@@ -248,33 +247,35 @@ unsigned int corosync_service_link_and_init (
 		name_sufix = (char*)service_name;
 
 	corosync_api->object_create (object_stats_services_handle,
-								 &object_stats_handle,
-								 name_sufix, strlen (name_sufix));
+		&object_stats_handle,
+		name_sufix, strlen (name_sufix));
 
 	corosync_api->object_key_create_typed (object_stats_handle,
-										 "service_id",
-										 &service->id, sizeof (service->id),
-										 OBJDB_VALUETYPE_INT16);
+		"service_id",
+		&service->id, sizeof (service->id),
+		OBJDB_VALUETYPE_INT16);
 
 	for (fn = 0; fn < service->exec_engine_count; fn++) {
 
 		snprintf (object_name, 32, "%d", fn);
 		corosync_api->object_create (object_stats_handle,
-									 &service_stats_handle[service->id][fn],
-									 object_name, strlen (object_name));
+			&service_stats_handle[service->id][fn],
+			object_name, strlen (object_name));
 
 		corosync_api->object_key_create_typed (service_stats_handle[service->id][fn],
-											 "tx",
-											 &zero_64, sizeof (zero_64),
-											 OBJDB_VALUETYPE_UINT64);
+			"tx",
+			&zero_64, sizeof (zero_64),
+			OBJDB_VALUETYPE_UINT64);
 
 		corosync_api->object_key_create_typed (service_stats_handle[service->id][fn],
-											 "rx",
-											 &zero_64, sizeof (zero_64),
-											 OBJDB_VALUETYPE_UINT64);
+			"rx",
+			&zero_64, sizeof (zero_64),
+			OBJDB_VALUETYPE_UINT64);
 	}
 
-	log_printf (LOGSYS_LEVEL_NOTICE, "Service engine loaded: %s\n", service->name);
+	log_printf (LOGSYS_LEVEL_NOTICE,
+		"Service engine loaded: %s [%d]\n", service->name, service->id);
+	cs_ipcs_service_init(service);
 	return (res);
 }
 
@@ -580,7 +581,7 @@ static int service_unlink_schedwrk_handler (const void *data) {
 	/*
 	 * Exit all ipc connections dependent on this service
 	 */
-	if (coroipcs_ipc_service_exit (cb_data->service_engine) == -1)
+	if (cs_ipcs_service_destroy (cb_data->service_engine) == -1)
 		return -1;
 
 	log_printf(LOGSYS_LEVEL_NOTICE,

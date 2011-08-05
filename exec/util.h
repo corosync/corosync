@@ -71,17 +71,17 @@ static inline cs_error_t hdb_error_to_cs (int res)		\
 	if (res == 0) {						\
 		return (CS_OK);					\
 	} else {						\
-		if (errno == EBADF) {				\
+		if (res == -EBADF) {				\
 			return (CS_ERR_BAD_HANDLE);		\
 		} else						\
-		if (errno == ENOMEM) {				\
+		if (res == -ENOMEM) {				\
 			return (CS_ERR_NO_MEMORY);		\
 		} else						\
-		if (errno == EMFILE) {				\
+		if (res == -EMFILE) {				\
 			return (CS_ERR_NO_RESOURCES);		\
 		} else						\
-		if (errno == EACCES) {				\
-			return (CS_ERR_SECURITY);		\
+		if (res == -EACCES) {				\
+			return (CS_ERR_ACCESS);			\
 		}						\
 		return (CS_ERR_LIBRARY);			\
 	}							\

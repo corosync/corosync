@@ -58,7 +58,7 @@
 
 #include <corosync/engine/logsys.h>
 #include <corosync/corotypes.h>
-#include <corosync/coroipc_types.h>
+#include <qb/qbipc_common.h>
 #include <corosync/mar_gen.h>
 #include <corosync/engine/coroapi.h>
 #include <corosync/engine/quorum.h>

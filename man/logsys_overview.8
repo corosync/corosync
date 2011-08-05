@@ -32,7 +32,7 @@
 .\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 .\" * THE POSSIBILITY OF SUCH DAMAGE.
 .\" */
-.TH LOGSYS_OVERVIEW 8 2009-06-16 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
+.TH QB_LOGSYS_OVERVIEW 8 2009-06-16 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
 .SH NAME
 logsys_overview \- Logsys Library Overview
 .SH OVERVIEW
@@ -56,14 +56,14 @@ The logsys library is initially configured by including logsys.h and declaring
 a logger.  Once the logger is declared, optional subsystem loggers can be
 declared in every file.
 
-The definition LOGSYS_DECLARE_SYSTEM is placed after the include section of one
+The definition QB_LOGSYS_DECLARE_SYSTEM is placed after the include section of one
 C file in the application.  This declaration creates a constructor function
 which will be called automatically before main() is executed.  This technique
 avoids the need for calling any setup functions in short applications that don't
 require it and enables full logging capabilities before any application code is
 executed.
 
-#define LOGSYS_DECLARE_SYSTEM (name, mode, debug, file, file_priority,
+#define QB_LOGSYS_DECLARE_SYSTEM (name, mode, debug, file, file_priority,
 syslog_facility, syslog_priority, format, fltsize)
 
 The name parameter is the name of the application or system.
@@ -71,17 +71,17 @@ The name parameter is the name of the application or system.
 The mode parameter is the logging mode of the system.
 The following modes can be configured by logically ORing these flags:
 
-LOGSYS_MODE_OUTPUT_FILE: Output all log data to the file parameter of this declaration
+QB_LOGSYS_MODE_OUTPUT_FILE: Output all log data to the file parameter of this declaration
 
-LOGSYS_MODE_OUTPUT_STDERR: Output all log data to the stderr descriptor
+QB_LOGSYS_MODE_OUTPUT_STDERR: Output all log data to the stderr descriptor
 
-LOGSYS_MODE_OUTPUT_SYSLOG: Output all log data to syslog using a non-blocking thread
+QB_LOGSYS_MODE_OUTPUT_SYSLOG: Output all log data to syslog using a non-blocking thread
 
-LOGSYS_MODE_FORK: This flags tells logsys to queue all data untill the application
+QB_LOGSYS_MODE_FORK: This flags tells logsys to queue all data untill the application
 has forked. The application is then responsible to call logsys_fork_completed to flush
 the queue and start logging.
 
-LOGSYS_MODE_THREADED: Starts a separate thread to handle non-blocking logging operations.
+QB_LOGSYS_MODE_THREADED: Starts a separate thread to handle non-blocking logging operations.
 If this flag is not specified, the logging operations are blocking.
 
 The debug parameter, if enabled, turns off all messages priority filtering, recording
@@ -110,13 +110,13 @@ An example declaration would be:
 
 ... (other #includes)
 
-LOGSYS_DECLARE_SYSTEM ("test",                            /* name */
-        LOGSYS_MODE_OUTPUT_STDERR | LOGSYS_MODE_THREADED, /* mode */
+QB_LOGSYS_DECLARE_SYSTEM ("test",                            /* name */
+        QB_LOGSYS_MODE_OUTPUT_STDERR | QB_LOGSYS_MODE_THREADED, /* mode */
         0,                                                /* debug */
         NULL,                                             /* logfile path */
-        LOGSYS_LEVEL_INFO,                                /* logfile_priority */
+        QB_LOGSYS_LEVEL_INFO,                                /* logfile_priority */
         LOG_DAEMON,                                       /* syslog facility */
-        LOGSYS_LEVEL_INFO,                                /* syslog level */
+        QB_LOGSYS_LEVEL_INFO,                                /* syslog level */
         NULL,                                             /* use default format */
         1000000);                                         /* flight recorder size */
 
@@ -128,7 +128,7 @@ and it is entirely optional.
 
 An example:
 
-LOGSYS_DECLARE_SUBSYS ("subsystest");
+QB_LOGSYS_DECLARE_SUBSYS ("subsystest");
 
 It is possible to use the same subsystem name in separate object files.
 In this case, the individual logging parameters for those subsystem identifier
@@ -144,18 +144,18 @@ throught the configuration API.
 The definition log_printf is used to log information to the log.  It works
 in a similiar fashion to printf, except it has a first parameter of level
 which may be the following:
-LOGSYS_LEVEL_EMERG
-LOGSYS_LEVEL_ALERT
-LOGSYS_LEVEL_CRIT
-LOGSYS_LEVEL_ERR
-LOGSYS_LEVEL_WARNING
-LOGSYS_LEVEL_NOTICE
-LOGSYS_LEVEL_INFO
-LOGSYS_LEVEL_DEBUG
+QB_LOGSYS_LEVEL_EMERG
+QB_LOGSYS_LEVEL_ALERT
+QB_LOGSYS_LEVEL_CRIT
+QB_LOGSYS_LEVEL_ERR
+QB_LOGSYS_LEVEL_WARNING
+QB_LOGSYS_LEVEL_NOTICE
+QB_LOGSYS_LEVEL_INFO
+QB_LOGSYS_LEVEL_DEBUG
 
 An example of using log_printf would be
 
-log_printf (LOGSYS_LEVEL_EMERG, "This is an emergency %s value %d\n", string, value);
+log_printf (QB_LOGSYS_LEVEL_EMERG, "This is an emergency %s value %d\n", string, value);
 
 Tracing of functions can be done using ENTER(), LEAVE();
 

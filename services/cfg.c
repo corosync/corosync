@@ -48,9 +48,10 @@
 #include <limits.h>
 #include <errno.h>
 #include <string.h>
+#include <assert.h>
 
 #include <corosync/corotypes.h>
-#include <corosync/coroipc_types.h>
+#include <qb/qbipc_common.h>
 #include <corosync/cfg.h>
 #include <corosync/list.h>
 #include <corosync/mar_gen.h>
@@ -329,23 +330,23 @@ __attribute__ ((constructor)) static void corosync_lcr_component_register (void)
 }
 
 struct req_exec_cfg_ringreenable {
-	coroipc_request_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_request_header header __attribute__((aligned(8)));
         mar_message_source_t source __attribute__((aligned(8)));
 };
 
 struct req_exec_cfg_killnode {
-	coroipc_request_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_request_header header __attribute__((aligned(8)));
         mar_uint32_t nodeid __attribute__((aligned(8)));
 	mar_name_t reason __attribute__((aligned(8)));
 };
 
 struct req_exec_cfg_crypto_set {
-	coroipc_request_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_request_header header __attribute__((aligned(8)));
 	mar_uint32_t type __attribute__((aligned(8)));
 };
 
 struct req_exec_cfg_shutdown {
-	coroipc_request_header_t header __attribute__((aligned(8)));
+	struct qb_ipc_request_header header __attribute__((aligned(8)));
 };
 
 /* IMPL */
