@@ -37,7 +37,7 @@ INCLUDES		= -I$(top_builddir)/include -I$(top_srcdir)/include $(nss_CFLAGS) $(rd
 
 TOTEM_SRC		= totemip.c totemnet.c totemudp.c \
 			  totemudpu.c totemrrp.c totemsrp.c totemmrp.c \
-			  totempg.c crypto.c tsafe.c
+			  totempg.c crypto.c
 if BUILD_RDMA
 TOTEM_SRC		+= totemiba.c
 endif
@@ -67,7 +67,7 @@ SHARED_LIBS		= $(lib_LIBRARIES:%.a=%.so.$(SONAME))
 SHARED_LIBS_SO		= $(SHARED_LIBS:%.so.$(SONAME)=%.so)
 SHARED_LIBS_SO_TWO	= $(SHARED_LIBS:%.so.$(SONAME)=%.so.$(SOMAJOR))
 
-noinst_HEADERS		= apidef.h crypto.h mainconfig.h main.h tsafe.h \
+noinst_HEADERS		= apidef.h crypto.h mainconfig.h main.h \
 			  quorum.h service.h sync.h timer.h totemconfig.h \
 			  totemmrp.h totemnet.h totemudp.h totemiba.h totemrrp.h \
 			  totemudpu.h totemsrp.h util.h vsf.h schedwrk.h \

@@ -123,7 +123,6 @@
 #include "service.h"
 #include "schedwrk.h"
 #include "evil.h"
-#include "tsafe.h"
 
 #ifdef HAVE_SMALL_MEMORY_FOOTPRINT
 #define IPC_LOGSYS_SIZE			1024*64
@@ -1525,9 +1524,6 @@ int main (int argc, char **argv, char **envp)
 	if ((flock_err = corosync_flock (corosync_lock_file, getpid ())) != AIS_DONE_EXIT) {
 		corosync_exit_error (flock_err);
 	}
-
-	/* callthis after our fork() */
-	tsafe_init (envp);
 
 	corosync_poll_handle = qb_loop_create ();
 
