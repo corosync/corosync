@@ -3,8 +3,27 @@ The Corosync Cluster Engine Topic Branches
 ------------------------------------------
 
 --------------------------
-Last Updated: October 2010
+Last Updated: August 2011
 --------------------------
+
+------------------------------------------------------------------------------
+master
+------------------------------------------------------------------------------
+1) exec/totempg.c in check_q_level()
+   Remove hardcoded values.
+   Chat to Steve about correcting the queue length calculation.
+
+2) check max message size restrictions.
+
+3) is this https://github.com/asalkeld/libqb/issues/1 still an issue?
+
+4) remove "old" stuff from the man pages (logging/IPC).
+
+5) new blackbox size might be too small (exec/logsys.c:311)
+
+6) extend the logging config to make better use of the tracing capabilities.
+
+
 
 We use topic branches in our git repository to develop new disruptive features
 that define our future roadmap.  This file describes the topic branches
@@ -12,60 +31,6 @@ the developers have interest in investigating further.
 
 targets can be: whitetank, needle, or future (3.0+).
 Finished can be: percentage or date merged to master.
-
-------------------------------------------------------------------------------
-topic-libqb
-------------------------------------------------------------------------------
-Main Developer: Angus Salkeld
-Started: September 2010
-Finished: 60%
-target: needle
-Description:
-The libqb project is our effort to remove the core infrastructure required for
-client server operations of corosync from the corosync code base and place
-inside a separate project.
-
-The main purpose of this topic is to investigate integrating corosync with the 
-libqb package that has been refactored.  Part of this effort also involves
-investigation into single threaded operation of the IPC layer without
-peformance penalties.
-
-------------------------------------------------------------------------------
-topic-rr
-------------------------------------------------------------------------------
-Main Developer: Steven Dake
-Started: Not Started
-Finished: 0%
-target: needle
-Description:
-Redundant ring may have quality problems near boundary conditions for sequence
-numbers.  This effort involves qualifying and hardening redundant ring around
-these boundary numbers.  A further stretch goal of this topic is to
-automatically reenable a redundant ring when it has been back in service.
-
-------------------------------------------------------------------------------
-topic-snmp
-------------------------------------------------------------------------------
-Main Developer: Angus Salkeld
-Started: Not Started
-Finished: 100%
-target: needle
-Description:
-This topic involves investigation of adding SNMP support into Corosync.
-
-
-------------------------------------------------------------------------------
-topic-udpu
-------------------------------------------------------------------------------
-Main Developer: Steven Dake
-Started: October
-Finished: 80%
-target: needle
-Description:
-The UDPU transport mode offers a mechanism for Corosync to operate in network
-environments where multicast or broadcast are prohibited.  The main mechanism
-it uses to do this is to UDP unicast to each of the target node IP addresses
-listed in the configuation.
 
 ------------------------------------------------------------------------------
 topic-onecrypt
