@@ -42,7 +42,7 @@ LCR_H			= lcr_ckpt.h lcr_comp.h	lcr_ifact.h
 
 ENGINE_H		= config.h coroapi.h logsys.h objdb.h quorum.h
 
-TOTEM_H			= coropoll.h totem.h totemip.h totempg.h
+TOTEM_H			= totem.h totemip.h totempg.h
 
 EXTRA_DIST 		= $(noinst_HEADERS)
 

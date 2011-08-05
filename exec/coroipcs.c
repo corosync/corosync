@@ -1252,7 +1252,7 @@ static void msg_send (void *conn, const struct iovec *iov, unsigned int iov_len,
 		if (conn_info->poll_state == POLL_STATE_IN) {
 			conn_info->poll_state = POLL_STATE_INOUT;
 			api->poll_dispatch_modify (conn_info->fd,
-				POLLIN|POLLOUT|POLLNVAL);
+				POLLIN|POLLOUT|POLLNVAL, conn_info);
 		}
 	}
 
@@ -1766,7 +1766,7 @@ int coroipcs_handler_dispatch (
 		}
 		if (conn_info->poll_state == POLL_STATE_INOUT) {
 			conn_info->poll_state = POLL_STATE_IN;
-			api->poll_dispatch_modify (conn_info->fd, POLLIN|POLLNVAL);
+			api->poll_dispatch_modify (conn_info->fd, POLLIN|POLLNVAL, conn_info);
 		}
 	}
 

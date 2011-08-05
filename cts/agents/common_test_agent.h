@@ -36,6 +36,7 @@
 #define CORO_COMMON_TEST_AGNET_H_DEFINED
 
 #include <corosync/hdb.h>
+#include <qb/qbloop.h>
 
 #define OK_STR "OK"
 #define FAIL_STR "FAIL"
@@ -48,7 +49,7 @@ typedef void (*ta_do_command_fn) (int sock, char* func, char*args[], int num_arg
 
 int test_agent_run(int server_port, ta_do_command_fn func);
 
-hdb_handle_t ta_poll_handle_get(void);
+qb_loop_t *ta_poll_handle_get(void);
 
 #endif /* CORO_COMMON_TEST_AGNET_H_DEFINED */
 

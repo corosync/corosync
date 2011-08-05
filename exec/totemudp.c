@@ -62,7 +62,7 @@
 #include <corosync/list.h>
 #include <corosync/hdb.h>
 #include <corosync/swab.h>
-#include <corosync/totem/coropoll.h>
+#include <qb/qbloop.h>
 #define LOGSYS_UTILS_ONLY 1
 #include <corosync/engine/logsys.h>
 #include "totemudp.h"
@@ -122,7 +122,7 @@ struct totemudp_instance {
 
 	unsigned int totemudp_private_key_len;
 
-	hdb_handle_t totemudp_poll_handle;
+	qb_loop_t *totemudp_poll_handle;
 
 	struct totem_interface *totem_interface;
 
@@ -198,7 +198,7 @@ struct totemudp_instance {
 
 	int firstrun;
 
-	poll_timer_handle timer_netif_check_timeout;
+	qb_loop_timer_handle timer_netif_check_timeout;
 
 	unsigned int my_memb_entries;
 
@@ -1138,7 +1138,7 @@ int totemudp_finalize (
 
 	if (instance->totemudp_sockets.mcast_recv > 0) {
 		close (instance->totemudp_sockets.mcast_recv);
-	 	poll_dispatch_delete (instance->totemudp_poll_handle,
+	 	qb_loop_poll_del (instance->totemudp_poll_handle,
 			instance->totemudp_sockets.mcast_recv);
 	}
 	if (instance->totemudp_sockets.mcast_send > 0) {
@@ -1146,7 +1146,7 @@ int totemudp_finalize (
 	}
 	if (instance->totemudp_sockets.token > 0) {
 		close (instance->totemudp_sockets.token);
-		poll_dispatch_delete (instance->totemudp_poll_handle,
+		qb_loop_poll_del (instance->totemudp_poll_handle,
 			instance->totemudp_sockets.token);
 	}
 
@@ -1158,7 +1158,6 @@ int totemudp_finalize (
  */
 
 static int net_deliver_fn (
-	hdb_handle_t handle,
 	int fd,
 	int revents,
 	void *data)
@@ -1290,7 +1289,8 @@ static void timer_function_netif_check_timeout (
 		instance->netif_bind_state == BIND_STATE_REGULAR &&
 		interface_up == 1)) {
 
-		poll_timer_add (instance->totemudp_poll_handle,
+		qb_loop_timer_add (instance->totemudp_poll_handle,
+			QB_LOOP_MED,
 			instance->totem_config->downcheck_timeout,
 			(void *)instance,
 			timer_function_netif_check_timeout,
@@ -1304,7 +1304,7 @@ static void timer_function_netif_check_timeout (
 
 	if (instance->totemudp_sockets.mcast_recv > 0) {
 		close (instance->totemudp_sockets.mcast_recv);
-	 	poll_dispatch_delete (instance->totemudp_poll_handle,
+	 	qb_loop_poll_del (instance->totemudp_poll_handle,
 			instance->totemudp_sockets.mcast_recv);
 	}
 	if (instance->totemudp_sockets.mcast_send > 0) {
@@ -1312,7 +1312,7 @@ static void timer_function_netif_check_timeout (
 	}
 	if (instance->totemudp_sockets.token > 0) {
 		close (instance->totemudp_sockets.token);
-		poll_dispatch_delete (instance->totemudp_poll_handle,
+		qb_loop_poll_del (instance->totemudp_poll_handle,
 			instance->totemudp_sockets.token);
 	}
 
@@ -1326,7 +1326,8 @@ static void timer_function_netif_check_timeout (
 		/*
 		 * Add a timer to retry building interfaces and request memb_gather_enter
 		 */
-		poll_timer_add (instance->totemudp_poll_handle,
+		qb_loop_timer_add (instance->totemudp_poll_handle,
+			QB_LOOP_MED,
 			instance->totem_config->downcheck_timeout,
 			(void *)instance,
 			timer_function_netif_check_timeout,
@@ -1347,13 +1348,15 @@ static void timer_function_netif_check_timeout (
 		&instance->totemudp_sockets,
 		&instance->totem_interface->boundto);
 
-	poll_dispatch_add (
+	qb_loop_poll_add (
 		instance->totemudp_poll_handle,
+		QB_LOOP_MED,
 		instance->totemudp_sockets.mcast_recv,
 		POLLIN, instance, net_deliver_fn);
 
-	poll_dispatch_add (
+	qb_loop_poll_add (
 		instance->totemudp_poll_handle,
+		QB_LOOP_MED,
 		instance->totemudp_sockets.token,
 		POLLIN, instance, net_deliver_fn);
 
@@ -1374,7 +1377,8 @@ static void timer_function_netif_check_timeout (
 		 * Add a timer to check for interface going down in single membership
 		 */
 		if (instance->my_memb_entries == 1) {
-			poll_timer_add (instance->totemudp_poll_handle,
+			qb_loop_timer_add (instance->totemudp_poll_handle,
+				QB_LOOP_MED,
 				instance->totem_config->downcheck_timeout,
 				(void *)instance,
 				timer_function_netif_check_timeout,
@@ -1737,7 +1741,7 @@ static int totemudp_build_sockets (
  * Create an instance
  */
 int totemudp_initialize (
-	hdb_handle_t poll_handle,
+	qb_loop_t *poll_handle,
 	void **udp_context,
 	struct totem_config *totem_config,
 	int interface_no,
@@ -1824,7 +1828,8 @@ int totemudp_initialize (
 	 * RRP layer isn't ready to receive message because it hasn't
 	 * initialized yet.  Add short timer to check the interfaces.
 	 */
-	poll_timer_add (instance->totemudp_poll_handle,
+	qb_loop_timer_add (instance->totemudp_poll_handle,
+		QB_LOOP_MED,
 		100,
 		(void *)instance,
 		timer_function_netif_check_timeout,
@@ -1852,10 +1857,11 @@ int totemudp_processor_count_set (
 	int res = 0;
 
 	instance->my_memb_entries = processor_count;
-	poll_timer_delete (instance->totemudp_poll_handle,
+	qb_loop_timer_del (instance->totemudp_poll_handle,
 		instance->timer_netif_check_timeout);
 	if (processor_count == 1) {
-		poll_timer_add (instance->totemudp_poll_handle,
+		qb_loop_timer_add (instance->totemudp_poll_handle,
+			QB_LOOP_MED,
 			instance->totem_config->downcheck_timeout,
 			(void *)instance,
 			timer_function_netif_check_timeout,
@@ -1879,7 +1885,7 @@ int totemudp_recv_flush (void *udp_context)
 		ufd.events = POLLIN;
 		nfds = poll (&ufd, 1, 0);
 		if (nfds == 1 && ufd.revents & POLLIN) {
-		net_deliver_fn (0, instance->totemudp_sockets.mcast_recv,
+		net_deliver_fn (instance->totemudp_sockets.mcast_recv,
 			ufd.revents, instance);
 		}
 	} while (nfds == 1);

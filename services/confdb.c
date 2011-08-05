@@ -52,7 +52,6 @@
 #include <corosync/lcr/lcr_comp.h>
 #include <corosync/engine/logsys.h>
 #include <corosync/engine/coroapi.h>
-#include <corosync/totem/coropoll.h>
 
 LOGSYS_DECLARE_SUBSYS ("CONFDB");
 
@@ -87,8 +86,7 @@ static int confdb_exec_exit_fn(void);
 
 static int fd_set_nonblocking(int fd);
 
-static int objdb_notify_dispatch(hdb_handle_t handle,
-		int fd,	int revents, void *data);
+static int objdb_notify_dispatch(int fd, int revents, void *data);
 
 static int confdb_lib_init_fn (void *conn);
 static int confdb_lib_exit_fn (void *conn);
@@ -857,8 +855,7 @@ static void message_handler_req_lib_confdb_reload (void *conn,
 	api->ipc_response_send(conn, &res_lib_confdb_reload, sizeof(res_lib_confdb_reload));
 }
 
-static int objdb_notify_dispatch(hdb_handle_t handle,
-		int fd,	int revents, void *data)
+static int objdb_notify_dispatch(int fd, int revents, void *data)
 {
 	struct confdb_ipc_message_holder *holder;
 	ssize_t rc;

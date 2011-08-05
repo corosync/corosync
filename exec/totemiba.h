@@ -37,6 +37,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <corosync/hdb.h>
+#include <qb/qbloop.h>
 
 #include <corosync/totem/totem.h>
 
@@ -44,7 +45,7 @@
  * Create an instance
  */
 extern int totemiba_initialize (
-	hdb_handle_t poll_handle,
+	qb_loop_t* qb_poll_handle,
 	void **iba_handle,
 	struct totem_config *totem_config,
 	int interface_no,

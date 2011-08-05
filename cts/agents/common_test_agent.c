@@ -47,17 +47,17 @@
 #include <poll.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <corosync/totem/coropoll.h>
+#include <qb/qbloop.h>
 #include "common_test_agent.h"
 
 
 int32_t parse_debug = 0;
 static char big_and_buf_rx[HOW_BIG_AND_BUF];
 ta_do_command_fn do_command;
-static hdb_handle_t poll_handle;
+static qb_loop_t *poll_handle;
 
 
-hdb_handle_t ta_poll_handle_get(void)
+qb_loop_t *ta_poll_handle_get(void)
 {
 	return poll_handle;
 }
@@ -102,7 +102,7 @@ static void ta_handle_command (int sock, char* msg)
 	free (str);
 }
 
-static int server_process_data_fn (hdb_handle_t handle,
+static int server_process_data_fn (
 	int fd,
 	int revents,
 	void *data)
@@ -121,7 +121,7 @@ static int server_process_data_fn (hdb_handle_t handle,
 			syslog (LOG_ERR,"recv() failed: %s", strerror(errno));
 		}
 		close (fd);
-		poll_stop (handle);
+		qb_loop_stop (ta_poll_handle_get());
 	} else {
 		big_and_buf_rx[nbytes] = '\0';
 
@@ -138,7 +138,7 @@ static int server_process_data_fn (hdb_handle_t handle,
 	return 0;
 }
 
-static int server_accept_fn (hdb_handle_t handle,
+static int server_accept_fn (
 	int fd, int revents, void *data)
 {
 	socklen_t addrlen;
@@ -169,7 +169,12 @@ retry_accept:
 		return (0); /* This is an error, but -1 would indicate disconnect from poll loop */
 	}
 
-	poll_dispatch_add (poll_handle, new_fd, POLLIN|POLLNVAL, NULL, server_process_data_fn);
+	qb_loop_poll_add (poll_handle,
+			QB_LOOP_MED,
+			new_fd,
+			POLLIN|POLLNVAL,
+			NULL,
+			server_process_data_fn);
 	return 0;
 }
 
@@ -236,11 +241,16 @@ int test_agent_run(int server_port, ta_do_command_fn func)
 	int listener;
 
 	do_command = func;
-	poll_handle = poll_create ();
+	poll_handle = qb_loop_create ();
 
 	listener = create_server_sockect (server_port);
-	poll_dispatch_add (poll_handle, listener, POLLIN|POLLNVAL, NULL, server_accept_fn);
+	qb_loop_poll_add (poll_handle,
+			  QB_LOOP_MED,
+			  listener,
+			  POLLIN|POLLNVAL,
+			  NULL, server_accept_fn);
 
-	return poll_run (poll_handle);
+	qb_loop_run (poll_handle);
+	return 0;
 }
 

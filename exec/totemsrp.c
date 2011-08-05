@@ -79,7 +79,7 @@
 #include <corosync/sq.h>
 #include <corosync/list.h>
 #include <corosync/hdb.h>
-#include <corosync/totem/coropoll.h>
+#include <qb/qbloop.h>
 #define LOGSYS_UTILS_ONLY 1
 #include <corosync/engine/logsys.h>
 
@@ -403,23 +403,23 @@ struct totemsrp_instance {
 	/*
 	 * Timers
 	 */
-	poll_timer_handle timer_pause_timeout;
+	qb_loop_timer_handle timer_pause_timeout;
 
-	poll_timer_handle timer_orf_token_timeout;
+	qb_loop_timer_handle timer_orf_token_timeout;
 
-	poll_timer_handle timer_orf_token_retransmit_timeout;
+	qb_loop_timer_handle timer_orf_token_retransmit_timeout;
 
-	poll_timer_handle timer_orf_token_hold_retransmit_timeout;
+	qb_loop_timer_handle timer_orf_token_hold_retransmit_timeout;
 
-	poll_timer_handle timer_merge_detect_timeout;
+	qb_loop_timer_handle timer_merge_detect_timeout;
 
-	poll_timer_handle memb_timer_state_gather_join_timeout;
+	qb_loop_timer_handle memb_timer_state_gather_join_timeout;
 
-	poll_timer_handle memb_timer_state_gather_consensus_timeout;
+	qb_loop_timer_handle memb_timer_state_gather_consensus_timeout;
 
-	poll_timer_handle memb_timer_state_commit_timeout;
+	qb_loop_timer_handle memb_timer_state_commit_timeout;
 
-	poll_timer_handle timer_heartbeat_timeout;
+	qb_loop_timer_handle timer_heartbeat_timeout;
 
 	/*
 	 * Function and data used to log messages
@@ -447,7 +447,7 @@ struct totemsrp_instance {
 
 //TODO	struct srp_addr next_memb;
 
-	hdb_handle_t totemsrp_poll_handle;
+	qb_loop_t *totemsrp_poll_handle;
 
 	struct totem_ip_address mcast_address;
 
@@ -757,7 +757,7 @@ static int token_event_stats_collector (enum totem_callback_token_type type, con
  * Exported interfaces
  */
 int totemsrp_initialize (
-	hdb_handle_t poll_handle,
+	qb_loop_t *poll_handle,
 	void **srp_context,
 	struct totem_config *totem_config,
 	totemmrp_stats_t *stats,
@@ -1383,9 +1383,10 @@ static void totemsrp_buffer_release (struct totemsrp_instance *instance, void *p
 
 static void reset_token_retransmit_timeout (struct totemsrp_instance *instance)
 {
-	poll_timer_delete (instance->totemsrp_poll_handle,
+	qb_loop_timer_del (instance->totemsrp_poll_handle,
 		instance->timer_orf_token_retransmit_timeout);
-	poll_timer_add (instance->totemsrp_poll_handle,
+	qb_loop_timer_add (instance->totemsrp_poll_handle,
+		QB_LOOP_MED,
 		instance->totem_config->token_retransmit_timeout,
 		(void *)instance,
 		timer_function_token_retransmit_timeout,
@@ -1396,7 +1397,8 @@ static void reset_token_retransmit_timeout (struct totemsrp_instance *instance)
 static void start_merge_detect_timeout (struct totemsrp_instance *instance)
 {
 	if (instance->my_merge_detect_timeout_outstanding == 0) {
-		poll_timer_add (instance->totemsrp_poll_handle,
+		qb_loop_timer_add (instance->totemsrp_poll_handle,
+			QB_LOOP_MED,
 			instance->totem_config->merge_timeout,
 			(void *)instance,
 			timer_function_merge_detect_timeout,
@@ -1408,7 +1410,7 @@ static void start_merge_detect_timeout (struct totemsrp_instance *instance)
 
 static void cancel_merge_detect_timeout (struct totemsrp_instance *instance)
 {
-	poll_timer_delete (instance->totemsrp_poll_handle, instance->timer_merge_detect_timeout);
+	qb_loop_timer_del (instance->totemsrp_poll_handle, instance->timer_merge_detect_timeout);
 	instance->my_merge_detect_timeout_outstanding = 0;
 }
 
@@ -1448,8 +1450,9 @@ static void old_ring_state_reset (struct totemsrp_instance *instance)
 
 static void reset_pause_timeout (struct totemsrp_instance *instance)
 {
-	poll_timer_delete (instance->totemsrp_poll_handle, instance->timer_pause_timeout);
-	poll_timer_add (instance->totemsrp_poll_handle,
+	qb_loop_timer_del (instance->totemsrp_poll_handle, instance->timer_pause_timeout);
+	qb_loop_timer_add (instance->totemsrp_poll_handle,
+		QB_LOOP_MED,
 		instance->totem_config->token_timeout / 5,
 		(void *)instance,
 		timer_function_pause_timeout,
@@ -1457,8 +1460,9 @@ static void reset_pause_timeout (struct totemsrp_instance *instance)
 }
 
 static void reset_token_timeout (struct totemsrp_instance *instance) {
-	poll_timer_delete (instance->totemsrp_poll_handle, instance->timer_orf_token_timeout);
-	poll_timer_add (instance->totemsrp_poll_handle,
+	qb_loop_timer_del (instance->totemsrp_poll_handle, instance->timer_orf_token_timeout);
+	qb_loop_timer_add (instance->totemsrp_poll_handle,
+		QB_LOOP_MED,
 		instance->totem_config->token_timeout,
 		(void *)instance,
 		timer_function_orf_token_timeout,
@@ -1466,8 +1470,9 @@ static void reset_token_timeout (struct totemsrp_instance *instance) {
 }
 
 static void reset_heartbeat_timeout (struct totemsrp_instance *instance) {
-        poll_timer_delete (instance->totemsrp_poll_handle, instance->timer_heartbeat_timeout);
-        poll_timer_add (instance->totemsrp_poll_handle,
+        qb_loop_timer_del (instance->totemsrp_poll_handle, instance->timer_heartbeat_timeout);
+        qb_loop_timer_add (instance->totemsrp_poll_handle,
+		QB_LOOP_MED,
                 instance->heartbeat_timeout,
                 (void *)instance,
                 timer_function_heartbeat_timeout,
@@ -1476,21 +1481,22 @@ static void reset_heartbeat_timeout (struct totemsrp_instance *instance) {
 
 
 static void cancel_token_timeout (struct totemsrp_instance *instance) {
-	poll_timer_delete (instance->totemsrp_poll_handle, instance->timer_orf_token_timeout);
+	qb_loop_timer_del (instance->totemsrp_poll_handle, instance->timer_orf_token_timeout);
 }
 
 static void cancel_heartbeat_timeout (struct totemsrp_instance *instance) {
-	poll_timer_delete (instance->totemsrp_poll_handle, instance->timer_heartbeat_timeout);
+	qb_loop_timer_del (instance->totemsrp_poll_handle, instance->timer_heartbeat_timeout);
 }
 
 static void cancel_token_retransmit_timeout (struct totemsrp_instance *instance)
 {
-	poll_timer_delete (instance->totemsrp_poll_handle, instance->timer_orf_token_retransmit_timeout);
+	qb_loop_timer_del (instance->totemsrp_poll_handle, instance->timer_orf_token_retransmit_timeout);
 }
 
 static void start_token_hold_retransmit_timeout (struct totemsrp_instance *instance)
 {
-	poll_timer_add (instance->totemsrp_poll_handle,
+	qb_loop_timer_add (instance->totemsrp_poll_handle,
+		QB_LOOP_MED,
 		instance->totem_config->token_hold_timeout,
 		(void *)instance,
 		timer_function_token_hold_retransmit_timeout,
@@ -1499,7 +1505,7 @@ static void start_token_hold_retransmit_timeout (struct totemsrp_instance *insta
 
 static void cancel_token_hold_retransmit_timeout (struct totemsrp_instance *instance)
 {
-	poll_timer_delete (instance->totemsrp_poll_handle,
+	qb_loop_timer_del (instance->totemsrp_poll_handle,
 		instance->timer_orf_token_hold_retransmit_timeout);
 }
 
@@ -1615,9 +1621,10 @@ static void memb_timer_function_state_gather (void *data)
 		/*
 		 * Restart the join timeout
 		`*/
-		poll_timer_delete (instance->totemsrp_poll_handle, instance->memb_timer_state_gather_join_timeout);
+		qb_loop_timer_del (instance->totemsrp_poll_handle, instance->memb_timer_state_gather_join_timeout);
 
-		poll_timer_add (instance->totemsrp_poll_handle,
+		qb_loop_timer_add (instance->totemsrp_poll_handle,
+			QB_LOOP_MED,
 			instance->totem_config->join_timeout,
 			(void *)instance,
 			memb_timer_function_state_gather,
@@ -1864,9 +1871,10 @@ static void memb_state_gather_enter (
 	/*
 	 * Restart the join timeout
 	 */
-	poll_timer_delete (instance->totemsrp_poll_handle, instance->memb_timer_state_gather_join_timeout);
+	qb_loop_timer_del (instance->totemsrp_poll_handle, instance->memb_timer_state_gather_join_timeout);
 
-	poll_timer_add (instance->totemsrp_poll_handle,
+	qb_loop_timer_add (instance->totemsrp_poll_handle,
+		QB_LOOP_MED,
 		instance->totem_config->join_timeout,
 		(void *)instance,
 		memb_timer_function_state_gather,
@@ -1875,10 +1883,11 @@ static void memb_state_gather_enter (
 	/*
 	 * Restart the consensus timeout
 	 */
-	poll_timer_delete (instance->totemsrp_poll_handle,
+	qb_loop_timer_del (instance->totemsrp_poll_handle,
 		instance->memb_timer_state_gather_consensus_timeout);
 
-	poll_timer_add (instance->totemsrp_poll_handle,
+	qb_loop_timer_add (instance->totemsrp_poll_handle,
+		QB_LOOP_MED,
 		instance->totem_config->consensus_timeout,
 		(void *)instance,
 		memb_timer_function_gather_consensus_timeout,
@@ -1939,11 +1948,11 @@ static void memb_state_commit_enter (
 
 	memb_state_commit_token_target_set (instance);
 
-	poll_timer_delete (instance->totemsrp_poll_handle, instance->memb_timer_state_gather_join_timeout);
+	qb_loop_timer_del (instance->totemsrp_poll_handle, instance->memb_timer_state_gather_join_timeout);
 
 	instance->memb_timer_state_gather_join_timeout = 0;
 
-	poll_timer_delete (instance->totemsrp_poll_handle, instance->memb_timer_state_gather_consensus_timeout);
+	qb_loop_timer_del (instance->totemsrp_poll_handle, instance->memb_timer_state_gather_consensus_timeout);
 
 	instance->memb_timer_state_gather_consensus_timeout = 0;
 

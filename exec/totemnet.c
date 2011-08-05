@@ -43,6 +43,7 @@
 #include <totemudp.h>
 #include <totemudpu.h>
 #include <totemnet.h>
+#include <qb/qbloop.h>
 
 #define LOGSYS_UTILS_ONLY 1
 #include <corosync/engine/logsys.h>
@@ -51,7 +52,7 @@ struct transport {
 	const char *name;
 	
 	int (*initialize) (
-		hdb_handle_t poll_handle,
+		qb_loop_t *loop_pt,
 		void **transport_instance,
 		struct totem_config *totem_config,
 		int interface_no,
@@ -265,7 +266,7 @@ int totemnet_finalize (
 }
 
 int totemnet_initialize (
-	hdb_handle_t poll_handle,
+	qb_loop_t *loop_pt,
 	void **net_context,
 	struct totem_config *totem_config,
 	int interface_no,
@@ -292,7 +293,7 @@ int totemnet_initialize (
 	}
 	totemnet_instance_initialize (instance, totem_config);
 
-	res = instance->transport->initialize (poll_handle,
+	res = instance->transport->initialize (loop_pt,
 		&instance->transport_context, totem_config,
 		interface_no, context, deliver_fn, iface_change_fn, target_set_completed);
 

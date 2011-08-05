@@ -48,7 +48,7 @@
 #include <syslog.h>
 #include <poll.h>
 
-#include <corosync/totem/coropoll.h>
+#include <qb/qbloop.h>
 #include <corosync/corotypes.h>
 #include <corosync/votequorum.h>
 #include <corosync/quorum.h>
@@ -78,7 +78,7 @@ static void quorum_notification_fn(
 }
 
 
-static int vq_dispatch_wrapper_fn (hdb_handle_t handle,
+static int vq_dispatch_wrapper_fn (
 	int fd,
 	int revents,
 	void *data)
@@ -86,13 +86,13 @@ static int vq_dispatch_wrapper_fn (hdb_handle_t handle,
 	cs_error_t error = votequorum_dispatch (vq_handle, CS_DISPATCH_ALL);
 	if (error == CS_ERR_LIBRARY) {
 		syslog (LOG_ERR, "%s() got LIB error disconnecting from corosync.", __func__);
-		poll_dispatch_delete (ta_poll_handle_get(), fd);
+		qb_loop_poll_del (ta_poll_handle_get(), fd);
 		close (fd);
 	}
 	return 0;
 }
 
-static int q_dispatch_wrapper_fn (hdb_handle_t handle,
+static int q_dispatch_wrapper_fn (
 	int fd,
 	int revents,
 	void *data)
@@ -100,7 +100,7 @@ static int q_dispatch_wrapper_fn (hdb_handle_t handle,
 	cs_error_t error = quorum_dispatch (q_handle, CS_DISPATCH_ALL);
 	if (error == CS_ERR_LIBRARY) {
 		syslog (LOG_ERR, "%s() got LIB error disconnecting from corosync.", __func__);
-		poll_dispatch_delete (ta_poll_handle_get(), fd);
+		qb_loop_poll_del (ta_poll_handle_get(), fd);
 		close (fd);
 	}
 	return 0;
@@ -137,7 +137,7 @@ static int q_lib_init(void)
 			}
 
 			votequorum_fd_get (vq_handle, &fd);
-			poll_dispatch_add (ta_poll_handle_get(), fd,
+			qb_loop_poll_add (ta_poll_handle_get(), QB_LOOP_MED, fd,
 				POLLIN|POLLNVAL, NULL, vq_dispatch_wrapper_fn);
 		}
 	}
@@ -155,7 +155,7 @@ static int q_lib_init(void)
 				syslog (LOG_ERR, "quorum_trackstart FAILED: %d\n", ret);
 			}
 			quorum_fd_get (q_handle, &fd);
-			poll_dispatch_add (ta_poll_handle_get(), fd,
+			qb_loop_poll_add (ta_poll_handle_get(), QB_LOOP_MED, fd,
 				POLLIN|POLLNVAL, NULL, q_dispatch_wrapper_fn);
 		}
 	}

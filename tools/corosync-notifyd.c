@@ -51,8 +51,10 @@
 #include <signal.h>
 #include <syslog.h>
 
+#include <qb/qbdefs.h>
+#include <qb/qbloop.h>
+
 #include <corosync/corotypes.h>
-#include <corosync/totem/coropoll.h>
 #include <corosync/confdb.h>
 #include <corosync/cfg.h>
 #include <corosync/quorum.h>
@@ -87,7 +89,7 @@ static int num_notifiers = 0;
 static struct notify_callbacks notifiers[MAX_NOTIFIERS];
 static uint32_t local_nodeid = 0;
 static char local_nodename[CS_MAX_NAME_LENGTH];
-static hdb_handle_t poll_handle;
+static qb_loop_t *main_loop;
 static quorum_handle_t quorum_handle;
 
 static void _cs_node_membership_event(char *nodename, uint32_t nodeid, char *state, char* ip);
@@ -356,8 +358,7 @@ _cs_confdb_find_object (confdb_handle_t handle,
 }
 
 static int
-_cs_confdb_dispatch(hdb_handle_t handle,
-	int fd,	int revents, void *data)
+_cs_confdb_dispatch(int fd, int revents, void *data)
 {
 	confdb_dispatch(confdb_handle, CS_DISPATCH_ONE);
 	return 0;
@@ -380,8 +381,7 @@ static void _cs_quorum_notification(quorum_handle_t handle,
 }
 
 static int
-_cs_quorum_dispatch(hdb_handle_t handle,
-	int fd,	int revents, void *data)
+_cs_quorum_dispatch(int fd, int revents, void *data)
 {
 	quorum_dispatch(quorum_handle, CS_DISPATCH_ONE);
 	return 0;
@@ -403,7 +403,7 @@ _cs_quorum_init(void)
 		return;
 	}
 	quorum_fd_get(quorum_handle, &fd);
-	poll_dispatch_add (poll_handle, fd, POLLIN|POLLNVAL, NULL,
+	qb_loop_poll_add(main_loop, QB_LOOP_MED, fd, POLLIN|POLLNVAL, NULL,
 		_cs_quorum_dispatch);
 	quorum_trackstart(quorum_handle, CS_TRACK_CHANGES);
 }
@@ -881,10 +881,11 @@ _cs_application_connection_event(char *app_name, const char *state)
 	}
 }
 
-static void
-sig_exit_handler (int num)
+static int32_t
+sig_exit_handler(int32_t num, void *data)
 {
-	poll_stop(poll_handle);
+	qb_loop_stop(main_loop);
+	return 0;
 }
 
 static void
@@ -901,7 +902,7 @@ _cs_confdb_init(void)
 	}
 	confdb_fd_get(confdb_handle, &conf_fd);
 
-	poll_dispatch_add (poll_handle, conf_fd, POLLIN|POLLNVAL, NULL,
+	qb_loop_poll_add(main_loop, QB_LOOP_MED, conf_fd, POLLIN|POLLNVAL, NULL,
 		_cs_confdb_dispatch);
 
 	rc = _cs_confdb_find_object (confdb_handle, "runtime.connections.",
@@ -1056,7 +1057,7 @@ main(int argc, char *argv[])
 		num_notifiers++;
 	}
 
-	poll_handle = poll_create();
+	main_loop = qb_loop_create();
 
 	_cs_confdb_init();
 	_cs_quorum_init();
@@ -1073,11 +1074,26 @@ main(int argc, char *argv[])
 	}
 #endif /* ENABLE_SNMP */
 
-	(void)signal (SIGINT, sig_exit_handler);
-	(void)signal (SIGQUIT, sig_exit_handler);
-	(void)signal (SIGTERM, sig_exit_handler);
+	qb_loop_signal_add(main_loop,
+			   QB_LOOP_HIGH,
+			   SIGINT,
+			   NULL,
+			   sig_exit_handler,
+			   NULL);
+	qb_loop_signal_add(main_loop,
+			   QB_LOOP_HIGH,
+			   SIGQUIT,
+			   NULL,
+			   sig_exit_handler,
+			   NULL);
+	qb_loop_signal_add(main_loop,
+			   QB_LOOP_HIGH,
+			   SIGTERM,
+			   NULL,
+			   sig_exit_handler,
+			   NULL);
 
-	poll_run(poll_handle);
+	qb_loop_run(main_loop);
 
 #ifdef HAVE_DBUS
 	if (conf[CS_NTF_DBUS]) {

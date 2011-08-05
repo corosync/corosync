@@ -44,13 +44,13 @@
 #define TOTEMSRP_H_DEFINED
 
 #include <corosync/totem/totem.h>
-#include <corosync/totem/coropoll.h>
+#include <qb/qbloop.h>
 
 /**
  * Create a protocol instance
  */
 int totemsrp_initialize (
-	hdb_handle_t poll_handle,
+	qb_loop_t *poll_handle,
 	void **srp_context,
 	struct totem_config *totem_config,
 	totemmrp_stats_t *stats,

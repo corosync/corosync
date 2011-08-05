@@ -70,7 +70,7 @@
 #include <corosync/list.h>
 #include <corosync/hdb.h>
 #include <corosync/swab.h>
-#include <corosync/totem/coropoll.h>
+#include <qb/qbloop.h>
 #define LOGSYS_UTILS_ONLY 1
 #include <corosync/engine/logsys.h>
 #include "totemiba.h"
@@ -111,9 +111,9 @@ struct totemiba_instance {
 
 	void *rrp_context;
 
-	poll_timer_handle timer_netif_check_timeout;
+	qb_loop_timer_handle timer_netif_check_timeout;
 
-	hdb_handle_t totemiba_poll_handle;
+	qb_loop_t *totemiba_poll_handle;
 
 	struct totem_ip_address my_id;
 
@@ -467,7 +467,7 @@ static inline void iba_deliver_fn (struct totemiba_instance *instance, uint64_t 
 	instance->totemiba_deliver_fn (instance->rrp_context, addr, bytes);
 }
 
-static int mcast_cq_send_event_fn (hdb_handle_t poll_handle,  int events,  int suck,  void *context)
+static int mcast_cq_send_event_fn (int events,  int suck,  void *context)
 {
 	struct totemiba_instance *instance = (struct totemiba_instance *)context;
 	struct ibv_wc wc[32];
@@ -490,7 +490,7 @@ static int mcast_cq_send_event_fn (hdb_handle_t poll_handle,  int events,  int s
 	return (0);
 }
 
-static int mcast_cq_recv_event_fn (hdb_handle_t poll_handle,  int events,  int suck,  void *context)
+static int mcast_cq_recv_event_fn (int events,  int suck,  void *context)
 {
 	struct totemiba_instance *instance = (struct totemiba_instance *)context;
 	struct ibv_wc wc[64];
@@ -514,7 +514,7 @@ static int mcast_cq_recv_event_fn (hdb_handle_t poll_handle,  int events,  int s
 	return (0);
 }
 
-static int mcast_rdma_event_fn (hdb_handle_t poll_handle,  int events,  int suck,  void *context)
+static int mcast_rdma_event_fn (int events,  int suck,  void *context)
 {
 	struct totemiba_instance *instance = (struct totemiba_instance *)context;
 	struct rdma_cm_event *event;
@@ -583,7 +583,7 @@ static int recv_token_cq_send_event_fn (hdb_handle_t poll_handle,  int events,  
 	return (0);
 }
 
-static int recv_token_cq_recv_event_fn (hdb_handle_t poll_handle,  int events,  int suck,  void *context)
+static int recv_token_cq_recv_event_fn (int events,  int suck,  void *context)
 {
 	struct totemiba_instance *instance = (struct totemiba_instance *)context;
 	struct ibv_wc wc[32];
@@ -629,11 +629,11 @@ static int recv_token_accept_destroy (struct totemiba_instance *instance)
 
 	rdma_destroy_id (instance->recv_token_cma_id);
 
-	poll_dispatch_delete (
+	qb_loop_poll_del (
 		instance->totemiba_poll_handle,
 		instance->recv_token_recv_completion_channel->fd);
 
-	poll_dispatch_delete (
+	qb_loop_poll_del (
 		instance->totemiba_poll_handle,
 		instance->recv_token_send_completion_channel->fd);
 
@@ -718,13 +718,15 @@ static int recv_token_accept_setup (struct totemiba_instance *instance)
 	
 	recv_token_recv_buf_post_initial (instance);
 
-	poll_dispatch_add (
+	qb_loop_poll_add (
 		instance->totemiba_poll_handle,
+		QB_LOOP_MED,
 		instance->recv_token_recv_completion_channel->fd,
 		POLLIN, instance, recv_token_cq_recv_event_fn);
 
-	poll_dispatch_add (
+	qb_loop_poll_add (
 		instance->totemiba_poll_handle,
+		QB_LOOP_MED,
 		instance->recv_token_send_completion_channel->fd,
 		POLLIN, instance, recv_token_cq_send_event_fn);
 
@@ -733,7 +735,7 @@ static int recv_token_accept_setup (struct totemiba_instance *instance)
 	return (res);
 };
 
-static int recv_token_rdma_event_fn (hdb_handle_t poll_handle,  int events,  int suck,  void *context)
+static int recv_token_rdma_event_fn (int events,  int suck,  void *context)
 {
 	struct totemiba_instance *instance = (struct totemiba_instance *)context;
 	struct rdma_cm_event *event;
@@ -765,7 +767,7 @@ static int recv_token_rdma_event_fn (hdb_handle_t poll_handle,  int events,  int
 	return (0);
 }
 
-static int send_token_cq_send_event_fn (hdb_handle_t poll_handle,  int events,  int suck,  void *context)
+static int send_token_cq_send_event_fn (int events,  int suck,  void *context)
 {
 	struct totemiba_instance *instance = (struct totemiba_instance *)context;
 	struct ibv_wc wc[32];
@@ -788,7 +790,7 @@ static int send_token_cq_send_event_fn (hdb_handle_t poll_handle,  int events,  
 	return (0);
 }
 
-static int send_token_cq_recv_event_fn (hdb_handle_t poll_handle,  int events,  int suck,  void *context)
+static int send_token_cq_recv_event_fn (int events,  int suck,  void *context)
 {
 	struct totemiba_instance *instance = (struct totemiba_instance *)context;
 	struct ibv_wc wc[32];
@@ -811,7 +813,7 @@ static int send_token_cq_recv_event_fn (hdb_handle_t poll_handle,  int events,  
 	return (0);
 }
 
-static int send_token_rdma_event_fn (hdb_handle_t poll_handle,  int events,  int suck,  void *context)
+static int send_token_rdma_event_fn (int events,  int suck,  void *context)
 {
 	struct totemiba_instance *instance = (struct totemiba_instance *)context;
 	struct rdma_cm_event *event;
@@ -982,18 +984,21 @@ static int send_token_bind (struct totemiba_instance *instance)
 		return (-1);
 	}
 	
-	poll_dispatch_add (
+	qb_loop_poll_add (
 		instance->totemiba_poll_handle,
+		QB_LOOP_MED,
 		instance->send_token_recv_completion_channel->fd,
 		POLLIN, instance, send_token_cq_recv_event_fn);
 
-	poll_dispatch_add (
+	qb_loop_poll_add (
 		instance->totemiba_poll_handle,
+		QB_LOOP_MED,
 		instance->send_token_send_completion_channel->fd,
 		POLLIN, instance, send_token_cq_send_event_fn);
 
-	poll_dispatch_add (
+	qb_loop_poll_add (
 		instance->totemiba_poll_handle,
+		QB_LOOP_MED,
 		instance->send_token_channel->fd,
 		POLLIN, instance, send_token_rdma_event_fn);
 
@@ -1007,13 +1012,13 @@ static int send_token_unbind (struct totemiba_instance *instance)
 		return (0);
 	}
 
-	poll_dispatch_delete (
+	qb_loop_poll_del (
 		instance->totemiba_poll_handle,
 		instance->send_token_recv_completion_channel->fd);
-	poll_dispatch_delete (
+	qb_loop_poll_del (
 		instance->totemiba_poll_handle,
 		instance->send_token_send_completion_channel->fd);
-	poll_dispatch_delete (
+	qb_loop_poll_del (
 		instance->totemiba_poll_handle,
 		instance->send_token_channel->fd);
 
@@ -1062,8 +1067,9 @@ static int recv_token_bind (struct totemiba_instance *instance)
 		return (-1);
 	}
 
-	poll_dispatch_add (
+	qb_loop_poll_add (
 		instance->totemiba_poll_handle,
+		QB_LOOP_MED,
 		instance->listen_recv_token_channel->fd,
 		POLLIN, instance, recv_token_rdma_event_fn);
 
@@ -1176,18 +1182,21 @@ static int mcast_bind (struct totemiba_instance *instance)
 	
 	mcast_recv_buf_post_initial (instance);
 
-	poll_dispatch_add (
+	qb_loop_poll_add (
 		instance->totemiba_poll_handle,
+		QB_LOOP_MED,
 		instance->mcast_recv_completion_channel->fd,
 		POLLIN, instance, mcast_cq_recv_event_fn);
 
-	poll_dispatch_add (
+	qb_loop_poll_add (
 		instance->totemiba_poll_handle,
+		QB_LOOP_MED,
 		instance->mcast_send_completion_channel->fd,
 		POLLIN, instance, mcast_cq_send_event_fn);
 
-	poll_dispatch_add (
+	qb_loop_poll_add (
 		instance->totemiba_poll_handle,
+		QB_LOOP_MED,
 		instance->mcast_channel->fd,
 		POLLIN, instance, mcast_rdma_event_fn);
 
@@ -1264,7 +1273,7 @@ int totemiba_finalize (
  * Create an instance
  */
 int totemiba_initialize (
-	hdb_handle_t poll_handle,
+	qb_loop_t *qb_poll_handle,
 	void **iba_context,
 	struct totem_config *totem_config,
 	int interface_no,
@@ -1294,7 +1303,7 @@ int totemiba_initialize (
 
 	instance->totem_interface = &totem_config->interfaces[interface_no];
 
-	instance->totemiba_poll_handle = poll_handle;
+	instance->totemiba_poll_handle = qb_poll_handle;
 
 	instance->totemiba_deliver_fn = deliver_fn;
 
@@ -1306,7 +1315,8 @@ int totemiba_initialize (
 
 	instance->rrp_context = context;
 
-	poll_timer_add (instance->totemiba_poll_handle,
+	qb_loop_timer_add (instance->totemiba_poll_handle,
+		QB_LOOP_MED,
 		100,
 		(void *)instance,
 		timer_function_netif_check_timeout,

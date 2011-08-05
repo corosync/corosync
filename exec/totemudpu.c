@@ -57,11 +57,12 @@
 #include <sys/poll.h>
 #include <limits.h>
 
+#include <qb/qbloop.h>
+
 #include <corosync/sq.h>
 #include <corosync/list.h>
 #include <corosync/hdb.h>
 #include <corosync/swab.h>
-#include <corosync/totem/coropoll.h>
 #define LOGSYS_UTILS_ONLY 1
 #include <corosync/engine/logsys.h>
 #include "totemudpu.h"
@@ -115,7 +116,7 @@ struct totemudpu_instance {
 
 	unsigned int totemudpu_private_key_len;
 
-	hdb_handle_t totemudpu_poll_handle;
+	qb_loop_t *totemudpu_poll_handle;
 
 	struct totem_interface *totem_interface;
 
@@ -183,7 +184,7 @@ struct totemudpu_instance {
 
 	int firstrun;
 
-	poll_timer_handle timer_netif_check_timeout;
+	qb_loop_timer_handle timer_netif_check_timeout;
 
 	unsigned int my_memb_entries;
 
@@ -1047,7 +1048,7 @@ int totemudpu_finalize (
 
 	if (instance->token_socket > 0) {
 		close (instance->token_socket);
-		poll_dispatch_delete (instance->totemudpu_poll_handle,
+		qb_loop_poll_del (instance->totemudpu_poll_handle,
 			instance->token_socket);
 	}
 
@@ -1055,7 +1056,6 @@ int totemudpu_finalize (
 }
 
 static int net_deliver_fn (
-	hdb_handle_t handle,
 	int fd,
 	int revents,
 	void *data)
@@ -1183,7 +1183,8 @@ static void timer_function_netif_check_timeout (
 		instance->netif_bind_state == BIND_STATE_REGULAR &&
 		interface_up == 1)) {
 
-		poll_timer_add (instance->totemudpu_poll_handle,
+		qb_loop_timer_add (instance->totemudpu_poll_handle,
+			QB_LOOP_MED,
 			instance->totem_config->downcheck_timeout,
 			(void *)instance,
 			timer_function_netif_check_timeout,
@@ -1197,7 +1198,7 @@ static void timer_function_netif_check_timeout (
 
 	if (instance->token_socket > 0) {
 		close (instance->token_socket);
-		poll_dispatch_delete (instance->totemudpu_poll_handle,
+		qb_loop_poll_del (instance->totemudpu_poll_handle,
 			instance->token_socket);
 	}
 
@@ -1211,7 +1212,8 @@ static void timer_function_netif_check_timeout (
 		/*
 		 * Add a timer to retry building interfaces and request memb_gather_enter
 		 */
-		poll_timer_add (instance->totemudpu_poll_handle,
+		qb_loop_timer_add (instance->totemudpu_poll_handle,
+			QB_LOOP_MED,
 			instance->totem_config->downcheck_timeout,
 			(void *)instance,
 			timer_function_netif_check_timeout,
@@ -1230,8 +1232,8 @@ static void timer_function_netif_check_timeout (
 		bind_address,
 		&instance->totem_interface->boundto);
 
-	poll_dispatch_add (
-		instance->totemudpu_poll_handle,
+	qb_loop_poll_add (instance->totemudpu_poll_handle,
+		QB_LOOP_MED,
 		instance->token_socket,
 		POLLIN, instance, net_deliver_fn);
 
@@ -1252,7 +1254,8 @@ static void timer_function_netif_check_timeout (
 		 * Add a timer to check for interface going down in single membership
 		 */
 		if (instance->my_memb_entries == 1) {
-			poll_timer_add (instance->totemudpu_poll_handle,
+			qb_loop_timer_add (instance->totemudpu_poll_handle,
+				QB_LOOP_MED,
 				instance->totem_config->downcheck_timeout,
 				(void *)instance,
 				timer_function_netif_check_timeout,
@@ -1382,7 +1385,7 @@ static int totemudpu_build_sockets (
  * Create an instance
  */
 int totemudpu_initialize (
-	hdb_handle_t poll_handle,
+	qb_loop_t *poll_handle,
 	void **udpu_context,
 	struct totem_config *totem_config,
 	int interface_no,
@@ -1455,7 +1458,8 @@ int totemudpu_initialize (
 	 * RRP layer isn't ready to receive message because it hasn't
 	 * initialized yet.  Add short timer to check the interfaces.
 	 */
-	poll_timer_add (instance->totemudpu_poll_handle,
+	qb_loop_timer_add (instance->totemudpu_poll_handle,
+		QB_LOOP_MED,
 		100,
 		(void *)instance,
 		timer_function_netif_check_timeout,
@@ -1483,10 +1487,11 @@ int totemudpu_processor_count_set (
 	int res = 0;
 
 	instance->my_memb_entries = processor_count;
-	poll_timer_delete (instance->totemudpu_poll_handle,
+	qb_loop_timer_del (instance->totemudpu_poll_handle,
 		instance->timer_netif_check_timeout);
 	if (processor_count == 1) {
-		poll_timer_add (instance->totemudpu_poll_handle,
+		qb_loop_timer_add (instance->totemudpu_poll_handle,
+			QB_LOOP_MED,
 			instance->totem_config->downcheck_timeout,
 			(void *)instance,
 			timer_function_netif_check_timeout,
