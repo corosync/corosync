@@ -1004,13 +1004,19 @@ static void corosync_setscheduler (void)
 				global_sched_param.sched_priority);
 
 			global_sched_param.sched_priority = 0;
-			logsys_thread_priority_set (SCHED_OTHER, NULL, 1);
+#ifdef HAVE_QB_LOG_THREAD_PRIORITY_SET
+			qb_log_thread_priority_set (SCHED_OTHER, 0);
+#endif
 		} else {
 
 			/*
 			 * Turn on SCHED_RR in logsys system
 			 */
-			res = logsys_thread_priority_set (SCHED_RR, &global_sched_param, 10);
+#ifdef HAVE_QB_LOG_THREAD_PRIORITY_SET
+			res = qb_log_thread_priority_set (SCHED_RR, sched_priority);
+#else
+			res = -1;
+#endif
 			if (res == -1) {
 				log_printf (LOGSYS_LEVEL_ERROR,
 					    "Could not set logsys thread priority."
@@ -1262,9 +1268,9 @@ int main (int argc, char **argv, char **envp)
 	/* default configuration
 	 */
 	background = 1;
-	setprio = 1;
+	setprio = 0;
 
-	while ((ch = getopt (argc, argv, "fpv")) != EOF) {
+	while ((ch = getopt (argc, argv, "fprv")) != EOF) {
 
 		switch (ch) {
 			case 'f':
@@ -1272,7 +1278,9 @@ int main (int argc, char **argv, char **envp)
 				logsys_config_mode_set (NULL, LOGSYS_MODE_OUTPUT_STDERR|LOGSYS_MODE_THREADED|LOGSYS_MODE_FORK);
 				break;
 			case 'p':
-				setprio = 0;
+				break;
+			case 'r':
+				setprio = 1;
 				break;
 			case 'v':
 				printf ("Corosync Cluster Engine, version '%s'\n", VERSION);
@@ -1284,7 +1292,8 @@ int main (int argc, char **argv, char **envp)
 				fprintf(stderr, \
 					"usage:\n"\
 					"        -f     : Start application in foreground.\n"\
-					"        -p     : Do not set process priority.    \n"\
+					"        -p     : Does nothing.    \n"\
+					"        -r     : Set round robin realtime scheduling \n"\
 					"        -v     : Display version and SVN revision of Corosync and exit.\n");
 				return EXIT_FAILURE;
 		}

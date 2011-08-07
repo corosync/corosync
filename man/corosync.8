@@ -35,7 +35,7 @@
 .SH NAME
 corosync \- The Corosync Cluster Engine.
 .SH SYNOPSIS
-.B "corosync [\-f] [\-p] [\-v]"
+.B "corosync [\-f] [\-p] [\-r] [\-v]"
 .SH DESCRIPTION
 .B corosync
 Corosync provides clustering infracture such as membership, messaging and quorum.
@@ -45,7 +45,10 @@ Corosync provides clustering infracture such as membership, messaging and quorum
 Start application in foreground.
 .TP
 .B -p
-Do not set process priority.    
+Does nothing (was: "Do not set process priority" - this is now the default).
+.TP
+.B -r
+Set round robin realtime scheduling.
 .TP
 .B -v
 Display version and SVN revision of Corosync and exit.

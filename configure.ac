@@ -73,6 +73,12 @@ AC_CHECK_LIB([socket], [socket])
 AC_CHECK_LIB([nsl], [t_open])
 AC_CHECK_LIB([rt], [sched_getscheduler])
 PKG_CHECK_MODULES([LIBQB], [libqb])
+AC_CHECK_LIB([qb], [qb_log_thread_priority_set], \
+	     have_qb_log_thread_priority_set="yes", \
+	     have_qb_log_thread_priority_set="no")
+if test "x${have_qb_log_thread_priority_set}" = xyes; then
+	AC_DEFINE_UNQUOTED([HAVE_QB_LOG_THREAD_PRIORITY_SET], 1, [have qb_log_thread_priority_set])
+fi
 
 # Checks for header files.
 AC_FUNC_ALLOCA
