@@ -1,0 +1,12 @@
+[Unit]
+Description=Corosync Cluster Engine
+ConditionKernelCommandLine=!nocluster
+#Conflicts=cman.service
+
+[Service]
+ExecStart=@SBINDIR@/corosync
+Type=forking
+#RestartSec=90s
+
+[Install]
+WantedBy=multi-user.target

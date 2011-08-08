@@ -272,6 +272,11 @@ AC_ARG_ENABLE([augeas],
 	[ enable_augeas="no" ])
 AM_CONDITIONAL(INSTALL_AUGEAS, test x$enable_augeas = xyes)
 
+AC_ARG_ENABLE([systemd],
+	      [  --enable-systemd               : Install systemd service files],,
+	[ enable_systemd="no" ])
+AM_CONDITIONAL(INSTALL_SYSTEMD, test x$enable_systemd = xyes)
+
 AC_ARG_WITH([initddir],
 	[  --with-initddir=DIR     : path to init script directory. ],
 	[ INITDDIR="$withval" ],
@@ -440,6 +445,9 @@ fi
 
 if test "x${enable_augeas}" = xyes; then
 	PACKAGE_FEATURES="$PACKAGE_FEATURES augeas"
+fi
+if test "x${enable_systemd}" = xyes; then
+	PACKAGE_FEATURES="$PACKAGE_FEATURES systemd"
 fi
 
 if test "x${enable_snmp}" = xyes; then

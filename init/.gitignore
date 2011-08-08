@@ -1,2 +1,4 @@
 generic
 notifyd
+corosync.service
+corosync-notifyd.service

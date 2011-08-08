@@ -34,9 +34,14 @@
 
 MAINTAINERCLEANFILES	= Makefile.in
 
-EXTRA_DIST		= generic.in notifyd.in
+EXTRA_DIST		= generic.in notifyd.in corosync.service.in corosync-notifyd.service.in
 
+if INSTALL_SYSTEMD
+systemdconfdir = /lib/systemd/system
+systemdconf_DATA = corosync.service corosync-notifyd.service
+else
 target_INIT		= generic notifyd
+endif
 
 %: %.in Makefile
 	rm -f $@-t $@
@@ -46,14 +51,15 @@ target_INIT		= generic notifyd
 		-e 's#@''INITDDIR@#$(INITDDIR)#g' \
 		-e 's#@''LOCALSTATEDIR@#$(localstatedir)#g' \
 	    $< > $@-t
-	chmod 0755 $@-t
 	mv $@-t $@
 
-all-local: $(target_INIT)
+all-local: $(target_INIT) $(systemdconf_DATA)
 
 clean-local:
-	rm -rf $(target_INIT)
+	rm -rf $(target_INIT) $(systemdconf_DATA)
 
+if INSTALL_SYSTEMD
+else
 install-exec-local:
 	$(INSTALL) -d $(DESTDIR)/$(INITDDIR)
 	$(INSTALL) -m 755 generic $(DESTDIR)/$(INITDDIR)/corosync
@@ -62,3 +68,4 @@ install-exec-local:
 uninstall-local:
 	cd $(DESTDIR)/$(INITDDIR) && \
 		rm -f corosync corosync-notifyd
+endif
