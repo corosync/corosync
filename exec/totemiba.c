@@ -562,7 +562,10 @@ static int mcast_rdma_event_fn (int events,  int suck,  void *context)
 	return (0);
 }
 
-static int recv_token_cq_send_event_fn (hdb_handle_t poll_handle,  int events,  int suck,  void *context)
+static int recv_token_cq_send_event_fn (
+	int fd,
+	int revents,
+	void *context)
 {
 	struct totemiba_instance *instance = (struct totemiba_instance *)context;
 	struct ibv_wc wc[32];
