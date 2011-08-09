@@ -187,13 +187,15 @@ struct totemiba_instance {
 
 	struct ibv_cq *send_token_recv_cq;
 
-	void (*totemiba_log_printf) (
-		unsigned int rec_ident,
+        void (*totemiba_log_printf) (
+		int level,
+		int subsys,
 		const char *function,
 		const char *file,
 		int line,
 		const char *format,
-		...)__attribute__((format(printf, 5, 6)));
+		...)__attribute__((format(printf, 6, 7)));
+
 
 	int totemiba_subsys_id;
 
