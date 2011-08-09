@@ -57,7 +57,11 @@ static inline void swab_mar_message_source_t (mar_message_source_t *to_swab)
 	 */
 	to_swab->conn = NULL;
 }
+
+#ifndef TIMER_HANDLE_T
 typedef qb_loop_timer_handle corosync_timer_handle_t;
+#define TIMER_HANDLE_T 1
+#endif
 
 struct corosync_tpg_group {
 	const void *group;

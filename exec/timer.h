@@ -39,7 +39,10 @@
 #include <time.h>
 #include <qb/qbloop.h>
 
+#ifndef TIMER_HANDLE_T
 typedef qb_loop_timer_handle corosync_timer_handle_t;
+#define TIMER_HANDLE_T 1
+#endif
 
 extern int corosync_timer_add_duration (
 	unsigned long long nanosec_duration,
