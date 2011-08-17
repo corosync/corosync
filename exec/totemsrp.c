@@ -2051,7 +2051,7 @@ static void memb_state_recovery_enter (
 		log_printf (instance->totemsrp_log_level_debug,
 			"position [%d] member %s:\n", i, totemip_print (&addr[i].addr[0]));
 		log_printf (instance->totemsrp_log_level_debug,
-			"previous ring seq %lld rep %s\n",
+			"previous ring seq %llx rep %s\n",
 			memb_list[i].ring_id.seq,
 			totemip_print (&memb_list[i].ring_id.rep));
 
@@ -4432,7 +4432,7 @@ void main_iface_change_fn (
 		memb_ring_id_create_or_load (instance, &instance->my_ring_id);
 		log_printf (
 			instance->totemsrp_log_level_debug,
-			"Created or loaded sequence id %lld.%s for this ring.\n",
+			"Created or loaded sequence id %llx.%s for this ring.\n",
 			instance->my_ring_id.seq,
 			totemip_print (&instance->my_ring_id.rep));
 
