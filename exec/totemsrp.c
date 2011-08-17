@@ -111,10 +111,6 @@
  * SEQNO_START_TOKEN is the starting sequence number after a new configuration
  *	for a token.  This should remain zero, unless testing overflow in which
  *	case 07fffff00 or 0xffffff00 are good starting values.
- *
- * SEQNO_START_MSG is the starting sequence number after a new configuration
- *	This should remain zero, unless testing overflow in which case
- *	0x7ffff000 and 0xfffff000 are good values to start with
  */
 #define SEQNO_START_MSG 0x0
 #define SEQNO_START_TOKEN 0x0
@@ -629,12 +625,12 @@ void main_iface_change_fn (
 struct message_handlers totemsrp_message_handlers = {
 	6,
 	{
-		message_handler_orf_token,
-		message_handler_mcast,
-		message_handler_memb_merge_detect,
-		message_handler_memb_join,
-		message_handler_memb_commit_token,
-		message_handler_token_hold_cancel
+		message_handler_orf_token,            /* MESSAGE_TYPE_ORF_TOKEN */
+		message_handler_mcast,                /* MESSAGE_TYPE_MCAST */
+		message_handler_memb_merge_detect,    /* MESSAGE_TYPE_MEMB_MERGE_DETECT */
+		message_handler_memb_join,            /* MESSAGE_TYPE_MEMB_JOIN */
+		message_handler_memb_commit_token,    /* MESSAGE_TYPE_MEMB_COMMIT_TOKEN */
+		message_handler_token_hold_cancel     /* MESSAGE_TYPE_TOKEN_HOLD_CANCEL */
 	}
 };
 

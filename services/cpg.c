@@ -310,39 +310,39 @@ static inline int zcb_all_free (
  */
 static struct corosync_lib_handler cpg_lib_engine[] =
 {
-	{ /* 0 */
+	{ /* 0 - MESSAGE_REQ_CPG_JOIN */
 		.lib_handler_fn				= message_handler_req_lib_cpg_join,
 		.flow_control				= CS_LIB_FLOW_CONTROL_REQUIRED
 	},
-	{ /* 1 */
+	{ /* 1 - MESSAGE_REQ_CPG_LEAVE */
 		.lib_handler_fn				= message_handler_req_lib_cpg_leave,
 		.flow_control				= CS_LIB_FLOW_CONTROL_REQUIRED
 	},
-	{ /* 2 */
+	{ /* 2 - MESSAGE_REQ_CPG_MCAST */
 		.lib_handler_fn				= message_handler_req_lib_cpg_mcast,
 		.flow_control				= CS_LIB_FLOW_CONTROL_REQUIRED
 	},
-	{ /* 3 */
+	{ /* 3 - MESSAGE_REQ_CPG_MEMBERSHIP */
 		.lib_handler_fn				= message_handler_req_lib_cpg_membership,
 		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
-	{ /* 4 */
+	{ /* 4 - MESSAGE_REQ_CPG_LOCAL_GET */
 		.lib_handler_fn				= message_handler_req_lib_cpg_local_get,
 		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
-	{ /* 5 */
+	{ /* 5 - MESSAGE_REQ_CPG_ITERATIONINITIALIZE */
 		.lib_handler_fn				= message_handler_req_lib_cpg_iteration_initialize,
 		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
-	{ /* 6 */
+	{ /* 6 - MESSAGE_REQ_CPG_ITERATIONNEXT */
 		.lib_handler_fn				= message_handler_req_lib_cpg_iteration_next,
 		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
-	{ /* 7 */
+	{ /* 7 - MESSAGE_REQ_CPG_ITERATIONFINALIZE */
 		.lib_handler_fn				= message_handler_req_lib_cpg_iteration_finalize,
 		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
-	{ /* 8 */
+	{ /* 8 - MESSAGE_REQ_CPG_FINALIZE */
 		.lib_handler_fn				= message_handler_req_lib_cpg_finalize,
 		.flow_control				= CS_LIB_FLOW_CONTROL_REQUIRED
 	},
@@ -364,27 +364,27 @@ static struct corosync_lib_handler cpg_lib_engine[] =
 
 static struct corosync_exec_handler cpg_exec_engine[] =
 {
-	{ /* 0 */
+	{ /* 0 - MESSAGE_REQ_EXEC_CPG_PROCJOIN */
 		.exec_handler_fn	= message_handler_req_exec_cpg_procjoin,
 		.exec_endian_convert_fn	= exec_cpg_procjoin_endian_convert
 	},
-	{ /* 1 */
+	{ /* 1 - MESSAGE_REQ_EXEC_CPG_PROCLEAVE */
 		.exec_handler_fn	= message_handler_req_exec_cpg_procleave,
 		.exec_endian_convert_fn	= exec_cpg_procjoin_endian_convert
 	},
-	{ /* 2 */
+	{ /* 2 - MESSAGE_REQ_EXEC_CPG_JOINLIST */
 		.exec_handler_fn	= message_handler_req_exec_cpg_joinlist,
 		.exec_endian_convert_fn	= exec_cpg_joinlist_endian_convert
 	},
-	{ /* 3 */
+	{ /* 3 - MESSAGE_REQ_EXEC_CPG_MCAST */
 		.exec_handler_fn	= message_handler_req_exec_cpg_mcast,
 		.exec_endian_convert_fn	= exec_cpg_mcast_endian_convert
 	},
-	{ /* 4 */
+	{ /* 4 - MESSAGE_REQ_EXEC_CPG_DOWNLIST_OLD */
 		.exec_handler_fn	= message_handler_req_exec_cpg_downlist_old,
 		.exec_endian_convert_fn	= exec_cpg_downlist_endian_convert_old
 	},
-	{ /* 5 */
+	{ /* 5 - MESSAGE_REQ_EXEC_CPG_DOWNLIST */
 		.exec_handler_fn	= message_handler_req_exec_cpg_downlist,
 		.exec_endian_convert_fn	= exec_cpg_downlist_endian_convert
 	},
