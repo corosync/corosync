@@ -683,7 +683,8 @@ static int notify_lib_joinlist(
 				}
 				if (left_list_entries) {
 					if (left_list[0].pid == cpd->pid &&
-						left_list[0].nodeid == api->totem_nodeid_get()) {
+						left_list[0].nodeid == api->totem_nodeid_get() &&
+						left_list[0].reason == CONFCHG_CPG_REASON_LEAVE) {
 
 						cpd->pid = 0;
 						memset (&cpd->group_name, 0, sizeof(cpd->group_name));
