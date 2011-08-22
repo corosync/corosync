@@ -1055,17 +1055,10 @@ _logsys_log_printf(int level, int subsys,
 	size_t len;
 
 	va_start(ap, format);
-	len = vsnprintf(buf, sizeof(buf), format, ap);
-	va_end(ap);
-
-	if (buf[len - 1] == '\n') {
-		buf[len - 1] = '\0';
-		len -= 1;
-	}
-
-	qb_log_from_external_source(function_name, file_name,
+	qb_log_from_external_source_va(function_name, file_name,
 				    format, level, file_line,
-				    subsys, buf);
+				    subsys, ap);
+	va_end(ap);
 }
 
 static void fplay_key_change_notify_fn (
