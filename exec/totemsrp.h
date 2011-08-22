@@ -133,4 +133,7 @@ extern int totemsrp_member_remove (
 	const struct totem_ip_address *member,
 	int ring_no);
 	
+void totemsrp_threaded_mode_enable (
+	void *srp_context);
+
 #endif /* TOTEMSRP_H_DEFINED */

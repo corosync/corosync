@@ -267,3 +267,12 @@ int totemmrp_member_remove (
 
 	return (res);
 }
+
+void totemmrp_threaded_mode_enable (void)
+{
+	int res;
+
+	totemsrp_threaded_mode_enable (totemsrp_context);
+
+	return (res);
+}

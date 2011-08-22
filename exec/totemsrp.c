@@ -503,6 +503,8 @@ struct totemsrp_instance {
 	totemsrp_stats_t stats;
 
 	uint32_t orf_token_discard;
+
+	uint32_t threaded_mode_enabled;
 	
 	void * token_recv_event_handle;
 	void * token_sent_event_handle;
@@ -881,7 +883,7 @@ int totemsrp_initialize (
 
 
 	cs_queue_init (&instance->retrans_message_queue, RETRANS_MESSAGE_QUEUE_SIZE_MAX,
-		sizeof (struct message_item));
+		sizeof (struct message_item), instance->threaded_mode_enabled);
 
 	sq_init (&instance->regular_sort_queue,
 		QUEUE_RTR_ITEMS_SIZE_MAX, sizeof (struct sort_queue_item), 0);
@@ -942,7 +944,7 @@ int totemsrp_initialize (
 	 */
 	cs_queue_init (&instance->new_message_queue,
 		MESSAGE_QUEUE_MAX,
-		sizeof (struct message_item));
+		sizeof (struct message_item), instance->threaded_mode_enabled);
 
 	totemsrp_callback_token_create (instance,
 		&instance->token_recv_event_handle,
@@ -4490,4 +4492,11 @@ int totemsrp_member_remove (
 	res = totemrrp_member_remove (instance->totemrrp_context, member, ring_no);
 
 	return (res);
+}
+
+void totemsrp_threaded_mode_enable (void *context)
+{
+	struct totemsrp_instance *instance = (struct totemsrp_instance *)context;
+
+	instance->threaded_mode_enabled = 1;
 }

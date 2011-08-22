@@ -166,6 +166,8 @@ static unsigned int totempg_size_limit;
 
 static totem_queue_level_changed_fn totem_queue_level_changed = NULL;
 
+static uint32_t totempg_threaded_mode = 0;
+
 /*
  * Function and data used to log messages
  */
@@ -689,13 +691,19 @@ int callback_token_received_fn (enum totem_callback_token_type type,
 	struct totempg_mcast mcast;
 	struct iovec iovecs[3];
 
-	pthread_mutex_lock (&mcast_msg_mutex);
+	if (totempg_threaded_mode == 1) {
+		pthread_mutex_lock (&mcast_msg_mutex);
+	}
 	if (mcast_packed_msg_count == 0) {
-		pthread_mutex_unlock (&mcast_msg_mutex);
+		if (totempg_threaded_mode == 1) {
+			pthread_mutex_unlock (&mcast_msg_mutex);
+		}
 		return (0);
 	}
 	if (totemmrp_avail() == 0) {
-		pthread_mutex_unlock (&mcast_msg_mutex);
+		if (totempg_threaded_mode == 1) {
+			pthread_mutex_unlock (&mcast_msg_mutex);
+		}
 		return (0);
 	}
 	mcast.header.version = 0;
@@ -722,7 +730,9 @@ int callback_token_received_fn (enum totem_callback_token_type type,
 	mcast_packed_msg_count = 0;
 	fragment_size = 0;
 
-	pthread_mutex_unlock (&mcast_msg_mutex);
+	if (totempg_threaded_mode == 1) {
+		pthread_mutex_unlock (&mcast_msg_mutex);
+	}
 	return (0);
 }
 
@@ -774,9 +784,13 @@ int totempg_initialize (
 
 void totempg_finalize (void)
 {
-	pthread_mutex_lock (&totempg_mutex);
+	if (totempg_threaded_mode == 1) {
+		pthread_mutex_lock (&totempg_mutex);
+	}
 	totemmrp_finalize ();
-	pthread_mutex_unlock (&totempg_mutex);
+	if (totempg_threaded_mode == 1) {
+		pthread_mutex_unlock (&totempg_mutex);
+	}
 }
 
 /*
@@ -798,7 +812,9 @@ static int mcast_msg (
 	int copy_base = 0;
 	int total_size = 0;
 
-	pthread_mutex_lock (&mcast_msg_mutex);
+	if (totempg_threaded_mode == 1) {
+		pthread_mutex_lock (&mcast_msg_mutex);
+	}
 	totemmrp_event_signal (TOTEM_EVENT_NEW_MSG, 1);
 
 	/*
@@ -828,7 +844,9 @@ static int mcast_msg (
 	if (byte_count_send_ok (total_size + sizeof(unsigned short) *
 		(mcast_packed_msg_count)) == 0) {
 
-		pthread_mutex_unlock (&mcast_msg_mutex);
+		if (totempg_threaded_mode == 1) {
+			pthread_mutex_unlock (&mcast_msg_mutex);
+		}
 		return(-1);
 	}
 
@@ -946,7 +964,9 @@ static int mcast_msg (
 	}
 
 error_exit:
-	pthread_mutex_unlock (&mcast_msg_mutex);
+	if (totempg_threaded_mode == 1) {
+		pthread_mutex_unlock (&mcast_msg_mutex);
+	}
 	return (res);
 }
 
@@ -1004,19 +1024,27 @@ int totempg_callback_token_create (
 	const void *data)
 {
 	unsigned int res;
-	pthread_mutex_lock (&callback_token_mutex);
+	if (totempg_threaded_mode == 1) {
+		pthread_mutex_lock (&callback_token_mutex);
+	}
 	res = totemmrp_callback_token_create (handle_out, type, delete,
 		callback_fn, data);
-	pthread_mutex_unlock (&callback_token_mutex);
+	if (totempg_threaded_mode == 1) {
+		pthread_mutex_unlock (&callback_token_mutex);
+	}
 	return (res);
 }
 
 void totempg_callback_token_destroy (
 	void *handle_out)
 {
-	pthread_mutex_lock (&callback_token_mutex);
+	if (totempg_threaded_mode == 1) {
+		pthread_mutex_lock (&callback_token_mutex);
+	}
 	totemmrp_callback_token_destroy (handle_out);
-	pthread_mutex_unlock (&callback_token_mutex);
+	if (totempg_threaded_mode == 1) {
+		pthread_mutex_unlock (&callback_token_mutex);
+	}
 }
 
 /*
@@ -1042,7 +1070,9 @@ int totempg_groups_initialize (
 	struct totempg_group_instance *instance;
 	unsigned int res;
 
-	pthread_mutex_lock (&totempg_mutex);
+	if (totempg_threaded_mode == 1) {
+		pthread_mutex_lock (&totempg_mutex);
+	}
 	res = hdb_handle_create (&totempg_groups_instance_database,
 		sizeof (struct totempg_group_instance), handle);
 	if (res != 0) {
@@ -1068,13 +1098,17 @@ int totempg_groups_initialize (
 
 	hdb_handle_put (&totempg_groups_instance_database, *handle);
 
-	pthread_mutex_unlock (&totempg_mutex);
+	if (totempg_threaded_mode == 1) {
+		pthread_mutex_unlock (&totempg_mutex);
+	}
 	return (0);
 error_destroy:
 	hdb_handle_destroy (&totempg_groups_instance_database, *handle);
 
 error_exit:
-	pthread_mutex_unlock (&totempg_mutex);
+	if (totempg_threaded_mode == 1) {
+		pthread_mutex_unlock (&totempg_mutex);
+	}
 	return (-1);
 }
 
@@ -1087,7 +1121,10 @@ int totempg_groups_join (
 	struct totempg_group *new_groups;
 	unsigned int res;
 
-	pthread_mutex_lock (&totempg_mutex);
+	if (totempg_threaded_mode == 1) {
+		pthread_mutex_lock (&totempg_mutex);
+	}
+	
 	res = hdb_handle_get (&totempg_groups_instance_database, handle,
 		(void *)&instance);
 	if (res != 0) {
@@ -1109,7 +1146,9 @@ int totempg_groups_join (
 	hdb_handle_put (&totempg_groups_instance_database, handle);
 
 error_exit:
-	pthread_mutex_unlock (&totempg_mutex);
+	if (totempg_threaded_mode == 1) {
+		pthread_mutex_unlock (&totempg_mutex);
+	}
 	return (res);
 }
 
@@ -1121,7 +1160,9 @@ int totempg_groups_leave (
 	struct totempg_group_instance *instance;
 	unsigned int res;
 
-	pthread_mutex_lock (&totempg_mutex);
+	if (totempg_threaded_mode == 1) {
+		pthread_mutex_lock (&totempg_mutex);
+	}
 	res = hdb_handle_get (&totempg_groups_instance_database, handle,
 		(void *)&instance);
 	if (res != 0) {
@@ -1131,7 +1172,9 @@ int totempg_groups_leave (
 	hdb_handle_put (&totempg_groups_instance_database, handle);
 
 error_exit:
-	pthread_mutex_unlock (&totempg_mutex);
+	if (totempg_threaded_mode == 1) {
+		pthread_mutex_unlock (&totempg_mutex);
+	}
 	return (res);
 }
 
@@ -1150,7 +1193,10 @@ int totempg_groups_mcast_joined (
 	int i;
 	unsigned int res;
 
-	pthread_mutex_lock (&totempg_mutex);
+	if (totempg_threaded_mode == 1) {
+		pthread_mutex_lock (&totempg_mutex);
+	}
+	
 	res = hdb_handle_get (&totempg_groups_instance_database, handle,
 		(void *)&instance);
 	if (res != 0) {
@@ -1177,7 +1223,10 @@ int totempg_groups_mcast_joined (
 	hdb_handle_put (&totempg_groups_instance_database, handle);
 
 error_exit:
-	pthread_mutex_unlock (&totempg_mutex);
+	if (totempg_threaded_mode == 1) {
+		pthread_mutex_unlock (&totempg_mutex);
+	}
+	
 	return (res);
 }
 
@@ -1228,8 +1277,10 @@ int totempg_groups_joined_reserve (
 	unsigned int res;
 	unsigned int reserved = 0;
 
-	pthread_mutex_lock (&totempg_mutex);
-	pthread_mutex_lock (&mcast_msg_mutex);
+	if (totempg_threaded_mode == 1) {
+		pthread_mutex_lock (&totempg_mutex);
+		pthread_mutex_lock (&mcast_msg_mutex);
+	}
 	res = hdb_handle_get (&totempg_groups_instance_database, handle,
 		(void *)&instance);
 	if (res != 0) {
@@ -1259,19 +1310,25 @@ error_put:
 	hdb_handle_put (&totempg_groups_instance_database, handle);
 
 error_exit:
-	pthread_mutex_unlock (&mcast_msg_mutex);
-	pthread_mutex_unlock (&totempg_mutex);
+	if (totempg_threaded_mode == 1) {
+		pthread_mutex_unlock (&mcast_msg_mutex);
+		pthread_mutex_unlock (&totempg_mutex);
+	}
 	return (reserved);
 }
 
 
 int totempg_groups_joined_release (int msg_count)
 {
-	pthread_mutex_lock (&totempg_mutex);
-	pthread_mutex_lock (&mcast_msg_mutex);
+	if (totempg_threaded_mode == 1) {
+		pthread_mutex_lock (&totempg_mutex);
+		pthread_mutex_lock (&mcast_msg_mutex);
+	}
 	send_release (msg_count);
-	pthread_mutex_unlock (&mcast_msg_mutex);
-	pthread_mutex_unlock (&totempg_mutex);
+	if (totempg_threaded_mode == 1) {
+		pthread_mutex_unlock (&mcast_msg_mutex);
+		pthread_mutex_unlock (&totempg_mutex);
+	}
 	return 0;
 }
 
@@ -1289,7 +1346,9 @@ int totempg_groups_mcast_groups (
 	int i;
 	unsigned int res;
 
-	pthread_mutex_lock (&totempg_mutex);
+	if (totempg_threaded_mode == 1) {
+		pthread_mutex_lock (&totempg_mutex);
+	}
 	res = hdb_handle_get (&totempg_groups_instance_database, handle,
 		(void *)&instance);
 	if (res != 0) {
@@ -1317,7 +1376,9 @@ int totempg_groups_mcast_groups (
 	hdb_handle_put (&totempg_groups_instance_database, handle);
 
 error_exit:
-	pthread_mutex_unlock (&totempg_mutex);
+	if (totempg_threaded_mode == 1) {
+		pthread_mutex_unlock (&totempg_mutex);
+	}
 	return (res);
 }
 
@@ -1336,7 +1397,9 @@ int totempg_groups_send_ok_groups (
 	unsigned int i;
 	unsigned int res;
 
-	pthread_mutex_lock (&totempg_mutex);
+	if (totempg_threaded_mode == 1) {
+		pthread_mutex_lock (&totempg_mutex);
+	}
 	res = hdb_handle_get (&totempg_groups_instance_database, handle,
 		(void *)&instance);
 	if (res != 0) {
@@ -1354,7 +1417,9 @@ int totempg_groups_send_ok_groups (
 
 	hdb_handle_put (&totempg_groups_instance_database, handle);
 error_exit:
-	pthread_mutex_unlock (&totempg_mutex);
+	if (totempg_threaded_mode == 1) {
+		pthread_mutex_unlock (&totempg_mutex);
+	}
 	return (res);
 }
 
@@ -1457,3 +1522,10 @@ extern int totempg_member_add (
 extern int totempg_member_remove (
 	const struct totem_ip_address *member,
 	int ring_no);
+
+void totempg_threaded_mode_enable (void)
+{
+	totempg_threaded_mode = 1;
+	totemmrp_threaded_mode_enable ();
+}
+
