@@ -35,7 +35,9 @@
 #define CS_QUEUE_H_DEFINED
 
 #include <string.h>
+#include <stdlib.h>
 #include <pthread.h>
+#include <errno.h>
 #include "assert.h"
 
 struct cs_queue {

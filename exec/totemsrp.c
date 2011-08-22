@@ -79,7 +79,6 @@
 #include <qb/qbloop.h>
 
 #include <corosync/swab.h>
-#include <corosync/cs_queue.h>
 #include <corosync/sq.h>
 #include <corosync/list.h>
 #include <corosync/hdb.h>
@@ -92,6 +91,7 @@
 #include "totemnet.h"
 
 #include "crypto.h"
+#include "cs_queue.h"
 
 #define LOCALHOST_IP				inet_addr("127.0.0.1")
 #define QUEUE_RTR_ITEMS_SIZE_MAX		16384 /* allow 16384 retransmit items */
