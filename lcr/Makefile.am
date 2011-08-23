@@ -45,9 +45,10 @@ uic_SOURCES		= uic.c
 liblcr_a_SOURCES	= lcr_ifact.c
 
 test_SOURCES		= test.c uis.c
-test_LDADD		= liblcr.a
+test_LDADD		= liblcr.a $(LIBQB_LIBS)
 
 test_static_SOURCES	= test.c libtest_a.c libtest_b.c uis.c lcr_ifact.c
+test_static_LDADD	= $(LIBQB_LIBS)
 
 if BUILD_DARWIN
 
