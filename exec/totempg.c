@@ -98,7 +98,6 @@
 #include <limits.h>
 
 #include <corosync/swab.h>
-#include <corosync/hdb.h>
 #include <corosync/list.h>
 #include <qb/qbloop.h>
 #include <qb/qbipcs.h>
@@ -212,6 +211,8 @@ DECLARE_LIST_INIT(assembly_list_inuse);
 
 DECLARE_LIST_INIT(assembly_list_free);
 
+DECLARE_LIST_INIT(totempg_groups_list);
+
 /*
  * Staging buffer for packed messages.  Messages are staged in this buffer
  * before sending.  Multiple messages may fit which cuts down on the
@@ -229,8 +230,6 @@ static int fragment_size = 0;
 static int fragment_continuation = 0;
 
 static struct iovec iov_delv;
-
-static unsigned int totempg_max_handle = 0;
 
 struct totempg_group_instance {
 	void (*deliver_fn) (
@@ -250,6 +249,8 @@ struct totempg_group_instance {
 
 	int groups_cnt;
 	int32_t q_level;
+
+	struct list_head list;
 };
 
 DECLARE_HDB_DATABASE (totempg_groups_instance_database,NULL);
@@ -342,7 +343,7 @@ static inline void app_confchg_fn (
 	int i;
 	struct totempg_group_instance *instance;
 	struct assembly *assembly;
-	unsigned int res;
+	struct list_head *list;
 
 	/*
 	 * For every leaving processor, add to free list
@@ -354,25 +355,23 @@ static inline void app_confchg_fn (
 		list_del (&assembly->list);
 		list_add (&assembly->list, &assembly_list_free);
 	}
-	for (i = 0; i <= totempg_max_handle; i++) {
-		res = hdb_handle_get (&totempg_groups_instance_database,
-			hdb_nocheck_convert (i), (void *)&instance);
 
-		if (res == 0) {
-			if (instance->confchg_fn) {
-				instance->confchg_fn (
-					configuration_type,
-					member_list,
-					member_list_entries,
-					left_list,
-					left_list_entries,
-					joined_list,
-					joined_list_entries,
-					ring_id);
-			}
+	for (list = totempg_groups_list.next;
+		list != &totempg_groups_list;
+		list = list->next) {
 
-			hdb_handle_put (&totempg_groups_instance_database,
-				hdb_nocheck_convert (i));
+		instance = list_entry (list, struct totempg_group_instance, list);
+
+		if (instance->confchg_fn) {
+			instance->confchg_fn (
+				configuration_type,
+				member_list,
+				member_list_entries,
+				left_list,
+				left_list_entries,
+				joined_list,
+				joined_list_entries,
+				ring_id);
 		}
 	}
 }
@@ -474,12 +473,11 @@ static inline void app_deliver_fn (
 	unsigned int msg_len,
 	int endian_conversion_required)
 {
-	int i;
 	struct totempg_group_instance *instance;
 	struct iovec stripped_iovec;
 	unsigned int adjust_iovec;
-	unsigned int res;
 	struct iovec *iovec;
+	struct list_head *list;
 
         struct iovec aligned_iovec = { NULL, 0 };
 
@@ -507,38 +505,35 @@ static inline void app_deliver_fn (
 
 	iovec = &aligned_iovec;
 
-	for (i = 0; i <= totempg_max_handle; i++) {
-		res = hdb_handle_get (&totempg_groups_instance_database,
-			hdb_nocheck_convert (i), (void *)&instance);
+	for (list = totempg_groups_list.next;
+		list != &totempg_groups_list;
+		list = list->next) {
 
-		if (res == 0) {
-			if (group_matches (iovec, 1, instance->groups, instance->groups_cnt, &adjust_iovec)) {
-				stripped_iovec.iov_len = iovec->iov_len - adjust_iovec;
-				stripped_iovec.iov_base = (char *)iovec->iov_base + adjust_iovec;
+		instance = list_entry (list, struct totempg_group_instance, list);
+		if (group_matches (iovec, 1, instance->groups, instance->groups_cnt, &adjust_iovec)) {
+			stripped_iovec.iov_len = iovec->iov_len - adjust_iovec;
+			stripped_iovec.iov_base = (char *)iovec->iov_base + adjust_iovec;
 
 #ifdef TOTEMPG_NEED_ALIGN
+			/*
+			 * Align data structure for not i386 or x86_64
+			 */
+			if ((char *)iovec->iov_base + adjust_iovec % 4 != 0) {
 				/*
-				 * Align data structure for not i386 or x86_64
+				 * Deal with misalignment
 				 */
-				if ((char *)iovec->iov_base + adjust_iovec % 4 != 0) {
-					/*
-					 * Deal with misalignment
-					 */
-					stripped_iovec.iov_base =
-						alloca (stripped_iovec.iov_len);
-					memcpy (stripped_iovec.iov_base,
-						 (char *)iovec->iov_base + adjust_iovec,
-						stripped_iovec.iov_len);
-				}
-#endif
-				instance->deliver_fn (
-					nodeid,
-					stripped_iovec.iov_base,
-					stripped_iovec.iov_len,
-					endian_conversion_required);
+				stripped_iovec.iov_base =
+					alloca (stripped_iovec.iov_len);
+				memcpy (stripped_iovec.iov_base,
+					 (char *)iovec->iov_base + adjust_iovec,
+					stripped_iovec.iov_len);
 			}
-
-			hdb_handle_put (&totempg_groups_instance_database, hdb_nocheck_convert(i));
+#endif
+			instance->deliver_fn (
+				nodeid,
+				stripped_iovec.iov_base,
+				stripped_iovec.iov_len,
+				endian_conversion_required);
 		}
 	}
 }
@@ -778,6 +773,8 @@ int totempg_initialize (
 	totempg_size_limit = (totemmrp_avail() - 1) *
 		(totempg_totem_config->net_mtu -
 		sizeof (struct totempg_mcast) - 16);
+
+	list_init (&totempg_groups_list);
 
 	return (res);
 }
@@ -1052,7 +1049,7 @@ void totempg_callback_token_destroy (
  */
 
 int totempg_groups_initialize (
-	hdb_handle_t *handle,
+	void **totempg_groups_instance,
 
 	void (*deliver_fn) (
 		unsigned int nodeid,
@@ -1068,25 +1065,14 @@ int totempg_groups_initialize (
 		const struct memb_ring_id *ring_id))
 {
 	struct totempg_group_instance *instance;
-	unsigned int res;
 
 	if (totempg_threaded_mode == 1) {
 		pthread_mutex_lock (&totempg_mutex);
 	}
-	res = hdb_handle_create (&totempg_groups_instance_database,
-		sizeof (struct totempg_group_instance), handle);
-	if (res != 0) {
+	
+	instance = malloc (sizeof (struct totempg_group_instance));
+	if (instance == NULL) {
 		goto error_exit;
-	}
-
-	if (*handle > totempg_max_handle) {
-		totempg_max_handle = *handle;
-	}
-
-	res = hdb_handle_get (&totempg_groups_instance_database, *handle,
-		(void *)&instance);
-	if (res != 0) {
-		goto error_destroy;
 	}
 
 	instance->deliver_fn = deliver_fn;
@@ -1094,16 +1080,14 @@ int totempg_groups_initialize (
 	instance->groups = 0;
 	instance->groups_cnt = 0;
 	instance->q_level = QB_LOOP_MED;
-
-
-	hdb_handle_put (&totempg_groups_instance_database, *handle);
+	list_init (&instance->list);
+	list_add (&instance->list, &totempg_groups_list);
 
 	if (totempg_threaded_mode == 1) {
 		pthread_mutex_unlock (&totempg_mutex);
 	}
+	*totempg_groups_instance = instance;
 	return (0);
-error_destroy:
-	hdb_handle_destroy (&totempg_groups_instance_database, *handle);
 
 error_exit:
 	if (totempg_threaded_mode == 1) {
@@ -1113,11 +1097,11 @@ error_exit:
 }
 
 int totempg_groups_join (
-	hdb_handle_t handle,
+	void *totempg_groups_instance,
 	const struct totempg_group *groups,
 	size_t group_cnt)
 {
-	struct totempg_group_instance *instance;
+	struct totempg_group_instance *instance = (struct totempg_group_instance *)totempg_groups_instance;
 	struct totempg_group *new_groups;
 	unsigned int res;
 
@@ -1125,12 +1109,6 @@ int totempg_groups_join (
 		pthread_mutex_lock (&totempg_mutex);
 	}
 	
-	res = hdb_handle_get (&totempg_groups_instance_database, handle,
-		(void *)&instance);
-	if (res != 0) {
-		goto error_exit;
-	}
-
 	new_groups = realloc (instance->groups,
 		sizeof (struct totempg_group) *
 		(instance->groups_cnt + group_cnt));
@@ -1143,8 +1121,6 @@ int totempg_groups_join (
 	instance->groups = new_groups;
 	instance->groups_cnt += group_cnt;
 
-	hdb_handle_put (&totempg_groups_instance_database, handle);
-
 error_exit:
 	if (totempg_threaded_mode == 1) {
 		pthread_mutex_unlock (&totempg_mutex);
@@ -1153,41 +1129,30 @@ error_exit:
 }
 
 int totempg_groups_leave (
-	hdb_handle_t handle,
+	void *totempg_groups_instance,
 	const struct totempg_group *groups,
 	size_t group_cnt)
 {
-	struct totempg_group_instance *instance;
-	unsigned int res;
-
 	if (totempg_threaded_mode == 1) {
 		pthread_mutex_lock (&totempg_mutex);
 	}
-	res = hdb_handle_get (&totempg_groups_instance_database, handle,
-		(void *)&instance);
-	if (res != 0) {
-		goto error_exit;
-	}
 
-	hdb_handle_put (&totempg_groups_instance_database, handle);
-
-error_exit:
 	if (totempg_threaded_mode == 1) {
 		pthread_mutex_unlock (&totempg_mutex);
 	}
-	return (res);
+	return (0);
 }
 
 #define MAX_IOVECS_FROM_APP 32
 #define MAX_GROUPS_PER_MSG 32
 
 int totempg_groups_mcast_joined (
-	hdb_handle_t handle,
+	void *totempg_groups_instance,
 	const struct iovec *iovec,
 	unsigned int iov_len,
 	int guarantee)
 {
-	struct totempg_group_instance *instance;
+	struct totempg_group_instance *instance = (struct totempg_group_instance *)totempg_groups_instance;
 	unsigned short group_len[MAX_GROUPS_PER_MSG + 1];
 	struct iovec iovec_mcast[MAX_GROUPS_PER_MSG + 1 + MAX_IOVECS_FROM_APP];
 	int i;
@@ -1197,12 +1162,6 @@ int totempg_groups_mcast_joined (
 		pthread_mutex_lock (&totempg_mutex);
 	}
 	
-	res = hdb_handle_get (&totempg_groups_instance_database, handle,
-		(void *)&instance);
-	if (res != 0) {
-		goto error_exit;
-	}
-
 	/*
 	 * Build group_len structure and the iovec_mcast structure
 	 */
@@ -1220,9 +1179,7 @@ int totempg_groups_mcast_joined (
 	}
 
 	res = mcast_msg (iovec_mcast, iov_len + instance->groups_cnt + 1, guarantee);
-	hdb_handle_put (&totempg_groups_instance_database, handle);
 
-error_exit:
 	if (totempg_threaded_mode == 1) {
 		pthread_mutex_unlock (&totempg_mutex);
 	}
@@ -1230,10 +1187,12 @@ error_exit:
 	return (res);
 }
 
-static void check_q_level(struct totempg_group_instance *instance)
+static void check_q_level(
+	void *totempg_groups_instance)
 {
 	int32_t old_level;
 	int32_t percent_used = 0;
+	struct totempg_group_instance *instance = (struct totempg_group_instance *)totempg_groups_instance;
 
 	old_level = instance->q_level;
 	percent_used = 100 - (totemmrp_avail () * 100 / 800); /*(1024*1024/1500)*/
@@ -1253,38 +1212,27 @@ static void check_q_level(struct totempg_group_instance *instance)
 
 }
 
-void totempg_check_q_level(qb_handle_t handle)
+void totempg_check_q_level(
+	void *totempg_groups_instance)
 {
-	struct totempg_group_instance *instance;
+	struct totempg_group_instance *instance = (struct totempg_group_instance *)totempg_groups_instance;
 
-	if (hdb_handle_get (&totempg_groups_instance_database, handle,
-			(void *)&instance) != 0) {
-		return;
-	}
 	check_q_level(instance);
-
-	hdb_handle_put (&totempg_groups_instance_database, handle);
 }
 
 int totempg_groups_joined_reserve (
-	hdb_handle_t handle,
+	void *totempg_groups_instance,
 	const struct iovec *iovec,
 	unsigned int iov_len)
 {
-	struct totempg_group_instance *instance;
+	struct totempg_group_instance *instance = (struct totempg_group_instance *)totempg_groups_instance;
 	unsigned int size = 0;
 	unsigned int i;
-	unsigned int res;
 	unsigned int reserved = 0;
 
 	if (totempg_threaded_mode == 1) {
 		pthread_mutex_lock (&totempg_mutex);
 		pthread_mutex_lock (&mcast_msg_mutex);
-	}
-	res = hdb_handle_get (&totempg_groups_instance_database, handle,
-		(void *)&instance);
-	if (res != 0) {
-		goto error_exit;
 	}
 
 	for (i = 0; i < instance->groups_cnt; i++) {
@@ -1297,7 +1245,7 @@ int totempg_groups_joined_reserve (
 
 	if (size >= totempg_size_limit) {
 		reserved = -1;
-		goto error_put;
+		goto error_exit;
 	}
 
 	reserved = send_reserve (size);
@@ -1306,8 +1254,6 @@ int totempg_groups_joined_reserve (
 		reserved = 0;
 	}
 
-error_put:
-	hdb_handle_put (&totempg_groups_instance_database, handle);
 
 error_exit:
 	if (totempg_threaded_mode == 1) {
@@ -1333,14 +1279,13 @@ int totempg_groups_joined_release (int msg_count)
 }
 
 int totempg_groups_mcast_groups (
-	hdb_handle_t handle,
+	void *totempg_groups_instance,
 	int guarantee,
 	const struct totempg_group *groups,
 	size_t groups_cnt,
 	const struct iovec *iovec,
 	unsigned int iov_len)
 {
-	struct totempg_group_instance *instance;
 	unsigned short group_len[MAX_GROUPS_PER_MSG + 1];
 	struct iovec iovec_mcast[MAX_GROUPS_PER_MSG + 1 + MAX_IOVECS_FROM_APP];
 	int i;
@@ -1348,11 +1293,6 @@ int totempg_groups_mcast_groups (
 
 	if (totempg_threaded_mode == 1) {
 		pthread_mutex_lock (&totempg_mutex);
-	}
-	res = hdb_handle_get (&totempg_groups_instance_database, handle,
-		(void *)&instance);
-	if (res != 0) {
-		goto error_exit;
 	}
 
 	/*
@@ -1373,9 +1313,6 @@ int totempg_groups_mcast_groups (
 
 	res = mcast_msg (iovec_mcast, iov_len + groups_cnt + 1, guarantee);
 
-	hdb_handle_put (&totempg_groups_instance_database, handle);
-
-error_exit:
 	if (totempg_threaded_mode == 1) {
 		pthread_mutex_unlock (&totempg_mutex);
 	}
@@ -1386,24 +1323,18 @@ error_exit:
  * Returns -1 if error, 0 if can't send, 1 if can send the message
  */
 int totempg_groups_send_ok_groups (
-	hdb_handle_t handle,
+	void *totempg_groups_instance,
 	const struct totempg_group *groups,
 	size_t groups_cnt,
 	const struct iovec *iovec,
 	unsigned int iov_len)
 {
-	struct totempg_group_instance *instance;
 	unsigned int size = 0;
 	unsigned int i;
 	unsigned int res;
 
 	if (totempg_threaded_mode == 1) {
 		pthread_mutex_lock (&totempg_mutex);
-	}
-	res = hdb_handle_get (&totempg_groups_instance_database, handle,
-		(void *)&instance);
-	if (res != 0) {
-		goto error_exit;
 	}
 
 	for (i = 0; i < groups_cnt; i++) {
@@ -1415,8 +1346,6 @@ int totempg_groups_send_ok_groups (
 
 	res = msg_count_send_ok (size);
 
-	hdb_handle_put (&totempg_groups_instance_database, handle);
-error_exit:
 	if (totempg_threaded_mode == 1) {
 		pthread_mutex_unlock (&totempg_mutex);
 	}

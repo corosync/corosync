@@ -167,7 +167,7 @@ static struct totempg_group sync_group = {
     .group_len  = 6
 };
 
-static hdb_handle_t sync_group_handle;
+static void *sync_group_handle;
 
 int sync_v2_init (
         int (*sync_callbacks_retrieve) (

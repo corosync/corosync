@@ -49,7 +49,6 @@ extern "C" {
 
 #include <netinet/in.h>
 #include "totem.h"
-#include <corosync/hdb.h>
 #include <qb/qbloop.h>
 
 struct totempg_group {
@@ -82,7 +81,7 @@ extern void totempg_callback_token_destroy (void *handle);
  * Initialize a groups instance
  */
 extern int totempg_groups_initialize (
-	hdb_handle_t *handle,
+	void **instance,
 
 	void (*deliver_fn) (
 		unsigned int nodeid,
@@ -97,27 +96,26 @@ extern int totempg_groups_initialize (
 		const unsigned int *joined_list, size_t joined_list_entries,
 		const struct memb_ring_id *ring_id));
 
-extern int totempg_groups_finalize (
-	hdb_handle_t handle);
+extern int totempg_groups_finalize (void *instance);
 
 extern int totempg_groups_join (
-	hdb_handle_t handle,
+	void *instance,
 	const struct totempg_group *groups,
 	size_t group_cnt);
 
 extern int totempg_groups_leave (
-	hdb_handle_t handle,
+	void *instance,
 	const struct totempg_group *groups,
 	size_t group_cnt);
 
 extern int totempg_groups_mcast_joined (
-	hdb_handle_t handle,
+	void *instance,
 	const struct iovec *iovec,
 	unsigned int iov_len,
 	int guarantee);
 
 extern int totempg_groups_joined_reserve (
-	hdb_handle_t handle,
+	void *instance,
 	const struct iovec *iovec,
 	unsigned int iov_len);
 
@@ -125,7 +123,7 @@ extern int totempg_groups_joined_release (
 	int msg_count);
 
 extern int totempg_groups_mcast_groups (
-	hdb_handle_t handle,
+	void *instance,
 	int guarantee,
 	const struct totempg_group *groups,
 	size_t groups_cnt,
@@ -133,7 +131,7 @@ extern int totempg_groups_mcast_groups (
 	unsigned int iov_len);
 
 extern int totempg_groups_send_ok_groups (
-	hdb_handle_t handle,
+	void *instance,
 	const struct totempg_group *groups,
 	size_t groups_cnt,
 	const struct iovec *iovec,
@@ -177,7 +175,7 @@ enum totem_q_level {
 	TOTEM_Q_LEVEL_CRITICAL
 };
 
-void totempg_check_q_level(hdb_handle_t handle);
+void totempg_check_q_level(void *instance);
 
 typedef void (*totem_queue_level_changed_fn) (enum totem_q_level level);
 extern void totempg_queue_level_register_callback (totem_queue_level_changed_fn);

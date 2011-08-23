@@ -244,7 +244,7 @@ static void sigabrt_handler (int num)
 
 #define LOCALHOST_IP inet_addr("127.0.0.1")
 
-static hdb_handle_t corosync_group_handle;
+static void *corosync_group_handle;
 
 static struct totempg_group corosync_group = {
 	.group		= "a",

@@ -142,7 +142,7 @@ static struct totempg_group sync_group = {
     .group_len  = 4
 };
 
-static hdb_handle_t sync_group_handle;
+static void *sync_group_handle;
 
 struct req_exec_sync_barrier_start {
 	struct qb_ipc_request_header header;
