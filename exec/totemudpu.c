@@ -62,7 +62,6 @@
 
 #include <corosync/sq.h>
 #include <corosync/list.h>
-#include <corosync/hdb.h>
 #include <corosync/swab.h>
 #define LOGSYS_UTILS_ONLY 1
 #include <corosync/engine/logsys.h>
