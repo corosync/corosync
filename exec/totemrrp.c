@@ -1015,12 +1015,16 @@ static void passive_mcast_flush_send (
 	unsigned int msg_len)
 {
 	struct passive_instance *passive_instance = (struct passive_instance *)instance->rrp_algo_instance;
+	int i = 0;
 
 	do {
 		passive_instance->msg_xmit_iface = (passive_instance->msg_xmit_iface + 1) % instance->interface_count;
-	} while (passive_instance->faulty[passive_instance->msg_xmit_iface] == 1);
+		i++;
+	} while ((i <= instance->interface_count) && (passive_instance->faulty[passive_instance->msg_xmit_iface] == 1));
 
-	totemnet_mcast_flush_send (instance->net_handles[passive_instance->msg_xmit_iface], msg, msg_len);
+	if (i <= instance->interface_count) {
+		totemnet_mcast_flush_send (instance->net_handles[passive_instance->msg_xmit_iface], msg, msg_len);
+	}
 }
 
 static void passive_mcast_noflush_send (
@@ -1029,13 +1033,16 @@ static void passive_mcast_noflush_send (
 	unsigned int msg_len)
 {
 	struct passive_instance *passive_instance = (struct passive_instance *)instance->rrp_algo_instance;
+	int i = 0;
 
 	do {
 		passive_instance->msg_xmit_iface = (passive_instance->msg_xmit_iface + 1) % instance->interface_count;
-	} while (passive_instance->faulty[passive_instance->msg_xmit_iface] == 1);
+		i++;
+	} while ((i <= instance->interface_count) && (passive_instance->faulty[passive_instance->msg_xmit_iface] == 1));
 
-
-	totemnet_mcast_noflush_send (instance->net_handles[passive_instance->msg_xmit_iface], msg, msg_len);
+	if (i <= instance->interface_count) {
+		totemnet_mcast_noflush_send (instance->net_handles[passive_instance->msg_xmit_iface], msg, msg_len);
+	}
 }
 
 static void passive_token_recv (
@@ -1070,14 +1077,18 @@ static void passive_token_send (
 	unsigned int msg_len)
 {
 	struct passive_instance *passive_instance = (struct passive_instance *)instance->rrp_algo_instance;
+	int i = 0;
 
 	do {
 		passive_instance->token_xmit_iface = (passive_instance->token_xmit_iface + 1) % instance->interface_count;
-	} while (passive_instance->faulty[passive_instance->token_xmit_iface] == 1);
+		i++;
+	} while ((i <= instance->interface_count) && (passive_instance->faulty[passive_instance->token_xmit_iface] == 1));
 
-	totemnet_token_send (
-		instance->net_handles[passive_instance->token_xmit_iface],
-		msg, msg_len);
+	if (i <= instance->interface_count) {
+		totemnet_token_send (
+		    instance->net_handles[passive_instance->token_xmit_iface],
+		    msg, msg_len);
+	}
 
 }
 
