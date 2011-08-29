@@ -858,6 +858,9 @@ int totemsrp_initialize (
 		"RRP threshold (%d problem count)\n",
 		totem_config->rrp_problem_count_threshold);
 	log_printf (instance->totemsrp_log_level_debug,
+		"RRP multicast threshold (%d problem count)\n",
+		totem_config->rrp_problem_count_mcast_threshold);
+	log_printf (instance->totemsrp_log_level_debug,
 		"RRP automatic recovery check timeout (%d ms)\n",
 		totem_config->rrp_autorecovery_check_timeout);
 	log_printf (instance->totemsrp_log_level_debug,

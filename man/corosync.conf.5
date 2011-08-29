@@ -472,6 +472,14 @@ may occur.
 The default is 10 problem counts.
 
 .TP
+rrp_problem_count_mcast_threshold
+This specifies the number of times a problem is detected with multicast before
+setting the link faulty for passive rrp mode. This variable is unused in active
+rrp mode.
+
+The default is 10 times rrp_problem_count_threshold.
+
+.TP
 rrp_token_expired_timeout
 This specifies the time in milliseconds to increment the problem counter for
 the redundant ring protocol after not having received a token from all rings
