@@ -892,14 +892,17 @@ static void passive_monitor (
 	unsigned int max;
 	unsigned int i;
 	unsigned int min_all, min_active;
+	unsigned int threshold;
 
 	/*
 	 * Monitor for failures
 	 */
 	if (is_token_recv_count) {
 		recv_count = passive_instance->token_recv_count;
+		threshold = rrp_instance->totem_config->rrp_problem_count_threshold;
 	} else {
 		recv_count = passive_instance->mcast_recv_count;
+		threshold = rrp_instance->totem_config->rrp_problem_count_mcast_threshold;
 	}
 
 	recv_count[iface_no] += 1;
@@ -961,8 +964,7 @@ static void passive_monitor (
 
 	for (i = 0; i < rrp_instance->interface_count; i++) {
 		if ((passive_instance->faulty[i] == 0) &&
-			(max - recv_count[i] >
-			rrp_instance->totem_config->rrp_problem_count_threshold)) {
+		    (max - recv_count[i] > threshold)) {
 			passive_instance->faulty[i] = 1;
 			qb_loop_timer_add (rrp_instance->poll_handle,
 				QB_LOOP_MED,
