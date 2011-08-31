@@ -90,6 +90,8 @@
 #define BIND_STATE_REGULAR	1
 #define BIND_STATE_LOOPBACK	2
 
+#define MESSAGE_TYPE_MCAST	1
+
 #define HMAC_HASH_SIZE 20
 struct security_header {
 	unsigned char hash_digest[HMAC_HASH_SIZE]; /* The hash *MUST* be first in the data structure */
@@ -1172,6 +1174,7 @@ static int net_deliver_fn (
 	int res = 0;
 	unsigned char *msg_offset;
 	unsigned int size_delv;
+	char *message_type;
 
 	if (instance->flushing == 1) {
 		iovec = &instance->totemudp_iov_recv_flush;
@@ -1233,6 +1236,16 @@ static int net_deliver_fn (
 		size_delv = bytes_received;
 	}
 
+	/*
+	 * Drop all non-mcast messages (more specifically join
+	 * messages should be dropped)
+	 */
+	message_type = (char *)msg_offset;
+	if (instance->flushing == 1 && *message_type != MESSAGE_TYPE_MCAST) {
+		iovec->iov_len = FRAME_SIZE_MAX;
+		return (0);
+	}
+	
 	/*
 	 * Handle incoming message
 	 */
