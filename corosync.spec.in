@@ -12,6 +12,7 @@
 %bcond_with dbus
 %bcond_with rdma
 %bcond_with systemd
+%bcond_with nss
 
 Name: corosync
 Summary: The Corosync Cluster Engine and Application Programming Interfaces
@@ -34,10 +35,13 @@ Conflicts: openais <= 0.89, openais-devel <= 0.89
 %define buildtrunk 0
 %{?_with_buildtrunk: %define buildtrunk 1}
 
+BuildRequires: libqb-devel
 %if %{buildtrunk}
 BuildRequires: autoconf automake
 %endif
-BuildRequires: nss-devel libqb-devel
+%if %{with nss}
+BuildRequires: nss-devel
+%endif
 %if %{with rdma}
 BuildRequires: libibverbs-devel librdmacm-devel
 %endif
@@ -68,7 +72,11 @@ export rdmacm_CFLAGS=-I/usr/include/rdma \
 export rdmacm_LIBS=-lrdmacm \
 %endif
 %{configure} \
+%if %{with nss}
 	--enable-nss \
+%else
+	--disable-nss \
+%endif
 %if %{with testagents}
 	--enable-testagents \
 %endif
