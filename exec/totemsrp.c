@@ -1791,7 +1791,36 @@ static void memb_state_operational_enter (struct totemsrp_instance *instance)
 		sizeof (struct srp_addr) * instance->my_memb_entries);
 
 	instance->my_failed_list_entries = 0;
-	instance->my_high_delivered = instance->my_high_seq_received;
+	/*
+	 * TODO Not exactly to spec
+	 *
+	 * At the entry to this function all messages without a gap are
+	 * deliered.
+	 *
+	 * This code throw away messages from the last gap in the sort queue
+	 * to my_high_seq_received
+	 *
+	 * What should really happen is we should deliver all messages up to
+	 * a gap, then delier the transitional configuration, then deliver
+	 * the messages between the first gap and my_high_seq_received, then
+	 * deliver a regular configuration, then deliver the regular
+	 * configuration
+	 *
+	 * Unfortunately totempg doesn't appear to like this operating mode
+	 * which needs more inspection
+	 */
+	i = instance->my_high_seq_received + 1;
+	do {
+		void *ptr;
+
+		i -= 1;
+		res = sq_item_get (&instance->regular_sort_queue, i, &ptr);
+		if (i == 0) {
+			break;
+		}
+	} while (res);
+
+	instance->my_high_delivered = i;
 
 	for (i = 0; i <= instance->my_high_delivered; i++) {
 		void *ptr;
