@@ -1453,14 +1453,6 @@ int main (int argc, char **argv, char **envp)
 		corosync_exit_error (AIS_DONE_MAINCONFIGREAD);
 	}
 
-	res = corosync_main_config_compatibility_read (objdb,
-		&minimum_sync_mode,
-		&error_string);
-	if (res == -1) {
-		log_printf (LOGSYS_LEVEL_ERROR, "%s", error_string);
-		corosync_exit_error (AIS_DONE_MAINCONFIGREAD);
-	}
-
 	/* create the main runtime object */
 	objdb->object_create (OBJECT_PARENT_HANDLE,
 		&object_runtime_handle,
