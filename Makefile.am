@@ -69,7 +69,7 @@ SUBDIRS			= include lcr lib exec services tools test cts pkgconfig \
 
 coverity:
 	cov-build --dir=cov make
-	cov-analyze --dir cov
+	cov-analyze --dir cov --concurrency
 	cov-format-errors --dir cov
 
 install-exec-local:
