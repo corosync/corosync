@@ -1,36 +1,71 @@
-------------------------------------------
-The Corosync Cluster Engine Topic Branches
-------------------------------------------
+--------------------------------------------------------
+ The Corosync Cluster Engine Topic Branches and Backlog
+--------------------------------------------------------
 
---------------------------
-Last Updated: August 2011
---------------------------
+----------------------------
+ Last Updated: October 2011
+----------------------------
 
-------------------------------------------------------------------------------
-master
-------------------------------------------------------------------------------
-1) exec/totempg.c in check_q_level()
-   Remove hardcoded values.
-   Chat to Steve about correcting the queue length calculation.
+--------------------------------------
+ Current priority list for Needle 2.0
+--------------------------------------
+1. implement topic-map
+2. replace confdb callers with map callers
+3. quorum debugging and rework
+4. implement topic-xmlconfig
+5. remove external plug-in api
+6. remove logsys.h from external headers
+7. remove hardcoded values in totempg.c check_q_level
+8. check max message size restrictions
+9. investigate if https://github.com/asalkeld/libqb/issues/1 is still an issue.
+10. remove logging/ipc from man pages.
+11. investigate proper sizing for new blackbox (exec/logsys.c:311)
+12. allow a cluster name to autogenerate a mcastaddr
+13. ring status change via corosync-notifyd
 
-2) check max message size restrictions.
-
-3) is this https://github.com/asalkeld/libqb/issues/1 still an issue?
-
-4) remove "old" stuff from the man pages (logging/IPC).
-
-5) new blackbox size might be too small (exec/logsys.c:311)
-
-6) extend the logging config to make better use of the tracing capabilities.
-
-
+--------------------------------------
+ Current priority list for Needle 2.1
+--------------------------------------
+1. implement topic-onecrypt
+2. implement add/remove nodes from udpu
+3. logsys glue layer removal
+4. implement topic-zerocopy
+5. implement topic-rdmaud
+6. harden and finish ykd algorithm
 
 We use topic branches in our git repository to develop new disruptive features
 that define our future roadmap.  This file describes the topic branches
 the developers have interest in investigating further.
 
-targets can be: whitetank, needle, or future (3.0+).
-Finished can be: percentage or date merged to master.
+targets can be: whitetank, needle2.0, needle3.0, or future (3.0+).
+Finished can be: percentage or date merged to master.  Once in a shipped
+version, please remove from the topic list.
+
+------------------------------------------------------------------------------
+topic-map
+------------------------------------------------------------------------------
+Main Developer: Honza Friesse
+Started: not started
+Finished: 20%
+target: needle2.0
+Currently confdb is very difficult to use.  We use this component for
+our diagnostic feature set as well as storing our runtime configuration.  A
+map is a better choice for a data structure here.  Current thinking is to
+use the trie implementation from libqb to provide the core of this
+functionality 
+
+------------------------------------------------------------------------------
+topic-xmlconfig
+------------------------------------------------------------------------------
+Main Developer: Honza Friesse
+Started: not started
+Finished: 0%
+target: needle2.0
+Test suites and users alike would like to configure the software via XML
+configuration.  Current thinking is we will implement a separate binary which
+converts xml to native config format via XSLT.  This keeps libxml out of the 
+corosync process address space.  During startup, corosync could either fork
+and exec this process, or it could be part of the system startup mechanism.
 
 ------------------------------------------------------------------------------
 topic-onecrypt
@@ -38,7 +73,7 @@ topic-onecrypt
 Main Developer: Honza Friesse
 Started: not started
 Finished: 0%
-target: needle
+target: needle2.1
 Description:
 Currently encryption code is located in totemudp.c, totemudpu.c, and iba has
 no encryption support.  This topic merges the encryption code into a new
@@ -49,10 +84,10 @@ requested by the configuration.
 ------------------------------------------------------------------------------
 topic-netmalloc
 ------------------------------------------------------------------------------
-Main Developer: Steven Dake
+Main Developer: Honza Friesse
 Started: not started
 Finished: 0%
-target: needle
+target: needle2.1
 Description:
 The totemiba.c driver must allocate memory and assign it to a protection domain
 in order for an infiniband driver to transmit memory.  In the current
@@ -63,26 +98,12 @@ a memory allocation function.  When totemsrp wants a free frame, it requests
 it from the network driver.
 
 ------------------------------------------------------------------------------
-topic-iazc
-------------------------------------------------------------------------------
-Main Developer: Steven Dake
-Started: not started
-Finished: 0%
-target: needle
-Description:
-The totempg.c file uses alloca/memcpy to deal with misaligned data structures
-to avoid bus errors on hardware which does not support unaligned access.  This
-topic addresses the totempg.c code to avoid memory copies on platforms which
-support unaligned access (x86/x86_64) and use the current alloca/memcpy
-on platforms which don't (pretty much all other processor types).
-
-------------------------------------------------------------------------------
 topic-rdmaud
 ------------------------------------------------------------------------------
-Main Developer: Steven Dake
+Main Developer: Honza Friesse Steven Dake
 Started: not started
 Finished: 0%
-target: needle or future
+target: needle2.1
 Description:
 Currently our RDMA code uses librdmacm to setup connections.  We are not 
 certain this extra library is needed, and may be able to use only ibverbs.  If
@@ -92,10 +113,10 @@ failure conditions.
 ------------------------------------------------------------------------------
 topic-zerocopy
 ------------------------------------------------------------------------------
-Main Developer: Steven Dake
+Main Developer: Honza Friesse
 Started: not started
 Finished: 0%
-target: future
+target: needle2.1
 Description:
 Totem has many copies involved in messaging which we would like to investigate
 removing.  Our goal is to deliver wire speed performance for rdma networks,
@@ -109,3 +130,5 @@ other topics not yet defined:
 * disallow binding to localhost interfae in redundant ring configuation.
 * doxygenize include and lib directories.
 * sort out binding to localhost in general
+* totem multiring
+* load balancing over different speed links in RRP
