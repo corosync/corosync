@@ -196,16 +196,16 @@ static void logsys_subsys_init (void)					\
 	} while(0)
 
 #define log_printf(level, format, args...) qb_log(level, format, ##args)
-#define ENTER() qb_log(LOG_DEBUG, "ENTER")
-#define LEAVE() qb_log(LOG_DEBUG, "LEAVE")
-#define TRACE1(format, args...) qb_log(LOG_DEBUG, "TRACE1:" #format, ##args)
-#define TRACE2
-#define TRACE3
-#define TRACE4
-#define TRACE5
-#define TRACE6
-#define TRACE7
-#define TRACE8
+#define ENTER qb_enter
+#define LEAVE qb_log
+#define TRACE1(format, args...) qb_log(LOG_TRACE, "TRACE1:" #format, ##args)
+#define TRACE2(format, args...) qb_log(LOG_TRACE, "TRACE2:" #format, ##args)
+#define TRACE3(format, args...) qb_log(LOG_TRACE, "TRACE3:" #format, ##args)
+#define TRACE4(format, args...) qb_log(LOG_TRACE, "TRACE4:" #format, ##args)
+#define TRACE5(format, args...) qb_log(LOG_TRACE, "TRACE5:" #format, ##args)
+#define TRACE6(format, args...) qb_log(LOG_TRACE, "TRACE6:" #format, ##args)
+#define TRACE7(format, args...) qb_log(LOG_TRACE, "TRACE7:" #format, ##args)
+#define TRACE8(format, args...) qb_log(LOG_TRACE, "TRACE8:" #format, ##args)
 
 #endif /* LOGSYS_UTILS_ONLY */
 
