@@ -102,7 +102,8 @@ static cpg_callbacks_t callbacks = {
 	.cpg_confchg_fn		= cpg_bm_confchg_fn
 };
 
-static char data[500000];
+#define ONE_MEG 1048576
+static char data[ONE_MEG];
 
 static void cpg_benchmark (
 	cpg_handle_t handle_in,
@@ -185,7 +186,10 @@ int main (void) {
 	for (i = 0; i < 10; i++) { /* number of repetitions - up to 50k */
 		cpg_benchmark (handle, size);
 		signal (SIGALRM, sigalrm_handler);
-		size *= 2;
+		size *= 8;
+		if (size >= (ONE_MEG - 100)) {
+			break;
+		}
 	}
 
 	res = cpg_finalize (handle);
