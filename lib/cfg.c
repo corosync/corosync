@@ -101,9 +101,6 @@ corosync_cfg_initialize (
 		error = qb_to_cs_error(-errno);
 		goto error_put_destroy;
 	}
-	if (error != CS_OK) {
-		goto error_put_destroy;
-	}
 
 	if (cfg_callbacks) {
 	memcpy (&cfg_inst->callbacks, cfg_callbacks, sizeof (corosync_cfg_callbacks_t));
