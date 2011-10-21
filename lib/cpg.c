@@ -187,10 +187,6 @@ cs_error_t cpg_model_initialize (
 				goto error_destroy;
 			}
 			break;
-		default:
-			error = CS_ERR_LIBRARY;
-			goto error_destroy;
-			break;
 		}
 	}
 
