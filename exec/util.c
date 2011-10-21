@@ -140,9 +140,13 @@ void _corosync_exit_error (
 void _corosync_exit_error (
 	enum e_ais_done err, const char *file, unsigned int line)
 {
-	log_printf (LOGSYS_LEVEL_ERROR, "Corosync Cluster Engine exiting "
-		"with status %d at %s:%u.\n", err, file, line);
-
+	if (err == AIS_DONE_EXIT) {
+		log_printf (LOGSYS_LEVEL_NOTICE,
+			"Corosync Cluster Engine exiting normally");
+	} else {
+		log_printf (LOGSYS_LEVEL_ERROR, "Corosync Cluster Engine exiting "
+			"with status %d at %s:%u.\n", err, file, line);
+	}
 	qb_log_fini();
 	exit (err);
 }
