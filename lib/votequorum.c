@@ -88,9 +88,6 @@ cs_error_t votequorum_initialize (
 		error = qb_to_cs_error(-errno);
 		goto error_put_destroy;
 	}
-	if (error != CS_OK) {
-		goto error_put_destroy;
-	}
 
 	if (callbacks)
 		memcpy(&votequorum_inst->callbacks, callbacks, sizeof (*callbacks));
