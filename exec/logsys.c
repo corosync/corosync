@@ -614,6 +614,9 @@ int logsys_config_logfile_priority_set (
 
 static void _logsys_config_apply_per_file(int32_t s, const char *filename)
 {
+	uint32_t syslog_priority = logsys_loggers[s].syslog_priority;
+	uint32_t logfile_priority = logsys_loggers[s].logfile_priority;
+
 	qb_log_filter_ctl(s, QB_LOG_TAG_SET, QB_LOG_FILTER_FILE,
 			  filename, LOG_TRACE);
 
@@ -622,12 +625,16 @@ static void _logsys_config_apply_per_file(int32_t s, const char *filename)
 	qb_log_filter_ctl(QB_LOG_STDERR, QB_LOG_FILTER_REMOVE,
 			  QB_LOG_FILTER_FILE, filename, LOG_TRACE);
 
+	if (logsys_loggers[s].debug) {
+		syslog_priority = LOG_DEBUG;
+		logfile_priority = LOG_DEBUG;
+	}
 	qb_log_filter_ctl(QB_LOG_SYSLOG, QB_LOG_FILTER_ADD,
 			  QB_LOG_FILTER_FILE, filename,
-			  logsys_loggers[s].syslog_priority);
+			  syslog_priority);
 	qb_log_filter_ctl(QB_LOG_STDERR, QB_LOG_FILTER_ADD,
 			  QB_LOG_FILTER_FILE, filename,
-			  logsys_loggers[s].logfile_priority);
+			  logfile_priority);
 }
 
 static void _logsys_config_apply_per_subsys(int32_t s)
@@ -661,12 +668,14 @@ int logsys_config_debug_set (
 	if (subsys != NULL) {
 		i = _logsys_config_subsys_get_unlocked (subsys);
 		if (i >= 0) {
+			logsys_loggers[i].dirty = QB_TRUE;
 			logsys_loggers[i].debug = debug;
 			i = 0;
 		}
 	} else {
 		for (i = 0; i <= LOGSYS_MAX_SUBSYS_COUNT; i++) {
 			logsys_loggers[i].debug = debug;
+			logsys_loggers[i].dirty = QB_TRUE;
 		}
 		i = 0;
 	}
