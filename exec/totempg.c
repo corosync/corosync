@@ -1103,7 +1103,7 @@ int totempg_groups_join (
 {
 	struct totempg_group_instance *instance = (struct totempg_group_instance *)totempg_groups_instance;
 	struct totempg_group *new_groups;
-	unsigned int res;
+	unsigned int res = 0;
 
 	if (totempg_threaded_mode == 1) {
 		pthread_mutex_lock (&totempg_mutex);
