@@ -74,29 +74,6 @@ static struct syslog_names prioritynames[] =
 	{ NULL, -1 }
 };
 
-static struct syslog_names facilitynames[] =
-{
-	{ "auth", LOG_AUTH },
-	{ "cron", LOG_CRON },
-	{ "daemon", LOG_DAEMON },
-	{ "kern", LOG_KERN },
-	{ "lpr", LOG_LPR },
-	{ "mail", LOG_MAIL },
-	{ "news", LOG_NEWS },
-	{ "syslog", LOG_SYSLOG },
-	{ "user", LOG_USER },
-	{ "uucp", LOG_UUCP },
-	{ "local0", LOG_LOCAL0 },
-	{ "local1", LOG_LOCAL1 },
-	{ "local2", LOG_LOCAL2 },
-	{ "local3", LOG_LOCAL3 },
-	{ "local4", LOG_LOCAL4 },
-	{ "local5", LOG_LOCAL5 },
-	{ "local6", LOG_LOCAL6 },
-	{ "local7", LOG_LOCAL7 },
-	{ NULL, -1 }
-};
-
 #define MAX_FILES_PER_SUBSYS 16
 
 /*
@@ -700,30 +677,6 @@ int logsys_config_debug_set (
 	pthread_mutex_unlock (&logsys_config_mutex);
 
 	return i;
-}
-
-int logsys_facility_id_get (const char *name)
-{
-	unsigned int i;
-
-	for (i = 0; facilitynames[i].c_name != NULL; i++) {
-		if (strcasecmp(name, facilitynames[i].c_name) == 0) {
-			return (facilitynames[i].c_val);
-		}
-	}
-	return (-1);
-}
-
-const char *logsys_facility_name_get (unsigned int facility)
-{
-	unsigned int i;
-
-	for (i = 0; facilitynames[i].c_name != NULL; i++) {
-		if (facility == facilitynames[i].c_val) {
-			return (facilitynames[i].c_name);
-		}
-	}
-	return (NULL);
 }
 
 int logsys_priority_id_get (const char *name)

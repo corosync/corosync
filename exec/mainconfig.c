@@ -352,7 +352,7 @@ static int corosync_main_config_set (
 	if (!objdb_get_string (objdb,object_handle, "syslog_facility", &value)) {
 		int syslog_facility;
 
-		syslog_facility = logsys_facility_id_get(value);
+		syslog_facility = qb_log_facility2int(value);
 		if (syslog_facility < 0) {
 			error_reason = "unknown syslog facility specified";
 			goto parse_error;
