@@ -48,8 +48,7 @@ MAINTAINERCLEANFILES	= Makefile.in aclocal.m4 configure depcomp \
 			  config.guess config.sub missing install-sh \
 			  autoheader automake autoconf test_lense.sh
 
-dist_doc_DATA		= LICENSE INSTALL README.devmap \
-			  README.recovery SECURITY TODO AUTHORS
+dist_doc_DATA		= LICENSE INSTALL README.recovery SECURITY TODO AUTHORS
 
 corosysconfdir		= ${COROSYSCONFDIR}
 
