@@ -172,8 +172,7 @@ static int logsys_config_file_set_unlocked (
 	}
 
 	logsys_loggers[subsysid].dirty = QB_TRUE;
-	if ((file == NULL) ||
-	    (strcmp(logsys_loggers[subsysid].subsys, "") == 0)) {
+	if (file == NULL) {
 		return (0);
 	}
 
@@ -228,6 +227,7 @@ static int logsys_config_file_set_unlocked (
 		*error_string = error_string_response;
 		return (-1);
 	}
+	qb_log_format_set(logsys_loggers[subsysid].target_id, format_buffer);
 	return (0);
 }
 
@@ -498,6 +498,7 @@ int logsys_config_file_set (
 int logsys_format_set (const char *format)
 {
 	int ret = 0;
+	int i;
 	int c;
 	int w;
 	int reminder;
@@ -513,6 +514,12 @@ int logsys_format_set (const char *format)
 		ret = -1;
 	}
 	qb_log_format_set(QB_LOG_STDERR, format_buffer);
+
+	for (i = 0; i <= LOGSYS_MAX_SUBSYS_COUNT; i++) {
+		if (logsys_loggers[i].target_id > 0) {
+			qb_log_format_set(logsys_loggers[i].target_id, format_buffer);
+		}
+	}
 
 	/*
 	 * This just goes through and remove %t and %p from
@@ -624,17 +631,28 @@ static void _logsys_config_apply_per_file(int32_t s, const char *filename)
 			  QB_LOG_FILTER_FILE, filename, LOG_TRACE);
 	qb_log_filter_ctl(QB_LOG_STDERR, QB_LOG_FILTER_REMOVE,
 			  QB_LOG_FILTER_FILE, filename, LOG_TRACE);
+	if (logsys_loggers[s].target_id > 0) {
+		qb_log_filter_ctl(logsys_loggers[s].target_id,
+			QB_LOG_FILTER_REMOVE,
+			QB_LOG_FILTER_FILE, filename, LOG_TRACE);
+	}
 
 	if (logsys_loggers[s].debug) {
 		syslog_priority = LOG_DEBUG;
 		logfile_priority = LOG_DEBUG;
 	}
 	qb_log_filter_ctl(QB_LOG_SYSLOG, QB_LOG_FILTER_ADD,
-			  QB_LOG_FILTER_FILE, filename,
-			  syslog_priority);
+		QB_LOG_FILTER_FILE, filename,
+		syslog_priority);
 	qb_log_filter_ctl(QB_LOG_STDERR, QB_LOG_FILTER_ADD,
-			  QB_LOG_FILTER_FILE, filename,
-			  logfile_priority);
+		QB_LOG_FILTER_FILE, filename,
+		logfile_priority);
+	if (logsys_loggers[s].target_id > 0) {
+		qb_log_filter_ctl(logsys_loggers[s].target_id,
+			QB_LOG_FILTER_ADD,
+			QB_LOG_FILTER_FILE, filename,
+			logfile_priority);
+	}
 }
 
 static void _logsys_config_apply_per_subsys(int32_t s)

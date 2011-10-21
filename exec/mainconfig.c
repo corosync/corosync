@@ -338,10 +338,6 @@ static int corosync_main_config_set (
 	}
 
 	if (corosync_main_config_log_destination_set (objdb, object_handle, subsys, &error_reason,
-	    "to_logfile", LOGSYS_MODE_OUTPUT_FILE, 0, NULL) != 0)
-		goto parse_error;
-
-	if (corosync_main_config_log_destination_set (objdb, object_handle, subsys, &error_reason,
 	    "to_stderr", LOGSYS_MODE_OUTPUT_STDERR, 0, NULL) != 0)
 		goto parse_error;
 
@@ -407,6 +403,10 @@ static int corosync_main_config_set (
 			goto parse_error;
 		}
 	}
+
+	if (corosync_main_config_log_destination_set (objdb, object_handle, subsys, &error_reason,
+	    "to_logfile", LOGSYS_MODE_OUTPUT_FILE, 0, NULL) != 0)
+		goto parse_error;
 
 	if (!objdb_get_string (objdb,object_handle, "logfile_priority", &value)) {
 		int logfile_priority;
