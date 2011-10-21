@@ -106,9 +106,6 @@ evs_error_t evs_initialize (
 		error = qb_to_cs_error(-errno);
 		goto error_put_destroy;
 	}
-	if (error != EVS_OK) {
-		goto error_put_destroy;
-	}
 
 	if (callbacks) {
 		memcpy (&evs_inst->callbacks, callbacks, sizeof (evs_callbacks_t));
