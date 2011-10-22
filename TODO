@@ -18,9 +18,8 @@
 7. remove hardcoded values in totempg.c check_q_level
 8. check max message size restrictions
 9. investigate if https://github.com/asalkeld/libqb/issues/1 is still an issue.
-10. investigate proper sizing for new blackbox (exec/logsys.c:311)
-11. allow a cluster name to autogenerate a mcastaddr
-12. ring status change via corosync-notifyd
+10. allow a cluster name to autogenerate a mcastaddr
+11. ring status change via corosync-notifyd
 
 --------------------------------------
  Current priority list for Needle 2.1

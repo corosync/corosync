@@ -75,6 +75,11 @@ static struct syslog_names prioritynames[] =
 };
 
 #define MAX_FILES_PER_SUBSYS 16
+#ifdef HAVE_SMALL_MEMORY_FOOTPRINT
+#define IPC_LOGSYS_SIZE			8192*64
+#else
+#define IPC_LOGSYS_SIZE			8192*1024
+#endif
 
 /*
  * need unlogical order to preserve 64bit alignment
@@ -285,7 +290,7 @@ int _logsys_system_setup(
 
 	qb_log_filter_ctl(QB_LOG_BLACKBOX, QB_LOG_FILTER_ADD,
 			  QB_LOG_FILTER_FILE, "*", LOG_TRACE);
-	qb_log_ctl(QB_LOG_BLACKBOX, QB_LOG_CONF_SIZE, 4096);
+	qb_log_ctl(QB_LOG_BLACKBOX, QB_LOG_CONF_SIZE, IPC_LOGSYS_SIZE);
 	qb_log_ctl(QB_LOG_BLACKBOX, QB_LOG_CONF_THREADED, QB_FALSE);
 	qb_log_ctl(QB_LOG_BLACKBOX, QB_LOG_CONF_ENABLED, QB_TRUE);
 
