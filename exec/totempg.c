@@ -253,8 +253,6 @@ struct totempg_group_instance {
 	struct list_head list;
 };
 
-DECLARE_HDB_DATABASE (totempg_groups_instance_database,NULL);
-
 static unsigned char next_fragment = 1;
 
 static pthread_mutex_t totempg_mutex = PTHREAD_MUTEX_INITIALIZER;

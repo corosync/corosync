@@ -180,6 +180,7 @@ void totempg_check_q_level(void *instance);
 typedef void (*totem_queue_level_changed_fn) (enum totem_q_level level);
 extern void totempg_queue_level_register_callback (totem_queue_level_changed_fn);
 
+extern void totempg_threaded_mode_enable (void);
 
 #ifdef __cplusplus
 }
