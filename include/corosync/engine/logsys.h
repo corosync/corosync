@@ -197,7 +197,7 @@ static void logsys_subsys_init (void)					\
 
 #define log_printf(level, format, args...) qb_log(level, format, ##args)
 #define ENTER qb_enter
-#define LEAVE qb_log
+#define LEAVE qb_leave
 #define TRACE1(format, args...) qb_log(LOG_TRACE, "TRACE1:" #format, ##args)
 #define TRACE2(format, args...) qb_log(LOG_TRACE, "TRACE2:" #format, ##args)
 #define TRACE3(format, args...) qb_log(LOG_TRACE, "TRACE3:" #format, ##args)
