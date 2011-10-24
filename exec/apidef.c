@@ -63,23 +63,23 @@ LOGSYS_DECLARE_SUBSYS ("APIDEF");
  * Remove compile warnings about type name changes in corosync_tpg_group
  */
 typedef int (*typedef_tpg_join) (
-	hdb_handle_t,
+	void *,
 	const struct corosync_tpg_group *,
 	size_t);
 
-typedef int (*typedef_tpg_leave) (hdb_handle_t,
+typedef int (*typedef_tpg_leave) (void *,
 	const struct corosync_tpg_group *,
 	size_t);
 
 typedef int (*typedef_tpg_groups_mcast_groups) (
-	hdb_handle_t, int,
+	void *, int,
 	const struct corosync_tpg_group *,
 	size_t groups_cnt,
 	const struct iovec *,
 	unsigned int);
 
 typedef int (*typedef_tpg_groups_send_ok) (
-	hdb_handle_t,
+	void *,
 	const struct corosync_tpg_group *,
 	size_t groups_cnt,
 	struct iovec *,

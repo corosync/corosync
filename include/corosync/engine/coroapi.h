@@ -483,7 +483,7 @@ struct corosync_api_v1 {
 	 * wanting their own groups
 	 */
 	int (*tpg_init) (
-		hdb_handle_t *handle,
+		void **instance,
 
 		void (*deliver_fn) (
 			unsigned int nodeid,
@@ -502,26 +502,26 @@ struct corosync_api_v1 {
 			const struct memb_ring_id *ring_id));
 
 	int (*tpg_exit) (
-       		hdb_handle_t handle);
+		void *instance);
 
 	int (*tpg_join) (
-		hdb_handle_t handle,
+		void *instance,
 		const struct corosync_tpg_group *groups,
 		size_t group_cnt);
 
 	int (*tpg_leave) (
-		hdb_handle_t handle,
+		void *instance,
 		const struct corosync_tpg_group *groups,
 		size_t group_cnt);
 
 	int (*tpg_joined_mcast) (
-		hdb_handle_t handle,
+		void *totempg_groups_instance,
 		const struct iovec *iovec,
 		unsigned int iov_len,
 		int guarantee);
 
 	int (*tpg_joined_reserve) (
-		hdb_handle_t handle,
+		void *totempg_groups_instance,
 		const struct iovec *iovec,
 		unsigned int iov_len);
 
@@ -529,7 +529,7 @@ struct corosync_api_v1 {
 		int reserved_msgs);
 
 	int (*tpg_groups_mcast) (
-		hdb_handle_t handle,
+		void *instance,
 		int guarantee,
 		const struct corosync_tpg_group *groups,
 		size_t groups_cnt,
@@ -537,7 +537,7 @@ struct corosync_api_v1 {
 		unsigned int iov_len);
 
 	int (*tpg_groups_reserve) (
-		hdb_handle_t handle,
+		void *instance,
 		const struct corosync_tpg_group *groups,
 		size_t groups_cnt,
 		const struct iovec *iovec,

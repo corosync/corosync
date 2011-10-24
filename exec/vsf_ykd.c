@@ -111,7 +111,7 @@ struct state_received {
 
 struct ykd_state ykd_state;
 
-static hdb_handle_t ykd_group_handle;
+static void *ykd_group_handle;
 
 static struct state_received state_received_confchg[YKD_PROCESSOR_COUNT_MAX];
 
