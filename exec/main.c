@@ -1051,8 +1051,6 @@ _logsys_log_printf(int level, int subsys,
 		const char *format, ...)
 {
 	va_list ap;
-	char buf[QB_LOG_MAX_LEN];
-	size_t len;
 
 	va_start(ap, format);
 	qb_log_from_external_source_va(function_name, file_name,
