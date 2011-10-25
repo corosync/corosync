@@ -20,6 +20,9 @@
 9. investigate if https://github.com/asalkeld/libqb/issues/1 is still an issue.
 10. allow a cluster name to autogenerate a mcastaddr
 11. ring status change via corosync-notifyd
+12. remove dashes in UDPU notifier and replace with dots once map code is in
+13. put addition/removal of members in totem.interface.member objects
+14. dynamic UDPU needs ring id settings for multiple rings
 
 --------------------------------------
  Current priority list for Needle 2.1

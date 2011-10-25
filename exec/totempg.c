@@ -1444,11 +1444,17 @@ void totempg_queue_level_register_callback (totem_queue_level_changed_fn fn)
 
 extern int totempg_member_add (
 	const struct totem_ip_address *member,
-	int ring_no);
+	int ring_no)
+{
+	return totemmrp_member_add (member, ring_no);
+}
 
 extern int totempg_member_remove (
 	const struct totem_ip_address *member,
-	int ring_no);
+	int ring_no)
+{
+	return totemmrp_member_remove (member, ring_no);
+}
 
 void totempg_threaded_mode_enable (void)
 {

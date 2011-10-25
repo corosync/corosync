@@ -680,6 +680,121 @@ static void corosync_totem_stats_updater (void *data)
 		&corosync_stats_timer_handle);
 }
 
+static void totem_dynamic_name_to_ip (char *dest,
+	size_t dest_size,
+	const void *src,
+	size_t src_len)
+{
+	char *p;
+	size_t len;
+
+	len = (src_len + 1 > dest_size) ? dest_size-1 : src_len;
+	memset(dest, 0, dest_size);
+	memcpy(dest, src, len);
+	for (p = dest; p != dest + len; p++) {
+		if (*p == '-') {
+			*p = '.';
+		}
+	}
+}
+
+static void totem_dynamic_create_notify_fn (
+	hdb_handle_t parent_object_handle,
+	hdb_handle_t object_handle,
+	const void *name_pt, size_t name_len,
+	void *priv_data_pt)
+{
+	struct totem_ip_address member;
+	int ring_no; 
+	char object_name[128];
+
+	totem_dynamic_name_to_ip (object_name,
+		sizeof object_name, name_pt, name_len);
+	log_printf (LOGSYS_LEVEL_DEBUG,
+		"adding dynamic member: %s\n", object_name);
+
+	/*
+	 * add new member
+	 */
+	if (totemip_parse (&member, object_name, 0) == 0) {
+		ring_no = 0;
+		totempg_member_add (&member, ring_no);
+	}
+}
+
+static void totem_dynamic_destroy_notify_fn(
+	hdb_handle_t parent_object_handle,
+	const void *name_pt, size_t name_len,
+	void *priv_data_pt)
+{
+	struct totem_ip_address member;
+	int ring_no; 
+	char object_name[128];
+
+	totem_dynamic_name_to_ip (object_name, sizeof object_name,
+		name_pt, name_len);
+	log_printf(LOGSYS_LEVEL_DEBUG,
+		"removing dynamic member: %s\n", object_name);
+
+	/*
+	 * remove member
+	 */
+	if (totemip_parse(&member, object_name, 0) == 0) {
+		ring_no = 0;
+		totempg_member_remove (&member, ring_no);
+	}
+}
+
+static void corosync_totem_dynamic_init (void)
+{
+	hdb_handle_t object_find_handle;
+	hdb_handle_t object_totem_handle;
+	hdb_handle_t object_interface_handle;
+	hdb_handle_t object_dynamic_handle;
+
+	if (objdb->object_find_create (OBJECT_PARENT_HANDLE,
+		"totem", strlen("totem"), &object_find_handle) != 0) {
+		log_printf(LOGSYS_LEVEL_ERROR,
+			"corosync_totem_dynamic_init:: FAILED to find totem!\n");
+		return;
+	}
+	if (objdb->object_find_next (object_find_handle,
+		&object_totem_handle) != 0) {
+		return;
+	}
+
+	if (objdb->object_find_create(object_totem_handle,
+		"interface", strlen("interface"), &object_find_handle) != 0) {
+
+		log_printf(LOGSYS_LEVEL_ERROR,
+			"corosync_totem_dynamic_init:: FAILED to find totem.interface!\n");
+		return;
+	}
+	if (objdb->object_find_next (object_find_handle,
+		&object_interface_handle) != 0) {
+
+		return;
+	}
+
+	/*
+	 * create new child object: dynamic
+	 */
+	if (objdb->object_create (object_interface_handle,
+		&object_dynamic_handle,
+		"dynamic", strlen("dynamic")) != 0) {
+
+		log_printf(LOGSYS_LEVEL_ERROR,
+			"unable to create object: \"totem.interface.dynamic\"\n");
+		return;
+	}
+
+	objdb->object_track_start (object_dynamic_handle,
+		OBJECT_TRACK_DEPTH_RECURSIVE,
+		NULL,
+		totem_dynamic_create_notify_fn,
+		totem_dynamic_destroy_notify_fn,
+		NULL, NULL);
+}
 static void corosync_totem_stats_init (void)
 {
 	totempg_stats_t * stats;
@@ -1126,6 +1241,7 @@ static void main_service_ready (void)
 	cs_ipcs_init();
 	corosync_totem_stats_init ();
 	corosync_fplay_control_init ();
+	corosync_totem_dynamic_init ();
 	if (minimum_sync_mode == CS_SYNC_V2) {
 		log_printf (LOGSYS_LEVEL_NOTICE, "Compatibility mode set to none.  Using V2 of the synchronization engine.\n");
 		sync_v2_init (

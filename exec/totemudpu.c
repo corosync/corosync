@@ -1677,6 +1677,8 @@ int totemudpu_member_add (
 	if (new_member == NULL) {
 		return (-1);
 	}
+	log_printf (LOGSYS_LEVEL_NOTICE, "adding new UDPU member {%s}\n", 
+		totemip_print(member));
 	list_init (&new_member->list);
 	list_add_tail (&new_member->list, &instance->member_list);
 	memcpy (&new_member->member, member, sizeof (struct totem_ip_address));
@@ -1712,7 +1714,47 @@ int totemudpu_member_remove (
 	void *udpu_context,
 	const struct totem_ip_address *token_target)
 {
+	int found = 0;
+	struct list_head *list;
+	struct totemudpu_member *member;
+
 	struct totemudpu_instance *instance = (struct totemudpu_instance *)udpu_context;
+
+	/*
+	 * Find the member to remove and close its socket
+	 */
+	for (list = instance->member_list.next;
+		list != &instance->member_list;
+		list = list->next) {
+
+		member = list_entry (list,
+			struct totemudpu_member,
+			list);
+
+		if (totemip_compare (token_target, &member->member)==0) {
+			log_printf(LOGSYS_LEVEL_NOTICE,
+				"removing UDPU member {%s}\n",
+				totemip_print(&member->member));
+
+			if (member->fd > 0) {
+				log_printf(LOGSYS_LEVEL_DEBUG,
+					"Closing socket to: {%s}\n",
+					totemip_print(&member->member));
+				qb_loop_poll_del (instance->totemudpu_poll_handle,
+					member->fd);
+				close (member->fd);
+			}
+			found = 1;
+			break;
+		}
+	}
+
+	/*
+	 * Delete the member from the list
+	 */
+	if (found) {
+		list_del (list);
+	}
 
 	instance = NULL;
 	return (0);
