@@ -55,6 +55,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <sys/mman.h>
+#include <qb/qbmap.h>
 
 #include <corosync/corotypes.h>
 #include <qb/qbipc_common.h>
@@ -705,7 +706,6 @@ static int notify_lib_joinlist(
 		for (iter = cpg_pd_list_head.next; iter != &cpg_pd_list_head; iter = iter->next) {
 			struct cpg_pd *cpd = list_entry (iter, struct cpg_pd, list);
 			if (mar_name_compare (&cpd->group_name, group_name) == 0) {
-				assert (left_list_entries <= 1);
 				assert (joined_list_entries <= 1);
 				if (joined_list_entries) {
 					if (joined_list[0].pid == cpd->pid &&
@@ -798,8 +798,19 @@ static void downlist_master_choose_and_send (void)
 {
 	struct downlist_msg *stored_msg;
 	struct list_head *iter;
-	mar_cpg_address_t left_list;
-	int i;
+	struct process_info *left_pi;
+	qb_map_t *group_map;
+	struct cpg_name cpg_group;
+	mar_cpg_name_t group;
+	struct confchg_data{
+		struct cpg_name cpg_group;
+		mar_cpg_address_t left_list[CPG_MEMBERS_MAX];
+		int left_list_entries;
+		struct list_head  list;
+	} *pcd;
+	qb_map_iter_t *miter;
+	int i, size;
+	const char *p;
 
 	downlist_state = CPG_DOWNLIST_APPLYING;
 
@@ -810,27 +821,70 @@ static void downlist_master_choose_and_send (void)
 	}
 	downlist_log("chosen downlist", stored_msg);
 
-	/* send events */
+	group_map = qb_skiplist_create();
+
+	/*
+	 * only the cpg groups included in left nodes should receive
+	 * confchg event, so we will collect these cpg groups and
+	 * relative left_lists here.
+	 */
 	for (iter = process_info_list_head.next; iter != &process_info_list_head; ) {
 		struct process_info *pi = list_entry(iter, struct process_info, list);
 		iter = iter->next;
 
+		left_pi = NULL;
 		for (i = 0; i < stored_msg->left_nodes; i++) {
-			if (pi->nodeid == stored_msg->nodeids[i]) {
-				left_list.nodeid = pi->nodeid;
-				left_list.pid = pi->pid;
-				left_list.reason = CONFCHG_CPG_REASON_NODEDOWN;
 
-				notify_lib_joinlist(&pi->group, NULL,
-					0, NULL,
-					1, &left_list,
-					MESSAGE_RES_CPG_CONFCHG_CALLBACK);
-				list_del (&pi->list);
-				free (pi);
+			if (pi->nodeid == stored_msg->nodeids[i]) {
+				left_pi = pi;
 				break;
 			}
 		}
+
+		if (left_pi) {
+			marshall_from_mar_cpg_name_t(&cpg_group, &left_pi->group);
+			cpg_group.value[cpg_group.length] = 0;
+
+			pcd = (struct confchg_data *)qb_map_get(group_map, cpg_group.value);
+			if (pcd == NULL) {
+				pcd = (struct confchg_data *)calloc(1, sizeof(struct confchg_data));
+				memcpy(&pcd->cpg_group, &cpg_group, sizeof(struct cpg_name));
+				qb_map_put(group_map, pcd->cpg_group.value, pcd);
+			}
+			size = pcd->left_list_entries;
+			pcd->left_list[size].nodeid = left_pi->nodeid;
+			pcd->left_list[size].pid = left_pi->pid;
+			pcd->left_list[size].reason = CONFCHG_CPG_REASON_NODEDOWN;
+			pcd->left_list_entries++;
+			list_del (&left_pi->list);
+			free (left_pi);
+		}
 	}
+
+	/* send only one confchg event per cpg group */
+	miter = qb_map_iter_create(group_map);
+	while ((p = qb_map_iter_next(miter, (void **)&pcd))) {
+		marshall_to_mar_cpg_name_t(&group, &pcd->cpg_group);
+
+		log_printf (LOG_DEBUG, "left_list_entries:%d", pcd->left_list_entries);
+		for (i=0; i<pcd->left_list_entries; i++) {
+			log_printf (LOG_DEBUG, "left_list[%d] group:%d, ip:%s, pid:%d",
+				i, pcd->cpg_group.value,
+				(char*)api->totem_ifaces_print(pcd->left_list[i].nodeid),
+				pcd->left_list[i].pid);
+		}
+
+		/* send confchg event */
+		notify_lib_joinlist(&group, NULL,
+			0, NULL,
+			pcd->left_list_entries,
+			pcd->left_list,
+			MESSAGE_RES_CPG_CONFCHG_CALLBACK);
+
+		free(pcd);
+	}
+	qb_map_iter_free(miter);
+	qb_map_destroy(group_map);
 }
 
 static void downlist_messages_delete (void)
