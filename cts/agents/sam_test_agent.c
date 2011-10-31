@@ -1471,8 +1471,13 @@ static void do_command (int sock, char* func, char*args[], int num_args)
 	} else if (strcmp ("setup_hc", func) == 0) {
 		err = setup_hc ();
 	} else if (strcmp ("sam_stop", func) == 0) {
-		sam_stop ();
-		sam_finalize();
+		err = sam_stop ();
+		if (err != CS_OK) {
+			err = -1;
+			syslog (LOG_ERR,"%s RPC:%s sam_stop failed!", __func__, func);
+			snprintf (response, 100, "%s", FAIL_STR);
+		}
+		err = sam_finalize();
 	} else {
 		err = -1;
 		syslog (LOG_ERR,"%s RPC:%s not supported!", __func__, func);
