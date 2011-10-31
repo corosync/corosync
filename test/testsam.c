@@ -532,9 +532,12 @@ static int test4 (void)
 
 static int test5_hc_cb (void)
 {
+	cs_error_t res;
 	printf ("%s %d\n", __FUNCTION__, ++test5_hc_cb_count);
 
-	sam_data_store (&test5_hc_cb_count, sizeof (test5_hc_cb_count));
+	res = sam_data_store (&test5_hc_cb_count, sizeof (test5_hc_cb_count));
+	if (res != CS_OK)
+		return 1;
 
 	if (test5_hc_cb_count > 10)
 		return 1;
