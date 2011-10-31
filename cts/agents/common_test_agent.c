@@ -241,6 +241,10 @@ static int create_server_sockect (int server_port)
 		case AF_INET6:
 			ptr = &((struct sockaddr_in6 *) p->ai_addr)->sin6_addr;
 			break;
+		default:
+			syslog (LOG_ERR, "address family wrong");
+			exit (4);
+			
 		}
 
 		if (inet_ntop(p->ai_family, ptr, addr_str, INET_ADDRSTRLEN) == NULL) {
