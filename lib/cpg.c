@@ -699,8 +699,8 @@ memory_map (char *path, const char *file, void **buf, size_t bytes)
 	int32_t res;
 	char *buffer;
 	int32_t i;
-	int32_t written;
-	long page_size; 
+	size_t written;
+	size_t page_size; 
 
 	snprintf (path, PATH_MAX, "/dev/shm/%s", file);
 
@@ -717,7 +717,7 @@ memory_map (char *path, const char *file, void **buf, size_t bytes)
 	if (res == -1) {
 		goto error_close_unlink;
 	}
-	page_size = sysconf(_SC_PAGESIZE);
+	page_size = (size_t)sysconf(_SC_PAGESIZE);
 	buffer = malloc (page_size);
 	if (buffer == NULL) {
 		goto error_close_unlink;
