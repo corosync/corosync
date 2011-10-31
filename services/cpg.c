@@ -810,7 +810,6 @@ static void downlist_master_choose_and_send (void)
 	} *pcd;
 	qb_map_iter_t *miter;
 	int i, size;
-	const char *p;
 
 	downlist_state = CPG_DOWNLIST_APPLYING;
 
@@ -863,7 +862,7 @@ static void downlist_master_choose_and_send (void)
 
 	/* send only one confchg event per cpg group */
 	miter = qb_map_iter_create(group_map);
-	while ((p = qb_map_iter_next(miter, (void **)&pcd))) {
+	while (qb_map_iter_next(miter, (void **)&pcd)) {
 		marshall_to_mar_cpg_name_t(&group, &pcd->cpg_group);
 
 		log_printf (LOG_DEBUG, "left_list_entries:%d", pcd->left_list_entries);
