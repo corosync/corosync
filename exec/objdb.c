@@ -104,6 +104,8 @@ struct object_find_instance {
 struct objdb_iface_ver0 objdb_iface;
 struct list_head objdb_trackers_head;
 
+static int object_destroy (hdb_handle_t object_handle);
+
 DECLARE_HDB_DATABASE (object_instance_database,NULL);
 
 DECLARE_HDB_DATABASE (object_find_instance_database,NULL);
@@ -125,7 +127,7 @@ static int objdb_init (void)
 		goto error_destroy;
 	}
 	instance->find_child_list = &instance->child_head;
-	instance->object_name = (char *)"parent";
+	instance->object_name = strdup("parent");
 	instance->object_name_len = strlen ("parent");
 	instance->object_handle = handle;
 	instance->parent_handle = OBJECT_PARENT_HANDLE;
@@ -146,6 +148,13 @@ error_destroy:
 
 error_exit:
 	return (-1);
+}
+
+
+static void objdb_fini (void)
+{
+	object_destroy (OBJECT_PARENT_HANDLE);
+	hdb_destroy (&object_instance_database);
 }
 
 static int _object_notify_deleted_children(struct object_instance *parent_pt)
@@ -1810,8 +1819,9 @@ struct objdb_iface_ver0 objdb_iface = {
 	.object_key_increment   = object_key_increment,
 	.object_key_decrement   = object_key_decrement,
 	.object_key_create_typed	= object_key_create_typed,
-	.object_key_get_typed		= object_key_get_typed,
-	.object_key_iter_typed		= object_key_iter_typed,
+	.object_key_get_typed	= object_key_get_typed,
+	.object_key_iter_typed	= object_key_iter_typed,
+	.objdb_fini		= objdb_fini,
 };
 
 struct lcr_iface objdb_iface_ver0[1] = {

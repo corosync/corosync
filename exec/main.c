@@ -1649,6 +1649,11 @@ int main (int argc, char **argv, char **envp)
 	qb_loop_destroy (corosync_poll_handle);
 
 	/*
+	 * free up the objdb
+	 */
+	objdb->objdb_fini ();
+
+	/*
 	 * Remove pid lock file
 	 */
 	unlink (corosync_lock_file);

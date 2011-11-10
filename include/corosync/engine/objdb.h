@@ -269,6 +269,7 @@ struct objdb_iface_ver0 {
 		void **value,
 		size_t *value_len,
 		objdb_value_types_t *type);
+	void (*objdb_fini) (void);
 };
 
 #endif /* OBJDB_H_DEFINED */
