@@ -304,6 +304,7 @@ int totemip_parse(struct totem_ip_address *totemip, const char *addr, int family
 	else
 		memcpy(totemip->addr, &sa6->sin6_addr, sizeof(struct in6_addr));
 
+	freeaddrinfo(ainfo);
 	return 0;
 }
 
