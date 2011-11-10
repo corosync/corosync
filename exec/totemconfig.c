@@ -421,6 +421,7 @@ printf ("couldn't find totem handle\n");
 		}
 		totem_config->interfaces[ringnumber].member_count = member_count;
 		totem_config->interface_count++;
+		objdb->object_find_destroy (object_find_member_handle);
 	}
 
 	objdb->object_find_destroy (object_find_interface_handle);

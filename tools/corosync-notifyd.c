@@ -346,6 +346,7 @@ _cs_confdb_find_object (confdb_handle_t handle,
 		if (res != CS_OK) {
 			return res;
 		}
+		confdb_object_find_destroy(handle, parent_object_handle);
 
 		parent_object_handle = obj_handle;
 		obj_name_pt = strtok_r (NULL, SEPERATOR_STR, &save_pt);

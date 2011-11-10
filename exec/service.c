@@ -497,9 +497,11 @@ unsigned int corosync_service_defaults_link_and_init (struct corosync_api_v1 *co
 			&object_runtime_handle) == 0) {
 
 		corosync_api->object_create (object_runtime_handle,
-									 &object_stats_services_handle,
-									 "services", strlen ("services"));
+			&object_stats_services_handle,
+			"services", strlen ("services"));
 	}
+	corosync_api->object_find_destroy (object_find2_handle);
+
 	corosync_api->object_create (OBJECT_PARENT_HANDLE,
 		&object_internal_configuration_handle,
 		"internal_configuration",
