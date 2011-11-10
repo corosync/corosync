@@ -243,6 +243,20 @@ static const char *_logsys_tags_stringify(uint32_t tags)
 	}
 }
 
+void logsys_system_fini (void)
+{
+	int i;
+	int f;
+	for (i = 0; i < LOGSYS_MAX_SUBSYS_COUNT; i++) {
+		free(logsys_loggers[i].logfile);
+		for (f = 0; i < logsys_loggers[i].file_idx; f++) {
+			free(logsys_loggers[i].files[f]);
+		}
+	}
+
+	qb_log_fini ();
+}
+
 /*
  * Internal API - exported
  */

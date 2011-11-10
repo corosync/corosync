@@ -157,6 +157,8 @@ extern int _logsys_system_setup(
 	int syslog_facility,
 	int syslog_priority);
 
+extern void logsys_system_fini (void);
+
 extern int _logsys_config_subsys_get (
 	const char *subsys);
 
