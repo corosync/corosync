@@ -1650,6 +1650,7 @@ static void votequorum_objdb_reload_notify(
 		else {
 			log_printf(LOGSYS_LEVEL_ERROR, "votequorum objdb tracking stopped, cannot find quorum{} handle in objdb\n");
 		}
+		corosync_api->object_find_destroy(find_handle);
 	}
 }
 
