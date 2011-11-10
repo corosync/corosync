@@ -975,8 +975,14 @@ void totemsrp_finalize (
 {
 	struct totemsrp_instance *instance = (struct totemsrp_instance *)srp_context;
 
+
 	memb_leave_message_send (instance);
-	free (srp_context);
+	totemrrp_finalize (instance->totemrrp_context);
+	cs_queue_free (&instance->new_message_queue);
+	cs_queue_free (&instance->retrans_message_queue);
+	sq_free (&instance->regular_sort_queue);
+	sq_free (&instance->recovery_sort_queue);
+	free (instance);
 }
 
 int totemsrp_ifaces_get (

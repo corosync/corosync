@@ -1781,7 +1781,8 @@ int totemrrp_finalize (
 	for (i = 0; i < instance->interface_count; i++) {
 		totemnet_finalize (instance->net_handles[i]);
 	}
-
+	free (instance->net_handles);
+	free (instance);
 	return (0);
 }
 
