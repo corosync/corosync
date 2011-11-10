@@ -388,6 +388,7 @@ static void member_object_joined (unsigned int nodeid)
 			"joined", strlen("joined"),
 			OBJDB_VALUETYPE_STRING);
 	}
+	objdb->object_find_destroy (object_find_handle);
 }
 
 static void member_object_left (unsigned int nodeid)
@@ -411,6 +412,7 @@ static void member_object_left (unsigned int nodeid)
 			"status", strlen("status"),
 			"left", strlen("left"));
 	}
+	objdb->object_find_destroy (object_find_handle);
 }
 
 static void confchg_fn (
@@ -762,6 +764,7 @@ static void corosync_totem_dynamic_init (void)
 		&object_totem_handle) != 0) {
 		return;
 	}
+	api->object_find_destroy (object_find_handle);
 
 	if (objdb->object_find_create(object_totem_handle,
 		"interface", strlen("interface"), &object_find_handle) != 0) {
@@ -775,6 +778,7 @@ static void corosync_totem_dynamic_init (void)
 
 		return;
 	}
+	api->object_find_destroy (object_find_handle);
 
 	/*
 	 * create new child object: dynamic
@@ -926,6 +930,8 @@ static void corosync_totem_stats_init (void)
 			sizeof (zero_32), OBJDB_VALUETYPE_UINT32);
 
 	}
+	objdb->object_find_destroy (object_find_handle);
+
 	/* start stats timer */
 	api->timer_add_duration (1500 * MILLI_2_NANO_SECONDS, NULL,
 		corosync_totem_stats_updater,
@@ -1207,6 +1213,7 @@ static void corosync_fplay_control_init (void)
 			&object_runtime_handle) != 0) {
 		return;
 	}
+	objdb->object_find_destroy (object_find_handle);
 
 	objdb->object_create (object_runtime_handle,
 		&object_blackbox_handle,

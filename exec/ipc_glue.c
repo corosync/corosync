@@ -898,5 +898,6 @@ void cs_ipcs_init(void)
 	api->object_key_create_typed (object_connection_handle,
 		"closed", &zero_64, sizeof (zero_64),
 		OBJDB_VALUETYPE_UINT64);
+	api->object_find_destroy (object_find_handle);
 }
 
