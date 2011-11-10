@@ -799,6 +799,7 @@ static void corosync_totem_dynamic_init (void)
 		totem_dynamic_destroy_notify_fn,
 		NULL, NULL);
 }
+
 static void corosync_totem_stats_init (void)
 {
 	totempg_stats_t * stats;
@@ -1641,6 +1642,11 @@ int main (int argc, char **argv, char **envp)
 	 * Exit was requested
 	 */
 	totempg_finalize ();
+
+	/*
+	 * free the loop resources
+	 */
+	qb_loop_destroy (corosync_poll_handle);
 
 	/*
 	 * Remove pid lock file
