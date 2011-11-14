@@ -450,7 +450,6 @@ static void
 _cs_dbus_node_quorum_event(char *nodename, uint32_t nodeid, const char *state)
 {
 	DBusMessage *msg = NULL;
-	int ret = -1;
 
 	if (err_set) {
 		qb_log(LOG_ERR, "%s", _err);
@@ -487,7 +486,6 @@ _cs_dbus_node_quorum_event(char *nodename, uint32_t nodeid, const char *state)
 	}
 
 	dbus_connection_send(db, msg, NULL);
-	ret = 0;
 
 out_unlock:
 	if (msg) {
@@ -501,7 +499,6 @@ static void
 _cs_dbus_node_membership_event(char *nodename, uint32_t nodeid, char *state, char* ip)
 {
 	DBusMessage *msg = NULL;
-	int ret = -1;
 
 	if (err_set) {
 		qb_log(LOG_ERR, "%s", _err);
@@ -539,7 +536,6 @@ _cs_dbus_node_membership_event(char *nodename, uint32_t nodeid, char *state, cha
 	}
 
 	dbus_connection_send(db, msg, NULL);
-	ret = 0;
 
 out_unlock:
 	if (msg) {
@@ -553,7 +549,6 @@ static void
 _cs_dbus_application_connection_event(char *nodename, uint32_t nodeid, char *app_name, const char *state)
 {
 	DBusMessage *msg = NULL;
-	int ret = -1;
 
 	if (err_set) {
 		qb_log(LOG_ERR, "%s", _err);
@@ -591,7 +586,6 @@ _cs_dbus_application_connection_event(char *nodename, uint32_t nodeid, char *app
 	}
 
 	dbus_connection_send(db, msg, NULL);
-	ret = 0;
 
 out_unlock:
 	if (msg) {

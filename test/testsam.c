@@ -272,6 +272,7 @@ static int test3 (void) {
 		tmp2 = rand ();
 		tmp3 = 0;
 		tmp1 = tmp2 / tmp3;
+		tmp3 = tmp1;
 
 		return 1;
 	}
