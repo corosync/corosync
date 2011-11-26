@@ -4022,7 +4022,7 @@ static void memb_join_process (
 
 			memb_state_commit_enter (instance);
 		} else {
-			return;
+			goto out;
 		}
 	} else
 	if (memb_set_subset (proc_list,
@@ -4035,12 +4035,12 @@ static void memb_join_process (
 		instance->my_failed_list,
 		instance->my_failed_list_entries)) {
 
-		return;
+		goto out;
 	} else
 	if (memb_set_subset (&memb_join->system_from, 1,
 		instance->my_failed_list, instance->my_failed_list_entries)) {
 
-		return;
+		goto out;
 	} else {
 		memb_set_merge (proc_list,
 			memb_join->proc_list_entries,
@@ -4085,6 +4085,8 @@ static void memb_join_process (
 		memb_state_gather_enter (instance, 11);
 		gather_entered = 1;
 	}
+
+out:
 	if (gather_entered == 0 &&
 		instance->memb_state == MEMB_STATE_OPERATIONAL) {
 
