@@ -2662,9 +2662,9 @@ static int token_send (
 	orf_token_size = sizeof (struct orf_token) +
 		(orf_token->rtr_list_entries * sizeof (struct rtr_item));
 
+	orf_token->header.nodeid = instance->my_id.addr[0].nodeid;
 	memcpy (instance->orf_token_retransmit, orf_token, orf_token_size);
 	instance->orf_token_retransmit_size = orf_token_size;
-	orf_token->header.nodeid = instance->my_id.addr[0].nodeid;
 	assert (orf_token->header.nodeid);
 
 	if (forward_token == 0) {
@@ -2844,6 +2844,7 @@ static int memb_state_commit_token_send_recovery (
 	memb_list = (struct memb_commit_token_memb_entry *)(addr + commit_token->addr_entries);
 
 	commit_token->token_seq++;
+	commit_token->header.nodeid = instance->my_id.addr[0].nodeid;
 	commit_token_size = sizeof (struct memb_commit_token) +
 		((sizeof (struct srp_addr) +
 			sizeof (struct memb_commit_token_memb_entry)) * commit_token->addr_entries);
