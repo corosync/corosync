@@ -2377,9 +2377,6 @@ static void update_aru (
 	}
 
 	range = instance->my_high_seq_received - instance->my_aru;
-	if (range > 1024) {
-		return;
-	}
 
 	my_aru_saved = instance->my_aru;
 	for (i = 1; i <= range; i++) {
