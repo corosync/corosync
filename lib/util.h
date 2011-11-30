@@ -38,7 +38,7 @@
 
 #include <corosync/corotypes.h>
 
-#define hdb_error_to_cs(_result_) qb_to_cs_error(-_result_)
+#define hdb_error_to_cs(_result_) qb_to_cs_error(_result_)
 
 #ifdef HAVE_SMALL_MEMORY_FOOTPRINT
 #define IPC_REQUEST_SIZE        1024*64
