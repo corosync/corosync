@@ -2875,6 +2875,7 @@ static int memb_state_commit_token_send (
 	memb_list = (struct memb_commit_token_memb_entry *)(addr + instance->commit_token->addr_entries);
 
 	instance->commit_token->token_seq++;
+	instance->commit_token->header.nodeid = instance->my_id.addr[0].nodeid;
 	commit_token_size = sizeof (struct memb_commit_token) +
 		((sizeof (struct srp_addr) +
 			sizeof (struct memb_commit_token_memb_entry)) * instance->commit_token->addr_entries);
