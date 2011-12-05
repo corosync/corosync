@@ -9,6 +9,7 @@ AC_INIT([corosync],
 	[openais@lists.osdl.org])
 
 AM_INIT_AUTOMAKE([-Wno-portability])
+AM_SILENT_RULES([yes])
 
 AC_CONFIG_SRCDIR([lib/cpg.c])
 AC_CONFIG_HEADER([include/corosync/config.h include/corosync/cs_config.h])
