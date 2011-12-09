@@ -258,7 +258,12 @@ static void quorum_notification_fn(
 	}
 }
 
-static void show_status(void)
+/*
+ * return  1 if quorate
+ *         0 if not quorate
+ *        -1 on error
+ */
+static int show_status(void)
 {
 	quorum_handle_t q_handle;
 	votequorum_handle_t v_handle;
@@ -272,26 +277,39 @@ static void show_status(void)
 	err=quorum_initialize(&q_handle, &callbacks);
 	if (err != CS_OK) {
 		fprintf(stderr, "Cannot connect to quorum service, is it loaded?\n");
-		return;
+		return -1;
 	}
 
 	err=quorum_getquorate(q_handle, &is_quorate);
 	if (err != CS_OK) {
 		fprintf(stderr, "quorum_getquorate FAILED: %d\n", err);
-		return;
+		goto quorum_err;
 	}
 
 	err=quorum_trackstart(q_handle, CS_TRACK_CURRENT);
 	if (err != CS_OK) {
 		fprintf(stderr, "quorum_trackstart FAILED: %d\n", err);
-		return;
+		goto quorum_err;
 	}
 
 	g_called = 0;
-	while (g_called == 0)
-		quorum_dispatch(q_handle, CS_DISPATCH_ONE);
+	while (g_called == 0 && err == CS_OK) {
+		err = quorum_dispatch(q_handle, CS_DISPATCH_ONE);
+		if (err != CS_OK) {
+			fprintf(stderr, "quorum_dispatch FAILED: %d\n", err);
+		}
+	}
 
-	quorum_finalize(q_handle);
+	if (quorum_trackstop(q_handle) != CS_OK) {
+		fprintf(stderr, "quorum_trackstop FAILED: %d\n", err);
+	}
+
+quorum_err:
+	if (quorum_finalize(q_handle) != CS_OK) {
+		fprintf(stderr, "quorum_finalize FAILED: %d\n", err);
+	}
+	if (err < 0)
+		return err;
 
 	printf("Version:          %s\n", VERSION);
 	printf("Nodes:            %d\n", g_view_list_entries);
@@ -299,34 +317,42 @@ static void show_status(void)
 	printf("Quorum type:      %s\n", get_quorum_type());
 	printf("Quorate:          %s\n", is_quorate?"Yes":"No");
 
-	if (using_votequorum()) {
-
-		v_callbacks.votequorum_notify_fn = NULL;
-		v_callbacks.votequorum_expectedvotes_notify_fn = NULL;
-
-		if ( (err=votequorum_initialize(&v_handle, &v_callbacks)) != CS_OK) {
-			fprintf(stderr, "votequorum_initialize FAILED: %d, this is probably a configuration error\n", err);
-			goto err_exit;
-		}
-		if ( (err=votequorum_getinfo(v_handle, 0, &info)) != CS_OK)
-			fprintf(stderr, "votequorum_getinfo FAILED: %d\n", err);
-		else {
-			printf("Node votes:       %d\n", info.node_votes);
-			printf("Expected votes:   %d\n", info.node_expected_votes);
-			printf("Highest expected: %d\n", info.highest_expected);
-			printf("Total votes:      %d\n", info.total_votes);
-			printf("Quorum:           %d %s\n", info.quorum, info.flags & VOTEQUORUM_INFO_FLAG_QUORATE?" ":"Activity blocked");
-			printf("Flags:            ");
-			if (info.flags & VOTEQUORUM_INFO_FLAG_HASSTATE) printf("HasState ");
-			if (info.flags & VOTEQUORUM_INFO_FLAG_DISALLOWED) printf("DisallowedNodes ");
-			if (info.flags & VOTEQUORUM_INFO_FLAG_TWONODE) printf("2Node ");
-			if (info.flags & VOTEQUORUM_INFO_FLAG_QUORATE) printf("Quorate ");
-			printf("\n");
-		}
+	if (!using_votequorum()) {
+		return is_quorate;
 	}
 
-	err_exit:
-	return;
+	v_callbacks.votequorum_notify_fn = NULL;
+	v_callbacks.votequorum_expectedvotes_notify_fn = NULL;
+
+	if ((err=votequorum_initialize(&v_handle, &v_callbacks)) != CS_OK) {
+		fprintf(stderr, "votequorum_initialize FAILED: %d, this is probably a configuration error\n", err);
+		goto err_exit;
+	}
+
+	if ((err=votequorum_getinfo(v_handle, 0, &info)) == CS_OK) {
+		printf("Node votes:       %d\n", info.node_votes);
+		printf("Expected votes:   %d\n", info.node_expected_votes);
+		printf("Highest expected: %d\n", info.highest_expected);
+		printf("Total votes:      %d\n", info.total_votes);
+		printf("Quorum:           %d %s\n", info.quorum, info.flags & VOTEQUORUM_INFO_FLAG_QUORATE?" ":"Activity blocked");
+		printf("Flags:            ");
+		if (info.flags & VOTEQUORUM_INFO_FLAG_HASSTATE) printf("HasState ");
+		if (info.flags & VOTEQUORUM_INFO_FLAG_DISALLOWED) printf("DisallowedNodes ");
+		if (info.flags & VOTEQUORUM_INFO_FLAG_TWONODE) printf("2Node ");
+		if (info.flags & VOTEQUORUM_INFO_FLAG_QUORATE) printf("Quorate ");
+		printf("\n");
+	} else {
+		fprintf(stderr, "votequorum_getinfo FAILED: %d\n", err);
+	}
+
+	if (votequorum_finalize(v_handle) != CS_OK) {
+		fprintf(stderr, "votequorum_finalize FAILED: %d\n", err);
+	}
+
+err_exit:
+	if (err != CS_OK)
+		return err;
+	return is_quorate;
 }
 
 static int show_nodes(nodeid_format_t nodeid_format, name_format_t name_format)
@@ -490,12 +516,13 @@ int main (int argc, char *argv[]) {
 	switch (command_opt) {
 	case CMD_UNKNOWN:
 		show_usage(argv[0]);
+		ret = -1;
 		break;
 	case CMD_SHOWNODES:
 		ret = show_nodes(nodeid_format, address_format);
 		break;
 	case CMD_SHOWSTATUS:
-		show_status();
+		ret = show_status();
 		break;
 	case CMD_SETVOTES:
 		ret = set_votes(nodeid, votes);
