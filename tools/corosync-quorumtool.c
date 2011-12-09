@@ -72,7 +72,7 @@ static void show_usage(const char *name)
 	printf("  -v <votes>     change the number of votes for a node *\n");
 	printf("  -n <nodeid>    optional nodeid of node for -v\n");
 	printf("  -e <expected>  change expected votes for the cluster *\n");
-	printf("  -h             show nodeids in hexadecimal rather than decimal\n");
+	printf("  -H             show nodeids in hexadecimal rather than decimal\n");
 	printf("  -i             show node IP addresses instead of the resolved name\n");
 	printf("  -h             show this help text\n");
 	printf("\n");
@@ -438,7 +438,7 @@ int main (int argc, char *argv[]) {
 		case 'i':
 			address_format = ADDRESS_FORMAT_IP;
 			break;
-		case 'h':
+		case 'H':
 			nodeid_format = NODEID_FORMAT_HEX;
 			break;
 		case 'l':
@@ -480,7 +480,7 @@ int main (int argc, char *argv[]) {
 				exit(2);
 			}
 			break;
-		case 'H':
+		case 'h':
 		case '?':
 		default:
 		break;
