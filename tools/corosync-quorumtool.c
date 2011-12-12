@@ -71,7 +71,8 @@ typedef enum {
 	CMD_SHOWNODES,
 	CMD_SHOWSTATUS,
 	CMD_SETVOTES,
-	CMD_SETEXPECTED
+	CMD_SETEXPECTED,
+	CMD_MONITOR
 } command_t;
 
 /*
@@ -109,7 +110,7 @@ static quorum_callbacks_t q_callbacks = {
 static uint32_t g_quorate;
 static uint64_t g_ring_id;
 static uint32_t g_view_list_entries;
-static uint32_t *g_view_list;
+static uint32_t *g_view_list = NULL;
 static uint32_t g_called;
 
 /*
@@ -138,6 +139,7 @@ static void show_usage(const char *name)
 	printf("  options:\n");
 	printf("\n");
 	printf("  -s             show quorum status\n");
+	printf("  -m             monitor quorum status\n");
 	printf("  -l             list nodes\n");
 	printf("  -v <votes>     change the number of votes for a node *\n");
 	printf("  -n <nodeid>    optional nodeid of node for -v\n");
@@ -189,6 +191,7 @@ static int get_quorum_type(char *quorum_type, size_t quorum_type_len)
 
 	strncpy(quorum_type, buf, quorum_type_len - 1);
 
+	return 0;
 out:
 	return err;
 }
@@ -265,26 +268,32 @@ static int get_votes(uint32_t nodeid)
  */
 static const char *node_name(uint32_t nodeid, name_format_t name_format)
 {
-	int ret;
+	int err;
 	int numaddrs;
 	corosync_cfg_node_address_t addrs[INTERFACE_MAX];
+	static char buf[INET6_ADDRSTRLEN];
+	socklen_t addrlen;
+	struct sockaddr_storage *ss;
 
-	if (corosync_cfg_get_node_addrs(c_handle, nodeid, INTERFACE_MAX, &numaddrs, addrs) == CS_OK) {
+	err = corosync_cfg_get_node_addrs(c_handle, nodeid, INTERFACE_MAX, &numaddrs, addrs);
+	if (err != CS_OK) {
+		fprintf(stderr, "Unable to get node address for nodeid %u: %d\n", nodeid, err);
+		return "";
+	}
 
-		static char buf[INET6_ADDRSTRLEN];
-		socklen_t addrlen;
-		struct sockaddr_storage *ss = (struct sockaddr_storage *)addrs[0].address;
+	ss = (struct sockaddr_storage *)addrs[0].address;
 
-		if (ss->ss_family == AF_INET6)
-			addrlen = sizeof(struct sockaddr_in6);
-		else
-			addrlen = sizeof(struct sockaddr_in);
+	if (ss->ss_family == AF_INET6) {
+		addrlen = sizeof(struct sockaddr_in6);
+	} else {
+		addrlen = sizeof(struct sockaddr_in);
+	}
 
-		ret = getnameinfo((struct sockaddr *)addrs[0].address, addrlen,
-				  buf, sizeof(buf),
-				  NULL, 0,
-				  (name_format == ADDRESS_FORMAT_IP)?NI_NUMERICHOST:0);
-		if (!ret)
+	if (!getnameinfo(
+		(struct sockaddr *)addrs[0].address, addrlen,
+		buf, sizeof(buf),
+		NULL, 0,
+		(name_format == ADDRESS_FORMAT_IP)?NI_NUMERICHOST:0)) {
 			return buf;
 	}
 
@@ -302,6 +311,9 @@ static void quorum_notification_fn(
 	g_quorate = quorate;
 	g_ring_id = ring_id;
 	g_view_list_entries = view_list_entries;
+	if (g_view_list) {
+		free(g_view_list);
+	}
 	g_view_list = malloc(sizeof(uint32_t) * view_list_entries);
 	if (g_view_list) {
 		memcpy(g_view_list, view_list,sizeof(uint32_t) * view_list_entries);
@@ -349,8 +361,6 @@ quorum_err:
 		return err;
 	}
 
-	get_quorum_type(quorum_type, sizeof(quorum_type));
-
 	printf("Version:          %s\n", VERSION);
 	printf("Nodes:            %d\n", g_view_list_entries);
 	printf("Ring ID:          %" PRIu64 "\n", g_ring_id);
@@ -384,6 +394,50 @@ quorum_err:
 		return err;
 	}
 	return is_quorate;
+}
+
+static int monitor_status(nodeid_format_t nodeid_format, name_format_t name_format) {
+	int err;
+
+	show_status();
+
+	printf("starting monitoring loop\n");
+
+	err=quorum_trackstart(q_handle, CS_TRACK_CHANGES);
+	if (err != CS_OK) {
+		fprintf(stderr, "quorum_trackstart FAILED: %d\n", err);
+		goto quorum_err;
+	}
+
+	while (1) {
+		time_t t;
+		int i;
+
+		err = quorum_dispatch(q_handle, CS_DISPATCH_ONE);
+		if (err != CS_OK) {
+			fprintf(stderr, "quorum_dispatch FAILED: %d\n", err);
+			goto quorum_err;
+		}
+		time(&t);
+		printf("\ndate: %s", ctime((const time_t *)&t));
+		printf("Nodes:            %d\n", g_view_list_entries);
+		printf("Ring ID:          %" PRIu64 "\n", g_ring_id);
+		printf("Quorate:          %s\n", g_quorate?"Yes":"No");
+		printf("Nodeid\tName\n");
+		for (i=0; i < g_view_list_entries; i++) {
+			if (nodeid_format == NODEID_FORMAT_DECIMAL) {
+				printf("%4u\t", g_view_list[i]);
+			} else {
+				printf("0x%04x\t", g_view_list[i]);
+			}
+			printf("%s\n", node_name(g_view_list[i], name_format));
+		}
+		free(g_view_list);
+		g_view_list = NULL;
+	}
+
+quorum_err:
+	return err;
 }
 
 static int show_nodes(nodeid_format_t nodeid_format, name_format_t name_format)
@@ -497,7 +551,7 @@ static void close_all(void) {
 }
 
 int main (int argc, char *argv[]) {
-	const char *options = "VHsle:v:hin:d:";
+	const char *options = "VHslme:v:hin:d:";
 	char *endptr;
 	int opt;
 	int votes = 0;
@@ -521,6 +575,9 @@ int main (int argc, char *argv[]) {
 		switch (opt) {
 		case 's':
 			command_opt = CMD_SHOWSTATUS;
+			break;
+		case 'm':
+			command_opt = CMD_MONITOR;
 			break;
 		case 'i':
 			address_format = ADDRESS_FORMAT_IP;
@@ -587,6 +644,9 @@ int main (int argc, char *argv[]) {
 		break;
 	case CMD_SETEXPECTED:
 		ret = set_expected(votes);
+		break;
+	case CMD_MONITOR:
+		ret = monitor_status(nodeid_format, address_format);
 		break;
 	}
 
