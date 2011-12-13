@@ -90,6 +90,8 @@ static void message_handler_req_lib_quorum_trackstart (void *conn,
 						       const void *msg);
 static void message_handler_req_lib_quorum_trackstop (void *conn,
 						      const void *msg);
+static void message_handler_req_lib_quorum_gettype (void *conn,
+						       const void *msg);
 static void send_library_notification(void *conn);
 static void send_internal_notification(void);
 static int quorum_exec_init_fn (struct corosync_api_v1 *api);
@@ -97,6 +99,7 @@ static int quorum_lib_init_fn (void *conn);
 static int quorum_lib_exit_fn (void *conn);
 
 static int primary_designated = 0;
+static int quorum_type = 0;
 static struct corosync_api_v1 *corosync_api;
 static struct list_head lib_trackers_list;
 static struct list_head internal_trackers_list;
@@ -170,6 +173,10 @@ static struct corosync_lib_handler quorum_lib_service[] =
 	},
 	{ /* 2 */
 		.lib_handler_fn				= message_handler_req_lib_quorum_trackstop,
+		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
+	},
+	{ /* 3 */
+		.lib_handler_fn				= message_handler_req_lib_quorum_gettype,
 		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	}
 };
@@ -329,6 +336,7 @@ static int quorum_exec_init_fn (struct corosync_api_v1 *api)
 
 		quorum_iface = (struct quorum_services_api_ver1 *)quorum_iface_p;
 		quorum_iface->init (api, quorum_api_set_quorum);
+		quorum_type = 1;
 		free(quorum_module);
 	}
 	if (!quorum_iface) {
@@ -336,6 +344,7 @@ static int quorum_exec_init_fn (struct corosync_api_v1 *api)
                  * With no quorum provider, we are always quorate
                  */
 		primary_designated = 1;
+		quorum_type = 0;
 	}
 
 	return (0);
@@ -434,7 +443,6 @@ static void message_handler_req_lib_quorum_getquorate (void *conn,
 	corosync_api->ipc_response_send(conn, &res_lib_quorum_getquorate, sizeof(res_lib_quorum_getquorate));
 }
 
-
 static void message_handler_req_lib_quorum_trackstart (void *conn,
 						       const void *msg)
 {
@@ -495,3 +503,19 @@ static void message_handler_req_lib_quorum_trackstop (void *conn, const void *ms
 	res.error = CS_OK;
 	corosync_api->ipc_response_send(conn, &res, sizeof(struct qb_ipc_response_header));
 }
+
+static void message_handler_req_lib_quorum_gettype (void *conn,
+						       const void *msg)
+{
+	struct res_lib_quorum_gettype res_lib_quorum_gettype;
+
+	log_printf(LOGSYS_LEVEL_DEBUG, "got quorum_type request on %p\n", conn);
+
+	/* send status */
+	res_lib_quorum_gettype.quorum_type = quorum_type;
+	res_lib_quorum_gettype.header.size = sizeof(res_lib_quorum_gettype);
+	res_lib_quorum_gettype.header.id = MESSAGE_RES_QUORUM_GETTYPE;
+	res_lib_quorum_gettype.header.error = CS_OK;
+	corosync_api->ipc_response_send(conn, &res_lib_quorum_gettype, sizeof(res_lib_quorum_gettype));
+}
+

@@ -151,9 +151,10 @@ static int q_lib_init(void)
 		}
 	}
 	if (q_handle == 0) {
+		uint32_t q_type;
 		syslog (LOG_INFO, "quorum_initialize");
 		q_callbacks.quorum_notify_fn = quorum_notification_fn;
-		ret = quorum_initialize (&q_handle, &q_callbacks);
+		ret = quorum_initialize (&q_handle, &q_callbacks, &q_type);
 		if (ret != CS_OK) {
 			syslog (LOG_ERR, "quorum_initialize FAILED: %d\n", ret);
 			q_handle = 0;

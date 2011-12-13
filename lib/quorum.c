@@ -65,10 +65,14 @@ DECLARE_HDB_DATABASE(quorum_handle_t_db,NULL);
 
 cs_error_t quorum_initialize (
 	quorum_handle_t *handle,
-	quorum_callbacks_t *callbacks)
+	quorum_callbacks_t *callbacks,
+	uint32_t *quorum_type)
 {
 	cs_error_t error;
 	struct quorum_inst *quorum_inst;
+	struct iovec iov;
+	struct qb_ipc_request_header req;
+	struct res_lib_quorum_gettype res_lib_quorum_gettype;
 
 	error = hdb_error_to_cs(hdb_handle_create (&quorum_handle_t_db, sizeof (struct quorum_inst), handle));
 	if (error != CS_OK) {
@@ -86,6 +90,27 @@ cs_error_t quorum_initialize (
 		error = qb_to_cs_error(-errno);
 		goto error_put_destroy;
 	}
+
+	req.size = sizeof (req);
+	req.id = MESSAGE_REQ_QUORUM_GETTYPE;
+
+	iov.iov_base = (char *)&req;
+	iov.iov_len = sizeof (req);
+
+	error = qb_to_cs_error(qb_ipcc_sendv_recv (
+		quorum_inst->c,
+		&iov,
+		1,
+		&res_lib_quorum_gettype,
+		sizeof (struct res_lib_quorum_gettype), -1));
+
+	if (error != CS_OK) {
+		goto error_put_destroy;
+	}
+
+	error = res_lib_quorum_gettype.header.error;
+
+	*quorum_type = res_lib_quorum_gettype.quorum_type;
 
 	if (callbacks)
 		memcpy(&quorum_inst->callbacks, callbacks, sizeof (*callbacks));
@@ -155,7 +180,7 @@ cs_error_t quorum_getquorate (
 	iov.iov_base = (char *)&req;
 	iov.iov_len = sizeof (req);
 
-       error = qb_to_cs_error(qb_ipcc_sendv_recv (
+	error = qb_to_cs_error(qb_ipcc_sendv_recv (
 		quorum_inst->c,
 		&iov,
 		1,

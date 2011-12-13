@@ -95,6 +95,7 @@ static void quorum_notification_fn(
 	uint32_t *view_list);
 
 static quorum_handle_t q_handle;
+static uint32_t q_type;
 static quorum_callbacks_t q_callbacks = {
 	.quorum_notify_fn = quorum_notification_fn
 };
@@ -154,6 +155,10 @@ static int get_quorum_type(char *quorum_type, size_t quorum_type_len)
 
 	if ((!quorum_type) || (quorum_type_len <= 0)) {
 		errno = EINVAL;
+		return -1;
+	}
+
+	if (q_type == QUORUM_FREE) {
 		return -1;
 	}
 
@@ -374,6 +379,11 @@ static int monitor_status(nodeid_format_t nodeid_format, name_format_t name_form
 
 	show_status();
 
+	if (q_type == QUORUM_FREE) {
+		printf("\nQuorum is not configured - cannot monitor\n");
+		return 0;
+	}
+
 	printf("starting monitoring loop\n");
 
 	err=quorum_trackstart(q_handle, CS_TRACK_CHANGES);
@@ -481,7 +491,7 @@ static int init_all(void) {
 		goto out;
 	}
 
-	if (quorum_initialize(&q_handle, &q_callbacks) != CS_OK) {
+	if (quorum_initialize(&q_handle, &q_callbacks, &q_type) != CS_OK) {
 		fprintf(stderr, "Cannot initialize QUORUM service\n");
 		q_handle = 0;
 		goto out;

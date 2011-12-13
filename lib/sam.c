@@ -256,6 +256,7 @@ cs_error_t sam_initialize (
 	sam_recovery_policy_t recovery_policy)
 {
 	quorum_callbacks_t quorum_callbacks;
+	uint32_t quorum_type;
 	cs_error_t err;
 
 	if (sam_internal_data.internal_status != SAM_INTERNAL_STATUS_NOT_INITIALIZED) {
@@ -272,7 +273,7 @@ cs_error_t sam_initialize (
 		 * Initialize quorum
 		 */
 		quorum_callbacks.quorum_notify_fn = quorum_notification_fn;
-		if ((err = quorum_initialize (&sam_internal_data.quorum_handle, &quorum_callbacks)) != CS_OK) {
+		if ((err = quorum_initialize (&sam_internal_data.quorum_handle, &quorum_callbacks, &quorum_type)) != CS_OK) {
 			goto exit_error;
 		}
 

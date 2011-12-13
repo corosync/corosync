@@ -40,14 +40,16 @@
 enum req_quorum_types {
 	MESSAGE_REQ_QUORUM_GETQUORATE = 0,
 	MESSAGE_REQ_QUORUM_TRACKSTART,
-	MESSAGE_REQ_QUORUM_TRACKSTOP
+	MESSAGE_REQ_QUORUM_TRACKSTOP,
+	MESSAGE_REQ_QUORUM_GETTYPE
 };
 
 enum res_quorum_types {
 	MESSAGE_RES_QUORUM_GETQUORATE = 0,
 	MESSAGE_RES_QUORUM_TRACKSTART,
 	MESSAGE_RES_QUORUM_TRACKSTOP,
-	MESSAGE_RES_QUORUM_NOTIFICATION
+	MESSAGE_RES_QUORUM_NOTIFICATION,
+	MESSAGE_RES_QUORUM_GETTYPE
 };
 
 struct req_lib_quorum_trackstart {
@@ -57,7 +59,7 @@ struct req_lib_quorum_trackstart {
 
 
 struct res_lib_quorum_getquorate {
-        struct qb_ipc_response_header header __attribute__((aligned(8)));
+	struct qb_ipc_response_header header __attribute__((aligned(8)));
 	mar_uint32_t quorate;
 };
 
@@ -67,6 +69,11 @@ struct res_lib_quorum_notification {
 	mar_uint64_t ring_seq __attribute__((aligned(8)));
 	mar_uint32_t view_list_entries __attribute__((aligned(8)));
 	mar_uint32_t view_list[];
+};
+
+struct res_lib_quorum_gettype {
+	struct qb_ipc_response_header header __attribute__((aligned(8)));
+	mar_uint32_t quorum_type;
 };
 
 #endif

@@ -59,13 +59,16 @@ typedef struct {
 	quorum_notification_fn_t quorum_notify_fn;
 } quorum_callbacks_t;
 
+#define QUORUM_FREE	0
+#define QUORUM_SET	1
 
 /**
  * Create a new quorum connection
  */
 cs_error_t quorum_initialize (
 	quorum_handle_t *handle,
-	quorum_callbacks_t *callbacks);
+	quorum_callbacks_t *callbacks,
+	uint32_t *quorum_type);
 
 /**
  * Close the quorum handle

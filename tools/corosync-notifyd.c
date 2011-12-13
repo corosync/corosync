@@ -356,13 +356,15 @@ static void
 _cs_quorum_init(void)
 {
 	cs_error_t rc;
+	uint32_t quorum_type;
 	int fd;
 
 	quorum_callbacks_t quorum_callbacks = {
 		.quorum_notify_fn = _cs_quorum_notification,
 	};
 
-	rc = quorum_initialize (&quorum_handle, &quorum_callbacks);
+	rc = quorum_initialize (&quorum_handle, &quorum_callbacks,
+			        &quorum_type);
 	if (rc != CS_OK) {
 		qb_log(LOG_ERR, "Could not connect to corosync(quorum)");
 		return;
