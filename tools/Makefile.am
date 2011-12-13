@@ -53,7 +53,7 @@ corosync_cfgtool_LDADD	= -lcfg $(LIBQB_LIBS)
 corosync_cfgtool_LDFLAGS= -L../lib
 corosync_cpgtool_LDADD	= -lcfg -lcpg $(LIBQB_LIBS)
 corosync_cpgtool_LDFLAGS= -L../lib
-corosync_quorumtool_LDADD = -lconfdb -lcfg -lquorum \
+corosync_quorumtool_LDADD = -lcmap -lcfg -lquorum \
 			    -lvotequorum ../lcr/liblcr.a $(LIBQB_LIBS)
 corosync_quorumtool_LDFLAGS = -L../lib
 

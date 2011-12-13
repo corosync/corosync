@@ -52,7 +52,7 @@
 #include <corosync/corotypes.h>
 #include <corosync/totem/totem.h>
 #include <corosync/cfg.h>
-#include <corosync/confdb.h>
+#include <corosync/cmap.h>
 #include <corosync/quorum.h>
 #include <corosync/votequorum.h>
 
@@ -80,14 +80,9 @@ typedef enum {
  */
 
 /*
- * confdb bits
+ * cmap bits
  */
-static confdb_handle_t confdb_handle;
-static confdb_callbacks_t confdb_callbacks = {
-	.confdb_key_change_notify_fn = NULL,
-	.confdb_object_create_change_notify_fn = NULL,
-	.confdb_object_delete_change_notify_fn = NULL
-};
+static cmap_handle_t cmap_handle;
 
 /*
  * quorum bits
@@ -152,44 +147,22 @@ static void show_usage(const char *name)
 	printf("\n");
 }
 
-/*
- * Caller should free the returned string
- */
 static int get_quorum_type(char *quorum_type, size_t quorum_type_len)
 {
 	int err;
-	hdb_handle_t quorum_handle;
-	char buf[256];
-	size_t namelen = 0;
+	char *str;
 
 	if ((!quorum_type) || (quorum_type_len <= 0)) {
 		errno = EINVAL;
 		return -1;
 	}
 
-	memset(quorum_type, 0, quorum_type_len);
-
-	err = confdb_object_find_start(confdb_handle, OBJECT_PARENT_HANDLE);
-	if (err != CS_OK) {
+	if ((err = cmap_get_string(cmap_handle, "quorum.provider", &str)) != CS_OK) {
 		goto out;
 	}
 
-	err = confdb_object_find(confdb_handle, OBJECT_PARENT_HANDLE, (void *)"quorum", strlen("quorum"), &quorum_handle);
-	if (err != CS_OK) {
-		goto out;
-	}
-
-	err = confdb_key_get(confdb_handle, quorum_handle, (void *)"provider", strlen("provider"), buf, &namelen);
-	if (err != CS_OK) {
-		goto out;
-	}
-
-	if (namelen >= sizeof(buf)) {
-		namelen = sizeof(buf) - 1;
-	}
-	buf[namelen] = '\0';
-
-	strncpy(quorum_type, buf, quorum_type_len - 1);
+	strncpy(quorum_type, str, quorum_type_len - 1);
+	free(str);
 
 	return 0;
 out:
@@ -497,14 +470,14 @@ err_exit:
  */
 
 static int init_all(void) {
-	confdb_handle = 0;
+	cmap_handle = 0;
 	q_handle = 0;
 	v_handle = 0;
 	c_handle = 0;
 
-	if (confdb_initialize(&confdb_handle, &confdb_callbacks) != CS_OK) {
-		fprintf(stderr, "Cannot initialize CONFDB service\n");
-		confdb_handle = 0;
+	if (cmap_initialize(&cmap_handle) != CS_OK) {
+		fprintf(stderr, "Cannot initialize CMAP service\n");
+		cmap_handle = 0;
 		goto out;
 	}
 
@@ -536,8 +509,8 @@ out:
 }
 
 static void close_all(void) {
-	if (confdb_handle) {
-		confdb_finalize(confdb_handle);
+	if (cmap_handle) {
+		cmap_finalize(cmap_handle);
 	}
 	if (q_handle) {
 		quorum_finalize(q_handle);
