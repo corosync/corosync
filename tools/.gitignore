@@ -6,3 +6,4 @@ corosync-objctl
 corosync-pload
 corosync-quorumtool
 corosync-notifyd
+corosync-cmapctl

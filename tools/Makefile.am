@@ -36,7 +36,7 @@ INCLUDES       		= -I$(top_builddir)/include  -I$(top_srcdir)/include \
 sbin_PROGRAMS		= corosync-fplay corosync-cfgtool \
 			  corosync-keygen corosync-objctl \
 			  corosync-pload corosync-cpgtool corosync-quorumtool \
-			  corosync-notifyd
+			  corosync-notifyd corosync-cmapctl
 
 bin_SCRIPTS		= corosync-blackbox
 
@@ -47,6 +47,8 @@ corosync_pload_LDADD	= -lpload $(LIBQB_LIBS)
 corosync_pload_LDFLAGS	= -L../lib
 corosync_objctl_LDADD	= -lconfdb ../lcr/liblcr.a $(LIBQB_LIBS)
 corosync_objctl_LDFLAGS	= -L../lib
+corosync_cmapctl_LDADD = -lcmap $(LIBQB_LIBS)
+corosync_cmapctl_LDFLAGS= -L../lib
 corosync_cfgtool_LDADD	= -lcfg $(LIBQB_LIBS)
 corosync_cfgtool_LDFLAGS= -L../lib
 corosync_cpgtool_LDADD	= -lcfg -lcpg $(LIBQB_LIBS)
