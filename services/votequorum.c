@@ -68,6 +68,7 @@
 #include <corosync/mar_gen.h>
 #include <corosync/engine/coroapi.h>
 #include <corosync/engine/quorum.h>
+#include <corosync/engine/icmap.h>
 #include <corosync/ipc_votequorum.h>
 
 #define VOTEQUORUM_MAJOR_VERSION 7
@@ -224,7 +225,7 @@ static void exec_votequorum_nodeinfo_endian_convert (void *msg);
 static void exec_votequorum_reconfigure_endian_convert (void *msg);
 static void exec_votequorum_killnode_endian_convert (void *msg);
 
-static void add_votequorum_config_notification(hdb_handle_t quorum_object_handle);
+static void add_votequorum_config_notification(void);
 
 static void recalculate_quorum(int allow_decrease, int by_current_nodes);
 
@@ -422,61 +423,36 @@ struct req_exec_quorum_killnode {
 	unsigned int nodeid;
 };
 
-/* These just make the access a little neater */
-static inline int objdb_get_string(const struct corosync_api_v1 *corosync,
-				   hdb_handle_t object_service_handle,
-				   char *key, char **value)
+static void read_quorum_config(void)
 {
-	int res;
-
-	*value = NULL;
-	if ( !(res = corosync_api->object_key_get(object_service_handle,
-					      key,
-					      strlen(key),
-					      (void *)value,
-					      NULL))) {
-		if (*value)
-			return 0;
-	}
-	return -1;
-}
-
-static inline void objdb_get_int(const struct corosync_api_v1 *corosync,
-				 hdb_handle_t object_service_handle,
-				 const char *key, unsigned int *intvalue,
-				 unsigned int default_value)
-{
-	char *value = NULL;
-
-	*intvalue = default_value;
-
-	if (!corosync_api->object_key_get(object_service_handle, key, strlen(key),
-				 (void *)&value, NULL)) {
-		if (value) {
-			*intvalue = atoi(value);
-		}
-	}
-}
-
-static void read_quorum_config(hdb_handle_t quorum_handle)
-{
-	unsigned int value = 0;
+	uint8_t value = 0;
 	int cluster_members = 0;
 	struct list_head *tmp;
 
 	log_printf(LOGSYS_LEVEL_INFO, "Reading configuration\n");
 
-	objdb_get_int(corosync_api, quorum_handle, "expected_votes", &us->expected_votes, DEFAULT_EXPECTED);
-	objdb_get_int(corosync_api, quorum_handle, "votes", &us->votes, 1);
-	objdb_get_int(corosync_api, quorum_handle, "quorumdev_poll", &quorumdev_poll, DEFAULT_QDEV_POLL);
-	objdb_get_int(corosync_api, quorum_handle, "leaving_timeout", &leaving_timeout, DEFAULT_LEAVE_TMO);
-	objdb_get_int(corosync_api, quorum_handle, "disallowed", &value, 0);
+	if (icmap_get_uint32("quorum.expected_votes", &us->expected_votes) != CS_OK) {
+		us->expected_votes = DEFAULT_EXPECTED;
+	}
+	if (icmap_get_uint32("quorum.votes", &us->votes) != CS_OK) {
+		us->votes = 1;
+	}
+	if (icmap_get_uint32("quorum.quorumdev_poll", &quorumdev_poll) != CS_OK) {
+		quorumdev_poll = DEFAULT_QDEV_POLL;
+	}
+	if (icmap_get_uint32("quorum.leaving_timeout", &leaving_timeout) != CS_OK) {
+		leaving_timeout = DEFAULT_LEAVE_TMO;
+	}
+
+	value = 0;
+	icmap_get_uint8("quorum.disallowed", &value);
 	if (value)
 		quorum_flags |= VOTEQUORUM_FLAG_FEATURE_DISALLOWED;
 	else
 		quorum_flags &= ~VOTEQUORUM_FLAG_FEATURE_DISALLOWED;
 
-	objdb_get_int(corosync_api, quorum_handle, "two_node", &value, 0);
+	value = 0;
+	icmap_get_uint8("quorum.two_node", &value);
 	if (value)
 		quorum_flags |= VOTEQUORUM_FLAG_FEATURE_TWONODE;
 	else
@@ -497,9 +473,6 @@ static void read_quorum_config(hdb_handle_t quorum_handle)
 
 static int votequorum_exec_init_fn (struct corosync_api_v1 *api)
 {
-	hdb_handle_t object_handle;
-	hdb_handle_t find_handle;
-
 #ifdef COROSYNC_SOLARIS
 	logsys_subsys_init();
 #endif
@@ -521,17 +494,11 @@ static int votequorum_exec_init_fn (struct corosync_api_v1 *api)
 	us->votes = 1;
 	time(&us->join_time);
 
-	/* Get configuration variables */
-	corosync_api->object_find_create(OBJECT_PARENT_HANDLE, "quorum", strlen("quorum"), &find_handle);
-
-	if (corosync_api->object_find_next(find_handle, &object_handle) == 0) {
-		read_quorum_config(object_handle);
-	}
+	read_quorum_config();
 	recalculate_quorum(0, 0);
 
 	/* Listen for changes */
-	add_votequorum_config_notification(object_handle);
-	corosync_api->object_find_destroy(find_handle);
+	add_votequorum_config_notification();
 
 	/* Start us off with one node */
 	quorum_exec_send_nodeinfo();
@@ -1575,7 +1542,7 @@ static const char *kill_reason(int reason)
 	}
 }
 
-static void reread_config(hdb_handle_t object_handle)
+static void reread_config(void)
 {
 	unsigned int old_votes;
 	unsigned int old_expected;
@@ -1586,7 +1553,7 @@ static void reread_config(hdb_handle_t object_handle)
 	/*
 	 * Reload the configuration
 	 */
-	read_quorum_config(object_handle);
+	read_quorum_config();
 
 	/*
 	 * Check for fundamental changes that we need to propogate
@@ -1599,80 +1566,23 @@ static void reread_config(hdb_handle_t object_handle)
 	}
 }
 
-static void quorum_key_change_notify(object_change_type_t change_type,
-				     hdb_handle_t parent_object_handle,
-				     hdb_handle_t object_handle,
-				     const void *object_name_pt,
-				     size_t object_name_len,
-				     const void *key_name_pt, size_t key_len,
-				     const void *key_value_pt, size_t key_value_len,
-				     void *priv_data_pt)
+static void key_change_quorum(
+	int32_t event,
+	const char *key_name,
+	struct icmap_notify_value new_val,
+	struct icmap_notify_value old_val,
+	void *user_data)
 {
-	if (memcmp(object_name_pt, "quorum", object_name_len) == 0)
-		reread_config(object_handle);
+	reread_config();
 }
 
-
-/* Called when the objdb is reloaded */
-static void votequorum_objdb_reload_notify(
-	objdb_reload_notify_type_t type, int flush,
-	void *priv_data_pt)
+static void add_votequorum_config_notification(void)
 {
-	/*
-	 * A new quorum {} key might exist, cancel the
-	 * existing notification at the start of reload,
-	 * and start a new one on the new object when
-	 * it's all settled.
-	 */
+	icmap_track_t icmap_track;
 
-	if (type == OBJDB_RELOAD_NOTIFY_START) {
-		corosync_api->object_track_stop(
-			quorum_key_change_notify,
-			NULL,
-			NULL,
-			NULL,
-			NULL);
-	}
-
-	if (type == OBJDB_RELOAD_NOTIFY_END ||
-	    type == OBJDB_RELOAD_NOTIFY_FAILED) {
-		hdb_handle_t find_handle;
-		hdb_handle_t object_handle;
-
-		corosync_api->object_find_create(OBJECT_PARENT_HANDLE, "quorum", strlen("quorum"), &find_handle);
-		if (corosync_api->object_find_next(find_handle, &object_handle) == 0) {
-			add_votequorum_config_notification(object_handle);
-
-			reread_config(object_handle);
-		}
-		else {
-			log_printf(LOGSYS_LEVEL_ERROR, "votequorum objdb tracking stopped, cannot find quorum{} handle in objdb\n");
-		}
-		corosync_api->object_find_destroy(find_handle);
-	}
-}
-
-
-static void add_votequorum_config_notification(
-	hdb_handle_t quorum_object_handle)
-{
-
-	corosync_api->object_track_start(quorum_object_handle,
-					 1,
-					 quorum_key_change_notify,
-					 NULL,
-					 NULL,
-					 NULL,
-					 NULL);
-
-	/*
-	 * Reload notify must be on the parent object
-	 */
-	corosync_api->object_track_start(OBJECT_PARENT_HANDLE,
-					 1,
-					 NULL,
-					 NULL,
-					 NULL,
-					 votequorum_objdb_reload_notify,
-					 NULL);
+	icmap_track_add("quorum.",
+		ICMAP_TRACK_ADD | ICMAP_TRACK_DELETE | ICMAP_TRACK_MODIFY | ICMAP_TRACK_PREFIX,
+		key_change_quorum,
+		NULL,
+		&icmap_track);
 }
