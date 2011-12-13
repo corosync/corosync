@@ -61,6 +61,7 @@
 #include <corosync/lcr/lcr_comp.h>
 #include <corosync/engine/logsys.h>
 #include <corosync/engine/coroapi.h>
+#include <corosync/engine/icmap.h>
 #include <corosync/corodefs.h>
 
 LOGSYS_DECLARE_SUBSYS ("CFG");
@@ -952,27 +953,12 @@ static void message_handler_req_lib_cfg_tryshutdown (
 		return;
 	}
 	else {
-		hdb_handle_t cfg_handle;
-		hdb_handle_t find_handle;
-		char *timeout_str;
 		unsigned int shutdown_timeout = DEFAULT_SHUTDOWN_TIMEOUT;
 
 		/*
-		 * Look for a shutdown timeout in objdb
+		 * Look for a shutdown timeout in configuration map
 		 */
-		api->object_find_create(OBJECT_PARENT_HANDLE, "cfg", strlen("cfg"), &find_handle);
-		api->object_find_next(find_handle, &cfg_handle);
-		api->object_find_destroy(find_handle);
-
-		if (cfg_handle) {
-			if ( !api->object_key_get(cfg_handle,
-						  "shutdown_timeout",
-						  strlen("shutdown_timeout"),
-						  (void *)&timeout_str,
-						  NULL)) {
-				shutdown_timeout = atoi(timeout_str);
-			}
-		}
+		icmap_get_uint32("cfg.shutdown_timeout", &shutdown_timeout);
 
 		/*
 		 * Start the timer. If we don't get a full set of replies before this goes
