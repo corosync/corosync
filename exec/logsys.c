@@ -249,7 +249,7 @@ void logsys_system_fini (void)
 	int f;
 	for (i = 0; i < LOGSYS_MAX_SUBSYS_COUNT; i++) {
 		free(logsys_loggers[i].logfile);
-		for (f = 0; i < logsys_loggers[i].file_idx; f++) {
+		for (f = 0; f < logsys_loggers[i].file_idx; f++) {
 			free(logsys_loggers[i].files[f]);
 		}
 	}
