@@ -56,9 +56,79 @@
 #include <corosync/quorum.h>
 #include <corosync/votequorum.h>
 
-typedef enum { NODEID_FORMAT_DECIMAL, NODEID_FORMAT_HEX } nodeid_format_t;
-typedef enum { ADDRESS_FORMAT_NAME, ADDRESS_FORMAT_IP } name_format_t;
-typedef enum { CMD_UNKNOWN, CMD_SHOWNODES, CMD_SHOWSTATUS, CMD_SETVOTES, CMD_SETEXPECTED } command_t;
+typedef enum {
+	NODEID_FORMAT_DECIMAL,
+	NODEID_FORMAT_HEX
+} nodeid_format_t;
+
+typedef enum {
+	ADDRESS_FORMAT_NAME,
+	ADDRESS_FORMAT_IP
+} name_format_t;
+
+typedef enum {
+	CMD_UNKNOWN,
+	CMD_SHOWNODES,
+	CMD_SHOWSTATUS,
+	CMD_SETVOTES,
+	CMD_SETEXPECTED
+} command_t;
+
+/*
+ * global vars
+ */
+
+/*
+ * confdb bits
+ */
+static confdb_handle_t confdb_handle;
+static confdb_callbacks_t confdb_callbacks = {
+	.confdb_key_change_notify_fn = NULL,
+	.confdb_object_create_change_notify_fn = NULL,
+	.confdb_object_delete_change_notify_fn = NULL
+};
+
+/*
+ * quorum bits
+ */
+static void quorum_notification_fn(
+	quorum_handle_t handle,
+	uint32_t quorate,
+	uint64_t ring_id,
+	uint32_t view_list_entries,
+	uint32_t *view_list);
+
+static quorum_handle_t q_handle;
+static quorum_callbacks_t q_callbacks = {
+	.quorum_notify_fn = quorum_notification_fn
+};
+
+/*
+ * quorum call back vars
+ */
+static uint32_t g_quorate;
+static uint64_t g_ring_id;
+static uint32_t g_view_list_entries;
+static uint32_t *g_view_list;
+static uint32_t g_called;
+
+/*
+ * votequorum bits
+ */
+static votequorum_handle_t v_handle;
+static votequorum_callbacks_t v_callbacks = {
+	.votequorum_notify_fn = NULL,
+	.votequorum_expectedvotes_notify_fn = NULL
+};
+
+/*
+ * cfg bits
+ */
+static corosync_cfg_handle_t c_handle;
+static corosync_cfg_callbacks_t c_callbacks = {
+	.corosync_cfg_state_track_callback = NULL,
+	.corosync_cfg_shutdown_callback = NULL
+};
 
 static void show_usage(const char *name)
 {
@@ -89,15 +159,8 @@ static int get_quorum_type(char *quorum_type, size_t quorum_type_len)
 	hdb_handle_t quorum_handle;
 	char buf[256];
 	size_t namelen = 0;
-	confdb_handle_t confdb_handle;
-	confdb_callbacks_t callbacks = {
-		.confdb_key_change_notify_fn = NULL,
-		.confdb_object_create_change_notify_fn = NULL,
-		.confdb_object_delete_change_notify_fn = NULL
-	};
 
-	if ((!quorum_type) || (quorum_type_len <= 0) ||
-	    (confdb_initialize(&confdb_handle, &callbacks) != CS_OK)) {
+	if ((!quorum_type) || (quorum_type_len <= 0)) {
 		errno = EINVAL;
 		return -1;
 	}
@@ -127,7 +190,6 @@ static int get_quorum_type(char *quorum_type, size_t quorum_type_len)
 	strncpy(quorum_type, buf, quorum_type_len - 1);
 
 out:
-	confdb_finalize(confdb_handle);
 	return err;
 }
 
@@ -155,49 +217,37 @@ static int using_votequorum(void)
 
 static int set_votes(uint32_t nodeid, int votes)
 {
-	votequorum_handle_t v_handle;
-	votequorum_callbacks_t v_callbacks;
 	int err;
 
-	v_callbacks.votequorum_notify_fn = NULL;
-	v_callbacks.votequorum_expectedvotes_notify_fn = NULL;
-
-	if ( (err=votequorum_initialize(&v_handle, &v_callbacks)) != CS_OK) {
+	if ((err=votequorum_initialize(&v_handle, &v_callbacks)) != CS_OK) {
 		fprintf(stderr, "votequorum_initialize FAILED: %d, this is probably a configuration error\n", err);
 		return err;
 	}
 
-	if ( (err=votequorum_setvotes(v_handle, nodeid, votes)) != CS_OK) {
+	if ((err=votequorum_setvotes(v_handle, nodeid, votes)) != CS_OK) {
 		fprintf(stderr, "set votes FAILED: %d\n", err);
 	}
 
-	votequorum_finalize(v_handle);
 	return err==CS_OK?0:err;
 }
 
 static int set_expected(int expected_votes)
 {
-	votequorum_handle_t v_handle;
-	votequorum_callbacks_t v_callbacks;
 	int err;
 
-	v_callbacks.votequorum_notify_fn = NULL;
-	v_callbacks.votequorum_expectedvotes_notify_fn = NULL;
-
-	if ( (err=votequorum_initialize(&v_handle, &v_callbacks)) != CS_OK) {
+	if ((err=votequorum_initialize(&v_handle, &v_callbacks)) != CS_OK) {
 		fprintf(stderr, "votequorum_initialize FAILED: %d, this is probably a configuration error\n", err);
 		return err;
 	}
 
-	if ( (err=votequorum_setexpected(v_handle, expected_votes)) != CS_OK) {
+	if ((err=votequorum_setexpected(v_handle, expected_votes)) != CS_OK) {
 		fprintf(stderr, "set expected votes FAILED: %d\n", err);
 	}
 
-	votequorum_finalize(v_handle);
 	return err==CS_OK?0:err;
 }
 
-static int get_votes(votequorum_handle_t v_handle, uint32_t nodeid)
+static int get_votes(uint32_t nodeid)
 {
 	int votes = -1;
 	struct votequorum_info info;
@@ -213,7 +263,7 @@ static int get_votes(votequorum_handle_t v_handle, uint32_t nodeid)
  * This resolves the first address assigned to a node
  * and returns the name or IP address. Use cfgtool if you need more information.
  */
-static const char *node_name(corosync_cfg_handle_t c_handle, uint32_t nodeid, name_format_t name_format)
+static const char *node_name(uint32_t nodeid, name_format_t name_format)
 {
 	int ret;
 	int numaddrs;
@@ -241,15 +291,6 @@ static const char *node_name(corosync_cfg_handle_t c_handle, uint32_t nodeid, na
 	return "";
 }
 
-/*
- * Static variables to pass back to calling routine
- */
-static uint32_t g_quorate;
-static uint64_t g_ring_id;
-static uint32_t g_view_list_entries;
-static uint32_t *g_view_list;
-static uint32_t g_called;
-
 static void quorum_notification_fn(
 	quorum_handle_t handle,
 	uint32_t quorate,
@@ -274,21 +315,10 @@ static void quorum_notification_fn(
  */
 static int show_status(void)
 {
-	quorum_handle_t q_handle;
-	votequorum_handle_t v_handle;
-	votequorum_callbacks_t v_callbacks;
-	quorum_callbacks_t callbacks;
 	struct votequorum_info info;
 	int is_quorate;
 	int err;
 	char quorum_type[256];
-
-	callbacks.quorum_notify_fn = quorum_notification_fn;
-	err=quorum_initialize(&q_handle, &callbacks);
-	if (err != CS_OK) {
-		fprintf(stderr, "Cannot connect to quorum service, is it loaded?\n");
-		return -1;
-	}
 
 	err=quorum_getquorate(q_handle, &is_quorate);
 	if (err != CS_OK) {
@@ -315,9 +345,6 @@ static int show_status(void)
 	}
 
 quorum_err:
-	if (quorum_finalize(q_handle) != CS_OK) {
-		fprintf(stderr, "quorum_finalize FAILED: %d\n", err);
-	}
 	if (err < 0) {
 		return err;
 	}
@@ -333,16 +360,8 @@ quorum_err:
 	printf("Quorum type:      %s\n", quorum_type);
 	printf("Quorate:          %s\n", is_quorate?"Yes":"No");
 
-	if (using_votequorum() != 0) {
+	if (!v_handle) {
 		return is_quorate;
-	}
-
-	v_callbacks.votequorum_notify_fn = NULL;
-	v_callbacks.votequorum_expectedvotes_notify_fn = NULL;
-
-	if ((err=votequorum_initialize(&v_handle, &v_callbacks)) != CS_OK) {
-		fprintf(stderr, "votequorum_initialize FAILED: %d, this is probably a configuration error\n", err);
-		goto err_exit;
 	}
 
 	if ((err=votequorum_getinfo(v_handle, 0, &info)) == CS_OK) {
@@ -361,11 +380,6 @@ quorum_err:
 		fprintf(stderr, "votequorum_getinfo FAILED: %d\n", err);
 	}
 
-	if (votequorum_finalize(v_handle) != CS_OK) {
-		fprintf(stderr, "votequorum_finalize FAILED: %d\n", err);
-	}
-
-err_exit:
 	if (err != CS_OK) {
 		return err;
 	}
@@ -374,35 +388,9 @@ err_exit:
 
 static int show_nodes(nodeid_format_t nodeid_format, name_format_t name_format)
 {
-	quorum_handle_t q_handle = 0;
-	votequorum_handle_t v_handle = 0;
-	corosync_cfg_handle_t c_handle = 0;
-	corosync_cfg_callbacks_t c_callbacks;
 	int i;
-	int using_vq = 0;
-	quorum_callbacks_t q_callbacks;
-	votequorum_callbacks_t v_callbacks;
 	int err;
 	int result = EXIT_FAILURE;
-
-	q_callbacks.quorum_notify_fn = quorum_notification_fn;
-	err=quorum_initialize(&q_handle, &q_callbacks);
-	if (err != CS_OK) {
-		fprintf(stderr, "Cannot connect to quorum service, is it loaded?\n");
-		return result;
-	}
-
-	v_callbacks.votequorum_notify_fn = NULL;
-	v_callbacks.votequorum_expectedvotes_notify_fn = NULL;
-
-	using_vq = using_votequorum();
-	if (using_vq > 0) {
-		if ( (err=votequorum_initialize(&v_handle, &v_callbacks)) != CS_OK) {
-			fprintf(stderr, "votequorum_initialize FAILED: %d, this is probably a configuration error\n", err);
-			v_handle = 0;
-			goto err_exit;
-		}
-	}
 
 	err = quorum_trackstart(q_handle, CS_TRACK_CURRENT);
 	if (err != CS_OK) {
@@ -425,7 +413,7 @@ static int show_nodes(nodeid_format_t nodeid_format, name_format_t name_format)
 		goto err_exit;
 	}
 
-	if (using_vq) {
+	if (v_handle) {
 		printf("Nodeid     Votes  Name\n");
 	} else {
 		printf("Nodeid     Name\n");
@@ -437,25 +425,75 @@ static int show_nodes(nodeid_format_t nodeid_format, name_format_t name_format)
 		} else {
 			printf("0x%04x   ", g_view_list[i]);
 		}
-		if (using_vq) {
-			printf("%3d  %s\n",  get_votes(v_handle, g_view_list[i]), node_name(c_handle, g_view_list[i], name_format));
+		if (v_handle) {
+			printf("%3d  %s\n",  get_votes(g_view_list[i]), node_name(g_view_list[i], name_format));
 		} else {
-			printf("%s\n", node_name(c_handle, g_view_list[i], name_format));
+			printf("%s\n", node_name(g_view_list[i], name_format));
 		}
 	}
 
 	result = EXIT_SUCCESS;
 err_exit:
-	if (q_handle != 0) {
-		quorum_finalize (q_handle);
-	}
-	if (using_vq && v_handle != 0) {
-		votequorum_finalize (v_handle);
-	}
-	if (c_handle != 0) {
-		corosync_cfg_finalize (c_handle);
-	}
 	return result;
+}
+
+/*
+ * return -1 on error
+ *         0 if OK
+ */
+
+static int init_all(void) {
+	confdb_handle = 0;
+	q_handle = 0;
+	v_handle = 0;
+	c_handle = 0;
+
+	if (confdb_initialize(&confdb_handle, &confdb_callbacks) != CS_OK) {
+		fprintf(stderr, "Cannot initialize CONFDB service\n");
+		confdb_handle = 0;
+		goto out;
+	}
+
+	if (quorum_initialize(&q_handle, &q_callbacks) != CS_OK) {
+		fprintf(stderr, "Cannot initialize QUORUM service\n");
+		q_handle = 0;
+		goto out;
+	}
+
+	if (corosync_cfg_initialize(&c_handle, &c_callbacks) != CS_OK) {
+		fprintf(stderr, "Cannot initialise CFG service\n");
+		c_handle = 0;
+		goto out;
+	}
+
+	if (using_votequorum() <= 0) {
+		return 0;
+	}
+
+	if (votequorum_initialize(&v_handle, &v_callbacks) != CS_OK) {
+		fprintf(stderr, "Cannot initialise VOTEQUORUM service\n");
+		v_handle = 0;
+		goto out;
+	}
+
+	return 0;
+out:
+	return -1;
+}
+
+static void close_all(void) {
+	if (confdb_handle) {
+		confdb_finalize(confdb_handle);
+	}
+	if (q_handle) {
+		quorum_finalize(q_handle);
+	}
+	if (c_handle) {
+		corosync_cfg_finalize(c_handle);
+	}
+	if (v_handle) {
+		votequorum_finalize(v_handle);
+	}
 }
 
 int main (int argc, char *argv[]) {
@@ -473,6 +511,12 @@ int main (int argc, char *argv[]) {
 		show_usage (argv[0]);
 		exit(0);
 	}
+
+	if (init_all()) {
+		close_all();
+		exit(1);
+	}
+
 	while ( (opt = getopt(argc, argv, options)) != -1 ) {
 		switch (opt) {
 		case 's':
@@ -545,6 +589,8 @@ int main (int argc, char *argv[]) {
 		ret = set_expected(votes);
 		break;
 	}
+
+	close_all();
 
 	return (ret);
 }
