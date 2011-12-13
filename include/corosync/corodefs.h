@@ -59,7 +59,8 @@ enum corosync_service_types {
 	TST_SV1_SERVICE = 18,
 	TST_SV2_SERVICE = 19,
 	MON_SERVICE = 20,
-	WD_SERVICE = 21
+	WD_SERVICE = 21,
+	CMAP_SERVICE = 22,
 };
 
 #ifdef HAVE_SMALL_MEMORY_FOOTPRINT
