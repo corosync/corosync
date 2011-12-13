@@ -58,9 +58,9 @@
 #include <qb/qbloop.h>
 
 #include <corosync/corotypes.h>
-#include <corosync/confdb.h>
 #include <corosync/cfg.h>
 #include <corosync/quorum.h>
+#include <corosync/cmap.h>
 
 /*
  * generic declarations
@@ -153,36 +153,12 @@ static const char *local_host = "localhost";
 static char snmp_manager_buf[CS_MAX_NAME_LENGTH];
 static char *snmp_manager = NULL;
 
+#define CMAP_MAX_RETRIES 10
 
 /*
- * confdb
+ * cmap
  */
-#define SEPERATOR_STR "."
-
-static confdb_handle_t confdb_handle;
-
-static void _cs_confdb_key_changed(confdb_handle_t handle,
-	confdb_change_type_t change_type,
-	hdb_handle_t parent_object_handle,
-	hdb_handle_t object_handle,
-	const void *object_name, size_t object_name_len,
-	const void *key_name, size_t key_name_len,
-	const void *key_value, size_t key_value_len);
-
-static void _cs_confdb_object_created(confdb_handle_t handle,
-	hdb_handle_t parent_object_handle,
-	hdb_handle_t object_handle,
-	const void *name_pt, size_t name_len);
-
-static void _cs_confdb_object_deleted(confdb_handle_t handle,
-	hdb_handle_t parent_object_handle,
-	const void *name_pt, size_t name_len);
-
-static confdb_callbacks_t callbacks = {
-	.confdb_key_change_notify_fn = _cs_confdb_key_changed,
-	.confdb_object_create_change_notify_fn = _cs_confdb_object_created,
-	.confdb_object_delete_change_notify_fn = _cs_confdb_object_deleted,
-};
+static cmap_handle_t cmap_handle;
 
 static int32_t _cs_ip_to_hostname(char* ip, char* name_out)
 {
@@ -209,162 +185,98 @@ static int32_t _cs_ip_to_hostname(char* ip, char* name_out)
 	return 0;
 }
 
-static void
-_cs_confdb_key_changed(confdb_handle_t handle,
-	confdb_change_type_t change_type,
-	hdb_handle_t parent_object_handle,
-	hdb_handle_t object_handle,
-	const void *object_name_pt, size_t  object_name_len,
-	const void *key_name_pt, size_t key_name_len,
-	const void *key_value_pt, size_t key_value_len)
+static void _cs_cmap_members_key_changed (
+	cmap_handle_t cmap_handle_c,
+	cmap_track_handle_t cmap_track_handle,
+	int32_t event,
+	const char *key_name,
+	struct cmap_notify_value new_value,
+	struct cmap_notify_value old_value,
+	void *user_data)
 {
-	char parent_name[CS_MAX_NAME_LENGTH];
-	size_t len = 0;
-	hdb_handle_t real_parent_object_handle;
-	cs_error_t rc = CS_OK;
 	char nodename[CS_MAX_NAME_LENGTH];
-	char nodeid_str[CS_MAX_NAME_LENGTH];
-	uint32_t nodeid;
-	char status[CS_MAX_NAME_LENGTH];
-	char ip[CS_MAX_NAME_LENGTH];
-	size_t ip_len;
-	confdb_value_types_t type;
 	char* open_bracket = NULL;
 	char* close_bracket = NULL;
+	int res;
+	uint32_t nodeid;
+	char *ip_str;
+	char tmp_key[CMAP_KEYNAME_MAXLEN];
+	cs_error_t err;
+	int no_retries;
 
-	rc = confdb_object_parent_get (handle,
-		parent_object_handle, &real_parent_object_handle);
-	assert(rc == CS_OK);
-
-	rc = confdb_object_name_get (handle,
-		real_parent_object_handle,
-		parent_name,
-		&len);
-	parent_name[len] = '\0';
-	assert(rc == CS_OK);
-
-	if (strcmp(parent_name, "members") == 0) {
-		if (strncmp(key_name_pt, "status", strlen("status")) == 0) {
-
-			memcpy(nodeid_str, object_name_pt, object_name_len);
-			nodeid_str[object_name_len] = '\0';
-			nodeid = atoi(nodeid_str);
-
-			memcpy(status, key_value_pt, key_value_len);
-			status[key_value_len] = '\0';
-
-			rc = confdb_key_get_typed(handle, parent_object_handle,
-				"ip", ip, &ip_len, &type);
-			assert(rc == CS_OK);
-			ip[ip_len-1] = '\0';
-
-			/*
-			 * We want the ip out of: "r(0) ip(192.168.100.92)"
-			 */
-			open_bracket = strrchr(ip, '(');
-			open_bracket++;
-			close_bracket = strrchr(open_bracket, ')');
-			*close_bracket = '\0';
-			_cs_ip_to_hostname(open_bracket, nodename);
-
-			_cs_node_membership_event(nodename, nodeid, status, open_bracket);
-		}
+	if (event != CMAP_TRACK_MODIFY) {
+		return ;
 	}
+
+	res = sscanf(key_name, "runtime.totem.pg.mrp.srp.members.%u.%s", &nodeid, tmp_key);
+	if (res != 2)
+		return ;
+
+	if (strcmp(tmp_key, "status") != 0) {
+		return ;
+	}
+
+	snprintf(tmp_key, CMAP_KEYNAME_MAXLEN, "runtime.totem.pg.mrp.srp.members.%u.ip", nodeid);
+	no_retries = 0;
+	while ((err = cmap_get_string(cmap_handle, tmp_key, &ip_str)) == CS_ERR_TRY_AGAIN &&
+			no_retries++ < CMAP_MAX_RETRIES) {
+		sleep(1);
+	}
+
+	if (err != CS_OK) {
+		return ;
+	}
+	/*
+	 * We want the ip out of: "r(0) ip(192.168.100.92)"
+	 */
+	open_bracket = strrchr(ip_str, '(');
+	open_bracket++;
+	close_bracket = strrchr(open_bracket, ')');
+	*close_bracket = '\0';
+	_cs_ip_to_hostname(open_bracket, nodename);
+
+	_cs_node_membership_event(nodename, nodeid, (char *)new_value.data, open_bracket);
+	free(ip_str);
 }
 
-static void
-_cs_confdb_object_created(confdb_handle_t handle,
-	hdb_handle_t parent_object_handle,
-	hdb_handle_t object_handle,
-	const void *name_pt,
-	size_t name_len)
+static void _cs_cmap_connections_key_changed (
+	cmap_handle_t cmap_handle_c,
+	cmap_track_handle_t cmap_track_handle,
+	int32_t event,
+	const char *key_name,
+	struct cmap_notify_value new_value,
+	struct cmap_notify_value old_value,
+	void *user_data)
 {
-	char parent_name[CS_MAX_NAME_LENGTH];
-	size_t len = 0;
 	char obj_name[CS_MAX_NAME_LENGTH];
-	cs_error_t rc = CS_OK;
+	char conn_str[CMAP_KEYNAME_MAXLEN];
+	char tmp_key[CMAP_KEYNAME_MAXLEN];
+	int res;
 
-	memcpy(obj_name, name_pt, name_len);
-	obj_name[name_len] = '\0';
-
-	rc = confdb_object_name_get (handle,
-		object_handle, parent_name, &len);
-	parent_name[len] = '\0';
-	if (rc != CS_OK) {
-		return;
+	res = sscanf(key_name, "runtime.connections.%[^.].%s", conn_str, tmp_key);
+	if (res != 2) {
+		return ;
 	}
 
-	if (strcmp(parent_name, "connections") == 0) {
+	if (strcmp(tmp_key, "service_id") != 0) {
+		return ;
+	}
+
+	snprintf(obj_name, CS_MAX_NAME_LENGTH, "%s", conn_str);
+
+	if (event == CMAP_TRACK_ADD) {
 		_cs_application_connection_event(obj_name, "connected");
 	}
-}
 
-static void
-_cs_confdb_object_deleted(confdb_handle_t handle,
-	hdb_handle_t parent_object_handle,
-	const void *name_pt,
-	size_t name_len)
-{
-	char obj_name[CS_MAX_NAME_LENGTH];
-	char parent_name[CS_MAX_NAME_LENGTH];
-	size_t len = 0;
-	cs_error_t rc;
-
-	memcpy(obj_name, name_pt, name_len);
-	obj_name[name_len] = '\0';
-
-	rc = confdb_object_name_get (handle,
-		parent_object_handle, parent_name, &len);
-	parent_name[len] = '\0';
-	assert(rc == CS_OK);
-
-	if (strcmp(parent_name, "connections") == 0) {
+	if (event == CMAP_TRACK_DELETE) {
 		_cs_application_connection_event(obj_name, "disconnected");
 	}
 }
 
-static cs_error_t
-_cs_confdb_find_object (confdb_handle_t handle,
-	const char * name_pt,
-	hdb_handle_t * out_handle)
-{
-	char * obj_name_pt;
-	char * save_pt;
-	hdb_handle_t obj_handle;
-	confdb_handle_t parent_object_handle = OBJECT_PARENT_HANDLE;
-	char tmp_name[CS_MAX_NAME_LENGTH];
-	cs_error_t res = CS_OK;
-
-	strncpy (tmp_name, name_pt, sizeof (tmp_name));
-	tmp_name[sizeof (tmp_name) - 1] = '\0';
-	obj_name_pt = strtok_r(tmp_name, SEPERATOR_STR, &save_pt);
-
-	while (obj_name_pt != NULL) {
-		res = confdb_object_find_start(handle, parent_object_handle);
-		if (res != CS_OK) {
-			qb_log(LOG_ERR, 0, "Could not start object_find %d", res);
-			exit (EXIT_FAILURE);
-		}
-
-		res = confdb_object_find(handle, parent_object_handle,
-				obj_name_pt, strlen (obj_name_pt), &obj_handle);
-		if (res != CS_OK) {
-			return res;
-		}
-		confdb_object_find_destroy(handle, parent_object_handle);
-
-		parent_object_handle = obj_handle;
-		obj_name_pt = strtok_r (NULL, SEPERATOR_STR, &save_pt);
-	}
-
-	*out_handle = parent_object_handle;
-	return res;
-}
-
 static int
-_cs_confdb_dispatch(int fd, int revents, void *data)
+_cs_cmap_dispatch(int fd, int revents, void *data)
 {
-	confdb_dispatch(confdb_handle, CS_DISPATCH_ONE);
+	cmap_dispatch(cmap_handle, CS_DISPATCH_ONE);
 	return 0;
 }
 
@@ -771,7 +683,7 @@ _cs_snmp_init(void)
 
 	notifiers[num_notifiers].node_membership_fn =
 		_cs_snmp_node_membership_event;
-	notifiers[num_notifiers].node_quorum_fn = 
+	notifiers[num_notifiers].node_quorum_fn =
 		_cs_snmp_node_quorum_event;
 	notifiers[num_notifiers].application_connection_fn = NULL;
 	num_notifiers++;
@@ -884,58 +796,49 @@ sig_exit_handler(int32_t num, void *data)
 }
 
 static void
-_cs_confdb_init(void)
+_cs_cmap_init(void)
 {
-	hdb_handle_t obj_handle;
 	cs_error_t rc;
-	int conf_fd = 0;
+	int cmap_fd = 0;
+	cmap_track_handle_t track_handle;
 
-	rc = confdb_initialize (&confdb_handle, &callbacks);
+	rc = cmap_initialize (&cmap_handle);
 	if (rc != CS_OK) {
-		qb_log(LOG_ERR, "Failed to initialize the objdb API. Error %d", rc);
+		qb_log(LOG_ERR, "Failed to initialize the cmap API. Error %d", rc);
 		exit (EXIT_FAILURE);
 	}
-	confdb_fd_get(confdb_handle, &conf_fd);
+	cmap_fd_get(cmap_handle, &cmap_fd);
 
-	qb_loop_poll_add(main_loop, QB_LOOP_MED, conf_fd, POLLIN|POLLNVAL, NULL,
-		_cs_confdb_dispatch);
+	qb_loop_poll_add(main_loop, QB_LOOP_MED, cmap_fd, POLLIN|POLLNVAL, NULL,
+		_cs_cmap_dispatch);
 
-	rc = _cs_confdb_find_object (confdb_handle, "runtime.connections.",
-		&obj_handle);
+	rc = cmap_track_add(cmap_handle, "runtime.connections.",
+			CMAP_TRACK_ADD | CMAP_TRACK_DELETE | CMAP_TRACK_PREFIX,
+			_cs_cmap_connections_key_changed,
+			NULL,
+			&track_handle);
 	if (rc != CS_OK) {
 		qb_log(LOG_ERR,
-			"Failed to find the connections object. Error %d", rc);
+			"Failed to track the connections key. Error %d", rc);
 		exit (EXIT_FAILURE);
 	}
 
-	rc = confdb_track_changes (confdb_handle, obj_handle,
-		CONFDB_TRACK_DEPTH_ONE);
+	rc = cmap_track_add(cmap_handle, "runtime.totem.pg.mrp.srp.members.",
+			CMAP_TRACK_MODIFY | CMAP_TRACK_PREFIX,
+			_cs_cmap_members_key_changed,
+			NULL,
+			&track_handle);
 	if (rc != CS_OK) {
 		qb_log(LOG_ERR,
-			"Failed to track the connections object. Error %d", rc);
-		exit (EXIT_FAILURE);
-	}
-	rc = _cs_confdb_find_object(confdb_handle,
-		"runtime.totem.pg.mrp.srp.members.", &obj_handle);
-	if (rc != CS_OK) {
-		qb_log(LOG_ERR, "Failed to find the object. Error %d", rc);
-		exit (EXIT_FAILURE);
-	}
-
-	rc = confdb_track_changes(confdb_handle,
-		obj_handle, CONFDB_TRACK_DEPTH_RECURSIVE);
-	if (rc != CS_OK) {
-		qb_log(LOG_ERR,
-			"Failed to track the object. Error %d", rc);
+			"Failed to track the members key. Error %d", rc);
 		exit (EXIT_FAILURE);
 	}
 }
 
 static void
-_cs_confdb_finalize(void)
+_cs_cmap_finalize(void)
 {
-	confdb_stop_track_changes (confdb_handle);
-	confdb_finalize (confdb_handle);
+	cmap_finalize (cmap_handle);
 }
 
 static void
@@ -1056,7 +959,7 @@ main(int argc, char *argv[])
 
 	main_loop = qb_loop_create();
 
-	_cs_confdb_init();
+	_cs_cmap_init();
 	_cs_quorum_init();
 
 #ifdef HAVE_DBUS
@@ -1099,7 +1002,7 @@ main(int argc, char *argv[])
 #endif /* HAVE_DBUS */
 
 	_cs_quorum_finalize();
-	_cs_confdb_finalize();
+	_cs_cmap_finalize();
 
 	return 0;
 }
