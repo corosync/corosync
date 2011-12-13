@@ -40,7 +40,7 @@ CS_INTERNAL_H		= ipc_cfg.h ipc_confdb.h ipc_cpg.h ipc_evs.h ipc_pload.h ipc_quor
 
 LCR_H			= lcr_ckpt.h lcr_comp.h	lcr_ifact.h
 
-ENGINE_H		= config.h coroapi.h logsys.h objdb.h quorum.h
+ENGINE_H		= config.h coroapi.h logsys.h objdb.h quorum.h icmap.h
 
 TOTEM_H			= totem.h totemip.h totempg.h
 

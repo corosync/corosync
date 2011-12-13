@@ -43,25 +43,28 @@ TOTEM_SRC		+= totemiba.c
 endif
 
 LOGSYS_SRC		= logsys.c
+ICMAP_SRC		= icmap.c
 LCRSO_SRC		= objdb.c vsf_ykd.c coroparse.c vsf_quorum.c
 LCRSO_OBJS		= $(LCRSO_SRC:%.c=%.o)
 LCRSO			= $(LCRSO_SRC:%.c=%.lcrso)
 
-lib_LIBRARIES		= libtotem_pg.a liblogsys.a
+lib_LIBRARIES		= libtotem_pg.a liblogsys.a libicmap.a
 sbin_PROGRAMS		= corosync
 
 libtotem_pg_a_SOURCES	= $(TOTEM_SRC)
 liblogsys_a_SOURCES	= $(LOGSYS_SRC)
+libicmap_a_SOURCES	= $(ICMAP_SRC)
 
 corosync_SOURCES 	= main.c ipc_glue.c util.c sync.c apidef.c service.c \
 			  timer.c totemconfig.c mainconfig.c quorum.c schedwrk.c \
 			  ../lcr/lcr_ifact.c evil.c syncv2.c
-corosync_LDADD	  	= -ltotem_pg -llogsys $(LIBQB_LIBS) $(statgrab_LIBS)
-corosync_DEPENDENCIES	= libtotem_pg.so.$(SONAME) liblogsys.so.$(SONAME)
+corosync_LDADD	  	= -ltotem_pg -llogsys -licmap $(LIBQB_LIBS) $(statgrab_LIBS)
+corosync_DEPENDENCIES	= libtotem_pg.so.$(SONAME) liblogsys.so.$(SONAME) libicmap.so.$(SONAME)
 corosync_LDFLAGS	= $(OS_DYFLAGS) -L./
 
 TOTEM_OBJS		= $(TOTEM_SRC:%.c=%.o)
 LOGSYS_OBJS		= $(LOGSYS_SRC:%.c=%.o)
+ICMAP_OBJS		= $(ICMAP_SRC:%.c=%.o)
 
 SHARED_LIBS		= $(lib_LIBRARIES:%.a=%.so.$(SONAME))
 SHARED_LIBS_SO		= $(SHARED_LIBS:%.so.$(SONAME)=%.so)
@@ -77,7 +80,7 @@ EXTRA_DIST		= $(LCRSO_SRC)
 
 if BUILD_DARWIN
 %.lcrso: %.o
-	$(CC) $(LDFLAGS) $(CFLAGS) -L$(top_builddir)/exec -llogsys -bundle -bind_at_load -bundle_loader ./corosync $^ -o $@
+	$(CC) $(LDFLAGS) $(CFLAGS) -L$(top_builddir)/exec -llogsys -licmap -bundle -bind_at_load -bundle_loader ./corosync $^ -o $@
 
 libtotem_pg.so.$(SONAME): $(TOTEM_OBJS)
 	$(CC) $(LDFLAGS) $(DARWIN_OPTS) $(TOTEM_OBJS) -o $@ -lpthread
@@ -88,6 +91,11 @@ liblogsys.so.$(SONAME): $(LOGSYS_OBJS)
 	$(CC) $(LDFLAGS) $(DARWIN_OPTS) $(LOGSYS_OBJS) -o $@ -lpthread
 	ln -sf liblogsys.so.$(SONAME) liblogsys.so
 	ln -sf liblogsys.so.$(SONAME) liblogsys.so.$(SOMAJOR)
+
+libicmap.so.$(SONAME): $(ICMAP_OBJS)
+	$(CC) $(LDFLAGS) $(DARWIN_OPTS) $(ICMAP_OBJS) -o $@ -lpthread
+	ln -sf libicmap.so.$(SONAME) libicmap.so
+	ln -sf libicmap.so.$(SONAME) libicmap.so.$(SOMAJOR)
 
 else
 
@@ -104,6 +112,11 @@ liblogsys.so.$(SONAME): $(LOGSYS_OBJS)
 	$(LD) $(LDFLAGS) -G $(LOGSYS_OBJS) -o $@ -lpthread
 	ln -sf liblogsys.so.$(SONAME) liblogsys.so
 	ln -sf liblogsys.so.$(SONAME) liblogsys.so.$(SOMAJOR)
+
+libicmap.so.$(SONAME): $(ICMAP_OBJS)
+	$(LD) $(LDFLAGS) -G $(ICMAP_OBJS) -o $@ -lpthread
+	ln -sf libicmap.so.$(SONAME) libicmap.so
+	ln -sf libicmap.so.$(SONAME) libicmap.so.$(SOMAJOR)
 
 else
 
@@ -123,6 +136,13 @@ liblogsys.so.$(SONAME): $(LOGSYS_OBJS)
 		$(LDFLAGS) $^ -lpthread
 	ln -sf liblogsys.so.$(SONAME) liblogsys.so
 	ln -sf liblogsys.so.$(SONAME) liblogsys.so.$(SOMAJOR)
+
+libicmap.so.$(SONAME): $(ICMAP_OBJS)
+	$(CC) -shared -o $@ \
+		-Wl,-soname=libicmap.so.$(SOMAJOR) \
+		$(LDFLAGS) $^ -lpthread
+	ln -sf libicmap.so.$(SONAME) libicmap.so
+	ln -sf libicmap.so.$(SONAME) libicmap.so.$(SOMAJOR)
 
 endif
 
