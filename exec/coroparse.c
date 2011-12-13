@@ -1,9 +1,10 @@
 /*
- * Copyright (c) 2006, 2009 Red Hat, Inc.
+ * Copyright (c) 2006, 2011 Red Hat, Inc.
  *
  * All rights reserved.
  *
  * Author: Patrick Caulfield (pcaulfie@redhat.com)
+ *         Jan Friesse (jfriesse@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
  *
@@ -50,37 +51,144 @@
 #include <dirent.h>
 #include <limits.h>
 #include <stddef.h>
+#include <grp.h>
+#include <pwd.h>
 
+#include <corosync/list.h>
 #include <corosync/lcr/lcr_comp.h>
-#include <corosync/engine/objdb.h>
-#include <corosync/engine/config.h>
 #include <qb/qbutil.h>
 #define LOGSYS_UTILS_ONLY 1
 #include <corosync/engine/logsys.h>
+#include <corosync/engine/icmap.h>
+#include <corosync/engine/config.h>
 
 #include "util.h"
 
-static int read_config_file_into_objdb(
-	struct objdb_iface_ver0 *objdb,
+enum parser_cb_type {
+	PARSER_CB_START,
+	PARSER_CB_END,
+	PARSER_CB_SECTION_START,
+	PARSER_CB_SECTION_END,
+	PARSER_CB_ITEM,
+};
+
+typedef int (*parser_cb_f)(const char *path,
+			char *key,
+			char *value,
+			enum parser_cb_type type,
+			const char **error_string,
+			void *user_data);
+
+enum main_cp_cb_data_state {
+	MAIN_CP_CB_DATA_STATE_NORMAL,
+	MAIN_CP_CB_DATA_STATE_TOTEM,
+	MAIN_CP_CB_DATA_STATE_INTERFACE,
+	MAIN_CP_CB_DATA_STATE_LOGGER_SUBSYS,
+	MAIN_CP_CB_DATA_STATE_UIDGID,
+	MAIN_CP_CB_DATA_STATE_LOGGING_DAEMON,
+	MAIN_CP_CB_DATA_STATE_MEMBER,
+	MAIN_CP_CB_DATA_STATE_QUORUM,
+};
+
+struct key_value_list_item {
+	char *key;
+	char *value;
+	struct list_head list;
+};
+
+struct main_cp_cb_data {
+	enum main_cp_cb_data_state state;
+
+	int ringnumber;
+	char *bindnetaddr;
+	char *mcastaddr;
+	char *broadcast;
+	int mcastport;
+	int ttl;
+
+	struct list_head logger_subsys_items_head;
+	char *subsys;
+	char *logging_daemon_name;
+	struct list_head member_items_head;
+};
+
+static int read_config_file_into_icmap(
 	const char **error_string);
 static char error_string_response[512];
 
+static int uid_determine (const char *req_user)
+{
+	int pw_uid = 0;
+	struct passwd passwd;
+	struct passwd* pwdptr = &passwd;
+	struct passwd* temp_pwd_pt;
+	char *pwdbuffer;
+	int  pwdlinelen;
 
+	pwdlinelen = sysconf (_SC_GETPW_R_SIZE_MAX);
+
+	if (pwdlinelen == -1) {
+	        pwdlinelen = 256;
+	}
+
+	pwdbuffer = malloc (pwdlinelen);
+
+	if ((getpwnam_r (req_user, pwdptr, pwdbuffer, pwdlinelen, &temp_pwd_pt)) != 0) {
+	        sprintf (error_string_response,
+	                "The '%s' user is not found in /etc/passwd, please read the documentation.",
+	                req_user);
+	        return (-1);
+	}
+	pw_uid = passwd.pw_uid;
+	free (pwdbuffer);
+
+	return pw_uid;
+}
+
+static int gid_determine (const char *req_group)
+{
+	int ais_gid = 0;
+	struct group group;
+	struct group * grpptr = &group;
+	struct group * temp_grp_pt;
+	char *grpbuffer;
+	int  grplinelen;
+
+	grplinelen = sysconf (_SC_GETGR_R_SIZE_MAX);
+
+	if (grplinelen == -1) {
+	        grplinelen = 256;
+	}
+
+	grpbuffer = malloc (grplinelen);
+
+	if ((getgrnam_r (req_group, grpptr, grpbuffer, grplinelen, &temp_grp_pt)) != 0) {
+	        sprintf (error_string_response,
+	                "The '%s' group is not found in /etc/group, please read the documentation.",
+	                req_group);
+		return (-1);
+	}
+	ais_gid = group.gr_gid;
+	free (grpbuffer);
+
+	return ais_gid;
+}
 static char *strchr_rs (const char *haystack, int byte)
 {
 	const char *end_address = strchr (haystack, byte);
 	if (end_address) {
 		end_address += 1; /* skip past { or = */
-		end_address += strspn (end_address, " \t");
+
+		while (*end_address == ' ' || *end_address == '\t')
+			end_address++;
 	}
 
 	return ((char *) end_address);
 }
 
-static int aisparser_readconfig (struct objdb_iface_ver0 *objdb,
-				 const char **error_string)
+static int aisparser_readconfig (const char **error_string)
 {
-	if (read_config_file_into_objdb(objdb, error_string)) {
+	if (read_config_file_into_icmap(error_string)) {
 		return -1;
 	}
 
@@ -90,9 +198,14 @@ static int aisparser_readconfig (struct objdb_iface_ver0 *objdb,
 
 static char *remove_whitespace(char *string)
 {
-	char *start = string+strspn(string, " \t");
-	char *end = start+(strlen(start))-1;
+	char *start;
+	char *end;
 
+	start = string;
+	while (*start == ' ' || *start == '\t')
+		start++;
+
+	end = start+(strlen(start))-1;
 	while ((*end == ' ' || *end == '\t' || *end == ':' || *end == '{') && end > start)
 		end--;
 	if (end != start)
@@ -101,25 +214,23 @@ static char *remove_whitespace(char *string)
 	return start;
 }
 
-#define PCHECK_ADD_SUBSECTION 1
-#define PCHECK_ADD_ITEM       2
 
-typedef int (*parser_check_item_f)(struct objdb_iface_ver0 *objdb,
-				hdb_handle_t parent_handle,
-				int type,
-				const char *name,
-				const char **error_string);
 
 static int parse_section(FILE *fp,
-			 struct objdb_iface_ver0 *objdb,
-			 hdb_handle_t parent_handle,
+			 char *path,
 			 const char **error_string,
-			 parser_check_item_f parser_check_item_call)
+			 parser_cb_f parser_cb,
+			 void *user_data)
 {
 	char line[512];
 	int i;
 	char *loc;
 	int ignore_line;
+	char new_keyname[ICMAP_KEYNAME_MAXLEN];
+
+	if (strcmp(path, "") == 0) {
+		parser_cb("", NULL, NULL, PARSER_CB_START, error_string, user_data);
+	}
 
 	while (fgets (line, sizeof (line), fp)) {
 		if (strlen(line) > 0) {
@@ -157,20 +268,22 @@ static int parse_section(FILE *fp,
 
 		/* New section ? */
 		if ((loc = strchr_rs (line, '{'))) {
-			hdb_handle_t new_parent;
 			char *section = remove_whitespace(line);
 
 			loc--;
 			*loc = '\0';
-			if (parser_check_item_call) {
-				if (!parser_check_item_call(objdb, parent_handle, PCHECK_ADD_SUBSECTION,
-				    section, error_string))
-					    return -1;
+
+			strcpy(new_keyname, path);
+			if (strcmp(path, "") != 0) {
+				strcat(new_keyname, ".");
+			}
+			strcat(new_keyname, section);
+
+			if (!parser_cb(new_keyname, NULL, NULL, PARSER_CB_SECTION_START, error_string, user_data)) {
+				return -1;
 			}
 
-			objdb->object_create (parent_handle, &new_parent,
-					      section, strlen (section));
-			if (parse_section(fp, objdb, new_parent, error_string, parser_check_item_call))
+			if (parse_section(fp, new_keyname, error_string, parser_cb, user_data))
 				return -1;
 		}
 
@@ -182,59 +295,552 @@ static int parse_section(FILE *fp,
 			*(loc-1) = '\0';
 			key = remove_whitespace(line);
 			value = remove_whitespace(loc);
-			if (parser_check_item_call) {
-				if (!parser_check_item_call(objdb, parent_handle, PCHECK_ADD_ITEM,
-				    key, error_string))
-					    return -1;
+
+			strcpy(new_keyname, path);
+			if (strcmp(path, "") != 0) {
+				strcat(new_keyname, ".");
 			}
-			objdb->object_key_create_typed (parent_handle, key,
-				value, strlen (value) + 1, OBJDB_VALUETYPE_STRING);
+			strcat(new_keyname, key);
+
+			if (!parser_cb(new_keyname, key, value, PARSER_CB_ITEM, error_string, user_data)) {
+				return -1;
+			}
 		}
 
 		if (strchr_rs (line, '}')) {
+			if (!parser_cb(path, NULL, NULL, PARSER_CB_SECTION_END, error_string, user_data)) {
+				return -1;
+			}
+
 			return 0;
 		}
 	}
 
-	if (parent_handle != OBJECT_PARENT_HANDLE) {
+	if (strcmp(path, "") != 0) {
 		*error_string = "Missing closing brace";
 		return -1;
+	}
+
+	if (strcmp(path, "") == 0) {
+		parser_cb("", NULL, NULL, PARSER_CB_END, error_string, user_data);
 	}
 
 	return 0;
 }
 
-static int parser_check_item_uidgid(struct objdb_iface_ver0 *objdb,
-			hdb_handle_t parent_handle,
-			int type,
-			const char *name,
-			const char **error_string)
+static int main_config_parser_cb(const char *path,
+			char *key,
+			char *value,
+			enum parser_cb_type type,
+			const char **error_string,
+			void *user_data)
 {
-	if (type == PCHECK_ADD_SUBSECTION) {
-		if (parent_handle != OBJECT_PARENT_HANDLE) {
-			*error_string = "uidgid: Can't add second level subsection";
-			return 0;
+	int i;
+	int add_as_string;
+	char key_name[ICMAP_KEYNAME_MAXLEN];
+	struct main_cp_cb_data *data = (struct main_cp_cb_data *)user_data;
+	struct key_value_list_item *kv_item;
+	struct list_head *iter, *iter_next;
+	int uid, gid;
+
+	switch (type) {
+	case PARSER_CB_START:
+		memset(data, 0, sizeof(struct main_cp_cb_data));
+		data->state = MAIN_CP_CB_DATA_STATE_NORMAL;
+		break;
+	case PARSER_CB_END:
+		break;
+	case PARSER_CB_ITEM:
+		add_as_string = 1;
+
+		switch (data->state) {
+		case MAIN_CP_CB_DATA_STATE_NORMAL:
+			break;
+		case MAIN_CP_CB_DATA_STATE_QUORUM:
+			if ((strcmp(path, "quorum.expected_votes") == 0) ||
+			    (strcmp(path, "quorum.votes") == 0) ||
+			    (strcmp(path, "quorum.quorumdev_poll") == 0) ||
+			    (strcmp(path, "quorum.leaving_timeout") == 0)) {
+				i = atoi(value);
+				icmap_set_uint32(path, i);
+				add_as_string = 0;
+			}
+
+			if ((strcmp(path, "quorum.disallowed") == 0) ||
+			    (strcmp(path, "quorum.two_node") == 0) ||
+			    (strcmp(path, "quorum.quorate") == 0)) {
+				i = atoi(value);
+				icmap_set_uint8(path, i);
+				add_as_string = 0;
+			}
+			break;
+		case MAIN_CP_CB_DATA_STATE_TOTEM:
+			if ((strcmp(path, "totem.version") == 0) ||
+			    (strcmp(path, "totem.nodeid") == 0) ||
+			    (strcmp(path, "totem.threads") == 0) ||
+			    (strcmp(path, "totem.token") == 0) ||
+			    (strcmp(path, "totem.token_retransmit") == 0) ||
+			    (strcmp(path, "totem.hold") == 0) ||
+			    (strcmp(path, "totem.token_retransmits_before_loss_const") == 0) ||
+			    (strcmp(path, "totem.join") == 0) ||
+			    (strcmp(path, "totem.send_join") == 0) ||
+			    (strcmp(path, "totem.consensus") == 0) ||
+			    (strcmp(path, "totem.merge") == 0) ||
+			    (strcmp(path, "totem.downcheck") == 0) ||
+			    (strcmp(path, "totem.fail_recv_const") == 0) ||
+			    (strcmp(path, "totem.seqno_unchanged_const") == 0) ||
+			    (strcmp(path, "totem.rrp_token_expired_timeout") == 0) ||
+			    (strcmp(path, "totem.rrp_problem_count_timeout") == 0) ||
+			    (strcmp(path, "totem.rrp_problem_count_threshold") == 0) ||
+			    (strcmp(path, "totem.rrp_problem_count_mcast_threshold") == 0) ||
+			    (strcmp(path, "totem.rrp_autorecovery_check_timeout") == 0) ||
+			    (strcmp(path, "totem.heartbeat_failures_allowed") == 0) ||
+			    (strcmp(path, "totem.max_network_delay") == 0) ||
+			    (strcmp(path, "totem.window_size") == 0) ||
+			    (strcmp(path, "totem.max_messages") == 0) ||
+			    (strcmp(path, "totem.miss_count_const") == 0) ||
+			    (strcmp(path, "totem.netmtu") == 0)) {
+				i = atoi(value);
+				icmap_set_uint32(path, i);
+				add_as_string = 0;
+			}
+		case MAIN_CP_CB_DATA_STATE_INTERFACE:
+			if (strcmp(path, "totem.interface.ringnumber") == 0) {
+				data->ringnumber = atoi(value);
+				add_as_string = 0;
+			}
+			if (strcmp(path, "totem.interface.bindnetaddr") == 0) {
+				data->bindnetaddr = strdup(value);
+				add_as_string = 0;
+			}
+			if (strcmp(path, "totem.interface.mcastaddr") == 0) {
+				data->mcastaddr = strdup(value);
+				add_as_string = 0;
+			}
+			if (strcmp(path, "totem.interface.broadcast") == 0) {
+				data->broadcast = strdup(value);
+				add_as_string = 0;
+			}
+			if (strcmp(path, "totem.interface.mcastport") == 0) {
+				data->mcastport = atoi(value);
+				if (data->mcastport < 0 || data->mcastport > 65535) {
+					*error_string = "Invalid multicast port (should be 0..65535)";
+
+					return (0);
+				};
+				add_as_string = 0;
+			}
+			if (strcmp(path, "totem.interface.ttl") == 0) {
+				data->ttl = atoi(value);
+				if (data->ttl < 0 || data->ttl > 255) {
+					*error_string = "Invalid TTL (should be 0..255)";
+
+					return (0);
+				};
+				add_as_string = 0;
+			}
+			break;
+		case MAIN_CP_CB_DATA_STATE_LOGGER_SUBSYS:
+			if (strcmp(key, "subsys") == 0) {
+				data->subsys = strdup(value);
+				if (data->subsys == NULL) {
+					*error_string = "Can't alloc memory";
+
+					return (0);
+				}
+			} else {
+				kv_item = malloc(sizeof(*kv_item));
+				if (kv_item == NULL) {
+					*error_string = "Can't alloc memory";
+
+					return (0);
+				}
+				memset(kv_item, 0, sizeof(*kv_item));
+
+				kv_item->key = strdup(key);
+				kv_item->value = strdup(value);
+				if (kv_item->key == NULL || kv_item->value == NULL) {
+					free(kv_item);
+					*error_string = "Can't alloc memory";
+
+					return (0);
+				}
+				list_init(&kv_item->list);
+				list_add(&kv_item->list, &data->logger_subsys_items_head);
+			}
+			add_as_string = 0;
+			break;
+		case MAIN_CP_CB_DATA_STATE_LOGGING_DAEMON:
+			if (strcmp(key, "subsys") == 0) {
+				data->subsys = strdup(value);
+				if (data->subsys == NULL) {
+					*error_string = "Can't alloc memory";
+
+					return (0);
+				}
+			} else if (strcmp(key, "name") == 0) {
+				data->logging_daemon_name = strdup(value);
+				if (data->logging_daemon_name == NULL) {
+					*error_string = "Can't alloc memory";
+
+					return (0);
+				}
+			} else {
+				kv_item = malloc(sizeof(*kv_item));
+				if (kv_item == NULL) {
+					*error_string = "Can't alloc memory";
+
+					return (0);
+				}
+				memset(kv_item, 0, sizeof(*kv_item));
+
+				kv_item->key = strdup(key);
+				kv_item->value = strdup(value);
+				if (kv_item->key == NULL || kv_item->value == NULL) {
+					free(kv_item);
+					*error_string = "Can't alloc memory";
+
+					return (0);
+				}
+				list_init(&kv_item->list);
+				list_add(&kv_item->list, &data->logger_subsys_items_head);
+			}
+			add_as_string = 0;
+			break;
+		case MAIN_CP_CB_DATA_STATE_UIDGID:
+			if (strcmp(key, "uid") == 0) {
+				uid = uid_determine(value);
+				if (uid == -1) {
+					*error_string = error_string_response;
+					return (0);
+				}
+				snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "uidgid.uid.%u",
+						uid);
+				icmap_set_uint8(key_name, 1);
+				add_as_string = 0;
+			} else if (strcmp(key, "gid") == 0) {
+				gid = gid_determine(value);
+				if (gid == -1) {
+					*error_string = error_string_response;
+					return (0);
+				}
+				snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "uidgid.gid.%u",
+						gid);
+				icmap_set_uint8(key_name, 1);
+				add_as_string = 0;
+			} else {
+				*error_string = "uidgid: Only uid and gid are allowed items";
+				return (0);
+			}
+			break;
+		case MAIN_CP_CB_DATA_STATE_MEMBER:
+			if (strcmp(key, "memberaddr") != 0) {
+				*error_string = "Only memberaddr is allowed in member section";
+
+				return (0);
+			}
+
+			kv_item = malloc(sizeof(*kv_item));
+			if (kv_item == NULL) {
+				*error_string = "Can't alloc memory";
+
+				return (0);
+			}
+			memset(kv_item, 0, sizeof(*kv_item));
+
+			kv_item->key = strdup(key);
+			kv_item->value = strdup(value);
+			if (kv_item->key == NULL || kv_item->value == NULL) {
+				free(kv_item);
+				*error_string = "Can't alloc memory";
+
+				return (0);
+			}
+			list_init(&kv_item->list);
+			list_add(&kv_item->list, &data->member_items_head);
+			add_as_string = 0;
+			break;
 		}
 
-		if (strcmp (name, "uidgid") != 0) {
-			*error_string = "uidgid: Can't add subsection different then uidgid";
-			return 0;
+		if (add_as_string) {
+			icmap_set_string(path, value);
 		}
+		break;
+	case PARSER_CB_SECTION_START:
+		if (strcmp(path, "totem.interface") == 0) {
+			data->state = MAIN_CP_CB_DATA_STATE_INTERFACE;
+			data->ringnumber = 0;
+			data->mcastport = -1;
+			data->ttl = -1;
+			list_init(&data->member_items_head);
+		};
+		if (strcmp(path, "totem") == 0) {
+			data->state = MAIN_CP_CB_DATA_STATE_TOTEM;
+		};
+
+		if (strcmp(path, "logging.logger_subsys") == 0) {
+			data->state = MAIN_CP_CB_DATA_STATE_LOGGER_SUBSYS;
+			list_init(&data->logger_subsys_items_head);
+			data->subsys = NULL;
+		}
+		if (strcmp(path, "logging.logging_daemon") == 0) {
+			data->state = MAIN_CP_CB_DATA_STATE_LOGGING_DAEMON;
+			list_init(&data->logger_subsys_items_head);
+			data->subsys = NULL;
+			data->logging_daemon_name = NULL;
+		}
+		if (strcmp(path, "uidgid") == 0) {
+			data->state = MAIN_CP_CB_DATA_STATE_UIDGID;
+		}
+		if (strcmp(path, "totem.interface.member") == 0) {
+			data->state = MAIN_CP_CB_DATA_STATE_MEMBER;
+		}
+		if (strcmp(path, "quorum") == 0) {
+			data->state = MAIN_CP_CB_DATA_STATE_QUORUM;
+		}
+		break;
+	case PARSER_CB_SECTION_END:
+		switch (data->state) {
+		case MAIN_CP_CB_DATA_STATE_NORMAL:
+			break;
+		case MAIN_CP_CB_DATA_STATE_INTERFACE:
+			/*
+			 * Create new interface section
+			 */
+			if (data->bindnetaddr != NULL) {
+				snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.bindnetaddr",
+						data->ringnumber);
+				icmap_set_string(key_name, data->bindnetaddr);
+
+				free(data->bindnetaddr);
+				data->bindnetaddr = NULL;
+			} else {
+				*error_string = "No bindnetaddr for interface";
+
+				return (0);
+			}
+
+			if (data->mcastaddr != NULL) {
+				snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.mcastaddr",
+						data->ringnumber);
+				icmap_set_string(key_name, data->mcastaddr);
+
+				free(data->mcastaddr);
+				data->mcastaddr = NULL;
+			}
+
+			if (data->broadcast != NULL) {
+				snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.broadcast",
+						data->ringnumber);
+				icmap_set_string(key_name, data->broadcast);
+
+				free(data->broadcast);
+				data->broadcast = NULL;
+			}
+
+			if (data->mcastport > -1) {
+				snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.mcastport",
+						data->ringnumber);
+				icmap_set_uint16(key_name, data->mcastport);
+			}
+
+			if (data->ttl > -1) {
+				snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.ttl",
+						data->ringnumber);
+				icmap_set_uint8(key_name, data->ttl);
+			}
+
+			i = 0;
+			for (iter = data->member_items_head.next;
+			     iter != &data->member_items_head; iter = iter_next) {
+				kv_item = list_entry(iter, struct key_value_list_item, list);
+
+				snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.member.%u",
+						data->ringnumber, i);
+				icmap_set_string(key_name, kv_item->value);
+
+				iter_next = iter->next;
+
+				free(kv_item->value);
+				free(kv_item->key);
+				free(kv_item);
+				i++;
+			}
+
+			data->state = MAIN_CP_CB_DATA_STATE_TOTEM;
+			break;
+		case MAIN_CP_CB_DATA_STATE_TOTEM:
+			data->state = MAIN_CP_CB_DATA_STATE_NORMAL;
+			break;
+		case MAIN_CP_CB_DATA_STATE_LOGGER_SUBSYS:
+			if (data->subsys == NULL) {
+				*error_string = "No subsys key in logger_subsys directive";
+
+				return (0);
+			}
+
+			for (iter = data->logger_subsys_items_head.next;
+			     iter != &data->logger_subsys_items_head; iter = iter_next) {
+				kv_item = list_entry(iter, struct key_value_list_item, list);
+
+				snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "logging.logger_subsys.%s.%s",
+						data->subsys, kv_item->key);
+				icmap_set_string(key_name, kv_item->value);
+
+				iter_next = iter->next;
+
+				free(kv_item->value);
+				free(kv_item->key);
+				free(kv_item);
+			}
+
+			snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "logging.logger_subsys.%s.subsys",
+					data->subsys);
+			icmap_set_string(key_name, data->subsys);
+
+			free(data->subsys);
+
+			data->state = MAIN_CP_CB_DATA_STATE_NORMAL;
+			break;
+		case MAIN_CP_CB_DATA_STATE_LOGGING_DAEMON:
+			if (data->logging_daemon_name == NULL) {
+				*error_string = "No name key in logging_daemon directive";
+
+				return (0);
+			}
+
+			for (iter = data->logger_subsys_items_head.next;
+			     iter != &data->logger_subsys_items_head; iter = iter_next) {
+				kv_item = list_entry(iter, struct key_value_list_item, list);
+
+				if (data->subsys == NULL) {
+					if (strcmp(data->logging_daemon_name, "corosync") == 0) {
+						snprintf(key_name, ICMAP_KEYNAME_MAXLEN,
+								"logging.%s",
+								kv_item->key);
+					} else {
+						snprintf(key_name, ICMAP_KEYNAME_MAXLEN,
+								"logging.logging_daemon.%s.%s",
+								data->logging_daemon_name, kv_item->key);
+					}
+				} else {
+					if (strcmp(data->logging_daemon_name, "corosync") == 0) {
+						snprintf(key_name, ICMAP_KEYNAME_MAXLEN,
+								"logging.logger_subsys.%s.%s",
+								data->subsys,
+								kv_item->key);
+					} else {
+						snprintf(key_name, ICMAP_KEYNAME_MAXLEN,
+								"logging.logging_daemon.%s.%s.%s",
+								data->logging_daemon_name, data->subsys,
+								kv_item->key);
+					}
+				}
+				icmap_set_string(key_name, kv_item->value);
+
+				iter_next = iter->next;
+
+				free(kv_item->value);
+				free(kv_item->key);
+				free(kv_item);
+			}
+
+			if (data->subsys == NULL) {
+				if (strcmp(data->logging_daemon_name, "corosync") != 0) {
+					snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "logging.logging_daemon.%s.name",
+							data->logging_daemon_name);
+					icmap_set_string(key_name, data->logging_daemon_name);
+				}
+			} else {
+				if (strcmp(data->logging_daemon_name, "corosync") == 0) {
+					snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "logging.logger_subsys.%s.subsys",
+							data->subsys);
+					icmap_set_string(key_name, data->subsys);
+
+				} else {
+					snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "logging.logging_daemon.%s.%s.subsys",
+							data->logging_daemon_name, data->subsys);
+					icmap_set_string(key_name, data->subsys);
+					snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "logging.logging_daemon.%s.%s.name",
+							data->logging_daemon_name, data->subsys);
+					icmap_set_string(key_name, data->logging_daemon_name);
+				}
+			}
+
+			free(data->subsys);
+			free(data->logging_daemon_name);
+
+			data->state = MAIN_CP_CB_DATA_STATE_NORMAL;
+			break;
+		case MAIN_CP_CB_DATA_STATE_UIDGID:
+			data->state = MAIN_CP_CB_DATA_STATE_UIDGID;
+			break;
+		case MAIN_CP_CB_DATA_STATE_MEMBER:
+			data->state = MAIN_CP_CB_DATA_STATE_INTERFACE;
+			break;
+		case MAIN_CP_CB_DATA_STATE_QUORUM:
+			data->state = MAIN_CP_CB_DATA_STATE_NORMAL;
+			break;
+		}
+		break;
 	}
 
-	if (type == PCHECK_ADD_ITEM) {
-		if (!(strcmp (name, "uid") == 0 || strcmp (name, "gid") == 0)) {
-			*error_string = "uidgid: Only uid and gid are allowed items";
-			return 0;
-		}
-	}
-
-	return 1;
+	return (1);
 }
 
+static int uidgid_config_parser_cb(const char *path,
+			char *key,
+			char *value,
+			enum parser_cb_type type,
+			const char **error_string,
+			void *user_data)
+{
+	char key_name[ICMAP_KEYNAME_MAXLEN];
+	int uid, gid;
 
-static int read_uidgid_files_into_objdb(
-	struct objdb_iface_ver0 *objdb,
+	switch (type) {
+	case PARSER_CB_START:
+		break;
+	case PARSER_CB_END:
+		break;
+	case PARSER_CB_ITEM:
+		if (strcmp(path, "uidgid.uid") == 0) {
+			uid = uid_determine(value);
+			if (uid == -1) {
+				*error_string = error_string_response;
+				return (0);
+			}
+			snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "uidgid.uid.%u",
+					uid);
+			icmap_set_uint8(key_name, 1);
+		} else if (strcmp(key, "uidgid.gid") == 0) {
+			gid = gid_determine(value);
+			if (gid == -1) {
+				*error_string = error_string_response;
+				return (0);
+			}
+			snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "uidgid.gid.%u",
+					gid);
+			icmap_set_uint8(key_name, 1);
+		} else {
+			*error_string = "uidgid: Only uid and gid are allowed items";
+			return (0);
+		}
+		break;
+	case PARSER_CB_SECTION_START:
+		if (strcmp(path, "uidgid") != 0) {
+			*error_string = "uidgid: Can't add subsection different then uidgid";
+			return (0);
+		};
+		break;
+	case PARSER_CB_SECTION_END:
+		break;
+	}
+
+	return (1);
+}
+
+static int read_uidgid_files_into_icmap(
 	const char **error_string)
 {
 	FILE *fp;
@@ -247,6 +853,7 @@ static int read_uidgid_files_into_objdb(
 	size_t len;
 	int return_code;
 	struct stat stat_buf;
+	char key_name[ICMAP_KEYNAME_MAXLEN];
 
 	dirname = COROSYSCONFDIR "/uidgid.d";
 	dp = opendir (dirname);
@@ -273,7 +880,9 @@ static int read_uidgid_files_into_objdb(
 			fp = fopen (filename, "r");
 			if (fp == NULL) continue;
 
-			res = parse_section(fp, objdb, OBJECT_PARENT_HANDLE, error_string, parser_check_item_uidgid);
+			key_name[0] = 0;
+
+			res = parse_section(fp, key_name, error_string, uidgid_config_parser_cb, NULL);
 
 			fclose (fp);
 
@@ -290,8 +899,7 @@ error_exit:
 	return res;
 }
 
-static int read_service_files_into_objdb(
-	struct objdb_iface_ver0 *objdb,
+static int read_service_files_into_icmap(
 	const char **error_string)
 {
 	FILE *fp;
@@ -304,6 +912,8 @@ static int read_service_files_into_objdb(
 	struct stat stat_buf;
 	size_t len;
 	int return_code;
+	char key_name[ICMAP_KEYNAME_MAXLEN];
+	struct main_cp_cb_data data;
 
 	dirname = COROSYSCONFDIR "/service.d";
 	dp = opendir (dirname);
@@ -330,7 +940,9 @@ static int read_service_files_into_objdb(
 			fp = fopen (filename, "r");
 			if (fp == NULL) continue;
 
-			res = parse_section(fp, objdb, OBJECT_PARENT_HANDLE, error_string, NULL);
+			key_name[0] = 0;
+
+			res = parse_section(fp, key_name, error_string, main_config_parser_cb, &data);
 
 			fclose (fp);
 
@@ -347,15 +959,16 @@ error_exit:
 	return res;
 }
 
-/* Read config file and load into objdb */
-static int read_config_file_into_objdb(
-	struct objdb_iface_ver0 *objdb,
+/* Read config file and load into icmap */
+static int read_config_file_into_icmap(
 	const char **error_string)
 {
 	FILE *fp;
 	const char *filename;
 	char *error_reason = error_string_response;
 	int res;
+	char key_name[ICMAP_KEYNAME_MAXLEN];
+	struct main_cp_cb_data data;
 
 	filename = getenv ("COROSYNC_MAIN_CONFIG_FILE");
 	if (!filename)
@@ -372,16 +985,18 @@ static int read_config_file_into_objdb(
 		return -1;
 	}
 
-	res = parse_section(fp, objdb, OBJECT_PARENT_HANDLE, error_string, NULL);
+	key_name[0] = 0;
+
+	res = parse_section(fp, key_name, error_string, main_config_parser_cb, &data);
 
 	fclose(fp);
 
 	if (res == 0) {
-	        res = read_uidgid_files_into_objdb(objdb, error_string);
+	        res = read_uidgid_files_into_icmap(error_string);
 	}
 
 	if (res == 0) {
-	        res = read_service_files_into_objdb(objdb, error_string);
+	        res = read_service_files_into_icmap(error_string);
 	}
 
 	if (res == 0) {

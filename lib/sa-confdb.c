@@ -96,7 +96,7 @@ static int load_config(void)
 	hdb_handle_t config_version = 0;
 	void *config_p;
 	struct config_iface_ver0 *config;
-	const char *error_string;
+//	const char *error_string;
 	char *strtok_savept;
 
 	/* User's bootstrap config service */
@@ -127,7 +127,7 @@ static int load_config(void)
 			return -1;
 		}
 
-		res = config->config_readconfig(objdb, &error_string);
+//		res = config->config_readconfig(objdb, &error_string);
 		if (res == -1) {
 			return -1;
 		}

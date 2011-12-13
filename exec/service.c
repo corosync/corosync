@@ -46,6 +46,7 @@
 #include "mainconfig.h"
 #include "util.h"
 #include <corosync/engine/logsys.h>
+#include <corosync/engine/icmap.h>
 
 #include "timer.h"
 #include <corosync/totem/totempg.h>
@@ -78,10 +79,6 @@ static struct default_service default_services[] = {
 		.ver			 = 0,
 	},
 	{
-		.name			 = "corosync_confdb",
-		.ver			 = 0,
-	},
-	{
 		.name			 = "corosync_pload",
 		.ver			 = 0,
 	},
@@ -100,7 +97,11 @@ static struct default_service default_services[] = {
 	{
 		.name			 = "corosync_quorum",
 		.ver			 = 0,
-	}
+	},
+	{
+		.name			 = "corosync_cmap",
+		.ver			 = 0,
+	},
 };
 
 /*
@@ -114,50 +115,30 @@ struct seus_handler_data {
 
 struct corosync_service_engine *ais_service[SERVICE_HANDLER_MAXIMUM_COUNT];
 
-hdb_handle_t service_stats_handle[SERVICE_HANDLER_MAXIMUM_COUNT][64];
+const char *service_stats_rx[SERVICE_HANDLER_MAXIMUM_COUNT][64];
+const char *service_stats_tx[SERVICE_HANDLER_MAXIMUM_COUNT][64];
 
 int ais_service_exiting[SERVICE_HANDLER_MAXIMUM_COUNT];
-
-static hdb_handle_t object_internal_configuration_handle;
-
-static hdb_handle_t object_stats_services_handle;
 
 static void (*service_unlink_all_complete) (void) = NULL;
 
 static unsigned int default_services_requested (struct corosync_api_v1 *corosync_api)
 {
-	hdb_handle_t object_service_handle;
-	hdb_handle_t object_find_handle;
-	char *value;
+	char *value = NULL;
+	int res;
 
 	/*
 	 * Don't link default services if they have been disabled
 	 */
-	corosync_api->object_find_create (
-		OBJECT_PARENT_HANDLE,
-		"aisexec",
-		strlen ("aisexec"),
-		&object_find_handle);
-
-	if (corosync_api->object_find_next (
-		object_find_handle,
-		&object_service_handle) == 0) {
-
-		if ( ! corosync_api->object_key_get (object_service_handle,
-			"defaultservices",
-			strlen ("defaultservices"),
-			(void *)&value,
-			NULL)) {
-
-			if (value && strcmp (value, "no") == 0) {
-				return 0;
-			}
-		}
+	if (icmap_get_string("aisexec.defaultservices", &value) == CS_OK &&
+			value != NULL && strcmp(value, "no") == 0) {
+		res = 0;
+	} else {
+		res = -1;
 	}
 
-	corosync_api->object_find_destroy (object_find_handle);
-
-	return (-1);
+	free(value);
+	return (res);
 }
 
 unsigned int corosync_service_link_and_init (
@@ -170,14 +151,11 @@ unsigned int corosync_service_link_and_init (
 	hdb_handle_t handle;
 	struct corosync_service_engine *service;
 	int res;
-	hdb_handle_t object_service_handle;
-	hdb_handle_t object_stats_handle;
 	int fn;
-	char object_name[32];
 	char *name_sufix;
-	uint64_t zero_64 = 0;
 	void* _start;
 	void* _stop;
+	char key_name[ICMAP_KEYNAME_MAXLEN];
 
 	/*
 	 * reference the service interface
@@ -221,32 +199,16 @@ unsigned int corosync_service_link_and_init (
 	}
 
 	/*
-	 * Store service in object database
+	 * Store service in cmap db
 	 */
-	corosync_api->object_create (object_internal_configuration_handle,
-		&object_service_handle,
-		"service",
-		strlen ("service"));
+	snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "internal_configuration.service.%u.name", service->id);
+	icmap_set_string(key_name, service_name);
 
-	corosync_api->object_key_create_typed (object_service_handle,
-		"name",
-		service_name,
-		strlen (service_name) + 1, OBJDB_VALUETYPE_STRING);
+	snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "internal_configuration.service.%u.ver", service->id);
+	icmap_set_uint32(key_name, service_ver);
 
-	corosync_api->object_key_create_typed (object_service_handle,
-		"ver",
-		&service_ver,
-		sizeof (service_ver), OBJDB_VALUETYPE_UINT32);
-
-	res = corosync_api->object_key_create_typed (object_service_handle,
-		"handle",
-		&handle,
-		sizeof (handle), OBJDB_VALUETYPE_UINT64);
-
-	corosync_api->object_key_create_typed (object_service_handle,
-		"service_id",
-		&service->id,
-		sizeof (service->id), OBJDB_VALUETYPE_UINT16);
+	snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "internal_configuration.service.%u.handle", service->id);
+	icmap_set_uint64(key_name, handle);
 
 	name_sufix = strrchr (service_name, '_');
 	if (name_sufix)
@@ -254,31 +216,17 @@ unsigned int corosync_service_link_and_init (
 	else
 		name_sufix = (char*)service_name;
 
-	corosync_api->object_create (object_stats_services_handle,
-		&object_stats_handle,
-		name_sufix, strlen (name_sufix));
-
-	corosync_api->object_key_create_typed (object_stats_handle,
-		"service_id",
-		&service->id, sizeof (service->id),
-		OBJDB_VALUETYPE_INT16);
+	snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "runtime.services.%s.service_id", name_sufix);
+	icmap_set_uint16(key_name, service->id);
 
 	for (fn = 0; fn < service->exec_engine_count; fn++) {
+		snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "runtime.services.%s.%d.tx", name_sufix, fn);
+		icmap_set_uint64(key_name, 0);
+		service_stats_tx[service->id][fn] = strdup(key_name);
 
-		snprintf (object_name, 32, "%d", fn);
-		corosync_api->object_create (object_stats_handle,
-			&service_stats_handle[service->id][fn],
-			object_name, strlen (object_name));
-
-		corosync_api->object_key_create_typed (service_stats_handle[service->id][fn],
-			"tx",
-			&zero_64, sizeof (zero_64),
-			OBJDB_VALUETYPE_UINT64);
-
-		corosync_api->object_key_create_typed (service_stats_handle[service->id][fn],
-			"rx",
-			&zero_64, sizeof (zero_64),
-			OBJDB_VALUETYPE_UINT64);
+		snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "runtime.services.%s.%d.rx", name_sufix, fn);
+		icmap_set_uint64(key_name, 0);
+		service_stats_rx[service->id][fn] = strdup(key_name);
 	}
 
 	log_printf (LOGSYS_LEVEL_NOTICE,
@@ -309,10 +257,10 @@ corosync_service_unlink_priority (
 	int *current_service_engine,
 	hdb_handle_t *current_service_handle)
 {
-	unsigned short *service_id;
-	hdb_handle_t object_service_handle;
-	hdb_handle_t object_find_handle;
-	hdb_handle_t *found_service_handle;
+	unsigned short service_id;
+	hdb_handle_t found_service_handle;
+	char key_name[ICMAP_KEYNAME_MAXLEN];
+	int res;
 
 	for(; *current_priority >= lowest_priority; *current_priority = *current_priority - 1) {
 		for(*current_service_engine = 0;
@@ -325,56 +273,33 @@ corosync_service_unlink_priority (
 			}
 
 			/*
-			 * find service object in object database by service id
-			 * and unload it if possible.
+			 * find service handle and unload it if possible.
 			 *
 			 * If the service engine's exec_exit_fn returns -1 indicating
 			 * it was busy, this function returns -1 and can be called again
 			 * at a later time (usually via the schedwrk api).
 			 */
-			corosync_api->object_find_create (
-			    object_internal_configuration_handle,
-			    "service", strlen ("service"), &object_find_handle);
+			snprintf(key_name, ICMAP_KEYNAME_MAXLEN,
+					"internal_configuration.service.%u.handle",
+					ais_service[*current_service_engine]->id);
+			if (icmap_get_uint64(key_name, &found_service_handle) == CS_OK) {
+				service_id = ais_service[*current_service_engine]->id;
 
-			while (corosync_api->object_find_next (
-				  object_find_handle, &object_service_handle) == 0) {
-
-				int res = corosync_api->object_key_get (
-					object_service_handle,
-					"service_id", strlen ("service_id"),
-					(void *)&service_id, NULL);
-
-				if (res == 0 && *service_id ==
-					 ais_service[*current_service_engine]->id) {
-
-					if (ais_service[*service_id]->exec_exit_fn) {
-						res = ais_service[*service_id]->exec_exit_fn ();
-						if (res == -1) {
-							corosync_api->object_find_destroy (object_find_handle);
-							return (-1);
-						}
+				if (ais_service[service_id]->exec_exit_fn) {
+					res = ais_service[service_id]->exec_exit_fn ();
+					if (res == -1) {
+						return (-1);
 					}
-
-					res = corosync_api->object_key_get (
-						object_service_handle,
-						"handle", strlen ("handle"),
-						(void *)&found_service_handle,
-						NULL);
-
-					*current_service_handle = *found_service_handle;
-
-					ais_service_exiting[*current_service_engine] = 1;
-
-					corosync_api->object_find_destroy (object_find_handle);
-
-					/*
-					 * Call should call this function again
-					 */
-					return (1);
 				}
-			}
 
-			corosync_api->object_find_destroy (object_find_handle);
+				*current_service_handle = found_service_handle;
+				ais_service_exiting[*current_service_engine] = 1;
+
+				/*
+				 * Call should call this function again
+				 */
+				return (1);
+			}
 		}
 	}
 	/*
@@ -388,14 +313,16 @@ static unsigned int service_unlink_and_exit (
 	const char *service_name,
 	unsigned int service_ver)
 {
-	hdb_handle_t object_service_handle;
-	char *found_service_name;
-	unsigned short *service_id;
-	unsigned int *found_service_ver;
-	hdb_handle_t object_find_handle;
-	hdb_handle_t *found_service_handle;
+	unsigned short service_id;
+	hdb_handle_t found_service_handle;
 	char *name_sufix;
 	int res;
+	const char *iter_key_name;
+	icmap_iter_t iter;
+	char key_name[ICMAP_KEYNAME_MAXLEN];
+	unsigned int found_service_ver;
+	char *found_service_name;
+	int service_found;
 
 	name_sufix = strrchr (service_name, '_');
 	if (name_sufix)
@@ -403,93 +330,65 @@ static unsigned int service_unlink_and_exit (
 	else
 		name_sufix = (char*)service_name;
 
-	corosync_api->object_find_create (
-		object_stats_services_handle,
-		name_sufix, strlen (name_sufix),
-		&object_find_handle);
 
-	if (corosync_api->object_find_next (
-			object_find_handle,
-			&object_service_handle) == 0) {
-
-		corosync_api->object_destroy (object_service_handle);
-
-	}
-	corosync_api->object_find_destroy (object_find_handle);
-
-
-	corosync_api->object_find_create (
-		object_internal_configuration_handle,
-		"service",
-		strlen ("service"),
-		&object_find_handle);
-
-	while (corosync_api->object_find_next (
-		object_find_handle,
-		&object_service_handle) == 0) {
-
-		corosync_api->object_key_get (object_service_handle,
-			"name",
-			strlen ("name"),
-			(void *)&found_service_name,
-			NULL);
-
-		if (strcmp (service_name, found_service_name) != 0) {
-		    continue;
-		}
-
-		corosync_api->object_key_get (object_service_handle,
-			"ver",
-			strlen ("ver"),
-			(void *)&found_service_ver,
-			NULL);
-
-		/*
-		 * If service found and linked exit it
-		 */
-		if (service_ver != *found_service_ver) {
+	service_found = 0;
+	found_service_name = NULL;
+	iter = icmap_iter_init("internal_configuration.service.");
+	while ((iter_key_name = icmap_iter_next(iter, NULL, NULL)) != NULL) {
+		res = sscanf(iter_key_name, "internal_configuration.service.%hu.%s", &service_id, key_name);
+		if (res != 2) {
 			continue;
 		}
 
-		corosync_api->object_key_get (
-			object_service_handle,
-			"service_id", strlen ("service_id"),
-			(void *)&service_id, NULL);
+		snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "internal_configuration.service.%hu.name", service_id);
+		free(found_service_name);
+		if (icmap_get_string(key_name, &found_service_name) != CS_OK) {
+			continue;
+		}
 
-		if(service_id != NULL
-			&& *service_id < SERVICE_HANDLER_MAXIMUM_COUNT
-			&& ais_service[*service_id] != NULL) {
+		snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "internal_configuration.service.%u.ver", service_id);
+		if (icmap_get_uint32(key_name, &found_service_ver) != CS_OK) {
+			continue;
+		}
 
-			corosync_api->object_find_destroy (object_find_handle);
-
-			if (ais_service[*service_id]->exec_exit_fn) {
-				res = ais_service[*service_id]->exec_exit_fn ();
-				if (res == -1) {
-					return (-1);
-				}
-			}
-
-			log_printf(LOGSYS_LEVEL_NOTICE,
-				"Service engine unloaded: %s\n",
-				   ais_service[*service_id]->name);
-
-			ais_service[*service_id] = NULL;
-
-			res = corosync_api->object_key_get (
-				object_service_handle,
-				"handle", strlen ("handle"),
-				(void *)&found_service_handle,
-				NULL);
-
-			cs_ipcs_service_destroy (*service_id);
-
-			lcr_ifact_release (*found_service_handle);
-
-			corosync_api->object_destroy (object_service_handle);
+		if (service_ver == found_service_ver && strcmp(found_service_name, service_name) == 0) {
+			free(found_service_name);
+			service_found = 1;
+			break;
 		}
 	}
+	icmap_iter_finalize(iter);
 
-	corosync_api->object_find_destroy (object_find_handle);
+	if (service_found && service_id < SERVICE_HANDLER_MAXIMUM_COUNT
+		&& ais_service[service_id] != NULL) {
+
+		if (ais_service[service_id]->exec_exit_fn) {
+			res = ais_service[service_id]->exec_exit_fn ();
+			if (res == -1) {
+				return (-1);
+			}
+		}
+
+		log_printf(LOGSYS_LEVEL_NOTICE,
+			"Service engine unloaded: %s\n",
+			   ais_service[service_id]->name);
+
+		ais_service[service_id] = NULL;
+
+		cs_ipcs_service_destroy (service_id);
+
+		snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "internal_configuration.service.%u.handle", service_id);
+		if (icmap_get_uint64(key_name, &found_service_handle) == CS_OK) {
+			lcr_ifact_release (found_service_handle);
+		}
+
+		snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "internal_configuration.service.%u.handle", service_id);
+		icmap_delete(key_name);
+		snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "internal_configuration.service.%u.name", service_id);
+		icmap_delete(key_name);
+		snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "internal_configuration.service.%u.ver", service_id);
+		icmap_delete(key_name);
+	}
 
 	return (0);
 }
@@ -501,68 +400,45 @@ unsigned int corosync_service_defaults_link_and_init (struct corosync_api_v1 *co
 {
 	unsigned int i;
 
-	hdb_handle_t object_service_handle;
+	icmap_iter_t iter;
 	char *found_service_name;
-	char *found_service_ver;
-	unsigned int found_service_ver_atoi;
-	hdb_handle_t object_find_handle;
-	hdb_handle_t object_find2_handle;
-	hdb_handle_t object_runtime_handle;
+	int res;
+	unsigned int found_service_ver;
+	const char *iter_key_name;
+	unsigned int service_pos;
+	char key_name[ICMAP_KEYNAME_MAXLEN];
 
-	corosync_api->object_find_create (
-		OBJECT_PARENT_HANDLE,
-		"runtime",
-		strlen ("runtime"),
-		&object_find2_handle);
+	icmap_set_ro_access("internal_configuration.", 1, 1);
+	icmap_set_ro_access("runtime.services.", 1, 1);
 
-	if (corosync_api->object_find_next (
-			object_find2_handle,
-			&object_runtime_handle) == 0) {
+	found_service_name = NULL;
+	iter = icmap_iter_init("service.");
+	while ((iter_key_name = icmap_iter_next(iter, NULL, NULL)) != NULL) {
+		res = sscanf(iter_key_name, "service.%u.%s", &service_pos, key_name);
+		if (res != 2) {
+			continue;
+		}
+		if (strcmp(key_name, "name") != 0) {
+			continue;
+		}
 
-		corosync_api->object_create (object_runtime_handle,
-			&object_stats_services_handle,
-			"services", strlen ("services"));
-	}
-	corosync_api->object_find_destroy (object_find2_handle);
+		snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "service.%u.name", service_pos);
+		free(found_service_name);
+		if (icmap_get_string(key_name, &found_service_name) != CS_OK) {
+			continue;
+		}
 
-	corosync_api->object_create (OBJECT_PARENT_HANDLE,
-		&object_internal_configuration_handle,
-		"internal_configuration",
-		strlen ("internal_configuration"));
-
-	corosync_api->object_find_create (
-		OBJECT_PARENT_HANDLE,
-		"service",
-		strlen ("service"),
-		&object_find_handle);
-
-	while (corosync_api->object_find_next (
-		object_find_handle,
-		&object_service_handle) == 0) {
-
-		corosync_api->object_key_get (object_service_handle,
-			"name",
-			strlen ("name"),
-			(void *)&found_service_name,
-			NULL);
-
-		found_service_ver = NULL;
-
-		corosync_api->object_key_get (object_service_handle,
-			"ver",
-			strlen ("ver"),
-			(void *)&found_service_ver,
-			NULL);
-
-		found_service_ver_atoi = (found_service_ver ? atoi (found_service_ver) : 0);
+		snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "service.%u.ver", service_pos);
+		if (icmap_get_uint32(key_name, &found_service_ver) != CS_OK) {
+			continue;
+		}
 
 		corosync_service_link_and_init (
 			corosync_api,
 			found_service_name,
-			found_service_ver_atoi);
+			found_service_ver);
 	}
-
-	corosync_api->object_find_destroy (object_find_handle);
+	icmap_iter_finalize(iter);
 
  	if (default_services_requested (corosync_api) == 0) {
  		return (0);

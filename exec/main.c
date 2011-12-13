@@ -107,9 +107,9 @@
 #include <corosync/list.h>
 #include <corosync/lcr/lcr_ifact.h>
 #include <corosync/totem/totempg.h>
-#include <corosync/engine/objdb.h>
 #include <corosync/engine/config.h>
 #include <corosync/engine/logsys.h>
+#include <corosync/engine/icmap.h>
 
 #include "quorum.h"
 #include "totemsrp.h"
@@ -150,8 +150,6 @@ static int num_config_modules;
 
 static struct config_iface_ver0 *config_modules[MAX_DYNAMIC_SERVICES];
 
-static struct objdb_iface_ver0 *objdb = NULL;
-
 static struct corosync_api_v1 *api = NULL;
 
 static enum cs_sync_mode minimum_sync_mode;
@@ -161,8 +159,6 @@ static int sync_in_process = 1;
 static qb_loop_t *corosync_poll_handle;
 
 struct sched_param global_sched_param;
-
-static hdb_handle_t object_memb_handle;
 
 static corosync_timer_handle_t corosync_stats_timer_handle;
 
@@ -344,75 +340,30 @@ static struct memb_ring_id corosync_ring_id;
 
 static void member_object_joined (unsigned int nodeid)
 {
-	hdb_handle_t object_find_handle;
-	hdb_handle_t object_node_handle;
-	char * nodeint_str;
-	char nodeid_str[64];
-	unsigned int key_incr_dummy;
+	char member_ip[ICMAP_KEYNAME_MAXLEN];
+	char member_join_count[ICMAP_KEYNAME_MAXLEN];
+	char member_status[ICMAP_KEYNAME_MAXLEN];
 
-	snprintf (nodeid_str, 64, "%d", nodeid);
+	snprintf(member_ip, ICMAP_KEYNAME_MAXLEN, "runtime.totem.pg.mrp.srp.members.%u.ip", nodeid);
+	snprintf(member_join_count, ICMAP_KEYNAME_MAXLEN, "runtime.totem.pg.mrp.srp.members.%u.join_count", nodeid);
+	snprintf(member_status, ICMAP_KEYNAME_MAXLEN, "runtime.totem.pg.mrp.srp.members.%u.status", nodeid);
 
-	objdb->object_find_create (
-		object_memb_handle,
-		nodeid_str,
-		strlen (nodeid_str),
-		&object_find_handle);
-
-	if (objdb->object_find_next (object_find_handle,
-			&object_node_handle) == 0) {
-
-		objdb->object_key_increment (object_node_handle,
-			"join_count", strlen("join_count"),
-			&key_incr_dummy);
-
-		objdb->object_key_replace (object_node_handle,
-			"status", strlen("status"),
-			"joined", strlen("joined"));
+	if (icmap_get(member_ip, NULL, NULL, NULL) == CS_OK) {
+		icmap_inc(member_join_count);
+		icmap_set_string(member_status, "joined");
 	} else {
-		nodeint_str = (char*)api->totem_ifaces_print (nodeid);
-		objdb->object_create (object_memb_handle,
-			&object_node_handle,
-			nodeid_str, strlen (nodeid_str));
-
-		objdb->object_key_create_typed (object_node_handle,
-			"ip",
-			nodeint_str, strlen(nodeint_str),
-			OBJDB_VALUETYPE_STRING);
-		key_incr_dummy = 1;
-		objdb->object_key_create_typed (object_node_handle,
-			"join_count",
-			&key_incr_dummy, sizeof (key_incr_dummy),
-			OBJDB_VALUETYPE_UINT32);
-		objdb->object_key_create_typed (object_node_handle,
-			"status",
-			"joined", strlen("joined"),
-			OBJDB_VALUETYPE_STRING);
+		icmap_set_string(member_ip, (char*)api->totem_ifaces_print (nodeid));
+		icmap_set_uint32(member_join_count, 1);
+		icmap_set_string(member_status, "joined");
 	}
-	objdb->object_find_destroy (object_find_handle);
 }
 
 static void member_object_left (unsigned int nodeid)
 {
-	hdb_handle_t object_find_handle;
-	hdb_handle_t object_node_handle;
-	char nodeid_str[64];
+	char member_status[ICMAP_KEYNAME_MAXLEN];
 
-	snprintf (nodeid_str, 64, "%u", nodeid);
-
-	objdb->object_find_create (
-		object_memb_handle,
-		nodeid_str,
-		strlen (nodeid_str),
-		&object_find_handle);
-
-	if (objdb->object_find_next (object_find_handle,
-			&object_node_handle) == 0) {
-
-		objdb->object_key_replace (object_node_handle,
-			"status", strlen("status"),
-			"left", strlen("left"));
-	}
-	objdb->object_find_destroy (object_find_handle);
+	snprintf(member_status, ICMAP_KEYNAME_MAXLEN, "runtime.totem.pg.mrp.srp.members.%u.status", nodeid);
+	icmap_set_string(member_status, "left");
 }
 
 static void confchg_fn (
@@ -541,102 +492,42 @@ static void corosync_mlockall (void)
 static void corosync_totem_stats_updater (void *data)
 {
 	totempg_stats_t * stats;
-	uint32_t mtt_rx_token;
 	uint32_t total_mtt_rx_token;
-	uint32_t avg_backlog_calc;
 	uint32_t total_backlog_calc;
-	uint32_t avg_token_holdtime;
 	uint32_t total_token_holdtime;
 	int t, prev;
 	int32_t token_count;
-	uint32_t firewall_enabled_or_nic_failure;
 
 	stats = api->totem_get_stats();
 
-	objdb->object_key_replace (stats->hdr.handle,
-		"msg_reserved", strlen("msg_reserved"),
-		&stats->msg_reserved, sizeof (stats->msg_reserved));
-	objdb->object_key_replace (stats->hdr.handle,
-		"msg_queue_avail", strlen("msg_queue_avail"),
-		&stats->msg_queue_avail, sizeof (stats->msg_queue_avail));
-
-	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
-		"orf_token_tx", strlen("orf_token_tx"),
-		&stats->mrp->srp->orf_token_tx, sizeof (stats->mrp->srp->orf_token_tx));
-	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
-		"orf_token_rx", strlen("orf_token_rx"),
-		&stats->mrp->srp->orf_token_rx, sizeof (stats->mrp->srp->orf_token_rx));
-	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
-		"memb_merge_detect_tx", strlen("memb_merge_detect_tx"),
-		&stats->mrp->srp->memb_merge_detect_tx, sizeof (stats->mrp->srp->memb_merge_detect_tx));
-	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
-		"memb_merge_detect_rx", strlen("memb_merge_detect_rx"),
-		&stats->mrp->srp->memb_merge_detect_rx, sizeof (stats->mrp->srp->memb_merge_detect_rx));
-	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
-		"memb_join_tx", strlen("memb_join_tx"),
-		&stats->mrp->srp->memb_join_tx, sizeof (stats->mrp->srp->memb_join_tx));
-	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
-		"memb_join_rx", strlen("memb_join_rx"),
-		&stats->mrp->srp->memb_join_rx, sizeof (stats->mrp->srp->memb_join_rx));
-	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
-		"mcast_tx", strlen("mcast_tx"),
-		&stats->mrp->srp->mcast_tx,	sizeof (stats->mrp->srp->mcast_tx));
-	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
-		"mcast_retx", strlen("mcast_retx"),
-		&stats->mrp->srp->mcast_retx, sizeof (stats->mrp->srp->mcast_retx));
-	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
-		"mcast_rx", strlen("mcast_rx"),
-		&stats->mrp->srp->mcast_rx, sizeof (stats->mrp->srp->mcast_rx));
-	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
-		"memb_commit_token_tx", strlen("memb_commit_token_tx"),
-		&stats->mrp->srp->memb_commit_token_tx, sizeof (stats->mrp->srp->memb_commit_token_tx));
-	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
-		"memb_commit_token_rx", strlen("memb_commit_token_rx"),
-		&stats->mrp->srp->memb_commit_token_rx, sizeof (stats->mrp->srp->memb_commit_token_rx));
-	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
-		"token_hold_cancel_tx", strlen("token_hold_cancel_tx"),
-		&stats->mrp->srp->token_hold_cancel_tx, sizeof (stats->mrp->srp->token_hold_cancel_tx));
-	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
-		"token_hold_cancel_rx", strlen("token_hold_cancel_rx"),
-		&stats->mrp->srp->token_hold_cancel_rx, sizeof (stats->mrp->srp->token_hold_cancel_rx));
-	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
-		"operational_entered", strlen("operational_entered"),
-		&stats->mrp->srp->operational_entered, sizeof (stats->mrp->srp->operational_entered));
-	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
-		"operational_token_lost", strlen("operational_token_lost"),
-		&stats->mrp->srp->operational_token_lost, sizeof (stats->mrp->srp->operational_token_lost));
-	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
-		"gather_entered", strlen("gather_entered"),
-		&stats->mrp->srp->gather_entered, sizeof (stats->mrp->srp->gather_entered));
-	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
-		"gather_token_lost", strlen("gather_token_lost"),
-		&stats->mrp->srp->gather_token_lost, sizeof (stats->mrp->srp->gather_token_lost));
-	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
-		"commit_entered", strlen("commit_entered"),
-		&stats->mrp->srp->commit_entered, sizeof (stats->mrp->srp->commit_entered));
-	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
-		"commit_token_lost", strlen("commit_token_lost"),
-		&stats->mrp->srp->commit_token_lost, sizeof (stats->mrp->srp->commit_token_lost));
-	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
-		"recovery_entered", strlen("recovery_entered"),
-		&stats->mrp->srp->recovery_entered, sizeof (stats->mrp->srp->recovery_entered));
-	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
-		"recovery_token_lost", strlen("recovery_token_lost"),
-		&stats->mrp->srp->recovery_token_lost, sizeof (stats->mrp->srp->recovery_token_lost));
-	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
-		"consensus_timeouts", strlen("consensus_timeouts"),
-		&stats->mrp->srp->consensus_timeouts, sizeof (stats->mrp->srp->consensus_timeouts));
-	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
-		"rx_msg_dropped", strlen("rx_msg_dropped"),
-		&stats->mrp->srp->rx_msg_dropped, sizeof (stats->mrp->srp->rx_msg_dropped));
-	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
-		"continuous_gather", strlen("continuous_gather"),
-		&stats->mrp->srp->continuous_gather, sizeof (stats->mrp->srp->continuous_gather));
-
-	firewall_enabled_or_nic_failure = (stats->mrp->srp->continuous_gather > MAX_NO_CONT_GATHER ? 1 : 0);
-	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
-		"firewall_enabled_or_nic_failure", strlen("firewall_enabled_or_nic_failure"),
-		&firewall_enabled_or_nic_failure, sizeof (firewall_enabled_or_nic_failure));
+	icmap_set_uint32("runtime.totem.pg.msg_reserved", stats->msg_reserved);
+	icmap_set_uint32("runtime.totem.pg.msg_queue_avail", stats->msg_queue_avail);
+	icmap_set_uint64("runtime.totem.pg.mrp.srp.orf_token_tx", stats->mrp->srp->orf_token_tx);
+	icmap_set_uint64("runtime.totem.pg.mrp.srp.orf_token_rx", stats->mrp->srp->orf_token_rx);
+	icmap_set_uint64("runtime.totem.pg.mrp.srp.memb_merge_detect_tx", stats->mrp->srp->memb_merge_detect_tx);
+	icmap_set_uint64("runtime.totem.pg.mrp.srp.memb_merge_detect_rx", stats->mrp->srp->memb_merge_detect_rx);
+	icmap_set_uint64("runtime.totem.pg.mrp.srp.memb_join_tx", stats->mrp->srp->memb_join_tx);
+	icmap_set_uint64("runtime.totem.pg.mrp.srp.memb_join_rx", stats->mrp->srp->memb_join_rx);
+	icmap_set_uint64("runtime.totem.pg.mrp.srp.mcast_tx", stats->mrp->srp->mcast_tx);
+	icmap_set_uint64("runtime.totem.pg.mrp.srp.mcast_retx", stats->mrp->srp->mcast_retx);
+	icmap_set_uint64("runtime.totem.pg.mrp.srp.mcast_rx", stats->mrp->srp->mcast_rx);
+	icmap_set_uint64("runtime.totem.pg.mrp.srp.memb_commit_token_tx", stats->mrp->srp->memb_commit_token_tx);
+	icmap_set_uint64("runtime.totem.pg.mrp.srp.memb_commit_token_rx", stats->mrp->srp->memb_commit_token_rx);
+	icmap_set_uint64("runtime.totem.pg.mrp.srp.token_hold_cancel_tx", stats->mrp->srp->token_hold_cancel_tx);
+	icmap_set_uint64("runtime.totem.pg.mrp.srp.token_hold_cancel_rx", stats->mrp->srp->token_hold_cancel_rx);
+	icmap_set_uint64("runtime.totem.pg.mrp.srp.operational_entered", stats->mrp->srp->operational_entered);
+	icmap_set_uint64("runtime.totem.pg.mrp.srp.operational_token_lost", stats->mrp->srp->operational_token_lost);
+	icmap_set_uint64("runtime.totem.pg.mrp.srp.gather_entered", stats->mrp->srp->gather_entered);
+	icmap_set_uint64("runtime.totem.pg.mrp.srp.gather_token_lost", stats->mrp->srp->gather_token_lost);
+	icmap_set_uint64("runtime.totem.pg.mrp.srp.commit_entered", stats->mrp->srp->commit_entered);
+	icmap_set_uint64("runtime.totem.pg.mrp.srp.commit_token_lost", stats->mrp->srp->commit_token_lost);
+	icmap_set_uint64("runtime.totem.pg.mrp.srp.recovery_entered", stats->mrp->srp->recovery_entered);
+	icmap_set_uint64("runtime.totem.pg.mrp.srp.recovery_token_lost", stats->mrp->srp->recovery_token_lost);
+	icmap_set_uint64("runtime.totem.pg.mrp.srp.consensus_timeouts", stats->mrp->srp->consensus_timeouts);
+	icmap_set_uint64("runtime.totem.pg.mrp.srp.rx_msg_dropped", stats->mrp->srp->rx_msg_dropped);
+	icmap_set_uint32("runtime.totem.pg.mrp.srp.continuous_gather", stats->mrp->srp->continuous_gather);
+	icmap_set_uint8("runtime.totem.pg.mrp.srp.firewall_enabled_or_nic_failure",
+		stats->mrp->srp->continuous_gather > MAX_NO_CONT_GATHER ? 1 : 0);
 
 	total_mtt_rx_token = 0;
 	total_token_holdtime = 0;
@@ -661,18 +552,9 @@ static void corosync_totem_stats_updater (void *data)
 		t = prev;
 	}
 	if (token_count) {
-		mtt_rx_token = (total_mtt_rx_token / token_count);
-		avg_backlog_calc = (total_backlog_calc / token_count);
-		avg_token_holdtime = (total_token_holdtime / token_count);
-		objdb->object_key_replace (stats->mrp->srp->hdr.handle,
-			"mtt_rx_token", strlen("mtt_rx_token"),
-			&mtt_rx_token, sizeof (mtt_rx_token));
-		objdb->object_key_replace (stats->mrp->srp->hdr.handle,
-			"avg_token_workload", strlen("avg_token_workload"),
-			&avg_token_holdtime, sizeof (avg_token_holdtime));
-		objdb->object_key_replace (stats->mrp->srp->hdr.handle,
-			"avg_backlog_calc", strlen("avg_backlog_calc"),
-			&avg_backlog_calc, sizeof (avg_backlog_calc));
+		icmap_set_uint32("runtime.totem.pg.mrp.srp.mtt_rx_token", (total_mtt_rx_token / token_count));
+		icmap_set_uint32("runtime.totem.pg.mrp.srp.avg_token_workload", (total_token_holdtime / token_count));
+		icmap_set_uint32("runtime.totem.pg.mrp.srp.avg_backlog_calc", (total_backlog_calc / token_count));
 	}
 
 	cs_ipcs_stats_update();
@@ -682,262 +564,82 @@ static void corosync_totem_stats_updater (void *data)
 		&corosync_stats_timer_handle);
 }
 
-static void totem_dynamic_name_to_ip (char *dest,
-	size_t dest_size,
-	const void *src,
-	size_t src_len)
+static void totem_dynamic_notify(
+	int32_t event,
+	const char *key_name,
+	struct icmap_notify_value new_val,
+	struct icmap_notify_value old_val,
+	void *user_data)
 {
-	char *p;
-	size_t len;
+	int res;
+	int ring_no;
+	int member_no;
+	struct totem_ip_address member;
+	int add_new_member = 0;
+	int remove_old_member = 0;
 
-	len = (src_len + 1 > dest_size) ? dest_size-1 : src_len;
-	memset(dest, 0, dest_size);
-	memcpy(dest, src, len);
-	for (p = dest; p != dest + len; p++) {
-		if (*p == '-') {
-			*p = '.';
+	res = sscanf(key_name, "totem.interface.%u.member.%u", &ring_no, &member_no);
+	if (res != 2)
+		return ;
+
+	if (event == ICMAP_TRACK_ADD && new_val.type == ICMAP_VALUETYPE_STRING) {
+		add_new_member = 1;
+	}
+
+	if (event == ICMAP_TRACK_DELETE && old_val.type == ICMAP_VALUETYPE_STRING) {
+		remove_old_member = 1;
+	}
+
+	if (event == ICMAP_TRACK_MODIFY && new_val.type == ICMAP_VALUETYPE_STRING &&
+			old_val.type == ICMAP_VALUETYPE_STRING) {
+		add_new_member = 1;
+		remove_old_member = 1;
+	}
+
+	if (remove_old_member) {
+		log_printf(LOGSYS_LEVEL_DEBUG,
+			"removing dynamic member %s for ring %u\n", (char *)old_val.data, ring_no);
+		if (totemip_parse(&member, (char *)old_val.data, 0) == 0) {
+			totempg_member_remove (&member, ring_no);
 		}
 	}
-}
 
-static void totem_dynamic_create_notify_fn (
-	hdb_handle_t parent_object_handle,
-	hdb_handle_t object_handle,
-	const void *name_pt, size_t name_len,
-	void *priv_data_pt)
-{
-	struct totem_ip_address member;
-	int ring_no; 
-	char object_name[128];
-
-	totem_dynamic_name_to_ip (object_name,
-		sizeof object_name, name_pt, name_len);
-	log_printf (LOGSYS_LEVEL_DEBUG,
-		"adding dynamic member: %s\n", object_name);
-
-	/*
-	 * add new member
-	 */
-	if (totemip_parse (&member, object_name, 0) == 0) {
-		ring_no = 0;
-		totempg_member_add (&member, ring_no);
-	}
-}
-
-static void totem_dynamic_destroy_notify_fn(
-	hdb_handle_t parent_object_handle,
-	const void *name_pt, size_t name_len,
-	void *priv_data_pt)
-{
-	struct totem_ip_address member;
-	int ring_no; 
-	char object_name[128];
-
-	totem_dynamic_name_to_ip (object_name, sizeof object_name,
-		name_pt, name_len);
-	log_printf(LOGSYS_LEVEL_DEBUG,
-		"removing dynamic member: %s\n", object_name);
-
-	/*
-	 * remove member
-	 */
-	if (totemip_parse(&member, object_name, 0) == 0) {
-		ring_no = 0;
-		totempg_member_remove (&member, ring_no);
+	if (add_new_member) {
+		log_printf(LOGSYS_LEVEL_DEBUG,
+			"adding dynamic member %s for ring %u\n", (char *)new_val.data, ring_no);
+		if (totemip_parse(&member, (char *)new_val.data, 0) == 0) {
+			totempg_member_add (&member, ring_no);
+		}
 	}
 }
 
 static void corosync_totem_dynamic_init (void)
 {
-	hdb_handle_t object_find_handle;
-	hdb_handle_t object_totem_handle;
-	hdb_handle_t object_interface_handle;
-	hdb_handle_t object_dynamic_handle;
+	icmap_track_t icmap_track;
 
-	if (objdb->object_find_create (OBJECT_PARENT_HANDLE,
-		"totem", strlen("totem"), &object_find_handle) != 0) {
-		log_printf(LOGSYS_LEVEL_ERROR,
-			"corosync_totem_dynamic_init:: FAILED to find totem!\n");
-		return;
-	}
-	if (objdb->object_find_next (object_find_handle,
-		&object_totem_handle) != 0) {
-		return;
-	}
-	api->object_find_destroy (object_find_handle);
-
-	if (objdb->object_find_create(object_totem_handle,
-		"interface", strlen("interface"), &object_find_handle) != 0) {
-
-		log_printf(LOGSYS_LEVEL_ERROR,
-			"corosync_totem_dynamic_init:: FAILED to find totem.interface!\n");
-		return;
-	}
-	if (objdb->object_find_next (object_find_handle,
-		&object_interface_handle) != 0) {
-
-		return;
-	}
-	api->object_find_destroy (object_find_handle);
-
-	/*
-	 * create new child object: dynamic
-	 */
-	if (objdb->object_create (object_interface_handle,
-		&object_dynamic_handle,
-		"dynamic", strlen("dynamic")) != 0) {
-
-		log_printf(LOGSYS_LEVEL_ERROR,
-			"unable to create object: \"totem.interface.dynamic\"\n");
-		return;
-	}
-
-	objdb->object_track_start (object_dynamic_handle,
-		OBJECT_TRACK_DEPTH_RECURSIVE,
+	icmap_track_add("totem.interface.",
+		ICMAP_TRACK_ADD | ICMAP_TRACK_DELETE | ICMAP_TRACK_MODIFY | ICMAP_TRACK_PREFIX,
+		totem_dynamic_notify,
 		NULL,
-		totem_dynamic_create_notify_fn,
-		totem_dynamic_destroy_notify_fn,
-		NULL, NULL);
+		&icmap_track);
 }
 
 static void corosync_totem_stats_init (void)
 {
 	totempg_stats_t * stats;
-	hdb_handle_t object_find_handle;
-	hdb_handle_t object_runtime_handle;
-	hdb_handle_t object_totem_handle;
-	uint32_t zero_32 = 0;
-	uint64_t zero_64 = 0;
 
 	stats = api->totem_get_stats();
 
-	objdb->object_find_create (
-		OBJECT_PARENT_HANDLE,
-		"runtime",
-		strlen ("runtime"),
-		&object_find_handle);
+	icmap_set_uint32("runtime.totem.pg.mrp.srp.mtt_rx_token", 0);
+	icmap_set_uint32("runtime.totem.pg.mrp.srp.avg_token_workload", 0);
+	icmap_set_uint32("runtime.totem.pg.mrp.srp.avg_backlog_calc", 0);
 
-	if (objdb->object_find_next (object_find_handle,
-			&object_runtime_handle) == 0) {
-
-		objdb->object_create (object_runtime_handle,
-			&object_totem_handle,
-			"totem", strlen ("totem"));
-		objdb->object_create (object_totem_handle,
-			&stats->hdr.handle,
-			"pg", strlen ("pg"));
-		objdb->object_create (stats->hdr.handle,
-			&stats->mrp->hdr.handle,
-			"mrp", strlen ("mrp"));
-		objdb->object_create (stats->mrp->hdr.handle,
-			&stats->mrp->srp->hdr.handle,
-			"srp", strlen ("srp"));
-
-		objdb->object_key_create_typed (stats->hdr.handle,
-			"msg_reserved", &stats->msg_reserved,
-			sizeof (stats->msg_reserved), OBJDB_VALUETYPE_UINT32);
-		objdb->object_key_create_typed (stats->hdr.handle,
-			"msg_queue_avail", &stats->msg_queue_avail,
-			sizeof (stats->msg_queue_avail), OBJDB_VALUETYPE_UINT32);
-
-		/* Members object */
-		objdb->object_create (stats->mrp->srp->hdr.handle,
-			&object_memb_handle,
-			"members", strlen ("members"));
-
-		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
-			"orf_token_tx",	&stats->mrp->srp->orf_token_tx,
-			sizeof (stats->mrp->srp->orf_token_tx),	OBJDB_VALUETYPE_UINT64);
-		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
-			"orf_token_rx", &stats->mrp->srp->orf_token_rx,
-			sizeof (stats->mrp->srp->orf_token_rx), OBJDB_VALUETYPE_UINT64);
-		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
-			"memb_merge_detect_tx", &stats->mrp->srp->memb_merge_detect_tx,
-			sizeof (stats->mrp->srp->memb_merge_detect_tx), OBJDB_VALUETYPE_UINT64);
-		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
-			"memb_merge_detect_rx", &stats->mrp->srp->memb_merge_detect_rx,
-			sizeof (stats->mrp->srp->memb_merge_detect_rx), OBJDB_VALUETYPE_UINT64);
-		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
-			"memb_join_tx", &stats->mrp->srp->memb_join_tx,
-			sizeof (stats->mrp->srp->memb_join_tx), OBJDB_VALUETYPE_UINT64);
-		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
-			"memb_join_rx", &stats->mrp->srp->memb_join_rx,
-			sizeof (stats->mrp->srp->memb_join_rx), OBJDB_VALUETYPE_UINT64);
-		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
-			"mcast_tx", &stats->mrp->srp->mcast_tx,
-			sizeof (stats->mrp->srp->mcast_tx), OBJDB_VALUETYPE_UINT64);
-		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
-			"mcast_retx", &stats->mrp->srp->mcast_retx,
-			sizeof (stats->mrp->srp->mcast_retx), OBJDB_VALUETYPE_UINT64);
-		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
-			"mcast_rx", &stats->mrp->srp->mcast_rx,
-			sizeof (stats->mrp->srp->mcast_rx), OBJDB_VALUETYPE_UINT64);
-		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
-			"memb_commit_token_tx", &stats->mrp->srp->memb_commit_token_tx,
-			sizeof (stats->mrp->srp->memb_commit_token_tx), OBJDB_VALUETYPE_UINT64);
-		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
-			"memb_commit_token_rx", &stats->mrp->srp->memb_commit_token_rx,
-			sizeof (stats->mrp->srp->memb_commit_token_rx), OBJDB_VALUETYPE_UINT64);
-		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
-			"token_hold_cancel_tx", &stats->mrp->srp->token_hold_cancel_tx,
-			sizeof (stats->mrp->srp->token_hold_cancel_tx), OBJDB_VALUETYPE_UINT64);
-		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
-			"token_hold_cancel_rx", &stats->mrp->srp->token_hold_cancel_rx,
-			sizeof (stats->mrp->srp->token_hold_cancel_rx), OBJDB_VALUETYPE_UINT64);
-		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
-			"operational_entered", &stats->mrp->srp->operational_entered,
-			sizeof (stats->mrp->srp->operational_entered), OBJDB_VALUETYPE_UINT64);
-		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
-			"operational_token_lost", &stats->mrp->srp->operational_token_lost,
-			sizeof (stats->mrp->srp->operational_token_lost), OBJDB_VALUETYPE_UINT64);
-		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
-			"gather_entered", &stats->mrp->srp->gather_entered,
-			sizeof (stats->mrp->srp->gather_entered), OBJDB_VALUETYPE_UINT64);
-		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
-			"gather_token_lost", &stats->mrp->srp->gather_token_lost,
-			sizeof (stats->mrp->srp->gather_token_lost), OBJDB_VALUETYPE_UINT64);
-		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
-			"commit_entered", &stats->mrp->srp->commit_entered,
-			sizeof (stats->mrp->srp->commit_entered), OBJDB_VALUETYPE_UINT64);
-		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
-			"commit_token_lost", &stats->mrp->srp->commit_token_lost,
-			sizeof (stats->mrp->srp->commit_token_lost), OBJDB_VALUETYPE_UINT64);
-		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
-			"recovery_entered", &stats->mrp->srp->recovery_entered,
-			sizeof (stats->mrp->srp->recovery_entered), OBJDB_VALUETYPE_UINT64);
-		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
-			"recovery_token_lost", &stats->mrp->srp->recovery_token_lost,
-			sizeof (stats->mrp->srp->recovery_token_lost), OBJDB_VALUETYPE_UINT64);
-		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
-			"consensus_timeouts", &stats->mrp->srp->consensus_timeouts,
-			sizeof (stats->mrp->srp->consensus_timeouts), OBJDB_VALUETYPE_UINT64);
-		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
-			"mtt_rx_token", &zero_32,
-			sizeof (zero_32), OBJDB_VALUETYPE_UINT32);
-		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
-			"avg_token_workload", &zero_32,
-			sizeof (zero_32), OBJDB_VALUETYPE_UINT32);
-		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
-			"avg_backlog_calc", &zero_32,
-			sizeof (zero_32), OBJDB_VALUETYPE_UINT32);
-		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
-			"rx_msg_dropped", &zero_64,
-			sizeof (zero_64), OBJDB_VALUETYPE_UINT64);
-		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
-			"continuous_gather", &zero_32,
-			sizeof (zero_32), OBJDB_VALUETYPE_UINT32);
-		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
-			"firewall_enabled_or_nic_failure", &zero_32,
-			sizeof (zero_32), OBJDB_VALUETYPE_UINT32);
-
-	}
-	objdb->object_find_destroy (object_find_handle);
+	icmap_set_ro_access("runtime.totem", CS_TRUE, CS_TRUE);
 
 	/* start stats timer */
 	api->timer_add_duration (1500 * MILLI_2_NANO_SECONDS, NULL,
 		corosync_totem_stats_updater,
 		&corosync_stats_timer_handle);
-
 }
 
 
@@ -951,7 +653,6 @@ static void deliver_fn (
 	int32_t service;
 	int32_t fn_id;
 	uint32_t id;
-	uint32_t key_incr_dummy;
 
 	header = msg;
 	if (endian_conversion_required) {
@@ -980,9 +681,7 @@ static void deliver_fn (
 		return;
 	}
 
-	objdb->object_key_increment (service_stats_handle[service][fn_id],
-		"rx", strlen("rx"),
-		&key_incr_dummy);
+	icmap_inc(service_stats_rx[service][fn_id]);
 
 	if (endian_conversion_required) {
 		assert(ais_service[service]->exec_engine[fn_id].exec_endian_convert_fn != NULL);
@@ -1008,14 +707,12 @@ int main_mcast (
 	const struct qb_ipc_request_header *req = iovec->iov_base;
 	int32_t service;
 	int32_t fn_id;
-	uint32_t key_incr_dummy;
 
 	service = req->id >> 16;
 	fn_id = req->id & 0xffff;
 
 	if (ais_service[service]) {
-		objdb->object_key_increment (service_stats_handle[service][fn_id],
-			"tx", strlen("tx"), &key_incr_dummy);
+		icmap_inc(service_stats_tx[service][fn_id]);
 	}
 
 	return (totempg_groups_mcast_joined (corosync_group_handle, iovec, iov_len, guarantee));
@@ -1182,55 +879,37 @@ _logsys_log_printf(int level, int subsys,
 }
 
 static void fplay_key_change_notify_fn (
-	object_change_type_t change_type,
-	hdb_handle_t parent_object_handle,
-	hdb_handle_t object_handle,
-	const void *object_name_pt, size_t object_name_len,
-	const void *key_name_pt, size_t key_len,
-	const void *key_value_pt, size_t key_value_len,
-	void *priv_data_pt)
+	int32_t event,
+	const char *key_name,
+	struct icmap_notify_value new_val,
+	struct icmap_notify_value old_val,
+	void *user_data)
 {
-	if (key_len == strlen ("dump_flight_data") &&
-		memcmp ("dump_flight_data", key_name_pt, key_len) == 0) {
+	if (strcmp(key_name, "runtime.blackbox.dump_flight_data") == 0) {
+		fprintf(stderr,"Writetofile\n");
 		qb_log_blackbox_write_to_file (LOCALSTATEDIR "/lib/corosync/fdata");
 	}
-	if (key_len == strlen ("dump_state") &&
-		memcmp ("dump_state", key_name_pt, key_len) == 0) {
+	if (strcmp(key_name, "runtime.blackbox.dump_state") == 0) {
+		fprintf(stderr,"statefump\n");
 		corosync_state_dump ();
 	}
 }
 
 static void corosync_fplay_control_init (void)
 {
-	hdb_handle_t object_find_handle;
-	hdb_handle_t object_runtime_handle;
-	hdb_handle_t object_blackbox_handle;
+	icmap_track_t track;
 
-	objdb->object_find_create (OBJECT_PARENT_HANDLE,
-		"runtime", strlen ("runtime"),
-		&object_find_handle);
+	icmap_set_string("runtime.blackbox.dump_flight_data", "no");
+	icmap_set_string("runtime.blackbox.dump_state", "no");
 
-	if (objdb->object_find_next (object_find_handle,
-			&object_runtime_handle) != 0) {
-		return;
-	}
-	objdb->object_find_destroy (object_find_handle);
-
-	objdb->object_create (object_runtime_handle,
-		&object_blackbox_handle,
-		"blackbox", strlen ("blackbox"));
-
-	objdb->object_key_create_typed (object_blackbox_handle,
-		"dump_flight_data", "no", strlen("no"),
-		OBJDB_VALUETYPE_STRING);
-	objdb->object_key_create_typed (object_blackbox_handle,
-		"dump_state", "no", strlen("no"),
-		OBJDB_VALUETYPE_STRING);
-
-	objdb->object_track_start (object_blackbox_handle,
-		OBJECT_TRACK_DEPTH_RECURSIVE,
-		fplay_key_change_notify_fn,
-		NULL, NULL, NULL, NULL);
+	icmap_track_add("runtime.blackbox.dump_flight_data",
+			ICMAP_TRACK_ADD | ICMAP_TRACK_DELETE | ICMAP_TRACK_MODIFY,
+			fplay_key_change_notify_fn,
+			NULL, &track);
+	icmap_track_add("runtime.blackbox.dump_state",
+			ICMAP_TRACK_ADD | ICMAP_TRACK_DELETE | ICMAP_TRACK_MODIFY,
+			fplay_key_change_notify_fn,
+			NULL, &track);
 }
 
 static void main_service_ready (void)
@@ -1363,10 +1042,8 @@ int main (int argc, char **argv, char **envp)
 {
 	const char *error_string;
 	struct totem_config totem_config;
-	hdb_handle_t objdb_handle;
 	hdb_handle_t config_handle;
 	unsigned int config_version = 0;
-	void *objdb_p;
 	struct config_iface_ver0 *config;
 	void *config_p;
 	const char *config_iface_init;
@@ -1377,7 +1054,6 @@ int main (int argc, char **argv, char **envp)
 	int background, setprio;
 	struct stat stat_out;
 	char corosync_lib_dir[PATH_MAX];
-	hdb_handle_t object_runtime_handle;
 	enum e_ais_done flock_err;
 
 	/* default configuration
@@ -1444,28 +1120,14 @@ int main (int argc, char **argv, char **envp)
 	(void)signal (SIGPIPE, SIG_IGN);
 #endif
 
-	/*
-	 * Load the object database interface
-	 */
-	res = lcr_ifact_reference (
-		&objdb_handle,
-		"objdb",
-		0,
-		&objdb_p,
-		0);
-	if (res == -1) {
-		log_printf (LOGSYS_LEVEL_ERROR, "Corosync Executive couldn't open configuration object database component.\n");
+	if (icmap_init() != CS_OK) {
+		log_printf (LOGSYS_LEVEL_ERROR, "Corosync Executive couldn't initialize configuration component.\n");
 		corosync_exit_error (AIS_DONE_OBJDB);
 	}
-
-	objdb = (struct objdb_iface_ver0 *)objdb_p;
-
-	objdb->objdb_init ();
 
 	/*
 	 * Initialize the corosync_api_v1 definition
 	 */
-	apidef_init (objdb);
 	api = apidef_get ();
 
 	num_config_modules = 0;
@@ -1502,7 +1164,7 @@ int main (int argc, char **argv, char **envp)
 			corosync_exit_error (AIS_DONE_MAINCONFIGREAD);
 		}
 
-		res = config->config_readconfig(objdb, &error_string);
+		res = config->config_readconfig(&error_string);
 		if (res == -1) {
 			log_printf (LOGSYS_LEVEL_ERROR, "%s", error_string);
 			corosync_exit_error (AIS_DONE_MAINCONFIGREAD);
@@ -1514,7 +1176,7 @@ int main (int argc, char **argv, char **envp)
 	}
 	free(config_iface);
 
-	res = corosync_main_config_read (objdb, &error_string);
+	res = corosync_main_config_read (&error_string);
 	if (res == -1) {
 		/*
 		 * if we are here, we _must_ flush the logsys queue
@@ -1539,13 +1201,13 @@ int main (int argc, char **argv, char **envp)
 		corosync_exit_error (AIS_DONE_DIR_NOT_PRESENT);
 	}
 
-	res = totem_config_read (objdb, &totem_config, &error_string);
+	res = totem_config_read (&totem_config, &error_string);
 	if (res == -1) {
 		log_printf (LOGSYS_LEVEL_ERROR, "%s", error_string);
 		corosync_exit_error (AIS_DONE_MAINCONFIGREAD);
 	}
 
-	res = totem_config_keyread (objdb, &totem_config, &error_string);
+	res = totem_config_keyread (&totem_config, &error_string);
 	if (res == -1) {
 		log_printf (LOGSYS_LEVEL_ERROR, "%s", error_string);
 		corosync_exit_error (AIS_DONE_MAINCONFIGREAD);
@@ -1567,18 +1229,12 @@ int main (int argc, char **argv, char **envp)
 	totem_config.totem_logging_configuration.log_printf = _logsys_log_printf;
 	logsys_config_apply();
 
-	res = corosync_main_config_compatibility_read (objdb,
-		&minimum_sync_mode,
+	res = corosync_main_config_compatibility_read (&minimum_sync_mode,
 		&error_string);
 	if (res == -1) {
 		log_printf (LOGSYS_LEVEL_ERROR, "%s", error_string);
 		corosync_exit_error (AIS_DONE_MAINCONFIGREAD);
 	}
-
-	/* create the main runtime object */
-	objdb->object_create (OBJECT_PARENT_HANDLE,
-		&object_runtime_handle,
-		"runtime", strlen ("runtime"));
 
 	/*
 	 * Now we are fully initialized.
@@ -1649,9 +1305,8 @@ int main (int argc, char **argv, char **envp)
 	qb_loop_destroy (corosync_poll_handle);
 
 	/*
-	 * free up the objdb
+	 * free up the icmap 
 	 */
-	objdb->objdb_fini ();
 
 	/*
 	 * Remove pid lock file

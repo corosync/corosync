@@ -40,12 +40,10 @@
 #include <corosync/list.h>
 #include <qb/qbloop.h>
 #include <corosync/totem/totempg.h>
-#include <corosync/engine/objdb.h>
 
 #include "totemsrp.h"
 
 extern int totem_config_read (
-	struct objdb_iface_ver0 *objdb,
 	struct totem_config *totem_config,
 	const char **error_string);
 
@@ -54,7 +52,6 @@ extern int totem_config_validate (
 	const char **error_string);
 
 int totem_config_keyread (
-	struct objdb_iface_ver0 *objdb,
 	struct totem_config *totem_config,
 	const char **error_string);
 

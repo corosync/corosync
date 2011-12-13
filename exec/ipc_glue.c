@@ -51,9 +51,8 @@
 #include <corosync/corotypes.h>
 #include <corosync/corodefs.h>
 #include <corosync/totem/totempg.h>
-#include <corosync/engine/objdb.h>
-#include <corosync/engine/config.h>
 #include <corosync/engine/logsys.h>
+#include <corosync/engine/icmap.h>
 
 #include "mainconfig.h"
 #include "sync.h"
@@ -71,7 +70,6 @@ static int32_t ipc_not_enough_fds_left = 0;
 static int32_t ipc_fc_is_quorate; /* boolean */
 static int32_t ipc_fc_totem_queue_level; /* percentage used */
 static int32_t ipc_fc_sync_in_process; /* boolean */
-static qb_handle_t object_connection_handle;
 
 struct cs_ipcs_mapper {
 	int32_t id;
@@ -187,6 +185,9 @@ static const char* cs_ipcs_serv_short_name(int32_t service_id)
 	case WD_SERVICE:
 		name = "wd";
 		break;
+	case CMAP_SERVICE:
+		name = "cmap";
+		break;
 	default:
 		name = NULL;
 		break;
@@ -205,8 +206,9 @@ int32_t cs_ipcs_service_destroy(int32_t service_id)
 
 static int32_t cs_ipcs_connection_accept (qb_ipcs_connection_t *c, uid_t euid, gid_t egid)
 {
-	struct list_head *iter;
 	int32_t service = qb_ipcs_service_id_get(c);
+	uint8_t u8;
+	char key_name[ICMAP_KEYNAME_MAXLEN];
 
 	if (ais_service[service] == NULL ||
 		ais_service_exiting[service] ||
@@ -222,15 +224,14 @@ static int32_t cs_ipcs_connection_accept (qb_ipcs_connection_t *c, uid_t euid, g
 		return 0;
 	}
 
-	for (iter = uidgid_list_head.next; iter != &uidgid_list_head;
-		iter = iter->next) {
+	snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "uidgid.uid.%u", euid);
+	if (icmap_get_uint8(key_name, &u8) == CS_OK && u8 == 1)
+		return 0;
 
-		struct uidgid_item *ugi = qb_list_entry (iter, struct uidgid_item,
-			list);
+	snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "uidgid.gid.%u", egid);
+	if (icmap_get_uint8(key_name, &u8) == CS_OK && u8 == 1)
+		return 0;
 
-		if (euid == ugi->uid || egid == ugi->gid)
-			return 0;
-	}
 	log_printf(LOGSYS_LEVEL_ERROR, "Denied connection attempt from %d:%d", euid, egid);
 
 	return -EACCES;
@@ -280,9 +281,8 @@ static char * pid_to_name (pid_t pid, char *out_name, size_t name_len)
 	return out_name;
 }
 
-
 struct cs_ipcs_conn_context {
-	qb_handle_t stats_handle;
+	char *icmap_path;
 	struct list_head outq_head;
 	int32_t queuing;
 	uint32_t queued;
@@ -295,15 +295,13 @@ struct cs_ipcs_conn_context {
 static void cs_ipcs_connection_created(qb_ipcs_connection_t *c)
 {
 	int32_t service = 0;
-	uint32_t zero_32 = 0;
-	uint64_t zero_64 = 0;
-	unsigned int key_incr_dummy;
-	qb_handle_t object_handle;
 	struct cs_ipcs_conn_context *context;
-	char conn_name[42];
 	char proc_name[32];
 	struct qb_ipcs_connection_stats stats;
 	int32_t size = sizeof(struct cs_ipcs_conn_context);
+	char key_name[ICMAP_KEYNAME_MAXLEN];
+	int set_client_pid = 0;
+	int set_proc_name = 0;
 
 	log_printf(LOG_INFO, "%s() new connection", __func__);
 
@@ -321,95 +319,75 @@ static void cs_ipcs_connection_created(qb_ipcs_connection_t *c)
 
 	ais_service[service]->lib_init_fn(c);
 
-	api->object_key_increment (object_connection_handle,
-		"active", strlen("active"),
-		&key_incr_dummy);
+	icmap_inc("runtime.connections.active");
 
 	qb_ipcs_connection_stats_get(c, &stats, QB_FALSE);
 
 	if (stats.client_pid > 0) {
 		if (pid_to_name (stats.client_pid, proc_name, sizeof(proc_name))) {
-			snprintf (conn_name,
-				sizeof(conn_name),
-				"%s:%d:%p", proc_name,
-				stats.client_pid, c);
+			snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "runtime.connections.%s:%u:%p",
+					proc_name, stats.client_pid, c);
+			set_proc_name = 1;
 		} else {
-			snprintf (conn_name,
-				sizeof(conn_name),
-				"%d:%p",
-				stats.client_pid, c);
+			snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "runtime.connections.%u:%p",
+					stats.client_pid, c);
 		}
+		set_client_pid = 1;
 	} else {
-		snprintf (conn_name,
-			sizeof(conn_name),
-			"%p", c);
+		snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "runtime.connections.%p", c);
 	}
 
-	api->object_create (object_connection_handle,
-		&object_handle,
-		conn_name,
-		strlen (conn_name));
-	context->stats_handle = object_handle;
+	icmap_convert_name_to_valid_name(key_name);
 
-	api->object_key_create_typed (object_handle,
-		"service_id",
-		&zero_32, sizeof (zero_32),
-		OBJDB_VALUETYPE_UINT32);
+	context->icmap_path = strdup(key_name);
+	if (context->icmap_path == NULL) {
+		return ;
+	}
 
-	api->object_key_create_typed (object_handle,
-		"client_pid",
-		&zero_32, sizeof (zero_32),
-		OBJDB_VALUETYPE_INT32);
+	if (set_proc_name) {
+		snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "%s.name", context->icmap_path);
+		icmap_set_string(key_name, proc_name);
+	}
 
-	api->object_key_create_typed (object_handle,
-		"responses",
-		&zero_64, sizeof (zero_64),
-		OBJDB_VALUETYPE_UINT64);
+	snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "%s.client_pid", context->icmap_path);
+	if (set_client_pid) {
+		icmap_set_uint32(key_name, stats.client_pid);
+	} else {
+		icmap_set_uint32(key_name, 0);
+	}
 
-	api->object_key_create_typed (object_handle,
-		"dispatched",
-		&zero_64, sizeof (zero_64),
-		OBJDB_VALUETYPE_UINT64);
+	snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "%s.service_id", context->icmap_path);
+	icmap_set_uint32(key_name, service);
 
-	api->object_key_create_typed (object_handle,
-		"requests",
-		&zero_64, sizeof (zero_64),
-		OBJDB_VALUETYPE_INT64);
+	snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "%s.responses", context->icmap_path);
+	icmap_set_uint64(key_name, 0);
 
-	api->object_key_create_typed (object_handle,
-		"send_retries",
-		&zero_64, sizeof (zero_64),
-		OBJDB_VALUETYPE_UINT64);
+	snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "%s.dispatched", context->icmap_path);
+	icmap_set_uint64(key_name, 0);
 
-	api->object_key_create_typed (object_handle,
-		"recv_retries",
-		&zero_64, sizeof (zero_64),
-		OBJDB_VALUETYPE_UINT64);
+	snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "%s.requests", context->icmap_path);
+	icmap_set_uint64(key_name, 0);
 
-	api->object_key_create_typed (object_handle,
-		"flow_control",
-		&zero_32, sizeof (zero_32),
-		OBJDB_VALUETYPE_UINT32);
+	snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "%s.send_retries", context->icmap_path);
+	icmap_set_uint64(key_name, 0);
 
-	api->object_key_create_typed (object_handle,
-		"flow_control_count",
-		&zero_64, sizeof (zero_64),
-		OBJDB_VALUETYPE_UINT64);
+	snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "%s.recv_retries", context->icmap_path);
+	icmap_set_uint64(key_name, 0);
 
-	api->object_key_create_typed (object_handle,
-		"queue_size",
-		&zero_32, sizeof (zero_32),
-		OBJDB_VALUETYPE_UINT32);
+	snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "%s.flow_control", context->icmap_path);
+	icmap_set_uint32(key_name, 0);
 
-	api->object_key_create_typed (object_handle,
-		"invalid_request",
-		&zero_64, sizeof (zero_64),
-		OBJDB_VALUETYPE_UINT64);
+	snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "%s.flow_control_count", context->icmap_path);
+	icmap_set_uint64(key_name, 0);
 
-	api->object_key_create_typed (object_handle,
-		"overload",
-		&zero_64, sizeof (zero_64),
-		OBJDB_VALUETYPE_UINT64);
+	snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "%s.queue_size", context->icmap_path);
+	icmap_set_uint32(key_name, 0);
+
+	snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "%s.invalid_request", context->icmap_path);
+	icmap_set_uint64(key_name, 0);
+
+	snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "%s.overload", context->icmap_path);
+	icmap_set_uint64(key_name, 0);
 }
 
 void cs_ipc_refcnt_inc(void *conn)
@@ -455,10 +433,12 @@ static void cs_ipcs_connection_destroyed (qb_ipcs_connection_t *c)
 
 static int32_t cs_ipcs_connection_closed (qb_ipcs_connection_t *c)
 {
-	struct cs_ipcs_conn_context *cnx;
-	unsigned int key_incr_dummy;
 	int32_t res = 0;
 	int32_t service = qb_ipcs_service_id_get(c);
+	icmap_iter_t iter;
+	char prefix[ICMAP_KEYNAME_MAXLEN];
+	const char *key_name;
+	struct cs_ipcs_conn_context *cnx;
 
 	log_printf(LOG_INFO, "%s() ", __func__);
 	res = ais_service[service]->lib_exit_fn(c);
@@ -467,14 +447,16 @@ static int32_t cs_ipcs_connection_closed (qb_ipcs_connection_t *c)
 	}
 
 	cnx = qb_ipcs_context_get(c);
-	api->object_destroy (cnx->stats_handle);
 
-	api->object_key_increment (object_connection_handle,
-		"closed", strlen("closed"),
-		&key_incr_dummy);
-	api->object_key_decrement (object_connection_handle,
-		"active", strlen("active"),
-		&key_incr_dummy);
+	snprintf(prefix, ICMAP_KEYNAME_MAXLEN, "%s.", cnx->icmap_path);
+	iter = icmap_iter_init(prefix);
+	while ((key_name = icmap_iter_next(iter, NULL, NULL)) != NULL) {
+		icmap_delete(key_name);
+	}
+	free(cnx->icmap_path);
+
+	icmap_inc("runtie.connections.closed");
+	icmap_dec("runtime.connections.active");
 
 	return 0;
 }
@@ -787,6 +769,7 @@ void cs_ipcs_stats_update(void)
 	struct qb_ipcs_connection_stats stats;
 	qb_ipcs_connection_t *c;
 	struct cs_ipcs_conn_context *cnx;
+	char key_name[ICMAP_KEYNAME_MAXLEN];
 
 	for (i = 0; i < SERVICE_HANDLER_MAXIMUM_COUNT; i++) {
 		if (ais_service[i] == NULL || ipcs_mapper[i].inst == NULL) {
@@ -802,40 +785,39 @@ void cs_ipcs_stats_update(void)
 
 			qb_ipcs_connection_stats_get(c, &stats, QB_FALSE);
 
-			api->object_key_replace(cnx->stats_handle,
-				"client_pid", strlen("client_pid"),
-				&stats.client_pid, sizeof(uint32_t));
+			snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "%s.client_pid", cnx->icmap_path);
+			icmap_set_uint32(key_name, stats.client_pid);
 
-			api->object_key_replace(cnx->stats_handle,
-				"requests", strlen("requests"),
-				&stats.requests, sizeof(uint64_t));
-			api->object_key_replace(cnx->stats_handle,
-				"responses", strlen("responses"),
-				&stats.responses, sizeof(uint64_t));
-			api->object_key_replace(cnx->stats_handle,
-				"dispatched", strlen("dispatched"),
-				&stats.events, sizeof(uint64_t));
-			api->object_key_replace(cnx->stats_handle,
-				"send_retries", strlen("send_retries"),
-				&stats.send_retries, sizeof(uint64_t));
-			api->object_key_replace(cnx->stats_handle,
-				"recv_retries", strlen("recv_retries"),
-				&stats.recv_retries, sizeof(uint64_t));
-			api->object_key_replace(cnx->stats_handle,
-				"flow_control", strlen("flow_control"),
-				&stats.flow_control_state, sizeof(uint32_t));
-			api->object_key_replace(cnx->stats_handle,
-				"flow_control_count", strlen("flow_control_count"),
-				&stats.flow_control_count, sizeof(uint64_t));
-			api->object_key_replace(cnx->stats_handle,
-				"queue_size", strlen("queue_size"),
-				&cnx->queued, sizeof(uint32_t));
-			api->object_key_replace(cnx->stats_handle,
-				"invalid_request", strlen("invalid_request"),
-				&cnx->invalid_request, sizeof(uint64_t));
-			api->object_key_replace(cnx->stats_handle,
-				"overload", strlen("overload"),
-				&cnx->overload, sizeof(uint64_t));
+			snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "%s.requests", cnx->icmap_path);
+			icmap_set_uint64(key_name, stats.requests);
+
+			snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "%s.responses", cnx->icmap_path);
+			icmap_set_uint64(key_name, stats.responses);
+
+			snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "%s.dispatched", cnx->icmap_path);
+			icmap_set_uint64(key_name, stats.events);
+
+			snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "%s.send_retries", cnx->icmap_path);
+			icmap_set_uint64(key_name, stats.send_retries);
+
+			snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "%s.recv_retries", cnx->icmap_path);
+			icmap_set_uint64(key_name, stats.recv_retries);
+
+			snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "%s.flow_control", cnx->icmap_path);
+			icmap_set_uint32(key_name, stats.flow_control_state);
+
+			snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "%s.flow_control_count", cnx->icmap_path);
+			icmap_set_uint64(key_name, stats.flow_control_count);
+
+			snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "%s.queue_size", cnx->icmap_path);
+			icmap_set_uint32(key_name, cnx->queued);
+
+			snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "%s.invalid_request", cnx->icmap_path);
+			icmap_set_uint64(key_name, cnx->invalid_request);
+
+			snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "%s.overload", cnx->icmap_path);
+			icmap_set_uint64(key_name, cnx->overload);
+
 			qb_ipcs_connection_unref(c);
 		}
 	}
@@ -868,10 +850,6 @@ void cs_ipcs_service_init(struct corosync_service_engine *service)
 
 void cs_ipcs_init(void)
 {
-	qb_handle_t object_find_handle;
-	qb_handle_t object_runtime_handle;
-	uint64_t zero_64 = 0;
-
 	api = apidef_get ();
 
 	qb_loop_poll_low_fds_event_set(cs_poll_handle_get(), cs_ipcs_low_fds_event);
@@ -879,27 +857,9 @@ void cs_ipcs_init(void)
 	api->quorum_register_callback (cs_ipcs_fc_quorum_changed, NULL);
 	totempg_queue_level_register_callback (cs_ipcs_totem_queue_level_changed);
 
-	api->object_find_create (OBJECT_PARENT_HANDLE,
-		"runtime", strlen ("runtime"),
-		&object_find_handle);
+	icmap_set_ro_access("runtime.connections.", 1, 1);
 
-	if (api->object_find_next (object_find_handle,
-			&object_runtime_handle) != 0) {
-		log_printf (LOGSYS_LEVEL_ERROR,"arrg no runtime");
-		return;
-	}
-
-	/* Connection objects */
-	api->object_create (object_runtime_handle,
-		&object_connection_handle,
-		"connections", strlen ("connections"));
-
-	api->object_key_create_typed (object_connection_handle,
-		"active", &zero_64, sizeof (zero_64),
-		OBJDB_VALUETYPE_UINT64);
-	api->object_key_create_typed (object_connection_handle,
-		"closed", &zero_64, sizeof (zero_64),
-		OBJDB_VALUETYPE_UINT64);
-	api->object_find_destroy (object_find_handle);
+	icmap_set_uint64("runtime.connections.active", 0);
+	icmap_set_uint64("runtime.connections.closed", 0);
 }
 

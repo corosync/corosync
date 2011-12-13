@@ -1753,16 +1753,16 @@ static int object_write_config(const char **error_string)
 	struct config_iface_ver0 **modules;
 	int num_modules;
 	int i;
-	int res;
+//	int res;
 
 	main_get_config_modules(&modules, &num_modules);
 
 	for (i=0; i<num_modules; i++) {
 		if (modules[i]->config_writeconfig) {
-			res = modules[i]->config_writeconfig(&objdb_iface, error_string);
+/*			res = modules[i]->config_writeconfig(&objdb_iface, error_string);
 			if (res) {
 				return res;
-			}
+			}*/
 		}
 	}
 	return 0;
@@ -1773,18 +1773,18 @@ static int object_reload_config(int flush, const char **error_string)
 	struct config_iface_ver0 **modules;
 	int num_modules;
 	int i;
-	int res;
+/*	int res = 0; */
 
 	main_get_config_modules(&modules, &num_modules);
 	object_reload_notification(OBJDB_RELOAD_NOTIFY_START, flush);
 
 	for (i=0; i<num_modules; i++) {
 		if (modules[i]->config_reloadconfig) {
-			res = modules[i]->config_reloadconfig(&objdb_iface, flush, error_string);
+/*			res = modules[i]->config_reloadconfig(&objdb_iface, flush, error_string);
 			if (res) {
 				object_reload_notification(OBJDB_RELOAD_NOTIFY_FAILED, flush);
 				return res;
-			}
+			} */
 		}
 	}
 	object_reload_notification(OBJDB_RELOAD_NOTIFY_END, flush);

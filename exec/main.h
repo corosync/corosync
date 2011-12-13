@@ -48,7 +48,6 @@
 #include <corosync/hdb.h>
 #include <qb/qbloop.h>
 #include <corosync/totem/totempg.h>
-#include <corosync/engine/objdb.h>
 #include <corosync/engine/config.h>
 #include <corosync/engine/coroapi.h>
 

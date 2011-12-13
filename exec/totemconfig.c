@@ -1,10 +1,11 @@
 /*
  * Copyright (c) 2002-2005 MontaVista Software, Inc.
- * Copyright (c) 2006-2010 Red Hat, Inc.
+ * Copyright (c) 2006-2011 Red Hat, Inc.
  *
  * All rights reserved.
  *
  * Author: Steven Dake (sdake@redhat.com)
+ *         Jan Friesse (jfriesse@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
  *
@@ -52,9 +53,9 @@
 #include <corosync/list.h>
 #include <qb/qbdefs.h>
 #include <corosync/totem/totem.h>
-#include <corosync/engine/objdb.h>
 #include <corosync/engine/config.h>
 #include <corosync/engine/logsys.h>
+#include <corosync/engine/icmap.h>
 
 #ifdef HAVE_LIBNSS
 #include <nss.h>
@@ -86,162 +87,50 @@
 #define RRP_AUTORECOVERY_CHECK_TIMEOUT		1000
 
 static char error_string_response[512];
-static struct objdb_iface_ver0 *global_objdb;
 
-static void add_totem_config_notification(
-	struct objdb_iface_ver0 *objdb,
-	struct totem_config *totem_config,
-	hdb_handle_t totem_object_handle);
+static void add_totem_config_notification(struct totem_config *totem_config);
 
-
-/* These just makes the code below a little neater */
-static inline int objdb_get_string (
-	const struct objdb_iface_ver0 *objdb,
-	hdb_handle_t object_service_handle,
-	const char *key, const char **value)
+static void totem_volatile_config_read (struct totem_config *totem_config)
 {
-	int res;
+	char *str;
 
-	*value = NULL;
-	if ( !(res = objdb->object_key_get (object_service_handle,
-		key,
-		strlen (key),
-		(void *)value,
-		NULL))) {
-
-		if (*value) {
-			return 0;
-		}
-	}
-	return -1;
-}
-
-static inline void objdb_get_int (
-	const struct objdb_iface_ver0 *objdb,
-	hdb_handle_t object_service_handle,
-	const char *key, unsigned int *intvalue)
-{
-	char *value = NULL;
-
-	if (!objdb->object_key_get (object_service_handle,
-		key,
-		strlen (key),
-		(void *)&value,
-		NULL)) {
-
-		if (value) {
-			*intvalue = atoi(value);
-		}
+	icmap_get_uint32("totem.token", &totem_config->token_timeout);
+	icmap_get_uint32("totem.token_retransmit", &totem_config->token_retransmit_timeout);
+	icmap_get_uint32("totem.hold", &totem_config->token_hold_timeout);
+	icmap_get_uint32("totem.token_retransmits_before_loss_const", &totem_config->token_retransmits_before_loss_const);
+	icmap_get_uint32("totem.join", &totem_config->join_timeout);
+	icmap_get_uint32("totem.send_join", &totem_config->send_join_timeout);
+	icmap_get_uint32("totem.consensus", &totem_config->consensus_timeout);
+	icmap_get_uint32("totem.merge", &totem_config->merge_timeout);
+	icmap_get_uint32("totem.downcheck", &totem_config->downcheck_timeout);
+	icmap_get_uint32("totem.fail_recv_const", &totem_config->fail_to_recv_const);
+	icmap_get_uint32("totem.seqno_unchanged_const", &totem_config->seqno_unchanged_const);
+	icmap_get_uint32("totem.rrp_token_expired_timeout", &totem_config->rrp_token_expired_timeout);
+	icmap_get_uint32("totem.rrp_problem_count_timeout", &totem_config->rrp_problem_count_timeout);
+	icmap_get_uint32("totem.rrp_problem_count_threshold", &totem_config->rrp_problem_count_threshold);
+	icmap_get_uint32("totem.rrp_problem_count_mcast_threshold", &totem_config->rrp_problem_count_mcast_threshold);
+	icmap_get_uint32("totem.rrp_autorecovery_check_timeout", &totem_config->rrp_autorecovery_check_timeout);
+	icmap_get_uint32("totem.heartbeat_failures_allowed", &totem_config->heartbeat_failures_allowed);
+	icmap_get_uint32("totem.max_network_delay", &totem_config->max_network_delay);
+	icmap_get_uint32("totem.window_size", &totem_config->window_size);
+	icmap_get_uint32("totem.max_messages", &totem_config->max_messages);
+	icmap_get_uint32("totem.miss_count_const", &totem_config->miss_count_const);
+	if (icmap_get_string("totem.vsftype", &str) == CS_OK) {
+		totem_config->vsf_type = str;
 	}
 }
 
-static unsigned int totem_handle_find (
-	struct objdb_iface_ver0 *objdb,
-	hdb_handle_t *totem_find_handle)  {
 
-	hdb_handle_t object_find_handle;
-	unsigned int res;
-
-	/*
-	 * Find a network section
-	 */
-	objdb->object_find_create (
-		OBJECT_PARENT_HANDLE,
-		"network",
-		strlen ("network"),
-		&object_find_handle);
-
-	res = objdb->object_find_next (
-		object_find_handle,
-		totem_find_handle);
-
-	objdb->object_find_destroy (object_find_handle);
-
-	/*
-	 * Network section not found in configuration, checking for totem
-	 */
-	if (res == -1) {
-		objdb->object_find_create (
-			OBJECT_PARENT_HANDLE,
-			"totem",
-			strlen ("totem"),
-			&object_find_handle);
-
-		res = objdb->object_find_next (
-			object_find_handle,
-			totem_find_handle);
-
-		objdb->object_find_destroy (object_find_handle);
-	}
-
-	if (res == -1) {
-		return (-1);
-	}
-
-	return (0);
-}
-
-static void totem_volatile_config_read (
-	struct objdb_iface_ver0 *objdb,
-	struct totem_config *totem_config,
-	hdb_handle_t object_totem_handle)
+static void totem_get_crypto_type(struct totem_config *totem_config)
 {
-	objdb_get_int (objdb,object_totem_handle, "token", &totem_config->token_timeout);
-
-	objdb_get_int (objdb,object_totem_handle, "token_retransmit", &totem_config->token_retransmit_timeout);
-
-	objdb_get_int (objdb,object_totem_handle, "hold", &totem_config->token_hold_timeout);
-
-	objdb_get_int (objdb,object_totem_handle, "token_retransmits_before_loss_const", &totem_config->token_retransmits_before_loss_const);
-
-	objdb_get_int (objdb,object_totem_handle, "join", &totem_config->join_timeout);
-	objdb_get_int (objdb,object_totem_handle, "send_join", &totem_config->send_join_timeout);
-
-	objdb_get_int (objdb,object_totem_handle, "consensus", &totem_config->consensus_timeout);
-
-	objdb_get_int (objdb,object_totem_handle, "merge", &totem_config->merge_timeout);
-
-	objdb_get_int (objdb,object_totem_handle, "downcheck", &totem_config->downcheck_timeout);
-
-	objdb_get_int (objdb,object_totem_handle, "fail_recv_const", &totem_config->fail_to_recv_const);
-
-	objdb_get_int (objdb,object_totem_handle, "seqno_unchanged_const", &totem_config->seqno_unchanged_const);
-
-	objdb_get_int (objdb,object_totem_handle, "rrp_token_expired_timeout", &totem_config->rrp_token_expired_timeout);
-
-	objdb_get_int (objdb,object_totem_handle, "rrp_problem_count_timeout", &totem_config->rrp_problem_count_timeout);
-
-	objdb_get_int (objdb,object_totem_handle, "rrp_problem_count_threshold", &totem_config->rrp_problem_count_threshold);
-
-	objdb_get_int (objdb,object_totem_handle, "rrp_problem_count_mcast_threshold", &totem_config->rrp_problem_count_mcast_threshold);
-
-	objdb_get_int (objdb,object_totem_handle, "rrp_autorecovery_check_timeout", &totem_config->rrp_autorecovery_check_timeout);
-
-	objdb_get_int (objdb,object_totem_handle, "heartbeat_failures_allowed", &totem_config->heartbeat_failures_allowed);
-
-	objdb_get_int (objdb,object_totem_handle, "max_network_delay", &totem_config->max_network_delay);
-
-	objdb_get_int (objdb,object_totem_handle, "window_size", &totem_config->window_size);
-	(void)objdb_get_string (objdb, object_totem_handle, "vsftype", &totem_config->vsf_type);
-
-	objdb_get_int (objdb,object_totem_handle, "max_messages", &totem_config->max_messages);
-
-	objdb_get_int (objdb,object_totem_handle, "miss_count_const", &totem_config->miss_count_const);
-}
-
-
-static void totem_get_crypto_type(
-	const struct objdb_iface_ver0 *objdb,
-	hdb_handle_t object_totem_handle,
-	struct totem_config *totem_config)
-{
-	const char *str;
+	char *str;
 
 	totem_config->crypto_accept = TOTEM_CRYPTO_ACCEPT_OLD;
-	if (!objdb_get_string (objdb, object_totem_handle, "crypto_accept", &str)) {
+	if (icmap_get_string("totem.crypto_accept", &str) == CS_OK) {
 		if (strcmp(str, "new") == 0) {
 			totem_config->crypto_accept = TOTEM_CRYPTO_ACCEPT_NEW;
 		}
+		free(str);
 	}
 
 	totem_config->crypto_type = TOTEM_CRYPTO_SOBER;
@@ -255,42 +144,34 @@ static void totem_get_crypto_type(
 	totem_config->crypto_sign_type = CKM_SHA256_RSA_PKCS;
 #endif
 
-	if (!objdb_get_string (objdb, object_totem_handle, "crypto_type", &str)) {
+	if (icmap_get_string("totem.crypto_type", &str) == CS_OK) {
 		if (strcmp(str, "sober") == 0) {
+			free(str);
 			return;
 		}
 #ifdef HAVE_LIBNSS
 		if (strcmp(str, "nss") == 0) {
 			totem_config->crypto_type = TOTEM_CRYPTO_NSS;
-
 		}
+		free(str);
 #endif
 	}
 }
 
-
-
 extern int totem_config_read (
-	struct objdb_iface_ver0 *objdb,
 	struct totem_config *totem_config,
 	const char **error_string)
 {
 	int res = 0;
-	hdb_handle_t object_totem_handle;
-	hdb_handle_t object_interface_handle;
-	hdb_handle_t object_member_handle;
-	const char *str;
+	char *str;
 	unsigned int ringnumber = 0;
-	hdb_handle_t object_find_interface_handle;
-	hdb_handle_t object_find_member_handle;
-	const char *transport_type;
 	int member_count = 0;
-
-	res = totem_handle_find (objdb, &object_totem_handle);
-	if (res == -1) {
-printf ("couldn't find totem handle\n");
-		return (-1);
-	}
+	icmap_iter_t iter, member_iter;
+	const char *iter_key;
+	const char *member_iter_key;
+	char ringnumber_key[ICMAP_KEYNAME_MAXLEN];
+	char tmp_key[ICMAP_KEYNAME_MAXLEN];
+	uint8_t u8;
 
 	memset (totem_config, 0, sizeof (struct totem_config));
 	totem_config->interfaces = malloc (sizeof (struct totem_interface) * INTERFACE_MAX);
@@ -306,141 +187,137 @@ printf ("couldn't find totem handle\n");
 
 	strcpy (totem_config->rrp_mode, "none");
 
-	if (!objdb_get_string (objdb, object_totem_handle, "version", &str)) {
-		if (strcmp (str, "2") == 0) {
-			totem_config->version = 2;
-		}
-	}
-	if (!objdb_get_string (objdb, object_totem_handle, "secauth", &str)) {
+	icmap_get_uint32("totem.version", (uint32_t *)&totem_config->version);
+
+	if (icmap_get_string("totem.secauth", &str) == CS_OK) {
 		if (strcmp (str, "on") == 0) {
 			totem_config->secauth = 1;
 		}
 		if (strcmp (str, "off") == 0) {
 			totem_config->secauth = 0;
 		}
+		free(str);
 	}
 
 	if (totem_config->secauth == 1) {
-		totem_get_crypto_type(objdb, object_totem_handle, totem_config);
+		totem_get_crypto_type(totem_config);
 	}
 
-	if (!objdb_get_string (objdb, object_totem_handle, "rrp_mode", &str)) {
+	if (icmap_get_string("totem.rrp_mode", &str) == CS_OK) {
 		strcpy (totem_config->rrp_mode, str);
+		free(str);
 	}
 
 	/*
 	 * Get interface node id
 	 */
-	objdb_get_int (objdb, object_totem_handle, "nodeid", &totem_config->node_id);
+	icmap_get_uint32("totem.nodeid", &totem_config->node_id);
 
 	totem_config->clear_node_high_bit = 0;
-	if (!objdb_get_string (objdb,object_totem_handle, "clear_node_high_bit", &str)) {
+	if (icmap_get_string("totem.clear_node_high_bit", &str) == CS_OK) {
 		if (strcmp (str, "yes") == 0) {
 			totem_config->clear_node_high_bit = 1;
 		}
+		free(str);
 	}
 
-	objdb_get_int (objdb,object_totem_handle, "threads", &totem_config->threads);
+	icmap_get_uint32("totem.threads", &totem_config->threads);
 
-
-	objdb_get_int (objdb,object_totem_handle, "netmtu", &totem_config->net_mtu);
+	icmap_get_uint32("totem.netmtu", &totem_config->net_mtu);
 
 	/*
 	 * Get things that might change in the future
 	 */
-	totem_volatile_config_read (objdb, totem_config, object_totem_handle);
+	totem_volatile_config_read(totem_config);
 
-	objdb->object_find_create (
-		object_totem_handle,
-		"interface",
-		strlen ("interface"),
-		&object_find_interface_handle);
+	iter = icmap_iter_init("totem.interface.");
+	while ((iter_key = icmap_iter_next(iter, NULL, NULL)) != NULL) {
+		res = sscanf(iter_key, "totem.interface.%[^.].%s", ringnumber_key, tmp_key);
+		if (res != 2) {
+			continue;
+		}
 
-	while (objdb->object_find_next (
-		object_find_interface_handle,
-		&object_interface_handle) == 0) {
+		if (strcmp(tmp_key, "bindnetaddr") != 0) {
+			continue;
+		}
 
 		member_count = 0;
 
-		objdb_get_int (objdb, object_interface_handle, "ringnumber", &ringnumber);
+		ringnumber = atoi(ringnumber_key);
+
+		/*
+		 * Get the bind net address
+		 */
+		if (icmap_get_string(iter_key, &str) == CS_OK) {
+			res = totemip_parse (&totem_config->interfaces[ringnumber].bindnet, str,
+						     totem_config->interfaces[ringnumber].mcast_addr.family);
+			free(str);
+		}
 
 		/*
 		 * Get interface multicast address
 		 */
-		if (!objdb_get_string (objdb, object_interface_handle, "mcastaddr", &str)) {
+		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.mcastaddr", ringnumber);
+		if (icmap_get_string(tmp_key, &str) == CS_OK) {
 			res = totemip_parse (&totem_config->interfaces[ringnumber].mcast_addr, str, 0);
+			free(str);
 		}
+
 		totem_config->broadcast_use = 0;
-		if (!objdb_get_string (objdb, object_interface_handle, "broadcast", &str)) {
+		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.broadcast", ringnumber);
+		if (icmap_get_string(tmp_key, &str) == CS_OK) {
 			if (strcmp (str, "yes") == 0) {
 				totem_config->broadcast_use = 1;
 				totemip_parse (
 					&totem_config->interfaces[ringnumber].mcast_addr,
 					"255.255.255.255", 0);
 			}
+			free(str);
 		}
 
 		/*
 		 * Get mcast port
 		 */
-		if (!objdb_get_string (objdb, object_interface_handle, "mcastport", &str)) {
-			totem_config->interfaces[ringnumber].ip_port = atoi (str);
-		}
-
-		/*
-		 * Get the bind net address
-		 */
-		if (!objdb_get_string (objdb, object_interface_handle, "bindnetaddr", &str)) {
-
-			res = totemip_parse (&totem_config->interfaces[ringnumber].bindnet, str,
-					     totem_config->interfaces[ringnumber].mcast_addr.family);
-		}
+		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.mcastport", ringnumber);
+		icmap_get_uint16(tmp_key, &totem_config->interfaces[ringnumber].ip_port);
 
 		/*
 		 * Get the TTL
 		 */
 		totem_config->interfaces[ringnumber].ttl = 1;
-		if (!objdb_get_string (objdb, object_interface_handle, "ttl", &str)) {
-			totem_config->interfaces[ringnumber].ttl = atoi (str);
+
+		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.ttl", ringnumber);
+
+		if (icmap_get_uint8(tmp_key, &u8) == CS_OK) {
+			totem_config->interfaces[ringnumber].ttl = u8;
 		}
 
-		objdb->object_find_create (
-			object_interface_handle,
-			"member",
-			strlen ("member"),
-			&object_find_member_handle);
-
-		while (objdb->object_find_next (
-			object_find_member_handle,
-			&object_member_handle) == 0) {
-
-			if (!objdb_get_string (objdb, object_member_handle, "memberaddr", &str)) {
-				res = totemip_parse (&totem_config->interfaces[ringnumber].member_list[member_count++], str, 0);
+		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.member.", ringnumber);
+		member_iter = icmap_iter_init(tmp_key);
+		while ((member_iter_key = icmap_iter_next(member_iter, NULL, NULL)) != NULL) {
+			if (icmap_get_string(member_iter_key, &str) == CS_OK) {
+				res = totemip_parse (&totem_config->interfaces[ringnumber].member_list[member_count++],
+						str, 0);
 			}
-		
 		}
+
 		totem_config->interfaces[ringnumber].member_count = member_count;
 		totem_config->interface_count++;
-		objdb->object_find_destroy (object_find_member_handle);
 	}
-
-	objdb->object_find_destroy (object_find_interface_handle);
-
-	add_totem_config_notification(objdb, totem_config, object_totem_handle);
 
 	totem_config->transport_number = TOTEM_TRANSPORT_UDP;
-	(void)objdb_get_string (objdb, object_totem_handle, "transport", &transport_type);
-
-	if (transport_type) {
-		if (strcmp (transport_type, "udpu") == 0) {
+	if (icmap_get_string("totem.transport", &str) == CS_OK) {
+		if (strcmp (str, "udpu") == 0) {
 			totem_config->transport_number = TOTEM_TRANSPORT_UDPU;
 		}
-	}
-	if (transport_type) {
-		if (strcmp (transport_type, "iba") == 0) {
+
+		if (strcmp (str, "iba") == 0) {
 			totem_config->transport_number = TOTEM_TRANSPORT_RDMA;
 		}
+		free(str);
 	}
+
+	add_totem_config_notification(totem_config);
 
 	return 0;
 }
@@ -804,14 +681,13 @@ parse_error:
 }
 
 int totem_config_keyread (
-	struct objdb_iface_ver0 *objdb,
 	struct totem_config *totem_config,
 	const char **error_string)
 {
 	int got_key = 0;
-	const char *key_location = NULL;
-	hdb_handle_t object_totem_handle;
+	char *key_location = NULL;
 	int res;
+	size_t key_len;
 
 	memset (totem_config->private_key, 0, 128);
 	totem_config->private_key_len = 128;
@@ -820,34 +696,27 @@ int totem_config_keyread (
 		return (0);
 	}
 
-	res = totem_handle_find (objdb, &object_totem_handle);
-	if (res == -1) {
-		return (-1);
-	}
-	/* objdb may store the location of the key file */
-	if (!objdb_get_string (objdb,object_totem_handle, "keyfile", &key_location)
-	    && key_location) {
+	/* cmap may store the location of the key file */
+	if (icmap_get_string("totem.keyfile", &key_location) == CS_OK) {
 		res = read_keyfile(key_location, totem_config, error_string);
+		free(key_location);
 		if (res)  {
 			goto key_error;
 		}
 		got_key = 1;
-	} else { /* Or the key itself may be in the objdb */
-		char *key = NULL;
-		size_t key_len;
-		res = objdb->object_key_get (object_totem_handle,
-			"key",
-			strlen ("key"),
-			(void *)&key,
-			&key_len);
-
-		if (res == 0 && key) {
+	} else { /* Or the key itself may be in the cmap */
+		if (icmap_get("totem.key", NULL, &key_len, NULL) == CS_OK) {
 			if (key_len > sizeof (totem_config->private_key)) {
+				sprintf(error_string_response, "key is too long");
 				goto key_error;
 			}
-			memcpy(totem_config->private_key, key, key_len);
-			totem_config->private_key_len = key_len;
-			got_key = 1;
+			if (icmap_get("totem.key", totem_config->private_key, &key_len, NULL) == CS_OK) {
+				totem_config->private_key_len = key_len;
+				got_key = 1;
+			} else {
+				sprintf(error_string_response, "can't store private key");
+				goto key_error;
+			}
 		}
 	}
 
@@ -870,100 +739,23 @@ key_error:
 
 }
 
-static void totem_key_change_notify(object_change_type_t change_type,
-			      hdb_handle_t parent_object_handle,
-			      hdb_handle_t object_handle,
-			      const void *object_name_pt, size_t object_name_len,
-			      const void *key_name_pt, size_t key_len,
-			      const void *key_value_pt, size_t key_value_len,
-			      void *priv_data_pt)
+static void totem_change_notify(
+	int32_t event,
+	const char *key_name,
+	struct icmap_notify_value new_val,
+	struct icmap_notify_value old_val,
+	void *user_data)
 {
-	struct totem_config *totem_config = priv_data_pt;
-
-	if (memcmp(object_name_pt, "totem", object_name_len) == 0)
-		totem_volatile_config_read(global_objdb,
-					   totem_config,
-					   object_handle); // CHECK
+	totem_volatile_config_read((struct totem_config *)user_data);
 }
 
-static void totem_objdb_reload_notify(objdb_reload_notify_type_t type, int flush,
-				      void *priv_data_pt)
+static void add_totem_config_notification(struct totem_config *totem_config)
 {
-	struct totem_config *totem_config = priv_data_pt;
-	hdb_handle_t totem_object_handle;
+	icmap_track_t icmap_track;
 
-	if (totem_config == NULL)
-	        return;
-
-	/*
-	 * A new totem {} key might exist, cancel the
-	 * existing notification at the start of reload,
-	 * and start a new one on the new object when
-	 * it's all settled.
-	 */
-
-	if (type == OBJDB_RELOAD_NOTIFY_START) {
-		global_objdb->object_track_stop(
-			totem_key_change_notify,
-			NULL,
-			NULL,
-			NULL,
-			totem_config);
-	}
-
-	if (type == OBJDB_RELOAD_NOTIFY_END ||
-	    type == OBJDB_RELOAD_NOTIFY_FAILED) {
-
-
-		if (!totem_handle_find(global_objdb,
-				      &totem_object_handle)) {
-
-		        global_objdb->object_track_start(totem_object_handle,
-						  1,
-						  totem_key_change_notify,
-						  NULL, // object_create_notify,
-						  NULL, // object_destroy_notify,
-						  NULL, // object_reload_notify
-						  totem_config); // priv_data
-			/*
-			 * Reload the configuration
-			 */
-			totem_volatile_config_read(global_objdb,
-						   totem_config,
-						   totem_object_handle);
-
-		}
-		else {
-			log_printf(LOGSYS_LEVEL_ERROR, "totem objdb tracking stopped, cannot find totem{} handle on objdb\n");
-		}
-	}
-}
-
-
-static void add_totem_config_notification(
-	struct objdb_iface_ver0 *objdb,
-	struct totem_config *totem_config,
-	hdb_handle_t totem_object_handle)
-{
-
-	global_objdb = objdb;
-	objdb->object_track_start(totem_object_handle,
-				  1,
-				  totem_key_change_notify,
-				  NULL, // object_create_notify,
-				  NULL, // object_destroy_notify,
-				  NULL, // object_reload_notify
-				  totem_config); // priv_data
-
-	/*
-	 * Reload notify must be on the parent object
-	 */
-	objdb->object_track_start(OBJECT_PARENT_HANDLE,
-				  1,
-				  NULL, // key_change_notify,
-				  NULL, // object_create_notify,
-				  NULL, // object_destroy_notify,
-				  totem_objdb_reload_notify, // object_reload_notify
-				  totem_config); // priv_data
-
+	icmap_track_add("totem.",
+		ICMAP_TRACK_ADD | ICMAP_TRACK_DELETE | ICMAP_TRACK_MODIFY | ICMAP_TRACK_PREFIX,
+		totem_change_notify,
+		totem_config,
+		&icmap_track);
 }

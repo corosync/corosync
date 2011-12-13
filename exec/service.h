@@ -72,6 +72,7 @@ extern struct corosync_service_engine *ais_service[];
 
 extern int ais_service_exiting[];
 
-extern hdb_handle_t service_stats_handle[SERVICE_HANDLER_MAXIMUM_COUNT][64];
+extern const char *service_stats_rx[SERVICE_HANDLER_MAXIMUM_COUNT][64];
+extern const char *service_stats_tx[SERVICE_HANDLER_MAXIMUM_COUNT][64];
 
 #endif /* SERVICE_H_DEFINED */

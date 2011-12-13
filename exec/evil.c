@@ -70,7 +70,6 @@
 #include <corosync/corodefs.h>
 #include <corosync/list.h>
 #include <corosync/lcr/lcr_ifact.h>
-#include <corosync/engine/objdb.h>
 #include <corosync/engine/config.h>
 #include <corosync/engine/coroapi.h>
 #include <corosync/engine/logsys.h>

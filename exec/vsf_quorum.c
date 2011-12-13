@@ -67,6 +67,7 @@
 #include <corosync/engine/coroapi.h>
 #include <corosync/engine/logsys.h>
 #include <corosync/engine/quorum.h>
+#include <corosync/engine/icmap.h>
 
 LOGSYS_DECLARE_SUBSYS ("QUORUM");
 
@@ -278,8 +279,6 @@ static struct quorum_callin_functions callins = {
 
 static int quorum_exec_init_fn (struct corosync_api_v1 *api)
 {
-	hdb_handle_t find_handle;
-	hdb_handle_t quorum_handle = 0;
 	hdb_handle_t q_handle;
 	char *quorum_module;
 	int res;
@@ -302,44 +301,35 @@ static int quorum_exec_init_fn (struct corosync_api_v1 *api)
 	/*
 	 * Look for a quorum provider
 	 */
-	api->object_find_create(OBJECT_PARENT_HANDLE, "quorum", strlen("quorum"), &find_handle);
-        api->object_find_next(find_handle, &quorum_handle);
-	api->object_find_destroy(find_handle);
+	if (icmap_get_string("quorum.provider", &quorum_module) == CS_OK) {
+		res = lcr_ifact_reference (
+			&q_handle,
+			quorum_module,
+			0,
+			&quorum_iface_p,
+			0);
 
-	if (quorum_handle) {
-		if ( !(res = api->object_key_get(quorum_handle,
-						 "provider",
-						 strlen("provider"),
-						 (void *)&quorum_module,
-						 NULL))) {
-
-			res = lcr_ifact_reference (
-				&q_handle,
-				quorum_module,
-				0,
-				&quorum_iface_p,
-				0);
-
-			if (res == -1) {
-				log_printf (LOGSYS_LEVEL_NOTICE,
-					    "Couldn't load quorum provider %s\n",
-					    quorum_module);
-				return (-1);
-			}
-
+		if (res == -1) {
 			log_printf (LOGSYS_LEVEL_NOTICE,
-				    "Using quorum provider %s\n", quorum_module);
-
-			/*
-			 * Register the log sites with libqb
-			 */
-			_start = lcr_ifact_addr_get(q_handle, "__start___verbose");
-			_stop = lcr_ifact_addr_get(q_handle, "__stop___verbose");
-			qb_log_callsites_register(_start, _stop);
-
-			quorum_iface = (struct quorum_services_api_ver1 *)quorum_iface_p;
-			quorum_iface->init (api, quorum_api_set_quorum);
+				    "Couldn't load quorum provider %s\n",
+				    quorum_module);
+			free(quorum_module);
+			return (-1);
 		}
+
+		log_printf (LOGSYS_LEVEL_NOTICE,
+			    "Using quorum provider %s\n", quorum_module);
+
+		/*
+		 * Register the log sites with libqb
+		 */
+		_start = lcr_ifact_addr_get(q_handle, "__start___verbose");
+		_stop = lcr_ifact_addr_get(q_handle, "__stop___verbose");
+		qb_log_callsites_register(_start, _stop);
+
+		quorum_iface = (struct quorum_services_api_ver1 *)quorum_iface_p;
+		quorum_iface->init (api, quorum_api_set_quorum);
+		free(quorum_module);
 	}
 	if (!quorum_iface) {
 		/*

@@ -1,10 +1,11 @@
 /*
  * Copyright (c) 2002-2005 MontaVista Software, Inc.
- * Copyright (c) 2006-2009 Red Hat, Inc.
+ * Copyright (c) 2006-2011 Red Hat, Inc.
  *
  * All rights reserved.
  *
  * Author: Steven Dake (sdake@redhat.com)
+ *         Jan Friesse (jfriesse@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
  *
@@ -43,65 +44,18 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include <pwd.h>
-#include <grp.h>
 #include <limits.h>
 
 #include <corosync/corotypes.h>
 #include <corosync/list.h>
 #include <corosync/totem/totem.h>
 #include <corosync/engine/logsys.h>
+#include <corosync/engine/icmap.h>
 
 #include "util.h"
 #include "mainconfig.h"
 
 static char error_string_response[512];
-
-static struct objdb_iface_ver0 *global_objdb;
-
-DECLARE_LIST_INIT(uidgid_list_head);
-
-
-/* This just makes the code below a little neater */
-static inline int objdb_get_string (
-	const struct objdb_iface_ver0 *objdb,
-	hdb_handle_t object_service_handle,
-	const char *key, char **value)
-{
-	int res;
-
-	*value = NULL;
-	if ( !(res = objdb->object_key_get (object_service_handle,
-		key,
-		strlen (key),
-		(void *)value,
-		NULL))) {
-
-		if (*value) {
-			return 0;
-		}
-	}
-	return -1;
-}
-
-static inline void objdb_get_int (
-	const struct objdb_iface_ver0 *objdb,
-	hdb_handle_t object_service_handle,
-	char *key, unsigned int *intvalue)
-{
-	char *value = NULL;
-
-	if (!objdb->object_key_get (object_service_handle,
-		key,
-		strlen (key),
-		(void *)&value,
-		NULL)) {
-
-		if (value) {
-			*intvalue = atoi(value);
-		}
-	}
-}
 
 /**
  * insert_into_buffer
@@ -179,16 +133,14 @@ static int insert_into_buffer(
  * doesn't apply at system/subsystem level.
  */
 static int corosync_main_config_format_set (
-	struct objdb_iface_ver0 *objdb,
-	hdb_handle_t object_handle,
 	const char **error_string)
 {
 	const char *error_reason;
 	char new_format_buffer[PATH_MAX];
-	char *value;
-	int err = 0;
+	char *value = NULL;
+	cs_error_t err;
 
-	if (!objdb_get_string (objdb,object_handle, "fileline", &value)) {
+	if (icmap_get_string("logging.fileline", &value) == CS_OK) {
 		if (strcmp (value, "on") == 0) {
 			if (!insert_into_buffer(new_format_buffer,
 					sizeof(new_format_buffer),
@@ -207,8 +159,11 @@ static int corosync_main_config_format_set (
 			error_reason = "unknown value for fileline";
 			goto parse_error;
 		}
+
+		free(value);
 	}
-	if (!objdb_get_string (objdb,object_handle, "function_name", &value)) {
+
+	if (icmap_get_string("logging.function_name", &value) == CS_OK) {
 		if (strcmp (value, "on") == 0) {
 			if (!insert_into_buffer(new_format_buffer,
 					sizeof(new_format_buffer),
@@ -227,8 +182,11 @@ static int corosync_main_config_format_set (
 			error_reason = "unknown value for function_name";
 			goto parse_error;
 		}
+
+		free(value);
 	}
-	if (!objdb_get_string (objdb,object_handle, "timestamp", &value)) {
+
+	if (icmap_get_string("logging.timestamp", &value) == CS_OK) {
 		if (strcmp (value, "on") == 0) {
 			if(!insert_into_buffer(new_format_buffer,
 					sizeof(new_format_buffer),
@@ -242,40 +200,40 @@ static int corosync_main_config_format_set (
 			error_reason = "unknown value for timestamp";
 			goto parse_error;
 		}
-	}
-	if (err) {
-		error_reason = "exhausted virtual memory";
-		goto parse_error;
+
+		free(value);
 	}
 
 	return (0);
 
 parse_error:
+	free(value);
 	*error_string = error_reason;
 
 	return (-1);
 }
 
 static int corosync_main_config_log_destination_set (
-	struct objdb_iface_ver0 *objdb,
-	hdb_handle_t object_handle,
+	const char *path,
+	const char *key,
 	const char *subsys,
 	const char **error_string,
-	const char *objdb_key,
 	unsigned int mode_mask,
 	char deprecated,
 	const char *replacement)
 {
 	static char formatted_error_reason[128];
-	char *value;
+	char *value = NULL;
 	unsigned int mode;
+	char key_name[ICMAP_KEYNAME_MAXLEN];
 
-	if (!objdb_get_string (objdb, object_handle, objdb_key, &value)) {
+	snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "%s.%s", path, key);
+	if (icmap_get_string(key_name, &value) == CS_OK) {
 		if (deprecated) {
 			log_printf(LOGSYS_LEVEL_WARNING,
 			 "Warning: the %s config paramater has been obsoleted."
 			 " See corosync.conf man page %s directive.",
-			 objdb_key, replacement);
+			 key, replacement);
 		}
 
 		mode = logsys_config_mode_get (subsys);
@@ -283,37 +241,40 @@ static int corosync_main_config_log_destination_set (
 		if (strcmp (value, "yes") == 0 || strcmp (value, "on") == 0) {
 			mode |= mode_mask;
 			if (logsys_config_mode_set(subsys, mode) < 0) {
-				sprintf (formatted_error_reason, "unable to set mode %s", objdb_key);
-				*error_string = formatted_error_reason;
-				return -1;
+				sprintf (formatted_error_reason, "unable to set mode %s", key);
+				goto parse_error;
 			}
 		} else
 		if (strcmp (value, "no") == 0 || strcmp (value, "off") == 0) {
 			mode &= ~mode_mask;
 			if (logsys_config_mode_set(subsys, mode) < 0) {
-				sprintf (formatted_error_reason, "unable to unset mode %s", objdb_key);
-				*error_string = formatted_error_reason;
-				return -1;
+				sprintf (formatted_error_reason, "unable to unset mode %s", key);
+				goto parse_error;
 			}
 		} else {
-			sprintf (formatted_error_reason, "unknown value for %s", objdb_key);
-			*error_string = formatted_error_reason;
-			return -1;
+			sprintf (formatted_error_reason, "unknown value for %s", key);
+			goto parse_error;
 		}
 	}
 
-	return 0;
+	free(value);
+	return (0);
+
+parse_error:
+	*error_string = formatted_error_reason;
+	free(value);
+	return (-1);
 }
 
 static int corosync_main_config_set (
-	struct objdb_iface_ver0 *objdb,
-	hdb_handle_t object_handle,
+	const char *path,
 	const char *subsys,
 	const char **error_string)
 {
 	const char *error_reason = error_string_response;
 	char *value;
 	int mode;
+	char key_name[ICMAP_KEYNAME_MAXLEN];
 
 	/*
 	 * this bit abuses the internal logsys exported API
@@ -337,19 +298,16 @@ static int corosync_main_config_set (
 		goto parse_error;
 	}
 
-	if (corosync_main_config_log_destination_set (objdb, object_handle, subsys, &error_reason,
-	    "to_stderr", LOGSYS_MODE_OUTPUT_STDERR, 0, NULL) != 0)
+	if (corosync_main_config_log_destination_set (path, "to_stderr", subsys, &error_reason,
+	    LOGSYS_MODE_OUTPUT_STDERR, 0, NULL) != 0)
 		goto parse_error;
 
-	if (corosync_main_config_log_destination_set (objdb, object_handle, subsys, &error_reason,
-	    "to_syslog", LOGSYS_MODE_OUTPUT_SYSLOG, 0, NULL) != 0)
+	if (corosync_main_config_log_destination_set (path, "to_syslog", subsys, &error_reason,
+	    LOGSYS_MODE_OUTPUT_SYSLOG, 0, NULL) != 0)
 		goto parse_error;
 
-	if (corosync_main_config_log_destination_set (objdb, object_handle, subsys, &error_reason,
-	    "to_file", LOGSYS_MODE_OUTPUT_FILE, 1, "to_logfile") != 0)
-		goto parse_error;
-
-	if (!objdb_get_string (objdb,object_handle, "syslog_facility", &value)) {
+	snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "%s.%s", path, "syslog_facility");
+	if (icmap_get_string(key_name, &value) == CS_OK) {
 		int syslog_facility;
 
 		syslog_facility = qb_log_facility2int(value);
@@ -362,9 +320,12 @@ static int corosync_main_config_set (
 			error_reason = "unable to set syslog facility";
 			goto parse_error;
 		}
+
+		free(value);
 	}
 
-	if (!objdb_get_string (objdb,object_handle, "syslog_level", &value)) {
+	snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "%s.%s", path, "syslog_level");
+	if (icmap_get_string(key_name, &value) == CS_OK) {
 		int syslog_priority;
 
 		log_printf(LOGSYS_LEVEL_WARNING,
@@ -381,9 +342,11 @@ static int corosync_main_config_set (
 			error_reason = "unable to set syslog level";
 			goto parse_error;
 		}
+		free(value);
 	}
 
-	if (!objdb_get_string (objdb,object_handle, "syslog_priority", &value)) {
+	snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "%s.%s", path, "syslog_priority");
+	if (icmap_get_string(key_name, &value) == CS_OK) {
 		int syslog_priority;
 
 		syslog_priority = logsys_priority_id_get(value);
@@ -396,19 +359,27 @@ static int corosync_main_config_set (
 			error_reason = "unable to set syslog priority";
 			goto parse_error;
 		}
+		free(value);
 	}
 
-	if (!objdb_get_string (objdb,object_handle, "logfile", &value)) {
+	snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "%s.%s", path, "logfile");
+	if (icmap_get_string(key_name, &value) == CS_OK) {
 		if (logsys_config_file_set (subsys, error_string, value) < 0) {
 			goto parse_error;
 		}
+		free(value);
 	}
 
-	if (corosync_main_config_log_destination_set (objdb, object_handle, subsys, &error_reason,
-	    "to_logfile", LOGSYS_MODE_OUTPUT_FILE, 0, NULL) != 0)
+	if (corosync_main_config_log_destination_set (path, "to_file", subsys, &error_reason,
+	    LOGSYS_MODE_OUTPUT_FILE, 1, "to_logfile") != 0)
 		goto parse_error;
 
-	if (!objdb_get_string (objdb,object_handle, "logfile_priority", &value)) {
+	if (corosync_main_config_log_destination_set (path, "to_logfile", subsys, &error_reason,
+	    LOGSYS_MODE_OUTPUT_FILE, 0, NULL) != 0)
+		goto parse_error;
+
+	snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "%s.%s", path, "logfile_priority");
+	if (icmap_get_string(key_name, &value) == CS_OK) {
 		int logfile_priority;
 
 		logfile_priority = logsys_priority_id_get(value);
@@ -421,9 +392,11 @@ static int corosync_main_config_set (
 			error_reason = "unable to set logfile priority";
 			goto parse_error;
 		}
+		free(value);
 	}
 
-	if (!objdb_get_string (objdb, object_handle, "debug", &value)) {
+	snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "%s.%s", path, "debug");
+	if (icmap_get_string(key_name, &value) == CS_OK) {
 		if (strcmp (value, "on") == 0) {
 			if (logsys_config_debug_set (subsys, 1) < 0) {
 				error_reason = "unable to set debug on";
@@ -439,125 +412,60 @@ static int corosync_main_config_set (
 			error_reason = "unknown value for debug";
 			goto parse_error;
 		}
+		free(value);
 	}
 
 	return (0);
 
 parse_error:
 	*error_string = error_reason;
+	free(value);
 
 	return (-1);
 }
 
 static int corosync_main_config_read_logging (
-	struct objdb_iface_ver0 *objdb,
 	const char **error_string)
 {
-	hdb_handle_t object_service_handle;
-	hdb_handle_t object_logger_subsys_handle;
-	hdb_handle_t object_find_handle;
-	hdb_handle_t object_find_logsys_handle;
 	const char *error_reason;
-	char *value;
+	icmap_iter_t iter;
+	const char *key_name;
+	char key_subsys[ICMAP_KEYNAME_MAXLEN];
+	char key_item[ICMAP_KEYNAME_MAXLEN];
+	int res;
 
-	objdb->object_find_create (
-		OBJECT_PARENT_HANDLE,
-		"logging",
-		strlen ("logging"),
-		&object_find_handle);
-
-	if (objdb->object_find_next (
-		object_find_handle,
-		&object_service_handle) == 0) {
-
-		/* format set is supported only for toplevel */
-		if (corosync_main_config_format_set (objdb,
-						       object_service_handle,
-						       &error_reason) < 0) {
-			goto parse_error;
-		}
-
-		if (corosync_main_config_set (objdb,
-						object_service_handle,
-						NULL,
-						&error_reason) < 0) {
-			goto parse_error;
-		}
-
-		/* we will need 2 of these to compensate for new logging
-		 * config format */
-
-		objdb->object_find_create (
-			object_service_handle,
-			"logger_subsys",
-			strlen ("logger_subsys"),
-			&object_find_logsys_handle);
-
-		while (objdb->object_find_next (
-			object_find_logsys_handle,
-			&object_logger_subsys_handle) == 0) {
-
-			if (!objdb_get_string (objdb,
-				object_logger_subsys_handle,
-				"subsys", &value)) {
-
-				if (corosync_main_config_set (objdb,
-						object_logger_subsys_handle,
-						value,
-						&error_reason) < 0) {
-					goto parse_error;
-				}
-			}
-			else {
-				error_reason = "subsys required for logger directive";
-				goto parse_error;
-			}
-		}
-		objdb->object_find_destroy (object_find_logsys_handle);
-
-		objdb->object_find_create (
-			object_service_handle,
-			"logging_daemon",
-			strlen ("logging_daemon"),
-			&object_find_logsys_handle);
-
-		while (objdb->object_find_next (
-			object_find_logsys_handle,
-			&object_logger_subsys_handle) == 0) {
-
-			if (!objdb_get_string (objdb,
-				object_logger_subsys_handle,
-				"name", &value)) {
-
-				if (strcmp(value, "corosync") == 0) {
-					if (!objdb_get_string (objdb,
-						object_logger_subsys_handle,
-						"subsys", &value)) {
-						if (corosync_main_config_set (objdb,
-								object_logger_subsys_handle,
-								value,
-								&error_reason) < 0) {
-							goto parse_error;
-						}
-					}
-					else {
-						if (corosync_main_config_set (objdb,
-								object_logger_subsys_handle,
-								NULL,
-								&error_reason) < 0) {
-							goto parse_error;
-						}
-					}
-				}
-			}
-			else {
-				error_reason = "name required for logging_daemon directive";
-				goto parse_error;
-			}
-		}
-		objdb->object_find_destroy (object_find_logsys_handle);
+	/* format set is supported only for toplevel */
+	if (corosync_main_config_format_set(&error_reason) < 0) {
+		goto parse_error;
 	}
-	objdb->object_find_destroy (object_find_handle);
+
+	if (corosync_main_config_set ("logging", NULL, &error_reason) < 0) {
+		goto parse_error;
+	}
+
+	/*
+	 * we will need 2 of these to compensate for new logging
+	 * config format
+	 */
+	iter = icmap_iter_init("logging.logger_subsys.");
+	while ((key_name = icmap_iter_next(iter, NULL, NULL)) != NULL) {
+		res = sscanf(key_name, "logging.logger_subsys.%[^.].%s", key_subsys, key_item);
+
+		if (res != 2) {
+			continue ;
+		}
+
+		if (strcmp(key_item, "subsys") != 0) {
+			continue ;
+		}
+
+		snprintf(key_item, ICMAP_KEYNAME_MAXLEN, "logging.logger_subsys.%s", key_subsys);
+
+		if (corosync_main_config_set(key_item, key_subsys, &error_reason) < 0) {
+			goto parse_error;
+		}
+	}
+	icmap_iter_finalize(iter);
 
 	logsys_config_apply();
 	return 0;
@@ -568,159 +476,46 @@ parse_error:
 	return (-1);
 }
 
-static int uid_determine (const char *req_user)
-{
-	int pw_uid = 0;
-	struct passwd passwd;
-	struct passwd* pwdptr = &passwd;
-	struct passwd* temp_pwd_pt;
-	char *pwdbuffer;
-	int  pwdlinelen;
-
-	pwdlinelen = sysconf (_SC_GETPW_R_SIZE_MAX);
-
-	if (pwdlinelen == -1) {
-		pwdlinelen = 256;
-	}
-
-	pwdbuffer = malloc (pwdlinelen);
-
-	if ((getpwnam_r (req_user, pwdptr, pwdbuffer, pwdlinelen, &temp_pwd_pt)) != 0) {
-		log_printf (LOGSYS_LEVEL_ERROR,
-			"ERROR: The '%s' user is not found in /etc/passwd, please read the documentation.\n",
-			req_user);
-		corosync_exit_error (AIS_DONE_UID_DETERMINE);
-	}
-	pw_uid = passwd.pw_uid;
-	free (pwdbuffer);
-
-	return pw_uid;
-}
-
-static int gid_determine (const char *req_group)
-{
-	int ais_gid = 0;
-	struct group group;
-	struct group * grpptr = &group;
-	struct group * temp_grp_pt;
-	char *grpbuffer;
-	int  grplinelen;
-
-	grplinelen = sysconf (_SC_GETGR_R_SIZE_MAX);
-
-	if (grplinelen == -1) {
-		grplinelen = 256;
-	}
-
-	grpbuffer = malloc (grplinelen);
-
-	if ((getgrnam_r (req_group, grpptr, grpbuffer, grplinelen, &temp_grp_pt)) != 0) {
-		log_printf (LOGSYS_LEVEL_ERROR,
-			"ERROR: The '%s' group is not found in /etc/group, please read the documentation.\n",
-			req_group);
-		corosync_exit_error (AIS_DONE_GID_DETERMINE);
-	}
-	ais_gid = group.gr_gid;
-	free (grpbuffer);
-
-	return ais_gid;
-}
-
-
-static void main_objdb_reload_notify(objdb_reload_notify_type_t type, int flush,
-				     void *priv_data_pt)
+static void main_logging_notify(
+		int32_t event,
+		const char *key_name,
+		struct icmap_notify_value new_val,
+		struct icmap_notify_value old_val,
+		void *user_data)
 {
 	const char *error_string;
 
-	if (type == OBJDB_RELOAD_NOTIFY_END) {
-
-		/*
-		 * Reload the logsys configuration
-		 */
-		if (logsys_format_set(NULL) == -1) {
-			fprintf (stderr, "Unable to setup logging format.\n");
-		}
-		corosync_main_config_read_logging(global_objdb,
-						  &error_string);
+	/*
+	 * Reload the logsys configuration
+	 */
+	if (logsys_format_set(NULL) == -1) {
+		fprintf (stderr, "Unable to setup logging format.\n");
 	}
+	corosync_main_config_read_logging(&error_string);
 }
 
-static void add_logsys_config_notification(
-	struct objdb_iface_ver0 *objdb)
+static void add_logsys_config_notification(void)
 {
+	icmap_track_t icmap_track;
 
-	global_objdb = objdb;
-
-	objdb->object_track_start(OBJECT_PARENT_HANDLE,
-				  1,
-				  NULL,
-				  NULL,
-				  NULL,
-				  main_objdb_reload_notify,
-				  NULL);
-
-}
-
-static int corosync_main_config_read_uidgid (
-	struct objdb_iface_ver0 *objdb,
-	const char **error_string)
-{
-	hdb_handle_t object_find_handle;
-	hdb_handle_t object_service_handle;
-	char *value;
-	int uid, gid;
-	struct uidgid_item *ugi;
-
-	objdb->object_find_create (
-		OBJECT_PARENT_HANDLE,
-		"uidgid",
-		strlen ("uidgid"),
-		&object_find_handle);
-
-	while (objdb->object_find_next (
-		object_find_handle,
-		&object_service_handle) == 0) {
-		uid = -1;
-		gid = -1;
-
-		if (!objdb_get_string (objdb,object_service_handle, "uid", &value)) {
-			uid = uid_determine(value);
-		}
-
-		if (!objdb_get_string (objdb,object_service_handle, "gid", &value)) {
-			gid = gid_determine(value);
-		}
-
-		if (uid > -1 || gid > -1) {
-			ugi = malloc (sizeof (*ugi));
-			if (ugi == NULL) {
-				_corosync_out_of_memory_error();
-			}
-			ugi->uid = uid;
-			ugi->gid = gid;
-			list_init (&ugi->list);
-			list_add (&ugi->list, &uidgid_list_head);
-		}
-	}
-	objdb->object_find_destroy (object_find_handle);
-
-	return 0;
+	icmap_track_add("logging.",
+			ICMAP_TRACK_ADD | ICMAP_TRACK_DELETE | ICMAP_TRACK_MODIFY | ICMAP_TRACK_PREFIX,
+			main_logging_notify,
+			NULL,
+			&icmap_track);
 }
 
 int corosync_main_config_read (
-	struct objdb_iface_ver0 *objdb,
 	const char **error_string)
 {
 	const char *error_reason = error_string_response;
 
-	if (corosync_main_config_read_logging(objdb, error_string) < 0) {
+	if (corosync_main_config_read_logging(error_string) < 0) {
 		error_reason = *error_string;
 		goto parse_error;
 	}
 
-	corosync_main_config_read_uidgid (objdb, error_string);
-
-	add_logsys_config_notification(objdb);
+	add_logsys_config_notification();
 
 	return 0;
 
@@ -734,7 +529,6 @@ parse_error:
 }
 
 int corosync_main_config_compatibility_read (
-        struct objdb_iface_ver0 *objdb,
         enum cs_sync_mode *minimum_sync_mode,
         const char **error_string)
 {
@@ -742,8 +536,7 @@ int corosync_main_config_compatibility_read (
 	char *value;
 
 	*minimum_sync_mode = CS_SYNC_V1;
-	if (!objdb_get_string (objdb, OBJECT_PARENT_HANDLE, "compatibility", &value)) {
-
+	if (icmap_get_string("compatibility", &value) == CS_OK) {
 		if (strcmp (value, "whitetank") == 0) {
 			*minimum_sync_mode = CS_SYNC_V1;
 		} else
@@ -755,12 +548,13 @@ int corosync_main_config_compatibility_read (
 				"Invalid compatibility option '%s' specified, must be none or whitetank.\n", value);
 			goto parse_error;
 		}
+		free(value);
 	}
 
 	return 0;
 
 parse_error:
 	*error_string = error_reason;
-
+	free(value);
 	return (-1);
 }
