@@ -58,6 +58,7 @@
 #include <qb/qbipc_common.h>
 #include <corosync/corodefs.h>
 #include <corosync/engine/logsys.h>
+#include <corosync/engine/icmap.h>
 
 #include <corosync/mar_gen.h>
 #include <corosync/lcr/lcr_comp.h>
@@ -111,22 +112,20 @@ __attribute__ ((constructor)) static void corosync_lcr_component_register (void)
 
 static quorum_set_quorate_fn_t set_quorum;
 
-static void key_change_notify(object_change_type_t change_type,
-			      hdb_handle_t parent_object_handle,
-			      hdb_handle_t object_handle,
-			      const void *object_name_pt, size_t object_name_len,
-			      const void *key_name_pt, size_t key_len,
-			      const void *key_value_pt, size_t key_value_len,
-			      void *priv_data_pt)
+static void key_change_notify(
+	int32_t event,
+	const char *key_name,
+	struct icmap_notify_value new_val,
+	struct icmap_notify_value old_val,
+	void *user_data)
 {
-	unsigned int members[1];
 	struct memb_ring_id ring_id;
+	unsigned int members[1];
+	uint8_t u8;
 
 	memset(&ring_id, 0, sizeof(ring_id));
-
-	/* If the 'quorum.quorate' key changes, then that changes quorum */
-	if (strncmp(key_name_pt, "quorate", key_len) == 0) {
-		set_quorum(members, 0, atoi(key_value_pt), &ring_id);
+	if (icmap_get_uint8(key_name, &u8) == CS_OK) {
+		set_quorum(members, 0, u8, &ring_id);
 	}
 }
 
@@ -139,25 +138,18 @@ static void test_init(struct corosync_api_v1 *api,
 		      quorum_set_quorate_fn_t report)
 {
 
-	hdb_handle_t find_handle;
-	hdb_handle_t quorum_handle = 0;
+	icmap_track_t icmap_track;
 
 	set_quorum = report;
 
 	/*
-	 * Register for objdb changes on quorum { }
+	 * Register for icmap changes on quorum.quorate
 	 */
-	api->object_find_create(OBJECT_PARENT_HANDLE, "quorum", strlen("quorum"), &find_handle);
-        api->object_find_next(find_handle, &quorum_handle);
-	api->object_find_destroy(find_handle);
-
-	api->object_track_start(quorum_handle,
-				1,
-				key_change_notify,
-				NULL, // object_create_notify
-				NULL, // object_destroy_notify
-				NULL, // object_reload_notify
-				NULL); // priv_data
+	icmap_track_add("quorum.quorate",
+		ICMAP_TRACK_ADD | ICMAP_TRACK_DELETE | ICMAP_TRACK_MODIFY,
+		key_change_notify,
+		NULL,
+		&icmap_track);
 
 	/* Register for quorum changes too! */
 	api->quorum_register_callback(quorum_callback, NULL);
