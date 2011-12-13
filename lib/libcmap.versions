@@ -1,0 +1,6 @@
+# Version and symbol export for libsam.so
+
+COROSYNC_CMAP_1.0 {
+	global:
+		cmap_initialize;
+};
