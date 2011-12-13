@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009 Red Hat, Inc.
+ * Copyright (c) 2009-2011 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -46,12 +46,11 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <corosync/corotypes.h>
-#include <corosync/confdb.h>
 #include <corosync/sam.h>
 #include <signal.h>
 #include <string.h>
 #include <sys/wait.h>
-
+#include <corosync/cmap.h>
 extern const char *__progname;
 
 static int test2_sig_delivered = 0;
@@ -245,7 +244,6 @@ static int test2 (void) {
 static int test3 (void) {
 	cs_error_t error;
 	unsigned int instance_id;
-	int tmp1, tmp2, tmp3;
 
 	printf ("%s: initialize\n", __FUNCTION__);
 	error = sam_initialize (0, SAM_RECOVERY_POLICY_RESTART);
@@ -268,12 +266,8 @@ static int test3 (void) {
 			return 1;
 		}
 
-		printf ("%s iid %d: divide by zero\n", __FUNCTION__, instance_id);
-		tmp2 = rand ();
-		tmp3 = 0;
-		tmp1 = tmp2 / tmp3;
-		tmp3 = tmp1;
-
+		printf ("%s iid %d: Sending signal\n", __FUNCTION__, instance_id);
+		kill(getpid(), SIGSEGV);
 		return 1;
 	}
 
@@ -755,49 +749,35 @@ static void *test7_thread (void *arg)
  * Test quorum
  */
 static int test7 (void) {
-	confdb_handle_t cdb_handle;
+	cmap_handle_t cmap_handle;
 	cs_error_t err;
-	hdb_handle_t quorum_handle;
-	size_t value_len;
-	char key_value[256];
 	unsigned int instance_id;
 	pthread_t kill_thread;
+	char *str;
 
-	err = confdb_initialize (&cdb_handle, NULL);
+	err = cmap_initialize (&cmap_handle);
 	if (err != CS_OK) {
-		printf ("Could not initialize Cluster Configuration Database API instance error %d. Test skipped\n", err);
+		printf ("Could not initialize Cluster Map API instance error %d. Test skipped\n", err);
 		return (1);
 	}
 
-	err = confdb_object_find_start(cdb_handle, OBJECT_PARENT_HANDLE);
-	if (err != CS_OK) {
-		printf ("Could not start object_find %d. Test skipped\n", err);
-		return (1);
-        }
 
-	err = confdb_object_find(cdb_handle, OBJECT_PARENT_HANDLE, "quorum", strlen("quorum"), &quorum_handle);
-	if (err != CS_OK) {
-		printf ("Could not object_find \"quorum\": %d. Test skipped\n", err);
-		return (1);
-	}
-
-	err = confdb_key_get(cdb_handle, quorum_handle, "provider", strlen("provider"), key_value, &value_len);
-	if (err != CS_OK) {
+	if (cmap_get_string(cmap_handle, "quorum.provider", &str) != CS_OK) {
 		printf ("Could not get \"provider\" key: %d. Test skipped\n", err);
 		return (1);
 	}
-
-        if (!(value_len - 1 == strlen ("testquorum") && memcmp (key_value, "testquorum", value_len - 1) == 0)) {
+        if (strcmp(str, "testquorum") != 0) {
 		printf ("Provider is not testquorum. Test skipped\n");
 		return (1);
         }
+	free(str);
 
 	/*
 	 * Set to not quorate
 	 */
-	err = confdb_key_create(cdb_handle, quorum_handle, "quorate", strlen("quorate"), "0", strlen("0"));
+	err = cmap_set_uint8(cmap_handle, "quorum.quorate", 0);
 	if (err != CS_OK) {
-		printf ("Can't create confdb key. Error %d\n", err);
+		printf ("Can't set map key. Error %d\n", err);
 		return (2);
 	}
 
@@ -836,9 +816,9 @@ static int test7 (void) {
 		/*
 		 * Set to quorate
 		 */
-		err = confdb_key_create(cdb_handle, quorum_handle, "quorate", strlen("quorate"), "1", strlen("1"));
+		err = cmap_set_uint8(cmap_handle, "quorum.quorate", 1);
 		if (err != CS_OK) {
-			printf ("Can't create confdb key. Error %d\n", err);
+			printf ("Can't set map key. Error %d\n", err);
 			return (2);
 		}
 
@@ -852,9 +832,9 @@ static int test7 (void) {
 		/*
 		 * Set corosync unquorate
 		 */
-		err = confdb_key_create(cdb_handle, quorum_handle, "quorate", strlen("quorate"), "0", strlen("0"));
+		err = cmap_set_uint8(cmap_handle, "quorum.quorate", 0);
 		if (err != CS_OK) {
-			printf ("Can't create confdb key. Error %d\n", err);
+			printf ("Can't set map key. Error %d\n", err);
 			return (2);
 		}
 
@@ -873,23 +853,20 @@ static int test7 (void) {
 }
 
 /*
- * Test confdb integration + quit policy
+ * Test cmap integration + quit policy
  */
 static int test8 (pid_t pid, pid_t old_pid, int test_n) {
-	confdb_handle_t cdb_handle;
+	cmap_handle_t cmap_handle;
 	cs_error_t err;
-	hdb_handle_t res_handle, proc_handle, pid_handle;
-	size_t value_len;
 	uint64_t tstamp1, tstamp2;
 	int32_t msec_diff;
-	char key_value[256];
 	unsigned int instance_id;
-	char tmp_obj[PATH_MAX];
-	confdb_value_types_t cdbtype;
+	char key_name[CMAP_KEYNAME_MAXLEN];
+	char *str;
 
-	err = confdb_initialize (&cdb_handle, NULL);
+	err = cmap_initialize (&cmap_handle);
 	if (err != CS_OK) {
-		printf ("Could not initialize Cluster Configuration Database API instance error %d. Test skipped\n", err);
+		printf ("Could not initialize Cluster Map API instance error %d. Test skipped\n", err);
 		return (1);
 	}
 
@@ -901,50 +878,18 @@ static int test8 (pid_t pid, pid_t old_pid, int test_n) {
 		 */
 		printf ("%s Testing if object exists (it shouldn't)\n", __FUNCTION__);
 
-		err = confdb_object_find_start(cdb_handle, OBJECT_PARENT_HANDLE);
-		if (err != CS_OK) {
-			printf ("Could not start object_find %d.\n", err);
-			return (2);
-		}
-
-		err = confdb_object_find(cdb_handle, OBJECT_PARENT_HANDLE, "resources", strlen("resources"), &res_handle);
-		if (err != CS_OK) {
-			printf ("Could not object_find \"resources\": %d.\n", err);
-			return (2);
-		}
-
-		err = confdb_object_find_start(cdb_handle, res_handle);
-		if (err != CS_OK) {
-			printf ("Could not start object_find %d.\n", err);
-			return (2);
-		}
-
-		err = confdb_object_find(cdb_handle, res_handle, "process", strlen("process"), &proc_handle);
-		if (err != CS_OK) {
-			printf ("Could not object_find \"process\": %d.\n", err);
-			return (2);
-		}
-
-		if (snprintf (tmp_obj, sizeof (tmp_obj), "%s:%d", __progname, pid) >= sizeof (tmp_obj)) {
-			snprintf (tmp_obj, sizeof (tmp_obj), "%d", pid);
-		}
-
-		err = confdb_object_find_start(cdb_handle, proc_handle);
-		if (err != CS_OK) {
-			printf ("Could not start object_find %d.\n", err);
-			return (2);
-		}
-
-		err = confdb_object_find(cdb_handle, proc_handle, tmp_obj, strlen(tmp_obj), &pid_handle);
+		snprintf(key_name, CMAP_KEYNAME_MAXLEN, "resources.process.%d.state", pid);
+		err = cmap_get_string(cmap_handle, key_name, &str);
 		if (err == CS_OK) {
-			printf ("Could find object \"%s\": %d.\n", tmp_obj, err);
+			printf ("Could find key \"%s\": %d.\n", key_name, err);
+			free(str);
 			return (2);
 		}
 	}
 
 	if (test_n == 1 || test_n == 2) {
 		printf ("%s: initialize\n", __FUNCTION__);
-		err = sam_initialize (2000, SAM_RECOVERY_POLICY_QUIT | SAM_RECOVERY_POLICY_CONFDB);
+		err = sam_initialize (2000, SAM_RECOVERY_POLICY_QUIT | SAM_RECOVERY_POLICY_CMAP);
 		if (err != CS_OK) {
 			fprintf (stderr, "Can't initialize SAM API. Error %d\n", err);
 			return 2;
@@ -957,67 +902,31 @@ static int test8 (pid_t pid, pid_t old_pid, int test_n) {
 			return 2;
 		}
 
-		err = confdb_object_find_start(cdb_handle, OBJECT_PARENT_HANDLE);
-		if (err != CS_OK) {
-			printf ("Could not start object_find %d.\n", err);
-			return (2);
-		}
-
-		err = confdb_object_find(cdb_handle, OBJECT_PARENT_HANDLE, "resources", strlen("resources"), &res_handle);
-		if (err != CS_OK) {
-			printf ("Could not object_find \"resources\": %d.\n", err);
-			return (2);
-		}
-
-		err = confdb_object_find_start(cdb_handle, res_handle);
-		if (err != CS_OK) {
-			printf ("Could not start object_find %d.\n", err);
-			return (2);
-		}
-
-		err = confdb_object_find(cdb_handle, res_handle, "process", strlen("process"), &proc_handle);
-		if (err != CS_OK) {
-			printf ("Could not object_find \"process\": %d.\n", err);
-			return (2);
-		}
-
-		if (snprintf (tmp_obj, sizeof (tmp_obj), "%s:%d", __progname, pid) >= sizeof (tmp_obj)) {
-			snprintf (tmp_obj, sizeof (tmp_obj), "%d", pid);
-		}
-
-		err = confdb_object_find_start(cdb_handle, proc_handle);
-		if (err != CS_OK) {
-			printf ("Could not start object_find %d.\n", err);
-			return (2);
-		}
-
-		err = confdb_object_find(cdb_handle, proc_handle, tmp_obj, strlen(tmp_obj), &pid_handle);
-		if (err != CS_OK) {
-			printf ("Could not object_find \"%s\": %d.\n", tmp_obj, err);
-			return (2);
-		}
-
-		err = confdb_key_get(cdb_handle, pid_handle, "recovery", strlen("recovery"), key_value, &value_len);
+		snprintf(key_name, CMAP_KEYNAME_MAXLEN, "resources.process.%d.recovery", pid);
+		err = cmap_get_string(cmap_handle, key_name, &str);
 		if (err != CS_OK) {
 			printf ("Could not get \"recovery\" key: %d.\n", err);
 			return (2);
 		}
 
-		if (value_len != strlen ("quit") || memcmp (key_value, "quit", value_len) != 0) {
-			printf ("Recovery key \"%s\" is not \"watchdog\".\n", key_value);
+		if (strcmp(str, "quit") != 0) {
+			printf ("Recovery key \"%s\" is not \"quit\".\n", key_name);
 			return (2);
 		}
+		free(str);
 
-		err = confdb_key_get(cdb_handle, pid_handle, "state", strlen("state"), key_value, &value_len);
+		snprintf(key_name, CMAP_KEYNAME_MAXLEN, "resources.process.%d.state", pid);
+		err = cmap_get_string(cmap_handle, key_name, &str);
 		if (err != CS_OK) {
 			printf ("Could not get \"state\" key: %d.\n", err);
 			return (2);
 		}
 
-		if (value_len != strlen ("stopped") || memcmp (key_value, "stopped", value_len) != 0) {
+		if (strcmp(str, "stopped") != 0) {
 			printf ("State key is not \"stopped\".\n");
 			return (2);
 		}
+		free(str);
 
 		printf ("%s iid %d: start\n", __FUNCTION__, instance_id);
 		err = sam_start ();
@@ -1026,16 +935,17 @@ static int test8 (pid_t pid, pid_t old_pid, int test_n) {
 			return 2;
 		}
 
-		err = confdb_key_get(cdb_handle, pid_handle, "state", strlen("state"), key_value, &value_len);
+		err = cmap_get_string(cmap_handle, key_name, &str);
 		if (err != CS_OK) {
 			printf ("Could not get \"state\" key: %d.\n", err);
 			return (2);
 		}
 
-		if (value_len != strlen ("running") || memcmp (key_value, "running", value_len) != 0) {
+		if (strcmp(str, "running") != 0) {
 			printf ("State key is not \"running\".\n");
 			return (2);
 		}
+		free(str);
 
 		printf ("%s iid %d: stop\n", __FUNCTION__, instance_id);
 		err = sam_stop ();
@@ -1044,30 +954,32 @@ static int test8 (pid_t pid, pid_t old_pid, int test_n) {
 			return 2;
 		}
 
-		err = confdb_key_get(cdb_handle, pid_handle, "state", strlen("state"), key_value, &value_len);
+		err = cmap_get_string(cmap_handle, key_name, &str);
 		if (err != CS_OK) {
 			printf ("Could not get \"state\" key: %d.\n", err);
 			return (2);
 		}
 
-		if (value_len != strlen ("stopped") || memcmp (key_value, "stopped", value_len) != 0) {
+		if (strcmp(str, "stopped") != 0) {
 			printf ("State key is not \"stopped\".\n");
 			return (2);
 		}
+		free(str);
 
 		printf ("%s iid %d: sleeping 5\n", __FUNCTION__, instance_id);
 		sleep (5);
 
-		err = confdb_key_get(cdb_handle, pid_handle, "state", strlen("state"), key_value, &value_len);
+		err = cmap_get_string(cmap_handle, key_name, &str);
 		if (err != CS_OK) {
 			printf ("Could not get \"state\" key: %d.\n", err);
 			return (2);
 		}
 
-		if (value_len != strlen ("stopped") || memcmp (key_value, "stopped", value_len) != 0) {
+		if (strcmp(str, "stopped") != 0) {
 			printf ("State key is not \"stopped\".\n");
 			return (2);
 		}
+		free(str);
 
 		printf ("%s iid %d: start 2\n", __FUNCTION__, instance_id);
 		err = sam_start ();
@@ -1076,16 +988,17 @@ static int test8 (pid_t pid, pid_t old_pid, int test_n) {
 			return 2;
 		}
 
-		err = confdb_key_get(cdb_handle, pid_handle, "state", strlen("state"), key_value, &value_len);
+		err = cmap_get_string(cmap_handle, key_name, &str);
 		if (err != CS_OK) {
 			printf ("Could not get \"state\" key: %d.\n", err);
 			return (2);
 		}
 
-		if (value_len != strlen ("running") || memcmp (key_value, "running", value_len) != 0) {
+		if (strcmp(str, "running") != 0) {
 			printf ("State key is not \"running\".\n");
 			return (2);
 		}
+		free(str);
 
 		if (test_n == 2) {
 			printf ("%s iid %d: sleeping 5. Should be killed\n", __FUNCTION__, instance_id);
@@ -1099,9 +1012,11 @@ static int test8 (pid_t pid, pid_t old_pid, int test_n) {
 				fprintf (stderr, "Can't send hc. Error %d\n", err);
 				return 2;
 			}
-			err = confdb_key_get_typed (cdb_handle, pid_handle, "last_updated", &tstamp1, &value_len, &cdbtype);
+
+			snprintf(key_name, CMAP_KEYNAME_MAXLEN, "resources.process.%d.last_updated", pid);
+			err = cmap_get_uint64(cmap_handle, key_name, &tstamp1);
 			if (err != CS_OK) {
-				printf ("Could not get \"state\" key: %d.\n", err);
+				printf ("Could not get \"last_updated\" key: %d.\n", err);
 				return (2);
 			}
 			printf ("%s iid %d: Sleep 1\n", __FUNCTION__, instance_id);
@@ -1112,9 +1027,9 @@ static int test8 (pid_t pid, pid_t old_pid, int test_n) {
 				return 2;
 			}
 			sleep (1);
-			err = confdb_key_get_typed (cdb_handle, pid_handle, "last_updated", &tstamp2, &value_len, &cdbtype);
+			err = cmap_get_uint64(cmap_handle, key_name, &tstamp2);
 			if (err != CS_OK) {
-				printf ("Could not get \"state\" key: %d.\n", err);
+				printf ("Could not get \"last_updated\" key: %d.\n", err);
 				return (2);
 			}
 			msec_diff = (tstamp2 - tstamp1)/CS_TIME_NS_IN_MSEC;
@@ -1131,16 +1046,18 @@ static int test8 (pid_t pid, pid_t old_pid, int test_n) {
 				return 2;
 			}
 
-			err = confdb_key_get(cdb_handle, pid_handle, "state", strlen("state"), key_value, &value_len);
+			snprintf(key_name, CMAP_KEYNAME_MAXLEN, "resources.process.%d.state", pid);
+			err = cmap_get_string(cmap_handle, key_name, &str);
 			if (err != CS_OK) {
 				printf ("Could not get \"state\" key: %d.\n", err);
 				return (2);
 			}
 
-			if (value_len != strlen ("stopped") || memcmp (key_value, "stopped", value_len) != 0) {
+			if (strcmp(str, "stopped") != 0) {
 				printf ("State key is not \"stopped\".\n");
 				return (2);
 			}
+			free(str);
 
 			printf ("%s iid %d: exiting\n", __FUNCTION__, instance_id);
 			return (0);
@@ -1153,53 +1070,15 @@ static int test8 (pid_t pid, pid_t old_pid, int test_n) {
 		/*
 		 * Previous should be FAILED
 		 */
-		err = confdb_object_find_start(cdb_handle, OBJECT_PARENT_HANDLE);
-		if (err != CS_OK) {
-			printf ("Could not start object_find %d.\n", err);
-			return (2);
-		}
 
-		err = confdb_object_find(cdb_handle, OBJECT_PARENT_HANDLE, "resources", strlen("resources"), &res_handle);
-		if (err != CS_OK) {
-			printf ("Could not object_find \"resources\": %d.\n", err);
-			return (2);
-		}
-
-		err = confdb_object_find_start(cdb_handle, res_handle);
-		if (err != CS_OK) {
-			printf ("Could not start object_find %d.\n", err);
-			return (2);
-		}
-
-		err = confdb_object_find(cdb_handle, res_handle, "process", strlen("process"), &proc_handle);
-		if (err != CS_OK) {
-			printf ("Could not object_find \"process\": %d.\n", err);
-			return (2);
-		}
-
-		if (snprintf (tmp_obj, sizeof (tmp_obj), "%s:%d", __progname, pid) >= sizeof (tmp_obj)) {
-			snprintf (tmp_obj, sizeof (tmp_obj), "%d", pid);
-		}
-
-		err = confdb_object_find_start(cdb_handle, proc_handle);
-		if (err != CS_OK) {
-			printf ("Could not start object_find %d.\n", err);
-			return (2);
-		}
-
-		err = confdb_object_find(cdb_handle, proc_handle, tmp_obj, strlen(tmp_obj), &pid_handle);
-		if (err != CS_OK) {
-			printf ("Could not object_find \"%s\": %d.\n", tmp_obj, err);
-			return (2);
-		}
-
-		err = confdb_key_get(cdb_handle, pid_handle, "state", strlen("state"), key_value, &value_len);
+		snprintf(key_name, CMAP_KEYNAME_MAXLEN, "resources.process.%d.state", pid);
+		err = cmap_get_string(cmap_handle, key_name, &str);
 		if (err != CS_OK) {
 			printf ("Could not get \"state\" key: %d.\n", err);
 			return (2);
 		}
 
-		if (value_len != strlen ("failed") || memcmp (key_value, "failed", value_len) != 0) {
+		if (strcmp(str, "failed") != 0) {
 			printf ("State key is not \"failed\".\n");
 			return (2);
 		}
@@ -1211,20 +1090,18 @@ static int test8 (pid_t pid, pid_t old_pid, int test_n) {
 }
 
 /*
- * Test confdb integration + restart policy
+ * Test cmap integration + restart policy
  */
 static int test9 (pid_t pid, pid_t old_pid, int test_n) {
-	confdb_handle_t cdb_handle;
 	cs_error_t err;
-	hdb_handle_t res_handle, proc_handle, pid_handle;
-	size_t value_len;
-	char key_value[256];
+	cmap_handle_t cmap_handle;
 	unsigned int instance_id;
-	char tmp_obj[PATH_MAX];
+	char *str;
+	char key_name[CMAP_KEYNAME_MAXLEN];
 
-	err = confdb_initialize (&cdb_handle, NULL);
+	err = cmap_initialize (&cmap_handle);
 	if (err != CS_OK) {
-		printf ("Could not initialize Cluster Configuration Database API instance error %d. Test skipped\n", err);
+		printf ("Could not initialize Cluster Map API instance error %d. Test skipped\n", err);
 		return (1);
 	}
 
@@ -1232,7 +1109,7 @@ static int test9 (pid_t pid, pid_t old_pid, int test_n) {
 
 	if (test_n == 1) {
 		printf ("%s: initialize\n", __FUNCTION__);
-		err = sam_initialize (2000, SAM_RECOVERY_POLICY_RESTART | SAM_RECOVERY_POLICY_CONFDB);
+		err = sam_initialize (2000, SAM_RECOVERY_POLICY_RESTART | SAM_RECOVERY_POLICY_CMAP);
 		if (err != CS_OK) {
 			fprintf (stderr, "Can't initialize SAM API. Error %d\n", err);
 			return 2;
@@ -1247,68 +1124,31 @@ static int test9 (pid_t pid, pid_t old_pid, int test_n) {
 		printf ("%s: iid %d\n", __FUNCTION__, instance_id);
 
 		if (instance_id < 3) {
-			err = confdb_object_find_start(cdb_handle, OBJECT_PARENT_HANDLE);
-			if (err != CS_OK) {
-				printf ("Could not start object_find %d.\n", err);
-				return (2);
-			}
-
-			err = confdb_object_find(cdb_handle, OBJECT_PARENT_HANDLE, "resources", strlen("resources"),
-			    &res_handle);
-			if (err != CS_OK) {
-				printf ("Could not object_find \"resources\": %d.\n", err);
-				return (2);
-			}
-
-			err = confdb_object_find_start(cdb_handle, res_handle);
-			if (err != CS_OK) {
-				printf ("Could not start object_find %d.\n", err);
-				return (2);
-			}
-
-			err = confdb_object_find(cdb_handle, res_handle, "process", strlen("process"), &proc_handle);
-			if (err != CS_OK) {
-				printf ("Could not object_find \"process\": %d.\n", err);
-				return (2);
-			}
-
-			if (snprintf (tmp_obj, sizeof (tmp_obj), "%s:%d", __progname, pid) >= sizeof (tmp_obj)) {
-				snprintf (tmp_obj, sizeof (tmp_obj), "%d", pid);
-			}
-
-			err = confdb_object_find_start(cdb_handle, proc_handle);
-			if (err != CS_OK) {
-				printf ("Could not start object_find %d.\n", err);
-				return (2);
-			}
-
-			err = confdb_object_find(cdb_handle, proc_handle, tmp_obj, strlen(tmp_obj), &pid_handle);
-			if (err != CS_OK) {
-				printf ("Could not object_find \"%s\": %d.\n", tmp_obj, err);
-				return (2);
-			}
-
-			err = confdb_key_get(cdb_handle, pid_handle, "recovery", strlen("recovery"), key_value, &value_len);
+			snprintf(key_name, CMAP_KEYNAME_MAXLEN, "resources.process.%d.recovery", pid);
+			err = cmap_get_string(cmap_handle, key_name, &str);
 			if (err != CS_OK) {
 				printf ("Could not get \"recovery\" key: %d.\n", err);
 				return (2);
 			}
 
-			if (value_len != strlen ("restart") || memcmp (key_value, "restart", value_len) != 0) {
-				printf ("Recovery key \"%s\" is not \"restart\".\n", key_value);
+			if (strcmp(str, "restart") != 0) {
+				printf ("Recovery key \"%s\" is not \"restart\".\n", str);
 				return (2);
 			}
+			free(str);
 
-			err = confdb_key_get(cdb_handle, pid_handle, "state", strlen("state"), key_value, &value_len);
+			snprintf(key_name, CMAP_KEYNAME_MAXLEN, "resources.process.%d.state", pid);
+			err = cmap_get_string(cmap_handle, key_name, &str);
 			if (err != CS_OK) {
 				printf ("Could not get \"state\" key: %d.\n", err);
 				return (2);
 			}
 
-			if (value_len != strlen ("stopped") || memcmp (key_value, "stopped", value_len) != 0) {
+			if (strcmp(str, "stopped") != 0) {
 				printf ("State key is not \"stopped\".\n");
 				return (2);
 			}
+			free(str);
 
 			printf ("%s iid %d: start\n", __FUNCTION__, instance_id);
 			err = sam_start ();
@@ -1317,16 +1157,17 @@ static int test9 (pid_t pid, pid_t old_pid, int test_n) {
 				return 2;
 			}
 
-			err = confdb_key_get(cdb_handle, pid_handle, "state", strlen("state"), key_value, &value_len);
+			err = cmap_get_string(cmap_handle, key_name, &str);
 			if (err != CS_OK) {
 				printf ("Could not get \"state\" key: %d.\n", err);
 				return (2);
 			}
 
-			if (value_len != strlen ("running") || memcmp (key_value, "running", value_len) != 0) {
+			if (strcmp(str, "running") != 0) {
 				printf ("State key is not \"running\".\n");
 				return (2);
 			}
+			free(str);
 
 			printf ("%s iid %d: waiting for kill\n", __FUNCTION__, instance_id);
 			sleep (10);
@@ -1360,56 +1201,18 @@ static int test9 (pid_t pid, pid_t old_pid, int test_n) {
 		/*
 		 * Previous should be FAILED
 		 */
-		err = confdb_object_find_start(cdb_handle, OBJECT_PARENT_HANDLE);
-		if (err != CS_OK) {
-			printf ("Could not start object_find %d.\n", err);
-			return (2);
-		}
-
-		err = confdb_object_find(cdb_handle, OBJECT_PARENT_HANDLE, "resources", strlen("resources"), &res_handle);
-		if (err != CS_OK) {
-			printf ("Could not object_find \"resources\": %d.\n", err);
-			return (2);
-		}
-
-		err = confdb_object_find_start(cdb_handle, res_handle);
-		if (err != CS_OK) {
-			printf ("Could not start object_find %d.\n", err);
-			return (2);
-		}
-
-		err = confdb_object_find(cdb_handle, res_handle, "process", strlen("process"), &proc_handle);
-		if (err != CS_OK) {
-			printf ("Could not object_find \"process\": %d.\n", err);
-			return (2);
-		}
-
-		if (snprintf (tmp_obj, sizeof (tmp_obj), "%s:%d", __progname, pid) >= sizeof (tmp_obj)) {
-			snprintf (tmp_obj, sizeof (tmp_obj), "%d", pid);
-		}
-
-		err = confdb_object_find_start(cdb_handle, proc_handle);
-		if (err != CS_OK) {
-			printf ("Could not start object_find %d.\n", err);
-			return (2);
-		}
-
-		err = confdb_object_find(cdb_handle, proc_handle, tmp_obj, strlen(tmp_obj), &pid_handle);
-		if (err != CS_OK) {
-			printf ("Could not object_find \"%s\": %d.\n", tmp_obj, err);
-			return (2);
-		}
-
-		err = confdb_key_get(cdb_handle, pid_handle, "state", strlen("state"), key_value, &value_len);
+		snprintf(key_name, CMAP_KEYNAME_MAXLEN, "resources.process.%d.state", pid);
+		err = cmap_get_string(cmap_handle, key_name, &str);
 		if (err != CS_OK) {
 			printf ("Could not get \"state\" key: %d.\n", err);
 			return (2);
 		}
 
-		if (value_len != strlen ("failed") || memcmp (key_value, "failed", value_len) != 0) {
+		if (strcmp(str, "failed") != 0) {
 			printf ("State key is not \"failed\".\n");
 			return (2);
 		}
+		free(str);
 
 		return (0);
 	}
@@ -1610,6 +1413,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	fprintf (stderr, "test8 %s\n", (WEXITSTATUS (stat) == 0 ? "passed" : (WEXITSTATUS (stat) == 1 ? "skipped" : "failed")));
 	if (WEXITSTATUS (stat) == 1)
 		no_skipped++;
 	if (WEXITSTATUS (stat) > 1)

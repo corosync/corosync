@@ -82,7 +82,7 @@ logsys_t1_LDADD		= -llogsys  $(LIBQB_LIBS)
 logsys_t1_LDFLAGS	= -L../exec
 logsys_t2_LDADD		= -llogsys  $(LIBQB_LIBS)
 logsys_t2_LDFLAGS	= -L../exec
-testsam_LDADD		= -lsam -lconfdb -lquorum $(LIBQB_LIBS)
+testsam_LDADD		= -lsam -lcmap -lquorum $(LIBQB_LIBS)
 testsam_LDFLAGS		= -L../lib
 
 LINT_FILES1:=$(filter-out sa_error.c, $(wildcard *.c))

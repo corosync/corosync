@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009-2010 Red Hat, Inc.
+ * Copyright (c) 2009-2011 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -50,7 +50,7 @@
 #include <corosync/corotypes.h>
 #include <qb/qbipcc.h>
 #include <corosync/corodefs.h>
-#include <corosync/confdb.h>
+#include <corosync/cmap.h>
 #include <corosync/hdb.h>
 #include <corosync/quorum.h>
 
@@ -62,14 +62,14 @@
 #include <sys/wait.h>
 #include <signal.h>
 
-#define SAM_CONFDB_S_FAILED		"failed"
-#define SAM_CONFDB_S_REGISTERED		"stopped"
-#define SAM_CONFDB_S_STARTED		"running"
-#define SAM_CONFDB_S_Q_WAIT		"waiting for quorum"
+#define SAM_CMAP_S_FAILED		"failed"
+#define SAM_CMAP_S_REGISTERED		"stopped"
+#define SAM_CMAP_S_STARTED		"running"
+#define SAM_CMAP_S_Q_WAIT		"waiting for quorum"
 
 #define SAM_RP_MASK_Q(pol)	(pol & (~SAM_RECOVERY_POLICY_QUORUM))
-#define SAM_RP_MASK_C(pol)	(pol & (~SAM_RECOVERY_POLICY_CONFDB))
-#define SAM_RP_MASK(pol)	(pol & (~(SAM_RECOVERY_POLICY_QUORUM | SAM_RECOVERY_POLICY_CONFDB)))
+#define SAM_RP_MASK_C(pol)	(pol & (~SAM_RECOVERY_POLICY_CMAP))
+#define SAM_RP_MASK(pol)	(pol & (~(SAM_RECOVERY_POLICY_QUORUM | SAM_RECOVERY_POLICY_CMAP)))
 
 enum sam_internal_status_t {
 	SAM_INTERNAL_STATUS_NOT_INITIALIZED = 0,
@@ -100,11 +100,11 @@ enum sam_parent_action_t {
 	SAM_PARENT_ACTION_CONTINUE
 };
 
-enum sam_confdb_key_t {
-	SAM_CONFDB_KEY_RECOVERY,
-	SAM_CONFDB_KEY_HC_PERIOD,
-	SAM_CONFDB_KEY_LAST_HC,
-	SAM_CONFDB_KEY_STATE,
+enum sam_cmap_key_t {
+	SAM_CMAP_KEY_RECOVERY,
+	SAM_CMAP_KEY_HC_PERIOD,
+	SAM_CMAP_KEY_LAST_HC,
+	SAM_CMAP_KEY_STATE,
 };
 
 static struct {
@@ -133,48 +133,53 @@ static struct {
 	uint32_t quorate;
 	int quorum_fd;
 
-	confdb_handle_t confdb_handle;
-	hdb_handle_t confdb_pid_handle;
+	cmap_handle_t cmap_handle;
+	char cmap_pid_path[CMAP_KEYNAME_MAXLEN];
 } sam_internal_data;
 
 extern const char *__progname;
 
-static cs_error_t sam_confdb_update_key (enum sam_confdb_key_t key, const char *value)
+static cs_error_t sam_cmap_update_key (enum sam_cmap_key_t key, const char *value)
 {
 	cs_error_t err;
 	const char *svalue;
 	uint64_t hc_period, last_hc;
 	const char *ssvalue[] = { [SAM_RECOVERY_POLICY_QUIT] = "quit", [SAM_RECOVERY_POLICY_RESTART] = "restart" };
+	char key_name[CMAP_KEYNAME_MAXLEN];
 
 	switch (key) {
-	case SAM_CONFDB_KEY_RECOVERY:
+	case SAM_CMAP_KEY_RECOVERY:
 		svalue = ssvalue[SAM_RP_MASK (sam_internal_data.recovery_policy)];
 
-		if ((err = confdb_key_create_typed (sam_internal_data.confdb_handle, sam_internal_data.confdb_pid_handle,
-			"recovery", svalue, strlen ((const char *)svalue), CONFDB_VALUETYPE_STRING)) != CS_OK) {
+		snprintf(key_name, CMAP_KEYNAME_MAXLEN, "%s%s", sam_internal_data.cmap_pid_path,
+				"recovery");
+		if ((err = cmap_set_string(sam_internal_data.cmap_handle, key_name, svalue)) != CS_OK) {
 			goto exit_error;
 		}
 		break;
-	case SAM_CONFDB_KEY_HC_PERIOD:
+	case SAM_CMAP_KEY_HC_PERIOD:
 		hc_period = sam_internal_data.time_interval;
 
-		if ((err = confdb_key_create_typed (sam_internal_data.confdb_handle, sam_internal_data.confdb_pid_handle,
-			"poll_period", &hc_period, sizeof (hc_period), CONFDB_VALUETYPE_UINT64)) != CS_OK) {
+		snprintf(key_name, CMAP_KEYNAME_MAXLEN, "%s%s", sam_internal_data.cmap_pid_path,
+				"poll_period");
+		if ((err = cmap_set_uint64(sam_internal_data.cmap_handle, key_name, hc_period)) != CS_OK) {
 			goto exit_error;
 		}
 		break;
-	case SAM_CONFDB_KEY_LAST_HC:
+	case SAM_CMAP_KEY_LAST_HC:
 		last_hc = cs_timestamp_get();
 
-		if ((err = confdb_key_create_typed (sam_internal_data.confdb_handle, sam_internal_data.confdb_pid_handle,
-			"last_updated", &last_hc, sizeof (last_hc), CONFDB_VALUETYPE_UINT64)) != CS_OK) {
+		snprintf(key_name, CMAP_KEYNAME_MAXLEN, "%s%s", sam_internal_data.cmap_pid_path,
+				"last_updated");
+		if ((err = cmap_set_uint64(sam_internal_data.cmap_handle, key_name, last_hc)) != CS_OK) {
 			goto exit_error;
 		}
 		break;
-	case SAM_CONFDB_KEY_STATE:
+	case SAM_CMAP_KEY_STATE:
 		svalue = value;
-		if ((err = confdb_key_create_typed (sam_internal_data.confdb_handle, sam_internal_data.confdb_pid_handle,
-			"state", svalue, strlen ((const char *)svalue), CONFDB_VALUETYPE_STRING)) != CS_OK) {
+		snprintf(key_name, CMAP_KEYNAME_MAXLEN, "%s%s", sam_internal_data.cmap_pid_path,
+				"state");
+		if ((err = cmap_set_string(sam_internal_data.cmap_handle, key_name, svalue)) != CS_OK) {
 			goto exit_error;
 		}
 		break;
@@ -186,89 +191,53 @@ exit_error:
 	return (err);
 }
 
-static cs_error_t sam_confdb_destroy_pid_obj (void)
+static cs_error_t sam_cmap_destroy_pid_path (void)
 {
-	return (confdb_object_destroy (sam_internal_data.confdb_handle, sam_internal_data.confdb_pid_handle));
+	cmap_iter_handle_t iter;
+	cs_error_t err;
+	char key_name[CMAP_KEYNAME_MAXLEN];
+
+	err = cmap_iter_init(sam_internal_data.cmap_handle, sam_internal_data.cmap_pid_path, &iter);
+	if (err != CS_OK) {
+		goto error_exit;
+	}
+
+	while ((err = cmap_iter_next(sam_internal_data.cmap_handle, iter, key_name, NULL, NULL)) == CS_OK) {
+		cmap_delete(sam_internal_data.cmap_handle, key_name);
+	}
+
+	err = cmap_iter_finalize(sam_internal_data.cmap_handle, iter);
+
+error_exit:
+	return (err);
 }
 
-static cs_error_t sam_confdb_register (void)
+static cs_error_t sam_cmap_register (void)
 {
-	const char *obj_name;
 	cs_error_t err;
-	confdb_handle_t confdb_handle;
-	hdb_handle_t resource_handle, process_handle, pid_handle, obj_handle;
-	hdb_handle_t *res_handle;
-	char tmp_obj[PATH_MAX];
-	int i;
+	cmap_handle_t cmap_handle;
 
-	if ((err = confdb_initialize (&confdb_handle, NULL)) != CS_OK) {
+	if ((err = cmap_initialize (&cmap_handle)) != CS_OK) {
 		return (err);
 	}
 
-	for (i = 0; i < 3; i++) {
-		switch (i) {
-		case 0:
-			obj_name = "resources";
-			obj_handle = OBJECT_PARENT_HANDLE;
-			res_handle = &resource_handle;
-			break;
-		case 1:
-			obj_name = "process";
-			obj_handle = resource_handle;
-			res_handle = &process_handle;
-			break;
-		case 2:
-			if (snprintf (tmp_obj, sizeof (tmp_obj), "%s:%d", __progname, getpid ()) >= sizeof (tmp_obj)) {
-				snprintf (tmp_obj, sizeof (tmp_obj), "%d", getpid ());
-			}
+	snprintf(sam_internal_data.cmap_pid_path, CMAP_KEYNAME_MAXLEN, "resources.process.%d.", getpid());
 
-			obj_name = tmp_obj;
-			obj_handle = process_handle;
-			res_handle = &pid_handle;
-			break;
-		}
+	sam_internal_data.cmap_handle = cmap_handle;
 
-		if ((err = confdb_object_find_start (confdb_handle, obj_handle)) != CS_OK) {
-			goto finalize_error;
-		}
-
-		if ((err = confdb_object_find (confdb_handle, obj_handle, obj_name, strlen (obj_name),
-			res_handle)) != CS_OK) {
-			if (err == CONFDB_ERR_ACCESS) {
-				/*
-				 * Try to create object
-				 */
-				if ((err = confdb_object_create (confdb_handle, obj_handle, obj_name,
-					strlen (obj_name), res_handle)) != CS_OK) {
-					goto finalize_error;
-				}
-			} else {
-				goto finalize_error;
-			}
-		} else  {
-			if ((err = confdb_object_find_destroy (confdb_handle, obj_handle)) != CS_OK) {
-				goto finalize_error;
-			}
-		}
-	}
-
-	sam_internal_data.confdb_pid_handle = pid_handle;
-	sam_internal_data.confdb_handle = confdb_handle;
-
-	if ((err = sam_confdb_update_key (SAM_CONFDB_KEY_RECOVERY, NULL)) != CS_OK) {
+	if ((err = sam_cmap_update_key (SAM_CMAP_KEY_RECOVERY, NULL)) != CS_OK) {
 		goto destroy_finalize_error;
 	}
 
-	if ((err = sam_confdb_update_key (SAM_CONFDB_KEY_HC_PERIOD, NULL)) != CS_OK) {
+	if ((err = sam_cmap_update_key (SAM_CMAP_KEY_HC_PERIOD, NULL)) != CS_OK) {
 		goto destroy_finalize_error;
 	}
 
 	return (CS_OK);
 
 destroy_finalize_error:
-	sam_confdb_destroy_pid_obj ();
-finalize_error:
-	confdb_finalize (confdb_handle);
+	sam_cmap_destroy_pid_path ();
+	cmap_finalize (cmap_handle);
 	return (err);
 }
 
@@ -605,21 +574,21 @@ cs_error_t sam_start (void)
 
 	recpol = sam_internal_data.recovery_policy;
 
-	if (recpol & SAM_RECOVERY_POLICY_QUORUM || recpol & SAM_RECOVERY_POLICY_CONFDB) {
+	if (recpol & SAM_RECOVERY_POLICY_QUORUM || recpol & SAM_RECOVERY_POLICY_CMAP) {
 		pthread_mutex_lock (&sam_internal_data.lock);
 	}
 
 	command = SAM_COMMAND_START;
 
 	if (sam_safe_write (sam_internal_data.child_fd_out, &command, sizeof (command)) != sizeof (command)) {
-		if (recpol & SAM_RECOVERY_POLICY_QUORUM || recpol & SAM_RECOVERY_POLICY_CONFDB) {
+		if (recpol & SAM_RECOVERY_POLICY_QUORUM || recpol & SAM_RECOVERY_POLICY_CMAP) {
 			pthread_mutex_unlock (&sam_internal_data.lock);
 		}
 
 		return (CS_ERR_LIBRARY);
 	}
 
-	if (recpol & SAM_RECOVERY_POLICY_QUORUM || recpol & SAM_RECOVERY_POLICY_CONFDB) {
+	if (recpol & SAM_RECOVERY_POLICY_QUORUM || recpol & SAM_RECOVERY_POLICY_CMAP) {
 		/*
 		 * Wait for parent reply
 		 */
@@ -652,19 +621,19 @@ cs_error_t sam_stop (void)
 
 	command = SAM_COMMAND_STOP;
 
-	if (sam_internal_data.recovery_policy & SAM_RECOVERY_POLICY_CONFDB) {
+	if (sam_internal_data.recovery_policy & SAM_RECOVERY_POLICY_CMAP) {
 		pthread_mutex_lock (&sam_internal_data.lock);
 	}
 
 	if (sam_safe_write (sam_internal_data.child_fd_out, &command, sizeof (command)) != sizeof (command)) {
-		if (sam_internal_data.recovery_policy & SAM_RECOVERY_POLICY_CONFDB) {
+		if (sam_internal_data.recovery_policy & SAM_RECOVERY_POLICY_CMAP) {
 			pthread_mutex_unlock (&sam_internal_data.lock);
 		}
 
 		return (CS_ERR_LIBRARY);
 	}
 
-	if (sam_internal_data.recovery_policy & SAM_RECOVERY_POLICY_CONFDB) {
+	if (sam_internal_data.recovery_policy & SAM_RECOVERY_POLICY_CMAP) {
 		/*
 		 * Wait for parent reply
 		 */
@@ -735,7 +704,7 @@ cs_error_t sam_mark_failed (void)
 		return (CS_ERR_BAD_HANDLE);
 	}
 
-	if (!(sam_internal_data.recovery_policy & SAM_RECOVERY_POLICY_CONFDB)) {
+	if (!(sam_internal_data.recovery_policy & SAM_RECOVERY_POLICY_CMAP)) {
 		return (CS_ERR_INVALID_PARAM);
 	}
 
@@ -866,8 +835,8 @@ static cs_error_t sam_parent_wait_for_quorum (
 	struct pollfd pfds[2];
 	int poll_err;
 
-	if (sam_internal_data.recovery_policy & SAM_RECOVERY_POLICY_CONFDB) {
-		if ((err = sam_confdb_update_key (SAM_CONFDB_KEY_STATE, SAM_CONFDB_S_Q_WAIT)) != CS_OK) {
+	if (sam_internal_data.recovery_policy & SAM_RECOVERY_POLICY_CMAP) {
+		if ((err = sam_cmap_update_key (SAM_CMAP_KEY_STATE, SAM_CMAP_S_Q_WAIT)) != CS_OK) {
 			goto error_reply;
 		}
 	}
@@ -920,8 +889,8 @@ static cs_error_t sam_parent_wait_for_quorum (
 		}
 	}
 
-	if (sam_internal_data.recovery_policy & SAM_RECOVERY_POLICY_CONFDB) {
-		if ((err = sam_confdb_update_key (SAM_CONFDB_KEY_STATE, SAM_CONFDB_S_STARTED)) != CS_OK) {
+	if (sam_internal_data.recovery_policy & SAM_RECOVERY_POLICY_CMAP) {
+		if ((err = sam_cmap_update_key (SAM_CMAP_KEY_STATE, SAM_CMAP_S_STARTED)) != CS_OK) {
 			goto error_reply;
 		}
 	}
@@ -929,14 +898,14 @@ static cs_error_t sam_parent_wait_for_quorum (
 	return (sam_parent_reply_send (CS_OK, parent_fd_in, parent_fd_out));
 
 error_reply:
-	if (sam_internal_data.recovery_policy & SAM_RECOVERY_POLICY_CONFDB) {
-		sam_confdb_update_key (SAM_CONFDB_KEY_STATE, SAM_CONFDB_S_REGISTERED);
+	if (sam_internal_data.recovery_policy & SAM_RECOVERY_POLICY_CMAP) {
+		sam_cmap_update_key (SAM_CMAP_KEY_STATE, SAM_CMAP_S_REGISTERED);
 	}
 
 	return (sam_parent_reply_send (err, parent_fd_in, parent_fd_out));
 }
 
-static cs_error_t sam_parent_confdb_state_set (
+static cs_error_t sam_parent_cmap_state_set (
 	int parent_fd_in,
 	int parent_fd_out,
 	int state)
@@ -945,12 +914,12 @@ static cs_error_t sam_parent_confdb_state_set (
 	const char *state_s;
 
 	if (state == 1) {
-		state_s = SAM_CONFDB_S_STARTED;
+		state_s = SAM_CMAP_S_STARTED;
 	} else {
-		state_s = SAM_CONFDB_S_REGISTERED;
+		state_s = SAM_CMAP_S_REGISTERED;
 	}
 
-	if ((err = sam_confdb_update_key (SAM_CONFDB_KEY_STATE, state_s)) != CS_OK) {
+	if ((err = sam_cmap_update_key (SAM_CMAP_KEY_STATE, state_s)) != CS_OK) {
 		goto error_reply;
 	}
 
@@ -995,7 +964,7 @@ static cs_error_t sam_parent_mark_child_failed (
 
 	sam_internal_data.term_send = 1;
 	sam_internal_data.recovery_policy = SAM_RECOVERY_POLICY_QUIT |
-	    (SAM_RP_MASK_C (recpol) ? SAM_RECOVERY_POLICY_CONFDB : 0) |
+	    (SAM_RP_MASK_C (recpol) ? SAM_RECOVERY_POLICY_CMAP : 0) |
 	    (SAM_RP_MASK_Q (recpol) ? SAM_RECOVERY_POLICY_QUORUM : 0);
 
 	return (sam_parent_kill_child (action, child_pid));
@@ -1132,8 +1101,8 @@ static enum sam_parent_action_t sam_parent_handler (
 					goto action_exit;
 				}
 
-				if (recpol & SAM_RECOVERY_POLICY_CONFDB) {
-					sam_confdb_update_key (SAM_CONFDB_KEY_LAST_HC, NULL);
+				if (recpol & SAM_RECOVERY_POLICY_CMAP) {
+					sam_cmap_update_key (SAM_CMAP_KEY_LAST_HC, NULL);
 				}
 
 				/*
@@ -1152,8 +1121,8 @@ static enum sam_parent_action_t sam_parent_handler (
 							}
 						}
 
-						if (recpol & SAM_RECOVERY_POLICY_CONFDB) {
-							if (sam_parent_confdb_state_set (parent_fd_in,
+						if (recpol & SAM_RECOVERY_POLICY_CMAP) {
+							if (sam_parent_cmap_state_set (parent_fd_in,
 							    parent_fd_out, 1) != CS_OK) {
 								continue;
 							    }
@@ -1167,8 +1136,8 @@ static enum sam_parent_action_t sam_parent_handler (
 						/*
 						 *  Started
 						 */
-						if (recpol & SAM_RECOVERY_POLICY_CONFDB) {
-							if (sam_parent_confdb_state_set (parent_fd_in,
+						if (recpol & SAM_RECOVERY_POLICY_CMAP) {
+							if (sam_parent_cmap_state_set (parent_fd_in,
 							    parent_fd_out, 0) != CS_OK) {
 								continue;
 							    }
@@ -1226,11 +1195,11 @@ cs_error_t sam_register (
 
 	recpol = sam_internal_data.recovery_policy;
 
-	if (recpol & SAM_RECOVERY_POLICY_CONFDB) {
+	if (recpol & SAM_RECOVERY_POLICY_CMAP) {
 		/*
-		 * Register to objdb
+		 * Register to cmap
 		 */
-		if ((error = sam_confdb_register ()) != CS_OK) {
+		if ((error = sam_cmap_register ()) != CS_OK) {
 			goto error_exit;
 		}
 	}
@@ -1251,8 +1220,8 @@ cs_error_t sam_register (
 			goto error_exit;
 		}
 
-		if (recpol & SAM_RECOVERY_POLICY_CONFDB) {
-			if ((error = sam_confdb_update_key (SAM_CONFDB_KEY_STATE, SAM_CONFDB_S_REGISTERED)) != CS_OK) {
+		if (recpol & SAM_RECOVERY_POLICY_CMAP) {
+			if ((error = sam_cmap_update_key (SAM_CMAP_KEY_STATE, SAM_CMAP_S_REGISTERED)) != CS_OK) {
 				goto error_exit;
 			}
 		}
@@ -1328,14 +1297,14 @@ cs_error_t sam_register (
 					quorum_finalize (sam_internal_data.quorum_handle);
 				}
 
-				if (recpol & SAM_RECOVERY_POLICY_CONFDB) {
+				if (recpol & SAM_RECOVERY_POLICY_CMAP) {
 					if (old_action == SAM_PARENT_ACTION_RECOVERY) {
 						/*
 						 * Mark as failed
 						 */
-						sam_confdb_update_key (SAM_CONFDB_KEY_STATE, SAM_CONFDB_S_FAILED);
+						sam_cmap_update_key (SAM_CMAP_KEY_STATE, SAM_CMAP_S_FAILED);
 					} else {
-						sam_confdb_destroy_pid_obj ();
+						sam_cmap_destroy_pid_path ();
 					}
 				}
 
