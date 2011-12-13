@@ -83,47 +83,52 @@ static void show_usage(const char *name)
 /*
  * Caller should free the returned string
  */
-static const char *get_quorum_type(void)
+static int get_quorum_type(char *quorum_type, size_t quorum_type_len)
 {
-	const char *qtype = NULL;
-	int result;
-	char buf[255];
-	size_t namelen = sizeof(buf);
+	int err;
 	hdb_handle_t quorum_handle;
+	char buf[256];
+	size_t namelen = 0;
 	confdb_handle_t confdb_handle;
 	confdb_callbacks_t callbacks = {
-        	.confdb_key_change_notify_fn = NULL,
-        	.confdb_object_create_change_notify_fn = NULL,
-        	.confdb_object_delete_change_notify_fn = NULL
+		.confdb_key_change_notify_fn = NULL,
+		.confdb_object_create_change_notify_fn = NULL,
+		.confdb_object_delete_change_notify_fn = NULL
 	};
 
-	if (confdb_initialize(&confdb_handle, &callbacks) != CS_OK) {
+	if ((!quorum_type) || (quorum_type_len <= 0) ||
+	    (confdb_initialize(&confdb_handle, &callbacks) != CS_OK)) {
 		errno = EINVAL;
-		return NULL;
+		return -1;
 	}
-        result = confdb_object_find_start(confdb_handle, OBJECT_PARENT_HANDLE);
-	if (result != CS_OK)
-		goto out;
 
-        result = confdb_object_find(confdb_handle, OBJECT_PARENT_HANDLE, (void *)"quorum", strlen("quorum"), &quorum_handle);
-        if (result != CS_OK)
-		goto out;
+	memset(quorum_type, 0, quorum_type_len);
 
-        result = confdb_key_get(confdb_handle, quorum_handle, (void *)"provider", strlen("provider"), buf, &namelen);
-        if (result != CS_OK)
+	err = confdb_object_find_start(confdb_handle, OBJECT_PARENT_HANDLE);
+	if (err != CS_OK) {
 		goto out;
+	}
+
+	err = confdb_object_find(confdb_handle, OBJECT_PARENT_HANDLE, (void *)"quorum", strlen("quorum"), &quorum_handle);
+	if (err != CS_OK) {
+		goto out;
+	}
+
+	err = confdb_key_get(confdb_handle, quorum_handle, (void *)"provider", strlen("provider"), buf, &namelen);
+	if (err != CS_OK) {
+		goto out;
+	}
 
 	if (namelen >= sizeof(buf)) {
 		namelen = sizeof(buf) - 1;
 	}
 	buf[namelen] = '\0';
 
-	/* If strdup returns NULL then we just assume no quorum provider ?? */
-	qtype = strdup(buf);
+	strncpy(quorum_type, buf, quorum_type_len - 1);
 
 out:
 	confdb_finalize(confdb_handle);
-	return qtype;
+	return err;
 }
 
 /*
@@ -132,18 +137,19 @@ out:
  */
 static int using_votequorum(void)
 {
-	const char *quorumtype = get_quorum_type();
+	char quorumtype[256];
 	int using_voteq;
 
-	if (!quorumtype)
-		return 0;
+	if (get_quorum_type(quorumtype, sizeof(quorumtype))) {
+		return -1;
+	}
 
-	if (strcmp(quorumtype, "corosync_votequorum") == 0)
+	if (strcmp(quorumtype, "corosync_votequorum") == 0) {
 		using_voteq = 1;
-	else
+	} else {
 		using_voteq = 0;
+	}
 
-	free((void *)quorumtype);
 	return using_voteq;
 }
 
@@ -161,8 +167,9 @@ static int set_votes(uint32_t nodeid, int votes)
 		return err;
 	}
 
-	if ( (err=votequorum_setvotes(v_handle, nodeid, votes)) != CS_OK)
+	if ( (err=votequorum_setvotes(v_handle, nodeid, votes)) != CS_OK) {
 		fprintf(stderr, "set votes FAILED: %d\n", err);
+	}
 
 	votequorum_finalize(v_handle);
 	return err==CS_OK?0:err;
@@ -182,8 +189,9 @@ static int set_expected(int expected_votes)
 		return err;
 	}
 
-	if ( (err=votequorum_setexpected(v_handle, expected_votes)) != CS_OK)
+	if ( (err=votequorum_setexpected(v_handle, expected_votes)) != CS_OK) {
 		fprintf(stderr, "set expected votes FAILED: %d\n", err);
+	}
 
 	votequorum_finalize(v_handle);
 	return err==CS_OK?0:err;
@@ -194,8 +202,9 @@ static int get_votes(votequorum_handle_t v_handle, uint32_t nodeid)
 	int votes = -1;
 	struct votequorum_info info;
 
-	if (votequorum_getinfo(v_handle, nodeid, &info) == CS_OK)
+	if (votequorum_getinfo(v_handle, nodeid, &info) == CS_OK) {
 		votes = info.node_votes;
+	}
 
 	return votes;
 }
@@ -272,6 +281,7 @@ static int show_status(void)
 	struct votequorum_info info;
 	int is_quorate;
 	int err;
+	char quorum_type[256];
 
 	callbacks.quorum_notify_fn = quorum_notification_fn;
 	err=quorum_initialize(&q_handle, &callbacks);
@@ -308,16 +318,22 @@ quorum_err:
 	if (quorum_finalize(q_handle) != CS_OK) {
 		fprintf(stderr, "quorum_finalize FAILED: %d\n", err);
 	}
-	if (err < 0)
+	if (err < 0) {
 		return err;
+	}
+
+	get_quorum_type(quorum_type, sizeof(quorum_type));
 
 	printf("Version:          %s\n", VERSION);
 	printf("Nodes:            %d\n", g_view_list_entries);
 	printf("Ring ID:          %" PRIu64 "\n", g_ring_id);
-	printf("Quorum type:      %s\n", get_quorum_type());
+	if (get_quorum_type(quorum_type, sizeof(quorum_type))) {
+		strncpy(quorum_type, "Not configured", sizeof(quorum_type) - 1);
+	}
+	printf("Quorum type:      %s\n", quorum_type);
 	printf("Quorate:          %s\n", is_quorate?"Yes":"No");
 
-	if (!using_votequorum()) {
+	if (using_votequorum() != 0) {
 		return is_quorate;
 	}
 
@@ -350,8 +366,9 @@ quorum_err:
 	}
 
 err_exit:
-	if (err != CS_OK)
+	if (err != CS_OK) {
 		return err;
+	}
 	return is_quorate;
 }
 
@@ -379,7 +396,7 @@ static int show_nodes(nodeid_format_t nodeid_format, name_format_t name_format)
 	v_callbacks.votequorum_expectedvotes_notify_fn = NULL;
 
 	using_vq = using_votequorum();
-	if (using_vq) {
+	if (using_vq > 0) {
 		if ( (err=votequorum_initialize(&v_handle, &v_callbacks)) != CS_OK) {
 			fprintf(stderr, "votequorum_initialize FAILED: %d, this is probably a configuration error\n", err);
 			v_handle = 0;
@@ -394,8 +411,9 @@ static int show_nodes(nodeid_format_t nodeid_format, name_format_t name_format)
 	}
 
 	g_called = 0;
-	while (g_called == 0)
+	while (g_called == 0) {
 		quorum_dispatch(q_handle, CS_DISPATCH_ONE);
+	}
 
 	quorum_finalize(q_handle);
 	q_handle = 0;
@@ -407,22 +425,21 @@ static int show_nodes(nodeid_format_t nodeid_format, name_format_t name_format)
 		goto err_exit;
 	}
 
-	if (using_vq)
+	if (using_vq) {
 		printf("Nodeid     Votes  Name\n");
-	else
+	} else {
 		printf("Nodeid     Name\n");
+	}
 
 	for (i=0; i < g_view_list_entries; i++) {
 		if (nodeid_format == NODEID_FORMAT_DECIMAL) {
 			printf("%4u   ", g_view_list[i]);
-		}
-		else {
+		} else {
 			printf("0x%04x   ", g_view_list[i]);
 		}
 		if (using_vq) {
 			printf("%3d  %s\n",  get_votes(v_handle, g_view_list[i]), node_name(c_handle, g_view_list[i], name_format));
-		}
-		else {
+		} else {
 			printf("%s\n", node_name(c_handle, g_view_list[i], name_format));
 		}
 	}
@@ -471,16 +488,14 @@ int main (int argc, char *argv[]) {
 			command_opt = CMD_SHOWNODES;
 			break;
 		case 'e':
-			if (using_votequorum()) {
+			if (using_votequorum() > 0) {
 				votes = strtol(optarg, &endptr, 0);
 				if ((votes == 0 && endptr == optarg) || votes <= 0) {
 					fprintf(stderr, "New expected votes value was not valid, try a positive number\n");
-				}
-				else {
+				} else {
 					command_opt = CMD_SETEXPECTED;
 				}
-			}
-			else {
+			} else {
 				fprintf(stderr, "You cannot change expected votes, corosync is not using votequorum\n");
 				exit(2);
 			}
@@ -492,12 +507,11 @@ int main (int argc, char *argv[]) {
 			}
 			break;
 		case 'v':
-			if (using_votequorum()) {
+			if (using_votequorum() > 0) {
 				votes = strtol(optarg, &endptr, 0);
 				if ((votes == 0 && endptr == optarg) || votes < 0) {
 					fprintf(stderr, "New votes value was not valid, try a positive number or zero\n");
-				}
-				else {
+				} else {
 					command_opt = CMD_SETVOTES;
 				}
 			}
