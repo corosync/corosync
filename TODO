@@ -15,14 +15,12 @@
 4. implement topic-xmlconfig
 5. remove external plug-in api
 6. remove logsys.h from external headers
-7. remove hardcoded values in totempg.c check_q_level
-8. check max message size restrictions
-9. investigate if https://github.com/asalkeld/libqb/issues/1 is still an issue.
-10. allow a cluster name to autogenerate a mcastaddr
-11. ring status change via corosync-notifyd
-12. remove dashes in UDPU notifier and replace with dots once map code is in
-13. put addition/removal of members in totem.interface.member objects
-14. dynamic UDPU needs ring id settings for multiple rings
+7. investigate if https://github.com/asalkeld/libqb/issues/1 is still an issue.
+8. allow a cluster name to autogenerate a mcastaddr
+9. ring status change via corosync-notifyd
+10. remove dashes in UDPU notifier and replace with dots once map code is in
+11. put addition/removal of members in totem.interface.member objects
+12. dynamic UDPU needs ring id settings for multiple rings
 
 --------------------------------------
  Current priority list for Needle 2.1
