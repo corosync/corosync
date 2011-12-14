@@ -940,7 +940,9 @@ cs_error_t cpg_mcast_joined (
 	iov[0].iov_len = sizeof (struct req_lib_cpg_mcast);
 	memcpy (&iov[1], iovec, iov_len * sizeof (struct iovec));
 
+	qb_ipcc_fc_enable_max_set(cpg_inst->c,  2);
 	error = qb_to_cs_error(qb_ipcc_sendv(cpg_inst->c, iov, iov_len + 1));
+	qb_ipcc_fc_enable_max_set(cpg_inst->c,  1);
 
 	hdb_handle_put (&cpg_handle_t_db, handle);
 
