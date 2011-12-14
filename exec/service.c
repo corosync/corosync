@@ -205,11 +205,12 @@ unsigned int corosync_service_link_and_init (
 
 	ais_service[service->id] = service;
 
-	/* begin */
+	/*
+	 * Register the log sites with libqb
+	 */
 	_start = lcr_ifact_addr_get(handle, "__start___verbose");
 	_stop = lcr_ifact_addr_get(handle, "__stop___verbose");
 	qb_log_callsites_register(_start, _stop);
-	/* end */
 
 	if (service->config_init_fn) {
 		res = service->config_init_fn (corosync_api);

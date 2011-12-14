@@ -284,6 +284,8 @@ static int quorum_exec_init_fn (struct corosync_api_v1 *api)
 	char *quorum_module;
 	int res;
 	void *quorum_iface_p;
+	void* _start;
+	void* _stop;
 
 #ifdef COROSYNC_SOLARIS
 	logsys_subsys_init();
@@ -327,6 +329,13 @@ static int quorum_exec_init_fn (struct corosync_api_v1 *api)
 
 			log_printf (LOGSYS_LEVEL_NOTICE,
 				    "Using quorum provider %s\n", quorum_module);
+
+			/*
+			 * Register the log sites with libqb
+			 */
+			_start = lcr_ifact_addr_get(q_handle, "__start___verbose");
+			_stop = lcr_ifact_addr_get(q_handle, "__stop___verbose");
+			qb_log_callsites_register(_start, _stop);
 
 			quorum_iface = (struct quorum_services_api_ver1 *)quorum_iface_p;
 			quorum_iface->init (api, quorum_api_set_quorum);
