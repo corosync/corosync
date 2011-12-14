@@ -1251,12 +1251,11 @@ int totempg_groups_joined_reserve (
 		goto error_exit;
 	}
 
-	reserved = send_reserve (size);
-	if (msg_count_send_ok (reserved) == 0) {
-		send_release (reserved);
+	if (byte_count_send_ok (size)) {
+		reserved = send_reserve (size);
+	} else {
 		reserved = 0;
 	}
-
 
 error_exit:
 	check_q_level(instance);
