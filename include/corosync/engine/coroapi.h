@@ -72,15 +72,17 @@ struct corosync_tpg_group {
 
 #define INTERFACE_MAX 2
 
+#ifndef MESSAGE_QUEUE_MAX
 #ifdef HAVE_SMALL_MEMORY_FOOTPRINT
 #define PROCESSOR_COUNT_MAX	16
 #define MESSAGE_SIZE_MAX	1024*64
 #define MESSAGE_QUEUE_MAX	512
 #else
 #define PROCESSOR_COUNT_MAX	384
-#define MESSAGE_SIZE_MAX	1024*1024 /* (1MB) */
-#define MESSAGE_QUEUE_MAX	MESSAGE_SIZE_MAX / totem_config->net_mtu
+#define MESSAGE_SIZE_MAX	1024*1024
+#define MESSAGE_QUEUE_MAX	((4 * MESSAGE_SIZE_MAX) / totem_config->net_mtu)
 #endif /* HAVE_SMALL_MEMORY_FOOTPRINT */
+#endif /* MESSAGE_QUEUE_MAX */
 
 #define TOTEM_AGREED	0
 #define TOTEM_SAFE	1

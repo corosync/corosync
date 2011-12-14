@@ -44,7 +44,7 @@
 #else
 #define PROCESSOR_COUNT_MAX	384
 #define MESSAGE_SIZE_MAX	1024*1024 /* (1MB) */
-#define MESSAGE_QUEUE_MAX	MESSAGE_SIZE_MAX / totem_config->net_mtu
+#define MESSAGE_QUEUE_MAX	((4 * MESSAGE_SIZE_MAX) / totem_config->net_mtu)
 #endif /* HAVE_SMALL_MEMORY_FOOTPRINT */
 
 #define FRAME_SIZE_MAX		10000

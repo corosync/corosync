@@ -1011,6 +1011,16 @@ static void send_release (
 	totempg_stats.msg_reserved = totempg_reserved;
 }
 
+#ifndef HAVE_SMALL_MEMORY_FOOTPRINT
+#undef MESSAGE_QUEUE_MAX
+#define MESSAGE_QUEUE_MAX	((4 * MESSAGE_SIZE_MAX) / totempg_totem_config->net_mtu)
+#endif /* HAVE_SMALL_MEMORY_FOOTPRINT */
+
+static uint32_t q_level_precent_used(void)
+{
+	return (100 - (((totemmrp_avail() - totempg_reserved) * 100) / MESSAGE_QUEUE_MAX));
+}
+
 int totempg_callback_token_create (
 	void **handle_out,
 	enum totem_callback_token_type type,
@@ -1188,26 +1198,22 @@ int totempg_groups_mcast_joined (
 static void check_q_level(
 	void *totempg_groups_instance)
 {
-	int32_t old_level;
-	int32_t percent_used = 0;
 	struct totempg_group_instance *instance = (struct totempg_group_instance *)totempg_groups_instance;
+	int32_t old_level = instance->q_level;
+	int32_t percent_used = q_level_precent_used();
 
-	old_level = instance->q_level;
-	percent_used = 100 - (totemmrp_avail () * 100 / 800); /*(1024*1024/1500)*/
-
-	if (percent_used > 90 && instance->q_level != TOTEM_Q_LEVEL_CRITICAL) {
+	if (percent_used >= 75 && instance->q_level != TOTEM_Q_LEVEL_CRITICAL) {
 		instance->q_level = TOTEM_Q_LEVEL_CRITICAL;
 	} else if (percent_used < 30 && instance->q_level != TOTEM_Q_LEVEL_LOW) {
 		instance->q_level = TOTEM_Q_LEVEL_LOW;
-	} else if (percent_used > 40 && percent_used < 60 && instance->q_level != TOTEM_Q_LEVEL_GOOD) {
+	} else if (percent_used > 40 && percent_used < 50 && instance->q_level != TOTEM_Q_LEVEL_GOOD) {
 		instance->q_level = TOTEM_Q_LEVEL_GOOD;
-	} else if (percent_used > 70 && percent_used < 80 && instance->q_level != TOTEM_Q_LEVEL_HIGH) {
+	} else if (percent_used > 60 && percent_used < 70 && instance->q_level != TOTEM_Q_LEVEL_HIGH) {
 		instance->q_level = TOTEM_Q_LEVEL_HIGH;
 	}
 	if (totem_queue_level_changed && old_level != instance->q_level) {
 		totem_queue_level_changed(instance->q_level);
 	}
-
 }
 
 void totempg_check_q_level(
@@ -1239,7 +1245,6 @@ int totempg_groups_joined_reserve (
 	for (i = 0; i < iov_len; i++) {
 		size += iovec[i].iov_len;
 	}
-	check_q_level(instance);
 
 	if (size >= totempg_size_limit) {
 		reserved = -1;
@@ -1254,6 +1259,8 @@ int totempg_groups_joined_reserve (
 
 
 error_exit:
+	check_q_level(instance);
+
 	if (totempg_threaded_mode == 1) {
 		pthread_mutex_unlock (&mcast_msg_mutex);
 		pthread_mutex_unlock (&totempg_mutex);
