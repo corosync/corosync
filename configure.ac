@@ -215,13 +215,13 @@ SONAME="${SOMAJOR}.${SOMINOR}.${SOMICRO}"
 
 # specific libraries SONAME
 LIB_SONAME_IMPORT([cfg])
-LIB_SONAME_IMPORT([confdb])
 LIB_SONAME_IMPORT([cpg])
 LIB_SONAME_IMPORT([evs])
 LIB_SONAME_IMPORT([pload])
 LIB_SONAME_IMPORT([quorum])
 LIB_SONAME_IMPORT([sam])
 LIB_SONAME_IMPORT([votequorum])
+LIB_SONAME_IMPORT([cmap])
 
 # local options
 AC_ARG_ENABLE([ansi],

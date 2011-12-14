@@ -204,7 +204,6 @@ struct memb_ring_id {
 } __attribute__((packed));
 
 typedef struct {
-	hdb_handle_t handle;
 	int is_dirty;
 	time_t last_updated;
 } totem_stats_header_t;

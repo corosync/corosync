@@ -37,7 +37,7 @@ INCLUDES		= -I$(top_builddir)/include -I$(top_srcdir)/include \
 			  -I$(top_builddir)/include/corosync \
 			  -I$(top_srcdir)/include/corosync
 
-SERVICE_LCRSO		= evs cfg cpg confdb pload cmap
+SERVICE_LCRSO		= evs cfg cpg pload cmap
 if BUILD_WATCHDOG
 SERVICE_LCRSO		+= wd
 endif

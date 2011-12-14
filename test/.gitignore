@@ -10,7 +10,6 @@ logsysbench
 logsysrec
 stress_cpgcontext
 stress_cpgfdget
-testconfdb
 testcpg
 testcpg2
 testevs

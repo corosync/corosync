@@ -30,7 +30,7 @@ exit_timeout() {
     exit 1
 }
 
-corosync-objctl -c test.abd || exit 2
+corosync-cmapctl -s test.abd "str" "test" || exit 2
 
 trap exit_timeout SIGUSR1
 (sleep $TIMEOUT ; kill -SIGUSR1 $PID) &
@@ -38,14 +38,14 @@ trap exit_timeout SIGUSR1
 wait_list=""
 
 for e in {1..40};do
-    (for a in `seq 1 $up_to`;do corosync-objctl -w test.abd=$a ; done) &
+    (for a in `seq 1 $up_to`;do corosync-cmapctl -s test.abd "str" $a ; done) &
     wait_list="$wait_list $!"
 done
 
 notify_list=""
 
 for i in {1..2};do
-    sleep 600000 | corosync-objctl -t test > /dev/null &
+    sleep 600000 | corosync-cmapctl -t test > /dev/null &
     notify_list="$notify_list $!"
 done
 

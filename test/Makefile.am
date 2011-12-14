@@ -33,7 +33,7 @@
 MAINTAINERCLEANFILES    = Makefile.in
 INCLUDES       		= -I$(top_builddir)/include/corosync -I$(top_srcdir)/include
 
-noinst_PROGRAMS		= testevs evsbench evsverify cpgverify testcpg testcpg2 cpgbench testconfdb	\
+noinst_PROGRAMS		= testevs evsbench evsverify cpgverify testcpg testcpg2 cpgbench \
 			testquorum testvotequorum1 testvotequorum2	\
 			stress_cpgfdget stress_cpgcontext cpgbound testsam \
 			testcpgzc cpgbenchzc testzcgc stress_cpgzc \
@@ -55,8 +55,6 @@ stress_cpgfdget_LDADD	= -lcpg $(LIBQB_LIBS)
 stress_cpgfdget_LDFLAGS	= -L../lib
 stress_cpgcontext_LDADD	= -lcpg $(LIBQB_LIBS)
 stress_cpgcontext_LDFLAGS	= -L../lib
-testconfdb_LDADD	= -lconfdb ../lcr/liblcr.a $(LIBQB_LIBS)
-testconfdb_LDFLAGS	= -L../lib
 testquorum_LDADD	= -lquorum $(LIBQB_LIBS)
 testquorum_LDFLAGS	= -L../lib
 testvotequorum1_LDADD	= -lvotequorum $(LIBQB_LIBS)

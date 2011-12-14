@@ -44,7 +44,7 @@ endif
 
 LOGSYS_SRC		= logsys.c
 ICMAP_SRC		= icmap.c
-LCRSO_SRC		= objdb.c vsf_ykd.c coroparse.c vsf_quorum.c
+LCRSO_SRC		= vsf_ykd.c coroparse.c vsf_quorum.c
 LCRSO_OBJS		= $(LCRSO_SRC:%.c=%.o)
 LCRSO			= $(LCRSO_SRC:%.c=%.lcrso)
 
@@ -112,11 +112,6 @@ liblogsys.so.$(SONAME): $(LOGSYS_OBJS)
 	$(LD) $(LDFLAGS) -G $(LOGSYS_OBJS) -o $@ -lpthread
 	ln -sf liblogsys.so.$(SONAME) liblogsys.so
 	ln -sf liblogsys.so.$(SONAME) liblogsys.so.$(SOMAJOR)
-
-libicmap.so.$(SONAME): $(ICMAP_OBJS)
-	$(LD) $(LDFLAGS) -G $(ICMAP_OBJS) -o $@ -lpthread
-	ln -sf libicmap.so.$(SONAME) libicmap.so
-	ln -sf libicmap.so.$(SONAME) libicmap.so.$(SOMAJOR)
 
 else
 

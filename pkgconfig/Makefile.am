@@ -32,8 +32,8 @@ MAINTAINERCLEANFILES	= Makefile.in
 
 EXTRA_DIST		= libtemplate.pc.in corosync.pc.in
 
-LIBS	= cfg confdb cpg evs pload quorum \
-	  totem_pg votequorum sam
+LIBS	= cfg cpg evs pload quorum \
+	  totem_pg votequorum sam cmap
 
 target_LIBS = $(LIBS:%=lib%.pc)
 

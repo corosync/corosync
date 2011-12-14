@@ -140,7 +140,6 @@ class corosync_needle(ClusterManager):
             })
         self.start_cpg = True
         self.cpg_agent = {}
-        self.confdb_agent = {}
         self.sam_agent = {}
         self.votequorum_agent = {}
         self.config = CoroConfig ()
@@ -226,8 +225,6 @@ class corosync_needle(ClusterManager):
                 self.cpg_agent[node] = CpgTestAgent(node, self.Env)
                 self.cpg_agent[node].start()
 
-        if self.confdb_agent.has_key(node):
-            self.confdb_agent[node].restart()
         if self.sam_agent.has_key(node):
             self.sam_agent[node].restart()
 
@@ -376,8 +373,6 @@ class TestAgentComponent(ScenarioComponent):
             if self.CM.start_cpg:
                 self.CM.cpg_agent[node] = CpgTestAgent(node, CM.Env)
                 self.CM.cpg_agent[node].start()
-            self.CM.confdb_agent[node] = ConfdbTestAgent(node, CM.Env)
-            self.CM.confdb_agent[node].start()
             self.CM.sam_agent[node] = SamTestAgent(node, CM.Env)
             self.CM.sam_agent[node].start()
             # votequorum agent started as needed.
@@ -393,7 +388,6 @@ class TestAgentComponent(ScenarioComponent):
         for node in self.Env["nodes"]:
             if self.CM.cpg_agent.has_key(node):
                 self.CM.cpg_agent[node].stop()
-            self.CM.confdb_agent[node].stop()
             self.CM.sam_agent[node].stop()
             if self.CM.votequorum_agent.has_key(node):
                 self.CM.votequorum_agent[node].stop()
@@ -624,15 +618,6 @@ class CpgTestAgent(TestAgent):
     def context_test(self):
         self.send (["context_test"])  
         return self.read ()
-
-###################################################################
-class ConfdbTestAgent(TestAgent):
-
-    def __init__(self, node, Env=None):
-        TestAgent.__init__(self, "confdb_test_agent", node, 9035, env=Env)
-        self.initialized = False
-        self.nodeid = None
-        self.send_recv = True
 
 ###################################################################
 class SamTestAgent(TestAgent):

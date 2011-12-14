@@ -34,14 +34,14 @@ INCLUDES = -I$(top_builddir)/include -I$(top_srcdir)/include \
 		-I$(top_builddir)/include/corosync
 
 SOURCES =
-TEST_AGENTS = cpg_test_agent confdb_test_agent sam_test_agent votequorum_test_agent
+TEST_AGENTS = cpg_test_agent sam_test_agent votequorum_test_agent
 
 EXTRA_DIST		= syncv2.c
 
 if INSTALL_TESTAGENTS
 agentdir = $(datadir)/$(PACKAGE)/tests
 bin_PROGRAMS = $(TEST_AGENTS)
-dist_agent_SCRIPTS = mem_leak_test.sh net_breaker.sh confdb-dispatch-deadlock.sh shm_leak_audit.sh
+dist_agent_SCRIPTS = mem_leak_test.sh net_breaker.sh cmap-dispatch-deadlock.sh shm_leak_audit.sh
 
 AM_CFLAGS		= -fPIC
 SERVICE_LCRSO		= syncv2
@@ -50,7 +50,7 @@ LCRSO			= $(SERVICE_LCRSO:%=service_%.lcrso)
 LCRSO_OBJS		= $(SOURCES:%.c=%.o)
 else
 noinst_PROGRAMS = $(TEST_AGENTS)
-noinst_SCRIPTS = mem_leak_test.sh net_breaker.sh confdb-dispatch-deadlock.sh shm_leak_audit.sh
+noinst_SCRIPTS = mem_leak_test.sh net_breaker.sh cmap-dispatch-deadlock.sh shm_leak_audit.sh
 LCRSO =
 LCRSO_OBJS =
 endif
@@ -60,10 +60,6 @@ noinst_HEADERS          = common_test_agent.h
 cpg_test_agent_SOURCES = cpg_test_agent.c common_test_agent.c
 cpg_test_agent_LDADD =  -lcpg -lcfg ../../exec/crypto.o $(LIBQB_LIBS)
 cpg_test_agent_LDFLAGS =  -L../../lib -L.
-
-confdb_test_agent_SOURCES = confdb_test_agent.c common_test_agent.c
-confdb_test_agent_LDADD =  -lconfdb $(LIBQB_LIBS)
-confdb_test_agent_LDFLAGS =  -L../../lib 
 
 sam_test_agent_SOURCES = sam_test_agent.c common_test_agent.c
 sam_test_agent_LDADD =  -lsam -lquorum -lcmap $(LIBQB_LIBS)

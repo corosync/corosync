@@ -629,95 +629,22 @@ class ServiceLoadTest(CoroTest):
 
         return self.success()
 
-class ConfdbDispatchDeadlock(CoroTest):
+class CMapDispatchDeadlock(CoroTest):
     '''
-    run confdb-dispatch-deadlock.sh
+    run cmap-dispatch-deadlock.sh
     '''
     def __init__(self, cm):
         CoroTest.__init__(self,cm)
-        self.name="ConfdbDispatchDeadlock"
+        self.name="CMapDispatchDeadlock"
 
     def __call__(self, node):
         self.incr("calls")
 
-        result = self.CM.rsh(node, "/usr/share/corosync/tests/confdb-dispatch-deadlock.sh")
+        result = self.CM.rsh(node, "/usr/share/corosync/tests/cmap-dispatch-deadlock.sh")
         if result is 0:
             return self.success()
         else:
             return self.failure('Deadlock detected')
-
-###################################################################
-class ConfdbReplaceTest(CoroTest):
-    def __init__(self, cm):
-        CoroTest.__init__(self, cm)
-        self.name="ConfdbReplaceTest"
-
-    def __call__(self, node):
-        self.incr("calls")
-        res = self.CM.confdb_agent[node].set_get_test()
-        if 'OK' in res:
-            return self.success()
-        else:
-            return self.failure('set_get_test failed')
-
-###################################################################
-class ConfdbContextTest(CoroTest):
-    def __init__(self, cm):
-        CoroTest.__init__(self, cm)
-        self.name="ConfdbContextTest"
-
-    def __call__(self, node):
-        self.incr("calls")
-        res = self.CM.confdb_agent[node].context_test()
-        if 'OK' in res:
-            return self.success()
-        else:
-            return self.failure('context_test failed')
-
-
-###################################################################
-class ConfdbIncrementTest(CoroTest):
-    def __init__(self, cm):
-        CoroTest.__init__(self, cm)
-        self.name="ConfdbIncrementTest"
-
-    def __call__(self, node):
-        self.incr("calls")
-        res = self.CM.confdb_agent[node].increment_decrement_test()
-        if 'OK' in res:
-            return self.success()
-        else:
-            return self.failure('increment_decrement_test failed')
-
-
-###################################################################
-class ConfdbObjectFindTest(CoroTest):
-    def __init__(self, cm):
-        CoroTest.__init__(self, cm)
-        self.name="ConfdbObjectFindTest"
-
-    def __call__(self, node):
-        self.incr("calls")
-        res = self.CM.confdb_agent[node].object_find_test()
-        if 'OK' in res:
-            return self.success()
-        else:
-            return self.failure('object_find_test failed')
-
-
-###################################################################
-class ConfdbNotificationTest(CoroTest):
-    def __init__(self, cm):
-        CoroTest.__init__(self, cm)
-        self.name="ConfdbNotificationTest"
-
-    def __call__(self, node):
-        self.incr("calls")
-        res = self.CM.confdb_agent[node].notification_test()
-        if 'OK' in res:
-            return self.success()
-        else:
-            return self.failure('notification_test failed')
 
 ###################################################################
 class SamTest1(CoroTest):
@@ -1537,11 +1464,6 @@ GenTestClasses.append(VoteQuorumGoDown)
 GenTestClasses.append(VoteQuorumGoUp)
 
 AllTestClasses = []
-AllTestClasses.append(ConfdbReplaceTest)
-AllTestClasses.append(ConfdbIncrementTest)
-AllTestClasses.append(ConfdbObjectFindTest)
-AllTestClasses.append(ConfdbNotificationTest)
-AllTestClasses.append(ConfdbContextTest)
 AllTestClasses.append(CpgContextTest)
 AllTestClasses.append(VoteQuorumContextTest)
 AllTestClasses.append(SamTest1)
@@ -1564,7 +1486,7 @@ AllTestClasses.append(ResourcePollAdjust)
 AllTestClasses.append(ServiceLoadTest)
 AllTestClasses.append(MemLeakObject)
 AllTestClasses.append(MemLeakSession)
-#AllTestClasses.append(ConfdbDispatchDeadlock)
+#AllTestClasses.append(CMapDispatchDeadlock)
 AllTestClasses.append(FlipTest)
 AllTestClasses.append(RestartTest)
 AllTestClasses.append(StartOnebyOne)
