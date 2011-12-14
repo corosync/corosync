@@ -47,6 +47,7 @@
 #include <corosync/engine/coroapi.h>
 #include <corosync/list.h>
 #include <corosync/engine/logsys.h>
+#include <corosync/engine/icmap.h>
 #include "../exec/fsm.h"
 
 
@@ -58,7 +59,7 @@ typedef enum {
 } wd_resource_state_t;
 
 struct resource {
-	hdb_handle_t handle;
+	char res_path[ICMAP_KEYNAME_MAXLEN];
 	char *recovery;
 	char name[CS_MAX_NAME_LENGTH];
 	time_t last_updated;
@@ -66,6 +67,7 @@ struct resource {
 
 	corosync_timer_handle_t check_timer;
 	uint64_t check_timeout;
+	icmap_track_t icmap_track;
 };
 
 LOGSYS_DECLARE_SUBSYS("WD");
@@ -87,7 +89,6 @@ static uint32_t watchdog_timeout = WD_DEFAULT_TIMEOUT_SEC;
 static uint64_t tickle_timeout = (WD_DEFAULT_TIMEOUT_MS / 2);
 static int dog = -1;
 static corosync_timer_handle_t wd_timer;
-static hdb_handle_t resources_obj;
 static int watchdog_ok = 1;
 
 struct corosync_service_engine wd_service_engine = {
@@ -189,55 +190,6 @@ __attribute__ ((constructor)) static void corosync_lcr_component_register (void)
 	lcr_component_register (&wd_comp_ver0);
 }
 
-static int object_find_or_create (
-	hdb_handle_t parent_object_handle,
-	hdb_handle_t *object_handle,
-	const void *object_name,
-	size_t object_name_len)
-{
-	hdb_handle_t obj_finder;
-	hdb_handle_t obj;
-	int ret = -1;
-
-	api->object_find_create (
-		parent_object_handle,
-		object_name,
-		object_name_len,
-		&obj_finder);
-
-	if (api->object_find_next (obj_finder, &obj) == 0) {
-		/* found it */
-		*object_handle = obj;
-		ret = 0;
-	}
-	else {
-		ret = api->object_create (parent_object_handle,
-			object_handle,
-			object_name, object_name_len);
-	}
-
-	api->object_find_destroy (obj_finder);
-	return ret;
-}
-
-static cs_error_t str_to_uint64_t(const char* str, uint64_t *out_value, uint64_t min, uint64_t max)
-{
-	char *endptr;
-
-	errno = 0;
-        *out_value = strtol(str, &endptr, 0);
-
-        /* Check for various possible errors */
-	if (errno != 0 || endptr == str) {
-		return CS_ERR_INVALID_PARAM;
-	}
-
-	if (*out_value > max || *out_value < min) {
-		return CS_ERR_INVALID_PARAM;
-	}
-	return CS_OK;
-}
-
 static const char * wd_res_state_to_str(struct cs_fsm* fsm,
 	int32_t state)
 {
@@ -274,32 +226,29 @@ static const char * wd_res_event_to_str(struct cs_fsm* fsm,
  */
 static int32_t wd_resource_state_is_ok (struct resource *ref)
 {
-	hdb_handle_t resource = ref->handle;
-	int res;
 	char* state;
-	size_t state_len;
-	objdb_value_types_t type;
-	uint64_t *last_updated;
+	uint64_t last_updated;
 	uint64_t my_time;
 	uint64_t allowed_period;
-	size_t last_updated_len;
+	char key_name[ICMAP_KEYNAME_MAXLEN];
 
-	res = api->object_key_get_typed (resource,
-		"last_updated", (void*)&last_updated, &last_updated_len, &type);
-	if (res != 0) {
+	snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "%s%s", ref->res_path, "last_updated");
+	if (icmap_get_uint64(key_name, &last_updated) != CS_OK) {
 		/* key does not exist.
 		*/
 		return CS_FALSE;
 	}
-	res = api->object_key_get_typed (resource,
-		"state", (void**)&state, &state_len, &type);
-	if (res != 0 ||	strncmp (state, "disabled", strlen ("disabled")) == 0) {
+
+	snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "%s%s", ref->res_path, "state");
+	if (icmap_get_string(key_name, &state) != CS_OK || strcmp(state, "disabled") == 0) {
 		/* key does not exist.
 		*/
 		return CS_FALSE;
 	}
-	if (*last_updated == 0) {
+
+	if (last_updated == 0) {
 		/* initial value */
+		free(state);
 		return CS_TRUE;
 	}
 
@@ -310,42 +259,36 @@ static int32_t wd_resource_state_is_ok (struct resource *ref)
 	 * plus a grace factor of (0.5 * poll_period).
 	 */
 	allowed_period = (ref->check_timeout * MILLI_2_NANO_SECONDS * 3) / 2;
-	if ((*last_updated + allowed_period) < my_time) {
+	if ((last_updated + allowed_period) < my_time) {
 		log_printf (LOGSYS_LEVEL_ERROR,
 			"last_updated %"PRIu64" ms too late, period:%"PRIu64".",
-			(uint64_t)(my_time/MILLI_2_NANO_SECONDS - ((*last_updated + allowed_period) / MILLI_2_NANO_SECONDS)),
+			(uint64_t)(my_time/MILLI_2_NANO_SECONDS - ((last_updated + allowed_period) / MILLI_2_NANO_SECONDS)),
 			ref->check_timeout);
 		return CS_FALSE;
 	}
 
 	if (strcmp (state, wd_failed_str) == 0) {
+		free(state);
 		return CS_FALSE;
 	}
+
+	free(state);
 	return CS_TRUE;
 }
 
 static void wd_config_changed (struct cs_fsm* fsm, int32_t event, void * data)
 {
-	int res;
-	size_t len;
 	char *state;
-	objdb_value_types_t type;
-	char *str;
 	uint64_t tmp_value;
 	uint64_t next_timeout;
 	struct resource *ref = (struct resource*)data;
-	char str_copy[256];
+	char key_name[ICMAP_KEYNAME_MAXLEN];
 
 	next_timeout = ref->check_timeout;
 
-	res = api->object_key_get_typed (ref->handle,
-			"poll_period",
-			(void**)&str, &len,
-			&type);
-	if (res == 0) {
-		memcpy(str_copy, str, len);
-		str_copy[len] = '\0';
-		if (str_to_uint64_t(str_copy, &tmp_value, WD_MIN_TIMEOUT_MS, WD_MAX_TIMEOUT_MS) == CS_OK) {
+	snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "%s%s", ref->res_path, "poll_period");
+	if (icmap_get_uint64(ref->res_path, &tmp_value) == CS_OK) {
+		if (tmp_value >= WD_MIN_TIMEOUT_MS && tmp_value <= WD_MAX_TIMEOUT_MS) {
 			log_printf (LOGSYS_LEVEL_DEBUG,
 				"poll_period changing from:%"PRIu64" to %"PRIu64".",
 				ref->check_timeout, tmp_value);
@@ -358,14 +301,13 @@ static void wd_config_changed (struct cs_fsm* fsm, int32_t event, void * data)
 			ref->check_timeout = tmp_value;
 		} else {
 			log_printf (LOGSYS_LEVEL_WARNING,
-				"Could NOT use poll_period:%s ms for resource %s",
-				str, ref->name);
+				"Could NOT use poll_period:%"PRIu64" ms for resource %s",
+				tmp_value, ref->name);
 		}
 	}
 
-	res = api->object_key_get_typed (ref->handle,
-		"recovery", (void*)&ref->recovery, &len, &type);
-	if (res != 0) {
+	snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "%s%s", ref->res_path, "recovery");
+	if (icmap_get_string(key_name, &ref->recovery) != CS_OK) {
 		/* key does not exist.
 		 */
 		log_printf (LOGSYS_LEVEL_WARNING,
@@ -373,9 +315,8 @@ static void wd_config_changed (struct cs_fsm* fsm, int32_t event, void * data)
 		cs_fsm_state_set(&ref->fsm, WD_S_STOPPED, ref);
 		return;
 	}
-	res = api->object_key_get_typed (ref->handle,
-		"state", (void*)&state, &len, &type);
-	if (res != 0) {
+	snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "%s%s", ref->res_path, "state");
+	if (icmap_get_string(key_name, &state) != CS_OK) {
 		/* key does not exist.
 		*/
 		log_printf (LOGSYS_LEVEL_WARNING,
@@ -385,7 +326,7 @@ static void wd_config_changed (struct cs_fsm* fsm, int32_t event, void * data)
 	}
 	if (ref->check_timer) {
 		api->timer_delete(ref->check_timer);
-		ref->check_timer = NULL;
+		ref->check_timer = 0;
 	}
 
 	if (strcmp(wd_stopped_str, state) == 0) {
@@ -395,6 +336,7 @@ static void wd_config_changed (struct cs_fsm* fsm, int32_t event, void * data)
 			ref, wd_resource_check_fn, &ref->check_timer);
 		cs_fsm_state_set(&ref->fsm, WD_S_RUNNING, ref);
 	}
+	free(state);
 }
 
 static void wd_resource_failed (struct cs_fsm* fsm, int32_t event, void * data)
@@ -403,7 +345,7 @@ static void wd_resource_failed (struct cs_fsm* fsm, int32_t event, void * data)
 
 	if (ref->check_timer) {
 		api->timer_delete(ref->check_timer);
-		ref->check_timer = NULL;
+		ref->check_timer = 0;
 	}
 
 	log_printf (LOGSYS_LEVEL_CRIT, "%s resource \"%s\" failed!",
@@ -421,41 +363,48 @@ static void wd_resource_failed (struct cs_fsm* fsm, int32_t event, void * data)
 	cs_fsm_state_set(fsm, WD_S_FAILED, data);
 }
 
-static void wd_key_changed(object_change_type_t change_type,
-	hdb_handle_t parent_object_handle,
-	hdb_handle_t object_handle,
-	const void *object_name_pt, size_t object_name_len,
-	const void *key_name_pt, size_t key_len,
-	const void *key_value_pt, size_t key_value_len,
-	void *priv_data_pt)
+static void wd_key_changed(
+	int32_t event,
+	const char *key_name,
+	struct icmap_notify_value new_val,
+	struct icmap_notify_value old_val,
+	void *user_data)
 {
-	struct resource* ref = (struct resource*)priv_data_pt;
-
-	if (strncmp(key_name_pt, "last_updated", key_len) == 0 ||
-		strncmp(key_name_pt, "current", key_len) == 0) {
-		return;
-	}
+	struct resource* ref = (struct resource*)user_data;
+	char *last_key_part;
 
 	if (ref == NULL) {
-		return;
+		return ;
 	}
-	cs_fsm_process(&ref->fsm, WD_E_CONFIG_CHANGED, ref);
-}
 
-static void wd_object_destroyed(
-	hdb_handle_t parent_object_handle,
-	const void *name_pt, size_t name_len,
-	void *priv_data_pt)
-{
-	struct resource* ref = (struct resource*)priv_data_pt;
+	last_key_part = strrchr(key_name, '.');
+	if (last_key_part == NULL) {
+		return ;
+	}
+	last_key_part++;
 
-	if (ref) {
+	if (event == ICMAP_TRACK_ADD || event == ICMAP_TRACK_MODIFY) {
+		if (strcmp(last_key_part, "last_updated") == 0 ||
+			strcmp(last_key_part, "current") == 0) {
+			return;
+		}
+
+		cs_fsm_process(&ref->fsm, WD_E_CONFIG_CHANGED, ref);
+	}
+
+	if (event == ICMAP_TRACK_DELETE && ref != NULL) {
+		if (strcmp(last_key_part, "state") != 0) {
+			return ;
+		}
+
 		log_printf (LOGSYS_LEVEL_WARNING,
-			"resource \"%s\" deleted from objdb!",
+			"resource \"%s\" deleted from cmap!",
 			ref->name);
 
 		api->timer_delete(ref->check_timer);
-		ref->check_timer = NULL;
+		ref->check_timer = 0;
+		icmap_track_delete(ref->icmap_track);
+
 		free(ref);
 	}
 }
@@ -476,25 +425,18 @@ static void wd_resource_check_fn (void* resource_ref)
  * return 0   - fully configured
  * return -1  - partially configured
  */
-static int32_t wd_resource_create (hdb_handle_t resource_obj)
+static int32_t wd_resource_create (char *res_path, char *res_name)
 {
-	int res;
-	size_t len;
 	char *state;
-	objdb_value_types_t type;
-	char period_str[32];
-	char str_copy[256];
-	char *str;
 	uint64_t tmp_value;
 	struct resource *ref = malloc (sizeof (struct resource));
+	char key_name[ICMAP_KEYNAME_MAXLEN];
 
-	ref->handle = resource_obj;
+	strcpy(ref->res_path, res_path);
 	ref->check_timeout = WD_DEFAULT_TIMEOUT_MS;
-	ref->check_timer = NULL;
-	api->object_name_get (resource_obj,
-		ref->name,
-		&len);
-	ref->name[len] = '\0';
+	ref->check_timer = 0;
+
+	strcpy(ref->name, res_name);
 	ref->fsm.name = ref->name;
 	ref->fsm.table = wd_fsm_table;
 	ref->fsm.entries = sizeof(wd_fsm_table) / sizeof(struct cs_fsm_entry);
@@ -502,47 +444,35 @@ static int32_t wd_resource_create (hdb_handle_t resource_obj)
 	ref->fsm.curr_state = WD_S_STOPPED;
 	ref->fsm.state_to_str = wd_res_state_to_str;
 	ref->fsm.event_to_str = wd_res_event_to_str;
-	api->object_priv_set (resource_obj, NULL);
 
-	res = api->object_key_get_typed (resource_obj,
-			"poll_period",
-			(void**)&str, &len,
-			&type);
-	if (res != 0) {
-		len = snprintf (period_str, 32, "%"PRIu64"", ref->check_timeout);
-		api->object_key_create_typed (resource_obj,
-			"poll_period", &period_str,
-			len,
-			OBJDB_VALUETYPE_STRING);
-	}
-	else {
-		memcpy(str_copy, str, len);
-		str_copy[len] = '\0';
-		if (str_to_uint64_t(str_copy, &tmp_value, WD_MIN_TIMEOUT_MS, WD_MAX_TIMEOUT_MS) == CS_OK) {
+	snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "%s%s", res_path, "poll_period");
+	if (icmap_get_uint64(key_name, &tmp_value) != CS_OK) {
+		icmap_set_uint64(key_name, ref->check_timeout);
+	} else {
+		if (tmp_value >= WD_MIN_TIMEOUT_MS && tmp_value <= WD_MAX_TIMEOUT_MS) {
 			ref->check_timeout = tmp_value;
 		} else {
 			log_printf (LOGSYS_LEVEL_WARNING,
-				"Could NOT use poll_period:%s ms for resource %s",
-				str, ref->name);
+				"Could NOT use poll_period:%"PRIu64" ms for resource %s",
+				tmp_value, ref->name);
 		}
 	}
 
-	api->object_track_start (resource_obj, OBJECT_TRACK_DEPTH_RECURSIVE,
-			wd_key_changed, NULL, wd_object_destroyed,
-			NULL, ref);
+	icmap_track_add(res_path,
+			ICMAP_TRACK_ADD | ICMAP_TRACK_MODIFY | ICMAP_TRACK_DELETE | ICMAP_TRACK_PREFIX,
+			wd_key_changed,
+			ref, &ref->icmap_track);
 
-	res = api->object_key_get_typed (resource_obj,
-		"recovery", (void*)&ref->recovery, &len, &type);
-	if (res != 0) {
+	snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "%s%s", res_path, "recovery");
+	if (icmap_get_string(key_name, &ref->recovery) != CS_OK) {
 		/* key does not exist.
 		 */
 		log_printf (LOGSYS_LEVEL_WARNING,
 			"resource %s missing a recovery key.", ref->name);
 		return -1;
 	}
-	res = api->object_key_get_typed (resource_obj,
-		"state", (void*)&state, &len, &type);
-	if (res != 0) {
+	snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "%s%s", res_path, "state");
+	if (icmap_get_string(key_name, &state) != CS_OK) {
 		/* key does not exist.
 		*/
 		log_printf (LOGSYS_LEVEL_WARNING,
@@ -550,12 +480,13 @@ static int32_t wd_resource_create (hdb_handle_t resource_obj)
 		return -1;
 	}
 
-	res = api->object_key_get_typed (resource_obj,
-		"last_updated", (void*)&ref->last_updated, &len, &type);
-	if (res != 0) {
+	snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "%s%s", res_path, "last_updated");
+	if (icmap_get_uint64(key_name, &tmp_value) != CS_OK) {
 		/* key does not exist.
 		 */
 		ref->last_updated = 0;
+	} else {
+		ref->last_updated = tmp_value;
 	}
 
 	/*
@@ -588,60 +519,71 @@ static void wd_tickle_fn (void* arg)
 
 }
 
-static void wd_resource_object_created(hdb_handle_t parent_object_handle,
-	hdb_handle_t object_handle,
-	const void *name_pt, size_t name_len,
-	void *priv_data_pt)
+static void wd_resource_created_cb(
+	int32_t event,
+	const char *key_name,
+	struct icmap_notify_value new_val,
+	struct icmap_notify_value old_val,
+	void *user_data)
 {
-	wd_resource_create (object_handle);
+	char res_name[ICMAP_KEYNAME_MAXLEN];
+	char res_type[ICMAP_KEYNAME_MAXLEN];
+	char tmp_key[ICMAP_KEYNAME_MAXLEN];
+	int res;
+
+	if (event != ICMAP_TRACK_ADD) {
+		return ;
+	}
+
+	res = sscanf(key_name, "resources.%[^.].%[^.].%[^.]", res_type, res_name, tmp_key);
+	if (res != 3) {
+		return ;
+	}
+
+	if (strcmp(tmp_key, "state") != 0) {
+		return ;
+	}
+
+	snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "resources.%s.%s.", res_type, res_name);
+	wd_resource_create (tmp_key, res_name);
 }
 
 static void wd_scan_resources (void)
 {
-	hdb_handle_t obj_finder;
-	hdb_handle_t obj_finder2;
-	hdb_handle_t resource_type;
-	hdb_handle_t resource;
 	int res_count = 0;
+	icmap_track_t icmap_track;
+	icmap_iter_t iter;
+	const char *key_name;
+	int res;
+	char res_name[ICMAP_KEYNAME_MAXLEN];
+	char res_type[ICMAP_KEYNAME_MAXLEN];
+	char tmp_key[ICMAP_KEYNAME_MAXLEN];
 
 	ENTER();
 
-	api->object_find_create (
-		OBJECT_PARENT_HANDLE,
-		"resources", strlen ("resources"),
-		&obj_finder);
-
-	api->object_find_next (obj_finder, &resources_obj);
-	api->object_find_destroy (obj_finder);
-
-	/* this will be the system or process level
-	 */
-	api->object_find_create (
-		resources_obj,
-		NULL, 0,
-		&obj_finder);
-	while (api->object_find_next (obj_finder,
-			&resource_type) == 0) {
-
-		api->object_find_create (
-			resource_type,
-			NULL, 0,
-			&obj_finder2);
-
-		while (api->object_find_next (obj_finder2,
-				&resource) == 0) {
-
-			if (wd_resource_create (resource) == 0) {
-				res_count++;
-			}
+	iter = icmap_iter_init("resources.");
+	while ((key_name = icmap_iter_next(iter, NULL, NULL)) != NULL) {
+		res = sscanf(key_name, "resources.%[^.].%[^.].%[^.]", res_type, res_name, tmp_key);
+		if (res != 3) {
+			continue ;
 		}
-		api->object_find_destroy (obj_finder2);
 
-		api->object_track_start (resource_type, OBJECT_TRACK_DEPTH_ONE,
-			NULL, wd_resource_object_created, NULL,
-			NULL, NULL);
+		if (strcmp(tmp_key, "state") != 0) {
+			continue ;
+		}
+
+		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "resources.%s.%s.", res_type, res_name);
+		if (wd_resource_create (tmp_key, res_name) == 0) {
+			res_count++;
+		}
 	}
-	api->object_find_destroy (obj_finder);
+	icmap_iter_finalize(iter);
+
+	icmap_track_add("resources.process.", ICMAP_TRACK_ADD | ICMAP_TRACK_PREFIX,
+			wd_resource_created_cb, NULL, &icmap_track);
+	icmap_track_add("resources.system.", ICMAP_TRACK_ADD | ICMAP_TRACK_PREFIX,
+			wd_resource_created_cb, NULL, &icmap_track);
+
 	if (res_count == 0) {
 		log_printf (LOGSYS_LEVEL_INFO, "no resources configured.");
 	}
@@ -724,25 +666,19 @@ static int setup_watchdog(void)
 	return 0;
 }
 
-static void wd_top_level_key_changed(object_change_type_t change_type,
-	hdb_handle_t parent_object_handle,
-	hdb_handle_t object_handle,
-	const void *object_name_pt, size_t object_name_len,
-	const void *key_name_pt, size_t key_len,
-	const void *key_value_pt, size_t key_value_len,
-	void *priv_data_pt)
+static void wd_top_level_key_changed(
+	int32_t event,
+	const char *key_name,
+	struct icmap_notify_value new_val,
+	struct icmap_notify_value old_val,
+	void *user_data)
 {
-	uint64_t tmp_value;
-	int32_t tmp_value_32;
-	char str_copy[256];
+	uint32_t tmp_value_32;
 
 	ENTER();
-	if (change_type != OBJECT_KEY_DELETED &&
-		strncmp ((char*)key_name_pt, "watchdog_timeout", key_len) == 0) {
-		memcpy(str_copy, key_name_pt, key_len);
-		str_copy[key_len] = '\0';
-		if (str_to_uint64_t(str_copy, &tmp_value, 2, 120) == CS_OK) {
-			tmp_value_32 = tmp_value;
+
+	if (icmap_get_uint32("resources.watchdog_timeout", &tmp_value_32) != CS_OK) {
+		if (tmp_value_32 >= 2 && tmp_value_32 <= 120) {
 			watchdog_timeout_apply (tmp_value_32);
 		}
 	}
@@ -753,63 +689,38 @@ static void wd_top_level_key_changed(object_change_type_t change_type,
 
 static void watchdog_timeout_get_initial (void)
 {
-	int32_t res;
-	char watchdog_timeout_str[32];
-	size_t watchdog_timeout_len;
-	objdb_value_types_t watchdog_timeout_type;
 	uint32_t tmp_value_32;
-	uint64_t tmp_value;
+	icmap_track_t icmap_track;
 
 	ENTER();
 
-	res = api->object_key_get_typed (resources_obj,
-			"watchdog_timeout",
-			(void**)&watchdog_timeout_str, &watchdog_timeout_len,
-			&watchdog_timeout_type);
-	if (res != 0) {
+	if (icmap_get_uint32("resources.watchdog_timeout", &tmp_value_32) != CS_OK) {
 		watchdog_timeout_apply (WD_DEFAULT_TIMEOUT_SEC);
 
-		watchdog_timeout_len = snprintf (watchdog_timeout_str, 32, "%d", watchdog_timeout);
-		api->object_key_create_typed (resources_obj,
-			"watchdog_timeout", &watchdog_timeout_str,
-			watchdog_timeout_len,
-			OBJDB_VALUETYPE_STRING);
+		icmap_set_uint32("resources.watchdog_timeout", watchdog_timeout);
 	}
 	else {
-		if (str_to_uint64_t(watchdog_timeout_str, &tmp_value, 2, 120) == CS_OK) {
-			tmp_value_32 = tmp_value;
+		if (tmp_value_32 >= 2 && tmp_value_32 <= 120) {
 			watchdog_timeout_apply (tmp_value_32);
 		} else {
 			watchdog_timeout_apply (WD_DEFAULT_TIMEOUT_SEC);
 		}
 	}
 
-	api->object_track_start (resources_obj, OBJECT_TRACK_DEPTH_ONE,
-		wd_top_level_key_changed, NULL, NULL,
-		NULL, NULL);
+	icmap_track_add("resources.watchdog_timeout", ICMAP_TRACK_MODIFY,
+			wd_top_level_key_changed, NULL, &icmap_track);
 
 }
 
 static int wd_exec_init_fn (
 	struct corosync_api_v1 *corosync_api)
 {
-	hdb_handle_t obj;
 
 	ENTER();
 #ifdef COROSYNC_SOLARIS
 	logsys_subsys_init();
 #endif
 	api = corosync_api;
-
-	object_find_or_create (OBJECT_PARENT_HANDLE,
-		&resources_obj,
-		"resources", strlen ("resources"));
-	object_find_or_create (resources_obj,
-		&obj,
-		"system", strlen ("system"));
-	object_find_or_create (resources_obj,
-		&obj,
-		"process", strlen ("process"));
 
 	watchdog_timeout_get_initial();
 
