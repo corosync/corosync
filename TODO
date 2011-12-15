@@ -9,18 +9,13 @@
 --------------------------------------
  Current priority list for Needle 2.0
 --------------------------------------
-1. implement topic-map
-2. replace confdb callers with map callers
-3. quorum debugging and rework
-4. implement topic-xmlconfig
-5. remove external plug-in api
-6. remove logsys.h from external headers
-7. investigate if https://github.com/asalkeld/libqb/issues/1 is still an issue.
-8. allow a cluster name to autogenerate a mcastaddr
-9. ring status change via corosync-notifyd
-10. remove dashes in UDPU notifier and replace with dots once map code is in
-11. put addition/removal of members in totem.interface.member objects
-12. dynamic UDPU needs ring id settings for multiple rings
+1. quorum debugging and rework
+2. implement topic-xmlconfig
+3. remove external plug-in api
+4. remove logsys.h from external headers
+5. investigate if https://github.com/asalkeld/libqb/issues/1 is still an issue.
+6. allow a cluster name to autogenerate a mcastaddr
+7. ring status change via corosync-notifyd
 
 --------------------------------------
  Current priority list for Needle 2.1
@@ -39,19 +34,6 @@ the developers have interest in investigating further.
 targets can be: whitetank, needle2.0, needle3.0, or future (3.0+).
 Finished can be: percentage or date merged to master.  Once in a shipped
 version, please remove from the topic list.
-
-------------------------------------------------------------------------------
-topic-map
-------------------------------------------------------------------------------
-Main Developer: Honza Friesse
-Started: not started
-Finished: 20%
-target: needle2.0
-Currently confdb is very difficult to use.  We use this component for
-our diagnostic feature set as well as storing our runtime configuration.  A
-map is a better choice for a data structure here.  Current thinking is to
-use the trie implementation from libqb to provide the core of this
-functionality 
 
 ------------------------------------------------------------------------------
 topic-xmlconfig
