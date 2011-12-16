@@ -1,6 +1,6 @@
 .\"/*
 .\" * Copyright (c) 2005 MontaVista Software, Inc.
-.\" * Copyright (c) 2006-2010 Red Hat, Inc.
+.\" * Copyright (c) 2006-2011 Red Hat, Inc.
 .\" *
 .\" * All rights reserved.
 .\" *
@@ -32,7 +32,7 @@
 .\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 .\" * THE POSSIBILITY OF SUCH DAMAGE.
 .\" */
-.TH COROSYNC_CONF 5 2006-03-28 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
+.TH COROSYNC_CONF 5 2011-12-16 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
 .SH NAME
 corosync.conf - corosync executive configuration file
 
@@ -51,9 +51,6 @@ This top level directive contains configuration options for the totem protocol.
 .TP
 logging { }
 This top level directive contains configuration options for logging.
-.TP
-event { }
-This top level directive contains configuration options for the event service.
 
 .PP
 .PP
@@ -151,7 +148,7 @@ subdirective.  The required directive controls the version of the totem
 configuration.  The optional option unless using IPV6 directive controls
 identification of the processor.  The optional options control secrecy and
 authentication, the redundant ring mode of operation, maximum network MTU,
-and number of sending threads, and the nodeid field.
+and the nodeid field.
 
 .TP
 version
@@ -245,18 +242,6 @@ that some device in the network doesn't support large frames.
 Choose hardware carefully if intending to use large frame support.
 
 The default is 1500.
-
-.TP
-threads
-This directive controls how many threads are used to encrypt and send multicast
-messages.  If secauth is off, the protocol will never use threaded sending.
-If secauth is on, this directive allows systems to be configured to use
-multiple threads to encrypt and send multicast messages.
-
-A thread directive of 0 indicates that no threaded send should be used.  This
-mode offers best performance for non-SMP systems.
-
-The default is 0.
 
 .TP
 vsftype
@@ -605,18 +590,6 @@ This specifies whether debug output is logged for this particular logger.
 
 The default is off.
 
-.TP
-tags
-This specifies which tags should be traced for this particular logger.
-Set debug directive to
-.B on
-in order to enable tracing using tags.
-Values are specified using a vertical bar as a logical OR separator:
-
-enter|leave|trace1|trace2|trace3|...
-
-The default is none.
-
 .PP
 Within the
 .B logging
@@ -632,7 +605,7 @@ The subsys entry, described below, is mandatory to identify the subsystem.
 .TP
 subsys
 This specifies the subsystem identity (name) for which logging is specified. This is the
-name used by a service in the log_init () call. E.g. 'CKPT'. This directive is
+name used by a service in the log_init () call. E.g. 'CPG'. This directive is
 required.
 
 .SH "FILES"
