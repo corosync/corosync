@@ -70,7 +70,7 @@ logging {
 	debug: off
 	timestamp: on
 	logger_subsys {
-		subsys: AMF
+		subsys: EVS
 		debug: off
 	}
 }

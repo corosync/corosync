@@ -9,8 +9,6 @@ totem {
 	# secret with "corosync-keygen".
 	secauth: off
 
-	threads: 0
-
 	# interface: define at least one interface to communicate
 	# over. If you define more than one interface stanza, you must
 	# also set rrp_mode.
@@ -71,11 +69,7 @@ logging {
 	# timestamps can be annoying).
 	timestamp: on
 	logger_subsys {
-		subsys: AMF
+		subsys: EVS
 		debug: off
 	}
-}
-
-amf {
-	mode: disabled
 }
