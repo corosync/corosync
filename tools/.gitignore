@@ -7,3 +7,4 @@ corosync-pload
 corosync-quorumtool
 corosync-notifyd
 corosync-cmapctl
+corosync-xmlproc

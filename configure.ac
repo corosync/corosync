@@ -304,6 +304,11 @@ AC_ARG_ENABLE([snmp],
        [  --enable-snmp                   : SNMP protocol support ],
        [ default="no" ])
 
+AC_ARG_ENABLE([xmlconf],
+       [  --enable-xmlconf                : XML configuration support ],,
+       [ enable_xmlconf="no" ])
+AM_CONDITIONAL(INSTALL_XMLCONF, test x$enable_xmlconf = xyes)
+
 # OS detection
 # THIS SECTION MUST DIE!
 CP=cp
@@ -456,6 +461,9 @@ if test "x${enable_augeas}" = xyes; then
 fi
 if test "x${enable_systemd}" = xyes; then
 	PACKAGE_FEATURES="$PACKAGE_FEATURES systemd"
+fi
+if test "x${enable_xmlconf}" = xyes; then
+	PACKAGE_FEATURES="$PACKAGE_FEATURES xmlconf"
 fi
 
 if test "x${enable_snmp}" = xyes; then

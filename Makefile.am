@@ -40,7 +40,7 @@ EXTRA_DIST		= autogen.sh conf/corosync.conf.example $(SPEC).in \
 			  conf/lenses/tests/test_corosync.aug \
 			  conf/lenses/corosync.aug \
 			  conf/corosync.conf.example.udpu \
-			  .version
+			  .version conf/corosync.xml.example
 
 AUTOMAKE_OPTIONS	= foreign
 
@@ -61,6 +61,14 @@ corolens_DATA		= conf/lenses/corosync.aug
 
 corolenstestdir		= ${corolensdir}/tests
 corolenstest_DATA	= conf/lenses/tests/test_corosync.aug
+endif
+
+if INSTALL_XMLCONF
+corosysxmlconfdir	= ${COROSYSCONFDIR}
+corosysxmlconf_DATA	= conf/corosync.xml.example
+
+corosysxmlxsltdir	= ${datadir}/corosync
+corosysxmlxslt_DATA	= conf/xml2conf.xsl
 endif
 
 SUBDIRS			= include lcr lib exec services tools test cts pkgconfig \
