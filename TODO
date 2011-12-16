@@ -10,12 +10,11 @@
  Current priority list for Needle 2.0
 --------------------------------------
 1. quorum debugging and rework
-2. implement topic-xmlconfig
-3. remove external plug-in api
-4. remove logsys.h from external headers
-5. investigate if https://github.com/asalkeld/libqb/issues/1 is still an issue.
-6. allow a cluster name to autogenerate a mcastaddr
-7. ring status change via corosync-notifyd
+2. remove external plug-in api
+3. remove logsys.h from external headers
+4. investigate if https://github.com/asalkeld/libqb/issues/1 is still an issue.
+5. allow a cluster name to autogenerate a mcastaddr
+6. ring status change via corosync-notifyd
 
 --------------------------------------
  Current priority list for Needle 2.1
@@ -26,6 +25,7 @@
 4. implement topic-zerocopy
 5. implement topic-rdmaud
 6. harden and finish ykd algorithm
+7. implement topic-xmlschema
 
 We use topic branches in our git repository to develop new disruptive features
 that define our future roadmap.  This file describes the topic branches
@@ -36,17 +36,15 @@ Finished can be: percentage or date merged to master.  Once in a shipped
 version, please remove from the topic list.
 
 ------------------------------------------------------------------------------
-topic-xmlconfig
+topic-xmlschema
 ------------------------------------------------------------------------------
 Main Developer: Honza Friesse
 Started: not started
 Finished: 0%
-target: needle2.0
-Test suites and users alike would like to configure the software via XML
-configuration.  Current thinking is we will implement a separate binary which
-converts xml to native config format via XSLT.  This keeps libxml out of the 
-corosync process address space.  During startup, corosync could either fork
-and exec this process, or it could be part of the system startup mechanism.
+target: needle2.1
+XML configuration for corosync exists, but imput file is not checked against
+XML schema. This topic is about implementing preferably RelaxNG schema of
+corosync configuration.
 
 ------------------------------------------------------------------------------
 topic-onecrypt
