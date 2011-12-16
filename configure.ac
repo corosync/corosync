@@ -281,7 +281,7 @@ AC_ARG_ENABLE([augeas],
 AM_CONDITIONAL(INSTALL_AUGEAS, test x$enable_augeas = xyes)
 
 AC_ARG_ENABLE([systemd],
-	      [  --enable-systemd               : Install systemd service files],,
+	      [  --enable-systemd                : Install systemd service files],,
 	[ enable_systemd="no" ])
 AM_CONDITIONAL(INSTALL_SYSTEMD, test x$enable_systemd = xyes)
 
