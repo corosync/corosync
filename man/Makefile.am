@@ -121,7 +121,13 @@ dist_man_MANS = \
 	sam_start.3 \
 	sam_stop.3 \
 	sam_warn_signal_set.3
-	
+
+if INSTALL_XMLCONF
+dist_man_MANS += \
+	corosync-xmlproc.8 \
+	corosync.xml.5
+endif
+
 if BUILD_HTML_DOCS
 
 HTML_DOCS = $(dist_man_MANS:%=%.html)
