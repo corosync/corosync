@@ -303,7 +303,7 @@ static void cs_ipcs_connection_created(qb_ipcs_connection_t *c)
 	int set_client_pid = 0;
 	int set_proc_name = 0;
 
-	log_printf(LOG_INFO, "%s() new connection", __func__);
+	log_printf(LOG_DEBUG, "%s() new connection", __func__);
 
 	service = qb_ipcs_service_id_get(c);
 
@@ -413,7 +413,7 @@ static void cs_ipcs_connection_destroyed (qb_ipcs_connection_t *c)
 	struct list_head *list, *list_next;
 	struct outq_item *outq_item;
 
-	log_printf(LOG_INFO, "%s() ", __func__);
+	log_printf(LOG_DEBUG, "%s() ", __func__);
 
 	context = qb_ipcs_context_get(c);
 	if (context) {
@@ -440,7 +440,7 @@ static int32_t cs_ipcs_connection_closed (qb_ipcs_connection_t *c)
 	const char *key_name;
 	struct cs_ipcs_conn_context *cnx;
 
-	log_printf(LOG_INFO, "%s() ", __func__);
+	log_printf(LOG_DEBUG, "%s() ", __func__);
 	res = ais_service[service]->lib_exit_fn(c);
 	if (res != 0) {
 		return res;
