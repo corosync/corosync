@@ -117,7 +117,7 @@ struct cluster_node {
 
 static int quorum_flags;
 #define VOTEQUORUM_FLAG_FEATURE_DISALLOWED 1
-#define VOTEQUORUM_FLAG_FEATURE_TWONODE 1
+#define VOTEQUORUM_FLAG_FEATURE_TWONODE 2
 
 static int quorum;
 static int cluster_is_quorate;
