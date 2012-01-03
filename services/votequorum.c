@@ -124,6 +124,7 @@ static int cluster_is_quorate;
 static int first_trans = 1;
 static unsigned int quorumdev_poll = DEFAULT_QDEV_POLL;
 static unsigned int leaving_timeout = DEFAULT_LEAVE_TMO;
+static uint8_t wait_for_all = 0;
 
 static struct cluster_node *us;
 static struct cluster_node *quorum_device = NULL;
@@ -385,6 +386,8 @@ static void votequorum_init(struct corosync_api_v1 *api,
 	ENTER();
 	set_quorum = report;
 
+	icmap_get_uint8("quorum.wait_for_all", &wait_for_all);
+
 	/* Load the library-servicing part of this module */
 	api->service_link_and_init(api, "corosync_votequorum_iface", 0);
 
@@ -608,6 +611,23 @@ static void set_quorate(int total_votes)
 	int quorate;
 
 	ENTER();
+
+	/*
+	 * wait for all nodes to show up before granting quorum
+	 */
+
+	if (wait_for_all) {
+		if (total_votes != us->expected_votes) {
+			log_printf(LOGSYS_LEVEL_NOTICE,
+				   "Waiting for all cluster members. "
+				   "Current votes: %d expected_votes: %d\n",
+				   total_votes, us->expected_votes);
+			cluster_is_quorate = 0;
+			return;
+		}
+		wait_for_all = 0;
+	}
+
 	if (quorum > total_votes) {
 		quorate = 0;
 	}
