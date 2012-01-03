@@ -417,6 +417,7 @@ struct req_exec_quorum_nodeinfo {
 	unsigned int patch_version;	/* Backwards/forwards compatible */
 	unsigned int config_version;
 	unsigned int flags;
+	unsigned int wait_for_all;
 
 } __attribute__((packed));
 
@@ -889,6 +890,7 @@ static int quorum_exec_send_nodeinfo()
 	req_exec_quorum_nodeinfo.patch_version = VOTEQUORUM_PATCH_VERSION;
 	req_exec_quorum_nodeinfo.flags = us->flags;
 	req_exec_quorum_nodeinfo.first_trans = first_trans;
+	req_exec_quorum_nodeinfo.wait_for_all = wait_for_all;
 	if (have_disallowed())
 		req_exec_quorum_nodeinfo.flags |= NODE_FLAGS_SEESDISALLOWED;
 
@@ -1007,6 +1009,7 @@ static void exec_votequorum_nodeinfo_endian_convert (void *msg)
 	nodeinfo->patch_version = swab32(nodeinfo->patch_version);
 	nodeinfo->config_version = swab32(nodeinfo->config_version);
 	nodeinfo->flags = swab32(nodeinfo->flags);
+	nodeinfo->wait_for_all = swab32(nodeinfo->wait_for_all);
 }
 
 static void exec_votequorum_reconfigure_endian_convert (void *msg)
@@ -1066,7 +1069,7 @@ static void message_handler_req_exec_votequorum_nodeinfo (
 	node->expected_votes = req_exec_quorum_nodeinfo->expected_votes;
 	node->state = NODESTATE_MEMBER;
 
-	log_printf(LOGSYS_LEVEL_DEBUG, "nodeinfo message: votes: %d, expected:%d\n", req_exec_quorum_nodeinfo->votes, req_exec_quorum_nodeinfo->expected_votes);
+	log_printf(LOGSYS_LEVEL_DEBUG, "nodeinfo message: votes: %d, expected: %d wfa: %d\n", req_exec_quorum_nodeinfo->votes, req_exec_quorum_nodeinfo->expected_votes, req_exec_quorum_nodeinfo->wait_for_all);
 
 	/* Check flags for disallowed (if enabled) */
 	if (quorum_flags & VOTEQUORUM_FLAG_FEATURE_DISALLOWED) {
@@ -1093,6 +1096,10 @@ static void message_handler_req_exec_votequorum_nodeinfo (
 
 	if (!nodeid) {
 		free(node);
+	}
+
+	if ((wait_for_all) && (!req_exec_quorum_nodeinfo->wait_for_all)) {
+		wait_for_all = 0;
 	}
 
 	LEAVE();
