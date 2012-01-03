@@ -369,6 +369,7 @@ static int main_config_parser_cb(const char *path,
 			if ((strcmp(path, "quorum.disallowed") == 0) ||
 			    (strcmp(path, "quorum.two_node") == 0) ||
 			    (strcmp(path, "quorum.wait_for_all") == 0) ||
+			    (strcmp(path, "quorum.auto_tie_breaker") == 0) ||
 			    (strcmp(path, "quorum.quorate") == 0)) {
 				i = atoi(value);
 				icmap_set_uint8(path, i);

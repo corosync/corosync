@@ -125,6 +125,8 @@ static int first_trans = 1;
 static unsigned int quorumdev_poll = DEFAULT_QDEV_POLL;
 static unsigned int leaving_timeout = DEFAULT_LEAVE_TMO;
 static uint8_t wait_for_all = 0;
+static uint8_t auto_tie_breaker = 0;
+static int lowest_node_id = -1;
 
 static struct cluster_node *us;
 static struct cluster_node *quorum_device = NULL;
@@ -387,6 +389,16 @@ static void votequorum_init(struct corosync_api_v1 *api,
 	set_quorum = report;
 
 	icmap_get_uint8("quorum.wait_for_all", &wait_for_all);
+	icmap_get_uint8("quorum.auto_tie_breaker", &auto_tie_breaker);
+
+	/*
+	 * TODO: we need to know the lowest node-id in the cluster
+	 * current lack of node list with node-id's requires us to see all nodes
+	 * to determine which is the lowest.
+	 */
+	if (auto_tie_breaker) {
+		wait_for_all = 1;
+	}
 
 	/* Load the library-servicing part of this module */
 	api->service_link_and_init(api, "corosync_votequorum_iface", 0);
@@ -606,6 +618,39 @@ static void send_expectedvotes_notification(void)
 	}
 }
 
+static void get_lowest_node_id(void)
+{
+	struct cluster_node *node = NULL;
+	struct list_head *tmp;
+
+	lowest_node_id = us->node_id;
+
+	list_iterate(tmp, &cluster_members_list) {
+		node = list_entry(tmp, struct cluster_node, list);
+		if (node->node_id < lowest_node_id)
+			lowest_node_id = node->node_id;
+	}
+	log_printf(LOGSYS_LEVEL_DEBUG, "lowest node id: %d us: %d\n", lowest_node_id, us->node_id);
+}
+
+static int check_low_node_id_partition(void)
+{
+	struct cluster_node *node = NULL;
+	struct list_head *tmp;
+	int found = 0;
+
+	list_iterate(tmp, &cluster_members_list) {
+		node = list_entry(tmp, struct cluster_node, list);
+		if (node->state == NODESTATE_MEMBER) {
+			if (node->node_id == lowest_node_id) {
+				found = 1;
+			}
+		}
+	}
+
+	return found;
+}
+
 static void set_quorate(int total_votes)
 {
 	int quorate;
@@ -626,12 +671,19 @@ static void set_quorate(int total_votes)
 			return;
 		}
 		wait_for_all = 0;
+		get_lowest_node_id();
 	}
 
 	if (quorum > total_votes) {
 		quorate = 0;
 	}
 	else {
+		quorate = 1;
+	}
+
+	if ((auto_tie_breaker) &&
+	    (total_votes == (us->expected_votes / 2)) &&
+	    (check_low_node_id_partition() == 1)) {
 		quorate = 1;
 	}
 
