@@ -920,6 +920,7 @@ static void quorum_confchg_fn (
 		recalculate_quorum(leaving, leaving);
 
 	memcpy(&quorum_ringid, ring_id, sizeof(*ring_id));
+	set_quorum(quorum_members, quorum_members_entries, cluster_is_quorate, &quorum_ringid);
 	LEAVE();
 }
 
