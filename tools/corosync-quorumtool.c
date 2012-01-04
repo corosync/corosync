@@ -360,7 +360,6 @@ quorum_err:
 		printf("Quorum:           %d %s\n", info.quorum, info.flags & VOTEQUORUM_INFO_FLAG_QUORATE?" ":"Activity blocked");
 		printf("Flags:            ");
 		if (info.flags & VOTEQUORUM_INFO_FLAG_HASSTATE) printf("HasState ");
-		if (info.flags & VOTEQUORUM_INFO_FLAG_DISALLOWED) printf("DisallowedNodes ");
 		if (info.flags & VOTEQUORUM_INFO_FLAG_TWONODE) printf("2Node ");
 		if (info.flags & VOTEQUORUM_INFO_FLAG_QUORATE) printf("Quorate ");
 		printf("\n");

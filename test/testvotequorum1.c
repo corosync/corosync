@@ -60,9 +60,6 @@ static const char *node_state(int state)
 	case NODESTATE_LEAVING:
 		return "Leaving";
 		break;
-	case NODESTATE_DISALLOWED:
-		return "Disallowed";
-		break;
 	default:
 		return "UNKNOWN";
 		break;
@@ -132,7 +129,6 @@ int main(int argc, char *argv[])
 		printf("quorum           %d\n", info.quorum);
 		printf("flags            ");
 		if (info.flags & VOTEQUORUM_INFO_FLAG_HASSTATE) printf("HasState ");
-		if (info.flags & VOTEQUORUM_INFO_FLAG_DISALLOWED) printf("Disallowed ");
 		if (info.flags & VOTEQUORUM_INFO_FLAG_TWONODE) printf("2Node ");
 		if (info.flags & VOTEQUORUM_INFO_FLAG_QUORATE) printf("Quorate ");
 		printf("\n");
@@ -159,7 +155,6 @@ int main(int argc, char *argv[])
 			printf("votequorum           %d\n", info.quorum);
 			printf("flags            ");
 			if (info.flags & VOTEQUORUM_INFO_FLAG_HASSTATE) printf("HasState ");
-			if (info.flags & VOTEQUORUM_INFO_FLAG_DISALLOWED) printf("Disallowed ");
 			if (info.flags & VOTEQUORUM_INFO_FLAG_TWONODE) printf("2Node ");
 			if (info.flags & VOTEQUORUM_INFO_FLAG_QUORATE) printf("Quorate ");
 			printf("\n");

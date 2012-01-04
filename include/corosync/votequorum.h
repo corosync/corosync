@@ -44,9 +44,8 @@ typedef uint64_t votequorum_handle_t;
 #define VOTEQUORUM_MAX_QDISK_NAME_LEN 255
 
 #define VOTEQUORUM_INFO_FLAG_HASSTATE   1
-#define VOTEQUORUM_INFO_FLAG_DISALLOWED 2
-#define VOTEQUORUM_INFO_FLAG_TWONODE    4
-#define VOTEQUORUM_INFO_FLAG_QUORATE    8
+#define VOTEQUORUM_INFO_FLAG_TWONODE    2
+#define VOTEQUORUM_INFO_FLAG_QUORATE    4
 
 #define VOTEQUORUM_NODEID_US 0
 #define VOTEQUORUM_NODEID_QDEVICE -1
@@ -55,8 +54,6 @@ typedef uint64_t votequorum_handle_t;
 #define NODESTATE_MEMBER     2
 #define NODESTATE_DEAD       3
 #define NODESTATE_LEAVING    4
-#define NODESTATE_DISALLOWED 5
-
 
 /** @} */
 

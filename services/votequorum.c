@@ -85,21 +85,19 @@ LOGSYS_DECLARE_SUBSYS ("VOTEQ");
 enum quorum_message_req_types {
 	MESSAGE_REQ_EXEC_VOTEQUORUM_NODEINFO  = 0,
 	MESSAGE_REQ_EXEC_VOTEQUORUM_RECONFIGURE = 1,
-	MESSAGE_REQ_EXEC_VOTEQUORUM_KILLNODE = 2,
 };
 
 #define NODE_FLAGS_BEENDOWN         1
-#define NODE_FLAGS_SEESDISALLOWED   8
-#define NODE_FLAGS_HASSTATE        16
-#define NODE_FLAGS_QDISK           32
-#define NODE_FLAGS_REMOVED         64
-#define NODE_FLAGS_US             128
+#define NODE_FLAGS_HASSTATE         8
+#define NODE_FLAGS_QDISK           16
+#define NODE_FLAGS_REMOVED         32
+#define NODE_FLAGS_US              64
 
 #define NODEID_US 0
 #define NODEID_QDEVICE -1
 
 typedef enum { NODESTATE_JOINING=1, NODESTATE_MEMBER,
-	       NODESTATE_DEAD, NODESTATE_LEAVING, NODESTATE_DISALLOWED } nodestate_t;
+	       NODESTATE_DEAD, NODESTATE_LEAVING } nodestate_t;
 
 struct cluster_node {
 	int flags;
@@ -116,8 +114,7 @@ struct cluster_node {
 };
 
 static int quorum_flags;
-#define VOTEQUORUM_FLAG_FEATURE_DISALLOWED 1
-#define VOTEQUORUM_FLAG_FEATURE_TWONODE 2
+#define VOTEQUORUM_FLAG_FEATURE_TWONODE 1
 
 static int quorum;
 static int cluster_is_quorate;
@@ -143,7 +140,6 @@ static struct memb_ring_id quorum_ringid;
 #define max(a,b) (((a) > (b)) ? (a) : (b))
 static struct cluster_node *find_node_by_nodeid(int nodeid);
 static struct cluster_node *allocate_node(int nodeid);
-static const char *kill_reason(int reason);
 
 #define list_iterate(v, head) \
         for (v = (head)->next; v != head; v = v->next)
@@ -184,11 +180,6 @@ static void message_handler_req_exec_votequorum_reconfigure (
 	const void *message,
 	unsigned int nodeid);
 
-static void message_handler_req_exec_votequorum_killnode (
-	const void *message,
-	unsigned int nodeid);
-
-
 static void message_handler_req_lib_votequorum_getinfo (void *conn,
 							const void *message);
 
@@ -222,11 +213,9 @@ static void message_handler_req_lib_votequorum_trackstop (void *conn,
 
 static int quorum_exec_send_nodeinfo(void);
 static int quorum_exec_send_reconfigure(int param, int nodeid, int value);
-static int quorum_exec_send_killnode(int nodeid, unsigned int reason);
 
 static void exec_votequorum_nodeinfo_endian_convert (void *msg);
 static void exec_votequorum_reconfigure_endian_convert (void *msg);
-static void exec_votequorum_killnode_endian_convert (void *msg);
 
 static void add_votequorum_config_notification(void);
 
@@ -292,10 +281,6 @@ static struct corosync_exec_handler votequorum_exec_engine[] =
 	{ /* 1 */
 		.exec_handler_fn	= message_handler_req_exec_votequorum_reconfigure,
 		.exec_endian_convert_fn	= exec_votequorum_reconfigure_endian_convert
-	},
-	{ /* 2 */
-		.exec_handler_fn	= message_handler_req_exec_votequorum_killnode,
-		.exec_endian_convert_fn	= exec_votequorum_killnode_endian_convert
 	},
 };
 
@@ -433,12 +418,6 @@ struct req_exec_quorum_reconfigure {
 	unsigned int value;
 };
 
-struct req_exec_quorum_killnode {
-	struct qb_ipc_request_header header __attribute__((aligned(8)));
-	unsigned int reason;
-	unsigned int nodeid;
-};
-
 static void read_quorum_config(void)
 {
 	uint8_t value = 0;
@@ -459,13 +438,6 @@ static void read_quorum_config(void)
 	if (icmap_get_uint32("quorum.leaving_timeout", &leaving_timeout) != CS_OK) {
 		leaving_timeout = DEFAULT_LEAVE_TMO;
 	}
-
-	value = 0;
-	icmap_get_uint8("quorum.disallowed", &value);
-	if (value)
-		quorum_flags |= VOTEQUORUM_FLAG_FEATURE_DISALLOWED;
-	else
-		quorum_flags &= ~VOTEQUORUM_FLAG_FEATURE_DISALLOWED;
 
 	value = 0;
 	icmap_get_uint8("quorum.two_node", &value);
@@ -693,18 +665,6 @@ static void set_quorate(int total_votes)
 	if (!cluster_is_quorate && quorate)
 		log_printf(LOGSYS_LEVEL_INFO, "quorum regained, resuming activity\n");
 
-	/* If we are newly quorate, then kill any DISALLOWED nodes */
-	if (!cluster_is_quorate && quorate) {
-		struct cluster_node *node = NULL;
-		struct list_head *tmp;
-
-		list_iterate(tmp, &cluster_members_list) {
-			node = list_entry(tmp, struct cluster_node, list);
-			if (node->state == NODESTATE_DISALLOWED)
-				quorum_exec_send_killnode(node->node_id, VOTEQUORUM_REASON_KILL_REJOIN);
-		}
-	}
-
 	cluster_is_quorate = quorate;
 	set_quorum(quorum_members, quorum_members_entries, quorate, &quorum_ringid);
 	ENTER();
@@ -804,20 +764,6 @@ static void recalculate_quorum(int allow_decrease, int by_current_nodes)
 	LEAVE();
 }
 
-static int have_disallowed(void)
-{
-	struct cluster_node *node;
-	struct list_head *tmp;
-
-	list_iterate(tmp, &cluster_members_list) {
-		node = list_entry(tmp, struct cluster_node, list);
-		if (node->state == NODESTATE_DISALLOWED)
-			return 1;
-	}
-
-	return 0;
-}
-
 static void node_add_ordered(struct cluster_node *newnode)
 {
 	struct cluster_node *node = NULL;
@@ -891,8 +837,6 @@ static int quorum_exec_send_nodeinfo()
 	req_exec_quorum_nodeinfo.flags = us->flags;
 	req_exec_quorum_nodeinfo.first_trans = first_trans;
 	req_exec_quorum_nodeinfo.wait_for_all = wait_for_all;
-	if (have_disallowed())
-		req_exec_quorum_nodeinfo.flags |= NODE_FLAGS_SEESDISALLOWED;
 
 	req_exec_quorum_nodeinfo.header.id = SERVICE_ID_MAKE(VOTEQUORUM_SERVICE, MESSAGE_REQ_EXEC_VOTEQUORUM_NODEINFO);
 	req_exec_quorum_nodeinfo.header.size = sizeof(req_exec_quorum_nodeinfo);
@@ -924,29 +868,6 @@ static int quorum_exec_send_reconfigure(int param, int nodeid, int value)
 
 	iov[0].iov_base = (void *)&req_exec_quorum_reconfigure;
 	iov[0].iov_len = sizeof(req_exec_quorum_reconfigure);
-
-	ret = corosync_api->totem_mcast (iov, 1, TOTEM_AGREED);
-
-	LEAVE();
-	return ret;
-}
-
-static int quorum_exec_send_killnode(int nodeid, unsigned int reason)
-{
-	struct req_exec_quorum_killnode req_exec_quorum_killnode;
-	struct iovec iov[1];
-	int ret;
-
-	ENTER();
-
-	req_exec_quorum_killnode.nodeid = nodeid;
-	req_exec_quorum_killnode.reason = reason;
-
-	req_exec_quorum_killnode.header.id = SERVICE_ID_MAKE(VOTEQUORUM_SERVICE, MESSAGE_REQ_EXEC_VOTEQUORUM_KILLNODE);
-	req_exec_quorum_killnode.header.size = sizeof(req_exec_quorum_killnode);
-
-	iov[0].iov_base = (void *)&req_exec_quorum_killnode;
-	iov[0].iov_len = sizeof(req_exec_quorum_killnode);
 
 	ret = corosync_api->totem_mcast (iov, 1, TOTEM_AGREED);
 
@@ -1019,13 +940,6 @@ static void exec_votequorum_reconfigure_endian_convert (void *msg)
 	reconfigure->value = swab32(reconfigure->value);
 }
 
-static void exec_votequorum_killnode_endian_convert (void *msg)
-{
-	struct req_exec_quorum_killnode *killnode = msg;
-	killnode->reason = swab16(killnode->reason);
-	killnode->nodeid = swab32(killnode->nodeid);
-}
-
 static void message_handler_req_exec_votequorum_nodeinfo (
 	const void *message,
 	unsigned int nodeid)
@@ -1050,16 +964,6 @@ static void message_handler_req_exec_votequorum_nodeinfo (
 		return;
 	}
 
-	/*
-	 * If the node sending the message sees disallowed nodes and we don't, then
-	 * we have to leave
-	 */
-	if (req_exec_quorum_nodeinfo->flags & NODE_FLAGS_SEESDISALLOWED && !have_disallowed()) {
-		/* Must use syslog directly here or the message will never arrive */
-		syslog(LOGSYS_LEVEL_CRIT, "[VOTEQ]: Joined a cluster with disallowed nodes. must die");
-		corosync_api->fatal_error(2, __FILE__, __LINE__);
-		exit(2);
-	}
 	old_votes = node->votes;
 	old_expected = node->expected_votes;
 	old_state = node->state;
@@ -1071,23 +975,6 @@ static void message_handler_req_exec_votequorum_nodeinfo (
 
 	log_printf(LOGSYS_LEVEL_DEBUG, "nodeinfo message: votes: %d, expected: %d wfa: %d\n", req_exec_quorum_nodeinfo->votes, req_exec_quorum_nodeinfo->expected_votes, req_exec_quorum_nodeinfo->wait_for_all);
 
-	/* Check flags for disallowed (if enabled) */
-	if (quorum_flags & VOTEQUORUM_FLAG_FEATURE_DISALLOWED) {
-		if ((req_exec_quorum_nodeinfo->flags & NODE_FLAGS_HASSTATE && node->flags & NODE_FLAGS_BEENDOWN) ||
-		    (req_exec_quorum_nodeinfo->flags & NODE_FLAGS_HASSTATE && req_exec_quorum_nodeinfo->first_trans && !(node->flags & NODE_FLAGS_US) && (us->flags & NODE_FLAGS_HASSTATE))) {
-			if (node->state != NODESTATE_DISALLOWED) {
-				if (cluster_is_quorate) {
-					log_printf(LOGSYS_LEVEL_CRIT, "Killing node %d because it has rejoined the cluster with existing state", node->node_id);
-					node->state = NODESTATE_DISALLOWED;
-					quorum_exec_send_killnode(nodeid, VOTEQUORUM_REASON_KILL_REJOIN);
-				}
-				else {
-					log_printf(LOGSYS_LEVEL_CRIT, "Node %d not joined to quorum because it has existing state", node->node_id);
-					node->state = NODESTATE_DISALLOWED;
-				}
-			}
-		}
-	}
 	node->flags &= ~NODE_FLAGS_BEENDOWN;
 
 	if (new_node || req_exec_quorum_nodeinfo->first_trans || 
@@ -1103,20 +990,6 @@ static void message_handler_req_exec_votequorum_nodeinfo (
 	}
 
 	LEAVE();
-}
-
-static void message_handler_req_exec_votequorum_killnode (
-	const void *message,
-	unsigned int nodeid)
-{
-	const struct req_exec_quorum_killnode *req_exec_quorum_killnode = message;
-
-	if (req_exec_quorum_killnode->nodeid == corosync_api->totem_nodeid_get()) {
-		log_printf(LOGSYS_LEVEL_CRIT, "Killed by node %d: %s\n", nodeid, kill_reason(req_exec_quorum_killnode->reason));
-
-		corosync_api->fatal_error(1, __FILE__, __LINE__);
-		exit(1);
-	}
 }
 
 static void message_handler_req_exec_votequorum_reconfigure (
@@ -1236,8 +1109,6 @@ static void message_handler_req_lib_votequorum_getinfo (void *conn, const void *
 			res_lib_votequorum_getinfo.flags |= VOTEQUORUM_INFO_FLAG_TWONODE;
 		if (cluster_is_quorate)
 			res_lib_votequorum_getinfo.flags |= VOTEQUORUM_INFO_FLAG_QUORATE;
-		if (us->flags & NODE_FLAGS_SEESDISALLOWED)
-			res_lib_votequorum_getinfo.flags |= VOTEQUORUM_INFO_FLAG_DISALLOWED;
 	}
 	else {
 		error = CS_ERR_NOT_EXIST;
@@ -1260,15 +1131,6 @@ static void message_handler_req_lib_votequorum_setexpected (void *conn, const vo
 	unsigned int total_votes;
 
 	ENTER();
-
-	/*
-	 * If there are disallowed nodes, then we can't allow the user
-	 * to bypass them by fiddling with expected votes.
-	 */
-	if (quorum_flags & VOTEQUORUM_FLAG_FEATURE_DISALLOWED && have_disallowed()) {
-		error = CS_ERR_EXIST;
-		goto error_exit;
-	}
 
 	/* Validate new expected votes */
 	newquorum = calculate_quorum(1, req_lib_votequorum_setexpected->expected_votes, &total_votes);
@@ -1598,28 +1460,6 @@ static void message_handler_req_lib_votequorum_trackstop (void *conn,
 	corosync_api->ipc_response_send(conn, &res_lib_votequorum_status, sizeof(res_lib_votequorum_status));
 
 	LEAVE();
-}
-
-
-static const char *kill_reason(int reason)
-{
-	static char msg[1024];
-
-	switch (reason)
-	{
-	case VOTEQUORUM_REASON_KILL_REJECTED:
-		return "our membership application was rejected";
-
-	case VOTEQUORUM_REASON_KILL_APPLICATION:
-		return "we were killed by an application request";
-
-	case VOTEQUORUM_REASON_KILL_REJOIN:
-		return "we rejoined the cluster without a full restart";
-
-	default:
-		sprintf(msg, "we got kill message number %d", reason);
-		return msg;
-	}
 }
 
 static void reread_config(void)

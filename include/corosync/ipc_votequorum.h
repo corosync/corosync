@@ -107,9 +107,8 @@ struct res_lib_votequorum_status {
 };
 
 #define VOTEQUORUM_INFO_FLAG_HASSTATE   1
-#define VOTEQUORUM_INFO_FLAG_DISALLOWED 2
-#define VOTEQUORUM_INFO_FLAG_TWONODE    4
-#define VOTEQUORUM_INFO_FLAG_QUORATE    8
+#define VOTEQUORUM_INFO_FLAG_TWONODE    2
+#define VOTEQUORUM_INFO_FLAG_QUORATE    4
 
 struct res_lib_votequorum_getinfo {
         struct qb_ipc_response_header header __attribute__((aligned(8)));
