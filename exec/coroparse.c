@@ -360,6 +360,7 @@ static int main_config_parser_cb(const char *path,
 			if ((strcmp(path, "quorum.expected_votes") == 0) ||
 			    (strcmp(path, "quorum.votes") == 0) ||
 			    (strcmp(path, "quorum.quorumdev_poll") == 0) ||
+			    (strcmp(path, "quorum.last_man_standing_window") == 0) ||
 			    (strcmp(path, "quorum.leaving_timeout") == 0)) {
 				i = atoi(value);
 				icmap_set_uint32(path, i);
@@ -369,6 +370,7 @@ static int main_config_parser_cb(const char *path,
 			if ((strcmp(path, "quorum.two_node") == 0) ||
 			    (strcmp(path, "quorum.wait_for_all") == 0) ||
 			    (strcmp(path, "quorum.auto_tie_breaker") == 0) ||
+			    (strcmp(path, "quorum.last_man_standing") == 0) ||
 			    (strcmp(path, "quorum.quorate") == 0)) {
 				i = atoi(value);
 				icmap_set_uint8(path, i);

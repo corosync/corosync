@@ -79,6 +79,7 @@
 #define DEFAULT_EXPECTED   1024
 #define DEFAULT_QDEV_POLL 10000
 #define DEFAULT_LEAVE_TMO 10000
+#define DEFAULT_LMS_WIN   10000
 
 LOGSYS_DECLARE_SUBSYS ("VOTEQ");
 
@@ -121,9 +122,14 @@ static int cluster_is_quorate;
 static int first_trans = 1;
 static unsigned int quorumdev_poll = DEFAULT_QDEV_POLL;
 static unsigned int leaving_timeout = DEFAULT_LEAVE_TMO;
+
 static uint8_t wait_for_all = 0;
 static uint8_t auto_tie_breaker = 0;
 static int lowest_node_id = -1;
+static uint8_t last_man_standing = 0;
+static uint32_t last_man_standing_window = DEFAULT_LMS_WIN;
+static int last_man_standing_timer_set = 0;
+static corosync_timer_handle_t last_man_standing_timer;
 
 static struct cluster_node *us;
 static struct cluster_node *quorum_device = NULL;
@@ -375,6 +381,8 @@ static void votequorum_init(struct corosync_api_v1 *api,
 
 	icmap_get_uint8("quorum.wait_for_all", &wait_for_all);
 	icmap_get_uint8("quorum.auto_tie_breaker", &auto_tie_breaker);
+	icmap_get_uint8("quorum.last_man_standing", &last_man_standing);
+	icmap_get_uint32("quorum.last_man_standing_window", &last_man_standing_window);
 
 	/*
 	 * TODO: we need to know the lowest node-id in the cluster
@@ -875,6 +883,16 @@ static int quorum_exec_send_reconfigure(int param, int nodeid, int value)
 	return ret;
 }
 
+static void lms_timer_fn(void *arg)
+{
+	ENTER();
+	last_man_standing_timer_set = 0;
+	if (cluster_is_quorate) {
+		recalculate_quorum(1,1);
+	}
+	LEAVE();
+}
+
 static void quorum_confchg_fn (
 	enum totem_configuration_type configuration_type,
 	const unsigned int *member_list, size_t member_list_entries,
@@ -899,6 +917,17 @@ static void quorum_confchg_fn (
 				node->state = NODESTATE_DEAD;
 				node->flags |= NODE_FLAGS_BEENDOWN;
 			}
+		}
+	}
+
+	if (last_man_standing) {
+		if ((member_list_entries >= quorum) && (left_list_entries)) {
+			if (last_man_standing_timer_set) {
+				corosync_api->timer_delete(last_man_standing_timer);
+				last_man_standing_timer_set = 0;
+			}
+			corosync_api->timer_add_duration((unsigned long long)last_man_standing_window*1000000, NULL, lms_timer_fn, &last_man_standing_timer);
+			last_man_standing_timer_set = 1;
 		}
 	}
 
@@ -974,6 +1003,16 @@ static void message_handler_req_exec_votequorum_nodeinfo (
 	node->state = NODESTATE_MEMBER;
 
 	log_printf(LOGSYS_LEVEL_DEBUG, "nodeinfo message: votes: %d, expected: %d wfa: %d\n", req_exec_quorum_nodeinfo->votes, req_exec_quorum_nodeinfo->expected_votes, req_exec_quorum_nodeinfo->wait_for_all);
+
+	if ((last_man_standing) && (req_exec_quorum_nodeinfo->votes > 1)) {
+		log_printf(LOGSYS_LEVEL_WARNING, "Last Man Standing feature is supported only when all"
+						 "cluster nodes votes are set to 1. Disabling LMS.");
+		last_man_standing = 0;
+		if (last_man_standing_timer_set) {
+			corosync_api->timer_delete(last_man_standing_timer);
+			last_man_standing_timer_set = 0;
+		}
+	}
 
 	node->flags &= ~NODE_FLAGS_BEENDOWN;
 
