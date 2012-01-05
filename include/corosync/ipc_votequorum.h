@@ -1,9 +1,10 @@
 /*
- * Copyright (c) 2009 Red Hat, Inc.
+ * Copyright (c) 2009-2011 Red Hat, Inc.
  *
  * All rights reserved.
  *
- * Author: Christine Caulfield (ccaulfie@redhat.com)
+ * Authors: Christine Caulfield (ccaulfie@redhat.com)
+ *          Fabio M. Di Nitto   (fdinitto@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
  *
@@ -62,35 +63,35 @@ enum res_votequorum_types {
 };
 
 struct req_lib_votequorum_setvotes {
-        struct qb_ipc_request_header header __attribute__((aligned(8)));
+	struct qb_ipc_request_header header __attribute__((aligned(8)));
 	unsigned int votes;
 	int nodeid;
 };
 
 struct req_lib_votequorum_qdisk_register {
-        struct qb_ipc_request_header header __attribute__((aligned(8)));
+	struct qb_ipc_request_header header __attribute__((aligned(8)));
 	unsigned int votes;
 	char name[VOTEQUORUM_MAX_QDISK_NAME_LEN];
 };
 
 struct req_lib_votequorum_qdisk_poll {
-        struct qb_ipc_request_header header __attribute__((aligned(8)));
+	struct qb_ipc_request_header header __attribute__((aligned(8)));
 	int state;
 };
 
 struct req_lib_votequorum_setexpected {
-        struct qb_ipc_request_header header __attribute__((aligned(8)));
+	struct qb_ipc_request_header header __attribute__((aligned(8)));
 	unsigned int expected_votes;
 };
 
 struct req_lib_votequorum_trackstart {
-        struct qb_ipc_request_header header __attribute__((aligned(8)));
+	struct qb_ipc_request_header header __attribute__((aligned(8)));
 	uint64_t context;
 	unsigned int track_flags;
 };
 
 struct req_lib_votequorum_general {
-        struct qb_ipc_request_header header __attribute__((aligned(8)));
+	struct qb_ipc_request_header header __attribute__((aligned(8)));
 };
 
 #define VOTEQUORUM_REASON_KILL_REJECTED    1
@@ -98,12 +99,12 @@ struct req_lib_votequorum_general {
 #define VOTEQUORUM_REASON_KILL_REJOIN      3
 
 struct req_lib_votequorum_getinfo {
-        struct qb_ipc_request_header header __attribute__((aligned(8)));
+	struct qb_ipc_request_header header __attribute__((aligned(8)));
 	int nodeid;
 };
 
 struct res_lib_votequorum_status {
-        struct qb_ipc_response_header header __attribute__((aligned(8)));
+	struct qb_ipc_response_header header __attribute__((aligned(8)));
 };
 
 #define VOTEQUORUM_INFO_FLAG_HASSTATE   1
@@ -111,7 +112,7 @@ struct res_lib_votequorum_status {
 #define VOTEQUORUM_INFO_FLAG_QUORATE    4
 
 struct res_lib_votequorum_getinfo {
-        struct qb_ipc_response_header header __attribute__((aligned(8)));
+	struct qb_ipc_response_header header __attribute__((aligned(8)));
 	int nodeid;
 	unsigned int votes;
 	unsigned int expected_votes;
@@ -122,7 +123,7 @@ struct res_lib_votequorum_getinfo {
 };
 
 struct res_lib_votequorum_qdisk_getinfo {
-        struct qb_ipc_response_header header __attribute__((aligned(8)));
+	struct qb_ipc_response_header header __attribute__((aligned(8)));
 	unsigned int votes;
 	unsigned int state;
 	char name[VOTEQUORUM_MAX_QDISK_NAME_LEN];

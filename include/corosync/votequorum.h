@@ -1,9 +1,10 @@
 /*
- * Copyright (c) 2009 Red Hat, Inc.
+ * Copyright (c) 2009-2011 Red Hat, Inc.
  *
  * All rights reserved.
  *
- * Author: Christine Caulfield (ccaulfie@redhat.com)
+ * Authors: Christine Caulfield (ccaulfie@redhat.com)
+ *          Fabio M. Di Nitto   (fdinitto@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
  *
@@ -78,20 +79,17 @@ typedef struct {
 	uint32_t state;
 } votequorum_node_t;
 
-
 typedef void (*votequorum_notification_fn_t) (
 	votequorum_handle_t handle,
 	uint64_t context,
 	uint32_t quorate,
 	uint32_t node_list_entries,
-	votequorum_node_t node_list[]
-	);
+	votequorum_node_t node_list[]);
 
 typedef void (*votequorum_expectedvotes_notification_fn_t) (
 	votequorum_handle_t handle,
 	uint64_t context,
-	uint32_t expected_votes
-	);
+	uint32_t expected_votes);
 
 typedef struct {
 	votequorum_notification_fn_t votequorum_notify_fn;
