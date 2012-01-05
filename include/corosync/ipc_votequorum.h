@@ -94,10 +94,6 @@ struct req_lib_votequorum_general {
 	struct qb_ipc_request_header header __attribute__((aligned(8)));
 };
 
-#define VOTEQUORUM_REASON_KILL_REJECTED    1
-#define VOTEQUORUM_REASON_KILL_APPLICATION 2
-#define VOTEQUORUM_REASON_KILL_REJOIN      3
-
 struct req_lib_votequorum_getinfo {
 	struct qb_ipc_request_header header __attribute__((aligned(8)));
 	int nodeid;
