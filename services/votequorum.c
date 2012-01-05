@@ -118,15 +118,13 @@ struct cluster_node {
 	struct list_head list;
 };
 
-static int quorum_flags;
-#define VOTEQUORUM_FLAG_FEATURE_TWONODE 1
-
 static int quorum;
 static int cluster_is_quorate;
 static int first_trans = 1;
 static unsigned int quorumdev_poll = DEFAULT_QDEV_POLL;
 static unsigned int leaving_timeout = DEFAULT_LEAVE_TMO;
 
+static uint8_t two_node = 0;
 static uint8_t wait_for_all = 0;
 static uint8_t auto_tie_breaker = 0;
 static int lowest_node_id = -1;
@@ -432,7 +430,6 @@ struct req_exec_quorum_reconfigure {
 
 static void read_quorum_config(void)
 {
-	uint8_t value = 0;
 	int cluster_members = 0;
 	struct list_head *tmp;
 
@@ -456,13 +453,7 @@ static void read_quorum_config(void)
 		leaving_timeout = DEFAULT_LEAVE_TMO;
 	}
 
-	value = 0;
-	icmap_get_uint8("quorum.two_node", &value);
-	if (value) {
-		quorum_flags |= VOTEQUORUM_FLAG_FEATURE_TWONODE;
-	} else {
-		quorum_flags &= ~VOTEQUORUM_FLAG_FEATURE_TWONODE;
-	}
+	icmap_get_uint8("quorum.two_node", &two_node);
 
 	/*
 	 * two_node mode is invalid if there are more than 2 nodes in the cluster!
@@ -471,9 +462,9 @@ static void read_quorum_config(void)
 		cluster_members++;
         }
 
-	if (quorum_flags & VOTEQUORUM_FLAG_FEATURE_TWONODE && cluster_members > 2) {
+	if (two_node && cluster_members > 2) {
 		log_printf(LOGSYS_LEVEL_WARNING, "quorum.two_node was set but there are more than 2 nodes in the cluster. It will be ignored.");
-		quorum_flags &= ~VOTEQUORUM_FLAG_FEATURE_TWONODE;
+		two_node = 0;
 	}
 
 	LEAVE();
@@ -778,7 +769,7 @@ static int calculate_quorum(int allow_decrease, int max_expected, unsigned int *
 	 * Also: if there are more than two nodes, force us inquorate to avoid
 	 * any damage or confusion.
 	 */
-	if ((quorum_flags & VOTEQUORUM_FLAG_FEATURE_TWONODE) && total_nodes <= 2) {
+	if (two_node && total_nodes <= 2) {
 		newquorum = 1;
 	}
 
@@ -1265,7 +1256,7 @@ static void message_handler_req_lib_votequorum_getinfo (void *conn, const void *
 		if (us->flags & NODE_FLAGS_HASSTATE) {
 			res_lib_votequorum_getinfo.flags |= VOTEQUORUM_INFO_FLAG_HASSTATE;
 		}
-		if (quorum_flags & VOTEQUORUM_FLAG_FEATURE_TWONODE) {
+		if (two_node) {
 			res_lib_votequorum_getinfo.flags |= VOTEQUORUM_INFO_FLAG_TWONODE;
 		}
 		if (cluster_is_quorate) {
