@@ -1,9 +1,10 @@
 /*
- * Copyright (c) 2009 Red Hat, Inc.
+ * Copyright (c) 2009-2011 Red Hat, Inc.
  *
  * All rights reserved.
  *
- * Author: Christine Caulfield (ccaulfie@redhat.com)
+ * Authors: Christine Caulfield (ccaulfie@redhat.com)
+ *          Fabio M. Di Nitto   (fdinitto@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
  *
