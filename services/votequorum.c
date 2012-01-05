@@ -674,7 +674,6 @@ static void set_quorate(int total_votes)
 		log_printf(LOGSYS_LEVEL_INFO, "quorum regained, resuming activity\n");
 
 	cluster_is_quorate = quorate;
-	set_quorum(quorum_members, quorum_members_entries, quorate, &quorum_ringid);
 	ENTER();
 }
 
@@ -905,6 +904,11 @@ static void quorum_confchg_fn (
 	struct cluster_node *node;
 
 	ENTER();
+
+	if (configuration_type != TOTEM_CONFIGURATION_REGULAR) {
+		return;
+	}
+
 	if (member_list_entries > 1)
 		first_trans = 0;
 
