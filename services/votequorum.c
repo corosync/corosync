@@ -76,7 +76,9 @@
 #define VOTEQUORUM_MINOR_VERSION 0
 #define VOTEQUORUM_PATCH_VERSION 0
 
- /* Silly default to prevent accidents! */
+/*
+ * Silly default to prevent accidents!
+ */
 #define DEFAULT_EXPECTED   1024
 #define DEFAULT_QDEV_POLL 10000
 #define DEFAULT_LEAVE_TMO 10000
