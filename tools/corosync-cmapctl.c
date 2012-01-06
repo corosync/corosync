@@ -386,6 +386,49 @@ static void track_changes(cmap_handle_t handle)
 	} while (poll_res > 0 && !quit);
 }
 
+static cs_error_t set_key_bin(cmap_handle_t handle, const char *key_name, const char *fname)
+{
+	FILE *f;
+	char *val;
+	char buf[4096];
+	size_t size;
+	size_t readed;
+	size_t pos;
+	cs_error_t err;
+
+	if (strcmp(fname, "-") == 0) {
+		f = stdin;
+	} else {
+		f = fopen(fname, "rb");
+		if (f == NULL) {
+			perror("Can't open input file");
+			exit(EXIT_FAILURE);
+		}
+	}
+
+	val = NULL;
+	size = 0;
+	pos = 0;
+
+	while ((readed = fread(buf, 1, sizeof(buf), f)) != 0) {
+		size +=	readed;
+		if ((val = realloc(val, size)) == NULL) {
+			fprintf(stderr, "Can't alloc memory\n");
+			exit (EXIT_FAILURE);
+		}
+		memcpy(val + pos, buf, readed);
+		pos += readed;
+	}
+
+	if (f != stdin) {
+		fclose(f);
+	}
+
+	err = cmap_set(handle, key_name, val, size, CMAP_VALUETYPE_BINARY);
+	free(val);
+
+	return (err);
+}
 
 static void set_key(cmap_handle_t handle, const char *key_name, const char *key_type_s, const char *key_value_s)
 {
@@ -501,7 +544,7 @@ static void set_key(cmap_handle_t handle, const char *key_name, const char *key_
 		err = cmap_set_string(handle, key_name, key_value_s);
 		break;
 	case CMAP_VALUETYPE_BINARY:
-		exit(1);
+		err = set_key_bin(handle, key_name, key_value_s);
 		break;
 	}
 
