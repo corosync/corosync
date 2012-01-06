@@ -62,7 +62,7 @@
 
 #include <corosync/mar_gen.h>
 #include <corosync/lcr/lcr_comp.h>
-#include <corosync/engine/coroapi.h>
+#include <corosync/coroapi.h>
 
 #include <corosync/engine/quorum.h>
 

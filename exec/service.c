@@ -52,7 +52,6 @@
 #include <corosync/totem/totempg.h>
 #include <corosync/totem/totemip.h>
 #include "main.h"
-#include <corosync/engine/coroapi.h>
 #include "service.h"
 
 #include <qb/qbipcs.h>

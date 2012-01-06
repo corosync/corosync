@@ -64,7 +64,7 @@
 #include <corosync/jhash.h>
 #include <corosync/lcr/lcr_comp.h>
 #include <corosync/logsys.h>
-#include <corosync/engine/coroapi.h>
+#include <corosync/coroapi.h>
 
 #include <corosync/cpg.h>
 #include <corosync/ipc_cpg.h>

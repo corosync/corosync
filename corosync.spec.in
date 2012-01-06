@@ -294,7 +294,6 @@ The Corosync Cluster Engine APIs.
 %{_includedir}/corosync/lcr/lcr_ifact.h
 %dir %{_includedir}/corosync/engine
 %{_includedir}/corosync/engine/config.h
-%{_includedir}/corosync/engine/coroapi.h
 %{_includedir}/corosync/engine/icmap.h
 %{_includedir}/corosync/engine/quorum.h
 %{_libdir}/libcfg.so

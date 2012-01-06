@@ -71,7 +71,7 @@
 #include <corosync/list.h>
 #include <corosync/lcr/lcr_ifact.h>
 #include <corosync/config.h>
-#include <corosync/engine/coroapi.h>
+#include <corosync/coroapi.h>
 #include <corosync/logsys.h>
 #include <qb/qbipcs.h>
 #include "sync.h"

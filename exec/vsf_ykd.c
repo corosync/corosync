@@ -60,7 +60,7 @@
 #include <corosync/corotypes.h>
 #include <qb/qbipc_common.h>
 #include <corosync/mar_gen.h>
-#include <corosync/engine/coroapi.h>
+#include <corosync/coroapi.h>
 #include <corosync/engine/quorum.h>
 #include <corosync/swab.h>
 #include <corosync/lcr/lcr_comp.h>

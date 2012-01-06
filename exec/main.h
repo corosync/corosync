@@ -49,7 +49,7 @@
 #include <qb/qbloop.h>
 #include <corosync/totem/totempg.h>
 #include <corosync/engine/config.h>
-#include <corosync/engine/coroapi.h>
+#include <corosync/coroapi.h>
 
 extern unsigned long long *(*main_clm_get_by_nodeid) (unsigned int node_id);
 

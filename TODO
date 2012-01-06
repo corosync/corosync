@@ -10,9 +10,8 @@
  Current priority list for Needle 2.0
 --------------------------------------
 1. quorum debugging and rework
-2. remove external plug-in api
-3. allow a cluster name to autogenerate a mcastaddr
-4. ring status change via corosync-notifyd
+2. allow a cluster name to autogenerate a mcastaddr
+3. ring status change via corosync-notifyd
 
 --------------------------------------
  Current priority list for Needle 2.1

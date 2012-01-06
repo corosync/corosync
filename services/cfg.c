@@ -60,7 +60,7 @@
 #include <corosync/ipc_cfg.h>
 #include <corosync/lcr/lcr_comp.h>
 #include <corosync/logsys.h>
-#include <corosync/engine/coroapi.h>
+#include <corosync/coroapi.h>
 #include <corosync/engine/icmap.h>
 #include <corosync/corodefs.h>
 

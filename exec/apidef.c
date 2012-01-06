@@ -54,7 +54,6 @@
 #include "schedwrk.h"
 #include "main.h"
 #include "apidef.h"
-#include <corosync/engine/coroapi.h>
 #include "service.h"
 
 LOGSYS_DECLARE_SUBSYS ("APIDEF");

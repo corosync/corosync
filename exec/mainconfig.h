@@ -37,7 +37,7 @@
 
 #include <corosync/logsys.h>
 #include <corosync/list.h>
-#include <corosync/engine/coroapi.h>
+#include <corosync/coroapi.h>
 
 /**
  * All service handlers in the AIS
