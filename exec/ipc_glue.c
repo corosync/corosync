@@ -453,6 +453,7 @@ static int32_t cs_ipcs_connection_closed (qb_ipcs_connection_t *c)
 	while ((key_name = icmap_iter_next(iter, NULL, NULL)) != NULL) {
 		icmap_delete(key_name);
 	}
+	icmap_iter_finalize(iter);
 	free(cnx->icmap_path);
 
 	icmap_inc("runtie.connections.closed");

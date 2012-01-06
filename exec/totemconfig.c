@@ -300,10 +300,12 @@ extern int totem_config_read (
 						str, 0);
 			}
 		}
+		icmap_iter_finalize(member_iter);
 
 		totem_config->interfaces[ringnumber].member_count = member_count;
 		totem_config->interface_count++;
 	}
+	icmap_iter_finalize(iter);
 
 	totem_config->transport_number = TOTEM_TRANSPORT_UDP;
 	if (icmap_get_string("totem.transport", &str) == CS_OK) {
