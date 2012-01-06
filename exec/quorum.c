@@ -55,7 +55,7 @@
 #include <corosync/totem/totempg.h>
 #include <corosync/totem/totem.h>
 #include <corosync/lcr/lcr_ifact.h>
-#include <corosync/engine/logsys.h>
+#include <corosync/logsys.h>
 
 #include "quorum.h"
 #include "main.h"

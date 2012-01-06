@@ -83,7 +83,7 @@
 #include <corosync/list.h>
 
 #define LOGSYS_UTILS_ONLY 1
-#include <corosync/engine/logsys.h>
+#include <corosync/logsys.h>
 
 #include "totemsrp.h"
 #include "totemrrp.h"

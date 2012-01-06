@@ -59,7 +59,7 @@
 #include <corosync/mar_gen.h>
 #include <corosync/engine/coroapi.h>
 #include <corosync/list.h>
-#include <corosync/engine/logsys.h>
+#include <corosync/logsys.h>
 
 LOGSYS_DECLARE_SUBSYS ("TST2");
 

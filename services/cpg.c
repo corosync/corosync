@@ -63,7 +63,7 @@
 #include <corosync/list.h>
 #include <corosync/jhash.h>
 #include <corosync/lcr/lcr_comp.h>
-#include <corosync/engine/logsys.h>
+#include <corosync/logsys.h>
 #include <corosync/engine/coroapi.h>
 
 #include <corosync/cpg.h>

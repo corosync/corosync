@@ -46,7 +46,7 @@
 #include <qb/qbloop.h>
 
 #define LOGSYS_UTILS_ONLY 1
-#include <corosync/engine/logsys.h>
+#include <corosync/logsys.h>
 
 struct transport {
 	const char *name;

@@ -64,7 +64,7 @@
 #include <corosync/engine/coroapi.h>
 #include <corosync/ipc_pload.h>
 #include <corosync/list.h>
-#include <corosync/engine/logsys.h>
+#include <corosync/logsys.h>
 
 LOGSYS_DECLARE_SUBSYS ("PLOAD");
 

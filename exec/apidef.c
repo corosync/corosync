@@ -46,7 +46,7 @@
 #include <corosync/totem/totempg.h>
 #include <corosync/totem/totemip.h>
 #include <corosync/totem/totem.h>
-#include <corosync/engine/logsys.h>
+#include <corosync/logsys.h>
 #include "util.h"
 #include "timer.h"
 #include "sync.h"

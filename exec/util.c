@@ -46,7 +46,7 @@
 #include <corosync/corotypes.h>
 #include <corosync/corodefs.h>
 #include <corosync/list.h>
-#include <corosync/engine/logsys.h>
+#include <corosync/logsys.h>
 #include "util.h"
 
 LOGSYS_DECLARE_SUBSYS ("MAIN");

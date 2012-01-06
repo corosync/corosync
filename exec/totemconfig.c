@@ -53,8 +53,8 @@
 #include <corosync/list.h>
 #include <qb/qbdefs.h>
 #include <corosync/totem/totem.h>
-#include <corosync/engine/config.h>
-#include <corosync/engine/logsys.h>
+#include <corosync/config.h>
+#include <corosync/logsys.h>
 #include <corosync/engine/icmap.h>
 
 #ifdef HAVE_LIBNSS

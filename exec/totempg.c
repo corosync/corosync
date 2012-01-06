@@ -103,7 +103,7 @@
 #include <qb/qbipcs.h>
 #include <corosync/totem/totempg.h>
 #define LOGSYS_UTILS_ONLY 1
-#include <corosync/engine/logsys.h>
+#include <corosync/logsys.h>
 
 #include "totemmrp.h"
 #include "totemsrp.h"

@@ -46,7 +46,7 @@
 #include <corosync/lcr/lcr_comp.h>
 #include <corosync/engine/coroapi.h>
 #include <corosync/list.h>
-#include <corosync/engine/logsys.h>
+#include <corosync/logsys.h>
 #include <corosync/engine/icmap.h>
 #include "../exec/fsm.h"
 

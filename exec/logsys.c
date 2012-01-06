@@ -48,7 +48,7 @@
 #include <qb/qblog.h>
 
 #include <corosync/list.h>
-#include <corosync/engine/logsys.h>
+#include <corosync/logsys.h>
 
 /*
  * syslog prioritynames, facility names to value mapping

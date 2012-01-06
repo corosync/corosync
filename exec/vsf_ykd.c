@@ -56,7 +56,7 @@
 #include <sched.h>
 #include <time.h>
 
-#include <corosync/engine/logsys.h>
+#include <corosync/logsys.h>
 #include <corosync/corotypes.h>
 #include <qb/qbipc_common.h>
 #include <corosync/mar_gen.h>

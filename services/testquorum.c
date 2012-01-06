@@ -57,7 +57,7 @@
 #include <corosync/corotypes.h>
 #include <qb/qbipc_common.h>
 #include <corosync/corodefs.h>
-#include <corosync/engine/logsys.h>
+#include <corosync/logsys.h>
 #include <corosync/engine/icmap.h>
 
 #include <corosync/mar_gen.h>

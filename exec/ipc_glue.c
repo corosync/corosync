@@ -51,7 +51,7 @@
 #include <corosync/corotypes.h>
 #include <corosync/corodefs.h>
 #include <corosync/totem/totempg.h>
-#include <corosync/engine/logsys.h>
+#include <corosync/logsys.h>
 #include <corosync/engine/icmap.h>
 
 #include "mainconfig.h"

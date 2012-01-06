@@ -11,9 +11,8 @@
 --------------------------------------
 1. quorum debugging and rework
 2. remove external plug-in api
-3. remove logsys.h from external headers
-4. allow a cluster name to autogenerate a mcastaddr
-5. ring status change via corosync-notifyd
+3. allow a cluster name to autogenerate a mcastaddr
+4. ring status change via corosync-notifyd
 
 --------------------------------------
  Current priority list for Needle 2.1

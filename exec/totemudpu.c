@@ -64,7 +64,7 @@
 #include <corosync/list.h>
 #include <corosync/swab.h>
 #define LOGSYS_UTILS_ONLY 1
-#include <corosync/engine/logsys.h>
+#include <corosync/logsys.h>
 #include "totemudpu.h"
 
 #include "crypto.h"

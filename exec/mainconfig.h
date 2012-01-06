@@ -35,7 +35,7 @@
 #ifndef MAINCONFIG_H_DEFINED
 #define MAINCONFIG_H_DEFINED
 
-#include <corosync/engine/logsys.h>
+#include <corosync/logsys.h>
 #include <corosync/list.h>
 #include <corosync/engine/coroapi.h>
 

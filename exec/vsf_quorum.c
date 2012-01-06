@@ -65,7 +65,7 @@
 #include <corosync/lcr/lcr_ifact.h>
 #include <corosync/mar_gen.h>
 #include <corosync/engine/coroapi.h>
-#include <corosync/engine/logsys.h>
+#include <corosync/logsys.h>
 #include <corosync/engine/quorum.h>
 #include <corosync/engine/icmap.h>
 

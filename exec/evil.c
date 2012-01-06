@@ -70,9 +70,9 @@
 #include <corosync/corodefs.h>
 #include <corosync/list.h>
 #include <corosync/lcr/lcr_ifact.h>
-#include <corosync/engine/config.h>
+#include <corosync/config.h>
 #include <corosync/engine/coroapi.h>
-#include <corosync/engine/logsys.h>
+#include <corosync/logsys.h>
 #include <qb/qbipcs.h>
 #include "sync.h"
 #include "evil.h"

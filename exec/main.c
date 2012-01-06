@@ -108,7 +108,7 @@
 #include <corosync/lcr/lcr_ifact.h>
 #include <corosync/totem/totempg.h>
 #include <corosync/engine/config.h>
-#include <corosync/engine/logsys.h>
+#include <corosync/logsys.h>
 #include <corosync/engine/icmap.h>
 
 #include "quorum.h"
