@@ -94,7 +94,30 @@ static int convert_name_to_type(const char *name)
 static int print_help(void)
 {
 	printf("\n");
-	printf("usage:  corosync-cmapctl ");
+	printf("usage:  corosync-cmapctl [-b] [-adghsTt] [params...]\n");
+	printf("Set key:\n");
+	printf("    corosync-cmapctl -s key_name type value\n");
+	printf("\n");
+	printf("    where type is one of ([i|u][8|16|32|64] | flt | dbl | str | bin)\n");
+	printf("    for bin, value is file name (or - for stdin)\n");
+	printf("\n");
+	printf("Delete key:\n");
+	printf("    corosync-cmapctl -d key_name...\n");
+	printf("\n");
+	printf("Get key:\n");
+	printf("    corosync-cmapctl [-b] -g key_name...\n");
+	printf("\n");
+	printf("Display all keys:\n");
+	printf("    corosync-cmapctl [-b] -a\n");
+	printf("\n");
+	printf("Display keys with prefix key_name:\n");
+	printf("    corosync-cmapctl [-b] key_name...\n");
+	printf("\n");
+	printf("Track changes on keys with prefix key_name:\n");
+	printf("    corosync-cmapctl [-b] -t key_name\n");
+	printf("\n");
+	printf("Track changes on keys with key_name name:\n");
+	printf("    corosync-cmapctl [-b] -T key_name\n");
 	printf("\n");
 
 	return (0);
