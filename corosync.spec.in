@@ -141,7 +141,7 @@ fi
 %doc LICENSE SECURITY
 %{_sbindir}/corosync
 %{_sbindir}/corosync-keygen
-%{_sbindir}/corosync-objctl
+%{_sbindir}/corosync-cmapctl
 %{_sbindir}/corosync-cfgtool
 %{_sbindir}/corosync-fplay
 %{_sbindir}/corosync-pload
@@ -149,6 +149,9 @@ fi
 %{_sbindir}/corosync-quorumtool
 %{_sbindir}/corosync-notifyd
 %{_bindir}/corosync-blackbox
+%if %{with xmlconf}
+%{_bindir}/corosync-xmlproc
+%endif
 %dir %{_sysconfdir}/corosync
 %dir %{_sysconfdir}/corosync/service.d
 %dir %{_sysconfdir}/corosync/uidgid.d
@@ -306,6 +309,7 @@ The Corosync Cluster Engine APIs.
 %{_libdir}/libvotequorum.so
 %{_libdir}/libpload.so
 %{_libdir}/libsam.so
+%{_libdir}/libicmap.so
 %{_libdir}/pkgconfig/*.pc
 %{_mandir}/man3/cpg_*3*
 %{_mandir}/man3/evs_*3*
