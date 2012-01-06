@@ -41,13 +41,13 @@ sbin_PROGRAMS		= corosync-fplay corosync-cfgtool \
 bin_SCRIPTS		= corosync-blackbox
 
 if INSTALL_XMLCONF
-bin_PROGRAMS		= corosync-xmlproc
+bin_SCRIPTS		+= corosync-xmlproc
+endif
 
 corosync-xmlproc: corosync-xmlproc.sh
 	sed -e 's#@''DATADIR@#${datadir}#g' $< > $@
-endif
 
-EXTRA_DIST		= $(bin_SCRIPTS) corosync-notifyd.sysconfig.example
+EXTRA_DIST		= $(bin_SCRIPTS) corosync-xmlproc.sh corosync-notifyd.sysconfig.example
 
 corosync_fplay_LDADD	= $(LIBQB_LIBS)
 corosync_pload_LDADD	= -lpload $(LIBQB_LIBS)
@@ -72,4 +72,6 @@ corosync_notifyd_CPPFLAGS = $(DBUS_CFLAGS)
 lint:
 	-splint $(LINT_FLAGS) $(DBUS_CFLAGS) $(INCLUDES) $(CFLAGS) *.c
 
+clean-local:
+	rm -f corosync-xmlproc
 
