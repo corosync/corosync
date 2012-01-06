@@ -181,7 +181,7 @@ srpm: clean
 	$(MAKE) $(SPEC) $(TARFILE)
 	rpmbuild $(RPMBUILDOPTS) --nodeps -bs $(SPEC)
 
-rpm: clean
+rpm: clean _version
 	$(MAKE) $(SPEC) $(TARFILE)
 	rpmbuild $(RPMBUILDOPTS) -ba $(SPEC)
 
@@ -194,7 +194,7 @@ dist-hook: gen-ChangeLog
 	echo $(VERSION) > $(distdir)/.tarball-version
 
 gen_start_date = 2000-01-01
-.PHONY: gen-ChangeLog
+.PHONY: gen-ChangeLog _version
 gen-ChangeLog:
 	if test -d .git; then						\
 		LC_ALL=C $(top_srcdir)/build-aux/gitlog-to-changelog		\
@@ -202,3 +202,7 @@ gen-ChangeLog:
 		rm -f $(distdir)/ChangeLog;				\
 		mv $(distdir)/cl-t $(distdir)/ChangeLog;		\
 	fi
+
+_version:
+	cd $(srcdir) && rm -rf autom4te.cache .version && autoreconf -i
+	$(MAKE) $(AM_MAKEFLAGS) Makefile
