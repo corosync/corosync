@@ -93,6 +93,24 @@ corosyncObjectsQuorumStatus OBJECT-TYPE
 	"Quorum Status"
 ::= { corosyncObjects 21 }
 
+--
+-- RRP Information
+---
+
+corosyncObjectsIfaceNo OBJECT-TYPE
+    SYNTAX      Integer32
+    MAX-ACCESS  accessible-for-notify
+    STATUS      current
+    DESCRIPTION "The integer of interface."
+::= { corosyncObjects 60 }
+
+corosyncObjectsRRPStatus OBJECT-TYPE
+    SYNTAX	OCTET STRING
+    MAX-ACCESS  accessible-for-notify
+    STATUS      current
+    DESCRIPTION
+	"RRP Status"
+::= { corosyncObjects 61 }
 
 --
 -- Application Information
@@ -156,6 +174,18 @@ corosyncNoticesAppStatus NOTIFICATION-TYPE
        name and the new state (either 'connected' or 'disconnected')."
 ::= { corosyncNotices 3 }
 
+corosyncNoticesRRPStatus NOTIFICATION-TYPE
+    OBJECTS	{ corosyncObjectsNodeName,
+		  corosyncObjectsNodeID,
+		  corosyncObjectsIfaceNo,
+		  corosyncObjectsRRPStatus }
+    STATUS  current
+    DESCRIPTION
+      "Produced when the interface of RRP is marked failed or operational.
+
+       The notification also includes the node name, nodeid, iface number
+       and the new state (either 'failed' or 'operational')."
+::= { corosyncNotices 4 }
 
 --
 -- Compliance Information
@@ -179,7 +209,9 @@ corosyncObjectGroup OBJECT-GROUP
               corosyncObjectsRingSeq,
               corosyncObjectsQuorumStatus,
 	      corosyncObjectsAppName,
-	      corosyncObjectsAppStatus
+	      corosyncObjectsAppStatus,
+	      corosyncObjectsIfaceNo,
+	      corosyncObjectsRRPStatus
             }
     STATUS      current
     DESCRIPTION "Corosync Object Conformance Group"
@@ -188,7 +220,8 @@ corosyncObjectGroup OBJECT-GROUP
 corosyncNotificationGroup NOTIFICATION-GROUP
     NOTIFICATIONS { corosyncNoticesNodeStatus,
                     corosyncNoticesQuorumStatus,
-		    corosyncNoticesAppStatus
+		    corosyncNoticesAppStatus,
+		    corosyncNoticesRRPStatus,
                   }
     STATUS      current
     DESCRIPTION "Corosync Notification Conformance Group"

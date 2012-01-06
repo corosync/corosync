@@ -80,11 +80,13 @@ static int32_t _cs_is_quorate = 0;
 typedef void (*node_membership_fn_t)(char *nodename, uint32_t nodeid, char *state, char* ip);
 typedef void (*node_quorum_fn_t)(char *nodename, uint32_t nodeid, const char *state);
 typedef void (*application_connection_fn_t)(char *nodename, uint32_t nodeid, char *app_name, const char *state);
+typedef void (*rrp_faulty_fn_t)(char *nodename, uint32_t nodeid, uint32_t iface_no, const char *state);
 
 struct notify_callbacks {
 	node_membership_fn_t node_membership_fn;
 	node_quorum_fn_t node_quorum_fn;
 	application_connection_fn_t application_connection_fn;
+	rrp_faulty_fn_t rrp_faulty_fn;
 };
 
 #define MAX_NOTIFIERS 5
@@ -98,6 +100,7 @@ static quorum_handle_t quorum_handle;
 static void _cs_node_membership_event(char *nodename, uint32_t nodeid, char *state, char* ip);
 static void _cs_node_quorum_event(const char *state);
 static void _cs_application_connection_event(char *app_name, const char *state);
+static void _cs_rrp_faulty_event(uint32_t iface_no, const char *state);
 
 #ifdef HAVE_DBUS
 #include <dbus/dbus.h>
@@ -142,10 +145,14 @@ enum snmp_node_status {
 #define SNMP_OID_OBJECT_APP_NAME	SNMP_OID_OBJECT_ROOT ".40"
 #define SNMP_OID_OBJECT_APP_STATUS	SNMP_OID_OBJECT_ROOT ".41"
 
+#define SNMP_OID_OBJECT_RRP_IFACE_NO	SNMP_OID_OBJECT_ROOT ".60"
+#define SNMP_OID_OBJECT_RRP_STATUS	SNMP_OID_OBJECT_ROOT ".61"
+
 #define SNMP_OID_TRAPS_ROOT		SNMP_OID_COROSYNC ".0"
 #define SNMP_OID_TRAPS_NODE		SNMP_OID_TRAPS_ROOT ".1"
 #define SNMP_OID_TRAPS_QUORUM		SNMP_OID_TRAPS_ROOT ".2"
 #define SNMP_OID_TRAPS_APP		SNMP_OID_TRAPS_ROOT ".3"
+#define SNMP_OID_TRAPS_RRP		SNMP_OID_TRAPS_ROOT ".4"
 
 #define CS_TIMESTAMP_STR_LEN 20
 static const char *local_host = "localhost";
@@ -270,6 +277,48 @@ static void _cs_cmap_connections_key_changed (
 
 	if (event == CMAP_TRACK_DELETE) {
 		_cs_application_connection_event(obj_name, "disconnected");
+	}
+}
+
+static void _cs_cmap_rrp_faulty_key_changed (
+	cmap_handle_t cmap_handle_c,
+	cmap_track_handle_t cmap_track_handle,
+	int32_t event,
+	const char *key_name,
+	struct cmap_notify_value new_value,
+	struct cmap_notify_value old_value,
+	void *user_data)
+{
+	uint32_t iface_no;
+	char tmp_key[CMAP_KEYNAME_MAXLEN];
+	int res;
+	int no_retries;
+	uint8_t faulty;
+	cs_error_t err;
+
+	res = sscanf(key_name, "runtime.totem.pg.mrp.rrp.%u.%s", &iface_no, tmp_key);
+	if (res != 2) {
+		return ;
+	}
+
+	if (strcmp(tmp_key, "faulty") != 0) {
+		return ;
+	}
+
+	no_retries = 0;
+	while ((err = cmap_get_uint8(cmap_handle, key_name, &faulty)) == CS_ERR_TRY_AGAIN &&
+			no_retries++ < CMAP_MAX_RETRIES) {
+		sleep(1);
+	}
+
+	if (err != CS_OK) {
+		return ;
+	}
+
+	if (faulty) {
+		_cs_rrp_faulty_event(iface_no, "faulty");
+	} else {
+		_cs_rrp_faulty_event(iface_no, "operational");
 	}
 }
 
@@ -508,6 +557,56 @@ out_free:
 }
 
 static void
+_cs_dbus_rrp_faulty_event(char *nodename, uint32_t nodeid, uint32_t iface_no, const char *state)
+{
+	DBusMessage *msg = NULL;
+
+	if (err_set) {
+		qb_log(LOG_ERR, "%s", _err);
+		err_set = 0;
+	}
+
+	if (!db) {
+		goto out_free;
+	}
+
+	if (dbus_connection_get_is_connected(db) != TRUE) {
+		err_set = 1;
+		snprintf(_err, sizeof(_err), "DBus connection lost");
+		_cs_dbus_release();
+		goto out_unlock;
+	}
+
+	_cs_dbus_auto_flush();
+
+	if (!(msg = dbus_message_new_signal(DBUS_CS_PATH,
+					    DBUS_CS_IFACE,
+					    "QuorumStateChange"))) {
+		qb_log(LOG_ERR, "error creating dbus signal");
+		goto out_unlock;
+	}
+
+	if (!dbus_message_append_args(msg,
+			DBUS_TYPE_STRING, &nodename,
+			DBUS_TYPE_UINT32, &nodeid,
+			DBUS_TYPE_UINT32, &iface_no,
+			DBUS_TYPE_STRING, &state,
+			DBUS_TYPE_INVALID)) {
+		qb_log(LOG_ERR, "error adding args to rrp signal");
+		goto out_unlock;
+	}
+
+	dbus_connection_send(db, msg, NULL);
+
+out_unlock:
+	if (msg) {
+		dbus_message_unref(msg);
+	}
+out_free:
+	return;
+}
+
+static void
 _cs_dbus_init(void)
 {
 	DBusConnection *dbc = NULL;
@@ -534,6 +633,9 @@ _cs_dbus_init(void)
 		_cs_dbus_node_quorum_event;
 	notifiers[num_notifiers].application_connection_fn =
 		_cs_dbus_application_connection_event;
+	notifiers[num_notifiers].rrp_faulty_fn =
+		_cs_dbus_rrp_faulty_event;
+
 	num_notifiers++;
 }
 
@@ -657,7 +759,7 @@ _cs_snmp_node_quorum_event(char *nodename, uint32_t nodeid,
 	/* send uptime */
 	sprintf (csysuptime, "%ld", now);
 	snmp_add_var (trap_pdu, sysuptime_oid, sizeof (sysuptime_oid) / sizeof (oid), 't', csysuptime);
-	snmp_add_var (trap_pdu, snmptrap_oid, sizeof (snmptrap_oid) / sizeof (oid), 'o', SNMP_OID_TRAPS_NODE);
+	snmp_add_var (trap_pdu, snmptrap_oid, sizeof (snmptrap_oid) / sizeof (oid), 'o', SNMP_OID_TRAPS_QUORUM);
 
 	/* Add extries to the trap */
 	add_field (trap_pdu, ASN_OCTET_STR, SNMP_OID_OBJECT_NODE_NAME, (void*)nodename, strlen (nodename));
@@ -673,6 +775,48 @@ _cs_snmp_node_quorum_event(char *nodename, uint32_t nodeid,
 	}
 }
 
+static void
+_cs_snmp_rrp_faulty_event(char *nodename, uint32_t nodeid,
+		uint32_t iface_no, const char *state)
+{
+	int ret;
+	char csysuptime[20];
+	static oid snmptrap_oid[]  = { 1,3,6,1,6,3,1,1,4,1,0 };
+	static oid sysuptime_oid[] = { 1,3,6,1,2,1,1,3,0 };
+	time_t now = time (NULL);
+
+	netsnmp_pdu *trap_pdu;
+	netsnmp_session *session = snmp_init (snmp_manager);
+	if (session == NULL) {
+		qb_log(LOG_NOTICE, "Failed to init SNMP session.");
+		return ;
+	}
+
+	trap_pdu = snmp_pdu_create (SNMP_MSG_TRAP2);
+	if (!trap_pdu) {
+		qb_log(LOG_NOTICE, "Failed to create SNMP notification.");
+		return ;
+	}
+
+	/* send uptime */
+	sprintf (csysuptime, "%ld", now);
+	snmp_add_var (trap_pdu, sysuptime_oid, sizeof (sysuptime_oid) / sizeof (oid), 't', csysuptime);
+	snmp_add_var (trap_pdu, snmptrap_oid, sizeof (snmptrap_oid) / sizeof (oid), 'o', SNMP_OID_TRAPS_RRP);
+
+	/* Add extries to the trap */
+	add_field (trap_pdu, ASN_OCTET_STR, SNMP_OID_OBJECT_NODE_NAME, (void*)nodename, strlen (nodename));
+	add_field (trap_pdu, ASN_INTEGER, SNMP_OID_OBJECT_NODE_ID, (void*)&nodeid, sizeof (nodeid));
+	add_field (trap_pdu, ASN_INTEGER, SNMP_OID_OBJECT_RRP_IFACE_NO, (void*)&iface_no, sizeof (iface_no));
+	add_field (trap_pdu, ASN_OCTET_STR, SNMP_OID_OBJECT_RRP_STATUS, (void*)state, strlen (state));
+
+	/* Send and cleanup */
+	ret = snmp_send (session, trap_pdu);
+	if (ret == 0) {
+		/* error */
+		qb_log(LOG_ERR, "Could not send SNMP trap");
+		snmp_free_pdu (trap_pdu);
+	}
+}
 
 static void
 _cs_snmp_init(void)
@@ -686,6 +830,8 @@ _cs_snmp_init(void)
 	notifiers[num_notifiers].node_quorum_fn =
 		_cs_snmp_node_quorum_event;
 	notifiers[num_notifiers].application_connection_fn = NULL;
+	notifiers[num_notifiers].rrp_faulty_fn =
+		_cs_snmp_rrp_faulty_event;
 	num_notifiers++;
 }
 
@@ -715,6 +861,12 @@ _cs_syslog_application_connection_event(char *nodename, uint32_t nodeid, char* a
 	} else {
 		qb_log(LOG_NOTICE, "%s[%d] %s is now %s from corosync", nodename, nodeid, app_name, state);
 	}
+}
+
+static void
+_cs_syslog_rrp_faulty_event(char *nodename, uint32_t nodeid, uint32_t iface_no, const char *state)
+{
+	qb_log(LOG_NOTICE, "%s[%d] interface %u is now %s", nodename, nodeid, iface_no, state);
 }
 
 static void
@@ -788,6 +940,22 @@ _cs_application_connection_event(char *app_name, const char *state)
 	}
 }
 
+static void
+_cs_rrp_faulty_event(uint32_t iface_no, const char *state)
+{
+	int i;
+	char *nodename;
+	uint32_t nodeid;
+
+	_cs_local_node_info_get(&nodename, &nodeid);
+
+	for (i = 0; i < num_notifiers; i++) {
+		if (notifiers[i].application_connection_fn) {
+			notifiers[i].rrp_faulty_fn(nodename, nodeid, iface_no, state);
+		}
+	}
+}
+
 static int32_t
 sig_exit_handler(int32_t num, void *data)
 {
@@ -831,6 +999,16 @@ _cs_cmap_init(void)
 	if (rc != CS_OK) {
 		qb_log(LOG_ERR,
 			"Failed to track the members key. Error %d", rc);
+		exit (EXIT_FAILURE);
+	}
+	rc = cmap_track_add(cmap_handle, "runtime.totem.pg.mrp.rrp.",
+			CMAP_TRACK_ADD | CMAP_TRACK_MODIFY | CMAP_TRACK_PREFIX,
+			_cs_cmap_rrp_faulty_key_changed,
+			NULL,
+			&track_handle);
+	if (rc != CS_OK) {
+		qb_log(LOG_ERR,
+			"Failed to track the rrp key. Error %d", rc);
 		exit (EXIT_FAILURE);
 	}
 }
@@ -954,6 +1132,8 @@ main(int argc, char *argv[])
 			_cs_syslog_node_quorum_event;
 		notifiers[num_notifiers].application_connection_fn =
 			_cs_syslog_application_connection_event;
+		notifiers[num_notifiers].rrp_faulty_fn =
+			_cs_syslog_rrp_faulty_event;
 		num_notifiers++;
 	}
 
