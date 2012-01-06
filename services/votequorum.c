@@ -666,6 +666,7 @@ static int check_low_node_id_partition(void)
 static void set_quorate(int total_votes)
 {
 	int quorate;
+	int quorum_change = 0;
 
 	ENTER();
 
@@ -699,13 +700,20 @@ static void set_quorate(int total_votes)
 	}
 
 	if (cluster_is_quorate && !quorate) {
+		quorum_change = 1;
 		log_printf(LOGSYS_LEVEL_INFO, "quorum lost, blocking activity\n");
 	}
 	if (!cluster_is_quorate && quorate) {
+		quorum_change = 1;
 		log_printf(LOGSYS_LEVEL_INFO, "quorum regained, resuming activity\n");
 	}
 
 	cluster_is_quorate = quorate;
+
+	if (quorum_change) {
+		set_quorum(quorum_members, quorum_members_entries,
+			   cluster_is_quorate, &quorum_ringid);
+	}
 
 	LEAVE();
 }
@@ -1020,7 +1028,9 @@ static void quorum_confchg_fn (
 	}
 
 	memcpy(&quorum_ringid, ring_id, sizeof(*ring_id));
-	set_quorum(quorum_members, quorum_members_entries, cluster_is_quorate, &quorum_ringid);
+
+	set_quorum(quorum_members, quorum_members_entries,
+		   cluster_is_quorate, &quorum_ringid);
 
 	LEAVE();
 }
