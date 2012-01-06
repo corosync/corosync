@@ -76,6 +76,8 @@ struct name_to_type_item name_to_type[] = {
 	{"str", CMAP_VALUETYPE_STRING},
 	{"bin", CMAP_VALUETYPE_BINARY}};
 
+int show_binary = 0;
+
 static int convert_name_to_type(const char *name)
 {
 	int i;
@@ -98,6 +100,25 @@ static int print_help(void)
 	return (0);
 }
 
+static void print_binary_key (char *value, size_t value_len)
+{
+	size_t i;
+	char c;
+
+	for (i = 0; i < value_len; i++) {
+		c = value[i];
+		if (c >= ' ' && c < 0x7f && c != '\\') {
+			fputc (c, stdout);
+		} else {
+			if (c == '\\') {
+				printf ("\\\\");
+			} else {
+				printf ("\\x%02X", c);
+			}
+		}
+	}
+}
+
 static void print_key(cmap_handle_t handle,
 		const char *key_name,
 		size_t value_len,
@@ -105,6 +126,7 @@ static void print_key(cmap_handle_t handle,
 		cmap_value_types_t type)
 {
 	char *str;
+	char *bin_value;
 	cs_error_t err;
 	int8_t i8;
 	uint8_t u8;
@@ -118,6 +140,7 @@ static void print_key(cmap_handle_t handle,
 	double dbl;
 	int end_loop;
 	int no_retries;
+	size_t bin_value_len;
 
 	end_loop = 0;
 	no_retries = 0;
@@ -203,7 +226,21 @@ static void print_key(cmap_handle_t handle,
 				str = (char *)value;
 			}
 			break;
-		case CMAP_VALUETYPE_BINARY: break;
+		case CMAP_VALUETYPE_BINARY:
+			if (show_binary) {
+				if (value == NULL) {
+					bin_value = malloc(value_len);
+					if (bin_value == NULL) {
+						fprintf(stderr, "Can't alloc memory\n");
+						exit(EXIT_FAILURE);
+					}
+					bin_value_len = value_len;
+					err = cmap_get(handle, key_name, bin_value, &bin_value_len, NULL);
+				} else {
+					bin_value = (char *)value;
+				}
+			}
+			break;
 		}
 
 		if (err == CS_OK)
@@ -266,6 +303,13 @@ static void print_key(cmap_handle_t handle,
 		break;
 	case CMAP_VALUETYPE_BINARY:
 		printf("%s)", "bin");
+		if (show_binary) {
+			printf(" = ");
+			print_binary_key(bin_value, value_len);
+			if (value == NULL) {
+				free(bin_value);
+			}
+		}
 		break;
 	}
 
@@ -569,13 +613,16 @@ int main(int argc, char *argv[])
 	action = ACTION_PRINT_PREFIX;
 	track_prefix = 1;
 
-	while ((c = getopt(argc, argv, "hagsdtT")) != -1) {
+	while ((c = getopt(argc, argv, "hagsdtTb")) != -1) {
 		switch (c) {
 		case 'h':
 			return print_help();
 			break;
 		case 'a':
 			action = ACTION_PRINT_ALL;
+			break;
+		case 'b':
+			show_binary++;
 			break;
 		case 'g':
 			action = ACTION_GET;
@@ -602,7 +649,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if (argc == 1) {
+	if (argc == 1 || (argc == 2 && show_binary)) {
 		action = ACTION_PRINT_DEFAULT;
 	}
 
