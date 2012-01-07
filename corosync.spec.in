@@ -54,6 +54,9 @@ BuildRequires: dbus-devel
 %if %{with systemd}
 BuildRequires: systemd-units
 %endif
+%if %{with xmlconf}
+Requires: libxslt
+%endif
 
 BuildRoot: %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 
