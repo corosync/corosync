@@ -160,7 +160,7 @@ cs_error_t quorum_getquorate (
 		&iov,
 		1,
 		&res_lib_quorum_getquorate,
-		sizeof (struct res_lib_quorum_getquorate), -1));
+		sizeof (struct res_lib_quorum_getquorate), CS_IPC_TIMEOUT_MS));
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -262,7 +262,7 @@ cs_error_t quorum_trackstart (
                 &iov,
                 1,
                 &res,
-                sizeof (res), -1));
+                sizeof (res), CS_IPC_TIMEOUT_MS));
 
 	if (error != CS_OK) {
 		goto error_exit;
@@ -301,7 +301,7 @@ cs_error_t quorum_trackstop (
                 &iov,
                 1,
                 &res,
-                sizeof (res), -1));
+                sizeof (res), CS_IPC_TIMEOUT_MS));
 
 	if (error != CS_OK) {
 		goto error_exit;

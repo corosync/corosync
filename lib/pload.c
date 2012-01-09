@@ -185,7 +185,7 @@ unsigned int pload_start (
 		&iov,
 		1,
 		&res_lib_pload_start,
-		sizeof (struct res_lib_pload_start), -1));
+		sizeof (struct res_lib_pload_start), CS_IPC_TIMEOUT_MS));
 
 	if (error != CS_OK) {
 		goto error_exit;

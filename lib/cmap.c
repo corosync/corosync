@@ -359,7 +359,7 @@ cs_error_t cmap_set (
 		iov,
 		2,
 		&res_lib_cmap_set,
-		sizeof (struct res_lib_cmap_set), -1));
+		sizeof (struct res_lib_cmap_set), CS_IPC_TIMEOUT_MS));
 
 	if (error == CS_OK) {
 		error = res_lib_cmap_set.header.error;
@@ -457,7 +457,7 @@ cs_error_t cmap_delete(cmap_handle_t handle, const char *key_name)
 		&iov,
 		1,
 		&res_lib_cmap_delete,
-		sizeof (struct res_lib_cmap_delete), -1));
+		sizeof (struct res_lib_cmap_delete), CS_IPC_TIMEOUT_MS));
 
 	if (error == CS_OK) {
 		error = res_lib_cmap_delete.header.error;
@@ -519,7 +519,7 @@ cs_error_t cmap_get(
 		&iov,
 		1,
 		res_lib_cmap_get,
-		res_size, -1));
+		res_size, CS_IPC_TIMEOUT_MS));
 
 	if (error == CS_OK) {
 		error = res_lib_cmap_get->header.error;
@@ -705,7 +705,7 @@ static cs_error_t cmap_adjust_int(cmap_handle_t handle, const char *key_name, in
 		&iov,
 		1,
 		&res_lib_cmap_adjust_int,
-		sizeof (struct res_lib_cmap_adjust_int), -1));
+		sizeof (struct res_lib_cmap_adjust_int), CS_IPC_TIMEOUT_MS));
 
 	if (error == CS_OK) {
 		error = res_lib_cmap_adjust_int.header.error;
@@ -761,7 +761,7 @@ cs_error_t cmap_iter_init(
 		&iov,
 		1,
 		&res_lib_cmap_iter_init,
-		sizeof (struct res_lib_cmap_iter_init), -1));
+		sizeof (struct res_lib_cmap_iter_init), CS_IPC_TIMEOUT_MS));
 
 	if (error == CS_OK) {
 		error = res_lib_cmap_iter_init.header.error;
@@ -807,7 +807,7 @@ cs_error_t cmap_iter_next(
 		&iov,
 		1,
 		&res_lib_cmap_iter_next,
-		sizeof (struct res_lib_cmap_iter_next), -1));
+		sizeof (struct res_lib_cmap_iter_next), CS_IPC_TIMEOUT_MS));
 
 	if (error == CS_OK) {
 		error = res_lib_cmap_iter_next.header.error;
@@ -858,7 +858,7 @@ cs_error_t cmap_iter_finalize(
 		&iov,
 		1,
 		&res_lib_cmap_iter_finalize,
-		sizeof (struct res_lib_cmap_iter_finalize), -1));
+		sizeof (struct res_lib_cmap_iter_finalize), CS_IPC_TIMEOUT_MS));
 
 	if (error == CS_OK) {
 		error = res_lib_cmap_iter_finalize.header.error;
@@ -926,7 +926,7 @@ cs_error_t cmap_track_add(
 		&iov,
 		1,
 		&res_lib_cmap_track_add,
-		sizeof (struct res_lib_cmap_track_add), -1));
+		sizeof (struct res_lib_cmap_track_add), CS_IPC_TIMEOUT_MS));
 
 	if (error == CS_OK) {
 		error = res_lib_cmap_track_add.header.error;
@@ -982,7 +982,7 @@ cs_error_t cmap_track_delete(
 		&iov,
 		1,
 		&res_lib_cmap_track_delete,
-		sizeof (struct res_lib_cmap_track_delete), -1));
+		sizeof (struct res_lib_cmap_track_delete), CS_IPC_TIMEOUT_MS));
 
 	if (error == CS_OK) {
 		error = res_lib_cmap_track_delete.header.error;
