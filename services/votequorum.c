@@ -982,10 +982,6 @@ static void quorum_confchg_fn (
 
 	ENTER();
 
-	if (configuration_type != TOTEM_CONFIGURATION_REGULAR) {
-		return;
-	}
-
 	if (member_list_entries > 1) {
 		first_trans = 0;
 	}
@@ -1029,8 +1025,10 @@ static void quorum_confchg_fn (
 
 	memcpy(&quorum_ringid, ring_id, sizeof(*ring_id));
 
-	set_quorum(quorum_members, quorum_members_entries,
-		   cluster_is_quorate, &quorum_ringid);
+	if (configuration_type == TOTEM_CONFIGURATION_REGULAR) {
+		set_quorum(quorum_members, quorum_members_entries,
+			   cluster_is_quorate, &quorum_ringid);
+	}
 
 	LEAVE();
 }
