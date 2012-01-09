@@ -126,6 +126,7 @@ static unsigned int leaving_timeout = DEFAULT_LEAVE_TMO;
 
 static uint8_t two_node = 0;
 static uint8_t wait_for_all = 0;
+static uint8_t wait_for_all_status = 0;
 static uint8_t auto_tie_breaker = 0;
 static int lowest_node_id = -1;
 static uint8_t last_man_standing = 0;
@@ -395,6 +396,10 @@ static void votequorum_init(struct corosync_api_v1 *api,
 		wait_for_all = 1;
 	}
 
+	if (wait_for_all) {
+		wait_for_all_status = 1;
+	}
+
 	/* Load the library-servicing part of this module */
 	api->service_link_and_init(api, "corosync_votequorum_iface", 0);
 
@@ -411,7 +416,8 @@ struct req_exec_quorum_nodeinfo {
 	unsigned int patch_version;	/* Backwards/forwards compatible */
 	unsigned int config_version;
 	unsigned int flags;
-	unsigned int wait_for_all;
+	unsigned int wait_for_all_status;
+	unsigned int quorate;
 } __attribute__((packed));
 
 /*
@@ -674,7 +680,7 @@ static void set_quorate(int total_votes)
 	 * wait for all nodes to show up before granting quorum
 	 */
 
-	if (wait_for_all) {
+	if ((wait_for_all) && (wait_for_all_status)) {
 		if (total_votes != us->expected_votes) {
 			log_printf(LOGSYS_LEVEL_NOTICE,
 				   "Waiting for all cluster members. "
@@ -683,7 +689,7 @@ static void set_quorate(int total_votes)
 			cluster_is_quorate = 0;
 			return;
 		}
-		wait_for_all = 0;
+		wait_for_all_status = 0;
 		get_lowest_node_id();
 	}
 
@@ -709,6 +715,14 @@ static void set_quorate(int total_votes)
 	}
 
 	cluster_is_quorate = quorate;
+
+	if (wait_for_all) {
+		if (quorate) {
+			wait_for_all_status = 0;
+		} else {
+			wait_for_all_status = 1;
+		}
+	}
 
 	if (quorum_change) {
 		set_quorum(quorum_members, quorum_members_entries,
@@ -918,7 +932,8 @@ static int quorum_exec_send_nodeinfo()
 	req_exec_quorum_nodeinfo.patch_version = VOTEQUORUM_PATCH_VERSION;
 	req_exec_quorum_nodeinfo.flags = us->flags;
 	req_exec_quorum_nodeinfo.first_trans = first_trans;
-	req_exec_quorum_nodeinfo.wait_for_all = wait_for_all;
+	req_exec_quorum_nodeinfo.wait_for_all_status = wait_for_all_status;
+	req_exec_quorum_nodeinfo.quorate = cluster_is_quorate;
 
 	req_exec_quorum_nodeinfo.header.id = SERVICE_ID_MAKE(VOTEQUORUM_SERVICE, MESSAGE_REQ_EXEC_VOTEQUORUM_NODEINFO);
 	req_exec_quorum_nodeinfo.header.size = sizeof(req_exec_quorum_nodeinfo);
@@ -1046,7 +1061,8 @@ static void exec_votequorum_nodeinfo_endian_convert (void *message)
 	nodeinfo->patch_version = swab32(nodeinfo->patch_version);
 	nodeinfo->config_version = swab32(nodeinfo->config_version);
 	nodeinfo->flags = swab32(nodeinfo->flags);
-	nodeinfo->wait_for_all = swab32(nodeinfo->wait_for_all);
+	nodeinfo->wait_for_all_status = swab32(nodeinfo->wait_for_all_status);
+	nodeinfo->quorate = swab32(nodeinfo->quorate);
 
 	LEAVE();
 }
@@ -1098,10 +1114,11 @@ static void message_handler_req_exec_votequorum_nodeinfo (
 	node->expected_votes = req_exec_quorum_nodeinfo->expected_votes;
 	node->state = NODESTATE_MEMBER;
 
-	log_printf(LOGSYS_LEVEL_DEBUG, "nodeinfo message: votes: %d, expected: %d wfa: %d\n",
+	log_printf(LOGSYS_LEVEL_DEBUG, "nodeinfo message: votes: %d, expected: %d wfa: %d quorate: %d\n",
 					req_exec_quorum_nodeinfo->votes,
 					req_exec_quorum_nodeinfo->expected_votes,
-					req_exec_quorum_nodeinfo->wait_for_all);
+					req_exec_quorum_nodeinfo->wait_for_all_status,
+					req_exec_quorum_nodeinfo->quorate);
 
 	if ((last_man_standing) && (req_exec_quorum_nodeinfo->votes > 1)) {
 		log_printf(LOGSYS_LEVEL_WARNING, "Last Man Standing feature is supported only when all"
@@ -1127,8 +1144,10 @@ static void message_handler_req_exec_votequorum_nodeinfo (
 		free(node);
 	}
 
-	if ((wait_for_all) && (!req_exec_quorum_nodeinfo->wait_for_all)) {
-		wait_for_all = 0;
+	if ((wait_for_all) &&
+	    (!req_exec_quorum_nodeinfo->wait_for_all_status) &&
+	    (req_exec_quorum_nodeinfo->quorate)) {
+		wait_for_all_status = 0;
 	}
 
 	LEAVE();
