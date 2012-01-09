@@ -52,7 +52,6 @@ enum user_action {
 	ACTION_SET,
 	ACTION_DELETE,
 	ACTION_PRINT_ALL,
-	ACTION_PRINT_DEFAULT,
 	ACTION_PRINT_PREFIX,
 	ACTION_TRACK
 };
@@ -108,7 +107,7 @@ static int print_help(void)
 	printf("    corosync-cmapctl [-b] -g key_name...\n");
 	printf("\n");
 	printf("Display all keys:\n");
-	printf("    corosync-cmapctl [-b] -a\n");
+	printf("    corosync-cmapctl [-b]\n");
 	printf("\n");
 	printf("Display keys with prefix key_name:\n");
 	printf("    corosync-cmapctl [-b] key_name...\n");
@@ -339,7 +338,7 @@ static void print_key(cmap_handle_t handle,
 	printf("\n");
 }
 
-static void print_iter(enum user_action action, cmap_handle_t handle, const char *prefix)
+static void print_iter(cmap_handle_t handle, const char *prefix)
 {
 	cmap_iter_handle_t iter_handle;
 	char key_name[CMAP_KEYNAME_MAXLEN + 1];
@@ -354,9 +353,6 @@ static void print_iter(enum user_action action, cmap_handle_t handle, const char
 	}
 
 	while ((err = cmap_iter_next(handle, iter_handle, key_name, &value_len, &type)) == CS_OK) {
-		if (action == ACTION_PRINT_DEFAULT &&
-			strncmp(key_name, "internal_configuration", strlen("internal_configuration") == 0))
-			continue;
 		print_key(handle, key_name, value_len, NULL, type);
 	}
 }
@@ -636,13 +632,10 @@ int main(int argc, char *argv[])
 	action = ACTION_PRINT_PREFIX;
 	track_prefix = 1;
 
-	while ((c = getopt(argc, argv, "hagsdtTb")) != -1) {
+	while ((c = getopt(argc, argv, "hgsdtTb")) != -1) {
 		switch (c) {
 		case 'h':
 			return print_help();
-			break;
-		case 'a':
-			action = ACTION_PRINT_ALL;
 			break;
 		case 'b':
 			show_binary++;
@@ -673,13 +666,13 @@ int main(int argc, char *argv[])
 	}
 
 	if (argc == 1 || (argc == 2 && show_binary)) {
-		action = ACTION_PRINT_DEFAULT;
+		action = ACTION_PRINT_ALL;
 	}
 
 	argc -= optind;
 	argv += optind;
 
-	if (argc == 0 && action != ACTION_PRINT_DEFAULT && action != ACTION_PRINT_ALL) {
+	if (argc == 0 && action != ACTION_PRINT_ALL) {
 		fprintf(stderr, "Expected key after options\n");
 		return (EXIT_FAILURE);
 	}
@@ -695,13 +688,12 @@ int main(int argc, char *argv[])
 	}
 
 	switch (action) {
-	case ACTION_PRINT_DEFAULT:
 	case ACTION_PRINT_ALL:
-		print_iter(action, handle, NULL);
+		print_iter(handle, NULL);
 		break;
 	case ACTION_PRINT_PREFIX:
 		for (i = 0; i < argc; i++) {
-			print_iter(action, handle, argv[i]);
+			print_iter(handle, argv[i]);
 		}
 		break;
 	case ACTION_GET:
