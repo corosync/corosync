@@ -1015,7 +1015,8 @@ static void quorum_confchg_fn (
 	}
 
 	if (last_man_standing) {
-		if ((member_list_entries >= quorum) && (left_list_entries)) {
+		if (((member_list_entries >= quorum) && (left_list_entries)) ||
+		    ((member_list_entries <= quorum) && (auto_tie_breaker) && (check_low_node_id_partition() == 1))) {
 			if (last_man_standing_timer_set) {
 				corosync_api->timer_delete(last_man_standing_timer);
 				last_man_standing_timer_set = 0;
