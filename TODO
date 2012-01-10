@@ -47,6 +47,8 @@ Current status:
   * documentation
   * votequorum lib/core cleanup
   * configuration bits in corosync.conf for quorum related business
+  * improve corosync-quorumtool to show more details in some cases
+    (config flags/votequorum info in monitoring at least)
 
 ------------------------------------------------------------------------------
 topic-xmlschema
