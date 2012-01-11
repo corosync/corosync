@@ -112,12 +112,12 @@ struct seus_handler_data {
 	struct corosync_api_v1 *api;
 };
 
-struct corosync_service_engine *ais_service[SERVICE_HANDLER_MAXIMUM_COUNT];
+struct corosync_service_engine *corosync_service[SERVICE_HANDLER_MAXIMUM_COUNT];
 
 const char *service_stats_rx[SERVICE_HANDLER_MAXIMUM_COUNT][64];
 const char *service_stats_tx[SERVICE_HANDLER_MAXIMUM_COUNT][64];
 
-int ais_service_exiting[SERVICE_HANDLER_MAXIMUM_COUNT];
+int corosync_service_exiting[SERVICE_HANDLER_MAXIMUM_COUNT];
 
 static void (*service_unlink_all_complete) (void) = NULL;
 
@@ -180,7 +180,7 @@ unsigned int corosync_service_link_and_init (
 	 */
 	service = iface_ver0->corosync_get_service_engine_ver0();
 
-	ais_service[service->id] = service;
+	corosync_service[service->id] = service;
 
 	/*
 	 * Register the log sites with libqb
@@ -238,8 +238,8 @@ static int service_priority_max(void)
 {
 	int lpc = 0, max = 0;
 	for(; lpc < SERVICE_HANDLER_MAXIMUM_COUNT; lpc++) {
-		if(ais_service[lpc] != NULL && ais_service[lpc]->priority > max) {
-			max = ais_service[lpc]->priority;
+		if(corosync_service[lpc] != NULL && corosync_service[lpc]->priority > max) {
+			max = corosync_service[lpc]->priority;
 		}
 	}
 	return max;
@@ -266,8 +266,8 @@ corosync_service_unlink_priority (
 			*current_service_engine < SERVICE_HANDLER_MAXIMUM_COUNT;
 			*current_service_engine = *current_service_engine + 1) {
 
-			if(ais_service[*current_service_engine] == NULL ||
-				ais_service[*current_service_engine]->priority != *current_priority) {
+			if(corosync_service[*current_service_engine] == NULL ||
+				corosync_service[*current_service_engine]->priority != *current_priority) {
 				continue;
 			}
 
@@ -280,19 +280,19 @@ corosync_service_unlink_priority (
 			 */
 			snprintf(key_name, ICMAP_KEYNAME_MAXLEN,
 					"internal_configuration.service.%u.handle",
-					ais_service[*current_service_engine]->id);
+					corosync_service[*current_service_engine]->id);
 			if (icmap_get_uint64(key_name, &found_service_handle) == CS_OK) {
-				service_id = ais_service[*current_service_engine]->id;
+				service_id = corosync_service[*current_service_engine]->id;
 
-				if (ais_service[service_id]->exec_exit_fn) {
-					res = ais_service[service_id]->exec_exit_fn ();
+				if (corosync_service[service_id]->exec_exit_fn) {
+					res = corosync_service[service_id]->exec_exit_fn ();
 					if (res == -1) {
 						return (-1);
 					}
 				}
 
 				*current_service_handle = found_service_handle;
-				ais_service_exiting[*current_service_engine] = 1;
+				corosync_service_exiting[*current_service_engine] = 1;
 
 				/*
 				 * Call should call this function again
@@ -359,10 +359,10 @@ static unsigned int service_unlink_and_exit (
 	icmap_iter_finalize(iter);
 
 	if (service_found && service_id < SERVICE_HANDLER_MAXIMUM_COUNT
-		&& ais_service[service_id] != NULL) {
+		&& corosync_service[service_id] != NULL) {
 
-		if (ais_service[service_id]->exec_exit_fn) {
-			res = ais_service[service_id]->exec_exit_fn ();
+		if (corosync_service[service_id]->exec_exit_fn) {
+			res = corosync_service[service_id]->exec_exit_fn ();
 			if (res == -1) {
 				return (-1);
 			}
@@ -370,9 +370,9 @@ static unsigned int service_unlink_and_exit (
 
 		log_printf(LOGSYS_LEVEL_NOTICE,
 			"Service engine unloaded: %s\n",
-			   ais_service[service_id]->name);
+			   corosync_service[service_id]->name);
 
-		ais_service[service_id] = NULL;
+		corosync_service[service_id] = NULL;
 
 		cs_ipcs_service_destroy (service_id);
 
@@ -473,9 +473,9 @@ static void service_unlink_schedwrk_handler (void *data) {
 
 	log_printf(LOGSYS_LEVEL_NOTICE,
 		"Service engine unloaded: %s\n",
-		ais_service[cb_data->service_engine]->name);
+		corosync_service[cb_data->service_engine]->name);
 
-	ais_service[cb_data->service_engine] = NULL;
+	corosync_service[cb_data->service_engine] = NULL;
 
 	lcr_ifact_release (cb_data->service_handle);
 

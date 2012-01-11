@@ -135,12 +135,12 @@ void _corosync_out_of_memory_error (void)
 }
 
 void _corosync_exit_error (
-	enum e_ais_done err, const char *file, unsigned int line)  __attribute__((noreturn));
+	enum e_corosync_done err, const char *file, unsigned int line)  __attribute__((noreturn));
 
 void _corosync_exit_error (
-	enum e_ais_done err, const char *file, unsigned int line)
+	enum e_corosync_done err, const char *file, unsigned int line)
 {
-	if (err == AIS_DONE_EXIT) {
+	if (err == COROSYNC_DONE_EXIT) {
 		log_printf (LOGSYS_LEVEL_NOTICE,
 			"Corosync Cluster Engine exiting normally");
 	} else {

@@ -20,7 +20,7 @@ The corosync project does not intend to mitigate the following threats:
 
 1. physical access to the hardware which could expose the private key
 2. privledged access to the operating system which could expose the private key
-   or be used to inject errors into the ais executive.
+   or be used to inject errors into the corosync executive.
 3. library user creates requests which are intended to fault the corosync
    executive
 
@@ -32,11 +32,11 @@ The corosync project mitigates the threats using two mechanisms:
 Library Interface
 -----------------
 The corosync executive authenticates every library user.  The library is only
-allowed to access services if it's GID is ais or 0.  Unauthorized library
+allowed to access services if it's GID is corosync or 0.  Unauthorized library
 users are rejected.
 
-The ais group is a trusted group.  If the administrator doesn't trust the
-application, it should not be added to the group!  Any member of the ais group
+The corosync group is a trusted group.  If the administrator doesn't trust the
+application, it should not be added to the group!  Any member of the corosync group
 could potentially send a malformed request to the executive and cause it to
 fault.
 
@@ -184,4 +184,4 @@ Once all nodes are using libnss encryption, the option should be set in
 in corosync.conf so that it takes effect at the next system reboot.
 
 
-Comments welcome mailto:corosync@lists.osdl.org
+Comments welcome mailto:discuss@corosync.org

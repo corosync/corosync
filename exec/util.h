@@ -43,27 +43,27 @@
  */
 extern cs_time_t clust_time_now(void);
 
-enum e_ais_done {
-	AIS_DONE_EXIT = 0,
-	AIS_DONE_UID_DETERMINE = 1,
-	AIS_DONE_GID_DETERMINE = 2,
-	AIS_DONE_MEMPOOL_INIT = 3,
-	AIS_DONE_FORK = 4,
-	AIS_DONE_LIBAIS_SOCKET = 5,
-	AIS_DONE_LIBAIS_BIND = 6,
-	AIS_DONE_READKEY = 7,
-	AIS_DONE_MAINCONFIGREAD = 8,
-	AIS_DONE_LOGSETUP = 9,
-	AIS_DONE_AMFCONFIGREAD = 10,
-	AIS_DONE_DYNAMICLOAD = 11,
-	AIS_DONE_OBJDB = 12,
-	AIS_DONE_INIT_SERVICES = 13,
-	AIS_DONE_OUT_OF_MEMORY = 14,
-	AIS_DONE_FATAL_ERR = 15,
-	AIS_DONE_DIR_NOT_PRESENT = 16,
-	AIS_DONE_AQUIRE_LOCK = 17,
-	AIS_DONE_ALREADY_RUNNING = 18,
-	AIS_DONE_STD_TO_NULL_REDIR = 19,
+enum e_corosync_done {
+	COROSYNC_DONE_EXIT = 0,
+	COROSYNC_DONE_UID_DETERMINE = 1,
+	COROSYNC_DONE_GID_DETERMINE = 2,
+	COROSYNC_DONE_MEMPOOL_INIT = 3,
+	COROSYNC_DONE_FORK = 4,
+	COROSYNC_DONE_LIBCOROSYNC_SOCKET = 5,
+	COROSYNC_DONE_LIBCOROSYNC_BIND = 6,
+	COROSYNC_DONE_READKEY = 7,
+	COROSYNC_DONE_MAINCONFIGREAD = 8,
+	COROSYNC_DONE_LOGSETUP = 9,
+	COROSYNC_DONE_AMFCONFIGREAD = 10,
+	COROSYNC_DONE_DYNAMICLOAD = 11,
+	COROSYNC_DONE_OBJDB = 12,
+	COROSYNC_DONE_INIT_SERVICES = 13,
+	COROSYNC_DONE_OUT_OF_MEMORY = 14,
+	COROSYNC_DONE_FATAL_ERR = 15,
+	COROSYNC_DONE_DIR_NOT_PRESENT = 16,
+	COROSYNC_DONE_AQUIRE_LOCK = 17,
+	COROSYNC_DONE_ALREADY_RUNNING = 18,
+	COROSYNC_DONE_STD_TO_NULL_REDIR = 19,
 };
 
 static inline cs_error_t hdb_error_to_cs (int res)		\
@@ -92,7 +92,7 @@ static inline cs_error_t hdb_error_to_cs (int res)		\
  */
 extern int name_match(cs_name_t *name1, cs_name_t *name2);
 #define corosync_exit_error(err) _corosync_exit_error ((err), __FILE__, __LINE__)
-extern void _corosync_exit_error (enum e_ais_done err, const char *file,
+extern void _corosync_exit_error (enum e_corosync_done err, const char *file,
 				  unsigned int line) __attribute__((noreturn));
 void _corosync_out_of_memory_error (void) __attribute__((noreturn));
 extern char *getcs_name_t (cs_name_t *name);

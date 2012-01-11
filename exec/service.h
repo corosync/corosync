@@ -68,9 +68,9 @@ extern void corosync_service_unlink_all (
 extern unsigned int corosync_service_defaults_link_and_init (
 	struct corosync_api_v1 *objdb);
 
-extern struct corosync_service_engine *ais_service[];
+extern struct corosync_service_engine *corosync_service[];
 
-extern int ais_service_exiting[];
+extern int corosync_service_exiting[];
 
 extern const char *service_stats_rx[SERVICE_HANDLER_MAXIMUM_COUNT][64];
 extern const char *service_stats_tx[SERVICE_HANDLER_MAXIMUM_COUNT][64];

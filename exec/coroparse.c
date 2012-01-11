@@ -147,7 +147,7 @@ static int uid_determine (const char *req_user)
 
 static int gid_determine (const char *req_group)
 {
-	int ais_gid = 0;
+	int corosync_gid = 0;
 	struct group group;
 	struct group * grpptr = &group;
 	struct group * temp_grp_pt;
@@ -168,10 +168,10 @@ static int gid_determine (const char *req_group)
 	                req_group);
 		return (-1);
 	}
-	ais_gid = group.gr_gid;
+	corosync_gid = group.gr_gid;
 	free (grpbuffer);
 
-	return ais_gid;
+	return corosync_gid;
 }
 static char *strchr_rs (const char *haystack, int byte)
 {

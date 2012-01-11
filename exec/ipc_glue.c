@@ -210,8 +210,8 @@ static int32_t cs_ipcs_connection_accept (qb_ipcs_connection_t *c, uid_t euid, g
 	uint8_t u8;
 	char key_name[ICMAP_KEYNAME_MAXLEN];
 
-	if (ais_service[service] == NULL ||
-		ais_service_exiting[service] ||
+	if (corosync_service[service] == NULL ||
+		corosync_service_exiting[service] ||
 		ipcs_mapper[service].inst == NULL) {
 		return -ENOSYS;
 	}
@@ -307,7 +307,7 @@ static void cs_ipcs_connection_created(qb_ipcs_connection_t *c)
 
 	service = qb_ipcs_service_id_get(c);
 
-	size += ais_service[service]->private_data_size;
+	size += corosync_service[service]->private_data_size;
 	context = calloc(1, size);
 
 	list_init(&context->outq_head);
@@ -317,7 +317,7 @@ static void cs_ipcs_connection_created(qb_ipcs_connection_t *c)
 
 	qb_ipcs_context_set(c, context);
 
-	ais_service[service]->lib_init_fn(c);
+	corosync_service[service]->lib_init_fn(c);
 
 	icmap_inc("runtime.connections.active");
 
@@ -441,7 +441,7 @@ static int32_t cs_ipcs_connection_closed (qb_ipcs_connection_t *c)
 	struct cs_ipcs_conn_context *cnx;
 
 	log_printf(LOG_DEBUG, "%s() ", __func__);
-	res = ais_service[service]->lib_exit_fn(c);
+	res = corosync_service[service]->lib_exit_fn(c);
 	if (res != 0) {
 		return res;
 	}
@@ -658,7 +658,7 @@ static int32_t cs_ipcs_msg_process(qb_ipcs_connection_t *c,
 	}
 
 	if (send_ok) {
-		ais_service[service]->lib_engine[request_pt->id].lib_handler_fn(c, request_pt);
+		corosync_service[service]->lib_engine[request_pt->id].lib_handler_fn(c, request_pt);
 		res = 0;
 	}
 	corosync_sending_allowed_release (&sending_allowed_private_data);
@@ -713,12 +713,12 @@ static void cs_ipcs_check_for_flow_control(void)
 	int32_t fc_enabled;
 
 	for (i = 0; i < SERVICE_HANDLER_MAXIMUM_COUNT; i++) {
-		if (ais_service[i] == NULL || ipcs_mapper[i].inst == NULL) {
+		if (corosync_service[i] == NULL || ipcs_mapper[i].inst == NULL) {
 			continue;
 		}
 		fc_enabled = QB_IPCS_RATE_OFF;
 		if (ipc_fc_is_quorate == 1 ||
-			ais_service[i]->allow_inquorate == CS_LIB_ALLOW_INQUORATE) {
+			corosync_service[i]->allow_inquorate == CS_LIB_ALLOW_INQUORATE) {
 			/*
 			 * we are quorate
 			 * now check flow control
@@ -773,7 +773,7 @@ void cs_ipcs_stats_update(void)
 	char key_name[ICMAP_KEYNAME_MAXLEN];
 
 	for (i = 0; i < SERVICE_HANDLER_MAXIMUM_COUNT; i++) {
-		if (ais_service[i] == NULL || ipcs_mapper[i].inst == NULL) {
+		if (corosync_service[i] == NULL || ipcs_mapper[i].inst == NULL) {
 			continue;
 		}
 		qb_ipcs_stats_get(ipcs_mapper[i].inst, &srv_stats, QB_FALSE);

@@ -33,8 +33,8 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef AIS_UTIL_H_DEFINED
-#define AIS_UTIL_H_DEFINED
+#ifndef COROSYNC_UTIL_H_DEFINED
+#define COROSYNC_UTIL_H_DEFINED
 
 #include <corosync/corotypes.h>
 
@@ -149,4 +149,4 @@ static inline const char * cs_strerror(cs_error_t err)
 }
 
 
-#endif /* AIS_UTIL_H_DEFINED */
+#endif /* COROSYNC_UTIL_H_DEFINED */

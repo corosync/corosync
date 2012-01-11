@@ -40,7 +40,7 @@
 #include <corosync/coroapi.h>
 
 /**
- * All service handlers in the AIS
+ * All service handlers
  */
 struct dynamic_service {
 	char *name;

@@ -828,8 +828,7 @@ static int authenticate_and_decrypt (
 	}
 
 	/*
-	 * If it failed, then try decrypting the whole packet as it might be
-	 * from aisexec
+	 * If it failed, then try decrypting the whole packet
 	 */
 	if (res == -1) {
 		iov[iov_len-1].iov_len += 1;

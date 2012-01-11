@@ -83,7 +83,7 @@ static inline void cs_fsm_process (struct cs_fsm *fsm, int32_t new_event, void *
 	}
 	log_printf (LOGSYS_LEVEL_ERROR, "Fsm:%s could not find event \"%s\" in state \"%s\"",
 		fsm->name, fsm->event_to_str(fsm, new_event), fsm->state_to_str(fsm, fsm->curr_state));
-	corosync_exit_error(AIS_DONE_FATAL_ERR);
+	corosync_exit_error(COROSYNC_DONE_FATAL_ERR);
 }
 
 static inline void cs_fsm_state_set (struct cs_fsm* fsm, int32_t next_state, void* data)
@@ -116,7 +116,7 @@ static inline void cs_fsm_state_set (struct cs_fsm* fsm, int32_t next_state, voi
 		fsm->state_to_str(fsm, fsm->table[fsm->curr_entry].curr_state),
 		fsm->state_to_str(fsm, next_state),
 		fsm->event_to_str(fsm, entry->event));
-	corosync_exit_error(AIS_DONE_FATAL_ERR);
+	corosync_exit_error(COROSYNC_DONE_FATAL_ERR);
 }
 
 #endif /* FSM_H_DEFINED */

@@ -238,9 +238,9 @@ First generate the key on one of the nodes:
 balance# corosync-keygen
 Corosync Authentication key generator.
 Gathering 1024 bits for key from /dev/random.
-Writing corosync key to /etc/ais/authkey.
+Writing corosync key to /etc/corosync/authkey.
 
-After this is complete, a private key will be in the file /etc/ais/authkey.
+After this is complete, a private key will be in the file /etc/corosync/authkey.
 This private key must be copied to every processor that will be a member of
 the cluster.  If the private key isn't the same for every node, those nodes
 with nonmatching private keys will not be able to join the same configuration.
@@ -248,7 +248,7 @@ with nonmatching private keys will not be able to join the same configuration.
 Copy the key to some transportable storage or use ssh to transmit the key
 from node to node.  Then install the key with the command:
 
-balance# install -D --group=0 --owner=0 --mode=0400 /path_to_authkey/authkey /etc/ais/authkey
+balance# install -D --group=0 --owner=0 --mode=0400 /path_to_authkey/authkey /etc/corosync/authkey
 
 If the message invalid digest appears, the keys are not the same on each node.
 

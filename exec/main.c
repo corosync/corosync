@@ -192,8 +192,8 @@ void corosync_state_dump (void)
 	int i;
 
 	for (i = 0; i < SERVICE_HANDLER_MAXIMUM_COUNT; i++) {
-		if (ais_service[i] && ais_service[i]->exec_dump_fn) {
-			ais_service[i]->exec_dump_fn ();
+		if (corosync_service[i] && corosync_service[i]->exec_dump_fn) {
+			corosync_service[i]->exec_dump_fn ();
 		}
 	}
 }
@@ -267,17 +267,17 @@ static void corosync_sync_completed (void)
 static int corosync_sync_callbacks_retrieve (int sync_id,
 	struct sync_callbacks *callbacks)
 {
-	unsigned int ais_service_index;
+	unsigned int corosync_service_index;
 	int res;
 
-	for (ais_service_index = 0;
-		ais_service_index < SERVICE_HANDLER_MAXIMUM_COUNT;
-		ais_service_index++) {
+	for (corosync_service_index = 0;
+		corosync_service_index < SERVICE_HANDLER_MAXIMUM_COUNT;
+		corosync_service_index++) {
 
-		if (ais_service[ais_service_index] != NULL
-			&& (ais_service[ais_service_index]->sync_mode == CS_SYNC_V1
-				|| ais_service[ais_service_index]->sync_mode == CS_SYNC_V1_APIV2)) {
-			if (ais_service_index == sync_id) {
+		if (corosync_service[corosync_service_index] != NULL
+			&& (corosync_service[corosync_service_index]->sync_mode == CS_SYNC_V1
+				|| corosync_service[corosync_service_index]->sync_mode == CS_SYNC_V1_APIV2)) {
+			if (corosync_service_index == sync_id) {
 				break;
 			}
 		}
@@ -285,19 +285,19 @@ static int corosync_sync_callbacks_retrieve (int sync_id,
 	/*
 	 * Try to load backwards compat sync engines
 	 */
-	if (ais_service_index == SERVICE_HANDLER_MAXIMUM_COUNT) {
+	if (corosync_service_index == SERVICE_HANDLER_MAXIMUM_COUNT) {
 		res = evil_callbacks_load (sync_id, callbacks);
 		return (res);
 	}
-	callbacks->name = ais_service[ais_service_index]->name;
-	callbacks->sync_init_api.sync_init_v1 = ais_service[ais_service_index]->sync_init;
+	callbacks->name = corosync_service[corosync_service_index]->name;
+	callbacks->sync_init_api.sync_init_v1 = corosync_service[corosync_service_index]->sync_init;
 	callbacks->api_version = 1;
-	if (ais_service[ais_service_index]->sync_mode == CS_SYNC_V1_APIV2) {
+	if (corosync_service[corosync_service_index]->sync_mode == CS_SYNC_V1_APIV2) {
 		callbacks->api_version = 2;
 	}
-	callbacks->sync_process = ais_service[ais_service_index]->sync_process;
-	callbacks->sync_activate = ais_service[ais_service_index]->sync_activate;
-	callbacks->sync_abort = ais_service[ais_service_index]->sync_abort;
+	callbacks->sync_process = corosync_service[corosync_service_index]->sync_process;
+	callbacks->sync_activate = corosync_service[corosync_service_index]->sync_activate;
+	callbacks->sync_abort = corosync_service[corosync_service_index]->sync_abort;
 	return (0);
 }
 
@@ -307,32 +307,32 @@ static int corosync_sync_v2_callbacks_retrieve (
 {
 	int res;
 
-	if (minimum_sync_mode == CS_SYNC_V2 && service_id == CLM_SERVICE && ais_service[CLM_SERVICE] == NULL) {
+	if (minimum_sync_mode == CS_SYNC_V2 && service_id == CLM_SERVICE && corosync_service[CLM_SERVICE] == NULL) {
 		res = evil_callbacks_load (service_id, callbacks);
 		return (res);
 	}
-	if (minimum_sync_mode == CS_SYNC_V2 && service_id == EVT_SERVICE && ais_service[EVT_SERVICE] == NULL) {
+	if (minimum_sync_mode == CS_SYNC_V2 && service_id == EVT_SERVICE && corosync_service[EVT_SERVICE] == NULL) {
 		res = evil_callbacks_load (service_id, callbacks);
 		return (res);
 	}
-	if (ais_service[service_id] == NULL) {
+	if (corosync_service[service_id] == NULL) {
 		return (-1);
 	}
-	if (minimum_sync_mode == CS_SYNC_V1 && ais_service[service_id]->sync_mode != CS_SYNC_V2) {
+	if (minimum_sync_mode == CS_SYNC_V1 && corosync_service[service_id]->sync_mode != CS_SYNC_V2) {
 		return (-1);
 	}
 
-	callbacks->name = ais_service[service_id]->name;
+	callbacks->name = corosync_service[service_id]->name;
 
 	callbacks->api_version = 1;
-	if (ais_service[service_id]->sync_mode == CS_SYNC_V1_APIV2) {
+	if (corosync_service[service_id]->sync_mode == CS_SYNC_V1_APIV2) {
 		callbacks->api_version = 2;
 	}
 
-	callbacks->sync_init_api.sync_init_v1 = ais_service[service_id]->sync_init;
-	callbacks->sync_process = ais_service[service_id]->sync_process;
-	callbacks->sync_activate = ais_service[service_id]->sync_activate;
-	callbacks->sync_abort = ais_service[service_id]->sync_abort;
+	callbacks->sync_init_api.sync_init_v1 = corosync_service[service_id]->sync_init;
+	callbacks->sync_process = corosync_service[service_id]->sync_process;
+	callbacks->sync_activate = corosync_service[service_id]->sync_activate;
+	callbacks->sync_abort = corosync_service[service_id]->sync_abort;
 	return (0);
 }
 
@@ -393,8 +393,8 @@ static void confchg_fn (
 	 * Call configuration change for all services
 	 */
 	for (i = 0; i < service_count; i++) {
-		if (ais_service[i] && ais_service[i]->confchg_fn) {
-			ais_service[i]->confchg_fn (configuration_type,
+		if (corosync_service[i] && corosync_service[i]->confchg_fn) {
+			corosync_service[i]->confchg_fn (configuration_type,
 				member_list, member_list_entries,
 				left_list, left_list_entries,
 				joined_list, joined_list_entries, ring_id);
@@ -427,7 +427,7 @@ static void corosync_tty_detach (void)
 
 	switch (fork ()) {
 		case -1:
-			corosync_exit_error (AIS_DONE_FORK);
+			corosync_exit_error (COROSYNC_DONE_FORK);
 			break;
 		case 0:
 			/*
@@ -447,15 +447,15 @@ static void corosync_tty_detach (void)
 	 */
 	r = freopen("/dev/null", "r", stdin);
 	if (r == NULL) {
-		corosync_exit_error (AIS_DONE_STD_TO_NULL_REDIR);
+		corosync_exit_error (COROSYNC_DONE_STD_TO_NULL_REDIR);
 	}
 	r = freopen("/dev/null", "a", stderr);
 	if (r == NULL) {
-		corosync_exit_error (AIS_DONE_STD_TO_NULL_REDIR);
+		corosync_exit_error (COROSYNC_DONE_STD_TO_NULL_REDIR);
 	}
 	r = freopen("/dev/null", "a", stdout);
 	if (r == NULL) {
-		corosync_exit_error (AIS_DONE_STD_TO_NULL_REDIR);
+		corosync_exit_error (COROSYNC_DONE_STD_TO_NULL_REDIR);
 	}
 }
 
@@ -672,29 +672,29 @@ static void deliver_fn (
 	service = id >> 16;
 	fn_id = id & 0xffff;
 
-	if (ais_service[service] == NULL && service == EVT_SERVICE) {
+	if (corosync_service[service] == NULL && service == EVT_SERVICE) {
 		evil_deliver_fn (nodeid, service, fn_id, msg,
 			endian_conversion_required);
 	}
 
-	if (!ais_service[service]) {
+	if (!corosync_service[service]) {
 		return;
 	}
-	if (fn_id >= ais_service[service]->exec_engine_count) {
+	if (fn_id >= corosync_service[service]->exec_engine_count) {
 		log_printf(LOGSYS_LEVEL_WARNING, "discarded unknown message %d for service %d (max id %d)",
-			fn_id, service, ais_service[service]->exec_engine_count);
+			fn_id, service, corosync_service[service]->exec_engine_count);
 		return;
 	}
 
 	icmap_inc(service_stats_rx[service][fn_id]);
 
 	if (endian_conversion_required) {
-		assert(ais_service[service]->exec_engine[fn_id].exec_endian_convert_fn != NULL);
-		ais_service[service]->exec_engine[fn_id].exec_endian_convert_fn
+		assert(corosync_service[service]->exec_engine[fn_id].exec_endian_convert_fn != NULL);
+		corosync_service[service]->exec_engine[fn_id].exec_endian_convert_fn
 			((void *)msg);
 	}
 
-	ais_service[service]->exec_engine[fn_id].exec_handler_fn
+	corosync_service[service]->exec_engine[fn_id].exec_handler_fn
 		(msg, nodeid);
 }
 
@@ -716,7 +716,7 @@ int main_mcast (
 	service = req->id >> 16;
 	fn_id = req->id & 0xffff;
 
-	if (ais_service[service]) {
+	if (corosync_service[service]) {
 		icmap_inc(service_stats_tx[service][fn_id]);
 	}
 
@@ -762,10 +762,10 @@ int corosync_sending_allowed (
 
 	sending_allowed = QB_FALSE;
 	if (corosync_quorum_is_quorate() == 1 ||
-	    ais_service[service]->allow_inquorate == CS_LIB_ALLOW_INQUORATE) {
+	    corosync_service[service]->allow_inquorate == CS_LIB_ALLOW_INQUORATE) {
 		// we are quorate
 		// now check flow control
-		if (ais_service[service]->lib_engine[id].flow_control == CS_LIB_FLOW_CONTROL_NOT_REQUIRED) {
+		if (corosync_service[service]->lib_engine[id].flow_control == CS_LIB_FLOW_CONTROL_NOT_REQUIRED) {
 			sending_allowed = QB_TRUE;
 		} else if (pd->reserved_msgs && sync_in_process == 0) {
 			sending_allowed = QB_TRUE;
@@ -845,7 +845,7 @@ static void corosync_setscheduler (void)
 				log_printf (LOGSYS_LEVEL_ERROR,
 					    "Could not set logsys thread priority."
 					    " Can't continue because of priority inversions.");
-				corosync_exit_error (AIS_DONE_LOGSETUP);
+				corosync_exit_error (COROSYNC_DONE_LOGSETUP);
 			}
 		}
 	} else {
@@ -927,7 +927,7 @@ static void main_service_ready (void)
 	res = corosync_service_defaults_link_and_init (api);
 	if (res == -1) {
 		log_printf (LOGSYS_LEVEL_ERROR, "Could not initialize default services\n");
-		corosync_exit_error (AIS_DONE_INIT_SERVICES);
+		corosync_exit_error (COROSYNC_DONE_INIT_SERVICES);
 	}
 	evil_init (api);
 	cs_ipcs_init();
@@ -956,20 +956,20 @@ static void main_service_ready (void)
 
 }
 
-static enum e_ais_done corosync_flock (const char *lockfile, pid_t pid)
+static enum e_corosync_done corosync_flock (const char *lockfile, pid_t pid)
 {
 	struct flock lock;
-	enum e_ais_done err;
+	enum e_corosync_done err;
 	char pid_s[17];
 	int fd_flag;
 	int lf;
 
-	err = AIS_DONE_EXIT;
+	err = COROSYNC_DONE_EXIT;
 
 	lf = open (lockfile, O_WRONLY | O_CREAT, 0640);
 	if (lf == -1) {
 		log_printf (LOGSYS_LEVEL_ERROR, "Corosync Executive couldn't create lock file.\n");
-		return (AIS_DONE_AQUIRE_LOCK);
+		return (COROSYNC_DONE_AQUIRE_LOCK);
 	}
 
 retry_fcntl:
@@ -985,13 +985,13 @@ retry_fcntl:
 		case EAGAIN:
 		case EACCES:
 			log_printf (LOGSYS_LEVEL_ERROR, "Another Corosync instance is already running.\n");
-			err = AIS_DONE_ALREADY_RUNNING;
+			err = COROSYNC_DONE_ALREADY_RUNNING;
 			goto error_close;
 			break;
 		default:
 			log_printf (LOGSYS_LEVEL_ERROR, "Corosync Executive couldn't aquire lock. Error was %s\n",
 			    strerror(errno));
-			err = AIS_DONE_AQUIRE_LOCK;
+			err = COROSYNC_DONE_AQUIRE_LOCK;
 			goto error_close;
 			break;
 		}
@@ -1000,7 +1000,7 @@ retry_fcntl:
 	if (ftruncate (lf, 0) == -1) {
 		log_printf (LOGSYS_LEVEL_ERROR, "Corosync Executive couldn't truncate lock file. Error was %s\n",
 		    strerror (errno));
-		err = AIS_DONE_AQUIRE_LOCK;
+		err = COROSYNC_DONE_AQUIRE_LOCK;
 		goto error_close_unlink;
 	}
 
@@ -1014,7 +1014,7 @@ retry_write:
 		} else {
 			log_printf (LOGSYS_LEVEL_ERROR, "Corosync Executive couldn't write pid to lock file. "
 				"Error was %s\n", strerror (errno));
-			err = AIS_DONE_AQUIRE_LOCK;
+			err = COROSYNC_DONE_AQUIRE_LOCK;
 			goto error_close_unlink;
 		}
 	}
@@ -1022,14 +1022,14 @@ retry_write:
 	if ((fd_flag = fcntl (lf, F_GETFD, 0)) == -1) {
 		log_printf (LOGSYS_LEVEL_ERROR, "Corosync Executive couldn't get close-on-exec flag from lock file. "
 			"Error was %s\n", strerror (errno));
-		err = AIS_DONE_AQUIRE_LOCK;
+		err = COROSYNC_DONE_AQUIRE_LOCK;
 		goto error_close_unlink;
 	}
 	fd_flag |= FD_CLOEXEC;
 	if (fcntl (lf, F_SETFD, fd_flag) == -1) {
 		log_printf (LOGSYS_LEVEL_ERROR, "Corosync Executive couldn't set close-on-exec flag to lock file. "
 			"Error was %s\n", strerror (errno));
-		err = AIS_DONE_AQUIRE_LOCK;
+		err = COROSYNC_DONE_AQUIRE_LOCK;
 		goto error_close_unlink;
 	}
 
@@ -1059,7 +1059,7 @@ int main (int argc, char **argv, char **envp)
 	int background, setprio;
 	struct stat stat_out;
 	char corosync_lib_dir[PATH_MAX];
-	enum e_ais_done flock_err;
+	enum e_corosync_done flock_err;
 
 	/* default configuration
 	 */
@@ -1127,7 +1127,7 @@ int main (int argc, char **argv, char **envp)
 
 	if (icmap_init() != CS_OK) {
 		log_printf (LOGSYS_LEVEL_ERROR, "Corosync Executive couldn't initialize configuration component.\n");
-		corosync_exit_error (AIS_DONE_OBJDB);
+		corosync_exit_error (COROSYNC_DONE_OBJDB);
 	}
 
 	/*
@@ -1150,7 +1150,7 @@ int main (int argc, char **argv, char **envp)
 	/* Make a copy so we can deface it with strtok */
 	if ((config_iface = strdup(config_iface_init)) == NULL) {
 		log_printf (LOGSYS_LEVEL_ERROR, "exhausted virtual memory");
-		corosync_exit_error (AIS_DONE_OBJDB);
+		corosync_exit_error (COROSYNC_DONE_OBJDB);
 	}
 
 	iface = strtok_r(config_iface, ":", &strtok_save_pt);
@@ -1166,13 +1166,13 @@ int main (int argc, char **argv, char **envp)
 		config = (struct config_iface_ver0 *)config_p;
 		if (res == -1) {
 			log_printf (LOGSYS_LEVEL_ERROR, "Corosync Executive couldn't open configuration component '%s'\n", iface);
-			corosync_exit_error (AIS_DONE_MAINCONFIGREAD);
+			corosync_exit_error (COROSYNC_DONE_MAINCONFIGREAD);
 		}
 
 		res = config->config_readconfig(&error_string);
 		if (res == -1) {
 			log_printf (LOGSYS_LEVEL_ERROR, "%s", error_string);
-			corosync_exit_error (AIS_DONE_MAINCONFIGREAD);
+			corosync_exit_error (COROSYNC_DONE_MAINCONFIGREAD);
 		}
 		log_printf (LOGSYS_LEVEL_NOTICE, "%s", error_string);
 		config_modules[num_config_modules++] = config;
@@ -1193,7 +1193,7 @@ int main (int argc, char **argv, char **envp)
 		log_printf (LOGSYS_LEVEL_ERROR, "%s", error_string);
 		fprintf(stderr, "%s", error_string);
 		syslog (LOGSYS_LEVEL_ERROR, "%s", error_string);
-		corosync_exit_error (AIS_DONE_MAINCONFIGREAD);
+		corosync_exit_error (COROSYNC_DONE_MAINCONFIGREAD);
 	}
 
 	/*
@@ -1203,25 +1203,25 @@ int main (int argc, char **argv, char **envp)
 	res = stat (corosync_lib_dir, &stat_out);
 	if ((res == -1) || (res == 0 && !S_ISDIR(stat_out.st_mode))) {
 		log_printf (LOGSYS_LEVEL_ERROR, "Required directory not present %s.  Please create it.\n", corosync_lib_dir);
-		corosync_exit_error (AIS_DONE_DIR_NOT_PRESENT);
+		corosync_exit_error (COROSYNC_DONE_DIR_NOT_PRESENT);
 	}
 
 	res = totem_config_read (&totem_config, &error_string);
 	if (res == -1) {
 		log_printf (LOGSYS_LEVEL_ERROR, "%s", error_string);
-		corosync_exit_error (AIS_DONE_MAINCONFIGREAD);
+		corosync_exit_error (COROSYNC_DONE_MAINCONFIGREAD);
 	}
 
 	res = totem_config_keyread (&totem_config, &error_string);
 	if (res == -1) {
 		log_printf (LOGSYS_LEVEL_ERROR, "%s", error_string);
-		corosync_exit_error (AIS_DONE_MAINCONFIGREAD);
+		corosync_exit_error (COROSYNC_DONE_MAINCONFIGREAD);
 	}
 
 	res = totem_config_validate (&totem_config, &error_string);
 	if (res == -1) {
 		log_printf (LOGSYS_LEVEL_ERROR, "%s", error_string);
-		corosync_exit_error (AIS_DONE_MAINCONFIGREAD);
+		corosync_exit_error (COROSYNC_DONE_MAINCONFIGREAD);
 	}
 
 	totem_config.totem_logging_configuration = totem_logging_configuration;
@@ -1238,7 +1238,7 @@ int main (int argc, char **argv, char **envp)
 		&error_string);
 	if (res == -1) {
 		log_printf (LOGSYS_LEVEL_ERROR, "%s", error_string);
-		corosync_exit_error (AIS_DONE_MAINCONFIGREAD);
+		corosync_exit_error (COROSYNC_DONE_MAINCONFIGREAD);
 	}
 
 	/*
@@ -1249,7 +1249,7 @@ int main (int argc, char **argv, char **envp)
 	}
 	qb_log_thread_start();
 
-	if ((flock_err = corosync_flock (corosync_lock_file, getpid ())) != AIS_DONE_EXIT) {
+	if ((flock_err = corosync_flock (corosync_lock_file, getpid ())) != COROSYNC_DONE_EXIT) {
 		corosync_exit_error (flock_err);
 	}
 
@@ -1281,7 +1281,7 @@ int main (int argc, char **argv, char **envp)
 		1);
 
 	/*
-	 * Drop root privleges to user 'ais'
+	 * Drop root privleges to user 'corosync'
 	 * TODO: Don't really need full root capabilities;
 	 *       needed capabilities are:
 	 * CAP_NET_RAW (bindtodevice)
@@ -1318,7 +1318,7 @@ int main (int argc, char **argv, char **envp)
 	 */
 	unlink (corosync_lock_file);
 
-	corosync_exit_error (AIS_DONE_EXIT);
+	corosync_exit_error (COROSYNC_DONE_EXIT);
 
 	return EXIT_SUCCESS;
 }
