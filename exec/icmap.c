@@ -41,7 +41,7 @@
 
 #include <qb/qbdefs.h>
 #include <corosync/list.h>
-#include <corosync/engine/icmap.h>
+#include <corosync/icmap.h>
 
 #define ICMAP_MAX_VALUE_LEN	(16*1024)
 

@@ -42,22 +42,20 @@ if BUILD_RDMA
 TOTEM_SRC		+= totemiba.c
 endif
 
-ICMAP_SRC		= icmap.c
 LCRSO_SRC		= vsf_ykd.c coroparse.c vsf_quorum.c
 LCRSO_OBJS		= $(LCRSO_SRC:%.c=%.o)
 LCRSO			= $(LCRSO_SRC:%.c=%.lcrso)
 
-lib_LIBRARIES		= libtotem_pg.a libicmap.a
+lib_LIBRARIES		= libtotem_pg.a
 sbin_PROGRAMS		= corosync
 
 libtotem_pg_a_SOURCES	= $(TOTEM_SRC)
-libicmap_a_SOURCES	= $(ICMAP_SRC)
 
 corosync_SOURCES 	= main.c ipc_glue.c util.c sync.c apidef.c service.c \
 			  timer.c totemconfig.c mainconfig.c quorum.c schedwrk.c \
-			  ../lcr/lcr_ifact.c evil.c syncv2.c logsys.c
-corosync_LDADD	  	= -ltotem_pg -licmap $(LIBQB_LIBS) $(statgrab_LIBS)
-corosync_DEPENDENCIES	= libtotem_pg.so.$(SONAME) libicmap.so.$(SONAME)
+			  ../lcr/lcr_ifact.c evil.c syncv2.c logsys.c icmap.c
+corosync_LDADD	  	= -ltotem_pg $(LIBQB_LIBS) $(statgrab_LIBS)
+corosync_DEPENDENCIES	= libtotem_pg.so.$(SONAME)
 corosync_LDFLAGS	= $(OS_DYFLAGS) -L./
 
 TOTEM_OBJS		= $(TOTEM_SRC:%.c=%.o)
@@ -78,17 +76,12 @@ EXTRA_DIST		= $(LCRSO_SRC)
 
 if BUILD_DARWIN
 %.lcrso: %.o
-	$(CC) $(LDFLAGS) $(CFLAGS) -L$(top_builddir)/exec -licmap -bundle -bind_at_load -bundle_loader ./corosync $^ -o $@
+	$(CC) $(LDFLAGS) $(CFLAGS) -L$(top_builddir)/exec -bundle -bind_at_load -bundle_loader ./corosync $^ -o $@
 
 libtotem_pg.so.$(SONAME): $(TOTEM_OBJS)
 	$(CC) $(LDFLAGS) $(DARWIN_OPTS) $(TOTEM_OBJS) -o $@ -lpthread
 	ln -sf libtotem_pg.so.$(SONAME) libtotem_pg.so
 	ln -sf libtotem_pg.so.$(SONAME) libtotem_pg.so.$(SOMAJOR)
-
-libicmap.so.$(SONAME): $(ICMAP_OBJS)
-	$(CC) $(LDFLAGS) $(DARWIN_OPTS) $(ICMAP_OBJS) -o $@ -lpthread
-	ln -sf libicmap.so.$(SONAME) libicmap.so
-	ln -sf libicmap.so.$(SONAME) libicmap.so.$(SOMAJOR)
 
 else
 
@@ -112,13 +105,6 @@ libtotem_pg.so.$(SONAME): $(TOTEM_OBJS)
 		$(LDFLAGS) $^ $(nss_LIBS) $(rdmacm_LIBS) $(ibverbs_LIBS) -lpthread
 	ln -sf libtotem_pg.so.$(SONAME) libtotem_pg.so
 	ln -sf libtotem_pg.so.$(SONAME) libtotem_pg.so.$(SOMAJOR)
-
-libicmap.so.$(SONAME): $(ICMAP_OBJS)
-	$(CC) -shared -o $@ \
-		-Wl,-soname=libicmap.so.$(SOMAJOR) \
-		$(LDFLAGS) $^ -lpthread
-	ln -sf libicmap.so.$(SONAME) libicmap.so
-	ln -sf libicmap.so.$(SONAME) libicmap.so.$(SOMAJOR)
 
 endif
 

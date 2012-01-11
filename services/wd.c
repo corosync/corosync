@@ -47,7 +47,7 @@
 #include <corosync/coroapi.h>
 #include <corosync/list.h>
 #include <corosync/logsys.h>
-#include <corosync/engine/icmap.h>
+#include <corosync/icmap.h>
 #include "../exec/fsm.h"
 
 

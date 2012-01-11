@@ -59,7 +59,7 @@
 #include <qb/qbutil.h>
 #define LOGSYS_UTILS_ONLY 1
 #include <corosync/logsys.h>
-#include <corosync/engine/icmap.h>
+#include <corosync/icmap.h>
 #include <corosync/engine/config.h>
 
 #include "util.h"

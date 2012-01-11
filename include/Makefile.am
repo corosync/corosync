@@ -37,11 +37,11 @@ CS_H			= hdb.h cs_config.h cpg.h cfg.h evs.h mar_gen.h swab.h 	\
 
 CS_INTERNAL_H		= ipc_cfg.h ipc_cpg.h ipc_evs.h ipc_pload.h ipc_quorum.h 	\
 			jhash.h pload.h quorum.h sq.h ipc_votequorum.h ipc_cmap.h \
-			logsys.h coroapi.h
+			logsys.h coroapi.h icmap.h
 
 LCR_H			= lcr_ckpt.h lcr_comp.h	lcr_ifact.h
 
-ENGINE_H		= config.h quorum.h icmap.h
+ENGINE_H		= config.h quorum.h
 
 TOTEM_H			= totem.h totemip.h totempg.h
 

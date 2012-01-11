@@ -109,7 +109,7 @@
 #include <corosync/totem/totempg.h>
 #include <corosync/engine/config.h>
 #include <corosync/logsys.h>
-#include <corosync/engine/icmap.h>
+#include <corosync/icmap.h>
 
 #include "quorum.h"
 #include "totemsrp.h"

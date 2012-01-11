@@ -61,7 +61,7 @@
 #include <corosync/lcr/lcr_comp.h>
 #include <corosync/logsys.h>
 #include <corosync/coroapi.h>
-#include <corosync/engine/icmap.h>
+#include <corosync/icmap.h>
 #include <corosync/corodefs.h>
 
 LOGSYS_DECLARE_SUBSYS ("CFG");

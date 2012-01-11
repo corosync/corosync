@@ -69,7 +69,7 @@
 #include <corosync/mar_gen.h>
 #include <corosync/coroapi.h>
 #include <corosync/engine/quorum.h>
-#include <corosync/engine/icmap.h>
+#include <corosync/icmap.h>
 #include <corosync/ipc_votequorum.h>
 
 #define VOTEQUORUM_MAJOR_VERSION 7

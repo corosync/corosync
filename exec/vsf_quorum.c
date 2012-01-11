@@ -67,7 +67,7 @@
 #include <corosync/coroapi.h>
 #include <corosync/logsys.h>
 #include <corosync/engine/quorum.h>
-#include <corosync/engine/icmap.h>
+#include <corosync/icmap.h>
 
 LOGSYS_DECLARE_SUBSYS ("QUORUM");
 

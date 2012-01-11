@@ -54,7 +54,7 @@
 #include <corosync/lcr/lcr_comp.h>
 #include <corosync/logsys.h>
 #include <corosync/coroapi.h>
-#include <corosync/engine/icmap.h>
+#include <corosync/icmap.h>
 
 #define hdb_error_to_cs(_result_) qb_to_cs_error(_result_)
 

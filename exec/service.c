@@ -46,7 +46,7 @@
 #include "mainconfig.h"
 #include "util.h"
 #include <corosync/logsys.h>
-#include <corosync/engine/icmap.h>
+#include <corosync/icmap.h>
 
 #include "timer.h"
 #include <corosync/totem/totempg.h>

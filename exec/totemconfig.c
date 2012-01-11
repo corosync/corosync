@@ -55,7 +55,7 @@
 #include <corosync/totem/totem.h>
 #include <corosync/config.h>
 #include <corosync/logsys.h>
-#include <corosync/engine/icmap.h>
+#include <corosync/icmap.h>
 
 #ifdef HAVE_LIBNSS
 #include <nss.h>
