@@ -58,6 +58,7 @@ extern int totemrrp_initialize (
 	qb_loop_t *poll_handle,
 	void **rrp_context,
 	struct totem_config *totem_config,
+	totemsrp_stats_t *stats,
 	void *context,
 
 	void (*deliver_fn) (

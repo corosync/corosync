@@ -495,8 +495,9 @@ static void corosync_totem_stats_updater (void *data)
 	uint32_t total_mtt_rx_token;
 	uint32_t total_backlog_calc;
 	uint32_t total_token_holdtime;
-	int t, prev;
+	int t, prev, i;
 	int32_t token_count;
+	char key_name[ICMAP_KEYNAME_MAXLEN];
 
 	stats = api->totem_get_stats();
 
@@ -529,6 +530,10 @@ static void corosync_totem_stats_updater (void *data)
 	icmap_set_uint8("runtime.totem.pg.mrp.srp.firewall_enabled_or_nic_failure",
 		stats->mrp->srp->continuous_gather > MAX_NO_CONT_GATHER ? 1 : 0);
 
+	for (i = 0; i < stats->mrp->srp->rrp->interface_count; i++) {
+		snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "runtime.totem.pg.mrp.rrp.%u.faulty", i);
+		icmap_set_uint8(key_name, stats->mrp->srp->rrp->faulty[i]);
+	}
 	total_mtt_rx_token = 0;
 	total_token_holdtime = 0;
 	total_backlog_calc = 0;

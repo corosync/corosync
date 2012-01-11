@@ -249,7 +249,12 @@ struct totemrrp_instance {
 	void *deliver_fn_context[INTERFACE_MAX];
 
 	qb_loop_timer_handle timer_active_test_ring_timeout[INTERFACE_MAX];
+
+	totemrrp_stats_t stats;
 };
+
+static void stats_set_interface_faulty(struct totemrrp_instance *rrp_instance,
+		unsigned int iface_no, int is_faulty);
 
 /*
  * None Replication Forward Declerations
@@ -597,6 +602,12 @@ do {								\
 		format, ##args);				\
 } while (0);
 
+static void stats_set_interface_faulty(struct totemrrp_instance *rrp_instance,
+		unsigned int iface_no, int is_faulty)
+{
+	rrp_instance->stats.faulty[iface_no] = (is_faulty ? 1 : 0);
+}
+
 static void test_active_msg_endian_convert(const struct message_header *in, struct message_header *out)
 {
 	out->type = in->type;
@@ -775,6 +786,7 @@ void *passive_instance_initialize (
 	int interface_count)
 {
 	struct passive_instance *instance;
+	int i;
 
 	instance = malloc (sizeof (struct passive_instance));
 	if (instance == 0) {
@@ -789,6 +801,10 @@ void *passive_instance_initialize (
 		goto error_exit;
 	}
 	memset (instance->faulty, 0, sizeof (int) * interface_count);
+
+	for (i = 0; i < interface_count; i++) {
+		stats_set_interface_faulty (rrp_instance, i, 0);
+	}
 
 	instance->token_recv_count = malloc (sizeof (int) * interface_count);
 	if (instance->token_recv_count == 0) {
@@ -966,12 +982,15 @@ static void passive_monitor (
 		if ((passive_instance->faulty[i] == 0) &&
 		    (max - recv_count[i] > threshold)) {
 			passive_instance->faulty[i] = 1;
+
 			qb_loop_timer_add (rrp_instance->poll_handle,
 				QB_LOOP_MED,
 				rrp_instance->totem_config->rrp_autorecovery_check_timeout*QB_TIME_NS_IN_MSEC,
 				rrp_instance->deliver_fn_context[i],
 				timer_function_test_ring_timeout,
 				&rrp_instance->timer_active_test_ring_timeout[i]);
+
+			stats_set_interface_faulty (rrp_instance, i, passive_instance->faulty[i]);
 
 			sprintf (rrp_instance->status[i],
 				"Marking ringid %u interface %s FAULTY",
@@ -1206,6 +1225,7 @@ static void passive_ring_reenable (
 	unsigned int iface_no)
 {
 	struct passive_instance *rrp_algo_instance = (struct passive_instance *)instance->rrp_algo_instance;
+	int i;
 
 	memset (rrp_algo_instance->mcast_recv_count, 0, sizeof (unsigned int) *
 		instance->interface_count);
@@ -1215,8 +1235,12 @@ static void passive_ring_reenable (
 	if (iface_no == instance->interface_count) {
 		memset (rrp_algo_instance->faulty, 0, sizeof (unsigned int) *
 			instance->interface_count);
+		for (i = 0; i < instance->interface_count; i++) {
+			stats_set_interface_faulty (instance, i, 0);
+		}
 	} else {
 		rrp_algo_instance->faulty[iface_no] = 0;
+		stats_set_interface_faulty (instance, iface_no, 0);
 	}
 }
 
@@ -1228,6 +1252,7 @@ void *active_instance_initialize (
 	int interface_count)
 {
 	struct active_instance *instance;
+	int i;
 
 	instance = malloc (sizeof (struct active_instance));
 	if (instance == 0) {
@@ -1242,6 +1267,10 @@ void *active_instance_initialize (
 		goto error_exit;
 	}
 	memset (instance->faulty, 0, sizeof (unsigned int) * interface_count);
+
+	for (i = 0; i < interface_count; i++) {
+		stats_set_interface_faulty (rrp_instance, i, 0);
+	}
 
 	instance->last_token_recv = malloc (sizeof (int) * interface_count);
 	if (instance->last_token_recv == 0) {
@@ -1333,15 +1362,18 @@ static void timer_function_active_token_expired (void *context)
 		}
 	}
 	for (i = 0; i < rrp_instance->interface_count; i++) {
-		if (active_instance->counter_problems[i] >= rrp_instance->totem_config->rrp_problem_count_threshold)
-		{
+		if (active_instance->counter_problems[i] >= rrp_instance->totem_config->rrp_problem_count_threshold &&
+		    active_instance->faulty[i] == 0) {
 			active_instance->faulty[i] = 1;
+
 			qb_loop_timer_add (rrp_instance->poll_handle,
 				QB_LOOP_MED,
 				rrp_instance->totem_config->rrp_autorecovery_check_timeout*QB_TIME_NS_IN_MSEC,
 				rrp_instance->deliver_fn_context[i],
 				timer_function_test_ring_timeout,
 				&rrp_instance->timer_active_test_ring_timeout[i]);
+
+			stats_set_interface_faulty (rrp_instance, i, active_instance->faulty[i]);
 
 			sprintf (rrp_instance->status[i],
 				"Marking seqid %d ringid %u interface %s FAULTY",
@@ -1621,6 +1653,7 @@ static void active_ring_reenable (
 	unsigned int iface_no)
 {
 	struct active_instance *rrp_algo_instance = (struct active_instance *)instance->rrp_algo_instance;
+	int i;
 
 	if (iface_no == instance->interface_count) {
 		memset (rrp_algo_instance->last_token_recv, 0, sizeof (unsigned int) *
@@ -1629,10 +1662,16 @@ static void active_ring_reenable (
 			instance->interface_count);
 		memset (rrp_algo_instance->counter_problems, 0, sizeof (unsigned int) *
 			instance->interface_count);
+
+		for (i = 0; i < instance->interface_count; i++) {
+			stats_set_interface_faulty (instance, i, 0);
+		}
 	} else {
 		rrp_algo_instance->last_token_recv[iface_no] = 0;
 		rrp_algo_instance->faulty[iface_no] = 0;
 		rrp_algo_instance->counter_problems[iface_no] = 0;
+
+		stats_set_interface_faulty (instance, iface_no, 0);
 	}
 }
 
@@ -1805,6 +1844,7 @@ int totemrrp_initialize (
 	qb_loop_t *poll_handle,
 	void **rrp_context,
 	struct totem_config *totem_config,
+	totemsrp_stats_t *stats,
 	void *context,
 
 	void (*deliver_fn) (
@@ -1838,6 +1878,11 @@ int totemrrp_initialize (
 	totemrrp_instance_initialize (instance);
 
 	instance->totem_config = totem_config;
+	stats->rrp = &instance->stats;
+	if (totem_config->interface_count > 1) {
+		instance->stats.interface_count = totem_config->interface_count;
+		instance->stats.faulty = calloc(instance->stats.interface_count, sizeof(uint8_t));
+	}
 
 	res = totemrrp_algorithm_set (
 		instance->totem_config,
@@ -1878,6 +1923,7 @@ int totemrrp_initialize (
 	instance->context = context;
 
 	instance->poll_handle = poll_handle;
+
 
 	for (i = 0; i < totem_config->interface_count; i++) {
 		struct deliver_fn_context *deliver_fn_context;

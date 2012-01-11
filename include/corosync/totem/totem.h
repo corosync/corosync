@@ -217,6 +217,8 @@ typedef struct {
 	totem_stats_header_t hdr;
 	totemnet_stats_t *net;
 	char *algo_name;
+	uint8_t *faulty;
+	uint32_t interface_count;
 } totemrrp_stats_t;
 
 
