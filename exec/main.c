@@ -682,7 +682,7 @@ static void deliver_fn (
 		return;
 	}
 
-	icmap_inc(service_stats_rx[service][fn_id]);
+	icmap_fast_inc(service_stats_rx[service][fn_id]);
 
 	if (endian_conversion_required) {
 		assert(corosync_service[service]->exec_engine[fn_id].exec_endian_convert_fn != NULL);
@@ -713,7 +713,7 @@ int main_mcast (
 	fn_id = req->id & 0xffff;
 
 	if (corosync_service[service]) {
-		icmap_inc(service_stats_tx[service][fn_id]);
+		icmap_fast_inc(service_stats_tx[service][fn_id]);
 	}
 
 	return (totempg_groups_mcast_joined (corosync_group_handle, iovec, iov_len, guarantee));
