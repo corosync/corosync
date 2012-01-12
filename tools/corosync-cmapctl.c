@@ -503,8 +503,8 @@ static void set_key(cmap_handle_t handle, const char *key_name, const char *key_
 	uint64_t u64;
 	double dbl;
 	float flt;
-	cs_error_t err;
-	int scanf_res;
+	cs_error_t err = CS_OK;
+	int scanf_res = 0;
 
 	cmap_value_types_t type;
 
