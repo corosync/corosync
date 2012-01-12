@@ -229,7 +229,7 @@ static int icmap_check_key_name(const char *key_name)
 
 static size_t icmap_get_valuetype_len(icmap_value_types_t type)
 {
-	size_t res;
+	size_t res = 0;
 
 	switch (type) {
 	case ICMAP_VALUETYPE_INT8: res = sizeof(int8_t); break;
