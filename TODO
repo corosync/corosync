@@ -36,14 +36,13 @@ topic-quorum
 ------------------------------------------------------------------------------
 Main Developer: Fabio "the coding monkey" Di Nitto
 Started: yes
-Finished: 85%
+Finished: 90%
 target: needle2.0
 This topic is about bringing votequorum/quorum up to speed and feature complete.
 Current status:
 - features are implemented, most of debugging done
 - need to do:
-  * man pages
-  * documentation
+  * document new votequorum options once we are sure their behavior won't change
   * configuration bits in corosync.conf for quorum related business
 
 ------------------------------------------------------------------------------
