@@ -631,10 +631,6 @@ static void corosync_totem_dynamic_init (void)
 
 static void corosync_totem_stats_init (void)
 {
-	totempg_stats_t * stats;
-
-	stats = api->totem_get_stats();
-
 	icmap_set_uint32("runtime.totem.pg.mrp.srp.mtt_rx_token", 0);
 	icmap_set_uint32("runtime.totem.pg.mrp.srp.avg_token_workload", 0);
 	icmap_set_uint32("runtime.totem.pg.mrp.srp.avg_backlog_calc", 0);
