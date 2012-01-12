@@ -95,6 +95,7 @@ dist_man_MANS = \
 	evs_context_get.3 \
 	evs_context_set.3 \
 	quorum_initialize.3 \
+	quorum_finalize.3 \
 	votequorum_dispatch.3 \
 	votequorum_fd_get.3 \
 	votequorum_context_get.3 \
