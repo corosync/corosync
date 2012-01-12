@@ -1,5 +1,5 @@
 .\"/*
-.\" * Copyright (C) 2010 Red Hat, Inc.
+.\" * Copyright (C) 2010,2012 Red Hat, Inc.
 .\" *
 .\" * All rights reserved.
 .\" *
@@ -31,17 +31,20 @@
 .\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 .\" * THE POSSIBILITY OF SUCH DAMAGE.
 .\" */
-.TH COROSYNC-QUORUMTOOL 8 2010-05-30
+.TH COROSYNC-QUORUMTOOL 8 2012-01-12
 .SH NAME
 corosync-quorumtool \- Set and display quorum settings.
 .SH SYNOPSIS
-.B "corosync-quorumtool [\-s] [\-l] [\-v votes] [\-n nodeid] [\-e expected] [\-h] [\-i]"
+.B "corosync-quorumtool [\-s] [\-m] [\-l] [\-v votes] [\-n nodeid] [\-e expected] [\-h] [\-i]"
 .SH DESCRIPTION
 Display the current state of quorum in the cluster and set vote quorum options.
 .SH OPTIONS
 .TP
 .B  -s
 show quorum status
+.TP
+.B  -m
+constantly monitor quorum status
 .TP
 .B  -l
 list nodes

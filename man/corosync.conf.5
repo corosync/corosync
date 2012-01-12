@@ -1,6 +1,6 @@
 .\"/*
 .\" * Copyright (c) 2005 MontaVista Software, Inc.
-.\" * Copyright (c) 2006-2011 Red Hat, Inc.
+.\" * Copyright (c) 2006-2012 Red Hat, Inc.
 .\" *
 .\" * All rights reserved.
 .\" *
@@ -32,7 +32,7 @@
 .\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 .\" * THE POSSIBILITY OF SUCH DAMAGE.
 .\" */
-.TH COROSYNC_CONF 5 2011-12-16 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
+.TH COROSYNC_CONF 5 2012-01-12 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
 .SH NAME
 corosync.conf - corosync executive configuration file
 
@@ -51,6 +51,9 @@ This top level directive contains configuration options for the totem protocol.
 .TP
 logging { }
 This top level directive contains configuration options for logging.
+.TP
+quorum { }
+This top level directive contains configuration options for quorum.
 
 .PP
 .PP
@@ -607,6 +610,16 @@ subsys
 This specifies the subsystem identity (name) for which logging is specified. This is the
 name used by a service in the log_init () call. E.g. 'CPG'. This directive is
 required.
+
+.PP
+Within the
+.B quorum
+directive it is possible to specify the quorum algorithm to use with the
+
+.TP
+provider
+directive. At the time of writing only corosync_votequorum is supported. Please refer
+to quorum modules man pages (8) for specific config options.
 
 .SH "FILES"
 .TP

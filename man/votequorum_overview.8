@@ -1,9 +1,10 @@
 .\"/*
-.\" * Copyright (c) 2008 Red Hat, Inc.
+.\" * Copyright (c) 2008, 2012 Red Hat, Inc.
 .\" *
 .\" * All rights reserved.
 .\" *
-.\" * Author: Christine Caulfield <ccaulfie@redhat.com>
+.\" * Authors: Christine Caulfield <ccaulfie@redhat.com>
+.\" *          Fabio M. Di Nitto   <fdinitto@redhat.com>
 .\" *
 .\" * This software licensed under BSD license, the text of which follows:
 .\" *
@@ -31,7 +32,7 @@
 .\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 .\" * THE POSSIBILITY OF SUCH DAMAGE.
 .\" */
-.TH VOTEQUORUM_OVERVIEW 8 2009-01-26 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
+.TH VOTEQUORUM_OVERVIEW 8 2012-01-12 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
 .SH NAME
 votequorum_overview \- Votequorum Library Overview
 .SH OVERVIEW
@@ -56,7 +57,7 @@ The library provides a mechanism to:
 * Connect an additional quorum device to allow small clusters to remain quorate during node outages.
 .PP
 .B votequorum
-reads its configuration from the objdb. The following keys are read when it starts up:
+reads its configuration from internal cmap database. The following keys are read when it starts up:
 .PP
 * quorum.expected_votes
 .br
@@ -65,20 +66,32 @@ reads its configuration from the objdb. The following keys are read when it star
 * quorum.quorumdev_poll
 .br
 * quorum.two_node
+.br
+* quorum.wait_for_all
+.br
+* quorum.last_man_standing
+.br
+* quorum.last_man_standing_window
+.br
+* quorum.auto_tie_breaker
 .PP
-Most of those values can be changed while corosync is running with the following exception:
-.B two_node
-cannot be set on-the-fly, though it can be cleared. ie you can start with two nodes in the cluster
-and add a third without rebooting all the nodes.
+Values that can be changed at runtime are expected_votes, votes, quorumdev_poll and two_nodes
 .PP
 .SH BUGS
-This software is not yet production, so there may still be some bugs.
+No known bugs at the time of writing. The authors are from outerspace. Deal with it.
 .SH "SEE ALSO"
 .BR corosync-quorumtool (8),
-.BR votequorum_initialize (3),
-.BR votequorum_finalize (3),
-.BR votequorum_fd_get (3),
-.BR votequorum_dispatch (3),
 .BR votequorum_context_get (3),
 .BR votequorum_context_set (3),
+.BR votequorum_dispatch (3),
+.BR votequorum_fd_get (3),
+.BR votequorum_finalize (3),
+.BR votequorum_getinfo (3),
+.BR votequorum_initialize (3),
+.BR votequorum_qdisk_getinfo (3),
+.BR votequorum_qdisk_poll (3),
+.BR votequorum_qdisk_register (3),
+.BR votequorum_qdisk_unregister (3),
+.BR votequorum_setexpected (3),
+.BR votequorum_setvotes (3)
 .PP
