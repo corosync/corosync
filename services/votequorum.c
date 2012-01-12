@@ -686,11 +686,11 @@ static void set_quorate(int total_votes)
 
 	if (cluster_is_quorate && !quorate) {
 		quorum_change = 1;
-		log_printf(LOGSYS_LEVEL_INFO, "quorum lost, blocking activity\n");
+		log_printf(LOGSYS_LEVEL_DEBUG, "quorum lost, blocking activity\n");
 	}
 	if (!cluster_is_quorate && quorate) {
 		quorum_change = 1;
-		log_printf(LOGSYS_LEVEL_INFO, "quorum regained, resuming activity\n");
+		log_printf(LOGSYS_LEVEL_DEBUG, "quorum regained, resuming activity\n");
 	}
 
 	cluster_is_quorate = quorate;
