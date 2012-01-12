@@ -1279,6 +1279,15 @@ static void message_handler_req_lib_votequorum_getinfo (void *conn, const void *
 		if (cluster_is_quorate) {
 			res_lib_votequorum_getinfo.flags |= VOTEQUORUM_INFO_FLAG_QUORATE;
 		}
+		if (wait_for_all) {
+			res_lib_votequorum_getinfo.flags |= VOTEQUORUM_INFO_WAIT_FOR_ALL;
+		}
+		if (last_man_standing) {
+			res_lib_votequorum_getinfo.flags |= VOTEQUORUM_INFO_LAST_MAN_STANDING;
+		}
+		if (auto_tie_breaker) {
+			res_lib_votequorum_getinfo.flags |= VOTEQUORUM_INFO_AUTO_TIE_BREAKER;
+		}
 	} else {
 		error = CS_ERR_NOT_EXIST;
 	}

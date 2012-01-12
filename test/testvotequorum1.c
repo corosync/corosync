@@ -130,6 +130,10 @@ int main(int argc, char *argv[])
 		printf("flags            ");
 		if (info.flags & VOTEQUORUM_INFO_FLAG_TWONODE) printf("2Node ");
 		if (info.flags & VOTEQUORUM_INFO_FLAG_QUORATE) printf("Quorate ");
+		if (info.flags & VOTEQUORUM_INFO_WAIT_FOR_ALL) printf("WaitForAll ");
+		if (info.flags & VOTEQUORUM_INFO_LAST_MAN_STANDING) printf("LastManStanding ");
+		if (info.flags & VOTEQUORUM_INFO_AUTO_TIE_BREAKER) printf("AutoTieBreaker ");
+
 		printf("\n");
 	}
 
@@ -155,6 +159,9 @@ int main(int argc, char *argv[])
 			printf("flags            ");
 			if (info.flags & VOTEQUORUM_INFO_FLAG_TWONODE) printf("2Node ");
 			if (info.flags & VOTEQUORUM_INFO_FLAG_QUORATE) printf("Quorate ");
+			if (info.flags & VOTEQUORUM_INFO_WAIT_FOR_ALL) printf("WaitForAll ");
+			if (info.flags & VOTEQUORUM_INFO_LAST_MAN_STANDING) printf("LastManStanding ");
+			if (info.flags & VOTEQUORUM_INFO_AUTO_TIE_BREAKER) printf("AutoTieBreaker ");
 			printf("\n");
 		}
 	}

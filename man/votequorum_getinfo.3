@@ -62,9 +62,11 @@ struct votequorum_info {
 	unsigned int flags;
 };
 
-#define VOTEQUORUM_INFO_FLAG_DIRTY      1
-#define VOTEQUORUM_INFO_FLAG_TWONODE    2
-#define VOTEQUORUM_INFO_FLAG_QUORATE    4
+#define VOTEQUORUM_INFO_FLAG_TWONODE            1
+#define VOTEQUORUM_INFO_FLAG_QUORATE            2
+#define VOTEQUORUM_INFO_WAIT_FOR_ALL            4
+#define VOTEQUORUM_INFO_LAST_MAN_STANDING       8
+#define VOTEQUORUM_INFO_AUTO_TIE_BREAKER       16
 
 .ta
 .fi
