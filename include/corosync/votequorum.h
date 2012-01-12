@@ -195,12 +195,6 @@ cs_error_t votequorum_trackstop (
 	votequorum_handle_t handle);
 
 /**
- * Set our LEAVING flag. we should exit soon after this
- */
-cs_error_t votequorum_leaving (
-	votequorum_handle_t handle);
-
-/**
  * Save and retrieve private data/context
  */
 cs_error_t votequorum_context_get (

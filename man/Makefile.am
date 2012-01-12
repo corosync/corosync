@@ -101,7 +101,6 @@ dist_man_MANS = \
 	votequorum_finalize.3 \
 	votequorum_getinfo.3 \
 	votequorum_initialize.3 \
-	votequorum_leaving.3 \
 	votequorum_qdisk_getinfo.3 \
 	votequorum_qdisk_poll.3 \
 	votequorum_qdisk_register.3 \

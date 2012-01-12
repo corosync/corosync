@@ -121,7 +121,6 @@ static int quorum;
 static int cluster_is_quorate;
 static int first_trans = 1;
 static unsigned int quorumdev_poll = DEFAULT_QDEV_POLL;
-static unsigned int leaving_timeout = DEFAULT_LEAVE_TMO;
 
 static uint8_t two_node = 0;
 static uint8_t wait_for_all = 0;
@@ -137,7 +136,6 @@ static struct cluster_node *us;
 static struct cluster_node *quorum_device = NULL;
 static char quorum_device_name[VOTEQUORUM_MAX_QDISK_NAME_LEN];
 static corosync_timer_handle_t quorum_device_timer;
-static corosync_timer_handle_t leaving_timer;
 static struct list_head cluster_members_list;
 static struct corosync_api_v1 *corosync_api;
 static struct list_head trackers_list;
@@ -209,8 +207,6 @@ static void message_handler_req_lib_votequorum_qdisk_poll (void *conn,
 static void message_handler_req_lib_votequorum_qdisk_getinfo (void *conn,
 							      const void *message);
 
-static void message_handler_req_lib_votequorum_leaving (void *conn,
-							const void *message);
 static void message_handler_req_lib_votequorum_trackstart (void *conn,
 							   const void *message);
 static void message_handler_req_lib_votequorum_trackstop (void *conn,
@@ -260,14 +256,10 @@ static struct corosync_lib_handler quorum_lib_service[] =
 		.flow_control		= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 7 */
-		.lib_handler_fn		= message_handler_req_lib_votequorum_leaving,
-		.flow_control		= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
-	},
-	{ /* 8 */
 		.lib_handler_fn		= message_handler_req_lib_votequorum_trackstart,
 		.flow_control		= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
-	{ /* 9 */
+	{ /* 8 */
 		.lib_handler_fn		= message_handler_req_lib_votequorum_trackstop,
 		.flow_control		= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
 	}
@@ -417,7 +409,6 @@ struct req_exec_quorum_nodeinfo {
  */
 #define RECONFIG_PARAM_EXPECTED_VOTES 1
 #define RECONFIG_PARAM_NODE_VOTES     2
-#define RECONFIG_PARAM_LEAVING        3
 
 struct req_exec_quorum_reconfigure {
 	struct qb_ipc_request_header header __attribute__((aligned(8)));
@@ -445,10 +436,6 @@ static void read_quorum_config(void)
 
 	if (icmap_get_uint32("quorum.quorumdev_poll", &quorumdev_poll) != CS_OK) {
 		quorumdev_poll = DEFAULT_QDEV_POLL;
-	}
-
-	if (icmap_get_uint32("quorum.leaving_timeout", &leaving_timeout) != CS_OK) {
-		leaving_timeout = DEFAULT_LEAVE_TMO;
 	}
 
 	icmap_get_uint8("quorum.two_node", &two_node);
@@ -1183,14 +1170,6 @@ static void message_handler_req_exec_votequorum_reconfigure (
 		recalculate_quorum(1, 0);  /* Allow decrease */
 		break;
 
-	case RECONFIG_PARAM_LEAVING:
-		if (req_exec_quorum_reconfigure->value == 1 && node->state == NODESTATE_MEMBER) {
-			node->state = NODESTATE_LEAVING;
-		}
-		if (req_exec_quorum_reconfigure->value == 0 && node->state == NODESTATE_LEAVING) {
-			node->state = NODESTATE_MEMBER;
-		}
-		break;
 	}
 
 	LEAVE();
@@ -1207,26 +1186,6 @@ static int quorum_lib_init_fn (void *conn)
 
 	LEAVE();
 	return (0);
-}
-
-/*
- * Someone called votequorum_leave AGES ago!
- * Assume they forgot to shut down the node.
- */
-static void leaving_timer_fn(void *arg)
-{
-	ENTER();
-
-	if (us->state == NODESTATE_LEAVING) {
-		us->state = NODESTATE_MEMBER;
-	}
-
-	/*
-	 * Tell everyone else we made a mistake
-	 */
-	quorum_exec_send_reconfigure(RECONFIG_PARAM_LEAVING, us->node_id, 0);
-
-	LEAVE();
 }
 
 /*
@@ -1388,32 +1347,6 @@ static void message_handler_req_lib_votequorum_setvotes (void *conn, const void 
 	 * send status
 	 */
 error_exit:
-	res_lib_votequorum_status.header.size = sizeof(res_lib_votequorum_status);
-	res_lib_votequorum_status.header.id = MESSAGE_RES_VOTEQUORUM_STATUS;
-	res_lib_votequorum_status.header.error = error;
-	corosync_api->ipc_response_send(conn, &res_lib_votequorum_status, sizeof(res_lib_votequorum_status));
-
-	LEAVE();
-}
-
-static void message_handler_req_lib_votequorum_leaving (void *conn, const void *message)
-{
-	struct res_lib_votequorum_status res_lib_votequorum_status;
-	cs_error_t error = CS_OK;
-
-	ENTER();
-
-	quorum_exec_send_reconfigure(RECONFIG_PARAM_LEAVING, us->node_id, 1);
-
-	/*
-	 * If we don't shut down in a sensible amount of time then cancel the
-	 * leave status.
-	 */
-	if (leaving_timeout) {
-		corosync_api->timer_add_duration((unsigned long long)leaving_timeout*1000000, NULL,
-						 leaving_timer_fn, &leaving_timer);
-	}
-
 	res_lib_votequorum_status.header.size = sizeof(res_lib_votequorum_status);
 	res_lib_votequorum_status.header.id = MESSAGE_RES_VOTEQUORUM_STATUS;
 	res_lib_votequorum_status.header.error = error;
