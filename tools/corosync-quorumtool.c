@@ -201,11 +201,6 @@ static int set_votes(uint32_t nodeid, int votes)
 {
 	int err;
 
-	if ((err=votequorum_initialize(&v_handle, &v_callbacks)) != CS_OK) {
-		fprintf(stderr, "votequorum_initialize FAILED: %d, this is probably a configuration error\n", err);
-		return err;
-	}
-
 	if ((err=votequorum_setvotes(v_handle, nodeid, votes)) != CS_OK) {
 		fprintf(stderr, "set votes FAILED: %d\n", err);
 	}
@@ -216,11 +211,6 @@ static int set_votes(uint32_t nodeid, int votes)
 static int set_expected(int expected_votes)
 {
 	int err;
-
-	if ((err=votequorum_initialize(&v_handle, &v_callbacks)) != CS_OK) {
-		fprintf(stderr, "votequorum_initialize FAILED: %d, this is probably a configuration error\n", err);
-		return err;
-	}
 
 	if ((err=votequorum_setexpected(v_handle, expected_votes)) != CS_OK) {
 		fprintf(stderr, "set expected votes FAILED: %d\n", err);
