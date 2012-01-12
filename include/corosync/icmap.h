@@ -189,6 +189,14 @@ extern cs_error_t icmap_get_string(const char *key_name, char **str);
 extern cs_error_t icmap_adjust_int(const char *key_name, int32_t step);
 
 /*
+ * Defined only for [u]int* values. It adds step to current value. Difference
+ * between this function and icmap_adjust_int is given in fact, that in
+ * tracking callback, old value is undefined, but whole process is done
+ * without malloc/memcpy.
+ */
+extern cs_error_t icmap_fast_adjust_int(const char *key_name, int32_t step);
+
+/*
  * Increase stored value by one
  */
 extern cs_error_t icmap_inc(const char *key_name);
@@ -197,6 +205,18 @@ extern cs_error_t icmap_inc(const char *key_name);
  * Decrease stored value by one
  */
 extern cs_error_t icmap_dec(const char *key_name);
+
+/*
+ * Increase stored value by one. Difference between this function and icmap_inc
+ * is same as between icmap_adjust_int and icmap_fast_adjust_int.
+ */
+extern cs_error_t icmap_fast_inc(const char *key_name);
+
+/*
+ * Decrease stored value by one. Difference between this function and icmap_dec
+ * is same as between icmap_adjust_int and icmap_fast_adjust_int.
+ */
+extern cs_error_t icmap_fast_dec(const char *key_name);
 
 /*
  * Initialize iterator with given prefix

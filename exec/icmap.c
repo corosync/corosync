@@ -172,7 +172,10 @@ static void icmap_map_free_cb(uint32_t event,
 {
 	struct icmap_item *item = (struct icmap_item *)old_value;
 
-	if (item != NULL) {
+	/*
+	 * value == old_value -> fast_adjust_int was used, don't free data
+	 */
+	if (item != NULL && value != old_value) {
 		free(item->key_name);
 		free(item);
 	}
@@ -681,6 +684,54 @@ cs_error_t icmap_adjust_int(
 	return (err);
 }
 
+cs_error_t icmap_fast_adjust_int(
+	const char *key_name,
+	int32_t step)
+{
+	struct icmap_item *item;
+	cs_error_t err = CS_OK;
+
+	if (key_name == NULL) {
+		return (CS_ERR_INVALID_PARAM);
+	}
+
+	item = qb_map_get(icmap_map, key_name);
+	if (item == NULL) {
+		return (CS_ERR_NOT_EXIST);
+	}
+
+	switch (item->type) {
+	case ICMAP_VALUETYPE_INT8:
+	case ICMAP_VALUETYPE_UINT8:
+		*(uint8_t *)item->value += step;
+		break;
+	case ICMAP_VALUETYPE_INT16:
+	case ICMAP_VALUETYPE_UINT16:
+		*(uint16_t *)item->value += step;
+		break;
+	case ICMAP_VALUETYPE_INT32:
+	case ICMAP_VALUETYPE_UINT32:
+		*(uint32_t *)item->value += step;
+		break;
+	case ICMAP_VALUETYPE_INT64:
+	case ICMAP_VALUETYPE_UINT64:
+		*(uint64_t *)item->value += step;
+		break;
+	case ICMAP_VALUETYPE_FLOAT:
+	case ICMAP_VALUETYPE_DOUBLE:
+	case ICMAP_VALUETYPE_STRING:
+	case ICMAP_VALUETYPE_BINARY:
+		err = CS_ERR_INVALID_PARAM;
+		break;
+	}
+
+	if (err == CS_OK) {
+		qb_map_put(icmap_map, item->key_name, item);
+	}
+
+	return (err);
+}
+
 cs_error_t icmap_inc(const char *key_name)
 {
 	return (icmap_adjust_int(key_name, 1));
@@ -689,6 +740,16 @@ cs_error_t icmap_inc(const char *key_name)
 cs_error_t icmap_dec(const char *key_name)
 {
 	return (icmap_adjust_int(key_name, -1));
+}
+
+cs_error_t icmap_fast_inc(const char *key_name)
+{
+	return (icmap_fast_adjust_int(key_name, 1));
+}
+
+cs_error_t icmap_fast_dec(const char *key_name)
+{
+	return (icmap_fast_adjust_int(key_name, -1));
 }
 
 icmap_iter_t icmap_iter_init(const char *prefix)
@@ -742,7 +803,10 @@ static void icmap_notify_fn(uint32_t event, char *key, void *old_value, void *va
 		memset(&new_val, 0, sizeof(new_val));
 	}
 
-	if (old_item != NULL) {
+	/*
+	 * old_item == new_item if fast functions are used -> don't fill old value
+	 */
+	if (old_item != NULL && old_item != new_item) {
 		old_val.type = old_item->type;
 		old_val.len = old_item->value_len;
 		old_val.data = old_item->value;
