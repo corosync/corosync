@@ -461,7 +461,7 @@ static void read_quorum_config(void)
         }
 
 	if (two_node && cluster_members > 2) {
-		log_printf(LOGSYS_LEVEL_WARNING, "quorum.two_node was set but there are more than 2 nodes in the cluster. It will be ignored.");
+		log_printf(LOGSYS_LEVEL_WARNING, "quorum.two_node was set but there are more than 2 nodes in the cluster. It will be ignored.\n");
 		two_node = 0;
 	}
 
