@@ -448,45 +448,6 @@ error_exit:
 	return (error);
 }
 
-cs_error_t votequorum_setstate (
-	votequorum_handle_t handle)
-{
-	cs_error_t error;
-	struct votequorum_inst *votequorum_inst;
-	struct iovec iov;
-	struct req_lib_votequorum_general req_lib_votequorum_general;
-	struct res_lib_votequorum_status res_lib_votequorum_status;
-
-	error = hdb_error_to_cs(hdb_handle_get (&votequorum_handle_t_db, handle, (void *)&votequorum_inst));
-	if (error != CS_OK) {
-		return (error);
-	}
-
-	req_lib_votequorum_general.header.size = sizeof (struct req_lib_votequorum_general);
-	req_lib_votequorum_general.header.id = MESSAGE_REQ_VOTEQUORUM_SETSTATE;
-
-	iov.iov_base = (char *)&req_lib_votequorum_general;
-	iov.iov_len = sizeof (struct req_lib_votequorum_general);
-
-        error = qb_to_cs_error(qb_ipcc_sendv_recv (
-		votequorum_inst->c,
-		&iov,
-		1,
-                &res_lib_votequorum_status,
-		sizeof (struct res_lib_votequorum_status), CS_IPC_TIMEOUT_MS));
-
-	if (error != CS_OK) {
-		goto error_exit;
-	}
-
-	error = res_lib_votequorum_status.header.error;
-
-error_exit:
-	hdb_handle_put (&votequorum_handle_t_db, handle);
-
-	return (error);
-}
-
 cs_error_t votequorum_leaving (
 	votequorum_handle_t handle)
 {

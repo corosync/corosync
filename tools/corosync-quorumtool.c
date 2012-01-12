@@ -315,7 +315,6 @@ static int display_quorum_data(int is_quorate)
 		printf("Total votes:      %d\n", info.total_votes);
 		printf("Quorum:           %d %s\n", info.quorum, info.flags & VOTEQUORUM_INFO_FLAG_QUORATE?" ":"Activity blocked");
 		printf("Flags:            ");
-		if (info.flags & VOTEQUORUM_INFO_FLAG_HASSTATE) printf("HasState ");
 		if (info.flags & VOTEQUORUM_INFO_FLAG_TWONODE) printf("2Node ");
 		if (info.flags & VOTEQUORUM_INFO_FLAG_QUORATE) printf("Quorate ");
 		printf("\n");

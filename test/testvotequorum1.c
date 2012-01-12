@@ -128,7 +128,6 @@ int main(int argc, char *argv[])
 		printf("total votes      %d\n", info.total_votes);
 		printf("quorum           %d\n", info.quorum);
 		printf("flags            ");
-		if (info.flags & VOTEQUORUM_INFO_FLAG_HASSTATE) printf("HasState ");
 		if (info.flags & VOTEQUORUM_INFO_FLAG_TWONODE) printf("2Node ");
 		if (info.flags & VOTEQUORUM_INFO_FLAG_QUORATE) printf("Quorate ");
 		printf("\n");
@@ -154,7 +153,6 @@ int main(int argc, char *argv[])
 			printf("total votes      %d\n", info.total_votes);
 			printf("votequorum           %d\n", info.quorum);
 			printf("flags            ");
-			if (info.flags & VOTEQUORUM_INFO_FLAG_HASSTATE) printf("HasState ");
 			if (info.flags & VOTEQUORUM_INFO_FLAG_TWONODE) printf("2Node ");
 			if (info.flags & VOTEQUORUM_INFO_FLAG_QUORATE) printf("Quorate ");
 			printf("\n");

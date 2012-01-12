@@ -92,10 +92,9 @@ enum quorum_message_req_types {
 };
 
 #define NODE_FLAGS_BEENDOWN         1
-#define NODE_FLAGS_HASSTATE         8
-#define NODE_FLAGS_QDISK           16
-#define NODE_FLAGS_REMOVED         32
-#define NODE_FLAGS_US              64
+#define NODE_FLAGS_QDISK            8
+#define NODE_FLAGS_REMOVED         16
+#define NODE_FLAGS_US              32
 
 #define NODEID_US 0
 #define NODEID_QDEVICE -1
@@ -210,9 +209,6 @@ static void message_handler_req_lib_votequorum_qdisk_poll (void *conn,
 static void message_handler_req_lib_votequorum_qdisk_getinfo (void *conn,
 							      const void *message);
 
-static void message_handler_req_lib_votequorum_setstate (void *conn,
-							 const void *message);
-
 static void message_handler_req_lib_votequorum_leaving (void *conn,
 							const void *message);
 static void message_handler_req_lib_votequorum_trackstart (void *conn,
@@ -264,18 +260,14 @@ static struct corosync_lib_handler quorum_lib_service[] =
 		.flow_control		= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 7 */
-		.lib_handler_fn		= message_handler_req_lib_votequorum_setstate,
-		.flow_control		= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
-	},
-	{ /* 8 */
 		.lib_handler_fn		= message_handler_req_lib_votequorum_leaving,
 		.flow_control		= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
-	{ /* 9 */
+	{ /* 8 */
 		.lib_handler_fn		= message_handler_req_lib_votequorum_trackstart,
 		.flow_control		= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
-	{ /* 10 */
+	{ /* 9 */
 		.lib_handler_fn		= message_handler_req_lib_votequorum_trackstop,
 		.flow_control		= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
 	}
@@ -1281,9 +1273,6 @@ static void message_handler_req_lib_votequorum_getinfo (void *conn, const void *
 		res_lib_votequorum_getinfo.flags = 0;
 		res_lib_votequorum_getinfo.nodeid = node->node_id;
 
-		if (us->flags & NODE_FLAGS_HASSTATE) {
-			res_lib_votequorum_getinfo.flags |= VOTEQUORUM_INFO_FLAG_HASSTATE;
-		}
 		if (two_node) {
 			res_lib_votequorum_getinfo.flags |= VOTEQUORUM_INFO_FLAG_TWONODE;
 		}
@@ -1575,27 +1564,6 @@ static void message_handler_req_lib_votequorum_qdisk_getinfo (void *conn,
 	res_lib_votequorum_qdisk_getinfo.header.id = MESSAGE_RES_VOTEQUORUM_GETINFO;
 	res_lib_votequorum_qdisk_getinfo.header.error = error;
 	corosync_api->ipc_response_send(conn, &res_lib_votequorum_qdisk_getinfo, sizeof(res_lib_votequorum_qdisk_getinfo));
-
-	LEAVE();
-}
-
-static void message_handler_req_lib_votequorum_setstate (void *conn,
-							 const void *message)
-{
-	struct res_lib_votequorum_status res_lib_votequorum_status;
-	cs_error_t error = CS_OK;
-
-	ENTER();
-
-	us->flags |= NODE_FLAGS_HASSTATE;
-
-	/*
-	 * send status
-	 */
-	res_lib_votequorum_status.header.size = sizeof(res_lib_votequorum_status);
-	res_lib_votequorum_status.header.id = MESSAGE_RES_VOTEQUORUM_STATUS;
-	res_lib_votequorum_status.header.error = error;
-	corosync_api->ipc_response_send(conn, &res_lib_votequorum_status, sizeof(res_lib_votequorum_status));
 
 	LEAVE();
 }
