@@ -51,7 +51,7 @@ argument to uniquely identify the connection.  The
 argument is then used in other function calls to identify the connection to be used
 for communication with the quorum service.
 .PP
-Every time the voting configuraton changes (eg a node joins or leave the cluster) or the quorum status chnage,
+Every time the voting configuraton changes (eg a node joins or leave the cluster) or the quorum status change,
 the callback is called.
 The callback function is described by the following type definitions:
 
@@ -85,6 +85,28 @@ typedef struct {
 .fi
 .RE
 .IP
+.PP
+The
+.I quorum_type
+argument is set to:
+.IP
+.RS
+.ne 18
+.nf
+.PP
+#define QUORUM_FREE     0
+#define QUORUM_SET      1
+
+.ta
+.fi
+.RE
+.IP
+.PP
+.I QUORUM_FREE
+value means that no quorum algorithm is loaded and that no callbacks will take place.
+.PP
+.I QUORUM_SET
+value means that one quorum algorithm is configured and that callbacks will take place.
 .PP
 When a configuration change occurs, the callback
 is called from the
