@@ -138,7 +138,7 @@ static int corosync_main_config_format_set (
 	const char *error_reason;
 	char new_format_buffer[PATH_MAX];
 	char *value = NULL;
-	cs_error_t err;
+	int err = 0;
 
 	if (icmap_get_string("logging.fileline", &value) == CS_OK) {
 		if (strcmp (value, "on") == 0) {
@@ -161,6 +161,11 @@ static int corosync_main_config_format_set (
 		}
 
 		free(value);
+	}
+
+	if (err) {
+		error_reason = "not enough memory to set logging format buffer";
+		goto parse_error;
 	}
 
 	if (icmap_get_string("logging.function_name", &value) == CS_OK) {
@@ -186,6 +191,11 @@ static int corosync_main_config_format_set (
 		free(value);
 	}
 
+	if (err) {
+		error_reason = "not enough memory to set logging format buffer";
+		goto parse_error;
+	}
+
 	if (icmap_get_string("logging.timestamp", &value) == CS_OK) {
 		if (strcmp (value, "on") == 0) {
 			if(!insert_into_buffer(new_format_buffer,
@@ -202,6 +212,11 @@ static int corosync_main_config_format_set (
 		}
 
 		free(value);
+	}
+
+	if (err) {
+		error_reason = "not enough memory to set logging format buffer";
+		goto parse_error;
 	}
 
 	return (0);
