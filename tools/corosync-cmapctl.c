@@ -148,7 +148,7 @@ static void print_key(cmap_handle_t handle,
 		cmap_value_types_t type)
 {
 	char *str;
-	char *bin_value;
+	char *bin_value = NULL;
 	cs_error_t err;
 	int8_t i8;
 	uint8_t u8;
@@ -327,9 +327,13 @@ static void print_key(cmap_handle_t handle,
 		printf("%s)", "bin");
 		if (show_binary) {
 			printf(" = ");
-			print_binary_key(bin_value, value_len);
-			if (value == NULL) {
-				free(bin_value);
+			if (bin_value) {
+				print_binary_key(bin_value, value_len);
+				if (value == NULL) {
+					free(bin_value);
+				}
+			} else {
+				printf("*empty*");
 			}
 		}
 		break;
