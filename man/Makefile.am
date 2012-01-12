@@ -98,6 +98,7 @@ dist_man_MANS = \
 	quorum_finalize.3 \
 	quorum_fd_get.3 \
 	quorum_dispatch.3 \
+	quorum_context_get.3\
 	votequorum_dispatch.3 \
 	votequorum_fd_get.3 \
 	votequorum_context_get.3 \
