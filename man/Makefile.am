@@ -38,7 +38,6 @@ EXTRA_DIST		= index.html
 
 dist_man_MANS = \
 	corosync.conf.5 \
-	confdb_overview.8 \
 	corosync.8 \
 	corosync-objctl.8 \
 	corosync-blackbox.8 \
@@ -53,21 +52,6 @@ dist_man_MANS = \
 	cpg_overview.8 \
 	evs_overview.8 \
 	votequorum_overview.8 \
-	confdb_dispatch.3 \
-	confdb_fd_get.3 \
-	confdb_finalize.3 \
-	confdb_initialize.3 \
-	confdb_key_create.3 \
-	confdb_key_delete.3 \
-	confdb_key_iter.3 \
-	confdb_key_replace.3 \
-	confdb_object_create.3 \
-	confdb_object_destroy.3 \
-	confdb_object_find.3 \
-	confdb_object_iter.3 \
-	confdb_object_parent_get.3 \
-	confdb_context_get.3 \
-	confdb_context_set.3 \
 	cpg_context_get.3 \
 	cpg_context_set.3 \
 	cpg_dispatch.3 \
