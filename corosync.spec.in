@@ -309,12 +309,11 @@ The Corosync Cluster Engine APIs.
 %{_libdir}/pkgconfig/*.pc
 %{_mandir}/man3/cpg_*3*
 %{_mandir}/man3/evs_*3*
-%{_mandir}/man3/confdb_*3*
+%{_mandir}/man3/quorum_*3*
 %{_mandir}/man3/votequorum_*3*
 %{_mandir}/man3/sam_*3*
 %{_mandir}/man8/cpg_overview.8*
 %{_mandir}/man8/evs_overview.8*
-%{_mandir}/man8/confdb_overview.8*
 %{_mandir}/man8/votequorum_overview.8*
 %{_mandir}/man8/sam_overview.8*
 
