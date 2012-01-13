@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009-2011 Red Hat, Inc.
+ * Copyright (c) 2009-2012 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -415,7 +415,7 @@ struct req_exec_quorum_reconfigure {
 	unsigned int param;
 	unsigned int nodeid;
 	unsigned int value;
-};
+} __attribute__((packed));
 
 static void read_quorum_config(void)
 {
