@@ -36,37 +36,15 @@
 #include <config.h>
 
 #include <sys/types.h>
-#ifdef HAVE_ALLOCA_H
-#include <alloca.h>
-#endif
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <sys/un.h>
-#include <sys/time.h>
-#include <sys/ioctl.h>
-#include <netinet/in.h>
-#include <sys/uio.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <errno.h>
-#include <time.h>
-#include <unistd.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
 
 #include <qb/qbipc_common.h>
 #include <qb/qbdefs.h>
 #include <qb/qbutil.h>
 
-#include <corosync/corotypes.h>
 #include <corosync/corodefs.h>
-#include <corosync/cfg.h>
 #include <corosync/list.h>
 #include <corosync/lcr/lcr_comp.h>
 #include <corosync/logsys.h>
-#include <corosync/mar_gen.h>
 #include <corosync/coroapi.h>
 #include <corosync/engine/quorum.h>
 #include <corosync/icmap.h>
