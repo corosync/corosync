@@ -130,7 +130,6 @@ AC_CONFIG_FILES([Makefile
 		 exec/Makefile
 		 include/Makefile
 		 init/Makefile
-		 lcr/Makefile
 		 lib/Makefile
 		 man/Makefile
 		 pkgconfig/Makefile
@@ -288,11 +287,6 @@ AC_ARG_WITH([initddir],
 	[  --with-initddir=DIR     : path to init script directory. ],
 	[ INITDDIR="$withval" ],
 	[ INITDDIR="$sysconfdir/init.d" ])
-
-AC_ARG_WITH([lcrso-dir],
-	[  --with-lcrso-dir=DIR    : corosync lcrso files. ],
-	[ LCRSODIR="$withval" ],
-	[ LCRSODIR="$libexecdir/lcrso" ])
 
 AC_ARG_WITH([socket-dir],
 	[  --with-socket-dir=DIR   : corosync socket dir. ],
@@ -516,7 +510,6 @@ else
        enable_snmp=0
 fi
 AC_SUBST([SNMPLIBS])
-AC_SUBST([SNMP_LCRSO])
 AM_CONDITIONAL(BUILD_SNMP, test "${enable_snmp}" = "1")
 
 # extra warnings
@@ -556,12 +549,10 @@ if test "x${enable_coverage}" = xyes && \
 	OPT_CFLAGS="-O0"
 	COVERAGE_CFLAGS="-ftest-coverage -fprofile-arcs"
 	COVERAGE_LDFLAGS="-ftest-coverage -fprofile-arcs"
-	COVERAGE_LCRSO_EXTRA_LDFLAGS="-rdynamic"
 	PACKAGE_FEATURES="$PACKAGE_FEATURES coverage"
 else
 	COVERAGE_CFLAGS=""
 	COVERAGE_LDFLAGS=""
-	COVERAGE_LCRSO_EXTRA_LDFLAGS=""
 fi
 
 
@@ -603,14 +594,12 @@ LDFLAGS="$ENV_LDFLAGS $COVERAGE_LDFLAGS $OS_LDFLAGS"
 
 # substitute what we need:
 AC_SUBST([INITDDIR])
-AC_SUBST([LCRSODIR])
 AC_SUBST([SOCKETDIR])
 
 AC_SUBST([SOMAJOR])
 AC_SUBST([SOMINOR])
 AC_SUBST([SOMICRO])
 AC_SUBST([SONAME])
-AC_SUBST([COVERAGE_LCRSO_EXTRA_LDFLAGS])
 AC_SUBST([OS_DYFLAGS])
 
 AC_SUBST([OS_LDL])
@@ -629,7 +618,6 @@ AM_CONDITIONAL(BUILD_HTML_DOCS, test -n "${GROFF}")
 
 AC_SUBST([LINT_FLAGS])
 
-AC_DEFINE_UNQUOTED([LCRSODIR], "$(eval echo ${LCRSODIR})", [LCRSO directory])
 AC_DEFINE_UNQUOTED([SOCKETDIR], "$(eval echo ${SOCKETDIR})", [Socket directory])
 AC_DEFINE_UNQUOTED([LOCALSTATEDIR], "$(eval echo ${localstatedir})", [localstate directory])
 
@@ -655,7 +643,6 @@ AC_MSG_RESULT([  State information        = ${localstatedir}])
 AC_MSG_RESULT([  System configuration     = ${sysconfdir}])
 AC_MSG_RESULT([  System init.d directory  = ${INITDDIR}])
 AC_MSG_RESULT([  corosync config dir      = ${COROSYSCONFDIR}])
-AC_MSG_RESULT([  LCRSO                    = ${LCRSODIR}])
 AC_MSG_RESULT([  SOCKETDIR                = ${SOCKETDIR}])
 AC_MSG_RESULT([  Features                 =${PACKAGE_FEATURES}])
 AC_MSG_RESULT([])

@@ -67,9 +67,6 @@ noinst_HEADERS		= util.h \
 			  libquorum.versions libvotequorum.versions \
 			  libsam.versions libcmap.versions
 
-../lcr/lcr_ifact.o:
-	$(MAKE) -C ../lcr lcr_ifact.o
-
 if BUILD_DARWIN
 
 lib%.so: lib%.a $(LIBQB_LIBS)

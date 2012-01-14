@@ -173,23 +173,6 @@ fi
 %{_initrddir}/corosync
 %{_initrddir}/corosync-notifyd
 %endif
-%dir %{_libexecdir}/lcrso
-%{_libexecdir}/lcrso/coroparse.lcrso
-%{_libexecdir}/lcrso/service_cfg.lcrso
-%{_libexecdir}/lcrso/service_cpg.lcrso
-%{_libexecdir}/lcrso/service_evs.lcrso
-%{_libexecdir}/lcrso/service_cmap.lcrso
-%{_libexecdir}/lcrso/service_pload.lcrso
-%{_libexecdir}/lcrso/quorum_votequorum.lcrso
-%{_libexecdir}/lcrso/quorum_testquorum.lcrso
-%{_libexecdir}/lcrso/vsf_quorum.lcrso
-%{_libexecdir}/lcrso/vsf_ykd.lcrso
-%if %{with watchdog}
-%{_libexecdir}/lcrso/service_wd.lcrso
-%endif
-%if %{with monitoring}
-%{_libexecdir}/lcrso/service_mon.lcrso
-%endif
 %dir %{_localstatedir}/lib/corosync
 %dir %{_localstatedir}/log/cluster
 %{_mandir}/man8/corosync_overview.8*
@@ -225,7 +208,6 @@ This package contains corosync test agents.
 %{_bindir}/cpg_test_agent
 %{_bindir}/sam_test_agent
 %{_bindir}/votequorum_test_agent
-%{_libexecdir}/lcrso/service_syncv2.lcrso
 
 %endif
 
@@ -290,10 +272,6 @@ The Corosync Cluster Engine APIs.
 %{_includedir}/corosync/totem/totem.h
 %{_includedir}/corosync/totem/totemip.h
 %{_includedir}/corosync/totem/totempg.h
-%dir %{_includedir}/corosync/lcr/
-%{_includedir}/corosync/lcr/lcr_ckpt.h
-%{_includedir}/corosync/lcr/lcr_comp.h
-%{_includedir}/corosync/lcr/lcr_ifact.h
 %dir %{_includedir}/corosync/engine
 %{_includedir}/corosync/engine/config.h
 %{_includedir}/corosync/engine/quorum.h

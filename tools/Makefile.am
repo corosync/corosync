@@ -59,10 +59,10 @@ corosync_cfgtool_LDFLAGS= -L../lib
 corosync_cpgtool_LDADD	= -lcfg -lcpg $(LIBQB_LIBS)
 corosync_cpgtool_LDFLAGS= -L../lib
 corosync_quorumtool_LDADD = -lcmap -lcfg -lquorum \
-			    -lvotequorum ../lcr/liblcr.a $(LIBQB_LIBS)
+			    -lvotequorum $(LIBQB_LIBS)
 corosync_quorumtool_LDFLAGS = -L../lib
 
-corosync_notifyd_LDADD = -lcfg -lcmap ../lcr/liblcr.a \
+corosync_notifyd_LDADD = -lcfg -lcmap \
 			   $(LIBQB_LIBS) $(DBUS_LIBS) $(SNMPLIBS) \
 			   -lquorum
 corosync_notifyd_LDFLAGS = -L../lib

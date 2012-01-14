@@ -1,5 +1,2 @@
-/* Location of lcrso plugins */
-#undef LCRSODIR
-
 /* Location of sockets */
 #undef SOCKETDIR

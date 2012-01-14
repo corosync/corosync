@@ -38,7 +38,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <corosync/lcr/lcr_ifact.h>
 #include <corosync/swab.h>
 #include <corosync/totem/totem.h>
 

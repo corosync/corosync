@@ -61,8 +61,6 @@
 #include <corosync/list.h>
 #include <corosync/mar_gen.h>
 #include <corosync/ipc_quorum.h>
-#include <corosync/lcr/lcr_comp.h>
-#include <corosync/lcr/lcr_ifact.h>
 #include <corosync/mar_gen.h>
 #include <corosync/coroapi.h>
 #include <corosync/logsys.h>

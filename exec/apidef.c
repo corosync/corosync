@@ -42,7 +42,6 @@
 #include <qb/qbipcs.h>
 
 #include <corosync/corotypes.h>
-#include <corosync/lcr/lcr_ifact.h>
 #include <corosync/totem/totempg.h>
 #include <corosync/totem/totemip.h>
 #include <corosync/totem/totem.h>

@@ -55,7 +55,6 @@
 #include <pwd.h>
 
 #include <corosync/list.h>
-#include <corosync/lcr/lcr_comp.h>
 #include <qb/qbutil.h>
 #define LOGSYS_UTILS_ONLY 1
 #include <corosync/logsys.h>

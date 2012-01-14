@@ -69,7 +69,6 @@
 #include <corosync/corotypes.h>
 #include <corosync/corodefs.h>
 #include <corosync/list.h>
-#include <corosync/lcr/lcr_ifact.h>
 #include <corosync/config.h>
 #include <corosync/coroapi.h>
 #include <corosync/logsys.h>
