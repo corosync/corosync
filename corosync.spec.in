@@ -272,7 +272,7 @@ The Corosync Cluster Engine APIs.
 %{_includedir}/corosync/totem/totemip.h
 %{_includedir}/corosync/totem/totempg.h
 %dir %{_includedir}/corosync/engine
-%{_includedir}/corosync/engine/config.h
+%{_includedir}/corosync/engine/icmap.h
 %{_includedir}/corosync/engine/quorum.h
 %{_libdir}/libcfg.so
 %{_libdir}/libcpg.so

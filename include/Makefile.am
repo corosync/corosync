@@ -39,7 +39,7 @@ CS_INTERNAL_H		= ipc_cfg.h ipc_cpg.h ipc_evs.h ipc_pload.h ipc_quorum.h 	\
 			jhash.h pload.h quorum.h sq.h ipc_votequorum.h ipc_cmap.h \
 			logsys.h coroapi.h icmap.h
 
-ENGINE_H		= config.h quorum.h
+ENGINE_H		= quorum.h
 
 TOTEM_H			= totem.h totemip.h totempg.h
 

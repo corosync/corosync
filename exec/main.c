@@ -106,7 +106,6 @@
 #include <corosync/corodefs.h>
 #include <corosync/list.h>
 #include <corosync/totem/totempg.h>
-#include <corosync/engine/config.h>
 #include <corosync/logsys.h>
 #include <corosync/icmap.h>
 

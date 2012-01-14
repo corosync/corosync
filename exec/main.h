@@ -48,12 +48,9 @@
 #include <corosync/hdb.h>
 #include <qb/qbloop.h>
 #include <corosync/totem/totempg.h>
-#include <corosync/engine/config.h>
 #include <corosync/coroapi.h>
 
 extern unsigned long long *(*main_clm_get_by_nodeid) (unsigned int node_id);
-
-extern void main_get_config_modules(struct config_iface_ver0 ***modules, int *num);
 
 extern int main_mcast (
 	const struct iovec *iovec,
