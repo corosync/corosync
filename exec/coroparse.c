@@ -901,66 +901,6 @@ error_exit:
 	return res;
 }
 
-static int read_service_files_into_icmap(
-	const char **error_string)
-{
-	FILE *fp;
-	const char *dirname;
-	DIR *dp;
-	struct dirent *dirent;
-	struct dirent *entry;
-	char filename[PATH_MAX + FILENAME_MAX + 1];
-	int res = 0;
-	struct stat stat_buf;
-	size_t len;
-	int return_code;
-	char key_name[ICMAP_KEYNAME_MAXLEN];
-	struct main_cp_cb_data data;
-
-	dirname = COROSYSCONFDIR "/service.d";
-	dp = opendir (dirname);
-
-	if (dp == NULL)
-		return 0;
-
-	len = offsetof(struct dirent, d_name) + NAME_MAX + 1;
-
-	entry = malloc(len);
-	if (entry == NULL) {
-		res = 0;
-		goto error_exit;
-	}
-
-	for (return_code = readdir_r(dp, entry, &dirent);
-		dirent != NULL && return_code == 0;
-		return_code = readdir_r(dp, entry, &dirent)) {
-
-		snprintf(filename, sizeof (filename), "%s/%s", dirname, dirent->d_name);
-		stat (filename, &stat_buf);
-		if (S_ISREG(stat_buf.st_mode)) {
-
-			fp = fopen (filename, "r");
-			if (fp == NULL) continue;
-
-			key_name[0] = 0;
-
-			res = parse_section(fp, key_name, error_string, main_config_parser_cb, &data);
-
-			fclose (fp);
-
-			if (res != 0) {
-				goto error_exit;
-			}
-		}
-	}
-
-error_exit:
-	free (entry);
-	closedir(dp);
-
-	return res;
-}
-
 /* Read config file and load into icmap */
 static int read_config_file_into_icmap(
 	const char **error_string)
@@ -995,10 +935,6 @@ static int read_config_file_into_icmap(
 
 	if (res == 0) {
 	        res = read_uidgid_files_into_icmap(error_string);
-	}
-
-	if (res == 0) {
-	        res = read_service_files_into_icmap(error_string);
 	}
 
 	if (res == 0) {

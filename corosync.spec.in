@@ -156,7 +156,6 @@ fi
 %{_bindir}/corosync-xmlproc
 %endif
 %dir %{_sysconfdir}/corosync
-%dir %{_sysconfdir}/corosync/service.d
 %dir %{_sysconfdir}/corosync/uidgid.d
 %config(noreplace) %{_sysconfdir}/corosync/corosync.conf.example
 %config(noreplace) %{_sysconfdir}/corosync/corosync.conf.example.udpu
