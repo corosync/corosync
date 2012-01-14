@@ -62,6 +62,7 @@
 #include <corosync/icmap.h>
 #include <corosync/engine/config.h>
 
+#include "main.h"
 #include "util.h"
 
 enum parser_cb_type {
@@ -186,7 +187,7 @@ static char *strchr_rs (const char *haystack, int byte)
 	return ((char *) end_address);
 }
 
-static int aisparser_readconfig (const char **error_string)
+int coroparse_configparse (const char **error_string)
 {
 	if (read_config_file_into_icmap(error_string)) {
 		return -1;
@@ -194,7 +195,6 @@ static int aisparser_readconfig (const char **error_string)
 
 	return 0;
 }
-
 
 static char *remove_whitespace(char *string)
 {
@@ -1009,44 +1009,4 @@ static int read_config_file_into_icmap(
 	}
 
 	return res;
-}
-
-/*
- * Dynamic Loader definition
- */
-
-struct config_iface_ver0 aisparser_iface_ver0 = {
-	.config_readconfig        = aisparser_readconfig
-};
-
-struct lcr_iface corosync_aisparser_ver0[1] = {
-	{
-		.name				= "corosync_parser",
-		.version			= 0,
-		.versions_replace		= 0,
-		.versions_replace_count		= 0,
-		.dependencies			= 0,
-		.dependency_count		= 0,
-		.constructor			= NULL,
-		.destructor			= NULL,
-		.interfaces			= NULL,
-	}
-};
-
-struct corosync_service_handler *aisparser_get_handler_ver0 (void);
-
-struct lcr_comp aisparser_comp_ver0 = {
-	.iface_count				= 1,
-	.ifaces					= corosync_aisparser_ver0
-};
-
-#ifdef COROSYNC_SOLARIS
-void corosync_lcr_component_register (void);
-
-void corosync_lcr_component_register (void) {
-#else
-__attribute__ ((constructor)) static void corosync_lcr_component_register (void) {
-#endif
-        lcr_interfaces_set (&corosync_aisparser_ver0[0], &aisparser_iface_ver0);
-	lcr_component_register (&aisparser_comp_ver0);
 }

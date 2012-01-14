@@ -50,6 +50,8 @@
 #include <corosync/icmap.h>
 #include <corosync/ipc_votequorum.h>
 
+#include "service.h"
+
 LOGSYS_DECLARE_SUBSYS ("VOTEQ");
 
 /*
@@ -319,15 +321,7 @@ static struct corosync_lib_handler quorum_lib_service[] =
 	}
 };
 
-/*
- * Dynamic loader/lcrso object definition
- */
-
-static struct quorum_services_api_ver1 votequorum_iface_ver0 = {
-	.init				= votequorum_init
-};
-
-static struct corosync_service_engine quorum_service_handler = {
+static struct corosync_service_engine votequorum_service_engine = {
 	.name				= "corosync vote quorum service v1.0",
 	.id				= VOTEQUORUM_SERVICE,
 	.private_data_size		= sizeof (struct quorum_pd),
@@ -344,54 +338,9 @@ static struct corosync_service_engine quorum_service_handler = {
 	.sync_mode			= CS_SYNC_V1
 };
 
-static struct corosync_service_engine *quorum_get_service_handler_ver0 (void)
+struct corosync_service_engine *votequorum_get_service_engine_ver0 (void)
 {
-	return (&quorum_service_handler);
-}
-
-static struct corosync_service_engine_iface_ver0 quorum_service_handler_iface = {
-	.corosync_get_service_engine_ver0 = quorum_get_service_handler_ver0
-};
-
-static struct lcr_iface corosync_quorum_ver0[2] = {
-	{
-		.name				= "corosync_votequorum",
-		.version			= 0,
-		.versions_replace		= 0,
-		.versions_replace_count		= 0,
-		.dependencies			= 0,
-		.dependency_count		= 0,
-		.constructor			= NULL,
-		.destructor			= NULL,
-		.interfaces			= (void **)(void *)&votequorum_iface_ver0
-	},
-	{
-		.name				= "corosync_votequorum_iface",
-		.version			= 0,
-		.versions_replace		= 0,
-		.versions_replace_count		= 0,
-		.dependencies			= 0,
-		.dependency_count		= 0,
-		.constructor			= NULL,
-		.destructor			= NULL,
-		.interfaces			= NULL
-	}
-};
-
-static struct lcr_comp quorum_comp_ver0 = {
-	.iface_count			= 2,
-	.ifaces				= corosync_quorum_ver0
-};
-
-#ifdef COROSYNC_SOLARIS
-void corosync_lcr_component_register (void);
-void corosync_lcr_component_register (void) {
-#else
-__attribute__ ((constructor)) static void corosync_lcr_component_register (void) {
-#endif
-	lcr_interfaces_set (&corosync_quorum_ver0[0], &votequorum_iface_ver0);
-	lcr_interfaces_set (&corosync_quorum_ver0[1], &quorum_service_handler_iface);
-	lcr_component_register (&quorum_comp_ver0);
+	return (&votequorum_service_engine);
 }
 
 /*

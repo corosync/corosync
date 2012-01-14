@@ -63,7 +63,6 @@
 #include <corosync/coroapi.h>
 #include <corosync/engine/quorum.h>
 #include <corosync/swab.h>
-#include <corosync/lcr/lcr_comp.h>
 
 LOGSYS_DECLARE_SUBSYS ("YKD");
 
@@ -525,40 +524,4 @@ static void ykd_init (
 		1);
 
 	ykd_state_init ();
-}
-
-/*
- * lcrso object definition
- */
-static struct quorum_services_api_ver1 vsf_ykd_iface_ver0 = {
-	.init				= ykd_init,
-};
-
-static struct lcr_iface corosync_vsf_ykd_ver0[1] = {
-	{
-		.name			= "corosync_quorum_ykd",
-		.version		= 0,
-		.versions_replace	= 0,
-		.versions_replace_count	= 0,
-		.dependencies		= 0,
-		.dependency_count	= 0,
-		.constructor		= NULL,
-		.destructor		= NULL,
-		.interfaces		= (void **)(void *)&vsf_ykd_iface_ver0,
-	}
-};
-
-static struct lcr_comp vsf_ykd_comp_ver0 = {
-	.iface_count			= 1,
-	.ifaces				= corosync_vsf_ykd_ver0
-};
-
-#ifdef COROSYNC_SOLARIS
-void corosync_lcr_component_register (void);
-
-void corosync_lcr_component_register (void) {
-#else
-__attribute__ ((constructor)) static void corosync_lcr_component_register (void) {
-#endif
-	lcr_component_register (&vsf_ykd_comp_ver0);
 }

@@ -134,7 +134,6 @@ AC_CONFIG_FILES([Makefile
 		 lib/Makefile
 		 man/Makefile
 		 pkgconfig/Makefile
-		 services/Makefile
 		 test/Makefile
 		 cts/Makefile
 		 cts/agents/Makefile

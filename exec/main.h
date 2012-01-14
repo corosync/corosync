@@ -122,4 +122,6 @@ extern void cs_ipc_refcnt_inc(void *conn);
 
 extern void cs_ipc_refcnt_dec(void *conn);
 
+int coroparse_configparse (const char **error_string);
+
 #endif /* MAIN_H_DEFINED */

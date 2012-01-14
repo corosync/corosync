@@ -58,11 +58,12 @@
 #include <corosync/totem/totemip.h>
 #include <corosync/totem/totem.h>
 #include <corosync/ipc_cfg.h>
-#include <corosync/lcr/lcr_comp.h>
 #include <corosync/logsys.h>
 #include <corosync/coroapi.h>
 #include <corosync/icmap.h>
 #include <corosync/corodefs.h>
+
+#include "service.h"
 
 LOGSYS_DECLARE_SUBSYS ("CFG");
 
@@ -285,49 +286,9 @@ struct corosync_service_engine cfg_service_engine = {
 	.sync_mode				= CS_SYNC_V1
 };
 
-/*
- * Dynamic Loader definition
- */
-static struct corosync_service_engine *cfg_get_service_engine_ver0 (void);
-
-static struct corosync_service_engine_iface_ver0 cfg_service_engine_iface = {
-	.corosync_get_service_engine_ver0	= cfg_get_service_engine_ver0
-};
-
-static struct lcr_iface corosync_cfg_ver0[1] = {
-	{
-		.name				= "corosync_cfg",
-		.version			= 0,
-		.versions_replace		= 0,
-		.versions_replace_count		= 0,
-		.dependencies			= 0,
-		.dependency_count		= 0,
-		.constructor			= NULL,
-		.destructor			= NULL,
-		.interfaces			= NULL
-	}
-};
-
-static struct lcr_comp cfg_comp_ver0 = {
-	.iface_count				= 1,
-	.ifaces					= corosync_cfg_ver0
-};
-
-static struct corosync_service_engine *cfg_get_service_engine_ver0 (void)
+struct corosync_service_engine *cfg_get_service_engine_ver0 (void)
 {
 	return (&cfg_service_engine);
-}
-
-#ifdef COROSYNC_SOLARIS
-void corosync_lcr_component_register (void);
-
-void corosync_lcr_component_register (void) {
-#else
-__attribute__ ((constructor)) static void corosync_lcr_component_register (void) {
-#endif
-	lcr_interfaces_set (&corosync_cfg_ver0[0], &cfg_service_engine_iface);
-
-	lcr_component_register (&cfg_comp_ver0);
 }
 
 struct req_exec_cfg_ringreenable {

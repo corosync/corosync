@@ -51,10 +51,11 @@
 #include <corosync/list.h>
 #include <corosync/mar_gen.h>
 #include <corosync/ipc_cmap.h>
-#include <corosync/lcr/lcr_comp.h>
 #include <corosync/logsys.h>
 #include <corosync/coroapi.h>
 #include <corosync/icmap.h>
+
+#include "service.h"
 
 #define hdb_error_to_cs(_result_) qb_to_cs_error(_result_)
 
@@ -157,50 +158,9 @@ struct corosync_service_engine cmap_service_engine = {
 	.exec_exit_fn				= cmap_exec_exit_fn,
 };
 
-/*
- * Dynamic loader definition
- */
-static struct corosync_service_engine *cmap_get_service_engine_ver0 (void);
-
-static struct corosync_service_engine_iface_ver0 cmap_service_engine_iface = {
-	.corosync_get_service_engine_ver0		= cmap_get_service_engine_ver0
-};
-
-static struct lcr_iface corosync_cmap_ver0[1] = {
-	{
-		.name				= "corosync_cmap",
-		.version			= 0,
-		.versions_replace		= 0,
-		.versions_replace_count         = 0,
-		.dependencies			= 0,
-		.dependency_count		= 0,
-		.constructor			= NULL,
-		.destructor			= NULL,
-		.interfaces			= NULL
-	}
-};
-
-static struct lcr_comp cmap_comp_ver0 = {
-	.iface_count			= 1,
-	.ifaces			        = corosync_cmap_ver0
-};
-
-
-static struct corosync_service_engine *cmap_get_service_engine_ver0 (void)
+struct corosync_service_engine *cmap_get_service_engine_ver0 (void)
 {
 	return (&cmap_service_engine);
-}
-
-#ifdef COROSYNC_SOLARIS
-void corosync_lcr_component_register (void);
-
-void corosync_lcr_component_register (void) {
-#else
-__attribute__ ((constructor)) static void corosync_lcr_component_register (void) {
-#endif
-        lcr_interfaces_set (&corosync_cmap_ver0[0], &cmap_service_engine_iface);
-
-	lcr_component_register (&cmap_comp_ver0);
 }
 
 static int cmap_exec_exit_fn(void)

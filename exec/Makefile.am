@@ -42,25 +42,22 @@ if BUILD_RDMA
 TOTEM_SRC		+= totemiba.c
 endif
 
-LCRSO_SRC		= vsf_ykd.c coroparse.c vsf_quorum.c
-LCRSO_OBJS		= $(LCRSO_SRC:%.c=%.o)
-LCRSO			= $(LCRSO_SRC:%.c=%.lcrso)
-
 lib_LIBRARIES		= libtotem_pg.a
 sbin_PROGRAMS		= corosync
 
 libtotem_pg_a_SOURCES	= $(TOTEM_SRC)
 
-corosync_SOURCES 	= main.c ipc_glue.c util.c sync.c apidef.c service.c \
-			  timer.c totemconfig.c mainconfig.c quorum.c schedwrk.c \
-			  ../lcr/lcr_ifact.c evil.c syncv2.c logsys.c icmap.c
+corosync_SOURCES	= evil.c vsf_ykd.c coroparse.c vsf_quorum.c syncv2.c \
+			  logsys.c cfg.c cmap.c cpg.c evs.c mon.c pload.c \
+			  votequorum.c wd.c util.c schedwrk.c main.c \
+			  apidef.c quorum.c sync.c icmap.c timer.c \
+			  ipc_glue.c service.c mainconfig.c totemconfig.c
 corosync_LDADD	  	= -ltotem_pg $(LIBQB_LIBS) $(statgrab_LIBS)
 corosync_DEPENDENCIES	= libtotem_pg.so.$(SONAME)
 corosync_LDFLAGS	= $(OS_DYFLAGS) -L./
 
 TOTEM_OBJS		= $(TOTEM_SRC:%.c=%.o)
 LOGSYS_OBJS		= $(LOGSYS_SRC:%.c=%.o)
-ICMAP_OBJS		= $(ICMAP_SRC:%.c=%.o)
 
 SHARED_LIBS		= $(lib_LIBRARIES:%.a=%.so.$(SONAME))
 SHARED_LIBS_SO		= $(SHARED_LIBS:%.so.$(SONAME)=%.so)
@@ -72,12 +69,7 @@ noinst_HEADERS		= apidef.h crypto.h mainconfig.h main.h \
 			  totemudpu.h totemsrp.h util.h vsf.h schedwrk.h \
 			  evil.h syncv2.h fsm.h
 
-EXTRA_DIST		= $(LCRSO_SRC)
-
 if BUILD_DARWIN
-%.lcrso: %.o
-	$(CC) $(LDFLAGS) $(CFLAGS) -L$(top_builddir)/exec -bundle -bind_at_load -bundle_loader ./corosync $^ -o $@
-
 libtotem_pg.so.$(SONAME): $(TOTEM_OBJS)
 	$(CC) $(LDFLAGS) $(DARWIN_OPTS) $(TOTEM_OBJS) -o $@ -lpthread
 	ln -sf libtotem_pg.so.$(SONAME) libtotem_pg.so
@@ -86,19 +78,12 @@ libtotem_pg.so.$(SONAME): $(TOTEM_OBJS)
 else
 
 if BUILD_SOLARIS
-%.lcrso: %.o
-	$(LD) $(LDFLAGS) -G $^ -o $@
-
 libtotem_pg.so.$(SONAME): $(TOTEM_OBJS)
 	$(LD) $(LDFLAGS) -G $(TOTEM_OBJS) -o $@ -lpthread
 	ln -sf libtotem_pg.so.$(SONAME) libtotem_pg.so
 	ln -sf libtotem_pg.so.$(SONAME) libtotem_pg.so.$(SOMAJOR)
 
 else
-
-%.lcrso: %.o
-	$(CC) $(LDFLAGS) $(CFLAGS) $(COVERAGE_LCRSO_EXTRA_LDFLAGS) -shared -Wl,-soname=$@ $^ -o $@
-
 libtotem_pg.so.$(SONAME): $(TOTEM_OBJS)
 	$(CC) -shared -o $@ \
 		-Wl,-soname=libtotem_pg.so.$(SOMAJOR) \
@@ -120,8 +105,6 @@ install-exec-local:
 	$(INSTALL) -d $(DESTDIR)/$(libdir)
 	$(INSTALL) -m 755 $(SHARED_LIBS) $(DESTDIR)/$(libdir)
 	$(CP) -a $(SHARED_LIBS_SO) $(SHARED_LIBS_SO_TWO) $(DESTDIR)/$(libdir)
-	$(INSTALL) -d $(DESTDIR)/$(LCRSODIR)
-	$(INSTALL) -m 755 $(LCRSO) $(DESTDIR)/$(LCRSODIR)
 
 uninstall-local:
 	cd $(DESTDIR)/$(libdir) && \
@@ -130,4 +113,4 @@ uninstall-local:
 		rm -f $(LCRSO)
 
 clean-local:
-	rm -f corosync *.o *.lcrso gmon.out *.da *.bb *.bbg *.so*
+	rm -f corosync *.o gmon.out *.da *.bb *.bbg *.so*

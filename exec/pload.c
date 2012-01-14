@@ -59,12 +59,13 @@
 #include <corosync/swab.h>
 #include <corosync/corotypes.h>
 #include <corosync/corodefs.h>
-#include <corosync/lcr/lcr_comp.h>
 #include <corosync/mar_gen.h>
 #include <corosync/coroapi.h>
 #include <corosync/ipc_pload.h>
 #include <corosync/list.h>
 #include <corosync/logsys.h>
+
+#include "service.h"
 
 LOGSYS_DECLARE_SUBSYS ("PLOAD");
 
@@ -170,50 +171,9 @@ struct corosync_service_engine pload_service_engine = {
 
 static DECLARE_LIST_INIT (confchg_notify);
 
-/*
- * Dynamic loading descriptor
- */
-
-static struct corosync_service_engine *pload_get_service_engine_ver0 (void);
-
-static struct corosync_service_engine_iface_ver0 pload_service_engine_iface = {
-	.corosync_get_service_engine_ver0	= pload_get_service_engine_ver0
-};
-
-static struct lcr_iface corosync_pload_ver0[1] = {
-	{
-		.name			= "corosync_pload",
-		.version		= 0,
-		.versions_replace	= 0,
-		.versions_replace_count = 0,
-		.dependencies		= 0,
-		.dependency_count	= 0,
-		.constructor		= NULL,
-		.destructor		= NULL,
-		.interfaces		= NULL,
-	}
-};
-
-static struct lcr_comp pload_comp_ver0 = {
-	.iface_count	= 1,
-	.ifaces		= corosync_pload_ver0
-};
-
-static struct corosync_service_engine *pload_get_service_engine_ver0 (void)
+struct corosync_service_engine *pload_get_service_engine_ver0 (void)
 {
 	return (&pload_service_engine);
-}
-
-#ifdef COROSYNC_SOLARIS
-void corosync_lcr_component_register (void);
-
-void corosync_lcr_component_register (void) {
-#else
-__attribute__ ((constructor)) static void corosync_lcr_component_register (void) {
-#endif
-	lcr_interfaces_set (&corosync_pload_ver0[0], &pload_service_engine_iface);
-
-	lcr_component_register (&pload_comp_ver0);
 }
 
 static int pload_exec_init_fn (

@@ -43,13 +43,13 @@
 
 #include <corosync/corotypes.h>
 #include <corosync/corodefs.h>
-#include <corosync/lcr/lcr_comp.h>
 #include <corosync/coroapi.h>
 #include <corosync/list.h>
 #include <corosync/logsys.h>
 #include <corosync/icmap.h>
 #include "../exec/fsm.h"
 
+#include "service.h"
 
 typedef enum {
 	WD_RESOURCE_GOOD,
@@ -144,50 +144,9 @@ struct cs_fsm_entry wd_fsm_table[] = {
 	{ WD_S_FAILED,	WD_E_FAILURE,		NULL,			{-1} },
 };
 
-/*
- * Dynamic loading descriptor
- */
-
-static struct corosync_service_engine *wd_get_service_engine_ver0 (void);
-
-static struct corosync_service_engine_iface_ver0 wd_service_engine_iface = {
-	.corosync_get_service_engine_ver0	= wd_get_service_engine_ver0
-};
-
-static struct lcr_iface corosync_wd_ver0[1] = {
-	{
-		.name			= "corosync_wd",
-		.version		= 0,
-		.versions_replace	= 0,
-		.versions_replace_count = 0,
-		.dependencies		= 0,
-		.dependency_count	= 0,
-		.constructor		= NULL,
-		.destructor		= NULL,
-		.interfaces		= NULL,
-	}
-};
-
-static struct lcr_comp wd_comp_ver0 = {
-	.iface_count	= 1,
-	.ifaces		= corosync_wd_ver0
-};
-
-static struct corosync_service_engine *wd_get_service_engine_ver0 (void)
+struct corosync_service_engine *wd_get_service_engine_ver0 (void)
 {
 	return (&wd_service_engine);
-}
-
-#ifdef COROSYNC_SOLARIS
-void corosync_lcr_component_register (void);
-
-void corosync_lcr_component_register (void) {
-#else
-__attribute__ ((constructor)) static void corosync_lcr_component_register (void) {
-#endif
-	lcr_interfaces_set (&corosync_wd_ver0[0], &wd_service_engine_iface);
-
-	lcr_component_register (&wd_comp_ver0);
 }
 
 static const char * wd_res_state_to_str(struct cs_fsm* fsm,

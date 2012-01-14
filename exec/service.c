@@ -62,44 +62,55 @@ LOGSYS_DECLARE_SUBSYS ("SERV");
 struct default_service {
 	const char *name;
 	int ver;
+	struct corosync_service_engine *(*loader)(void);
 };
 
 static struct default_service default_services[] = {
 	{
-		.name			 = "corosync_evs",
-		.ver			 = 0,
+		.name		= "corosync_evs",
+		.ver		= 0,
+		.loader		= evs_get_service_engine_ver0
 	},
 	{
-		.name			 = "corosync_cfg",
-		.ver			 = 0,
+		.name		= "corosync_cfg",
+		.ver		= 0,
+		.loader		= cfg_get_service_engine_ver0
 	},
 	{
-		.name			 = "corosync_cpg",
-		.ver			 = 0,
+		.name		= "corosync_cpg",
+		.ver		= 0,
+		.loader		= cpg_get_service_engine_ver0
 	},
 	{
-		.name			 = "corosync_pload",
-		.ver			 = 0,
+		.name		= "corosync_pload",
+		.ver		= 0,
+		.loader		= pload_get_service_engine_ver0
 	},
 #ifdef HAVE_MONITORING
 	{
-		.name			 = "corosync_mon",
-		.ver			 = 0,
+		.name		= "corosync_mon",
+		.ver		= 0,
+		.loader		= mon_get_service_engine_ver0
 	},
 #endif
 #ifdef HAVE_WATCHDOG
 	{
-		.name			 = "corosync_wd",
-		.ver			 = 0,
+		.name		= "corosync_wd",
+		.ver		= 0,
+		.loader		= wd_get_service_engine_ver0
+	},
+#endif
+#ifdef HAVE_VOTEQUORUM
+	{
+		.name		= "corosync_quorum",
+		.ver		= 0,
+		.loader		= votequorum_get_service_engine_ver0
 	},
 #endif
 	{
-		.name			 = "corosync_quorum",
-		.ver			 = 0,
-	},
-	{
-		.name			 = "corosync_cmap",
-		.ver			 = 0,
+		.name		= "corosync_cmap",
+		.ver		= 0,
+		.loader		= cmap_get_service_engine_ver0
 	},
 };
 
@@ -121,116 +132,73 @@ int corosync_service_exiting[SERVICE_HANDLER_MAXIMUM_COUNT];
 
 static void (*service_unlink_all_complete) (void) = NULL;
 
-static unsigned int default_services_requested (struct corosync_api_v1 *corosync_api)
-{
-	char *value = NULL;
-	int res;
-
-	/*
-	 * Don't link default services if they have been disabled
-	 */
-	if (icmap_get_string("aisexec.defaultservices", &value) == CS_OK &&
-			value != NULL && strcmp(value, "no") == 0) {
-		res = 0;
-	} else {
-		res = -1;
-	}
-
-	free(value);
-	return (res);
-}
-
 unsigned int corosync_service_link_and_init (
 	struct corosync_api_v1 *corosync_api,
-	const char *service_name,
-	unsigned int service_ver)
+	struct default_service *service)
 {
-	struct corosync_service_engine_iface_ver0 *iface_ver0;
-	void *iface_ver0_p;
-	hdb_handle_t handle;
-	struct corosync_service_engine *service;
-	int res;
+	struct corosync_service_engine *service_engine;
+	int res = 0;
 	int fn;
 	char *name_sufix;
-	void* _start;
-	void* _stop;
 	char key_name[ICMAP_KEYNAME_MAXLEN];
-
-	/*
-	 * reference the service interface
-	 */
-	iface_ver0_p = NULL;
-	res = lcr_ifact_reference (
-		&handle,
-		service_name,
-		service_ver,
-		&iface_ver0_p,
-		(void *)0);
-
-	iface_ver0 = (struct corosync_service_engine_iface_ver0 *)iface_ver0_p;
-
-	if (res == -1 || iface_ver0 == 0) {
-		log_printf(LOGSYS_LEVEL_ERROR, "Service failed to load '%s'.\n", service_name);
-		return (-1);
-	}
-
 
 	/*
 	 * Initialize service
 	 */
-	service = iface_ver0->corosync_get_service_engine_ver0();
+	service_engine = service->loader();
 
-	corosync_service[service->id] = service;
+	corosync_service[service_engine->id] = service_engine;
 
 	/*
 	 * Register the log sites with libqb
 	 */
+/* SDAKE
 	_start = lcr_ifact_addr_get(handle, "__start___verbose");
 	_stop = lcr_ifact_addr_get(handle, "__stop___verbose");
 	qb_log_callsites_register(_start, _stop);
+*/
 
-	if (service->config_init_fn) {
-		res = service->config_init_fn (corosync_api);
+	if (service_engine->config_init_fn) {
+		res = service_engine->config_init_fn (corosync_api);
 	}
 
-	if (service->exec_init_fn) {
-		res = service->exec_init_fn (corosync_api);
+	if (service_engine->exec_init_fn) {
+		res = service_engine->exec_init_fn (corosync_api);
 	}
 
 	/*
 	 * Store service in cmap db
 	 */
-	snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "internal_configuration.service.%u.name", service->id);
-	icmap_set_string(key_name, service_name);
+	snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "internal_configuration.service.%u.name", service_engine->id);
+	icmap_set_string(key_name, service->name);
 
-	snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "internal_configuration.service.%u.ver", service->id);
-	icmap_set_uint32(key_name, service_ver);
+	snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "internal_configuration.service.%u.ver", service_engine->id);
+	icmap_set_uint32(key_name, service->ver);
 
-	snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "internal_configuration.service.%u.handle", service->id);
-	icmap_set_uint64(key_name, handle);
+	snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "internal_configuration.service.%u.handle", service_engine->id);
 
-	name_sufix = strrchr (service_name, '_');
+	name_sufix = strrchr (service->name, '_');
 	if (name_sufix)
 		name_sufix++;
 	else
-		name_sufix = (char*)service_name;
+		name_sufix = (char*)service->name;
 
 	snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "runtime.services.%s.service_id", name_sufix);
-	icmap_set_uint16(key_name, service->id);
+	icmap_set_uint16(key_name, service_engine->id);
 
-	for (fn = 0; fn < service->exec_engine_count; fn++) {
+	for (fn = 0; fn < service_engine->exec_engine_count; fn++) {
 		snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "runtime.services.%s.%d.tx", name_sufix, fn);
 		icmap_set_uint64(key_name, 0);
-		service_stats_tx[service->id][fn] = strdup(key_name);
+		service_stats_tx[service_engine->id][fn] = strdup(key_name);
 
 		snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "runtime.services.%s.%d.rx", name_sufix, fn);
 		icmap_set_uint64(key_name, 0);
-		service_stats_rx[service->id][fn] = strdup(key_name);
+		service_stats_rx[service_engine->id][fn] = strdup(key_name);
 	}
 
 	log_printf (LOGSYS_LEVEL_NOTICE,
-		"Service engine loaded: %s [%d]\n", service->name, service->id);
-	cs_ipcs_service_init(service);
+		"Service engine loaded: %s [%d]\n", service_engine->name, service_engine->id);
+	cs_ipcs_service_init(service_engine);
 	return (res);
 }
 
@@ -313,7 +281,6 @@ static unsigned int service_unlink_and_exit (
 	unsigned int service_ver)
 {
 	unsigned short service_id;
-	hdb_handle_t found_service_handle;
 	char *name_sufix;
 	int res;
 	const char *iter_key_name;
@@ -376,10 +343,12 @@ static unsigned int service_unlink_and_exit (
 
 		cs_ipcs_service_destroy (service_id);
 
+#ifdef SDAKE
 		snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "internal_configuration.service.%u.handle", service_id);
 		if (icmap_get_uint64(key_name, &found_service_handle) == CS_OK) {
 			lcr_ifact_release (found_service_handle);
 		}
+#endif
 
 		snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "internal_configuration.service.%u.handle", service_id);
 		icmap_delete(key_name);
@@ -399,57 +368,13 @@ unsigned int corosync_service_defaults_link_and_init (struct corosync_api_v1 *co
 {
 	unsigned int i;
 
-	icmap_iter_t iter;
-	char *found_service_name;
-	int res;
-	unsigned int found_service_ver;
-	const char *iter_key_name;
-	unsigned int service_pos;
-	char key_name[ICMAP_KEYNAME_MAXLEN];
-
-	icmap_set_ro_access("internal_configuration.", 1, 1);
-	icmap_set_ro_access("runtime.services.", 1, 1);
-
-	found_service_name = NULL;
-	iter = icmap_iter_init("service.");
-	while ((iter_key_name = icmap_iter_next(iter, NULL, NULL)) != NULL) {
-		res = sscanf(iter_key_name, "service.%u.%s", &service_pos, key_name);
-		if (res != 2) {
-			continue;
-		}
-		if (strcmp(key_name, "name") != 0) {
-			continue;
-		}
-
-		snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "service.%u.name", service_pos);
-		free(found_service_name);
-		if (icmap_get_string(key_name, &found_service_name) != CS_OK) {
-			continue;
-		}
-
-		snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "service.%u.ver", service_pos);
-		if (icmap_get_uint32(key_name, &found_service_ver) != CS_OK) {
-			continue;
-		}
-
-		corosync_service_link_and_init (
-			corosync_api,
-			found_service_name,
-			found_service_ver);
-	}
-	icmap_iter_finalize(iter);
-
- 	if (default_services_requested (corosync_api) == 0) {
- 		return (0);
- 	}
-
 	for (i = 0;
 		i < sizeof (default_services) / sizeof (struct default_service); i++) {
 
+		default_services[i].loader();
 		corosync_service_link_and_init (
 			corosync_api,
-			default_services[i].name,
-			default_services[i].ver);
+			&default_services[i]);
 	}
 
 	return (0);
@@ -477,7 +402,9 @@ static void service_unlink_schedwrk_handler (void *data) {
 
 	corosync_service[cb_data->service_engine] = NULL;
 
+#ifdef SDAKE
 	lcr_ifact_release (cb_data->service_handle);
+#endif
 
 	qb_loop_job_add(cs_poll_handle_get(),
 		QB_LOOP_HIGH,

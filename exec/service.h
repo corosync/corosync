@@ -39,13 +39,14 @@
 
 struct corosync_api_v1;
 
+struct default_service;
+
 /**
  * Link and initialize a service
  */
-extern unsigned int corosync_service_link_and_init (
+unsigned int corosync_service_link_and_init (
 	struct corosync_api_v1 *objdb,
-	const char *service_name,
-	unsigned int service_ver);
+	struct default_service *service_engine);
 
 /**
  * Unlink and exit a service
@@ -74,5 +75,14 @@ extern int corosync_service_exiting[];
 
 extern const char *service_stats_rx[SERVICE_HANDLER_MAXIMUM_COUNT][64];
 extern const char *service_stats_tx[SERVICE_HANDLER_MAXIMUM_COUNT][64];
+
+struct corosync_service_engine *votequorum_get_service_engine_ver0 (void);
+struct corosync_service_engine *pload_get_service_engine_ver0 (void);
+struct corosync_service_engine *cfg_get_service_engine_ver0 (void);
+struct corosync_service_engine *evs_get_service_engine_ver0 (void);
+struct corosync_service_engine *cpg_get_service_engine_ver0 (void);
+struct corosync_service_engine *mon_get_service_engine_ver0 (void);
+struct corosync_service_engine *wd_get_service_engine_ver0 (void);
+struct corosync_service_engine *cmap_get_service_engine_ver0 (void);
 
 #endif /* SERVICE_H_DEFINED */

@@ -62,12 +62,13 @@
 #include <corosync/corodefs.h>
 #include <corosync/list.h>
 #include <corosync/jhash.h>
-#include <corosync/lcr/lcr_comp.h>
 #include <corosync/logsys.h>
 #include <corosync/coroapi.h>
 
 #include <corosync/cpg.h>
 #include <corosync/ipc_cpg.h>
+
+#include "service.h"
 
 LOGSYS_DECLARE_SUBSYS ("CPG");
 
@@ -413,50 +414,9 @@ struct corosync_service_engine cpg_service_engine = {
 	.sync_abort                             = cpg_sync_abort
 };
 
-/*
- * Dynamic loader definition
- */
-static struct corosync_service_engine *cpg_get_service_engine_ver0 (void);
-
-static struct corosync_service_engine_iface_ver0 cpg_service_engine_iface = {
-	.corosync_get_service_engine_ver0		= cpg_get_service_engine_ver0
-};
-
-static struct lcr_iface corosync_cpg_ver0[1] = {
-	{
-		.name				= "corosync_cpg",
-		.version			= 0,
-		.versions_replace		= 0,
-		.versions_replace_count         = 0,
-		.dependencies			= 0,
-		.dependency_count		= 0,
-		.constructor			= NULL,
-		.destructor			= NULL,
-		.interfaces			= NULL
-	}
-};
-
-static struct lcr_comp cpg_comp_ver0 = {
-	.iface_count			= 1,
-	.ifaces			        = corosync_cpg_ver0
-};
-
-
-static struct corosync_service_engine *cpg_get_service_engine_ver0 (void)
+struct corosync_service_engine *cpg_get_service_engine_ver0 (void)
 {
 	return (&cpg_service_engine);
-}
-
-#ifdef COROSYNC_SOLARIS
-void corosync_lcr_component_register (void);
-
-void corosync_lcr_component_register (void) {
-#else
-__attribute__ ((constructor)) static void corosync_lcr_component_register (void) {
-#endif
-        lcr_interfaces_set (&corosync_cpg_ver0[0], &cpg_service_engine_iface);
-
-	lcr_component_register (&cpg_comp_ver0);
 }
 
 struct req_exec_cpg_procjoin {

@@ -71,7 +71,7 @@ corosysxmlxsltdir	= ${datadir}/corosync
 corosysxmlxslt_DATA	= conf/xml2conf.xsl
 endif
 
-SUBDIRS			= include lcr lib exec services tools test cts pkgconfig \
+SUBDIRS			= include lcr lib exec tools test cts pkgconfig \
 			  man init conf
 
 coverity:
@@ -104,7 +104,7 @@ test_lense.sh:
 endif
 
 lint:
-	for dir in lcr lib exec services tools test; do make -C $$dir lint; done
+	for dir in lcr lib exec tools test; do make -C $$dir lint; done
 
 .PHONY: doxygen
 doxygen:

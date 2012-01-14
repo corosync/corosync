@@ -41,13 +41,13 @@
 
 #include <corosync/corotypes.h>
 #include <corosync/corodefs.h>
-#include <corosync/lcr/lcr_comp.h>
 #include <corosync/coroapi.h>
 #include <corosync/list.h>
 #include <corosync/logsys.h>
 #include <corosync/icmap.h>
 #include "../exec/fsm.h"
 
+#include "service.h"
 
 LOGSYS_DECLARE_SUBSYS ("MON");
 
@@ -150,50 +150,9 @@ struct cs_fsm_entry mon_fsm_table[] = {
 	{ MON_S_FAILED,  MON_E_FAILURE,		NULL,			{-1} },
 };
 
-/*
- * Dynamic loading descriptor
- */
-
-static struct corosync_service_engine *mon_get_service_engine_ver0 (void);
-
-static struct corosync_service_engine_iface_ver0 mon_service_engine_iface = {
-	.corosync_get_service_engine_ver0	= mon_get_service_engine_ver0
-};
-
-static struct lcr_iface corosync_mon_ver0[1] = {
-	{
-		.name			= "corosync_mon",
-		.version		= 0,
-		.versions_replace	= 0,
-		.versions_replace_count = 0,
-		.dependencies		= 0,
-		.dependency_count	= 0,
-		.constructor		= NULL,
-		.destructor		= NULL,
-		.interfaces		= NULL,
-	}
-};
-
-static struct lcr_comp mon_comp_ver0 = {
-	.iface_count	= 1,
-	.ifaces		= corosync_mon_ver0
-};
-
-static struct corosync_service_engine *mon_get_service_engine_ver0 (void)
+struct corosync_service_engine *mon_get_service_engine_ver0 (void)
 {
 	return (&mon_service_engine);
-}
-
-#ifdef COROSYNC_SOLARIS
-void corosync_lcr_component_register (void);
-
-void corosync_lcr_component_register (void) {
-#else
-__attribute__ ((constructor)) static void corosync_lcr_component_register (void) {
-#endif
-	lcr_interfaces_set (&corosync_mon_ver0[0], &mon_service_engine_iface);
-
-	lcr_component_register (&mon_comp_ver0);
 }
 
 static const char * mon_res_state_to_str(struct cs_fsm* fsm,
