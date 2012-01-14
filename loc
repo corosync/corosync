@@ -3,9 +3,6 @@ echo "---------------------------"
 echo -n "exec LOC     "
 printf "%7.7s\n" `find exec -name *.[ch] -exec cat {} \; | wc -l`
 
-echo -n "services LOC "
-printf "%7.7s\n" `find services -name *.[ch] -exec cat {} \; | wc -l`
-
 echo -n "lib LOC      "
 printf "%7.7s\n" `find lib -name *.[ch] -exec cat {} \; | wc -l`
 
