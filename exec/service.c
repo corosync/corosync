@@ -148,15 +148,6 @@ unsigned int corosync_service_link_and_init (
 
 	corosync_service[service_engine->id] = service_engine;
 
-	/*
-	 * Register the log sites with libqb
-	 */
-/* SDAKE
-	_start = lcr_ifact_addr_get(handle, "__start___verbose");
-	_stop = lcr_ifact_addr_get(handle, "__stop___verbose");
-	qb_log_callsites_register(_start, _stop);
-*/
-
 	if (service_engine->config_init_fn) {
 		res = service_engine->config_init_fn (corosync_api);
 	}
@@ -342,13 +333,6 @@ static unsigned int service_unlink_and_exit (
 
 		cs_ipcs_service_destroy (service_id);
 
-#ifdef SDAKE
-		snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "internal_configuration.service.%u.handle", service_id);
-		if (icmap_get_uint64(key_name, &found_service_handle) == CS_OK) {
-			lcr_ifact_release (found_service_handle);
-		}
-#endif
-
 		snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "internal_configuration.service.%u.handle", service_id);
 		icmap_delete(key_name);
 		snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "internal_configuration.service.%u.name", service_id);
@@ -400,10 +384,6 @@ static void service_unlink_schedwrk_handler (void *data) {
 		corosync_service[cb_data->service_engine]->name);
 
 	corosync_service[cb_data->service_engine] = NULL;
-
-#ifdef SDAKE
-	lcr_ifact_release (cb_data->service_handle);
-#endif
 
 	qb_loop_job_add(cs_poll_handle_get(),
 		QB_LOOP_HIGH,
