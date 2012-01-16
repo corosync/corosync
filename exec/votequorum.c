@@ -750,7 +750,7 @@ static void votequorum_refresh_config(
 
 static void votequorum_exec_add_config_notification(void)
 {
-	icmap_track_t icmap_track;
+	icmap_track_t icmap_track = NULL;
 
 	ENTER();
 
