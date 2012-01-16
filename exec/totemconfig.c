@@ -158,6 +158,55 @@ static void totem_get_crypto_type(struct totem_config *totem_config)
 	}
 }
 
+static uint16_t generate_cluster_id (const char *cluster_name)
+{
+	int i;
+	int value = 0;
+
+	for (i = 0; i < strlen(cluster_name); i++) {
+		value <<= 1;
+		value += cluster_name[i];
+	}
+
+	return (value & 0xFFFF);
+}
+
+static int get_cluster_mcast_addr (
+		const char *cluster_name,
+		const struct totem_ip_address *bindnet,
+		unsigned int ringnumber,
+		struct totem_ip_address *res)
+{
+	uint16_t clusterid;
+	char addr[INET6_ADDRSTRLEN + 1];
+	int err;
+
+	if (cluster_name == NULL) {
+		return (-1);
+	}
+
+	clusterid = generate_cluster_id(cluster_name) + ringnumber;
+	memset (res, 0, sizeof(res));
+
+	switch (bindnet->family) {
+	case AF_INET:
+		snprintf(addr, sizeof(addr), "239.192.%d.%d", clusterid >> 8, clusterid % 0xFF);
+		break;
+	case AF_INET6:
+		snprintf(addr, sizeof(addr), "ff15::%x", clusterid);
+		break;
+	default:
+		/*
+		 * Unknown family
+		 */
+		return (-1);
+	}
+
+	err = totemip_parse (res, addr, 0);
+
+	return (err);
+}
+
 extern int totem_config_read (
 	struct totem_config *totem_config,
 	const char **error_string)
@@ -172,6 +221,7 @@ extern int totem_config_read (
 	char ringnumber_key[ICMAP_KEYNAME_MAXLEN];
 	char tmp_key[ICMAP_KEYNAME_MAXLEN];
 	uint8_t u8;
+	char *cluster_name = NULL;
 
 	memset (totem_config, 0, sizeof (struct totem_config));
 	totem_config->interfaces = malloc (sizeof (struct totem_interface) * INTERFACE_MAX);
@@ -225,6 +275,8 @@ extern int totem_config_read (
 
 	icmap_get_uint32("totem.netmtu", &totem_config->net_mtu);
 
+	icmap_get_string("totem.cluster_name", &cluster_name);
+
 	/*
 	 * Get things that might change in the future
 	 */
@@ -261,6 +313,15 @@ extern int totem_config_read (
 		if (icmap_get_string(tmp_key, &str) == CS_OK) {
 			res = totemip_parse (&totem_config->interfaces[ringnumber].mcast_addr, str, 0);
 			free(str);
+		} else {
+			/*
+			 * User not specified address -> autogenerate one from cluster_name key
+			 * (if available)
+			 */
+			res = get_cluster_mcast_addr (cluster_name,
+					&totem_config->interfaces[ringnumber].bindnet,
+					ringnumber,
+					&totem_config->interfaces[ringnumber].mcast_addr);
 		}
 
 		totem_config->broadcast_use = 0;
@@ -318,6 +379,8 @@ extern int totem_config_read (
 		}
 		free(str);
 	}
+
+	free(cluster_name);
 
 	add_totem_config_notification(totem_config);
 

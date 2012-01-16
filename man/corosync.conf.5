@@ -117,6 +117,9 @@ multicast address.
 This may also be an IPV6 multicast address, in which case IPV6 networking
 will be used.  If IPv6 networking is used, the nodeid field must be specified.
 
+It's not needed to use this option if cluster_name option is used. If both options
+are used, mcastaddr has higher priority.
+
 .TP
 mcastport
 This specifies the UDP port number.  It is possible to use the same multicast
@@ -268,6 +271,11 @@ the list of members that could potentially make up the membership before
 deployment.
 
 The default is udp.  The transport type can also be set to udpu or iba.
+
+.TP
+cluster_name
+This specifies the name of cluster and it's used for automatic generating
+of multicast address.
 
 Within the
 .B totem
