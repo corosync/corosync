@@ -649,7 +649,7 @@ static void wd_top_level_key_changed(
 static void watchdog_timeout_get_initial (void)
 {
 	uint32_t tmp_value_32;
-	icmap_track_t icmap_track;
+	icmap_track_t icmap_track = NULL;
 
 	ENTER();
 
