@@ -506,7 +506,7 @@ static void message_handler_req_lib_cmap_track_add(void *conn, const void *messa
 	const struct req_lib_cmap_track_add *req_lib_cmap_track_add = message;
 	struct res_lib_cmap_track_add res_lib_cmap_track_add;
 	cs_error_t ret;
-	cmap_track_handle_t handle;
+	cmap_track_handle_t handle = 0;
 	icmap_track_t track;
 	icmap_track_t *hdb_track;
 	struct cmap_track_user_data *cmap_track_user_data;
