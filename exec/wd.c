@@ -388,7 +388,7 @@ static int32_t wd_resource_create (char *res_path, char *res_name)
 {
 	char *state;
 	uint64_t tmp_value;
-	struct resource *ref = malloc (sizeof (struct resource));
+	struct resource *ref = calloc (1, sizeof (struct resource));
 	char key_name[ICMAP_KEYNAME_MAXLEN];
 
 	strcpy(ref->res_path, res_path);
