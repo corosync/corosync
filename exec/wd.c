@@ -510,7 +510,7 @@ static void wd_resource_created_cb(
 static void wd_scan_resources (void)
 {
 	int res_count = 0;
-	icmap_track_t icmap_track;
+	icmap_track_t icmap_track = NULL;
 	icmap_iter_t iter;
 	const char *key_name;
 	int res;
