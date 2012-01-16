@@ -221,7 +221,9 @@ extern int totem_config_read (
 	char ringnumber_key[ICMAP_KEYNAME_MAXLEN];
 	char tmp_key[ICMAP_KEYNAME_MAXLEN];
 	uint8_t u8;
+	uint16_t u16;
 	char *cluster_name = NULL;
+	int i;
 
 	memset (totem_config, 0, sizeof (struct totem_config));
 	totem_config->interfaces = malloc (sizeof (struct totem_interface) * INTERFACE_MAX);
@@ -367,6 +369,24 @@ extern int totem_config_read (
 		totem_config->interface_count++;
 	}
 	icmap_iter_finalize(iter);
+
+	/*
+	 * Store automatically generated items back to icmap
+	 */
+	for (i = 0; i < totem_config->interface_count; i++) {
+		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.mcastaddr", i);
+		if (icmap_get_string(tmp_key, &str) == CS_OK) {
+			free(str);
+		} else {
+			str = (char *)totemip_print(&totem_config->interfaces[i].mcast_addr);
+			icmap_set_string(tmp_key, str);
+		}
+
+		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.mcastport", i);
+		if (icmap_get_uint16(tmp_key, &u16) != CS_OK) {
+			icmap_set_uint16(tmp_key, totem_config->interfaces[i].ip_port);
+		}
+	}
 
 	totem_config->transport_number = TOTEM_TRANSPORT_UDP;
 	if (icmap_get_string("totem.transport", &str) == CS_OK) {
