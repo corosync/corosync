@@ -10,7 +10,6 @@
  Current priority list for Needle 2.0
 --------------------------------------
 1. quorum improvements
-2. allow a cluster name to autogenerate a mcastaddr
 
 --------------------------------------
  Current priority list for Needle 2.1
