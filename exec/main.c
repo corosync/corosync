@@ -618,7 +618,7 @@ static void totem_dynamic_notify(
 
 static void corosync_totem_dynamic_init (void)
 {
-	icmap_track_t icmap_track;
+	icmap_track_t icmap_track = NULL;
 
 	icmap_track_add("totem.interface.",
 		ICMAP_TRACK_ADD | ICMAP_TRACK_DELETE | ICMAP_TRACK_MODIFY | ICMAP_TRACK_PREFIX,
