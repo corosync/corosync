@@ -86,6 +86,8 @@
 #define RRP_PROBLEM_COUNT_THRESHOLD_MIN		2
 #define RRP_AUTORECOVERY_CHECK_TIMEOUT		1000
 
+#define DEFAULT_PORT				5405
+
 static char error_string_response[512];
 
 static void add_totem_config_notification(struct totem_config *totem_config);
@@ -298,7 +300,6 @@ extern int totem_config_read (
 		member_count = 0;
 
 		ringnumber = atoi(ringnumber_key);
-
 		/*
 		 * Get the bind net address
 		 */
@@ -342,7 +343,13 @@ extern int totem_config_read (
 		 * Get mcast port
 		 */
 		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.mcastport", ringnumber);
-		icmap_get_uint16(tmp_key, &totem_config->interfaces[ringnumber].ip_port);
+		if (icmap_get_uint16(tmp_key, &totem_config->interfaces[ringnumber].ip_port) != CS_OK) {
+			if (totem_config->broadcast_use) {
+				totem_config->interfaces[ringnumber].ip_port = DEFAULT_PORT + (2 * ringnumber);
+			} else {
+				totem_config->interfaces[ringnumber].ip_port = DEFAULT_PORT;
+			}
+		}
 
 		/*
 		 * Get the TTL
