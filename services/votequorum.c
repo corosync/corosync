@@ -328,7 +328,7 @@ static struct quorum_services_api_ver1 votequorum_iface_ver0 = {
 };
 
 static struct corosync_service_engine quorum_service_handler = {
-	.name				= "corosync votes quorum service v0.91",
+	.name				= "corosync vote quorum service v1.0",
 	.id				= VOTEQUORUM_SERVICE,
 	.private_data_size		= sizeof (struct quorum_pd),
 	.allow_inquorate		= CS_LIB_ALLOW_INQUORATE,
