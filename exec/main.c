@@ -890,7 +890,7 @@ static void fplay_key_change_notify_fn (
 
 static void corosync_fplay_control_init (void)
 {
-	icmap_track_t track;
+	icmap_track_t track = NULL;
 
 	icmap_set_string("runtime.blackbox.dump_flight_data", "no");
 	icmap_set_string("runtime.blackbox.dump_state", "no");
