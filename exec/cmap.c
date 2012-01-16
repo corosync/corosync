@@ -355,7 +355,7 @@ static void message_handler_req_lib_cmap_iter_init(void *conn, const void *messa
 	cs_error_t ret;
 	icmap_iter_t iter;
 	icmap_iter_t *hdb_iter;
-	cmap_iter_handle_t handle;
+	cmap_iter_handle_t handle = 0ULL;
 	const char *prefix;
 	struct cmap_conn_info *conn_info = (struct cmap_conn_info *)api->ipc_private_data_get (conn);
 
