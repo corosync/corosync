@@ -692,12 +692,6 @@ static void deliver_fn (
 		(msg, nodeid);
 }
 
-void main_get_config_modules(struct config_iface_ver0 ***modules, int *num)
-{
-	*modules = config_modules;
-	*num = num_config_modules;
-}
-
 int main_mcast (
         const struct iovec *iovec,
         unsigned int iov_len,
