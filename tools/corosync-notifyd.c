@@ -372,7 +372,11 @@ _cs_quorum_init(void)
 	quorum_fd_get(quorum_handle, &fd);
 	qb_loop_poll_add(main_loop, QB_LOOP_MED, fd, POLLIN|POLLNVAL, NULL,
 		_cs_quorum_dispatch);
-	quorum_trackstart(quorum_handle, CS_TRACK_CHANGES);
+	rc = quorum_trackstart(quorum_handle, CS_TRACK_CHANGES);
+	if (rc != CS_OK) {
+		qb_log(LOG_ERR, "Could not start tracking");
+		return;
+	}
 }
 
 static void
