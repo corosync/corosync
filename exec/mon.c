@@ -442,7 +442,7 @@ static void mon_instance_init (struct resource_instance* inst)
 {
 	uint64_t tmp_value;
 	char key_name[ICMAP_KEYNAME_MAXLEN];
-	icmap_track_t icmap_track;
+	icmap_track_t icmap_track = NULL;
 
 	snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "%s%s", inst->icmap_path, "current");
 	if (inst->max_type == ICMAP_VALUETYPE_INT32) {
