@@ -287,7 +287,7 @@ static int corosync_main_config_set (
 	const char **error_string)
 {
 	const char *error_reason = error_string_response;
-	char *value;
+	char *value = NULL;
 	int mode;
 	char key_name[ICMAP_KEYNAME_MAXLEN];
 
