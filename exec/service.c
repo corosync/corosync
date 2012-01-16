@@ -99,13 +99,16 @@ static struct default_service default_services[] = {
 		.loader		= wd_get_service_engine_ver0
 	},
 #endif
-#ifdef HAVE_VOTEQUORUM
 	{
-		.name		= "corosync_quorum",
+		.name		= "corosync_votequorum",
 		.ver		= 0,
 		.loader		= votequorum_get_service_engine_ver0
 	},
-#endif
+	{
+		.name		= "corosync_quorum",
+		.ver		= 0,
+		.loader		= vsf_quorum_get_service_engine_ver0
+	},
 	{
 		.name		= "corosync_cmap",
 		.ver		= 0,

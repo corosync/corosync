@@ -77,6 +77,8 @@ extern const char *service_stats_rx[SERVICE_HANDLER_MAXIMUM_COUNT][64];
 extern const char *service_stats_tx[SERVICE_HANDLER_MAXIMUM_COUNT][64];
 
 struct corosync_service_engine *votequorum_get_service_engine_ver0 (void);
+struct corosync_service_engine *vsf_quorum_get_service_engine_ver0 (void);
+struct corosync_service_engine *quorum_get_service_handler_ver0 (void);
 struct corosync_service_engine *pload_get_service_engine_ver0 (void);
 struct corosync_service_engine *cfg_get_service_engine_ver0 (void);
 struct corosync_service_engine *evs_get_service_engine_ver0 (void);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008, 2009 Red Hat, Inc.
+ * Copyright (c) 2008, 2009, 2012 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -66,6 +66,8 @@
 #include <corosync/logsys.h>
 #include <corosync/engine/quorum.h>
 #include <corosync/icmap.h>
+
+#include "votequorum.h"
 
 LOGSYS_DECLARE_SUBSYS ("QUORUM");
 
@@ -193,7 +195,7 @@ static struct corosync_service_engine quorum_service_handler = {
 	.sync_mode				= CS_SYNC_V1
 };
 
-static struct corosync_service_engine *quorum_get_service_engine_ver0 (void)
+struct corosync_service_engine *vsf_quorum_get_service_engine_ver0 (void)
 {
 	return (&quorum_service_handler);
 }
@@ -250,10 +252,11 @@ static struct quorum_callin_functions callins = {
 
 static int quorum_exec_init_fn (struct corosync_api_v1 *api)
 {
+	char *quorum_module;
+
 #ifdef COROSYNC_SOLARIS
 	logsys_subsys_init();
 #endif
-#ifdef SDAKE
 	corosync_api = api;
 	list_init (&lib_trackers_list);
 	list_init (&internal_trackers_list);
@@ -267,45 +270,25 @@ static int quorum_exec_init_fn (struct corosync_api_v1 *api)
 	 * Look for a quorum provider
 	 */
 	if (icmap_get_string("quorum.provider", &quorum_module) == CS_OK) {
-		res = lcr_ifact_reference (
-			&q_handle,
-			quorum_module,
-			0,
-			&quorum_iface_p,
-			0);
-
-		if (res == -1) {
-			log_printf (LOGSYS_LEVEL_NOTICE,
-				    "Couldn't load quorum provider %s\n",
-				    quorum_module);
-			free(quorum_module);
-			return (-1);
-		}
-
 		log_printf (LOGSYS_LEVEL_NOTICE,
 			    "Using quorum provider %s\n", quorum_module);
 
-		/*
-		 * Register the log sites with libqb
-		 */
-		_start = lcr_ifact_addr_get(q_handle, "__start___verbose");
-		_stop = lcr_ifact_addr_get(q_handle, "__stop___verbose");
-		qb_log_callsites_register(_start, _stop);
-
-		quorum_iface = (struct quorum_services_api_ver1 *)quorum_iface_p;
-		quorum_iface->init (api, quorum_api_set_quorum);
-		quorum_type = 1;
-		free(quorum_module);
+		if (strcmp (quorum_module, "corosync_votequorum") == 0) {
+			if (votequorum_init (api, quorum_api_set_quorum) == CS_OK) {
+				quorum_type = 1;
+			}
+		}
 	}
-	if (!quorum_iface) {
-		/*
-                 * With no quorum provider, we are always quorate
-                 */
+
+	/*
+	 * setting quorum_type and primary_designated in the right order is important
+	 * always try to lookup/init a quorum module, then revert back to be quorate
+	 */
+
+	if (quorum_type == 0) {
 		primary_designated = 1;
-		quorum_type = 0;
 	}
 
-#endif
 	return (0);
 }
 

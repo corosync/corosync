@@ -114,6 +114,8 @@ struct req_exec_quorum_reconfigure {
  * votequorum_exec onwire version (via totem)
  */
 
+#include "votequorum.h"
+
 #define VOTEQUORUM_MAJOR_VERSION 7
 #define VOTEQUORUM_MINOR_VERSION 0
 #define VOTEQUORUM_PATCH_VERSION 0
@@ -206,9 +208,6 @@ static int last_man_standing_timer_set = 0;
 /*
  * Service Interfaces required by service_message_handler struct
  */
-
-static void votequorum_init(struct corosync_api_v1 *api,
-			    quorum_set_quorate_fn_t q_set_quorate_fn);
 
 static void votequorum_confchg_fn (
 	enum totem_configuration_type configuration_type,
@@ -1191,8 +1190,9 @@ static void votequorum_confchg_fn (
 	LEAVE();
 }
 
-static void votequorum_init(struct corosync_api_v1 *api,
-			    quorum_set_quorate_fn_t q_set_quorate_fn)
+
+cs_error_t votequorum_init(struct corosync_api_v1 *api,
+	quorum_set_quorate_fn_t q_set_quorate_fn)
 {
 	ENTER();
 
@@ -1200,10 +1200,9 @@ static void votequorum_init(struct corosync_api_v1 *api,
 
 	votequorum_readconfig_static();
 
-	/* Load the library-servicing part of this module */
-	api->service_link_and_init(api, "corosync_votequorum_iface", 0);
-
 	LEAVE();
+
+	return CS_OK;
 }
 
 /*
