@@ -67,7 +67,6 @@ static struct corosync_api_v1 *corosync_api;
  */
 #define DEFAULT_EXPECTED   1024
 #define DEFAULT_QDEV_POLL 10000
-#define DEFAULT_LEAVE_TMO 10000
 
 static unsigned int quorumdev_poll = DEFAULT_QDEV_POLL;
 static char quorum_device_name[VOTEQUORUM_MAX_QDISK_NAME_LEN];
