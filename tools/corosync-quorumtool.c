@@ -279,6 +279,34 @@ static void quorum_notification_fn(
 	}
 }
 
+static void display_nodes_data(nodeid_format_t nodeid_format, name_format_t name_format)
+{
+	int i;
+
+	if (v_handle) {
+		printf("Nodeid     Votes  Name\n");
+	} else {
+		printf("Nodeid     Name\n");
+	}
+
+	for (i=0; i < g_view_list_entries; i++) {
+		if (nodeid_format == NODEID_FORMAT_DECIMAL) {
+			printf("%4u   ", g_view_list[i]);
+		} else {
+			printf("0x%04x   ", g_view_list[i]);
+		}
+		if (v_handle) {
+			printf("%3d  %s\n",  get_votes(g_view_list[i]), node_name(g_view_list[i], name_format));
+		} else {
+			printf("%s\n", node_name(g_view_list[i], name_format));
+		}
+	}
+	if (g_view_list_entries) {
+		free(g_view_list);
+		g_view_list = NULL;
+	}
+}
+
 static int display_quorum_data(int is_quorate, int loop)
 {
 	struct votequorum_info info;
@@ -395,6 +423,7 @@ static int monitor_status(nodeid_format_t nodeid_format, name_format_t name_form
 		time(&t);
 		printf("date:             %s", ctime((const time_t *)&t));
 		err = display_quorum_data(g_quorate, loop);
+		display_nodes_data(nodeid_format, name_format);
 		printf("\n");
 		loop = 1;
 		if (err != CS_OK) {
@@ -409,7 +438,6 @@ quorum_err:
 
 static int show_nodes(nodeid_format_t nodeid_format, name_format_t name_format)
 {
-	int i;
 	int err;
 	int result = EXIT_FAILURE;
 
@@ -424,34 +452,7 @@ static int show_nodes(nodeid_format_t nodeid_format, name_format_t name_format)
 		quorum_dispatch(q_handle, CS_DISPATCH_ONE);
 	}
 
-	quorum_finalize(q_handle);
-	q_handle = 0;
-
-	err = corosync_cfg_initialize(&c_handle, &c_callbacks);
-	if (err != CS_OK) {
-		fprintf(stderr, "Cannot initialise CFG service\n");
-		c_handle = 0;
-		goto err_exit;
-	}
-
-	if (v_handle) {
-		printf("Nodeid     Votes  Name\n");
-	} else {
-		printf("Nodeid     Name\n");
-	}
-
-	for (i=0; i < g_view_list_entries; i++) {
-		if (nodeid_format == NODEID_FORMAT_DECIMAL) {
-			printf("%4u   ", g_view_list[i]);
-		} else {
-			printf("0x%04x   ", g_view_list[i]);
-		}
-		if (v_handle) {
-			printf("%3d  %s\n",  get_votes(g_view_list[i]), node_name(g_view_list[i], name_format));
-		} else {
-			printf("%s\n", node_name(g_view_list[i], name_format));
-		}
-	}
+	display_nodes_data(nodeid_format, name_format);
 
 	result = EXIT_SUCCESS;
 err_exit:
