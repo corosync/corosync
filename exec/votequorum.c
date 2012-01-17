@@ -36,6 +36,7 @@
 #include <config.h>
 
 #include <sys/types.h>
+#include <stdint.h>
 
 #include <qb/qbipc_common.h>
 #include <qb/qbdefs.h>
@@ -90,23 +91,25 @@ static uint32_t last_man_standing_window = DEFAULT_LMS_WIN;
 
 struct req_exec_quorum_nodeinfo {
 	struct qb_ipc_request_header header __attribute__((aligned(8)));
-	unsigned int first_trans;
-	unsigned int votes;
-	unsigned int expected_votes;
-	unsigned int major_version;	/* Not backwards compatible */
-	unsigned int minor_version;	/* Backwards compatible */
-	unsigned int patch_version;	/* Backwards/forwards compatible */
-	unsigned int config_version;
-	unsigned int flags;
-	unsigned int wait_for_all_status;
-	unsigned int quorate;
+	uint8_t major_version;	/* Not backwards compatible */
+	uint8_t minor_version;	/* Backwards compatible */
+	uint8_t patch_version;	/* Backwards/forwards compatible */
+	uint8_t first_trans;
+	uint32_t votes;
+	uint32_t expected_votes;
+	uint16_t flags;
+	uint8_t quorate;
+	uint8_t wait_for_all_status;
 } __attribute__((packed));
 
 struct req_exec_quorum_reconfigure {
 	struct qb_ipc_request_header header __attribute__((aligned(8)));
-	unsigned int param;
+	uint8_t major_version;	/* Not backwards compatible */
+	uint8_t minor_version;	/* Backwards compatible */
+	uint8_t patch_version;	/* Backwards/forwards compatible */
+	uint8_t param;
+	uint32_t value;
 	unsigned int nodeid;
-	unsigned int value;
 } __attribute__((packed));
 
 /*
@@ -132,7 +135,7 @@ static int votequorum_exec_send_quorum_notification(void *conn, uint64_t context
 #define VOTEQUORUM_RECONFIG_PARAM_EXPECTED_VOTES 1
 #define VOTEQUORUM_RECONFIG_PARAM_NODE_VOTES     2
 
-static int votequorum_exec_send_reconfigure(int param, int nodeid, int value);
+static int votequorum_exec_send_reconfigure(uint8_t param, unsigned int nodeid, uint32_t value);
 
 /*
  * votequorum internal node status/view
@@ -144,7 +147,7 @@ static int votequorum_exec_send_reconfigure(int param, int nodeid, int value);
 #define NODE_FLAGS_US              32
 
 #define NODEID_US 0
-#define NODEID_QDEVICE -1
+#define NODEID_QDEVICE UINT32_MAX
 
 typedef enum {
 	NODESTATE_JOINING=1,
@@ -154,12 +157,11 @@ typedef enum {
 } nodestate_t;
 
 struct cluster_node {
-	int flags;
 	int node_id;
-	unsigned int expected_votes;
-	unsigned int votes;
-	time_t join_time;
 	nodestate_t state;
+	uint32_t votes;
+	uint32_t expected_votes;
+	uint16_t flags;
 	unsigned long long int last_hello; /* Only used for quorum devices */
 	struct list_head list;
 };
@@ -168,9 +170,9 @@ struct cluster_node {
  * votequorum internal quorum status
  */
 
-static int quorum;
-static int cluster_is_quorate;
-static int first_trans = 1;
+static uint8_t quorum;
+static uint8_t cluster_is_quorate;
+static uint8_t first_trans = 1;
 
 /*
  * votequorum membership data
@@ -385,7 +387,7 @@ static void node_add_ordered(struct cluster_node *newnode)
 	LEAVE();
 }
 
-static struct cluster_node *allocate_node(int nodeid)
+static struct cluster_node *allocate_node(unsigned int nodeid)
 {
 	struct cluster_node *cl;
 
@@ -405,7 +407,7 @@ static struct cluster_node *allocate_node(int nodeid)
 	return cl;
 }
 
-static struct cluster_node *find_node_by_nodeid(int nodeid)
+static struct cluster_node *find_node_by_nodeid(unsigned int nodeid)
 {
 	struct cluster_node *node;
 	struct list_head *tmp;
@@ -479,7 +481,7 @@ static int check_low_node_id_partition(void)
  * quorum calculation core bits
  */
 
-static int calculate_quorum(int allow_decrease, int max_expected, unsigned int *ret_total_votes)
+static int calculate_quorum(int allow_decrease, unsigned int max_expected, unsigned int *ret_total_votes)
 {
 	struct list_head *nodelist;
 	struct cluster_node *node;
@@ -493,7 +495,7 @@ static int calculate_quorum(int allow_decrease, int max_expected, unsigned int *
 	list_iterate(nodelist, &cluster_members_list) {
 		node = list_entry(nodelist, struct cluster_node, list);
 
-		log_printf(LOGSYS_LEVEL_DEBUG, "node %x state=%d, votes=%d, expected=%d\n",
+		log_printf(LOGSYS_LEVEL_DEBUG, "node %u state=%d, votes=%u, expected=%u\n",
 			   node->node_id, node->state, node->votes, node->expected_votes);
 
 		if (node->state == NODESTATE_MEMBER) {
@@ -550,7 +552,7 @@ static int calculate_quorum(int allow_decrease, int max_expected, unsigned int *
 	return newquorum;
 }
 
-static void are_we_quorate(int total_votes)
+static void are_we_quorate(unsigned int total_votes)
 {
 	int quorate;
 	int quorum_change = 0;
@@ -778,7 +780,7 @@ static void votequorum_exec_add_config_notification(void)
  * votequorum_exec core
  */
 
-static int votequorum_exec_send_reconfigure(int param, int nodeid, int value)
+static int votequorum_exec_send_reconfigure(uint8_t param, unsigned int nodeid, uint32_t value)
 {
 	struct req_exec_quorum_reconfigure req_exec_quorum_reconfigure;
 	struct iovec iov[1];
@@ -786,9 +788,12 @@ static int votequorum_exec_send_reconfigure(int param, int nodeid, int value)
 
 	ENTER();
 
+	req_exec_quorum_reconfigure.major_version = VOTEQUORUM_MAJOR_VERSION;
+	req_exec_quorum_reconfigure.minor_version = VOTEQUORUM_MINOR_VERSION;
+	req_exec_quorum_reconfigure.patch_version = VOTEQUORUM_PATCH_VERSION;
 	req_exec_quorum_reconfigure.param = param;
-	req_exec_quorum_reconfigure.nodeid = nodeid;
 	req_exec_quorum_reconfigure.value = value;
+	req_exec_quorum_reconfigure.nodeid = nodeid;
 
 	req_exec_quorum_reconfigure.header.id = SERVICE_ID_MAKE(VOTEQUORUM_SERVICE, MESSAGE_REQ_EXEC_VOTEQUORUM_RECONFIGURE);
 	req_exec_quorum_reconfigure.header.size = sizeof(req_exec_quorum_reconfigure);
@@ -810,15 +815,15 @@ static int votequorum_exec_send_nodeinfo(void)
 
 	ENTER();
 
-	req_exec_quorum_nodeinfo.expected_votes = us->expected_votes;
-	req_exec_quorum_nodeinfo.votes = us->votes;
 	req_exec_quorum_nodeinfo.major_version = VOTEQUORUM_MAJOR_VERSION;
 	req_exec_quorum_nodeinfo.minor_version = VOTEQUORUM_MINOR_VERSION;
 	req_exec_quorum_nodeinfo.patch_version = VOTEQUORUM_PATCH_VERSION;
-	req_exec_quorum_nodeinfo.flags = us->flags;
 	req_exec_quorum_nodeinfo.first_trans = first_trans;
-	req_exec_quorum_nodeinfo.wait_for_all_status = wait_for_all_status;
+	req_exec_quorum_nodeinfo.votes = us->votes;
+	req_exec_quorum_nodeinfo.expected_votes = us->expected_votes;
 	req_exec_quorum_nodeinfo.quorate = cluster_is_quorate;
+	req_exec_quorum_nodeinfo.flags = us->flags;
+	req_exec_quorum_nodeinfo.wait_for_all_status = wait_for_all_status;
 
 	req_exec_quorum_nodeinfo.header.id = SERVICE_ID_MAKE(VOTEQUORUM_SERVICE, MESSAGE_REQ_EXEC_VOTEQUORUM_NODEINFO);
 	req_exec_quorum_nodeinfo.header.size = sizeof(req_exec_quorum_nodeinfo);
@@ -929,13 +934,7 @@ static void exec_votequorum_nodeinfo_endian_convert (void *message)
 
 	nodeinfo->votes = swab32(nodeinfo->votes);
 	nodeinfo->expected_votes = swab32(nodeinfo->expected_votes);
-	nodeinfo->major_version = swab32(nodeinfo->major_version);
-	nodeinfo->minor_version = swab32(nodeinfo->minor_version);
-	nodeinfo->patch_version = swab32(nodeinfo->patch_version);
-	nodeinfo->config_version = swab32(nodeinfo->config_version);
-	nodeinfo->flags = swab32(nodeinfo->flags);
-	nodeinfo->wait_for_all_status = swab32(nodeinfo->wait_for_all_status);
-	nodeinfo->quorate = swab32(nodeinfo->quorate);
+	nodeinfo->flags = swab16(nodeinfo->flags);
 
 	LEAVE();
 }
@@ -953,7 +952,11 @@ static void message_handler_req_exec_votequorum_nodeinfo (
 
 	ENTER();
 
-	log_printf(LOGSYS_LEVEL_DEBUG, "got nodeinfo message from cluster node %d\n", nodeid);
+	log_printf(LOGSYS_LEVEL_DEBUG, "got nodeinfo message from cluster node %u\n", nodeid);
+
+	/*
+	 * TODO: add version checking for onwire compat
+	 */	
 
 	node = find_node_by_nodeid(nodeid);
 	if (!node) {
@@ -1036,7 +1039,11 @@ static void message_handler_req_exec_votequorum_reconfigure (
 
 	ENTER();
 
-	log_printf(LOGSYS_LEVEL_DEBUG, "got reconfigure message from cluster node %d\n", nodeid);
+	log_printf(LOGSYS_LEVEL_DEBUG, "got reconfigure message from cluster node %u\n", nodeid);
+
+	/*
+	 * TODO: add version checking for onwire compat
+	 */	
 
 	node = find_node_by_nodeid(req_exec_quorum_reconfigure->nodeid);
 	if (!node) {
@@ -1092,7 +1099,6 @@ static int votequorum_exec_init_fn (struct corosync_api_v1 *api)
 	us->state = NODESTATE_MEMBER;
 	us->expected_votes = DEFAULT_EXPECTED;
 	us->votes = 1;
-	time(&us->join_time);
 
 	votequorum_readconfig_dynamic();
 	recalculate_quorum(0, 0);
@@ -1292,7 +1298,7 @@ static void message_handler_req_lib_votequorum_getinfo (void *conn, const void *
 
 	ENTER();
 
-	log_printf(LOGSYS_LEVEL_DEBUG, "got getinfo request on %p for node %d\n", conn, req_lib_votequorum_getinfo->nodeid);
+	log_printf(LOGSYS_LEVEL_DEBUG, "got getinfo request on %p for node %u\n", conn, req_lib_votequorum_getinfo->nodeid);
 
 	node = find_node_by_nodeid(req_lib_votequorum_getinfo->nodeid);
 	if (node) {
