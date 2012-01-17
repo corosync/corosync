@@ -58,7 +58,6 @@ LOGSYS_DECLARE_SUBSYS ("VOTEQ");
  */
 
 static struct corosync_api_v1 *corosync_api;
-static int votequorum_configured = 0;
 
 /*
  * votequorum global config vars
@@ -222,6 +221,8 @@ static quorum_set_quorate_fn_t quorum_callback;
  * votequorum_exec handler and definitions
  */
 
+static int votequorum_exec_init_fn (struct corosync_api_v1 *api);
+
 static void message_handler_req_exec_votequorum_nodeinfo (
 	const void *message,
 	unsigned int nodeid);
@@ -328,6 +329,7 @@ static struct corosync_service_engine votequorum_service_engine = {
 	.lib_exit_fn			= quorum_lib_exit_fn,
 	.lib_engine			= quorum_lib_service,
 	.lib_engine_count		= sizeof (quorum_lib_service) / sizeof (struct corosync_lib_handler),
+	.exec_init_fn			= votequorum_exec_init_fn,
 	.exec_engine			= votequorum_exec_engine,
 	.exec_engine_count		= sizeof (votequorum_exec_engine) / sizeof (struct corosync_exec_handler),
 	.confchg_fn			= votequorum_confchg_fn,
@@ -338,6 +340,14 @@ struct corosync_service_engine *votequorum_get_service_engine_ver0 (void)
 {
 	return (&votequorum_service_engine);
 }
+
+static struct default_service votequorum_service[] = {
+	{
+		.name		= "corosync_votequorum",
+		.ver		= 0,
+		.loader		= votequorum_get_service_engine_ver0
+	},
+};
 
 /*
  * common/utility macros/functions
@@ -1131,11 +1141,6 @@ static void votequorum_confchg_fn (
 
 	ENTER();
 
-	if (votequorum_configured == 0) {
-		LEAVE();
-		return;
-	}
-
 	if (member_list_entries > 1) {
 		first_trans = 0;
 	}
@@ -1205,12 +1210,8 @@ cs_error_t votequorum_init(struct corosync_api_v1 *api,
 
 	votequorum_readconfig_static();
 
-	if (votequorum_exec_init_fn(api) != 0) {
-		LEAVE();
-		return CS_ERR_NO_MEMORY;
-	}
-
-	votequorum_configured = 1;
+	corosync_service_link_and_init(corosync_api,
+				       &votequorum_service[0]);
 
 	LEAVE();
 

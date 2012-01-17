@@ -39,7 +39,11 @@
 
 struct corosync_api_v1;
 
-struct default_service;
+struct default_service {
+	const char *name;
+	int ver;
+	struct corosync_service_engine *(*loader)(void);
+};
 
 /**
  * Link and initialize a service

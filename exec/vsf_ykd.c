@@ -146,8 +146,6 @@ hdb_handle_t schedwrk_state_send_callback_handle;
 
 static struct corosync_api_v1 *api;
 
-static int ykd_configured = 0;
-
 static void (*ykd_primary_callback_fn) (
 	const unsigned int *view_list,
 	size_t view_list_entries,
@@ -465,10 +463,6 @@ static void ykd_confchg_fn (
 {
 	int i;
 
-	if (ykd_configured == 0) {
-		return;
-	}
-
 	if (configuration_type != TOTEM_CONFIGURATION_REGULAR) {
 		return;
 	}
@@ -524,8 +518,6 @@ cs_error_t ykd_init (
 	if ((!corosync_api) || (!set_primary)) {
 		return CS_ERR_INVALID_PARAM;
 	}
-
-	ykd_configured = 1;
 
 	api->tpg_init (
 		&ykd_group_handle,

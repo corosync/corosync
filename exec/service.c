@@ -58,12 +58,6 @@
 
 LOGSYS_DECLARE_SUBSYS ("SERV");
 
-struct default_service {
-	const char *name;
-	int ver;
-	struct corosync_service_engine *(*loader)(void);
-};
-
 static struct default_service default_services[] = {
 	{
 		.name		= "corosync_evs",
@@ -99,11 +93,6 @@ static struct default_service default_services[] = {
 		.loader		= wd_get_service_engine_ver0
 	},
 #endif
-	{
-		.name		= "corosync_votequorum",
-		.ver		= 0,
-		.loader		= votequorum_get_service_engine_ver0
-	},
 	{
 		.name		= "corosync_quorum",
 		.ver		= 0,
