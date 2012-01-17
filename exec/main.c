@@ -144,10 +144,6 @@ static unsigned int service_count = 32;
 
 static struct totem_logging_configuration totem_logging_configuration;
 
-static int num_config_modules;
-
-static struct config_iface_ver0 *config_modules[MAX_DYNAMIC_SERVICES];
-
 static struct corosync_api_v1 *api = NULL;
 
 static enum cs_sync_mode minimum_sync_mode;
@@ -1114,8 +1110,6 @@ int main (int argc, char **argv, char **envp)
 	 * Initialize the corosync_api_v1 definition
 	 */
 	api = apidef_get ();
-
-	num_config_modules = 0;
 
 	res = coroparse_configparse(&error_string);
 	if (res == -1) {
