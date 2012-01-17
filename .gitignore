@@ -1,6 +1,5 @@
 *.o
 *.a
-*.lcrso
 *.so*
 .deps
 .version
