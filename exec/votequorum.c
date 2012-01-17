@@ -1071,6 +1071,11 @@ static int votequorum_exec_init_fn (struct corosync_api_v1 *api)
 
 	corosync_api = api;
 
+	if (!api) {
+		LEAVE();
+		return (1);
+	}
+
 	list_init(&cluster_members_list);
 	list_init(&trackers_list);
 
@@ -1195,6 +1200,12 @@ cs_error_t votequorum_init(struct corosync_api_v1 *api,
 	quorum_set_quorate_fn_t q_set_quorate_fn)
 {
 	ENTER();
+
+	if ((!api) || (!q_set_quorate_fn)) {
+		return CS_ERR_INVALID_PARAM;
+	}
+
+	corosync_api = api;
 
 	quorum_callback = q_set_quorate_fn;
 
