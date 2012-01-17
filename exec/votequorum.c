@@ -43,7 +43,6 @@
 
 #include <corosync/corodefs.h>
 #include <corosync/list.h>
-#include <corosync/lcr/lcr_comp.h>
 #include <corosync/logsys.h>
 #include <corosync/coroapi.h>
 #include <corosync/engine/quorum.h>
