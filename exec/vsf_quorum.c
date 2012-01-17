@@ -67,7 +67,9 @@
 #include <corosync/engine/quorum.h>
 #include <corosync/icmap.h>
 
+#include "service.h"
 #include "votequorum.h"
+#include "vsf_ykd.h"
 
 LOGSYS_DECLARE_SUBSYS ("QUORUM");
 
@@ -275,6 +277,11 @@ static int quorum_exec_init_fn (struct corosync_api_v1 *api)
 
 		if (strcmp (quorum_module, "corosync_votequorum") == 0) {
 			if (votequorum_init (api, quorum_api_set_quorum) == CS_OK) {
+				quorum_type = 1;
+			}
+		}
+		if (strcmp (quorum_module, "corosync_ykd") == 0) {
+			if (ykd_init (api, quorum_api_set_quorum) == CS_OK) {
 				quorum_type = 1;
 			}
 		}

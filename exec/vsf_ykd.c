@@ -64,6 +64,8 @@
 #include <corosync/engine/quorum.h>
 #include <corosync/swab.h>
 
+#include "vsf_ykd.h"
+
 LOGSYS_DECLARE_SUBSYS ("YKD");
 
 #define YKD_PROCESSOR_COUNT_MAX 32
@@ -506,12 +508,16 @@ struct corosync_tpg_group ykd_group = {
 	.group_len	= 3
 };
 
-static void ykd_init (
+cs_error_t ykd_init (
 	struct corosync_api_v1 *corosync_api,
 	quorum_set_quorate_fn_t set_primary)
 {
 	ykd_primary_callback_fn = set_primary;
 	api = corosync_api;
+
+	if ((!corosync_api) || (!set_primary)) {
+		return CS_ERR_INVALID_PARAM;
+	}
 
 	api->tpg_init (
 		&ykd_group_handle,
@@ -524,4 +530,6 @@ static void ykd_init (
 		1);
 
 	ykd_state_init ();
+
+	return CS_OK;
 }
