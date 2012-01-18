@@ -87,6 +87,8 @@ enum main_cp_cb_data_state {
 	MAIN_CP_CB_DATA_STATE_LOGGING_DAEMON,
 	MAIN_CP_CB_DATA_STATE_MEMBER,
 	MAIN_CP_CB_DATA_STATE_QUORUM,
+	MAIN_CP_CB_DATA_STATE_NODELIST,
+	MAIN_CP_CB_DATA_STATE_NODELIST_NODE,
 };
 
 struct key_value_list_item {
@@ -109,6 +111,9 @@ struct main_cp_cb_data {
 	char *subsys;
 	char *logging_daemon_name;
 	struct list_head member_items_head;
+
+	int node_number;
+	int ring0_addr_added;
 };
 
 static int read_config_file_into_icmap(
@@ -563,6 +568,26 @@ static int main_config_parser_cb(const char *path,
 			list_add(&kv_item->list, &data->member_items_head);
 			add_as_string = 0;
 			break;
+		case MAIN_CP_CB_DATA_STATE_NODELIST:
+			break;
+		case MAIN_CP_CB_DATA_STATE_NODELIST_NODE:
+			snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "nodelist.node.%u.%s", data->node_number, key);
+			if ((strcmp(key, "nodeid") == 0) ||
+			    (strcmp(key, "quorum_votes") == 0)) {
+				i = atoi(value);
+				icmap_set_uint32(key_name, i);
+				add_as_string = 0;
+			}
+
+			if (strcmp(key, "ring0_addr") == 0) {
+				data->ring0_addr_added = 1;
+			}
+
+			if (add_as_string) {
+				icmap_set_string(key_name, value);
+				add_as_string = 0;
+			}
+			break;
 		}
 
 		if (add_as_string) {
@@ -600,6 +625,14 @@ static int main_config_parser_cb(const char *path,
 		}
 		if (strcmp(path, "quorum") == 0) {
 			data->state = MAIN_CP_CB_DATA_STATE_QUORUM;
+		}
+		if (strcmp(path, "nodelist") == 0) {
+			data->state = MAIN_CP_CB_DATA_STATE_NODELIST;
+			data->node_number = 0;
+		}
+		if (strcmp(path, "nodelist.node") == 0) {
+			data->state = MAIN_CP_CB_DATA_STATE_NODELIST_NODE;
+			data->ring0_addr_added = 0;
 		}
 		break;
 	case PARSER_CB_SECTION_END:
@@ -783,6 +816,18 @@ static int main_config_parser_cb(const char *path,
 			break;
 		case MAIN_CP_CB_DATA_STATE_QUORUM:
 			data->state = MAIN_CP_CB_DATA_STATE_NORMAL;
+			break;
+		case MAIN_CP_CB_DATA_STATE_NODELIST:
+			data->state = MAIN_CP_CB_DATA_STATE_NORMAL;
+			break;
+		case MAIN_CP_CB_DATA_STATE_NODELIST_NODE:
+			if (!data->ring0_addr_added) {
+				*error_string = "No ring0_addr specified for node";
+
+				return (0);
+			}
+			data->node_number++;
+			data->state = MAIN_CP_CB_DATA_STATE_NODELIST;
 			break;
 		}
 		break;
