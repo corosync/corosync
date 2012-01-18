@@ -209,6 +209,57 @@ static int get_cluster_mcast_addr (
 	return (err);
 }
 
+static int find_local_node_in_nodelist(struct totem_config *totem_config)
+{
+	icmap_iter_t iter;
+	const char *iter_key;
+	int res = 0;
+	int node_pos;
+	int local_node_pos = -1;
+	struct totem_ip_address bind_addr;
+	int interface_up, interface_num;
+	char tmp_key[ICMAP_KEYNAME_MAXLEN];
+	char *node_addr_str;
+	struct totem_ip_address node_addr;
+
+	res = totemip_iface_check(&totem_config->interfaces[0].bindnet,
+		&bind_addr, &interface_up, &interface_num,
+		totem_config->clear_node_high_bit);
+	if (res == -1) {
+		return (-1);
+	}
+
+	iter = icmap_iter_init("nodelist.node.");
+	while ((iter_key = icmap_iter_next(iter, NULL, NULL)) != NULL) {
+		res = sscanf(iter_key, "nodelist.node.%u.%s", &node_pos, tmp_key);
+		if (res != 2) {
+			continue;
+		}
+
+		if (strcmp(tmp_key, "ring0_addr") != 0) {
+			continue;
+		}
+
+		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "nodelist.node.%u.ring0_addr", node_pos);
+		if (icmap_get_string(tmp_key, &node_addr_str) != CS_OK) {
+			continue;
+		}
+
+		res = totemip_parse (&node_addr, node_addr_str, 0);
+		free(node_addr_str);
+		if (res == -1) {
+			continue ;
+		}
+
+		if (totemip_equal(&bind_addr, &node_addr)) {
+			local_node_pos = node_pos;
+		}
+	}
+	icmap_iter_finalize(iter);
+
+	return (local_node_pos);
+}
+
 extern int totem_config_read (
 	struct totem_config *totem_config,
 	const char **error_string)
@@ -226,6 +277,7 @@ extern int totem_config_read (
 	uint16_t u16;
 	char *cluster_name = NULL;
 	int i;
+	int local_node_pos;
 
 	memset (totem_config, 0, sizeof (struct totem_config));
 	totem_config->interfaces = malloc (sizeof (struct totem_interface) * INTERFACE_MAX);
@@ -408,6 +460,23 @@ extern int totem_config_read (
 	}
 
 	free(cluster_name);
+
+	/*
+	 * If we have nodelist ...
+	 */
+	if (icmap_get_string("nodelist.node.0.ring0_addr", &str) == CS_OK) {
+		free(str);
+		/*
+		 * find local node
+		 */
+		local_node_pos = find_local_node_in_nodelist(totem_config);
+		if (local_node_pos != -1) {
+			/*
+			 * Store icmap key
+			 */
+			icmap_set_uint32("nodelist.local_node_pos", local_node_pos);
+		}
+	}
 
 	add_totem_config_notification(totem_config);
 
