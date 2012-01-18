@@ -204,6 +204,8 @@ This package contains corosync test agents.
 %defattr(755,root,root,-)
 %{_datadir}/corosync/tests/mem_leak_test.sh
 %{_datadir}/corosync/tests/net_breaker.sh
+%{_datadir}/corosync/tests/cmap-dispatch-deadlock.sh
+%{_datadir}/corosync/tests/shm_leak_audit.sh
 %{_bindir}/cpg_test_agent
 %{_bindir}/sam_test_agent
 %{_bindir}/votequorum_test_agent
