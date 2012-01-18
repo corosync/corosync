@@ -68,10 +68,13 @@ static struct corosync_api_v1 *corosync_api;
  * Silly default to prevent accidents!
  */
 #define DEFAULT_EXPECTED   1024
+
+#ifdef EXPERIMENTAL_QUORUM_DEVICE_API
 #define DEFAULT_QDEV_POLL 10000
 
 static unsigned int quorumdev_poll = DEFAULT_QDEV_POLL;
 static char quorum_device_name[VOTEQUORUM_MAX_QDISK_NAME_LEN];
+#endif
 
 static uint8_t two_node = 0;
 
@@ -202,7 +205,9 @@ static struct list_head trackers_list;
  * votequorum timers
  */
 
+#ifdef EXPERIMENTAL_QUORUM_DEVICE_API
 static corosync_timer_handle_t quorum_device_timer;
+#endif
 static corosync_timer_handle_t last_man_standing_timer;
 static int last_man_standing_timer_set = 0;
 
@@ -264,6 +269,13 @@ static void message_handler_req_lib_votequorum_setexpected (void *conn,
 static void message_handler_req_lib_votequorum_setvotes (void *conn,
 							 const void *message);
 
+static void message_handler_req_lib_votequorum_trackstart (void *conn,
+							   const void *message);
+
+static void message_handler_req_lib_votequorum_trackstop (void *conn,
+							  const void *message);
+
+#ifdef EXPERIMENTAL_QUORUM_DEVICE_API
 static void message_handler_req_lib_votequorum_qdisk_register (void *conn,
 							       const void *message);
 
@@ -275,11 +287,7 @@ static void message_handler_req_lib_votequorum_qdisk_poll (void *conn,
 
 static void message_handler_req_lib_votequorum_qdisk_getinfo (void *conn,
 							      const void *message);
-
-static void message_handler_req_lib_votequorum_trackstart (void *conn,
-							   const void *message);
-static void message_handler_req_lib_votequorum_trackstop (void *conn,
-							  const void *message);
+#endif
 
 static struct corosync_lib_handler quorum_lib_service[] =
 {
@@ -296,28 +304,30 @@ static struct corosync_lib_handler quorum_lib_service[] =
 		.flow_control		= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 3 */
-		.lib_handler_fn		= message_handler_req_lib_votequorum_qdisk_register,
-		.flow_control		= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
-	},
-	{ /* 4 */
-		.lib_handler_fn		= message_handler_req_lib_votequorum_qdisk_unregister,
-		.flow_control		= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
-	},
-	{ /* 5 */
-		.lib_handler_fn		= message_handler_req_lib_votequorum_qdisk_poll,
-		.flow_control		= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
-	},
-	{ /* 6 */
-		.lib_handler_fn		= message_handler_req_lib_votequorum_qdisk_getinfo,
-		.flow_control		= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
-	},
-	{ /* 7 */
 		.lib_handler_fn		= message_handler_req_lib_votequorum_trackstart,
 		.flow_control		= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
-	{ /* 8 */
+	{ /* 4 */
 		.lib_handler_fn		= message_handler_req_lib_votequorum_trackstop,
 		.flow_control		= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
+#ifdef EXPERIMENTAL_QUORUM_DEVICE_API
+	},
+	{ /* 5 */
+		.lib_handler_fn		= message_handler_req_lib_votequorum_qdisk_register,
+		.flow_control		= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
+	},
+	{ /* 6 */
+		.lib_handler_fn		= message_handler_req_lib_votequorum_qdisk_unregister,
+		.flow_control		= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
+	},
+	{ /* 7 */
+		.lib_handler_fn		= message_handler_req_lib_votequorum_qdisk_poll,
+		.flow_control		= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
+	},
+	{ /* 8 */
+		.lib_handler_fn		= message_handler_req_lib_votequorum_qdisk_getinfo,
+		.flow_control		= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
+#endif
 	}
 };
 
@@ -703,9 +713,11 @@ static void votequorum_readconfig_dynamic(void)
 		us->votes = 1;
 	}
 
+#ifdef EXPERIMENTAL_QUORUM_DEVICE_API
 	if (icmap_get_uint32("quorum.quorumdev_poll", &quorumdev_poll) != CS_OK) {
 		quorumdev_poll = DEFAULT_QDEV_POLL;
 	}
+#endif
 
 	icmap_get_uint8("quorum.two_node", &two_node);
 
@@ -1261,6 +1273,7 @@ static int quorum_lib_exit_fn (void *conn)
  * library internal functions
  */
 
+#ifdef EXPERIMENTAL_QUORUM_DEVICE_API
 static void quorum_device_timer_fn(void *arg)
 {
 	ENTER();
@@ -1282,6 +1295,7 @@ static void quorum_device_timer_fn(void *arg)
 
 	LEAVE();
 }
+#endif
 
 /*
  * Library Handler Functions
@@ -1439,6 +1453,72 @@ error_exit:
 	LEAVE();
 }
 
+static void message_handler_req_lib_votequorum_trackstart (void *conn,
+							   const void *message)
+{
+	const struct req_lib_votequorum_trackstart *req_lib_votequorum_trackstart = message;
+	struct res_lib_votequorum_status res_lib_votequorum_status;
+	struct quorum_pd *quorum_pd = (struct quorum_pd *)corosync_api->ipc_private_data_get (conn);
+
+	ENTER();
+	/*
+	 * If an immediate listing of the current cluster membership
+	 * is requested, generate membership list
+	 */
+	if (req_lib_votequorum_trackstart->track_flags & CS_TRACK_CURRENT ||
+	    req_lib_votequorum_trackstart->track_flags & CS_TRACK_CHANGES) {
+		log_printf(LOGSYS_LEVEL_DEBUG, "sending initial status to %p\n", conn);
+		votequorum_exec_send_quorum_notification(conn, req_lib_votequorum_trackstart->context);
+	}
+
+	/*
+	 * Record requests for tracking
+	 */
+	if (req_lib_votequorum_trackstart->track_flags & CS_TRACK_CHANGES ||
+	    req_lib_votequorum_trackstart->track_flags & CS_TRACK_CHANGES_ONLY) {
+
+		quorum_pd->track_flags = req_lib_votequorum_trackstart->track_flags;
+		quorum_pd->tracking_enabled = 1;
+		quorum_pd->tracking_context = req_lib_votequorum_trackstart->context;
+
+		list_add (&quorum_pd->list, &trackers_list);
+	}
+
+	res_lib_votequorum_status.header.size = sizeof(res_lib_votequorum_status);
+	res_lib_votequorum_status.header.id = MESSAGE_RES_VOTEQUORUM_STATUS;
+	res_lib_votequorum_status.header.error = CS_OK;
+	corosync_api->ipc_response_send(conn, &res_lib_votequorum_status, sizeof(res_lib_votequorum_status));
+
+	LEAVE();
+}
+
+static void message_handler_req_lib_votequorum_trackstop (void *conn,
+							  const void *message)
+{
+	struct res_lib_votequorum_status res_lib_votequorum_status;
+	struct quorum_pd *quorum_pd = (struct quorum_pd *)corosync_api->ipc_private_data_get (conn);
+	int error = CS_OK;
+
+	ENTER();
+
+	if (quorum_pd->tracking_enabled) {
+		error = CS_OK;
+		quorum_pd->tracking_enabled = 0;
+		list_del (&quorum_pd->list);
+		list_init (&quorum_pd->list);
+	} else {
+		error = CS_ERR_NOT_EXIST;
+	}
+
+	res_lib_votequorum_status.header.size = sizeof(res_lib_votequorum_status);
+	res_lib_votequorum_status.header.id = MESSAGE_RES_VOTEQUORUM_STATUS;
+	res_lib_votequorum_status.header.error = error;
+	corosync_api->ipc_response_send(conn, &res_lib_votequorum_status, sizeof(res_lib_votequorum_status));
+
+	LEAVE();
+}
+
+#ifdef EXPERIMENTAL_QUORUM_DEVICE_API
 static void message_handler_req_lib_votequorum_qdisk_register (void *conn,
 							       const void *message)
 {
@@ -1562,68 +1642,4 @@ static void message_handler_req_lib_votequorum_qdisk_getinfo (void *conn,
 
 	LEAVE();
 }
-
-static void message_handler_req_lib_votequorum_trackstart (void *conn,
-							   const void *message)
-{
-	const struct req_lib_votequorum_trackstart *req_lib_votequorum_trackstart = message;
-	struct res_lib_votequorum_status res_lib_votequorum_status;
-	struct quorum_pd *quorum_pd = (struct quorum_pd *)corosync_api->ipc_private_data_get (conn);
-
-	ENTER();
-	/*
-	 * If an immediate listing of the current cluster membership
-	 * is requested, generate membership list
-	 */
-	if (req_lib_votequorum_trackstart->track_flags & CS_TRACK_CURRENT ||
-	    req_lib_votequorum_trackstart->track_flags & CS_TRACK_CHANGES) {
-		log_printf(LOGSYS_LEVEL_DEBUG, "sending initial status to %p\n", conn);
-		votequorum_exec_send_quorum_notification(conn, req_lib_votequorum_trackstart->context);
-	}
-
-	/*
-	 * Record requests for tracking
-	 */
-	if (req_lib_votequorum_trackstart->track_flags & CS_TRACK_CHANGES ||
-	    req_lib_votequorum_trackstart->track_flags & CS_TRACK_CHANGES_ONLY) {
-
-		quorum_pd->track_flags = req_lib_votequorum_trackstart->track_flags;
-		quorum_pd->tracking_enabled = 1;
-		quorum_pd->tracking_context = req_lib_votequorum_trackstart->context;
-
-		list_add (&quorum_pd->list, &trackers_list);
-	}
-
-	res_lib_votequorum_status.header.size = sizeof(res_lib_votequorum_status);
-	res_lib_votequorum_status.header.id = MESSAGE_RES_VOTEQUORUM_STATUS;
-	res_lib_votequorum_status.header.error = CS_OK;
-	corosync_api->ipc_response_send(conn, &res_lib_votequorum_status, sizeof(res_lib_votequorum_status));
-
-	LEAVE();
-}
-
-static void message_handler_req_lib_votequorum_trackstop (void *conn,
-							  const void *message)
-{
-	struct res_lib_votequorum_status res_lib_votequorum_status;
-	struct quorum_pd *quorum_pd = (struct quorum_pd *)corosync_api->ipc_private_data_get (conn);
-	int error = CS_OK;
-
-	ENTER();
-
-	if (quorum_pd->tracking_enabled) {
-		error = CS_OK;
-		quorum_pd->tracking_enabled = 0;
-		list_del (&quorum_pd->list);
-		list_init (&quorum_pd->list);
-	} else {
-		error = CS_ERR_NOT_EXIST;
-	}
-
-	res_lib_votequorum_status.header.size = sizeof(res_lib_votequorum_status);
-	res_lib_votequorum_status.header.id = MESSAGE_RES_VOTEQUORUM_STATUS;
-	res_lib_votequorum_status.header.error = error;
-	corosync_api->ipc_response_send(conn, &res_lib_votequorum_status, sizeof(res_lib_votequorum_status));
-
-	LEAVE();
-}
+#endif

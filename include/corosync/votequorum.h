@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009-2011 Red Hat, Inc.
+ * Copyright (c) 2009-2012 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -42,7 +42,9 @@ extern "C" {
 
 typedef uint64_t votequorum_handle_t;
 
+#ifdef EXPERIMENTAL_QUORUM_DEVICE_API
 #define VOTEQUORUM_MAX_QDISK_NAME_LEN 255
+#endif
 
 #define VOTEQUORUM_INFO_FLAG_TWONODE            1
 #define VOTEQUORUM_INFO_FLAG_QUORATE            2
@@ -70,11 +72,13 @@ struct votequorum_info {
 	unsigned int flags;
 };
 
+#ifdef EXPERIMENTAL_QUORUM_DEVICE_API
 struct votequorum_qdisk_info {
 	unsigned int votes;
 	unsigned int state;
 	char name[VOTEQUORUM_MAX_QDISK_NAME_LEN];
 };
+#endif
 
 typedef struct {
 	uint32_t nodeid;
@@ -154,6 +158,29 @@ cs_error_t votequorum_setvotes (
 	unsigned int votes);
 
 /**
+ * Track node and quorum changes
+ */
+cs_error_t votequorum_trackstart (
+	votequorum_handle_t handle,
+	uint64_t context,
+	unsigned int flags );
+
+cs_error_t votequorum_trackstop (
+	votequorum_handle_t handle);
+
+/**
+ * Save and retrieve private data/context
+ */
+cs_error_t votequorum_context_get (
+	votequorum_handle_t handle,
+	void **context);
+
+cs_error_t votequorum_context_set (
+	votequorum_handle_t handle,
+	void *context);
+
+#ifdef EXPERIMENTAL_QUORUM_DEVICE_API
+/**
  * Register a quorum device
  *
  * it will be DEAD until polled
@@ -183,27 +210,7 @@ cs_error_t votequorum_qdisk_getinfo (
 	votequorum_handle_t handle,
 	struct votequorum_qdisk_info *info);
 
-/**
- * Track node and quorum changes
- */
-cs_error_t votequorum_trackstart (
-	votequorum_handle_t handle,
-	uint64_t context,
-	unsigned int flags );
-
-cs_error_t votequorum_trackstop (
-	votequorum_handle_t handle);
-
-/**
- * Save and retrieve private data/context
- */
-cs_error_t votequorum_context_get (
-	votequorum_handle_t handle,
-	void **context);
-
-cs_error_t votequorum_context_set (
-	votequorum_handle_t handle,
-	void *context);
+#endif
 
 #ifdef __cplusplus
 }

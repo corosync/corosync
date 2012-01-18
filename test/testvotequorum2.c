@@ -42,8 +42,8 @@
 #include <corosync/corotypes.h>
 #include <corosync/votequorum.h>
 
+#ifdef EXPERIMENTAL_QUORUM_DEVICE_API
 static votequorum_handle_t handle;
-
 
 static void print_info(int ok_to_fail)
 {
@@ -59,9 +59,11 @@ static void print_info(int ok_to_fail)
 		printf("\n");
 	}
 }
+#endif
 
 int main(int argc, char *argv[])
 {
+#ifdef EXPERIMENTAL_QUORUM_DEVICE_API
 	int pollcount=0, polltime=1;
 	int err;
 
@@ -95,5 +97,9 @@ int main(int argc, char *argv[])
 	}
 	print_info(1);
 
+	votequorum_finalize(handle);
+#else
+	fprintf(stderr, "qdisk support is not built in corosync/votequorum\n");	
+#endif
 	return 0;
 }

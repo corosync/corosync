@@ -272,182 +272,6 @@ error_exit:
 	return (error);
 }
 
-cs_error_t votequorum_qdisk_register (
-	votequorum_handle_t handle,
-	const char *name,
-	unsigned int votes)
-{
-	cs_error_t error;
-	struct votequorum_inst *votequorum_inst;
-	struct iovec iov;
-	struct req_lib_votequorum_qdisk_register req_lib_votequorum_qdisk_register;
-	struct res_lib_votequorum_status res_lib_votequorum_status;
-
-	if (strlen(name) > VOTEQUORUM_MAX_QDISK_NAME_LEN)
-		return CS_ERR_INVALID_PARAM;
-
-	error = hdb_error_to_cs(hdb_handle_get (&votequorum_handle_t_db, handle, (void *)&votequorum_inst));
-	if (error != CS_OK) {
-		return (error);
-	}
-
-
-	req_lib_votequorum_qdisk_register.header.size = sizeof (struct req_lib_votequorum_qdisk_register);
-	req_lib_votequorum_qdisk_register.header.id = MESSAGE_REQ_VOTEQUORUM_QDISK_REGISTER;
-	strcpy(req_lib_votequorum_qdisk_register.name, name);
-	req_lib_votequorum_qdisk_register.votes = votes;
-
-	iov.iov_base = (char *)&req_lib_votequorum_qdisk_register;
-	iov.iov_len = sizeof (struct req_lib_votequorum_qdisk_register);
-
-        error = qb_to_cs_error(qb_ipcc_sendv_recv (
-		votequorum_inst->c,
-		&iov,
-		1,
-                &res_lib_votequorum_status,
-		sizeof (struct res_lib_votequorum_status), CS_IPC_TIMEOUT_MS));
-
-	if (error != CS_OK) {
-		goto error_exit;
-	}
-
-	error = res_lib_votequorum_status.header.error;
-
-error_exit:
-	hdb_handle_put (&votequorum_handle_t_db, handle);
-
-	return (error);
-}
-
-cs_error_t votequorum_qdisk_poll (
-	votequorum_handle_t handle,
-	unsigned int state)
-{
-	cs_error_t error;
-	struct votequorum_inst *votequorum_inst;
-	struct iovec iov;
-	struct req_lib_votequorum_qdisk_poll req_lib_votequorum_qdisk_poll;
-	struct res_lib_votequorum_status res_lib_votequorum_status;
-
-	error = hdb_error_to_cs(hdb_handle_get (&votequorum_handle_t_db, handle, (void *)&votequorum_inst));
-	if (error != CS_OK) {
-		return (error);
-	}
-
-
-	req_lib_votequorum_qdisk_poll.header.size = sizeof (struct req_lib_votequorum_qdisk_poll);
-	req_lib_votequorum_qdisk_poll.header.id = MESSAGE_REQ_VOTEQUORUM_QDISK_POLL;
-	req_lib_votequorum_qdisk_poll.state = state;
-
-	iov.iov_base = (char *)&req_lib_votequorum_qdisk_poll;
-	iov.iov_len = sizeof (struct req_lib_votequorum_qdisk_poll);
-
-        error = qb_to_cs_error(qb_ipcc_sendv_recv (
-		votequorum_inst->c,
-		&iov,
-		1,
-                &res_lib_votequorum_status,
-		sizeof (struct res_lib_votequorum_status), CS_IPC_TIMEOUT_MS));
-
-	if (error != CS_OK) {
-		goto error_exit;
-	}
-
-	error = res_lib_votequorum_status.header.error;
-
-error_exit:
-	hdb_handle_put (&votequorum_handle_t_db, handle);
-
-	return (error);
-}
-
-cs_error_t votequorum_qdisk_unregister (
-	votequorum_handle_t handle)
-{
-	cs_error_t error;
-	struct votequorum_inst *votequorum_inst;
-	struct iovec iov;
-	struct req_lib_votequorum_general req_lib_votequorum_general;
-	struct res_lib_votequorum_status res_lib_votequorum_status;
-
-	error = hdb_error_to_cs(hdb_handle_get (&votequorum_handle_t_db, handle, (void *)&votequorum_inst));
-	if (error != CS_OK) {
-		return (error);
-	}
-
-	req_lib_votequorum_general.header.size = sizeof (struct req_lib_votequorum_general);
-	req_lib_votequorum_general.header.id = MESSAGE_REQ_VOTEQUORUM_QDISK_UNREGISTER;
-
-	iov.iov_base = (char *)&req_lib_votequorum_general;
-	iov.iov_len = sizeof (struct req_lib_votequorum_general);
-
-        error = qb_to_cs_error(qb_ipcc_sendv_recv (
-		votequorum_inst->c,
-		&iov,
-		1,
-                &res_lib_votequorum_status,
-		sizeof (struct res_lib_votequorum_status), CS_IPC_TIMEOUT_MS));
-
-	if (error != CS_OK) {
-		goto error_exit;
-	}
-
-	error = res_lib_votequorum_status.header.error;
-
-error_exit:
-	hdb_handle_put (&votequorum_handle_t_db, handle);
-
-	return (error);
-}
-
-
-
-cs_error_t votequorum_qdisk_getinfo (
-	votequorum_handle_t handle,
-	struct votequorum_qdisk_info *qinfo)
-{
-	cs_error_t error;
-	struct votequorum_inst *votequorum_inst;
-	struct iovec iov;
-	struct req_lib_votequorum_general req_lib_votequorum_general;
-	struct res_lib_votequorum_qdisk_getinfo res_lib_votequorum_qdisk_getinfo;
-
-	error = hdb_error_to_cs(hdb_handle_get (&votequorum_handle_t_db, handle, (void *)&votequorum_inst));
-	if (error != CS_OK) {
-		return (error);
-	}
-
-
-	req_lib_votequorum_general.header.size = sizeof (struct req_lib_votequorum_general);
-	req_lib_votequorum_general.header.id = MESSAGE_REQ_VOTEQUORUM_QDISK_GETINFO;
-
-	iov.iov_base = (char *)&req_lib_votequorum_general;
-	iov.iov_len = sizeof (struct req_lib_votequorum_general);
-
-        error = qb_to_cs_error(qb_ipcc_sendv_recv (
-		votequorum_inst->c,
-		&iov,
-		1,
-                &res_lib_votequorum_qdisk_getinfo,
-		sizeof (struct res_lib_votequorum_qdisk_getinfo), CS_IPC_TIMEOUT_MS));
-
-	if (error != CS_OK) {
-		goto error_exit;
-	}
-
-	error = res_lib_votequorum_qdisk_getinfo.header.error;
-
-	qinfo->votes = res_lib_votequorum_qdisk_getinfo.votes;
-	qinfo->state = res_lib_votequorum_qdisk_getinfo.state;
-	strcpy(qinfo->name, res_lib_votequorum_qdisk_getinfo.name);
-
-
-error_exit:
-	hdb_handle_put (&votequorum_handle_t_db, handle);
-
-	return (error);
-}
-
 cs_error_t votequorum_trackstart (
 	votequorum_handle_t handle,
 	uint64_t context,
@@ -704,3 +528,180 @@ error_put:
 	hdb_handle_put (&votequorum_handle_t_db, handle);
 	return (error);
 }
+
+#ifdef EXPERIMENTAL_QUORUM_DEVICE_API
+cs_error_t votequorum_qdisk_register (
+	votequorum_handle_t handle,
+	const char *name,
+	unsigned int votes)
+{
+	cs_error_t error;
+	struct votequorum_inst *votequorum_inst;
+	struct iovec iov;
+	struct req_lib_votequorum_qdisk_register req_lib_votequorum_qdisk_register;
+	struct res_lib_votequorum_status res_lib_votequorum_status;
+
+	if (strlen(name) > VOTEQUORUM_MAX_QDISK_NAME_LEN)
+		return CS_ERR_INVALID_PARAM;
+
+	error = hdb_error_to_cs(hdb_handle_get (&votequorum_handle_t_db, handle, (void *)&votequorum_inst));
+	if (error != CS_OK) {
+		return (error);
+	}
+
+
+	req_lib_votequorum_qdisk_register.header.size = sizeof (struct req_lib_votequorum_qdisk_register);
+	req_lib_votequorum_qdisk_register.header.id = MESSAGE_REQ_VOTEQUORUM_QDISK_REGISTER;
+	strcpy(req_lib_votequorum_qdisk_register.name, name);
+	req_lib_votequorum_qdisk_register.votes = votes;
+
+	iov.iov_base = (char *)&req_lib_votequorum_qdisk_register;
+	iov.iov_len = sizeof (struct req_lib_votequorum_qdisk_register);
+
+        error = qb_to_cs_error(qb_ipcc_sendv_recv (
+		votequorum_inst->c,
+		&iov,
+		1,
+                &res_lib_votequorum_status,
+		sizeof (struct res_lib_votequorum_status), CS_IPC_TIMEOUT_MS));
+
+	if (error != CS_OK) {
+		goto error_exit;
+	}
+
+	error = res_lib_votequorum_status.header.error;
+
+error_exit:
+	hdb_handle_put (&votequorum_handle_t_db, handle);
+
+	return (error);
+}
+
+cs_error_t votequorum_qdisk_poll (
+	votequorum_handle_t handle,
+	unsigned int state)
+{
+	cs_error_t error;
+	struct votequorum_inst *votequorum_inst;
+	struct iovec iov;
+	struct req_lib_votequorum_qdisk_poll req_lib_votequorum_qdisk_poll;
+	struct res_lib_votequorum_status res_lib_votequorum_status;
+
+	error = hdb_error_to_cs(hdb_handle_get (&votequorum_handle_t_db, handle, (void *)&votequorum_inst));
+	if (error != CS_OK) {
+		return (error);
+	}
+
+
+	req_lib_votequorum_qdisk_poll.header.size = sizeof (struct req_lib_votequorum_qdisk_poll);
+	req_lib_votequorum_qdisk_poll.header.id = MESSAGE_REQ_VOTEQUORUM_QDISK_POLL;
+	req_lib_votequorum_qdisk_poll.state = state;
+
+	iov.iov_base = (char *)&req_lib_votequorum_qdisk_poll;
+	iov.iov_len = sizeof (struct req_lib_votequorum_qdisk_poll);
+
+        error = qb_to_cs_error(qb_ipcc_sendv_recv (
+		votequorum_inst->c,
+		&iov,
+		1,
+                &res_lib_votequorum_status,
+		sizeof (struct res_lib_votequorum_status), CS_IPC_TIMEOUT_MS));
+
+	if (error != CS_OK) {
+		goto error_exit;
+	}
+
+	error = res_lib_votequorum_status.header.error;
+
+error_exit:
+	hdb_handle_put (&votequorum_handle_t_db, handle);
+
+	return (error);
+}
+
+cs_error_t votequorum_qdisk_unregister (
+	votequorum_handle_t handle)
+{
+	cs_error_t error;
+	struct votequorum_inst *votequorum_inst;
+	struct iovec iov;
+	struct req_lib_votequorum_general req_lib_votequorum_general;
+	struct res_lib_votequorum_status res_lib_votequorum_status;
+
+	error = hdb_error_to_cs(hdb_handle_get (&votequorum_handle_t_db, handle, (void *)&votequorum_inst));
+	if (error != CS_OK) {
+		return (error);
+	}
+
+	req_lib_votequorum_general.header.size = sizeof (struct req_lib_votequorum_general);
+	req_lib_votequorum_general.header.id = MESSAGE_REQ_VOTEQUORUM_QDISK_UNREGISTER;
+
+	iov.iov_base = (char *)&req_lib_votequorum_general;
+	iov.iov_len = sizeof (struct req_lib_votequorum_general);
+
+        error = qb_to_cs_error(qb_ipcc_sendv_recv (
+		votequorum_inst->c,
+		&iov,
+		1,
+                &res_lib_votequorum_status,
+		sizeof (struct res_lib_votequorum_status), CS_IPC_TIMEOUT_MS));
+
+	if (error != CS_OK) {
+		goto error_exit;
+	}
+
+	error = res_lib_votequorum_status.header.error;
+
+error_exit:
+	hdb_handle_put (&votequorum_handle_t_db, handle);
+
+	return (error);
+}
+
+cs_error_t votequorum_qdisk_getinfo (
+	votequorum_handle_t handle,
+	struct votequorum_qdisk_info *qinfo)
+{
+	cs_error_t error;
+	struct votequorum_inst *votequorum_inst;
+	struct iovec iov;
+	struct req_lib_votequorum_general req_lib_votequorum_general;
+	struct res_lib_votequorum_qdisk_getinfo res_lib_votequorum_qdisk_getinfo;
+
+	error = hdb_error_to_cs(hdb_handle_get (&votequorum_handle_t_db, handle, (void *)&votequorum_inst));
+	if (error != CS_OK) {
+		return (error);
+	}
+
+
+	req_lib_votequorum_general.header.size = sizeof (struct req_lib_votequorum_general);
+	req_lib_votequorum_general.header.id = MESSAGE_REQ_VOTEQUORUM_QDISK_GETINFO;
+
+	iov.iov_base = (char *)&req_lib_votequorum_general;
+	iov.iov_len = sizeof (struct req_lib_votequorum_general);
+
+        error = qb_to_cs_error(qb_ipcc_sendv_recv (
+		votequorum_inst->c,
+		&iov,
+		1,
+                &res_lib_votequorum_qdisk_getinfo,
+		sizeof (struct res_lib_votequorum_qdisk_getinfo), CS_IPC_TIMEOUT_MS));
+
+	if (error != CS_OK) {
+		goto error_exit;
+	}
+
+	error = res_lib_votequorum_qdisk_getinfo.header.error;
+
+	qinfo->votes = res_lib_votequorum_qdisk_getinfo.votes;
+	qinfo->state = res_lib_votequorum_qdisk_getinfo.state;
+	strcpy(qinfo->name, res_lib_votequorum_qdisk_getinfo.name);
+
+
+error_exit:
+	hdb_handle_put (&votequorum_handle_t_db, handle);
+
+	return (error);
+}
+#endif
+
