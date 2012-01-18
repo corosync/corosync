@@ -339,7 +339,6 @@ static void mem_update_stats_fn (void *data)
 	char key_name[ICMAP_KEYNAME_MAXLEN];
 
 	new_value = percent_mem_used_get();
-	fprintf(stderr,"BLA = %u\n", new_value);
 	if (new_value > 0) {
 		snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "%s%s", inst->icmap_path, "current");
 		icmap_set_uint32(key_name, new_value);
