@@ -45,14 +45,26 @@ fi
 
 if [ -z "$TARGET" ]
 then
-	TARGET=fedora-14-x86_64
+	TARGET=fedora-16-x86_64
 fi
+case $TARGET in
+	fedora-15-x86_64)
+	EXTRA_WITH=" --with systemd"
+	;;
+	fedora-16-x86_64)
+	EXTRA_WITH=" --with systemd"
+	;;
+	fedora-17-x86_64)
+	EXTRA_WITH=" --with systemd"
+	;;
+	*)
+esac
 
 RPM_DIR=/var/lib/mock/$TARGET/result
 rm -f $RPM_DIR/corosync*.rpm
 
 $LOG "running mock rebuild ($SRPM)"
-$MOCK -v -r $TARGET --no-clean --rebuild $SRPM --with testagents --with watchdog --with monitoring
+$MOCK -v -r $TARGET --no-clean --rebuild $SRPM --with testagents --with watchdog --with monitoring $EXTRA_WITH
 
 if [ -z "$TEST_NODES" ]
 then
