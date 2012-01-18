@@ -84,10 +84,10 @@ $LOG onto the test nodes $TEST_NODES
 for n in $TEST_NODES
 do
 	$LOG "Installing onto $n"
-	ssh $n "rm -rf /tmp/corosync*.rpm"
-	ssh $n "rm -f /etc/corosync/corosync.conf.*"
-	scp $RPM_LIST $n:/tmp/
-        ssh $n "rpm --nodeps --force -Uvf /tmp/corosync*.rpm"
+	sudo ssh $n "rm -rf /tmp/corosync*.rpm"
+	sudo ssh $n "rm -f /etc/corosync/corosync.conf.*"
+	sudo scp $RPM_LIST $n:/tmp/
+        sudo ssh $n "rpm --nodeps --force -Uvf /tmp/corosync*.rpm"
 done
 
 $LOG 'running CTS ...'
