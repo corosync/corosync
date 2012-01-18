@@ -552,83 +552,6 @@ class MemLeakSession(CoroTest):
             return self.failure(str(mem_leaked) + 'kB memory leaked.')
 
 ###################################################################
-class ServiceLoadTest(CoroTest):
-    '''
-    Test loading and unloading of service engines
-    '''
-    def __init__(self, cm):
-        CoroTest.__init__(self, cm)
-        self.name="ServiceLoadTest"
-
-    def is_loaded(self, node):
-        check = 'corosync-objctl runtime.services. | grep evs'
-
-        (res, out) = self.CM.rsh(node, check, stdout=2)
-        if res is 0:
-            return True
-        else:
-            return False
-
-    def service_unload(self, node):
-        # unload evs
-        pats = []
-        pats.append("%s .*Service engine unloaded: corosync extended.*" % node)
-        unloaded = self.create_watch(pats, 60)
-        unloaded.setwatch()
-
-        self.CM.rsh(node, 'corosync-cfgtool -u corosync_evs')
-
-        if not unloaded.lookforall():
-            self.CM.log("Patterns not found: " + repr(unloaded.unmatched))
-            self.error_message = "evs service not unloaded"
-            return False
-
-        if self.is_loaded(node):
-            self.error_message = "evs has been unload, why are it's session objects are still there?"
-            return False
-        return True
-
-    def service_load(self, node):
-        # now reload it.
-        pats = []
-        pats.append("%s .*Service engine loaded.*" % node)
-        loaded = self.create_watch(pats, 60)
-        loaded.setwatch()
-
-        self.CM.rsh(node, 'corosync-cfgtool -l corosync_evs')
-
-        if not loaded.lookforall():
-            self.CM.log("Patterns not found: " + repr(loaded.unmatched))
-            self.error_message = "evs service not unloaded"
-            return False
-
-        return True
-
-
-    def __call__(self, node):
-        self.incr("calls")
-        should_be_loaded = True
-
-        if self.is_loaded(node):
-            ret = self.service_unload(node)
-            should_be_loaded = False
-        else:
-            ret = self.service_load(node)
-            should_be_loaded = True
-
-        if not ret:
-            return self.failure(self.error_message)
-
-        if self.is_loaded(node):
-            ret = self.service_unload(node)
-        else:
-            ret = self.service_load(node)
-
-        if not ret:
-            return self.failure(self.error_message)
-
-        return self.success()
-
 class CMapDispatchDeadlock(CoroTest):
     '''
     run cmap-dispatch-deadlock.sh
@@ -1459,7 +1382,9 @@ GenTestClasses.append(CpgCfgChgOnGroupLeave)
 GenTestClasses.append(CpgCfgChgOnNodeLeave)
 GenTestClasses.append(CpgCfgChgOnNodeIsolate)
 #GenTestClasses.append(CpgCfgChgOnNodeRestart)
-GenTestClasses.append(CpgCfgChgOnLowestNodeJoin)
+
+# TODO need log messages in sync
+#GenTestClasses.append(CpgCfgChgOnLowestNodeJoin)
 GenTestClasses.append(VoteQuorumGoDown)
 GenTestClasses.append(VoteQuorumGoUp)
 
@@ -1483,7 +1408,6 @@ AllTestClasses.append(NoWDOnCorosyncStop)
 AllTestClasses.append(WdDeleteResource)
 #AllTestClasses.append(RebootOnHighMem)
 AllTestClasses.append(ResourcePollAdjust)
-AllTestClasses.append(ServiceLoadTest)
 AllTestClasses.append(MemLeakObject)
 AllTestClasses.append(MemLeakSession)
 #AllTestClasses.append(CMapDispatchDeadlock)

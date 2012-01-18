@@ -42,7 +42,6 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
-#include <syslog.h>
 #include <poll.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -51,6 +50,7 @@
 #include <qb/qbdefs.h>
 #include <qb/qbutil.h>
 #include <qb/qbloop.h>
+#include <qb/qblog.h>
 #include <corosync/cpg.h>
 #include <corosync/cfg.h>
 #include "../../exec/crypto.h"
@@ -169,8 +169,8 @@ static void delivery_callback (
 	sha1_process (&sha1_hash, msg_pt->payload, (msg_pt->size - sizeof (msg_t)));
 	sha1_done (&sha1_hash, sha1_compare);
 	if (memcmp (sha1_compare, msg_pt->sha1, 20) != 0) {
-		syslog (LOG_ERR, "%s(); msg seq:%d; incorrect hash",
-			__func__, msg_pt->seq);
+		qb_log (LOG_ERR, "msg seq:%d; incorrect hash",
+			msg_pt->seq);
 		status = MSG_SHA1_ERR;
 	}
 
@@ -185,7 +185,7 @@ static void delivery_callback (
 	total_msgs_revd++;
 
 	if ((total_msgs_revd % 100) == 0) {
-		syslog (LOG_INFO, "%s(); %d", __func__, total_msgs_revd);
+		qb_log (LOG_INFO, "%d",total_msgs_revd);
 	}
 
 }
@@ -203,8 +203,7 @@ static void config_change_callback (
 	/* group_name,ip,pid,join|leave */
 
 	for (i = 0; i < left_list_entries; i++) {
-		syslog (LOG_INFO, "%s(%d) %d:%s left", __func__, record_config_events_g,
-			left_list[i].nodeid, groupName->value);
+		qb_log(LOG_INFO, "Member left: %s", left_list[i].nodeid);
 
 		if (record_config_events_g > 0) {
 			log_pt = malloc (sizeof(log_entry_t));
@@ -215,8 +214,7 @@ static void config_change_callback (
 		}
 	}
 	for (i = 0; i < joined_list_entries; i++) {
-		syslog (LOG_INFO, "%s(%d) %d:%s joined", __func__, record_config_events_g,
-			left_list[i].nodeid, groupName->value);
+		qb_log(LOG_INFO, "Member joined: %s", joined_list[i].nodeid);
 
 		if (record_config_events_g > 0) {
 			log_pt = malloc (sizeof(log_entry_t));
@@ -236,7 +234,7 @@ static void config_change_callback (
 static void my_shutdown_callback (corosync_cfg_handle_t handle,
 	corosync_cfg_shutdown_flags_t flags)
 {
-	syslog (LOG_CRIT, "%s flags:%d", __func__, flags);
+	qb_log (LOG_CRIT, "flags:%d", flags);
 	if (flags & COROSYNC_CFG_SHUTDOWN_FLAG_REQUEST) {
 		corosync_cfg_replyto_shutdown (cfg_handle, COROSYNC_CFG_SHUTDOWN_FLAG_YES);
 	}
@@ -255,7 +253,7 @@ static cpg_callbacks_t callbacks = {
 static void record_messages (void)
 {
 	record_messages_g = 1;
-	syslog (LOG_DEBUG,"%s() record:%d", __func__, record_messages_g);
+	qb_log (LOG_DEBUG,"record:%d", record_messages_g);
 }
 
 static void record_config_events (int sock)
@@ -263,7 +261,7 @@ static void record_config_events (int sock)
 	char response[100];
 
 	record_config_events_g = 1;
-	syslog (LOG_INFO, "%s() record:%d", __func__, record_config_events_g);
+	qb_log (LOG_INFO, "record:%d", record_config_events_g);
 
 	snprintf (response, 100, "%s", OK_STR);
 	send (sock, response, strlen (response), 0);
@@ -281,7 +279,7 @@ static void read_config_event (int sock)
 		list_del (&entry->list);
 		free (entry);
 	} else {
-		syslog (LOG_DEBUG,"%s() no events in list", __func__);
+		qb_log (LOG_DEBUG, "no events in list");
 		send (sock, empty, strlen (empty), 0);
 	}
 }
@@ -298,8 +296,8 @@ static void read_messages (int sock, char* atmost_str)
 	if (atmost > (HOW_BIG_AND_BUF / LOG_STR_SIZE))
 		atmost = (HOW_BIG_AND_BUF / LOG_STR_SIZE);
 
-//	syslog (LOG_DEBUG, "%s() atmost %d; total_stored_msgs:%d",
-//		__func__, atmost, total_stored_msgs);
+	qb_log(LOG_DEBUG, "atmost %d; total_stored_msgs:%d",
+		atmost, total_stored_msgs);
 	big_and_buf[0] = '\0';
 
 	for (list = msg_log_head.next;
@@ -319,8 +317,8 @@ static void read_messages (int sock, char* atmost_str)
 	if (packed == 0) {
 		strcpy (big_and_buf, "None");
 	} else {
-		syslog (LOG_INFO, "%s() sending %d; total_stored_msgs:%d; len:%d",
-			__func__, packed, total_stored_msgs, (int)strlen (big_and_buf));
+		qb_log(LOG_INFO, "sending %d; total_stored_msgs:%d; len:%d",
+			packed, total_stored_msgs, (int)strlen (big_and_buf));
 	}
 	send (sock, big_and_buf, strlen (big_and_buf), 0);
 }
@@ -359,7 +357,7 @@ static void send_some_more_messages_zcb (void)
 
 	my_msg = (msg_t*)zcb_buffer;
 
-	//syslog (LOG_DEBUG,"%s() send_now:%d", __func__, send_now);
+	qb_log(LOG_DEBUG, "send_now:%d", send_now);
 	my_msg->pid = my_pid;
 	my_msg->nodeid = my_nodeid;
 	my_msg->size = sizeof (msg_t) + payload_size;
@@ -377,7 +375,7 @@ static void send_some_more_messages_zcb (void)
 		if (res == CS_OK && fc_state == CPG_FLOW_CONTROL_ENABLED) {
 			/* lets do this later */
 			send_some_more_messages_later ();
-			syslog (LOG_INFO, "%s() flow control enabled.", __func__);
+			qb_log (LOG_INFO, "flow control enabled.");
 			goto free_buffer;
 		}
 
@@ -386,13 +384,13 @@ static void send_some_more_messages_zcb (void)
 			/* lets do this later */
 			send_some_more_messages_later ();
 //			if (i > 0) {
-//				syslog (LOG_INFO, "%s() TRY_AGAIN %d to send.",
-//					__func__, my_msgs_to_send);
+//				qb_log (LOG_INFO, "TRY_AGAIN %d to send.",
+//					my_msgs_to_send);
 //			}
 			goto free_buffer;
 		} else if (res != CS_OK) {
-			syslog (LOG_ERR, "%s() -> cpg_mcast_joined error:%d, exiting.",
-				__func__, res);
+			qb_log (LOG_ERR, "cpg_mcast_joined error:%d, exiting.",
+				res);
 			exit (-2);
 		}
 
@@ -430,7 +428,8 @@ static void send_some_more_messages_normal (void)
 
 	send_now = my_msgs_to_send;
 
-	//syslog (LOG_DEBUG,"%s() send_now:%d", __func__, send_now);
+	qb_log (LOG_DEBUG,"send_now:%d", send_now);
+
 	my_msg.pid = my_pid;
 	my_msg.nodeid = my_nodeid;
 	payload_size = (rand() % 10000);
@@ -454,12 +453,12 @@ static void send_some_more_messages_normal (void)
 			before = time(NULL);
 			cs_repeat(retries, 30, res = cpg_mcast_joined(cpg_handle, CPG_TYPE_AGREED, iov, 2));
 			if (retries > 20) {
-				syslog (LOG_ERR, "%s() -> cs_repeat: blocked for :%lu secs.",
-					__func__, (unsigned long)(time(NULL) - before));
+				qb_log (LOG_ERR, "cs_repeat: blocked for :%lu secs.",
+					(unsigned long)(time(NULL) - before));
 			}
 			if (res != CS_OK) {
-				syslog (LOG_ERR, "%s() -> cpg_mcast_joined error:%d.",
-					__func__, res);
+				qb_log (LOG_ERR, "cpg_mcast_joined error:%d.",
+					res);
 				return;
 			}
 		} else {
@@ -467,7 +466,7 @@ static void send_some_more_messages_normal (void)
 			if (res == CS_OK && fc_state == CPG_FLOW_CONTROL_ENABLED) {
 				/* lets do this later */
 				send_some_more_messages_later ();
-				syslog (LOG_INFO, "%s() flow control enabled.", __func__);
+				qb_log (LOG_INFO, "flow control enabled.");
 				return;
 			}
 
@@ -476,21 +475,21 @@ static void send_some_more_messages_normal (void)
 				/* lets do this later */
 				send_some_more_messages_later ();
 				if (i > 0) {
-					syslog (LOG_INFO, "%s() TRY_AGAIN %d to send.",
-						__func__, my_msgs_to_send);
+					qb_log (LOG_INFO, "TRY_AGAIN %d to send.",
+						my_msgs_to_send);
 				}
 				return;
 			} else if (res != CS_OK) {
-				syslog (LOG_ERR, "%s() -> cpg_mcast_joined error:%d, exiting.",
-					__func__, res);
+				qb_log (LOG_ERR, "cpg_mcast_joined error:%d, exiting.",
+					res);
 				exit (-2);
 			}
 		}
 		my_msgs_sent++;
 		my_msgs_to_send--;
 	}
-	syslog (LOG_INFO, "%s() sent %d; to send %d.",
-			__func__, my_msgs_sent, my_msgs_to_send);
+	qb_log (LOG_INFO, "sent %d; to send %d.",
+		my_msgs_sent, my_msgs_to_send);
 }
 
 static void send_some_more_messages (void * unused)
@@ -569,7 +568,7 @@ static int cfg_dispatch_wrapper_fn (
 {
 	cs_error_t error;
 	if (revents & POLLHUP || revents & POLLERR) {
-		syslog (LOG_ERR, "%s() got POLLHUP disconnecting from CFG", __func__);
+		qb_log (LOG_ERR, "got POLLHUP disconnecting from CFG");
 		corosync_cfg_finalize(cfg_handle);
 		cfg_handle = 0;
 		qb_loop_poll_del (ta_poll_handle_get(), cfg_fd);
@@ -579,7 +578,7 @@ static int cfg_dispatch_wrapper_fn (
 	}
 	error = corosync_cfg_dispatch (cfg_handle, CS_DISPATCH_ALL);
 	if (error == CS_ERR_LIBRARY) {
-		syslog (LOG_ERR, "%s() got LIB error disconnecting from CFG.", __func__);
+		qb_log (LOG_ERR, "got LIB error disconnecting from CFG.");
 		corosync_cfg_finalize(cfg_handle);
 		cfg_handle = 0;
 		qb_loop_poll_del (ta_poll_handle_get(), cfg_fd);
@@ -597,7 +596,7 @@ static int cpg_dispatch_wrapper_fn (
 {
 	cs_error_t error;
 	if (revents & POLLHUP || revents & POLLERR) {
-		syslog (LOG_ERR, "%s() got POLLHUP disconnecting from CPG", __func__);
+		qb_log (LOG_ERR, "got POLLHUP disconnecting from CPG");
 		cpg_finalize(cpg_handle);
 		cpg_handle = 0;
 		qb_loop_poll_del (ta_poll_handle_get(), cpg_fd);
@@ -607,7 +606,7 @@ static int cpg_dispatch_wrapper_fn (
 	}
 	error = cpg_dispatch (cpg_handle, CS_DISPATCH_ALL);
 	if (error == CS_ERR_LIBRARY) {
-		syslog (LOG_ERR, "%s() got LIB error disconnecting from CPG", __func__);
+		qb_log (LOG_ERR, "got LIB error disconnecting from CPG");
 		cpg_finalize(cpg_handle);
 		cpg_handle = 0;
 		qb_loop_poll_del (ta_poll_handle_get(), cpg_fd);
@@ -625,7 +624,7 @@ static void do_command (int sock, char* func, char*args[], int num_args)
 	struct cpg_name group_name;
 
 	if (parse_debug)
-		syslog (LOG_DEBUG,"RPC:%s() called.", func);
+		qb_log (LOG_DEBUG,"RPC:%s() called.", func);
 
 	if (strcmp ("cpg_mcast_joined",func) == 0) {
 		struct iovec iov[5];
@@ -644,11 +643,11 @@ static void do_command (int sock, char* func, char*args[], int num_args)
 
 		result = cpg_join (cpg_handle, &group_name);
 		if (result != CS_OK) {
-			syslog (LOG_ERR,
+			qb_log (LOG_ERR,
 				"Could not join process group, error %d\n", result);
 			exit (1);
 		}
-		syslog (LOG_INFO, "called cpg_join()!");
+		qb_log (LOG_INFO, "called cpg_join()!");
 
 	} else if (strcmp ("cpg_leave",func) == 0) {
 
@@ -657,18 +656,18 @@ static void do_command (int sock, char* func, char*args[], int num_args)
 
 		result = cpg_leave (cpg_handle, &group_name);
 		if (result != CS_OK) {
-			syslog (LOG_ERR,
+			qb_log (LOG_ERR,
 				"Could not leave process group, error %d\n", result);
 			exit (1);
 		}
-		syslog (LOG_INFO, "called cpg_leave()!");
+		qb_log (LOG_INFO, "called cpg_leave()!");
 
 	} else if (strcmp ("cpg_initialize",func) == 0) {
 		int retry_count = 0;
 
 		result = cpg_initialize (&cpg_handle, &callbacks);
 		while (result != CS_OK) {
-			syslog (LOG_ERR,
+			qb_log (LOG_ERR,
 				"cpg_initialize error %d (attempt %d)\n",
 				result, retry_count);
 			if (retry_count >= 3) {
@@ -726,18 +725,18 @@ static void do_command (int sock, char* func, char*args[], int num_args)
 
 	} else if (strcmp ("cfg_shutdown", func) == 0) {
 
-		syslog (LOG_INFO,"%s calling %s() called!", __func__, func);
+		qb_log (LOG_INFO, "calling %s() called!", func);
 		result = corosync_cfg_try_shutdown (cfg_handle, COROSYNC_CFG_SHUTDOWN_FLAG_REQUEST);
-		syslog (LOG_INFO,"%s() returned %d!", func, result);
+		qb_log (LOG_INFO,"%s() returned %d!", func, result);
 
 	} else if (strcmp ("cfg_initialize",func) == 0) {
 		int retry_count = 0;
 
-		syslog (LOG_INFO,"%s %s() called!", __func__, func);
+		qb_log (LOG_INFO,"%s() called!", func);
 		result = corosync_cfg_initialize (&cfg_handle, &cfg_callbacks);
 		while (result != CS_OK) {
-			syslog (LOG_ERR,
-				"cfg_initialize error %d (attempt %d)\n",
+			qb_log (LOG_ERR,
+				"cfg_initialize error %d (attempt %d)",
 				result, retry_count);
 			if (retry_count >= 3) {
 				exit (1);
@@ -746,13 +745,13 @@ static void do_command (int sock, char* func, char*args[], int num_args)
 			retry_count++;
 			result = corosync_cfg_initialize (&cfg_handle, &cfg_callbacks);
 		}
-		syslog (LOG_INFO,"corosync_cfg_initialize() == %d", result);
+		qb_log (LOG_INFO,"corosync_cfg_initialize() == %d", result);
 
 		result = corosync_cfg_fd_get (cfg_handle, &cfg_fd);
-		syslog (LOG_INFO,"corosync_cfg_fd_get() == %d", result);
+		qb_log (LOG_INFO,"corosync_cfg_fd_get() == %d", result);
 
 		result = corosync_cfg_state_track (cfg_handle, 0, &notification_buffer);
-		syslog (LOG_INFO,"corosync_cfg_state_track() == %d", result);
+		qb_log (LOG_INFO,"corosync_cfg_state_track() == %d", result);
 
 		qb_loop_poll_add (ta_poll_handle_get(),
 				  QB_LOOP_MED,
@@ -761,21 +760,13 @@ static void do_command (int sock, char* func, char*args[], int num_args)
 				  NULL,
 				  cfg_dispatch_wrapper_fn);
 	} else {
-		syslog (LOG_ERR,"%s RPC:%s not supported!", __func__, func);
+		qb_log(LOG_ERR, "RPC:%s not supported!", func);
 	}
-}
-
-static void cs_ipcs_libqb_log_fn(const char *file_name,
-	int32_t file_line,
-	int32_t severity,
-	const char *msg)
-{
-	syslog(severity, "%s:%d %s() %s", file_name, file_line, __func__, msg);
 }
 
 static void my_pre_exit(void)
 {
-	syslog (LOG_INFO, "%s PRE EXIT", __FILE__);
+	qb_log (LOG_INFO, "%s PRE EXIT", __FILE__);
 	if (cpg_handle > 0) {
 		cpg_finalize (cpg_handle);
 		cpg_handle = 0;
@@ -785,15 +776,17 @@ static void my_pre_exit(void)
 int main (int argc, char *argv[])
 {
 	int res = 0;
-	openlog (NULL, LOG_CONS|LOG_PID, LOG_DAEMON);
-	syslog (LOG_INFO, "%s STARTING", __FILE__);
 
-	qb_util_set_log_function (cs_ipcs_libqb_log_fn);
+	qb_log_init("cpg_test_agent", LOG_DAEMON, LOG_DEBUG);
+	qb_log_format_set(QB_LOG_SYSLOG, "%n() [%p] %b");
+	qb_log (LOG_INFO, "STARTING");
+
 	list_init (&msg_log_head);
 	list_init (&config_chg_log_head);
 
 	res = test_agent_run (9034, do_command, my_pre_exit);
-	syslog (LOG_INFO, "%s EXITING", __FILE__);
+	qb_log (LOG_INFO, "EXITING");
+	qb_log_fini();
 	return res;
 }
 

@@ -36,23 +36,14 @@ INCLUDES = -I$(top_builddir)/include -I$(top_srcdir)/include \
 SOURCES =
 TEST_AGENTS = cpg_test_agent sam_test_agent votequorum_test_agent
 
-EXTRA_DIST		= syncv2.c
-
 if INSTALL_TESTAGENTS
 agentdir = $(datadir)/$(PACKAGE)/tests
 bin_PROGRAMS = $(TEST_AGENTS)
 dist_agent_SCRIPTS = mem_leak_test.sh net_breaker.sh cmap-dispatch-deadlock.sh shm_leak_audit.sh
-
 AM_CFLAGS		= -fPIC
-SERVICE_LCRSO		= syncv2
-SOURCES			+= $(SERVICE_LCRSO:%=%.c)
-LCRSO			= $(SERVICE_LCRSO:%=service_%.lcrso)
-LCRSO_OBJS		= $(SOURCES:%.c=%.o)
 else
 noinst_PROGRAMS = $(TEST_AGENTS)
 noinst_SCRIPTS = mem_leak_test.sh net_breaker.sh cmap-dispatch-deadlock.sh shm_leak_audit.sh
-LCRSO =
-LCRSO_OBJS =
 endif
 
 noinst_HEADERS          = common_test_agent.h
@@ -69,45 +60,8 @@ votequorum_test_agent_SOURCES = votequorum_test_agent.c common_test_agent.c
 votequorum_test_agent_LDADD =  -lvotequorum -lquorum $(LIBQB_LIBS)
 votequorum_test_agent_LDFLAGS =  -L../../lib 
 
-if BUILD_DARWIN
-
-service_%.lcrso: %.o
-	$(CC) $(LDFLAGS) $(CFLAGS) -L$(top_builddir)/exec -llogsys -bundle -bundle_loader $(top_builddir)/exec/corosync $^ -o $@
-
-else
-if BUILD_SOLARIS
-
-service_%.lcrso: %.o
-	$(LD) $(LDFLAGS) -G $^ -o $@
-
-else
-
-service_%.lcrso: %.o
-	$(CC) $(LDFLAGS) $(CFLAGS) $(COVERAGE_LCRSO_EXTRA_LDFLAGS) -shared -Wl,-soname=$@ $^ -o $@
-endif
-endif
-
-
-
-if INSTALL_TESTAGENTS
-syncv2.o: syncv2.c
-	$(CC) $(AM_CFLAGS) $(CFLAGS) $(CPPFLAGS) $(INCLUDES) -c -o $@ $<
-
-all-local: $(LCRSO_OBJS) $(LCRSO)
-	@echo Built Service Engines
-
-install-exec-local:
-	$(INSTALL) -d $(DESTDIR)/$(LCRSODIR)
-	$(INSTALL) -m 755 $(LCRSO) $(DESTDIR)/$(LCRSODIR)
-
-uninstall-local:
-	cd $(DESTDIR)/$(LCRSODIR) && \
-		rm -f $(LCRSO)
-
-endif
-
 clean-local:
-	rm -f *.o *.a *.so* *.da *.bb *.bbg *.lcrso
+	rm -f *.o *.a *.so* *.da *.bb *.bbg
 
 lint:
 	-splint $(LINT_FLAGS) $(CFLAGS) *.c
