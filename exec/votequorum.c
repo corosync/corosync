@@ -94,25 +94,25 @@ static uint32_t last_man_standing_window = DEFAULT_LMS_WIN;
 
 struct req_exec_quorum_nodeinfo {
 	struct qb_ipc_request_header header __attribute__((aligned(8)));
-	uint8_t major_version;	/* Not backwards compatible */
-	uint8_t minor_version;	/* Backwards compatible */
-	uint8_t patch_version;	/* Backwards/forwards compatible */
-	uint8_t first_trans;
 	uint32_t votes;
 	uint32_t expected_votes;
 	uint16_t flags;
 	uint8_t quorate;
 	uint8_t wait_for_all_status;
+	uint8_t first_trans;
+	uint8_t _pad0;
+	uint8_t _pad1;
+	uint8_t _pad2;
 } __attribute__((packed));
 
 struct req_exec_quorum_reconfigure {
 	struct qb_ipc_request_header header __attribute__((aligned(8)));
-	uint8_t major_version;	/* Not backwards compatible */
-	uint8_t minor_version;	/* Backwards compatible */
-	uint8_t patch_version;	/* Backwards/forwards compatible */
-	uint8_t param;
+	uint32_t nodeid;
 	uint32_t value;
-	unsigned int nodeid;
+	uint8_t param;
+	uint8_t _pad0;
+	uint8_t _pad1;
+	uint8_t _pad2;
 } __attribute__((packed));
 
 /*
@@ -120,10 +120,6 @@ struct req_exec_quorum_reconfigure {
  */
 
 #include "votequorum.h"
-
-#define VOTEQUORUM_MAJOR_VERSION 7
-#define VOTEQUORUM_MINOR_VERSION 0
-#define VOTEQUORUM_PATCH_VERSION 0
 
 /*
  * votequorum_exec onwire messages (via totem)
@@ -800,12 +796,12 @@ static int votequorum_exec_send_reconfigure(uint8_t param, unsigned int nodeid, 
 
 	ENTER();
 
-	req_exec_quorum_reconfigure.major_version = VOTEQUORUM_MAJOR_VERSION;
-	req_exec_quorum_reconfigure.minor_version = VOTEQUORUM_MINOR_VERSION;
-	req_exec_quorum_reconfigure.patch_version = VOTEQUORUM_PATCH_VERSION;
-	req_exec_quorum_reconfigure.param = param;
-	req_exec_quorum_reconfigure.value = value;
 	req_exec_quorum_reconfigure.nodeid = nodeid;
+	req_exec_quorum_reconfigure.value = value;
+	req_exec_quorum_reconfigure.param = param;
+	req_exec_quorum_reconfigure._pad0 = 0;
+	req_exec_quorum_reconfigure._pad1 = 0;
+	req_exec_quorum_reconfigure._pad2 = 0;
 
 	req_exec_quorum_reconfigure.header.id = SERVICE_ID_MAKE(VOTEQUORUM_SERVICE, MESSAGE_REQ_EXEC_VOTEQUORUM_RECONFIGURE);
 	req_exec_quorum_reconfigure.header.size = sizeof(req_exec_quorum_reconfigure);
@@ -827,15 +823,15 @@ static int votequorum_exec_send_nodeinfo(void)
 
 	ENTER();
 
-	req_exec_quorum_nodeinfo.major_version = VOTEQUORUM_MAJOR_VERSION;
-	req_exec_quorum_nodeinfo.minor_version = VOTEQUORUM_MINOR_VERSION;
-	req_exec_quorum_nodeinfo.patch_version = VOTEQUORUM_PATCH_VERSION;
-	req_exec_quorum_nodeinfo.first_trans = first_trans;
 	req_exec_quorum_nodeinfo.votes = us->votes;
 	req_exec_quorum_nodeinfo.expected_votes = us->expected_votes;
-	req_exec_quorum_nodeinfo.quorate = cluster_is_quorate;
 	req_exec_quorum_nodeinfo.flags = us->flags;
+	req_exec_quorum_nodeinfo.quorate = cluster_is_quorate;
 	req_exec_quorum_nodeinfo.wait_for_all_status = wait_for_all_status;
+	req_exec_quorum_nodeinfo.first_trans = first_trans;
+	req_exec_quorum_nodeinfo._pad0 = 0;
+	req_exec_quorum_nodeinfo._pad1 = 0;
+	req_exec_quorum_nodeinfo._pad2 = 0;
 
 	req_exec_quorum_nodeinfo.header.id = SERVICE_ID_MAKE(VOTEQUORUM_SERVICE, MESSAGE_REQ_EXEC_VOTEQUORUM_NODEINFO);
 	req_exec_quorum_nodeinfo.header.size = sizeof(req_exec_quorum_nodeinfo);
@@ -966,10 +962,6 @@ static void message_handler_req_exec_votequorum_nodeinfo (
 
 	log_printf(LOGSYS_LEVEL_DEBUG, "got nodeinfo message from cluster node %u\n", nodeid);
 
-	/*
-	 * TODO: add version checking for onwire compat
-	 */	
-
 	node = find_node_by_nodeid(nodeid);
 	if (!node) {
 		node = allocate_node(nodeid);
@@ -1052,10 +1044,6 @@ static void message_handler_req_exec_votequorum_reconfigure (
 	ENTER();
 
 	log_printf(LOGSYS_LEVEL_DEBUG, "got reconfigure message from cluster node %u\n", nodeid);
-
-	/*
-	 * TODO: add version checking for onwire compat
-	 */	
 
 	node = find_node_by_nodeid(req_exec_quorum_reconfigure->nodeid);
 	if (!node) {
