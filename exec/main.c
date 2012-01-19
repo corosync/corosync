@@ -1150,11 +1150,19 @@ int main (int argc, char **argv, char **envp)
 	}
 
 	if (totem_config_warnings & TOTEM_CONFIG_WARNING_MEMBERS_IGNORED) {
-		log_printf (LOGSYS_LEVEL_WARNING, "member section is used together with nodelist. members ignored");
+		log_printf (LOGSYS_LEVEL_WARNING, "member section is used together with nodelist. Members ignored.");
 	}
 
 	if (totem_config_warnings & TOTEM_CONFIG_WARNING_MEMBERS_DEPRECATED) {
-		log_printf (LOGSYS_LEVEL_WARNING, "member section is deprecated. Please migrate config file to nodelist");
+		log_printf (LOGSYS_LEVEL_WARNING, "member section is deprecated.");
+	}
+
+	if (totem_config_warnings & TOTEM_CONFIG_WARNING_NODEID_IGNORED) {
+		log_printf (LOGSYS_LEVEL_WARNING, "nodeid in totem section is deprecated and ignored.");
+	}
+
+	if (totem_config_warnings != 0) {
+		log_printf (LOGSYS_LEVEL_WARNING, "Please migrate config file to nodelist.");
 	}
 
 	res = totem_config_keyread (&totem_config, &error_string);

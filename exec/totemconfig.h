@@ -45,6 +45,7 @@
 
 #define TOTEM_CONFIG_WARNING_MEMBERS_IGNORED		(1<<1)
 #define TOTEM_CONFIG_WARNING_MEMBERS_DEPRECATED		(1<<2)
+#define TOTEM_CONFIG_WARNING_NODEID_IGNORED		(1<<3)
 
 extern int totem_config_read (
 	struct totem_config *totem_config,
