@@ -54,6 +54,9 @@ This top level directive contains configuration options for logging.
 .TP
 quorum { }
 This top level directive contains configuration options for quorum.
+.TP
+nodelist { }
+This top level directive contains configuration options for nodes in cluster.
 
 .PP
 .PP
@@ -99,7 +102,7 @@ This may also be an IPV6 address, in which case IPV6 networking will be used.
 In this case, the full address must be specified and there is no automatic
 selection of the network interface within a specific subnet as with IPv4.
 
-If IPv6 networking is used, the nodeid field must be specified.
+If IPv6 networking is used, the nodeid field in nodelist must be specified.
 
 .TP
 broadcast
@@ -115,7 +118,8 @@ about a multicast address to use.  Avoid 224.x.x.x because this is a "config"
 multicast address.
 
 This may also be an IPV6 multicast address, in which case IPV6 networking
-will be used.  If IPv6 networking is used, the nodeid field must be specified.
+will be used.  If IPv6 networking is used, the nodeid field in nodelist must
+be specified.
 
 It's not needed to use this option if cluster_name option is used. If both options
 are used, mcastaddr has higher priority.
@@ -137,13 +141,6 @@ network then the default of "1" will be too small. This option provides
 a way to increase this up to 255. The valid range is 0..255.
 Note that this is only valid on multicast transport types.
 
-.TP
-member
-This specifies a member on the interface and used with the udpu transport only.
-Every node that should be a member of the membership should be specified as
-a separate member directive.  Within the member directive there is a parameter
-memberaddr which specifies the ip address of one of the nodes.
-
 .PP
 .PP
 Within the
@@ -153,8 +150,8 @@ five are optional, and one is required when IPV6 is configured in the interface
 subdirective.  The required directive controls the version of the totem
 configuration.  The optional option unless using IPV6 directive controls
 identification of the processor.  The optional options control secrecy and
-authentication, the redundant ring mode of operation, maximum network MTU,
-and the nodeid field.
+authentication, the redundant ring mode of operation and maximum network MTU
+field.
 
 .TP
 version
@@ -163,15 +160,6 @@ valid version for this directive is 2.
 
 .PP
 .PP
-.TP
-nodeid
-This configuration option is optional when using IPv4 and required when using
-IPv6.  This is a 32 bit value specifying the node identifier delivered to the
-cluster membership service.  If this is not specified with IPv4, the node id
-will be determined from the 32 bit IP address the system to which the system
-is bound with ring identifier of 0.  The node identifier value of zero is
-reserved and should not be used.
-
 .TP
 clear_node_high_bit
 This configuration option is optional and is only relevant when no nodeid is
@@ -267,8 +255,8 @@ This directive controls the transport mechanism used.  If the interface to
 which corosync is binding is an RDMA interface such as RoCEE or Infiniband, the
 "iba" parameter may be specified.  To avoid the use of multicast entirely, a
 unicast transport parameter "udpu" can be specified.  This requires specifying
-the list of members that could potentially make up the membership before
-deployment.
+the list of members in nodelist directive, that could potentially make up
+the membership before deployment.
 
 The default is udp.  The transport type can also be set to udpu or iba.
 
@@ -628,6 +616,34 @@ directive it is possible to specify the quorum algorithm to use with the
 provider
 directive. At the time of writing only corosync_votequorum is supported. Please refer
 to quorum modules man pages (8) for specific config options.
+
+.PP
+Within the
+.B nodelist
+directive it is possible to specify specific informations about nodes in cluster. Directive
+can contain only
+.B node
+sub-directive, which specifies every node that should be a member of the membership, and where
+non-default options are needed. Every node must have at least ring0_addr field filled.
+
+For UDPU, every node that should be a member of the membership must be specified.
+
+Possible options are:
+.TP
+ringX_addr
+This specifies ip address of one of the nodes. X is ring number.
+
+.TP
+nodeid
+This configuration option is optional when using IPv4 and required when using
+IPv6.  This is a 32 bit value specifying the node identifier delivered to the
+cluster membership service.  If this is not specified with IPv4, the node id
+will be determined from the 32 bit IP address the system to which the system
+is bound with ring identifier of 0.  The node identifier value of zero is
+reserved and should not be used.
+
+.TP
+quorum_votes
 
 .SH "FILES"
 .TP
