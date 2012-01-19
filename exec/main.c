@@ -576,10 +576,15 @@ static void totem_dynamic_notify(
 	struct totem_ip_address member;
 	int add_new_member = 0;
 	int remove_old_member = 0;
+	char tmp_str[ICMAP_KEYNAME_MAXLEN];
 
-	res = sscanf(key_name, "totem.interface.%u.member.%u", &ring_no, &member_no);
-	if (res != 2)
+	res = sscanf(key_name, "nodelist.node.%u.ring%u%s", &member_no, &ring_no, tmp_str);
+	if (res != 3)
 		return ;
+
+	if (strcmp(tmp_str, "_addr") != 0) {
+		return;
+	}
 
 	if (event == ICMAP_TRACK_ADD && new_val.type == ICMAP_VALUETYPE_STRING) {
 		add_new_member = 1;
@@ -616,7 +621,7 @@ static void corosync_totem_dynamic_init (void)
 {
 	icmap_track_t icmap_track = NULL;
 
-	icmap_track_add("totem.interface.",
+	icmap_track_add("nodelist.node.",
 		ICMAP_TRACK_ADD | ICMAP_TRACK_DELETE | ICMAP_TRACK_MODIFY | ICMAP_TRACK_PREFIX,
 		totem_dynamic_notify,
 		NULL,
