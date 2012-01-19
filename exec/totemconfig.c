@@ -260,9 +260,60 @@ static int find_local_node_in_nodelist(struct totem_config *totem_config)
 	return (local_node_pos);
 }
 
+static void put_nodelist_members_to_config(struct totem_config *totem_config)
+{
+	icmap_iter_t iter, iter2;
+	const char *iter_key, *iter_key2;
+	int res = 0;
+	int node_pos;
+	char tmp_key[ICMAP_KEYNAME_MAXLEN];
+	char *node_addr_str;
+	int member_count;
+	unsigned int ringnumber = 0;
+
+	iter = icmap_iter_init("nodelist.node.");
+	while ((iter_key = icmap_iter_next(iter, NULL, NULL)) != NULL) {
+		res = sscanf(iter_key, "nodelist.node.%u.%s", &node_pos, tmp_key);
+		if (res != 2) {
+			continue;
+		}
+
+		if (strcmp(tmp_key, "ring0_addr") != 0) {
+			continue;
+		}
+
+		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "nodelist.node.%u.", node_pos);
+		iter2 = icmap_iter_init(tmp_key);
+		while ((iter_key2 = icmap_iter_next(iter2, NULL, NULL)) != NULL) {
+			res = sscanf(iter_key2, "nodelist.node.%u.ring%u_addr", &node_pos, &ringnumber);
+			if (res != 2) {
+				continue;
+			}
+
+			if (icmap_get_string(iter_key2, &node_addr_str) != CS_OK) {
+				continue;
+			}
+
+			member_count = totem_config->interfaces[ringnumber].member_count;
+
+			res = totemip_parse(&totem_config->interfaces[ringnumber].member_list[member_count],
+						node_addr_str, 0);
+			if (res != -1) {
+				totem_config->interfaces[ringnumber].member_count++;
+			}
+			free(node_addr_str);
+		}
+
+		icmap_iter_finalize(iter2);
+	}
+
+	icmap_iter_finalize(iter);
+}
+
 extern int totem_config_read (
 	struct totem_config *totem_config,
-	const char **error_string)
+	const char **error_string,
+	uint64_t *warnings)
 {
 	int res = 0;
 	char *str;
@@ -278,6 +329,8 @@ extern int totem_config_read (
 	char *cluster_name = NULL;
 	int i;
 	int local_node_pos;
+
+	*warnings = 0;
 
 	memset (totem_config, 0, sizeof (struct totem_config));
 	totem_config->interfaces = malloc (sizeof (struct totem_interface) * INTERFACE_MAX);
@@ -417,6 +470,16 @@ extern int totem_config_read (
 		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.member.", ringnumber);
 		member_iter = icmap_iter_init(tmp_key);
 		while ((member_iter_key = icmap_iter_next(member_iter, NULL, NULL)) != NULL) {
+			if (member_count == 0) {
+				if (icmap_get_string("nodelist.node.0.ring0_addr", &str) == CS_OK) {
+					free(str);
+					*warnings |= TOTEM_CONFIG_WARNING_MEMBERS_IGNORED;
+					break;
+				} else {
+					*warnings |= TOTEM_CONFIG_WARNING_MEMBERS_DEPRECATED;
+				}
+			}
+
 			if (icmap_get_string(member_iter_key, &str) == CS_OK) {
 				res = totemip_parse (&totem_config->interfaces[ringnumber].member_list[member_count++],
 						str, 0);
@@ -462,7 +525,7 @@ extern int totem_config_read (
 	free(cluster_name);
 
 	/*
-	 * If we have nodelist ...
+	 * Check existence of nodelist
 	 */
 	if (icmap_get_string("nodelist.node.0.ring0_addr", &str) == CS_OK) {
 		free(str);
@@ -471,11 +534,10 @@ extern int totem_config_read (
 		 */
 		local_node_pos = find_local_node_in_nodelist(totem_config);
 		if (local_node_pos != -1) {
-			/*
-			 * Store icmap key
-			 */
 			icmap_set_uint32("nodelist.local_node_pos", local_node_pos);
 		}
+
+		put_nodelist_members_to_config(totem_config);
 	}
 
 	add_totem_config_notification(totem_config);

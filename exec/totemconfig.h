@@ -43,9 +43,13 @@
 
 #include "totemsrp.h"
 
+#define TOTEM_CONFIG_WARNING_MEMBERS_IGNORED		(1<<1)
+#define TOTEM_CONFIG_WARNING_MEMBERS_DEPRECATED		(1<<2)
+
 extern int totem_config_read (
 	struct totem_config *totem_config,
-	const char **error_string);
+	const char **error_string,
+	uint64_t *warnings);
 
 extern int totem_config_validate (
 	struct totem_config *totem_config,

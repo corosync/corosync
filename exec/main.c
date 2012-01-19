@@ -1036,6 +1036,7 @@ int main (int argc, char **argv, char **envp)
 	struct stat stat_out;
 	char corosync_lib_dir[PATH_MAX];
 	enum e_corosync_done flock_err;
+	uint64_t totem_config_warnings;
 
 	/* default configuration
 	 */
@@ -1142,10 +1143,18 @@ int main (int argc, char **argv, char **envp)
 		corosync_exit_error (COROSYNC_DONE_DIR_NOT_PRESENT);
 	}
 
-	res = totem_config_read (&totem_config, &error_string);
+	res = totem_config_read (&totem_config, &error_string, &totem_config_warnings);
 	if (res == -1) {
 		log_printf (LOGSYS_LEVEL_ERROR, "%s", error_string);
 		corosync_exit_error (COROSYNC_DONE_MAINCONFIGREAD);
+	}
+
+	if (totem_config_warnings & TOTEM_CONFIG_WARNING_MEMBERS_IGNORED) {
+		log_printf (LOGSYS_LEVEL_WARNING, "member section is used together with nodelist. members ignored");
+	}
+
+	if (totem_config_warnings & TOTEM_CONFIG_WARNING_MEMBERS_DEPRECATED) {
+		log_printf (LOGSYS_LEVEL_WARNING, "member section is deprecated. Please migrate config file to nodelist");
 	}
 
 	res = totem_config_keyread (&totem_config, &error_string);
