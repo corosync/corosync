@@ -542,6 +542,15 @@ extern int totem_config_read (
 
 			snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "nodelist.node.%u.nodeid", local_node_pos);
 			icmap_get_uint32(tmp_key, &totem_config->node_id);
+
+			/*
+			 * Make localnode ring0_addr read only, so we can be sure that local
+			 * node never changes. If rebinding to other IP would be in future
+			 * supported, this must be changed and handled properly!
+			 */
+			snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "nodelist.node.%u.ring0_addr", local_node_pos);
+			icmap_set_ro_access(tmp_key, 0, 1);
+			icmap_set_ro_access("nodelist.local_node_pos", 0, 1);
 		}
 
 		put_nodelist_members_to_config(totem_config);
