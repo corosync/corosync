@@ -115,8 +115,9 @@ class CoroLabEnvironment(CtsLab):
         self["warn-inactive"] = 0
         self["ListTests"] = 0
         self["benchmark"] = 0
-        self["logrestartcmd"] = "/etc/init.d/rsyslog restart 2>&1 > /dev/null"
-        self["Schema"] = "corosync 1.2"
+        self["logrestartcmd"] = "systemctl restart rsyslog.service 2>&1 > /dev/null"
+        self["syslogd"] ="rsyslog"
+        self["Schema"] = "corosync 2.0"
         self["Stack"] = "corosync (needle)"
         self['CMclass'] = corosync_needle
         self["stonith-type"] = "external/ssh"
