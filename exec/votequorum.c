@@ -662,51 +662,141 @@ static void recalculate_quorum(int allow_decrease, int by_current_nodes)
  * configuration bits and pieces
  */
 
+static int votequorum_read_nodelist_configuration(uint32_t *votes,
+						  uint32_t *expected_votes)
+{
+	icmap_iter_t iter;
+	const char *iter_key;
+	char tmp_key[ICMAP_KEYNAME_MAXLEN];
+	uint32_t our_pos, node_pos;
+	uint32_t nodelist_expected_votes = 0;
+	uint32_t nodeid, node_votes = 0;
+	int res = 0, nodeid_found = 1;
+
+	ENTER();
+
+	if (icmap_get_uint32("nodelist.local_node_pos", &our_pos) != CS_OK) {
+		log_printf(LOGSYS_LEVEL_DEBUG,
+			   "No nodelist defined or our node is not in the nodelist");
+		return -1;
+	}
+
+	iter = icmap_iter_init("nodelist.node.");
+
+	while ((iter_key = icmap_iter_next(iter, NULL, NULL)) != NULL) {
+
+		res = sscanf(iter_key, "nodelist.node.%u.%s", &node_pos, tmp_key);
+		if (res != 2) {
+			continue;
+		}
+
+		if (strcmp(tmp_key, "ring0_addr") != 0) {
+			continue;
+		}
+
+		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "nodelist.node.%u.quorum_votes", node_pos);
+		if (icmap_get_uint32(tmp_key, &node_votes) != CS_OK) {
+			node_votes = 1;
+		}
+
+		nodelist_expected_votes = nodelist_expected_votes + node_votes;
+
+		if (node_pos == our_pos) {
+			*votes = node_votes;
+		}
+
+		if (nodeid_found == 0) {
+			continue;
+		}
+
+		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "nodelist.node.%u.nodeid", node_pos);
+		if (icmap_get_uint32(tmp_key, &nodeid) != CS_OK) {
+			nodeid_found = 0;
+			lowest_node_id = -1;
+			continue;
+		}
+
+		if (lowest_node_id == -1) {
+			lowest_node_id = nodeid;
+			continue;
+		}
+
+		if (nodeid < lowest_node_id) {
+			lowest_node_id = nodeid;
+		}
+	}
+
+	*expected_votes = nodelist_expected_votes;
+
+	icmap_iter_finalize(iter);
+
+	LEAVE();
+
+	return 0;
+}
+
 /*
  * votequorum_readconfig_static is executed before
  * votequorum_readconfig_dynamic
  */
 
-static void votequorum_readconfig_static(void)
+static int votequorum_readconfig_static(void)
 {
+	uint32_t node_votes, node_expected_votes, expected_votes;
+
+	ENTER();
+
+	log_printf(LOGSYS_LEVEL_DEBUG, "Reading static configuration");
+
 	icmap_get_uint8("quorum.wait_for_all", &wait_for_all);
 	icmap_get_uint8("quorum.auto_tie_breaker", &auto_tie_breaker);
 	icmap_get_uint8("quorum.last_man_standing", &last_man_standing);
 	icmap_get_uint32("quorum.last_man_standing_window", &last_man_standing_window);
 
-	/*
-	 * TODO: we need to know the lowest node-id in the cluster
-	 * current lack of node list with node-id's requires us to see all nodes
-	 * to determine which is the lowest.
-	 */
-	if (auto_tie_breaker) {
+	if ((votequorum_read_nodelist_configuration(&node_votes, &node_expected_votes)) &&
+	    (icmap_get_uint32("quorum.expected_votes", &expected_votes) != CS_OK)) {
+		log_printf(LOGSYS_LEVEL_CRIT,
+			   "configuration error: nodelist or quorum.expected_votes must be configured!");
+		return -1;
+	}
+
+	if ((auto_tie_breaker) && (lowest_node_id == -1)) {
 		wait_for_all = 1;
 	}
 
 	if (wait_for_all) {
 		wait_for_all_status = 1;
 	}
+
+	LEAVE();
+
+	return 0;
 }
 
 static void votequorum_readconfig_dynamic(void)
 {
 	int cluster_members = 0;
 	struct list_head *tmp;
+	uint32_t expected_votes = DEFAULT_EXPECTED;
+	int have_nodelist = 1;
 
 	ENTER();
 
-	log_printf(LOGSYS_LEVEL_DEBUG, "Reading configuration");
+	log_printf(LOGSYS_LEVEL_DEBUG, "Reading dynamic configuration");
 
-	/*
-	 * TODO: add votequorum_parse_nodelist();
-	 */
-
-	if (icmap_get_uint32("quorum.expected_votes", &us->expected_votes) != CS_OK) {
+	if (votequorum_read_nodelist_configuration(&us->votes, &us->expected_votes)) {
+		have_nodelist = 0;
 		us->expected_votes = DEFAULT_EXPECTED;
+		us->votes = 1;
+		icmap_get_uint32("quorum.votes", &us->votes);
 	}
 
-	if (icmap_get_uint32("quorum.votes", &us->votes) != CS_OK) {
-		us->votes = 1;
+	if (icmap_get_uint32("quorum.expected_votes", &expected_votes) == CS_OK) {
+		if (have_nodelist) {
+			us->expected_votes = max(us->expected_votes, expected_votes);
+		} else {
+			us->expected_votes = expected_votes;
+		}
 	}
 
 #ifdef EXPERIMENTAL_QUORUM_DEVICE_API
@@ -767,19 +857,22 @@ static void votequorum_refresh_config(
 
 static void votequorum_exec_add_config_notification(void)
 {
-	icmap_track_t icmap_track = NULL;
+	icmap_track_t icmap_track_nodelist = NULL;
+	icmap_track_t icmap_track_quorum = NULL;
 
 	ENTER();
 
-	/*
-	 * TODO: add track for nodeslist
-	 */
+	icmap_track_add("nodelist.",
+		ICMAP_TRACK_ADD | ICMAP_TRACK_DELETE | ICMAP_TRACK_MODIFY | ICMAP_TRACK_PREFIX,
+		votequorum_refresh_config,
+		NULL,
+		&icmap_track_nodelist);
 
 	icmap_track_add("quorum.",
 		ICMAP_TRACK_ADD | ICMAP_TRACK_DELETE | ICMAP_TRACK_MODIFY | ICMAP_TRACK_PREFIX,
 		votequorum_refresh_config,
 		NULL,
-		&icmap_track);
+		&icmap_track_quorum);
 
 	LEAVE();
 }
@@ -1214,7 +1307,9 @@ cs_error_t votequorum_init(struct corosync_api_v1 *api,
 	corosync_api = api;
 	quorum_callback = q_set_quorate_fn;
 
-	votequorum_readconfig_static();
+	if (votequorum_readconfig_static()) {
+		return CS_ERR_INVALID_PARAM;
+	}
 
 	corosync_service_link_and_init(corosync_api,
 				       &votequorum_service[0]);

@@ -285,6 +285,11 @@ static int quorum_exec_init_fn (struct corosync_api_v1 *api)
 				quorum_type = 1;
 			}
 		}
+
+		if (quorum_type == 0) {
+			log_printf (LOGSYS_LEVEL_CRIT, 
+				    "Quorum provider: %s failed to initialize", quorum_module);
+		}
 	}
 
 	if (quorum_module) {
