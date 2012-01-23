@@ -34,6 +34,7 @@
 
 #include <config.h>
 
+#include <ctype.h>
 #include <stdio.h>
 #include <poll.h>
 
@@ -53,7 +54,8 @@ enum user_action {
 	ACTION_DELETE,
 	ACTION_PRINT_ALL,
 	ACTION_PRINT_PREFIX,
-	ACTION_TRACK
+	ACTION_TRACK,
+	ACTION_LOAD,
 };
 
 struct name_to_type_item {
@@ -93,12 +95,18 @@ static int convert_name_to_type(const char *name)
 static int print_help(void)
 {
 	printf("\n");
-	printf("usage:  corosync-cmapctl [-b] [-adghsTt] [params...]\n");
+	printf("usage:  corosync-cmapctl [-b] [-adghsTtp] [params...]\n");
 	printf("Set key:\n");
 	printf("    corosync-cmapctl -s key_name type value\n");
 	printf("\n");
 	printf("    where type is one of ([i|u][8|16|32|64] | flt | dbl | str | bin)\n");
 	printf("    for bin, value is file name (or - for stdin)\n");
+	printf("\n");
+	printf("Load settings from a file:\n");
+	printf("    corosync-cmapctl -p filename\n");
+	printf("\n");
+	printf("    the format of the file is:\n");
+	printf("    <key_name> <type> <value>\n");
 	printf("\n");
 	printf("Delete key:\n");
 	printf("    corosync-cmapctl -d key_name...\n");
@@ -621,6 +629,66 @@ static void set_key(cmap_handle_t handle, const char *key_name, const char *key_
 	}
 }
 
+
+static void read_in_config_file(cmap_handle_t handle, char * filename)
+{
+	int ignore;
+	int c;
+	FILE* fh;
+	char buf[1024];
+	char * line;
+	char *key_name;
+	char *key_type_s;
+	char *key_value_s;
+
+	if (access (filename, R_OK) != 0) {
+		perror ("Couldn't access file.");
+		return;
+	}
+
+	fh = fopen(filename, "r");
+	if (fh == NULL) {
+		perror ("Couldn't open file.");
+		return;
+	}
+
+	while (fgets (buf, 1024, fh) != NULL) {
+		/* find the first real character, if it is
+		 * a '#' then ignore this line.
+		 * else process.
+		 * if no real characters then also ignore.
+		 */
+		ignore = 1;
+		for (c = 0; c < 1024; c++) {
+			if (isblank (buf[c])) {
+				continue;
+			}
+
+			if (buf[c] == '#' || buf[c] == '\n') {
+				ignore = 1;
+				break;
+			}
+			ignore = 0;
+			line = &buf[c];
+			break;
+		}
+		if (ignore == 1) {
+			continue;
+		}
+
+		/*
+		 * should be:
+		 * <key> <type> <value>
+		 */
+		key_name = strtok(line, " \n");
+		key_type_s = strtok(NULL, " \n");
+		key_value_s = strtok(NULL, " \n");
+		set_key(handle, key_name, key_type_s, key_value_s);
+	}
+
+	fclose (fh);
+}
+
 int main(int argc, char *argv[])
 {
 	enum user_action action;
@@ -632,11 +700,12 @@ int main(int argc, char *argv[])
 	cmap_value_types_t type;
 	int track_prefix;
 	int no_retries;
+	char * settings_file = NULL;
 
 	action = ACTION_PRINT_PREFIX;
 	track_prefix = 1;
 
-	while ((c = getopt(argc, argv, "hgsdtTb")) != -1) {
+	while ((c = getopt(argc, argv, "hgsdtTbp:")) != -1) {
 		switch (c) {
 		case 'h':
 			return print_help();
@@ -652,6 +721,10 @@ int main(int argc, char *argv[])
 			break;
 		case 'd':
 			action = ACTION_DELETE;
+			break;
+		case 'p':
+			settings_file = optarg;
+			action = ACTION_LOAD;
 			break;
 		case 't':
 			action = ACTION_TRACK;
@@ -676,7 +749,9 @@ int main(int argc, char *argv[])
 	argc -= optind;
 	argv += optind;
 
-	if (argc == 0 && action != ACTION_PRINT_ALL) {
+	if (argc == 0 &&
+	    action != ACTION_LOAD &&
+	    action != ACTION_PRINT_ALL) {
 		fprintf(stderr, "Expected key after options\n");
 		return (EXIT_FAILURE);
 	}
@@ -717,6 +792,9 @@ int main(int argc, char *argv[])
 				fprintf(stderr, "Can't delete key %s. Error %s\n", argv[i], cs_strerror(err));
 			}
 		}
+		break;
+	case ACTION_LOAD:
+		read_in_config_file(handle, settings_file);
 		break;
 	case ACTION_TRACK:
 		for (i = 0; i < argc; i++) {
