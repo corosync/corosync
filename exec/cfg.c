@@ -443,7 +443,8 @@ static void check_shutdown_status(void)
 			shutdown_con = NULL;
 		}
 
-		log_printf(LOGSYS_LEVEL_DEBUG, "shutdown decision is: (yes count: %d, no count: %d) flags=%x\n", shutdown_yes, shutdown_no, shutdown_flags);
+		log_printf(LOGSYS_LEVEL_DEBUG, "shutdown decision is: (yes count: %d, no count: %d) flags=%x",
+		       shutdown_yes, shutdown_no, shutdown_flags);
 	}
 	LEAVE();
 }
@@ -572,10 +573,11 @@ static void message_handler_req_exec_cfg_killnode (
 	cs_name_t reason;
 
 	ENTER();
-	log_printf(LOGSYS_LEVEL_DEBUG, "request to kill node %d(us=%d): %s\n",  req_exec_cfg_killnode->nodeid, api->totem_nodeid_get(), reason.value);
+	log_printf(LOGSYS_LEVEL_DEBUG, "request to kill node %d(us=%d): %s",
+		req_exec_cfg_killnode->nodeid, api->totem_nodeid_get(), reason.value);
         if (req_exec_cfg_killnode->nodeid == api->totem_nodeid_get()) {
 		marshall_from_mar_name_t(&reason, &req_exec_cfg_killnode->reason);
-		log_printf(LOGSYS_LEVEL_NOTICE, "Killed by node %d: %s\n",
+		log_printf(LOGSYS_LEVEL_NOTICE, "Killed by node %d: %s",
 			   nodeid, reason.value);
 		corosync_fatal_error(COROSYNC_FATAL_ERROR_EXIT);
 	}
@@ -591,7 +593,7 @@ static void message_handler_req_exec_cfg_shutdown (
 {
 	ENTER();
 
-	log_printf(LOGSYS_LEVEL_NOTICE, "Node %d was shut down by sysadmin\n", nodeid);
+	log_printf(LOGSYS_LEVEL_NOTICE, "Node %d was shut down by sysadmin", nodeid);
 	if (nodeid == api->totem_nodeid_get()) {
 		api->shutdown_request();
 	}
@@ -605,7 +607,8 @@ static void message_handler_req_exec_cfg_crypto_set (
 	const struct req_exec_cfg_crypto_set *req_exec_cfg_crypto_set = message;
 	ENTER();
 
-	log_printf(LOGSYS_LEVEL_NOTICE, "Node %d requested set crypto to %d\n", nodeid, req_exec_cfg_crypto_set->type);
+	log_printf(LOGSYS_LEVEL_NOTICE, "Node %d requested set crypto to %d",
+		nodeid, req_exec_cfg_crypto_set->type);
 
 	api->totem_crypto_set(req_exec_cfg_crypto_set->type);
 	LEAVE();

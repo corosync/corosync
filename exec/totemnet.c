@@ -237,7 +237,7 @@ static void totemnet_instance_initialize (
 	transport = config->transport_number;
 
 	log_printf (LOGSYS_LEVEL_NOTICE,
-		"Initializing transport (%s).\n", transport_entries[transport].name);
+		"Initializing transport (%s).", transport_entries[transport].name);
 
 	instance->transport = &transport_entries[transport];
 }

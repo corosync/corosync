@@ -252,7 +252,7 @@ static void serialize_unlock (void)
 static void corosync_sync_completed (void)
 {
 	log_printf (LOGSYS_LEVEL_NOTICE,
-		"Completed service synchronization, ready to provide service.\n");
+		"Completed service synchronization, ready to provide service.");
 	sync_in_process = 0;
 
 	cs_ipcs_sync_state_changed(sync_in_process);
@@ -476,7 +476,7 @@ static void corosync_mlockall (void)
 	/* under FreeBSD < 8 a process with locked page cannot call dlopen
 	 * code disabled until FreeBSD bug i386/93396 was solved
 	 */
-	log_printf (LOGSYS_LEVEL_WARNING, "Could not lock memory of service to avoid page faults\n");
+	log_printf (LOGSYS_LEVEL_WARNING, "Could not lock memory of service to avoid page faults");
 #else
 	res = mlockall (MCL_CURRENT | MCL_FUTURE);
 	if (res == -1) {
@@ -606,7 +606,7 @@ static void totem_dynamic_notify(
 
 	if (remove_old_member) {
 		log_printf(LOGSYS_LEVEL_DEBUG,
-			"removing dynamic member %s for ring %u\n", (char *)old_val.data, ring_no);
+			"removing dynamic member %s for ring %u", (char *)old_val.data, ring_no);
 		if (totemip_parse(&member, (char *)old_val.data, 0) == 0) {
 			totempg_member_remove (&member, ring_no);
 		}
@@ -614,7 +614,7 @@ static void totem_dynamic_notify(
 
 	if (add_new_member) {
 		log_printf(LOGSYS_LEVEL_DEBUG,
-			"adding dynamic member %s for ring %u\n", (char *)new_val.data, ring_no);
+			"adding dynamic member %s for ring %u", (char *)new_val.data, ring_no);
 		if (totemip_parse(&member, (char *)new_val.data, 0) == 0) {
 			totempg_member_add (&member, ring_no);
 		}
@@ -919,7 +919,7 @@ static void main_service_ready (void)
 	 */
 	res = corosync_service_defaults_link_and_init (api);
 	if (res == -1) {
-		log_printf (LOGSYS_LEVEL_ERROR, "Could not initialize default services\n");
+		log_printf (LOGSYS_LEVEL_ERROR, "Could not initialize default services");
 		corosync_exit_error (COROSYNC_DONE_INIT_SERVICES);
 	}
 	evil_init (api);
@@ -928,13 +928,15 @@ static void main_service_ready (void)
 	corosync_fplay_control_init ();
 	corosync_totem_dynamic_init ();
 	if (minimum_sync_mode == CS_SYNC_V2) {
-		log_printf (LOGSYS_LEVEL_NOTICE, "Compatibility mode set to none.  Using V2 of the synchronization engine.\n");
+		log_printf (LOGSYS_LEVEL_NOTICE,
+		       "Compatibility mode set to none.  Using V2 of the synchronization engine.");
 		sync_v2_init (
 			corosync_sync_v2_callbacks_retrieve,
 			corosync_sync_completed);
 	} else
 	if (minimum_sync_mode == CS_SYNC_V1) {
-		log_printf (LOGSYS_LEVEL_NOTICE, "Compatibility mode set to whitetank.  Using V1 and V2 of the synchronization engine.\n");
+		log_printf (LOGSYS_LEVEL_NOTICE,
+			"Compatibility mode set to whitetank.  Using V1 and V2 of the synchronization engine.");
 		sync_register (
 			corosync_sync_callbacks_retrieve,
 			sync_v2_memb_list_determine,
@@ -961,7 +963,7 @@ static enum e_corosync_done corosync_flock (const char *lockfile, pid_t pid)
 
 	lf = open (lockfile, O_WRONLY | O_CREAT, 0640);
 	if (lf == -1) {
-		log_printf (LOGSYS_LEVEL_ERROR, "Corosync Executive couldn't create lock file.\n");
+		log_printf (LOGSYS_LEVEL_ERROR, "Corosync Executive couldn't create lock file.");
 		return (COROSYNC_DONE_AQUIRE_LOCK);
 	}
 
@@ -977,12 +979,12 @@ retry_fcntl:
 			break;
 		case EAGAIN:
 		case EACCES:
-			log_printf (LOGSYS_LEVEL_ERROR, "Another Corosync instance is already running.\n");
+			log_printf (LOGSYS_LEVEL_ERROR, "Another Corosync instance is already running.");
 			err = COROSYNC_DONE_ALREADY_RUNNING;
 			goto error_close;
 			break;
 		default:
-			log_printf (LOGSYS_LEVEL_ERROR, "Corosync Executive couldn't aquire lock. Error was %s\n",
+			log_printf (LOGSYS_LEVEL_ERROR, "Corosync Executive couldn't aquire lock. Error was %s",
 			    strerror(errno));
 			err = COROSYNC_DONE_AQUIRE_LOCK;
 			goto error_close;
@@ -991,7 +993,7 @@ retry_fcntl:
 	}
 
 	if (ftruncate (lf, 0) == -1) {
-		log_printf (LOGSYS_LEVEL_ERROR, "Corosync Executive couldn't truncate lock file. Error was %s\n",
+		log_printf (LOGSYS_LEVEL_ERROR, "Corosync Executive couldn't truncate lock file. Error was %s",
 		    strerror (errno));
 		err = COROSYNC_DONE_AQUIRE_LOCK;
 		goto error_close_unlink;
@@ -1006,7 +1008,7 @@ retry_write:
 			goto retry_write;
 		} else {
 			log_printf (LOGSYS_LEVEL_ERROR, "Corosync Executive couldn't write pid to lock file. "
-				"Error was %s\n", strerror (errno));
+				"Error was %s", strerror (errno));
 			err = COROSYNC_DONE_AQUIRE_LOCK;
 			goto error_close_unlink;
 		}
@@ -1014,14 +1016,14 @@ retry_write:
 
 	if ((fd_flag = fcntl (lf, F_GETFD, 0)) == -1) {
 		log_printf (LOGSYS_LEVEL_ERROR, "Corosync Executive couldn't get close-on-exec flag from lock file. "
-			"Error was %s\n", strerror (errno));
+			"Error was %s", strerror (errno));
 		err = COROSYNC_DONE_AQUIRE_LOCK;
 		goto error_close_unlink;
 	}
 	fd_flag |= FD_CLOEXEC;
 	if (fcntl (lf, F_SETFD, fd_flag) == -1) {
 		log_printf (LOGSYS_LEVEL_ERROR, "Corosync Executive couldn't set close-on-exec flag to lock file. "
-			"Error was %s\n", strerror (errno));
+			"Error was %s", strerror (errno));
 		err = COROSYNC_DONE_AQUIRE_LOCK;
 		goto error_close_unlink;
 	}
@@ -1092,8 +1094,8 @@ int main (int argc, char **argv, char **envp)
 
 	corosync_mlockall ();
 
-	log_printf (LOGSYS_LEVEL_NOTICE, "Corosync Cluster Engine ('%s'): started and ready to provide service.\n", VERSION);
-	log_printf (LOGSYS_LEVEL_INFO, "Corosync built-in features:" PACKAGE_FEATURES "\n");
+	log_printf (LOGSYS_LEVEL_NOTICE, "Corosync Cluster Engine ('%s'): started and ready to provide service.", VERSION);
+	log_printf (LOGSYS_LEVEL_INFO, "Corosync built-in features:" PACKAGE_FEATURES "");
 
 	corosync_poll_handle = qb_loop_create ();
 
@@ -1112,7 +1114,7 @@ int main (int argc, char **argv, char **envp)
 #endif
 
 	if (icmap_init() != CS_OK) {
-		log_printf (LOGSYS_LEVEL_ERROR, "Corosync Executive couldn't initialize configuration component.\n");
+		log_printf (LOGSYS_LEVEL_ERROR, "Corosync Executive couldn't initialize configuration component.");
 		corosync_exit_error (COROSYNC_DONE_OBJDB);
 	}
 
@@ -1148,7 +1150,7 @@ int main (int argc, char **argv, char **envp)
 	sprintf (corosync_lib_dir, "%s/lib/corosync", LOCALSTATEDIR);
 	res = stat (corosync_lib_dir, &stat_out);
 	if ((res == -1) || (res == 0 && !S_ISDIR(stat_out.st_mode))) {
-		log_printf (LOGSYS_LEVEL_ERROR, "Required directory not present %s.  Please create it.\n", corosync_lib_dir);
+		log_printf (LOGSYS_LEVEL_ERROR, "Required directory not present %s.  Please create it.", corosync_lib_dir);
 		corosync_exit_error (COROSYNC_DONE_DIR_NOT_PRESENT);
 	}
 

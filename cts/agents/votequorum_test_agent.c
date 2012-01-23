@@ -135,13 +135,13 @@ static int q_lib_init(void)
 			}
 		}
 		if (ret != CS_OK) {
-			qb_log (LOG_ERR, "votequorum_initialize FAILED: %d\n", ret);
+			qb_log (LOG_ERR, "votequorum_initialize FAILED: %d", ret);
 			vq_handle = 0;
 		}
 		else {
 			ret = votequorum_trackstart (vq_handle, vq_handle, CS_TRACK_CHANGES);
 			if (ret != CS_OK) {
-				qb_log (LOG_ERR, "votequorum_trackstart FAILED: %d\n", ret);
+				qb_log (LOG_ERR, "votequorum_trackstart FAILED: %d", ret);
 			}
 
 			votequorum_fd_get (vq_handle, &fd);
@@ -155,13 +155,13 @@ static int q_lib_init(void)
 		q_callbacks.quorum_notify_fn = quorum_notification_fn;
 		ret = quorum_initialize (&q_handle, &q_callbacks, &q_type);
 		if (ret != CS_OK) {
-			qb_log (LOG_ERR, "quorum_initialize FAILED: %d\n", ret);
+			qb_log (LOG_ERR, "quorum_initialize FAILED: %d", ret);
 			q_handle = 0;
 		}
 		else {
 			ret = quorum_trackstart (q_handle, CS_TRACK_CHANGES);
 			if (ret != CS_OK) {
-				qb_log (LOG_ERR, "quorum_trackstart FAILED: %d\n", ret);
+				qb_log (LOG_ERR, "quorum_trackstart FAILED: %d", ret);
 			}
 			quorum_fd_get (q_handle, &fd);
 			qb_loop_poll_add (ta_poll_handle_get(), QB_LOOP_MED, fd,
@@ -181,7 +181,7 @@ static void lib_init (int sock)
 
 	if (ret != CS_OK) {
 		snprintf (response, 100, "%s", FAIL_STR);
-		qb_log (LOG_ERR, "q_lib_init FAILED: %d\n", ret);
+		qb_log (LOG_ERR, "q_lib_init FAILED: %d", ret);
 	}
 
 	send (sock, response, strlen (response), 0);
@@ -198,7 +198,7 @@ static void getinfo (int sock)
 	ret = votequorum_getinfo(vq_handle, 0, &info);
 	if (ret != CS_OK) {
 		snprintf (response, 100, "%s", FAIL_STR);
-		qb_log (LOG_ERR, "votequorum_getinfo FAILED: %d\n", ret);
+		qb_log (LOG_ERR, "votequorum_getinfo FAILED: %d", ret);
 		goto send_response;
 	}
 
@@ -224,7 +224,7 @@ static void setexpected (int sock, char *arg)
 	ret = votequorum_setexpected (vq_handle, atoi(arg));
 	if (ret != CS_OK) {
 		snprintf (response, 100, "%s", FAIL_STR);
-		qb_log (LOG_ERR, "set expected votes FAILED: %d\n", ret);
+		qb_log (LOG_ERR, "set expected votes FAILED: %d", ret);
 		goto send_response;
 	}
 
@@ -244,7 +244,7 @@ static void setvotes (int sock, char *arg)
 	ret = votequorum_setvotes (vq_handle, 0, atoi(arg));
 	if (ret != CS_OK) {
 		snprintf (response, 100, "%s", FAIL_STR);
-		qb_log (LOG_ERR, "set votes FAILED: %d\n", ret);
+		qb_log (LOG_ERR, "set votes FAILED: %d", ret);
 		goto send_response;
 	}
 
@@ -266,7 +266,7 @@ static void getquorate (int sock)
 	ret = quorum_getquorate (q_handle, &quorate);
 	if (ret != CS_OK) {
 		snprintf (response, 100, "%s", FAIL_STR);
-		qb_log (LOG_ERR, "getquorate FAILED: %d\n", ret);
+		qb_log (LOG_ERR, "getquorate FAILED: %d", ret);
 		goto send_response;
 	}
 

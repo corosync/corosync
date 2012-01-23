@@ -457,7 +457,7 @@ static void get_lowest_node_id(void)
 			lowest_node_id = node->node_id;
 		}
 	}
-	log_printf(LOGSYS_LEVEL_DEBUG, "lowest node id: %d us: %d\n", lowest_node_id, us->node_id);
+	log_printf(LOGSYS_LEVEL_DEBUG, "lowest node id: %d us: %d", lowest_node_id, us->node_id);
 
 	LEAVE();
 }
@@ -501,7 +501,7 @@ static int calculate_quorum(int allow_decrease, unsigned int max_expected, unsig
 	list_iterate(nodelist, &cluster_members_list) {
 		node = list_entry(nodelist, struct cluster_node, list);
 
-		log_printf(LOGSYS_LEVEL_DEBUG, "node %u state=%d, votes=%u, expected=%u\n",
+		log_printf(LOGSYS_LEVEL_DEBUG, "node %u state=%d, votes=%u, expected=%u",
 			   node->node_id, node->state, node->votes, node->expected_votes);
 
 		if (node->state == NODESTATE_MEMBER) {
@@ -573,7 +573,7 @@ static void are_we_quorate(unsigned int total_votes)
 		if (total_votes != us->expected_votes) {
 			log_printf(LOGSYS_LEVEL_NOTICE,
 				   "Waiting for all cluster members. "
-				   "Current votes: %d expected_votes: %d\n",
+				   "Current votes: %d expected_votes: %d",
 				   total_votes, us->expected_votes);
 			cluster_is_quorate = 0;
 			return;
@@ -596,11 +596,11 @@ static void are_we_quorate(unsigned int total_votes)
 
 	if (cluster_is_quorate && !quorate) {
 		quorum_change = 1;
-		log_printf(LOGSYS_LEVEL_DEBUG, "quorum lost, blocking activity\n");
+		log_printf(LOGSYS_LEVEL_DEBUG, "quorum lost, blocking activity");
 	}
 	if (!cluster_is_quorate && quorate) {
 		quorum_change = 1;
-		log_printf(LOGSYS_LEVEL_DEBUG, "quorum regained, resuming activity\n");
+		log_printf(LOGSYS_LEVEL_DEBUG, "quorum regained, resuming activity");
 	}
 
 	cluster_is_quorate = quorate;
@@ -644,7 +644,7 @@ static void recalculate_quorum(int allow_decrease, int by_current_nodes)
 	/*
 	 * Keep expected_votes at the highest number of votes in the cluster
 	 */
-	log_printf(LOGSYS_LEVEL_DEBUG, "total_votes=%d, expected_votes=%d\n", total_votes, us->expected_votes);
+	log_printf(LOGSYS_LEVEL_DEBUG, "total_votes=%d, expected_votes=%d", total_votes, us->expected_votes);
 	if (total_votes > us->expected_votes) {
 		us->expected_votes = total_votes;
 		votequorum_exec_send_expectedvotes_notification();
@@ -695,7 +695,7 @@ static void votequorum_readconfig_dynamic(void)
 
 	ENTER();
 
-	log_printf(LOGSYS_LEVEL_DEBUG, "Reading configuration\n");
+	log_printf(LOGSYS_LEVEL_DEBUG, "Reading configuration");
 
 	/*
 	 * TODO: add votequorum_parse_nodelist();
@@ -725,7 +725,7 @@ static void votequorum_readconfig_dynamic(void)
         }
 
 	if (two_node && cluster_members > 2) {
-		log_printf(LOGSYS_LEVEL_WARNING, "quorum.two_node was set but there are more than 2 nodes in the cluster. It will be ignored.\n");
+		log_printf(LOGSYS_LEVEL_WARNING, "quorum.two_node was set but there are more than 2 nodes in the cluster. It will be ignored.");
 		two_node = 0;
 	}
 
@@ -917,7 +917,7 @@ static void votequorum_exec_send_expectedvotes_notification(void)
 
 	ENTER();
 
-	log_printf(LOGSYS_LEVEL_DEBUG, "Sending expected votes callback\n");
+	log_printf(LOGSYS_LEVEL_DEBUG, "Sending expected votes callback");
 
 	res_lib_votequorum_expectedvotes_notification.header.id = MESSAGE_RES_VOTEQUORUM_EXPECTEDVOTES_NOTIFICATION;
 	res_lib_votequorum_expectedvotes_notification.header.size = sizeof(res_lib_votequorum_expectedvotes_notification);
@@ -960,7 +960,7 @@ static void message_handler_req_exec_votequorum_nodeinfo (
 
 	ENTER();
 
-	log_printf(LOGSYS_LEVEL_DEBUG, "got nodeinfo message from cluster node %u\n", nodeid);
+	log_printf(LOGSYS_LEVEL_DEBUG, "got nodeinfo message from cluster node %u", nodeid);
 
 	node = find_node_by_nodeid(nodeid);
 	if (!node) {
@@ -982,7 +982,7 @@ static void message_handler_req_exec_votequorum_nodeinfo (
 	node->expected_votes = req_exec_quorum_nodeinfo->expected_votes;
 	node->state = NODESTATE_MEMBER;
 
-	log_printf(LOGSYS_LEVEL_DEBUG, "nodeinfo message: votes: %d, expected: %d wfa: %d quorate: %d\n",
+	log_printf(LOGSYS_LEVEL_DEBUG, "nodeinfo message: votes: %d, expected: %d wfa: %d quorate: %d",
 					req_exec_quorum_nodeinfo->votes,
 					req_exec_quorum_nodeinfo->expected_votes,
 					req_exec_quorum_nodeinfo->wait_for_all_status,
@@ -1043,7 +1043,7 @@ static void message_handler_req_exec_votequorum_reconfigure (
 
 	ENTER();
 
-	log_printf(LOGSYS_LEVEL_DEBUG, "got reconfigure message from cluster node %u\n", nodeid);
+	log_printf(LOGSYS_LEVEL_DEBUG, "got reconfigure message from cluster node %u", nodeid);
 
 	node = find_node_by_nodeid(req_exec_quorum_reconfigure->nodeid);
 	if (!node) {
@@ -1274,7 +1274,7 @@ static void quorum_device_timer_fn(void *arg)
 	if ((quorum_device->last_hello / QB_TIME_NS_IN_SEC) + quorumdev_poll/1000 <
 	    (qb_util_nano_current_get () / QB_TIME_NS_IN_SEC)) {
 		quorum_device->state = NODESTATE_DEAD;
-		log_printf(LOGSYS_LEVEL_INFO, "lost contact with quorum device\n");
+		log_printf(LOGSYS_LEVEL_INFO, "lost contact with quorum device");
 		recalculate_quorum(0, 0);
 	} else {
 		corosync_api->timer_add_duration((unsigned long long)quorumdev_poll*1000000, quorum_device,
@@ -1300,7 +1300,7 @@ static void message_handler_req_lib_votequorum_getinfo (void *conn, const void *
 
 	ENTER();
 
-	log_printf(LOGSYS_LEVEL_DEBUG, "got getinfo request on %p for node %u\n", conn, req_lib_votequorum_getinfo->nodeid);
+	log_printf(LOGSYS_LEVEL_DEBUG, "got getinfo request on %p for node %u", conn, req_lib_votequorum_getinfo->nodeid);
 
 	node = find_node_by_nodeid(req_lib_votequorum_getinfo->nodeid);
 	if (node) {
@@ -1353,7 +1353,7 @@ static void message_handler_req_lib_votequorum_getinfo (void *conn, const void *
 	res_lib_votequorum_getinfo.header.id = MESSAGE_RES_VOTEQUORUM_GETINFO;
 	res_lib_votequorum_getinfo.header.error = error;
 	corosync_api->ipc_response_send(conn, &res_lib_votequorum_getinfo, sizeof(res_lib_votequorum_getinfo));
-	log_printf(LOGSYS_LEVEL_DEBUG, "getinfo response error: %d\n", error);
+	log_printf(LOGSYS_LEVEL_DEBUG, "getinfo response error: %d", error);
 
 	LEAVE();
 }
@@ -1455,7 +1455,7 @@ static void message_handler_req_lib_votequorum_trackstart (void *conn,
 	 */
 	if (req_lib_votequorum_trackstart->track_flags & CS_TRACK_CURRENT ||
 	    req_lib_votequorum_trackstart->track_flags & CS_TRACK_CHANGES) {
-		log_printf(LOGSYS_LEVEL_DEBUG, "sending initial status to %p\n", conn);
+		log_printf(LOGSYS_LEVEL_DEBUG, "sending initial status to %p", conn);
 		votequorum_exec_send_quorum_notification(conn, req_lib_votequorum_trackstart->context);
 	}
 
@@ -1611,7 +1611,7 @@ static void message_handler_req_lib_votequorum_qdisk_getinfo (void *conn,
 	ENTER();
 
 	if (quorum_device) {
-		log_printf(LOGSYS_LEVEL_DEBUG, "got qdisk_getinfo state %d\n", quorum_device->state);
+		log_printf(LOGSYS_LEVEL_DEBUG, "got qdisk_getinfo state %d", quorum_device->state);
 		res_lib_votequorum_qdisk_getinfo.votes = quorum_device->votes;
 		if (quorum_device->state == NODESTATE_MEMBER) {
 			res_lib_votequorum_qdisk_getinfo.state = 1;

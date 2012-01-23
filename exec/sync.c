@@ -295,7 +295,7 @@ int sync_register (
 		sync_confchg_fn);
 	if (res == -1) {
 		log_printf (LOGSYS_LEVEL_ERROR,
-			"Couldn't initialize groups interface.\n");
+			"Couldn't initialize groups interface.");
 		return (-1);
 	}
 
@@ -304,7 +304,7 @@ int sync_register (
 		&sync_group,
 		1);
 	if (res == -1) {
-		log_printf (LOGSYS_LEVEL_ERROR, "Couldn't join group.\n");
+		log_printf (LOGSYS_LEVEL_ERROR, "Couldn't join group.");
 		return (-1);
 	}
 
@@ -365,7 +365,7 @@ static void sync_deliver_fn (
 	unsigned int barrier_completed;
 	int i;
 
-	log_printf (LOGSYS_LEVEL_DEBUG, "confchg entries %lu\n",
+	log_printf (LOGSYS_LEVEL_DEBUG, "confchg entries %lu",
 		    (unsigned long int) barrier_data_confchg_entries);
 	if (endian_conversion_required) {
 		sync_endian_convert (req_exec_sync_barrier_start);
@@ -391,7 +391,7 @@ static void sync_deliver_fn (
 		if (nodeid == barrier_data_process[i].nodeid) {
 			barrier_data_process[i].completed = 1;
 			log_printf (LOGSYS_LEVEL_DEBUG,
-				"Barrier Start Received From %d\n",
+				"Barrier Start Received From %d",
 				barrier_data_process[i].nodeid);
 			break;
 		}
@@ -402,7 +402,7 @@ static void sync_deliver_fn (
 	 */
 	for (i = 0; i < barrier_data_confchg_entries; i++) {
 		log_printf (LOGSYS_LEVEL_DEBUG,
-			"Barrier completion status for nodeid %d = %d. \n",
+			"Barrier completion status for nodeid %d = %d. ",
 			barrier_data_process[i].nodeid,
 			barrier_data_process[i].completed);
 		if (barrier_data_process[i].completed == 0) {
@@ -411,7 +411,7 @@ static void sync_deliver_fn (
 	}
 	if (barrier_completed) {
 		log_printf (LOGSYS_LEVEL_DEBUG,
-			"Synchronization barrier completed\n");
+			"Synchronization barrier completed");
 	}
 	/*
 	 * This sync is complete so activate and start next service sync
@@ -420,7 +420,7 @@ static void sync_deliver_fn (
 		sync_callbacks.sync_activate ();
 
 		log_printf (LOGSYS_LEVEL_DEBUG,
-			"Committing synchronization for (%s)\n",
+			"Committing synchronization for (%s)",
 			sync_callbacks.name);
 	}
 
@@ -438,7 +438,7 @@ static void sync_deliver_fn (
 		 */
 		if (sync_processing && sync_callbacks.sync_init_api.sync_init_v1) {
 			log_printf (LOGSYS_LEVEL_DEBUG,
-				"Synchronization actions starting for (%s)\n",
+				"Synchronization actions starting for (%s)",
 				sync_callbacks.name);
 			sync_service_init (&deliver_ring_id);
 		}

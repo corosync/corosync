@@ -1730,7 +1730,7 @@ void rrp_deliver_fn (
 	if (hdr->type == MESSAGE_TYPE_RING_TEST_ACTIVE) {
 		log_printf (
 			rrp_instance->totemrrp_log_level_debug,
-			"received message requesting test of ring now active\n");
+			"received message requesting test of ring now active");
 
 		if (hdr->endian_detector != ENDIAN_LOCAL) {
 			test_active_msg_endian_convert(hdr, &tmp_msg);
@@ -1760,7 +1760,7 @@ void rrp_deliver_fn (
 	if (hdr->type == MESSAGE_TYPE_RING_TEST_ACTIVATE) {
 		log_printf (
 			rrp_instance->totemrrp_log_level_notice,
-			"Automatically recovered ring %d\n", hdr->ring_number);
+			"Automatically recovered ring %d", hdr->ring_number);
 
 		if (hdr->endian_detector != ENDIAN_LOCAL) {
 			test_active_msg_endian_convert(hdr, &tmp_msg);

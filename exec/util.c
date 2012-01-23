@@ -145,7 +145,7 @@ void _corosync_exit_error (
 			"Corosync Cluster Engine exiting normally");
 	} else {
 		log_printf (LOGSYS_LEVEL_ERROR, "Corosync Cluster Engine exiting "
-			"with status %d at %s:%u.\n", err, file, line);
+			"with status %d at %s:%u.", err, file, line);
 	}
 	logsys_system_fini ();
 	exit (err);

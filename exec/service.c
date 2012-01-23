@@ -179,7 +179,7 @@ unsigned int corosync_service_link_and_init (
 	}
 
 	log_printf (LOGSYS_LEVEL_NOTICE,
-		"Service engine loaded: %s [%d]\n", service_engine->name, service_engine->id);
+		"Service engine loaded: %s [%d]", service_engine->name, service_engine->id);
 	cs_ipcs_service_init(service_engine);
 	return (res);
 }
@@ -318,7 +318,7 @@ static unsigned int service_unlink_and_exit (
 		}
 
 		log_printf(LOGSYS_LEVEL_NOTICE,
-			"Service engine unloaded: %s\n",
+			"Service engine unloaded: %s",
 			   corosync_service[service_id]->name);
 
 		corosync_service[service_id] = NULL;
@@ -372,7 +372,7 @@ static void service_unlink_schedwrk_handler (void *data) {
 	}
 
 	log_printf(LOGSYS_LEVEL_NOTICE,
-		"Service engine unloaded: %s\n",
+		"Service engine unloaded: %s",
 		corosync_service[cb_data->service_engine]->name);
 
 	corosync_service[cb_data->service_engine] = NULL;
@@ -403,7 +403,7 @@ static void service_exit_schedwrk_handler (void *data) {
 
 	if (called == 0) {
 		log_printf(LOGSYS_LEVEL_NOTICE,
-			"Unloading all Corosync service engines.\n");
+			"Unloading all Corosync service engines.");
  		current_priority = service_priority_max ();
 		called = 1;
 	}

@@ -82,7 +82,7 @@ static void ta_handle_command (int sock, char* msg)
 	char* func = NULL;
 
 	if (parse_debug)
-		qb_log (LOG_DEBUG,"%s (MSG:%s)\n", __func__, msg);
+		qb_log (LOG_DEBUG,"%s (MSG:%s)", __func__, msg);
 
 	str_len = strtok_r (str, ":", &saveptr);
 	assert (str_len);
@@ -129,7 +129,7 @@ static int server_process_data_fn (
 		/* got error or connection closed by client */
 		if (nbytes == 0) {
 			/* connection closed */
-			qb_log (LOG_WARNING, "socket %d hung up: exiting...\n", fd);
+			qb_log (LOG_WARNING, "socket %d hung up: exiting...", fd);
 		} else {
 			qb_perror(LOG_ERR, "recv() failed");
 		}
@@ -175,14 +175,14 @@ retry_accept:
 
 	if (new_fd == -1) {
 		qb_log (LOG_ERR,
-			"Could not accept connection: %s\n", strerror (errno));
+			"Could not accept connection: %s", strerror (errno));
 		return (0); /* This is an error, but -1 would indicate disconnect from poll loop */
 	}
 
 	res = fcntl (new_fd, F_SETFL, O_NONBLOCK);
 	if (res == -1) {
 		qb_log (LOG_ERR,
-			"Could not set non-blocking operation on connection: %s\n",
+			"Could not set non-blocking operation on connection: %s",
 			strerror (errno));
 		close (new_fd);
 		return (0); /* This is an error, but -1 would indicate disconnect from poll loop */
@@ -252,7 +252,7 @@ static int create_server_sockect (int server_port)
 		}
 
 		if (bind (listener, p->ai_addr, p->ai_addrlen) < 0) {
-			qb_log (LOG_ERR, "bind(%s) failed: %s\n", addr_str, strerror (errno));
+			qb_log (LOG_ERR, "bind(%s) failed: %s", addr_str, strerror (errno));
 			close (listener);
 			continue;
 		}

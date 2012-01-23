@@ -967,7 +967,7 @@ static int read_config_file_into_icmap(
 		char error_str[100];
 		const char *error_ptr = qb_strerror_r(errno, error_str, sizeof(error_str));
 		snprintf (error_reason, sizeof(error_string_response),
-			"Can't read file %s reason = (%s)\n",
+			"Can't read file %s reason = (%s)",
 			 filename, error_ptr);
 		*error_string = error_reason;
 		return -1;
@@ -985,7 +985,7 @@ static int read_config_file_into_icmap(
 
 	if (res == 0) {
 		snprintf (error_reason, sizeof(error_string_response),
-			"Successfully read main configuration file '%s'.\n", filename);
+			"Successfully read main configuration file '%s'.", filename);
 		*error_string = error_reason;
 	}
 

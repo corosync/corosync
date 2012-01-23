@@ -327,7 +327,7 @@ static void message_handler_req_exec_pload_mcast (
 	if (msgs_delivered == msgs_wanted) {
 		tv2 = qb_util_nano_current_get ();
 		tv_elapsed = tv2 - tv1;
-		sprintf (log_buffer, "%5d Writes %d bytes per write %7.3f seconds runtime, %9.3f TP/S, %9.3f MB/S.\n",
+		sprintf (log_buffer, "%5d Writes %d bytes per write %7.3f seconds runtime, %9.3f TP/S, %9.3f MB/S.",
 			msgs_delivered,
 			msg_size,
 			(tv_elapsed / 1000000000.0),

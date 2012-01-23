@@ -353,7 +353,7 @@ static void ykd_deliver_fn (
 #ifdef TODO
 	if (totemip_localhost_check (source_addr)) {
 		log_printf (LOGSYS_LEVEL_NOTICE,
-			"This processor is within the primary component.\n");
+			"This processor is within the primary component.");
 			primary_designated = 1;
 
 			ykd_primary_callback_fn (
@@ -435,7 +435,7 @@ static void ykd_deliver_fn (
 		case YKD_MODE_ATTEMPT:
 			if (all_received) {
 				log_printf (LOGSYS_LEVEL_NOTICE,
-					"This processor is within the primary component.\n");
+					"This processor is within the primary component.");
 				ykd_primary_designated = 1;
 
 				ykd_primary_callback_fn (

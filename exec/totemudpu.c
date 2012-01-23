@@ -101,7 +101,7 @@ struct totemudpu_member {
 	struct totem_ip_address member;
 	int fd;
 };
-	
+
 struct totemudpu_instance {
 	hmac_state totemudpu_hmac_state;
 
@@ -241,7 +241,7 @@ do {												\
         instance->totemudpu_log_printf (							\
 		level, instance->totemudpu_subsys_id,						\
                 __FUNCTION__, __FILE__, __LINE__,						\
-		fmt ": %s (%d)\n", ##args, _error_ptr, err_num);				\
+		fmt ": %s (%d)", ##args, _error_ptr, err_num);				\
 	} while(0)
 
 static int authenticate_and_decrypt_sober (
@@ -309,7 +309,7 @@ static void init_sober_crypto(
 	struct totemudpu_instance *instance)
 {
 	log_printf(instance->totemudpu_log_level_notice,
-		"Initializing transmit/receive security: libtomcrypt SOBER128/SHA1HMAC (mode 0).\n");
+		"Initializing transmit/receive security: libtomcrypt SOBER128/SHA1HMAC (mode 0).");
 	rng_make_prng (128, PRNG_SOBER, &instance->totemudpu_prng_state, NULL);
 }
 
@@ -375,11 +375,11 @@ static void init_nss_crypto(
 	SECStatus          rv;
 
 	log_printf(instance->totemudpu_log_level_notice,
-		"Initializing transmit/receive security: NSS AES128CBC/SHA1HMAC (mode 1).\n");
+		"Initializing transmit/receive security: NSS AES128CBC/SHA1HMAC (mode 1).");
 	rv = NSS_NoDB_Init(".");
 	if (rv != SECSuccess)
 	{
-		log_printf(instance->totemudpu_log_level_security, "NSS initialization failed (err %d)\n",
+		log_printf(instance->totemudpu_log_level_security, "NSS initialization failed (err %d)",
 			PR_GetError());
 		goto out;
 	}
@@ -387,7 +387,7 @@ static void init_nss_crypto(
 	aes_slot = PK11_GetBestSlot(instance->totem_config->crypto_crypt_type, NULL);
 	if (aes_slot == NULL)
 	{
-		log_printf(instance->totemudpu_log_level_security, "Unable to find security slot (err %d)\n",
+		log_printf(instance->totemudpu_log_level_security, "Unable to find security slot (err %d)",
 			PR_GetError());
 		goto out;
 	}
@@ -395,7 +395,7 @@ static void init_nss_crypto(
 	sha1_slot = PK11_GetBestSlot(CKM_SHA_1_HMAC, NULL);
 	if (sha1_slot == NULL)
 	{
-		log_printf(instance->totemudpu_log_level_security, "Unable to find security slot (err %d)\n",
+		log_printf(instance->totemudpu_log_level_security, "Unable to find security slot (err %d)",
 			PR_GetError());
 		goto out;
 	}
@@ -412,7 +412,7 @@ static void init_nss_crypto(
 		&key_item, NULL);
 	if (instance->nss_sym_key == NULL)
 	{
-		log_printf(instance->totemudpu_log_level_security, "Failure to import key into NSS (err %d)\n",
+		log_printf(instance->totemudpu_log_level_security, "Failure to import key into NSS (err %d)",
 			PR_GetError());
 		goto out;
 	}
@@ -422,7 +422,7 @@ static void init_nss_crypto(
 		PK11_OriginUnwrap, CKA_SIGN,
 		&key_item, NULL);
 	if (instance->nss_sym_key_sign == NULL) {
-		log_printf(instance->totemudpu_log_level_security, "Failure to import key into NSS (err %d)\n",
+		log_printf(instance->totemudpu_log_level_security, "Failure to import key into NSS (err %d)",
 			PR_GetError());
 		goto out;
 	}
@@ -459,7 +459,7 @@ static int encrypt_and_sign_nss (
 	tmp1_outlen = tmp2_outlen = 0;
 	inbuf = copy_from_iovec(iovec, iov_len, &datalen);
 	if (!inbuf) {
-		log_printf(instance->totemudpu_log_level_security, "malloc error copying buffer from iovec\n");
+		log_printf(instance->totemudpu_log_level_security, "malloc error copying buffer from iovec");
 		return -1;
 	}
 
@@ -474,7 +474,7 @@ static int encrypt_and_sign_nss (
 		sizeof (nss_iv_data));
 	if (rv != SECSuccess) {
 		log_printf(instance->totemudpu_log_level_security,
-			"Failure to generate a random number %d\n",
+			"Failure to generate a random number %d",
 			PR_GetError());
 	}
 
@@ -488,7 +488,7 @@ static int encrypt_and_sign_nss (
 		&iv_item);
 	if (nss_sec_param == NULL) {
 		log_printf(instance->totemudpu_log_level_security,
-			"Failure to set up PKCS11 param (err %d)\n",
+			"Failure to set up PKCS11 param (err %d)",
 			PR_GetError());
 		free (inbuf);
 		return (-1);
@@ -507,7 +507,7 @@ static int encrypt_and_sign_nss (
 		PR_GetErrorText(err);
 		err[PR_GetErrorTextLength()] = 0;
 		log_printf(instance->totemudpu_log_level_security,
-			"PK11_CreateContext failed (encrypt) crypt_type=%d (err %d): %s\n",
+			"PK11_CreateContext failed (encrypt) crypt_type=%d (err %d): %s",
 			instance->totem_config->crypto_crypt_type,
 			PR_GetError(), err);
 		free(inbuf);
@@ -534,7 +534,7 @@ static int encrypt_and_sign_nss (
 		char err[1024];
 		PR_GetErrorText(err);
 		err[PR_GetErrorTextLength()] = 0;
-		log_printf(instance->totemudpu_log_level_security, "encrypt: PK11_CreateContext failed (digest) err %d: %s\n",
+		log_printf(instance->totemudpu_log_level_security, "encrypt: PK11_CreateContext failed (digest) err %d: %s",
 			PR_GetError(), err);
 		return -1;
 	}
@@ -588,7 +588,7 @@ static int authenticate_and_decrypt_nss (
 	if (iov_len > 1) {
 		inbuf = copy_from_iovec(iov, iov_len, &datalen);
 		if (!inbuf) {
-			log_printf(instance->totemudpu_log_level_security, "malloc error copying buffer from iovec\n");
+			log_printf(instance->totemudpu_log_level_security, "malloc error copying buffer from iovec");
 			return -1;
 		}
 	}
@@ -610,7 +610,7 @@ static int authenticate_and_decrypt_nss (
 		char err[1024];
 		PR_GetErrorText(err);
 		err[PR_GetErrorTextLength()] = 0;
-		log_printf(instance->totemudpu_log_level_security, "PK11_CreateContext failed (check digest) err %d: %s\n",
+		log_printf(instance->totemudpu_log_level_security, "PK11_CreateContext failed (check digest) err %d: %s",
 			PR_GetError(), err);
 		free (inbuf);
 		return -1;
@@ -624,12 +624,12 @@ static int authenticate_and_decrypt_nss (
 	PK11_DestroyContext(enc_context, PR_TRUE);
 
 	if (rv1 != SECSuccess || rv2 != SECSuccess) {
-		log_printf(instance->totemudpu_log_level_security, "Digest check failed\n");
+		log_printf(instance->totemudpu_log_level_security, "Digest check failed");
 		return -1;
 	}
 
 	if (memcmp(digest, header->hash_digest, tmp2_outlen) != 0) {
-		log_printf(instance->totemudpu_log_level_error, "Digest does not match\n");
+		log_printf(instance->totemudpu_log_level_error, "Digest does not match");
 		return -1;
 	}
 
@@ -650,7 +650,7 @@ static int authenticate_and_decrypt_nss (
 		instance->nss_sym_key, &ivdata);
 	if (!enc_context) {
 		log_printf(instance->totemudpu_log_level_security,
-			"PK11_CreateContext (decrypt) failed (err %d)\n",
+			"PK11_CreateContext (decrypt) failed (err %d)",
 			PR_GetError());
 		return -1;
 	}
@@ -660,7 +660,7 @@ static int authenticate_and_decrypt_nss (
 			    data, datalen);
 	if (rv1 != SECSuccess) {
 		log_printf(instance->totemudpu_log_level_security,
-			"PK11_CipherOp (decrypt) failed (err %d)\n",
+			"PK11_CipherOp (decrypt) failed (err %d)",
 			PR_GetError());
 	}
 	rv2 = PK11_DigestFinal(enc_context, outdata + tmp1_outlen, &tmp2_outlen,
@@ -1104,7 +1104,7 @@ static int net_deliver_fn (
 	if ((instance->totem_config->secauth == 1) &&
 		(bytes_received < sizeof (struct security_header))) {
 
-		log_printf (instance->totemudpu_log_level_security, "Received message is too short...  ignoring %d.\n", bytes_received);
+		log_printf (instance->totemudpu_log_level_security, "Received message is too short...  ignoring %d.", bytes_received);
 		return (0);
 	}
 
@@ -1116,9 +1116,9 @@ static int net_deliver_fn (
 
 		res = authenticate_and_decrypt (instance, iovec, 1);
 		if (res == -1) {
-			log_printf (instance->totemudpu_log_level_security, "Received message has invalid digest... ignoring.\n");
+			log_printf (instance->totemudpu_log_level_security, "Received message has invalid digest... ignoring.");
 			log_printf (instance->totemudpu_log_level_security,
-				"Invalid packet data\n");
+				"Invalid packet data");
 			iovec->iov_len = FRAME_SIZE_MAX;
 			return 0;
 		}
@@ -1252,7 +1252,7 @@ static void timer_function_netif_check_timeout (
 	if (instance->netif_bind_state == BIND_STATE_REGULAR) {
 		if (instance->netif_state_report & NETIF_STATE_REPORT_UP) {
 			log_printf (instance->totemudpu_log_level_notice,
-				"The network interface [%s] is now up.\n",
+				"The network interface [%s] is now up.",
 				totemip_print (&instance->totem_interface->boundto));
 			instance->netif_state_report = NETIF_STATE_REPORT_DOWN;
 			instance->totemudpu_iface_change_fn (instance->context, &instance->my_id);
@@ -1272,7 +1272,7 @@ static void timer_function_netif_check_timeout (
 	} else {
 		if (instance->netif_state_report & NETIF_STATE_REPORT_DOWN) {
 			log_printf (instance->totemudpu_log_level_notice,
-				"The network interface is down.\n");
+				"The network interface is down.");
 			instance->totemudpu_iface_change_fn (instance->context, &instance->my_id);
 		}
 		instance->netif_state_report = NETIF_STATE_REPORT_UP;
@@ -1676,7 +1676,7 @@ int totemudpu_member_add (
 	if (new_member == NULL) {
 		return (-1);
 	}
-	log_printf (LOGSYS_LEVEL_NOTICE, "adding new UDPU member {%s}\n", 
+	log_printf (LOGSYS_LEVEL_NOTICE, "adding new UDPU member {%s}",
 		totemip_print(member));
 	list_init (&new_member->list);
 	list_add_tail (&new_member->list, &instance->member_list);
@@ -1732,12 +1732,12 @@ int totemudpu_member_remove (
 
 		if (totemip_compare (token_target, &member->member)==0) {
 			log_printf(LOGSYS_LEVEL_NOTICE,
-				"removing UDPU member {%s}\n",
+				"removing UDPU member {%s}",
 				totemip_print(&member->member));
 
 			if (member->fd > 0) {
 				log_printf(LOGSYS_LEVEL_DEBUG,
-					"Closing socket to: {%s}\n",
+					"Closing socket to: {%s}",
 					totemip_print(&member->member));
 				qb_loop_poll_del (instance->totemudpu_poll_handle,
 					member->fd);

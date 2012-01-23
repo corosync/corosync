@@ -644,7 +644,7 @@ static void do_command (int sock, char* func, char*args[], int num_args)
 		result = cpg_join (cpg_handle, &group_name);
 		if (result != CS_OK) {
 			qb_log (LOG_ERR,
-				"Could not join process group, error %d\n", result);
+				"Could not join process group, error %d", result);
 			exit (1);
 		}
 		qb_log (LOG_INFO, "called cpg_join()!");
@@ -657,7 +657,7 @@ static void do_command (int sock, char* func, char*args[], int num_args)
 		result = cpg_leave (cpg_handle, &group_name);
 		if (result != CS_OK) {
 			qb_log (LOG_ERR,
-				"Could not leave process group, error %d\n", result);
+				"Could not leave process group, error %d", result);
 			exit (1);
 		}
 		qb_log (LOG_INFO, "called cpg_leave()!");
@@ -668,7 +668,7 @@ static void do_command (int sock, char* func, char*args[], int num_args)
 		result = cpg_initialize (&cpg_handle, &callbacks);
 		while (result != CS_OK) {
 			qb_log (LOG_ERR,
-				"cpg_initialize error %d (attempt %d)\n",
+				"cpg_initialize error %d (attempt %d)",
 				result, retry_count);
 			if (retry_count >= 3) {
 				exit (1);

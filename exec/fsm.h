@@ -102,7 +102,7 @@ static inline void cs_fsm_state_set (struct cs_fsm* fsm, int32_t next_state, voi
 			break;
 		}
 		if (entry->next_states[i] == next_state) {
-			log_printf (LOGSYS_LEVEL_INFO, "Fsm:%s event \"%s\", state \"%s\" --> \"%s\"\n",
+			log_printf (LOGSYS_LEVEL_INFO, "Fsm:%s event \"%s\", state \"%s\" --> \"%s\"",
 				fsm->name,
 				fsm->event_to_str(fsm, entry->event),
 				fsm->state_to_str(fsm, fsm->table[fsm->curr_entry].curr_state),
@@ -111,7 +111,7 @@ static inline void cs_fsm_state_set (struct cs_fsm* fsm, int32_t next_state, voi
 			return;
 		}
 	}
-	log_printf (LOGSYS_LEVEL_CRIT, "Fsm:%s Can't change state from \"%s\" to \"%s\" (event was \"%s\")\n",
+	log_printf (LOGSYS_LEVEL_CRIT, "Fsm:%s Can't change state from \"%s\" to \"%s\" (event was \"%s\")",
 		fsm->name,
 		fsm->state_to_str(fsm, fsm->table[fsm->curr_entry].curr_state),
 		fsm->state_to_str(fsm, next_state),

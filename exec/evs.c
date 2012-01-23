@@ -221,7 +221,7 @@ static int evs_lib_init_fn (void *conn)
 {
 	struct evs_pd *evs_pd = (struct evs_pd *)api->ipc_private_data_get (conn);
 
-	log_printf (LOGSYS_LEVEL_DEBUG, "Got request to initalize evs service.\n");
+	log_printf (LOGSYS_LEVEL_DEBUG, "Got request to initalize evs service.");
 
 	evs_pd->groups = NULL;
 	evs_pd->group_entries = 0;

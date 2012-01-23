@@ -918,7 +918,7 @@ static int cpg_lib_exit_fn (void *conn)
 {
 	struct cpg_pd *cpd = (struct cpg_pd *)api->ipc_private_data_get (conn);
 
-	log_printf(LOGSYS_LEVEL_DEBUG, "exit_fn for conn=%p\n", conn);
+	log_printf(LOGSYS_LEVEL_DEBUG, "exit_fn for conn=%p", conn);
 
 	if (cpd->group_name.length > 0) {
 		cpg_node_joinleave_send (cpd->pid, &cpd->group_name,
@@ -1132,7 +1132,7 @@ static void message_handler_req_exec_cpg_procjoin (
 {
 	const struct req_exec_cpg_procjoin *req_exec_cpg_procjoin = message;
 
-	log_printf(LOGSYS_LEVEL_DEBUG, "got procjoin message from cluster node %d\n", nodeid);
+	log_printf(LOGSYS_LEVEL_DEBUG, "got procjoin message from cluster node %d", nodeid);
 
 	do_proc_join (&req_exec_cpg_procjoin->group_name,
 		req_exec_cpg_procjoin->pid, nodeid,
@@ -1148,7 +1148,7 @@ static void message_handler_req_exec_cpg_procleave (
 	struct list_head *iter;
 	mar_cpg_address_t notify_info;
 
-	log_printf(LOGSYS_LEVEL_DEBUG, "got procleave message from cluster node %d\n", nodeid);
+	log_printf(LOGSYS_LEVEL_DEBUG, "got procleave message from cluster node %d", nodeid);
 
 	notify_info.pid = req_exec_cpg_procjoin->pid;
 	notify_info.nodeid = nodeid;
@@ -1181,7 +1181,7 @@ static void message_handler_req_exec_cpg_joinlist (
 	const struct qb_ipc_response_header *res = (const struct qb_ipc_response_header *)message;
 	const struct join_list_entry *jle = (const struct join_list_entry *)(message + sizeof(struct qb_ipc_response_header));
 
-	log_printf(LOGSYS_LEVEL_DEBUG, "got joinlist message from node %x\n",
+	log_printf(LOGSYS_LEVEL_DEBUG, "got joinlist message from node %x",
 		nodeid);
 
 	/* Ignore our own messages */
@@ -1330,7 +1330,7 @@ static int cpg_lib_init_fn (void *conn)
 	list_init (&cpd->zcb_mapped_list_head);
 
 	api->ipc_refcnt_inc (conn);
-	log_printf(LOGSYS_LEVEL_DEBUG, "lib_init_fn: conn=%p, cpd=%p\n", conn, cpd);
+	log_printf(LOGSYS_LEVEL_DEBUG, "lib_init_fn: conn=%p, cpd=%p", conn, cpd);
 	return (0);
 }
 
@@ -1410,7 +1410,7 @@ static void message_handler_req_lib_cpg_leave (void *conn, const void *message)
 	struct req_lib_cpg_leave  *req_lib_cpg_leave = (struct req_lib_cpg_leave *)message;
 	struct cpg_pd *cpd = (struct cpg_pd *)api->ipc_private_data_get (conn);
 
-	log_printf(LOGSYS_LEVEL_DEBUG, "got leave request on %p\n", conn);
+	log_printf(LOGSYS_LEVEL_DEBUG, "got leave request on %p", conn);
 
 	switch (cpd->cpd_state) {
 	case CPD_STATE_UNJOINED:
@@ -1448,7 +1448,7 @@ static void message_handler_req_lib_cpg_finalize (
 	struct res_lib_cpg_finalize res_lib_cpg_finalize;
 	cs_error_t error = CS_OK;
 
-	log_printf (LOGSYS_LEVEL_DEBUG, "cpg finalize for conn=%p\n", conn);
+	log_printf (LOGSYS_LEVEL_DEBUG, "cpg finalize for conn=%p", conn);
 
 	/*
 	 * We will just remove cpd from list. After this call, connection will be
@@ -1682,7 +1682,7 @@ static void message_handler_req_lib_cpg_mcast (void *conn, const void *message)
 	int result;
 	cs_error_t error = CS_ERR_NOT_EXIST;
 
-	log_printf(LOGSYS_LEVEL_DEBUG, "got mcast request on %p\n", conn);
+	log_printf(LOGSYS_LEVEL_DEBUG, "got mcast request on %p", conn);
 
 	switch (cpd->cpd_state) {
 	case CPD_STATE_UNJOINED:
@@ -1717,7 +1717,7 @@ static void message_handler_req_lib_cpg_mcast (void *conn, const void *message)
 		result = api->totem_mcast (req_exec_cpg_iovec, 2, TOTEM_AGREED);
 		assert(result == 0);
 	} else {
-		log_printf(LOGSYS_LEVEL_ERROR, "*** %p can't mcast to group %s state:%d, error:%d\n",
+		log_printf(LOGSYS_LEVEL_ERROR, "*** %p can't mcast to group %s state:%d, error:%d",
 			conn, group_name.value, cpd->cpd_state, error);
 	}
 }
@@ -1736,7 +1736,7 @@ static void message_handler_req_lib_cpg_zc_execute (
 	int result;
 	cs_error_t error = CS_ERR_NOT_EXIST;
 
-	log_printf(LOGSYS_LEVEL_DEBUG, "got ZC mcast request on %p\n", conn);
+	log_printf(LOGSYS_LEVEL_DEBUG, "got ZC mcast request on %p", conn);
 
 	header = (struct qb_ipc_request_header *)(((char *)serveraddr2void(hdr->server_address) + sizeof (struct coroipcs_zc_header)));
 	req_lib_cpg_mcast = (struct req_lib_cpg_mcast *)header;
@@ -1845,7 +1845,7 @@ static void message_handler_req_lib_cpg_iteration_initialize (
 	cs_error_t error = CS_OK;
 	int res;
 
-	log_printf (LOGSYS_LEVEL_DEBUG, "cpg iteration initialize\n");
+	log_printf (LOGSYS_LEVEL_DEBUG, "cpg iteration initialize");
 
 	/* Because between calling this function and *next can be some operations which will
 	 * change list, we must do full copy.
@@ -1988,7 +1988,7 @@ static void message_handler_req_lib_cpg_iteration_next (
 	int res;
 	struct process_info *pi;
 
-	log_printf (LOGSYS_LEVEL_DEBUG, "cpg iteration next\n");
+	log_printf (LOGSYS_LEVEL_DEBUG, "cpg iteration next");
 
 	res = hdb_handle_get (&cpg_iteration_handle_t_db,
 			req_lib_cpg_iterationnext->iteration_handle,
@@ -2040,7 +2040,7 @@ static void message_handler_req_lib_cpg_iteration_finalize (
 	cs_error_t error = CS_OK;
 	int res;
 
-	log_printf (LOGSYS_LEVEL_DEBUG, "cpg iteration finalize\n");
+	log_printf (LOGSYS_LEVEL_DEBUG, "cpg iteration finalize");
 
 	res = hdb_handle_get (&cpg_iteration_handle_t_db,
 			req_lib_cpg_iterationfinalize->iteration_handle,

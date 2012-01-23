@@ -692,10 +692,10 @@ static void cs_ipcs_low_fds_event(int32_t not_enough, int32_t fds_available)
 {
 	ipc_not_enough_fds_left = not_enough;
 	if (not_enough) {
-		log_printf(LOGSYS_LEVEL_WARNING, "refusing new connections (fds_available:%d)\n",
+		log_printf(LOGSYS_LEVEL_WARNING, "refusing new connections (fds_available:%d)",
 			fds_available);
 	} else {
-		log_printf(LOGSYS_LEVEL_NOTICE, "allowing new connections (fds_available:%d)\n",
+		log_printf(LOGSYS_LEVEL_NOTICE, "allowing new connections (fds_available:%d)",
 			fds_available);
 
 	}

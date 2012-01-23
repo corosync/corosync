@@ -579,11 +579,11 @@ static void watchdog_timeout_apply (uint32_t new)
 		api->timer_add_duration(tickle_timeout*MILLI_2_NANO_SECONDS, NULL,
 			wd_tickle_fn, &wd_timer);
 
-		log_printf (LOGSYS_LEVEL_DEBUG, "The Watchdog timeout is %d seconds\n", watchdog_timeout);
-		log_printf (LOGSYS_LEVEL_DEBUG, "The tickle timeout is %"PRIu64" ms\n", tickle_timeout);
+		log_printf (LOGSYS_LEVEL_DEBUG, "The Watchdog timeout is %d seconds", watchdog_timeout);
+		log_printf (LOGSYS_LEVEL_DEBUG, "The tickle timeout is %"PRIu64" ms", tickle_timeout);
 	} else {
 		log_printf (LOGSYS_LEVEL_WARNING,
-			"Could not change the Watchdog timeout from %d to %d seconds\n",
+			"Could not change the Watchdog timeout from %d to %d seconds",
 			original_timeout, new);
 	}
 

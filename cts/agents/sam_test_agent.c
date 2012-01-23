@@ -84,13 +84,13 @@ static int test1 (void)
 	qb_enter();
 	error = sam_initialize (2000, SAM_RECOVERY_POLICY_RESTART);
 	if (error != CS_OK) {
-		qb_log (LOG_ERR, "Can't initialize SAM API. Error %d\n", error);
+		qb_log (LOG_ERR, "Can't initialize SAM API. Error %d", error);
 		return 1;
 	}
 	qb_log (LOG_INFO, "register");
 	error = sam_register (&instance_id);
 	if (error != CS_OK) {
-		qb_log (LOG_ERR, "Can't register. Error %d\n", error);
+		qb_log (LOG_ERR, "Can't register. Error %d", error);
 		return 1;
 	}
 

@@ -145,9 +145,9 @@ static void quorum_api_set_quorum(const unsigned int *view_list,
 	primary_designated = quorum;
 
 	if (primary_designated && !old_quorum) {
-		log_printf (LOGSYS_LEVEL_NOTICE, "This node is within the primary component and will provide service.\n");
+		log_printf (LOGSYS_LEVEL_NOTICE, "This node is within the primary component and will provide service.");
 	} else if (!primary_designated && old_quorum) {
-		log_printf (LOGSYS_LEVEL_NOTICE, "This node is within the non-primary component and will NOT provide any services.\n");
+		log_printf (LOGSYS_LEVEL_NOTICE, "This node is within the non-primary component and will NOT provide any services.");
 	}
 
 	quorum_view_list_entries = view_list_entries;
@@ -273,7 +273,7 @@ static int quorum_exec_init_fn (struct corosync_api_v1 *api)
 	 */
 	if (icmap_get_string("quorum.provider", &quorum_module) == CS_OK) {
 		log_printf (LOGSYS_LEVEL_NOTICE,
-			    "Using quorum provider %s\n", quorum_module);
+			    "Using quorum provider %s", quorum_module);
 
 		if (strcmp (quorum_module, "corosync_votequorum") == 0) {
 			if (votequorum_init (api, quorum_api_set_quorum) == CS_OK) {
@@ -308,7 +308,7 @@ static int quorum_lib_init_fn (void *conn)
 {
 	struct quorum_pd *pd = (struct quorum_pd *)corosync_api->ipc_private_data_get (conn);
 
-	log_printf(LOGSYS_LEVEL_DEBUG, "lib_init_fn: conn=%p\n", conn);
+	log_printf(LOGSYS_LEVEL_DEBUG, "lib_init_fn: conn=%p", conn);
 
 	list_init (&pd->list);
 	pd->conn = conn;
@@ -320,7 +320,7 @@ static int quorum_lib_exit_fn (void *conn)
 {
 	struct quorum_pd *quorum_pd = (struct quorum_pd *)corosync_api->ipc_private_data_get (conn);
 
-	log_printf(LOGSYS_LEVEL_DEBUG, "lib_exit_fn: conn=%p\n", conn);
+	log_printf(LOGSYS_LEVEL_DEBUG, "lib_exit_fn: conn=%p", conn);
 
 	if (quorum_pd->tracking_enabled) {
 		list_del (&quorum_pd->list);
@@ -351,7 +351,7 @@ static void send_library_notification(void *conn)
 	struct list_head *tmp;
 	int i;
 
-	log_printf(LOGSYS_LEVEL_DEBUG, "sending quorum notification to %p, length = %d\n", conn, size);
+	log_printf(LOGSYS_LEVEL_DEBUG, "sending quorum notification to %p, length = %d", conn, size);
 
 	res_lib_quorum_notification->quorate = primary_designated;
 	res_lib_quorum_notification->ring_seq = quorum_ring_id.seq;
@@ -387,7 +387,7 @@ static void message_handler_req_lib_quorum_getquorate (void *conn,
 {
 	struct res_lib_quorum_getquorate res_lib_quorum_getquorate;
 
-	log_printf(LOGSYS_LEVEL_DEBUG, "got quorate request on %p\n", conn);
+	log_printf(LOGSYS_LEVEL_DEBUG, "got quorate request on %p", conn);
 
 	/* send status */
 	res_lib_quorum_getquorate.quorate = primary_designated;
@@ -404,7 +404,7 @@ static void message_handler_req_lib_quorum_trackstart (void *conn,
 	struct qb_ipc_response_header res;
 	struct quorum_pd *quorum_pd = (struct quorum_pd *)corosync_api->ipc_private_data_get (conn);
 
-	log_printf(LOGSYS_LEVEL_DEBUG, "got trackstart request on %p\n", conn);
+	log_printf(LOGSYS_LEVEL_DEBUG, "got trackstart request on %p", conn);
 
 	/*
 	 * If an immediate listing of the current cluster membership
@@ -412,7 +412,7 @@ static void message_handler_req_lib_quorum_trackstart (void *conn,
 	 */
 	if (req_lib_quorum_trackstart->track_flags & CS_TRACK_CURRENT ||
 	    req_lib_quorum_trackstart->track_flags & CS_TRACK_CHANGES) {
-		log_printf(LOGSYS_LEVEL_DEBUG, "sending initial status to %p\n", conn);
+		log_printf(LOGSYS_LEVEL_DEBUG, "sending initial status to %p", conn);
 		send_library_notification(conn);
 	}
 
@@ -440,7 +440,7 @@ static void message_handler_req_lib_quorum_trackstop (void *conn, const void *ms
 	struct qb_ipc_response_header res;
 	struct quorum_pd *quorum_pd = (struct quorum_pd *)corosync_api->ipc_private_data_get (conn);
 
-	log_printf(LOGSYS_LEVEL_DEBUG, "got trackstop request on %p\n", conn);
+	log_printf(LOGSYS_LEVEL_DEBUG, "got trackstop request on %p", conn);
 
 	if (quorum_pd->tracking_enabled) {
 		res.error = CS_OK;
@@ -463,7 +463,7 @@ static void message_handler_req_lib_quorum_gettype (void *conn,
 {
 	struct res_lib_quorum_gettype res_lib_quorum_gettype;
 
-	log_printf(LOGSYS_LEVEL_DEBUG, "got quorum_type request on %p\n", conn);
+	log_printf(LOGSYS_LEVEL_DEBUG, "got quorum_type request on %p", conn);
 
 	/* send status */
 	res_lib_quorum_gettype.quorum_type = quorum_type;

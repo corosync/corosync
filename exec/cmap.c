@@ -184,7 +184,7 @@ static int cmap_lib_init_fn (void *conn)
 {
 	struct cmap_conn_info *conn_info = (struct cmap_conn_info *)api->ipc_private_data_get (conn);
 
-	log_printf(LOGSYS_LEVEL_DEBUG, "lib_init_fn: conn=%p\n", conn);
+	log_printf(LOGSYS_LEVEL_DEBUG, "lib_init_fn: conn=%p", conn);
 
 	api->ipc_refcnt_inc(conn);
 
@@ -203,7 +203,7 @@ static int cmap_lib_exit_fn (void *conn)
 	hdb_handle_t track_handle = 0;
 	icmap_track_t *track;
 
-	log_printf(LOGSYS_LEVEL_DEBUG, "exit_fn for conn=%p\n", conn);
+	log_printf(LOGSYS_LEVEL_DEBUG, "exit_fn for conn=%p", conn);
 
 	hdb_iterator_reset(&conn_info->iter_db);
         while (hdb_iterator_next(&conn_info->iter_db,

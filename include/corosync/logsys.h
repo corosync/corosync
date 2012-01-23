@@ -194,7 +194,7 @@ static void logsys_subsys_init (void)					\
 #define LOGSYS_PERROR(err_num, level, fmt, args...) do {						\
 		char _error_str[LOGSYS_MAX_PERROR_MSG_LEN];						\
 		const char *_error_ptr = qb_strerror_r(err_num, _error_str, sizeof(_error_str));	\
-		qb_log(level, fmt ": %s (%d)\n", ##args, _error_ptr, err_num);				\
+		qb_log(level, fmt ": %s (%d)", ##args, _error_ptr, err_num);				\
 	} while(0)
 
 #define log_printf(level, format, args...) qb_log(level, format, ##args)
