@@ -28,10 +28,9 @@ _object_test_()
   temp_file=/tmp/object.txt
   COUNT=1
 
-  corosync-objctl -c usr
-  corosync-objctl -w usr.angus=456
-  corosync-objctl -w usr.angus=4123
-  corosync-objctl -d usr
+  corosync-cmapctl -s usr.angus u32 456
+  corosync-cmapctl -s usr.angus u32 4123
+  corosync-cmapctl -d usr.angus
 
   BEFORE=$(get_mem $TYPE)
   # this loop is just to ignore the first iteration
@@ -41,12 +40,12 @@ _object_test_()
 
     find $f | sed "s|\.|_|g" | sed "s|/|.|g" | while read l
     do 
-      echo $l.count=$count >> $temp_file
+      echo $l.count u32 $count >> $temp_file
       let COUNT="$COUNT+1"
     done
 
-    corosync-objctl -p $temp_file
-    corosync-objctl -d usr
+    corosync-cmapctl -p $temp_file
+    corosync-cmapctl -D usr
   done
   AFTER=$(get_mem $TYPE)
   let DIFF="$AFTER - $BEFORE"
@@ -65,7 +64,7 @@ _session_test_()
   echo _session_test_
   COUNT=1
 
-  corosync-objctl -h >/dev/null
+  corosync-cmap -h >/dev/null
   corosync-cfgtool -h >/dev/null
   corosync-quorumtool -h >/dev/null
 
@@ -76,11 +75,10 @@ _session_test_()
 
   find /usr/bin | sed "s|\.|_|g" | sed "s|/|.|g" | while read l
   do 
-    corosync-objctl -c $l
-    corosync-objctl -w $l.value=$COUNT
+    corosync-cmapctl -s $l u32 $COUNT
     let COUNT="$COUNT+1"
   done
-  corosync-objctl -d usr
+  corosync-cmapctl -D usr
   AFTER=$(get_mem $TYPE)
   let DIFF="$AFTER - $BEFORE"
   echo $DIFF

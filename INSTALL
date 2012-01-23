@@ -168,7 +168,7 @@ I start up wireshark to see if there are any snmp traps been sent
 as I am too lazy to setup a manager to receive traps.
 
 run a program that talks to corosync e.g.
-$ corosync-objctl
+$ corosync-cmapctl
 
 And you should get traps
 

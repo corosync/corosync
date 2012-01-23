@@ -1,13 +1,13 @@
 #!/bin/bash
 
 
-/etc/init.d/corosync status >/dev/null
+service corosync status >/dev/null
 CS_STATUS=$?
 
 if [ $CS_STATUS -eq 0 ]
 then
 	# corosync running
-	active=$(corosync-objctl runtime.connections. | grep active | cut -d= -f2)
+	active=$(corosync-cmapctl runtime.connections. | grep active | cut -d= -f2)
 	if [ $active -lt 2 ]
 	then
 		FILES=$(ls /dev/shm/qb-*)
@@ -16,7 +16,7 @@ then
 			echo $f
 		done
 	else
-		pids=$(corosync-objctl runtime.connections. | grep client_pid | cut -d= -f2)
+		pids=$(corosync-cmapctl runtime.connections. | grep client_pid | cut -d= -f2)
 
 		FILES=$(ls /dev/shm/qb-*)
 		for f in $FILES

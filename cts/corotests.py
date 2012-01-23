@@ -1252,7 +1252,7 @@ check that we do NOT get watchdog'ed
         no_w.setwatch()
         time.sleep(2)
 
-        self.CM.rsh(node, 'corosync-objctl -d resources.system.memory_used')
+        self.CM.rsh(node, 'corosync-cmapctl -d resources.system.memory_used')
 
         yes_matched = yes_w.look()
         no_matched = no_w.look()
@@ -1299,7 +1299,7 @@ check that we do NOT get watchdog'ed
             if poll_period < 500:
                 poll_period = 500
             self.CM.log("setting poll_period to: %d" % poll_period)
-            self.CM.rsh(node, 'corosync-objctl -w resources.system.memory_used.poll_period=%d' % poll_period)
+            self.CM.rsh(node, 'corosync-cmapctl -s resources.system.memory_used.poll_period str %d' % poll_period)
             sleep_time = poll_period * 2 / 1000
             if sleep_time < 1:
                 sleep_time = 1
@@ -1334,19 +1334,19 @@ confirm reboot action
 
         # get the uptime
         up_before = self.CM.rsh(node, 'cut -d. -f1 /proc/uptime', 1).rstrip()
-        cmd = 'corosync-objctl resources.system.memory_used. | grep current | cut -d= -f2'
+        cmd = 'corosync-cmapctl resources.system.memory_used. | grep current | cut -d= -f2'
         mem_current_str = self.CM.rsh(node, cmd, 1).rstrip()
         mem_new_max = int(mem_current_str) + 5
 
         self.CM.log("current mem usage: %s, new max:%d" % (mem_current_str, mem_new_max))
-        cmd = 'corosync-objctl -w resources.system.memory_used.max=' + str(mem_new_max)
+        cmd = 'corosync-cmapctl -s resources.system.memory_used.max str ' + str(mem_new_max)
         self.CM.rsh(node, cmd)
 
         self.CM.rsh(node, 'memhog -r10000 200m', synchronous=0)
 
         self.CM.log("wait for it to reboot")
         time.sleep(60 * 3)
-        cmd = 'corosync-objctl resources.system.memory_used. | grep current | cut -d= -f2'
+        cmd = 'corosync-cmapctl resources.system.memory_used. | grep current | cut -d= -f2'
         mem_current_str = self.CM.rsh(node, cmd, 1).rstrip()
         self.CM.log("current mem usage: %s" % (mem_current_str))
 

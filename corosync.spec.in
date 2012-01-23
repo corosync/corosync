@@ -177,7 +177,7 @@ fi
 %{_mandir}/man8/corosync_overview.8*
 %{_mandir}/man8/corosync.8*
 %{_mandir}/man8/corosync-blackbox.8*
-%{_mandir}/man8/corosync-objctl.8*
+%{_mandir}/man8/corosync-cmapctl.8*
 %{_mandir}/man8/corosync-keygen.8*
 %{_mandir}/man8/corosync-cfgtool.8*
 %{_mandir}/man8/corosync-cpgtool.8*

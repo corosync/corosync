@@ -15,7 +15,7 @@
 .\" * - Redistributions in binary form must reproduce the above copyright notice,
 .\" *   this list of conditions and the following disclaimer in the documentation
 .\" *   and/or other materials provided with the distribution.
-.\" * - Neither the name of Red Hat, Inc. nor the names of its
+.\" * - Neither the name of the MontaVista Software, Inc. nor the names of its
 .\" *   contributors may be used to endorse or promote products derived from this
 .\" *   software without specific prior written permission.
 .\" *
@@ -31,39 +31,55 @@
 .\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 .\" * THE POSSIBILITY OF SUCH DAMAGE.
 .\" */
-.TH COROSYNC-BLACKBOX 8 2010-05-30
+.TH COROSYNC-CMAP 8 2012-01-23
 .SH NAME
-corosync-blackbox \- Dump live "flight data" from the corosync "blackbox".
-.SH SYNOPSIS
-.B "corosync-blackbox"
+corosync-cmapctl: \- A tool for accessing the object database.
 .SH DESCRIPTION
-.B corosync-blackbox
-Trigger corosync to write it's "flight data" out to file and then run
-.B corosync-fplay
-which prints it out.
-.SH EXAMPLES
-.TP
-Print the current "flight data".
-.br
-$ corosync-blackbox 
-.br
-Starting replay: head [74205] tail [0]
-.br
-rec=[1] Log Message=Corosync Cluster Engine ('1.2.1'): started and ready to provide service.
-.br
-[...]
-.br
-rec=[2607] Log Message=Delivering MCAST message with seq a to pending delivery queue
-.br
-rec=[2608] Log Message=downlist received left_list: 2
-.br
-rec=[2609] Log Message=chosen downlist from node r(0) ip(192.168.100.11) 
-.br
-Finishing replay: records found [2609]
-.br
-.SH SEE ALSO
-.BR corosync-fplay (8),
-.BR corosync-cmapctl (8),
-.SH AUTHOR
-Angus Salkeld
+usage:  corosync\-cmapctl [\-b] [\-dghsTtp] [params...]
+.HP
+\fB\-b\fR show binary values
+.SS "Set key:"
+.IP
+corosync\-cmapctl \fB\-s\fR key_name type value
+.IP
+where type is one of ([i|u][8|16|32|64] | flt | dbl | str | bin)
+for bin, value is file name (or \- for stdin)
+.SS "Load settings from a file:"
+.IP
+corosync\-cmapctl \fB\-p\fR filename
+.IP
+the format of the file is:
+<key_name> <type> <value>
+.SS "Delete key:"
+.IP
+corosync\-cmapctl \fB\-d\fR key_name...
+.SS "Delete multiple keys with prefix:"
+.IP
+corosync\-cmapctl \fB\-D\fR key_prefix...
+.SS "Get key:"
+.IP
+corosync\-cmapctl [\-b] \fB\-g\fR key_name...
+.SS "Display all keys:"
+.IP
+corosync\-cmapctl [\-b]
+.SS "Display keys with prefix key_name:"
+.IP
+corosync\-cmapctl [\-b] key_name...
+.SS "Track changes on keys with key_name:"
+.IP
+corosync\-cmapctl [\-b] \fB\-t\fR key_name
+.SS "Track changes on keys with key prefix:"
+.IP
+corosync\-cmapctl [\-b] \fB\-T\fR key_prefix
+.SH "SEE ALSO"
+The full documentation for
+.B corosync-cmapctl:
+is maintained as a Texinfo manual.  If the
+.B info
+and
+.B corosync-cmapctl:
+programs are properly installed at your site, the command
+.IP
+.B info corosync-cmapctl:
 .PP
+should give you access to the complete manual.

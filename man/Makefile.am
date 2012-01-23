@@ -39,7 +39,7 @@ EXTRA_DIST		= index.html
 dist_man_MANS = \
 	corosync.conf.5 \
 	corosync.8 \
-	corosync-objctl.8 \
+	corosync-cmapctl.8 \
 	corosync-blackbox.8 \
 	corosync-keygen.8 \
 	corosync-cfgtool.8 \
