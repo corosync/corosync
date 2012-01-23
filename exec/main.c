@@ -338,9 +338,12 @@ static void member_object_joined (unsigned int nodeid)
 	char member_join_count[ICMAP_KEYNAME_MAXLEN];
 	char member_status[ICMAP_KEYNAME_MAXLEN];
 
-	snprintf(member_ip, ICMAP_KEYNAME_MAXLEN, "runtime.totem.pg.mrp.srp.members.%u.ip", nodeid);
-	snprintf(member_join_count, ICMAP_KEYNAME_MAXLEN, "runtime.totem.pg.mrp.srp.members.%u.join_count", nodeid);
-	snprintf(member_status, ICMAP_KEYNAME_MAXLEN, "runtime.totem.pg.mrp.srp.members.%u.status", nodeid);
+	snprintf(member_ip, ICMAP_KEYNAME_MAXLEN,
+		"runtime.totem.pg.mrp.srp.members.%u.ip", nodeid);
+	snprintf(member_join_count, ICMAP_KEYNAME_MAXLEN,
+		"runtime.totem.pg.mrp.srp.members.%u.join_count", nodeid);
+	snprintf(member_status, ICMAP_KEYNAME_MAXLEN,
+		"runtime.totem.pg.mrp.srp.members.%u.status", nodeid);
 
 	if (icmap_get(member_ip, NULL, NULL, NULL) == CS_OK) {
 		icmap_inc(member_join_count);
@@ -356,7 +359,8 @@ static void member_object_left (unsigned int nodeid)
 {
 	char member_status[ICMAP_KEYNAME_MAXLEN];
 
-	snprintf(member_status, ICMAP_KEYNAME_MAXLEN, "runtime.totem.pg.mrp.srp.members.%u.status", nodeid);
+	snprintf(member_status, ICMAP_KEYNAME_MAXLEN,
+		"runtime.totem.pg.mrp.srp.members.%u.status", nodeid);
 	icmap_set_string(member_status, "left");
 }
 
