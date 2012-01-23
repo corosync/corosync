@@ -301,6 +301,7 @@ int _logsys_system_setup(
 	} else {
 		qb_log_ctl(QB_LOG_SYSLOG, QB_LOG_CONF_ENABLED, QB_FALSE);
 	}
+	qb_log_ctl(QB_LOG_SYSLOG, QB_LOG_CONF_PRIORITY_BUMP, LOG_INFO - LOG_DEBUG);
 
 	qb_log_filter_ctl(QB_LOG_BLACKBOX, QB_LOG_FILTER_ADD,
 			  QB_LOG_FILTER_FILE, "*", LOG_TRACE);
