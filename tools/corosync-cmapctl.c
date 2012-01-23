@@ -123,11 +123,11 @@ static int print_help(void)
 	printf("Display keys with prefix key_name:\n");
 	printf("    corosync-cmapctl [-b] key_name...\n");
 	printf("\n");
-	printf("Track changes on keys with prefix key_name:\n");
+	printf("Track changes on keys with key_name:\n");
 	printf("    corosync-cmapctl [-b] -t key_name\n");
 	printf("\n");
-	printf("Track changes on keys with key_name name:\n");
-	printf("    corosync-cmapctl [-b] -T key_name\n");
+	printf("Track changes on keys with key prefix:\n");
+	printf("    corosync-cmapctl [-b] -T key_prefix\n");
 	printf("\n");
 
 	return (0);
@@ -731,10 +731,10 @@ int main(int argc, char *argv[])
 			break;
 		case 't':
 			action = ACTION_TRACK;
+			track_prefix = 0;
 			break;
 		case 'T':
 			action = ACTION_TRACK;
-			track_prefix = 0;
 			break;
 		case '?':
 			return (EXIT_FAILURE);
