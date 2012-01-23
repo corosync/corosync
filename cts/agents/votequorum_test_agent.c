@@ -45,7 +45,6 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <sys/un.h>
-#include <syslog.h>
 #include <poll.h>
 
 #include <qb/qbloop.h>
@@ -65,7 +64,7 @@ static void votequorum_notification_fn(
 	uint32_t node_list_entries,
 	votequorum_node_t node_list[])
 {
-	syslog (LOG_INFO, "VQ notification quorate: %d", quorate);
+	qb_log (LOG_INFO, "VQ notification quorate: %d", quorate);
 }
 
 static void quorum_notification_fn(
@@ -75,7 +74,7 @@ static void quorum_notification_fn(
 	uint32_t view_list_entries,
 	uint32_t *view_list)
 {
-	syslog (LOG_INFO, "NQ notification quorate: %d", quorate);
+	qb_log (LOG_INFO, "NQ notification quorate: %d", quorate);
 }
 
 
@@ -86,7 +85,7 @@ static int vq_dispatch_wrapper_fn (
 {
 	cs_error_t error = votequorum_dispatch (vq_handle, CS_DISPATCH_ALL);
 	if (error != CS_OK) {
-		syslog (LOG_ERR, "%s() got %s error, disconnecting.",
+		qb_log (LOG_ERR, "%s() got %s error, disconnecting.",
 			__func__, cs_strerror(error));
 		votequorum_finalize(vq_handle);
 		qb_loop_poll_del (ta_poll_handle_get(), fd);
@@ -104,7 +103,7 @@ static int q_dispatch_wrapper_fn (
 {
 	cs_error_t error = quorum_dispatch (q_handle, CS_DISPATCH_ALL);
 	if (error != CS_OK) {
-		syslog (LOG_ERR, "%s() got %s error, disconnecting.",
+		qb_log (LOG_ERR, "%s() got %s error, disconnecting.",
 			__func__, cs_strerror(error));
 		quorum_finalize(q_handle);
 		qb_loop_poll_del (ta_poll_handle_get(), fd);
@@ -124,7 +123,7 @@ static int q_lib_init(void)
 	int fd;
 
 	if (vq_handle == 0) {
-		syslog (LOG_INFO, "votequorum_initialize");
+		qb_log (LOG_INFO, "votequorum_initialize");
 		vq_callbacks.votequorum_notify_fn = votequorum_notification_fn;
 		vq_callbacks.votequorum_expectedvotes_notify_fn = NULL;
 		ret = CS_ERR_NOT_EXIST;
@@ -136,13 +135,13 @@ static int q_lib_init(void)
 			}
 		}
 		if (ret != CS_OK) {
-			syslog (LOG_ERR, "votequorum_initialize FAILED: %d\n", ret);
+			qb_log (LOG_ERR, "votequorum_initialize FAILED: %d\n", ret);
 			vq_handle = 0;
 		}
 		else {
 			ret = votequorum_trackstart (vq_handle, vq_handle, CS_TRACK_CHANGES);
 			if (ret != CS_OK) {
-				syslog (LOG_ERR, "votequorum_trackstart FAILED: %d\n", ret);
+				qb_log (LOG_ERR, "votequorum_trackstart FAILED: %d\n", ret);
 			}
 
 			votequorum_fd_get (vq_handle, &fd);
@@ -152,17 +151,17 @@ static int q_lib_init(void)
 	}
 	if (q_handle == 0) {
 		uint32_t q_type;
-		syslog (LOG_INFO, "quorum_initialize");
+		qb_log (LOG_INFO, "quorum_initialize");
 		q_callbacks.quorum_notify_fn = quorum_notification_fn;
 		ret = quorum_initialize (&q_handle, &q_callbacks, &q_type);
 		if (ret != CS_OK) {
-			syslog (LOG_ERR, "quorum_initialize FAILED: %d\n", ret);
+			qb_log (LOG_ERR, "quorum_initialize FAILED: %d\n", ret);
 			q_handle = 0;
 		}
 		else {
 			ret = quorum_trackstart (q_handle, CS_TRACK_CHANGES);
 			if (ret != CS_OK) {
-				syslog (LOG_ERR, "quorum_trackstart FAILED: %d\n", ret);
+				qb_log (LOG_ERR, "quorum_trackstart FAILED: %d\n", ret);
 			}
 			quorum_fd_get (q_handle, &fd);
 			qb_loop_poll_add (ta_poll_handle_get(), QB_LOOP_MED, fd,
@@ -182,7 +181,7 @@ static void lib_init (int sock)
 
 	if (ret != CS_OK) {
 		snprintf (response, 100, "%s", FAIL_STR);
-		syslog (LOG_ERR, "q_lib_init FAILED: %d\n", ret);
+		qb_log (LOG_ERR, "q_lib_init FAILED: %d\n", ret);
 	}
 
 	send (sock, response, strlen (response), 0);
@@ -199,7 +198,7 @@ static void getinfo (int sock)
 	ret = votequorum_getinfo(vq_handle, 0, &info);
 	if (ret != CS_OK) {
 		snprintf (response, 100, "%s", FAIL_STR);
-		syslog (LOG_ERR, "votequorum_getinfo FAILED: %d\n", ret);
+		qb_log (LOG_ERR, "votequorum_getinfo FAILED: %d\n", ret);
 		goto send_response;
 	}
 
@@ -225,7 +224,7 @@ static void setexpected (int sock, char *arg)
 	ret = votequorum_setexpected (vq_handle, atoi(arg));
 	if (ret != CS_OK) {
 		snprintf (response, 100, "%s", FAIL_STR);
-		syslog (LOG_ERR, "set expected votes FAILED: %d\n", ret);
+		qb_log (LOG_ERR, "set expected votes FAILED: %d\n", ret);
 		goto send_response;
 	}
 
@@ -245,7 +244,7 @@ static void setvotes (int sock, char *arg)
 	ret = votequorum_setvotes (vq_handle, 0, atoi(arg));
 	if (ret != CS_OK) {
 		snprintf (response, 100, "%s", FAIL_STR);
-		syslog (LOG_ERR, "set votes FAILED: %d\n", ret);
+		qb_log (LOG_ERR, "set votes FAILED: %d\n", ret);
 		goto send_response;
 	}
 
@@ -267,7 +266,7 @@ static void getquorate (int sock)
 	ret = quorum_getquorate (q_handle, &quorate);
 	if (ret != CS_OK) {
 		snprintf (response, 100, "%s", FAIL_STR);
-		syslog (LOG_ERR, "getquorate FAILED: %d\n", ret);
+		qb_log (LOG_ERR, "getquorate FAILED: %d\n", ret);
 		goto send_response;
 	}
 
@@ -288,14 +287,14 @@ static void context_test (int sock)
 	votequorum_context_get (vq_handle, (void**)&cmp);
 	if (response != cmp) {
 		snprintf (response, 100, "%s", FAIL_STR);
-		syslog (LOG_ERR, "votequorum context not the same");
+		qb_log (LOG_ERR, "votequorum context not the same");
 	}
 
 	quorum_context_set (q_handle, response);
 	quorum_context_get (q_handle, (const void**)&cmp);
 	if (response != cmp) {
 		snprintf (response, 100, "%s", FAIL_STR);
-		syslog (LOG_ERR, "quorum context not the same");
+		qb_log (LOG_ERR, "quorum context not the same");
 	}
 	send (sock, response, strlen (response) + 1, 0);
 }
@@ -305,7 +304,7 @@ static void do_command (int sock, char* func, char*args[], int num_args)
 	char response[100];
 
 	if (parse_debug)
-		syslog (LOG_DEBUG,"RPC:%s() called.", func);
+		qb_log (LOG_DEBUG,"RPC:%s() called.", func);
 
 	if (strcmp ("votequorum_getinfo", func) == 0) {
 		getinfo (sock);
@@ -323,7 +322,7 @@ static void do_command (int sock, char* func, char*args[], int num_args)
 		snprintf (response, 100, "%s", OK_STR);
 		send (sock, response, strlen (response) + 1, 0);
 	} else {
-		syslog (LOG_ERR,"%s RPC:%s not supported!", __func__, func);
+		qb_log (LOG_ERR,"%s RPC:%s not supported!", __func__, func);
 		snprintf (response, 100, "%s", NOT_SUPPORTED_STR);
 		send (sock, response, strlen (response), 0);
 	}
@@ -331,7 +330,7 @@ static void do_command (int sock, char* func, char*args[], int num_args)
 
 static void my_pre_exit(void)
 {
-	syslog (LOG_INFO, "PRE EXIT");
+	qb_log (LOG_INFO, "PRE EXIT");
 	if (vq_handle) {
 		votequorum_finalize(vq_handle);
 		vq_handle = 0;
@@ -342,18 +341,9 @@ static void my_pre_exit(void)
 	}
 }
 
-int main (int argc, char *argv[])
+int
+main(int argc, char *argv[])
 {
-	int ret;
-
-	openlog (NULL, LOG_CONS|LOG_PID, LOG_DAEMON);
-	syslog (LOG_INFO, "%s STARTING", __FILE__);
-
 	parse_debug = 1;
-	ret = test_agent_run (9037, do_command, my_pre_exit);
-	syslog (LOG_INFO, "EXITING");
-
-	return ret;
+	return test_agent_run ("quorum_test_agent", 9037, do_command, my_pre_exit);
 }
-
-

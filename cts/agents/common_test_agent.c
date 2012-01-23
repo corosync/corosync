@@ -43,13 +43,11 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
-#include <syslog.h>
 #include <poll.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <qb/qbloop.h>
-#include "common_test_agent.h"
 
+#include "common_test_agent.h"
 
 int32_t parse_debug = 0;
 static char big_and_buf_rx[HOW_BIG_AND_BUF];
@@ -84,7 +82,7 @@ static void ta_handle_command (int sock, char* msg)
 	char* func = NULL;
 
 	if (parse_debug)
-		syslog (LOG_DEBUG,"%s (MSG:%s)\n", __func__, msg);
+		qb_log (LOG_DEBUG,"%s (MSG:%s)\n", __func__, msg);
 
 	str_len = strtok_r (str, ":", &saveptr);
 	assert (str_len);
@@ -96,14 +94,14 @@ static void ta_handle_command (int sock, char* msg)
 		if (func == NULL) {
 			/* first "arg" is the function */
 			if (parse_debug)
-				syslog (LOG_DEBUG, "(LEN:%s, FUNC:%s)", str_len, str_arg);
+				qb_log (LOG_DEBUG, "(LEN:%s, FUNC:%s)", str_len, str_arg);
 			func = str_arg;
 			a = 0;
 		} else {
 			args[a] = str_arg;
 			a++;
 			if (parse_debug)
-				syslog (LOG_DEBUG, "(LEN:%s, ARG:%s)", str_len, str_arg);
+				qb_log (LOG_DEBUG, "(LEN:%s, ARG:%s)", str_len, str_arg);
 		}
 	}
 	do_command (sock, func, args, a+1);
@@ -121,7 +119,8 @@ static int server_process_data_fn (
 	char *cmd;
 	int32_t nbytes;
 
-	if (revents & POLLHUP) {
+	if (revents & POLLHUP || revents & POLLERR) {
+		qb_log (LOG_INFO, "command sockect got POLLHUP exiting...");
 		shut_me_down();
 		return -1;
 	}
@@ -130,9 +129,9 @@ static int server_process_data_fn (
 		/* got error or connection closed by client */
 		if (nbytes == 0) {
 			/* connection closed */
-			syslog (LOG_WARNING, "socket %d hung up: exiting...\n", fd);
+			qb_log (LOG_WARNING, "socket %d hung up: exiting...\n", fd);
 		} else {
-			syslog (LOG_ERR,"recv() failed: %s", strerror(errno));
+			qb_perror(LOG_ERR, "recv() failed");
 		}
 		shut_me_down();
 		return -1;
@@ -160,7 +159,8 @@ static int server_accept_fn (
 	int new_fd;
 	int res;
 
-	if (revents & POLLHUP) {
+	if (revents & POLLHUP || revents & POLLERR) {
+		qb_log (LOG_INFO, "command sockect got POLLHUP exiting...");
 		shut_me_down();
 		return -1;
 	}
@@ -174,14 +174,14 @@ retry_accept:
 	}
 
 	if (new_fd == -1) {
-		syslog (LOG_ERR,
+		qb_log (LOG_ERR,
 			"Could not accept connection: %s\n", strerror (errno));
 		return (0); /* This is an error, but -1 would indicate disconnect from poll loop */
 	}
 
 	res = fcntl (new_fd, F_SETFL, O_NONBLOCK);
 	if (res == -1) {
-		syslog (LOG_ERR,
+		qb_log (LOG_ERR,
 			"Could not set non-blocking operation on connection: %s\n",
 			strerror (errno));
 		close (new_fd);
@@ -216,7 +216,7 @@ static int create_server_sockect (int server_port)
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_flags = AI_PASSIVE;
 	if ((rv = getaddrinfo (NULL, server_port_str, &hints, &ai)) != 0) {
-		syslog (LOG_ERR, "%s", gai_strerror (rv));
+		qb_log (LOG_ERR, "%s", gai_strerror (rv));
 		exit (1);
 	}
 
@@ -230,7 +230,7 @@ static int create_server_sockect (int server_port)
 		 */
 		if (setsockopt (listener, SOL_SOCKET, SO_REUSEADDR,
 				&yes, sizeof(int)) < 0) {
-			syslog (LOG_ERR, "setsockopt() failed: %s", strerror (errno));
+			qb_log (LOG_ERR, "setsockopt() failed: %s", strerror (errno));
 		}
 
 		switch (p->ai_family)
@@ -242,17 +242,17 @@ static int create_server_sockect (int server_port)
 			ptr = &((struct sockaddr_in6 *) p->ai_addr)->sin6_addr;
 			break;
 		default:
-			syslog (LOG_ERR, "address family wrong");
+			qb_log (LOG_ERR, "address family wrong");
 			exit (4);
 			
 		}
 
 		if (inet_ntop(p->ai_family, ptr, addr_str, INET_ADDRSTRLEN) == NULL) {
-			syslog (LOG_ERR, "inet_ntop() failed: %s", strerror (errno));
+			qb_log (LOG_ERR, "inet_ntop() failed: %s", strerror (errno));
 		}
 
 		if (bind (listener, p->ai_addr, p->ai_addrlen) < 0) {
-			syslog (LOG_ERR, "bind(%s) failed: %s\n", addr_str, strerror (errno));
+			qb_log (LOG_ERR, "bind(%s) failed: %s\n", addr_str, strerror (errno));
 			close (listener);
 			continue;
 		}
@@ -261,14 +261,14 @@ static int create_server_sockect (int server_port)
 	}
 
 	if (p == NULL) {
-		syslog (LOG_ERR, "failed to bind");
+		qb_log (LOG_ERR, "failed to bind");
 		exit (2);
 	}
 
 	freeaddrinfo (ai);
 
 	if (listen (listener, 10) == -1) {
-		syslog (LOG_ERR, "listen() failed: %s", strerror(errno));
+		qb_log (LOG_ERR, "listen() failed: %s", strerror(errno));
 		exit (3);
 	}
 
@@ -277,13 +277,21 @@ static int create_server_sockect (int server_port)
 
 static int32_t sig_exit_handler (int num, void *data)
 {
+	qb_log (LOG_INFO, "got signal %d, exiting", num);
 	shut_me_down();
 	return 0;
 }
 
-int test_agent_run(int server_port, ta_do_command_fn func, pre_exit_fn exit_fn)
+int
+test_agent_run(const char * prog_name, int server_port,
+		ta_do_command_fn func, pre_exit_fn exit_fn)
 {
 	int listener;
+
+	qb_log_init(prog_name, LOG_DAEMON, LOG_DEBUG);
+	qb_log_format_set(QB_LOG_SYSLOG, "%n() [%p] %b");
+
+	qb_log (LOG_INFO, "STARTING");
 
 	do_command = func;
 	pre_exit = exit_fn;
@@ -306,6 +314,9 @@ int test_agent_run(int server_port, ta_do_command_fn func, pre_exit_fn exit_fn)
 			  NULL, server_accept_fn);
 
 	qb_loop_run (poll_handle);
+
+	qb_log (LOG_INFO, "EXITING");
+	qb_log_fini();
 	return 0;
 }
 

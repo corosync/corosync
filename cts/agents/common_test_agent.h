@@ -37,6 +37,7 @@
 
 #include <corosync/hdb.h>
 #include <qb/qbloop.h>
+#include <qb/qblog.h>
 
 #define OK_STR "OK"
 #define FAIL_STR "FAIL"
@@ -48,7 +49,8 @@ extern int32_t parse_debug;
 typedef void (*ta_do_command_fn) (int sock, char* func, char*args[], int num_args);
 typedef void (*pre_exit_fn) (void);
 
-int test_agent_run(int server_port, ta_do_command_fn func, pre_exit_fn exit_fn);
+int test_agent_run(const char * prog_name, int server_port,
+		   ta_do_command_fn func, pre_exit_fn exit_fn);
 
 qb_loop_t *ta_poll_handle_get(void);
 

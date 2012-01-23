@@ -54,7 +54,6 @@
 #include <corosync/sam.h>
 #include <signal.h>
 #include <string.h>
-#include <syslog.h>
 #include <sys/wait.h>
 #include <corosync/cmap.h>
 
@@ -82,60 +81,60 @@ static int test1 (void)
 	unsigned int instance_id;
 	int i;
 
-	syslog (LOG_INFO, "%s: initialize\n", __FUNCTION__);
+	qb_enter();
 	error = sam_initialize (2000, SAM_RECOVERY_POLICY_RESTART);
 	if (error != CS_OK) {
-		syslog (LOG_ERR, "Can't initialize SAM API. Error %d\n", error);
+		qb_log (LOG_ERR, "Can't initialize SAM API. Error %d\n", error);
 		return 1;
 	}
-	syslog (LOG_INFO, "%s: register\n", __FUNCTION__);
+	qb_log (LOG_INFO, "register");
 	error = sam_register (&instance_id);
 	if (error != CS_OK) {
-		syslog (LOG_ERR, "Can't register. Error %d\n", error);
+		qb_log (LOG_ERR, "Can't register. Error %d\n", error);
 		return 1;
 	}
 
 	if (instance_id == 1 || instance_id == 2) {
-		syslog (LOG_INFO, "%s iid %d: start\n", __FUNCTION__, instance_id);
+		qb_log (LOG_INFO, "iid %d: start", instance_id);
 		error = sam_start ();
 		if (error != CS_OK) {
-			syslog (LOG_ERR, "Can't start hc. Error %d\n", error);
+			qb_log (LOG_ERR, "Can't start hc. Error %d", error);
 			return 1;
 		}
 
 		for (i = 0; i < 10; i++) {
-			syslog (LOG_INFO, "%s iid %d: sleep 1\n", __FUNCTION__, instance_id);
+			qb_log (LOG_INFO, "iid %d: sleep 1", instance_id);
 			sleep (1);
 
-			syslog (LOG_INFO, "%s iid %d: hc send\n", __FUNCTION__, instance_id);
+			qb_log (LOG_INFO, "iid %d: hc send", instance_id);
 			error = sam_hc_send ();
 			if (error != CS_OK) {
-				syslog (LOG_ERR, "Can't send hc. Error %d\n", error);
+				qb_log (LOG_ERR, "Can't send hc. Error %d", error);
 				return 1;
 			}
 		}
 
 		if (instance_id == 2) {
-			syslog (LOG_INFO, "%s iid %d: stop\n", __FUNCTION__, instance_id);
+			qb_log (LOG_INFO, "iid %d: stop", instance_id);
 			error = sam_stop ();
 
 			if (error != CS_OK) {
-				syslog (LOG_ERR, "Can't send hc. Error %d\n", error);
+				qb_log (LOG_ERR, "Can't send hc. Error %d", error);
 				return 1;
 			}
 		}
 
-		syslog (LOG_INFO, "%s iid %d: sleep 3\n", __FUNCTION__, instance_id);
+		qb_log (LOG_INFO, "iid %d: sleep 3", instance_id);
 		sleep (3);
 
-		syslog (LOG_INFO, "%s iid %d: start\n", __FUNCTION__, instance_id);
+		qb_log (LOG_INFO, "iid %d: start", instance_id);
 		error = sam_start ();
 		if (error != CS_OK) {
-			syslog (LOG_ERR, "Can't start hc. Error %d\n", error);
+			qb_log (LOG_ERR, "Can't start hc. Error %d", error);
 			return 1;
 		}
 
-		syslog (LOG_INFO, "%s iid %d: sleep 3\n", __FUNCTION__, instance_id);
+		qb_log (LOG_INFO, "iid %d: sleep 3", instance_id);
 		sleep (3);
 		return 0;
 	}
@@ -143,28 +142,28 @@ static int test1 (void)
 	if (instance_id == 3) {
 		error = sam_initialize (2000, SAM_RECOVERY_POLICY_RESTART);
 		if (error == CS_OK) {
-			syslog (LOG_ERR, "Can initialize SAM API after initialization");
+			qb_log (LOG_ERR, "Can initialize SAM API after initialization");
 			return 1;
 		}
 
 		error = sam_start ();
 		if (error != CS_OK) {
-			syslog (LOG_ERR, "Can't start hc. Error %d\n", error);
+			qb_log (LOG_ERR, "Can't start hc. Error %d", error);
 			return 1;
 		}
 		error = sam_stop ();
 		if (error != CS_OK) {
-			syslog (LOG_ERR, "Can't stop hc. Error %d\n", error);
+			qb_log (LOG_ERR, "Can't stop hc. Error %d", error);
 			return 1;
 		}
 		error = sam_finalize ();
 		if (error != CS_OK) {
-			syslog (LOG_ERR, "Can't finalize sam. Error %d\n", error);
+			qb_log (LOG_ERR, "Can't finalize sam. Error %d", error);
 			return 1;
 		}
 		error = sam_finalize ();
 		if (error == CS_OK) {
-			syslog (LOG_ERR, "Can finalize sam after finalization!\n");
+			qb_log (LOG_ERR, "Can finalize sam after finalization!");
 			return 1;
 		}
 
@@ -173,7 +172,7 @@ static int test1 (void)
 			sam_register (NULL) == CS_OK || sam_hc_send () == CS_OK ||
 			sam_hc_callback_register (NULL) == CS_OK) {
 
-			syslog (LOG_ERR, "Can call one of function after finalization!\n");
+			qb_log (LOG_ERR, "Can call one of function after finalization!");
 
 			return 1;
 		}
@@ -185,8 +184,9 @@ static int test1 (void)
 }
 
 
-static void test2_signal (int sig) {
-	syslog (LOG_INFO, "%s\n", __FUNCTION__);
+static void test2_signal (int sig)
+{
+	qb_enter();
 
 	test2_sig_delivered = 1;
 }
@@ -198,46 +198,46 @@ static int test2 (void) {
 	cs_error_t error;
 	unsigned int instance_id;
 
-	syslog (LOG_INFO, "%s: initialize\n", __FUNCTION__);
+	qb_enter();
 	error = sam_initialize (2000, SAM_RECOVERY_POLICY_QUIT);
 	if (error != CS_OK) {
-		syslog (LOG_ERR, "Can't initialize SAM API. Error %d\n", error);
+		qb_log (LOG_ERR, "Can't initialize SAM API. Error %d", error);
 		return 1;
 	}
-	syslog (LOG_INFO, "%s: register\n", __FUNCTION__);
+	qb_log (LOG_INFO, "register");
 	error = sam_register (&instance_id);
 	if (error != CS_OK) {
-		syslog (LOG_ERR, "Can't register. Error %d\n", error);
+		qb_log (LOG_ERR, "Can't register. Error %d", error);
 		return 1;
 	}
 
 	if (instance_id == 1) {
 		signal (SIGTERM, test2_signal);
 
-		syslog (LOG_INFO, "%s iid %d: start\n", __FUNCTION__, instance_id);
+		qb_log (LOG_INFO, "iid %d: start", instance_id);
 		error = sam_start ();
 		if (error != CS_OK) {
-			syslog (LOG_ERR, "Can't start hc. Error %d\n", error);
+			qb_log (LOG_ERR, "Can't start hc. Error %d", error);
 			return 1;
 		}
 
-		syslog (LOG_INFO, "%s iid %d: sleep 1\n", __FUNCTION__, instance_id);
+		qb_log (LOG_INFO, "iid %d: sleep 1", instance_id);
 		sleep (1);
 
-		syslog (LOG_INFO, "%s iid %d: hc send\n", __FUNCTION__, instance_id);
+		qb_log (LOG_INFO, "iid %d: hc send", instance_id);
 		error = sam_hc_send ();
 		if (error != CS_OK) {
-			syslog (LOG_ERR, "Can't send hc. Error %d\n", error);
+			qb_log (LOG_ERR, "Can't send hc. Error %d", error);
 			return 1;
 		}
 
 
-		syslog (LOG_INFO, "%s iid %d: wait for delivery of signal\n", __FUNCTION__, instance_id);
+		qb_log (LOG_INFO, "iid %d: wait for delivery of signal", instance_id);
 		while (!test2_sig_delivered) {
 			sleep (1);
 		}
 
-		syslog (LOG_INFO, "%s iid %d: wait for real kill\n", __FUNCTION__, instance_id);
+		qb_log (LOG_INFO, "iid %d: wait for real kill", instance_id);
 
 		sleep (3);
 	}
@@ -254,28 +254,28 @@ static int test3 (void) {
 	cs_error_t error;
 	unsigned int instance_id;
 
-	syslog (LOG_INFO, "%s: initialize\n", __FUNCTION__);
+	qb_log (LOG_INFO, "initialize");
 	error = sam_initialize (0, SAM_RECOVERY_POLICY_RESTART);
 	if (error != CS_OK) {
-		syslog (LOG_ERR, "Can't initialize SAM API. Error %d\n", error);
+		qb_log (LOG_ERR, "Can't initialize SAM API. Error %d", error);
 		return 1;
 	}
-	syslog (LOG_INFO, "%s: register\n", __FUNCTION__);
+	qb_log (LOG_INFO, "register");
 	error = sam_register (&instance_id);
 	if (error != CS_OK) {
-		syslog (LOG_ERR, "Can't register. Error %d\n", error);
+		qb_log (LOG_ERR, "Can't register. Error %d", error);
 		return 1;
 	}
 
 	if (instance_id < 100) {
-		syslog (LOG_INFO, "%s iid %d: start\n", __FUNCTION__, instance_id);
+		qb_log (LOG_INFO, "iid %d: start", instance_id);
 		error = sam_start ();
 		if (error != CS_OK) {
-			syslog (LOG_ERR, "Can't start hc. Error %d\n", error);
+			qb_log (LOG_ERR, "Can't start hc. Error %d", error);
 			return 1;
 		}
 
-		syslog (LOG_INFO, "%s iid %d: Sending signal\n", __FUNCTION__, instance_id);
+		qb_log (LOG_INFO, "iid %d: Sending signal", instance_id);
 		kill(getpid(), SIGSEGV);
 		return 1;
 	}
@@ -296,56 +296,56 @@ static int test4 (void)
 	char saved_data[128];
 	char saved_data2[128];
 
-	syslog (LOG_INFO, "%s: sam_data_getsize 1\n", __FUNCTION__);
+	qb_log (LOG_INFO, "sam_data_getsize 1");
 	err = sam_data_getsize (&size);
 	if (err != CS_ERR_BAD_HANDLE) {
-		syslog (LOG_ERR, "Test should return CS_ERR_BAD_HANDLE. Error returned %d\n", err);
+		qb_log (LOG_ERR, "Test should return CS_ERR_BAD_HANDLE. Error returned %d", err);
 		return 1;
 	}
 
-	syslog (LOG_INFO, "%s: sam_data_getsize 2\n", __FUNCTION__);
+	qb_log (LOG_INFO, "sam_data_getsize 2");
 	err = sam_data_getsize (NULL);
 	if (err != CS_ERR_INVALID_PARAM) {
-		syslog (LOG_ERR, "Test should return CS_ERR_INVALID_PARAM. Error returned %d\n", err);
+		qb_log (LOG_ERR, "Test should return CS_ERR_INVALID_PARAM. Error returned %d", err);
 		return 1;
 	}
 
-	syslog (LOG_INFO, "%s: sam_data_store 1\n", __FUNCTION__);
+	qb_log (LOG_INFO, "sam_data_store 1");
 	err = sam_data_store (NULL, 0);
 	if (err != CS_ERR_BAD_HANDLE) {
-		syslog (LOG_ERR, "Test should return CS_ERR_BAD_HANDLE. Error returned %d\n", err);
+		qb_log (LOG_ERR, "Test should return CS_ERR_BAD_HANDLE. Error returned %d", err);
 		return 1;
 	}
 
-	syslog (LOG_INFO, "%s: sam_data_restore 1\n", __FUNCTION__);
+	qb_log (LOG_INFO, "sam_data_restore 1");
 	err = sam_data_restore (saved_data, sizeof (saved_data));
 	if (err != CS_ERR_BAD_HANDLE) {
-		syslog (LOG_ERR, "Test should return CS_ERR_BAD_HANDLE. Error returned %d\n", err);
+		qb_log (LOG_ERR, "Test should return CS_ERR_BAD_HANDLE. Error returned %d", err);
 		return 1;
 	}
 
-	syslog (LOG_INFO, "%s: sam_initialize\n", __FUNCTION__);
+	qb_log (LOG_INFO, "sam_initialize");
 	err = sam_initialize (0, SAM_RECOVERY_POLICY_RESTART);
 	if (err != CS_OK) {
-		syslog (LOG_ERR, "Can't initialize SAM API. Error %d\n", err);
+		qb_log (LOG_ERR, "Can't initialize SAM API. Error %d", err);
 		return 1;
 	}
 
-	syslog (LOG_INFO, "%s: sam_data_getsize 3\n", __FUNCTION__);
+	qb_log (LOG_INFO, "sam_data_getsize 3");
 	err = sam_data_getsize (&size);
 	if (err != CS_OK) {
-		syslog (LOG_ERR, "Test should return CS_ERR_BAD_HANDLE. Error returned %d\n", err);
+		qb_log (LOG_ERR, "Test should return CS_ERR_BAD_HANDLE. Error returned %d", err);
 		return 1;
 	}
 	if (size != 0) {
-		syslog (LOG_ERR, "Test should return size of 0. Returned %zx\n", size);
+		qb_log (LOG_ERR, "Test should return size of 0. Returned %zx", size);
 		return 1;
 	}
 
-	syslog (LOG_INFO, "%s: sam_data_restore 2\n", __FUNCTION__);
+	qb_log (LOG_INFO, "sam_data_restore 2");
 	err = sam_data_restore (NULL, sizeof (saved_data));
 	if (err != CS_ERR_INVALID_PARAM) {
-		syslog (LOG_ERR, "Test should return CS_ERR_INVALID_PARAM. Error returned %d\n", err);
+		qb_log (LOG_ERR, "Test should return CS_ERR_INVALID_PARAM. Error returned %d", err);
 		return 1;
 	}
 
@@ -356,105 +356,105 @@ static int test4 (void)
 		saved_data[i] = (char)(i + 5);
 	}
 
-	syslog (LOG_INFO, "%s: sam_data_store 2\n", __FUNCTION__);
+	qb_log (LOG_INFO, "sam_data_store 2");
 	err = sam_data_store (saved_data, sizeof (saved_data));
 	if (err != CS_OK) {
-		syslog (LOG_ERR, "Test should return CS_OK. Error returned %d\n", err);
+		qb_log (LOG_ERR, "Test should return CS_OK. Error returned %d", err);
 		return 1;
 	}
 
-	syslog (LOG_INFO, "%s: sam_data_getsize 4\n", __FUNCTION__);
+	qb_log (LOG_INFO, " sam_data_getsize 4");
 	err = sam_data_getsize (&size);
 	if (err != CS_OK) {
-		syslog (LOG_ERR, "Test should return CS_OK. Error returned %d\n", err);
+		qb_log (LOG_ERR, "Test should return CS_OK. Error returned %d", err);
 		return 1;
 	}
 	if (size != sizeof (saved_data)) {
-		syslog (LOG_ERR, "Test should return size of 0. Returned %zx\n", size);
+		qb_log (LOG_ERR, "Test should return size of 0. Returned %zx", size);
 		return 1;
 	}
 
-	syslog (LOG_INFO, "%s: sam_data_restore 3\n", __FUNCTION__);
+	qb_log (LOG_INFO, " sam_data_restore 3");
 	err = sam_data_restore (saved_data2, sizeof (saved_data2) - 1);
 	if (err != CS_ERR_INVALID_PARAM) {
-		syslog (LOG_ERR, "Test should return CS_ERR_INVALID_PARAM. Error returned %d\n", err);
+		qb_log (LOG_ERR, "Test should return CS_ERR_INVALID_PARAM. Error returned %d", err);
 		return 1;
 	}
 
-	syslog (LOG_INFO, "%s: sam_data_restore 4\n", __FUNCTION__);
+	qb_log (LOG_INFO, " sam_data_restore 4");
 	err = sam_data_restore (saved_data2, sizeof (saved_data2));
 	if (err != CS_OK) {
-		syslog (LOG_ERR, "Test should return CS_OK. Error returned %d\n", err);
+		qb_log (LOG_ERR, "Test should return CS_OK. Error returned %d", err);
 		return 1;
 	}
 
 	if (memcmp (saved_data, saved_data2, sizeof (saved_data2)) != 0) {
-		syslog (LOG_ERR, "Retored data are not same\n");
+		qb_log (LOG_ERR, "Retored data are not same");
 		return 1;
 	}
 
 	memset (saved_data2, 0, sizeof (saved_data2));
 
-	syslog (LOG_INFO, "%s: sam_data_store 3\n", __FUNCTION__);
+	qb_log (LOG_INFO, " sam_data_store 3");
 	err = sam_data_store (NULL, 1);
 	if (err != CS_OK) {
-		syslog (LOG_ERR, "Test should return CS_OK. Error returned %d\n", err);
+		qb_log (LOG_ERR, "Test should return CS_OK. Error returned %d", err);
 		return 1;
 	}
 
-	syslog (LOG_INFO, "%s: sam_data_getsize 5\n", __FUNCTION__);
+	qb_log (LOG_INFO, " sam_data_getsize 5");
 	err = sam_data_getsize (&size);
 	if (err != CS_OK) {
-		syslog (LOG_ERR, "Test should return CS_OK. Error returned %d\n", err);
+		qb_log (LOG_ERR, "Test should return CS_OK. Error returned %d", err);
 		return 1;
 	}
 	if (size != 0) {
-		syslog (LOG_ERR, "Test should return size of 0. Returned %zx\n", size);
+		qb_log (LOG_ERR, "Test should return size of 0. Returned %zx", size);
 		return 1;
 	}
 
-	syslog (LOG_INFO, "%s: sam_data_store 4\n", __FUNCTION__);
+	qb_log (LOG_INFO, " sam_data_store 4");
 	err = sam_data_store (saved_data, sizeof (saved_data));
 	if (err != CS_OK) {
-		syslog (LOG_ERR, "Test should return CS_OK. Error returned %d\n", err);
+		qb_log (LOG_ERR, "Test should return CS_OK. Error returned %d", err);
 		return 1;
 	}
 
-	syslog (LOG_INFO, "%s: register\n", __FUNCTION__);
+	qb_log (LOG_INFO, " register");
 	err = sam_register (&instance_id);
 	if (err != CS_OK) {
-		syslog (LOG_ERR, "Can't register. Error %d\n", err);
+		qb_log (LOG_ERR, "Can't register. Error %d", err);
 		return 1;
 	}
 
 	if (instance_id == 1) {
-		syslog (LOG_INFO, "%s iid %d: sam_start\n", __FUNCTION__, instance_id);
+		qb_log (LOG_INFO, "%s iid %d: sam_start", instance_id);
 		err = sam_start ();
 		if (err != CS_OK) {
-			syslog (LOG_ERR, "Can't start hc. Error %d\n", err);
+			qb_log (LOG_ERR, "Can't start hc. Error %d", err);
 			return 1;
 		}
 
-		syslog (LOG_INFO, "%s iid %d: sam_data_getsize 6\n", __FUNCTION__, instance_id);
+		qb_log (LOG_INFO, "%s iid %d: sam_data_getsize 6", instance_id);
 		err = sam_data_getsize (&size);
 		if (err != CS_OK) {
-			syslog (LOG_ERR, "Test should return CS_OK. Error returned %d\n", err);
+			qb_log (LOG_ERR, "Test should return CS_OK. Error returned %d", err);
 			return 1;
 		}
 		if (size != sizeof (saved_data2)) {
-			syslog (LOG_ERR, "Test should return size of 0. Returned %zx\n", size);
+			qb_log (LOG_ERR, "Test should return size of 0. Returned %zx", size);
 			return 1;
 		}
 
-		syslog (LOG_INFO, "%s iid %d: sam_data_restore 5\n", __FUNCTION__, instance_id);
+		qb_log (LOG_INFO, "%s iid %d: sam_data_restore 5", instance_id);
 		err = sam_data_restore (saved_data2, sizeof (saved_data2));
 		if (err != CS_OK) {
-			syslog (LOG_ERR, "Test should return CS_OK. Error returned %d\n", err);
+			qb_log (LOG_ERR, "Test should return CS_OK. Error returned %d", err);
 			return 1;
 		}
 
 		if (memcmp (saved_data, saved_data2, sizeof (saved_data2)) != 0) {
-			syslog (LOG_ERR, "Retored data are not same\n");
+			qb_log (LOG_ERR, "Retored data are not same");
 			return 1;
 		}
 
@@ -462,10 +462,10 @@ static int test4 (void)
 			saved_data[i] = (char)(i - 5);
 		}
 
-		syslog (LOG_INFO, "%s iid %d: sam_data_store 5\n", __FUNCTION__, instance_id);
+		qb_log (LOG_INFO, "%s iid %d: sam_data_store 5", instance_id);
 		err = sam_data_store (saved_data, sizeof (saved_data) - 7);
 		if (err != CS_OK) {
-			syslog (LOG_ERR, "Test should return CS_OK. Error returned %d\n", err);
+			qb_log (LOG_ERR, "Test should return CS_OK. Error returned %d", err);
 			return 1;
 		}
 
@@ -473,28 +473,28 @@ static int test4 (void)
 	}
 
 	if (instance_id == 2) {
-		syslog (LOG_INFO, "%s iid %d: sam_start\n", __FUNCTION__, instance_id);
+		qb_log (LOG_INFO, "%s iid %d: sam_start", instance_id);
 		err = sam_start ();
 		if (err != CS_OK) {
-			syslog (LOG_ERR, "Can't start hc. Error %d\n", err);
+			qb_log (LOG_ERR, "Can't start hc. Error %d", err);
 			return 1;
 		}
 
-		syslog (LOG_INFO, "%s iid %d: sam_data_getsize 7\n", __FUNCTION__, instance_id);
+		qb_log (LOG_INFO, "%s iid %d: sam_data_getsize 7", instance_id);
 		err = sam_data_getsize (&size);
 		if (err != CS_OK) {
-			syslog (LOG_ERR, "Test should return CS_OK. Error returned %d\n", err);
+			qb_log (LOG_ERR, "Test should return CS_OK. Error returned %d", err);
 			return 1;
 		}
 		if (size != sizeof (saved_data2) - 7) {
-			syslog (LOG_ERR, "Test should return size of 0. Returned %zx\n", size);
+			qb_log (LOG_ERR, "Test should return size of 0. Returned %zx", size);
 			return 1;
 		}
 
-		syslog (LOG_INFO, "%s iid %d: sam_data_restore 6\n", __FUNCTION__, instance_id);
+		qb_log (LOG_INFO, "%s iid %d: sam_data_restore 6", instance_id);
 		err = sam_data_restore (saved_data2, sizeof (saved_data2));
 		if (err != CS_OK) {
-			syslog (LOG_ERR, "Test should return CS_OK. Error returned %d\n", err);
+			qb_log (LOG_ERR, "Test should return CS_OK. Error returned %d", err);
 			return 1;
 		}
 
@@ -503,14 +503,14 @@ static int test4 (void)
 		}
 
 		if (memcmp (saved_data, saved_data2, sizeof (saved_data2) - 7) != 0) {
-			syslog (LOG_ERR, "Retored data are not same\n");
+			qb_log (LOG_ERR, "Retored data are not same");
 			return 1;
 		}
 
-		syslog (LOG_INFO, "%s iid %d: sam_data_store 6\n", __FUNCTION__, instance_id);
+		qb_log (LOG_INFO, "%s iid %d: sam_data_store 6", instance_id);
 		err = sam_data_store (NULL, 0);
 		if (err != CS_OK) {
-			syslog (LOG_ERR, "Test should return CS_OK. Error returned %d\n", err);
+			qb_log (LOG_ERR, "Test should return CS_OK. Error returned %d", err);
 			return 1;
 		}
 
@@ -518,14 +518,14 @@ static int test4 (void)
 	}
 
 	if (instance_id == 3) {
-		syslog (LOG_INFO, "%s iid %d: sam_data_getsize 8\n", __FUNCTION__, instance_id);
+		qb_log (LOG_INFO, "%s iid %d: sam_data_getsize 8", instance_id);
 		err = sam_data_getsize (&size);
 		if (err != CS_OK) {
-			syslog (LOG_ERR, "Test should return CS_OK. Error returned %d\n", err);
+			qb_log (LOG_ERR, "Test should return CS_OK. Error returned %d", err);
 			return 1;
 		}
 		if (size != 0) {
-			syslog (LOG_ERR, "Test should return size of 0. Returned %zx\n", size);
+			qb_log (LOG_ERR, "Test should return size of 0. Returned %zx", size);
 			return 1;
 		}
 	}
@@ -537,7 +537,7 @@ static int test5_hc_cb (void)
 {
 	cs_error_t res;
 
-	syslog (LOG_INFO, "%s %d\n", __FUNCTION__, ++test5_hc_cb_count);
+	qb_log (LOG_INFO, "%s %d", ++test5_hc_cb_count);
 
 	res = sam_data_store (&test5_hc_cb_count, sizeof (test5_hc_cb_count));
 
@@ -558,50 +558,50 @@ static int test5 (void)
 	unsigned int instance_id;
 	int hc_cb_count;
 
-	syslog (LOG_INFO, "%s: initialize\n", __FUNCTION__);
+	qb_log (LOG_INFO, " initialize");
 	error = sam_initialize (100, SAM_RECOVERY_POLICY_RESTART);
 	if (error != CS_OK) {
-		syslog (LOG_ERR, "Can't initialize SAM API. Error %d\n", error);
+		qb_log (LOG_ERR, "Can't initialize SAM API. Error %d", error);
 		return 1;
 	}
-	syslog (LOG_INFO, "%s: register\n", __FUNCTION__);
+	qb_log (LOG_INFO, " register");
 	error = sam_register (&instance_id);
 	if (error != CS_OK) {
-		syslog (LOG_ERR, "Can't register. Error %d\n", error);
+		qb_log (LOG_ERR, "Can't register. Error %d", error);
 		return 1;
 	}
 
 	if (instance_id == 1) {
-		syslog (LOG_INFO, "%s iid %d: hc callback register\n", __FUNCTION__, instance_id);
+		qb_log (LOG_INFO, "%s iid %d: hc callback register", instance_id);
 		error = sam_hc_callback_register (test5_hc_cb);
 		if (error != CS_OK) {
-			syslog (LOG_ERR, "Can't register hc cb. Error %d\n", error);
+			qb_log (LOG_ERR, "Can't register hc cb. Error %d", error);
 			return 1;
 		}
 
 
-		syslog (LOG_INFO, "%s iid %d: start\n", __FUNCTION__, instance_id);
+		qb_log (LOG_INFO, "%s iid %d: start", instance_id);
 		error = sam_start ();
 		if (error != CS_OK) {
-			syslog (LOG_ERR, "Can't start hc. Error %d\n", error);
+			qb_log (LOG_ERR, "Can't start hc. Error %d", error);
 			return 1;
 		}
 
 		sleep (2);
 
-		syslog (LOG_INFO, "%s iid %d: Failed. Wasn't killed.\n", __FUNCTION__, instance_id);
+		qb_log (LOG_INFO, "%s iid %d: Failed. Wasn't killed.", instance_id);
 		return 1;
 	}
 
 	if (instance_id == 2) {
 		error = sam_data_restore (&hc_cb_count, sizeof (hc_cb_count));
 		if (error != CS_OK) {
-			syslog (LOG_ERR, "sam_data_restore should return CS_OK. Error returned %d\n", error);
+			qb_log (LOG_ERR, "sam_data_restore should return CS_OK. Error returned %d", error);
 			return 1;
 		}
 
 		if (hc_cb_count != 11) {
-			syslog (LOG_ERR, "%s iid %d: Premature killed. hc_cb_count should be 11 and it is %d\n",
+			qb_log (LOG_ERR, "%s iid %d: Premature killed. hc_cb_count should be 11 and it is %d",
 				__FUNCTION__, instance_id - 1, hc_cb_count);
 			return 1;
 
@@ -615,11 +615,11 @@ static int test5 (void)
 static void test6_signal (int sig) {
 	cs_error_t error;
 
-	syslog (LOG_INFO, "%s\n", __FUNCTION__);
+	qb_log (LOG_INFO, "%s");
 	test6_sig_delivered++;
 
 	if ((error = sam_data_store (&test6_sig_delivered, sizeof (test6_sig_delivered))) != CS_OK) {
-		syslog (LOG_ERR, "Can't store data! Error : %d\n", error);
+		qb_log (LOG_ERR, "Can't store data! Error : %d", error);
 	}
 }
 
@@ -631,115 +631,115 @@ static int test6 (void) {
 	unsigned int instance_id;
 	int test6_sig_del;
 
-	syslog (LOG_INFO, "%s: initialize\n", __FUNCTION__);
+	qb_log (LOG_INFO, " initialize");
 	error = sam_initialize (2000, SAM_RECOVERY_POLICY_RESTART);
 	if (error != CS_OK) {
-		syslog (LOG_ERR, "Can't initialize SAM API. Error %d\n", error);
+		qb_log (LOG_ERR, "Can't initialize SAM API. Error %d", error);
 		return 1;
 	}
-	syslog (LOG_INFO, "%s: register\n", __FUNCTION__);
+	qb_log (LOG_INFO, " register");
 	error = sam_register (&instance_id);
 	if (error != CS_OK) {
-		syslog (LOG_ERR, "Can't register. Error %d\n", error);
+		qb_log (LOG_ERR, "Can't register. Error %d", error);
 		return 1;
 	}
 
 	if (instance_id == 1) {
 		error = sam_warn_signal_set (SIGUSR1);
 		if (error != CS_OK) {
-			syslog (LOG_ERR, "Can't set warn signal. Error %d\n", error);
+			qb_log (LOG_ERR, "Can't set warn signal. Error %d", error);
 			return 1;
 		}
 
 		signal (SIGUSR1, test6_signal);
 
-		syslog (LOG_INFO, "%s iid %d: start\n", __FUNCTION__, instance_id);
+		qb_log (LOG_INFO, "%s iid %d: start", instance_id);
 		error = sam_start ();
 		if (error != CS_OK) {
-			syslog (LOG_ERR, "Can't start hc. Error %d\n", error);
+			qb_log (LOG_ERR, "Can't start hc. Error %d", error);
 			return 1;
 		}
 
-		syslog (LOG_INFO, "%s iid %d: sleep 1\n", __FUNCTION__, instance_id);
+		qb_log (LOG_INFO, "%s iid %d: sleep 1", instance_id);
 		sleep (1);
 
-		syslog (LOG_INFO, "%s iid %d: hc send\n", __FUNCTION__, instance_id);
+		qb_log (LOG_INFO, "%s iid %d: hc send", instance_id);
 		error = sam_hc_send ();
 		if (error != CS_OK) {
-			syslog (LOG_ERR, "Can't send hc. Error %d\n", error);
+			qb_log (LOG_ERR, "Can't send hc. Error %d", error);
 			return 1;
 		}
 
 
-		syslog (LOG_INFO, "%s iid %d: wait for delivery of signal\n", __FUNCTION__, instance_id);
+		qb_log (LOG_INFO, "%s iid %d: wait for delivery of signal", instance_id);
 		while (!test6_sig_delivered) {
 			sleep (1);
 		}
 
-		syslog (LOG_INFO, "%s iid %d: wait for real kill\n", __FUNCTION__, instance_id);
+		qb_log (LOG_INFO, "%s iid %d: wait for real kill", instance_id);
 
 		sleep (3);
 
-		syslog (LOG_INFO, "%s iid %d: wasn't killed\n", __FUNCTION__, instance_id);
+		qb_log (LOG_INFO, "%s iid %d: wasn't killed", instance_id);
 		return (1);
 	}
 
 	if (instance_id == 2) {
 		error = sam_data_restore (&test6_sig_del, sizeof (test6_sig_del));
 		if (error != CS_OK) {
-			syslog (LOG_ERR, "Can't restore data. Error %d\n", error);
+			qb_log (LOG_ERR, "Can't restore data. Error %d", error);
 			return 1;
 		}
 
 		if (test6_sig_del != 1) {
-			syslog (LOG_ERR, "Previous test failed. Signal was not delivered\n");
+			qb_log (LOG_ERR, "Previous test failed. Signal was not delivered");
 			return 1;
 		}
 
 		error = sam_warn_signal_set (SIGKILL);
 		if (error != CS_OK) {
-			syslog (LOG_ERR, "Can't set warn signal. Error %d\n", error);
+			qb_log (LOG_ERR, "Can't set warn signal. Error %d", error);
 			return 1;
 		}
 
 		signal (SIGUSR1, test6_signal);
 
-		syslog (LOG_INFO, "%s iid %d: start\n", __FUNCTION__, instance_id);
+		qb_log (LOG_INFO, "%s iid %d: start", instance_id);
 		error = sam_start ();
 		if (error != CS_OK) {
-			syslog (LOG_ERR, "Can't start hc. Error %d\n", error);
+			qb_log (LOG_ERR, "Can't start hc. Error %d", error);
 			return 1;
 		}
 
-		syslog (LOG_INFO, "%s iid %d: sleep 1\n", __FUNCTION__, instance_id);
+		qb_log (LOG_INFO, "%s iid %d: sleep 1", instance_id);
 		sleep (1);
 
-		syslog (LOG_INFO, "%s iid %d: hc send\n", __FUNCTION__, instance_id);
+		qb_log (LOG_INFO, "%s iid %d: hc send", instance_id);
 		error = sam_hc_send ();
 		if (error != CS_OK) {
-			syslog (LOG_ERR, "Can't send hc. Error %d\n", error);
+			qb_log (LOG_ERR, "Can't send hc. Error %d", error);
 			return 1;
 		}
 
 
-		syslog (LOG_INFO, "%s iid %d: wait for delivery of signal\n", __FUNCTION__, instance_id);
+		qb_log (LOG_INFO, "%s iid %d: wait for delivery of signal", instance_id);
 		while (!test6_sig_delivered) {
 			sleep (1);
 		}
 
-		syslog (LOG_INFO, "%s iid %d: wasn't killed\n", __FUNCTION__, instance_id);
+		qb_log (LOG_INFO, "%s iid %d: wasn't killed", instance_id);
 		return (1);
 	}
 
 	if (instance_id == 3) {
 		error = sam_data_restore (&test6_sig_del, sizeof (test6_sig_del));
 		if (error != CS_OK) {
-			syslog (LOG_ERR, "Can't restore data. Error %d\n", error);
+			qb_log (LOG_ERR, "Can't restore data. Error %d", error);
 			return 1;
 		}
 
 		if (test6_sig_del != 1) {
-			syslog (LOG_ERR, "Previous test failed. Signal WAS delivered\n");
+			qb_log (LOG_ERR, "Previous test failed. Signal WAS delivered");
 			return 1;
 		}
 
@@ -768,17 +768,17 @@ static int test_quorum (void) {
 
 	err = cmap_initialize (&cmap_handle);
 	if (err != CS_OK) {
-		syslog (LOG_INFO, "Could not initialize Cluster Map API instance error %d. Test skipped\n", err);
+		qb_log (LOG_INFO, "Could not initialize Cluster Map API instance error %d. Test skipped", err);
 		return (1);
 	}
 
 
 	if (cmap_get_string(cmap_handle, "quorum.provider", &str) != CS_OK) {
-		syslog (LOG_INFO, "Could not get \"provider\" key: %d. Test skipped\n", err);
+		qb_log (LOG_INFO, "Could not get \"provider\" key: %d. Test skipped", err);
 		return (1);
 	}
         if (strcmp(str, "testquorum") != 0) {
-		syslog (LOG_INFO, "Provider is not testquorum. Test skipped\n");
+		qb_log (LOG_INFO, "Provider is not testquorum. Test skipped");
 		return (1);
         }
 	free(str);
@@ -788,21 +788,21 @@ static int test_quorum (void) {
 	 */
 	err = cmap_set_uint8(cmap_handle, "quorum.quorate", 0);
 	if (err != CS_OK) {
-		syslog (LOG_INFO, "Can't set map key. Error %d\n", err);
+		qb_log (LOG_INFO, "Can't set map key. Error %d", err);
 		return (2);
 	}
 
-	syslog (LOG_INFO, "%s: initialize\n", __FUNCTION__);
+	qb_log (LOG_INFO, " initialize");
 	err = sam_initialize (2000, SAM_RECOVERY_POLICY_QUORUM_RESTART);
 	if (err != CS_OK) {
-		syslog (LOG_ERR, "Can't initialize SAM API. Error %d\n", err);
+		qb_log (LOG_ERR, "Can't initialize SAM API. Error %d", err);
 		return 2;
 	}
 
-	syslog (LOG_INFO, "%s: register\n", __FUNCTION__);
+	qb_log (LOG_INFO, " register");
 	err = sam_register (&instance_id);
 	if (err != CS_OK) {
-		syslog (LOG_ERR, "Can't register. Error %d\n", err);
+		qb_log (LOG_ERR, "Can't register. Error %d", err);
 		return 2;
 	}
 
@@ -812,14 +812,14 @@ static int test_quorum (void) {
 		 */
 		pthread_create (&kill_thread, NULL, test7_thread, NULL);
 
-		syslog (LOG_INFO, "%s iid %d: start - should block forever (waiting 5s)\n", __FUNCTION__, instance_id);
+		qb_log (LOG_INFO, "%s iid %d: start - should block forever (waiting 5s)", instance_id);
 		err = sam_start ();
 		if (err != CS_OK) {
-			syslog (LOG_ERR, "Can't start hc. Error %d\n", err);
+			qb_log (LOG_ERR, "Can't start hc. Error %d", err);
 			return 2;
 		}
 
-		syslog (LOG_INFO, "%s iid %d: wasn't killed\n", __FUNCTION__, instance_id);
+		qb_log (LOG_INFO, "%s iid %d: wasn't killed", instance_id);
 		return (2);
 	}
 
@@ -829,14 +829,14 @@ static int test_quorum (void) {
 		 */
 		err = cmap_set_uint8(cmap_handle, "quorum.quorate", 1);
 		if (err != CS_OK) {
-			syslog (LOG_INFO, "Can't set map key. Error %d\n", err);
+			qb_log (LOG_INFO, "Can't set map key. Error %d", err);
 			return (2);
 		}
 
-		syslog (LOG_INFO, "%s iid %d: start\n", __FUNCTION__, instance_id);
+		qb_log (LOG_INFO, "%s iid %d: start", instance_id);
 		err = sam_start ();
 		if (err != CS_OK) {
-			syslog (LOG_ERR, "Can't start hc. Error %d\n", err);
+			qb_log (LOG_ERR, "Can't start hc. Error %d", err);
 			return 2;
 		}
 
@@ -845,14 +845,14 @@ static int test_quorum (void) {
 		 */
 		err = cmap_set_uint8(cmap_handle, "quorum.quorate", 0);
 		if (err != CS_OK) {
-			syslog (LOG_INFO, "Can't set map key. Error %d\n", err);
+			qb_log (LOG_INFO, "Can't set map key. Error %d", err);
 			return (2);
 		}
 
-		syslog (LOG_INFO, "%s iid %d: sleep 3\n", __FUNCTION__, instance_id);
+		qb_log (LOG_INFO, "%s iid %d: sleep 3", instance_id);
 		sleep (3);
 
-		syslog (LOG_INFO, "%s iid %d: wasn't killed\n", __FUNCTION__, instance_id);
+		qb_log (LOG_INFO, "%s iid %d: wasn't killed", instance_id);
 		return (2);
 	}
 
@@ -877,51 +877,51 @@ static int test8 (pid_t pid, pid_t old_pid, int test_n) {
 
 	err = cmap_initialize (&cmap_handle);
 	if (err != CS_OK) {
-		syslog (LOG_INFO, "Could not initialize Cluster Map API instance error %d. Test skipped\n", err);
+		qb_log (LOG_INFO, "Could not initialize Cluster Map API instance error %d. Test skipped", err);
 		return (1);
 	}
 
-	syslog (LOG_INFO, "%s test %d\n", __FUNCTION__, test_n);
+	qb_log (LOG_INFO, "%s test %d", test_n);
 
 	if (test_n == 2) {
 		/*
 		 * Object should not exist
 		 */
-		syslog (LOG_INFO, "%s Testing if object exists (it shouldn't)\n", __FUNCTION__);
+		qb_log (LOG_INFO, "%s Testing if object exists (it shouldn't)");
 
 		snprintf(key_name, CMAP_KEYNAME_MAXLEN, "resources.process.%d.state", pid);
 		err = cmap_get_string(cmap_handle, key_name, &str);
 		if (err == CS_OK) {
-			syslog (LOG_INFO, "Could find key \"%s\": %d.\n", key_name, err);
+			qb_log (LOG_INFO, "Could find key \"%s\": %d.", key_name, err);
 			free(str);
 			return (2);
 		}
 	}
 
 	if (test_n == 1 || test_n == 2) {
-		syslog (LOG_INFO, "%s: initialize\n", __FUNCTION__);
+		qb_log (LOG_INFO, " initialize");
 		err = sam_initialize (2000, SAM_RECOVERY_POLICY_QUIT | SAM_RECOVERY_POLICY_CMAP);
 		if (err != CS_OK) {
-			syslog (LOG_ERR, "Can't initialize SAM API. Error %d\n", err);
+			qb_log (LOG_ERR, "Can't initialize SAM API. Error %d", err);
 			return 2;
 		}
 
-		syslog (LOG_INFO, "%s: register\n", __FUNCTION__);
+		qb_log (LOG_INFO, " register");
 		err = sam_register (&instance_id);
 		if (err != CS_OK) {
-			syslog (LOG_ERR, "Can't register. Error %d\n", err);
+			qb_log (LOG_ERR, "Can't register. Error %d", err);
 			return 2;
 		}
 
 		snprintf(key_name, CMAP_KEYNAME_MAXLEN, "resources.process.%d.recovery", pid);
 		err = cmap_get_string(cmap_handle, key_name, &str);
 		if (err != CS_OK) {
-			syslog (LOG_INFO, "Could not get \"recovery\" key: %d.\n", err);
+			qb_log (LOG_INFO, "Could not get \"recovery\" key: %d.", err);
 			return (2);
 		}
 
 		if (strcmp(str, "quit") != 0) {
-			syslog (LOG_INFO, "Recovery key \"%s\" is not \"quit\".\n", key_name);
+			qb_log (LOG_INFO, "Recovery key \"%s\" is not \"quit\".", key_name);
 			return (2);
 		}
 		free(str);
@@ -929,154 +929,154 @@ static int test8 (pid_t pid, pid_t old_pid, int test_n) {
 		snprintf(key_name, CMAP_KEYNAME_MAXLEN, "resources.process.%d.state", pid);
 		err = cmap_get_string(cmap_handle, key_name, &str);
 		if (err != CS_OK) {
-			syslog (LOG_INFO, "Could not get \"state\" key: %d.\n", err);
+			qb_log (LOG_INFO, "Could not get \"state\" key: %d.", err);
 			return (2);
 		}
 
 		if (strcmp(str, "stopped") != 0) {
-			syslog (LOG_INFO, "State key is not \"stopped\".\n");
+			qb_log (LOG_INFO, "State key is not \"stopped\".");
 			return (2);
 		}
 		free(str);
 
-		syslog (LOG_INFO, "%s iid %d: start\n", __FUNCTION__, instance_id);
+		qb_log (LOG_INFO, "%s iid %d: start", instance_id);
 		err = sam_start ();
 		if (err != CS_OK) {
-			syslog (LOG_ERR, "Can't start hc. Error %d\n", err);
+			qb_log (LOG_ERR, "Can't start hc. Error %d", err);
 			return 2;
 		}
 
 		err = cmap_get_string(cmap_handle, key_name, &str);
 		if (err != CS_OK) {
-			syslog (LOG_INFO, "Could not get \"state\" key: %d.\n", err);
+			qb_log (LOG_INFO, "Could not get \"state\" key: %d.", err);
 			return (2);
 		}
 
 		if (strcmp(str, "running") != 0) {
-			syslog (LOG_INFO, "State key is not \"running\".\n");
+			qb_log (LOG_INFO, "State key is not \"running\".");
 			return (2);
 		}
 		free(str);
 
-		syslog (LOG_INFO, "%s iid %d: stop\n", __FUNCTION__, instance_id);
+		qb_log (LOG_INFO, "%s iid %d: stop", instance_id);
 		err = sam_stop ();
 		if (err != CS_OK) {
-			syslog (LOG_ERR, "Can't stop hc. Error %d\n", err);
+			qb_log (LOG_ERR, "Can't stop hc. Error %d", err);
 			return 2;
 		}
 
 		err = cmap_get_string(cmap_handle, key_name, &str);
 		if (err != CS_OK) {
-			syslog (LOG_INFO, "Could not get \"state\" key: %d.\n", err);
+			qb_log (LOG_INFO, "Could not get \"state\" key: %d.", err);
 			return (2);
 		}
 
 		if (strcmp(str, "stopped") != 0) {
-			syslog (LOG_INFO, "State key is not \"stopped\".\n");
+			qb_log (LOG_INFO, "State key is not \"stopped\".");
 			return (2);
 		}
 		free(str);
 
-		syslog (LOG_INFO, "%s iid %d: sleeping 5\n", __FUNCTION__, instance_id);
+		qb_log (LOG_INFO, "%s iid %d: sleeping 5", instance_id);
 		sleep (5);
 
 		err = cmap_get_string(cmap_handle, key_name, &str);
 		if (err != CS_OK) {
-			syslog (LOG_INFO, "Could not get \"state\" key: %d.\n", err);
+			qb_log (LOG_INFO, "Could not get \"state\" key: %d.", err);
 			return (2);
 		}
 
 		if (strcmp(str, "stopped") != 0) {
-			syslog (LOG_INFO, "State key is not \"stopped\".\n");
+			qb_log (LOG_INFO, "State key is not \"stopped\".");
 			return (2);
 		}
 		free(str);
 
-		syslog (LOG_INFO, "%s iid %d: start 2\n", __FUNCTION__, instance_id);
+		qb_log (LOG_INFO, "%s iid %d: start 2", instance_id);
 		err = sam_start ();
 		if (err != CS_OK) {
-			syslog (LOG_ERR, "Can't start hc. Error %d\n", err);
+			qb_log (LOG_ERR, "Can't start hc. Error %d", err);
 			return 2;
 		}
 
 		err = cmap_get_string(cmap_handle, key_name, &str);
 		if (err != CS_OK) {
-			syslog (LOG_INFO, "Could not get \"state\" key: %d.\n", err);
+			qb_log (LOG_INFO, "Could not get \"state\" key: %d.", err);
 			return (2);
 		}
 
 		if (strcmp(str, "running") != 0) {
-			syslog (LOG_INFO, "State key is not \"running\".\n");
+			qb_log (LOG_INFO, "State key is not \"running\".");
 			return (2);
 		}
 		free(str);
 
 		if (test_n == 2) {
-			syslog (LOG_INFO, "%s iid %d: sleeping 5. Should be killed\n", __FUNCTION__, instance_id);
+			qb_log (LOG_INFO, "%s iid %d: sleeping 5. Should be killed", instance_id);
 			sleep (5);
 
 			return (2);
 		} else {
-			syslog (LOG_INFO, "%s iid %d: Test HC\n", __FUNCTION__, instance_id);
+			qb_log (LOG_INFO, "%s iid %d: Test HC", instance_id);
 			err = sam_hc_send ();
 			if (err != CS_OK) {
-				syslog (LOG_ERR, "Can't send hc. Error %d\n", err);
+				qb_log (LOG_ERR, "Can't send hc. Error %d", err);
 				return 2;
 			}
 
 			snprintf(key_name, CMAP_KEYNAME_MAXLEN, "resources.process.%d.last_updated", pid);
 			err = cmap_get_uint64(cmap_handle, key_name, &tstamp1);
 			if (err != CS_OK) {
-				syslog (LOG_INFO, "Could not get \"last_updated\" key: %d.\n", err);
+				qb_log (LOG_INFO, "Could not get \"last_updated\" key: %d.", err);
 				return (2);
 			}
-			syslog (LOG_INFO, "%s iid %d: Sleep 1\n", __FUNCTION__, instance_id);
+			qb_log (LOG_INFO, "%s iid %d: Sleep 1", instance_id);
 			sleep (1);
 			err = sam_hc_send ();
 			if (err != CS_OK) {
-				syslog (LOG_ERR, "Can't send hc. Error %d\n", err);
+				qb_log (LOG_ERR, "Can't send hc. Error %d", err);
 				return 2;
 			}
 			sleep (1);
 			err = cmap_get_uint64(cmap_handle, key_name, &tstamp2);
 			if (err != CS_OK) {
-				syslog (LOG_INFO, "Could not get \"last_updated\" key: %d.\n", err);
+				qb_log (LOG_INFO, "Could not get \"last_updated\" key: %d.", err);
 				return (2);
 			}
 			msec_diff = (tstamp2 - tstamp1)/CS_TIME_NS_IN_MSEC;
 
 			if (msec_diff < 500 || msec_diff > 2000) {
-				syslog (LOG_INFO, "Difference %d is not within <500, 2000> interval.\n", msec_diff);
+				qb_log (LOG_INFO, "Difference %d is not within <500, 2000> interval.", msec_diff);
 				return (2);
 			}
 
-			syslog (LOG_INFO, "%s iid %d: stop 2\n", __FUNCTION__, instance_id);
+			qb_log (LOG_INFO, "%s iid %d: stop 2", instance_id);
 			err = sam_stop ();
 			if (err != CS_OK) {
-				syslog (LOG_ERR, "Can't stop hc. Error %d\n", err);
+				qb_log (LOG_ERR, "Can't stop hc. Error %d", err);
 				return 2;
 			}
 
 			snprintf(key_name, CMAP_KEYNAME_MAXLEN, "resources.process.%d.state", pid);
 			err = cmap_get_string(cmap_handle, key_name, &str);
 			if (err != CS_OK) {
-				syslog (LOG_INFO, "Could not get \"state\" key: %d.\n", err);
+				qb_log (LOG_INFO, "Could not get \"state\" key: %d.", err);
 				return (2);
 			}
 
 			if (strcmp(str, "stopped") != 0) {
-				syslog (LOG_INFO, "State key is not \"stopped\".\n");
+				qb_log (LOG_INFO, "State key is not \"stopped\".");
 				return (2);
 			}
 			free(str);
 
-			syslog (LOG_INFO, "%s iid %d: exiting\n", __FUNCTION__, instance_id);
+			qb_log (LOG_INFO, "%s iid %d: exiting", instance_id);
 			return (0);
 		}
 	}
 
 	if (test_n == 3) {
-		syslog (LOG_INFO, "%s Testing if status is failed\n", __FUNCTION__);
+		qb_log (LOG_INFO, "%s Testing if status is failed");
 
 		/*
 		 * Previous should be FAILED
@@ -1085,12 +1085,12 @@ static int test8 (pid_t pid, pid_t old_pid, int test_n) {
 		snprintf(key_name, CMAP_KEYNAME_MAXLEN, "resources.process.%d.state", pid);
 		err = cmap_get_string(cmap_handle, key_name, &str);
 		if (err != CS_OK) {
-			syslog (LOG_INFO, "Could not get \"state\" key: %d.\n", err);
+			qb_log (LOG_INFO, "Could not get \"state\" key: %d.", err);
 			return (2);
 		}
 
 		if (strcmp(str, "failed") != 0) {
-			syslog (LOG_INFO, "State key is not \"failed\".\n");
+			qb_log (LOG_INFO, "State key is not \"failed\".");
 			return (2);
 		}
 
@@ -1112,38 +1112,38 @@ static int test9 (pid_t pid, pid_t old_pid, int test_n) {
 
 	err = cmap_initialize (&cmap_handle);
 	if (err != CS_OK) {
-		syslog (LOG_INFO, "Could not initialize Cluster Map API instance error %d. Test skipped\n", err);
+		qb_log (LOG_INFO, "Could not initialize Cluster Map API instance error %d. Test skipped", err);
 		return (1);
 	}
 
-	syslog (LOG_INFO, "%s test %d\n", __FUNCTION__, test_n);
+	qb_log (LOG_INFO, "%s test %d", test_n);
 
 	if (test_n == 1) {
-		syslog (LOG_INFO, "%s: initialize\n", __FUNCTION__);
+		qb_log (LOG_INFO, " initialize");
 		err = sam_initialize (2000, SAM_RECOVERY_POLICY_RESTART | SAM_RECOVERY_POLICY_CMAP);
 		if (err != CS_OK) {
-			syslog (LOG_ERR, "Can't initialize SAM API. Error %d\n", err);
+			qb_log (LOG_ERR, "Can't initialize SAM API. Error %d", err);
 			return 2;
 		}
 
-		syslog (LOG_INFO, "%s: register\n", __FUNCTION__);
+		qb_log (LOG_INFO, " register");
 		err = sam_register (&instance_id);
 		if (err != CS_OK) {
-			syslog (LOG_ERR, "Can't register. Error %d\n", err);
+			qb_log (LOG_ERR, "Can't register. Error %d", err);
 			return 2;
 		}
-		syslog (LOG_INFO, "%s: iid %d\n", __FUNCTION__, instance_id);
+		qb_log (LOG_INFO, " iid %d", instance_id);
 
 		if (instance_id < 3) {
 			snprintf(key_name, CMAP_KEYNAME_MAXLEN, "resources.process.%d.recovery", pid);
 			err = cmap_get_string(cmap_handle, key_name, &str);
 			if (err != CS_OK) {
-				syslog (LOG_INFO, "Could not get \"recovery\" key: %d.\n", err);
+				qb_log (LOG_INFO, "Could not get \"recovery\" key: %d.", err);
 				return (2);
 			}
 
 			if (strcmp(str, "restart") != 0) {
-				syslog (LOG_INFO, "Recovery key \"%s\" is not \"restart\".\n", str);
+				qb_log (LOG_INFO, "Recovery key \"%s\" is not \"restart\".", str);
 				return (2);
 			}
 			free(str);
@@ -1151,50 +1151,50 @@ static int test9 (pid_t pid, pid_t old_pid, int test_n) {
 			snprintf(key_name, CMAP_KEYNAME_MAXLEN, "resources.process.%d.state", pid);
 			err = cmap_get_string(cmap_handle, key_name, &str);
 			if (err != CS_OK) {
-				syslog (LOG_INFO, "Could not get \"state\" key: %d.\n", err);
+				qb_log (LOG_INFO, "Could not get \"state\" key: %d.", err);
 				return (2);
 			}
 
 			if (strcmp(str, "stopped") != 0) {
-				syslog (LOG_INFO, "State key is not \"stopped\".\n");
+				qb_log (LOG_INFO, "State key is not \"stopped\".");
 				return (2);
 			}
 			free(str);
 
-			syslog (LOG_INFO, "%s iid %d: start\n", __FUNCTION__, instance_id);
+			qb_log (LOG_INFO, "%s iid %d: start", instance_id);
 			err = sam_start ();
 			if (err != CS_OK) {
-				syslog (LOG_ERR, "Can't start hc. Error %d\n", err);
+				qb_log (LOG_ERR, "Can't start hc. Error %d", err);
 				return 2;
 			}
 
 			err = cmap_get_string(cmap_handle, key_name, &str);
 			if (err != CS_OK) {
-				syslog (LOG_INFO, "Could not get \"state\" key: %d.\n", err);
+				qb_log (LOG_INFO, "Could not get \"state\" key: %d.", err);
 				return (2);
 			}
 
 			if (strcmp(str, "running") != 0) {
-				syslog (LOG_INFO, "State key is not \"running\".\n");
+				qb_log (LOG_INFO, "State key is not \"running\".");
 				return (2);
 			}
 			free(str);
 
-			syslog (LOG_INFO, "%s iid %d: waiting for kill\n", __FUNCTION__, instance_id);
+			qb_log (LOG_INFO, "%s iid %d: waiting for kill", instance_id);
 			sleep (10);
 
 			return (2);
 		}
 
 		if (instance_id == 3) {
-			syslog (LOG_INFO, "%s iid %d: mark failed\n", __FUNCTION__, instance_id);
+			qb_log (LOG_INFO, "%s iid %d: mark failed", instance_id);
 			if (err != CS_OK) {
-				syslog (LOG_ERR, "Can't start hc. Error %d\n", err);
+				qb_log (LOG_ERR, "Can't start hc. Error %d", err);
 				return 2;
 			}
 			err = sam_mark_failed ();
 			if (err != CS_OK) {
-				syslog (LOG_ERR, "Can't mark failed. Error %d\n", err);
+				qb_log (LOG_ERR, "Can't mark failed. Error %d", err);
 				return 2;
 			}
 
@@ -1207,7 +1207,7 @@ static int test9 (pid_t pid, pid_t old_pid, int test_n) {
 	}
 
 	if (test_n == 2) {
-		syslog (LOG_INFO, "%s Testing if status is failed\n", __FUNCTION__);
+		qb_log (LOG_INFO, "%s Testing if status is failed");
 
 		/*
 		 * Previous should be FAILED
@@ -1215,12 +1215,12 @@ static int test9 (pid_t pid, pid_t old_pid, int test_n) {
 		snprintf(key_name, CMAP_KEYNAME_MAXLEN, "resources.process.%d.state", pid);
 		err = cmap_get_string(cmap_handle, key_name, &str);
 		if (err != CS_OK) {
-			syslog (LOG_INFO, "Could not get \"state\" key: %d.\n", err);
+			qb_log (LOG_INFO, "Could not get \"state\" key: %d.", err);
 			return (2);
 		}
 
 		if (strcmp(str, "failed") != 0) {
-			syslog (LOG_INFO, "State key is not \"failed\".\n");
+			qb_log (LOG_INFO, "State key is not \"failed\".");
 			return (2);
 		}
 		free(str);
@@ -1233,7 +1233,7 @@ static int test9 (pid_t pid, pid_t old_pid, int test_n) {
 
 static int hc_allways_respond_cb(void)
 {
-	syslog (LOG_INFO, "%s() -> health check OK.", __FUNCTION__);
+	qb_log (LOG_INFO, "%s() -> health check OK.");
 	return 0;
 }
 
@@ -1244,22 +1244,22 @@ static int setup_hc (void)
 
 	err = sam_initialize (1000, SAM_RECOVERY_POLICY_QUIT | SAM_RECOVERY_POLICY_CMAP);
 	if (err != CS_OK) {
-		syslog (LOG_ERR, "Can't initialize SAM API. Error %d\n", err);
+		qb_log (LOG_ERR, "Can't initialize SAM API. Error %d", err);
 		return 2;
 	}
 
-	syslog (LOG_INFO, "%s: register\n", __FUNCTION__);
+	qb_log (LOG_INFO, " register");
 	err = sam_register (&instance_id);
 	if (err != CS_OK) {
-		syslog (LOG_ERR, "Can't register. Error %d\n", err);
+		qb_log (LOG_ERR, "Can't register. Error %d", err);
 		return 2;
 	}
 	err = sam_hc_callback_register (hc_allways_respond_cb);
 
-	syslog (LOG_INFO, "%s instance id %d: start\n", __FUNCTION__, instance_id);
+	qb_log (LOG_INFO, "%s instance id %d: start", instance_id);
 	err = sam_start ();
 	if (err != CS_OK) {
-		syslog (LOG_ERR, "Can't start hc. Error %d\n", err);
+		qb_log (LOG_ERR, "Can't start hc. Error %d", err);
 		return 2;
 	}
 
@@ -1275,7 +1275,7 @@ static int do_test_command(int sock, char* func, char*args[], int num_args)
 	pid = fork ();
 
 	if (pid == -1) {
-		syslog (LOG_ERR, "Can't fork\n");
+		qb_log (LOG_ERR, "Can't fork");
 		return -1;
 	}
 
@@ -1318,7 +1318,7 @@ static void do_command (int sock, char* func, char*args[], int num_args)
 	int err = 0;
 
 	if (parse_debug) {
-		syslog (LOG_INFO, "RPC:%s() called.", func);
+		qb_log (LOG_INFO, "RPC:%s() called.", func);
 	}
 	if (strncmp ("test", func, 4) == 0) {
 		err = do_test_command(sock, func, args, num_args);
@@ -1328,13 +1328,13 @@ static void do_command (int sock, char* func, char*args[], int num_args)
 		err = sam_stop ();
 		if (err != CS_OK) {
 			err = -1;
-			syslog (LOG_ERR,"%s RPC:%s sam_stop failed!", __func__, func);
+			qb_log (LOG_ERR,"%s RPC:%s sam_stop failed!", __func__, func);
 			snprintf (response, 100, "%s", FAIL_STR);
 		}
 		err = sam_finalize();
 	} else {
 		err = -1;
-		syslog (LOG_ERR,"%s RPC:%s not supported!", __func__, func);
+		qb_log (LOG_ERR,"%s RPC:%s not supported!", __func__, func);
 		snprintf (response, 100, "%s", NOT_SUPPORTED_STR);
 	}
 
@@ -1342,24 +1342,17 @@ static void do_command (int sock, char* func, char*args[], int num_args)
 		snprintf (response, 100, "%s", OK_STR);
 	} else if (err == 1) {
 		snprintf (response, 100, "%s", FAIL_STR);
-		syslog (LOG_ERR, "%s() test skipped?! (%d).", func, err);
+		qb_log (LOG_ERR, "%s() test skipped?! (%d).", func, err);
 	} else {
 		snprintf (response, 100, "%s", FAIL_STR);
-		syslog (LOG_ERR, "%s() failed (%d).", func, err);
+		qb_log (LOG_ERR, "%s() failed (%d).", func, err);
 	}
 	send (sock, response, strlen (response) + 1, 0);
 }
 
-int main (int argc, char *argv[])
+int
+main (int argc, char *argv[])
 {
-	int ret;
-
-	openlog (NULL, LOG_CONS|LOG_PID, LOG_DAEMON);
-	syslog (LOG_INFO, "%s STARTNG", __FILE__);
-
 	parse_debug = 1;
-	ret = test_agent_run (9036, do_command, NULL);
-	syslog (LOG_INFO, "%s EXITING", __FILE__);
-
-	return ret;
+	return test_agent_run ("sam_test_agent", 9036, do_command, NULL);
 }

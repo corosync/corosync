@@ -773,20 +773,12 @@ static void my_pre_exit(void)
 	}
 }
 
-int main (int argc, char *argv[])
+int
+main(int argc, char *argv[])
 {
-	int res = 0;
-
-	qb_log_init("cpg_test_agent", LOG_DAEMON, LOG_DEBUG);
-	qb_log_format_set(QB_LOG_SYSLOG, "%n() [%p] %b");
-	qb_log (LOG_INFO, "STARTING");
-
 	list_init (&msg_log_head);
 	list_init (&config_chg_log_head);
 
-	res = test_agent_run (9034, do_command, my_pre_exit);
-	qb_log (LOG_INFO, "EXITING");
-	qb_log_fini();
-	return res;
+	return test_agent_run ("cpg_test_agent", 9034, do_command, my_pre_exit);
 }
 
