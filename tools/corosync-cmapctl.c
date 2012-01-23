@@ -95,7 +95,10 @@ static int convert_name_to_type(const char *name)
 static int print_help(void)
 {
 	printf("\n");
-	printf("usage:  corosync-cmapctl [-b] [-adghsTtp] [params...]\n");
+	printf("usage:  corosync-cmapctl [-b] [-dghsTtp] [params...]\n");
+	printf("\n");
+	printf("    -b show binary values\n");
+	printf("\n");
 	printf("Set key:\n");
 	printf("    corosync-cmapctl -s key_name type value\n");
 	printf("\n");
