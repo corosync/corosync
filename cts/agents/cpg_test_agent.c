@@ -187,7 +187,6 @@ static void delivery_callback (
 	if ((total_msgs_revd % 100) == 0) {
 		qb_log (LOG_INFO, "%d",total_msgs_revd);
 	}
-
 }
 
 static void config_change_callback (
@@ -563,23 +562,19 @@ static int cfg_dispatch_wrapper_fn (
 	void *data)
 {
 	cs_error_t error;
+
 	if (revents & POLLHUP || revents & POLLERR) {
 		qb_log (LOG_ERR, "got POLLHUP disconnecting from CFG");
 		corosync_cfg_finalize(cfg_handle);
 		cfg_handle = 0;
-		qb_loop_poll_del (ta_poll_handle_get(), cfg_fd);
-		close (cfg_fd);
-		cfg_fd = -1;
 		return -1;
 	}
+
 	error = corosync_cfg_dispatch (cfg_handle, CS_DISPATCH_ALL);
 	if (error == CS_ERR_LIBRARY) {
 		qb_log (LOG_ERR, "got LIB error disconnecting from CFG.");
 		corosync_cfg_finalize(cfg_handle);
 		cfg_handle = 0;
-		qb_loop_poll_del (ta_poll_handle_get(), cfg_fd);
-		close (cfg_fd);
-		cfg_fd = -1;
 		return -1;
 	}
 	return 0;
@@ -591,23 +586,19 @@ static int cpg_dispatch_wrapper_fn (
 	void *data)
 {
 	cs_error_t error;
+
 	if (revents & POLLHUP || revents & POLLERR) {
 		qb_log (LOG_ERR, "got POLLHUP disconnecting from CPG");
 		cpg_finalize(cpg_handle);
 		cpg_handle = 0;
-		qb_loop_poll_del (ta_poll_handle_get(), cpg_fd);
-		close (cpg_fd);
-		cpg_fd = -1;
 		return -1;
 	}
+
 	error = cpg_dispatch (cpg_handle, CS_DISPATCH_ALL);
 	if (error == CS_ERR_LIBRARY) {
 		qb_log (LOG_ERR, "got LIB error disconnecting from CPG");
 		cpg_finalize(cpg_handle);
 		cpg_handle = 0;
-		qb_loop_poll_del (ta_poll_handle_get(), cpg_fd);
-		close (cpg_fd);
-		cpg_fd = -1;
 		return -1;
 	}
 	return 0;
@@ -693,10 +684,6 @@ static void do_command (int sock, char* func, char*args[], int num_args)
 			cpg_finalize (cpg_handle);
 			cpg_handle = 0;
 		}
-		if (cpg_fd > 0) {
-			qb_loop_poll_del (ta_poll_handle_get(), cpg_fd);
-			cpg_fd = -1;
-		}
 
 	} else if (strcmp ("record_config_events", func) == 0) {
 		record_config_events (sock);
@@ -765,6 +752,10 @@ static void my_pre_exit(void)
 	if (cpg_handle > 0) {
 		cpg_finalize (cpg_handle);
 		cpg_handle = 0;
+	}
+	if (cfg_handle > 0) {
+		corosync_cfg_finalize (cfg_handle);
+		cfg_handle = 0;
 	}
 }
 
