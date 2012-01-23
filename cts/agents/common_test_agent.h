@@ -43,7 +43,6 @@
 #define FAIL_STR "FAIL"
 #define NOT_SUPPORTED_STR "NOT_SUPPORTED"
 
-extern int32_t parse_debug;
 #define HOW_BIG_AND_BUF 4096
 
 typedef void (*ta_do_command_fn) (int sock, char* func, char*args[], int num_args);

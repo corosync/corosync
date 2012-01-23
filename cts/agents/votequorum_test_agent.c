@@ -85,8 +85,8 @@ static int vq_dispatch_wrapper_fn (
 {
 	cs_error_t error = votequorum_dispatch (vq_handle, CS_DISPATCH_ALL);
 	if (error != CS_OK) {
-		qb_log (LOG_ERR, "%s() got %s error, disconnecting.",
-			__func__, cs_strerror(error));
+		qb_log (LOG_ERR, "got %s error, disconnecting.",
+			cs_strerror(error));
 		votequorum_finalize(vq_handle);
 		qb_loop_poll_del (ta_poll_handle_get(), fd);
 		close (fd);
@@ -103,8 +103,8 @@ static int q_dispatch_wrapper_fn (
 {
 	cs_error_t error = quorum_dispatch (q_handle, CS_DISPATCH_ALL);
 	if (error != CS_OK) {
-		qb_log (LOG_ERR, "%s() got %s error, disconnecting.",
-			__func__, cs_strerror(error));
+		qb_log (LOG_ERR, "got %s error, disconnecting.",
+			cs_strerror(error));
 		quorum_finalize(q_handle);
 		qb_loop_poll_del (ta_poll_handle_get(), fd);
 		close (fd);
@@ -303,8 +303,7 @@ static void do_command (int sock, char* func, char*args[], int num_args)
 {
 	char response[100];
 
-	if (parse_debug)
-		qb_log (LOG_DEBUG,"RPC:%s() called.", func);
+	qb_log (LOG_INFO,"RPC:%s() called.", func);
 
 	if (strcmp ("votequorum_getinfo", func) == 0) {
 		getinfo (sock);
@@ -344,6 +343,5 @@ static void my_pre_exit(void)
 int
 main(int argc, char *argv[])
 {
-	parse_debug = 1;
 	return test_agent_run ("quorum_test_agent", 9037, do_command, my_pre_exit);
 }

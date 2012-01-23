@@ -428,14 +428,14 @@ static int test4 (void)
 	}
 
 	if (instance_id == 1) {
-		qb_log (LOG_INFO, "%s iid %d: sam_start", instance_id);
+		qb_log (LOG_INFO, "iid %d: sam_start", instance_id);
 		err = sam_start ();
 		if (err != CS_OK) {
 			qb_log (LOG_ERR, "Can't start hc. Error %d", err);
 			return 1;
 		}
 
-		qb_log (LOG_INFO, "%s iid %d: sam_data_getsize 6", instance_id);
+		qb_log (LOG_INFO, "iid %d: sam_data_getsize 6", instance_id);
 		err = sam_data_getsize (&size);
 		if (err != CS_OK) {
 			qb_log (LOG_ERR, "Test should return CS_OK. Error returned %d", err);
@@ -446,7 +446,7 @@ static int test4 (void)
 			return 1;
 		}
 
-		qb_log (LOG_INFO, "%s iid %d: sam_data_restore 5", instance_id);
+		qb_log (LOG_INFO, "iid %d: sam_data_restore 5", instance_id);
 		err = sam_data_restore (saved_data2, sizeof (saved_data2));
 		if (err != CS_OK) {
 			qb_log (LOG_ERR, "Test should return CS_OK. Error returned %d", err);
@@ -462,7 +462,7 @@ static int test4 (void)
 			saved_data[i] = (char)(i - 5);
 		}
 
-		qb_log (LOG_INFO, "%s iid %d: sam_data_store 5", instance_id);
+		qb_log (LOG_INFO, "iid %d: sam_data_store 5", instance_id);
 		err = sam_data_store (saved_data, sizeof (saved_data) - 7);
 		if (err != CS_OK) {
 			qb_log (LOG_ERR, "Test should return CS_OK. Error returned %d", err);
@@ -473,14 +473,14 @@ static int test4 (void)
 	}
 
 	if (instance_id == 2) {
-		qb_log (LOG_INFO, "%s iid %d: sam_start", instance_id);
+		qb_log (LOG_INFO, "iid %d: sam_start", instance_id);
 		err = sam_start ();
 		if (err != CS_OK) {
 			qb_log (LOG_ERR, "Can't start hc. Error %d", err);
 			return 1;
 		}
 
-		qb_log (LOG_INFO, "%s iid %d: sam_data_getsize 7", instance_id);
+		qb_log (LOG_INFO, "iid %d: sam_data_getsize 7", instance_id);
 		err = sam_data_getsize (&size);
 		if (err != CS_OK) {
 			qb_log (LOG_ERR, "Test should return CS_OK. Error returned %d", err);
@@ -491,7 +491,7 @@ static int test4 (void)
 			return 1;
 		}
 
-		qb_log (LOG_INFO, "%s iid %d: sam_data_restore 6", instance_id);
+		qb_log (LOG_INFO, "iid %d: sam_data_restore 6", instance_id);
 		err = sam_data_restore (saved_data2, sizeof (saved_data2));
 		if (err != CS_OK) {
 			qb_log (LOG_ERR, "Test should return CS_OK. Error returned %d", err);
@@ -507,7 +507,7 @@ static int test4 (void)
 			return 1;
 		}
 
-		qb_log (LOG_INFO, "%s iid %d: sam_data_store 6", instance_id);
+		qb_log (LOG_INFO, "iid %d: sam_data_store 6", instance_id);
 		err = sam_data_store (NULL, 0);
 		if (err != CS_OK) {
 			qb_log (LOG_ERR, "Test should return CS_OK. Error returned %d", err);
@@ -518,7 +518,7 @@ static int test4 (void)
 	}
 
 	if (instance_id == 3) {
-		qb_log (LOG_INFO, "%s iid %d: sam_data_getsize 8", instance_id);
+		qb_log (LOG_INFO, "iid %d: sam_data_getsize 8", instance_id);
 		err = sam_data_getsize (&size);
 		if (err != CS_OK) {
 			qb_log (LOG_ERR, "Test should return CS_OK. Error returned %d", err);
@@ -537,7 +537,7 @@ static int test5_hc_cb (void)
 {
 	cs_error_t res;
 
-	qb_log (LOG_INFO, "%s %d", ++test5_hc_cb_count);
+	qb_log (LOG_INFO, "%d", ++test5_hc_cb_count);
 
 	res = sam_data_store (&test5_hc_cb_count, sizeof (test5_hc_cb_count));
 
@@ -572,7 +572,7 @@ static int test5 (void)
 	}
 
 	if (instance_id == 1) {
-		qb_log (LOG_INFO, "%s iid %d: hc callback register", instance_id);
+		qb_log (LOG_INFO, "iid %d: hc callback register", instance_id);
 		error = sam_hc_callback_register (test5_hc_cb);
 		if (error != CS_OK) {
 			qb_log (LOG_ERR, "Can't register hc cb. Error %d", error);
@@ -580,7 +580,7 @@ static int test5 (void)
 		}
 
 
-		qb_log (LOG_INFO, "%s iid %d: start", instance_id);
+		qb_log (LOG_INFO, "iid %d: start", instance_id);
 		error = sam_start ();
 		if (error != CS_OK) {
 			qb_log (LOG_ERR, "Can't start hc. Error %d", error);
@@ -589,7 +589,7 @@ static int test5 (void)
 
 		sleep (2);
 
-		qb_log (LOG_INFO, "%s iid %d: Failed. Wasn't killed.", instance_id);
+		qb_log (LOG_INFO, "iid %d: Failed. Wasn't killed.", instance_id);
 		return 1;
 	}
 
@@ -601,7 +601,7 @@ static int test5 (void)
 		}
 
 		if (hc_cb_count != 11) {
-			qb_log (LOG_ERR, "%s iid %d: Premature killed. hc_cb_count should be 11 and it is %d",
+			qb_log (LOG_ERR, "iid %d: Premature killed. hc_cb_count should be 11 and it is %d",
 				__FUNCTION__, instance_id - 1, hc_cb_count);
 			return 1;
 
@@ -615,7 +615,7 @@ static int test5 (void)
 static void test6_signal (int sig) {
 	cs_error_t error;
 
-	qb_log (LOG_INFO, "%s");
+	qb_enter();
 	test6_sig_delivered++;
 
 	if ((error = sam_data_store (&test6_sig_delivered, sizeof (test6_sig_delivered))) != CS_OK) {
@@ -653,17 +653,17 @@ static int test6 (void) {
 
 		signal (SIGUSR1, test6_signal);
 
-		qb_log (LOG_INFO, "%s iid %d: start", instance_id);
+		qb_log (LOG_INFO, " iid %d: start", instance_id);
 		error = sam_start ();
 		if (error != CS_OK) {
 			qb_log (LOG_ERR, "Can't start hc. Error %d", error);
 			return 1;
 		}
 
-		qb_log (LOG_INFO, "%s iid %d: sleep 1", instance_id);
+		qb_log (LOG_INFO, "iid %d: sleep 1", instance_id);
 		sleep (1);
 
-		qb_log (LOG_INFO, "%s iid %d: hc send", instance_id);
+		qb_log (LOG_INFO, "iid %d: hc send", instance_id);
 		error = sam_hc_send ();
 		if (error != CS_OK) {
 			qb_log (LOG_ERR, "Can't send hc. Error %d", error);
@@ -671,16 +671,16 @@ static int test6 (void) {
 		}
 
 
-		qb_log (LOG_INFO, "%s iid %d: wait for delivery of signal", instance_id);
+		qb_log (LOG_INFO, "iid %d: wait for delivery of signal", instance_id);
 		while (!test6_sig_delivered) {
 			sleep (1);
 		}
 
-		qb_log (LOG_INFO, "%s iid %d: wait for real kill", instance_id);
+		qb_log (LOG_INFO, "iid %d: wait for real kill", instance_id);
 
 		sleep (3);
 
-		qb_log (LOG_INFO, "%s iid %d: wasn't killed", instance_id);
+		qb_log (LOG_INFO, "iid %d: wasn't killed", instance_id);
 		return (1);
 	}
 
@@ -704,17 +704,17 @@ static int test6 (void) {
 
 		signal (SIGUSR1, test6_signal);
 
-		qb_log (LOG_INFO, "%s iid %d: start", instance_id);
+		qb_log (LOG_INFO, "iid %d: start", instance_id);
 		error = sam_start ();
 		if (error != CS_OK) {
 			qb_log (LOG_ERR, "Can't start hc. Error %d", error);
 			return 1;
 		}
 
-		qb_log (LOG_INFO, "%s iid %d: sleep 1", instance_id);
+		qb_log (LOG_INFO, "iid %d: sleep 1", instance_id);
 		sleep (1);
 
-		qb_log (LOG_INFO, "%s iid %d: hc send", instance_id);
+		qb_log (LOG_INFO, "iid %d: hc send", instance_id);
 		error = sam_hc_send ();
 		if (error != CS_OK) {
 			qb_log (LOG_ERR, "Can't send hc. Error %d", error);
@@ -722,12 +722,12 @@ static int test6 (void) {
 		}
 
 
-		qb_log (LOG_INFO, "%s iid %d: wait for delivery of signal", instance_id);
+		qb_log (LOG_INFO, "iid %d: wait for delivery of signal", instance_id);
 		while (!test6_sig_delivered) {
 			sleep (1);
 		}
 
-		qb_log (LOG_INFO, "%s iid %d: wasn't killed", instance_id);
+		qb_log (LOG_INFO, "iid %d: wasn't killed", instance_id);
 		return (1);
 	}
 
@@ -812,14 +812,14 @@ static int test_quorum (void) {
 		 */
 		pthread_create (&kill_thread, NULL, test7_thread, NULL);
 
-		qb_log (LOG_INFO, "%s iid %d: start - should block forever (waiting 5s)", instance_id);
+		qb_log (LOG_INFO, "iid %d: start - should block forever (waiting 5s)", instance_id);
 		err = sam_start ();
 		if (err != CS_OK) {
 			qb_log (LOG_ERR, "Can't start hc. Error %d", err);
 			return 2;
 		}
 
-		qb_log (LOG_INFO, "%s iid %d: wasn't killed", instance_id);
+		qb_log (LOG_INFO, "iid %d: wasn't killed", instance_id);
 		return (2);
 	}
 
@@ -833,7 +833,7 @@ static int test_quorum (void) {
 			return (2);
 		}
 
-		qb_log (LOG_INFO, "%s iid %d: start", instance_id);
+		qb_log (LOG_INFO, "iid %d: start", instance_id);
 		err = sam_start ();
 		if (err != CS_OK) {
 			qb_log (LOG_ERR, "Can't start hc. Error %d", err);
@@ -849,10 +849,10 @@ static int test_quorum (void) {
 			return (2);
 		}
 
-		qb_log (LOG_INFO, "%s iid %d: sleep 3", instance_id);
+		qb_log (LOG_INFO, "iid %d: sleep 3", instance_id);
 		sleep (3);
 
-		qb_log (LOG_INFO, "%s iid %d: wasn't killed", instance_id);
+		qb_log (LOG_INFO, "iid %d: wasn't killed", instance_id);
 		return (2);
 	}
 
@@ -881,13 +881,13 @@ static int test8 (pid_t pid, pid_t old_pid, int test_n) {
 		return (1);
 	}
 
-	qb_log (LOG_INFO, "%s test %d", test_n);
+	qb_log (LOG_INFO, "test %d", test_n);
 
 	if (test_n == 2) {
 		/*
 		 * Object should not exist
 		 */
-		qb_log (LOG_INFO, "%s Testing if object exists (it shouldn't)");
+		qb_log (LOG_INFO, "Testing if object exists (it shouldn't)");
 
 		snprintf(key_name, CMAP_KEYNAME_MAXLEN, "resources.process.%d.state", pid);
 		err = cmap_get_string(cmap_handle, key_name, &str);
@@ -939,7 +939,7 @@ static int test8 (pid_t pid, pid_t old_pid, int test_n) {
 		}
 		free(str);
 
-		qb_log (LOG_INFO, "%s iid %d: start", instance_id);
+		qb_log (LOG_INFO, "iid %d: start", instance_id);
 		err = sam_start ();
 		if (err != CS_OK) {
 			qb_log (LOG_ERR, "Can't start hc. Error %d", err);
@@ -958,7 +958,7 @@ static int test8 (pid_t pid, pid_t old_pid, int test_n) {
 		}
 		free(str);
 
-		qb_log (LOG_INFO, "%s iid %d: stop", instance_id);
+		qb_log (LOG_INFO, "iid %d: stop", instance_id);
 		err = sam_stop ();
 		if (err != CS_OK) {
 			qb_log (LOG_ERR, "Can't stop hc. Error %d", err);
@@ -977,7 +977,7 @@ static int test8 (pid_t pid, pid_t old_pid, int test_n) {
 		}
 		free(str);
 
-		qb_log (LOG_INFO, "%s iid %d: sleeping 5", instance_id);
+		qb_log (LOG_INFO, "iid %d: sleeping 5", instance_id);
 		sleep (5);
 
 		err = cmap_get_string(cmap_handle, key_name, &str);
@@ -992,7 +992,7 @@ static int test8 (pid_t pid, pid_t old_pid, int test_n) {
 		}
 		free(str);
 
-		qb_log (LOG_INFO, "%s iid %d: start 2", instance_id);
+		qb_log (LOG_INFO, "iid %d: start 2", instance_id);
 		err = sam_start ();
 		if (err != CS_OK) {
 			qb_log (LOG_ERR, "Can't start hc. Error %d", err);
@@ -1012,12 +1012,12 @@ static int test8 (pid_t pid, pid_t old_pid, int test_n) {
 		free(str);
 
 		if (test_n == 2) {
-			qb_log (LOG_INFO, "%s iid %d: sleeping 5. Should be killed", instance_id);
+			qb_log (LOG_INFO, "iid %d: sleeping 5. Should be killed", instance_id);
 			sleep (5);
 
 			return (2);
 		} else {
-			qb_log (LOG_INFO, "%s iid %d: Test HC", instance_id);
+			qb_log (LOG_INFO, "iid %d: Test HC", instance_id);
 			err = sam_hc_send ();
 			if (err != CS_OK) {
 				qb_log (LOG_ERR, "Can't send hc. Error %d", err);
@@ -1030,7 +1030,7 @@ static int test8 (pid_t pid, pid_t old_pid, int test_n) {
 				qb_log (LOG_INFO, "Could not get \"last_updated\" key: %d.", err);
 				return (2);
 			}
-			qb_log (LOG_INFO, "%s iid %d: Sleep 1", instance_id);
+			qb_log (LOG_INFO, "iid %d: Sleep 1", instance_id);
 			sleep (1);
 			err = sam_hc_send ();
 			if (err != CS_OK) {
@@ -1050,7 +1050,7 @@ static int test8 (pid_t pid, pid_t old_pid, int test_n) {
 				return (2);
 			}
 
-			qb_log (LOG_INFO, "%s iid %d: stop 2", instance_id);
+			qb_log (LOG_INFO, "iid %d: stop 2", instance_id);
 			err = sam_stop ();
 			if (err != CS_OK) {
 				qb_log (LOG_ERR, "Can't stop hc. Error %d", err);
@@ -1070,13 +1070,13 @@ static int test8 (pid_t pid, pid_t old_pid, int test_n) {
 			}
 			free(str);
 
-			qb_log (LOG_INFO, "%s iid %d: exiting", instance_id);
+			qb_log (LOG_INFO, "iid %d: exiting", instance_id);
 			return (0);
 		}
 	}
 
 	if (test_n == 3) {
-		qb_log (LOG_INFO, "%s Testing if status is failed");
+		qb_log (LOG_INFO, "Testing if status is failed");
 
 		/*
 		 * Previous should be FAILED
@@ -1116,7 +1116,7 @@ static int test9 (pid_t pid, pid_t old_pid, int test_n) {
 		return (1);
 	}
 
-	qb_log (LOG_INFO, "%s test %d", test_n);
+	qb_log (LOG_INFO, "test %d", test_n);
 
 	if (test_n == 1) {
 		qb_log (LOG_INFO, " initialize");
@@ -1161,7 +1161,7 @@ static int test9 (pid_t pid, pid_t old_pid, int test_n) {
 			}
 			free(str);
 
-			qb_log (LOG_INFO, "%s iid %d: start", instance_id);
+			qb_log (LOG_INFO, "iid %d: start", instance_id);
 			err = sam_start ();
 			if (err != CS_OK) {
 				qb_log (LOG_ERR, "Can't start hc. Error %d", err);
@@ -1180,14 +1180,14 @@ static int test9 (pid_t pid, pid_t old_pid, int test_n) {
 			}
 			free(str);
 
-			qb_log (LOG_INFO, "%s iid %d: waiting for kill", instance_id);
+			qb_log (LOG_INFO, "iid %d: waiting for kill", instance_id);
 			sleep (10);
 
 			return (2);
 		}
 
 		if (instance_id == 3) {
-			qb_log (LOG_INFO, "%s iid %d: mark failed", instance_id);
+			qb_log (LOG_INFO, "iid %d: mark failed", instance_id);
 			if (err != CS_OK) {
 				qb_log (LOG_ERR, "Can't start hc. Error %d", err);
 				return 2;
@@ -1207,7 +1207,7 @@ static int test9 (pid_t pid, pid_t old_pid, int test_n) {
 	}
 
 	if (test_n == 2) {
-		qb_log (LOG_INFO, "%s Testing if status is failed");
+		qb_log (LOG_INFO, "Testing if status is failed");
 
 		/*
 		 * Previous should be FAILED
@@ -1233,7 +1233,7 @@ static int test9 (pid_t pid, pid_t old_pid, int test_n) {
 
 static int hc_allways_respond_cb(void)
 {
-	qb_log (LOG_INFO, "%s() -> health check OK.");
+	qb_log (LOG_INFO, "health check OK.");
 	return 0;
 }
 
@@ -1256,7 +1256,7 @@ static int setup_hc (void)
 	}
 	err = sam_hc_callback_register (hc_allways_respond_cb);
 
-	qb_log (LOG_INFO, "%s instance id %d: start", instance_id);
+	qb_log (LOG_INFO, "instance id %d: start", instance_id);
 	err = sam_start ();
 	if (err != CS_OK) {
 		qb_log (LOG_ERR, "Can't start hc. Error %d", err);
@@ -1317,9 +1317,7 @@ static void do_command (int sock, char* func, char*args[], int num_args)
 	char response[100];
 	int err = 0;
 
-	if (parse_debug) {
-		qb_log (LOG_INFO, "RPC:%s() called.", func);
-	}
+	qb_log (LOG_INFO, "RPC:%s() called.", func);
 	if (strncmp ("test", func, 4) == 0) {
 		err = do_test_command(sock, func, args, num_args);
 	} else if (strcmp ("setup_hc", func) == 0) {
@@ -1328,13 +1326,13 @@ static void do_command (int sock, char* func, char*args[], int num_args)
 		err = sam_stop ();
 		if (err != CS_OK) {
 			err = -1;
-			qb_log (LOG_ERR,"%s RPC:%s sam_stop failed!", __func__, func);
+			qb_log (LOG_ERR,"RPC:%s sam_stop failed!", func);
 			snprintf (response, 100, "%s", FAIL_STR);
 		}
 		err = sam_finalize();
 	} else {
 		err = -1;
-		qb_log (LOG_ERR,"%s RPC:%s not supported!", __func__, func);
+		qb_log (LOG_ERR,"RPC:%s not supported!", func);
 		snprintf (response, 100, "%s", NOT_SUPPORTED_STR);
 	}
 
@@ -1353,6 +1351,5 @@ static void do_command (int sock, char* func, char*args[], int num_args)
 int
 main (int argc, char *argv[])
 {
-	parse_debug = 1;
 	return test_agent_run ("sam_test_agent", 9036, do_command, NULL);
 }

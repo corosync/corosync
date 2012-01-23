@@ -619,8 +619,7 @@ static void do_command (int sock, char* func, char*args[], int num_args)
 	char response[100];
 	struct cpg_name group_name;
 
-	if (parse_debug)
-		qb_log (LOG_DEBUG,"RPC:%s() called.", func);
+	qb_log (LOG_TRACE, "RPC:%s() called.", func);
 
 	if (strcmp ("cpg_mcast_joined",func) == 0) {
 		struct iovec iov[5];

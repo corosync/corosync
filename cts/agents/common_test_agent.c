@@ -49,7 +49,6 @@
 
 #include "common_test_agent.h"
 
-int32_t parse_debug = 0;
 static char big_and_buf_rx[HOW_BIG_AND_BUF];
 ta_do_command_fn do_command;
 static qb_loop_t *poll_handle;
@@ -81,8 +80,7 @@ static void ta_handle_command (int sock, char* msg)
 	int a = 0;
 	char* func = NULL;
 
-	if (parse_debug)
-		qb_log (LOG_DEBUG,"%s (MSG:%s)", __func__, msg);
+	qb_log(LOG_DEBUG,"(MSG:%s)", msg);
 
 	str_len = strtok_r (str, ":", &saveptr);
 	assert (str_len);
@@ -93,15 +91,13 @@ static void ta_handle_command (int sock, char* msg)
 		str_arg = strtok_r (NULL, ":", &saveptr);
 		if (func == NULL) {
 			/* first "arg" is the function */
-			if (parse_debug)
-				qb_log (LOG_DEBUG, "(LEN:%s, FUNC:%s)", str_len, str_arg);
+			qb_log (LOG_TRACE, "(LEN:%s, FUNC:%s)", str_len, str_arg);
 			func = str_arg;
 			a = 0;
 		} else {
 			args[a] = str_arg;
 			a++;
-			if (parse_debug)
-				qb_log (LOG_DEBUG, "(LEN:%s, ARG:%s)", str_len, str_arg);
+			qb_log (LOG_TRACE, "(LEN:%s, ARG:%s)", str_len, str_arg);
 		}
 	}
 	do_command (sock, func, args, a+1);
