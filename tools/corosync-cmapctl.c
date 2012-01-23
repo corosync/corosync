@@ -52,6 +52,7 @@ enum user_action {
 	ACTION_GET,
 	ACTION_SET,
 	ACTION_DELETE,
+	ACTION_DELETE_PREFIX,
 	ACTION_PRINT_ALL,
 	ACTION_PRINT_PREFIX,
 	ACTION_TRACK,
@@ -113,6 +114,9 @@ static int print_help(void)
 	printf("\n");
 	printf("Delete key:\n");
 	printf("    corosync-cmapctl -d key_name...\n");
+	printf("\n");
+	printf("Delete multiple keys with prefix:\n");
+	printf("    corosync-cmapctl -D key_prefix...\n");
 	printf("\n");
 	printf("Get key:\n");
 	printf("    corosync-cmapctl [-b] -g key_name...\n");
@@ -369,6 +373,29 @@ static void print_iter(cmap_handle_t handle, const char *prefix)
 
 	while ((err = cmap_iter_next(handle, iter_handle, key_name, &value_len, &type)) == CS_OK) {
 		print_key(handle, key_name, value_len, NULL, type);
+	}
+}
+
+static void delete_with_prefix(cmap_handle_t handle, const char *prefix)
+{
+	cmap_iter_handle_t iter_handle;
+	char key_name[CMAP_KEYNAME_MAXLEN + 1];
+	size_t value_len;
+	cmap_value_types_t type;
+	cs_error_t err;
+	cs_error_t err2;
+
+	err = cmap_iter_init(handle, prefix, &iter_handle);
+	if (err != CS_OK) {
+		fprintf (stderr, "Failed to initialize iteration. Error %s\n", cs_strerror(err));
+		exit (EXIT_FAILURE);
+	}
+
+	while ((err = cmap_iter_next(handle, iter_handle, key_name, &value_len, &type)) == CS_OK) {
+		err2 = cmap_delete(handle, key_name);
+		if (err2 != CS_OK) {
+			fprintf(stderr, "Can't delete key %s. Error %s\n", key_name, cs_strerror(err2));
+		}
 	}
 }
 
@@ -725,6 +752,9 @@ int main(int argc, char *argv[])
 		case 'd':
 			action = ACTION_DELETE;
 			break;
+		case 'D':
+			action = ACTION_DELETE_PREFIX;
+			break;
 		case 'p':
 			settings_file = optarg;
 			action = ACTION_LOAD;
@@ -794,6 +824,11 @@ int main(int argc, char *argv[])
 			if (err != CS_OK) {
 				fprintf(stderr, "Can't delete key %s. Error %s\n", argv[i], cs_strerror(err));
 			}
+		}
+		break;
+	case ACTION_DELETE_PREFIX:
+		for (i = 0; i < argc; i++) {
+			delete_with_prefix(handle, argv[i]);
 		}
 		break;
 	case ACTION_LOAD:
