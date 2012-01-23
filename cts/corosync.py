@@ -105,17 +105,17 @@ class corosync_needle(ClusterManager):
 
         self.update({
             "Name"           : "corosync(needle)",
-            "StartCmd"       : CTSvars.INITDIR+"/corosync start",
-            "StopCmd"        : CTSvars.INITDIR+"/corosync stop",
-            "RereadCmd"      : CTSvars.INITDIR+"/corosync reload",
-            "StatusCmd"      : CTSvars.INITDIR+"/corosync status %s",
+            "StartCmd"       : "service corosync start",
+            "StopCmd"        : "service corosync stop",
+            "RereadCmd"      : "service corosync reload",
+            "StatusCmd"      : "service corosync status",
             "DeadTime"       : 30,
             "StartTime"      : 15,        # Max time to start up
             "StableTime"     : 10,
             "BreakCommCmd"   : "/usr/share/corosync/tests/net_breaker.sh BreakCommCmd %s",
             "FixCommCmd"     : "/usr/share/corosync/tests/net_breaker.sh FixCommCmd %s",
 
-            "Pat:We_stopped"   : "%s.*Corosync Cluster Engine exiting with status.*",
+            "Pat:We_stopped"   : "%s.*Corosync Cluster Engine exiting.*",
             "Pat:They_stopped" : "%s.*Member left:.*%s.*",
             "Pat:They_dead"    : "corosync:.*Node %s is now: lost",
             "Pat:Local_starting" : "%s.*started and ready to provide service.",
@@ -135,6 +135,7 @@ class corosync_needle(ClusterManager):
                 r"core dump",
                 r"Could not bind AF_UNIX",
                 r"Too many open files",
+		r"Address already in use",
             ),
             "LogFileName"    : Environment["LogFileName"],
             })
