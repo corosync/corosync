@@ -76,7 +76,6 @@
 #define LOGSYS_UTILS_ONLY 1
 #include <corosync/logsys.h>
 #include "totemiba.h"
-#include "wthread.h"
 
 #define COMPLETION_QUEUE_ENTRIES 100
 
