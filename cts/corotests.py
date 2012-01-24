@@ -954,6 +954,63 @@ class GenSimulStop(CoroTest):
         return self.success()
 
 
+class GenFlipTest(CoroTest):
+    def __init__(self, cm):
+        CoroTest.__init__(self,cm)
+        self.name="GenFlipTest"
+        self.test = FlipTest(cm)
+
+    def __call__(self, dummy):
+        '''Perform the test. '''
+        self.incr("calls")
+        return self.test.__call__(dummy)
+
+class GenRestartTest(CoroTest):
+    def __init__(self, cm):
+        CoroTest.__init__(self,cm)
+        self.name="GenRestartTest"
+        self.test = RestartTest(cm)
+
+    def __call__(self, dummy):
+        '''Perform the test. '''
+        self.incr("calls")
+        return self.test.__call__(dummy)
+
+class GenStartOnebyOne(CoroTest):
+    def __init__(self, cm):
+        CoroTest.__init__(self,cm)
+        self.name="GenStartOnebyOne"
+        self.test = RestartOnebyOne(cm)
+
+    def __call__(self, dummy):
+        '''Perform the test. '''
+        self.incr("calls")
+        return self.test.__call__(dummy)
+
+class GenStopOnebyOne(CoroTest):
+    def __init__(self, cm):
+        CoroTest.__init__(self,cm)
+        self.name="GenStopOnebyOne"
+        self.test = StopOnebyOne(cm)
+
+    def __call__(self, dummy):
+        '''Perform the test. '''
+        self.incr("calls")
+        return self.test.__call__(dummy)
+
+class GenRestartOnebyOne(CoroTest):
+    def __init__(self, cm):
+        CoroTest.__init__(self,cm)
+        self.name="GenRestartOnebyOne"
+        self.test = RestartOnebyOne(cm)
+
+    def __call__(self, dummy):
+        '''Perform the test. '''
+        self.incr("calls")
+        return self.test.__call__(dummy)
+
+
+
 ###################################################################
 class GenStopAllBeekhof(CoroTest):
     '''Stop all the nodes ~ simultaneously'''
@@ -1375,6 +1432,11 @@ confirm reboot action
 GenTestClasses = []
 GenTestClasses.append(GenSimulStart)
 GenTestClasses.append(GenSimulStop)
+GenTestClasses.append(GenFlipTest)
+GenTestClasses.append(GenRestartTest)
+GenTestClasses.append(GenStartOnebyOne)
+GenTestClasses.append(GenStopOnebyOne)
+GenTestClasses.append(GenRestartOnebyOne)
 GenTestClasses.append(GenStopAllBeekhof)
 GenTestClasses.append(CpgMsgOrderBasic)
 GenTestClasses.append(CpgMsgOrderZcb)
@@ -1406,11 +1468,6 @@ AllTestClasses.append(ResourcePollAdjust)
 AllTestClasses.append(MemLeakObject)
 AllTestClasses.append(MemLeakSession)
 #AllTestClasses.append(CMapDispatchDeadlock)
-AllTestClasses.append(FlipTest)
-AllTestClasses.append(RestartTest)
-AllTestClasses.append(StartOnebyOne)
-AllTestClasses.append(StopOnebyOne)
-AllTestClasses.append(RestartOnebyOne)
 
 # FIXME quorum tests
 #AllTestClasses.append(SamTestQuorum)
