@@ -1384,11 +1384,6 @@ GenTestClasses.append(CpgCfgChgOnNodeLeave)
 GenTestClasses.append(CpgCfgChgOnNodeIsolate)
 #GenTestClasses.append(CpgCfgChgOnNodeRestart)
 
-# TODO need log messages in sync
-#GenTestClasses.append(CpgCfgChgOnLowestNodeJoin)
-GenTestClasses.append(VoteQuorumGoDown)
-GenTestClasses.append(VoteQuorumGoUp)
-
 AllTestClasses = []
 AllTestClasses.append(CpgContextTest)
 AllTestClasses.append(VoteQuorumContextTest)
@@ -1397,7 +1392,6 @@ AllTestClasses.append(SamTest2)
 AllTestClasses.append(SamTest4)
 AllTestClasses.append(SamTest5)
 AllTestClasses.append(SamTest6)
-AllTestClasses.append(SamTestQuorum)
 AllTestClasses.append(SamTest8)
 AllTestClasses.append(SamTest9)
 AllTestClasses.append(SamWdIntegration1)
@@ -1417,6 +1411,14 @@ AllTestClasses.append(RestartTest)
 AllTestClasses.append(StartOnebyOne)
 AllTestClasses.append(StopOnebyOne)
 AllTestClasses.append(RestartOnebyOne)
+
+# FIXME quorum tests
+#AllTestClasses.append(SamTestQuorum)
+#GenTestClasses.append(VoteQuorumGoDown)
+#GenTestClasses.append(VoteQuorumGoUp)
+
+# FIXME need log messages in sync
+#GenTestClasses.append(CpgCfgChgOnLowestNodeJoin)
 
 
 class ConfigContainer(UserDict):
@@ -1467,26 +1469,22 @@ def CoroTestList(cm, audits):
     c['totem/join'] = 1000
     c['totem/consensus'] = 7500
     configs.append(c)
-
-    s = ConfigContainer('pcmk_vq')
-    s['quorum/provider'] = 'corosync_votequorum'
-    s['quorum/expected_votes'] = len(cm.Env["nodes"])
-    s['totem/token'] = 5000
-    s['totem/token_retransmits_before_loss_const'] = 10
-    s['totem/join'] = 1000
-    s['totem/vsftype'] = 'none'
-    s['totem/consensus'] = 7500
-    s['totem/max_messages'] = 20
-    configs.append(s)
-
+#
+#    s = ConfigContainer('pcmk_vq')
+#    s['quorum/provider'] = 'corosync_votequorum'
+#    s['quorum/expected_votes'] = len(cm.Env["nodes"])
+#    s['totem/token'] = 5000
+#    s['totem/token_retransmits_before_loss_const'] = 10
+#    s['totem/join'] = 1000
+#    s['totem/vsftype'] = 'none'
+#    s['totem/consensus'] = 7500
+#    s['totem/max_messages'] = 20
+#    configs.append(s)
+#
     d = ConfigContainer('sec_sober')
     d['totem/secauth'] = 'on'
     d['totem/crypto_type'] = 'sober'
     configs.append(d)
-
-    e = ConfigContainer('threads_4')
-    e['totem/threads'] = 4
-    configs.append(e)
 
     if not cm.Env["RrpBindAddr"] is None:
         g = ConfigContainer('rrp_passive')
