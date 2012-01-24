@@ -40,7 +40,7 @@ _object_test_()
 
     find $f | sed "s|\.|_|g" | sed "s|/|.|g" | while read l
     do 
-      echo $l.count u32 $count >> $temp_file
+      echo $l.count u64 $COUNT >> $temp_file
       let COUNT="$COUNT+1"
     done
 
