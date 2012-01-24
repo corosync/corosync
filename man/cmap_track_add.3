@@ -1,0 +1,164 @@
+.\"/*
+.\" * Copyright (c) 2012 Red Hat, Inc.
+.\" *
+.\" * All rights reserved.
+.\" *
+.\" * Author: Jan Friesse (jfriesse@redhat.com)
+.\" *
+.\" * This software licensed under BSD license, the text of which follows:
+.\" *
+.\" * Redistribution and use in source and binary forms, with or without
+.\" * modification, are permitted provided that the following conditions are met:
+.\" *
+.\" * - Redistributions of source code must retain the above copyright notice,
+.\" *   this list of conditions and the following disclaimer.
+.\" * - Redistributions in binary form must reproduce the above copyright notice,
+.\" *   this list of conditions and the following disclaimer in the documentation
+.\" *   and/or other materials provided with the distribution.
+.\" * - Neither the name of the Red Hat, Inc. nor the names of its
+.\" *   contributors may be used to endorse or promote products derived from this
+.\" *   software without specific prior written permission.
+.\" *
+.\" * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+.\" * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+.\" * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+.\" * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+.\" * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+.\" * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+.\" * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+.\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+.\" * THE POSSIBILITY OF SUCH DAMAGE.
+.\" */
+.TH "CMAP_TRACK_ADD" 3 "06/02/2012" "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
+
+.SH NAME
+.P
+cmap_track_add \- Set tracking function for values in CMAP
+
+.SH SYNOPSIS
+.P
+\fB#include <corosync/cmap.h>\fR
+
+.P
+\fBcs_error_t
+cmap_track_add (cmap_handle_t \fIhandle\fB, const char *\fIkey_name\fB, int32_t \fItrack_type\fB,
+cmap_notify_fn_t \fInotify_fn\fB, void *\fIuser_data\fB, cmap_track_handle_t *\fIcmap_track_handle\fB);\fR
+
+.SH DESCRIPTION
+.P
+The
+.B cmap_track_add
+function is used to set function which tracks changes in CMAP. One CMAP connection can
+track multiple keys and also it's possible to track one key multiple times. The
+.I handle
+argument is connection to CMAP database obtained by calling
+.B cmap_initialize(3)
+function.
+.I key_name
+argument is ether exact key name or prefix of key name to track changes on.
+.I track_type
+is bitfield which may consist of following values:
+.PP
+\fBCMAP_TRACK_ADD\fR - track addition of new key (or key added in callback)
+.PP
+\fBCMAP_TRACK_DELETE\fR - track deletion of key (or key deleted in callback)
+.PP
+\fBCMAP_TRACK_MODIFY\fR - track modification of key (or key modified in callback)
+.PP
+\fBCMAP_TRACK_PREFIX\fR - whole prefix is tracked, instead of key only, so "totem." tracking means
+that "totem.nodeid", "totem.version", ... applies (this value is never returned
+in callback)
+.PP
+.I notify_fn
+is pointer to function which is called when value is changed. It's definition and meaning of parameters
+is discussed bellow.
+.I user_data
+argument is passed directly to
+.I notify_fn
+without any changes.
+.I cmap_track_handle
+is used for removing of tracking when no longer needed by calling
+.B cmap_track_delete(3)
+function.
+
+Callback function is defined as:
+.IP
+.RS
+.ne 18
+.nf
+.PP
+typedef void (*cmap_notify_fn_t) (
+    cmap_handle_t cmap_handle,
+    cmap_track_handle_t cmap_track_handle,
+    int32_t event,
+    const char *key_name,
+    struct cmap_notify_value new_value,
+    struct cmap_notify_value old_value,
+    void *user_data);
+.ta
+.fi
+.RE
+.IP
+.PP
+where
+.I cmap_handle
+is handle used in registration of track function.
+.I cmap_track_handle
+is handle returned by
+.B cmap_track_add
+function.
+.I event
+is one of \fBCMAP_TRACK_ADD\fR, \fBCMAP_TRACK_DELETE\fR or \fBCMAP_TRACK_MODIFY\fR.
+.I key_name
+is name of changed key.
+.I new_value
+is new value of key, or unset if
+.I event
+is \fBCMAP_TRACK_DELETE\fR.
+.I old_value
+is previous value of key or unset if
+.I event
+is \fBCMAP_TRACK_ADD\fR or for some special keys set directly by Corosync due to speed optimalizations.
+Both
+.I new_value
+and
+.I old_value
+are structures defined as:
+.IP
+.RS
+.ne 18
+.nf
+.PP
+struct cmap_notify_value {
+    cmap_value_types_t type;
+    size_t len;
+    const void *data;
+};
+.ta
+.fi
+.RE
+.IP
+.PP
+If value is unset, all fields are set to 0. Otherwise
+.I type
+is one of cmap types (as described in
+.B cmap_get(3)
+function),
+.I len
+is length of value in cmap and
+.I data
+is pointer to value of item. Data storage is dynamically alocated by caller and notify function must not try to
+free it.
+
+.SH RETURN VALUE
+This call returns the CS_OK value if successful. It can return CS_ERR_INVALID_PARAM if
+notify_fn is NULL or track_type is invalid value.
+
+.SH "SEE ALSO"
+.BR cmap_track_delete (3),
+.BR cmap_initialize (3),
+.BR cmap_get (3),
+.BR cmap_dispatch (3),
+.BR cmap_overview (8)

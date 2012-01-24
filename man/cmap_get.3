@@ -1,0 +1,153 @@
+.\"/*
+.\" * Copyright (c) 2012 Red Hat, Inc.
+.\" *
+.\" * All rights reserved.
+.\" *
+.\" * Author: Jan Friesse (jfriesse@redhat.com)
+.\" *
+.\" * This software licensed under BSD license, the text of which follows:
+.\" *
+.\" * Redistribution and use in source and binary forms, with or without
+.\" * modification, are permitted provided that the following conditions are met:
+.\" *
+.\" * - Redistributions of source code must retain the above copyright notice,
+.\" *   this list of conditions and the following disclaimer.
+.\" * - Redistributions in binary form must reproduce the above copyright notice,
+.\" *   this list of conditions and the following disclaimer in the documentation
+.\" *   and/or other materials provided with the distribution.
+.\" * - Neither the name of the Red Hat, Inc. nor the names of its
+.\" *   contributors may be used to endorse or promote products derived from this
+.\" *   software without specific prior written permission.
+.\" *
+.\" * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+.\" * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+.\" * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+.\" * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+.\" * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+.\" * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+.\" * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+.\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+.\" * THE POSSIBILITY OF SUCH DAMAGE.
+.\" */
+.TH "CMAP_GET" 3 "03/02/2012" "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
+
+.SH NAME
+.P
+cmap_get \- Retreive value from CMAP
+
+.SH SYNOPSIS
+.P
+\fB#include <corosync/cmap.h>\fR
+
+.P
+\fBcs_error_t
+cmap_get (cmap_handle_t \fIhandle\fB, const char *\fIkey_name\fB, void *\fIvalue\fB,
+size_t *\fIvalue_len\fB, cmap_value_types_t *\fItype\fB);\fR
+.P
+Also shortcuts for different types are defined
+.P
+\fBcs_error_t cmap_get_int8 (cmap_handle_t \fIhandle\fB, const char *\fIkey_name\fB, int8_t *\fIi8\fB);\fR
+.P
+\fBcs_error_t cmap_get_uint8 (cmap_handle_t \fIhandle\fB, const char *\fIkey_name\fB, uint8_t *\fIu8\fB);\fR
+.P
+\fBcs_error_t cmap_get_int16 (cmap_handle_t \fIhandle\fB, const char *\fIkey_name\fB, int16_t *\fIi16\fB);\fR
+.P
+\fBcs_error_t cmap_get_uint16 (cmap_handle_t \fIhandle\fB, const char *\fIkey_name\fB, uint16_t *\fIu16\fB);\fR
+.P
+\fBcs_error_t cmap_get_int32 (cmap_handle_t \fIhandle\fB, const char *\fIkey_name\fB, int32_t *\fIi32\fB);\fR
+.P
+\fBcs_error_t cmap_get_uint32 (cmap_handle_t \fIhandle\fB, const char *\fIkey_name\fB, uint32_t *\fIu32\fB);\fR
+.P
+\fBcs_error_t cmap_get_int64 (cmap_handle_t \fIhandle\fB, const char *\fIkey_name\fB, int64_t *\fIi64\fB);\fR
+.P
+\fBcs_error_t cmap_get_uint64 (cmap_handle_t \fIhandle\fB, const char *\fIkey_name\fB, uint64_t *\fIu64\fB);\fR
+.P
+\fBcs_error_t cmap_get_float (cmap_handle_t \fIhandle\fB, const char *\fIkey_name\fB, float *\fIflt\fB);\fR
+.P
+\fBcs_error_t cmap_get_double (cmap_handle_t \fIhandle\fB, const char *\fIkey_name\fB, double *\fIdbl\fB);\fR
+.P
+\fBcs_error_t cmap_get_string (cmap_handle_t \fIhandle\fB, const char *\fIkey_name\fB, char **\fIstr\fB);\fR
+
+.SH DESCRIPTION
+.P
+The
+.B cmap_get
+function is used to retreive key from cmap previously set by
+.B cmap_set(3)
+function. The
+.I handle
+argument is connection to CMAP database obtained by calling
+.B cmap_initialize(3)
+function.
+.I key_name
+is name of key to get value from.
+.I value
+is pointer to preallocated data used as storage for data, but can be also NULL, and then only
+.I value_len
+and/or
+.I type
+is returned (both of them can also be NULL, allowing function to be used only for test of existence of key).
+If
+.I value
+is not NULL, actual length of value in map is checked against
+.I *value_len.
+If
+.I *value_len
+is shorter then length of value in map, error CS_ERR_INVALID_PARAM is returned. After successful copy of
+value,
+.I *value_len
+is set to actual length of value in map. Parameter
+.I type
+is pointer to memory, where type of value is stored after successful return. Pointer can also be NULL and
+then nothing is stored. Type can be one of:
+.PP
+\fBCMAP_VALUETYPE_INT8\fR - 8-bit signed interger
+.PP
+\fBCMAP_VALUETYPE_UINT8\fR - 8-bit unsigned integer
+.PP
+\fBCMAP_VALUETYPE_INT16\fR - 16-bit signed interger
+.PP
+\fBCMAP_VALUETYPE_UINT16\fR - 16-bit unsigned integer
+.PP
+\fBCMAP_VALUETYPE_INT32\fR - 32-bit signed interger
+.PP
+\fBCMAP_VALUETYPE_UINT32\fR - 32-bit unsigned integer
+.PP
+\fBCMAP_VALUETYPE_INT64\fR - 64-bit signed interger
+.PP
+\fBCMAP_VALUETYPE_UINT64\fR - 64-bit unsigned integer
+.PP
+\fBCMAP_VALUETYPE_FLOAT\fR - Float value
+.PP
+\fBCMAP_VALUETYPE_DOUBLE\fR - Double value
+.PP
+\fBCMAP_VALUETYPE_STRING\fR - C-style string
+.PP
+\fBCMAP_VALUETYPE_BINARY\fR - Binary data, byte with zero value has no special meaning
+
+Sortcut functions tests cmap type with it's own type. If type didn't match, CS_ERR_INVALID_PARAM error
+is returned. No conversions are done, so for example
+.B cmap_get_int16
+is not able to return value with
+.B CMAP_VALUETYPE_INT8
+type.
+
+String shortcut function returns newly allocated memory and caller is responsible for freeing that.
+
+.SH RETURN VALUE
+This call returns the CS_OK value if successful. If value or key_name are unspecified, CS_ERR_INVALID_PARAM
+is returned. Same error is also returned if
+.I value
+is specified, and
+.I *value_len
+is too short for store of data. If key doesn't exists (it was not set by calling
+.B cmap_set(3)
+function first) CS_ERR_NOT_EXIST error is returned. For helper functions,
+CS_ERR_INVALID_PARAM is returned if type stored in cmap doesn't match with type of helper function.
+
+.SH "SEE ALSO"
+.BR cmap_set (3),
+.BR cmap_initialize (3),
+.BR cmap_overview (8)

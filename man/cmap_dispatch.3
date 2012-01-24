@@ -1,0 +1,87 @@
+.\"/*
+.\" * Copyright (c) 2012 Red Hat, Inc.
+.\" *
+.\" * All rights reserved.
+.\" *
+.\" * Author: Jan Friesse (jfriesse@redhat.com)
+.\" *
+.\" * This software licensed under BSD license, the text of which follows:
+.\" *
+.\" * Redistribution and use in source and binary forms, with or without
+.\" * modification, are permitted provided that the following conditions are met:
+.\" *
+.\" * - Redistributions of source code must retain the above copyright notice,
+.\" *   this list of conditions and the following disclaimer.
+.\" * - Redistributions in binary form must reproduce the above copyright notice,
+.\" *   this list of conditions and the following disclaimer in the documentation
+.\" *   and/or other materials provided with the distribution.
+.\" * - Neither the name of the Red Hat, Inc. nor the names of its
+.\" *   contributors may be used to endorse or promote products derived from this
+.\" *   software without specific prior written permission.
+.\" *
+.\" * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+.\" * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+.\" * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+.\" * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+.\" * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+.\" * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+.\" * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+.\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+.\" * THE POSSIBILITY OF SUCH DAMAGE.
+.\" */
+.TH "CMAP_DISPATCH" 3 "23/01/2012" "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
+
+.SH NAME
+.P
+cmap_dispatch \- Dispatches callbacks from the CMAP service
+
+.SH SYNOPSIS
+.P
+\fB#include <corosync/cmap.h>\fR
+
+.P
+\fBcs_error_t
+cmap_dispatch (cmap_handle_t \fIhandle\fB, cs_dispatch_flags_t \fIdispatch_types\fB);\fR
+
+.SH DESCRIPTION
+The
+.B cmap_dispatch
+function is used to dispatch configuration changes.
+.PP
+Each application may have several connections to the CMAP API.  Each  application
+uses the
+.I handle
+argument to uniquely identify the connection.
+.PP
+The
+.I dispatch_types
+argument is used to identify the type of dispatch to execute.  The possible types are
+CS_DISPATCH_ONE, CS_DISPATCH_ALL and CS_DISPATCH_BLOCKING.
+
+The dispatch values have the following meanings:
+.TP
+.B CS_DISPATCH_ONE
+Dispatch at least one callback, blocking until the callback is dispatched.
+.TP
+.B CS_DISPATCH_ALL
+Dispatch all waiting callbacks without blocking to wait for any callbacks.
+.TP
+.B CS_DISPATCH_BLOCKING
+Dispatch all callbacks blocking indefinitely.  This is used in a threaded
+program where a thread is created, and then cs_dispatch() is called immediately
+from the created thread to execute callbacks.
+.PP
+It's needed to call
+.B cmap_track_add(3)
+to add tracked items and receive callbacks.
+
+.SH RETURN VALUE
+.P
+This call returns the CS_OK value if successful, otherwise an error is returned.
+
+.SH "SEE ALSO"
+.BR cmap_track_add (3),
+.BR cmap_track_delete (3),
+.BR cmap_overview (8)

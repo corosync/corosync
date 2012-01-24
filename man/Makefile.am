@@ -117,7 +117,24 @@ dist_man_MANS = \
 	sam_register.3 \
 	sam_start.3 \
 	sam_stop.3 \
-	sam_warn_signal_set.3
+	sam_warn_signal_set.3 \
+	cmap_context_get.3 \
+	cmap_dec.3 \
+	cmap_iter_init.3 \
+	cmap_get.3 \
+	cmap_inc.3 \
+	cmap_set.3 \
+	cmap_overview.8 \
+	cmap_iter_next.3 \
+	cmap_delete.3 \
+	cmap_iter_finalize.3 \
+	cmap_finalize.3 \
+	cmap_dispatch.3  \
+	cmap_initialize.3 \
+	cmap_track_add.3 \
+	cmap_context_set.3 \
+	cmap_fd_get.3 \
+	cmap_track_delete.3
 
 if INSTALL_XMLCONF
 dist_man_MANS += $(xml_man)

@@ -1,0 +1,127 @@
+.\"/*
+.\" * Copyright (c) 2012 Red Hat, Inc.
+.\" *
+.\" * All rights reserved.
+.\" *
+.\" * Author: Jan Friesse (jfriesse@redhat.com)
+.\" *
+.\" * This software licensed under BSD license, the text of which follows:
+.\" *
+.\" * Redistribution and use in source and binary forms, with or without
+.\" * modification, are permitted provided that the following conditions are met:
+.\" *
+.\" * - Redistributions of source code must retain the above copyright notice,
+.\" *   this list of conditions and the following disclaimer.
+.\" * - Redistributions in binary form must reproduce the above copyright notice,
+.\" *   this list of conditions and the following disclaimer in the documentation
+.\" *   and/or other materials provided with the distribution.
+.\" * - Neither the name of the Red Hat, Inc. nor the names of its
+.\" *   contributors may be used to endorse or promote products derived from this
+.\" *   software without specific prior written permission.
+.\" *
+.\" * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+.\" * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+.\" * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+.\" * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+.\" * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+.\" * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+.\" * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+.\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+.\" * THE POSSIBILITY OF SUCH DAMAGE.
+.\" */
+.TH "CMAP_SET" 3 "23/01/2012" "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
+
+.SH NAME
+.P
+cmap_set \- Store value in CMAP
+
+.SH SYNOPSIS
+.P
+\fB#include <corosync/cmap.h>\fR
+
+.P
+\fBcs_error_t
+cmap_set (cmap_handle_t \fIhandle\fB, const char *\fIkey_name\fB, const void *\fIvalue\fB,
+size_t \fIvalue_len\fB, cmap_value_types_t \fItype\fB);\fR
+.P
+Also shortcuts for different types are defined
+.P
+\fBcs_error_t cmap_set_int8(cmap_handle_t \fIhandle\fB, const char *\fIkey_name\fB, int8_t \fIvalue\fB);\fR
+.P
+\fBcs_error_t cmap_set_uint8(cmap_handle_t \fIhandle\fB, const char *\fIkey_name\fB, uint8_t \fIvalue\fB);\fR
+.P
+\fBcs_error_t cmap_set_int16(cmap_handle_t \fIhandle\fB, const char *\fIkey_name\fB, int16_t \fIvalue\fB);\fR
+.P
+\fBcs_error_t cmap_set_uint16(cmap_handle_t \fIhandle\fB, const char *\fIkey_name\fB, uint16_t \fIvalue\fB);\fR
+.P
+\fBcs_error_t cmap_set_int32(cmap_handle_t \fIhandle\fB, const char *\fIkey_name\fB, int32_t \fIvalue\fB);\fR
+.P
+\fBcs_error_t cmap_set_uint32(cmap_handle_t \fIhandle\fB, const char *\fIkey_name\fB, uint32_t \fIvalue\fB);\fR
+.P
+\fBcs_error_t cmap_set_int64(cmap_handle_t \fIhandle\fB, const char *\fIkey_name\fB, int64_t \fIvalue\fB);\fR
+.P
+\fBcs_error_t cmap_set_uint64(cmap_handle_t \fIhandle\fB, const char *\fIkey_name\fB, uint64_t \fIvalue\fB);\fR
+.P
+\fBcs_error_t cmap_set_float(cmap_handle_t \fIhandle\fB, const char *\fIkey_name\fB, float \fIvalue\fB);\fR
+.P
+\fBcs_error_t cmap_set_double(cmap_handle_t \fIhandle\fB, const char *\fIkey_name\fB, double \fIvalue\fB);\fR
+.P
+\fBcs_error_t cmap_set_string(cmap_handle_t \fIhandle\fB, const char *\fIkey_name\fB, const char *\fIvalue\fB);\fR
+
+.SH DESCRIPTION
+.P
+The
+.B cmap_set
+function is used to store key inside cmap. The
+.I handle
+argument is connection to CMAP database obtained by calling
+.B cmap_initialize(3)
+function.
+.I key_name
+is name of key to set value. Key name is limited by minimal (CMAP_KEYNAME_MINLEN, currently 3) and
+maximal (CMAP_KEYNAME_MAXLEN, currently 255) length. Also key can contain only limited set of characters expressed
+by regexp [a-zA-Z0-9._-/:]*.
+.I value
+is pointer to allocated data which will be stored inside CMAP. Length of value (number of bytes) is supplied
+as
+.I value_len
+parameter. Last parameter is
+.I type
+which gives type of value. It may be one of:
+.PP
+\fBCMAP_VALUETYPE_INT8\fR - 8-bit signed interger
+.PP
+\fBCMAP_VALUETYPE_UINT8\fR - 8-bit unsigned integer
+.PP
+\fBCMAP_VALUETYPE_INT16\fR - 16-bit signed interger
+.PP
+\fBCMAP_VALUETYPE_UINT16\fR - 16-bit unsigned integer
+.PP
+\fBCMAP_VALUETYPE_INT32\fR - 32-bit signed interger
+.PP
+\fBCMAP_VALUETYPE_UINT32\fR - 32-bit unsigned integer
+.PP
+\fBCMAP_VALUETYPE_INT64\fR - 64-bit signed interger
+.PP
+\fBCMAP_VALUETYPE_UINT64\fR - 64-bit unsigned integer
+.PP
+\fBCMAP_VALUETYPE_FLOAT\fR - Float value
+.PP
+\fBCMAP_VALUETYPE_DOUBLE\fR - Double value
+.PP
+\fBCMAP_VALUETYPE_STRING\fR - C-style string
+.PP
+\fBCMAP_VALUETYPE_BINARY\fR - Binary data, byte with zero value has no special meaning
+
+
+.SH RETURN VALUE
+This call returns the CS_OK value if successful. If value or key_name are unspecified, CS_ERR_INVALID_PARAM
+is returned. Too short or too long key_name returns CS_ERR_NAME_TOO_LONG error code. Some of keys may
+be tagged read-only directly in corosync and seting such key will result in CS_ERR_ACCESS error.
+
+.SH "SEE ALSO"
+.BR cmap_get (3),
+.BR cmap_initialize (3),
+.BR cmap_overview (8)

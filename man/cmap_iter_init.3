@@ -1,0 +1,80 @@
+.\"/*
+.\" * Copyright (c) 2012 Red Hat, Inc.
+.\" *
+.\" * All rights reserved.
+.\" *
+.\" * Author: Jan Friesse (jfriesse@redhat.com)
+.\" *
+.\" * This software licensed under BSD license, the text of which follows:
+.\" *
+.\" * Redistribution and use in source and binary forms, with or without
+.\" * modification, are permitted provided that the following conditions are met:
+.\" *
+.\" * - Redistributions of source code must retain the above copyright notice,
+.\" *   this list of conditions and the following disclaimer.
+.\" * - Redistributions in binary form must reproduce the above copyright notice,
+.\" *   this list of conditions and the following disclaimer in the documentation
+.\" *   and/or other materials provided with the distribution.
+.\" * - Neither the name of the Red Hat, Inc. nor the names of its
+.\" *   contributors may be used to endorse or promote products derived from this
+.\" *   software without specific prior written permission.
+.\" *
+.\" * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+.\" * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+.\" * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+.\" * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+.\" * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+.\" * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+.\" * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+.\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+.\" * THE POSSIBILITY OF SUCH DAMAGE.
+.\" */
+.TH "CMAP_ITER_INIT" 3 "03/02/2012" "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
+
+.SH NAME
+.P
+cmap_iter_init \- Initialize iterator for keys stored in CMAP
+
+.SH SYNOPSIS
+.P
+\fB#include <corosync/cmap.h>\fR
+
+.P
+\fBcs_error_t
+cmap_iter_init (cmap_handle_t \fIhandle\fB, const char *\fIprefix\fB, cmap_iter_handle_t *\fIcmap_iter_handle\fB);\fR
+
+.SH DESCRIPTION
+.P
+The
+.B cmap_iter_init
+function is used to initialize iteration of all keys with given
+.I prefix.
+The
+.I handle
+argument is connection to CMAP database obtained by calling
+.B cmap_initialize(3)
+function.
+.I prefix
+is string, and every returned key must have name with given prefix. This variable can also
+be NULL (or empty string) and then all keys are iterated.
+
+.B cmap_iter_init
+is used only for initialize context for future
+.B cmap_iter_next(3)
+calls and handle needed for that function is returned in
+.I cmap_iter_handle
+variable. When you have finished iteration over objects, call
+.B cmap_iter_finalize(3)
+function to free up memory associated with iteration.
+
+.SH RETURN VALUE
+This call returns the CS_OK value if successful. If there are no items with given prefixes,
+CS_ERR_NO_SECTIONS is returned.
+
+.SH "SEE ALSO"
+.BR cmap_iter_next (3),
+.BR cmap_iter_finalize (3),
+.BR cmap_initialize (3),
+.BR cmap_overview (8)
