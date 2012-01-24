@@ -203,8 +203,6 @@ static void config_change_callback (
 	/* group_name,ip,pid,join|leave */
 
 	for (i = 0; i < left_list_entries; i++) {
-		qb_log(LOG_INFO, "Member left: %s", left_list[i].nodeid);
-
 		if (record_config_events_g > 0) {
 			log_pt = malloc (sizeof(log_entry_t));
 			list_init (&log_pt->list);
@@ -214,8 +212,6 @@ static void config_change_callback (
 		}
 	}
 	for (i = 0; i < joined_list_entries; i++) {
-		qb_log(LOG_INFO, "Member joined: %s", joined_list[i].nodeid);
-
 		if (record_config_events_g > 0) {
 			log_pt = malloc (sizeof(log_entry_t));
 			list_init (&log_pt->list);

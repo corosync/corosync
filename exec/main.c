@@ -353,6 +353,9 @@ static void member_object_joined (unsigned int nodeid)
 		icmap_set_uint32(member_join_count, 1);
 		icmap_set_string(member_status, "joined");
 	}
+
+	log_printf (LOGSYS_LEVEL_DEBUG,
+		"Member joined: %s", api->totem_ifaces_print (nodeid));
 }
 
 static void member_object_left (unsigned int nodeid)
@@ -362,6 +365,9 @@ static void member_object_left (unsigned int nodeid)
 	snprintf(member_status, ICMAP_KEYNAME_MAXLEN,
 		"runtime.totem.pg.mrp.srp.members.%u.status", nodeid);
 	icmap_set_string(member_status, "left");
+
+	log_printf (LOGSYS_LEVEL_DEBUG,
+		"Member left: %s", api->totem_ifaces_print (nodeid));
 }
 
 static void confchg_fn (

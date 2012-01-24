@@ -49,6 +49,8 @@ class CoroTest(CTSTest):
         self.start = StartTest(cm)
         self.stop = StopTest(cm)
         self.config = {}
+        self.config['logging/logger_subsys[1]/subsys'] = 'MAIN'
+        self.config['logging/logger_subsys[1]/debug'] = 'on'
         self.need_all_up = True
         self.CM.start_cpg = True
 
@@ -960,9 +962,8 @@ class GenStopAllBeekhof(CoroTest):
         CoroTest.__init__(self,cm)
         self.name="GenStopAllBeekhof"
         self.need_all_up = True
-        self.config['logging/logger_subsys[1]/subsys'] = 'CFG'
-        self.config['logging/logger_subsys[1]/debug'] = 'on'
-        self.config['logging/logger_subsys[1]/tags'] = 'trace1|enter|leave'
+        self.config['logging/logger_subsys[2]/subsys'] = 'CFG'
+        self.config['logging/logger_subsys[2]/debug'] = 'on'
 
     def __call__(self, node):
         '''Perform the 'GenStopAllBeekhof' test. '''
@@ -1100,8 +1101,8 @@ confirm watchdog action
         CoroTest.__init__(self,cm)
         self.name="WDOnForkBomb"
         self.need_all_up = False
-        self.config['logging/logger_subsys[1]/subsys'] = 'WD'
-        self.config['logging/logger_subsys[1]/debug'] = 'on'
+        self.config['logging/logger_subsys[2]/subsys'] = 'WD'
+        self.config['logging/logger_subsys[2]/debug'] = 'on'
         self.config['resources/system/memory_used/recovery'] = 'watchdog'
         self.config['resources/system/memory_used/max'] = '80'
         self.config['resources/system/memory_used/poll_period'] = '800'
@@ -1152,8 +1153,8 @@ confirm action
         CoroTest.__init__(self,cm)
         self.name="SamWdIntegration1"
         self.need_all_up = True
-        self.config['logging/logger_subsys[1]/subsys'] = 'WD'
-        self.config['logging/logger_subsys[1]/debug'] = 'on'
+        self.config['logging/logger_subsys[2]/subsys'] = 'WD'
+        self.config['logging/logger_subsys[2]/debug'] = 'on'
 
     def __call__(self, node):
         '''Perform the test. '''
@@ -1186,8 +1187,8 @@ confirm resource "stopped" and no watchdog action.
         CoroTest.__init__(self,cm)
         self.name="SamWdIntegration2"
         self.need_all_up = True
-        self.config['logging/logger_subsys[1]/subsys'] = 'WD'
-        self.config['logging/logger_subsys[1]/debug'] = 'on'
+        self.config['logging/logger_subsys[2]/subsys'] = 'WD'
+        self.config['logging/logger_subsys[2]/debug'] = 'on'
 
     def __call__(self, node):
         '''Perform the test. '''
@@ -1230,10 +1231,10 @@ check that we do NOT get watchdog'ed
         CoroTest.__init__(self,cm)
         self.name="WdDeleteResource"
         self.need_all_up = True
-        self.config['logging/logger_subsys[1]/subsys'] = 'WD'
-        self.config['logging/logger_subsys[1]/debug'] = 'on'
         self.config['logging/logger_subsys[2]/subsys'] = 'MON'
         self.config['logging/logger_subsys[2]/debug'] = 'on'
+        self.config['logging/logger_subsys[3]/subsys'] = 'WD'
+        self.config['logging/logger_subsys[3]/debug'] = 'on'
         self.config['resources/system/memory_used/recovery'] = 'watchdog'
         self.config['resources/system/memory_used/max'] = '80'
         self.config['resources/system/memory_used/poll_period'] = '800'
@@ -1275,10 +1276,10 @@ check that we do NOT get watchdog'ed
         CoroTest.__init__(self,cm)
         self.name="ResourcePollAdjust"
         self.need_all_up = True
-        self.config['logging/logger_subsys[1]/subsys'] = 'WD'
-        self.config['logging/logger_subsys[1]/debug'] = 'on'
         self.config['logging/logger_subsys[2]/subsys'] = 'MON'
         self.config['logging/logger_subsys[2]/debug'] = 'on'
+        self.config['logging/logger_subsys[3]/subsys'] = 'WD'
+        self.config['logging/logger_subsys[3]/debug'] = 'on'
         self.config['resources/system/memory_used/recovery'] = 'none'
         self.config['resources/system/memory_used/max'] = '80'
         self.config['resources/system/memory_used/poll_period'] = '800'
@@ -1322,8 +1323,8 @@ confirm reboot action
         CoroTest.__init__(self,cm)
         self.name="RebootOnHighMem"
         self.need_all_up = True
-        self.config['logging/logger_subsys[1]/subsys'] = 'WD'
-        self.config['logging/logger_subsys[1]/debug'] = 'on'
+        self.config['logging/logger_subsys[2]/subsys'] = 'WD'
+        self.config['logging/logger_subsys[2]/debug'] = 'on'
         self.config['resources/system/memory_used/recovery'] = 'reboot'
         self.config['resources/system/memory_used/max'] = '80'
         self.config['resources/system/memory_used/poll_period'] = '800'
