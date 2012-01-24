@@ -558,7 +558,11 @@ class TestAgent(object):
 
     def read (self):
 
-        msg = self.sock.recv (4096)
+        try:
+            msg = self.sock.recv (4096)
+        except socket.error, msg:
+            raise RuntimeError(msg)
+
         if msg == '':
             raise RuntimeError("socket connection broken")
         return msg
