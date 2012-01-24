@@ -13,6 +13,7 @@
 %bcond_with rdma
 %bcond_with systemd
 %bcond_with nss
+%bcond_with xmlconf
 
 Name: corosync
 Summary: The Corosync Cluster Engine and Application Programming Interfaces
