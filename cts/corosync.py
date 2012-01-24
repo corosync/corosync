@@ -114,6 +114,7 @@ class corosync_needle(ClusterManager):
             "StableTime"     : 10,
             "BreakCommCmd"   : "/usr/share/corosync/tests/net_breaker.sh BreakCommCmd %s",
             "FixCommCmd"     : "/usr/share/corosync/tests/net_breaker.sh FixCommCmd %s",
+            "QuorumCmd"      : "corosync-quorumtool -s",
 
             "Pat:We_stopped"   : "%s.*Corosync Cluster Engine exiting.*",
             "Pat:They_stopped" : "%s.*Member left:.*%s.*",
@@ -316,13 +317,13 @@ class corosync_needle(ClusterManager):
 
         for node in node_list:
             if self.ShouldBeStatus[node] == "up":
-                quorum = self.rsh(node, self["QuorumCmd"], 1)
-                if string.find(quorum, "1") != -1:
+                (quorum, qout) = self.rsh(node, self["QuorumCmd"], stdout=2)
+                if quorum == 1:
                     return 1
-                elif string.find(quorum, "0") != -1:
+                elif quorum == 0:
                     return 0
                 else:
-                    self.log("WARN: Unexpected quorum test result from "+ node +":"+ quorum)
+                    self.log("WARN: Unexpected quorum test result from %s : %d" % (node, quorum))
 
         return 0
 
