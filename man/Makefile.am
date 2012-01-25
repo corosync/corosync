@@ -38,6 +38,7 @@ EXTRA_DIST		= index.html
 
 dist_man_MANS = \
 	corosync.conf.5 \
+	votequorum.5 \
 	corosync.8 \
 	corosync-cmapctl.8 \
 	corosync-blackbox.8 \
