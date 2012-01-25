@@ -51,7 +51,7 @@
 #include <corosync/totem/totem.h>
 #include <corosync/cfg.h>
 
-static void ringstatusget_do (void)
+static int ringstatusget_do (char *interface_name)
 {
 	cs_error_t result;
 	corosync_cfg_handle_t handle;
@@ -60,6 +60,7 @@ static void ringstatusget_do (void)
 	char **interface_status;
 	unsigned int i;
 	unsigned int nodeid;
+	int rc = 0;
 
 	printf ("Printing ring status.\n");
 	result = corosync_cfg_initialize (&handle, NULL);
@@ -84,12 +85,22 @@ static void ringstatusget_do (void)
 		printf ("Could not get the ring status, the error is: %d\n", result);
 	} else {
 		for (i = 0; i < interface_count; i++) {
-			printf ("RING ID %d\n", i);
-			printf ("\tid\t= %s\n", interface_names[i]);
-			printf ("\tstatus\t= %s\n", interface_status[i]);
+			if ( (interface_name && 
+			     	(interface_name[0]=='\0' || 
+				strcasecmp (interface_name, interface_names[i]) == 0)) ||
+				!interface_name ) {
+
+				printf ("RING ID %d\n", i);
+				printf ("\tid\t= %s\n", interface_names[i]);
+				printf ("\tstatus\t= %s\n", interface_status[i]);
+				if (strstr(interface_status[i], "FAULTY")) {
+					rc = 1;
+				}
+			}
 		}
 	}
 	(void)corosync_cfg_finalize (handle);
+	return rc;
 }
 
 static void ringreenable_do (void)
@@ -254,7 +265,7 @@ static void killnode_do(unsigned int nodeid)
 
 static void usage_do (void)
 {
-	printf ("corosync-cfgtool [-s] [-r] [-l] [-u] [-H] [service_name] [-v] [version] [-k] [nodeid] [-a] [nodeid]\n\n");
+	printf ("corosync-cfgtool [[-i <interface ip>] -s] [-r] [-l] [-u] [-H] [service_name] [-v] [version] [-k] [nodeid] [-a] [nodeid]\n\n");
 	printf ("A tool for displaying and configuring active parameters within corosync.\n");
 	printf ("options:\n");
 	printf ("\t-s\tDisplays the status of the current rings on this node.\n");
@@ -280,21 +291,26 @@ xstrdup (char const *s)
 }
 
 int main (int argc, char *argv[]) {
-	const char *options = "srl:u:v:k:a:c:hH";
+	const char *options = "i:srl:u:v:k:a:c:hH";
 	int opt;
 	int service_load = 0;
 	unsigned int nodeid;
 	int service_unload = 0;
 	char *service = NULL;
 	unsigned int version = 0;
+	char interface_name[128] = "";
+	int rc=0;
 
 	if (argc == 1) {
 		usage_do ();
 	}
 	while ( (opt = getopt(argc, argv, options)) != -1 ) {
 		switch (opt) {
+		case 'i':
+			strncpy(interface_name, optarg, sizeof(interface_name));
+			break;
 		case 's':
-			ringstatusget_do ();
+			rc = ringstatusget_do (interface_name);
 			break;
 		case 'r':
 			ringreenable_do ();
@@ -336,5 +352,5 @@ int main (int argc, char *argv[]) {
 		service_unload_do (service, version);
 	}
 
-	return (0);
+	return (rc);
 }

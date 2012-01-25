@@ -35,7 +35,7 @@
 .SH "NAME"
 corosync-cfgtool \- An administrative tool for corosync.
 .SH "SYNOPSIS"
-.B corosync\-cfgtool [\-s] [\-r] [\-l] [\-u] [\-H] [service_name] [\-v] [version] [\-k] [nodeid] [\-a] [nodeid]
+.B corosync\-cfgtool [\-i] [IP_address] [\-s] [\-r] [\-l] [\-u] [\-H] [service_name] [\-v] [version] [\-k] [nodeid] [\-a] [nodeid]
 .SH "DESCRIPTION"
 .B corosync\-cfgtool
 A tool for displaying and configuring active parameters within corosync.
@@ -43,9 +43,14 @@ A tool for displaying and configuring active parameters within corosync.
 .TP 
 .B -h
 Print basic usage.
+.TP
+.B -i
+Finds only information about the specified interface IP address.
 .TP 
 .B -s
-Displays the status of the current rings on this node.
+Displays the status of the current rings on this node.  If any interfaces are 
+faulty, 1 is returned by the binary.  If all interfaces are active 0 is returned
+to the shell.
 .TP 
 .B -r
 Reset redundant ring state cluster wide after a fault to
