@@ -748,6 +748,12 @@ static int votequorum_readconfig_static(void)
 
 	log_printf(LOGSYS_LEVEL_DEBUG, "Reading static configuration");
 
+	icmap_get_uint8("quorum.two_node", &two_node);
+
+	if (two_node) {
+		wait_for_all = 1;
+	}
+
 	icmap_get_uint8("quorum.wait_for_all", &wait_for_all);
 	icmap_get_uint8("quorum.auto_tie_breaker", &auto_tie_breaker);
 	icmap_get_uint8("quorum.last_man_standing", &last_man_standing);
