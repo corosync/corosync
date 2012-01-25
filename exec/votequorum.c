@@ -64,11 +64,6 @@ static struct corosync_api_v1 *corosync_api;
  * votequorum global config vars
  */
 
-/*
- * Silly default to prevent accidents!
- */
-#define DEFAULT_EXPECTED   1024
-
 #ifdef EXPERIMENTAL_QUORUM_DEVICE_API
 #define DEFAULT_QDEV_POLL 10000
 
@@ -783,27 +778,17 @@ static void votequorum_readconfig_dynamic(void)
 {
 	int cluster_members = 0;
 	struct list_head *tmp;
-	uint32_t expected_votes = DEFAULT_EXPECTED;
-	int have_nodelist = 1;
 
 	ENTER();
 
 	log_printf(LOGSYS_LEVEL_DEBUG, "Reading dynamic configuration");
 
 	if (votequorum_read_nodelist_configuration(&us->votes, &us->expected_votes)) {
-		have_nodelist = 0;
-		us->expected_votes = DEFAULT_EXPECTED;
 		us->votes = 1;
 		icmap_get_uint32("quorum.votes", &us->votes);
 	}
 
-	if (icmap_get_uint32("quorum.expected_votes", &expected_votes) == CS_OK) {
-		if (have_nodelist) {
-			us->expected_votes = max(us->expected_votes, expected_votes);
-		} else {
-			us->expected_votes = expected_votes;
-		}
-	}
+	icmap_get_uint32("quorum.expected_votes", &us->expected_votes);
 
 #ifdef EXPERIMENTAL_QUORUM_DEVICE_API
 	if (icmap_get_uint32("quorum.quorumdev_poll", &quorumdev_poll) != CS_OK) {
@@ -1196,7 +1181,6 @@ static int votequorum_exec_init_fn (struct corosync_api_v1 *api)
 
 	us->flags |= NODE_FLAGS_US;
 	us->state = NODESTATE_MEMBER;
-	us->expected_votes = DEFAULT_EXPECTED;
 	us->votes = 1;
 
 	votequorum_readconfig_dynamic();
