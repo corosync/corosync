@@ -1221,7 +1221,7 @@ confirm action
 
         pats = []
         for pid in pids:
-            pats.append('%s .*resource "sam_test_agent:%s" failed!' % (node, pid))
+            pats.append('%s .*resource "%s" failed!' % (node, pid))
 	
         w = self.create_watch(pats, 60)
         w.setwatch()
@@ -1256,9 +1256,9 @@ confirm resource "stopped" and no watchdog action.
         no_pats = []
         yes_pats = []
         for pid in pids:
-            no_pats.append('%s .*resource "sam_test_agent:%s" failed!' % (node, pid))
-            yes_pats.append('%s .*Fsm:sam_test_agent:%s event "config_changed", state "running" --> "stopped"' % (node, pid))
-	
+            no_pats.append('%s .*resource "%s" failed!' % (node, pid))
+            yes_pats.append('%s .*Fsm:%s event "config_changed", state "running" --> "stopped"' % (node, pid))
+
         yes_w = self.create_watch(yes_pats, 10)
         no_w = self.create_watch(no_pats, 10)
         yes_w.setwatch()
@@ -1303,7 +1303,7 @@ check that we do NOT get watchdog'ed
         no_pats = []
         yes_pats = []
         no_pats.append('%s .*resource "memory_used" failed!' % node)
-        yes_pats.append('%s .*resource "memory_used" deleted from objdb!' % node)
+        yes_pats.append('%s .*resource "memory_used" deleted from cmap!' % node)
         yes_w = self.create_watch(yes_pats, 10)
         no_w = self.create_watch(no_pats, 10)
         yes_w.setwatch()
