@@ -447,7 +447,8 @@ static void get_lowest_node_id(void)
 
 	list_iterate(tmp, &cluster_members_list) {
 		node = list_entry(tmp, struct cluster_node, list);
-		if (node->node_id < lowest_node_id) {
+		if ((node->state == NODESTATE_MEMBER) &&
+		    (node->node_id < lowest_node_id)) {
 			lowest_node_id = node->node_id;
 		}
 	}
@@ -466,10 +467,9 @@ static int check_low_node_id_partition(void)
 
 	list_iterate(tmp, &cluster_members_list) {
 		node = list_entry(tmp, struct cluster_node, list);
-		if (node->state == NODESTATE_MEMBER) {
-			if (node->node_id == lowest_node_id) {
+		if ((node->state == NODESTATE_MEMBER) &&
+		    (node->node_id == lowest_node_id)) {
 				found = 1;
-			}
 		}
 	}
 
@@ -573,13 +573,13 @@ static void are_we_quorate(unsigned int total_votes)
 			return;
 		}
 		wait_for_all_status = 0;
-		get_lowest_node_id();
 	}
 
 	if (quorum > total_votes) {
 		quorate = 0;
 	} else {
 		quorate = 1;
+		get_lowest_node_id();
 	}
 
 	if ((auto_tie_breaker) &&
@@ -664,8 +664,8 @@ static int votequorum_read_nodelist_configuration(uint32_t *votes,
 	char tmp_key[ICMAP_KEYNAME_MAXLEN];
 	uint32_t our_pos, node_pos;
 	uint32_t nodelist_expected_votes = 0;
-	uint32_t nodeid, node_votes = 0;
-	int res = 0, nodeid_found = 1;
+	uint32_t node_votes = 0;
+	int res = 0;
 
 	ENTER();
 
@@ -697,26 +697,6 @@ static int votequorum_read_nodelist_configuration(uint32_t *votes,
 
 		if (node_pos == our_pos) {
 			*votes = node_votes;
-		}
-
-		if (nodeid_found == 0) {
-			continue;
-		}
-
-		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "nodelist.node.%u.nodeid", node_pos);
-		if (icmap_get_uint32(tmp_key, &nodeid) != CS_OK) {
-			nodeid_found = 0;
-			lowest_node_id = -1;
-			continue;
-		}
-
-		if (lowest_node_id == -1) {
-			lowest_node_id = nodeid;
-			continue;
-		}
-
-		if (nodeid < lowest_node_id) {
-			lowest_node_id = nodeid;
 		}
 	}
 
@@ -758,10 +738,6 @@ static int votequorum_readconfig_static(void)
 		log_printf(LOGSYS_LEVEL_CRIT,
 			   "configuration error: nodelist or quorum.expected_votes must be configured!");
 		return -1;
-	}
-
-	if ((auto_tie_breaker) && (lowest_node_id == -1)) {
-		wait_for_all = 1;
 	}
 
 	if (wait_for_all) {

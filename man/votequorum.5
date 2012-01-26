@@ -260,12 +260,6 @@ at the same time, in a deterministic fashion. The cluster partition, or the
 set of nodes that are still in contact with the node that has the lowest
 nodeid will remain quorate. The other nodes will be inquorate.
 .PP
-NOTES: For ATB to work, the lowest nodeid in the cluster needs to be known.
-corosync can automatically generate a nodeid or it can be overridden manually.
-If nodeids are not known at startup, ATB will automatically enable WFA.
-WFA will guarantee that all nodeids in the cluster are known before ATB can
-operate correctly.
-.PP
 Example configuration 1:
 .nf
 
@@ -276,37 +270,6 @@ quorum {
 }
 
 .fi
-this will also automatically enable WFA.
-.PP
-Example configuration 2:
-.nf
-
-quorum {
-    provider: corosync_votequorum
-    auto_tie_breaker: 1
-}
-
-nodelist {
-    node {
-        ring0_addr: 192.168.1.1
-        nodeid: 1
-    }
-    node {
-        ring0_addr: 192.168.1.2
-        nodeid: 2
-    }
-    node {
-        ring0_addr: 192.168.1.3
-        nodeid: 3
-    }
-    node {
-        ring0_addr: 192.168.1.4
-        nodeid: 4
-    }
-}
-
-.fi
-this will allow ATB to work without WFA as all nodeids are known at startup.
 .SH VARIOUS NOTES
 .PP
 * WFA / LMS / ATB can be used combined together.
