@@ -9,7 +9,6 @@
 --------------------------------------
  Current priority list for Needle 2.0
 --------------------------------------
-1. quorum improvements
 
 --------------------------------------
  Current priority list for Needle 2.1
@@ -29,20 +28,6 @@ the developers have interest in investigating further.
 targets can be: whitetank, needle2.0, needle3.0, or future (3.0+).
 Finished can be: percentage or date merged to master.  Once in a shipped
 version, please remove from the topic list.
-
-------------------------------------------------------------------------------
-topic-quorum
-------------------------------------------------------------------------------
-Main Developer: Fabio "the coding monkey" Di Nitto
-Started: yes
-Finished: 99% 
-target: needle2.0
-This topic is about bringing votequorum/quorum up to speed and feature complete.
-Current status:
-- implementation is complete
-- need to do bug fixing / code cleanup:
-  * fix auto_tie_breaker lower node id discovery (nodelist updates and
-    random config changes).
 
 ------------------------------------------------------------------------------
 topic-xmlschema
