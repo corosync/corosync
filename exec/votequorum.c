@@ -1016,6 +1016,7 @@ static void message_handler_req_exec_votequorum_nodeinfo (
 	int old_expected;
 	nodestate_t old_state;
 	int new_node = 0;
+	int allow_downgrade = 0;
 
 	ENTER();
 
@@ -1038,8 +1039,19 @@ static void message_handler_req_exec_votequorum_nodeinfo (
 
 	/* Update node state */
 	node->votes = req_exec_quorum_nodeinfo->votes;
-	node->expected_votes = req_exec_quorum_nodeinfo->expected_votes;
 	node->state = NODESTATE_MEMBER;
+
+	if ((!cluster_is_quorate) &&
+	    (req_exec_quorum_nodeinfo->quorate)) {
+		allow_downgrade = 1;
+		us->expected_votes = req_exec_quorum_nodeinfo->expected_votes;
+	}
+
+	if (req_exec_quorum_nodeinfo->quorate) {
+		node->expected_votes = req_exec_quorum_nodeinfo->expected_votes;
+	} else {
+		node->expected_votes = us->expected_votes;
+	}
 
 	log_printf(LOGSYS_LEVEL_DEBUG, "nodeinfo message: votes: %d, expected: %d wfa: %d quorate: %d",
 					req_exec_quorum_nodeinfo->votes,
@@ -1064,7 +1076,7 @@ static void message_handler_req_exec_votequorum_nodeinfo (
 	    old_votes != node->votes ||
 	    old_expected != node->expected_votes ||
 	    old_state != node->state) {
-		recalculate_quorum(0, 0);
+		recalculate_quorum(allow_downgrade, 0);
 	}
 
 	if (!nodeid) {
