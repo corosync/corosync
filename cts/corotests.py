@@ -1310,7 +1310,7 @@ check that we do NOT get watchdog'ed
         no_w.setwatch()
         time.sleep(2)
 
-        self.CM.rsh(node, 'corosync-cmapctl -d resources.system.memory_used')
+        self.CM.rsh(node, 'corosync-cmapctl -D resources.system.memory_used')
 
         yes_matched = yes_w.look()
         no_matched = no_w.look()
