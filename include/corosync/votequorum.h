@@ -58,7 +58,6 @@ typedef uint64_t votequorum_handle_t;
 #define NODESTATE_JOINING    1
 #define NODESTATE_MEMBER     2
 #define NODESTATE_DEAD       3
-#define NODESTATE_LEAVING    4
 
 /** @} */
 

@@ -57,9 +57,6 @@ static const char *node_state(int state)
 	case NODESTATE_DEAD:
 		return "Dead";
 		break;
-	case NODESTATE_LEAVING:
-		return "Leaving";
-		break;
 	default:
 		return "UNKNOWN";
 		break;

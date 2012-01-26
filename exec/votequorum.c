@@ -146,8 +146,7 @@ static int votequorum_exec_send_reconfigure(uint8_t param, unsigned int nodeid, 
 typedef enum {
 	NODESTATE_JOINING=1,
 	NODESTATE_MEMBER,
-	NODESTATE_DEAD,
-	NODESTATE_LEAVING
+	NODESTATE_DEAD
 } nodestate_t;
 
 struct cluster_node {
@@ -1225,7 +1224,6 @@ static void votequorum_confchg_fn (
 	const struct memb_ring_id *ring_id)
 {
 	int i;
-	int leaving = 0;
 	struct cluster_node *node;
 
 	ENTER();
@@ -1238,9 +1236,6 @@ static void votequorum_confchg_fn (
 		for (i = 0; i< left_list_entries; i++) {
 			node = find_node_by_nodeid(left_list[i]);
 			if (node) {
-				if (node->state == NODESTATE_LEAVING) {
-					leaving = 1;
-				}
 				node->state = NODESTATE_DEAD;
 				node->flags |= NODE_FLAGS_BEENDOWN;
 			}
@@ -1271,7 +1266,7 @@ static void votequorum_confchg_fn (
 	}
 
 	if (left_list_entries) {
-		recalculate_quorum(leaving, leaving);
+		recalculate_quorum(0, 0);
 	}
 
 	memcpy(&quorum_ringid, ring_id, sizeof(*ring_id));
