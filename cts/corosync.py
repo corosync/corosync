@@ -262,7 +262,8 @@ class corosync_needle(ClusterManager):
         out = str(lines)
 
         if 'systemctl' in out:
-                ret= (string.find(out, 'inactive (dead)') == -1)
+            is_running = ('active (running)' in out)
+            ret = (rc is 0 and is_running is 0)
         else:
             is_stopped = string.find(out, 'stopped')
             is_dead = string.find(out, 'dead')
