@@ -148,8 +148,6 @@ class corosync_needle(ClusterManager):
         self.node_to_ip = {}
         
         self.new_config = {}
-        self.new_config['service[1]/name'] = 'corosync_tst_sv2'
-        self.new_config['service[1]/ver'] = '0'
         self.applied_config = {}
         for n in self.Env["nodes"]:
             ip = socket.gethostbyname(n)
@@ -594,7 +592,6 @@ class CpgTestAgent(TestAgent):
 
     def __init__(self, node, Env=None):
         TestAgent.__init__(self, "cpg_test_agent", node, 9034, env=Env)
-        self.initialized = False
         self.nodeid = None
 
     def start(self):
@@ -643,7 +640,6 @@ class SamTestAgent(TestAgent):
 
     def __init__(self, node, Env=None):
         TestAgent.__init__(self, "sam_test_agent", node, 9036, env=Env)
-        self.initialized = False
         self.nodeid = None
         self.send_recv = True
 
@@ -652,7 +648,6 @@ class VoteQuorumTestAgent(TestAgent):
 
     def __init__(self, node, Env=None):
         TestAgent.__init__(self, "votequorum_test_agent", node, 9037, env=Env)
-        self.initialized = False
         self.nodeid = None
         self.send_recv = True
 
