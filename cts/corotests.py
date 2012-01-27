@@ -53,6 +53,7 @@ class CoroTest(CTSTest):
         self.config['logging/logger_subsys[1]/debug'] = 'on'
         self.need_all_up = True
         self.CM.start_cpg = True
+        self.cpg_name = 'cts_group'
 
     def setup(self, node):
         ret = CTSTest.setup(self, node)
@@ -82,7 +83,7 @@ class CoroTest(CTSTest):
                 self.start(n)
             if self.need_all_up and self.CM.start_cpg:
                 self.CM.cpg_agent[n].clean_start()
-                self.CM.cpg_agent[n].cpg_join(self.name)
+                self.CM.cpg_agent[n].cpg_join(self.cpg_name)
                 self.CM.cpg_agent[n].cfg_initialize()
             if not self.need_all_up and self.CM.StataCM(n):
                 self.incr("stopped")
@@ -99,8 +100,8 @@ class CoroTest(CTSTest):
 ###################################################################
 class CpgContextTest(CoroTest):
     def __init__(self, cm):
-        CoroTest.__init__(self, cm)
         self.name="CpgContextTest"
+        CoroTest.__init__(self, cm)
         self.CM.start_cpg = True
 
     def __call__(self, node):
@@ -186,7 +187,7 @@ class CpgCfgChgOnGroupLeave(CpgConfigChangeBase):
 
     def failure_action(self):
         self.CM.log("calling cpg_leave() on " + self.wobbly)
-        self.CM.cpg_agent[self.wobbly].cpg_leave(self.name)
+        self.CM.cpg_agent[self.wobbly].cpg_leave(self.cpg_name)
 
     def __call__(self, node):
         self.incr("calls")
@@ -261,7 +262,7 @@ class CpgCfgChgOnLowestNodeJoin(CTSTest):
                 self.CM.log("starting " + n)
                 self.start(n)
                 self.CM.cpg_agent[n].clean_start()
-                self.CM.cpg_agent[n].cpg_join(self.name)
+                self.CM.cpg_agent[n].cpg_join(self.cpg_name)
 
         # start recording events
         pats = []
@@ -280,7 +281,7 @@ class CpgCfgChgOnLowestNodeJoin(CTSTest):
 
         self.start(self.lowest)
         self.CM.cpg_agent[self.lowest].clean_start()
-        self.CM.cpg_agent[self.lowest].cpg_join(self.name)
+        self.CM.cpg_agent[self.lowest].cpg_join(self.cpg_name)
         self.wobbly_id = self.CM.cpg_agent[self.lowest].cpg_local_get()
 
         self.CM.log("waiting for sync events")
@@ -371,7 +372,7 @@ class CpgCfgChgOnNodeRestart(CpgConfigChangeBase):
         for node in self.CM.Env["nodes"]:
             self.CM.cpg_agent[node] = CpgTestAgent(node, self.CM.Env)
             self.CM.cpg_agent[node].start()
-            self.CM.cpg_agent[node].cpg_join(self.name)
+            self.CM.cpg_agent[node].cpg_join(self.cpg_name)
 
         self.wobbly_id = self.CM.cpg_agent[self.wobbly].cpg_local_get()
         self.CM.cpg_agent[self.listener].record_config_events(truncate=True)
@@ -409,7 +410,7 @@ class CpgMsgOrderBase(CoroTest):
 
         for n in self.CM.Env["nodes"]:
             self.CM.cpg_agent[n].clean_start()
-            self.CM.cpg_agent[n].cpg_join(self.name)
+            self.CM.cpg_agent[n].cpg_join(self.cpg_name)
             self.CM.cpg_agent[n].record_messages()
 
         time.sleep(1)
@@ -705,7 +706,7 @@ class VoteQuorumBase(CoroTest):
                 self.listener = n
             if self.need_all_up:
                 self.CM.cpg_agent[n].clean_start()
-                self.CM.cpg_agent[n].cpg_join(self.name)
+                self.CM.cpg_agent[n].cpg_join(self.cpg_name)
                 self.id_map[n] = self.CM.cpg_agent[n].cpg_local_get()
 
         return ret
