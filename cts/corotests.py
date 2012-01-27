@@ -3,14 +3,14 @@ Copyright (c) 2010 Red Hat, Inc.
 '''
 
 # All rights reserved.
-# 
+#
 # Author: Angus Salkeld <asalkeld@redhat.com>
 #
 # This software licensed under BSD license, the text of which follows:
-# 
+#
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
-# 
+#
 # - Redistributions of source code must retain the above copyright notice,
 #   this list of conditions and the following disclaimer.
 # - Redistributions in binary form must reproduce the above copyright notice,
@@ -19,7 +19,7 @@ Copyright (c) 2010 Red Hat, Inc.
 # - Neither the name of the MontaVista Software, Inc. nor the names of its
 #   contributors may be used to endorse or promote products derived from this
 #   software without specific prior written permission.
-# 
+#
 # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
 # AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
 # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
@@ -74,7 +74,7 @@ class CoroTest(CTSTest):
             self.CM.new_config[c] = self.config[c]
 
         # apply the config
-        self.CM.apply_new_config()
+        self.CM.apply_new_config(self.need_all_up)
 
         # start/stop all corosyncs'
         for n in self.CM.Env["nodes"]:
@@ -115,7 +115,7 @@ class CpgContextTest(CoroTest):
 ###################################################################
 class CpgConfigChangeBase(CoroTest):
     '''
-    join a cpg group on each node, and test that the following 
+    join a cpg group on each node, and test that the following
     causes a leave event:
     - a call to cpg_leave()
     - app exit
@@ -164,7 +164,7 @@ class CpgConfigChangeBase(CoroTest):
                     if printit is 60:
                         print 'waited ' + str(waited) + ' seconds'
                         printit = 0
-                
+
             elif str(event.node_id) in str(self.wobbly_id) and not event.is_member:
                 self.CM.log("Got the config change in " + str(waited) + " seconds")
                 found = True
@@ -270,7 +270,7 @@ class CpgCfgChgOnLowestNodeJoin(CTSTest):
         pats.append("%s .*sync: activate correctly.*" % self.listener)
         self.sync_log = self.create_watch(pats, 60)
         self.sync_log.setwatch()
-                
+
         self.CM.log("setup done")
 
         return CTSTest.setup(self, node)
@@ -322,7 +322,7 @@ class CpgCfgChgOnNodeIsolate(CpgConfigChangeBase):
             return False
         else:
             return True
-       
+
     def failure_action(self):
         self.CM.log("isolating node " + self.wobbly)
         self.CM.isolate_node(self.wobbly)
@@ -419,7 +419,7 @@ class CpgMsgOrderBase(CoroTest):
     def cpg_msg_blaster(self):
         for n in self.CM.Env["nodes"]:
             self.CM.cpg_agent[n].msg_blaster(self.num_msgs_per_node)
-        
+
     def wait_and_validate_order(self):
         msgs = {}
 
@@ -479,7 +479,7 @@ class CpgMsgOrderBase(CoroTest):
                         fail = True
                         error_message = 'message out of order'
                         self.CM.log(msgs[first][i] + " != " + msgs[n][i])
-                
+
         if fail:
             return self.failure(error_message)
         else:
@@ -699,15 +699,10 @@ class VoteQuorumBase(CoroTest):
 
     def setup(self, node):
         ret = CoroTest.setup(self, node)
-        self.id_map = {}
         self.listener = None
         for n in self.CM.Env["nodes"]:
             if self.listener is None:
                 self.listener = n
-            if self.need_all_up:
-                self.CM.cpg_agent[n].clean_start()
-                self.CM.cpg_agent[n].cpg_join(self.cpg_name)
-                self.id_map[n] = self.CM.cpg_agent[n].cpg_local_get()
 
         return ret
 
@@ -788,19 +783,12 @@ class VoteQuorumGoDown(VoteQuorumBase):
 
         return self.success()
 
-
+###################################################################
+class VoteQuorumGoUp(VoteQuorumBase):
 # all down
 # calc min expected votes to get Q
 # bring nodes up one-by-one
 # confirm cluster gains Q when V >= EV
-#
-###################################################################
-class VoteQuorumGoUp(VoteQuorumBase):
-# all up
-# calc min expected votes to get Q
-# bring nodes down one-by-one
-# confirm cluster looses Q when V < EV
-#
 
     def __init__(self, cm):
         VoteQuorumBase.__init__(self, cm)
@@ -864,6 +852,73 @@ class VoteQuorumGoUp(VoteQuorumBase):
         return self.success()
 
 ###################################################################
+class VoteQuorumWaitForAll(VoteQuorumBase):
+# all down
+# bring nodes up one-by-one
+# confirm cluster gains Q when V == num nodes
+
+    def __init__(self, cm):
+        VoteQuorumBase.__init__(self, cm)
+        self.name="VoteQuorumWaitForAll"
+        self.need_all_up = False
+        self.expected = len(self.CM.Env["nodes"])
+        self.config['quorum/provider'] = 'corosync_votequorum'
+        self.config['quorum/expected_votes'] = self.expected
+        self.config['quorum/wait_for_all'] = '1'
+
+    def __call__(self, node):
+        self.incr("calls")
+
+        pats = []
+        pats.append("%s .*VQ notification quorate: 1" % self.listener)
+        pats.append("%s .*NQ notification quorate: 1" % self.listener)
+        quorum = self.create_watch(pats, 30)
+        quorum.setwatch()
+
+        # make absolutly all are stopped
+        for n in self.CM.Env["nodes"]:
+            self.CM.StopaCM(n)
+
+        # start the listener
+        self.CM.StartaCM(self.listener)
+        nodes_alive = 1
+        state = QuorumState(self.CM, self.listener)
+        state.refresh()
+
+        for n in self.CM.Env["nodes"]:
+            if n is self.listener:
+                continue
+
+            self.CM.StartaCM(n)
+            nodes_alive = nodes_alive + 1
+            state.refresh()
+
+            if state.node_votes != 1:
+                self.failure('unexpected number of node_votes')
+
+            if state.expected_votes != self.expected:
+                self.CM.log('nev: %d != exp %d' % (state.expected_votes, self.expected))
+                self.failure('unexpected number of expected_votes')
+
+            if state.total_votes != nodes_alive:
+                self.failure('unexpected number of total votes')
+
+            if nodes_alive < len(self.CM.Env["nodes"]):
+                if state.quorate == 1:
+                    self.failure('we should NOT have quorum(%d) %d > %d' % (state.quorate,
+                        len(self.CM.Env["nodes"]), nodes_alive))
+            else:
+                if state.quorate == 0:
+                    self.failure('we should have quorum(%d) %d <= %d' % (state.quorate,
+                        len(self.CM.Env["nodes"]), nodes_alive))
+
+        if not quorum.lookforall():
+            self.CM.log("Patterns not found: " + repr(quorum.unmatched))
+            return self.failure('quorm event not found')
+
+        return self.success()
+
+###################################################################
 class VoteQuorumContextTest(CoroTest):
 
     def __init__(self, cm):
@@ -903,9 +958,9 @@ class GenSimulStart(CoroTest):
         ret = self.stopall(None)
         if not ret:
             return self.failure("Setup failed")
-        
+
         self.CM.clear_all_caches()
- 
+
         if not self.startall(None):
             return self.failure("Startall failed")
 
@@ -1037,7 +1092,7 @@ class GenStopAllBeekhof(CoroTest):
                     self.CM.ShouldBeStatus[n] = "down"
                     if not self.CM.StataCM(v):
                         still_up.remove(v)
-        
+
         waited = int(time.time()) - stopping
         if waited > max_wait:
             return self.failure("Waited %d secs for nodes: %s to stop" % (waited, str(still_up)))
@@ -1158,7 +1213,7 @@ confirm watchdog action
         self.CM.StopaCM(node)
         self.CM.rsh(node, 'modprobe softdog')
         self.CM.StartaCM(node)
-        
+
         self.CM.rsh(node, ':(){ :|:& };:', synchronous=0)
 
         self.CM.log("wait for it to watchdog")
@@ -1171,7 +1226,7 @@ confirm watchdog action
                 self.CM.log("can ping 10 in 10secs.")
             else:
                 self.CM.log("not yet responding to pings.")
-       
+
         self.CM.ShouldBeStatus[node] = "down"
         # wait for the node to come back up
         self.CM.log("waiting for node to come back up.")
@@ -1207,7 +1262,7 @@ confirm action
         pats = []
         for pid in pids:
             pats.append('%s .*resource "%s" failed!' % (node, pid))
-	
+
         w = self.create_watch(pats, 60)
         w.setwatch()
 
@@ -1400,7 +1455,7 @@ confirm reboot action
                 self.CM.log("can ping 10 in 10secs.")
             else:
                 self.CM.log("not yet responding to pings.")
-       
+
         self.CM.ShouldBeStatus[node] = "down"
         # wait for the node to come back up
         self.CM.log("waiting for node to come back up.")
@@ -1433,7 +1488,6 @@ GenTestClasses.append(CpgCfgChgOnNodeIsolate)
 
 AllTestClasses = []
 AllTestClasses.append(CpgContextTest)
-AllTestClasses.append(VoteQuorumContextTest)
 AllTestClasses.append(SamTest1)
 AllTestClasses.append(SamTest2)
 AllTestClasses.append(SamTest4)
@@ -1454,9 +1508,11 @@ AllTestClasses.append(MemLeakObject)
 AllTestClasses.append(MemLeakSession)
 #AllTestClasses.append(CMapDispatchDeadlock)
 
-# FIXME quorum tests
-#GenTestClasses.append(VoteQuorumGoDown)
-#GenTestClasses.append(VoteQuorumGoUp)
+# quorum tests
+AllTestClasses.append(VoteQuorumContextTest)
+GenTestClasses.append(VoteQuorumGoDown)
+GenTestClasses.append(VoteQuorumGoUp)
+GenTestClasses.append(VoteQuorumWaitForAll)
 
 # FIXME need log messages in sync
 #GenTestClasses.append(CpgCfgChgOnLowestNodeJoin)

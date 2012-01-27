@@ -173,12 +173,13 @@ class corosync_needle(ClusterManager):
             self.debug('applying default config')
             self.stopall()
 
-    def apply_new_config(self):
+    def apply_new_config(self, need_all_up=True):
 
         if len(self.new_config) > 0:
             self.debug('applying new config')
             self.stopall()
-            self.startall()
+            if need_all_up:
+                self.startall()
 
     def install_all_config(self):
         tmp1 = {}
