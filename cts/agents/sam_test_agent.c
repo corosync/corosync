@@ -749,120 +749,6 @@ static int test6 (void) {
 	return 1;
 }
 
-static void *test7_thread (void *arg)
-{
-	/* Wait 5s */
-	sleep (5);
-	exit (0);
-}
-
-/*
- * Test quorum
- */
-static int test_quorum (void) {
-	cmap_handle_t cmap_handle;
-	cs_error_t err;
-	unsigned int instance_id;
-	pthread_t kill_thread;
-	char *str;
-
-	err = cmap_initialize (&cmap_handle);
-	if (err != CS_OK) {
-		qb_log (LOG_INFO, "Could not initialize Cluster Map API instance error %d. Test skipped", err);
-		return (1);
-	}
-
-
-	if (cmap_get_string(cmap_handle, "quorum.provider", &str) != CS_OK) {
-		qb_log (LOG_INFO, "Could not get \"provider\" key: %d. Test skipped", err);
-		return (1);
-	}
-        if (strcmp(str, "testquorum") != 0) {
-		qb_log (LOG_INFO, "Provider is not testquorum. Test skipped");
-		return (1);
-        }
-	free(str);
-
-	/*
-	 * Set to not quorate
-	 */
-	err = cmap_set_uint8(cmap_handle, "quorum.quorate", 0);
-	if (err != CS_OK) {
-		qb_log (LOG_INFO, "Can't set map key. Error %d", err);
-		return (2);
-	}
-
-	qb_log (LOG_INFO, " initialize");
-	err = sam_initialize (2000, SAM_RECOVERY_POLICY_QUORUM_RESTART);
-	if (err != CS_OK) {
-		qb_log (LOG_ERR, "Can't initialize SAM API. Error %d", err);
-		return 2;
-	}
-
-	qb_log (LOG_INFO, " register");
-	err = sam_register (&instance_id);
-	if (err != CS_OK) {
-		qb_log (LOG_ERR, "Can't register. Error %d", err);
-		return 2;
-	}
-
-	if (instance_id == 1) {
-		/*
-		 * Sam start should block forever, but 10s for us should be enough
-		 */
-		pthread_create (&kill_thread, NULL, test7_thread, NULL);
-
-		qb_log (LOG_INFO, "iid %d: start - should block forever (waiting 5s)", instance_id);
-		err = sam_start ();
-		if (err != CS_OK) {
-			qb_log (LOG_ERR, "Can't start hc. Error %d", err);
-			return 2;
-		}
-
-		qb_log (LOG_INFO, "iid %d: wasn't killed", instance_id);
-		return (2);
-	}
-
-	if (instance_id == 2) {
-		/*
-		 * Set to quorate
-		 */
-		err = cmap_set_uint8(cmap_handle, "quorum.quorate", 1);
-		if (err != CS_OK) {
-			qb_log (LOG_INFO, "Can't set map key. Error %d", err);
-			return (2);
-		}
-
-		qb_log (LOG_INFO, "iid %d: start", instance_id);
-		err = sam_start ();
-		if (err != CS_OK) {
-			qb_log (LOG_ERR, "Can't start hc. Error %d", err);
-			return 2;
-		}
-
-		/*
-		 * Set corosync unquorate
-		 */
-		err = cmap_set_uint8(cmap_handle, "quorum.quorate", 0);
-		if (err != CS_OK) {
-			qb_log (LOG_INFO, "Can't set map key. Error %d", err);
-			return (2);
-		}
-
-		qb_log (LOG_INFO, "iid %d: sleep 3", instance_id);
-		sleep (3);
-
-		qb_log (LOG_INFO, "iid %d: wasn't killed", instance_id);
-		return (2);
-	}
-
-	if (instance_id == 3) {
-		return (0);
-	}
-
-	return (2);
-}
-
 /*
  * Test cmap integration + quit policy
  */
@@ -1292,8 +1178,6 @@ static int do_test_command(int sock, char* func, char*args[], int num_args)
 			err = test5 ();
 		} else if (strcmp ("test6", func) == 0) {
 			err = test6 ();
-		} else if (strcmp ("test_quorum", func) == 0) {
-			err = test_quorum ();
 		} else if (strcmp ("test8", func) == 0) {
 			err = test8 (getpid(), 0, 1);
 		} else if (strcmp ("test9", func) == 0) {

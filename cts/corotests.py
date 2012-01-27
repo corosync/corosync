@@ -642,22 +642,6 @@ class SamTest6(CoroTest):
             return self.failure(self.name + ' failed')
 
 ###################################################################
-class SamTestQuorum(CoroTest):
-    def __init__(self, cm):
-        CoroTest.__init__(self, cm)
-        self.name="SamTestQuorum"
-        self.config['quorum/provider'] = 'testquorum'
-        self.config['quorum/quorate'] = '1'
-
-    def __call__(self, node):
-        self.incr("calls")
-        res = self.CM.sam_agent[node].test_quorum()
-        if 'OK' in res:
-            return self.success()
-        else:
-            return self.failure(self.name + ' failed')
-
-###################################################################
 class SamTest8(CoroTest):
     def __init__(self, cm):
         CoroTest.__init__(self, cm)
@@ -1470,7 +1454,6 @@ AllTestClasses.append(MemLeakSession)
 #AllTestClasses.append(CMapDispatchDeadlock)
 
 # FIXME quorum tests
-#AllTestClasses.append(SamTestQuorum)
 #GenTestClasses.append(VoteQuorumGoDown)
 #GenTestClasses.append(VoteQuorumGoUp)
 
