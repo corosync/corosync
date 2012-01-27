@@ -655,12 +655,6 @@ class VoteQuorumTestAgent(TestAgent):
         self.nodeid = None
         self.send_recv = True
 
-    def start(self):
-        if not self.started:
-            TestAgent.start(self)
-            self.init()
-            self.used = False
-
 AllAuditClasses = []
 AllAuditClasses.append(LogAudit)
 AllAuditClasses.append(ShmLeakAudit)

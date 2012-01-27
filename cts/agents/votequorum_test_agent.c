@@ -88,8 +88,6 @@ static int vq_dispatch_wrapper_fn (
 		qb_log (LOG_ERR, "got %s error, disconnecting.",
 			cs_strerror(error));
 		votequorum_finalize(vq_handle);
-		qb_loop_poll_del (ta_poll_handle_get(), fd);
-		close (fd);
 		vq_handle = 0;
 		return -1;
 	}
@@ -106,8 +104,6 @@ static int q_dispatch_wrapper_fn (
 		qb_log (LOG_ERR, "got %s error, disconnecting.",
 			cs_strerror(error));
 		quorum_finalize(q_handle);
-		qb_loop_poll_del (ta_poll_handle_get(), fd);
-		close (fd);
 		q_handle = 0;
 		return -1;
 	}
@@ -169,22 +165,6 @@ static int q_lib_init(void)
 		}
 	}
 	return ret;
-}
-
-static void lib_init (int sock)
-{
-	int ret;
-	char response[100];
-
-	snprintf (response, 100, "%s", OK_STR);
-	ret = q_lib_init ();
-
-	if (ret != CS_OK) {
-		snprintf (response, 100, "%s", FAIL_STR);
-		qb_log (LOG_ERR, "q_lib_init FAILED: %d", ret);
-	}
-
-	send (sock, response, strlen (response), 0);
 }
 
 static void getinfo (int sock)
@@ -280,21 +260,25 @@ static void context_test (int sock)
 {
 	char response[100];
 	char *cmp;
+	cs_error_t rc1;
+	cs_error_t rc2;
 
 	snprintf (response, 100, "%s", OK_STR);
 
-	votequorum_context_set (vq_handle, response);
-	votequorum_context_get (vq_handle, (void**)&cmp);
+	rc1 = votequorum_context_set (vq_handle, response);
+	rc2 = votequorum_context_get (vq_handle, (void**)&cmp);
 	if (response != cmp) {
 		snprintf (response, 100, "%s", FAIL_STR);
-		qb_log (LOG_ERR, "votequorum context not the same");
+		qb_log (LOG_ERR, "votequorum context not the same %d %d",
+			rc1, rc2);
 	}
 
-	quorum_context_set (q_handle, response);
-	quorum_context_get (q_handle, (const void**)&cmp);
+	rc1 = quorum_context_set (q_handle, response);
+	rc2 = quorum_context_get (q_handle, (const void**)&cmp);
 	if (response != cmp) {
 		snprintf (response, 100, "%s", FAIL_STR);
-		qb_log (LOG_ERR, "quorum context not the same");
+		qb_log (LOG_ERR, "quorum context not the same %d %d",
+			rc1, rc2);
 	}
 	send (sock, response, strlen (response) + 1, 0);
 }
@@ -302,6 +286,8 @@ static void context_test (int sock)
 static void do_command (int sock, char* func, char*args[], int num_args)
 {
 	char response[100];
+
+	q_lib_init ();
 
 	qb_log (LOG_INFO,"RPC:%s() called.", func);
 
@@ -313,11 +299,10 @@ static void do_command (int sock, char* func, char*args[], int num_args)
 		setexpected (sock, args[0]);
 	} else if (strcmp ("quorum_getquorate", func) == 0) {
 		getquorate (sock);
-	} else if (strcmp ("init", func) == 0) {
-		lib_init (sock);
 	} else if (strcmp ("context_test", func) == 0) {
 		context_test (sock);
-	} else if (strcmp ("are_you_ok_dude", func) == 0) {
+	} else if (strcmp ("are_you_ok_dude", func) == 0 ||
+	           strcmp ("init", func) == 0) {
 		snprintf (response, 100, "%s", OK_STR);
 		send (sock, response, strlen (response) + 1, 0);
 	} else {
