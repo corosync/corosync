@@ -43,7 +43,7 @@ extern "C" {
 typedef uint64_t votequorum_handle_t;
 
 #ifdef EXPERIMENTAL_QUORUM_DEVICE_API
-#define VOTEQUORUM_MAX_QDISK_NAME_LEN 255
+#define VOTEQUORUM_MAX_QDEVICE_NAME_LEN 255
 #endif
 
 #define VOTEQUORUM_INFO_FLAG_TWONODE            1
@@ -72,10 +72,10 @@ struct votequorum_info {
 };
 
 #ifdef EXPERIMENTAL_QUORUM_DEVICE_API
-struct votequorum_qdisk_info {
+struct votequorum_qdevice_info {
 	unsigned int votes;
 	unsigned int state;
-	char name[VOTEQUORUM_MAX_QDISK_NAME_LEN];
+	char name[VOTEQUORUM_MAX_QDEVICE_NAME_LEN];
 };
 #endif
 
@@ -184,7 +184,7 @@ cs_error_t votequorum_context_set (
  *
  * it will be DEAD until polled
  */
-cs_error_t votequorum_qdisk_register (
+cs_error_t votequorum_qdevice_register (
 	votequorum_handle_t handle,
 	const char *name,
 	unsigned int votes);
@@ -192,22 +192,22 @@ cs_error_t votequorum_qdisk_register (
 /**
  * Unregister a quorum device
  */
-cs_error_t votequorum_qdisk_unregister (
+cs_error_t votequorum_qdevice_unregister (
 	votequorum_handle_t handle);
 
 /**
  * Poll a quorum device
  */
-cs_error_t votequorum_qdisk_poll (
+cs_error_t votequorum_qdevice_poll (
 	votequorum_handle_t handle,
 	unsigned int state);
 
 /**
  * Get quorum device information
  */
-cs_error_t votequorum_qdisk_getinfo (
+cs_error_t votequorum_qdevice_getinfo (
 	votequorum_handle_t handle,
-	struct votequorum_qdisk_info *info);
+	struct votequorum_qdevice_info *info);
 
 #endif
 

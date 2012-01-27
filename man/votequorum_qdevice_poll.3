@@ -1,5 +1,5 @@
 .\"/*
-.\" * Copyright (c) 2009 Red Hat, Inc.
+.\" * Copyright (c) 2009,2012 Red Hat, Inc.
 .\" *
 .\" * All rights reserved.
 .\" *
@@ -31,23 +31,23 @@
 .\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 .\" * THE POSSIBILITY OF SUCH DAMAGE.
 .\" */
-.TH VOTEQUORUM_QDISK_POLL 3 2009-01-26 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
+.TH VOTEQUORUM_QDEVICE_POLL 3 2009-01-26 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
 .SH NAME
-votequorum_qdisk_poll \- Tells votequorum the result of the quorum device poll
+votequorum_qdevice_poll \- Tells votequorum the result of the quorum device poll
 .SH SYNOPSIS
 .B #include <corosync/votequorum.h>
 .sp
-.BI "int votequorum_qdisk_poll(votequorum_handle_t " handle ", unsigned int " state ");"
+.BI "int votequorum_qdevice_poll(votequorum_handle_t " handle ", unsigned int " state ");"
 .SH DESCRIPTION
 The
-.B votequorum_qdisk_poll
-is called by the quorum device subsyetem (not provided as part of votequorum) to tell
+.B votequorum_qdevice_poll
+is called by the quorum device subsystem (not provided as part of votequorum) to tell
 the voting system if the qurum device is present/active or not. If
 .B state
 is 1 then the votes for the device are included in the quorum calculation, otherwise not.
 This routine should be called at regular intervals to ensure that the device status
 is always known to votequorum. If
-.B votequorum_qdisk_poll
+.B votequorum_qdevice_poll
 is not called after (default) 10 seconds then the device will be deeded to be dead and
 its votes removed from the cluster. This does not unregister the device.
 The default poll time can be changed by setting the object database variable
@@ -63,7 +63,7 @@ The errors are undocumented.
 .BR votequorum_finalize (3),
 .BR votequorum_dispatch (3),
 .BR votequorum_fd_get (3),
-.BR votequorum_qdisk_poll (3),
-.BR votequorum_qdisk_unregister (3),
-.BR votequorum_qdisk_getinfo (3),
+.BR votequorum_qdevice_register (3),
+.BR votequorum_qdevice_unregister (3),
+.BR votequorum_qdevice_getinfo (3),
 .PP

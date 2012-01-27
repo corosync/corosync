@@ -36,7 +36,7 @@
 #define IPC_VOTEQUORUM_H_DEFINED
 
 #include <corosync/mar_gen.h>
-#define VOTEQUORUM_MAX_QDISK_NAME_LEN 255
+#define VOTEQUORUM_MAX_QDEVICE_NAME_LEN 255
 
 enum req_votequorum_types {
 	MESSAGE_REQ_VOTEQUORUM_GETINFO = 0,
@@ -46,17 +46,17 @@ enum req_votequorum_types {
 	MESSAGE_REQ_VOTEQUORUM_TRACKSTOP
 #ifdef EXPERIMENTAL_QUORUM_DEVICE_API
 	,
-	MESSAGE_REQ_VOTEQUORUM_QDISK_REGISTER,
-	MESSAGE_REQ_VOTEQUORUM_QDISK_UNREGISTER,
-	MESSAGE_REQ_VOTEQUORUM_QDISK_POLL,
-	MESSAGE_REQ_VOTEQUORUM_QDISK_GETINFO
+	MESSAGE_REQ_VOTEQUORUM_QDEVICE_REGISTER,
+	MESSAGE_REQ_VOTEQUORUM_QDEVICE_UNREGISTER,
+	MESSAGE_REQ_VOTEQUORUM_QDEVICE_POLL,
+	MESSAGE_REQ_VOTEQUORUM_QDEVICE_GETINFO
 #endif
 };
 
 enum res_votequorum_types {
 	MESSAGE_RES_VOTEQUORUM_STATUS = 0,
 	MESSAGE_RES_VOTEQUORUM_GETINFO,
-	MESSAGE_RES_VOTEQUORUM_QDISK_GETINFO,
+	MESSAGE_RES_VOTEQUORUM_QDEVICE_GETINFO,
 	MESSAGE_RES_VOTEQUORUM_TRACKSTART,
 	MESSAGE_RES_VOTEQUORUM_NOTIFICATION,
 	MESSAGE_RES_VOTEQUORUM_EXPECTEDVOTES_NOTIFICATION
@@ -68,13 +68,13 @@ struct req_lib_votequorum_setvotes {
 	int nodeid;
 };
 
-struct req_lib_votequorum_qdisk_register {
+struct req_lib_votequorum_qdevice_register {
 	struct qb_ipc_request_header header __attribute__((aligned(8)));
 	unsigned int votes;
-	char name[VOTEQUORUM_MAX_QDISK_NAME_LEN];
+	char name[VOTEQUORUM_MAX_QDEVICE_NAME_LEN];
 };
 
-struct req_lib_votequorum_qdisk_poll {
+struct req_lib_votequorum_qdevice_poll {
 	struct qb_ipc_request_header header __attribute__((aligned(8)));
 	int state;
 };
@@ -120,11 +120,11 @@ struct res_lib_votequorum_getinfo {
 	unsigned int flags;
 };
 
-struct res_lib_votequorum_qdisk_getinfo {
+struct res_lib_votequorum_qdevice_getinfo {
 	struct qb_ipc_response_header header __attribute__((aligned(8)));
 	unsigned int votes;
 	unsigned int state;
-	char name[VOTEQUORUM_MAX_QDISK_NAME_LEN];
+	char name[VOTEQUORUM_MAX_QDEVICE_NAME_LEN];
 };
 
 struct votequorum_node {

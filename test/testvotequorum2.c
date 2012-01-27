@@ -47,13 +47,13 @@ static votequorum_handle_t handle;
 
 static void print_info(int ok_to_fail)
 {
-	struct votequorum_qdisk_info qinfo;
+	struct votequorum_qdevice_info qinfo;
 	int err;
 
-	if ( (err=votequorum_qdisk_getinfo(handle, &qinfo)) != CS_OK)
-		fprintf(stderr, "votequorum_qdisk_getinfo error %d: %s\n", err, ok_to_fail?"OK":"FAILED");
+	if ( (err=votequorum_qdevice_getinfo(handle, &qinfo)) != CS_OK)
+		fprintf(stderr, "votequorum_qdevice_getinfo error %d: %s\n", err, ok_to_fail?"OK":"FAILED");
 	else {
-		printf("qdisk votes  %d\n", qinfo.votes);
+		printf("qdevice votes  %d\n", qinfo.votes);
 		printf("state        %d\n", qinfo.state);
 		printf("name         %s\n", qinfo.name);
 		printf("\n");
@@ -82,24 +82,24 @@ int main(int argc, char *argv[])
 	}
 
 	if (argc >= 2) {
-		if ( (err=votequorum_qdisk_register(handle, "QDISK", 4)) != CS_OK)
-			fprintf(stderr, "qdisk_register FAILED: %d\n", err);
+		if ( (err=votequorum_qdevice_register(handle, "QDEVICE", 4)) != CS_OK)
+			fprintf(stderr, "qdevice_register FAILED: %d\n", err);
 
 		while (pollcount--) {
 			print_info(0);
-			if ((err=votequorum_qdisk_poll(handle, 1)) != CS_OK)
-				fprintf(stderr, "qdisk poll FAILED: %d\n", err);
+			if ((err=votequorum_qdevice_poll(handle, 1)) != CS_OK)
+				fprintf(stderr, "qdevice poll FAILED: %d\n", err);
 			print_info(0);
 			sleep(polltime);
 		}
-		if ((err= votequorum_qdisk_unregister(handle)) != CS_OK)
-			fprintf(stderr, "qdisk unregister FAILED: %d\n", err);
+		if ((err= votequorum_qdevice_unregister(handle)) != CS_OK)
+			fprintf(stderr, "qdevice unregister FAILED: %d\n", err);
 	}
 	print_info(1);
 
 	votequorum_finalize(handle);
 #else
-	fprintf(stderr, "qdisk support is not built in corosync/votequorum\n");	
+	fprintf(stderr, "qdevice support is not built in corosync/votequorum\n");	
 #endif
 	return 0;
 }

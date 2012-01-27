@@ -1,5 +1,5 @@
 # Copyright (c) 2004 MontaVista Software, Inc.
-# Copyright (c) 2009 Red Hat, Inc.
+# Copyright (c) 2009, 2012 Red Hat, Inc.
 #
 # Authors: Steven Dake (sdake@redhat.com)
 #          Fabio M. Di Nitto (fdinitto@redhat.com)
@@ -93,10 +93,10 @@ dist_man_MANS = \
 	votequorum_finalize.3 \
 	votequorum_getinfo.3 \
 	votequorum_initialize.3 \
-	votequorum_qdisk_getinfo.3 \
-	votequorum_qdisk_poll.3 \
-	votequorum_qdisk_register.3 \
-	votequorum_qdisk_unregister.3 \
+	votequorum_qdevice_getinfo.3 \
+	votequorum_qdevice_poll.3 \
+	votequorum_qdevice_register.3 \
+	votequorum_qdevice_unregister.3 \
 	votequorum_setexpected.3 \
 	votequorum_setvotes.3 \
 	sam_data_getsize.3 \

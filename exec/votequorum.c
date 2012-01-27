@@ -68,7 +68,7 @@ static struct corosync_api_v1 *corosync_api;
 #define DEFAULT_QDEV_POLL 10000
 
 static unsigned int quorumdev_poll = DEFAULT_QDEV_POLL;
-static char quorum_device_name[VOTEQUORUM_MAX_QDISK_NAME_LEN];
+static char quorum_device_name[VOTEQUORUM_MAX_QDEVICE_NAME_LEN];
 #endif
 
 static uint8_t two_node = 0;
@@ -136,7 +136,7 @@ static int votequorum_exec_send_reconfigure(uint8_t param, unsigned int nodeid, 
  */
 
 #define NODE_FLAGS_BEENDOWN         1
-#define NODE_FLAGS_QDISK            8
+#define NODE_FLAGS_QDEVICE          8
 #define NODE_FLAGS_REMOVED         16
 #define NODE_FLAGS_US              32
 
@@ -266,16 +266,16 @@ static void message_handler_req_lib_votequorum_trackstop (void *conn,
 							  const void *message);
 
 #ifdef EXPERIMENTAL_QUORUM_DEVICE_API
-static void message_handler_req_lib_votequorum_qdisk_register (void *conn,
+static void message_handler_req_lib_votequorum_qdevice_register (void *conn,
 							       const void *message);
 
-static void message_handler_req_lib_votequorum_qdisk_unregister (void *conn,
+static void message_handler_req_lib_votequorum_qdevice_unregister (void *conn,
 								 const void *message);
 
-static void message_handler_req_lib_votequorum_qdisk_poll (void *conn,
+static void message_handler_req_lib_votequorum_qdevice_poll (void *conn,
 							   const void *message);
 
-static void message_handler_req_lib_votequorum_qdisk_getinfo (void *conn,
+static void message_handler_req_lib_votequorum_qdevice_getinfo (void *conn,
 							      const void *message);
 #endif
 
@@ -303,19 +303,19 @@ static struct corosync_lib_handler quorum_lib_service[] =
 #ifdef EXPERIMENTAL_QUORUM_DEVICE_API
 	},
 	{ /* 5 */
-		.lib_handler_fn		= message_handler_req_lib_votequorum_qdisk_register,
+		.lib_handler_fn		= message_handler_req_lib_votequorum_qdevice_register,
 		.flow_control		= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 6 */
-		.lib_handler_fn		= message_handler_req_lib_votequorum_qdisk_unregister,
+		.lib_handler_fn		= message_handler_req_lib_votequorum_qdevice_unregister,
 		.flow_control		= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 7 */
-		.lib_handler_fn		= message_handler_req_lib_votequorum_qdisk_poll,
+		.lib_handler_fn		= message_handler_req_lib_votequorum_qdevice_poll,
 		.flow_control		= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
 	{ /* 8 */
-		.lib_handler_fn		= message_handler_req_lib_votequorum_qdisk_getinfo,
+		.lib_handler_fn		= message_handler_req_lib_votequorum_qdevice_getinfo,
 		.flow_control		= COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED
 #endif
 	}
@@ -1575,10 +1575,10 @@ static void message_handler_req_lib_votequorum_trackstop (void *conn,
 }
 
 #ifdef EXPERIMENTAL_QUORUM_DEVICE_API
-static void message_handler_req_lib_votequorum_qdisk_register (void *conn,
+static void message_handler_req_lib_votequorum_qdevice_register (void *conn,
 							       const void *message)
 {
-	const struct req_lib_votequorum_qdisk_register *req_lib_votequorum_qdisk_register = message;
+	const struct req_lib_votequorum_qdevice_register *req_lib_votequorum_qdevice_register = message;
 	struct res_lib_votequorum_status res_lib_votequorum_status;
 	cs_error_t error = CS_OK;
 
@@ -1589,8 +1589,8 @@ static void message_handler_req_lib_votequorum_qdisk_register (void *conn,
 	} else {
 		quorum_device = allocate_node(0);
 		quorum_device->state = NODESTATE_DEAD;
-		quorum_device->votes = req_lib_votequorum_qdisk_register->votes;
-		strcpy(quorum_device_name, req_lib_votequorum_qdisk_register->name);
+		quorum_device->votes = req_lib_votequorum_qdevice_register->votes;
+		strcpy(quorum_device_name, req_lib_votequorum_qdevice_register->name);
 		list_add(&quorum_device->list, &cluster_members_list);
 	}
 
@@ -1602,7 +1602,7 @@ static void message_handler_req_lib_votequorum_qdisk_register (void *conn,
 	LEAVE();
 }
 
-static void message_handler_req_lib_votequorum_qdisk_unregister (void *conn,
+static void message_handler_req_lib_votequorum_qdevice_unregister (void *conn,
 								 const void *message)
 {
 	struct res_lib_votequorum_status res_lib_votequorum_status;
@@ -1629,17 +1629,17 @@ static void message_handler_req_lib_votequorum_qdisk_unregister (void *conn,
 	LEAVE();
 }
 
-static void message_handler_req_lib_votequorum_qdisk_poll (void *conn,
+static void message_handler_req_lib_votequorum_qdevice_poll (void *conn,
 							   const void *message)
 {
-	const struct req_lib_votequorum_qdisk_poll *req_lib_votequorum_qdisk_poll = message;
+	const struct req_lib_votequorum_qdevice_poll *req_lib_votequorum_qdevice_poll = message;
 	struct res_lib_votequorum_status res_lib_votequorum_status;
 	cs_error_t error = CS_OK;
 
 	ENTER();
 
 	if (quorum_device) {
-		if (req_lib_votequorum_qdisk_poll->state) {
+		if (req_lib_votequorum_qdevice_poll->state) {
 			quorum_device->last_hello = qb_util_nano_current_get ();
 			if (quorum_device->state == NODESTATE_DEAD) {
 				quorum_device->state = NODESTATE_MEMBER;
@@ -1670,31 +1670,31 @@ static void message_handler_req_lib_votequorum_qdisk_poll (void *conn,
 	LEAVE();
 }
 
-static void message_handler_req_lib_votequorum_qdisk_getinfo (void *conn,
+static void message_handler_req_lib_votequorum_qdevice_getinfo (void *conn,
 							      const void *message)
 {
-	struct res_lib_votequorum_qdisk_getinfo res_lib_votequorum_qdisk_getinfo;
+	struct res_lib_votequorum_qdevice_getinfo res_lib_votequorum_qdevice_getinfo;
 	cs_error_t error = CS_OK;
 
 	ENTER();
 
 	if (quorum_device) {
-		log_printf(LOGSYS_LEVEL_DEBUG, "got qdisk_getinfo state %d", quorum_device->state);
-		res_lib_votequorum_qdisk_getinfo.votes = quorum_device->votes;
+		log_printf(LOGSYS_LEVEL_DEBUG, "got qdevice_getinfo state %d", quorum_device->state);
+		res_lib_votequorum_qdevice_getinfo.votes = quorum_device->votes;
 		if (quorum_device->state == NODESTATE_MEMBER) {
-			res_lib_votequorum_qdisk_getinfo.state = 1;
+			res_lib_votequorum_qdevice_getinfo.state = 1;
 		} else {
-			res_lib_votequorum_qdisk_getinfo.state = 0;
+			res_lib_votequorum_qdevice_getinfo.state = 0;
 		}
-		strcpy(res_lib_votequorum_qdisk_getinfo.name, quorum_device_name);
+		strcpy(res_lib_votequorum_qdevice_getinfo.name, quorum_device_name);
 	} else {
 		error = CS_ERR_NOT_EXIST;
 	}
 
-	res_lib_votequorum_qdisk_getinfo.header.size = sizeof(res_lib_votequorum_qdisk_getinfo);
-	res_lib_votequorum_qdisk_getinfo.header.id = MESSAGE_RES_VOTEQUORUM_GETINFO;
-	res_lib_votequorum_qdisk_getinfo.header.error = error;
-	corosync_api->ipc_response_send(conn, &res_lib_votequorum_qdisk_getinfo, sizeof(res_lib_votequorum_qdisk_getinfo));
+	res_lib_votequorum_qdevice_getinfo.header.size = sizeof(res_lib_votequorum_qdevice_getinfo);
+	res_lib_votequorum_qdevice_getinfo.header.id = MESSAGE_RES_VOTEQUORUM_GETINFO;
+	res_lib_votequorum_qdevice_getinfo.header.error = error;
+	corosync_api->ipc_response_send(conn, &res_lib_votequorum_qdevice_getinfo, sizeof(res_lib_votequorum_qdevice_getinfo));
 
 	LEAVE();
 }

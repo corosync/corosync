@@ -1,5 +1,5 @@
 .\"/*
-.\" * Copyright (c) 2009 Red Hat, Inc.
+.\" * Copyright (c) 2009,2012 Red Hat, Inc.
 .\" *
 .\" * All rights reserved.
 .\" *
@@ -31,26 +31,38 @@
 .\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 .\" * THE POSSIBILITY OF SUCH DAMAGE.
 .\" */
-.TH VOTEQUORUM_QDISK_REGISTER 3 2009-01-26 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
+.TH VOTEQUORUM_QDEVICE_GETINFO 3 2012-01-27 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
 .SH NAME
-votequorum_qdisk_register \- Registers a new quorum device
+votequorum_qdevice_getinfo \- Get details of the quorum device
 .SH SYNOPSIS
 .B #include <corosync/votequorum.h>
 .sp
-.BI "int votequorum_qdisk_register(votequorum_handle_t " handle ", char * " name ", unsigned int " votes ");"
+.BI "int votequorum_qdevice_getinfo(votequorum_handle_t " handle ", struct votequorum_qdevice_info " *info ");"
 .SH DESCRIPTION
 The
-.B votequorum_qdisk_register
-is used to register a new quorum device. A quorum device is an external way of adding votes to a small
-cluster. The quorum device is, in effect, a pseudo node in the cluster that provide votes based on some
-external device, usually a shared disk partition or perhaps a network router.
-.br
-This call creates the device but does not mark it active.
-.B votequorum_qdisk_poll
-must be called for the votes to be included in the quorum calculation.
-.br
-Note that it is the responsibility of the quorum device subsystem (not provided as part of votequorum)
-to keep all nodes informed of the quorum device status.
+.B votequorum_qdevice_getinfo
+Returns information about the quorum device in the following structure:
+.PP
+.PP
+.IP
+.RS
+.ne 18
+.nf
+.ta 4n 20n 32n
+
+struct votequorum_qdevice_info {
+	unsigned int votes;
+	unsigned int state;
+	char name[VOTEQUORUM_MAX_QDEVICE_NAME_LEN];
+};
+
+.ta
+.fi
+.RE
+.IP
+.PP
+.PP
+
 .SH RETURN VALUE
 This call returns the CS_OK value if successful, otherwise an error is returned.
 .PP
@@ -62,7 +74,7 @@ The errors are undocumented.
 .BR votequorum_finalize (3),
 .BR votequorum_dispatch (3),
 .BR votequorum_fd_get (3),
-.BR votequorum_qdisk_poll (3),
-.BR votequorum_qdisk_unregister (3),
-.BR votequorum_qdisk_getinfo (3),
+.BR votequorum_qdevice_poll (3),
+.BR votequorum_qdevice_unregister (3),
+.BR votequorum_qdevice_getinfo (3),
 .PP
