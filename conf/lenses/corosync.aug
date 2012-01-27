@@ -140,22 +140,16 @@ let resources =
     system in
   section "resources" setting
 
-(* The amf section *)
-let amf =
-  let setting =
-   kv "mode" /enabled|disabled/ in
-  section "amf" setting
-
 (* The quorum section *)
 let quorum =
   let setting =
    qstr /provider/
    |kv "expected_votes" Rx.integer
    |kv "votes" Rx.integer
-   |kv "quorumdev_poll" Rx.integer
-   |kv "leaving_timeout" Rx.integer
-   |kv "disallowed" Rx.integer
-   |kv "quorate" Rx.integer
+   |kv "wait_for_all" Rx.integer
+   |kv "last_man_standing" Rx.integer
+   |kv "last_man_standing_window" Rx.integer
+   |kv "auto_tie_breaker" Rx.integer
    |kv "two_node" Rx.integer in
   section "quorum" setting
 
@@ -171,6 +165,6 @@ let uidgid =
    qstr /uid|gid/ in
   section "uidgid" setting
 
-let lns = (comment|empty|compatibility|totem|quorum|logging|resources|amf|service|uidgid)*
+let lns = (comment|empty|compatibility|totem|quorum|logging|resources|service|uidgid)*
 
 let xfm = transform lns (incl "/etc/corosync/corosync.conf")

@@ -46,14 +46,14 @@ logging {
 }
 
 quorum {
-    provider: corosync_quorum_ykd
+    provider: corosync_votequorum
     expected_votes: 5
-    votes: 1
-    quorumdev_poll: 2
-    leaving_timeout: 2
-    disallowed: 0
-    quorate: 1
-    two_node: 0
+    votes: 2
+    two_node: 1
+    wait_for_all: 1
+    last_man_standing: 1
+    last_man_standing_window: 10000
+    auto_tie_breaker: 1
 }
 
 resources {
@@ -72,10 +72,6 @@ resources {
 uidgid {
     uid: 0
     gid: 0
-}
-
-amf {
-	mode: disabled
 }\n"
 
 test Corosync.lns get conf =
@@ -121,14 +117,14 @@ test Corosync.lns get conf =
 		{ "tags" = "enter|trace4" } } }
   { }
   { "quorum"
-    { "provider" = "corosync_quorum_ykd" }
+    { "provider" = "corosync_votequorum" }
     { "expected_votes" = "5" }
-    { "votes" = "1" }
-    { "quorumdev_poll" = "2" }
-    { "leaving_timeout" = "2" }
-    { "disallowed" = "0" }
-    { "quorate" = "1" }
-    { "two_node" = "0" } }
+    { "votes" = "2" }
+    { "two_node" = "1" }
+    { "wait_for_all" = "1" }
+    { "last_man_standing" = "1" }
+    { "last_man_standing_window" = "10000" }
+    { "auto_tie_breaker" = "1" } }
   { }
     { "resources"
 	  { "system"
@@ -142,6 +138,3 @@ test Corosync.lns get conf =
   { "uidgid"
     { "uid" = "0" }
     { "gid" = "0" } }
-  { }
-  { "amf"
-	{ "mode" = "disabled" } }
