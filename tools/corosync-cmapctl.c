@@ -735,7 +735,7 @@ int main(int argc, char *argv[])
 	action = ACTION_PRINT_PREFIX;
 	track_prefix = 1;
 
-	while ((c = getopt(argc, argv, "hgsdtTbp:")) != -1) {
+	while ((c = getopt(argc, argv, "hgsdDtTbp:")) != -1) {
 		switch (c) {
 		case 'h':
 			return print_help();
