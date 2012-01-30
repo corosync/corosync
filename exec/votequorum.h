@@ -38,7 +38,7 @@
 #include <corosync/list.h>
 #include <corosync/coroapi.h>
 
-extern cs_error_t votequorum_init(struct corosync_api_v1 *api,
-				  quorum_set_quorate_fn_t q_set_quorate_fn);
+char *votequorum_init(struct corosync_api_v1 *api,
+	quorum_set_quorate_fn_t q_set_quorate_fn);
 
 #endif /* VOTEQUORUM_H_DEFINED */

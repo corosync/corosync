@@ -54,8 +54,7 @@ LOGSYS_DECLARE_SUBSYS ("MON");
 /*
  * Service Interfaces required by service_message_handler struct
  */
-static int mon_exec_init_fn (
-	struct corosync_api_v1 *corosync_api);
+static char *mon_exec_init_fn (struct corosync_api_v1 *corosync_api);
 
 static struct corosync_api_v1 *api;
 #define MON_DEFAULT_PERIOD 3000
@@ -484,8 +483,7 @@ static void mon_instance_init (struct resource_instance* inst)
 			mon_key_changed_cb, inst, &icmap_track);
 }
 
-static int mon_exec_init_fn (
-	struct corosync_api_v1 *corosync_api)
+static char *mon_exec_init_fn (struct corosync_api_v1 *corosync_api)
 {
 
 #ifdef HAVE_LIBSTATGRAB
@@ -500,7 +498,7 @@ static int mon_exec_init_fn (
 	mon_instance_init (&memory_used_inst);
 	mon_instance_init (&load_15min_inst);
 
-	return 0;
+	return NULL;
 }
 
 

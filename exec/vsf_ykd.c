@@ -508,15 +508,17 @@ struct corosync_tpg_group ykd_group = {
 	.group_len	= 3
 };
 
-cs_error_t ykd_init (
+char *ykd_init (
 	struct corosync_api_v1 *corosync_api,
 	quorum_set_quorate_fn_t set_primary)
 {
+	char *error;
+
 	ykd_primary_callback_fn = set_primary;
 	api = corosync_api;
 
-	if ((!corosync_api) || (!set_primary)) {
-		return CS_ERR_INVALID_PARAM;
+	if (set_primary == 0) {
+		error = (char *)"set primary not set";
 	}
 
 	api->tpg_init (
@@ -531,5 +533,5 @@ cs_error_t ykd_init (
 
 	ykd_state_init ();
 
-	return CS_OK;
+	return ((char *)error);
 }

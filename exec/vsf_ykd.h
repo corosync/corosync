@@ -38,7 +38,7 @@
 #include <corosync/list.h>
 #include <corosync/coroapi.h>
 
-extern cs_error_t ykd_init(struct corosync_api_v1 *api,
-				  quorum_set_quorate_fn_t set_primary);
+char *ykd_init(struct corosync_api_v1 *api,
+	quorum_set_quorate_fn_t set_primary);
 
 #endif /* VFS_YKD_H_DEFINED */

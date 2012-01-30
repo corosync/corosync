@@ -123,15 +123,15 @@ int corosync_service_exiting[SERVICE_HANDLER_MAXIMUM_COUNT];
 
 static void (*service_unlink_all_complete) (void) = NULL;
 
-unsigned int corosync_service_link_and_init (
+char *corosync_service_link_and_init (
 	struct corosync_api_v1 *corosync_api,
 	struct default_service *service)
 {
 	struct corosync_service_engine *service_engine;
-	int res = 0;
 	int fn;
 	char *name_sufix;
 	char key_name[ICMAP_KEYNAME_MAXLEN];
+	char *init_result;
 
 	/*
 	 * Initialize service
@@ -141,11 +141,14 @@ unsigned int corosync_service_link_and_init (
 	corosync_service[service_engine->id] = service_engine;
 
 	if (service_engine->config_init_fn) {
-		res = service_engine->config_init_fn (corosync_api);
+		service_engine->config_init_fn (corosync_api);
 	}
 
 	if (service_engine->exec_init_fn) {
-		res = service_engine->exec_init_fn (corosync_api);
+		init_result = service_engine->exec_init_fn (corosync_api);
+		if (init_result) {
+			return (init_result);
+		}
 	}
 
 	/*
@@ -181,7 +184,8 @@ unsigned int corosync_service_link_and_init (
 	log_printf (LOGSYS_LEVEL_NOTICE,
 		"Service engine loaded: %s [%d]", service_engine->name, service_engine->id);
 	cs_ipcs_service_init(service_engine);
-	return (res);
+
+	return NULL;
 }
 
 static int service_priority_max(void)
@@ -342,14 +346,22 @@ static unsigned int service_unlink_and_exit (
 unsigned int corosync_service_defaults_link_and_init (struct corosync_api_v1 *corosync_api)
 {
 	unsigned int i;
+	char *error;
 
 	for (i = 0;
 		i < sizeof (default_services) / sizeof (struct default_service); i++) {
 
 		default_services[i].loader();
-		corosync_service_link_and_init (
+		error = corosync_service_link_and_init (
 			corosync_api,
 			&default_services[i]);
+		if (error) {
+			log_printf(LOGSYS_LEVEL_ERROR,
+				"Service engine '%s' failed to load for reason '%s'",
+				default_services[i].name,
+				error);
+			corosync_exit_error (COROSYNC_DONE_SERVICE_ENGINE_INIT);
+		}
 	}
 
 	return (0);

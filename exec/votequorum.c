@@ -218,7 +218,7 @@ static quorum_set_quorate_fn_t quorum_callback;
  * votequorum_exec handler and definitions
  */
 
-static int votequorum_exec_init_fn (struct corosync_api_v1 *api);
+static char *votequorum_exec_init_fn (struct corosync_api_v1 *api);
 
 static void message_handler_req_exec_votequorum_nodeinfo (
 	const void *message,
@@ -714,7 +714,7 @@ static int votequorum_read_nodelist_configuration(uint32_t *votes,
  * votequorum_readconfig_dynamic
  */
 
-static int votequorum_readconfig_static(void)
+static char *votequorum_readconfig_static(void)
 {
 	uint32_t node_votes, node_expected_votes, expected_votes;
 
@@ -735,9 +735,7 @@ static int votequorum_readconfig_static(void)
 
 	if ((votequorum_read_nodelist_configuration(&node_votes, &node_expected_votes)) &&
 	    (icmap_get_uint32("quorum.expected_votes", &expected_votes) != CS_OK)) {
-		log_printf(LOGSYS_LEVEL_CRIT,
-			   "configuration error: nodelist or quorum.expected_votes must be configured!");
-		return -1;
+		return ((char *)"configuration error: nodelist or quorum.expected_votes must be configured!");
 	}
 
 	if (wait_for_all) {
@@ -746,7 +744,7 @@ static int votequorum_readconfig_static(void)
 
 	LEAVE();
 
-	return 0;
+	return (NULL);
 }
 
 static void votequorum_readconfig_dynamic(void)
@@ -1146,7 +1144,7 @@ static void message_handler_req_exec_votequorum_reconfigure (
 	LEAVE();
 }
 
-static int votequorum_exec_init_fn (struct corosync_api_v1 *api)
+static char *votequorum_exec_init_fn (struct corosync_api_v1 *api)
 {
 #ifdef COROSYNC_SOLARIS
 	logsys_subsys_init();
@@ -1163,7 +1161,7 @@ static int votequorum_exec_init_fn (struct corosync_api_v1 *api)
 	us = allocate_node(corosync_api->totem_nodeid_get());
 	if (!us) {
 		LEAVE();
-		return (1);
+		return ((char *)"Could not allocate node.");
 	}
 
 	us->flags |= NODE_FLAGS_US;
@@ -1185,7 +1183,7 @@ static int votequorum_exec_init_fn (struct corosync_api_v1 *api)
 
 	LEAVE();
 
-	return (0);
+	return (NULL);
 }
 
 /*
@@ -1268,28 +1266,34 @@ static void votequorum_confchg_fn (
 }
 
 
-cs_error_t votequorum_init(struct corosync_api_v1 *api,
+char *votequorum_init(struct corosync_api_v1 *api,
 	quorum_set_quorate_fn_t q_set_quorate_fn)
 {
+	char *error;
+
 	ENTER();
 
-	if ((!api) || (!q_set_quorate_fn)) {
-		return CS_ERR_INVALID_PARAM;
+	if (q_set_quorate_fn == NULL) {
+		return ((char *)"Quorate function not set");
 	}
 
 	corosync_api = api;
 	quorum_callback = q_set_quorate_fn;
 
-	if (votequorum_readconfig_static()) {
-		return CS_ERR_INVALID_PARAM;
+	error = votequorum_readconfig_static();
+	if (error) {
+		return (error);
 	}
 
-	corosync_service_link_and_init(corosync_api,
-				       &votequorum_service[0]);
+	error = corosync_service_link_and_init(corosync_api,
+		&votequorum_service[0]);
+	if (error) {
+		return (error);
+	}
 
 	LEAVE();
 
-	return CS_OK;
+	return (NULL);
 }
 
 /*

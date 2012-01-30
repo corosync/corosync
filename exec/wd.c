@@ -75,8 +75,7 @@ LOGSYS_DECLARE_SUBSYS("WD");
 /*
  * Service Interfaces required by service_message_handler struct
  */
-static int wd_exec_init_fn (
-	struct corosync_api_v1 *corosync_api);
+static char *wd_exec_init_fn (struct corosync_api_v1 *corosync_api);
 static int wd_exec_exit_fn (void);
 static void wd_resource_check_fn (void* resource_ref);
 
@@ -671,8 +670,7 @@ static void watchdog_timeout_get_initial (void)
 
 }
 
-static int wd_exec_init_fn (
-	struct corosync_api_v1 *corosync_api)
+static char *wd_exec_init_fn (struct corosync_api_v1 *corosync_api)
 {
 
 	ENTER();
@@ -690,7 +688,7 @@ static int wd_exec_init_fn (
 	api->timer_add_duration(tickle_timeout*MILLI_2_NANO_SECONDS, NULL,
 				wd_tickle_fn, &wd_timer);
 
-	return 0;
+	return NULL;
 }
 
 static int wd_exec_exit_fn (void)

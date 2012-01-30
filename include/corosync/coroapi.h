@@ -443,7 +443,7 @@ struct corosync_service_engine {
 	unsigned int private_data_size;
 	enum cs_lib_flow_control flow_control;
 	enum cs_lib_allow_inquorate allow_inquorate;
-	int (*exec_init_fn) (struct corosync_api_v1 *);
+	char *(*exec_init_fn) (struct corosync_api_v1 *);
 	int (*exec_exit_fn) (void);
 	void (*exec_dump_fn) (void);
 	int (*lib_init_fn) (void *conn);

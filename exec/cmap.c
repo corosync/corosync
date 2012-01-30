@@ -77,7 +77,7 @@ struct cmap_track_user_data {
 
 static struct corosync_api_v1 *api;
 
-static int cmap_exec_init_fn (struct corosync_api_v1 *corosync_api);
+static char *cmap_exec_init_fn (struct corosync_api_v1 *corosync_api);
 static int cmap_exec_exit_fn(void);
 
 static int cmap_lib_init_fn (void *conn);
@@ -168,7 +168,7 @@ static int cmap_exec_exit_fn(void)
 	return 0;
 }
 
-static int cmap_exec_init_fn (
+static char *cmap_exec_init_fn (
 	struct corosync_api_v1 *corosync_api)
 {
 
@@ -177,7 +177,7 @@ static int cmap_exec_init_fn (
 #endif
 	api = corosync_api;
 
-	return (0);
+	return (NULL);
 }
 
 static int cmap_lib_init_fn (void *conn)

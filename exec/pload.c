@@ -77,8 +77,7 @@ enum pload_exec_message_req_types {
 /*
  * Service Interfaces required by service_message_handler struct
  */
-static int pload_exec_init_fn (
-	struct corosync_api_v1 *corosync_api);
+static char *pload_exec_init_fn (struct corosync_api_v1 *corosync_api);
 
 static void pload_confchg_fn (
 	enum totem_configuration_type configuration_type,
@@ -176,15 +175,14 @@ struct corosync_service_engine *pload_get_service_engine_ver0 (void)
 	return (&pload_service_engine);
 }
 
-static int pload_exec_init_fn (
-	struct corosync_api_v1 *corosync_api)
+static char *pload_exec_init_fn (struct corosync_api_v1 *corosync_api)
 {
 #ifdef COROSYNC_SOLARIS
 	logsys_subsys_init();
 #endif
 	api = corosync_api;
 
-	return 0;
+	return NULL;
 }
 
 static void pload_confchg_fn (

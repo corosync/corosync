@@ -48,7 +48,7 @@ struct default_service {
 /**
  * Link and initialize a service
  */
-unsigned int corosync_service_link_and_init (
+char *corosync_service_link_and_init (
 	struct corosync_api_v1 *objdb,
 	struct default_service *service_engine);
 

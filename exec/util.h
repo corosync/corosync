@@ -64,6 +64,7 @@ enum e_corosync_done {
 	COROSYNC_DONE_AQUIRE_LOCK = 17,
 	COROSYNC_DONE_ALREADY_RUNNING = 18,
 	COROSYNC_DONE_STD_TO_NULL_REDIR = 19,
+	COROSYNC_DONE_SERVICE_ENGINE_INIT = 20
 };
 
 static inline cs_error_t hdb_error_to_cs (int res)		\

@@ -96,7 +96,7 @@ static void message_handler_req_lib_quorum_gettype (void *conn,
 						       const void *msg);
 static void send_library_notification(void *conn);
 static void send_internal_notification(void);
-static int quorum_exec_init_fn (struct corosync_api_v1 *api);
+static char *quorum_exec_init_fn (struct corosync_api_v1 *api);
 static int quorum_lib_init_fn (void *conn);
 static int quorum_lib_exit_fn (void *conn);
 
@@ -252,9 +252,10 @@ static struct quorum_callin_functions callins = {
 
 /* --------------------------------------------------------------------- */
 
-static int quorum_exec_init_fn (struct corosync_api_v1 *api)
+static char *quorum_exec_init_fn (struct corosync_api_v1 *api)
 {
 	char *quorum_module = NULL;
+	char *error;
 
 #ifdef COROSYNC_SOLARIS
 	logsys_subsys_init();
@@ -275,20 +276,21 @@ static int quorum_exec_init_fn (struct corosync_api_v1 *api)
 		log_printf (LOGSYS_LEVEL_NOTICE,
 			    "Using quorum provider %s", quorum_module);
 
+		error = (char *)"Invalid quorum provider";
+
 		if (strcmp (quorum_module, "corosync_votequorum") == 0) {
-			if (votequorum_init (api, quorum_api_set_quorum) == CS_OK) {
-				quorum_type = 1;
-			}
+			error = votequorum_init (api, quorum_api_set_quorum);
+			quorum_type = 1;
 		}
 		if (strcmp (quorum_module, "corosync_ykd") == 0) {
-			if (ykd_init (api, quorum_api_set_quorum) == CS_OK) {
-				quorum_type = 1;
-			}
+			error = ykd_init (api, quorum_api_set_quorum);
+			quorum_type = 1;
 		}
-
-		if (quorum_type == 0) {
+		if (error) {
 			log_printf (LOGSYS_LEVEL_CRIT, 
-				    "Quorum provider: %s failed to initialize", quorum_module);
+				"Quorum provider: %s failed to initialize.",
+				 quorum_module);
+			return (error);
 		}
 	}
 
@@ -306,7 +308,7 @@ static int quorum_exec_init_fn (struct corosync_api_v1 *api)
 		primary_designated = 1;
 	}
 
-	return (0);
+	return (NULL);
 }
 
 static int quorum_lib_init_fn (void *conn)

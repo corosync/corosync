@@ -74,7 +74,7 @@ enum evs_exec_message_req_types {
 /*
  * Service Interfaces required by service_message_handler struct
  */
-static int evs_exec_init_fn (
+static char *evs_exec_init_fn (
 	struct corosync_api_v1 *corosync_api);
 
 static void evs_confchg_fn (
@@ -163,7 +163,7 @@ struct corosync_service_engine *evs_get_service_engine_ver0 (void)
 	return (&evs_service_engine);
 }
 
-static int evs_exec_init_fn (
+static char *evs_exec_init_fn (
 	struct corosync_api_v1 *corosync_api)
 {
 #ifdef COROSYNC_SOLARIS
@@ -172,7 +172,7 @@ static int evs_exec_init_fn (
 
 	api = corosync_api;
 
-	return 0;
+	return NULL;
 }
 
 struct res_evs_confchg_callback res_evs_confchg_callback;

@@ -198,7 +198,7 @@ struct join_list_entry {
 /*
  * Service Interfaces required by service_message_handler struct
  */
-static int cpg_exec_init_fn (struct corosync_api_v1 *);
+static char *cpg_exec_init_fn (struct corosync_api_v1 *);
 
 static int cpg_lib_init_fn (void *conn);
 
@@ -864,14 +864,14 @@ static void downlist_messages_delete (void)
 }
 
 
-static int cpg_exec_init_fn (struct corosync_api_v1 *corosync_api)
+static char *cpg_exec_init_fn (struct corosync_api_v1 *corosync_api)
 {
 #ifdef COROSYNC_SOLARIS
 	logsys_subsys_init();
 #endif
 	list_init (&downlist_messages_head);
 	api = corosync_api;
-	return (0);
+	return (NULL);
 }
 
 static void cpg_iteration_instance_finalize (struct cpg_iteration_instance *cpg_iteration_instance)

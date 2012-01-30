@@ -103,7 +103,7 @@ static void cfg_confchg_fn (
 	const unsigned int *joined_list, size_t joined_list_entries,
 	const struct memb_ring_id *ring_id);
 
-static int cfg_exec_init_fn (struct corosync_api_v1 *corosync_api_v1);
+static char *cfg_exec_init_fn (struct corosync_api_v1 *corosync_api_v1);
 
 static struct corosync_api_v1 *api;
 
@@ -313,7 +313,7 @@ struct req_exec_cfg_shutdown {
 
 /* IMPL */
 
-static int cfg_exec_init_fn (
+static char *cfg_exec_init_fn (
 	struct corosync_api_v1 *corosync_api_v1)
 {
 #ifdef COROSYNC_SOLARIS
@@ -323,7 +323,7 @@ static int cfg_exec_init_fn (
 	api = corosync_api_v1;
 
 	list_init(&trackers_list);
-	return (0);
+	return (NULL);
 }
 
 static void cfg_confchg_fn (
