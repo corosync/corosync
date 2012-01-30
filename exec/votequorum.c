@@ -135,11 +135,6 @@ static int votequorum_exec_send_reconfigure(uint8_t param, unsigned int nodeid, 
  * votequorum internal node status/view
  */
 
-#define NODE_FLAGS_BEENDOWN         1
-#define NODE_FLAGS_QDEVICE          8
-#define NODE_FLAGS_REMOVED         16
-#define NODE_FLAGS_US              32
-
 #define NODEID_US 0
 #define NODEID_QDEVICE UINT32_MAX
 
@@ -1067,8 +1062,6 @@ static void message_handler_req_exec_votequorum_nodeinfo (
 		}
 	}
 
-	node->flags &= ~NODE_FLAGS_BEENDOWN;
-
 	if (new_node ||
 	    req_exec_quorum_nodeinfo->first_trans || 
 	    old_votes != node->votes ||
@@ -1164,7 +1157,6 @@ static char *votequorum_exec_init_fn (struct corosync_api_v1 *api)
 		return ((char *)"Could not allocate node.");
 	}
 
-	us->flags |= NODE_FLAGS_US;
 	us->state = NODESTATE_MEMBER;
 	us->votes = 1;
 
@@ -1223,7 +1215,6 @@ static void votequorum_confchg_fn (
 			node = find_node_by_nodeid(left_list[i]);
 			if (node) {
 				node->state = NODESTATE_DEAD;
-				node->flags |= NODE_FLAGS_BEENDOWN;
 			}
 		}
 	}
