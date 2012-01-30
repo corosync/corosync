@@ -374,6 +374,7 @@ static void print_iter(cmap_handle_t handle, const char *prefix)
 	while ((err = cmap_iter_next(handle, iter_handle, key_name, &value_len, &type)) == CS_OK) {
 		print_key(handle, key_name, value_len, NULL, type);
 	}
+	cmap_iter_finalize(handle, iter_handle);
 }
 
 static void delete_with_prefix(cmap_handle_t handle, const char *prefix)
@@ -397,6 +398,7 @@ static void delete_with_prefix(cmap_handle_t handle, const char *prefix)
 			fprintf(stderr, "Can't delete key %s. Error %s\n", key_name, cs_strerror(err2));
 		}
 	}
+	cmap_iter_finalize(handle, iter_handle);
 }
 
 static void cmap_notify_fn(
