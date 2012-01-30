@@ -541,7 +541,7 @@ cs_error_t votequorum_qdevice_register (
 	struct req_lib_votequorum_qdevice_register req_lib_votequorum_qdevice_register;
 	struct res_lib_votequorum_status res_lib_votequorum_status;
 
-	if (strlen(name) > VOTEQUORUM_MAX_QDEVICE_NAME_LEN)
+	if (strlen(name) >= VOTEQUORUM_MAX_QDEVICE_NAME_LEN)
 		return CS_ERR_INVALID_PARAM;
 
 	error = hdb_error_to_cs(hdb_handle_get (&votequorum_handle_t_db, handle, (void *)&votequorum_inst));
