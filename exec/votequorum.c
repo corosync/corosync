@@ -1008,6 +1008,7 @@ static void message_handler_req_exec_votequorum_nodeinfo (
 	struct cluster_node *node;
 	int old_votes;
 	int old_expected;
+	uint16_t old_flags;
 	nodestate_t old_state;
 	int new_node = 0;
 	int allow_downgrade = 0;
@@ -1030,9 +1031,11 @@ static void message_handler_req_exec_votequorum_nodeinfo (
 	old_votes = node->votes;
 	old_expected = node->expected_votes;
 	old_state = node->state;
+	old_flags = node->flags;
 
 	/* Update node state */
 	node->votes = req_exec_quorum_nodeinfo->votes;
+	node->flags = req_exec_quorum_nodeinfo->flags;
 	node->state = NODESTATE_MEMBER;
 
 	if ((!cluster_is_quorate) &&
@@ -1067,6 +1070,7 @@ static void message_handler_req_exec_votequorum_nodeinfo (
 	    req_exec_quorum_nodeinfo->first_trans || 
 	    old_votes != node->votes ||
 	    old_expected != node->expected_votes ||
+	    old_flags != node->flags ||
 	    old_state != node->state) {
 		recalculate_quorum(allow_downgrade, 0);
 	}
