@@ -260,9 +260,11 @@ class corosync_needle(ClusterManager):
         (rc, lines) = self.rsh(node, self["StatusCmd"], stdout=2)
         out = str(lines)
 
-        if 'systemctl' in out:
-            is_running = ('active (running)' in out)
-            ret = (rc is 0 and is_running is 0)
+        if 'systemd' in out:
+            if 'running' in out:
+                ret = 2
+            else:
+                ret = 0
         else:
             is_stopped = string.find(out, 'stopped')
             is_dead = string.find(out, 'dead')
