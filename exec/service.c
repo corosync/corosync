@@ -109,7 +109,6 @@ static struct default_service default_services[] = {
  * service exit and unlink schedwrk handler data structure
  */
 struct seus_handler_data {
-	hdb_handle_t service_handle;
 	int service_engine;
 	struct corosync_api_v1 *api;
 };
@@ -160,8 +159,6 @@ char *corosync_service_link_and_init (
 	snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "internal_configuration.service.%u.ver", service_engine->id);
 	icmap_set_uint32(key_name, service->ver);
 
-	snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "internal_configuration.service.%u.handle", service_engine->id);
-
 	name_sufix = strrchr (service->name, '_');
 	if (name_sufix)
 		name_sufix++;
@@ -207,12 +204,9 @@ corosync_service_unlink_priority (
 	struct corosync_api_v1 *corosync_api,
 	int lowest_priority,
 	int *current_priority,
-	int *current_service_engine,
-	hdb_handle_t *current_service_handle)
+	int *current_service_engine)
 {
 	unsigned short service_id;
-	hdb_handle_t found_service_handle;
-	char key_name[ICMAP_KEYNAME_MAXLEN];
 	int res;
 
 	for(; *current_priority >= lowest_priority; *current_priority = *current_priority - 1) {
@@ -232,27 +226,21 @@ corosync_service_unlink_priority (
 			 * it was busy, this function returns -1 and can be called again
 			 * at a later time (usually via the schedwrk api).
 			 */
-			snprintf(key_name, ICMAP_KEYNAME_MAXLEN,
-					"internal_configuration.service.%u.handle",
-					corosync_service[*current_service_engine]->id);
-			if (icmap_get_uint64(key_name, &found_service_handle) == CS_OK) {
-				service_id = corosync_service[*current_service_engine]->id;
+			service_id = corosync_service[*current_service_engine]->id;
 
-				if (corosync_service[service_id]->exec_exit_fn) {
-					res = corosync_service[service_id]->exec_exit_fn ();
-					if (res == -1) {
-						return (-1);
-					}
+			if (corosync_service[service_id]->exec_exit_fn) {
+				res = corosync_service[service_id]->exec_exit_fn ();
+				if (res == -1) {
+					return (-1);
 				}
-
-				*current_service_handle = found_service_handle;
-				corosync_service_exiting[*current_service_engine] = 1;
-
-				/*
-				 * Call should call this function again
-				 */
-				return (1);
 			}
+
+			corosync_service_exiting[*current_service_engine] = 1;
+
+			/*
+			 * Call should call this function again
+			 */
+			return (1);
 		}
 	}
 	/*
@@ -411,7 +399,6 @@ static void service_exit_schedwrk_handler (void *data) {
 	static int called = 0;
 	struct seus_handler_data *cb_data = (struct seus_handler_data *)data;
 	struct corosync_api_v1 *api = (struct corosync_api_v1 *)cb_data->api;
-	hdb_handle_t service_handle;
 
 	if (called == 0) {
 		log_printf(LOGSYS_LEVEL_NOTICE,
@@ -424,8 +411,7 @@ static void service_exit_schedwrk_handler (void *data) {
 		api,
 		0,
 		&current_priority,
-		&current_service_engine,
-		&service_handle);
+		&current_service_engine);
 	if (res == 0) {
 		service_unlink_all_complete();
 		return;
@@ -433,7 +419,6 @@ static void service_exit_schedwrk_handler (void *data) {
 
 	if (res == 1) {
 		cb_data->service_engine = current_service_engine;
-		cb_data->service_handle = service_handle;
 
 		qb_loop_job_add(cs_poll_handle_get(),
 			QB_LOOP_HIGH,
