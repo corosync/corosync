@@ -303,12 +303,16 @@ static void cs_ipcs_connection_created(qb_ipcs_connection_t *c)
 	int set_client_pid = 0;
 	int set_proc_name = 0;
 
-	log_printf(LOG_DEBUG, "%s() new connection", __func__);
+	log_printf(LOG_DEBUG, "connection created");
 
 	service = qb_ipcs_service_id_get(c);
 
 	size += corosync_service[service]->private_data_size;
 	context = calloc(1, size);
+	if (context == NULL) {
+		qb_ipcs_disconnect(c);
+		return;
+	}
 
 	list_init(&context->outq_head);
 	context->queuing = QB_FALSE;
@@ -317,8 +321,11 @@ static void cs_ipcs_connection_created(qb_ipcs_connection_t *c)
 
 	qb_ipcs_context_set(c, context);
 
-	corosync_service[service]->lib_init_fn(c);
-
+	if (corosync_service[service]->lib_init_fn(c) != 0) {
+		log_printf(LOG_ERR, "lib_init_fn failed, disconnecting");
+		qb_ipcs_disconnect(c);
+		return;
+	}
 	icmap_inc("runtime.connections.active");
 
 	qb_ipcs_connection_stats_get(c, &stats, QB_FALSE);
@@ -341,7 +348,8 @@ static void cs_ipcs_connection_created(qb_ipcs_connection_t *c)
 
 	context->icmap_path = strdup(key_name);
 	if (context->icmap_path == NULL) {
-		return ;
+		qb_ipcs_disconnect(c);
+		return;
 	}
 
 	if (set_proc_name) {
