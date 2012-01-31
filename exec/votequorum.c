@@ -83,6 +83,8 @@ static int lowest_node_id = -1;
 static uint8_t last_man_standing = 0;
 static uint32_t last_man_standing_window = DEFAULT_LMS_WIN;
 
+static uint8_t leave_remove = 0;
+static uint32_t ev_barrier = 0;
 /*
  * votequorum_exec defines/structs/forward definitions
  */
@@ -135,13 +137,15 @@ static int votequorum_exec_send_reconfigure(uint8_t param, unsigned int nodeid, 
  * votequorum internal node status/view
  */
 
+#define NODE_FLAGS_LEAVING 1
+
 #define NODEID_US 0
 #define NODEID_QDEVICE UINT32_MAX
 
 typedef enum {
-	NODESTATE_JOINING=1,
-	NODESTATE_MEMBER,
-	NODESTATE_DEAD
+	NODESTATE_MEMBER=1,
+	NODESTATE_DEAD,
+	NODESTATE_LEAVING
 } nodestate_t;
 
 struct cluster_node {
@@ -214,6 +218,7 @@ static quorum_set_quorate_fn_t quorum_callback;
  */
 
 static char *votequorum_exec_init_fn (struct corosync_api_v1 *api);
+static int votequorum_exec_exit_fn (void);
 
 static void message_handler_req_exec_votequorum_nodeinfo (
 	const void *message,
@@ -328,6 +333,7 @@ static struct corosync_service_engine votequorum_service_engine = {
 	.lib_engine			= quorum_lib_service,
 	.lib_engine_count		= sizeof (quorum_lib_service) / sizeof (struct corosync_lib_handler),
 	.exec_init_fn			= votequorum_exec_init_fn,
+	.exec_exit_fn			= votequorum_exec_exit_fn,
 	.exec_engine			= votequorum_exec_engine,
 	.exec_engine_count		= sizeof (votequorum_exec_engine) / sizeof (struct corosync_exec_handler),
 	.confchg_fn			= votequorum_confchg_fn,
@@ -487,6 +493,10 @@ static int calculate_quorum(int allow_decrease, unsigned int max_expected, unsig
 	unsigned int total_nodes = 0;
 
 	ENTER();
+
+	if ((leave_remove) && (allow_decrease) && (max_expected)) {
+		max_expected = max(ev_barrier, max_expected);
+	}
 
 	list_iterate(nodelist, &cluster_members_list) {
 		node = list_entry(nodelist, struct cluster_node, list);
@@ -724,6 +734,7 @@ static char *votequorum_readconfig_static(void)
 		wait_for_all = 1;
 	}
 
+	icmap_get_uint8("quorum.leave_remove", &leave_remove);
 	icmap_get_uint8("quorum.wait_for_all", &wait_for_all);
 	icmap_get_uint8("quorum.auto_tie_breaker", &auto_tie_breaker);
 	icmap_get_uint8("quorum.last_man_standing", &last_man_standing);
@@ -758,6 +769,8 @@ static void votequorum_readconfig_dynamic(void)
 	}
 
 	icmap_get_uint32("quorum.expected_votes", &us->expected_votes);
+
+	ev_barrier = us->expected_votes;
 
 #ifdef EXPERIMENTAL_QUORUM_DEVICE_API
 	if (icmap_get_uint32("quorum.quorumdev_poll", &quorumdev_poll) != CS_OK) {
@@ -1012,10 +1025,18 @@ static void message_handler_req_exec_votequorum_nodeinfo (
 	nodestate_t old_state;
 	int new_node = 0;
 	int allow_downgrade = 0;
+	int by_node = 0;
 
 	ENTER();
 
 	log_printf(LOGSYS_LEVEL_DEBUG, "got nodeinfo message from cluster node %u", nodeid);
+	log_printf(LOGSYS_LEVEL_DEBUG, "nodeinfo message[%u]: votes: %d, expected: %d wfa: %d quorate: %d flags: %d",
+					nodeid,
+					req_exec_quorum_nodeinfo->votes,
+					req_exec_quorum_nodeinfo->expected_votes,
+					req_exec_quorum_nodeinfo->wait_for_all_status,
+					req_exec_quorum_nodeinfo->quorate,
+					req_exec_quorum_nodeinfo->flags);
 
 	node = find_node_by_nodeid(nodeid);
 	if (!node) {
@@ -1036,7 +1057,14 @@ static void message_handler_req_exec_votequorum_nodeinfo (
 	/* Update node state */
 	node->votes = req_exec_quorum_nodeinfo->votes;
 	node->flags = req_exec_quorum_nodeinfo->flags;
-	node->state = NODESTATE_MEMBER;
+
+	if (node->flags & NODE_FLAGS_LEAVING) {
+		node->state = NODESTATE_LEAVING;
+		allow_downgrade = 1;
+		by_node = 1;
+	} else {
+		node->state = NODESTATE_MEMBER;
+	}
 
 	if ((!cluster_is_quorate) &&
 	    (req_exec_quorum_nodeinfo->quorate)) {
@@ -1049,12 +1077,6 @@ static void message_handler_req_exec_votequorum_nodeinfo (
 	} else {
 		node->expected_votes = us->expected_votes;
 	}
-
-	log_printf(LOGSYS_LEVEL_DEBUG, "nodeinfo message: votes: %d, expected: %d wfa: %d quorate: %d",
-					req_exec_quorum_nodeinfo->votes,
-					req_exec_quorum_nodeinfo->expected_votes,
-					req_exec_quorum_nodeinfo->wait_for_all_status,
-					req_exec_quorum_nodeinfo->quorate);
 
 	if ((last_man_standing) && (req_exec_quorum_nodeinfo->votes > 1)) {
 		log_printf(LOGSYS_LEVEL_WARNING, "Last Man Standing feature is supported only when all"
@@ -1072,7 +1094,7 @@ static void message_handler_req_exec_votequorum_nodeinfo (
 	    old_expected != node->expected_votes ||
 	    old_flags != node->flags ||
 	    old_state != node->state) {
-		recalculate_quorum(allow_downgrade, 0);
+		recalculate_quorum(allow_downgrade, by_node);
 	}
 
 	if (!nodeid) {
@@ -1129,6 +1151,7 @@ static void message_handler_req_exec_votequorum_reconfigure (
 			}
 		}
 		votequorum_exec_send_expectedvotes_notification();
+		ev_barrier = req_exec_quorum_reconfigure->value;
 		recalculate_quorum(1, 0);  /* Allow decrease */
 		break;
 
@@ -1140,6 +1163,21 @@ static void message_handler_req_exec_votequorum_reconfigure (
 	}
 
 	LEAVE();
+}
+
+static int votequorum_exec_exit_fn (void)
+{
+	int ret = 0;
+
+	ENTER();
+
+	if (leave_remove) {
+		us->flags |= NODE_FLAGS_LEAVING;
+		ret = votequorum_exec_send_nodeinfo();
+	}
+
+	LEAVE();
+	return ret;
 }
 
 static char *votequorum_exec_init_fn (struct corosync_api_v1 *api)
@@ -1412,6 +1450,9 @@ static void message_handler_req_lib_votequorum_getinfo (void *conn, const void *
 		}
 		if (auto_tie_breaker) {
 			res_lib_votequorum_getinfo.flags |= VOTEQUORUM_INFO_AUTO_TIE_BREAKER;
+		}
+		if (leave_remove) {
+			res_lib_votequorum_getinfo.flags |= VOTEQUORUM_INFO_LEAVE_REMOVE;
 		}
 	} else {
 		error = CS_ERR_NOT_EXIST;

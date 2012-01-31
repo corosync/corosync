@@ -108,6 +108,7 @@ struct res_lib_votequorum_status {
 #define VOTEQUORUM_INFO_WAIT_FOR_ALL	        4
 #define VOTEQUORUM_INFO_LAST_MAN_STANDING       8
 #define VOTEQUORUM_INFO_AUTO_TIE_BREAKER       16
+#define VOTEQUORUM_INFO_LEAVE_REMOVE           32
 
 struct res_lib_votequorum_getinfo {
 	struct qb_ipc_response_header header __attribute__((aligned(8)));

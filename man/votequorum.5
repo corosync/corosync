@@ -270,9 +270,55 @@ quorum {
 }
 
 .fi
+.PP
+.B leave_remove: 1
+.PP
+Enables leave remove (LR) feature (default: 0).
+.PP
+The general behaviour of votequorum is to never decrease expected votes or quorum.
+.PP
+When LR is enabled, both expected votes and quorum are recalculated when
+a node leaves the cluster in a clean state (normal corosync shutdown process) down
+to configured expected_votes.
+.PP
+Example use case:
+.PP
+.nf
+1) N node cluster (where N is any value higher than 3)
+
+2) expected_votes set to 3 in corosync.conf
+
+3) only 3 nodes are running
+
+4) admin requires to increase processing power and adds 10 nodes
+
+5) internal expected_votes is automatically set to 13
+
+6) minimum expected_votes is 3 (from configuration)
+
+- up to this point this is standard votequorum behavior -
+
+7) once the work is done, admin wants to remove nodes from the cluster
+
+8) using an ordered shutdown the admin can reduce the cluster size
+   automatically back to 3, but not below 3, where normal quorum
+   operation will work as usual.
+
+.fi
+.PP
+Example configuration:
+.nf
+
+quorum {
+    provider: corosync_votequorum
+    expected_votes: 3
+    leave_remove: 1
+}
+.fi
+.PP
 .SH VARIOUS NOTES
 .PP
-* WFA / LMS / ATB can be used combined together.
+* WFA / LMS / ATB / LR can be used combined together.
 .PP
 * In order to change the default votes for a node there are two options:
 .nf

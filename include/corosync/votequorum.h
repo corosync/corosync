@@ -51,13 +51,14 @@ typedef uint64_t votequorum_handle_t;
 #define VOTEQUORUM_INFO_WAIT_FOR_ALL            4
 #define VOTEQUORUM_INFO_LAST_MAN_STANDING       8
 #define VOTEQUORUM_INFO_AUTO_TIE_BREAKER       16
+#define VOTEQUORUM_INFO_LEAVE_REMOVE           32
 
 #define VOTEQUORUM_NODEID_US 0
 #define VOTEQUORUM_NODEID_QDEVICE -1
 
-#define NODESTATE_JOINING    1
-#define NODESTATE_MEMBER     2
-#define NODESTATE_DEAD       3
+#define NODESTATE_MEMBER     1
+#define NODESTATE_DEAD       2
+#define NODESTATE_LEAVING    3
 
 /** @} */
 

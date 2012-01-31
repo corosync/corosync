@@ -341,6 +341,7 @@ static int display_quorum_data(int is_quorate, int loop)
 		if (info.flags & VOTEQUORUM_INFO_WAIT_FOR_ALL) printf("WaitForAll ");
 		if (info.flags & VOTEQUORUM_INFO_LAST_MAN_STANDING) printf("LastManStanding ");
 		if (info.flags & VOTEQUORUM_INFO_AUTO_TIE_BREAKER) printf("AutoTieBreaker ");
+		if (info.flags & VOTEQUORUM_INFO_LEAVE_REMOVE) printf("LeaveRemove ");
 		printf("\n");
 	} else {
 		fprintf(stderr, "votequorum_getinfo FAILED: %d\n", err);
