@@ -186,6 +186,7 @@ static struct corosync_lib_handler quorum_lib_service[] =
 static struct corosync_service_engine quorum_service_handler = {
 	.name				        = "corosync cluster quorum service v0.1",
 	.id					= QUORUM_SERVICE,
+	.priority				= 1,
 	.private_data_size			= sizeof (struct quorum_pd),
 	.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED,
 	.allow_inquorate			= CS_LIB_ALLOW_INQUORATE,

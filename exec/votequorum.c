@@ -319,6 +319,7 @@ static struct corosync_lib_handler quorum_lib_service[] =
 static struct corosync_service_engine votequorum_service_engine = {
 	.name				= "corosync vote quorum service v1.0",
 	.id				= VOTEQUORUM_SERVICE,
+	.priority			= 2,
 	.private_data_size		= sizeof (struct quorum_pd),
 	.allow_inquorate		= CS_LIB_ALLOW_INQUORATE,
 	.flow_control			= COROSYNC_LIB_FLOW_CONTROL_REQUIRED,
