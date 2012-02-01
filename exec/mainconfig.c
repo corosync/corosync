@@ -403,7 +403,7 @@ static int corosync_main_config_set (
 	}
 
 	if (!objdb_get_string (objdb,object_handle, "logfile", &value)) {
-		if (logsys_config_file_set (subsys, error_string, value) < 0) {
+		if (logsys_config_file_set (subsys, &error_reason, value) < 0) {
 			goto parse_error;
 		}
 	}
