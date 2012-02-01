@@ -106,6 +106,12 @@ stop()
 	success
 	echo
 
+	echo -n "Waiting for $prog services to unload:"
+	while status $prog > /dev/null 2>&1; do
+		sleep 1
+		echo -n "."
+	done
+
 	rm -f $LOCK_FILE
 	success
 	echo
