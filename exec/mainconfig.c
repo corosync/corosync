@@ -379,7 +379,7 @@ static int corosync_main_config_set (
 
 	snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "%s.%s", path, "logfile");
 	if (icmap_get_string(key_name, &value) == CS_OK) {
-		if (logsys_config_file_set (subsys, error_string, value) < 0) {
+		if (logsys_config_file_set (subsys, &error_reason, value) < 0) {
 			goto parse_error;
 		}
 		free(value);
