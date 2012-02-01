@@ -33,14 +33,11 @@ SPEC			= $(PACKAGE_NAME).spec
 
 TARFILE			= $(PACKAGE_NAME)-$(VERSION).tar.gz
 
-EXTRA_DIST		= autogen.sh conf/corosync.conf.example $(SPEC).in \
+EXTRA_DIST		= autogen.sh $(SPEC).in \
 			  build-aux/git-version-gen \
 			  build-aux/gitlog-to-changelog \
 			  build-aux/release.mk \
-			  conf/lenses/tests/test_corosync.aug \
-			  conf/lenses/corosync.aug \
-			  conf/corosync.conf.example.udpu \
-			  .version conf/corosync.xml.example
+			  .version
 
 AUTOMAKE_OPTIONS	= foreign
 
@@ -49,27 +46,6 @@ MAINTAINERCLEANFILES	= Makefile.in aclocal.m4 configure depcomp \
 			  autoheader automake autoconf test_lense.sh
 
 dist_doc_DATA		= LICENSE INSTALL README.recovery SECURITY TODO AUTHORS
-
-corosysconfdir		= ${COROSYSCONFDIR}
-
-corosysconf_DATA	= conf/corosync.conf.example \
-			  conf/corosync.conf.example.udpu
-
-if INSTALL_AUGEAS
-corolensdir		= ${datadir}/augeas/lenses
-corolens_DATA		= conf/lenses/corosync.aug
-
-corolenstestdir		= ${corolensdir}/tests
-corolenstest_DATA	= conf/lenses/tests/test_corosync.aug
-endif
-
-if INSTALL_XMLCONF
-corosysxmlconfdir	= ${COROSYSCONFDIR}
-corosysxmlconf_DATA	= conf/corosync.xml.example
-
-corosysxmlxsltdir	= ${datadir}/corosync
-corosysxmlxslt_DATA	= conf/xml2conf.xsl
-endif
 
 SUBDIRS			= include lib exec tools test cts pkgconfig \
 			  man init conf

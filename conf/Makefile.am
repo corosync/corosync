@@ -29,16 +29,43 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 
-EXTRA_DIST     = COROSYNC-MIB.txt corosync-signals.conf
-
 MAINTAINERCLEANFILES    = Makefile.in
 
+EXTRA_DIST		= COROSYNC-MIB.txt corosync-signals.conf \
+			  corosync.conf.example \
+			  corosync.conf.example.udpu \
+			  corosync.xml.example \
+			  xml2conf.xsl \
+			  lenses/corosync.aug \
+			  lenses/tests/test_corosync.aug
+
+corosysconfdir		= ${COROSYSCONFDIR}
+
+corosysconf_DATA	= corosync.conf.example \
+			  corosync.conf.example.udpu
+
+if INSTALL_AUGEAS
+corolensdir		= ${datadir}/augeas/lenses
+corolens_DATA		= lenses/corosync.aug
+
+corolenstestdir		= ${corolensdir}/tests
+corolenstest_DATA	= lenses/tests/test_corosync.aug
+endif
+
+if INSTALL_XMLCONF
+corosysxmlconfdir	= ${COROSYSCONFDIR}
+corosysxmlconf_DATA	= corosync.xml.example
+
+corosysxmlxsltdir	= ${datadir}/corosync
+corosysxmlxslt_DATA	= xml2conf.xsl
+endif
+
 if INSTALL_MIB
-mibdir = $(datadir)/snmp/mibs
-mib_DATA = COROSYNC-MIB.txt
+mibdir			= $(datadir)/snmp/mibs
+mib_DATA		= COROSYNC-MIB.txt
 endif
 
 if INSTALL_DBUSCONF
-dbusdir = $(sysconfdir)/dbus-1/system.d
-dbus_DATA = corosync-signals.conf
+dbusdir			= $(sysconfdir)/dbus-1/system.d
+dbus_DATA		= corosync-signals.conf
 endif

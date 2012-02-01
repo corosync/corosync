@@ -155,6 +155,11 @@ fi
 %{_bindir}/corosync-blackbox
 %if %{with xmlconf}
 %{_bindir}/corosync-xmlproc
+%config(noreplace) %{_sysconfdir}/corosync/corosync.xml.example
+%dir %{_datadir}/corosync
+%dir %{_datadir}/corosync/xml2conf.xsl
+%{_mandir}/man8/corosync-xmlproc.8*
+%{_mandir}/man5/corosync.xml.5*
 %endif
 %dir %{_sysconfdir}/corosync
 %dir %{_sysconfdir}/corosync/uidgid.d

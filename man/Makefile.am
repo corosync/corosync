@@ -34,7 +34,13 @@
 
 MAINTAINERCLEANFILES	= Makefile.in
 
-EXTRA_DIST		= index.html
+xml_man			= corosync-xmlproc.8 \
+			  corosync.xml.5
+
+INDEX_HTML		= index.html
+
+EXTRA_DIST		= $(INDEX_HTML) \
+			  $(xml_man)
 
 dist_man_MANS = \
 	corosync.conf.5 \
@@ -114,16 +120,12 @@ dist_man_MANS = \
 	sam_warn_signal_set.3
 
 if INSTALL_XMLCONF
-dist_man_MANS += \
-	corosync-xmlproc.8 \
-	corosync.xml.5
+dist_man_MANS += $(xml_man)
 endif
 
 if BUILD_HTML_DOCS
 
 HTML_DOCS = $(dist_man_MANS:%=%.html)
-
-INDEX_HTML = index.html
 
 %.html: %
 	$(GROFF) -mandoc -Thtml $^ > $@
