@@ -195,7 +195,7 @@ static int logsys_config_file_set_unlocked (
 
 	logsys_loggers[subsysid].target_id = qb_log_file_open(file);
 	if (logsys_loggers[subsysid].target_id < 0) {
-		int err = logsys_loggers[subsysid].target_id;
+		int err = -logsys_loggers[subsysid].target_id;
 		char error_str[LOGSYS_MAX_PERROR_MSG_LEN];
 		const char *error_ptr;
 		error_ptr = qb_strerror_r(err, error_str, sizeof(error_str));
