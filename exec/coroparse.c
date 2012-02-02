@@ -331,6 +331,31 @@ static int parse_section(FILE *fp,
 	return 0;
 }
 
+static int safe_atoi(const char *str, int *res)
+{
+	int val;
+	char *endptr;
+
+	errno = 0;
+
+	val = strtol(str, &endptr, 10);
+	if (errno == ERANGE) {
+		return (-1);
+	}
+
+	if (endptr == str) {
+		return (-1);
+	}
+
+	if (*endptr != '\0') {
+		return (-1);
+	}
+
+	*res = val;
+	return (0);
+}
+
+
 static int main_config_parser_cb(const char *path,
 			char *key,
 			char *value,
@@ -341,6 +366,7 @@ static int main_config_parser_cb(const char *path,
 	int i;
 	int add_as_string;
 	char key_name[ICMAP_KEYNAME_MAXLEN];
+	static char formated_err[256];
 	struct main_cp_cb_data *data = (struct main_cp_cb_data *)user_data;
 	struct key_value_list_item *kv_item;
 	struct list_head *iter, *iter_next;
@@ -365,7 +391,9 @@ static int main_config_parser_cb(const char *path,
 			    (strcmp(path, "quorum.quorumdev_poll") == 0) ||
 			    (strcmp(path, "quorum.last_man_standing_window") == 0) ||
 			    (strcmp(path, "quorum.leaving_timeout") == 0)) {
-				i = atoi(value);
+				if (safe_atoi(value, &i) != 0) {
+					goto atoi_error;
+				}
 				icmap_set_uint32(path, i);
 				add_as_string = 0;
 			}
@@ -375,7 +403,9 @@ static int main_config_parser_cb(const char *path,
 			    (strcmp(path, "quorum.wait_for_all") == 0) ||
 			    (strcmp(path, "quorum.auto_tie_breaker") == 0) ||
 			    (strcmp(path, "quorum.last_man_standing") == 0)) {
-				i = atoi(value);
+				if (safe_atoi(value, &i) != 0) {
+					goto atoi_error;
+				}
 				icmap_set_uint8(path, i);
 				add_as_string = 0;
 			}
@@ -406,7 +436,9 @@ static int main_config_parser_cb(const char *path,
 			    (strcmp(path, "totem.max_messages") == 0) ||
 			    (strcmp(path, "totem.miss_count_const") == 0) ||
 			    (strcmp(path, "totem.netmtu") == 0)) {
-				i = atoi(value);
+				if (safe_atoi(value, &i) != 0) {
+					goto atoi_error;
+				}
 				icmap_set_uint32(path, i);
 				add_as_string = 0;
 			}
@@ -414,7 +446,11 @@ static int main_config_parser_cb(const char *path,
 
 		case MAIN_CP_CB_DATA_STATE_INTERFACE:
 			if (strcmp(path, "totem.interface.ringnumber") == 0) {
-				data->ringnumber = atoi(value);
+				if (safe_atoi(value, &i) != 0) {
+					goto atoi_error;
+				}
+
+				data->ringnumber = i;
 				add_as_string = 0;
 			}
 			if (strcmp(path, "totem.interface.bindnetaddr") == 0) {
@@ -430,7 +466,10 @@ static int main_config_parser_cb(const char *path,
 				add_as_string = 0;
 			}
 			if (strcmp(path, "totem.interface.mcastport") == 0) {
-				data->mcastport = atoi(value);
+				if (safe_atoi(value, &i) != 0) {
+					goto atoi_error;
+				}
+				data->mcastport = i;
 				if (data->mcastport < 0 || data->mcastport > 65535) {
 					*error_string = "Invalid multicast port (should be 0..65535)";
 
@@ -439,7 +478,10 @@ static int main_config_parser_cb(const char *path,
 				add_as_string = 0;
 			}
 			if (strcmp(path, "totem.interface.ttl") == 0) {
-				data->ttl = atoi(value);
+				if (safe_atoi(value, &i) != 0) {
+					goto atoi_error;
+				}
+				data->ttl = i;
 				if (data->ttl < 0 || data->ttl > 255) {
 					*error_string = "Invalid TTL (should be 0..255)";
 
@@ -574,7 +616,10 @@ static int main_config_parser_cb(const char *path,
 			snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "nodelist.node.%u.%s", data->node_number, key);
 			if ((strcmp(key, "nodeid") == 0) ||
 			    (strcmp(key, "quorum_votes") == 0)) {
-				i = atoi(value);
+				if (safe_atoi(value, &i) != 0) {
+					goto atoi_error;
+				}
+
 				icmap_set_uint32(key_name, i);
 				add_as_string = 0;
 			}
@@ -834,6 +879,13 @@ static int main_config_parser_cb(const char *path,
 	}
 
 	return (1);
+
+atoi_error:
+	snprintf(formated_err, sizeof(formated_err),
+	    "Value of key \"%s\" must be integer, but \"%s\" was given", key, value);
+	*error_string = formated_err;
+
+	return (0);
 }
 
 static int uidgid_config_parser_cb(const char *path,
