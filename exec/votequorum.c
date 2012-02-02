@@ -455,6 +455,7 @@ static void get_lowest_node_id(void)
 		}
 	}
 	log_printf(LOGSYS_LEVEL_DEBUG, "lowest node id: %d us: %d", lowest_node_id, us->node_id);
+	icmap_set_uint32("runtime.votequorum.lowest_node_id", lowest_node_id);
 
 	LEAVE();
 }
@@ -477,6 +478,24 @@ static int check_low_node_id_partition(void)
 
 	LEAVE();
 	return found;
+}
+
+static void update_wait_for_all_status(uint8_t wfa_status)
+{
+	wait_for_all_status = wfa_status;
+	icmap_set_uint8("runtime.votequorum.wait_for_all_status",
+			wait_for_all_status);
+}
+
+static void update_two_node(void)
+{
+	icmap_set_uint8("runtime.votequorum.two_node", two_node);
+}
+
+static void update_ev_barrier(uint32_t expected_votes)
+{
+	ev_barrier = expected_votes;
+	icmap_set_uint32("runtime.votequorum.ev_barrier", ev_barrier);
 }
 
 /*
@@ -578,7 +597,7 @@ static void are_we_quorate(unsigned int total_votes)
 			cluster_is_quorate = 0;
 			return;
 		}
-		wait_for_all_status = 0;
+		update_wait_for_all_status(0);
 	}
 
 	if (quorum > total_votes) {
@@ -607,9 +626,9 @@ static void are_we_quorate(unsigned int total_votes)
 
 	if (wait_for_all) {
 		if (quorate) {
-			wait_for_all_status = 0;
+			update_wait_for_all_status(0);
 		} else {
-			wait_for_all_status = 1;
+			update_wait_for_all_status(1);
 		}
 	}
 
@@ -729,6 +748,7 @@ static char *votequorum_readconfig_static(void)
 	log_printf(LOGSYS_LEVEL_DEBUG, "Reading static configuration");
 
 	icmap_get_uint8("quorum.two_node", &two_node);
+	update_two_node();
 
 	if (two_node) {
 		wait_for_all = 1;
@@ -746,7 +766,7 @@ static char *votequorum_readconfig_static(void)
 	}
 
 	if (wait_for_all) {
-		wait_for_all_status = 1;
+		update_wait_for_all_status(1);
 	}
 
 	LEAVE();
@@ -770,7 +790,7 @@ static void votequorum_readconfig_dynamic(void)
 
 	icmap_get_uint32("quorum.expected_votes", &us->expected_votes);
 
-	ev_barrier = us->expected_votes;
+	update_ev_barrier(us->expected_votes);
 
 #ifdef EXPERIMENTAL_QUORUM_DEVICE_API
 	if (icmap_get_uint32("quorum.quorumdev_poll", &quorumdev_poll) != CS_OK) {
@@ -779,7 +799,7 @@ static void votequorum_readconfig_dynamic(void)
 #endif
 
 	icmap_get_uint8("quorum.two_node", &two_node);
-
+	update_two_node();
 	/*
 	 * two_node mode is invalid if there are more than 2 nodes in the cluster!
 	 */
@@ -790,6 +810,7 @@ static void votequorum_readconfig_dynamic(void)
 	if (two_node && cluster_members > 2) {
 		log_printf(LOGSYS_LEVEL_WARNING, "quorum.two_node was set but there are more than 2 nodes in the cluster. It will be ignored.");
 		two_node = 0;
+		update_two_node();
 	}
 
 	LEAVE();
@@ -1104,7 +1125,7 @@ static void message_handler_req_exec_votequorum_nodeinfo (
 	if ((wait_for_all) &&
 	    (!req_exec_quorum_nodeinfo->wait_for_all_status) &&
 	    (req_exec_quorum_nodeinfo->quorate)) {
-		wait_for_all_status = 0;
+		update_wait_for_all_status(0);
 	}
 
 	LEAVE();
@@ -1151,7 +1172,7 @@ static void message_handler_req_exec_votequorum_reconfigure (
 			}
 		}
 		votequorum_exec_send_expectedvotes_notification();
-		ev_barrier = req_exec_quorum_reconfigure->value;
+		update_ev_barrier(req_exec_quorum_reconfigure->value);
 		recalculate_quorum(1, 0);  /* Allow decrease */
 		break;
 
@@ -1199,6 +1220,8 @@ static char *votequorum_exec_init_fn (struct corosync_api_v1 *api)
 		LEAVE();
 		return ((char *)"Could not allocate node.");
 	}
+
+	icmap_set_uint32("runtime.votequorum.this_node_id", us->node_id);
 
 	us->state = NODESTATE_MEMBER;
 	us->votes = 1;
