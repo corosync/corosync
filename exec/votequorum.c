@@ -1166,8 +1166,7 @@ static void message_handler_req_exec_votequorum_reconfigure (
 	case VOTEQUORUM_RECONFIG_PARAM_EXPECTED_VOTES:
 		list_iterate(nodelist, &cluster_members_list) {
 			node = list_entry(nodelist, struct cluster_node, list);
-			if (node->state == NODESTATE_MEMBER &&
-			    node->expected_votes > req_exec_quorum_reconfigure->value) {
+			if (node->state == NODESTATE_MEMBER) {
 				node->expected_votes = req_exec_quorum_reconfigure->value;
 			}
 		}
@@ -1497,13 +1496,18 @@ static void message_handler_req_lib_votequorum_setexpected (void *conn, const vo
 	cs_error_t error = CS_OK;
 	unsigned int newquorum;
 	unsigned int total_votes;
+	uint8_t leave_remove_status = 0;
 
 	ENTER();
+
+	leave_remove_status = leave_remove;
+	leave_remove = 0;
 
 	/*
 	 * Validate new expected votes
 	 */
 	newquorum = calculate_quorum(1, req_lib_votequorum_setexpected->expected_votes, &total_votes);
+	leave_remove = leave_remove_status;
 	if (newquorum < total_votes / 2 ||
 	    newquorum > total_votes) {
 		error = CS_ERR_INVALID_PARAM;
