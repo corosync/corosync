@@ -355,7 +355,7 @@ static int display_quorum_data(int is_quorate, int loop)
  *         0 if not quorate
  *        -1 on error
  */
-static int show_status(void)
+static int show_status(nodeid_format_t nodeid_format, name_format_t name_format)
 {
 	int is_quorate;
 	int err;
@@ -390,10 +390,11 @@ quorum_err:
 	}
 
 	err = display_quorum_data(is_quorate, 0);
-
 	if (err != CS_OK) {
 		return err;
 	}
+	display_nodes_data(nodeid_format, name_format);
+
 	return is_quorate;
 }
 
@@ -402,7 +403,7 @@ static int monitor_status(nodeid_format_t nodeid_format, name_format_t name_form
 	int loop = 0;
 
 	if (q_type == QUORUM_FREE) {
-		show_status();
+		show_status(nodeid_format, name_format);
 		printf("\nQuorum is not configured - cannot monitor\n");
 		return 0;
 	}
@@ -606,7 +607,7 @@ int main (int argc, char *argv[]) {
 		ret = show_nodes(nodeid_format, address_format);
 		break;
 	case CMD_SHOWSTATUS:
-		ret = show_status();
+		ret = show_status(nodeid_format, address_format);
 		break;
 	case CMD_SETVOTES:
 		ret = set_votes(nodeid, votes);
