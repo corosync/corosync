@@ -920,7 +920,7 @@ static int cpg_lib_exit_fn (void *conn)
 
 	log_printf(LOGSYS_LEVEL_DEBUG, "exit_fn for conn=%p", conn);
 
-	if (cpd->group_name.length > 0) {
+	if (cpd->group_name.length > 0 && cpd->cpd_state != CPD_STATE_LEAVE_STARTED) {
 		cpg_node_joinleave_send (cpd->pid, &cpd->group_name,
 				MESSAGE_REQ_EXEC_CPG_PROCLEAVE, CONFCHG_CPG_REASON_PROCDOWN);
 	}
