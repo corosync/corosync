@@ -433,7 +433,6 @@ static int corosync_main_config_set (
 
 parse_error:
 	*error_string = error_reason;
-	free(value);
 
 	return (-1);
 }
