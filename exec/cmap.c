@@ -338,7 +338,12 @@ static void message_handler_req_lib_cmap_adjust_int(void *conn, const void *mess
 	struct res_lib_cmap_adjust_int res_lib_cmap_adjust_int;
 	cs_error_t ret;
 
-	ret = icmap_adjust_int((char *)req_lib_cmap_adjust_int->key_name.value, req_lib_cmap_adjust_int->step);
+	if (icmap_is_key_ro((char *)req_lib_cmap_adjust_int->key_name.value)) {
+		ret = CS_ERR_ACCESS;
+	} else {
+		ret = icmap_adjust_int((char *)req_lib_cmap_adjust_int->key_name.value,
+		    req_lib_cmap_adjust_int->step);
+	}
 
 	memset(&res_lib_cmap_adjust_int, 0, sizeof(res_lib_cmap_adjust_int));
 	res_lib_cmap_adjust_int.header.size = sizeof(res_lib_cmap_adjust_int);
