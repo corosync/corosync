@@ -1074,10 +1074,6 @@ static int test9 (pid_t pid, pid_t old_pid, int test_n) {
 
 		if (instance_id == 3) {
 			qb_log (LOG_INFO, "iid %d: mark failed", instance_id);
-			if (err != CS_OK) {
-				qb_log (LOG_ERR, "Can't start hc. Error %d", err);
-				return 2;
-			}
 			err = sam_mark_failed ();
 			if (err != CS_OK) {
 				qb_log (LOG_ERR, "Can't mark failed. Error %d", err);
