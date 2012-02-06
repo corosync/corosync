@@ -222,6 +222,7 @@ static int32_t wd_resource_state_is_ok (struct resource *ref)
 			"last_updated %"PRIu64" ms too late, period:%"PRIu64".",
 			(uint64_t)(my_time/MILLI_2_NANO_SECONDS - ((last_updated + allowed_period) / MILLI_2_NANO_SECONDS)),
 			ref->check_timeout);
+		free(state);
 		return CS_FALSE;
 	}
 
