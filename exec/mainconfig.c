@@ -222,7 +222,6 @@ static int corosync_main_config_format_set (
 	return (0);
 
 parse_error:
-	free(value);
 	*error_string = error_reason;
 
 	return (-1);
