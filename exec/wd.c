@@ -203,6 +203,7 @@ static int32_t wd_resource_state_is_ok (struct resource *ref)
 		*/
 		return CS_FALSE;
 	}
+	free (state);
 
 	if (last_updated == 0) {
 		/* initial value */
