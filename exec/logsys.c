@@ -112,6 +112,7 @@ static pthread_mutex_t logsys_config_mutex = PTHREAD_MUTEX_INITIALIZER;
 static int32_t _logsys_config_mode_set_unlocked(int32_t subsysid, uint32_t new_mode);
 static void _logsys_config_apply_per_file(int32_t s, const char *filename);
 static void _logsys_config_apply_per_subsys(int32_t s);
+static void _logsys_subsys_filename_add (int32_t s, const char *filename);
 
 static char *format_buffer=NULL;
 
@@ -275,6 +276,15 @@ int _logsys_system_setup(
 	    (strlen(mainsystem) >= LOGSYS_MAX_SUBSYS_NAMELEN)) {
 		return -1;
 	}
+	/*
+	 * Setup libqb as a subsys
+	 */
+	i = _logsys_subsys_create ("QB", "loop");
+	_logsys_subsys_filename_add (i, "ipc");
+	_logsys_subsys_filename_add (i, "log");
+	_logsys_subsys_filename_add (i, "trie.c");
+	_logsys_subsys_filename_add (i, "map.c");
+	_logsys_subsys_filename_add (i, "ringbuffer");
 
 	i = LOGSYS_MAX_SUBSYS_COUNT;
 
