@@ -52,6 +52,7 @@
 #include <arpa/inet.h>
 #include <pthread.h>
 
+#include <qb/qblog.h>
 #include <qb/qbutil.h>
 
 #include <corosync/corotypes.h>
@@ -147,14 +148,6 @@ static struct cpg_name group_name = {
 	.length = 6
 };
 
-
-static void libqb_log_writer(const char *file_name,
-			     int32_t file_line,
-			     int32_t severity, const char *msg)
-{
-	printf("libqb: %s:%d [%d] %s\n", file_name, file_line, severity, msg);
-}
-
 static void* dispatch_thread (void *arg)
 {
 	cpg_dispatch (handle, CPG_DISPATCH_BLOCKING);
@@ -166,7 +159,11 @@ int main (void) {
 	int i;
 	unsigned int res;
 
-	qb_util_set_log_function(libqb_log_writer);
+	qb_log_init("cpgbench", LOG_USER, LOG_EMERG);
+	qb_log_ctl(QB_LOG_SYSLOG, QB_LOG_CONF_ENABLED, QB_FALSE);
+	qb_log_filter_ctl(QB_LOG_STDERR, QB_LOG_FILTER_ADD,
+			  QB_LOG_FILTER_FILE, "*", LOG_DEBUG);
+	qb_log_ctl(QB_LOG_STDERR, QB_LOG_CONF_ENABLED, QB_TRUE);
 
 	size = 64;
 	signal (SIGALRM, sigalrm_handler);
