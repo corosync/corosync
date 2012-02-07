@@ -142,10 +142,9 @@ static void show_usage(const char *name)
 static int get_quorum_type(char *quorum_type, size_t quorum_type_len)
 {
 	int err;
-	char *str;
+	char *str = NULL;
 
 	if ((!quorum_type) || (quorum_type_len <= 0)) {
-		errno = EINVAL;
 		return -1;
 	}
 
@@ -155,6 +154,10 @@ static int get_quorum_type(char *quorum_type, size_t quorum_type_len)
 
 	if ((err = cmap_get_string(cmap_handle, "quorum.provider", &str)) != CS_OK) {
 		goto out;
+	}
+
+	if (!str) {
+		return -1;
 	}
 
 	strncpy(quorum_type, str, quorum_type_len - 1);
@@ -173,6 +176,8 @@ static int using_votequorum(void)
 {
 	char quorumtype[256];
 	int using_voteq;
+
+	memset(quorumtype, 0, sizeof(quorumtype));
 
 	if (get_quorum_type(quorumtype, sizeof(quorumtype))) {
 		return -1;
@@ -311,14 +316,16 @@ static int display_quorum_data(int is_quorate, int loop)
 {
 	struct votequorum_info info;
 	int err;
-	char quorum_type[256];
+	char quorumtype[256];
+
+	memset(quorumtype, 0, sizeof(quorumtype));
 
 	if (!loop) {
 		printf("Version:          %s\n", VERSION);
-		if (get_quorum_type(quorum_type, sizeof(quorum_type))) {
-			strncpy(quorum_type, "Not configured", sizeof(quorum_type) - 1);
+		if (get_quorum_type(quorumtype, sizeof(quorumtype))) {
+			strncpy(quorumtype, "Not configured", sizeof(quorumtype) - 1);
 		}
-		printf("Quorum type:      %s\n", quorum_type);
+		printf("Quorum type:      %s\n", quorumtype);
 	}
 
 	printf("Nodes:            %d\n", g_view_list_entries);
