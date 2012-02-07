@@ -434,10 +434,7 @@ static int monitor_status(nodeid_format_t nodeid_format, name_format_t name_form
 	}
 
 quorum_err:
-	if (err != CS_OK) {
-		return -1;
-	}
-	return g_quorate;
+	return -1;
 }
 
 static int show_nodes(nodeid_format_t nodeid_format, name_format_t name_format)
