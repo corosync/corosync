@@ -453,7 +453,11 @@ static int show_nodes(nodeid_format_t nodeid_format, name_format_t name_format)
 
 	g_called = 0;
 	while (g_called == 0) {
-		quorum_dispatch(q_handle, CS_DISPATCH_ONE);
+		err = quorum_dispatch(q_handle, CS_DISPATCH_ONE);
+		if (err != CS_OK) {
+			fprintf(stderr, "quorum_dispatch FAILED: %d\n", err);
+			goto err_exit;
+		}
 	}
 
 	display_nodes_data(nodeid_format, name_format);
