@@ -52,8 +52,15 @@ SUBDIRS			= include common_lib lib exec tools test cts pkgconfig \
 			  man init conf
 
 coverity:
+	rm -rf cov
+	make clean
 	cov-build --dir=cov make
-	cov-analyze --dir cov --concurrency --wait-for-license
+	cov-analyze --dir cov \
+		    --concurrency \
+		    --all \
+		    --aggressiveness-level high \
+		    --security \
+		    --wait-for-license
 	cov-format-errors --dir cov
 
 install-exec-local:
