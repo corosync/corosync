@@ -1039,7 +1039,7 @@ static void message_handler_req_exec_votequorum_nodeinfo (
 	unsigned int nodeid)
 {
 	const struct req_exec_quorum_nodeinfo *req_exec_quorum_nodeinfo = message;
-	struct cluster_node *node;
+	struct cluster_node *node = NULL;
 	int old_votes;
 	int old_expected;
 	uint16_t old_flags;
@@ -1070,10 +1070,17 @@ static void message_handler_req_exec_votequorum_nodeinfo (
 		return;
 	}
 
-	old_votes = node->votes;
-	old_expected = node->expected_votes;
-	old_state = node->state;
-	old_flags = node->flags;
+	if (new_node) {
+		old_votes = 0;
+		old_expected = 0;
+		old_state = NODESTATE_DEAD;
+		old_flags = 0;
+	} else {
+		old_votes = node->votes;
+		old_expected = node->expected_votes;
+		old_state = node->state;
+		old_flags = node->flags;
+	}
 
 	/* Update node state */
 	node->votes = req_exec_quorum_nodeinfo->votes;
