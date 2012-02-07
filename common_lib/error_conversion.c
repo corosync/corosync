@@ -52,6 +52,7 @@ cs_error_t qb_to_cs_error (int result)
 	case ENOMEM:
 		err = CS_ERR_NO_MEMORY;
 		break;
+	case ENOBUFS:
 	case ETIMEDOUT:
 	case EAGAIN:
 		err = CS_ERR_TRY_AGAIN;
@@ -76,9 +77,6 @@ cs_error_t qb_to_cs_error (int result)
 		break;
 	case EEXIST:
 		err = CS_ERR_EXIST;
-		break;
-	case ENOBUFS:
-		err = CS_ERR_QUEUE_FULL;
 		break;
 	case ENOSPC:
 		err = CS_ERR_NO_SPACE;
