@@ -165,8 +165,12 @@ int main(int argc, char *argv[])
 	printf("Waiting for votequorum events, press ^C to finish\n");
 	printf("-------------------\n");
 
-	while (1)
-		votequorum_dispatch(g_handle, CS_DISPATCH_ALL);
+	while (1) {
+		if (votequorum_dispatch(g_handle, CS_DISPATCH_ALL) != CS_OK) {
+			fprintf(stderr, "votequorum_dispatch error\n");
+			return -1;
+		}
+	}
 
 	return 0;
 }
