@@ -67,26 +67,7 @@ enum e_corosync_done {
 	COROSYNC_DONE_SERVICE_ENGINE_INIT = 20
 };
 
-static inline cs_error_t hdb_error_to_cs (int res)		\
-{								\
-	if (res == 0) {						\
-		return (CS_OK);					\
-	} else {						\
-		if (res == -EBADF) {				\
-			return (CS_ERR_BAD_HANDLE);		\
-		} else						\
-		if (res == -ENOMEM) {				\
-			return (CS_ERR_NO_MEMORY);		\
-		} else						\
-		if (res == -EMFILE) {				\
-			return (CS_ERR_NO_RESOURCES);		\
-		} else						\
-		if (res == -EACCES) {				\
-			return (CS_ERR_ACCESS);			\
-		}						\
-		return (CS_ERR_LIBRARY);			\
-	}							\
-}
+cs_error_t hdb_error_to_cs (int res);
 
 /**
  * Compare two names.  returns non-zero on match.

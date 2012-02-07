@@ -111,4 +111,21 @@ cs_error_t qb_to_cs_error (int result)
 	return err;
 }
 
+cs_error_t hdb_error_to_cs (int res)
+{
+	if (res == 0) {
+		return (CS_OK);
+	} else {
+		if (res == -EBADF) {
+			return (CS_ERR_BAD_HANDLE);
+		} else if (res == -ENOMEM) {
+			return (CS_ERR_NO_MEMORY);
+		} else 	if (res == -EMFILE) {
+			return (CS_ERR_NO_RESOURCES);
+		} else	if (res == -EACCES) {
+			return (CS_ERR_ACCESS);
+		}
+		return (CS_ERR_LIBRARY);
+	}
+}
 
