@@ -1118,10 +1118,6 @@ static void message_handler_req_exec_votequorum_nodeinfo (
 		recalculate_quorum(allow_downgrade, by_node);
 	}
 
-	if (!nodeid) {
-		free(node);
-	}
-
 	if ((wait_for_all) &&
 	    (!req_exec_quorum_nodeinfo->wait_for_all_status) &&
 	    (req_exec_quorum_nodeinfo->quorate)) {
