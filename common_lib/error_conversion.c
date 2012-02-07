@@ -127,3 +127,100 @@ cs_error_t hdb_error_to_cs (int res)
 	}
 }
 
+const char * cs_strerror(cs_error_t err)
+{
+	switch (err) {
+	case CS_OK:
+		return "success";
+
+	case CS_ERR_LIBRARY:
+		return "CS_ERR_LIBRARY";
+
+	case CS_ERR_VERSION:
+		return "CS_ERR_VERSION";
+
+	case CS_ERR_INIT:
+		return "CS_ERR_INIT";
+
+	case CS_ERR_NO_MEMORY:
+		return "CS_ERR_NO_MEMORY";
+
+	case CS_ERR_NAME_TOO_LONG :
+		return "CS_ERR_NAME_TOO_LONG ";
+
+	case CS_ERR_TIMEOUT:
+		return "CS_ERR_TIMEOUT";
+
+	case CS_ERR_TRY_AGAIN:
+		return "CS_ERR_TRY_AGAIN";
+
+	case CS_ERR_INVALID_PARAM:
+		return "CS_ERR_INVALID_PARAM";
+
+	case CS_ERR_BAD_HANDLE:
+		return "CS_ERR_BAD_HANDLE";
+
+	case CS_ERR_BUSY :
+		return "CS_ERR_BUSY ";
+
+	case CS_ERR_ACCESS :
+		return "CS_ERR_ACCESS ";
+
+	case CS_ERR_NOT_EXIST :
+		return "CS_ERR_NOT_EXIST ";
+
+	case CS_ERR_EXIST :
+		return "CS_ERR_EXIST ";
+
+	case CS_ERR_NO_SPACE :
+		return "CS_ERR_NO_SPACE ";
+
+	case CS_ERR_INTERRUPT :
+		return "CS_ERR_INTERRUPT ";
+
+	case CS_ERR_NAME_NOT_FOUND :
+		return "CS_ERR_NAME_NOT_FOUND ";
+
+	case CS_ERR_NO_RESOURCES :
+		return "CS_ERR_NO_RESOURCES ";
+
+	case CS_ERR_NOT_SUPPORTED :
+		return "CS_ERR_NOT_SUPPORTED ";
+
+	case CS_ERR_BAD_OPERATION :
+		return "CS_ERR_BAD_OPERATION ";
+
+	case CS_ERR_FAILED_OPERATION :
+		return "CS_ERR_FAILED_OPERATION ";
+
+	case CS_ERR_MESSAGE_ERROR :
+		return "CS_ERR_MESSAGE_ERROR ";
+
+	case CS_ERR_QUEUE_FULL :
+		return "CS_ERR_QUEUE_FULL ";
+
+	case CS_ERR_QUEUE_NOT_AVAILABLE :
+		return "CS_ERR_QUEUE_NOT_AVAILABLE ";
+
+	case CS_ERR_BAD_FLAGS :
+		return "CS_ERR_BAD_FLAGS ";
+
+	case CS_ERR_TOO_BIG :
+		return "CS_ERR_TOO_BIG ";
+
+	case CS_ERR_NO_SECTIONS :
+		return "CS_ERR_NO_SECTIONS ";
+
+	case CS_ERR_CONTEXT_NOT_FOUND :
+		return "CS_ERR_CONTEXT_NOT_FOUND ";
+
+	case CS_ERR_TOO_MANY_GROUPS :
+		return "CS_ERR_TOO_MANY_GROUPS ";
+
+	case CS_ERR_SECURITY :
+		return "CS_ERR_SECURITY ";
+
+	default:
+		return "unknown error";
+	}
+}
