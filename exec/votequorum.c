@@ -1307,11 +1307,11 @@ static void votequorum_confchg_fn (
 		votequorum_exec_send_nodeinfo();
 	}
 
+	memcpy(&quorum_ringid, ring_id, sizeof(*ring_id));
+
 	if (left_list_entries) {
 		recalculate_quorum(0, 0);
 	}
-
-	memcpy(&quorum_ringid, ring_id, sizeof(*ring_id));
 
 	if (configuration_type == TOTEM_CONFIGURATION_REGULAR) {
 		quorum_callback(quorum_members, quorum_members_entries,
