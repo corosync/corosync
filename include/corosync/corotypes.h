@@ -66,7 +66,8 @@ typedef struct {
 typedef enum {
 	CS_DISPATCH_ONE = 1,
 	CS_DISPATCH_ALL = 2,
-	CS_DISPATCH_BLOCKING = 3
+	CS_DISPATCH_BLOCKING = 3,
+	CS_DISPATCH_ONE_NONBLOCKING = 4
 } cs_dispatch_flags_t;
 
 #define CS_TRACK_CURRENT 0x01

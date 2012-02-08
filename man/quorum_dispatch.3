@@ -81,6 +81,10 @@ Dispatch all waiting callbacks without blocking to wait for any callbacks.
 Dispatch all callbacks blocking indefinitely.  This is used in a threaded
 program where a thread is created, and then quorum_dispatch() is called immediately
 from the created thread to execute callbacks.
+.TP
+.B CS_DISPATCH_ONE_NONBLOCKING
+Dispatch at most one callback. If there is no pending callback,
+CS_ERR_TRY_AGAIN is returned.
 
 .SH RETURN VALUE
 This call returns the CS_OK value if successful, otherwise an error is returned.

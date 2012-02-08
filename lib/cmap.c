@@ -190,10 +190,10 @@ cs_error_t cmap_dispatch (
 	}
 
 	/*
-	 * Timeout instantly for CS_DISPATCH_ONE or CS_DISPATCH_ALL and
-	 * wait indefinitely for CS_DISPATCH_BLOCKING
+	 * Timeout instantly for CS_DISPATCH_ONE_NONBLOCKING or CS_DISPATCH_ALL and
+	 * wait indefinately for CS_DISPATCH_ONE or CS_DISPATCH_BLOCKING
 	 */
-	if (dispatch_types == CS_DISPATCH_ALL) {
+	if (dispatch_types == CS_DISPATCH_ALL || dispatch_types == CS_DISPATCH_ONE_NONBLOCKING) {
 		timeout = 0;
 	}
 
@@ -210,6 +210,12 @@ cs_error_t cmap_dispatch (
 			goto error_put;
 		}
 		if (error == CS_ERR_TRY_AGAIN) {
+			if (dispatch_types == CS_DISPATCH_ONE_NONBLOCKING) {
+				/*
+				 * Don't mask error
+				 */
+				goto error_put;
+			}
 			error = CS_OK;
 			if (dispatch_types == CS_DISPATCH_ALL) {
 				break; /* exit do while cont is 1 loop */
@@ -268,7 +274,7 @@ cs_error_t cmap_dispatch (
 		/*
 		 * Determine if more messages should be processed
 		 */
-		if (dispatch_types == CS_DISPATCH_ONE) {
+		if (dispatch_types == CS_DISPATCH_ONE || dispatch_types == CS_DISPATCH_ONE_NONBLOCKING) {
 			cont = 0;
 		}
 	} while (cont);

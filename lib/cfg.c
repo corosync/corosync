@@ -158,9 +158,10 @@ corosync_cfg_dispatch (
 	}
 
 	/*
-	 * Timeout instantly for CS_DISPATCH_ALL
+	 * Timeout instantly for CS_DISPATCH_ONE_NONBLOCKING or CS_DISPATCH_ALL and
+	 * wait indefinately for CS_DISPATCH_ONE or CS_DISPATCH_BLOCKING
 	 */
-	if (dispatch_flags == CS_DISPATCH_ALL) {
+	if (dispatch_flags == CS_DISPATCH_ALL || dispatch_flags == CS_DISPATCH_ONE_NONBLOCKING) {
 		timeout = 0;
 	}
 
@@ -176,6 +177,12 @@ corosync_cfg_dispatch (
 			goto error_put;
 		}
 		if (error == CS_ERR_TRY_AGAIN) {
+			if (dispatch_flags == CS_DISPATCH_ONE_NONBLOCKING) {
+				/*
+				 * Don't mask error
+				 */
+				goto error_put;
+			}
 			error = CS_OK;
 			if (dispatch_flags == CS_DISPATCH_ALL) {
 				break; /* exit do while cont is 1 loop */
@@ -215,7 +222,7 @@ corosync_cfg_dispatch (
 		/*
 		 * Determine if more messages should be processed
 		 */
-		if (dispatch_flags == CS_DISPATCH_ONE) {
+		if (dispatch_flags == CS_DISPATCH_ONE || dispatch_flags == CS_DISPATCH_ONE_NONBLOCKING) {
 			cont = 0;
 		}
 	} while (cont);
