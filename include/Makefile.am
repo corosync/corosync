@@ -31,13 +31,13 @@
 
 MAINTAINERCLEANFILES    = Makefile.in corosync/config.h.in
 
-CS_H			= hdb.h cs_config.h cpg.h cfg.h evs.h mar_gen.h swab.h 	\
+CS_H			= hdb.h cs_config.h cpg.h cfg.h evs.h swab.h 	\
 			corodefs.h \
 			list.h corotypes.h quorum.h votequorum.h sam.h cmap.h
 
 CS_INTERNAL_H		= ipc_cfg.h ipc_cpg.h ipc_evs.h ipc_pload.h ipc_quorum.h 	\
 			jhash.h pload.h quorum.h sq.h ipc_votequorum.h ipc_cmap.h \
-			logsys.h coroapi.h icmap.h
+			logsys.h coroapi.h icmap.h mar_gen.h
 
 ENGINE_H		= quorum.h
 
