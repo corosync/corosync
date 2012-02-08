@@ -270,7 +270,6 @@ The Corosync Cluster Engine APIs.
 %{_includedir}/corosync/cpg.h
 %{_includedir}/corosync/evs.h
 %{_includedir}/corosync/hdb.h
-%{_includedir}/corosync/list.h
 %{_includedir}/corosync/sam.h
 %{_includedir}/corosync/swab.h
 %{_includedir}/corosync/quorum.h
