@@ -54,6 +54,7 @@
 #include <sched.h>
 #include <time.h>
 
+#include "quorum.h"
 #include <corosync/corotypes.h>
 #include <qb/qbipc_common.h>
 #include <corosync/corodefs.h>
@@ -64,7 +65,6 @@
 #include <corosync/mar_gen.h>
 #include <corosync/coroapi.h>
 #include <corosync/logsys.h>
-#include <corosync/engine/quorum.h>
 #include <corosync/icmap.h>
 
 #include "service.h"

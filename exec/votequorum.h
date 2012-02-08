@@ -34,6 +34,7 @@
 #ifndef VOTEQUORUM_H_DEFINED
 #define VOTEQUORUM_H_DEFINED
 
+#include "quorum.h"
 #include <corosync/logsys.h>
 #include <corosync/list.h>
 #include <corosync/coroapi.h>

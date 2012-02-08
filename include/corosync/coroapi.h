@@ -163,10 +163,9 @@ typedef enum {
 #ifndef QUORUM_H_DEFINED
 typedef void (*quorum_callback_fn_t) (int quorate, void *context);
 
-struct quorum_callin_functions
-{
+struct quorum_callin_functions {
 	int (*quorate) (void);
-	int (*register_callback) (quorum_callback_fn_t callback_fn, void *context);
+	int (*register_callback) (quorum_callback_fn_t callback_fn, void *contexxt);
 	int (*unregister_callback) (quorum_callback_fn_t callback_fn, void *context);
 };
 
@@ -177,6 +176,7 @@ typedef void (*sync_callback_fn_t) (
 	struct memb_ring_id *ring_id);
 
 #endif /* QUORUM_H_DEFINED */
+
 
 struct corosync_api_v1 {
 	/*

@@ -56,12 +56,12 @@
 #include <sched.h>
 #include <time.h>
 
+#include "quorum.h"
 #include <corosync/logsys.h>
 #include <corosync/corotypes.h>
 #include <qb/qbipc_common.h>
 #include <corosync/mar_gen.h>
 #include <corosync/coroapi.h>
-#include <corosync/engine/quorum.h>
 #include <corosync/swab.h>
 
 #include "vsf_ykd.h"

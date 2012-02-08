@@ -39,6 +39,10 @@ struct memb_ring_id;
 
 typedef void (*quorum_callback_fn_t) (int quorate, void *context);
 
+typedef void (*quorum_set_quorate_fn_t) (const unsigned int *view_list,
+                                         size_t view_list_entries,
+                                         int quorate, struct memb_ring_id *);
+
 struct quorum_callin_functions
 {
 	int (*quorate) (void);

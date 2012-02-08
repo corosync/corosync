@@ -42,11 +42,11 @@
 #include <qb/qbdefs.h>
 #include <qb/qbutil.h>
 
+#include "quorum.h"
 #include <corosync/corodefs.h>
 #include <corosync/list.h>
 #include <corosync/logsys.h>
 #include <corosync/coroapi.h>
-#include <corosync/engine/quorum.h>
 #include <corosync/icmap.h>
 #include <corosync/ipc_votequorum.h>
 
