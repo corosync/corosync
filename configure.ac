@@ -131,6 +131,7 @@ AC_CONFIG_FILES([Makefile
 		 include/Makefile
 		 init/Makefile
 		 lib/Makefile
+		 common_lib/Makefile
 		 man/Makefile
 		 pkgconfig/Makefile
 		 test/Makefile
