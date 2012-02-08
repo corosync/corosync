@@ -158,7 +158,7 @@ cs_error_t cpg_model_initialize (
 	struct cpg_inst *cpg_inst;
 
 	if (model != CPG_MODEL_V1) {
-		error = CPG_ERR_INVALID_PARAM;
+		error = CS_ERR_INVALID_PARAM;
 		goto error_no_destroy;
 	}
 
@@ -227,7 +227,7 @@ cs_error_t cpg_finalize (
 	 */
 	if (cpg_inst->finalize) {
 		hdb_handle_put (&cpg_handle_t_db, handle);
-		return (CPG_ERR_BAD_HANDLE);
+		return (CS_ERR_BAD_HANDLE);
 	}
 
 	cpg_inst->finalize = 1;
@@ -346,7 +346,7 @@ cs_error_t cpg_dispatch (
 	 * Timeout instantly for CS_DISPATCH_ONE or CS_DISPATCH_ALL and
 	 * wait indefinately for CS_DISPATCH_BLOCKING
 	 */
-	if (dispatch_types == CPG_DISPATCH_ALL) {
+	if (dispatch_types == CS_DISPATCH_ALL) {
 		timeout = 0;
 	}
 
@@ -364,7 +364,7 @@ cs_error_t cpg_dispatch (
 		}
 		if (error == CS_ERR_TRY_AGAIN) {
 			error = CS_OK;
-			if (dispatch_types == CPG_DISPATCH_ALL) {
+			if (dispatch_types == CS_DISPATCH_ALL) {
 				break; /* exit do while cont is 1 loop */
 			} else {
 				continue; /* next poll */
@@ -521,7 +521,7 @@ cs_error_t cpg_join (
 		if (error != CS_OK) {
 			goto error_exit;
 		}
-	} while (response.header.error == CPG_ERR_BUSY);
+	} while (response.header.error == CS_ERR_BUSY);
 
 	error = response.header.error;
 
@@ -562,7 +562,7 @@ cs_error_t cpg_leave (
 		if (error != CS_OK) {
 			goto error_exit;
 		}
-	} while (res_lib_cpg_leave.header.error == CPG_ERR_BUSY);
+	} while (res_lib_cpg_leave.header.error == CS_ERR_BUSY);
 
 	error = res_lib_cpg_leave.header.error;
 
@@ -613,7 +613,7 @@ cs_error_t cpg_membership_get (
 		if (error != CS_OK) {
 			goto error_exit;
 		}
-	} while (res_lib_cpg_membership_get.header.error == CPG_ERR_BUSY);
+	} while (res_lib_cpg_membership_get.header.error == CS_ERR_BUSY);
 
 	error = res_lib_cpg_membership_get.header.error;
 

@@ -150,7 +150,7 @@ static struct cpg_name group_name = {
 
 static void* dispatch_thread (void *arg)
 {
-	cpg_dispatch (handle, CPG_DISPATCH_BLOCKING);
+	cpg_dispatch (handle, CS_DISPATCH_BLOCKING);
 	return NULL;
 }
 

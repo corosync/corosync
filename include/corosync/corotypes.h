@@ -210,29 +210,6 @@ static inline cs_error_t qb_to_cs_error (int result)
 	return err;
 }
 
-
-/*
- * DEPRECATED
- */
-#define CPG_DISPATCH_ONE			CS_DISPATCH_ONE
-#define CPG_DISPATCH_ALL			CS_DISPATCH_ALL
-#define CPG_DISPATCH_BLOCKING		CS_DISPATCH_BLOCKING
-#define CPG_OK						CS_OK
-#define CPG_ERR_LIBRARY				CS_ERR_LIBRARY
-#define CPG_ERR_TIMEOUT				CS_ERR_TIMEOUT
-#define CPG_ERR_TRY_AGAIN			CS_ERR_TRY_AGAIN
-#define CPG_ERR_INVALID_PARAM		CS_ERR_INVALID_PARAM
-#define CPG_ERR_NO_MEMORY			CS_ERR_NO_MEMORY
-#define CPG_ERR_BAD_HANDLE			CS_ERR_BAD_HANDLE
-#define CPG_ERR_ACCESS				CS_ERR_ACCESS
-#define CPG_ERR_BUSY				CS_ERR_BUSY
-#define CPG_ERR_NOT_EXIST			CS_ERR_NOT_EXIST
-#define CPG_ERR_EXIST				CS_ERR_EXIST
-#define CPG_ERR_NOT_SUPPORTED		CS_ERR_NOT_SUPPORTED
-#define CPG_ERR_SECURITY			CS_ERR_SECURITY
-#define CPG_ERR_TOO_MANY_GROUPS		CS_ERR_TOO_MANY_GROUPS
-#define cpg_error_t cs_error_t
-
 /*
  * static inline so multiple libraries can link into same binary
  */

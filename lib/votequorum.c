@@ -461,7 +461,7 @@ cs_error_t votequorum_dispatch (
 		}
 		if (error == CS_ERR_TRY_AGAIN) {
 			error = CS_OK;
-			if (dispatch_types == CPG_DISPATCH_ALL) {
+			if (dispatch_types == CS_DISPATCH_ALL) {
 				break; /* exit do while cont is 1 loop */
 			} else {
 				continue; /* next poll */

@@ -60,9 +60,9 @@ defined by the structure:
 .nf
 .ta 4n 30n 33n
 typedef enum {
-        CPG_DISPATCH_ONE,
-        CPG_DISPATCH_ALL,
-        CPG_DISPATCH_BLOCKING
+        CS_DISPATCH_ONE,
+        CS_DISPATCH_ALL,
+        CS_DISPATCH_BLOCKING
 } cpg_dispatch_t;
 .ta
 .fi
@@ -72,19 +72,19 @@ typedef enum {
 .PP
 The dispatch values have the following meanings:
 .TP
-.B CPG_DISPATCH_ONE
+.B CS_DISPATCH_ONE
 Dispatch atleast one callback, blocking until the callback is dispatched.
 .TP
-.B CPG_DISPATCH_ALL
+.B CS_DISPATCH_ALL
 Dispatch all waiting callbacks without blocking to wait for any callbacks.
 .TP
-.B CPG_DISPATCH_BLOCKING
+.B CS_DISPATCH_BLOCKING
 Dispatch all callbacks, blocking indefinitely.  This is used in a threaded
 program where a thread is created, and then cpg_dispatch() is called immediately
 from the created thread to execute callbacks.
 
 .SH RETURN VALUE
-This call returns the CPG_OK value if successful, otherwise an error is returned.
+This call returns the CS_OK value if successful, otherwise an error is returned.
 .PP
 .SH ERRORS
 The errors are undocumented.
