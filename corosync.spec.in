@@ -271,7 +271,6 @@ The Corosync Cluster Engine APIs.
 %{_includedir}/corosync/evs.h
 %{_includedir}/corosync/hdb.h
 %{_includedir}/corosync/sam.h
-%{_includedir}/corosync/swab.h
 %{_includedir}/corosync/quorum.h
 %{_includedir}/corosync/votequorum.h
 %dir %{_includedir}/corosync/totem/
