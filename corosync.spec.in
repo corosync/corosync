@@ -262,7 +262,6 @@ The Corosync Cluster Engine APIs.
 %defattr(-,root,root,-)
 %doc LICENSE
 %dir %{_includedir}/corosync/
-%{_includedir}/corosync/cs_config.h
 %{_includedir}/corosync/corodefs.h
 %{_includedir}/corosync/cfg.h
 %{_includedir}/corosync/cmap.h
