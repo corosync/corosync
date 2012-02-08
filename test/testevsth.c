@@ -103,11 +103,11 @@ struct iovec iov = {
 
 void *th_dispatch (void *arg)
 {
-	evs_error_t result;
+	cs_error_t result;
 	evs_handle_t handle = *(evs_handle_t *)arg;
 
 	printf ("THREAD DISPATCH starting.\n");
-	result = evs_dispatch (handle, EVS_DISPATCH_BLOCKING);
+	result = evs_dispatch (handle, CS_DISPATCH_BLOCKING);
 	printf ("THREAD DISPATCH return result is %d\n", result);
 	return (0);
 }
@@ -119,13 +119,13 @@ static struct sched_param sched_param = {
 int main (void)
 {
 	evs_handle_t handle;
-	evs_error_t result;
+	cs_error_t result;
 	int i = 0;
 	pthread_t dispatch_thread;
 	pthread_attr_t dispatch_thread_attribute;
 
 	result = evs_initialize (&handle, &callbacks);
-	if (result != EVS_OK) {
+	if (result != CS_OK) {
 		printf ("Couldn't initialize EVS service %d\n", result);
 		exit (0);
 	}
@@ -150,10 +150,10 @@ int main (void)
 		sprintf (buffer, "evs_mcast_joined: This is message %d", i);
 try_again_one:
 		result = evs_mcast_joined (handle, EVS_TYPE_AGREED, &iov, 1);
-		if (result == EVS_ERR_TRY_AGAIN) {
+		if (result == CS_ERR_TRY_AGAIN) {
 			goto try_again_one;
 		} else
-		if (result != EVS_OK) {
+		if (result != CS_OK) {
 			printf ("Got error result, exiting %d\n", result);
 			exit (1);
 		}
@@ -168,7 +168,7 @@ try_again_one:
 try_again_two:
 		result = evs_mcast_groups (handle, EVS_TYPE_AGREED,
 			 &groups[1], 1, &iov, 1);
-		if (result == EVS_ERR_TRY_AGAIN) {
+		if (result == CS_ERR_TRY_AGAIN) {
 			goto try_again_two;
 		}
 	}

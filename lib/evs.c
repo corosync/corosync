@@ -82,9 +82,9 @@ DECLARE_HDB_DATABASE (evs_handle_t_db,NULL);
  * test
  * @param handle The handle of evs initialize
  * @param callbacks The callbacks for evs_initialize
- * @returns EVS_OK
+ * @returns CS_OK
  */
-evs_error_t evs_initialize (
+cs_error_t evs_initialize (
 	evs_handle_t *handle,
 	evs_callbacks_t *callbacks)
 {
@@ -123,7 +123,7 @@ error_no_destroy:
 	return (error);
 }
 
-evs_error_t evs_finalize (
+cs_error_t evs_finalize (
 	evs_handle_t handle)
 {
 	struct evs_inst *evs_inst;
@@ -139,7 +139,7 @@ evs_error_t evs_finalize (
 	 */
 	if (evs_inst->finalize) {
 		hdb_handle_put (&evs_handle_t_db, handle);
-		return (EVS_ERR_BAD_HANDLE);
+		return (CS_ERR_BAD_HANDLE);
 	}
 
 	evs_inst->finalize = 1;
@@ -150,10 +150,10 @@ evs_error_t evs_finalize (
 
 	hdb_handle_put (&evs_handle_t_db, handle);
 
-	return (EVS_OK);
+	return (CS_OK);
 }
 
-evs_error_t evs_fd_get (
+cs_error_t evs_fd_get (
 	evs_handle_t handle,
 	int *fd)
 {
@@ -172,7 +172,7 @@ evs_error_t evs_fd_get (
 	return (CS_OK);
 }
 
-evs_error_t evs_context_get (
+cs_error_t evs_context_get (
 	evs_handle_t handle,
 	void **context)
 {
@@ -210,7 +210,7 @@ cs_error_t evs_context_set (
 	return (CS_OK);
 }
 
-evs_error_t evs_dispatch (
+cs_error_t evs_dispatch (
 	evs_handle_t handle,
 	cs_dispatch_flags_t dispatch_types)
 {
@@ -233,7 +233,7 @@ evs_error_t evs_dispatch (
 	 * Timeout instantly for CS_DISPATCH_ONE or CS_DISPATCH_ALL and
 	 * wait indefinately for CS_DISPATCH_BLOCKING
 	 */
-	if (dispatch_types == EVS_DISPATCH_ALL) {
+	if (dispatch_types == CS_DISPATCH_ALL) {
 		timeout = 0;
 	}
 
@@ -250,7 +250,7 @@ evs_error_t evs_dispatch (
 		}
 		if (error == CS_ERR_TRY_AGAIN) {
 			error = CS_OK;
-			if (dispatch_types == CPG_DISPATCH_ALL) {
+			if (dispatch_types == CS_DISPATCH_ALL) {
 				break; /* exit do while cont is 1 loop */
 			} else {
 				continue; /* next poll */
@@ -320,19 +320,19 @@ error_put:
 	return (error);
 }
 
-evs_error_t evs_join (
+cs_error_t evs_join (
     evs_handle_t handle,
     const struct evs_group *groups,
     size_t group_entries)
 {
-	evs_error_t error;
+	cs_error_t error;
 	struct evs_inst *evs_inst;
 	struct iovec iov[2];
 	struct req_lib_evs_join req_lib_evs_join;
 	struct res_lib_evs_join res_lib_evs_join;
 
 	error = hdb_error_to_cs(hdb_handle_get (&evs_handle_t_db, handle, (void *)&evs_inst));
-	if (error != EVS_OK) {
+	if (error != CS_OK) {
 		return (error);
 	}
 
@@ -361,12 +361,12 @@ error_exit:
 	return (error);
 }
 
-evs_error_t evs_leave (
+cs_error_t evs_leave (
     evs_handle_t handle,
     const struct evs_group *groups,
     size_t group_entries)
 {
-	evs_error_t error;
+	cs_error_t error;
 	struct evs_inst *evs_inst;
 	struct iovec iov[2];
 	struct req_lib_evs_leave req_lib_evs_leave;
@@ -402,14 +402,14 @@ error_exit:
 	return (error);
 }
 
-evs_error_t evs_mcast_joined (
+cs_error_t evs_mcast_joined (
 	evs_handle_t handle,
 	evs_guarantee_t guarantee,
 	const struct iovec *iovec,
 	unsigned int iov_len)
 {
 	int i;
-	evs_error_t error;
+	cs_error_t error;
 	struct evs_inst *evs_inst;
 	struct iovec iov[64];
 	struct req_lib_evs_mcast_joined req_lib_evs_mcast_joined;
@@ -453,7 +453,7 @@ error_exit:
 	return (error);
 }
 
-evs_error_t evs_mcast_groups (
+cs_error_t evs_mcast_groups (
 	evs_handle_t handle,
 	evs_guarantee_t guarantee,
 	const struct evs_group *groups,
@@ -462,7 +462,7 @@ evs_error_t evs_mcast_groups (
 	unsigned int iov_len)
 {
 	int i;
-	evs_error_t error;
+	cs_error_t error;
 	struct evs_inst *evs_inst;
 	struct iovec iov[64]; /* FIXME: what if iov_len > 62 ?  use malloc */
 	struct req_lib_evs_mcast_groups req_lib_evs_mcast_groups;
@@ -506,13 +506,13 @@ error_exit:
 	return (error);
 }
 
-evs_error_t evs_membership_get (
+cs_error_t evs_membership_get (
 	evs_handle_t handle,
 	unsigned int *local_nodeid,
 	unsigned int *member_list,
 	size_t *member_list_entries)
 {
-	evs_error_t error;
+	cs_error_t error;
 	struct evs_inst *evs_inst;
 	struct iovec iov;
 	struct req_lib_evs_membership_get req_lib_evs_membership_get;
