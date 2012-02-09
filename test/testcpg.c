@@ -165,11 +165,36 @@ static void sigintr_handler (int signum) {
 }
 static struct cpg_name group_name;
 
+
+#define cs_repeat_init(counter, max, code) do {    \
+	code;                                 \
+	if (result == CS_ERR_TRY_AGAIN || result == CS_ERR_QUEUE_FULL || result == CS_ERR_LIBRARY) {  \
+		counter++;                    \
+		printf("Retrying operation after %ds\n", counter); \
+		sleep(counter);               \
+	} else {                              \
+		break;                        \
+	}                                     \
+} while (counter < max)
+
+#define cs_repeat(counter, max, code) do {    \
+	code;                                 \
+	if (result == CS_ERR_TRY_AGAIN || result == CS_ERR_QUEUE_FULL) {  \
+		counter++;                    \
+		printf("Retrying operation after %ds\n", counter); \
+		sleep(counter);               \
+	} else {                              \
+		break;                        \
+	}                                     \
+} while (counter < max)
+
+
 int main (int argc, char *argv[]) {
 	cpg_handle_t handle;
 	fd_set read_fds;
 	int select_fd;
 	int result;
+	int retries;
 	const char *options = "i";
 	int opt;
 	unsigned int nodeid;
@@ -195,27 +220,30 @@ int main (int argc, char *argv[]) {
 		group_name.length = 6;
 	}
 
-	result = cpg_model_initialize (&handle, CPG_MODEL_V1, (cpg_model_data_t *)&model_data, NULL);
+	retries = 0;
+	cs_repeat_init(retries, 30, result = cpg_model_initialize (&handle, CPG_MODEL_V1, (cpg_model_data_t *)&model_data, NULL));
 	if (result != CS_OK) {
 		printf ("Could not initialize Cluster Process Group API instance error %d\n", result);
 		exit (1);
 	}
-	result = cpg_local_get (handle, &nodeid);
+	retries = 0;
+	cs_repeat(retries, 30, result = cpg_local_get(handle, &nodeid));
 	if (result != CS_OK) {
 		printf ("Could not get local node id\n");
 		exit (1);
 	}
-
 	printf ("Local node id is %x\n", nodeid);
-	result = cpg_join(handle, &group_name);
+
+	retries = 0;
+	cs_repeat(retries, 30, result = cpg_join(handle, &group_name));
 	if (result != CS_OK) {
 		printf ("Could not join process group, error %d\n", result);
 		exit (1);
 	}
 
-	sleep (1);
-	result = cpg_membership_get (handle, &group_name,
-		(struct cpg_address *)&member_list, &member_list_entries);
+	retries = 0;
+	cs_repeat(retries, 30, result = cpg_membership_get (handle, &group_name,
+		(struct cpg_address *)&member_list, &member_list_entries));
 	if (result != CS_OK) {
 		printf ("Could not get current membership list %d\n", result);
 		exit (1);
