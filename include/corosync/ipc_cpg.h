@@ -189,26 +189,6 @@ struct res_lib_cpg_finalize {
 	struct qb_ipc_response_header header __attribute__((aligned(8)));
 };
 
-struct req_lib_cpg_trackstart {
-	struct qb_ipc_request_header header __attribute__((aligned(8)));
-	mar_cpg_name_t group_name __attribute__((aligned(8)));
-	mar_uint32_t pid __attribute__((aligned(8)));
-};
-
-struct res_lib_cpg_trackstart {
-	struct qb_ipc_response_header header __attribute__((aligned(8)));
-};
-
-struct req_lib_cpg_trackstop {
-	struct qb_ipc_request_header header __attribute__((aligned(8)));
-	mar_cpg_name_t group_name __attribute__((aligned(8)));
-	mar_uint32_t pid __attribute__((aligned(8)));
-};
-
-struct res_lib_cpg_trackstop {
-	struct qb_ipc_response_header header __attribute__((aligned(8)));
-};
-
 struct req_lib_cpg_local_get {
 	struct qb_ipc_request_header header __attribute__((aligned(8)));
 };
