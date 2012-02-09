@@ -31,7 +31,7 @@
 .\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 .\" * THE POSSIBILITY OF SUCH DAMAGE.
 .\" */
-.TH QUORUM_INITIALIZE 3 2012-01-12 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
+.TH QUORUM_INITIALIZE 3 @BUILDDATE@ "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
 .SH NAME
 quorum_initialize \- Create a new connection to the Quorum service
 .SH SYNOPSIS
@@ -116,11 +116,8 @@ function.
 .SH RETURN VALUE
 This call returns the CS_OK value if successful, otherwise an error is returned.
 .PP
-.SH BUGS
-Callbacks are not support at the moment.
-.PP
 .SH ERRORS
-The errors are undocumented.
+@COMMONIPCERRORS@
 .SH "SEE ALSO"
 .BR quorum_finalize (3),
 .BR quorum_fd_get (3),
