@@ -141,6 +141,7 @@ dist_man_MANS 		= $(xml_man) \
 			  corosync_overview.8 \
 			  cpg_overview.8 \
 			  evs_overview.8 \
+			  quorum_overview.8 \
 			  votequorum_overview.8 \
 			  sam_overview.8 \
 			  cmap_overview.8
