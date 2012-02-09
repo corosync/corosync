@@ -66,6 +66,7 @@ AC_CHECK_PROGS([PKGCONFIG], [pkg-config])
 AC_CHECK_PROGS([AUGTOOL], [augtool])
 AC_CHECK_PROGS([DOT], [dot])
 AC_CHECK_PROGS([DOXYGEN], [doxygen])
+AC_CHECK_PROGS([AWK], [awk])
 
 # Checks for libraries.
 AC_CHECK_LIB([dl], [dlopen])

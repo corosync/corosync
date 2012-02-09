@@ -39,8 +39,25 @@ xml_man			= corosync-xmlproc.8 \
 
 INDEX_HTML		= index.html
 
+autogen_man		=
+
+autogen_common		= ipc_common.sh.errors
+
 EXTRA_DIST		= $(INDEX_HTML) \
-			  $(xml_man)
+			  $(xml_man) \
+			  $(autogen_man:%=%.in) \
+			  $(autogen_common)
+
+man_MANS = $(autogen_man)
+
+%.3: %.3.in $(autogen_common) $(top_srcdir)/build-aux/genman
+	@echo Generating $@ man page && \
+	rm -f $@-t $@ && \
+	$(top_srcdir)/build-aux/genman \
+		$(srcdir)/$@.in \
+		$(builddir)/$@-t \
+		$(srcdir)/$(autogen_common) && \
+	mv $@-t $@
 
 dist_man_MANS = \
 	corosync.conf.5 \
@@ -142,7 +159,7 @@ endif
 
 if BUILD_HTML_DOCS
 
-HTML_DOCS = $(dist_man_MANS:%=%.html)
+HTML_DOCS = $(dist_man_MANS:%=%.html) $(man_MANS:%=%.html)
 
 %.html: %
 	$(GROFF) -mandoc -Thtml $^ > $@
@@ -158,6 +175,9 @@ uninstall-local:
 all-local: $(HTML_DOCS)
 
 clean-local:
-	rm -rf $(HTML_DOCS)
+	rm -rf $(HTML_DOCS) $(autogen_man)
 
+else
+clean-local:
+	rm -rf $(autogen_man)
 endif

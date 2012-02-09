@@ -37,6 +37,7 @@ EXTRA_DIST		= autogen.sh $(SPEC).in \
 			  build-aux/git-version-gen \
 			  build-aux/gitlog-to-changelog \
 			  build-aux/release.mk \
+			  build-aux/genman \
 			  .version
 
 AUTOMAKE_OPTIONS	= foreign
