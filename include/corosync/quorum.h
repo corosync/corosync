@@ -42,11 +42,6 @@ extern "C" {
 
 typedef uint64_t quorum_handle_t;
 
-typedef struct {
-	uint32_t nodeid;
-	uint32_t state;
-} quorum_node_t;
-
 typedef void (*quorum_notification_fn_t) (
 	quorum_handle_t handle,
 	uint32_t quorate,
