@@ -51,6 +51,8 @@
 #include <corosync/cpg.h>
 #include <corosync/swab.h>
 
+#include <qb/qblog.h>
+
 static int quit = 0;
 static int show_ip = 0;
 
@@ -202,6 +204,13 @@ int main (int argc, char *argv[]) {
 	struct cpg_address member_list[64];
 	int member_list_entries;
 	int i;
+
+	qb_log_init("testcpg", LOG_USER, LOG_ERR);
+	qb_log_ctl(QB_LOG_SYSLOG, QB_LOG_CONF_ENABLED, QB_FALSE);
+	qb_log_filter_ctl(QB_LOG_STDERR, QB_LOG_FILTER_ADD,
+			  QB_LOG_FILTER_FILE, "*", LOG_TRACE);
+	qb_log_ctl(QB_LOG_STDERR, QB_LOG_CONF_ENABLED, QB_TRUE);
+	qb_log_format_set(QB_LOG_STDERR, "[%p] %f %b");
 
 	while ( (opt = getopt(argc, argv, options)) != -1 ) {
 		switch (opt) {

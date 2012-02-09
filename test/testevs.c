@@ -44,6 +44,8 @@
 #include <corosync/corotypes.h>
 #include <corosync/evs.h>
 
+#include <qb/qblog.h>
+
 static const char *delivery_string;
 
 static int deliveries = 0;
@@ -110,6 +112,13 @@ int main (void)
 	unsigned int member_list[32];
 	unsigned int local_nodeid;
 	size_t member_list_entries = 32;
+
+	qb_log_init("testevs", LOG_USER, LOG_ERR);
+	qb_log_ctl(QB_LOG_SYSLOG, QB_LOG_CONF_ENABLED, QB_FALSE);
+	qb_log_filter_ctl(QB_LOG_STDERR, QB_LOG_FILTER_ADD,
+			  QB_LOG_FILTER_FILE, "*", LOG_TRACE);
+	qb_log_ctl(QB_LOG_STDERR, QB_LOG_CONF_ENABLED, QB_TRUE);
+	qb_log_format_set(QB_LOG_STDERR, "[%p] %f %b");
 
 	result = evs_initialize (&handle, &callbacks);
 	if (result != CS_OK) {
