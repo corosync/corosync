@@ -34,12 +34,87 @@
 
 MAINTAINERCLEANFILES	= Makefile.in
 
+if INSTALL_XMLCONF
 xml_man			= corosync-xmlproc.8 \
 			  corosync.xml.5
+endif
 
 INDEX_HTML		= index.html
 
-autogen_man		=
+autogen_man		= cpg_context_get.3 \
+			  cpg_context_set.3 \
+			  cpg_dispatch.3 \
+			  cpg_fd_get.3 \
+			  cpg_finalize.3 \
+			  cpg_initialize.3 \
+			  cpg_join.3 \
+			  cpg_leave.3 \
+			  cpg_local_get.3 \
+			  cpg_mcast_joined.3 \
+			  cpg_model_initialize.3 \
+			  cpg_zcb_mcast_joined.3 \
+			  cpg_zcb_alloc.3 \
+			  cpg_zcb_free.3 \
+			  cpg_membership_get.3 \
+			  evs_dispatch.3 \
+			  evs_fd_get.3 \
+			  evs_finalize.3 \
+			  evs_initialize.3 \
+			  evs_join.3 \
+			  evs_leave.3 \
+			  evs_mcast_groups.3 \
+			  evs_mcast_joined.3 \
+			  evs_membership_get.3 \
+			  evs_context_get.3 \
+			  evs_context_set.3 \
+			  quorum_initialize.3 \
+			  quorum_finalize.3 \
+			  quorum_fd_get.3 \
+			  quorum_dispatch.3 \
+			  quorum_context_get.3 \
+			  quorum_context_set.3 \
+			  quorum_getquorate.3 \
+			  votequorum_dispatch.3 \
+			  votequorum_fd_get.3 \
+			  votequorum_context_get.3 \
+			  votequorum_context_set.3 \
+			  votequorum_finalize.3 \
+			  votequorum_getinfo.3 \
+			  votequorum_initialize.3 \
+			  votequorum_qdevice_getinfo.3 \
+			  votequorum_qdevice_poll.3 \
+			  votequorum_qdevice_register.3 \
+			  votequorum_qdevice_unregister.3 \
+			  votequorum_setexpected.3 \
+			  votequorum_setvotes.3 \
+			  sam_data_getsize.3 \
+			  sam_data_restore.3 \
+			  sam_data_store.3 \
+			  sam_finalize.3 \
+			  sam_hc_callback_register.3 \
+			  sam_hc_send.3 \
+			  sam_initialize.3 \
+			  sam_mark_failed.3 \
+			  sam_register.3 \
+			  sam_start.3 \
+			  sam_stop.3 \
+			  sam_warn_signal_set.3 \
+			  cmap_context_get.3 \
+			  cmap_dec.3 \
+			  cmap_iter_init.3 \
+			  cmap_get.3 \
+			  cmap_inc.3 \
+			  cmap_set.3 \
+			  cmap_iter_next.3 \
+			  cmap_delete.3 \
+			  cmap_iter_finalize.3 \
+			  cmap_finalize.3 \
+			  cmap_dispatch.3  \
+			  cmap_initialize.3 \
+			  cmap_track_add.3 \
+			  cmap_context_set.3 \
+			  cmap_fd_get.3 \
+			  cmap_track_delete.3
 
 autogen_common		= ipc_common.sh.errors
 
@@ -48,8 +123,31 @@ EXTRA_DIST		= $(INDEX_HTML) \
 			  $(autogen_man:%=%.in) \
 			  $(autogen_common)
 
-man_MANS = $(autogen_man)
+man_MANS		= $(autogen_man)
 
+dist_man_MANS 		= $(xml_man) \
+			  corosync.conf.5 \
+			  votequorum.5 \
+			  corosync.8 \
+			  corosync-cmapctl.8 \
+			  corosync-blackbox.8 \
+			  corosync-keygen.8 \
+			  corosync-cfgtool.8 \
+			  corosync-cpgtool.8 \
+			  corosync-fplay.8 \
+			  corosync-pload.8 \
+			  corosync-notifyd.8 \
+			  corosync-quorumtool.8 \
+			  corosync_overview.8 \
+			  cpg_overview.8 \
+			  evs_overview.8 \
+			  votequorum_overview.8 \
+			  sam_overview.8 \
+			  cmap_overview.8
+
+HTML_DOCS 		= $(dist_man_MANS:%=%.html) $(man_MANS:%=%.html)
+
+# developer man page generation
 %.3: %.3.in $(autogen_common) $(top_srcdir)/build-aux/genman
 	@echo Generating $@ man page && \
 	rm -f $@-t $@ && \
@@ -59,108 +157,10 @@ man_MANS = $(autogen_man)
 		$(srcdir)/$(autogen_common) && \
 	mv $@-t $@
 
-dist_man_MANS = \
-	corosync.conf.5 \
-	votequorum.5 \
-	corosync.8 \
-	corosync-cmapctl.8 \
-	corosync-blackbox.8 \
-	corosync-keygen.8 \
-	corosync-cfgtool.8 \
-	corosync-cpgtool.8 \
-	corosync-fplay.8 \
-	corosync-pload.8 \
-	corosync-notifyd.8 \
-	corosync-quorumtool.8 \
-	corosync_overview.8 \
-	cpg_overview.8 \
-	evs_overview.8 \
-	votequorum_overview.8 \
-	cpg_context_get.3 \
-	cpg_context_set.3 \
-	cpg_dispatch.3 \
-	cpg_fd_get.3 \
-	cpg_finalize.3 \
-	cpg_initialize.3 \
-	cpg_join.3 \
-	cpg_leave.3 \
-	cpg_local_get.3 \
-	cpg_mcast_joined.3 \
-	cpg_model_initialize.3 \
-	cpg_zcb_mcast_joined.3 \
-	cpg_zcb_alloc.3 \
-	cpg_zcb_free.3 \
-	cpg_membership_get.3 \
-	evs_dispatch.3 \
-	evs_fd_get.3 \
-	evs_finalize.3 \
-	evs_initialize.3 \
-	evs_join.3 \
-	evs_leave.3 \
-	evs_mcast_groups.3 \
-	evs_mcast_joined.3 \
-	evs_membership_get.3 \
-	evs_context_get.3 \
-	evs_context_set.3 \
-	quorum_initialize.3 \
-	quorum_finalize.3 \
-	quorum_fd_get.3 \
-	quorum_dispatch.3 \
-	quorum_context_get.3 \
-	quorum_context_set.3 \
-	quorum_getquorate.3 \
-	votequorum_dispatch.3 \
-	votequorum_fd_get.3 \
-	votequorum_context_get.3 \
-	votequorum_context_set.3 \
-	votequorum_finalize.3 \
-	votequorum_getinfo.3 \
-	votequorum_initialize.3 \
-	votequorum_qdevice_getinfo.3 \
-	votequorum_qdevice_poll.3 \
-	votequorum_qdevice_register.3 \
-	votequorum_qdevice_unregister.3 \
-	votequorum_setexpected.3 \
-	votequorum_setvotes.3 \
-	sam_data_getsize.3 \
-	sam_data_restore.3 \
-	sam_data_store.3 \
-	sam_finalize.3 \
-	sam_hc_callback_register.3 \
-	sam_hc_send.3 \
-	sam_initialize.3 \
-	sam_mark_failed.3 \
-	sam_overview.8 \
-	sam_register.3 \
-	sam_start.3 \
-	sam_stop.3 \
-	sam_warn_signal_set.3 \
-	cmap_context_get.3 \
-	cmap_dec.3 \
-	cmap_iter_init.3 \
-	cmap_get.3 \
-	cmap_inc.3 \
-	cmap_set.3 \
-	cmap_overview.8 \
-	cmap_iter_next.3 \
-	cmap_delete.3 \
-	cmap_iter_finalize.3 \
-	cmap_finalize.3 \
-	cmap_dispatch.3  \
-	cmap_initialize.3 \
-	cmap_track_add.3 \
-	cmap_context_set.3 \
-	cmap_fd_get.3 \
-	cmap_track_delete.3
-
-if INSTALL_XMLCONF
-dist_man_MANS += $(xml_man)
-endif
+clean-local:
+	rm -rf $(HTML_DOCS) $(autogen_man)
 
 if BUILD_HTML_DOCS
-
-HTML_DOCS = $(dist_man_MANS:%=%.html) $(man_MANS:%=%.html)
-
 %.html: %
 	$(GROFF) -mandoc -Thtml $^ > $@
 
@@ -173,11 +173,4 @@ uninstall-local:
 	rmdir $(DESTDIR)/${docdir}/html 2> /dev/null || :
 
 all-local: $(HTML_DOCS)
-
-clean-local:
-	rm -rf $(HTML_DOCS) $(autogen_man)
-
-else
-clean-local:
-	rm -rf $(autogen_man)
 endif
