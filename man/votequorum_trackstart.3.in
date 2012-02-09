@@ -1,0 +1,64 @@
+.\"/*
+.\" * Copyright (c) 2012 Red Hat, Inc.
+.\" *
+.\" * All rights reserved.
+.\" *
+.\" * Author: Fabio M. Di Nitto <fdinitto@redhat.com>
+.\" *
+.\" * This software licensed under BSD license, the text of which follows:
+.\" *
+.\" * Redistribution and use in source and binary forms, with or without
+.\" * modification, are permitted provided that the following conditions are met:
+.\" *
+.\" * - Redistributions of source code must retain the above copyright notice,
+.\" *   this list of conditions and the following disclaimer.
+.\" * - Redistributions in binary form must reproduce the above copyright notice,
+.\" *   this list of conditions and the following disclaimer in the documentation
+.\" *   and/or other materials provided with the distribution.
+.\" * - Neither the name of the MontaVista Software, Inc. nor the names of its
+.\" *   contributors may be used to endorse or promote products derived from this
+.\" *   software without specific prior written permission.
+.\" *
+.\" * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+.\" * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+.\" * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+.\" * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+.\" * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+.\" * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+.\" * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+.\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+.\" * THE POSSIBILITY OF SUCH DAMAGE.
+.\" */
+.TH VOTEQUORUM_TRACKSTART 3 @BUILDDATE@ "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
+.SH NAME
+votequorum_trackstart \- Enable callbacks notification.
+.SH SYNOPSIS
+.B #include <corosync/votequorum.h>
+.sp
+.BI "int votequorum_trackstart(votequorum_handle_t *" handle ", uint64_t " context ", unsigned int " flags ");
+.SH DESCRIPTION
+The
+.B votequorum_trackstart
+function is used to enable callbacks notification from the votequorum API.
+.PP
+Every time the voting configuraton changes (eg a node joins or leave the cluster)
+or the quorum status change or the expected votes changes, the notification is queued.
+.PP
+The notification is dispatched via
+.B votequorum_dispatch()
+function that will execute the callback.
+.PP
+.SH RETURN VALUE
+This call returns the CS_OK value if successful, otherwise an error is returned.
+.PP
+.SH ERRORS
+@COMMONIPCERRORS@
+.SH "SEE ALSO"
+.BR votequorum_initialize (3),
+.BR votequorum_finalize (3),
+.BR votequorum_fd_get (3),
+.BR votequorum_dispatch (3),
+.BR votequorum_trackstop (3),
+.PP

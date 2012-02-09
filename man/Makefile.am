@@ -74,6 +74,8 @@ autogen_man		= cpg_context_get.3 \
 			  quorum_context_get.3 \
 			  quorum_context_set.3 \
 			  quorum_getquorate.3 \
+			  quorum_trackstart.3 \
+			  quorum_trackstop.3 \
 			  votequorum_dispatch.3 \
 			  votequorum_fd_get.3 \
 			  votequorum_context_get.3 \
@@ -87,6 +89,8 @@ autogen_man		= cpg_context_get.3 \
 			  votequorum_qdevice_unregister.3 \
 			  votequorum_setexpected.3 \
 			  votequorum_setvotes.3 \
+			  votequorum_trackstart.3 \
+			  votequorum_trackstop.3 \
 			  sam_data_getsize.3 \
 			  sam_data_restore.3 \
 			  sam_data_store.3 \
