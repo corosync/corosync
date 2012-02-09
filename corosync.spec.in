@@ -297,6 +297,7 @@ The Corosync Cluster Engine APIs.
 %{_mandir}/man8/sam_overview.8*
 %{_mandir}/man3/cmap_*3*
 %{_mandir}/man8/cmap_overview.8*
+%{_mandir}/man8/quorum_overview.8*
 
 %changelog
 * @date@ Autotools generated version <nobody@nowhere.org> - @version@-1-@numcomm@.@alphatag@.@dirty@
