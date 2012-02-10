@@ -38,7 +38,8 @@ quorum_overview \- Quorum Library Overview
 .SH OVERVIEW
 The quorum library is delivered with the corosync project. It is the external interface to
 the quorum service. This service is loaded into all nodes in a corosync cluster and track
-the quorate status of a node.
+the quorum status of a node. In order for quorum service to be useful, a quorum provider
+must be configured.
 .PP
 The library provides a mechanism to:
 .PP
@@ -49,18 +50,15 @@ The library provides a mechanism to:
 No known bugs at the time of writing. The authors are from outerspace. Deal with it.
 .SH "SEE ALSO"
 .BR corosync-quorumtool (8),
+.BR corosync.conf (5),
 .BR votequorum (5),
-.BR votequorum_context_get (3),
-.BR votequorum_context_set (3),
-.BR votequorum_dispatch (3),
-.BR votequorum_fd_get (3),
-.BR votequorum_finalize (3),
-.BR votequorum_getinfo (3),
-.BR votequorum_initialize (3),
-.BR votequorum_qdevice_getinfo (3),
-.BR votequorum_qdevice_poll (3),
-.BR votequorum_qdevice_register (3),
-.BR votequorum_qdevice_unregister (3),
-.BR votequorum_setexpected (3),
-.BR votequorum_setvotes (3)
+.BR quorum_initialize (3),
+.BR quorum_finalize (3),
+.BR quorum_getquorate (3),
+.BR quorum_trackstart (3),
+.BR quorum_trackstop (3),
+.BR quorum_fd_get (3),
+.BR quorum_dispatch (3),
+.BR quorum_context_set (3),
+.BR quorum_context_get (3)
 .PP

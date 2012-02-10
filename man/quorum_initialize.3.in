@@ -37,7 +37,7 @@ quorum_initialize \- Create a new connection to the Quorum service
 .SH SYNOPSIS
 .B #include <corosync/quorum.h>
 .sp
-.BI "int quorum_initialize(quorum_handle_t *" handle ", quorum_callbacks_t *" callbacks ", uint32_t *" quorum_type ");
+.BI "int quorum_initialize(quorum_handle_t *" handle ", quorum_callbacks_t *" callbacks ", uint32_t *" quorum_type ");"
 .SH DESCRIPTION
 The
 .B quorum_initialize
@@ -55,6 +55,7 @@ Every time the voting configuraton changes (eg a node joins or leave the cluster
 the callback is called.
 The callback function is described by the following type definitions:
 
+.nf
 typedef void (*quorum_notification_fn_t) (
         quorum_handle_t handle,
         uint32_t quorate,
@@ -62,45 +63,26 @@ typedef void (*quorum_notification_fn_t) (
         uint32_t view_list_entries,
         uint32_t *view_list
         );
-
-.ta
 .fi
-.RE
-.IP
-.PP
 .PP
 The
 .I callbacks
 argument is of the type:
-.IP
-.RS
-.ne 18
+
 .nf
-.PP
 typedef struct {
         quorum_notification_fn_t quorum_notify_fn;
 } quorum_callbacks_t;
-
-.ta
 .fi
-.RE
-.IP
 .PP
 The
 .I quorum_type
 argument is set to:
-.IP
-.RS
-.ne 18
+
 .nf
-.PP
 #define QUORUM_FREE     0
 #define QUORUM_SET      1
-
-.ta
 .fi
-.RE
-.IP
 .PP
 .I QUORUM_FREE
 value means that no quorum algorithm is loaded and that no callbacks will take place.
@@ -119,7 +101,13 @@ This call returns the CS_OK value if successful, otherwise an error is returned.
 .SH ERRORS
 @COMMONIPCERRORS@
 .SH "SEE ALSO"
+.BR quorum_overview (8),
 .BR quorum_finalize (3),
+.BR quorum_getquorate (3),
+.BR quorum_trackstart (3),
+.BR quorum_trackstop (3),
 .BR quorum_fd_get (3),
 .BR quorum_dispatch (3),
+.BR quorum_context_set (3),
+.BR quorum_context_get (3)
 .PP
