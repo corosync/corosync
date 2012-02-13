@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2002-2004 MontaVista Software, Inc.
+ * Copyright (c) 2006-2010 Red Hat, Inc.
  *
  * All rights reserved.
  *

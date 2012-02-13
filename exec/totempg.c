@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2003-2005 MontaVista Software, Inc.
  * Copyright (c) 2005 OSDL.
- * Copyright (c) 2006-2009 Red Hat, Inc.
+ * Copyright (c) 2006-2012 Red Hat, Inc.
  *
  * All rights reserved.
  *

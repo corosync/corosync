@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006, 2011 Red Hat, Inc.
+ * Copyright (c) 2006-2012 Red Hat, Inc.
  *
  * All rights reserved.
  *
