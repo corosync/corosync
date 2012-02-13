@@ -61,7 +61,6 @@
 #include <qb/qbipc_common.h>
 #include <corosync/corodefs.h>
 #include <corosync/list.h>
-#include <corosync/jhash.h>
 #include <corosync/logsys.h>
 #include <corosync/coroapi.h>
 
