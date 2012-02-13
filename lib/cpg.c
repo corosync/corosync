@@ -52,6 +52,7 @@
 
 #include <qb/qbdefs.h>
 #include <qb/qbipcc.h>
+#include <qb/qblog.h>
 
 #include <corosync/hdb.h>
 #include <corosync/list.h>
@@ -606,20 +607,18 @@ cs_error_t cpg_membership_get (
 	req_lib_cpg_membership_get.header.size = sizeof (struct req_lib_cpg_membership_get);
 	req_lib_cpg_membership_get.header.id = MESSAGE_REQ_CPG_MEMBERSHIP;
 
-	memcpy (&req_lib_cpg_membership_get.group_name, group_name,
-		sizeof (struct cpg_name));
+	marshall_to_mar_cpg_name_t (&req_lib_cpg_membership_get.group_name,
+		group_name);
 
 	iov.iov_base = (void *)&req_lib_cpg_membership_get;
-	iov.iov_len = sizeof (struct qb_ipc_request_header);
+	iov.iov_len = sizeof (struct req_lib_cpg_membership_get);
 
-	do {
-		error = coroipcc_msg_send_reply_receive (cpg_inst->c, &iov, 1,
-				&res_lib_cpg_membership_get, sizeof (res_lib_cpg_membership_get));
+	error = coroipcc_msg_send_reply_receive (cpg_inst->c, &iov, 1,
+			&res_lib_cpg_membership_get, sizeof (res_lib_cpg_membership_get));
 
-		if (error != CS_OK) {
-			goto error_exit;
-		}
-	} while (res_lib_cpg_membership_get.header.error == CS_ERR_BUSY);
+	if (error != CS_OK) {
+		goto error_exit;
+	}
 
 	error = res_lib_cpg_membership_get.header.error;
 
