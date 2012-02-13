@@ -138,6 +138,7 @@ static inline uint64_t cs_timestamp_get(void)
 
 cs_error_t qb_to_cs_error (int result);
 const char * cs_strerror(cs_error_t err);
+cs_error_t hdb_error_to_cs (int res);
 
 #endif /* COROTYPES_H_DEFINED */
 

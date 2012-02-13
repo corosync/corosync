@@ -68,7 +68,6 @@ enum e_corosync_done {
 	COROSYNC_DONE_SERVICE_ENGINE_INIT = 20
 };
 
-cs_error_t hdb_error_to_cs (int res);
 
 /**
  * Compare two names.  returns non-zero on match.

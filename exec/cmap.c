@@ -57,8 +57,6 @@
 
 #include "service.h"
 
-#define hdb_error_to_cs(_result_) qb_to_cs_error(_result_)
-
 LOGSYS_DECLARE_SUBSYS ("CMAP");
 
 struct cmap_conn_info {
