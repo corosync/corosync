@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2005 MontaVista Software, Inc.
- * Copyright (c) 2006-2009 Red Hat, Inc.
+ * Copyright (c) 2006-2012 Red Hat, Inc.
  *
  * Author: Steven Dake (sdake@redhat.com)
  *
