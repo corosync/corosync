@@ -1,7 +1,7 @@
 /*
  * vi: set autoindent tabstop=4 shiftwidth=4 :
  *
- * Copyright (c) 2006-2009 Red Hat, Inc.
+ * Copyright (c) 2006-2012 Red Hat, Inc.
  *
  * All rights reserved.
  *
