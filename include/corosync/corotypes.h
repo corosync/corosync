@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2008 Allied Telesis Labs.
+ * Copyright (c) 2012 Red Hat, Inc.
  *
  * All rights reserved.
  *
