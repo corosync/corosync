@@ -163,8 +163,8 @@ valid version for this directive is 2.
 .TP
 clear_node_high_bit
 This configuration option is optional and is only relevant when no nodeid is
-specified.  Some openais clients require a signed 32 bit nodeid that is greater
-than zero however by default openais uses all 32 bits of the IPv4 address space
+specified.  Some corosync clients require a signed 32 bit nodeid that is greater
+than zero however by default corosync uses all 32 bits of the IPv4 address space
 when generating a nodeid.  Set this option to yes to force the high bit to be
 zero and therefor ensure the nodeid is a positive signed 32 bit integer.
 
