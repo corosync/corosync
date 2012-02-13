@@ -114,7 +114,6 @@ static votequorum_callbacks_t v_callbacks = {
  */
 static corosync_cfg_handle_t c_handle;
 static corosync_cfg_callbacks_t c_callbacks = {
-	.corosync_cfg_state_track_callback = NULL,
 	.corosync_cfg_shutdown_callback = NULL
 };
 

@@ -137,30 +137,6 @@ static void message_handler_req_lib_cfg_ringreenable (
 	void *conn,
 	const void *msg);
 
-static void message_handler_req_lib_cfg_statetrack (
-	void *conn,
-	const void *msg);
-
-static void message_handler_req_lib_cfg_statetrackstop (
-	void *conn,
-	const void *msg);
-
-static void message_handler_req_lib_cfg_administrativestateset (
-	void *conn,
-	const void *msg);
-
-static void message_handler_req_lib_cfg_administrativestateget (
-	void *conn,
-	const void *msg);
-
-static void message_handler_req_lib_cfg_serviceload (
-	void *conn,
-	const void *msg);
-
-static void message_handler_req_lib_cfg_serviceunload (
-	void *conn,
-	const void *msg);
-
 static void message_handler_req_lib_cfg_killnode (
 	void *conn,
 	const void *msg);
@@ -199,50 +175,26 @@ static struct corosync_lib_handler cfg_lib_engine[] =
 		.flow_control		= CS_LIB_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 2 */
-		.lib_handler_fn		= message_handler_req_lib_cfg_statetrack,
-		.flow_control		= CS_LIB_FLOW_CONTROL_REQUIRED
-	},
-	{ /* 3 */
-		.lib_handler_fn		= message_handler_req_lib_cfg_statetrackstop,
-		.flow_control		= CS_LIB_FLOW_CONTROL_REQUIRED
-	},
-	{ /* 4 */
-		.lib_handler_fn		= message_handler_req_lib_cfg_administrativestateset,
-		.flow_control		= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
-	},
-	{ /* 5 */
-		.lib_handler_fn		= message_handler_req_lib_cfg_administrativestateget,
-		.flow_control		= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
-	},
-	{ /* 6 */
-		.lib_handler_fn		= message_handler_req_lib_cfg_serviceload,
-		.flow_control		= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
-	},
-	{ /* 7 */
-		.lib_handler_fn		= message_handler_req_lib_cfg_serviceunload,
-		.flow_control		= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
-	},
-	{ /* 8 */
 		.lib_handler_fn		= message_handler_req_lib_cfg_killnode,
 		.flow_control		= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
-	{ /* 9 */
+	{ /* 3 */
 		.lib_handler_fn		= message_handler_req_lib_cfg_tryshutdown,
 		.flow_control		= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
-	{ /* 10 */
+	{ /* 4 */
 		.lib_handler_fn		= message_handler_req_lib_cfg_replytoshutdown,
 		.flow_control		= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
-	{ /* 11 */
+	{ /* 5 */
 		.lib_handler_fn		= message_handler_req_lib_cfg_get_node_addrs,
 		.flow_control		= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
-	{ /* 12 */
+	{ /* 6 */
 		.lib_handler_fn		= message_handler_req_lib_cfg_local_get,
 		.flow_control		= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	},
-	{ /* 13 */
+	{ /* 7 */
 		.lib_handler_fn		= message_handler_req_lib_cfg_crypto_set,
 		.flow_control		= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	}
@@ -681,118 +633,6 @@ static void message_handler_req_lib_cfg_ringreenable (
 
 	LEAVE();
 }
-
-static void message_handler_req_lib_cfg_statetrack (
-	void *conn,
-	const void *msg)
-{
-	struct cfg_info *ci = (struct cfg_info *)api->ipc_private_data_get (conn);
-	struct res_lib_cfg_statetrack res_lib_cfg_statetrack;
-
-	ENTER();
-
-	/*
-	 * We only do shutdown tracking at the moment
-	 */
-	if (list_empty(&ci->list)) {
-		list_add(&ci->list, &trackers_list);
-		ci->tracker_conn = conn;
-
-		if (shutdown_con) {
-			/*
-			 * Shutdown already in progress, ask the newcomer's opinion
-			 */
-			ci->shutdown_reply = SHUTDOWN_REPLY_UNKNOWN;
-			shutdown_expected++;
-			send_test_shutdown(conn, NULL, CS_OK);
-		}
-	}
-
-	res_lib_cfg_statetrack.header.size = sizeof(struct res_lib_cfg_statetrack);
-	res_lib_cfg_statetrack.header.id = MESSAGE_RES_CFG_STATETRACKSTART;
-	res_lib_cfg_statetrack.header.error = CS_OK;
-
-	api->ipc_response_send(conn, &res_lib_cfg_statetrack,
-				    sizeof(res_lib_cfg_statetrack));
-
-	LEAVE();
-}
-
-static void message_handler_req_lib_cfg_statetrackstop (
-	void *conn,
-	const void *msg)
-{
-	struct cfg_info *ci = (struct cfg_info *)api->ipc_private_data_get (conn);
-//	struct req_lib_cfg_statetrackstop *req_lib_cfg_statetrackstop = (struct req_lib_cfg_statetrackstop *)message;
-
-	ENTER();
-	remove_ci_from_shutdown(ci);
-	LEAVE();
-}
-
-static void message_handler_req_lib_cfg_administrativestateset (
-	void *conn,
-	const void *msg)
-{
-//	struct req_lib_cfg_administrativestateset *req_lib_cfg_administrativestateset = (struct req_lib_cfg_administrativestateset *)message;
-
-	ENTER();
-	LEAVE();
-}
-static void message_handler_req_lib_cfg_administrativestateget (
-	void *conn,
-	const void *msg)
-{
-//	struct req_lib_cfg_administrativestateget *req_lib_cfg_administrativestateget = (struct req_lib_cfg_administrativestateget *)message;
-	ENTER();
-	LEAVE();
-}
-
-static void message_handler_req_lib_cfg_serviceload (
-	void *conn,
-	const void *msg)
-{
-	const struct req_lib_cfg_serviceload *req_lib_cfg_serviceload = msg;
-	struct res_lib_cfg_serviceload res_lib_cfg_serviceload;
-
-	ENTER();
-	api->service_link_and_init (
-		api,
-		(const char *)req_lib_cfg_serviceload->service_name,
-		req_lib_cfg_serviceload->service_ver);
-
-	res_lib_cfg_serviceload.header.id = MESSAGE_RES_CFG_SERVICEUNLOAD;
-	res_lib_cfg_serviceload.header.size = sizeof (struct res_lib_cfg_serviceload);
-	res_lib_cfg_serviceload.header.error = CS_OK;
-	api->ipc_response_send (
-		conn,
-		&res_lib_cfg_serviceload,
-		sizeof (struct res_lib_cfg_serviceload));
-	LEAVE();
-}
-
-static void message_handler_req_lib_cfg_serviceunload (
-	void *conn,
-	const void *msg)
-{
-	const struct req_lib_cfg_serviceunload *req_lib_cfg_serviceunload = msg;
-	struct res_lib_cfg_serviceunload res_lib_cfg_serviceunload;
-
-	ENTER();
-	api->service_unlink_and_exit (
-		api,
-		(const char *)req_lib_cfg_serviceunload->service_name,
-		req_lib_cfg_serviceunload->service_ver);
-	res_lib_cfg_serviceunload.header.id = MESSAGE_RES_CFG_SERVICEUNLOAD;
-	res_lib_cfg_serviceunload.header.size = sizeof (struct res_lib_cfg_serviceunload);
-	res_lib_cfg_serviceunload.header.error = CS_OK;
-	api->ipc_response_send (
-		conn,
-		&res_lib_cfg_serviceunload,
-		sizeof (struct res_lib_cfg_serviceunload));
-	LEAVE();
-}
-
 
 static void message_handler_req_lib_cfg_killnode (
 	void *conn,

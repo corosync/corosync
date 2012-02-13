@@ -40,48 +40,6 @@
 
 typedef uint64_t corosync_cfg_handle_t;
 
-typedef enum {
-	COROSYNC_CFG_ADMINISTRATIVETARGET_SERVICEUNIT = 0,
-	COROSYNC_CFG_ADMINISTRATIVETARGET_SERVICEGROUP = 1,
-	COROSYNC_CFG_ADMINISTRATIVETARGET_COMPONENTSERVICEINSTANCE = 2,
-	COROSYNC_CFG_ADMINISTRATIVETARGET_NODE = 3
-} corosync_cfg_administrative_target_t;
-
-typedef enum {
-	COROSYNC_CFG_ADMINISTRATIVESTATE_UNLOCKED = 0,
-	COROSYNC_CFG_ADMINISTRATIVESTATE_LOCKED = 1,
-	COROSYNC_CFG_ADMINISTRATIVESTATE_STOPPING = 2
-} corosync_cfg_administrative_state_t;
-
-typedef enum {
-	COROSYNC_CFG_OPERATIONALSTATE_ENABLED = 1,
-	COROSYNC_CFG_OPERATIONALSTATE_DISABLED = 2
-} corosync_cfg_operational_state_t;
-
-typedef enum {
-	COROSYNC_CFG_READINESSSTATE_OUTOFSERVICE = 1,
-	COROSYNC_CFG_READINESSSTATE_INSERVICE = 2,
-	COROSYNC_CFG_READINESSSTATE_STOPPING = 3
-} corosync_cfg_readiness_state_t;
-
-typedef enum {
-	COROSYNC_CFG_PRESENCESTATE_UNINSTANTIATED = 1,
-	COROSYNC_CFG_PRESENCESTATE_INSTANTIATING = 2,
-	COROSYNC_CFG_PRESENCESTATE_INSTANTIATED = 3,
-	COROSYNC_CFG_PRESENCESTATE_TERMINATING = 4,
-	COROSYNC_CFG_PRESENCESTATE_RESTARTING = 5,
-	COROSYNC_CFG_PRESENCESTATE_INSTANTIATION_FAILED = 6,
-	COROSYNC_CFG_PRESENCESTATE_TERMINATION_FAILED = 7
-} corosync_cfg_presence_state_t;
-
-typedef enum {
-	COROSYNC_CFG_STATETYPE_OPERATIONAL = 0,
-	COROSYNC_CFG_STATETYPE_ADMINISTRATIVE = 1,
-	COROSYNC_CFG_STATETYPE_READINESS = 2,
-	COROSYNC_CFG_STATETYPE_HA = 3,
-	COROSYNC_CFG_STATETYPE_PRESENCE = 4
-} corosync_cfg_state_type_t;
-
 /**
  * Shutdown types.
  */
@@ -107,27 +65,11 @@ typedef enum {
 	COROSYNC_CFG_SHUTDOWN_FLAG_YES = 1,
 } corosync_cfg_shutdown_reply_flags_t;
 
-typedef struct {
-	cs_name_t name;
-	corosync_cfg_state_type_t state_type;
-	corosync_cfg_administrative_state_t administrative_state;
-} corosync_cfg_state_notification_t;
-
-typedef struct {
-        uint32_t number_of_items;
-        corosync_cfg_state_notification_t *notification;
-} corosync_cfg_state_notification_buffer_t;
-
-typedef void (*corosync_cfg_state_track_callback_t) (
-	corosync_cfg_state_notification_buffer_t *notification_buffer,
-	cs_error_t error);
-
 typedef void (*corosync_cfg_shutdown_callback_t) (
 	corosync_cfg_handle_t cfg_handle,
 	corosync_cfg_shutdown_flags_t flags);
 
 typedef struct {
-	corosync_cfg_state_track_callback_t corosync_cfg_state_track_callback;
 	corosync_cfg_shutdown_callback_t corosync_cfg_shutdown_callback;
 } corosync_cfg_callbacks_t;
 
@@ -186,18 +128,6 @@ corosync_cfg_ring_reenable (
 	corosync_cfg_handle_t cfg_handle);
 
 cs_error_t
-corosync_cfg_service_load (
-	corosync_cfg_handle_t cfg_handle,
-	const char *service_name,
-	unsigned int service_ver);
-
-cs_error_t
-corosync_cfg_service_unload (
-	corosync_cfg_handle_t cfg_handle,
-	const char *service_name,
-	unsigned int service_ver);
-
-cs_error_t
 corosync_cfg_kill_node (
 	corosync_cfg_handle_t cfg_handle,
 	unsigned int nodeid,
@@ -213,17 +143,6 @@ cs_error_t
 corosync_cfg_replyto_shutdown (
 	corosync_cfg_handle_t cfg_handle,
 	corosync_cfg_shutdown_reply_flags_t flags);
-
-cs_error_t
-corosync_cfg_state_track (
-        corosync_cfg_handle_t cfg_handle,
-        uint8_t track_flags,
-        const corosync_cfg_state_notification_t *notification_buffer);
-
-cs_error_t
-corosync_cfg_state_track_stop (
-        corosync_cfg_handle_t cfg_handle);
-
 
 cs_error_t
 corosync_cfg_get_node_addrs (

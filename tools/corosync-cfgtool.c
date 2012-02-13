@@ -123,42 +123,6 @@ static void ringreenable_do (void)
 	(void)corosync_cfg_finalize (handle);
 }
 
-static void service_load_do (const char *service, unsigned int version)
-{
-	cs_error_t result;
-	corosync_cfg_handle_t handle;
-
-	printf ("Loading service '%s' version '%d'\n", service, version);
-	result = corosync_cfg_initialize (&handle, NULL);
-	if (result != CS_OK) {
-		printf ("Could not initialize corosync configuration API error %d\n", result);
-		exit (1);
-	}
-	result = corosync_cfg_service_load (handle, service, version);
-	if (result != CS_OK) {
-		printf ("Could not load service (error = %d)\n", result);
-	}
-	(void)corosync_cfg_finalize (handle);
-}
-
-static void service_unload_do (const char *service, unsigned int version)
-{
-	cs_error_t result;
-	corosync_cfg_handle_t handle;
-
-	printf ("Unloading service '%s' version '%d'\n", service, version);
-	result = corosync_cfg_initialize (&handle, NULL);
-	if (result != CS_OK) {
-		printf ("Could not initialize corosync configuration API error %d\n", result);
-		exit (1);
-	}
-	result = corosync_cfg_service_unload (handle, service, version);
-	if (result != CS_OK) {
-		printf ("Could not unload service (error = %d)\n", result);
-	}
-	(void)corosync_cfg_finalize (handle);
-}
-
 static void shutdown_do(void)
 {
 	cs_error_t result;
@@ -265,39 +229,22 @@ static void killnode_do(unsigned int nodeid)
 
 static void usage_do (void)
 {
-	printf ("corosync-cfgtool [[-i <interface ip>] -s] [-r] [-l] [-u] [-H] [service_name] [-v] [version] [-k] [nodeid] [-a] [nodeid]\n\n");
+	printf ("corosync-cfgtool [-i <interface ip>] -s] [-r] [-H] [service_name] [-k] [nodeid] [-a] [nodeid]\n\n");
 	printf ("A tool for displaying and configuring active parameters within corosync.\n");
 	printf ("options:\n");
 	printf ("\t-s\tDisplays the status of the current rings on this node.\n");
 	printf ("\t-r\tReset redundant ring state cluster wide after a fault to\n");
 	printf ("\t\tre-enable redundant ring operation.\n");
-	printf ("\t-l\tLoad a service identified by name.\n");
-	printf ("\t-u\tUnload a service identified by name.\n");
 	printf ("\t-a\tDisplay the IP address(es) of a node\n");
 	printf ("\t-c\tSet the cryptography mode of cluster communications\n");
 	printf ("\t-k\tKill a node identified by node id.\n");
 	printf ("\t-H\tShutdown corosync cleanly on this node.\n");
 }
 
-static char *
-xstrdup (char const *s)
-{
-	char *p = strdup (s);
-	if (p)
-		return (char *) p;
-
-	printf ("exhausted virtual memory\n");
-	exit (1);
-}
-
 int main (int argc, char *argv[]) {
-	const char *options = "i:srl:u:v:k:a:c:hH";
+	const char *options = "i:srk:a:c:hH";
 	int opt;
-	int service_load = 0;
 	unsigned int nodeid;
-	int service_unload = 0;
-	char *service = NULL;
-	unsigned int version = 0;
 	char interface_name[128] = "";
 	int rc=0;
 
@@ -315,14 +262,6 @@ int main (int argc, char *argv[]) {
 		case 'r':
 			ringreenable_do ();
 			break;
-		case 'l':
-			service_load = 1;
-			service = xstrdup (optarg);
-			break;
-		case 'u':
-			service_unload = 1;
-			service = xstrdup (optarg);
-			break;
 		case 'k':
 			nodeid = atoi (optarg);
 			killnode_do(nodeid);
@@ -336,20 +275,10 @@ int main (int argc, char *argv[]) {
 		case 'c':
 			crypto_do( atoi(optarg) );
 			break;
-		case 'v':
-			version = atoi (optarg);
-			break;
 		case 'h':
 			usage_do();
 			break;
 		}
-	}
-
-	if (service_load) {
-		service_load_do (service, version);
-	} else
-	if (service_unload) {
-		service_unload_do (service, version);
 	}
 
 	return (rc);

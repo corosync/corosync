@@ -244,7 +244,6 @@ static void my_shutdown_callback (corosync_cfg_handle_t handle,
 
 static corosync_cfg_callbacks_t cfg_callbacks = {
 	.corosync_cfg_shutdown_callback = my_shutdown_callback,
-	.corosync_cfg_state_track_callback = NULL,
 };
 static cpg_callbacks_t callbacks = {
 	.cpg_deliver_fn = delivery_callback,
@@ -559,8 +558,6 @@ static void msg_blaster_zcb (int sock, char* num_to_send_str)
 	send_some_more_messages_zcb ();
 }
 
-static corosync_cfg_state_notification_t notification_buffer;
-
 static int cfg_dispatch_wrapper_fn (
 	int fd,
 	int revents,
@@ -736,9 +733,6 @@ static void do_command (int sock, char* func, char*args[], int num_args)
 
 		result = corosync_cfg_fd_get (cfg_handle, &cfg_fd);
 		qb_log (LOG_INFO,"corosync_cfg_fd_get() == %d", result);
-
-		result = corosync_cfg_state_track (cfg_handle, 0, &notification_buffer);
-		qb_log (LOG_INFO,"corosync_cfg_state_track() == %d", result);
 
 		qb_loop_poll_add (ta_poll_handle_get(),
 			QB_LOOP_MED,

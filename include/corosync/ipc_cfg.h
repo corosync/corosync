@@ -42,18 +42,12 @@
 enum req_lib_cfg_types {
 	MESSAGE_REQ_CFG_RINGSTATUSGET = 0,
 	MESSAGE_REQ_CFG_RINGREENABLE = 1,
-        MESSAGE_REQ_CFG_STATETRACKSTART = 2,
-        MESSAGE_REQ_CFG_STATETRACKSTOP = 3,
-        MESSAGE_REQ_CFG_ADMINISTRATIVESTATESET = 4,
-        MESSAGE_REQ_CFG_ADMINISTRATIVESTATEGET = 5,
-        MESSAGE_REQ_CFG_SERVICELOAD = 6,
-        MESSAGE_REQ_CFG_SERVICEUNLOAD = 7,
-	MESSAGE_REQ_CFG_KILLNODE = 8,
-	MESSAGE_REQ_CFG_TRYSHUTDOWN = 9,
-	MESSAGE_REQ_CFG_REPLYTOSHUTDOWN = 10,
-	MESSAGE_REQ_CFG_GET_NODE_ADDRS = 11,
-	MESSAGE_REQ_CFG_LOCAL_GET = 12,
-	MESSAGE_REQ_CFG_CRYPTO_SET = 13
+	MESSAGE_REQ_CFG_KILLNODE = 2,
+	MESSAGE_REQ_CFG_TRYSHUTDOWN = 3,
+	MESSAGE_REQ_CFG_REPLYTOSHUTDOWN = 4,
+	MESSAGE_REQ_CFG_GET_NODE_ADDRS = 5,
+	MESSAGE_REQ_CFG_LOCAL_GET = 6,
+	MESSAGE_REQ_CFG_CRYPTO_SET = 7
 };
 
 enum res_lib_cfg_types {
@@ -74,46 +68,6 @@ enum res_lib_cfg_types {
 	MESSAGE_RES_CFG_CRYPTO_SET = 14,
 };
 
-struct req_lib_cfg_statetrack {
-	struct qb_ipc_request_header header;
-	uint8_t track_flags;
-	corosync_cfg_state_notification_t *notification_buffer_address;
-};
-
-struct res_lib_cfg_statetrack {
-	struct qb_ipc_response_header header;
-};
-
-struct req_lib_cfg_statetrackstop {
-	struct qb_ipc_request_header header;
-};
-
-struct res_lib_cfg_statetrackstop {
-	struct qb_ipc_response_header header;
-};
-
-struct req_lib_cfg_administrativestateset {
-	struct qb_ipc_request_header header;
-	cs_name_t comp_name;
-	corosync_cfg_administrative_target_t administrative_target;
-	corosync_cfg_administrative_state_t administrative_state;
-};
-
-struct res_lib_cfg_administrativestateset {
-	struct qb_ipc_response_header header;
-};
-
-struct req_lib_cfg_administrativestateget {
-	struct qb_ipc_request_header header;
-	cs_name_t comp_name;
-	corosync_cfg_administrative_target_t administrative_target;
-	corosync_cfg_administrative_state_t administrative_state;
-};
-
-struct res_lib_cfg_administrativestateget {
-	struct qb_ipc_response_header header __attribute__((aligned(8)));
-};
-
 struct req_lib_cfg_ringstatusget {
 	struct qb_ipc_request_header header __attribute__((aligned(8)));
 };
@@ -130,26 +84,6 @@ struct req_lib_cfg_ringreenable {
 };
 
 struct res_lib_cfg_ringreenable {
-	struct qb_ipc_response_header header __attribute__((aligned(8)));
-};
-
-struct req_lib_cfg_serviceload {
-	struct qb_ipc_response_header header __attribute__((aligned(8)));
-	char service_name[256] __attribute__((aligned(8)));
-	unsigned int service_ver;
-};
-
-struct res_lib_cfg_serviceload {
-	struct qb_ipc_response_header header __attribute__((aligned(8)));
-};
-
-struct req_lib_cfg_serviceunload {
-	struct qb_ipc_response_header header __attribute__((aligned(8)));
-	char service_name[256] __attribute__((aligned(8)));
-	unsigned int service_ver;
-};
-
-struct res_lib_cfg_serviceunload {
 	struct qb_ipc_response_header header __attribute__((aligned(8)));
 };
 
