@@ -37,7 +37,7 @@ votequorum_initialize \- Create a new connection to the VoteQuorum service
 .SH SYNOPSIS
 .B #include <corosync/votequorum.h>
 .sp
-.BI "int votequorum_initialize(votequorum_handle_t *" handle ", votequorum_callbacks_t *" callbacks ");
+.BI "int votequorum_initialize(votequorum_handle_t *" handle ", votequorum_callbacks_t *" callbacks ");"
 .SH DESCRIPTION
 The
 .B votequorum_initialize
@@ -54,6 +54,7 @@ for communication with the votequorum service.
 Every time the voting configuraton changes (eg a node joins or leave the cluster), the callback is called.
 The callback function is described by the following type definitions:
 
+.nf
 typedef void (*votequorum_notification_fn_t) (
 	votequorum_handle_t handle,
 	uint64_t context,
@@ -62,28 +63,28 @@ typedef void (*votequorum_notification_fn_t) (
 	votequorum_node_t node_list[]
 	);
 
-.ta
 .fi
-.RE
-.IP
 .PP
+Every time the expected votes are changed, the callback is called.
+The expected votes callback function is described by the following type definitions:
+
+.nf
+typedef void (*votequorum_expectedvotes_notification_fn_t) (
+        votequorum_handle_t handle,
+        uint64_t context,
+        uint32_t expected_votes);
+.fi
 .PP
 The
 .I callbacks
 argument is of the type:
-.IP
-.RS
-.ne 18
+
 .nf
-.PP
 typedef struct {
 	votequorum_notification_fn_t votequorum_notify_fn;
+	votequorum_expectedvotes_notification_fn_t votequorum_expectedvotes_notify_fn;
 } votequorum_callbacks_t;
-
-.ta
 .fi
-.RE
-.IP
 .PP
 When a configuration change occurs, the callback
 is called from the
@@ -97,6 +98,13 @@ This call returns the CS_OK value if successful, otherwise an error is returned.
 .SH "SEE ALSO"
 .BR votequorum_overview (8),
 .BR votequorum_finalize (3),
+.BR votequorum_getinfo (3),
+.BR votequorum_trackstart (3),
+.BR votequorum_trackstop (3),
 .BR votequorum_fd_get (3),
 .BR votequorum_dispatch (3),
+.BR votequorum_context_set (3),
+.BR votequorum_context_get (3),
+.BR votequorum_setexpected (3),
+.BR votequorum_setvotes (3)
 .PP

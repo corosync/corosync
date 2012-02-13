@@ -42,7 +42,7 @@ votequorum_qdevice_poll \- Tells votequorum the result of the quorum device poll
 The
 .B votequorum_qdevice_poll
 is called by the quorum device subsystem (not provided as part of votequorum) to tell
-the voting system if the qurum device is present/active or not. If
+the voting system if the quorum device is present/active or not. If
 .B state
 is 1 then the votes for the device are included in the quorum calculation, otherwise not.
 This routine should be called at regular intervals to ensure that the device status
@@ -61,9 +61,16 @@ This call returns the CS_OK value if successful, otherwise an error is returned.
 .BR votequorum_overview (8),
 .BR votequorum_initialize (3),
 .BR votequorum_finalize (3),
-.BR votequorum_dispatch (3),
+.BR votequorum_getinfo (3),
+.BR votequorum_trackstart (3),
+.BR votequorum_trackstop (3),
 .BR votequorum_fd_get (3),
+.BR votequorum_dispatch (3),
+.BR votequorum_context_set (3),
+.BR votequorum_context_get (3),
+.BR votequorum_setexpected (3),
+.BR votequorum_setvotes (3),
 .BR votequorum_qdevice_register (3),
 .BR votequorum_qdevice_unregister (3),
-.BR votequorum_qdevice_getinfo (3),
+.BR votequorum_qdevice_get_info (3)
 .PP

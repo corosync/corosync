@@ -37,29 +37,24 @@ votequorum_getinfo \- Get information about the VoteQuorum service
 .SH SYNOPSIS
 .B #include <corosync/votequorum.h>
 .sp
-.BI "int votequorum_getinfo(votequorum_handle_t *" handle ", unsigned int " nodeid ", struct votequorum_info *" info ");
+.BI "int votequorum_getinfo(votequorum_handle_t *" handle ", unsigned int " nodeid ", struct votequorum_info *" info ");"
 .SH DESCRIPTION
 The
 .B votequorum_getinfo
-function is used to get information about the voteing system and its nodes.
+function is used to get information about the voting system and its nodes.
 
 The votequorum_info structure is defined as follows:
-.PP
-.PP
-.IP
-.RS
-.ne 18
+
 .nf
-.ta 4n 20n 32n
 
 struct votequorum_info {
-	unsigned int node_id;
-	unsigned int node_votes;
-	unsigned int node_expected_votes;
-	unsigned int highest_expected;
-	unsigned int total_votes;
-	unsigned int quorum;
-	unsigned int flags;
+        unsigned int node_id;
+        unsigned int node_votes;
+        unsigned int node_expected_votes;
+        unsigned int highest_expected;
+        unsigned int total_votes;
+        unsigned int quorum;
+        unsigned int flags;
 };
 
 #define VOTEQUORUM_INFO_FLAG_TWONODE            1
@@ -68,12 +63,7 @@ struct votequorum_info {
 #define VOTEQUORUM_INFO_LAST_MAN_STANDING       8
 #define VOTEQUORUM_INFO_AUTO_TIE_BREAKER       16
 #define VOTEQUORUM_INFO_LEAVE_REMOVE           32
-
-.ta
 .fi
-.RE
-.IP
-.PP
 .PP
 The members starting node_ hold information specific to the requested nodeid, the other are
 general to the voting system.
@@ -84,7 +74,14 @@ This call returns the CS_OK value if successful, otherwise an error is returned.
 @COMMONIPCERRORS@
 .SH "SEE ALSO"
 .BR votequorum_overview (8),
+.BR votequorum_initialize (3),
 .BR votequorum_finalize (3),
+.BR votequorum_trackstart (3),
+.BR votequorum_trackstop (3),
 .BR votequorum_fd_get (3),
 .BR votequorum_dispatch (3),
+.BR votequorum_context_set (3),
+.BR votequorum_context_get (3),
+.BR votequorum_setexpected (3),
+.BR votequorum_setvotes (3)
 .PP

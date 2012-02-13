@@ -83,10 +83,6 @@ autogen_man		= cpg_context_get.3 \
 			  votequorum_finalize.3 \
 			  votequorum_getinfo.3 \
 			  votequorum_initialize.3 \
-			  votequorum_qdevice_getinfo.3 \
-			  votequorum_qdevice_poll.3 \
-			  votequorum_qdevice_register.3 \
-			  votequorum_qdevice_unregister.3 \
 			  votequorum_setexpected.3 \
 			  votequorum_setvotes.3 \
 			  votequorum_trackstart.3 \

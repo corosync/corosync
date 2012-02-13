@@ -37,7 +37,7 @@ votequorum_dispatch \- Dispatches callbacks from the votequorum service
 .SH SYNOPSIS
 .B #include <corosync/votequorum.h>
 .sp
-.BI "int votequorum_dispatch(votequorum_handle_t " handle ", votequorum_dispatch_t *" dispatch_types ");"
+.BI "int votequorum_dispatch(votequorum_handle_t " handle ", cs_dispatch_flags_t *" dispatch_types ");"
 .SH DESCRIPTION
 The
 .B votequorum_dispatch
@@ -53,21 +53,14 @@ The
 argument is used to identify the type of dispatch to execute.  The possible types are
 defined by the structure:
 
-.IP
-.RS
-.ne 18
 .nf
-.ta 4n 30n 33n
 typedef enum {
-        CS_DISPATCH_ONE,
-        CS_DISPATCH_ALL,
-        CS_DISPATCH_BLOCKING
-} votequorum_dispatch_t;
-.ta
+        CS_DISPATCH_ONE = 1,
+        CS_DISPATCH_ALL = 2,
+        CS_DISPATCH_BLOCKING = 3,
+        CS_DISPATCH_ONE_NONBLOCKING = 4
+} cs_dispatch_flags_t;
 .fi
-.RE
-.IP
-.PP
 .PP
 The dispatch values have the following meanings:
 .TP
@@ -79,7 +72,7 @@ Dispatch all waiting callbacks without blocking to wait for any callbacks.
 .TP
 .B CS_DISPATCH_BLOCKING
 Dispatch all callbacks blocking indefinitely.  This is used in a threaded
-program where a thread is created, and then votequorum_dispatch() is called immediately
+program where a thread is created, and then quorum_dispatch() is called immediately
 from the created thread to execute callbacks.
 .TP
 .B CS_DISPATCH_ONE_NONBLOCKING
@@ -95,6 +88,12 @@ This call returns the CS_OK value if successful, otherwise an error is returned.
 .BR votequorum_overview (8),
 .BR votequorum_initialize (3),
 .BR votequorum_finalize (3),
+.BR votequorum_getinfo (3),
+.BR votequorum_trackstart (3),
+.BR votequorum_trackstop (3),
 .BR votequorum_fd_get (3),
-
+.BR votequorum_context_set (3),
+.BR votequorum_context_get (3),
+.BR votequorum_setexpected (3),
+.BR votequorum_setvotes (3)
 .PP
