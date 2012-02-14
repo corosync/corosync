@@ -34,10 +34,8 @@
 
 MAINTAINERCLEANFILES	= Makefile.in
 
-if INSTALL_XMLCONF
 xml_man			= corosync-xmlproc.8 \
 			  corosync.xml.5
-endif
 
 INDEX_HTML		= index.html
 
@@ -125,8 +123,7 @@ EXTRA_DIST		= $(INDEX_HTML) \
 
 man_MANS		= $(autogen_man)
 
-dist_man_MANS 		= $(xml_man) \
-			  corosync.conf.5 \
+dist_man_MANS 		= corosync.conf.5 \
 			  votequorum.5 \
 			  corosync.8 \
 			  corosync-cmapctl.8 \
@@ -145,6 +142,10 @@ dist_man_MANS 		= $(xml_man) \
 			  votequorum_overview.8 \
 			  sam_overview.8 \
 			  cmap_overview.8
+
+if INSTALL_XMLCONF
+dist_man_MANS		+= $(xml_man)
+endif
 
 HTML_DOCS 		= $(dist_man_MANS:%=%.html) $(man_MANS:%=%.html)
 
