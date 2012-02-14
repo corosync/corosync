@@ -108,7 +108,7 @@ typedef enum {
    CS_ERR_SECURITY = 100
 } cs_error_t;
 
-#define CS_IPC_TIMEOUT_MS 1000
+#define CS_IPC_TIMEOUT_MS -1
 
 #define CS_TIME_MS_IN_SEC   1000ULL
 #define CS_TIME_US_IN_SEC   1000000ULL
