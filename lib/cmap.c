@@ -428,6 +428,11 @@ cs_error_t cmap_set_double(cmap_handle_t handle, const char *key_name, double va
 
 cs_error_t cmap_set_string(cmap_handle_t handle, const char *key_name, const char *value)
 {
+
+	if (value == NULL) {
+		return (CS_ERR_INVALID_PARAM);
+	}
+
 	return (cmap_set(handle, key_name, value, strlen(value), CMAP_VALUETYPE_STRING));
 }
 

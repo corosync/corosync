@@ -447,6 +447,10 @@ cs_error_t icmap_set_double(const char *key_name, double value)
 cs_error_t icmap_set_string(const char *key_name, const char *value)
 {
 
+	if (value == NULL) {
+		return (CS_ERR_INVALID_PARAM);
+	}
+
 	return (icmap_set(key_name, value, strlen(value), ICMAP_VALUETYPE_STRING));
 }
 
