@@ -39,6 +39,7 @@
 
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <corosync/list.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -64,6 +65,15 @@ struct totem_ip_address
 	unsigned char  addr[TOTEMIP_ADDRLEN];
 } __attribute__((packed));
 
+struct totem_ip_if_address
+{
+	struct totem_ip_address ip_addr;
+	struct totem_ip_address mask_addr;
+	int interface_up;
+	int interface_num;
+	char *name;
+	struct list_head list;
+};
 
 extern int totemip_equal(const struct totem_ip_address *addr1,
 			 const struct totem_ip_address *addr2);
@@ -87,6 +97,10 @@ extern int totemip_iface_check(struct totem_ip_address *bindnet,
 			       int *interface_up,
 			       int *interface_num,
 			       int mask_high_bit);
+
+extern int totemip_getifaddrs(struct list_head *addrs);
+
+extern void totemip_freeifaddrs(struct list_head *addrs);
 
 /* These two simulate a zero in_addr by clearing the family field */
 static inline void totemip_zero_set(struct totem_ip_address *addr)

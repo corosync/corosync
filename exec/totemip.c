@@ -68,6 +68,10 @@
 #include <linux/rtnetlink.h>
 #endif
 
+#ifdef HAVE_GETIFADDRS
+#include <ifaddrs.h>
+#endif
+
 #include <corosync/totem/totemip.h>
 #include <corosync/swab.h>
 
@@ -672,3 +676,85 @@ finished:
 	return res;
 }
 #endif /* COROSYNC_LINUX */
+
+#ifdef HAVE_GETIFADDRS
+int totemip_getifaddrs(struct list_head *addrs)
+{
+	struct ifaddrs *ifap, *ifa;
+	struct totem_ip_if_address *if_addr;
+
+	if (getifaddrs(&ifap) != 0)
+		return (-1);
+
+	list_init(addrs);
+
+	for (ifa = ifap; ifa; ifa = ifa->ifa_next) {
+		if (ifa->ifa_addr == NULL || ifa->ifa_netmask == NULL)
+			continue ;
+
+		if ((ifa->ifa_addr->sa_family != AF_INET && ifa->ifa_addr->sa_family != AF_INET6) ||
+		    (ifa->ifa_netmask->sa_family != AF_INET && ifa->ifa_netmask->sa_family != AF_INET6))
+			continue ;
+
+		if_addr = malloc(sizeof(struct totem_ip_if_address));
+		if (if_addr == NULL) {
+			goto error_free_ifaddrs;
+		}
+
+		list_init(&if_addr->list);
+
+		memset(if_addr, 0, sizeof(struct totem_ip_if_address));
+
+		if_addr->interface_up = ifa->ifa_flags & IFF_UP;
+		if_addr->interface_num = if_nametoindex(ifa->ifa_name);
+		if_addr->name = strdup(ifa->ifa_name);
+		if (if_addr->name == NULL) {
+			goto error_free_addr;
+		}
+
+		if (totemip_sockaddr_to_totemip_convert((const struct sockaddr_storage *)ifa->ifa_addr,
+		    &if_addr->ip_addr) == -1) {
+			goto error_free_addr_name;
+		}
+
+		if (totemip_sockaddr_to_totemip_convert((const struct sockaddr_storage *)ifa->ifa_netmask,
+		    &if_addr->mask_addr) == -1) {
+			goto error_free_addr_name;
+		}
+
+		list_add(&if_addr->list, addrs);
+	}
+
+	freeifaddrs(ifap);
+
+	return (0);
+
+error_free_addr_name:
+	free(if_addr->name);
+
+error_free_addr:
+	free(if_addr);
+
+error_free_ifaddrs:
+	totemip_freeifaddrs(addrs);
+	freeifaddrs(ifap);
+	return (-1);
+}
+#else
+#endif /* HAVE_GETIFADDRS */
+
+void totemip_freeifaddrs(struct list_head *addrs)
+{
+	struct totem_ip_if_address *if_addr;
+	struct list_head *list;
+
+	for (list = addrs->next; list != addrs;) {
+		if_addr = list_entry(list, struct totem_ip_if_address, list);
+		list = list->next;
+
+		free(if_addr->name);
+		list_del(&if_addr->list);
+	        free(if_addr);
+	}
+	list_init(addrs);
+}

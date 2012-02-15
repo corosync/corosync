@@ -90,7 +90,7 @@ AC_HEADER_SYS_WAIT
 AC_CHECK_HEADERS([arpa/inet.h fcntl.h limits.h netdb.h netinet/in.h stdint.h \
 		  stdlib.h string.h sys/ioctl.h sys/param.h sys/socket.h \
 		  sys/time.h syslog.h unistd.h sys/types.h getopt.h malloc.h \
-		  sys/sockio.h utmpx.h])
+		  sys/sockio.h utmpx.h ifaddrs.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_C_CONST
@@ -125,7 +125,7 @@ AC_CHECK_FUNCS([alarm alphasort atexit bzero dup2 endgrent endpwent fcntl \
 		getcwd getpeerucred getpeereid gettimeofday inet_ntoa memmove \
 		memset mkdir scandir select socket strcasecmp strchr strdup \
 		strerror strrchr strspn strstr pthread_setschedparam \
-		sched_get_priority_max sched_setscheduler])
+		sched_get_priority_max sched_setscheduler getifaddrs])
 
 AC_CONFIG_FILES([Makefile
 		 exec/Makefile
