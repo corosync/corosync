@@ -339,95 +339,7 @@ int totemip_sockaddr_to_totemip_convert(const struct sockaddr_storage *saddr,
 	return ret;
 }
 
-/*
- * On Solaris, man if_tcp describes this method
- */
-#if defined(COROSYNC_SOLARIS)
-int totemip_iface_check(struct totem_ip_address *bindnet,
-	struct totem_ip_address *boundto,
-	int *interface_up,
-	int *interface_num,
-	int mask_high_bit)
-{
-	struct sockaddr_storage bindnet_ss;
-	struct sockaddr_in *bindnet_sin = (struct sockaddr_in *)&bindnet_ss;
-        struct sockaddr_in *sockaddr_in;
-        int id_fd;
-        struct lifconf lifconf;
-	struct lifreq *lifreq;
-        int numreqs = 0;
-        int i;
-        in_addr_t mask_addr;
-	int res = -1;
-	int addrlen;
-
-	totemip_totemip_to_sockaddr_convert (bindnet,
-		0, &bindnet_ss, &addrlen);
-
-	*interface_up = 0;
-	id_fd = socket (AF_INET, SOCK_STREAM, 0);
-	lifconf.lifc_family = AF_UNSPEC;
-	lifconf.lifc_flags = 0;
-	lifconf.lifc_buf = NULL;
-	lifconf.lifc_len = 0;
-	do {
-		numreqs += 32;
-		lifconf.lifc_len = sizeof (struct lifreq) * numreqs;
-		lifconf.lifc_buf = (void *)realloc(lifconf.lifc_buf, lifconf.lifc_len);
-		res = ioctl (id_fd, SIOCGLIFCONF, &lifconf);
-		if (res < 0) {
-			close (id_fd);
-			return -1;
-		}
-	} while (lifconf.lifc_len == sizeof (struct lifconf) * numreqs);
-	res = -1;
-
-	lifreq = (struct lifreq *)lifconf.lifc_buf;
-	/*
-	* Find interface address to bind to
-	*/
-	for (i = 0; i < lifconf.lifc_len / sizeof (struct lifreq); i++) {
-		sockaddr_in = (struct sockaddr_in *)&lifreq[i].lifr_addr;
-		mask_addr = inet_addr ("255.255.255.0");
-
-		if ((sockaddr_in->sin_family == AF_INET) &&
-			(sockaddr_in->sin_addr.s_addr & mask_addr) ==
-			(bindnet_sin->sin_addr.s_addr & mask_addr)) {
-
-			res = i;
-
-			/*
-			 * Setup boundto output
-			 */
-			totemip_sockaddr_to_totemip_convert((struct sockaddr_storage *)sockaddr_in, boundto);
-			boundto->nodeid = sockaddr_in->sin_addr.s_addr;
-#if __BYTE_ORDER == __BIG_ENDIAN
-			boundto->nodeid = swab32 (boundto->nodeid);
-#endif
-
-			if (ioctl(id_fd, SIOCGLIFFLAGS, &lifreq[i]) < 0) {
-				printf ("couldn't do ioctl\n");
-			}
-
-			*interface_up = lifreq[i].lifr_flags & IFF_UP;
-
-			if (ioctl(id_fd, SIOCGLIFINDEX, &lifreq[i]) < 0) {
-				printf ("couldn't do ioctl\n");
-			}
-			*interface_num = lifreq[i].lifr_index;
-
-
-			break;
-		}
-	}
-	free (lifconf.lifc_buf);
-	close (id_fd);
-
-	return (res);
-}
-#endif
-
-#ifdef HAVE_GETIFADDRS
+#if defined(HAVE_GETIFADDRS)
 int totemip_getifaddrs(struct list_head *addrs)
 {
 	struct ifaddrs *ifap, *ifa;
@@ -490,7 +402,110 @@ error_free_ifaddrs:
 	freeifaddrs(ifap);
 	return (-1);
 }
-#else
+#elif defined(SOLARIS)
+/*
+ * On Solaris, man if_tcp describes this method
+ */
+int totemip_getifaddrs(struct list_head *addrs)
+{
+	int id_fd;
+	int numreqs;
+	int res;
+	struct lifconf lifconf;
+	struct lifreq *lifreq;
+	int i, j;
+	struct totem_ip_if_address *if_addr;
+	short family;
+
+	list_init(addrs);
+
+	for (family = 0; family < 2; family++) {
+		numreqs = 0;
+		res = -1;
+
+		lifconf.lifc_family = (family == 0 ? AF_INET : AF_INET6);
+		id_fd = socket (lifconf.lifc_family, SOCK_STREAM, 0);
+		lifconf.lifc_flags = 0;
+		lifconf.lifc_buf = NULL;
+		lifconf.lifc_len = 0;
+		do {
+			numreqs += 32;
+			lifconf.lifc_len = sizeof (struct lifreq) * numreqs;
+			lifconf.lifc_buf = (void *)realloc(lifconf.lifc_buf, lifconf.lifc_len);
+			res = ioctl (id_fd, SIOCGLIFCONF, &lifconf);
+			if (res < 0) {
+				close (id_fd);
+			}
+		} while (res >= 0 && lifconf.lifc_len == sizeof (struct lifconf) * numreqs);
+
+		if (res < 0)
+			continue ;
+
+		lifreq = (struct lifreq *)lifconf.lifc_buf;
+		for (i = 0; i < lifconf.lifc_len / sizeof (struct lifreq); i++) {
+			if (ioctl(id_fd, SIOCGLIFADDR, &lifreq[i]) < 0)
+				continue ;
+
+			if (lifreq[i].lifr_addr.ss_family != AF_INET && lifreq[i].lifr_addr.ss_family != AF_INET6)
+				continue ;
+
+			if_addr = malloc(sizeof(struct totem_ip_if_address));
+			if (if_addr == NULL) {
+				goto error_free_ifaddrs;
+			}
+
+			memset(if_addr, 0, sizeof(struct totem_ip_if_address));
+
+			if_addr->name = strdup(lifreq[i].lifr_name);
+			if (if_addr->name == NULL) {
+				goto error_free_addr;
+			}
+
+			if (totemip_sockaddr_to_totemip_convert(&lifreq[i].lifr_addr, &if_addr->ip_addr) == -1) {
+				goto error_free_addr_name;
+			}
+
+			if (ioctl(id_fd, SIOCGLIFSUBNET, &lifreq[i]) < 0)
+				continue ;
+
+			/*
+			 * lifreq doesn't contain mask address. But It length of prefix in bits,
+			 * so we can generate mask.
+			 */
+			memset(&if_addr->mask_addr, 0, sizeof(if_addr->mask_addr));
+			if_addr->mask_addr.family = if_addr->ip_addr.family;
+			for (j = 0; j < lifreq[i].lifr_addrlen; j++) {
+				if_addr->mask_addr.addr[j / 8] |= 1 << (7 - (j % 8));
+			}
+			if (ioctl(id_fd, SIOCGLIFFLAGS, &lifreq[i]) >= 0) {
+				if_addr->interface_up = lifreq[i].lifr_flags & IFF_UP;
+			}
+			if (ioctl(id_fd, SIOCGLIFINDEX, &lifreq[i]) >= 0) {
+				if_addr->interface_num = lifreq[i].lifr_index;
+			}
+
+			list_add(&if_addr->list, addrs);
+		}
+
+		free (lifconf.lifc_buf);
+		close (id_fd);
+	}
+
+	return (0);
+
+error_free_addr_name:
+	free(if_addr->name);
+
+error_free_addr:
+	free(if_addr);
+
+error_free_ifaddrs:
+	totemip_freeifaddrs(addrs);
+	free (lifconf.lifc_buf);
+	close (id_fd);
+
+	return (-1);
+}
 #endif /* HAVE_GETIFADDRS */
 
 void totemip_freeifaddrs(struct list_head *addrs)
