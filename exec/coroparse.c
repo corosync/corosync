@@ -695,10 +695,6 @@ static int main_config_parser_cb(const char *path,
 
 				free(data->bindnetaddr);
 				data->bindnetaddr = NULL;
-			} else {
-				*error_string = "No bindnetaddr for interface";
-
-				return (0);
 			}
 
 			if (data->mcastaddr != NULL) {

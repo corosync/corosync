@@ -311,6 +311,92 @@ static void put_nodelist_members_to_config(struct totem_config *totem_config)
 	icmap_iter_finalize(iter);
 }
 
+static void config_convert_nodelist_to_interface(struct totem_config *totem_config)
+{
+	icmap_iter_t iter;
+	const char *iter_key;
+	int res = 0;
+	int node_pos;
+	char tmp_key[ICMAP_KEYNAME_MAXLEN];
+	char tmp_key2[ICMAP_KEYNAME_MAXLEN];
+	char *node_addr_str;
+	unsigned int ringnumber = 0;
+	struct list_head addrs;
+	struct list_head *list;
+	struct totem_ip_if_address *if_addr;
+	struct totem_ip_address node_addr;
+	int node_found;
+
+	if (totemip_getifaddrs(&addrs) == -1) {
+		return ;
+	}
+
+	iter = icmap_iter_init("nodelist.node.");
+	while ((iter_key = icmap_iter_next(iter, NULL, NULL)) != NULL) {
+		res = sscanf(iter_key, "nodelist.node.%u.%s", &node_pos, tmp_key);
+		if (res != 2) {
+			continue;
+		}
+
+		if (strcmp(tmp_key, "ring0_addr") != 0) {
+			continue;
+		}
+
+		if (icmap_get_string(iter_key, &node_addr_str) != CS_OK) {
+			continue ;
+		}
+
+		if (totemip_parse(&node_addr, node_addr_str, 0) == -1) {
+			free(node_addr_str);
+			continue ;
+		}
+		free(node_addr_str);
+
+		/*
+		 * Try to find node in if_addrs
+		 */
+		node_found = 0;
+		for (list = addrs.next; list != &addrs; list = list->next) {
+			if_addr = list_entry(list, struct totem_ip_if_address, list);
+
+			if (totemip_equal(&node_addr, &if_addr->ip_addr)) {
+				node_found = 1;
+				break;
+			}
+		}
+
+		if (node_found) {
+			break ;
+		}
+	}
+
+	icmap_iter_finalize(iter);
+
+	if (node_found) {
+		/*
+		 * We found node, so create interface section
+		 */
+		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "nodelist.node.%u.", node_pos);
+		iter = icmap_iter_init(tmp_key);
+		while ((iter_key = icmap_iter_next(iter, NULL, NULL)) != NULL) {
+			res = sscanf(iter_key, "nodelist.node.%u.ring%u%s", &node_pos, &ringnumber, tmp_key2);
+			if (res != 3 || strcmp(tmp_key2, "_addr") != 0) {
+				continue ;
+			}
+
+			if (icmap_get_string(iter_key, &node_addr_str) != CS_OK) {
+				continue;
+			}
+
+			snprintf(tmp_key2, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.bindnetaddr", ringnumber);
+			icmap_set_string(tmp_key2, node_addr_str);
+			free(node_addr_str);
+		}
+		icmap_iter_finalize(iter);
+	}
+}
+
+
 extern int totem_config_read (
 	struct totem_config *totem_config,
 	const char **error_string,
@@ -395,6 +481,15 @@ extern int totem_config_read (
 	 * Get things that might change in the future
 	 */
 	totem_volatile_config_read(totem_config);
+
+	if (icmap_get_string("totem.interface.0.bindnetaddr", &str) != CS_OK) {
+		/*
+		 * We were not able to find ring 0 bindnet addr. Try to use nodelist informations
+		 */
+		config_convert_nodelist_to_interface(totem_config);
+	} else {
+		free(str);
+	}
 
 	iter = icmap_iter_init("totem.interface.");
 	while ((iter_key = icmap_iter_next(iter, NULL, NULL)) != NULL) {
