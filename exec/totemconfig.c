@@ -267,6 +267,7 @@ static void put_nodelist_members_to_config(struct totem_config *totem_config)
 	int res = 0;
 	int node_pos;
 	char tmp_key[ICMAP_KEYNAME_MAXLEN];
+	char tmp_key2[ICMAP_KEYNAME_MAXLEN];
 	char *node_addr_str;
 	int member_count;
 	unsigned int ringnumber = 0;
@@ -285,8 +286,8 @@ static void put_nodelist_members_to_config(struct totem_config *totem_config)
 		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "nodelist.node.%u.", node_pos);
 		iter2 = icmap_iter_init(tmp_key);
 		while ((iter_key2 = icmap_iter_next(iter2, NULL, NULL)) != NULL) {
-			res = sscanf(iter_key2, "nodelist.node.%u.ring%u_addr", &node_pos, &ringnumber);
-			if (res != 2) {
+			res = sscanf(iter_key2, "nodelist.node.%u.ring%u%s", &node_pos, &ringnumber, tmp_key2);
+			if (res != 3 || strcmp(tmp_key2, "_addr") != 0) {
 				continue;
 			}
 
