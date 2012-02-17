@@ -46,7 +46,7 @@ sam_mark_failed \- Mark process failed
 
 .SH DESCRIPTION
 .P
-The \fBsam_mark_failed\fR function is used with SAM_RECOVERY_POLICY_CONFDB mostly
+The \fBsam_mark_failed\fR function is used with SAM_RECOVERY_POLICY_CMAP mostly
 together with SAM_RECOVERY_POLICY_RESTART to mark process failed. Process marked
 failed is killed without sending warn signal and control process will exit
 as with SAM_RECOVERY_POLICY_QUIT policy. Condb key state will be set to failed so
@@ -63,7 +63,7 @@ library was not initialized by calling \fBsam_initialize(3)\fR or was already fi
 
 .TP
 CS_ERR_INVALID_PARAM
-recovery policy doesn't has SAM_RECOVERY_POLICY_CONFDB flag set
+recovery policy doesn't has SAM_RECOVERY_POLICY_CMAP flag set
 
 .TP
 CS_ERR_LIBRARY

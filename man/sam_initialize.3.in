@@ -71,6 +71,7 @@ The \fIrecovery_policy\fR is defined as type:
         SAM_RECOVERY_POLICY_QUORUM = 0x08,
         SAM_RECOVERY_POLICY_QUORUM_QUIT = SAM_RECOVERY_POLICY_QUORUM | SAM_RECOVERY_POLICY_QUIT,
         SAM_RECOVERY_POLICY_QUORUM_RESTART = SAM_RECOVERY_POLICY_QUORUM | SAM_RECOVERY_POLICY_RESTART,
+        SAM_RECOVERY_POLICY_CMAP = 0x10,
         SAM_RECOVERY_POLICY_CONFDB = 0x10,
   } sam_recovery_policy_t;
 .fi
@@ -96,8 +97,10 @@ SAM_RECOVERY_POLICY_QUORUM_RESTART
 same as \fISAM_RECOVERY_POLICY_RESTART\fR but \fBsam_start (3)\fR will block until corosync becomes
 quorate and process will be restarted if quorum is lost.
 .TP
-SAM_RECOVERY_POLICY_CONFDB
-is not policy. Used only as flag meaning confdb integration. It can be used with all previous policies.
+SAM_RECOVERY_POLICY_CMAP
+is not policy. Used only as flag meaning cmap integration. It can be used with all previous policies.
+For backward compatibility, SAM_RECOVERY_POLICY_CONFDB with same meaning as
+\fISAM_RECOVERY_POLICY_CMAP\fR is also provided.
 
 .P
 To perform event driven healthchecking, \fBsam_register(3)\fR and
