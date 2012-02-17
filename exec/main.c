@@ -1174,8 +1174,8 @@ int main (int argc, char **argv, char **envp)
 		log_printf (LOGSYS_LEVEL_WARNING, "member section is deprecated.");
 	}
 
-	if (totem_config_warnings & TOTEM_CONFIG_WARNING_NODEID_IGNORED) {
-		log_printf (LOGSYS_LEVEL_WARNING, "nodeid in totem section is deprecated and ignored.");
+	if (totem_config_warnings & TOTEM_CONFIG_WARNING_TOTEM_NODEID_IGNORED) {
+		log_printf (LOGSYS_LEVEL_WARNING, "nodeid appears both in totem section and nodelist. Nodelist one is used.");
 	}
 
 	if (totem_config_warnings != 0) {

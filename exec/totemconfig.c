@@ -413,10 +413,10 @@ extern int totem_config_read (
 	char tmp_key[ICMAP_KEYNAME_MAXLEN];
 	uint8_t u8;
 	uint16_t u16;
-	uint32_t u32;
 	char *cluster_name = NULL;
 	int i;
 	int local_node_pos;
+	int nodeid_set;
 
 	*warnings = 0;
 
@@ -455,13 +455,7 @@ extern int totem_config_read (
 		free(str);
 	}
 
-	/*
-	 * Get interface node id. This is now deprecated, so set warning
-	 * flag if item exists.
-	 */
-	if (icmap_get_uint32("totem.nodeid", &u32) == CS_OK) {
-		*warnings |= TOTEM_CONFIG_WARNING_NODEID_IGNORED;
-	}
+	icmap_get_uint32("totem.nodeid", &totem_config->node_id);
 
 	totem_config->clear_node_high_bit = 0;
 	if (icmap_get_string("totem.clear_node_high_bit", &str) == CS_OK) {
@@ -637,7 +631,11 @@ extern int totem_config_read (
 			icmap_set_uint32("nodelist.local_node_pos", local_node_pos);
 
 			snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "nodelist.node.%u.nodeid", local_node_pos);
-			icmap_get_uint32(tmp_key, &totem_config->node_id);
+
+			nodeid_set = (totem_config->node_id != 0);
+			if (icmap_get_uint32(tmp_key, &totem_config->node_id) == CS_OK && nodeid_set) {
+				*warnings |= TOTEM_CONFIG_WARNING_TOTEM_NODEID_IGNORED;
+			}
 
 			/*
 			 * Make localnode ring0_addr read only, so we can be sure that local
