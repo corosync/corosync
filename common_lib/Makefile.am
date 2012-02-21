@@ -29,15 +29,65 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 
+# Functions
+uc=$(shell echo $1 | tr a-z A-Z)
+get_soname=$(if $($(call uc,$1)_SONAME),$($(call uc,$1)_SONAME),$(SONAME))
+get_major=$(firstword $(subst ., ,$(call get_soname,$1)))
+get_sharedlibs=$(foreach lib,$(SHARED_LIBS_SO:lib%.so=%),lib$(lib).so.$(call get_soname,$(lib)))
+get_sharedlibs_two=$(foreach lib,$(SHARED_LIBS_SO:lib%.so=%),lib$(lib).so.$(call get_major,$(lib)))
+get_linker_add=$(if $($(call uc,$1)_LINKER_ADD),$($(call uc,$1)_LINKER_ADD))
+
 MAINTAINERCLEANFILES    = Makefile.in
 
 AM_CFLAGS		= -fPIC
 
 INCLUDES		= -I$(top_builddir)/include -I$(top_srcdir)/include
 
-noinst_LIBRARIES		= libcorosync_common.a
+lib_LIBRARIES		= libcorosync_common.a
+SHARED_LIBS_SO		= $(lib_LIBRARIES:%.a=%.so)
 
 libcorosync_common_a_SOURCES	= error_conversion.c
 
+if BUILD_DARWIN
+
+lib%.so: lib%.a $(LIBQB_LIBS)
+	$(CC) $(DARWIN_OPTS) $(call get_linker_add,$*) -Wl,-whole-archive $^ -Wl,-no-whole-archive -o $@
+	ln -sf lib$*.so.$(call get_soname,$*) lib$*.so
+	ln -sf lib$*.so.$(call get_soname,$*) lib$*.so.$(call get_major,$*)
+
+else
+
+if BUILD_SOLARIS
+
+lib%.so.$(SONAME): lib%.a
+	$(LD) $(SOLARIS_OPTS) $(call get_linker_add,$*) -G -whole-archive $^ -no-whole-archive -o $@
+	ln -sf lib$*.so.$(call get_soname,$*) lib$*.so
+	ln -sf lib$*.so.$(call get_soname,$*) lib$*.so.$(call get_major,$*)
+
+else
+
+lib%.so: lib%.a
+	$(CC) -shared -o $@.$(call get_soname,$*) \
+		-Wl,-soname=lib$*.so.$(call get_major,$*) \
+		-Wl,-whole-archive $^ -Wl,-no-whole-archive $(LDFLAGS) $(LIBQB_LIBS) $(AM_LDFLAGS) $(call get_linker_add,$*)
+	ln -sf lib$*.so.$(call get_soname,$*) lib$*.so
+	ln -sf lib$*.so.$(call get_soname,$*) lib$*.so.$(call get_major,$*)
+
+endif
+
+endif
+
+all-local: $(get_explicit_sharedlibs) $(SHARED_LIBS_SO)
+	@echo Built shared libs
+
+install-exec-local:
+	$(INSTALL) -d $(DESTDIR)/$(libdir)
+	$(INSTALL) -m 755 $(get_sharedlibs) $(DESTDIR)/$(libdir)
+	$(CP) -a $(SHARED_LIBS_SO) $(get_sharedlibs_two) $(DESTDIR)/$(libdir)
+
+uninstall-local:
+	cd $(DESTDIR)/$(libdir)/ && \
+		rm -f $(get_sharedlibs) $(SHARED_LIBS_SO) $(get_sharedlibs_two)
+
 clean-local:
-	rm -f *.o *.a
+	rm -f *.o *.a *.so* *.da *.bb *.bbg

@@ -38,6 +38,7 @@ noinst_PROGRAMS		= testevs evsbench evsverify cpgverify testcpg testcpg2 cpgbenc
 			stress_cpgfdget stress_cpgcontext cpgbound testsam \
 			testcpgzc cpgbenchzc testzcgc stress_cpgzc
 
+
 testevs_LDADD		= -levs $(LIBQB_LIBS)
 testevs_LDFLAGS		= -L../lib
 testcpg_LDADD		= -lcpg $(LIBQB_LIBS)
@@ -70,8 +71,8 @@ evsbench_LDADD		= -levs $(LIBQB_LIBS)
 evsbench_LDFLAGS	= -L../lib
 cpgbench_LDADD		= -lcpg $(LIBQB_LIBS)
 cpgbench_LDFLAGS	= -L../lib
-cpgbenchzc_LDADD	= -lcpg $(LIBQB_LIBS)
-cpgbenchzc_LDFLAGS	= -L../lib
+cpgbenchzc_LDADD	= -lcpg -lcorosync_common $(LIBQB_LIBS)
+cpgbenchzc_LDFLAGS	= -L../lib -L../common_lib
 testsam_LDADD		= -lsam -lcmap -lquorum $(LIBQB_LIBS)
 testsam_LDFLAGS		= -L../lib
 

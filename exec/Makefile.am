@@ -52,9 +52,9 @@ corosync_SOURCES	= evil.c vsf_ykd.c coroparse.c vsf_quorum.c syncv2.c \
 			  votequorum.c wd.c util.c schedwrk.c main.c \
 			  apidef.c quorum.c sync.c icmap.c timer.c \
 			  ipc_glue.c service.c mainconfig.c totemconfig.c
-corosync_LDADD		= -ltotem_pg ../common_lib/libcorosync_common.a $(LIBQB_LIBS) $(statgrab_LIBS)
-corosync_DEPENDENCIES	= libtotem_pg.so.$(SONAME) ../common_lib/libcorosync_common.a
-corosync_LDFLAGS	= $(OS_DYFLAGS) -L./
+corosync_LDADD		= -ltotem_pg -lcorosync_common $(LIBQB_LIBS) $(statgrab_LIBS)
+corosync_DEPENDENCIES	= libtotem_pg.so.$(SONAME) ../common_lib/libcorosync_common.so
+corosync_LDFLAGS	= $(OS_DYFLAGS) -L./ -L../common_lib
 
 TOTEM_OBJS		= $(TOTEM_SRC:%.c=%.o)
 LOGSYS_OBJS		= $(LOGSYS_SRC:%.c=%.o)

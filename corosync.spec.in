@@ -241,6 +241,7 @@ This package contains corosync libraries.
 %{_libdir}/libvotequorum.so.*
 %{_libdir}/libpload.so.*
 %{_libdir}/libsam.so.*
+%{_libdir}/libcorosync_common.so.*
 
 %post -n corosynclib -p /sbin/ldconfig
 
@@ -285,6 +286,7 @@ The Corosync Cluster Engine APIs.
 %{_libdir}/libvotequorum.so
 %{_libdir}/libpload.so
 %{_libdir}/libsam.so
+%{_libdir}/libcorosync_common.so
 %{_libdir}/pkgconfig/*.pc
 %{_mandir}/man3/cpg_*3*
 %{_mandir}/man3/evs_*3*

@@ -42,7 +42,7 @@ MAINTAINERCLEANFILES    = Makefile.in
 
 AM_CFLAGS		= -fPIC
 
-AM_LDFLAGS		= -lpthread
+AM_LDFLAGS		= -lpthread -L../common_lib -lcorosync_common
 
 INCLUDES		= -I$(top_builddir)/include -I$(top_srcdir)/include
 
@@ -89,7 +89,7 @@ lib%.so: lib%.a
 	$(CC) -shared -o $@.$(call get_soname,$*) \
 		-Wl,-soname=lib$*.so.$(call get_major,$*) \
 		-Wl,-version-script=$(srcdir)/lib$*.versions \
-		-Wl,-whole-archive $^ -Wl,-no-whole-archive $(LDFLAGS) $(LIBQB_LIBS) ../common_lib/libcorosync_common.a $(AM_LDFLAGS) $(call get_linker_add,$*)
+		-Wl,-whole-archive $^ -Wl,-no-whole-archive $(LDFLAGS) $(LIBQB_LIBS) $(AM_LDFLAGS) $(call get_linker_add,$*)
 	ln -sf lib$*.so.$(call get_soname,$*) lib$*.so
 	ln -sf lib$*.so.$(call get_soname,$*) lib$*.so.$(call get_major,$*)
 

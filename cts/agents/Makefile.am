@@ -49,16 +49,16 @@ endif
 noinst_HEADERS          = common_test_agent.h
 
 cpg_test_agent_SOURCES = cpg_test_agent.c common_test_agent.c
-cpg_test_agent_LDADD =  -lcpg -lcfg ../../exec/crypto.o $(LIBQB_LIBS)
-cpg_test_agent_LDFLAGS =  -L../../lib -L.
+cpg_test_agent_LDADD =  -lcpg -lcfg ../../exec/crypto.o -lcorosync_common $(LIBQB_LIBS)
+cpg_test_agent_LDFLAGS =  -L../../lib -L. -L../../common_lib
 
 sam_test_agent_SOURCES = sam_test_agent.c common_test_agent.c
-sam_test_agent_LDADD =  -lsam -lquorum -lcmap $(LIBQB_LIBS)
-sam_test_agent_LDFLAGS =  -L../../lib 
+sam_test_agent_LDADD =  -lsam -lquorum -lcmap -lcorosync_common $(LIBQB_LIBS)
+sam_test_agent_LDFLAGS =  -L../../lib -L../../common_lib
 
 votequorum_test_agent_SOURCES = votequorum_test_agent.c common_test_agent.c
-votequorum_test_agent_LDADD =  -lvotequorum -lquorum $(LIBQB_LIBS)
-votequorum_test_agent_LDFLAGS =  -L../../lib 
+votequorum_test_agent_LDADD =  -lvotequorum -lquorum -lcorosync_common $(LIBQB_LIBS)
+votequorum_test_agent_LDFLAGS =  -L../../lib -L../../common_lib
 
 clean-local:
 	rm -f *.o *.a *.so* *.da *.bb *.bbg

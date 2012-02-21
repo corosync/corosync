@@ -49,11 +49,11 @@ corosync-xmlproc: corosync-xmlproc.sh
 
 EXTRA_DIST		= $(bin_SCRIPTS) corosync-xmlproc.sh corosync-notifyd.sysconfig.example
 
+corosync_cmapctl_LDADD	= -lcorosync_common -lcmap $(LIBQB_LIBS)
+corosync_cmapctl_LDFLAGS= -L../lib -L../common_lib
 corosync_fplay_LDADD	= $(LIBQB_LIBS)
 corosync_pload_LDADD	= -lpload $(LIBQB_LIBS)
 corosync_pload_LDFLAGS	= -L../lib
-corosync_cmapctl_LDADD	= -lcmap $(LIBQB_LIBS)
-corosync_cmapctl_LDFLAGS= -L../lib
 corosync_cfgtool_LDADD	= -lcfg $(LIBQB_LIBS)
 corosync_cfgtool_LDFLAGS= -L../lib
 corosync_cpgtool_LDADD	= -lcfg -lcpg $(LIBQB_LIBS)
