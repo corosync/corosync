@@ -1310,6 +1310,8 @@ int totemiba_initialize (
 
 	instance->totemiba_poll_handle = qb_poll_handle;
 
+	instance->totem_interface->bindnet.nodeid = totem_config->node_id;
+
 	instance->totemiba_deliver_fn = deliver_fn;
 
 	instance->totemiba_target_set_completed = target_set_completed;
