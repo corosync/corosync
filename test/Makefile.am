@@ -34,52 +34,52 @@ MAINTAINERCLEANFILES    = Makefile.in
 INCLUDES       		= -I$(top_builddir)/include/corosync -I$(top_srcdir)/include
 
 noinst_PROGRAMS		= testevs evsbench evsverify cpgverify testcpg testcpg2 cpgbench \
-			testquorum testvotequorum1 testvotequorum2	\
-			stress_cpgfdget stress_cpgcontext cpgbound testsam \
-			testcpgzc cpgbenchzc testzcgc stress_cpgzc
+			  testquorum testvotequorum1 testvotequorum2	\
+			  stress_cpgfdget stress_cpgcontext cpgbound testsam \
+			  testcpgzc cpgbenchzc testzcgc stress_cpgzc
 
+COMMON_OPTS		= -L../lib -L../common_lib -Wl,-rpath,../common_lib
 
 testevs_LDADD		= -levs $(LIBQB_LIBS)
-testevs_LDFLAGS		= -L../lib
+testevs_LDFLAGS		= $(COMMON_OPTS)
 testcpg_LDADD		= -lcpg $(LIBQB_LIBS)
-testcpg_LDFLAGS		= -L../lib
+testcpg_LDFLAGS		= $(COMMON_OPTS)
 testcpg2_LDADD		= -lcpg $(LIBQB_LIBS)
-testcpg2_LDFLAGS	= -L../lib
+testcpg2_LDFLAGS	= $(COMMON_OPTS)
 testcpgzc_LDADD		= -lcpg $(LIBQB_LIBS)
-testcpgzc_LDFLAGS	= -L../lib
+testcpgzc_LDFLAGS	= $(COMMON_OPTS)
 testzcgc_LDADD		= -lcpg $(LIBQB_LIBS)
-testzcgc_LDFLAGS	= -L../lib
+testzcgc_LDFLAGS	= $(COMMON_OPTS)
 stress_cpgzc_LDADD	= -lcpg $(LIBQB_LIBS)
-stress_cpgzc_LDFLAGS	= -L../lib
+stress_cpgzc_LDFLAGS	= $(COMMON_OPTS)
 stress_cpgfdget_LDADD	= -lcpg $(LIBQB_LIBS)
-stress_cpgfdget_LDFLAGS	= -L../lib
+stress_cpgfdget_LDFLAGS	= $(COMMON_OPTS)
 stress_cpgcontext_LDADD	= -lcpg $(LIBQB_LIBS)
-stress_cpgcontext_LDFLAGS	= -L../lib
+stress_cpgcontext_LDFLAGS	= $(COMMON_OPTS)
 testquorum_LDADD	= -lquorum $(LIBQB_LIBS)
-testquorum_LDFLAGS	= -L../lib
+testquorum_LDFLAGS	= $(COMMON_OPTS)
 testvotequorum1_LDADD	= -lvotequorum $(LIBQB_LIBS)
-testvotequorum1_LDFLAGS	= -L../lib
+testvotequorum1_LDFLAGS	= $(COMMON_OPTS)
 testvotequorum2_LDADD	= -lvotequorum $(LIBQB_LIBS)
-testvotequorum2_LDFLAGS	= -L../lib
+testvotequorum2_LDFLAGS	= $(COMMON_OPTS)
 evsverify_LDADD		= -levs -ltotem_pg $(LIBQB_LIBS)
-evsverify_LDFLAGS	= -L../lib -L../exec
+evsverify_LDFLAGS	= $(COMMON_OPTS) -L../exec
 cpgverify_LDADD		= -lcpg -ltotem_pg $(LIBQB_LIBS)
-cpgverify_LDFLAGS	= -L../lib -L../exec
+cpgverify_LDFLAGS	= $(COMMON_OPTS) -L../exec
 cpgbound_LDADD		= -lcpg $(LIBQB_LIBS)
-cpgbound_LDFLAGS	= -L../lib
+cpgbound_LDFLAGS	= $(COMMON_OPTS)
 evsbench_LDADD		= -levs $(LIBQB_LIBS)
-evsbench_LDFLAGS	= -L../lib
+evsbench_LDFLAGS	= $(COMMON_OPTS)
 cpgbench_LDADD		= -lcpg $(LIBQB_LIBS)
-cpgbench_LDFLAGS	= -L../lib
+cpgbench_LDFLAGS	= $(COMMON_OPTS)
 cpgbenchzc_LDADD	= -lcpg -lcorosync_common $(LIBQB_LIBS)
-cpgbenchzc_LDFLAGS	= -L../lib -L../common_lib
+cpgbenchzc_LDFLAGS	= $(COMMON_OPTS)
 testsam_LDADD		= -lsam -lcmap -lquorum $(LIBQB_LIBS)
-testsam_LDFLAGS		= -L../lib
+testsam_LDFLAGS		= $(COMMON_OPTS)
 
 LINT_FILES1:=$(filter-out sa_error.c, $(wildcard *.c))
 LINT_FILES2:=$(filter-out testevsth.c, $(LINT_FILES1))
 LINT_FILES:=$(filter-out testparse.c, $(LINT_FILES2))
-
 
 lint:
 	-for f in $(LINT_FILES) ; do echo Splint $$f ; splint $(INCLUDES) $(LINT_FLAGS) $(CFLAGS) $$f ; done

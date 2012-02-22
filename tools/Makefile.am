@@ -49,25 +49,31 @@ corosync-xmlproc: corosync-xmlproc.sh
 
 EXTRA_DIST		= $(bin_SCRIPTS) corosync-xmlproc.sh corosync-notifyd.sysconfig.example
 
+COMMON_OPTS		= -L../lib -L../common_lib -Wl,-rpath,../common_lib
+
+corosync_cmapctl_LDFLAGS= $(COMMON_OPTS)
 corosync_cmapctl_LDADD	= -lcorosync_common -lcmap $(LIBQB_LIBS)
-corosync_cmapctl_LDFLAGS= -L../lib -L../common_lib
+
 corosync_fplay_LDADD	= $(LIBQB_LIBS)
+
+corosync_pload_LDFLAGS	= $(COMMON_OPTS)
 corosync_pload_LDADD	= -lpload $(LIBQB_LIBS)
-corosync_pload_LDFLAGS	= -L../lib
+
+corosync_cfgtool_LDFLAGS= $(COMMON_OPTS)
 corosync_cfgtool_LDADD	= -lcfg $(LIBQB_LIBS)
-corosync_cfgtool_LDFLAGS= -L../lib
+
+corosync_cpgtool_LDFLAGS= $(COMMON_OPTS)
 corosync_cpgtool_LDADD	= -lcfg -lcpg $(LIBQB_LIBS)
-corosync_cpgtool_LDFLAGS= -L../lib
-corosync_quorumtool_LDADD = -lcmap -lcfg -lquorum \
-			    -lvotequorum $(LIBQB_LIBS)
-corosync_quorumtool_LDFLAGS = -L../lib
 
-corosync_notifyd_LDADD = -lcfg -lcmap \
-			   $(LIBQB_LIBS) $(DBUS_LIBS) $(SNMPLIBS) \
-			   -lquorum
-corosync_notifyd_LDFLAGS = -L../lib
+corosync_quorumtool_LDFLAGS = $(COMMON_OPTS)
+corosync_quorumtool_LDADD   = -lcmap -lcfg -lquorum \
+			      -lvotequorum $(LIBQB_LIBS)
+
 corosync_notifyd_CPPFLAGS = $(DBUS_CFLAGS)
-
+corosync_notifyd_LDFLAGS  = $(COMMON_OPTS)
+corosync_notifyd_LDADD    = -lcfg -lcmap \
+			    $(LIBQB_LIBS) $(DBUS_LIBS) $(SNMPLIBS) \
+			    -lquorum
 
 lint:
 	-splint $(LINT_FLAGS) $(DBUS_CFLAGS) $(INCLUDES) $(CFLAGS) *.c
