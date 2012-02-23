@@ -174,6 +174,7 @@ cs_error_t votequorum_getinfo (
 	error = res_lib_votequorum_getinfo.header.error;
 
 	info->node_id = res_lib_votequorum_getinfo.nodeid;
+	info->state = res_lib_votequorum_getinfo.state;
 	info->node_votes = res_lib_votequorum_getinfo.votes;
 	info->node_expected_votes = res_lib_votequorum_getinfo.expected_votes;
 	info->highest_expected = res_lib_votequorum_getinfo.highest_expected;
@@ -539,8 +540,7 @@ error_put:
 #ifdef EXPERIMENTAL_QUORUM_DEVICE_API
 cs_error_t votequorum_qdevice_register (
 	votequorum_handle_t handle,
-	const char *name,
-	unsigned int votes)
+	const char *name)
 {
 	cs_error_t error;
 	struct votequorum_inst *votequorum_inst;
@@ -548,8 +548,9 @@ cs_error_t votequorum_qdevice_register (
 	struct req_lib_votequorum_qdevice_register req_lib_votequorum_qdevice_register;
 	struct res_lib_votequorum_status res_lib_votequorum_status;
 
-	if (strlen(name) >= VOTEQUORUM_MAX_QDEVICE_NAME_LEN)
+	if (strlen(name) >= VOTEQUORUM_MAX_QDEVICE_NAME_LEN) {
 		return CS_ERR_INVALID_PARAM;
+	}
 
 	error = hdb_error_to_cs(hdb_handle_get (&votequorum_handle_t_db, handle, (void *)&votequorum_inst));
 	if (error != CS_OK) {
@@ -560,7 +561,6 @@ cs_error_t votequorum_qdevice_register (
 	req_lib_votequorum_qdevice_register.header.size = sizeof (struct req_lib_votequorum_qdevice_register);
 	req_lib_votequorum_qdevice_register.header.id = MESSAGE_REQ_VOTEQUORUM_QDEVICE_REGISTER;
 	strcpy(req_lib_votequorum_qdevice_register.name, name);
-	req_lib_votequorum_qdevice_register.votes = votes;
 
 	iov.iov_base = (char *)&req_lib_votequorum_qdevice_register;
 	iov.iov_len = sizeof (struct req_lib_votequorum_qdevice_register);
@@ -586,6 +586,7 @@ error_exit:
 
 cs_error_t votequorum_qdevice_poll (
 	votequorum_handle_t handle,
+	const char *name,
 	unsigned int state)
 {
 	cs_error_t error;
@@ -594,14 +595,18 @@ cs_error_t votequorum_qdevice_poll (
 	struct req_lib_votequorum_qdevice_poll req_lib_votequorum_qdevice_poll;
 	struct res_lib_votequorum_status res_lib_votequorum_status;
 
+	if (strlen(name) >= VOTEQUORUM_MAX_QDEVICE_NAME_LEN) {
+		return CS_ERR_INVALID_PARAM;
+	}
+
 	error = hdb_error_to_cs(hdb_handle_get (&votequorum_handle_t_db, handle, (void *)&votequorum_inst));
 	if (error != CS_OK) {
 		return (error);
 	}
 
-
 	req_lib_votequorum_qdevice_poll.header.size = sizeof (struct req_lib_votequorum_qdevice_poll);
 	req_lib_votequorum_qdevice_poll.header.id = MESSAGE_REQ_VOTEQUORUM_QDEVICE_POLL;
+	strcpy(req_lib_votequorum_qdevice_poll.name, name);
 	req_lib_votequorum_qdevice_poll.state = state;
 
 	iov.iov_base = (char *)&req_lib_votequorum_qdevice_poll;
@@ -627,24 +632,30 @@ error_exit:
 }
 
 cs_error_t votequorum_qdevice_unregister (
-	votequorum_handle_t handle)
+	votequorum_handle_t handle,
+	const char *name)
 {
 	cs_error_t error;
 	struct votequorum_inst *votequorum_inst;
 	struct iovec iov;
-	struct req_lib_votequorum_general req_lib_votequorum_general;
+	struct req_lib_votequorum_qdevice_unregister req_lib_votequorum_qdevice_unregister;
 	struct res_lib_votequorum_status res_lib_votequorum_status;
+
+	if (strlen(name) >= VOTEQUORUM_MAX_QDEVICE_NAME_LEN) {
+		return CS_ERR_INVALID_PARAM;
+	}
 
 	error = hdb_error_to_cs(hdb_handle_get (&votequorum_handle_t_db, handle, (void *)&votequorum_inst));
 	if (error != CS_OK) {
 		return (error);
 	}
 
-	req_lib_votequorum_general.header.size = sizeof (struct req_lib_votequorum_general);
-	req_lib_votequorum_general.header.id = MESSAGE_REQ_VOTEQUORUM_QDEVICE_UNREGISTER;
+	req_lib_votequorum_qdevice_unregister.header.size = sizeof (struct req_lib_votequorum_qdevice_unregister);
+	req_lib_votequorum_qdevice_unregister.header.id = MESSAGE_REQ_VOTEQUORUM_QDEVICE_UNREGISTER;
+	strcpy(req_lib_votequorum_qdevice_unregister.name, name);
 
-	iov.iov_base = (char *)&req_lib_votequorum_general;
-	iov.iov_len = sizeof (struct req_lib_votequorum_general);
+	iov.iov_base = (char *)&req_lib_votequorum_qdevice_unregister;
+	iov.iov_len = sizeof (struct req_lib_votequorum_qdevice_unregister);
 
         error = qb_to_cs_error(qb_ipcc_sendv_recv (
 		votequorum_inst->c,
@@ -667,12 +678,13 @@ error_exit:
 
 cs_error_t votequorum_qdevice_getinfo (
 	votequorum_handle_t handle,
+	unsigned int nodeid,
 	struct votequorum_qdevice_info *qinfo)
 {
 	cs_error_t error;
 	struct votequorum_inst *votequorum_inst;
 	struct iovec iov;
-	struct req_lib_votequorum_general req_lib_votequorum_general;
+	struct req_lib_votequorum_qdevice_getinfo req_lib_votequorum_qdevice_getinfo;
 	struct res_lib_votequorum_qdevice_getinfo res_lib_votequorum_qdevice_getinfo;
 
 	error = hdb_error_to_cs(hdb_handle_get (&votequorum_handle_t_db, handle, (void *)&votequorum_inst));
@@ -680,12 +692,12 @@ cs_error_t votequorum_qdevice_getinfo (
 		return (error);
 	}
 
+	req_lib_votequorum_qdevice_getinfo.header.size = sizeof (struct req_lib_votequorum_qdevice_getinfo);
+	req_lib_votequorum_qdevice_getinfo.header.id = MESSAGE_REQ_VOTEQUORUM_QDEVICE_GETINFO;
+	req_lib_votequorum_qdevice_getinfo.nodeid = nodeid;
 
-	req_lib_votequorum_general.header.size = sizeof (struct req_lib_votequorum_general);
-	req_lib_votequorum_general.header.id = MESSAGE_REQ_VOTEQUORUM_QDEVICE_GETINFO;
-
-	iov.iov_base = (char *)&req_lib_votequorum_general;
-	iov.iov_len = sizeof (struct req_lib_votequorum_general);
+	iov.iov_base = (char *)&req_lib_votequorum_qdevice_getinfo;
+	iov.iov_len = sizeof (struct req_lib_votequorum_qdevice_getinfo);
 
         error = qb_to_cs_error(qb_ipcc_sendv_recv (
 		votequorum_inst->c,

@@ -87,6 +87,7 @@ enum main_cp_cb_data_state {
 	MAIN_CP_CB_DATA_STATE_LOGGING_DAEMON,
 	MAIN_CP_CB_DATA_STATE_MEMBER,
 	MAIN_CP_CB_DATA_STATE_QUORUM,
+	MAIN_CP_CB_DATA_STATE_QDEVICE,
 	MAIN_CP_CB_DATA_STATE_NODELIST,
 	MAIN_CP_CB_DATA_STATE_NODELIST_NODE,
 };
@@ -388,7 +389,6 @@ static int main_config_parser_cb(const char *path,
 		case MAIN_CP_CB_DATA_STATE_QUORUM:
 			if ((strcmp(path, "quorum.expected_votes") == 0) ||
 			    (strcmp(path, "quorum.votes") == 0) ||
-			    (strcmp(path, "quorum.quorumdev_poll") == 0) ||
 			    (strcmp(path, "quorum.last_man_standing_window") == 0) ||
 			    (strcmp(path, "quorum.leaving_timeout") == 0)) {
 				if (safe_atoi(value, &i) != 0) {
@@ -410,6 +410,15 @@ static int main_config_parser_cb(const char *path,
 				add_as_string = 0;
 			}
 			break;
+		case MAIN_CP_CB_DATA_STATE_QDEVICE:
+			if ((strcmp(path, "quorum.device.timeout") == 0) ||
+			    (strcmp(path, "quorum.device.votes") == 0)) {
+				if (safe_atoi(value, &i) != 0) {
+					goto atoi_error;
+				}
+				icmap_set_uint32(path, i);
+				add_as_string = 0;
+			}
 		case MAIN_CP_CB_DATA_STATE_TOTEM:
 			if ((strcmp(path, "totem.version") == 0) ||
 			    (strcmp(path, "totem.nodeid") == 0) ||
@@ -671,6 +680,9 @@ static int main_config_parser_cb(const char *path,
 		if (strcmp(path, "quorum") == 0) {
 			data->state = MAIN_CP_CB_DATA_STATE_QUORUM;
 		}
+		if (strcmp(path, "quorum.device") == 0) {
+			data->state = MAIN_CP_CB_DATA_STATE_QDEVICE;
+		}
 		if (strcmp(path, "nodelist") == 0) {
 			data->state = MAIN_CP_CB_DATA_STATE_NODELIST;
 			data->node_number = 0;
@@ -857,6 +869,9 @@ static int main_config_parser_cb(const char *path,
 			break;
 		case MAIN_CP_CB_DATA_STATE_QUORUM:
 			data->state = MAIN_CP_CB_DATA_STATE_NORMAL;
+			break;
+		case MAIN_CP_CB_DATA_STATE_QDEVICE:
+			data->state = MAIN_CP_CB_DATA_STATE_QUORUM;
 			break;
 		case MAIN_CP_CB_DATA_STATE_NODELIST:
 			data->state = MAIN_CP_CB_DATA_STATE_NORMAL;

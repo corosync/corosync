@@ -50,7 +50,7 @@ static void print_info(int ok_to_fail)
 	struct votequorum_qdevice_info qinfo;
 	int err;
 
-	if ( (err=votequorum_qdevice_getinfo(handle, &qinfo)) != CS_OK)
+	if ( (err=votequorum_qdevice_getinfo(handle, VOTEQUORUM_NODEID_QDEVICE, &qinfo)) != CS_OK)
 		fprintf(stderr, "votequorum_qdevice_getinfo error %d: %s\n", err, ok_to_fail?"OK":"FAILED");
 	else {
 		printf("qdevice votes  %d\n", qinfo.votes);
@@ -63,6 +63,7 @@ static void print_info(int ok_to_fail)
 
 int main(int argc, char *argv[])
 {
+	int ret = 0;
 #ifdef EXPERIMENTAL_QUORUM_DEVICE_API
 	int pollcount=0, polltime=1;
 	int err;
@@ -82,24 +83,34 @@ int main(int argc, char *argv[])
 	}
 
 	if (argc >= 2) {
-		if ( (err=votequorum_qdevice_register(handle, "QDEVICE", 4)) != CS_OK)
+		if ( (err=votequorum_qdevice_register(handle, "QDEVICE")) != CS_OK) {
 			fprintf(stderr, "qdevice_register FAILED: %d\n", err);
+			ret = -1;
+			goto out;
+		}
 
 		while (pollcount--) {
 			print_info(0);
-			if ((err=votequorum_qdevice_poll(handle, 1)) != CS_OK)
+			if ((err=votequorum_qdevice_poll(handle, "QDEVICE", 1)) != CS_OK) {
 				fprintf(stderr, "qdevice poll FAILED: %d\n", err);
+				ret = -1;
+				goto out;
+			}
 			print_info(0);
 			sleep(polltime);
 		}
-		if ((err= votequorum_qdevice_unregister(handle)) != CS_OK)
+		if ((err= votequorum_qdevice_unregister(handle, "QDEVICE")) != CS_OK) {
 			fprintf(stderr, "qdevice unregister FAILED: %d\n", err);
+			ret = -1;
+			goto out;
+		}
 	}
 	print_info(1);
 
+out:
 	votequorum_finalize(handle);
 #else
-	fprintf(stderr, "qdevice support is not built in corosync/votequorum\n");	
+	fprintf(stderr, "qdevice support is not built in corosync/votequorum\n");
 #endif
-	return 0;
+	return ret;
 }

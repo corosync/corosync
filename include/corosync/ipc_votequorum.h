@@ -48,6 +48,7 @@ enum req_votequorum_types {
 	,
 	MESSAGE_REQ_VOTEQUORUM_QDEVICE_REGISTER,
 	MESSAGE_REQ_VOTEQUORUM_QDEVICE_UNREGISTER,
+	MESSAGE_REQ_VOTEQUORUM_QDEVICE_UPDATE,
 	MESSAGE_REQ_VOTEQUORUM_QDEVICE_POLL,
 	MESSAGE_REQ_VOTEQUORUM_QDEVICE_GETINFO
 #endif
@@ -62,21 +63,37 @@ enum res_votequorum_types {
 	MESSAGE_RES_VOTEQUORUM_EXPECTEDVOTES_NOTIFICATION
 };
 
-struct req_lib_votequorum_setvotes {
-	struct qb_ipc_request_header header __attribute__((aligned(8)));
-	unsigned int votes;
-	int nodeid;
-};
-
 struct req_lib_votequorum_qdevice_register {
 	struct qb_ipc_request_header header __attribute__((aligned(8)));
-	unsigned int votes;
 	char name[VOTEQUORUM_MAX_QDEVICE_NAME_LEN];
+};
+
+struct req_lib_votequorum_qdevice_unregister {
+	struct qb_ipc_request_header header __attribute__((aligned(8)));
+	char name[VOTEQUORUM_MAX_QDEVICE_NAME_LEN];
+};
+
+struct req_lib_votequorum_qdevice_update {
+	struct qb_ipc_request_header header __attribute__((aligned(8)));
+	char oldname[VOTEQUORUM_MAX_QDEVICE_NAME_LEN];
+	char newname[VOTEQUORUM_MAX_QDEVICE_NAME_LEN];
 };
 
 struct req_lib_votequorum_qdevice_poll {
 	struct qb_ipc_request_header header __attribute__((aligned(8)));
+	char name[VOTEQUORUM_MAX_QDEVICE_NAME_LEN];
 	int state;
+};
+
+struct req_lib_votequorum_qdevice_getinfo {
+	struct qb_ipc_request_header header __attribute__((aligned(8)));
+	int nodeid;
+};
+
+struct req_lib_votequorum_setvotes {
+	struct qb_ipc_request_header header __attribute__((aligned(8)));
+	unsigned int votes;
+	int nodeid;
 };
 
 struct req_lib_votequorum_setexpected {
@@ -109,10 +126,12 @@ struct res_lib_votequorum_status {
 #define VOTEQUORUM_INFO_LAST_MAN_STANDING       8
 #define VOTEQUORUM_INFO_AUTO_TIE_BREAKER       16
 #define VOTEQUORUM_INFO_LEAVE_REMOVE           32
+#define VOTEQUORUM_INFO_QDEVICE                64
 
 struct res_lib_votequorum_getinfo {
 	struct qb_ipc_response_header header __attribute__((aligned(8)));
-	int nodeid;
+	unsigned int nodeid;
+	unsigned int state;
 	unsigned int votes;
 	unsigned int expected_votes;
 	unsigned int highest_expected;

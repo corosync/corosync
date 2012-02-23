@@ -42,19 +42,16 @@ extern "C" {
 
 typedef uint64_t votequorum_handle_t;
 
-#ifdef EXPERIMENTAL_QUORUM_DEVICE_API
-#define VOTEQUORUM_MAX_QDEVICE_NAME_LEN 255
-#endif
-
 #define VOTEQUORUM_INFO_FLAG_TWONODE            1
 #define VOTEQUORUM_INFO_FLAG_QUORATE            2
 #define VOTEQUORUM_INFO_WAIT_FOR_ALL            4
 #define VOTEQUORUM_INFO_LAST_MAN_STANDING       8
 #define VOTEQUORUM_INFO_AUTO_TIE_BREAKER       16
 #define VOTEQUORUM_INFO_LEAVE_REMOVE           32
+#define VOTEQUORUM_INFO_QDEVICE                64
 
-#define VOTEQUORUM_NODEID_US 0
-#define VOTEQUORUM_NODEID_QDEVICE -1
+#define VOTEQUORUM_NODEID_QDEVICE 0
+#define VOTEQUORUM_MAX_QDEVICE_NAME_LEN 255
 
 #define NODESTATE_MEMBER     1
 #define NODESTATE_DEAD       2
@@ -64,6 +61,7 @@ typedef uint64_t votequorum_handle_t;
 
 struct votequorum_info {
 	unsigned int node_id;
+	unsigned int state;
 	unsigned int node_votes;
 	unsigned int node_expected_votes;
 	unsigned int highest_expected;
@@ -187,20 +185,29 @@ cs_error_t votequorum_context_set (
  */
 cs_error_t votequorum_qdevice_register (
 	votequorum_handle_t handle,
-	const char *name,
-	unsigned int votes);
+	const char *name);
 
 /**
  * Unregister a quorum device
  */
 cs_error_t votequorum_qdevice_unregister (
-	votequorum_handle_t handle);
+	votequorum_handle_t handle,
+	const char *name);
+
+/**
+ * Update registered name of a quorum device
+ */
+cs_error_t votequorum_qdevice_update (
+	votequorum_handle_t handle,
+	const char *oldname,
+	const char *newname);
 
 /**
  * Poll a quorum device
  */
 cs_error_t votequorum_qdevice_poll (
 	votequorum_handle_t handle,
+	const char *name,
 	unsigned int state);
 
 /**
@@ -208,6 +215,7 @@ cs_error_t votequorum_qdevice_poll (
  */
 cs_error_t votequorum_qdevice_getinfo (
 	votequorum_handle_t handle,
+	unsigned int nodeid,
 	struct votequorum_qdevice_info *info);
 
 #endif
