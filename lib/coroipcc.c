@@ -752,7 +752,7 @@ coroipcc_service_connect (
 
 	ipc_instance->fd = request_fd;
 
-	if (path_data->res_setup.error == CS_ERR_TRY_AGAIN) {
+	if (path_data->res_setup.error != CS_OK) {
 		res = path_data->res_setup.error;
 		goto error_exit;
 	}
@@ -776,12 +776,16 @@ error_exit:
 		semctl (ipc_instance->control_buffer->semid, 0, IPC_RMID);
 #endif
 	memory_unmap (ipc_instance->dispatch_buffer, dispatch_size);
+	unlink (path_data->dispatch_map_path);
 error_dispatch_buffer:
 	memory_unmap (ipc_instance->response_buffer, response_size);
+	unlink (path_data->response_map_path);
 error_response_buffer:
 	memory_unmap (ipc_instance->request_buffer, request_size);
+	unlink (path_data->request_map_path);
 error_request_buffer:
 	memory_unmap (ipc_instance->control_buffer, 8192);
+	unlink (path_data->control_map_path);
 error_connect:
 	close (request_fd);
 
