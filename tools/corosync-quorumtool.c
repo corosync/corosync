@@ -381,11 +381,11 @@ static int display_quorum_data(int is_quorate, uint32_t nodeid, int loop)
 	}
 
 	if ((err=votequorum_getinfo(v_handle, nodeid, &info)) == CS_OK) {
-		printf("Node votes:       %d\n", info.node_votes);
 		printf("Node state:       %s\n", decode_state(info.node_state));
 		if (info.node_state != NODESTATE_MEMBER) {
 			return err;
 		}
+		printf("Node votes:       %d\n", info.node_votes);
 		printf("Expected votes:   %d\n", info.node_expected_votes);
 		printf("Highest expected: %d\n", info.highest_expected);
 		printf("Total votes:      %d\n", info.total_votes);
