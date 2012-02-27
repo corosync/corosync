@@ -61,7 +61,7 @@ typedef uint64_t votequorum_handle_t;
 
 struct votequorum_info {
 	unsigned int node_id;
-	unsigned int state;
+	unsigned int node_state;
 	unsigned int node_votes;
 	unsigned int node_expected_votes;
 	unsigned int highest_expected;

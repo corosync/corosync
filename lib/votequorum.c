@@ -174,7 +174,7 @@ cs_error_t votequorum_getinfo (
 	error = res_lib_votequorum_getinfo.header.error;
 
 	info->node_id = res_lib_votequorum_getinfo.nodeid;
-	info->state = res_lib_votequorum_getinfo.state;
+	info->node_state = res_lib_votequorum_getinfo.state;
 	info->node_votes = res_lib_votequorum_getinfo.votes;
 	info->node_expected_votes = res_lib_votequorum_getinfo.expected_votes;
 	info->highest_expected = res_lib_votequorum_getinfo.highest_expected;

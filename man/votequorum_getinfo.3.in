@@ -43,12 +43,17 @@ The
 .B votequorum_getinfo
 function is used to get information about the voting system and its nodes.
 
+The
+.I nodeid
+argument indicates which node information should be stored in the votequorum_info structure.
+
 The votequorum_info structure is defined as follows:
 
 .nf
 
 struct votequorum_info {
         unsigned int node_id;
+        unsigned int node_state;
         unsigned int node_votes;
         unsigned int node_expected_votes;
         unsigned int highest_expected;
@@ -57,18 +62,31 @@ struct votequorum_info {
         unsigned int flags;
 };
 
+.fi
+The node_state is defined as:
+.nf
+
+#define NODESTATE_MEMBER     1
+#define NODESTATE_DEAD       2
+#define NODESTATE_LEAVING    3
+
+.fi
+The flags are defined as:
+.nf
+
 #define VOTEQUORUM_INFO_FLAG_TWONODE            1
 #define VOTEQUORUM_INFO_FLAG_QUORATE            2
 #define VOTEQUORUM_INFO_WAIT_FOR_ALL            4
 #define VOTEQUORUM_INFO_LAST_MAN_STANDING       8
 #define VOTEQUORUM_INFO_AUTO_TIE_BREAKER       16
 #define VOTEQUORUM_INFO_LEAVE_REMOVE           32
+#define VOTEQUORUM_INFO_QDEVICE                64
 .fi
 .PP
 The members starting node_ hold information specific to the requested nodeid, the other are
 general to the voting system.
 .SH RETURN VALUE
-This call returns the CS_OK value if successful, otherwise an error is returned.
+This call returns the CS_OK value if successful, otherwise a generic error is returned.
 .PP
 .SH ERRORS
 @COMMONIPCERRORS@
