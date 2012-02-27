@@ -66,7 +66,7 @@ corosync_cpgtool_LDFLAGS= $(COMMON_OPTS)
 corosync_cpgtool_LDADD	= -lcfg -lcpg $(LIBQB_LIBS)
 
 corosync_quorumtool_LDFLAGS = $(COMMON_OPTS)
-corosync_quorumtool_LDADD   = -lcmap -lcfg -lquorum \
+corosync_quorumtool_LDADD   = -lcmap -lcfg -lquorum -lcorosync_common \
 			      -lvotequorum $(LIBQB_LIBS)
 
 corosync_notifyd_CPPFLAGS = $(DBUS_CFLAGS)

@@ -130,15 +130,17 @@ static void show_usage(const char *name)
 	printf("  -s             show quorum status\n");
 	printf("  -m             monitor quorum status\n");
 	printf("  -l             list nodes\n");
-	printf("  -v <votes>     change the number of votes for a node *\n");
-	printf("  -n <nodeid>    optional nodeid of node for -v\n");
-	printf("  -e <expected>  change expected votes for the cluster *\n");
+	printf("  -v <votes>     change the number of votes for a node (*)\n");
+	printf("  -n <nodeid>    optional nodeid of node for -s or -v (*)\n");
+	printf("  -e <expected>  change expected votes for the cluster (*)\n");
 	printf("  -H             show nodeids in hexadecimal rather than decimal\n");
 	printf("  -i             show node IP addresses instead of the resolved name\n");
-	printf("  -f             forcefully unregister a quorum device *DANGEROUS*\n");
+#ifdef EXPERIMENTAL_QUORUM_DEVICE_API
+	printf("  -f             forcefully unregister a quorum device *DANGEROUS* (*)\n");
+#endif
 	printf("  -h             show this help text\n");
 	printf("\n");
-	printf("  * Starred items only work if votequorum is the quorum provider for corosync\n");
+	printf("  (*) Starred items only work if votequorum is the quorum provider for corosync\n");
 	printf("\n");
 }
 
@@ -200,7 +202,8 @@ static int set_votes(uint32_t nodeid, int votes)
 	int err;
 
 	if ((err=votequorum_setvotes(v_handle, nodeid, votes)) != CS_OK) {
-		fprintf(stderr, "set votes FAILED: %d\n", err);
+		fprintf(stderr, "Unable to set votes %d for nodeid: %u: %s\n",
+			votes, nodeid, cs_strerror(err));
 	}
 
 	return err==CS_OK?0:err;
@@ -211,7 +214,7 @@ static int set_expected(int expected_votes)
 	int err;
 
 	if ((err=votequorum_setexpected(v_handle, expected_votes)) != CS_OK) {
-		fprintf(stderr, "set expected votes FAILED: %d\n", err);
+		fprintf(stderr, "Unable to set expected votes: %s\n", cs_strerror(err));
 	}
 
 	return err==CS_OK?0:err;
@@ -244,7 +247,7 @@ static const char *node_name(uint32_t nodeid, name_format_t name_format)
 
 	err = corosync_cfg_get_node_addrs(c_handle, nodeid, INTERFACE_MAX, &numaddrs, addrs);
 	if (err != CS_OK) {
-		fprintf(stderr, "Unable to get node address for nodeid %u: %d\n", nodeid, err);
+		fprintf(stderr, "Unable to get node address for nodeid %u: %s\n", nodeid, cs_strerror(err));
 		return "";
 	}
 
@@ -315,14 +318,14 @@ static void display_nodes_data(uint32_t nodeid, nodeid_format_t nodeid_format, n
 		g_view_list = NULL;
 	}
 
-#if EXPERIMENTAL_QUORUM_DEVICE_API
+#ifdef EXPERIMENTAL_QUORUM_DEVICE_API
 	if ((display_qdevice) && (v_handle)) {
 		int err;
 		struct votequorum_qdevice_info qinfo;
 
 		err = votequorum_qdevice_getinfo(v_handle, nodeid, &qinfo);
 		if (err != CS_OK) {
-			fprintf(stderr, "votequorum_qdevice_getinfo error: %d\n", err);
+			fprintf(stderr, "Unable to get quorum device info: %s\n", cs_strerror(err));
 		} else {
 			if (nodeid_format == NODEID_FORMAT_DECIMAL) {
 				printf("%10u   ", VOTEQUORUM_NODEID_QDEVICE);
@@ -380,6 +383,9 @@ static int display_quorum_data(int is_quorate, uint32_t nodeid, int loop)
 	if ((err=votequorum_getinfo(v_handle, nodeid, &info)) == CS_OK) {
 		printf("Node votes:       %d\n", info.node_votes);
 		printf("Node state:       %s\n", decode_state(info.state));
+		if (info.state != NODESTATE_MEMBER) {
+			return err;
+		}
 		printf("Expected votes:   %d\n", info.node_expected_votes);
 		printf("Highest expected: %d\n", info.highest_expected);
 		printf("Total votes:      %d\n", info.total_votes);
@@ -399,7 +405,7 @@ static int display_quorum_data(int is_quorate, uint32_t nodeid, int loop)
 		}
 		printf("\n");
 	} else {
-		fprintf(stderr, "votequorum_getinfo FAILED: %d\n", err);
+		fprintf(stderr, "Unable to get node %u info: %s\n", nodeid, cs_strerror(err));
 	}
 
 	return err;
@@ -417,13 +423,13 @@ static int show_status(uint32_t nodeid, nodeid_format_t nodeid_format, name_form
 
 	err=quorum_getquorate(q_handle, &is_quorate);
 	if (err != CS_OK) {
-		fprintf(stderr, "quorum_getquorate FAILED: %d\n", err);
+		fprintf(stderr, "Unable to get cluster quorate status: %s\n", cs_strerror(err));
 		goto quorum_err;
 	}
 
 	err=quorum_trackstart(q_handle, CS_TRACK_CURRENT);
 	if (err != CS_OK) {
-		fprintf(stderr, "quorum_trackstart FAILED: %d\n", err);
+		fprintf(stderr, "Unable to start quorum status tracking: %s\n", cs_strerror(err));
 		goto quorum_err;
 	}
 
@@ -431,12 +437,12 @@ static int show_status(uint32_t nodeid, nodeid_format_t nodeid_format, name_form
 	while (g_called == 0 && err == CS_OK) {
 		err = quorum_dispatch(q_handle, CS_DISPATCH_ONE);
 		if (err != CS_OK) {
-			fprintf(stderr, "quorum_dispatch FAILED: %d\n", err);
+			fprintf(stderr, "Unable to dispatch quorum status: %s\n", cs_strerror(err));
 		}
 	}
 
 	if (quorum_trackstop(q_handle) != CS_OK) {
-		fprintf(stderr, "quorum_trackstop FAILED: %d\n", err);
+		fprintf(stderr, "Unable to stop quorum status tracking: %s\n", cs_strerror(err));
 	}
 
 quorum_err:
@@ -464,7 +470,7 @@ static int monitor_status(nodeid_format_t nodeid_format, name_format_t name_form
 
 	err=quorum_trackstart(q_handle, CS_TRACK_CHANGES);
 	if (err != CS_OK) {
-		fprintf(stderr, "quorum_trackstart FAILED: %d\n", err);
+		fprintf(stderr, "Unable to start quorum status tracking: %s\n", cs_strerror(err));
 		goto quorum_err;
 	}
 
@@ -473,7 +479,7 @@ static int monitor_status(nodeid_format_t nodeid_format, name_format_t name_form
 
 		err = quorum_dispatch(q_handle, CS_DISPATCH_ONE);
 		if (err != CS_OK) {
-			fprintf(stderr, "quorum_dispatch FAILED: %d\n", err);
+			fprintf(stderr, "Unable to dispatch quorum status: %s\n", cs_strerror(err));
 			goto quorum_err;
 		}
 		time(&t);
@@ -483,7 +489,7 @@ static int monitor_status(nodeid_format_t nodeid_format, name_format_t name_form
 		printf("\n");
 		loop = 1;
 		if (err != CS_OK) {
-			fprintf(stderr, "display_quorum_data FAILED: %d\n", err);
+			fprintf(stderr, "Unable to display quorum data: %s\n", cs_strerror(err));
 			goto quorum_err;
 		}
 	}
@@ -499,7 +505,7 @@ static int show_nodes(nodeid_format_t nodeid_format, name_format_t name_format)
 
 	err = quorum_trackstart(q_handle, CS_TRACK_CURRENT);
 	if (err != CS_OK) {
-		fprintf(stderr, "quorum_trackstart FAILED: %d\n", err);
+		fprintf(stderr, "Unable to start quorum status tracking: %s\n", cs_strerror(err));
 		goto err_exit;
 	}
 
@@ -507,7 +513,7 @@ static int show_nodes(nodeid_format_t nodeid_format, name_format_t name_format)
 	while (g_called == 0) {
 		err = quorum_dispatch(q_handle, CS_DISPATCH_ONE);
 		if (err != CS_OK) {
-			fprintf(stderr, "quorum_dispatch FAILED: %d\n", err);
+			fprintf(stderr, "Unable to dispatch quorum status: %s\n", cs_strerror(err));
 			goto err_exit;
 		}
 	}
@@ -527,13 +533,13 @@ static int unregister_qdevice(void)
 
 	err = votequorum_qdevice_getinfo(v_handle, our_nodeid, &qinfo);
 	if (err != CS_OK) {
-		fprintf(stderr, "votequorum_qdevice_getinfo FAILED: %d\n", err);
+		fprintf(stderr, "Unable to get quorum device info: %s\n", cs_strerror(err));
 		return -1;
 	}
 
 	err = votequorum_qdevice_unregister(v_handle, qinfo.name);
 	if (err != CS_OK) {
-		fprintf(stderr, "votequorum_qdevice_unregister FAILED: %d\n", err);
+		fprintf(stderr, "Unable to unregister quorum device: %s\n", cs_strerror(err));
 		return -1;
 	}
 	return 0;
@@ -631,6 +637,7 @@ int main (int argc, char *argv[]) {
 
 	while ( (opt = getopt(argc, argv, options)) != -1 ) {
 		switch (opt) {
+#ifdef EXPERIMENTAL_QUORUM_DEVICE_API
 		case 'f':
 			if (using_votequorum() > 0) {
 				command_opt = CMD_UNREGISTER_QDEVICE;
@@ -639,6 +646,7 @@ int main (int argc, char *argv[]) {
 				exit(2);
 			}
 			break;
+#endif
 		case 's':
 			command_opt = CMD_SHOWSTATUS;
 			break;
