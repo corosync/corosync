@@ -35,7 +35,7 @@
 .SH NAME
 corosync-quorumtool \- Set and display quorum settings.
 .SH SYNOPSIS
-.B "corosync-quorumtool [\-s] [\-m] [\-l] [\-v votes] [\-n nodeid] [\-e expected] [\-h] [\-i]"
+.B "corosync-quorumtool [\-s] [\-m] [\-l] [\-v votes] [\-n nodeid] [\-e expected] [\-h] [\-i] [\-V]"
 .SH DESCRIPTION
 Display the current state of quorum in the cluster and set vote quorum options.
 .SH OPTIONS
@@ -66,6 +66,9 @@ show node IP addresses instead of the resolved name
 .TP
 .B  -h (if no other argument)
 show this help text
+.TP
+.B  -V
+show version and exit
 .PP
 * Starred items only work if votequorum is the quorum provider for corosync
 .SH SEE ALSO

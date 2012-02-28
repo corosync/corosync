@@ -139,6 +139,7 @@ static void show_usage(const char *name)
 	printf("  -f             forcefully unregister a quorum device *DANGEROUS* (*)\n");
 #endif
 	printf("  -h             show this help text\n");
+	printf("  -V             show version and exit\n");
 	printf("\n");
 	printf("  (*) Starred items only work if votequorum is the quorum provider for corosync\n");
 	printf("\n");
@@ -365,7 +366,6 @@ static int display_quorum_data(int is_quorate, uint32_t nodeid, int loop)
 	memset(quorumtype, 0, sizeof(quorumtype));
 
 	if (!loop) {
-		printf("Version:          %s\n", VERSION);
 		if (get_quorum_type(quorumtype, sizeof(quorumtype))) {
 			strncpy(quorumtype, "Not configured", sizeof(quorumtype) - 1);
 		}
@@ -698,6 +698,9 @@ int main (int argc, char *argv[]) {
 				exit(2);
 			}
 			break;
+		case 'V':
+			printf("corosync-quorumtool version: %s\n", VERSION);
+			exit(0);
 		case ':':
 		case 'h':
 		case '?':
