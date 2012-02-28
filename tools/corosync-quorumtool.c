@@ -295,6 +295,9 @@ static void display_nodes_data(uint32_t nodeid, nodeid_format_t nodeid_format, n
 {
 	int i;
 
+	printf("\nMembership information\n");
+	printf("----------------------\n");
+
 	if (v_handle) {
 		printf("Nodeid     Votes  Name\n");
 	} else {
@@ -329,9 +332,9 @@ static void display_nodes_data(uint32_t nodeid, nodeid_format_t nodeid_format, n
 			fprintf(stderr, "Unable to get quorum device info: %s\n", cs_strerror(err));
 		} else {
 			if (nodeid_format == NODEID_FORMAT_DECIMAL) {
-				printf("%10u   ", VOTEQUORUM_NODEID_QDEVICE);
+				printf("%4u   ", VOTEQUORUM_NODEID_QDEVICE);
 			} else {
-				printf("0x%08x   ", VOTEQUORUM_NODEID_QDEVICE);
+				printf("0x%04x   ", VOTEQUORUM_NODEID_QDEVICE);
 			}
 			printf("%3d  %s (%s)\n", qinfo.votes, qinfo.name, qinfo.state?"Voting":"Not voting");
 		}
@@ -357,21 +360,26 @@ static const char *decode_state(int state)
 	}
 }
 
-static int display_quorum_data(int is_quorate, uint32_t nodeid, int loop)
+static int display_quorum_data(int is_quorate, uint32_t nodeid,
+			       nodeid_format_t nodeid_format, name_format_t name_format,
+			       int loop)
 {
 	struct votequorum_info info;
 	int err;
 	char quorumtype[256];
+	time_t t;
 
 	memset(quorumtype, 0, sizeof(quorumtype));
 
-	if (!loop) {
-		if (get_quorum_type(quorumtype, sizeof(quorumtype))) {
-			strncpy(quorumtype, "Not configured", sizeof(quorumtype) - 1);
-		}
-		printf("Quorum type:      %s\n", quorumtype);
-	}
+	printf("Quorum information\n");
+	printf("------------------\n");
+	time(&t);
+	printf("Date:             %s", ctime((const time_t *)&t));
 
+	if (get_quorum_type(quorumtype, sizeof(quorumtype))) {
+		strncpy(quorumtype, "Not configured", sizeof(quorumtype) - 1);
+	}
+	printf("Quorum provider:  %s\n", quorumtype);
 	printf("Nodes:            %d\n", g_view_list_entries);
 	printf("Ring ID:          %" PRIu64 "\n", g_ring_id);
 	printf("Quorate:          %s\n", is_quorate?"Yes":"No");
@@ -381,6 +389,9 @@ static int display_quorum_data(int is_quorate, uint32_t nodeid, int loop)
 	}
 
 	if ((err=votequorum_getinfo(v_handle, nodeid, &info)) == CS_OK) {
+		printf("\nVotequorum information\n");
+		printf("----------------------\n");
+		printf("Node ID:          %u\n", nodeid);
 		printf("Node state:       %s\n", decode_state(info.node_state));
 		if (info.node_state != NODESTATE_MEMBER) {
 			return err;
@@ -407,6 +418,8 @@ static int display_quorum_data(int is_quorate, uint32_t nodeid, int loop)
 	} else {
 		fprintf(stderr, "Unable to get node %u info: %s\n", nodeid, cs_strerror(err));
 	}
+
+	display_nodes_data(nodeid, nodeid_format, name_format);
 
 	return err;
 }
@@ -450,11 +463,10 @@ quorum_err:
 		return -1;
 	}
 
-	err = display_quorum_data(is_quorate, nodeid, 0);
+	err = display_quorum_data(is_quorate, nodeid, nodeid_format, name_format, 0);
 	if (err != CS_OK) {
 		return -1;
 	}
-	display_nodes_data(nodeid, nodeid_format, name_format);
 
 	return is_quorate;
 }
@@ -475,17 +487,12 @@ static int monitor_status(nodeid_format_t nodeid_format, name_format_t name_form
 	}
 
 	while (1) {
-		time_t t;
-
 		err = quorum_dispatch(q_handle, CS_DISPATCH_ONE);
 		if (err != CS_OK) {
 			fprintf(stderr, "Unable to dispatch quorum status: %s\n", cs_strerror(err));
 			goto quorum_err;
 		}
-		time(&t);
-		printf("date:             %s", ctime((const time_t *)&t));
-		err = display_quorum_data(g_quorate, our_nodeid, loop);
-		display_nodes_data(our_nodeid, nodeid_format, name_format);
+		err = display_quorum_data(g_quorate, our_nodeid, nodeid_format, name_format, loop);
 		printf("\n");
 		loop = 1;
 		if (err != CS_OK) {
