@@ -614,7 +614,7 @@ static void close_all(void) {
 }
 
 int main (int argc, char *argv[]) {
-	const char *options = "VHslmfe:v:hin:d:";
+	const char *options = "VHslmfe:v:hin:";
 	char *endptr;
 	int opt;
 	int votes = 0;
