@@ -291,6 +291,27 @@ static void quorum_notification_fn(
 	}
 }
 
+static void print_string_padded(const char *buf)
+{
+	int len, delta;
+
+	len = strlen(buf);
+	delta = 10 - len;
+	while (delta > 0) {
+		printf(" ");
+		delta--;
+	}
+	printf("%s ", buf);
+}
+
+static void print_uint32_padded(uint32_t value)
+{
+	char buf[12];
+
+	snprintf(buf, sizeof(buf) - 1, "%u", value);
+	print_string_padded(buf);
+}
+
 static void display_nodes_data(uint32_t nodeid, nodeid_format_t nodeid_format, name_format_t name_format)
 {
 	int i;
@@ -298,23 +319,22 @@ static void display_nodes_data(uint32_t nodeid, nodeid_format_t nodeid_format, n
 	printf("\nMembership information\n");
 	printf("----------------------\n");
 
+	print_string_padded("Nodeid");
 	if (v_handle) {
-		printf("Nodeid     Votes  Name\n");
-	} else {
-		printf("Nodeid     Name\n");
+		print_string_padded("Votes");
 	}
+	printf("Name\n");
 
 	for (i=0; i < g_view_list_entries; i++) {
 		if (nodeid_format == NODEID_FORMAT_DECIMAL) {
-			printf("%4u   ", g_view_list[i]);
+			print_uint32_padded(g_view_list[i]);
 		} else {
-			printf("0x%04x   ", g_view_list[i]);
+			printf("0x%08x ", g_view_list[i]);
 		}
 		if (v_handle) {
-			printf("%3d  %s\n",  get_votes(g_view_list[i]), node_name(g_view_list[i], name_format));
-		} else {
-			printf("%s\n", node_name(g_view_list[i], name_format));
+			print_uint32_padded(get_votes(g_view_list[i]));
 		}
+		printf("%s\n", node_name(g_view_list[i], name_format));
 	}
 
 	if (g_view_list_entries) {
@@ -332,11 +352,12 @@ static void display_nodes_data(uint32_t nodeid, nodeid_format_t nodeid_format, n
 			fprintf(stderr, "Unable to get quorum device info: %s\n", cs_strerror(err));
 		} else {
 			if (nodeid_format == NODEID_FORMAT_DECIMAL) {
-				printf("%4u   ", VOTEQUORUM_NODEID_QDEVICE);
+				print_uint32_padded(VOTEQUORUM_NODEID_QDEVICE);
 			} else {
-				printf("0x%04x   ", VOTEQUORUM_NODEID_QDEVICE);
+				printf("0x%08x ", VOTEQUORUM_NODEID_QDEVICE);
 			}
-			printf("%3d  %s (%s)\n", qinfo.votes, qinfo.name, qinfo.state?"Voting":"Not voting");
+			print_uint32_padded(qinfo.votes);
+			printf("%s (%s)\n", qinfo.name, qinfo.state?"Voting":"Not voting");
 		}
 	}
 #endif
