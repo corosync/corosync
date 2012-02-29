@@ -518,6 +518,18 @@ static int check_low_node_id_partition(void)
 	return found;
 }
 
+static void decode_flags(uint32_t flags)
+{
+	log_printf(LOGSYS_LEVEL_DEBUG,
+		   "flags: quorate: %s Leaving: %s WFA Status: %s First: %s Qdevice: %s QdeviceState: %s",
+		   (flags & NODE_FLAGS_QUORATE)?"Yes":"No",
+		   (flags & NODE_FLAGS_LEAVING)?"Yes":"No",
+		   (flags & NODE_FLAGS_WFASTATUS)?"Yes":"No",
+		   (flags & NODE_FLAGS_FIRST)?"Yes":"No",
+		   (flags & NODE_FLAGS_QDEVICE)?"Yes":"No",
+		   (flags & NODE_FLAGS_QDEVICE_STATE)?"Yes":"No");
+}
+
 static void update_wait_for_all_status(uint8_t wfa_status)
 {
 	wait_for_all_status = wfa_status;
@@ -1178,6 +1190,9 @@ static int votequorum_exec_send_nodeinfo(uint32_t nodeid)
 	req_exec_quorum_nodeinfo.votes = node->votes;
 	req_exec_quorum_nodeinfo.expected_votes = node->expected_votes;
 	req_exec_quorum_nodeinfo.flags = node->flags;
+	if (nodeid != NODEID_QDEVICE) {
+		decode_flags(node->flags);
+	}
 
 	req_exec_quorum_nodeinfo.header.id = SERVICE_ID_MAKE(VOTEQUORUM_SERVICE, MESSAGE_REQ_EXEC_VOTEQUORUM_NODEINFO);
 	req_exec_quorum_nodeinfo.header.size = sizeof(req_exec_quorum_nodeinfo);
@@ -1491,6 +1506,10 @@ static void message_handler_req_exec_votequorum_nodeinfo (
 					req_exec_quorum_nodeinfo->votes,
 					req_exec_quorum_nodeinfo->expected_votes,
 					req_exec_quorum_nodeinfo->flags);
+
+	if (nodeid != NODEID_QDEVICE) {
+		decode_flags(req_exec_quorum_nodeinfo->flags);
+	}
 
 	node = find_node_by_nodeid(nodeid);
 	if (!node) {
