@@ -550,7 +550,6 @@ error_put:
 	return (error);
 }
 
-#ifdef EXPERIMENTAL_QUORUM_DEVICE_API
 cs_error_t votequorum_qdevice_register (
 	votequorum_handle_t handle,
 	const char *name)
@@ -735,5 +734,3 @@ error_exit:
 
 	return (error);
 }
-#endif
-

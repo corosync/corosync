@@ -42,7 +42,6 @@
 #include <corosync/corotypes.h>
 #include <corosync/votequorum.h>
 
-#ifdef EXPERIMENTAL_QUORUM_DEVICE_API
 static votequorum_handle_t handle;
 
 static void print_info(int ok_to_fail)
@@ -59,12 +58,10 @@ static void print_info(int ok_to_fail)
 		printf("\n");
 	}
 }
-#endif
 
 int main(int argc, char *argv[])
 {
 	int ret = 0;
-#ifdef EXPERIMENTAL_QUORUM_DEVICE_API
 	int pollcount=0, polltime=1;
 	int err;
 
@@ -109,8 +106,5 @@ int main(int argc, char *argv[])
 
 out:
 	votequorum_finalize(handle);
-#else
-	fprintf(stderr, "qdevice support is not built in corosync/votequorum\n");
-#endif
 	return ret;
 }

@@ -70,13 +70,11 @@ struct votequorum_info {
 	unsigned int flags;
 };
 
-#ifdef EXPERIMENTAL_QUORUM_DEVICE_API
 struct votequorum_qdevice_info {
 	unsigned int votes;
 	unsigned int state;
 	char name[VOTEQUORUM_MAX_QDEVICE_NAME_LEN];
 };
-#endif
 
 typedef struct {
 	uint32_t nodeid;
@@ -177,7 +175,6 @@ cs_error_t votequorum_context_set (
 	votequorum_handle_t handle,
 	void *context);
 
-#ifdef EXPERIMENTAL_QUORUM_DEVICE_API
 /**
  * Register a quorum device
  *
@@ -217,8 +214,6 @@ cs_error_t votequorum_qdevice_getinfo (
 	votequorum_handle_t handle,
 	unsigned int nodeid,
 	struct votequorum_qdevice_info *info);
-
-#endif
 
 #ifdef __cplusplus
 }

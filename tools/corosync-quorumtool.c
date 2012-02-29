@@ -135,9 +135,7 @@ static void show_usage(const char *name)
 	printf("  -e <expected>  change expected votes for the cluster (*)\n");
 	printf("  -H             show nodeids in hexadecimal rather than decimal\n");
 	printf("  -i             show node IP addresses instead of the resolved name\n");
-#ifdef EXPERIMENTAL_QUORUM_DEVICE_API
 	printf("  -f             forcefully unregister a quorum device *DANGEROUS* (*)\n");
-#endif
 	printf("  -h             show this help text\n");
 	printf("  -V             show version and exit\n");
 	printf("\n");
@@ -342,7 +340,6 @@ static void display_nodes_data(uint32_t nodeid, nodeid_format_t nodeid_format, n
 		g_view_list = NULL;
 	}
 
-#ifdef EXPERIMENTAL_QUORUM_DEVICE_API
 	if ((display_qdevice) && (v_handle)) {
 		int err;
 		struct votequorum_qdevice_info qinfo;
@@ -360,7 +357,6 @@ static void display_nodes_data(uint32_t nodeid, nodeid_format_t nodeid_format, n
 			printf("%s (%s)\n", qinfo.name, qinfo.state?"Voting":"Not voting");
 		}
 	}
-#endif
 }
 
 static const char *decode_state(int state)
@@ -564,7 +560,6 @@ err_exit:
 
 static int unregister_qdevice(void)
 {
-#ifdef EXPERIMENTAL_QUORUM_DEVICE_API 
 	int err;
 	struct votequorum_qdevice_info qinfo;
 
@@ -580,10 +575,6 @@ static int unregister_qdevice(void)
 		return -1;
 	}
 	return 0;
-#else
-	fprintf(stderr, "votequorum quorum device support is not built-in\n");
-	return -1;
-#endif
 }
 
 /*
@@ -674,7 +665,6 @@ int main (int argc, char *argv[]) {
 
 	while ( (opt = getopt(argc, argv, options)) != -1 ) {
 		switch (opt) {
-#ifdef EXPERIMENTAL_QUORUM_DEVICE_API
 		case 'f':
 			if (using_votequorum() > 0) {
 				command_opt = CMD_UNREGISTER_QDEVICE;
@@ -683,7 +673,6 @@ int main (int argc, char *argv[]) {
 				exit(2);
 			}
 			break;
-#endif
 		case 's':
 			command_opt = CMD_SHOWSTATUS;
 			break;
