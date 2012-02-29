@@ -142,7 +142,8 @@ AC_CONFIG_FILES([Makefile
 		 cts/CTSvars.py
 		 tools/Makefile
 		 conf/Makefile
-                 Doxyfile])
+		 qdevices/Makefile
+		 Doxyfile])
 
 ### Local business
 
@@ -296,13 +297,18 @@ AC_ARG_WITH([initwrappersdir],
 	[ INITWRAPPERSDIR="$datarootdir/corosync" ])
 
 AC_ARG_ENABLE([snmp],
-       [  --enable-snmp                   : SNMP protocol support ],
-       [ default="no" ])
+	[  --enable-snmp                   : SNMP protocol support ],
+	[ default="no" ])
 
 AC_ARG_ENABLE([xmlconf],
-       [  --enable-xmlconf                : XML configuration support ],,
-       [ enable_xmlconf="no" ])
+	[  --enable-xmlconf                : XML configuration support ],,
+	[ enable_xmlconf="no" ])
 AM_CONDITIONAL(INSTALL_XMLCONF, test x$enable_xmlconf = xyes)
+
+AC_ARG_ENABLE([qdevices],
+	[  --enable-qdevices               : Quorum devices support ],,
+	[ enable_qdevices="no" ])
+AM_CONDITIONAL(BUILD_QDEVICES, test x$enable_qdevices = xyes)
 
 # OS detection
 # THIS SECTION MUST DIE!
@@ -452,6 +458,9 @@ if test "x${enable_systemd}" = xyes; then
 fi
 if test "x${enable_xmlconf}" = xyes; then
 	PACKAGE_FEATURES="$PACKAGE_FEATURES xmlconf"
+fi
+if test "x${enable_qdevices}" = xyes; then
+	PACKAGE_FEATURES="$PACKAGE_FEATURES qdevices"
 fi
 
 if test "x${enable_snmp}" = xyes; then
