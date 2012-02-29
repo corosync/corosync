@@ -913,10 +913,6 @@ static char *votequorum_readconfig_static(void)
 		return ((char *)"configuration error: quorum device is not compatible with auto_tie_breaker feature");
 	}
 
-	if (wait_for_all) {
-		update_wait_for_all_status(1);
-	}
-
 	LEAVE();
 
 	return (NULL);
@@ -1686,6 +1682,10 @@ static char *votequorum_exec_init_fn (struct corosync_api_v1 *api)
 	us->state = NODESTATE_MEMBER;
 	us->votes = 1;
 	us->flags |= NODE_FLAGS_FIRST;
+
+	if (wait_for_all) {
+		update_wait_for_all_status(1);
+	}
 
 	qdevice = allocate_node(NODEID_QDEVICE);
 	if (!qdevice) {
