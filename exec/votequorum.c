@@ -1476,7 +1476,7 @@ static void message_handler_req_exec_votequorum_nodeinfo (
 	struct cluster_node *node = NULL;
 	int old_votes;
 	int old_expected;
-	uint16_t old_flags;
+	uint32_t old_flags;
 	nodestate_t old_state;
 	int new_node = 0;
 	int allow_downgrade = 0;
