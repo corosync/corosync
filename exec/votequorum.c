@@ -933,6 +933,10 @@ static char *votequorum_readconfig_static(void)
 		return ((char *)"configuration error: quorum device is not compatible with wait_for_all feature");
 	}
 
+	if (wait_for_all) {
+		update_wait_for_all_status(1);
+	}
+
 	LEAVE();
 
 	return (NULL);
@@ -1692,6 +1696,8 @@ static int votequorum_exec_exit_fn (void)
 
 static char *votequorum_exec_init_fn (struct corosync_api_v1 *api)
 {
+	char *error = NULL;
+
 #ifdef COROSYNC_SOLARIS
 	logsys_subsys_init();
 #endif
@@ -1716,10 +1722,6 @@ static char *votequorum_exec_init_fn (struct corosync_api_v1 *api)
 	us->votes = 1;
 	us->flags |= NODE_FLAGS_FIRST;
 
-	if (wait_for_all) {
-		update_wait_for_all_status(1);
-	}
-
 	qdevice = allocate_node(NODEID_QDEVICE);
 	if (!qdevice) {
 		LEAVE();
@@ -1729,6 +1731,10 @@ static char *votequorum_exec_init_fn (struct corosync_api_v1 *api)
 	qdevice->votes = 0;
 	memset(qdevice_name, 0, VOTEQUORUM_MAX_QDEVICE_NAME_LEN);
 
+	error = votequorum_readconfig_static();
+	if (error) {
+		return error;
+	}
 	votequorum_readconfig_dynamic();
 	recalculate_quorum(0, 0);
 
@@ -1841,11 +1847,6 @@ char *votequorum_init(struct corosync_api_v1 *api,
 
 	corosync_api = api;
 	quorum_callback = q_set_quorate_fn;
-
-	error = votequorum_readconfig_static();
-	if (error) {
-		return (error);
-	}
 
 	error = corosync_service_link_and_init(corosync_api,
 		&votequorum_service[0]);
