@@ -844,11 +844,7 @@ static int votequorum_qdevice_is_configured(uint32_t *qdevice_votes)
 }
 
 /*
- * votequorum_readconfig_static is executed before
- * votequorum_readconfig_dynamic
- *
  * errors from _static are fatal
- * errors from _dynamic need to be handled at runtime without self-destruction
  *
  * TODO: static/dynamic shares a lot of checks _and_
  *       there are probably more options we can change at runtime
@@ -942,16 +938,27 @@ static char *votequorum_readconfig_static(void)
 	return (NULL);
 }
 
-static void votequorum_readconfig_dynamic(void)
+#define VOTEQUORUM_READCONFIG_STARTUP 0
+#define VOTEQUORUM_READCONFIG_RUNTIME 1
+
+static char *votequorum_readconfig(int runtime)
 {
 	uint32_t node_votes = 0, qdevice_votes = 0;
 	uint32_t node_expected_votes = 0, expected_votes = 0;
 	uint32_t node_count = 0;
 	int have_nodelist, have_qdevice;
+	char *error = NULL;
 
 	ENTER();
 
-	log_printf(LOGSYS_LEVEL_DEBUG, "Reading dynamic configuration");
+	log_printf(LOGSYS_LEVEL_DEBUG, "Reading configuration (runtime: %d)", runtime);
+
+	if (runtime == VOTEQUORUM_READCONFIG_STARTUP) {
+		error = votequorum_readconfig_static();
+		if (error) {
+			return error;
+		}
+	}
 
 	/*
 	 * gather basic data here
@@ -1097,6 +1104,7 @@ static void votequorum_readconfig_dynamic(void)
 
 out:
 	LEAVE();
+	return NULL;
 }
 
 static void votequorum_refresh_config(
@@ -1119,7 +1127,7 @@ static void votequorum_refresh_config(
 	/*
 	 * Reload the configuration
 	 */
-	votequorum_readconfig_dynamic();
+	votequorum_readconfig(VOTEQUORUM_READCONFIG_RUNTIME);
 
 	/*
 	 * Check for fundamental changes that we need to propogate
@@ -1731,11 +1739,10 @@ static char *votequorum_exec_init_fn (struct corosync_api_v1 *api)
 	qdevice->votes = 0;
 	memset(qdevice_name, 0, VOTEQUORUM_MAX_QDEVICE_NAME_LEN);
 
-	error = votequorum_readconfig_static();
+	error = votequorum_readconfig(VOTEQUORUM_READCONFIG_STARTUP);
 	if (error) {
 		return error;
 	}
-	votequorum_readconfig_dynamic();
 	recalculate_quorum(0, 0);
 
 	/*
