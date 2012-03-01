@@ -843,101 +843,6 @@ static int votequorum_qdevice_is_configured(uint32_t *qdevice_votes)
 	return 0;
 }
 
-/*
- * errors from _static are fatal
- *
- * TODO: static/dynamic shares a lot of checks _and_
- *       there are probably more options we can change at runtime
- *       than we allow now. Review this in 2.1
- */
-
-static char *votequorum_readconfig_static(void)
-{
-	uint32_t node_votes = 0, qdevice_votes = 0;
-	uint32_t node_expected_votes = 0, expected_votes = 0;
-	uint32_t node_count = 0;
-	int have_nodelist, have_qdevice;
-
-	ENTER();
-
-	log_printf(LOGSYS_LEVEL_DEBUG, "Reading static configuration");
-
-	/*
-	 * gather basic data here
-	 */
-	icmap_get_uint32("quorum.expected_votes", &expected_votes);
-	have_nodelist = votequorum_read_nodelist_configuration(&node_votes, &node_count, &node_expected_votes);
-	have_qdevice = votequorum_qdevice_is_configured(&qdevice_votes);
-	icmap_get_uint8("quorum.two_node", &two_node);
-	update_two_node();
-
-	/*
-	 * do basic config verification
-	 */
-	if ((!have_nodelist) && (!expected_votes)) {
-		return ((char *)"configuration error: nodelist or quorum.expected_votes must be configured!");
-	}
-
-	if ((two_node) && (have_qdevice)) {
-		return ((char *)"configuration error: two_node and quorum device cannot be configured at the same time!");
-	}
-
-	if ((expected_votes) && (have_qdevice) && (qdevice_votes == -1)) {
-		return ((char *)"configuration error: quorum.device.votes must be specified when quorum.expected_votes is set");
-	}
-
-	if ((have_qdevice) &&
-	    (qdevice_votes == -1) &&
-	    (have_nodelist) &&
-	    (node_count != node_expected_votes)) {
-		return ((char *)"configuration error: quorum.device.votes must be specified when not all nodes votes 1");
-	}
-
-	if ((qdevice_votes > 0) && (expected_votes)) {
-		int delta = expected_votes - qdevice_votes;
-		if (delta < 2) {
-			return ((char *)"configuration error: quorum.device.votes is too high or expected_votes is too low");
-		}
-	}
-
-	/*
-	 * Enable special features
-	 */
-	if (two_node) {
-		wait_for_all = 1;
-	}
-
-	icmap_get_uint8("quorum.leave_remove", &leave_remove);
-	icmap_get_uint8("quorum.wait_for_all", &wait_for_all);
-	icmap_get_uint8("quorum.auto_tie_breaker", &auto_tie_breaker);
-	icmap_get_uint8("quorum.last_man_standing", &last_man_standing);
-	icmap_get_uint32("quorum.last_man_standing_window", &last_man_standing_window);
-
-	if ((have_qdevice) && (last_man_standing)) {
-		return ((char *)"configuration error: quorum device is not compatible with last_man_standing feature");
-	}
-
-	if ((have_qdevice) && (auto_tie_breaker)) {
-		return ((char *)"configuration error: quorum device is not compatible with auto_tie_breaker feature");
-	}
-
-	if ((have_qdevice) && (wait_for_all)) {
-		/*
-		 * TODO: disable compat for now. There is a problem on expected_votes vs local votes
-		 *       when starting qdevice on one node only that makes cluster quorate view not correct.
-		 */
-		return ((char *)"configuration error: quorum device is not compatible with wait_for_all feature");
-	}
-
-	if (wait_for_all) {
-		update_wait_for_all_status(1);
-	}
-
-	LEAVE();
-
-	return (NULL);
-}
-
 #define VOTEQUORUM_READCONFIG_STARTUP 0
 #define VOTEQUORUM_READCONFIG_RUNTIME 1
 
@@ -953,16 +858,8 @@ static char *votequorum_readconfig(int runtime)
 
 	log_printf(LOGSYS_LEVEL_DEBUG, "Reading configuration (runtime: %d)", runtime);
 
-	if (runtime == VOTEQUORUM_READCONFIG_STARTUP) {
-		error = votequorum_readconfig_static();
-		if (error) {
-			return error;
-		}
-	}
-
 	/*
 	 * gather basic data here
-	 * TODO: make it common with static!!!
 	 */
 	icmap_get_uint32("quorum.expected_votes", &expected_votes);
 	have_nodelist = votequorum_read_nodelist_configuration(&node_votes, &node_count, &node_expected_votes);
@@ -974,8 +871,12 @@ static char *votequorum_readconfig(int runtime)
 	 */
 
 	if ((!have_nodelist) && (!expected_votes)) {
-		log_printf(LOGSYS_LEVEL_CRIT, "configuration error: nodelist or quorum.expected_votes must be configured!");
-		log_printf(LOGSYS_LEVEL_CRIT, "will continue with current runtime data");
+		if (!runtime) {
+			error = (char *)"configuration error: nodelist or quorum.expected_votes must be configured!";
+		} else {
+			log_printf(LOGSYS_LEVEL_CRIT, "configuration error: nodelist or quorum.expected_votes must be configured!");
+			log_printf(LOGSYS_LEVEL_CRIT, "will continue with current runtime data");
+		}
 		goto out;
 	}
 
@@ -985,14 +886,34 @@ static char *votequorum_readconfig(int runtime)
 	 */
 
 	if ((two_node) && (have_qdevice)) {
-		log_printf(LOGSYS_LEVEL_CRIT, "configuration error: two_node and quorum device cannot be configured at the same time!");
-		if (qdevice_is_registered) {
-			log_printf(LOGSYS_LEVEL_CRIT, "quorum device is registered, disabling two_node");
-			two_node = 0;
+		if (!runtime) {
+			error = (char *)"configuration error: two_node and quorum device cannot be configured at the same time!";
+			goto out;
 		} else {
-			log_printf(LOGSYS_LEVEL_CRIT, "quorum device is not registered, allowing two_node");
-			update_qdevice_can_operate(0);
+			log_printf(LOGSYS_LEVEL_CRIT, "configuration error: two_node and quorum device cannot be configured at the same time!");
+			if (qdevice_is_registered) {
+				log_printf(LOGSYS_LEVEL_CRIT, "quorum device is registered, disabling two_node");
+				two_node = 0;
+			} else {
+				log_printf(LOGSYS_LEVEL_CRIT, "quorum device is not registered, allowing two_node");
+				update_qdevice_can_operate(0);
+			}
 		}
+	}
+
+	/*
+	 * Enable special features
+	 */
+	if (!runtime) {
+		if (two_node) {
+			wait_for_all = 1;
+		}
+
+		icmap_get_uint8("quorum.leave_remove", &leave_remove);
+		icmap_get_uint8("quorum.wait_for_all", &wait_for_all);
+		icmap_get_uint8("quorum.auto_tie_breaker", &auto_tie_breaker);
+		icmap_get_uint8("quorum.last_man_standing", &last_man_standing);
+		icmap_get_uint32("quorum.last_man_standing_window", &last_man_standing_window);
 	}
 
 	/*
@@ -1003,21 +924,36 @@ static char *votequorum_readconfig(int runtime)
 	 */
 
 	if ((have_qdevice) && (last_man_standing)) {
-		log_printf(LOGSYS_LEVEL_CRIT, "configuration error: quorum.device is not compatible with last_man_standing");
-		log_printf(LOGSYS_LEVEL_CRIT, "disabling quorum device operations");
-		update_qdevice_can_operate(0);
+		if (!runtime) {
+			error = (char *)"configuration error: quorum.device is not compatible with last_man_standing";
+			goto out;
+		} else {
+			log_printf(LOGSYS_LEVEL_CRIT, "configuration error: quorum.device is not compatible with last_man_standing");
+			log_printf(LOGSYS_LEVEL_CRIT, "disabling quorum device operations");
+			update_qdevice_can_operate(0);
+		}
 	}
 
 	if ((have_qdevice) && (auto_tie_breaker)) {
-		log_printf(LOGSYS_LEVEL_CRIT, "configuration error: quorum.device is not compatible with auto_tie_breaker");
-		log_printf(LOGSYS_LEVEL_CRIT, "disabling quorum device operations");
-		update_qdevice_can_operate(0);
+		if (!runtime) {
+			error = (char *)"configuration error: quorum.device is not compatible with auto_tie_breaker";
+			goto out;
+		} else {
+			log_printf(LOGSYS_LEVEL_CRIT, "configuration error: quorum.device is not compatible with auto_tie_breaker");
+			log_printf(LOGSYS_LEVEL_CRIT, "disabling quorum device operations");
+			update_qdevice_can_operate(0);
+		}
 	}
 
 	if ((have_qdevice) && (wait_for_all)) {
-		log_printf(LOGSYS_LEVEL_CRIT, "configuration error: quorum.device is not compatible with wait_for_all");
-		log_printf(LOGSYS_LEVEL_CRIT, "disabling quorum device operations");
-		update_qdevice_can_operate(0);
+		if (!runtime) {
+			error = (char *)"configuration error: quorum.device is not compatible with wait_for_all";
+			goto out;
+		} else {
+			log_printf(LOGSYS_LEVEL_CRIT, "configuration error: quorum.device is not compatible with wait_for_all");
+			log_printf(LOGSYS_LEVEL_CRIT, "disabling quorum device operations");
+			update_qdevice_can_operate(0);
+		}
 	}
 
 	/*
@@ -1026,9 +962,14 @@ static char *votequorum_readconfig(int runtime)
 	 */
 
 	if ((expected_votes) && (have_qdevice) && (qdevice_votes == -1)) {
-		log_printf(LOGSYS_LEVEL_CRIT, "configuration error: quorum.device.votes must be specified when quorum.expected_votes is set");
-		log_printf(LOGSYS_LEVEL_CRIT, "disabling quorum device operations");
-		update_qdevice_can_operate(0);
+		if (!runtime) {
+			error = (char *)"configuration error: quorum.device.votes must be specified when quorum.expected_votes is set";
+			goto out;
+		} else {
+			log_printf(LOGSYS_LEVEL_CRIT, "configuration error: quorum.device.votes must be specified when quorum.expected_votes is set");
+			log_printf(LOGSYS_LEVEL_CRIT, "disabling quorum device operations");
+			update_qdevice_can_operate(0);
+		}
 	}
 
 	/*
@@ -1040,9 +981,14 @@ static char *votequorum_readconfig(int runtime)
 	    (qdevice_votes == -1) &&
 	    (have_nodelist) &&
 	    (node_count != node_expected_votes)) {
-		log_printf(LOGSYS_LEVEL_CRIT, "configuration error: quorum.device.votes must be specified when not all nodes votes 1");
-		log_printf(LOGSYS_LEVEL_CRIT, "disabling quorum device operations");
-		update_qdevice_can_operate(0);
+		if (!runtime) {
+			error = (char *)"configuration error: quorum.device.votes must be specified when not all nodes votes 1";
+			goto out;
+		} else {
+			log_printf(LOGSYS_LEVEL_CRIT, "configuration error: quorum.device.votes must be specified when not all nodes votes 1");
+			log_printf(LOGSYS_LEVEL_CRIT, "disabling quorum device operations");
+			update_qdevice_can_operate(0);
+		}
 	}
 
 	/*
@@ -1052,9 +998,14 @@ static char *votequorum_readconfig(int runtime)
 	if ((qdevice_votes > 0) && (expected_votes)) {
 		int delta = expected_votes - qdevice_votes;
 		if (delta < 2) {
-			log_printf(LOGSYS_LEVEL_CRIT, "configuration error: quorum.device.votes is too high or expected_votes is too low");
-			log_printf(LOGSYS_LEVEL_CRIT, "disabling quorum device operations");
-			update_qdevice_can_operate(0);
+			if (!runtime) {
+				error = (char *)"configuration error: quorum.device.votes is too high or expected_votes is too low";
+				goto out;
+			} else {
+				log_printf(LOGSYS_LEVEL_CRIT, "configuration error: quorum.device.votes is too high or expected_votes is too low");
+				log_printf(LOGSYS_LEVEL_CRIT, "disabling quorum device operations");
+				update_qdevice_can_operate(0);
+			}
 		}
 	}
 
@@ -1101,10 +1052,13 @@ static char *votequorum_readconfig(int runtime)
 
 	update_ev_barrier(us->expected_votes);
 	update_two_node();
+	if (wait_for_all) {
+		update_wait_for_all_status(1);
+	}
 
 out:
 	LEAVE();
-	return NULL;
+	return error;
 }
 
 static void votequorum_refresh_config(
