@@ -711,13 +711,10 @@ static void are_we_quorate(unsigned int total_votes)
 	LEAVE();
 }
 
-/*
- * Recalculate cluster quorum, set quorate and notify changes
- */
-static void recalculate_quorum(int allow_decrease, int by_current_nodes)
+static void get_total_votes(unsigned int *totalvotes, unsigned int *current_members)
 {
 	unsigned int total_votes = 0;
-	int cluster_members = 0;
+	unsigned int cluster_members = 0;
 	struct list_head *nodelist;
 	struct cluster_node *node;
 
@@ -726,18 +723,35 @@ static void recalculate_quorum(int allow_decrease, int by_current_nodes)
 	list_iterate(nodelist, &cluster_members_list) {
 		node = list_entry(nodelist, struct cluster_node, list);
 		if (node->state == NODESTATE_MEMBER) {
-			if (by_current_nodes) {
-				cluster_members++;
-			}
+			cluster_members++;
 			total_votes += node->votes;
 		}
 	}
 
 	if (qdevice->votes) {
 		total_votes += qdevice->votes;
-		if (by_current_nodes) {
-			cluster_members++;
-		}
+		cluster_members++;
+	}
+	*totalvotes = total_votes;
+	*current_members = cluster_members;
+
+	LEAVE();
+}
+
+/*
+ * Recalculate cluster quorum, set quorate and notify changes
+ */
+static void recalculate_quorum(int allow_decrease, int by_current_nodes)
+{
+	unsigned int total_votes = 0;
+	unsigned int cluster_members = 0;
+
+	ENTER();
+
+	get_total_votes(&total_votes, &cluster_members);
+
+	if (!by_current_nodes) {
+		cluster_members = 0;
 	}
 
 	/*
