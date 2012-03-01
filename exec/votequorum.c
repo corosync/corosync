@@ -970,6 +970,17 @@ static char *votequorum_readconfig(int runtime)
 		}
 	}
 
+	if ((have_qdevice) && (leave_remove)) {
+		if (!runtime) {
+			error = (char *)"configuration error: quorum.device is not compatible with leave_remove";
+			goto out;
+		} else {
+			log_printf(LOGSYS_LEVEL_CRIT, "configuration error: quorum.device is not compatible with leave_remove");
+			log_printf(LOGSYS_LEVEL_CRIT, "disabling quorum device operations");
+			update_qdevice_can_operate(0);
+		}
+	}
+
 	/*
 	 * if user specifies quorum.expected_votes + quorum.device but NOT the device.votes
 	 * we don't know what the quorum device should vote.
