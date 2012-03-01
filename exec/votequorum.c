@@ -1625,12 +1625,6 @@ static void message_handler_req_exec_votequorum_reconfigure (
 	log_printf(LOGSYS_LEVEL_DEBUG, "got reconfigure message from cluster node %u for %u",
 					nodeid, req_exec_quorum_reconfigure->nodeid);
 
-	node = find_node_by_nodeid(req_exec_quorum_reconfigure->nodeid);
-	if (!node) {
-		LEAVE();
-		return;
-	}
-
 	switch(req_exec_quorum_reconfigure->param)
 	{
 	case VOTEQUORUM_RECONFIG_PARAM_EXPECTED_VOTES:
@@ -1646,6 +1640,11 @@ static void message_handler_req_exec_votequorum_reconfigure (
 		break;
 
 	case VOTEQUORUM_RECONFIG_PARAM_NODE_VOTES:
+		node = find_node_by_nodeid(req_exec_quorum_reconfigure->nodeid);
+		if (!node) {
+			LEAVE();
+			return;
+		}
 		node->votes = req_exec_quorum_reconfigure->value;
 		recalculate_quorum(1, 0);  /* Allow decrease */
 		break;
