@@ -538,6 +538,9 @@ int totemip_iface_check(struct totem_ip_address *bindnet,
 	socklen_t si;
 	int res = -1;
 
+	*interface_up = 0;
+	*interface_num = 0;
+
 	if (totemip_getifaddrs(&addrs) == -1) {
 		return (-1);
 	}
