@@ -925,6 +925,14 @@ static char *votequorum_readconfig_static(void)
 		return ((char *)"configuration error: quorum device is not compatible with auto_tie_breaker feature");
 	}
 
+	if ((have_qdevice) && (wait_for_all)) {
+		/*
+		 * TODO: disable compat for now. There is a problem on expected_votes vs local votes
+		 *       when starting qdevice on one node only that makes cluster quorate view not correct.
+		 */
+		return ((char *)"configuration error: quorum device is not compatible with wait_for_all feature");
+	}
+
 	LEAVE();
 
 	return (NULL);
@@ -991,6 +999,12 @@ static void votequorum_readconfig_dynamic(void)
 
 	if ((have_qdevice) && (auto_tie_breaker)) {
 		log_printf(LOGSYS_LEVEL_CRIT, "configuration error: quorum.device is not compatible with auto_tie_breaker");
+		log_printf(LOGSYS_LEVEL_CRIT, "disabling quorum device operations");
+		update_qdevice_can_operate(0);
+	}
+
+	if ((have_qdevice) && (wait_for_all)) {
+		log_printf(LOGSYS_LEVEL_CRIT, "configuration error: quorum.device is not compatible with wait_for_all");
 		log_printf(LOGSYS_LEVEL_CRIT, "disabling quorum device operations");
 		update_qdevice_can_operate(0);
 	}
