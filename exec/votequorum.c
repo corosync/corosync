@@ -1668,12 +1668,55 @@ static void message_handler_req_exec_votequorum_reconfigure (
 static int votequorum_exec_exit_fn (void)
 {
 	int ret = 0;
+	struct cluster_node *node;
+	struct quorum_pd *qpd;
+	struct list_head *tmp;
 
 	ENTER();
+
+	/*
+	 * tell the other nodes we are leaving
+	 */
 
 	if (leave_remove) {
 		us->flags |= NODE_FLAGS_LEAVING;
 		ret = votequorum_exec_send_nodeinfo(us->node_id);
+	}
+
+	/*
+	 * clean up our internals
+	 */
+
+	/*
+	 * free the node list and qdevice
+	 */
+
+	if (qdevice) {
+		free(qdevice);
+		qdevice = NULL;
+	}
+
+	list_iterate(tmp, &cluster_members_list) {
+		node = list_entry(tmp, struct cluster_node, list);
+		if (node) {
+			list_del(tmp);
+			free(node);
+			node = NULL;
+		}
+	}
+
+	us = NULL;
+
+	/*
+	 * clean the tracking list
+	 * should we notify that service is going away?
+	 */
+
+	list_iterate(tmp, &trackers_list) {
+		qpd = list_entry(tmp, struct quorum_pd, list);
+		if (qpd) {
+			list_del(tmp);
+		}
 	}
 
 	LEAVE();
