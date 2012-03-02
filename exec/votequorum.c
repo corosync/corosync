@@ -1093,15 +1093,7 @@ static void votequorum_refresh_config(
 	struct icmap_notify_value old_val,
 	void *user_data)
 {
-	unsigned int old_votes;
-	unsigned int old_expected;
-	unsigned int old_qdevice_votes;
-
 	ENTER();
-
-	old_votes = us->votes;
-	old_expected = us->expected_votes;
-	old_qdevice_votes = qdevice->votes;
 
 	/*
 	 * Reload the configuration
@@ -1109,17 +1101,10 @@ static void votequorum_refresh_config(
 	votequorum_readconfig(VOTEQUORUM_READCONFIG_RUNTIME);
 
 	/*
-	 * Check for fundamental changes that we need to propogate
+	 * activate new config
 	 */
-	if (old_votes != us->votes) {
-		votequorum_exec_send_reconfigure(VOTEQUORUM_RECONFIG_PARAM_NODE_VOTES, us->node_id, us->votes);
-	}
-	if (old_expected != us->expected_votes) {
-		votequorum_exec_send_reconfigure(VOTEQUORUM_RECONFIG_PARAM_EXPECTED_VOTES, us->node_id, us->expected_votes);
-	}
-	if (old_qdevice_votes != qdevice->votes) {
-		votequorum_exec_send_reconfigure(VOTEQUORUM_RECONFIG_PARAM_NODE_VOTES, NODEID_QDEVICE, qdevice->votes);
-	}
+	votequorum_exec_send_nodeinfo(us->node_id);
+	votequorum_exec_send_nodeinfo(NODEID_QDEVICE);
 
 	LEAVE();
 }
