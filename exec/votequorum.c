@@ -83,7 +83,7 @@ static int lowest_node_id = -1;
 static uint8_t last_man_standing = 0;
 static uint32_t last_man_standing_window = DEFAULT_LMS_WIN;
 
-static uint8_t leave_remove = 0;
+static uint8_t allow_downscale = 0;
 static uint32_t ev_barrier = 0;
 
 /*
@@ -574,7 +574,7 @@ static int calculate_quorum(int allow_decrease, unsigned int max_expected, unsig
 
 	ENTER();
 
-	if ((leave_remove) && (allow_decrease) && (max_expected)) {
+	if ((allow_downscale) && (allow_decrease) && (max_expected)) {
 		max_expected = max(ev_barrier, max_expected);
 	}
 
@@ -923,7 +923,7 @@ static char *votequorum_readconfig(int runtime)
 			wait_for_all = 1;
 		}
 
-		icmap_get_uint8("quorum.leave_remove", &leave_remove);
+		icmap_get_uint8("quorum.allow_downscale", &allow_downscale);
 		icmap_get_uint8("quorum.wait_for_all", &wait_for_all);
 		icmap_get_uint8("quorum.auto_tie_breaker", &auto_tie_breaker);
 		icmap_get_uint8("quorum.last_man_standing", &last_man_standing);
@@ -970,12 +970,12 @@ static char *votequorum_readconfig(int runtime)
 		}
 	}
 
-	if ((have_qdevice) && (leave_remove)) {
+	if ((have_qdevice) && (allow_downscale)) {
 		if (!runtime) {
-			error = (char *)"configuration error: quorum.device is not compatible with leave_remove";
+			error = (char *)"configuration error: quorum.device is not compatible with allow_downscale";
 			goto out;
 		} else {
-			log_printf(LOGSYS_LEVEL_CRIT, "configuration error: quorum.device is not compatible with leave_remove");
+			log_printf(LOGSYS_LEVEL_CRIT, "configuration error: quorum.device is not compatible with allow_downscale");
 			log_printf(LOGSYS_LEVEL_CRIT, "disabling quorum device operations");
 			update_qdevice_can_operate(0);
 		}
@@ -1663,7 +1663,7 @@ static int votequorum_exec_exit_fn (void)
 	 * tell the other nodes we are leaving
 	 */
 
-	if (leave_remove) {
+	if (allow_downscale) {
 		us->flags |= NODE_FLAGS_LEAVING;
 		ret = votequorum_exec_send_nodeinfo(us->node_id);
 	}
@@ -1992,7 +1992,7 @@ static void message_handler_req_lib_votequorum_getinfo (void *conn, const void *
 		if (auto_tie_breaker) {
 			res_lib_votequorum_getinfo.flags |= VOTEQUORUM_INFO_AUTO_TIE_BREAKER;
 		}
-		if (leave_remove) {
+		if (allow_downscale) {
 			res_lib_votequorum_getinfo.flags |= VOTEQUORUM_INFO_LEAVE_REMOVE;
 		}
 		if (node->flags & NODE_FLAGS_QDEVICE) {
@@ -2018,18 +2018,18 @@ static void message_handler_req_lib_votequorum_setexpected (void *conn, const vo
 	cs_error_t error = CS_OK;
 	unsigned int newquorum;
 	unsigned int total_votes;
-	uint8_t leave_remove_status = 0;
+	uint8_t allow_downscale_status = 0;
 
 	ENTER();
 
-	leave_remove_status = leave_remove;
-	leave_remove = 0;
+	allow_downscale_status = allow_downscale;
+	allow_downscale = 0;
 
 	/*
 	 * Validate new expected votes
 	 */
 	newquorum = calculate_quorum(1, req_lib_votequorum_setexpected->expected_votes, &total_votes);
-	leave_remove = leave_remove_status;
+	allow_downscale = allow_downscale_status;
 	if (newquorum < total_votes / 2 ||
 	    newquorum > total_votes) {
 		error = CS_ERR_INVALID_PARAM;

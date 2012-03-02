@@ -271,13 +271,13 @@ quorum {
 
 .fi
 .PP
-.B leave_remove: 1
+.B allow_downscale: 1
 .PP
-Enables leave remove (LR) feature (default: 0).
+Enables allow downscale (AD) feature (default: 0).
 .PP
 The general behaviour of votequorum is to never decrease expected votes or quorum.
 .PP
-When LR is enabled, both expected votes and quorum are recalculated when
+When AD is enabled, both expected votes and quorum are recalculated when
 a node leaves the cluster in a clean state (normal corosync shutdown process) down
 to configured expected_votes.
 .PP
@@ -312,13 +312,13 @@ Example configuration:
 quorum {
     provider: corosync_votequorum
     expected_votes: 3
-    leave_remove: 1
+    allow_downscale: 1
 }
 .fi
 .PP
 .SH VARIOUS NOTES
 .PP
-* WFA / LMS / ATB / LR can be used combined together.
+* WFA / LMS / ATB / AD can be used combined together.
 .PP
 * In order to change the default votes for a node there are two options:
 .nf
