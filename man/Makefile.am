@@ -54,6 +54,9 @@ autogen_man		= cpg_context_get.3 \
 			  cpg_zcb_alloc.3 \
 			  cpg_zcb_free.3 \
 			  cpg_membership_get.3 \
+			  cpg_iteration_finalize.3 \
+			  cpg_iteration_initialize.3 \
+			  cpg_iteration_next.3 \
 			  evs_dispatch.3 \
 			  evs_fd_get.3 \
 			  evs_finalize.3 \

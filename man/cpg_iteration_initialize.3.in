@@ -1,0 +1,96 @@
+.\"/*
+.\" * Copyright (c) 2012 Red Hat, Inc.
+.\" *
+.\" * All rights reserved.
+.\" *
+.\" * Author: Jan Friesse (jfriesse@redhat.com)
+.\" *
+.\" * This software licensed under BSD license, the text of which follows:
+.\" *
+.\" * Redistribution and use in source and binary forms, with or without
+.\" * modification, are permitted provided that the following conditions are met:
+.\" *
+.\" * - Redistributions of source code must retain the above copyright notice,
+.\" *   this list of conditions and the following disclaimer.
+.\" * - Redistributions in binary form must reproduce the above copyright notice,
+.\" *   this list of conditions and the following disclaimer in the documentation
+.\" *   and/or other materials provided with the distribution.
+.\" * - Neither the name of the Red Hat, Inc. nor the names of its
+.\" *   contributors may be used to endorse or promote products derived from this
+.\" *   software without specific prior written permission.
+.\" *
+.\" * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+.\" * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+.\" * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+.\" * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+.\" * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+.\" * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+.\" * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+.\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+.\" * THE POSSIBILITY OF SUCH DAMAGE.
+.\" */
+.TH "CPG_ITERATION_INITIALIZE" 3 "05/03/2012" "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
+
+.SH NAME
+.P
+cpg_iteration_initialize \- Initialize iterator for members of CPG
+
+.SH SYNOPSIS
+.P
+\fB#include <corosync/cpg.h>\fR
+
+.P
+\fBcs_error_t
+cpg_iteration_initialize (cpg_handle_t \fIhandle\fB, cpg_iteration_type_t \fIiteration_type\fB,
+const struct cpg_name *\fIgroup\fB, cpg_iteration_handle_t *\fIcpg_iteration_handle\fB);\fR
+
+.SH DESCRIPTION
+.P
+The
+.B cpg_iteration_initialize
+function is used to initialize iteration of CPG members.
+The
+.I handle
+argument is connection to CPG database obtained by calling
+.B cpg_initialize(3)
+function.
+.I iteration_type
+is used for limit number of returned items and can be one of:
+.PP
+\fBCPG_ITERATION_NAME_ONLY\fR - only name of used groups are returned
+.PP
+\fBCPG_ITERATION_ONE_GROUP\fR - only members group with name \fIgroup\fR are returned
+.PP
+\fBCPG_ITERATION_ALL\fR - all members are returned
+
+The
+.I group
+parameter is used only with \fBCPG_ITERATION_ONE_GROUP\fR and it's name of group with
+members to iterate. For other \fIiteration_type\fR, this parameter must be NULL.
+
+.B cpg_iteration_initialize
+is used only for initialize context for future
+.B cpg_iteration_next(3)
+calls and handle needed for that function is returned in
+.I cpg_iteration_handle
+variable. When you have finished iteration over objects, call
+.B cpg_iteration_finalize(3)
+function to free up memory associated with iteration.
+
+.SH RETURN VALUE
+This call returns the CS_OK value if successful. If \fIcpg_iteration_handle\fR is NULL,
+\fBCS_ERR_INVALID_PARAM\fR error is returned. Same error is returned when \fIiteration_type\fR
+is \fBCPG_ITERATION_ONE_GROUP\fR, but \fIgroup\fR is NULL, or when \fIgroup\fR is not NULL and
+\fIiteration_type\fR is not \fBCPG_ITERATION_ONE_GROUP\fR. If there is not enough memory
+for internal store of data, \fBCS_ERR_NO_MEMORY\fR is returned. \fBCS_ERR_BAD_HANDLE\fR can
+be returned, if \fIhandle\fR is not valid handle.
+
+.SH COMMON IPC ERRORS
+@COMMONIPCERRORS@
+.SH "SEE ALSO"
+.BR cpg_iteration_next (3),
+.BR cpg_iteration_finalize (3),
+.BR cpg_initialize (3),
+.BR cpg_overview (8)
