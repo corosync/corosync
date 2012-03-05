@@ -409,13 +409,20 @@ static int display_quorum_data(int is_quorate, uint32_t nodeid,
 		return CS_OK;
 	}
 
-	if ((err=votequorum_getinfo(v_handle, nodeid, &info)) == CS_OK) {
+	err=votequorum_getinfo(v_handle, nodeid, &info);
+	if ((err == CS_OK) || (err == CS_ERR_NOT_EXIST)) {
 		printf("\nVotequorum information\n");
 		printf("----------------------\n");
 		printf("Node ID:          %u\n", nodeid);
-		printf("Node state:       %s\n", decode_state(info.node_state));
+		printf("Node state:       ");
+		if (err == CS_ERR_NOT_EXIST) {
+			printf("Unknown\n");
+			err = CS_OK;
+			goto out;
+		}
+		printf("%s\n", decode_state(info.node_state));
 		if (info.node_state != NODESTATE_MEMBER) {
-			return err;
+			goto out;
 		}
 		printf("Node votes:       %d\n", info.node_votes);
 		printf("Expected votes:   %d\n", info.node_expected_votes);
@@ -439,6 +446,8 @@ static int display_quorum_data(int is_quorate, uint32_t nodeid,
 	} else {
 		fprintf(stderr, "Unable to get node %u info: %s\n", nodeid, cs_strerror(err));
 	}
+
+out:
 
 	display_nodes_data(nodeid, nodeid_format, name_format);
 
