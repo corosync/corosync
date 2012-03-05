@@ -1273,7 +1273,7 @@ static int votequorum_exec_send_quorum_notification(void *conn, uint64_t context
 	int cluster_members = 0;
 	int i = 0;
 	int size;
-	char *buf;
+	char buf[sizeof(struct res_lib_votequorum_notification) + sizeof(struct votequorum_node) * (PROCESSOR_COUNT_MAX + 2)];
 
 	ENTER();
 
@@ -1286,13 +1286,8 @@ static int votequorum_exec_send_quorum_notification(void *conn, uint64_t context
 	}
 
 	size = sizeof(struct res_lib_votequorum_notification) + sizeof(struct votequorum_node) * cluster_members;
-	buf = alloca(size);
-	if (!buf) {
-		LEAVE();
-		return -1;
-	}
 
-	res_lib_votequorum_notification = (struct res_lib_votequorum_notification *)buf;
+	res_lib_votequorum_notification = (struct res_lib_votequorum_notification *)&buf;
 	res_lib_votequorum_notification->quorate = cluster_is_quorate;
 	res_lib_votequorum_notification->node_list_entries = cluster_members;
 	res_lib_votequorum_notification->context = context;
@@ -1311,7 +1306,7 @@ static int votequorum_exec_send_quorum_notification(void *conn, uint64_t context
 
 	/* Send it to all interested parties */
 	if (conn) {
-		int ret = corosync_api->ipc_dispatch_send(conn, buf, size);
+		int ret = corosync_api->ipc_dispatch_send(conn, &buf, size);
 		LEAVE();
 		return ret;
 	} else {
@@ -1320,7 +1315,7 @@ static int votequorum_exec_send_quorum_notification(void *conn, uint64_t context
 		list_iterate(tmp, &trackers_list) {
 			qpd = list_entry(tmp, struct quorum_pd, list);
 			res_lib_votequorum_notification->context = qpd->tracking_context;
-			corosync_api->ipc_dispatch_send(qpd->conn, buf, size);
+			corosync_api->ipc_dispatch_send(qpd->conn, &buf, size);
 		}
 	}
 
