@@ -190,9 +190,15 @@ static uint8_t cluster_is_quorate;
 
 static struct cluster_node *us;
 static struct list_head cluster_members_list;
-static unsigned int quorum_members[PROCESSOR_COUNT_MAX+1];
+static unsigned int quorum_members[PROCESSOR_COUNT_MAX];
 static int quorum_members_entries = 0;
 static struct memb_ring_id quorum_ringid;
+
+/*
+ * pre allocate all cluster_nodes + one for qdevice
+ */
+static struct cluster_node cluster_nodes[PROCESSOR_COUNT_MAX+2];
+static int cluster_nodes_entries = 0;
 
 /*
  * votequorum tracking
@@ -429,19 +435,38 @@ static void node_add_ordered(struct cluster_node *newnode)
 
 static struct cluster_node *allocate_node(unsigned int nodeid)
 {
-	struct cluster_node *cl;
+	struct cluster_node *cl = NULL;
+	struct list_head *tmp;
 
 	ENTER();
 
-	cl = malloc(sizeof(struct cluster_node));
-	if (cl) {
-		memset(cl, 0, sizeof(struct cluster_node));
-		cl->node_id = nodeid;
-		if (nodeid != NODEID_QDEVICE) {
-			node_add_ordered(cl);
+	if (cluster_nodes_entries <= PROCESSOR_COUNT_MAX + 1) {
+		cl = (struct cluster_node *)&cluster_nodes[cluster_nodes_entries];
+		cluster_nodes_entries++;
+	} else {
+		list_iterate(tmp, &cluster_members_list) {
+			cl = list_entry(tmp, struct cluster_node, list);
+			if (cl->state == NODESTATE_DEAD) {
+				break;
+			}
 		}
+		/*
+		 * this should never happen
+		 */
+		if (!cl) {
+			log_printf(LOGSYS_LEVEL_CRIT, "Unable to find memory for node %u data!!", nodeid);
+			goto out;
+		}
+		list_del(tmp);
 	}
 
+	memset(cl, 0, sizeof(struct cluster_node));
+	cl->node_id = nodeid;
+	if (nodeid != NODEID_QDEVICE) {
+		node_add_ordered(cl);
+	}
+
+out:
 	LEAVE();
 
 	return cl;
@@ -1653,9 +1678,6 @@ static void message_handler_req_exec_votequorum_reconfigure (
 static int votequorum_exec_exit_fn (void)
 {
 	int ret = 0;
-	struct cluster_node *node;
-	struct quorum_pd *qpd;
-	struct list_head *tmp;
 
 	ENTER();
 
@@ -1676,33 +1698,16 @@ static int votequorum_exec_exit_fn (void)
 	 * free the node list and qdevice
 	 */
 
-	if (qdevice) {
-		free(qdevice);
-		qdevice = NULL;
-	}
-
-	list_iterate(tmp, &cluster_members_list) {
-		node = list_entry(tmp, struct cluster_node, list);
-		if (node) {
-			list_del(tmp);
-			free(node);
-			node = NULL;
-		}
-	}
-
+	list_init(&cluster_members_list);
+	qdevice = NULL;
 	us = NULL;
+	memset(cluster_nodes, 0, sizeof(cluster_nodes));
 
 	/*
 	 * clean the tracking list
-	 * should we notify that service is going away?
 	 */
 
-	list_iterate(tmp, &trackers_list) {
-		qpd = list_entry(tmp, struct quorum_pd, list);
-		if (qpd) {
-			list_del(tmp);
-		}
-	}
+	list_init(&trackers_list);
 
 	LEAVE();
 	return ret;
@@ -1722,6 +1727,18 @@ static char *votequorum_exec_init_fn (struct corosync_api_v1 *api)
 	list_init(&trackers_list);
 
 	/*
+	 * Allocate a cluster_node for qdevice
+	 */
+	qdevice = allocate_node(NODEID_QDEVICE);
+	if (!qdevice) {
+		LEAVE();
+		return ((char *)"Could not allocate node.");
+	}
+	qdevice->state = NODESTATE_DEAD;
+	qdevice->votes = 0;
+	memset(qdevice_name, 0, VOTEQUORUM_MAX_QDEVICE_NAME_LEN);
+
+	/*
 	 * Allocate a cluster_node for us
 	 */
 	us = allocate_node(corosync_api->totem_nodeid_get());
@@ -1735,15 +1752,6 @@ static char *votequorum_exec_init_fn (struct corosync_api_v1 *api)
 	us->state = NODESTATE_MEMBER;
 	us->votes = 1;
 	us->flags |= NODE_FLAGS_FIRST;
-
-	qdevice = allocate_node(NODEID_QDEVICE);
-	if (!qdevice) {
-		LEAVE();
-		return ((char *)"Could not allocate node.");
-	}
-	qdevice->state = NODESTATE_DEAD;
-	qdevice->votes = 0;
-	memset(qdevice_name, 0, VOTEQUORUM_MAX_QDEVICE_NAME_LEN);
 
 	error = votequorum_readconfig(VOTEQUORUM_READCONFIG_STARTUP);
 	if (error) {
