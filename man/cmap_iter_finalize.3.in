@@ -35,7 +35,7 @@
 
 .SH NAME
 .P
-cmap_iter_init \- Finalize iterator for keys stored in CMAP
+cmap_iter_finalize \- Finalize iterator for keys stored in CMAP
 
 .SH SYNOPSIS
 .P
