@@ -113,6 +113,7 @@ static int32_t _logsys_config_mode_set_unlocked(int32_t subsysid, uint32_t new_m
 static void _logsys_config_apply_per_file(int32_t s, const char *filename);
 static void _logsys_config_apply_per_subsys(int32_t s);
 static void _logsys_subsys_filename_add (int32_t s, const char *filename);
+static void logsys_file_format_get(char* file_format, int buf_len);
 
 static char *format_buffer=NULL;
 
@@ -145,6 +146,7 @@ static int logsys_config_file_set_unlocked (
 {
 	static char error_string_response[512];
 	int i;
+	char file_format[128];
 
 	if (logsys_loggers[subsysid].target_id > 0) {
 		/* TODO close file
@@ -210,7 +212,8 @@ static int logsys_config_file_set_unlocked (
 		*error_string = error_string_response;
 		return (-1);
 	}
-	qb_log_format_set(logsys_loggers[subsysid].target_id, format_buffer);
+	logsys_file_format_get(file_format, 128);
+	qb_log_format_set(logsys_loggers[subsysid].target_id, file_format);
 	return (0);
 }
 
@@ -502,6 +505,22 @@ int logsys_config_file_set (
 	return res;
 }
 
+static void
+logsys_file_format_get(char* file_format, int buf_len)
+{
+	char *per_t;
+	file_format[0] = '\0';
+	per_t = strstr(format_buffer, "%t");
+	if (per_t) {
+		strcpy(file_format, "%t [%P] %H %N");
+		per_t += 2;
+		strncat(file_format, per_t, buf_len - strlen("%t [%P] %H %N"));
+	} else {
+		strcpy(file_format, "[%P] %H %N");
+		strncat(file_format, format_buffer, buf_len - strlen("[%P] %H %N"));
+	}
+}
+
 int logsys_format_set (const char *format)
 {
 	int ret = 0;
@@ -510,6 +529,7 @@ int logsys_format_set (const char *format)
 	int w;
 	int reminder;
 	char syslog_format[128];
+	char file_format[128];
 
 	if (format_buffer) {
 		free(format_buffer);
@@ -522,9 +542,10 @@ int logsys_format_set (const char *format)
 	}
 	qb_log_format_set(QB_LOG_STDERR, format_buffer);
 
+	logsys_file_format_get(file_format, 128);
 	for (i = 0; i <= LOGSYS_MAX_SUBSYS_COUNT; i++) {
 		if (logsys_loggers[i].target_id > 0) {
-			qb_log_format_set(logsys_loggers[i].target_id, format_buffer);
+			qb_log_format_set(logsys_loggers[i].target_id, file_format);
 		}
 	}
 
