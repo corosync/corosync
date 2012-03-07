@@ -741,16 +741,3 @@ int logsys_priority_id_get (const char *name)
 	}
 	return (-1);
 }
-
-const char *logsys_priority_name_get (unsigned int priority)
-{
-	unsigned int i;
-
-	for (i = 0; prioritynames[i].c_name != NULL; i++) {
-		if (priority == prioritynames[i].c_val) {
-			return (prioritynames[i].c_name);
-		}
-	}
-	return (NULL);
-}
-
