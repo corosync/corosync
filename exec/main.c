@@ -115,13 +115,11 @@
 #include "totemconfig.h"
 #include "main.h"
 #include "sync.h"
-#include "syncv2.h"
 #include "timer.h"
 #include "util.h"
 #include "apidef.h"
 #include "service.h"
 #include "schedwrk.h"
-#include "evil.h"
 
 #ifdef HAVE_SMALL_MEMORY_FOOTPRINT
 #define IPC_LOGSYS_SIZE			1024*64
@@ -145,8 +143,6 @@ static unsigned int service_count = 32;
 static struct totem_logging_configuration totem_logging_configuration;
 
 static struct corosync_api_v1 *api = NULL;
-
-static enum cs_sync_mode minimum_sync_mode;
 
 static int sync_in_process = 1;
 
@@ -258,72 +254,17 @@ static void corosync_sync_completed (void)
 	cs_ipcs_sync_state_changed(sync_in_process);
 }
 
-static int corosync_sync_callbacks_retrieve (int sync_id,
-	struct sync_callbacks *callbacks)
-{
-	unsigned int corosync_service_index;
-	int res;
-
-	for (corosync_service_index = 0;
-		corosync_service_index < SERVICE_HANDLER_MAXIMUM_COUNT;
-		corosync_service_index++) {
-
-		if (corosync_service[corosync_service_index] != NULL
-			&& (corosync_service[corosync_service_index]->sync_mode == CS_SYNC_V1
-				|| corosync_service[corosync_service_index]->sync_mode == CS_SYNC_V1_APIV2)) {
-			if (corosync_service_index == sync_id) {
-				break;
-			}
-		}
-	}
-	/*
-	 * Try to load backwards compat sync engines
-	 */
-	if (corosync_service_index == SERVICE_HANDLER_MAXIMUM_COUNT) {
-		res = evil_callbacks_load (sync_id, callbacks);
-		return (res);
-	}
-	callbacks->name = corosync_service[corosync_service_index]->name;
-	callbacks->sync_init_api.sync_init_v1 = corosync_service[corosync_service_index]->sync_init;
-	callbacks->api_version = 1;
-	if (corosync_service[corosync_service_index]->sync_mode == CS_SYNC_V1_APIV2) {
-		callbacks->api_version = 2;
-	}
-	callbacks->sync_process = corosync_service[corosync_service_index]->sync_process;
-	callbacks->sync_activate = corosync_service[corosync_service_index]->sync_activate;
-	callbacks->sync_abort = corosync_service[corosync_service_index]->sync_abort;
-	return (0);
-}
-
-static int corosync_sync_v2_callbacks_retrieve (
+static int corosync_sync_callbacks_retrieve (
 	int service_id,
 	struct sync_callbacks *callbacks)
 {
-	int res;
-
-	if (minimum_sync_mode == CS_SYNC_V2 && service_id == CLM_SERVICE && corosync_service[CLM_SERVICE] == NULL) {
-		res = evil_callbacks_load (service_id, callbacks);
-		return (res);
-	}
-	if (minimum_sync_mode == CS_SYNC_V2 && service_id == EVT_SERVICE && corosync_service[EVT_SERVICE] == NULL) {
-		res = evil_callbacks_load (service_id, callbacks);
-		return (res);
-	}
 	if (corosync_service[service_id] == NULL) {
-		return (-1);
-	}
-	if (minimum_sync_mode == CS_SYNC_V1 && corosync_service[service_id]->sync_mode != CS_SYNC_V2) {
 		return (-1);
 	}
 
 	callbacks->name = corosync_service[service_id]->name;
 
-	callbacks->api_version = 1;
-	if (corosync_service[service_id]->sync_mode == CS_SYNC_V1_APIV2) {
-		callbacks->api_version = 2;
-	}
-
-	callbacks->sync_init_api.sync_init_v1 = corosync_service[service_id]->sync_init;
+	callbacks->sync_init = corosync_service[service_id]->sync_init;
 	callbacks->sync_process = corosync_service[service_id]->sync_process;
 	callbacks->sync_activate = corosync_service[service_id]->sync_activate;
 	callbacks->sync_abort = corosync_service[service_id]->sync_abort;
@@ -406,13 +347,13 @@ static void confchg_fn (
 	}
 
 	if (abort_activate) {
-		sync_v2_abort ();
+		sync_abort ();
 	}
-	if (minimum_sync_mode == CS_SYNC_V2 && configuration_type == TOTEM_CONFIGURATION_TRANSITIONAL) {
-		sync_v2_save_transitional (member_list, member_list_entries, ring_id);
+	if (configuration_type == TOTEM_CONFIGURATION_TRANSITIONAL) {
+		sync_save_transitional (member_list, member_list_entries, ring_id);
 	}
-	if (minimum_sync_mode == CS_SYNC_V2 && configuration_type == TOTEM_CONFIGURATION_REGULAR) {
-		sync_v2_start (member_list, member_list_entries, ring_id);
+	if (configuration_type == TOTEM_CONFIGURATION_REGULAR) {
+		sync_start (member_list, member_list_entries, ring_id);
 	}
 }
 
@@ -677,11 +618,6 @@ static void deliver_fn (
 	service = id >> 16;
 	fn_id = id & 0xffff;
 
-	if (corosync_service[service] == NULL && service == EVT_SERVICE) {
-		evil_deliver_fn (nodeid, service, fn_id, msg,
-			endian_conversion_required);
-	}
-
 	if (!corosync_service[service]) {
 		return;
 	}
@@ -928,33 +864,13 @@ static void main_service_ready (void)
 		log_printf (LOGSYS_LEVEL_ERROR, "Could not initialize default services");
 		corosync_exit_error (COROSYNC_DONE_INIT_SERVICES);
 	}
-	evil_init (api);
 	cs_ipcs_init();
 	corosync_totem_stats_init ();
 	corosync_fplay_control_init ();
 	corosync_totem_dynamic_init ();
-	if (minimum_sync_mode == CS_SYNC_V2) {
-		log_printf (LOGSYS_LEVEL_NOTICE,
-		       "Compatibility mode set to none.  Using V2 of the synchronization engine.");
-		sync_v2_init (
-			corosync_sync_v2_callbacks_retrieve,
-			corosync_sync_completed);
-	} else
-	if (minimum_sync_mode == CS_SYNC_V1) {
-		log_printf (LOGSYS_LEVEL_NOTICE,
-			"Compatibility mode set to whitetank.  Using V1 and V2 of the synchronization engine.");
-		sync_register (
-			corosync_sync_callbacks_retrieve,
-			sync_v2_memb_list_determine,
-			sync_v2_memb_list_abort,
-			sync_v2_start);
-
-		sync_v2_init (
-			corosync_sync_v2_callbacks_retrieve,
-			corosync_sync_completed);
-	}
-
-
+	sync_init (
+		corosync_sync_callbacks_retrieve,
+		corosync_sync_completed);
 }
 
 static enum e_corosync_done corosync_flock (const char *lockfile, pid_t pid)
@@ -1203,13 +1119,6 @@ int main (int argc, char **argv, char **envp)
 	totem_config.totem_logging_configuration.log_level_debug = LOGSYS_LEVEL_DEBUG;
 	totem_config.totem_logging_configuration.log_printf = _logsys_log_printf;
 	logsys_config_apply();
-
-	res = corosync_main_config_compatibility_read (&minimum_sync_mode,
-		&error_string);
-	if (res == -1) {
-		log_printf (LOGSYS_LEVEL_ERROR, "%s", error_string);
-		corosync_exit_error (COROSYNC_DONE_MAINCONFIGREAD);
-	}
 
 	/*
 	 * Now we are fully initialized.

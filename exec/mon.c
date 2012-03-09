@@ -75,8 +75,7 @@ struct corosync_service_engine mon_service_engine = {
 	.exec_engine_count	= 0,
 	.confchg_fn		= NULL,
 	.exec_init_fn		= mon_exec_init_fn,
-	.exec_dump_fn		= NULL,
-	.sync_mode		= CS_SYNC_V2
+	.exec_dump_fn		= NULL
 };
 
 static DECLARE_LIST_INIT (confchg_notify);

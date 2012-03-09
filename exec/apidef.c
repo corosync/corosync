@@ -48,7 +48,6 @@
 #include <corosync/logsys.h>
 #include "util.h"
 #include "timer.h"
-#include "sync.h"
 #include "quorum.h"
 #include "schedwrk.h"
 #include "main.h"

@@ -52,8 +52,4 @@ struct dynamic_service {
 extern int corosync_main_config_read (
 	const char **error_string);
 
-extern int corosync_main_config_compatibility_read (
-	enum cs_sync_mode *minimum_sync_mode,
-	const char **error_string);
-
 #endif /* MAINCONFIG_H_DEFINED */

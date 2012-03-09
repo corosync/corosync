@@ -380,8 +380,7 @@ static struct corosync_service_engine votequorum_service_engine = {
 	.exec_exit_fn			= votequorum_exec_exit_fn,
 	.exec_engine			= votequorum_exec_engine,
 	.exec_engine_count		= sizeof (votequorum_exec_engine) / sizeof (struct corosync_exec_handler),
-	.confchg_fn			= votequorum_confchg_fn,
-	.sync_mode			= CS_SYNC_V1
+	.confchg_fn			= votequorum_confchg_fn
 };
 
 struct corosync_service_engine *votequorum_get_service_engine_ver0 (void)

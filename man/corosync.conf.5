@@ -60,18 +60,6 @@ This top level directive contains configuration options for nodes in cluster.
 
 .PP
 .PP
-It is also possible to specify the top level parameter
-.B compatibility.
-This directive indicates the level of compatibility requested by the user.  The
-option whitetank can be specified to remain backward compatable with
-openais-0.80.z.  The option none can be specified to only be compatable
-with corosync-1.Y.Z.  Extra processing during configuration changes is
-required to remain backward compatable.
-
-The default is whitetank. (backwards compatibility)
-
-.PP
-.PP
 Within the
 .B totem
 directive, an interface directive is required.  There is also one configuration

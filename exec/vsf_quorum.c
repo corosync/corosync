@@ -194,8 +194,7 @@ static struct corosync_service_engine quorum_service_handler = {
 	.lib_exit_fn				= quorum_lib_exit_fn,
 	.lib_engine				= quorum_lib_service,
 	.exec_init_fn				= quorum_exec_init_fn,
-	.lib_engine_count			= sizeof (quorum_lib_service) / sizeof (struct corosync_lib_handler),
-	.sync_mode				= CS_SYNC_V1
+	.lib_engine_count			= sizeof (quorum_lib_service) / sizeof (struct corosync_lib_handler)
 };
 
 struct corosync_service_engine *vsf_quorum_get_service_engine_ver0 (void)

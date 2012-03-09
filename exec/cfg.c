@@ -234,8 +234,7 @@ struct corosync_service_engine cfg_service_engine = {
 	.exec_init_fn				= cfg_exec_init_fn,
 	.exec_engine				= cfg_exec_engine,
 	.exec_engine_count			= sizeof (cfg_exec_engine) / sizeof (struct corosync_exec_handler),
-	.confchg_fn				= cfg_confchg_fn,
-	.sync_mode				= CS_SYNC_V1
+	.confchg_fn				= cfg_confchg_fn
 };
 
 struct corosync_service_engine *cfg_get_service_engine_ver0 (void)

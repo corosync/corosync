@@ -105,8 +105,7 @@ struct corosync_service_engine wd_service_engine = {
 	.confchg_fn		= NULL,
 	.exec_init_fn		= wd_exec_init_fn,
 	.exec_exit_fn		= wd_exec_exit_fn,
-	.exec_dump_fn		= NULL,
-	.sync_mode		= CS_SYNC_V2
+	.exec_dump_fn		= NULL
 };
 
 static DECLARE_LIST_INIT (confchg_notify);

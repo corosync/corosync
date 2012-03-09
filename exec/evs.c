@@ -152,8 +152,7 @@ struct corosync_service_engine evs_service_engine = {
 	.exec_engine_count	= sizeof (evs_exec_engine) / sizeof (struct corosync_exec_handler),
 	.confchg_fn		= evs_confchg_fn,
 	.exec_init_fn		= evs_exec_init_fn,
-	.exec_dump_fn		= NULL,
-	.sync_mode		= CS_SYNC_V1
+	.exec_dump_fn		= NULL
 };
 
 static DECLARE_LIST_INIT (confchg_notify);

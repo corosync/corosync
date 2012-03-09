@@ -285,7 +285,7 @@ static void downlist_messages_delete (void);
 
 static void downlist_master_choose_and_send (void);
 
-static void cpg_sync_init_v2 (
+static void cpg_sync_init (
 	const unsigned int *trans_list,
 	size_t trans_list_entries,
 	const unsigned int *member_list,
@@ -406,8 +406,7 @@ struct corosync_service_engine cpg_service_engine = {
 	.exec_dump_fn				= NULL,
 	.exec_engine				= cpg_exec_engine,
 	.exec_engine_count		        = sizeof (cpg_exec_engine) / sizeof (struct corosync_exec_handler),
-	.sync_mode				= CS_SYNC_V1_APIV2,
-	.sync_init                              = (sync_init_v1_fn_t)cpg_sync_init_v2,
+	.sync_init                              = cpg_sync_init,
 	.sync_process                           = cpg_sync_process,
 	.sync_activate                          = cpg_sync_activate,
 	.sync_abort                             = cpg_sync_abort
@@ -459,7 +458,7 @@ struct downlist_msg {
 
 static struct req_exec_cpg_downlist g_req_exec_cpg_downlist;
 
-static void cpg_sync_init_v2 (
+static void cpg_sync_init (
 	const unsigned int *trans_list,
 	size_t trans_list_entries,
 	const unsigned int *member_list,

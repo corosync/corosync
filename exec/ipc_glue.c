@@ -56,7 +56,6 @@
 
 #include "mainconfig.h"
 #include "sync.h"
-#include "syncv2.h"
 #include "timer.h"
 #include "main.h"
 #include "util.h"
@@ -122,38 +121,11 @@ static const char* cs_ipcs_serv_short_name(int32_t service_id)
 	case EVS_SERVICE:
 		name = "evs";
 		break;
-	case CLM_SERVICE:
-		name = "saClm";
-		break;
-	case AMF_SERVICE:
-		name = "saAmf";
-		break;
-	case CKPT_SERVICE:
-		name = "saCkpt";
-		break;
-	case EVT_SERVICE:
-		name = "saEvt";
-		break;
-	case LCK_SERVICE:
-		name = "saLck";
-		break;
-	case MSG_SERVICE:
-		name = "saMsg";
-		break;
 	case CFG_SERVICE:
 		name = "cfg";
 		break;
 	case CPG_SERVICE:
 		name = "cpg";
-		break;
-	case CMAN_SERVICE:
-		name = "cman";
-		break;
-	case PCMK_SERVICE:
-		name = "pacemaker.engine";
-		break;
-	case CONFDB_SERVICE:
-		name = "confdb";
 		break;
 	case QUORUM_SERVICE:
 		name = "quorum";
@@ -161,23 +133,8 @@ static const char* cs_ipcs_serv_short_name(int32_t service_id)
 	case PLOAD_SERVICE:
 		name = "pload";
 		break;
-	case TMR_SERVICE:
-		name = "saTmr";
-		break;
 	case VOTEQUORUM_SERVICE:
 		name = "votequorum";
-		break;
-	case NTF_SERVICE:
-		name = "saNtf";
-		break;
-	case AMF_V2_SERVICE:
-		name = "saAmfV2";
-		break;
-	case TST_SV1_SERVICE:
-		name = "tst";
-		break;
-	case TST_SV2_SERVICE:
-		name = "tst2";
 		break;
 	case MON_SERVICE:
 		name = "mon";

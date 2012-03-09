@@ -47,10 +47,10 @@ sbin_PROGRAMS		= corosync
 
 libtotem_pg_a_SOURCES	= $(TOTEM_SRC)
 
-corosync_SOURCES	= evil.c vsf_ykd.c coroparse.c vsf_quorum.c syncv2.c \
+corosync_SOURCES	= vsf_ykd.c coroparse.c vsf_quorum.c sync.c \
 			  logsys.c cfg.c cmap.c cpg.c evs.c mon.c pload.c \
 			  votequorum.c wd.c util.c schedwrk.c main.c \
-			  apidef.c quorum.c sync.c icmap.c timer.c \
+			  apidef.c quorum.c icmap.c timer.c \
 			  ipc_glue.c service.c mainconfig.c totemconfig.c
 corosync_LDADD		= -ltotem_pg -lcorosync_common $(LIBQB_LIBS) $(statgrab_LIBS)
 corosync_DEPENDENCIES	= libtotem_pg.so.$(SONAME) ../common_lib/libcorosync_common.so
@@ -64,10 +64,10 @@ SHARED_LIBS_SO		= $(SHARED_LIBS:%.so.$(SONAME)=%.so)
 SHARED_LIBS_SO_TWO	= $(SHARED_LIBS:%.so.$(SONAME)=%.so.$(SOMAJOR))
 
 noinst_HEADERS		= apidef.h crypto.h mainconfig.h main.h \
-			  quorum.h service.h sync.h timer.h totemconfig.h \
+			  quorum.h service.h timer.h totemconfig.h \
 			  totemmrp.h totemnet.h totemudp.h totemiba.h totemrrp.h \
 			  totemudpu.h totemsrp.h util.h vsf.h schedwrk.h \
-			  evil.h syncv2.h fsm.h votequorum.h vsf_ykd.h
+			  sync.h fsm.h votequorum.h vsf_ykd.h
 
 if BUILD_DARWIN
 libtotem_pg.so.$(SONAME): $(TOTEM_OBJS)

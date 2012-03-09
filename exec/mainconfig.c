@@ -540,34 +540,3 @@ parse_error:
 	*error_string = error_string_response;
 	return (-1);
 }
-
-int corosync_main_config_compatibility_read (
-        enum cs_sync_mode *minimum_sync_mode,
-        const char **error_string)
-{
-	const char *error_reason = error_string_response;
-	char *value;
-
-	*minimum_sync_mode = CS_SYNC_V1;
-	if (icmap_get_string("compatibility", &value) == CS_OK) {
-		if (strcmp (value, "whitetank") == 0) {
-			*minimum_sync_mode = CS_SYNC_V1;
-		} else
-		if (strcmp (value, "none") == 0) {
-			*minimum_sync_mode = CS_SYNC_V2;
-		} else {
-
-			snprintf (error_string_response, sizeof (error_string_response),
-				"Invalid compatibility option '%s' specified, must be none or whitetank.\n", value);
-			goto parse_error;
-		}
-		free(value);
-	}
-
-	return 0;
-
-parse_error:
-	*error_string = error_reason;
-	free(value);
-	return (-1);
-}

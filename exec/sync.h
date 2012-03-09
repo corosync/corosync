@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2002-2004 MontaVista Software, Inc.
- * Copyright (c) 2006-2010 Red Hat, Inc.
+ * Copyright (c) 2009-2010 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -36,47 +35,39 @@
 #ifndef SYNC_H_DEFINED
 #define SYNC_H_DEFINED
 
-#include <netinet/in.h>
-#include <corosync/totem/totempg.h>
-#include "totemsrp.h"
-
-union sync_init_api {
-	void (*sync_init_v1) (
-		const unsigned int *member_list,
-		size_t member_list_entries,
-		const struct memb_ring_id *ring_id);
-
-	void (*sync_init_v2) (
+struct sync_callbacks {
+	void (*sync_init) (
 		const unsigned int *trans_list,
 		size_t trans_list_entries,
 		const unsigned int *member_list,
 		size_t member_list_entries,
 		const struct memb_ring_id *ring_id);
-};
-
-struct sync_callbacks {
-	int api_version;
-	union sync_init_api sync_init_api;
 	int (*sync_process) (void);
 	void (*sync_activate) (void);
 	void (*sync_abort) (void);
 	const char *name;
 };
 
-int sync_register (
+extern int sync_init (
 	int (*sync_callbacks_retrieve) (
-		int sync_id,
+		int service_id,
 		struct sync_callbacks *callbacks),
+	void (*synchronization_completed) (void));
 
-	void (*sync_started) (
-		const struct memb_ring_id *ring_id),
+extern void sync_start (
+        const unsigned int *member_list,
+        size_t member_list_entries,
+        const struct memb_ring_id *ring_id);
 
-	void (*sync_aborted) (void),
+extern void sync_save_transitional (
+        const unsigned int *member_list,
+        size_t member_list_entries,
+        const struct memb_ring_id *ring_id);
 
-	void (*next_start) (
-		const unsigned int *member_list,
-		size_t member_list_entries,
-		const struct memb_ring_id *ring_id));
+extern void sync_abort (void);
 
+extern void sync_memb_list_determine (const struct memb_ring_id *ring_id);
+
+extern void sync_memb_list_abort (void);
 
 #endif /* SYNC_H_DEFINED */

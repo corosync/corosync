@@ -142,12 +142,6 @@ enum cs_flow_control_state {
 
 #endif /* COROSYNC_FLOW_CONTROL_STATE */
 
-enum cs_sync_mode {
-	CS_SYNC_V1	 = 0,
-	CS_SYNC_V2	 = 1,
-	CS_SYNC_V1_APIV2 = 2
-};
-
 typedef enum {
 	COROSYNC_FATAL_ERROR_EXIT = -1,
 	COROSYNC_LIBAIS_SOCKET = -6,
@@ -429,11 +423,6 @@ struct corosync_service_engine_iface_ver0 {
         struct corosync_service_engine *(*corosync_get_service_engine_ver0) (void);
 };
 
-typedef void (*sync_init_v1_fn_t) (
-		const unsigned int *member_list,
-		size_t member_list_entries,
-		const struct memb_ring_id *ring_id) ;
-
 struct corosync_service_engine {
 	const char *name;
 	unsigned short id;
@@ -459,8 +448,12 @@ struct corosync_service_engine {
 		const unsigned int *left_list, size_t left_list_entries,
 		const unsigned int *joined_list, size_t joined_list_entries,
 		const struct memb_ring_id *ring_id);
-	enum cs_sync_mode sync_mode;
-	sync_init_v1_fn_t sync_init;
+	void (*sync_init) (
+		const unsigned int *trans_list,
+		size_t trans_list_entries,
+		const unsigned int *member_list,
+		size_t member_list_entries,
+		const struct memb_ring_id *ring_id);
 	int (*sync_process) (void);
 	void (*sync_activate) (void);
 	void (*sync_abort) (void);

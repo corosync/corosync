@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2005-2006 MontaVista Software, Inc.
- * Copyright (c) 2006-2012 Red Hat, Inc.
+ * Copyright (c) 2009-2012 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -56,63 +55,104 @@
 #include <corosync/totem/totem.h>
 #include <corosync/logsys.h>
 #include <qb/qbipc_common.h>
+#include "schedwrk.h"
 #include "quorum.h"
 #include "sync.h"
 
 LOGSYS_DECLARE_SUBSYS ("SYNC");
 
 #define MESSAGE_REQ_SYNC_BARRIER 0
+#define MESSAGE_REQ_SYNC_SERVICE_BUILD 1
+#define MESSAGE_REQ_SYNC_MEMB_DETERMINE 2
 
-struct barrier_data {
-	unsigned int nodeid;
-	int completed;
+enum sync_process_state {
+	INIT,
+	PROCESS,
+	ACTIVATE
 };
 
-static const struct memb_ring_id *sync_ring_id;
+enum sync_state {
+	SYNC_SERVICELIST_BUILD,
+	SYNC_PROCESS,
+	SYNC_BARRIER
+};
 
-static int (*sync_callbacks_retrieve) (int sync_id, struct sync_callbacks *callack);
+struct service_entry {
+	int service_id;
+	void (*sync_init) (
+		const unsigned int *trans_list,
+		size_t trans_list_entries,
+		const unsigned int *member_list,
+		size_t member_list_entries,
+		const struct memb_ring_id *ring_id);
+	void (*sync_abort) (void);
+	int (*sync_process) (void);
+	void (*sync_activate) (void);
+	enum sync_process_state state;
+	char name[128];
+};
 
-static void (*sync_started) (
-	const struct memb_ring_id *ring_id);
+struct processor_entry {
+	int nodeid;
+	int received;
+};
 
-static void (*sync_aborted) (void);
+struct req_exec_memb_determine_message {
+	struct qb_ipc_request_header header __attribute__((aligned(8)));
+	struct memb_ring_id ring_id __attribute__((aligned(8)));
+};
 
-static struct sync_callbacks sync_callbacks;
+struct req_exec_service_build_message {
+	struct qb_ipc_request_header header __attribute__((aligned(8)));
+	struct memb_ring_id ring_id __attribute__((aligned(8)));
+	int service_list_entries __attribute__((aligned(8)));
+	int service_list[128] __attribute__((aligned(8)));
+};
 
-static int sync_processing = 0;
+struct req_exec_barrier_message {
+	struct qb_ipc_request_header header __attribute__((aligned(8)));
+	struct memb_ring_id ring_id __attribute__((aligned(8)));
+};
 
-static void (*sync_next_start) (
-	const unsigned int *member_list,
-	size_t member_list_entries,
-	const struct memb_ring_id *ring_id);
+static enum sync_state my_state = SYNC_BARRIER;
 
-static int sync_recovery_index = 0;
+static struct memb_ring_id my_ring_id;
 
-static void *sync_callback_token_handle = 0;
+static struct memb_ring_id my_memb_determine_ring_id;
 
-static struct barrier_data barrier_data_confchg[PROCESSOR_COUNT_MAX];
+static int my_memb_determine = 0;
 
-static size_t barrier_data_confchg_entries;
+static unsigned int my_memb_determine_list[PROCESSOR_COUNT_MAX];
 
-static struct barrier_data barrier_data_process[PROCESSOR_COUNT_MAX];
+static unsigned int my_memb_determine_list_entries = 0;
+
+static int my_processing_idx = 0;
+
+static hdb_handle_t my_schedwrk_handle;
+
+static struct processor_entry my_processor_list[PROCESSOR_COUNT_MAX];
 
 static unsigned int my_member_list[PROCESSOR_COUNT_MAX];
 
 static unsigned int my_trans_list[PROCESSOR_COUNT_MAX];
 
-static unsigned int my_member_list_entries;
+static size_t my_member_list_entries = 0;
 
-static unsigned int my_trans_list_entries;
+static size_t my_trans_list_entries = 0;
 
-static int sync_barrier_send (const struct memb_ring_id *ring_id);
+static int my_processor_list_entries = 0;
 
-static int sync_start_process (enum totem_callback_token_type type,
-			       const void *data);
+static struct service_entry my_service_list[128];
 
-static void sync_service_init (struct memb_ring_id *ring_id);
+static int my_service_list_entries = 0;
 
-static int sync_service_process (enum totem_callback_token_type type,
-				 const void *data);
+static const struct memb_ring_id sync_ring_id;
+
+static struct service_entry my_initial_service_list[PROCESSOR_COUNT_MAX];
+
+static int my_initial_service_list_entries;
+
+static void (*sync_synchronization_completed) (void);
 
 static void sync_deliver_fn (
 	unsigned int nodeid,
@@ -120,21 +160,9 @@ static void sync_deliver_fn (
 	unsigned int msg_len,
 	int endian_conversion_required);
 
-static void sync_confchg_fn (
-	enum totem_configuration_type configuration_type,
-	const unsigned int *member_list,
-	size_t member_list_entries,
-	const unsigned int *left_list,
-	size_t left_list_entries,
-	const unsigned int *joined_list,
-	size_t joined_list_entries,
-	const struct memb_ring_id *ring_id);
+static int schedwrk_processor (const void *context);
 
-static void sync_primary_callback_fn (
-        const unsigned int *view_list,
-        size_t view_list_entries,
-        const struct memb_ring_id *ring_id);
-
+static void sync_process_enter (void);
 
 static struct totempg_group sync_group = {
     .group      = "sync",
@@ -143,156 +171,20 @@ static struct totempg_group sync_group = {
 
 static void *sync_group_handle;
 
-struct req_exec_sync_barrier_start {
-	struct qb_ipc_request_header header;
-	struct memb_ring_id ring_id;
-};
-
-/*
- * Send a barrier data structure
- */
-static int sync_barrier_send (const struct memb_ring_id *ring_id)
-{
-	struct req_exec_sync_barrier_start req_exec_sync_barrier_start;
-	struct iovec iovec;
-	int res;
-
-	req_exec_sync_barrier_start.header.size = sizeof (struct req_exec_sync_barrier_start);
-	req_exec_sync_barrier_start.header.id = MESSAGE_REQ_SYNC_BARRIER;
-
-	memcpy (&req_exec_sync_barrier_start.ring_id, ring_id,
-		sizeof (struct memb_ring_id));
-
-	iovec.iov_base = (char *)&req_exec_sync_barrier_start;
-	iovec.iov_len = sizeof (req_exec_sync_barrier_start);
-
-	res = totempg_groups_mcast_joined (sync_group_handle, &iovec, 1, TOTEMPG_AGREED);
-
-	return (res);
-}
-
-static void sync_start_init (const struct memb_ring_id *ring_id)
-{
-	totempg_callback_token_create (
-		&sync_callback_token_handle,
-		TOTEM_CALLBACK_TOKEN_SENT,
-		0, /* don't delete after callback */
-		sync_start_process,
-		ring_id);
-}
-
-static void sync_service_init (struct memb_ring_id *ring_id)
-{
-	if (sync_callbacks.api_version == 1) {
-		sync_callbacks.sync_init_api.sync_init_v1 (my_member_list,
-			my_member_list_entries, ring_id);
-	} else {
-		sync_callbacks.sync_init_api.sync_init_v2 (my_trans_list,
-			my_trans_list_entries,
-			my_member_list, my_member_list_entries, ring_id);
-	}
-	totempg_callback_token_destroy (&sync_callback_token_handle);
-
-	/*
-	 * Create the token callback for the processing
-	 */
-	totempg_callback_token_create (
-		&sync_callback_token_handle,
-		TOTEM_CALLBACK_TOKEN_SENT,
-		0, /* don't delete after callback */
-		sync_service_process,
-		ring_id);
-}
-
-static int sync_start_process (enum totem_callback_token_type type,
-			       const void *data)
-{
-	int res;
-	const struct memb_ring_id *ring_id = data;
-
-	res = sync_barrier_send (ring_id);
-	if (res == 0) {
-		/*
-		 * Delete the token callback for the barrier
-		 */
-		totempg_callback_token_destroy (&sync_callback_token_handle);
-	}
-	return (0);
-}
-
-static void sync_callbacks_load (void)
-{
-	int res;
-
-	for (;;) {
-		res = sync_callbacks_retrieve (sync_recovery_index,
-			&sync_callbacks);
-
-		/*
-		 * No more service handlers have sync callbacks at this time
-	`	 */
-		if (res == -1) {
-			sync_processing = 0;
-			break;
-		}
-		sync_recovery_index += 1;
-		if (sync_callbacks.sync_init_api.sync_init_v1) {
-			break;
-		}
-	}
-}
-
-static int sync_service_process (enum totem_callback_token_type type,
-				 const void *data)
-{
-	int res;
-	const struct memb_ring_id *ring_id = data;
-
-
-	/*
-	 * If process operation not from this ring id, then ignore it and stop
-	 * processing
-	 */
-	if (memcmp (ring_id, sync_ring_id, sizeof (struct memb_ring_id)) != 0) {
-		return (0);
-	}
-
-	/*
-	 * If process returns 0, then its time to activate
-	 * and start the next service's synchronization
-	 */
-	res = sync_callbacks.sync_process ();
-	if (res != 0) {
-		return (0);
-	}
-	totempg_callback_token_destroy (&sync_callback_token_handle);
-
-	sync_start_init (ring_id);
-
-	return (0);
-}
-
-int sync_register (
-	int (*callbacks_retrieve) (
-		int sync_id,
-		struct sync_callbacks *callbacks),
-
-	void (*started) (
-		const struct memb_ring_id *ring_id),
-
-	void (*aborted) (void),
-
-	void (*next_start) (
-		const unsigned int *member_list,
-		size_t member_list_entries,
-		const struct memb_ring_id *ring_id))
+int sync_init (
+        int (*sync_callbacks_retrieve) (
+                int service_id,
+                struct sync_callbacks *callbacks),
+        void (*synchronization_completed) (void))
 {
 	unsigned int res;
+	int i;
+	struct sync_callbacks sync_callbacks;
 
 	res = totempg_groups_initialize (
 		&sync_group_handle,
 		sync_deliver_fn,
-		sync_confchg_fn);
+		NULL);
 	if (res == -1) {
 		log_printf (LOGSYS_LEVEL_ERROR,
 			"Couldn't initialize groups interface.");
@@ -308,50 +200,183 @@ int sync_register (
 		return (-1);
 	}
 
-	sync_callbacks_retrieve = callbacks_retrieve;
-	sync_next_start = next_start;
-	sync_started = started;
-	sync_aborted = aborted;
+	sync_synchronization_completed = synchronization_completed;
+	for (i = 0; i < 64; i++) {
+		res = sync_callbacks_retrieve (i, &sync_callbacks);
+		if (res == -1) {
+			continue;
+		}
+		if (sync_callbacks.sync_init == NULL) {
+			continue;
+		}
+		my_initial_service_list[my_initial_service_list_entries].state =
+			INIT;
+		my_initial_service_list[my_initial_service_list_entries].service_id = i;
+		strcpy (my_initial_service_list[my_initial_service_list_entries].name,
+			sync_callbacks.name);
+		my_initial_service_list[my_initial_service_list_entries].sync_init = sync_callbacks.sync_init;
+		my_initial_service_list[my_initial_service_list_entries].sync_process = sync_callbacks.sync_process;
+		my_initial_service_list[my_initial_service_list_entries].sync_abort = sync_callbacks.sync_abort;
+		my_initial_service_list[my_initial_service_list_entries].sync_activate = sync_callbacks.sync_activate;
+		my_initial_service_list_entries += 1;
+	}
 	return (0);
 }
 
-
-static void sync_primary_callback_fn (
-	const unsigned int *view_list,
-	size_t view_list_entries,
-	const struct memb_ring_id *ring_id)
+static void sync_barrier_handler (unsigned int nodeid, const void *msg)
 {
+	const struct req_exec_barrier_message *req_exec_barrier_message = msg;
 	int i;
+	int barrier_reached = 1;
 
+	if (memcmp (&my_ring_id, &req_exec_barrier_message->ring_id,
+		sizeof (struct memb_ring_id)) != 0) {
 
-	/*
-	 * Execute configuration change for synchronization service
-	 */
-	sync_processing = 1;
-
-	totempg_callback_token_destroy (&sync_callback_token_handle);
-
-	sync_recovery_index = 0;
-	memset (&barrier_data_confchg, 0, sizeof (barrier_data_confchg));
-	for (i = 0; i < view_list_entries; i++) {
-		barrier_data_confchg[i].nodeid = view_list[i];
-		barrier_data_confchg[i].completed = 0;
+		log_printf (LOGSYS_LEVEL_DEBUG, "barrier for old ring - discarding");
+		return;
 	}
-	memcpy (barrier_data_process, barrier_data_confchg,
-		sizeof (barrier_data_confchg));
-	barrier_data_confchg_entries = view_list_entries;
-	sync_start_init (sync_ring_id);
+	for (i = 0; i < my_processor_list_entries; i++) {
+		if (my_processor_list[i].nodeid == nodeid) {
+			my_processor_list[i].received = 1;
+		}
+	}
+	for (i = 0; i < my_processor_list_entries; i++) {
+		if (my_processor_list[i].received == 0) {
+			barrier_reached = 0;
+		}
+	}
+	if (barrier_reached) {
+		log_printf (LOGSYS_LEVEL_DEBUG, "Committing synchronization for %s",
+			my_service_list[my_processing_idx].name);
+		my_service_list[my_processing_idx].state = ACTIVATE;
+		my_service_list[my_processing_idx].sync_activate ();
+
+		my_processing_idx += 1;
+		if (my_service_list_entries == my_processing_idx) {
+			my_memb_determine_list_entries = 0;
+			sync_synchronization_completed ();
+		} else {
+			sync_process_enter ();
+		}
+	}
 }
 
-static struct memb_ring_id deliver_ring_id;
-
-static void sync_endian_convert (struct req_exec_sync_barrier_start
-				 *req_exec_sync_barrier_start)
+static void dummy_sync_init (
+	const unsigned int *trans_list,
+	size_t trans_list_entries,
+	const unsigned int *member_list,
+	size_t member_list_entries,
+	const struct memb_ring_id *ring_id)
 {
-	totemip_copy_endian_convert(&req_exec_sync_barrier_start->ring_id.rep,
-		&req_exec_sync_barrier_start->ring_id.rep);
-	req_exec_sync_barrier_start->ring_id.seq = swab64 (req_exec_sync_barrier_start->ring_id.seq);
+}
 
+static void dummy_sync_abort (void)
+{
+}
+
+static int dummy_sync_process (void)
+{
+	return (0);
+}
+
+static void dummy_sync_activate (void)
+{
+}
+
+static int service_entry_compare (const void *a, const void *b)
+{
+	const struct service_entry *service_entry_a = a;
+	const struct service_entry *service_entry_b = b;
+
+	return (service_entry_a->service_id > service_entry_b->service_id);
+}
+
+static void sync_memb_determine (unsigned int nodeid, const void *msg)
+{
+	const struct req_exec_memb_determine_message *req_exec_memb_determine_message = msg;
+	int found = 0;
+	int i;
+
+	if (memcmp (&req_exec_memb_determine_message->ring_id,
+		&my_memb_determine_ring_id, sizeof (struct memb_ring_id)) != 0) {
+
+		log_printf (LOGSYS_LEVEL_DEBUG, "memb determine for old ring - discarding");
+		return;
+	}
+
+	my_memb_determine = 1;
+	for (i = 0; i < my_memb_determine_list_entries; i++) {
+		if (my_memb_determine_list[i] == nodeid) {
+			found = 1;
+		}
+	}
+	if (found == 0) {
+		my_memb_determine_list[my_memb_determine_list_entries] = nodeid;
+		my_memb_determine_list_entries += 1;
+	}
+}
+
+static void sync_service_build_handler (unsigned int nodeid, const void *msg)
+{
+	const struct req_exec_service_build_message *req_exec_service_build_message = msg;
+	int i, j;
+	int barrier_reached = 1;
+	int found;
+	int qsort_trigger = 0;
+
+	if (memcmp (&my_ring_id, &req_exec_service_build_message->ring_id,
+		sizeof (struct memb_ring_id)) != 0) {
+		log_printf (LOGSYS_LEVEL_DEBUG, "service build for old ring - discarding");
+		return;
+	}
+	for (i = 0; i < req_exec_service_build_message->service_list_entries; i++) {
+
+		found = 0;
+		for (j = 0; j < my_service_list_entries; j++) {
+			if (req_exec_service_build_message->service_list[i] ==
+				my_service_list[j].service_id) {
+				found = 1;
+				break;
+			}
+		}
+		if (found == 0) {
+			my_service_list[my_service_list_entries].state =
+				INIT;
+			my_service_list[my_service_list_entries].service_id =
+				req_exec_service_build_message->service_list[i];
+			sprintf (my_service_list[my_service_list_entries].name,
+				"External Service (id = %d)\n",
+				req_exec_service_build_message->service_list[i]);
+			my_service_list[my_service_list_entries].sync_init =
+				dummy_sync_init;
+			my_service_list[my_service_list_entries].sync_abort =
+				dummy_sync_abort;
+			my_service_list[my_service_list_entries].sync_process =
+				dummy_sync_process;
+			my_service_list[my_service_list_entries].sync_activate =
+				dummy_sync_activate;
+			my_service_list_entries += 1;
+
+			qsort_trigger = 1;
+		}
+	}
+	if (qsort_trigger) {
+		qsort (my_service_list, my_service_list_entries,
+			sizeof (struct service_entry), service_entry_compare);
+	}
+	for (i = 0; i < my_processor_list_entries; i++) {
+		if (my_processor_list[i].nodeid == nodeid) {
+			my_processor_list[i].received = 1;
+		}
+	}
+	for (i = 0; i < my_processor_list_entries; i++) {
+		if (my_processor_list[i].received == 0) {
+			barrier_reached = 0;
+		}
+	}
+	if (barrier_reached) {
+		sync_process_enter ();
+	}
 }
 
 static void sync_deliver_fn (
@@ -360,127 +385,236 @@ static void sync_deliver_fn (
 	unsigned int msg_len,
 	int endian_conversion_required)
 {
-	struct req_exec_sync_barrier_start *req_exec_sync_barrier_start =
-		(struct req_exec_sync_barrier_start *)msg;
-	unsigned int barrier_completed;
-	int i;
+	struct qb_ipc_request_header *header = (struct qb_ipc_request_header *)msg;
 
-	log_printf (LOGSYS_LEVEL_DEBUG, "confchg entries %lu",
-		    (unsigned long int) barrier_data_confchg_entries);
-	if (endian_conversion_required) {
-		sync_endian_convert (req_exec_sync_barrier_start);
-	}
-
-	barrier_completed = 1;
-
-	memcpy (&deliver_ring_id, &req_exec_sync_barrier_start->ring_id,
-		sizeof (struct memb_ring_id));
-
-	/*
-	 * Is this barrier from this configuration, if not, ignore it
-	 */
-	if (memcmp (&req_exec_sync_barrier_start->ring_id, sync_ring_id,
-		sizeof (struct memb_ring_id)) != 0) {
-		return;
-	}
-
-	/*
-	 * Set completion for source_addr's address
-	 */
-	for (i = 0; i < barrier_data_confchg_entries; i++) {
-		if (nodeid == barrier_data_process[i].nodeid) {
-			barrier_data_process[i].completed = 1;
-			log_printf (LOGSYS_LEVEL_DEBUG,
-				"Barrier Start Received From %d",
-				barrier_data_process[i].nodeid);
+	switch (header->id) {
+		case MESSAGE_REQ_SYNC_BARRIER:
+			sync_barrier_handler (nodeid, msg);
 			break;
-		}
+		case MESSAGE_REQ_SYNC_SERVICE_BUILD:
+			sync_service_build_handler (nodeid, msg);
+			break;
+		case MESSAGE_REQ_SYNC_MEMB_DETERMINE:
+			sync_memb_determine (nodeid, msg);
+			break;
 	}
-
-	/*
-	 * Test if barrier is complete
-	 */
-	for (i = 0; i < barrier_data_confchg_entries; i++) {
-		log_printf (LOGSYS_LEVEL_DEBUG,
-			"Barrier completion status for nodeid %d = %d. ",
-			barrier_data_process[i].nodeid,
-			barrier_data_process[i].completed);
-		if (barrier_data_process[i].completed == 0) {
-			barrier_completed = 0;
-		}
-	}
-	if (barrier_completed) {
-		log_printf (LOGSYS_LEVEL_DEBUG,
-			"Synchronization barrier completed");
-	}
-	/*
-	 * This sync is complete so activate and start next service sync
-	 */
-	if (barrier_completed && sync_callbacks.sync_activate) {
-		sync_callbacks.sync_activate ();
-
-		log_printf (LOGSYS_LEVEL_DEBUG,
-			"Committing synchronization for (%s)",
-			sync_callbacks.name);
-	}
-
-	/*
-	 * Start synchronization if the barrier has completed
-	 */
-	if (barrier_completed) {
-		memcpy (barrier_data_process, barrier_data_confchg,
-			sizeof (barrier_data_confchg));
-
-		sync_callbacks_load();
-
-		/*
-		 * if sync service found, execute it
-		 */
-		if (sync_processing && sync_callbacks.sync_init_api.sync_init_v1) {
-			log_printf (LOGSYS_LEVEL_DEBUG,
-				"Synchronization actions starting for (%s)",
-				sync_callbacks.name);
-			sync_service_init (&deliver_ring_id);
-		}
-		if (sync_processing == 0) {
-			sync_next_start (my_member_list, my_member_list_entries, sync_ring_id);
-		}
-	}
-	return;
 }
 
-static void sync_confchg_fn (
-	enum totem_configuration_type configuration_type,
-	const unsigned int *member_list,
-	size_t member_list_entries,
-	const unsigned int *left_list,
-	size_t left_list_entries,
-	const unsigned int *joined_list,
-	size_t joined_list_entries,
-	const struct memb_ring_id *ring_id)
+static void memb_determine_message_transmit (void)
 {
-	sync_ring_id = ring_id;
+	struct iovec iovec;
+	struct req_exec_memb_determine_message req_exec_memb_determine_message;
 
-	if (configuration_type != TOTEM_CONFIGURATION_REGULAR) {
-		memcpy (my_trans_list, member_list, member_list_entries *
-			sizeof (unsigned int));
-		my_trans_list_entries = member_list_entries;
+	req_exec_memb_determine_message.header.size = sizeof (struct req_exec_memb_determine_message);
+	req_exec_memb_determine_message.header.id = MESSAGE_REQ_SYNC_MEMB_DETERMINE;
+
+	memcpy (&req_exec_memb_determine_message.ring_id,
+		&my_memb_determine_ring_id,
+		sizeof (struct memb_ring_id));
+
+	iovec.iov_base = (char *)&req_exec_memb_determine_message;
+	iovec.iov_len = sizeof (req_exec_memb_determine_message);
+
+	(void)totempg_groups_mcast_joined (sync_group_handle,
+		&iovec, 1, TOTEMPG_AGREED);
+}
+
+static void barrier_message_transmit (void)
+{
+	struct iovec iovec;
+	struct req_exec_barrier_message req_exec_barrier_message;
+
+	req_exec_barrier_message.header.size = sizeof (struct req_exec_barrier_message);
+	req_exec_barrier_message.header.id = MESSAGE_REQ_SYNC_BARRIER;
+
+	memcpy (&req_exec_barrier_message.ring_id, &my_ring_id,
+		sizeof (struct memb_ring_id));
+
+	iovec.iov_base = (char *)&req_exec_barrier_message;
+	iovec.iov_len = sizeof (req_exec_barrier_message);
+
+	(void)totempg_groups_mcast_joined (sync_group_handle,
+		&iovec, 1, TOTEMPG_AGREED);
+}
+
+static void service_build_message_transmit (struct req_exec_service_build_message *service_build_message)
+{
+	struct iovec iovec;
+
+	service_build_message->header.size = sizeof (struct req_exec_service_build_message);
+	service_build_message->header.id = MESSAGE_REQ_SYNC_SERVICE_BUILD;
+
+	memcpy (&service_build_message->ring_id, &my_ring_id,
+		sizeof (struct memb_ring_id));
+
+	iovec.iov_base = (void *)service_build_message;
+	iovec.iov_len = sizeof (struct req_exec_service_build_message);
+
+	(void)totempg_groups_mcast_joined (sync_group_handle,
+		&iovec, 1, TOTEMPG_AGREED);
+}
+
+static void sync_barrier_enter (void)
+{
+	my_state = SYNC_BARRIER;
+	barrier_message_transmit ();
+}
+
+static void sync_process_enter (void)
+{
+	int i;
+
+	my_state = SYNC_PROCESS;
+
+	/*
+	 * No sync services
+	 */
+	if (my_service_list_entries == 0) {
+		my_state = SYNC_SERVICELIST_BUILD;
+		my_memb_determine_list_entries = 0;
+		sync_synchronization_completed ();
 		return;
 	}
-	memcpy (my_member_list, member_list, member_list_entries * sizeof (unsigned int));
+	for (i = 0; i < my_processor_list_entries; i++) {
+		my_processor_list[i].received = 0;
+	}
+	schedwrk_create (&my_schedwrk_handle,
+		schedwrk_processor,
+		NULL);
+}
+
+static void sync_servicelist_build_enter (
+	const unsigned int *member_list,
+	size_t member_list_entries,
+	const struct memb_ring_id *ring_id)
+{
+	struct req_exec_service_build_message service_build;
+	int i;
+
+	my_state = SYNC_SERVICELIST_BUILD;
+	for (i = 0; i < member_list_entries; i++) {
+		my_processor_list[i].nodeid = member_list[i];
+		my_processor_list[i].received = 0;
+	}
+	my_processor_list_entries = member_list_entries;
+
+	memcpy (my_member_list, member_list,
+		member_list_entries * sizeof (unsigned int));
 	my_member_list_entries = member_list_entries;
 
-	sync_aborted ();
-	if (sync_processing && sync_callbacks.sync_abort != NULL) {
-		sync_callbacks.sync_abort ();
-		sync_callbacks.sync_activate = NULL;
+	my_processing_idx = 0;
+
+	memcpy (my_service_list, my_initial_service_list,
+		sizeof (struct service_entry) *
+			my_initial_service_list_entries);
+	my_service_list_entries = my_initial_service_list_entries;
+
+	for (i = 0; i < my_initial_service_list[i].service_id; i++) {
+		service_build.service_list[i] =
+			my_initial_service_list[i].service_id;
+	}
+	service_build.service_list_entries = i;
+
+	service_build_message_transmit (&service_build);
+}
+
+static int schedwrk_processor (const void *context)
+{
+	int res = 0;
+
+	if (my_service_list[my_processing_idx].state == INIT) {
+		unsigned int old_trans_list[PROCESSOR_COUNT_MAX];
+		size_t old_trans_list_entries = 0;
+		int o, m;
+		my_service_list[my_processing_idx].state = PROCESS;
+
+		memcpy (old_trans_list, my_trans_list, my_trans_list_entries *
+			sizeof (unsigned int));
+		old_trans_list_entries = my_trans_list_entries;
+
+		my_trans_list_entries = 0;
+		for (o = 0; o < old_trans_list_entries; o++) {
+			for (m = 0; m < my_member_list_entries; m++) {
+				if (old_trans_list[o] == my_member_list[m]) {
+					my_trans_list[my_trans_list_entries] = my_member_list[m];
+					my_trans_list_entries++;
+					break;
+				}
+			}
+		}
+
+		my_service_list[my_processing_idx].sync_init (my_trans_list,
+			my_trans_list_entries, my_member_list,
+			my_member_list_entries,
+			&my_ring_id);
+	}
+	if (my_service_list[my_processing_idx].state == PROCESS) {
+		my_service_list[my_processing_idx].state = PROCESS;
+		res = my_service_list[my_processing_idx].sync_process ();
+		if (res == 0) {
+			sync_barrier_enter();
+		} else {
+			return (-1);
+		}
+	}
+	return (0);
+}
+
+void sync_start (
+        const unsigned int *member_list,
+        size_t member_list_entries,
+        const struct memb_ring_id *ring_id)
+{
+	ENTER();
+	memcpy (&my_ring_id, ring_id, sizeof (struct memb_ring_id));
+
+	if (my_memb_determine) {
+		my_memb_determine = 0;
+		sync_servicelist_build_enter (my_memb_determine_list,
+			my_memb_determine_list_entries, ring_id);
+	} else {
+		sync_servicelist_build_enter (member_list, member_list_entries,
+			ring_id);
+	}
+}
+
+void sync_save_transitional (
+        const unsigned int *member_list,
+        size_t member_list_entries,
+        const struct memb_ring_id *ring_id)
+{
+	ENTER();
+	memcpy (my_trans_list, member_list, member_list_entries *
+		sizeof (unsigned int));
+	my_trans_list_entries = member_list_entries;
+}
+
+void sync_abort (void)
+{
+	ENTER();
+	if (my_state == SYNC_PROCESS) {
+		schedwrk_destroy (my_schedwrk_handle);
+		my_service_list[my_processing_idx].sync_abort ();
 	}
 
-	sync_started (
-		ring_id);
+	/* this will cause any "old" barrier messages from causing
+	 * problems.
+	 */
+	memset (&my_ring_id, 0,	sizeof (struct memb_ring_id));
+}
 
-	sync_primary_callback_fn (
-		member_list,
-		member_list_entries,
-		ring_id);
+void sync_memb_list_determine (const struct memb_ring_id *ring_id)
+{
+	ENTER();
+	memcpy (&my_memb_determine_ring_id, ring_id,
+		sizeof (struct memb_ring_id));
+
+	memb_determine_message_transmit ();
+}
+
+void sync_memb_list_abort (void)
+{
+	ENTER();
+	my_memb_determine_list_entries = 0;
+	memset (&my_memb_determine_ring_id, 0, sizeof (struct memb_ring_id));
 }

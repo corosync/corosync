@@ -58,7 +58,6 @@
 
 #include "quorum.h"
 #include "main.h"
-#include "sync.h"
 #include "vsf.h"
 
 LOGSYS_DECLARE_SUBSYS ("QUORUM");
