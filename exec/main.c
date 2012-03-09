@@ -1037,7 +1037,7 @@ int main (int argc, char **argv, char **envp)
 
 	if (icmap_init() != CS_OK) {
 		log_printf (LOGSYS_LEVEL_ERROR, "Corosync Executive couldn't initialize configuration component.");
-		corosync_exit_error (COROSYNC_DONE_OBJDB);
+		corosync_exit_error (COROSYNC_DONE_ICMAP);
 	}
 
 	/*
