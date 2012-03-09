@@ -225,7 +225,6 @@ class CpgCfgChgOnLowestNodeJoin(CTSTest):
         self.stop = StopTest(cm)
         self.config = {}
         self.need_all_up = False
-        self.config['compatibility'] = 'none'
 
     def config_valid(self, config):
         return True
@@ -1544,13 +1543,11 @@ def CoroTestList(cm, audits):
     configs.append(default)
 
     a = ConfigContainer('none_5min')
-    a['compatibility'] = 'none'
     a['totem/token'] = (5 * 60 * 1000)
     a['totem/consensus'] = int(5 * 60 * 1000 * 1.2) + 1
     configs.append(a)
 
     b = ConfigContainer('pcmk_basic')
-    b['compatibility'] = 'whitetank'
     b['totem/token'] = 5000
     b['totem/token_retransmits_before_loss_const'] = 10
     b['totem/join'] = 1000

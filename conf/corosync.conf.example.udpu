@@ -1,6 +1,4 @@
 # Please read the corosync.conf.5 manual page
-compatibility: whitetank
-
 totem {
 	version: 2
 	secauth: off

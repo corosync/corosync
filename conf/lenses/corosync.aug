@@ -34,10 +34,6 @@ let qstr (k:regexp) =
   [ ikey k . wsc . bare . eol ]
  |[ ikey k . wsc . quoted . eol ]
 
-(* The compatibility option *)
-let compatibility = kv "compatibility" /whitetank|none/
-
-
 (* A integer subsection *)
 let interface =
   let setting =
@@ -165,6 +161,6 @@ let uidgid =
    qstr /uid|gid/ in
   section "uidgid" setting
 
-let lns = (comment|empty|compatibility|totem|quorum|logging|resources|service|uidgid)*
+let lns = (comment|empty|totem|quorum|logging|resources|service|uidgid)*
 
 let xfm = transform lns (incl "/etc/corosync/corosync.conf")

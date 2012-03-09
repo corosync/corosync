@@ -4,7 +4,7 @@
     Please read the corosync.xml.5 and corosync.conf.5 manual page
 -->
 
-<corosync compatibility="whitetank">
+<corosync>
 
 <!--
     totem tag configures behavior of totem and interfaces.

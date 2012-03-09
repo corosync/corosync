@@ -1,7 +1,6 @@
 module Test_corosync =
 
   let conf = "# Please read the corosync.conf.5 manual page
-compatibility: whitetank
 
 totem {
 	version: 2
@@ -77,7 +76,6 @@ uidgid {
 test Corosync.lns get conf =
 
   { "#comment" = "Please read the corosync.conf.5 manual page" }
-  { "compatibility" = "whitetank" }
   { }
   { "totem"
 	{ "version" = "2" }
