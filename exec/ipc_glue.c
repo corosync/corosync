@@ -421,7 +421,7 @@ static int32_t cs_ipcs_connection_closed (qb_ipcs_connection_t *c)
 	icmap_iter_finalize(iter);
 	free(cnx->icmap_path);
 
-	icmap_inc("runtie.connections.closed");
+	icmap_inc("runtime.connections.closed");
 	icmap_dec("runtime.connections.active");
 
 	return 0;
