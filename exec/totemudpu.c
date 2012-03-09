@@ -771,12 +771,13 @@ static int encrypt_and_sign_worker (
 	const struct iovec *iovec,
 	unsigned int iov_len)
 {
-	if (instance->totem_config->crypto_type == TOTEM_CRYPTO_SOBER ||
-	    instance->totem_config->crypto_accept == TOTEM_CRYPTO_ACCEPT_OLD)
+	if (instance->totem_config->crypto_type == TOTEM_CRYPTO_SOBER) {
 		return encrypt_and_sign_sober(instance, buf, buf_len, iovec, iov_len);
+	}
 #ifdef HAVE_LIBNSS
-	if (instance->totem_config->crypto_type == TOTEM_CRYPTO_NSS)
+	if (instance->totem_config->crypto_type == TOTEM_CRYPTO_NSS) {
 		return encrypt_and_sign_nss(instance, buf, buf_len, iovec, iov_len);
+	}
 #endif
 	return -1;
 }
@@ -796,18 +797,15 @@ static int authenticate_and_decrypt (
 	type = endbuf[iov[iov_len-1].iov_len-1];
 	iov[iov_len-1].iov_len -= 1;
 
-	if (type == TOTEM_CRYPTO_SOBER)
+	if (type == TOTEM_CRYPTO_SOBER) {
 		res = authenticate_and_decrypt_sober(instance, iov, iov_len);
-
-	/*
-	 * Only try higher crypto options if NEW has been requested
-	 */
-	if (instance->totem_config->crypto_accept == TOTEM_CRYPTO_ACCEPT_NEW) {
-#ifdef HAVE_LIBNSS
-		if (type == TOTEM_CRYPTO_NSS)
-		    res = authenticate_and_decrypt_nss(instance, iov, iov_len);
-#endif
 	}
+
+#ifdef HAVE_LIBNSS
+	if (type == TOTEM_CRYPTO_NSS) {
+		    res = authenticate_and_decrypt_nss(instance, iov, iov_len);
+	}
+#endif
 
 	/*
 	 * If it failed, then try decrypting the whole packet
@@ -823,16 +821,7 @@ static int authenticate_and_decrypt (
 static void init_crypto(
 	struct totemudpu_instance *instance)
 {
-	/*
-	 * If we are expecting NEW crypto type then initialise all available
-	 * crypto options. For OLD then we only need SOBER128.
-	 */
-
 	init_sober_crypto(instance);
-
-	if (instance->totem_config->crypto_accept == TOTEM_CRYPTO_ACCEPT_OLD)
-		return;
-
 #ifdef HAVE_LIBNSS
 	init_nss_crypto(instance);
 #endif
@@ -846,27 +835,20 @@ int totemudpu_crypto_set (
 	int res = 0;
 
 	/*
-	 * Can't set crypto type if OLD is selected
+	 * Validate crypto algorithm
 	 */
-	if (instance->totem_config->crypto_accept == TOTEM_CRYPTO_ACCEPT_OLD) {
-		res = -1;
-	} else {
-		/*
-		 * Validate crypto algorithm
-		 */
-		switch (type) {
-			case TOTEM_CRYPTO_SOBER:
-				log_printf(instance->totemudpu_log_level_security,
-					"Transmit security set to: libtomcrypt SOBER128/SHA1HMAC (mode 0)");
-				break;
-			case TOTEM_CRYPTO_NSS:
-				log_printf(instance->totemudpu_log_level_security,
-					"Transmit security set to: NSS AES128CBC/SHA1HMAC (mode 1)");
-				break;
-			default:
-				res = -1;
-				break;
-		}
+	switch (type) {
+		case TOTEM_CRYPTO_SOBER:
+			log_printf(instance->totemudpu_log_level_security,
+				"Transmit security set to: libtomcrypt SOBER128/SHA1HMAC (mode 0)");
+			break;
+		case TOTEM_CRYPTO_NSS:
+			log_printf(instance->totemudpu_log_level_security,
+				"Transmit security set to: NSS AES128CBC/SHA1HMAC (mode 1)");
+			break;
+		default:
+			res = -1;
+			break;
 	}
 
 	return (res);
@@ -907,12 +889,7 @@ static inline void ucast_sendmsg (
 			iovec_encrypt,
 			2);
 
-		if (instance->totem_config->crypto_accept == TOTEM_CRYPTO_ACCEPT_NEW) {
-			encrypt_data[buf_len++] = instance->totem_config->crypto_type;
-		}
-		else {
-			encrypt_data[buf_len++] = 0;
-		}
+		encrypt_data[buf_len++] = instance->totem_config->crypto_type;
 
 		iovec_encrypt[0].iov_base = (void *)encrypt_data;
 		iovec_encrypt[0].iov_len = buf_len;
@@ -990,12 +967,7 @@ static inline void mcast_sendmsg (
 			iovec_encrypt,
 			2);
 
-		if (instance->totem_config->crypto_accept == TOTEM_CRYPTO_ACCEPT_NEW) {
-			encrypt_data[buf_len++] = instance->totem_config->crypto_type;
-		}
-		else {
-			encrypt_data[buf_len++] = 0;
-		}
+		encrypt_data[buf_len++] = instance->totem_config->crypto_type;
 
 		iovec_encrypt[0].iov_base = (void *)encrypt_data;
 		iovec_encrypt[0].iov_len = buf_len;

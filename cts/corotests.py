@@ -1556,7 +1556,6 @@ def CoroTestList(cm, audits):
 
     c = ConfigContainer('pcmk_sec_nss')
     c['totem/secauth'] = 'on'
-    c['totem/crypto_accept'] = 'new'
     c['totem/crypto_type'] = 'nss'
     c['totem/token'] = 5000
     c['totem/token_retransmits_before_loss_const'] = 10

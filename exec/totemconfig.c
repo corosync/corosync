@@ -127,14 +127,6 @@ static void totem_get_crypto_type(struct totem_config *totem_config)
 {
 	char *str;
 
-	totem_config->crypto_accept = TOTEM_CRYPTO_ACCEPT_OLD;
-	if (icmap_get_string("totem.crypto_accept", &str) == CS_OK) {
-		if (strcmp(str, "new") == 0) {
-			totem_config->crypto_accept = TOTEM_CRYPTO_ACCEPT_NEW;
-		}
-		free(str);
-	}
-
 	totem_config->crypto_type = TOTEM_CRYPTO_SOBER;
 
 #ifdef HAVE_LIBNSS
@@ -148,15 +140,14 @@ static void totem_get_crypto_type(struct totem_config *totem_config)
 
 	if (icmap_get_string("totem.crypto_type", &str) == CS_OK) {
 		if (strcmp(str, "sober") == 0) {
-			free(str);
-			return;
+			totem_config->crypto_type = TOTEM_CRYPTO_SOBER;
 		}
 #ifdef HAVE_LIBNSS
 		if (strcmp(str, "nss") == 0) {
 			totem_config->crypto_type = TOTEM_CRYPTO_NSS;
 		}
-		free(str);
 #endif
+		free(str);
 	}
 }
 
