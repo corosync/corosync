@@ -3,7 +3,8 @@
  *
  * All rights reserved.
  *
- * Author: Steven Dake (sdake@redhat.com)
+ * Authors: Steven Dake (sdake@redhat.com)
+ *          Fabio M. Di Nitto (fdinitto@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
  *
@@ -34,109 +35,53 @@
 
 #include <config.h>
 
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <sys/un.h>
-#include <sys/time.h>
-#include <sys/ioctl.h>
-#include <netinet/in.h>
-#include <sys/uio.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <errno.h>
-#include <time.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <string.h>
-#include <assert.h>
-
 #include <qb/qblist.h>
 #include <qb/qbutil.h>
 #include <qb/qbipc_common.h>
 
 #include <corosync/swab.h>
-#include <corosync/corotypes.h>
 #include <corosync/corodefs.h>
-#include <corosync/mar_gen.h>
 #include <corosync/coroapi.h>
-#include <corosync/ipc_pload.h>
-#include <corosync/list.h>
+#include <corosync/icmap.h>
 #include <corosync/logsys.h>
 
 #include "service.h"
+#include "util.h"
 
 LOGSYS_DECLARE_SUBSYS ("PLOAD");
 
+/*
+ * Service Interfaces required by service_message_handler struct
+ */
+static struct corosync_api_v1 *api;
+
+static char *pload_exec_init_fn (struct corosync_api_v1 *corosync_api);
+
+/*
+ * on wire / network bits
+ */
 enum pload_exec_message_req_types {
 	MESSAGE_REQ_EXEC_PLOAD_START = 0,
 	MESSAGE_REQ_EXEC_PLOAD_MCAST = 1
 };
 
-/*
- * Service Interfaces required by service_message_handler struct
- */
-static char *pload_exec_init_fn (struct corosync_api_v1 *corosync_api);
-
-static void pload_confchg_fn (
-	enum totem_configuration_type configuration_type,
-	const unsigned int *member_list, size_t member_list_entries,
-	const unsigned int *left_list, size_t left_list_entries,
-	const unsigned int *joined_list, size_t joined_list_entries,
-	const struct memb_ring_id *ring_id);
-
-static void message_handler_req_exec_pload_start (const void *msg,
-						  unsigned int nodeid);
-
-static void message_handler_req_exec_pload_mcast (const void *msg,
-						  unsigned int nodeid);
-
-static void req_exec_pload_start_endian_convert (void *msg);
-
-static void req_exec_pload_mcast_endian_convert (void *msg);
-
-static void message_handler_req_pload_start (void *conn, const void *msg);
-
-static int pload_lib_init_fn (void *conn);
-
-static int pload_lib_exit_fn (void *conn);
-
-static char buffer[1000000];
-
-static unsigned int msgs_delivered = 0;
-
-static unsigned int msgs_wanted = 0;
-
-static unsigned int msg_size = 0;
-
-static unsigned int msg_code = 1;
-
-static unsigned int msgs_sent = 0;
-
-
-static struct corosync_api_v1 *api;
-
 struct req_exec_pload_start {
 	struct qb_ipc_request_header header;
-	unsigned int msg_code;
-	unsigned int msg_count;
-	unsigned int msg_size;
-	unsigned int time_interval;
+	uint32_t msg_count;
+	uint32_t msg_size;
 };
 
 struct req_exec_pload_mcast {
 	struct qb_ipc_request_header header;
-	unsigned int msg_code;
 };
 
-static struct corosync_lib_handler pload_lib_engine[] =
-{
-	{ /* 0 */
-		.lib_handler_fn		= message_handler_req_pload_start,
-		.flow_control		= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
-	}
-};
+static void message_handler_req_exec_pload_start (const void *msg,
+						  unsigned int nodeid);
+static void req_exec_pload_start_endian_convert (void *msg);
+
+static void message_handler_req_exec_pload_mcast (const void *msg,
+						  unsigned int nodeid);
+static void req_exec_pload_mcast_endian_convert (void *msg);
 
 static struct corosync_exec_handler pload_exec_engine[] =
 {
@@ -150,149 +95,69 @@ static struct corosync_exec_handler pload_exec_engine[] =
 	}
 };
 
+/*
+ * internal bits and pieces
+ */
+
+/*
+ * really unused buffer but we need to give something to iovec
+ */
+static char *buffer = NULL;
+
+/*
+ * wanted/size come from config
+ * sent/delivered track the runtime status
+ */
+static uint32_t msgs_wanted = 0;
+static uint32_t msg_size = 0;
+static uint32_t msgs_sent = 0;
+static uint32_t msgs_delivered = 0;
+
+/*
+ * bit flip to track if we are running or not and avoid multiple instances
+ */
+static uint8_t pload_started = 0;
+
+/*
+ * handle for scheduler
+ */
+static hdb_handle_t start_mcasting_handle;
+
+/*
+ * timing/profiling
+ */
+static unsigned long long int tv1;
+static unsigned long long int tv2;
+static unsigned long long int tv_elapsed;
+
+/*
+ * Service engine hooks
+ */
 struct corosync_service_engine pload_service_engine = {
 	.name			= "corosync profile loading service",
 	.id			= PLOAD_SERVICE,
 	.priority		= 1,
-	.private_data_size	= 0,
 	.flow_control		= CS_LIB_FLOW_CONTROL_REQUIRED,
-	.lib_init_fn		= pload_lib_init_fn,
-	.lib_exit_fn		= pload_lib_exit_fn,
-	.lib_engine		= pload_lib_engine,
-	.lib_engine_count	= sizeof (pload_lib_engine) / sizeof (struct corosync_lib_handler),
 	.exec_engine		= pload_exec_engine,
 	.exec_engine_count	= sizeof (pload_exec_engine) / sizeof (struct corosync_exec_handler),
-	.confchg_fn		= pload_confchg_fn,
-	.exec_init_fn		= pload_exec_init_fn,
-	.exec_dump_fn		= NULL
+	.exec_init_fn		= pload_exec_init_fn
 };
-
-static DECLARE_LIST_INIT (confchg_notify);
 
 struct corosync_service_engine *pload_get_service_engine_ver0 (void)
 {
 	return (&pload_service_engine);
 }
 
-static char *pload_exec_init_fn (struct corosync_api_v1 *corosync_api)
-{
-#ifdef COROSYNC_SOLARIS
-	logsys_subsys_init();
-#endif
-	api = corosync_api;
+/*
+ * internal use only functions
+ */
 
-	return NULL;
-}
+/*
+ * not all architectures / OSes define timersub in sys/time.h or time.h
+ */
 
-static void pload_confchg_fn (
-	enum totem_configuration_type configuration_type,
-	const unsigned int *member_list, size_t member_list_entries,
-	const unsigned int *left_list, size_t left_list_entries,
-	const unsigned int *joined_list, size_t joined_list_entries,
-	const struct memb_ring_id *ring_id)
-{
-}
-
-static int pload_lib_init_fn (void *conn)
-{
-	return (0);
-}
-
-static int pload_lib_exit_fn (void *conn)
-{
-	return (0);
-}
-
-static void message_handler_req_pload_start (void *conn, const void *msg)
-{
-	const struct req_lib_pload_start *req_lib_pload_start = msg;
-	struct req_exec_pload_start req_exec_pload_start;
-	struct iovec iov;
-
-	req_exec_pload_start.header.id =
-		SERVICE_ID_MAKE (PLOAD_SERVICE, MESSAGE_REQ_EXEC_PLOAD_START);
-	req_exec_pload_start.msg_code = req_lib_pload_start->msg_code;
-	req_exec_pload_start.msg_size = req_lib_pload_start->msg_size;
-	req_exec_pload_start.msg_count = req_lib_pload_start->msg_count;
-	req_exec_pload_start.time_interval = req_lib_pload_start->time_interval;
-	iov.iov_base = (void *)&req_exec_pload_start;
-	iov.iov_len = sizeof (struct req_exec_pload_start);
-
-	msgs_delivered = 0;
-
-	msgs_wanted = 0;
-
-	msgs_sent = 0;
-
-	api->totem_mcast (&iov, 1, TOTEM_AGREED);
-}
-
-static void req_exec_pload_start_endian_convert (void *msg)
-{
-}
-
-static void req_exec_pload_mcast_endian_convert (void *msg)
-{
-}
-
-static int send_message (const void *arg)
-{
-	struct req_exec_pload_mcast req_exec_pload_mcast;
-	struct iovec iov[2];
-	unsigned int res;
-	unsigned int iov_len = 1;
-
-	req_exec_pload_mcast.header.id =
-		SERVICE_ID_MAKE (PLOAD_SERVICE, MESSAGE_REQ_EXEC_PLOAD_MCAST);
-	req_exec_pload_mcast.header.size = sizeof (struct req_exec_pload_mcast) + msg_size;
-
-	iov[0].iov_base = (void *)&req_exec_pload_mcast;
-	iov[0].iov_len = sizeof (struct req_exec_pload_mcast);
-	if (msg_size > sizeof (req_exec_pload_mcast)) {
-		iov[1].iov_base = buffer;
-		iov[1].iov_len = msg_size - sizeof (req_exec_pload_mcast);
-		iov_len = 2;
-	}
-
-	do {
-		res = api->totem_mcast (iov, iov_len, TOTEM_AGREED);
-		if (res == -1) {
-			break;
-		} else {
-			msgs_sent++;
-			msg_code++;
-		}
-	} while (msgs_sent < msgs_wanted);
-	if (msgs_sent == msgs_wanted) {
-		return (0);
-	} else {
-		return (-1);
-	}
-}
-
-hdb_handle_t start_mcasting_handle;
-
-static void start_mcasting (void)
-{
-	api->schedwrk_create (
-		&start_mcasting_handle,
-		send_message,
-		&start_mcasting_handle);
-}
-
-static void message_handler_req_exec_pload_start (
-	const void *msg,
-	unsigned int nodeid)
-{
-	const struct req_exec_pload_start *req_exec_pload_start = msg;
-
-	msgs_wanted = req_exec_pload_start->msg_count;
-	msg_size = req_exec_pload_start->msg_size;
-	msg_code = req_exec_pload_start->msg_code;
-
-	start_mcasting ();
-}
 #ifndef timersub
+#warning Using internal timersub definition. Check your include header files
 #define timersub(a, b, result)					\
 do {								\
 	(result)->tv_sec = (a)->tv_sec - (b)->tv_sec;		\
@@ -304,19 +169,173 @@ do {								\
 } while (0)
 #endif /* timersub */
 
-unsigned long long int tv1;
-unsigned long long int tv2;
-unsigned long long int tv_elapsed;
-int last_msg_no = 0;
+/*
+ * tell all cluster nodes to start mcasting
+ */
+static void pload_send_start (uint32_t count, uint32_t size)
+{
+	struct req_exec_pload_start req_exec_pload_start;
+	struct iovec iov;
+
+	req_exec_pload_start.header.id = SERVICE_ID_MAKE (PLOAD_SERVICE, MESSAGE_REQ_EXEC_PLOAD_START);
+	req_exec_pload_start.msg_count = count;
+	req_exec_pload_start.msg_size = size;
+	iov.iov_base = (void *)&req_exec_pload_start;
+	iov.iov_len = sizeof (struct req_exec_pload_start);
+
+	api->totem_mcast (&iov, 1, TOTEM_AGREED);
+}
+
+/*
+ * send N empty data messages of size X
+ */
+static int pload_send_message (const void *arg)
+{
+	struct req_exec_pload_mcast req_exec_pload_mcast;
+	struct iovec iov[2];
+	unsigned int res;
+	unsigned int iov_len = 1;
+
+	req_exec_pload_mcast.header.id = SERVICE_ID_MAKE (PLOAD_SERVICE, MESSAGE_REQ_EXEC_PLOAD_MCAST);
+	req_exec_pload_mcast.header.size = sizeof (struct req_exec_pload_mcast) + msg_size;
+
+	iov[0].iov_base = (void *)&req_exec_pload_mcast;
+	iov[0].iov_len = sizeof (struct req_exec_pload_mcast);
+	if (msg_size > sizeof (req_exec_pload_mcast)) {
+		iov[1].iov_base = &buffer;
+		iov[1].iov_len = msg_size - sizeof (req_exec_pload_mcast);
+		iov_len = 2;
+	}
+
+	do {
+		res = api->totem_mcast (iov, iov_len, TOTEM_AGREED);
+		if (res == -1) {
+			break;
+		} else {
+			msgs_sent++;
+		}
+	} while (msgs_sent < msgs_wanted);
+
+	if (msgs_sent == msgs_wanted) {
+		return (0);
+	} else {
+		return (-1);
+	}
+}
+
+/*
+ * hook into icmap to read config at runtime
+ * we do NOT start by default, ever!
+ */
+static void pload_read_config(
+	int32_t event,
+	const char *key_name,
+	struct icmap_notify_value new_val,
+	struct icmap_notify_value old_val,
+	void *user_data)
+{
+	uint32_t pload_count = 1500000;
+	uint32_t pload_size = 300;
+	char *pload_start = NULL;
+
+	icmap_get_uint32("pload.count", &pload_count);
+	icmap_get_uint32("pload.size", &pload_size);
+
+	if (pload_size > MESSAGE_SIZE_MAX) {
+		pload_size = MESSAGE_SIZE_MAX;
+		log_printf(LOGSYS_LEVEL_WARNING, "pload size limited to %u", pload_size);
+	}
+
+	if ((!pload_started) &&
+	    (icmap_get_string("pload.start", &pload_start) == CS_OK)) {
+		if (!strcmp(pload_start,
+			    "i_totally_understand_pload_will_crash_my_cluster_and_kill_corosync_on_exit")) {
+			buffer = malloc(pload_size);
+			if (buffer) {
+				log_printf(LOGSYS_LEVEL_WARNING, "Starting pload!");
+				pload_send_start(pload_count,  pload_size);
+			} else {
+				log_printf(LOGSYS_LEVEL_WARNING,
+					  "Unable to allocate pload buffer!");
+			}
+		}
+		free(pload_start);
+	}
+}
+
+/*
+ * exec functions
+ */
+static char *pload_exec_init_fn (struct corosync_api_v1 *corosync_api)
+{
+	icmap_track_t pload_track = NULL;
+
+#ifdef COROSYNC_SOLARIS
+	logsys_subsys_init();
+#endif
+
+	api = corosync_api;
+
+	/*
+	 * track changes to pload config and start only on demand
+	 */
+	if (icmap_track_add("pload.",
+		ICMAP_TRACK_ADD | ICMAP_TRACK_DELETE | ICMAP_TRACK_MODIFY | ICMAP_TRACK_PREFIX,
+		pload_read_config,
+		NULL,
+		&pload_track) != CS_OK) {
+		return (char *)"Unable to setup pload config tracking!\n";
+	}
+
+	return NULL;
+}
+
+/*
+ * network messages/onwire handlers
+ */
+
+static void req_exec_pload_start_endian_convert (void *msg)
+{
+	struct req_exec_pload_start *req_exec_pload_start = msg;
+
+	req_exec_pload_start->msg_count = swab32(req_exec_pload_start->msg_count);
+	req_exec_pload_start->msg_size = swab32(req_exec_pload_start->msg_size);
+}
+
+static void message_handler_req_exec_pload_start (
+	const void *msg,
+	unsigned int nodeid)
+{
+	const struct req_exec_pload_start *req_exec_pload_start = msg;
+
+	/*
+	 * don't start multiple instances
+	 */
+	if (pload_started) {
+		return;
+	}
+
+	pload_started = 1;
+
+	msgs_wanted = req_exec_pload_start->msg_count;
+	msg_size = req_exec_pload_start->msg_size;
+
+	api->schedwrk_create (
+		&start_mcasting_handle,
+		pload_send_message,
+		&start_mcasting_handle);
+}
+
+static void req_exec_pload_mcast_endian_convert (void *msg)
+{
+}
 
 static void message_handler_req_exec_pload_mcast (
 	const void *msg,
 	unsigned int nodeid)
 {
-	const struct req_exec_pload_mcast *pload_mcast = msg;
 	char log_buffer[1024];
 
-	last_msg_no = pload_mcast->msg_code;
 	if (msgs_delivered == 0) {
 		tv1 = qb_util_nano_current_get ();
 	}
@@ -332,5 +351,11 @@ static void message_handler_req_exec_pload_mcast (
 			(((float)msgs_delivered) * ((float)msg_size) /
 				(tv_elapsed / 1000000000.0)) / (1024.0 * 1024.0));
 		log_printf (LOGSYS_LEVEL_NOTICE, "%s", log_buffer);
+		log_printf (LOGSYS_LEVEL_WARNING, "Stopping corosync the hard way");
+		if (buffer) {
+			free(buffer);
+			buffer = NULL;
+		}
+		exit(COROSYNC_DONE_PLOAD);
 	}
 }

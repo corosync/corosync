@@ -1,6 +1,0 @@
-# Version and symbol export for libSaClm.so
-
-COROSYNC_PLOAD_1.0 {
-	global:
-		pload_start;
-};

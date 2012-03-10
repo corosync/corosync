@@ -90,6 +90,7 @@ enum main_cp_cb_data_state {
 	MAIN_CP_CB_DATA_STATE_QDEVICE,
 	MAIN_CP_CB_DATA_STATE_NODELIST,
 	MAIN_CP_CB_DATA_STATE_NODELIST_NODE,
+	MAIN_CP_CB_DATA_STATE_PLOAD
 };
 
 struct key_value_list_item {
@@ -385,6 +386,16 @@ static int main_config_parser_cb(const char *path,
 
 		switch (data->state) {
 		case MAIN_CP_CB_DATA_STATE_NORMAL:
+			break;
+		case MAIN_CP_CB_DATA_STATE_PLOAD:
+			if ((strcmp(path, "pload.count") == 0) ||
+			    (strcmp(path, "pload.size") == 0)) {
+				if (safe_atoi(value, &i) != 0) {
+					goto atoi_error;
+				}
+				icmap_set_uint32(path, i);
+				add_as_string = 0;
+			}
 			break;
 		case MAIN_CP_CB_DATA_STATE_QUORUM:
 			if ((strcmp(path, "quorum.expected_votes") == 0) ||
@@ -695,6 +706,9 @@ static int main_config_parser_cb(const char *path,
 	case PARSER_CB_SECTION_END:
 		switch (data->state) {
 		case MAIN_CP_CB_DATA_STATE_NORMAL:
+			break;
+		case MAIN_CP_CB_DATA_STATE_PLOAD:
+			data->state = MAIN_CP_CB_DATA_STATE_NORMAL;
 			break;
 		case MAIN_CP_CB_DATA_STATE_INTERFACE:
 			/*

@@ -33,10 +33,14 @@
 MAINTAINERCLEANFILES    = Makefile.in
 INCLUDES       		= -I$(top_builddir)/include/corosync -I$(top_srcdir)/include
 
+EXTRA_DIST		= ploadstart.sh
+
 noinst_PROGRAMS		= testevs evsbench evsverify cpgverify testcpg testcpg2 cpgbench \
 			  testquorum testvotequorum1 testvotequorum2	\
 			  stress_cpgfdget stress_cpgcontext cpgbound testsam \
 			  testcpgzc cpgbenchzc testzcgc stress_cpgzc
+
+noinst_SCRIPTS		= ploadstart
 
 COMMON_OPTS		= -L../lib -L../common_lib -Wl,-rpath,../common_lib
 
@@ -77,6 +81,10 @@ cpgbenchzc_LDFLAGS	= $(COMMON_OPTS)
 testsam_LDADD		= -lsam -lcmap -lquorum $(LIBQB_LIBS)
 testsam_LDFLAGS		= $(COMMON_OPTS)
 
+ploadstart: ploadstart.sh
+	cp $^ $@
+	chmod 755 $@
+
 LINT_FILES1:=$(filter-out sa_error.c, $(wildcard *.c))
 LINT_FILES2:=$(filter-out testevsth.c, $(LINT_FILES1))
 LINT_FILES:=$(filter-out testparse.c, $(LINT_FILES2))
@@ -85,4 +93,4 @@ lint:
 	-for f in $(LINT_FILES) ; do echo Splint $$f ; splint $(INCLUDES) $(LINT_FLAGS) $(CFLAGS) $$f ; done
 
 clean-local:
-	rm -f fdata
+	rm -f fdata ploadstart
