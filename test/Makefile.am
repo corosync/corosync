@@ -35,7 +35,7 @@ INCLUDES       		= -I$(top_builddir)/include/corosync -I$(top_srcdir)/include
 
 EXTRA_DIST		= ploadstart.sh
 
-noinst_PROGRAMS		= testevs evsbench evsverify cpgverify testcpg testcpg2 cpgbench \
+noinst_PROGRAMS		= cpgverify testcpg testcpg2 cpgbench \
 			  testquorum testvotequorum1 testvotequorum2	\
 			  stress_cpgfdget stress_cpgcontext cpgbound testsam \
 			  testcpgzc cpgbenchzc testzcgc stress_cpgzc
@@ -44,8 +44,6 @@ noinst_SCRIPTS		= ploadstart
 
 COMMON_OPTS		= -L../lib -L../common_lib -Wl,-rpath,../common_lib
 
-testevs_LDADD		= -levs $(LIBQB_LIBS)
-testevs_LDFLAGS		= $(COMMON_OPTS)
 testcpg_LDADD		= -lcpg $(LIBQB_LIBS)
 testcpg_LDFLAGS		= $(COMMON_OPTS)
 testcpg2_LDADD		= -lcpg $(LIBQB_LIBS)
@@ -66,14 +64,10 @@ testvotequorum1_LDADD	= -lvotequorum $(LIBQB_LIBS)
 testvotequorum1_LDFLAGS	= $(COMMON_OPTS)
 testvotequorum2_LDADD	= -lvotequorum $(LIBQB_LIBS)
 testvotequorum2_LDFLAGS	= $(COMMON_OPTS)
-evsverify_LDADD		= -levs -ltotem_pg $(LIBQB_LIBS)
-evsverify_LDFLAGS	= $(COMMON_OPTS) -L../exec
 cpgverify_LDADD		= -lcpg -ltotem_pg $(LIBQB_LIBS)
 cpgverify_LDFLAGS	= $(COMMON_OPTS) -L../exec
 cpgbound_LDADD		= -lcpg $(LIBQB_LIBS)
 cpgbound_LDFLAGS	= $(COMMON_OPTS)
-evsbench_LDADD		= -levs $(LIBQB_LIBS)
-evsbench_LDFLAGS	= $(COMMON_OPTS)
 cpgbench_LDADD		= -lcpg $(LIBQB_LIBS)
 cpgbench_LDFLAGS	= $(COMMON_OPTS)
 cpgbenchzc_LDADD	= -lcpg -lcorosync_common $(LIBQB_LIBS)
@@ -86,8 +80,7 @@ ploadstart: ploadstart.sh
 	chmod 755 $@
 
 LINT_FILES1:=$(filter-out sa_error.c, $(wildcard *.c))
-LINT_FILES2:=$(filter-out testevsth.c, $(LINT_FILES1))
-LINT_FILES:=$(filter-out testparse.c, $(LINT_FILES2))
+LINT_FILES:=$(filter-out testparse.c, $(LINT_FILES1))
 
 lint:
 	-for f in $(LINT_FILES) ; do echo Splint $$f ; splint $(INCLUDES) $(LINT_FLAGS) $(CFLAGS) $$f ; done

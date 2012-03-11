@@ -46,13 +46,12 @@ AM_LDFLAGS		= -lpthread -L../common_lib -lcorosync_common
 
 INCLUDES		= -I$(top_builddir)/include -I$(top_srcdir)/include
 
-lib_LIBRARIES		= libcpg.a libquorum.a libevs.a libcfg.a \
+lib_LIBRARIES		= libcpg.a libquorum.a libcfg.a \
 			  libvotequorum.a libsam.a libcmap.a
 SHARED_LIBS_SO		= $(lib_LIBRARIES:%.a=%.so)
 
 libcpg_a_SOURCES	= cpg.c
 libcfg_a_SOURCES	= cfg.c
-libevs_a_SOURCES	= evs.c
 libquorum_a_SOURCES	= quorum.c
 libvotequorum_a_SOURCES	= votequorum.c
 libcmap_a_SOURCES	= cmap.c
@@ -62,7 +61,6 @@ libsam_a_SOURCES	= sam.c
 noinst_HEADERS		= util.h \
 			  libcfg.versions \
 			  libcpg.versions \
-			  libevs.versions \
 			  libquorum.versions libvotequorum.versions \
 			  libsam.versions libcmap.versions
 

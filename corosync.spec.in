@@ -235,7 +235,6 @@ This package contains corosync libraries.
 %{_libdir}/libcfg.so.*
 %{_libdir}/libcpg.so.*
 %{_libdir}/libcmap.so.*
-%{_libdir}/libevs.so.*
 %{_libdir}/libtotem_pg.so.*
 %{_libdir}/libquorum.so.*
 %{_libdir}/libvotequorum.so.*
@@ -267,7 +266,6 @@ The Corosync Cluster Engine APIs.
 %{_includedir}/corosync/cmap.h
 %{_includedir}/corosync/corotypes.h
 %{_includedir}/corosync/cpg.h
-%{_includedir}/corosync/evs.h
 %{_includedir}/corosync/hdb.h
 %{_includedir}/corosync/sam.h
 %{_includedir}/corosync/quorum.h
@@ -279,7 +277,6 @@ The Corosync Cluster Engine APIs.
 %{_libdir}/libcfg.so
 %{_libdir}/libcpg.so
 %{_libdir}/libcmap.so
-%{_libdir}/libevs.so
 %{_libdir}/libtotem_pg.so
 %{_libdir}/libquorum.so
 %{_libdir}/libvotequorum.so
@@ -287,12 +284,10 @@ The Corosync Cluster Engine APIs.
 %{_libdir}/libcorosync_common.so
 %{_libdir}/pkgconfig/*.pc
 %{_mandir}/man3/cpg_*3*
-%{_mandir}/man3/evs_*3*
 %{_mandir}/man3/quorum_*3*
 %{_mandir}/man3/votequorum_*3*
 %{_mandir}/man3/sam_*3*
 %{_mandir}/man8/cpg_overview.8*
-%{_mandir}/man8/evs_overview.8*
 %{_mandir}/man8/votequorum_overview.8*
 %{_mandir}/man8/sam_overview.8*
 %{_mandir}/man3/cmap_*3*

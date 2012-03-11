@@ -1,8 +1,6 @@
 cpgbench
 cpgbound
 cpgverify
-evsbench
-evsverify
 logsys_s
 logsys_t1
 logsys_t2
@@ -12,7 +10,6 @@ stress_cpgcontext
 stress_cpgfdget
 testcpg
 testcpg2
-testevs
 testquorum
 testsam
 testvotequorum1

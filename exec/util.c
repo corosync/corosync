@@ -58,7 +58,6 @@ struct service_names {
 
 static struct service_names servicenames[] =
 {
-	{ "EVS", EVS_SERVICE },
 	{ "CFG", CFG_SERVICE },
 	{ "CPG", CPG_SERVICE },
 	{ "QUORUM", QUORUM_SERVICE },

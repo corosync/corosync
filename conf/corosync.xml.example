@@ -103,7 +103,7 @@
 	subsys if needed.
     -->
 
-    <logger_subsys subsys="EVS" debug="off" />
+    <logger_subsys subsys="QUORUM" debug="off" />
 </logging>
 
 </corosync>

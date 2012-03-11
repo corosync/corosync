@@ -118,9 +118,6 @@ static const char* cs_ipcs_serv_short_name(int32_t service_id)
 {
 	const char *name;
 	switch (service_id) {
-	case EVS_SERVICE:
-		name = "evs";
-		break;
 	case CFG_SERVICE:
 		name = "cfg";
 		break;

@@ -85,7 +85,6 @@ struct corosync_service_engine *vsf_quorum_get_service_engine_ver0 (void);
 struct corosync_service_engine *quorum_get_service_handler_ver0 (void);
 struct corosync_service_engine *pload_get_service_engine_ver0 (void);
 struct corosync_service_engine *cfg_get_service_engine_ver0 (void);
-struct corosync_service_engine *evs_get_service_engine_ver0 (void);
 struct corosync_service_engine *cpg_get_service_engine_ver0 (void);
 struct corosync_service_engine *mon_get_service_engine_ver0 (void);
 struct corosync_service_engine *wd_get_service_engine_ver0 (void);

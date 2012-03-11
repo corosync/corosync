@@ -67,7 +67,7 @@ logging {
 	# timestamps can be annoying).
 	timestamp: on
 	logger_subsys {
-		subsys: EVS
+		subsys: QUORUM
 		debug: off
 	}
 }

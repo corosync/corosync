@@ -60,9 +60,9 @@ LOGSYS_DECLARE_SUBSYS ("SERV");
 
 static struct default_service default_services[] = {
 	{
-		.name		= "corosync_evs",
+		.name		= "corosync_cmap",
 		.ver		= 0,
-		.loader		= evs_get_service_engine_ver0
+		.loader		= cmap_get_service_engine_ver0
 	},
 	{
 		.name		= "corosync_cfg",
@@ -97,11 +97,6 @@ static struct default_service default_services[] = {
 		.name		= "corosync_quorum",
 		.ver		= 0,
 		.loader		= vsf_quorum_get_service_engine_ver0
-	},
-	{
-		.name		= "corosync_cmap",
-		.ver		= 0,
-		.loader		= cmap_get_service_engine_ver0
 	},
 };
 

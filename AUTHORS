@@ -2,7 +2,7 @@ Last Updated Dec 2009
 
 Main Developers
 ---------------
-Steven Dake		Maintainer, totem implementation, evs, cfg,
+Steven Dake		Maintainer, totem implementation, cfg,
 			logsys, service engine architecture, ipc system
 			poll, timers, objdb, hdb, sync, coroapi
 Christine Caulfield	cpg, cfg, quorum, confdb, totem ipv6 support, totem NSS

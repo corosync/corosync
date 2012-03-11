@@ -48,7 +48,7 @@ sbin_PROGRAMS		= corosync
 libtotem_pg_a_SOURCES	= $(TOTEM_SRC)
 
 corosync_SOURCES	= vsf_ykd.c coroparse.c vsf_quorum.c sync.c \
-			  logsys.c cfg.c cmap.c cpg.c evs.c mon.c pload.c \
+			  logsys.c cfg.c cmap.c cpg.c mon.c pload.c \
 			  votequorum.c wd.c util.c schedwrk.c main.c \
 			  apidef.c quorum.c icmap.c timer.c \
 			  ipc_glue.c service.c mainconfig.c totemconfig.c

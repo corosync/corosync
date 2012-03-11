@@ -57,17 +57,6 @@ autogen_man		= cpg_context_get.3 \
 			  cpg_iteration_finalize.3 \
 			  cpg_iteration_initialize.3 \
 			  cpg_iteration_next.3 \
-			  evs_dispatch.3 \
-			  evs_fd_get.3 \
-			  evs_finalize.3 \
-			  evs_initialize.3 \
-			  evs_join.3 \
-			  evs_leave.3 \
-			  evs_mcast_groups.3 \
-			  evs_mcast_joined.3 \
-			  evs_membership_get.3 \
-			  evs_context_get.3 \
-			  evs_context_set.3 \
 			  quorum_initialize.3 \
 			  quorum_finalize.3 \
 			  quorum_fd_get.3 \
@@ -139,7 +128,6 @@ dist_man_MANS 		= corosync.conf.5 \
 			  corosync-quorumtool.8 \
 			  corosync_overview.8 \
 			  cpg_overview.8 \
-			  evs_overview.8 \
 			  quorum_overview.8 \
 			  votequorum_overview.8 \
 			  sam_overview.8 \

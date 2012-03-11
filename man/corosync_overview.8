@@ -56,9 +56,9 @@ Corosync.  Corosync is designed for applications to replicate their state to
 up to 16 processors.  The processors all contain a replica of the application
 state.
 
-The corosync project provides two group message APIs called CPG and EVS.
+The corosync project provides a group message API called CPG.
 The project developers recommend CPG be used for most applications.  The CPG
-service implmeents a closed group messaging model presenting extended virtual
+service implements a closed group messaging model presenting extended virtual
 synchrony guarantees. 
 
 To manage conditions where the process executing the CPG application exchange
@@ -168,8 +168,7 @@ The default is /etc/corosync/authkey.
 The corosync executive optionally encrypts all messages sent over the network
 using the SOBER-128 stream cipher.  The corosync executive uses HMAC and SHA1 to
 authenticate all messages.  The corosync executive library uses SOBER-128
-as a pseudo random number generator.  The EVS library feeds the PRNG using
-the /dev/random Linux device.
+as a pseudo random number generator.
 
 If membership messages can be captured by intruders, it is possible to execute
 a denial of service attack on the cluster.  In this scenario, the cluster is
@@ -191,7 +190,6 @@ None that are known.
 .SH "SEE ALSO"
 .BR corosync.conf (5),
 .BR corosync-keygen (8),
-.BR evs_overview (8),
 .BR cpg_overview (8),
 .BR sam_overview (8)
 .PP
