@@ -12,7 +12,7 @@ AM_INIT_AUTOMAKE([-Wno-portability])
 AM_SILENT_RULES([yes])
 
 AC_CONFIG_SRCDIR([lib/cpg.c])
-AC_CONFIG_HEADER([include/corosync/config.h include/corosync/cs_config.h])
+AC_CONFIG_HEADER([include/corosync/config.h])
 
 AC_CANONICAL_HOST
 
@@ -288,11 +288,6 @@ AC_ARG_WITH([initddir],
 	[  --with-initddir=DIR     : path to init script directory. ],
 	[ INITDDIR="$withval" ],
 	[ INITDDIR="$sysconfdir/init.d" ])
-
-AC_ARG_WITH([socket-dir],
-	[  --with-socket-dir=DIR   : corosync socket dir. ],
-	[ SOCKETDIR="$withval" ],
-	[ SOCKETDIR="$localstatedir/run" ])
 
 AC_ARG_ENABLE([snmp],
        [  --enable-snmp                   : SNMP protocol support ],
@@ -595,7 +590,6 @@ LDFLAGS="$ENV_LDFLAGS $COVERAGE_LDFLAGS $OS_LDFLAGS"
 
 # substitute what we need:
 AC_SUBST([INITDDIR])
-AC_SUBST([SOCKETDIR])
 
 AC_SUBST([SOMAJOR])
 AC_SUBST([SOMINOR])
@@ -619,7 +613,6 @@ AM_CONDITIONAL(BUILD_HTML_DOCS, test -n "${GROFF}")
 
 AC_SUBST([LINT_FLAGS])
 
-AC_DEFINE_UNQUOTED([SOCKETDIR], "$(eval echo ${SOCKETDIR})", [Socket directory])
 AC_DEFINE_UNQUOTED([LOCALSTATEDIR], "$(eval echo ${localstatedir})", [localstate directory])
 
 COROSYSCONFDIR=${sysconfdir}/corosync
@@ -644,7 +637,6 @@ AC_MSG_RESULT([  State information        = ${localstatedir}])
 AC_MSG_RESULT([  System configuration     = ${sysconfdir}])
 AC_MSG_RESULT([  System init.d directory  = ${INITDDIR}])
 AC_MSG_RESULT([  corosync config dir      = ${COROSYSCONFDIR}])
-AC_MSG_RESULT([  SOCKETDIR                = ${SOCKETDIR}])
 AC_MSG_RESULT([  Features                 =${PACKAGE_FEATURES}])
 AC_MSG_RESULT([])
 AC_MSG_RESULT([$PACKAGE build info:])

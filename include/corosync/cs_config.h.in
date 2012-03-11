@@ -1,2 +1,0 @@
-/* Location of sockets */
-#undef SOCKETDIR
