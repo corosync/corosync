@@ -98,7 +98,7 @@ endif
 lint:
 	-splint $(INCLUDES) $(LINT_FLAGS) $(CFLAGS) *.c
 
-all-local: $(LCRSO_OBJS) $(LCRSO) $(SHARED_LIBS)
+all-local: $(SHARED_LIBS)
 	@echo Built corosync Executive
 
 install-exec-local:
@@ -109,8 +109,6 @@ install-exec-local:
 uninstall-local:
 	cd $(DESTDIR)/$(libdir) && \
 		rm -f $(SHARED_LIBS) $(SHARED_LIBS_SO) $(SHARED_LIBS_SO_TWO)
-	cd $(DESTDIR)/$(LCRSODIR) && \
-		rm -f $(LCRSO)
 
 clean-local:
 	rm -f corosync *.o gmon.out *.da *.bb *.bbg *.so*
