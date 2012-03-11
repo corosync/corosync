@@ -57,7 +57,6 @@ corosync_DEPENDENCIES	= libtotem_pg.so.$(SONAME) ../common_lib/libcorosync_commo
 corosync_LDFLAGS	= $(OS_DYFLAGS) -L./ -L../common_lib
 
 TOTEM_OBJS		= $(TOTEM_SRC:%.c=%.o)
-LOGSYS_OBJS		= $(LOGSYS_SRC:%.c=%.o)
 
 SHARED_LIBS		= $(lib_LIBRARIES:%.a=%.so.$(SONAME))
 SHARED_LIBS_SO		= $(SHARED_LIBS:%.so.$(SONAME)=%.so)
