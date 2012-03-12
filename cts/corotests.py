@@ -1574,9 +1574,9 @@ def CoroTestList(cm, audits):
 #    s['totem/max_messages'] = 20
 #    configs.append(s)
 #
-    d = ConfigContainer('sec_sober')
+    d = ConfigContainer('sec_nss')
     d['totem/secauth'] = 'on'
-    d['totem/crypto_type'] = 'sober'
+    d['totem/crypto_type'] = 'nss'
     configs.append(d)
 
     if not cm.Env["RrpBindAddr"] is None:

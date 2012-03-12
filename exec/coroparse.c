@@ -462,6 +462,14 @@ static int main_config_parser_cb(const char *path,
 				icmap_set_uint32(path, i);
 				add_as_string = 0;
 			}
+			if (strcmp(path, "totem.crypto_type") == 0) {
+				if ((strcmp(value, "nss") != 0) &&
+				    (strcmp(value, "aes256") != 0)) {
+					*error_string = "Invalid crypto type";
+
+					return (0);
+				}
+			}
 			break;
 
 		case MAIN_CP_CB_DATA_STATE_INTERFACE:

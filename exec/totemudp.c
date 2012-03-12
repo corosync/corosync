@@ -67,15 +67,12 @@
 #include <corosync/logsys.h>
 #include "totemudp.h"
 
-#include "crypto.h"
 #include "util.h"
 
-#ifdef HAVE_LIBNSS
 #include <nss.h>
 #include <pk11pub.h>
 #include <pkcs11.h>
 #include <prerror.h>
-#endif
 
 #ifndef MSG_NOSIGNAL
 #define MSG_NOSIGNAL 0
@@ -98,11 +95,6 @@ struct security_header {
 	char msg[0];
 } __attribute__((packed));
 
-struct totemudp_mcast_thread_state {
-	unsigned char iobuf[FRAME_SIZE_MAX];
-	prng_state prng_state;
-};
-
 struct totemudp_socket {
 	int mcast_recv;
 	int mcast_send;
@@ -110,14 +102,8 @@ struct totemudp_socket {
 };
 
 struct totemudp_instance {
-	hmac_state totemudp_hmac_state;
-
-	prng_state totemudp_prng_state;
-
-#ifdef HAVE_LIBNSS
 	PK11SymKey   *nss_sym_key;
 	PK11SymKey   *nss_sym_key_sign;
-#endif
 
 	unsigned char totemudp_private_key[1024];
 
@@ -262,77 +248,6 @@ do {												\
 	} while(0)
 
 
-static int authenticate_and_decrypt_sober (
-	struct totemudp_instance *instance,
-	struct iovec *iov,
-	unsigned int iov_len)
-{
-	unsigned char keys[48];
-	struct security_header *header = (struct security_header *)iov[0].iov_base;
-	prng_state keygen_prng_state;
-	prng_state stream_prng_state;
-	unsigned char *hmac_key = &keys[32];
-	unsigned char *cipher_key = &keys[16];
-	unsigned char *initial_vector = &keys[0];
-	unsigned char digest_comparison[HMAC_HASH_SIZE];
-	unsigned long len;
-
-	/*
-	 * Generate MAC, CIPHER, IV keys from private key
-	 */
-	memset (keys, 0, sizeof (keys));
-	sober128_start (&keygen_prng_state);
-	sober128_add_entropy (instance->totemudp_private_key,
-		instance->totemudp_private_key_len, &keygen_prng_state);
-	sober128_add_entropy (header->salt, sizeof (header->salt), &keygen_prng_state);
-
-	sober128_read (keys, sizeof (keys), &keygen_prng_state);
-
-	/*
-	 * Setup stream cipher
-	 */
-	sober128_start (&stream_prng_state);
-	sober128_add_entropy (cipher_key, 16, &stream_prng_state);
-	sober128_add_entropy (initial_vector, 16, &stream_prng_state);
-
-	/*
-	 * Authenticate contents of message
-	 */
-	hmac_init (&instance->totemudp_hmac_state, DIGEST_SHA1, hmac_key, 16);
-
-	hmac_process (&instance->totemudp_hmac_state,
-		(unsigned char *)iov->iov_base + HMAC_HASH_SIZE,
-		iov->iov_len - HMAC_HASH_SIZE);
-
-	len = hash_descriptor[DIGEST_SHA1]->hashsize;
-	assert (HMAC_HASH_SIZE >= len);
-	hmac_done (&instance->totemudp_hmac_state, digest_comparison, &len);
-
-	if (memcmp (digest_comparison, header->hash_digest, len) != 0) {
-		return (-1);
-	}
-
-	/*
-	 * Decrypt the contents of the message with the cipher key
-	 */
-	sober128_read ((unsigned char*)iov->iov_base +
-			sizeof (struct security_header),
-		iov->iov_len - sizeof (struct security_header),
-		&stream_prng_state);
-
-	return (0);
-}
-
-static void init_sober_crypto(
-	struct totemudp_instance *instance)
-{
-	log_printf(instance->totemudp_log_level_notice,
-		"Initializing transmit/receive security: libtomcrypt SOBER128/SHA1HMAC (mode 0).");
-	rng_make_prng (128, PRNG_SOBER, &instance->totemudp_prng_state, NULL);
-}
-
-#ifdef HAVE_LIBNSS
-
 static unsigned char *copy_from_iovec(
 	const struct iovec *iov,
 	unsigned int iov_len,
@@ -393,7 +308,7 @@ static void init_nss_crypto(
 	SECStatus          rv;
 
 	log_printf(instance->totemudp_log_level_notice,
-		"Initializing transmit/receive security: NSS AES128CBC/SHA1HMAC (mode 1).");
+		"Initializing transmit/receive security: NSS AES256CBC/SHA1HMAC (mode %u).", TOTEM_CRYPTO_AES256);
 	rv = NSS_NoDB_Init(".");
 	if (rv != SECSuccess)
 	{
@@ -422,7 +337,7 @@ static void init_nss_crypto(
 	 */
 	key_item.type = siBuffer;
 	key_item.data = instance->totem_config->private_key;
-	key_item.len = 32; /* Use 128 bits */
+	key_item.len = 32; /* Use 256 bits */
 
 	instance->nss_sym_key = PK11_ImportSymKey(aes_slot,
 		instance->totem_config->crypto_crypt_type,
@@ -696,91 +611,6 @@ static int authenticate_and_decrypt_nss (
 
 	return 0;
 }
-#endif
-
-static int encrypt_and_sign_sober (
-	struct totemudp_instance *instance,
-	unsigned char *buf,
-	size_t *buf_len,
-	const struct iovec *iovec,
-	unsigned int iov_len)
-{
-	int i;
-	unsigned char *addr;
-	unsigned char keys[48];
-	struct security_header *header;
-	unsigned char *hmac_key = &keys[32];
-	unsigned char *cipher_key = &keys[16];
-	unsigned char *initial_vector = &keys[0];
-	unsigned long len;
-	size_t outlen = 0;
-	hmac_state hmac_st;
-	prng_state keygen_prng_state;
-	prng_state stream_prng_state;
-	prng_state *prng_state_in = &instance->totemudp_prng_state;
-
-	header = (struct security_header *)buf;
-	addr = buf + sizeof (struct security_header);
-
-	memset (keys, 0, sizeof (keys));
-	memset (header->salt, 0, sizeof (header->salt));
-
-	/*
-	 * Generate MAC, CIPHER, IV keys from private key
-	 */
-	sober128_read (header->salt, sizeof (header->salt), prng_state_in);
-	sober128_start (&keygen_prng_state);
-	sober128_add_entropy (instance->totemudp_private_key,
-		instance->totemudp_private_key_len,
-		&keygen_prng_state);
-	sober128_add_entropy (header->salt, sizeof (header->salt),
-		&keygen_prng_state);
-
-	sober128_read (keys, sizeof (keys), &keygen_prng_state);
-
-	/*
-	 * Setup stream cipher
-	 */
-	sober128_start (&stream_prng_state);
-	sober128_add_entropy (cipher_key, 16, &stream_prng_state);
-	sober128_add_entropy (initial_vector, 16, &stream_prng_state);
-
-	outlen = sizeof (struct security_header);
-	/*
-	 * Copy remainder of message, then encrypt it
-	 */
-	for (i = 1; i < iov_len; i++) {
-		memcpy (addr, iovec[i].iov_base, iovec[i].iov_len);
-		addr += iovec[i].iov_len;
-		outlen += iovec[i].iov_len;
-	}
-
-	/*
- 	 * Encrypt message by XORing stream cipher data
-	 */
-	sober128_read (buf + sizeof (struct security_header),
-		outlen - sizeof (struct security_header),
-		&stream_prng_state);
-
-	memset (&hmac_st, 0, sizeof (hmac_st));
-
-	/*
-	 * Sign the contents of the message with the hmac key and store signature in message
-	 */
-	hmac_init (&hmac_st, DIGEST_SHA1, hmac_key, 16);
-
-	hmac_process (&hmac_st,
-		buf + HMAC_HASH_SIZE,
-		outlen - HMAC_HASH_SIZE);
-
-	len = hash_descriptor[DIGEST_SHA1]->hashsize;
-
-	hmac_done (&hmac_st, header->hash_digest, &len);
-
-	*buf_len = outlen;
-
-	return 0;
-}
 
 static int encrypt_and_sign_worker (
 	struct totemudp_instance *instance,
@@ -789,14 +619,11 @@ static int encrypt_and_sign_worker (
 	const struct iovec *iovec,
 	unsigned int iov_len)
 {
-	if (instance->totem_config->crypto_type == TOTEM_CRYPTO_SOBER) {
-		return encrypt_and_sign_sober(instance, buf, buf_len, iovec, iov_len);
-	}
-#ifdef HAVE_LIBNSS
-	if (instance->totem_config->crypto_type == TOTEM_CRYPTO_NSS) {
+
+	if (instance->totem_config->crypto_type == TOTEM_CRYPTO_AES256) {
 		return encrypt_and_sign_nss(instance, buf, buf_len, iovec, iov_len);
 	}
-#endif
+
 	return -1;
 }
 
@@ -815,22 +642,8 @@ static int authenticate_and_decrypt (
 	type = endbuf[iov[iov_len-1].iov_len-1];
 	iov[iov_len-1].iov_len -= 1;
 
-	if (type == TOTEM_CRYPTO_SOBER) {
-		res = authenticate_and_decrypt_sober(instance, iov, iov_len);
-	}
-
-#ifdef HAVE_LIBNSS
-	if (type == TOTEM_CRYPTO_NSS) {
+	if (type == TOTEM_CRYPTO_AES256) {
 		    res = authenticate_and_decrypt_nss(instance, iov, iov_len);
-	}
-#endif
-
-	/*
-	 * If it failed, then try decrypting the whole packet
-	 */
-	if (res == -1) {
-		iov[iov_len-1].iov_len += 1;
-		res = authenticate_and_decrypt_sober(instance, iov, iov_len);
 	}
 
 	return res;
@@ -839,10 +652,8 @@ static int authenticate_and_decrypt (
 static void init_crypto(
 	struct totemudp_instance *instance)
 {
-	init_sober_crypto(instance);
-#ifdef HAVE_LIBNSS
+
 	init_nss_crypto(instance);
-#endif
 }
 
 int totemudp_crypto_set (
@@ -856,13 +667,9 @@ int totemudp_crypto_set (
 	 * Validate crypto algorithm
 	 */
 	switch (type) {
-		case TOTEM_CRYPTO_SOBER:
+		case TOTEM_CRYPTO_AES256:
 			log_printf(instance->totemudp_log_level_security,
-				"Transmit security set to: libtomcrypt SOBER128/SHA1HMAC (mode 0)");
-			break;
-		case TOTEM_CRYPTO_NSS:
-			log_printf(instance->totemudp_log_level_security,
-				"Transmit security set to: NSS AES128CBC/SHA1HMAC (mode 1)");
+				"Transmit security set to: NSS AES256CBC/SHA1HMAC (mode %u)", type);
 			break;
 		default:
 			res = -1;
@@ -896,7 +703,6 @@ static inline void ucast_sendmsg (
 		iovec_encrypt[0].iov_len = sizeof (struct security_header);
 		iovec_encrypt[1].iov_base = (void *)msg;
 		iovec_encrypt[1].iov_len = msg_len;
-
 		/*
 		 * Encrypt and digest the message
 		 */

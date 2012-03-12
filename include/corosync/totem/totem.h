@@ -169,7 +169,7 @@ struct totem_config {
 
 	unsigned int broadcast_use;
 
-	enum { TOTEM_CRYPTO_SOBER=0, TOTEM_CRYPTO_NSS } crypto_type;
+	enum { TOTEM_CRYPTO_AES256 = 0} crypto_type;
 
 	int crypto_crypt_type;
 	int crypto_sign_type;

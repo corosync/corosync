@@ -81,6 +81,7 @@ AC_CHECK_LIB([qb], [qb_log_thread_priority_set], \
 if test "x${have_qb_log_thread_priority_set}" = xyes; then
 	AC_DEFINE_UNQUOTED([HAVE_QB_LOG_THREAD_PRIORITY_SET], 1, [have qb_log_thread_priority_set])
 fi
+PKG_CHECK_MODULES([nss],[nss])
 
 # Checks for header files.
 AC_FUNC_ALLOCA
@@ -246,10 +247,6 @@ AC_ARG_ENABLE([small-memory-footprint],
 	[  --enable-small-memory-footprint : Use small message queues and small messages sizes. ],
 	[ default="no" ])
 
-AC_ARG_ENABLE([nss],
-	[  --enable-nss                    : Network Security Services encryption. ],,
-	[ enable_nss="yes" ])
-
 AC_ARG_ENABLE([dbus],
 	[  --enable-dbus                   : dbus events. ],,
 	[ enable_dbus="no" ])
@@ -392,13 +389,6 @@ if test "x${GCC}" = xyes; then
 	GDB_FLAGS="-ggdb3"
 else
 	GDB_FLAGS="-g"
-fi
-
-# Look for libnss
-if test "x${enable_nss}" = xyes; then
-	PKG_CHECK_MODULES([nss],[nss])
-	AC_DEFINE_UNQUOTED([HAVE_LIBNSS], 1, [have libnss])
-	PACKAGE_FEATURES="$PACKAGE_FEATURES nss"
 fi
 
 # Look for dbus-1

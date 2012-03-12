@@ -163,23 +163,11 @@ a subset of the cluster (for example during a rolling upgrade).
 secauth
 This specifies that HMAC/SHA1 authentication should be used to authenticate
 all messages.  It further specifies that all data should be encrypted with the
-sober128 encryption algorithm to protect data from eavesdropping.
+nss library and aes256 encryption algorithm to protect data from eavesdropping.
 
-Enabling this option adds a 36 byte header to every message sent by totem which
-reduces total throughput.  Encryption and authentication consume 75% of CPU
-cycles in aisexec as measured with gprof when enabled.
-
-For 100mbit networks with 1500 MTU frame transmissions:
-A throughput of 9mb/sec is possible with 100% cpu utilization when this
-option is enabled on 3ghz cpus.
-A throughput of 10mb/sec is possible wth 20% cpu utilization when this
-optin is disabled on 3ghz cpus.
-
-For gig-e networks with large frame transmissions:
-A throughput of 20mb/sec is possible when this option is enabled on
-3ghz cpus.
-A throughput of 60mb/sec is possible when this option is disabled on
-3ghz cpus.
+Enabling this option adds a encryption header to every message sent by totem which
+reduces total throughput. Also encryption and authentication consume extra CPU
+cycles in corosync.
 
 The default is on.
 

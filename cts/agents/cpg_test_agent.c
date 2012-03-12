@@ -53,9 +53,10 @@
 #include <qb/qblog.h>
 #include <corosync/cpg.h>
 #include <corosync/cfg.h>
-#include "../../exec/crypto.h"
 #include "common_test_agent.h"
 
+#include <nss.h>
+#include <pk11pub.h>
 
 typedef enum {
 	MSG_OK,
@@ -100,6 +101,7 @@ static int32_t total_stored_msgs = 0;
 static int32_t total_msgs_revd = 0;
 static int32_t in_cnchg = 0;
 static int32_t pcmk_test = 0;
+PK11Context* sha1_context;
 
 static void send_some_more_messages (void * unused);
 
@@ -148,7 +150,7 @@ static void delivery_callback (
 	msg_status_t status = MSG_OK;
 	char status_buf[20];
 	unsigned char sha1_compare[20];
-	hash_state sha1_hash;
+	unsigned int sha1_len;
 
 	if (record_messages_g == 0) {
 		return;
@@ -163,9 +165,9 @@ static void delivery_callback (
 	if (msg_len != msg_pt->size) {
 		status = MSG_SIZE_ERR;
 	}
-	sha1_init (&sha1_hash);
-	sha1_process (&sha1_hash, msg_pt->payload, (msg_pt->size - sizeof (msg_t)));
-	sha1_done (&sha1_hash, sha1_compare);
+	PK11_DigestBegin(sha1_context);
+	PK11_DigestOp(sha1_context, msg_pt->payload, (msg_pt->size - sizeof (msg_t)));
+        PK11_DigestFinal(sha1_context, sha1_compare, &sha1_len, sizeof(sha1_compare));
 	if (memcmp (sha1_compare, msg_pt->sha1, 20) != 0) {
 		qb_log (LOG_ERR, "msg seq:%d; incorrect hash",
 			msg_pt->seq);
@@ -344,7 +346,7 @@ static void send_some_more_messages_zcb (void)
 	int send_now;
 	size_t payload_size;
 	size_t total_size;
-	hash_state sha1_hash;
+	unsigned int sha1_len;
 	cs_error_t res;
 	cpg_flow_control_state_t fc_state;
 	void *zcb_buffer;
@@ -367,9 +369,9 @@ static void send_some_more_messages_zcb (void)
 	for (i = 0; i < payload_size; i++) {
 		my_msg->payload[i] = i;
 	}
-	sha1_init (&sha1_hash);
-	sha1_process (&sha1_hash, my_msg->payload, payload_size);
-	sha1_done (&sha1_hash, my_msg->sha1);
+	PK11_DigestBegin(sha1_context);
+	PK11_DigestOp(sha1_context,  my_msg->payload, payload_size);
+	PK11_DigestFinal(sha1_context, my_msg->sha1, &sha1_len, sizeof(my_msg->sha1));
 
 	for (i = 0; i < send_now; i++) {
 
@@ -415,11 +417,11 @@ static void send_some_more_messages_normal (void)
 	int i;
 	int send_now;
 	size_t payload_size;
-	hash_state sha1_hash;
 	cs_error_t res;
 	cpg_flow_control_state_t fc_state;
 	int retries = 0;
 	time_t before;
+	unsigned int sha1_len;
 
 	if (cpg_fd < 0)
 		return;
@@ -436,9 +438,9 @@ static void send_some_more_messages_normal (void)
 	for (i = 0; i < payload_size; i++) {
 		buffer[i] = i;
 	}
-	sha1_init (&sha1_hash);
-	sha1_process (&sha1_hash, buffer, payload_size);
-	sha1_done (&sha1_hash, my_msg.sha1);
+	PK11_DigestBegin(sha1_context);
+	PK11_DigestOp(sha1_context,  buffer, payload_size);
+	PK11_DigestFinal(sha1_context, my_msg.sha1, &sha1_len, sizeof(my_msg.sha1));
 
 	iov[0].iov_len = sizeof (msg_t);
 	iov[0].iov_base = &my_msg;
@@ -628,7 +630,6 @@ static void do_command (int sock, char* func, char*args[], int num_args)
 
 		strcpy (group_name.value, args[0]);
 		group_name.length = strlen(args[0]);
-
 		result = cpg_join (cpg_handle, &group_name);
 		if (result != CS_OK) {
 			qb_log (LOG_ERR,
@@ -756,6 +757,8 @@ static void my_pre_exit(void)
 		corosync_cfg_finalize (cfg_handle);
 		cfg_handle = 0;
 	}
+
+	PK11_DestroyContext(sha1_context, PR_TRUE);
 }
 
 int
@@ -763,6 +766,16 @@ main(int argc, char *argv[])
 {
 	list_init (&msg_log_head);
 	list_init (&config_chg_log_head);
+
+	if (NSS_NoDB_Init(".") != SECSuccess) {
+		qb_log(LOG_ERR, "Couldn't initialize nss");
+		exit (0);
+	}
+
+	if ((sha1_context = PK11_CreateDigestContext(SEC_OID_SHA1)) == NULL) {
+		qb_log(LOG_ERR, "Couldn't initialize nss");
+		exit (0);
+	}
 
 	return test_agent_run ("cpg_test_agent", 9034, do_command, my_pre_exit);
 }

@@ -166,8 +166,8 @@ The default is /etc/corosync/authkey.
 
 .SH SECURITY
 The corosync executive optionally encrypts all messages sent over the network
-using the SOBER-128 stream cipher.  The corosync executive uses HMAC and SHA1 to
-authenticate all messages.  The corosync executive library uses SOBER-128
+using the AES-128 cipher.  The corosync executive uses HMAC and SHA1 to
+authenticate all messages.  The corosync executive library uses NSS
 as a pseudo random number generator.
 
 If membership messages can be captured by intruders, it is possible to execute

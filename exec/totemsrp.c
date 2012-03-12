@@ -41,7 +41,7 @@
  * 	http://citeseer.ist.psu.edu/amir95totem.html
  *
  * The deviations from the above published protocols are:
- * - encryption of message contents with SOBER128
+ * - encryption of message contents with nss
  * - authentication of meessage contents with SHA1/HMAC
  * - token hold mode where token doesn't rotate on unused ring - reduces cpu
  *   usage on 1.6ghz xeon from 35% to less then .1 % as measured by top
@@ -89,7 +89,6 @@
 #include "totemrrp.h"
 #include "totemnet.h"
 
-#include "crypto.h"
 #include "cs_queue.h"
 
 #define LOCALHOST_IP				inet_addr("127.0.0.1")
@@ -282,7 +281,6 @@ struct sort_queue_item {
 
 struct orf_token_mcast_thread_state {
 	char iobuf[9000];
-	prng_state prng_state;
 };
 
 enum memb_state {

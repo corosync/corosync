@@ -49,7 +49,8 @@ endif
 noinst_HEADERS          = common_test_agent.h
 
 cpg_test_agent_SOURCES = cpg_test_agent.c common_test_agent.c
-cpg_test_agent_LDADD =  -lcpg -lcfg ../../exec/crypto.o -lcorosync_common $(LIBQB_LIBS)
+cpg_test_agent_CFLAGS =  $(nss_CFLAGS)
+cpg_test_agent_LDADD =  -lcpg -lcfg -lcorosync_common $(LIBQB_LIBS) $(nss_LIBS)
 cpg_test_agent_LDFLAGS =  -L../../lib -L. -L../../common_lib
 
 sam_test_agent_SOURCES = sam_test_agent.c common_test_agent.c

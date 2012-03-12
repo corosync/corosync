@@ -44,7 +44,6 @@
 #include <corosync/corotypes.h>
 #include <corosync/cpg.h>
 #include <signal.h>
-#include "../exec/crypto.h"
 
 struct my_msg {
 	unsigned int msg_size;

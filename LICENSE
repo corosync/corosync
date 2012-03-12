@@ -1,17 +1,6 @@
-***
-All cryptographic software in this package is subject to the following legal
-notice:
-This package includes publicly available encryption source code which,
-together with object code resulting from the compiling of publicly
-available source code, may be exported from the United States under License
-Exception TSU prsuant to 15 C.F.R Section 740.13(e).
-***
 -----------------------------------------------------------------------------
 The following license applies to every file in this source distribution except
-for the files exec/crypto.c, exec/crypto.h, git-version-gen, and
-gitlog-to-changelog.  The exec/crypto[c|h] file license is described in its
-full content later in this file and are part of the executive runtime and
-components of binary images produced by the source code.
+for the files git-version-gen, and gitlog-to-changelog.
 
 The git* files, which are available under GPLv3 or later,  are only used by
 our release process to generate text file content and are not part of any
@@ -48,21 +37,6 @@ INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
 CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 THE POSSIBILITY OF SUCH DAMAGE.
-
------------------------------------------------------------------------------
-The corosync project uses software from the LibTomCrypt project
-www.libtomcrypt.org.  This software is contained the files exec/crypto.c and
-exec/crypto.h.  The following license applies to the files exec/crypto.c and
-exec/crytpo.h:
------------------------------------------------------------------------------
-LibTomCrypt is public domain.  As should all quality software be.
-
-All of the software was either written by or donated to Tom St Denis for the
-purposes of this project.  The only exception is the SAFER.C source which has
-no known license status (assumed copyrighted) which is why SAFER,C is shipped
-as disabled.
-
-Tom St Denis
 
 -----------------------------------------------------------------------------
 The corosync project uses software for release processing which generates

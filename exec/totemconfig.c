@@ -57,12 +57,10 @@
 #include <corosync/logsys.h>
 #include <corosync/icmap.h>
 
-#ifdef HAVE_LIBNSS
 #include <nss.h>
 #include <pk11pub.h>
 #include <pkcs11.h>
 #include <prerror.h>
-#endif
 
 #include "util.h"
 #include "totemconfig.h"
@@ -127,26 +125,17 @@ static void totem_get_crypto_type(struct totem_config *totem_config)
 {
 	char *str;
 
-	totem_config->crypto_type = TOTEM_CRYPTO_SOBER;
-
-#ifdef HAVE_LIBNSS
-	/*
-	 * We must set these even if the key does not exist.
-	 * Encryption type can be set on-the-fly using CFG
-	 */
+	 /*
+	  * We must set these even if the key does not exist.
+	  * Encryption type can be set on-the-fly using CFG
+	  */
 	totem_config->crypto_crypt_type = CKM_AES_CBC_PAD;
 	totem_config->crypto_sign_type = CKM_SHA256_RSA_PKCS;
-#endif
 
 	if (icmap_get_string("totem.crypto_type", &str) == CS_OK) {
-		if (strcmp(str, "sober") == 0) {
-			totem_config->crypto_type = TOTEM_CRYPTO_SOBER;
+		if (strcmp(str, "nss") == 0 || strcmp(str, "aes256") == 0) {
+			totem_config->crypto_type = TOTEM_CRYPTO_AES256;
 		}
-#ifdef HAVE_LIBNSS
-		if (strcmp(str, "nss") == 0) {
-			totem_config->crypto_type = TOTEM_CRYPTO_NSS;
-		}
-#endif
 		free(str);
 	}
 }

@@ -44,7 +44,9 @@
 #include <string.h>
 #include <corosync/corotypes.h>
 #include <corosync/cpg.h>
-#include "../exec/crypto.h"
+
+#include <nss.h>
+#include <pk11pub.h>
 
 struct my_msg {
 	unsigned int msg_size;
@@ -53,6 +55,8 @@ struct my_msg {
 };
 
 static int deliveries = 0;
+PK11Context* sha1_context;
+
 static void cpg_deliver_fn (
         cpg_handle_t handle,
         const struct cpg_name *group_name,
@@ -63,13 +67,13 @@ static void cpg_deliver_fn (
 {
 	const struct my_msg *msg2 = m;
 	unsigned char sha1_compare[20];
-	hash_state sha1_hash;
 	unsigned int i;
+	unsigned int sha1_len;
 
 	printf ("msg '%s'\n", msg2->buffer);
-	sha1_init (&sha1_hash);
-	sha1_process (&sha1_hash, msg2->buffer, msg2->msg_size);
-	sha1_done (&sha1_hash, sha1_compare);
+	PK11_DigestBegin(sha1_context);
+	PK11_DigestOp(sha1_context, msg2->buffer, msg2->msg_size);
+	PK11_DigestFinal(sha1_context, sha1_compare, &sha1_len, sizeof(sha1_compare));
 printf ("SIZE %d HASH: ", msg2->msg_size);
 for (i = 0; i < 20; i++) {
 printf ("%x", sha1_compare[i]);
@@ -110,12 +114,12 @@ int main (int argc, char *argv[])
 	int i = 0;
 	int j;
 	struct my_msg msg;
-	hash_state sha1_hash;
 	struct iovec iov[2];
 	const char *options = "i:";
 	int iter = 1000;
 	int opt;
 	int run_forever = 1;
+	unsigned int sha1_len;
 
 	while ((opt = getopt(argc, argv, options)) != -1) {
 		switch (opt) {
@@ -129,6 +133,16 @@ int main (int argc, char *argv[])
 	result = cpg_initialize (&handle, &callbacks);
 	if (result != CS_OK) {
 		printf ("Couldn't initialize CPG service %d\n", result);
+		exit (0);
+	}
+
+	if (NSS_NoDB_Init(".") != SECSuccess) {
+		printf ("Couldn't initialize nss\n");
+		exit (0);
+	}
+
+	if ((sha1_context = PK11_CreateDigestContext(SEC_OID_SHA1)) == NULL) {
+		printf ("Couldn't initialize nss\n");
 		exit (0);
 	}
 
@@ -154,9 +168,10 @@ int main (int argc, char *argv[])
 		}
 		sprintf ((char *)buffer,
 			"cpg_mcast_joined: This is message %12d", i);
-		sha1_init (&sha1_hash);
-		sha1_process (&sha1_hash, buffer, msg.msg_size);
-		sha1_done (&sha1_hash, msg.sha1);
+
+		PK11_DigestBegin(sha1_context);
+		PK11_DigestOp(sha1_context, buffer, msg.msg_size);
+		PK11_DigestFinal(sha1_context, msg.sha1, &sha1_len, sizeof(msg.sha1));
 try_again_one:
 		result = cpg_mcast_joined (handle, CPG_TYPE_AGREED,
 			iov, 2);
@@ -166,6 +181,8 @@ try_again_one:
 		result = cpg_dispatch (handle, CS_DISPATCH_ALL);
 		i++;
 	} while (run_forever || i < iter);
+
+	PK11_DestroyContext(sha1_context, PR_TRUE);
 
 	cpg_finalize (handle);
 

@@ -12,7 +12,6 @@
 %bcond_with dbus
 %bcond_with rdma
 %bcond_with systemd
-%bcond_with nss
 %bcond_with xmlconf
 
 Name: corosync
@@ -37,11 +36,9 @@ Conflicts: openais <= 0.89, openais-devel <= 0.89
 %{?_with_buildtrunk: %define buildtrunk 1}
 
 BuildRequires: libqb-devel
+BuildRequires: nss-devel
 %if %{buildtrunk}
 BuildRequires: autoconf automake
-%endif
-%if %{with nss}
-BuildRequires: nss-devel
 %endif
 %if %{with rdma}
 BuildRequires: libibverbs-devel librdmacm-devel
@@ -76,11 +73,6 @@ export rdmacm_CFLAGS=-I/usr/include/rdma \
 export rdmacm_LIBS=-lrdmacm \
 %endif
 %{configure} \
-%if %{with nss}
-	--enable-nss \
-%else
-	--disable-nss \
-%endif
 %if %{with testagents}
 	--enable-testagents \
 %endif
