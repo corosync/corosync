@@ -70,8 +70,7 @@ LOGSYS_DECLARE_SUBSYS ("CFG");
 enum cfg_message_req_types {
         MESSAGE_REQ_EXEC_CFG_RINGREENABLE = 0,
 	MESSAGE_REQ_EXEC_CFG_KILLNODE = 1,
-	MESSAGE_REQ_EXEC_CFG_SHUTDOWN = 2,
-	MESSAGE_REQ_EXEC_CFG_CRYPTO_SET = 3
+	MESSAGE_REQ_EXEC_CFG_SHUTDOWN = 2
 };
 
 #define DEFAULT_SHUTDOWN_TIMEOUT 5
@@ -123,10 +122,6 @@ static void message_handler_req_exec_cfg_shutdown (
         const void *message,
         unsigned int nodeid);
 
-static void message_handler_req_exec_cfg_crypto_set (
-        const void *message,
-        unsigned int nodeid);
-
 static void exec_cfg_killnode_endian_convert (void *msg);
 
 static void message_handler_req_lib_cfg_ringstatusget (
@@ -154,10 +149,6 @@ static void message_handler_req_lib_cfg_get_node_addrs (
 	const void *msg);
 
 static void message_handler_req_lib_cfg_local_get (
-	void *conn,
-	const void *msg);
-
-static void message_handler_req_lib_cfg_crypto_set (
 	void *conn,
 	const void *msg);
 
@@ -193,10 +184,6 @@ static struct corosync_lib_handler cfg_lib_engine[] =
 	{ /* 6 */
 		.lib_handler_fn		= message_handler_req_lib_cfg_local_get,
 		.flow_control		= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
-	},
-	{ /* 7 */
-		.lib_handler_fn		= message_handler_req_lib_cfg_crypto_set,
-		.flow_control		= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	}
 };
 
@@ -211,9 +198,6 @@ static struct corosync_exec_handler cfg_exec_engine[] =
 	},
 	{ /* 2 */
 		.exec_handler_fn = message_handler_req_exec_cfg_shutdown,
-	},
-	{ /* 3 */
-		.exec_handler_fn = message_handler_req_exec_cfg_crypto_set,
 	}
 };
 
@@ -251,11 +235,6 @@ struct req_exec_cfg_killnode {
 	struct qb_ipc_request_header header __attribute__((aligned(8)));
         mar_uint32_t nodeid __attribute__((aligned(8)));
 	mar_name_t reason __attribute__((aligned(8)));
-};
-
-struct req_exec_cfg_crypto_set {
-	struct qb_ipc_request_header header __attribute__((aligned(8)));
-	mar_uint32_t type __attribute__((aligned(8)));
 };
 
 struct req_exec_cfg_shutdown {
@@ -550,21 +529,6 @@ static void message_handler_req_exec_cfg_shutdown (
 	}
 	LEAVE();
 }
-
-static void message_handler_req_exec_cfg_crypto_set (
-        const void *message,
-        unsigned int nodeid)
-{
-	const struct req_exec_cfg_crypto_set *req_exec_cfg_crypto_set = message;
-	ENTER();
-
-	log_printf(LOGSYS_LEVEL_NOTICE, "Node %d requested set crypto to %d",
-		nodeid, req_exec_cfg_crypto_set->type);
-
-	api->totem_crypto_set(req_exec_cfg_crypto_set->type);
-	LEAVE();
-}
-
 
 /*
  * Library Interface Implementation
@@ -867,41 +831,4 @@ static void message_handler_req_lib_cfg_local_get (void *conn, const void *msg)
 
 	api->ipc_response_send(conn, &res_lib_cfg_local_get,
 		sizeof(res_lib_cfg_local_get));
-}
-
-
-static void message_handler_req_lib_cfg_crypto_set (
-	void *conn,
-	const void *msg)
-{
-	const struct req_lib_cfg_crypto_set *req_lib_cfg_crypto_set = msg;
-	struct res_lib_cfg_crypto_set res_lib_cfg_crypto_set;
-	struct req_exec_cfg_crypto_set req_exec_cfg_crypto_set;
-	struct iovec iovec;
-	int ret = CS_ERR_INVALID_PARAM;
-
-	req_exec_cfg_crypto_set.header.size =
-		sizeof (struct req_exec_cfg_crypto_set);
-	req_exec_cfg_crypto_set.header.id = SERVICE_ID_MAKE (CFG_SERVICE,
-		MESSAGE_REQ_EXEC_CFG_CRYPTO_SET);
-
-	/*
-	 * Set it locally first so we can tell if it is allowed
-	 */
-	if (api->totem_crypto_set(req_lib_cfg_crypto_set->type) == 0) {
-
-		req_exec_cfg_crypto_set.type = req_lib_cfg_crypto_set->type;
-
-		iovec.iov_base = (char *)&req_exec_cfg_crypto_set;
-		iovec.iov_len = sizeof (struct req_exec_cfg_crypto_set);
-		assert (api->totem_mcast (&iovec, 1, TOTEM_SAFE) == 0);
-		ret = CS_OK;
-	}
-
-	res_lib_cfg_crypto_set.header.size = sizeof(res_lib_cfg_crypto_set);
-	res_lib_cfg_crypto_set.header.id = MESSAGE_RES_CFG_CRYPTO_SET;
-	res_lib_cfg_crypto_set.header.error = ret;
-
-	api->ipc_response_send(conn, &res_lib_cfg_crypto_set,
-		sizeof(res_lib_cfg_crypto_set));
 }
