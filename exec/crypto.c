@@ -76,6 +76,13 @@
 #include <pkcs11.h>
 #include <prerror.h>
 
+#define CRYPTO_HMAC_HASH_SIZE 20
+struct crypto_security_header {
+	unsigned char hash_digest[CRYPTO_HMAC_HASH_SIZE]; /* The hash *MUST* be first in the data structure */
+	unsigned char salt[16]; /* random number */
+	char msg[0];
+} __attribute__((packed));
+
 struct crypto_instance {
 	PK11SymKey   *nss_sym_key;
 	PK11SymKey   *nss_sym_key_sign;
@@ -83,6 +90,10 @@ struct crypto_instance {
 	unsigned char private_key[1024];
 
 	unsigned int private_key_len;
+
+	int crypto_crypt_type;
+
+	int crypto_hash_type;
 
 	void (*log_printf_func) (
 		int level,
@@ -117,58 +128,6 @@ do {												\
 		fmt ": %s (%d)", ##args, _error_ptr, err_num);				\
 	} while(0)
 
-
-static unsigned char *copy_from_iovec(
-	const struct iovec *iov,
-	unsigned int iov_len,
-	size_t *buf_size)
-{
-	int i;
-	size_t bufptr;
-	size_t buflen = 0;
-	unsigned char *newbuf;
-
-	for (i=0; i<iov_len; i++)
-		buflen += iov[i].iov_len;
-
-	newbuf = malloc(buflen);
-	if (!newbuf)
-		return NULL;
-
-	bufptr=0;
-	for (i=0; i<iov_len; i++) {
-		memcpy(newbuf+bufptr, iov[i].iov_base, iov[i].iov_len);
-		bufptr += iov[i].iov_len;
-	}
-	*buf_size = buflen;
-	return newbuf;
-}
-
-static void copy_to_iovec(
-	struct iovec *iov,
-	unsigned int iov_len,
-	const unsigned char *buf,
-	size_t buf_size)
-{
-	int i;
-	size_t copylen;
-	size_t bufptr = 0;
-
-	bufptr=0;
-	for (i=0; i<iov_len; i++) {
-		copylen = iov[i].iov_len;
-		if (bufptr + copylen > buf_size) {
-			copylen = buf_size - bufptr;
-		}
-		memcpy(iov[i].iov_base, buf+bufptr, copylen);
-		bufptr += copylen;
-		if (iov[i].iov_len != copylen) {
-			iov[i].iov_len = copylen;
-			return;
-		}
-	}
-}
-
 static void init_nss_crypto(struct crypto_instance *instance)
 {
 	PK11SlotInfo*      aes_slot = NULL;
@@ -186,6 +145,9 @@ static void init_nss_crypto(struct crypto_instance *instance)
 		goto out;
 	}
 
+	/*
+	 * TODO: use instance info!
+	 */
 	aes_slot = PK11_GetBestSlot(CKM_AES_CBC_PAD, NULL);
 	if (aes_slot == NULL)
 	{
@@ -234,19 +196,16 @@ out:
 
 static int encrypt_and_sign_nss (
 	struct crypto_instance *instance,
-	unsigned char *buf,
-	size_t *buf_len,
-	const struct iovec *iovec,
-	unsigned int iov_len)
+	const unsigned char *buf_in,
+	const size_t buf_in_len,
+	unsigned char *buf_out,
+	size_t *buf_out_len)
 {
 	PK11Context*       enc_context = NULL;
 	SECStatus          rv1, rv2;
 	int                tmp1_outlen;
 	unsigned int       tmp2_outlen;
-	unsigned char      *inbuf;
-	unsigned char      *data;
 	unsigned char      *outdata;
-	size_t             datalen;
 	SECItem            no_params;
 	SECItem            iv_item;
 	struct crypto_security_header *header;
@@ -259,17 +218,9 @@ static int encrypt_and_sign_nss (
 	no_params.len = 0;
 
 	tmp1_outlen = tmp2_outlen = 0;
-	inbuf = copy_from_iovec(iovec, iov_len, &datalen);
-	if (!inbuf) {
-		log_printf(instance->log_level_security, "malloc error copying buffer from iovec");
-		return -1;
-	}
 
-	data = inbuf + sizeof (struct crypto_security_header);
-	datalen -= sizeof (struct crypto_security_header);
-
-	outdata = buf + sizeof (struct crypto_security_header);
-	header = (struct crypto_security_header *)buf;
+	outdata = buf_out + sizeof (struct crypto_security_header);
+	header = (struct crypto_security_header *)buf_out;
 
 	rv = PK11_GenerateRandom (
 		nss_iv_data,
@@ -292,7 +243,6 @@ static int encrypt_and_sign_nss (
 		log_printf(instance->log_level_security,
 			"Failure to set up PKCS11 param (err %d)",
 			PR_GetError());
-		free (inbuf);
 		return (-1);
 	}
 
@@ -312,19 +262,16 @@ static int encrypt_and_sign_nss (
 			"PK11_CreateContext failed (encrypt) crypt_type=%d (err %d): %s",
 			CKM_AES_CBC_PAD,
 			PR_GetError(), err);
-		free(inbuf);
 		return -1;
 	}
 	rv1 = PK11_CipherOp(enc_context, outdata,
 			    &tmp1_outlen, FRAME_SIZE_MAX - sizeof(struct crypto_security_header),
-			    data, datalen);
+			    (unsigned char *)buf_in, buf_in_len);
 	rv2 = PK11_DigestFinal(enc_context, outdata + tmp1_outlen, &tmp2_outlen,
 			       FRAME_SIZE_MAX - tmp1_outlen);
 	PK11_DestroyContext(enc_context, PR_TRUE);
 
-	*buf_len = tmp1_outlen + tmp2_outlen;
-	free(inbuf);
-//	memcpy(&outdata[*buf_len], nss_iv_data, sizeof(nss_iv_data));
+	*buf_out_len = tmp1_outlen + tmp2_outlen;
 
 	if (rv1 != SECSuccess || rv2 != SECSuccess)
 		goto out;
@@ -344,7 +291,7 @@ static int encrypt_and_sign_nss (
 
 	PK11_DigestBegin(enc_context);
 
-	rv1 = PK11_DigestOp(enc_context, outdata - 16, *buf_len + 16);
+	rv1 = PK11_DigestOp(enc_context, outdata - 16, *buf_out_len + 16);
 	rv2 = PK11_DigestFinal(enc_context, header->hash_digest, &tmp2_outlen, sizeof(header->hash_digest));
 
 	PK11_DestroyContext(enc_context, PR_TRUE);
@@ -353,7 +300,7 @@ static int encrypt_and_sign_nss (
 		goto out;
 
 
-	*buf_len = *buf_len + sizeof(struct crypto_security_header);
+	*buf_out_len = *buf_out_len + sizeof(struct crypto_security_header);
 	SECITEM_FreeItem(nss_sec_param, PR_TRUE);
 	return 0;
 
@@ -364,8 +311,8 @@ out:
 
 static int authenticate_and_decrypt_nss (
 	struct crypto_instance *instance,
-	struct iovec *iov,
-	unsigned int iov_len)
+	unsigned char *buf,
+	int *buf_len)
 {
 	PK11Context*  enc_context = NULL;
 	SECStatus     rv1, rv2;
@@ -378,7 +325,7 @@ static int authenticate_and_decrypt_nss (
 	unsigned char *data;
 	unsigned char *inbuf;
 	size_t        datalen;
-	struct crypto_security_header *header = (struct crypto_security_header *)iov[0].iov_base;
+	struct crypto_security_header *header = (struct crypto_security_header *)buf;
 	SECItem no_params;
 	SECItem ivdata;
 
@@ -387,17 +334,8 @@ static int authenticate_and_decrypt_nss (
 	no_params.len = 0;
 
 	tmp1_outlen = tmp2_outlen = 0;
-	if (iov_len > 1) {
-		inbuf = copy_from_iovec(iov, iov_len, &datalen);
-		if (!inbuf) {
-			log_printf(instance->log_level_security, "malloc error copying buffer from iovec");
-			return -1;
-		}
-	}
-	else {
-		inbuf = (unsigned char *)iov[0].iov_base;
-		datalen = iov[0].iov_len;
-	}
+	inbuf = (unsigned char *)buf;
+	datalen = *buf_len;
 	data = inbuf + sizeof (struct crypto_security_header) - 16;
 	datalen = datalen - sizeof (struct crypto_security_header) + 16;
 
@@ -414,7 +352,6 @@ static int authenticate_and_decrypt_nss (
 		err[PR_GetErrorTextLength()] = 0;
 		log_printf(instance->log_level_security, "PK11_CreateContext failed (check digest) err %d: %s",
 			PR_GetError(), err);
-		free (inbuf);
 		return -1;
 	}
 
@@ -470,10 +407,10 @@ static int authenticate_and_decrypt_nss (
 	PK11_DestroyContext(enc_context, PR_TRUE);
 	result_len = tmp1_outlen + tmp2_outlen + sizeof (struct crypto_security_header);
 
-	/* Copy it back to the buffer */
-	copy_to_iovec(iov, iov_len, outbuf, result_len);
-	if (iov_len > 1)
-		free(inbuf);
+	memset(buf, 0, *buf_len);
+	memcpy(buf, outdata, result_len);
+
+	*buf_len = result_len;
 
 	if (rv1 != SECSuccess || rv2 != SECSuccess)
 		return -1;
@@ -481,36 +418,36 @@ static int authenticate_and_decrypt_nss (
 	return 0;
 }
 
+size_t crypto_sec_header_size(int crypt_hash_type)
+{
+	/*
+	 * TODO: add switch / size mapping
+	 */
+	return sizeof(struct crypto_security_header);
+}
+
 int crypto_encrypt_and_sign (
 	struct crypto_instance *instance,
-	unsigned char *buf,
-	size_t *buf_len,
-	const struct iovec *iovec,
-	unsigned int iov_len)
+	const unsigned char *buf_in,
+	const size_t buf_in_len,
+	unsigned char *buf_out,
+	size_t *buf_out_len)
 {
-
-	return (encrypt_and_sign_nss(instance, buf, buf_len, iovec, iov_len));
+	return (encrypt_and_sign_nss(instance, buf_in, buf_in_len, buf_out, buf_out_len));
 }
 
 int crypto_authenticate_and_decrypt (struct crypto_instance *instance,
-	struct iovec *iov,
-	unsigned int iov_len)
+	unsigned char *buf,
+	int *buf_len)
 {
-	unsigned char type;
-	unsigned char *endbuf = (unsigned char *)iov[iov_len-1].iov_base;
-
-	/*
-	 * Get the encryption type and remove it from the buffer
-	 */
-	type = endbuf[iov[iov_len-1].iov_len-1];
-	iov[iov_len-1].iov_len -= 1;
-
-	return (authenticate_and_decrypt_nss(instance, iov, iov_len));
+	return (authenticate_and_decrypt_nss(instance, buf, buf_len));
 }
 
 struct crypto_instance *crypto_init(
 	const unsigned char *private_key,
 	unsigned int private_key_len,
+	int crypto_crypt_type,
+	int crypto_hash_type,
 	void (*log_printf_func) (
 		int level,
 		int subsys,
@@ -533,6 +470,8 @@ struct crypto_instance *crypto_init(
 
 	memcpy(instance->private_key, private_key, private_key_len);
 	instance->private_key_len = private_key_len;
+	instance->crypto_crypt_type = crypto_crypt_type;
+	instance->crypto_hash_type = crypto_hash_type;
 	instance->log_printf_func = log_printf_func;
 	instance->log_level_security = log_level_security;
 	instance->log_level_notice = log_level_notice;

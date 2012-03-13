@@ -38,29 +38,28 @@
 
 #include <sys/types.h>
 
-#define CRYPTO_HMAC_HASH_SIZE 20
-struct crypto_security_header {
-	unsigned char hash_digest[CRYPTO_HMAC_HASH_SIZE]; /* The hash *MUST* be first in the data structure */
-	unsigned char salt[16]; /* random number */
-	char msg[0];
-} __attribute__((packed));
-
 struct crypto_instance;
 
-extern int crypto_authenticate_and_decrypt (struct crypto_instance *instance,
-	struct iovec *iov,
-	unsigned int iov_len);
+extern size_t crypto_sec_header_size(
+	int crypt_hash_type);
+
+extern int crypto_authenticate_and_decrypt (
+	struct crypto_instance *instance,
+	unsigned char *buf,
+	int *buf_len);
 
 extern int crypto_encrypt_and_sign (
 	struct crypto_instance *instance,
-	unsigned char *buf,
-	size_t *buf_len,
-	const struct iovec *iovec,
-	unsigned int iov_len);
+	const unsigned char *buf_in,
+	const size_t buf_in_len,
+	unsigned char *buf_out, 
+	size_t *buf_out_len);
 
 extern struct crypto_instance *crypto_init(
 	const unsigned char *private_key,
 	unsigned int private_key_len,
+	int crypto_crypt_type,
+	int crypto_hash_type,
 	void (*log_printf_func) (
 		int level,
 		int subsys,

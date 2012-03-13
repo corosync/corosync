@@ -241,43 +241,30 @@ static inline void ucast_sendmsg (
 {
 	struct msghdr msg_ucast;
 	int res = 0;
-	size_t buf_len;
-	unsigned char sheader[sizeof (struct crypto_security_header)];
-	unsigned char encrypt_data[FRAME_SIZE_MAX];
-	struct iovec iovec_encrypt[2];
-	const struct iovec *iovec_sendmsg;
+	size_t buf_out_len;
+	unsigned char buf_out[FRAME_SIZE_MAX];
 	struct sockaddr_storage sockaddr;
 	struct iovec iovec;
-	unsigned int iov_len;
 	int addrlen;
 
 	if (instance->totem_config->secauth == 1) {
-		iovec_encrypt[0].iov_base = (void *)sheader;
-		iovec_encrypt[0].iov_len = sizeof (struct crypto_security_header);
-		iovec_encrypt[1].iov_base = (void *)msg;
-		iovec_encrypt[1].iov_len = msg_len;
-
 		/*
 		 * Encrypt and digest the message
 		 */
-		crypto_encrypt_and_sign (
+		if (crypto_encrypt_and_sign (
 			instance->crypto_inst,
-			encrypt_data,
-			&buf_len,
-			iovec_encrypt,
-			2);
+			(const unsigned char *)msg,
+			msg_len,
+			buf_out,
+			&buf_out_len) != 0) {
+			log_printf(LOGSYS_LEVEL_CRIT, "unable to crypt? now what?");
+		}
 
-		encrypt_data[buf_len++] = instance->totem_config->crypto_type;
-
-		iovec_encrypt[0].iov_base = (void *)encrypt_data;
-		iovec_encrypt[0].iov_len = buf_len;
-		iovec_sendmsg = &iovec_encrypt[0];
-		iov_len = 1;
+		iovec.iov_base = (void *)buf_out;
+		iovec.iov_len = buf_out_len;
 	} else {
 		iovec.iov_base = (void *)msg;
 		iovec.iov_len = msg_len;
-		iovec_sendmsg = &iovec;
-		iov_len = 1;
 	}
 
 	/*
@@ -287,8 +274,8 @@ static inline void ucast_sendmsg (
 		instance->totem_interface->ip_port, &sockaddr, &addrlen);
 	msg_ucast.msg_name = &sockaddr;
 	msg_ucast.msg_namelen = addrlen;
-	msg_ucast.msg_iov = (void *) iovec_sendmsg;
-	msg_ucast.msg_iovlen = iov_len;
+	msg_ucast.msg_iov = (void *)&iovec;
+	msg_ucast.msg_iovlen = 1;
 #if !defined(COROSYNC_SOLARIS)
 	msg_ucast.msg_control = 0;
 	msg_ucast.msg_controllen = 0;
@@ -317,46 +304,32 @@ static inline void mcast_sendmsg (
 {
 	struct msghdr msg_mcast;
 	int res = 0;
-	size_t buf_len;
-	unsigned char sheader[sizeof (struct crypto_security_header)];
-	unsigned char encrypt_data[FRAME_SIZE_MAX];
-	struct iovec iovec_encrypt[2];
+	size_t buf_out_len;
+	unsigned char buf_out[FRAME_SIZE_MAX];
 	struct iovec iovec;
-	const struct iovec *iovec_sendmsg;
 	struct sockaddr_storage sockaddr;
-	unsigned int iov_len;
 	int addrlen;
         struct list_head *list;
 	struct totemudpu_member *member;
 
 	if (instance->totem_config->secauth == 1) {
-		iovec_encrypt[0].iov_base = (void *)sheader;
-		iovec_encrypt[0].iov_len = sizeof (struct crypto_security_header);
-		iovec_encrypt[1].iov_base = (void *)msg;
-		iovec_encrypt[1].iov_len = msg_len;
-
 		/*
 		 * Encrypt and digest the message
 		 */
-		crypto_encrypt_and_sign (
+		if(crypto_encrypt_and_sign (
 			instance->crypto_inst,
-			encrypt_data,
-			&buf_len,
-			iovec_encrypt,
-			2);
+			(const unsigned char *)msg,
+			msg_len,
+			buf_out,
+			&buf_out_len) != 0) {
+			log_printf(LOGSYS_LEVEL_CRIT, "Unable to crypt? now what?");
+		}
 
-		encrypt_data[buf_len++] = instance->totem_config->crypto_type;
-
-		iovec_encrypt[0].iov_base = (void *)encrypt_data;
-		iovec_encrypt[0].iov_len = buf_len;
-		iovec_sendmsg = &iovec_encrypt[0];
-		iov_len = 1;
+		iovec.iov_base = (void *)buf_out;
+		iovec.iov_len = buf_out_len;
 	} else {
 		iovec.iov_base = (void *)msg;
 		iovec.iov_len = msg_len;
-
-		iovec_sendmsg = &iovec;
-		iov_len = 1;
 	}
 
 	/*
@@ -374,8 +347,8 @@ static inline void mcast_sendmsg (
 			instance->totem_interface->ip_port, &sockaddr, &addrlen);
 		msg_mcast.msg_name = &sockaddr;
 		msg_mcast.msg_namelen = addrlen;
-		msg_mcast.msg_iov = (void *) iovec_sendmsg;
-		msg_mcast.msg_iovlen = iov_len;
+		msg_mcast.msg_iov = (void *)&iovec;
+		msg_mcast.msg_iovlen = 1;
 	#if !defined(COROSYNC_SOLARIS)
 		msg_mcast.msg_control = 0;
 		msg_mcast.msg_controllen = 0;
@@ -423,8 +396,6 @@ static int net_deliver_fn (
 	struct sockaddr_storage system_from;
 	int bytes_received;
 	int res = 0;
-	unsigned char *msg_offset;
-	unsigned int size_delv;
 
 	iovec = &instance->totemudpu_iov_recv;
 
@@ -451,20 +422,12 @@ static int net_deliver_fn (
 		instance->stats_recv += bytes_received;
 	}
 
-	if ((instance->totem_config->secauth == 1) &&
-		(bytes_received < sizeof (struct crypto_security_header))) {
-
-		log_printf (instance->totemudpu_log_level_security, "Received message is too short...  ignoring %d.", bytes_received);
-		return (0);
-	}
-
-	iovec->iov_len = bytes_received;
 	if (instance->totem_config->secauth == 1) {
 		/*
 		 * Authenticate and if authenticated, decrypt datagram
 		 */
 
-		res = crypto_authenticate_and_decrypt (instance->crypto_inst, iovec, 1);
+		res = crypto_authenticate_and_decrypt (instance->crypto_inst, iovec->iov_base, &bytes_received);
 		if (res == -1) {
 			log_printf (instance->totemudpu_log_level_security, "Received message has invalid digest... ignoring.");
 			log_printf (instance->totemudpu_log_level_security,
@@ -472,21 +435,16 @@ static int net_deliver_fn (
 			iovec->iov_len = FRAME_SIZE_MAX;
 			return 0;
 		}
-		msg_offset = (unsigned char *)iovec->iov_base +
-			sizeof (struct crypto_security_header);
-		size_delv = bytes_received - sizeof (struct crypto_security_header);
-	} else {
-		msg_offset = (void *)iovec->iov_base;
-		size_delv = bytes_received;
 	}
+	iovec->iov_len = bytes_received;
 
 	/*
 	 * Handle incoming message
 	 */
 	instance->totemudpu_deliver_fn (
 		instance->context,
-		msg_offset,
-		size_delv);
+		iovec->iov_base,
+		iovec->iov_len);
 
 	iovec->iov_len = FRAME_SIZE_MAX;
 	return (0);
@@ -786,6 +744,8 @@ int totemudpu_initialize (
 	*/
 	instance->crypto_inst = crypto_init (totem_config->private_key,
 		totem_config->private_key_len,
+		totem_config->crypto_crypt_type,
+		totem_config->crypto_hash_type,
 		instance->totemudpu_log_printf,
 		instance->totemudpu_log_level_security,
 		instance->totemudpu_log_level_notice,
@@ -925,7 +885,7 @@ extern void totemudpu_net_mtu_adjust (void *udpu_context, struct totem_config *t
 {
 #define UDPIP_HEADER_SIZE (20 + 8) /* 20 bytes for ip 8 bytes for udp */
 	if (totem_config->secauth == 1) {
-		totem_config->net_mtu -= sizeof (struct crypto_security_header) +
+		totem_config->net_mtu -= crypto_sec_header_size(totem_config->crypto_hash_type) +
 			UDPIP_HEADER_SIZE;
 	} else {
 		totem_config->net_mtu -= UDPIP_HEADER_SIZE;

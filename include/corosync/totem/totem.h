@@ -172,7 +172,8 @@ struct totem_config {
 	enum { TOTEM_CRYPTO_AES256 = 0} crypto_type;
 
 	int crypto_crypt_type;
-	int crypto_sign_type;
+
+	int crypto_hash_type;
 
 	totem_transport_t transport_number;
 

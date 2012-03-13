@@ -130,7 +130,7 @@ static void totem_get_crypto_type(struct totem_config *totem_config)
 	  * Encryption type can be set on-the-fly using CFG
 	  */
 	totem_config->crypto_crypt_type = CKM_AES_CBC_PAD;
-	totem_config->crypto_sign_type = CKM_SHA256_RSA_PKCS;
+	totem_config->crypto_hash_type = CKM_SHA256_RSA_PKCS;
 
 	if (icmap_get_string("totem.crypto_type", &str) == CS_OK) {
 		if (strcmp(str, "nss") == 0 || strcmp(str, "aes256") == 0) {
