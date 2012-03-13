@@ -85,22 +85,4 @@ When a message is received (decrypt_and_authenticate):
 - If they do match then the message is decrypted using the private key.
 - The message is processed.
 
-
-Compatibility
--------------
-
-The encryption type can be changed at runtime with a single command:
-
-# corosync-cfgtool -c0
-
-(0 for nss)
-
-This will tell all cluster nodes to start using libnss encryption. Note that
-it is possible to upgrade node individially by setting the encryption type in
-corosync.conf. The last byte of the packet indicates the decryption algorithm
-that the receiver should use.
-
-Once all nodes are using libnss encryption, the option should be set in
-in corosync.conf so that it takes effect at the next system reboot.
-
 Comments welcome mailto:discuss@corosync.org

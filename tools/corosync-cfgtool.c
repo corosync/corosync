@@ -189,25 +189,6 @@ static void showaddrs_do(int nodeid)
 }
 
 
-static void crypto_do(unsigned int type)
-{
-	cs_error_t result;
-	corosync_cfg_handle_t handle;
-
-	printf ("Setting crypto to mode %d\n", type);
-	result = corosync_cfg_initialize (&handle, NULL);
-	if (result != CS_OK) {
-		printf ("Could not initialize corosync configuration API error %d\n", result);
-		exit (1);
-	}
-	result = corosync_cfg_crypto_set (handle, type);
-	if (result != CS_OK) {
-		printf ("Could not set crypto mode (error = %d)\n", result);
-	}
-	(void)corosync_cfg_finalize (handle);
-
-}
-
 static void killnode_do(unsigned int nodeid)
 {
 	cs_error_t result;
@@ -236,13 +217,12 @@ static void usage_do (void)
 	printf ("\t-r\tReset redundant ring state cluster wide after a fault to\n");
 	printf ("\t\tre-enable redundant ring operation.\n");
 	printf ("\t-a\tDisplay the IP address(es) of a node\n");
-	printf ("\t-c\tSet the cryptography mode of cluster communications\n");
 	printf ("\t-k\tKill a node identified by node id.\n");
 	printf ("\t-H\tShutdown corosync cleanly on this node.\n");
 }
 
 int main (int argc, char *argv[]) {
-	const char *options = "i:srk:a:c:hH";
+	const char *options = "i:srk:a:hH";
 	int opt;
 	unsigned int nodeid;
 	char interface_name[128] = "";
@@ -271,9 +251,6 @@ int main (int argc, char *argv[]) {
 			break;
 		case 'a':
 			showaddrs_do( atoi(optarg) );
-			break;
-		case 'c':
-			crypto_do( atoi(optarg) );
 			break;
 		case 'h':
 			usage_do();
