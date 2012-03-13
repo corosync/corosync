@@ -1024,7 +1024,7 @@ int totemudp_initialize (
 	*/
 	instance->crypto_inst = crypto_init (totem_config->private_key,
 			totem_config->private_key_len,
-			totem_config->crypto_crypt_type,
+			totem_config->crypto_cipher_type,
 			totem_config->crypto_hash_type,
 			instance->totemudp_log_printf,
 			instance->totemudp_log_level_security,

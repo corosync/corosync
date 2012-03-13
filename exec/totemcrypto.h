@@ -38,10 +38,20 @@
 
 #include <sys/types.h>
 
+enum crypto_crypt_t {
+	CRYPTO_CIPHER_TYPE_NONE = 0,
+	CRYPTO_CIPHER_TYPE_AES256 = 1
+};
+
+enum crypto_hash_t {
+	CRYPTO_HASH_TYPE_NONE = 0,
+	CRYPTO_HASH_TYPE_SHA1 = 1
+};
+
 struct crypto_instance;
 
 extern size_t crypto_sec_header_size(
-	int crypt_hash_type);
+	const char *crypto_hash_type);
 
 extern int crypto_authenticate_and_decrypt (
 	struct crypto_instance *instance,
@@ -58,8 +68,8 @@ extern int crypto_encrypt_and_sign (
 extern struct crypto_instance *crypto_init(
 	const unsigned char *private_key,
 	unsigned int private_key_len,
-	int crypto_crypt_type,
-	int crypto_hash_type,
+	const char *crypto_cipher_type,
+	const char *crypto_hash_type,
 	void (*log_printf_func) (
 		int level,
 		int subsys,

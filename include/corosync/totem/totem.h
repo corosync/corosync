@@ -169,11 +169,9 @@ struct totem_config {
 
 	unsigned int broadcast_use;
 
-	enum { TOTEM_CRYPTO_AES256 = 0} crypto_type;
+	char *crypto_cipher_type;
 
-	int crypto_crypt_type;
-
-	int crypto_hash_type;
+	char *crypto_hash_type;
 
 	totem_transport_t transport_number;
 

@@ -121,23 +121,54 @@ static void totem_volatile_config_read (struct totem_config *totem_config)
 }
 
 
-static void totem_get_crypto_type(struct totem_config *totem_config)
+static void totem_get_crypto(struct totem_config *totem_config)
 {
 	char *str;
+	const char *tmp_cipher;
+	const char *tmp_hash;
 
-	 /*
-	  * We must set these even if the key does not exist.
-	  * Encryption type can be set on-the-fly using CFG
-	  */
-	totem_config->crypto_crypt_type = CKM_AES_CBC_PAD;
-	totem_config->crypto_hash_type = CKM_SHA256_RSA_PKCS;
+	tmp_hash = "sha1";
+	tmp_cipher = "aes256";
+	totem_config->secauth = 1;
 
-	if (icmap_get_string("totem.crypto_type", &str) == CS_OK) {
-		if (strcmp(str, "nss") == 0 || strcmp(str, "aes256") == 0) {
-			totem_config->crypto_type = TOTEM_CRYPTO_AES256;
+	if (icmap_get_string("totem.secauth", &str) == CS_OK) {
+		if (strcmp (str, "off") == 0) {
+			totem_config->secauth = 0;
+			tmp_hash = "none";
+			tmp_cipher = "none";
 		}
 		free(str);
 	}
+
+	if (icmap_get_string("totem.crypto_cipher", &str) == CS_OK) {
+		if (strcmp(str, "none") == 0) {
+			tmp_cipher = "none";
+		}
+		if (strcmp(str, "aes256") == 0) {
+			tmp_cipher = "aes256";
+		}
+		free(str);
+	}
+
+	if (icmap_get_string("totem.crypto_hash", &str) == CS_OK) {
+		if (strcmp(str, "none") == 0) {
+			tmp_hash = "none";
+		}
+		if (strcmp(str, "sha1") == 0) {
+			tmp_hash = "sha1";
+		}
+		free(str);
+	}
+
+	if (strcmp(tmp_hash, "none") == 0 && strcmp(tmp_cipher, "none") == 0) {
+		totem_config->secauth = 0;
+	}
+
+	free(totem_config->crypto_cipher_type);
+	free(totem_config->crypto_hash_type);
+
+	totem_config->crypto_cipher_type = strdup(tmp_cipher);
+	totem_config->crypto_hash_type = strdup(tmp_hash);
 }
 
 static uint16_t generate_cluster_id (const char *cluster_name)
@@ -410,25 +441,11 @@ extern int totem_config_read (
 	memset (totem_config->interfaces, 0,
 		sizeof (struct totem_interface) * INTERFACE_MAX);
 
-	totem_config->secauth = 1;
-
 	strcpy (totem_config->rrp_mode, "none");
 
 	icmap_get_uint32("totem.version", (uint32_t *)&totem_config->version);
 
-	if (icmap_get_string("totem.secauth", &str) == CS_OK) {
-		if (strcmp (str, "on") == 0) {
-			totem_config->secauth = 1;
-		}
-		if (strcmp (str, "off") == 0) {
-			totem_config->secauth = 0;
-		}
-		free(str);
-	}
-
-	if (totem_config->secauth == 1) {
-		totem_get_crypto_type(totem_config);
-	}
+	totem_get_crypto(totem_config);
 
 	if (icmap_get_string("totem.rrp_mode", &str) == CS_OK) {
 		strcpy (totem_config->rrp_mode, str);
@@ -923,9 +940,6 @@ int totem_config_validate (
 
 	if (totem_config->threads > SEND_THREADS_MAX) {
 		totem_config->threads = SEND_THREADS_MAX;
-	}
-	if (totem_config->secauth == 0) {
-		totem_config->threads = 0;
 	}
 	if (totem_config->net_mtu > FRAME_SIZE_MAX) {
 		error_reason = "This net_mtu parameter is greater then the maximum frame size";

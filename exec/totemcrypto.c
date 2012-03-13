@@ -91,9 +91,9 @@ struct crypto_instance {
 
 	unsigned int private_key_len;
 
-	int crypto_crypt_type;
+	enum crypto_crypt_t crypto_cipher_type;
 
-	int crypto_hash_type;
+	enum crypto_hash_t crypto_hash_type;
 
 	void (*log_printf_func) (
 		int level,
@@ -108,6 +108,21 @@ struct crypto_instance {
 	int log_level_notice;
 	int log_level_error;
 	int log_subsys_id;
+};
+
+CK_MECHANISM_TYPE cipher_to_nss[] = {
+        0,		 		/* CRYPTO_CIPHER_TYPE_NONE */
+        CKM_AES_CBC_PAD  		/* CRYPTO_CIPHER_TYPE_AES256 */
+};
+
+size_t cipher_key_len[] = {
+	 0,				/* CRYPTO_CIPHER_TYPE_NONE */
+	32,				/* CRYPTO_CIPHER_TYPE_AES256 */
+};
+
+CK_MECHANISM_TYPE hash_to_nss[] = {
+        0,		 		/* CRYPTO_HASH_TYPE_NONE */
+        CKM_SHA_1_HMAC  		/* CRYPTO_HASH_TYPE_SHA1 */
 };
 
 #define log_printf(level, format, args...)				\
@@ -148,7 +163,7 @@ static void init_nss_crypto(struct crypto_instance *instance)
 	/*
 	 * TODO: use instance info!
 	 */
-	aes_slot = PK11_GetBestSlot(CKM_AES_CBC_PAD, NULL);
+	aes_slot = PK11_GetBestSlot(cipher_to_nss[instance->crypto_cipher_type], NULL);
 	if (aes_slot == NULL)
 	{
 		log_printf(instance->log_level_security, "Unable to find security slot (err %d)",
@@ -156,7 +171,7 @@ static void init_nss_crypto(struct crypto_instance *instance)
 		goto out;
 	}
 
-	sha1_slot = PK11_GetBestSlot(CKM_SHA_1_HMAC, NULL);
+	sha1_slot = PK11_GetBestSlot(hash_to_nss[instance->crypto_hash_type], NULL);
 	if (sha1_slot == NULL)
 	{
 		log_printf(instance->log_level_security, "Unable to find security slot (err %d)",
@@ -168,10 +183,10 @@ static void init_nss_crypto(struct crypto_instance *instance)
 	 */
 	key_item.type = siBuffer;
 	key_item.data = instance->private_key;
-	key_item.len = 32; /* Use 256 bits */
+	key_item.len = cipher_key_len[instance->crypto_cipher_type];
 
 	instance->nss_sym_key = PK11_ImportSymKey(aes_slot,
-		CKM_AES_CBC_PAD,
+		cipher_to_nss[instance->crypto_cipher_type],
 		PK11_OriginUnwrap, CKA_ENCRYPT|CKA_DECRYPT,
 		&key_item, NULL);
 	if (instance->nss_sym_key == NULL)
@@ -182,7 +197,7 @@ static void init_nss_crypto(struct crypto_instance *instance)
 	}
 
 	instance->nss_sym_key_sign = PK11_ImportSymKey(sha1_slot,
-		CKM_SHA_1_HMAC,
+		hash_to_nss[instance->crypto_hash_type],
 		PK11_OriginUnwrap, CKA_SIGN,
 		&key_item, NULL);
 	if (instance->nss_sym_key_sign == NULL) {
@@ -237,7 +252,7 @@ static int encrypt_and_sign_nss (
 	iv_item.len = sizeof (nss_iv_data);
 
 	nss_sec_param = PK11_ParamFromIV (
-		CKM_AES_CBC_PAD,
+		cipher_to_nss[instance->crypto_cipher_type],
 		&iv_item);
 	if (nss_sec_param == NULL) {
 		log_printf(instance->log_level_security,
@@ -250,7 +265,7 @@ static int encrypt_and_sign_nss (
 	 * Create cipher context for encryption
 	 */
 	enc_context = PK11_CreateContextBySymKey (
-		CKM_AES_CBC_PAD,
+		cipher_to_nss[instance->crypto_cipher_type],
 		CKA_ENCRYPT,
 		instance->nss_sym_key,
 		nss_sec_param);
@@ -260,7 +275,7 @@ static int encrypt_and_sign_nss (
 		err[PR_GetErrorTextLength()] = 0;
 		log_printf(instance->log_level_security,
 			"PK11_CreateContext failed (encrypt) crypt_type=%d (err %d): %s",
-			CKM_AES_CBC_PAD,
+			(int)cipher_to_nss[instance->crypto_cipher_type],
 			PR_GetError(), err);
 		return -1;
 	}
@@ -277,7 +292,7 @@ static int encrypt_and_sign_nss (
 		goto out;
 
 	/* Now do the digest */
-	enc_context = PK11_CreateContextBySymKey(CKM_SHA_1_HMAC,
+	enc_context = PK11_CreateContextBySymKey(hash_to_nss[instance->crypto_hash_type],
 		CKA_SIGN, instance->nss_sym_key_sign, &no_params);
 	if (!enc_context) {
 		char err[1024];
@@ -298,7 +313,6 @@ static int encrypt_and_sign_nss (
 
 	if (rv1 != SECSuccess || rv2 != SECSuccess)
 		goto out;
-
 
 	*buf_out_len = *buf_out_len + sizeof(struct crypto_security_header);
 	SECITEM_FreeItem(nss_sec_param, PR_TRUE);
@@ -343,7 +357,7 @@ static int authenticate_and_decrypt_nss (
 
 	/* Check the digest */
 	enc_context = PK11_CreateContextBySymKey (
-		CKM_SHA_1_HMAC, CKA_SIGN,
+		hash_to_nss[instance->crypto_hash_type], CKA_SIGN,
 		instance->nss_sym_key_sign,
 		&no_params);
 	if (!enc_context) {
@@ -384,7 +398,7 @@ static int authenticate_and_decrypt_nss (
 	ivdata.len = sizeof(header->salt);
 
 	enc_context = PK11_CreateContextBySymKey(
-		CKM_AES_CBC_PAD,
+		cipher_to_nss[instance->crypto_cipher_type],
 		CKA_DECRYPT,
 		instance->nss_sym_key, &ivdata);
 	if (!enc_context) {
@@ -418,7 +432,7 @@ static int authenticate_and_decrypt_nss (
 	return 0;
 }
 
-size_t crypto_sec_header_size(int crypt_hash_type)
+size_t crypto_sec_header_size(const char *crypto_hash_type)
 {
 	/*
 	 * TODO: add switch / size mapping
@@ -446,8 +460,8 @@ int crypto_authenticate_and_decrypt (struct crypto_instance *instance,
 struct crypto_instance *crypto_init(
 	const unsigned char *private_key,
 	unsigned int private_key_len,
-	int crypto_crypt_type,
-	int crypto_hash_type,
+	const char *crypto_cipher_type,
+	const char *crypto_hash_type,
 	void (*log_printf_func) (
 		int level,
 		int subsys,
@@ -470,8 +484,19 @@ struct crypto_instance *crypto_init(
 
 	memcpy(instance->private_key, private_key, private_key_len);
 	instance->private_key_len = private_key_len;
-	instance->crypto_crypt_type = crypto_crypt_type;
-	instance->crypto_hash_type = crypto_hash_type;
+
+	if (strcmp(crypto_cipher_type, "none") == 0) {
+		instance->crypto_cipher_type = CRYPTO_CIPHER_TYPE_NONE;
+	} else if (strcmp(crypto_cipher_type, "aes256") == 0) {
+		instance->crypto_cipher_type = CRYPTO_CIPHER_TYPE_AES256;
+	}
+
+	if (strcmp(crypto_hash_type, "none") == 0) {
+		instance->crypto_hash_type = CRYPTO_HASH_TYPE_NONE;
+	} else if (strcmp(crypto_hash_type, "sha1") == 0) {
+		instance->crypto_hash_type = CRYPTO_HASH_TYPE_SHA1;
+	}
+
 	instance->log_printf_func = log_printf_func;
 	instance->log_level_security = log_level_security;
 	instance->log_level_notice = log_level_notice;
