@@ -67,7 +67,7 @@
 #define LOGSYS_UTILS_ONLY 1
 #include <corosync/logsys.h>
 #include <corosync/totem/totem.h>
-#include "crypto.h"
+#include "totemcrypto.h"
 
 #include "util.h"
 

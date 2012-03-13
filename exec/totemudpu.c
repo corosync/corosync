@@ -68,7 +68,7 @@
 #include "totemudpu.h"
 
 #include "util.h"
-#include "crypto.h"
+#include "totemcrypto.h"
 
 #include <nss.h>
 #include <pk11pub.h>

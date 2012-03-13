@@ -37,7 +37,7 @@ INCLUDES		= -I$(top_builddir)/include -I$(top_srcdir)/include $(nss_CFLAGS) $(rd
 
 TOTEM_SRC		= totemip.c totemnet.c totemudp.c \
 			  totemudpu.c totemrrp.c totemsrp.c totemmrp.c \
-			  totempg.c cs_queue.h crypto.c
+			  totempg.c cs_queue.h totemcrypto.c
 if BUILD_RDMA
 TOTEM_SRC		+= totemiba.c
 endif
@@ -66,7 +66,7 @@ noinst_HEADERS		= apidef.h mainconfig.h main.h \
 			  quorum.h service.h timer.h totemconfig.h \
 			  totemmrp.h totemnet.h totemudp.h totemiba.h totemrrp.h \
 			  totemudpu.h totemsrp.h util.h vsf.h schedwrk.h \
-			  sync.h fsm.h votequorum.h vsf_ykd.h crypto.h
+			  sync.h fsm.h votequorum.h vsf_ykd.h totemcrypto.h
 
 if BUILD_DARWIN
 libtotem_pg.so.$(SONAME): $(TOTEM_OBJS)

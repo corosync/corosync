@@ -33,8 +33,8 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef CRYPTO_H_DEFINED
-#define CRYPTO_H_DEFINED
+#ifndef TOTEMCRYPTO_H_DEFINED
+#define TOTEMCRYPTO_H_DEFINED
 
 #include <sys/types.h>
 
@@ -73,4 +73,4 @@ extern struct crypto_instance *crypto_init(
 	int log_level_error,
 	int log_subsys_id);
 
-#endif /* CRYPTO_H_DEFINED */
+#endif /* TOTEMCRYPTO_H_DEFINED */
