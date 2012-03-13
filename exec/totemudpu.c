@@ -68,6 +68,7 @@
 #include "totemudpu.h"
 
 #include "util.h"
+#include "crypto.h"
 
 #include <nss.h>
 #include <pk11pub.h>
@@ -86,13 +87,6 @@
 #define BIND_STATE_REGULAR	1
 #define BIND_STATE_LOOPBACK	2
 
-#define HMAC_HASH_SIZE 20
-struct security_header {
-	unsigned char hash_digest[HMAC_HASH_SIZE]; /* The hash *MUST* be first in the data structure */
-	unsigned char salt[16]; /* random number */
-	char msg[0];
-} __attribute__((packed));
-
 struct totemudpu_member {
 	struct list_head list;
 	struct totem_ip_address member;
@@ -100,12 +94,7 @@ struct totemudpu_member {
 };
 
 struct totemudpu_instance {
-	PK11SymKey   *nss_sym_key;
-	PK11SymKey   *nss_sym_key_sign;
-
-	unsigned char totemudpu_private_key[1024];
-
-	unsigned int totemudpu_private_key_len;
+	struct crypto_instance *crypto_inst;
 
 	qb_loop_t *totemudpu_poll_handle;
 
@@ -235,435 +224,12 @@ do {												\
 		fmt ": %s (%d)", ##args, _error_ptr, err_num);				\
 	} while(0)
 
-static unsigned char *copy_from_iovec(
-	const struct iovec *iov,
-	unsigned int iov_len,
-	size_t *buf_size)
-{
-	int i;
-	size_t bufptr;
-	size_t buflen = 0;
-	unsigned char *newbuf;
-
-	for (i=0; i<iov_len; i++)
-		buflen += iov[i].iov_len;
-
-	newbuf = malloc(buflen);
-	if (!newbuf)
-		return NULL;
-
-	bufptr=0;
-	for (i=0; i<iov_len; i++) {
-		memcpy(newbuf+bufptr, iov[i].iov_base, iov[i].iov_len);
-		bufptr += iov[i].iov_len;
-	}
-	*buf_size = buflen;
-	return newbuf;
-}
-
-static void copy_to_iovec(
-	struct iovec *iov,
-	unsigned int iov_len,
-	const unsigned char *buf,
-	size_t buf_size)
-{
-	int i;
-	size_t copylen;
-	size_t bufptr = 0;
-
-	bufptr=0;
-	for (i=0; i<iov_len; i++) {
-		copylen = iov[i].iov_len;
-		if (bufptr + copylen > buf_size) {
-			copylen = buf_size - bufptr;
-		}
-		memcpy(iov[i].iov_base, buf+bufptr, copylen);
-		bufptr += copylen;
-		if (iov[i].iov_len != copylen) {
-			iov[i].iov_len = copylen;
-			return;
-		}
-	}
-}
-
-static void init_nss_crypto(
-	struct totemudpu_instance *instance)
-{
-	PK11SlotInfo*      aes_slot = NULL;
-	PK11SlotInfo*      sha1_slot = NULL;
-	SECItem            key_item;
-	SECStatus          rv;
-
-	log_printf(instance->totemudpu_log_level_notice,
-		"Initializing transmit/receive security: NSS AES256CBC/SHA1HMAC (mode %u).", TOTEM_CRYPTO_AES256);
-	rv = NSS_NoDB_Init(".");
-	if (rv != SECSuccess)
-	{
-		log_printf(instance->totemudpu_log_level_security, "NSS initialization failed (err %d)",
-			PR_GetError());
-		goto out;
-	}
-
-	aes_slot = PK11_GetBestSlot(instance->totem_config->crypto_crypt_type, NULL);
-	if (aes_slot == NULL)
-	{
-		log_printf(instance->totemudpu_log_level_security, "Unable to find security slot (err %d)",
-			PR_GetError());
-		goto out;
-	}
-
-	sha1_slot = PK11_GetBestSlot(CKM_SHA_1_HMAC, NULL);
-	if (sha1_slot == NULL)
-	{
-		log_printf(instance->totemudpu_log_level_security, "Unable to find security slot (err %d)",
-			PR_GetError());
-		goto out;
-	}
-	/*
-	 * Make the private key into a SymKey that we can use
-	 */
-	key_item.type = siBuffer;
-	key_item.data = instance->totem_config->private_key;
-	key_item.len = 32; /* Use 256 bits */
-
-	instance->nss_sym_key = PK11_ImportSymKey(aes_slot,
-		instance->totem_config->crypto_crypt_type,
-		PK11_OriginUnwrap, CKA_ENCRYPT|CKA_DECRYPT,
-		&key_item, NULL);
-	if (instance->nss_sym_key == NULL)
-	{
-		log_printf(instance->totemudpu_log_level_security, "Failure to import key into NSS (err %d)",
-			PR_GetError());
-		goto out;
-	}
-
-	instance->nss_sym_key_sign = PK11_ImportSymKey(sha1_slot,
-		CKM_SHA_1_HMAC,
-		PK11_OriginUnwrap, CKA_SIGN,
-		&key_item, NULL);
-	if (instance->nss_sym_key_sign == NULL) {
-		log_printf(instance->totemudpu_log_level_security, "Failure to import key into NSS (err %d)",
-			PR_GetError());
-		goto out;
-	}
-out:
-	return;
-}
-
-static int encrypt_and_sign_nss (
-	struct totemudpu_instance *instance,
-	unsigned char *buf,
-	size_t *buf_len,
-	const struct iovec *iovec,
-	unsigned int iov_len)
-{
-	PK11Context*       enc_context = NULL;
-	SECStatus          rv1, rv2;
-	int                tmp1_outlen;
-	unsigned int       tmp2_outlen;
-	unsigned char      *inbuf;
-	unsigned char      *data;
-	unsigned char      *outdata;
-	size_t             datalen;
-	SECItem            no_params;
-	SECItem            iv_item;
-	struct security_header *header;
-	SECItem      *nss_sec_param;
-	unsigned char nss_iv_data[16];
-	SECStatus          rv;
-
-	no_params.type = siBuffer;
-	no_params.data = 0;
-	no_params.len = 0;
-
-	tmp1_outlen = tmp2_outlen = 0;
-	inbuf = copy_from_iovec(iovec, iov_len, &datalen);
-	if (!inbuf) {
-		log_printf(instance->totemudpu_log_level_security, "malloc error copying buffer from iovec");
-		return -1;
-	}
-
-	data = inbuf + sizeof (struct security_header);
-	datalen -= sizeof (struct security_header);
-
-	outdata = buf + sizeof (struct security_header);
-	header = (struct security_header *)buf;
-
-	rv = PK11_GenerateRandom (
-		nss_iv_data,
-		sizeof (nss_iv_data));
-	if (rv != SECSuccess) {
-		log_printf(instance->totemudpu_log_level_security,
-			"Failure to generate a random number %d",
-			PR_GetError());
-	}
-
-	memcpy(header->salt, nss_iv_data, sizeof(nss_iv_data));
-	iv_item.type = siBuffer;
-	iv_item.data = nss_iv_data;
-	iv_item.len = sizeof (nss_iv_data);
-
-	nss_sec_param = PK11_ParamFromIV (
-		instance->totem_config->crypto_crypt_type,
-		&iv_item);
-	if (nss_sec_param == NULL) {
-		log_printf(instance->totemudpu_log_level_security,
-			"Failure to set up PKCS11 param (err %d)",
-			PR_GetError());
-		free (inbuf);
-		return (-1);
-	}
-
-	/*
-	 * Create cipher context for encryption
-	 */
-	enc_context = PK11_CreateContextBySymKey (
-		instance->totem_config->crypto_crypt_type,
-		CKA_ENCRYPT,
-		instance->nss_sym_key,
-		nss_sec_param);
-	if (!enc_context) {
-		char err[1024];
-		PR_GetErrorText(err);
-		err[PR_GetErrorTextLength()] = 0;
-		log_printf(instance->totemudpu_log_level_security,
-			"PK11_CreateContext failed (encrypt) crypt_type=%d (err %d): %s",
-			instance->totem_config->crypto_crypt_type,
-			PR_GetError(), err);
-		free(inbuf);
-		return -1;
-	}
-	rv1 = PK11_CipherOp(enc_context, outdata,
-			    &tmp1_outlen, FRAME_SIZE_MAX - sizeof(struct security_header),
-			    data, datalen);
-	rv2 = PK11_DigestFinal(enc_context, outdata + tmp1_outlen, &tmp2_outlen,
-			       FRAME_SIZE_MAX - tmp1_outlen);
-	PK11_DestroyContext(enc_context, PR_TRUE);
-
-	*buf_len = tmp1_outlen + tmp2_outlen;
-	free(inbuf);
-//	memcpy(&outdata[*buf_len], nss_iv_data, sizeof(nss_iv_data));
-
-	if (rv1 != SECSuccess || rv2 != SECSuccess)
-		goto out;
-
-	/* Now do the digest */
-	enc_context = PK11_CreateContextBySymKey(CKM_SHA_1_HMAC,
-		CKA_SIGN, instance->nss_sym_key_sign, &no_params);
-	if (!enc_context) {
-		char err[1024];
-		PR_GetErrorText(err);
-		err[PR_GetErrorTextLength()] = 0;
-		log_printf(instance->totemudpu_log_level_security, "encrypt: PK11_CreateContext failed (digest) err %d: %s",
-			PR_GetError(), err);
-		return -1;
-	}
-
-
-	PK11_DigestBegin(enc_context);
-
-	rv1 = PK11_DigestOp(enc_context, outdata - 16, *buf_len + 16);
-	rv2 = PK11_DigestFinal(enc_context, header->hash_digest, &tmp2_outlen, sizeof(header->hash_digest));
-
-	PK11_DestroyContext(enc_context, PR_TRUE);
-
-	if (rv1 != SECSuccess || rv2 != SECSuccess)
-		goto out;
-
-
-	*buf_len = *buf_len + sizeof(struct security_header);
-	SECITEM_FreeItem(nss_sec_param, PR_TRUE);
-	return 0;
-
-out:
-	return -1;
-}
-
-
-static int authenticate_and_decrypt_nss (
-	struct totemudpu_instance *instance,
-	struct iovec *iov,
-	unsigned int iov_len)
-{
-	PK11Context*  enc_context = NULL;
-	SECStatus     rv1, rv2;
-	int           tmp1_outlen;
-	unsigned int  tmp2_outlen;
-	unsigned char outbuf[FRAME_SIZE_MAX];
-	unsigned char digest[HMAC_HASH_SIZE];
-	unsigned char *outdata;
-	int           result_len;
-	unsigned char *data;
-	unsigned char *inbuf;
-	size_t        datalen;
-	struct security_header *header = (struct security_header *)iov[0].iov_base;
-	SECItem no_params;
-	SECItem ivdata;
-
-	no_params.type = siBuffer;
-	no_params.data = 0;
-	no_params.len = 0;
-
-	tmp1_outlen = tmp2_outlen = 0;
-	if (iov_len > 1) {
-		inbuf = copy_from_iovec(iov, iov_len, &datalen);
-		if (!inbuf) {
-			log_printf(instance->totemudpu_log_level_security, "malloc error copying buffer from iovec");
-			return -1;
-		}
-	}
-	else {
-		inbuf = (unsigned char *)iov[0].iov_base;
-		datalen = iov[0].iov_len;
-	}
-	data = inbuf + sizeof (struct security_header) - 16;
-	datalen = datalen - sizeof (struct security_header) + 16;
-
-	outdata = outbuf + sizeof (struct security_header);
-
-	/* Check the digest */
-	enc_context = PK11_CreateContextBySymKey (
-		CKM_SHA_1_HMAC, CKA_SIGN,
-		instance->nss_sym_key_sign,
-		&no_params);
-	if (!enc_context) {
-		char err[1024];
-		PR_GetErrorText(err);
-		err[PR_GetErrorTextLength()] = 0;
-		log_printf(instance->totemudpu_log_level_security, "PK11_CreateContext failed (check digest) err %d: %s",
-			PR_GetError(), err);
-		free (inbuf);
-		return -1;
-	}
-
-	PK11_DigestBegin(enc_context);
-
-	rv1 = PK11_DigestOp(enc_context, data, datalen);
-	rv2 = PK11_DigestFinal(enc_context, digest, &tmp2_outlen, sizeof(digest));
-
-	PK11_DestroyContext(enc_context, PR_TRUE);
-
-	if (rv1 != SECSuccess || rv2 != SECSuccess) {
-		log_printf(instance->totemudpu_log_level_security, "Digest check failed");
-		return -1;
-	}
-
-	if (memcmp(digest, header->hash_digest, tmp2_outlen) != 0) {
-		log_printf(instance->totemudpu_log_level_error, "Digest does not match");
-		return -1;
-	}
-
-	/*
-	 * Get rid of salt
-	 */
-	data += 16;
-	datalen -= 16;
-
-	/* Create cipher context for decryption */
-	ivdata.type = siBuffer;
-	ivdata.data = header->salt;
-	ivdata.len = sizeof(header->salt);
-
-	enc_context = PK11_CreateContextBySymKey(
-		instance->totem_config->crypto_crypt_type,
-		CKA_DECRYPT,
-		instance->nss_sym_key, &ivdata);
-	if (!enc_context) {
-		log_printf(instance->totemudpu_log_level_security,
-			"PK11_CreateContext (decrypt) failed (err %d)",
-			PR_GetError());
-		return -1;
-	}
-
-	rv1 = PK11_CipherOp(enc_context, outdata, &tmp1_outlen,
-			    sizeof(outbuf) - sizeof (struct security_header),
-			    data, datalen);
-	if (rv1 != SECSuccess) {
-		log_printf(instance->totemudpu_log_level_security,
-			"PK11_CipherOp (decrypt) failed (err %d)",
-			PR_GetError());
-	}
-	rv2 = PK11_DigestFinal(enc_context, outdata + tmp1_outlen, &tmp2_outlen,
-			       sizeof(outbuf) - tmp1_outlen);
-	PK11_DestroyContext(enc_context, PR_TRUE);
-	result_len = tmp1_outlen + tmp2_outlen + sizeof (struct security_header);
-
-	/* Copy it back to the buffer */
-	copy_to_iovec(iov, iov_len, outbuf, result_len);
-	if (iov_len > 1)
-		free(inbuf);
-
-	if (rv1 != SECSuccess || rv2 != SECSuccess)
-		return -1;
-
-	return 0;
-}
-
-static int encrypt_and_sign_worker (
-	struct totemudpu_instance *instance,
-	unsigned char *buf,
-	size_t *buf_len,
-	const struct iovec *iovec,
-	unsigned int iov_len)
-{
-
-	if (instance->totem_config->crypto_type == TOTEM_CRYPTO_AES256) {
-		return encrypt_and_sign_nss(instance, buf, buf_len, iovec, iov_len);
-	}
-
-	return -1;
-}
-
-static int authenticate_and_decrypt (
-	struct totemudpu_instance *instance,
-	struct iovec *iov,
-	unsigned int iov_len)
-{
-	unsigned char type;
-	unsigned char *endbuf = (unsigned char *)iov[iov_len-1].iov_base;
-	int res = -1;
-
-	/*
-	 * Get the encryption type and remove it from the buffer
-	 */
-	type = endbuf[iov[iov_len-1].iov_len-1];
-	iov[iov_len-1].iov_len -= 1;
-
-	if (type == TOTEM_CRYPTO_AES256) {
-		    res = authenticate_and_decrypt_nss(instance, iov, iov_len);
-	}
-
-	return res;
-}
-
-static void init_crypto(
-	struct totemudpu_instance *instance)
-{
-
-	init_nss_crypto(instance);
-}
-
 int totemudpu_crypto_set (
 	void *udpu_context,
 	 unsigned int type)
 {
-	struct totemudpu_instance *instance = (struct totemudpu_instance *)udpu_context;
-	int res = 0;
 
-	/*
-	 * Validate crypto algorithm
-	 */
-	switch (type) {
-		case TOTEM_CRYPTO_AES256:
-			log_printf(instance->totemudpu_log_level_security,
-				"Transmit security set to: NSS AES256CBC/SHA1HMAC (mode %u)", type);
-			break;
-		default:
-			res = -1;
-			break;
-	}
-
-	return (res);
+	return (0);
 }
 
 
@@ -676,7 +242,7 @@ static inline void ucast_sendmsg (
 	struct msghdr msg_ucast;
 	int res = 0;
 	size_t buf_len;
-	unsigned char sheader[sizeof (struct security_header)];
+	unsigned char sheader[sizeof (struct crypto_security_header)];
 	unsigned char encrypt_data[FRAME_SIZE_MAX];
 	struct iovec iovec_encrypt[2];
 	const struct iovec *iovec_sendmsg;
@@ -687,15 +253,15 @@ static inline void ucast_sendmsg (
 
 	if (instance->totem_config->secauth == 1) {
 		iovec_encrypt[0].iov_base = (void *)sheader;
-		iovec_encrypt[0].iov_len = sizeof (struct security_header);
+		iovec_encrypt[0].iov_len = sizeof (struct crypto_security_header);
 		iovec_encrypt[1].iov_base = (void *)msg;
 		iovec_encrypt[1].iov_len = msg_len;
 
 		/*
 		 * Encrypt and digest the message
 		 */
-		encrypt_and_sign_worker (
-			instance,
+		crypto_encrypt_and_sign (
+			instance->crypto_inst,
 			encrypt_data,
 			&buf_len,
 			iovec_encrypt,
@@ -752,7 +318,7 @@ static inline void mcast_sendmsg (
 	struct msghdr msg_mcast;
 	int res = 0;
 	size_t buf_len;
-	unsigned char sheader[sizeof (struct security_header)];
+	unsigned char sheader[sizeof (struct crypto_security_header)];
 	unsigned char encrypt_data[FRAME_SIZE_MAX];
 	struct iovec iovec_encrypt[2];
 	struct iovec iovec;
@@ -765,15 +331,15 @@ static inline void mcast_sendmsg (
 
 	if (instance->totem_config->secauth == 1) {
 		iovec_encrypt[0].iov_base = (void *)sheader;
-		iovec_encrypt[0].iov_len = sizeof (struct security_header);
+		iovec_encrypt[0].iov_len = sizeof (struct crypto_security_header);
 		iovec_encrypt[1].iov_base = (void *)msg;
 		iovec_encrypt[1].iov_len = msg_len;
 
 		/*
 		 * Encrypt and digest the message
 		 */
-		encrypt_and_sign_worker (
-			instance,
+		crypto_encrypt_and_sign (
+			instance->crypto_inst,
 			encrypt_data,
 			&buf_len,
 			iovec_encrypt,
@@ -886,7 +452,7 @@ static int net_deliver_fn (
 	}
 
 	if ((instance->totem_config->secauth == 1) &&
-		(bytes_received < sizeof (struct security_header))) {
+		(bytes_received < sizeof (struct crypto_security_header))) {
 
 		log_printf (instance->totemudpu_log_level_security, "Received message is too short...  ignoring %d.", bytes_received);
 		return (0);
@@ -898,7 +464,7 @@ static int net_deliver_fn (
 		 * Authenticate and if authenticated, decrypt datagram
 		 */
 
-		res = authenticate_and_decrypt (instance, iovec, 1);
+		res = crypto_authenticate_and_decrypt (instance->crypto_inst, iovec, 1);
 		if (res == -1) {
 			log_printf (instance->totemudpu_log_level_security, "Received message has invalid digest... ignoring.");
 			log_printf (instance->totemudpu_log_level_security,
@@ -907,8 +473,8 @@ static int net_deliver_fn (
 			return 0;
 		}
 		msg_offset = (unsigned char *)iovec->iov_base +
-			sizeof (struct security_header);
-		size_delv = bytes_received - sizeof (struct security_header);
+			sizeof (struct crypto_security_header);
+		size_delv = bytes_received - sizeof (struct crypto_security_header);
 	} else {
 		msg_offset = (void *)iovec->iov_base;
 		size_delv = bytes_received;
@@ -1218,12 +784,13 @@ int totemudpu_initialize (
 	/*
 	* Initialize random number generator for later use to generate salt
 	*/
-	memcpy (instance->totemudpu_private_key, totem_config->private_key,
-		totem_config->private_key_len);
-
-	instance->totemudpu_private_key_len = totem_config->private_key_len;
-
-	init_crypto(instance);
+	instance->crypto_inst = crypto_init (totem_config->private_key,
+		totem_config->private_key_len,
+		instance->totemudpu_log_printf,
+		instance->totemudpu_log_level_security,
+		instance->totemudpu_log_level_notice,
+		instance->totemudpu_log_level_error,
+		instance->totemudpu_subsys_id);
 
 	/*
 	 * Initialize local variables for totemudpu
@@ -1358,7 +925,7 @@ extern void totemudpu_net_mtu_adjust (void *udpu_context, struct totem_config *t
 {
 #define UDPIP_HEADER_SIZE (20 + 8) /* 20 bytes for ip 8 bytes for udp */
 	if (totem_config->secauth == 1) {
-		totem_config->net_mtu -= sizeof (struct security_header) +
+		totem_config->net_mtu -= sizeof (struct crypto_security_header) +
 			UDPIP_HEADER_SIZE;
 	} else {
 		totem_config->net_mtu -= UDPIP_HEADER_SIZE;
