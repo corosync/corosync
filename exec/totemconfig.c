@@ -129,11 +129,9 @@ static void totem_get_crypto(struct totem_config *totem_config)
 
 	tmp_hash = "sha1";
 	tmp_cipher = "aes256";
-	totem_config->secauth = 1;
 
 	if (icmap_get_string("totem.secauth", &str) == CS_OK) {
 		if (strcmp (str, "off") == 0) {
-			totem_config->secauth = 0;
 			tmp_hash = "none";
 			tmp_cipher = "none";
 		}
@@ -158,10 +156,6 @@ static void totem_get_crypto(struct totem_config *totem_config)
 			tmp_hash = "sha1";
 		}
 		free(str);
-	}
-
-	if (strcmp(tmp_hash, "none") == 0 && strcmp(tmp_cipher, "none") == 0) {
-		totem_config->secauth = 0;
 	}
 
 	free(totem_config->crypto_cipher_type);
@@ -1019,7 +1013,8 @@ int totem_config_keyread (
 	memset (totem_config->private_key, 0, 128);
 	totem_config->private_key_len = 128;
 
-	if (totem_config->secauth == 0) {
+	if (strcmp(totem_config->crypto_cipher_type, "none") == 0 &&
+	    strcmp(totem_config->crypto_hash_type, "none") == 0) {
 		return (0);
 	}
 

@@ -51,6 +51,7 @@ enum crypto_hash_t {
 struct crypto_instance;
 
 extern size_t crypto_sec_header_size(
+	const char *crypto_cipher_type,
 	const char *crypto_hash_type);
 
 extern int crypto_authenticate_and_decrypt (

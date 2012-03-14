@@ -151,8 +151,6 @@ struct totem_config {
 
 	struct totem_logging_configuration totem_logging_configuration;
 
-	unsigned int secauth;
-
 	unsigned int net_mtu;
 
 	unsigned int threads;

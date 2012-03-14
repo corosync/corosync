@@ -247,25 +247,23 @@ static inline void ucast_sendmsg (
 	struct iovec iovec;
 	int addrlen;
 
-	if (instance->totem_config->secauth == 1) {
+	/*
+	 * Encrypt and digest the message
+	 */
+	if (crypto_encrypt_and_sign (
+		instance->crypto_inst,
+		(const unsigned char *)msg,
+		msg_len,
+		buf_out,
+		&buf_out_len) != 0) {
 		/*
-		 * Encrypt and digest the message
+		 * TODO: how to handle error here
 		 */
-		if (crypto_encrypt_and_sign (
-			instance->crypto_inst,
-			(const unsigned char *)msg,
-			msg_len,
-			buf_out,
-			&buf_out_len) != 0) {
-			log_printf(LOGSYS_LEVEL_CRIT, "unable to crypt? now what?");
-		}
-
-		iovec.iov_base = (void *)buf_out;
-		iovec.iov_len = buf_out_len;
-	} else {
-		iovec.iov_base = (void *)msg;
-		iovec.iov_len = msg_len;
+		log_printf(LOGSYS_LEVEL_CRIT, "unable to crypt? now what?");
 	}
+
+	iovec.iov_base = (void *)buf_out;
+	iovec.iov_len = buf_out_len;
 
 	/*
 	 * Build unicast message
@@ -312,25 +310,23 @@ static inline void mcast_sendmsg (
         struct list_head *list;
 	struct totemudpu_member *member;
 
-	if (instance->totem_config->secauth == 1) {
+	/*
+	 * Encrypt and digest the message
+	 */
+	if (crypto_encrypt_and_sign (
+		instance->crypto_inst,
+		(const unsigned char *)msg,
+		msg_len,
+		buf_out,
+		&buf_out_len) != 0) {
 		/*
-		 * Encrypt and digest the message
+		 * TODO: how to handle error here
 		 */
-		if(crypto_encrypt_and_sign (
-			instance->crypto_inst,
-			(const unsigned char *)msg,
-			msg_len,
-			buf_out,
-			&buf_out_len) != 0) {
-			log_printf(LOGSYS_LEVEL_CRIT, "Unable to crypt? now what?");
-		}
-
-		iovec.iov_base = (void *)buf_out;
-		iovec.iov_len = buf_out_len;
-	} else {
-		iovec.iov_base = (void *)msg;
-		iovec.iov_len = msg_len;
+		log_printf(LOGSYS_LEVEL_CRIT, "Unable to crypt? now what?");
 	}
+
+	iovec.iov_base = (void *)buf_out;
+	iovec.iov_len = buf_out_len;
 
 	/*
 	 * Build multicast message
@@ -422,19 +418,17 @@ static int net_deliver_fn (
 		instance->stats_recv += bytes_received;
 	}
 
-	if (instance->totem_config->secauth == 1) {
-		/*
-		 * Authenticate and if authenticated, decrypt datagram
-		 */
+	/*
+	 * Authenticate and if authenticated, decrypt datagram
+	 */
 
-		res = crypto_authenticate_and_decrypt (instance->crypto_inst, iovec->iov_base, &bytes_received);
-		if (res == -1) {
-			log_printf (instance->totemudpu_log_level_security, "Received message has invalid digest... ignoring.");
-			log_printf (instance->totemudpu_log_level_security,
-				"Invalid packet data");
-			iovec->iov_len = FRAME_SIZE_MAX;
-			return 0;
-		}
+	res = crypto_authenticate_and_decrypt (instance->crypto_inst, iovec->iov_base, &bytes_received);
+	if (res == -1) {
+		log_printf (instance->totemudpu_log_level_security, "Received message has invalid digest... ignoring.");
+		log_printf (instance->totemudpu_log_level_security,
+			"Invalid packet data");
+		iovec->iov_len = FRAME_SIZE_MAX;
+		return 0;
 	}
 	iovec->iov_len = bytes_received;
 
@@ -751,7 +745,9 @@ int totemudpu_initialize (
 		instance->totemudpu_log_level_notice,
 		instance->totemudpu_log_level_error,
 		instance->totemudpu_subsys_id);
-
+	if (instance->crypto_inst == NULL) {
+		return (-1);
+	}
 	/*
 	 * Initialize local variables for totemudpu
 	 */
@@ -884,12 +880,9 @@ extern int totemudpu_iface_check (void *udpu_context)
 extern void totemudpu_net_mtu_adjust (void *udpu_context, struct totem_config *totem_config)
 {
 #define UDPIP_HEADER_SIZE (20 + 8) /* 20 bytes for ip 8 bytes for udp */
-	if (totem_config->secauth == 1) {
-		totem_config->net_mtu -= crypto_sec_header_size(totem_config->crypto_hash_type) +
-			UDPIP_HEADER_SIZE;
-	} else {
-		totem_config->net_mtu -= UDPIP_HEADER_SIZE;
-	}
+	totem_config->net_mtu -= crypto_sec_header_size(totem_config->crypto_cipher_type,
+							totem_config->crypto_hash_type) +
+				 UDPIP_HEADER_SIZE;
 }
 
 const char *totemudpu_iface_print (void *udpu_context)  {
