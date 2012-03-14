@@ -85,6 +85,11 @@ struct crypto_security_header {
 	char msg[0];
 } __attribute__((packed));
 
+struct crypto_config_header {
+	uint8_t	crypto_cipher_type;
+	uint8_t	crypto_hash_type;
+} __attribute__((packed));
+
 struct crypto_instance {
 	PK11SymKey   *nss_sym_key;
 	PK11SymKey   *nss_sym_key_sign;
@@ -516,10 +521,37 @@ out:
 	return -1;
 }
 
+static int string_to_crypto_cipher_type(const char* crypto_cipher_type)
+{
+	if (strcmp(crypto_cipher_type, "none") == 0) {
+		return CRYPTO_CIPHER_TYPE_NONE;
+	} else if (strcmp(crypto_cipher_type, "aes256") == 0) {
+		return CRYPTO_CIPHER_TYPE_AES256;
+	}
+	return CRYPTO_CIPHER_TYPE_NONE;
+}
+
+static int string_to_crypto_hash_type(const char* crypto_hash_type)
+{
+	if (strcmp(crypto_hash_type, "none") == 0) {
+		return CRYPTO_HASH_TYPE_NONE;
+	} else if (strcmp(crypto_hash_type, "sha1") == 0) {
+		return CRYPTO_HASH_TYPE_SHA1;
+	}
+
+	return CRYPTO_HASH_TYPE_NONE;
+}
+
 size_t crypto_sec_header_size(
 	const char *crypto_cipher_type,
 	const char *crypto_hash_type)
 {
+	int crypto_cipher = string_to_crypto_cipher_type(crypto_cipher_type);
+	int crypto_hash = string_to_crypto_hash_type(crypto_hash_type);
+
+	if ((!crypto_cipher) && (!crypto_hash)) {
+		return 2;
+	}
 	/*
 	 * TODO: crypto_cipher_type determines the crypto BLOCK size
 	 *       crypto_hash_type determines the HASH_SIZE
@@ -534,6 +566,8 @@ int crypto_encrypt_and_sign (
 	unsigned char *buf_out,
 	size_t *buf_out_len)
 {
+	int err = 0;
+
 	/*
 	 * if crypto is totally disabled, let's skip complex parsing
 	 */
@@ -541,25 +575,70 @@ int crypto_encrypt_and_sign (
 	    (!hash_to_nss[instance->crypto_hash_type])) {
 		memcpy(buf_out, buf_in, buf_in_len);
 		*buf_out_len = buf_in_len;
-		return 0;
+		err = 0;
+	} else {
+		err = encrypt_and_sign_nss(instance,
+					   buf_in, buf_in_len,
+					   buf_out, buf_out_len);
 	}
 
-	return (encrypt_and_sign_nss(instance, buf_in, buf_in_len, buf_out, buf_out_len));
+	/*
+	 * Add 2 bytes to the tail of each packet to
+	 * propagate crypto info for this packet.
+	 */
+	if (!err) {
+		size_t out_len = *buf_out_len;
+		struct crypto_config_header *cch;
+
+		cch = (struct crypto_config_header *)&buf_out[*buf_out_len];
+
+		cch->crypto_cipher_type = instance->crypto_cipher_type;
+		cch->crypto_hash_type = instance->crypto_hash_type;
+
+		*buf_out_len = *buf_out_len + 2;
+	}
+
+	return err;
 }
 
 int crypto_authenticate_and_decrypt (struct crypto_instance *instance,
 	unsigned char *buf,
 	int *buf_len)
 {
+	int err = 0;
+	struct crypto_config_header *cch;
+
+	cch = (struct crypto_config_header *)&buf[*buf_len - 2];
+
+	/*
+	 * decode crypto config of incoming packets
+	 */
+
+	if (cch->crypto_cipher_type != instance->crypto_cipher_type) {
+		log_printf(instance->log_level_security,
+			   "Incoming packet has different crypto type. Rejecting");
+		return -1;
+	}
+
+	if (cch->crypto_hash_type != instance->crypto_hash_type) {
+		log_printf(instance->log_level_security,
+			   "Incoming packet has different hash type. Rejecting");
+		return -1;
+	}
+
 	/*
 	 * if crypto is totally disabled, there is no work for us
 	 */
 	if ((!cipher_to_nss[instance->crypto_cipher_type]) &&
 	    (!hash_to_nss[instance->crypto_hash_type])) {
-		return 0;
+		*buf_len = *buf_len - 2;
+		err = 0;
+	} else {
+		*buf_len = *buf_len - 2;
+		err = authenticate_and_decrypt_nss(instance, buf, buf_len);
 	}
 
-	return (authenticate_and_decrypt_nss(instance, buf, buf_len));
+	return err;
 }
 
 struct crypto_instance *crypto_init(
@@ -590,17 +669,8 @@ struct crypto_instance *crypto_init(
 	memcpy(instance->private_key, private_key, private_key_len);
 	instance->private_key_len = private_key_len;
 
-	if (strcmp(crypto_cipher_type, "none") == 0) {
-		instance->crypto_cipher_type = CRYPTO_CIPHER_TYPE_NONE;
-	} else if (strcmp(crypto_cipher_type, "aes256") == 0) {
-		instance->crypto_cipher_type = CRYPTO_CIPHER_TYPE_AES256;
-	}
-
-	if (strcmp(crypto_hash_type, "none") == 0) {
-		instance->crypto_hash_type = CRYPTO_HASH_TYPE_NONE;
-	} else if (strcmp(crypto_hash_type, "sha1") == 0) {
-		instance->crypto_hash_type = CRYPTO_HASH_TYPE_SHA1;
-	}
+	instance->crypto_cipher_type = string_to_crypto_cipher_type(crypto_cipher_type);
+	instance->crypto_hash_type = string_to_crypto_hash_type(crypto_hash_type);
 
 	instance->log_printf_func = log_printf_func;
 	instance->log_level_security = log_level_security;
