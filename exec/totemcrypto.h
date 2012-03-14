@@ -38,16 +38,6 @@
 
 #include <sys/types.h>
 
-enum crypto_crypt_t {
-	CRYPTO_CIPHER_TYPE_NONE = 0,
-	CRYPTO_CIPHER_TYPE_AES256 = 1
-};
-
-enum crypto_hash_t {
-	CRYPTO_HASH_TYPE_NONE = 0,
-	CRYPTO_HASH_TYPE_SHA1 = 1
-};
-
 struct crypto_instance;
 
 extern size_t crypto_sec_header_size(
