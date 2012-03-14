@@ -256,10 +256,8 @@ static inline void ucast_sendmsg (
 		msg_len,
 		buf_out,
 		&buf_out_len) != 0) {
-		/*
-		 * TODO: how to handle error here
-		 */
-		log_printf(LOGSYS_LEVEL_CRIT, "unable to crypt? now what?");
+		log_printf(LOGSYS_LEVEL_CRIT, "Error encrypting/signing packet (non-critical)");
+		return;
 	}
 
 	iovec.iov_base = (void *)buf_out;
@@ -319,10 +317,8 @@ static inline void mcast_sendmsg (
 		msg_len,
 		buf_out,
 		&buf_out_len) != 0) {
-		/*
-		 * TODO: how to handle error here
-		 */
-		log_printf(LOGSYS_LEVEL_CRIT, "Unable to crypt? now what?");
+		log_printf(LOGSYS_LEVEL_CRIT, "Error encrypting/signing packet (non-critical)");
+		return;
 	}
 
 	iovec.iov_base = (void *)buf_out;
