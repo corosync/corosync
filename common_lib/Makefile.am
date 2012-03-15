@@ -48,6 +48,11 @@ SHARED_LIBS_SO		= $(lib_LIBRARIES:%.a=%.so)
 
 libcorosync_common_a_SOURCES	= error_conversion.c
 
+SOMAJOR=4
+SOMINOR=0
+SOMICRO=0
+SONAME=${SOMAJOR}.${SOMINOR}.${SOMICRO}
+
 if BUILD_DARWIN
 
 lib%.so: lib%.a $(LIBQB_LIBS)
