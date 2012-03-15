@@ -108,7 +108,8 @@ extern int totemudpu_token_target_set (
 
 extern int totemudpu_crypto_set (
 	void *udpu_context,
-	unsigned int type);
+	const char *cipher_type,
+	const char *hash_type);
 
 extern int totemudpu_recv_mcast_empty (
 	void *udpu_context);

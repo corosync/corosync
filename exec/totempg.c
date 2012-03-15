@@ -1384,12 +1384,12 @@ void* totempg_get_stats (void)
 }
 
 int totempg_crypto_set (
-	unsigned int type)
+	const char *cipher_type,
+	const char *hash_type)
 {
 	int res;
 
-	res = totemmrp_crypto_set (
-		type);
+	res = totemmrp_crypto_set (cipher_type, hash_type);
 
 	return (res);
 }

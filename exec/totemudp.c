@@ -238,7 +238,8 @@ do {												\
 
 int totemudp_crypto_set (
 	void *udp_context,
-	 unsigned int type)
+	const char *cipher_type,
+	const char *hash_type)
 {
 
 	return (0);

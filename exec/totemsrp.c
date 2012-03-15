@@ -1032,12 +1032,13 @@ finish:
 
 int totemsrp_crypto_set (
 	void *srp_context,
-	unsigned int type)
+	const char *cipher_type,
+	const char *hash_type)
 {
 	struct totemsrp_instance *instance = (struct totemsrp_instance *)srp_context;
 	int res;
 
-	res = totemrrp_crypto_set(instance->totemrrp_context, type);
+	res = totemrrp_crypto_set(instance->totemrrp_context, cipher_type, hash_type);
 
 	return (res);
 }

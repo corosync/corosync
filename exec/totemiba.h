@@ -108,7 +108,8 @@ extern int totemiba_token_target_set (
 
 extern int totemiba_crypto_set (
 	void *iba_context,
-	unsigned int type);
+	const char *cipher_type,
+	const char *hash_type);
 
 extern int totemiba_recv_mcast_empty (
 	void *iba_context);

@@ -116,7 +116,8 @@ struct transport {
 
 	int (*crypto_set) (
 		void *transport_context,
-		unsigned int type);
+		const char *cipher_type,
+		const char *hash_type);
 
 	int (*recv_mcast_empty) (
 		void *transport_context);
@@ -244,12 +245,14 @@ static void totemnet_instance_initialize (
 
 int totemnet_crypto_set (
 	void *net_context,
-	 unsigned int type)
+	const char *cipher_type,
+	const char *hash_type)
 {
 	struct totemnet_instance *instance = (struct totemnet_instance *)net_context;
 	int res = 0;
 
-	res = instance->transport->crypto_set (instance->transport_context, type);
+	res = instance->transport->crypto_set (instance->transport_context,
+	    cipher_type, hash_type);
 
 	return res;
 }

@@ -114,7 +114,8 @@ extern int totemsrp_my_family_get (
 
 extern int totemsrp_crypto_set (
 	void *srp_context,
-	unsigned int type);
+	const char *cipher_type,
+	const char *hash_type);
 
 extern int totemsrp_ring_reenable (
 	void *srp_context);

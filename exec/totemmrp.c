@@ -212,10 +212,12 @@ int totemmrp_ifaces_get (
 }
 
 int totemmrp_crypto_set (
-	unsigned int type)
+	const char *cipher_type,
+	const char *hash_type)
 {
 	return totemsrp_crypto_set (totemsrp_context,
-				    type);
+				    cipher_type,
+				    hash_type);
 }
 
 unsigned int totemmrp_my_nodeid_get (void)

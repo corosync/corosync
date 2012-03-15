@@ -141,15 +141,6 @@ struct res_lib_cfg_local_get {
 	mar_uint32_t local_nodeid __attribute__((aligned(8)));
 };
 
-struct req_lib_cfg_crypto_set {
-	struct qb_ipc_response_header header __attribute__((aligned(8)));
-	mar_uint32_t type __attribute__((aligned(8)));
-};
-
-struct res_lib_cfg_crypto_set {
-	struct qb_ipc_response_header header __attribute__((aligned(8)));
-};
-
 typedef enum {
 	AIS_AMF_ADMINISTRATIVETARGET_SERVICEUNIT = 0,
 	AIS_AMF_ADMINISTRATIVETARGET_SERVICEGROUP = 1,

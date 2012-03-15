@@ -2080,12 +2080,13 @@ int totemrrp_ifaces_get (
 
 int totemrrp_crypto_set (
 	void *rrp_context,
-	unsigned int type)
+	const char *cipher_type,
+	const char *hash_type)
 {
 	struct totemrrp_instance *instance = (struct totemrrp_instance *)rrp_context;
 	int res;
 
-	res = totemnet_crypto_set(instance->net_handles[0], type);
+	res = totemnet_crypto_set(instance->net_handles[0], cipher_type, hash_type);
 
 	return (res);
 }

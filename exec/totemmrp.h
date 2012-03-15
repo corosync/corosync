@@ -113,7 +113,7 @@ extern unsigned int totemmrp_my_nodeid_get (void);
 
 extern int totemmrp_my_family_get (void);
 
-extern int totemmrp_crypto_set (unsigned int);
+extern int totemmrp_crypto_set (const char *cipher_type, const char *hash_type);
 
 extern int totemmrp_ring_reenable (void);
 

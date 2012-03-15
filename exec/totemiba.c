@@ -1253,7 +1253,8 @@ static void timer_function_netif_check_timeout (
 
 int totemiba_crypto_set (
 	void *iba_context,
-	unsigned int type)
+	const char *cipher_type,
+	const char *hash_type)
 {
 	struct totemiba_instance *instance = (struct totemiba_instance *)iba_context;
 	int res = 0;

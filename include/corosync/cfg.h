@@ -157,11 +157,6 @@ corosync_cfg_local_get (
 	corosync_cfg_handle_t handle,
 	unsigned int *local_nodeid);
 
-cs_error_t
-corosync_cfg_crypto_set (
-	corosync_cfg_handle_t handle,
-	unsigned int type);
-
 #ifdef __cplusplus
 }
 #endif

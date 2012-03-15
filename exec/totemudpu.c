@@ -226,7 +226,8 @@ do {												\
 
 int totemudpu_crypto_set (
 	void *udpu_context,
-	 unsigned int type)
+	const char *cipher_type,
+	const char *hash_type)
 {
 
 	return (0);

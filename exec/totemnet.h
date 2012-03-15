@@ -118,7 +118,8 @@ extern int totemnet_token_target_set (
 
 extern int totemnet_crypto_set (
 	void *net_context,
-	unsigned int type);
+	const char *cipher_type,
+	const char *hash_type);
 
 extern int totemnet_recv_mcast_empty (
 	void *net_context);

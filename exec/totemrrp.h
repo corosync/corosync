@@ -130,7 +130,8 @@ extern int totemrrp_ifaces_get (
 
 extern int totemrrp_crypto_set (
 	void *rrp_context,
-	unsigned int type);
+	const char *cipher_type,
+	const char *hash_type);
 
 extern int totemrrp_ring_reenable (
 	void *rrp_context,
