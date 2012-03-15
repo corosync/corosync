@@ -76,6 +76,7 @@
 #include <pkcs11.h>
 #include <prerror.h>
 #include <blapit.h>
+#include <hasht.h>
 
 #define SALT_SIZE 16
 
@@ -105,23 +106,39 @@ size_t cypher_block_len[] = {
 };
 
 enum crypto_hash_t {
-	CRYPTO_HASH_TYPE_NONE = 0,
-	CRYPTO_HASH_TYPE_SHA1 = 1
+	CRYPTO_HASH_TYPE_NONE	= 0,
+	CRYPTO_HASH_TYPE_SHA1	= 1,
+	CRYPTO_HASH_TYPE_SHA224	= 2,
+	CRYPTO_HASH_TYPE_SHA256	= 3,
+	CRYPTO_HASH_TYPE_SHA384	= 4,
+	CRYPTO_HASH_TYPE_SHA512	= 5
 };
 
 CK_MECHANISM_TYPE hash_to_nss[] = {
 	 0,				/* CRYPTO_HASH_TYPE_NONE */
-	CKM_SHA_1_HMAC			/* CRYPTO_HASH_TYPE_SHA1 */
+	CKM_SHA_1_HMAC,			/* CRYPTO_HASH_TYPE_SHA1 */
+	CKM_SHA224_HMAC,		/* CRYPTO_HASH_TYPE_SHA224 */
+	CKM_SHA256_HMAC,		/* CRYPTO_HASH_TYPE_SHA256 */
+	CKM_SHA384_HMAC,		/* CRYPTO_HASH_TYPE_SHA384 */
+	CKM_SHA512_HMAC			/* CRYPTO_HASH_TYPE_SHA512 */
 };
 
 size_t hash_len[] = {
 	 0,				/* CRYPTO_HASH_TYPE_NONE */
-	SHA1_LENGTH			/* CRYPTO_HASH_TYPE_SHA1 */
+	SHA1_LENGTH,			/* CRYPTO_HASH_TYPE_SHA1 */
+	SHA224_LENGTH,			/* CRYPTO_HASH_TYPE_SHA224 */
+	SHA256_LENGTH,			/* CRYPTO_HASH_TYPE_SHA256 */
+	SHA384_LENGTH,			/* CRYPTO_HASH_TYPE_SHA384 */
+	SHA512_LENGTH			/* CRYPTO_HASH_TYPE_SHA512 */
 };
 
 size_t hash_block_len[] = {
 	 0,				/* CRYPTO_HASH_TYPE_NONE */
-	SHA1_BLOCK_LENGTH		/* CRYPTO_HASH_TYPE_SHA1 */
+	SHA1_BLOCK_LENGTH,		/* CRYPTO_HASH_TYPE_SHA1 */
+	SHA224_BLOCK_LENGTH,		/* CRYPTO_HASH_TYPE_SHA224 */
+	SHA256_BLOCK_LENGTH,		/* CRYPTO_HASH_TYPE_SHA256 */
+	SHA384_BLOCK_LENGTH,		/* CRYPTO_HASH_TYPE_SHA384 */
+	SHA512_BLOCK_LENGTH		/* CRYPTO_HASH_TYPE_SHA512 */
 };
 
 struct crypto_instance {
@@ -560,7 +577,7 @@ static int string_to_crypto_cipher_type(const char* crypto_cipher_type)
 	} else if (strcmp(crypto_cipher_type, "aes256") == 0) {
 		return CRYPTO_CIPHER_TYPE_AES256;
 	}
-	return CRYPTO_CIPHER_TYPE_NONE;
+	return CRYPTO_CIPHER_TYPE_AES256;
 }
 
 static int string_to_crypto_hash_type(const char* crypto_hash_type)
@@ -569,9 +586,17 @@ static int string_to_crypto_hash_type(const char* crypto_hash_type)
 		return CRYPTO_HASH_TYPE_NONE;
 	} else if (strcmp(crypto_hash_type, "sha1") == 0) {
 		return CRYPTO_HASH_TYPE_SHA1;
+	} else if (strcmp(crypto_hash_type, "sha224") == 0) {
+		return CRYPTO_HASH_TYPE_SHA224;
+	} else if (strcmp(crypto_hash_type, "sha256") == 0) {
+		return CRYPTO_HASH_TYPE_SHA256;
+	} else if (strcmp(crypto_hash_type, "sha384") == 0) {
+		return CRYPTO_HASH_TYPE_SHA384;
+	} else if (strcmp(crypto_hash_type, "sha512") == 0) {
+		return CRYPTO_HASH_TYPE_SHA512;
 	}
 
-	return CRYPTO_HASH_TYPE_NONE;
+	return CRYPTO_HASH_TYPE_SHA1;
 }
 
 size_t crypto_sec_header_size(

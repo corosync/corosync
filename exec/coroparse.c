@@ -480,7 +480,11 @@ static int main_config_parser_cb(const char *path,
 			}
 			if (strcmp(path, "totem.crypto_hash") == 0) {
 				if ((strcmp(value, "none") != 0) &&
-				    (strcmp(value, "sha1") != 0)) {
+				    (strcmp(value, "sha1") != 0) &&
+				    (strcmp(value, "sha224") != 0) &&
+				    (strcmp(value, "sha256") != 0) &&
+				    (strcmp(value, "sha384") != 0) &&
+				    (strcmp(value, "sha512") != 0)) {
 					*error_string = "Invalid hash type";
 
 					return (0);
