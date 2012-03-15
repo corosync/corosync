@@ -147,8 +147,6 @@ This specifies the version of the configuration file.  Currently the only
 valid version for this directive is 2.
 
 .PP
-.PP
-.TP
 clear_node_high_bit
 This configuration option is optional and is only relevant when no nodeid is
 specified.  Some corosync clients require a signed 32 bit nodeid that is greater
@@ -158,6 +156,21 @@ zero and therefor ensure the nodeid is a positive signed 32 bit integer.
 
 WARNING: The clusters behavior is undefined if this option is enabled on only
 a subset of the cluster (for example during a rolling upgrade).
+
+.TP
+crypto_hash
+This specifies which HMAC authentication should be used to authenticate all
+messages. Valid values are none (no authentication), sha1, sha224, sha256,
+sha384 and sha512.
+
+The default is sha1.
+
+.TP
+crypto_cipher
+This specifies which cipher should be used to encrypt all messages.
+Valid values are none (no encryption) and aes256.
+
+The default is aes256.
 
 .TP
 secauth
@@ -170,6 +183,9 @@ reduces total throughput. Also encryption and authentication consume extra CPU
 cycles in corosync.
 
 The default is on.
+
+WARNING: This parameter is deprecated. It's recomended to use combination of
+crypto_cipher and crypto_hash.
 
 .TP
 rrp_mode
