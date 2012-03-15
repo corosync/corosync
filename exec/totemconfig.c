@@ -152,11 +152,11 @@ static void totem_get_crypto(struct totem_config *totem_config)
 		if (strcmp(str, "none") == 0) {
 			tmp_hash = "none";
 		}
+		if (strcmp(str, "md5") == 0) {
+			tmp_hash = "md5";
+		}
 		if (strcmp(str, "sha1") == 0) {
 			tmp_hash = "sha1";
-		}
-		if (strcmp(str, "sha224") == 0) {
-			tmp_hash = "sha224";
 		}
 		if (strcmp(str, "sha256") == 0) {
 			tmp_hash = "sha256";

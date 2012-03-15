@@ -109,8 +109,8 @@ size_t cypher_block_len[] = {
 
 enum crypto_hash_t {
 	CRYPTO_HASH_TYPE_NONE	= 0,
-	CRYPTO_HASH_TYPE_SHA1	= 1,
-	CRYPTO_HASH_TYPE_SHA224	= 2,
+	CRYPTO_HASH_TYPE_MD5	= 1,
+	CRYPTO_HASH_TYPE_SHA1	= 2,
 	CRYPTO_HASH_TYPE_SHA256	= 3,
 	CRYPTO_HASH_TYPE_SHA384	= 4,
 	CRYPTO_HASH_TYPE_SHA512	= 5
@@ -118,8 +118,8 @@ enum crypto_hash_t {
 
 CK_MECHANISM_TYPE hash_to_nss[] = {
 	 0,				/* CRYPTO_HASH_TYPE_NONE */
+	CKM_MD5_HMAC,			/* CRYPTO_HASH_TYPE_MD5 */
 	CKM_SHA_1_HMAC,			/* CRYPTO_HASH_TYPE_SHA1 */
-	CKM_SHA224_HMAC,		/* CRYPTO_HASH_TYPE_SHA224 */
 	CKM_SHA256_HMAC,		/* CRYPTO_HASH_TYPE_SHA256 */
 	CKM_SHA384_HMAC,		/* CRYPTO_HASH_TYPE_SHA384 */
 	CKM_SHA512_HMAC			/* CRYPTO_HASH_TYPE_SHA512 */
@@ -127,8 +127,8 @@ CK_MECHANISM_TYPE hash_to_nss[] = {
 
 size_t hash_len[] = {
 	 0,				/* CRYPTO_HASH_TYPE_NONE */
+	MD5_LENGTH,			/* CRYPTO_HASH_TYPE_MD5 */
 	SHA1_LENGTH,			/* CRYPTO_HASH_TYPE_SHA1 */
-	SHA224_LENGTH,			/* CRYPTO_HASH_TYPE_SHA224 */
 	SHA256_LENGTH,			/* CRYPTO_HASH_TYPE_SHA256 */
 	SHA384_LENGTH,			/* CRYPTO_HASH_TYPE_SHA384 */
 	SHA512_LENGTH			/* CRYPTO_HASH_TYPE_SHA512 */
@@ -136,8 +136,8 @@ size_t hash_len[] = {
 
 size_t hash_block_len[] = {
 	 0,				/* CRYPTO_HASH_TYPE_NONE */
+	MD5_BLOCK_LENGTH,		/* CRYPTO_HASH_TYPE_MD5 */
 	SHA1_BLOCK_LENGTH,		/* CRYPTO_HASH_TYPE_SHA1 */
-	SHA224_BLOCK_LENGTH,		/* CRYPTO_HASH_TYPE_SHA224 */
 	SHA256_BLOCK_LENGTH,		/* CRYPTO_HASH_TYPE_SHA256 */
 	SHA384_BLOCK_LENGTH,		/* CRYPTO_HASH_TYPE_SHA384 */
 	SHA512_BLOCK_LENGTH		/* CRYPTO_HASH_TYPE_SHA512 */
@@ -586,10 +586,10 @@ static int string_to_crypto_hash_type(const char* crypto_hash_type)
 {
 	if (strcmp(crypto_hash_type, "none") == 0) {
 		return CRYPTO_HASH_TYPE_NONE;
+	} else if (strcmp(crypto_hash_type, "md5") == 0) {
+		return CRYPTO_HASH_TYPE_MD5;
 	} else if (strcmp(crypto_hash_type, "sha1") == 0) {
 		return CRYPTO_HASH_TYPE_SHA1;
-	} else if (strcmp(crypto_hash_type, "sha224") == 0) {
-		return CRYPTO_HASH_TYPE_SHA224;
 	} else if (strcmp(crypto_hash_type, "sha256") == 0) {
 		return CRYPTO_HASH_TYPE_SHA256;
 	} else if (strcmp(crypto_hash_type, "sha384") == 0) {
