@@ -83,6 +83,8 @@
 struct crypto_config_header {
 	uint8_t	crypto_cipher_type;
 	uint8_t	crypto_hash_type;
+	uint8_t __pad0;
+	uint8_t __pad1;
 } __attribute__((packed));
 
 enum crypto_crypt_t {
@@ -634,6 +636,8 @@ int crypto_encrypt_and_sign (
 	cch = (struct crypto_config_header *)buf_out;
 	cch->crypto_cipher_type = instance->crypto_cipher_type;
 	cch->crypto_hash_type = instance->crypto_hash_type;
+	cch->__pad0 = 0;
+	cch->__pad1 = 0;
 
 	if ((!cipher_to_nss[instance->crypto_cipher_type]) &&
 	    (!hash_to_nss[instance->crypto_hash_type])) {
@@ -674,6 +678,12 @@ int crypto_authenticate_and_decrypt (struct crypto_instance *instance,
 	if (cch->crypto_hash_type != instance->crypto_hash_type) {
 		log_printf(instance->log_level_security,
 			   "Incoming packet has different hash type. Rejecting");
+		return -1;
+	}
+
+	if ((cch->__pad0 != 0) || (cch->__pad1 != 0)) {
+		log_printf(instance->log_level_security,
+			   "Incoming packet appears to have features not supported by this version of corosync. Rejecting");
 		return -1;
 	}
 
