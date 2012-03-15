@@ -472,7 +472,7 @@ static int encrypt_and_sign_nss (
 	inbuf = copy_from_iovec(iovec, iov_len, &datalen);
 	if (!inbuf) {
 		log_printf(instance->totemudp_log_level_security, "malloc error copying buffer from iovec\n");
-		return -1;
+		goto out;
 	}
 
 	data = inbuf + sizeof (struct security_header);
@@ -488,6 +488,7 @@ static int encrypt_and_sign_nss (
 		log_printf(instance->totemudp_log_level_security,
 			"Failure to generate a random number %d\n",
 			PR_GetError());
+		goto out;
 	}
 
 	memcpy(header->salt, nss_iv_data, sizeof(nss_iv_data));
@@ -503,7 +504,7 @@ static int encrypt_and_sign_nss (
 			"Failure to set up PKCS11 param (err %d)\n",
 			PR_GetError());
 		free (inbuf);
-		return (-1);
+		goto out;
 	}
 
 	/*
@@ -523,7 +524,7 @@ static int encrypt_and_sign_nss (
 			instance->totem_config->crypto_crypt_type,
 			PR_GetError(), err);
 		free(inbuf);
-		return -1;
+		goto sec_out;
 	}
 	rv1 = PK11_CipherOp(enc_context, outdata,
 			    &tmp1_outlen, FRAME_SIZE_MAX - sizeof(struct security_header),
@@ -537,7 +538,7 @@ static int encrypt_and_sign_nss (
 //	memcpy(&outdata[*buf_len], nss_iv_data, sizeof(nss_iv_data));
 
 	if (rv1 != SECSuccess || rv2 != SECSuccess)
-		goto out;
+		goto sec_out;
 
 	/* Now do the digest */
 	enc_context = PK11_CreateContextBySymKey(CKM_SHA_1_HMAC,
@@ -548,7 +549,7 @@ static int encrypt_and_sign_nss (
 		err[PR_GetErrorTextLength()] = 0;
 		log_printf(instance->totemudp_log_level_security, "encrypt: PK11_CreateContext failed (digest) err %d: %s\n",
 			PR_GetError(), err);
-		return -1;
+		goto sec_out;
 	}
 
 
@@ -560,13 +561,17 @@ static int encrypt_and_sign_nss (
 	PK11_DestroyContext(enc_context, PR_TRUE);
 
 	if (rv1 != SECSuccess || rv2 != SECSuccess)
-		goto out;
+		goto sec_out;
 
 
 	*buf_len = *buf_len + sizeof(struct security_header);
 	SECITEM_FreeItem(nss_sec_param, PR_TRUE);
 	return 0;
 
+sec_out:
+	if (nss_sec_param != NULL) {
+		SECITEM_FreeItem(nss_sec_param, PR_TRUE);
+	}
 out:
 	return -1;
 }
@@ -624,8 +629,7 @@ static int authenticate_and_decrypt_nss (
 		err[PR_GetErrorTextLength()] = 0;
 		log_printf(instance->totemudp_log_level_security, "PK11_CreateContext failed (check digest) err %d: %s\n",
 			PR_GetError(), err);
-		free (inbuf);
-		return -1;
+		goto out;
 	}
 
 	PK11_DigestBegin(enc_context);
@@ -637,12 +641,12 @@ static int authenticate_and_decrypt_nss (
 
 	if (rv1 != SECSuccess || rv2 != SECSuccess) {
 		log_printf(instance->totemudp_log_level_security, "Digest check failed\n");
-		return -1;
+		goto out;
 	}
 
 	if (memcmp(digest, header->hash_digest, tmp2_outlen) != 0) {
 		log_printf(instance->totemudp_log_level_error, "Digest does not match\n");
-		return -1;
+		goto out;
 	}
 
 	/*
@@ -664,7 +668,7 @@ static int authenticate_and_decrypt_nss (
 		log_printf(instance->totemudp_log_level_security,
 			"PK11_CreateContext (decrypt) failed (err %d)\n",
 			PR_GetError());
-		return -1;
+		goto out;
 	}
 
 	rv1 = PK11_CipherOp(enc_context, outdata, &tmp1_outlen,
@@ -689,6 +693,13 @@ static int authenticate_and_decrypt_nss (
 		return -1;
 
 	return 0;
+
+out:
+	if (iov_len > 1 && inbuf != NULL) {
+		free (inbuf);
+	}
+
+	return (-1);
 }
 #endif
 
