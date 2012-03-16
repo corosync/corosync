@@ -1,7 +1,8 @@
 # Please read the corosync.conf.5 manual page
 totem {
 	version: 2
-	secauth: off
+	crypto_cipher: none
+	crypto_hash: none
 	interface {
 		member {
 			memberaddr: 10.16.35.101

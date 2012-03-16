@@ -2,10 +2,11 @@
 totem {
 	version: 2
 
-	# secauth: Enable mutual node authentication. If you choose to
-	# enable this ("on"), then do remember to create a shared
+	# cypto_cipher and crypto_hash: Used for mutual node authentication.
+	# If you choose to enable this, then do remember to create a shared
 	# secret with "corosync-keygen".
-	secauth: off
+	crypto_cipher: none
+	crypto_hash: none
 
 	# interface: define at least one interface to communicate
 	# over. If you define more than one interface stanza, you must
