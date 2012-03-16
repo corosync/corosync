@@ -827,8 +827,6 @@ void cs_ipcs_init(void)
 	api->quorum_register_callback (cs_ipcs_fc_quorum_changed, NULL);
 	totempg_queue_level_register_callback (cs_ipcs_totem_queue_level_changed);
 
-	icmap_set_ro_access("runtime.connections.", 1, 1);
-
 	icmap_set_uint64("runtime.connections.active", 0);
 	icmap_set_uint64("runtime.connections.closed", 0);
 }

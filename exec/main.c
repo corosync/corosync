@@ -585,8 +585,6 @@ static void corosync_totem_stats_init (void)
 	icmap_set_uint32("runtime.totem.pg.mrp.srp.avg_token_workload", 0);
 	icmap_set_uint32("runtime.totem.pg.mrp.srp.avg_backlog_calc", 0);
 
-	icmap_set_ro_access("runtime.totem", CS_TRUE, CS_TRUE);
-
 	/* start stats timer */
 	api->timer_add_duration (1500 * MILLI_2_NANO_SECONDS, NULL,
 		corosync_totem_stats_updater,
@@ -852,6 +850,34 @@ static void corosync_fplay_control_init (void)
 			NULL, &track);
 }
 
+/*
+ * Set RO flag for keys, which ether doesn't make sense to change by user (statistic)
+ * or which when changed are not reflected by runtime (totem.crypto_cipher, ...).
+ *
+ * Also some RO keys cannot be determined in this stage, so they are set later in
+ * other functions (like nodelist.local_node_pos, ...)
+ */
+static void set_icmap_ro_keys_flag (void)
+{
+	/*
+	 * Set RO flag for all keys of internal configuration and runtime statistics
+	 */
+	icmap_set_ro_access("internal_configuration.", CS_TRUE, CS_TRUE);
+	icmap_set_ro_access("runtime.connections.", CS_TRUE, CS_TRUE);
+	icmap_set_ro_access("runtime.totem.", CS_TRUE, CS_TRUE);
+	icmap_set_ro_access("runtime.services.", CS_TRUE, CS_TRUE);
+
+	/*
+	 * Set RO flag for constrete keys of configuration which can't be changed
+	 * during runtime
+	 */
+	icmap_set_ro_access("totem.crypto_cipher", CS_FALSE, CS_TRUE);
+	icmap_set_ro_access("totem.crypto_hash", CS_FALSE, CS_TRUE);
+	icmap_set_ro_access("totem.secauth", CS_FALSE, CS_TRUE);
+	icmap_set_ro_access("totem.rrp_mode", CS_FALSE, CS_TRUE);
+	icmap_set_ro_access("totem.netmtu", CS_FALSE, CS_TRUE);
+}
+
 static void main_service_ready (void)
 {
 	int res;
@@ -1039,6 +1065,7 @@ int main (int argc, char **argv, char **envp)
 		log_printf (LOGSYS_LEVEL_ERROR, "Corosync Executive couldn't initialize configuration component.");
 		corosync_exit_error (COROSYNC_DONE_ICMAP);
 	}
+	set_icmap_ro_keys_flag();
 
 	/*
 	 * Initialize the corosync_api_v1 definition
