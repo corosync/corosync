@@ -153,6 +153,7 @@ enum encapsulation_type {
  * New membership algorithm local variables
  */
 struct srp_addr {
+	uint8_t no_addrs;
 	struct totem_ip_address addr[INTERFACE_MAX];
 };
 
@@ -677,6 +678,8 @@ static void totemsrp_instance_initialize (struct totemsrp_instance *instance)
 	instance->orf_token_discard = 0;
 
 	instance->commit_token = (struct memb_commit_token *)instance->commit_token_storage;
+
+	instance->my_id.no_addrs = INTERFACE_MAX;
 }
 
 static void main_token_seqid_get (
@@ -1100,6 +1103,8 @@ static void srp_addr_copy (struct srp_addr *dest, const struct srp_addr *src)
 {
 	unsigned int i;
 
+	dest->no_addrs = src->no_addrs;
+
 	for (i = 0; i < INTERFACE_MAX; i++) {
 		totemip_copy (&dest->addr[i], &src->addr[i]);
 	}
@@ -1375,10 +1380,10 @@ static void memb_set_print (
 	printf ("List '%s' contains %d entries:\n", string, list_entries);
 
 	for (i = 0; i < list_entries; i++) {
-		for (j = 0; j < INTERFACE_MAX; j++) {
-			printf ("Address %d\n", i);
+		printf ("Address %d with %d rings\n", i, list[i].no_addrs);
+		for (j = 0; j < list[i].no_addrs; j++) {
 			printf ("\tiface %d %s\n", j, totemip_print (&list[i].addr[j]));
-			printf ("family %d\n", list[i].addr[j].family);
+			printf ("\tfamily %d\n", list[i].addr[j].family);
 		}
 	}
 }
