@@ -78,7 +78,7 @@ AC_HEADER_SYS_WAIT
 AC_CHECK_HEADERS([arpa/inet.h fcntl.h limits.h netdb.h netinet/in.h stdint.h \
 		  stdlib.h string.h sys/ioctl.h sys/param.h sys/socket.h \
 		  sys/time.h syslog.h unistd.h sys/types.h getopt.h malloc.h \
-		  sys/sockio.h])
+		  sys/sockio.h net/if_var.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_C_CONST
@@ -318,6 +318,10 @@ case "$host_os" in
 			*freebsd*)
 				AC_DEFINE_UNQUOTED([COROSYNC_FREEBSD_GE_8], [1],
 					   [Compiling for FreeBSD >= 8 platform])
+			;;
+			*netbsd*)
+				AC_DEFINE_UNQUOTED([_SEM_SEMUN_UNDEFINED], [1],
+					   [The semun structure is undefined])
 			;;
 		esac
 	;;

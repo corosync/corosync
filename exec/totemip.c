@@ -50,7 +50,9 @@
 #if defined(COROSYNC_BSD) || defined(COROSYNC_DARWIN)
 #include <sys/sockio.h>
 #include <net/if.h>
+#ifdef HAVE_NET_IF_VAR_H
 #include <net/if_var.h>
+#endif
 #include <netinet/in_var.h>
 #include <netinet/in.h>
 #include <ifaddrs.h>
