@@ -250,7 +250,7 @@ memory_map (
 		munmap(addr_orig, bytes);
 		goto error_close_unlink;
 	}
-#ifdef COROSYNC_BSD
+#if (defined COROSYNC_BSD && defined MADV_NOSYNC)
 	madvise(addr, bytes, MADV_NOSYNC);
 #endif
 
@@ -305,7 +305,7 @@ circular_memory_map (
 		munmap(addr_orig, bytes);
 		goto error_close_unlink;
 	}
-#ifdef COROSYNC_BSD
+#if (defined COROSYNC_BSD && defined MADV_NOSYNC)
 	madvise(addr_orig, bytes, MADV_NOSYNC);
 #endif
 
@@ -317,7 +317,7 @@ circular_memory_map (
 		munmap(addr, bytes);
 		goto error_close_unlink;
 	}
-#ifdef COROSYNC_BSD
+#if (defined COROSYNC_BSD && defined MADV_NOSYNC)
 	madvise(((char *)addr_orig) + bytes, bytes, MADV_NOSYNC);
 #endif
 

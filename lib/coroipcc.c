@@ -353,7 +353,7 @@ retry_write:
 	if (addr != addr_orig) {
 		goto error_close_unlink;
 	}
-#ifdef COROSYNC_BSD
+#if (defined COROSYNC_BSD && defined MADV_NOSYNC)
 	madvise(addr_orig, bytes, MADV_NOSYNC);
 #endif
 
@@ -363,7 +363,7 @@ retry_write:
 	if (addr == MAP_FAILED) {
 		goto error_close_unlink;
 	}
-#ifdef COROSYNC_BSD
+#if (defined COROSYNC_BSD && defined MADV_NOSYNC)
 	madvise(((char *)addr_orig) + bytes, bytes, MADV_NOSYNC);
 #endif
 
@@ -463,7 +463,7 @@ retry_write:
 	if (addr != addr_orig) {
 		goto error_close_unlink;
 	}
-#ifdef COROSYNC_BSD
+#if (defined COROSYNC_BSD && defined MADV_NOSYNC)
 	madvise(addr_orig, bytes, MADV_NOSYNC);
 #endif
 

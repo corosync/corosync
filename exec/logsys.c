@@ -273,7 +273,7 @@ retry_write:
 		error_return = -1;
 		goto mmap_exit;
 	}
-	#ifdef COROSYNC_BSD
+	#if (defined COROSYNC_BSD && defined MADV_NOSYNC)
 		madvise(addr_orig, bytes, MADV_NOSYNC);
 	#endif
 
@@ -284,7 +284,7 @@ retry_write:
 		error_return = -1;
 		goto mmap_exit;
 	}
-#ifdef COROSYNC_BSD
+#if (defined COROSYNC_BSD && defined MADV_NOSYNC)
 	madvise(((char *)addr_orig) + bytes, bytes, MADV_NOSYNC);
 #endif
 
