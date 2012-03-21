@@ -83,6 +83,8 @@
 
 static pthread_mutex_t timer_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+static pthread_cond_t timer_mutex_cond = PTHREAD_COND_INITIALIZER;
+
 static pthread_t expiry_thread;
 
 static pthread_attr_t thread_attr;
@@ -116,6 +118,8 @@ static void *prioritized_timer_thread (void *data)
 	}
 #endif
 
+	pthread_mutex_lock (&timer_mutex);
+	pthread_cond_signal (&timer_mutex_cond);
 	pthread_mutex_unlock (&timer_mutex);
 	for (;;) {
 		timer_serialize_lock_fn ();
@@ -169,6 +173,12 @@ int corosync_timer_init (
 	pthread_attr_setdetachstate (&thread_attr, PTHREAD_CREATE_DETACHED);
 	res = pthread_create (&expiry_thread, &thread_attr,
 		prioritized_timer_thread, NULL);
+
+	/*
+	 * Wait for thread to really exec
+	 */
+	pthread_cond_wait (&timer_mutex_cond, &timer_mutex);
+	pthread_mutex_unlock (&timer_mutex);
 
 	return (res);
 }
