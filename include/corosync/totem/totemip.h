@@ -39,6 +39,7 @@
 
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
