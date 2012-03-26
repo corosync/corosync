@@ -129,7 +129,7 @@ all-local: $(get_explicit_sharedlibs) $(SHARED_LIBS_SO)
 install-exec-local:
 	$(INSTALL) -d $(DESTDIR)/$(libdir)
 	$(INSTALL) -m 755 $(get_sharedlibs) $(get_explicit_sharedlibs) $(DESTDIR)/$(libdir)
-	$(CP) -a $(SHARED_LIBS_SO) $(EXPLICIT_SHARED_LIBS_SO) $(get_sharedlibs_two) $(get_explicit_sharedlibs_two) $(DESTDIR)/$(libdir)
+	$(CP) $(CP_ARGS) $(SHARED_LIBS_SO) $(EXPLICIT_SHARED_LIBS_SO) $(get_sharedlibs_two) $(get_explicit_sharedlibs_two) $(DESTDIR)/$(libdir)
 
 uninstall-local:
 	cd $(DESTDIR)/$(libdir)/ && \

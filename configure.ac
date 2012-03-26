@@ -272,6 +272,7 @@ AC_ARG_ENABLE([snmp],
 # OS detection
 # THIS SECTION MUST DIE!
 CP=cp
+CP_ARGS="-a"
 OS_LDL="-ldl"
 case "$host_os" in
 	*linux*)
@@ -322,6 +323,7 @@ case "$host_os" in
 			*netbsd*)
 				AC_DEFINE_UNQUOTED([_SEM_SEMUN_UNDEFINED], [1],
 					   [The semun structure is undefined])
+				CP_ARGS="-RpP"
 			;;
 		esac
 	;;
@@ -346,6 +348,7 @@ case "$host_os" in
 esac
 
 AC_SUBST(CP)
+AC_SUBST(CP_ARGS)
 # *FLAGS handling goes here
 
 ENV_CFLAGS="$CFLAGS"

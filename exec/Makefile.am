@@ -158,7 +158,7 @@ all-local: $(LCRSO_OBJS) $(LCRSO) $(SHARED_LIBS)
 install-exec-local:
 	$(INSTALL) -d $(DESTDIR)/$(libdir)
 	$(INSTALL) -m 755 $(SHARED_LIBS) $(DESTDIR)/$(libdir)
-	$(CP) -a $(SHARED_LIBS_SO) $(SHARED_LIBS_SO_TWO) $(DESTDIR)/$(libdir)
+	$(CP) $(CP_ARGS) $(SHARED_LIBS_SO) $(SHARED_LIBS_SO_TWO) $(DESTDIR)/$(libdir)
 	$(INSTALL) -d $(DESTDIR)/$(LCRSODIR)
 	$(INSTALL) -m 755 $(LCRSO) $(DESTDIR)/$(LCRSODIR)
 
