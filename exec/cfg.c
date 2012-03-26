@@ -553,6 +553,7 @@ static void message_handler_req_lib_cfg_ringstatusget (
 	api->totem_ifaces_get (
 		api->totem_nodeid_get(),
 		interfaces,
+		INTERFACE_MAX,
 		&status,
 		&iface_count);
 
@@ -801,7 +802,7 @@ static void message_handler_req_lib_cfg_get_node_addrs (void *conn,
 	if (nodeid == 0)
 		nodeid = api->totem_nodeid_get();
 
-	api->totem_ifaces_get(nodeid, node_ifs, &status, &num_interfaces);
+	api->totem_ifaces_get(nodeid, node_ifs, INTERFACE_MAX, &status, &num_interfaces);
 
 	res_lib_cfg_get_node_addrs->header.size = sizeof(struct res_lib_cfg_get_node_addrs) + (num_interfaces * TOTEMIP_ADDRLEN);
 	res_lib_cfg_get_node_addrs->header.id = MESSAGE_RES_CFG_GET_NODE_ADDRS;

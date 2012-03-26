@@ -103,6 +103,7 @@ extern int totemsrp_ifaces_get (
 	void *srp_context,
 	unsigned int nodeid,
 	struct totem_ip_address *interfaces,
+	unsigned int interfaces_size,
 	char ***status,
 	unsigned int *iface_count);
 

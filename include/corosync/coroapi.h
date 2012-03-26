@@ -234,6 +234,7 @@ struct corosync_api_v1 {
 	int (*totem_ifaces_get) (
 		unsigned int nodeid,
 		struct totem_ip_address *interfaces,
+		unsigned int interfaces_size,
 		char ***status,
 		unsigned int *iface_count);
 

@@ -106,6 +106,7 @@ extern void totemmrp_event_signal (enum totem_event_type type, int value);
 extern int totemmrp_ifaces_get (
 	unsigned int nodeid,
 	struct totem_ip_address *interfaces,
+	unsigned int interfaces_size,
 	char ***status,
 	unsigned int *iface_count);
 

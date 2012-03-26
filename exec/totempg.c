@@ -1359,6 +1359,7 @@ int totempg_groups_send_ok_groups (
 int totempg_ifaces_get (
 	unsigned int nodeid,
 	struct totem_ip_address *interfaces,
+	unsigned int interfaces_size,
 	char ***status,
 	unsigned int *iface_count)
 {
@@ -1367,6 +1368,7 @@ int totempg_ifaces_get (
 	res = totemmrp_ifaces_get (
 		nodeid,
 		interfaces,
+		interfaces_size,
 		status,
 		iface_count);
 
@@ -1415,10 +1417,12 @@ const char *totempg_ifaces_print (unsigned int nodeid)
 
 	iface_string[0] = '\0';
 
-	res = totempg_ifaces_get (nodeid, interfaces, &status, &iface_count);
+	res = totempg_ifaces_get (nodeid, interfaces, INTERFACE_MAX, &status, &iface_count);
 	if (res == -1) {
 		return ("no interface found for nodeid");
 	}
+
+	res = totempg_ifaces_get (nodeid, interfaces, INTERFACE_MAX, &status, &iface_count);
 
 	for (i = 0; i < iface_count; i++) {
 		sprintf (one_iface, "r(%d) ip(%s) ",

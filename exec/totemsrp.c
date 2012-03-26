@@ -987,10 +987,19 @@ void totemsrp_finalize (
 	free (instance);
 }
 
+/*
+ * Return configured interfaces. interfaces is array of totem_ip addresses allocated by caller,
+ * with interaces_size number of items. iface_count is final number of interfaces filled by this
+ * function.
+ *
+ * Function returns 0 on success, otherwise if interfaces array is not big enough, -2 is returned,
+ * and if interface was not found, -1 is returned.
+ */
 int totemsrp_ifaces_get (
 	void *srp_context,
 	unsigned int nodeid,
 	struct totem_ip_address *interfaces,
+	unsigned int interfaces_size,
 	char ***status,
 	unsigned int *iface_count)
 {
@@ -1007,9 +1016,15 @@ int totemsrp_ifaces_get (
 	}
 
 	if (found) {
-		memcpy (interfaces, &instance->my_memb_list[i],
-			sizeof (struct srp_addr));
 		*iface_count = instance->totem_config->interface_count;
+
+		if (interfaces_size >= *iface_count) {
+			memcpy (interfaces, instance->my_memb_list[i].addr,
+				sizeof (struct totem_ip_address) * *iface_count);
+		} else {
+			res = -2;
+		}
+
 		goto finish;
 	}
 
@@ -1021,9 +1036,14 @@ int totemsrp_ifaces_get (
 	}
 
 	if (found) {
-		memcpy (interfaces, &instance->my_left_memb_list[i],
-			sizeof (struct srp_addr));
 		*iface_count = instance->totem_config->interface_count;
+
+		if (interfaces_size >= *iface_count) {
+			memcpy (interfaces, instance->my_left_memb_list[i].addr,
+				sizeof (struct totem_ip_address) * *iface_count);
+		} else {
+			res = -2;
+		}
 	} else {
 		res = -1;
 	}

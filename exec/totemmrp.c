@@ -196,6 +196,7 @@ void totemmrp_event_signal (enum totem_event_type type, int value)
 int totemmrp_ifaces_get (
 	unsigned int nodeid,
 	struct totem_ip_address *interfaces,
+	unsigned int interfaces_size,
 	char ***status,
 	unsigned int *iface_count)
 {
@@ -205,6 +206,7 @@ int totemmrp_ifaces_get (
 		totemsrp_context,
 		nodeid,
 		interfaces,
+		interfaces_size,
 		status,
 		iface_count);
 
