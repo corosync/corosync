@@ -651,7 +651,6 @@ int crypto_authenticate_and_decrypt (struct crypto_instance *instance,
 	unsigned char *buf,
 	int *buf_len)
 {
-	int err = 0;
 	struct crypto_config_header *cch = (struct crypto_config_header *)buf;
 
 	/*
