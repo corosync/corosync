@@ -1,57 +1,11 @@
 # Please read the corosync.conf.5 manual page
 totem {
 	version: 2
+
 	crypto_cipher: none
 	crypto_hash: none
+
 	interface {
-		member {
-			memberaddr: 10.16.35.101
-		}
-		member {
-			memberaddr: 10.16.35.102
-		}
-		member {
-			memberaddr: 10.16.35.103
-		}
-		member {
-			memberaddr: 10.16.35.104
-		}
-		member {
-			memberaddr: 10.16.35.105
-		}
-		member {
-			memberaddr: 10.16.35.106
-		}
-		member {
-			memberaddr: 10.16.35.107
-		}
-		member {
-			memberaddr: 10.16.35.108
-		}
-		member {
-			memberaddr: 10.16.35.109
-		}
-		member {
-			memberaddr: 10.16.35.110
-		}
-		member {
-			memberaddr: 10.16.35.111
-		}
-		member {
-			memberaddr: 10.16.35.112
-		}
-		member {
-			memberaddr: 10.16.35.113
-		}
-		member {
-			memberaddr: 10.16.35.114
-		}
-		member {
-			memberaddr: 10.16.35.115
-		}
-		member {
-			memberaddr: 10.16.35.116
-		}
 		ringnumber: 0
 		bindnetaddr: 10.16.35.0
 		mcastport: 5405
@@ -71,5 +25,29 @@ logging {
 	logger_subsys {
 		subsys: QUORUM
 		debug: off
+	}
+}
+
+nodelist {
+	node {
+		ring0_addr: 10.16.35.101
+		nodeid: 1
+	}
+
+	node {
+		ring0_addr: 10.16.35.102
+		nodeid: 2
+	}
+
+	node {
+		ring0_addr: 10.16.35.103
+	}
+
+	node {
+		ring0_addr: 10.16.35.104
+	}
+
+	node {
+		ring0_addr: 10.16.35.105
 	}
 }
