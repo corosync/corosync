@@ -72,3 +72,9 @@ logging {
 		debug: off
 	}
 }
+
+quorum {
+	# Enable and configure quorum subsystem (default: off)
+	# see also corosync.conf.5 and votequorum.5
+	#provider: corosync_votequorum
+}
