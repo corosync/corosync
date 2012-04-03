@@ -64,7 +64,9 @@ struct votequorum_inst {
 	votequorum_callbacks_t callbacks;
 };
 
-DECLARE_HDB_DATABASE(votequorum_handle_t_db,NULL);
+static void votequorum_inst_free (void *inst);
+
+DECLARE_HDB_DATABASE(votequorum_handle_t_db, votequorum_inst_free);
 
 cs_error_t votequorum_initialize (
 	votequorum_handle_t *handle,
@@ -83,6 +85,7 @@ cs_error_t votequorum_initialize (
 		goto error_destroy;
 	}
 
+	votequorum_inst->finalize = 0;
 	votequorum_inst->c = qb_ipcc_connect ("votequorum", IPC_REQUEST_SIZE);
 	if (votequorum_inst->c == NULL) {
 		error = qb_to_cs_error(-errno);
@@ -106,6 +109,12 @@ error_no_destroy:
 	return (error);
 }
 
+static void votequorum_inst_free (void *inst)
+{
+	struct votequorum_inst *vq_inst = (struct votequorum_inst *)inst;
+	qb_ipcc_disconnect(vq_inst->c);
+}
+
 cs_error_t votequorum_finalize (
 	votequorum_handle_t handle)
 {
@@ -126,8 +135,6 @@ cs_error_t votequorum_finalize (
 	}
 
 	votequorum_inst->finalize = 1;
-
-	qb_ipcc_disconnect (votequorum_inst->c);
 
 	hdb_handle_destroy (&votequorum_handle_t_db, handle);
 
@@ -521,6 +528,13 @@ cs_error_t votequorum_dispatch (
 			goto error_put;
 			break;
 		}
+		if (votequorum_inst->finalize) {
+			/*
+			 * If the finalize has been called then get out of the dispatch.
+			 */
+			error = CS_ERR_BAD_HANDLE;
+			goto error_put;
+		}
 
 		/*
 		 * Determine if more messages should be processed
@@ -530,7 +544,6 @@ cs_error_t votequorum_dispatch (
 		}
 	} while (cont);
 
-	goto error_put;
 
 error_put:
 	hdb_handle_put (&votequorum_handle_t_db, handle);

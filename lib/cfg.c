@@ -72,7 +72,9 @@ struct cfg_inst {
 /*
  * All instances in one database
  */
-DECLARE_HDB_DATABASE (cfg_hdb,NULL);
+static void cfg_inst_free (void *inst);
+
+DECLARE_HDB_DATABASE (cfg_hdb, cfg_inst_free);
 
 /*
  * Implementation
@@ -96,6 +98,7 @@ corosync_cfg_initialize (
 		goto error_destroy;
 	}
 
+	cfg_inst->finalize = 0;
 	cfg_inst->c = qb_ipcc_connect ("cfg", IPC_REQUEST_SIZE);
 	if (cfg_inst->c == NULL) {
 		error = qb_to_cs_error(-errno);
@@ -218,6 +221,13 @@ corosync_cfg_dispatch (
 			goto error_nounlock;
 			break;
 		}
+		if (cfg_inst->finalize) {
+			/*
+			 * If the finalize has been called then get out of the dispatch.
+			 */
+			error = CS_ERR_BAD_HANDLE;
+			goto error_put;
+		}
 
 		/*
 		 * Determine if more messages should be processed
@@ -231,6 +241,12 @@ error_put:
 	(void)hdb_handle_put (&cfg_hdb, cfg_handle);
 error_nounlock:
 	return (error);
+}
+
+static void cfg_inst_free (void *inst)
+{
+	struct cfg_inst *cfg_inst = (struct cfg_inst *)inst;
+	qb_ipcc_disconnect(cfg_inst->c);
 }
 
 cs_error_t
@@ -254,8 +270,6 @@ corosync_cfg_finalize (
 	}
 
 	cfg_inst->finalize = 1;
-
-	qb_ipcc_disconnect (cfg_inst->c);
 
 	(void)hdb_handle_destroy (&cfg_hdb, cfg_handle);
 

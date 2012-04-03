@@ -73,8 +73,9 @@ struct cpg_inst {
 	};
 	struct list_head iteration_list_head;
 };
+static void cpg_inst_free (void *inst);
 
-DECLARE_HDB_DATABASE(cpg_handle_t_db,NULL);
+DECLARE_HDB_DATABASE(cpg_handle_t_db, cpg_inst_free);
 
 struct cpg_iteration_instance_t {
 	cpg_iteration_handle_t cpg_iteration_handle;
@@ -106,6 +107,12 @@ static void cpg_iteration_instance_finalize (struct cpg_iteration_instance_t *cp
 {
 	list_del (&cpg_iteration_instance->list);
 	hdb_handle_destroy (&cpg_iteration_handle_t_db, cpg_iteration_instance->cpg_iteration_handle);
+}
+
+static void cpg_inst_free (void *inst)
+{
+	struct cpg_inst *cpg_inst = (struct cpg_inst *)inst;
+	qb_ipcc_disconnect(cpg_inst->c);
 }
 
 static void cpg_inst_finalize (struct cpg_inst *cpg_inst, hdb_handle_t handle)
@@ -247,8 +254,6 @@ cs_error_t cpg_finalize (
 		1,
 		&res_lib_cpg_finalize,
 		sizeof (struct res_lib_cpg_finalize));
-
-	qb_ipcc_disconnect(cpg_inst->c);
 
 	cpg_inst_finalize (cpg_inst, handle);
 	hdb_handle_put (&cpg_handle_t_db, handle);
@@ -474,6 +479,15 @@ cs_error_t cpg_dispatch (
 			} /* - switch (dispatch_data->id) */
 			break; /* case CPG_MODEL_V1 */
 		} /* - switch (cpg_inst_copy.model_data.model) */
+
+		if (cpg_inst_copy.finalize || cpg_inst->finalize) {
+			/*
+			 * If the finalize has been called then get out of the dispatch.
+			 */
+			cpg_inst->finalize = 1;
+			error = CS_ERR_BAD_HANDLE;
+			goto error_put;
+		}
 
 		/*
 		 * Determine if more messages should be processed

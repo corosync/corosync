@@ -54,6 +54,7 @@
 #include <stdio.h>
 
 struct cmap_inst {
+	int finalize;
 	qb_ipcc_connection_t *c;
 	const void *context;
 };
@@ -65,7 +66,9 @@ struct cmap_track_inst {
 	cmap_track_handle_t track_handle;
 };
 
-DECLARE_HDB_DATABASE(cmap_handle_t_db,NULL);
+static void cmap_inst_free (void *inst);
+
+DECLARE_HDB_DATABASE(cmap_handle_t_db, cmap_inst_free);
 DECLARE_HDB_DATABASE(cmap_track_handle_t_db,NULL);
 
 /*
@@ -99,6 +102,7 @@ cs_error_t cmap_initialize (cmap_handle_t *handle)
 	}
 
 	error = CS_OK;
+	cmap_inst->finalize = 0;
 	cmap_inst->c = qb_ipcc_connect("cmap", IPC_REQUEST_SIZE);
 	if (cmap_inst->c == NULL) {
 		error = qb_to_cs_error(-errno);
@@ -117,6 +121,12 @@ error_no_destroy:
 	return (error);
 }
 
+static void cmap_inst_free (void *inst)
+{
+	struct cmap_inst *cmap_inst = (struct cmap_inst *)inst;
+	qb_ipcc_disconnect(cmap_inst->c);
+}
+
 cs_error_t cmap_finalize(cmap_handle_t handle)
 {
 	struct cmap_inst *cmap_inst;
@@ -129,7 +139,11 @@ cs_error_t cmap_finalize(cmap_handle_t handle)
 		return (error);
 	}
 
-	qb_ipcc_disconnect(cmap_inst->c);
+	if (cmap_inst->finalize) {
+		(void)hdb_handle_put (&cmap_handle_t_db, handle);
+		return (CS_ERR_BAD_HANDLE);
+	}
+	cmap_inst->finalize = 1;
 
 	/*
 	 * Destroy all track instances for given connection
@@ -269,6 +283,13 @@ cs_error_t cmap_dispatch (
 			error = CS_ERR_LIBRARY;
 			goto error_put;
 			break;
+		}
+		if (cmap_inst->finalize) {
+			/*
+			 * If the finalize has been called then get out of the dispatch.
+			 */
+			error = CS_ERR_BAD_HANDLE;
+			goto error_put;
 		}
 
 		/*

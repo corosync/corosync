@@ -61,7 +61,9 @@ struct quorum_inst {
 	quorum_callbacks_t callbacks;
 };
 
-DECLARE_HDB_DATABASE(quorum_handle_t_db,NULL);
+static void quorum_inst_free (void *inst);
+
+DECLARE_HDB_DATABASE(quorum_handle_t_db, quorum_inst_free);
 
 cs_error_t quorum_initialize (
 	quorum_handle_t *handle,
@@ -85,6 +87,7 @@ cs_error_t quorum_initialize (
 	}
 
 	error = CS_OK;
+	quorum_inst->finalize = 0;
 	quorum_inst->c = qb_ipcc_connect ("quorum", IPC_REQUEST_SIZE);
 	if (quorum_inst->c == NULL) {
 		error = qb_to_cs_error(-errno);
@@ -129,6 +132,12 @@ error_no_destroy:
 	return (error);
 }
 
+static void quorum_inst_free (void *inst)
+{
+	struct quorum_inst *quorum_inst = (struct quorum_inst *)inst;
+	qb_ipcc_disconnect(quorum_inst->c);
+}
+
 cs_error_t quorum_finalize (
 	quorum_handle_t handle)
 {
@@ -149,8 +158,6 @@ cs_error_t quorum_finalize (
 	}
 
 	quorum_inst->finalize = 1;
-
-	qb_ipcc_disconnect (quorum_inst->c);
 
 	(void)hdb_handle_destroy (&quorum_handle_t_db, handle);
 
@@ -433,6 +440,13 @@ cs_error_t quorum_dispatch (
 			goto error_put;
 			break;
 		}
+		if (quorum_inst->finalize) {
+			/*
+			 * If the finalize has been called then get out of the dispatch.
+			 */
+			error = CS_ERR_BAD_HANDLE;
+			goto error_put;
+		}
 
 		/*
 		 * Determine if more messages should be processed
@@ -441,8 +455,6 @@ cs_error_t quorum_dispatch (
 			cont = 0;
 		}
 	} while (cont);
-
-	goto error_put;
 
 error_put:
 	(void)hdb_handle_put (&quorum_handle_t_db, handle);
