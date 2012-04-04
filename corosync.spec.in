@@ -97,7 +97,8 @@ export rdmacm_LIBS=-lrdmacm \
 %if %{with xmlconf}
 	--enable-xmlconf \
 %endif
-	--with-initddir=%{_initrddir}
+	--with-initddir=%{_initrddir} \
+	--with-systemddir=%{_unitdir}
 
 make %{_smp_mflags}
 

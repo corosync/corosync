@@ -37,7 +37,7 @@ MAINTAINERCLEANFILES	= Makefile.in
 EXTRA_DIST		= generic.in notifyd.in corosync.service.in corosync-notifyd.service.in
 
 if INSTALL_SYSTEMD
-systemdconfdir = /lib/systemd/system
+systemdconfdir = $(SYSTEMDDIR)
 systemdconf_DATA = corosync.service corosync-notifyd.service
 else
 target_INIT		= generic notifyd

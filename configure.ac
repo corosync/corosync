@@ -285,6 +285,11 @@ AC_ARG_WITH([initddir],
 	[ INITDDIR="$withval" ],
 	[ INITDDIR="$sysconfdir/init.d" ])
 
+AC_ARG_WITH([systemddir],
+	[  --with-systemddir=DIR   : path to systemd unit files directory. ],
+	[ SYSTEMDDIR="$withval" ],
+	[ SYSTEMDDIR="/lib/systemd/system" ])
+
 AC_ARG_ENABLE([snmp],
        [  --enable-snmp                   : SNMP protocol support ],
        [ default="no" ])
@@ -579,6 +584,7 @@ LDFLAGS="$ENV_LDFLAGS $COVERAGE_LDFLAGS $OS_LDFLAGS"
 
 # substitute what we need:
 AC_SUBST([INITDDIR])
+AC_SUBST([SYSTEMDDIR])
 
 AC_SUBST([SOMAJOR])
 AC_SUBST([SOMINOR])
