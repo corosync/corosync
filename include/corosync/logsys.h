@@ -43,6 +43,7 @@
 #include <pthread.h>
 #include <limits.h>
 
+#include <qb/qbconfig.h>
 #include <qb/qblog.h>
 
 #ifdef __cplusplus
@@ -177,11 +178,17 @@ static void logsys_system_init (void)					\
 	}								\
 }
 
+#ifdef QB_HAVE_ATTRIBUTE_SECTION
+#define LOGSYS_DECLARE_SECTION assert(__start___verbose != __stop___verbose)
+#else
+#define LOGSYS_DECLARE_SECTION
+#endif
+
 #define LOGSYS_DECLARE_SUBSYS(subsys)					\
 __attribute__ ((constructor))						\
 static void logsys_subsys_init (void)					\
 {									\
-	assert(__start___verbose != __stop___verbose);			\
+	LOGSYS_DECLARE_SECTION;						\
 	logsys_subsys_id =						\
 		_logsys_subsys_create ((subsys), __FILE__);		\
 	if (logsys_subsys_id == -1) {					\
