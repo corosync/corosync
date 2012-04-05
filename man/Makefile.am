@@ -131,7 +131,8 @@ dist_man_MANS 		= corosync.conf.5 \
 			  quorum_overview.8 \
 			  votequorum_overview.8 \
 			  sam_overview.8 \
-			  cmap_overview.8
+			  cmap_overview.8 \
+			  cmap_keys.8
 
 if INSTALL_XMLCONF
 dist_man_MANS		+= $(xml_man)
