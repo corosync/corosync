@@ -966,7 +966,7 @@ static int uidgid_config_parser_cb(const char *path,
 			snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "uidgid.uid.%u",
 					uid);
 			icmap_set_uint8(key_name, 1);
-		} else if (strcmp(key, "uidgid.gid") == 0) {
+		} else if (strcmp(path, "uidgid.gid") == 0) {
 			gid = gid_determine(value);
 			if (gid == -1) {
 				*error_string = error_string_response;
