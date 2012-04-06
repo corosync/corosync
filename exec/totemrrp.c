@@ -1879,10 +1879,8 @@ int totemrrp_initialize (
 
 	instance->totem_config = totem_config;
 	stats->rrp = &instance->stats;
-	if (totem_config->interface_count > 1) {
-		instance->stats.interface_count = totem_config->interface_count;
-		instance->stats.faulty = calloc(instance->stats.interface_count, sizeof(uint8_t));
-	}
+	instance->stats.interface_count = totem_config->interface_count;
+	instance->stats.faulty = calloc(instance->stats.interface_count, sizeof(uint8_t));
 
 	res = totemrrp_algorithm_set (
 		instance->totem_config,
