@@ -69,6 +69,7 @@ static int32_t ipc_not_enough_fds_left = 0;
 static int32_t ipc_fc_is_quorate; /* boolean */
 static int32_t ipc_fc_totem_queue_level; /* percentage used */
 static int32_t ipc_fc_sync_in_process; /* boolean */
+static int32_t ipc_allow_connections = 0; /* boolean */
 
 struct cs_ipcs_mapper {
 	int32_t id;
@@ -149,6 +150,11 @@ static const char* cs_ipcs_serv_short_name(int32_t service_id)
 	return name;
 }
 
+void cs_ipc_allow_connections(int32_t allow)
+{
+	ipc_allow_connections = allow;
+}
+
 int32_t cs_ipcs_service_destroy(int32_t service_id)
 {
 	if (ipcs_mapper[service_id].inst) {
@@ -163,6 +169,11 @@ static int32_t cs_ipcs_connection_accept (qb_ipcs_connection_t *c, uid_t euid, g
 	int32_t service = qb_ipcs_service_id_get(c);
 	uint8_t u8;
 	char key_name[ICMAP_KEYNAME_MAXLEN];
+
+	if (!ipc_allow_connections) {
+		log_printf(LOGSYS_LEVEL_DEBUG, "Denied connection, corosync is not ready");
+		return -EAGAIN;
+	}
 
 	if (corosync_service[service] == NULL ||
 		corosync_service_exiting[service] ||

@@ -119,6 +119,8 @@ extern void cs_ipc_refcnt_inc(void *conn);
 
 extern void cs_ipc_refcnt_dec(void *conn);
 
+extern void cs_ipc_allow_connections(int32_t allow);
+
 int coroparse_configparse (const char **error_string);
 
 #endif /* MAIN_H_DEFINED */

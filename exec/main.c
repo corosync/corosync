@@ -252,6 +252,7 @@ static void corosync_sync_completed (void)
 	sync_in_process = 0;
 
 	cs_ipcs_sync_state_changed(sync_in_process);
+	cs_ipc_allow_connections(1);
 }
 
 static int corosync_sync_callbacks_retrieve (
