@@ -207,6 +207,8 @@ static int init_nss_crypto(struct crypto_instance *instance)
 		return -1;
 	}
 
+	PK11_FreeSlot(crypt_slot);
+
 	return 0;
 }
 
@@ -423,6 +425,8 @@ static int init_nss_hash(struct crypto_instance *instance)
 			   PR_GetError());
 		return -1;
 	}
+
+	PK11_FreeSlot(hash_slot);
 
 	return 0;
 }
