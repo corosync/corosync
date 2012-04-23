@@ -950,6 +950,7 @@ cs_error_t icmap_set_ro_access(const char *key_name, int prefix, int ro_access)
 				return (CS_ERR_EXIST);
 			} else {
 				list_del(&icmap_ro_ai->list);
+				free(icmap_ro_ai->key_name);
 				free(icmap_ro_ai);
 
 				return (CS_OK);
