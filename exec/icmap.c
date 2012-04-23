@@ -59,6 +59,7 @@ struct icmap_track {
 	int32_t track_type;
 	icmap_notify_fn_t notify_fn;
 	void *user_data;
+	struct list_head list;
 };
 
 struct icmap_ro_access_item {
@@ -68,6 +69,7 @@ struct icmap_ro_access_item {
 };
 
 DECLARE_LIST_INIT(icmap_ro_access_item_list_head);
+DECLARE_LIST_INIT(icmap_track_list_head);
 
 /*
  * Static functions declarations
@@ -192,6 +194,47 @@ cs_error_t icmap_init(void)
 	err = qb_map_notify_add(icmap_map, NULL, icmap_map_free_cb, QB_MAP_NOTIFY_FREE, NULL);
 
 	return (qb_to_cs_error(err));
+}
+
+static void icmap_set_ro_access_free(void)
+{
+	struct list_head *iter = icmap_ro_access_item_list_head.next;
+	struct icmap_ro_access_item *icmap_ro_ai;
+
+	while (iter != &icmap_ro_access_item_list_head) {
+		icmap_ro_ai = list_entry(iter, struct icmap_ro_access_item, list);
+		list_del(&icmap_ro_ai->list);
+		free(icmap_ro_ai->key_name);
+		free(icmap_ro_ai);
+		iter = icmap_ro_access_item_list_head.next;
+	}
+}
+
+static void icmap_del_all_track(void)
+{
+	struct list_head *iter = icmap_track_list_head.next;
+	struct icmap_track *icmap_track;
+
+	while (iter != &icmap_track_list_head) {
+		icmap_track = list_entry(iter, struct icmap_track, list);
+		icmap_track_delete(icmap_track);
+		iter = icmap_track_list_head.next;
+	}
+}
+
+void icmap_fini(void)
+{
+	icmap_del_all_track();
+	/*
+	 * catch 22 warning:
+	 * We need to drop this notify but we can't because it calls icmap_map_free_cb
+	 * while destroying the tree to free icmap_item(s).
+	 * -> qb_map_notify_del_2(icmap_map, NULL, icmap_map_free_cb, QB_MAP_NOTIFY_FREE, NULL);
+	 * and we cannot call it after map_destroy. joy! :)
+	 */
+	qb_map_destroy(icmap_map);
+	icmap_set_ro_access_free();
+	return;
 }
 
 static int icmap_is_valid_name_char(char c)
@@ -864,6 +907,9 @@ cs_error_t icmap_track_add(
 		return (qb_to_cs_error(err));
 	}
 
+	list_init(&(*icmap_track)->list);
+	list_add (&(*icmap_track)->list, &icmap_track_list_head);
+
 	return (CS_OK);
 }
 
@@ -876,6 +922,7 @@ cs_error_t icmap_track_delete(icmap_track_t icmap_track)
 		return (qb_to_cs_error(err));
 	}
 
+	list_del(&icmap_track->list);
 	free(icmap_track->key_name);
 	free(icmap_track);
 

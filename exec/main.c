@@ -192,6 +192,7 @@ static void unlink_all_completed (void)
 {
 	api->timer_delete (corosync_stats_timer_handle);
 	qb_loop_stop (corosync_poll_handle);
+	icmap_fini();
 }
 
 void corosync_shutdown_request (void)

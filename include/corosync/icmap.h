@@ -120,6 +120,7 @@ typedef struct icmap_track *icmap_track_t;
  * Initialize icmap
  */
 extern cs_error_t icmap_init(void);
+extern void icmap_fini(void);
 
 /*
  * Store value with value_len length and type as key_name name in icmap.
