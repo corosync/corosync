@@ -46,26 +46,36 @@
 #include <sys/un.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <time.h>
+#include <sys/time.h>
+#include <assert.h>
+#include <limits.h>
 
 #include <corosync/corotypes.h>
 #include <corosync/cpg.h>
 #include <corosync/swab.h>
 
+#ifdef QBLOG
 #include <qb/qblog.h>
+#endif
 
 static int quit = 0;
 static int show_ip = 0;
+static int restart = 0;
+static uint32_t nodeidStart = 0;
+
+static void print_localnodeid(cpg_handle_t handle);
 
 static void print_cpgname (const struct cpg_name *name)
 {
-	int i;
+	unsigned int i;
 
 	for (i = 0; i < name->length; i++) {
 		printf ("%c", name->value[i]);
 	}
 }
 
-static char * node_pid_format(unsigned int nodeid,int pid) {
+static char * node_pid_format(unsigned int nodeid, unsigned int pid) {
 	static char buffer[100];
 	if (show_ip) {
 		struct in_addr saddr;
@@ -82,6 +92,36 @@ static char * node_pid_format(unsigned int nodeid,int pid) {
 	return buffer;
 }
 
+static void
+print_time(void)
+{
+#define     MAXLEN (256)
+	char buf[MAXLEN];
+	char hostname[HOST_NAME_MAX];
+	struct timeval tnow;
+	time_t t;
+	size_t len;
+	char *s = buf;
+
+	len = sizeof(hostname);
+	if(gethostname(hostname, len) == 0) {
+		hostname[len-1] = '\0';
+		char *longName = hostname;
+		if( (longName = strstr( hostname, "." )) != NULL )
+		*longName = '\0';
+	}
+
+	strcpy(s, hostname);
+	s += strlen(hostname);
+	s += snprintf(s, sizeof(buf)-(s-buf), ":%d", getpid());
+	t = time(0);
+	gettimeofday( &tnow, 0 );
+	s += strftime(s, sizeof(buf)-(s-buf) , " %Y-%m-%d %T", localtime(&t));
+	s += snprintf(s, sizeof(buf)-(s-buf), ".%03ld", tnow.tv_usec/1000);
+	assert(s-buf < (int)sizeof(buf));
+	printf("%s\n", buf);
+}
+
 
 static void DeliverCallback (
 	cpg_handle_t handle,
@@ -91,6 +131,7 @@ static void DeliverCallback (
 	void *msg,
 	size_t msg_len)
 {
+	print_time();
 	printf("DeliverCallback: message (len=%lu)from %s: '%s'\n",
 		       (unsigned long int) msg_len, node_pid_format(nodeid, pid),
 		       (const char *)msg);
@@ -103,11 +144,16 @@ static void ConfchgCallback (
 	const struct cpg_address *left_list, size_t left_list_entries,
 	const struct cpg_address *joined_list, size_t joined_list_entries)
 {
-	int i;
+	unsigned int i;
+	int result;
+	uint32_t nodeid;
 
-	printf("\nConfchgCallback: group '");
+	print_time();
+	printf("ConfchgCallback: group '");
 	print_cpgname(groupName);
 	printf("'\n");
+	print_localnodeid(handle);
+
 	for (i=0; i<joined_list_entries; i++) {
 		printf("joined %s reason: %d\n",
 				node_pid_format(joined_list[i].nodeid, joined_list[i].pid),
@@ -127,11 +173,33 @@ static void ConfchgCallback (
 				node_pid_format(member_list[i].nodeid, member_list[i].pid));
 	}
 
+	result = cpg_local_get(handle, &nodeid);
+	if(result != CS_OK) {
+		printf("failed to get local nodeid %d\n", result);
+		nodeid = 0;
+	}
 	/* Is it us??
 	   NOTE: in reality we should also check the nodeid */
-	if (left_list_entries && left_list[0].pid == getpid()) {
-		printf("We have left the building\n");
-		quit = 1;
+	if (left_list_entries && (pid_t)left_list[0].pid == getpid()) {
+		printf("We might have left the building pid %d\n", left_list[0].pid);
+		/* can only use nodeidStart as a reliable check (version <= 1.4.2) */
+		if(nodeidStart) {
+			/* report dynamic nature of nodeid returned from local_get */
+			/*  local get of nodeid might change identity from original! */
+			if(htonl((uint32_t)nodeid) == INADDR_LOOPBACK) {
+				printf("We probably left the building switched identity? start nodeid %d nodeid %d current nodeid %d pid %d\n", nodeidStart, left_list[0].nodeid, nodeid, left_list[0].pid);
+			} else if(htonl((uint32_t)left_list[0].nodeid) == INADDR_LOOPBACK) {
+				printf("We probably left the building started alone? start nodeid %d nodeid %d current nodeid %d pid %d\n", nodeidStart, left_list[0].nodeid, nodeid, left_list[0].pid);
+			}
+			/* a possibly reliable way to check is based on original address */
+			if(left_list[0].nodeid == nodeidStart) {
+				printf("We have left the building direct match start nodeid %d nodeid %d local get current nodeid %d pid %d\n", nodeidStart, left_list[0].nodeid, nodeid, left_list[0].pid);
+				// quit = 1;
+				restart = 1;
+			} else {
+				printf("Probably another node with matching pid start nodeid %d nodeid %d current nodeid %d pid %d\n", nodeidStart, left_list[0].nodeid, nodeid, left_list[0].pid);
+			}
+		}
 	}
 }
 
@@ -141,9 +209,11 @@ static void TotemConfchgCallback (
         uint32_t member_list_entries,
         const uint32_t *member_list)
 {
-	int i;
+	unsigned int i;
 
-	printf ("\nTotemConfchgCallback: ringid (%u.%"PRIu64")\n",
+	printf("\n");
+	print_time();
+	printf ("TotemConfchgCallback: ringid (%u.%"PRIu64")\n",
 		ring_id.nodeid, ring_id.seq);
 
 	printf("active processors %lu: ",
@@ -167,13 +237,20 @@ static void sigintr_handler (int signum) {
 }
 static struct cpg_name group_name;
 
+#define retrybackoff(counter) {    \
+		counter++;                    \
+		printf("Restart operation after %ds\n", counter); \
+		sleep((unsigned int)counter);               \
+		restart = 1;			\
+		continue;			\
+}
 
 #define cs_repeat_init(counter, max, code) do {    \
 	code;                                 \
 	if (result == CS_ERR_TRY_AGAIN || result == CS_ERR_QUEUE_FULL || result == CS_ERR_LIBRARY) {  \
 		counter++;                    \
 		printf("Retrying operation after %ds\n", counter); \
-		sleep(counter);               \
+		sleep((unsigned int)counter);               \
 	} else {                              \
 		break;                        \
 	}                                     \
@@ -184,12 +261,35 @@ static struct cpg_name group_name;
 	if (result == CS_ERR_TRY_AGAIN || result == CS_ERR_QUEUE_FULL) {  \
 		counter++;                    \
 		printf("Retrying operation after %ds\n", counter); \
-		sleep(counter);               \
+		sleep((unsigned int)counter);               \
 	} else {                              \
 		break;                        \
 	}                                     \
 } while (counter < max)
 
+static void print_localnodeid(cpg_handle_t handle)
+{
+	char addrStr[128];
+	unsigned int retries;
+	unsigned int nodeid;
+	struct sockaddr_storage addr;
+	struct sockaddr_in *v4addr = (struct sockaddr_in *)&addr;
+	int result;
+
+	retries = 0;
+
+	cs_repeat(retries, 30, result = cpg_local_get(handle, &nodeid));
+	if (result != CS_OK) {
+		printf ("Could not get local node id\n");
+	} else {
+	v4addr->sin_addr.s_addr = nodeid;
+	if(inet_ntop(AF_INET, (const void *)&v4addr->sin_addr.s_addr,
+                           addrStr, (socklen_t)sizeof(addrStr)) == NULL) {
+		addrStr[0] = 0;
+	}
+	printf ("Local node id is %s/%x result %d\n", addrStr, nodeid, result);
+	}
+}
 
 int main (int argc, char *argv[]) {
 	cpg_handle_t handle;
@@ -204,13 +304,20 @@ int main (int argc, char *argv[]) {
 	struct cpg_address member_list[64];
 	int member_list_entries;
 	int i;
+	int recnt;
+	int doexit;
+	const char *exitStr = "EXIT";
 
+	doexit = 0;
+
+#ifdef QBLOG
 	qb_log_init("testcpg", LOG_USER, LOG_ERR);
 	qb_log_ctl(QB_LOG_SYSLOG, QB_LOG_CONF_ENABLED, QB_FALSE);
 	qb_log_filter_ctl(QB_LOG_STDERR, QB_LOG_FILTER_ADD,
 			  QB_LOG_FILTER_FILE, "*", LOG_TRACE);
 	qb_log_ctl(QB_LOG_STDERR, QB_LOG_CONF_ENABLED, QB_TRUE);
 	qb_log_format_set(QB_LOG_STDERR, "[%p] %f %b");
+#endif
 
 	while ( (opt = getopt(argc, argv, options)) != -1 ) {
 		switch (opt) {
@@ -228,47 +335,54 @@ int main (int argc, char *argv[]) {
 		strcpy(group_name.value, "GROUP");
 		group_name.length = 6;
 	}
+	recnt = 0;
 
-	retries = 0;
-	cs_repeat_init(retries, 30, result = cpg_model_initialize (&handle, CPG_MODEL_V1, (cpg_model_data_t *)&model_data, NULL));
-	if (result != CS_OK) {
-		printf ("Could not initialize Cluster Process Group API instance error %d\n", result);
-		exit (1);
-	}
-	retries = 0;
-	cs_repeat(retries, 30, result = cpg_local_get(handle, &nodeid));
-	if (result != CS_OK) {
-		printf ("Could not get local node id\n");
-		exit (1);
-	}
-	printf ("Local node id is %x\n", nodeid);
+	printf ("Type %s to finish\n", exitStr);
+	restart = 1;
 
-	retries = 0;
-	cs_repeat(retries, 30, result = cpg_join(handle, &group_name));
-	if (result != CS_OK) {
-		printf ("Could not join process group, error %d\n", result);
-		exit (1);
-	}
-
-	retries = 0;
-	cs_repeat(retries, 30, result = cpg_membership_get (handle, &group_name,
-		(struct cpg_address *)&member_list, &member_list_entries));
-	if (result != CS_OK) {
-		printf ("Could not get current membership list %d\n", result);
-		exit (1);
-	}
-
-	printf ("membership list\n");
-	for (i = 0; i < member_list_entries; i++) {
-		printf ("node id %d pid %d\n", member_list[i].nodeid,
-			member_list[i].pid);
-	}
-
-
-	FD_ZERO (&read_fds);
-	cpg_fd_get(handle, &select_fd);
-	printf ("Type EXIT to finish\n");
 	do {
+		if(restart) {
+			restart = 0;
+			retries = 0;
+			cs_repeat_init(retries, 30, result = cpg_model_initialize (&handle, CPG_MODEL_V1, (cpg_model_data_t *)&model_data, NULL));
+			if (result != CS_OK) {
+				printf ("Could not initialize Cluster Process Group API instance error %d\n", result);
+				retrybackoff(recnt);
+			}
+			retries = 0;
+			cs_repeat(retries, 30, result = cpg_local_get(handle, &nodeid));
+			if (result != CS_OK) {
+				printf ("Could not get local node id\n");
+				retrybackoff(recnt);
+			}
+			printf ("Local node id is %x\n", nodeid);
+			nodeidStart = nodeid;
+
+			retries = 0;
+			cs_repeat(retries, 30, result = cpg_join(handle, &group_name));
+			if (result != CS_OK) {
+				printf ("Could not join process group, error %d\n", result);
+				retrybackoff(recnt);
+			}
+
+			retries = 0;
+			cs_repeat(retries, 30, result = cpg_membership_get (handle, &group_name,
+				(struct cpg_address *)&member_list, &member_list_entries));
+			if (result != CS_OK) {
+				printf ("Could not get current membership list %d\n", result);
+				retrybackoff(recnt);
+			}
+			recnt = 0;
+
+			printf ("membership list\n");
+			for (i = 0; i < member_list_entries; i++) {
+				printf ("node id %d pid %d\n", member_list[i].nodeid,
+					member_list[i].pid);
+			}
+
+			FD_ZERO (&read_fds);
+			cpg_fd_get(handle, &select_fd);
+		}
 		FD_SET (select_fd, &read_fds);
 		FD_SET (STDIN_FILENO, &read_fds);
 		result = select (select_fd + 1, &read_fds, 0, 0, 0);
@@ -279,11 +393,13 @@ int main (int argc, char *argv[]) {
 			char inbuf[132];
 			struct iovec iov;
 
-			fgets_res = fgets(inbuf, sizeof(inbuf), stdin);
+			fgets_res = fgets(inbuf, (int)sizeof(inbuf), stdin);
 			if (fgets_res == NULL) {
+				doexit = 1;
 				cpg_leave(handle, &group_name);
 			}
-			if (strncmp(inbuf, "EXIT", 4) == 0) {
+			if (strncmp(inbuf, exitStr, strlen(exitStr)) == 0) {
+				doexit = 1;
 				cpg_leave(handle, &group_name);
 			}
 			else {
@@ -293,11 +409,21 @@ int main (int argc, char *argv[]) {
 			}
 		}
 		if (FD_ISSET (select_fd, &read_fds)) {
-			if (cpg_dispatch (handle, CS_DISPATCH_ALL) != CS_OK)
-				exit(1);
+			if (cpg_dispatch (handle, CS_DISPATCH_ALL) != CS_OK) {
+				if(doexit) {
+					exit(1);
+				}
+				restart = 1;
+			}
 		}
-	} while (result && !quit);
-
+		if(restart) {
+			if(!doexit) {
+				result = cpg_finalize (handle);
+				printf ("Finalize+restart result is %d (should be 1)\n", result);
+				continue;
+			}
+		}
+	} while (result && !quit && !doexit);
 
 	result = cpg_finalize (handle);
 	printf ("Finalize  result is %d (should be 1)\n", result);
