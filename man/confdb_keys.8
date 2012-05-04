@@ -1,0 +1,243 @@
+.\"/*
+.\" * Copyright (c) 2012 Red Hat, Inc.
+.\" *
+.\" * All rights reserved.
+.\" *
+.\" * Author: Jan Friesse (jfriesse@redhat.com)
+.\" *
+.\" * This software licensed under BSD license, the text of which follows:
+.\" *
+.\" * Redistribution and use in source and binary forms, with or without
+.\" * modification, are permitted provided that the following conditions are met:
+.\" *
+.\" * - Redistributions of source code must retain the above copyright notice,
+.\" *   this list of conditions and the following disclaimer.
+.\" * - Redistributions in binary form must reproduce the above copyright notice,
+.\" *   this list of conditions and the following disclaimer in the documentation
+.\" *   and/or other materials provided with the distribution.
+.\" * - Neither the name of the Red Hat, Inc. nor the names of its
+.\" *   contributors may be used to endorse or promote products derived from this
+.\" *   software without specific prior written permission.
+.\" *
+.\" * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+.\" * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+.\" * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+.\" * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+.\" * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+.\" * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+.\" * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+.\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+.\" * THE POSSIBILITY OF SUCH DAMAGE.
+.\" */
+.TH "CONFDB_KEYS" 8 "04/05/2012" "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
+
+.SH NAME
+.P
+confdb_keys \- Overview of keys stored in the Configuration Database
+
+.SH OVERVIEW
+.P
+There are roughly 3 types of keys stored in ConfDB:
+.PP
+* Values stored in config file.
+.PP
+* Runtime statistics.
+.PP
+* Other user created values.
+
+.SH OBJECTS AND KEYS
+.TP
+internal_configuration.*
+Internal configuration data. It's only useful for getting list of loaded services.
+
+.TP
+logging.*
+Values read from configuration file. It's possible to change them at runtime.
+If subsystem specific configuration is needed, each subsys must have one object with subsys
+key. Other keys are same as in config file.
+
+
+.TP
+runtime.blackbox.*
+Trigger keys for store fplay data. It's recommended to use corosync-blackbox command
+to change keys in this object.
+
+.TP
+runtime.connections.*
+There are informations about total number of active connections in given moment in
+.B active
+key, number of closed connections during whole runtime of corosync in
+.B closed
+key and informations about each active IPC connection.
+
+.TP
+runtime.connections.ID.*
+Each IPC connection has unique ID. This is in form [[short_name:][PID:]internal_id. On some
+platforms, short_name and PID are not filled and only internal_id is used.
+
+Typical keys in object are:
+
+.B client_pid
+containing PID of IPC connection (unavailable on some platforms).
+
+.B dispatched
+with number of dispatched messages.
+
+.B invalid_request
+is number of requests made by IPC which are invalid (calling non-existing call, ...).
+
+.B name
+containing short name of IPC connection (unavailable on some platforms).
+
+.B overload
+is number of requests which were not processed because of overload.
+
+.B queue_size
+contains number of messages in queue waiting for send.
+
+.B recv_retries
+is total number of interrupted receives.
+
+.B requests
+contains number of requests made by IPC.
+
+.B responses
+is number of responses sent to IPC client.
+
+.B send_retries
+contains total number of interrupted sends.
+
+.B service_id
+contains ID of service which IPC is connected to.
+
+.TP
+runtime.services.*
+Objects with statistics for service engines. Each service has it's own
+subobject with name SERVICE, where SERVICE is lower case
+name of service. Inside object is number of received and send messages
+by corosync engine in format runtime.services.SERVICE.EXEC_CALL.rx and
+runtime.services.SERVICE.EXEC_CALL.tx, where EXEC_CALL is internal id of service
+call (so for example 3 in cpg service is receive of multicast message from other
+nodes).
+
+.TP
+runtime.totem.pg.mrp.srp.*
+Object with statistics about totem.
+Typical keys:
+
+.B commit_entered
+Number of times processor entered COMMIT state.
+
+.B commit_token_lost
+Number of times processor lost token in COMMIT state.
+
+.B consensus_timeouts
+How many times processor timeouted making consensus about membership.
+
+.B continuous_gather
+How many times was processor not able to reach consensus.
+
+.B firewall_enabled_or_nic_failure
+Set to 1 when processor was not able to reach consensus for long time. Usual
+reason is badly configured firewall or connection failure.
+
+.B gather_entered
+Number of times processor entered GATHER state.
+
+.B gather_token_lost
+Number of times processor lost token in GATHER state.
+
+.B mcast_retx
+Number of retransmitted messages.
+
+.B mcast_rx
+Number of received multicast messages.
+
+.B mcast_tx
+Number of transmitted multicast messages.
+
+.B memb_commit_token_rx
+Number of received commit tokens.
+
+.B memb_commit_token_tx
+Number of transmitted commit tokens.
+
+.B memb_join_rx
+Number of received join messages.
+
+.B memb_join_tx
+Number of transmitted join messages.
+
+.B memb_merge_detect_rx
+Number of received member merge messages.
+
+.B memb_merge_detect_tx
+Number of transmitted member merge messages.
+
+.B orf_token_rx
+Number of received orf tokens.
+
+.B orf_token_tx
+Number of transmitted orf tokens.
+
+.B recovery_entered
+Number of times processor entered recovery.
+
+.B recovery_token_lost
+Number of times token was lost in recovery state.
+
+.B rx_msg_dropped
+Number of received messages which was dropped because they were not expected
+(as example multicast message in commit state).
+
+.B token_hold_cancel_rx
+Number of received token hold cancel messages.
+
+.B token_hold_cancel_tx
+Number of transmitted token hold cancel messages.
+
+.TP
+runtime.totem.pg.mrp.srp.members.*
+Object containing members of totem single ring protocol. Each member
+key has format runtime.totem.pg.mrp.srp.members.NODEID.KEY, where key is
+one of:
+
+.B ip
+IP address of member. It's stored in format r(RING_ID) ip(IP_ADDRESS).
+
+.B join_count
+Number of times processor joined membership with local processor. When
+processor fails and rejoins again, this value is incremented.
+
+.B status
+Status of processor. Can be one of joined and left.
+
+.TP
+resources.process.PID.*
+Object created by applications using SAM with ConfDB integration.
+It contains following keys:
+
+.B recovery
+Recovery policy of process. Can be one of quit or restart.
+
+.B poll_period
+Value passed in sam_initialize as time_interval.
+
+.B last_updated
+Last time when SAM received heartbeat from client.
+
+.B state
+State of client. Can be one of failed, stopped, running and waiting for quorum.
+
+.TP
+uidgid.*
+Informations about users/groups which are allowed to do IPC connection to
+corosync. Objects can contain uid and gid keys, with user and group allowed
+to connect corosync IPC.
+
+.SH "SEE ALSO"
+.BR corosync_overview (8),
+.BR corosync.conf (5),
+.BR corosync-objctl (8)

@@ -70,6 +70,7 @@ dist_man_MANS = \
 	confdb_object_parent_get.3 \
 	confdb_context_get.3 \
 	confdb_context_set.3 \
+	confdb_keys.8 \
 	cpg_context_get.3 \
 	cpg_context_set.3 \
 	cpg_dispatch.3 \
