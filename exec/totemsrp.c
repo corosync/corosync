@@ -1904,7 +1904,9 @@ static void memb_state_operational_enter (struct totemsrp_instance *instance)
 	log_printf (instance->totemsrp_log_level_debug,
 		"entering OPERATIONAL state.");
 	log_printf (instance->totemsrp_log_level_notice,
-		"A processor joined or left the membership and a new membership was formed.");
+		"A processor joined or left the membership and a new membership (%s:%lld) was formed.",
+		totemip_print (&instance->my_ring_id.rep),
+		instance->my_ring_id.seq);
 	instance->memb_state = MEMB_STATE_OPERATIONAL;
 
 	instance->stats.operational_entered++;
