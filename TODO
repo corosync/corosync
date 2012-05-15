@@ -3,39 +3,68 @@
 --------------------------------------------------------
 
 ----------------------------
- Last Updated: January 2012
+ Last Updated: May 2012
 ----------------------------
-
---------------------------------------
- Current priority list for Needle 2.0
---------------------------------------
 
 --------------------------------------
  Current priority list for Needle 2.1
 --------------------------------------
-1. implement topic-onecrypt
-2. implement add/remove nodes from udpu
-3. logsys glue layer removal
-4. implement topic-zerocopy
-5. implement topic-rdmaud
-6. harden and finish ykd algorithm
-7. implement topic-xmlschema
+* disallow binding to localhost (Honza)
+* don't rely on mcast loop (Honza)
+* Add support for LOG_TRACE and log received messages in this level (Honza)
+* Proper support for DNS (always return one address even if function
+   is called multiple times) (Honza)
+* porting of qdisk to votequorum and eventually finalize qdevice API
+   in votequorum. (Fabio)
+* Cleaner shutdown process -> free memory (Fabio)
+* Merge init and systemd stuff (Fabio)
+
+--------------------------------------
+ Current priority list for Needle 2.X
+--------------------------------------
+* logsys glue layer removal
+* harden and finish ykd algorithm
+* implement topic-xmlschema
+* Modify totemsrp to allow dynamic definitions of the ring counts
+   to allow a larger number of redundant rings then 2.
+* Investigate always-on flight recorder
+* support more encryption methods (other than none/aes256) from nss
+* implement topic-rdmaud
+
+--------------------------------
+Ideas for future releases (3.0+)
+--------------------------------
+* topic-netmalloc
+* doxygenize include and lib directories.
+* re-evaluate using libtool to link libraries.
+* Support for clang as compiler (depends on libtool)
+* reorganize library/headers/code in the tree
+* change and simplify build defaults
+* libtotem cleanup/rewrite
+    * Rewrite totem fragmentation layer
+    * rewrite top level totempg interface
+    * Split fragmentation layer in totem (ie: totempg talks to totemfrg
+      talks to totemsrp)
+    * Add a getopt and setopt feature to top level interface to allow
+      runtime configuration of the interface
+* Improve cpg - opaque data in callbacks (client stores data about
+   itself, every node can access them), permissions (read only/read
+   write/ some application may disable listeners) - Probably implemented
+   as extra user space library on top of normal cpg
+* Better statistic - histogram
+* totem multiring
+* load balancing over different speed links in RRP
 
 We use topic branches in our git repository to develop new disruptive features
 that define our future roadmap.  This file describes the topic branches
 the developers have interest in investigating further.
 
-targets can be: whitetank, needle2.0, needle3.0, or future (3.0+).
-Finished can be: percentage or date merged to master.  Once in a shipped
-version, please remove from the topic list.
+targets can be: needle2.1, needle2.X, or future (3.0).
+Once in a shipped version, please remove from the topic list.
 
 ------------------------------------------------------------------------------
 topic-xmlschema
 ------------------------------------------------------------------------------
-Main Developer: Honza Friesse
-Started: not started
-Finished: 0%
-target: needle2.1
 XML configuration for corosync exists, but imput file is not checked against
 XML schema. This topic is about implementing preferably RelaxNG schema of
 corosync configuration.
@@ -43,11 +72,6 @@ corosync configuration.
 ------------------------------------------------------------------------------
 topic-onecrypt
 ------------------------------------------------------------------------------
-Main Developer: Honza Friesse
-Started: not started
-Finished: 0%
-target: needle2.1
-Description:
 Currently encryption code is located in totemudp.c, totemudpu.c, and iba has
 no encryption support.  This topic merges the encryption code into a new
 file such as totemcrp.c and provides a mechanism for totemnet.c to register
@@ -57,11 +81,6 @@ requested by the configuration.
 ------------------------------------------------------------------------------
 topic-netmalloc
 ------------------------------------------------------------------------------
-Main Developer: Honza Friesse
-Started: not started
-Finished: 0%
-target: needle2.1
-Description:
 The totemiba.c driver must allocate memory and assign it to a protection domain
 in order for an infiniband driver to transmit memory.  In the current
 implementation, totemsrp.c also allocates these same frames.  This results in
@@ -73,35 +92,7 @@ it from the network driver.
 ------------------------------------------------------------------------------
 topic-rdmaud
 ------------------------------------------------------------------------------
-Main Developer: Honza Friesse Steven Dake
-Started: not started
-Finished: 0%
-target: needle2.1
-Description:
 Currently our RDMA code uses librdmacm to setup connections.  We are not 
 certain this extra library is needed, and may be able to use only ibverbs.  If
 this is possible, the totem code may be more reliable, especially around
 failure conditions.
-
-------------------------------------------------------------------------------
-topic-zerocopy
-------------------------------------------------------------------------------
-Main Developer: Honza Friesse
-Started: not started
-Finished: 0%
-target: needle2.1
-Description:
-Totem has many copies involved in messaging which we would like to investigate
-removing.  Our goal is to deliver wire speed performance for rdma networks,
-and if this can be achieved by our other topic investigations, we may not
-further investigate this topic.  The basic idea of the topic is to handle
-message assembly/fragmentation in libcpg, and have totem be responsible for
-sending these pages that are shared via posix shared memory.
-
-------------------------------------------------------------------------------
-other topics not yet defined:
-* disallow binding to localhost interfae in redundant ring configuation.
-* doxygenize include and lib directories.
-* sort out binding to localhost in general
-* totem multiring
-* load balancing over different speed links in RRP
