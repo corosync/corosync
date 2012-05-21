@@ -17,7 +17,6 @@
 * porting of qdisk to votequorum and eventually finalize qdevice API
    in votequorum. (Fabio)
 * Cleaner shutdown process -> free memory (Fabio)
-* Merge init and systemd stuff (Fabio)
 
 --------------------------------------
  Current priority list for Needle 2.X

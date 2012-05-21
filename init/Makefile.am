@@ -34,38 +34,30 @@
 
 MAINTAINERCLEANFILES	= Makefile.in
 
-EXTRA_DIST		= generic.in notifyd.in corosync.service.in corosync-notifyd.service.in
+EXTRA_DIST		= corosync.in corosync-notifyd.in corosync.service.in corosync-notifyd.service.in
 
 if INSTALL_SYSTEMD
-systemdconfdir = $(SYSTEMDDIR)
-systemdconf_DATA = corosync.service corosync-notifyd.service
+systemdconfdir	   = $(SYSTEMDDIR)
+systemdconf_DATA   = corosync.service corosync-notifyd.service
+initscriptdir	   = $(INITWRAPPERSDIR)
 else
-target_INIT		= generic notifyd
+initscriptdir	   = $(INITDDIR)
 endif
+initscript_SCRIPTS  = corosync corosync-notifyd
 
 %: %.in Makefile
 	rm -f $@-t $@
-	sed \
+	cp $< $@-t
+	sed -i \
 		-e 's#@''SBINDIR@#$(sbindir)#g' \
 		-e 's#@''SYSCONFDIR@#$(sysconfdir)#g' \
 		-e 's#@''INITDDIR@#$(INITDDIR)#g' \
+		-e 's#@''INITWRAPPERSDIR@#$(INITWRAPPERSDIR)#g' \
 		-e 's#@''LOCALSTATEDIR@#$(localstatedir)#g' \
-	    $< > $@-t
+	    $@-t
 	mv $@-t $@
 
-all-local: $(target_INIT) $(systemdconf_DATA)
+all-local: $(initscript_SCRIPTS) $(systemdconf_DATA)
 
 clean-local:
-	rm -rf $(target_INIT) $(systemdconf_DATA)
-
-if INSTALL_SYSTEMD
-else
-install-exec-local:
-	$(INSTALL) -d $(DESTDIR)/$(INITDDIR)
-	$(INSTALL) -m 755 generic $(DESTDIR)/$(INITDDIR)/corosync
-	$(INSTALL) -m 755 notifyd $(DESTDIR)/$(INITDDIR)/corosync-notifyd
-
-uninstall-local:
-	cd $(DESTDIR)/$(INITDDIR) && \
-		rm -f corosync corosync-notifyd
-endif
+	rm -rf $(initscript_SCRIPTS) $(systemdconf_DATA)

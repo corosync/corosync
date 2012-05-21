@@ -290,6 +290,11 @@ AC_ARG_WITH([systemddir],
 	[ SYSTEMDDIR="$withval" ],
 	[ SYSTEMDDIR="/lib/systemd/system" ])
 
+AC_ARG_WITH([initwrappersdir],
+	[  --with-initwrappersdir=DIR   : path to init wrappers files directory. ],
+	[ INITWRAPPERSDIR="$withval" ],
+	[ INITWRAPPERSDIR="$datarootdir/corosync" ])
+
 AC_ARG_ENABLE([snmp],
        [  --enable-snmp                   : SNMP protocol support ],
        [ default="no" ])
@@ -585,6 +590,8 @@ LDFLAGS="$ENV_LDFLAGS $COVERAGE_LDFLAGS $OS_LDFLAGS"
 # substitute what we need:
 AC_SUBST([INITDDIR])
 AC_SUBST([SYSTEMDDIR])
+INITWRAPPERSDIR=$(eval echo ${INITWRAPPERSDIR})
+AC_SUBST([INITWRAPPERSDIR])
 
 AC_SUBST([SOMAJOR])
 AC_SUBST([SOMINOR])
@@ -631,6 +638,8 @@ AC_MSG_RESULT([  Arch-independent files   = ${datadir}])
 AC_MSG_RESULT([  State information        = ${localstatedir}])
 AC_MSG_RESULT([  System configuration     = ${sysconfdir}])
 AC_MSG_RESULT([  System init.d directory  = ${INITDDIR}])
+AC_MSG_RESULT([  System systemd directory = ${SYSTEMDDIR}])
+AC_MSG_RESULT([  System init wraps dir    = ${INITWRAPPERSDIR}])
 AC_MSG_RESULT([  corosync config dir      = ${COROSYSCONFDIR}])
 AC_MSG_RESULT([  Features                 =${PACKAGE_FEATURES}])
 AC_MSG_RESULT([])

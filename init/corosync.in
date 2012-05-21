@@ -81,6 +81,20 @@ cluster_disabled_at_boot()
        return 0
 }
 
+wait_for_ipc()
+{
+	try=0
+	while [ "$try" -le "20" ]; do
+		if corosync-cfgtool -s > /dev/null 2>&1; then
+			return 0
+		fi
+		sleep 0.5
+		try=$((try + 1))
+	done
+
+	return 1
+}
+
 start()
 {
 	echo -n "Starting $desc ($prog): "
@@ -98,39 +112,19 @@ start()
 	else
 		$prog > /dev/null 2>&1
 
-		# give it time to fail
-		sleep 2
-		if status $prog > /dev/null 2>&1; then
-			touch $LOCK_FILE
-			success
-		else
+		if ! wait_for_ipc; then
 			failure
 			rtrn=1
 		fi
+		touch $LOCK_FILE
+		success
 	fi
 	echo
-}
-
-executed_by_cman()
-{
-	[ -f @LOCALSTATEDIR@/run/cman.pid ] || return 0
-
-	read cman_pid foo < @LOCALSTATEDIR@/run/cman.pid
-	if [ "$(pidof $prog)" == "$cman_pid" ];then
-		echo -n "$desc was executed by cman"
-		failure
-		echo
-		return 1
-	fi
-
-	return 0
 }
 
 stop()
 {
 	! status $prog > /dev/null 2>&1 && return
-
-	! executed_by_cman && return
 
 	echo -n "Signaling $desc ($prog) to terminate: "
 	kill -TERM $(pidof $prog) > /dev/null 2>&1

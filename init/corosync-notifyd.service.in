@@ -1,6 +1,7 @@
 [Unit]
 Description=Corosync Dbus and snmp notifier
 Wants=corosync.service
+After=corosync.service
 
 [Service]
 EnvironmentFile=@SYSCONFIGDIR@/corosync-notifyd

@@ -169,6 +169,9 @@ fi
 %if %{with systemd}
 %{_unitdir}/corosync.service
 %{_unitdir}/corosync-notifyd.service
+%dir %{_datadir}/corosync
+%{_datadir}/corosync/corosync
+%{_datadir}/corosync/corosync-notifyd
 %else
 %{_initrddir}/corosync
 %{_initrddir}/corosync-notifyd
