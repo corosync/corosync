@@ -537,6 +537,8 @@ int totemip_iface_check(struct totem_ip_address *bindnet,
 	socklen_t addr_len;
 	socklen_t si;
 	int res = -1;
+	int exact_match_found = 0;
+	int net_match_found = 0;
 
 	*interface_up = 0;
 	*interface_num = 0;
@@ -568,12 +570,16 @@ int totemip_iface_check(struct totem_ip_address *bindnet,
 		totemip_copy(&bn_netaddr, bindnet);
 		totemip_copy(&if_netaddr, &if_addr->ip_addr);
 
+		if (totemip_equal(&bn_netaddr, &if_netaddr)) {
+			exact_match_found = 1;
+		}
+
 		for (si = 0; si < addr_len; si++) {
 			bn_netaddr.addr[si] = bn_netaddr.addr[si] & if_addr->mask_addr.addr[si];
 			if_netaddr.addr[si] = if_netaddr.addr[si] & if_addr->mask_addr.addr[si];
 		}
 
-		if (totemip_equal(&bn_netaddr, &if_netaddr)) {
+		if (exact_match_found || (!net_match_found && totemip_equal(&bn_netaddr, &if_netaddr))) {
 			totemip_copy(boundto, &if_addr->ip_addr);
 			boundto->nodeid = bindnet->nodeid;
 			*interface_up = if_addr->interface_up;
@@ -591,8 +597,12 @@ int totemip_iface_check(struct totem_ip_address *bindnet,
 				boundto->nodeid = nodeid;
 			}
 
+			net_match_found = 1;
 			res = 0;
-			goto finished;
+
+			if (exact_match_found) {
+				goto finished;
+			}
 		}
 	}
 
