@@ -34,23 +34,21 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <config.h>
+#include "config.h"
 
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <errno.h>
-#include <unistd.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <limits.h>
-
-#include <corosync/corotypes.h>
-#include <corosync/list.h>
 #include <corosync/totem/totem.h>
 #include <corosync/logsys.h>
+#ifdef MAINCONFIG_USE_ICMAP
 #include <corosync/icmap.h>
+#define MAP_KEYNAME_MAXLEN	ICMAP_KEYNAME_MAXLEN
+#define map_get_string(key_name, value)	icmap_get_string(key_name, value)
+#else
+#include <corosync/cmap.h>
+static cmap_handle_t cmap_handle;
+static const char *main_logfile;
+#define MAP_KEYNAME_MAXLEN	CMAP_KEYNAME_MAXLEN
+#define map_get_string(key_name, value) cmap_get_string(cmap_handle, key_name, value)
+#endif
 
 #include "util.h"
 #include "mainconfig.h"
@@ -140,7 +138,7 @@ static int corosync_main_config_format_set (
 	char *value = NULL;
 	int err = 0;
 
-	if (icmap_get_string("logging.fileline", &value) == CS_OK) {
+	if (map_get_string("logging.fileline", &value) == CS_OK) {
 		if (strcmp (value, "on") == 0) {
 			if (!insert_into_buffer(new_format_buffer,
 					sizeof(new_format_buffer),
@@ -168,7 +166,7 @@ static int corosync_main_config_format_set (
 		goto parse_error;
 	}
 
-	if (icmap_get_string("logging.function_name", &value) == CS_OK) {
+	if (map_get_string("logging.function_name", &value) == CS_OK) {
 		if (strcmp (value, "on") == 0) {
 			if (!insert_into_buffer(new_format_buffer,
 					sizeof(new_format_buffer),
@@ -196,7 +194,7 @@ static int corosync_main_config_format_set (
 		goto parse_error;
 	}
 
-	if (icmap_get_string("logging.timestamp", &value) == CS_OK) {
+	if (map_get_string("logging.timestamp", &value) == CS_OK) {
 		if (strcmp (value, "on") == 0) {
 			if(!insert_into_buffer(new_format_buffer,
 					sizeof(new_format_buffer),
@@ -239,10 +237,10 @@ static int corosync_main_config_log_destination_set (
 	static char formatted_error_reason[128];
 	char *value = NULL;
 	unsigned int mode;
-	char key_name[ICMAP_KEYNAME_MAXLEN];
+	char key_name[MAP_KEYNAME_MAXLEN];
 
-	snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "%s.%s", path, key);
-	if (icmap_get_string(key_name, &value) == CS_OK) {
+	snprintf(key_name, MAP_KEYNAME_MAXLEN, "%s.%s", path, key);
+	if (map_get_string(key_name, &value) == CS_OK) {
 		if (deprecated) {
 			log_printf(LOGSYS_LEVEL_WARNING,
 			 "Warning: the %s config paramater has been obsoleted."
@@ -288,7 +286,7 @@ static int corosync_main_config_set (
 	const char *error_reason = error_string_response;
 	char *value = NULL;
 	int mode;
-	char key_name[ICMAP_KEYNAME_MAXLEN];
+	char key_name[MAP_KEYNAME_MAXLEN];
 
 	/*
 	 * this bit abuses the internal logsys exported API
@@ -320,8 +318,8 @@ static int corosync_main_config_set (
 	    LOGSYS_MODE_OUTPUT_SYSLOG, 0, NULL) != 0)
 		goto parse_error;
 
-	snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "%s.%s", path, "syslog_facility");
-	if (icmap_get_string(key_name, &value) == CS_OK) {
+	snprintf(key_name, MAP_KEYNAME_MAXLEN, "%s.%s", path, "syslog_facility");
+	if (map_get_string(key_name, &value) == CS_OK) {
 		int syslog_facility;
 
 		syslog_facility = qb_log_facility2int(value);
@@ -338,8 +336,8 @@ static int corosync_main_config_set (
 		free(value);
 	}
 
-	snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "%s.%s", path, "syslog_level");
-	if (icmap_get_string(key_name, &value) == CS_OK) {
+	snprintf(key_name, MAP_KEYNAME_MAXLEN, "%s.%s", path, "syslog_level");
+	if (map_get_string(key_name, &value) == CS_OK) {
 		int syslog_priority;
 
 		log_printf(LOGSYS_LEVEL_WARNING,
@@ -359,8 +357,8 @@ static int corosync_main_config_set (
 		free(value);
 	}
 
-	snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "%s.%s", path, "syslog_priority");
-	if (icmap_get_string(key_name, &value) == CS_OK) {
+	snprintf(key_name, MAP_KEYNAME_MAXLEN, "%s.%s", path, "syslog_priority");
+	if (map_get_string(key_name, &value) == CS_OK) {
 		int syslog_priority;
 
 		syslog_priority = logsys_priority_id_get(value);
@@ -376,13 +374,21 @@ static int corosync_main_config_set (
 		free(value);
 	}
 
-	snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "%s.%s", path, "logfile");
-	if (icmap_get_string(key_name, &value) == CS_OK) {
+#ifdef MAINCONFIG_USE_ICMAP
+	snprintf(key_name, MAP_KEYNAME_MAXLEN, "%s.%s", path, "logfile");
+	if (map_get_string(key_name, &value) == CS_OK) {
 		if (logsys_config_file_set (subsys, &error_reason, value) < 0) {
 			goto parse_error;
 		}
 		free(value);
 	}
+#else
+	if (!subsys) {
+		if (logsys_config_file_set (subsys, &error_reason, main_logfile) < 0) {
+			goto parse_error;
+		}
+	}
+#endif
 
 	if (corosync_main_config_log_destination_set (path, "to_file", subsys, &error_reason,
 	    LOGSYS_MODE_OUTPUT_FILE, 1, "to_logfile") != 0)
@@ -392,8 +398,8 @@ static int corosync_main_config_set (
 	    LOGSYS_MODE_OUTPUT_FILE, 0, NULL) != 0)
 		goto parse_error;
 
-	snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "%s.%s", path, "logfile_priority");
-	if (icmap_get_string(key_name, &value) == CS_OK) {
+	snprintf(key_name, MAP_KEYNAME_MAXLEN, "%s.%s", path, "logfile_priority");
+	if (map_get_string(key_name, &value) == CS_OK) {
 		int logfile_priority;
 
 		logfile_priority = logsys_priority_id_get(value);
@@ -409,8 +415,8 @@ static int corosync_main_config_set (
 		free(value);
 	}
 
-	snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "%s.%s", path, "debug");
-	if (icmap_get_string(key_name, &value) == CS_OK) {
+	snprintf(key_name, MAP_KEYNAME_MAXLEN, "%s.%s", path, "debug");
+	if (map_get_string(key_name, &value) == CS_OK) {
 		if (strcmp (value, "on") == 0) {
 			if (logsys_config_debug_set (subsys, 1) < 0) {
 				error_reason = "unable to set debug on";
@@ -441,10 +447,15 @@ static int corosync_main_config_read_logging (
 	const char **error_string)
 {
 	const char *error_reason;
+#ifdef MAINCONFIG_USE_ICMAP
 	icmap_iter_t iter;
 	const char *key_name;
-	char key_subsys[ICMAP_KEYNAME_MAXLEN];
-	char key_item[ICMAP_KEYNAME_MAXLEN];
+#else
+	cmap_iter_handle_t iter;
+	char key_name[CMAP_KEYNAME_MAXLEN];
+#endif
+	char key_subsys[MAP_KEYNAME_MAXLEN];
+	char key_item[MAP_KEYNAME_MAXLEN];
 	int res;
 
 	/* format set is supported only for toplevel */
@@ -460,8 +471,13 @@ static int corosync_main_config_read_logging (
 	 * we will need 2 of these to compensate for new logging
 	 * config format
 	 */
+#ifdef MAINCONFIG_USE_ICMAP
 	iter = icmap_iter_init("logging.logger_subsys.");
 	while ((key_name = icmap_iter_next(iter, NULL, NULL)) != NULL) {
+#else
+	cmap_iter_init(cmap_handle, "logging.logger_subsys.", &iter);
+	while ((cmap_iter_next(cmap_handle, iter, key_name, NULL, NULL)) == CS_OK) {
+#endif
 		res = sscanf(key_name, "logging.logger_subsys.%[^.].%s", key_subsys, key_item);
 
 		if (res != 2) {
@@ -472,13 +488,17 @@ static int corosync_main_config_read_logging (
 			continue ;
 		}
 
-		snprintf(key_item, ICMAP_KEYNAME_MAXLEN, "logging.logger_subsys.%s", key_subsys);
+		snprintf(key_item, MAP_KEYNAME_MAXLEN, "logging.logger_subsys.%s", key_subsys);
 
 		if (corosync_main_config_set(key_item, key_subsys, &error_reason) < 0) {
 			goto parse_error;
 		}
 	}
+#ifdef MAINCONFIG_USE_ICMAP
 	icmap_iter_finalize(iter);
+#else
+	cmap_iter_finalize(cmap_handle, iter);
+#endif
 
 	logsys_config_apply();
 	return 0;
@@ -489,12 +509,23 @@ parse_error:
 	return (-1);
 }
 
+#ifdef MAINCONFIG_USE_ICMAP 
 static void main_logging_notify(
 		int32_t event,
 		const char *key_name,
 		struct icmap_notify_value new_val,
 		struct icmap_notify_value old_val,
 		void *user_data)
+#else
+static void main_logging_notify(
+		cmap_handle_t cmap_handle_unused,
+		cmap_handle_t cmap_track_handle_unused,
+		int32_t event,
+		const char *key_name,
+		struct cmap_notify_value new_val,
+		struct cmap_notify_value old_val,
+		void *user_data)
+#endif
 {
 	const char *error_string;
 
@@ -507,6 +538,7 @@ static void main_logging_notify(
 	corosync_main_config_read_logging(&error_string);
 }
 
+#ifdef MAINCONFIG_USE_ICMAP
 static void add_logsys_config_notification(void)
 {
 	icmap_track_t icmap_track = NULL;
@@ -517,11 +549,40 @@ static void add_logsys_config_notification(void)
 			NULL,
 			&icmap_track);
 }
+#else
+static void add_logsys_config_notification(void)
+{
+	cmap_track_handle_t cmap_track;
+
+	cmap_track_add(cmap_handle, "logging.",
+			CMAP_TRACK_ADD | CMAP_TRACK_DELETE | CMAP_TRACK_MODIFY | CMAP_TRACK_PREFIX,
+			main_logging_notify,
+			NULL,
+			&cmap_track);
+}
+#endif
 
 int corosync_main_config_read (
+#ifndef MAINCONFIG_USE_ICMAP
+	cmap_handle_t cmap_h,
+	const char *default_logfile,
+#endif
 	const char **error_string)
 {
 	const char *error_reason = error_string_response;
+
+#ifndef MAINCONFIG_USE_ICMAP
+	if (!cmap_h) {
+		error_reason = "No cmap handle";
+		return (-1);
+	}
+	if (!default_logfile) {
+		error_reason = "No default logfile";
+		return (-1);
+	}
+	cmap_handle = cmap_h;
+	main_logfile = default_logfile;
+#endif
 
 	if (corosync_main_config_read_logging(error_string) < 0) {
 		error_reason = *error_string;

@@ -31,7 +31,7 @@
 
 MAINTAINERCLEANFILES	= Makefile.in
 
-AM_CFLAGS		= -fPIC
+AM_CFLAGS		= -fPIC -DMAINCONFIG_USE_ICMAP=1
 
 INCLUDES		= -I$(top_builddir)/include -I$(top_srcdir)/include $(nss_CFLAGS) $(rdmacm_CFLAGS) $(ibverbs_CFLAGS)
 
