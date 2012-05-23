@@ -384,7 +384,7 @@ int totemip_getifaddrs(struct list_head *addrs)
 			goto error_free_addr_name;
 		}
 
-		list_add(&if_addr->list, addrs);
+		list_add_tail(&if_addr->list, addrs);
 	}
 
 	freeifaddrs(ifap);
@@ -484,7 +484,7 @@ int totemip_getifaddrs(struct list_head *addrs)
 				if_addr->interface_num = lifreq[i].lifr_index;
 			}
 
-			list_add(&if_addr->list, addrs);
+			list_add_tail(&if_addr->list, addrs);
 		}
 
 		free (lifconf.lifc_buf);
