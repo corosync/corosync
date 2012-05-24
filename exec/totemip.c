@@ -524,6 +524,8 @@ int totemip_iface_check(struct totem_ip_address *bindnet,
         struct sockaddr_nl nladdr;
 	struct totem_ip_address ipaddr;
 	static char rcvbuf[NETLINK_BUFSIZE];
+	int exact_match_found = 0;
+	int net_match_found = 0;
 
 	*interface_up = 0;
 	*interface_num = 0;
@@ -600,12 +602,13 @@ int totemip_iface_check(struct totem_ip_address *bindnet,
 					memcpy(ipaddr.addr, RTA_DATA(tb[IFA_LOCAL]), TOTEMIP_ADDRLEN);
 					if (totemip_equal(&ipaddr, bindnet)) {
 						found_if = 1;
+						exact_match_found = 1;
 					}
 				}
 
 				/* If the address we have is an IPv4 network address, then
 				   substitute the actual IP address of this interface */
-				if (!found_if && tb[IFA_LOCAL] && ifa->ifa_family == AF_INET) {
+				if (!found_if && !net_match_found && tb[IFA_LOCAL] && ifa->ifa_family == AF_INET) {
 					uint32_t network;
 					uint32_t addr;
 					uint32_t netmask = htonl(~((1<<(32-ifa->ifa_prefixlen))-1));
@@ -620,32 +623,6 @@ int totemip_iface_check(struct totem_ip_address *bindnet,
 				}
 
 				if (found_if) {
-
-					/* Found it - check I/F is UP */
-					struct ifreq ifr;
-					int ioctl_fd; /* Can't do ioctls on netlink FDs */
-
-					ioctl_fd = socket(AF_INET, SOCK_STREAM, 0);
-					if (ioctl_fd < 0) {
-						close(fd);
-						return -1;
-					}
-					memset(&ifr, 0, sizeof(ifr));
-					ifr.ifr_ifindex = ifa->ifa_index;
-
-					/* SIOCGIFFLAGS needs an interface name */
-					status = ioctl(ioctl_fd, SIOCGIFNAME, &ifr);
-					status = ioctl(ioctl_fd, SIOCGIFFLAGS, &ifr);
-					close(ioctl_fd);
-					if (status) {
-						res = -1;
-						goto finished;
-					}
-
-					if (ifr.ifr_flags & IFF_UP)
-						*interface_up = 1;
-
-					*interface_num = ifa->ifa_index;
 					/*
 					 * Mask 32nd bit off to workaround bugs in other peoples code
 					 * (if configuration requests it).
@@ -662,17 +639,49 @@ int totemip_iface_check(struct totem_ip_address *bindnet,
 						ipaddr.nodeid = nodeid;
 					}
 					totemip_copy (boundto, &ipaddr);
-					res = 0;
-					goto finished;
+					*interface_num = ifa->ifa_index;
+
+					net_match_found = 1;
+
+					if (exact_match_found) {
+						goto finished;
+					}
 				}
 			}
-
 			h = NLMSG_NEXT(h, status);
 		}
 	}
-	res = -1; /* address not found */
 finished:
 	close(fd);
+	if (net_match_found) {
+		/*
+		 * Found it - check I/F is UP
+		 */
+		struct ifreq ifr;
+		int ioctl_fd; /* Can't do ioctls on netlink FDs */
+
+		ioctl_fd = socket(AF_INET, SOCK_STREAM, 0);
+		if (ioctl_fd < 0) {
+			return -1;
+		}
+		memset(&ifr, 0, sizeof(ifr));
+		ifr.ifr_ifindex = *interface_num;
+
+		/* SIOCGIFFLAGS needs an interface name */
+		res = ioctl(ioctl_fd, SIOCGIFNAME, &ifr);
+		res = ioctl(ioctl_fd, SIOCGIFFLAGS, &ifr);
+		close(ioctl_fd);
+		if (res) {
+			return (-1);
+		}
+
+		if (ifr.ifr_flags & IFF_UP)
+			*interface_up = 1;
+
+		res = 0;
+	} else {
+		res = -1;
+	}
 	return res;
 }
 #endif /* COROSYNC_LINUX */
