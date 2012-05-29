@@ -149,11 +149,14 @@ static int logsys_config_file_set_unlocked (
 	char file_format[128];
 
 	if (logsys_loggers[subsysid].target_id > 0) {
-		/* TODO close file
-		logsys_filter_apply(subsysid,
-				    QB_LOG_FILTER_REMOVE,
-				    logsys_loggers[subsysid].target_id);
-		*/
+		int32_t f;
+		for (f = 0; f < logsys_loggers[subsysid].file_idx; f++) {
+			qb_log_filter_ctl(logsys_loggers[subsysid].target_id,
+				QB_LOG_FILTER_REMOVE,
+				QB_LOG_FILTER_FILE,
+				logsys_loggers[subsysid].files[f],
+				LOG_TRACE);
+		}
 	}
 
 	logsys_loggers[subsysid].dirty = QB_TRUE;
@@ -192,8 +195,17 @@ static int logsys_config_file_set_unlocked (
 	}
 
 	if (logsys_loggers[subsysid].target_id > 0) {
-		/* no one else is using this close it */
-		qb_log_file_close(logsys_loggers[subsysid].target_id);
+		int num_using_current = 0;
+		for (i = 0; i <= LOGSYS_MAX_SUBSYS_COUNT; i++) {
+			if (logsys_loggers[subsysid].target_id ==
+				logsys_loggers[i].target_id) {
+				num_using_current++;
+			}
+		}
+		if (num_using_current == 1) {
+			/* no one else is using this close it */
+			qb_log_file_close(logsys_loggers[subsysid].target_id);
+		}
 	}
 
 	logsys_loggers[subsysid].target_id = qb_log_file_open(file);
