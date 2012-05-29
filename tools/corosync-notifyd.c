@@ -956,7 +956,7 @@ _cs_rrp_faulty_event(uint32_t iface_no, const char *state)
 	_cs_local_node_info_get(&nodename, &nodeid);
 
 	for (i = 0; i < num_notifiers; i++) {
-		if (notifiers[i].application_connection_fn) {
+		if (notifiers[i].rrp_faulty_fn) {
 			notifiers[i].rrp_faulty_fn(nodename, nodeid, iface_no, state);
 		}
 	}
