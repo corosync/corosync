@@ -79,7 +79,7 @@ extern "C" {
  * SUBSYS_COUNT defines the maximum number of subsystems
  * SUBSYS_NAMELEN defines the maximum len of a subsystem name
  */
-#define LOGSYS_MAX_SUBSYS_COUNT		64
+#define LOGSYS_MAX_SUBSYS_COUNT		32
 #define LOGSYS_MAX_SUBSYS_NAMELEN	64
 #define LOGSYS_MAX_PERROR_MSG_LEN	128
 
