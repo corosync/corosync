@@ -221,7 +221,7 @@ corosyncNotificationGroup NOTIFICATION-GROUP
     NOTIFICATIONS { corosyncNoticesNodeStatus,
                     corosyncNoticesQuorumStatus,
 		    corosyncNoticesAppStatus,
-		    corosyncNoticesRRPStatus,
+		    corosyncNoticesRRPStatus
                   }
     STATUS      current
     DESCRIPTION "Corosync Notification Conformance Group"
