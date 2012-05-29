@@ -226,6 +226,11 @@ static int logsys_config_file_set_unlocked (
 	}
 	logsys_file_format_get(file_format, 128);
 	qb_log_format_set(logsys_loggers[subsysid].target_id, file_format);
+
+	qb_log_ctl(logsys_loggers[subsysid].target_id,
+		   QB_LOG_CONF_ENABLED,
+		   (logsys_loggers[subsysid].mode & LOGSYS_MODE_OUTPUT_FILE));
+
 	return (0);
 }
 
@@ -724,6 +729,11 @@ static void _logsys_config_apply_per_subsys(int32_t s)
 	int32_t f;
 	for (f = 0; f < logsys_loggers[s].file_idx; f++) {
 		_logsys_config_apply_per_file(s, logsys_loggers[s].files[f]);
+	}
+	if (logsys_loggers[s].target_id > 0) {
+		qb_log_ctl(logsys_loggers[s].target_id,
+			QB_LOG_CONF_ENABLED,
+			(logsys_loggers[s].mode & LOGSYS_MODE_OUTPUT_FILE));
 	}
 	logsys_loggers[s].dirty = QB_FALSE;
 }
