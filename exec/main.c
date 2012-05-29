@@ -111,7 +111,7 @@
 
 #include "quorum.h"
 #include "totemsrp.h"
-#include "mainconfig.h"
+#include "logconfig.h"
 #include "totemconfig.h"
 #include "main.h"
 #include "sync.h"
@@ -1080,7 +1080,7 @@ int main (int argc, char **argv, char **envp)
 		corosync_exit_error (COROSYNC_DONE_MAINCONFIGREAD);
 	}
 
-	res = corosync_main_config_read (&error_string);
+	res = corosync_log_config_read (&error_string);
 	if (res == -1) {
 		/*
 		 * if we are here, we _must_ flush the logsys queue
@@ -1092,7 +1092,7 @@ int main (int argc, char **argv, char **envp)
 		log_printf (LOGSYS_LEVEL_ERROR, "%s", error_string);
 		fprintf(stderr, "%s", error_string);
 		syslog (LOGSYS_LEVEL_ERROR, "%s", error_string);
-		corosync_exit_error (COROSYNC_DONE_MAINCONFIGREAD);
+		corosync_exit_error (COROSYNC_DONE_LOGCONFIGREAD);
 	}
 
 	/*

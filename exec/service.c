@@ -42,7 +42,6 @@
 #include <corosync/totem/totem.h>
 
 #include <corosync/corotypes.h>
-#include "mainconfig.h"
 #include "util.h"
 #include <corosync/logsys.h>
 #include <corosync/icmap.h>

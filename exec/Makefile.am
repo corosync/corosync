@@ -31,7 +31,7 @@
 
 MAINTAINERCLEANFILES	= Makefile.in
 
-AM_CFLAGS		= -fPIC -DMAINCONFIG_USE_ICMAP=1
+AM_CFLAGS		= -fPIC -DLOGCONFIG_USE_ICMAP=1
 
 INCLUDES		= -I$(top_builddir)/include -I$(top_srcdir)/include $(nss_CFLAGS) $(rdmacm_CFLAGS) $(ibverbs_CFLAGS)
 
@@ -51,7 +51,7 @@ corosync_SOURCES	= vsf_ykd.c coroparse.c vsf_quorum.c sync.c \
 			  logsys.c cfg.c cmap.c cpg.c mon.c pload.c \
 			  votequorum.c wd.c util.c schedwrk.c main.c \
 			  apidef.c quorum.c icmap.c timer.c \
-			  ipc_glue.c service.c mainconfig.c totemconfig.c
+			  ipc_glue.c service.c logconfig.c totemconfig.c
 corosync_LDADD		= -ltotem_pg -lcorosync_common $(LIBQB_LIBS) $(statgrab_LIBS)
 corosync_DEPENDENCIES	= libtotem_pg.so.$(SONAME) ../common_lib/libcorosync_common.so
 corosync_LDFLAGS	= $(OS_DYFLAGS) -L./ -L../common_lib
@@ -62,7 +62,7 @@ SHARED_LIBS		= $(lib_LIBRARIES:%.a=%.so.$(SONAME))
 SHARED_LIBS_SO		= $(SHARED_LIBS:%.so.$(SONAME)=%.so)
 SHARED_LIBS_SO_TWO	= $(SHARED_LIBS:%.so.$(SONAME)=%.so.$(SOMAJOR))
 
-noinst_HEADERS		= apidef.h mainconfig.h main.h \
+noinst_HEADERS		= apidef.h logconfig.h main.h \
 			  quorum.h service.h timer.h totemconfig.h \
 			  totemmrp.h totemnet.h totemudp.h totemiba.h totemrrp.h \
 			  totemudpu.h totemsrp.h util.h vsf.h schedwrk.h \

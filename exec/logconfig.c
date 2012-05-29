@@ -38,7 +38,7 @@
 
 #include <corosync/totem/totem.h>
 #include <corosync/logsys.h>
-#ifdef MAINCONFIG_USE_ICMAP
+#ifdef LOGCONFIG_USE_ICMAP
 #include <corosync/icmap.h>
 #define MAP_KEYNAME_MAXLEN	ICMAP_KEYNAME_MAXLEN
 #define map_get_string(key_name, value)	icmap_get_string(key_name, value)
@@ -51,7 +51,7 @@ static const char *main_logfile;
 #endif
 
 #include "util.h"
-#include "mainconfig.h"
+#include "logconfig.h"
 
 static char error_string_response[512];
 
@@ -374,7 +374,7 @@ static int corosync_main_config_set (
 		free(value);
 	}
 
-#ifdef MAINCONFIG_USE_ICMAP
+#ifdef LOGCONFIG_USE_ICMAP
 	snprintf(key_name, MAP_KEYNAME_MAXLEN, "%s.%s", path, "logfile");
 	if (map_get_string(key_name, &value) == CS_OK) {
 		if (logsys_config_file_set (subsys, &error_reason, value) < 0) {
@@ -447,7 +447,7 @@ static int corosync_main_config_read_logging (
 	const char **error_string)
 {
 	const char *error_reason;
-#ifdef MAINCONFIG_USE_ICMAP
+#ifdef LOGCONFIG_USE_ICMAP
 	icmap_iter_t iter;
 	const char *key_name;
 #else
@@ -471,7 +471,7 @@ static int corosync_main_config_read_logging (
 	 * we will need 2 of these to compensate for new logging
 	 * config format
 	 */
-#ifdef MAINCONFIG_USE_ICMAP
+#ifdef LOGCONFIG_USE_ICMAP
 	iter = icmap_iter_init("logging.logger_subsys.");
 	while ((key_name = icmap_iter_next(iter, NULL, NULL)) != NULL) {
 #else
@@ -494,7 +494,7 @@ static int corosync_main_config_read_logging (
 			goto parse_error;
 		}
 	}
-#ifdef MAINCONFIG_USE_ICMAP
+#ifdef LOGCONFIG_USE_ICMAP
 	icmap_iter_finalize(iter);
 #else
 	cmap_iter_finalize(cmap_handle, iter);
@@ -509,7 +509,7 @@ parse_error:
 	return (-1);
 }
 
-#ifdef MAINCONFIG_USE_ICMAP 
+#ifdef LOGCONFIG_USE_ICMAP 
 static void main_logging_notify(
 		int32_t event,
 		const char *key_name,
@@ -538,7 +538,7 @@ static void main_logging_notify(
 	corosync_main_config_read_logging(&error_string);
 }
 
-#ifdef MAINCONFIG_USE_ICMAP
+#ifdef LOGCONFIG_USE_ICMAP
 static void add_logsys_config_notification(void)
 {
 	icmap_track_t icmap_track = NULL;
@@ -562,8 +562,8 @@ static void add_logsys_config_notification(void)
 }
 #endif
 
-int corosync_main_config_read (
-#ifndef MAINCONFIG_USE_ICMAP
+int corosync_log_config_read (
+#ifndef LOGCONFIG_USE_ICMAP
 	cmap_handle_t cmap_h,
 	const char *default_logfile,
 #endif
@@ -571,7 +571,7 @@ int corosync_main_config_read (
 {
 	const char *error_reason = error_string_response;
 
-#ifndef MAINCONFIG_USE_ICMAP
+#ifndef LOGCONFIG_USE_ICMAP
 	if (!cmap_h) {
 		error_reason = "No cmap handle";
 		return (-1);

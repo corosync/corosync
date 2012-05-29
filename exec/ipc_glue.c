@@ -54,7 +54,6 @@
 #include <corosync/logsys.h>
 #include <corosync/icmap.h>
 
-#include "mainconfig.h"
 #include "sync.h"
 #include "timer.h"
 #include "main.h"
