@@ -74,7 +74,7 @@ static struct syslog_names prioritynames[] =
 	{ NULL, -1 }
 };
 
-#define MAX_FILES_PER_SUBSYS 16
+#define MAX_FILES_PER_SUBSYS 32
 #ifdef HAVE_SMALL_MEMORY_FOOTPRINT
 #define IPC_LOGSYS_SIZE			8192*64
 #else
@@ -282,12 +282,36 @@ int _logsys_system_setup(
 	/*
 	 * Setup libqb as a subsys
 	 */
-	i = _logsys_subsys_create ("QB", "loop");
-	_logsys_subsys_filename_add (i, "ipc");
-	_logsys_subsys_filename_add (i, "log");
+	i = _logsys_subsys_create ("QB", "array.c");
+	_logsys_subsys_filename_add (i, "log.c");
+	_logsys_subsys_filename_add (i, "log_syslog.c");
+	_logsys_subsys_filename_add (i, "log_blackbox.c");
+	_logsys_subsys_filename_add (i, "log_format.c");
+	_logsys_subsys_filename_add (i, "log_file.c");
+	_logsys_subsys_filename_add (i, "log_dcs.c");
+	_logsys_subsys_filename_add (i, "log_thread.c");
+	_logsys_subsys_filename_add (i, "ipc_shm.c");
+	_logsys_subsys_filename_add (i, "ipcs.c");
+	_logsys_subsys_filename_add (i, "ipc_us.c");
+	_logsys_subsys_filename_add (i, "loop.c");
+	_logsys_subsys_filename_add (i, "loop_poll_epoll.c");
+	_logsys_subsys_filename_add (i, "loop_job.c");
+	_logsys_subsys_filename_add (i, "loop_poll_poll.c");
+	_logsys_subsys_filename_add (i, "loop_poll_kqueue.c");
+	_logsys_subsys_filename_add (i, "loop_timerlist.c");
+	_logsys_subsys_filename_add (i, "loop_poll.c");
+	_logsys_subsys_filename_add (i, "ringbuffer.c");
+	_logsys_subsys_filename_add (i, "ringbuffer_helper.c");
 	_logsys_subsys_filename_add (i, "trie.c");
 	_logsys_subsys_filename_add (i, "map.c");
-	_logsys_subsys_filename_add (i, "ringbuffer");
+	_logsys_subsys_filename_add (i, "skiplist.c");
+	_logsys_subsys_filename_add (i, "rpl_sem.c");
+	_logsys_subsys_filename_add (i, "hdb.c");
+	_logsys_subsys_filename_add (i, "unix.c");
+	/*
+	 * name clash
+	 * _logsys_subsys_filename_add (i, "util.c");
+	 */
 
 	i = LOGSYS_MAX_SUBSYS_COUNT;
 
