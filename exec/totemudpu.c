@@ -205,6 +205,13 @@ static int totemudpu_build_sockets (
 	struct totem_ip_address *bindnet_address,
 	struct totem_ip_address *bound_to);
 
+static int totemudpu_create_sending_socket(
+	void *udpu_context,
+	const struct totem_ip_address *member);
+
+int totemudpu_member_list_rebind_ip (
+	void *udpu_context);
+
 static struct totem_ip_address localhost;
 
 static void totemudpu_instance_initialize (struct totemudpu_instance *instance)
@@ -1385,6 +1392,12 @@ static int totemudpu_build_sockets (
 
 	/* We only send out of the token socket */
 	totemudpu_traffic_control_set(instance, instance->token_socket);
+
+	/*
+	 * Rebind all members to new ips
+	 */
+	totemudpu_member_list_rebind_ip(instance);
+
 	return res;
 }
 
@@ -1654,32 +1667,26 @@ extern int totemudpu_recv_mcast_empty (
 	return (msg_processed);
 }
 
-int totemudpu_member_add (
+static int totemudpu_create_sending_socket(
 	void *udpu_context,
 	const struct totem_ip_address *member)
 {
 	struct totemudpu_instance *instance = (struct totemudpu_instance *)udpu_context;
-
-	struct totemudpu_member *new_member;
+	int fd;
 	int res;
 	unsigned int sendbuf_size;
 	unsigned int optlen = sizeof (sendbuf_size);
+	struct sockaddr_storage sockaddr;
+	int addrlen;
 
-	new_member = malloc (sizeof (struct totemudpu_member));
-	if (new_member == NULL) {
-		return (-1);
-	}
-	list_init (&new_member->list);
-	list_add_tail (&new_member->list, &instance->member_list);
-	memcpy (&new_member->member, member, sizeof (struct totem_ip_address));
-	new_member->fd = socket (member->family, SOCK_DGRAM, 0);
-	if (new_member->fd == -1) {
+	fd = socket (member->family, SOCK_DGRAM, 0);
+	if (fd == -1) {
 		LOGSYS_PERROR (errno, instance->totemudpu_log_level_warning,
 			"Could not create socket for new member");
 		return (-1);
 	}
-	totemip_nosigpipe (new_member->fd);
-	res = fcntl (new_member->fd, F_SETFL, O_NONBLOCK);
+	totemip_nosigpipe (fd);
+	res = fcntl (fd, F_SETFL, O_NONBLOCK);
 	if (res == -1) {
 		LOGSYS_PERROR (errno, instance->totemudpu_log_level_warning,
 			"Could not set non-blocking operation on token socket");
@@ -1691,12 +1698,47 @@ int totemudpu_member_add (
  	 * should be large
  	 */
 	sendbuf_size = MCAST_SOCKET_BUFFER_SIZE;
-	res = setsockopt (new_member->fd, SOL_SOCKET, SO_SNDBUF,
+	res = setsockopt (fd, SOL_SOCKET, SO_SNDBUF,
 		&sendbuf_size, optlen);
 	if (res == -1) {
 		LOGSYS_PERROR (errno, instance->totemudpu_log_level_notice,
 			"Could not set sendbuf size");
 	}
+
+	/*
+	 * Bind to sending interface
+	 */
+	totemip_totemip_to_sockaddr_convert(&instance->my_id, 0, &sockaddr, &addrlen);
+	res = bind (fd, (struct sockaddr *)&sockaddr, addrlen);
+	if (res == -1) {
+		LOGSYS_PERROR (errno, instance->totemudpu_log_level_warning,
+			"bind token socket failed");
+		return (-1);
+	}
+
+	return (fd);
+
+}
+
+int totemudpu_member_add (
+	void *udpu_context,
+	const struct totem_ip_address *member)
+{
+	struct totemudpu_instance *instance = (struct totemudpu_instance *)udpu_context;
+
+	struct totemudpu_member *new_member;
+
+	new_member = malloc (sizeof (struct totemudpu_member));
+	if (new_member == NULL) {
+		return (-1);
+	}
+	log_printf (LOGSYS_LEVEL_NOTICE, "adding new UDPU member {%s}",
+		totemip_print(member));
+	list_init (&new_member->list);
+	list_add_tail (&new_member->list, &instance->member_list);
+	memcpy (&new_member->member, member, sizeof (struct totem_ip_address));
+	new_member->fd = totemudpu_create_sending_socket(udpu_context, member);
+
 	return (0);
 }
 
@@ -1707,5 +1749,31 @@ int totemudpu_member_remove (
 	struct totemudpu_instance *instance = (struct totemudpu_instance *)udpu_context;
 
 	instance = NULL;
+	return (0);
+}
+
+int totemudpu_member_list_rebind_ip (
+	void *udpu_context)
+{
+	struct list_head *list;
+	struct totemudpu_member *member;
+
+	struct totemudpu_instance *instance = (struct totemudpu_instance *)udpu_context;
+
+	for (list = instance->member_list.next;
+		list != &instance->member_list;
+		list = list->next) {
+
+		member = list_entry (list,
+			struct totemudpu_member,
+			list);
+
+		if (member->fd > 0) {
+			close (member->fd);
+		}
+
+		member->fd = totemudpu_create_sending_socket(udpu_context, &member->member);
+	}
+
 	return (0);
 }
