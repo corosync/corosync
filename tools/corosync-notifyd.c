@@ -211,7 +211,7 @@ static void _cs_cmap_members_key_changed (
 	cs_error_t err;
 	int no_retries;
 
-	if (event != CMAP_TRACK_MODIFY) {
+	if (event != CMAP_TRACK_ADD && event != CMAP_TRACK_MODIFY) {
 		return ;
 	}
 
@@ -998,7 +998,7 @@ _cs_cmap_init(void)
 	}
 
 	rc = cmap_track_add(cmap_handle, "runtime.totem.pg.mrp.srp.members.",
-			CMAP_TRACK_MODIFY | CMAP_TRACK_PREFIX,
+			CMAP_TRACK_ADD | CMAP_TRACK_MODIFY | CMAP_TRACK_PREFIX,
 			_cs_cmap_members_key_changed,
 			NULL,
 			&track_handle);
