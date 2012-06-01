@@ -105,8 +105,9 @@ print_time(void)
 
 	len = sizeof(hostname);
 	if(gethostname(hostname, len) == 0) {
+		char *longName;
 		hostname[len-1] = '\0';
-		char *longName = hostname;
+		longName = hostname;
 		if( (longName = strstr( hostname, "." )) != NULL )
 		*longName = '\0';
 	}
