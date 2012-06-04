@@ -188,6 +188,28 @@ void corosync_state_dump (void)
 	}
 }
 
+static void corosync_blackbox_write_to_file (void)
+{
+	char fname[PATH_MAX];
+	char time_str[PATH_MAX];
+	struct tm cur_time_tm;
+	time_t cur_time_t;
+
+	cur_time_t = time(NULL);
+	localtime_r(&cur_time_t, &cur_time_tm);
+
+	strftime(time_str, PATH_MAX, "%Y-%m-%dT%H:%M:%S", &cur_time_tm);
+	snprintf(fname, PATH_MAX, "%s/fdata-%s-%lld",
+	    LOCALSTATEDIR "/lib/corosync",
+	    time_str,
+	    (long long int)getpid());
+
+	qb_log_blackbox_write_to_file(fname);
+
+	unlink(LOCALSTATEDIR "/lib/corosync/fdata");
+	symlink(fname, LOCALSTATEDIR "/lib/corosync/fdata");
+}
+
 static void unlink_all_completed (void)
 {
 	api->timer_delete (corosync_stats_timer_handle);
@@ -203,7 +225,6 @@ void corosync_shutdown_request (void)
 static int32_t sig_diag_handler (int num, void *data)
 {
 	corosync_state_dump ();
-	qb_log_blackbox_write_to_file(LOCALSTATEDIR "/lib/corosync/fdata");
 	return 0;
 }
 
@@ -216,7 +237,7 @@ static int32_t sig_exit_handler (int num, void *data)
 static void sigsegv_handler (int num)
 {
 	(void)signal (SIGSEGV, SIG_DFL);
-	qb_log_blackbox_write_to_file(LOCALSTATEDIR "/lib/corosync/fdata");
+	corosync_blackbox_write_to_file ();
 	qb_log_fini();
 	raise (SIGSEGV);
 }
@@ -224,7 +245,7 @@ static void sigsegv_handler (int num)
 static void sigabrt_handler (int num)
 {
 	(void)signal (SIGABRT, SIG_DFL);
-	qb_log_blackbox_write_to_file(LOCALSTATEDIR "/lib/corosync/fdata");
+	corosync_blackbox_write_to_file ();
 	qb_log_fini();
 	raise (SIGABRT);
 }
@@ -827,7 +848,7 @@ static void fplay_key_change_notify_fn (
 {
 	if (strcmp(key_name, "runtime.blackbox.dump_flight_data") == 0) {
 		fprintf(stderr,"Writetofile\n");
-		qb_log_blackbox_write_to_file (LOCALSTATEDIR "/lib/corosync/fdata");
+		corosync_blackbox_write_to_file ();
 	}
 	if (strcmp(key_name, "runtime.blackbox.dump_state") == 0) {
 		fprintf(stderr,"statefump\n");
