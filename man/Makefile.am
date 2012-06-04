@@ -123,7 +123,6 @@ dist_man_MANS 		= corosync.conf.5 \
 			  corosync-keygen.8 \
 			  corosync-cfgtool.8 \
 			  corosync-cpgtool.8 \
-			  corosync-fplay.8 \
 			  corosync-notifyd.8 \
 			  corosync-quorumtool.8 \
 			  corosync_overview.8 \

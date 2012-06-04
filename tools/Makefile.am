@@ -33,7 +33,7 @@ MAINTAINERCLEANFILES    = Makefile.in
 INCLUDES       		= -I$(top_builddir)/include  -I$(top_srcdir)/include \
                           -I$(top_builddir)/include/corosync
 
-sbin_PROGRAMS		= corosync-fplay corosync-cfgtool \
+sbin_PROGRAMS		= corosync-cfgtool \
 			  corosync-keygen \
 			  corosync-cpgtool corosync-quorumtool \
 			  corosync-notifyd corosync-cmapctl
@@ -47,14 +47,17 @@ endif
 corosync-xmlproc: corosync-xmlproc.sh
 	sed -e 's#@''DATADIR@#${datadir}#g' $< > $@
 
-EXTRA_DIST		= $(bin_SCRIPTS) corosync-xmlproc.sh corosync-notifyd.sysconfig.example
+corosync-blackbox: corosync-blackbox.sh
+	sed -e 's#@''LOCALSTATEDIR@#${localstatedir}#g' $< > $@
+
+
+EXTRA_DIST		= $(bin_SCRIPTS) corosync-xmlproc.sh corosync-notifyd.sysconfig.example \
+                          corosync-blackbox.sh
 
 COMMON_OPTS		= -L../lib -L../common_lib -Wl,-rpath,../common_lib
 
 corosync_cmapctl_LDFLAGS= $(COMMON_OPTS)
 corosync_cmapctl_LDADD	= -lcorosync_common -lcmap $(LIBQB_LIBS)
-
-corosync_fplay_LDADD	= $(LIBQB_LIBS)
 
 corosync_cfgtool_LDFLAGS= $(COMMON_OPTS)
 corosync_cfgtool_LDADD	= -lcfg $(LIBQB_LIBS)
@@ -76,5 +79,5 @@ lint:
 	-splint $(LINT_FLAGS) $(DBUS_CFLAGS) $(INCLUDES) $(CFLAGS) *.c
 
 clean-local:
-	rm -f corosync-xmlproc
+	rm -f corosync-xmlproc corosync-blackbox
 

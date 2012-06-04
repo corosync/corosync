@@ -6,3 +6,4 @@ corosync-quorumtool
 corosync-notifyd
 corosync-cmapctl
 corosync-xmlproc
+corosync-blackbox
