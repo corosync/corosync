@@ -724,6 +724,8 @@ static struct downlist_msg* downlist_master_choose (void)
 	struct list_head *iter;
 	uint32_t cmp_members;
 	uint32_t best_members;
+	uint32_t i;
+	int ignore_msg;
 
 	for (iter = downlist_messages_head.next;
 		iter != &downlist_messages_head;
@@ -731,10 +733,26 @@ static struct downlist_msg* downlist_master_choose (void)
 
 		cmp = list_entry(iter, struct downlist_msg, list);
 		downlist_log("comparing", cmp);
+
+		ignore_msg = 0;
+		for (i = 0; i < cmp->left_nodes; i++) {
+			if (cmp->nodeids[i] == api->totem_nodeid_get()) {
+				log_printf (LOG_DEBUG, "Ignoring this entry because I'm in the left list\n");
+
+				ignore_msg = 1;
+				break;
+			}
+		}
+
+		if (ignore_msg) {
+			continue ;
+		}
+
 		if (best == NULL) {
 			best = cmp;
 			continue;
 		}
+
 		best_members = best->old_members - best->left_nodes;
 		cmp_members = cmp->old_members - cmp->left_nodes;
 
@@ -749,6 +767,9 @@ static struct downlist_msg* downlist_master_choose (void)
 		}
 
 	}
+
+	assert (best != NULL);
+
 	return best;
 }
 
