@@ -87,7 +87,7 @@
 #define BIND_STATE_REGULAR	1
 #define BIND_STATE_LOOPBACK	2
 
-#define MESSAGE_TYPE_MCAST	1
+#define MESSAGE_TYPE_MEMB_JOIN	3
 
 struct totemudp_socket {
 	int mcast_recv;
@@ -454,7 +454,7 @@ static int net_deliver_fn (
 	 * messages should be dropped)
 	 */
 	message_type = (char *)iovec->iov_base;
-	if (instance->flushing == 1 && *message_type != MESSAGE_TYPE_MCAST) {
+	if (instance->flushing == 1 && *message_type == MESSAGE_TYPE_MEMB_JOIN) {
 		iovec->iov_len = FRAME_SIZE_MAX;
 		return (0);
 	}
