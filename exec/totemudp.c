@@ -90,7 +90,7 @@
 #define BIND_STATE_REGULAR	1
 #define BIND_STATE_LOOPBACK	2
 
-#define MESSAGE_TYPE_MCAST	1
+#define MESSAGE_TYPE_MEMB_JOIN	3
 
 #define HMAC_HASH_SIZE 20
 struct security_header {
@@ -1252,7 +1252,7 @@ static int net_deliver_fn (
 	 * messages should be dropped)
 	 */
 	message_type = (char *)msg_offset;
-	if (instance->flushing == 1 && *message_type != MESSAGE_TYPE_MCAST) {
+	if (instance->flushing == 1 && *message_type == MESSAGE_TYPE_MEMB_JOIN) {
 		iovec->iov_len = FRAME_SIZE_MAX;
 		return (0);
 	}
