@@ -135,6 +135,7 @@ enum cpg_downlist_state_e {
 };
 static enum cpg_downlist_state_e downlist_state;
 static struct list_head downlist_messages_head;
+static struct list_head joinlist_messages_head;
 
 struct cpg_pd {
 	void *conn;
@@ -264,6 +265,10 @@ static void downlist_messages_delete (void);
 
 static void downlist_master_choose_and_send (void);
 
+static void joinlist_inform_clients (void);
+
+static void joinlist_messages_delete (void);
+
 static void cpg_sync_init_v2 (
 	const unsigned int *trans_list,
 	size_t trans_list_entries,
@@ -277,10 +282,19 @@ static void cpg_sync_activate (void);
 
 static void cpg_sync_abort (void);
 
+static void do_proc_join(
+	const mar_cpg_name_t *name,
+	uint32_t pid,
+	unsigned int nodeid,
+	int reason);
+
 static int notify_lib_totem_membership (
 	void *conn,
 	int member_list_entries,
 	const unsigned int *member_list);
+
+static char *cpg_print_group_name (
+	const mar_cpg_name_t *group);
 
 /*
  * Library Handler Definition
@@ -460,7 +474,44 @@ struct downlist_msg {
 	struct list_head list;
 };
 
+struct joinlist_msg {
+	mar_uint32_t sender_nodeid;
+	uint32_t pid;
+	mar_cpg_name_t group_name;
+	struct list_head list;
+};
+
 static struct req_exec_cpg_downlist g_req_exec_cpg_downlist;
+
+/*
+ * Function print group name. It's not reentrant
+ */
+static char *cpg_print_group_name(const mar_cpg_name_t *group)
+{
+	static char res[CPG_MAX_NAME_LENGTH * 4 + 1];
+	int dest_pos = 0;
+	char c;
+	int i;
+
+	for (i = 0; i < group->length; i++) {
+		c = group->value[i];
+
+		if (c >= ' ' && c < 0x7f && c != '\\') {
+			res[dest_pos++] = c;
+                } else {
+			if (c == '\\') {
+				res[dest_pos++] = '\\';
+				res[dest_pos++] = '\\';
+			} else {
+				snprintf(res + dest_pos, sizeof(res) - dest_pos, "\\x%02X", c);
+				dest_pos += 4;
+			}
+		}
+	}
+	res[dest_pos] = 0;
+
+	return (res);
+}
 
 static void cpg_sync_init_v2 (
 	const unsigned int *trans_list,
@@ -531,8 +582,11 @@ static void cpg_sync_activate (void)
 		downlist_master_choose_and_send ();
 	}
 
+	joinlist_inform_clients ();
+
 	downlist_messages_delete ();
 	downlist_state = CPG_DOWNLIST_NONE;
+	joinlist_messages_delete ();
 
 	notify_lib_totem_membership (NULL, my_member_list_entries, my_member_list);
 }
@@ -541,6 +595,7 @@ static void cpg_sync_abort (void)
 {
 	downlist_state = CPG_DOWNLIST_NONE;
 	downlist_messages_delete ();
+	joinlist_messages_delete ();
 }
 
 static int notify_lib_totem_membership (
@@ -817,6 +872,34 @@ static void downlist_master_choose_and_send (void)
 	}
 }
 
+static void joinlist_inform_clients (void)
+{
+	struct joinlist_msg *stored_msg;
+	struct list_head *iter;
+	unsigned int i;
+
+	i = 0;
+	for (iter = joinlist_messages_head.next;
+		iter != &joinlist_messages_head;
+		iter = iter->next) {
+
+		stored_msg = list_entry(iter, struct joinlist_msg, list);
+
+		log_printf (LOG_DEBUG, "joinlist_messages[%u] group:%s, ip:%s, pid:%d",
+			i++, cpg_print_group_name(&stored_msg->group_name),
+			(char*)api->totem_ifaces_print(stored_msg->sender_nodeid),
+			stored_msg->pid);
+
+		/* Ignore our own messages */
+		if (stored_msg->sender_nodeid == api->totem_nodeid_get()) {
+			continue ;
+		}
+
+		do_proc_join (&stored_msg->group_name, stored_msg->pid, stored_msg->sender_nodeid,
+			CONFCHG_CPG_REASON_NODEUP);
+	}
+}
+
 static void downlist_messages_delete (void)
 {
 	struct downlist_msg *stored_msg;
@@ -834,6 +917,23 @@ static void downlist_messages_delete (void)
 	}
 }
 
+static void joinlist_messages_delete (void)
+{
+	struct joinlist_msg *stored_msg;
+	struct list_head *iter, *iter_next;
+
+	for (iter = joinlist_messages_head.next;
+		iter != &joinlist_messages_head;
+		iter = iter_next) {
+
+		iter_next = iter->next;
+
+		stored_msg = list_entry(iter, struct joinlist_msg, list);
+		list_del (&stored_msg->list);
+		free (stored_msg);
+	}
+	list_init (&joinlist_messages_head);
+}
 
 static int cpg_exec_init_fn (struct corosync_api_v1 *corosync_api)
 {
@@ -841,6 +941,7 @@ static int cpg_exec_init_fn (struct corosync_api_v1 *corosync_api)
 	logsys_subsys_init();
 #endif
 	list_init (&downlist_messages_head);
+	list_init (&joinlist_messages_head);
 	api = corosync_api;
 	return (0);
 }
@@ -1160,18 +1261,19 @@ static void message_handler_req_exec_cpg_joinlist (
 	const char *message = message_v;
 	const coroipc_response_header_t *res = (const coroipc_response_header_t *)message;
 	const struct join_list_entry *jle = (const struct join_list_entry *)(message + sizeof(coroipc_response_header_t));
+	struct joinlist_msg *stored_msg;
 
 	log_printf(LOGSYS_LEVEL_DEBUG, "got joinlist message from node %x\n",
 		nodeid);
 
-	/* Ignore our own messages */
-	if (nodeid == api->totem_nodeid_get()) {
-		return;
-	}
-
 	while ((const char*)jle < message + res->size) {
-		do_proc_join (&jle->group_name, jle->pid, nodeid,
-			CONFCHG_CPG_REASON_NODEUP);
+		stored_msg = malloc (sizeof (struct joinlist_msg));
+		memset(stored_msg, 0, sizeof (struct joinlist_msg));
+		stored_msg->sender_nodeid = nodeid;
+		stored_msg->pid = jle->pid;
+		memcpy(&stored_msg->group_name, &jle->group_name, sizeof(mar_cpg_name_t));
+		list_init (&stored_msg->list);
+		list_add (&stored_msg->list, &joinlist_messages_head);
 		jle++;
 	}
 }
