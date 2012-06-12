@@ -317,6 +317,9 @@ static int notify_lib_totem_membership (
 static inline int zcb_all_free (
 	struct cpg_pd *cpd);
 
+static char *cpg_print_group_name (
+	const mar_cpg_name_t *group);
+
 /*
  * Library Handler Definition
  */
@@ -475,6 +478,36 @@ struct joinlist_msg {
 };
 
 static struct req_exec_cpg_downlist g_req_exec_cpg_downlist;
+
+/*
+ * Function print group name. It's not reentrant
+ */
+static char *cpg_print_group_name(const mar_cpg_name_t *group)
+{
+	static char res[CPG_MAX_NAME_LENGTH * 4 + 1];
+	int dest_pos = 0;
+	char c;
+	int i;
+
+	for (i = 0; i < group->length; i++) {
+		c = group->value[i];
+
+		if (c >= ' ' && c < 0x7f && c != '\\') {
+			res[dest_pos++] = c;
+                } else {
+			if (c == '\\') {
+				res[dest_pos++] = '\\';
+				res[dest_pos++] = '\\';
+			} else {
+				snprintf(res + dest_pos, sizeof(res) - dest_pos, "\\x%02X", c);
+				dest_pos += 4;
+			}
+		}
+	}
+	res[dest_pos] = 0;
+
+	return (res);
+}
 
 static void cpg_sync_init (
 	const unsigned int *trans_list,
@@ -868,8 +901,8 @@ static void downlist_master_choose_and_send (void)
 
 		log_printf (LOG_DEBUG, "left_list_entries:%d", pcd->left_list_entries);
 		for (i=0; i<pcd->left_list_entries; i++) {
-			log_printf (LOG_DEBUG, "left_list[%d] group:%d, ip:%s, pid:%d",
-				i, pcd->cpg_group.value,
+			log_printf (LOG_DEBUG, "left_list[%d] group:%s, ip:%s, pid:%d",
+				i, cpg_print_group_name(&group),
 				(char*)api->totem_ifaces_print(pcd->left_list[i].nodeid),
 				pcd->left_list[i].pid);
 		}
@@ -900,8 +933,8 @@ static void joinlist_inform_clients (void)
 
 		stored_msg = list_entry(iter, struct joinlist_msg, list);
 
-		log_printf (LOG_DEBUG, "joinlist_messages[%u] group:%d, ip:%s, pid:%d",
-			i++, stored_msg->group_name.value,
+		log_printf (LOG_DEBUG, "joinlist_messages[%u] group:%s, ip:%s, pid:%d",
+			i++, cpg_print_group_name(&stored_msg->group_name),
 			(char*)api->totem_ifaces_print(stored_msg->sender_nodeid),
 			stored_msg->pid);
 
