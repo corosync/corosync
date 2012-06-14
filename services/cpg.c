@@ -816,16 +816,17 @@ static struct downlist_msg* downlist_master_choose (void)
 		best_members = best->old_members - best->left_nodes;
 		cmp_members = cmp->old_members - cmp->left_nodes;
 
-		if (cmp_members < best_members) {
-			continue;
-		}
-		else if (cmp_members > best_members) {
+		if (cmp_members > best_members) {
 			best = cmp;
+		} else if (cmp_members == best_members) {
+			if (cmp->old_members > best->old_members) {
+				best = cmp;
+			} else if (cmp->old_members == best->old_members) {
+				if (cmp->sender_nodeid < best->sender_nodeid) {
+					best = cmp;
+				}
+			}
 		}
-		else if (cmp->sender_nodeid < best->sender_nodeid) {
-			best = cmp;
-		}
-
 	}
 
 	assert (best != NULL);
