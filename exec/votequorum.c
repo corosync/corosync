@@ -1945,12 +1945,17 @@ static void message_handler_req_lib_votequorum_getinfo (void *conn, const void *
 	unsigned int highest_expected = 0;
 	unsigned int total_votes = 0;
 	cs_error_t error = CS_OK;
+	uint32_t nodeid = req_lib_votequorum_getinfo->nodeid;
 
 	ENTER();
 
 	log_printf(LOGSYS_LEVEL_DEBUG, "got getinfo request on %p for node %u", conn, req_lib_votequorum_getinfo->nodeid);
 
-	node = find_node_by_nodeid(req_lib_votequorum_getinfo->nodeid);
+	if (nodeid == NODEID_QDEVICE) {
+		nodeid = us->node_id;
+	}
+
+	node = find_node_by_nodeid(nodeid);
 	if (node) {
 		struct cluster_node *iternode;
 		struct list_head *nodelist;
@@ -1965,10 +1970,9 @@ static void message_handler_req_lib_votequorum_getinfo (void *conn, const void *
 			}
 		}
 
-		if (((us->flags & NODE_FLAGS_QDEVICE_REGISTERED) && (qdevice->state == NODESTATE_MEMBER)) ||
-		    ((node->flags & NODE_FLAGS_QDEVICE_REGISTERED) &&
-		     (node->flags & NODE_FLAGS_QDEVICE_ALIVE) &&
-		     (node->flags & NODE_FLAGS_QDEVICE_CAST_VOTE))) {
+		if ((node->flags & NODE_FLAGS_QDEVICE_REGISTERED) &&
+		    (node->flags & NODE_FLAGS_QDEVICE_ALIVE) &&
+		    (node->flags & NODE_FLAGS_QDEVICE_CAST_VOTE)) {
 			total_votes += qdevice->votes;
 		}
 

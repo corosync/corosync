@@ -409,7 +409,7 @@ static int display_quorum_data(int is_quorate, uint32_t nodeid,
 	if ((err == CS_OK) || (err == CS_ERR_NOT_EXIST)) {
 		printf("\nVotequorum information\n");
 		printf("----------------------\n");
-		printf("Node ID:          %u\n", nodeid);
+		printf("Node ID:          %u\n", nodeid?nodeid:our_nodeid);
 		printf("Node state:       ");
 		if (err == CS_ERR_NOT_EXIST) {
 			printf("Unknown\n");
