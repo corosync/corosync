@@ -620,13 +620,10 @@ static int calculate_quorum(int allow_decrease, unsigned int max_expected, unsig
 		}
 	}
 
-	if (us->flags & NODE_FLAGS_QDEVICE_REGISTERED) {
-		log_printf(LOGSYS_LEVEL_DEBUG, "node %u state=%d, votes=%u",
-			   qdevice->node_id, qdevice->state, qdevice->votes);
-		if (qdevice->state == NODESTATE_MEMBER) {
-			total_votes += qdevice->votes;
-			total_nodes++;
-		}
+	if (us->flags & NODE_FLAGS_QDEVICE_CAST_VOTE) {
+		log_printf(LOGSYS_LEVEL_DEBUG, "node 0 state=1, votes=%u", qdevice->votes);
+		total_votes += qdevice->votes;
+		total_nodes++;
 	}
 
 	if (max_expected > 0) {
@@ -757,6 +754,7 @@ static void get_total_votes(unsigned int *totalvotes, unsigned int *current_memb
 		total_votes += qdevice->votes;
 		cluster_members++;
 	}
+
 	*totalvotes = total_votes;
 	*current_members = cluster_members;
 
@@ -1728,7 +1726,6 @@ static char *votequorum_exec_init_fn (struct corosync_api_v1 *api)
 		LEAVE();
 		return ((char *)"Could not allocate node.");
 	}
-	qdevice->state = NODESTATE_DEAD;
 	qdevice->votes = 0;
 	memset(qdevice_name, 0, VOTEQUORUM_MAX_QDEVICE_NAME_LEN);
 
@@ -1915,14 +1912,12 @@ static void qdevice_timer_fn(void *arg)
 {
 	ENTER();
 
-	if ((!(us->flags & NODE_FLAGS_QDEVICE_REGISTERED)) ||
-	    (qdevice->state == NODESTATE_DEAD) ||
+	if ((!(us->flags & NODE_FLAGS_QDEVICE_ALIVE)) ||
 	    (!qdevice_timer_set)) {
 		LEAVE();
 		return;
 	}
 
-	qdevice->state = NODESTATE_DEAD;
 	us->flags &= ~NODE_FLAGS_QDEVICE_ALIVE;
 	us->flags &= ~NODE_FLAGS_QDEVICE_CAST_VOTE;
 	log_printf(LOGSYS_LEVEL_INFO, "lost contact with quorum device %s", qdevice_name);
@@ -1970,9 +1965,7 @@ static void message_handler_req_lib_votequorum_getinfo (void *conn, const void *
 			}
 		}
 
-		if ((node->flags & NODE_FLAGS_QDEVICE_REGISTERED) &&
-		    (node->flags & NODE_FLAGS_QDEVICE_ALIVE) &&
-		    (node->flags & NODE_FLAGS_QDEVICE_CAST_VOTE)) {
+		if (node->flags & NODE_FLAGS_QDEVICE_CAST_VOTE) {
 			total_votes += qdevice->votes;
 		}
 
@@ -2252,7 +2245,6 @@ static void message_handler_req_lib_votequorum_qdevice_unregister (void *conn,
 		us->flags &= ~NODE_FLAGS_QDEVICE_REGISTERED;
 		us->flags &= ~NODE_FLAGS_QDEVICE_ALIVE;
 		us->flags &= ~NODE_FLAGS_QDEVICE_CAST_VOTE;
-		qdevice->state = NODESTATE_DEAD;
 		votequorum_exec_send_nodeinfo(us->node_id);
 		votequorum_exec_send_qdevice_reg(VOTEQUORUM_QDEVICE_OPERATION_UNREGISTER,
 						 req_lib_votequorum_qdevice_unregister->name);
@@ -2304,6 +2296,7 @@ static void message_handler_req_lib_votequorum_qdevice_poll (void *conn,
 	const struct req_lib_votequorum_qdevice_poll *req_lib_votequorum_qdevice_poll = message;
 	struct res_lib_votequorum_status res_lib_votequorum_status;
 	cs_error_t error = CS_OK;
+	uint32_t oldflags;
 
 	ENTER();
 
@@ -2317,25 +2310,24 @@ static void message_handler_req_lib_votequorum_qdevice_poll (void *conn,
 			error = CS_ERR_INVALID_PARAM;
 			goto out;
 		}
+
 		if (qdevice_timer_set) {
 			corosync_api->timer_delete(qdevice_timer);
 			qdevice_timer_set = 0;
 		}
 
+		oldflags = us->flags;
+
+		us->flags |= NODE_FLAGS_QDEVICE_ALIVE;
+
 		if (req_lib_votequorum_qdevice_poll->state) {
-			if (qdevice->state == NODESTATE_DEAD) {
-				qdevice->state = NODESTATE_MEMBER;
-				us->flags |= NODE_FLAGS_QDEVICE_ALIVE;
-				us->flags |= NODE_FLAGS_QDEVICE_CAST_VOTE;
-				votequorum_exec_send_nodeinfo(us->node_id);
-			}
+			us->flags |= NODE_FLAGS_QDEVICE_CAST_VOTE;
 		} else {
-			if (qdevice->state == NODESTATE_MEMBER) {
-				qdevice->state = NODESTATE_DEAD;
-				us->flags &= ~NODE_FLAGS_QDEVICE_ALIVE;
-				us->flags &= ~NODE_FLAGS_QDEVICE_CAST_VOTE;
-				votequorum_exec_send_nodeinfo(us->node_id);
-			}
+			us->flags &= ~NODE_FLAGS_QDEVICE_CAST_VOTE;
+		}
+
+		if (us->flags != oldflags) {
+			votequorum_exec_send_nodeinfo(us->node_id);
 		}
 
 		corosync_api->timer_add_duration((unsigned long long)qdevice_timeout*1000000, qdevice,
