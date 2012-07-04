@@ -2364,42 +2364,29 @@ static void message_handler_req_lib_votequorum_qdevice_getinfo (void *conn,
 
 	ENTER();
 
-	if ((nodeid != us->node_id) &&
-	    (nodeid != NODEID_QDEVICE)) {
-		node = find_node_by_nodeid(req_lib_votequorum_qdevice_getinfo->nodeid);
-		if ((node) &&
-		    (node->flags & NODE_FLAGS_QDEVICE_REGISTERED)) {
-			int alive_status = 0, vote_status = 0;
+	if (nodeid == NODEID_QDEVICE) {
+		nodeid = us->node_id;
+	}
 
-			if (node->flags & NODE_FLAGS_QDEVICE_ALIVE) {
-				alive_status = 1;
-			}
-			if (node->flags & NODE_FLAGS_QDEVICE_CAST_VOTE) {
-				vote_status = 1;
-			}
-			log_printf(LOGSYS_LEVEL_DEBUG, "got qdevice_getinfo node %u alive_status %d", nodeid, alive_status);
-			res_lib_votequorum_qdevice_getinfo.votes = qdevice->votes;
-			res_lib_votequorum_qdevice_getinfo.alive = alive_status;
-			res_lib_votequorum_qdevice_getinfo.vote = vote_status;
-			strcpy(res_lib_votequorum_qdevice_getinfo.name, qdevice_name);
-		} else {
-			error = CS_ERR_NOT_EXIST;
+	node = find_node_by_nodeid(nodeid);
+	if ((node) &&
+	    (node->flags & NODE_FLAGS_QDEVICE_REGISTERED)) {
+		int alive_status = 0, vote_status = 0;
+
+		if (node->flags & NODE_FLAGS_QDEVICE_ALIVE) {
+			alive_status = 1;
 		}
+		if (node->flags & NODE_FLAGS_QDEVICE_CAST_VOTE) {
+			vote_status = 1;
+		}
+		log_printf(LOGSYS_LEVEL_DEBUG, "got qdevice_getinfo node %u alive_status %d vote_status %d",
+						nodeid, alive_status, vote_status);
+		res_lib_votequorum_qdevice_getinfo.votes = qdevice->votes;
+		res_lib_votequorum_qdevice_getinfo.alive = alive_status;
+		res_lib_votequorum_qdevice_getinfo.vote = vote_status;
+		strcpy(res_lib_votequorum_qdevice_getinfo.name, qdevice_name);
 	} else {
-		if (qdevice_is_registered) {
-			log_printf(LOGSYS_LEVEL_DEBUG, "got qdevice_getinfo node %u state %d", us->node_id, qdevice->state);
-			res_lib_votequorum_qdevice_getinfo.votes = qdevice->votes;
-			if (qdevice->state == NODESTATE_MEMBER) {
-				res_lib_votequorum_qdevice_getinfo.alive = 1;
-				res_lib_votequorum_qdevice_getinfo.vote = 1;
-			} else {
-				res_lib_votequorum_qdevice_getinfo.alive = 0;
-				res_lib_votequorum_qdevice_getinfo.vote = 0;
-			}
-			strcpy(res_lib_votequorum_qdevice_getinfo.name, qdevice_name);
-		} else {
-			error = CS_ERR_NOT_EXIST;
-		}
+		error = CS_ERR_NOT_EXIST;
 	}
 
 	res_lib_votequorum_qdevice_getinfo.header.size = sizeof(res_lib_votequorum_qdevice_getinfo);
