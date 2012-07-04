@@ -1422,6 +1422,15 @@ static void message_handler_req_exec_votequorum_qdevice_reg (
 		}
 
 		/*
+		 * protect against the case where we broadcast qdevice registration
+		 * to new memebers, we receive the message back, but there is no registration
+		 * connection in progress
+		 */
+		if (us->flags & NODE_FLAGS_QDEVICE_REGISTERED) {
+			LEAVE();
+		}
+
+		/*
 		 * this should NEVER happen
 		 */
 		if (!qdevice_reg_conn) {
@@ -1541,66 +1550,58 @@ static void message_handler_req_exec_votequorum_nodeinfo (
 		old_flags = node->flags;
 	}
 
-	/* Update node state */
-	node->flags = req_exec_quorum_nodeinfo->flags;
-
-	if (nodeid != NODEID_QDEVICE) {
-		node->votes = req_exec_quorum_nodeinfo->votes;
-	} else {
+	if (nodeid == NODEID_QDEVICE) {
 		if ((!cluster_is_quorate) &&
 		    (req_exec_quorum_nodeinfo->flags & NODE_FLAGS_QUORATE)) {
 			node->votes = req_exec_quorum_nodeinfo->votes;
 		} else {
 			node->votes = max(node->votes, req_exec_quorum_nodeinfo->votes);
 		}
+		goto recalculate;
 	}
+
+	/* Update node state */
+	node->flags = req_exec_quorum_nodeinfo->flags;
+	node->votes = req_exec_quorum_nodeinfo->votes;
+	node->state = NODESTATE_MEMBER;
 
 	if (node->flags & NODE_FLAGS_LEAVING) {
 		node->state = NODESTATE_LEAVING;
 		allow_downgrade = 1;
 		by_node = 1;
+	}
+
+	if ((!cluster_is_quorate) &&
+	    (req_exec_quorum_nodeinfo->flags & NODE_FLAGS_QUORATE)) {
+		allow_downgrade = 1;
+		us->expected_votes = req_exec_quorum_nodeinfo->expected_votes;
+	}
+
+	if (req_exec_quorum_nodeinfo->flags & NODE_FLAGS_QUORATE) {
+		node->expected_votes = req_exec_quorum_nodeinfo->expected_votes;
 	} else {
-		if (nodeid != NODEID_QDEVICE) {
-			node->state = NODESTATE_MEMBER;
-		} else {
-			/*
-			 * qdevice status is only local to the node
-			 */
-			node->state = old_state;
+		node->expected_votes = us->expected_votes;
+	}
+
+	if ((last_man_standing) && (req_exec_quorum_nodeinfo->votes > 1)) {
+		log_printf(LOGSYS_LEVEL_WARNING, "Last Man Standing feature is supported only when all"
+						 "cluster nodes votes are set to 1. Disabling LMS.");
+		last_man_standing = 0;
+		if (last_man_standing_timer_set) {
+			corosync_api->timer_delete(last_man_standing_timer);
+			last_man_standing_timer_set = 0;
 		}
 	}
 
-	if (nodeid != NODEID_QDEVICE) {
-		if ((!cluster_is_quorate) &&
-		    (req_exec_quorum_nodeinfo->flags & NODE_FLAGS_QUORATE)) {
-			allow_downgrade = 1;
-			us->expected_votes = req_exec_quorum_nodeinfo->expected_votes;
-		}
+recalculate:
 
-		if (req_exec_quorum_nodeinfo->flags & NODE_FLAGS_QUORATE) {
-			node->expected_votes = req_exec_quorum_nodeinfo->expected_votes;
-		} else {
-			node->expected_votes = us->expected_votes;
-		}
-
-		if ((last_man_standing) && (req_exec_quorum_nodeinfo->votes > 1)) {
-			log_printf(LOGSYS_LEVEL_WARNING, "Last Man Standing feature is supported only when all"
-							 "cluster nodes votes are set to 1. Disabling LMS.");
-			last_man_standing = 0;
-			if (last_man_standing_timer_set) {
-				corosync_api->timer_delete(last_man_standing_timer);
-				last_man_standing_timer_set = 0;
-			}
-		}
-	}
-
-	if (new_node ||
-	    nodeid == NODEID_QDEVICE ||
-	    req_exec_quorum_nodeinfo->flags & NODE_FLAGS_FIRST || 
-	    old_votes != node->votes ||
-	    old_expected != node->expected_votes ||
-	    old_flags != node->flags ||
-	    old_state != node->state) {
+	if ((new_node) ||
+	    (nodeid == us->node_id) ||
+	    (req_exec_quorum_nodeinfo->flags & NODE_FLAGS_FIRST) || 
+	    (old_votes != node->votes) ||
+	    (old_expected != node->expected_votes) ||
+	    (old_flags != node->flags) ||
+	    (old_state != node->state)) {
 		recalculate_quorum(allow_downgrade, by_node);
 	}
 
