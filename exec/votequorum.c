@@ -68,7 +68,6 @@ static char qdevice_name[VOTEQUORUM_MAX_QDEVICE_NAME_LEN];
 static struct cluster_node *qdevice = NULL;
 static unsigned int qdevice_timeout = DEFAULT_QDEVICE_TIMEOUT;
 static uint8_t qdevice_can_operate = 1;
-static uint8_t qdevice_is_registered = 0;
 static void *qdevice_reg_conn = NULL;
 
 static uint8_t two_node = 0;
@@ -621,7 +620,7 @@ static int calculate_quorum(int allow_decrease, unsigned int max_expected, unsig
 		}
 	}
 
-	if (qdevice_is_registered) {
+	if (us->flags & NODE_FLAGS_QDEVICE_REGISTERED) {
 		log_printf(LOGSYS_LEVEL_DEBUG, "node %u state=%d, votes=%u",
 			   qdevice->node_id, qdevice->state, qdevice->votes);
 		if (qdevice->state == NODESTATE_MEMBER) {
@@ -931,7 +930,7 @@ static char *votequorum_readconfig(int runtime)
 			goto out;
 		} else {
 			log_printf(LOGSYS_LEVEL_CRIT, "configuration error: two_node and quorum device cannot be configured at the same time!");
-			if (qdevice_is_registered) {
+			if (us->flags & NODE_FLAGS_QDEVICE_REGISTERED) {
 				log_printf(LOGSYS_LEVEL_CRIT, "quorum device is registered, disabling two_node");
 				two_node = 0;
 			} else {
@@ -1282,7 +1281,7 @@ static int votequorum_exec_send_quorum_notification(void *conn, uint64_t context
 		node = list_entry(tmp, struct cluster_node, list);
 		cluster_members++;
         }
-	if (qdevice_is_registered) {
+	if (us->flags & NODE_FLAGS_QDEVICE_REGISTERED) {
 		cluster_members++;
 	}
 
@@ -1297,7 +1296,7 @@ static int votequorum_exec_send_quorum_notification(void *conn, uint64_t context
 		res_lib_votequorum_notification->node_list[i].nodeid = node->node_id;
 		res_lib_votequorum_notification->node_list[i++].state = node->state;
         }
-	if (qdevice_is_registered) {
+	if (us->flags & NODE_FLAGS_QDEVICE_REGISTERED) {
 		res_lib_votequorum_notification->node_list[i].nodeid = NODEID_QDEVICE;
 		res_lib_votequorum_notification->node_list[i++].state = qdevice->state;
 	}
@@ -1445,7 +1444,6 @@ static void message_handler_req_exec_votequorum_qdevice_reg (
 		 */
 		if ((!strncmp(req_exec_quorum_qdevice_reg->qdevice_name,
 			      qdevice_name, VOTEQUORUM_MAX_QDEVICE_NAME_LEN))) {
-			qdevice_is_registered = 1;
 			us->flags |= NODE_FLAGS_QDEVICE_REGISTERED;
 			votequorum_exec_send_nodeinfo(NODEID_QDEVICE);
 			votequorum_exec_send_nodeinfo(us->node_id);
@@ -1917,7 +1915,7 @@ static void qdevice_timer_fn(void *arg)
 {
 	ENTER();
 
-	if ((!qdevice_is_registered) ||
+	if ((!(us->flags & NODE_FLAGS_QDEVICE_REGISTERED)) ||
 	    (qdevice->state == NODESTATE_DEAD) ||
 	    (!qdevice_timer_set)) {
 		LEAVE();
@@ -1967,7 +1965,7 @@ static void message_handler_req_lib_votequorum_getinfo (void *conn, const void *
 			}
 		}
 
-		if (((qdevice_is_registered) && (qdevice->state == NODESTATE_MEMBER)) ||
+		if (((us->flags & NODE_FLAGS_QDEVICE_REGISTERED) && (qdevice->state == NODESTATE_MEMBER)) ||
 		    ((node->flags & NODE_FLAGS_QDEVICE_REGISTERED) &&
 		     (node->flags & NODE_FLAGS_QDEVICE_ALIVE) &&
 		     (node->flags & NODE_FLAGS_QDEVICE_CAST_VOTE))) {
@@ -2188,7 +2186,7 @@ static void message_handler_req_lib_votequorum_qdevice_register (void *conn,
 		goto out;
 	}
 
-	if (qdevice_is_registered) {
+	if (us->flags & NODE_FLAGS_QDEVICE_REGISTERED) {
 		if ((!strncmp(req_lib_votequorum_qdevice_register->name,
 		     qdevice_name, VOTEQUORUM_MAX_QDEVICE_NAME_LEN))) {
 			goto out;
@@ -2238,7 +2236,7 @@ static void message_handler_req_lib_votequorum_qdevice_unregister (void *conn,
 
 	ENTER();
 
-	if (qdevice_is_registered) {
+	if (us->flags & NODE_FLAGS_QDEVICE_REGISTERED) {
 		if (strncmp(req_lib_votequorum_qdevice_unregister->name, qdevice_name, VOTEQUORUM_MAX_QDEVICE_NAME_LEN)) {
 			error = CS_ERR_INVALID_PARAM;
 			goto out;
@@ -2247,7 +2245,6 @@ static void message_handler_req_lib_votequorum_qdevice_unregister (void *conn,
 			corosync_api->timer_delete(qdevice_timer);
 			qdevice_timer_set = 0;
 		}
-		qdevice_is_registered = 0;
 		us->flags &= ~NODE_FLAGS_QDEVICE_REGISTERED;
 		us->flags &= ~NODE_FLAGS_QDEVICE_ALIVE;
 		us->flags &= ~NODE_FLAGS_QDEVICE_CAST_VOTE;
@@ -2277,7 +2274,7 @@ static void message_handler_req_lib_votequorum_qdevice_update (void *conn,
 
 	ENTER();
 
-	if (qdevice_is_registered) {
+	if (us->flags & NODE_FLAGS_QDEVICE_REGISTERED) {
 		if (strncmp(req_lib_votequorum_qdevice_update->oldname, qdevice_name, VOTEQUORUM_MAX_QDEVICE_NAME_LEN)) {
 			error = CS_ERR_INVALID_PARAM;
 			goto out;
@@ -2311,7 +2308,7 @@ static void message_handler_req_lib_votequorum_qdevice_poll (void *conn,
 		goto out;
 	}
 
-	if (qdevice_is_registered) {
+	if (us->flags & NODE_FLAGS_QDEVICE_REGISTERED) {
 		if (strncmp(req_lib_votequorum_qdevice_poll->name, qdevice_name, VOTEQUORUM_MAX_QDEVICE_NAME_LEN)) {
 			error = CS_ERR_INVALID_PARAM;
 			goto out;
