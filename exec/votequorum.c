@@ -158,7 +158,7 @@ static int votequorum_exec_send_reconfigure(uint8_t param, unsigned int nodeid, 
 #define NODE_FLAGS_WFASTATUS            4
 #define NODE_FLAGS_FIRST                8
 #define NODE_FLAGS_QDEVICE_REGISTERED  16
-#define NODE_FLAGS_QDEVICE_STATE       32
+#define NODE_FLAGS_QDEVICE_ALIVE       32
 
 #define NODEID_QDEVICE 0
 
@@ -551,7 +551,7 @@ static void decode_flags(uint32_t flags)
 		   (flags & NODE_FLAGS_WFASTATUS)?"Yes":"No",
 		   (flags & NODE_FLAGS_FIRST)?"Yes":"No",
 		   (flags & NODE_FLAGS_QDEVICE_REGISTERED)?"Yes":"No",
-		   (flags & NODE_FLAGS_QDEVICE_STATE)?"Yes":"No");
+		   (flags & NODE_FLAGS_QDEVICE_ALIVE)?"Yes":"No");
 }
 
 static void update_wait_for_all_status(uint8_t wfa_status)
@@ -1923,7 +1923,7 @@ static void qdevice_timer_fn(void *arg)
 	}
 
 	qdevice->state = NODESTATE_DEAD;
-	us->flags &= ~NODE_FLAGS_QDEVICE_STATE;
+	us->flags &= ~NODE_FLAGS_QDEVICE_ALIVE;
 	log_printf(LOGSYS_LEVEL_INFO, "lost contact with quorum device %s", qdevice_name);
 	votequorum_exec_send_nodeinfo(us->node_id);
 
@@ -1965,7 +1965,7 @@ static void message_handler_req_lib_votequorum_getinfo (void *conn, const void *
 		}
 
 		if (((qdevice_is_registered) && (qdevice->state == NODESTATE_MEMBER)) ||
-		    ((node->flags & NODE_FLAGS_QDEVICE_REGISTERED) && (node->flags & NODE_FLAGS_QDEVICE_STATE))) {
+		    ((node->flags & NODE_FLAGS_QDEVICE_REGISTERED) && (node->flags & NODE_FLAGS_QDEVICE_ALIVE))) {
 			total_votes += qdevice->votes;
 		}
 
@@ -1999,6 +1999,9 @@ static void message_handler_req_lib_votequorum_getinfo (void *conn, const void *
 		}
 		if (node->flags & NODE_FLAGS_QDEVICE_REGISTERED) {
 			res_lib_votequorum_getinfo.flags |= VOTEQUORUM_INFO_QDEVICE_REGISTERED;
+		}
+		if (node->flags & NODE_FLAGS_QDEVICE_ALIVE) {
+			res_lib_votequorum_getinfo.flags |= VOTEQUORUM_INFO_QDEVICE_ALIVE;
 		}
 	} else {
 		error = CS_ERR_NOT_EXIST;
@@ -2238,7 +2241,7 @@ static void message_handler_req_lib_votequorum_qdevice_unregister (void *conn,
 		}
 		qdevice_is_registered = 0;
 		us->flags &= ~NODE_FLAGS_QDEVICE_REGISTERED;
-		us->flags &= ~NODE_FLAGS_QDEVICE_STATE;
+		us->flags &= ~NODE_FLAGS_QDEVICE_ALIVE;
 		qdevice->state = NODESTATE_DEAD;
 		votequorum_exec_send_nodeinfo(us->node_id);
 		votequorum_exec_send_qdevice_reg(VOTEQUORUM_QDEVICE_OPERATION_UNREGISTER,
@@ -2312,13 +2315,13 @@ static void message_handler_req_lib_votequorum_qdevice_poll (void *conn,
 		if (req_lib_votequorum_qdevice_poll->state) {
 			if (qdevice->state == NODESTATE_DEAD) {
 				qdevice->state = NODESTATE_MEMBER;
-				us->flags |= NODE_FLAGS_QDEVICE_STATE;
+				us->flags |= NODE_FLAGS_QDEVICE_ALIVE;
 				votequorum_exec_send_nodeinfo(us->node_id);
 			}
 		} else {
 			if (qdevice->state == NODESTATE_MEMBER) {
 				qdevice->state = NODESTATE_DEAD;
-				us->flags &= ~NODE_FLAGS_QDEVICE_STATE;
+				us->flags &= ~NODE_FLAGS_QDEVICE_ALIVE;
 				votequorum_exec_send_nodeinfo(us->node_id);
 			}
 		}
@@ -2355,18 +2358,14 @@ static void message_handler_req_lib_votequorum_qdevice_getinfo (void *conn,
 		node = find_node_by_nodeid(req_lib_votequorum_qdevice_getinfo->nodeid);
 		if ((node) &&
 		    (node->flags & NODE_FLAGS_QDEVICE_REGISTERED)) {
-			int state = 0;
+			int alive_status = 0;
 
-			if (node->flags & NODE_FLAGS_QDEVICE_STATE) {
-				state = 1;
+			if (node->flags & NODE_FLAGS_QDEVICE_ALIVE) {
+				alive_status = 1;
 			}
-			log_printf(LOGSYS_LEVEL_DEBUG, "got qdevice_getinfo node %u state %d", nodeid, state);
+			log_printf(LOGSYS_LEVEL_DEBUG, "got qdevice_getinfo node %u alive_status %d", nodeid, alive_status);
 			res_lib_votequorum_qdevice_getinfo.votes = qdevice->votes;
-			if (state) {
-				res_lib_votequorum_qdevice_getinfo.state = 1;
-			} else {
-				res_lib_votequorum_qdevice_getinfo.state = 0;
-			}
+			res_lib_votequorum_qdevice_getinfo.alive = alive_status;
 			strcpy(res_lib_votequorum_qdevice_getinfo.name, qdevice_name);
 		} else {
 			error = CS_ERR_NOT_EXIST;
@@ -2376,9 +2375,9 @@ static void message_handler_req_lib_votequorum_qdevice_getinfo (void *conn,
 			log_printf(LOGSYS_LEVEL_DEBUG, "got qdevice_getinfo node %u state %d", us->node_id, qdevice->state);
 			res_lib_votequorum_qdevice_getinfo.votes = qdevice->votes;
 			if (qdevice->state == NODESTATE_MEMBER) {
-				res_lib_votequorum_qdevice_getinfo.state = 1;
+				res_lib_votequorum_qdevice_getinfo.alive = 1;
 			} else {
-				res_lib_votequorum_qdevice_getinfo.state = 0;
+				res_lib_votequorum_qdevice_getinfo.alive = 0;
 			}
 			strcpy(res_lib_votequorum_qdevice_getinfo.name, qdevice_name);
 		} else {

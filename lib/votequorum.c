@@ -725,7 +725,7 @@ cs_error_t votequorum_qdevice_getinfo (
 	error = res_lib_votequorum_qdevice_getinfo.header.error;
 
 	qinfo->votes = res_lib_votequorum_qdevice_getinfo.votes;
-	qinfo->state = res_lib_votequorum_qdevice_getinfo.state;
+	qinfo->alive = res_lib_votequorum_qdevice_getinfo.alive;
 	strcpy(qinfo->name, res_lib_votequorum_qdevice_getinfo.name);
 
 

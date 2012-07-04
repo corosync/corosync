@@ -49,6 +49,7 @@ typedef uint64_t votequorum_handle_t;
 #define VOTEQUORUM_INFO_AUTO_TIE_BREAKER       16
 #define VOTEQUORUM_INFO_LEAVE_REMOVE           32
 #define VOTEQUORUM_INFO_QDEVICE_REGISTERED     64
+#define VOTEQUORUM_INFO_QDEVICE_ALIVE         128
 
 #define VOTEQUORUM_NODEID_QDEVICE 0
 #define VOTEQUORUM_MAX_QDEVICE_NAME_LEN 255
@@ -72,7 +73,7 @@ struct votequorum_info {
 
 struct votequorum_qdevice_info {
 	unsigned int votes;
-	unsigned int state;
+	unsigned int alive;
 	char name[VOTEQUORUM_MAX_QDEVICE_NAME_LEN];
 };
 

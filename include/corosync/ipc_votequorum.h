@@ -124,6 +124,7 @@ struct res_lib_votequorum_status {
 #define VOTEQUORUM_INFO_AUTO_TIE_BREAKER       16
 #define VOTEQUORUM_INFO_LEAVE_REMOVE           32
 #define VOTEQUORUM_INFO_QDEVICE_REGISTERED     64
+#define VOTEQUORUM_INFO_QDEVICE_ALIVE         128
 
 struct res_lib_votequorum_getinfo {
 	struct qb_ipc_response_header header __attribute__((aligned(8)));
@@ -140,7 +141,7 @@ struct res_lib_votequorum_getinfo {
 struct res_lib_votequorum_qdevice_getinfo {
 	struct qb_ipc_response_header header __attribute__((aligned(8)));
 	unsigned int votes;
-	unsigned int state;
+	unsigned int alive;
 	char name[VOTEQUORUM_MAX_QDEVICE_NAME_LEN];
 };
 

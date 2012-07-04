@@ -53,7 +53,7 @@ static void print_info(int ok_to_fail)
 		fprintf(stderr, "votequorum_qdevice_getinfo error %d: %s\n", err, ok_to_fail?"OK":"FAILED");
 	else {
 		printf("qdevice votes  %d\n", qinfo.votes);
-		printf("state        %d\n", qinfo.state);
+		printf("alive        %d\n", qinfo.alive);
 		printf("name         %s\n", qinfo.name);
 		printf("\n");
 	}

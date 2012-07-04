@@ -81,6 +81,8 @@ The flags are defined as:
 #define VOTEQUORUM_INFO_AUTO_TIE_BREAKER       16
 #define VOTEQUORUM_INFO_LEAVE_REMOVE           32
 #define VOTEQUORUM_INFO_QDEVICE_REGISTERED     64
+#define VOTEQUORUM_INFO_QDEVICE_ALIVE         128
+
 .fi
 .PP
 The members starting node_ hold information specific to the requested nodeid, the other are
