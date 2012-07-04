@@ -153,12 +153,12 @@ static int votequorum_exec_send_reconfigure(uint8_t param, unsigned int nodeid, 
  * votequorum internal node status/view
  */
 
-#define NODE_FLAGS_QUORATE        1
-#define NODE_FLAGS_LEAVING        2
-#define NODE_FLAGS_WFASTATUS      4
-#define NODE_FLAGS_FIRST          8
-#define NODE_FLAGS_QDEVICE       16
-#define NODE_FLAGS_QDEVICE_STATE 32
+#define NODE_FLAGS_QUORATE              1
+#define NODE_FLAGS_LEAVING              2
+#define NODE_FLAGS_WFASTATUS            4
+#define NODE_FLAGS_FIRST                8
+#define NODE_FLAGS_QDEVICE_REGISTERED  16
+#define NODE_FLAGS_QDEVICE_STATE       32
 
 #define NODEID_QDEVICE 0
 
@@ -550,7 +550,7 @@ static void decode_flags(uint32_t flags)
 		   (flags & NODE_FLAGS_LEAVING)?"Yes":"No",
 		   (flags & NODE_FLAGS_WFASTATUS)?"Yes":"No",
 		   (flags & NODE_FLAGS_FIRST)?"Yes":"No",
-		   (flags & NODE_FLAGS_QDEVICE)?"Yes":"No",
+		   (flags & NODE_FLAGS_QDEVICE_REGISTERED)?"Yes":"No",
 		   (flags & NODE_FLAGS_QDEVICE_STATE)?"Yes":"No");
 }
 
@@ -1444,7 +1444,7 @@ static void message_handler_req_exec_votequorum_qdevice_reg (
 		if ((!strncmp(req_exec_quorum_qdevice_reg->qdevice_name,
 			      qdevice_name, VOTEQUORUM_MAX_QDEVICE_NAME_LEN))) {
 			qdevice_is_registered = 1;
-			us->flags |= NODE_FLAGS_QDEVICE;
+			us->flags |= NODE_FLAGS_QDEVICE_REGISTERED;
 			votequorum_exec_send_nodeinfo(NODEID_QDEVICE);
 			votequorum_exec_send_nodeinfo(us->node_id);
 		} else {
@@ -1464,7 +1464,7 @@ static void message_handler_req_exec_votequorum_qdevice_reg (
 		list_iterate(tmp, &cluster_members_list) {
 			node = list_entry(tmp, struct cluster_node, list);
 			if ((node->state == NODESTATE_MEMBER) &&
-			    (node->flags & NODE_FLAGS_QDEVICE)) {
+			    (node->flags & NODE_FLAGS_QDEVICE_REGISTERED)) {
 				wipe_qdevice_name = 0;
 			}
 		}
@@ -1965,7 +1965,7 @@ static void message_handler_req_lib_votequorum_getinfo (void *conn, const void *
 		}
 
 		if (((qdevice_is_registered) && (qdevice->state == NODESTATE_MEMBER)) ||
-		    ((node->flags & NODE_FLAGS_QDEVICE) && (node->flags & NODE_FLAGS_QDEVICE_STATE))) {
+		    ((node->flags & NODE_FLAGS_QDEVICE_REGISTERED) && (node->flags & NODE_FLAGS_QDEVICE_STATE))) {
 			total_votes += qdevice->votes;
 		}
 
@@ -1997,8 +1997,8 @@ static void message_handler_req_lib_votequorum_getinfo (void *conn, const void *
 		if (allow_downscale) {
 			res_lib_votequorum_getinfo.flags |= VOTEQUORUM_INFO_LEAVE_REMOVE;
 		}
-		if (node->flags & NODE_FLAGS_QDEVICE) {
-			res_lib_votequorum_getinfo.flags |= VOTEQUORUM_INFO_QDEVICE;
+		if (node->flags & NODE_FLAGS_QDEVICE_REGISTERED) {
+			res_lib_votequorum_getinfo.flags |= VOTEQUORUM_INFO_QDEVICE_REGISTERED;
 		}
 	} else {
 		error = CS_ERR_NOT_EXIST;
@@ -2237,7 +2237,7 @@ static void message_handler_req_lib_votequorum_qdevice_unregister (void *conn,
 			qdevice_timer_set = 0;
 		}
 		qdevice_is_registered = 0;
-		us->flags &= ~NODE_FLAGS_QDEVICE;
+		us->flags &= ~NODE_FLAGS_QDEVICE_REGISTERED;
 		us->flags &= ~NODE_FLAGS_QDEVICE_STATE;
 		qdevice->state = NODESTATE_DEAD;
 		votequorum_exec_send_nodeinfo(us->node_id);
@@ -2354,7 +2354,7 @@ static void message_handler_req_lib_votequorum_qdevice_getinfo (void *conn,
 	    (nodeid != NODEID_QDEVICE)) {
 		node = find_node_by_nodeid(req_lib_votequorum_qdevice_getinfo->nodeid);
 		if ((node) &&
-		    (node->flags & NODE_FLAGS_QDEVICE)) {
+		    (node->flags & NODE_FLAGS_QDEVICE_REGISTERED)) {
 			int state = 0;
 
 			if (node->flags & NODE_FLAGS_QDEVICE_STATE) {
