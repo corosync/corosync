@@ -47,6 +47,7 @@ Returns information about the quorum device in the following structure:
 struct votequorum_qdevice_info {
         unsigned int votes;
         unsigned int alive;
+        unsigned int vote;
         char name[VOTEQUORUM_MAX_QDEVICE_NAME_LEN];
 };
 .fi

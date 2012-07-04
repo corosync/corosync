@@ -354,7 +354,7 @@ static void display_nodes_data(uint32_t nodeid, nodeid_format_t nodeid_format, n
 				printf("0x%08x ", VOTEQUORUM_NODEID_QDEVICE);
 			}
 			print_uint32_padded(qinfo.votes);
-			printf("%s (%s)\n", qinfo.name, qinfo.alive?"Alive":"Not alive");
+			printf("%s (%s/%s)\n", qinfo.name, qinfo.alive?"Alive":"Not alive", qinfo.vote?"Voting":"Not voting");
 		}
 	}
 }

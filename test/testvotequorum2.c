@@ -54,6 +54,7 @@ static void print_info(int ok_to_fail)
 	else {
 		printf("qdevice votes  %d\n", qinfo.votes);
 		printf("alive        %d\n", qinfo.alive);
+		printf("vote         %d\n", qinfo.vote);
 		printf("name         %s\n", qinfo.name);
 		printf("\n");
 	}
