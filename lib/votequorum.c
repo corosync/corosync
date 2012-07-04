@@ -599,7 +599,7 @@ error_exit:
 cs_error_t votequorum_qdevice_poll (
 	votequorum_handle_t handle,
 	const char *name,
-	unsigned int state)
+	unsigned int cast_vote)
 {
 	cs_error_t error;
 	struct votequorum_inst *votequorum_inst;
@@ -619,7 +619,7 @@ cs_error_t votequorum_qdevice_poll (
 	req_lib_votequorum_qdevice_poll.header.size = sizeof (struct req_lib_votequorum_qdevice_poll);
 	req_lib_votequorum_qdevice_poll.header.id = MESSAGE_REQ_VOTEQUORUM_QDEVICE_POLL;
 	strcpy(req_lib_votequorum_qdevice_poll.name, name);
-	req_lib_votequorum_qdevice_poll.state = state;
+	req_lib_votequorum_qdevice_poll.cast_vote = cast_vote;
 
 	iov.iov_base = (char *)&req_lib_votequorum_qdevice_poll;
 	iov.iov_len = sizeof (struct req_lib_votequorum_qdevice_poll);
@@ -726,7 +726,7 @@ cs_error_t votequorum_qdevice_getinfo (
 
 	qinfo->votes = res_lib_votequorum_qdevice_getinfo.votes;
 	qinfo->alive = res_lib_votequorum_qdevice_getinfo.alive;
-	qinfo->vote = res_lib_votequorum_qdevice_getinfo.vote;
+	qinfo->cast_vote = res_lib_votequorum_qdevice_getinfo.cast_vote;
 	strcpy(qinfo->name, res_lib_votequorum_qdevice_getinfo.name);
 
 

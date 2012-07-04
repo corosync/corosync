@@ -79,7 +79,7 @@ struct req_lib_votequorum_qdevice_update {
 struct req_lib_votequorum_qdevice_poll {
 	struct qb_ipc_request_header header __attribute__((aligned(8)));
 	char name[VOTEQUORUM_MAX_QDEVICE_NAME_LEN];
-	int state;
+	int cast_vote;
 };
 
 struct req_lib_votequorum_qdevice_getinfo {
@@ -143,7 +143,7 @@ struct res_lib_votequorum_qdevice_getinfo {
 	struct qb_ipc_response_header header __attribute__((aligned(8)));
 	unsigned int votes;
 	unsigned int alive;
-	unsigned int vote;
+	unsigned int cast_vote;
 	char name[VOTEQUORUM_MAX_QDEVICE_NAME_LEN];
 };
 

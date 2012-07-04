@@ -53,9 +53,9 @@ static void print_info(int ok_to_fail)
 		fprintf(stderr, "votequorum_qdevice_getinfo error %d: %s\n", err, ok_to_fail?"OK":"FAILED");
 	else {
 		printf("qdevice votes  %d\n", qinfo.votes);
-		printf("alive        %d\n", qinfo.alive);
-		printf("vote         %d\n", qinfo.vote);
-		printf("name         %s\n", qinfo.name);
+		printf("alive          %d\n", qinfo.alive);
+		printf("cast vote      %d\n", qinfo.cast_vote);
+		printf("name           %s\n", qinfo.name);
 		printf("\n");
 	}
 }
@@ -63,6 +63,7 @@ static void print_info(int ok_to_fail)
 int main(int argc, char *argv[])
 {
 	int ret = 0;
+	int cast_vote = 1;
 	int pollcount=0, polltime=1;
 	int err;
 
@@ -79,6 +80,9 @@ int main(int argc, char *argv[])
 	if (argc >= 3 && atoi(argv[2])) {
 		polltime = atoi(argv[2]);
 	}
+	if (argc >= 4) {
+		cast_vote = atoi(argv[3]);
+	}
 
 	if (argc >= 2) {
 		if ( (err=votequorum_qdevice_register(handle, "QDEVICE")) != CS_OK) {
@@ -89,7 +93,7 @@ int main(int argc, char *argv[])
 
 		while (pollcount--) {
 			print_info(0);
-			if ((err=votequorum_qdevice_poll(handle, "QDEVICE", 1)) != CS_OK) {
+			if ((err=votequorum_qdevice_poll(handle, "QDEVICE", cast_vote)) != CS_OK) {
 				fprintf(stderr, "qdevice poll FAILED: %d\n", err);
 				ret = -1;
 				goto out;

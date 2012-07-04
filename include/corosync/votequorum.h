@@ -75,7 +75,7 @@ struct votequorum_info {
 struct votequorum_qdevice_info {
 	unsigned int votes;
 	unsigned int alive;
-	unsigned int vote;
+	unsigned int cast_vote;
 	char name[VOTEQUORUM_MAX_QDEVICE_NAME_LEN];
 };
 
@@ -208,7 +208,7 @@ cs_error_t votequorum_qdevice_update (
 cs_error_t votequorum_qdevice_poll (
 	votequorum_handle_t handle,
 	const char *name,
-	unsigned int state);
+	unsigned int cast_vote);
 
 /**
  * Get quorum device information

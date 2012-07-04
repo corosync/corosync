@@ -37,13 +37,13 @@ votequorum_qdevice_poll \- Tells votequorum the result of the quorum device poll
 .SH SYNOPSIS
 .B #include <corosync/votequorum.h>
 .sp
-.BI "int votequorum_qdevice_poll(votequorum_handle_t " handle ", unsigned int " state ");"
+.BI "int votequorum_qdevice_poll(votequorum_handle_t " handle ", unsigned int " cast_vote ");"
 .SH DESCRIPTION
 The
 .B votequorum_qdevice_poll
 is called by the quorum device subsystem (not provided as part of votequorum) to tell
 the voting system if the quorum device is present/active or not. If
-.B state
+.B cast_vote
 is 1 then the votes for the device are included in the quorum calculation, otherwise not.
 This routine should be called at regular intervals to ensure that the device status
 is always known to votequorum. If

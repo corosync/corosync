@@ -2321,7 +2321,7 @@ static void message_handler_req_lib_votequorum_qdevice_poll (void *conn,
 
 		us->flags |= NODE_FLAGS_QDEVICE_ALIVE;
 
-		if (req_lib_votequorum_qdevice_poll->state) {
+		if (req_lib_votequorum_qdevice_poll->cast_vote) {
 			us->flags |= NODE_FLAGS_QDEVICE_CAST_VOTE;
 		} else {
 			us->flags &= ~NODE_FLAGS_QDEVICE_CAST_VOTE;
@@ -2377,7 +2377,7 @@ static void message_handler_req_lib_votequorum_qdevice_getinfo (void *conn,
 						nodeid, alive_status, vote_status);
 		res_lib_votequorum_qdevice_getinfo.votes = qdevice->votes;
 		res_lib_votequorum_qdevice_getinfo.alive = alive_status;
-		res_lib_votequorum_qdevice_getinfo.vote = vote_status;
+		res_lib_votequorum_qdevice_getinfo.cast_vote = vote_status;
 		strcpy(res_lib_votequorum_qdevice_getinfo.name, qdevice_name);
 	} else {
 		error = CS_ERR_NOT_EXIST;
