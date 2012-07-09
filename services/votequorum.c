@@ -227,6 +227,9 @@ static void exec_votequorum_killnode_endian_convert (void *msg);
 static void add_votequorum_config_notification(hdb_handle_t quorum_object_handle);
 
 static void recalculate_quorum(int allow_decrease, int by_current_nodes);
+static void votequorum_objdb_reload_notify(
+	objdb_reload_notify_type_t type, int flush,
+	void *priv_data_pt);
 
 /*
  * Library Handler Definition
@@ -533,6 +536,16 @@ static int votequorum_exec_init_fn (struct corosync_api_v1 *api)
 
 	/* Listen for changes */
 	add_votequorum_config_notification(object_handle);
+	/*
+	 * Reload notify must be on the parent object
+	 */
+	corosync_api->object_track_start(OBJECT_PARENT_HANDLE,
+					 1,
+					 NULL,
+					 NULL,
+					 NULL,
+					 votequorum_objdb_reload_notify,
+					 NULL);
 	corosync_api->object_find_destroy(find_handle);
 
 	/* Start us off with one node */
@@ -1667,14 +1680,4 @@ static void add_votequorum_config_notification(
 					 NULL,
 					 NULL);
 
-	/*
-	 * Reload notify must be on the parent object
-	 */
-	corosync_api->object_track_start(OBJECT_PARENT_HANDLE,
-					 1,
-					 NULL,
-					 NULL,
-					 NULL,
-					 votequorum_objdb_reload_notify,
-					 NULL);
 }
