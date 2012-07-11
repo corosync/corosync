@@ -51,6 +51,8 @@ let totem =
     |kv "vsftype" /none|ykd/
     |kv "secauth" /on|off/
     |kv "crypto_type" /nss|aes256/
+    |kv "crypto_cipher" /none|nss|aes256/
+    |kv "crypto_hash" /none|md5|sha1|sha256|sha384|sha512/
     |kv "transport" /udp|iba/
     |kv "version" Rx.integer
     |kv "nodeid" Rx.integer
@@ -160,6 +162,20 @@ let uidgid =
    qstr /uid|gid/ in
   section "uidgid" setting
 
-let lns = (comment|empty|totem|quorum|logging|resources|service|uidgid)*
+(* The node section *)
+let node =
+  let setting =
+   qstr /ring[0-9]_addr/
+   |kv "nodeid" Rx.integer
+   |kv "quorum_votes" Rx.integer in
+  section "node" setting
+
+(* The nodelist section *)
+let nodelist =
+  let setting =
+    node in
+  section "nodelist" setting
+
+let lns = (comment|empty|totem|quorum|logging|resources|service|uidgid|nodelist)*
 
 let xfm = transform lns (incl "/etc/corosync/corosync.conf")
