@@ -5,7 +5,8 @@ module Test_corosync =
 totem {
 	version: 2
 	secauth: off
-	crypto_type: nss
+	crypto_cipher: none
+	crypto_hash: none
 	threads: 0
 	clear_node_high_bit: no
 	rrp_mode: none
@@ -70,6 +71,20 @@ resources {
 uidgid {
     uid: 0
     gid: 0
+}
+
+nodelist {
+	node {
+		ring0_addr: 192.168.122.1
+		nodeid: 1
+		quorum_votes: 2
+	}
+
+	node {
+		ring0_addr: 192.168.122.2
+		ring1_addr: 192.168.123.1
+		nodeid: 2
+	}
 }\n"
 
 test Corosync.lns get conf =
@@ -79,7 +94,8 @@ test Corosync.lns get conf =
   { "totem"
 	{ "version" = "2" }
 	{ "secauth" = "off" }
-	{ "crypto_type" = "nss" }
+	{ "crypto_cipher" = "none" }
+	{ "crypto_hash" = "none" }
 	{ "threads" = "0" }
     { "clear_node_high_bit" = "no" }
     { "rrp_mode" = "none" }
@@ -134,3 +150,14 @@ test Corosync.lns get conf =
   { "uidgid"
     { "uid" = "0" }
     { "gid" = "0" } }
+  { }
+  { "nodelist"
+    { "node"
+      { "ring0_addr" = "192.168.122.1" }
+      { "nodeid" = "1" }
+      { "quorum_votes" = "2" } }
+    { }
+    { "node"
+      { "ring0_addr" = "192.168.122.2" }
+      { "ring1_addr" = "192.168.123.1" }
+      { "nodeid" = "2" } } }
