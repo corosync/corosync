@@ -33,6 +33,7 @@ then
                 then
                     found=1
                 elif [[ "$f" =~ "blackbox" ]]
+                then
                     found=1
                 fi
             done
