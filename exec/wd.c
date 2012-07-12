@@ -183,7 +183,7 @@ static const char * wd_res_event_to_str(struct cs_fsm* fsm,
  */
 static int32_t wd_resource_state_is_ok (struct resource *ref)
 {
-	char* state;
+	char* state = NULL;
 	uint64_t last_updated;
 	uint64_t my_time;
 	uint64_t allowed_period;
@@ -200,6 +200,9 @@ static int32_t wd_resource_state_is_ok (struct resource *ref)
 	if (icmap_get_string(key_name, &state) != CS_OK || strcmp(state, "disabled") == 0) {
 		/* key does not exist.
 		*/
+		if (state != NULL)
+			free(state);
+
 		return CS_FALSE;
 	}
 
