@@ -1551,8 +1551,9 @@ static void message_handler_req_exec_votequorum_nodeinfo (
 	}
 
 	if (nodeid == NODEID_QDEVICE) {
+		struct cluster_node *sender_node = find_node_by_nodeid(sender_nodeid);
 		if ((!cluster_is_quorate) &&
-		    (req_exec_quorum_nodeinfo->flags & NODE_FLAGS_QUORATE)) {
+		    (sender_node->flags & NODE_FLAGS_QUORATE)) {
 			node->votes = req_exec_quorum_nodeinfo->votes;
 		} else {
 			node->votes = max(node->votes, req_exec_quorum_nodeinfo->votes);
@@ -1572,18 +1573,18 @@ static void message_handler_req_exec_votequorum_nodeinfo (
 	}
 
 	if ((!cluster_is_quorate) &&
-	    (req_exec_quorum_nodeinfo->flags & NODE_FLAGS_QUORATE)) {
+	    (node->flags & NODE_FLAGS_QUORATE)) {
 		allow_downgrade = 1;
 		us->expected_votes = req_exec_quorum_nodeinfo->expected_votes;
 	}
 
-	if (req_exec_quorum_nodeinfo->flags & NODE_FLAGS_QUORATE) {
+	if (node->flags & NODE_FLAGS_QUORATE) {
 		node->expected_votes = req_exec_quorum_nodeinfo->expected_votes;
 	} else {
 		node->expected_votes = us->expected_votes;
 	}
 
-	if ((last_man_standing) && (req_exec_quorum_nodeinfo->votes > 1)) {
+	if ((last_man_standing) && (node->votes > 1)) {
 		log_printf(LOGSYS_LEVEL_WARNING, "Last Man Standing feature is supported only when all"
 						 "cluster nodes votes are set to 1. Disabling LMS.");
 		last_man_standing = 0;
@@ -1597,7 +1598,7 @@ recalculate:
 
 	if ((new_node) ||
 	    (nodeid == us->node_id) ||
-	    (req_exec_quorum_nodeinfo->flags & NODE_FLAGS_FIRST) || 
+	    (node->flags & NODE_FLAGS_FIRST) || 
 	    (old_votes != node->votes) ||
 	    (old_expected != node->expected_votes) ||
 	    (old_flags != node->flags) ||
@@ -1606,8 +1607,8 @@ recalculate:
 	}
 
 	if ((wait_for_all) &&
-	    (!(req_exec_quorum_nodeinfo->flags & NODE_FLAGS_WFASTATUS)) &&
-	    (req_exec_quorum_nodeinfo->flags & NODE_FLAGS_QUORATE)) {
+	    (!(node->flags & NODE_FLAGS_WFASTATUS)) &&
+	    (node->flags & NODE_FLAGS_QUORATE)) {
 		update_wait_for_all_status(0);
 	}
 
