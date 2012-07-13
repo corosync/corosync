@@ -69,6 +69,7 @@ static struct cluster_node *qdevice = NULL;
 static unsigned int qdevice_timeout = DEFAULT_QDEVICE_TIMEOUT;
 static uint8_t qdevice_can_operate = 1;
 static void *qdevice_reg_conn = NULL;
+static uint8_t qdevice_master_wins = 0;
 
 static uint8_t two_node = 0;
 
@@ -542,6 +543,26 @@ static int check_low_node_id_partition(void)
 	return found;
 }
 
+static int check_qdevice_master(void)
+{
+	struct cluster_node *node = NULL;
+	struct list_head *tmp;
+	int found = 0;
+
+	ENTER();
+
+	list_iterate(tmp, &cluster_members_list) {
+		node = list_entry(tmp, struct cluster_node, list);
+		if ((node->state == NODESTATE_MEMBER) &&
+		    (node->flags & NODE_FLAGS_QDEVICE_CAST_VOTE)) {
+				found = 1;
+		}
+	}
+
+	LEAVE();
+	return found;
+}
+
 static void decode_flags(uint32_t flags)
 {
 	log_printf(LOGSYS_LEVEL_DEBUG,
@@ -698,6 +719,13 @@ static void are_we_quorate(unsigned int total_votes)
 	if ((auto_tie_breaker) &&
 	    (total_votes == (us->expected_votes / 2)) &&
 	    (check_low_node_id_partition() == 1)) {
+		quorate = 1;
+	}
+
+	if ((qdevice_master_wins) &&
+	    (!quorate) &&
+	    (check_qdevice_master() == 1)) {
+		log_printf(LOGSYS_LEVEL_DEBUG, "node is quorate as part of master_wins partition");
 		quorate = 1;
 	}
 
@@ -870,6 +898,9 @@ static int votequorum_qdevice_is_configured(uint32_t *qdevice_votes)
 		}
 		if (icmap_get_uint32("quorum.device.timeout", &qdevice_timeout) != CS_OK) {
 			qdevice_timeout = DEFAULT_QDEVICE_TIMEOUT;
+		}
+		if (icmap_get_uint8("quorum.device.master_wins", &qdevice_master_wins) != CS_OK) {
+			qdevice_master_wins = 0;
 		}
 		update_qdevice_can_operate(1);
 		return 1;
