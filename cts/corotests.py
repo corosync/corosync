@@ -301,6 +301,7 @@ class CpgCfgChgOnExecCrash(CpgConfigChangeBase):
         self.CM.log("sending KILL to corosync on " + self.wobbly)
         self.CM.rsh(self.wobbly, "killall -9 corosync")
         self.CM.rsh(self.wobbly, "rm -f /var/run/corosync.pid")
+        self.CM.rsh(self.wobbly, "rm -f /dev/shm/qb-corosync-blackbox*")
         self.CM.ShouldBeStatus[self.wobbly] = "down"
 
     def __call__(self, node):
