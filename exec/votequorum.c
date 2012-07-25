@@ -2013,10 +2013,10 @@ static void message_handler_req_lib_votequorum_getinfo (void *conn, const void *
 		res_lib_votequorum_getinfo.nodeid = node->node_id;
 
 		if (two_node) {
-			res_lib_votequorum_getinfo.flags |= VOTEQUORUM_INFO_FLAG_TWONODE;
+			res_lib_votequorum_getinfo.flags |= VOTEQUORUM_INFO_TWONODE;
 		}
 		if (cluster_is_quorate) {
-			res_lib_votequorum_getinfo.flags |= VOTEQUORUM_INFO_FLAG_QUORATE;
+			res_lib_votequorum_getinfo.flags |= VOTEQUORUM_INFO_QUORATE;
 		}
 		if (wait_for_all) {
 			res_lib_votequorum_getinfo.flags |= VOTEQUORUM_INFO_WAIT_FOR_ALL;

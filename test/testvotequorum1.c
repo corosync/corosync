@@ -122,8 +122,8 @@ int main(int argc, char *argv[])
 		printf("total votes      %d\n", info.total_votes);
 		printf("quorum           %d\n", info.quorum);
 		printf("flags            ");
-		if (info.flags & VOTEQUORUM_INFO_FLAG_TWONODE) printf("2Node ");
-		if (info.flags & VOTEQUORUM_INFO_FLAG_QUORATE) printf("Quorate ");
+		if (info.flags & VOTEQUORUM_INFO_TWONODE) printf("2Node ");
+		if (info.flags & VOTEQUORUM_INFO_QUORATE) printf("Quorate ");
 		if (info.flags & VOTEQUORUM_INFO_WAIT_FOR_ALL) printf("WaitForAll ");
 		if (info.flags & VOTEQUORUM_INFO_LAST_MAN_STANDING) printf("LastManStanding ");
 		if (info.flags & VOTEQUORUM_INFO_AUTO_TIE_BREAKER) printf("AutoTieBreaker ");
@@ -152,8 +152,8 @@ int main(int argc, char *argv[])
 			printf("total votes      %d\n", info.total_votes);
 			printf("votequorum           %d\n", info.quorum);
 			printf("flags            ");
-			if (info.flags & VOTEQUORUM_INFO_FLAG_TWONODE) printf("2Node ");
-			if (info.flags & VOTEQUORUM_INFO_FLAG_QUORATE) printf("Quorate ");
+			if (info.flags & VOTEQUORUM_INFO_TWONODE) printf("2Node ");
+			if (info.flags & VOTEQUORUM_INFO_QUORATE) printf("Quorate ");
 			if (info.flags & VOTEQUORUM_INFO_WAIT_FOR_ALL) printf("WaitForAll ");
 			if (info.flags & VOTEQUORUM_INFO_LAST_MAN_STANDING) printf("LastManStanding ");
 			if (info.flags & VOTEQUORUM_INFO_AUTO_TIE_BREAKER) printf("AutoTieBreaker ");

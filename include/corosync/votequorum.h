@@ -42,8 +42,8 @@ extern "C" {
 
 typedef uint64_t votequorum_handle_t;
 
-#define VOTEQUORUM_INFO_FLAG_TWONODE            1
-#define VOTEQUORUM_INFO_FLAG_QUORATE            2
+#define VOTEQUORUM_INFO_TWONODE                 1
+#define VOTEQUORUM_INFO_QUORATE                 2
 #define VOTEQUORUM_INFO_WAIT_FOR_ALL            4
 #define VOTEQUORUM_INFO_LAST_MAN_STANDING       8
 #define VOTEQUORUM_INFO_AUTO_TIE_BREAKER       16
