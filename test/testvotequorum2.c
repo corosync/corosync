@@ -46,16 +46,20 @@ static votequorum_handle_t handle;
 
 static void print_info(int ok_to_fail)
 {
-	struct votequorum_qdevice_info qinfo;
+	struct votequorum_info info;
 	int err;
 
-	if ( (err=votequorum_qdevice_getinfo(handle, VOTEQUORUM_NODEID_QDEVICE, &qinfo)) != CS_OK)
-		fprintf(stderr, "votequorum_qdevice_getinfo error %d: %s\n", err, ok_to_fail?"OK":"FAILED");
+	if ( (err=votequorum_getinfo(handle, VOTEQUORUM_NODEID_QDEVICE, &info)) != CS_OK)
+		fprintf(stderr, "votequorum_getinfo error %d: %s\n", err, ok_to_fail?"OK":"FAILED");
 	else {
-		printf("qdevice votes  %d\n", qinfo.votes);
-		printf("alive          %d\n", qinfo.alive);
-		printf("cast vote      %d\n", qinfo.cast_vote);
-		printf("name           %s\n", qinfo.name);
+		printf("name           %s\n", info.qdevice_name);
+		printf("qdevice votes  %d\n", info.qdevice_votes);
+		if (info.flags & VOTEQUORUM_INFO_QDEVICE_ALIVE) {
+			printf("alive\n");
+		}
+		if (info.flags & VOTEQUORUM_INFO_QDEVICE_CAST_VOTE) {
+			printf("cast vote\n");
+		}
 		printf("\n");
 	}
 }

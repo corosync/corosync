@@ -219,18 +219,6 @@ static int set_expected(int expected_votes)
 	return err==CS_OK?0:err;
 }
 
-static int get_votes(uint32_t nodeid)
-{
-	int votes = -1;
-	struct votequorum_info info;
-
-	if (votequorum_getinfo(v_handle, nodeid, &info) == CS_OK) {
-		votes = info.node_votes;
-	}
-
-	return votes;
-}
-
 /*
  * This resolves the first address assigned to a node
  * and returns the name or IP address. Use cfgtool if you need more information.
@@ -310,6 +298,18 @@ static void print_uint32_padded(uint32_t value)
 	print_string_padded(buf);
 }
 
+static int get_votes(uint32_t nodeid)
+{
+	int votes = -1;
+	struct votequorum_info info;
+
+	if (votequorum_getinfo(v_handle, nodeid, &info) == CS_OK) {
+		votes = info.node_votes;
+	}
+
+	return votes;
+}
+
 static void display_nodes_data(uint32_t nodeid, nodeid_format_t nodeid_format, name_format_t name_format)
 {
 	int i;
@@ -342,9 +342,9 @@ static void display_nodes_data(uint32_t nodeid, nodeid_format_t nodeid_format, n
 
 	if ((display_qdevice) && (v_handle)) {
 		int err;
-		struct votequorum_qdevice_info qinfo;
+		struct votequorum_info info;
 
-		err = votequorum_qdevice_getinfo(v_handle, nodeid, &qinfo);
+		err = votequorum_getinfo(v_handle, nodeid, &info);
 		if (err != CS_OK) {
 			fprintf(stderr, "Unable to get quorum device info: %s\n", cs_strerror(err));
 		} else {
@@ -353,10 +353,10 @@ static void display_nodes_data(uint32_t nodeid, nodeid_format_t nodeid_format, n
 			} else {
 				printf("0x%08x ", VOTEQUORUM_NODEID_QDEVICE);
 			}
-			print_uint32_padded(qinfo.votes);
-			printf("%s (%s/%s)\n", qinfo.name,
-			       qinfo.alive?"Alive":"Not alive",
-			       qinfo.cast_vote?"Voting":"Not voting");
+			print_uint32_padded(info.qdevice_votes);
+			printf("%s (%s/%s)\n", info.qdevice_name,
+			       info.flags & VOTEQUORUM_INFO_QDEVICE_ALIVE?"Alive":"Not alive",
+			       info.flags & VOTEQUORUM_INFO_QDEVICE_CAST_VOTE?"Voting":"Not voting");
 		}
 	}
 }
@@ -563,15 +563,19 @@ err_exit:
 static int unregister_qdevice(void)
 {
 	int err;
-	struct votequorum_qdevice_info qinfo;
+	struct votequorum_info info;
 
-	err = votequorum_qdevice_getinfo(v_handle, our_nodeid, &qinfo);
+	err = votequorum_getinfo(v_handle, our_nodeid, &info);
 	if (err != CS_OK) {
 		fprintf(stderr, "Unable to get quorum device info: %s\n", cs_strerror(err));
 		return -1;
 	}
 
-	err = votequorum_qdevice_unregister(v_handle, qinfo.name);
+	if (!(info.flags & VOTEQUORUM_INFO_QDEVICE_REGISTERED)) {
+		return 0;
+	}
+
+	err = votequorum_qdevice_unregister(v_handle, info.qdevice_name);
 	if (err != CS_OK) {
 		fprintf(stderr, "Unable to unregister quorum device: %s\n", cs_strerror(err));
 		return -1;

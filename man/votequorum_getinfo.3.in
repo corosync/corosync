@@ -60,6 +60,8 @@ struct votequorum_info {
         unsigned int total_votes;
         unsigned int quorum;
         unsigned int flags;
+        unsigned int qdevice_votes;
+        char qdevice_name[VOTEQUORUM_MAX_QDEVICE_NAME_LEN];
 };
 
 .fi

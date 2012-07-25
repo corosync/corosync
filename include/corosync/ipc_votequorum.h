@@ -47,14 +47,12 @@ enum req_votequorum_types {
 	MESSAGE_REQ_VOTEQUORUM_QDEVICE_REGISTER,
 	MESSAGE_REQ_VOTEQUORUM_QDEVICE_UNREGISTER,
 	MESSAGE_REQ_VOTEQUORUM_QDEVICE_UPDATE,
-	MESSAGE_REQ_VOTEQUORUM_QDEVICE_POLL,
-	MESSAGE_REQ_VOTEQUORUM_QDEVICE_GETINFO
+	MESSAGE_REQ_VOTEQUORUM_QDEVICE_POLL
 };
 
 enum res_votequorum_types {
 	MESSAGE_RES_VOTEQUORUM_STATUS = 0,
 	MESSAGE_RES_VOTEQUORUM_GETINFO,
-	MESSAGE_RES_VOTEQUORUM_QDEVICE_GETINFO,
 	MESSAGE_RES_VOTEQUORUM_TRACKSTART,
 	MESSAGE_RES_VOTEQUORUM_NOTIFICATION,
 	MESSAGE_RES_VOTEQUORUM_EXPECTEDVOTES_NOTIFICATION
@@ -80,11 +78,6 @@ struct req_lib_votequorum_qdevice_poll {
 	struct qb_ipc_request_header header __attribute__((aligned(8)));
 	char name[VOTEQUORUM_MAX_QDEVICE_NAME_LEN];
 	int cast_vote;
-};
-
-struct req_lib_votequorum_qdevice_getinfo {
-	struct qb_ipc_request_header header __attribute__((aligned(8)));
-	int nodeid;
 };
 
 struct req_lib_votequorum_setvotes {
@@ -141,14 +134,8 @@ struct res_lib_votequorum_getinfo {
 	unsigned int total_votes;
 	unsigned int quorum;
 	unsigned int flags;
-};
-
-struct res_lib_votequorum_qdevice_getinfo {
-	struct qb_ipc_response_header header __attribute__((aligned(8)));
-	unsigned int votes;
-	unsigned int alive;
-	unsigned int cast_vote;
-	char name[VOTEQUORUM_MAX_QDEVICE_NAME_LEN];
+	unsigned int qdevice_votes;
+	char qdevice_name[VOTEQUORUM_MAX_QDEVICE_NAME_LEN];
 };
 
 struct votequorum_node {

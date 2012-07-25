@@ -10,7 +10,6 @@ COROSYNC_VOTEQUORUM_1.0 {
 		votequorum_qdevice_register;
 		votequorum_qdevice_unregister;
 		votequorum_qdevice_poll;
-		votequorum_qdevice_getinfo;
 		votequorum_trackstart;
 		votequorum_trackstop;
 		votequorum_context_get;

@@ -70,13 +70,8 @@ struct votequorum_info {
 	unsigned int total_votes;
 	unsigned int quorum;
 	unsigned int flags;
-};
-
-struct votequorum_qdevice_info {
-	unsigned int votes;
-	unsigned int alive;
-	unsigned int cast_vote;
-	char name[VOTEQUORUM_MAX_QDEVICE_NAME_LEN];
+	unsigned int qdevice_votes;
+	char qdevice_name[VOTEQUORUM_MAX_QDEVICE_NAME_LEN];
 };
 
 typedef struct {
@@ -209,14 +204,6 @@ cs_error_t votequorum_qdevice_poll (
 	votequorum_handle_t handle,
 	const char *name,
 	unsigned int cast_vote);
-
-/**
- * Get quorum device information
- */
-cs_error_t votequorum_qdevice_getinfo (
-	votequorum_handle_t handle,
-	unsigned int nodeid,
-	struct votequorum_qdevice_info *info);
 
 #ifdef __cplusplus
 }

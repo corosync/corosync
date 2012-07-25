@@ -188,6 +188,9 @@ cs_error_t votequorum_getinfo (
 	info->total_votes = res_lib_votequorum_getinfo.total_votes;
 	info->quorum = res_lib_votequorum_getinfo.quorum;
 	info->flags = res_lib_votequorum_getinfo.flags;
+	info->qdevice_votes = res_lib_votequorum_getinfo.qdevice_votes;
+	memset(info->qdevice_name, 0, VOTEQUORUM_MAX_QDEVICE_NAME_LEN);
+	strcpy(info->qdevice_name, res_lib_votequorum_getinfo.qdevice_name);
 
 error_exit:
 	hdb_handle_put (&votequorum_handle_t_db, handle);
@@ -681,54 +684,6 @@ cs_error_t votequorum_qdevice_unregister (
 	}
 
 	error = res_lib_votequorum_status.header.error;
-
-error_exit:
-	hdb_handle_put (&votequorum_handle_t_db, handle);
-
-	return (error);
-}
-
-cs_error_t votequorum_qdevice_getinfo (
-	votequorum_handle_t handle,
-	unsigned int nodeid,
-	struct votequorum_qdevice_info *qinfo)
-{
-	cs_error_t error;
-	struct votequorum_inst *votequorum_inst;
-	struct iovec iov;
-	struct req_lib_votequorum_qdevice_getinfo req_lib_votequorum_qdevice_getinfo;
-	struct res_lib_votequorum_qdevice_getinfo res_lib_votequorum_qdevice_getinfo;
-
-	error = hdb_error_to_cs(hdb_handle_get (&votequorum_handle_t_db, handle, (void *)&votequorum_inst));
-	if (error != CS_OK) {
-		return (error);
-	}
-
-	req_lib_votequorum_qdevice_getinfo.header.size = sizeof (struct req_lib_votequorum_qdevice_getinfo);
-	req_lib_votequorum_qdevice_getinfo.header.id = MESSAGE_REQ_VOTEQUORUM_QDEVICE_GETINFO;
-	req_lib_votequorum_qdevice_getinfo.nodeid = nodeid;
-
-	iov.iov_base = (char *)&req_lib_votequorum_qdevice_getinfo;
-	iov.iov_len = sizeof (struct req_lib_votequorum_qdevice_getinfo);
-
-        error = qb_to_cs_error(qb_ipcc_sendv_recv (
-		votequorum_inst->c,
-		&iov,
-		1,
-                &res_lib_votequorum_qdevice_getinfo,
-		sizeof (struct res_lib_votequorum_qdevice_getinfo), CS_IPC_TIMEOUT_MS));
-
-	if (error != CS_OK) {
-		goto error_exit;
-	}
-
-	error = res_lib_votequorum_qdevice_getinfo.header.error;
-
-	qinfo->votes = res_lib_votequorum_qdevice_getinfo.votes;
-	qinfo->alive = res_lib_votequorum_qdevice_getinfo.alive;
-	qinfo->cast_vote = res_lib_votequorum_qdevice_getinfo.cast_vote;
-	strcpy(qinfo->name, res_lib_votequorum_qdevice_getinfo.name);
-
 
 error_exit:
 	hdb_handle_put (&votequorum_handle_t_db, handle);
