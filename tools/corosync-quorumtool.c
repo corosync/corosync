@@ -433,7 +433,7 @@ static int display_quorum_data(int is_quorate, uint32_t nodeid,
 		if (info.flags & VOTEQUORUM_INFO_WAIT_FOR_ALL) printf("WaitForAll ");
 		if (info.flags & VOTEQUORUM_INFO_LAST_MAN_STANDING) printf("LastManStanding ");
 		if (info.flags & VOTEQUORUM_INFO_AUTO_TIE_BREAKER) printf("AutoTieBreaker ");
-		if (info.flags & VOTEQUORUM_INFO_LEAVE_REMOVE) printf("LeaveRemove ");
+		if (info.flags & VOTEQUORUM_INFO_ALLOW_DOWNSCALE) printf("AllowDownscale ");
 		if (info.flags & VOTEQUORUM_INFO_QDEVICE_REGISTERED) {
 			printf("Qdevice ");
 			display_qdevice = 1;

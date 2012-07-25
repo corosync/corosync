@@ -127,7 +127,7 @@ int main(int argc, char *argv[])
 		if (info.flags & VOTEQUORUM_INFO_WAIT_FOR_ALL) printf("WaitForAll ");
 		if (info.flags & VOTEQUORUM_INFO_LAST_MAN_STANDING) printf("LastManStanding ");
 		if (info.flags & VOTEQUORUM_INFO_AUTO_TIE_BREAKER) printf("AutoTieBreaker ");
-		if (info.flags & VOTEQUORUM_INFO_LEAVE_REMOVE) printf("LeaveRemove ");
+		if (info.flags & VOTEQUORUM_INFO_ALLOW_DOWNSCALE) printf("AllowDownscale ");
 
 		printf("\n");
 	}
@@ -157,7 +157,7 @@ int main(int argc, char *argv[])
 			if (info.flags & VOTEQUORUM_INFO_WAIT_FOR_ALL) printf("WaitForAll ");
 			if (info.flags & VOTEQUORUM_INFO_LAST_MAN_STANDING) printf("LastManStanding ");
 			if (info.flags & VOTEQUORUM_INFO_AUTO_TIE_BREAKER) printf("AutoTieBreaker ");
-			if (info.flags & VOTEQUORUM_INFO_LEAVE_REMOVE) printf("LeaveRemove ");
+			if (info.flags & VOTEQUORUM_INFO_ALLOW_DOWNSCALE) printf("AllowDownscale ");
 			printf("\n");
 		}
 	}

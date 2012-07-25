@@ -2028,7 +2028,7 @@ static void message_handler_req_lib_votequorum_getinfo (void *conn, const void *
 			res_lib_votequorum_getinfo.flags |= VOTEQUORUM_INFO_AUTO_TIE_BREAKER;
 		}
 		if (allow_downscale) {
-			res_lib_votequorum_getinfo.flags |= VOTEQUORUM_INFO_LEAVE_REMOVE;
+			res_lib_votequorum_getinfo.flags |= VOTEQUORUM_INFO_ALLOW_DOWNSCALE;
 		}
 		if (node->flags & NODE_FLAGS_QDEVICE_REGISTERED) {
 			res_lib_votequorum_getinfo.flags |= VOTEQUORUM_INFO_QDEVICE_REGISTERED;
