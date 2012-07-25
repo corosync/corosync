@@ -127,6 +127,10 @@ struct res_lib_votequorum_status {
 #define VOTEQUORUM_INFO_QDEVICE_ALIVE         128
 #define VOTEQUORUM_INFO_QDEVICE_CAST_VOTE     256
 
+#define VOTEQUORUM_NODESTATE_MEMBER     1
+#define VOTEQUORUM_NODESTATE_DEAD       2
+#define VOTEQUORUM_NODESTATE_LEAVING    3
+
 struct res_lib_votequorum_getinfo {
 	struct qb_ipc_response_header header __attribute__((aligned(8)));
 	unsigned int nodeid;

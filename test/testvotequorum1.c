@@ -48,11 +48,14 @@ static votequorum_handle_t g_handle;
 static const char *node_state(int state)
 {
 	switch (state) {
-	case NODESTATE_MEMBER:
+	case VOTEQUORUM_NODESTATE_MEMBER:
 		return "Member";
 		break;
-	case NODESTATE_DEAD:
+	case VOTEQUORUM_NODESTATE_DEAD:
 		return "Dead";
+		break;
+	case VOTEQUORUM_NODESTATE_LEAVING:
+		return "Leaving";
 		break;
 	default:
 		return "UNKNOWN";

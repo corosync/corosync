@@ -2002,6 +2002,20 @@ static void message_handler_req_lib_votequorum_getinfo (void *conn, const void *
 			total_votes += qdevice->votes;
 		}
 
+		switch(node->state) {
+			case NODESTATE_MEMBER:
+				res_lib_votequorum_getinfo.state = VOTEQUORUM_NODESTATE_MEMBER;
+				break;
+			case NODESTATE_DEAD:
+				res_lib_votequorum_getinfo.state = VOTEQUORUM_NODESTATE_DEAD;
+				break;
+			case NODESTATE_LEAVING:
+				res_lib_votequorum_getinfo.state = VOTEQUORUM_NODESTATE_LEAVING;
+				break;
+			default:
+				res_lib_votequorum_getinfo.state = node->state;
+				break;
+		}
 		res_lib_votequorum_getinfo.state = node->state;
 		res_lib_votequorum_getinfo.votes = node->votes;
 		res_lib_votequorum_getinfo.expected_votes = node->expected_votes;

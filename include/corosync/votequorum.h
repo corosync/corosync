@@ -55,9 +55,9 @@ typedef uint64_t votequorum_handle_t;
 #define VOTEQUORUM_NODEID_QDEVICE 0
 #define VOTEQUORUM_MAX_QDEVICE_NAME_LEN 255
 
-#define NODESTATE_MEMBER     1
-#define NODESTATE_DEAD       2
-#define NODESTATE_LEAVING    3
+#define VOTEQUORUM_NODESTATE_MEMBER     1
+#define VOTEQUORUM_NODESTATE_DEAD       2
+#define VOTEQUORUM_NODESTATE_LEAVING    3
 
 /** @} */
 

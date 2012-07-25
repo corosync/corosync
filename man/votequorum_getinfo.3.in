@@ -66,16 +66,16 @@ struct votequorum_info {
 The node_state is defined as:
 .nf
 
-#define NODESTATE_MEMBER     1
-#define NODESTATE_DEAD       2
-#define NODESTATE_LEAVING    3
+#define VOTEQUORUM_NODESTATE_MEMBER     1
+#define VOTEQUORUM_NODESTATE_DEAD       2
+#define VOTEQUORUM_NODESTATE_LEAVING    3
 
 .fi
 The flags are defined as:
 .nf
 
-#define VOTEQUORUM_INFO_TWONODE            1
-#define VOTEQUORUM_INFO_QUORATE            2
+#define VOTEQUORUM_INFO_TWONODE                 1
+#define VOTEQUORUM_INFO_QUORATE                 2
 #define VOTEQUORUM_INFO_WAIT_FOR_ALL            4
 #define VOTEQUORUM_INFO_LAST_MAN_STANDING       8
 #define VOTEQUORUM_INFO_AUTO_TIE_BREAKER       16

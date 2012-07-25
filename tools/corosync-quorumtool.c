@@ -364,13 +364,13 @@ static void display_nodes_data(uint32_t nodeid, nodeid_format_t nodeid_format, n
 static const char *decode_state(int state)
 {
 	switch(state) {
-		case NODESTATE_MEMBER:
+		case VOTEQUORUM_NODESTATE_MEMBER:
 			return "Member";
 			break;
-		case NODESTATE_DEAD:
+		case VOTEQUORUM_NODESTATE_DEAD:
 			return "Dead";
 			break;
-		case NODESTATE_LEAVING:
+		case VOTEQUORUM_NODESTATE_LEAVING:
 			return "Leaving";
 			break;
 		default:
@@ -419,7 +419,7 @@ static int display_quorum_data(int is_quorate, uint32_t nodeid,
 			goto out;
 		}
 		printf("%s\n", decode_state(info.node_state));
-		if (info.node_state != NODESTATE_MEMBER) {
+		if (info.node_state != VOTEQUORUM_NODESTATE_MEMBER) {
 			goto out;
 		}
 		printf("Node votes:       %d\n", info.node_votes);
