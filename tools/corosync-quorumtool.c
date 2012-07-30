@@ -354,9 +354,10 @@ static void display_nodes_data(uint32_t nodeid, nodeid_format_t nodeid_format, n
 				printf("0x%08x ", VOTEQUORUM_NODEID_QDEVICE);
 			}
 			print_uint32_padded(info.qdevice_votes);
-			printf("%s (%s/%s)\n", info.qdevice_name,
+			printf("%s (%s/%s/%s)\n", info.qdevice_name,
 			       info.flags & VOTEQUORUM_INFO_QDEVICE_ALIVE?"Alive":"Not alive",
-			       info.flags & VOTEQUORUM_INFO_QDEVICE_CAST_VOTE?"Voting":"Not voting");
+			       info.flags & VOTEQUORUM_INFO_QDEVICE_CAST_VOTE?"Voting":"Not voting",
+			       info.flags & VOTEQUORUM_INFO_QDEVICE_MASTER_WINS?"MasterWins":"NoMasterWins");
 		}
 	}
 }

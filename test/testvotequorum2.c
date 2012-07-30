@@ -60,6 +60,9 @@ static void print_info(int ok_to_fail)
 		if (info.flags & VOTEQUORUM_INFO_QDEVICE_CAST_VOTE) {
 			printf("cast vote\n");
 		}
+		if (info.flags & VOTEQUORUM_INFO_QDEVICE_MASTER_WINS) {
+			printf("master wins\n");
+		}
 		printf("\n");
 	}
 }
@@ -67,7 +70,7 @@ static void print_info(int ok_to_fail)
 int main(int argc, char *argv[])
 {
 	int ret = 0;
-	int cast_vote = 1;
+	int cast_vote = 1, master_wins = 1;
 	int pollcount=0, polltime=1;
 	int err;
 
@@ -87,10 +90,19 @@ int main(int argc, char *argv[])
 	if (argc >= 4) {
 		cast_vote = atoi(argv[3]);
 	}
+	if (argc >= 5) {
+		master_wins = atoi(argv[4]);
+	}
 
 	if (argc >= 2) {
 		if ( (err=votequorum_qdevice_register(handle, "QDEVICE")) != CS_OK) {
 			fprintf(stderr, "qdevice_register FAILED: %d\n", err);
+			ret = -1;
+			goto out;
+		}
+
+		if ( (err=votequorum_qdevice_master_wins(handle, "QDEVICE", master_wins)) != CS_OK) {
+			fprintf(stderr, "qdevice_master_wins FAILED: %d\n", err);
 			ret = -1;
 			goto out;
 		}

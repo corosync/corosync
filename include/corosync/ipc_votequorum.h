@@ -47,7 +47,8 @@ enum req_votequorum_types {
 	MESSAGE_REQ_VOTEQUORUM_QDEVICE_REGISTER,
 	MESSAGE_REQ_VOTEQUORUM_QDEVICE_UNREGISTER,
 	MESSAGE_REQ_VOTEQUORUM_QDEVICE_UPDATE,
-	MESSAGE_REQ_VOTEQUORUM_QDEVICE_POLL
+	MESSAGE_REQ_VOTEQUORUM_QDEVICE_POLL,
+	MESSAGE_REQ_VOTEQUORUM_QDEVICE_MASTER_WINS
 };
 
 enum res_votequorum_types {
@@ -78,6 +79,12 @@ struct req_lib_votequorum_qdevice_poll {
 	struct qb_ipc_request_header header __attribute__((aligned(8)));
 	char name[VOTEQUORUM_MAX_QDEVICE_NAME_LEN];
 	int cast_vote;
+};
+
+struct req_lib_votequorum_qdevice_master_wins {
+	struct qb_ipc_request_header header __attribute__((aligned(8)));
+	char name[VOTEQUORUM_MAX_QDEVICE_NAME_LEN];
+	unsigned int allow;
 };
 
 struct req_lib_votequorum_setvotes {
@@ -119,6 +126,7 @@ struct res_lib_votequorum_status {
 #define VOTEQUORUM_INFO_QDEVICE_REGISTERED     64
 #define VOTEQUORUM_INFO_QDEVICE_ALIVE         128
 #define VOTEQUORUM_INFO_QDEVICE_CAST_VOTE     256
+#define VOTEQUORUM_INFO_QDEVICE_MASTER_WINS   512
 
 #define VOTEQUORUM_NODESTATE_MEMBER     1
 #define VOTEQUORUM_NODESTATE_DEAD       2

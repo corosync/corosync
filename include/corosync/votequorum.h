@@ -51,6 +51,7 @@ typedef uint64_t votequorum_handle_t;
 #define VOTEQUORUM_INFO_QDEVICE_REGISTERED     64
 #define VOTEQUORUM_INFO_QDEVICE_ALIVE         128
 #define VOTEQUORUM_INFO_QDEVICE_CAST_VOTE     256
+#define VOTEQUORUM_INFO_QDEVICE_MASTER_WINS   512
 
 #define VOTEQUORUM_NODEID_QDEVICE 0
 #define VOTEQUORUM_MAX_QDEVICE_NAME_LEN 255
@@ -204,6 +205,14 @@ cs_error_t votequorum_qdevice_poll (
 	votequorum_handle_t handle,
 	const char *name,
 	unsigned int cast_vote);
+
+/**
+ * Allow qdevice to tell votequorum if master_wins can be enabled or not
+ */
+cs_error_t votequorum_qdevice_master_wins (
+	votequorum_handle_t handle,
+	const char *name,
+	unsigned int allow);
 
 #ifdef __cplusplus
 }
