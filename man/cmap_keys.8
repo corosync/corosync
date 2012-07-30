@@ -218,6 +218,16 @@ Number of received token hold cancel messages.
 .B token_hold_cancel_tx
 Number of transmitted token hold cancel messages.
 
+.B mtt_rx_token
+Mean transit time of token in milliseconds. In other words, time between
+two consecutive token receives.
+
+.B avg_token_workload
+Average time in milliseconds of holding time of token on current processor.
+
+.B avg_backlog_calc
+Average number of not yet sent messages of current processor.
+
 .TP
 runtime.totem.pg.mrp.srp.members.*
 Prefix containing members of totem single ring protocol. Each member
