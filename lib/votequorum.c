@@ -563,7 +563,8 @@ cs_error_t votequorum_qdevice_register (
 	struct req_lib_votequorum_qdevice_register req_lib_votequorum_qdevice_register;
 	struct res_lib_votequorum_status res_lib_votequorum_status;
 
-	if (strlen(name) >= VOTEQUORUM_MAX_QDEVICE_NAME_LEN) {
+	if ((strlen(name) == 0) ||
+	    (strlen(name) >= VOTEQUORUM_MAX_QDEVICE_NAME_LEN)) {
 		return CS_ERR_INVALID_PARAM;
 	}
 
@@ -610,7 +611,8 @@ cs_error_t votequorum_qdevice_poll (
 	struct req_lib_votequorum_qdevice_poll req_lib_votequorum_qdevice_poll;
 	struct res_lib_votequorum_status res_lib_votequorum_status;
 
-	if (strlen(name) >= VOTEQUORUM_MAX_QDEVICE_NAME_LEN) {
+	if ((strlen(name) == 0) ||
+	    (strlen(name) >= VOTEQUORUM_MAX_QDEVICE_NAME_LEN)) {
 		return CS_ERR_INVALID_PARAM;
 	}
 
@@ -657,7 +659,8 @@ cs_error_t votequorum_qdevice_master_wins (
 	struct req_lib_votequorum_qdevice_master_wins req_lib_votequorum_qdevice_master_wins;
 	struct res_lib_votequorum_status res_lib_votequorum_status;
 
-	if (strlen(name) >= VOTEQUORUM_MAX_QDEVICE_NAME_LEN) {
+	if ((strlen(name) == 0) ||
+	    (strlen(name) >= VOTEQUORUM_MAX_QDEVICE_NAME_LEN)) {
 		return CS_ERR_INVALID_PARAM;
 	}
 
@@ -693,6 +696,56 @@ error_exit:
 	return (error);
 }
 
+cs_error_t votequorum_qdevice_update (
+	votequorum_handle_t handle,
+	const char *oldname,
+	const char *newname)
+{
+	cs_error_t error;
+	struct votequorum_inst *votequorum_inst;
+	struct iovec iov;
+	struct req_lib_votequorum_qdevice_update req_lib_votequorum_qdevice_update;
+	struct res_lib_votequorum_status res_lib_votequorum_status;
+
+	if ((strlen(oldname) == 0) ||
+	    (strlen(oldname) >= VOTEQUORUM_MAX_QDEVICE_NAME_LEN) ||
+	    (strlen(newname) == 0) ||
+	    (strlen(newname) >= VOTEQUORUM_MAX_QDEVICE_NAME_LEN)) {
+		return CS_ERR_INVALID_PARAM;
+	}
+
+	error = hdb_error_to_cs(hdb_handle_get (&votequorum_handle_t_db, handle, (void *)&votequorum_inst));
+	if (error != CS_OK) {
+		return (error);
+	}
+
+	req_lib_votequorum_qdevice_update.header.size = sizeof (struct req_lib_votequorum_qdevice_update);
+	req_lib_votequorum_qdevice_update.header.id = MESSAGE_REQ_VOTEQUORUM_QDEVICE_UPDATE;
+	strcpy(req_lib_votequorum_qdevice_update.oldname, oldname);
+	strcpy(req_lib_votequorum_qdevice_update.newname, newname);
+
+	iov.iov_base = (char *)&req_lib_votequorum_qdevice_update;
+	iov.iov_len = sizeof (struct req_lib_votequorum_qdevice_update);
+
+        error = qb_to_cs_error(qb_ipcc_sendv_recv (
+		votequorum_inst->c,
+		&iov,
+		1,
+                &res_lib_votequorum_status,
+		sizeof (struct res_lib_votequorum_status), CS_IPC_TIMEOUT_MS));
+
+	if (error != CS_OK) {
+		goto error_exit;
+	}
+
+	error = res_lib_votequorum_status.header.error;
+
+error_exit:
+	hdb_handle_put (&votequorum_handle_t_db, handle);
+
+	return (error);
+}
+
 cs_error_t votequorum_qdevice_unregister (
 	votequorum_handle_t handle,
 	const char *name)
@@ -703,7 +756,8 @@ cs_error_t votequorum_qdevice_unregister (
 	struct req_lib_votequorum_qdevice_unregister req_lib_votequorum_qdevice_unregister;
 	struct res_lib_votequorum_status res_lib_votequorum_status;
 
-	if (strlen(name) >= VOTEQUORUM_MAX_QDEVICE_NAME_LEN) {
+	if ((strlen(name) == 0) ||
+	    (strlen(name) >= VOTEQUORUM_MAX_QDEVICE_NAME_LEN)) {
 		return CS_ERR_INVALID_PARAM;
 	}
 
