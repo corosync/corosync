@@ -58,6 +58,7 @@
 #include "schedwrk.h"
 #include "quorum.h"
 #include "sync.h"
+#include "main.h"
 
 LOGSYS_DECLARE_SUBSYS ("SYNC");
 
@@ -142,13 +143,13 @@ static size_t my_trans_list_entries = 0;
 
 static int my_processor_list_entries = 0;
 
-static struct service_entry my_service_list[128];
+static struct service_entry my_service_list[SERVICES_COUNT_MAX];
 
 static int my_service_list_entries = 0;
 
 static const struct memb_ring_id sync_ring_id;
 
-static struct service_entry my_initial_service_list[PROCESSOR_COUNT_MAX];
+static struct service_entry my_initial_service_list[SERVICES_COUNT_MAX];
 
 static int my_initial_service_list_entries;
 
@@ -201,7 +202,7 @@ int sync_init (
 	}
 
 	sync_synchronization_completed = synchronization_completed;
-	for (i = 0; i < 64; i++) {
+	for (i = 0; i < SERVICES_COUNT_MAX; i++) {
 		res = sync_callbacks_retrieve (i, &sync_callbacks);
 		if (res == -1) {
 			continue;

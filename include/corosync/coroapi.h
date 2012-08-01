@@ -410,6 +410,8 @@ struct corosync_api_v1 {
 
 #define SERVICE_HANDLER_MAXIMUM_COUNT 64
 
+#define SERVICES_COUNT_MAX 64
+
 struct corosync_lib_handler {
 	void (*lib_handler_fn) (void *conn, const void *msg);
 	enum cs_lib_flow_control flow_control;

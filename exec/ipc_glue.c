@@ -83,7 +83,7 @@ struct outq_item {
 	struct list_head list;
 };
 
-static struct cs_ipcs_mapper ipcs_mapper[SERVICE_HANDLER_MAXIMUM_COUNT];
+static struct cs_ipcs_mapper ipcs_mapper[SERVICES_COUNT_MAX];
 
 static int32_t cs_ipcs_job_add(enum qb_loop_priority p,	void *data, qb_loop_job_dispatch_fn fn);
 static int32_t cs_ipcs_dispatch_add(enum qb_loop_priority p, int32_t fd, int32_t events,
@@ -692,7 +692,7 @@ static void cs_ipcs_check_for_flow_control(void)
 	int32_t i;
 	int32_t fc_enabled;
 
-	for (i = 0; i < SERVICE_HANDLER_MAXIMUM_COUNT; i++) {
+	for (i = 0; i < SERVICES_COUNT_MAX; i++) {
 		if (corosync_service[i] == NULL || ipcs_mapper[i].inst == NULL) {
 			continue;
 		}
@@ -752,7 +752,7 @@ void cs_ipcs_stats_update(void)
 	struct cs_ipcs_conn_context *cnx;
 	char key_name[ICMAP_KEYNAME_MAXLEN];
 
-	for (i = 0; i < SERVICE_HANDLER_MAXIMUM_COUNT; i++) {
+	for (i = 0; i < SERVICES_COUNT_MAX; i++) {
 		if (corosync_service[i] == NULL || ipcs_mapper[i].inst == NULL) {
 			continue;
 		}
@@ -798,7 +798,6 @@ void cs_ipcs_stats_update(void)
 
 			snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "%s.overload", cnx->icmap_path);
 			icmap_set_uint64(key_name, cnx->overload);
-
 			qb_ipcs_connection_unref(c);
 		}
 	}

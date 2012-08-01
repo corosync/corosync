@@ -108,12 +108,12 @@ struct seus_handler_data {
 	struct corosync_api_v1 *api;
 };
 
-struct corosync_service_engine *corosync_service[SERVICE_HANDLER_MAXIMUM_COUNT];
+struct corosync_service_engine *corosync_service[SERVICES_COUNT_MAX];
 
-const char *service_stats_rx[SERVICE_HANDLER_MAXIMUM_COUNT][64];
-const char *service_stats_tx[SERVICE_HANDLER_MAXIMUM_COUNT][64];
+const char *service_stats_rx[SERVICES_COUNT_MAX][SERVICE_HANDLER_MAXIMUM_COUNT];
+const char *service_stats_tx[SERVICES_COUNT_MAX][SERVICE_HANDLER_MAXIMUM_COUNT];
 
-int corosync_service_exiting[SERVICE_HANDLER_MAXIMUM_COUNT];
+int corosync_service_exiting[SERVICES_COUNT_MAX];
 
 static void (*service_unlink_all_complete) (void) = NULL;
 
@@ -183,7 +183,7 @@ char *corosync_service_link_and_init (
 static int service_priority_max(void)
 {
 	int lpc = 0, max = 0;
-	for(; lpc < SERVICE_HANDLER_MAXIMUM_COUNT; lpc++) {
+	for(; lpc < SERVICES_COUNT_MAX; lpc++) {
 		if(corosync_service[lpc] != NULL && corosync_service[lpc]->priority > max) {
 			max = corosync_service[lpc]->priority;
 		}
@@ -206,7 +206,7 @@ corosync_service_unlink_priority (
 
 	for(; *current_priority >= lowest_priority; *current_priority = *current_priority - 1) {
 		for(*current_service_engine = 0;
-			*current_service_engine < SERVICE_HANDLER_MAXIMUM_COUNT;
+			*current_service_engine < SERVICES_COUNT_MAX;
 			*current_service_engine = *current_service_engine + 1) {
 
 			if(corosync_service[*current_service_engine] == NULL ||
@@ -294,7 +294,7 @@ static unsigned int service_unlink_and_exit (
 	}
 	icmap_iter_finalize(iter);
 
-	if (service_found && service_id < SERVICE_HANDLER_MAXIMUM_COUNT
+	if (service_found && service_id < SERVICES_COUNT_MAX
 		&& corosync_service[service_id] != NULL) {
 
 		if (corosync_service[service_id]->exec_exit_fn) {

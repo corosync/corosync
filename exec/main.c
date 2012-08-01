@@ -181,7 +181,7 @@ void corosync_state_dump (void)
 {
 	int i;
 
-	for (i = 0; i < SERVICE_HANDLER_MAXIMUM_COUNT; i++) {
+	for (i = 0; i < SERVICES_COUNT_MAX; i++) {
 		if (corosync_service[i] && corosync_service[i]->exec_dump_fn) {
 			corosync_service[i]->exec_dump_fn ();
 		}
