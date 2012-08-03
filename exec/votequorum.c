@@ -1489,6 +1489,7 @@ static void message_handler_req_exec_votequorum_qdevice_reg (
 		 */
 		if (us->flags & NODE_FLAGS_QDEVICE_REGISTERED) {
 			LEAVE();
+			return;
 		}
 
 		/*
