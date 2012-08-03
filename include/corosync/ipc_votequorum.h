@@ -36,7 +36,9 @@
 #define IPC_VOTEQUORUM_H_DEFINED
 
 #include <corosync/mar_gen.h>
-#define VOTEQUORUM_MAX_QDEVICE_NAME_LEN 255
+#define VOTEQUORUM_QDEVICE_NODEID              0
+#define VOTEQUORUM_QDEVICE_MAX_NAME_LEN      255
+#define VOTEQUORUM_QDEVICE_DEFAULT_TIMEOUT 10000
 
 enum req_votequorum_types {
 	MESSAGE_REQ_VOTEQUORUM_GETINFO = 0,
@@ -61,29 +63,29 @@ enum res_votequorum_types {
 
 struct req_lib_votequorum_qdevice_register {
 	struct qb_ipc_request_header header __attribute__((aligned(8)));
-	char name[VOTEQUORUM_MAX_QDEVICE_NAME_LEN];
+	char name[VOTEQUORUM_QDEVICE_MAX_NAME_LEN];
 };
 
 struct req_lib_votequorum_qdevice_unregister {
 	struct qb_ipc_request_header header __attribute__((aligned(8)));
-	char name[VOTEQUORUM_MAX_QDEVICE_NAME_LEN];
+	char name[VOTEQUORUM_QDEVICE_MAX_NAME_LEN];
 };
 
 struct req_lib_votequorum_qdevice_update {
 	struct qb_ipc_request_header header __attribute__((aligned(8)));
-	char oldname[VOTEQUORUM_MAX_QDEVICE_NAME_LEN];
-	char newname[VOTEQUORUM_MAX_QDEVICE_NAME_LEN];
+	char oldname[VOTEQUORUM_QDEVICE_MAX_NAME_LEN];
+	char newname[VOTEQUORUM_QDEVICE_MAX_NAME_LEN];
 };
 
 struct req_lib_votequorum_qdevice_poll {
 	struct qb_ipc_request_header header __attribute__((aligned(8)));
-	char name[VOTEQUORUM_MAX_QDEVICE_NAME_LEN];
+	char name[VOTEQUORUM_QDEVICE_MAX_NAME_LEN];
 	int cast_vote;
 };
 
 struct req_lib_votequorum_qdevice_master_wins {
 	struct qb_ipc_request_header header __attribute__((aligned(8)));
-	char name[VOTEQUORUM_MAX_QDEVICE_NAME_LEN];
+	char name[VOTEQUORUM_QDEVICE_MAX_NAME_LEN];
 	unsigned int allow;
 };
 
@@ -143,7 +145,7 @@ struct res_lib_votequorum_getinfo {
 	unsigned int quorum;
 	unsigned int flags;
 	unsigned int qdevice_votes;
-	char qdevice_name[VOTEQUORUM_MAX_QDEVICE_NAME_LEN];
+	char qdevice_name[VOTEQUORUM_QDEVICE_MAX_NAME_LEN];
 };
 
 struct votequorum_node {

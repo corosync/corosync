@@ -349,9 +349,9 @@ static void display_nodes_data(uint32_t nodeid, nodeid_format_t nodeid_format, n
 			fprintf(stderr, "Unable to get quorum device info: %s\n", cs_strerror(err));
 		} else {
 			if (nodeid_format == NODEID_FORMAT_DECIMAL) {
-				print_uint32_padded(VOTEQUORUM_NODEID_QDEVICE);
+				print_uint32_padded(VOTEQUORUM_QDEVICE_NODEID);
 			} else {
-				printf("0x%08x ", VOTEQUORUM_NODEID_QDEVICE);
+				printf("0x%08x ", VOTEQUORUM_QDEVICE_NODEID);
 			}
 			print_uint32_padded(info.qdevice_votes);
 			printf("%s (%s/%s/%s)\n", info.qdevice_name,

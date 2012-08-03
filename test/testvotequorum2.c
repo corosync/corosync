@@ -49,7 +49,7 @@ static void print_info(int ok_to_fail)
 	struct votequorum_info info;
 	int err;
 
-	if ( (err=votequorum_getinfo(handle, VOTEQUORUM_NODEID_QDEVICE, &info)) != CS_OK)
+	if ( (err=votequorum_getinfo(handle, VOTEQUORUM_QDEVICE_NODEID, &info)) != CS_OK)
 		fprintf(stderr, "votequorum_getinfo error %d: %s\n", err, ok_to_fail?"OK":"FAILED");
 	else {
 		printf("name           %s\n", info.qdevice_name);

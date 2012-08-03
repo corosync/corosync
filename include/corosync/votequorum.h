@@ -53,12 +53,13 @@ typedef uint64_t votequorum_handle_t;
 #define VOTEQUORUM_INFO_QDEVICE_CAST_VOTE     256
 #define VOTEQUORUM_INFO_QDEVICE_MASTER_WINS   512
 
-#define VOTEQUORUM_NODEID_QDEVICE 0
-#define VOTEQUORUM_MAX_QDEVICE_NAME_LEN 255
+#define VOTEQUORUM_QDEVICE_NODEID               0
+#define VOTEQUORUM_QDEVICE_MAX_NAME_LEN       255
+#define VOTEQUORUM_QDEVICE_DEFAULT_TIMEOUT  10000
 
-#define VOTEQUORUM_NODESTATE_MEMBER     1
-#define VOTEQUORUM_NODESTATE_DEAD       2
-#define VOTEQUORUM_NODESTATE_LEAVING    3
+#define VOTEQUORUM_NODESTATE_MEMBER             1
+#define VOTEQUORUM_NODESTATE_DEAD               2
+#define VOTEQUORUM_NODESTATE_LEAVING            3
 
 /** @} */
 
@@ -72,7 +73,7 @@ struct votequorum_info {
 	unsigned int quorum;
 	unsigned int flags;
 	unsigned int qdevice_votes;
-	char qdevice_name[VOTEQUORUM_MAX_QDEVICE_NAME_LEN];
+	char qdevice_name[VOTEQUORUM_QDEVICE_MAX_NAME_LEN];
 };
 
 typedef struct {

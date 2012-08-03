@@ -189,7 +189,7 @@ cs_error_t votequorum_getinfo (
 	info->quorum = res_lib_votequorum_getinfo.quorum;
 	info->flags = res_lib_votequorum_getinfo.flags;
 	info->qdevice_votes = res_lib_votequorum_getinfo.qdevice_votes;
-	memset(info->qdevice_name, 0, VOTEQUORUM_MAX_QDEVICE_NAME_LEN);
+	memset(info->qdevice_name, 0, VOTEQUORUM_QDEVICE_MAX_NAME_LEN);
 	strcpy(info->qdevice_name, res_lib_votequorum_getinfo.qdevice_name);
 
 error_exit:
@@ -564,7 +564,7 @@ cs_error_t votequorum_qdevice_register (
 	struct res_lib_votequorum_status res_lib_votequorum_status;
 
 	if ((strlen(name) == 0) ||
-	    (strlen(name) >= VOTEQUORUM_MAX_QDEVICE_NAME_LEN)) {
+	    (strlen(name) >= VOTEQUORUM_QDEVICE_MAX_NAME_LEN)) {
 		return CS_ERR_INVALID_PARAM;
 	}
 
@@ -612,7 +612,7 @@ cs_error_t votequorum_qdevice_poll (
 	struct res_lib_votequorum_status res_lib_votequorum_status;
 
 	if ((strlen(name) == 0) ||
-	    (strlen(name) >= VOTEQUORUM_MAX_QDEVICE_NAME_LEN)) {
+	    (strlen(name) >= VOTEQUORUM_QDEVICE_MAX_NAME_LEN)) {
 		return CS_ERR_INVALID_PARAM;
 	}
 
@@ -660,7 +660,7 @@ cs_error_t votequorum_qdevice_master_wins (
 	struct res_lib_votequorum_status res_lib_votequorum_status;
 
 	if ((strlen(name) == 0) ||
-	    (strlen(name) >= VOTEQUORUM_MAX_QDEVICE_NAME_LEN)) {
+	    (strlen(name) >= VOTEQUORUM_QDEVICE_MAX_NAME_LEN)) {
 		return CS_ERR_INVALID_PARAM;
 	}
 
@@ -708,9 +708,9 @@ cs_error_t votequorum_qdevice_update (
 	struct res_lib_votequorum_status res_lib_votequorum_status;
 
 	if ((strlen(oldname) == 0) ||
-	    (strlen(oldname) >= VOTEQUORUM_MAX_QDEVICE_NAME_LEN) ||
+	    (strlen(oldname) >= VOTEQUORUM_QDEVICE_MAX_NAME_LEN) ||
 	    (strlen(newname) == 0) ||
-	    (strlen(newname) >= VOTEQUORUM_MAX_QDEVICE_NAME_LEN)) {
+	    (strlen(newname) >= VOTEQUORUM_QDEVICE_MAX_NAME_LEN)) {
 		return CS_ERR_INVALID_PARAM;
 	}
 
@@ -757,7 +757,7 @@ cs_error_t votequorum_qdevice_unregister (
 	struct res_lib_votequorum_status res_lib_votequorum_status;
 
 	if ((strlen(name) == 0) ||
-	    (strlen(name) >= VOTEQUORUM_MAX_QDEVICE_NAME_LEN)) {
+	    (strlen(name) >= VOTEQUORUM_QDEVICE_MAX_NAME_LEN)) {
 		return CS_ERR_INVALID_PARAM;
 	}
 
