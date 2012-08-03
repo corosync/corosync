@@ -35,6 +35,7 @@ Conflicts: openais <= 0.89, openais-devel <= 0.89
 %define buildtrunk 0
 %{?_with_buildtrunk: %define buildtrunk 1}
 
+BuildRequires: groff
 BuildRequires: libqb-devel
 BuildRequires: nss-devel
 %if %{buildtrunk}
