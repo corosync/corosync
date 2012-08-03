@@ -555,6 +555,7 @@ static int check_qdevice_master(void)
 	list_iterate(tmp, &cluster_members_list) {
 		node = list_entry(tmp, struct cluster_node, list);
 		if ((node->state == NODESTATE_MEMBER) &&
+		    (node->flags & NODE_FLAGS_QDEVICE_MASTER_WINS) &&
 		    (node->flags & NODE_FLAGS_QDEVICE_CAST_VOTE)) {
 				found = 1;
 		}
