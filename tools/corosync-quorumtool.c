@@ -424,6 +424,7 @@ static int display_quorum_data(int is_quorate, uint32_t nodeid,
 			goto out;
 		}
 		printf("Node votes:       %d\n", info.node_votes);
+		printf("Qdevice votes:    %d\n", info.flags & VOTEQUORUM_INFO_QDEVICE_CAST_VOTE?info.qdevice_votes:0);
 		printf("Expected votes:   %d\n", info.node_expected_votes);
 		printf("Highest expected: %d\n", info.highest_expected);
 		printf("Total votes:      %d\n", info.total_votes);
