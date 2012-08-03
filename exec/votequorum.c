@@ -566,6 +566,8 @@ static int check_qdevice_master(void)
 
 static void decode_flags(uint32_t flags)
 {
+	ENTER();
+
 	log_printf(LOGSYS_LEVEL_DEBUG,
 		   "flags: quorate: %s Leaving: %s WFA Status: %s First: %s Qdevice: %s QdeviceAlive: %s QdeviceCastVote: %s QdeviceMasterWins: %s",
 		   (flags & NODE_FLAGS_QUORATE)?"Yes":"No",
@@ -576,10 +578,14 @@ static void decode_flags(uint32_t flags)
 		   (flags & NODE_FLAGS_QDEVICE_ALIVE)?"Yes":"No",
 		   (flags & NODE_FLAGS_QDEVICE_CAST_VOTE)?"Yes":"No",
 		   (flags & NODE_FLAGS_QDEVICE_MASTER_WINS)?"Yes":"No");
+
+	LEAVE();
 }
 
 static void update_wait_for_all_status(uint8_t wfa_status)
 {
+	ENTER(); 
+
 	wait_for_all_status = wfa_status;
 	if (wait_for_all_status) {
 		us->flags |= NODE_FLAGS_WFASTATUS;
@@ -588,29 +594,47 @@ static void update_wait_for_all_status(uint8_t wfa_status)
 	}
 	icmap_set_uint8("runtime.votequorum.wait_for_all_status",
 			wait_for_all_status);
+
+	LEAVE();
 }
 
 static void update_two_node(void)
 {
+	ENTER();
+
 	icmap_set_uint8("runtime.votequorum.two_node", two_node);
+
+	LEAVE();
 }
 
 static void update_ev_barrier(uint32_t expected_votes)
 {
+	ENTER();
+
 	ev_barrier = expected_votes;
 	icmap_set_uint32("runtime.votequorum.ev_barrier", ev_barrier);
+
+	LEAVE();
 }
 
 static void update_qdevice_can_operate(uint8_t status)
 {
+	ENTER();
+
 	qdevice_can_operate = status;
 	icmap_set_uint8("runtime.votequorum.qdevice_can_operate", qdevice_can_operate);
+
+	LEAVE();
 }
 
 static void update_qdevice_master_wins(uint8_t allow)
 {
+	ENTER();
+
 	qdevice_master_wins = allow;
 	icmap_set_uint8("runtime.votequorum.qdevice_master_wins", qdevice_master_wins);
+
+	LEAVE();
 }
 
 /*
