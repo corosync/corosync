@@ -2074,12 +2074,11 @@ static void message_handler_req_lib_votequorum_getinfo (void *conn, const void *
 		}
 
 		memset(res_lib_votequorum_getinfo.qdevice_name, 0, VOTEQUORUM_QDEVICE_MAX_NAME_LEN);
-		res_lib_votequorum_getinfo.qdevice_votes = 0;
+		strcpy(res_lib_votequorum_getinfo.qdevice_name, qdevice_name);
+		res_lib_votequorum_getinfo.qdevice_votes = qdevice->votes;
 
 		if (node->flags & NODE_FLAGS_QDEVICE_REGISTERED) {
 			res_lib_votequorum_getinfo.flags |= VOTEQUORUM_INFO_QDEVICE_REGISTERED;
-			res_lib_votequorum_getinfo.qdevice_votes = qdevice->votes;
-			strcpy(res_lib_votequorum_getinfo.qdevice_name, qdevice_name);
 		}
 		if (node->flags & NODE_FLAGS_QDEVICE_ALIVE) {
 			res_lib_votequorum_getinfo.flags |= VOTEQUORUM_INFO_QDEVICE_ALIVE;
