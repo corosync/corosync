@@ -1743,25 +1743,6 @@ static int votequorum_exec_exit_fn (void)
 		ret = votequorum_exec_send_nodeinfo(us->node_id);
 	}
 
-	/*
-	 * clean up our internals
-	 */
-
-	/*
-	 * free the node list and qdevice
-	 */
-
-	list_init(&cluster_members_list);
-	qdevice = NULL;
-	us = NULL;
-	memset(cluster_nodes, 0, sizeof(cluster_nodes));
-
-	/*
-	 * clean the tracking list
-	 */
-
-	list_init(&trackers_list);
-
 	LEAVE();
 	return ret;
 }
@@ -1776,8 +1757,14 @@ static char *votequorum_exec_init_fn (struct corosync_api_v1 *api)
 
 	ENTER();
 
+	/*
+	 * make sure we start clean
+	 */
 	list_init(&cluster_members_list);
 	list_init(&trackers_list);
+	qdevice = NULL;
+	us = NULL;
+	memset(cluster_nodes, 0, sizeof(cluster_nodes));
 
 	/*
 	 * Allocate a cluster_node for qdevice
