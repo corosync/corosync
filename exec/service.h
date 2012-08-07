@@ -75,8 +75,6 @@ extern unsigned int corosync_service_defaults_link_and_init (
 
 extern struct corosync_service_engine *corosync_service[];
 
-extern int corosync_service_exiting[];
-
 extern const char *service_stats_rx[SERVICES_COUNT_MAX][SERVICE_HANDLER_MAXIMUM_COUNT];
 extern const char *service_stats_tx[SERVICES_COUNT_MAX][SERVICE_HANDLER_MAXIMUM_COUNT];
 
