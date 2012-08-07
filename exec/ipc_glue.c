@@ -176,7 +176,6 @@ static int32_t cs_ipcs_connection_accept (qb_ipcs_connection_t *c, uid_t euid, g
 	}
 
 	if (corosync_service[service] == NULL ||
-		corosync_service_exiting[service] ||
 		ipcs_mapper[service].inst == NULL) {
 		return -ENOSYS;
 	}
