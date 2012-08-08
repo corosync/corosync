@@ -361,6 +361,10 @@ cs_error_t cmap_set (
 		return (CS_ERR_INVALID_PARAM);
 	}
 
+	if (strlen(key_name) >= CS_MAX_NAME_LENGTH) {
+		return (CS_ERR_NAME_TOO_LONG);
+	}
+
 	error = hdb_error_to_cs(hdb_handle_get (&cmap_handle_t_db, handle, (void *)&cmap_inst));
 	if (error != CS_OK) {
 		return (error);
@@ -468,6 +472,9 @@ cs_error_t cmap_delete(cmap_handle_t handle, const char *key_name)
 	if (key_name == NULL) {
 		return (CS_ERR_INVALID_PARAM);
 	}
+	if (strlen(key_name) >= CS_MAX_NAME_LENGTH) {
+		return (CS_ERR_NAME_TOO_LONG);
+	}
 
 	error = hdb_error_to_cs(hdb_handle_get (&cmap_handle_t_db, handle, (void *)&cmap_inst));
 	if (error != CS_OK) {
@@ -516,6 +523,9 @@ cs_error_t cmap_get(
 
 	if (key_name == NULL) {
 		return (CS_ERR_INVALID_PARAM);
+	}
+	if (strlen(key_name) >= CS_MAX_NAME_LENGTH) {
+		return (CS_ERR_NAME_TOO_LONG);
 	}
 
 	error = hdb_error_to_cs(hdb_handle_get (&cmap_handle_t_db, handle, (void *)&cmap_inst));
@@ -714,6 +724,9 @@ static cs_error_t cmap_adjust_int(cmap_handle_t handle, const char *key_name, in
 	if (key_name == NULL) {
 		return (CS_ERR_INVALID_PARAM);
 	}
+	if (strlen(key_name) >= CS_MAX_NAME_LENGTH) {
+		return (CS_ERR_NAME_TOO_LONG);
+	}
 
 	error = hdb_error_to_cs(hdb_handle_get (&cmap_handle_t_db, handle, (void *)&cmap_inst));
 	if (error != CS_OK) {
@@ -781,6 +794,9 @@ cs_error_t cmap_iter_init(
 	req_lib_cmap_iter_init.header.id = MESSAGE_REQ_CMAP_ITER_INIT;
 
 	if (prefix) {
+		if (strlen(prefix) >= CS_MAX_NAME_LENGTH) {
+			return (CS_ERR_NAME_TOO_LONG);
+		}
 		memcpy(req_lib_cmap_iter_init.prefix.value, prefix, strlen(prefix));
 		req_lib_cmap_iter_init.prefix.length = strlen(prefix);
 	}
@@ -943,6 +959,9 @@ cs_error_t cmap_track_add(
 	req_lib_cmap_track_add.header.id = MESSAGE_REQ_CMAP_TRACK_ADD;
 
 	if (key_name) {
+		if (strlen(key_name) >= CS_MAX_NAME_LENGTH) {
+			return (CS_ERR_NAME_TOO_LONG);
+		}
 		memcpy(req_lib_cmap_track_add.key_name.value, key_name, strlen(key_name));
 		req_lib_cmap_track_add.key_name.length = strlen(key_name);
 	}
