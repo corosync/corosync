@@ -285,6 +285,10 @@ static int corosync_sync_callbacks_retrieve (
 		return (-1);
 	}
 
+	if (callbacks == NULL) {
+		return (0);
+	}
+
 	callbacks->name = corosync_service[service_id]->name;
 
 	callbacks->sync_init = corosync_service[service_id]->sync_init;
