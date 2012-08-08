@@ -483,6 +483,10 @@ cs_error_t cpg_join (
 	struct req_lib_cpg_join req_lib_cpg_join;
 	struct res_lib_cpg_join res_lib_cpg_join;
 
+	if (group->length > CPG_MAX_NAME_LENGTH) {
+		return (CS_ERR_NAME_TOO_LONG);
+	}
+
 	error = hdb_error_to_cs (hdb_handle_get (&cpg_handle_t_db, handle, (void *)&cpg_inst));
 	if (error != CS_OK) {
 		return (error);
@@ -533,6 +537,10 @@ cs_error_t cpg_leave (
 	struct req_lib_cpg_leave req_lib_cpg_leave;
 	struct res_lib_cpg_leave res_lib_cpg_leave;
 
+        if (group->length > CPG_MAX_NAME_LENGTH) {
+		return (CS_ERR_NAME_TOO_LONG);
+        }
+
 	error = hdb_error_to_cs (hdb_handle_get (&cpg_handle_t_db, handle, (void *)&cpg_inst));
 	if (error != CS_OK) {
 		return (error);
@@ -577,6 +585,9 @@ cs_error_t cpg_membership_get (
 	struct res_lib_cpg_membership_get res_lib_cpg_membership_get;
 	unsigned int i;
 
+	if (group_name->length > CPG_MAX_NAME_LENGTH) {
+		return (CS_ERR_NAME_TOO_LONG);
+	}
 	if (member_list == NULL) {
 		return (CS_ERR_INVALID_PARAM);
 	}
@@ -830,6 +841,9 @@ cs_error_t cpg_iteration_initialize(
 	struct req_lib_cpg_iterationinitialize req_lib_cpg_iterationinitialize;
 	struct res_lib_cpg_iterationinitialize res_lib_cpg_iterationinitialize;
 
+	if (group && group->length > CPG_MAX_NAME_LENGTH) {
+		return (CS_ERR_NAME_TOO_LONG);
+	}
 	if (cpg_iteration_handle == NULL) {
 		return (CS_ERR_INVALID_PARAM);
 	}

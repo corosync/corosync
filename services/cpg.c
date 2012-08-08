@@ -1331,6 +1331,11 @@ static void message_handler_req_lib_cpg_join (void *conn, const void *message)
 		}
 	}
 
+	if (req_lib_cpg_join->group_name.length > CPG_MAX_NAME_LENGTH) {
+		error = CS_ERR_NAME_TOO_LONG;
+		goto response_send;
+	}
+
 	switch (cpd->cpd_state) {
 	case CPD_STATE_UNJOINED:
 		error = CPG_OK;
