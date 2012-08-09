@@ -374,17 +374,17 @@ int totemudp_finalize (
 	int res = 0;
 
 	if (instance->totemudp_sockets.mcast_recv > 0) {
-		close (instance->totemudp_sockets.mcast_recv);
 	 	qb_loop_poll_del (instance->totemudp_poll_handle,
 			instance->totemudp_sockets.mcast_recv);
+		close (instance->totemudp_sockets.mcast_recv);
 	}
 	if (instance->totemudp_sockets.mcast_send > 0) {
 		close (instance->totemudp_sockets.mcast_send);
 	}
 	if (instance->totemudp_sockets.token > 0) {
-		close (instance->totemudp_sockets.token);
 		qb_loop_poll_del (instance->totemudp_poll_handle,
 			instance->totemudp_sockets.token);
+		close (instance->totemudp_sockets.token);
 	}
 
 	return (res);
@@ -533,17 +533,17 @@ static void timer_function_netif_check_timeout (
 	}
 
 	if (instance->totemudp_sockets.mcast_recv > 0) {
-		close (instance->totemudp_sockets.mcast_recv);
 	 	qb_loop_poll_del (instance->totemudp_poll_handle,
 			instance->totemudp_sockets.mcast_recv);
+		close (instance->totemudp_sockets.mcast_recv);
 	}
 	if (instance->totemudp_sockets.mcast_send > 0) {
 		close (instance->totemudp_sockets.mcast_send);
 	}
 	if (instance->totemudp_sockets.token > 0) {
-		close (instance->totemudp_sockets.token);
 		qb_loop_poll_del (instance->totemudp_poll_handle,
 			instance->totemudp_sockets.token);
+		close (instance->totemudp_sockets.token);
 	}
 
 	if (interface_up == 0) {
