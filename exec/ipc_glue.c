@@ -635,7 +635,7 @@ static int32_t cs_ipcs_msg_process(qb_ipcs_connection_t *c,
 		res = -ENOBUFS;
 	}
 
-	if (send_ok) {
+	if (send_ok >= 0) {
 		corosync_service[service]->lib_engine[request_pt->id].lib_handler_fn(c, request_pt);
 		res = 0;
 	}
