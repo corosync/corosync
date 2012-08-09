@@ -40,6 +40,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
+#include <limits.h>
 
 #include <corosync/totem/totem.h>
 #include <corosync/cfg.h>
@@ -219,6 +220,60 @@ static int set_expected(int expected_votes)
 }
 
 /*
+ *  node name by nodelist
+ */
+
+static const char *node_name_by_nodelist(uint32_t nodeid)
+{
+	cmap_iter_handle_t iter;
+	char key_name[CMAP_KEYNAME_MAXLEN];
+	char tmp_key[CMAP_KEYNAME_MAXLEN];
+	static char ret_buf[_POSIX_HOST_NAME_MAX];
+	char *str = NULL;
+	uint32_t node_pos, cur_nodeid;
+	int res = 0;
+
+	if (cmap_iter_init(cmap_handle, "nodelist.node.", &iter) != CS_OK) {
+		return "";
+	}
+
+	memset(ret_buf, 0, sizeof(ret_buf));
+
+	while ((cmap_iter_next(cmap_handle, iter, key_name, NULL, NULL)) == CS_OK) {
+
+		res = sscanf(key_name, "nodelist.node.%u.%s", &node_pos, tmp_key);
+		if (res != 2) {
+			continue;
+		}
+
+		if (strcmp(tmp_key, "ring0_addr") != 0) {
+			continue;
+		}
+
+		snprintf(tmp_key, CMAP_KEYNAME_MAXLEN, "nodelist.node.%u.nodeid", node_pos);
+		if (cmap_get_uint32(cmap_handle, tmp_key, &cur_nodeid) != CS_OK) {
+			continue;
+		}
+		if (cur_nodeid != nodeid) {
+			continue;
+		}
+		snprintf(tmp_key, CMAP_KEYNAME_MAXLEN, "nodelist.node.%u.ring0_addr", node_pos);
+		if (cmap_get_string(cmap_handle, tmp_key, &str) != CS_OK) {
+			continue;
+		}
+		if (!str) {
+			continue;
+		}
+		strncpy(ret_buf, str, sizeof(ret_buf) - 1);
+		free(str);
+		break;
+	}
+	cmap_iter_finalize(cmap_handle, iter);
+
+	return ret_buf;
+}
+
+/*
  * This resolves the first address assigned to a node
  * and returns the name or IP address. Use cfgtool if you need more information.
  */
@@ -228,8 +283,18 @@ static const char *node_name(uint32_t nodeid, name_format_t name_format)
 	int numaddrs;
 	corosync_cfg_node_address_t addrs[INTERFACE_MAX];
 	static char buf[INET6_ADDRSTRLEN];
+	const char *nodelist_name = NULL;
 	socklen_t addrlen;
 	struct sockaddr_storage *ss;
+
+	if (name_format == ADDRESS_FORMAT_NAME) {
+		nodelist_name = node_name_by_nodelist(nodeid);
+	}
+
+	if ((nodelist_name) &&
+	    (strlen(nodelist_name) > 0)) {
+		return nodelist_name;
+	}
 
 	err = corosync_cfg_get_node_addrs(c_handle, nodeid, INTERFACE_MAX, &numaddrs, addrs);
 	if (err != CS_OK) {
