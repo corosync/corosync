@@ -377,9 +377,9 @@ int totemudpu_finalize (
 	int res = 0;
 
 	if (instance->token_socket > 0) {
-		close (instance->token_socket);
 		qb_loop_poll_del (instance->totemudpu_poll_handle,
 			instance->token_socket);
+		close (instance->token_socket);
 	}
 
 	return (res);
@@ -510,9 +510,9 @@ static void timer_function_netif_check_timeout (
 	}
 
 	if (instance->token_socket > 0) {
-		close (instance->token_socket);
 		qb_loop_poll_del (instance->totemudpu_poll_handle,
 			instance->token_socket);
+		close (instance->token_socket);
 	}
 
 	if (interface_up == 0) {
