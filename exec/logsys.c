@@ -230,6 +230,7 @@ static int logsys_config_file_set_unlocked (
 	qb_log_ctl(logsys_loggers[subsysid].target_id,
 		   QB_LOG_CONF_ENABLED,
 		   (logsys_loggers[subsysid].mode & LOGSYS_MODE_OUTPUT_FILE));
+	qb_log_ctl(logsys_loggers[subsysid].target_id, QB_LOG_CONF_THREADED, QB_TRUE);
 
 	return (0);
 }
@@ -355,6 +356,7 @@ int _logsys_system_setup(
 	} else {
 		qb_log_ctl(QB_LOG_SYSLOG, QB_LOG_CONF_ENABLED, QB_FALSE);
 	}
+	qb_log_ctl(QB_LOG_SYSLOG, QB_LOG_CONF_THREADED, QB_TRUE);
 	qb_log_ctl(QB_LOG_SYSLOG, QB_LOG_CONF_PRIORITY_BUMP, LOG_INFO - LOG_DEBUG);
 
 	qb_log_filter_ctl(QB_LOG_BLACKBOX, QB_LOG_FILTER_ADD,
