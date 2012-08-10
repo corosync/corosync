@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2008 Allied Telesis Labs NZ
+ *                 (c) 2012 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -49,7 +50,7 @@
 
 #define SEPERATOR '.'
 #define SEPERATOR_STR "."
-#define OBJ_NAME_SIZE 512
+#define OBJ_NAME_SIZE 4096
 
 
 typedef enum {
@@ -183,7 +184,8 @@ static void print_config_tree(confdb_handle_t handle, hdb_handle_t parent_object
 	char object_name[OBJ_NAME_SIZE];
 	size_t object_name_len;
 	char key_name[OBJ_NAME_SIZE];
-	char key_value[OBJ_NAME_SIZE];
+	char output_string[OBJ_NAME_SIZE];
+	char *key_value=NULL;/* Dynamically allocated value */
 	size_t key_value_len;
 	cs_error_t res;
 	int children_printed;
@@ -197,10 +199,10 @@ static void print_config_tree(confdb_handle_t handle, hdb_handle_t parent_object
 	}
 	children_printed = 0;
 
-	while ( (res = confdb_key_iter_typed(handle,
+	while ( (res = confdb_key_iter_typed2(handle,
 								   parent_object_handle,
 								   key_name,
-								   key_value,
+					                           (void**)&key_value,
 								   &key_value_len,
 								   &type)) == CS_OK) {
 		key_value[key_value_len] = '\0';
@@ -208,6 +210,8 @@ static void print_config_tree(confdb_handle_t handle, hdb_handle_t parent_object
 			printf("%s%c", parent_name, SEPERATOR);
 
 		print_key(key_name, key_value, key_value_len, type);
+		free(key_value);
+		key_value = NULL;
 
 		children_printed++;
 	}
@@ -227,12 +231,12 @@ static void print_config_tree(confdb_handle_t handle, hdb_handle_t parent_object
 
 		object_name[object_name_len] = '\0';
 		if (parent_name != NULL) {
-			snprintf(key_value, OBJ_NAME_SIZE, "%s%c%s", parent_name, SEPERATOR, object_name);
+			snprintf(output_string, OBJ_NAME_SIZE, "%s%c%s", parent_name, SEPERATOR, object_name);
 		} else {
 			if ((action == ACTION_PRINT_DEFAULT) && strcmp(object_name, "internal_configuration") == 0) continue;
-			snprintf(key_value, OBJ_NAME_SIZE, "%s", object_name);
+			snprintf(output_string, OBJ_NAME_SIZE, "%s", object_name);
 		}
-		print_config_tree(handle, object_handle, key_value);
+		print_config_tree(handle, object_handle, output_string);
 		children_printed++;
 	}
 	if (children_printed == 0 && parent_name != NULL) {
@@ -489,6 +493,7 @@ static void write_key(confdb_handle_t handle, char * path_pt)
 	char key_name[OBJ_NAME_SIZE];
 	char key_value[OBJ_NAME_SIZE];
 	char old_key_value[OBJ_NAME_SIZE];
+	char *old_key_value_ptr = old_key_value;
 	size_t old_key_value_len;
 	cs_error_t res;
 	confdb_value_types_t type;
@@ -513,11 +518,15 @@ static void write_key(confdb_handle_t handle, char * path_pt)
 	}
 
 	/* get the current key */
-	res = confdb_key_get_typed (handle,
+	res = confdb_key_get_typed2 (handle,
 						  obj_handle,
 						  key_name,
-						  old_key_value,
+				                  (void**)&old_key_value_ptr,
 						  &old_key_value_len, &type);
+
+	if (debug == 1 && res==CS_OK)
+		printf ("%d: key:\"%s\", old value:\"%s\"\n",
+				__LINE__, key_name, old_key_value);
 
 	if (res == CS_OK) {
 		/* replace the current value */

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2010 Red Hat, Inc.
+ * Copyright (c) 2008-2012 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -355,6 +355,25 @@ cs_error_t confdb_dispatch (
 					res_key_changed_pt->key_name.value,
 					res_key_changed_pt->key_name.length,
 					res_key_changed_pt->key_value.value,
+					res_key_changed_pt->key_value.length);
+				break;
+
+		        case MESSAGE_RES_CONFDB_KEY_CHANGE_CALLBACK2:
+				if (callbacks.confdb_key_change_notify_fn == NULL) {
+					break;
+				}
+
+				res_key_changed_pt = (struct res_lib_confdb_key_change_callback *)dispatch_data;
+
+				callbacks.confdb_key_change_notify_fn(handle,
+					res_key_changed_pt->change_type,
+					res_key_changed_pt->object_handle,
+					res_key_changed_pt->parent_object_handle,
+					res_key_changed_pt->object_name.value,
+					res_key_changed_pt->object_name.length,
+					res_key_changed_pt->key_name.value,
+					res_key_changed_pt->key_name.length,
+					&res_key_changed_pt->key_value.value,
 					res_key_changed_pt->key_value.length);
 				break;
 
@@ -795,7 +814,7 @@ cs_error_t confdb_key_create_typed (
 	cs_error_t error;
 	struct confdb_inst *confdb_inst;
 	struct iovec iov;
-	struct req_lib_confdb_key_create_typed request;
+	struct req_lib_confdb_key_create_typed2 *request;
 	coroipc_response_header_t res;
 
 	error = hdb_error_to_cs(hdb_handle_get (&confdb_handle_t_db, handle, (void *)&confdb_inst));
@@ -812,17 +831,23 @@ cs_error_t confdb_key_create_typed (
 		goto error_exit;
 	}
 
-	request.header.size = sizeof (struct req_lib_confdb_key_create_typed);
-	request.header.id = MESSAGE_REQ_CONFDB_KEY_CREATE_TYPED;
-	request.object_handle = parent_object_handle;
-	request.key_name.length = strlen(key_name)+1;
-	memcpy(request.key_name.value, key_name, request.key_name.length);
-	memcpy(request.value.value, value, value_len);
-	request.value.length = value_len;
-	request.type = type;
+	request = malloc(sizeof(struct req_lib_confdb_key_create_typed2)+value_len);
+	if (!request) {
+		error = CS_ERR_NO_MEMORY;
+		goto error_exit;
+	}
 
-	iov.iov_base = (char *)&request;
-	iov.iov_len = sizeof (struct req_lib_confdb_key_create_typed);
+	request->header.size = sizeof (struct req_lib_confdb_key_create_typed2) + value_len;
+	request->header.id = MESSAGE_REQ_CONFDB_KEY_CREATE_TYPED2;
+	request->object_handle = parent_object_handle;
+	request->key_name.length = strlen(key_name)+1;
+	memcpy(request->key_name.value, key_name, request->key_name.length);
+	memcpy(&request->value, value, value_len);
+	request->value_length = value_len;
+	request->type = type;
+
+	iov.iov_base = (char *)request;
+	iov.iov_len = request->header.size;
 
 	error = coroipcc_msg_send_reply_receive (
 		confdb_inst->handle,
@@ -989,7 +1014,7 @@ cs_error_t confdb_key_get_typed (
 		error = CS_OK;
 
 		if (confdb_sa_key_get_typed(parent_object_handle,
-				      key_name, value, value_len, (int*)type))
+				      key_name, &value, value_len, (int*)type))
 			error = CS_ERR_ACCESS;
 		goto error_exit;
 	}
@@ -1025,6 +1050,77 @@ error_exit:
 	(void)hdb_handle_put (&confdb_handle_t_db, handle);
 
 	return (error);
+}
+
+cs_error_t confdb_key_get_typed2 (
+	confdb_handle_t handle,
+	hdb_handle_t parent_object_handle,
+	const char *key_name,
+	void **value,
+	size_t *value_len,
+	confdb_value_types_t *type)
+{
+	cs_error_t error;
+	struct confdb_inst *confdb_inst;
+	struct iovec iov;
+	struct req_lib_confdb_key_get req_lib_confdb_key_get;
+	struct res_lib_confdb_key_get_typed2 *response;
+	void *return_address;
+
+	error = hdb_error_to_cs(hdb_handle_get (&confdb_handle_t_db, handle, (void *)&confdb_inst));
+	if (error != CS_OK) {
+		return (error);
+	}
+
+	if (confdb_inst->standalone) {
+		error = CS_OK;
+
+		if (confdb_sa_key_get_typed(parent_object_handle,
+				      key_name, value, value_len, (int*)type))
+			error = CS_ERR_ACCESS;
+		goto error_exit;
+	}
+
+	req_lib_confdb_key_get.header.size = sizeof (struct req_lib_confdb_key_get);
+	req_lib_confdb_key_get.header.id = MESSAGE_REQ_CONFDB_KEY_GET_TYPED2;
+	req_lib_confdb_key_get.parent_object_handle = parent_object_handle;
+	req_lib_confdb_key_get.key_name.length = strlen(key_name) + 1;
+	memcpy(req_lib_confdb_key_get.key_name.value, key_name, req_lib_confdb_key_get.key_name.length);
+
+	iov.iov_base = (char *)&req_lib_confdb_key_get;
+	iov.iov_len = sizeof (struct req_lib_confdb_key_get);
+
+	error = coroipcc_msg_send_reply_receive_in_buf_get (
+		confdb_inst->handle,
+		&iov,
+		1,
+		&return_address);
+	response = return_address;
+
+	if (error != CS_OK) {
+		goto error_exit;
+	}
+	error = response->header.error;
+
+	if (error == CS_OK) {
+		if (!*value) {
+			/* Allow space for naughty callers to put a NUL for printing */
+			*value = malloc(response->value_length+1);
+			if (!*value) {
+				error = CS_ERR_NO_MEMORY;
+				goto error_exit;
+			}
+		}
+		memcpy(*value, &response->value, response->value_length);
+		*value_len = response->value_length;
+		*type = response->type;
+	}
+
+error_exit:
+	(void)hdb_handle_put (&confdb_handle_t_db, handle);
+
+	return (error);
+
 }
 
 
@@ -1159,7 +1255,7 @@ cs_error_t confdb_key_replace (
 	cs_error_t error;
 	struct confdb_inst *confdb_inst;
 	struct iovec iov;
-	struct req_lib_confdb_key_replace req_lib_confdb_key_replace;
+	struct req_lib_confdb_key_replace2 *req_lib_confdb_key_replace;
 	coroipc_response_header_t res;
 
 	error = hdb_error_to_cs(hdb_handle_get (&confdb_handle_t_db, handle, (void *)&confdb_inst));
@@ -1177,18 +1273,19 @@ cs_error_t confdb_key_replace (
 			error = CS_ERR_ACCESS;
 		goto error_exit;
 	}
-	req_lib_confdb_key_replace.header.size = sizeof (struct req_lib_confdb_key_replace);
-	req_lib_confdb_key_replace.header.id = MESSAGE_REQ_CONFDB_KEY_REPLACE;
-	req_lib_confdb_key_replace.object_handle = parent_object_handle;
-	memcpy(req_lib_confdb_key_replace.key_name.value, key_name, key_name_len);
-	req_lib_confdb_key_replace.key_name.length = key_name_len;
-	memcpy(req_lib_confdb_key_replace.old_value.value, old_value, old_value_len);
-	req_lib_confdb_key_replace.old_value.length = old_value_len;
-	memcpy(req_lib_confdb_key_replace.new_value.value, new_value, new_value_len);
-	req_lib_confdb_key_replace.new_value.length = new_value_len;
 
-	iov.iov_base = (char *)&req_lib_confdb_key_replace;
-	iov.iov_len = sizeof (struct req_lib_confdb_key_replace);
+	req_lib_confdb_key_replace = malloc(sizeof(struct req_lib_confdb_key_replace2) + new_value_len);
+
+	req_lib_confdb_key_replace->header.size = sizeof(struct req_lib_confdb_key_replace2) + new_value_len;
+	req_lib_confdb_key_replace->header.id = MESSAGE_REQ_CONFDB_KEY_REPLACE2;
+	req_lib_confdb_key_replace->object_handle = parent_object_handle;
+	memcpy(req_lib_confdb_key_replace->key_name.value, key_name, key_name_len);
+	req_lib_confdb_key_replace->key_name.length = key_name_len;
+	memcpy(&req_lib_confdb_key_replace->new_value, new_value, new_value_len);
+	req_lib_confdb_key_replace->new_value_length = new_value_len;
+	/* Oddly objdb doesn't use the old value, so we don't bother sending it */
+	iov.iov_base = (char *)req_lib_confdb_key_replace;
+	iov.iov_len = sizeof(struct req_lib_confdb_key_replace2) +  new_value_len;
 
         error = coroipcc_msg_send_reply_receive (
 		confdb_inst->handle,
@@ -1566,7 +1663,7 @@ cs_error_t confdb_key_iter_typed (
 		if (confdb_sa_key_iter_typed(parent_object_handle,
 				       context->next_entry,
 				       key_name,
-				       value, value_len, (int*)type))
+				       &value, value_len, (int*)type))
 			error = CS_ERR_ACCESS;
 		goto sa_exit;
 	}
@@ -1597,6 +1694,89 @@ cs_error_t confdb_key_iter_typed (
 		*value_len = response.value.length;
 		memcpy(value, response.value.value, *value_len);
 		*type = response.type;
+	}
+
+sa_exit:
+	context->next_entry++;
+
+error_exit:
+	(void)hdb_handle_put (&confdb_handle_t_db, handle);
+
+	return (error);
+}
+
+cs_error_t confdb_key_iter_typed2 (
+	confdb_handle_t handle,
+	hdb_handle_t parent_object_handle,
+	char *key_name,
+	void **value,
+	size_t *value_len,
+	confdb_value_types_t *type)
+{
+	cs_error_t error;
+	struct confdb_inst *confdb_inst;
+	struct iovec iov;
+	struct iter_context *context;
+	struct req_lib_confdb_key_iter req_lib_confdb_key_iter;
+	struct res_lib_confdb_key_iter_typed2 *response;
+	void *return_address;
+
+	error = hdb_error_to_cs(hdb_handle_get (&confdb_handle_t_db, handle, (void *)&confdb_inst));
+	if (error != CS_OK) {
+		return (error);
+	}
+
+	/* You MUST call confdb_key_iter_start first */
+	context = find_iter_context(&confdb_inst->key_iter_head, parent_object_handle);
+	if (!context) {
+		error =	CS_ERR_CONTEXT_NOT_FOUND;
+		goto error_exit;
+	}
+
+	if (confdb_inst->standalone) {
+		error = CS_OK;
+		if (confdb_sa_key_iter_typed(parent_object_handle,
+				       context->next_entry,
+				       key_name,
+				       value, value_len, (int*)type))
+			error = CS_ERR_ACCESS;
+		goto sa_exit;
+	}
+
+	req_lib_confdb_key_iter.header.size = sizeof (struct req_lib_confdb_key_iter);
+	req_lib_confdb_key_iter.header.id = MESSAGE_REQ_CONFDB_KEY_ITER_TYPED2;
+	req_lib_confdb_key_iter.parent_object_handle = parent_object_handle;
+	req_lib_confdb_key_iter.next_entry= context->next_entry;
+
+	iov.iov_base = (char *)&req_lib_confdb_key_iter;
+	iov.iov_len = sizeof (struct req_lib_confdb_key_iter);
+
+	error = coroipcc_msg_send_reply_receive_in_buf_get (
+		confdb_inst->handle,
+		&iov,
+		1,
+		&return_address);
+	response = return_address;
+
+	if (error != CS_OK) {
+		goto error_exit;
+	}
+	error = response->header.error;
+
+	if (error == CS_OK) {
+		if (!*value) {
+			/* Allow space for naughty callers to put a NUL for printing */
+			*value = malloc(response->value_length+1);
+			if (!*value) {
+				error = CS_ERR_NO_MEMORY;
+				goto error_exit;
+			}
+		}
+		memcpy(key_name, response->key_name.value, response->key_name.length);
+		key_name[response->key_name.length] = '\0';
+		memcpy(*value, &response->value, response->value_length);
+		*value_len = response->value_length;
+		*type = response->type;
 	}
 
 sa_exit:

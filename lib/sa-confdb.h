@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008, 2009 Red Hat, Inc.
+ * Copyright (c) 2008, 2012 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -65,7 +65,7 @@ extern int confdb_sa_key_get(hdb_handle_t parent_object_handle,
 			     size_t *value_len);
 extern int confdb_sa_key_get_typed(hdb_handle_t parent_object_handle,
 			     const char *key_name,
-			     void *value,
+			     void **value,
 			     size_t *value_len,
 			     int *type);
 extern int confdb_sa_key_replace(hdb_handle_t parent_object_handle,
@@ -96,7 +96,7 @@ extern int confdb_sa_key_iter(hdb_handle_t parent_object_handle,
 extern int confdb_sa_key_iter_typed (hdb_handle_t parent_object_handle,
 				hdb_handle_t start_pos,
 				char *key_name,
-				void *value,
+				void **value,
 				size_t *value_len,
 				int *type);
 extern int confdb_sa_key_increment(hdb_handle_t parent_object_handle,

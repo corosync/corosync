@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2010 Red Hat, Inc.
+ * Copyright (c) 2008-2012 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -246,6 +246,14 @@ cs_error_t confdb_key_get_typed (
 	size_t *value_len,
 	confdb_value_types_t *type);
 
+cs_error_t confdb_key_get_typed2 (
+	confdb_handle_t handle,
+	hdb_handle_t parent_object_handle,
+	const char *key_name,
+	void **value,
+	size_t *value_len,
+	confdb_value_types_t *type);
+
 cs_error_t confdb_key_replace (
 	confdb_handle_t handle,
 	hdb_handle_t parent_object_handle,
@@ -326,6 +334,14 @@ cs_error_t confdb_key_iter_typed (
 	hdb_handle_t parent_object_handle,
 	char *key_name,
 	void *value,
+	size_t *value_len,
+	confdb_value_types_t *type);
+
+cs_error_t confdb_key_iter_typed2 (
+	confdb_handle_t handle,
+	hdb_handle_t parent_object_handle,
+	char *key_name,
+	void **value,
 	size_t *value_len,
 	confdb_value_types_t *type);
 

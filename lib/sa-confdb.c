@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008, 2009 Red Hat, Inc.
+ * Copyright (c) 2008, 2012 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -251,7 +251,7 @@ int confdb_sa_key_get (
 int confdb_sa_key_get_typed (
 	hdb_handle_t parent_object_handle,
 	const char *key_name,
-	void *value,
+	void **value,
 	size_t *value_len,
 	int *type)
 {
@@ -262,7 +262,15 @@ int confdb_sa_key_get_typed (
 				    key_name,
 				    &kvalue, value_len, (objdb_value_types_t*)type);
 	if (!res) {
-		memcpy(value, kvalue, *value_len);
+		if (!*value) {
+			*value = malloc(*value_len);
+			if (!*value) {
+				res = CS_ERR_NO_MEMORY;
+			}
+		}
+		if (*value) {
+			memcpy(*value, kvalue, *value_len);
+		}
 	}
 	return res;
 }
@@ -417,7 +425,7 @@ int confdb_sa_key_iter_typed (
 	hdb_handle_t parent_object_handle,
 	hdb_handle_t start_pos,
 	char *key_name,
-	void *value,
+	void **value,
 	size_t *value_len,
 	int *type)
 {
@@ -434,11 +442,18 @@ int confdb_sa_key_iter_typed (
 	if (!res) {
 		memcpy(key_name, kname, key_name_len);
 		key_name[key_name_len] = '\0';
-		memcpy(value, kvalue, *value_len);
-
-		objdb->object_key_get_typed(parent_object_handle,
-					  key_name,
-					  &kvalue, value_len, (objdb_value_types_t*)type);
+		if (!*value) {
+			*value = malloc(*value_len);
+			if (!*value) {
+				res = CS_ERR_NO_MEMORY;
+			}
+		}
+		if (*value) {
+			memcpy(*value, kvalue, *value_len);
+			objdb->object_key_get_typed(parent_object_handle,
+						    key_name,
+						    &kvalue, value_len, (objdb_value_types_t*)type);
+		}
 	}
 	return res;
 }
