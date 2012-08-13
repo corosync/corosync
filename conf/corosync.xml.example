@@ -9,7 +9,7 @@
 <!--
     totem tag configures behavior of totem and interfaces.
 
-    cypto_cipher and crypto_hash:
+    crypto_cipher and crypto_hash:
 	Used for mutual node authentication. If you choose to
 	enable this, then do remember to create a shared
 	secret with "corosync-keygen".

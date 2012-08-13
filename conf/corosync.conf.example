@@ -2,7 +2,7 @@
 totem {
 	version: 2
 
-	# cypto_cipher and crypto_hash: Used for mutual node authentication.
+	# crypto_cipher and crypto_hash: Used for mutual node authentication.
 	# If you choose to enable this, then do remember to create a shared
 	# secret with "corosync-keygen".
 	crypto_cipher: none
