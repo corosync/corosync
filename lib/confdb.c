@@ -857,10 +857,13 @@ cs_error_t confdb_key_create_typed (
 		sizeof (res));
 
 	if (error != CS_OK) {
-		goto error_exit;
+		goto free_exit;
 	}
 
 	error = res.error;
+
+free_exit:
+	free(request);
 
 error_exit:
 	(void)hdb_handle_put (&confdb_handle_t_db, handle);
@@ -1115,6 +1118,7 @@ cs_error_t confdb_key_get_typed2 (
 		*value_len = response->value_length;
 		*type = response->type;
 	}
+	coroipcc_msg_send_reply_receive_in_buf_put(confdb_inst->handle);
 
 error_exit:
 	(void)hdb_handle_put (&confdb_handle_t_db, handle);
@@ -1295,10 +1299,12 @@ cs_error_t confdb_key_replace (
 		sizeof (res));
 
 	if (error != CS_OK) {
-		goto error_exit;
+		goto free_exit;
 	}
 
 	error = res.error;
+free_exit:
+	free(req_lib_confdb_key_replace);
 
 error_exit:
 	(void)hdb_handle_put (&confdb_handle_t_db, handle);
@@ -1778,6 +1784,7 @@ cs_error_t confdb_key_iter_typed2 (
 		*value_len = response->value_length;
 		*type = response->type;
 	}
+	coroipcc_msg_send_reply_receive_in_buf_put(confdb_inst->handle);
 
 sa_exit:
 	context->next_entry++;
