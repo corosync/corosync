@@ -75,7 +75,3 @@ logging {
 		debug: off
 	}
 }
-
-amf {
-	mode: disabled
-}
