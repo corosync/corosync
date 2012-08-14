@@ -65,7 +65,6 @@ logging {
 	fileline: off
 	to_logfile: yes
 	to_syslog: yes
-	debug: on
 	logfile: /var/log/cluster/corosync.log
 	debug: off
 	timestamp: on
