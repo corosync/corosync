@@ -75,6 +75,7 @@ else
 
 if BUILD_SOLARIS
 
+libsam.so.$(SONAME): libcmap.so libquorum.a
 lib%.so.$(SONAME): lib%.a
 	$(LD) $(SOLARIS_OPTS) $(call get_linker_add,$*) -G -whole-archive $^ -no-whole-archive -o $@
 	ln -sf lib$*.so.$(call get_soname,$*) lib$*.so
@@ -82,6 +83,7 @@ lib%.so.$(SONAME): lib%.a
 
 else
 
+libsam.so: libcmap.so libquorum.so
 lib%.so: lib%.a
 	$(CC) -shared -o $@.$(call get_soname,$*) \
 		-Wl,-soname=lib$*.so.$(call get_major,$*) \
