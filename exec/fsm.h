@@ -43,7 +43,18 @@ struct cs_fsm_entry;
 typedef void (*cs_fsm_event_action_fn)(struct cs_fsm* fsm, int32_t event, void * data);
 typedef const char * (*cs_fsm_state_to_str_fn)(struct cs_fsm* fsm, int32_t state);
 typedef const char * (*cs_fsm_event_to_str_fn)(struct cs_fsm* fsm, int32_t event);
+
+typedef void (*cs_fsm_cb)(struct cs_fsm *fsm, int cb_event, int32_t curr_state,
+    int32_t next_state, int32_t fsm_event, void *data);
+
 #define CS_FSM_NEXT_STATE_SIZE 32
+
+#define CS_FSM_STATE_NONE		-1
+
+#define CS_FSM_CB_EVENT_PROCESS_NF	0
+#define CS_FSM_CB_EVENT_STATE_SET	1
+#define CS_FSM_CB_EVENT_STATE_SET_NF	2
+
 struct cs_fsm_entry {
 	int32_t curr_state;
 	int32_t event;
@@ -66,7 +77,7 @@ struct cs_fsm {
  * so cs_fsm_process() sets the entry and cs_fsm_state_set()
  * sets the new state.
  */
-static inline void cs_fsm_process (struct cs_fsm *fsm, int32_t new_event, void * data)
+static inline void cs_fsm_process (struct cs_fsm *fsm, int32_t new_event, void * data, cs_fsm_cb cb)
 {
 	int32_t i;
 
@@ -81,12 +92,13 @@ static inline void cs_fsm_process (struct cs_fsm *fsm, int32_t new_event, void *
 			return;
 		}
 	}
-	log_printf (LOGSYS_LEVEL_ERROR, "Fsm:%s could not find event \"%s\" in state \"%s\"",
-		fsm->name, fsm->event_to_str(fsm, new_event), fsm->state_to_str(fsm, fsm->curr_state));
-	corosync_exit_error(COROSYNC_DONE_FATAL_ERR);
+
+	if (cb != NULL) {
+		cb(fsm, CS_FSM_CB_EVENT_PROCESS_NF, fsm->curr_state, CS_FSM_STATE_NONE, new_event, data);
+	}
 }
 
-static inline void cs_fsm_state_set (struct cs_fsm* fsm, int32_t next_state, void* data)
+static inline void cs_fsm_state_set (struct cs_fsm* fsm, int32_t next_state, void* data, cs_fsm_cb cb)
 {
 	int i;
 	struct cs_fsm_entry *entry = &fsm->table[fsm->curr_entry];
@@ -102,21 +114,16 @@ static inline void cs_fsm_state_set (struct cs_fsm* fsm, int32_t next_state, voi
 			break;
 		}
 		if (entry->next_states[i] == next_state) {
-			log_printf (LOGSYS_LEVEL_INFO, "Fsm:%s event \"%s\", state \"%s\" --> \"%s\"",
-				fsm->name,
-				fsm->event_to_str(fsm, entry->event),
-				fsm->state_to_str(fsm, fsm->table[fsm->curr_entry].curr_state),
-				fsm->state_to_str(fsm, next_state));
+			if (cb != NULL) {
+				cb(fsm, CS_FSM_CB_EVENT_STATE_SET, fsm->curr_state, next_state, entry->event, data);
+			}
 			fsm->curr_state = next_state;
 			return;
 		}
 	}
-	log_printf (LOGSYS_LEVEL_CRIT, "Fsm:%s Can't change state from \"%s\" to \"%s\" (event was \"%s\")",
-		fsm->name,
-		fsm->state_to_str(fsm, fsm->table[fsm->curr_entry].curr_state),
-		fsm->state_to_str(fsm, next_state),
-		fsm->event_to_str(fsm, entry->event));
-	corosync_exit_error(COROSYNC_DONE_FATAL_ERR);
+	if (cb != NULL) {
+		cb(fsm, CS_FSM_CB_EVENT_STATE_SET_NF, fsm->curr_state, next_state, entry->event, data);
+	}
 }
 
 #endif /* FSM_H_DEFINED */
