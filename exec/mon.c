@@ -45,7 +45,7 @@
 #include <corosync/list.h>
 #include <corosync/logsys.h>
 #include <corosync/icmap.h>
-#include "../exec/fsm.h"
+#include "fsm.h"
 
 #include "service.h"
 
@@ -184,6 +184,37 @@ static const char * mon_res_event_to_str(struct cs_fsm* fsm,
 	return NULL;
 }
 
+static void mon_fsm_cb (struct cs_fsm *fsm, int cb_event, int32_t curr_state,
+	int32_t next_state, int32_t fsm_event, void *data)
+{
+	switch (cb_event) {
+	case CS_FSM_CB_EVENT_PROCESS_NF:
+		log_printf (LOGSYS_LEVEL_ERROR, "Fsm:%s could not find event \"%s\" in state \"%s\"",
+			fsm->name, fsm->event_to_str(fsm, fsm_event), fsm->state_to_str(fsm, curr_state));
+		corosync_exit_error(COROSYNC_DONE_FATAL_ERR);
+		break;
+	case CS_FSM_CB_EVENT_STATE_SET:
+		log_printf (LOGSYS_LEVEL_INFO, "Fsm:%s event \"%s\", state \"%s\" --> \"%s\"",
+			fsm->name,
+			fsm->event_to_str(fsm, fsm_event),
+			fsm->state_to_str(fsm, fsm->table[fsm->curr_entry].curr_state),
+			fsm->state_to_str(fsm, next_state));
+		break;
+	case CS_FSM_CB_EVENT_STATE_SET_NF:
+		log_printf (LOGSYS_LEVEL_CRIT, "Fsm:%s Can't change state from \"%s\" to \"%s\" (event was \"%s\")",
+			fsm->name,
+			fsm->state_to_str(fsm, fsm->table[fsm->curr_entry].curr_state),
+			fsm->state_to_str(fsm, next_state),
+			fsm->event_to_str(fsm, fsm_event));
+	        corosync_exit_error(COROSYNC_DONE_FATAL_ERR);
+		break;
+	default:
+		log_printf (LOGSYS_LEVEL_CRIT, "Fsm: Can't find callback event!");
+	        corosync_exit_error(COROSYNC_DONE_FATAL_ERR);
+		break;
+	}
+}
+
 static void mon_fsm_state_set (struct cs_fsm* fsm,
 	enum mon_resource_state next_state, struct resource_instance* inst)
 {
@@ -193,7 +224,7 @@ static void mon_fsm_state_set (struct cs_fsm* fsm,
 
 	ENTER();
 
-	cs_fsm_state_set(fsm, next_state, inst);
+	cs_fsm_state_set(fsm, next_state, inst, mon_fsm_cb);
 
 	if (prev_state == fsm->curr_state) {
 		return;
@@ -328,7 +359,6 @@ static int32_t percent_mem_used_get(void)
 #endif /* HAVE_LIBSTATGRAB */
 }
 
-
 static void mem_update_stats_fn (void *data)
 {
 	struct resource_instance * inst = (struct resource_instance *)data;
@@ -347,7 +377,7 @@ static void mem_update_stats_fn (void *data)
 		icmap_set_uint64(key_name, timestamp);
 
 		if (new_value > inst->max.int32 && inst->fsm.curr_state != MON_S_FAILED) {
-			cs_fsm_process (&inst->fsm, MON_E_FAILURE, inst);
+			cs_fsm_process (&inst->fsm, MON_E_FAILURE, inst, mon_fsm_cb);
 		}
 	}
 	api->timer_add_duration(inst->period * MILLI_2_NANO_SECONDS,
@@ -395,7 +425,7 @@ static void load_update_stats_fn (void *data)
 		icmap_set_uint64(key_name, timestamp);
 
 		if (min15 > inst->max.dbl && inst->fsm.curr_state != MON_S_FAILED) {
-			cs_fsm_process (&inst->fsm, MON_E_FAILURE, &inst);
+			cs_fsm_process (&inst->fsm, MON_E_FAILURE, &inst, mon_fsm_cb);
 		}
 	}
 
@@ -418,7 +448,7 @@ static void mon_key_changed_cb (
 			"resource \"%s\" deleted from cmap!",
 			inst->name);
 
-		cs_fsm_process (&inst->fsm, MON_E_CONFIG_CHANGED, inst);
+		cs_fsm_process (&inst->fsm, MON_E_CONFIG_CHANGED, inst, mon_fsm_cb);
 	}
 
 	if (event == ICMAP_TRACK_MODIFY) {
@@ -430,7 +460,7 @@ static void mon_key_changed_cb (
 		if (strcmp(last_key_part, "max") == 0 ||
 		    strcmp(last_key_part, "poll_period") == 0) {
 			ENTER();
-			cs_fsm_process (&inst->fsm, MON_E_CONFIG_CHANGED, inst);
+			cs_fsm_process (&inst->fsm, MON_E_CONFIG_CHANGED, inst, mon_fsm_cb);
 		}
 	}
 }
@@ -475,7 +505,7 @@ static void mon_instance_init (struct resource_instance* inst)
 				tmp_value, inst->name);
 		}
 	}
-	cs_fsm_process (&inst->fsm, MON_E_CONFIG_CHANGED, inst);
+	cs_fsm_process (&inst->fsm, MON_E_CONFIG_CHANGED, inst, mon_fsm_cb);
 
 	icmap_track_add(inst->icmap_path,
 			ICMAP_TRACK_ADD | ICMAP_TRACK_MODIFY | ICMAP_TRACK_DELETE | ICMAP_TRACK_PREFIX,

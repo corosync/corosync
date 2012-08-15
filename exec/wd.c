@@ -47,7 +47,7 @@
 #include <corosync/list.h>
 #include <corosync/logsys.h>
 #include <corosync/icmap.h>
-#include "../exec/fsm.h"
+#include "fsm.h"
 
 #include "service.h"
 
@@ -178,6 +178,37 @@ static const char * wd_res_event_to_str(struct cs_fsm* fsm,
 	return NULL;
 }
 
+static void wd_fsm_cb (struct cs_fsm *fsm, int cb_event, int32_t curr_state,
+	int32_t next_state, int32_t fsm_event, void *data)
+{
+	switch (cb_event) {
+	case CS_FSM_CB_EVENT_PROCESS_NF:
+		log_printf (LOGSYS_LEVEL_ERROR, "Fsm:%s could not find event \"%s\" in state \"%s\"",
+			fsm->name, fsm->event_to_str(fsm, fsm_event), fsm->state_to_str(fsm, curr_state));
+		corosync_exit_error(COROSYNC_DONE_FATAL_ERR);
+		break;
+	case CS_FSM_CB_EVENT_STATE_SET:
+		log_printf (LOGSYS_LEVEL_INFO, "Fsm:%s event \"%s\", state \"%s\" --> \"%s\"",
+			fsm->name,
+			fsm->event_to_str(fsm, fsm_event),
+			fsm->state_to_str(fsm, fsm->table[fsm->curr_entry].curr_state),
+			fsm->state_to_str(fsm, next_state));
+		break;
+	case CS_FSM_CB_EVENT_STATE_SET_NF:
+		log_printf (LOGSYS_LEVEL_CRIT, "Fsm:%s Can't change state from \"%s\" to \"%s\" (event was \"%s\")",
+			fsm->name,
+			fsm->state_to_str(fsm, fsm->table[fsm->curr_entry].curr_state),
+			fsm->state_to_str(fsm, next_state),
+			fsm->event_to_str(fsm, fsm_event));
+	        corosync_exit_error(COROSYNC_DONE_FATAL_ERR);
+		break;
+	default:
+		log_printf (LOGSYS_LEVEL_CRIT, "Fsm: Unknown callback event!");
+	        corosync_exit_error(COROSYNC_DONE_FATAL_ERR);
+		break;
+	}
+}
+
 /*
  * returns (CS_TRUE == OK, CS_FALSE == failed)
  */
@@ -273,7 +304,7 @@ static void wd_config_changed (struct cs_fsm* fsm, int32_t event, void * data)
 		 */
 		log_printf (LOGSYS_LEVEL_WARNING,
 			"resource %s missing a recovery key.", ref->name);
-		cs_fsm_state_set(&ref->fsm, WD_S_STOPPED, ref);
+		cs_fsm_state_set(&ref->fsm, WD_S_STOPPED, ref, wd_fsm_cb);
 		return;
 	}
 	snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "%s%s", ref->res_path, "state");
@@ -282,7 +313,7 @@ static void wd_config_changed (struct cs_fsm* fsm, int32_t event, void * data)
 		*/
 		log_printf (LOGSYS_LEVEL_WARNING,
 			"resource %s missing a state key.", ref->name);
-		cs_fsm_state_set(&ref->fsm, WD_S_STOPPED, ref);
+		cs_fsm_state_set(&ref->fsm, WD_S_STOPPED, ref, wd_fsm_cb);
 		return;
 	}
 	if (ref->check_timer) {
@@ -291,11 +322,11 @@ static void wd_config_changed (struct cs_fsm* fsm, int32_t event, void * data)
 	}
 
 	if (strcmp(wd_stopped_str, state) == 0) {
-		cs_fsm_state_set(&ref->fsm, WD_S_STOPPED, ref);
+		cs_fsm_state_set(&ref->fsm, WD_S_STOPPED, ref, wd_fsm_cb);
 	} else {
 		api->timer_add_duration(next_timeout * MILLI_2_NANO_SECONDS,
 			ref, wd_resource_check_fn, &ref->check_timer);
-		cs_fsm_state_set(&ref->fsm, WD_S_RUNNING, ref);
+		cs_fsm_state_set(&ref->fsm, WD_S_RUNNING, ref, wd_fsm_cb);
 	}
 	free(state);
 }
@@ -321,7 +352,7 @@ static void wd_resource_failed (struct cs_fsm* fsm, int32_t event, void * data)
 	else if (strcmp (ref->recovery, "shutdown") == 0) {
 		reboot(RB_POWER_OFF);
 	}
-	cs_fsm_state_set(fsm, WD_S_FAILED, data);
+	cs_fsm_state_set(fsm, WD_S_FAILED, data, wd_fsm_cb);
 }
 
 static void wd_key_changed(
@@ -350,7 +381,7 @@ static void wd_key_changed(
 			return;
 		}
 
-		cs_fsm_process(&ref->fsm, WD_E_CONFIG_CHANGED, ref);
+		cs_fsm_process(&ref->fsm, WD_E_CONFIG_CHANGED, ref, wd_fsm_cb);
 	}
 
 	if (event == ICMAP_TRACK_DELETE && ref != NULL) {
@@ -375,7 +406,7 @@ static void wd_resource_check_fn (void* resource_ref)
 	struct resource* ref = (struct resource*)resource_ref;
 
 	if (wd_resource_state_is_ok (ref) == CS_FALSE) {
-		cs_fsm_process(&ref->fsm, WD_E_FAILURE, ref);
+		cs_fsm_process(&ref->fsm, WD_E_FAILURE, ref, wd_fsm_cb);
 		return;
 	}
 	api->timer_add_duration(ref->check_timeout*MILLI_2_NANO_SECONDS,
@@ -458,7 +489,7 @@ static int32_t wd_resource_create (char *res_path, char *res_name)
 		ref,
 		wd_resource_check_fn, &ref->check_timer);
 
-	cs_fsm_state_set(&ref->fsm, WD_S_RUNNING, ref);
+	cs_fsm_state_set(&ref->fsm, WD_S_RUNNING, ref, wd_fsm_cb);
 	return 0;
 }
 
