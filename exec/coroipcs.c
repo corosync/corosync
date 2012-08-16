@@ -163,6 +163,8 @@ static int shared_mem_dispatch_bytes_left (const struct conn_info *conn_info);
 
 static void outq_flush (struct conn_info *conn_info);
 
+static void outq_destroy (struct conn_info *conn_info);
+
 static int priv_change (struct conn_info *conn_info);
 
 static void ipc_disconnect (struct conn_info *conn_info);
@@ -567,6 +569,12 @@ static inline int conn_info_destroy (struct conn_info *conn_info)
 	if (conn_info->private_data) {
 		api->free (conn_info->private_data);
 	}
+
+	/*
+	 * Free outq list
+	 */
+	outq_destroy(conn_info);
+
 	close (conn_info->fd);
 	res = circular_memory_unmap (conn_info->dispatch_buffer, conn_info->dispatch_size);
 	zcb_all_free (conn_info);
@@ -1258,6 +1266,23 @@ static void msg_send (void *conn, const struct iovec *iov, unsigned int iov_len,
 	}
 
 	ipc_sem_post (conn_info->control_buffer, SEMAPHORE_DISPATCH);
+}
+
+static void outq_destroy (struct conn_info *conn_info) {
+	struct list_head *list, *list_next;
+	struct outq_item *outq_item;
+
+	for (list = conn_info->outq_head.next;
+		list != &conn_info->outq_head; list = list_next) {
+
+		list_next = list->next;
+		outq_item = list_entry (list, struct outq_item, list);
+		list_del (list);
+		api->free (outq_item->msg);
+		api->free (outq_item);
+	}
+
+	list_init (&conn_info->outq_head);
 }
 
 static void outq_flush (struct conn_info *conn_info) {
