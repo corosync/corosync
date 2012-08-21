@@ -280,10 +280,6 @@ struct sort_queue_item {
 	unsigned int msg_len;
 };
 
-struct orf_token_mcast_thread_state {
-	char iobuf[9000];
-};
-
 enum memb_state {
 	MEMB_STATE_OPERATIONAL = 1,
 	MEMB_STATE_GATHER = 2,
