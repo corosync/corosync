@@ -67,8 +67,6 @@
 
 #define TOKEN_RETRANSMITS_BEFORE_LOSS_CONST	4
 #define TOKEN_TIMEOUT				1000
-#define TOKEN_RETRANSMIT_TIMEOUT		(int)(TOKEN_TIMEOUT / (TOKEN_RETRANSMITS_BEFORE_LOSS_CONST + 0.2))
-#define TOKEN_HOLD_TIMEOUT			(int)(TOKEN_RETRANSMIT_TIMEOUT * 0.8 - (1000/(int)HZ))
 #define JOIN_TIMEOUT				50
 #define MERGE_TIMEOUT				200
 #define DOWNCHECK_TIMEOUT			1000
@@ -743,20 +741,6 @@ int totem_config_validate (
 	 */
 	if (totem_config->token_timeout == 0) {
 		totem_config->token_timeout = TOKEN_TIMEOUT;
-		if (totem_config->token_retransmits_before_loss_const == 0) {
-			totem_config->token_retransmits_before_loss_const = TOKEN_RETRANSMITS_BEFORE_LOSS_CONST;
-		}
-
-		if (totem_config->token_retransmit_timeout == 0) {
-			totem_config->token_retransmit_timeout =
-				(int)(totem_config->token_timeout /
-				(totem_config->token_retransmits_before_loss_const + 0.2));
-		}
-		if (totem_config->token_hold_timeout == 0) {
-			totem_config->token_hold_timeout =
-				(int)(totem_config->token_retransmit_timeout * 0.8 -
-				(1000/HZ));
-		}
 	}
 
 	if (totem_config->max_network_delay == 0) {
@@ -804,10 +788,6 @@ int totem_config_validate (
 			"The token retransmit timeout parameter (%d ms) may not be less then (%d ms).",
 			totem_config->token_retransmit_timeout, MINIMUM_TIMEOUT);
 		goto parse_error;
-	}
-
-	if (totem_config->token_hold_timeout == 0) {
-		totem_config->token_hold_timeout = TOKEN_HOLD_TIMEOUT;
 	}
 
 	if (totem_config->token_hold_timeout < MINIMUM_TIMEOUT) {
