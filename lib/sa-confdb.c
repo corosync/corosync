@@ -263,7 +263,7 @@ int confdb_sa_key_get_typed (
 				    &kvalue, value_len, (objdb_value_types_t*)type);
 	if (!res) {
 		if (!*value) {
-			*value = malloc(*value_len);
+			*value = malloc(*value_len + 1);
 			if (!*value) {
 				res = CS_ERR_NO_MEMORY;
 			}
@@ -443,7 +443,7 @@ int confdb_sa_key_iter_typed (
 		memcpy(key_name, kname, key_name_len);
 		key_name[key_name_len] = '\0';
 		if (!*value) {
-			*value = malloc(*value_len);
+			*value = malloc(*value_len + 1);
 			if (!*value) {
 				res = CS_ERR_NO_MEMORY;
 			}
