@@ -30,83 +30,42 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 
-# Functions
-uc=$(shell echo $1 | tr a-z A-Z)
-get_soname=$(if $($(call uc,$1)_SONAME),$($(call uc,$1)_SONAME),$(SONAME))
-get_major=$(firstword $(subst ., ,$(call get_soname,$1)))
-get_sharedlibs=$(foreach lib,$(SHARED_LIBS_SO:lib%.so=%),lib$(lib).so.$(call get_soname,$(lib)))
-get_sharedlibs_two=$(foreach lib,$(SHARED_LIBS_SO:lib%.so=%),lib$(lib).so.$(call get_major,$(lib)))
-get_linker_add=$(if $($(call uc,$1)_LINKER_ADD),$($(call uc,$1)_LINKER_ADD))
+# Functions to be used at link time (target.lo)
+get_libname=$(shell echo $1 | sed -e "s/\.lo//")
+uc=$(shell echo $(call get_libname,$1) | tr a-z A-Z)
+get_soname=$(subst .,:,$(if $($(call uc,$1)_SONAME),$($(call uc,$1)_SONAME),$(SONAME)))
+get_major=$(firstword $(subst :, ,$(call get_soname,$1)))
 
 MAINTAINERCLEANFILES    = Makefile.in
 
+EXTRA_DIST		= libcfg.versions	 libcfg.verso		\
+			  libcmap.versions	 libcmap.verso		\
+			  libcpg.versions	 libcpg.verso    	\
+			  libquorum.versions	 libquorum.verso 	\
+			  libsam.versions	 libsam.verso    	\
+			  libvotequorum.versions libvotequorum.verso
+
+noinst_HEADERS		= util.h
+
+AM_CPPFLAGS		= -I$(top_builddir)/include \
+			  -I$(top_srcdir)/include
+
 AM_CFLAGS		= -fPIC
 
-AM_LDFLAGS		= -lpthread -L../common_lib -lcorosync_common
+# override global LIBS that pulls in lots of craft we don't need here
+LIBS			= -version-number $(call get_soname,$<) \
+			  -version-script=$(srcdir)/lib$(call get_libname,$<).versions \
+			  -lpthread \
+			  $(top_builddir)/common_lib/libcorosync_common.la \
+			  $(LIBQB_LIBS)
 
-INCLUDES		= -I$(top_builddir)/include -I$(top_srcdir)/include
+lib_LTLIBRARIES		= libcpg.la libquorum.la libcfg.la \
+			  libvotequorum.la libsam.la libcmap.la
 
-lib_LIBRARIES		= libcpg.a libquorum.a libcfg.a \
-			  libvotequorum.a libsam.a libcmap.a
-SHARED_LIBS_SO		= $(lib_LIBRARIES:%.a=%.so)
-
-libcpg_a_SOURCES	= cpg.c
-libcfg_a_SOURCES	= cfg.c
-libquorum_a_SOURCES	= quorum.c
-libvotequorum_a_SOURCES	= votequorum.c
-libcmap_a_SOURCES	= cmap.c
-SAM_LINKER_ADD		= -L. -lquorum -lcmap
-libsam_a_SOURCES	= sam.c
-
-noinst_HEADERS		= util.h \
-			  libcfg.versions \
-			  libcpg.versions \
-			  libquorum.versions libvotequorum.versions \
-			  libsam.versions libcmap.versions
-
-if BUILD_DARWIN
-
-lib%.so: lib%.a $(LIBQB_LIBS)
-	$(CC) $(DARWIN_OPTS) $(call get_linker_add,$*) -Wl,-whole-archive $^ -Wl,-no-whole-archive -o $@
-	ln -sf lib$*.so.$(call get_soname,$*) lib$*.so
-	ln -sf lib$*.so.$(call get_soname,$*) lib$*.so.$(call get_major,$*)
-
-else
-
-if BUILD_SOLARIS
-
-libsam.so.$(SONAME): libcmap.so libquorum.a
-lib%.so.$(SONAME): lib%.a
-	$(LD) $(SOLARIS_OPTS) $(call get_linker_add,$*) -G -whole-archive $^ -no-whole-archive -o $@
-	ln -sf lib$*.so.$(call get_soname,$*) lib$*.so
-	ln -sf lib$*.so.$(call get_soname,$*) lib$*.so.$(call get_major,$*)
-
-else
-
-libsam.so: libcmap.so libquorum.so
-lib%.so: lib%.a
-	$(CC) -shared -o $@.$(call get_soname,$*) \
-		-Wl,-soname=lib$*.so.$(call get_major,$*) \
-		-Wl,-version-script=$(srcdir)/lib$*.versions \
-		-Wl,-whole-archive $^ -Wl,-no-whole-archive $(LDFLAGS) $(LIBQB_LIBS) $(AM_LDFLAGS) $(call get_linker_add,$*)
-	ln -sf lib$*.so.$(call get_soname,$*) lib$*.so
-	ln -sf lib$*.so.$(call get_soname,$*) lib$*.so.$(call get_major,$*)
-
-endif
-
-endif
-
-all-local: $(get_explicit_sharedlibs) $(SHARED_LIBS_SO)
-	@echo Built shared libs
-
-install-exec-local:
-	$(INSTALL) -d $(DESTDIR)/$(libdir)
-	$(INSTALL) -m 755 $(get_sharedlibs) $(DESTDIR)/$(libdir)
-	$(CP) -a $(SHARED_LIBS_SO) $(get_sharedlibs_two) $(DESTDIR)/$(libdir)
-
-uninstall-local:
-	cd $(DESTDIR)/$(libdir)/ && \
-		rm -f $(get_sharedlibs) $(SHARED_LIBS_SO) $(get_sharedlibs_two)
-
-clean-local:
-	rm -f *.o *.a *.so* *.da *.bb *.bbg
+libcpg_la_SOURCES	= cpg.c
+libcfg_la_SOURCES	= cfg.c
+libquorum_la_SOURCES	= quorum.c
+libvotequorum_la_SOURCES= votequorum.c
+libcmap_la_SOURCES	= cmap.c
+libsam_la_SOURCES	= sam.c
+libsam_la_LIBADD	= libquorum.la libcmap.la

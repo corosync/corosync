@@ -9,10 +9,15 @@ AC_INIT([corosync],
 	[discuss@lists.corosync.org])
 
 AM_INIT_AUTOMAKE([-Wno-portability])
+
+LT_PREREQ([2.2.6])
+LT_INIT
+
 AM_SILENT_RULES([yes])
 
 AC_CONFIG_SRCDIR([lib/cpg.c])
 AC_CONFIG_HEADER([include/corosync/config.h])
+AC_CONFIG_MACRO_DIR([m4])
 
 AC_CANONICAL_HOST
 
@@ -57,11 +62,13 @@ fi
 sinclude(coroysync-default.m4)
 
 AC_PROG_CC
+AC_PROG_CXX
 AC_PROG_INSTALL
 AC_PROG_LN_S
 AC_PROG_MAKE_SET
 AC_PROG_RANLIB
 AC_PROG_SED
+AC_PROG_LIBTOOL
 
 AC_CHECK_PROGS([GROFF], [groff])
 AC_CHECK_PROGS([PKGCONFIG], [pkg-config])
@@ -318,14 +325,12 @@ AM_CONDITIONAL(BUILD_QDEVICES, test x$enable_qdevices = xyes)
 
 # OS detection
 # THIS SECTION MUST DIE!
-CP=cp
 OS_LDL="-ldl"
 have_linux="no"
 case "$host_os" in
 	*linux*)
 		AC_DEFINE_UNQUOTED([COROSYNC_LINUX], [1],
 				   [Compiling for Linux platform])
-		OS_CFLAGS=""
 		OS_CPPFLAGS="-D_GNU_SOURCE"
 		OS_LDFLAGS=""
 		OS_DYFLAGS="-rdynamic"
@@ -335,8 +340,6 @@ case "$host_os" in
 	darwin*)
 		AC_DEFINE_UNQUOTED([COROSYNC_DARWIN], [1],
 				   [Compiling for Darwin platform])
-		CP=rsync
-		OS_CFLAGS=""
 		OS_CPPFLAGS=""
 		OS_LDFLAGS=""
 		OS_DYFLAGS=""
@@ -355,7 +358,6 @@ case "$host_os" in
 				   [Compiling for BSD platform])
 		AC_DEFINE_UNQUOTED([MAP_ANONYMOUS], [MAP_ANON],
 				   [Shared memory define for Darwin platform])
-		OS_CFLAGS=""
 		OS_CPPFLAGS="-I/usr/local/include"
 		OS_LDFLAGS="-L/usr/local/lib"
 		OS_DYFLAGS="-export-dynamic"
@@ -377,8 +379,6 @@ case "$host_os" in
 				   [Prevent being scheduled RR])
 		AC_DEFINE_UNQUOTED([_SEM_SEMUN_UNDEFINED], [1],
 				   [The semun structure is undefined])
-		CP=rsync
-		OS_CFLAGS=""
 		OS_CPPFLAGS="-D_REENTRANT"
 		OS_LDFLAGS=""
 		OS_DYFLAGS="-Wl,-z,lazyload"
@@ -390,7 +390,6 @@ case "$host_os" in
 	;;
 esac
 
-AC_SUBST(CP)
 # *FLAGS handling goes here
 
 ENV_CFLAGS="$CFLAGS"
@@ -596,7 +595,7 @@ if test "x${enable_user_flags}" = xyes; then
 fi
 
 # final build of *FLAGS
-CFLAGS="$ENV_CFLAGS $OPT_CFLAGS $GDB_FLAGS $OS_CFLAGS \
+CFLAGS="$ENV_CFLAGS $OPT_CFLAGS $GDB_FLAGS \
 	$COVERAGE_CFLAGS $EXTRA_WARNINGS $WERROR_CFLAGS $NSS_CFLAGS"
 CPPFLAGS="$ENV_CPPFLAGS $ANSI_CPPFLAGS $OS_CPPFLAGS"
 LDFLAGS="$ENV_LDFLAGS $COVERAGE_LDFLAGS $OS_LDFLAGS"
@@ -666,7 +665,6 @@ AC_MSG_RESULT([  Extra compiler warnings  = ${EXTRA_WARNING}])
 AC_MSG_RESULT([  Env. defined CFLAG       = ${ENV_CFLAGS}])
 AC_MSG_RESULT([  Env. defined CPPFLAGS    = ${ENV_CPPFLAGS}])
 AC_MSG_RESULT([  Env. defined LDFLAGS     = ${ENV_LDFLAGS}])
-AC_MSG_RESULT([  OS   defined CFLAGS      = ${OS_CFLAGS}])
 AC_MSG_RESULT([  OS   defined CPPFLAGS    = ${OS_CPPFLAGS}])
 AC_MSG_RESULT([  OS   defined LDFLAGS     = ${OS_LDFLAGS}])
 AC_MSG_RESULT([  OS   defined LDL         = ${OS_LDL}])

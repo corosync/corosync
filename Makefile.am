@@ -42,9 +42,12 @@ EXTRA_DIST		= autogen.sh $(SPEC).in \
 
 AUTOMAKE_OPTIONS	= foreign
 
+ACLOCAL_AMFLAGS		= -I m4
+
 MAINTAINERCLEANFILES	= Makefile.in aclocal.m4 configure depcomp \
 			  config.guess config.sub missing install-sh \
-			  autoheader automake autoconf test_lense.sh
+			  autoheader automake autoconf test_lense.sh \
+			  autoscan.log configure.scan ltmain.sh
 
 dist_doc_DATA		= LICENSE INSTALL README.recovery SECURITY TODO AUTHORS
 
@@ -188,3 +191,6 @@ gen-ChangeLog:
 _version:
 	cd $(srcdir) && rm -rf autom4te.cache .version && autoreconf -i
 	$(MAKE) $(AM_MAKEFLAGS) Makefile
+
+maintainer-clean-local:
+	rm -rf m4

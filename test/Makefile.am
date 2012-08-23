@@ -30,8 +30,7 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 
-MAINTAINERCLEANFILES    = Makefile.in
-INCLUDES       		= -I$(top_builddir)/include/corosync -I$(top_srcdir)/include
+MAINTAINERCLEANFILES	= Makefile.in
 
 EXTRA_DIST		= ploadstart.sh
 
@@ -42,39 +41,27 @@ noinst_PROGRAMS		= cpgverify testcpg testcpg2 cpgbench \
 
 noinst_SCRIPTS		= ploadstart
 
-COMMON_OPTS		= -L../lib -L../common_lib -Wl,-rpath,../common_lib
+AM_CPPFLAGS		= -I$(top_builddir)/include/corosync \
+			  -I$(top_srcdir)/include \
+			  $(nss_CFLAGS)
 
-testcpg_LDADD		= -lcpg $(LIBQB_LIBS)
-testcpg_LDFLAGS		= $(COMMON_OPTS)
-testcpg2_LDADD		= -lcpg $(LIBQB_LIBS)
-testcpg2_LDFLAGS	= $(COMMON_OPTS)
-testcpgzc_LDADD		= -lcpg $(LIBQB_LIBS)
-testcpgzc_LDFLAGS	= $(COMMON_OPTS)
-testzcgc_LDADD		= -lcpg $(LIBQB_LIBS)
-testzcgc_LDFLAGS	= $(COMMON_OPTS)
-stress_cpgzc_LDADD	= -lcpg $(LIBQB_LIBS)
-stress_cpgzc_LDFLAGS	= $(COMMON_OPTS)
-stress_cpgfdget_LDADD	= -lcpg $(LIBQB_LIBS)
-stress_cpgfdget_LDFLAGS	= $(COMMON_OPTS)
-stress_cpgcontext_LDADD	= -lcpg $(LIBQB_LIBS)
-stress_cpgcontext_LDFLAGS	= $(COMMON_OPTS)
-testquorum_LDADD	= -lquorum $(LIBQB_LIBS)
-testquorum_LDFLAGS	= $(COMMON_OPTS)
-testvotequorum1_LDADD	= -lvotequorum $(LIBQB_LIBS)
-testvotequorum1_LDFLAGS	= $(COMMON_OPTS)
-testvotequorum2_LDADD	= -lvotequorum $(LIBQB_LIBS)
-testvotequorum2_LDFLAGS	= $(COMMON_OPTS)
-cpgverify_CFLAGS	= $(nss_CFLAGS)
-cpgverify_LDADD		= -lcpg -ltotem_pg $(LIBQB_LIBS) $(nss_LIBS)
-cpgverify_LDFLAGS	= $(COMMON_OPTS) -L../exec
-cpgbound_LDADD		= -lcpg $(LIBQB_LIBS)
-cpgbound_LDFLAGS	= $(COMMON_OPTS)
-cpgbench_LDADD		= -lcpg $(LIBQB_LIBS)
-cpgbench_LDFLAGS	= $(COMMON_OPTS)
-cpgbenchzc_LDADD	= -lcpg -lcorosync_common $(LIBQB_LIBS)
-cpgbenchzc_LDFLAGS	= $(COMMON_OPTS)
-testsam_LDADD		= -lsam -lcmap -lquorum $(LIBQB_LIBS)
-testsam_LDFLAGS		= $(COMMON_OPTS)
+AM_CFLAGS		= -fPIC
+
+testcpg_LDADD		= $(LIBQB_LIBS) $(top_builddir)/lib/libcpg.la
+testcpg2_LDADD		= $(LIBQB_LIBS) $(top_builddir)/lib/libcpg.la
+testcpgzc_LDADD		= $(LIBQB_LIBS) $(top_builddir)/lib/libcpg.la
+testzcgc_LDADD		= $(LIBQB_LIBS) $(top_builddir)/lib/libcpg.la
+stress_cpgzc_LDADD	= $(LIBQB_LIBS) $(top_builddir)/lib/libcpg.la
+stress_cpgfdget_LDADD	= $(LIBQB_LIBS) $(top_builddir)/lib/libcpg.la
+stress_cpgcontext_LDADD	= $(LIBQB_LIBS) $(top_builddir)/lib/libcpg.la
+testquorum_LDADD	= $(LIBQB_LIBS) $(top_builddir)/lib/libquorum.la
+testvotequorum1_LDADD	= $(LIBQB_LIBS) $(top_builddir)/lib/libvotequorum.la
+testvotequorum2_LDADD	= $(LIBQB_LIBS) $(top_builddir)/lib/libvotequorum.la
+cpgverify_LDADD		= $(LIBQB_LIBS) $(nss_LIBS) $(top_builddir)/lib/libcpg.la
+cpgbound_LDADD		= $(LIBQB_LIBS) $(top_builddir)/lib/libcpg.la
+cpgbench_LDADD		= $(LIBQB_LIBS) $(top_builddir)/lib/libcpg.la
+cpgbenchzc_LDADD	= $(LIBQB_LIBS) $(top_builddir)/lib/libcpg.la
+testsam_LDADD		= $(LIBQB_LIBS) $(top_builddir)/lib/libsam.la
 
 ploadstart: ploadstart.sh
 	cp $^ $@
@@ -84,7 +71,7 @@ LINT_FILES1:=$(filter-out sa_error.c, $(wildcard *.c))
 LINT_FILES:=$(filter-out testparse.c, $(LINT_FILES1))
 
 lint:
-	-for f in $(LINT_FILES) ; do echo Splint $$f ; splint $(INCLUDES) $(LINT_FLAGS) $(CFLAGS) $$f ; done
+	-for f in $(LINT_FILES) ; do echo Splint $$f ; splint $(AM_CPPFLAGS) $(LINT_FLAGS) $(CFLAGS) $$f ; done
 
 clean-local:
-	rm -f fdata ploadstart
+	rm -f ploadstart

@@ -29,40 +29,53 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 
-MAINTAINERCLEANFILES = Makefile.in
-INCLUDES = -I$(top_builddir)/include -I$(top_srcdir)/include \
-		-I$(top_builddir)/include/corosync
+MAINTAINERCLEANFILES		= Makefile.in
 
-SOURCES =
-TEST_AGENTS = cpg_test_agent sam_test_agent votequorum_test_agent
+TEST_AGENTS			= cpg_test_agent \
+				  sam_test_agent \
+				  votequorum_test_agent
+
+SHELL_TESTS			= mem_leak_test.sh \
+				  net_breaker.sh \
+				  cmap-dispatch-deadlock.sh \
+				  shm_leak_audit.sh
+
+noinst_HEADERS			= common_test_agent.h
 
 if INSTALL_TESTAGENTS
-agentdir = $(datadir)/$(PACKAGE)/tests
-bin_PROGRAMS = $(TEST_AGENTS)
-dist_agent_SCRIPTS = mem_leak_test.sh net_breaker.sh cmap-dispatch-deadlock.sh shm_leak_audit.sh
-AM_CFLAGS		= -fPIC
+agentdir			= $(datadir)/$(PACKAGE)/tests
+bin_PROGRAMS			= $(TEST_AGENTS)
+dist_agent_SCRIPTS		= $(SHELL_TESTS)
 else
-noinst_PROGRAMS = $(TEST_AGENTS)
-noinst_SCRIPTS = mem_leak_test.sh net_breaker.sh cmap-dispatch-deadlock.sh shm_leak_audit.sh
+noinst_PROGRAMS			= $(TEST_AGENTS)
+noinst_SCRIPTS			= $(SHELL_TESTS)
 endif
 
-noinst_HEADERS          = common_test_agent.h
+AM_CPPFLAGS			= -I$(top_builddir)/include \
+				  -I$(top_srcdir)/include \
+				  -I$(top_builddir)/include/corosync
 
-cpg_test_agent_SOURCES = cpg_test_agent.c common_test_agent.c
-cpg_test_agent_CFLAGS =  $(nss_CFLAGS)
-cpg_test_agent_LDADD =  -lcpg -lcfg -lcorosync_common $(LIBQB_LIBS) $(nss_LIBS)
-cpg_test_agent_LDFLAGS =  -L../../lib -L. -L../../common_lib
+AM_CFLAGS			= -fPIC
 
-sam_test_agent_SOURCES = sam_test_agent.c common_test_agent.c
-sam_test_agent_LDADD =  -lsam -lquorum -lcmap -lcorosync_common $(LIBQB_LIBS)
-sam_test_agent_LDFLAGS =  -L../../lib -L../../common_lib
+cpg_test_agent_SOURCES		= cpg_test_agent.c common_test_agent.c
+cpg_test_agent_CFLAGS		= $(nss_CFLAGS)
+cpg_test_agent_LDADD		= $(LIBQB_LIBS) $(nss_LIBS) \
+				  $(top_builddir)/lib/libcfg.la \
+				  $(top_builddir)/lib/libcpg.la \
+				  $(top_builddir)/common_lib/libcorosync_common.la
 
-votequorum_test_agent_SOURCES = votequorum_test_agent.c common_test_agent.c
-votequorum_test_agent_LDADD =  -lvotequorum -lquorum -lcorosync_common $(LIBQB_LIBS)
-votequorum_test_agent_LDFLAGS =  -L../../lib -L../../common_lib
+sam_test_agent_SOURCES		= sam_test_agent.c common_test_agent.c
+sam_test_agent_LDADD		= $(LIBQB_LIBS) \
+				  $(top_builddir)/lib/libsam.la \
+				  $(top_builddir)/lib/libcmap.la \
+				  $(top_builddir)/lib/libquorum.la \
+				  $(top_builddir)/common_lib/libcorosync_common.la
 
-clean-local:
-	rm -f *.o *.a *.so* *.da *.bb *.bbg
+votequorum_test_agent_SOURCES	= votequorum_test_agent.c common_test_agent.c
+votequorum_test_agent_LDADD	= $(LIBQB_LIBS) \
+				  $(top_builddir)/lib/libquorum.la \
+				  $(top_builddir)/lib/libvotequorum.la \
+				  $(top_builddir)/common_lib/libcorosync_common.la
 
 lint:
 	-splint $(LINT_FLAGS) $(CFLAGS) *.c
