@@ -59,6 +59,10 @@
 #include <qb/qblog.h>
 #endif
 
+#ifndef HOST_NAME_MAX
+#define HOST_NAME_MAX _POSIX_HOST_NAME_MAX
+#endif
+
 static int quit = 0;
 static int show_ip = 0;
 static int restart = 0;
