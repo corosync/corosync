@@ -60,7 +60,7 @@ LIBS			= -version-number $(call get_soname,$<) \
 			  $(LIBQB_LIBS)
 
 lib_LTLIBRARIES		= libcpg.la libquorum.la libcfg.la \
-			  libvotequorum.la libsam.la libcmap.la
+			  libvotequorum.la libcmap.la libsam.la
 
 libcpg_la_SOURCES	= cpg.c
 libcfg_la_SOURCES	= cfg.c
