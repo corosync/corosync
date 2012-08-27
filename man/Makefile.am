@@ -140,13 +140,18 @@ endif
 HTML_DOCS 		= $(dist_man_MANS:%=%.html) $(man_MANS:%=%.html)
 
 # developer man page generation
-%.3: %.3.in $(autogen_common) $(top_srcdir)/build-aux/genman
+%.3: %.3.in $(autogen_common)
 	@echo Generating $@ man page && \
-	rm -f $@-t $@ && \
-	$(top_srcdir)/build-aux/genman \
-		$(srcdir)/$@.in \
-		$(builddir)/$@-t \
-		$(srcdir)/$(autogen_common) && \
+	rm -f $@-t-t $@-t $@ && \
+	date="$$(LC_ALL=C date "+%F")" && \
+	awk "{print}(\$$1 ~ /@COMMONIPCERRORS@/){exit 0}" $@.in > $@-t-t && \
+	cat $(autogen_common) >> $@-t-t && \
+	awk -v p=0 "(\$$1 ~ /@COMMONIPCERRORS@/){p = 1} {if(p==1)print}" $@.in >> $@-t-t && \
+	cat $@-t-t | \
+		sed -e 's#@BUILDDATE@#'$$date'#g' \
+		    -e 's#@COMMONIPCERRORS@##g' \
+		    > $@-t && \
+	rm -f $@-t-t && \
 	mv $@-t $@
 
 clean-local:

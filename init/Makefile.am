@@ -47,14 +47,13 @@ initscript_SCRIPTS  = corosync corosync-notifyd
 
 %: %.in Makefile
 	rm -f $@-t $@
-	cp $< $@-t
-	sed -i \
+	cat $< | sed \
 		-e 's#@''SBINDIR@#$(sbindir)#g' \
 		-e 's#@''SYSCONFDIR@#$(sysconfdir)#g' \
 		-e 's#@''INITDDIR@#$(INITDDIR)#g' \
 		-e 's#@''INITWRAPPERSDIR@#$(INITWRAPPERSDIR)#g' \
 		-e 's#@''LOCALSTATEDIR@#$(localstatedir)#g' \
-	    $@-t
+	    > $@-t
 	mv $@-t $@
 
 all-local: $(initscript_SCRIPTS) $(systemdconf_DATA)
