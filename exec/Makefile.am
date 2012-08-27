@@ -62,10 +62,13 @@ sbin_PROGRAMS		= corosync
 
 corosync_SOURCES	= vsf_ykd.c coroparse.c vsf_quorum.c sync.c \
 			  logsys.c cfg.c cmap.c cpg.c mon.c pload.c \
-			  votequorum.c wd.c util.c schedwrk.c main.c \
+			  votequorum.c util.c schedwrk.c main.c \
 			  apidef.c quorum.c icmap.c timer.c \
 			  ipc_glue.c service.c logconfig.c totemconfig.c
 
+if BUILD_WATCHDOG
+corosync_SOURCES	+= wd.c
+endif
 
 corosync_LDADD		= libtotem_pg.la ../common_lib/libcorosync_common.la \
 			  $(LIBQB_LIBS) $(statgrab_LIBS)
