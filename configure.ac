@@ -117,7 +117,6 @@ AC_CHECK_LIB([qb], [qb_log_thread_priority_set], \
 if test "x${have_qb_log_thread_priority_set}" = xyes; then
 	AC_DEFINE_UNQUOTED([HAVE_QB_LOG_THREAD_PRIORITY_SET], 1, [have qb_log_thread_priority_set])
 fi
-AC_CHECK_LIB([dl], [dlopen])
 AC_CHECK_LIB([pthread], [pthread_create])
 AC_CHECK_LIB([socket], [socket])
 AC_CHECK_LIB([nsl], [t_open])
@@ -326,7 +325,6 @@ AM_CONDITIONAL(BUILD_QDEVICES, test x$enable_qdevices = xyes)
 
 # OS detection
 # THIS SECTION MUST DIE!
-OS_LDL="-ldl"
 have_linux="no"
 case "$host_os" in
 	*linux*)
@@ -334,7 +332,6 @@ case "$host_os" in
 				   [Compiling for Linux platform])
 		OS_CPPFLAGS="-D_GNU_SOURCE"
 		OS_LDFLAGS=""
-		OS_DYFLAGS="-rdynamic"
 		DARWIN_OPTS=""
 		have_linux="yes"
 	;;
@@ -343,7 +340,6 @@ case "$host_os" in
 				   [Compiling for Darwin platform])
 		OS_CPPFLAGS=""
 		OS_LDFLAGS=""
-		OS_DYFLAGS=""
 		DARWIN_OPTS="-dynamiclib -bind_at_load \
 			     -current_version ${SONAME} \
 			     -compatibility_version ${SONAME} -install_name \$(libdir)/\$(@)"
@@ -361,17 +357,7 @@ case "$host_os" in
 				   [Shared memory define for Darwin platform])
 		OS_CPPFLAGS="-I/usr/local/include"
 		OS_LDFLAGS="-L/usr/local/lib"
-		OS_DYFLAGS="-export-dynamic"
 		DARWIN_OPTS=""
-		OS_LDL=""
-		case "$host_os" in
-			*freebsd[[234567]]*)
-			;;
-			*freebsd*)
-				AC_DEFINE_UNQUOTED([COROSYNC_FREEBSD_GE_8], [1],
-					   [Compiling for FreeBSD >= 8 platform])
-			;;
-		esac
 	;;
 	*solaris*)
 		AC_DEFINE_UNQUOTED([COROSYNC_SOLARIS], [1],
@@ -382,7 +368,6 @@ case "$host_os" in
 				   [The semun structure is undefined])
 		OS_CPPFLAGS="-D_REENTRANT"
 		OS_LDFLAGS=""
-		OS_DYFLAGS="-Wl,-z,lazyload"
 		DARWIN_OPTS=""
 		SOLARIS_OPTS=" "
 	;;
@@ -612,9 +597,7 @@ AC_SUBST([SOMAJOR])
 AC_SUBST([SOMINOR])
 AC_SUBST([SOMICRO])
 AC_SUBST([SONAME])
-AC_SUBST([OS_DYFLAGS])
 
-AC_SUBST([OS_LDL])
 AM_CONDITIONAL(INSTALL_TESTAGENTS, test -n "${enable_testagents}")
 AM_CONDITIONAL(INSTALL_MIB, test "${enable_snmp}" = "1")
 AM_CONDITIONAL(INSTALL_DBUSCONF, test "${enable_dbus}" = "1")
@@ -669,8 +652,6 @@ AC_MSG_RESULT([  Env. defined CPPFLAGS    = ${ENV_CPPFLAGS}])
 AC_MSG_RESULT([  Env. defined LDFLAGS     = ${ENV_LDFLAGS}])
 AC_MSG_RESULT([  OS   defined CPPFLAGS    = ${OS_CPPFLAGS}])
 AC_MSG_RESULT([  OS   defined LDFLAGS     = ${OS_LDFLAGS}])
-AC_MSG_RESULT([  OS   defined LDL         = ${OS_LDL}])
-AC_MSG_RESULT([  OS   defined DYFLAGS     = ${OS_DYFLAGS}])
 AC_MSG_RESULT([  ANSI defined CPPFLAGS    = ${ANSI_CPPFLAGS}])
 AC_MSG_RESULT([  Coverage     CFLAGS      = ${COVERAGE_CFLAGS}])
 AC_MSG_RESULT([  Coverage     LDFLAGS     = ${COVERAGE_LDFLAGS}])

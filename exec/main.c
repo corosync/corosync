@@ -433,9 +433,7 @@ static void corosync_tty_detach (void)
 
 static void corosync_mlockall (void)
 {
-#if !defined(COROSYNC_BSD) || defined(COROSYNC_FREEBSD_GE_8)
 	int res;
-#endif
 	struct rlimit rlimit;
 
 	rlimit.rlim_cur = RLIM_INFINITY;
@@ -446,18 +444,11 @@ static void corosync_mlockall (void)
 	setrlimit (RLIMIT_VMEM, &rlimit);
 #endif
 
-#if defined(COROSYNC_BSD) && !defined(COROSYNC_FREEBSD_GE_8)
-	/* under FreeBSD < 8 a process with locked page cannot call dlopen
-	 * code disabled until FreeBSD bug i386/93396 was solved
-	 */
-	log_printf (LOGSYS_LEVEL_WARNING, "Could not lock memory of service to avoid page faults");
-#else
 	res = mlockall (MCL_CURRENT | MCL_FUTURE);
 	if (res == -1) {
 		LOGSYS_PERROR (errno, LOGSYS_LEVEL_WARNING,
 			"Could not lock memory of service to avoid page faults");
 	};
-#endif
 }
 
 
