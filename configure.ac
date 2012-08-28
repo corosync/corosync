@@ -345,8 +345,6 @@ case "$host_os" in
 			     -compatibility_version ${SONAME} -install_name \$(libdir)/\$(@)"
 		AC_DEFINE_UNQUOTED([MAP_ANONYMOUS], [MAP_ANON],
 				   [Shared memory define for Darwin platform])
-		AC_DEFINE_UNQUOTED([PATH_MAX], [4096],
-				   [Number of chars in a path name including nul])
 	;;
 	*bsd*)
 		AC_DEFINE_UNQUOTED([COROSYNC_BSD], [1],
