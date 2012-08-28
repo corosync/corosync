@@ -33,6 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <config.h>
 #include <corosync/corotypes.h>
 
 cs_error_t qb_to_cs_error (int result)
@@ -58,12 +59,16 @@ cs_error_t qb_to_cs_error (int result)
 	case EAGAIN:
 		err = CS_ERR_TRY_AGAIN;
 		break;
+#ifdef EBADE
 	case EBADE:
 		err = CS_ERR_FAILED_OPERATION;
 		break;
+#endif
+#ifdef ETIME
 	case ETIME:
 		err = CS_ERR_TIMEOUT;
 		break;
+#endif
 	case EINVAL:
 		err = CS_ERR_INVALID_PARAM;
 		break;
