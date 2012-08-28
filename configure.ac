@@ -347,8 +347,6 @@ case "$host_os" in
 				   [Shared memory define for Darwin platform])
 		AC_DEFINE_UNQUOTED([PATH_MAX], [4096],
 				   [Number of chars in a path name including nul])
-		AC_DEFINE_UNQUOTED([NAME_MAX], [255],
-				   [Number of chars in a file name])
 	;;
 	*bsd*)
 		AC_DEFINE_UNQUOTED([COROSYNC_BSD], [1],
