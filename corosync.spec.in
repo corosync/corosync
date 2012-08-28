@@ -116,6 +116,7 @@ install -m 644 %{_builddir}/%{name}-%{version}/conf/corosync-signals.conf %{buil
 ## tree fixup
 # drop static libs
 rm -f %{buildroot}%{_libdir}/*.a
+rm -f %{buildroot}%{_libdir}/*.la
 # drop docs and html docs for now
 rm -rf %{buildroot}%{_docdir}/*
 
