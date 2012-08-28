@@ -195,11 +195,13 @@ LIB_MSG_RESULT(m4_shift(m4_shift($@)))dnl
 
 ## helper for CC stuff
 cc_supports_flag() {
-	local CPPFLAGS="$CPPFLAGS $@"
+	BACKUP="$CPPFLAGS"
+	CPPFLAGS="$CPPFLAGS $@"
 	AC_MSG_CHECKING([whether $CC supports "$@"])
 	AC_PREPROC_IFELSE([AC_LANG_PROGRAM([])],
 			  [RC=0; AC_MSG_RESULT([yes])],
 			  [RC=1; AC_MSG_RESULT([no])])
+	CPPFLAGS="$BACKUP"
 	return $RC
 }
 
