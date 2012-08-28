@@ -331,15 +331,11 @@ case "$host_os" in
 		AC_DEFINE_UNQUOTED([COROSYNC_LINUX], [1],
 				   [Compiling for Linux platform])
 		OS_CPPFLAGS="-D_GNU_SOURCE"
-		OS_LDFLAGS=""
-		DARWIN_OPTS=""
 		have_linux="yes"
 	;;
 	darwin*)
 		AC_DEFINE_UNQUOTED([COROSYNC_DARWIN], [1],
 				   [Compiling for Darwin platform])
-		OS_CPPFLAGS=""
-		OS_LDFLAGS=""
 		DARWIN_OPTS="-dynamiclib -bind_at_load \
 			     -current_version ${SONAME} \
 			     -compatibility_version ${SONAME} -install_name \$(libdir)/\$(@)"
@@ -364,9 +360,6 @@ case "$host_os" in
 		AC_DEFINE_UNQUOTED([_SEM_SEMUN_UNDEFINED], [1],
 				   [The semun structure is undefined])
 		OS_CPPFLAGS="-D_REENTRANT"
-		OS_LDFLAGS=""
-		DARWIN_OPTS=""
-		SOLARIS_OPTS=" "
 	;;
 	*)
 		AC_MSG_ERROR([Unsupported OS? hmmmm])
@@ -576,7 +569,7 @@ CFLAGS="$ENV_CFLAGS $OPT_CFLAGS $GDB_FLAGS \
 	$WERROR_CFLAGS $NSS_CFLAGS $LIBQB_CFLAGS \
 	$SNMP_INCLUDES"
 CPPFLAGS="$ENV_CPPFLAGS $ANSI_CPPFLAGS $OS_CPPFLAGS"
-LDFLAGS="$ENV_LDFLAGS $COVERAGE_LDFLAGS $OS_LDFLAGS"
+LDFLAGS="$ENV_LDFLAGS $COVERAGE_LDFLAGS"
 
 # substitute what we need:
 AC_SUBST([BASHPATH])
@@ -643,7 +636,6 @@ AC_MSG_RESULT([  Env. defined CFLAG       = ${ENV_CFLAGS}])
 AC_MSG_RESULT([  Env. defined CPPFLAGS    = ${ENV_CPPFLAGS}])
 AC_MSG_RESULT([  Env. defined LDFLAGS     = ${ENV_LDFLAGS}])
 AC_MSG_RESULT([  OS   defined CPPFLAGS    = ${OS_CPPFLAGS}])
-AC_MSG_RESULT([  OS   defined LDFLAGS     = ${OS_LDFLAGS}])
 AC_MSG_RESULT([  ANSI defined CPPFLAGS    = ${ANSI_CPPFLAGS}])
 AC_MSG_RESULT([  Coverage     CFLAGS      = ${COVERAGE_CFLAGS}])
 AC_MSG_RESULT([  Coverage     LDFLAGS     = ${COVERAGE_LDFLAGS}])
