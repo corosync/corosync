@@ -355,9 +355,6 @@ case "$host_os" in
 				   [Compiling for BSD platform])
 		AC_DEFINE_UNQUOTED([MAP_ANONYMOUS], [MAP_ANON],
 				   [Shared memory define for Darwin platform])
-		OS_CPPFLAGS="-I/usr/local/include"
-		OS_LDFLAGS="-L/usr/local/lib"
-		DARWIN_OPTS=""
 	;;
 	*solaris*)
 		AC_DEFINE_UNQUOTED([COROSYNC_SOLARIS], [1],
@@ -454,58 +451,51 @@ if test "x${enable_qdevices}" = xyes; then
 	PACKAGE_FEATURES="$PACKAGE_FEATURES qdevices"
 fi
 
+do_snmp=0
 if test "x${enable_snmp}" = xyes; then
-       SNMPCONFIG=""
-       AC_CHECK_HEADERS(net-snmp/net-snmp-config.h)
+	AC_PATH_PROGS([SNMPCONFIG], [net-snmp-config])
 
-       if test "x${ac_cv_header_net_snmp_net_snmp_config_h}" != "xyes"; then
-               enable_snmp=no
-       fi
+	if test "x${SNMPCONFIG}" != "x"; then
+		AC_MSG_CHECKING([for snmp includes])
+		SNMP_PREFIX=`$SNMPCONFIG --prefix`
+		SNMP_INCLUDES="-I$SNMP_PREFIX/include"
+		AC_MSG_RESULT([$SNMP_INCLUDES])
 
-       if test $enable_snmp != no; then
-               AC_PATH_PROGS(SNMPCONFIG, net-snmp-config)
-               if test "X${SNMPCONFIG}" = "X"; then
-                       AC_MSG_RESULT(You need the net_snmp development package to continue.)
-                       enable_snmp=no
-               fi
-       fi
+		AC_MSG_CHECKING([for snmp libraries])
+		SNMP_LIBS=`$SNMPCONFIG --libs`
+		AC_MSG_RESULT([$SNMP_LIBS])
+		AC_SUBST([SNMP_LIBS])
 
-       if test $enable_snmp != no; then
-               AC_MSG_CHECKING(for special snmp libraries)
-               SNMPLIBS=`$SNMPCONFIG --libs`
-               AC_MSG_RESULT($SNMPLIBS)
-       fi
+		saveCFLAGS="$CFLAGS"
+		CFLAGS="$CFLAGS $SNMP_INCLUDES"
+		AC_CHECK_HEADERS([net-snmp/net-snmp-config.h])
+		CFLAGS="$saveCFLAGS"
 
-       if test $enable_snmp != no; then
-               savedLibs=$LIBS
-               LIBS="$LIBS $SNMPLIBS"
-               AC_CHECK_FUNCS(netsnmp_transport_open_client)
-               if test $ac_cv_func_netsnmp_transport_open_client != yes; then
-                       AC_CHECK_FUNCS(netsnmp_tdomain_transport)
-                       if test $ac_cv_func_netsnmp_tdomain_transport != yes; then
-                               enable_snmp=no
-                       fi
-               else
-                       AC_DEFINE_UNQUOTED([NETSNMPV54], $NETSNMP_NEW_SUPPORT, [have net-snmp5.4 over])
-               fi
-               LIBS=$savedLibs
-       fi
+		if test "x${ac_cv_header_net_snmp_net_snmp_config_h}" != "xyes"; then
+			AC_MSG_ERROR([Unable to use net-snmp/net-snmp-config.h])
+		fi
 
-       AC_MSG_CHECKING(for snmp)
-       AC_MSG_RESULT($enable_snmp)
-   if test $enable_snmp = no; then
-               enable_snmp=0
-               AC_MSG_ERROR(Unable to support SNMP)
-   else
-               enable_snmp=1
-               PACKAGE_FEATURES="$PACKAGE_FEATURES snmp"
-               AC_DEFINE_UNQUOTED([ENABLE_SNMP], $enable_snmp, [Build in support for sending SNMP traps])
-   fi
-else
-       enable_snmp=0
+		savedLibs=$LIBS
+		LIBS="$LIBS $SNMP_LIBS"
+		AC_CHECK_FUNCS([netsnmp_transport_open_client])
+		if test $ac_cv_func_netsnmp_transport_open_client != yes; then
+			AC_CHECK_FUNCS([netsnmp_tdomain_transport])
+			if test $ac_cv_func_netsnmp_tdomain_transport != yes; then
+				AC_MSG_ERROR([No usable SNMP client transport implementation found])
+			fi
+		else
+			AC_DEFINE_UNQUOTED([NETSNMPV54], $NETSNMP_NEW_SUPPORT, [have net-snmp5.4 over])
+		fi
+		LIBS=$savedLibs
+
+		do_snmp=1
+		PACKAGE_FEATURES="$PACKAGE_FEATURES snmp"
+		AC_DEFINE_UNQUOTED([ENABLE_SNMP], $enable_snmp, [Build in support for sending SNMP traps])
+	else
+		AC_MSG_ERROR([You need the net_snmp development package to continue.])
+	fi
 fi
-AC_SUBST([SNMPLIBS])
-AM_CONDITIONAL(BUILD_SNMP, test "${enable_snmp}" = "1")
+AM_CONDITIONAL(BUILD_SNMP, test "${do_snmp}" = "1")
 
 # extra warnings
 EXTRA_WARNINGS=""
@@ -582,7 +572,9 @@ fi
 
 # final build of *FLAGS
 CFLAGS="$ENV_CFLAGS $OPT_CFLAGS $GDB_FLAGS \
-	$COVERAGE_CFLAGS $EXTRA_WARNINGS $WERROR_CFLAGS $NSS_CFLAGS"
+	$COVERAGE_CFLAGS $EXTRA_WARNINGS \
+	$WERROR_CFLAGS $NSS_CFLAGS $LIBQB_CFLAGS \
+	$SNMP_INCLUDES"
 CPPFLAGS="$ENV_CPPFLAGS $ANSI_CPPFLAGS $OS_CPPFLAGS"
 LDFLAGS="$ENV_LDFLAGS $COVERAGE_LDFLAGS $OS_LDFLAGS"
 

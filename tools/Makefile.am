@@ -72,7 +72,7 @@ corosync_quorumtool_LDADD = $(LIBQB_LIBS) \
 			    $(top_builddir)/lib/libquorum.la \
 			    $(top_builddir)/lib/libvotequorum.la
 
-corosync_notifyd_LDADD    = $(LIBQB_LIBS) $(DBUS_LIBS) $(SNMPLIBS) \
+corosync_notifyd_LDADD    = $(LIBQB_LIBS) $(DBUS_LIBS) $(SNMP_LIBS) \
 			    $(top_builddir)/lib/libcmap.la \
 			    $(top_builddir)/lib/libcfg.la \
 			    $(top_builddir)/lib/libquorum.la
