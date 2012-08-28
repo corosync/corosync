@@ -1021,7 +1021,7 @@ static int read_uidgid_files_into_icmap(
 	if (dp == NULL)
 		return 0;
 
-	len = offsetof(struct dirent, d_name) + NAME_MAX + 1;
+	len = offsetof(struct dirent, d_name) + FILENAME_MAX + 1;
 
 	entry = malloc(len);
 	if (entry == NULL) {

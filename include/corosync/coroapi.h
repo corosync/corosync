@@ -35,7 +35,7 @@
 #define COROAPI_H_DEFINED
 
 #include <stdio.h>
-#ifdef COROSYNC_BSD
+#if defined(COROSYNC_BSD) || defined(COROSYNC_SOLARIS)
 #include <sys/uio.h>
 #endif
 #include <corosync/hdb.h>

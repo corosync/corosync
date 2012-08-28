@@ -362,7 +362,7 @@ case "$host_os" in
 				   [Prevent being scheduled RR])
 		AC_DEFINE_UNQUOTED([_SEM_SEMUN_UNDEFINED], [1],
 				   [The semun structure is undefined])
-		OS_CPPFLAGS="-D_REENTRANT"
+		OS_CPPFLAGS="-D__EXTENSIONS__ -D_REENTRANT -D_POSIX_PTHREAD_SEMANTICS"
 	;;
 	*)
 		AC_MSG_ERROR([Unsupported OS? hmmmm])
