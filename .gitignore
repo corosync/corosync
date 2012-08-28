@@ -14,8 +14,12 @@ config.log
 config.status
 config.sub
 configure
+corosync-*.tar*
 depcomp
 install-sh
+libtool
+ltmain.sh
+m4
 missing
 tags
 ID
