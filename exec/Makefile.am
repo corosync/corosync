@@ -61,10 +61,14 @@ libtotem_pg_la_LIBADD	= -lpthread $(nss_LIBS) $(rdmacm_LIBS) $(ibverbs_LIBS)
 sbin_PROGRAMS		= corosync
 
 corosync_SOURCES	= vsf_ykd.c coroparse.c vsf_quorum.c sync.c \
-			  logsys.c cfg.c cmap.c cpg.c mon.c pload.c \
+			  logsys.c cfg.c cmap.c cpg.c pload.c \
 			  votequorum.c util.c schedwrk.c main.c \
 			  apidef.c quorum.c icmap.c timer.c \
 			  ipc_glue.c service.c logconfig.c totemconfig.c
+
+if BUILD_MONITORING
+corosync_SOURCES	+= mon.c
+endif
 
 if BUILD_WATCHDOG
 corosync_SOURCES	+= wd.c
