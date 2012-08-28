@@ -8,6 +8,8 @@ AC_INIT([corosync],
 	m4_esyscmd([build-aux/git-version-gen .tarball-version]),
 	[discuss@lists.corosync.org])
 
+AC_USE_SYSTEM_EXTENSIONS
+
 AM_INIT_AUTOMAKE([-Wno-portability])
 
 LT_PREREQ([2.2.6])
@@ -332,7 +334,6 @@ case "$host_os" in
 	*linux*)
 		AC_DEFINE_UNQUOTED([COROSYNC_LINUX], [1],
 				   [Compiling for Linux platform])
-		OS_CPPFLAGS="-D_GNU_SOURCE"
 		have_linux="yes"
 	;;
 	darwin*)
@@ -362,7 +363,6 @@ case "$host_os" in
 				   [Prevent being scheduled RR])
 		AC_DEFINE_UNQUOTED([_SEM_SEMUN_UNDEFINED], [1],
 				   [The semun structure is undefined])
-		OS_CPPFLAGS="-D__EXTENSIONS__ -D_REENTRANT -D_POSIX_PTHREAD_SEMANTICS"
 	;;
 	*)
 		AC_MSG_ERROR([Unsupported OS? hmmmm])
@@ -544,7 +544,7 @@ fi
 if test "x${enable_ansi}" = xyes && \
 		cc_supports_flag -std=iso9899:199409 ; then
 	AC_MSG_NOTICE([Enabling ANSI Compatibility])
-	ANSI_CPPFLAGS="-ansi -D_GNU_SOURCE -DANSI_ONLY"
+	ANSI_CPPFLAGS="-ansi -DANSI_ONLY"
 	PACKAGE_FEATURES="$PACKAGE_FEATURES ansi"
 else
 	ANSI_CPPFLAGS=""
@@ -571,7 +571,7 @@ CFLAGS="$ENV_CFLAGS $OPT_CFLAGS $GDB_FLAGS \
 	$COVERAGE_CFLAGS $EXTRA_WARNINGS \
 	$WERROR_CFLAGS $NSS_CFLAGS $LIBQB_CFLAGS \
 	$SNMP_INCLUDES"
-CPPFLAGS="$ENV_CPPFLAGS $ANSI_CPPFLAGS $OS_CPPFLAGS"
+CPPFLAGS="$ENV_CPPFLAGS $ANSI_CPPFLAGS"
 LDFLAGS="$ENV_LDFLAGS $COVERAGE_LDFLAGS"
 
 # substitute what we need:
@@ -633,7 +633,6 @@ AC_MSG_RESULT([  Extra compiler warnings  = ${EXTRA_WARNING}])
 AC_MSG_RESULT([  Env. defined CFLAG       = ${ENV_CFLAGS}])
 AC_MSG_RESULT([  Env. defined CPPFLAGS    = ${ENV_CPPFLAGS}])
 AC_MSG_RESULT([  Env. defined LDFLAGS     = ${ENV_LDFLAGS}])
-AC_MSG_RESULT([  OS   defined CPPFLAGS    = ${OS_CPPFLAGS}])
 AC_MSG_RESULT([  ANSI defined CPPFLAGS    = ${ANSI_CPPFLAGS}])
 AC_MSG_RESULT([  Coverage     CFLAGS      = ${COVERAGE_CFLAGS}])
 AC_MSG_RESULT([  Coverage     LDFLAGS     = ${COVERAGE_LDFLAGS}])
