@@ -53,6 +53,7 @@ initscript_SCRIPTS  = corosync corosync-notifyd
 		-e 's#@''INITDDIR@#$(INITDDIR)#g' \
 		-e 's#@''INITWRAPPERSDIR@#$(INITWRAPPERSDIR)#g' \
 		-e 's#@''LOCALSTATEDIR@#$(localstatedir)#g' \
+		-e 's#@''BASHPATH@#${BASHPATH}#g' \
 	    > $@-t
 	mv $@-t $@
 

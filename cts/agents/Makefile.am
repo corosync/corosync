@@ -31,6 +31,9 @@
 
 MAINTAINERCLEANFILES		= Makefile.in
 
+EXTRA_DIST			= cmap-dispatch-deadlock.sh.in \
+				  shm_leak_audit.sh.in
+
 TEST_AGENTS			= cpg_test_agent \
 				  sam_test_agent \
 				  votequorum_test_agent
@@ -50,6 +53,14 @@ else
 noinst_PROGRAMS			= $(TEST_AGENTS)
 noinst_SCRIPTS			= $(SHELL_TESTS)
 endif
+
+cmap-dispatch-deadlock.sh: cmap-dispatch-deadlock.sh.in
+	sed -e 's#@''BASHPATH@#${BASHPATH}#g' $< > $@
+	chmod 755 $@
+
+shm_leak_audit.sh: shm_leak_audit.sh.in
+	sed -e 's#@''BASHPATH@#${BASHPATH}#g' $< > $@
+	chmod 755 $@
 
 AM_CPPFLAGS			= -I$(top_builddir)/include \
 				  -I$(top_srcdir)/include \
@@ -76,6 +87,9 @@ votequorum_test_agent_LDADD	= $(LIBQB_LIBS) \
 				  $(top_builddir)/lib/libquorum.la \
 				  $(top_builddir)/lib/libvotequorum.la \
 				  $(top_builddir)/common_lib/libcorosync_common.la
+
+clean-local:
+	rm -f shm_leak_audit.sh cmap-dispatch-deadlock.sh
 
 lint:
 	-splint $(LINT_FLAGS) $(CFLAGS) *.c

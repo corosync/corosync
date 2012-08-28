@@ -47,7 +47,9 @@ EXTRA_DIST		= $(bin_SCRIPTS) corosync-xmlproc.sh \
                           corosync-blackbox.sh
 
 corosync-xmlproc: corosync-xmlproc.sh
-	sed -e 's#@''DATADIR@#${datadir}#g' $< > $@
+	sed -e 's#@''DATADIR@#${datadir}#g' \
+	    -e 's#@''BASHPATH@#${BASHPATH}#g' \
+	    $< > $@
 
 corosync-blackbox: corosync-blackbox.sh
 	sed -e 's#@''LOCALSTATEDIR@#${localstatedir}#g' $< > $@

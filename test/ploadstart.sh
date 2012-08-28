@@ -1,4 +1,4 @@
-#!/bin/bash
+#!@BASHPATH@
 
 set -e
 

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!@BASHPATH@
 
 
 service corosync status >/dev/null

@@ -64,7 +64,7 @@ cpgbenchzc_LDADD	= $(LIBQB_LIBS) $(top_builddir)/lib/libcpg.la
 testsam_LDADD		= $(LIBQB_LIBS) $(top_builddir)/lib/libsam.la
 
 ploadstart: ploadstart.sh
-	cp $^ $@
+	sed -e 's#@''BASHPATH@#${BASHPATH}#g' $< > $@
 	chmod 755 $@
 
 LINT_FILES1:=$(filter-out sa_error.c, $(wildcard *.c))
