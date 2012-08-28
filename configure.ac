@@ -336,6 +336,7 @@ case "$host_os" in
 	darwin*)
 		AC_DEFINE_UNQUOTED([COROSYNC_DARWIN], [1],
 				   [Compiling for Darwin platform])
+		# this is unused. needs verification
 		DARWIN_OPTS="-dynamiclib -bind_at_load \
 			     -current_version ${SONAME} \
 			     -compatibility_version ${SONAME} -install_name \$(libdir)/\$(@)"
@@ -588,11 +589,6 @@ AM_CONDITIONAL(INSTALL_MIB, test "${enable_snmp}" = "1")
 AM_CONDITIONAL(INSTALL_DBUSCONF, test "${enable_dbus}" = "1")
 AM_CONDITIONAL(AUGTOOL, test -n "${AUGTOOL}")
 AC_SUBST([NSS_LDFLAGS])
-
-AM_CONDITIONAL(BUILD_DARWIN, test -n "${DARWIN_OPTS}")
-AM_CONDITIONAL(BUILD_SOLARIS, test -n "${SOLARIS_OPTS}")
-AC_SUBST([DARWIN_OPTS])
-AC_SUBST([SOLARIS_OPTS])
 
 AM_CONDITIONAL(BUILD_HTML_DOCS, test -n "${GROFF}")
 
