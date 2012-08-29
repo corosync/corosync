@@ -1,6 +1,6 @@
-%global alphatag @alphatag@
-%global numcomm @numcomm@
-%global dirty @dirty@
+@ALPHATAG@
+@NUMCOMM@
+@DIRTY@
 
 # Conditionals
 # Invoke "rpmbuild --without <feature>" or "rpmbuild --with <feature>"

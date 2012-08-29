@@ -120,7 +120,7 @@ $(SPEC): $(SPEC).in
 		rpmver=$$gitver && \
 		alphatag="" && \
 		dirty="" && \
-		numcomm="0"; \
+		numcomm=""; \
 	else \
 		gitver="$(shell git describe --abbrev=4 --match='v*' HEAD 2>/dev/null)" && \
 		rpmver=`echo $$gitver | sed -e "s/^v//" -e "s/-.*//g"` && \
@@ -130,25 +130,18 @@ $(SPEC): $(SPEC).in
 		git update-index --refresh > /dev/null 2>&1 || true && \
 		dirty=`git diff-index --name-only HEAD 2>/dev/null`; \
 	fi && \
-	if [ -n "$$dirty" ]; then dirty="dirty"; else dirty=""; fi && \
-	if [ "$$numcomm" = "0" ]; then \
-		sed \
-			-e "s#@version@#$$rpmver#g" \
-			-e "s#%glo.*alpha.*##g" \
-			-e "s#%glo.*numcomm.*##g" \
-			-e "s#@dirty@#$$dirty#g" \
-			-e "s#@date@#$$date#g" \
-		$< > $@-t; \
-	else \
-		sed \
-			-e "s#@version@#$$rpmver#g" \
-			-e "s#@alphatag@#$$alphatag#g" \
-			-e "s#@numcomm@#$$numcomm#g" \
-			-e "s#@dirty@#$$dirty#g" \
-			-e "s#@date@#$$date#g" \
-		$< > $@-t; \
-	fi; \
-	if [ -z "$$dirty" ]; then sed -i -e "s#%glo.*dirty.*##g" $@-t; fi
+	if [ "$$numcomm" = "0" ]; then numcomm=""; fi && \
+	if [ -n "$$numcomm" ]; then numcomm="%global numcomm $$numcomm"; fi && \
+	if [ "$$alphatag" = "$$gitver" ]; then alphatag=""; fi && \
+	if [ -n "$$alphatag" ]; then alphatag="%global alphatag $$alphatag"; fi && \
+	if [ -n "$$dirty" ]; then dirty="%global dirty dirty"; fi && \
+	sed \
+		-e "s#@version@#$$rpmver#g" \
+		-e "s#@ALPHATAG@#$$alphatag#g" \
+		-e "s#@NUMCOMM@#$$numcomm#g" \
+		-e "s#@DIRTY@#$$dirty#g" \
+		-e "s#@date@#$$date#g" \
+	$< > $@-t; \
 	chmod a-w $@-t
 	mv $@-t $@
 
