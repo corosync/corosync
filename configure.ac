@@ -483,7 +483,7 @@ if test "x${enable_snmp}" = xyes; then
 
 		do_snmp=1
 		PACKAGE_FEATURES="$PACKAGE_FEATURES snmp"
-		AC_DEFINE_UNQUOTED([ENABLE_SNMP], $enable_snmp, [Build in support for sending SNMP traps])
+		AC_DEFINE_UNQUOTED([ENABLE_SNMP], $do_snmp, [Build in support for sending SNMP traps])
 	else
 		AC_MSG_ERROR([You need the net_snmp development package to continue.])
 	fi
@@ -584,7 +584,7 @@ AC_SUBST([SOMICRO])
 AC_SUBST([SONAME])
 
 AM_CONDITIONAL(INSTALL_TESTAGENTS, test -n "${enable_testagents}")
-AM_CONDITIONAL(INSTALL_MIB, test "${enable_snmp}" = "1")
+AM_CONDITIONAL(INSTALL_MIB, test "${do_snmp}" = "1")
 AM_CONDITIONAL(INSTALL_DBUSCONF, test "${enable_dbus}" = "1")
 AM_CONDITIONAL(AUGTOOL, test -n "${AUGTOOL}")
 AC_SUBST([NSS_LDFLAGS])
