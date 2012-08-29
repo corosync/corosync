@@ -14,14 +14,17 @@
 %bcond_with systemd
 %bcond_with xmlconf
 
+%global gitver %{?numcomm:.%{numcomm}}%{?alphatag:.%{alphatag}}%{?dirty:.%{dirty}}
+%global gittarver %{?numcomm:.%{numcomm}}%{?alphatag:-%{alphatag}}%{?dirty:-%{dirty}}
+
 Name: corosync
 Summary: The Corosync Cluster Engine and Application Programming Interfaces
 Version: @version@
-Release: 1%{?numcomm:.%{numcomm}}%{?alphatag:.%{alphatag}}%{?dirty:.%{dirty}}%{?dist}
+Release: 1%{?gitver}%{?dist}
 License: BSD
 Group: System Environment/Base
 URL: http://ftp.corosync.org
-Source0: ftp://ftp:user@ftp.corosync.org/downloads/%{name}-%{version}/%{name}-%{version}%{?numcomm:.%{numcomm}}%{?alphatag:-%{alphatag}}%{?dirty:-%{dirty}}.tar.gz
+Source0: ftp://ftp:user@ftp.corosync.org/downloads/%{name}-%{version}/%{name}-%{version}%{?gittarver}.tar.gz
 
 # Runtime bits
 Requires: corosynclib = %{version}-%{release}
@@ -60,7 +63,7 @@ Requires: libxslt
 BuildRoot: %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 
 %prep
-%setup -q -n %{name}-%{version}%{?numcomm:.%{numcomm}}%{?alphatag:-%{alphatag}}%{?dirty:-%{dirty}}
+%setup -q -n %{name}-%{version}%{?gittarver}
 
 %build
 %if %{buildtrunk}
@@ -110,7 +113,7 @@ make install DESTDIR=%{buildroot}
 
 %if %{with dbus}
 mkdir -p -m 0700 %{buildroot}/%{_sysconfdir}/dbus-1/system.d
-install -m 644 %{_builddir}/%{name}-%{version}/conf/corosync-signals.conf %{buildroot}/%{_sysconfdir}/dbus-1/system.d/corosync-signals.conf
+install -m 644 %{_builddir}/%{name}-%{version}%{?gittarver}/conf/corosync-signals.conf %{buildroot}/%{_sysconfdir}/dbus-1/system.d/corosync-signals.conf
 %endif
 
 ## tree fixup
