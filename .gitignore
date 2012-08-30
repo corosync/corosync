@@ -1,6 +1,9 @@
 *.o
 *.a
 *.so*
+*.lo
+*.la
+.libs
 .deps
 .version
 doc
