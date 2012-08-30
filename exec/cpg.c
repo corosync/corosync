@@ -990,9 +990,6 @@ static void joinlist_messages_delete (void)
 
 static char *cpg_exec_init_fn (struct corosync_api_v1 *corosync_api)
 {
-#ifdef COROSYNC_SOLARIS
-	logsys_subsys_init();
-#endif
 	list_init (&downlist_messages_head);
 	list_init (&joinlist_messages_head);
 	api = corosync_api;

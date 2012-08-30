@@ -36,11 +36,7 @@
 #ifndef COROTYPES_H_DEFINED
 #define COROTYPES_H_DEFINED
 
-#ifndef COROSYNC_SOLARIS
 #include <stdint.h>
-#else
-#include <sys/types.h>
-#endif
 #include <errno.h>
 #include <time.h>
 #include <sys/time.h>

@@ -463,12 +463,8 @@ static void mon_instance_init (struct resource_instance* inst)
 
 static char *mon_exec_init_fn (struct corosync_api_v1 *corosync_api)
 {
-
 	sg_init();
 
-#ifdef COROSYNC_SOLARIS
-	logsys_subsys_init();
-#endif
 	api = corosync_api;
 
 	mon_instance_init (&memory_used_inst);

@@ -169,10 +169,6 @@ static int cmap_exec_exit_fn(void)
 static char *cmap_exec_init_fn (
 	struct corosync_api_v1 *corosync_api)
 {
-
-#ifdef COROSYNC_SOLARIS
-	logsys_subsys_init();
-#endif
 	api = corosync_api;
 
 	return (NULL);

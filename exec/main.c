@@ -438,11 +438,12 @@ static void corosync_mlockall (void)
 
 	rlimit.rlim_cur = RLIM_INFINITY;
 	rlimit.rlim_max = RLIM_INFINITY;
-#ifndef COROSYNC_SOLARIS
-	setrlimit (RLIMIT_MEMLOCK, &rlimit);
-#else
-	setrlimit (RLIMIT_VMEM, &rlimit);
+
+#ifndef RLIMIT_MEMLOCK
+#define RLIMIT_MEMLOCK RLIMIT_VMEM
 #endif
+
+	setrlimit (RLIMIT_MEMLOCK, &rlimit);
 
 	res = mlockall (MCL_CURRENT | MCL_FUTURE);
 	if (res == -1) {

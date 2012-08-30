@@ -96,12 +96,28 @@ AC_CHECK_HEADERS([arpa/inet.h fcntl.h limits.h netdb.h netinet/in.h stdint.h \
 		  sys/time.h syslog.h unistd.h sys/types.h getopt.h malloc.h \
 		  utmpx.h ifaddrs.h stddef.h sys/file.h sys/uio.h])
 
+# Check entries in specific structs
 AC_CHECK_MEMBER([struct sockaddr_in.sin_len],
 		[AC_DEFINE_UNQUOTED([HAVE_SOCK_SIN_LEN], [1], [sockaddr_in needs sin_len])],
 		[], [[#include <netinet/in.h>]])
 AC_CHECK_MEMBER([struct sockaddr_in6.sin6_len],
 		[AC_DEFINE_UNQUOTED([HAVE_SOCK_SIN6_LEN], [1], [sockaddr_in6 needs sin6_len])],
 		[], [[#include <netinet/in.h>]])
+AC_CHECK_MEMBER([struct msghdr.msg_control],
+		[AC_DEFINE_UNQUOTED([HAVE_MSGHDR_CONTROL], [1], [msghdr has msg_control])],
+		[], [[#include <sys/socket.h>]])
+AC_CHECK_MEMBER([struct msghdr.msg_controllen],
+		[AC_DEFINE_UNQUOTED([HAVE_MSGHDR_CONTROLLEN], [1], [msghdr has msg_controllen])],
+		[], [[#include <sys/socket.h>]])
+AC_CHECK_MEMBER([struct msghdr.msg_flags],
+		[AC_DEFINE_UNQUOTED([HAVE_MSGHDR_FLAGS], [1], [msghdr has msg_flags])],
+		[], [[#include <sys/socket.h>]])
+AC_CHECK_MEMBER([struct msghdr.msg_accrights],
+		[AC_DEFINE_UNQUOTED([HAVE_MSGHDR_ACCRIGHTS], [1], [msghdr has msg_accrights])],
+		[], [[#include <sys/socket.h>]])
+AC_CHECK_MEMBER([struct msghdr.msg_accrightslen],
+		[AC_DEFINE_UNQUOTED([HAVE_MSGHDR_ACCRIGHTSLEN], [1], [msghdr has msg_accrightslen])],
+		[], [[#include <sys/socket.h>]])
 
 # Checks for typedefs.
 AC_TYPE_UID_T
@@ -342,10 +358,6 @@ case "$host_os" in
 		DARWIN_OPTS="-dynamiclib -bind_at_load \
 			     -current_version ${SONAME} \
 			     -compatibility_version ${SONAME} -install_name \$(libdir)/\$(@)"
-	;;
-	*solaris*)
-		AC_DEFINE_UNQUOTED([COROSYNC_SOLARIS], [1],
-				   [Compiling for Solaris platform])
 	;;
 esac
 

@@ -270,10 +270,6 @@ static char *pload_exec_init_fn (struct corosync_api_v1 *corosync_api)
 {
 	icmap_track_t pload_track = NULL;
 
-#ifdef COROSYNC_SOLARIS
-	logsys_subsys_init();
-#endif
-
 	api = corosync_api;
 
 	/*

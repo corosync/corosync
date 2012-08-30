@@ -280,12 +280,19 @@ static inline void ucast_sendmsg (
 	msg_ucast.msg_namelen = addrlen;
 	msg_ucast.msg_iov = (void *)&iovec;
 	msg_ucast.msg_iovlen = 1;
-#if !defined(COROSYNC_SOLARIS)
+#ifdef HAVE_MSGHDR_CONTROL
 	msg_ucast.msg_control = 0;
+#endif
+#ifdef HAVE_MSGHDR_CONTROLLEN
 	msg_ucast.msg_controllen = 0;
+#endif
+#ifdef HAVE_MSGHDR_FLAGS
 	msg_ucast.msg_flags = 0;
-#else
+#endif
+#ifdef HAVE_MSGHDR_ACCRIGHTS
 	msg_ucast.msg_accrights = NULL;
+#endif
+#ifdef HAVE_MSGHDR_ACCRIGHTSLEN
 	msg_ucast.msg_accrightslen = 0;
 #endif
 
@@ -349,12 +356,19 @@ static inline void mcast_sendmsg (
 		msg_mcast.msg_namelen = addrlen;
 		msg_mcast.msg_iov = (void *)&iovec;
 		msg_mcast.msg_iovlen = 1;
-	#if !defined(COROSYNC_SOLARIS)
+	#ifdef HAVE_MSGHDR_CONTROL
 		msg_mcast.msg_control = 0;
+	#endif
+	#ifdef HAVE_MSGHDR_CONTROLLEN
 		msg_mcast.msg_controllen = 0;
+	#endif
+	#ifdef HAVE_MSGHDR_FLAGS
 		msg_mcast.msg_flags = 0;
-	#else
+	#endif
+	#ifdef HAVE_MSGHDR_ACCRIGHTS
 		msg_mcast.msg_accrights = NULL;
+	#endif
+	#ifdef HAVE_MSGHDR_ACCRIGHTSLEN
 		msg_mcast.msg_accrightslen = 0;
 	#endif
 
@@ -406,12 +420,19 @@ static int net_deliver_fn (
 	msg_recv.msg_namelen = sizeof (struct sockaddr_storage);
 	msg_recv.msg_iov = iovec;
 	msg_recv.msg_iovlen = 1;
-#if !defined(COROSYNC_SOLARIS)
+#ifdef HAVE_MSGHDR_CONTROL
 	msg_recv.msg_control = 0;
+#endif
+#ifdef HAVE_MSGHDR_CONTROLLEN
 	msg_recv.msg_controllen = 0;
+#endif
+#ifdef HAVE_MSGHDR_FLAGS
 	msg_recv.msg_flags = 0;
-#else
+#endif
+#ifdef HAVE_MSGHDR_ACCRIGHTS
 	msg_recv.msg_accrights = NULL;
+#endif
+#ifdef HAVE_MSGHDR_ACCRIGHTSLEN
 	msg_recv.msg_accrightslen = 0;
 #endif
 
@@ -949,12 +970,19 @@ extern int totemudpu_recv_mcast_empty (
 	msg_recv.msg_namelen = sizeof (struct sockaddr_storage);
 	msg_recv.msg_iov = &instance->totemudpu_iov_recv;
 	msg_recv.msg_iovlen = 1;
-#if !defined(COROSYNC_SOLARIS)
+#ifdef HAVE_MSGHDR_CONTROL
 	msg_recv.msg_control = 0;
+#endif
+#ifdef HAVE_MSGHDR_CONTROLLEN
 	msg_recv.msg_controllen = 0;
+#endif
+#ifdef HAVE_MSGHDR_FLAGS
 	msg_recv.msg_flags = 0;
-#else
+#endif
+#ifdef HAVE_MSGHDR_ACCRIGHTS
 	msg_recv.msg_accrights = NULL;
+#endif
+#ifdef HAVE_MSGHDR_ACCRIGHTSLEN
 	msg_recv.msg_accrightslen = 0;
 #endif
 

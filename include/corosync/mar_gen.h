@@ -35,11 +35,7 @@
 #ifndef MAR_GEN_H_DEFINED
 #define MAR_GEN_H_DEFINED
 
-#ifndef COROSYNC_SOLARIS
 #include <stdint.h>
-#else
-#include <sys/types.h>
-#endif
 #include <string.h>
 
 #include <corosync/corotypes.h>
