@@ -339,8 +339,6 @@ AM_CONDITIONAL(BUILD_QDEVICES, test x$enable_qdevices = xyes)
 # THIS SECTION MUST DIE!
 case "$host_os" in
 	darwin*)
-		AC_DEFINE_UNQUOTED([COROSYNC_DARWIN], [1],
-				   [Compiling for Darwin platform])
 		# this is unused. needs verification
 		DARWIN_OPTS="-dynamiclib -bind_at_load \
 			     -current_version ${SONAME} \
