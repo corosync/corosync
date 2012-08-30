@@ -35,9 +35,7 @@
 #include <config.h>
 
 #include <unistd.h>
-#if defined(HAVE_LIBSTATGRAB)
 #include <statgrab.h>
-#endif
 
 #include <corosync/corotypes.h>
 #include <corosync/corodefs.h>
@@ -305,7 +303,6 @@ void mon_resource_failed (struct cs_fsm* fsm, int32_t event, void * data)
 
 static int32_t percent_mem_used_get(void)
 {
-#if defined(HAVE_LIBSTATGRAB)
 	sg_mem_stats *mem_stats;
 	sg_swap_stats *swap_stats;
 	long long total, freemem;
@@ -321,42 +318,6 @@ static int32_t percent_mem_used_get(void)
 	total = mem_stats->total + swap_stats->total;
 	freemem = mem_stats->free + swap_stats->free;
 	return ((total - freemem) * 100) / total;
-#else
-#if defined(COROSYNC_LINUX)
-	char *line_ptr;
-	char line[512];
-	unsigned long long value;
-	FILE *f;
-	long long total = 0;
-	long long freemem = 0;
-
-	if ((f = fopen("/proc/meminfo", "r")) == NULL) {
-		return -1;
-	}
-
-	while ((line_ptr = fgets(line, sizeof(line), f)) != NULL) {
-		if (sscanf(line_ptr, "%*s %llu kB", &value) != 1) {
-			continue;
-		}
-		value *= 1024;
-
-		if (strncmp(line_ptr, "MemTotal:", 9) == 0) {
-			total += value;
-		} else if (strncmp(line_ptr, "MemFree:", 8) == 0) {
-			freemem += value;
-		} else if (strncmp(line_ptr, "SwapTotal:", 10) == 0) {
-			total += value;
-		} else if (strncmp(line_ptr, "SwapFree:", 9) == 0) {
-			freemem += value;
-		}
-	}
-
-	fclose(f);
-	return ((total - freemem) * 100) / total;
-#else
-#error need libstatgrab or linux.
-#endif /* COROSYNC_LINUX */
-#endif /* HAVE_LIBSTATGRAB */
 }
 
 static void mem_update_stats_fn (void *data)
@@ -386,7 +347,6 @@ static void mem_update_stats_fn (void *data)
 
 static double min15_loadavg_get(void)
 {
-#if defined(HAVE_LIBSTATGRAB)
 	sg_load_stats *load_stats;
 	load_stats = sg_get_load_stats ();
 	if (load_stats == NULL) {
@@ -395,17 +355,6 @@ static double min15_loadavg_get(void)
 		return -1;
 	}
 	return load_stats->min15;
-#else
-#if defined(COROSYNC_LINUX)
-	double loadav[3];
-	if (getloadavg(loadav,3) < 0) {
-		return -1;
-	}
-	return loadav[2];
-#else
-#error need libstatgrab or linux.
-#endif /* COROSYNC_LINUX */
-#endif /* HAVE_LIBSTATGRAB */
 }
 
 static void load_update_stats_fn (void *data)
@@ -515,9 +464,7 @@ static void mon_instance_init (struct resource_instance* inst)
 static char *mon_exec_init_fn (struct corosync_api_v1 *corosync_api)
 {
 
-#ifdef HAVE_LIBSTATGRAB
 	sg_init();
-#endif /* HAVE_LIBSTATGRAB */
 
 #ifdef COROSYNC_SOLARIS
 	logsys_subsys_init();

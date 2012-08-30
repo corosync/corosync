@@ -413,16 +413,7 @@ if test "x${enable_rdma}" = xyes; then
 fi
 
 if test "x${enable_monitoring}" = xyes; then
-
-	PKG_CHECK_MODULES([statgrab], [libstatgrab], [have_libstatgrab="yes"], [have_libstatgrab="no"])
-
-	if test "x${have_libstatgrab}" = xyes; then
-		AC_DEFINE_UNQUOTED([HAVE_LIBSTATGRAB], 1, [have libstatgrab])
-	else
-		if test "x${have_linux}" = xno; then
-			AC_MSG_ERROR(monitoring requires libstatgrab on non-linux systems)
-		fi
-	fi
+	PKG_CHECK_MODULES([statgrab], [libstatgrab])
 	AC_DEFINE_UNQUOTED([HAVE_MONITORING], 1, [have resource monitoring])
 	PACKAGE_FEATURES="$PACKAGE_FEATURES monitoring"
 fi

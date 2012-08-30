@@ -44,6 +44,9 @@ BuildRequires: nss-devel
 %if %{buildtrunk}
 BuildRequires: autoconf automake
 %endif
+%if %{with monitoring}
+BuildRequires: libstatgrab-devel
+%endif
 %if %{with rdma}
 BuildRequires: libibverbs-devel librdmacm-devel
 %endif
