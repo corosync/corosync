@@ -346,8 +346,6 @@ case "$host_os" in
 	*solaris*)
 		AC_DEFINE_UNQUOTED([COROSYNC_SOLARIS], [1],
 				   [Compiling for Solaris platform])
-		AC_DEFINE_UNQUOTED([TS_CLASS], [1],
-				   [Prevent being scheduled RR])
 	;;
 esac
 
