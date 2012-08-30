@@ -94,8 +94,7 @@ AC_HEADER_SYS_WAIT
 AC_CHECK_HEADERS([arpa/inet.h fcntl.h limits.h netdb.h netinet/in.h stdint.h \
 		  stdlib.h string.h sys/ioctl.h sys/param.h sys/socket.h \
 		  sys/time.h syslog.h unistd.h sys/types.h getopt.h malloc.h \
-		  sys/sockio.h utmpx.h ifaddrs.h stddef.h sys/file.h \
-		  net/if_var.h netinet/in_var.h netinet/in.h])
+		  utmpx.h ifaddrs.h stddef.h sys/file.h])
 
 AC_CHECK_MEMBER([struct sockaddr_in.sin_len],
 		[AC_DEFINE_UNQUOTED([HAVE_SOCK_SIN_LEN], [1], [sockaddr_in needs sin_len])],
