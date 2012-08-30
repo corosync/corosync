@@ -350,17 +350,6 @@ AC_ARG_ENABLE([qdevices],
 	[ enable_qdevices="no" ])
 AM_CONDITIONAL(BUILD_QDEVICES, test x$enable_qdevices = xyes)
 
-# OS detection
-# THIS SECTION MUST DIE!
-case "$host_os" in
-	darwin*)
-		# this is unused. needs verification
-		DARWIN_OPTS="-dynamiclib -bind_at_load \
-			     -current_version ${SONAME} \
-			     -compatibility_version ${SONAME} -install_name \$(libdir)/\$(@)"
-	;;
-esac
-
 # *FLAGS handling goes here
 
 ENV_CFLAGS="$CFLAGS"
