@@ -1633,7 +1633,7 @@ memory_map (
 		munmap(addr_orig, bytes);
 		goto error_close_unlink;
 	}
-#ifdef COROSYNC_BSD
+#ifdef MADV_NOSYNC
 	madvise(addr, bytes, MADV_NOSYNC);
 #endif
 

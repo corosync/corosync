@@ -780,7 +780,7 @@ retry_write:
 	if (addr != addr_orig) {
 		goto error_close_unlink;
 	}
-#ifdef COROSYNC_BSD
+#ifdef MADV_NOSYNC
 	madvise(addr_orig, bytes, MADV_NOSYNC);
 #endif
 
