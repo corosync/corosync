@@ -357,8 +357,6 @@ case "$host_os" in
 				   [Compiling for Solaris platform])
 		AC_DEFINE_UNQUOTED([TS_CLASS], [1],
 				   [Prevent being scheduled RR])
-		AC_DEFINE_UNQUOTED([_SEM_SEMUN_UNDEFINED], [1],
-				   [The semun structure is undefined])
 	;;
 	*)
 		AC_MSG_ERROR([Unsupported OS? hmmmm])
