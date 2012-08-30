@@ -67,6 +67,10 @@
 #include <corosync/cpg.h>
 #include <corosync/ipc_cpg.h>
 
+#ifndef MAP_ANONYMOUS
+#define MAP_ANONYMOUS MAP_ANON
+#endif
+
 #include "service.h"
 
 LOGSYS_DECLARE_SUBSYS ("CPG");

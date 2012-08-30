@@ -63,6 +63,10 @@
 
 #include "util.h"
 
+#ifndef MAP_ANONYMOUS
+#define MAP_ANONYMOUS MAP_ANON
+#endif
+
 struct cpg_inst {
 	qb_ipcc_connection_t *c;
 	int finalize;
