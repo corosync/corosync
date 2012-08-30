@@ -39,6 +39,7 @@
 
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <stdint.h>
 #include <corosync/list.h>
 
 #ifdef __cplusplus
