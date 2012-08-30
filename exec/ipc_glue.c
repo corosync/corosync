@@ -818,7 +818,7 @@ void cs_ipcs_service_init(struct corosync_service_engine *service)
 		ipcs_mapper[service->id].id);
 	ipcs_mapper[service->id].inst = qb_ipcs_create(ipcs_mapper[service->id].name,
 		ipcs_mapper[service->id].id,
-		QB_IPC_SHM,
+		QB_IPC_NATIVE,
 		&corosync_service_funcs);
 	assert(ipcs_mapper[service->id].inst);
 	qb_ipcs_poll_handlers_set(ipcs_mapper[service->id].inst,
