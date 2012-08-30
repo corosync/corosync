@@ -43,32 +43,26 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
-#if defined(COROSYNC_SOLARIS)
 #include <net/if.h>
-#include <sys/sockio.h>
-#endif
-#if defined(COROSYNC_BSD) || defined(COROSYNC_DARWIN)
-#include <sys/sockio.h>
-#include <net/if.h>
-#include <net/if_var.h>
-#include <netinet/in_var.h>
-#include <netinet/in.h>
-#include <ifaddrs.h>
-#endif
 #include <string.h>
 #include <stdio.h>
 #include <errno.h>
 #include <assert.h>
 #include <stdlib.h>
 #include <unistd.h>
-
-#if defined(COROSYNC_LINUX)
-#include <net/if.h>
-#include <asm/types.h>
-#include <linux/rtnetlink.h>
+#ifdef HAVE_SYS_SOCKIO_H
+#include <sys/sockio.h>
 #endif
-
-#ifdef HAVE_GETIFADDRS
+#ifdef HAVE_NET_IF_VAR_H
+#include <net/if_var.h>
+#endif
+#ifdef HAVE_NETINET_IN_VAR_H
+#include <netinet/in_var.h>
+#endif
+#ifdef HAVE_NETINET_IN_H
+#include <netinet/in.h>
+#endif
+#ifdef HAVE_IFADDRS_H
 #include <ifaddrs.h>
 #endif
 
@@ -249,7 +243,7 @@ int totemip_totemip_to_sockaddr_convert(struct totem_ip_address *ip_addr,
 		struct sockaddr_in *sin = (struct sockaddr_in *)saddr;
 
 		memset(sin, 0, sizeof(struct sockaddr_in));
-#if defined(COROSYNC_BSD) || defined(COROSYNC_DARWIN)
+#ifdef HAVE_SOCK_SIN_LEN
 		sin->sin_len = sizeof(struct sockaddr_in);
 #endif
 		sin->sin_family = ip_addr->family;
@@ -263,7 +257,7 @@ int totemip_totemip_to_sockaddr_convert(struct totem_ip_address *ip_addr,
 		struct sockaddr_in6 *sin = (struct sockaddr_in6 *)saddr;
 
 		memset(sin, 0, sizeof(struct sockaddr_in6));
-#if defined(COROSYNC_BSD) || defined(COROSYNC_DARWIN)
+#ifdef HAVE_SOCK_SIN6_LEN
 		sin->sin6_len = sizeof(struct sockaddr_in6);
 #endif
 		sin->sin6_family = ip_addr->family;
