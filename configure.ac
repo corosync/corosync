@@ -337,13 +337,7 @@ AM_CONDITIONAL(BUILD_QDEVICES, test x$enable_qdevices = xyes)
 
 # OS detection
 # THIS SECTION MUST DIE!
-have_linux="no"
 case "$host_os" in
-	*linux*)
-		AC_DEFINE_UNQUOTED([COROSYNC_LINUX], [1],
-				   [Compiling for Linux platform])
-		have_linux="yes"
-	;;
 	darwin*)
 		AC_DEFINE_UNQUOTED([COROSYNC_DARWIN], [1],
 				   [Compiling for Darwin platform])
@@ -365,9 +359,6 @@ case "$host_os" in
 				   [Compiling for Solaris platform])
 		AC_DEFINE_UNQUOTED([TS_CLASS], [1],
 				   [Prevent being scheduled RR])
-	;;
-	*)
-		AC_MSG_ERROR([Unsupported OS? hmmmm])
 	;;
 esac
 
@@ -419,11 +410,8 @@ if test "x${enable_monitoring}" = xyes; then
 fi
 
 if test "x${enable_watchdog}" = xyes; then
-	if test "x${have_linux}" = xno; then
-		AC_MSG_ERROR(watchdog is only supported on linux systems)
-	fi
-	AC_CHECK_HEADER(linux/watchdog.h,,AC_MSG_ERROR(watchdog requires linux/watchdog.h))
-	AC_CHECK_HEADER(linux/reboot.h,,AC_MSG_ERROR(watchdog requires linux/reboot.h))
+	AC_CHECK_HEADER([linux/watchdog.h], [], [AC_MSG_ERROR([watchdog requires linux/watchdog.h])])
+	AC_CHECK_HEADER([linux/reboot.h], [], [AC_MSG_ERROR([watchdog requires linux/reboot.h])])
 	AC_DEFINE_UNQUOTED([HAVE_WATCHDOG], 1, [have watchdog])
 	PACKAGE_FEATURES="$PACKAGE_FEATURES watchdog"
 fi
