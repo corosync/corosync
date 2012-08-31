@@ -682,6 +682,7 @@ static int totemudp_build_sockets_ip (
 	int addrlen;
 	int res;
 	int flag;
+	uint8_t sflag;
 
 	/*
 	 * Create multicast recv socket
@@ -878,8 +879,9 @@ static int totemudp_build_sockets_ip (
 	flag = 1;
 	switch ( bindnet_address->family ) {
 		case AF_INET:
+		sflag = 1;
 		res = setsockopt (sockets->mcast_send, IPPROTO_IP, IP_MULTICAST_LOOP,
-			&flag, sizeof (flag));
+			&sflag, sizeof (sflag));
 		break;
 		case AF_INET6:
 		res = setsockopt (sockets->mcast_send, IPPROTO_IPV6, IPV6_MULTICAST_LOOP,
@@ -904,8 +906,9 @@ static int totemudp_build_sockets_ip (
 			return (-1);
 		}
 	} else {
+		sflag = flag;
 		res = setsockopt(sockets->mcast_send, IPPROTO_IP, IP_MULTICAST_TTL,
-			&flag, sizeof(flag));
+			&sflag, sizeof(sflag));
 		if (res == -1) {
 			LOGSYS_PERROR (errno, instance->totemudp_log_level_warning,
 				"set mcast v4 TTL failed");
