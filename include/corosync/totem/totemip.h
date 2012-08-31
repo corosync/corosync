@@ -37,6 +37,7 @@
 #ifndef TOTEMIP_H_DEFINED
 #define TOTEMIP_H_DEFINED
 
+#include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <stdint.h>

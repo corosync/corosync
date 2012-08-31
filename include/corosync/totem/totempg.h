@@ -47,6 +47,7 @@
 extern "C" {
 #endif
 
+#include <sys/types.h>
 #include <netinet/in.h>
 #include "totem.h"
 #include <qb/qbloop.h>

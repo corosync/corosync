@@ -46,6 +46,7 @@
 #include <sys/socket.h>
 #include <sys/select.h>
 #include <sys/un.h>
+#include <sys/uio.h>
 
 #include <qb/qbipcc.h>
 

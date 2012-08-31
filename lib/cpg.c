@@ -47,6 +47,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/mman.h>
+#include <sys/uio.h>
 #include <errno.h>
 #include <limits.h>
 

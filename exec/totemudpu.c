@@ -55,6 +55,7 @@
 #include <time.h>
 #include <sys/time.h>
 #include <sys/poll.h>
+#include <sys/uio.h>
 #include <limits.h>
 
 #include <qb/qbdefs.h>

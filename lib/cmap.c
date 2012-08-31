@@ -39,6 +39,7 @@
 #include <unistd.h>
 #include <pthread.h>
 #include <sys/types.h>
+#include <sys/uio.h>
 #include <errno.h>
 
 #include <corosync/corotypes.h>

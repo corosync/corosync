@@ -39,6 +39,7 @@
 #include <poll.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/uio.h>
 
 #include <corosync/corotypes.h>
 #include <corosync/cpg.h>
