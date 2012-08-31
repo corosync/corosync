@@ -333,8 +333,13 @@ int totemip_getifaddrs(struct list_head *addrs)
 			continue ;
 
 		if ((ifa->ifa_addr->sa_family != AF_INET && ifa->ifa_addr->sa_family != AF_INET6) ||
-		    (ifa->ifa_netmask->sa_family != AF_INET && ifa->ifa_netmask->sa_family != AF_INET6))
+		    (ifa->ifa_netmask->sa_family != AF_INET && ifa->ifa_netmask->sa_family != AF_INET6 &&
+		     ifa->ifa_netmask->sa_family != 0))
 			continue ;
+
+		if (ifa->ifa_netmask->sa_family == 0) {
+			ifa->ifa_netmask->sa_family = ifa->ifa_addr->sa_family;
+		}
 
 		if_addr = malloc(sizeof(struct totem_ip_if_address));
 		if (if_addr == NULL) {
