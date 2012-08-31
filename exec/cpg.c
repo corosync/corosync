@@ -1931,7 +1931,7 @@ static void message_handler_req_lib_cpg_membership (void *conn,
 	res_lib_cpg_membership_get.header.id = MESSAGE_RES_CPG_MEMBERSHIP;
 	res_lib_cpg_membership_get.header.error = CS_OK;
 	res_lib_cpg_membership_get.header.size =
-		sizeof (struct req_lib_cpg_membership_get);
+		sizeof (struct res_lib_cpg_membership_get);
 
 	for (iter = process_info_list_head.next;
 		iter != &process_info_list_head; iter = iter->next) {
