@@ -98,9 +98,11 @@ cs_error_t qb_to_cs_error (int result)
 	case ENOTSUP:
 		err = CS_ERR_NOT_SUPPORTED;
 		break;
+#ifdef EBADMSG
 	case EBADMSG:
 		err = CS_ERR_MESSAGE_ERROR;
 		break;
+#endif
 	case EMSGSIZE:
 	case E2BIG:
 		err = CS_ERR_TOO_BIG;
