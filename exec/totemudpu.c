@@ -277,6 +277,7 @@ static inline void ucast_sendmsg (
 	 */
 	totemip_totemip_to_sockaddr_convert(system_to,
 		instance->totem_interface->ip_port, &sockaddr, &addrlen);
+	memset(&msg_ucast, 0, sizeof(msg_ucast));
 	msg_ucast.msg_name = &sockaddr;
 	msg_ucast.msg_namelen = addrlen;
 	msg_ucast.msg_iov = (void *)&iovec;
@@ -340,6 +341,7 @@ static inline void mcast_sendmsg (
 	iovec.iov_base = (void *)buf_out;
 	iovec.iov_len = buf_out_len;
 
+	memset(&msg_mcast, 0, sizeof(msg_mcast));
 	/*
 	 * Build multicast message
 	 */

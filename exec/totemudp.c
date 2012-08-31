@@ -280,6 +280,7 @@ static inline void ucast_sendmsg (
 	/*
 	 * Build unicast message
 	 */
+	memset(&msg_ucast, 0, sizeof(msg_ucast));
 	totemip_totemip_to_sockaddr_convert(system_to,
 		instance->totem_interface->ip_port, &sockaddr, &addrlen);
 	msg_ucast.msg_name = &sockaddr;
@@ -349,6 +350,7 @@ static inline void mcast_sendmsg (
 	 */
 	totemip_totemip_to_sockaddr_convert(&instance->mcast_address,
 		instance->totem_interface->ip_port, &sockaddr, &addrlen);
+	memset(&msg_mcast, 0, sizeof(msg_mcast));
 	msg_mcast.msg_name = &sockaddr;
 	msg_mcast.msg_namelen = addrlen;
 	msg_mcast.msg_iov = (void *)&iovec;
