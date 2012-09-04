@@ -292,6 +292,7 @@ int _logsys_system_setup(
 	int i;
 	int32_t fidx;
 	char tempsubsys[LOGSYS_MAX_SUBSYS_NAMELEN];
+	int res;
 
 	if ((mainsystem == NULL) ||
 	    (strlen(mainsystem) >= LOGSYS_MAX_SUBSYS_NAMELEN)) {
@@ -385,10 +386,11 @@ int _logsys_system_setup(
 			_logsys_config_apply_per_subsys(i);
 		}
 	}
+	res = qb_log_thread_start();
 
 	pthread_mutex_unlock (&logsys_config_mutex);
 
-	return (0);
+	return (res);
 }
 
 
