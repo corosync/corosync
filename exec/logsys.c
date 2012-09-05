@@ -169,7 +169,7 @@ static int logsys_config_file_set_unlocked (
 	if (strlen(file) >= PATH_MAX) {
 		snprintf (error_string_response,
 			sizeof(error_string_response),
-			"%s: logfile name exceed maximum system filename lenght\n",
+			"%s: logfile name exceed maximum system filename lenght",
 			logsys_loggers[subsysid].subsys);
 		*error_string = error_string_response;
 		return (-1);
@@ -190,7 +190,7 @@ static int logsys_config_file_set_unlocked (
 	if (logsys_loggers[subsysid].logfile == NULL) {
 		snprintf (error_string_response,
 			sizeof(error_string_response),
-			"Unable to allocate memory for logfile '%s'\n",
+			"Unable to allocate memory for logfile '%s'",
 			file);
 		*error_string = error_string_response;
 		return (-1);
@@ -221,7 +221,7 @@ static int logsys_config_file_set_unlocked (
 		logsys_loggers[subsysid].logfile = NULL;
 		snprintf (error_string_response,
 			sizeof(error_string_response),
-			"Can't open logfile '%s' for reason: %s (%d).\n",
+			"Can't open logfile '%s' for reason: %s (%d)",
 			 file, error_ptr, err);
 		*error_string = error_string_response;
 		return (-1);
@@ -620,8 +620,6 @@ int logsys_format_set (const char *format)
 		syslog_format[w] = format_buffer[c];
 		w++;
 	}
-//	printf("normal_format: %s\n", format_buffer);
-//	printf("syslog_format: %s\n", syslog_format);
 	qb_log_format_set(QB_LOG_SYSLOG, syslog_format);
 
 	return ret;
