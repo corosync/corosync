@@ -1172,7 +1172,10 @@ int main (int argc, char **argv, char **envp)
 	if (background) {
 		corosync_tty_detach ();
 	}
-	qb_log_thread_start();
+	if (logsys_thread_start() != 0) {
+		log_printf (LOGSYS_LEVEL_ERROR, "Can't initialize log thread");
+		corosync_exit_error (COROSYNC_DONE_LOGCONFIGREAD);
+	}
 
 	if ((flock_err = corosync_flock (corosync_lock_file, getpid ())) != COROSYNC_DONE_EXIT) {
 		corosync_exit_error (flock_err);

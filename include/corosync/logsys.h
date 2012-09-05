@@ -165,6 +165,8 @@ extern int _logsys_config_subsys_get (
 
 extern int _logsys_subsys_create (const char *subsys, const char *filename);
 
+extern int logsys_thread_start (void);
+
 static int logsys_subsys_id __attribute__((unused)) = LOGSYS_MAX_SUBSYS_COUNT;
 
 #define LOGSYS_DECLARE_SYSTEM(name,mode,syslog_facility,syslog_priority)\

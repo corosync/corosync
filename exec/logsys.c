@@ -117,6 +117,8 @@ static void logsys_file_format_get(char* file_format, int buf_len);
 
 static char *format_buffer=NULL;
 
+static int logsys_thread_started = 0;
+
 static int _logsys_config_subsys_get_unlocked (const char *subsys)
 {
 	unsigned int i;
@@ -230,7 +232,9 @@ static int logsys_config_file_set_unlocked (
 	qb_log_ctl(logsys_loggers[subsysid].target_id,
 		   QB_LOG_CONF_ENABLED,
 		   (logsys_loggers[subsysid].mode & LOGSYS_MODE_OUTPUT_FILE));
-	qb_log_ctl(logsys_loggers[subsysid].target_id, QB_LOG_CONF_THREADED, QB_TRUE);
+	if (logsys_thread_started) {
+		qb_log_ctl(logsys_loggers[subsysid].target_id, QB_LOG_CONF_THREADED, QB_TRUE);
+	}
 
 	return (0);
 }
@@ -292,7 +296,6 @@ int _logsys_system_setup(
 	int i;
 	int32_t fidx;
 	char tempsubsys[LOGSYS_MAX_SUBSYS_NAMELEN];
-	int res;
 
 	if ((mainsystem == NULL) ||
 	    (strlen(mainsystem) >= LOGSYS_MAX_SUBSYS_NAMELEN)) {
@@ -357,7 +360,6 @@ int _logsys_system_setup(
 	} else {
 		qb_log_ctl(QB_LOG_SYSLOG, QB_LOG_CONF_ENABLED, QB_FALSE);
 	}
-	qb_log_ctl(QB_LOG_SYSLOG, QB_LOG_CONF_THREADED, QB_TRUE);
 	qb_log_ctl(QB_LOG_SYSLOG, QB_LOG_CONF_PRIORITY_BUMP, LOG_INFO - LOG_DEBUG);
 
 	qb_log_filter_ctl(QB_LOG_BLACKBOX, QB_LOG_FILTER_ADD,
@@ -386,11 +388,10 @@ int _logsys_system_setup(
 			_logsys_config_apply_per_subsys(i);
 		}
 	}
-	res = qb_log_thread_start();
 
 	pthread_mutex_unlock (&logsys_config_mutex);
 
-	return (res);
+	return (0);
 }
 
 
@@ -790,4 +791,26 @@ int logsys_priority_id_get (const char *name)
 		}
 	}
 	return (-1);
+}
+
+int logsys_thread_start (void)
+{
+	int i;
+	int err;
+
+	err = qb_log_thread_start();
+	if (err != 0) {
+		return (err);
+	}
+
+	qb_log_ctl(QB_LOG_SYSLOG, QB_LOG_CONF_THREADED, QB_TRUE);
+	for (i = 0; i <= LOGSYS_MAX_SUBSYS_COUNT; i++) {
+		if (logsys_loggers[i].target_id > 0) {
+			qb_log_ctl(logsys_loggers[i].target_id, QB_LOG_CONF_THREADED, QB_TRUE);
+		}
+	}
+
+	logsys_thread_started = 1;
+
+	return (0);
 }
