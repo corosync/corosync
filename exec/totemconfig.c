@@ -57,11 +57,6 @@
 #include <corosync/logsys.h>
 #include <corosync/icmap.h>
 
-#include <nss.h>
-#include <pk11pub.h>
-#include <pkcs11.h>
-#include <prerror.h>
-
 #include "util.h"
 #include "totemconfig.h"
 
