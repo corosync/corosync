@@ -536,17 +536,34 @@ if test "x${enable_user_flags}" = xyes; then
   EXTRA_WARNINGS=""
 fi
 
+# stolen from apache configure snippet
+AC_CACHE_CHECK([whether $CC accepts PIE flags], [ap_cv_cc_pie], [
+  save_CFLAGS=$CFLAGS
+  save_LDFLAGS=$LDFLAGS
+  CFLAGS="$CFLAGS -fPIE"
+  LDFLAGS="$LDFLAGS -pie"
+  AC_TRY_RUN([static int foo[30000]; int main () { return 0; }],
+    [ap_cv_cc_pie=yes], [ap_cv_cc_pie=no], [ap_cv_cc_pie=yes])
+  CFLAGS=$save_CFLAGS
+  LDFLAGS=$save_LDFLAGS
+])
+if test "$ap_cv_cc_pie" = "yes"; then
+   PIE_FLAGS="-fPIE"
+   PIE_LDFLAGS="-pie"
+   PACKAGE_FEATURES="$PACKAGE_FEATURES pie"
+fi
+
 # define global include dirs
 INCLUDE_DIRS="$INCLUDE_DIRS -I\$(top_builddir)/include -I\$(top_srcdir)/include"
 INCLUDE_DIRS="$INCLUDE_DIRS -I\$(top_builddir)/include/corosync -I\$(top_srcdir)/include/corosync"
 
 # final build of *FLAGS
-CFLAGS="$ENV_CFLAGS $OPT_CFLAGS $GDB_FLAGS \
+CFLAGS="$ENV_CFLAGS $PIE_FLAGS $OPT_CFLAGS $GDB_FLAGS \
 	$COVERAGE_CFLAGS $EXTRA_WARNINGS \
 	$WERROR_CFLAGS $NSS_CFLAGS $LIBQB_CFLAGS \
 	$SNMP_INCLUDES"
 CPPFLAGS="$ENV_CPPFLAGS $ANSI_CPPFLAGS $INCLUDE_DIRS"
-LDFLAGS="$ENV_LDFLAGS $COVERAGE_LDFLAGS"
+LDFLAGS="$ENV_LDFLAGS $PIE_LDFLAGS $COVERAGE_LDFLAGS"
 
 # substitute what we need:
 AC_SUBST([BASHPATH])
