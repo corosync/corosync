@@ -62,12 +62,6 @@ shm_leak_audit.sh: shm_leak_audit.sh.in
 	sed -e 's#@''BASHPATH@#${BASHPATH}#g' $< > $@
 	chmod 755 $@
 
-AM_CPPFLAGS			= -I$(top_builddir)/include \
-				  -I$(top_srcdir)/include \
-				  -I$(top_builddir)/include/corosync
-
-AM_CFLAGS			= -fPIC
-
 cpg_test_agent_SOURCES		= cpg_test_agent.c common_test_agent.c
 cpg_test_agent_CFLAGS		= $(nss_CFLAGS)
 cpg_test_agent_LDADD		= $(LIBQB_LIBS) $(nss_LIBS) \

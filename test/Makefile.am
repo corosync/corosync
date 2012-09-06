@@ -41,12 +41,6 @@ noinst_PROGRAMS		= cpgverify testcpg testcpg2 cpgbench \
 
 noinst_SCRIPTS		= ploadstart
 
-AM_CPPFLAGS		= -I$(top_builddir)/include/corosync \
-			  -I$(top_srcdir)/include \
-			  $(nss_CFLAGS)
-
-AM_CFLAGS		= -fPIC
-
 testcpg_LDADD		= $(LIBQB_LIBS) $(top_builddir)/lib/libcpg.la
 testcpg2_LDADD		= $(LIBQB_LIBS) $(top_builddir)/lib/libcpg.la
 testcpgzc_LDADD		= $(LIBQB_LIBS) $(top_builddir)/lib/libcpg.la
@@ -57,6 +51,7 @@ stress_cpgcontext_LDADD	= $(LIBQB_LIBS) $(top_builddir)/lib/libcpg.la
 testquorum_LDADD	= $(LIBQB_LIBS) $(top_builddir)/lib/libquorum.la
 testvotequorum1_LDADD	= $(LIBQB_LIBS) $(top_builddir)/lib/libvotequorum.la
 testvotequorum2_LDADD	= $(LIBQB_LIBS) $(top_builddir)/lib/libvotequorum.la
+cpgverify_CPPFLAGS	= $(nss_CFLAGS)
 cpgverify_LDADD		= $(LIBQB_LIBS) $(nss_LIBS) $(top_builddir)/lib/libcpg.la
 cpgbound_LDADD		= $(LIBQB_LIBS) $(top_builddir)/lib/libcpg.la
 cpgbench_LDADD		= $(LIBQB_LIBS) $(top_builddir)/lib/libcpg.la
@@ -71,7 +66,7 @@ LINT_FILES1:=$(filter-out sa_error.c, $(wildcard *.c))
 LINT_FILES:=$(filter-out testparse.c, $(LINT_FILES1))
 
 lint:
-	-for f in $(LINT_FILES) ; do echo Splint $$f ; splint $(AM_CPPFLAGS) $(LINT_FLAGS) $(CFLAGS) $$f ; done
+	-for f in $(LINT_FILES) ; do echo Splint $$f ; splint $(LINT_FLAGS) $(CPPFLAGS) $(CFLAGS) $$f ; done
 
 clean-local:
 	rm -f ploadstart

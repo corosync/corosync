@@ -31,10 +31,6 @@
 
 MAINTAINERCLEANFILES    	= Makefile.in
 
-AM_CFLAGS			= -fPIC \
-				  -I$(top_builddir)/include \
-				  -I$(top_srcdir)/include
-
 lib_LTLIBRARIES			= libcorosync_common.la
 
 libcorosync_common_la_SOURCES	= error_conversion.c

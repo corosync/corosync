@@ -31,13 +31,6 @@
 
 MAINTAINERCLEANFILES	= Makefile.in
 
-AM_CFLAGS		= -fPIC
-
-AM_CPPFLAGS		= -DLOGCONFIG_USE_ICMAP=1 \
-			  -I$(top_builddir)/include \
-			  -I$(top_srcdir)/include \
-			  $(nss_CFLAGS) $(rdmacm_CFLAGS) $(ibverbs_CFLAGS)
-
 noinst_HEADERS		= apidef.h cs_queue.h logconfig.h main.h \
 			  quorum.h service.h timer.h totemconfig.h \
 			  totemmrp.h totemnet.h totemudp.h totemiba.h \
@@ -55,6 +48,7 @@ endif
 
 lib_LTLIBRARIES		= libtotem_pg.la
 libtotem_pg_la_SOURCES	= $(TOTEM_SRC)
+libtotem_pg_la_CFLAGS	= $(nss_CFLAGS) $(rdmacm_CFLAGS) $(ibverbs_CFLAGS)
 libtotem_pg_la_LDFLAGS	= -version-number $(subst .,:,$(SONAME))
 libtotem_pg_la_LIBADD	= -lpthread $(nss_LIBS) $(rdmacm_LIBS) $(ibverbs_LIBS)
 
@@ -74,9 +68,11 @@ if BUILD_WATCHDOG
 corosync_SOURCES	+= wd.c
 endif
 
+corosync_CPPFLAGS	= -DLOGCONFIG_USE_ICMAP=1
+
 corosync_LDADD		= libtotem_pg.la ../common_lib/libcorosync_common.la \
 			  $(LIBQB_LIBS) $(statgrab_LIBS)
 corosync_DEPENDENCIES	= libtotem_pg.la ../common_lib/libcorosync_common.la
 
 lint:
-	-splint $(AM_CPPFLAGS) $(LINT_FLAGS) $(CFLAGS) *.c
+	-splint $(LINT_FLAGS) $(CPPFLAGS) $(CFLAGS) *.c

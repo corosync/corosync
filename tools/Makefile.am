@@ -54,11 +54,6 @@ corosync-xmlproc: corosync-xmlproc.sh
 corosync-blackbox: corosync-blackbox.sh
 	sed -e 's#@''LOCALSTATEDIR@#${localstatedir}#g' $< > $@
 
-AM_CPPFLAGS		= -I$(top_builddir)/include \
-			  -I$(top_srcdir)/include \
-                          -I$(top_builddir)/include/corosync \
-			  $(DBUS_CFLAGS)
-
 corosync_cmapctl_LDADD	= $(LIBQB_LIBS) $(top_builddir)/lib/libcmap.la
 
 corosync_cfgtool_LDADD	= $(LIBQB_LIBS) $(top_builddir)/lib/libcfg.la
@@ -72,13 +67,14 @@ corosync_quorumtool_LDADD = $(LIBQB_LIBS) \
 			    $(top_builddir)/lib/libquorum.la \
 			    $(top_builddir)/lib/libvotequorum.la
 
+corosync_notifyd_CPPFLAGS = $(DBUS_CFLAGS)
 corosync_notifyd_LDADD    = $(LIBQB_LIBS) $(DBUS_LIBS) $(SNMP_LIBS) \
 			    $(top_builddir)/lib/libcmap.la \
 			    $(top_builddir)/lib/libcfg.la \
 			    $(top_builddir)/lib/libquorum.la
 
 lint:
-	-splint $(LINT_FLAGS) $(DBUS_CFLAGS) $(AM_CPPFLAGS) $(CFLAGS) *.c
+	-splint $(LINT_FLAGS) $(DBUS_CFLAGS) $(CPPFLAGS) $(CFLAGS) *.c
 
 clean-local:
 	rm -f corosync-xmlproc corosync-blackbox

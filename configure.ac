@@ -536,12 +536,16 @@ if test "x${enable_user_flags}" = xyes; then
   EXTRA_WARNINGS=""
 fi
 
+# define global include dirs
+INCLUDE_DIRS="$INCLUDE_DIRS -I\$(top_builddir)/include -I\$(top_srcdir)/include"
+INCLUDE_DIRS="$INCLUDE_DIRS -I\$(top_builddir)/include/corosync -I\$(top_srcdir)/include/corosync"
+
 # final build of *FLAGS
 CFLAGS="$ENV_CFLAGS $OPT_CFLAGS $GDB_FLAGS \
 	$COVERAGE_CFLAGS $EXTRA_WARNINGS \
 	$WERROR_CFLAGS $NSS_CFLAGS $LIBQB_CFLAGS \
 	$SNMP_INCLUDES"
-CPPFLAGS="$ENV_CPPFLAGS $ANSI_CPPFLAGS"
+CPPFLAGS="$ENV_CPPFLAGS $ANSI_CPPFLAGS $INCLUDE_DIRS"
 LDFLAGS="$ENV_LDFLAGS $COVERAGE_LDFLAGS"
 
 # substitute what we need:

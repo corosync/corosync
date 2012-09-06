@@ -47,11 +47,6 @@ EXTRA_DIST		= libcfg.versions	 libcfg.verso		\
 
 noinst_HEADERS		= util.h
 
-AM_CPPFLAGS		= -I$(top_builddir)/include \
-			  -I$(top_srcdir)/include
-
-AM_CFLAGS		= -fPIC
-
 # override global LIBS that pulls in lots of craft we don't need here
 LIBS			= -version-number $(call get_soname,$<) \
 			  -Wl,-version-script=$(srcdir)/lib$(call get_libname,$<).versions \
