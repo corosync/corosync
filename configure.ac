@@ -548,9 +548,34 @@ AC_CACHE_CHECK([whether $CC accepts PIE flags], [ap_cv_cc_pie], [
   LDFLAGS=$save_LDFLAGS
 ])
 if test "$ap_cv_cc_pie" = "yes"; then
-   PIE_FLAGS="-fPIE"
-   PIE_LDFLAGS="-pie"
-   PACKAGE_FEATURES="$PACKAGE_FEATURES pie"
+  SEC_FLAGS="$SEC_FLAGS -fPIE"
+  SEC_LDFLAGS="$SEC_LDFLAGS -pie"
+  PACKAGE_FEATURES="$PACKAGE_FEATURES pie"
+fi
+
+# similar to above
+AC_CACHE_CHECK([whether $CC accepts RELRO flags], [ap_cv_cc_relro], [
+  save_LDFLAGS=$LDFLAGS
+  LDFLAGS="$LDFLAGS -Wl,-z,relro"
+  AC_TRY_RUN([static int foo[30000]; int main () { return 0; }],
+    [ap_cv_cc_relro=yes], [ap_cv_cc_relro=no], [ap_cv_cc_relro=yes])
+  LDFLAGS=$save_LDFLAGS
+])
+if test "$ap_cv_cc_relro" = "yes"; then
+  SEC_LDFLAGS="$SEC_LDFLAGS -Wl,-z,relro"
+  PACKAGE_FEATURES="$PACKAGE_FEATURES relro"
+fi
+
+AC_CACHE_CHECK([whether $CC accepts BINDNOW flags], [ap_cv_cc_bindnow], [
+  save_LDFLAGS=$LDFLAGS
+  LDFLAGS="$LDFLAGS -Wl,-z,now"
+  AC_TRY_RUN([static int foo[30000]; int main () { return 0; }],
+    [ap_cv_cc_bindnow=yes], [ap_cv_cc_bindnow=no], [ap_cv_cc_bindnow=yes])
+  LDFLAGS=$save_LDFLAGS
+])
+if test "$ap_cv_cc_bindnow" = "yes"; then
+  SEC_LDFLAGS="$SEC_LDFLAGS -Wl,-z,now"
+  PACKAGE_FEATURES="$PACKAGE_FEATURES bindnow"
 fi
 
 # define global include dirs
@@ -558,12 +583,12 @@ INCLUDE_DIRS="$INCLUDE_DIRS -I\$(top_builddir)/include -I\$(top_srcdir)/include"
 INCLUDE_DIRS="$INCLUDE_DIRS -I\$(top_builddir)/include/corosync -I\$(top_srcdir)/include/corosync"
 
 # final build of *FLAGS
-CFLAGS="$ENV_CFLAGS $PIE_FLAGS $OPT_CFLAGS $GDB_FLAGS \
+CFLAGS="$ENV_CFLAGS $SEC_FLAGS $OPT_CFLAGS $GDB_FLAGS \
 	$COVERAGE_CFLAGS $EXTRA_WARNINGS \
 	$WERROR_CFLAGS $NSS_CFLAGS $LIBQB_CFLAGS \
 	$SNMP_INCLUDES"
 CPPFLAGS="$ENV_CPPFLAGS $ANSI_CPPFLAGS $INCLUDE_DIRS"
-LDFLAGS="$ENV_LDFLAGS $PIE_LDFLAGS $COVERAGE_LDFLAGS"
+LDFLAGS="$ENV_LDFLAGS $SEC_LDFLAGS $COVERAGE_LDFLAGS"
 
 # substitute what we need:
 AC_SUBST([BASHPATH])
