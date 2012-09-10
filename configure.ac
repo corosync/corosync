@@ -276,6 +276,11 @@ AC_ARG_ENABLE([debug],
 	[  --enable-debug                  : enable debug build. ],
 	[ default="no" ])
 
+AC_ARG_ENABLE([secure-build],
+	[  --enable-secure-build           : enable PIE/RELRO build. ],
+	[],
+	[enable_secure_build="yes"])
+
 AC_ARG_ENABLE([user-flags],
 	[  --enable-user-flags             : rely on user environment. ],
 	[ default="no" ])
@@ -536,47 +541,50 @@ if test "x${enable_user_flags}" = xyes; then
   EXTRA_WARNINGS=""
 fi
 
-# stolen from apache configure snippet
-AC_CACHE_CHECK([whether $CC accepts PIE flags], [ap_cv_cc_pie], [
-  save_CFLAGS=$CFLAGS
-  save_LDFLAGS=$LDFLAGS
-  CFLAGS="$CFLAGS -fPIE"
-  LDFLAGS="$LDFLAGS -pie"
-  AC_TRY_RUN([static int foo[30000]; int main () { return 0; }],
-    [ap_cv_cc_pie=yes], [ap_cv_cc_pie=no], [ap_cv_cc_pie=yes])
-  CFLAGS=$save_CFLAGS
-  LDFLAGS=$save_LDFLAGS
-])
-if test "$ap_cv_cc_pie" = "yes"; then
-  SEC_FLAGS="$SEC_FLAGS -fPIE"
-  SEC_LDFLAGS="$SEC_LDFLAGS -pie"
-  PACKAGE_FEATURES="$PACKAGE_FEATURES pie"
+if test "x${enable_secure_build}" = xyes; then
+  # stolen from apache configure snippet
+  AC_CACHE_CHECK([whether $CC accepts PIE flags], [ap_cv_cc_pie], [
+    save_CFLAGS=$CFLAGS
+    save_LDFLAGS=$LDFLAGS
+    CFLAGS="$CFLAGS -fPIE"
+    LDFLAGS="$LDFLAGS -pie"
+    AC_TRY_RUN([static int foo[30000]; int main () { return 0; }],
+      [ap_cv_cc_pie=yes], [ap_cv_cc_pie=no], [ap_cv_cc_pie=yes])
+    CFLAGS=$save_CFLAGS
+    LDFLAGS=$save_LDFLAGS
+  ])
+  if test "$ap_cv_cc_pie" = "yes"; then
+    SEC_FLAGS="$SEC_FLAGS -fPIE"
+    SEC_LDFLAGS="$SEC_LDFLAGS -pie"
+    PACKAGE_FEATURES="$PACKAGE_FEATURES pie"
+  fi
+
+  # similar to above
+  AC_CACHE_CHECK([whether $CC accepts RELRO flags], [ap_cv_cc_relro], [
+    save_LDFLAGS=$LDFLAGS
+    LDFLAGS="$LDFLAGS -Wl,-z,relro"
+    AC_TRY_RUN([static int foo[30000]; int main () { return 0; }],
+      [ap_cv_cc_relro=yes], [ap_cv_cc_relro=no], [ap_cv_cc_relro=yes])
+    LDFLAGS=$save_LDFLAGS
+  ])
+  if test "$ap_cv_cc_relro" = "yes"; then
+    SEC_LDFLAGS="$SEC_LDFLAGS -Wl,-z,relro"
+    PACKAGE_FEATURES="$PACKAGE_FEATURES relro"
+  fi
+
+  AC_CACHE_CHECK([whether $CC accepts BINDNOW flags], [ap_cv_cc_bindnow], [
+    save_LDFLAGS=$LDFLAGS
+    LDFLAGS="$LDFLAGS -Wl,-z,now"
+    AC_TRY_RUN([static int foo[30000]; int main () { return 0; }],
+      [ap_cv_cc_bindnow=yes], [ap_cv_cc_bindnow=no], [ap_cv_cc_bindnow=yes])
+    LDFLAGS=$save_LDFLAGS
+  ])
+  if test "$ap_cv_cc_bindnow" = "yes"; then
+    SEC_LDFLAGS="$SEC_LDFLAGS -Wl,-z,now"
+    PACKAGE_FEATURES="$PACKAGE_FEATURES bindnow"
+  fi
 fi
 
-# similar to above
-AC_CACHE_CHECK([whether $CC accepts RELRO flags], [ap_cv_cc_relro], [
-  save_LDFLAGS=$LDFLAGS
-  LDFLAGS="$LDFLAGS -Wl,-z,relro"
-  AC_TRY_RUN([static int foo[30000]; int main () { return 0; }],
-    [ap_cv_cc_relro=yes], [ap_cv_cc_relro=no], [ap_cv_cc_relro=yes])
-  LDFLAGS=$save_LDFLAGS
-])
-if test "$ap_cv_cc_relro" = "yes"; then
-  SEC_LDFLAGS="$SEC_LDFLAGS -Wl,-z,relro"
-  PACKAGE_FEATURES="$PACKAGE_FEATURES relro"
-fi
-
-AC_CACHE_CHECK([whether $CC accepts BINDNOW flags], [ap_cv_cc_bindnow], [
-  save_LDFLAGS=$LDFLAGS
-  LDFLAGS="$LDFLAGS -Wl,-z,now"
-  AC_TRY_RUN([static int foo[30000]; int main () { return 0; }],
-    [ap_cv_cc_bindnow=yes], [ap_cv_cc_bindnow=no], [ap_cv_cc_bindnow=yes])
-  LDFLAGS=$save_LDFLAGS
-])
-if test "$ap_cv_cc_bindnow" = "yes"; then
-  SEC_LDFLAGS="$SEC_LDFLAGS -Wl,-z,now"
-  PACKAGE_FEATURES="$PACKAGE_FEATURES bindnow"
-fi
 
 # define global include dirs
 INCLUDE_DIRS="$INCLUDE_DIRS -I\$(top_builddir)/include -I\$(top_srcdir)/include"
