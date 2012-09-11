@@ -142,7 +142,7 @@ static int32_t icmap_tt_to_qbtt(int32_t track_type)
 		res |= QB_MAP_NOTIFY_RECURSIVE;
 	}
 
-	return (track_type);
+	return (res);
 }
 
 static int32_t icmap_qbtt_to_tt(int32_t track_type)
@@ -165,7 +165,7 @@ static int32_t icmap_qbtt_to_tt(int32_t track_type)
 		res |= ICMAP_TRACK_PREFIX;
 	}
 
-	return (track_type);
+	return (res);
 }
 
 static void icmap_map_free_cb(uint32_t event,
