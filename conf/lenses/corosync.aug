@@ -83,7 +83,7 @@ let common_logging =
    kv "to_syslog" /yes|no|on|off/
    |kv "to_stderr" /yes|no|on|off/
    |kv "to_logfile" /yes|no|on|off/
-   |kv "debug" /yes|no|on|off/
+   |kv "debug" /yes|no|on|off|trace/
    |kv "logfile_priority" /alert|crit|debug|emerg|err|info|notice|warning/
    |kv "syslog_priority" /alert|crit|debug|emerg|err|info|notice|warning/
    |kv "syslog_facility" /daemon|local0|local1|local2|local3|local4|local5|local6|local7/

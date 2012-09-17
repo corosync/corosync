@@ -88,7 +88,7 @@ struct logsys_logger {
 	char subsys[LOGSYS_MAX_SUBSYS_NAMELEN];	/* subsystem name */
 	char *logfile;				/* log to file */
 	unsigned int mode;			/* subsystem mode */
-	unsigned int debug;			/* debug on|off */
+	unsigned int debug;			/* debug on|off|trace */
 	int syslog_priority;			/* priority */
 	int logfile_priority;			/* priority to file */
 	int init_status;			/* internal field to handle init queues
@@ -344,7 +344,7 @@ int _logsys_system_setup(
 		"%s", mainsystem);
 
 	logsys_loggers[i].mode = mode;
-	logsys_loggers[i].debug = 0;
+	logsys_loggers[i].debug = LOGSYS_DEBUG_OFF;
 	logsys_loggers[i].file_idx = 0;
 	logsys_loggers[i].logfile_priority = syslog_priority;
 	logsys_loggers[i].syslog_priority = syslog_priority;
@@ -709,9 +709,19 @@ static void _logsys_config_apply_per_file(int32_t s, const char *filename)
 			QB_LOG_FILTER_FILE, filename, LOG_TRACE);
 	}
 
-	if (logsys_loggers[s].debug) {
-		syslog_priority = LOG_DEBUG;
-		logfile_priority = LOG_DEBUG;
+	if (logsys_loggers[s].debug != LOGSYS_DEBUG_OFF) {
+		switch (logsys_loggers[s].debug) {
+		case LOGSYS_DEBUG_ON:
+			syslog_priority = LOG_DEBUG;
+			logfile_priority = LOG_DEBUG;
+			break;
+		case LOGSYS_DEBUG_TRACE:
+			syslog_priority = LOG_TRACE;
+			logfile_priority = LOG_TRACE;
+			break;
+		default:
+			assert(0);
+		}
 	}
 	qb_log_filter_ctl(QB_LOG_SYSLOG, QB_LOG_FILTER_ADD,
 		QB_LOG_FILTER_FILE, filename,

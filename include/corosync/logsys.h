@@ -72,6 +72,7 @@ extern "C" {
 #define LOGSYS_LEVEL_NOTICE		LOG_NOTICE
 #define LOGSYS_LEVEL_INFO		LOG_INFO
 #define LOGSYS_LEVEL_DEBUG		LOG_DEBUG
+#define LOGSYS_LEVEL_TRACE		LOG_TRACE
 
 /*
  * logsys_logger bits
@@ -82,6 +83,13 @@ extern "C" {
 #define LOGSYS_MAX_SUBSYS_COUNT		32
 #define LOGSYS_MAX_SUBSYS_NAMELEN	64
 #define LOGSYS_MAX_PERROR_MSG_LEN	128
+
+/*
+ * Debug levels
+ */
+#define LOGSYS_DEBUG_OFF		0
+#define LOGSYS_DEBUG_ON			1
+#define LOGSYS_DEBUG_TRACE		2
 
 #ifndef LOGSYS_UTILS_ONLY
 
