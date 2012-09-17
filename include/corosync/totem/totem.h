@@ -82,6 +82,7 @@ struct totem_logging_configuration {
 	int log_level_warning;
 	int log_level_notice;
 	int log_level_debug;
+	int log_level_trace;
 	int log_subsys_id;
 };
 

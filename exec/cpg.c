@@ -1813,7 +1813,7 @@ static void message_handler_req_lib_cpg_mcast (void *conn, const void *message)
 	int result;
 	cs_error_t error = CS_ERR_NOT_EXIST;
 
-	log_printf(LOGSYS_LEVEL_DEBUG, "got mcast request on %p", conn);
+	log_printf(LOGSYS_LEVEL_TRACE, "got mcast request on %p", conn);
 
 	switch (cpd->cpd_state) {
 	case CPD_STATE_UNJOINED:
@@ -1867,7 +1867,7 @@ static void message_handler_req_lib_cpg_zc_execute (
 	int result;
 	cs_error_t error = CS_ERR_NOT_EXIST;
 
-	log_printf(LOGSYS_LEVEL_DEBUG, "got ZC mcast request on %p", conn);
+	log_printf(LOGSYS_LEVEL_TRACE, "got ZC mcast request on %p", conn);
 
 	header = (struct qb_ipc_request_header *)(((char *)serveraddr2void(hdr->server_address) + sizeof (struct coroipcs_zc_header)));
 	req_lib_cpg_mcast = (struct req_lib_cpg_mcast *)header;

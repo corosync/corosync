@@ -1163,6 +1163,7 @@ int main (int argc, char **argv, char **envp)
 	totem_config.totem_logging_configuration.log_level_warning = LOGSYS_LEVEL_WARNING;
 	totem_config.totem_logging_configuration.log_level_notice = LOGSYS_LEVEL_NOTICE;
 	totem_config.totem_logging_configuration.log_level_debug = LOGSYS_LEVEL_DEBUG;
+	totem_config.totem_logging_configuration.log_level_trace = LOGSYS_LEVEL_TRACE;
 	totem_config.totem_logging_configuration.log_printf = _logsys_log_printf;
 	logsys_config_apply();
 
