@@ -424,14 +424,20 @@ static int corosync_main_config_set (
 	}
 
 	if (!objdb_get_string (objdb, object_handle, "debug", &value)) {
+		if (strcmp (value, "trace") == 0) {
+			if (logsys_config_debug_set (subsys, LOGSYS_DEBUG_TRACE) < 0) {
+				error_reason = "unable to set debug on";
+				goto parse_error;
+			}
+		} else
 		if (strcmp (value, "on") == 0) {
-			if (logsys_config_debug_set (subsys, 1) < 0) {
+			if (logsys_config_debug_set (subsys, LOGSYS_DEBUG_ON) < 0) {
 				error_reason = "unable to set debug on";
 				goto parse_error;
 			}
 		} else
 		if (strcmp (value, "off") == 0) {
-			if (logsys_config_debug_set (subsys, 0) < 0) {
+			if (logsys_config_debug_set (subsys, LOGSYS_DEBUG_OFF) < 0) {
 				error_reason = "unable to set debug off";
 				goto parse_error;
 			}

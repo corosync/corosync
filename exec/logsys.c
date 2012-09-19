@@ -144,6 +144,7 @@ struct logsys_logger {
 	int logfile_priority;			/* priority to file */
 	int init_status;			/* internal field to handle init queues
 						   for subsystems */
+	unsigned int trace1_allowed;
 };
 
 
@@ -439,12 +440,13 @@ static void log_printf_to_logs (
 	int c;
 	struct tm tm_res;
 
-	if (LOGSYS_DECODE_RECID(rec_ident) != LOGSYS_RECID_LOG) {
-		return;
-	}
-
 	subsysid = LOGSYS_DECODE_SUBSYSID(rec_ident);
 	level = LOGSYS_DECODE_LEVEL(rec_ident);
+
+	if (!((LOGSYS_DECODE_RECID(rec_ident) == LOGSYS_RECID_LOG) ||
+	      (logsys_loggers[subsysid].trace1_allowed && LOGSYS_DECODE_RECID(rec_ident) == LOGSYS_RECID_TRACE1))) {
+		return;
+	}
 
 	while ((c = format_buffer[format_buffer_idx])) {
 		cutoff = 0;
@@ -960,6 +962,7 @@ int _logsys_system_setup(
 	logsys_loggers[i].mode = mode;
 
 	logsys_loggers[i].debug = debug;
+	logsys_loggers[i].trace1_allowed = 0;
 
 	if (logsys_config_file_set_unlocked (i, &errstr, logfile) < 0) {
 		pthread_mutex_unlock (&logsys_config_mutex);
@@ -1495,12 +1498,32 @@ int logsys_config_debug_set (
 	if (subsys != NULL) {
 		i = _logsys_config_subsys_get_unlocked (subsys);
 		if (i >= 0) {
-			logsys_loggers[i].debug = debug;
+			switch (debug) {
+			case LOGSYS_DEBUG_OFF:
+			case LOGSYS_DEBUG_ON:
+				logsys_loggers[i].debug = debug;
+				logsys_loggers[i].trace1_allowed = 0;
+				break;
+			case LOGSYS_DEBUG_TRACE:
+				logsys_loggers[i].debug = LOGSYS_DEBUG_ON;
+				logsys_loggers[i].trace1_allowed = 1;
+				break;
+			}
 			i = 0;
 		}
 	} else {
 		for (i = 0; i <= LOGSYS_MAX_SUBSYS_COUNT; i++) {
-			logsys_loggers[i].debug = debug;
+			switch (debug) {
+			case LOGSYS_DEBUG_OFF:
+			case LOGSYS_DEBUG_ON:
+				logsys_loggers[i].debug = debug;
+				logsys_loggers[i].trace1_allowed = 0;
+				break;
+			case LOGSYS_DEBUG_TRACE:
+				logsys_loggers[i].debug = LOGSYS_DEBUG_ON;
+				logsys_loggers[i].trace1_allowed = 1;
+				break;
+			}
 		}
 		i = 0;
 	}

@@ -58,6 +58,7 @@ extern "C" {
 #define LOGSYS_MODE_FORK		(1<<3)
 #define LOGSYS_MODE_THREADED		(1<<4)
 
+
 /*
  * Log priorities, compliant with syslog and SA Forum Log spec.
  */
@@ -92,6 +93,12 @@ extern "C" {
 #define LOGSYS_RECID_TRACE7		(LOGSYS_RECID_MAX - 10)
 #define LOGSYS_RECID_TRACE8		(LOGSYS_RECID_MAX - 11)
 
+/*
+ * Debug levels
+ */
+#define LOGSYS_DEBUG_OFF		0
+#define LOGSYS_DEBUG_ON			1
+#define LOGSYS_DEBUG_TRACE		2
 
 /*
  * Internal APIs that must be globally exported
