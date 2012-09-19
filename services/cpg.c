@@ -1462,7 +1462,7 @@ static void message_handler_req_lib_cpg_mcast (void *conn, const void *message)
 	int result;
  	cs_error_t error = CPG_ERR_NOT_EXIST;
 
-	log_printf(LOGSYS_LEVEL_DEBUG, "got mcast request on %p\n", conn);
+	TRACE1("got mcast request on %p\n", conn);
 
  	switch (cpd->cpd_state) {
  	case CPD_STATE_UNJOINED:

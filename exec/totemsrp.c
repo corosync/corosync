@@ -637,6 +637,19 @@ do {									\
 		format, ##args);					\
 } while (0);
 
+#define TRACE(recid, format, args...) do {				\
+	instance->totemsrp_log_printf (					\
+		LOGSYS_ENCODE_RECID(LOGSYS_LEVEL_DEBUG,			\
+				    instance->totemsrp_subsys_id,	\
+				    recid),				\
+		 __FUNCTION__, __FILE__, __LINE__,			\
+		format, ##args);					\
+} while(0)
+
+#define TRACE1(format, args...) do {					\
+	TRACE(LOGSYS_RECID_TRACE1, format, ##args);			\
+} while(0)
+
 static void totemsrp_instance_initialize (struct totemsrp_instance *instance)
 {
 	memset (instance, 0, sizeof (struct totemsrp_instance));
@@ -1707,8 +1720,7 @@ static void memb_state_operational_enter (struct totemsrp_instance *instance)
 
 	deliver_messages_from_recovery_to_regular (instance);
 
-	log_printf (instance->totemsrp_log_level_debug,
-		"Delivering to app %x to %x\n",
+	TRACE1 ("Delivering to app %x to %x\n",
 		instance->my_high_delivered + 1, instance->old_ring_state_high_seq_received);
 
 	aru_save = instance->my_aru;
@@ -2229,7 +2241,7 @@ int totemsrp_mcast (
 
 	message_item.msg_len = addr_idx;
 
-	log_printf (instance->totemsrp_log_level_debug, "mcasted message added to pending queue\n");
+	TRACE1 ("mcasted message added to pending queue\n");
 	instance->stats.mcast_tx++;
 	cs_queue_item_add (&instance->new_message_queue, &message_item);
 
@@ -2351,8 +2363,7 @@ static void messages_free (
 	instance->last_released += range;
 
  	if (log_release) {
-		log_printf (instance->totemsrp_log_level_debug,
-			"releasing messages up to and including %x\n", release_to);
+		TRACE1 ("releasing messages up to and including %x\n", release_to);
 	}
 }
 
@@ -3704,8 +3715,7 @@ static void messages_deliver_to_app (
 	range = end_point - instance->my_high_delivered;
 
 	if (range) {
-		log_printf (instance->totemsrp_log_level_debug,
-			"Delivering %x to %x\n", instance->my_high_delivered,
+		TRACE1 ("Delivering %x to %x\n", instance->my_high_delivered,
 			end_point);
 	}
 	assert (range < QUEUE_RTR_ITEMS_SIZE_MAX);
@@ -3773,8 +3783,7 @@ static void messages_deliver_to_app (
 		/*
 		 * Message found
 		 */
-		log_printf (instance->totemsrp_log_level_debug,
-			"Delivering MCAST message with seq %x to pending delivery queue\n",
+		TRACE1 ("Delivering MCAST message with seq %x to pending delivery queue\n",
 			mcast_header.seq);
 
 		/*
@@ -3863,8 +3872,7 @@ static int message_handler_mcast (
 		return (0);
 	}
 
-	log_printf (instance->totemsrp_log_level_debug,
-		"Received ringid(%s:%lld) seq %x\n",
+	TRACE1 ("Received ringid(%s:%lld) seq %x\n",
 		totemip_print (&mcast_header.ring_id.rep),
 		mcast_header.ring_id.seq,
 		mcast_header.seq);
