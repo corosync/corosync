@@ -357,6 +357,29 @@ static int safe_atoi(const char *str, int *res)
 	return (0);
 }
 
+static int str_to_ull(const char *str, unsigned long long int *res)
+{
+	unsigned long long int val;
+	char *endptr;
+
+	errno = 0;
+
+	val = strtoull(str, &endptr, 10);
+	if (errno == ERANGE) {
+		return (-1);
+	}
+
+	if (endptr == str) {
+		return (-1);
+	}
+
+	if (*endptr != '\0') {
+		return (-1);
+	}
+
+	*res = val;
+	return (0);
+}
 
 static int main_config_parser_cb(const char *path,
 			char *key,
@@ -366,6 +389,7 @@ static int main_config_parser_cb(const char *path,
 			void *user_data)
 {
 	int i;
+	unsigned long long int ull;
 	int add_as_string;
 	char key_name[ICMAP_KEYNAME_MAXLEN];
 	static char formated_err[256];
@@ -467,6 +491,13 @@ static int main_config_parser_cb(const char *path,
 					goto atoi_error;
 				}
 				icmap_set_uint32(path, i);
+				add_as_string = 0;
+			}
+			if (strcmp(path, "totem.config_version") == 0) {
+				if (str_to_ull(value, &ull) != 0) {
+					goto atoi_error;
+				}
+				icmap_set_uint64(path, ull);
 				add_as_string = 0;
 			}
 			if (strcmp(path, "totem.crypto_type") == 0) {
