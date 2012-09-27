@@ -811,6 +811,8 @@ static void exec_cmap_mcast_endian_convert(void *message)
 	uint16_t u16;
 	uint32_t u32;
 	uint64_t u64;
+	float flt;
+	double dbl;
 
 	swab_coroipc_request_header_t(&req_exec_cmap_mcast->header);
 
@@ -841,9 +843,16 @@ static void exec_cmap_mcast_endian_convert(void *message)
 			u64 = swab64(u64);
 			memcpy(item->value, &u64, sizeof(u64));
 			break;
-		/*
-		 * TODO: Need to convert also float and double
-		 */
+		case ICMAP_VALUETYPE_FLOAT:
+			memcpy(&flt, item->value, sizeof(flt));
+			swabflt(&flt);
+			memcpy(item->value, &flt, sizeof(flt));
+			break;
+		case ICMAP_VALUETYPE_DOUBLE:
+			memcpy(&dbl, item->value, sizeof(dbl));
+			swabdbl(&dbl);
+			memcpy(item->value, &dbl, sizeof(dbl));
+			break;
 		}
 
 		p += sizeof(*item) + item->value_len;
