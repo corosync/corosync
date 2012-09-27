@@ -502,6 +502,16 @@ extern int totem_config_read (
 		member_count = 0;
 
 		ringnumber = atoi(ringnumber_key);
+
+		if (ringnumber >= INTERFACE_MAX) {
+			snprintf (error_string_response, sizeof(error_string_response),
+			    "parse error in config: interface ring number %u is bigger then allowed maximum %u\n",
+			    ringnumber, INTERFACE_MAX - 1);
+
+			*error_string = error_string_response;
+			return -1;
+		}
+
 		/*
 		 * Get the bind net address
 		 */
