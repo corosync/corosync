@@ -91,6 +91,28 @@ static inline void swab_mar_uint64_t (mar_uint64_t *to_swab)
 	*to_swab = swab64 (*to_swab);
 }
 
+static inline void swabbin(char *data, size_t len)
+{
+	int i;
+	char tmp;
+
+	for (i = 0; i < len / 2; i++) {
+		tmp = data[i];
+		data[i] = data[len - i - 1];
+		data[len - i - 1] = tmp;
+	}
+}
+
+static inline void swabflt(float *flt)
+{
+	swabbin((char *)flt, sizeof(*flt));
+}
+
+static inline void swabdbl(double *dbl)
+{
+	swabbin((char *)dbl, sizeof(*dbl));
+}
+
 typedef struct {
 	mar_uint16_t length __attribute__((aligned(8)));
 	mar_uint8_t value[CS_MAX_NAME_LENGTH] __attribute__((aligned(8)));
