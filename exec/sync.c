@@ -513,11 +513,11 @@ static void sync_servicelist_build_enter (
 		my_service_list_entries += 1;
 	}
 
-	for (i = 0; i < my_service_list[i].service_id; i++) {
+	for (i = 0; i < my_service_list_entries; i++) {
 		service_build.service_list[i] =
 			my_service_list[i].service_id;
 	}
-	service_build.service_list_entries = i;
+	service_build.service_list_entries = my_service_list_entries;
 
 	service_build_message_transmit (&service_build);
 }
