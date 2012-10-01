@@ -121,7 +121,7 @@ static void exec_cmap_mcast_endian_convert(void *message);
  * error is returned). If key is not found, item has type ICMAP_VALUETYPE_NOT_EXIST
  * and length zero.
  */
-static int cmap_mcast_send(enum cmap_mcast_reason reason, int argc, char *argv[]);
+static cs_error_t cmap_mcast_send(enum cmap_mcast_reason reason, int argc, char *argv[]);
 
 /*
  * Library Handler Definition
@@ -656,7 +656,7 @@ reply_send:
 	api->ipc_response_send(conn, &res_lib_cmap_track_delete, sizeof(res_lib_cmap_track_delete));
 }
 
-static int cmap_mcast_send(enum cmap_mcast_reason reason, int argc, char *argv[])
+static cs_error_t cmap_mcast_send(enum cmap_mcast_reason reason, int argc, char *argv[])
 {
 	int i;
 	size_t value_len;
@@ -723,7 +723,7 @@ static int cmap_mcast_send(enum cmap_mcast_reason reason, int argc, char *argv[]
 	req_exec_cmap_iovec[0].iov_len = sizeof(req_exec_cmap_mcast);
 
 	qb_log(LOG_TRACE, "Sending %u items (%u iovec) for reason %u", argc, argc + 1, reason);
-	err = api->totem_mcast(req_exec_cmap_iovec, argc + 1, TOTEM_AGREED);
+	err = (api->totem_mcast(req_exec_cmap_iovec, argc + 1, TOTEM_AGREED) == 0 ? CS_OK : CS_ERR_MESSAGE_ERROR);
 
 free_mem:
 	for (i = 0; i < argc; i++) {
