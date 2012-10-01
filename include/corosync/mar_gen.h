@@ -41,6 +41,8 @@
 #include <corosync/corotypes.h>
 #include <corosync/swab.h>
 
+#define MAR_ALIGN_UP(addr,size) (((addr)+((size)-1))&(~((size)-1)))
+
 typedef int8_t mar_int8_t;
 typedef int16_t mar_int16_t;
 typedef int32_t mar_int32_t;

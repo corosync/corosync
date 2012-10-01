@@ -114,6 +114,13 @@ static void message_handler_req_exec_cmap_mcast(
 
 static void exec_cmap_mcast_endian_convert(void *message);
 
+/*
+ * Reson is subtype of message. argc is number of items in argv array. Argv is array
+ * of strings (key names) which will be send to wire. There can be maximum
+ * MAX_REQ_EXEC_CMAP_MCAST_ITEMS items (for more items, CS_ERR_TOO_MANY_GROUPS
+ * error is returned). If key is not found, item has type ICMAP_VALUETYPE_NOT_EXIST
+ * and length zero.
+ */
 static int cmap_mcast_send(enum cmap_mcast_reason reason, int argc, char *argv[]);
 
 /*
@@ -203,7 +210,7 @@ struct req_exec_cmap_mcast {
         mar_uint8_t reserved1 __attribute__((aligned(8)));
         mar_uint8_t reserver2 __attribute__((aligned(8)));
         /*
-         * Following are array of req_exec_cmap_mcast_item
+         * Following are array of req_exec_cmap_mcast_item alligned to 8 bytes
          */
 };
 
@@ -679,7 +686,7 @@ static int cmap_mcast_send(enum cmap_mcast_reason reason, int argc, char *argv[]
 			value_len = 0;
 		}
 
-		item_len = sizeof(*item) + value_len;
+		item_len = MAR_ALIGN_UP(sizeof(*item) + value_len, 8);
 
 		item = malloc(item_len);
 		if (item == NULL) {
@@ -749,7 +756,7 @@ static struct req_exec_cmap_mcast_item *cmap_mcast_item_find(
 			return (item);
 		}
 
-		p += sizeof(*item) + item->value_len;
+		p += MAR_ALIGN_UP(sizeof(*item) + item->value_len, 8);
 	}
 
 	return (NULL);
@@ -855,6 +862,6 @@ static void exec_cmap_mcast_endian_convert(void *message)
 			break;
 		}
 
-		p += sizeof(*item) + item->value_len;
+		p += MAR_ALIGN_UP(sizeof(*item) + item->value_len, 8);
 	}
 }
