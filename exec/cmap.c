@@ -123,6 +123,17 @@ static void exec_cmap_mcast_endian_convert(void *message);
  */
 static cs_error_t cmap_mcast_send(enum cmap_mcast_reason reason, int argc, char *argv[]);
 
+static void cmap_sync_init (
+	const unsigned int *trans_list,
+	size_t trans_list_entries,
+	const unsigned int *member_list,
+	size_t member_list_entries,
+	const struct memb_ring_id *ring_id);
+
+static int cmap_sync_process (void);
+static void cmap_sync_activate (void);
+static void cmap_sync_abort (void);
+
 /*
  * Library Handler Definition
  */
@@ -189,6 +200,10 @@ struct corosync_service_engine cmap_service_engine = {
 	.exec_exit_fn				= cmap_exec_exit_fn,
 	.exec_engine				= cmap_exec_engine,
 	.exec_engine_count			= sizeof (cmap_exec_engine) / sizeof (struct corosync_exec_handler),
+	.sync_init				= cmap_sync_init,
+	.sync_process				= cmap_sync_process,
+	.sync_activate				= cmap_sync_activate,
+	.sync_abort				= cmap_sync_abort
 };
 
 struct corosync_service_engine *cmap_get_service_engine_ver0 (void)
@@ -213,6 +228,12 @@ struct req_exec_cmap_mcast {
          * Following are array of req_exec_cmap_mcast_item alligned to 8 bytes
          */
 };
+
+static size_t cmap_sync_trans_list_entries = 0;
+static size_t cmap_sync_member_list_entries = 0;
+static uint64_t cmap_highest_config_version_received = 0;
+static uint64_t cmap_my_config_version = 0;
+static int cmap_first_sync = 1;
 
 static int cmap_exec_exit_fn(void)
 {
@@ -278,6 +299,78 @@ static int cmap_lib_exit_fn (void *conn)
 	api->ipc_refcnt_dec(conn);
 
 	return (0);
+}
+
+static void cmap_sync_init (
+	const unsigned int *trans_list,
+	size_t trans_list_entries,
+	const unsigned int *member_list,
+	size_t member_list_entries,
+	const struct memb_ring_id *ring_id)
+{
+
+	cmap_sync_trans_list_entries = trans_list_entries;
+	cmap_sync_member_list_entries = member_list_entries;
+	cmap_highest_config_version_received = 0;
+
+	if (icmap_get_uint64("totem.config_version", &cmap_my_config_version) != CS_OK) {
+		cmap_my_config_version = 0;
+	}
+}
+
+static int cmap_sync_process (void)
+{
+	const char *key = "totem.config_version";
+	cs_error_t ret;
+
+	ret = cmap_mcast_send(CMAP_MCAST_REASON_SYNC, 1, (char **)&key);
+
+	return (ret == CS_OK ? 0 : -1);
+}
+
+static void cmap_sync_activate (void)
+{
+
+	if (cmap_sync_trans_list_entries == 0) {
+		log_printf(LOGSYS_LEVEL_DEBUG, "Single node sync -> no action");
+
+		return ;
+	}
+
+	if (cmap_first_sync == 1) {
+		cmap_first_sync = 0;
+	} else {
+		log_printf(LOGSYS_LEVEL_DEBUG, "Not first sync -> no action");
+
+		return ;
+	}
+
+	if (cmap_my_config_version == 0) {
+		log_printf(LOGSYS_LEVEL_DEBUG, "My config version is 0 -> no action");
+
+		return ;
+	}
+
+	if (cmap_highest_config_version_received == 0) {
+		log_printf(LOGSYS_LEVEL_DEBUG, "Other nodes version is 0 -> no action");
+
+		return ;
+	}
+
+
+	if (cmap_highest_config_version_received != cmap_my_config_version) {
+		log_printf(LOGSYS_LEVEL_ERROR,
+		    "Received config version (%"PRIu64") is different then my config version (%"PRIu64")! Exiting",
+		    cmap_highest_config_version_received, cmap_my_config_version);
+		api->shutdown_request();
+		return ;
+	}
+}
+
+static void cmap_sync_abort (void)
+{
+
+
 }
 
 static void message_handler_req_lib_cmap_set(void *conn, const void *message)
@@ -786,6 +879,11 @@ static void message_handler_req_exec_cmap_mcast_reason_sync(
 	}
 
 	qb_log(LOG_TRACE, "Received config version %"PRIu64" from node %x", config_version, nodeid);
+
+	if (nodeid != api->totem_nodeid_get() &&
+	    config_version > cmap_highest_config_version_received) {
+		cmap_highest_config_version_received = config_version;
+	}
 
 	LEAVE();
 }
