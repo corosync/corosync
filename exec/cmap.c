@@ -82,6 +82,7 @@ enum cmap_message_req_types {
 
 enum cmap_mcast_reason {
 	CMAP_MCAST_REASON_SYNC = 0,
+	CMAP_MCAST_REASON_NEW_CONFIG_VERSION = 1,
 };
 
 static struct corosync_api_v1 *api;
@@ -133,6 +134,13 @@ static void cmap_sync_init (
 static int cmap_sync_process (void);
 static void cmap_sync_activate (void);
 static void cmap_sync_abort (void);
+
+static void cmap_config_version_track_cb(
+	int32_t event,
+	const char *key_name,
+	struct icmap_notify_value new_value,
+	struct icmap_notify_value old_value,
+	void *user_data);
 
 /*
  * Library Handler Definition
@@ -234,16 +242,59 @@ static size_t cmap_sync_member_list_entries = 0;
 static uint64_t cmap_highest_config_version_received = 0;
 static uint64_t cmap_my_config_version = 0;
 static int cmap_first_sync = 1;
+static icmap_track_t cmap_config_version_track;
+
+static void cmap_config_version_track_cb(
+	int32_t event,
+	const char *key_name,
+	struct icmap_notify_value new_value,
+	struct icmap_notify_value old_value,
+	void *user_data)
+{
+	const char *key = "totem.config_version";
+	cs_error_t ret;
+
+	ENTER();
+
+	if (icmap_get_uint64("totem.config_version", &cmap_my_config_version) != CS_OK) {
+		cmap_my_config_version = 0;
+	}
+
+
+	ret = cmap_mcast_send(CMAP_MCAST_REASON_NEW_CONFIG_VERSION, 1, (char **)&key);
+	if (ret != CS_OK) {
+		log_printf(LOGSYS_LEVEL_ERROR, "Can't inform other nodes about new config version");
+	}
+
+	LEAVE();
+}
 
 static int cmap_exec_exit_fn(void)
 {
+
+	if (icmap_track_delete(cmap_config_version_track) != CS_OK) {
+		log_printf(LOGSYS_LEVEL_ERROR, "Can't delete config_version icmap tracker");
+	}
+
 	return 0;
 }
 
 static char *cmap_exec_init_fn (
 	struct corosync_api_v1 *corosync_api)
 {
+	cs_error_t ret;
+
 	api = corosync_api;
+
+	ret = icmap_track_add("totem.config_version",
+	    ICMAP_TRACK_ADD | ICMAP_TRACK_DELETE | ICMAP_TRACK_MODIFY,
+	    cmap_config_version_track_cb,
+	    NULL,
+	    &cmap_config_version_track);
+
+	if (ret != CS_OK) {
+		return ((char *)"Can't add config_version icmap tracker");
+	}
 
 	return (NULL);
 }
@@ -855,10 +906,12 @@ static struct req_exec_cmap_mcast_item *cmap_mcast_item_find(
 	return (NULL);
 }
 
-static void message_handler_req_exec_cmap_mcast_reason_sync(
+static void message_handler_req_exec_cmap_mcast_reason_sync_nv(
+		enum cmap_mcast_reason reason,
 		const void *message,
 		unsigned int nodeid)
 {
+	char member_config_version[ICMAP_KEYNAME_MAXLEN];
 	uint64_t config_version = 0;
 	struct req_exec_cmap_mcast_item *item;
 	mar_size_t value_len;
@@ -885,6 +938,10 @@ static void message_handler_req_exec_cmap_mcast_reason_sync(
 		cmap_highest_config_version_received = config_version;
 	}
 
+	snprintf(member_config_version, ICMAP_KEYNAME_MAXLEN,
+		"runtime.totem.pg.mrp.srp.members.%u.config_version", nodeid);
+	icmap_set_uint64(member_config_version, config_version);
+
 	LEAVE();
 }
 
@@ -898,7 +955,14 @@ static void message_handler_req_exec_cmap_mcast(
 
 	switch (req_exec_cmap_mcast->reason) {
 	case CMAP_MCAST_REASON_SYNC:
-		message_handler_req_exec_cmap_mcast_reason_sync(message, nodeid);
+		message_handler_req_exec_cmap_mcast_reason_sync_nv(req_exec_cmap_mcast->reason,
+		    message, nodeid);
+
+		break;
+	case CMAP_MCAST_REASON_NEW_CONFIG_VERSION:
+		message_handler_req_exec_cmap_mcast_reason_sync_nv(req_exec_cmap_mcast->reason,
+		    message, nodeid);
+
 		break;
 	default:
 		qb_log(LOG_TRACE, "Received mcast with unknown reason %u", req_exec_cmap_mcast->reason);
