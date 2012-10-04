@@ -608,8 +608,8 @@ directive it is possible to specify the quorum algorithm to use with the
 
 .TP
 provider
-directive. At the time of writing only corosync_votequorum is supported. Please refer
-to quorum modules man pages (8) for specific config options.
+directive. At the time of writing only corosync_votequorum is supported.
+See votequorum(5) for configuration options.
 
 .PP
 Within the
@@ -635,9 +635,6 @@ cluster membership service.  If this is not specified with IPv4, the node id
 will be determined from the 32 bit IP address the system to which the system
 is bound with ring identifier of 0.  The node identifier value of zero is
 reserved and should not be used.
-
-.TP
-quorum_votes
 
 .SH "FILES"
 .TP
