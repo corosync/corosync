@@ -646,6 +646,14 @@ static void corosync_totem_stats_updater (void *data)
 		"firewall_enabled_or_nic_failure", strlen("firewall_enabled_or_nic_failure"),
 		&firewall_enabled_or_nic_failure, sizeof (firewall_enabled_or_nic_failure));
 
+	if (stats->mrp->srp->continuous_gather > MAX_NO_CONT_GATHER) {
+		log_printf (LOGSYS_LEVEL_WARNING,
+			"Totem is unable to form a cluster because of an "
+			"operating system or network fault. The most common "
+			"cause of this message is that the local firewall is "
+			"configured improperly.");
+	}
+
 	total_mtt_rx_token = 0;
 	total_token_holdtime = 0;
 	total_backlog_calc = 0;
