@@ -54,6 +54,7 @@ extern int totemnet_initialize (
 	hdb_handle_t poll_handle,
 	void **net_context,
 	struct totem_config *totem_config,
+	totemsrp_stats_t *stats,
 	int interface_no,
 	void *context,
 

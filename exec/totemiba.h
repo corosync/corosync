@@ -47,6 +47,7 @@ extern int totemiba_initialize (
 	hdb_handle_t poll_handle,
 	void **iba_handle,
 	struct totem_config *totem_config,
+	totemsrp_stats_t *stats,
 	int interface_no,
 	void *context,
 

@@ -215,6 +215,8 @@ struct totemudp_instance {
 
 	struct totem_config *totem_config;
 
+	totemsrp_stats_t *stats;
+
 	struct totem_ip_address token_target;
 };
 
@@ -1067,6 +1069,9 @@ static inline void mcast_sendmsg (
 	if (res < 0) {
 		LOGSYS_PERROR (errno, instance->totemudp_log_level_debug,
 			"sendmsg(mcast) failed (non-critical)");
+		instance->stats->continuous_sendmsg_failures++;
+	} else {
+		instance->stats->continuous_sendmsg_failures = 0;
 	}
 
 	/*
@@ -1861,6 +1866,7 @@ int totemudp_initialize (
 	hdb_handle_t poll_handle,
 	void **udp_context,
 	struct totem_config *totem_config,
+	totemsrp_stats_t *stats,
 	int interface_no,
 	void *context,
 
@@ -1886,6 +1892,8 @@ int totemudp_initialize (
 	totemudp_instance_initialize (instance);
 
 	instance->totem_config = totem_config;
+	instance->stats = stats;
+
 	/*
 	* Configure logging
 	*/

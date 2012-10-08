@@ -56,6 +56,10 @@
  * Maximum number of continuous gather states
  */
 #define MAX_NO_CONT_GATHER	3
+/*
+ * Maximum number of continuous failures get from sendmsg call
+ */
+#define MAX_NO_CONT_SENDMSG_FAILURES	30
 
 struct totem_interface {
 	struct totem_ip_address bindnet;
@@ -262,6 +266,7 @@ typedef struct {
 	uint64_t consensus_timeouts;
 	uint64_t rx_msg_dropped;
 	uint32_t continuous_gather;
+	uint32_t continuous_sendmsg_failures;
 
 	int earliest_token;
 	int latest_token;

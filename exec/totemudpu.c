@@ -189,6 +189,8 @@ struct totemudpu_instance {
 
 	struct totem_config *totem_config;
 
+	totemsrp_stats_t *stats;
+
 	struct totem_ip_address token_target;
 
 	int token_socket;
@@ -1413,6 +1415,7 @@ int totemudpu_initialize (
 	hdb_handle_t poll_handle,
 	void **udpu_context,
 	struct totem_config *totem_config,
+	totemsrp_stats_t *stats,
 	int interface_no,
 	void *context,
 
@@ -1438,6 +1441,8 @@ int totemudpu_initialize (
 	totemudpu_instance_initialize (instance);
 
 	instance->totem_config = totem_config;
+	instance->stats = stats;
+
 	/*
 	* Configure logging
 	*/

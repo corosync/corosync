@@ -640,19 +640,25 @@ static void corosync_totem_stats_updater (void *data)
 	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
 		"continuous_gather", strlen("continuous_gather"),
 		&stats->mrp->srp->continuous_gather, sizeof (stats->mrp->srp->continuous_gather));
-
-	firewall_enabled_or_nic_failure = (stats->mrp->srp->continuous_gather > MAX_NO_CONT_GATHER ? 1 : 0);
 	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
-		"firewall_enabled_or_nic_failure", strlen("firewall_enabled_or_nic_failure"),
-		&firewall_enabled_or_nic_failure, sizeof (firewall_enabled_or_nic_failure));
+		"continuous_sendmsg_failures", strlen("continuous_sendmsg_failures"),
+		&stats->mrp->srp->continuous_sendmsg_failures, sizeof (stats->mrp->srp->continuous_sendmsg_failures));
 
-	if (stats->mrp->srp->continuous_gather > MAX_NO_CONT_GATHER) {
+	if (stats->mrp->srp->continuous_gather > MAX_NO_CONT_GATHER ||
+	    stats->mrp->srp->continuous_sendmsg_failures > MAX_NO_CONT_SENDMSG_FAILURES) {
 		log_printf (LOGSYS_LEVEL_WARNING,
 			"Totem is unable to form a cluster because of an "
 			"operating system or network fault. The most common "
 			"cause of this message is that the local firewall is "
 			"configured improperly.");
+		firewall_enabled_or_nic_failure = 1;
+	} else {
+		firewall_enabled_or_nic_failure = 0;
 	}
+
+	objdb->object_key_replace (stats->mrp->srp->hdr.handle,
+		"firewall_enabled_or_nic_failure", strlen("firewall_enabled_or_nic_failure"),
+		&firewall_enabled_or_nic_failure, sizeof (firewall_enabled_or_nic_failure));
 
 	total_mtt_rx_token = 0;
 	total_token_holdtime = 0;
@@ -820,6 +826,9 @@ static void corosync_totem_stats_init (void)
 			sizeof (zero_64), OBJDB_VALUETYPE_UINT64);
 		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
 			"continuous_gather", &zero_32,
+			sizeof (zero_32), OBJDB_VALUETYPE_UINT32);
+		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
+			"continuous_sendmsg_failures", &zero_32,
 			sizeof (zero_32), OBJDB_VALUETYPE_UINT32);
 		objdb->object_key_create_typed (stats->mrp->srp->hdr.handle,
 			"firewall_enabled_or_nic_failure", &zero_32,

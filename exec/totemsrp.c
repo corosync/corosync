@@ -930,6 +930,7 @@ int totemsrp_initialize (
 		poll_handle,
 		&instance->totemrrp_context,
 		totem_config,
+		stats->srp,
 		instance,
 		main_deliver_fn,
 		main_iface_change_fn,

@@ -1798,6 +1798,7 @@ int totemrrp_initialize (
 	hdb_handle_t poll_handle,
 	void **rrp_context,
 	struct totem_config *totem_config,
+	totemsrp_stats_t *stats,
 	void *context,
 
 	void (*deliver_fn) (
@@ -1886,6 +1887,7 @@ int totemrrp_initialize (
 			poll_handle,
 			&instance->net_handles[i],
 			totem_config,
+			stats,
 			i,
 			(void *)deliver_fn_context,
 			rrp_deliver_fn,
