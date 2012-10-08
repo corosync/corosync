@@ -48,6 +48,7 @@ extern int totemiba_initialize (
 	qb_loop_t* qb_poll_handle,
 	void **iba_handle,
 	struct totem_config *totem_config,
+	totemsrp_stats_t *stats,
 	int interface_no,
 	void *context,
 

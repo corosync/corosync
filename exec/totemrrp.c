@@ -1937,6 +1937,7 @@ int totemrrp_initialize (
 			poll_handle,
 			&instance->net_handles[i],
 			totem_config,
+			stats,
 			i,
 			(void *)deliver_fn_context,
 			rrp_deliver_fn,

@@ -55,6 +55,7 @@ struct transport {
 		qb_loop_t *loop_pt,
 		void **transport_instance,
 		struct totem_config *totem_config,
+		totemsrp_stats_t *stats,
 		int interface_no,
 		void *context,
 
@@ -272,6 +273,7 @@ int totemnet_initialize (
 	qb_loop_t *loop_pt,
 	void **net_context,
 	struct totem_config *totem_config,
+	totemsrp_stats_t *stats,
 	int interface_no,
 	void *context,
 
@@ -297,7 +299,7 @@ int totemnet_initialize (
 	totemnet_instance_initialize (instance, totem_config);
 
 	res = instance->transport->initialize (loop_pt,
-		&instance->transport_context, totem_config,
+		&instance->transport_context, totem_config, stats,
 		interface_no, context, deliver_fn, iface_change_fn, target_set_completed);
 
 	if (res == -1) {

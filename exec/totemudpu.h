@@ -48,6 +48,7 @@ extern int totemudpu_initialize (
 	qb_loop_t *poll_handle,
 	void **udpu_context,
 	struct totem_config *totem_config,
+	totemsrp_stats_t *stats,
 	int interface_no,
 	void *context,
 

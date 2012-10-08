@@ -491,15 +491,22 @@ static void corosync_totem_stats_updater (void *data)
 	icmap_set_uint64("runtime.totem.pg.mrp.srp.consensus_timeouts", stats->mrp->srp->consensus_timeouts);
 	icmap_set_uint64("runtime.totem.pg.mrp.srp.rx_msg_dropped", stats->mrp->srp->rx_msg_dropped);
 	icmap_set_uint32("runtime.totem.pg.mrp.srp.continuous_gather", stats->mrp->srp->continuous_gather);
+	icmap_set_uint32("runtime.totem.pg.mrp.srp.continuous_sendmsg_failures",
+	    stats->mrp->srp->continuous_sendmsg_failures);
+
 	icmap_set_uint8("runtime.totem.pg.mrp.srp.firewall_enabled_or_nic_failure",
 		stats->mrp->srp->continuous_gather > MAX_NO_CONT_GATHER ? 1 : 0);
 
-	if (stats->mrp->srp->continuous_gather > MAX_NO_CONT_GATHER) {
+	if (stats->mrp->srp->continuous_gather > MAX_NO_CONT_GATHER ||
+	    stats->mrp->srp->continuous_sendmsg_failures > MAX_NO_CONT_SENDMSG_FAILURES) {
 		log_printf (LOGSYS_LEVEL_WARNING,
 			"Totem is unable to form a cluster because of an "
 			"operating system or network fault. The most common "
 			"cause of this message is that the local firewall is "
 			"configured improperly.");
+		icmap_set_uint8("runtime.totem.pg.mrp.srp.firewall_enabled_or_nic_failure", 1);
+	} else {
+		icmap_set_uint8("runtime.totem.pg.mrp.srp.firewall_enabled_or_nic_failure", 0);
 	}
 
 	for (i = 0; i < stats->mrp->srp->rrp->interface_count; i++) {

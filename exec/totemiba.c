@@ -98,6 +98,8 @@ struct totemiba_instance {
 
 	struct totem_config *totem_config;
 
+	totemsrp_stats_t *stats;
+
 	void (*totemiba_iface_change_fn) (
 		void *context,
 		const struct totem_ip_address *iface_address);
@@ -1320,6 +1322,7 @@ int totemiba_initialize (
 	instance->totemiba_iface_change_fn = iface_change_fn;
 
 	instance->totem_config = totem_config;
+	instance->stats = stats;
 
 	instance->rrp_context = context;
 
