@@ -494,6 +494,14 @@ static void corosync_totem_stats_updater (void *data)
 	icmap_set_uint8("runtime.totem.pg.mrp.srp.firewall_enabled_or_nic_failure",
 		stats->mrp->srp->continuous_gather > MAX_NO_CONT_GATHER ? 1 : 0);
 
+	if (stats->mrp->srp->continuous_gather > MAX_NO_CONT_GATHER) {
+		log_printf (LOGSYS_LEVEL_WARNING,
+			"Totem is unable to form a cluster because of an "
+			"operating system or network fault. The most common "
+			"cause of this message is that the local firewall is "
+			"configured improperly.");
+	}
+
 	for (i = 0; i < stats->mrp->srp->rrp->interface_count; i++) {
 		snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "runtime.totem.pg.mrp.rrp.%u.faulty", i);
 		icmap_set_uint8(key_name, stats->mrp->srp->rrp->faulty[i]);

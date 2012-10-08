@@ -1988,14 +1988,6 @@ static void memb_state_gather_enter (
 		instance->stats.continuous_gather++;
 	}
 
-	if (instance->stats.continuous_gather > MAX_NO_CONT_GATHER) {
-		log_printf (instance->totemsrp_log_level_warning,
-			"Totem is unable to form a cluster because of an "
-			"operating system or network fault. The most common "
-			"cause of this message is that the local firewall is "
-			"configured improperly.");
-	}
-
 	return;
 }
 
