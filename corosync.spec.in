@@ -13,6 +13,7 @@
 %bcond_with rdma
 %bcond_with systemd
 %bcond_with xmlconf
+%bcond_with runautogen
 
 %global gitver %{?numcomm:.%{numcomm}}%{?alphatag:.%{alphatag}}%{?dirty:.%{dirty}}
 %global gittarver %{?numcomm:.%{numcomm}}%{?alphatag:-%{alphatag}}%{?dirty:-%{dirty}}
@@ -35,14 +36,11 @@ Conflicts: openais <= 0.89, openais-devel <= 0.89
 
 # Build bits
 
-%define buildtrunk 0
-%{?_with_buildtrunk: %define buildtrunk 1}
-
 BuildRequires: groff
 BuildRequires: libqb-devel
 BuildRequires: nss-devel
-%if %{buildtrunk}
-BuildRequires: autoconf automake
+%if %{with runautogen}
+BuildRequires: autoconf automake libtool
 %endif
 %if %{with monitoring}
 BuildRequires: libstatgrab-devel
@@ -69,7 +67,7 @@ BuildRoot: %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 %setup -q -n %{name}-%{version}%{?gittarver}
 
 %build
-%if %{buildtrunk}
+%if %{with runautogen}
 ./autogen.sh
 %endif
 
