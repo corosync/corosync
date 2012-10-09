@@ -56,6 +56,9 @@ BuildRequires: dbus-devel
 %endif
 %if %{with systemd}
 BuildRequires: systemd-units
+Requires(post): systemd
+Requires(preun): systemd
+Requires(postun): systemd
 %endif
 %if %{with xmlconf}
 Requires: libxslt
@@ -132,15 +135,28 @@ This package contains the Corosync Cluster Engine Executive, several default
 APIs and libraries, default configuration files, and an init script.
 
 %post
+%if %{with systemd} && 0%{?systemd_post:1}
+%systemd_post corosync.service
+%else
 if [ $1 -eq 1 ]; then
 	/sbin/chkconfig --add corosync || :
 fi
+%endif
 
 %preun
+%if %{with systemd} && 0%{?systemd_preun:1}
+%systemd_preun corosync.service
+%else
 if [ $1 -eq 0 ]; then
 	/sbin/service corosync stop &>/dev/null || :
 	/sbin/chkconfig --del corosync || :
 fi
+%endif
+
+%postun
+%if %{with systemd} && 0%{?systemd_postun:1}
+%systemd_postun
+%endif
 
 %files
 %defattr(-,root,root,-)
