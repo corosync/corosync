@@ -11,6 +11,7 @@
 %bcond_with snmp
 %bcond_with dbus
 %bcond_with rdma
+%bcond_with runautogen
 
 Name: corosync
 Summary: The Corosync Cluster Engine and Application Programming Interfaces
@@ -30,10 +31,7 @@ Conflicts: openais <= 0.89, openais-devel <= 0.89
 
 # Build bits
 
-%define buildtrunk 0
-%{?_with_buildtrunk: %define buildtrunk 1}
-
-%if %{buildtrunk}
+%if %{with runautogen}
 BuildRequires: autoconf automake
 %endif
 BuildRequires: nss-devel
@@ -53,7 +51,7 @@ BuildRoot: %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 %setup -q -n %{name}-%{version}%{?numcomm:.%{numcomm}}%{?alphatag:-%{alphatag}}%{?dirty:-%{dirty}}
 
 %build
-%if %{buildtrunk}
+%if %{with runautogen}
 ./autogen.sh
 %endif
 
