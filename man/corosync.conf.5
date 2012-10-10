@@ -32,7 +32,7 @@
 .\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 .\" * THE POSSIBILITY OF SUCH DAMAGE.
 .\" */
-.TH COROSYNC_CONF 5 2012-01-12 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
+.TH COROSYNC_CONF 5 2012-10-10 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
 .SH NAME
 corosync.conf - corosync executive configuration file
 
@@ -257,6 +257,16 @@ The default is udp.  The transport type can also be set to udpu or iba.
 cluster_name
 This specifies the name of cluster and it's used for automatic generating
 of multicast address.
+
+.TP
+config_version
+This specifies version of config file. This is converted to unsigned 64-bit int.
+By default it's 0. Option is used to prevent joining old nodes with not
+up-to-date configuration. If value is not 0, and node is going for first time
+(only for first time, join after split doesn't follow this rules)
+from single-node membership to multiple nodes membership, other nodes
+config_versions are collected. If current node config_version is not
+equal to highest of collected versions, corosync is terminated.
 
 Within the
 .B totem

@@ -31,7 +31,7 @@
 .\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 .\" * THE POSSIBILITY OF SUCH DAMAGE.
 .\" */
-.TH "CMAP_KEYS" 8 "05/04/2012" "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
+.TH "CMAP_KEYS" 8 "10/10/2012" "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
 
 .SH NAME
 .P
@@ -243,6 +243,9 @@ processor fails and rejoins again, this value is incremented.
 
 .B status
 Status of processor. Can be one of joined and left.
+
+.B config_version
+Config version of member node.
 
 .TP
 resources.process.PID.*
