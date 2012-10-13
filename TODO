@@ -27,7 +27,6 @@
 * Modify totemsrp to allow dynamic definitions of the ring counts
    to allow a larger number of redundant rings then 2.
 * Investigate always-on flight recorder
-* support more encryption methods (other than none/aes256) from nss
 * implement topic-rdmaud
 
 --------------------------------

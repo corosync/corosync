@@ -68,22 +68,34 @@ struct crypto_config_header {
 
 enum crypto_crypt_t {
 	CRYPTO_CIPHER_TYPE_NONE = 0,
-	CRYPTO_CIPHER_TYPE_AES256 = 1
+	CRYPTO_CIPHER_TYPE_AES256 = 1,
+	CRYPTO_CIPHER_TYPE_AES192 = 2,
+	CRYPTO_CIPHER_TYPE_AES128 = 3,
+	CRYPTO_CIPHER_TYPE_3DES = 4
 };
 
 CK_MECHANISM_TYPE cipher_to_nss[] = {
 	0,				/* CRYPTO_CIPHER_TYPE_NONE */
-	CKM_AES_CBC_PAD			/* CRYPTO_CIPHER_TYPE_AES256 */
+	CKM_AES_CBC_PAD,		/* CRYPTO_CIPHER_TYPE_AES256 */
+	CKM_AES_CBC_PAD,		/* CRYPTO_CIPHER_TYPE_AES192 */
+	CKM_AES_CBC_PAD,		/* CRYPTO_CIPHER_TYPE_AES128 */
+	CKM_DES3_CBC_PAD		/* CRYPTO_CIPHER_TYPE_3DES */
 };
 
 size_t cipher_key_len[] = {
-	 0,				/* CRYPTO_CIPHER_TYPE_NONE */
-	32,				/* CRYPTO_CIPHER_TYPE_AES256 */
+	0,				/* CRYPTO_CIPHER_TYPE_NONE */
+	AES_256_KEY_LENGTH,		/* CRYPTO_CIPHER_TYPE_AES256 */
+	AES_192_KEY_LENGTH,		/* CRYPTO_CIPHER_TYPE_AES192 */
+	AES_128_KEY_LENGTH,		/* CRYPTO_CIPHER_TYPE_AES128 */
+	24				/* CRYPTO_CIPHER_TYPE_3DES - no magic in nss headers */
 };
 
 size_t cypher_block_len[] = {
-	 0,				/* CRYPTO_CIPHER_TYPE_NONE */
-	AES_BLOCK_SIZE			/* CRYPTO_CIPHER_TYPE_AES256 */
+	0,				/* CRYPTO_CIPHER_TYPE_NONE */
+	AES_BLOCK_SIZE,			/* CRYPTO_CIPHER_TYPE_AES256 */
+	AES_BLOCK_SIZE,			/* CRYPTO_CIPHER_TYPE_AES192 */
+	AES_BLOCK_SIZE,			/* CRYPTO_CIPHER_TYPE_AES128 */
+	0				/* CRYPTO_CIPHER_TYPE_3DES */
 };
 
 /*
@@ -100,7 +112,7 @@ enum crypto_hash_t {
 };
 
 CK_MECHANISM_TYPE hash_to_nss[] = {
-	 0,				/* CRYPTO_HASH_TYPE_NONE */
+	0,				/* CRYPTO_HASH_TYPE_NONE */
 	CKM_MD5_HMAC,			/* CRYPTO_HASH_TYPE_MD5 */
 	CKM_SHA_1_HMAC,			/* CRYPTO_HASH_TYPE_SHA1 */
 	CKM_SHA256_HMAC,		/* CRYPTO_HASH_TYPE_SHA256 */
@@ -109,7 +121,7 @@ CK_MECHANISM_TYPE hash_to_nss[] = {
 };
 
 size_t hash_len[] = {
-	 0,				/* CRYPTO_HASH_TYPE_NONE */
+	0,				/* CRYPTO_HASH_TYPE_NONE */
 	MD5_LENGTH,			/* CRYPTO_HASH_TYPE_MD5 */
 	SHA1_LENGTH,			/* CRYPTO_HASH_TYPE_SHA1 */
 	SHA256_LENGTH,			/* CRYPTO_HASH_TYPE_SHA256 */
@@ -118,7 +130,7 @@ size_t hash_len[] = {
 };
 
 size_t hash_block_len[] = {
-	 0,				/* CRYPTO_HASH_TYPE_NONE */
+	0,				/* CRYPTO_HASH_TYPE_NONE */
 	MD5_BLOCK_LENGTH,		/* CRYPTO_HASH_TYPE_MD5 */
 	SHA1_BLOCK_LENGTH,		/* CRYPTO_HASH_TYPE_SHA1 */
 	SHA256_BLOCK_LENGTH,		/* CRYPTO_HASH_TYPE_SHA256 */
@@ -173,6 +185,12 @@ static int string_to_crypto_cipher_type(const char* crypto_cipher_type)
 		return CRYPTO_CIPHER_TYPE_NONE;
 	} else if (strcmp(crypto_cipher_type, "aes256") == 0) {
 		return CRYPTO_CIPHER_TYPE_AES256;
+	} else if (strcmp(crypto_cipher_type, "aes192") == 0) {
+		return CRYPTO_CIPHER_TYPE_AES192;
+	} else if (strcmp(crypto_cipher_type, "aes128") == 0) {
+		return CRYPTO_CIPHER_TYPE_AES128;
+	} else if (strcmp(crypto_cipher_type, "3des") == 0) {
+		return CRYPTO_CIPHER_TYPE_3DES;
 	}
 	return CRYPTO_CIPHER_TYPE_AES256;
 }

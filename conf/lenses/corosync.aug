@@ -50,8 +50,8 @@ let totem =
     |kv "rrp_mode" /none|active|passive/
     |kv "vsftype" /none|ykd/
     |kv "secauth" /on|off/
-    |kv "crypto_type" /nss|aes256/
-    |kv "crypto_cipher" /none|nss|aes256/
+    |kv "crypto_type" /nss|aes256|aes192|aes128|3des/
+    |kv "crypto_cipher" /none|nss|aes256|aes192|aes128|3des/
     |kv "crypto_hash" /none|md5|sha1|sha256|sha384|sha512/
     |kv "transport" /udp|iba/
     |kv "version" Rx.integer

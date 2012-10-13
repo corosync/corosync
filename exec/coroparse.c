@@ -502,7 +502,10 @@ static int main_config_parser_cb(const char *path,
 			}
 			if (strcmp(path, "totem.crypto_type") == 0) {
 				if ((strcmp(value, "nss") != 0) &&
-				    (strcmp(value, "aes256") != 0)) {
+				    (strcmp(value, "aes256") != 0) &&
+				    (strcmp(value, "aes192") != 0) &&
+				    (strcmp(value, "aes128") != 0) &&
+				    (strcmp(value, "3des") != 0)) {
 					*error_string = "Invalid crypto type";
 
 					return (0);
@@ -510,7 +513,10 @@ static int main_config_parser_cb(const char *path,
 			}
 			if (strcmp(path, "totem.crypto_cipher") == 0) {
 				if ((strcmp(value, "none") != 0) &&
-				    (strcmp(value, "aes256") != 0)) {
+				    (strcmp(value, "aes256") != 0) &&
+				    (strcmp(value, "aes192") != 0) &&
+				    (strcmp(value, "aes128") != 0) &&
+				    (strcmp(value, "3des") != 0)) {
 					*error_string = "Invalid cipher type";
 
 					return (0);
