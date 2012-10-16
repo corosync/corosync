@@ -159,7 +159,7 @@ if BUILD_HTML_DOCS
 
 install-data-local:
 	$(INSTALL) -d $(DESTDIR)/${docdir}/html
-	$(INSTALL) -m644 ${srcdir}/$(INDEX_HTML) $(HTML_DOCS) $(DESTDIR)/${docdir}/html/
+	$(INSTALL) -m 644 ${srcdir}/$(INDEX_HTML) $(HTML_DOCS) $(DESTDIR)/${docdir}/html/
 
 uninstall-local:
 	cd $(DESTDIR)/${docdir}/html && rm -f $(INDEX_HTML) $(HTML_DOCS)
