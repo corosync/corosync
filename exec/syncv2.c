@@ -227,8 +227,9 @@ static void sync_barrier_handler (unsigned int nodeid, const void *msg)
 		log_printf (LOGSYS_LEVEL_DEBUG, "Committing synchronization for %s\n",
 			my_service_list[my_processing_idx].name);
 		my_service_list[my_processing_idx].state = ACTIVATE;
-		my_service_list[my_processing_idx].sync_activate ();
-
+		if (my_sync_callbacks_retrieve(my_service_list[my_processing_idx].service_id, NULL) != -1) {
+			my_service_list[my_processing_idx].sync_activate ();
+		}
 		my_processing_idx += 1;
 		if (my_service_list_entries == my_processing_idx) {
 			my_memb_determine_list_entries = 0;
@@ -525,9 +526,11 @@ static int schedwrk_processor (const void *context)
 	if (my_service_list[my_processing_idx].state == INIT) {
 		my_service_list[my_processing_idx].state = PROCESS;
 		if (my_service_list[my_processing_idx].api_version == 1) {
-			my_service_list[my_processing_idx].sync_init_api.sync_init_v1 (my_member_list,
-				my_member_list_entries,
-				&my_ring_id);
+			if (my_sync_callbacks_retrieve(my_service_list[my_processing_idx].service_id, NULL) != -1) {
+				my_service_list[my_processing_idx].sync_init_api.sync_init_v1 (my_member_list,
+					my_member_list_entries,
+					&my_ring_id);
+			}
 		} else {
 			unsigned int old_trans_list[PROCESSOR_COUNT_MAX];
 			size_t old_trans_list_entries = 0;
@@ -548,15 +551,21 @@ static int schedwrk_processor (const void *context)
 				}
 			}
 
-			my_service_list[my_processing_idx].sync_init_api.sync_init_v2 (my_trans_list,
-				my_trans_list_entries, my_member_list,
-				my_member_list_entries,
-				&my_ring_id);
+			if (my_sync_callbacks_retrieve(my_service_list[my_processing_idx].service_id, NULL) != -1) {
+				my_service_list[my_processing_idx].sync_init_api.sync_init_v2 (my_trans_list,
+					my_trans_list_entries, my_member_list,
+					my_member_list_entries,
+					&my_ring_id);
+			}
 		}
 	}
 	if (my_service_list[my_processing_idx].state == PROCESS) {
 		my_service_list[my_processing_idx].state = PROCESS;
-		res = my_service_list[my_processing_idx].sync_process ();
+		if (my_sync_callbacks_retrieve(my_service_list[my_processing_idx].service_id, NULL) != -1) {
+			res = my_service_list[my_processing_idx].sync_process ();
+		} else {
+			res = 0;
+		}
 		if (res == 0) {
 			sync_barrier_enter();
 		} else {
@@ -598,7 +607,9 @@ void sync_v2_abort (void)
 {
 	if (my_state == SYNC_PROCESS) {
 		schedwrk_destroy (my_schedwrk_handle);
-		my_service_list[my_processing_idx].sync_abort ();
+		if (my_sync_callbacks_retrieve(my_service_list[my_processing_idx].service_id, NULL) != -1) {
+			my_service_list[my_processing_idx].sync_abort ();
+		}
 	}
 
 	/* this will cause any "old" barrier messages from causing

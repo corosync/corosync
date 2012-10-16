@@ -300,6 +300,11 @@ static int corosync_sync_callbacks_retrieve (int sync_id,
 		res = evil_callbacks_load (sync_id, callbacks);
 		return (res);
 	}
+
+	if (callbacks == NULL) {
+		return (0);
+	}
+
 	callbacks->name = ais_service[ais_service_index]->name;
 	callbacks->sync_init_api.sync_init_v1 = ais_service[ais_service_index]->sync_init;
 	callbacks->api_version = 1;
@@ -331,6 +336,10 @@ static int corosync_sync_v2_callbacks_retrieve (
 	}
 	if (minimum_sync_mode == CS_SYNC_V1 && ais_service[service_id]->sync_mode != CS_SYNC_V2) {
 		return (-1);
+	}
+
+	if (callbacks == NULL) {
+		return (0);
 	}
 
 	callbacks->name = ais_service[service_id]->name;

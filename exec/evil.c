@@ -167,7 +167,10 @@ extern int evil_callbacks_load (int sync_id,
 	int sync_dummy_found = 1;
 	int callbacks_init = 1;
 
-	memset (callbacks, 0, sizeof (struct sync_callbacks));
+	if (callbacks != NULL) {
+		memset (callbacks, 0, sizeof (struct sync_callbacks));
+	}
+
 	switch (sync_id) {
 		case EVS_SERVICE:
 			callbacks_init = 0;
@@ -176,20 +179,28 @@ extern int evil_callbacks_load (int sync_id,
 			/*
 			 * ugh
 			 */
-			memcpy (callbacks, &clm_sync_operations, sizeof (struct sync_callbacks));
+			if (callbacks != NULL) {
+				memcpy (callbacks, &clm_sync_operations, sizeof (struct sync_callbacks));
+			}
 			callbacks_init = 0;
 			break;
 		case AMF_SERVICE:
-			callbacks->name = "dummy AMF service";
+			if (callbacks != NULL) {
+				callbacks->name = "dummy AMF service";
+			}
 			break;
 		case CKPT_SERVICE:
-			callbacks->name = "dummy CKPT service";
+			if (callbacks != NULL) {
+				callbacks->name = "dummy CKPT service";
+			}
 			break;
 		case EVT_SERVICE:
 			/*
 			 * double ugh
 			 */
-			memcpy (callbacks, &evt_sync_operations, sizeof (struct sync_callbacks));
+			if (callbacks != NULL) {
+				memcpy (callbacks, &evt_sync_operations, sizeof (struct sync_callbacks));
+			}
 			callbacks_init = 0;
 			break;
 		case LCK_SERVICE:
@@ -202,7 +213,11 @@ extern int evil_callbacks_load (int sync_id,
 			callbacks_init = 0;
 			break;
 		case CPG_SERVICE:
-			callbacks->name = "dummy CPG service";
+			if (callbacks != NULL) {
+				callbacks->name = "dummy CPG service";
+			} else {
+				return (-1);
+			}
 			break;
 		case CONFDB_SERVICE:
 			callbacks_init = 0;
@@ -213,7 +228,7 @@ extern int evil_callbacks_load (int sync_id,
 			break;
 
 	}
-	if (callbacks_init) {
+	if (callbacks_init && callbacks != NULL) {
 		callbacks->sync_init_api.sync_init_v1 = sync_dummy_init;
 		callbacks->sync_process = sync_dummy_process;
 		callbacks->sync_activate = sync_dummy_activate;
