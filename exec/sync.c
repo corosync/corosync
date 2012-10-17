@@ -232,7 +232,7 @@ static void sync_barrier_handler (unsigned int nodeid, const void *msg)
 			my_service_list[my_processing_idx].name);
 		my_service_list[my_processing_idx].state = ACTIVATE;
 
-		if (my_sync_callbacks_retrieve(my_processing_idx, NULL) != -1) {
+		if (my_sync_callbacks_retrieve(my_service_list[my_processing_idx].service_id, NULL) != -1) {
 			my_service_list[my_processing_idx].sync_activate ();
 		}
 
@@ -547,7 +547,7 @@ static int schedwrk_processor (const void *context)
 			}
 		}
 
-		if (my_sync_callbacks_retrieve(my_processing_idx, NULL) != -1) {
+		if (my_sync_callbacks_retrieve(my_service_list[my_processing_idx].service_id, NULL) != -1) {
 			my_service_list[my_processing_idx].sync_init (my_trans_list,
 				my_trans_list_entries, my_member_list,
 				my_member_list_entries,
@@ -556,7 +556,7 @@ static int schedwrk_processor (const void *context)
 	}
 	if (my_service_list[my_processing_idx].state == PROCESS) {
 		my_service_list[my_processing_idx].state = PROCESS;
-		if (my_sync_callbacks_retrieve(my_processing_idx, NULL) != -1) {
+		if (my_sync_callbacks_retrieve(my_service_list[my_processing_idx].service_id, NULL) != -1) {
 			res = my_service_list[my_processing_idx].sync_process ();
 		} else {
 			res = 0;
@@ -604,7 +604,7 @@ void sync_abort (void)
 	ENTER();
 	if (my_state == SYNC_PROCESS) {
 		schedwrk_destroy (my_schedwrk_handle);
-		if (my_sync_callbacks_retrieve(my_processing_idx, NULL) != -1) {
+		if (my_sync_callbacks_retrieve(my_service_list[my_processing_idx].service_id, NULL) != -1) {
 			my_service_list[my_processing_idx].sync_abort ();
 		}
 	}
