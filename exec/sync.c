@@ -392,6 +392,12 @@ static void sync_deliver_fn (
 		sync_endian_convert (req_exec_sync_barrier_start);
 	}
 
+	if (sync_ring_id == NULL) {
+		log_printf (LOGSYS_LEVEL_DEBUG,
+		    "Initial sync was not yet proceed. Ignoring sync msg\n");
+		return ;
+	}
+
 	barrier_completed = 1;
 
 	memcpy (&deliver_ring_id, &req_exec_sync_barrier_start->ring_id,
