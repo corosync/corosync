@@ -1247,6 +1247,16 @@ static int memb_consensus_agreed (
 			break;
 		}
 	}
+
+	if (agreed && instance->failed_to_recv == 1) {
+		/*
+		 * Both nodes agreed on our failure. We don't care how many proc list items left because we
+		 * will create single ring anyway.
+		 */
+
+		 return (agreed);
+	}
+
 	assert (token_memb_entries >= 1);
 
 	return (agreed);
@@ -3617,6 +3627,11 @@ printf ("token seq %d\n", token->seq);
 			instance->my_aru_count = 0;
 		}
 
+		/*
+		 * We really don't follow specification there. In specification, OTHER nodes
+		 * detect failure of one node (based on aru_count) and my_id IS NEVER added
+		 * to failed list (so node never mark itself as failed)
+		 */
 		if (instance->my_aru_count > instance->totem_config->fail_to_recv_const &&
 			token->aru_addr == instance->my_id.addr[0].nodeid) {
 
