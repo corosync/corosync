@@ -50,7 +50,7 @@ lib_LTLIBRARIES		= libtotem_pg.la
 libtotem_pg_la_SOURCES	= $(TOTEM_SRC)
 libtotem_pg_la_CFLAGS	= $(nss_CFLAGS) $(rdmacm_CFLAGS) $(ibverbs_CFLAGS)
 libtotem_pg_la_LDFLAGS	= -version-number $(subst .,:,$(SONAME))
-libtotem_pg_la_LIBADD	= -lpthread $(nss_LIBS) $(rdmacm_LIBS) $(ibverbs_LIBS)
+libtotem_pg_la_LIBADD	= -lpthread $(LIBQB_LIBS) $(nss_LIBS) $(rdmacm_LIBS) $(ibverbs_LIBS)
 
 sbin_PROGRAMS		= corosync
 
