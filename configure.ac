@@ -612,7 +612,7 @@ AC_SUBST([SONAME])
 
 AM_CONDITIONAL(INSTALL_TESTAGENTS, test -n "${enable_testagents}")
 AM_CONDITIONAL(INSTALL_MIB, test "${do_snmp}" = "1")
-AM_CONDITIONAL(INSTALL_DBUSCONF, test "${enable_dbus}" = "1")
+AM_CONDITIONAL(INSTALL_DBUSCONF, test "${enable_dbus}" = "yes")
 AM_CONDITIONAL(AUGTOOL, test -n "${AUGTOOL}")
 AC_SUBST([NSS_LDFLAGS])
 
