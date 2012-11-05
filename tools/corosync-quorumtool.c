@@ -405,7 +405,11 @@ static void display_nodes_data(nodeid_format_t nodeid_format, name_format_t name
 				print_string_padded("NR");
 			}
 		}
-		printf("%s\n", node_name(g_view_list[i], name_format));
+		printf("%s", node_name(g_view_list[i], name_format));
+		if (g_view_list[i] == our_nodeid) {
+			printf(" (local)");
+		}
+		printf("\n");
 	}
 
 	if (g_view_list_entries) {
