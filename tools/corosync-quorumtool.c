@@ -684,12 +684,7 @@ int main (int argc, char *argv[]) {
 	uint32_t nodeid_set = 0;
 	nodeid_format_t nodeid_format = NODEID_FORMAT_DECIMAL;
 	name_format_t address_format = ADDRESS_FORMAT_NAME;
-	command_t command_opt = CMD_UNKNOWN;
-
-	if (argc == 1) {
-		show_usage (argv[0]);
-		exit(0);
-	}
+	command_t command_opt = CMD_SHOWSTATUS;
 
 	if (init_all()) {
 		close_all();
