@@ -450,6 +450,11 @@ static int display_quorum_data(int is_quorate,
 	}
 	printf("Quorum provider:  %s\n", quorumtype);
 	printf("Nodes:            %d\n", g_view_list_entries);
+	if (nodeid_format == NODEID_FORMAT_DECIMAL) {
+		printf("Node ID:          %u\n", our_nodeid);
+	} else {
+		printf("Node ID:          0x%08x\n", our_nodeid);
+	}
 	printf("Ring ID:          %" PRIu64 "\n", g_ring_id);
 	printf("Quorate:          %s\n", is_quorate?"Yes":"No");
 
