@@ -61,6 +61,7 @@ dist_man_MANS = \
 	confdb_initialize.3 \
 	confdb_key_create.3 \
 	confdb_key_delete.3 \
+	confdb_key_get.3 \
 	confdb_key_iter.3 \
 	confdb_key_iter_start.3 \
 	confdb_key_replace.3 \
