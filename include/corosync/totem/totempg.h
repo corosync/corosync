@@ -183,6 +183,8 @@ extern void totempg_queue_level_register_callback (totem_queue_level_changed_fn)
 
 extern void totempg_threaded_mode_enable (void);
 
+extern void totempg_trans_ack (void);
+
 #ifdef __cplusplus
 }
 #endif
