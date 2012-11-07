@@ -131,4 +131,6 @@ extern int totemmrp_member_remove (
 
 void totemmrp_threaded_mode_enable (void);
 
+void totemmrp_trans_ack (void);
+
 #endif /* TOTEMMRP_H_DEFINED */
