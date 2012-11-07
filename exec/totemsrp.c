@@ -464,6 +464,9 @@ struct totemsrp_instance {
 
         void (*totemsrp_service_ready_fn) (void);
 
+	void (*totemsrp_waiting_trans_ack_cb_fn) (
+		int waiting_trans_ack);
+
 	int global_seqno;
 
 	int my_token_held;
@@ -786,7 +789,9 @@ int totemsrp_initialize (
 		const unsigned int *member_list, size_t member_list_entries,
 		const unsigned int *left_list, size_t left_list_entries,
 		const unsigned int *joined_list, size_t joined_list_entries,
-		const struct memb_ring_id *ring_id))
+		const struct memb_ring_id *ring_id),
+	void (*waiting_trans_ack_cb_fn) (
+		int waiting_trans_ack))
 {
 	struct totemsrp_instance *instance;
 	unsigned int res;
@@ -812,6 +817,9 @@ int totemsrp_initialize (
 	}
 
 	totemsrp_instance_initialize (instance);
+
+	instance->totemsrp_waiting_trans_ack_cb_fn = waiting_trans_ack_cb_fn;
+	instance->totemsrp_waiting_trans_ack_cb_fn (1);
 
 	stats->srp = &instance->stats;
 	instance->stats.latest_token = 0;
@@ -1837,6 +1845,7 @@ static void memb_state_operational_enter (struct totemsrp_instance *instance)
 		left_list, instance->my_left_memb_entries,
 		0, 0, &instance->my_ring_id);
 	instance->waiting_trans_ack = 1;
+	instance->totemsrp_waiting_trans_ack_cb_fn (1);
 
 // TODO we need to filter to ensure we only deliver those
 // messages which are part of instance->my_deliver_memb
@@ -4626,4 +4635,5 @@ void totemsrp_trans_ack (void *context)
 	struct totemsrp_instance *instance = (struct totemsrp_instance *)context;
 
 	instance->waiting_trans_ack = 0;
+	instance->totemsrp_waiting_trans_ack_cb_fn (0);
 }
