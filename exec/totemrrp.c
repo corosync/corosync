@@ -180,6 +180,7 @@ struct rrp_algo {
 
 };
 
+#define STATUS_STR_LEN 1024
 struct totemrrp_instance {
 	qb_loop_t *poll_handle;
 
@@ -992,7 +993,7 @@ static void passive_monitor (
 
 			stats_set_interface_faulty (rrp_instance, i, passive_instance->faulty[i]);
 
-			sprintf (rrp_instance->status[i],
+			snprintf (rrp_instance->status[i], STATUS_STR_LEN,
 				"Marking ringid %u interface %s FAULTY",
 				i,
 				totemnet_iface_print (rrp_instance->net_handles[i]));
@@ -1314,10 +1315,10 @@ static void timer_function_active_problem_decrementer (void *context)
 			problem_found = 1;
 			active_instance->counter_problems[i] -= 1;
 			if (active_instance->counter_problems[i] == 0) {
-				sprintf (rrp_instance->status[i],
+				snprintf (rrp_instance->status[i], STATUS_STR_LEN,
 					"ring %d active with no faults", i);
 			} else {
-				sprintf (rrp_instance->status[i],
+				snprintf (rrp_instance->status[i], STATUS_STR_LEN,
 					"Decrementing problem counter for iface %s to [%d of %d]",
 					totemnet_iface_print (rrp_instance->net_handles[i]),
 					active_instance->counter_problems[i],
@@ -1349,7 +1350,7 @@ static void timer_function_active_token_expired (void *context)
 			if (active_instance->timer_problem_decrementer == 0) {
 				active_timer_problem_decrementer_start (active_instance);
 			}
-			sprintf (rrp_instance->status[i],
+			snprintf (rrp_instance->status[i], STATUS_STR_LEN,
 				"Incrementing problem counter for seqid %d iface %s to [%d of %d]",
 				active_instance->last_token_seq,
 				totemnet_iface_print (rrp_instance->net_handles[i]),
@@ -1375,7 +1376,7 @@ static void timer_function_active_token_expired (void *context)
 
 			stats_set_interface_faulty (rrp_instance, i, active_instance->faulty[i]);
 
-			sprintf (rrp_instance->status[i],
+			snprintf (rrp_instance->status[i], STATUS_STR_LEN,
 				"Marking seqid %d ringid %u interface %s FAULTY",
 				active_instance->last_token_seq,
 				i,
@@ -1700,8 +1701,9 @@ static int totemrrp_algorithm_set (
 		}
 	}
 	for (i = 0; i < totem_config->interface_count; i++) {
-		instance->status[i] = malloc (1024);
-		sprintf (instance->status[i], "ring %d active with no faults", i);
+		instance->status[i] = malloc (STATUS_STR_LEN+1);
+		snprintf (instance->status[i], STATUS_STR_LEN,
+			  "ring %d active with no faults", i);
 	}
 	return (res);
 }
@@ -2108,10 +2110,12 @@ int totemrrp_ring_reenable (
 
 	if (iface_no == instance->interface_count) {
 		for (i = 0; i < instance->interface_count; i++) {
-			sprintf (instance->status[i], "ring %d active with no faults", i);
+			snprintf (instance->status[i], STATUS_STR_LEN,
+				"ring %d active with no faults", i);
 		}
 	} else {
-		sprintf (instance->status[iface_no], "ring %d active with no faults", iface_no);
+		snprintf (instance->status[iface_no], STATUS_STR_LEN,
+			"ring %d active with no faults", iface_no);
 	}
 
 	return (res);

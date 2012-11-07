@@ -1408,10 +1408,11 @@ int totempg_ring_reenable (void)
 	return (res);
 }
 
+#define ONE_IFACE_LEN 63
 const char *totempg_ifaces_print (unsigned int nodeid)
 {
 	static char iface_string[256 * INTERFACE_MAX];
-	char one_iface[64];
+	char one_iface[ONE_IFACE_LEN+1];
 	struct totem_ip_address interfaces[INTERFACE_MAX];
 	char **status;
 	unsigned int iface_count;
@@ -1428,8 +1429,9 @@ const char *totempg_ifaces_print (unsigned int nodeid)
 	res = totempg_ifaces_get (nodeid, interfaces, INTERFACE_MAX, &status, &iface_count);
 
 	for (i = 0; i < iface_count; i++) {
-		sprintf (one_iface, "r(%d) ip(%s) ",
-			i, totemip_print (&interfaces[i]));
+		snprintf (one_iface, ONE_IFACE_LEN,
+			  "r(%d) ip(%s) ",
+			  i, totemip_print (&interfaces[i]));
 		strcat (iface_string, one_iface);
 	}
 	return (iface_string);
