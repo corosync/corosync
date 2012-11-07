@@ -39,7 +39,7 @@ corosync-blackbox \- Dump live "flight data" from the corosync "blackbox".
 .SH DESCRIPTION
 .B corosync-blackbox
 Trigger corosync to write it's "flight data" out to file and then run
-.B corosync-fplay
+.B qb-blackbox
 which prints it out.
 .SH EXAMPLES
 .TP
@@ -62,8 +62,8 @@ rec=[2609] Log Message=chosen downlist from node r(0) ip(192.168.100.11)
 Finishing replay: records found [2609]
 .br
 .SH SEE ALSO
-.BR corosync-fplay (8),
-.BR corosync-cmapctl (8),
+.BR qb-blackbox (8),
+.BR corosync-cmapctl (8)
 .SH AUTHOR
 Angus Salkeld
 .PP
