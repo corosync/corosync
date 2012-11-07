@@ -25,6 +25,22 @@ AC_CANONICAL_HOST
 
 AC_LANG([C])
 
+
+#Enable inter-library dependencies
+AC_ARG_ENABLE(interlib-deps,
+    [AC_HELP_STRING([--disable-interlib-deps  ],[disable inter-library dependencies (might break builds)])],
+    [enable_interlib_deps="$enableval"],
+    [enable_interlib_deps="yes"])
+
+AC_MSG_NOTICE([enable inter-library dependencies: $enable_interlib_deps])
+if test "${enable_interlib_deps}" == "yes"; then
+    link_all_deplibs=yes
+    link_all_deplibs_CXX=yes
+else
+    link_all_deplibs=no
+    link_all_deplibs_CXX=no
+fi
+
 dnl Fix default variables - "prefix" variable if not specified
 if test "$prefix" = "NONE"; then
 	prefix="/usr"
