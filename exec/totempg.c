@@ -1477,3 +1477,8 @@ void totempg_threaded_mode_enable (void)
 	totemmrp_threaded_mode_enable ();
 }
 
+void totempg_trans_ack (void)
+{
+	totemmrp_trans_ack ();
+}
+

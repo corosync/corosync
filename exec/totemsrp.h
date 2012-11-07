@@ -138,4 +138,7 @@ extern int totemsrp_member_remove (
 void totemsrp_threaded_mode_enable (
 	void *srp_context);
 
+void totemsrp_trans_ack (
+	void *srp_context);
+
 #endif /* TOTEMSRP_H_DEFINED */

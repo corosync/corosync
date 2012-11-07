@@ -276,3 +276,8 @@ void totemmrp_threaded_mode_enable (void)
 {
 	totemsrp_threaded_mode_enable (totemsrp_context);
 }
+
+void totemmrp_trans_ack (void)
+{
+	totemsrp_trans_ack (totemsrp_context);
+}

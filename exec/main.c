@@ -275,6 +275,10 @@ static void corosync_sync_completed (void)
 
 	cs_ipcs_sync_state_changed(sync_in_process);
 	cs_ipc_allow_connections(1);
+	/*
+	 * Inform totem to start using new message queue again
+	 */
+	totempg_trans_ack();
 }
 
 static int corosync_sync_callbacks_retrieve (
