@@ -57,6 +57,9 @@ This top level directive contains configuration options for quorum.
 .TP
 nodelist { }
 This top level directive contains configuration options for nodes in cluster.
+.TP
+qb { }
+This top level directive contains configuration options related to libqb.
 
 .PP
 .PP
@@ -648,6 +651,19 @@ cluster membership service.  If this is not specified with IPv4, the node id
 will be determined from the 32 bit IP address the system to which the system
 is bound with ring identifier of 0.  The node identifier value of zero is
 reserved and should not be used.
+
+.PP
+Within the
+.B qb
+directive it is possible to specify options for libqb.
+
+Possible option is:
+.TP
+ipc_type
+This specifies type of IPC to use. Can be one of native (default), shm and socket.
+Native means one of shm or socket, depending on what is supported by OS. On systems
+with support for both, SHM is selected. SHM is generally faster, but need to allocate
+ring buffer file in /dev/shm.
 
 .SH "FILES"
 .TP

@@ -90,7 +90,8 @@ enum main_cp_cb_data_state {
 	MAIN_CP_CB_DATA_STATE_QDEVICE,
 	MAIN_CP_CB_DATA_STATE_NODELIST,
 	MAIN_CP_CB_DATA_STATE_NODELIST_NODE,
-	MAIN_CP_CB_DATA_STATE_PLOAD
+	MAIN_CP_CB_DATA_STATE_PLOAD,
+	MAIN_CP_CB_DATA_STATE_QB
 };
 
 struct key_value_list_item {
@@ -536,6 +537,18 @@ static int main_config_parser_cb(const char *path,
 			}
 			break;
 
+		case MAIN_CP_CB_DATA_STATE_QB:
+			if (strcmp(path, "qb.ipc_type") == 0) {
+				if ((strcmp(value, "native") != 0) &&
+				    (strcmp(value, "shm") != 0) &&
+				    (strcmp(value, "socket") != 0)) {
+					*error_string = "Invalid qb ipc_type";
+
+					return (0);
+				}
+			}
+			break;
+
 		case MAIN_CP_CB_DATA_STATE_INTERFACE:
 			if (strcmp(path, "totem.interface.ringnumber") == 0) {
 				if (safe_atoi(value, &i) != 0) {
@@ -742,7 +755,9 @@ static int main_config_parser_cb(const char *path,
 		if (strcmp(path, "totem") == 0) {
 			data->state = MAIN_CP_CB_DATA_STATE_TOTEM;
 		};
-
+		if (strcmp(path, "qb") == 0) {
+			data->state = MAIN_CP_CB_DATA_STATE_QB;
+		}
 		if (strcmp(path, "logging.logger_subsys") == 0) {
 			data->state = MAIN_CP_CB_DATA_STATE_LOGGER_SUBSYS;
 			list_init(&data->logger_subsys_items_head);
@@ -845,6 +860,9 @@ static int main_config_parser_cb(const char *path,
 			data->state = MAIN_CP_CB_DATA_STATE_TOTEM;
 			break;
 		case MAIN_CP_CB_DATA_STATE_TOTEM:
+			data->state = MAIN_CP_CB_DATA_STATE_NORMAL;
+			break;
+		case MAIN_CP_CB_DATA_STATE_QB:
 			data->state = MAIN_CP_CB_DATA_STATE_NORMAL;
 			break;
 		case MAIN_CP_CB_DATA_STATE_LOGGER_SUBSYS:

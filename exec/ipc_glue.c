@@ -801,6 +801,43 @@ void cs_ipcs_stats_update(void)
 	}
 }
 
+static enum qb_ipc_type cs_get_ipc_type (void)
+{
+	char *str;
+	int found = 0;
+	enum qb_ipc_type ret = QB_IPC_NATIVE;
+
+	if (icmap_get_string("qb.ipc_type", &str) != CS_OK) {
+		log_printf(LOGSYS_LEVEL_DEBUG, "No configured qb.ipc_type. Using native ipc");
+		return QB_IPC_NATIVE;
+	}
+
+	if (strcmp(str, "native") == 0) {
+		ret = QB_IPC_NATIVE;
+		found = 1;
+	}
+
+	if (strcmp(str, "shm") == 0) {
+		ret = QB_IPC_SHM;
+		found = 1;
+	}
+
+	if (strcmp(str, "socket") == 0) {
+		ret = QB_IPC_SOCKET;
+		found = 1;
+	}
+
+	if (found) {
+		log_printf(LOGSYS_LEVEL_DEBUG, "Using %s ipc", str);
+	} else {
+		log_printf(LOGSYS_LEVEL_DEBUG, "Unknown ipc type %s", str);
+	}
+
+	free(str);
+
+	return ret;
+}
+
 const char *cs_ipcs_service_init(struct corosync_service_engine *service)
 {
 	if (service->lib_engine_count == 0) {
@@ -818,7 +855,7 @@ const char *cs_ipcs_service_init(struct corosync_service_engine *service)
 		ipcs_mapper[service->id].id);
 	ipcs_mapper[service->id].inst = qb_ipcs_create(ipcs_mapper[service->id].name,
 		ipcs_mapper[service->id].id,
-		QB_IPC_NATIVE,
+		cs_get_ipc_type(),
 		&corosync_service_funcs);
 	assert(ipcs_mapper[service->id].inst);
 	qb_ipcs_poll_handlers_set(ipcs_mapper[service->id].inst,
