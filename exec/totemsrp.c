@@ -3368,7 +3368,10 @@ static unsigned int backlog_get (struct totemsrp_instance *instance)
 		backlog = cs_queue_used (&instance->retrans_message_queue);
 		queue_use = &instance->retrans_message_queue;
 	}
-	backlog = cs_queue_used (queue_use);
+
+	if (queue_use != NULL) {
+		backlog = cs_queue_used (queue_use);
+	}
 	
 	instance->stats.token[instance->stats.latest_token].backlog_calc = backlog;
 	return (backlog);
