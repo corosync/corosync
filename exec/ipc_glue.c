@@ -801,14 +801,14 @@ void cs_ipcs_stats_update(void)
 	}
 }
 
-void cs_ipcs_service_init(struct corosync_service_engine *service)
+const char *cs_ipcs_service_init(struct corosync_service_engine *service)
 {
 	if (service->lib_engine_count == 0) {
 		log_printf (LOGSYS_LEVEL_DEBUG,
 			"NOT Initializing IPC on %s [%d]",
 			cs_ipcs_serv_short_name(service->id),
 			service->id);
-		return;
+		return NULL;
 	}
 	ipcs_mapper[service->id].id = service->id;
 	strcpy(ipcs_mapper[service->id].name, cs_ipcs_serv_short_name(service->id));
@@ -823,7 +823,12 @@ void cs_ipcs_service_init(struct corosync_service_engine *service)
 	assert(ipcs_mapper[service->id].inst);
 	qb_ipcs_poll_handlers_set(ipcs_mapper[service->id].inst,
 		&corosync_poll_funcs);
-	qb_ipcs_run(ipcs_mapper[service->id].inst);
+	if (qb_ipcs_run(ipcs_mapper[service->id].inst) != 0) {
+		log_printf (LOGSYS_LEVEL_ERROR, "Can't initialize IPC");
+		return "qb_ipcs_run error";
+	}
+
+	return NULL;
 }
 
 void cs_ipcs_init(void)

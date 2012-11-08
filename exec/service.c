@@ -172,7 +172,10 @@ char *corosync_service_link_and_init (
 
 	log_printf (LOGSYS_LEVEL_NOTICE,
 		"Service engine loaded: %s [%d]", service_engine->name, service_engine->id);
-	cs_ipcs_service_init(service_engine);
+	init_result = (char *)cs_ipcs_service_init(service_engine);
+	if (init_result != NULL) {
+		return (init_result);
+	}
 
 	return NULL;
 }
