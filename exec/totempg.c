@@ -1410,3 +1410,8 @@ extern int totempg_member_add (
 extern int totempg_member_remove (
 	const struct totem_ip_address *member,
 	int ring_no);
+
+void totempg_trans_ack (void)
+{
+	totemmrp_trans_ack ();
+}

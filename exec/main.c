@@ -273,6 +273,10 @@ static void corosync_sync_completed (void)
 	log_printf (LOGSYS_LEVEL_NOTICE,
 		"Completed service synchronization, ready to provide service.\n");
 	sync_in_process = 0;
+	/*
+	 * Inform totem to start using new message queue again
+	 */
+	totempg_trans_ack();
 }
 
 static int corosync_sync_callbacks_retrieve (int sync_id,

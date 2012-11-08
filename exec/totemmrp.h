@@ -124,4 +124,6 @@ extern int totemmrp_member_remove (
 	const struct totem_ip_address *member,
 	int ring_no);
 
+void totemmrp_trans_ack (void);
+
 #endif /* TOTEMMRP_H_DEFINED */

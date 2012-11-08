@@ -168,6 +168,8 @@ extern int totempg_member_remove (
 	const struct totem_ip_address *member,
 	int ring_no);
 
+extern void totempg_trans_ack (void);
+
 #ifdef __cplusplus
 }
 #endif

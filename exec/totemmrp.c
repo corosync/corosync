@@ -267,3 +267,8 @@ int totemmrp_member_remove (
 
 	return (res);
 }
+
+void totemmrp_trans_ack (void)
+{
+	totemsrp_trans_ack (totemsrp_context);
+}
