@@ -204,6 +204,10 @@ static int callback_token_received_fn (enum totem_callback_token_type type,
 
 DECLARE_LIST_INIT(assembly_list_inuse);
 
+DECLARE_LIST_INIT(assembly_list_inuse_trans);
+
+DECLARE_LIST_INIT(assembly_list_free_trans);
+
 DECLARE_LIST_INIT(assembly_list_free);
 
 /*
@@ -223,6 +227,8 @@ static int fragment_size = 0;
 static int fragment_continuation = 0;
 
 static struct iovec iov_delv;
+
+static int totempg_waiting_transack = 0;
 
 static unsigned int totempg_max_handle = 0;
 
@@ -269,16 +275,32 @@ static int msg_count_send_ok (int msg_count);
 
 static int byte_count_send_ok (int byte_count);
 
+static void totempg_waiting_trans_ack_cb (int waiting_trans_ack)
+{
+	log_printf(LOG_DEBUG, "waiting_trans_ack changed to %u", waiting_trans_ack);
+	totempg_waiting_transack = waiting_trans_ack;
+}
+
 static struct assembly *assembly_ref (unsigned int nodeid)
 {
 	struct assembly *assembly;
 	struct list_head *list;
+	struct list_head *active_assembly_list_inuse;
+	struct list_head *active_assembly_list_free;
+
+	if (totempg_waiting_transack) {
+		active_assembly_list_inuse = &assembly_list_inuse_trans;
+		active_assembly_list_free = &assembly_list_free_trans;
+	} else {
+		active_assembly_list_inuse = &assembly_list_inuse;
+		active_assembly_list_free = &assembly_list_free;
+	}
 
 	/*
 	 * Search inuse list for node id and return assembly buffer if found
 	 */
-	for (list = assembly_list_inuse.next;
-		list != &assembly_list_inuse;
+	for (list = active_assembly_list_inuse->next;
+		list != active_assembly_list_inuse;
 		list = list->next) {
 
 		assembly = list_entry (list, struct assembly, list);
@@ -291,10 +313,10 @@ static struct assembly *assembly_ref (unsigned int nodeid)
 	/*
 	 * Nothing found in inuse list get one from free list if available
 	 */
-	if (list_empty (&assembly_list_free) == 0) {
-		assembly = list_entry (assembly_list_free.next, struct assembly, list);
+	if (list_empty (active_assembly_list_free) == 0) {
+		assembly = list_entry (active_assembly_list_free->next, struct assembly, list);
 		list_del (&assembly->list);
-		list_add (&assembly->list, &assembly_list_inuse);
+		list_add (&assembly->list, active_assembly_list_inuse);
 		assembly->nodeid = nodeid;
 		assembly->index = 0;
 		assembly->last_frag_num = 0;
@@ -316,15 +338,55 @@ static struct assembly *assembly_ref (unsigned int nodeid)
 	assembly->last_frag_num = 0;
 	assembly->throw_away_mode = THROW_AWAY_INACTIVE;
 	list_init (&assembly->list);
-	list_add (&assembly->list, &assembly_list_inuse);
+	list_add (&assembly->list, active_assembly_list_inuse);
 
 	return (assembly);
 }
 
 static void assembly_deref (struct assembly *assembly)
 {
+	struct list_head *active_assembly_list_free;
+
+	if (totempg_waiting_transack) {
+		active_assembly_list_free = &assembly_list_free_trans;
+	} else {
+		active_assembly_list_free = &assembly_list_free;
+	}
+
 	list_del (&assembly->list);
-	list_add (&assembly->list, &assembly_list_free);
+	list_add (&assembly->list, active_assembly_list_free);
+}
+
+static void assembly_deref_from_normal_and_trans (int nodeid)
+{
+	int j;
+	struct list_head *list, *list_next;
+	struct list_head *active_assembly_list_inuse;
+	struct list_head *active_assembly_list_free;
+	struct assembly *assembly;
+
+	for (j = 0; j < 2; j++) {
+		if (j == 0) {
+			active_assembly_list_inuse = &assembly_list_inuse;
+			active_assembly_list_free = &assembly_list_free;
+		} else {
+			active_assembly_list_inuse = &assembly_list_inuse_trans;
+			active_assembly_list_free = &assembly_list_free_trans;
+		}
+
+		for (list = active_assembly_list_inuse->next;
+			list != active_assembly_list_inuse;
+			list = list_next) {
+
+			list_next = list->next;
+			assembly = list_entry (list, struct assembly, list);
+
+			if (nodeid == assembly->nodeid) {
+				list_del (&assembly->list);
+				list_add (&assembly->list, active_assembly_list_free);
+			}
+		}
+	}
 }
 
 static inline void app_confchg_fn (
@@ -336,7 +398,6 @@ static inline void app_confchg_fn (
 {
 	int i;
 	struct totempg_group_instance *instance;
-	struct assembly *assembly;
 	unsigned int res;
 
 	/*
@@ -345,9 +406,7 @@ static inline void app_confchg_fn (
 	 * In the leaving processor's assembly buffer.
 	 */
 	for (i = 0; i < left_list_entries; i++) {
-		assembly = assembly_ref (left_list[i]);
-		list_del (&assembly->list);
-		list_add (&assembly->list, &assembly_list_free);
+		assembly_deref_from_normal_and_trans (left_list[i]);
 	}
 	for (i = 0; i <= totempg_max_handle; i++) {
 		res = hdb_handle_get (&totempg_groups_instance_database,
@@ -647,6 +706,8 @@ static void totempg_deliver_fn (
 				}
 			}
 		} else {
+			log_printf (LOG_DEBUG, "fragmented continuation %u is not equal to assembly last_frag_num %u",
+					continuation, assembly->last_frag_num);
 			assembly->throw_away_mode = THROW_AWAY_ACTIVE;
 		}
 	}
@@ -753,7 +814,8 @@ int totempg_initialize (
 		totem_config,
 		&totempg_stats,
 		totempg_deliver_fn,
-		totempg_confchg_fn);
+		totempg_confchg_fn,
+		totempg_waiting_trans_ack_cb);
 
 	totemmrp_callback_token_create (
 		&callback_token_received_handle,
