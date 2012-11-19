@@ -631,30 +631,113 @@ static int gid_determine (const char *req_group)
 	return ais_gid;
 }
 
+static unsigned int logging_handle_find (
+	struct objdb_iface_ver0 *objdb,
+	hdb_handle_t *logging_find_handle)
+{
+	hdb_handle_t object_find_handle;
+	unsigned int res;
+
+	objdb->object_find_create (
+		OBJECT_PARENT_HANDLE,
+		"logging",
+		strlen ("logging"),
+		&object_find_handle);
+
+	res = objdb->object_find_next (
+		object_find_handle,
+		logging_find_handle);
+
+	objdb->object_find_destroy (object_find_handle);
+
+	if (res == -1) {
+		return (-1);
+	}
+
+	return (0);
+}
+
+static void logsys_objdb_key_change_notify(object_change_type_t change_type,
+			      hdb_handle_t parent_object_handle,
+			      hdb_handle_t object_handle,
+			      const void *object_name_pt, size_t object_name_len,
+			      const void *key_name_pt, size_t key_len,
+			      const void *key_value_pt, size_t key_value_len,
+			      void *priv_data_pt)
+{
+	const char *error_string;
+
+	if (logsys_format_set(NULL) == -1) {
+		fprintf (stderr, "Unable to setup logging format.\n");
+	}
+	corosync_main_config_read_logging(global_objdb,
+					  &error_string);
+}
 
 static void main_objdb_reload_notify(objdb_reload_notify_type_t type, int flush,
 				     void *priv_data_pt)
 {
 	const char *error_string;
+	hdb_handle_t logsys_object_handle;
 
-	if (type == OBJDB_RELOAD_NOTIFY_END) {
+	/*
+	 * A new logsys {} key might exist, cancel the
+	 * existing notification at the start of reload,
+	 * and start a new one on the new object when
+	 * it's all settled.
+	 */
+	if (type == OBJDB_RELOAD_NOTIFY_START) {
+		global_objdb->object_track_stop(
+			logsys_objdb_key_change_notify,
+			NULL,
+			NULL,
+			NULL,
+			NULL);
+	}
 
-		/*
-		 * Reload the logsys configuration
-		 */
-		if (logsys_format_set(NULL) == -1) {
-			fprintf (stderr, "Unable to setup logging format.\n");
+	if (type == OBJDB_RELOAD_NOTIFY_END || type == OBJDB_RELOAD_NOTIFY_FAILED) {
+		if (!logging_handle_find(global_objdb, &logsys_object_handle)) {
+			/*
+			 * Reload the logsys configuration
+			 */
+			if (logsys_format_set(NULL) == -1) {
+				fprintf (stderr, "Unable to setup logging format.\n");
+			}
+			corosync_main_config_read_logging(global_objdb,
+							  &error_string);
+
+			global_objdb->object_track_start(logsys_object_handle,
+						  1,
+						  logsys_objdb_key_change_notify,
+						  NULL, // object_create_notify,
+						  NULL, // object_destroy_notify,
+						  NULL, // object_reload_notify
+						  NULL); // priv_data
+		} else {
+			log_printf(LOGSYS_LEVEL_ERROR, "logsys objdb tracking stopped, cannot find logsys{} handle on objdb\n");
 		}
-		corosync_main_config_read_logging(global_objdb,
-						  &error_string);
 	}
 }
+
 
 static void add_logsys_config_notification(
 	struct objdb_iface_ver0 *objdb)
 {
+	hdb_handle_t logsys_object_handle;
 
 	global_objdb = objdb;
+
+	if (!logging_handle_find(global_objdb, &logsys_object_handle)) {
+		objdb->object_track_start(logsys_object_handle,
+					  1,
+					  logsys_objdb_key_change_notify,
+					  NULL, // object_create_notify,
+					  NULL, // object_destroy_notify,
+					  NULL, // object_reload_notify
+					  NULL); // priv_data
+	} else {
+		log_printf(LOGSYS_LEVEL_ERROR, "logsys objdb tracking stopped, cannot find logsys{} handle on objdb\n");
+	}
 
 	objdb->object_track_start(OBJECT_PARENT_HANDLE,
 				  1,
