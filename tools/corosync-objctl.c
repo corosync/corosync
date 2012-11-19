@@ -244,18 +244,6 @@ static void print_config_tree(confdb_handle_t handle, hdb_handle_t parent_object
 	}
 }
 
-static cs_error_t reload_db(confdb_handle_t handle)
-{
-	char error[1024];
-	cs_error_t ret;
-
-	ret = confdb_reload(handle, 0, error, sizeof(error) - 1);
-	if (ret != CONFDB_OK) {
-		fprintf (stderr, "Error reloading DB %d\n", ret);
-	}
-	return ret;
-}
-
 static int read_in_config_file (char * filename)
 {
 	confdb_handle_t handle;
@@ -326,7 +314,6 @@ static int read_in_config_file (char * filename)
 		/* write the attribute */
 		write_key (handle, line);
 	}
-	reload_db(handle);
 	confdb_finalize (handle);
 	fclose (fh);
 	return 0;
@@ -931,8 +918,6 @@ int main (int argc, char *argv[]) {
 	if (action == ACTION_TRACK) {
 		listen_for_object_changes(handle);
 		stop_tracking(handle);
-	} else {
-		reload_db(handle);
 	}
 
 	result = confdb_finalize (handle);
