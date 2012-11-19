@@ -535,6 +535,7 @@ static int mcast_rdma_event_fn (hdb_handle_t poll_handle, int fd, int events, vo
 	 */
 	case RDMA_CM_EVENT_ADDR_RESOLVED:
 		rdma_join_multicast (instance->mcast_cma_id, &instance->mcast_addr, instance);
+		usleep(1000);
 		break;
 	/*
 	 * occurs when the CM joins the multicast group
@@ -1020,6 +1021,12 @@ static int send_token_unbind (struct totemiba_instance *instance)
 		instance->totemiba_poll_handle,
 		instance->send_token_channel->fd);
 
+	if(instance->send_token_ah)
+	{
+		ibv_destroy_ah(instance->send_token_ah);
+		instance->send_token_ah = 0;
+	}
+
 	rdma_destroy_qp (instance->send_token_cma_id);
 	ibv_destroy_cq (instance->send_token_send_cq);
 	ibv_destroy_cq (instance->send_token_recv_cq);
@@ -1392,7 +1399,8 @@ int totemiba_token_send (
 	sge.lkey = send_buf->mr->lkey;
 	sge.addr = (uintptr_t)msg;
 
-	res = ibv_post_send (instance->send_token_cma_id->qp, &send_wr, &failed_send_wr);
+	if(instance->send_token_ah != 0 && instance->send_token_bound)
+		res = ibv_post_send (instance->send_token_cma_id->qp, &send_wr, &failed_send_wr);
 
 	return (res);
 }
