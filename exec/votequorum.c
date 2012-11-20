@@ -1174,7 +1174,12 @@ static void votequorum_refresh_config(
 	struct icmap_notify_value old_val,
 	void *user_data)
 {
+	int old_votes, old_expected_votes;
+
 	ENTER();
+
+	old_votes = us->votes;
+	old_expected_votes = us->expected_votes;
 
 	/*
 	 * Reload the configuration
@@ -1186,6 +1191,14 @@ static void votequorum_refresh_config(
 	 */
 	votequorum_exec_send_nodeinfo(us->node_id);
 	votequorum_exec_send_nodeinfo(VOTEQUORUM_QDEVICE_NODEID);
+	if (us->votes != old_votes) {
+		votequorum_exec_send_reconfigure(VOTEQUORUM_RECONFIG_PARAM_NODE_VOTES,
+						 us->node_id, us->votes);
+	}
+	if (us->expected_votes != old_expected_votes) {
+		votequorum_exec_send_reconfigure(VOTEQUORUM_RECONFIG_PARAM_EXPECTED_VOTES,
+						 us->node_id, us->expected_votes);
+	}
 
 	LEAVE();
 }
