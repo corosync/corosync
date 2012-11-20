@@ -120,6 +120,11 @@ static corosync_cfg_callbacks_t c_callbacks = {
 	.corosync_cfg_shutdown_callback = NULL
 };
 
+/*
+ * global
+ */
+static int machine_parsable = 0;
+
 static void show_usage(const char *name)
 {
 	printf("usage: \n");
@@ -130,6 +135,7 @@ static void show_usage(const char *name)
 	printf("  -s             show quorum status\n");
 	printf("  -m             monitor quorum status\n");
 	printf("  -l             list nodes\n");
+	printf("  -p             when used with -s or -l, generates machine parsable output\n");
 	printf("  -v <votes>     change the number of votes for a node (*)\n");
 	printf("  -n <nodeid>    optional nodeid of node for -v (*)\n");
 	printf("  -e <expected>  change expected votes for the cluster (*)\n");
@@ -365,7 +371,21 @@ static void print_uint32_padded(uint32_t value)
 static void display_nodes_data(nodeid_format_t nodeid_format, name_format_t name_format)
 {
 	int i, display_qdevice = 0;
-	struct votequorum_info info;
+	struct votequorum_info info[g_view_list_entries];
+
+	/*
+	 * cache node info because we need to parse them twice
+	 */
+	if (v_handle) {
+		for (i=0; i < g_view_list_entries; i++) {
+			if (votequorum_getinfo(v_handle, g_view_list[i], &info[i]) != CS_OK) {
+				printf("Unable to get node %u info\n", g_view_list[i]);
+			}
+			if (info[i].flags & VOTEQUORUM_INFO_QDEVICE_REGISTERED) {
+				display_qdevice = 1;
+			}
+		}
+	}
 
 	printf("\nMembership information\n");
 	printf("----------------------\n");
@@ -373,7 +393,9 @@ static void display_nodes_data(nodeid_format_t nodeid_format, name_format_t name
 	print_string_padded("Nodeid");
 	if (v_handle) {
 		print_string_padded("Votes");
-		print_string_padded("Qdevice");
+		if ((display_qdevice) || (machine_parsable)) {
+			print_string_padded("Qdevice");
+		}
 	}
 	printf("Name\n");
 
@@ -386,23 +408,22 @@ static void display_nodes_data(nodeid_format_t nodeid_format, name_format_t name
 		if (v_handle) {
 			int votes = -1;
 
-			if (votequorum_getinfo(v_handle, g_view_list[i], &info) == CS_OK) {
-				votes = info.node_votes;
-			}
+			votes = info[i].node_votes;
 			print_uint32_padded(votes);
 
-			if (info.flags & VOTEQUORUM_INFO_QDEVICE_REGISTERED) {
-				char buf[10];
+			if ((display_qdevice) || (machine_parsable)) {
+				if (info[i].flags & VOTEQUORUM_INFO_QDEVICE_REGISTERED) {
+					char buf[10];
 
-				display_qdevice = 1;
-				snprintf(buf, sizeof(buf) - 1,
-					 "%s,%s,%s",
-					 info.flags & VOTEQUORUM_INFO_QDEVICE_ALIVE?"A":"NA",
-					 info.flags & VOTEQUORUM_INFO_QDEVICE_CAST_VOTE?"V":"NV",
-					 info.flags & VOTEQUORUM_INFO_QDEVICE_MASTER_WINS?"MW":"NMW");
-				print_string_padded(buf);
-			} else {
-				print_string_padded("NR");
+					snprintf(buf, sizeof(buf) - 1,
+						 "%s,%s,%s",
+						 info[i].flags & VOTEQUORUM_INFO_QDEVICE_ALIVE?"A":"NA",
+						 info[i].flags & VOTEQUORUM_INFO_QDEVICE_CAST_VOTE?"V":"NV",
+						 info[i].flags & VOTEQUORUM_INFO_QDEVICE_MASTER_WINS?"MW":"NMW");
+					print_string_padded(buf);
+				} else {
+					print_string_padded("NR");
+				}
 			}
 		}
 		printf("%s", node_name(g_view_list[i], name_format));
@@ -423,8 +444,8 @@ static void display_nodes_data(nodeid_format_t nodeid_format, name_format_t name
 		} else {
 			printf("0x%08x ", VOTEQUORUM_QDEVICE_NODEID);
 		}
-		print_uint32_padded(info.qdevice_votes);
-		printf("           %s\n", info.qdevice_name);
+		print_uint32_padded(info[0].qdevice_votes);
+		printf("           %s\n", info[0].qdevice_name);
 	}
 
 }
@@ -684,7 +705,7 @@ static void close_all(void) {
 }
 
 int main (int argc, char *argv[]) {
-	const char *options = "VHslmfe:v:hin:";
+	const char *options = "VHslpmfe:v:hin:";
 	char *endptr;
 	int opt;
 	int votes = 0;
@@ -724,6 +745,9 @@ int main (int argc, char *argv[]) {
 			break;
 		case 'l':
 			command_opt = CMD_SHOWNODES;
+			break;
+		case 'p':
+			machine_parsable = 1;
 			break;
 		case 'e':
 			if (using_votequorum() > 0) {
