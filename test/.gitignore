@@ -6,6 +6,7 @@ logsys_t1
 logsys_t2
 logsysbench
 logsysrec
+ploadstart
 stress_cpgcontext
 stress_cpgfdget
 testcpg
