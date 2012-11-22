@@ -358,7 +358,7 @@ cs_error_t cmap_set (
 	struct req_lib_cmap_set req_lib_cmap_set;
 	struct res_lib_cmap_set res_lib_cmap_set;
 
-	if (key_name == NULL) {
+	if (key_name == NULL || value == NULL) {
 		return (CS_ERR_INVALID_PARAM);
 	}
 
@@ -529,6 +529,10 @@ cs_error_t cmap_get(
 		return (CS_ERR_NAME_TOO_LONG);
 	}
 
+	if (value != NULL && value_len == NULL) {
+		return (CS_ERR_INVALID_PARAM);
+	}
+
 	error = hdb_error_to_cs(hdb_handle_get (&cmap_handle_t_db, handle, (void *)&cmap_inst));
 	if (error != CS_OK) {
 		return (error);
@@ -577,7 +581,7 @@ cs_error_t cmap_get(
 			*value_len = res_lib_cmap_get->value_len;
 		}
 
-		if (value != NULL) {
+		if (value != NULL && value_len != NULL) {
 			memcpy(value, res_lib_cmap_get->value, res_lib_cmap_get->value_len);
 		}
 	}
