@@ -907,6 +907,7 @@ static void set_icmap_ro_keys_flag (void)
 	 */
 	icmap_set_ro_access("totem.crypto_cipher", CS_FALSE, CS_TRUE);
 	icmap_set_ro_access("totem.crypto_hash", CS_FALSE, CS_TRUE);
+	icmap_set_ro_access("totem.crypto_compat", CS_FALSE, CS_TRUE);
 	icmap_set_ro_access("totem.secauth", CS_FALSE, CS_TRUE);
 	icmap_set_ro_access("totem.rrp_mode", CS_FALSE, CS_TRUE);
 	icmap_set_ro_access("totem.netmtu", CS_FALSE, CS_TRUE);

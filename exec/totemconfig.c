@@ -119,9 +119,11 @@ static void totem_get_crypto(struct totem_config *totem_config)
 	char *str;
 	const char *tmp_cipher;
 	const char *tmp_hash;
+	const char *tmp_compat;
 
 	tmp_hash = "sha1";
 	tmp_cipher = "aes256";
+	tmp_compat = "2.2";
 
 	if (icmap_get_string("totem.secauth", &str) == CS_OK) {
 		if (strcmp (str, "off") == 0) {
@@ -172,11 +174,23 @@ static void totem_get_crypto(struct totem_config *totem_config)
 		free(str);
 	}
 
+	if (icmap_get_string("totem.crypto_compat", &str) == CS_OK) {
+		if (strcmp(str, "2.0") == 0) {
+			tmp_compat = "2.0";
+		}
+		if (strcmp(str, "2.2") == 0) {
+			tmp_compat = "2.2";
+		}
+		free(str);
+	}
+
 	free(totem_config->crypto_cipher_type);
 	free(totem_config->crypto_hash_type);
+	free(totem_config->crypto_compat_type);
 
 	totem_config->crypto_cipher_type = strdup(tmp_cipher);
 	totem_config->crypto_hash_type = strdup(tmp_hash);
+	totem_config->crypto_compat_type = strdup(tmp_compat);
 }
 
 static uint16_t generate_cluster_id (const char *cluster_name)

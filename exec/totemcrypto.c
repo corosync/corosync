@@ -81,12 +81,19 @@ struct crypto_config_header {
 #define AES_128_KEY_LENGTH 16
 #endif
 
+/*
+ * while CRYPTO_CIPHER_TYPE_2_2 is not a real cipher at all,
+ * we still allocate a value for it because we use crypto_crypt_t
+ * internally and we don't want overlaps
+ */
+
 enum crypto_crypt_t {
 	CRYPTO_CIPHER_TYPE_NONE = 0,
 	CRYPTO_CIPHER_TYPE_AES256 = 1,
 	CRYPTO_CIPHER_TYPE_AES192 = 2,
 	CRYPTO_CIPHER_TYPE_AES128 = 3,
-	CRYPTO_CIPHER_TYPE_3DES = 4
+	CRYPTO_CIPHER_TYPE_3DES = 4,
+	CRYPTO_CIPHER_TYPE_2_2 = UINT8_MAX
 };
 
 CK_MECHANISM_TYPE cipher_to_nss[] = {
@@ -117,13 +124,20 @@ size_t cypher_block_len[] = {
  * hash definitions and conversion tables
  */
 
+/*
+ * while CRYPTO_HASH_TYPE_2_2 is not a real hash mechanism at all,
+ * we still allocate a value for it because we use crypto_hash_t
+ * internally and we don't want overlaps
+ */
+
 enum crypto_hash_t {
 	CRYPTO_HASH_TYPE_NONE	= 0,
 	CRYPTO_HASH_TYPE_MD5	= 1,
 	CRYPTO_HASH_TYPE_SHA1	= 2,
 	CRYPTO_HASH_TYPE_SHA256	= 3,
 	CRYPTO_HASH_TYPE_SHA384	= 4,
-	CRYPTO_HASH_TYPE_SHA512	= 5
+	CRYPTO_HASH_TYPE_SHA512	= 5,
+	CRYPTO_HASH_TYPE_2_2	= UINT8_MAX
 };
 
 CK_MECHANISM_TYPE hash_to_nss[] = {
@@ -153,6 +167,15 @@ size_t hash_block_len[] = {
 	SHA512_BLOCK_LENGTH		/* CRYPTO_HASH_TYPE_SHA512 */
 };
 
+/*
+ * crypto on-wire compat
+ */
+
+enum crypto_compat_t {
+	CRYPTO_COMPAT_2_0	= 0,
+	CRYPTO_COMPAT_2_2	= 1
+};
+
 struct crypto_instance {
 	PK11SymKey   *nss_sym_key;
 	PK11SymKey   *nss_sym_key_sign;
@@ -164,6 +187,8 @@ struct crypto_instance {
 	enum crypto_crypt_t crypto_cipher_type;
 
 	enum crypto_hash_t crypto_hash_type;
+
+	enum crypto_compat_t crypto_compat_type;
 
 	unsigned int crypto_header_size;
 
@@ -189,6 +214,20 @@ do {									\
 		__FUNCTION__, __FILE__, __LINE__,			\
 		(const char *)format, ##args);				\
 } while (0);
+
+/*
+ * compat functions
+ */
+
+static int string_to_crypto_compat_type(const char* crypto_compat_type)
+{
+	if (strcmp(crypto_compat_type, "2.0") == 0) {
+		return CRYPTO_COMPAT_2_0;
+	} else if (strcmp(crypto_compat_type, "2.1") == 0) {
+		return CRYPTO_COMPAT_2_2;
+	}
+	return CRYPTO_COMPAT_2_2;
+}
 
 /*
  * crypt/decrypt functions
@@ -556,11 +595,12 @@ static int init_nss_db(struct crypto_instance *instance)
 
 static int init_nss(struct crypto_instance *instance,
 		    const char *crypto_cipher_type,
-		    const char *crypto_hash_type)
+		    const char *crypto_hash_type,
+		    const char *crypto_compat_type)
 {
 	log_printf(instance->log_level_notice,
-		   "Initializing transmit/receive security (NSS) crypto: %s hash: %s",
-		   crypto_cipher_type, crypto_hash_type);
+		   "Initializing transmit/receive security (NSS) crypto: %s hash: %s compat: %s",
+		   crypto_cipher_type, crypto_hash_type, crypto_compat_type);
 
 	if (init_nss_db(instance) < 0) {
 		return -1;
@@ -577,7 +617,7 @@ static int init_nss(struct crypto_instance *instance,
 	return 0;
 }
 
-static int encrypt_and_sign_nss (
+static int encrypt_and_sign_nss_2_0 (
 	struct crypto_instance *instance,
 	const unsigned char *buf_in,
 	const size_t buf_in_len,
@@ -601,7 +641,32 @@ static int encrypt_and_sign_nss (
 	return 0;
 }
 
-static int authenticate_and_decrypt_nss (
+static int encrypt_and_sign_nss_2_2 (
+	struct crypto_instance *instance,
+	const unsigned char *buf_in,
+	const size_t buf_in_len,
+	unsigned char *buf_out,
+	size_t *buf_out_len)
+{
+	if (encrypt_nss(instance,
+			buf_in, buf_in_len,
+			buf_out + sizeof(struct crypto_config_header), buf_out_len) < 0) {
+		return -1;
+	}
+
+	*buf_out_len += sizeof(struct crypto_config_header);
+
+	if (hash_to_nss[instance->crypto_hash_type]) {
+		if (calculate_nss_hash(instance, buf_out, *buf_out_len, buf_out + *buf_out_len) < 0) {
+			return -1;
+		}
+		*buf_out_len += hash_len[instance->crypto_hash_type];
+	}
+
+	return 0;
+}
+
+static int authenticate_and_decrypt_nss_2_0 (
 	struct crypto_instance *instance,
 	unsigned char *buf,
 	int *buf_len)
@@ -626,6 +691,43 @@ static int authenticate_and_decrypt_nss (
 	}
 
 	if (decrypt_nss(instance, buf, buf_len) < 0) {
+		return -1;
+	}
+
+	return 0;
+}
+
+static int authenticate_nss_2_2 (
+	struct crypto_instance *instance,
+	unsigned char *buf,
+	int *buf_len)
+{
+	if (hash_to_nss[instance->crypto_hash_type]) {
+		unsigned char	tmp_hash[hash_len[instance->crypto_hash_type]];
+		int             datalen = *buf_len - hash_len[instance->crypto_hash_type];
+
+		if (calculate_nss_hash(instance, buf, datalen, tmp_hash) < 0) {
+			return -1;
+		}
+
+		if (memcmp(tmp_hash, buf + datalen, hash_len[instance->crypto_hash_type]) != 0) {
+			log_printf(instance->log_level_error, "Digest does not match");
+			return -1;
+		}
+		*buf_len = datalen;
+	}
+
+	return 0;
+}
+
+static int decrypt_nss_2_2 (
+	struct crypto_instance *instance,
+	unsigned char *buf,
+	int *buf_len)
+{
+	*buf_len -= sizeof(struct crypto_config_header);
+
+	if (decrypt_nss(instance, buf + sizeof(struct crypto_config_header), buf_len) < 0) {
 		return -1;
 	}
 
@@ -658,6 +760,20 @@ size_t crypto_sec_header_size(
 	return hdr_size;
 }
 
+/*
+ * 2.0 packet format:
+ *   crypto_cipher_type | crypto_hash_type | __pad0 | __pad1 | hash | salt | data
+ *   only data is encrypted, hash only covers salt + data
+ *
+ * 2.2 packet format
+ *   fake_crypto_cipher_type | fake_crypto_hash_type | __pad0 | __pad1 | salt | data | hash
+ *   only data is encrypted, hash covers the whole packet
+ *
+ *  we need to leave fake_* unencrypted for older versions of corosync to reject the packets,
+ *  we need to leave __pad0|1 unencrypted for performance reasons (saves at least 2 memcpy and
+ *  and extra buffer but values are hashed and verified.
+ */
+
 int crypto_encrypt_and_sign (
 	struct crypto_instance *instance,
 	const unsigned char *buf_in,
@@ -668,18 +784,35 @@ int crypto_encrypt_and_sign (
 	struct crypto_config_header *cch = (struct crypto_config_header *)buf_out;
 	int err;
 
-	cch->crypto_cipher_type = instance->crypto_cipher_type;
-	cch->crypto_hash_type = instance->crypto_hash_type;
-	cch->__pad0 = 0;
-	cch->__pad1 = 0;
+	switch (instance->crypto_compat_type) {
+		case CRYPTO_COMPAT_2_0:
+			cch->crypto_cipher_type = instance->crypto_cipher_type;
+			cch->crypto_hash_type = instance->crypto_hash_type;
+			cch->__pad0 = 0;
+			cch->__pad1 = 0;
 
-	buf_out += sizeof(struct crypto_config_header);
+			buf_out += sizeof(struct crypto_config_header);
 
-	err = encrypt_and_sign_nss(instance,
-				   buf_in, buf_in_len,
-				   buf_out, buf_out_len);
+			err = encrypt_and_sign_nss_2_0(instance,
+						       buf_in, buf_in_len,
+						       buf_out, buf_out_len);
 
-	*buf_out_len = *buf_out_len + sizeof(struct crypto_config_header);
+			*buf_out_len = *buf_out_len + sizeof(struct crypto_config_header);
+			break;
+		case CRYPTO_COMPAT_2_2:
+			cch->crypto_cipher_type = CRYPTO_CIPHER_TYPE_2_2;
+			cch->crypto_hash_type = CRYPTO_HASH_TYPE_2_2;
+			cch->__pad0 = 0;
+			cch->__pad1 = 0;
+
+			err = encrypt_and_sign_nss_2_2(instance,
+						   buf_in, buf_in_len,
+						   buf_out, buf_out_len);
+			break;
+		default:
+			err = -1;
+			break;
+	}
 
 	return err;
 }
@@ -690,36 +823,92 @@ int crypto_authenticate_and_decrypt (struct crypto_instance *instance,
 {
 	struct crypto_config_header *cch = (struct crypto_config_header *)buf;
 
-	/*
-	 * decode crypto config of incoming packets
-	 */
+	switch (instance->crypto_compat_type) {
+		case CRYPTO_COMPAT_2_0:
 
-	if (cch->crypto_cipher_type != instance->crypto_cipher_type) {
-		log_printf(instance->log_level_security,
-			   "Incoming packet has different crypto type. Rejecting");
-		return -1;
+			/*
+			 * decode crypto config of incoming packets
+			 */
+
+			if (cch->crypto_cipher_type != instance->crypto_cipher_type) {
+				log_printf(instance->log_level_security,
+					   "Incoming packet has different crypto type. Rejecting");
+				return -1;
+			}
+
+			if (cch->crypto_hash_type != instance->crypto_hash_type) {
+				log_printf(instance->log_level_security,
+					   "Incoming packet has different hash type. Rejecting");
+				return -1;
+			}
+
+			if ((cch->__pad0 != 0) || (cch->__pad1 != 0)) {
+				log_printf(instance->log_level_security,
+					   "Incoming packet appears to have features not supported by this version of corosync. Rejecting");
+				return -1;
+			}
+
+			/*
+			 * invalidate config header and kill it
+			 */
+
+			cch = NULL;
+			*buf_len -= sizeof(struct crypto_config_header);
+			memmove(buf, buf + sizeof(struct crypto_config_header), *buf_len);
+
+			return authenticate_and_decrypt_nss_2_0(instance, buf, buf_len);
+			break;
+		case CRYPTO_COMPAT_2_2:
+			if (cch->crypto_cipher_type != CRYPTO_CIPHER_TYPE_2_2) {
+				log_printf(instance->log_level_security,
+					   "Incoming packet has different crypto type. Rejecting");
+				return -1;
+			}
+
+			if (cch->crypto_hash_type != CRYPTO_HASH_TYPE_2_2) {
+				log_printf(instance->log_level_security,
+					   "Incoming packet has different hash type. Rejecting");
+				return -1;
+			}
+
+			/*
+			 * authenticate packet first
+			 */
+
+			if (authenticate_nss_2_2(instance, buf, buf_len) != 0) {
+				return -1;
+			}
+
+			/*
+			 * now we can "trust" the padding bytes/future features
+			 */
+
+			if ((cch->__pad0 != 0) || (cch->__pad1 != 0)) {
+				log_printf(instance->log_level_security,
+					   "Incoming packet appears to have features not supported by this version of corosync. Rejecting");
+				return -1;
+			}
+
+			/*
+			 * decrypt
+			 */
+
+			if (decrypt_nss_2_2(instance, buf, buf_len) != 0) {
+				return -1;
+			}
+
+			/*
+			 * invalidate config header and kill it
+			 */
+			cch = NULL;
+			memmove(buf, buf + sizeof(struct crypto_config_header), *buf_len);
+
+			return 0;
+			break;
+		default:
+			return -1;
+			break;
 	}
-
-	if (cch->crypto_hash_type != instance->crypto_hash_type) {
-		log_printf(instance->log_level_security,
-			   "Incoming packet has different hash type. Rejecting");
-		return -1;
-	}
-
-	if ((cch->__pad0 != 0) || (cch->__pad1 != 0)) {
-		log_printf(instance->log_level_security,
-			   "Incoming packet appears to have features not supported by this version of corosync. Rejecting");
-		return -1;
-	}
-
-	/*
-	 * invalidate config header and kill it
-	 */
-	cch = NULL;
-	*buf_len -= sizeof(struct crypto_config_header);
-	memmove(buf, buf + sizeof(struct crypto_config_header), *buf_len);
-
-	return authenticate_and_decrypt_nss(instance, buf, buf_len);
 }
 
 struct crypto_instance *crypto_init(
@@ -727,6 +916,7 @@ struct crypto_instance *crypto_init(
 	unsigned int private_key_len,
 	const char *crypto_cipher_type,
 	const char *crypto_hash_type,
+	const char *crypto_compat_type,
 	void (*log_printf_func) (
 		int level,
 		int subsys,
@@ -752,6 +942,7 @@ struct crypto_instance *crypto_init(
 
 	instance->crypto_cipher_type = string_to_crypto_cipher_type(crypto_cipher_type);
 	instance->crypto_hash_type = string_to_crypto_hash_type(crypto_hash_type);
+	instance->crypto_compat_type = string_to_crypto_compat_type(crypto_compat_type);
 
 	instance->crypto_header_size = crypto_sec_header_size(crypto_cipher_type, crypto_hash_type);
 
@@ -761,7 +952,7 @@ struct crypto_instance *crypto_init(
 	instance->log_level_error = log_level_error;
 	instance->log_subsys_id = log_subsys_id;
 
-	if (init_nss(instance, crypto_cipher_type, crypto_hash_type) < 0) {
+	if (init_nss(instance, crypto_cipher_type, crypto_hash_type, crypto_compat_type) < 0) {
 		free(instance);
 		return(NULL);
 	}
