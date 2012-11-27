@@ -1100,26 +1100,33 @@ static int object_key_increment (
 		switch (object_key->value_type) {
 		case OBJDB_VALUETYPE_INT16:
 			(*(int16_t *)object_key->value)++;
+			*value = *(int16_t *)object_key->value;
 			break;
 		case OBJDB_VALUETYPE_UINT16:
 			(*(uint16_t *)object_key->value)++;
+			*value = *(uint16_t *)object_key->value;
 			break;
 		case OBJDB_VALUETYPE_INT32:
 			(*(int32_t *)object_key->value)++;
+			*value = *(int32_t *)object_key->value;
 			break;
 		case OBJDB_VALUETYPE_UINT32:
 			(*(uint32_t *)object_key->value)++;
+			*value = *(uint32_t *)object_key->value;
 			break;
 		case OBJDB_VALUETYPE_INT64:
 			(*(int64_t *)object_key->value)++;
+			*value = *(int64_t *)object_key->value;
 			break;
 		case OBJDB_VALUETYPE_UINT64:
 			(*(uint64_t *)object_key->value)++;
+			*value = *(uint64_t *)object_key->value;
 			break;
 		case OBJDB_VALUETYPE_ANY:
 			/* for backwards compatibilty */
 			if (object_key->value_len == sizeof(int)) {
 				(*(int *)object_key->value)++;
+				*value = *(int *)object_key->value;
 			}
 			else {
 				res = -1;
@@ -1128,11 +1135,6 @@ static int object_key_increment (
 		default:
 			res = -1;
 			break;
-		}
-		if (res == 0) {
-			/* nasty, not sure why we need to return this typed
-			 * instead of void* */
-			*value = *(int *)object_key->value;
 		}
 	}
 	else {
@@ -1187,26 +1189,33 @@ static int object_key_decrement (
 		switch (object_key->value_type) {
 		case OBJDB_VALUETYPE_INT16:
 			(*(int16_t *)object_key->value)--;
+			*value = *(int16_t *)object_key->value;
 			break;
 		case OBJDB_VALUETYPE_UINT16:
 			(*(uint16_t *)object_key->value)--;
+			*value = *(uint16_t *)object_key->value;
 			break;
 		case OBJDB_VALUETYPE_INT32:
 			(*(int32_t *)object_key->value)--;
+			*value = *(int32_t *)object_key->value;
 			break;
 		case OBJDB_VALUETYPE_UINT32:
 			(*(uint32_t *)object_key->value)--;
+			*value = *(uint32_t *)object_key->value;
 			break;
 		case OBJDB_VALUETYPE_INT64:
 			(*(int64_t *)object_key->value)--;
+			*value = *(int64_t *)object_key->value;
 			break;
 		case OBJDB_VALUETYPE_UINT64:
 			(*(uint64_t *)object_key->value)--;
+			*value = *(uint64_t *)object_key->value;
 			break;
 		case OBJDB_VALUETYPE_ANY:
 			/* for backwards compatibilty */
 			if (object_key->value_len == sizeof(int)) {
 				(*(int *)object_key->value)--;
+				*value = *(int *)object_key->value;
 			}
 			else {
 				res = -1;
@@ -1215,11 +1224,6 @@ static int object_key_decrement (
 		default:
 			res = -1;
 			break;
-		}
-		if (res == 0) {
-			/* nasty, not sure why we need to return this typed
-			 * instead of void* */
-			*value = *(int *)object_key->value;
 		}
 	}
 	else {
