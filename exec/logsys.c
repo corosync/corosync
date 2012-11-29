@@ -443,6 +443,8 @@ static void log_printf_to_logs (
 	subsysid = LOGSYS_DECODE_SUBSYSID(rec_ident);
 	level = LOGSYS_DECODE_LEVEL(rec_ident);
 
+	pthread_mutex_lock (&logsys_config_mutex);
+
 	if (!((LOGSYS_DECODE_RECID(rec_ident) == LOGSYS_RECID_LOG) ||
 	      (logsys_loggers[subsysid].trace1_allowed && LOGSYS_DECODE_RECID(rec_ident) == LOGSYS_RECID_TRACE1))) {
 		return;
@@ -538,6 +540,8 @@ static void log_printf_to_logs (
 			break;
 		}
 	}
+
+	pthread_mutex_unlock (&logsys_config_mutex);
 
 	normal_output_buffer[normal_output_buffer_idx] = '\0';
 	syslog_output_buffer[syslog_output_buffer_idx] = '\0';
