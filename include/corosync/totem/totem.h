@@ -181,6 +181,8 @@ struct totem_config {
 	totem_transport_t transport_number;
 
 	unsigned int miss_count_const;
+
+	int ip_version;
 };
 
 #define TOTEM_CONFIGURATION_TYPE

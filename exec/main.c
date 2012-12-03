@@ -154,6 +154,8 @@ static corosync_timer_handle_t corosync_stats_timer_handle;
 
 static const char *corosync_lock_file = LOCALSTATEDIR"/run/corosync.pid";
 
+static int ip_version = AF_INET;
+
 qb_loop_t *cs_poll_handle_get (void)
 {
 	return (corosync_poll_handle);
@@ -592,7 +594,7 @@ static void totem_dynamic_notify(
 	if (remove_old_member) {
 		log_printf(LOGSYS_LEVEL_DEBUG,
 			"removing dynamic member %s for ring %u", (char *)old_val.data, ring_no);
-		if (totemip_parse(&member, (char *)old_val.data, 0) == 0) {
+		if (totemip_parse(&member, (char *)old_val.data, ip_version) == 0) {
 			totempg_member_remove (&member, ring_no);
 		}
 	}
@@ -600,7 +602,7 @@ static void totem_dynamic_notify(
 	if (add_new_member) {
 		log_printf(LOGSYS_LEVEL_DEBUG,
 			"adding dynamic member %s for ring %u", (char *)new_val.data, ring_no);
-		if (totemip_parse(&member, (char *)new_val.data, 0) == 0) {
+		if (totemip_parse(&member, (char *)new_val.data, ip_version) == 0) {
 			totempg_member_add (&member, ring_no);
 		}
 	}
@@ -913,6 +915,7 @@ static void set_icmap_ro_keys_flag (void)
 	icmap_set_ro_access("totem.crypto_hash", CS_FALSE, CS_TRUE);
 	icmap_set_ro_access("totem.crypto_compat", CS_FALSE, CS_TRUE);
 	icmap_set_ro_access("totem.secauth", CS_FALSE, CS_TRUE);
+	icmap_set_ro_access("totem.ip_version", CS_FALSE, CS_TRUE);
 	icmap_set_ro_access("totem.rrp_mode", CS_FALSE, CS_TRUE);
 	icmap_set_ro_access("totem.netmtu", CS_FALSE, CS_TRUE);
 	icmap_set_ro_access("qb.ipc_type", CS_FALSE, CS_TRUE);
@@ -1176,6 +1179,8 @@ int main (int argc, char **argv, char **envp)
 		log_printf (LOGSYS_LEVEL_ERROR, "%s", error_string);
 		corosync_exit_error (COROSYNC_DONE_MAINCONFIGREAD);
 	}
+
+	ip_version = totem_config.ip_version;
 
 	totem_config.totem_logging_configuration = totem_logging_configuration;
 	totem_config.totem_logging_configuration.log_subsys_id = _logsys_subsys_create("TOTEM", "totem");

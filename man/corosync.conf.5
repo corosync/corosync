@@ -287,6 +287,12 @@ from single-node membership to multiple nodes membership, other nodes
 config_versions are collected. If current node config_version is not
 equal to highest of collected versions, corosync is terminated.
 
+.TP
+ip_version
+Specifies version of IP to use for communication. Value can be one of
+ipv4 or ipv6. Default (if unspecified) is ipv4.
+
+
 Within the
 .B totem
 directive, there are several configuration options which are used to control

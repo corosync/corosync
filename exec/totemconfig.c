@@ -210,6 +210,7 @@ static int get_cluster_mcast_addr (
 		const char *cluster_name,
 		const struct totem_ip_address *bindnet,
 		unsigned int ringnumber,
+		int ip_version,
 		struct totem_ip_address *res)
 {
 	uint16_t clusterid;
@@ -237,7 +238,7 @@ static int get_cluster_mcast_addr (
 		return (-1);
 	}
 
-	err = totemip_parse (res, addr, 0);
+	err = totemip_parse (res, addr, ip_version);
 
 	return (err);
 }
@@ -278,7 +279,7 @@ static int find_local_node_in_nodelist(struct totem_config *totem_config)
 			continue;
 		}
 
-		res = totemip_parse (&node_addr, node_addr_str, 0);
+		res = totemip_parse (&node_addr, node_addr_str, totem_config->ip_version);
 		free(node_addr_str);
 		if (res == -1) {
 			continue ;
@@ -331,7 +332,7 @@ static void put_nodelist_members_to_config(struct totem_config *totem_config)
 			member_count = totem_config->interfaces[ringnumber].member_count;
 
 			res = totemip_parse(&totem_config->interfaces[ringnumber].member_list[member_count],
-						node_addr_str, 0);
+						node_addr_str, totem_config->ip_version);
 			if (res != -1) {
 				totem_config->interfaces[ringnumber].member_count++;
 			}
@@ -379,7 +380,7 @@ static void config_convert_nodelist_to_interface(struct totem_config *totem_conf
 			continue ;
 		}
 
-		if (totemip_parse(&node_addr, node_addr_str, 0) == -1) {
+		if (totemip_parse(&node_addr, node_addr_str, totem_config->ip_version) == -1) {
 			free(node_addr_str);
 			continue ;
 		}
@@ -490,6 +491,17 @@ extern int totem_config_read (
 
 	icmap_get_string("totem.cluster_name", &cluster_name);
 
+	totem_config->ip_version = AF_INET;
+	if (icmap_get_string("totem.ip_version", &str) == CS_OK) {
+		if (strcmp(str, "ipv4") == 0) {
+			totem_config->ip_version = AF_INET;
+		}
+		if (strcmp(str, "ipv6") == 0) {
+			totem_config->ip_version = AF_INET6;
+		}
+		free(str);
+	}
+
 	/*
 	 * Get things that might change in the future
 	 */
@@ -542,7 +554,7 @@ extern int totem_config_read (
 		 */
 		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.mcastaddr", ringnumber);
 		if (icmap_get_string(tmp_key, &str) == CS_OK) {
-			res = totemip_parse (&totem_config->interfaces[ringnumber].mcast_addr, str, 0);
+			res = totemip_parse (&totem_config->interfaces[ringnumber].mcast_addr, str, totem_config->ip_version);
 			free(str);
 		} else {
 			/*
@@ -552,6 +564,7 @@ extern int totem_config_read (
 			res = get_cluster_mcast_addr (cluster_name,
 					&totem_config->interfaces[ringnumber].bindnet,
 					ringnumber,
+					totem_config->ip_version,
 					&totem_config->interfaces[ringnumber].mcast_addr);
 		}
 
@@ -562,7 +575,7 @@ extern int totem_config_read (
 				totem_config->broadcast_use = 1;
 				totemip_parse (
 					&totem_config->interfaces[ringnumber].mcast_addr,
-					"255.255.255.255", 0);
+					"255.255.255.255", totem_config->ip_version);
 			}
 			free(str);
 		}
@@ -605,7 +618,7 @@ extern int totem_config_read (
 
 			if (icmap_get_string(member_iter_key, &str) == CS_OK) {
 				res = totemip_parse (&totem_config->interfaces[ringnumber].member_list[member_count++],
-						str, 0);
+						str, totem_config->ip_version);
 			}
 		}
 		icmap_iter_finalize(member_iter);
