@@ -501,6 +501,14 @@ static int main_config_parser_cb(const char *path,
 				icmap_set_uint64(path, ull);
 				add_as_string = 0;
 			}
+			if (strcmp(path, "totem.ip_version") == 0) {
+				if ((strcmp(value, "ipv4") != 0) &&
+				    (strcmp(value, "ipv6") != 0)) {
+					*error_string = "Invalid ip_version type";
+
+					return (0);
+				}
+			}
 			if (strcmp(path, "totem.crypto_type") == 0) {
 				if ((strcmp(value, "nss") != 0) &&
 				    (strcmp(value, "aes256") != 0) &&
