@@ -1617,7 +1617,7 @@ int coroipcs_handler_dispatch (
 	/*
 	 * If an error occurs, request exit
 	 */
-	if (revent & (POLLERR|POLLHUP)) {
+	if (revent & (POLLERR|POLLHUP|POLLNVAL)) {
 		ipc_disconnect (conn_info);
 		return (0);
 	}

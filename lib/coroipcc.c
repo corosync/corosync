@@ -902,7 +902,7 @@ coroipcc_dispatch_get (
 		error = CS_ERR_TRY_AGAIN;
 		goto error_put;
 	}
-	if (poll_events == 1 && (ufds.revents & (POLLERR|POLLHUP))) {
+	if (poll_events == 1 && (ufds.revents & (POLLERR|POLLHUP|POLLNVAL))) {
 		error = CS_ERR_LIBRARY;
 		goto error_put;
 	}
