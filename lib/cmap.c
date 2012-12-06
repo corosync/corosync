@@ -789,6 +789,10 @@ cs_error_t cmap_iter_init(
 	struct req_lib_cmap_iter_init req_lib_cmap_iter_init;
 	struct res_lib_cmap_iter_init res_lib_cmap_iter_init;
 
+	if (cmap_iter_handle == NULL) {
+		return (CS_ERR_INVALID_PARAM);
+	}
+
 	error = hdb_error_to_cs(hdb_handle_get (&cmap_handle_t_db, handle, (void *)&cmap_inst));
 	if (error != CS_OK) {
 		return (error);
@@ -841,6 +845,10 @@ cs_error_t cmap_iter_next(
 	struct cmap_inst *cmap_inst;
 	struct req_lib_cmap_iter_next req_lib_cmap_iter_next;
 	struct res_lib_cmap_iter_next res_lib_cmap_iter_next;
+
+	if (key_name == NULL) {
+		return (CS_ERR_INVALID_PARAM);
+	}
 
 	error = hdb_error_to_cs(hdb_handle_get (&cmap_handle_t_db, handle, (void *)&cmap_inst));
 	if (error != CS_OK) {
@@ -937,6 +945,10 @@ cs_error_t cmap_track_add(
 	struct res_lib_cmap_track_add res_lib_cmap_track_add;
 	struct cmap_track_inst *cmap_track_inst;
 	cmap_track_handle_t cmap_track_inst_handle;
+
+	if (cmap_track_handle == NULL || notify_fn == NULL) {
+		return (CS_ERR_INVALID_PARAM);
+	}
 
 	error = hdb_error_to_cs(hdb_handle_get (&cmap_handle_t_db, handle, (void *)&cmap_inst));
 	if (error != CS_OK) {
