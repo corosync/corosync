@@ -243,9 +243,7 @@ retry_poll:
 			}
 
 			if (res == 1) {
-				if (pfd.revents == POLLERR ||
-					pfd.revents == POLLHUP ||
-					pfd.revents == POLLNVAL) {
+				if (pfd.revents & (POLLERR|POLLHUP|POLLNVAL)) {
 
 					return (CS_ERR_LIBRARY);
 				}
