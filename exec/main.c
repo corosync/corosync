@@ -1088,16 +1088,9 @@ int main (int argc, char **argv, char **envp)
 	log_printf (LOGSYS_LEVEL_NOTICE, "Corosync Cluster Engine ('%s'): started and ready to provide service.", VERSION);
 	log_printf (LOGSYS_LEVEL_INFO, "Corosync built-in features:" PACKAGE_FEATURES "");
 
-	corosync_poll_handle = qb_loop_create ();
-
-	qb_loop_signal_add(corosync_poll_handle, QB_LOOP_LOW,
-		SIGUSR2, NULL, sig_diag_handler, NULL);
-	qb_loop_signal_add(corosync_poll_handle, QB_LOOP_HIGH,
-		SIGINT, NULL, sig_exit_handler, NULL);
-	qb_loop_signal_add(corosync_poll_handle, QB_LOOP_HIGH,
-		SIGQUIT, NULL, sig_exit_handler, NULL);
-	qb_loop_signal_add(corosync_poll_handle, QB_LOOP_HIGH,
-		SIGTERM, NULL, sig_exit_handler, NULL);
+	/*
+	 * Other signals are registered later via qb_loop_signal_add
+	 */
 	(void)signal (SIGSEGV, sigsegv_handler);
 	(void)signal (SIGABRT, sigabrt_handler);
 #if MSG_NOSIGNAL != 0
@@ -1199,6 +1192,18 @@ int main (int argc, char **argv, char **envp)
 	if (background) {
 		corosync_tty_detach ();
 	}
+
+	corosync_poll_handle = qb_loop_create ();
+
+	qb_loop_signal_add(corosync_poll_handle, QB_LOOP_LOW,
+		SIGUSR2, NULL, sig_diag_handler, NULL);
+	qb_loop_signal_add(corosync_poll_handle, QB_LOOP_HIGH,
+		SIGINT, NULL, sig_exit_handler, NULL);
+	qb_loop_signal_add(corosync_poll_handle, QB_LOOP_HIGH,
+		SIGQUIT, NULL, sig_exit_handler, NULL);
+	qb_loop_signal_add(corosync_poll_handle, QB_LOOP_HIGH,
+		SIGTERM, NULL, sig_exit_handler, NULL);
+
 	if (logsys_thread_start() != 0) {
 		log_printf (LOGSYS_LEVEL_ERROR, "Can't initialize log thread");
 		corosync_exit_error (COROSYNC_DONE_LOGCONFIGREAD);
