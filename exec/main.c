@@ -1084,9 +1084,6 @@ int main (int argc, char **argv, char **envp)
 
 	corosync_mlockall ();
 
-	log_printf (LOGSYS_LEVEL_NOTICE, "Corosync Cluster Engine ('%s'): started and ready to provide service.", VERSION);
-	log_printf (LOGSYS_LEVEL_INFO, "Corosync built-in features:" PACKAGE_FEATURES "");
-
 	/*
 	 * Other signals are registered later via qb_loop_signal_add
 	 */
@@ -1127,6 +1124,9 @@ int main (int argc, char **argv, char **envp)
 		syslog (LOGSYS_LEVEL_ERROR, "%s", error_string);
 		corosync_exit_error (COROSYNC_DONE_LOGCONFIGREAD);
 	}
+
+	log_printf (LOGSYS_LEVEL_NOTICE, "Corosync Cluster Engine ('%s'): started and ready to provide service.", VERSION);
+	log_printf (LOGSYS_LEVEL_INFO, "Corosync built-in features:" PACKAGE_FEATURES "");
 
 	/*
 	 * Make sure required directory is present
