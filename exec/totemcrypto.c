@@ -478,8 +478,8 @@ static int init_nss_hash(struct crypto_instance *instance)
 	}
 
 	hash_param.type = siBuffer;
-	hash_param.data = 0;
-	hash_param.len = 0;
+	hash_param.data = instance->private_key;
+	hash_param.len = instance->private_key_len;
 
 	hash_slot = PK11_GetBestSlot(hash_to_nss[instance->crypto_hash_type], NULL);
 	if (hash_slot == NULL) {
