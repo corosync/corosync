@@ -13,6 +13,7 @@
 	Used for mutual node authentication. If you choose to
 	enable this, then do remember to create a shared
 	secret with "corosync-keygen".
+	enabling crypto_cipher, requires also enabling of crypto_hash.
 -->
 <totem version="2" crypto_cipher="none" crypto_hash="none">
     <!--
