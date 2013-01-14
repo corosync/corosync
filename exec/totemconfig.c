@@ -114,7 +114,7 @@ static void totem_volatile_config_read (struct totem_config *totem_config)
 }
 
 
-static void totem_get_crypto(struct totem_config *totem_config)
+static int totem_get_crypto(struct totem_config *totem_config)
 {
 	char *str;
 	const char *tmp_cipher;
@@ -172,11 +172,18 @@ static void totem_get_crypto(struct totem_config *totem_config)
 		free(str);
 	}
 
+	if ((strcmp(tmp_cipher, "none") != 0) &&
+	    (strcmp(tmp_hash, "none") == 0)) {
+		return -1;
+	}
+
 	free(totem_config->crypto_cipher_type);
 	free(totem_config->crypto_hash_type);
 
 	totem_config->crypto_cipher_type = strdup(tmp_cipher);
 	totem_config->crypto_hash_type = strdup(tmp_hash);
+
+	return 0;
 }
 
 static uint16_t generate_cluster_id (const char *cluster_name)
@@ -454,7 +461,10 @@ extern int totem_config_read (
 
 	icmap_get_uint32("totem.version", (uint32_t *)&totem_config->version);
 
-	totem_get_crypto(totem_config);
+	if (totem_get_crypto(totem_config) != 0) {
+		*error_string = "crypto_cipher requires crypto_hash with value other than none";
+		return -1;
+	}
 
 	if (icmap_get_string("totem.rrp_mode", &str) == CS_OK) {
 		strcpy (totem_config->rrp_mode, str);
