@@ -1148,7 +1148,6 @@ int totemudp_initialize (
 			totem_config->private_key_len,
 			totem_config->crypto_cipher_type,
 			totem_config->crypto_hash_type,
-			totem_config->crypto_compat_type,
 			instance->totemudp_log_printf,
 			instance->totemudp_log_level_security,
 			instance->totemudp_log_level_notice,

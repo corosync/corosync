@@ -61,7 +61,6 @@ extern struct crypto_instance *crypto_init(
 	unsigned int private_key_len,
 	const char *crypto_cipher_type,
 	const char *crypto_hash_type,
-	const char *crypto_compat_type,
 	void (*log_printf_func) (
 		int level,
 		int subsys,

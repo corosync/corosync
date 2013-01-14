@@ -779,7 +779,6 @@ int totemudpu_initialize (
 		totem_config->private_key_len,
 		totem_config->crypto_cipher_type,
 		totem_config->crypto_hash_type,
-		totem_config->crypto_compat_type,
 		instance->totemudpu_log_printf,
 		instance->totemudpu_log_level_security,
 		instance->totemudpu_log_level_notice,

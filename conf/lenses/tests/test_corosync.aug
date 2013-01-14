@@ -7,7 +7,6 @@ totem {
 	secauth: off
 	crypto_cipher: none
 	crypto_hash: none
-	crypto_compat: 2.2
 	threads: 0
 	clear_node_high_bit: no
 	rrp_mode: none
@@ -97,7 +96,6 @@ test Corosync.lns get conf =
 	{ "secauth" = "off" }
 	{ "crypto_cipher" = "none" }
 	{ "crypto_hash" = "none" }
-	{ "crypto_compat" = "2.2" }
 	{ "threads" = "0" }
     { "clear_node_high_bit" = "no" }
     { "rrp_mode" = "none" }

@@ -181,19 +181,6 @@ Valid values are none (no encryption), aes256, aes192, aes128 and 3des.
 The default is aes256.
 
 .TP
-crypto_compat
-This specifies which crypto protocol version should be used to encrypt all messages.
-Valid values are 2.0 and 2.2.
-
-The default is always is the higher supported version.
-
-This value should only be used when performing rolling upgrades from older
-versions of corosync to newer ones. It cannot be changed at runtime.
-
-Once the upgrade is completed, the cluster should be temporary halted to
-switch to the latest version of the protocol.
-
-.TP
 secauth
 This specifies that HMAC/SHA1 authentication should be used to authenticate
 all messages.  It further specifies that all data should be encrypted with the

@@ -543,14 +543,6 @@ static int main_config_parser_cb(const char *path,
 					return (0);
 				}
 			}
-			if (strcmp(path, "totem.crypto_compat") == 0) {
-				if ((strcmp(value, "2.0") != 0) &&
-				    (strcmp(value, "2.2") != 0)) {
-					*error_string = "Invalid crypto compat type";
-
-					return (0);
-				}
-			}
 			break;
 
 		case MAIN_CP_CB_DATA_STATE_QB:

@@ -8,13 +8,6 @@ totem {
 	crypto_cipher: none
 	crypto_hash: none
 
-	# crypto_compat: 2.0|2.2 (default higher) can be used to change
-	# on-wire crypto packet format. Unless performing some special
-	# rolling upgrades from corosync < 2.2 to 2.2, to keep the cluster
-	# running, do not touch this option. This option cannot be changed
-	# at runtime.
-	#crypto_compat: 2.2
-
 	# interface: define at least one interface to communicate
 	# over. If you define more than one interface stanza, you must
 	# also set rrp_mode.

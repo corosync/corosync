@@ -176,8 +176,6 @@ struct totem_config {
 
 	char *crypto_hash_type;
 
-	char *crypto_compat_type;
-
 	totem_transport_t transport_number;
 
 	unsigned int miss_count_const;
