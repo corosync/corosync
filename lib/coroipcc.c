@@ -74,6 +74,7 @@
 
 struct ipc_instance {
 	int fd;
+	int user_app_fd;
 	struct control_buffer *control_buffer;
 	char *request_buffer;
 	char *response_buffer;
@@ -611,6 +612,11 @@ coroipcc_service_connect (
 	if (request_fd == -1) {
 		return (CS_ERR_LIBRARY);
 	}
+	ipc_instance->user_app_fd = dup(request_fd);
+	if (ipc_instance->user_app_fd == -1) {
+		close(request_fd);
+		return (CS_ERR_LIBRARY);
+	}
 #ifdef SO_NOSIGPIPE
 	socket_nosigpipe (request_fd);
 #endif
@@ -810,6 +816,7 @@ coroipcc_service_disconnect (
 
 	shutdown (ipc_instance->fd, SHUT_RDWR);
 	close (ipc_instance->fd);
+	close (ipc_instance->user_app_fd);
 	hdb_handle_destroy (&ipc_hdb, handle);
 	hdb_handle_put (&ipc_hdb, handle);
 	return (CS_OK);
@@ -847,7 +854,7 @@ coroipcc_fd_get (
 		return (res);
 	}
 
-	*fd = ipc_instance->fd;
+	*fd = ipc_instance->user_app_fd;
 
 	hdb_handle_put (&ipc_hdb, handle);
 	return (res);
