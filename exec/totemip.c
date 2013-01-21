@@ -598,6 +598,13 @@ int totemip_iface_check(struct totem_ip_address *bindnet,
 
 				parse_rtattr(tb, IFA_MAX, IFA_RTA(ifa), len);
 
+				if (ifa->ifa_family == AF_INET6 && tb[IFA_ADDRESS]) {
+					memcpy(ipaddr.addr, RTA_DATA(tb[IFA_ADDRESS]), TOTEMIP_ADDRLEN);
+					if (totemip_equal(&ipaddr, bindnet)) {
+						found_if = 1;
+						exact_match_found = 1;
+					}
+				}
 				if (tb[IFA_LOCAL]) {
 					memcpy(ipaddr.addr, RTA_DATA(tb[IFA_LOCAL]), TOTEMIP_ADDRLEN);
 					if (totemip_equal(&ipaddr, bindnet)) {
