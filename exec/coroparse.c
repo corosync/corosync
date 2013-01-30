@@ -202,7 +202,7 @@ int coroparse_configparse (const char **error_string)
 	return 0;
 }
 
-static char *remove_whitespace(char *string)
+static char *remove_whitespace(char *string, int remove_colon_and_brace)
 {
 	char *start;
 	char *end;
@@ -212,7 +212,7 @@ static char *remove_whitespace(char *string)
 		start++;
 
 	end = start+(strlen(start))-1;
-	while ((*end == ' ' || *end == '\t' || *end == ':' || *end == '{') && end > start)
+	while ((*end == ' ' || *end == '\t' || (remove_colon_and_brace && (*end == ':' || *end == '{'))) && end > start)
 		end--;
 	if (end != start)
 		*(end+1) = '\0';
@@ -274,7 +274,7 @@ static int parse_section(FILE *fp,
 
 		/* New section ? */
 		if ((loc = strchr_rs (line, '{'))) {
-			char *section = remove_whitespace(line);
+			char *section = remove_whitespace(line, 1);
 
 			loc--;
 			*loc = '\0';
@@ -291,6 +291,8 @@ static int parse_section(FILE *fp,
 
 			if (parse_section(fp, new_keyname, error_string, parser_cb, user_data))
 				return -1;
+
+			continue ;
 		}
 
 		/* New key/value */
@@ -299,8 +301,8 @@ static int parse_section(FILE *fp,
 			char *value;
 
 			*(loc-1) = '\0';
-			key = remove_whitespace(line);
-			value = remove_whitespace(loc);
+			key = remove_whitespace(line, 1);
+			value = remove_whitespace(loc, 0);
 
 			strcpy(new_keyname, path);
 			if (strcmp(path, "") != 0) {
@@ -311,6 +313,8 @@ static int parse_section(FILE *fp,
 			if (!parser_cb(new_keyname, key, value, PARSER_CB_ITEM, error_string, user_data)) {
 				return -1;
 			}
+
+			continue ;
 		}
 
 		if (strchr_rs (line, '}')) {
