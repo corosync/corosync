@@ -225,6 +225,7 @@ static char *remove_whitespace(char *string, int remove_colon_and_brace)
 static int parse_section(FILE *fp,
 			 char *path,
 			 const char **error_string,
+			 int depth,
 			 parser_cb_f parser_cb,
 			 void *user_data)
 {
@@ -289,7 +290,7 @@ static int parse_section(FILE *fp,
 				return -1;
 			}
 
-			if (parse_section(fp, new_keyname, error_string, parser_cb, user_data))
+			if (parse_section(fp, new_keyname, error_string, depth + 1, parser_cb, user_data))
 				return -1;
 
 			continue ;
@@ -318,6 +319,12 @@ static int parse_section(FILE *fp,
 		}
 
 		if (strchr_rs (line, '}')) {
+			if (depth == 0) {
+				*error_string = "parser error: Unexpected closing brace";
+
+				return -1;
+			}
+
 			if (!parser_cb(path, NULL, NULL, PARSER_CB_SECTION_END, error_string, user_data)) {
 				return -1;
 			}
@@ -327,7 +334,7 @@ static int parse_section(FILE *fp,
 	}
 
 	if (strcmp(path, "") != 0) {
-		*error_string = "Missing closing brace";
+		*error_string = "parser error: Missing closing brace";
 		return -1;
 	}
 
@@ -1109,7 +1116,7 @@ static int read_uidgid_files_into_icmap(
 
 			key_name[0] = 0;
 
-			res = parse_section(fp, key_name, error_string, uidgid_config_parser_cb, NULL);
+			res = parse_section(fp, key_name, error_string, 0, uidgid_config_parser_cb, NULL);
 
 			fclose (fp);
 
@@ -1154,7 +1161,7 @@ static int read_config_file_into_icmap(
 
 	key_name[0] = 0;
 
-	res = parse_section(fp, key_name, error_string, main_config_parser_cb, &data);
+	res = parse_section(fp, key_name, error_string, 0, main_config_parser_cb, &data);
 
 	fclose(fp);
 
