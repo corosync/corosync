@@ -87,12 +87,12 @@ static int aisparser_readconfig (struct objdb_iface_ver0 *objdb,
 }
 
 
-static char *remove_whitespace(char *string)
+static char *remove_whitespace(char *string, int remove_colon_and_brace)
 {
 	char *start = string+strspn(string, " \t");
 	char *end = start+(strlen(start))-1;
 
-	while ((*end == ' ' || *end == '\t' || *end == ':' || *end == '{') && end > start)
+	while ((*end == ' ' || *end == '\t' || (remove_colon_and_brace && (*end == ':' || *end == '{'))) && end > start)
 		end--;
 	if (end != start)
 		*(end+1) = '\0';
@@ -157,7 +157,7 @@ static int parse_section(FILE *fp,
 		/* New section ? */
 		if ((loc = strchr_rs (line, '{'))) {
 			hdb_handle_t new_parent;
-			char *section = remove_whitespace(line);
+			char *section = remove_whitespace(line, 1);
 
 			loc--;
 			*loc = '\0';
@@ -171,6 +171,8 @@ static int parse_section(FILE *fp,
 					      section, strlen (section));
 			if (parse_section(fp, objdb, new_parent, error_string, parser_check_item_call))
 				return -1;
+
+			continue ;
 		}
 
 		/* New key/value */
@@ -179,8 +181,8 @@ static int parse_section(FILE *fp,
 			char *value;
 
 			*(loc-1) = '\0';
-			key = remove_whitespace(line);
-			value = remove_whitespace(loc);
+			key = remove_whitespace(line, 1);
+			value = remove_whitespace(loc, 0);
 			if (parser_check_item_call) {
 				if (!parser_check_item_call(objdb, parent_handle, PCHECK_ADD_ITEM,
 				    key, error_string))
@@ -188,6 +190,8 @@ static int parse_section(FILE *fp,
 			}
 			objdb->object_key_create_typed (parent_handle, key,
 				value, strlen (value) + 1, OBJDB_VALUETYPE_STRING);
+
+			continue ;
 		}
 
 		if (strchr_rs (line, '}')) {
