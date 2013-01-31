@@ -113,6 +113,7 @@ static int parse_section(FILE *fp,
 			 struct objdb_iface_ver0 *objdb,
 			 hdb_handle_t parent_handle,
 			 const char **error_string,
+			 int depth,
 			 parser_check_item_f parser_check_item_call)
 {
 	char line[512];
@@ -169,7 +170,7 @@ static int parse_section(FILE *fp,
 
 			objdb->object_create (parent_handle, &new_parent,
 					      section, strlen (section));
-			if (parse_section(fp, objdb, new_parent, error_string, parser_check_item_call))
+			if (parse_section(fp, objdb, new_parent, error_string, depth + 1, parser_check_item_call))
 				return -1;
 
 			continue ;
@@ -195,12 +196,18 @@ static int parse_section(FILE *fp,
 		}
 
 		if (strchr_rs (line, '}')) {
+			if (depth == 0) {
+				*error_string = "parser error: Unexpected closing brace";
+
+				return -1;
+			}
+
 			return 0;
 		}
 	}
 
 	if (parent_handle != OBJECT_PARENT_HANDLE) {
-		*error_string = "Missing closing brace";
+		*error_string = "parser error: Missing closing brace";
 		return -1;
 	}
 
@@ -275,7 +282,7 @@ static int read_uidgid_files_into_objdb(
 			fp = fopen (filename, "r");
 			if (fp == NULL) continue;
 
-			res = parse_section(fp, objdb, OBJECT_PARENT_HANDLE, error_string, parser_check_item_uidgid);
+			res = parse_section(fp, objdb, OBJECT_PARENT_HANDLE, error_string, 0, parser_check_item_uidgid);
 
 			fclose (fp);
 
@@ -332,7 +339,7 @@ static int read_service_files_into_objdb(
 			fp = fopen (filename, "r");
 			if (fp == NULL) continue;
 
-			res = parse_section(fp, objdb, OBJECT_PARENT_HANDLE, error_string, NULL);
+			res = parse_section(fp, objdb, OBJECT_PARENT_HANDLE, error_string, 0, NULL);
 
 			fclose (fp);
 
@@ -375,7 +382,7 @@ static int read_config_file_into_objdb(
 		return -1;
 	}
 
-	res = parse_section(fp, objdb, OBJECT_PARENT_HANDLE, error_string, NULL);
+	res = parse_section(fp, objdb, OBJECT_PARENT_HANDLE, error_string, 0, NULL);
 
 	fclose(fp);
 
