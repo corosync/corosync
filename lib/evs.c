@@ -308,12 +308,17 @@ evs_error_t evs_dispatch (
 			break;
 
 		default:
-			coroipcc_dispatch_put (evs_inst->handle);
-			error = CS_ERR_LIBRARY;
+			error = coroipcc_dispatch_put (evs_inst->handle);
+			if (error == CS_OK) {
+				error = CS_ERR_LIBRARY;
+			}
 			goto error_put;
 			break;
 		}
-		coroipcc_dispatch_put (evs_inst->handle);
+		error = coroipcc_dispatch_put (evs_inst->handle);
+		if (error != CS_OK) {
+			goto error_put;
+		}
 
 		/*
 		 * Determine if more messages should be processed

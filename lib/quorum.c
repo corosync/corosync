@@ -399,12 +399,17 @@ cs_error_t quorum_dispatch (
 			break;
 
 		default:
-			coroipcc_dispatch_put (quorum_inst->handle);
-			error = CS_ERR_LIBRARY;
+			error = coroipcc_dispatch_put (quorum_inst->handle);
+			if (error == CS_OK) {
+				error = CS_ERR_LIBRARY;
+			}
 			goto error_put;
 			break;
 		}
-		coroipcc_dispatch_put (quorum_inst->handle);
+		error = coroipcc_dispatch_put (quorum_inst->handle);
+		if (error != CS_OK) {
+			goto error_put;
+		}
 
 		/*
 		 * Determine if more messages should be processed

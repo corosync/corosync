@@ -451,14 +451,19 @@ cs_error_t cpg_dispatch (
 					totem_member_list);
 				break;
 			default:
-				coroipcc_dispatch_put (cpg_inst->handle);
-				error = CS_ERR_LIBRARY;
+				error = coroipcc_dispatch_put (cpg_inst->handle);
+				if (error == CS_OK) {
+					error = CS_ERR_LIBRARY;
+				}
 				goto error_put;
 				break;
 			} /* - switch (dispatch_data->id) */
 			break; /* case CPG_MODEL_V1 */
 		} /* - switch (cpg_inst_copy.model_data.model) */
-		coroipcc_dispatch_put (cpg_inst->handle);
+		error = coroipcc_dispatch_put (cpg_inst->handle);
+		if (error != CS_OK) {
+			goto error_put;
+		}
 
 		/*
 		 * Determine if more messages should be processed
