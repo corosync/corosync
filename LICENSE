@@ -2,17 +2,27 @@
 The following license applies to every file in this source distribution except
 for the files git-version-gen, and gitlog-to-changelog.
 
-The git* files, which are available under GPLv3 or later,  are only used by
+The git* files, which are available under GPLv3 or later, are only used by
 our release process to generate text file content and are not part of any
 generated binary.
+
+Some of the files, although licensed like the vast majority of corosync
+codebase under revised BSD license, the actual wording differs as
+the licensors are different.  The authoritative license text can be
+found within these files.
+
+Special exception is simplification.xsl transformation obtained verbatim
+from http://downloads.xmlschemata.org/relax-ng/utilities/simplification.xsl,
+author of which, Eric van der Vlist, agreed with effectively inheriting
+corosync's revised BSD license.
 -----------------------------------------------------------------------------
 
 Copyright (c) 2002-2004 MontaVista Software, Inc.
-Copyright (c) 2005-2010 Red Hat, Inc.
+Copyright (c) 2005-2013 Red Hat, Inc.
 
 All rights reserved.
 
-This software licensed under BSD license, the text of which follows:
+This software licensed under revised BSD license, the text of which follows:
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -39,10 +49,10 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 THE POSSIBILITY OF SUCH DAMAGE.
 
 -----------------------------------------------------------------------------
-The corosync project uses software for release processing which generates
+The corosync project uses software for release processing, which generates
 changelogs and version information for the software.  These programs are not
-used by the generated binaries or libraries These files are git-version-gen
-and gitlog-to-changelog.
+used by the generated binaries or libraries.
+These files are git-version-gen and gitlog-to-changelog.
 -----------------------------------------------------------------------------
 The license for these files is as follows:
 This program is free software: you can redistribute it and/or modify

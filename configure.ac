@@ -95,6 +95,11 @@ AC_CHECK_PROGS([DOT], [dot])
 AC_CHECK_PROGS([DOXYGEN], [doxygen])
 AC_CHECK_PROGS([AWK], [awk])
 AC_CHECK_PROGS([SED], [sed])
+# these are for generated corosync.conf.5 and corosync.aug
+AC_CHECK_PROGS([XSLTPROC], [xsltproc])
+AC_CHECK_PROGS([ASCIIDOC], [asciidoc])
+AC_CHECK_PROGS([PYTHON], [python])
+
 AC_PATH_PROG([BASHPATH], [bash])
 
 # Checks for compiler characteristics.

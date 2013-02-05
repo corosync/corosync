@@ -1,5 +1,5 @@
 # Copyright (c) 2004 MontaVista Software, Inc.
-# Copyright (c) 2009, 2012 Red Hat, Inc.
+# Copyright (c) 2013 Red Hat, Inc.
 #
 # Authors: Steven Dake (sdake@redhat.com)
 #          Fabio M. Di Nitto (fdinitto@redhat.com)
@@ -39,7 +39,8 @@ xml_man			= corosync-xmlproc.8 \
 
 INDEX_HTML		= index.html
 
-autogen_man		= cpg_context_get.3 \
+autogen_man		= corosync.conf.5 \
+			  cpg_context_get.3 \
 			  cpg_context_set.3 \
 			  cpg_dispatch.3 \
 			  cpg_fd_get.3 \
@@ -115,8 +116,7 @@ EXTRA_DIST		= $(INDEX_HTML) \
 
 man_MANS		= $(autogen_man)
 
-dist_man_MANS 		= corosync.conf.5 \
-			  votequorum.5 \
+dist_man_MANS 		= votequorum.5 \
 			  corosync.8 \
 			  corosync-cmapctl.8 \
 			  corosync-blackbox.8 \
@@ -139,6 +139,18 @@ endif
 
 HTML_DOCS 		= $(dist_man_MANS:%=%.html) $(man_MANS:%=%.html)
 
+DOCBOOK_XSL_MAN		= /etc/asciidoc/docbook-xsl/manpage.xsl
+DOCBOOK_XSL_XHTML	= /etc/asciidoc/docbook-xsl/xhtml.xsl
+# verbatim from a2x
+DOCBOOK_XSLT_OPTS	= --stringparam callout.graphics 0 \
+			  --stringparam navig.graphics   0 \
+			  --stringparam admon.textlabel  1 \
+			  --stringparam admon.graphics   0 \
+			  --nonet
+# we need more space for topcenter text
+DOCBOOK_XSLT_OPTS	+= --param man.th.extra3.max.length 52
+
+
 # developer man page generation
 %.3: %.3.in $(autogen_common)
 	@echo Generating $@ man page && \
@@ -153,6 +165,17 @@ HTML_DOCS 		= $(dist_man_MANS:%=%.html) $(man_MANS:%=%.html)
 		    > $@-t && \
 	rm -f $@-t-t && \
 	mv $@-t $@
+
+# corosync.conf.5{,.html}
+corosync.conf.5:
+	@echo Generating $@ man page && \
+	$(MAKE) $(AM_MAKEFLAGS) -C ../conf $(@:.5=.xml) && \
+	$(XSLTPROC) $(DOCBOOK_XSLT_OPTS) $(DOCBOOK_XSL_MAN) ../conf/$(@:.5=.xml)
+
+corosync.conf.5.html:
+	@echo Generating $@ HTMLized man page && \
+	$(MAKE) $(AM_MAKEFLAGS) -C ../conf $(@:.5.html=.xml) && \
+	$(XSLTPROC) $(DOCBOOK_XSLT_OPTS) $(DOCBOOK_XSL_XHTML) ../conf/$(@:.5.html=.xml) > $@
 
 clean-local:
 	rm -rf $(HTML_DOCS) $(autogen_man)

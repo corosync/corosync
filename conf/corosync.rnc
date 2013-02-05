@@ -1,0 +1,729 @@
+# style guide (RELAX NG Compact only):
+# * '##' comments are wrapped at 50/80 (first line/rest), 2-spaced sentence sep,
+#   AsciiDoc formatting is used within them
+# * sort everything (except for dependencies/nesting) to ease the lookup
+
+namespace a = "http://relaxng.org/ns/compatibility/annotations/1.0"
+namespace a4doc = "http://people.redhat.com/jpokorny/ns/a4doc"
+
+start = corosync
+
+corosync =
+  element corosync {
+    (logging?
+     & nodelist?
+     & resources?
+     & quorum?
+     & totem
+     & uidgid?)
+  }
+
+## LOGGING ####################################################################
+
+# only named set of attributes
+common_logging =
+    # CFG: corosync.conf, cluster.conf
+    ## This specifies whether debug output is
+    ## logged for this particular logger.  Also can contain value 'trace',
+    ## which is highest level of debug informations.
+    [ a:defaultValue = "off" ]
+    attribute debug {"off"|"on"|"trace"}?,
+
+    # CFG: corosync.conf, cluster.conf
+    ## If the *to_logfile* option is set to
+    ## 'yes', this option specifies the pathname of the log file.
+    attribute logfile {text}?,
+
+    # CFG: corosync.conf, cluster.conf
+    ## This specifies the logfile level for this particular subsystem.  Ignored
+    ## if *debug* is 'on'.  Note: 'debug' is the same as if *debug* is 'on'.
+    [ a:defaultValue = "info" ]
+    attribute logfile_priority {"alert"
+                               |"crit"
+                               |"debug"
+                               |"emerg"
+                               |"err"
+                               |"info"
+                               |"notice"
+                               |"warning"
+    }?,
+
+    # CFG: corosync.conf, cluster.conf
+    ## This specifies the syslog facility type
+    ## that will be used for any messages sent to syslog.
+    [ a:defaultValue = "daemon" ]
+    attribute syslog_facility {"daemon"
+                              |"local0"
+                              |"local1"
+                              |"local2"
+                              |"local3"
+                              |"local4"
+                              |"local5"
+                              |"local6"
+                              |"local7"
+    }?,
+
+    # CFG: corosync.conf, cluster.conf
+    ## This specifies the syslog level for this
+    ## particular subsystem.  Ignored if *debug* is 'on'.  Note: 'debug'
+    ## is the same as *debug* is 'on'.
+    [ a:defaultValue = "info" ]
+    attribute syslog_priority {"alert"
+                              |"crit"
+                              |"debug"
+                              |"emerg"
+                              |"err"
+                              |"info"
+                              |"notice"
+                              |"warning"
+    }?,
+
+    # XXX: undocumented
+    attribute tags {text}?,
+
+    # CFG: corosync.conf, cluster.conf
+    ## This specifies whether to use
+    ## the respective destination of logging output.
+    ##
+    ## Please note, if you are using *to_logfile* and want to rotate the file,
+    ## use `logrotate(8)` with the option `copytruncate`, e.g.
+    ##
+    ## ----
+    ## /var/log/corosync.log {
+    ##     missingok
+    ##     compress
+    ##     notifempty
+    ##     daily
+    ##     rotate 7
+    ##     copytruncate
+    ## }
+    ## ----
+    [ a:defaultValue = "no" ]
+    attribute to_logfile {"no"|"yes"}?,
+
+    # CFG: corosync.conf
+    ## This specifies whether to use
+    ## the respective destination of logging output.
+    [ a:defaultValue = "yes" ]
+    attribute to_stderr {"no"|"yes"}?,
+
+    # CFG: corosync.conf, cluster.conf
+    ## This specifies whether to use
+    ## the respective destination of logging output.
+    [ a:defaultValue = "yes" ]
+    attribute to_syslog {"no"|"yes"}?
+
+logging =
+  ## In this configuration section, one can
+  ## adjust logging.
+  element logging {
+    # CFG: corosync.conf
+    ## This specifies that file and line should
+    ## be printed.
+    [ a:defaultValue = "off" ]
+    attribute fileline {"off"|"on"}?,
+
+    # CFG: corosync.conf
+    ## This specifies that the code function name
+    ## should be printed.
+    [ a:defaultValue = "off" ]
+    attribute function_name {"off"|"on"}?,
+
+    # CFG: corosync.conf
+    ## This specifies that a timestamp is placed
+    ## on all log messages.
+    [ a:defaultValue = "off" ]
+    attribute timestamp {"off"|"on"}?,
+
+    common_logging,
+    logger_subsys*
+  }
+
+logger_subsys =
+  element logger_subsys {
+    # CFG: corosync.conf, cluster.conf
+    ## This specifies the subsystem identity
+    ## (name) for which logging is specified.  This is the name used by
+    ## a service in the `log_init` call, e.g., 'CPG'.
+    attribute subsys {text},
+
+    common_logging
+  }
+
+## NODELIST ###################################################################
+
+nodelist =
+  ## In this configuration section, one can
+  ## adjust nodes in the cluster.
+  element nodelist {
+    node*
+  }
+
+node =
+  element node {
+    # XXX: implied check
+    # CFG: corosync.conf, cluster.conf
+    ## This configuration option is optional when
+    ## using IPv4 and required when using IPv6.  This is a 32bit value
+    ## specifying the node identifier delivered to the cluster membership
+    ## service.  If this is not specified with IPv4, *nodeid* will be
+    ## determined from the 32bit IP address the system to which the system
+    ## is bound with ring identifier of 0.  The node identifier value of zero
+    ## is reserved and should not be used.
+    attribute nodeid {xsd:unsignedInt}?,
+
+    # CFG: corosync.conf, cluster.conf
+    # NOTE: not a direct mapping in cluster.conf (clusternode/votes)
+    attribute quorum_votes {xsd:unsignedInt}?,
+
+    # CFG: corosync.conf, cluster.conf
+    ## This specifies IP address of one of the nodes for particular ring
+    ## as denoted by its number (instead 0, there can be higher numbers).
+    attribute ring0_addr {text},
+    attribute ring1_addr {text}?,
+    attribute ring2_addr {text}?,
+    attribute ring3_addr {text}?,
+    attribute ring4_addr {text}?,
+    attribute ring5_addr {text}?,
+    attribute ring6_addr {text}?,
+    attribute ring7_addr {text}?,
+    attribute ring8_addr {text}?,
+    attribute ring9_addr {text}?
+    # NOTE: Augeas lens for corosync.conf counts on X = 0..9 only
+  }
+
+## QUORUM #####################################################################
+
+quorum =
+  ## In this configuration section, one can
+  ## adjust quorum.
+  element quorum {
+    # CFG: corosync.conf
+    ## This enables Downscale feature
+    ## (see `votequorum(5)`).
+    [ a:defaultValue = "0" ]
+    attribute allow_downscale {"0"|"1"}?,
+
+    # CFG: corosync.conf
+    ## This enables Auto Tie Breaker feature
+    ## (see `votequorum(5)`).
+    [ a:defaultValue = "0" ]
+    attribute auto_tie_breaker {"0"|"1"}?,
+
+    # CFG: corosync.conf, cluster.conf
+    ## This specifies the number of expected votes, overriding the number
+    ## implied by the number of *node* items within *nodes*.
+    attribute expected_votes {xsd:unsignedInt}?,
+
+    # CFG: corosync.conf
+    ## This enables Last Man Standing feature
+    ## (see `votequorum(5)`).
+    [ a:defaultValue = "0" ]
+    attribute last_man_standing {"0"|"1"}?,
+
+    # CFG: corosync.conf
+    ## This specifies the tunable for Last Man
+    ## Standing feature (see `votequorum(5)`).
+    [ a:defaultValue = "0" ]
+    attribute last_man_standing_window {xsd:nonNegativeInteger}?,
+
+    # CFG: corosync.conf
+    ## This specifies the quorum algorithm to use.
+    ## As of now, only 'corosync_votequorum' is supported.
+    attribute provider {"corosync_votequorum"}?,
+
+    # CFG: corosync.conf, cluster.conf
+    ## This enables two node cluster operations
+    ## (see `votequorum(5)`).
+    [ a:defaultValue = "0" ]
+    attribute two_node {"0"|"1"}?,
+
+    # CFG: corosync.conf
+    attribute votes {xsd:unsignedInt}?,
+
+    # CFG: corosync.conf
+    ## This enables Wait For All feature
+    ## (see `votequorum(5)`).
+    [ a:defaultValue = "0" ]
+    attribute wait_for_all {"0"|"1"}?
+  }
+
+## RESOURCES ##################################################################
+
+# only named set of attributes
+common_resource =
+  # XXX: undocumented
+  attribute max {xsd:decimal}?,
+
+  # XXX: undocumented
+  attribute poll_period {xsd:unsignedInt}?,
+
+  # XXX: undocumented
+  attribute recovery {"reboot"|"shutdown"|"watchdog"|"none"}?
+
+load_15min =
+  element load_15min {
+    common_resource?
+  }
+
+memory_used =
+  element memory_used {
+    common_resource?
+  }
+
+system =
+  element system {
+    (load_15min?
+     &memory_used?)
+  }
+
+resources =
+  element resources {
+    system?
+  }
+
+## TOTEM ######################################################################
+
+totem =
+  ## In this configuration section, one can
+  ## adjust totem protocol.
+  element totem {
+    # CFG: corosync.conf
+    ## This configuration option is only relevant
+    ## when no *nodeid* option within *nodelist* section is specified.  Some
+    ## corosync clients require a signed 32bit nodeid that is greater than
+    ## zero however, by default, corosync uses all 32 bits of the IPv4 address
+    ## space when generating a nodeid.
+    ## Set this option to 'yes' to force the high bit to be zero and therefor
+    ## ensure the nodeid is a positive signed 32bit integer.
+    [ a:defaultValue = "no"
+      a4doc:discretion-hint =
+        "The clusters behavior is undefined if this option is enabled"
+        ~ " on only a subset of the cluster (for example during a rolling"
+        ~ " upgrade)." ]
+    attribute clear_node_high_bit {"no"|"yes"}?,
+
+    # CFG: corosync.conf, cluster.conf
+    # NOTE: not a direct mapping in cluster.conf (top-level tag instead)
+    ## This specifies the name of cluster and it's
+    ## used for automatic generating of multicast address.
+    attribute cluster_name {text}?,
+
+    # XXX: implied check
+    # CFG: corosync.conf, cluster.conf
+    ## This timeout specifies in milliseconds how
+    ## long to wait for consensus to be achieved before starting a new round
+    ## of membership configuration.  The minimum value for *consensus* must be
+    ## 1.2 x *token*.
+    ##
+    ## This value will be automatically calculated at 1.2 x *token* if
+    ## the user doesn't specify a *consensus* value.
+    ##
+    ## For two node clusters, a *consensus* larger than the *join* timeout but
+    ## less than *token* is safe.  For three-node or larger clusters,
+    ## *consensus* should be larger than *token*.  There is an increasing risk
+    ## of odd membership changes, which still guarantee virtual synchrony,
+    ## as node count grows if *consensus* is less than *token*.
+    [ a:defaultValue = "1200" ]
+    attribute consensus {xsd:unsignedInt}?,
+
+    # XXX: missing nss?
+    # CFG: corosync.conf
+    ## This specifies which cipher should be used
+    ## to encrypt all messages.
+    [ a:defaultValue = "aes256" ]
+    attribute crypto_cipher {"3des"|"aes128"|"aes192"|"aes256"|"none"}?,
+
+    # XXX: undocumented
+    attribute crypto_compat {"2.0"|"2.2"}?,
+
+    # CFG: corosync.conf
+    ## This specifies which HMAC authentication
+    ## should be used to authenticate all messages.
+    [ a:defaultValue = "sha1" ]
+    attribute crypto_hash {"none"|"md5"|"sha1"|"sha256"|"sha384"|"sha512"}?,
+
+    # XXX: undocumented
+    attribute crypto_type {"3des"|"aes128"|"aes192"|"aes256"|"nss"}?,
+
+    # CFG: corosync.conf
+    ## This timeout specifies in milliseconds how
+    ## long to wait before checking that a network interface is back up after
+    ## it has been downed.
+    [ a:defaultValue = "1000" ]
+    attribute downcheck {xsd:unsignedInt}?,
+
+    # CFG: corosync.conf, cluster.conf
+    ## This constant specifies how many rotations
+    ## of the token without receiving any of the messages when messages should
+    ## be received may occur before a new configuration is formed.
+    [ a:defaultValue = "2500" ]
+    attribute fail_recv_const {xsd:unsignedInt}?,
+
+    # CFG: corosync.conf
+    ## Configures the optional HeartBeating
+    ## mechanism for faster failure detection. Keep in mind that engaging this
+    ## mechanism in lossy networks could cause faulty loss declaration as
+    ## the mechanism relies on the network for heartbeating.
+    ##
+    ## So as a rule of thumb use this mechanism if you require improved
+    ## failure in low to medium utilized networks.
+    ##
+    ## This constant specifies the number of heartbeat failures the system
+    ## should tolerate before declaring heartbeat failure, e.g., 3.
+    ## Also if this value is not set or is 0, the heartbeat mechanism is
+    ## not engaged in the system and token rotation is the method of failure
+    ## detection.  Zero disables the mechanism.
+    [ a:defaultValue = "0" ]
+    attribute heartbeat_failures_allowed {xsd:unsignedInt}?,
+
+    # CFG: corosync.conf
+    ## This timeout specifies in milliseconds
+    ## how long the token should be held by the representative when
+    ## the protocol is under low utilization.
+    [ a:defaultValue = "180"
+      a4doc:danger-hint =
+        "It is not recommended to override this value without guidance"
+        ~ " from the corosync community." ]
+    attribute hold {xsd:unsignedInt}?,
+
+    # CFG: corosync.conf, cluster.conf
+    ## This timeout specifies in milliseconds how
+    ## long to wait for join messages in the membership protocol.
+    [ a:defaultValue = "50" ]
+    attribute join {xsd:unsignedInt}?,
+
+    # CFG: corosync.conf, cluster.conf
+    ## This constant specifies the maximum number
+    ## of messages that may be sent by one processor on receipt of the token.
+    ## The *max_messages* parameter is limited to 256000 / *netmtu* to prevent
+    ## overflow of the kernel transmit buffers.
+    [ a:defaultValue = "17" ]
+    attribute max_messages {xsd:unsignedInt}?,
+
+    # CFG: corosync.conf
+    ## This constant specifies in milliseconds
+    ## the approximate delay that your network takes to transport one packet
+    ## from one machine to another.  This value is to be set by system engineers
+    ## and please don't change it if not sure as this effects the failure
+    ## detection mechanism using heartbeat.
+    [ a:defaultValue = "50" ]
+    attribute max_network_delay {xsd:unsignedInt}?,
+
+    # CFG: corosync.conf
+    ## This timeout specifies in milliseconds how
+    ## long to wait before checking for a partition when no multicast traffic
+    ## is being sent.  If multicast traffic is being sent, the merge detection
+    ## happens automatically as a function of the protocol.
+    [ a:defaultValue = "200" ]
+    attribute merge {xsd:unsignedInt}?,
+
+    # CFG: corosync.conf, cluster.conf
+    ## This constant defines the maximum number
+    ## of times on receipt of a token a message is checked for retransmission
+    ## before a retransmission occurs.  This parameter is useful to modify for
+    ## switches that delay multicast packets compared to unicast packets.
+    ## The default setting works well for nearly all modern switches.
+    [ a:defaultValue = "5" ]
+    attribute miss_count_const {xsd:unsignedInt}?,
+
+    # CFG: corosync.conf, cluster.conf
+    ## This specifies the network maximum transmit
+    ## unit.  To set this value beyond 1500, the regular frame MTU, requires
+    ## ethernet devices that support large, or also called jumbo, frames.
+    ## If any device in the network doesn't support large frames, the protocol
+    ## will not operate properly.  The hosts must also have their mtu size set
+    ## from 1500 to whatever frame size is specified here.
+    ##
+    ## Please note that while some NICs or
+    ## switches claim large frame support, they support '9000' MTU as
+    ## the maximum frame size including the IP header.  Setting the *netmtu*
+    ## and host MTUs to '9000' will cause totem to use the full 9000 bytes
+    ## of the frame.  Then Linux will add an 18byte header moving the full
+    ## frame size to 9018.  As a result some hardware will not operate properly
+    ## with this size of data.  A *netmtu* of '8982' seems to work for the few
+    ## large frame devices that have been tested.  Some manufacturers claim
+    ## large frame support when in fact they support frame sizes of 4500 bytes.
+    ##
+    ## When sending multicast traffic, if the network frequently reconfigures,
+    ## chances are that some device in the network doesn't support large frames.
+    ##
+    ## Choose hardware carefully if intending to use large frame support.
+    [ a:defaultValue = "1500" ]
+    attribute netmtu {xsd:unsignedInt}?,
+
+    # XXX: undocumented
+    attribute nodeid {xsd:unsignedInt}?,
+
+    # CFG: corosync.conf
+    ## This specifies the time in milliseconds
+    ## to check if the failed ring can be auto-recovered.
+    [ a:defaultValue = "1000" ]
+    attribute rrp_autorecovery_check_timeout {xsd:unsignedInt}?,
+
+    # XXX: implied check: count(interface) <= 4 (2 active + 2 passive)
+    # CFG: corosync.conf, cluster.conf
+    ## This specifies the mode of redundant ring.
+    ## Active replication ('active') offers slightly lower latency from
+    ## transmit to delivery in faulty network environments but with less
+    ## performance.  Passive replication ('passive') may nearly double
+    ## the speed of the totem protocol if it doesn't become CPU bound.
+    ## The remaining option is 'none', in which case only one network
+    ## interface will be used to operate the totem protocol.
+    ##
+    ## If only one *interface* section is specified, 'none' is automatically
+    ## chosen.  If multiple *interface* sections are specified, only 'active'
+    ## or 'passive' may be chosen.
+    ##
+    ## The maximum number of *interface* sections that is allowed for either
+    ## mode ('active' or 'passive') is 2.
+    attribute rrp_mode {"active"|"none"|"passive"}?,
+
+    # CFG: corosync.conf
+    ## This specifies the number of times
+    ## a problem is detected with multicast before setting the link faulty for
+    ## 'passive' *rrp_mode*.  This variable is unused in 'active' *rrp_mode*.
+    ##
+    ## The default is 10 x *rrp_problem_count_threshold*.
+    attribute rrp_problem_count_mcast_threshold {xsd:unsignedInt}?,
+
+    # XXX: implied check
+    # CFG: corosync.conf, cluster.conf
+    ## This specifies the number of times
+    ## a problem is detected with a link before setting the link faulty.
+    ## Once a link is set faulty, no more data is transmitted upon it.  Also,
+    ## the problem counter is no longer decremented when the problem count
+    ## timeout expires.
+    ##
+    ## A problem is detected whenever all tokens from the proceeding
+    ## processor have not been received within the *rrp_token_expired_timeout*.
+    ## The *rrp_problem_count_threshold* x *rrp_token_expired_timeout* should be
+    ## at least 50 milliseconds less than the *token* timeout, or a complete
+    ## reconfiguration may occur.
+    [ a:defaultValue = "10" ]
+    attribute rrp_problem_count_threshold {xsd:unsignedInt}?,
+
+    # CFG: corosync.conf
+    ## This specifies the time in milliseconds
+    ## to wait before decrementing the problem count by 1 for a particular ring
+    ## to ensure a link is not marked faulty for transient network failures.
+    [ a:defaultValue = "2000" ]
+    attribute rrp_problem_count_timeout {xsd:unsignedInt}?,
+
+    # CFG: corosync.conf
+    ## This specifies the time in milliseconds
+    ## to increment the problem counter for the redundant ring protocol after
+    ## not having received a token from all rings for a particular processor.
+    ##
+    ## This value will automatically be calculated from the *token* timeout
+    ## and *problem_count_threshold* but may be overridden.
+    [ a:defaultValue = "47"
+      a4doc:danger-hint =
+        "It is not recommended to override this value without guidance"
+        ~ " from the corosync community." ]
+    attribute rrp_token_expired_timeout {xsd:unsignedInt}?,
+
+    # XXX: implied check/migration to current items
+    # CFG: corosync.conf, cluster.conf
+    ## This specifies that HMAC/SHA1 authentication should be used
+    ## to authenticate all messages.  It further specifies that all data
+    ## should be encrypted with the nss library and aes256 encryption
+    ## algorithm to protect data from eavesdropping.
+    ##
+    ## Enabling this option adds a encryption header to every message sent
+    ## by totem which reduces total throughput.  Also encryption and
+    ## authentication consume extra CPU cycles in corosync.
+    [ a:defaultValue = "on"
+      a4doc:deprecation-hint =
+      "It's recomended to use combination of *crypto_cipher* and *crypto_hash*."
+    ]
+    attribute secauth {"off"|"on"}?,
+
+    # CFG: corosync.conf
+    ## This timeout specifies in milliseconds
+    ## an upper range between 0 and *send_join* to wait before sending a join
+    ## message.  For configurations with less than 32 nodes, this parameter
+    ## is not necessary.  For larger rings, this parameter is necessary
+    ## to ensure the NIC is not overflowed with join messages on formation of
+    ## a new ring.  A reasonable value for large rings (128 nodes) would be
+    ## __80__msec.  Other timer values must also change if this value
+    ## is changed.
+    [ a:defaultValue = "0"
+      a4doc:danger-hint =
+        "Seek advice from the corosync mailing list if trying to run"
+        ~ " larger configurations." ]
+    attribute send_join {xsd:unsignedInt}?,
+
+    # CFG: corosync.conf, cluster.conf
+    ## This constant specifies how many rotations
+    ## of the token without any multicast traffic should occur before the hold
+    ## timer is started.
+    [ a:defaultValue = "30" ]
+    attribute seqno_unchanged_const {xsd:unsignedInt}?,
+
+    # XXX: undocumented
+    attribute threads {xsd:unsignedInt}?,
+
+    # CFG: corosync.conf, cluster.conf
+    ## This timeout specifies a period in
+    ## milliseconds until a token loss is declared after not receiving
+    ## a token.  This is the time spent detecting a failure of a processor
+    ## in the current configuration.  Reforming a new configuration takes
+    ## about 50 milliseconds in addition to this timeout.
+    [ a:defaultValue = "1000" ]
+    attribute token {xsd:unsignedInt}?,
+
+    # CFG: corosync.conf
+    ## This timeout specifies a period in
+    ## milliseconds without receiving a token after which the token is
+    ## retransmitted.  This will be automatically calculated if *token* is
+    ## modified.
+    [ a:defaultValue = "238"
+      a4doc:danger-hint =
+        "It is not recommended to override this value without guidance"
+        ~ " from the corosync community." ]
+    attribute token_retransmit {xsd:unsignedInt}?,
+
+    # CFG: corosync.conf, cluster.conf
+    ## This value identifies how many token
+    ## retransmits should be attempted before forming a new configuration.
+    ## If this value is set, retransmit and hold will be automatically
+    ## calculated from *retransmits_before_loss* and *token*.
+    [ a:defaultValue = "4" ]
+    attribute token_retransmits_before_loss_const {xsd:unsignedInt}?,
+
+    # CFG: corosync.conf
+    ## This option controls the transport
+    ## mechanism used.  If the interface to which corosync is binding is
+    ## an RDMA interface such as RoCEE or Infiniband, the 'iba' parameter
+    ## may be specified.  To avoid the use of multicast entirely, a unicast
+    ## transport parameter 'udpu' can be specified.  This requires specifying
+    ## the list of members that could potentially make up the membership
+    ## in *nodelist* section before deployment.
+    [ a:defaultValue = "udp" ]
+    attribute transport {"iba"|"udp"|"udpu"}?,
+
+    # CFG: corosync.conf
+    ## This specifies the version of
+    ## the configuration file.  Currently the only valid value for this
+    ## option is '2'.
+    attribute version {xsd:unsignedInt},
+
+    # CFG: corosync.conf
+    ## This option controls the virtual
+    ## synchrony filter type used to identify a primary component.
+    ## The preferred choice is YKD dynamic linear voting ('ykd'), however, for
+    ## clusters larger than 32 nodes YKD consumes a lot of memory.  For large
+    ## scale clusters that are created by changing the MAX_PROCESSORS_COUNT
+    ## #define in the C code totem.h file, the virtual synchrony filter 'none'
+    ## is recommended but then AMF and DLCK services (which are currently
+    ## experimental) are not safe for use.
+    [ a:defaultValue = "ykd" ]
+    attribute vsftype {"none"|"ykd"}?,
+
+    # CFG: corosync.conf, cluster.conf
+    ## This constant specifies the maximum number
+    ## of messages that may be sent on one token rotation.  If all processors
+    ## perform equally well, this value could be large ('300'), which would
+    ## introduce higher latency from origination to delivery for very large
+    ## rings.  To reduce latency in large rings (16+), the default is a safe
+    ## compromise.  If 1 or more slow processor(s) are present among fast
+    ## processors, *window_size* should be no larger than 256000 / *netmtu*
+    ## to avoid overflow of the kernel receive buffers.  The user is notified
+    ## of this by the display of a retransmit list in the notification logs.
+    ## There is no loss of data, but performance is reduced when these errors
+    ## occur.
+    [ a:defaultValue = "50" ]
+    attribute window_size {xsd:unsignedInt}?,
+
+    interface*
+  }
+
+interface =
+  element interface {
+    # CFG: corosync.conf, cluster.conf
+    ## This specifies the network address
+    ## the corosync executive should bind to.
+    ## *bindnetaddr* should be an IP address configured on the system, or
+    ## a network address.
+    ##
+    ## For example, if the local interface is `192.168.5.92` with netmask
+    ## `255.255.255.0`, you should set *bindnetaddr* to `192.168.5.92` or
+    ## `192.168.5.0`.   If the local interface is `192.168.5.92` with netmask
+    ## `255.255.255.192`, set *bindnetaddr* to `192.168.5.92` or `192.168.5.64`,
+    ## and so forth.
+    ##
+    ## This may also be an IPv6 address, in which case IPv6 networking will be
+    ## used.  In this case, the exact address must be specified and there is no
+    ## automatic selection of the network interface within a specific subnet
+    ## as with IPv4.
+    ##
+    ## If IPv6 networking is used, *nodeid* options within *nodelist* section
+    ## must be specified.
+    attribute bindnetaddr {text}?,
+
+    # CFG: corosync.conf
+    ## If this is set to 'yes', the broadcast
+    ## address will be used for communication.  If this option is set,
+    ## *mcastaddr* should not be set.
+    [ a:defaultValue = "no" ]
+    attribute broadcast {"no"|"yes"}?,
+
+    # CFG: corosync.conf, cluster.conf
+    ## This is the multicast address used
+    ## by corosync executive.  The default should work for most networks, but
+    ## the network administrator should be queried about a multicast address
+    ## to use.  Avoid `224.x.x.x` because this is a "config" multicast address.
+    ##
+    ## This may also be an IPv6 multicast address, in which case IPv6 networking
+    ## will be used.  If IPv6 networking is used, *nodeid* options within
+    ## *nodelist* section must be specified.
+    ##
+    ## It's not needed to use this option if *cluster_name* option in
+    ## *totem* section is used.  If both options are used, *mcastaddr* has
+    ## higher priority.
+    attribute mcastaddr {text}?,
+
+    # CFG: corosync.conf, cluster.conf
+    ## This specifies the UDP port number.
+    ## It is possible to use the same multicast address on a network with
+    ## the corosync services configured for different UDP ports.  Please note
+    ## corosync uses two UDP ports *mcastport* (for mcast receives) and
+    ## *mcastport* - 1 (for mcast sends).  If you have multiple  clusters
+    ## on the same network using the same *mcastaddr*, please configure
+    ## the **mcastport**s with a gap.
+    attribute mcastport {xsd:unsignedShort}?,
+
+    # CFG: corosync.conf, cluster.conf
+    ## This specifies the ring number for
+    ## the interface.  When using the redundant ring protocol, each interface
+    ## should specify separate ring numbers to uniquely identify to
+    ## the membership protocol which interface to use for which redundant ring.
+    ## The *ringnumber* must start at '0'.
+    attribute ringnumber {xsd:unsignedByte}?,
+
+    # CFG: corosync.conf, cluster.conf
+    ## This specifies the Time To Live (TTL).
+    ## If you run your cluster on a routed network, the default of '1' will
+    ## be too small.  This option provides a way to increase this up to '255'.
+    ## The valid range is '0..255'.  Note that this is only valid on multicast
+    ## transport types.
+    [ a:defaultValue = "1" ]
+    attribute ttl {xsd:unsignedByte}?
+  }
+
+## UIDGID #####################################################################
+
+uidgid =
+  element uidgid {
+    # CFG: corosync.conf, cluster.conf
+    # XXX: undocumented
+    attribute uid {text}?,
+
+    # CFG: corosync.conf, cluster.conf
+    # XXX: undocumented
+    attribute gid {text}?
+  }
+
+
+# vim: et:ts=2:sw=2

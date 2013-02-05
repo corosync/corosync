@@ -1,4 +1,4 @@
-# Copyright (c) 2009 Red Hat, Inc.
+# Copyright (c) 2013 Red Hat, Inc.
 #
 # Authors: Andrew Beekhof
 #         Steven Dake (sdake@redhat.com)
@@ -69,3 +69,43 @@ if INSTALL_DBUSCONF
 dbusdir			= $(sysconfdir)/dbus-1/system.d
 dbus_DATA		= corosync-signals.conf
 endif
+
+#
+# rnc -> man page DocBook, Augeas lens
+#
+
+CONF_NAME		= corosync.conf
+CONF_SCHEMA_ORIG	= corosync.rnc
+CONF_XSL_ASCIIDOCMAN	= rng2asciidocman.xsl
+CONF_XSL_LENS		= rng2lens.xsl
+CONF_XSLS_ASCIIDOCMAN	= $(CONF_XSL_ASCIIDOCMAN) common.xsl
+CONF_XSLS_LENS		= $(CONF_XSL_LENS) xsddatatypes2lens.xsl common.xsl
+CONF_SCRIPT		= rnctree.py
+CONF_SIMPLIFICATOR	= simplification-wrapper.xsl
+# derived
+CONF_ASCIIDOC		= $(CONF_NAME:=.asciidoc)  # fixed name
+CONF_DOCBOOK		= $(CONF_NAME:=.xml)       # fixed name
+
+CONF_SCHEMA		= $(CONF_SCHEMA_ORIG:.rnc=.rng)
+CONF_SCHEMA_ORIG_RNG	= $(CONF_SCHEMA_ORIG:.rnc=.orig.rng)
+
+noinst_DATA		= $(CONF_SCHEMA_ORIG) $(CONF_SCHEMA_ORIG_RNG) \
+			  $(CONF_ASCIIDOC) $(CONF_DOCBOOK)
+
+$(CONF_DOCBOOK): $(CONF_ASCIIDOC)
+	$(ASCIIDOC) --doctype=manpage -b docbook -d manpage $<
+
+$(CONF_ASCIIDOC): $(CONF_SCHEMA) $(CONF_XSLS_ASCIIDOCMAN)
+	$(XSLTPROC) $(CONF_XSL_ASCIIDOCMAN) $< > $@
+
+lenses/corosync.aug: $(CONF_SCHEMA_ORIG_RNG) $(CONF_XSLS_LENS)
+	$(XSLTPROC) $(CONF_XSL_LENS) $< > $@
+
+#trang -O rng $(CONF_SCHEMA_ORIG) $@
+$(CONF_SCHEMA_ORIG_RNG): $(CONF_SCHEMA_ORIG) $(CONF_SCRIPT)
+	cat $< | $(PYTHON) $(CONF_SCRIPT) > $@
+
+$(CONF_SCHEMA): $(CONF_SCHEMA_ORIG_RNG) $(CONF_SIMPLIFICATOR)
+	$(XSLTPROC) $(CONF_SIMPLIFICATOR) $< > $@
+
+all-local: lenses/corosync.aug
