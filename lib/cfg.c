@@ -212,7 +212,7 @@ corosync_cfg_dispatch (
 		default:
 			coroipcc_dispatch_put (cfg_instance->handle);
 			error = CS_ERR_LIBRARY;
-			goto error_nounlock;
+			goto error_put;
 			break;
 		}
 		coroipcc_dispatch_put (cfg_instance->handle);
@@ -227,7 +227,6 @@ corosync_cfg_dispatch (
 
 error_put:
 	(void)hdb_handle_put (&cfg_hdb, cfg_handle);
-error_nounlock:
 	return (error);
 }
 

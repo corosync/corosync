@@ -418,7 +418,7 @@ cs_error_t confdb_dispatch (
 			default:
 				coroipcc_dispatch_put (confdb_inst->handle);
 				error = CS_ERR_LIBRARY;
-				goto error_noput;
+				goto error_put;
 				break;
 		}
 		coroipcc_dispatch_put (confdb_inst->handle);
@@ -433,7 +433,6 @@ cs_error_t confdb_dispatch (
 
 error_put:
 	(void)hdb_handle_put (&confdb_handle_t_db, handle);
-error_noput:
 	return (error);
 }
 
