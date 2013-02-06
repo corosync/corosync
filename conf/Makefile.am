@@ -37,7 +37,8 @@ EXTRA_DIST		= COROSYNC-MIB.txt corosync-signals.conf \
 			  corosync.xml.example \
 			  xml2conf.xsl \
 			  lenses/corosync.aug \
-			  lenses/tests/test_corosync.aug
+			  lenses/tests/test_corosync.aug \
+			  $(CONF_SCHEMA)
 
 corosysconfdir		= ${COROSYSCONFDIR}
 
@@ -57,7 +58,7 @@ corosysxmlconfdir	= ${COROSYSCONFDIR}
 corosysxmlconf_DATA	= corosync.xml.example
 
 corosysxmlxsltdir	= ${datadir}/corosync
-corosysxmlxslt_DATA	= xml2conf.xsl
+corosysxmlxslt_DATA	= xml2conf.xsl $(CONF_SCHEMA)
 endif
 
 if INSTALL_MIB
