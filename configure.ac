@@ -626,7 +626,7 @@ AC_SUBST([SOMINOR])
 AC_SUBST([SOMICRO])
 AC_SUBST([SONAME])
 
-AM_CONDITIONAL(INSTALL_TESTAGENTS, test -n "${enable_testagents}")
+AM_CONDITIONAL(INSTALL_TESTAGENTS, test "${enable_testagents}" = "yes")
 AM_CONDITIONAL(INSTALL_MIB, test "${do_snmp}" = "1")
 AM_CONDITIONAL(INSTALL_DBUSCONF, test "${enable_dbus}" = "yes")
 AM_CONDITIONAL(AUGTOOL, test -n "${AUGTOOL}")
