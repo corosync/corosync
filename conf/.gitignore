@@ -1,0 +1,6 @@
+*.pyc
+corosync.conf.asciidoc
+corosync.conf.xml
+corosync.orig.rng
+corosync.rng
+lenses/corosync.aug

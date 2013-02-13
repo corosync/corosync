@@ -39,8 +39,7 @@ xml_man			= corosync-xmlproc.8 \
 
 INDEX_HTML		= index.html
 
-autogen_man		= corosync.conf.5 \
-			  cpg_context_get.3 \
+autogen_man		= cpg_context_get.3 \
 			  cpg_context_set.3 \
 			  cpg_dispatch.3 \
 			  cpg_fd_get.3 \
@@ -114,7 +113,8 @@ EXTRA_DIST		= $(INDEX_HTML) \
 			  $(autogen_man:%=%.in) \
 			  $(autogen_common)
 
-man_MANS		= $(autogen_man)
+man_MANS		= corosync.conf.5 \
+			  $(autogen_man)
 
 dist_man_MANS 		= votequorum.5 \
 			  corosync.8 \
@@ -168,13 +168,11 @@ DOCBOOK_XSLT_OPTS	+= --param man.th.extra3.max.length 52
 
 # corosync.conf.5{,.html}
 corosync.conf.5:
-	@echo Generating $@ man page && \
-	$(MAKE) $(AM_MAKEFLAGS) -C ../conf $(@:.5=.xml) && \
+	@echo Generating $@ man page 
 	$(XSLTPROC) $(DOCBOOK_XSLT_OPTS) $(DOCBOOK_XSL_MAN) ../conf/$(@:.5=.xml)
 
 corosync.conf.5.html:
-	@echo Generating $@ HTMLized man page && \
-	$(MAKE) $(AM_MAKEFLAGS) -C ../conf $(@:.5.html=.xml) && \
+	@echo Generating $@ HTMLized man page
 	$(XSLTPROC) $(DOCBOOK_XSLT_OPTS) $(DOCBOOK_XSL_XHTML) ../conf/$(@:.5.html=.xml) > $@
 
 clean-local:

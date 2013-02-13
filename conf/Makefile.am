@@ -36,18 +36,20 @@ EXTRA_DIST		= COROSYNC-MIB.txt corosync-signals.conf \
 			  corosync.conf.example.udpu \
 			  corosync.xml.example \
 			  xml2conf.xsl \
-			  lenses/corosync.aug \
 			  lenses/tests/test_corosync.aug \
-			  $(CONF_SCHEMA)
+			  $(CONF_SCHEMA_ORIG) $(CONF_SCRIPT) \
+			  *.py *.xsl
 
 corosysconfdir		= ${COROSYSCONFDIR}
 
 corosysconf_DATA	= corosync.conf.example \
 			  corosync.conf.example.udpu
 
+LENSES_TARGET		= lenses/corosync.aug
+
 if INSTALL_AUGEAS
 corolensdir		= ${datadir}/augeas/lenses
-corolens_DATA		= lenses/corosync.aug
+corolens_DATA		= $(LENSES_TARGET)
 
 corolenstestdir		= ${corolensdir}/tests
 corolenstest_DATA	= lenses/tests/test_corosync.aug
@@ -90,16 +92,13 @@ CONF_DOCBOOK		= $(CONF_NAME:=.xml)       # fixed name
 CONF_SCHEMA		= $(CONF_SCHEMA_ORIG:.rnc=.rng)
 CONF_SCHEMA_ORIG_RNG	= $(CONF_SCHEMA_ORIG:.rnc=.orig.rng)
 
-noinst_DATA		= $(CONF_SCHEMA_ORIG) $(CONF_SCHEMA_ORIG_RNG) \
-			  $(CONF_ASCIIDOC) $(CONF_DOCBOOK)
-
 $(CONF_DOCBOOK): $(CONF_ASCIIDOC)
 	$(ASCIIDOC) --doctype=manpage -b docbook -d manpage $<
 
 $(CONF_ASCIIDOC): $(CONF_SCHEMA) $(CONF_XSLS_ASCIIDOCMAN)
 	$(XSLTPROC) $(CONF_XSL_ASCIIDOCMAN) $< > $@
 
-lenses/corosync.aug: $(CONF_SCHEMA_ORIG_RNG) $(CONF_XSLS_LENS)
+$(LENSES_TARGET): $(CONF_SCHEMA_ORIG_RNG) $(CONF_XSLS_LENS)
 	$(XSLTPROC) $(CONF_XSL_LENS) $< > $@
 
 #trang -O rng $(CONF_SCHEMA_ORIG) $@
@@ -109,4 +108,8 @@ $(CONF_SCHEMA_ORIG_RNG): $(CONF_SCHEMA_ORIG) $(CONF_SCRIPT)
 $(CONF_SCHEMA): $(CONF_SCHEMA_ORIG_RNG) $(CONF_SIMPLIFICATOR)
 	$(XSLTPROC) $(CONF_SIMPLIFICATOR) $< > $@
 
-all-local: lenses/corosync.aug
+all-local: $(CONF_SCHEMA) $(CONF_ASCIIDOC) $(CONF_DOCBOOK) $(LENSES_TARGET)
+
+clean-local:
+	rm -rf $(LENSES_TARGET) *.pyc
+	rm -rf $(CONF_ASCIIDOC) $(CONF_DOCBOOK) $(CONF_SCHEMA) $(CONF_SCHEMA_ORIG_RNG)

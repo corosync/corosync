@@ -36,7 +36,7 @@ Conflicts: openais <= 0.89, openais-devel <= 0.89
 
 # Build bits
 
-BuildRequires: groff
+BuildRequires: groff python libxslt asciidoc
 BuildRequires: libqb-devel
 BuildRequires: nss-devel
 %if %{with runautogen}

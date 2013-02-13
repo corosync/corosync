@@ -3,8 +3,6 @@
 *.so*
 *.lo
 *.la
-*.pyc
-*.swp
 .libs
 .deps
 .version
@@ -30,7 +28,3 @@ missing
 tags
 ID
 Doxyfile
-/conf/corosync*.rng
-/conf/corosync.conf.asciidoc
-/conf/corosync.conf.xml
-/conf/lenses/corosync.aug
