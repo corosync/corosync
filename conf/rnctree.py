@@ -59,7 +59,7 @@ for t in tokens + quant_tokens_aux + parse_constructs:
 
 keyword_list = keywords.values()
 
-PAIRS = {r[0]: tuple(r[1:]) for r in pair_rules}
+PAIRS = dict((r[0], tuple(r[1:])) for r in pair_rules)
 
 TAGS = {
     ONE:   'group',
@@ -458,8 +458,8 @@ def _nest_annotations(nodes, mapping, delim=None):
 
         if not isinstance(n.value, str):  # no recurse to terminal str
             if n.type in (ELEM, ATTR):
-                mapping_rec = {n: [] for n in
-                               (ANNOTATION, NS_ANNOTATION, COMMENT)}
+                mapping_rec = dict((n, []) for n in
+                                   (ANNOTATION, NS_ANNOTATION, COMMENT))
             else:
                 mapping_rec = mapping
             _nest_annotations(n.value, mapping_rec)
