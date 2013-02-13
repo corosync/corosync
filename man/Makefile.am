@@ -168,7 +168,7 @@ DOCBOOK_XSLT_OPTS	+= --param man.th.extra3.max.length 52
 
 # corosync.conf.5{,.html}
 corosync.conf.5:
-	@echo Generating $@ man page 
+	@echo Generating $@ man page
 	$(XSLTPROC) $(DOCBOOK_XSLT_OPTS) $(DOCBOOK_XSL_MAN) ../conf/$(@:.5=.xml)
 
 corosync.conf.5.html:
