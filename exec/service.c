@@ -407,17 +407,17 @@ static unsigned int service_unlink_and_exit (
 		object_find_handle,
 		&object_service_handle) == 0) {
 
-		corosync_api->object_key_get (object_service_handle,
+		res = corosync_api->object_key_get (object_service_handle,
 			"name",
 			strlen ("name"),
 			(void *)&found_service_name,
 			NULL);
 
-		if (strcmp (service_name, found_service_name) != 0) {
+		if (res != 0 || strcmp (service_name, found_service_name) != 0) {
 		    continue;
 		}
 
-		corosync_api->object_key_get (object_service_handle,
+		res = corosync_api->object_key_get (object_service_handle,
 			"ver",
 			strlen ("ver"),
 			(void *)&found_service_ver,
@@ -426,16 +426,17 @@ static unsigned int service_unlink_and_exit (
 		/*
 		 * If service found and linked exit it
 		 */
-		if (service_ver != *found_service_ver) {
+		if (res != 0 || service_ver != *found_service_ver) {
 			continue;
 		}
 
-		corosync_api->object_key_get (
+		res = corosync_api->object_key_get (
 			object_service_handle,
 			"service_id", strlen ("service_id"),
 			(void *)&service_id, NULL);
 
-		if(service_id != NULL
+		if(res == 0
+			&& service_id != NULL
 			&& *service_id < SERVICE_HANDLER_MAXIMUM_COUNT
 			&& ais_service[*service_id] != NULL) {
 
@@ -460,9 +461,11 @@ static unsigned int service_unlink_and_exit (
 				(void *)&found_service_handle,
 				NULL);
 
-			lcr_ifact_release (*found_service_handle);
+			if (res == 0) {
+				lcr_ifact_release (*found_service_handle);
 
-			corosync_api->object_destroy (object_service_handle);
+				corosync_api->object_destroy (object_service_handle);
+			}
 		}
 	}
 
@@ -485,6 +488,7 @@ unsigned int corosync_service_defaults_link_and_init (struct corosync_api_v1 *co
 	hdb_handle_t object_find_handle;
 	hdb_handle_t object_find2_handle;
 	hdb_handle_t object_runtime_handle;
+	int res;
 
 	corosync_api->object_find_create (
 		OBJECT_PARENT_HANDLE,
@@ -517,21 +521,28 @@ unsigned int corosync_service_defaults_link_and_init (struct corosync_api_v1 *co
 		object_find_handle,
 		&object_service_handle) == 0) {
 
-		corosync_api->object_key_get (object_service_handle,
+		res = corosync_api->object_key_get (object_service_handle,
 			"name",
 			strlen ("name"),
 			(void *)&found_service_name,
 			NULL);
 
+		if (res != 0) {
+			log_printf(LOGSYS_LEVEL_ERROR,
+				"Service section defined in config file without name key\n");
+
+			return (-1);
+		}
+
 		found_service_ver = NULL;
 
-		corosync_api->object_key_get (object_service_handle,
+		res = corosync_api->object_key_get (object_service_handle,
 			"ver",
 			strlen ("ver"),
 			(void *)&found_service_ver,
 			NULL);
 
-		found_service_ver_atoi = (found_service_ver ? atoi (found_service_ver) : 0);
+		found_service_ver_atoi = ((res == 0 && found_service_ver) ? atoi (found_service_ver) : 0);
 
 		corosync_service_link_and_init (
 			corosync_api,
