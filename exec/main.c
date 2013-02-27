@@ -1620,6 +1620,14 @@ int main (int argc, char **argv, char **envp)
 	log_printf (LOGSYS_LEVEL_NOTICE, "Corosync Cluster Engine ('%s'): started and ready to provide service.\n", VERSION);
 	log_printf (LOGSYS_LEVEL_INFO, "Corosync built-in features:" PACKAGE_FEATURES "\n");
 
+	/*
+	 * Create exit semaphore
+	 */
+	res = sem_init (&corosync_exit_sem, 0, 0);
+	if (res != 0) {
+		log_printf (LOGSYS_LEVEL_ERROR, "Corosync Executive couldn't create exit thread.\n");
+		corosync_exit_error (AIS_DONE_FATAL_ERR);
+	}
 
 	(void)signal (SIGINT, sigintr_handler);
 	(void)signal (SIGUSR2, sigusr2_handler);
@@ -1803,14 +1811,8 @@ int main (int argc, char **argv, char **envp)
 // TODO what is this hack for?	usleep(totem_config.token_timeout * 2000);
 
 	/*
-	 * Create semaphore and start "exit" thread
+	 * Start "exit" thread
 	 */
-	res = sem_init (&corosync_exit_sem, 0, 0);
-	if (res != 0) {
-		log_printf (LOGSYS_LEVEL_ERROR, "Corosync Executive couldn't create exit thread.\n");
-		corosync_exit_error (AIS_DONE_FATAL_ERR);
-	}
-
 	res = pthread_create (&corosync_exit_thread, NULL, corosync_exit_thread_handler, NULL);
 	if (res != 0) {
 		log_printf (LOGSYS_LEVEL_ERROR, "Corosync Executive couldn't create exit thread.\n");
