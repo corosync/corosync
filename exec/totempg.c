@@ -226,8 +226,6 @@ static int fragment_size = 0;
 
 static int fragment_continuation = 0;
 
-static struct iovec iov_delv;
-
 static int totempg_waiting_transack = 0;
 
 static unsigned int totempg_max_handle = 0;
@@ -628,6 +626,7 @@ static void totempg_deliver_fn (
 	int start;
 	const char *data;
 	int datasize;
+	struct iovec iov_delv;
 
 	assembly = assembly_ref (nodeid);
 	assert (assembly);
