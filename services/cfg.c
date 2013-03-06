@@ -971,6 +971,7 @@ static void message_handler_req_lib_cfg_tryshutdown (
 		result = send_shutdown();
 		if (result == -1) {
 			error = CS_ERR_TRY_AGAIN;
+			shutdown_con = NULL;
 		}
 
 		res_lib_cfg_tryshutdown.header.size = sizeof(struct res_lib_cfg_tryshutdown);
