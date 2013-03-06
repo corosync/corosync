@@ -51,6 +51,20 @@
 #include <corosync/totem/totem.h>
 #include <corosync/cfg.h>
 
+#define cs_repeat(result, max, code)				\
+	do {							\
+		int counter = 0;				\
+		do {						\
+			result = code;				\
+			if (result == CS_ERR_TRY_AGAIN) {	\
+				sleep(1);			\
+				counter++;			\
+			} else {				\
+				break;				\
+			}					\
+		} while (counter < max);			\
+	} while (0)
+
 static void ringstatusget_do (void)
 {
 	cs_error_t result;
@@ -163,7 +177,7 @@ static void shutdown_do(void)
 	}
 
 	printf ("Shutting down corosync\n");
-	result = corosync_cfg_try_shutdown (handle, COROSYNC_CFG_SHUTDOWN_FLAG_REQUEST);
+	cs_repeat(result, 30, corosync_cfg_try_shutdown (handle, COROSYNC_CFG_SHUTDOWN_FLAG_REQUEST));
 	if (result != CS_OK) {
 		printf ("Could not shutdown (error = %d)\n", result);
 	}
