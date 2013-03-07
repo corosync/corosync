@@ -1225,8 +1225,16 @@ static int shared_mem_dispatch_bytes_left (const struct conn_info *conn_info)
 	} else {
 		bytes_left = n_read - n_write;
 	}
-	if (bytes_left > 0) {
-		bytes_left--;
+
+	/*
+	 * Pointers in ring buffer are 64-bit alignment (in memcpy_dwrap)
+	 * To ensure we will not overwrite previous data,
+	 * 9 bytes (64-bit + 1 byte) are subtracted from bytes_left
+	 */
+	if (bytes_left < 9) {
+		bytes_left = 0;
+	} else {
+		bytes_left = bytes_left - 9;
 	}
 
 	return (bytes_left);
