@@ -704,6 +704,8 @@ static void *pthread_ipc_consumer (void *conn)
 
 		coroipcs_refcount_inc (conn);
 
+		api->serialize_lock();
+
 		send_ok = api->sending_allowed (conn_info->service,
 			header->id,
 			header,
@@ -724,9 +726,7 @@ static void *pthread_ipc_consumer (void *conn)
 		} else 
 		if (send_ok) {
 			api->stats_increment_value (conn_info->stats_handle, "requests");
-			api->serialize_lock();
 			api->handler_fn_get (conn_info->service, header->id) (conn_info, header);
-			api->serialize_unlock();
 		} else {
 			/*
 			 * Overload, tell library to retry
@@ -741,6 +741,9 @@ static void *pthread_ipc_consumer (void *conn)
 		}
 
 		api->sending_allowed_release (conn_info->sending_allowed_private_data);
+
+		api->serialize_unlock();
+
 		coroipcs_refcount_dec (conn);
 	}
 	pthread_exit (0);
