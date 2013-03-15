@@ -118,16 +118,16 @@ static int schedwrk_internal_create (
 		goto error_destroy;
 	}
 
+	instance->schedwrk_fn = schedwrk_fn;
+	instance->context = context;
+	instance->lock = lock;
+
 	totempg_callback_token_create (
 		&instance->callback_handle,
 		TOTEM_CALLBACK_TOKEN_SENT,
 		1,
 		schedwrk_do,
 		handle2void (*handle));
-
-	instance->schedwrk_fn = schedwrk_fn;
-	instance->context = context;
-	instance->lock = lock;
 
         hdb_handle_put (&schedwrk_instance_database, *handle);
 
