@@ -140,6 +140,7 @@ struct conn_info {
 	key_t semkey;
 #endif
 	unsigned int pending_semops;
+	pthread_mutex_t pending_semops_mutex;
 	pthread_mutex_t mutex;
 	struct control_buffer *control_buffer;
 	char *request_buffer;
@@ -1265,12 +1266,14 @@ static void msg_send (void *conn, const struct iovec *iov, unsigned int iov_len,
 	buf = list_empty (&conn_info->outq_head);
 	res = send (conn_info->fd, &buf, 1, MSG_NOSIGNAL);
 	if (res != 1) {
+		pthread_mutex_lock(&conn_info->pending_semops_mutex);
 		conn_info->pending_semops += 1;
 		if (conn_info->poll_state == POLL_STATE_IN) {
 			conn_info->poll_state = POLL_STATE_INOUT;
 			api->poll_dispatch_modify (conn_info->fd,
 				POLLIN|POLLOUT|POLLNVAL);
 		}
+		pthread_mutex_unlock(&conn_info->pending_semops_mutex);
 	}
 
 	ipc_sem_post (conn_info->control_buffer, SEMAPHORE_DISPATCH);
@@ -1648,6 +1651,7 @@ int coroipcs_handler_dispatch (
 		}
 
 		pthread_mutex_init (&conn_info->mutex, NULL);
+		pthread_mutex_init (&conn_info->pending_semops_mutex, NULL);
 		req_setup = (mar_req_setup_t *)conn_info->setup_msg;
 		/*
 		 * Is the service registered ?
@@ -1784,22 +1788,21 @@ int coroipcs_handler_dispatch (
 	}
 
 	if (revent & POLLOUT) {
-		int psop = conn_info->pending_semops;
-		int i;
+		pthread_mutex_lock(&conn_info->pending_semops_mutex);
 
-		assert (psop != 0);
-		for (i = 0; i < psop; i++) {
-			res = send (conn_info->fd, &buf, 1, MSG_NOSIGNAL);
-			if (res != 1) {
-				return (0);
-			} else {
-				conn_info->pending_semops -= 1;
-			}
+		assert(conn_info->pending_semops != 0);
+
+		while (conn_info->pending_semops > 0 &&
+			((res = send (conn_info->fd, &buf, 1, MSG_NOSIGNAL)) == 1)) {
+
+			conn_info->pending_semops -= 1;
 		}
-		if (conn_info->poll_state == POLL_STATE_INOUT) {
+
+		if (conn_info->pending_semops == 0 && conn_info->poll_state == POLL_STATE_INOUT) {
 			conn_info->poll_state = POLL_STATE_IN;
 			api->poll_dispatch_modify (conn_info->fd, POLLIN|POLLNVAL);
 		}
+		pthread_mutex_unlock(&conn_info->pending_semops_mutex);
 	}
 
 	return (0);
