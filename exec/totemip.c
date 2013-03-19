@@ -466,7 +466,7 @@ int totemip_iface_check(struct totem_ip_address *bindnet,
 			if (boundto->family == AF_INET && boundto->nodeid == 0) {
 				unsigned int nodeid = 0;
 				memcpy (&nodeid, boundto->addr, sizeof (int));
-#if __BYTE_ORDER == __BIG_ENDIAN
+#if __BYTE_ORDER == __LITTLE_ENDIAN
                                 nodeid = swab32 (nodeid);
 #endif
 				if (mask_high_bit) {

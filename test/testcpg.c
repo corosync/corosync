@@ -84,7 +84,7 @@ static char * node_pid_format(unsigned int nodeid, unsigned int pid) {
 	static char buffer[100];
 	if (show_ip) {
 		struct in_addr saddr;
-#if __BYTE_ORDER == __BIG_ENDIAN
+#if __BYTE_ORDER == __LITTLE_ENDIAN
 		saddr.s_addr = swab32(nodeid);
 #else
 		saddr.s_addr = nodeid;
