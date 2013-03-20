@@ -178,7 +178,7 @@ static void delivery_callback (
 	log_pt = malloc (sizeof(log_entry_t));
 	list_init (&log_pt->list);
 
-	snprintf (log_pt->log, LOG_STR_SIZE, "%d:%d:%d:%s;",
+	snprintf (log_pt->log, LOG_STR_SIZE, "%u:%d:%d:%s;",
 		msg_pt->nodeid, msg_pt->seq, my_seq,
 		err_status_string (status_buf, 20, status));
 	list_add_tail (&log_pt->list, &msg_log_head);
@@ -212,7 +212,7 @@ static void config_change_callback (
 		if (record_config_events_g > 0) {
 			log_pt = malloc (sizeof(log_entry_t));
 			list_init (&log_pt->list);
-			snprintf (log_pt->log, LOG_STR_SIZE, "%s,%d,%d,left",
+			snprintf (log_pt->log, LOG_STR_SIZE, "%s,%u,%u,left",
 				groupName->value, left_list[i].nodeid,left_list[i].pid);
 			list_add_tail(&log_pt->list, &config_chg_log_head);
 			qb_log (LOG_INFO, "cpg event %s", log_pt->log);
@@ -222,7 +222,7 @@ static void config_change_callback (
 		if (record_config_events_g > 0) {
 			log_pt = malloc (sizeof(log_entry_t));
 			list_init (&log_pt->list);
-			snprintf (log_pt->log, LOG_STR_SIZE, "%s,%d,%d,join",
+			snprintf (log_pt->log, LOG_STR_SIZE, "%s,%u,%u,join",
 				groupName->value, joined_list[i].nodeid,joined_list[i].pid);
 			list_add_tail (&log_pt->list, &config_chg_log_head);
 			qb_log (LOG_INFO, "cpg event %s", log_pt->log);
