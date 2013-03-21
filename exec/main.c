@@ -127,6 +127,8 @@ static enum cs_sync_mode minimum_sync_mode;
 
 static int sync_in_process = 1;
 
+static pthread_mutex_t sync_in_process_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 static hdb_handle_t corosync_poll_handle;
 
 struct sched_param global_sched_param;
@@ -274,11 +276,15 @@ static void corosync_sync_completed (void)
 {
 	log_printf (LOGSYS_LEVEL_NOTICE,
 		"Completed service synchronization, ready to provide service.\n");
+
+	pthread_mutex_lock(&sync_in_process_mutex);
 	sync_in_process = 0;
 	/*
 	 * Inform totem to start using new message queue again
 	 */
 	totempg_trans_ack();
+
+	pthread_mutex_unlock(&sync_in_process_mutex);
 }
 
 static int corosync_sync_callbacks_retrieve (int sync_id,
@@ -447,10 +453,14 @@ static void confchg_fn (
 	int i;
 	int abort_activate = 0;
 
+	pthread_mutex_lock(&sync_in_process_mutex);
+
 	if (sync_in_process == 1) {
 		abort_activate = 1;
 	}
 	sync_in_process = 1;
+
+	pthread_mutex_unlock(&sync_in_process_mutex);
 	serialize_lock ();
 	memcpy (&corosync_ring_id, ring_id, sizeof (struct memb_ring_id));
 
@@ -1052,6 +1062,8 @@ static int corosync_sending_allowed (
 		return (-1);
 	}
 
+	pthread_mutex_lock(&sync_in_process_mutex);
+
 	sending_allowed =
 		(corosync_quorum_is_quorate() == 1 ||
 		ais_service[service]->allow_inquorate == CS_LIB_ALLOW_INQUORATE) &&
@@ -1059,6 +1071,8 @@ static int corosync_sending_allowed (
 		((ais_service[service]->lib_engine[id].flow_control == CS_LIB_FLOW_CONTROL_REQUIRED) &&
 		(pd->reserved_msgs) &&
 		(sync_in_process == 0)));
+
+	pthread_mutex_unlock(&sync_in_process_mutex);
 
 	return (sending_allowed);
 }
