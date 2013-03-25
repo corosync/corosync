@@ -156,11 +156,11 @@ RPMBUILDOPTS	= --define "_sourcedir $(abs_builddir)" \
 
 srpm: clean
 	$(MAKE) $(SPEC) $(TARFILE)
-	rpmbuild $(RPMBUILDOPTS) --nodeps -bs $(SPEC)
+	rpmbuild $(WITH_LIST) $(RPMBUILDOPTS) --nodeps -bs $(SPEC)
 
 rpm: clean _version
 	$(MAKE) $(SPEC) $(TARFILE)
-	rpmbuild $(RPMBUILDOPTS) -ba $(SPEC)
+	rpmbuild $(WITH_LIST) $(RPMBUILDOPTS) -ba $(SPEC)
 
 # release/versioning
 BUILT_SOURCES	= .version

@@ -25,6 +25,7 @@ AC_CANONICAL_HOST
 
 AC_LANG([C])
 
+AC_SUBST(WITH_LIST, [""])
 
 #Enable inter-library dependencies
 AC_ARG_ENABLE(interlib-deps,
@@ -398,11 +399,13 @@ if test "x${enable_dbus}" = xyes; then
 	PKG_CHECK_MODULES([DBUS],[dbus-1])
 	AC_DEFINE_UNQUOTED([HAVE_DBUS], 1, [have dbus])
 	PACKAGE_FEATURES="$PACKAGE_FEATURES dbus"
+	WITH_LIST="$WITH_LIST --with dbus"
 fi
 
 if test "x${enable_testagents}" = xyes; then
 	AC_DEFINE_UNQUOTED([HAVE_TESTAGENTS], 1, [have testagents])
 	PACKAGE_FEATURES="$PACKAGE_FEATURES testagents"
+	WITH_LIST="$WITH_LIST --with testagents"
 fi
 
 if test "x${enable_rdma}" = xyes; then
@@ -410,12 +413,14 @@ if test "x${enable_rdma}" = xyes; then
 	PKG_CHECK_MODULES([ibverbs],[ibverbs])
 	AC_DEFINE_UNQUOTED([HAVE_RDMA], 1, [have rdmacm])
 	PACKAGE_FEATURES="$PACKAGE_FEATURES rdma"
+	WITH_LIST="$WITH_LIST --with rdma"
 fi
 
 if test "x${enable_monitoring}" = xyes; then
 	PKG_CHECK_MODULES([statgrab], [libstatgrab])
 	AC_DEFINE_UNQUOTED([HAVE_MONITORING], 1, [have resource monitoring])
 	PACKAGE_FEATURES="$PACKAGE_FEATURES monitoring"
+	WITH_LIST="$WITH_LIST --with monitoring"
 fi
 
 if test "x${enable_watchdog}" = xyes; then
@@ -423,6 +428,7 @@ if test "x${enable_watchdog}" = xyes; then
 	AC_CHECK_HEADER([linux/reboot.h], [], [AC_MSG_ERROR([watchdog requires linux/reboot.h])])
 	AC_DEFINE_UNQUOTED([HAVE_WATCHDOG], 1, [have watchdog])
 	PACKAGE_FEATURES="$PACKAGE_FEATURES watchdog"
+	WITH_LIST="$WITH_LIST --with watchdog"
 fi
 
 if test "x${enable_augeas}" = xyes; then
@@ -430,9 +436,11 @@ if test "x${enable_augeas}" = xyes; then
 fi
 if test "x${enable_systemd}" = xyes; then
 	PACKAGE_FEATURES="$PACKAGE_FEATURES systemd"
+	WITH_LIST="$WITH_LIST --with systemd"
 fi
 if test "x${enable_xmlconf}" = xyes; then
 	PACKAGE_FEATURES="$PACKAGE_FEATURES xmlconf"
+	WITH_LIST="$WITH_LIST --with xmlconf"
 fi
 if test "x${enable_qdevices}" = xyes; then
 	PACKAGE_FEATURES="$PACKAGE_FEATURES qdevices"
@@ -477,6 +485,7 @@ if test "x${enable_snmp}" = xyes; then
 
 		do_snmp=1
 		PACKAGE_FEATURES="$PACKAGE_FEATURES snmp"
+		WITH_LIST="$WITH_LIST --with snmp"
 		AC_DEFINE_UNQUOTED([ENABLE_SNMP], $do_snmp, [Build in support for sending SNMP traps])
 	else
 		AC_MSG_ERROR([You need the net_snmp development package to continue.])
