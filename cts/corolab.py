@@ -136,7 +136,8 @@ class CoroLabEnvironment(CtsLab):
         self["all-once"] = 0
         self["LogWatcher"] = "remote"
         self["SyslogFacility"] = DefaultFacility
-    
+        self["stats"] = 0
+
 #
 # Main entry into the test system.
 #
