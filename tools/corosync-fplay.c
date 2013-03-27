@@ -343,6 +343,11 @@ static unsigned int printer_subsys_count =
 
 #define G_RECORD_SIZE	10000
 
+/*
+ * Record must have at least 4 bytes - size, indent, line and record_number
+ */
+#define MINIMUM_RECORD_SIZE	4
+
 static uint32_t g_record[G_RECORD_SIZE];
 
 /*
@@ -359,6 +364,11 @@ static int logsys_rec_get (int rec_idx) {
 
 	if (rec_size > G_RECORD_SIZE || rec_size > flt_data_size) {
 		fprintf (stderr, "rec_size too large. Input file is probably corrupted.\n");
+		exit (EXIT_FAILURE);
+	}
+
+	if (rec_size < MINIMUM_RECORD_SIZE) {
+		fprintf (stderr, "rec_size too small. Input file is probably corrupted.\n");
 		exit (EXIT_FAILURE);
 	}
 
