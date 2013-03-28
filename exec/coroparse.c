@@ -130,7 +130,7 @@ static int uid_determine (const char *req_user)
 	struct passwd* pwdptr = &passwd;
 	struct passwd* temp_pwd_pt;
 	char *pwdbuffer;
-	int  pwdlinelen;
+	int  pwdlinelen, rc;
 
 	pwdlinelen = sysconf (_SC_GETPW_R_SIZE_MAX);
 
@@ -140,20 +140,24 @@ static int uid_determine (const char *req_user)
 
 	pwdbuffer = malloc (pwdlinelen);
 
-	while ((getpwnam_r (req_user, pwdptr, pwdbuffer, pwdlinelen, &temp_pwd_pt)) != 0) {
-		if (errno == ERANGE) {
-			char *n;
+	while ((rc = getpwnam_r (req_user, pwdptr, pwdbuffer, pwdlinelen, &temp_pwd_pt)) == ERANGE) {
+		char *n;
 
-			pwdlinelen *= 2;
-			if (pwdlinelen <= 32678) {
-				n = realloc (pwdbuffer, pwdlinelen);
-				if (n != NULL) {
-					pwdbuffer = n;
-					continue;
-				}
+		pwdlinelen *= 2;
+		if (pwdlinelen <= 32678) {
+			n = realloc (pwdbuffer, pwdlinelen);
+			if (n != NULL) {
+				pwdbuffer = n;
+				continue;
 			}
 		}
-
+	}
+	if (rc != 0) {
+		free (pwdbuffer);
+	        sprintf (error_string_response, "getpwnam_r(): %s", strerror(rc));
+	        return (-1);
+	}
+	if (temp_pwd_pt == NULL) {
 		free (pwdbuffer);
 	        sprintf (error_string_response,
 	                "The '%s' user is not found in /etc/passwd, please read the documentation.",
@@ -173,7 +177,7 @@ static int gid_determine (const char *req_group)
 	struct group * grpptr = &group;
 	struct group * temp_grp_pt;
 	char *grpbuffer;
-	int  grplinelen;
+	int  grplinelen, rc;
 
 	grplinelen = sysconf (_SC_GETGR_R_SIZE_MAX);
 
@@ -183,20 +187,24 @@ static int gid_determine (const char *req_group)
 
 	grpbuffer = malloc (grplinelen);
 
-	while ((getgrnam_r (req_group, grpptr, grpbuffer, grplinelen, &temp_grp_pt)) != 0) {
-		if (errno == ERANGE) {
-			char *n;
+	while ((rc = getgrnam_r (req_group, grpptr, grpbuffer, grplinelen, &temp_grp_pt)) == ERANGE) {
+		char *n;
 
-			grplinelen *= 2;
-			if (grplinelen <= 32678) {
-				n = realloc (grpbuffer, grplinelen);
-				if (n != NULL) {
-					grpbuffer = n;
-					continue;
-				}
+		grplinelen *= 2;
+		if (grplinelen <= 32678) {
+			n = realloc (grpbuffer, grplinelen);
+			if (n != NULL) {
+				grpbuffer = n;
+				continue;
 			}
 		}
-
+	}
+	if (rc != 0) {
+		free (grpbuffer);
+	        sprintf (error_string_response, "getgrnam_r(): %s", strerror(rc));
+	        return (-1);
+	}
+	if (temp_grp_pt == NULL) {
 		free (grpbuffer);
 	        sprintf (error_string_response,
 	                "The '%s' group is not found in /etc/group, please read the documentation.",
