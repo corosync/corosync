@@ -350,12 +350,19 @@ static unsigned int printer_subsys_count =
 
 static uint32_t g_record[G_RECORD_SIZE];
 
+static int file_rewind = 0;
+
 /*
  * Copy record, dealing with wrapping
  */
 static int logsys_rec_get (int rec_idx) {
 	uint32_t rec_size;
 	int firstcopy, secondcopy;
+
+	if (rec_idx >= flt_data_size) {
+		fprintf (stderr, "rec_idx too large. Input file is probably corrupted.\n");
+		exit (EXIT_FAILURE);
+	}
 
 	rec_size = flt_data[rec_idx];
 
@@ -373,6 +380,12 @@ static int logsys_rec_get (int rec_idx) {
 	}
 
 	if (firstcopy + rec_idx > flt_data_size) {
+		if (file_rewind) {
+			fprintf (stderr, "file rewind for second time (cycle). Input file is probably corrupted.\n");
+			exit (EXIT_FAILURE);
+		}
+
+		file_rewind = 1;
 		firstcopy = flt_data_size - rec_idx;
 		secondcopy -= firstcopy - rec_size;
 	}
