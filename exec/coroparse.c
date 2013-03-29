@@ -131,6 +131,13 @@ static int uid_determine (const char *req_user)
 	struct passwd* temp_pwd_pt;
 	char *pwdbuffer;
 	int  pwdlinelen, rc;
+	long int id;
+	char *ep;
+
+	id = strtol(req_user, &ep, 10);
+	if (*ep == '\0' && id >= 0 && id <= UINT_MAX) {
+		return (id);
+	}
 
 	pwdlinelen = sysconf (_SC_GETPW_R_SIZE_MAX);
 
@@ -178,6 +185,13 @@ static int gid_determine (const char *req_group)
 	struct group * temp_grp_pt;
 	char *grpbuffer;
 	int  grplinelen, rc;
+	long int id;
+	char *ep;
+
+	id = strtol(req_group, &ep, 10);
+	if (*ep == '\0' && id >= 0 && id <= UINT_MAX) {
+		return (id);
+	}
 
 	grplinelen = sysconf (_SC_GETGR_R_SIZE_MAX);
 
