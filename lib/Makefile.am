@@ -49,7 +49,7 @@ noinst_HEADERS		= util.h
 
 # override global LIBS that pulls in lots of craft we don't need here
 LIBS			= -version-number $(call get_soname,$<) \
-			  -Wl,-version-script=$(srcdir)/lib$(call get_libname,$<).versions \
+			  @VERSCRIPT_LDFLAGS@ \
 			  -lpthread \
 			  $(top_builddir)/common_lib/libcorosync_common.la \
 			  $(LIBQB_LIBS)

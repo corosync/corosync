@@ -610,6 +610,28 @@ if test "x${enable_secure_build}" = xyes; then
   fi
 fi
 
+AC_CACHE_CHECK([whether $CC accepts "--as-needed"], [ap_cv_cc_as_needed], [
+  save_LDFLAGS=$LDFLAGS
+  LDFLAGS="$LDFLAGS -Wl,--as-needed"
+  AC_TRY_RUN([static int foo[30000]; int main () { return 0; }],
+    [ap_cv_cc_as_needed=yes], [ap_cv_cc_as_needed=no], [ap_cv_cc_as_needed=yes])
+  LDFLAGS=$save_LDFLAGS
+])
+
+AC_CACHE_CHECK([whether $CC accepts "--version-script"], [ap_cv_cc_version_script], [
+  save_LDFLAGS=$LDFLAGS
+  LDFLAGS="$LDFLAGS -Wl,--version-script=conftest.versions"
+  echo "CONFTEST { };" >conftest.versions
+  AC_TRY_RUN([static int foo[30000]; int main () { return 0; }],
+    [ap_cv_cc_version_script=yes], [ap_cv_cc_version_script=no], [ap_cv_cc_version_script=yes])
+  rm -f conftest.versions
+  LDFLAGS=$save_LDFLAGS
+])
+if test "$ap_cv_cc_version_script" = "yes"; then
+  AC_SUBST(VERSCRIPT_LDFLAGS, ["-Wl,--version-script=\$(srcdir)/lib\$(call get_libname,\$<).versions"])
+else
+  AC_SUBST(VERSCRIPT_LDFLAGS, [""])
+fi
 
 # define global include dirs
 INCLUDE_DIRS="$INCLUDE_DIRS -I\$(top_builddir)/include -I\$(top_srcdir)/include"
@@ -621,7 +643,11 @@ CFLAGS="$ENV_CFLAGS $lt_prog_compiler_pic $SEC_FLAGS $OPT_CFLAGS $GDB_FLAGS \
 	$WERROR_CFLAGS $NSS_CFLAGS $LIBQB_CFLAGS \
 	$SNMP_INCLUDES"
 CPPFLAGS="$ENV_CPPFLAGS $ANSI_CPPFLAGS $INCLUDE_DIRS"
-LDFLAGS="$ENV_LDFLAGS $lt_prog_compiler_pic $SEC_LDFLAGS -Wl,--as-needed $COVERAGE_LDFLAGS"
+LDFLAGS="$ENV_LDFLAGS $lt_prog_compiler_pic $SEC_LDFLAGS $COVERAGE_LDFLAGS"
+
+if test "$ap_cv_cc_as_needed" = "yes"; then
+  LDFLAGS="$LDFLAGS -Wl,--as-needed"
+fi
 
 # substitute what we need:
 AC_SUBST([BASHPATH])
