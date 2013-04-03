@@ -580,21 +580,46 @@ static int uid_determine (const char *req_user)
 	struct passwd* pwdptr = &passwd;
 	struct passwd* temp_pwd_pt;
 	char *pwdbuffer;
-	int  pwdlinelen;
+	int  pwdlinelen, rc;
+	long int id;
+	char *ep;
+
+	id = strtol(req_user, &ep, 10);
+	if (*ep == '\0' && id >= 0 && id <= UINT_MAX) {
+		return (id);
+	}
 
 	pwdlinelen = sysconf (_SC_GETPW_R_SIZE_MAX);
 
 	if (pwdlinelen == -1) {
-		pwdlinelen = 256;
+	        pwdlinelen = 256;
 	}
 
 	pwdbuffer = malloc (pwdlinelen);
 
-	if ((getpwnam_r (req_user, pwdptr, pwdbuffer, pwdlinelen, &temp_pwd_pt)) != 0) {
-		log_printf (LOGSYS_LEVEL_ERROR,
-			"ERROR: The '%s' user is not found in /etc/passwd, please read the documentation.\n",
-			req_user);
-		corosync_exit_error (AIS_DONE_UID_DETERMINE);
+	while ((rc = getpwnam_r (req_user, pwdptr, pwdbuffer, pwdlinelen, &temp_pwd_pt)) == ERANGE) {
+		char *n;
+
+		pwdlinelen *= 2;
+		if (pwdlinelen <= 32678) {
+			n = realloc (pwdbuffer, pwdlinelen);
+			if (n != NULL) {
+				pwdbuffer = n;
+				continue;
+			}
+		}
+	}
+	if (rc != 0) {
+		free (pwdbuffer);
+	        log_printf (LOGSYS_LEVEL_ERROR, "getpwnam_r(): %s", strerror(rc));
+	        corosync_exit_error (AIS_DONE_UID_DETERMINE);
+	}
+	if (temp_pwd_pt == NULL) {
+		free (pwdbuffer);
+	        log_printf (LOGSYS_LEVEL_ERROR,
+	                "The '%s' user is not found in /etc/passwd, please read the documentation.",
+	                req_user);
+	        corosync_exit_error (AIS_DONE_UID_DETERMINE);
 	}
 	pw_uid = passwd.pw_uid;
 	free (pwdbuffer);
@@ -604,31 +629,56 @@ static int uid_determine (const char *req_user)
 
 static int gid_determine (const char *req_group)
 {
-	int ais_gid = 0;
+	int corosync_gid = 0;
 	struct group group;
 	struct group * grpptr = &group;
 	struct group * temp_grp_pt;
 	char *grpbuffer;
-	int  grplinelen;
+	int  grplinelen, rc;
+	long int id;
+	char *ep;
+
+	id = strtol(req_group, &ep, 10);
+	if (*ep == '\0' && id >= 0 && id <= UINT_MAX) {
+		return (id);
+	}
 
 	grplinelen = sysconf (_SC_GETGR_R_SIZE_MAX);
 
 	if (grplinelen == -1) {
-		grplinelen = 256;
+	        grplinelen = 256;
 	}
 
 	grpbuffer = malloc (grplinelen);
 
-	if ((getgrnam_r (req_group, grpptr, grpbuffer, grplinelen, &temp_grp_pt)) != 0) {
-		log_printf (LOGSYS_LEVEL_ERROR,
-			"ERROR: The '%s' group is not found in /etc/group, please read the documentation.\n",
-			req_group);
-		corosync_exit_error (AIS_DONE_GID_DETERMINE);
+	while ((rc = getgrnam_r (req_group, grpptr, grpbuffer, grplinelen, &temp_grp_pt)) == ERANGE) {
+		char *n;
+
+		grplinelen *= 2;
+		if (grplinelen <= 32678) {
+			n = realloc (grpbuffer, grplinelen);
+			if (n != NULL) {
+				grpbuffer = n;
+				continue;
+			}
+		}
 	}
-	ais_gid = group.gr_gid;
+	if (rc != 0) {
+		free (grpbuffer);
+	        log_printf (LOGSYS_LEVEL_ERROR, "getgrnam_r(): %s", strerror(rc));
+	        corosync_exit_error (AIS_DONE_GID_DETERMINE);
+	}
+	if (temp_grp_pt == NULL) {
+		free (grpbuffer);
+	        log_printf (LOGSYS_LEVEL_ERROR,
+	                "The '%s' group is not found in /etc/group, please read the documentation.",
+	                req_group);
+	        corosync_exit_error (AIS_DONE_GID_DETERMINE);
+	}
+	corosync_gid = group.gr_gid;
 	free (grpbuffer);
 
-	return ais_gid;
+	return corosync_gid;
 }
 
 static unsigned int logging_handle_find (
