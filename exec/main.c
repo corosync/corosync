@@ -1295,6 +1295,49 @@ static struct coroipcs_init_state_v2 ipc_init_state_v2 = {
 	.stats_decrement_value		= corosync_stats_decrement_value,
 };
 
+struct scheduler_pause_timeout_data {
+	struct totem_config *totem_config;
+	poll_timer_handle handle;
+	unsigned long long tv_prev;
+	unsigned long long max_tv_diff;
+};
+
+static void timer_function_scheduler_timeout (void *data)
+{
+	struct scheduler_pause_timeout_data *timeout_data = (struct scheduler_pause_timeout_data *)data;
+	unsigned long long tv_current;
+	unsigned long long tv_diff;
+
+	tv_current = timerlist_nano_current_get ();
+
+	if (timeout_data->tv_prev == 0) {
+		/*
+		 * Initial call -> just pretent everything is ok
+		 */
+		timeout_data->tv_prev = tv_current;
+		timeout_data->max_tv_diff = 0;
+	}
+
+	tv_diff = tv_current - timeout_data->tv_prev;
+	timeout_data->tv_prev = tv_current;
+
+	if (tv_diff > timeout_data->max_tv_diff) {
+		log_printf (LOGSYS_LEVEL_WARNING, "Corosync main process was not scheduled for %0.4f ms "
+		    "(threshold is %0.4f ms). Consider token timeout increase.",
+		    (float)tv_diff / TIMERLIST_NS_IN_MSEC, (float)timeout_data->max_tv_diff / TIMERLIST_NS_IN_MSEC);
+	}
+
+	/*
+	 * Set next threshold, because token_timeout can change
+	 */
+	timeout_data->max_tv_diff = timeout_data->totem_config->token_timeout * TIMERLIST_NS_IN_MSEC * 0.8;
+	poll_timer_add (corosync_poll_handle,
+		timeout_data->totem_config->token_timeout / 3,
+		timeout_data,
+		timer_function_scheduler_timeout,
+		&timeout_data->handle);
+}
+
 static void corosync_setscheduler (void)
 {
 #if defined(HAVE_PTHREAD_SETSCHEDPARAM) && defined(HAVE_SCHED_GET_PRIORITY_MAX) && defined(HAVE_SCHED_SETSCHEDULER)
@@ -1576,6 +1619,7 @@ int main (int argc, char **argv, char **envp)
 	char corosync_lib_dir[PATH_MAX];
 	hdb_handle_t object_runtime_handle;
 	enum e_ais_done flock_err;
+	struct scheduler_pause_timeout_data scheduler_pause_timeout_data;
 
  	/* default configuration
 	 */
@@ -1790,6 +1834,10 @@ int main (int argc, char **argv, char **envp)
 
 	corosync_poll_handle = poll_create ();
 	poll_low_fds_event_set(corosync_poll_handle, main_low_fds_event);
+
+	memset(&scheduler_pause_timeout_data, 0, sizeof(scheduler_pause_timeout_data));
+	scheduler_pause_timeout_data.totem_config = &totem_config;
+	timer_function_scheduler_timeout (&scheduler_pause_timeout_data);
 
 	/*
 	 * Create exit pipe
