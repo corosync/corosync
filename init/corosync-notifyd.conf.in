@@ -1,0 +1,38 @@
+# corosync-notifyd - Corosync Dbus and snmp notifier
+#
+# Starts corosync-notifyd
+
+expect fork
+respawn
+
+env prog=corosync-notifyd
+env rpm_sysconf=@SYSCONFDIR@/sysconfig/corosync-notifyd
+env rpm_lockfile=@LOCALSTATEDIR@/lock/subsys/corosync-notifyd
+env deb_sysconf=@SYSCONFDIR@/default/corosync-notifyd
+env deb_lockfile=@LOCALSTATEDIR@/lock/corosync-notifyd
+
+script
+    [ -f "$rpm_sysconf" ] && . $rpm_sysconf
+    [ -f "$deb_sysconf" ] && . $deb_sysconf
+    exec $prog $OPTIONS
+end script
+
+pre-start script
+    mkdir -p @LOCALSTATEDIR@/run
+end script
+
+post-start script
+    [ -f "$rpm_sysconf" ] && . $rpm_sysconf
+    [ -f "$deb_sysconf" ] && . $deb_sysconf
+    [ -z "$LOCK_FILE" -a -d @SYSCONFDIR@/sysconfig ] && LOCK_FILE="$rpm_lockfile"
+    [ -z "$LOCK_FILE" -a -d @SYSCONFDIR@/default ] && LOCK_FILE="$deb_lockfile"
+    touch $LOCK_FILE
+end script
+
+post-stop script
+    [ -f "$rpm_sysconf" ] && . $rpm_sysconf
+    [ -f "$deb_sysconf" ] && . $deb_sysconf
+    [ -z "$LOCK_FILE" -a -d @SYSCONFDIR@/sysconfig ] && LOCK_FILE="$rpm_lockfile"
+    [ -z "$LOCK_FILE" -a -d @SYSCONFDIR@/default ] && LOCK_FILE="$deb_lockfile"
+    rm -f $LOCK_FILE
+end script

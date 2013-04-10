@@ -343,6 +343,11 @@ AC_ARG_ENABLE([systemd],
 	[ enable_systemd="no" ])
 AM_CONDITIONAL(INSTALL_SYSTEMD, test x$enable_systemd = xyes)
 
+AC_ARG_ENABLE([upstart],
+	      [  --enable-upstart                : Install upstart service files],,
+	[ enable_upstart="no" ])
+AM_CONDITIONAL(INSTALL_UPSTART, test x$enable_upstart = xyes)
+
 AC_ARG_WITH([initddir],
 	[  --with-initddir=DIR     : path to init script directory. ],
 	[ INITDDIR="$withval" ],
@@ -352,6 +357,11 @@ AC_ARG_WITH([systemddir],
 	[  --with-systemddir=DIR   : path to systemd unit files directory. ],
 	[ SYSTEMDDIR="$withval" ],
 	[ SYSTEMDDIR="/lib/systemd/system" ])
+
+AC_ARG_WITH([upstartdir],
+	[  --with-upstartdir=DIR   : path to upstart config files directory. ],
+	[ UPSTARTDIR="$withval" ],
+	[ UPSTARTDIR="$sysconfdir/init" ])
 
 AC_ARG_WITH([initwrappersdir],
 	[  --with-initwrappersdir=DIR   : path to init wrappers files directory. ],
@@ -437,6 +447,10 @@ fi
 if test "x${enable_systemd}" = xyes; then
 	PACKAGE_FEATURES="$PACKAGE_FEATURES systemd"
 	WITH_LIST="$WITH_LIST --with systemd"
+fi
+if test "x${enable_upstart}" = xyes; then
+	PACKAGE_FEATURES="$PACKAGE_FEATURES upstart"
+	WITH_LIST="$WITH_LIST --with upstart"
 fi
 if test "x${enable_xmlconf}" = xyes; then
 	PACKAGE_FEATURES="$PACKAGE_FEATURES xmlconf"
@@ -653,6 +667,7 @@ fi
 AC_SUBST([BASHPATH])
 AC_SUBST([INITDDIR])
 AC_SUBST([SYSTEMDDIR])
+AC_SUBST([UPSTARTDIR])
 INITWRAPPERSDIR=$(eval echo ${INITWRAPPERSDIR})
 AC_SUBST([INITWRAPPERSDIR])
 
@@ -695,6 +710,7 @@ AC_MSG_RESULT([  State information        = ${localstatedir}])
 AC_MSG_RESULT([  System configuration     = ${sysconfdir}])
 AC_MSG_RESULT([  System init.d directory  = ${INITDDIR}])
 AC_MSG_RESULT([  System systemd directory = ${SYSTEMDDIR}])
+AC_MSG_RESULT([  System upstart directory = ${UPSTARTDIR}])
 AC_MSG_RESULT([  System init wraps dir    = ${INITWRAPPERSDIR}])
 AC_MSG_RESULT([  corosync config dir      = ${COROSYSCONFDIR}])
 AC_MSG_RESULT([  Features                 =${PACKAGE_FEATURES}])

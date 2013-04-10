@@ -1,0 +1,52 @@
+# corosync - Corosync Cluster Engine
+#
+# Starts corosync
+
+expect fork
+
+env prog=corosync
+env rpm_sysconf=@SYSCONFDIR@/sysconfig/corosync
+env rpm_lockfile=@LOCALSTATEDIR@/lock/subsys/corosync
+env deb_sysconf=@SYSCONFDIR@/default/corosync
+env deb_lockfile=@LOCALSTATEDIR@/lock/corosync
+
+script
+    [ -f "$rpm_sysconf" ] && . $rpm_sysconf
+    [ -f "$deb_sysconf" ] && . $deb_sysconf
+    exec $prog
+end script
+
+pre-start script
+    mkdir -p @LOCALSTATEDIR@/run
+end script
+
+post-start script
+wait_for_ipc()
+{
+    try=0
+    while [ "$try" -le "20" ]; do
+        if corosync-cfgtool -s > /dev/null 2>&1; then
+            return 0
+        fi
+        sleep 0.5
+        try=$((try + 1))
+    done
+    logger -i -t "$UPSTART_JOB" "ERROR: Any interfaces are faulty!"
+    return 1
+}
+    wait_for_ipc || { stop; exit 1; }
+
+    [ -f "$rpm_sysconf" ] && . $rpm_sysconf
+    [ -f "$deb_sysconf" ] && . $deb_sysconf
+    [ -z "$LOCK_FILE" -a -d @SYSCONFDIR@/sysconfig ] && LOCK_FILE="$rpm_lockfile"
+    [ -z "$LOCK_FILE" -a -d @SYSCONFDIR@/default ] && LOCK_FILE="$deb_lockfile"
+    touch $LOCK_FILE
+end script
+
+post-stop script
+    [ -f "$rpm_sysconf" ] && . $rpm_sysconf
+    [ -f "$deb_sysconf" ] && . $deb_sysconf
+    [ -z "$LOCK_FILE" -a -d @SYSCONFDIR@/sysconfig ] && LOCK_FILE="$rpm_lockfile"
+    [ -z "$LOCK_FILE" -a -d @SYSCONFDIR@/default ] && LOCK_FILE="$deb_lockfile"
+    rm -f $LOCK_FILE
+end script
