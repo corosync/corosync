@@ -1,7 +1,7 @@
 SYNCHRONIZATION ALGORITHM:
 -------------------------
 The synchronization algorithm is used for every service in corosync to
-synchronize state of he system.
+synchronize state of the system.
 
 There are 4 events of the synchronization algorithm.  These events are in fact
 functions that are registered in the service handler data structure.  They
