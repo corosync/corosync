@@ -131,6 +131,10 @@ rm -f %{buildroot}%{_libdir}/*.a
 rm -f %{buildroot}%{_libdir}/*.la
 # drop docs and html docs for now
 rm -rf %{buildroot}%{_docdir}/*
+# /etc/sysconfig/corosync-notifyd
+mkdir -p %{buildroot}%{_sysconfdir}/sysconfig
+install -m 644 tools/corosync-notifyd.sysconfig.example \
+   %{buildroot}%{_sysconfdir}/sysconfig/corosync-notifyd
 
 %clean
 rm -rf %{buildroot}
@@ -186,6 +190,7 @@ fi
 %dir %{_sysconfdir}/corosync/uidgid.d
 %config(noreplace) %{_sysconfdir}/corosync/corosync.conf.example
 %config(noreplace) %{_sysconfdir}/corosync/corosync.conf.example.udpu
+%config(noreplace) %{_sysconfdir}/sysconfig/corosync-notifyd
 %if %{with dbus}
 %{_sysconfdir}/dbus-1/system.d/corosync-signals.conf
 %endif
