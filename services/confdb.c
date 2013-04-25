@@ -348,11 +348,31 @@ __attribute__ ((constructor)) static void corosync_lcr_component_register (void)
 	lcr_component_register (&confdb_comp_ver0);
 }
 
+static void free_confdb_ipc_message_holder_list(void)
+{
+	struct confdb_ipc_message_holder *holder;
+
+	pthread_mutex_lock (&confdb_ipc_message_holder_list_mutex);
+
+	while (!list_empty (&confdb_ipc_message_holder_list_head)) {
+		holder = list_entry (confdb_ipc_message_holder_list_head.next,
+			    struct confdb_ipc_message_holder, list);
+		list_del (&holder->list);
+		api->ipc_refcnt_dec(holder->conn);
+		free(holder);
+	}
+
+	pthread_mutex_unlock (&confdb_ipc_message_holder_list_mutex);
+}
+
 static int confdb_exec_exit_fn(void)
 {
 	api->poll_dispatch_delete(api->poll_handle_get(), notify_pipe[0]);
 	close(notify_pipe[0]);
 	close(notify_pipe[1]);
+
+	free_confdb_ipc_message_holder_list();
+
 	return 0;
 }
 
