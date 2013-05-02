@@ -761,7 +761,7 @@ req_setup_send (
 	res_setup.error = error;
 
 retry_send:
-	res = send (conn_info->fd, &res_setup, sizeof (mar_res_setup_t), MSG_WAITALL);
+	res = send (conn_info->fd, &res_setup, sizeof (mar_res_setup_t), MSG_WAITALL|MSG_NOSIGNAL);
 	if (res == -1 && errno == EINTR) {
 		api->stats_increment_value (conn_info->stats_handle, "send_retry_count");
 		goto retry_send;
