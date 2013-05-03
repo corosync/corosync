@@ -1003,12 +1003,44 @@ static void message_handler_req_lib_confdb_reload (void *conn,
 	api->ipc_response_send(conn, &res_lib_confdb_reload, sizeof(res_lib_confdb_reload));
 }
 
+/*
+ * Write byte to notify_pipe, what makes objdb_notify_dispatch trigger.
+ * Return -1 on failure otherwise 0.
+ */
+static int write_to_notify_pipe(void)
+{
+	char pipe_cmd;
+	ssize_t written;
+
+	pipe_cmd = 'M';		/* Message */
+retry_write:
+	written = write(notify_pipe[1], &pipe_cmd, sizeof(pipe_cmd));
+
+	if (written == -1) {
+		if (errno == EINTR) {
+			goto retry_write;
+		}
+
+		if (errno != EAGAIN && errno != EWOULDBLOCK)  {
+			/*
+			 * Different error then EINTR or BLOCK -> exit with error
+			 */
+			return (-1);
+		}
+	} else if (written != sizeof (pipe_cmd)) {
+		return (-1);
+	}
+
+	return (0);
+}
+
 static int objdb_notify_dispatch(hdb_handle_t handle,
 		int fd,	int revents, void *data)
 {
 	struct confdb_ipc_message_holder *holder;
 	ssize_t rc;
 	char pipe_cmd;
+	int counter;
 
 	if (revents & POLLHUP) {
 		return -1;
@@ -1034,7 +1066,14 @@ retry_read:
 		goto unlock_exit;	/* rc != -1 && rc != 1 -> end of file */
 	}
 
-	while (!list_empty (&confdb_ipc_message_holder_list_head)) {
+	/*
+	 * To ensure we will not spent too much time in this function, counter is added
+	 * and terminate condition for while cycle is not only empty_list but also number
+	 * of processed items.
+	 */
+	counter = 0;
+
+	while (!list_empty (&confdb_ipc_message_holder_list_head) && counter++ < 256) {
 		holder = list_entry (confdb_ipc_message_holder_list_head.next,
 			    struct confdb_ipc_message_holder, list);
 
@@ -1058,6 +1097,13 @@ retry_read:
 		pthread_mutex_lock (&confdb_ipc_message_holder_list_mutex);
 	}
 
+	if (!list_empty (&confdb_ipc_message_holder_list_head)) {
+		/*
+		 * Ensure to call this function again. We have no way how
+		 * to handle error so it's ignored.
+		 */
+		(void)write_to_notify_pipe();
+	}
 unlock_exit:
 	pthread_mutex_unlock (&confdb_ipc_message_holder_list_mutex);
 
@@ -1067,9 +1113,7 @@ unlock_exit:
 static int32_t ipc_dispatch_send_from_poll_thread(void *conn, const void *msg, size_t mlen)
 {
 	struct confdb_ipc_message_holder *holder;
-	ssize_t written;
 	size_t holder_size;
-	char pipe_cmd;
 
 	api->ipc_refcnt_inc(conn);
 
@@ -1090,24 +1134,10 @@ static int32_t ipc_dispatch_send_from_poll_thread(void *conn, const void *msg, s
 
 	list_add_tail (&holder->list, &confdb_ipc_message_holder_list_head);
 
-	pipe_cmd = 'M';		/* Message */
-retry_write:
-	written = write(notify_pipe[1], &pipe_cmd, sizeof(pipe_cmd));
-
-	if (written == -1) {
-		if (errno == EINTR) {
-			goto retry_write;
-		}
-
-		if (errno != EAGAIN && errno != EWOULDBLOCK)  {
-			/*
-			 * Different error then EINTR or BLOCK -> exit with error
-			 */
-			goto refcnt_del_unlock_exit;
-		}
-	} else if (written != sizeof (pipe_cmd)) {
+	if (write_to_notify_pipe() == -1) {
 		goto refcnt_del_unlock_exit;
 	}
+
 	pthread_mutex_unlock (&confdb_ipc_message_holder_list_mutex);
 
 	return 0;
