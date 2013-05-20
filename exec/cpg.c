@@ -1603,7 +1603,6 @@ memory_map (
 	void **buf)
 {
 	int32_t fd;
-	void *addr_orig;
 	void *addr;
 	int32_t res;
 
@@ -1620,18 +1619,10 @@ memory_map (
 		goto error_close_unlink;
 	}
 
-	addr_orig = mmap (NULL, bytes, PROT_NONE,
-		MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+	addr = mmap (NULL, bytes, PROT_READ | PROT_WRITE,
+		MAP_SHARED, fd, 0);
 
-	if (addr_orig == MAP_FAILED) {
-		goto error_close_unlink;
-	}
-
-	addr = mmap (addr_orig, bytes, PROT_READ | PROT_WRITE,
-		MAP_FIXED | MAP_SHARED, fd, 0);
-
-	if (addr != addr_orig) {
-		munmap(addr_orig, bytes);
+	if (addr == MAP_FAILED) {
 		goto error_close_unlink;
 	}
 #ifdef MADV_NOSYNC
@@ -1642,7 +1633,7 @@ memory_map (
 	if (res) {
 		return (-1);
 	}
-	*buf = addr_orig;
+	*buf = addr;
 	return (0);
 
 error_close_unlink:
