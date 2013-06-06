@@ -239,7 +239,7 @@ static void my_shutdown_callback (corosync_cfg_handle_t handle,
 	corosync_cfg_shutdown_flags_t flags)
 {
 	qb_log (LOG_CRIT, "flags:%d", flags);
-	if (flags & COROSYNC_CFG_SHUTDOWN_FLAG_REQUEST) {
+	if (flags == COROSYNC_CFG_SHUTDOWN_FLAG_REQUEST) {
 		corosync_cfg_replyto_shutdown (cfg_handle, COROSYNC_CFG_SHUTDOWN_FLAG_YES);
 	}
 }
