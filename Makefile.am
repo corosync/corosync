@@ -59,6 +59,17 @@ coverity:
 	cov-build --dir=cov make
 	cov-analyze --dir cov \
 		    --concurrency \
+		    -co BAD_FREE:allow_first_field:true \
+		    --security \
+		    --wait-for-license
+	cov-format-errors --dir cov
+
+coverity-aggressive:
+	rm -rf cov
+	make clean
+	cov-build --dir=cov make
+	cov-analyze --dir cov \
+		    --concurrency \
 		    --all \
 		    --aggressiveness-level high \
 		    --security \
