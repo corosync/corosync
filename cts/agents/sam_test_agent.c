@@ -1196,6 +1196,8 @@ static void do_command (int sock, char* func, char*args[], int num_args)
 {
 	char response[100];
 	int err = 0;
+	ssize_t rc;
+	size_t send_len;
 
 	qb_log (LOG_INFO, "RPC:%s() called.", func);
 	if (strncmp ("test", func, 4) == 0) {
@@ -1225,7 +1227,9 @@ static void do_command (int sock, char* func, char*args[], int num_args)
 		snprintf (response, 100, "%s", FAIL_STR);
 		qb_log (LOG_ERR, "%s() failed (%d).", func, err);
 	}
-	send (sock, response, strlen (response) + 1, 0);
+	send_len = strlen (response);
+	rc = send (sock, response, send_len, 0);
+	assert(rc == send_len);
 }
 
 int
