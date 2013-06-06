@@ -643,7 +643,10 @@ static void do_command (int sock, char* func, char*args[], int num_args)
 		cpg_mcast_joined (cpg_handle, CPG_TYPE_AGREED, iov, num_args);
 
 	} else if (strcmp ("cpg_join",func) == 0) {
-
+		if (strlen(args[0]) >= CPG_MAX_NAME_LENGTH) {
+			qb_log (LOG_ERR, "Invalid group name");
+			exit (1);
+		}
 		strcpy (group_name.value, args[0]);
 		group_name.length = strlen(args[0]);
 		result = cpg_join (cpg_handle, &group_name);
