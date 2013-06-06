@@ -311,6 +311,7 @@ test_agent_run(const char * prog_name, int server_port,
 
 	qb_loop_run (poll_handle);
 
+	close(listener);
 	qb_log (LOG_INFO, "EXITING");
 	qb_log_fini();
 	return 0;
