@@ -334,6 +334,11 @@ int main (int argc, char *argv[]) {
 	}
 
 	if (argc > optind) {
+		if (strlen(argv[optind]) >= CPG_MAX_NAME_LENGTH) {
+			fprintf(stderr, "Invalid name for cpg group\n");
+			return (1);
+		}
+
 		strcpy(group_name.value, argv[optind]);
 		group_name.length = strlen(argv[optind]);
 	}
