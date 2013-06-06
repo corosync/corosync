@@ -325,7 +325,7 @@ static void read_messages (int sock, char* atmost_str)
 		}
 	}
 	rc = send (sock, big_and_buf, strlen (big_and_buf), 0);
-	assert(rc = strlen (big_and_buf));
+	assert(rc == strlen (big_and_buf));
 }
 
 static qb_loop_timer_handle more_messages_timer_handle;
