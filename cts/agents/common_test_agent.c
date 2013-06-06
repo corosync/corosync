@@ -49,10 +49,14 @@
 
 #include "common_test_agent.h"
 
+#define MAX_CLIENTS	64
+
 static char big_and_buf_rx[HOW_BIG_AND_BUF];
 ta_do_command_fn do_command;
 static qb_loop_t *poll_handle;
 static pre_exit_fn pre_exit = NULL;
+static int client_fds[MAX_CLIENTS];
+static int client_fds_pos = 0;
 
 qb_loop_t *ta_poll_handle_get(void)
 {
@@ -184,6 +188,10 @@ retry_accept:
 		return (0); /* This is an error, but -1 would indicate disconnect from poll loop */
 	}
 
+	client_fds[client_fds_pos] = new_fd;
+	client_fds_pos++;
+	assert(client_fds_pos < MAX_CLIENTS);
+
 	qb_loop_poll_add (poll_handle,
 			QB_LOOP_MED,
 			new_fd,
@@ -283,6 +291,7 @@ test_agent_run(const char * prog_name, int server_port,
 		ta_do_command_fn func, pre_exit_fn exit_fn)
 {
 	int listener;
+	int i;
 
 	qb_log_init(prog_name, LOG_DAEMON, LOG_DEBUG);
 	qb_log_format_set(QB_LOG_SYSLOG, "%n() [%p] %b");
@@ -312,6 +321,11 @@ test_agent_run(const char * prog_name, int server_port,
 	qb_loop_run (poll_handle);
 
 	close(listener);
+
+	for (i = 0; i < client_fds_pos; i++) {
+		close(client_fds[client_fds_pos]);
+	}
+
 	qb_log (LOG_INFO, "EXITING");
 	qb_log_fini();
 	return 0;
