@@ -768,6 +768,7 @@ static int test7 (void) {
 	}
         if (strcmp(str, "testquorum") != 0) {
 		printf ("Provider is not testquorum. Test skipped\n");
+		free(str);
 		return (1);
         }
 	free(str);
@@ -911,6 +912,7 @@ static int test8 (pid_t pid, pid_t old_pid, int test_n) {
 
 		if (strcmp(str, "quit") != 0) {
 			printf ("Recovery key \"%s\" is not \"quit\".\n", key_name);
+			free(str);
 			return (2);
 		}
 		free(str);
@@ -924,6 +926,7 @@ static int test8 (pid_t pid, pid_t old_pid, int test_n) {
 
 		if (strcmp(str, "stopped") != 0) {
 			printf ("State key is not \"stopped\".\n");
+			free(str);
 			return (2);
 		}
 		free(str);
@@ -943,6 +946,7 @@ static int test8 (pid_t pid, pid_t old_pid, int test_n) {
 
 		if (strcmp(str, "running") != 0) {
 			printf ("State key is not \"running\".\n");
+			free(str);
 			return (2);
 		}
 		free(str);
@@ -962,6 +966,7 @@ static int test8 (pid_t pid, pid_t old_pid, int test_n) {
 
 		if (strcmp(str, "stopped") != 0) {
 			printf ("State key is not \"stopped\".\n");
+			free(str);
 			return (2);
 		}
 		free(str);
@@ -977,6 +982,7 @@ static int test8 (pid_t pid, pid_t old_pid, int test_n) {
 
 		if (strcmp(str, "stopped") != 0) {
 			printf ("State key is not \"stopped\".\n");
+			free(str);
 			return (2);
 		}
 		free(str);
@@ -996,6 +1002,7 @@ static int test8 (pid_t pid, pid_t old_pid, int test_n) {
 
 		if (strcmp(str, "running") != 0) {
 			printf ("State key is not \"running\".\n");
+			free(str);
 			return (2);
 		}
 		free(str);
@@ -1055,6 +1062,7 @@ static int test8 (pid_t pid, pid_t old_pid, int test_n) {
 
 			if (strcmp(str, "stopped") != 0) {
 				printf ("State key is not \"stopped\".\n");
+				free(str);
 				return (2);
 			}
 			free(str);
@@ -1080,8 +1088,10 @@ static int test8 (pid_t pid, pid_t old_pid, int test_n) {
 
 		if (strcmp(str, "failed") != 0) {
 			printf ("State key is not \"failed\".\n");
+			free(str);
 			return (2);
 		}
+		free(str);
 
 		return (0);
 	}
@@ -1133,6 +1143,7 @@ static int test9 (pid_t pid, pid_t old_pid, int test_n) {
 
 			if (strcmp(str, "restart") != 0) {
 				printf ("Recovery key \"%s\" is not \"restart\".\n", str);
+				free(str);
 				return (2);
 			}
 			free(str);
@@ -1146,6 +1157,7 @@ static int test9 (pid_t pid, pid_t old_pid, int test_n) {
 
 			if (strcmp(str, "stopped") != 0) {
 				printf ("State key is not \"stopped\".\n");
+				free(str);
 				return (2);
 			}
 			free(str);
@@ -1165,6 +1177,7 @@ static int test9 (pid_t pid, pid_t old_pid, int test_n) {
 
 			if (strcmp(str, "running") != 0) {
 				printf ("State key is not \"running\".\n");
+				free(str);
 				return (2);
 			}
 			free(str);
@@ -1210,6 +1223,7 @@ static int test9 (pid_t pid, pid_t old_pid, int test_n) {
 
 		if (strcmp(str, "failed") != 0) {
 			printf ("State key is not \"failed\".\n");
+			free(str);
 			return (2);
 		}
 		free(str);

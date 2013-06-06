@@ -808,6 +808,7 @@ static int test8 (pid_t pid, pid_t old_pid, int test_n) {
 
 		if (strcmp(str, "quit") != 0) {
 			qb_log (LOG_INFO, "Recovery key \"%s\" is not \"quit\".", key_name);
+			free(str);
 			return (2);
 		}
 		free(str);
@@ -821,6 +822,7 @@ static int test8 (pid_t pid, pid_t old_pid, int test_n) {
 
 		if (strcmp(str, "stopped") != 0) {
 			qb_log (LOG_INFO, "State key is not \"stopped\".");
+			free(str);
 			return (2);
 		}
 		free(str);
@@ -840,6 +842,7 @@ static int test8 (pid_t pid, pid_t old_pid, int test_n) {
 
 		if (strcmp(str, "running") != 0) {
 			qb_log (LOG_INFO, "State key is not \"running\".");
+			free(str);
 			return (2);
 		}
 		free(str);
@@ -859,6 +862,7 @@ static int test8 (pid_t pid, pid_t old_pid, int test_n) {
 
 		if (strcmp(str, "stopped") != 0) {
 			qb_log (LOG_INFO, "State key is not \"stopped\".");
+			free(str);
 			return (2);
 		}
 		free(str);
@@ -874,6 +878,7 @@ static int test8 (pid_t pid, pid_t old_pid, int test_n) {
 
 		if (strcmp(str, "stopped") != 0) {
 			qb_log (LOG_INFO, "State key is not \"stopped\".");
+			free(str);
 			return (2);
 		}
 		free(str);
@@ -893,6 +898,7 @@ static int test8 (pid_t pid, pid_t old_pid, int test_n) {
 
 		if (strcmp(str, "running") != 0) {
 			qb_log (LOG_INFO, "State key is not \"running\".");
+			free(str);
 			return (2);
 		}
 		free(str);
@@ -952,6 +958,7 @@ static int test8 (pid_t pid, pid_t old_pid, int test_n) {
 
 			if (strcmp(str, "stopped") != 0) {
 				qb_log (LOG_INFO, "State key is not \"stopped\".");
+				free(str);
 				return (2);
 			}
 			free(str);
@@ -977,8 +984,10 @@ static int test8 (pid_t pid, pid_t old_pid, int test_n) {
 
 		if (strcmp(str, "failed") != 0) {
 			qb_log (LOG_INFO, "State key is not \"failed\".");
+			free(str);
 			return (2);
 		}
+		free(str);
 
 		return (0);
 	}
@@ -1030,6 +1039,7 @@ static int test9 (pid_t pid, pid_t old_pid, int test_n) {
 
 			if (strcmp(str, "restart") != 0) {
 				qb_log (LOG_INFO, "Recovery key \"%s\" is not \"restart\".", str);
+				free(str);
 				return (2);
 			}
 			free(str);
@@ -1043,6 +1053,7 @@ static int test9 (pid_t pid, pid_t old_pid, int test_n) {
 
 			if (strcmp(str, "stopped") != 0) {
 				qb_log (LOG_INFO, "State key is not \"stopped\".");
+				free(str);
 				return (2);
 			}
 			free(str);
@@ -1062,6 +1073,7 @@ static int test9 (pid_t pid, pid_t old_pid, int test_n) {
 
 			if (strcmp(str, "running") != 0) {
 				qb_log (LOG_INFO, "State key is not \"running\".");
+				free(str);
 				return (2);
 			}
 			free(str);
@@ -1103,6 +1115,7 @@ static int test9 (pid_t pid, pid_t old_pid, int test_n) {
 
 		if (strcmp(str, "failed") != 0) {
 			qb_log (LOG_INFO, "State key is not \"failed\".");
+			free(str);
 			return (2);
 		}
 		free(str);
