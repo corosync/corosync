@@ -262,12 +262,16 @@ static void record_messages (void)
 static void record_config_events (int sock)
 {
 	char response[100];
+	ssize_t rc;
+	size_t send_len;
 
 	record_config_events_g = 1;
 	qb_log (LOG_INFO, "record:%d", record_config_events_g);
 
 	snprintf (response, 100, "%s", OK_STR);
-	send (sock, response, strlen (response), 0);
+	send_len = strlen (response);
+	rc = send (sock, response, send_len, 0);
+	assert(rc == send_len);
 }
 
 static void read_config_event (int sock)
@@ -275,16 +279,21 @@ static void read_config_event (int sock)
 	const char *empty = "None";
 	struct list_head * list = config_chg_log_head.next;
 	log_entry_t *entry;
+	ssize_t rc;
+	size_t send_len;
 
 	if (list != &config_chg_log_head) {
 		entry = list_entry (list, log_entry_t, list);
-		send (sock, entry->log,	strlen (entry->log), 0);
+		send_len = strlen (entry->log);
+		rc = send (sock, entry->log, send_len, 0);
 		list_del (&entry->list);
 		free (entry);
 	} else {
 		qb_log (LOG_DEBUG, "no events in list");
-		send (sock, empty, strlen (empty), 0);
+		send_len = strlen (empty);
+		rc = send (sock, empty, send_len, 0);
 	}
+	assert(rc == send_len);
 }
 
 static void read_messages (int sock, char* atmost_str)
@@ -529,6 +538,8 @@ static void context_test (int sock)
 {
 	char response[100];
 	char *cmp;
+	ssize_t rc;
+	size_t send_len;
 
 	cpg_context_set (cpg_handle, response);
 	cpg_context_get (cpg_handle, (void**)&cmp);
@@ -538,7 +549,9 @@ static void context_test (int sock)
 	else {
 		snprintf (response, 100, "%s", OK_STR);
 	}
-	send (sock, response, strlen (response), 0);
+	send_len = strlen (response);
+	rc = send (sock, response, send_len, 0);
+	assert(rc == send_len);
 }
 
 static void msg_blaster_zcb (int sock, char* num_to_send_str)
@@ -614,6 +627,8 @@ static void do_command (int sock, char* func, char*args[], int num_args)
 	int result;
 	char response[100];
 	struct cpg_name group_name;
+	ssize_t rc;
+	size_t send_len;
 
 	qb_log (LOG_TRACE, "RPC:%s() called.", func);
 
@@ -681,7 +696,9 @@ static void do_command (int sock, char* func, char*args[], int num_args)
 
 		cpg_local_get (cpg_handle, &local_nodeid);
 		snprintf (response, 100, "%u",local_nodeid);
-		send (sock, response, strlen (response), 0);
+		send_len = strlen (response);
+		rc = send (sock, response, send_len, 0);
+		assert(rc == send_len);
 	} else if (strcmp ("cpg_finalize", func) == 0) {
 
 		if (cpg_handle > 0) {
@@ -707,8 +724,9 @@ static void do_command (int sock, char* func, char*args[], int num_args)
 		context_test (sock);
 	} else if (strcmp ("are_you_ok_dude", func) == 0) {
 		snprintf (response, 100, "%s", OK_STR);
-		send (sock, response, strlen (response), 0);
-
+		send_len = strlen (response);
+		rc = send (sock, response, strlen (response), 0);
+		assert(rc == send_len);
 	} else if (strcmp ("cfg_shutdown", func) == 0) {
 
 		qb_log (LOG_INFO, "calling %s() called!", func);
