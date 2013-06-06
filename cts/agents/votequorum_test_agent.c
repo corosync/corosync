@@ -172,6 +172,8 @@ static void getinfo (int sock)
 	int ret;
 	struct votequorum_info info;
 	char response[100];
+	ssize_t rc;
+	size_t send_len;
 
 	q_lib_init ();
 
@@ -190,7 +192,9 @@ static void getinfo (int sock)
 		info.quorum);
 
 send_response:
-	send (sock, response, strlen (response), 0);
+	send_len = strlen (response);
+	rc = send (sock, response, send_len, 0);
+	assert(rc == send_len);
 }
 
 
@@ -198,6 +202,8 @@ static void setexpected (int sock, char *arg)
 {
 	int ret;
 	char response[100];
+	ssize_t rc;
+	size_t send_len;
 
 	q_lib_init ();
 
@@ -211,13 +217,17 @@ static void setexpected (int sock, char *arg)
 	snprintf (response, 100, "%s", OK_STR);
 
 send_response:
-	send (sock, response, strlen (response) + 1, 0);
+	send_len = strlen (response);
+	rc = send (sock, response, send_len, 0);
+	assert(rc == send_len);
 }
 
 static void setvotes (int sock, char *arg)
 {
 	int ret;
 	char response[100];
+	ssize_t rc;
+	size_t send_len;
 
 	q_lib_init ();
 
@@ -231,7 +241,9 @@ static void setvotes (int sock, char *arg)
 	snprintf (response, 100, "%s", OK_STR);
 
 send_response:
-	send (sock, response, strlen (response), 0);
+	send_len = strlen (response);
+	rc = send (sock, response, send_len, 0);
+	assert(rc == send_len);
 }
 
 
@@ -240,6 +252,8 @@ static void getquorate (int sock)
 	int ret;
 	int quorate;
 	char response[100];
+	ssize_t rc;
+	size_t send_len;
 
 	q_lib_init ();
 
@@ -253,7 +267,9 @@ static void getquorate (int sock)
 	snprintf (response, 100, "%d", quorate);
 
 send_response:
-	send (sock, response, strlen (response), 0);
+	send_len = strlen (response);
+	rc = send (sock, response, send_len, 0);
+	assert(rc == send_len);
 }
 
 static void context_test (int sock)
@@ -262,6 +278,8 @@ static void context_test (int sock)
 	char *cmp;
 	cs_error_t rc1;
 	cs_error_t rc2;
+	ssize_t send_rc;
+	size_t send_len;
 
 	snprintf (response, 100, "%s", OK_STR);
 
@@ -280,12 +298,16 @@ static void context_test (int sock)
 		qb_log (LOG_ERR, "quorum context not the same %d %d",
 			rc1, rc2);
 	}
-	send (sock, response, strlen (response) + 1, 0);
+	send_len = strlen (response);
+	send_rc = send (sock, response, send_len, 0);
+	assert(send_rc == send_len);
 }
 
 static void do_command (int sock, char* func, char*args[], int num_args)
 {
 	char response[100];
+	ssize_t rc;
+	size_t send_len;
 
 	q_lib_init ();
 
@@ -304,12 +326,18 @@ static void do_command (int sock, char* func, char*args[], int num_args)
 	} else if (strcmp ("are_you_ok_dude", func) == 0 ||
 	           strcmp ("init", func) == 0) {
 		snprintf (response, 100, "%s", OK_STR);
-		send (sock, response, strlen (response) + 1, 0);
+		goto send_response;
 	} else {
 		qb_log (LOG_ERR,"%s RPC:%s not supported!", __func__, func);
 		snprintf (response, 100, "%s", NOT_SUPPORTED_STR);
-		send (sock, response, strlen (response), 0);
+		goto send_response;
 	}
+
+	return ;
+send_response:
+	send_len = strlen (response);
+	rc = send (sock, response, send_len, 0);
+	assert(rc == send_len);
 }
 
 static void my_pre_exit(void)
