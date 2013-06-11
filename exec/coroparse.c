@@ -523,6 +523,7 @@ static int main_config_parser_cb(const char *path,
 				icmap_set_uint8(path, i);
 				add_as_string = 0;
 			}
+			break;
 		case MAIN_CP_CB_DATA_STATE_TOTEM:
 			if ((strcmp(path, "totem.version") == 0) ||
 			    (strcmp(path, "totem.nodeid") == 0) ||
