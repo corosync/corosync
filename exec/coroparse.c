@@ -276,8 +276,8 @@ static int read_uidgid_files_into_objdb(
 		return_code = readdir_r(dp, entry, &dirent)) {
 
 		snprintf(filename, sizeof (filename), "%s/%s", dirname, dirent->d_name);
-		stat (filename, &stat_buf);
-		if (S_ISREG(stat_buf.st_mode)) {
+		res = stat (filename, &stat_buf);
+		if (res == 0 && S_ISREG(stat_buf.st_mode)) {
 
 			fp = fopen (filename, "r");
 			if (fp == NULL) continue;
@@ -333,8 +333,8 @@ static int read_service_files_into_objdb(
 		return_code = readdir_r(dp, entry, &dirent)) {
 
 		snprintf(filename, sizeof (filename), "%s/%s", dirname, dirent->d_name);
-		stat (filename, &stat_buf);
-		if (S_ISREG(stat_buf.st_mode)) {
+		res = stat (filename, &stat_buf);
+		if (res == 0 && S_ISREG(stat_buf.st_mode)) {
 
 			fp = fopen (filename, "r");
 			if (fp == NULL) continue;
