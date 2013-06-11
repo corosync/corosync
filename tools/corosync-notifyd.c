@@ -325,7 +325,17 @@ static void _cs_cmap_rrp_faulty_key_changed (
 static int
 _cs_cmap_dispatch(int fd, int revents, void *data)
 {
-	cmap_dispatch(cmap_handle, CS_DISPATCH_ONE);
+	cs_error_t err;
+
+	err = cmap_dispatch(cmap_handle, CS_DISPATCH_ONE);
+
+	if (err != CS_ERR_TRY_AGAIN && err != CS_ERR_TIMEOUT && err != CS_ERR_QUEUE_FULL) {
+		qb_log(LOG_ERR, "Could not dispatch cmap events. Error %u", err);
+		qb_loop_stop(main_loop);
+
+		return -1;
+	}
+
 	return 0;
 }
 
@@ -348,7 +358,15 @@ static void _cs_quorum_notification(quorum_handle_t handle,
 static int
 _cs_quorum_dispatch(int fd, int revents, void *data)
 {
-	quorum_dispatch(quorum_handle, CS_DISPATCH_ONE);
+	cs_error_t err;
+
+	err = quorum_dispatch(quorum_handle, CS_DISPATCH_ONE);
+	if (err != CS_ERR_TRY_AGAIN && err != CS_ERR_TIMEOUT && err != CS_ERR_QUEUE_FULL) {
+		qb_log(LOG_ERR, "Could not dispatch quorum events. Error %u", err);
+		qb_loop_stop(main_loop);
+
+		return -1;
+	}
 	return 0;
 }
 
