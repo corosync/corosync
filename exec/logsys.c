@@ -569,7 +569,6 @@ logsys_file_format_get(char* file_format, int buf_len)
 
 int logsys_format_set (const char *format)
 {
-	int ret = 0;
 	int i;
 	int c;
 	int w;
@@ -584,8 +583,9 @@ int logsys_format_set (const char *format)
 
 	format_buffer = strdup(format ? format : "%7p [%6g] %b");
 	if (format_buffer == NULL) {
-		ret = -1;
+		return -1;
 	}
+
 	qb_log_format_set(QB_LOG_STDERR, format_buffer);
 
 	logsys_file_format_get(file_format, 128);
@@ -622,7 +622,7 @@ int logsys_format_set (const char *format)
 	}
 	qb_log_format_set(QB_LOG_SYSLOG, syslog_format);
 
-	return ret;
+	return 0;
 }
 
 char *logsys_format_get (void)
