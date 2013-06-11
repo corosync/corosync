@@ -485,7 +485,9 @@ extern int totem_config_read (
 
 	icmap_get_uint32("totem.netmtu", &totem_config->net_mtu);
 
-	icmap_get_string("totem.cluster_name", &cluster_name);
+	if (icmap_get_string("totem.cluster_name", &cluster_name) != CS_OK) {
+		cluster_name = NULL;
+	}
 
 	totem_config->ip_version = AF_INET;
 	if (icmap_get_string("totem.ip_version", &str) == CS_OK) {
