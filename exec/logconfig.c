@@ -155,6 +155,7 @@ static int corosync_main_config_format_set (
 			/* nothing to do here */
 		} else {
 			error_reason = "unknown value for fileline";
+			free(value);
 			goto parse_error;
 		}
 
@@ -183,6 +184,7 @@ static int corosync_main_config_format_set (
 			/* nothing to do here */
 		} else {
 			error_reason = "unknown value for function_name";
+			free(value);
 			goto parse_error;
 		}
 
@@ -206,6 +208,7 @@ static int corosync_main_config_format_set (
 			/* nothing to do here */
 		} else {
 			error_reason = "unknown value for timestamp";
+			free(value);
 			goto parse_error;
 		}
 
@@ -345,6 +348,8 @@ static int corosync_main_config_set (
 		 " See corosync.conf man page syslog_priority directive.");
 
 		syslog_priority = logsys_priority_id_get(value);
+		free(value);
+
 		if (syslog_priority < 0) {
 			error_reason = "unknown syslog level specified";
 			goto parse_error;
@@ -354,7 +359,6 @@ static int corosync_main_config_set (
 			error_reason = "unable to set syslog level";
 			goto parse_error;
 		}
-		free(value);
 	}
 
 	snprintf(key_name, MAP_KEYNAME_MAXLEN, "%s.%s", path, "syslog_priority");
@@ -362,6 +366,7 @@ static int corosync_main_config_set (
 		int syslog_priority;
 
 		syslog_priority = logsys_priority_id_get(value);
+		free(value);
 		if (syslog_priority < 0) {
 			error_reason = "unknown syslog priority specified";
 			goto parse_error;
@@ -371,7 +376,6 @@ static int corosync_main_config_set (
 			error_reason = "unable to set syslog priority";
 			goto parse_error;
 		}
-		free(value);
 	}
 
 #ifdef LOGCONFIG_USE_ICMAP
@@ -403,6 +407,7 @@ static int corosync_main_config_set (
 		int logfile_priority;
 
 		logfile_priority = logsys_priority_id_get(value);
+		free(value);
 		if (logfile_priority < 0) {
 			error_reason = "unknown logfile priority specified";
 			goto parse_error;
@@ -412,7 +417,6 @@ static int corosync_main_config_set (
 			error_reason = "unable to set logfile priority";
 			goto parse_error;
 		}
-		free(value);
 	}
 
 	snprintf(key_name, MAP_KEYNAME_MAXLEN, "%s.%s", path, "debug");
@@ -420,22 +424,26 @@ static int corosync_main_config_set (
 		if (strcmp (value, "trace") == 0) {
 			if (logsys_config_debug_set (subsys, LOGSYS_DEBUG_TRACE) < 0) {
 				error_reason = "unable to set debug trace";
+				free(value);
 				goto parse_error;
 			}
 		} else
 		if (strcmp (value, "on") == 0) {
 			if (logsys_config_debug_set (subsys, LOGSYS_DEBUG_ON) < 0) {
 				error_reason = "unable to set debug on";
+				free(value);
 				goto parse_error;
 			}
 		} else
 		if (strcmp (value, "off") == 0) {
 			if (logsys_config_debug_set (subsys, LOGSYS_DEBUG_OFF) < 0) {
 				error_reason = "unable to set debug off";
+				free(value);
 				goto parse_error;
 			}
 		} else {
 			error_reason = "unknown value for debug";
+			free(value);
 			goto parse_error;
 		}
 		free(value);
