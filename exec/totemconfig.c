@@ -215,7 +215,7 @@ static int get_cluster_mcast_addr (
 	}
 
 	clusterid = generate_cluster_id(cluster_name) + ringnumber;
-	memset (res, 0, sizeof(res));
+	memset (res, 0, sizeof(*res));
 
 	switch (bindnet->family) {
 	case AF_INET:
