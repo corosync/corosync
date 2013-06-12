@@ -673,11 +673,6 @@ static void read_in_config_file(cmap_handle_t handle, char * filename)
 	char *key_type_s;
 	char *key_value_s;
 
-	if (access (filename, R_OK) != 0) {
-		perror ("Couldn't access file.");
-		return;
-	}
-
 	fh = fopen(filename, "r");
 	if (fh == NULL) {
 		perror ("Couldn't open file.");
