@@ -1634,6 +1634,9 @@ static void message_handler_req_exec_votequorum_nodeinfo (
 
 	if (nodeid == VOTEQUORUM_QDEVICE_NODEID) {
 		struct cluster_node *sender_node = find_node_by_nodeid(sender_nodeid);
+
+		assert(sender_node != NULL);
+
 		if ((!cluster_is_quorate) &&
 		    (sender_node->flags & NODE_FLAGS_QUORATE)) {
 			node->votes = req_exec_quorum_nodeinfo->votes;
