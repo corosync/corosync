@@ -352,7 +352,7 @@ static void config_convert_nodelist_to_interface(struct totem_config *totem_conf
 	struct list_head *list;
 	struct totem_ip_if_address *if_addr;
 	struct totem_ip_address node_addr;
-	int node_found;
+	int node_found = 0;
 
 	if (totemip_getifaddrs(&addrs) == -1) {
 		return ;
