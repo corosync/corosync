@@ -129,7 +129,8 @@ struct res_lib_cfg_get_node_addrs {
         struct qb_ipc_response_header header __attribute__((aligned(8)));
 	unsigned int family;
 	unsigned int num_addrs;
-	char addrs[TOTEMIP_ADDRLEN][0];
+	/* array of TOTEMIP_ADDRLEN items */
+	char addrs[];
 };
 
 struct req_lib_cfg_local_get {
