@@ -715,6 +715,7 @@ int main (int argc, char *argv[]) {
 	nodeid_format_t nodeid_format = NODEID_FORMAT_DECIMAL;
 	name_format_t address_format = ADDRESS_FORMAT_NAME;
 	command_t command_opt = CMD_SHOWSTATUS;
+	long int l;
 
 	if (init_all()) {
 		close_all();
@@ -763,11 +764,12 @@ int main (int argc, char *argv[]) {
 			}
 			break;
 		case 'n':
-			nodeid = strtol(optarg, &endptr, 0);
-			if ((nodeid == 0 && endptr == optarg) || nodeid < 0) {
+			l = strtol(optarg, &endptr, 0);
+			if ((l == 0 && endptr == optarg) || l < 0) {
 				fprintf(stderr, "The nodeid was not valid, try a positive number\n");
 				exit(2);
 			}
+			nodeid = l;
 			nodeid_set = 1;
 			break;
 		case 'v':
