@@ -368,7 +368,10 @@ int _logsys_system_setup(
 	qb_log_ctl(QB_LOG_BLACKBOX, QB_LOG_CONF_THREADED, QB_FALSE);
 	qb_log_ctl(QB_LOG_BLACKBOX, QB_LOG_CONF_ENABLED, QB_TRUE);
 
-	logsys_format_set(NULL);
+	if (logsys_format_set(NULL) == -1) {
+		return -1;
+	}
+
 	qb_log_tags_stringify_fn_set(_logsys_tags_stringify);
 
 	logsys_loggers[i].init_status = LOGSYS_LOGGER_INIT_DONE;
