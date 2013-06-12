@@ -305,6 +305,10 @@ int _logsys_system_setup(
 	 * Setup libqb as a subsys
 	 */
 	i = _logsys_subsys_create ("QB", "array.c");
+	if (i < 0) {
+		return -1;
+	}
+
 	_logsys_subsys_filename_add (i, "log.c");
 	_logsys_subsys_filename_add (i, "log_syslog.c");
 	_logsys_subsys_filename_add (i, "log_blackbox.c");
