@@ -809,7 +809,7 @@ static cs_error_t cmap_mcast_send(enum cmap_mcast_reason reason, int argc, char 
 	size_t item_len;
 	size_t msg_len = 0;
 	struct req_exec_cmap_mcast req_exec_cmap_mcast;
-	struct req_exec_cmap_mcast_item *item;
+	struct req_exec_cmap_mcast_item *item = NULL;
 	struct iovec req_exec_cmap_iovec[MAX_REQ_EXEC_CMAP_MCAST_ITEMS + 1];
 
 	ENTER();
