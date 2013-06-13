@@ -842,15 +842,25 @@ static enum qb_ipc_type cs_get_ipc_type (void)
 
 const char *cs_ipcs_service_init(struct corosync_service_engine *service)
 {
+	const char *serv_short_name;
+
+	serv_short_name = cs_ipcs_serv_short_name(service->id);
+
 	if (service->lib_engine_count == 0) {
 		log_printf (LOGSYS_LEVEL_DEBUG,
 			"NOT Initializing IPC on %s [%d]",
-			cs_ipcs_serv_short_name(service->id),
+			serv_short_name,
 			service->id);
 		return NULL;
 	}
+
+	if (strlen(serv_short_name) >= CS_IPCS_MAPPER_SERV_NAME) {
+		log_printf (LOGSYS_LEVEL_ERROR, "service name %s is too long", serv_short_name);
+		return "qb_ipcs_run error";
+	}
+
 	ipcs_mapper[service->id].id = service->id;
-	strcpy(ipcs_mapper[service->id].name, cs_ipcs_serv_short_name(service->id));
+	strcpy(ipcs_mapper[service->id].name, serv_short_name);
 	log_printf (LOGSYS_LEVEL_DEBUG,
 		"Initializing IPC on %s [%d]",
 		ipcs_mapper[service->id].name,
