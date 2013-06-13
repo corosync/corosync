@@ -39,6 +39,14 @@
 #include <corosync/corotypes.h>
 #include <corosync/mar_gen.h>
 
+#define CFG_INTERFACE_NAME_MAX_LEN		128
+#define CFG_INTERFACE_STATUS_MAX_LEN		512
+/*
+ * Too keep future ABI compatibility, this value
+ * is intentionaly bigger then INTERFACE_MAX
+ */
+#define CFG_MAX_INTERFACES			16
+
 enum req_lib_cfg_types {
 	MESSAGE_REQ_CFG_RINGSTATUSGET = 0,
 	MESSAGE_REQ_CFG_RINGREENABLE = 1,
@@ -75,8 +83,8 @@ struct req_lib_cfg_ringstatusget {
 struct res_lib_cfg_ringstatusget {
 	struct qb_ipc_response_header header __attribute__((aligned(8)));
 	mar_uint32_t interface_count __attribute__((aligned(8)));
-	char interface_name[16][128] __attribute__((aligned(8)));
-	char interface_status[16][512] __attribute__((aligned(8)));
+	char interface_name[CFG_MAX_INTERFACES][CFG_INTERFACE_NAME_MAX_LEN] __attribute__((aligned(8)));
+	char interface_status[CFG_MAX_INTERFACES][CFG_INTERFACE_STATUS_MAX_LEN] __attribute__((aligned(8)));
 };
 
 struct req_lib_cfg_ringreenable {
