@@ -48,6 +48,7 @@
 #include <sys/socket.h>
 #include <sys/mman.h>
 #include <sys/uio.h>
+#include <sys/stat.h>
 #include <errno.h>
 #include <limits.h>
 
@@ -67,6 +68,11 @@
 #ifndef MAP_ANONYMOUS
 #define MAP_ANONYMOUS MAP_ANON
 #endif
+
+/*
+ * ZCB files have following umask (umask is same as used in libqb)
+ */
+#define CPG_MEMORY_MAP_UMASK		077
 
 struct cpg_inst {
 	qb_ipcc_connection_t *c;
@@ -737,13 +743,18 @@ memory_map (char *path, const char *file, void **buf, size_t bytes)
 	size_t written;
 	size_t page_size; 
 	long int sysconf_page_size;
+	mode_t old_umask;
 
 	snprintf (path, PATH_MAX, "/dev/shm/%s", file);
 
+	old_umask = umask(CPG_MEMORY_MAP_UMASK);
 	fd = mkstemp (path);
+	(void)umask(old_umask);
 	if (fd == -1) {
 		snprintf (path, PATH_MAX, LOCALSTATEDIR "/run/%s", file);
+		old_umask = umask(CPG_MEMORY_MAP_UMASK);
 		fd = mkstemp (path);
+		(void)umask(old_umask);
 		if (fd == -1) {
 			return (-1);
 		}
