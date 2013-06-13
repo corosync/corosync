@@ -539,12 +539,12 @@ static void message_handler_req_lib_cfg_ringstatusget (
 	char **status;
 	const char *totem_ip_string;
 	unsigned int i;
+	cs_error_t res = CS_OK;
 
 	ENTER();
 
 	res_lib_cfg_ringstatusget.header.id = MESSAGE_RES_CFG_RINGSTATUSGET;
 	res_lib_cfg_ringstatusget.header.size = sizeof (struct res_lib_cfg_ringstatusget);
-	res_lib_cfg_ringstatusget.header.error = CS_OK;
 
 	api->totem_ifaces_get (
 		api->totem_nodeid_get(),
@@ -560,11 +560,27 @@ static void message_handler_req_lib_cfg_ringstatusget (
 	for (i = 0; i < iface_count; i++) {
 		totem_ip_string
 		  = (const char *)api->totem_ip_print (&interfaces[i]);
+
+		if (strlen(totem_ip_string) >= CFG_INTERFACE_NAME_MAX_LEN) {
+			log_printf(LOGSYS_LEVEL_ERROR, "String representation of interface %u is too long", i);
+			res = CS_ERR_NAME_TOO_LONG;
+			goto send_response;
+		}
+
+		if (strlen(status[i]) >= CFG_INTERFACE_STATUS_MAX_LEN) {
+			log_printf(LOGSYS_LEVEL_ERROR, "Status string for interface %u is too long", i);
+			res = CS_ERR_NAME_TOO_LONG;
+			goto send_response;
+		}
+
 		strcpy ((char *)&res_lib_cfg_ringstatusget.interface_status[i],
 			status[i]);
 		strcpy ((char *)&res_lib_cfg_ringstatusget.interface_name[i],
 			totem_ip_string);
 	}
+
+send_response:
+	res_lib_cfg_ringstatusget.header.error = res;
 	api->ipc_response_send (
 		conn,
 		&res_lib_cfg_ringstatusget,
