@@ -180,7 +180,7 @@ struct rrp_algo {
 
 };
 
-#define STATUS_STR_LEN 1024
+#define STATUS_STR_LEN 512
 struct totemrrp_instance {
 	qb_loop_t *poll_handle;
 
