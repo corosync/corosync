@@ -553,6 +553,8 @@ static void message_handler_req_lib_cfg_ringstatusget (
 		&status,
 		&iface_count);
 
+	assert(iface_count <= CFG_MAX_INTERFACES);
+
 	res_lib_cfg_ringstatusget.interface_count = iface_count;
 
 	for (i = 0; i < iface_count; i++) {
