@@ -927,25 +927,28 @@ static int votequorum_read_nodelist_configuration(uint32_t *votes,
 static int votequorum_qdevice_is_configured(uint32_t *qdevice_votes)
 {
 	char *qdevice_model = NULL;
+	int ret = 0;
 
 	ENTER();
 
-	if ((icmap_get_string("quorum.device.model", &qdevice_model) == CS_OK) &&
-	    (strlen(qdevice_model))) {
+	if (icmap_get_string("quorum.device.model", &qdevice_model) == CS_OK) {
+		if (strlen(qdevice_model)) {
+			if (icmap_get_uint32("quorum.device.votes", qdevice_votes) != CS_OK) {
+				*qdevice_votes = -1;
+			}
+			if (icmap_get_uint32("quorum.device.timeout", &qdevice_timeout) != CS_OK) {
+				qdevice_timeout = VOTEQUORUM_QDEVICE_DEFAULT_TIMEOUT;
+			}
+			update_qdevice_can_operate(1);
+			ret = 1;
+		}
+
 		free(qdevice_model);
-		if (icmap_get_uint32("quorum.device.votes", qdevice_votes) != CS_OK) {
-			*qdevice_votes = -1;
-		}
-		if (icmap_get_uint32("quorum.device.timeout", &qdevice_timeout) != CS_OK) {
-			qdevice_timeout = VOTEQUORUM_QDEVICE_DEFAULT_TIMEOUT;
-		}
-		update_qdevice_can_operate(1);
-		return 1;
 	}
 
 	LEAVE();
 
-	return 0;
+	return ret;
 }
 
 #define VOTEQUORUM_READCONFIG_STARTUP 0
