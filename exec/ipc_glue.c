@@ -70,10 +70,12 @@ static int32_t ipc_fc_totem_queue_level; /* percentage used */
 static int32_t ipc_fc_sync_in_process; /* boolean */
 static int32_t ipc_allow_connections = 0; /* boolean */
 
+#define CS_IPCS_MAPPER_SERV_NAME		256
+
 struct cs_ipcs_mapper {
 	int32_t id;
 	qb_ipcs_service_t *inst;
-	char name[256];
+	char name[CS_IPCS_MAPPER_SERV_NAME];
 };
 
 struct outq_item {
