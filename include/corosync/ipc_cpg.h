@@ -40,6 +40,8 @@
 #include <corosync/corotypes.h>
 #include <corosync/mar_gen.h>
 
+#define CPG_ZC_PATH_LEN				128
+
 enum req_cpg_types {
 	MESSAGE_REQ_CPG_JOIN = 0,
 	MESSAGE_REQ_CPG_LEAVE = 1,
@@ -298,7 +300,7 @@ struct res_lib_cpg_iterationfinalize {
 typedef struct {
         struct qb_ipc_request_header header __attribute__((aligned(8)));
         size_t map_size __attribute__((aligned(8)));
-        char path_to_file[128] __attribute__((aligned(8)));
+        char path_to_file[CPG_ZC_PATH_LEN] __attribute__((aligned(8)));
 } mar_req_coroipcc_zc_alloc_t __attribute__((aligned(8)));
 
 typedef struct {

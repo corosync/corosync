@@ -823,6 +823,12 @@ cs_error_t cpg_zcb_alloc (
 	map_size = size + sizeof (struct req_lib_cpg_mcast) + sizeof (struct coroipcs_zc_header);
 	assert(memory_map (path, "corosync_zerocopy-XXXXXX", &buf, map_size) != -1);
 
+	if (strlen(path) >= CPG_ZC_PATH_LEN) {
+		unlink(path);
+		munmap (buf, map_size);
+		return (CS_ERR_NAME_TOO_LONG);
+	}
+
 	req_coroipcc_zc_alloc.header.size = sizeof (mar_req_coroipcc_zc_alloc_t);
 	req_coroipcc_zc_alloc.header.id = MESSAGE_REQ_CPG_ZC_ALLOC;
 	req_coroipcc_zc_alloc.map_size = map_size;
