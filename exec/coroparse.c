@@ -330,6 +330,10 @@ static int parse_section(FILE *fp,
 			loc--;
 			*loc = '\0';
 
+			if (strlen(path) + strlen(section) + 1 >= ICMAP_KEYNAME_MAXLEN) {
+				*error_string = "parser error: Start of section makes total cmap path too long";
+				return -1;
+			}
 			strcpy(new_keyname, path);
 			if (strcmp(path, "") != 0) {
 				strcat(new_keyname, ".");
@@ -355,6 +359,10 @@ static int parse_section(FILE *fp,
 			key = remove_whitespace(line, 1);
 			value = remove_whitespace(loc, 0);
 
+			if (strlen(path) + strlen(key) + 1 >= ICMAP_KEYNAME_MAXLEN) {
+				*error_string = "parser error: New key makes total cmap path too long";
+				return -1;
+			}
 			strcpy(new_keyname, path);
 			if (strcmp(path, "") != 0) {
 				strcat(new_keyname, ".");
