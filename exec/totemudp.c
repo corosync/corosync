@@ -1154,6 +1154,7 @@ int totemudp_initialize (
 			instance->totemudp_log_level_error,
 			instance->totemudp_subsys_id);
 	if (instance->crypto_inst == NULL) {
+		free(instance);
 		return (-1);
 	}
 	/*
