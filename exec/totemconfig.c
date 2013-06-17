@@ -467,6 +467,12 @@ extern int totem_config_read (
 	}
 
 	if (icmap_get_string("totem.rrp_mode", &str) == CS_OK) {
+		if (strlen(str) >= TOTEM_RRP_MODE_BYTES) {
+			*error_string = "totem.rrp_mode is too long";
+			free(str);
+
+			return -1;
+		}
 		strcpy (totem_config->rrp_mode, str);
 		free(str);
 	}
