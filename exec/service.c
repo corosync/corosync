@@ -285,13 +285,13 @@ static unsigned int service_unlink_and_exit (
 		}
 
 		snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "internal_configuration.service.%hu.name", service_id);
-		free(found_service_name);
 		if (icmap_get_string(key_name, &found_service_name) != CS_OK) {
 			continue;
 		}
 
 		snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "internal_configuration.service.%u.ver", service_id);
 		if (icmap_get_uint32(key_name, &found_service_ver) != CS_OK) {
+			free(found_service_name);
 			continue;
 		}
 
@@ -300,6 +300,7 @@ static unsigned int service_unlink_and_exit (
 			service_found = 1;
 			break;
 		}
+		free(found_service_name);
 	}
 	icmap_iter_finalize(iter);
 
