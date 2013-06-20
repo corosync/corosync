@@ -128,7 +128,7 @@
 #endif
 
 LOGSYS_DECLARE_SYSTEM ("corosync",
-	LOGSYS_MODE_OUTPUT_STDERR,
+	LOGSYS_MODE_OUTPUT_STDERR | LOGSYS_MODE_OUTPUT_SYSLOG,
 	LOG_DAEMON,
 	LOG_INFO);
 
@@ -1095,7 +1095,6 @@ int main (int argc, char **argv, char **envp)
 		switch (ch) {
 			case 'f':
 				background = 0;
-				logsys_config_mode_set (NULL, LOGSYS_MODE_OUTPUT_STDERR|LOGSYS_MODE_THREADED|LOGSYS_MODE_FORK);
 				break;
 			case 'p':
 				break;
