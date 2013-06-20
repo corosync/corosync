@@ -155,7 +155,7 @@ LOGSYS_LEVEL_DEBUG
 
 An example of using log_printf would be
 
-log_printf (LOGSYS_LEVEL_EMERG, "This is an emergency %s value %d\n", string, value);
+log_printf (LOGSYS_LEVEL_EMERG, "This is an emergency %s value %d\\n", string, value);
 
 Tracing of functions can be done using ENTER(), LEAVE();
 
@@ -175,7 +175,7 @@ TRACE8(format, args)
 An example of using TRACE is
 
 char *name = "test";
-TRACE7 ("This is a trace 7 log with name %s\n", name);
+TRACE7 ("This is a trace 7 log with name %s\\n", name);
 
 Note that ENTER/LEAVE/TRACE* calls are recorded only in the flight recorder.
 
