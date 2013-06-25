@@ -19,6 +19,7 @@
 #include <corosync/engine/logsys.h>
 
 uint32_t flt_data_size;
+uint32_t old_format_file;
 
 uint32_t *flt_data;
 #define FDHEAD_INDEX		(flt_data_size)
@@ -411,17 +412,32 @@ static void logsys_rec_print (const void *record)
 	unsigned int words_processed;
 	unsigned int found;
 	const char *arguments[64];
+	time_t timestamp;
+	struct tm timestamp_tm;
 	int arg_count = 0;
+	char ts_buf[132];
 
-	rec_size = buf_uint32t[rec_idx];
-	rec_ident = buf_uint32t[rec_idx+1];
-	line = buf_uint32t[rec_idx+2];
-	record_number = buf_uint32t[rec_idx+3];
+	rec_size = buf_uint32t[rec_idx++];
+	rec_ident = buf_uint32t[rec_idx++];
+	line = buf_uint32t[rec_idx++];
+	record_number = buf_uint32t[rec_idx++];
+
+	if (!old_format_file) {
+		timestamp = (time_t)(buf_uint32t[rec_idx] | (time_t)(buf_uint32t[rec_idx+1])<<32);
+		rec_idx += 2;
+	}
 
 	level = LOGSYS_DECODE_LEVEL(rec_ident);
 
 	printf ("rec=[%d] ", record_number);
-	arg_size_idx = rec_idx + 4;
+
+	if (!old_format_file) {
+		localtime_r(&timestamp, &timestamp_tm);
+		strftime(ts_buf, sizeof(ts_buf), "%F %T", &timestamp_tm);
+		printf ("time=[%s] ", ts_buf);
+	}
+
+	arg_size_idx = rec_idx;
 	words_processed = 4;
 	for (i = 0; words_processed < rec_size; i++) {
 		arguments[arg_count++] =
@@ -496,6 +512,7 @@ int main (void)
 	ssize_t n_read;
 	const char *data_file = LOCALSTATEDIR "/lib/corosync/fdata";
 	size_t n_required;
+	uint32_t flt_magic;
 
 	if ((fd = open (data_file, O_RDONLY)) < 0) {
 		fprintf (stderr, "failed to open %s: %s\n",
@@ -504,10 +521,28 @@ int main (void)
 	}
 
 	n_required = sizeof (uint32_t);
-	n_read = read (fd, &flt_data_size, n_required);
+	n_read = read (fd, &flt_magic, n_required);
 	if (n_read != n_required) {
-		fprintf (stderr, "Unable to read fdata header\n");
+		fprintf (stderr, "Unable to read fdata magic number\n");
 		return EXIT_FAILURE;
+	}
+
+	/* If the first word is a magic number then this is a new format
+	 * fdata file (with timestamps) and the next word is the length.
+	 * If not, then it's an old file and we just read the length, so use it
+	 */
+	if (flt_magic == 0xFFFFDABB) {
+		n_required = sizeof (uint32_t);
+		n_read = read (fd, &flt_data_size, n_required);
+		if (n_read != n_required) {
+			fprintf (stderr, "Unable to read fdata header\n");
+			return EXIT_FAILURE;
+		}
+		old_format_file = 0;
+	}
+	else {
+		flt_data_size = flt_magic;
+		old_format_file = 1;
 	}
 
 	n_required = ((flt_data_size + 2) * sizeof(uint32_t));

@@ -1090,6 +1090,7 @@ int _logsys_rec_init (unsigned int fltsize)
 /*
  * u32 RECORD SIZE
  * u32 record ident
+ * u64 time_t timestamp
  * u32 arg count
  * u32 file line
  * u32 subsys length
@@ -1118,6 +1119,7 @@ void _logsys_log_rec (
 	unsigned int arguments = 0;
 	unsigned int record_reclaim_size = 0;
 	unsigned int index_start;
+	struct timeval the_timeval;
 	int words_written;
 	int subsysid;
 
@@ -1160,9 +1162,9 @@ void _logsys_log_rec (
 	index_start = idx;
 
 	/*
-	 * Reclaim data needed for record including 4 words for the header
+	 * Reclaim data needed for record including 6 words for the header
 	 */
-	records_reclaim (idx, record_reclaim_size + 4);
+	records_reclaim (idx, record_reclaim_size + 6);
 
 	/*
 	 * Write record size of zero and rest of header information
@@ -1178,6 +1180,14 @@ void _logsys_log_rec (
 
 	flt_data[idx++] = records_written;
 	idx_word_step(idx);
+
+	gettimeofday(&the_timeval, NULL);
+	flt_data[idx++] = the_timeval.tv_sec & 0xFFFFFFFF;
+	idx_word_step(idx);
+
+	flt_data[idx++] = the_timeval.tv_sec >> 32;
+	idx_word_step(idx);
+
 	/*
 	 * Encode all of the arguments into the log message
 	 */
@@ -1625,6 +1635,7 @@ int logsys_log_rec_store (const char *filename)
 	int fd;
 	ssize_t written_size = 0;
 	size_t this_write_size;
+	uint32_t header_magic=0xFFFFDABB; /* Flight Data Black Box */
 
 	fd = open (filename, O_CREAT|O_RDWR, 0700);
 	if (fd < 0) {
@@ -1632,6 +1643,17 @@ int logsys_log_rec_store (const char *filename)
 	}
 
 	logsys_flt_lock();
+
+	/* write a header that tells corosync-fplay this is a new-format
+	 * flightdata file, with timestamps. The header word has the top
+	 * bit set which makes it larger than any older fdata file so
+	 * that the tool can recognise old or new files.
+	 */
+	this_write_size = write (fd, &header_magic, sizeof(uint32_t));
+	if (this_write_size != sizeof(unsigned int)) {
+		goto error_exit;
+	}
+	written_size += this_write_size;
 
 	this_write_size = write (fd, &flt_data_size, sizeof(uint32_t));
 	if (this_write_size != sizeof(unsigned int)) {
