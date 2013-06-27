@@ -1796,6 +1796,8 @@ static void memb_state_operational_enter (struct totemsrp_instance *instance)
 	unsigned int left_list[PROCESSOR_COUNT_MAX];
 	unsigned int i;
 	unsigned int res;
+	char left_node_msg[1024];
+	char joined_node_msg[1024];
 
 	memb_consensus_reset (instance);
 
@@ -1932,12 +1934,36 @@ static void memb_state_operational_enter (struct totemsrp_instance *instance)
 	sq_items_release (&instance->regular_sort_queue, instance->my_high_delivered);
 	instance->last_released = instance->my_high_delivered;
 
+	if (joined_list_entries) {
+		int sptr = 0;
+		sptr += snprintf(joined_node_msg, sizeof(joined_node_msg)-sptr, " joined:");
+		for (i=0; i< joined_list_entries; i++) {
+			sptr += snprintf(joined_node_msg+sptr, sizeof(joined_node_msg)-sptr, " %d", joined_list_totemip[i]);
+		}
+	}
+	else {
+		joined_node_msg[0] = '\0';
+	}
+
+	if (instance->my_left_memb_entries) {
+		int sptr = 0;
+		sptr += snprintf(left_node_msg, sizeof(left_node_msg)-sptr, " left:");
+		for (i=0; i< instance->my_left_memb_entries; i++) {
+			sptr += snprintf(left_node_msg+sptr, sizeof(left_node_msg)-sptr, " %d", left_list[i]);
+		}
+	}
+	else {
+		left_node_msg[0] = '\0';
+	}
+
 	log_printf (instance->totemsrp_log_level_debug,
 		"entering OPERATIONAL state.");
 	log_printf (instance->totemsrp_log_level_notice,
-		"A processor joined or left the membership and a new membership (%s:%lld) was formed.",
+		"A new membership (%s:%lld) was formed. Members%s%s",
 		totemip_print (&instance->my_ring_id.rep),
-		instance->my_ring_id.seq);
+		instance->my_ring_id.seq,
+		joined_node_msg,
+		left_node_msg);
 	instance->memb_state = MEMB_STATE_OPERATIONAL;
 
 	instance->stats.operational_entered++;
