@@ -329,7 +329,8 @@ _cs_cmap_dispatch(int fd, int revents, void *data)
 
 	err = cmap_dispatch(cmap_handle, CS_DISPATCH_ONE);
 
-	if (err != CS_ERR_TRY_AGAIN && err != CS_ERR_TIMEOUT && err != CS_ERR_QUEUE_FULL) {
+	if (err != CS_OK && err != CS_ERR_TRY_AGAIN && err != CS_ERR_TIMEOUT &&
+		err != CS_ERR_QUEUE_FULL) {
 		qb_log(LOG_ERR, "Could not dispatch cmap events. Error %u", err);
 		qb_loop_stop(main_loop);
 
@@ -361,7 +362,8 @@ _cs_quorum_dispatch(int fd, int revents, void *data)
 	cs_error_t err;
 
 	err = quorum_dispatch(quorum_handle, CS_DISPATCH_ONE);
-	if (err != CS_ERR_TRY_AGAIN && err != CS_ERR_TIMEOUT && err != CS_ERR_QUEUE_FULL) {
+	if (err != CS_OK && err != CS_ERR_TRY_AGAIN && err != CS_ERR_TIMEOUT &&
+		err != CS_ERR_QUEUE_FULL) {
 		qb_log(LOG_ERR, "Could not dispatch quorum events. Error %u", err);
 		qb_loop_stop(main_loop);
 
