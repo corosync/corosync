@@ -92,6 +92,7 @@ static int32_t cs_ipcs_dispatch_add(enum qb_loop_priority p, int32_t fd, int32_t
 static int32_t cs_ipcs_dispatch_mod(enum qb_loop_priority p, int32_t fd, int32_t events,
 	void *data, qb_ipcs_dispatch_fn_t fn);
 static int32_t cs_ipcs_dispatch_del(int32_t fd);
+static void outq_flush (void *data);
 
 
 static struct qb_ipcs_poll_handlers corosync_poll_funcs = {
@@ -419,6 +420,8 @@ static int32_t cs_ipcs_connection_closed (qb_ipcs_connection_t *c)
 		return res;
 	}
 
+	qb_loop_job_del(cs_poll_handle_get(), QB_LOOP_HIGH, c, outq_flush);
+
 	cnx = qb_ipcs_context_get(c);
 
 	snprintf(prefix, ICMAP_KEYNAME_MAXLEN, "%s.", cnx->icmap_path);
@@ -473,7 +476,6 @@ static void outq_flush (void *data)
 		if (rc < 0 && rc != -EAGAIN) {
 			errno = -rc;
 			qb_perror(LOG_ERR, "qb_ipcs_event_send");
-			qb_ipcs_connection_unref(conn);
 			return;
 		} else if (rc == -EAGAIN) {
 			break;
@@ -492,7 +494,6 @@ static void outq_flush (void *data)
 			context->queued, context->sent);
 		context->queued = 0;
 		context->sent = 0;
-		qb_ipcs_connection_unref(conn);
 	} else {
 		qb_loop_job_add(cs_poll_handle_get(), QB_LOOP_HIGH, conn, outq_flush);
 	}
@@ -522,7 +523,6 @@ static void msg_send_or_queue(qb_ipcs_connection_t *conn, const struct iovec *io
 			context->queued = 0;
 			context->sent = 0;
 			context->queuing = QB_TRUE;
-			qb_ipcs_connection_ref(conn);
 			qb_loop_job_add(cs_poll_handle_get(), QB_LOOP_HIGH, conn, outq_flush);
 		} else {
 			log_printf(LOGSYS_LEVEL_ERROR, "event_send retuned %d, expected %d!", rc, bytes_msg);
