@@ -746,7 +746,7 @@ void cs_ipcs_stats_update(void)
 	int32_t i;
 	struct qb_ipcs_stats srv_stats;
 	struct qb_ipcs_connection_stats stats;
-	qb_ipcs_connection_t *c;
+	qb_ipcs_connection_t *c, *prev;
 	struct cs_ipcs_conn_context *cnx;
 	char key_name[ICMAP_KEYNAME_MAXLEN];
 
@@ -756,8 +756,9 @@ void cs_ipcs_stats_update(void)
 		}
 		qb_ipcs_stats_get(ipcs_mapper[i].inst, &srv_stats, QB_FALSE);
 
-		for (c = qb_ipcs_connection_first_get(ipcs_mapper[i].inst); c;
-		     c = qb_ipcs_connection_next_get(ipcs_mapper[i].inst, c)) {
+		for (c = qb_ipcs_connection_first_get(ipcs_mapper[i].inst);
+			 c;
+			 prev = c, c = qb_ipcs_connection_next_get(ipcs_mapper[i].inst, prev), qb_ipcs_connection_unref(prev)) {
 
 			cnx = qb_ipcs_context_get(c);
 			if (cnx == NULL) continue;
@@ -796,7 +797,6 @@ void cs_ipcs_stats_update(void)
 
 			snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "%s.overload", cnx->icmap_path);
 			icmap_set_uint64(key_name, cnx->overload);
-			qb_ipcs_connection_unref(c);
 		}
 	}
 }
