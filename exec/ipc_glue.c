@@ -531,14 +531,12 @@ static void msg_send_or_queue(qb_ipcs_connection_t *conn, const struct iovec *io
 	}
 	outq_item = malloc (sizeof (struct outq_item));
 	if (outq_item == NULL) {
-		qb_ipcs_connection_unref(conn);
 		qb_ipcs_disconnect(conn);
 		return;
 	}
 	outq_item->msg = malloc (bytes_msg);
 	if (outq_item->msg == NULL) {
 		free (outq_item);
-		qb_ipcs_connection_unref(conn);
 		qb_ipcs_disconnect(conn);
 		return;
 	}
