@@ -540,7 +540,10 @@ int totemip_iface_check(struct totem_ip_address *bindnet,
 	if (fd <0)
 		return -1;
 
-        setsockopt(fd,SOL_SOCKET,SO_RCVBUF,&rcvbuf,sizeof(rcvbuf));
+        if (setsockopt(fd,SOL_SOCKET,SO_RCVBUF,&rcvbuf,sizeof(rcvbuf)) == -1) {
+		close(fd);
+		return -1;
+	}
 
         memset(&nladdr, 0, sizeof(nladdr));
         nladdr.nl_family = AF_NETLINK;
