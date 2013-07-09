@@ -58,8 +58,14 @@ SUBDIRS			= include lcr lib exec services tools test pkgconfig \
 			  man init conf
 
 coverity:
+	rm -rf cov
+	make clean
 	cov-build --dir=cov make
-	cov-analyze --dir cov
+	cov-analyze --dir cov \
+	    --concurrency \
+	    -co BAD_FREE:allow_first_field:true \
+	    --security \
+	    --wait-for-license
 	cov-format-errors --dir cov
 
 install-exec-local:
