@@ -797,7 +797,13 @@ req_setup_recv (
 	iov_recv.iov_base = &conn_info->setup_msg[conn_info->setup_bytes_read];
 	iov_recv.iov_len = sizeof (mar_req_setup_t) - conn_info->setup_bytes_read;
 #ifdef COROSYNC_LINUX
-	setsockopt(conn_info->fd, SOL_SOCKET, SO_PASSCRED, &on, sizeof (on));
+	res = setsockopt(conn_info->fd, SOL_SOCKET, SO_PASSCRED, &on, sizeof (on));
+	if (res == -1) {
+		log_printf (LOGSYS_LEVEL_ERROR,
+			"Can't set SO_PASSCRED socket option for IPC connection.\n");
+		ipc_disconnect (conn_info);
+		return (CS_ERR_LIBRARY);
+	}
 #endif
 
 retry_recv:
@@ -905,8 +911,14 @@ retry_recv:
 
 	if (conn_info->setup_bytes_read == sizeof (mar_req_setup_t)) {
 #ifdef COROSYNC_LINUX
-		setsockopt(conn_info->fd, SOL_SOCKET, SO_PASSCRED,
+		res = setsockopt(conn_info->fd, SOL_SOCKET, SO_PASSCRED,
 			&off, sizeof (off));
+		if (res == -1) {
+			log_printf (LOGSYS_LEVEL_ERROR,
+				"Can't set SO_PASSCRED socket option for IPC connection.\n");
+			ipc_disconnect (conn_info);
+			return (CS_ERR_LIBRARY);
+		}
 #endif
 		return (CS_OK);
 	}
@@ -1518,7 +1530,13 @@ retry_accept:
 	 * Request credentials of sender provided by kernel
 	 */
 #ifdef COROSYNC_LINUX
-	setsockopt(new_fd, SOL_SOCKET, SO_PASSCRED, &on, sizeof (on));
+	res = setsockopt(new_fd, SOL_SOCKET, SO_PASSCRED, &on, sizeof (on));
+	if (res == -1) {
+		log_printf (LOGSYS_LEVEL_ERROR,
+			"Can't set SO_PASSCRED socket option for IPC connection.\n");
+		close(new_fd);
+		return (0);
+	}
 #endif
 
 	res = conn_info_create (new_fd);
