@@ -126,7 +126,7 @@ class corosync_needle(ClusterManager):
             "Pat:ChildKilled"  : "%s corosync.*Child process %s terminated with signal 9",
             "Pat:ChildRespawn" : "%s corosync.*Respawning failed child process: %s",
             "Pat:ChildExit"    : "Child process .* exited",
-            "Pat:DC_IDLE"      : ".*A processor joined or left the membership and a new membership.*was formed.",
+            "Pat:DC_IDLE"      : ".*A new membership.*was formed.",
             # Bad news Regexes.  Should never occur.
             "BadRegexes"   : (
                 r"ERROR:",
