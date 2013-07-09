@@ -497,6 +497,7 @@ static int encrypt_and_sign_nss (
 		log_printf(instance->totemudp_log_level_security,
 			"Failure to generate a random number %d\n",
 			PR_GetError());
+		free(inbuf);
 		goto out;
 	}
 
