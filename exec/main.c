@@ -824,7 +824,7 @@ static void timer_function_scheduler_timeout (void *data)
 	timeout_data->max_tv_diff = timeout_data->totem_config->token_timeout * QB_TIME_NS_IN_MSEC * 0.8;
 	qb_loop_timer_add (corosync_poll_handle,
 		QB_LOOP_MED,
-		timeout_data->totem_config->token_timeout / 3,
+		timeout_data->totem_config->token_timeout * QB_TIME_NS_IN_MSEC / 3,
 		timeout_data,
 		timer_function_scheduler_timeout,
 		&timeout_data->handle);
