@@ -107,6 +107,15 @@ typedef void (*icmap_notify_fn_t) (
 	void *user_data);
 
 /*
+ * icmap type.
+ * icmap.c contains global variable (icmap_global_map) of this type. This
+ * is used in every non-reentant call. Also only in this table are implemented
+ * operations like set_ro and tracking of values. Other tables (created by
+ * icmap_init_r) are simple map tables with get/set/iter operations.
+ */
+typedef struct icmap_map *icmap_map_t;
+
+/*
  * Itterator type
  */
 typedef qb_map_iter_t *icmap_iter_t;
@@ -117,15 +126,40 @@ typedef qb_map_iter_t *icmap_iter_t;
 typedef struct icmap_track *icmap_track_t;
 
 /*
- * Initialize icmap
+ * Initialize global icmap
  */
 extern cs_error_t icmap_init(void);
+
+/*
+ * Initialize additional (local, reentrant) icmap_map. Content of variable
+ * result is undefined if return code is not CS_OK.
+ */
+extern cs_error_t icmap_init_r(icmap_map_t *result);
+
+/*
+ * Finalize global icmap
+ */
 extern void icmap_fini(void);
 
 /*
- * Store value with value_len length and type as key_name name in icmap.
+ * Finalize local, reentrant icmap
+ */
+extern void icmap_fini_r(const icmap_map_t map);
+
+/*
+ * Store value with value_len length and type as key_name name in global icmap.
  */
 extern cs_error_t icmap_set(
+	const char *key_name,
+	const void *value,
+	size_t value_len,
+        icmap_value_types_t type);
+
+/*
+ * Reentrant version of icmap_set
+ */
+extern cs_error_t icmap_set_r(
+	const icmap_map_t map,
 	const char *key_name,
 	const void *value,
 	size_t value_len,
@@ -146,10 +180,24 @@ extern cs_error_t icmap_set_float(const char *key_name, float value);
 extern cs_error_t icmap_set_double(const char *key_name, double value);
 extern cs_error_t icmap_set_string(const char *key_name, const char *value);
 
+extern cs_error_t icmap_set_int8_r(const icmap_map_t map, const char *key_name, int8_t value);
+extern cs_error_t icmap_set_uint8_r(const icmap_map_t map, const char *key_name, uint8_t value);
+extern cs_error_t icmap_set_int16_r(const icmap_map_t map, const char *key_name, int16_t value);
+extern cs_error_t icmap_set_uint16_r(const icmap_map_t map, const char *key_name, uint16_t value);
+extern cs_error_t icmap_set_int32_r(const icmap_map_t map, const char *key_name, int32_t value);
+extern cs_error_t icmap_set_uint32_r(const icmap_map_t map, const char *key_name, uint32_t value);
+extern cs_error_t icmap_set_int64_r(const icmap_map_t map, const char *key_name, int64_t value);
+extern cs_error_t icmap_set_uint64_r(const icmap_map_t map, const char *key_name, uint64_t value);
+extern cs_error_t icmap_set_float_r(const icmap_map_t map, const char *key_name, float value);
+extern cs_error_t icmap_set_double_r(const icmap_map_t map, const char *key_name, double value);
+extern cs_error_t icmap_set_string_r(const icmap_map_t map, const char *key_name, const char *value);
+
 /*
  * Delete key from map
  */
 extern cs_error_t icmap_delete(const char *key_name);
+
+extern cs_error_t icmap_delete_r(const icmap_map_t map, const char *key_name);
 
 /*
  * Retrieve value of key key_name and store it in user preallocated value pointer.
@@ -166,6 +214,16 @@ extern cs_error_t icmap_get(
         icmap_value_types_t *type);
 
 /*
+ * Same as icmap_get but it's reentrant and operates on given icmap_map
+ */
+extern cs_error_t icmap_get_r(
+	const icmap_map_t map,
+	const char *key_name,
+	void *value,
+	size_t *value_len,
+	icmap_value_types_t *type);
+
+/*
  * Shortcuts for icmap_get
  */
 extern cs_error_t icmap_get_int8(const char *key_name, int8_t *i8);
@@ -178,6 +236,21 @@ extern cs_error_t icmap_get_int64(const char *key_name, int64_t *i64);
 extern cs_error_t icmap_get_uint64(const char *key_name, uint64_t *u64);
 extern cs_error_t icmap_get_float(const char *key_name, float *flt);
 extern cs_error_t icmap_get_double(const char *key_name, double *dbl);
+
+/*
+ * Shortcuts for icmap_get_r
+ */
+extern cs_error_t icmap_get_int8_r(const icmap_map_t map, const char *key_name, int8_t *i8);
+extern cs_error_t icmap_get_uint8_r(const icmap_map_t map, const char *key_name, uint8_t *u8);
+extern cs_error_t icmap_get_int16_r(const icmap_map_t map, const char *key_name, int16_t *i16);
+extern cs_error_t icmap_get_uint16_r(const icmap_map_t map, const char *key_name, uint16_t *u16);
+extern cs_error_t icmap_get_int32_r(const icmap_map_t map, const char *key_name, int32_t *i32);
+extern cs_error_t icmap_get_uint32_r(const icmap_map_t map, const char *key_name, uint32_t *u32);
+extern cs_error_t icmap_get_int64_r(const icmap_map_t map, const char *key_name, int64_t *i64);
+extern cs_error_t icmap_get_uint64_r(const icmap_map_t map, const char *key_name, uint64_t *u64);
+extern cs_error_t icmap_get_float_r(const icmap_map_t map, const char *key_name, float *flt);
+extern cs_error_t icmap_get_double_r(const icmap_map_t map, const char *key_name, double *dbl);
+
 /*
  * Shortcut for icmap_get for string type. Returned string is newly allocated and
  * caller is responsible for freeing memory
@@ -189,6 +262,8 @@ extern cs_error_t icmap_get_string(const char *key_name, char **str);
  */
 extern cs_error_t icmap_adjust_int(const char *key_name, int32_t step);
 
+extern cs_error_t icmap_adjust_int_r(const icmap_map_t map, const char *key_name, int32_t step);
+
 /*
  * Defined only for [u]int* values. It adds step to current value. Difference
  * between this function and icmap_adjust_int is given in fact, that in
@@ -197,15 +272,21 @@ extern cs_error_t icmap_adjust_int(const char *key_name, int32_t step);
  */
 extern cs_error_t icmap_fast_adjust_int(const char *key_name, int32_t step);
 
+extern cs_error_t icmap_fast_adjust_int_r(const icmap_map_t map, const char *key_name, int32_t step);
+
 /*
  * Increase stored value by one
  */
 extern cs_error_t icmap_inc(const char *key_name);
 
+extern cs_error_t icmap_inc_r(const icmap_map_t map, const char *key_name);
+
 /*
  * Decrease stored value by one
  */
 extern cs_error_t icmap_dec(const char *key_name);
+
+extern cs_error_t icmap_dec_r(const icmap_map_t map, const char *key_name);
 
 /*
  * Increase stored value by one. Difference between this function and icmap_inc
@@ -213,16 +294,22 @@ extern cs_error_t icmap_dec(const char *key_name);
  */
 extern cs_error_t icmap_fast_inc(const char *key_name);
 
+extern cs_error_t icmap_fast_inc_r(const icmap_map_t map, const char *key_name);
+
 /*
  * Decrease stored value by one. Difference between this function and icmap_dec
  * is same as between icmap_adjust_int and icmap_fast_adjust_int.
  */
 extern cs_error_t icmap_fast_dec(const char *key_name);
 
+extern cs_error_t icmap_fast_dec_r(const icmap_map_t map, const char *key_name);
+
 /*
  * Initialize iterator with given prefix
  */
 extern icmap_iter_t icmap_iter_init(const char *prefix);
+
+extern icmap_iter_t icmap_iter_init_r(const icmap_map_t map, const char *prefix);
 
 /*
  * Return next item in iterator iter. value_len and type are optional (= can be NULL), but if set,

@@ -52,7 +52,11 @@ struct icmap_item {
 	char value[];
 };
 
-static qb_map_t *icmap_map;
+struct icmap_map {
+	qb_map_t *qb_map;
+};
+
+static icmap_map_t icmap_global_map;
 
 struct icmap_track {
 	char *key_name;
@@ -114,7 +118,8 @@ static int icmap_is_valid_name_char(char c);
 /*
  * Helper for getting integer and float value with given type for key key_name and store it in value.
  */
-static cs_error_t icmap_get_int(
+static cs_error_t icmap_get_int_r(
+	const icmap_map_t map,
 	const char *key_name,
 	void *value,
 	icmap_value_types_t type);
@@ -183,17 +188,27 @@ static void icmap_map_free_cb(uint32_t event,
 	}
 }
 
-cs_error_t icmap_init(void)
+cs_error_t icmap_init_r(icmap_map_t *result)
 {
 	int32_t err;
 
-	icmap_map = qb_trie_create();
-	if (icmap_map == NULL)
+	*result = malloc(sizeof(struct icmap_map));
+	if (*result == NULL) {
+		return (CS_ERR_NO_MEMORY);
+	}
+
+        (*result)->qb_map = qb_trie_create();
+	if ((*result)->qb_map == NULL)
 		return (CS_ERR_INIT);
 
-	err = qb_map_notify_add(icmap_map, NULL, icmap_map_free_cb, QB_MAP_NOTIFY_FREE, NULL);
+	err = qb_map_notify_add((*result)->qb_map, NULL, icmap_map_free_cb, QB_MAP_NOTIFY_FREE, NULL);
 
 	return (qb_to_cs_error(err));
+}
+
+cs_error_t icmap_init(void)
+{
+	return (icmap_init_r(&icmap_global_map));
 }
 
 static void icmap_set_ro_access_free(void)
@@ -222,8 +237,18 @@ static void icmap_del_all_track(void)
 	}
 }
 
+void icmap_fini_r(const icmap_map_t map)
+{
+
+	qb_map_destroy(map->qb_map);
+	free(map);
+
+	return;
+}
+
 void icmap_fini(void)
 {
+
 	icmap_del_all_track();
 	/*
 	 * catch 22 warning:
@@ -232,9 +257,10 @@ void icmap_fini(void)
 	 * -> qb_map_notify_del_2(icmap_map, NULL, icmap_map_free_cb, QB_MAP_NOTIFY_FREE, NULL);
 	 * and we cannot call it after map_destroy. joy! :)
 	 */
-	qb_map_destroy(icmap_map);
+	icmap_fini_r(icmap_global_map);
 	icmap_set_ro_access_free();
-	return;
+
+	return ;
 }
 
 static int icmap_is_valid_name_char(char c)
@@ -348,7 +374,8 @@ static int icmap_item_eq(const struct icmap_item *item, const void *value, size_
 	return (0);
 }
 
-cs_error_t icmap_set(
+cs_error_t icmap_set_r(
+	const icmap_map_t map,
 	const char *key_name,
 	const void *value,
 	size_t value_len,
@@ -367,7 +394,7 @@ cs_error_t icmap_set(
 		return (CS_ERR_INVALID_PARAM);
 	}
 
-	item = qb_map_get(icmap_map, key_name);
+	item = qb_map_get(map->qb_map, key_name);
 	if (item != NULL) {
 		/*
 		 * Check that key is really changed
@@ -422,82 +449,158 @@ cs_error_t icmap_set(
 		((char *)new_item->value)[new_value_len - 1] = 0;
 	}
 
-	qb_map_put(icmap_map, new_item->key_name, new_item);
+	qb_map_put(map->qb_map, new_item->key_name, new_item);
 
 	return (CS_OK);
 }
 
-cs_error_t icmap_set_int8(const char *key_name, int8_t value)
+cs_error_t icmap_set(
+	const char *key_name,
+	const void *value,
+	size_t value_len,
+	icmap_value_types_t type)
 {
 
-	return (icmap_set(key_name, &value, sizeof(value), ICMAP_VALUETYPE_INT8));
+	return (icmap_set_r(icmap_global_map, key_name, value, value_len, type));
 }
 
-cs_error_t icmap_set_uint8(const char *key_name, uint8_t value)
+cs_error_t icmap_set_int8_r(const icmap_map_t map, const char *key_name, int8_t value)
 {
 
-	return (icmap_set(key_name, &value, sizeof(value), ICMAP_VALUETYPE_UINT8));
+	return (icmap_set_r(map, key_name, &value, sizeof(value), ICMAP_VALUETYPE_INT8));
 }
 
-cs_error_t icmap_set_int16(const char *key_name, int16_t value)
+cs_error_t icmap_set_uint8_r(const icmap_map_t map, const char *key_name, uint8_t value)
 {
 
-	return (icmap_set(key_name, &value, sizeof(value), ICMAP_VALUETYPE_INT16));
+	return (icmap_set_r(map, key_name, &value, sizeof(value), ICMAP_VALUETYPE_UINT8));
 }
 
-cs_error_t icmap_set_uint16(const char *key_name, uint16_t value)
+cs_error_t icmap_set_int16_r(const icmap_map_t map, const char *key_name, int16_t value)
 {
 
-	return (icmap_set(key_name, &value, sizeof(value), ICMAP_VALUETYPE_UINT16));
+	return (icmap_set_r(map,key_name, &value, sizeof(value), ICMAP_VALUETYPE_INT16));
 }
 
-cs_error_t icmap_set_int32(const char *key_name, int32_t value)
+cs_error_t icmap_set_uint16_r(const icmap_map_t map, const char *key_name, uint16_t value)
 {
 
-	return (icmap_set(key_name, &value, sizeof(value), ICMAP_VALUETYPE_INT32));
+	return (icmap_set_r(map, key_name, &value, sizeof(value), ICMAP_VALUETYPE_UINT16));
 }
 
-cs_error_t icmap_set_uint32(const char *key_name, uint32_t value)
+cs_error_t icmap_set_int32_r(const icmap_map_t map, const char *key_name, int32_t value)
 {
 
-	return (icmap_set(key_name, &value, sizeof(value), ICMAP_VALUETYPE_UINT32));
+	return (icmap_set_r(map, key_name, &value, sizeof(value), ICMAP_VALUETYPE_INT32));
 }
 
-cs_error_t icmap_set_int64(const char *key_name, int64_t value)
+cs_error_t icmap_set_uint32_r(const icmap_map_t map, const char *key_name, uint32_t value)
 {
 
-	return (icmap_set(key_name, &value, sizeof(value), ICMAP_VALUETYPE_INT64));
+	return (icmap_set_r(map, key_name, &value, sizeof(value), ICMAP_VALUETYPE_UINT32));
 }
 
-cs_error_t icmap_set_uint64(const char *key_name, uint64_t value)
+cs_error_t icmap_set_int64_r(const icmap_map_t map, const char *key_name, int64_t value)
 {
 
-	return (icmap_set(key_name, &value, sizeof(value), ICMAP_VALUETYPE_UINT64));
+	return (icmap_set_r(map, key_name, &value, sizeof(value), ICMAP_VALUETYPE_INT64));
 }
 
-cs_error_t icmap_set_float(const char *key_name, float value)
+cs_error_t icmap_set_uint64_r(const icmap_map_t map, const char *key_name, uint64_t value)
 {
 
-	return (icmap_set(key_name, &value, sizeof(value), ICMAP_VALUETYPE_FLOAT));
+	return (icmap_set_r(map, key_name, &value, sizeof(value), ICMAP_VALUETYPE_UINT64));
 }
 
-cs_error_t icmap_set_double(const char *key_name, double value)
+cs_error_t icmap_set_float_r(const icmap_map_t map, const char *key_name, float value)
 {
 
-	return (icmap_set(key_name, &value, sizeof(value), ICMAP_VALUETYPE_DOUBLE));
+	return (icmap_set_r(map, key_name, &value, sizeof(value), ICMAP_VALUETYPE_FLOAT));
 }
 
-cs_error_t icmap_set_string(const char *key_name, const char *value)
+cs_error_t icmap_set_double_r(const icmap_map_t map, const char *key_name, double value)
+{
+
+	return (icmap_set_r(map, key_name, &value, sizeof(value), ICMAP_VALUETYPE_DOUBLE));
+}
+
+cs_error_t icmap_set_string_r(const icmap_map_t map, const char *key_name, const char *value)
 {
 
 	if (value == NULL) {
 		return (CS_ERR_INVALID_PARAM);
 	}
 
-	return (icmap_set(key_name, value, strlen(value), ICMAP_VALUETYPE_STRING));
+	return (icmap_set_r(map, key_name, value, strlen(value), ICMAP_VALUETYPE_STRING));
 }
 
-cs_error_t icmap_delete(const char *key_name)
+cs_error_t icmap_set_int8(const char *key_name, int8_t value)
+{
+
+	return (icmap_set_int8_r(icmap_global_map, key_name, value));
+}
+
+cs_error_t icmap_set_uint8(const char *key_name, uint8_t value)
+{
+
+	return (icmap_set_uint8_r(icmap_global_map, key_name, value));
+}
+
+cs_error_t icmap_set_int16(const char *key_name, int16_t value)
+{
+
+	return (icmap_set_int16_r(icmap_global_map, key_name, value));
+}
+
+cs_error_t icmap_set_uint16(const char *key_name, uint16_t value)
+{
+
+	return (icmap_set_uint16_r(icmap_global_map, key_name, value));
+}
+
+cs_error_t icmap_set_int32(const char *key_name, int32_t value)
+{
+
+	return (icmap_set_int32_r(icmap_global_map, key_name, value));
+}
+
+cs_error_t icmap_set_uint32(const char *key_name, uint32_t value)
+{
+
+	return (icmap_set_uint32_r(icmap_global_map, key_name, value));
+}
+
+cs_error_t icmap_set_int64(const char *key_name, int64_t value)
+{
+
+	return (icmap_set_int64_r(icmap_global_map, key_name, value));
+}
+
+cs_error_t icmap_set_uint64(const char *key_name, uint64_t value)
+{
+
+	return (icmap_set_uint64_r(icmap_global_map, key_name, value));
+}
+
+cs_error_t icmap_set_float(const char *key_name, float value)
+{
+
+	return (icmap_set_float_r(icmap_global_map, key_name, value));
+}
+
+cs_error_t icmap_set_double(const char *key_name, double value)
+{
+
+	return (icmap_set_double_r(icmap_global_map, key_name, value));
+}
+
+cs_error_t icmap_set_string(const char *key_name, const char *value)
+{
+
+	return (icmap_set_string_r(icmap_global_map, key_name, value));
+}
+
+cs_error_t icmap_delete_r(const icmap_map_t map, const char *key_name)
 {
 	struct icmap_item *item;
 
@@ -505,19 +608,26 @@ cs_error_t icmap_delete(const char *key_name)
 		return (CS_ERR_INVALID_PARAM);
 	}
 
-	item = qb_map_get(icmap_map, key_name);
+	item = qb_map_get(map->qb_map, key_name);
 	if (item == NULL) {
 		return (CS_ERR_NOT_EXIST);
 	}
 
-	if (qb_map_rm(icmap_map, item->key_name) != QB_TRUE) {
+	if (qb_map_rm(map->qb_map, item->key_name) != QB_TRUE) {
 		return (CS_ERR_NOT_EXIST);
 	}
 
 	return (CS_OK);
 }
 
-cs_error_t icmap_get(
+cs_error_t icmap_delete(const char *key_name)
+{
+
+	return (icmap_delete_r(icmap_global_map, key_name));
+}
+
+cs_error_t icmap_get_r(
+	const icmap_map_t map,
 	const char *key_name,
 	void *value,
 	size_t *value_len,
@@ -529,7 +639,7 @@ cs_error_t icmap_get(
 		return (CS_ERR_INVALID_PARAM);
 	}
 
-	item = qb_map_get(icmap_map, key_name);
+	item = qb_map_get(map->qb_map, key_name);
 	if (item == NULL) {
 		return (CS_ERR_NOT_EXIST);
 	}
@@ -555,7 +665,18 @@ cs_error_t icmap_get(
 	return (CS_OK);
 }
 
-static cs_error_t icmap_get_int(
+cs_error_t icmap_get(
+	const char *key_name,
+	void *value,
+	size_t *value_len,
+	icmap_value_types_t *type)
+{
+
+	return (icmap_get_r(icmap_global_map, key_name, value, value_len, type));
+}
+
+static cs_error_t icmap_get_int_r(
+	const icmap_map_t map,
 	const char *key_name,
 	void *value,
 	icmap_value_types_t type)
@@ -581,64 +702,124 @@ static cs_error_t icmap_get_int(
 	return (CS_OK);
 }
 
+cs_error_t icmap_get_int8_r(const icmap_map_t map, const char *key_name, int8_t *i8)
+{
+
+	return (icmap_get_int_r(map, key_name, i8, ICMAP_VALUETYPE_INT8));
+}
+
+cs_error_t icmap_get_uint8_r(const icmap_map_t map, const char *key_name, uint8_t *u8)
+{
+
+	return (icmap_get_int_r(map, key_name, u8, ICMAP_VALUETYPE_UINT8));
+}
+
+cs_error_t icmap_get_int16_r(const icmap_map_t map, const char *key_name, int16_t *i16)
+{
+
+	return (icmap_get_int_r(map, key_name, i16, ICMAP_VALUETYPE_INT16));
+}
+
+cs_error_t icmap_get_uint16_r(const icmap_map_t map, const char *key_name, uint16_t *u16)
+{
+
+	return (icmap_get_int_r(map, key_name, u16, ICMAP_VALUETYPE_UINT16));
+}
+
+cs_error_t icmap_get_int32_r(const icmap_map_t map, const char *key_name, int32_t *i32)
+{
+
+	return (icmap_get_int_r(map, key_name, i32, ICMAP_VALUETYPE_INT32));
+}
+
+cs_error_t icmap_get_uint32_r(const icmap_map_t map, const char *key_name, uint32_t *u32)
+{
+
+	return (icmap_get_int_r(map, key_name, u32, ICMAP_VALUETYPE_UINT32));
+}
+
+cs_error_t icmap_get_int64_r(const icmap_map_t map, const char *key_name, int64_t *i64)
+{
+
+	return(icmap_get_int_r(map, key_name, i64, ICMAP_VALUETYPE_INT64));
+}
+
+cs_error_t icmap_get_uint64_r(const icmap_map_t map, const char *key_name, uint64_t *u64)
+{
+
+	return (icmap_get_int_r(map, key_name, u64, ICMAP_VALUETYPE_UINT64));
+}
+
+cs_error_t icmap_get_float_r(const icmap_map_t map, const char *key_name, float *flt)
+{
+
+	return (icmap_get_int_r(map, key_name, flt, ICMAP_VALUETYPE_FLOAT));
+}
+
+cs_error_t icmap_get_double_r(const icmap_map_t map, const char *key_name, double *dbl)
+{
+
+	return (icmap_get_int_r(map, key_name, dbl, ICMAP_VALUETYPE_DOUBLE));
+}
+
 cs_error_t icmap_get_int8(const char *key_name, int8_t *i8)
 {
 
-	return (icmap_get_int(key_name, i8, ICMAP_VALUETYPE_INT8));
+	return (icmap_get_int8_r(icmap_global_map, key_name, i8));
 }
 
 cs_error_t icmap_get_uint8(const char *key_name, uint8_t *u8)
 {
 
-	return (icmap_get_int(key_name, u8, ICMAP_VALUETYPE_UINT8));
+	return (icmap_get_uint8_r(icmap_global_map, key_name, u8));
 }
 
 cs_error_t icmap_get_int16(const char *key_name, int16_t *i16)
 {
 
-	return (icmap_get_int(key_name, i16, ICMAP_VALUETYPE_INT16));
+	return (icmap_get_int16_r(icmap_global_map, key_name, i16));
 }
 
 cs_error_t icmap_get_uint16(const char *key_name, uint16_t *u16)
 {
 
-	return (icmap_get_int(key_name, u16, ICMAP_VALUETYPE_UINT16));
+	return (icmap_get_uint16_r(icmap_global_map, key_name, u16));
 }
 
 cs_error_t icmap_get_int32(const char *key_name, int32_t *i32)
 {
 
-	return (icmap_get_int(key_name, i32, ICMAP_VALUETYPE_INT32));
+	return (icmap_get_int32_r(icmap_global_map, key_name, i32));
 }
 
 cs_error_t icmap_get_uint32(const char *key_name, uint32_t *u32)
 {
 
-	return (icmap_get_int(key_name, u32, ICMAP_VALUETYPE_UINT32));
+	return (icmap_get_uint32_r(icmap_global_map, key_name, u32));
 }
 
 cs_error_t icmap_get_int64(const char *key_name, int64_t *i64)
 {
 
-	return(icmap_get_int(key_name, i64, ICMAP_VALUETYPE_INT64));
+	return(icmap_get_int64_r(icmap_global_map, key_name, i64));
 }
 
 cs_error_t icmap_get_uint64(const char *key_name, uint64_t *u64)
 {
 
-	return (icmap_get_int(key_name, u64, ICMAP_VALUETYPE_UINT64));
+	return (icmap_get_uint64_r(icmap_global_map, key_name, u64));
 }
 
 cs_error_t icmap_get_float(const char *key_name, float *flt)
 {
 
-	return (icmap_get_int(key_name, flt, ICMAP_VALUETYPE_FLOAT));
+	return (icmap_get_float_r(icmap_global_map, key_name, flt));
 }
 
 cs_error_t icmap_get_double(const char *key_name, double *dbl)
 {
 
-	return (icmap_get_int(key_name, dbl, ICMAP_VALUETYPE_DOUBLE));
+	return (icmap_get_double_r(icmap_global_map, key_name, dbl));
 }
 
 cs_error_t icmap_get_string(const char *key_name, char **str)
@@ -675,7 +856,8 @@ return_error:
 	return (res);
 }
 
-cs_error_t icmap_adjust_int(
+cs_error_t icmap_adjust_int_r(
+	const icmap_map_t map,
 	const char *key_name,
 	int32_t step)
 {
@@ -690,7 +872,7 @@ cs_error_t icmap_adjust_int(
 		return (CS_ERR_INVALID_PARAM);
 	}
 
-	item = qb_map_get(icmap_map, key_name);
+	item = qb_map_get(map->qb_map, key_name);
 	if (item == NULL) {
 		return (CS_ERR_NOT_EXIST);
 	}
@@ -731,7 +913,16 @@ cs_error_t icmap_adjust_int(
 	return (err);
 }
 
-cs_error_t icmap_fast_adjust_int(
+cs_error_t icmap_adjust_int(
+	const char *key_name,
+	int32_t step)
+{
+
+	return (icmap_adjust_int_r(icmap_global_map, key_name, step));
+}
+
+cs_error_t icmap_fast_adjust_int_r(
+	const icmap_map_t map,
 	const char *key_name,
 	int32_t step)
 {
@@ -742,7 +933,7 @@ cs_error_t icmap_fast_adjust_int(
 		return (CS_ERR_INVALID_PARAM);
 	}
 
-	item = qb_map_get(icmap_map, key_name);
+	item = qb_map_get(map->qb_map, key_name);
 	if (item == NULL) {
 		return (CS_ERR_NOT_EXIST);
 	}
@@ -773,36 +964,70 @@ cs_error_t icmap_fast_adjust_int(
 	}
 
 	if (err == CS_OK) {
-		qb_map_put(icmap_map, item->key_name, item);
+		qb_map_put(map->qb_map, item->key_name, item);
 	}
 
 	return (err);
 }
 
+cs_error_t icmap_fast_adjust_int(
+	const char *key_name,
+	int32_t step)
+{
+
+	return (icmap_fast_adjust_int_r(icmap_global_map, key_name, step));
+}
+
+cs_error_t icmap_inc_r(const icmap_map_t map, const char *key_name)
+{
+	return (icmap_adjust_int_r(map, key_name, 1));
+}
+
 cs_error_t icmap_inc(const char *key_name)
 {
-	return (icmap_adjust_int(key_name, 1));
+	return (icmap_inc_r(icmap_global_map, key_name));
+}
+
+cs_error_t icmap_dec_r(const icmap_map_t map, const char *key_name)
+{
+	return (icmap_adjust_int_r(map, key_name, -1));
 }
 
 cs_error_t icmap_dec(const char *key_name)
 {
-	return (icmap_adjust_int(key_name, -1));
+	return (icmap_dec_r(icmap_global_map, key_name));
+}
+
+cs_error_t icmap_fast_inc_r(const icmap_map_t map, const char *key_name)
+{
+	return (icmap_fast_adjust_int_r(map, key_name, 1));
 }
 
 cs_error_t icmap_fast_inc(const char *key_name)
 {
-	return (icmap_fast_adjust_int(key_name, 1));
+	return (icmap_fast_inc_r(icmap_global_map, key_name));
+}
+
+cs_error_t icmap_fast_dec_r(const icmap_map_t map, const char *key_name)
+{
+	return (icmap_fast_adjust_int_r(map, key_name, -1));
 }
 
 cs_error_t icmap_fast_dec(const char *key_name)
 {
-	return (icmap_fast_adjust_int(key_name, -1));
+	return (icmap_fast_dec_r(icmap_global_map, key_name));
+}
+
+icmap_iter_t icmap_iter_init_r(const icmap_map_t map, const char *prefix)
+{
+	return (qb_map_pref_iter_create(map->qb_map, prefix));
 }
 
 icmap_iter_t icmap_iter_init(const char *prefix)
 {
-	return (qb_map_pref_iter_create(icmap_map, prefix));
+	return (icmap_iter_init_r(icmap_global_map, prefix));
 }
+
 
 const char *icmap_iter_next(icmap_iter_t iter, size_t *value_len, icmap_value_types_t *type)
 {
@@ -899,7 +1124,7 @@ cs_error_t icmap_track_add(
 	(*icmap_track)->notify_fn = notify_fn;
 	(*icmap_track)->user_data = user_data;
 
-	if ((err = qb_map_notify_add(icmap_map, (*icmap_track)->key_name, icmap_notify_fn,
+	if ((err = qb_map_notify_add(icmap_global_map->qb_map, (*icmap_track)->key_name, icmap_notify_fn,
 					icmap_tt_to_qbtt(track_type), *icmap_track)) != 0) {
 		free((*icmap_track)->key_name);
 		free(*icmap_track);
@@ -917,7 +1142,7 @@ cs_error_t icmap_track_delete(icmap_track_t icmap_track)
 {
 	int32_t err;
 
-	if ((err = qb_map_notify_del_2(icmap_map, icmap_track->key_name,
+	if ((err = qb_map_notify_del_2(icmap_global_map->qb_map, icmap_track->key_name,
 				icmap_notify_fn, icmap_tt_to_qbtt(icmap_track->track_type), icmap_track)) != 0) {
 		return (qb_to_cs_error(err));
 	}
