@@ -786,6 +786,8 @@ error_request_buffer:
 	memory_unmap (ipc_instance->control_buffer, 8192);
 	unlink (path_data->control_map_path);
 error_connect:
+	close (ipc_instance->user_app_fd);
+	ipc_instance->user_app_fd = -1;
 	close (request_fd);
 
 	hdb_handle_destroy (&ipc_hdb, *handle);
