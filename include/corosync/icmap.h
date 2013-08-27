@@ -147,6 +147,11 @@ extern void icmap_fini(void);
 extern void icmap_fini_r(const icmap_map_t map);
 
 /*
+ * Return global icmap
+ */
+extern icmap_map_t icmap_get_global_map(void);
+
+/*
  * Store value with value_len length and type as key_name name in global icmap.
  */
 extern cs_error_t icmap_set(

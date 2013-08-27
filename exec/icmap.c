@@ -263,6 +263,12 @@ void icmap_fini(void)
 	return ;
 }
 
+icmap_map_t icmap_get_global_map(void)
+{
+
+	return (icmap_global_map);
+}
+
 static int icmap_is_valid_name_char(char c)
 {
 	return ((c >= 'a' && c <= 'z') ||
