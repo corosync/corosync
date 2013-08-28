@@ -125,6 +125,18 @@ static cs_error_t icmap_get_int_r(
 	icmap_value_types_t type);
 
 /*
+ * Return raw item value data. Internal function used by icmap_get_r which does most
+ * of arguments validity checks but doesn't copy data (it returns raw item data
+ * pointer). It's not very safe tho it's static.
+ */
+static cs_error_t icmap_get_ref_r(
+	const icmap_map_t map,
+	const char *key_name,
+	void **value,
+	size_t *value_len,
+	icmap_value_types_t *type);
+
+/*
  * Function implementation
  */
 static int32_t icmap_tt_to_qbtt(int32_t track_type)
@@ -636,10 +648,10 @@ cs_error_t icmap_delete(const char *key_name)
 	return (icmap_delete_r(icmap_global_map, key_name));
 }
 
-cs_error_t icmap_get_r(
+static cs_error_t icmap_get_ref_r(
 	const icmap_map_t map,
 	const char *key_name,
-	void *value,
+	void **value,
 	size_t *value_len,
 	icmap_value_types_t *type)
 {
@@ -658,18 +670,45 @@ cs_error_t icmap_get_r(
 		*type = item->type;
 	}
 
+	if (value_len != NULL) {
+		*value_len = item->value_len;
+	}
+
+	if (value != NULL) {
+		*value = item->value;
+	}
+
+	return (CS_OK);
+}
+
+cs_error_t icmap_get_r(
+	const icmap_map_t map,
+	const char *key_name,
+	void *value,
+	size_t *value_len,
+	icmap_value_types_t *type)
+{
+	cs_error_t res;
+	void *tmp_value;
+	size_t tmp_value_len;
+
+	res = icmap_get_ref_r(map, key_name, &tmp_value, &tmp_value_len, type);
+	if (res != CS_OK) {
+		return (res);
+	}
+
 	if (value == NULL) {
 		if (value_len != NULL) {
-			*value_len = item->value_len;
+			*value_len = tmp_value_len;
 		}
 	} else {
-		if (value_len == NULL || *value_len < item->value_len) {
+		if (value_len == NULL || *value_len < tmp_value_len) {
 			return (CS_ERR_INVALID_PARAM);
 		}
 
-		*value_len = item->value_len;
+		*value_len = tmp_value_len;
 
-		memcpy(value, item->value, item->value_len);
+		memcpy(value, tmp_value, tmp_value_len);
 	}
 
 	return (CS_OK);
