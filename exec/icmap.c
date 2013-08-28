@@ -345,7 +345,11 @@ static int icmap_check_value_len(const void *value, size_t value_len, icmap_valu
 	}
 
 	if (type == ICMAP_VALUETYPE_STRING) {
-		if (value_len > strlen((const char *)value)) {
+		/*
+		 * value_len can be shorter then real string length, but never
+		 * longer (+ 1 is because of 0 at the end of string)
+		 */
+		if (value_len > strlen((const char *)value) + 1) {
 			return (-1);
 		} else {
 			return (0);
