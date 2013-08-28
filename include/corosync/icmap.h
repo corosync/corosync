@@ -368,6 +368,11 @@ extern int icmap_is_key_ro(const char *key_name);
  */
 extern void icmap_convert_name_to_valid_name(char *key_name);
 
+/*
+ * Copy content of src_map icmap to dst_map icmap.
+ */
+extern cs_error_t icmap_copy_map(icmap_map_t dst_map, const icmap_map_t src_map);
+
 #ifdef __cplusplus
 }
 #endif

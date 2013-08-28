@@ -1280,3 +1280,37 @@ int icmap_is_key_ro(const char *key_name)
 	return (CS_FALSE);
 
 }
+
+cs_error_t icmap_copy_map(icmap_map_t dst_map, const icmap_map_t src_map)
+{
+	icmap_iter_t iter;
+	size_t value_len;
+	icmap_value_types_t value_type;
+	const char *key_name;
+	cs_error_t err;
+	void *value;
+
+	iter = icmap_iter_init_r(src_map, NULL);
+	if (iter == NULL) {
+		return (CS_ERR_NO_MEMORY);
+	}
+
+	err = CS_OK;
+
+	while ((key_name = icmap_iter_next(iter, &value_len, &value_type)) != NULL) {
+		err = icmap_get_ref_r(src_map, key_name, &value, &value_len, &value_type);
+		if (err != CS_OK) {
+			goto exit_iter_finalize;
+		}
+
+		err = icmap_set_r(dst_map, key_name, value, value_len, value_type);
+		if (err != CS_OK) {
+			goto exit_iter_finalize;
+		}
+	}
+
+exit_iter_finalize:
+	icmap_iter_finalize(iter);
+
+	return (err);
+}
