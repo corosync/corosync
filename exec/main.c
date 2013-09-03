@@ -232,6 +232,7 @@ static int32_t sig_diag_handler (int num, void *data)
 
 static int32_t sig_exit_handler (int num, void *data)
 {
+	log_printf(LOGSYS_LEVEL_NOTICE, "Node was shut down by a signal");
 	corosync_service_unlink_all (api, unlink_all_completed);
 	return 0;
 }
