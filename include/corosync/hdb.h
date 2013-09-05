@@ -161,6 +161,7 @@ static inline int hdb_handle_create (
 
 	instance = (void *)malloc (instance_size);
 	if (instance == 0) {
+		hdb_database_unlock (&handle_database->lock);
 		errno = ENOMEM;
 		return (-1);
 	}
