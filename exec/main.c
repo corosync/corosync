@@ -182,12 +182,26 @@ static void unlink_all_completed (void)
 void corosync_shutdown_request (void)
 {
 	char buf = 0;
+	ssize_t res;
 
 	if (corosync_exit_pipe[1] == 0) {
 		corosync_exit_error (AIS_DONE_EXIT);
 	}
 
-	write(corosync_exit_pipe[1], &buf, sizeof(buf));
+retry_write:
+	res = write(corosync_exit_pipe[1], &buf, sizeof(buf));
+	if (res == -1) {
+		if (errno == EINTR || errno == EAGAIN) {
+			goto retry_write;
+		} else {
+			/*
+			 * Other error. This shouldn't happen. We cannot
+			 * signalize exit_pipe but user reqested exit,
+			 * so we will shutdown uncleanly
+			 */
+			assert(res == 1);
+		}
+	}
 }
 
 static int corosync_exit_dispatch_fn (
