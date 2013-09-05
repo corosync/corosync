@@ -712,12 +712,17 @@ cs_error_t confdb_object_find_destroy(
 	}
 
 	context = find_iter_context(&confdb_inst->object_find_head, parent_object_handle);
+	if (context == NULL) {
+		error = CS_ERR_LIBRARY;
+		goto error_exit;
+	}
 	error = do_find_destroy(confdb_inst, context->find_handle);
 	if (error == CS_OK) {
 		list_del(&context->list);
 		free(context);
 	}
 
+error_exit:
 	(void)hdb_handle_put (&confdb_handle_t_db, handle);
 	return error;
 }
@@ -736,12 +741,17 @@ cs_error_t confdb_object_iter_destroy(
 	}
 
 	context = find_iter_context(&confdb_inst->object_iter_head, parent_object_handle);
+	if (context == NULL) {
+		error = CS_ERR_LIBRARY;
+		goto error_exit;
+	}
 	error = do_find_destroy(confdb_inst, context->find_handle);
 	if (error == CS_OK) {
 		list_del(&context->list);
 		free(context);
 	}
 
+error_exit:
 	(void)hdb_handle_put (&confdb_handle_t_db, handle);
 	return error;
 }
