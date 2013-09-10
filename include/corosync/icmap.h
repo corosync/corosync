@@ -152,6 +152,19 @@ extern void icmap_fini_r(const icmap_map_t map);
 extern icmap_map_t icmap_get_global_map(void);
 
 /*
+ * Compare value of key with name key_name1 in map1 with key with name key_name2
+ * in map2. Two values must have same type, length and value to be considered equal.
+ * Function returns 0 when any of map1, key_name1, map2, key_name2 are NULL, or
+ * key_name is not found in map, or keys are not equal. != 0 is returned when
+ * values are equal.
+ */
+extern int icmap_key_value_eq(
+	const icmap_map_t map1,
+	const char *key_name1,
+	const icmap_map_t map2,
+	const char *key_name2);
+
+/*
  * Store value with value_len length and type as key_name name in global icmap.
  */
 extern cs_error_t icmap_set(

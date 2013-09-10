@@ -396,6 +396,28 @@ static int icmap_item_eq(const struct icmap_item *item, const void *value, size_
 	return (0);
 }
 
+int icmap_key_value_eq(
+	const icmap_map_t map1,
+	const char *key_name1,
+	const icmap_map_t map2,
+	const char *key_name2)
+{
+	struct icmap_item *item1, *item2;
+
+	if (map1 == NULL || key_name1 == NULL || map2 == NULL || key_name2 == NULL) {
+		return (0);
+	}
+
+	item1 = qb_map_get(map1->qb_map, key_name1);
+	item2 = qb_map_get(map2->qb_map, key_name2);
+
+	if (item1 == NULL || item2 == NULL) {
+		return (0);
+	}
+
+	return (icmap_item_eq(item1, item2->value, item2->value_len, item2->type));
+}
+
 cs_error_t icmap_set_r(
 	const icmap_map_t map,
 	const char *key_name,
