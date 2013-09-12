@@ -48,6 +48,7 @@
 #include <corosync/hdb.h>
 #include <qb/qbloop.h>
 #include <corosync/totem/totempg.h>
+#include <corosync/icmap.h>
 #include <corosync/coroapi.h>
 
 extern unsigned long long *(*main_clm_get_by_nodeid) (unsigned int node_id);
@@ -121,6 +122,6 @@ extern void cs_ipc_refcnt_dec(void *conn);
 
 extern void cs_ipc_allow_connections(int32_t allow);
 
-int coroparse_configparse (const char **error_string);
+int coroparse_configparse (icmap_map_t config_map, const char **error_string);
 
 #endif /* MAIN_H_DEFINED */
