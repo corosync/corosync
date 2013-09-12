@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2005 MontaVista Software, Inc.
- * Copyright (c) 2009-2012 Red Hat, Inc.
+ * Copyright (c) 2009-2013 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -55,7 +55,8 @@ enum req_lib_cfg_types {
 	MESSAGE_REQ_CFG_REPLYTOSHUTDOWN = 4,
 	MESSAGE_REQ_CFG_GET_NODE_ADDRS = 5,
 	MESSAGE_REQ_CFG_LOCAL_GET = 6,
-	MESSAGE_REQ_CFG_CRYPTO_SET = 7
+	MESSAGE_REQ_CFG_RELOAD_CONFIG = 7,
+	MESSAGE_REQ_CFG_CRYPTO_SET = 8
 };
 
 enum res_lib_cfg_types {
@@ -74,6 +75,7 @@ enum res_lib_cfg_types {
 	MESSAGE_RES_CFG_LOCAL_GET = 12,
 	MESSAGE_RES_CFG_REPLYTOSHUTDOWN = 13,
 	MESSAGE_RES_CFG_CRYPTO_SET = 14,
+	MESSAGE_RES_CFG_RELOAD_CONFIG = 15
 };
 
 struct req_lib_cfg_ringstatusget {
@@ -148,6 +150,14 @@ struct req_lib_cfg_local_get {
 struct res_lib_cfg_local_get {
 	struct qb_ipc_response_header header __attribute__((aligned(8)));
 	mar_uint32_t local_nodeid __attribute__((aligned(8)));
+};
+
+struct req_lib_cfg_reload_config {
+	struct qb_ipc_request_header header __attribute__((aligned(8)));
+};
+
+struct res_lib_cfg_reload_config {
+	struct qb_ipc_response_header header __attribute__((aligned(8)));
 };
 
 typedef enum {

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2002-2005 MontaVista Software, Inc.
- * Copyright (c) 2006-2011 Red Hat, Inc.
+ * Copyright (c) 2006-2013 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -614,6 +614,45 @@ cs_error_t corosync_cfg_local_get (
 	error = res_lib_cfg_local_get.header.error;
 
 	*local_nodeid = res_lib_cfg_local_get.local_nodeid;
+
+error_exit:
+	(void)hdb_handle_put (&cfg_hdb, handle);
+
+	return (error);
+}
+
+cs_error_t corosync_cfg_reload_config (
+	corosync_cfg_handle_t handle)
+{
+	cs_error_t error;
+	struct cfg_inst *cfg_inst;
+	struct iovec iov;
+	struct req_lib_cfg_reload_config req_lib_cfg_reload_config;
+	struct res_lib_cfg_reload_config res_lib_cfg_reload_config;
+
+	error = hdb_error_to_cs(hdb_handle_get (&cfg_hdb, handle, (void *)&cfg_inst));
+	if (error != CS_OK) {
+		return (error);
+	}
+
+	req_lib_cfg_reload_config.header.size = sizeof (struct qb_ipc_request_header);
+	req_lib_cfg_reload_config.header.id = MESSAGE_REQ_CFG_RELOAD_CONFIG;
+
+	iov.iov_base = (void *)&req_lib_cfg_reload_config;
+	iov.iov_len = sizeof (struct req_lib_cfg_reload_config);
+
+	error = qb_to_cs_error (qb_ipcc_sendv_recv (
+		cfg_inst->c,
+		&iov,
+		1,
+		&res_lib_cfg_reload_config,
+		sizeof (struct res_lib_cfg_reload_config), CS_IPC_TIMEOUT_MS));
+
+	if (error != CS_OK) {
+		goto error_exit;
+	}
+
+	error = res_lib_cfg_reload_config.header.error;
 
 error_exit:
 	(void)hdb_handle_put (&cfg_hdb, handle);

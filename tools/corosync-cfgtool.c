@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2012 Red Hat, Inc.
+ * Copyright (c) 2006-2013 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -137,6 +137,29 @@ static void ringreenable_do (void)
 	(void)corosync_cfg_finalize (handle);
 }
 
+static void reload_config_do (void)
+{
+	cs_error_t result;
+	corosync_cfg_handle_t handle;
+
+	printf ("Reloading corosync.conf...\n");
+	result = corosync_cfg_initialize (&handle, NULL);
+	if (result != CS_OK) {
+		printf ("Could not initialize corosync configuration API error %d\n", result);
+		exit (1);
+	}
+
+	result = corosync_cfg_reload_config (handle);
+	if (result != CS_OK) {
+		printf ("Could not reload configuration %d\n", result);
+	}
+	else {
+		printf ("Done\n");
+	}
+
+	(void)corosync_cfg_finalize (handle);
+}
+
 static void shutdown_do(void)
 {
 	cs_error_t result;
@@ -232,11 +255,12 @@ static void usage_do (void)
 	printf ("\t\tre-enable redundant ring operation.\n");
 	printf ("\t-a\tDisplay the IP address(es) of a node\n");
 	printf ("\t-k\tKill a node identified by node id.\n");
+	printf ("\t-R\tReload corosync.conf on all nodes.\n");
 	printf ("\t-H\tShutdown corosync cleanly on this node.\n");
 }
 
 int main (int argc, char *argv[]) {
-	const char *options = "i:srk:a:hH";
+	const char *options = "i:srRk:a:hH";
 	int opt;
 	unsigned int nodeid;
 	char interface_name[128] = "";
@@ -252,6 +276,9 @@ int main (int argc, char *argv[]) {
 			break;
 		case 's':
 			rc = ringstatusget_do (interface_name);
+			break;
+		case 'R':
+			reload_config_do ();
 			break;
 		case 'r':
 			ringreenable_do ();
