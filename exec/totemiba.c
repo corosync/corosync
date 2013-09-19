@@ -227,7 +227,7 @@ struct recv_buf {
 	struct ibv_recv_wr recv_wr;
 	struct ibv_sge sge;
 	struct ibv_mr *mr;
-	char buffer[MAX_MTU_SIZE];
+	char buffer[MAX_MTU_SIZE + sizeof (struct ibv_grh)];
 };
 
 struct send_buf {
@@ -270,7 +270,7 @@ static inline struct send_buf *mcast_send_buf_get (
 	}
 	send_buf->mr = ibv_reg_mr (instance->mcast_pd,
 		send_buf->buffer,
-		2048, IBV_ACCESS_LOCAL_WRITE);
+		MAX_MTU_SIZE, IBV_ACCESS_LOCAL_WRITE);
 	if (send_buf->mr == NULL) {
 		log_printf (LOGSYS_LEVEL_ERROR, "couldn't register memory range\n");
 		free (send_buf);
@@ -307,7 +307,7 @@ static inline struct send_buf *token_send_buf_get (
 	}
 	send_buf->mr = ibv_reg_mr (instance->send_token_pd,
 		send_buf->buffer,
-		2048, IBV_ACCESS_LOCAL_WRITE);
+		MAX_MTU_SIZE, IBV_ACCESS_LOCAL_WRITE);
 	if (send_buf->mr == NULL) {
 		log_printf (LOGSYS_LEVEL_ERROR, "couldn't register memory range\n");
 		free (send_buf);
@@ -354,7 +354,7 @@ static inline struct recv_buf *recv_token_recv_buf_create (
 	}
 
 	recv_buf->mr = ibv_reg_mr (instance->recv_token_pd, &recv_buf->buffer,
-		2048,
+		MAX_MTU_SIZE + sizeof (struct ibv_grh),
 		IBV_ACCESS_LOCAL_WRITE);
 
 	recv_buf->recv_wr.next = NULL;
@@ -362,7 +362,7 @@ static inline struct recv_buf *recv_token_recv_buf_create (
 	recv_buf->recv_wr.num_sge = 1;
 	recv_buf->recv_wr.wr_id = (uintptr_t)recv_buf;
 
-	recv_buf->sge.length = 2048;
+	recv_buf->sge.length = MAX_MTU_SIZE + sizeof (struct ibv_grh);
 	recv_buf->sge.lkey = recv_buf->mr->lkey;
 	recv_buf->sge.addr = (uintptr_t)recv_buf->buffer;
 
@@ -421,7 +421,7 @@ static inline struct recv_buf *mcast_recv_buf_create (struct totemiba_instance *
 	}
 
 	mr = ibv_reg_mr (instance->mcast_pd, &recv_buf->buffer,
-		2048,
+		MAX_MTU_SIZE + sizeof (struct ibv_grh),
 		IBV_ACCESS_LOCAL_WRITE);
 
 	recv_buf->recv_wr.next = NULL;
@@ -429,7 +429,7 @@ static inline struct recv_buf *mcast_recv_buf_create (struct totemiba_instance *
 	recv_buf->recv_wr.num_sge = 1;
 	recv_buf->recv_wr.wr_id = (uintptr_t)recv_buf;
 
-	recv_buf->sge.length = 2048;
+	recv_buf->sge.length = MAX_MTU_SIZE + sizeof (struct ibv_grh);
 	recv_buf->sge.lkey = mr->lkey;
 	recv_buf->sge.addr = (uintptr_t)recv_buf->buffer;
 
@@ -466,6 +466,7 @@ static inline void iba_deliver_fn (struct totemiba_instance *instance, uint64_t 
 	recv_buf = wrid2void(wr_id);
 	addr = &recv_buf->buffer[sizeof (struct ibv_grh)];
 
+	bytes -= sizeof (struct ibv_grh);
 	instance->totemiba_deliver_fn (instance->rrp_context, addr, bytes);
 }
 
