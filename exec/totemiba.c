@@ -472,7 +472,7 @@ static inline void iba_deliver_fn (struct totemiba_instance *instance, uint64_t 
 	instance->totemiba_deliver_fn (instance->rrp_context, addr, bytes);
 }
 
-static int mcast_cq_send_event_fn (int events,  int suck,  void *context)
+static int mcast_cq_send_event_fn (int fd, int events, void *context)
 {
 	struct totemiba_instance *instance = (struct totemiba_instance *)context;
 	struct ibv_wc wc[32];
@@ -495,7 +495,7 @@ static int mcast_cq_send_event_fn (int events,  int suck,  void *context)
 	return (0);
 }
 
-static int mcast_cq_recv_event_fn (int events,  int suck,  void *context)
+static int mcast_cq_recv_event_fn (int fd, int events, void *context)
 {
 	struct totemiba_instance *instance = (struct totemiba_instance *)context;
 	struct ibv_wc wc[64];
@@ -519,7 +519,7 @@ static int mcast_cq_recv_event_fn (int events,  int suck,  void *context)
 	return (0);
 }
 
-static int mcast_rdma_event_fn (int events,  int suck,  void *context)
+static int mcast_rdma_event_fn (int fd, int events, void *context)
 {
 	struct totemiba_instance *instance = (struct totemiba_instance *)context;
 	struct rdma_cm_event *event;
@@ -592,7 +592,7 @@ static int recv_token_cq_send_event_fn (
 	return (0);
 }
 
-static int recv_token_cq_recv_event_fn (int events,  int suck,  void *context)
+static int recv_token_cq_recv_event_fn (int fd, int events, void *context)
 {
 	struct totemiba_instance *instance = (struct totemiba_instance *)context;
 	struct ibv_wc wc[32];
@@ -744,7 +744,7 @@ static int recv_token_accept_setup (struct totemiba_instance *instance)
 	return (res);
 };
 
-static int recv_token_rdma_event_fn (int events,  int suck,  void *context)
+static int recv_token_rdma_event_fn (int fd, int events, void *context)
 {
 	struct totemiba_instance *instance = (struct totemiba_instance *)context;
 	struct rdma_cm_event *event;
@@ -776,7 +776,7 @@ static int recv_token_rdma_event_fn (int events,  int suck,  void *context)
 	return (0);
 }
 
-static int send_token_cq_send_event_fn (int events,  int suck,  void *context)
+static int send_token_cq_send_event_fn (int fd, int events, void *context)
 {
 	struct totemiba_instance *instance = (struct totemiba_instance *)context;
 	struct ibv_wc wc[32];
@@ -799,7 +799,7 @@ static int send_token_cq_send_event_fn (int events,  int suck,  void *context)
 	return (0);
 }
 
-static int send_token_cq_recv_event_fn (int events,  int suck,  void *context)
+static int send_token_cq_recv_event_fn (int fd, int events, void *context)
 {
 	struct totemiba_instance *instance = (struct totemiba_instance *)context;
 	struct ibv_wc wc[32];
@@ -822,7 +822,7 @@ static int send_token_cq_recv_event_fn (int events,  int suck,  void *context)
 	return (0);
 }
 
-static int send_token_rdma_event_fn (int events,  int suck,  void *context)
+static int send_token_rdma_event_fn (int fd, int events, void *context)
 {
 	struct totemiba_instance *instance = (struct totemiba_instance *)context;
 	struct rdma_cm_event *event;
