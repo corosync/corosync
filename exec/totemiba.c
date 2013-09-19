@@ -616,6 +616,14 @@ static int recv_token_accept_destroy (struct totemiba_instance *instance)
 		return (0);
 	}
 
+	poll_dispatch_delete (
+		instance->totemiba_poll_handle,
+		instance->recv_token_recv_completion_channel->fd);
+
+	poll_dispatch_delete (
+		instance->totemiba_poll_handle,
+		instance->recv_token_send_completion_channel->fd);
+
 	rdma_destroy_qp (instance->recv_token_cma_id);
 
 	recv_token_recv_buf_post_destroy (instance);
@@ -631,14 +639,6 @@ static int recv_token_accept_destroy (struct totemiba_instance *instance)
 	ibv_dealloc_pd (instance->recv_token_pd);
 
 	rdma_destroy_id (instance->recv_token_cma_id);
-
-	poll_dispatch_delete (
-		instance->totemiba_poll_handle,
-		instance->recv_token_recv_completion_channel->fd);
-
-	poll_dispatch_delete (
-		instance->totemiba_poll_handle,
-		instance->recv_token_send_completion_channel->fd);
 
 	return (0);
 }
