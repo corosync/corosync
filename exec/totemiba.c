@@ -1042,6 +1042,7 @@ static int send_token_unbind (struct totemiba_instance *instance)
 static int recv_token_bind (struct totemiba_instance *instance)
 {
 	int res;
+	struct ibv_port_attr port_attr;
 
 	instance->listen_recv_token_channel = rdma_create_event_channel();
 	if (instance->listen_recv_token_channel == NULL) {
@@ -1060,6 +1061,20 @@ static int recv_token_bind (struct totemiba_instance *instance)
 		&instance->bind_addr);
 	if (res) {
 		log_printf (LOGSYS_LEVEL_ERROR, "error doing rdma_bind_addr for recv token\n");
+		return (-1);
+	}
+
+	/*
+	 * Determine active_mtu of port and compare it with the configured one (160 is aproximation of all totem
+	 * structures.
+	 *
+	 * TODO: Implement MTU discovery also for IP and handle MTU correctly for all structures inside totemsrp,
+	 *       crypto, ...
+	 */
+	res = ibv_query_port (instance->listen_recv_token_cma_id->verbs, instance->listen_recv_token_cma_id->port_num, &port_attr);
+	if ( (1 << (port_attr.active_mtu + 7)) < instance->totem_config->net_mtu + 160) {
+		log_printf (LOGSYS_LEVEL_ERROR, "requested net_mtu is %d and is larger than the active port mtu %d\n",\
+				instance->totem_config->net_mtu + 160, (1 << (port_attr.active_mtu + 7)));
 		return (-1);
 	}
 
