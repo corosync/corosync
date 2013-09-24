@@ -1067,6 +1067,8 @@ int _logsys_rec_init (unsigned int fltsize)
 	if (res == -1) {
 		sem_destroy (&logsys_thread_start);
 		sem_destroy (&logsys_print_finished);
+
+		return (-1);
 	}
 
 	memset (flt_data, 0, flt_real_size * 2);
