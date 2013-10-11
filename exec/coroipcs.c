@@ -778,7 +778,7 @@ req_setup_recv (
 	char cmsg_cred[CMSG_SPACE (sizeof (struct ucred))];
 	int off = 0;
 	int on = 1;
-	struct ucred *cred;
+	struct ucred cred;
 #endif
 	msg_recv.msg_flags = 0;
 	msg_recv.msg_iov = &iov_recv;
@@ -881,16 +881,31 @@ retry_recv:
 /*
  * Usually Linux systems
  */
-	cmsg = CMSG_FIRSTHDR (&msg_recv);
-	assert (cmsg);
-	cred = (struct ucred *)CMSG_DATA (cmsg);
-	if (cred) {
-		conn_info->client_pid = cred->pid;
-		if (api->security_valid (cred->uid, cred->gid)) {
+	for (cmsg = CMSG_FIRSTHDR(&msg_recv); cmsg != NULL;
+	    cmsg = CMSG_NXTHDR(&msg_recv, cmsg)) {
+		if (cmsg->cmsg_type != SCM_CREDENTIALS)
+			continue;
+
+		memcpy(&cred, CMSG_DATA(cmsg), sizeof(struct ucred));
+
+		log_printf(LOGSYS_LEVEL_DEBUG, "IPC credentials for client pid %u: uid %u. gid %u\n",
+		    cred.pid, cred.uid, cred.gid);
+
+		break;
+       }
+
+	if (cmsg != NULL) {
+		conn_info->client_pid = cred.pid;
+		if (api->security_valid (cred.uid, cred.gid)) {
 			auth_res = CS_OK;
 		} else {
 			auth_res = hdb_error_to_cs(errno);
 		}
+	} else {
+		/*
+		 * We were unable to find valid credentials
+		 */
+		log_printf(LOGSYS_LEVEL_ERROR, "Platform should support credentials, but no credentials found!\n");
 	}
 
 #else /* no credentials */
