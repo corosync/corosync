@@ -1046,6 +1046,9 @@ static void _corosync_ipc_init(void)
 	int server_fd;
 	struct sockaddr_un un_addr;
 	int res;
+#if SO_PASSCRED
+	int on = 1;
+#endif
 
 	/*
 	 * Create socket for IPC clients, name socket, listen for connections
@@ -1101,6 +1104,13 @@ static void _corosync_ipc_init(void)
 	 */
 #if !defined(COROSYNC_LINUX)
 	res = chmod (un_addr.sun_path, S_IRWXU|S_IRWXG|S_IRWXO);
+#endif
+#if SO_PASSCRED
+	res = setsockopt(server_fd, SOL_SOCKET, SO_PASSCRED, &on, sizeof (on));
+	if (res == -1) {
+		LOGSYS_PERROR (errno, LOGSYS_LEVEL_CRIT, "Could not set SO_PASSCRED to AF_UNIX_SOCKET");
+		api->fatal_error ("Could not set SO_PASSCRED to AF_UNIX_SOCKET\n");
+	}
 #endif
 	listen (server_fd, SERVER_BACKLOG);
 
