@@ -1218,7 +1218,10 @@ int main (int argc, char **argv, char **envp)
 	ip_version = totem_config.ip_version;
 
 	totem_config.totem_logging_configuration = totem_logging_configuration;
-	totem_config.totem_logging_configuration.log_subsys_id = _logsys_subsys_create("TOTEM", "totem");
+	totem_config.totem_logging_configuration.log_subsys_id = _logsys_subsys_create("TOTEM", "totem,"
+			"totemmrp.c,totemrrp.c,totemip.c,totemconfig.c,totemcrypto.c,totemsrp.c,"
+			"totempg.c,totemiba.c,totemudp.c,totemudpu.c,totemnet.c");
+
 	totem_config.totem_logging_configuration.log_level_security = LOGSYS_LEVEL_WARNING;
 	totem_config.totem_logging_configuration.log_level_error = LOGSYS_LEVEL_ERROR;
 	totem_config.totem_logging_configuration.log_level_warning = LOGSYS_LEVEL_WARNING;

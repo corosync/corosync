@@ -301,39 +301,20 @@ int _logsys_system_setup(
 	    (strlen(mainsystem) >= LOGSYS_MAX_SUBSYS_NAMELEN)) {
 		return -1;
 	}
+
 	/*
 	 * Setup libqb as a subsys
 	 */
-	i = _logsys_subsys_create ("QB", "array.c");
+	i = _logsys_subsys_create ("QB", "array.c,log.c,log_syslog.c,log_blackbox.c,log_format.c,"
+		"log_file.c,log_dcs.c,log_thread.c,ipc_shm.c,ipcs.c,ipc_us.c,loop.c,"
+		"loop_poll_epoll.c,loop_job.c,loop_poll_poll.c,loop_poll_kqueue.c,"
+		"loop_timerlist.c,loop_poll.c,ringbuffer.c,ringbuffer_helper.c,trie.c,"
+		"map.c,skiplist.c,rpl_sem.c,hdb.c,unix.c,hashtable.c,strlcpy.c,ipc_socket.c,"
+		"strchrnul.c,ipc_setup.c,strlcat.c");
 	if (i < 0) {
 		return -1;
 	}
 
-	_logsys_subsys_filename_add (i, "log.c");
-	_logsys_subsys_filename_add (i, "log_syslog.c");
-	_logsys_subsys_filename_add (i, "log_blackbox.c");
-	_logsys_subsys_filename_add (i, "log_format.c");
-	_logsys_subsys_filename_add (i, "log_file.c");
-	_logsys_subsys_filename_add (i, "log_dcs.c");
-	_logsys_subsys_filename_add (i, "log_thread.c");
-	_logsys_subsys_filename_add (i, "ipc_shm.c");
-	_logsys_subsys_filename_add (i, "ipcs.c");
-	_logsys_subsys_filename_add (i, "ipc_us.c");
-	_logsys_subsys_filename_add (i, "loop.c");
-	_logsys_subsys_filename_add (i, "loop_poll_epoll.c");
-	_logsys_subsys_filename_add (i, "loop_job.c");
-	_logsys_subsys_filename_add (i, "loop_poll_poll.c");
-	_logsys_subsys_filename_add (i, "loop_poll_kqueue.c");
-	_logsys_subsys_filename_add (i, "loop_timerlist.c");
-	_logsys_subsys_filename_add (i, "loop_poll.c");
-	_logsys_subsys_filename_add (i, "ringbuffer.c");
-	_logsys_subsys_filename_add (i, "ringbuffer_helper.c");
-	_logsys_subsys_filename_add (i, "trie.c");
-	_logsys_subsys_filename_add (i, "map.c");
-	_logsys_subsys_filename_add (i, "skiplist.c");
-	_logsys_subsys_filename_add (i, "rpl_sem.c");
-	_logsys_subsys_filename_add (i, "hdb.c");
-	_logsys_subsys_filename_add (i, "unix.c");
 	/*
 	 * name clash
 	 * _logsys_subsys_filename_add (i, "util.c");
