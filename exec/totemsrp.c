@@ -4400,6 +4400,36 @@ static void memb_merge_detect_endian_convert (
 	srp_addr_copy_endian_convert (&out->system_from, &in->system_from);
 }
 
+static int ignore_join_under_operational (
+	struct totemsrp_instance *instance,
+	const struct memb_join *memb_join)
+{
+	struct srp_addr *proc_list;
+	struct srp_addr *failed_list;
+	unsigned long long ring_seq;
+
+	proc_list = (struct srp_addr *)memb_join->end_of_memb_join;
+	failed_list = proc_list + memb_join->proc_list_entries;
+	ring_seq = memb_join->ring_seq;
+
+	if (memb_set_subset (&instance->my_id, 1,
+	    failed_list, memb_join->failed_list_entries)) {
+		return (1);
+	}
+
+	/*
+	 * In operational state, my_proc_list is exactly the same as
+	 * my_memb_list.
+	 */
+	if ((memb_set_subset (&memb_join->system_from, 1,
+	    instance->my_memb_list, instance->my_memb_entries)) &&
+	    (ring_seq < instance->my_ring_id.seq)) {
+		return (1);
+	}
+
+	return (0);
+}
+
 static int message_handler_memb_join (
 	struct totemsrp_instance *instance,
 	const void *msg,
@@ -4430,7 +4460,9 @@ static int message_handler_memb_join (
 	}
 	switch (instance->memb_state) {
 		case MEMB_STATE_OPERATIONAL:
-			memb_join_process (instance, memb_join);
+			if (!ignore_join_under_operational (instance, memb_join)) {
+				memb_join_process (instance, memb_join);
+			}
 			break;
 
 		case MEMB_STATE_GATHER:
