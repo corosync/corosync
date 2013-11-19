@@ -137,27 +137,33 @@ static void ringreenable_do (void)
 	(void)corosync_cfg_finalize (handle);
 }
 
-static void reload_config_do (void)
+static int reload_config_do (void)
 {
 	cs_error_t result;
 	corosync_cfg_handle_t handle;
+	int rc;
+
+	rc = 0;
 
 	printf ("Reloading corosync.conf...\n");
 	result = corosync_cfg_initialize (&handle, NULL);
 	if (result != CS_OK) {
-		printf ("Could not initialize corosync configuration API error %d\n", result);
+		printf ("Could not initialize corosync configuration API error %s\n", cs_strerror(result));
 		exit (1);
 	}
 
 	result = corosync_cfg_reload_config (handle);
 	if (result != CS_OK) {
-		printf ("Could not reload configuration %d\n", result);
+		printf ("Could not reload configuration. Error %s\n", cs_strerror(result));
+		rc = (int)result;
 	}
 	else {
 		printf ("Done\n");
 	}
 
 	(void)corosync_cfg_finalize (handle);
+
+	return (rc);
 }
 
 static void shutdown_do(void)
@@ -278,7 +284,7 @@ int main (int argc, char *argv[]) {
 			rc = ringstatusget_do (interface_name);
 			break;
 		case 'R':
-			reload_config_do ();
+			rc = reload_config_do ();
 			break;
 		case 'r':
 			ringreenable_do ();
