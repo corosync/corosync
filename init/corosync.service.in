@@ -1,8 +1,8 @@
 [Unit]
 Description=Corosync Cluster Engine
 ConditionKernelCommandLine=!nocluster
-Requires=network.target
-After=network.target
+Requires=network-online.target
+After=network-online.target
 
 [Service]
 ExecStart=@INITWRAPPERSDIR@/corosync start
