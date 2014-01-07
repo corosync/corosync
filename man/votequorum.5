@@ -1,5 +1,5 @@
 .\"/*
-.\" * Copyright (c) 2012 Red Hat, Inc.
+.\" * Copyright (c) 2012-2014 Red Hat, Inc.
 .\" *
 .\" * All rights reserved.
 .\" *
@@ -316,6 +316,27 @@ quorum {
     expected_votes: 3
     allow_downscale: 1
 }
+.fi
+allow_downscale implicitly enabled EVT (see below).
+.PP
+.B expected_votes_tracking: 1
+.PP
+Enables Expected Votes Tracking (EVT) feature (default: 0).
+.PP
+Expected Votes Tracking stores the highest-seen value of expected votes on disk and uses
+that as the minimum value for expected votes in the absence of any higher authority (eg 
+a current quorate cluster). This is useful for when a group of nodes becomes detached from
+the main cluster and after a restart could have enough votes to provide quorum, which can 
+happen after using allow_downscale. 
+.PP
+Note that even if the in-memory version of expected_votes is reduced, eg by removing nodes
+or using corosync-quorumtool, the stored value will still be the highest value seen - it
+never gets reduced.
+.PP
+The value is held in the file /var/lib/corosync/ev_tracking which can be deleted if you 
+really do need to reduce the expected votes for any reason, like the node has been moved 
+to a different cluster.
+.PP
 .fi
 .PP
 .SH VARIOUS NOTES
