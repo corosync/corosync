@@ -993,6 +993,9 @@ static int cpg_lib_exit_fn (void *conn)
 
 	log_printf(LOGSYS_LEVEL_DEBUG, "exit_fn for conn=%p\n", conn);
 
+	list_del (&cpd->list);
+	list_init (&cpd->list);
+
 	if (cpd->group_name.length > 0) {
 		result = cpg_node_joinleave_send (cpd->pid, &cpd->group_name,
 				MESSAGE_REQ_EXEC_CPG_PROCLEAVE, CONFCHG_CPG_REASON_PROCDOWN);
@@ -1551,18 +1554,10 @@ static void message_handler_req_lib_cpg_finalize (
 	void *conn,
 	const void *message)
 {
-	struct cpg_pd *cpd = (struct cpg_pd *)api->ipc_private_data_get (conn);
 	struct res_lib_cpg_finalize res_lib_cpg_finalize;
 	cs_error_t error = CS_OK;
 
 	log_printf (LOGSYS_LEVEL_DEBUG, "cpg finalize for conn=%p\n", conn);
-
-	/*
-	 * We will just remove cpd from list. After this call, connection will be
-	 * closed on lib side, and cpg_lib_exit_fn will be called
-	 */
-	list_del (&cpd->list);
-	list_init (&cpd->list);
 
 	res_lib_cpg_finalize.header.size = sizeof (res_lib_cpg_finalize);
 	res_lib_cpg_finalize.header.id = MESSAGE_RES_CPG_FINALIZE;
