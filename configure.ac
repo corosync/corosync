@@ -159,7 +159,12 @@ AC_CHECK_LIB([qb], [qb_log_thread_priority_set], \
 if test "x${have_qb_log_thread_priority_set}" = xyes; then
 	AC_DEFINE_UNQUOTED([HAVE_QB_LOG_THREAD_PRIORITY_SET], 1, [have qb_log_thread_priority_set])
 fi
-AC_CHECK_LIB([pthread], [pthread_create])
+
+AX_PTHREAD([LIBS="$PTHREAD_LIBS $LIBS"
+            CFLAGS="$PTHREAD_CFLAGS $CFLAGS"
+            CC="$PTHREAD_CC"],
+           [AC_MSG_ERROR([Pthread API support is required.])])
+
 AC_CHECK_LIB([socket], [socket])
 AC_CHECK_LIB([nsl], [t_open])
 AC_CHECK_LIB([rt], [sched_getscheduler])
