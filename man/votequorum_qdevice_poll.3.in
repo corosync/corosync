@@ -1,5 +1,5 @@
 .\"/*
-.\" * Copyright (c) 2009,2012 Red Hat, Inc.
+.\" * Copyright (c) 2009,2012,2014 Red Hat, Inc.
 .\" *
 .\" * All rights reserved.
 .\" *
@@ -37,7 +37,7 @@ votequorum_qdevice_poll \- Tells votequorum the result of the quorum device poll
 .SH SYNOPSIS
 .B #include <corosync/votequorum.h>
 .sp
-.BI "int votequorum_qdevice_poll(votequorum_handle_t " handle ", unsigned int " cast_vote ");"
+.BI "int votequorum_qdevice_poll(votequorum_handle_t " handle ", const char * " name ", unsigned int " cast_vote ");"
 .SH DESCRIPTION
 The
 .B votequorum_qdevice_poll
@@ -48,9 +48,9 @@ is 1 then the votes for the device are included in the quorum calculation, other
 This routine should be called at regular intervals to ensure that the device status
 is always known to votequorum. If
 .B votequorum_qdevice_poll
-is not called after (default) 10 seconds then the device will be deeded to be dead and
+is not called for (default) 10 seconds then the device will be deemed to be dead and
 its votes removed from the cluster. This does not unregister the device.
-The default poll time can be changed by setting the object database variable
+The default poll time can be changed by setting the cmap variable
 quorum.quorumdev_poll.
 .SH RETURN VALUE
 This call returns the CS_OK value if successful, otherwise an error is returned.
@@ -72,5 +72,6 @@ This call returns the CS_OK value if successful, otherwise an error is returned.
 .BR votequorum_setvotes (3),
 .BR votequorum_qdevice_register (3),
 .BR votequorum_qdevice_unregister (3),
-.BR votequorum_qdevice_get_info (3)
+.BR votequorum_qdevice_update (3),
+.BR votequorum_qdevice_master_wins (3),
 .PP

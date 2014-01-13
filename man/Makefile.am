@@ -1,5 +1,5 @@
 # Copyright (c) 2004 MontaVista Software, Inc.
-# Copyright (c) 2009, 2012 Red Hat, Inc.
+# Copyright (c) 2009, 2012, 2014 Red Hat, Inc.
 #
 # Authors: Steven Dake (sdake@redhat.com)
 #          Fabio M. Di Nitto (fdinitto@redhat.com)
@@ -77,6 +77,11 @@ autogen_man		= cpg_context_get.3 \
 			  votequorum_setvotes.3 \
 			  votequorum_trackstart.3 \
 			  votequorum_trackstop.3 \
+			  votequorum_qdevice_register.3 \
+			  votequorum_qdevice_unregister.3 \
+			  votequorum_qdevice_update.3 \
+			  votequorum_qdevice_master_wins.3 \
+			  votequorum_qdevice_poll.3 \
 			  sam_data_getsize.3 \
 			  sam_data_restore.3 \
 			  sam_data_store.3 \
