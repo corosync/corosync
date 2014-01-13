@@ -597,8 +597,8 @@ static void message_handler_req_lib_cmap_iter_next(void *conn, const void *messa
 	struct res_lib_cmap_iter_next res_lib_cmap_iter_next;
 	cs_error_t ret;
 	icmap_iter_t *iter;
-	size_t value_len;
-	icmap_value_types_t type;
+	size_t value_len = 0;
+	icmap_value_types_t type = 0;
 	const char *res = NULL;
 	struct cmap_conn_info *conn_info = (struct cmap_conn_info *)api->ipc_private_data_get (conn);
 

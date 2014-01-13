@@ -292,7 +292,7 @@ static int find_local_node_in_nodelist(struct totem_config *totem_config)
 	icmap_iter_t iter;
 	const char *iter_key;
 	int res = 0;
-	int node_pos;
+	unsigned int node_pos;
 	int local_node_pos = -1;
 	struct totem_ip_address bind_addr;
 	int interface_up, interface_num;
@@ -343,7 +343,7 @@ static void put_nodelist_members_to_config(struct totem_config *totem_config)
 	icmap_iter_t iter, iter2;
 	const char *iter_key, *iter_key2;
 	int res = 0;
-	int node_pos;
+	unsigned int node_pos;
 	char tmp_key[ICMAP_KEYNAME_MAXLEN];
 	char tmp_key2[ICMAP_KEYNAME_MAXLEN];
 	char *node_addr_str;
@@ -394,7 +394,7 @@ static void config_convert_nodelist_to_interface(struct totem_config *totem_conf
 	icmap_iter_t iter;
 	const char *iter_key;
 	int res = 0;
-	int node_pos;
+	unsigned int node_pos;
 	char tmp_key[ICMAP_KEYNAME_MAXLEN];
 	char tmp_key2[ICMAP_KEYNAME_MAXLEN];
 	char *node_addr_str;

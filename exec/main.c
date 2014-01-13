@@ -562,8 +562,8 @@ static void totem_dynamic_notify(
 	void *user_data)
 {
 	int res;
-	int ring_no;
-	int member_no;
+	unsigned int ring_no;
+	unsigned int member_no;
 	struct totem_ip_address member;
 	int add_new_member = 0;
 	int remove_old_member = 0;
