@@ -431,8 +431,10 @@ static void corosync_tty_detach (void)
 
 	if (dup2(devnull, 0) < 0 || dup2(devnull, 1) < 0
 	    || dup2(devnull, 2) < 0) {
+		close(devnull);
 		corosync_exit_error (COROSYNC_DONE_STD_TO_NULL_REDIR);
 	}
+	close(devnull);
 }
 
 static void corosync_mlockall (void)
