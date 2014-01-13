@@ -209,7 +209,10 @@ static void corosync_blackbox_write_to_file (void)
 	qb_log_blackbox_write_to_file(fname);
 
 	unlink(LOCALSTATEDIR "/lib/corosync/fdata");
-	symlink(fname, LOCALSTATEDIR "/lib/corosync/fdata");
+	if (symlink(fname, LOCALSTATEDIR "/lib/corosync/fdata") == -1) {
+		log_printf(LOGSYS_LEVEL_ERROR, "Can't create symlink to '%s' for corosync blackbox file '%s'",
+		    fname, LOCALSTATEDIR "/lib/corosync/fdata");
+	}
 }
 
 static void unlink_all_completed (void)
