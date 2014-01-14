@@ -1,0 +1,69 @@
+.\"/*
+.\" * Copyright (c) 2014 Red Hat, Inc.
+.\" *
+.\" * All rights reserved.
+.\" *
+.\" * Author: Christine Caulfield <ccaulfie@redhat.com>
+.\" *
+.\" * This software licensed under BSD license, the text of which follows:
+.\" *
+.\" * Redistribution and use in source and binary forms, with or without
+.\" * modification, are permitted provided that the following conditions are met:
+.\" *
+.\" * - Redistributions of source code must retain the above copyright notice,
+.\" *   this list of conditions and the following disclaimer.
+.\" * - Redistributions in binary form must reproduce the above copyright notice,
+.\" *   this list of conditions and the following disclaimer in the documentation
+.\" *   and/or other materials provided with the distribution.
+.\" * - Neither the name of the MontaVista Software, Inc. nor the names of its
+.\" *   contributors may be used to endorse or promote products derived from this
+.\" *   software without specific prior written permission.
+.\" *
+.\" * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+.\" * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+.\" * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+.\" * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+.\" * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+.\" * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+.\" * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+.\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+.\" * THE POSSIBILITY OF SUCH DAMAGE.
+.\" */
+.TH VOTEQUORUM_QDEVICE_UPDATE 3 @BUILDDATE@ "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
+.SH NAME
+votequorum_qdevice_update \- Updates quorum device name
+.SH SYNOPSIS
+.B #include <corosync/votequorum.h>
+.sp
+.BI "int votequorum_qdevice_update(votequorum_handle_t " handle "const char " oldname ", const char " newname ");"
+.SH DESCRIPTION
+The
+.B votequorum_qdevice_update
+is used to change the name of the quorum device to corosync. The name of q quorum device is purely informational
+and has no significance to votequorum itself, but it's useful for the name (displayed by corosync-quorumtool)
+to reflect the actual device contributing votes to quorum to avoid user confusion.
+.SH RETURN VALUE
+This call returns the CS_OK value if successful, otherwise an error is returned.
+.PP
+.SH ERRORS
+@COMMONIPCERRORS@
+.SH "SEE ALSO"
+.BR votequorum_overview (8),
+.BR votequorum_initialize (3),
+.BR votequorum_finalize (3),
+.BR votequorum_getinfo (3),
+.BR votequorum_trackstart (3),
+.BR votequorum_trackstop (3),
+.BR votequorum_fd_get (3),
+.BR votequorum_dispatch (3),
+.BR votequorum_context_set (3),
+.BR votequorum_context_get (3),
+.BR votequorum_setexpected (3),
+.BR votequorum_setvotes (3),
+.BR votequorum_qdevice_register (3),
+.BR votequorum_qdevice_poll (3),
+.BR votequorum_qdevice_master_wins (3),
+.BR corosync-quorumtool (8)
+.PP

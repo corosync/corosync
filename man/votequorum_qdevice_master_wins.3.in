@@ -1,0 +1,77 @@
+.\"/*
+.\" * Copyright (c) 2014 Red Hat, Inc.
+.\" *
+.\" * All rights reserved.
+.\" *
+.\" * Author: Christine Caulfield <ccaulfie@redhat.com>
+.\" *
+.\" * This software licensed under BSD license, the text of which follows:
+.\" *
+.\" * Redistribution and use in source and binary forms, with or without
+.\" * modification, are permitted provided that the following conditions are met:
+.\" *
+.\" * - Redistributions of source code must retain the above copyright notice,
+.\" *   this list of conditions and the following disclaimer.
+.\" * - Redistributions in binary form must reproduce the above copyright notice,
+.\" *   this list of conditions and the following disclaimer in the documentation
+.\" *   and/or other materials provided with the distribution.
+.\" * - Neither the name of the MontaVista Software, Inc. nor the names of its
+.\" *   contributors may be used to endorse or promote products derived from this
+.\" *   software without specific prior written permission.
+.\" *
+.\" * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+.\" * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+.\" * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+.\" * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+.\" * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+.\" * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+.\" * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+.\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+.\" * THE POSSIBILITY OF SUCH DAMAGE.
+.\" */
+.TH VOTEQUORUM_QDEVICE_MASTER_WINS 3 @BUILDDATE@ "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
+.SH NAME
+votequorum_qdevice_master_wins \- Sets or clears quorum device master_wins flag
+.SH SYNOPSIS
+.B #include <corosync/votequorum.h>
+.sp
+.BI "int votequorum_qdevice_master_wins(votequorum_handle_t " handle " const char " name ", unsigned int " allow ");"
+.SH DESCRIPTION
+The
+.B votequorum_qdevice_master_wins
+informs votequorum whether or not the currently registered qdevice subsystem supports 'master_wins' mode (default 0).
+This mode allows the qdevice to effectively take over the quorum calculations of votequorum. Any node with an active
+qdevice that also has master_wins set becomes quorate regardless of the node votes of the cluster. It is left up to the 
+qdevice subsystem itself (not part of votequorum) to communicate across the nodes or otherwise provide some system of
+deciding which nodes will be part of the quorate cluster, if any. eg They may be the set of nodes that has access to
+a quorum disk.
+.br
+.B name
+The name of the currently registered quorum device on this node. This must match the existing name known to votequorum.
+.br
+.B allow
+0 (the default) means that master_wins is not active on this node. 1 means that master_wins is active on this node.
+.SH RETURN VALUE
+This call returns the CS_OK value if successful, otherwise an error is returned.
+.PP
+.SH ERRORS
+@COMMONIPCERRORS@
+.SH "SEE ALSO"
+.BR votequorum_overview (8),
+.BR votequorum_initialize (3),
+.BR votequorum_finalize (3),
+.BR votequorum_getinfo (3),
+.BR votequorum_trackstart (3),
+.BR votequorum_trackstop (3),
+.BR votequorum_fd_get (3),
+.BR votequorum_dispatch (3),
+.BR votequorum_context_set (3),
+.BR votequorum_context_get (3),
+.BR votequorum_setexpected (3),
+.BR votequorum_setvotes (3),
+.BR votequorum_qdevice_register (3),
+.BR votequorum_qdevice_poll (3),
+.BR votequorum_qdevice_update (3),
+.PP
