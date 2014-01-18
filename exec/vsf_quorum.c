@@ -262,6 +262,7 @@ static int quorum_unregister_callback(quorum_callback_fn_t function, void *conte
 		pd = list_entry(tmp, struct internal_callback_pd, list);
 		if (pd->callback == function && pd->context == context) {
 			list_del(&pd->list);
+			free(pd);
 			return 0;
 		}
 	}
