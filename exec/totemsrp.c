@@ -2089,7 +2089,7 @@ static void memb_state_gather_enter (
 	instance->memb_state = MEMB_STATE_GATHER;
 	instance->stats.gather_entered++;
 
-	if (TOTEMSRP_GSFROM_THE_CONSENSUS_TIMEOUT_EXPIRED == 3) {
+	if (gather_from == TOTEMSRP_GSFROM_THE_CONSENSUS_TIMEOUT_EXPIRED) {
 		/*
 		 * State 3 means gather, so we are continuously gathering.
 		 */
