@@ -313,6 +313,12 @@ static void do_proc_join(
 	unsigned int nodeid,
 	int reason);
 
+static void do_proc_leave(
+	const mar_cpg_name_t *name,
+	uint32_t pid,
+	unsigned int nodeid,
+	int reason);
+
 static int notify_lib_totem_membership (
 	void *conn,
 	int member_list_entries,
@@ -1195,6 +1201,37 @@ static void do_proc_join(
 			    MESSAGE_RES_CPG_CONFCHG_CALLBACK);
 }
 
+static void do_proc_leave(
+	const mar_cpg_name_t *name,
+	uint32_t pid,
+	unsigned int nodeid,
+	int reason)
+{
+	struct process_info *pi;
+	struct list_head *iter;
+	mar_cpg_address_t notify_info;
+
+	notify_info.pid = pid;
+	notify_info.nodeid = nodeid;
+	notify_info.reason = reason;
+
+	notify_lib_joinlist(name, NULL,
+		0, NULL,
+		1, &notify_info,
+		MESSAGE_RES_CPG_CONFCHG_CALLBACK);
+
+	for (iter = process_info_list_head.next; iter != &process_info_list_head; ) {
+		pi = list_entry(iter, struct process_info, list);
+		iter = iter->next;
+
+		if (pi->pid == pid && pi->nodeid == nodeid &&
+			mar_name_compare (&pi->group, name)==0) {
+			list_del (&pi->list);
+			free (pi);
+		}
+	}
+}
+
 static void message_handler_req_exec_cpg_downlist_old (
 	const void *message,
 	unsigned int nodeid)
@@ -1269,31 +1306,15 @@ static void message_handler_req_exec_cpg_procleave (
 	unsigned int nodeid)
 {
 	const struct req_exec_cpg_procjoin *req_exec_cpg_procjoin = message;
-	struct process_info *pi;
-	struct list_head *iter;
-	mar_cpg_address_t notify_info;
 
-	log_printf(LOGSYS_LEVEL_DEBUG, "got procleave message from cluster node %d", nodeid);
+	log_printf(LOGSYS_LEVEL_DEBUG, "got procleave message from cluster node %x (%s) for pid %u",
+		nodeid,
+		api->totem_ifaces_print(nodeid),
+		(unsigned int)req_exec_cpg_procjoin->pid);
 
-	notify_info.pid = req_exec_cpg_procjoin->pid;
-	notify_info.nodeid = nodeid;
-	notify_info.reason = req_exec_cpg_procjoin->reason;
-
-	notify_lib_joinlist(&req_exec_cpg_procjoin->group_name, NULL,
-		0, NULL,
-		1, &notify_info,
-		MESSAGE_RES_CPG_CONFCHG_CALLBACK);
-
-	for (iter = process_info_list_head.next; iter != &process_info_list_head; ) {
-		pi = list_entry(iter, struct process_info, list);
-		iter = iter->next;
-
-		if (pi->pid == req_exec_cpg_procjoin->pid && pi->nodeid == nodeid &&
-			mar_name_compare (&pi->group, &req_exec_cpg_procjoin->group_name)==0) {
-			list_del (&pi->list);
-			free (pi);
-		}
-	}
+	do_proc_leave (&req_exec_cpg_procjoin->group_name,
+		req_exec_cpg_procjoin->pid, nodeid,
+		req_exec_cpg_procjoin->reason);
 }
 
 
