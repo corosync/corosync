@@ -1236,7 +1236,7 @@ static void message_handler_req_exec_cpg_downlist_old (
 	const void *message,
 	unsigned int nodeid)
 {
-	log_printf (LOGSYS_LEVEL_WARNING, "downlist OLD from node %d",
+	log_printf (LOGSYS_LEVEL_WARNING, "downlist OLD from node 0x%x",
 		nodeid);
 }
 
@@ -1291,7 +1291,7 @@ static void message_handler_req_exec_cpg_procjoin (
 {
 	const struct req_exec_cpg_procjoin *req_exec_cpg_procjoin = message;
 
-	log_printf(LOGSYS_LEVEL_DEBUG, "got procjoin message from cluster node %d (%s) for pid %u",
+	log_printf(LOGSYS_LEVEL_DEBUG, "got procjoin message from cluster node 0x%x (%s) for pid %u",
 		nodeid,
 		api->totem_ifaces_print(nodeid),
 		(unsigned int)req_exec_cpg_procjoin->pid);
@@ -1307,7 +1307,7 @@ static void message_handler_req_exec_cpg_procleave (
 {
 	const struct req_exec_cpg_procjoin *req_exec_cpg_procjoin = message;
 
-	log_printf(LOGSYS_LEVEL_DEBUG, "got procleave message from cluster node %x (%s) for pid %u",
+	log_printf(LOGSYS_LEVEL_DEBUG, "got procleave message from cluster node 0x%x (%s) for pid %u",
 		nodeid,
 		api->totem_ifaces_print(nodeid),
 		(unsigned int)req_exec_cpg_procjoin->pid);
@@ -1328,7 +1328,7 @@ static void message_handler_req_exec_cpg_joinlist (
 	const struct join_list_entry *jle = (const struct join_list_entry *)(message + sizeof(struct qb_ipc_response_header));
 	struct joinlist_msg *stored_msg;
 
-	log_printf(LOGSYS_LEVEL_DEBUG, "got joinlist message from node %x",
+	log_printf(LOGSYS_LEVEL_DEBUG, "got joinlist message from node 0x%x",
 		nodeid);
 
 	while ((const char*)jle < message + res->size) {
