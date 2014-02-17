@@ -931,6 +931,56 @@ static void downlist_master_choose_and_send (void)
 	qb_map_destroy(group_map);
 }
 
+/*
+ * Remove processes that might have left the group while we were suspended.
+ */
+static void joinlist_remove_zombie_pi_entries (void)
+{
+	struct list_head *pi_iter;
+	struct list_head *jl_iter;
+	struct process_info *pi;
+	struct joinlist_msg *stored_msg;
+	int found;
+
+	for (pi_iter = process_info_list_head.next; pi_iter != &process_info_list_head; ) {
+		pi = list_entry (pi_iter, struct process_info, list);
+		pi_iter = pi_iter->next;
+
+		/*
+		 * Ignore local node
+		 */
+		if (pi->nodeid == api->totem_nodeid_get()) {
+			continue ;
+		}
+
+		/*
+		 * Try to find message in joinlist messages
+		 */
+		found = 0;
+		for (jl_iter = joinlist_messages_head.next;
+			jl_iter != &joinlist_messages_head;
+			jl_iter = jl_iter->next) {
+
+			stored_msg = list_entry(jl_iter, struct joinlist_msg, list);
+
+			if (stored_msg->sender_nodeid == api->totem_nodeid_get()) {
+				continue ;
+			}
+
+			if (pi->nodeid == stored_msg->sender_nodeid &&
+			    pi->pid == stored_msg->pid &&
+			    mar_name_compare (&pi->group, &stored_msg->group_name) == 0) {
+				found = 1;
+				break ;
+			}
+		}
+
+		if (!found) {
+			do_proc_leave(&pi->group, pi->pid, pi->nodeid, CONFCHG_CPG_REASON_PROCDOWN);
+		}
+	}
+}
+
 static void joinlist_inform_clients (void)
 {
 	struct joinlist_msg *stored_msg;
@@ -957,6 +1007,8 @@ static void joinlist_inform_clients (void)
 		do_proc_join (&stored_msg->group_name, stored_msg->pid, stored_msg->sender_nodeid,
 			CONFCHG_CPG_REASON_NODEUP);
 	}
+
+	joinlist_remove_zombie_pi_entries ();
 }
 
 static void downlist_messages_delete (void)
