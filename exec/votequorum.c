@@ -78,8 +78,9 @@ static uint8_t two_node = 0;
 static uint8_t wait_for_all = 0;
 static uint8_t wait_for_all_status = 0;
 
-static uint8_t auto_tie_breaker = 0;
+static enum {ATB_NONE, ATB_LOWEST, ATB_HIGHEST, ATB_LIST} auto_tie_breaker = ATB_NONE;
 static int lowest_node_id = -1;
+static int highest_node_id = -1;
 
 #define DEFAULT_LMS_WIN   10000
 static uint8_t last_man_standing = 0;
@@ -197,7 +198,11 @@ static uint8_t cluster_is_quorate;
 static struct cluster_node *us;
 static struct list_head cluster_members_list;
 static unsigned int quorum_members[PROCESSOR_COUNT_MAX];
+static unsigned int previous_quorum_members[PROCESSOR_COUNT_MAX];
+static unsigned int atb_nodelist[PROCESSOR_COUNT_MAX];
 static int quorum_members_entries = 0;
+static int previous_quorum_members_entries = 0;
+static int atb_nodelist_entries = 0;
 static struct memb_ring_id quorum_ringid;
 
 /*
@@ -537,6 +542,28 @@ static void get_lowest_node_id(void)
 	LEAVE();
 }
 
+static void get_highest_node_id(void)
+{
+	struct cluster_node *node = NULL;
+	struct list_head *tmp;
+
+	ENTER();
+
+	highest_node_id = us->node_id;
+
+	list_iterate(tmp, &cluster_members_list) {
+		node = list_entry(tmp, struct cluster_node, list);
+		if ((node->state == NODESTATE_MEMBER) &&
+		    (node->node_id > highest_node_id)) {
+			highest_node_id = node->node_id;
+		}
+	}
+	log_printf(LOGSYS_LEVEL_DEBUG, "highest node id: %d us: %d", highest_node_id, us->node_id);
+	icmap_set_uint32("runtime.votequorum.highest_node_id", highest_node_id);
+
+	LEAVE();
+}
+
 static int check_low_node_id_partition(void)
 {
 	struct cluster_node *node = NULL;
@@ -555,6 +582,151 @@ static int check_low_node_id_partition(void)
 
 	LEAVE();
 	return found;
+}
+
+static int check_high_node_id_partition(void)
+{
+	struct cluster_node *node = NULL;
+	struct list_head *tmp;
+	int found = 0;
+
+	ENTER();
+
+	list_iterate(tmp, &cluster_members_list) {
+		node = list_entry(tmp, struct cluster_node, list);
+		if ((node->state == NODESTATE_MEMBER) &&
+		    (node->node_id == highest_node_id)) {
+				found = 1;
+		}
+	}
+
+	LEAVE();
+	return found;
+}
+
+static int is_in_nodelist(int nodeid, unsigned int *members, int entries)
+{
+	int i;
+	ENTER();
+
+	for (i=0; i<entries; i++) {
+		if (nodeid == members[i]) {
+			LEAVE();
+			return 1;
+		}
+	}
+	LEAVE();
+	return 0;
+}
+
+/*
+ * The algorithm for a list of time-breaker nodes is:
+ * travel the list of nodes in the auto_tie_breaker list,
+ * if the node IS in our current partition, check if the
+ * nodes earlier in the atb list are in the 'previous' partition;
+ * If none are found then we are safe to be quorate, if any are
+ * then we cannot be as we don't know if that node is up or down.
+ * If we don't have a node in the current list we are NOT quorate.
+ * Obviously if we find the first node in the atb list in our
+ * partition then we are quorate.
+ *
+ * Special cases lowest nodeid, and highest nodeid are handled separately.
+ */
+static int check_auto_tie_breaker(void)
+{
+	int i, j;
+	int res;
+	ENTER();
+
+	if (auto_tie_breaker == ATB_LOWEST) {
+		res = check_low_node_id_partition();
+		log_printf(LOGSYS_LEVEL_DEBUG, "ATB_LOWEST decision: %d", res);
+		LEAVE();
+		return res;
+	}
+	if (auto_tie_breaker == ATB_HIGHEST) {
+		res = check_high_node_id_partition();
+		log_printf(LOGSYS_LEVEL_DEBUG, "ATB_HIGHEST decision: %d", res);
+		LEAVE();
+		return res;
+	}
+
+	/* Assume ATB_LIST, we should never be called for ATB_NONE */
+	for (i=0; i < atb_nodelist_entries; i++) {
+		if (is_in_nodelist(atb_nodelist[i], quorum_members, quorum_members_entries)) {
+			/*
+			 * Node is in our partition, if any of its predecessors are
+			 * in the previous quorum partition then it might be in the
+			 * 'other half' (as we've got this far without seeing it here)
+			 * and so we can't be quorate.
+			 */
+			for (j=0; j<i; j++) {
+				if (is_in_nodelist(atb_nodelist[j], previous_quorum_members, previous_quorum_members_entries)) {
+					log_printf(LOGSYS_LEVEL_DEBUG, "ATB_LIST found node %d in previous partition but not here, quorum denied", atb_nodelist[j]);
+					LEAVE();
+					return 0;
+				}
+			}
+
+			/*
+			 * None of the other list nodes were in the previous partition, if there
+			 * are enough votes, we can be quorate
+			 */
+			log_printf(LOGSYS_LEVEL_DEBUG, "ATB_LIST found node %d in current partition, we can be quorate", atb_nodelist[i]);
+			LEAVE();
+			return 1;
+		}
+	}
+	log_printf(LOGSYS_LEVEL_DEBUG, "ATB_LIST found no list nodes in current partition, we cannot be quorate");
+	LEAVE();
+	return 0;
+}
+
+/*
+ * atb_string can be either:
+ *   'lowest'
+ *   'highest'
+ *   a list of nodeids
+ */
+static void parse_atb_string(char *atb_string)
+{
+	char *ptr;
+	long num;
+
+	ENTER();
+	auto_tie_breaker = ATB_NONE;
+
+	if (!strcmp(atb_string, "lowest"))
+		auto_tie_breaker = ATB_LOWEST;
+
+	if (!strcmp(atb_string, "highest"))
+		auto_tie_breaker = ATB_HIGHEST;
+
+	if (atoi(atb_string)) {
+
+		atb_nodelist_entries = 0;
+		ptr = atb_string;
+		do {
+			num = strtol(ptr, &ptr, 10);
+			if (num) {
+				log_printf(LOGSYS_LEVEL_DEBUG, "ATB nodelist[%d] = %d", atb_nodelist_entries, num);
+				atb_nodelist[atb_nodelist_entries++] = num;
+			}
+		} while (num);
+
+		if (atb_nodelist_entries) {
+			auto_tie_breaker = ATB_LIST;
+		}
+	}
+	icmap_set_uint32("runtime.votequorum.atb_type", auto_tie_breaker);
+	log_printf(LOGSYS_LEVEL_DEBUG, "ATB type = %d", auto_tie_breaker);
+
+	/* Make sure we got something */
+	if (auto_tie_breaker == ATB_NONE) {
+		log_printf(LOGSYS_LEVEL_WARNING, "auto_tie_breaker_nodes is not valid. It must be 'lowest', 'highest' or a space-separated list of node IDs. auto_tie_breaker is disabled");
+		auto_tie_breaker = ATB_NONE;
+	}
+	LEAVE();
 }
 
 static int check_qdevice_master(void)
@@ -827,11 +999,12 @@ static void are_we_quorate(unsigned int total_votes)
 	} else {
 		quorate = 1;
 		get_lowest_node_id();
+		get_highest_node_id();
 	}
 
-	if ((auto_tie_breaker) &&
+	if ((auto_tie_breaker != ATB_NONE) &&
 	    (total_votes == (us->expected_votes / 2)) &&
-	    (check_low_node_id_partition() == 1)) {
+	    (check_auto_tie_breaker() == 1)) {
 		quorate = 1;
 	}
 
@@ -1038,7 +1211,9 @@ static char *votequorum_readconfig(int runtime)
 	uint32_t node_votes = 0, qdevice_votes = 0;
 	uint32_t node_expected_votes = 0, expected_votes = 0;
 	uint32_t node_count = 0;
+	uint8_t atb;
 	int have_nodelist, have_qdevice;
+	char *atb_string;
 	char *error = NULL;
 
 	ENTER();
@@ -1098,10 +1273,24 @@ static char *votequorum_readconfig(int runtime)
 
 		icmap_get_uint8("quorum.allow_downscale", &allow_downscale);
 		icmap_get_uint8("quorum.wait_for_all", &wait_for_all);
-		icmap_get_uint8("quorum.auto_tie_breaker", &auto_tie_breaker);
 		icmap_get_uint8("quorum.last_man_standing", &last_man_standing);
 		icmap_get_uint32("quorum.last_man_standing_window", &last_man_standing_window);
 		icmap_get_uint8("quorum.expected_votes_tracking", &ev_tracking);
+		icmap_get_uint8("quorum.auto_tie_breaker", &atb);
+		icmap_get_string("quorum.auto_tie_breaker_node", &atb_string);
+
+		if (!atb) {
+			auto_tie_breaker = ATB_NONE;
+			if (atb_string) {
+				log_printf(LOGSYS_LEVEL_WARNING,
+					   "auto_tie_breaker_node: is meaningless if auto_tie_breaker is set to 0");
+			}
+		}
+
+		if (atb && atb_string) {
+			parse_atb_string(atb_string);
+		}
+		free(atb_string);
 
 		/* allow_downscale requires ev_tracking */
 		if (allow_downscale) {
@@ -1136,7 +1325,7 @@ static char *votequorum_readconfig(int runtime)
 		}
 	}
 
-	if ((have_qdevice) && (auto_tie_breaker)) {
+	if ((have_qdevice) && (auto_tie_breaker != ATB_NONE)) {
 		if (!runtime) {
 			error = (char *)"configuration error: quorum.device is not compatible with auto_tie_breaker";
 			goto out;
@@ -2003,7 +2192,7 @@ static void votequorum_sync_init (
 
 	if (last_man_standing) {
 		if (((member_list_entries >= quorum) && (left_nodes)) ||
-		    ((member_list_entries <= quorum) && (auto_tie_breaker) && (check_low_node_id_partition() == 1))) {
+		    ((member_list_entries <= quorum) && (auto_tie_breaker != ATB_NONE) && (check_low_node_id_partition() == 1))) {
 			if (last_man_standing_timer_set) {
 				corosync_api->timer_delete(last_man_standing_timer);
 				last_man_standing_timer_set = 0;
@@ -2014,6 +2203,9 @@ static void votequorum_sync_init (
 			last_man_standing_timer_set = 1;
 		}
 	}
+
+	memcpy(previous_quorum_members, quorum_members, sizeof(unsigned int) * quorum_members_entries);
+	previous_quorum_members_entries = quorum_members_entries;
 
 	memcpy(quorum_members, member_list, sizeof(unsigned int) * member_list_entries);
 	quorum_members_entries = member_list_entries;
@@ -2205,7 +2397,7 @@ static void message_handler_req_lib_votequorum_getinfo (void *conn, const void *
 		if (last_man_standing) {
 			res_lib_votequorum_getinfo.flags |= VOTEQUORUM_INFO_LAST_MAN_STANDING;
 		}
-		if (auto_tie_breaker) {
+		if (auto_tie_breaker != ATB_NONE) {
 			res_lib_votequorum_getinfo.flags |= VOTEQUORUM_INFO_AUTO_TIE_BREAKER;
 		}
 		if (allow_downscale) {
