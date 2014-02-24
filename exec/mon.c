@@ -237,14 +237,26 @@ static void mon_fsm_state_set (struct cs_fsm* fsm,
 static void mon_config_changed (struct cs_fsm* fsm, int32_t event, void * data)
 {
 	struct resource_instance * inst = (struct resource_instance *)data;
+	char *tmp_str;
 	uint64_t tmp_value;
 	char key_name[ICMAP_KEYNAME_MAXLEN];
 	int run_updater;
+	int scanf_res = 0;
+	int32_t i32;
+	double dbl;
 
 	ENTER();
 
 	snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "%s%s", inst->icmap_path, "poll_period");
-	if (icmap_get_uint64(key_name, &tmp_value) == CS_OK) {
+	if (icmap_get_string(key_name, &tmp_str) == CS_OK) {
+		scanf_res = sscanf(tmp_str, "%"PRIu64, &tmp_value);
+		if (scanf_res != 1) {
+			log_printf (LOGSYS_LEVEL_WARNING,
+				"Could NOT use poll_period: %s (not uint64 type) for resource %s",
+				tmp_str, inst->name);
+		}
+		free(tmp_str);
+
 		if (tmp_value >= MON_MIN_PERIOD && tmp_value <= MON_MAX_PERIOD) {
 			log_printf (LOGSYS_LEVEL_DEBUG,
 				"poll_period changing from:%"PRIu64" to %"PRIu64".",
@@ -265,23 +277,29 @@ static void mon_config_changed (struct cs_fsm* fsm, int32_t event, void * data)
 	run_updater = 0;
 
 	snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "%s%s", inst->icmap_path, "max");
-	if (inst->max_type == ICMAP_VALUETYPE_INT32) {
-		if (icmap_get_int32(key_name, &inst->max.int32) != CS_OK) {
-			inst->max.int32 = INT32_MAX;
 
-			mon_fsm_state_set (fsm, MON_S_STOPPED, inst);
-		} else {
-			run_updater = 1;
-		}
-	}
-	if (inst->max_type == ICMAP_VALUETYPE_DOUBLE) {
-		if (icmap_get_double(key_name, &inst->max.dbl) != CS_OK) {
-			inst->max.dbl = INT32_MAX;
+	if (icmap_get_string(key_name, &tmp_str) == CS_OK) {
+		if (inst->max_type == ICMAP_VALUETYPE_INT32) {
+			if (sscanf(tmp_str, "%"PRId32, &i32) != 1) {
+				inst->max.int32 = INT32_MAX;
 
-			mon_fsm_state_set (fsm, MON_S_STOPPED, inst);
-		} else {
-			run_updater = 1;
+				mon_fsm_state_set (fsm, MON_S_STOPPED, inst);
+			} else {
+				inst->max.int32 = i32;
+				run_updater = 1;
+			}
 		}
+		if (inst->max_type == ICMAP_VALUETYPE_DOUBLE) {
+			if (sscanf(tmp_str, "%lf", &dbl) != 1) {
+				inst->max.dbl = INT32_MAX;
+
+				mon_fsm_state_set (fsm, MON_S_STOPPED, inst);
+			} else {
+				inst->max.dbl = dbl;
+				run_updater = 1;
+			}
+		}
+		free(tmp_str);
 	}
 
 	if (run_updater) {
@@ -429,6 +447,7 @@ static void mon_instance_init (struct resource_instance* inst)
 	uint64_t tmp_value;
 	char key_name[ICMAP_KEYNAME_MAXLEN];
 	icmap_track_t icmap_track = NULL;
+	char *tmp_str;
 
 	snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "%s%s", inst->icmap_path, "current");
 	if (inst->max_type == ICMAP_VALUETYPE_INT32) {
@@ -452,7 +471,8 @@ static void mon_instance_init (struct resource_instance* inst)
 	inst->fsm.event_to_str = mon_res_event_to_str;
 
 	snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "%s%s", inst->icmap_path, "poll_period");
-	if (icmap_get_uint64(key_name, &tmp_value) != CS_OK) {
+	if (icmap_get_string(key_name, &tmp_str) != CS_OK ||
+	    sscanf(tmp_str, "%"PRIu64, &tmp_value) != 1) {
 		icmap_set_uint64(key_name, inst->period);
 	}
 	else {
@@ -463,6 +483,7 @@ static void mon_instance_init (struct resource_instance* inst)
 				"Could NOT use poll_period:%"PRIu64" ms for resource %s",
 				tmp_value, inst->name);
 		}
+		free(tmp_str);
 	}
 	cs_fsm_process (&inst->fsm, MON_E_CONFIG_CHANGED, inst, mon_fsm_cb);
 
