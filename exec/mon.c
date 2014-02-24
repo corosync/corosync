@@ -384,7 +384,7 @@ static void load_update_stats_fn (void *data)
 		icmap_set_uint64(key_name, timestamp);
 
 		if (min15 > inst->max.dbl && inst->fsm.curr_state != MON_S_FAILED) {
-			cs_fsm_process (&inst->fsm, MON_E_FAILURE, &inst, mon_fsm_cb);
+			cs_fsm_process (&inst->fsm, MON_E_FAILURE, inst, mon_fsm_cb);
 		}
 	}
 
