@@ -428,6 +428,9 @@ fi
 
 if test "x${enable_monitoring}" = xyes; then
 	PKG_CHECK_MODULES([statgrab], [libstatgrab])
+	PKG_CHECK_MODULES([statgrabge090], [libstatgrab >= 0.90],
+	    AC_DEFINE_UNQUOTED([HAVE_LIBSTATGRAB_GE_090], 1, [have libstatgrab >= 0.90]),
+	    TMP_VARIABLE=1)
 	AC_DEFINE_UNQUOTED([HAVE_MONITORING], 1, [have resource monitoring])
 	PACKAGE_FEATURES="$PACKAGE_FEATURES monitoring"
 	WITH_LIST="$WITH_LIST --with monitoring"

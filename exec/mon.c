@@ -307,8 +307,13 @@ static int32_t percent_mem_used_get(void)
 	sg_swap_stats *swap_stats;
 	long long total, freemem;
 
+#ifdef HAVE_LIBSTATGRAB_GE_090
+	mem_stats = sg_get_mem_stats(NULL);
+	swap_stats = sg_get_swap_stats(NULL);
+#else
 	mem_stats = sg_get_mem_stats();
 	swap_stats = sg_get_swap_stats();
+#endif
 
 	if (mem_stats == NULL || swap_stats != NULL) {
 		log_printf (LOGSYS_LEVEL_ERROR, "Unable to get memory stats: %s",
@@ -348,7 +353,12 @@ static void mem_update_stats_fn (void *data)
 static double min15_loadavg_get(void)
 {
 	sg_load_stats *load_stats;
+
+#ifdef HAVE_LIBSTATGRAB_GE_090
+	load_stats = sg_get_load_stats (NULL);
+#else
 	load_stats = sg_get_load_stats ();
+#endif
 	if (load_stats == NULL) {
 		log_printf (LOGSYS_LEVEL_ERROR, "Unable to get load stats: %s",
 			sg_str_error (sg_get_error()));
@@ -463,7 +473,11 @@ static void mon_instance_init (struct resource_instance* inst)
 
 static char *mon_exec_init_fn (struct corosync_api_v1 *corosync_api)
 {
+#ifdef HAVE_LIBSTATGRAB_GE_090
+	sg_init(1);
+#else
 	sg_init();
+#endif
 
 	api = corosync_api;
 
