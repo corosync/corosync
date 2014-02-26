@@ -1211,9 +1211,9 @@ static char *votequorum_readconfig(int runtime)
 	uint32_t node_votes = 0, qdevice_votes = 0;
 	uint32_t node_expected_votes = 0, expected_votes = 0;
 	uint32_t node_count = 0;
-	uint8_t atb;
+	uint8_t atb = 0;
 	int have_nodelist, have_qdevice;
-	char *atb_string;
+	char *atb_string = NULL;
 	char *error = NULL;
 
 	ENTER();
