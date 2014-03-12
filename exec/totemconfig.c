@@ -1007,7 +1007,9 @@ int totem_config_validate (
 		goto parse_error;
 	}
 
-	totem_set_volatile_defaults(totem_config, error_string);
+	if (totem_set_volatile_defaults(totem_config, error_string) == -1) {
+		return (-1);
+	}
 
 	/*
 	 * RRP values validation
