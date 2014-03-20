@@ -133,37 +133,183 @@ static uint32_t *totem_get_param_by_name(struct totem_config *totem_config, cons
 	return NULL;
 }
 
-
-static void totem_volatile_config_read (struct totem_config *totem_config)
+/*
+ * Read key_name from icmap. If key is not found or key_name == delete_key or if allow_zero is false
+ * and readed value is zero, default value is used and stored into totem_config.
+ */
+static void totem_volatile_config_set_value (struct totem_config *totem_config,
+	const char *key_name, const char *deleted_key, unsigned int default_value,
+	int allow_zero_value)
 {
-	char *str;
 
-	icmap_get_uint32("totem.token", &totem_config->token_timeout);
-	icmap_get_uint32("totem.token_retransmit", &totem_config->token_retransmit_timeout);
-	icmap_get_uint32("totem.hold", &totem_config->token_hold_timeout);
-	icmap_get_uint32("totem.token_retransmits_before_loss_const", &totem_config->token_retransmits_before_loss_const);
-	icmap_get_uint32("totem.join", &totem_config->join_timeout);
-	icmap_get_uint32("totem.send_join", &totem_config->send_join_timeout);
-	icmap_get_uint32("totem.consensus", &totem_config->consensus_timeout);
-	icmap_get_uint32("totem.merge", &totem_config->merge_timeout);
-	icmap_get_uint32("totem.downcheck", &totem_config->downcheck_timeout);
-	icmap_get_uint32("totem.fail_recv_const", &totem_config->fail_to_recv_const);
-	icmap_get_uint32("totem.seqno_unchanged_const", &totem_config->seqno_unchanged_const);
-	icmap_get_uint32("totem.rrp_token_expired_timeout", &totem_config->rrp_token_expired_timeout);
-	icmap_get_uint32("totem.rrp_problem_count_timeout", &totem_config->rrp_problem_count_timeout);
-	icmap_get_uint32("totem.rrp_problem_count_threshold", &totem_config->rrp_problem_count_threshold);
-	icmap_get_uint32("totem.rrp_problem_count_mcast_threshold", &totem_config->rrp_problem_count_mcast_threshold);
-	icmap_get_uint32("totem.rrp_autorecovery_check_timeout", &totem_config->rrp_autorecovery_check_timeout);
-	icmap_get_uint32("totem.heartbeat_failures_allowed", &totem_config->heartbeat_failures_allowed);
-	icmap_get_uint32("totem.max_network_delay", &totem_config->max_network_delay);
-	icmap_get_uint32("totem.window_size", &totem_config->window_size);
-	icmap_get_uint32("totem.max_messages", &totem_config->max_messages);
-	icmap_get_uint32("totem.miss_count_const", &totem_config->miss_count_const);
-	if (icmap_get_string("totem.vsftype", &str) == CS_OK) {
-		totem_config->vsf_type = str;
+	if (icmap_get_uint32(key_name, totem_get_param_by_name(totem_config, key_name)) != CS_OK ||
+	    (deleted_key != NULL && strcmp(deleted_key, key_name) == 0) ||
+	    (!allow_zero_value && *totem_get_param_by_name(totem_config, key_name) == 0)) {
+		*totem_get_param_by_name(totem_config, key_name) = default_value;
 	}
 }
 
+
+/*
+ * Read and validate config values from cmap and store them into totem_config. If key doesn't exists,
+ * default value is stored. deleted_key is name of key beeing processed by delete operation
+ * from cmap. It is considered as non existing even if it can be read. Can be NULL.
+ */
+static void totem_volatile_config_read (struct totem_config *totem_config, const char *deleted_key)
+{
+
+	totem_volatile_config_set_value(totem_config, "totem.token_retransmits_before_loss_const", deleted_key,
+	    TOKEN_RETRANSMITS_BEFORE_LOSS_CONST, 0);
+
+	totem_volatile_config_set_value(totem_config, "totem.token", deleted_key, TOKEN_TIMEOUT, 0);
+
+	totem_volatile_config_set_value(totem_config, "totem.max_network_delay", deleted_key, MAX_NETWORK_DELAY, 0);
+
+	totem_volatile_config_set_value(totem_config, "totem.window_size", deleted_key, WINDOW_SIZE, 0);
+
+	totem_volatile_config_set_value(totem_config, "totem.max_messages", deleted_key, MAX_MESSAGES, 0);
+
+	totem_volatile_config_set_value(totem_config, "totem.miss_count_const", deleted_key, MISS_COUNT_CONST, 0);
+
+	totem_volatile_config_set_value(totem_config, "totem.token_retransmit", deleted_key,
+	   (int)(totem_config->token_timeout / (totem_config->token_retransmits_before_loss_const + 0.2)), 0);
+
+	totem_volatile_config_set_value(totem_config, "totem.hold", deleted_key,
+	    (int)(totem_config->token_retransmit_timeout * 0.8 - (1000/HZ)), 0);
+
+	totem_volatile_config_set_value(totem_config, "totem.join", deleted_key, JOIN_TIMEOUT, 0);
+
+	totem_volatile_config_set_value(totem_config, "totem.consensus", deleted_key,
+	    (int)(float)(1.2 * totem_config->token_timeout), 0);
+
+	totem_volatile_config_set_value(totem_config, "totem.merge", deleted_key, MERGE_TIMEOUT, 0);
+
+	totem_volatile_config_set_value(totem_config, "totem.downcheck", deleted_key, DOWNCHECK_TIMEOUT, 0);
+
+	totem_volatile_config_set_value(totem_config, "totem.fail_recv_const", deleted_key, FAIL_TO_RECV_CONST, 0);
+
+	totem_volatile_config_set_value(totem_config, "totem.seqno_unchanged_const", deleted_key,
+	    SEQNO_UNCHANGED_CONST, 0);
+
+	totem_volatile_config_set_value(totem_config, "totem.send_join", deleted_key, 0, 1);
+
+	totem_volatile_config_set_value(totem_config, "totem.rrp_problem_count_timeout", deleted_key,
+	    RRP_PROBLEM_COUNT_TIMEOUT, 0);
+
+	totem_volatile_config_set_value(totem_config, "totem.rrp_problem_count_threshold", deleted_key,
+	    RRP_PROBLEM_COUNT_THRESHOLD_DEFAULT, 0);
+
+	totem_volatile_config_set_value(totem_config, "totem.rrp_problem_count_mcast_threshold", deleted_key,
+	    totem_config->rrp_problem_count_threshold * 10, 0);
+
+	totem_volatile_config_set_value(totem_config, "totem.rrp_token_expired_timeout", deleted_key,
+	    totem_config->token_retransmit_timeout, 0);
+
+	totem_volatile_config_set_value(totem_config, "totem.rrp_autorecovery_check_timeout", deleted_key,
+	    RRP_AUTORECOVERY_CHECK_TIMEOUT, 0);
+
+	totem_volatile_config_set_value(totem_config, "totem.heartbeat_failures_allowed", deleted_key, 0, 1);
+}
+
+static int totem_volatile_config_validate (
+	struct totem_config *totem_config,
+	const char **error_string)
+{
+	static char local_error_reason[512];
+	const char *error_reason = local_error_reason;
+
+	if (totem_config->max_network_delay < MINIMUM_TIMEOUT) {
+		snprintf (local_error_reason, sizeof(local_error_reason),
+			"The max_network_delay parameter (%d ms) may not be less then (%d ms).",
+			totem_config->max_network_delay, MINIMUM_TIMEOUT);
+		goto parse_error;
+	}
+
+	if (totem_config->token_timeout < MINIMUM_TIMEOUT) {
+		snprintf (local_error_reason, sizeof(local_error_reason),
+			"The token timeout parameter (%d ms) may not be less then (%d ms).",
+			totem_config->token_timeout, MINIMUM_TIMEOUT);
+		goto parse_error;
+	}
+
+	if (totem_config->token_retransmit_timeout < MINIMUM_TIMEOUT) {
+		snprintf (local_error_reason, sizeof(local_error_reason),
+			"The token retransmit timeout parameter (%d ms) may not be less then (%d ms).",
+			totem_config->token_retransmit_timeout, MINIMUM_TIMEOUT);
+		goto parse_error;
+	}
+
+	if (totem_config->token_hold_timeout < MINIMUM_TIMEOUT) {
+		snprintf (local_error_reason, sizeof(local_error_reason),
+			"The token hold timeout parameter (%d ms) may not be less then (%d ms).",
+			totem_config->token_hold_timeout, MINIMUM_TIMEOUT);
+		goto parse_error;
+	}
+
+	if (totem_config->join_timeout < MINIMUM_TIMEOUT) {
+		snprintf (local_error_reason, sizeof(local_error_reason),
+			"The join timeout parameter (%d ms) may not be less then (%d ms).",
+			totem_config->join_timeout, MINIMUM_TIMEOUT);
+		goto parse_error;
+	}
+
+	if (totem_config->consensus_timeout < MINIMUM_TIMEOUT) {
+		snprintf (local_error_reason, sizeof(local_error_reason),
+			"The consensus timeout parameter (%d ms) may not be less then (%d ms).",
+			totem_config->consensus_timeout, MINIMUM_TIMEOUT);
+		goto parse_error;
+	}
+
+	if (totem_config->merge_timeout < MINIMUM_TIMEOUT) {
+		snprintf (local_error_reason, sizeof(local_error_reason),
+			"The merge timeout parameter (%d ms) may not be less then (%d ms).",
+			totem_config->merge_timeout, MINIMUM_TIMEOUT);
+		goto parse_error;
+	}
+
+	if (totem_config->downcheck_timeout < MINIMUM_TIMEOUT) {
+		snprintf (local_error_reason, sizeof(local_error_reason),
+			"The downcheck timeout parameter (%d ms) may not be less then (%d ms).",
+			totem_config->downcheck_timeout, MINIMUM_TIMEOUT);
+		goto parse_error;
+	}
+
+	if (totem_config->rrp_problem_count_timeout < MINIMUM_TIMEOUT) {
+		snprintf (local_error_reason, sizeof(local_error_reason),
+			"The RRP problem count timeout parameter (%d ms) may not be less then (%d ms).",
+			totem_config->rrp_problem_count_timeout, MINIMUM_TIMEOUT);
+		goto parse_error;
+	}
+
+	if (totem_config->rrp_problem_count_threshold < RRP_PROBLEM_COUNT_THRESHOLD_MIN) {
+		snprintf (local_error_reason, sizeof(local_error_reason),
+			"The RRP problem count threshold (%d problem count) may not be less then (%d problem count).",
+			totem_config->rrp_problem_count_threshold, RRP_PROBLEM_COUNT_THRESHOLD_MIN);
+		goto parse_error;
+	}
+	if (totem_config->rrp_problem_count_mcast_threshold < RRP_PROBLEM_COUNT_THRESHOLD_MIN) {
+		snprintf (local_error_reason, sizeof(local_error_reason),
+			"The RRP multicast problem count threshold (%d problem count) may not be less then (%d problem count).",
+			totem_config->rrp_problem_count_mcast_threshold, RRP_PROBLEM_COUNT_THRESHOLD_MIN);
+		goto parse_error;
+	}
+
+	if (totem_config->rrp_token_expired_timeout < MINIMUM_TIMEOUT) {
+		snprintf (local_error_reason, sizeof(local_error_reason),
+			"The RRP token expired timeout parameter (%d ms) may not be less then (%d ms).",
+			totem_config->rrp_token_expired_timeout, MINIMUM_TIMEOUT);
+		goto parse_error;
+	}
+
+	return 0;
+
+parse_error:
+	snprintf (error_string_response, sizeof(error_string_response),
+		 "parse error in config: %s\n", error_reason);
+	*error_string = error_string_response;
+	return (-1);
+
+}
 
 static int totem_get_crypto(struct totem_config *totem_config)
 {
@@ -566,11 +712,6 @@ extern int totem_config_read (
 		free(str);
 	}
 
-	/*
-	 * Get things that might change in the future
-	 */
-	totem_volatile_config_read(totem_config);
-
 	if (icmap_get_string("totem.interface.0.bindnetaddr", &str) != CS_OK) {
 		/*
 		 * We were not able to find ring 0 bindnet addr. Try to use nodelist informations
@@ -758,189 +899,16 @@ extern int totem_config_read (
 		put_nodelist_members_to_config(totem_config);
 	}
 
+	/*
+	 * Get things that might change in the future (and can depend on totem_config->interfaces);
+	 */
+	totem_volatile_config_read(totem_config, NULL);
+
 	add_totem_config_notification(totem_config);
 
 	return 0;
 }
 
-static int totem_set_volatile_defaults (
-	struct totem_config *totem_config,
-	const char **error_string)
-{
-	static char local_error_reason[512];
-	const char *error_reason = local_error_reason;
-
-	if (totem_config->token_retransmits_before_loss_const == 0) {
-		totem_config->token_retransmits_before_loss_const =
-			TOKEN_RETRANSMITS_BEFORE_LOSS_CONST;
-	}
-
-	/*
-	 * Setup timeout values that are not setup by user
-	 */
-	if (totem_config->token_timeout == 0) {
-		totem_config->token_timeout = TOKEN_TIMEOUT;
-	}
-
-	if (totem_config->max_network_delay == 0) {
-		totem_config->max_network_delay = MAX_NETWORK_DELAY;
-	}
-
-	if (totem_config->max_network_delay < MINIMUM_TIMEOUT) {
-		snprintf (local_error_reason, sizeof(local_error_reason),
-			"The max_network_delay parameter (%d ms) may not be less then (%d ms).",
-			totem_config->max_network_delay, MINIMUM_TIMEOUT);
-		goto parse_error;
-	}
-
-	if (totem_config->window_size == 0) {
-		totem_config->window_size = WINDOW_SIZE;
-	}
-
-	if (totem_config->max_messages == 0) {
-		totem_config->max_messages = MAX_MESSAGES;
-	}
-
-	if (totem_config->miss_count_const == 0) {
-		totem_config->miss_count_const = MISS_COUNT_CONST;
-	}
-
-	if (totem_config->token_timeout < MINIMUM_TIMEOUT) {
-		snprintf (local_error_reason, sizeof(local_error_reason),
-			"The token timeout parameter (%d ms) may not be less then (%d ms).",
-			totem_config->token_timeout, MINIMUM_TIMEOUT);
-		goto parse_error;
-	}
-
-	if (totem_config->token_retransmit_timeout == 0) {
-		totem_config->token_retransmit_timeout =
-			(int)(totem_config->token_timeout /
-			(totem_config->token_retransmits_before_loss_const + 0.2));
-	}
-	if (totem_config->token_hold_timeout == 0) {
-		totem_config->token_hold_timeout =
-			(int)(totem_config->token_retransmit_timeout * 0.8 -
-			(1000/HZ));
-	}
-	if (totem_config->token_retransmit_timeout < MINIMUM_TIMEOUT) {
-		snprintf (local_error_reason, sizeof(local_error_reason),
-			"The token retransmit timeout parameter (%d ms) may not be less then (%d ms).",
-			totem_config->token_retransmit_timeout, MINIMUM_TIMEOUT);
-		goto parse_error;
-	}
-
-	if (totem_config->token_hold_timeout < MINIMUM_TIMEOUT) {
-		snprintf (local_error_reason, sizeof(local_error_reason),
-			"The token hold timeout parameter (%d ms) may not be less then (%d ms).",
-			totem_config->token_hold_timeout, MINIMUM_TIMEOUT);
-		goto parse_error;
-	}
-
-	if (totem_config->join_timeout == 0) {
-		totem_config->join_timeout = JOIN_TIMEOUT;
-	}
-
-	if (totem_config->join_timeout < MINIMUM_TIMEOUT) {
-		snprintf (local_error_reason, sizeof(local_error_reason),
-			"The join timeout parameter (%d ms) may not be less then (%d ms).",
-			totem_config->join_timeout, MINIMUM_TIMEOUT);
-		goto parse_error;
-	}
-
-	if (totem_config->consensus_timeout == 0) {
-		totem_config->consensus_timeout = (int)(float)(1.2 * totem_config->token_timeout);
-	}
-
-	if (totem_config->consensus_timeout < MINIMUM_TIMEOUT) {
-		snprintf (local_error_reason, sizeof(local_error_reason),
-			"The consensus timeout parameter (%d ms) may not be less then (%d ms).",
-			totem_config->consensus_timeout, MINIMUM_TIMEOUT);
-		goto parse_error;
-	}
-
-	if (totem_config->merge_timeout == 0) {
-		totem_config->merge_timeout = MERGE_TIMEOUT;
-	}
-
-	if (totem_config->merge_timeout < MINIMUM_TIMEOUT) {
-		snprintf (local_error_reason, sizeof(local_error_reason),
-			"The merge timeout parameter (%d ms) may not be less then (%d ms).",
-			totem_config->merge_timeout, MINIMUM_TIMEOUT);
-		goto parse_error;
-	}
-
-	if (totem_config->downcheck_timeout == 0) {
-		totem_config->downcheck_timeout = DOWNCHECK_TIMEOUT;
-	}
-
-	if (totem_config->downcheck_timeout < MINIMUM_TIMEOUT) {
-		snprintf (local_error_reason, sizeof(local_error_reason),
-			"The downcheck timeout parameter (%d ms) may not be less then (%d ms).",
-			totem_config->downcheck_timeout, MINIMUM_TIMEOUT);
-		goto parse_error;
-	}
-
-	if (totem_config->fail_to_recv_const == 0) {
-		totem_config->fail_to_recv_const = FAIL_TO_RECV_CONST;
-	}
-	if (totem_config->seqno_unchanged_const == 0) {
-		totem_config->seqno_unchanged_const = SEQNO_UNCHANGED_CONST;
-	}
-
-/* RRP volatile values */
-
-	if (totem_config->rrp_problem_count_timeout == 0) {
-		totem_config->rrp_problem_count_timeout = RRP_PROBLEM_COUNT_TIMEOUT;
-	}
-	if (totem_config->rrp_problem_count_timeout < MINIMUM_TIMEOUT) {
-		snprintf (local_error_reason, sizeof(local_error_reason),
-			"The RRP problem count timeout parameter (%d ms) may not be less then (%d ms).",
-			totem_config->rrp_problem_count_timeout, MINIMUM_TIMEOUT);
-		goto parse_error;
-	}
-	if (totem_config->rrp_problem_count_threshold == 0) {
-		totem_config->rrp_problem_count_threshold = RRP_PROBLEM_COUNT_THRESHOLD_DEFAULT;
-	}
-	if (totem_config->rrp_problem_count_mcast_threshold == 0) {
-		totem_config->rrp_problem_count_mcast_threshold = totem_config->rrp_problem_count_threshold * 10;
-	}
-	if (totem_config->rrp_problem_count_threshold < RRP_PROBLEM_COUNT_THRESHOLD_MIN) {
-		snprintf (local_error_reason, sizeof(local_error_reason),
-			"The RRP problem count threshold (%d problem count) may not be less then (%d problem count).",
-			totem_config->rrp_problem_count_threshold, RRP_PROBLEM_COUNT_THRESHOLD_MIN);
-		goto parse_error;
-	}
-	if (totem_config->rrp_problem_count_mcast_threshold < RRP_PROBLEM_COUNT_THRESHOLD_MIN) {
-		snprintf (local_error_reason, sizeof(local_error_reason),
-			"The RRP multicast problem count threshold (%d problem count) may not be less then (%d problem count).",
-			totem_config->rrp_problem_count_mcast_threshold, RRP_PROBLEM_COUNT_THRESHOLD_MIN);
-		goto parse_error;
-	}
-	if (totem_config->rrp_token_expired_timeout == 0) {
-		totem_config->rrp_token_expired_timeout =
-			totem_config->token_retransmit_timeout;
-	}
-
-	if (totem_config->rrp_token_expired_timeout < MINIMUM_TIMEOUT) {
-		snprintf (local_error_reason, sizeof(local_error_reason),
-			"The RRP token expired timeout parameter (%d ms) may not be less then (%d ms).",
-			totem_config->rrp_token_expired_timeout, MINIMUM_TIMEOUT);
-		goto parse_error;
-	}
-
-	if (totem_config->rrp_autorecovery_check_timeout == 0) {
-		totem_config->rrp_autorecovery_check_timeout = RRP_AUTORECOVERY_CHECK_TIMEOUT;
-	}
-
-	return 0;
-
-parse_error:
-	snprintf (error_string_response, sizeof(error_string_response),
-		 "parse error in config: %s\n", error_reason);
-	*error_string = error_string_response;
-	return (-1);
-
-}
 
 int totem_config_validate (
 	struct totem_config *totem_config,
@@ -1016,7 +984,7 @@ int totem_config_validate (
 		goto parse_error;
 	}
 
-	if (totem_set_volatile_defaults(totem_config, error_string) == -1) {
+	if (totem_volatile_config_validate(totem_config, error_string) == -1) {
 		return (-1);
 	}
 
@@ -1174,8 +1142,8 @@ static void totem_change_notify(
 	void *user_data)
 {
 	uint32_t *param;
-	const char *error_string;
 	uint8_t reloading;
+	const char *deleted_key;
 
 	/*
 	 * If a full reload is in progress then don't do anything until it's done and
@@ -1188,22 +1156,22 @@ static void totem_change_notify(
 	if (!param)
 		return;
 
-	switch (event)
-	{
+	/*
+	 * Values other then UINT32 are not supported, or needed (yet)
+	 */
+	switch (event) {
 	case ICMAP_TRACK_DELETE:
-		if (new_val.type == ICMAP_VALUETYPE_UINT32)
-			*param = 0;
-		totem_set_volatile_defaults((struct totem_config *)user_data, &error_string);
+		deleted_key = key_name;
 		break;
 	case ICMAP_TRACK_ADD:
 	case ICMAP_TRACK_MODIFY:
-		if (new_val.type == ICMAP_VALUETYPE_UINT32)
-			memcpy(param, new_val.data, new_val.len);
-		/* Other value types not supported, or needed (yet) */
+		deleted_key = NULL;
 		break;
 	default:
 		break;
 	}
+
+	totem_volatile_config_read ((struct totem_config *)user_data, deleted_key);
 }
 
 static void totem_reload_notify(
@@ -1219,7 +1187,7 @@ static void totem_reload_notify(
 	/* Reload has completed */
 	if (*(uint8_t *)new_val.data == 0) {
 		put_nodelist_members_to_config (totem_config);
-		totem_volatile_config_read (totem_config);
+		totem_volatile_config_read (totem_config, NULL);
 
 		/* Reinstate the local_node_pos */
 		local_node_pos = find_local_node_in_nodelist(totem_config);
