@@ -349,6 +349,15 @@ static void put_nodelist_members_to_config(struct totem_config *totem_config)
 	char *node_addr_str;
 	int member_count;
 	unsigned int ringnumber = 0;
+	int i, j;
+
+	/* Clear out nodelist so we can put the new one in if needed */
+	for (i = 0; i < totem_config->interface_count; i++) {
+		for (j = 0; j < PROCESSOR_COUNT_MAX; j++) {
+			memset(&totem_config->interfaces[i].member_list[j], 0, sizeof(struct totem_ip_address));
+		}
+		totem_config->interfaces[i].member_count = 0;
+	}
 
 	iter = icmap_iter_init("nodelist.node.");
 	while ((iter_key = icmap_iter_next(iter, NULL, NULL)) != NULL) {
@@ -1209,15 +1218,6 @@ static void totem_reload_notify(
 
 	/* Reload has completed */
 	if (*(uint8_t *)new_val.data == 0) {
-		int i, j;
-
-		/* Clear out udpu nodelist so we can put the new one in if neede */
-		for (i=0; i<totem_config->interface_count; i++) {
-			for (j=0; j<PROCESSOR_COUNT_MAX; j++) {
-				memset(&totem_config->interfaces[i].member_list[j], 0, sizeof(struct totem_ip_address));
-			}
-		}
-
 		put_nodelist_members_to_config (totem_config);
 		totem_volatile_config_read (totem_config);
 
