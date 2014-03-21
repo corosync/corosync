@@ -1134,6 +1134,42 @@ key_error:
 
 }
 
+static void debug_dump_totem_config(const struct totem_config *totem_config)
+{
+
+	log_printf(LOGSYS_LEVEL_DEBUG, "Token Timeout (%d ms) retransmit timeout (%d ms)",
+	    totem_config->token_timeout, totem_config->token_retransmit_timeout);
+	log_printf(LOGSYS_LEVEL_DEBUG, "token hold (%d ms) retransmits before loss (%d retrans)",
+	    totem_config->token_hold_timeout, totem_config->token_retransmits_before_loss_const);
+	log_printf(LOGSYS_LEVEL_DEBUG, "join (%d ms) send_join (%d ms) consensus (%d ms) merge (%d ms)",
+	    totem_config->join_timeout, totem_config->send_join_timeout, totem_config->consensus_timeout,
+	    totem_config->merge_timeout);
+	log_printf(LOGSYS_LEVEL_DEBUG, "downcheck (%d ms) fail to recv const (%d msgs)",
+	    totem_config->downcheck_timeout, totem_config->fail_to_recv_const);
+	log_printf(LOGSYS_LEVEL_DEBUG,
+	    "seqno unchanged const (%d rotations) Maximum network MTU %d",
+	    totem_config->seqno_unchanged_const, totem_config->net_mtu);
+	log_printf(LOGSYS_LEVEL_DEBUG,
+	    "window size per rotation (%d messages) maximum messages per rotation (%d messages)",
+	    totem_config->window_size, totem_config->max_messages);
+	log_printf(LOGSYS_LEVEL_DEBUG, "missed count const (%d messages)", totem_config->miss_count_const);
+	log_printf(LOGSYS_LEVEL_DEBUG, "RRP token expired timeout (%d ms)",
+	    totem_config->rrp_token_expired_timeout);
+	log_printf(LOGSYS_LEVEL_DEBUG, "RRP token problem counter (%d ms)",
+	    totem_config->rrp_problem_count_timeout);
+	log_printf(LOGSYS_LEVEL_DEBUG, "RRP threshold (%d problem count)",
+	    totem_config->rrp_problem_count_threshold);
+	log_printf(LOGSYS_LEVEL_DEBUG, "RRP multicast threshold (%d problem count)",
+	    totem_config->rrp_problem_count_mcast_threshold);
+	log_printf(LOGSYS_LEVEL_DEBUG, "RRP automatic recovery check timeout (%d ms)",
+	    totem_config->rrp_autorecovery_check_timeout);
+	log_printf(LOGSYS_LEVEL_DEBUG, "RRP mode set to %s.",
+	    totem_config->rrp_mode);
+	log_printf(LOGSYS_LEVEL_DEBUG, "heartbeat_failures_allowed (%d)",
+	    totem_config->heartbeat_failures_allowed);
+	log_printf(LOGSYS_LEVEL_DEBUG, "max_network_delay (%d ms)", totem_config->max_network_delay);
+}
+
 static void totem_change_notify(
 	int32_t event,
 	const char *key_name,
@@ -1141,9 +1177,11 @@ static void totem_change_notify(
 	struct icmap_notify_value old_val,
 	void *user_data)
 {
+	struct totem_config *totem_config = (struct totem_config *)user_data;
 	uint32_t *param;
 	uint8_t reloading;
-	const char *deleted_key;
+	const char *deleted_key = NULL;
+	const char *error_string;
 
 	/*
 	 * If a full reload is in progress then don't do anything until it's done and
@@ -1171,7 +1209,16 @@ static void totem_change_notify(
 		break;
 	}
 
-	totem_volatile_config_read ((struct totem_config *)user_data, deleted_key);
+	totem_volatile_config_read (totem_config, deleted_key);
+	log_printf(LOGSYS_LEVEL_DEBUG, "Totem related config key changed. Dumping actual totem config.");
+	debug_dump_totem_config(totem_config);
+	if (totem_volatile_config_validate(totem_config, &error_string) == -1) {
+		log_printf (LOGSYS_LEVEL_ERROR, "%s", error_string);
+		/*
+		 * TODO: Consider corosync exit and/or load defaults for volatile
+		 * values. For now, log error seems to be enough
+		 */
+	}
 }
 
 static void totem_reload_notify(
@@ -1183,11 +1230,21 @@ static void totem_reload_notify(
 {
 	struct totem_config *totem_config = (struct totem_config *)user_data;
 	uint32_t local_node_pos;
+	const char *error_string;
 
 	/* Reload has completed */
 	if (*(uint8_t *)new_val.data == 0) {
 		put_nodelist_members_to_config (totem_config);
 		totem_volatile_config_read (totem_config, NULL);
+		log_printf(LOGSYS_LEVEL_DEBUG, "Configuration reloaded. Dumping actual totem config.");
+		debug_dump_totem_config(totem_config);
+		if (totem_volatile_config_validate(totem_config, &error_string) == -1) {
+			log_printf (LOGSYS_LEVEL_ERROR, "%s", error_string);
+			/*
+			 * TODO: Consider corosync exit and/or load defaults for volatile
+			 * values. For now, log error seems to be enough
+			 */
+		}
 
 		/* Reinstate the local_node_pos */
 		local_node_pos = find_local_node_in_nodelist(totem_config);
