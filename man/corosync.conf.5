@@ -300,6 +300,18 @@ milliseconds in addition to this timeout.
 The default is 1000 milliseconds.
 
 .TP
+token_coefficient
+This value is used only when
+.B nodelist
+section is specified and contains at least 3 nodes. If so, real token timeout
+is then computed as token + (number_of_nodes - 2) * token_coefficient.
+This allows cluster to scale without manually changing token timeout
+every time new node is added. This value can be set to 0 resulting
+in effective removal of this feature.
+
+The default is 650 milliseconds.
+
+.TP
 token_retransmit
 This timeout specifies in milliseconds after how long before receiving a token
 the token is retransmitted.  This will be automatically calculated if token

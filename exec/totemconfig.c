@@ -62,6 +62,7 @@
 
 #define TOKEN_RETRANSMITS_BEFORE_LOSS_CONST	4
 #define TOKEN_TIMEOUT				1000
+#define TOKEN_COEFFICIENT			650
 #define JOIN_TIMEOUT				50
 #define MERGE_TIMEOUT				200
 #define DOWNCHECK_TIMEOUT			1000
@@ -157,11 +158,18 @@ static void totem_volatile_config_set_value (struct totem_config *totem_config,
  */
 static void totem_volatile_config_read (struct totem_config *totem_config, const char *deleted_key)
 {
+	uint32_t u32;
 
 	totem_volatile_config_set_value(totem_config, "totem.token_retransmits_before_loss_const", deleted_key,
 	    TOKEN_RETRANSMITS_BEFORE_LOSS_CONST, 0);
 
 	totem_volatile_config_set_value(totem_config, "totem.token", deleted_key, TOKEN_TIMEOUT, 0);
+
+	if (totem_config->interface_count > 0 && totem_config->interfaces[0].member_count > 2) {
+		u32 = TOKEN_COEFFICIENT;
+		icmap_get_uint32("totem.token_coefficient", &u32);
+		totem_config->token_timeout += (totem_config->interfaces[0].member_count - 2) * u32;
+	}
 
 	totem_volatile_config_set_value(totem_config, "totem.max_network_delay", deleted_key, MAX_NETWORK_DELAY, 0);
 
