@@ -166,11 +166,33 @@ static int logsys_config_file_set_unlocked (
 		return (0);
 	}
 
+	if (logsys_loggers[subsysid].target_id > 0 &&
+	    logsys_loggers[subsysid].logfile != NULL &&
+	    strcmp(file, logsys_loggers[subsysid].logfile) == 0) {
+		return (0);
+	}
+
 	if (strlen(file) >= PATH_MAX) {
 		snprintf (error_string_response,
 			sizeof(error_string_response),
-			"%s: logfile name exceed maximum system filename lenght",
+			"%s: logfile name exceed maximum system filename length",
 			logsys_loggers[subsysid].subsys);
+		*error_string = error_string_response;
+		return (-1);
+	}
+
+	if (logsys_loggers[subsysid].logfile != NULL) {
+		free(logsys_loggers[subsysid].logfile);
+		logsys_loggers[subsysid].logfile = NULL;
+	}
+
+	logsys_loggers[subsysid].logfile = strdup(file);
+
+	if (logsys_loggers[subsysid].logfile == NULL) {
+		snprintf (error_string_response,
+			sizeof(error_string_response),
+			"Unable to allocate memory for logfile '%s'",
+			file);
 		*error_string = error_string_response;
 		return (-1);
 	}
@@ -185,15 +207,6 @@ static int logsys_config_file_set_unlocked (
 			logsys_loggers[subsysid].target_id = logsys_loggers[i].target_id;
 			return (0);
 		}
-	}
-	logsys_loggers[subsysid].logfile = strdup(file);
-	if (logsys_loggers[subsysid].logfile == NULL) {
-		snprintf (error_string_response,
-			sizeof(error_string_response),
-			"Unable to allocate memory for logfile '%s'",
-			file);
-		*error_string = error_string_response;
-		return (-1);
 	}
 
 	if (logsys_loggers[subsysid].target_id > 0) {
