@@ -34,7 +34,9 @@
 
 MAINTAINERCLEANFILES	= Makefile.in
 
-EXTRA_DIST		= corosync.in corosync-notifyd.in corosync.service.in corosync-notifyd.service.in corosync.conf.in corosync-notifyd.conf.in
+EXTRA_DIST		= corosync.in corosync-notifyd.in corosync.service.in \
+                          corosync-notifyd.service.in corosync.conf.in corosync-notifyd.conf.in \
+                          corosync.sysconfig.example
 
 if INSTALL_SYSTEMD
 systemdconfdir	   = $(SYSTEMDDIR)

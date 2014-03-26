@@ -84,7 +84,10 @@ cluster_disabled_at_boot()
 wait_for_ipc()
 {
 	try=0
-	while [ "$try" -le "20" ]; do
+	max_try=$((COROSYNC_INIT_TIMEOUT*2-1))
+	[ "$max_try" -le "0" ] && max_try=120
+
+	while [ "$try" -le "$max_try" ]; do
 		if corosync-cfgtool -s > /dev/null 2>&1; then
 			return 0
 		fi
@@ -110,7 +113,7 @@ start()
 	if status $prog > /dev/null 2>&1; then
 		success
 	else
-		$prog > /dev/null 2>&1
+		$prog $COROSYNC_OPTIONS > /dev/null 2>&1
 
 		if ! wait_for_ipc; then
 			failure

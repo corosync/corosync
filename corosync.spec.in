@@ -135,6 +135,9 @@ rm -rf %{buildroot}%{_docdir}/*
 mkdir -p %{buildroot}%{_sysconfdir}/sysconfig
 install -m 644 tools/corosync-notifyd.sysconfig.example \
    %{buildroot}%{_sysconfdir}/sysconfig/corosync-notifyd
+# /etc/sysconfig/corosync
+install -m 644 init/corosync.sysconfig.example \
+   %{buildroot}%{_sysconfdir}/sysconfig/corosync
 
 %clean
 rm -rf %{buildroot}
@@ -191,6 +194,7 @@ fi
 %config(noreplace) %{_sysconfdir}/corosync/corosync.conf.example
 %config(noreplace) %{_sysconfdir}/corosync/corosync.conf.example.udpu
 %config(noreplace) %{_sysconfdir}/sysconfig/corosync-notifyd
+%config(noreplace) %{_sysconfdir}/sysconfig/corosync
 %if %{with dbus}
 %{_sysconfdir}/dbus-1/system.d/corosync-signals.conf
 %endif

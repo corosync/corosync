@@ -1,0 +1,10 @@
+# Corosync init script configuration file
+
+# COROSYNC_INIT_TIMEOUT specifies number of seconds to wait for corosync
+# initialization (default is one minute).
+COROSYNC_INIT_TIMEOUT=60
+
+# COROSYNC_OPTIONS specifies options passed to corosync command
+# (default is no options).
+# See "man corosync" for detailed descriptions of the options.
+COROSYNC_OPTIONS=""
