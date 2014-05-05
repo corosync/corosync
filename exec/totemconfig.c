@@ -1199,7 +1199,12 @@ static void totem_change_notify(
 		return;
 
 	param = totem_get_param_by_name((struct totem_config *)user_data, key_name);
-	if (!param)
+	/*
+	 * Process change only if changed key is found in totem_config (-> param is not NULL)
+	 * or for special key token_coefficient. token_coefficient key is not stored in
+	 * totem_config, but it is used for computation of token timeout.
+	 */
+	if (!param && strcmp(key_name, "totem.token_coefficient") != 0)
 		return;
 
 	/*
