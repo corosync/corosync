@@ -13,7 +13,7 @@ env deb_lockfile=@LOCALSTATEDIR@/lock/corosync
 script
     [ -f "$rpm_sysconf" ] && . $rpm_sysconf
     [ -f "$deb_sysconf" ] && . $deb_sysconf
-    exec $prog
+    exec $prog $COROSYNC_OPTIONS
 end script
 
 pre-start script
@@ -23,8 +23,13 @@ end script
 post-start script
 wait_for_ipc()
 {
+    [ -f "$rpm_sysconf" ] && . $rpm_sysconf
+    [ -f "$deb_sysconf" ] && . $deb_sysconf
     try=0
-    while [ "$try" -le "20" ]; do
+    max_try=$((COROSYNC_INIT_TIMEOUT*2-1))
+    [ "$max_try" -le "0" ] && max_try=120
+
+    while [ "$try" -le "$max_try" ]; do
         if corosync-cfgtool -s > /dev/null 2>&1; then
             return 0
         fi
