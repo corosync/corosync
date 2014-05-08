@@ -553,7 +553,7 @@ static int nullcheck_strcmp(const char* left, const char *right)
 {
 	if (!left && right)
 		return -1;
-	if (left && ! right)
+	if (left && !right)
 		return 1;
 
 	if (!left && !right)
