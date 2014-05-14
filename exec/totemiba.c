@@ -83,6 +83,8 @@
 
 #define MAX_MTU_SIZE 4096
 
+#define MCAST_REJOIN_MSEC	100
+
 struct totemiba_instance {
 	struct sockaddr bind_addr;
 
@@ -209,6 +211,10 @@ struct totemiba_instance {
 	struct list_head token_send_buf_head;
 
 	struct list_head recv_token_recv_buf_head;
+
+	int mcast_seen_joined;
+
+	qb_loop_timer_handle mcast_rejoin;
 };
 union u {
 	uint64_t wr_id;
@@ -519,6 +525,32 @@ static int mcast_cq_recv_event_fn (int fd, int events, void *context)
 	return (0);
 }
 
+static void mcast_rejoin (void *data)
+{
+	int res;
+	struct totemiba_instance *instance = (struct totemiba_instance *)data;
+
+	res = rdma_leave_multicast (instance->mcast_cma_id, &instance->mcast_addr);
+	if (instance->mcast_ah) {
+		ibv_destroy_ah (instance->mcast_ah);
+		instance->mcast_ah = 0;
+	}
+
+	res = rdma_join_multicast (instance->mcast_cma_id, &instance->mcast_addr, instance);
+	if (res != 0) {
+		log_printf (LOGSYS_LEVEL_DEBUG,
+		    "rdma_join_multicast failed, errno=%d, rejoining in %u ms",
+		    MCAST_REJOIN_MSEC,
+		    errno);
+		qb_loop_timer_add (instance->totemiba_poll_handle,
+			QB_LOOP_MED,
+			MCAST_REJOIN_MSEC * QB_TIME_NS_IN_MSEC,
+			(void *)instance,
+			mcast_rejoin,
+			&instance->mcast_rejoin);
+	}
+}
+
 static int mcast_rdma_event_fn (int fd, int events, void *context)
 {
 	struct totemiba_instance *instance = (struct totemiba_instance *)context;
@@ -536,8 +568,17 @@ static int mcast_rdma_event_fn (int fd, int events, void *context)
 	 * occurs when we resolve the multicast address
 	 */
 	case RDMA_CM_EVENT_ADDR_RESOLVED:
-		rdma_join_multicast (instance->mcast_cma_id, &instance->mcast_addr, instance);
+		res = rdma_join_multicast (instance->mcast_cma_id, &instance->mcast_addr, instance);
 		usleep(1000);
+		if (res == 0) break;
+	case RDMA_CM_EVENT_MULTICAST_ERROR:
+		log_printf (LOGSYS_LEVEL_ERROR, "multicast error, trying to rejoin in %u ms", MCAST_REJOIN_MSEC);
+		qb_loop_timer_add (instance->totemiba_poll_handle,
+			QB_LOOP_MED,
+			MCAST_REJOIN_MSEC * QB_TIME_NS_IN_MSEC,
+			(void *)instance,
+			mcast_rejoin,
+			&instance->mcast_rejoin);
 		break;
 	/*
 	 * occurs when the CM joins the multicast group
@@ -547,13 +588,15 @@ static int mcast_rdma_event_fn (int fd, int events, void *context)
 		instance->mcast_qkey = event->param.ud.qkey;
 		instance->mcast_ah = ibv_create_ah (instance->mcast_pd, &event->param.ud.ah_attr);
 
-		instance->totemiba_iface_change_fn (instance->rrp_context, &instance->my_id);
+		if (instance->mcast_seen_joined == 0) {
+			log_printf (LOGSYS_LEVEL_DEBUG, "joining mcast 1st time, running callbacks");
+			instance->totemiba_iface_change_fn (instance->rrp_context, &instance->my_id);
+			instance->mcast_seen_joined=1;
+		}
+		log_printf (LOGSYS_LEVEL_DEBUG, "Joined multicast!");
 		break;
 	case RDMA_CM_EVENT_ADDR_ERROR:
 	case RDMA_CM_EVENT_ROUTE_ERROR:
-	case RDMA_CM_EVENT_MULTICAST_ERROR:
-		log_printf (LOGSYS_LEVEL_ERROR, "multicast error");
-		break;
 	case RDMA_CM_EVENT_DEVICE_REMOVAL:
 		break;
 	default:
@@ -1232,6 +1275,7 @@ static int mcast_bind (struct totemiba_instance *instance)
 
 	return (0);
 }
+
 static void timer_function_netif_check_timeout (
       void *data)
 {
@@ -1480,7 +1524,10 @@ int totemiba_mcast_flush_send (
 	sge.lkey = send_buf->mr->lkey;
 	sge.addr = (uintptr_t)msg;
 
-	res = ibv_post_send (instance->mcast_cma_id->qp, &send_wr, &failed_send_wr);
+	if (instance->mcast_ah != 0) {
+		res = ibv_post_send (instance->mcast_cma_id->qp, &send_wr, &failed_send_wr);
+	}
+
 	return (res);
 }
 
@@ -1518,7 +1565,10 @@ int totemiba_mcast_noflush_send (
 	sge.lkey = send_buf->mr->lkey;
 	sge.addr = (uintptr_t)msg;
 
-	res = ibv_post_send (instance->mcast_cma_id->qp, &send_wr, &failed_send_wr);
+	if (instance->mcast_ah != 0) {
+		res = ibv_post_send (instance->mcast_cma_id->qp, &send_wr, &failed_send_wr);
+	}
+
 	return (res);
 }
 
