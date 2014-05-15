@@ -538,8 +538,8 @@ static void mcast_rejoin (void *data)
 	if (res != 0) {
 		log_printf (LOGSYS_LEVEL_DEBUG,
 		    "rdma_join_multicast failed, errno=%d, rejoining in %u ms\n",
-		    MCAST_REJOIN_MSEC,
-		    errno);
+		    errno,
+		    MCAST_REJOIN_MSEC);
 		poll_timer_add (instance->totemiba_poll_handle,
 			MCAST_REJOIN_MSEC,
 			(void *)instance,
@@ -588,7 +588,7 @@ static int mcast_rdma_event_fn (hdb_handle_t poll_handle, int fd, int events, vo
 			instance->totemiba_iface_change_fn (instance->rrp_context, &instance->my_id);
 			instance->mcast_seen_joined=1;
 		}
-		log_printf (LOGSYS_LEVEL_DEBUG, "Joined multicast!\n");
+		log_printf (LOGSYS_LEVEL_NOTICE, "Joined multicast!\n");
 		break;
 	case RDMA_CM_EVENT_ADDR_ERROR:
 	case RDMA_CM_EVENT_ROUTE_ERROR:
