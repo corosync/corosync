@@ -30,7 +30,7 @@ SunStudio compilers fail to build with various internal compiler errors.
 ----------------------------
 * Building from subversion *
 ----------------------------
-When building and installing from subversion, automake 2.61 or later is
+When building and installing from subversion, autoconf 2.61 or later is
 required.  Prior versions will result in build failures.
 
 Step 1: check out a read only copy of the repository
