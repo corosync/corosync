@@ -196,6 +196,7 @@ static void corosync_blackbox_write_to_file (void)
 	char time_str[PATH_MAX];
 	struct tm cur_time_tm;
 	time_t cur_time_t;
+	ssize_t res;
 
 	cur_time_t = time(NULL);
 	localtime_r(&cur_time_t, &cur_time_tm);
@@ -206,8 +207,9 @@ static void corosync_blackbox_write_to_file (void)
 	    time_str,
 	    (long long int)getpid());
 
-	qb_log_blackbox_write_to_file(fname);
-
+	if ((res = qb_log_blackbox_write_to_file(fname)) < 0) {
+		LOGSYS_PERROR(-res, LOGSYS_LEVEL_ERROR, "Can't store blackbox file");
+	}
 	unlink(LOCALSTATEDIR "/lib/corosync/fdata");
 	if (symlink(fname, LOCALSTATEDIR "/lib/corosync/fdata") == -1) {
 		log_printf(LOGSYS_LEVEL_ERROR, "Can't create symlink to '%s' for corosync blackbox file '%s'",
