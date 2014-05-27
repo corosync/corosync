@@ -228,10 +228,20 @@ static int corosync_exit_dispatch_fn (
 	return (-1);
 }
 
+static void corosync_blackbox_write_to_file (void)
+{
+	int saved_errno;
+
+	if (logsys_log_rec_store (LOCALSTATEDIR "/lib/corosync/fdata")) {
+		saved_errno = errno;
+		LOGSYS_PERROR(saved_errno, LOGSYS_LEVEL_ERROR, "Can't store blackbox file");
+	}
+}
+
 static void sigusr2_handler (int num)
 {
 	corosync_state_dump ();
-	logsys_log_rec_store (LOCALSTATEDIR "/lib/corosync/fdata");
+	corosync_blackbox_write_to_file ();
 }
 
 static void sigterm_handler (int num)
@@ -253,7 +263,7 @@ static void sigsegv_handler (int num)
 {
 	(void)signal (SIGSEGV, SIG_DFL);
 	logsys_atexit();
-	logsys_log_rec_store (LOCALSTATEDIR "/lib/corosync/fdata");
+	corosync_blackbox_write_to_file ();
 	raise (SIGSEGV);
 }
 
@@ -261,7 +271,7 @@ static void sigabrt_handler (int num)
 {
 	(void)signal (SIGABRT, SIG_DFL);
 	logsys_atexit();
-	logsys_log_rec_store (LOCALSTATEDIR "/lib/corosync/fdata");
+	corosync_blackbox_write_to_file ();
 	raise (SIGABRT);
 }
 
@@ -1421,7 +1431,7 @@ static void fplay_key_change_notify_fn (
 {
 	if (key_len == strlen ("dump_flight_data") &&
 		memcmp ("dump_flight_data", key_name_pt, key_len) == 0) {
-		logsys_log_rec_store (LOCALSTATEDIR "/lib/corosync/fdata");
+		corosync_blackbox_write_to_file ();
 	}
 	if (key_len == strlen ("dump_state") &&
 		memcmp ("dump_state", key_name_pt, key_len) == 0) {
