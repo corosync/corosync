@@ -1105,16 +1105,16 @@ static int recv_token_bind (struct totemiba_instance *instance)
 	}
 
 	/*
-	 * Determine active_mtu of port and compare it with the configured one (160 is aproximation of all totem
-	 * structures.
+	 * Determine active_mtu of port and compare it with the configured one (98 is sizeof(struct mcast) defined
+	 * in totemsrp.c.
 	 *
 	 * TODO: Implement MTU discovery also for IP and handle MTU correctly for all structures inside totemsrp,
 	 *       crypto, ...
 	 */
 	res = ibv_query_port (instance->listen_recv_token_cma_id->verbs, instance->listen_recv_token_cma_id->port_num, &port_attr);
-	if ( (1 << (port_attr.active_mtu + 7)) < instance->totem_config->net_mtu + 160) {
+	if ( (1 << (port_attr.active_mtu + 7)) < instance->totem_config->net_mtu + 98) {
 		log_printf (LOGSYS_LEVEL_ERROR, "requested net_mtu is %d and is larger than the active port mtu %d\n",\
-				instance->totem_config->net_mtu + 160, (1 << (port_attr.active_mtu + 7)));
+				instance->totem_config->net_mtu + 98, (1 << (port_attr.active_mtu + 7)));
 		return (-1);
 	}
 
