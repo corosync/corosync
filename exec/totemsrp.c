@@ -91,6 +91,7 @@
 #include "totemnet.h"
 
 #include "cs_queue.h"
+#include "util.h"
 
 #define LOCALHOST_IP				inet_addr("127.0.0.1")
 #define QUEUE_RTR_ITEMS_SIZE_MAX		16384 /* allow 16384 retransmit items */
@@ -680,8 +681,6 @@ struct message_handlers totemsrp_message_handlers = {
 	}
 };
 
-static const char *rundir = NULL;
-
 #define log_printf(level, format, args...)		\
 do {							\
 	instance->totemsrp_log_printf (			\
@@ -843,26 +842,10 @@ int totemsrp_initialize (
 		int waiting_trans_ack))
 {
 	struct totemsrp_instance *instance;
-	unsigned int res;
 
 	instance = malloc (sizeof (struct totemsrp_instance));
 	if (instance == NULL) {
 		goto error_exit;
-	}
-
-	rundir = getenv ("COROSYNC_RUN_DIR");
-	if (rundir == NULL) {
-		rundir = LOCALSTATEDIR "/lib/corosync";
-	}
-
-	res = mkdir (rundir, 0700);
-	if (res == -1 && errno != EEXIST) {
-		goto error_destroy;
-	}
-
-	res = chdir (rundir);
-	if (res == -1) {
-		goto error_destroy;
 	}
 
 	totemsrp_instance_initialize (instance);
@@ -1032,9 +1015,6 @@ int totemsrp_initialize (
 		instance);
 	*srp_context = instance;
 	return (0);
-
-error_destroy:
-	free (instance);
 
 error_exit:
 	return (-1);
@@ -3321,7 +3301,7 @@ static void memb_ring_id_create_or_load (
 	char filename[PATH_MAX];
 
 	snprintf (filename, sizeof(filename), "%s/ringid_%s",
-		rundir, totemip_print (&instance->my_id.addr[0]));
+		get_run_dir(), totemip_print (&instance->my_id.addr[0]));
 	fd = open (filename, O_RDONLY, 0700);
 	/*
 	 * If file can be opened and read, read the ring id
@@ -3366,7 +3346,7 @@ static void memb_ring_id_set_and_store (
 	memcpy (&instance->my_ring_id, ring_id, sizeof (struct memb_ring_id));
 
 	snprintf (filename, sizeof(filename), "%s/ringid_%s",
-		rundir, totemip_print (&instance->my_id.addr[0]));
+		get_run_dir(), totemip_print (&instance->my_id.addr[0]));
 
 	fd = open (filename, O_WRONLY, 0777);
 	if (fd == -1) {

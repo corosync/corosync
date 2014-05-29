@@ -79,4 +79,9 @@ extern int cs_name_tisEqual (cs_name_t *str1, char *str2);
 const char * short_service_name_get(uint32_t service_id,
 				    char *buf, size_t buf_size);
 
+/*
+ * Return run directory (ether COROSYNC_RUN_DIR env or LOCALSTATEDIR/lib/corosync)
+ */
+const char *get_run_dir(void);
+
 #endif /* UTIL_H_DEFINED */

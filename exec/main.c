@@ -193,6 +193,7 @@ void corosync_state_dump (void)
 static void corosync_blackbox_write_to_file (void)
 {
 	char fname[PATH_MAX];
+	char fdata_fname[PATH_MAX];
 	char time_str[PATH_MAX];
 	struct tm cur_time_tm;
 	time_t cur_time_t;
@@ -203,17 +204,18 @@ static void corosync_blackbox_write_to_file (void)
 
 	strftime(time_str, PATH_MAX, "%Y-%m-%dT%H:%M:%S", &cur_time_tm);
 	snprintf(fname, PATH_MAX, "%s/fdata-%s-%lld",
-	    LOCALSTATEDIR "/lib/corosync",
+	    get_run_dir(),
 	    time_str,
 	    (long long int)getpid());
 
 	if ((res = qb_log_blackbox_write_to_file(fname)) < 0) {
 		LOGSYS_PERROR(-res, LOGSYS_LEVEL_ERROR, "Can't store blackbox file");
 	}
-	unlink(LOCALSTATEDIR "/lib/corosync/fdata");
-	if (symlink(fname, LOCALSTATEDIR "/lib/corosync/fdata") == -1) {
+	snprintf(fdata_fname, sizeof(fdata_fname), "%s/fdata", get_run_dir());
+	unlink(fdata_fname);
+	if (symlink(fname, fdata_fname) == -1) {
 		log_printf(LOGSYS_LEVEL_ERROR, "Can't create symlink to '%s' for corosync blackbox file '%s'",
-		    fname, LOCALSTATEDIR "/lib/corosync/fdata");
+		    fname, fdata_fname);
 	}
 }
 
@@ -1085,7 +1087,6 @@ int main (int argc, char **argv, char **envp)
 	int res, ch;
 	int background, setprio;
 	struct stat stat_out;
-	char corosync_lib_dir[PATH_MAX];
 	enum e_corosync_done flock_err;
 	uint64_t totem_config_warnings;
 	struct scheduler_pause_timeout_data scheduler_pause_timeout_data;
@@ -1181,10 +1182,16 @@ int main (int argc, char **argv, char **envp)
 	/*
 	 * Make sure required directory is present
 	 */
-	sprintf (corosync_lib_dir, "%s/lib/corosync", LOCALSTATEDIR);
-	res = stat (corosync_lib_dir, &stat_out);
+	res = stat (get_run_dir(), &stat_out);
 	if ((res == -1) || (res == 0 && !S_ISDIR(stat_out.st_mode))) {
-		log_printf (LOGSYS_LEVEL_ERROR, "Required directory not present %s.  Please create it.", corosync_lib_dir);
+		log_printf (LOGSYS_LEVEL_ERROR, "Required directory not present %s.  Please create it.", get_run_dir());
+		corosync_exit_error (COROSYNC_DONE_DIR_NOT_PRESENT);
+	}
+
+	res = chdir(get_run_dir());
+	if (res == -1) {
+		log_printf (LOGSYS_LEVEL_ERROR, "Cannot chdir to run directory %s.  "
+		    "Please make sure it has correct context and rights.", get_run_dir());
 		corosync_exit_error (COROSYNC_DONE_DIR_NOT_PRESENT);
 	}
 
