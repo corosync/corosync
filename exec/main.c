@@ -703,6 +703,87 @@ int main_mcast (
 	return (totempg_groups_mcast_joined (corosync_group_handle, iovec, iov_len, guarantee));
 }
 
+static void corosync_ring_id_create_or_load (
+	struct memb_ring_id *memb_ring_id,
+	const struct totem_ip_address *addr)
+{
+	int fd;
+	int res = 0;
+	char filename[PATH_MAX];
+
+	snprintf (filename, sizeof(filename), "%s/ringid_%s",
+		get_run_dir(), totemip_print (addr));
+	fd = open (filename, O_RDONLY, 0700);
+	/*
+	 * If file can be opened and read, read the ring id
+	 */
+	if (fd != -1) {
+		res = read (fd, &memb_ring_id->seq, sizeof (uint64_t));
+		close (fd);
+	}
+	/*
+	 * If file could not be opened or read, create a new ring id
+	 */
+	if ((fd == -1) || (res != sizeof (uint64_t))) {
+		memb_ring_id->seq = 0;
+		umask(0);
+		fd = open (filename, O_CREAT|O_RDWR, 0700);
+		if (fd != -1) {
+			res = write (fd, &memb_ring_id->seq, sizeof (uint64_t));
+			close (fd);
+			if (res == -1) {
+				LOGSYS_PERROR (errno, LOGSYS_LEVEL_ERROR,
+					"Couldn't write ringid file '%s'", filename);
+
+				corosync_exit_error (COROSYNC_DONE_STORE_RINGID);
+			}
+		} else {
+			LOGSYS_PERROR (errno, LOGSYS_LEVEL_ERROR,
+				"Couldn't create ringid file '%s'", filename);
+
+			corosync_exit_error (COROSYNC_DONE_STORE_RINGID);
+		}
+	}
+
+	totemip_copy(&memb_ring_id->rep, addr);
+	assert (!totemip_zero_check(&memb_ring_id->rep));
+}
+
+static void corosync_ring_id_store (
+	const struct memb_ring_id *memb_ring_id,
+	const struct totem_ip_address *addr)
+{
+	char filename[PATH_MAX];
+	int fd;
+	int res;
+
+	snprintf (filename, sizeof(filename), "%s/ringid_%s",
+		get_run_dir(), totemip_print (addr));
+
+	fd = open (filename, O_WRONLY, 0777);
+	if (fd == -1) {
+		fd = open (filename, O_CREAT|O_RDWR, 0777);
+	}
+	if (fd == -1) {
+		LOGSYS_PERROR(errno, LOGSYS_LEVEL_ERROR,
+			"Couldn't store new ring id %llx to stable storage",
+			memb_ring_id->seq);
+
+		corosync_exit_error (COROSYNC_DONE_STORE_RINGID);
+	}
+	log_printf (LOGSYS_LEVEL_DEBUG,
+		"Storing new sequence id for ring %llx", memb_ring_id->seq);
+	res = write (fd, &memb_ring_id->seq, sizeof(memb_ring_id->seq));
+	close (fd);
+	if (res != sizeof(memb_ring_id->seq)) {
+		LOGSYS_PERROR(errno, LOGSYS_LEVEL_ERROR,
+			"Couldn't store new ring id %llx to stable storage",
+			memb_ring_id->seq);
+
+		corosync_exit_error (COROSYNC_DONE_STORE_RINGID);
+	}
+}
+
 static qb_loop_timer_handle recheck_the_q_level_timer;
 void corosync_recheck_the_q_level(void *data)
 {
@@ -1230,6 +1311,9 @@ int main (int argc, char **argv, char **envp)
 	}
 
 	ip_version = totem_config.ip_version;
+
+	totem_config.totem_memb_ring_id_create_or_load = corosync_ring_id_create_or_load;
+	totem_config.totem_memb_ring_id_store = corosync_ring_id_store;
 
 	totem_config.totem_logging_configuration = totem_logging_configuration;
 	totem_config.totem_logging_configuration.log_subsys_id = _logsys_subsys_create("TOTEM", "totem,"
