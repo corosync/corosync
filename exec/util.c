@@ -177,3 +177,24 @@ int cs_name_tisEqual (cs_name_t *str1, char *str2) {
 		return 0;
 	}
 }
+
+const char *get_run_dir(void)
+{
+	static char path[PATH_MAX] = {'\0'};
+	char *env_run_dir;
+	int res;
+
+	if (path[0] == '\0') {
+		env_run_dir = getenv("COROSYNC_RUN_DIR");
+
+		if (env_run_dir != NULL && env_run_dir[0] != '\0') {
+			res = snprintf(path, PATH_MAX, "%s", getenv("COROSYNC_RUN_DIR"));
+		} else {
+			res = snprintf(path, PATH_MAX, "%s/%s", LOCALSTATEDIR, "lib/corosync");
+		}
+
+		assert(res < PATH_MAX);
+	}
+
+	return (path);
+}

@@ -462,6 +462,14 @@ struct totemsrp_instance {
 	void (*totemsrp_waiting_trans_ack_cb_fn) (
 		int waiting_trans_ack);
 
+	void (*memb_ring_id_create_or_load) (
+		struct memb_ring_id *memb_ring_id,
+		const struct totem_ip_address *addr);
+
+	void (*memb_ring_id_store) (
+		const struct memb_ring_id *memb_ring_id,
+		const struct totem_ip_address *addr);
+
 	int global_seqno;
 
 	int my_token_held;
@@ -577,8 +585,6 @@ static int srp_addr_equal (const struct srp_addr *a, const struct srp_addr *b);
 
 static void memb_leave_message_send (struct totemsrp_instance *instance);
 
-static void memb_ring_id_create_or_load (struct totemsrp_instance *, struct memb_ring_id *);
-
 static void token_callbacks_execute (struct totemsrp_instance *instance, enum totem_callback_token_type type);
 static void memb_state_gather_enter (struct totemsrp_instance *instance, int gather_from);
 static void messages_deliver_to_app (struct totemsrp_instance *instance, int skip, unsigned int end_point);
@@ -586,7 +592,7 @@ static int orf_token_mcast (struct totemsrp_instance *instance, struct orf_token
 	int fcc_mcasts_allowed);
 static void messages_free (struct totemsrp_instance *instance, unsigned int token_aru);
 
-static void memb_ring_id_set_and_store (struct totemsrp_instance *instance,
+static void memb_ring_id_set (struct totemsrp_instance *instance,
 	const struct memb_ring_id *ring_id);
 static void target_set_completed (void *context);
 static void memb_state_commit_token_update (struct totemsrp_instance *instance);
@@ -631,8 +637,6 @@ struct message_handlers totemsrp_message_handlers = {
 		message_handler_token_hold_cancel     /* MESSAGE_TYPE_TOKEN_HOLD_CANCEL */
 	}
 };
-
-static const char *rundir = NULL;
 
 #define log_printf(level, format, args...)				\
 do {									\
@@ -789,26 +793,10 @@ int totemsrp_initialize (
 		int waiting_trans_ack))
 {
 	struct totemsrp_instance *instance;
-	unsigned int res;
 
 	instance = malloc (sizeof (struct totemsrp_instance));
 	if (instance == NULL) {
 		goto error_exit;
-	}
-
-	rundir = getenv ("COROSYNC_RUN_DIR");
-	if (rundir == NULL) {
-		rundir = LOCALSTATEDIR "/lib/corosync";
-	}
-
-	res = mkdir (rundir, 0700);
-	if (res == -1 && errno != EEXIST) {
-		goto error_destroy;
-	}
-
-	res = chdir (rundir);
-	if (res == -1) {
-		goto error_destroy;
 	}
 
 	totemsrp_instance_initialize (instance);
@@ -832,6 +820,12 @@ int totemsrp_initialize (
 	instance->totemsrp_log_level_debug = totem_config->totem_logging_configuration.log_level_debug;
 	instance->totemsrp_subsys_id = totem_config->totem_logging_configuration.log_subsys_id;
 	instance->totemsrp_log_printf = totem_config->totem_logging_configuration.log_printf;
+
+	/*
+	 * Configure totem store and load functions
+	 */
+	instance->memb_ring_id_create_or_load = totem_config->totem_memb_ring_id_create_or_load;
+	instance->memb_ring_id_store = totem_config->totem_memb_ring_id_store;
 
 	/*
 	 * Initialize local variables for totemsrp
@@ -977,9 +971,6 @@ int totemsrp_initialize (
 		instance);
 	*srp_context = instance;
 	return (0);
-
-error_destroy:
-	free (instance);
 
 error_exit:
 	return (-1);
@@ -1991,7 +1982,8 @@ static void memb_state_commit_enter (
 
 	instance->memb_timer_state_gather_consensus_timeout = 0;
 
-	memb_ring_id_set_and_store (instance, &instance->commit_token->ring_id);
+	memb_ring_id_set (instance, &instance->commit_token->ring_id);
+	instance->memb_ring_id_store (&instance->my_ring_id, &instance->my_id.addr[0]);
 
 	instance->token_ring_id_seq = instance->my_ring_id.seq;
 
@@ -3187,79 +3179,12 @@ static void memb_merge_detect_transmit (struct totemsrp_instance *instance)
 		sizeof (struct memb_merge_detect));
 }
 
-static void memb_ring_id_create_or_load (
-	struct totemsrp_instance *instance,
-	struct memb_ring_id *memb_ring_id)
-{
-	int fd;
-	int res = 0;
-	char filename[PATH_MAX];
-
-	snprintf (filename, sizeof(filename), "%s/ringid_%s",
-		rundir, totemip_print (&instance->my_id.addr[0]));
-	fd = open (filename, O_RDONLY, 0700);
-	/*
-	 * If file can be opened and read, read the ring id
-	 */
-	if (fd != -1) {
-		res = read (fd, &memb_ring_id->seq, sizeof (uint64_t));
-		close (fd);
-	}
-	/*
- 	 * If file could not be opened or read, create a new ring id
- 	 */
-	if ((fd == -1) || (res != sizeof (uint64_t))) {
-		memb_ring_id->seq = 0;
-		umask(0);
-		fd = open (filename, O_CREAT|O_RDWR, 0700);
-		if (fd != -1) {
-			res = write (fd, &memb_ring_id->seq, sizeof (uint64_t));
-			close (fd);
-			if (res == -1) {
-				LOGSYS_PERROR (errno, instance->totemsrp_log_level_warning,
-					"Couldn't write ringid file '%s'", filename);
-			}
-		} else {
-			LOGSYS_PERROR (errno, instance->totemsrp_log_level_warning,
-				"Couldn't create ringid file '%s'", filename);
-		}
-	}
-
-	totemip_copy(&memb_ring_id->rep, &instance->my_id.addr[0]);
-	assert (!totemip_zero_check(&memb_ring_id->rep));
-	instance->token_ring_id_seq = memb_ring_id->seq;
-}
-
-static void memb_ring_id_set_and_store (
+static void memb_ring_id_set (
 	struct totemsrp_instance *instance,
 	const struct memb_ring_id *ring_id)
 {
-	char filename[256];
-	int fd;
-	int res;
 
 	memcpy (&instance->my_ring_id, ring_id, sizeof (struct memb_ring_id));
-
-	snprintf (filename, sizeof(filename), "%s/ringid_%s",
-		rundir, totemip_print (&instance->my_id.addr[0]));
-
-	fd = open (filename, O_WRONLY, 0777);
-	if (fd == -1) {
-		fd = open (filename, O_CREAT|O_RDWR, 0777);
-	}
-	if (fd == -1) {
-		LOGSYS_PERROR(errno, instance->totemsrp_log_level_warning,
-			"Couldn't store new ring id %llx to stable storage",
-			instance->my_ring_id.seq);
-		assert (0);
-		return;
-	}
-	log_printf (instance->totemsrp_log_level_debug,
-		"Storing new sequence id for ring %llx\n", instance->my_ring_id.seq);
-	//assert (fd > 0);
-	res = write (fd, &instance->my_ring_id.seq, sizeof (unsigned long long));
-	assert (res == sizeof (unsigned long long));
-	close (fd);
 }
 
 int totemsrp_callback_token_create (
@@ -4505,7 +4430,9 @@ void main_iface_change_fn (
 	totemip_copy (&instance->my_memb_list[0].addr[iface_no], iface_addr);
 
 	if (instance->iface_changes++ == 0) {
-		memb_ring_id_create_or_load (instance, &instance->my_ring_id);
+		instance->memb_ring_id_create_or_load (&instance->my_ring_id,
+		    &instance->my_id.addr[0]);
+		instance->token_ring_id_seq = instance->my_ring_id.seq;
 		log_printf (
 			instance->totemsrp_log_level_debug,
 			"Created or loaded sequence id %llx.%s for this ring.\n",

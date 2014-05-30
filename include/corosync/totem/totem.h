@@ -98,6 +98,12 @@ typedef enum {
 	TOTEM_TRANSPORT_RDMA = 2
 } totem_transport_t;
 
+#define MEMB_RING_ID
+struct memb_ring_id {
+	struct totem_ip_address rep;
+	unsigned long long seq;
+} __attribute__((packed));
+
 struct totem_config {
 	int version;
 
@@ -190,6 +196,14 @@ struct totem_config {
 	totem_transport_t transport_number;
 
 	unsigned int miss_count_const;
+
+	void (*totem_memb_ring_id_create_or_load) (
+	    struct memb_ring_id *memb_ring_id,
+	    const struct totem_ip_address *addr);
+
+	void (*totem_memb_ring_id_store) (
+	    const struct memb_ring_id *memb_ring_id,
+	    const struct totem_ip_address *addr);
 };
 
 #define TOTEM_CONFIGURATION_TYPE
@@ -208,12 +222,6 @@ enum totem_event_type {
 	TOTEM_EVENT_DELIVERY_CONGESTED,
 	TOTEM_EVENT_NEW_MSG,
 };
-
-#define MEMB_RING_ID
-struct memb_ring_id {
-	struct totem_ip_address rep;
-	unsigned long long seq;
-} __attribute__((packed));
 
 typedef struct {
 	hdb_handle_t handle;

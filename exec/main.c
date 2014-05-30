@@ -231,8 +231,11 @@ static int corosync_exit_dispatch_fn (
 static void corosync_blackbox_write_to_file (void)
 {
 	int saved_errno;
+	char fname[PATH_MAX];
 
-	if (logsys_log_rec_store (LOCALSTATEDIR "/lib/corosync/fdata")) {
+	snprintf(fname, PATH_MAX, "%s/fdata", get_run_dir());
+
+	if (logsys_log_rec_store (fname)) {
 		saved_errno = errno;
 		LOGSYS_PERROR(saved_errno, LOGSYS_LEVEL_ERROR, "Can't store blackbox file");
 	}
@@ -983,6 +986,87 @@ int main_mcast (
 	return (totempg_groups_mcast_joined (corosync_group_handle, iovec, iov_len, guarantee));
 }
 
+static void corosync_ring_id_create_or_load (
+	struct memb_ring_id *memb_ring_id,
+	const struct totem_ip_address *addr)
+{
+	int fd;
+	int res = 0;
+	char filename[PATH_MAX];
+
+	snprintf (filename, sizeof(filename), "%s/ringid_%s",
+		get_run_dir(), totemip_print (addr));
+	fd = open (filename, O_RDONLY, 0700);
+	/*
+	 * If file can be opened and read, read the ring id
+	 */
+	if (fd != -1) {
+		res = read (fd, &memb_ring_id->seq, sizeof (uint64_t));
+		close (fd);
+	}
+	/*
+	 * If file could not be opened or read, create a new ring id
+	 */
+	if ((fd == -1) || (res != sizeof (uint64_t))) {
+		memb_ring_id->seq = 0;
+		umask(0);
+		fd = open (filename, O_CREAT|O_RDWR, 0700);
+		if (fd != -1) {
+			res = write (fd, &memb_ring_id->seq, sizeof (uint64_t));
+			close (fd);
+			if (res == -1) {
+				LOGSYS_PERROR (errno, LOGSYS_LEVEL_ERROR,
+					"Couldn't write ringid file '%s'", filename);
+
+				corosync_exit_error (AIS_DONE_STORE_RINGID);
+			}
+		} else {
+			LOGSYS_PERROR (errno, LOGSYS_LEVEL_ERROR,
+				"Couldn't create ringid file '%s'", filename);
+
+			corosync_exit_error (AIS_DONE_STORE_RINGID);
+		}
+	}
+
+	totemip_copy(&memb_ring_id->rep, addr);
+	assert (!totemip_zero_check(&memb_ring_id->rep));
+}
+
+static void corosync_ring_id_store (
+	const struct memb_ring_id *memb_ring_id,
+	const struct totem_ip_address *addr)
+{
+	char filename[PATH_MAX];
+	int fd;
+	int res;
+
+	snprintf (filename, sizeof(filename), "%s/ringid_%s",
+		get_run_dir(), totemip_print (addr));
+
+	fd = open (filename, O_WRONLY, 0777);
+	if (fd == -1) {
+		fd = open (filename, O_CREAT|O_RDWR, 0777);
+	}
+	if (fd == -1) {
+		LOGSYS_PERROR(errno, LOGSYS_LEVEL_ERROR,
+			"Couldn't store new ring id %llx to stable storage",
+			memb_ring_id->seq);
+
+		corosync_exit_error (AIS_DONE_STORE_RINGID);
+	}
+	log_printf (LOGSYS_LEVEL_DEBUG,
+		"Storing new sequence id for ring %llx", memb_ring_id->seq);
+	res = write (fd, &memb_ring_id->seq, sizeof(memb_ring_id->seq));
+	close (fd);
+	if (res != sizeof(memb_ring_id->seq)) {
+		LOGSYS_PERROR(errno, LOGSYS_LEVEL_ERROR,
+			"Couldn't store new ring id %llx to stable storage",
+			memb_ring_id->seq);
+
+		corosync_exit_error (AIS_DONE_STORE_RINGID);
+	}
+}
+
 int message_source_is_local (const mar_message_source_t *source)
 {
 	int ret = 0;
@@ -1654,7 +1738,6 @@ int main (int argc, char **argv, char **envp)
 	int res, ch;
 	int background, setprio;
 	struct stat stat_out;
-	char corosync_lib_dir[PATH_MAX];
 	hdb_handle_t object_runtime_handle;
 	enum e_ais_done flock_err;
 	struct scheduler_pause_timeout_data scheduler_pause_timeout_data;
@@ -1802,10 +1885,16 @@ int main (int argc, char **argv, char **envp)
 	/*
 	 * Make sure required directory is present
 	 */
-	sprintf (corosync_lib_dir, "%s/lib/corosync", LOCALSTATEDIR);
-	res = stat (corosync_lib_dir, &stat_out);
+	res = stat (get_run_dir(), &stat_out);
 	if ((res == -1) || (res == 0 && !S_ISDIR(stat_out.st_mode))) {
-		log_printf (LOGSYS_LEVEL_ERROR, "Required directory not present %s.  Please create it.\n", corosync_lib_dir);
+		log_printf (LOGSYS_LEVEL_ERROR, "Required directory not present %s.  Please create it.\n", get_run_dir());
+		corosync_exit_error (AIS_DONE_DIR_NOT_PRESENT);
+	}
+
+	res = chdir(get_run_dir());
+	if (res == -1) {
+		log_printf (LOGSYS_LEVEL_ERROR, "Cannot chdir to run directory %s.  "
+		    "Please make sure it has correct context and rights.", get_run_dir());
 		corosync_exit_error (AIS_DONE_DIR_NOT_PRESENT);
 	}
 
@@ -1826,6 +1915,9 @@ int main (int argc, char **argv, char **envp)
 		log_printf (LOGSYS_LEVEL_ERROR, "%s", error_string);
 		corosync_exit_error (AIS_DONE_MAINCONFIGREAD);
 	}
+
+	totem_config.totem_memb_ring_id_create_or_load = corosync_ring_id_create_or_load;
+	totem_config.totem_memb_ring_id_store = corosync_ring_id_store;
 
 	totem_config.totem_logging_configuration = totem_logging_configuration;
 	totem_config.totem_logging_configuration.log_subsys_id =

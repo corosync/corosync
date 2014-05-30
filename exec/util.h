@@ -64,6 +64,7 @@ enum e_ais_done {
 	AIS_DONE_AQUIRE_LOCK = 17,
 	AIS_DONE_ALREADY_RUNNING = 18,
 	AIS_DONE_STD_TO_NULL_REDIR = 19,
+	AIS_DONE_STORE_RINGID = 21,
 };
 
 static inline cs_error_t hdb_error_to_cs (int res)		\
@@ -103,5 +104,10 @@ extern int cs_name_tisEqual (cs_name_t *str1, char *str2);
  */
 const char * short_service_name_get(uint32_t service_id,
 				    char *buf, size_t buf_size);
+
+/*
+ * Return run directory (ether COROSYNC_RUN_DIR env or LOCALSTATEDIR/lib/corosync)
+ */
+const char *get_run_dir(void);
 
 #endif /* UTIL_H_DEFINED */
