@@ -39,13 +39,13 @@ failure()
 status()
 {
 	pid=$(pidof $1 2>/dev/null)
-	rtrn=$?
-	if [ $rtrn -ne 0 ]; then
+	res=$?
+	if [ $res -ne 0 ]; then
 		echo "$1 is stopped"
 	else
 		echo "$1 (pid $pid) is running..."
 	fi
-	return $rtrn
+	return $res
 }
 
 # rpm based distros
