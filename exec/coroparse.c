@@ -405,14 +405,36 @@ static int parse_section(FILE *fp,
 	return 0;
 }
 
-static int safe_atoi(const char *str, int *res)
+static int safe_atoq_range(icmap_value_types_t value_type, long long int *min_val, long long int *max_val)
 {
-	int val;
+	switch (value_type) {
+	case ICMAP_VALUETYPE_INT8: *min_val = INT8_MIN; *max_val = INT8_MAX; break;
+	case ICMAP_VALUETYPE_UINT8: *min_val = 0; *max_val = UINT8_MAX; break;
+	case ICMAP_VALUETYPE_INT16: *min_val = INT16_MIN; *max_val = INT16_MAX; break;
+	case ICMAP_VALUETYPE_UINT16: *min_val = 0; *max_val = UINT16_MAX; break;
+	case ICMAP_VALUETYPE_INT32: *min_val = INT32_MIN; *max_val = INT32_MAX; break;
+	case ICMAP_VALUETYPE_UINT32: *min_val = 0; *max_val = UINT32_MAX; break;
+	default:
+		return (-1);
+	}
+
+	return (0);
+}
+
+/*
+ * Convert string str to long long int res. Type of result is target_type and currently only
+ * ICMAP_VALUETYPE_[U]INT[8|16|32] is supported.
+ * Return 0 on success, -1 on failure.
+ */
+static int safe_atoq(const char *str, long long int *res, icmap_value_types_t target_type)
+{
+	long long int val;
+	long long int min_val, max_val;
 	char *endptr;
 
 	errno = 0;
 
-	val = strtol(str, &endptr, 10);
+	val = strtoll(str, &endptr, 10);
 	if (errno == ERANGE) {
 		return (-1);
 	}
@@ -422,6 +444,14 @@ static int safe_atoi(const char *str, int *res)
 	}
 
 	if (*endptr != '\0') {
+		return (-1);
+	}
+
+	if (safe_atoq_range(target_type, &min_val, &max_val) != 0) {
+		return (-1);
+	}
+
+	if (val < min_val || val > max_val) {
 		return (-1);
 	}
 
@@ -461,7 +491,10 @@ static int main_config_parser_cb(const char *path,
 			icmap_map_t config_map,
 			void *user_data)
 {
-	int i;
+	int ii;
+	long long int val;
+	long long int min_val, max_val;
+	icmap_value_types_t val_type = ICMAP_VALUETYPE_BINARY;
 	unsigned long long int ull;
 	int add_as_string;
 	char key_name[ICMAP_KEYNAME_MAXLEN];
@@ -487,10 +520,11 @@ static int main_config_parser_cb(const char *path,
 		case MAIN_CP_CB_DATA_STATE_PLOAD:
 			if ((strcmp(path, "pload.count") == 0) ||
 			    (strcmp(path, "pload.size") == 0)) {
-				if (safe_atoi(value, &i) != 0) {
+				val_type = ICMAP_VALUETYPE_UINT32;
+				if (safe_atoq(value, &val, val_type) != 0) {
 					goto atoi_error;
 				}
-				icmap_set_uint32_r(config_map, path, i);
+				icmap_set_uint32_r(config_map, path, val);
 				add_as_string = 0;
 			}
 			break;
@@ -499,10 +533,11 @@ static int main_config_parser_cb(const char *path,
 			    (strcmp(path, "quorum.votes") == 0) ||
 			    (strcmp(path, "quorum.last_man_standing_window") == 0) ||
 			    (strcmp(path, "quorum.leaving_timeout") == 0)) {
-				if (safe_atoi(value, &i) != 0) {
+				val_type = ICMAP_VALUETYPE_UINT32;
+				if (safe_atoq(value, &val, val_type) != 0) {
 					goto atoi_error;
 				}
-				icmap_set_uint32_r(config_map, path, i);
+				icmap_set_uint32_r(config_map, path, val);
 				add_as_string = 0;
 			}
 
@@ -512,27 +547,30 @@ static int main_config_parser_cb(const char *path,
 			    (strcmp(path, "quorum.wait_for_all") == 0) ||
 			    (strcmp(path, "quorum.auto_tie_breaker") == 0) ||
 			    (strcmp(path, "quorum.last_man_standing") == 0)) {
-				if (safe_atoi(value, &i) != 0) {
+				val_type = ICMAP_VALUETYPE_UINT8;
+				if (safe_atoq(value, &val, val_type) != 0) {
 					goto atoi_error;
 				}
-				icmap_set_uint8_r(config_map, path, i);
+				icmap_set_uint8_r(config_map, path, val);
 				add_as_string = 0;
 			}
 			break;
 		case MAIN_CP_CB_DATA_STATE_QDEVICE:
 			if ((strcmp(path, "quorum.device.timeout") == 0) ||
 			    (strcmp(path, "quorum.device.votes") == 0)) {
-				if (safe_atoi(value, &i) != 0) {
+				val_type = ICMAP_VALUETYPE_UINT32;
+				if (safe_atoq(value, &val, val_type) != 0) {
 					goto atoi_error;
 				}
-				icmap_set_uint32_r(config_map, path, i);
+				icmap_set_uint32_r(config_map, path, val);
 				add_as_string = 0;
 			}
 			if ((strcmp(path, "quorum.device.master_wins") == 0)) {
-				if (safe_atoi(value, &i) != 0) {
+				val_type = ICMAP_VALUETYPE_UINT8;
+				if (safe_atoq(value, &val, val_type) != 0) {
 					goto atoi_error;
 				}
-				icmap_set_uint8_r(config_map, path, i);
+				icmap_set_uint8_r(config_map, path, val);
 				add_as_string = 0;
 			}
 			break;
@@ -563,10 +601,11 @@ static int main_config_parser_cb(const char *path,
 			    (strcmp(path, "totem.max_messages") == 0) ||
 			    (strcmp(path, "totem.miss_count_const") == 0) ||
 			    (strcmp(path, "totem.netmtu") == 0)) {
-				if (safe_atoi(value, &i) != 0) {
+				val_type = ICMAP_VALUETYPE_UINT32;
+				if (safe_atoq(value, &val, val_type) != 0) {
 					goto atoi_error;
 				}
-				icmap_set_uint32_r(config_map,path, i);
+				icmap_set_uint32_r(config_map,path, val);
 				add_as_string = 0;
 			}
 			if (strcmp(path, "totem.config_version") == 0) {
@@ -634,11 +673,12 @@ static int main_config_parser_cb(const char *path,
 
 		case MAIN_CP_CB_DATA_STATE_INTERFACE:
 			if (strcmp(path, "totem.interface.ringnumber") == 0) {
-				if (safe_atoi(value, &i) != 0) {
+				val_type = ICMAP_VALUETYPE_UINT8;
+				if (safe_atoq(value, &val, val_type) != 0) {
 					goto atoi_error;
 				}
 
-				data->ringnumber = i;
+				data->ringnumber = val;
 				add_as_string = 0;
 			}
 			if (strcmp(path, "totem.interface.bindnetaddr") == 0) {
@@ -654,27 +694,19 @@ static int main_config_parser_cb(const char *path,
 				add_as_string = 0;
 			}
 			if (strcmp(path, "totem.interface.mcastport") == 0) {
-				if (safe_atoi(value, &i) != 0) {
+				val_type = ICMAP_VALUETYPE_UINT16;
+				if (safe_atoq(value, &val, val_type) != 0) {
 					goto atoi_error;
 				}
-				data->mcastport = i;
-				if (data->mcastport < 0 || data->mcastport > 65535) {
-					*error_string = "Invalid multicast port (should be 0..65535)";
-
-					return (0);
-				};
+				data->mcastport = val;
 				add_as_string = 0;
 			}
 			if (strcmp(path, "totem.interface.ttl") == 0) {
-				if (safe_atoi(value, &i) != 0) {
+				val_type = ICMAP_VALUETYPE_UINT8;
+				if (safe_atoq(value, &val, val_type) != 0) {
 					goto atoi_error;
 				}
-				data->ttl = i;
-				if (data->ttl < 0 || data->ttl > 255) {
-					*error_string = "Invalid TTL (should be 0..255)";
-
-					return (0);
-				};
+				data->ttl = val;
 				add_as_string = 0;
 			}
 			break;
@@ -804,11 +836,12 @@ static int main_config_parser_cb(const char *path,
 			snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "nodelist.node.%u.%s", data->node_number, key);
 			if ((strcmp(key, "nodeid") == 0) ||
 			    (strcmp(key, "quorum_votes") == 0)) {
-				if (safe_atoi(value, &i) != 0) {
+				val_type = ICMAP_VALUETYPE_UINT32;
+				if (safe_atoq(value, &val, val_type) != 0) {
 					goto atoi_error;
 				}
 
-				icmap_set_uint32_r(config_map, key_name, i);
+				icmap_set_uint32_r(config_map, key_name, val);
 				add_as_string = 0;
 			}
 
@@ -923,13 +956,13 @@ static int main_config_parser_cb(const char *path,
 				icmap_set_uint8_r(config_map, key_name, data->ttl);
 			}
 
-			i = 0;
+			ii = 0;
 			for (iter = data->member_items_head.next;
 			     iter != &data->member_items_head; iter = iter_next) {
 				kv_item = list_entry(iter, struct key_value_list_item, list);
 
 				snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.member.%u",
-						data->ringnumber, i);
+						data->ringnumber, ii);
 				icmap_set_string_r(config_map, key_name, kv_item->value);
 
 				iter_next = iter->next;
@@ -937,7 +970,7 @@ static int main_config_parser_cb(const char *path,
 				free(kv_item->value);
 				free(kv_item->key);
 				free(kv_item);
-				i++;
+				ii++;
 			}
 
 			data->state = MAIN_CP_CB_DATA_STATE_TOTEM;
@@ -1079,8 +1112,16 @@ static int main_config_parser_cb(const char *path,
 	return (1);
 
 atoi_error:
+	min_val = max_val = 0;
+	/*
+	 * This is really assert, because developer ether doesn't set val_type correctly or
+	 * we've got here after some nasty memory overwrite
+	 */
+	assert(safe_atoq_range(val_type, &min_val, &max_val) == 0);
+
 	snprintf(formated_err, sizeof(formated_err),
-	    "Value of key \"%s\" must be integer, but \"%s\" was given", key, value);
+	    "Value of key \"%s\" is expected to be integer in range (%lld..%lld), but \"%s\" was given",
+	    key, min_val, max_val, value);
 	*error_string = formated_err;
 
 	return (0);
