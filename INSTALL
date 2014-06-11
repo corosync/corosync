@@ -3,52 +3,28 @@ The Corosync Cluster Engine Installation Guide
 ----------------------------------------------
 Please read LICENSE for a description of the licensing of this software.
 
-All cryptographic software in this package is subject to the following legal
-notice:
-This package includes publicly available encryption source code which,
-together with object code resulting from the compiling of publicly
-available source code, may be exported from the United States under License
-Exception TSU prsuant to 15 C.F.R Section 740.13(e).
-
----------------------------------
-* Platforms Built and Tested On *
----------------------------------
-Corosync has been tested on:
-Linux: Fedora 11, Fedora 12 (rawhide), Debian Lenny, Debian Unstable,
-       Ubuntu Hardy, Red Hat Enterprise Linux 5
-Solaris: version 10 CSW
-BSD: FreeBSD and OpenBSD
-MacOSX: Darwin latest update
-
-It should build and run properly on the tested platforms as well as possibly
-others with minimal effort.  Corosync requires a coherent mmap() system call
-and will not operate on platforms which don't support coherent mmap().
-
-Corosync has been tested with recent gcc compilers and Intel's C compiler.
-SunStudio compilers fail to build with various internal compiler errors.
-
-----------------------------
-* Building from subversion *
-----------------------------
-When building and installing from subversion, autoconf 2.61 or later is
-required.  Prior versions will result in build failures.
+---------------------
+* Building from git *
+---------------------
+When building and installing from git, autoconf 2.61, automake 1.11,
+libtool 2.2.6 and pkgconfig 0.23  (or later versions) are required.
+Prior versions may result in build failures.
 
 Step 1: check out a read only copy of the repository
-svn checkout http://svn.fedoraprojects.org/svn/corosync
+git clone git://github.com/corosync/corosync.git
 
-Find the version you want to build.  Usually this will be the "trunk" version
-located in the trunk directory.  If you want to build a specific released
-version check in the tags directory.
+Find the version you want to build.  Usually this will be the "master" version.
+If you want to build a specific released version, use git checkout VERSION.
 
 Step 2: Generate the makefiles
-balance:~/corosync/trunk% ./autogen.sh
+balance:~/corosync% ./autogen.sh
 
 Step 3: Run the configure script
-balance:~/corosync/trunk% ./configure
+balance:~/corosync% ./configure
 
 Step 4: Install the binaries
-balance:~/corosync/trunk% su
-balance:~/corosync/trunk# make install
+balance:~/corosync% su
+balance:~/corosync# make install
 
 -------------------------
 * Building from tarball *
@@ -57,42 +33,30 @@ The tarball is distributed with pregenerated makefiles.  There is no need
 to run the autogen.sh script in this case.
 
 Step 1: Run the configure script
-balance:~/corosync/trunk% ./configure
+balance:~/corosync% ./configure
 
 Step 2: Install the binaries
-balance:~/corosync/trunk% su
-balance:~/corosync/trunk# make install
+balance:~/corosync% su
+balance:~/corosync# make install
 
 -------------------------------
 * A notice about dependencies *
 -------------------------------
-We have strived very hard to avoid dependencies as much as possible, and in
-fact corosync can be compiled without any dependencies.
+We have strived very hard to avoid dependencies as much as possible, but there
+are two required libraries: LibQB and NSS.
 
-Optional dependencies are support for NSS and support for Infiniband RDMA.
+Optional dependencies are support for Infiniband RDMA, DBUS, SNMP and libstatgrab.
 
-NSS encryption performs more poorly then the default encryption, but may be
- a good choice if your organization has policies regarding encryption technology
-requiring the use of a common cryptographic library such as Netscape Security Services.
-
-To enable nss during building:
-balance:~/corosync/trunk% ./configure --enable-nss
-
-To disable nss during buildling:
-balance:~/corosync/trunk% ./configure --disable-nss
-
-The nss packages required to build corosync with nss support can usually be
-found by installing the "nss-devel" and "nspr-devel" packages for your
-distribution.  Note nss is enabled by default, so if you don't want nss support
-or don't want to install nss devel packages, make sure to set the appropriate
-configure option as described above.
+The nss packages required to build corosync can usually be found by
+installing the "nss-devel" and "nspr-devel" packages (names may vary, please use
+distribution's package manager). Also don't forget to install pkgconfig.
 
 -----------------------------------------
 * Building with Infiniband RDMA support *
 -----------------------------------------
 Infiniband RDMA build support is disabled by default.  To enable rdma during
 building:
-balance:~/corosync/trunk% ./configure --enable-rdma
+balance:~/corosync% ./configure --enable-rdma
 
 Infiniband rdma support requires the libibverbs and librdmacm packages (and
 their -devel counterparts).  Corosync requires the use of pkgconfig in these
@@ -224,8 +188,6 @@ but rather used to override the program defaults for the purposes of fine
 tuning for a given networking/processor combination or for debugging purposes.
 Be careful to use the same timeout values on each of the nodes in the cluster
 or unpredictable results may occur.
-
-Do not use DOS style termination.  This breaks the parser.
 
 Generate a private key
 ----------------------
