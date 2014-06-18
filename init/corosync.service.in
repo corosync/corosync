@@ -9,12 +9,16 @@ ExecStart=@INITWRAPPERSDIR@/corosync start
 ExecStop=@INITWRAPPERSDIR@/corosync stop
 Type=forking
 
-# If you are using with pacemaker and want to exert watchdog,
-# uncomment the line of the following Restart= and RestartSec=.
+# The following config is for corosync with enabled watchdog service.
+#
+#  When corosync watchdog service is being enabled and using with
+#  pacemaker.service, and if you want to exert the watchdog when a
+#  corosync process is terminated abnormally,
+#  uncomment the line of the following Restart= and RestartSec=.
 #Restart=on-failure
-# Specify a period longer than soft_margin as RestartSec.
+#  Specify a period longer than soft_margin as RestartSec.
 #RestartSec=70
-# rewrite according to environment.
+#  rewrite according to environment.
 #ExecStartPre=/sbin/modprobe softdog soft_margin=60
 
 [Install]
