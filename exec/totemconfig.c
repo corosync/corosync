@@ -912,6 +912,8 @@ extern int totem_config_read (
 	 */
 	totem_volatile_config_read(totem_config, NULL);
 
+	icmap_set_uint8("config.totemconfig_reload_in_progress", 0);
+
 	add_totem_config_notification(totem_config);
 
 	return 0;
@@ -1264,6 +1266,10 @@ static void totem_reload_notify(
 		if (local_node_pos != -1) {
 			icmap_set_uint32("nodelist.local_node_pos", local_node_pos);
 		}
+
+		icmap_set_uint8("config.totemconfig_reload_in_progress", 0);
+	} else {
+		icmap_set_uint8("config.totemconfig_reload_in_progress", 1);
 	}
 }
 

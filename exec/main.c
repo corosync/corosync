@@ -1052,6 +1052,7 @@ static void set_icmap_ro_keys_flag (void)
 	icmap_set_ro_access("totem.netmtu", CS_FALSE, CS_TRUE);
 	icmap_set_ro_access("qb.ipc_type", CS_FALSE, CS_TRUE);
 	icmap_set_ro_access("config.reload_in_progress", CS_FALSE, CS_TRUE);
+	icmap_set_ro_access("config.totemconfig_reload_in_progress", CS_FALSE, CS_TRUE);
 }
 
 static void main_service_ready (void)

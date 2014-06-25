@@ -1477,8 +1477,17 @@ static void votequorum_refresh_config(
 	void *user_data)
 {
 	int old_votes, old_expected_votes;
+	uint8_t reloading;
 
 	ENTER();
+
+	/*
+	 * If a full reload is in progress then don't do anything until it's done and
+	 * can reconfigure it all atomically
+	 */
+	if (icmap_get_uint8("config.totemconfig_reload_in_progress", &reloading) == CS_OK && reloading) {
+		return ;
+	}
 
 	old_votes = us->votes;
 	old_expected_votes = us->expected_votes;
@@ -1509,6 +1518,7 @@ static void votequorum_exec_add_config_notification(void)
 {
 	icmap_track_t icmap_track_nodelist = NULL;
 	icmap_track_t icmap_track_quorum = NULL;
+	icmap_track_t icmap_track_reload = NULL;
 
 	ENTER();
 
@@ -1523,6 +1533,12 @@ static void votequorum_exec_add_config_notification(void)
 		votequorum_refresh_config,
 		NULL,
 		&icmap_track_quorum);
+
+	icmap_track_add("config.totemconfig_reload_in_progress",
+		ICMAP_TRACK_ADD | ICMAP_TRACK_MODIFY,
+		votequorum_refresh_config,
+		NULL,
+		&icmap_track_reload);
 
 	LEAVE();
 }

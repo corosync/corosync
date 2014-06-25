@@ -276,6 +276,15 @@ and set to 0 when the reload is completed. This allows interested subsystems
 to do atomic reconfiguration rather than changing each key. Note that 
 individual add/change/delete notifications will still be sent during a reload.
 
+.TP
+config.totemconfig_reload_in_progress
+This key is similar to
+.B config.totemconfig_reload_in_progress
+but changed after totem config trigger is processed. It is useful (mainly)
+for situations when
+.B nodelist.local_node_pos
+must be first correctly reinstated.
+
 .SH DYNAMIC CHANGE USER/GROUP PERMISSION TO USE COROSYNC IPC
 Is very same as in configuration file. To add UID 500 use
 
