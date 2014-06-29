@@ -41,6 +41,7 @@ status()
 	pid=$(pidof $1 2>/dev/null)
 	res=$?
 	if [ $res -ne 0 ]; then
+		res=3
 		echo "$1 is stopped"
 	else
 		echo "$1 (pid $pid) is running..."
@@ -118,16 +119,21 @@ start()
 		if ! wait_for_ipc; then
 			failure
 			rtrn=1
+		else
+			rtrn=0
+			touch $LOCK_FILE
+			success
 		fi
-		touch $LOCK_FILE
-		success
 	fi
 	echo
 }
 
 stop()
 {
-	! status $prog > /dev/null 2>&1 && return
+	if ! status $prog > /dev/null 2>&1; then
+		rtrn=0
+		return
+	fi
 
 	echo -n "Signaling $desc ($prog) to terminate: "
 	kill -TERM $(pidof $prog) > /dev/null 2>&1
@@ -141,6 +147,7 @@ stop()
 	done
 
 	rm -f $LOCK_FILE
+	rtrn=0
 	success
 	echo
 }
