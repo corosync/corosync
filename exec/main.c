@@ -1193,6 +1193,7 @@ int main (int argc, char **argv, char **envp)
 			case 'v':
 				printf ("Corosync Cluster Engine, version '%s'\n", VERSION);
 				printf ("Copyright (c) 2006-2009 Red Hat, Inc.\n");
+				logsys_system_fini();
 				return EXIT_SUCCESS;
 
 				break;
@@ -1203,6 +1204,7 @@ int main (int argc, char **argv, char **envp)
 					"        -p     : Does nothing.    \n"\
 					"        -r     : Set round robin realtime scheduling \n"\
 					"        -v     : Display version and SVN revision of Corosync and exit.\n");
+				logsys_system_fini();
 				return EXIT_FAILURE;
 		}
 	}
