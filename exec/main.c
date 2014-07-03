@@ -1351,6 +1351,10 @@ int main (int argc, char **argv, char **envp)
 	qb_loop_signal_add(corosync_poll_handle, QB_LOOP_HIGH,
 		SIGINT, NULL, sig_exit_handler, NULL);
 	qb_loop_signal_add(corosync_poll_handle, QB_LOOP_HIGH,
+		SIGSEGV, NULL, sigsegv_handler, NULL);
+	qb_loop_signal_add(corosync_poll_handle, QB_LOOP_HIGH,
+		SIGABRT, NULL, sigabrt_handler, NULL);
+	qb_loop_signal_add(corosync_poll_handle, QB_LOOP_HIGH,
 		SIGQUIT, NULL, sig_exit_handler, NULL);
 	qb_loop_signal_add(corosync_poll_handle, QB_LOOP_HIGH,
 		SIGTERM, NULL, sig_exit_handler, NULL);
