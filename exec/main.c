@@ -252,12 +252,34 @@ static void sigsegv_handler (int num)
 	raise (SIGSEGV);
 }
 
+/*
+ * QB wrapper for real signal handler
+ */
+static int32_t sig_segv_handler (int num, void *data)
+{
+
+	sigsegv_handler(num);
+
+	return 0;
+}
+
 static void sigabrt_handler (int num)
 {
 	(void)signal (SIGABRT, SIG_DFL);
 	corosync_blackbox_write_to_file ();
 	qb_log_fini();
 	raise (SIGABRT);
+}
+
+/*
+ * QB wrapper for real signal handler
+ */
+static int32_t sig_abrt_handler (int num, void *data)
+{
+
+	sigabrt_handler(num);
+
+	return 0;
 }
 
 #define LOCALHOST_IP inet_addr("127.0.0.1")
@@ -1351,9 +1373,9 @@ int main (int argc, char **argv, char **envp)
 	qb_loop_signal_add(corosync_poll_handle, QB_LOOP_HIGH,
 		SIGINT, NULL, sig_exit_handler, NULL);
 	qb_loop_signal_add(corosync_poll_handle, QB_LOOP_HIGH,
-		SIGSEGV, NULL, sigsegv_handler, NULL);
+		SIGSEGV, NULL, sig_segv_handler, NULL);
 	qb_loop_signal_add(corosync_poll_handle, QB_LOOP_HIGH,
-		SIGABRT, NULL, sigabrt_handler, NULL);
+		SIGABRT, NULL, sig_abrt_handler, NULL);
 	qb_loop_signal_add(corosync_poll_handle, QB_LOOP_HIGH,
 		SIGQUIT, NULL, sig_exit_handler, NULL);
 	qb_loop_signal_add(corosync_poll_handle, QB_LOOP_HIGH,
