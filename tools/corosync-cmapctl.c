@@ -110,7 +110,11 @@ static int print_help(void)
 	printf("    corosync-cmapctl -p filename\n");
 	printf("\n");
 	printf("    the format of the file is:\n");
-	printf("    <key_name> <type> <value>\n");
+	printf("    [^[^]]<key_name>[ <type> <value>]\n");
+	printf("    Keys prefixed with single caret ('^') are deleted (see -d).\n");
+	printf("    Keys (actually prefixes) prefixed with double caret ('^^') are deleted by prefix (see -D).\n");
+	printf("    <type> and <value> are optional (not checked) in above cases.\n");
+	printf("    Other keys are set (see -s) so both <type> and <value> are required.\n");
 	printf("\n");
 	printf("Delete key:\n");
 	printf("    corosync-cmapctl -d key_name...\n");
@@ -705,12 +709,27 @@ static void read_in_config_file(cmap_handle_t handle, char * filename)
 
 		/*
 		 * should be:
-		 * <key> <type> <value>
+		 * [^[^]]<key>[ <type> <value>]
 		 */
 		key_name = strtok(line, " \n");
-		key_type_s = strtok(NULL, " \n");
-		key_value_s = strtok(NULL, " \n");
-		set_key(handle, key_name, key_type_s, key_value_s);
+		if (key_name && *key_name == '^') {
+			key_name++;
+			if (*key_name == '^') {
+				key_name++;
+				delete_with_prefix(handle, key_name);
+			} else {
+				cs_error_t err;
+
+				err = cmap_delete(handle, key_name);
+				if (err != CS_OK) {
+					fprintf(stderr, "Can't delete key %s. Error %s\n", key_name, cs_strerror(err));
+				}
+			}
+		} else {
+			key_type_s = strtok(NULL, " \n");
+			key_value_s = strtok(NULL, " \n");
+			set_key(handle, key_name, key_type_s, key_value_s);
+		}
 	}
 
 	fclose (fh);
