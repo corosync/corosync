@@ -391,6 +391,25 @@ static int totem_get_crypto(struct totem_config *totem_config)
 	return 0;
 }
 
+static int totem_config_get_ip_version(void)
+{
+	int res;
+	char *str;
+
+	res = AF_INET;
+	if (icmap_get_string("totem.ip_version", &str) == CS_OK) {
+		if (strcmp(str, "ipv4") == 0) {
+			res = AF_INET;
+		}
+		if (strcmp(str, "ipv6") == 0) {
+			res = AF_INET6;
+		}
+		free(str);
+	}
+
+	return (res);
+}
+
 static uint16_t generate_cluster_id (const char *cluster_name)
 {
 	int i;
@@ -710,16 +729,7 @@ extern int totem_config_read (
 		cluster_name = NULL;
 	}
 
-	totem_config->ip_version = AF_INET;
-	if (icmap_get_string("totem.ip_version", &str) == CS_OK) {
-		if (strcmp(str, "ipv4") == 0) {
-			totem_config->ip_version = AF_INET;
-		}
-		if (strcmp(str, "ipv6") == 0) {
-			totem_config->ip_version = AF_INET6;
-		}
-		free(str);
-	}
+	totem_config->ip_version = totem_config_get_ip_version();
 
 	if (icmap_get_string("totem.interface.0.bindnetaddr", &str) != CS_OK) {
 		/*
