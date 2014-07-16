@@ -612,6 +612,7 @@ static void config_convert_nodelist_to_interface(struct totem_config *totem_conf
 	}
 
 	icmap_iter_finalize(iter);
+	totemip_freeifaddrs(&addrs);
 
 	if (node_found) {
 		/*
