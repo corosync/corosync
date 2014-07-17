@@ -35,51 +35,60 @@
 .SH NAME
 corosync-keygen \- Generate an authentication key for Corosync.
 .SH SYNOPSIS
-.B "corosync-keygen [\-l]"
+.B "corosync-keygen [\-k <filename>] [\-l]"
 .SH DESCRIPTION
 
 If you want to configure corosync to use cryptographic techniques to ensure authenticity
-.br
 and privacy of the messages, you will need to generate a private key.
 .PP
 .B corosync-keygen
-creates this key and writes it to /etc/corosync/authkey.
+creates this key and writes it to /etc/corosync/authkey or to file specified by
+-k option.
 .PP
 This private key must be copied to every processor in the cluster.  If the
-.br
 private key isn't the same for every node, those nodes with nonmatching private
-.br
 keys will not be able to join the same configuration.
 .PP
 Copy the key to some security transportable storage or use ssh to transmit the
-.br
 key from node to node.  Then install the key with the command:
 .PP
 unix#: install -D --group=0 --owner=0 --mode=0400 /path_to_authkey/authkey /etc/corosync/authkey
 .PP
 If a message "Invalid digest" appears from the corosync executive, the keys
-.br
 are not consistent between processors.
 .PP
 .B Note: corosync-keygen
 will ask for user input to assist in generating entropy unless the -l option is used.
 .SH OPTIONS
 .TP
+.B -k <filename>
+This specifies the fully qualified path to the shared key to create.
+.br
+The default is /etc/corosync/authkey.
+.TP
 .B -l
 Use a less secure random data source that will not require user input to help generate
-.br
-entropy.  This may be useful when this utility is used from a script.
+entropy.  This may be useful when this utility is used from a script or hardware random number
+generator is not available (f.e. in virtual machine).
+
 .SH EXAMPLES
 .TP
 Generate the key.
 .PP
-$ corosync-keygen
+# corosync-keygen
 .br
 Corosync Cluster Engine Authentication key generator.
 .br
 Gathering 1024 bits for key from /dev/random.
 .br
 Press keys on your keyboard to generate entropy.
+.br
+.PP
+$ corosync-keygen -l -k /tmp/authkey
+.br
+Corosync Cluster Engine Authentication key generator.
+.br
+Writing corosync key to /tmp/authkey.
 .br
 .SH SEE ALSO
 .BR corosync_overview (8),
