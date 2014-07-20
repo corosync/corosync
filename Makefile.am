@@ -46,7 +46,7 @@ ACLOCAL_AMFLAGS		= -I m4
 MAINTAINERCLEANFILES	= Makefile.in aclocal.m4 configure depcomp \
 			  config.guess config.sub missing install-sh \
 			  autoheader automake autoconf test_lense.sh \
-			  autoscan.log configure.scan ltmain.sh
+			  autoscan.log configure.scan ltmain.sh test-driver
 
 dist_doc_DATA		= LICENSE INSTALL README.recovery SECURITY TODO AUTHORS
 
