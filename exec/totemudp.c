@@ -555,7 +555,6 @@ static void timer_function_netif_check_timeout (
 	struct totemudp_instance *instance = (struct totemudp_instance *)data;
 	int interface_up;
 	int interface_num;
-	struct totem_ip_address *bind_address;
 
 	/*
 	 * Build sockets for every interface
@@ -613,7 +612,6 @@ static void timer_function_netif_check_timeout (
 		 * Interface is not up
 		 */
 		instance->netif_bind_state = BIND_STATE_LOOPBACK;
-		bind_address = &localhost;
 
 		/*
 		 * Add a timer to retry building interfaces and request memb_gather_enter
@@ -629,14 +627,13 @@ static void timer_function_netif_check_timeout (
 		 * Interface is up
 		 */
 		instance->netif_bind_state = BIND_STATE_REGULAR;
-		bind_address = &instance->totem_interface->bindnet;
 	}
 	/*
 	 * Create and bind the multicast and unicast sockets
 	 */
 	(void)totemudp_build_sockets (instance,
 		&instance->mcast_address,
-		bind_address,
+		&instance->totem_interface->bindnet,
 		&instance->totemudp_sockets,
 		&instance->totem_interface->boundto);
 
