@@ -411,7 +411,7 @@ static void cmap_sync_activate (void)
 
 	if (cmap_highest_config_version_received != cmap_my_config_version) {
 		log_printf(LOGSYS_LEVEL_ERROR,
-		    "Received config version (%"PRIu64") is different then my config version (%"PRIu64")! Exiting",
+		    "Received config version (%"PRIu64") is different than my config version (%"PRIu64")! Exiting",
 		    cmap_highest_config_version_received, cmap_my_config_version);
 		api->shutdown_request();
 		return ;
