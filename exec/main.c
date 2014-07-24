@@ -252,12 +252,34 @@ static void sigsegv_handler (int num)
 	raise (SIGSEGV);
 }
 
+/*
+ * QB wrapper for real signal handler
+ */
+static int32_t sig_segv_handler (int num, void *data)
+{
+
+	sigsegv_handler(num);
+
+	return 0;
+}
+
 static void sigabrt_handler (int num)
 {
 	(void)signal (SIGABRT, SIG_DFL);
 	corosync_blackbox_write_to_file ();
 	qb_log_fini();
 	raise (SIGABRT);
+}
+
+/*
+ * QB wrapper for real signal handler
+ */
+static int32_t sig_abrt_handler (int num, void *data)
+{
+
+	sigabrt_handler(num);
+
+	return 0;
 }
 
 #define LOCALHOST_IP inet_addr("127.0.0.1")
@@ -1168,7 +1190,7 @@ int main (int argc, char **argv, char **envp)
 	const char *error_string;
 	struct totem_config totem_config;
 	int res, ch;
-	int background, setprio;
+	int background, setprio, testonly;
 	struct stat stat_out;
 	enum e_corosync_done flock_err;
 	uint64_t totem_config_warnings;
@@ -1178,8 +1200,9 @@ int main (int argc, char **argv, char **envp)
 	 */
 	background = 1;
 	setprio = 0;
+	testonly = 0;
 
-	while ((ch = getopt (argc, argv, "fprv")) != EOF) {
+	while ((ch = getopt (argc, argv, "fprtv")) != EOF) {
 
 		switch (ch) {
 			case 'f':
@@ -1189,6 +1212,9 @@ int main (int argc, char **argv, char **envp)
 				break;
 			case 'r':
 				setprio = 1;
+				break;
+			case 't':
+				testonly = 1;
 				break;
 			case 'v':
 				printf ("Corosync Cluster Engine, version '%s'\n", VERSION);
@@ -1202,6 +1228,7 @@ int main (int argc, char **argv, char **envp)
 					"usage:\n"\
 					"        -f     : Start application in foreground.\n"\
 					"        -p     : Does nothing.    \n"\
+					"        -t     : Test configuration and exit.\n"\
 					"        -r     : Set round robin realtime scheduling \n"\
 					"        -v     : Display version and SVN revision of Corosync and exit.\n");
 				logsys_system_fini();
@@ -1261,8 +1288,10 @@ int main (int argc, char **argv, char **envp)
 		corosync_exit_error (COROSYNC_DONE_LOGCONFIGREAD);
 	}
 
-	log_printf (LOGSYS_LEVEL_NOTICE, "Corosync Cluster Engine ('%s'): started and ready to provide service.", VERSION);
-	log_printf (LOGSYS_LEVEL_INFO, "Corosync built-in features:" PACKAGE_FEATURES "");
+	if (!testonly) {
+		log_printf (LOGSYS_LEVEL_NOTICE, "Corosync Cluster Engine ('%s'): started and ready to provide service.", VERSION);
+		log_printf (LOGSYS_LEVEL_INFO, "Corosync built-in features:" PACKAGE_FEATURES "");
+	}
 
 	/*
 	 * Make sure required directory is present
@@ -1314,6 +1343,10 @@ int main (int argc, char **argv, char **envp)
 		corosync_exit_error (COROSYNC_DONE_MAINCONFIGREAD);
 	}
 
+	if (testonly) {
+		corosync_exit_error (COROSYNC_DONE_EXIT);
+	}
+
 	ip_version = totem_config.ip_version;
 
 	totem_config.totem_memb_ring_id_create_or_load = corosync_ring_id_create_or_load;
@@ -1351,9 +1384,9 @@ int main (int argc, char **argv, char **envp)
 	qb_loop_signal_add(corosync_poll_handle, QB_LOOP_HIGH,
 		SIGINT, NULL, sig_exit_handler, NULL);
 	qb_loop_signal_add(corosync_poll_handle, QB_LOOP_HIGH,
-		SIGSEGV, NULL, sigsegv_handler, NULL);
+		SIGSEGV, NULL, sig_segv_handler, NULL);
 	qb_loop_signal_add(corosync_poll_handle, QB_LOOP_HIGH,
-		SIGABRT, NULL, sigabrt_handler, NULL);
+		SIGABRT, NULL, sig_abrt_handler, NULL);
 	qb_loop_signal_add(corosync_poll_handle, QB_LOOP_HIGH,
 		SIGQUIT, NULL, sig_exit_handler, NULL);
 	qb_loop_signal_add(corosync_poll_handle, QB_LOOP_HIGH,

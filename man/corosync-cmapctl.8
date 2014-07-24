@@ -49,7 +49,15 @@ for bin, value is file name (or \- for stdin)
 corosync\-cmapctl \fB\-p\fR filename
 .IP
 the format of the file is:
-<key_name> <type> <value>
+[^[^]]<key_name>[ <type> <value>]
+.IP
+Keys prefixed with single caret ('^') are deleted (see \fB\-d\fR).
+.IP
+Keys (actually prefixes) prefixed with double caret ('^^') are deleted by prefix (see \fB\-D\fR).
+.IP
+<type> and <value> are optional (not checked) in above cases.
+.IP
+Other keys are set (see \fB\-s\fR) so both <type> and <value> are required.
 .SS "Delete key:"
 .IP
 corosync\-cmapctl \fB\-d\fR key_name...

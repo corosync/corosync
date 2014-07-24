@@ -391,6 +391,25 @@ static int totem_get_crypto(struct totem_config *totem_config)
 	return 0;
 }
 
+static int totem_config_get_ip_version(void)
+{
+	int res;
+	char *str;
+
+	res = AF_INET;
+	if (icmap_get_string("totem.ip_version", &str) == CS_OK) {
+		if (strcmp(str, "ipv4") == 0) {
+			res = AF_INET;
+		}
+		if (strcmp(str, "ipv6") == 0) {
+			res = AF_INET6;
+		}
+		free(str);
+	}
+
+	return (res);
+}
+
 static uint16_t generate_cluster_id (const char *cluster_name)
 {
 	int i;
@@ -552,29 +571,41 @@ static void put_nodelist_members_to_config(struct totem_config *totem_config)
 	icmap_iter_finalize(iter);
 }
 
-static void config_convert_nodelist_to_interface(struct totem_config *totem_config)
+/*
+ * Tries to find node (node_pos) in config nodelist which address matches any
+ * local interface. Address can be stored in ring0_addr or if ipaddr_key_prefix is not NULL
+ * key with prefix ipaddr_key is used (there can be multiuple of them)
+ * This function differs  * from find_local_node_in_nodelist because it doesn't need bindnetaddr,
+ * but doesn't work when bind addr is network address (so IP must be exact
+ * match).
+ *
+ * Returns 1 on success (address was found, node_pos is then correctly set) or 0 on failure.
+ */
+int totem_config_find_local_addr_in_nodelist(const char *ipaddr_key_prefix, unsigned int *node_pos)
 {
-	icmap_iter_t iter;
-	const char *iter_key;
-	int res = 0;
-	unsigned int node_pos;
-	char tmp_key[ICMAP_KEYNAME_MAXLEN];
-	char tmp_key2[ICMAP_KEYNAME_MAXLEN];
-	char *node_addr_str;
-	unsigned int ringnumber = 0;
 	struct list_head addrs;
-	struct list_head *list;
 	struct totem_ip_if_address *if_addr;
+	icmap_iter_t iter, iter2;
+	const char *iter_key, *iter_key2;
+	struct list_head *list;
+	const char *ipaddr_key;
+	int ip_version;
 	struct totem_ip_address node_addr;
+	char *node_addr_str;
 	int node_found = 0;
+	int res = 0;
+	char tmp_key[ICMAP_KEYNAME_MAXLEN];
 
 	if (totemip_getifaddrs(&addrs) == -1) {
-		return ;
+		return 0;
 	}
 
+	ip_version = totem_config_get_ip_version();
+
 	iter = icmap_iter_init("nodelist.node.");
+
 	while ((iter_key = icmap_iter_next(iter, NULL, NULL)) != NULL) {
-		res = sscanf(iter_key, "nodelist.node.%u.%s", &node_pos, tmp_key);
+		res = sscanf(iter_key, "nodelist.node.%u.%s", node_pos, tmp_key);
 		if (res != 2) {
 			continue;
 		}
@@ -587,24 +618,49 @@ static void config_convert_nodelist_to_interface(struct totem_config *totem_conf
 			continue ;
 		}
 
-		if (totemip_parse(&node_addr, node_addr_str, totem_config->ip_version) == -1) {
-			free(node_addr_str);
-			continue ;
-		}
 		free(node_addr_str);
 
 		/*
-		 * Try to find node in if_addrs
+		 * ring0_addr found -> let's iterate thru ipaddr_key_prefix
 		 */
-		node_found = 0;
-		for (list = addrs.next; list != &addrs; list = list->next) {
-			if_addr = list_entry(list, struct totem_ip_if_address, list);
+		snprintf(tmp_key, sizeof(tmp_key), "nodelist.node.%u.%s", *node_pos,
+		    (ipaddr_key_prefix != NULL ? ipaddr_key_prefix : "ring0_addr"));
 
-			if (totemip_equal(&node_addr, &if_addr->ip_addr)) {
-				node_found = 1;
-				break;
+		iter2 = icmap_iter_init(tmp_key);
+		while ((iter_key2 = icmap_iter_next(iter2, NULL, NULL)) != NULL) {
+			/*
+			 * ring0_addr must be exact match, not prefix
+			 */
+			ipaddr_key = (ipaddr_key_prefix != NULL ? iter_key2 : tmp_key);
+			if (icmap_get_string(ipaddr_key, &node_addr_str) != CS_OK) {
+				continue ;
+			}
+
+			if (totemip_parse(&node_addr, node_addr_str, ip_version) == -1) {
+				free(node_addr_str);
+				continue ;
+			}
+			free(node_addr_str);
+
+			/*
+			 * Try to match ip with if_addrs
+			 */
+			node_found = 0;
+			for (list = addrs.next; list != &addrs; list = list->next) {
+				if_addr = list_entry(list, struct totem_ip_if_address, list);
+
+				if (totemip_equal(&node_addr, &if_addr->ip_addr)) {
+					node_found = 1;
+					break;
+				}
+			}
+
+			if (node_found) {
+				break ;
 			}
 		}
+
+		icmap_iter_finalize(iter2);
 
 		if (node_found) {
 			break ;
@@ -612,8 +668,23 @@ static void config_convert_nodelist_to_interface(struct totem_config *totem_conf
 	}
 
 	icmap_iter_finalize(iter);
+	totemip_freeifaddrs(&addrs);
 
-	if (node_found) {
+	return (node_found);
+}
+
+static void config_convert_nodelist_to_interface(struct totem_config *totem_config)
+{
+	int res = 0;
+	unsigned int node_pos;
+	char tmp_key[ICMAP_KEYNAME_MAXLEN];
+	char tmp_key2[ICMAP_KEYNAME_MAXLEN];
+	char *node_addr_str;
+	unsigned int ringnumber = 0;
+	icmap_iter_t iter;
+	const char *iter_key;
+
+	if (totem_config_find_local_addr_in_nodelist(NULL, &node_pos)) {
 		/*
 		 * We found node, so create interface section
 		 */
@@ -709,16 +780,7 @@ extern int totem_config_read (
 		cluster_name = NULL;
 	}
 
-	totem_config->ip_version = AF_INET;
-	if (icmap_get_string("totem.ip_version", &str) == CS_OK) {
-		if (strcmp(str, "ipv4") == 0) {
-			totem_config->ip_version = AF_INET;
-		}
-		if (strcmp(str, "ipv6") == 0) {
-			totem_config->ip_version = AF_INET6;
-		}
-		free(str);
-	}
+	totem_config->ip_version = totem_config_get_ip_version();
 
 	if (icmap_get_string("totem.interface.0.bindnetaddr", &str) != CS_OK) {
 		/*
