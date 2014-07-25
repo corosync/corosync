@@ -636,6 +636,13 @@ int totem_config_validate (
 		goto parse_error;
 	}
 
+	if (totem_config->consensus_timeout < totem_config->join_timeout) {
+		snprintf (local_error_reason, sizeof(local_error_reason),
+			"The consensus timeout parameter (%d ms) may not be less than join timeout (%d ms).",
+			totem_config->consensus_timeout, totem_config->join_timeout);
+		goto parse_error;
+	}
+
 	if (totem_config->merge_timeout == 0) {
 		totem_config->merge_timeout = MERGE_TIMEOUT;
 	}
