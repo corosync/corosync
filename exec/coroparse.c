@@ -227,7 +227,7 @@ static int parser_check_item_uidgid(struct objdb_iface_ver0 *objdb,
 		}
 
 		if (strcmp (name, "uidgid") != 0) {
-			*error_string = "uidgid: Can't add subsection different then uidgid";
+			*error_string = "uidgid: Can't add subsection different than uidgid";
 			return 0;
 		}
 	}

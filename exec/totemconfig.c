@@ -367,7 +367,7 @@ printf ("couldn't find totem handle\n");
 
 		if (ringnumber >= INTERFACE_MAX) {
 			snprintf (error_string_response, sizeof(error_string_response),
-			    "parse error in config: interface ring number %u is bigger then allowed maximum %u\n",
+			    "parse error in config: interface ring number %u is bigger than allowed maximum %u\n",
 			    ringnumber, INTERFACE_MAX - 1);
 
 			*error_string = error_string_response;
@@ -562,7 +562,7 @@ int totem_config_validate (
 
 	if (totem_config->max_network_delay < MINIMUM_TIMEOUT) {
 		snprintf (local_error_reason, sizeof(local_error_reason),
-			"The max_network_delay parameter (%d ms) may not be less then (%d ms).",
+			"The max_network_delay parameter (%d ms) may not be less than (%d ms).",
 			totem_config->max_network_delay, MINIMUM_TIMEOUT);
 		goto parse_error;
 	}
@@ -581,7 +581,7 @@ int totem_config_validate (
 
 	if (totem_config->token_timeout < MINIMUM_TIMEOUT) {
 		snprintf (local_error_reason, sizeof(local_error_reason),
-			"The token timeout parameter (%d ms) may not be less then (%d ms).",
+			"The token timeout parameter (%d ms) may not be less than (%d ms).",
 			totem_config->token_timeout, MINIMUM_TIMEOUT);
 		goto parse_error;
 	}
@@ -598,7 +598,7 @@ int totem_config_validate (
 	}
 	if (totem_config->token_retransmit_timeout < MINIMUM_TIMEOUT) {
 		snprintf (local_error_reason, sizeof(local_error_reason),
-			"The token retransmit timeout parameter (%d ms) may not be less then (%d ms).",
+			"The token retransmit timeout parameter (%d ms) may not be less than (%d ms).",
 			totem_config->token_retransmit_timeout, MINIMUM_TIMEOUT);
 		goto parse_error;
 	}
@@ -609,7 +609,7 @@ int totem_config_validate (
 
 	if (totem_config->token_hold_timeout < MINIMUM_TIMEOUT) {
 		snprintf (local_error_reason, sizeof(local_error_reason),
-			"The token hold timeout parameter (%d ms) may not be less then (%d ms).",
+			"The token hold timeout parameter (%d ms) may not be less than (%d ms).",
 			totem_config->token_hold_timeout, MINIMUM_TIMEOUT);
 		goto parse_error;
 	}
@@ -620,7 +620,7 @@ int totem_config_validate (
 
 	if (totem_config->join_timeout < MINIMUM_TIMEOUT) {
 		snprintf (local_error_reason, sizeof(local_error_reason),
-			"The join timeout parameter (%d ms) may not be less then (%d ms).",
+			"The join timeout parameter (%d ms) may not be less than (%d ms).",
 			totem_config->join_timeout, MINIMUM_TIMEOUT);
 		goto parse_error;
 	}
@@ -631,7 +631,7 @@ int totem_config_validate (
 
 	if (totem_config->consensus_timeout < MINIMUM_TIMEOUT) {
 		snprintf (local_error_reason, sizeof(local_error_reason),
-			"The consensus timeout parameter (%d ms) may not be less then (%d ms).",
+			"The consensus timeout parameter (%d ms) may not be less than (%d ms).",
 			totem_config->consensus_timeout, MINIMUM_TIMEOUT);
 		goto parse_error;
 	}
@@ -642,7 +642,7 @@ int totem_config_validate (
 
 	if (totem_config->merge_timeout < MINIMUM_TIMEOUT) {
 		snprintf (local_error_reason, sizeof(local_error_reason),
-			"The merge timeout parameter (%d ms) may not be less then (%d ms).",
+			"The merge timeout parameter (%d ms) may not be less than (%d ms).",
 			totem_config->merge_timeout, MINIMUM_TIMEOUT);
 		goto parse_error;
 	}
@@ -653,7 +653,7 @@ int totem_config_validate (
 
 	if (totem_config->downcheck_timeout < MINIMUM_TIMEOUT) {
 		snprintf (local_error_reason, sizeof(local_error_reason),
-			"The downcheck timeout parameter (%d ms) may not be less then (%d ms).",
+			"The downcheck timeout parameter (%d ms) may not be less than (%d ms).",
 			totem_config->downcheck_timeout, MINIMUM_TIMEOUT);
 		goto parse_error;
 	}
@@ -673,7 +673,7 @@ int totem_config_validate (
 	}
 	if (totem_config->rrp_problem_count_timeout < MINIMUM_TIMEOUT) {
 		snprintf (local_error_reason, sizeof(local_error_reason),
-			"The RRP problem count timeout parameter (%d ms) may not be less then (%d ms).",
+			"The RRP problem count timeout parameter (%d ms) may not be less than (%d ms).",
 			totem_config->rrp_problem_count_timeout, MINIMUM_TIMEOUT);
 		goto parse_error;
 	}
@@ -685,13 +685,13 @@ int totem_config_validate (
 	}
 	if (totem_config->rrp_problem_count_threshold < RRP_PROBLEM_COUNT_THRESHOLD_MIN) {
 		snprintf (local_error_reason, sizeof(local_error_reason),
-			"The RRP problem count threshold (%d problem count) may not be less then (%d problem count).",
+			"The RRP problem count threshold (%d problem count) may not be less than (%d problem count).",
 			totem_config->rrp_problem_count_threshold, RRP_PROBLEM_COUNT_THRESHOLD_MIN);
 		goto parse_error;
 	}
 	if (totem_config->rrp_problem_count_mcast_threshold < RRP_PROBLEM_COUNT_THRESHOLD_MIN) {
 		snprintf (local_error_reason, sizeof(local_error_reason),
-			"The RRP multicast problem count threshold (%d problem count) may not be less then (%d problem count).",
+			"The RRP multicast problem count threshold (%d problem count) may not be less than (%d problem count).",
 			totem_config->rrp_problem_count_mcast_threshold, RRP_PROBLEM_COUNT_THRESHOLD_MIN);
 		goto parse_error;
 	}
@@ -702,7 +702,7 @@ int totem_config_validate (
 
 	if (totem_config->rrp_token_expired_timeout < MINIMUM_TIMEOUT) {
 		snprintf (local_error_reason, sizeof(local_error_reason),
-			"The RRP token expired timeout parameter (%d ms) may not be less then (%d ms).",
+			"The RRP token expired timeout parameter (%d ms) may not be less than (%d ms).",
 			totem_config->rrp_token_expired_timeout, MINIMUM_TIMEOUT);
 		goto parse_error;
 	}
@@ -736,7 +736,7 @@ int totem_config_validate (
 
 	if ((MESSAGE_QUEUE_MAX) < totem_config->max_messages) {
 		snprintf (local_error_reason, sizeof(local_error_reason),
-			"The max_messages parameter (%d messages) may not be greater then (%d messages).",
+			"The max_messages parameter (%d messages) may not be greater than (%d messages).",
 			totem_config->max_messages, MESSAGE_QUEUE_MAX);
 		goto parse_error;
 	}
@@ -748,7 +748,7 @@ int totem_config_validate (
 		totem_config->threads = 0;
 	}
 	if (totem_config->net_mtu > FRAME_SIZE_MAX) {
-		error_reason = "This net_mtu parameter is greater then the maximum frame size";
+		error_reason = "This net_mtu parameter is greater than the maximum frame size";
 		goto parse_error;
 	}
 	if (totem_config->vsf_type == NULL) {

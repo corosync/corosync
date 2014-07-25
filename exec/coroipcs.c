@@ -1774,7 +1774,7 @@ int coroipcs_handler_dispatch (
 
 		pthread_attr_init (&conn_info->thread_attr);
 		/*
-		* IA64 needs more stack space then other arches
+		* IA64 needs more stack space than other arches
 		*/
 		#if defined(__ia64__)
 		pthread_attr_setstacksize (&conn_info->thread_attr, 400000);

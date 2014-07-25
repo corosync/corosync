@@ -44,7 +44,7 @@
  * - encryption of message contents with SOBER128
  * - authentication of meessage contents with SHA1/HMAC
  * - token hold mode where token doesn't rotate on unused ring - reduces cpu
- *   usage on 1.6ghz xeon from 35% to less then .1 % as measured by top
+ *   usage on 1.6ghz xeon from 35% to less than .1 % as measured by top
  */
 
 #include <config.h>
@@ -1833,7 +1833,7 @@ static void memb_state_operational_enter (struct totemsrp_instance *instance)
 	 * to my_high_seq_received
 	 *
 	 * What should really happen is we should deliver all messages up to
-	 * a gap, then delier the transitional configuration, then deliver
+	 * a gap, then deliver the transitional configuration, then deliver
 	 * the messages between the first gap and my_high_seq_received, then
 	 * deliver a regular configuration, then deliver the regular
 	 * configuration
@@ -2839,7 +2839,7 @@ static void memb_state_commit_token_update (
 	memb_list[instance->commit_token->memb_index].high_delivered = instance->my_high_delivered;
 	/*
 	 * find high aru up to current memb_index for all matching ring ids
-	 * if any ring id matching memb_index has aru less then high aru set
+	 * if any ring id matching memb_index has aru less than high aru set
 	 * received flag for that entry to false
 	 */
 	high_aru = memb_list[instance->commit_token->memb_index].aru;

@@ -117,7 +117,7 @@ struct totempg_mcast_header {
 
 #if !(defined(__i386__) || defined(__x86_64__))
 /*
- * Need align on architectures different then i386 or x86_64
+ * Need align on architectures different than i386 or x86_64
  */
 #define TOTEMPG_NEED_ALIGN 1
 #endif

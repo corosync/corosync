@@ -505,7 +505,7 @@ static void active_timer_problem_decrementer_cancel (
  * Threshold value when recv_count for passive rrp should be adjusted.
  * Set this value to some smaller for testing of adjusting proper
  * functionality. Also keep in mind that this value must be smaller
- * then rrp_problem_count_threshold
+ * than rrp_problem_count_threshold
  */
 #define PASSIVE_RECV_COUNT_THRESHOLD		(INT_MAX / 2)
 
@@ -913,7 +913,7 @@ static void passive_monitor (
 	}
 
 	/*
-	 * Max is larger then threshold -> start adjusting process
+	 * Max is larger than threshold -> start adjusting process
 	 */
 	if (max > PASSIVE_RECV_COUNT_THRESHOLD) {
 		min_all = min_active = recv_count[iface_no];
