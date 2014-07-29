@@ -61,6 +61,11 @@ enum res_votequorum_types {
 	MESSAGE_RES_VOTEQUORUM_EXPECTEDVOTES_NOTIFICATION
 };
 
+struct mar_votequorum_ring_id {
+	mar_uint32_t nodeid;
+	mar_uint64_t seq;
+};
+
 struct req_lib_votequorum_qdevice_register {
 	struct qb_ipc_request_header header __attribute__((aligned(8)));
 	char name[VOTEQUORUM_QDEVICE_MAX_NAME_LEN];
@@ -157,6 +162,7 @@ struct res_lib_votequorum_notification {
 	struct qb_ipc_response_header header __attribute__((aligned(8)));
 	mar_uint32_t quorate __attribute__((aligned(8)));
 	mar_uint64_t context __attribute__((aligned(8)));
+	struct mar_votequorum_ring_id ring_id __attribute__((aligned(8)));
 	mar_uint32_t node_list_entries __attribute__((aligned(8)));
 	struct votequorum_node node_list[] __attribute__((aligned(8)));
 };
@@ -165,6 +171,14 @@ struct res_lib_votequorum_expectedvotes_notification {
 	struct qb_ipc_response_header header __attribute__((aligned(8)));
 	mar_uint64_t context __attribute__((aligned(8)));
 	mar_uint32_t expected_votes __attribute__((aligned(8)));
+};
+
+static inline void marshall_from_mar_votequorum_ring_id (
+	votequorum_ring_id_t *dest,
+	const struct mar_votequorum_ring_id *src)
+{
+	dest->nodeid = src->nodeid;
+	dest->seq = src->seq;
 };
 
 #endif

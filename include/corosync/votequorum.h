@@ -81,10 +81,16 @@ typedef struct {
 	uint32_t state;
 } votequorum_node_t;
 
+typedef struct {
+	uint32_t nodeid;
+	uint64_t seq;
+} votequorum_ring_id_t;
+
 typedef void (*votequorum_notification_fn_t) (
 	votequorum_handle_t handle,
 	uint64_t context,
 	uint32_t quorate,
+	votequorum_ring_id_t ring_id,
 	uint32_t node_list_entries,
 	votequorum_node_t node_list[]);
 

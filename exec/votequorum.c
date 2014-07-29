@@ -49,6 +49,7 @@
 #include <corosync/logsys.h>
 #include <corosync/coroapi.h>
 #include <corosync/icmap.h>
+#include <corosync/votequorum.h>
 #include <corosync/ipc_votequorum.h>
 
 #include "service.h"
@@ -1677,6 +1678,8 @@ static int votequorum_exec_send_quorum_notification(void *conn, uint64_t context
 	res_lib_votequorum_notification = (struct res_lib_votequorum_notification *)&buf;
 	res_lib_votequorum_notification->quorate = cluster_is_quorate;
 	res_lib_votequorum_notification->node_list_entries = cluster_members;
+	res_lib_votequorum_notification->ring_id.nodeid = quorum_ringid.rep.nodeid;
+	res_lib_votequorum_notification->ring_id.seq = quorum_ringid.seq;
 	res_lib_votequorum_notification->context = context;
 	list_iterate(tmp, &cluster_members_list) {
 		node = list_entry(tmp, struct cluster_node, list);
