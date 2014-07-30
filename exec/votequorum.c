@@ -2741,6 +2741,15 @@ static void message_handler_req_lib_votequorum_qdevice_poll (void *conn,
 	}
 
 	if (us->flags & NODE_FLAGS_QDEVICE_REGISTERED) {
+		if (!(req_lib_votequorum_qdevice_poll->ring_id.nodeid == quorum_ringid.rep.nodeid &&
+		      req_lib_votequorum_qdevice_poll->ring_id.seq == quorum_ringid.seq)) {
+			log_printf(LOGSYS_LEVEL_DEBUG, "Received poll ring id (%u.%"PRIu64") != last sync "
+			    "ring id (%u.%"PRIu64"). Ignoring poll call.",
+			    req_lib_votequorum_qdevice_poll->ring_id.nodeid, req_lib_votequorum_qdevice_poll->ring_id.seq,
+			    quorum_ringid.rep.nodeid, quorum_ringid.seq);
+			error = CS_ERR_MESSAGE_ERROR;
+			goto out;
+		}
 		if (strncmp(req_lib_votequorum_qdevice_poll->name, qdevice_name, VOTEQUORUM_QDEVICE_MAX_NAME_LEN)) {
 			error = CS_ERR_INVALID_PARAM;
 			goto out;

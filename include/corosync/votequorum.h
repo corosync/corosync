@@ -211,7 +211,8 @@ cs_error_t votequorum_qdevice_update (
 cs_error_t votequorum_qdevice_poll (
 	votequorum_handle_t handle,
 	const char *name,
-	unsigned int cast_vote);
+	unsigned int cast_vote,
+	votequorum_ring_id_t ring_id);
 
 /**
  * Allow qdevice to tell votequorum if master_wins can be enabled or not

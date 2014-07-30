@@ -35,6 +35,7 @@
 #include <config.h>
 
 #include <sys/types.h>
+#include <inttypes.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
@@ -44,6 +45,8 @@
 #include <corosync/votequorum.h>
 
 static votequorum_handle_t handle;
+
+static votequorum_ring_id_t last_received_ring_id;
 
 static int print_info(int ok_to_fail)
 {
@@ -71,6 +74,22 @@ static int print_info(int ok_to_fail)
 	return 0;
 }
 
+static void votequorum_notification_fn(
+	votequorum_handle_t vq_handle,
+	uint64_t context,
+	uint32_t quorate,
+	votequorum_ring_id_t ring_id,
+	uint32_t node_list_entries,
+	votequorum_node_t node_list[])
+{
+
+	printf("votequorum notification called \n");
+	printf("  current ringid  = (%u.%"PRIu64")\n", ring_id.nodeid, ring_id.seq);
+	printf("\n");
+
+	memcpy(&last_received_ring_id, &ring_id, sizeof(ring_id));
+}
+
 static void usage(const char *command)
 {
   printf("%s [-p <num>] [-t <time>] [-n <name>] [-c] [-m]\n", command);
@@ -90,9 +109,13 @@ int main(int argc, char *argv[])
 	int pollcount=0, polltime=1, quiet=0, once=0;
 	int err;
 	int opt;
+	votequorum_callbacks_t callbacks;
 	const char *devicename = "QDEVICE";
 	const char *options = "n:p:t:cmq1h";
-	
+
+	memset(&callbacks, 0, sizeof(callbacks));
+	callbacks.votequorum_notify_fn = votequorum_notification_fn;
+
 	while ((opt = getopt(argc, argv, options)) != -1) {
 		switch (opt) {
 		case 'm':
@@ -122,7 +145,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if ( (err=votequorum_initialize(&handle, NULL)) != CS_OK) {
+	if ( (err=votequorum_initialize(&handle, &callbacks)) != CS_OK) {
 		fprintf(stderr, "votequorum_initialize FAILED: %d\n", err);
 		return -1;
 	}
@@ -141,6 +164,12 @@ int main(int argc, char *argv[])
 	}
 
 	if (argc >= 2) {
+		if ( (err = votequorum_trackstart(handle, handle, CS_TRACK_CHANGES)) != CS_OK) {
+			fprintf(stderr, "votequorum_trackstart FAILED: %d\n", err);
+			ret = -1;
+			goto out;
+		}
+
 		if ( (err=votequorum_qdevice_register(handle, devicename)) != CS_OK) {
 			fprintf(stderr, "qdevice_register FAILED: %d\n", err);
 			ret = -1;
@@ -153,13 +182,25 @@ int main(int argc, char *argv[])
 			goto out;
 		}
 
+
 		while (--pollcount) {
+			if (votequorum_dispatch(handle, CS_DISPATCH_ALL) != CS_OK) {
+				fprintf(stderr, "votequorum_dispatch error\n");
+                                ret = -1;
+                                goto out;
+                        }
+
 		        if (!quiet) print_info(0);
-			if ((err=votequorum_qdevice_poll(handle, devicename, cast_vote)) != CS_OK) {
+			if ((err=votequorum_qdevice_poll(handle, devicename, cast_vote, last_received_ring_id)) != CS_OK &&
+			     err != CS_ERR_MESSAGE_ERROR) {
 				fprintf(stderr, "qdevice poll FAILED: %d\n", err);
 				ret = -1;
 				goto out;
 			}
+			if (err == CS_ERR_MESSAGE_ERROR) {
+				fprintf(stderr, "qdevice poll passed OLD ring_id\n");
+			}
+
 			if (!quiet) print_info(0);
 			sleep(polltime);
 		}

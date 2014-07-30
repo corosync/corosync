@@ -37,7 +37,7 @@ votequorum_qdevice_poll \- Tells votequorum the result of the quorum device poll
 .SH SYNOPSIS
 .B #include <corosync/votequorum.h>
 .sp
-.BI "int votequorum_qdevice_poll(votequorum_handle_t " handle ", const char * " name ", unsigned int " cast_vote ");"
+.BI "int votequorum_qdevice_poll(votequorum_handle_t " handle ", const char * " name ", unsigned int " cast_vote ", votequorum_ring_id_t " ring_id ");"
 .SH DESCRIPTION
 The
 .B votequorum_qdevice_poll
@@ -45,6 +45,9 @@ is called by the quorum device subsystem (not provided as part of votequorum) to
 the voting system if the quorum device is present/active or not. If
 .B cast_vote
 is 1 then the votes for the device are included in the quorum calculation, otherwise not.
+Current
+.B ring_id
+must be set (one get in votequorum_notification_fn callback) otherwise poll is ignored.
 This routine should be called at regular intervals to ensure that the device status
 is always known to votequorum. If
 .B votequorum_qdevice_poll

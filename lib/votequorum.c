@@ -607,7 +607,8 @@ error_exit:
 cs_error_t votequorum_qdevice_poll (
 	votequorum_handle_t handle,
 	const char *name,
-	unsigned int cast_vote)
+	unsigned int cast_vote,
+	votequorum_ring_id_t ring_id)
 {
 	cs_error_t error;
 	struct votequorum_inst *votequorum_inst;
@@ -629,6 +630,7 @@ cs_error_t votequorum_qdevice_poll (
 	req_lib_votequorum_qdevice_poll.header.id = MESSAGE_REQ_VOTEQUORUM_QDEVICE_POLL;
 	strcpy(req_lib_votequorum_qdevice_poll.name, name);
 	req_lib_votequorum_qdevice_poll.cast_vote = cast_vote;
+	marshall_to_mar_votequorum_ring_id(&req_lib_votequorum_qdevice_poll.ring_id, &ring_id);
 
 	iov.iov_base = (char *)&req_lib_votequorum_qdevice_poll;
 	iov.iov_len = sizeof (struct req_lib_votequorum_qdevice_poll);

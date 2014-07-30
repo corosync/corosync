@@ -86,6 +86,7 @@ struct req_lib_votequorum_qdevice_poll {
 	struct qb_ipc_request_header header __attribute__((aligned(8)));
 	char name[VOTEQUORUM_QDEVICE_MAX_NAME_LEN];
 	int cast_vote;
+	struct mar_votequorum_ring_id ring_id __attribute__((aligned(8)));
 };
 
 struct req_lib_votequorum_qdevice_master_wins {
@@ -176,6 +177,14 @@ struct res_lib_votequorum_expectedvotes_notification {
 static inline void marshall_from_mar_votequorum_ring_id (
 	votequorum_ring_id_t *dest,
 	const struct mar_votequorum_ring_id *src)
+{
+	dest->nodeid = src->nodeid;
+	dest->seq = src->seq;
+};
+
+static inline void marshall_to_mar_votequorum_ring_id (
+	struct mar_votequorum_ring_id *dest,
+	const votequorum_ring_id_t *src)
 {
 	dest->nodeid = src->nodeid;
 	dest->seq = src->seq;
