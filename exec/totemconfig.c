@@ -228,83 +228,90 @@ static int totem_volatile_config_validate (
 
 	if (totem_config->max_network_delay < MINIMUM_TIMEOUT) {
 		snprintf (local_error_reason, sizeof(local_error_reason),
-			"The max_network_delay parameter (%d ms) may not be less then (%d ms).",
+			"The max_network_delay parameter (%d ms) may not be less than (%d ms).",
 			totem_config->max_network_delay, MINIMUM_TIMEOUT);
 		goto parse_error;
 	}
 
 	if (totem_config->token_timeout < MINIMUM_TIMEOUT) {
 		snprintf (local_error_reason, sizeof(local_error_reason),
-			"The token timeout parameter (%d ms) may not be less then (%d ms).",
+			"The token timeout parameter (%d ms) may not be less than (%d ms).",
 			totem_config->token_timeout, MINIMUM_TIMEOUT);
 		goto parse_error;
 	}
 
 	if (totem_config->token_retransmit_timeout < MINIMUM_TIMEOUT) {
 		snprintf (local_error_reason, sizeof(local_error_reason),
-			"The token retransmit timeout parameter (%d ms) may not be less then (%d ms).",
+			"The token retransmit timeout parameter (%d ms) may not be less than (%d ms).",
 			totem_config->token_retransmit_timeout, MINIMUM_TIMEOUT);
 		goto parse_error;
 	}
 
 	if (totem_config->token_hold_timeout < MINIMUM_TIMEOUT) {
 		snprintf (local_error_reason, sizeof(local_error_reason),
-			"The token hold timeout parameter (%d ms) may not be less then (%d ms).",
+			"The token hold timeout parameter (%d ms) may not be less than (%d ms).",
 			totem_config->token_hold_timeout, MINIMUM_TIMEOUT);
 		goto parse_error;
 	}
 
 	if (totem_config->join_timeout < MINIMUM_TIMEOUT) {
 		snprintf (local_error_reason, sizeof(local_error_reason),
-			"The join timeout parameter (%d ms) may not be less then (%d ms).",
+			"The join timeout parameter (%d ms) may not be less than (%d ms).",
 			totem_config->join_timeout, MINIMUM_TIMEOUT);
 		goto parse_error;
 	}
 
 	if (totem_config->consensus_timeout < MINIMUM_TIMEOUT) {
 		snprintf (local_error_reason, sizeof(local_error_reason),
-			"The consensus timeout parameter (%d ms) may not be less then (%d ms).",
+			"The consensus timeout parameter (%d ms) may not be less than (%d ms).",
 			totem_config->consensus_timeout, MINIMUM_TIMEOUT);
+		goto parse_error;
+	}
+
+	if (totem_config->consensus_timeout < totem_config->join_timeout) {
+		snprintf (local_error_reason, sizeof(local_error_reason),
+			"The consensus timeout parameter (%d ms) may not be less than join timeout (%d ms).",
+			totem_config->consensus_timeout, totem_config->join_timeout);
 		goto parse_error;
 	}
 
 	if (totem_config->merge_timeout < MINIMUM_TIMEOUT) {
 		snprintf (local_error_reason, sizeof(local_error_reason),
-			"The merge timeout parameter (%d ms) may not be less then (%d ms).",
+			"The merge timeout parameter (%d ms) may not be less than (%d ms).",
 			totem_config->merge_timeout, MINIMUM_TIMEOUT);
 		goto parse_error;
 	}
 
 	if (totem_config->downcheck_timeout < MINIMUM_TIMEOUT) {
 		snprintf (local_error_reason, sizeof(local_error_reason),
-			"The downcheck timeout parameter (%d ms) may not be less then (%d ms).",
+			"The downcheck timeout parameter (%d ms) may not be less than (%d ms).",
 			totem_config->downcheck_timeout, MINIMUM_TIMEOUT);
 		goto parse_error;
 	}
 
 	if (totem_config->rrp_problem_count_timeout < MINIMUM_TIMEOUT) {
 		snprintf (local_error_reason, sizeof(local_error_reason),
-			"The RRP problem count timeout parameter (%d ms) may not be less then (%d ms).",
+			"The RRP problem count timeout parameter (%d ms) may not be less than (%d ms).",
 			totem_config->rrp_problem_count_timeout, MINIMUM_TIMEOUT);
 		goto parse_error;
 	}
 
 	if (totem_config->rrp_problem_count_threshold < RRP_PROBLEM_COUNT_THRESHOLD_MIN) {
 		snprintf (local_error_reason, sizeof(local_error_reason),
-			"The RRP problem count threshold (%d problem count) may not be less then (%d problem count).",
+			"The RRP problem count threshold (%d problem count) may not be less than (%d problem count).",
 			totem_config->rrp_problem_count_threshold, RRP_PROBLEM_COUNT_THRESHOLD_MIN);
 		goto parse_error;
 	}
 	if (totem_config->rrp_problem_count_mcast_threshold < RRP_PROBLEM_COUNT_THRESHOLD_MIN) {
 		snprintf (local_error_reason, sizeof(local_error_reason),
-			"The RRP multicast problem count threshold (%d problem count) may not be less then (%d problem count).",
+			"The RRP multicast problem count threshold (%d problem count) may not be less than (%d problem count).",
 			totem_config->rrp_problem_count_mcast_threshold, RRP_PROBLEM_COUNT_THRESHOLD_MIN);
 		goto parse_error;
 	}
 
 	if (totem_config->rrp_token_expired_timeout < MINIMUM_TIMEOUT) {
 		snprintf (local_error_reason, sizeof(local_error_reason),
-			"The RRP token expired timeout parameter (%d ms) may not be less then (%d ms).",
+			"The RRP token expired timeout parameter (%d ms) may not be less than (%d ms).",
 			totem_config->rrp_token_expired_timeout, MINIMUM_TIMEOUT);
 		goto parse_error;
 	}
@@ -810,7 +817,7 @@ extern int totem_config_read (
 			free(cluster_name);
 
 			snprintf (error_string_response, sizeof(error_string_response),
-			    "parse error in config: interface ring number %u is bigger then allowed maximum %u\n",
+			    "parse error in config: interface ring number %u is bigger than allowed maximum %u\n",
 			    ringnumber, INTERFACE_MAX - 1);
 
 			*error_string = error_string_response;
@@ -1272,7 +1279,7 @@ static void totem_change_notify(
 		return;
 
 	/*
-	 * Values other then UINT32 are not supported, or needed (yet)
+	 * Values other than UINT32 are not supported, or needed (yet)
 	 */
 	switch (event) {
 	case ICMAP_TRACK_DELETE:

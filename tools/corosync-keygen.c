@@ -35,11 +35,11 @@
 
 #include <config.h>
 
+#include <err.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <errno.h>
 #include <string.h>
 #include <getopt.h>
 #include <sys/types.h>
@@ -112,8 +112,7 @@ int main (int argc, char *argv[])
 	}
 
 	if (random_fd == -1) {
-		perror ("Failed to open random source\n");
-		exit (errno);
+		err (1, "Failed to open random source");
 	}
 
 	/*
@@ -124,8 +123,7 @@ int main (int argc, char *argv[])
 retry_read:
 	res = read (random_fd, &key[bytes_read], sizeof (key) - bytes_read);
 	if (res == -1) {
-		perror ("Could not read /dev/random");
-		exit (errno);
+		err (1, "Could not read /dev/random");
 	}
 	bytes_read += res;
 	if (bytes_read != sizeof (key)) {
@@ -139,12 +137,10 @@ retry_read:
 	 */
 	authkey_fd = open (keyfile, O_CREAT|O_WRONLY, 0600);
 	if (authkey_fd == -1) {
-		fprintf (stderr, "Could not create %s: %s", keyfile, strerror(errno));
-		exit (errno);
+		err (2, "Could not create %s", keyfile);
 	}
 	if (fchmod (authkey_fd, 0400)) {
-		perror ("Failed to set key file permissions to 0400\n");
-		exit (errno);
+		err (3, "Failed to set key file permissions to 0400");
 	}
 
 	printf ("Writing corosync key to %s.\n", keyfile);
@@ -154,13 +150,11 @@ retry_read:
 	 */
 	res = write (authkey_fd, key, sizeof (key));
 	if (res != sizeof (key)) {
-		fprintf (stderr, "Could not write %s: %s", keyfile, strerror(errno));
-		exit (errno);
+		err (4, "Could not write %s", keyfile);
 	}
 
 	if (close (authkey_fd)) {
-		fprintf (stderr, "Could not close %s: %s", keyfile, strerror(errno));
-		exit (errno);
+		err (5, "Could not close %s", keyfile);
 	}
 
 	return (0);

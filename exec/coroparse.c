@@ -1169,7 +1169,7 @@ static int uidgid_config_parser_cb(const char *path,
 		break;
 	case PARSER_CB_SECTION_START:
 		if (strcmp(path, "uidgid") != 0) {
-			*error_string = "uidgid: Can't add subsection different then uidgid";
+			*error_string = "uidgid: Can't add subsection different than uidgid";
 			return (0);
 		};
 		break;
