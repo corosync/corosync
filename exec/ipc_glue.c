@@ -702,7 +702,14 @@ static void cs_ipcs_check_for_flow_control(void)
 			 * now check flow control
 			 */
 			if (ipc_fc_totem_queue_level != TOTEM_Q_LEVEL_CRITICAL &&
-				ipc_fc_sync_in_process == 0) {
+			    ipc_fc_sync_in_process == 0) {
+				fc_enabled = QB_FALSE;
+			} else if (ipc_fc_totem_queue_level != TOTEM_Q_LEVEL_CRITICAL &&
+			    i == VOTEQUORUM_SERVICE) {
+				/*
+				 * Allow message processing for votequorum service even
+				 * in sync phase
+				 */
 				fc_enabled = QB_FALSE;
 			} else {
 				fc_enabled = QB_IPCS_RATE_OFF_2;
