@@ -1247,8 +1247,15 @@ int totemudp_recv_flush (void *udp_context)
 			ufd.fd = sock;
 			ufd.events = POLLIN;
 			nfds = poll (&ufd, 1, 0);
-			if (nfds == 1 && ufd.revents & POLLIN) {
-			net_deliver_fn (sock, ufd.revents, instance);
+			if (nfds == 1) {
+					if(ufd.revents & POLLIN) {
+							net_deliver_fn (sock, ufd.revents, instance);
+					}
+					else if((ufd.revents & POLLERR)
+									|| (ufd.revents & POLLNVAL)
+									|| (ufd.revents & POLLHUP)) {
+							break;
+					}
 			}
 		} while (nfds == 1);
 	}
