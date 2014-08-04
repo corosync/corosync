@@ -47,6 +47,8 @@
 static votequorum_handle_t handle;
 
 static votequorum_ring_id_t last_received_ring_id;
+static votequorum_ring_id_t ring_id_to_send;
+static int no_sent_old_ringid = 0;
 
 static int print_info(int ok_to_fail)
 {
@@ -88,11 +90,13 @@ static void votequorum_notification_fn(
 	printf("\n");
 
 	memcpy(&last_received_ring_id, &ring_id, sizeof(ring_id));
+	no_sent_old_ringid = 0;
 }
 
 static void usage(const char *command)
 {
-  printf("%s [-p <num>] [-t <time>] [-n <name>] [-c] [-m]\n", command);
+  printf("%s [-F <num>] [-p <num>] [-t <time>] [-n <name>] [-c] [-m]\n", command);
+	printf("      -F <num>  Number of times to send old ringid before actual ringid is sent (for testing, default = 0)\n");
         printf("      -p <num>  Number of times to poll qdevice (default 0=infinte)\n");
         printf("      -t <secs> Time (in seconds) to wait between polls (default=1)\n");
         printf("      -n <name> Name of quorum device (default QDEVICE)\n");
@@ -107,11 +111,12 @@ int main(int argc, char *argv[])
 	int ret = 0;
 	int cast_vote = 1, master_wins = 0;
 	int pollcount=0, polltime=1, quiet=0, once=0;
+	int send_old_ringid = 0;
 	int err;
 	int opt;
 	votequorum_callbacks_t callbacks;
 	const char *devicename = "QDEVICE";
-	const char *options = "n:p:t:cmq1h";
+	const char *options = "F:n:p:t:cmq1h";
 
 	memset(&callbacks, 0, sizeof(callbacks));
 	callbacks.votequorum_notify_fn = votequorum_notification_fn;
@@ -129,6 +134,9 @@ int main(int argc, char *argv[])
 			break;
 		case 'q':
 		        quiet = 1;
+			break;
+		case 'F':
+		        send_old_ringid = atoi(optarg)+1;
 			break;
 		case 'p':
 		        pollcount = atoi(optarg)+1;
@@ -191,7 +199,17 @@ int main(int argc, char *argv[])
                         }
 
 		        if (!quiet) print_info(0);
-			if ((err=votequorum_qdevice_poll(handle, devicename, cast_vote, last_received_ring_id)) != CS_OK &&
+
+			if (no_sent_old_ringid + 1 >= send_old_ringid) {
+				/*
+				 * Finally send correct ringid
+				 */
+				memcpy(&ring_id_to_send, &last_received_ring_id, sizeof(ring_id_to_send));
+			} else {
+				no_sent_old_ringid++;
+			}
+
+			if ((err=votequorum_qdevice_poll(handle, devicename, cast_vote, ring_id_to_send)) != CS_OK &&
 			     err != CS_ERR_MESSAGE_ERROR) {
 				fprintf(stderr, "qdevice poll FAILED: %d\n", err);
 				ret = -1;
