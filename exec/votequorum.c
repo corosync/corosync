@@ -234,6 +234,8 @@ static corosync_timer_handle_t qdevice_timer;
 static int qdevice_timer_set = 0;
 static corosync_timer_handle_t last_man_standing_timer;
 static int last_man_standing_timer_set = 0;
+static int sync_nodeinfo_sent = 0;
+static int sync_wait_for_poll_or_timeout = 0;
 
 /*
  * Service Interfaces required by service_message_handler struct
@@ -309,6 +311,8 @@ static struct corosync_exec_handler votequorum_exec_engine[] =
 static int quorum_lib_init_fn (void *conn);
 
 static int quorum_lib_exit_fn (void *conn);
+
+static void qdevice_timer_fn(void *arg);
 
 static void message_handler_req_lib_votequorum_getinfo (void *conn,
 							const void *message);
@@ -2182,6 +2186,8 @@ static void votequorum_sync_init (
 	ENTER();
 
 	sync_in_progress = 1;
+	sync_nodeinfo_sent = 0;
+	sync_wait_for_poll_or_timeout = 0;
 
 	if (member_list_entries > 1) {
 		us->flags &= ~NODE_FLAGS_FIRST;
@@ -2231,17 +2237,46 @@ static void votequorum_sync_init (
 	quorum_members_entries = member_list_entries;
 	memcpy(&quorum_ringid, ring_id, sizeof(*ring_id));
 
+	if (us->flags & NODE_FLAGS_QDEVICE_REGISTERED && us->flags & NODE_FLAGS_QDEVICE_ALIVE) {
+		/*
+		 * Reset poll timer. Sync waiting is interrupted on valid qdevice poll or after timeout
+		 */
+		if (qdevice_timer_set) {
+			corosync_api->timer_delete(qdevice_timer);
+		}
+		corosync_api->timer_add_duration((unsigned long long)qdevice_timeout*1000000, qdevice,
+						 qdevice_timer_fn, &qdevice_timer);
+		qdevice_timer_set = 1;
+		sync_wait_for_poll_or_timeout = 1;
+
+		log_printf(LOGSYS_LEVEL_INFO, "waiting for quorum device %s poll (but maximum for %u ms)",
+			qdevice_name, qdevice_timeout);
+	}
+
 	LEAVE();
 }
 
 static int votequorum_sync_process (void)
 {
-	votequorum_exec_send_nodeinfo(us->node_id);
-	votequorum_exec_send_nodeinfo(VOTEQUORUM_QDEVICE_NODEID);
-	if (strlen(qdevice_name)) {
-		votequorum_exec_send_qdevice_reg(VOTEQUORUM_QDEVICE_OPERATION_REGISTER,
-						 qdevice_name);
+
+	if (!sync_nodeinfo_sent) {
+		votequorum_exec_send_nodeinfo(us->node_id);
+		votequorum_exec_send_nodeinfo(VOTEQUORUM_QDEVICE_NODEID);
+		if (strlen(qdevice_name)) {
+			votequorum_exec_send_qdevice_reg(VOTEQUORUM_QDEVICE_OPERATION_REGISTER,
+							 qdevice_name);
+		}
+		sync_nodeinfo_sent = 1;
 	}
+
+	if (us->flags & NODE_FLAGS_QDEVICE_REGISTERED && sync_wait_for_poll_or_timeout) {
+		/*
+		 * Waiting for qdevice to poll with new ringid or timeout
+		 */
+
+		return (-1);
+	}
+
 	return 0;
 }
 
@@ -2336,6 +2371,7 @@ static void qdevice_timer_fn(void *arg)
 	votequorum_exec_send_nodeinfo(us->node_id);
 
 	qdevice_timer_set = 0;
+	sync_wait_for_poll_or_timeout = 0;
 
 	LEAVE();
 }
@@ -2675,6 +2711,7 @@ static void message_handler_req_lib_votequorum_qdevice_unregister (void *conn,
 		if (qdevice_timer_set) {
 			corosync_api->timer_delete(qdevice_timer);
 			qdevice_timer_set = 0;
+			sync_wait_for_poll_or_timeout = 0;
 		}
 		us->flags &= ~NODE_FLAGS_QDEVICE_REGISTERED;
 		us->flags &= ~NODE_FLAGS_QDEVICE_ALIVE;
@@ -2777,6 +2814,7 @@ static void message_handler_req_lib_votequorum_qdevice_poll (void *conn,
 		corosync_api->timer_add_duration((unsigned long long)qdevice_timeout*1000000, qdevice,
 						 qdevice_timer_fn, &qdevice_timer);
 		qdevice_timer_set = 1;
+		sync_wait_for_poll_or_timeout = 0;
 	} else {
 		error = CS_ERR_NOT_EXIST;
 	}
