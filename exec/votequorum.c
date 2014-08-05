@@ -71,6 +71,7 @@ static struct corosync_api_v1 *corosync_api;
 static char qdevice_name[VOTEQUORUM_QDEVICE_MAX_NAME_LEN];
 static struct cluster_node *qdevice = NULL;
 static unsigned int qdevice_timeout = VOTEQUORUM_QDEVICE_DEFAULT_TIMEOUT;
+static unsigned int qdevice_sync_timeout = VOTEQUORUM_QDEVICE_DEFAULT_SYNC_TIMEOUT;
 static uint8_t qdevice_can_operate = 1;
 static void *qdevice_reg_conn = NULL;
 static uint8_t qdevice_master_wins = 0;
@@ -1197,6 +1198,9 @@ static int votequorum_qdevice_is_configured(uint32_t *qdevice_votes)
 			if (icmap_get_uint32("quorum.device.timeout", &qdevice_timeout) != CS_OK) {
 				qdevice_timeout = VOTEQUORUM_QDEVICE_DEFAULT_TIMEOUT;
 			}
+			if (icmap_get_uint32("quorum.device.sync_timeout", &qdevice_sync_timeout) != CS_OK) {
+				qdevice_sync_timeout = VOTEQUORUM_QDEVICE_DEFAULT_SYNC_TIMEOUT;
+			}
 			update_qdevice_can_operate(1);
 			ret = 1;
 		}
@@ -2244,13 +2248,13 @@ static void votequorum_sync_init (
 		if (qdevice_timer_set) {
 			corosync_api->timer_delete(qdevice_timer);
 		}
-		corosync_api->timer_add_duration((unsigned long long)qdevice_timeout*1000000, qdevice,
+		corosync_api->timer_add_duration((unsigned long long)qdevice_sync_timeout*1000000, qdevice,
 						 qdevice_timer_fn, &qdevice_timer);
 		qdevice_timer_set = 1;
 		sync_wait_for_poll_or_timeout = 1;
 
 		log_printf(LOGSYS_LEVEL_INFO, "waiting for quorum device %s poll (but maximum for %u ms)",
-			qdevice_name, qdevice_timeout);
+			qdevice_name, qdevice_sync_timeout);
 	}
 
 	LEAVE();

@@ -51,10 +51,13 @@ must be set (one get in votequorum_notification_fn callback) otherwise poll is i
 This routine should be called at regular intervals to ensure that the device status
 is always known to votequorum. If
 .B votequorum_qdevice_poll
-is not called for (default) 10 seconds then the device will be deemed to be dead and
+is not called for (default) 10 seconds (or 30 seconds for sync phase) then the device will be deemed to be dead and
 its votes removed from the cluster. This does not unregister the device.
 The default poll time can be changed by setting the cmap variable
-quorum.quorumdev_poll.
+.B quorum.device.timeout
+for normal operation or
+.B quorum.device.sync_timeout
+for synchronization phase.
 .SH RETURN VALUE
 This call returns the CS_OK value if successful, otherwise an error is returned.
 .PP
