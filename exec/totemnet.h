@@ -124,4 +124,9 @@ extern int totemnet_member_remove (
 	void *net_context,
 	const struct totem_ip_address *member);
 
+extern int totemnet_member_set_active (
+	void *net_context,
+	const struct totem_ip_address *member,
+	int active);
+
 #endif /* TOTEMNET_H_DEFINED */

@@ -122,6 +122,11 @@ struct transport {
 	int (*member_remove) (
 		void *transport_context,
 		const struct totem_ip_address *member);
+
+	int (*member_set_active) (
+		void *transport_context,
+		const struct totem_ip_address *member,
+		int active);
 };
 
 struct transport transport_entries[] = {
@@ -456,6 +461,24 @@ extern int totemnet_member_remove (
 		res = instance->transport->member_remove (
 			instance->transport_context,
 			member);
+	}
+
+	return (res);
+}
+
+int totemnet_member_set_active (
+	void *net_context,
+	const struct totem_ip_address *member,
+	int active)
+{
+	struct totemnet_instance *instance = (struct totemnet_instance *)net_context;
+	unsigned int res = 0;
+
+	if (instance->transport->member_set_active) {
+		res = instance->transport->member_set_active (
+			instance->transport_context,
+			member,
+			active);
 	}
 
 	return (res);
