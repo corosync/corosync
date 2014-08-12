@@ -150,6 +150,7 @@ static int votequorum_exec_send_quorum_notification(void *conn, uint64_t context
 
 #define VOTEQUORUM_RECONFIG_PARAM_EXPECTED_VOTES 1
 #define VOTEQUORUM_RECONFIG_PARAM_NODE_VOTES     2
+#define VOTEQUORUM_RECONFIG_PARAM_CANCEL_WFA     3
 
 static int votequorum_exec_send_reconfigure(uint8_t param, unsigned int nodeid, uint32_t value);
 
@@ -1487,6 +1488,7 @@ static void votequorum_refresh_config(
 {
 	int old_votes, old_expected_votes;
 	uint8_t reloading;
+	uint8_t cancel_wfa;
 
 	ENTER();
 
@@ -1496,6 +1498,15 @@ static void votequorum_refresh_config(
 	 */
 	if (icmap_get_uint8("config.totemconfig_reload_in_progress", &reloading) == CS_OK && reloading) {
 		return ;
+	}
+
+	icmap_get_uint8("quorum.cancel_wait_for_all", &cancel_wfa);
+	if (strcmp(key_name, "quorum.cancel_wait_for_all") == 0 &&
+	    cancel_wfa >= 1) {
+	        icmap_set_uint8("quorum.cancel_wait_for_all", 0);
+		votequorum_exec_send_reconfigure(VOTEQUORUM_RECONFIG_PARAM_CANCEL_WFA,
+						 us->node_id, 0);
+		return;
 	}
 
 	old_votes = us->votes;
@@ -2069,6 +2080,14 @@ static void message_handler_req_exec_votequorum_reconfigure (
 		node->votes = req_exec_quorum_reconfigure->value;
 		recalculate_quorum(1, 0);  /* Allow decrease */
 		break;
+
+	case VOTEQUORUM_RECONFIG_PARAM_CANCEL_WFA:
+	        update_wait_for_all_status(0);
+		log_printf(LOGSYS_LEVEL_INFO, "wait_for_all_status reset by user on node %d.",
+			   req_exec_quorum_reconfigure->nodeid);
+		recalculate_quorum(0, 0);
+
+	        break;
 
 	}
 

@@ -270,6 +270,11 @@ Informations about users/groups which are allowed to do IPC connection to
 corosync.
 
 .TP
+quorum.cancel_wait_for_all
+Tells votequorum to cancel waiting for all nodes at cluster startup. Can be used
+to unblock quorum if notes are known to be down. for pcs use only.
+
+.TP
 config.reload_in_progress
 This value will be set to 1 (or created) when corosync.conf reload is started,
 and set to 0 when the reload is completed. This allows interested subsystems
