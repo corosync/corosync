@@ -803,14 +803,36 @@ static int none_member_remove (
 }
 
 static void none_membership_changed (
-	struct totemrrp_instance *instance,
-        enum totem_configuration_type configuration_type,
+	struct totemrrp_instance *rrp_instance,
+	enum totem_configuration_type configuration_type,
 	const struct srp_addr *member_list, size_t member_list_entries,
 	const struct srp_addr *left_list, size_t left_list_entries,
 	const struct srp_addr *joined_list, size_t joined_list_entries,
 	const struct memb_ring_id *ring_id)
 {
+	int i;
 
+	for (i = 0; i < left_list_entries; i++) {
+		if (left_list[i].addr[0].family != AF_INET && left_list[i].addr[0].family != AF_INET6) {
+			log_printf(rrp_instance->totemrrp_log_level_error,
+				"Membership left list contains incorrect address. "
+				"This is sign of misconfiguration between nodes!");
+		} else {
+			totemnet_member_set_active(rrp_instance->net_handles[0],
+			    &left_list[i].addr[0], 0);
+		}
+	}
+
+	for (i = 0; i < joined_list_entries; i++) {
+		if (joined_list[i].addr[0].family != AF_INET && joined_list[i].addr[0].family != AF_INET6) {
+			log_printf(rrp_instance->totemrrp_log_level_error,
+				"Membership join list contains incorrect address. "
+				"This is sign of misconfiguration between nodes!");
+		} else {
+			totemnet_member_set_active(rrp_instance->net_handles[0],
+			    &joined_list[i].addr[0], 1);
+		}
+	}
 }
 
 /*
@@ -1244,14 +1266,41 @@ static int passive_member_remove (
 }
 
 static void passive_membership_changed (
-	struct totemrrp_instance *instance,
-        enum totem_configuration_type configuration_type,
+	struct totemrrp_instance *rrp_instance,
+	enum totem_configuration_type configuration_type,
 	const struct srp_addr *member_list, size_t member_list_entries,
 	const struct srp_addr *left_list, size_t left_list_entries,
 	const struct srp_addr *joined_list, size_t joined_list_entries,
 	const struct memb_ring_id *ring_id)
 {
+	int i;
+	int interface;
 
+	for (interface = 0; interface < rrp_instance->interface_count; interface++) {
+		for (i = 0; i < left_list_entries; i++) {
+			if (left_list[i].addr[interface].family != AF_INET &&
+			     left_list[i].addr[interface].family != AF_INET6) {
+				log_printf(rrp_instance->totemrrp_log_level_error,
+					"Membership left list contains incorrect address. "
+					"This is sign of misconfiguration between nodes!");
+			} else {
+				totemnet_member_set_active(rrp_instance->net_handles[interface],
+				    &left_list[i].addr[interface], 0);
+			}
+		}
+
+		for (i = 0; i < joined_list_entries; i++) {
+			if (joined_list[i].addr[interface].family != AF_INET &&
+			     joined_list[i].addr[interface].family != AF_INET6) {
+				log_printf(rrp_instance->totemrrp_log_level_error,
+					"Membership join list contains incorrect address. "
+					"This is sign of misconfiguration between nodes!");
+			} else {
+				totemnet_member_set_active(rrp_instance->net_handles[interface],
+				    &joined_list[i].addr[interface], 1);
+			}
+		}
+	}
 }
 
 static void passive_ring_reenable (
@@ -1610,14 +1659,41 @@ static int active_member_remove (
 }
 
 static void active_membership_changed (
-	struct totemrrp_instance *instance,
-        enum totem_configuration_type configuration_type,
+	struct totemrrp_instance *rrp_instance,
+	enum totem_configuration_type configuration_type,
 	const struct srp_addr *member_list, size_t member_list_entries,
 	const struct srp_addr *left_list, size_t left_list_entries,
 	const struct srp_addr *joined_list, size_t joined_list_entries,
 	const struct memb_ring_id *ring_id)
 {
+	int i;
+	int interface;
 
+	for (interface = 0; interface < rrp_instance->interface_count; interface++) {
+		for (i = 0; i < left_list_entries; i++) {
+			if (left_list[i].addr[interface].family != AF_INET &&
+			     left_list[i].addr[interface].family != AF_INET6) {
+				log_printf(rrp_instance->totemrrp_log_level_error,
+					"Membership left list contains incorrect address. "
+					"This is sign of misconfiguration between nodes!");
+			} else {
+				totemnet_member_set_active(rrp_instance->net_handles[interface],
+				    &left_list[i].addr[interface], 0);
+			}
+		}
+
+		for (i = 0; i < joined_list_entries; i++) {
+			if (joined_list[i].addr[interface].family != AF_INET &&
+			     joined_list[i].addr[interface].family != AF_INET6) {
+				log_printf(rrp_instance->totemrrp_log_level_error,
+					"Membership join list contains incorrect address. "
+					"This is sign of misconfiguration between nodes!");
+			} else {
+				totemnet_member_set_active(rrp_instance->net_handles[interface],
+				    &joined_list[i].addr[interface], 1);
+			}
+		}
+	}
 }
 
 static void active_iface_check (struct totemrrp_instance *instance)
@@ -2158,7 +2234,7 @@ int totemrrp_member_remove (
 
 void totemrrp_membership_changed (
         void *rrp_context,
-        enum totem_configuration_type configuration_type,
+	enum totem_configuration_type configuration_type,
 	const struct srp_addr *member_list, size_t member_list_entries,
 	const struct srp_addr *left_list, size_t left_list_entries,
 	const struct srp_addr *joined_list, size_t joined_list_entries,
