@@ -178,7 +178,8 @@ struct transport transport_entries[] = {
 		.crypto_set = totemudpu_crypto_set,
 		.recv_mcast_empty = totemudpu_recv_mcast_empty,
 		.member_add = totemudpu_member_add,
-		.member_remove = totemudpu_member_remove
+		.member_remove = totemudpu_member_remove,
+		.member_set_active = totemudpu_member_set_active
 	},
 #ifdef HAVE_RDMA
 	{
