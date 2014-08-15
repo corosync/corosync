@@ -36,6 +36,7 @@
 #include <config.h>
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -368,6 +369,20 @@ static void print_uint32_padded(uint32_t value)
 	print_string_padded(buf);
 }
 
+static int compare_nodeids(const void *one, const void *two)
+{
+      const struct votequorum_info *info1 = one;
+      const struct votequorum_info *info2 = two;
+
+      if (info1->node_id == info2->node_id) {
+	  return 0;
+      }
+      if (info1->node_id > info2->node_id) {
+	  return 1;
+      }
+      return -1;
+}
+
 static void display_nodes_data(nodeid_format_t nodeid_format, name_format_t name_format)
 {
 	int i, display_qdevice = 0;
@@ -399,11 +414,12 @@ static void display_nodes_data(nodeid_format_t nodeid_format, name_format_t name
 	}
 	printf("Name\n");
 
+	qsort(info, g_view_list_entries, sizeof(struct votequorum_info), compare_nodeids);
 	for (i=0; i < g_view_list_entries; i++) {
 		if (nodeid_format == NODEID_FORMAT_DECIMAL) {
-			print_uint32_padded(g_view_list[i]);
+			print_uint32_padded(info[i].node_id);
 		} else {
-			printf("0x%08x ", g_view_list[i]);
+			printf("0x%08x ", info[i].node_id);
 		}
 		if (v_handle) {
 			int votes = -1;
@@ -426,8 +442,8 @@ static void display_nodes_data(nodeid_format_t nodeid_format, name_format_t name
 				}
 			}
 		}
-		printf("%s", node_name(g_view_list[i], name_format));
-		if (g_view_list[i] == our_nodeid) {
+		printf("%s", node_name(info[i].node_id, name_format));
+		if (info[i].node_id == our_nodeid) {
 			printf(" (local)");
 		}
 		printf("\n");
