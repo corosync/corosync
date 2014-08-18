@@ -238,18 +238,6 @@ Choose hardware carefully if intending to use large frame support.
 The default is 1500.
 
 .TP
-vsftype
-This directive controls the virtual synchrony filter type used to identify
-a primary component.  The preferred choice is YKD dynamic linear voting,
-however, for clusters larger then 32 nodes YKD consumes alot of memory.  For
-large scale clusters that are created by changing the MAX_PROCESSORS_COUNT
-#define in the C code totem.h file, the virtual synchrony filter "none" is
-recommended but then AMF and DLCK services (which are currently experimental)
-are not safe for use.
-
-The default is ykd.  The vsftype can also be set to none.
-
-.TP
 transport
 This directive controls the transport mechanism used.  If the interface to
 which corosync is binding is an RDMA interface such as RoCEE or Infiniband, the
