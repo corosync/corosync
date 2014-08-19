@@ -178,6 +178,12 @@ struct totemudpu_instance {
 	struct totem_ip_address token_target;
 
 	int token_socket;
+
+	qb_loop_timer_handle timer_merge_detect_timeout;
+
+	int send_merge_detect_message;
+
+	unsigned int merge_detect_messages_sent_before_timeout;
 };
 
 struct work_item {
@@ -196,6 +202,12 @@ static int totemudpu_create_sending_socket(
 	const struct totem_ip_address *member);
 
 int totemudpu_member_list_rebind_ip (
+	void *udpu_context);
+
+static void totemudpu_start_merge_detect_timeout(
+	void *udpu_context);
+
+static void totemudpu_stop_merge_detect_timeout(
 	void *udpu_context);
 
 static struct totem_ip_address localhost;
@@ -357,7 +369,11 @@ static inline void mcast_sendmsg (
 			struct totemudpu_member,
 			list);
 
-		if (only_active && !member->active)
+		/*
+		 * Do not send multicast message if message is not "flush", member
+		 * is inactive and timeout for sending merge message didn't expired.
+		 */
+		if (only_active && !member->active && !instance->send_merge_detect_message)
 			continue ;
 
 		totemip_totemip_to_sockaddr_convert(&member->member,
@@ -392,6 +408,14 @@ static inline void mcast_sendmsg (
 				"sendmsg(mcast) failed (non-critical)");
 		}
 	}
+
+	if (!only_active || instance->send_merge_detect_message) {
+		/*
+		 * Current message was sent to all nodes
+		 */
+		instance->merge_detect_messages_sent_before_timeout++;
+		instance->send_merge_detect_message = 0;
+	}
 }
 
 int totemudpu_finalize (
@@ -405,6 +429,8 @@ int totemudpu_finalize (
 			instance->token_socket);
 		close (instance->token_socket);
 	}
+
+	totemudpu_stop_merge_detect_timeout(instance);
 
 	return (res);
 }
@@ -824,6 +850,8 @@ int totemudpu_initialize (
 		timer_function_netif_check_timeout,
 		&instance->timer_netif_check_timeout);
 
+	totemudpu_start_merge_detect_timeout(instance);
+
 	*udpu_context = instance;
 	return (0);
 }
@@ -1216,4 +1244,41 @@ int totemudpu_member_set_active (
 	}
 
 	return (0);
+}
+
+static void timer_function_merge_detect_timeout (
+	void *data)
+{
+	struct totemudpu_instance *instance = (struct totemudpu_instance *)data;
+
+	if (instance->merge_detect_messages_sent_before_timeout == 0) {
+		instance->send_merge_detect_message = 1;
+	}
+
+	instance->merge_detect_messages_sent_before_timeout = 0;
+
+	totemudpu_start_merge_detect_timeout(instance);
+}
+
+static void totemudpu_start_merge_detect_timeout(
+	void *udpu_context)
+{
+	struct totemudpu_instance *instance = (struct totemudpu_instance *)udpu_context;
+
+	qb_loop_timer_add(instance->totemudpu_poll_handle,
+	    QB_LOOP_MED,
+	    instance->totem_config->merge_timeout * 2 * QB_TIME_NS_IN_MSEC,
+	    (void *)instance,
+	    timer_function_merge_detect_timeout,
+	    &instance->timer_merge_detect_timeout);
+
+}
+
+static void totemudpu_stop_merge_detect_timeout(
+	void *udpu_context)
+{
+	struct totemudpu_instance *instance = (struct totemudpu_instance *)udpu_context;
+
+	qb_loop_timer_del(instance->totemudpu_poll_handle,
+	    instance->timer_merge_detect_timeout);
 }
