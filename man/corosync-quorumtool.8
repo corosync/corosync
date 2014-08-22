@@ -1,5 +1,5 @@
 .\"/*
-.\" * Copyright (C) 2010,2012 Red Hat, Inc.
+.\" * Copyright (C) 2010,2014 Red Hat, Inc.
 .\" *
 .\" * All rights reserved.
 .\" *
@@ -35,7 +35,7 @@
 .SH NAME
 corosync-quorumtool \- Set and display quorum settings.
 .SH SYNOPSIS
-.B "corosync-quorumtool [\-s] [\-m] [\-l] [\-p] [\-v votes] [\-n nodeid] [\-e expected] [\-h] [\-i] [\-V]"
+.B "corosync-quorumtool [\-s] [\-m] [\-l] [\-p] [\-v votes] [\-n nodeid] [\-e expected] [\-h] [\-i] [\-o <a|n|i>] [\-V]"
 .SH DESCRIPTION
 Display the current state of quorum in the cluster and set vote quorum options.
 .SH OPTIONS
@@ -66,6 +66,11 @@ show node IP addresses instead of the resolved name
 .TP
 .B -p
 when used with -s or -l, generates machine parsable output
+.TP
+.B -o <a|n|i>
+Orders the output of the nodes list. By default or with -oa nodes are listed in IP address
+order: as they come from corosync. -on will order the nodes based on their name,
+and -oi will order them based on their node ID.
 .TP
 .B  -h (if no other argument)
 show this help text
