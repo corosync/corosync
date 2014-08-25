@@ -35,6 +35,7 @@
 #include <config.h>
 
 #include <sys/types.h>
+#include <inttypes.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
@@ -79,6 +80,7 @@ static void votequorum_notification_fn(
 	votequorum_handle_t handle,
 	uint64_t context,
 	uint32_t quorate,
+	votequorum_ring_id_t ring_id,
 	uint32_t node_list_entries,
 	votequorum_node_t node_list[]
 	)
@@ -88,6 +90,7 @@ static void votequorum_notification_fn(
 	printf("votequorum notification called \n");
 	printf("  quorate         = %d\n", quorate);
 	printf("  number of nodes = %d\n", node_list_entries);
+	printf("  current ringid  = (%u.%"PRIu64")\n", ring_id.nodeid, ring_id.seq);
 
 	for (i = 0; i< node_list_entries; i++) {
 		printf("      %d: %s\n", node_list[i].nodeid, node_state(node_list[i].state));

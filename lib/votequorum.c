@@ -438,6 +438,7 @@ cs_error_t votequorum_dispatch (
 	struct res_lib_votequorum_notification *res_lib_votequorum_notification;
 	struct res_lib_votequorum_expectedvotes_notification *res_lib_votequorum_expectedvotes_notification;
 	char dispatch_buf[IPC_DISPATCH_SIZE];
+	votequorum_ring_id_t ring_id;
 
 	if (dispatch_types != CS_DISPATCH_ONE &&
 		dispatch_types != CS_DISPATCH_ALL &&
@@ -507,10 +508,12 @@ cs_error_t votequorum_dispatch (
 				break;
 			}
 			res_lib_votequorum_notification = (struct res_lib_votequorum_notification *)dispatch_data;
+			marshall_from_mar_votequorum_ring_id (&ring_id, &res_lib_votequorum_notification->ring_id);
 
 			callbacks.votequorum_notify_fn ( handle,
 							 res_lib_votequorum_notification->context,
 							 res_lib_votequorum_notification->quorate,
+							 ring_id,
 							 res_lib_votequorum_notification->node_list_entries,
 							 (votequorum_node_t *)res_lib_votequorum_notification->node_list );
 				;
@@ -604,7 +607,8 @@ error_exit:
 cs_error_t votequorum_qdevice_poll (
 	votequorum_handle_t handle,
 	const char *name,
-	unsigned int cast_vote)
+	unsigned int cast_vote,
+	votequorum_ring_id_t ring_id)
 {
 	cs_error_t error;
 	struct votequorum_inst *votequorum_inst;
@@ -626,6 +630,7 @@ cs_error_t votequorum_qdevice_poll (
 	req_lib_votequorum_qdevice_poll.header.id = MESSAGE_REQ_VOTEQUORUM_QDEVICE_POLL;
 	strcpy(req_lib_votequorum_qdevice_poll.name, name);
 	req_lib_votequorum_qdevice_poll.cast_vote = cast_vote;
+	marshall_to_mar_votequorum_ring_id(&req_lib_votequorum_qdevice_poll.ring_id, &ring_id);
 
 	iov.iov_base = (char *)&req_lib_votequorum_qdevice_poll;
 	iov.iov_len = sizeof (struct req_lib_votequorum_qdevice_poll);

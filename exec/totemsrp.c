@@ -3650,6 +3650,12 @@ static int message_handler_orf_token (
 		transmits_allowed = fcc_calculate (instance, token);
 		mcasted_retransmit = orf_token_rtr (instance, token, &transmits_allowed);
 
+		if (instance->my_token_held == 1 &&
+			(token->rtr_list_entries > 0 || mcasted_retransmit > 0)) {
+			instance->my_token_held = 0;
+			forward_token = 1;
+		}
+
 		fcc_rtr_limit (instance, token, &transmits_allowed);
 		mcasted_regular = orf_token_mcast (instance, token, transmits_allowed);
 /*

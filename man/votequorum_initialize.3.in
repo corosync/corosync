@@ -64,6 +64,11 @@ typedef void (*votequorum_notification_fn_t) (
 	);
 
 .fi
+
+Current ring_id (one get in votequorum_notification_fn) must be passed to
+.B votequorum_qdevice_poll
+to make qdevice voting valid.
+
 .PP
 Every time the expected votes are changed, the callback is called.
 The expected votes callback function is described by the following type definitions:

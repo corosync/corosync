@@ -49,6 +49,7 @@
 #include <corosync/logsys.h>
 #include <corosync/coroapi.h>
 #include <corosync/icmap.h>
+#include <corosync/votequorum.h>
 #include <corosync/ipc_votequorum.h>
 
 #include "service.h"
@@ -70,6 +71,7 @@ static struct corosync_api_v1 *corosync_api;
 static char qdevice_name[VOTEQUORUM_QDEVICE_MAX_NAME_LEN];
 static struct cluster_node *qdevice = NULL;
 static unsigned int qdevice_timeout = VOTEQUORUM_QDEVICE_DEFAULT_TIMEOUT;
+static unsigned int qdevice_sync_timeout = VOTEQUORUM_QDEVICE_DEFAULT_SYNC_TIMEOUT;
 static uint8_t qdevice_can_operate = 1;
 static void *qdevice_reg_conn = NULL;
 static uint8_t qdevice_master_wins = 0;
@@ -148,6 +150,7 @@ static int votequorum_exec_send_quorum_notification(void *conn, uint64_t context
 
 #define VOTEQUORUM_RECONFIG_PARAM_EXPECTED_VOTES 1
 #define VOTEQUORUM_RECONFIG_PARAM_NODE_VOTES     2
+#define VOTEQUORUM_RECONFIG_PARAM_CANCEL_WFA     3
 
 static int votequorum_exec_send_reconfigure(uint8_t param, unsigned int nodeid, uint32_t value);
 
@@ -233,6 +236,8 @@ static corosync_timer_handle_t qdevice_timer;
 static int qdevice_timer_set = 0;
 static corosync_timer_handle_t last_man_standing_timer;
 static int last_man_standing_timer_set = 0;
+static int sync_nodeinfo_sent = 0;
+static int sync_wait_for_poll_or_timeout = 0;
 
 /*
  * Service Interfaces required by service_message_handler struct
@@ -308,6 +313,8 @@ static struct corosync_exec_handler votequorum_exec_engine[] =
 static int quorum_lib_init_fn (void *conn);
 
 static int quorum_lib_exit_fn (void *conn);
+
+static void qdevice_timer_fn(void *arg);
 
 static void message_handler_req_lib_votequorum_getinfo (void *conn,
 							const void *message);
@@ -1192,6 +1199,9 @@ static int votequorum_qdevice_is_configured(uint32_t *qdevice_votes)
 			if (icmap_get_uint32("quorum.device.timeout", &qdevice_timeout) != CS_OK) {
 				qdevice_timeout = VOTEQUORUM_QDEVICE_DEFAULT_TIMEOUT;
 			}
+			if (icmap_get_uint32("quorum.device.sync_timeout", &qdevice_sync_timeout) != CS_OK) {
+				qdevice_sync_timeout = VOTEQUORUM_QDEVICE_DEFAULT_SYNC_TIMEOUT;
+			}
 			update_qdevice_can_operate(1);
 			ret = 1;
 		}
@@ -1478,6 +1488,7 @@ static void votequorum_refresh_config(
 {
 	int old_votes, old_expected_votes;
 	uint8_t reloading;
+	uint8_t cancel_wfa;
 
 	ENTER();
 
@@ -1487,6 +1498,15 @@ static void votequorum_refresh_config(
 	 */
 	if (icmap_get_uint8("config.totemconfig_reload_in_progress", &reloading) == CS_OK && reloading) {
 		return ;
+	}
+
+	icmap_get_uint8("quorum.cancel_wait_for_all", &cancel_wfa);
+	if (strcmp(key_name, "quorum.cancel_wait_for_all") == 0 &&
+	    cancel_wfa >= 1) {
+	        icmap_set_uint8("quorum.cancel_wait_for_all", 0);
+		votequorum_exec_send_reconfigure(VOTEQUORUM_RECONFIG_PARAM_CANCEL_WFA,
+						 us->node_id, 0);
+		return;
 	}
 
 	old_votes = us->votes;
@@ -1677,6 +1697,8 @@ static int votequorum_exec_send_quorum_notification(void *conn, uint64_t context
 	res_lib_votequorum_notification = (struct res_lib_votequorum_notification *)&buf;
 	res_lib_votequorum_notification->quorate = cluster_is_quorate;
 	res_lib_votequorum_notification->node_list_entries = cluster_members;
+	res_lib_votequorum_notification->ring_id.nodeid = quorum_ringid.rep.nodeid;
+	res_lib_votequorum_notification->ring_id.seq = quorum_ringid.seq;
 	res_lib_votequorum_notification->context = context;
 	list_iterate(tmp, &cluster_members_list) {
 		node = list_entry(tmp, struct cluster_node, list);
@@ -2059,6 +2081,14 @@ static void message_handler_req_exec_votequorum_reconfigure (
 		recalculate_quorum(1, 0);  /* Allow decrease */
 		break;
 
+	case VOTEQUORUM_RECONFIG_PARAM_CANCEL_WFA:
+	        update_wait_for_all_status(0);
+		log_printf(LOGSYS_LEVEL_INFO, "wait_for_all_status reset by user on node %d.",
+			   req_exec_quorum_reconfigure->nodeid);
+		recalculate_quorum(0, 0);
+
+	        break;
+
 	}
 
 	LEAVE();
@@ -2179,6 +2209,8 @@ static void votequorum_sync_init (
 	ENTER();
 
 	sync_in_progress = 1;
+	sync_nodeinfo_sent = 0;
+	sync_wait_for_poll_or_timeout = 0;
 
 	if (member_list_entries > 1) {
 		us->flags &= ~NODE_FLAGS_FIRST;
@@ -2228,17 +2260,46 @@ static void votequorum_sync_init (
 	quorum_members_entries = member_list_entries;
 	memcpy(&quorum_ringid, ring_id, sizeof(*ring_id));
 
+	if (us->flags & NODE_FLAGS_QDEVICE_REGISTERED && us->flags & NODE_FLAGS_QDEVICE_ALIVE) {
+		/*
+		 * Reset poll timer. Sync waiting is interrupted on valid qdevice poll or after timeout
+		 */
+		if (qdevice_timer_set) {
+			corosync_api->timer_delete(qdevice_timer);
+		}
+		corosync_api->timer_add_duration((unsigned long long)qdevice_sync_timeout*1000000, qdevice,
+						 qdevice_timer_fn, &qdevice_timer);
+		qdevice_timer_set = 1;
+		sync_wait_for_poll_or_timeout = 1;
+
+		log_printf(LOGSYS_LEVEL_INFO, "waiting for quorum device %s poll (but maximum for %u ms)",
+			qdevice_name, qdevice_sync_timeout);
+	}
+
 	LEAVE();
 }
 
 static int votequorum_sync_process (void)
 {
-	votequorum_exec_send_nodeinfo(us->node_id);
-	votequorum_exec_send_nodeinfo(VOTEQUORUM_QDEVICE_NODEID);
-	if (strlen(qdevice_name)) {
-		votequorum_exec_send_qdevice_reg(VOTEQUORUM_QDEVICE_OPERATION_REGISTER,
-						 qdevice_name);
+
+	if (!sync_nodeinfo_sent) {
+		votequorum_exec_send_nodeinfo(us->node_id);
+		votequorum_exec_send_nodeinfo(VOTEQUORUM_QDEVICE_NODEID);
+		if (strlen(qdevice_name)) {
+			votequorum_exec_send_qdevice_reg(VOTEQUORUM_QDEVICE_OPERATION_REGISTER,
+							 qdevice_name);
+		}
+		sync_nodeinfo_sent = 1;
 	}
+
+	if (us->flags & NODE_FLAGS_QDEVICE_REGISTERED && sync_wait_for_poll_or_timeout) {
+		/*
+		 * Waiting for qdevice to poll with new ringid or timeout
+		 */
+
+		return (-1);
+	}
+
 	return 0;
 }
 
@@ -2333,6 +2394,7 @@ static void qdevice_timer_fn(void *arg)
 	votequorum_exec_send_nodeinfo(us->node_id);
 
 	qdevice_timer_set = 0;
+	sync_wait_for_poll_or_timeout = 0;
 
 	LEAVE();
 }
@@ -2672,6 +2734,7 @@ static void message_handler_req_lib_votequorum_qdevice_unregister (void *conn,
 		if (qdevice_timer_set) {
 			corosync_api->timer_delete(qdevice_timer);
 			qdevice_timer_set = 0;
+			sync_wait_for_poll_or_timeout = 0;
 		}
 		us->flags &= ~NODE_FLAGS_QDEVICE_REGISTERED;
 		us->flags &= ~NODE_FLAGS_QDEVICE_ALIVE;
@@ -2738,6 +2801,15 @@ static void message_handler_req_lib_votequorum_qdevice_poll (void *conn,
 	}
 
 	if (us->flags & NODE_FLAGS_QDEVICE_REGISTERED) {
+		if (!(req_lib_votequorum_qdevice_poll->ring_id.nodeid == quorum_ringid.rep.nodeid &&
+		      req_lib_votequorum_qdevice_poll->ring_id.seq == quorum_ringid.seq)) {
+			log_printf(LOGSYS_LEVEL_DEBUG, "Received poll ring id (%u.%"PRIu64") != last sync "
+			    "ring id (%u.%"PRIu64"). Ignoring poll call.",
+			    req_lib_votequorum_qdevice_poll->ring_id.nodeid, req_lib_votequorum_qdevice_poll->ring_id.seq,
+			    quorum_ringid.rep.nodeid, quorum_ringid.seq);
+			error = CS_ERR_MESSAGE_ERROR;
+			goto out;
+		}
 		if (strncmp(req_lib_votequorum_qdevice_poll->name, qdevice_name, VOTEQUORUM_QDEVICE_MAX_NAME_LEN)) {
 			error = CS_ERR_INVALID_PARAM;
 			goto out;
@@ -2765,6 +2837,7 @@ static void message_handler_req_lib_votequorum_qdevice_poll (void *conn,
 		corosync_api->timer_add_duration((unsigned long long)qdevice_timeout*1000000, qdevice,
 						 qdevice_timer_fn, &qdevice_timer);
 		qdevice_timer_set = 1;
+		sync_wait_for_poll_or_timeout = 0;
 	} else {
 		error = CS_ERR_NOT_EXIST;
 	}

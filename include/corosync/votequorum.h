@@ -56,6 +56,7 @@ typedef uint64_t votequorum_handle_t;
 #define VOTEQUORUM_QDEVICE_NODEID               0
 #define VOTEQUORUM_QDEVICE_MAX_NAME_LEN       255
 #define VOTEQUORUM_QDEVICE_DEFAULT_TIMEOUT  10000
+#define VOTEQUORUM_QDEVICE_DEFAULT_SYNC_TIMEOUT  30000
 
 #define VOTEQUORUM_NODESTATE_MEMBER             1
 #define VOTEQUORUM_NODESTATE_DEAD               2
@@ -81,10 +82,16 @@ typedef struct {
 	uint32_t state;
 } votequorum_node_t;
 
+typedef struct {
+	uint32_t nodeid;
+	uint64_t seq;
+} votequorum_ring_id_t;
+
 typedef void (*votequorum_notification_fn_t) (
 	votequorum_handle_t handle,
 	uint64_t context,
 	uint32_t quorate,
+	votequorum_ring_id_t ring_id,
 	uint32_t node_list_entries,
 	votequorum_node_t node_list[]);
 
@@ -205,7 +212,8 @@ cs_error_t votequorum_qdevice_update (
 cs_error_t votequorum_qdevice_poll (
 	votequorum_handle_t handle,
 	const char *name,
-	unsigned int cast_vote);
+	unsigned int cast_vote,
+	votequorum_ring_id_t ring_id);
 
 /**
  * Allow qdevice to tell votequorum if master_wins can be enabled or not

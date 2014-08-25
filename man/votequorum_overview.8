@@ -56,6 +56,15 @@ The library provides a mechanism to:
 .PP
 * Connect an additional quorum device to allow small clusters to remain quorate during node outages.
 .PP
+.SH VIRTUAL SYNCHRONY
+Votequorum is the only one service where communication with library is allowed during synchronization
+phase. This makes it possible for quorum device to react to membership change and decide to vote or
+not without timing hazard, because corosync stands in synchronization phase until qdevice on all
+nodes votes or timeout expires.
+
+As a side effect, extended virtual synchrony is broken for the votequorum service. This means, that
+messages sent during synchronization phase can be delivered sooner then messages sent right
+before sync phase began. This applies also for local messages.
 .SH BUGS
 No known bugs at the time of writing. The authors are from outerspace. Deal with it.
 .SH "SEE ALSO"
