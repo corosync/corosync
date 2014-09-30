@@ -1316,10 +1316,12 @@ extern int totemudp_iface_check (void *udp_context)
 
 extern void totemudp_net_mtu_adjust (void *udp_context, struct totem_config *totem_config)
 {
-#define UDPIP_HEADER_SIZE (20 + 8) /* 20 bytes for ip 8 bytes for udp */
+
+	assert(totem_config->interface_count > 0);
+
 	totem_config->net_mtu -= crypto_sec_header_size(totem_config->crypto_cipher_type,
 							totem_config->crypto_hash_type) +
-				 UDPIP_HEADER_SIZE;
+				 totemip_udpip_header_size(totem_config->interfaces[0].bindnet.family);
 }
 
 const char *totemudp_iface_print (void *udp_context)  {

@@ -114,6 +114,8 @@ static inline int totemip_zero_check(const struct totem_ip_address *addr)
 	return (addr->family == 0);
 }
 
+extern size_t totemip_udpip_header_size(int family);
+
 #ifdef __cplusplus
 }
 #endif
