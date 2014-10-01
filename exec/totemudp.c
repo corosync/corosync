@@ -2091,12 +2091,13 @@ extern int totemudp_iface_check (void *udp_context)
 
 extern void totemudp_net_mtu_adjust (void *udp_context, struct totem_config *totem_config)
 {
-#define UDPIP_HEADER_SIZE (20 + 8) /* 20 bytes for ip 8 bytes for udp */
+	assert(totem_config->interface_count > 0);
+
 	if (totem_config->secauth == 1) {
 		totem_config->net_mtu -= sizeof (struct security_header) +
-			UDPIP_HEADER_SIZE;
+			totemip_udpip_header_size(totem_config->interfaces[0].bindnet.family);
 	} else {
-		totem_config->net_mtu -= UDPIP_HEADER_SIZE;
+		totem_config->net_mtu -= totemip_udpip_header_size(totem_config->interfaces[0].bindnet.family);
 	}
 }
 

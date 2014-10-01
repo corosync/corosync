@@ -695,3 +695,25 @@ finished:
 	return res;
 }
 #endif /* COROSYNC_LINUX */
+
+#define TOTEMIP_UDP_HEADER_SIZE		8
+#define TOTEMIP_IPV4_HEADER_SIZE	20
+#define TOTEMIP_IPV6_HEADER_SIZE	40
+
+size_t totemip_udpip_header_size(int family)
+{
+	size_t header_size;
+
+	header_size = 0;
+
+	switch (family) {
+	case AF_INET:
+		header_size = TOTEMIP_UDP_HEADER_SIZE + TOTEMIP_IPV4_HEADER_SIZE;
+		break;
+	case AF_INET6:
+		header_size = TOTEMIP_UDP_HEADER_SIZE + TOTEMIP_IPV6_HEADER_SIZE;
+		break;
+	}
+
+	return (header_size);
+}
