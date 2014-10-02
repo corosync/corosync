@@ -1910,13 +1910,21 @@ void rrp_deliver_fn (
 		}
 	} else 
 	if (hdr->type == MESSAGE_TYPE_RING_TEST_ACTIVATE) {
-		log_printf (
-			rrp_instance->totemrrp_log_level_notice,
-			"Automatically recovered ring %d", hdr->ring_number);
 
 		if (hdr->endian_detector != ENDIAN_LOCAL) {
 			test_active_msg_endian_convert(hdr, &tmp_msg);
 			hdr = &tmp_msg;
+		}
+
+		log_printf (
+			rrp_instance->totemrrp_log_level_debug,
+			"Received ring test activate message for ring %d sent by node %u",
+			hdr->ring_number,
+			hdr->nodeid_activator);
+
+		if (rrp_instance->stats.faulty[deliver_fn_context->iface_no]) {
+			log_printf (rrp_instance->totemrrp_log_level_notice,
+			    "Automatically recovered ring %d", hdr->ring_number);
 		}
 
 		totemrrp_ring_reenable (rrp_instance, deliver_fn_context->iface_no);
