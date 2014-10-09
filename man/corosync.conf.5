@@ -280,10 +280,16 @@ by reducing the token timeout.
 
 .TP
 token
-This timeout specifies in milliseconds until a token loss is declared after not
+This timeout is used directly or as a base for real token timeout calculation (explained in
+.B token_coefficient
+section). Token timeout specifies in milliseconds until a token loss is declared after not
 receiving a token.  This is the time spent detecting a failure of a processor
 in the current configuration.  Reforming a new configuration takes about 50
 milliseconds in addition to this timeout.
+
+For real token timeout used by totem it's possible to read cmap value of
+.B runtime.config.token
+key.
 
 The default is 1000 milliseconds.
 
