@@ -142,12 +142,21 @@ static void totem_volatile_config_set_value (struct totem_config *totem_config,
 	const char *key_name, const char *deleted_key, unsigned int default_value,
 	int allow_zero_value)
 {
+	char runtime_key_name[ICMAP_KEYNAME_MAXLEN];
 
 	if (icmap_get_uint32(key_name, totem_get_param_by_name(totem_config, key_name)) != CS_OK ||
 	    (deleted_key != NULL && strcmp(deleted_key, key_name) == 0) ||
 	    (!allow_zero_value && *totem_get_param_by_name(totem_config, key_name) == 0)) {
 		*totem_get_param_by_name(totem_config, key_name) = default_value;
 	}
+
+	/*
+	 * Store totem_config value to cmap runtime section
+	 */
+	strcpy(runtime_key_name, "runtime.config.");
+	strcat(runtime_key_name, key_name);
+
+	icmap_set_uint32(runtime_key_name, *totem_get_param_by_name(totem_config, key_name));
 }
 
 
@@ -169,6 +178,11 @@ static void totem_volatile_config_read (struct totem_config *totem_config, const
 		u32 = TOKEN_COEFFICIENT;
 		icmap_get_uint32("totem.token_coefficient", &u32);
 		totem_config->token_timeout += (totem_config->interfaces[0].member_count - 2) * u32;
+
+		/*
+		 * Store totem_config value to cmap runtime section
+		 */
+		icmap_set_uint32("runtime.config.totem.token", totem_config->token_timeout);
 	}
 
 	totem_volatile_config_set_value(totem_config, "totem.max_network_delay", deleted_key, MAX_NETWORK_DELAY, 0);

@@ -132,6 +132,14 @@ contains the total number of interrupted sends.
 contains the ID of service which the IPC is connected to.
 
 .TP
+runtime.config.*
+Contains the values actually in use by the totem membership protocol.
+Values here are either taken from the Corosync configuration file,
+defaults or computed from entries in the config file. For information
+on individual keys please refer to the man page
+.BR corosync.conf (5).
+
+.TP
 runtime.services.*
 Prefix with statistics for service engines. Each service has it's own
 .B service_id
