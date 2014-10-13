@@ -1,5 +1,5 @@
 .\"/*
-.\" * Copyright (c) 2012-2013 Red Hat, Inc.
+.\" * Copyright (c) 2012-2014 Red Hat, Inc.
 .\" *
 .\" * All rights reserved.
 .\" *
@@ -39,135 +39,135 @@ cmap_keys \- Overview of keys stored in the Configuration Map
 
 .SH OVERVIEW
 .P
-There are roughly 3 types of keys stored in CMAP:
+There are 3 main types of keys stored in CMAP:
 .PP
-* Mapping of values stored in config file.
+* Mapping of values stored in the config file.
 .PP
 * Runtime statistics.
 .PP
 * Other user created values.
 
-In this man page, wild-cards are used with usual meaning.
+In this man page, wild-cards have the usual meaning.
 
 .SH KEYS
 .TP
 internal_configuration.*
-Internal configuration data. This keys (whole prefix) is read only.
-It's only useful for getting list of loaded services.
+Internal configuration data. All keys in this prefix are read only.
+It's only useful for getting a list of loaded services.
 
 .TP
 logging.*
-Values read from configuration file. It's possible to change them at runtime.
-If subsystem specific configuration is needed, key must be in form
-logging.logger_subsys.SERVICE.key, where SERVICE is upper case name of service and
-key is same as in configuration file. All values are of string type.
+Values read from the configuration file. It's possible to change them at runtime.
+If subsystem specific configuration is needed, the key must be in the form
+logging.logger_subsys.SERVICE.key, where SERVICE is upper case name of the service and
+key is same as in the configuration file. All values are of string type.
 
 .TP
 nodelist.*
-Values read from configuration file. Each node element in configuration file gets
-assigned it's position starting from zero. So first node from config file has
-nodelist.node.0. prefix. To be valid entry, each node must have
+Values read from the configuration file. Each node element in the configuration file gets
+assigned it's position starting from zero. So the first node from the config file has
+nodelist.node.0. prefix. To be a valid entry, each node must have
 .B ring0_addr
 key.
-For change of
+To change the
 .B nodeid
-key, use u32 data type.
+key, use a u32 data type.
 
 Local node position is stored in
 .B local_node_pos
 key (RO), so it's easy to find
-out nodeid/ring addresses of local node directly from cmap.
+out nodeid/ring addresses of the local node directly from cmap.
 
 .TP
 runtime.blackbox.*
-Trigger keys for store fplay data. It's recommended to use corosync-blackbox command
+Trigger keys for storing fplay data. It's recommended that you the corosync-blackbox command
 to change keys in this prefix.
 
 .TP
 runtime.connections.*
-There are informations about total number of active connections in given moment in
+This is information about total number of active connections in a given moment in the
 .B active
-key, number of closed connections during whole runtime of corosync in
+key, number of closed connections during whole runtime of corosync in the
 .B closed
-key and informations about each active IPC connection. All keys in this prefix are read-only.
+key and information about each active IPC connection. All keys in this prefix are read-only.
 
 .TP
 runtime.connections.ID.*
-Each IPC connection has unique ID. This is in form [[short_name:][PID:]internal_id. On some
+Each IPC connection has a unique ID. This is in the form [[short_name:][PID:]internal_id. On some
 platforms, short_name and PID are not filled and only internal_id is used.
 
-Typical keys in prefix are:
+Typical keys in this prefix are:
 
 .B client_pid
 containing PID of IPC connection (unavailable on some platforms).
 
 .B dispatched
-with number of dispatched messages.
+number of dispatched messages.
 
 .B invalid_request
-is number of requests made by IPC which are invalid (calling non-existing call, ...).
+number of requests made by IPC which are invalid (calling non-existing call, ...).
 
 .B name
-containing short name of IPC connection (unavailable on some platforms).
+contains short name of the IPC connection (unavailable on some platforms).
 
 .B overload
 is number of requests which were not processed because of overload.
 
 .B queue_size
-contains number of messages in queue waiting for send.
+contains the number of messages in the queue waiting for send.
 
 .B recv_retries
-is total number of interrupted receives.
+is the total number of interrupted receives.
 
 .B requests
-contains number of requests made by IPC.
+contains the number of requests made by IPC.
 
 .B responses
-is number of responses sent to IPC client.
+is the number of responses sent to the IPC client.
 
 .B send_retries
-contains total number of interrupted sends.
+contains the total number of interrupted sends.
 
 .B service_id
-contains ID of service which IPC is connected to.
+contains the ID of service which the IPC is connected to.
 
 .TP
 runtime.services.*
 Prefix with statistics for service engines. Each service has it's own
 .B service_id
-key in prefix with name runtime.services.SERVICE., where SERVICE is lower case
-name of service. Inside service prefix is number of received and send messages
-by corosync engine in format runtime.services.SERVICE.EXEC_CALL.rx and
-runtime.services.SERVICE.EXEC_CALL.tx, where EXEC_CALL is internal id of service
+key in the prefix with the name runtime.services.SERVICE., where SERVICE is the lower case
+name of the service. Inside the service prefix is the number of messages received and sent
+by the corosync engine in the format runtime.services.SERVICE.EXEC_CALL.rx and
+runtime.services.SERVICE.EXEC_CALL.tx, where EXEC_CALL is the internal id of the service
 call (so for example 3 in cpg service is receive of multicast message from other
 nodes).
 
 .TP
 runtime.totem.pg.mrp.srp.*
-Prefix with statistics about totem. All keys there are read only.
+Prefix containing statistics about totem. All keys here are read only.
 Typical key prefixes:
 
 .B commit_entered
-Number of times processor entered COMMIT state.
+Number of times the processor entered COMMIT state.
 
 .B commit_token_lost
-Number of times processor lost token in COMMIT state.
+Number of times the processor lost token in COMMIT state.
 
 .B consensus_timeouts
-How many times processor timeouted making consensus about membership.
+How many times the processor timed out forming a consensus about membership.
 
 .B continuous_gather
-How many times was processor not able to reach consensus.
+How many times the processor was not able to reach consensus.
 
 .B firewall_enabled_or_nic_failure
-Set to 1 when processor was not able to reach consensus for long time. Usual
-reason is badly configured firewall or connection failure.
+Set to 1 when processor was not able to reach consensus for long time. The usual
+reason is a badly configured firewall or connection failure.
 
 .B gather_entered
-Number of times processor entered GATHER state.
+Number of times the processor entered GATHER state.
 
 .B gather_token_lost
-Number of times processor lost token in GATHER state.
+Number of times the processor lost token in GATHER state.
 
 .B mcast_retx
 Number of retransmitted messages.
@@ -203,13 +203,13 @@ Number of received orf tokens.
 Number of transmitted orf tokens.
 
 .B recovery_entered
-Number of times processor entered recovery.
+Number of times the processor entered recovery.
 
 .B recovery_token_lost
-Number of times token was lost in recovery state.
+Number of times the token was lost in recovery state.
 
 .B rx_msg_dropped
-Number of received messages which was dropped because they were not expected
+Number of received messages which were dropped because they were not expected
 (as example multicast message in commit state).
 
 .B token_hold_cancel_rx
@@ -223,14 +223,14 @@ Mean transit time of token in milliseconds. In other words, time between
 two consecutive token receives.
 
 .B avg_token_workload
-Average time in milliseconds of holding time of token on current processor.
+Average time in milliseconds of holding time of token on the current processor.
 
 .B avg_backlog_calc
-Average number of not yet sent messages of current processor.
+Average number of not yet sent messages on the current processor.
 
 .TP
 runtime.totem.pg.mrp.srp.members.*
-Prefix containing members of totem single ring protocol. Each member
+Prefix containing members of the totem single ring protocol. Each member
 keys has format runtime.totem.pg.mrp.srp.members.NODEID.KEY, where key is
 one of:
 
@@ -238,35 +238,35 @@ one of:
 IP address of member. It's stored in format r(RING_ID) ip(IP_ADDRESS).
 
 .B join_count
-Number of times processor joined membership with local processor. When
+Number of times the processor joined membership with local cluster. When
 processor fails and rejoins again, this value is incremented.
 
 .B status
-Status of processor. Can be one of joined and left.
+Status of the processor. Can be one of joined and left.
 
 .B config_version
-Config version of member node.
+Config version of the member node.
 
 .TP
 resources.process.PID.*
 Prefix created by applications using SAM with CMAP integration.
-It contains following keys:
+It contains the following keys:
 
 .B recovery
-Recovery policy of process. Can be one of quit or restart.
+Recovery policy of the process. Can be one of quit or restart.
 
 .B poll_period
-Value passed in sam_initialize as time_interval.
+Value passed in sam_initialize as a time_interval.
 
 .B last_updated
-Last time when SAM received heartbeat from client.
+Last time SAM received a heartbeat from the client.
 
 .B state
-State of client. Can be one of failed, stopped, running and waiting for quorum.
+State of the client. Can be one of failed, stopped, running and waiting for quorum.
 
 .TP
 uidgid.*
-Informations about users/groups which are allowed to do IPC connection to
+Informations about users/groups which are allowed to make IPC connections to
 corosync.
 
 .TP
@@ -276,7 +276,7 @@ to unblock quorum if notes are known to be down. for pcs use only.
 
 .TP
 config.reload_in_progress
-This value will be set to 1 (or created) when corosync.conf reload is started,
+This value will be set to 1 (or created) when a corosync.conf reload is started,
 and set to 0 when the reload is completed. This allows interested subsystems
 to do atomic reconfiguration rather than changing each key. Note that 
 individual add/change/delete notifications will still be sent during a reload.
@@ -285,33 +285,33 @@ individual add/change/delete notifications will still be sent during a reload.
 config.totemconfig_reload_in_progress
 This key is similar to
 .B config.totemconfig_reload_in_progress
-but changed after totem config trigger is processed. It is useful (mainly)
+but changed after the totem config trigger is processed. It is useful (mainly)
 for situations when
 .B nodelist.local_node_pos
-must be first correctly reinstated.
+must be correctly reinstated before anything else.
 
 .SH DYNAMIC CHANGE USER/GROUP PERMISSION TO USE COROSYNC IPC
-Is very same as in configuration file. To add UID 500 use
+Is the same as in the configuration file. eg: to add UID 500 use
 
 .br
 # corosync-cmapctl -s uidgid.uid.500 u8 1
 
-GID is similar, so to add GID use
+GID is similar, so to add a GID use
 
 .br
 # corosync-cmapctl -s uidgid.gid.500 u8 1
 
-For removal of permission, simply delete key
+For removal of permissions, simply delete the key
 
 .br
 # corosync-cmapctl -d uidgid.gid.500
 
 .SH DYNAMIC ADD/REMOVE OF UDPU NODE
-We will need to add node with address 10.34.38.108
+Eg. To add the node with address 10.34.38.108
 and nodeid 3. This node is called NEW and it's not running corosync yet.
 
 .PP
-* Find a node position in node list which is not used yet. It's recommended to
+* Find a node position in the node list which is not used yet. It's recommended that you
 use highest_number + 1. Let's say output of corosync-cmapctl looks like:
 
 .br
@@ -327,32 +327,32 @@ nodelist.node.1.ring0_addr (str) = 10.34.38.107
 
 So next node position will be 2.
 .PP
-* Add all entries needed for node on all running nodes, as:
+* Add all entries needed for the node on all running nodes, as:
 
 .br
 # corosync-cmapctl -s nodelist.node.2.nodeid u32 3
 .br
 # corosync-cmapctl -s nodelist.node.2.ring0_addr str 10.34.38.108
 
-Always add ring0_addr key as last. Corosync engine on all nodes should reply
+Always add the ring0_addr key last. The Corosync engine on all nodes should reply
 with
 .I notice  [TOTEM ] adding new UDPU member {10.34.38.108}
 message.
 .PP
-* Add node information to configuration file on all nodes so it
-will survive restart of corosync.
+* Add node information to the configuration file on all nodes so that it
+will survive a restart of corosync.
 .PP
-* Copy and edit configuration file to NEW node.
+* Copy and edit configuration file to the NEW node.
 .PP
-* Start corosync on NEW node.
+* Start corosync on the NEW node.
 
-Removal of UDPU node is very similar slightly reversed action, so
+Removal of a UDPU node is a very similar, slightly reversed action, so
 .PP
-* Stop corosync old OLD node.
+* Stop corosync on the OLD node.
 .PP
-* Remove relevant entries from cmap on all nodes.
+* Remove the relevant entries from cmap on all nodes.
 .PP
-* Change configuration file on all nodes.
+* Change the configuration file on all nodes.
 
 .SH "SEE ALSO"
 .BR corosync_overview (8),
