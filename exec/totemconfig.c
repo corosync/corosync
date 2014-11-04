@@ -507,20 +507,21 @@ int totem_config_validate (
 			goto parse_error;
 		}
 
-		if (totem_config->broadcast_use == 0 && totem_config->transport_number == 0) {
+		if (totem_config->broadcast_use == 0 && totem_config->transport_number == TOTEM_TRANSPORT_UDP) {
 			if (totem_config->interfaces[i].mcast_addr.family != totem_config->interfaces[i].bindnet.family) {
 				error_reason = "Multicast address family does not match bind address family";
 				goto parse_error;
 			}
 
-			if (totem_config->interfaces[i].mcast_addr.family != totem_config->interfaces[i].bindnet.family) {
-				error_reason =  "Not all bind address belong to the same IP family";
-				goto parse_error;
-			}
 			if (totemip_is_mcast (&totem_config->interfaces[i].mcast_addr) != 0) {
 				error_reason = "mcastaddr is not a correct multicast address.";
 				goto parse_error;
 			}
+		}
+
+		if (totem_config->interfaces[0].bindnet.family != totem_config->interfaces[i].bindnet.family) {
+			error_reason =  "Not all bind address belong to the same IP family";
+			goto parse_error;
 		}
 	}
 
