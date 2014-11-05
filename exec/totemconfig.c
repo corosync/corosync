@@ -350,6 +350,12 @@ printf ("couldn't find totem handle\n");
 	 */
 	totem_volatile_config_read (objdb, totem_config, object_totem_handle);
 
+	/*
+	 * Broadcast option is global but set in interface section,
+	 * so reset before processing interfaces.
+	 */
+	totem_config->broadcast_use = 0;
+
 	objdb->object_find_create (
 		object_totem_handle,
 		"interface",
@@ -380,13 +386,9 @@ printf ("couldn't find totem handle\n");
 		if (!objdb_get_string (objdb, object_interface_handle, "mcastaddr", &str)) {
 			res = totemip_parse (&totem_config->interfaces[ringnumber].mcast_addr, str, 0);
 		}
-		totem_config->broadcast_use = 0;
 		if (!objdb_get_string (objdb, object_interface_handle, "broadcast", &str)) {
 			if (strcmp (str, "yes") == 0) {
 				totem_config->broadcast_use = 1;
-				totemip_parse (
-					&totem_config->interfaces[ringnumber].mcast_addr,
-					"255.255.255.255", 0);
 			}
 		}
 
@@ -435,6 +437,16 @@ printf ("couldn't find totem handle\n");
 	}
 
 	objdb->object_find_destroy (object_find_interface_handle);
+
+	/*
+	 * Use broadcast is global, so if set, make sure to fill mcast addr correctly
+	 */
+	if (totem_config->broadcast_use) {
+		for (ringnumber = 0; ringnumber < totem_config->interface_count; ringnumber++) {
+			totemip_parse (&totem_config->interfaces[ringnumber].mcast_addr,
+				"255.255.255.255", 0);
+		}
+	}
 
 	add_totem_config_notification(objdb, totem_config, object_totem_handle);
 
