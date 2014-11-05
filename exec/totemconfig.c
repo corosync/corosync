@@ -474,8 +474,9 @@ int totem_config_validate (
 	static char local_error_reason[512];
 	char parse_error[512];
 	const char *error_reason = local_error_reason;
-	int i;
+	int i, j;
 	unsigned int interface_max = INTERFACE_MAX;
+	unsigned int port1, port2;
 
 	if (totem_config->interface_count == 0) {
 		error_reason = "No interfaces defined";
@@ -534,6 +535,22 @@ int totem_config_validate (
 		if (totem_config->interfaces[0].bindnet.family != totem_config->interfaces[i].bindnet.family) {
 			error_reason =  "Not all bind address belong to the same IP family";
 			goto parse_error;
+		}
+
+		/*
+		 * Ensure mcast address/port differs
+		 */
+		if (totem_config->transport_number == TOTEM_TRANSPORT_UDP) {
+			for (j = i + 1; j < totem_config->interface_count; j++) {
+				port1 = totem_config->interfaces[i].ip_port;
+				port2 = totem_config->interfaces[j].ip_port;
+				if (totemip_equal(&totem_config->interfaces[i].mcast_addr,
+				    &totem_config->interfaces[j].mcast_addr) &&
+				    (((port1 > port2 ? port1 : port2)  - (port1 < port2 ? port1 : port2)) <= 1)) {
+					error_reason = "Interfaces multicast address/port pair must differ";
+					goto parse_error;
+				}
+			}
 		}
 	}
 
