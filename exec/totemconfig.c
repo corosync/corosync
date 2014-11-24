@@ -812,6 +812,12 @@ extern int totem_config_read (
 		free(str);
 	}
 
+	/*
+	 * Broadcast option is global but set in interface section,
+	 * so reset before processing interfaces.
+	 */
+	totem_config->broadcast_use = 0;
+
 	iter = icmap_iter_init("totem.interface.");
 	while ((iter_key = icmap_iter_next(iter, NULL, NULL)) != NULL) {
 		res = sscanf(iter_key, "totem.interface.%[^.].%s", ringnumber_key, tmp_key);
@@ -866,14 +872,10 @@ extern int totem_config_read (
 					&totem_config->interfaces[ringnumber].mcast_addr);
 		}
 
-		totem_config->broadcast_use = 0;
 		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.broadcast", ringnumber);
 		if (icmap_get_string(tmp_key, &str) == CS_OK) {
 			if (strcmp (str, "yes") == 0) {
 				totem_config->broadcast_use = 1;
-				totemip_parse (
-					&totem_config->interfaces[ringnumber].mcast_addr,
-					"255.255.255.255", totem_config->ip_version);
 			}
 			free(str);
 		}
@@ -925,6 +927,16 @@ extern int totem_config_read (
 		totem_config->interface_count++;
 	}
 	icmap_iter_finalize(iter);
+
+	/*
+	 * Use broadcast is global, so if set, make sure to fill mcast addr correctly
+	 */
+	if (totem_config->broadcast_use) {
+		for (ringnumber = 0; ringnumber < totem_config->interface_count; ringnumber++) {
+			totemip_parse (&totem_config->interfaces[ringnumber].mcast_addr,
+				"255.255.255.255", 0);
+		}
+	}
 
 	/*
 	 * Store automatically generated items back to icmap
