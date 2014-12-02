@@ -99,6 +99,7 @@ struct totemudpu_member {
 	struct list_head list;
 	struct totem_ip_address member;
 	int fd;
+	int active;
 };
 	
 struct totemudpu_instance {
@@ -971,7 +972,8 @@ static inline void ucast_sendmsg (
 static inline void mcast_sendmsg (
 	struct totemudpu_instance *instance,
 	const void *msg,
-	unsigned int msg_len)
+	unsigned int msg_len,
+	int only_active)
 {
 	struct msghdr msg_mcast;
 	int res = 0;
@@ -1032,6 +1034,9 @@ static inline void mcast_sendmsg (
                 member = list_entry (list,
 			struct totemudpu_member,
 			list);
+
+		if (only_active && !member->active)
+			continue ;
 
 		totemip_totemip_to_sockaddr_convert(&member->member,
 			instance->totem_interface->ip_port, &sockaddr, &addrlen);
@@ -1554,7 +1559,7 @@ int totemudpu_mcast_flush_send (
 	struct totemudpu_instance *instance = (struct totemudpu_instance *)udpu_context;
 	int res = 0;
 
-	mcast_sendmsg (instance, msg, msg_len);
+	mcast_sendmsg (instance, msg, msg_len, 0);
 
 	return (res);
 }
@@ -1567,7 +1572,7 @@ int totemudpu_mcast_noflush_send (
 	struct totemudpu_instance *instance = (struct totemudpu_instance *)udpu_context;
 	int res = 0;
 
-	mcast_sendmsg (instance, msg, msg_len);
+	mcast_sendmsg (instance, msg, msg_len, 1);
 
 	return (res);
 }
@@ -1740,12 +1745,16 @@ int totemudpu_member_add (
 	if (new_member == NULL) {
 		return (-1);
 	}
+
+	memset(new_member, 0, sizeof(*new_member));
+
 	log_printf (LOGSYS_LEVEL_NOTICE, "adding new UDPU member {%s}",
 		totemip_print(member));
 	list_init (&new_member->list);
 	list_add_tail (&new_member->list, &instance->member_list);
 	memcpy (&new_member->member, member, sizeof (struct totem_ip_address));
 	new_member->fd = totemudpu_create_sending_socket(udpu_context, member);
+	new_member->active = 0;
 
 	return (0);
 }
@@ -1781,6 +1790,46 @@ int totemudpu_member_list_rebind_ip (
 		}
 
 		member->fd = totemudpu_create_sending_socket(udpu_context, &member->member);
+	}
+
+	return (0);
+}
+
+int totemudpu_member_set_active (
+	void *udpu_context,
+	const struct totem_ip_address *member_ip,
+	int active)
+{
+	struct list_head *list;
+	struct totemudpu_member *member;
+	int addr_found = 0;
+
+	struct totemudpu_instance *instance = (struct totemudpu_instance *)udpu_context;
+
+	/*
+	 * Find the member to set active flag
+	 */
+	for (list = instance->member_list.next; list != &instance->member_list;	list = list->next) {
+		member = list_entry (list, struct totemudpu_member, list);
+
+		if (totemip_compare (member_ip, &member->member) == 0) {
+			log_printf(LOGSYS_LEVEL_DEBUG,
+			    "Marking UDPU member %s %s",
+			    totemip_print(&member->member),
+			    (active ? "active" : "inactive"));
+
+			member->active = active;
+			addr_found = 1;
+
+			break;
+		}
+	}
+
+	if (!addr_found) {
+		log_printf(LOGSYS_LEVEL_DEBUG,
+		    "Can't find UDPU member %s (should be marked as %s)",
+			    totemip_print(member_ip),
+			    (active ? "active" : "inactive"));
 	}
 
 	return (0);

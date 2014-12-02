@@ -118,4 +118,9 @@ extern int totemudpu_member_remove (
 	void *udpu_context,
 	const struct totem_ip_address *member);
 
+extern int totemudpu_member_set_active (
+	void *udpu_context,
+	const struct totem_ip_address *member_ip,
+	int active);
+
 #endif /* TOTEMUDPU_H_DEFINED */
