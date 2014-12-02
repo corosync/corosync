@@ -178,6 +178,13 @@ struct rrp_algo {
 		const struct totem_ip_address *member,
 		unsigned int iface_no);
 
+	void (*membership_changed) (
+		struct totemrrp_instance *instance,
+	        enum totem_configuration_type configuration_type,
+		const struct srp_addr *member_list, size_t member_list_entries,
+		const struct srp_addr *left_list, size_t left_list_entries,
+		const struct srp_addr *joined_list, size_t joined_list_entries,
+		const struct memb_ring_id *ring_id);
 };
 
 struct totemrrp_instance {
@@ -317,6 +324,15 @@ static int none_member_remove (
 	struct totemrrp_instance *instance,
 	const struct totem_ip_address *member,
 	unsigned int iface_no);
+
+static void none_membership_changed (
+	struct totemrrp_instance *instance,
+	enum totem_configuration_type configuration_type,
+	const struct srp_addr *member_list, size_t member_list_entries,
+	const struct srp_addr *left_list, size_t left_list_entries,
+	const struct srp_addr *joined_list, size_t joined_list_entries,
+	const struct memb_ring_id *ring_id);
+
 /*
  * Passive Replication Forward Declerations
  */
@@ -393,6 +409,15 @@ static int passive_member_remove (
 	struct totemrrp_instance *instance,
 	const struct totem_ip_address *member,
 	unsigned int iface_no);
+
+static void passive_membership_changed (
+	struct totemrrp_instance *instance,
+	enum totem_configuration_type configuration_type,
+	const struct srp_addr *member_list, size_t member_list_entries,
+	const struct srp_addr *left_list, size_t left_list_entries,
+	const struct srp_addr *joined_list, size_t joined_list_entries,
+	const struct memb_ring_id *ring_id);
+
 /*
  * Active Replication Forward Definitions
  */
@@ -464,6 +489,14 @@ static int active_member_remove (
 	struct totemrrp_instance *instance,
 	const struct totem_ip_address *member,
 	unsigned int iface_no);
+
+static void active_membership_changed (
+	struct totemrrp_instance *instance,
+	enum totem_configuration_type configuration_type,
+	const struct srp_addr *member_list, size_t member_list_entries,
+	const struct srp_addr *left_list, size_t left_list_entries,
+	const struct srp_addr *joined_list, size_t joined_list_entries,
+	const struct memb_ring_id *ring_id);
 
 static void active_timer_expired_token_start (
 	struct active_instance *active_instance);
@@ -539,7 +572,8 @@ struct rrp_algo none_algo = {
 	.ring_reenable		= none_ring_reenable,
 	.mcast_recv_empty	= none_mcast_recv_empty,
 	.member_add		= none_member_add,
-	.member_remove		= none_member_remove
+	.member_remove		= none_member_remove,
+	.membership_changed	= none_membership_changed
 };
 
 struct rrp_algo passive_algo = {
@@ -558,7 +592,8 @@ struct rrp_algo passive_algo = {
 	.ring_reenable		= passive_ring_reenable,
 	.mcast_recv_empty	= passive_mcast_recv_empty,
 	.member_add		= passive_member_add,
-	.member_remove		= passive_member_remove
+	.member_remove		= passive_member_remove,
+	.membership_changed	= passive_membership_changed
 };
 
 struct rrp_algo active_algo = {
@@ -577,7 +612,8 @@ struct rrp_algo active_algo = {
 	.ring_reenable		= active_ring_reenable,
 	.mcast_recv_empty	= active_mcast_recv_empty,
 	.member_add		= active_member_add,
-	.member_remove		= active_member_remove
+	.member_remove		= active_member_remove,
+	.membership_changed	= active_membership_changed
 };
 
 struct rrp_algo *rrp_algos[] = {
@@ -766,6 +802,16 @@ static int none_member_remove (
 	return (res);
 }
 
+static void none_membership_changed (
+	struct totemrrp_instance *instance,
+        enum totem_configuration_type configuration_type,
+	const struct srp_addr *member_list, size_t member_list_entries,
+	const struct srp_addr *left_list, size_t left_list_entries,
+	const struct srp_addr *joined_list, size_t joined_list_entries,
+	const struct memb_ring_id *ring_id)
+{
+
+}
 
 /*
  * Passive Replication Implementation
@@ -1197,6 +1243,16 @@ static int passive_member_remove (
 	return (res);
 }
 
+static void passive_membership_changed (
+	struct totemrrp_instance *instance,
+        enum totem_configuration_type configuration_type,
+	const struct srp_addr *member_list, size_t member_list_entries,
+	const struct srp_addr *left_list, size_t left_list_entries,
+	const struct srp_addr *joined_list, size_t joined_list_entries,
+	const struct memb_ring_id *ring_id)
+{
+
+}
 
 static void passive_ring_reenable (
 	struct totemrrp_instance *instance,
@@ -1551,6 +1607,17 @@ static int active_member_remove (
 	int res;
 	res = totemnet_member_remove (instance->net_handles[iface_no], member);
 	return (res);
+}
+
+static void active_membership_changed (
+	struct totemrrp_instance *instance,
+        enum totem_configuration_type configuration_type,
+	const struct srp_addr *member_list, size_t member_list_entries,
+	const struct srp_addr *left_list, size_t left_list_entries,
+	const struct srp_addr *joined_list, size_t joined_list_entries,
+	const struct memb_ring_id *ring_id)
+{
+
 }
 
 static void active_iface_check (struct totemrrp_instance *instance)
@@ -2087,4 +2154,22 @@ int totemrrp_member_remove (
 	res = instance->rrp_algo->member_remove (instance, member, iface_no);
 
 	return (res);
+}
+
+void totemrrp_membership_changed (
+        void *rrp_context,
+        enum totem_configuration_type configuration_type,
+	const struct srp_addr *member_list, size_t member_list_entries,
+	const struct srp_addr *left_list, size_t left_list_entries,
+	const struct srp_addr *joined_list, size_t joined_list_entries,
+	const struct memb_ring_id *ring_id)
+{
+	struct totemrrp_instance *instance = (struct totemrrp_instance *)rrp_context;
+
+	instance->rrp_algo->membership_changed (instance,
+	    configuration_type,
+	    member_list, member_list_entries,
+	    left_list, left_list_entries,
+	    joined_list, joined_list_entries,
+	    ring_id);
 }

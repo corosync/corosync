@@ -49,6 +49,14 @@
  */
 
 /*
+ * SRP address. Used mainly in totemsrp.c, but we need it here to inform RRP about
+ * membership change.
+ */
+struct srp_addr {
+	struct totem_ip_address addr[INTERFACE_MAX];
+};
+
+/*
  * Create an instance
  */
 extern int totemrrp_initialize (
@@ -139,5 +147,13 @@ extern int totemrrp_member_remove (
         void *net_context,
         const struct totem_ip_address *member,
 	int iface_no);
+
+extern void totemrrp_membership_changed (
+	void *rrp_context,
+	enum totem_configuration_type configuration_type,
+	const struct srp_addr *member_list, size_t member_list_entries,
+	const struct srp_addr *left_list, size_t left_list_entries,
+	const struct srp_addr *joined_list, size_t joined_list_entries,
+	const struct memb_ring_id *ring_id);
 
 #endif /* TOTEMRRP_H_DEFINED */

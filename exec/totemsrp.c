@@ -153,11 +153,6 @@ enum encapsulation_type {
 /*
  * New membership algorithm local variables
  */
-struct srp_addr {
-	struct totem_ip_address addr[INTERFACE_MAX];
-};
-
-
 struct consensus_list_item {
 	struct srp_addr addr;
 	int set;
@@ -1770,6 +1765,16 @@ static void memb_state_operational_enter (struct totemsrp_instance *instance)
 	instance->my_set_retrans_flg = 0;
 
 	/*
+	 * Inform RRP about transitional change
+	 */
+	totemrrp_membership_changed (
+		instance->totemrrp_context,
+		TOTEM_CONFIGURATION_TRANSITIONAL,
+		instance->my_trans_memb_list, instance->my_trans_memb_entries,
+		instance->my_left_memb_list, instance->my_left_memb_entries,
+		NULL, 0,
+		&instance->my_ring_id);
+	/*
 	 * Deliver transitional configuration to application
 	 */
 	srp_addr_to_nodeid (left_list, instance->my_left_memb_list,
@@ -1789,6 +1794,16 @@ static void memb_state_operational_enter (struct totemsrp_instance *instance)
 
 	instance->my_aru = aru_save;
 
+	/*
+	 * Inform RRP about regular membership change
+	 */
+	totemrrp_membership_changed (
+		instance->totemrrp_context,
+		TOTEM_CONFIGURATION_REGULAR,
+		instance->my_new_memb_list, instance->my_new_memb_entries,
+		NULL, 0,
+		joined_list, joined_list_entries,
+		&instance->my_ring_id);
 	/*
 	 * Deliver regular configuration to application
 	 */
