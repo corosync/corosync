@@ -1499,6 +1499,7 @@ static void active_timer_problem_decrementer_cancel (
         poll_timer_delete (
 		active_instance->rrp_instance->poll_handle,
 		active_instance->timer_problem_decrementer);
+	active_instance->timer_problem_decrementer = 0;
 }
 
 
