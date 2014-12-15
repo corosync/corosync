@@ -957,6 +957,13 @@ coroipcc_dispatch_put (hdb_handle_t handle)
 retry_ipc_sem_wait:
 	res = ipc_sem_wait (ipc_instance->control_buffer, SEMAPHORE_DISPATCH, ipc_instance->fd);
 	if (res != CS_OK) {
+	        /*
+		 * IPC was closed earlier in dispatch, return OK
+		 */
+	        if (ipc_instance->control_buffer->ipc_closed) {
+		        res = CS_OK;
+			goto error_exit;
+		}
 		if (res == CS_ERR_TRY_AGAIN) {
 			priv_change_send (ipc_instance);
 			goto retry_ipc_sem_wait;
