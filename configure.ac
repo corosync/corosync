@@ -10,7 +10,7 @@ AC_INIT([corosync],
 
 AC_USE_SYSTEM_EXTENSIONS
 
-AM_INIT_AUTOMAKE([-Wno-portability])
+AM_INIT_AUTOMAKE([-Wno-portability 1.11])
 
 LT_PREREQ([2.2.6])
 LT_INIT
