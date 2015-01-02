@@ -1200,7 +1200,7 @@ int main (int argc, char **argv, char **envp)
 	/* default configuration
 	 */
 	background = 1;
-	setprio = 0;
+	setprio = 1;
 	testonly = 0;
 
 	while ((ch = getopt (argc, argv, "fprtv")) != EOF) {
@@ -1210,6 +1210,7 @@ int main (int argc, char **argv, char **envp)
 				background = 0;
 				break;
 			case 'p':
+				setprio = 0;
 				break;
 			case 'r':
 				setprio = 1;
@@ -1228,9 +1229,9 @@ int main (int argc, char **argv, char **envp)
 				fprintf(stderr, \
 					"usage:\n"\
 					"        -f     : Start application in foreground.\n"\
-					"        -p     : Does nothing.    \n"\
+					"        -p     : Do not set process priority.\n"\
 					"        -t     : Test configuration and exit.\n"\
-					"        -r     : Set round robin realtime scheduling \n"\
+					"        -r     : Set round robin realtime scheduling (default).\n"\
 					"        -v     : Display version and SVN revision of Corosync and exit.\n");
 				logsys_system_fini();
 				return EXIT_FAILURE;
