@@ -504,7 +504,9 @@ struct totemsrp_instance {
 	totemsrp_stats_t stats;
 
 	uint32_t orf_token_discard;
-	
+
+	uint32_t originated_orf_token;
+
 	uint32_t waiting_trans_ack;
 
 	void * token_recv_event_handle;
@@ -679,6 +681,8 @@ static void totemsrp_instance_initialize (struct totemsrp_instance *instance)
 	instance->my_high_delivered = SEQNO_START_MSG;
 
 	instance->orf_token_discard = 0;
+
+	instance->originated_orf_token = 0;
 
 	instance->commit_token = (struct memb_commit_token *)instance->commit_token_storage;
 
@@ -1729,6 +1733,8 @@ static void memb_state_operational_enter (struct totemsrp_instance *instance)
 	unsigned int i;
 	unsigned int res;
 
+	instance->originated_orf_token = 0;
+
 	memb_consensus_reset (instance);
 
 	old_ring_state_reset (instance);
@@ -1912,6 +1918,8 @@ static void memb_state_gather_enter (
 	int gather_from)
 {
 	instance->orf_token_discard = 1;
+
+	instance->originated_orf_token = 0;
 
 	memb_set_merge (
 		&instance->my_id, 1,
@@ -4349,6 +4357,14 @@ static int message_handler_memb_commit_token (
 
 		case MEMB_STATE_RECOVERY:
 			if (totemip_equal (&instance->my_id.addr[0], &instance->my_ring_id.rep)) {
+
+				/* Filter out duplicated tokens */
+				if (instance->originated_orf_token) {
+					break;
+				}
+
+				instance->originated_orf_token = 1;
+
 				log_printf (instance->totemsrp_log_level_debug,
 					"Sending initial ORF token\n");
 
