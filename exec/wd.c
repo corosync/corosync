@@ -585,7 +585,11 @@ static void wd_scan_resources (void)
 static void watchdog_timeout_apply (uint32_t new)
 {
 	struct watchdog_info ident;
-	uint32_t original_timeout = watchdog_timeout;
+	uint32_t original_timeout = 0;
+
+	if (dog > 0) {
+		ioctl(dog, WDIOC_GETTIMEOUT, &original_timeout);
+	}
 
 	if (new == original_timeout) {
 		return;
@@ -716,9 +720,6 @@ static char *wd_exec_init_fn (struct corosync_api_v1 *corosync_api)
 	setup_watchdog();
 
 	wd_scan_resources();
-
-	api->timer_add_duration(tickle_timeout*MILLI_2_NANO_SECONDS, NULL,
-				wd_tickle_fn, &wd_timer);
 
 	return NULL;
 }
