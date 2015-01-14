@@ -669,7 +669,7 @@ static void wd_top_level_key_changed(
 
 	ENTER();
 
-	if (icmap_get_uint32("resources.watchdog_timeout", &tmp_value_32) != CS_OK) {
+	if (icmap_get_uint32("resources.watchdog_timeout", &tmp_value_32) == CS_OK) {
 		if (tmp_value_32 >= 2 && tmp_value_32 <= 120) {
 			watchdog_timeout_apply (tmp_value_32);
 		}
