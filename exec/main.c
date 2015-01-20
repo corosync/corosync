@@ -1043,9 +1043,9 @@ static void corosync_ring_id_store (
 	snprintf (filename, sizeof(filename), "%s/ringid_%s",
 		get_run_dir(), totemip_print (addr));
 
-	fd = open (filename, O_WRONLY, 0777);
+	fd = open (filename, O_WRONLY, 0700);
 	if (fd == -1) {
-		fd = open (filename, O_CREAT|O_RDWR, 0777);
+		fd = open (filename, O_CREAT|O_RDWR, 0700);
 	}
 	if (fd == -1) {
 		LOGSYS_PERROR(errno, LOGSYS_LEVEL_ERROR,
