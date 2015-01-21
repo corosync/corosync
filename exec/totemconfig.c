@@ -532,7 +532,73 @@ static int find_local_node_in_nodelist(struct totem_config *totem_config)
 	return (local_node_pos);
 }
 
-static void put_nodelist_members_to_config(struct totem_config *totem_config)
+/*
+ * Compute difference between two set of totem interface arrays. set1 and set2
+ * are changed so for same ring, ip existing in both set1 and set2 are cleared
+ * (set to 0), and ips which are only in set1 or set2 remains untouched.
+ * totempg_node_add/remove is called.
+ */
+static void compute_interfaces_diff(int interface_count,
+	struct totem_interface *set1,
+	struct totem_interface *set2)
+{
+	int ring_no, set1_pos, set2_pos;
+	struct totem_ip_address empty_ip_address;
+
+	memset(&empty_ip_address, 0, sizeof(empty_ip_address));
+
+	for (ring_no = 0; ring_no < interface_count; ring_no++) {
+		for (set1_pos = 0; set1_pos < set1[ring_no].member_count; set1_pos++) {
+			for (set2_pos = 0; set2_pos < set2[ring_no].member_count; set2_pos++) {
+				/*
+				 * For current ring_no remove all set1 items existing
+				 * in set2
+				 */
+				if (memcmp(&set1[ring_no].member_list[set1_pos],
+				    &set2[ring_no].member_list[set2_pos],
+				    sizeof(struct totem_ip_address)) == 0) {
+					memset(&set1[ring_no].member_list[set1_pos], 0,
+					    sizeof(struct totem_ip_address));
+					memset(&set2[ring_no].member_list[set2_pos], 0,
+					    sizeof(struct totem_ip_address));
+				}
+			}
+		}
+	}
+
+	for (ring_no = 0; ring_no < interface_count; ring_no++) {
+		for (set1_pos = 0; set1_pos < set1[ring_no].member_count; set1_pos++) {
+			/*
+			 * All items which remained in set1 doesn't exists in set2 any longer so
+			 * node has to be removed.
+			 */
+			if (memcmp(&set1[ring_no].member_list[set1_pos], &empty_ip_address, sizeof(empty_ip_address)) != 0) {
+				log_printf(LOGSYS_LEVEL_DEBUG,
+					"removing dynamic member %s for ring %u",
+					totemip_print(&set1[ring_no].member_list[set1_pos]),
+					ring_no);
+
+				totempg_member_remove(&set1[ring_no].member_list[set1_pos], ring_no);
+			}
+		}
+		for (set2_pos = 0; set2_pos < set2[ring_no].member_count; set2_pos++) {
+			/*
+			 * All items which remained in set2 doesn't existed in set1 so this is no node
+			 * and has to be added.
+			 */
+			if (memcmp(&set2[ring_no].member_list[set2_pos], &empty_ip_address, sizeof(empty_ip_address)) != 0) {
+				log_printf(LOGSYS_LEVEL_DEBUG,
+					"adding dynamic member %s for ring %u",
+					totemip_print(&set2[ring_no].member_list[set2_pos]),
+					ring_no);
+
+				totempg_member_add(&set2[ring_no].member_list[set2_pos], ring_no);
+			}
+		}
+	}
+}
+
+static void put_nodelist_members_to_config(struct totem_config *totem_config, int reload)
 {
 	icmap_iter_t iter, iter2;
 	const char *iter_key, *iter_key2;
@@ -544,6 +610,22 @@ static void put_nodelist_members_to_config(struct totem_config *totem_config)
 	int member_count;
 	unsigned int ringnumber = 0;
 	int i, j;
+	struct totem_interface *orig_interfaces = NULL;
+	struct totem_interface *new_interfaces = NULL;
+
+	if (reload) {
+		/*
+		 * We need to compute diff only for reload. Also for initial configuration
+		 * not all totem structures are initialized so corosync will crash during
+		 * member_add/remove
+		 */
+		orig_interfaces = malloc (sizeof (struct totem_interface) * INTERFACE_MAX);
+		assert(orig_interfaces != NULL);
+		new_interfaces = malloc (sizeof (struct totem_interface) * INTERFACE_MAX);
+		assert(new_interfaces != NULL);
+
+		memcpy(orig_interfaces, totem_config->interfaces, sizeof (struct totem_interface) * INTERFACE_MAX);
+	}
 
 	/* Clear out nodelist so we can put the new one in if needed */
 	for (i = 0; i < totem_config->interface_count; i++) {
@@ -590,7 +672,50 @@ static void put_nodelist_members_to_config(struct totem_config *totem_config)
 	}
 
 	icmap_iter_finalize(iter);
+
+	if (reload) {
+		memcpy(new_interfaces, totem_config->interfaces, sizeof (struct totem_interface) * INTERFACE_MAX);
+
+		compute_interfaces_diff(totem_config->interface_count, orig_interfaces, new_interfaces);
+
+		free(new_interfaces);
+		free(orig_interfaces);
+	}
 }
+
+static void nodelist_dynamic_notify(
+	int32_t event,
+	const char *key_name,
+	struct icmap_notify_value new_val,
+	struct icmap_notify_value old_val,
+	void *user_data)
+{
+	int res;
+	unsigned int ring_no;
+	unsigned int member_no;
+	char tmp_str[ICMAP_KEYNAME_MAXLEN];
+	uint8_t reloading;
+	struct totem_config *totem_config = (struct totem_config *)user_data;
+
+	/*
+	* If a full reload is in progress then don't do anything until it's done and
+	* can reconfigure it all atomically
+	*/
+	if (icmap_get_uint8("config.totemconfig_reload_in_progress", &reloading) == CS_OK && reloading) {
+		return ;
+	}
+
+	res = sscanf(key_name, "nodelist.node.%u.ring%u%s", &member_no, &ring_no, tmp_str);
+	if (res != 3)
+		return ;
+
+	if (strcmp(tmp_str, "_addr") != 0) {
+		return;
+	}
+
+	put_nodelist_members_to_config(totem_config, 1);
+}
+
 
 /*
  * Tries to find node (node_pos) in config nodelist which address matches any
@@ -999,7 +1124,7 @@ extern int totem_config_read (
 			icmap_set_ro_access("nodelist.local_node_pos", 0, 1);
 		}
 
-		put_nodelist_members_to_config(totem_config);
+		put_nodelist_members_to_config(totem_config, 0);
 	}
 
 	/*
@@ -1362,7 +1487,7 @@ static void totem_reload_notify(
 
 	/* Reload has completed */
 	if (*(uint8_t *)new_val.data == 0) {
-		put_nodelist_members_to_config (totem_config);
+		put_nodelist_members_to_config (totem_config, 1);
 		totem_volatile_config_read (totem_config, NULL);
 		log_printf(LOGSYS_LEVEL_DEBUG, "Configuration reloaded. Dumping actual totem config.");
 		debug_dump_totem_config(totem_config);
@@ -1400,5 +1525,11 @@ static void add_totem_config_notification(struct totem_config *totem_config)
 		ICMAP_TRACK_ADD | ICMAP_TRACK_MODIFY,
 		totem_reload_notify,
 		totem_config,
+		&icmap_track);
+
+	icmap_track_add("nodelist.node.",
+		ICMAP_TRACK_ADD | ICMAP_TRACK_DELETE | ICMAP_TRACK_MODIFY | ICMAP_TRACK_PREFIX,
+		nodelist_dynamic_notify,
+		(void *)totem_config,
 		&icmap_track);
 }

@@ -583,71 +583,6 @@ static void corosync_totem_stats_updater (void *data)
 		&corosync_stats_timer_handle);
 }
 
-static void totem_dynamic_notify(
-	int32_t event,
-	const char *key_name,
-	struct icmap_notify_value new_val,
-	struct icmap_notify_value old_val,
-	void *user_data)
-{
-	int res;
-	unsigned int ring_no;
-	unsigned int member_no;
-	struct totem_ip_address member;
-	int add_new_member = 0;
-	int remove_old_member = 0;
-	char tmp_str[ICMAP_KEYNAME_MAXLEN];
-
-	res = sscanf(key_name, "nodelist.node.%u.ring%u%s", &member_no, &ring_no, tmp_str);
-	if (res != 3)
-		return ;
-
-	if (strcmp(tmp_str, "_addr") != 0) {
-		return;
-	}
-
-	if (event == ICMAP_TRACK_ADD && new_val.type == ICMAP_VALUETYPE_STRING) {
-		add_new_member = 1;
-	}
-
-	if (event == ICMAP_TRACK_DELETE && old_val.type == ICMAP_VALUETYPE_STRING) {
-		remove_old_member = 1;
-	}
-
-	if (event == ICMAP_TRACK_MODIFY && new_val.type == ICMAP_VALUETYPE_STRING &&
-			old_val.type == ICMAP_VALUETYPE_STRING) {
-		add_new_member = 1;
-		remove_old_member = 1;
-	}
-
-	if (remove_old_member) {
-		log_printf(LOGSYS_LEVEL_DEBUG,
-			"removing dynamic member %s for ring %u", (char *)old_val.data, ring_no);
-		if (totemip_parse(&member, (char *)old_val.data, ip_version) == 0) {
-			totempg_member_remove (&member, ring_no);
-		}
-	}
-
-	if (add_new_member) {
-		log_printf(LOGSYS_LEVEL_DEBUG,
-			"adding dynamic member %s for ring %u", (char *)new_val.data, ring_no);
-		if (totemip_parse(&member, (char *)new_val.data, ip_version) == 0) {
-			totempg_member_add (&member, ring_no);
-		}
-	}
-}
-
-static void corosync_totem_dynamic_init (void)
-{
-	icmap_track_t icmap_track = NULL;
-
-	icmap_track_add("nodelist.node.",
-		ICMAP_TRACK_ADD | ICMAP_TRACK_DELETE | ICMAP_TRACK_MODIFY | ICMAP_TRACK_PREFIX,
-		totem_dynamic_notify,
-		NULL,
-		&icmap_track);
-}
-
 static void corosync_totem_stats_init (void)
 {
 	icmap_set_uint32("runtime.totem.pg.mrp.srp.mtt_rx_token", 0);
@@ -659,7 +594,6 @@ static void corosync_totem_stats_init (void)
 		corosync_totem_stats_updater,
 		&corosync_stats_timer_handle);
 }
-
 
 static void deliver_fn (
 	unsigned int nodeid,
@@ -1093,7 +1027,6 @@ static void main_service_ready (void)
 	cs_ipcs_init();
 	corosync_totem_stats_init ();
 	corosync_fplay_control_init ();
-	corosync_totem_dynamic_init ();
 	sync_init (
 		corosync_sync_callbacks_retrieve,
 		corosync_sync_completed);
