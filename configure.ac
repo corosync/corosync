@@ -239,10 +239,19 @@ LIB_MSG_RESULT(m4_shift(m4_shift($@)))dnl
 # Helpers
 # ===============================================
 
+## check if the compiler supports -Werror -Wunknown-warning-option
+AC_MSG_CHECKING([whether $CC supports -Wunknown-warning-option -Werror])
+BACKUP="$CPPFLAGS"
+CPPFLAGS="$CPPFLAGS -Werror -Wunknown-warning-option"
+AC_PREPROC_IFELSE([AC_LANG_PROGRAM([])],
+		  [unknown_warnings_as_errors='-Wunknown-warning-option -Werror'; AC_MSG_RESULT([yes])],
+		  [unknown_warnings_as_errors=''; AC_MSG_RESULT([no])])
+CPPFLAGS="$BACKUP"
+
 ## helper for CC stuff
 cc_supports_flag() {
 	BACKUP="$CPPFLAGS"
-	CPPFLAGS="$CPPFLAGS $@"
+	CPPFLAGS="$CPPFLAGS $@ $unknown_warnings_as_errors"
 	AC_MSG_CHECKING([whether $CC supports "$@"])
 	AC_PREPROC_IFELSE([AC_LANG_PROGRAM([])],
 			  [RC=0; AC_MSG_RESULT([yes])],
