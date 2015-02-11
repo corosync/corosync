@@ -37,12 +37,22 @@
 
 #include "config.h"
 
-#include <nss.h>
-#include <pk11pub.h>
-#include <pkcs11.h>
-#include <prerror.h>
-#include <blapit.h>
-#include <hasht.h>
+#ifdef HAVE_OPENSSL
+  #include <openssl/conf.h>
+  #include <openssl/evp.h>
+  #include <openssl/err.h>
+  #include <openssl/aes.h>
+  #include <openssl/md5.h>
+  #include <openssl/sha.h>
+  #include <openssl/rand.h>
+#else
+  #include <nss.h>
+  #include <pk11pub.h>
+  #include <pkcs11.h>
+  #include <prerror.h>
+  #include <blapit.h>
+  #include <hasht.h>
+#endif
 
 #define LOGSYS_UTILS_ONLY 1
 #include <corosync/logsys.h>
@@ -97,6 +107,7 @@ enum crypto_crypt_t {
 	CRYPTO_CIPHER_TYPE_2_2 = UINT8_MAX
 };
 
+#ifndef HAVE_OPENSSL
 CK_MECHANISM_TYPE cipher_to_nss[] = {
 	0,				/* CRYPTO_CIPHER_TYPE_NONE */
 	CKM_AES_CBC_PAD,		/* CRYPTO_CIPHER_TYPE_AES256 */
@@ -104,6 +115,20 @@ CK_MECHANISM_TYPE cipher_to_nss[] = {
 	CKM_AES_CBC_PAD,		/* CRYPTO_CIPHER_TYPE_AES128 */
 	CKM_DES3_CBC_PAD		/* CRYPTO_CIPHER_TYPE_3DES */
 };
+#else
+static const EVP_CIPHER * cipher_to_openssl(uint8_t crypto_cipher_type) {
+  switch(crypto_cipher_type) {
+    case CRYPTO_CIPHER_TYPE_AES256:
+      return EVP_aes_256_cbc();
+    case CRYPTO_CIPHER_TYPE_AES192:
+      return EVP_aes_192_cbc();
+    case CRYPTO_CIPHER_TYPE_AES128:
+      return EVP_aes_128_cbc();
+    default :
+      return NULL;
+  }
+}
+#endif
 
 size_t cipher_key_len[] = {
 	0,				/* CRYPTO_CIPHER_TYPE_NONE */
@@ -142,6 +167,7 @@ enum crypto_hash_t {
 	CRYPTO_HASH_TYPE_2_2	= UINT8_MAX
 };
 
+#ifndef HAVE_OPENSSL
 CK_MECHANISM_TYPE hash_to_nss[] = {
 	0,				/* CRYPTO_HASH_TYPE_NONE */
 	CKM_MD5_HMAC,			/* CRYPTO_HASH_TYPE_MD5 */
@@ -150,7 +176,26 @@ CK_MECHANISM_TYPE hash_to_nss[] = {
 	CKM_SHA384_HMAC,		/* CRYPTO_HASH_TYPE_SHA384 */
 	CKM_SHA512_HMAC			/* CRYPTO_HASH_TYPE_SHA512 */
 };
+#else
+static const EVP_MD * hash_to_openssl(uint8_t crypto_hash_type) {
+  switch(crypto_hash_type) {
+    case CRYPTO_HASH_TYPE_MD5 :
+      return EVP_md5();
+    case CRYPTO_HASH_TYPE_SHA1 :
+      return EVP_sha();
+    case CRYPTO_HASH_TYPE_SHA256 :
+      return EVP_sha256();
+    case CRYPTO_HASH_TYPE_SHA384 :
+      return EVP_sha384();
+    case CRYPTO_HASH_TYPE_SHA512 :
+      return EVP_sha512();
+    default :
+      return NULL;
+  }
+}
+#endif
 
+#ifndef HAVE_OPENSSL
 size_t hash_len[] = {
 	0,				/* CRYPTO_HASH_TYPE_NONE */
 	MD5_LENGTH,			/* CRYPTO_HASH_TYPE_MD5 */
@@ -159,7 +204,18 @@ size_t hash_len[] = {
 	SHA384_LENGTH,			/* CRYPTO_HASH_TYPE_SHA384 */
 	SHA512_LENGTH			/* CRYPTO_HASH_TYPE_SHA512 */
 };
+#else
+size_t hash_len[] = {
+  0,        /* CRYPTO_HASH_TYPE_NONE */
+  MD5_DIGEST_LENGTH,  /* CRYPTO_HASH_TYPE_MD5 */
+  SHA_DIGEST_LENGTH,  /* CRYPTO_HASH_TYPE_SHA1 */
+  SHA256_DIGEST_LENGTH, /* CRYPTO_HASH_TYPE_SHA256 */
+  SHA384_DIGEST_LENGTH, /* CRYPTO_HASH_TYPE_SHA384 */
+  SHA512_DIGEST_LENGTH  /* CRYPTO_HASH_TYPE_SHA512 */
+};
+#endif
 
+#ifndef HAVE_OPENSSL
 size_t hash_block_len[] = {
 	0,				/* CRYPTO_HASH_TYPE_NONE */
 	MD5_BLOCK_LENGTH,		/* CRYPTO_HASH_TYPE_MD5 */
@@ -168,10 +224,22 @@ size_t hash_block_len[] = {
 	SHA384_BLOCK_LENGTH,		/* CRYPTO_HASH_TYPE_SHA384 */
 	SHA512_BLOCK_LENGTH		/* CRYPTO_HASH_TYPE_SHA512 */
 };
+#else
+size_t hash_block_len[] = {
+	0,				/* CRYPTO_HASH_TYPE_NONE */
+  MD5_CBLOCK,     /* CRYPTO_HASH_TYPE_MD5 */
+	SHA_CBLOCK,		/* CRYPTO_HASH_TYPE_SHA1 */
+	SHA256_CBLOCK,	/* CRYPTO_HASH_TYPE_SHA256 */
+	128, // OpenSSL has no SHA384_CBLOCK,		/* CRYPTO_HASH_TYPE_SHA384 */
+	SHA512_CBLOCK	/* CRYPTO_HASH_TYPE_SHA512 */
+};
+#endif
 
 struct crypto_instance {
+#ifndef HAVE_OPENSSL
 	PK11SymKey   *nss_sym_key;
 	PK11SymKey   *nss_sym_key_sign;
+#endif
 
 	unsigned char private_key[1024];
 
@@ -226,6 +294,7 @@ static int string_to_crypto_cipher_type(const char* crypto_cipher_type)
 	return CRYPTO_CIPHER_TYPE_AES256;
 }
 
+#ifndef HAVE_OPENSSL
 static int init_nss_crypto(struct crypto_instance *instance)
 {
 	PK11SlotInfo*	crypt_slot = NULL;
@@ -260,7 +329,22 @@ static int init_nss_crypto(struct crypto_instance *instance)
 
 	return 0;
 }
+#else
+static int init_openssl_crypto(struct crypto_instance *instance)
+{
+  if (!cipher_to_openssl(instance->crypto_cipher_type)) {
+    return 0;
+  }
 
+  ERR_load_crypto_strings();
+  OpenSSL_add_all_algorithms();
+  OPENSSL_config(NULL);
+
+  return 0;
+}
+#endif
+
+#ifndef HAVE_OPENSSL
 static int encrypt_nss(
 	struct crypto_instance *instance,
 	const unsigned char *buf_in,
@@ -352,7 +436,72 @@ out:
 	}
 	return err;
 }
+#else
+static int encrypt_openssl(
+	struct crypto_instance *instance,
+	const unsigned char *buf_in,
+	const size_t buf_in_len,
+	unsigned char *buf_out,
+	size_t *buf_out_len)
+{
+  EVP_CIPHER_CTX *ctx = NULL;
+  const EVP_CIPHER * openssl_cipher;
+  int   tmp1_outlen = 0;
+  unsigned int  tmp2_outlen = 0;
+  unsigned char *salt = buf_out;
+  unsigned char *data = buf_out + SALT_SIZE;
+  int   err = -1;
 
+  openssl_cipher = cipher_to_openssl(instance->crypto_cipher_type);
+  if (!openssl_cipher) {
+    memcpy(buf_out, buf_in, buf_in_len);
+    *buf_out_len = buf_in_len;
+	  return 0;
+  }
+
+  if (1 != RAND_bytes(salt, SALT_SIZE)) {
+  	log_printf(instance->log_level_security,
+	    "Failure to generate a random number: %s", ERR_reason_error_string(ERR_get_error()));
+	  goto out;
+  }
+
+  if(!(ctx = EVP_CIPHER_CTX_new())) {
+    log_printf(instance->log_level_security,
+      "Failure to create cipher context: %s", ERR_reason_error_string(ERR_get_error()));
+    goto out;
+  }
+
+  if(1 != EVP_EncryptInit_ex(ctx, openssl_cipher, NULL, 
+    instance->private_key, salt)) {
+    log_printf(instance->log_level_security,
+      "Failure to init cipher: %s", ERR_reason_error_string(ERR_get_error()));
+    goto out;
+  }
+
+  if(1 != EVP_EncryptUpdate(ctx, data, &tmp1_outlen, buf_in, buf_in_len)) {
+    log_printf(instance->log_level_security,
+      "Failure to encrypt: %s", ERR_reason_error_string(ERR_get_error()));
+    goto out;
+  }
+
+  if(1 != EVP_EncryptFinal_ex(ctx, data + tmp1_outlen, (int *) &tmp2_outlen)) {
+    log_printf(instance->log_level_security,
+      "Failure to encrypt final: %s", ERR_reason_error_string(ERR_get_error()));
+    goto out;
+  }
+
+  *buf_out_len = tmp1_outlen + tmp2_outlen + SALT_SIZE;
+
+  err = 0;
+out:
+  if (ctx) {
+    EVP_CIPHER_CTX_free(ctx);
+  }
+  return err;
+}
+#endif
+
+#ifndef HAVE_OPENSSL
 static int decrypt_nss (
 	struct crypto_instance *instance,
 	unsigned char *buf,
@@ -420,7 +569,68 @@ out:
 
 	return err;
 }
+#else 
+static int decrypt_openssl (
+	struct crypto_instance *instance,
+	unsigned char *buf,
+	int *buf_len)
+{
+  EVP_CIPHER_CTX *ctx = NULL;
+  const EVP_CIPHER *openssl_cipher;
+  int   tmp1_outlen = 0;
+  unsigned int  tmp2_outlen = 0;
+  unsigned char *salt = buf;
+  unsigned char *data = salt + SALT_SIZE;
+  int   datalen = *buf_len - SALT_SIZE;
+  unsigned char outbuf[FRAME_SIZE_MAX];
+  int   outbuf_len;
+  int   err = -1;
 
+  openssl_cipher = cipher_to_openssl(instance->crypto_cipher_type);
+  if (!openssl_cipher) {
+    return 0;
+  }
+
+  if(!(ctx = EVP_CIPHER_CTX_new())) {
+    log_printf(instance->log_level_security,
+         "create decrypt context failed: %s", ERR_reason_error_string(ERR_get_error()));
+    goto out;
+  }
+
+  if(1 != EVP_DecryptInit_ex(ctx, openssl_cipher, NULL,  instance->private_key, salt)) {
+    log_printf(instance->log_level_security,
+         "decrypt init failed: %s", ERR_reason_error_string(ERR_get_error()));
+    goto out;
+  }
+
+  if(1 != EVP_DecryptUpdate(ctx, outbuf, &tmp1_outlen, data, datalen)) {
+    log_printf(instance->log_level_security,
+         "decrypt update failed: %s", ERR_reason_error_string(ERR_get_error()));
+    goto out;
+  }
+
+  if(1 != EVP_DecryptFinal_ex(ctx, outbuf + tmp1_outlen, (int *) &tmp2_outlen)) {
+    log_printf(instance->log_level_security,
+         "decrypt final failed: %s", ERR_reason_error_string(ERR_get_error()));
+    goto out;
+  }
+
+  outbuf_len = tmp1_outlen + tmp2_outlen;
+
+  memset(buf, 0, *buf_len);
+  memcpy(buf, outbuf, outbuf_len);
+
+  *buf_len = outbuf_len;
+
+  err = 0;
+out:
+  if (ctx) {
+    EVP_CIPHER_CTX_free(ctx);
+  }
+
+  return err;
+}
+#endif
 
 /*
  * hash/hmac/digest functions
@@ -445,6 +655,7 @@ static int string_to_crypto_hash_type(const char* crypto_hash_type)
 	return CRYPTO_HASH_TYPE_SHA1;
 }
 
+#ifndef HAVE_OPENSSL
 static int init_nss_hash(struct crypto_instance *instance)
 {
 	PK11SlotInfo*	hash_slot = NULL;
@@ -479,7 +690,20 @@ static int init_nss_hash(struct crypto_instance *instance)
 
 	return 0;
 }
+#else
+static int init_openssl_hash(struct crypto_instance *instance)
+{
+  const EVP_MD * openssl_hash;
+  openssl_hash = hash_to_openssl(instance->crypto_hash_type);
+  if (!openssl_hash) {
+    return 0;
+  }
+  OpenSSL_add_all_digests();
+  return 0;
+}
+#endif
 
+#ifndef HAVE_OPENSSL
 static int calculate_nss_hash(
 	struct crypto_instance *instance,
 	const unsigned char *buf,
@@ -549,11 +773,67 @@ out:
 
 	return err;
 }
+#else 
+static int calculate_openssl_hash(
+	struct crypto_instance *instance,
+	const unsigned char *buf,
+	const size_t buf_len,
+	unsigned char *hash)
+{
+  EVP_MD_CTX *mdctx = NULL;
+  const EVP_MD * openssl_hash;
+  unsigned int  hash_tmp_outlen = 0;
+  unsigned char hash_block[hash_block_len[instance->crypto_hash_type]];
+  int   err = -1;
+
+  if((mdctx = EVP_MD_CTX_create()) == NULL) {
+    log_printf(instance->log_level_security,
+         "create hash context failed");
+    goto out;
+  }
+
+  openssl_hash = hash_to_openssl(instance->crypto_hash_type);
+  if (!openssl_hash) {
+    log_printf(instance->log_level_security,
+         "get hash failed");
+    goto out;
+  }
+
+  if(1 != EVP_DigestInit_ex(mdctx, openssl_hash, NULL)) {
+    log_printf(instance->log_level_security,
+         "digest init failed: %s", ERR_reason_error_string(ERR_get_error()));
+    goto out;
+  }
+
+  if(1 != EVP_DigestUpdate(mdctx, buf, buf_len)) {
+    log_printf(instance->log_level_security,
+         "digest update failed: %s", ERR_reason_error_string(ERR_get_error()));
+    goto out;
+  }
+
+  if(1 != EVP_DigestFinal_ex(mdctx, hash_block, &hash_tmp_outlen)) {
+    log_printf(instance->log_level_security,
+         "digest final failed: %s", ERR_reason_error_string(ERR_get_error()));
+    goto out;
+  }
+
+  memcpy(hash, hash_block, hash_len[instance->crypto_hash_type]);
+  err = 0;
+
+out:
+  if (mdctx) {
+    EVP_MD_CTX_destroy(mdctx);
+  }
+
+  return err;
+}
+#endif
 
 /*
  * global/glue nss functions
  */
 
+#ifndef HAVE_OPENSSL
 static int init_nss_db(struct crypto_instance *instance)
 {
 	if ((!cipher_to_nss[instance->crypto_cipher_type]) &&
@@ -569,7 +849,9 @@ static int init_nss_db(struct crypto_instance *instance)
 
 	return 0;
 }
+#endif
 
+#ifndef HAVE_OPENSSL
 static int init_nss(struct crypto_instance *instance,
 		    const char *crypto_cipher_type,
 		    const char *crypto_hash_type)
@@ -592,7 +874,31 @@ static int init_nss(struct crypto_instance *instance,
 
 	return 0;
 }
+#else
+static int init_openssl(struct crypto_instance *instance,
+		    const char *crypto_cipher_type,
+		    const char *crypto_hash_type)
+{
+  log_printf(instance->log_level_notice,
+       "Initializing transmit/receive security (OPENSSL) crypto: %s hash: %s",
+       crypto_cipher_type, crypto_hash_type);
 
+  if (init_openssl_crypto(instance) < 0) {
+		log_printf(instance->log_level_security,
+			   "Cannot init openssl crypto");
+    return -1;
+  }
+
+  if (init_openssl_hash(instance) < 0) {
+		log_printf(instance->log_level_security,
+			   "Cannot init openssl hash");
+    return -1;
+  }
+  return 0;
+}
+#endif
+
+#ifndef HAVE_OPENSSL
 static int encrypt_and_sign_nss_2_3 (
 	struct crypto_instance *instance,
 	const unsigned char *buf_in,
@@ -617,7 +923,33 @@ static int encrypt_and_sign_nss_2_3 (
 
 	return 0;
 }
+#else
+static int encrypt_and_sign_openssl (
+	struct crypto_instance *instance,
+	const unsigned char *buf_in,
+	const size_t buf_in_len,
+	unsigned char *buf_out,
+	size_t *buf_out_len)
+{
+  if (encrypt_openssl(instance,
+      buf_in, buf_in_len,
+      buf_out + sizeof(struct crypto_config_header), buf_out_len) < 0) {
+    return -1;
+  }
 
+  *buf_out_len += sizeof(struct crypto_config_header);
+
+  if (hash_to_openssl(instance->crypto_hash_type)) {
+    if (calculate_openssl_hash(instance, buf_out, *buf_out_len, buf_out + *buf_out_len) < 0) {
+      return -1;
+    }
+    *buf_out_len += hash_len[instance->crypto_hash_type];
+  }
+  return 0;
+}
+#endif
+
+#ifndef HAVE_OPENSSL
 static int authenticate_nss_2_3 (
 	struct crypto_instance *instance,
 	unsigned char *buf,
@@ -640,7 +972,34 @@ static int authenticate_nss_2_3 (
 
 	return 0;
 }
+#else
+static int authenticate_openssl (
+	struct crypto_instance *instance,
+	unsigned char *buf,
+	int *buf_len)
+{
+  if (hash_to_openssl(instance->crypto_hash_type)) {
+    unsigned char tmp_hash[hash_len[instance->crypto_hash_type]];
+    int             datalen = *buf_len - hash_len[instance->crypto_hash_type];
 
+    if (calculate_openssl_hash(instance, buf, datalen, tmp_hash) < 0) {
+      log_printf(instance->log_level_security,
+         "authenticate error: calculate hash failed");
+      return -1;
+    }
+
+    if (memcmp(tmp_hash, buf + datalen, hash_len[instance->crypto_hash_type]) != 0) {
+      log_printf(instance->log_level_error, "Digest does not match");
+      return -1;
+    }
+    *buf_len = datalen;
+  }
+  return 0;
+}
+
+#endif
+
+#ifndef HAVE_OPENSSL
 static int decrypt_nss_2_3 (
 	struct crypto_instance *instance,
 	unsigned char *buf,
@@ -654,6 +1013,21 @@ static int decrypt_nss_2_3 (
 
 	return 0;
 }
+#else
+static int decrypt_openssl_2_3 (
+	struct crypto_instance *instance,
+	unsigned char *buf,
+	int *buf_len)
+{
+	*buf_len -= sizeof(struct crypto_config_header);
+
+	if (decrypt_openssl(instance, buf + sizeof(struct crypto_config_header), buf_len) < 0) {
+		return -1;
+	}
+
+	return 0;
+}
+#endif
 
 /*
  * exported API
@@ -710,10 +1084,15 @@ int crypto_encrypt_and_sign (
 	cch->__pad0 = 0;
 	cch->__pad1 = 0;
 
+#ifndef HAVE_OPENSSL
 	err = encrypt_and_sign_nss_2_3(instance,
 				       buf_in, buf_in_len,
 				       buf_out, buf_out_len);
-
+#else
+	err = encrypt_and_sign_openssl(instance,
+				       buf_in, buf_in_len,
+				       buf_out, buf_out_len);
+#endif
 	return err;
 }
 
@@ -739,9 +1118,15 @@ int crypto_authenticate_and_decrypt (struct crypto_instance *instance,
 	 * authenticate packet first
 	 */
 
+#ifndef HAVE_OPENSSL
 	if (authenticate_nss_2_3(instance, buf, buf_len) != 0) {
 		return -1;
 	}
+#else
+	if (authenticate_openssl(instance, buf, buf_len) != 0) {
+		return -1;
+	}
+#endif
 
 	/*
 	 * now we can "trust" the padding bytes/future features
@@ -757,9 +1142,15 @@ int crypto_authenticate_and_decrypt (struct crypto_instance *instance,
 	 * decrypt
 	 */
 
+#ifndef HAVE_OPENSSL
 	if (decrypt_nss_2_3(instance, buf, buf_len) != 0) {
 		return -1;
 	}
+#else
+	if (decrypt_openssl_2_3(instance, buf, buf_len) != 0) {
+		return -1;
+	}
+#endif
 
 	/*
 	 * invalidate config header and kill it
@@ -809,10 +1200,17 @@ struct crypto_instance *crypto_init(
 	instance->log_level_error = log_level_error;
 	instance->log_subsys_id = log_subsys_id;
 
+#ifndef HAVE_OPENSSL
 	if (init_nss(instance, crypto_cipher_type, crypto_hash_type) < 0) {
 		free(instance);
 		return(NULL);
 	}
+#else
+	if (init_openssl(instance, crypto_cipher_type, crypto_hash_type) < 0) {
+		free(instance);
+		return(NULL);
+	}
+#endif
 
 	return (instance);
 }

@@ -15,6 +15,7 @@
 %bcond_with upstart
 %bcond_with xmlconf
 %bcond_with runautogen
+%bcond_with openssl
 
 %global gitver %{?numcomm:.%{numcomm}}%{?alphatag:.%{alphatag}}%{?dirty:.%{dirty}}
 %global gittarver %{?numcomm:.%{numcomm}}%{?alphatag:-%{alphatag}}%{?dirty:-%{dirty}}
@@ -39,7 +40,6 @@ Conflicts: openais <= 0.89, openais-devel <= 0.89
 
 BuildRequires: groff
 BuildRequires: libqb-devel
-BuildRequires: nss-devel
 %if %{with runautogen}
 BuildRequires: autoconf automake libtool
 %endif
@@ -63,6 +63,11 @@ Requires(postun): systemd
 %endif
 %if %{with xmlconf}
 Requires: libxslt
+%endif
+%if %{with openssl}
+Requires: ssl crypto
+%else
+Requires: nss-devel
 %endif
 
 BuildRoot: %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
@@ -108,6 +113,9 @@ export rdmacm_LIBS=-lrdmacm \
 %endif
 %if %{with xmlconf}
 	--enable-xmlconf \
+%endif
+%if %{with openssl}
+	--enable-openssl \
 %endif
 	--with-initddir=%{_initrddir} \
 	--with-systemddir=%{_unitdir} \

@@ -46,6 +46,7 @@
 #include <corosync/corotypes.h>
 #include <corosync/cpg.h>
 
+#ifndef HAVE_OPENSSL
 #include <nss.h>
 #include <pk11pub.h>
 
@@ -189,3 +190,11 @@ try_again_one:
 
 	return (0);
 }
+#else
+int main (int argc, char *argv[])
+{
+  // TODO Implement OpenSSL testing
+	return (0);
+}
+#endif
+

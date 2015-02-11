@@ -71,10 +71,16 @@
 #include "util.h"
 #include "totemcrypto.h"
 
-#include <nss.h>
-#include <pk11pub.h>
-#include <pkcs11.h>
-#include <prerror.h>
+#ifdef HAVE_OPENSSL
+  #include <openssl/conf.h>
+  #include <openssl/evp.h>
+  #include <openssl/err.h>
+#else
+  #include <nss.h>
+  #include <pk11pub.h>
+  #include <pkcs11.h>
+  #include <prerror.h>
+#endif
 
 #ifndef MSG_NOSIGNAL
 #define MSG_NOSIGNAL 0

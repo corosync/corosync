@@ -31,6 +31,9 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
+
+#include <config.h>
+
 #include <errno.h>
 #include <unistd.h>
 #include <stdio.h>
@@ -56,6 +59,7 @@
 #include <corosync/cfg.h>
 #include "common_test_agent.h"
 
+#ifndef HAVE_OPENSSL
 #include <nss.h>
 #include <pk11pub.h>
 
@@ -801,4 +805,13 @@ main(int argc, char *argv[])
 
 	return test_agent_run ("cpg_test_agent", 9034, do_command, my_pre_exit);
 }
+#else
+int
+main(int argc, char *argv[])
+{
+  return (0);
+}
+#endif
+
+
 

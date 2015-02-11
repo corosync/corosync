@@ -151,7 +151,6 @@ AC_TYPE_SSIZE_T
 AC_TYPE_SIGNAL
 
 # Checks for libraries.
-PKG_CHECK_MODULES([nss],[nss])
 PKG_CHECK_MODULES([LIBQB], [libqb])
 AC_CHECK_LIB([qb], [qb_log_thread_priority_set], \
 	     have_qb_log_thread_priority_set="yes", \
@@ -314,6 +313,11 @@ AC_ARG_ENABLE([dbus],
 	[  --enable-dbus                   : dbus events. ],,
 	[ enable_dbus="no" ])
 
+AC_ARG_ENABLE([openssl],
+	[  --enable-openssl                : enable OpenSSL. ],,
+	[ enable_openssl="no" ])
+AM_CONDITIONAL(BUILD_OPENSSL, test x$enable_openssl = xyes)
+
 AC_ARG_ENABLE([testagents],
 	[  --enable-testagents             : Install Test Agents. ],,
 	[ default="no" ])
@@ -410,6 +414,19 @@ if test "x${enable_dbus}" = xyes; then
 	AC_DEFINE_UNQUOTED([HAVE_DBUS], 1, [have dbus])
 	PACKAGE_FEATURES="$PACKAGE_FEATURES dbus"
 	WITH_LIST="$WITH_LIST --with dbus"
+fi
+
+if test "x${enable_openssl}" = xyes; then
+	PKG_CHECK_MODULES([OPENSSL],[openssl])
+	AC_DEFINE_UNQUOTED([HAVE_OPENSSL], 1, [have openssl])
+	PACKAGE_FEATURES="$PACKAGE_FEATURES openssl"
+	WITH_LIST="$WITH_LIST --with openssl"
+  AC_CHECK_LIB([ssl], [SSL_library_init], [],
+             [AC_MSG_FAILURE([can't find openssl ssl lib])])
+  AC_CHECK_LIB([crypto], [EVP_EncryptInit], [],
+             [AC_MSG_FAILURE([can't find openssl crypto lib])])
+else
+  PKG_CHECK_MODULES([nss],[nss])
 fi
 
 if test "x${enable_testagents}" = xyes; then
