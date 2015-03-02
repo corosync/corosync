@@ -1323,6 +1323,14 @@ static char *votequorum_readconfig(int runtime)
 
 	}
 
+	/* two_node and auto_tie_breaker are not compatible as two_node uses
+	 * a fence race to decide quorum whereas ATB decides based on node id
+	 */
+	if (two_node && auto_tie_breaker != ATB_NONE) {
+	        log_printf(LOGSYS_LEVEL_CRIT, "two_node and auto_tie_breaker are both specified but are not compatible.");
+		log_printf(LOGSYS_LEVEL_CRIT, "two_node has been disabled, please fix your corosync.conf");
+		two_node = 0;
+	}
 	/*
 	 * quorum device is not compatible with last_man_standing and auto_tie_breaker
 	 * neither lms or atb can be set at runtime, so there is no need to check for
