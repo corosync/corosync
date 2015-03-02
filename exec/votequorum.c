@@ -628,7 +628,7 @@ static int is_in_nodelist(int nodeid, unsigned int *members, int entries)
 }
 
 /*
- * The algorithm for a list of time-breaker nodes is:
+ * The algorithm for a list of tie-breaker nodes is:
  * travel the list of nodes in the auto_tie_breaker list,
  * if the node IS in our current partition, check if the
  * nodes earlier in the atb list are in the 'previous' partition;
@@ -1290,7 +1290,12 @@ static char *votequorum_readconfig(int runtime)
 		icmap_get_uint8("quorum.auto_tie_breaker", &atb);
 		icmap_get_string("quorum.auto_tie_breaker_node", &atb_string);
 
-		if (!atb) {
+		/* auto_tie_breaker defaults to LOWEST */
+		if (atb) {
+		    auto_tie_breaker = ATB_LOWEST;
+		    icmap_set_uint32("runtime.votequorum.atb_type", auto_tie_breaker);
+		}
+		else {
 			auto_tie_breaker = ATB_NONE;
 			if (atb_string) {
 				log_printf(LOGSYS_LEVEL_WARNING,
