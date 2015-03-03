@@ -1999,7 +1999,7 @@ static void memb_state_operational_enter (struct totemsrp_instance *instance)
 		int sptr = 0;
 		sptr += snprintf(joined_node_msg, sizeof(joined_node_msg)-sptr, " joined:");
 		for (i=0; i< joined_list_entries; i++) {
-			sptr += snprintf(joined_node_msg+sptr, sizeof(joined_node_msg)-sptr, " %d", joined_list_totemip[i]);
+			sptr += snprintf(joined_node_msg+sptr, sizeof(joined_node_msg)-sptr, " %u", joined_list_totemip[i]);
 		}
 	}
 	else {
@@ -2010,7 +2010,7 @@ static void memb_state_operational_enter (struct totemsrp_instance *instance)
 		int sptr = 0;
 		sptr += snprintf(left_node_msg, sizeof(left_node_msg)-sptr, " left:");
 		for (i=0; i< instance->my_left_memb_entries; i++) {
-			sptr += snprintf(left_node_msg+sptr, sizeof(left_node_msg)-sptr, " %d", left_list[i]);
+			sptr += snprintf(left_node_msg+sptr, sizeof(left_node_msg)-sptr, " %u", left_list[i]);
 		}
 	}
 	else {
