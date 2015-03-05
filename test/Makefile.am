@@ -34,7 +34,7 @@ MAINTAINERCLEANFILES	= Makefile.in
 
 EXTRA_DIST		= ploadstart.sh
 
-noinst_PROGRAMS		= cpgverify testcpg testcpg2 cpgbench \
+noinst_PROGRAMS		= cpgverify testcpg testcpg2 cpgbench cpghum \
 			  testquorum testvotequorum1 testvotequorum2	\
 			  stress_cpgfdget stress_cpgcontext cpgbound testsam \
 			  testcpgzc cpgbenchzc testzcgc stress_cpgzc
@@ -48,6 +48,7 @@ testzcgc_LDADD		= $(LIBQB_LIBS) $(top_builddir)/lib/libcpg.la
 stress_cpgzc_LDADD	= $(LIBQB_LIBS) $(top_builddir)/lib/libcpg.la
 stress_cpgfdget_LDADD	= $(LIBQB_LIBS) $(top_builddir)/lib/libcpg.la
 stress_cpgcontext_LDADD	= $(LIBQB_LIBS) $(top_builddir)/lib/libcpg.la
+cpghum_LDADD            = $(LIBQB_LIBS) $(top_builddir)/lib/libcpg.la -lz
 testquorum_LDADD	= $(LIBQB_LIBS) $(top_builddir)/lib/libquorum.la
 testvotequorum1_LDADD	= $(LIBQB_LIBS) $(top_builddir)/lib/libvotequorum.la
 testvotequorum2_LDADD	= $(LIBQB_LIBS) $(top_builddir)/lib/libvotequorum.la

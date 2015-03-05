@@ -40,6 +40,7 @@ Conflicts: openais <= 0.89, openais-devel <= 0.89
 BuildRequires: groff
 BuildRequires: libqb-devel
 BuildRequires: nss-devel
+BuildRequires: zlib-devel
 %if %{with runautogen}
 BuildRequires: autoconf automake libtool
 %endif

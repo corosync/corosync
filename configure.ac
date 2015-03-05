@@ -163,6 +163,7 @@ AC_CHECK_LIB([pthread], [pthread_create])
 AC_CHECK_LIB([socket], [socket])
 AC_CHECK_LIB([nsl], [t_open])
 AC_CHECK_LIB([rt], [sched_getscheduler])
+AC_CHECK_LIB([z], [crc32])
 
 # Checks for library functions.
 AC_FUNC_ALLOCA

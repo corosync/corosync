@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Red Hat, Inc.
+ * Copyright (c) 2006-2015 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -55,6 +55,7 @@ enum req_cpg_types {
 	MESSAGE_REQ_CPG_ZC_ALLOC = 9,
 	MESSAGE_REQ_CPG_ZC_FREE = 10,
 	MESSAGE_REQ_CPG_ZC_EXECUTE = 11,
+	MESSAGE_REQ_CPG_PARTIAL_MCAST = 12,
 };
 
 enum res_cpg_types {
@@ -75,6 +76,8 @@ enum res_cpg_types {
 	MESSAGE_RES_CPG_ZC_ALLOC = 14,
 	MESSAGE_RES_CPG_ZC_FREE = 15,
 	MESSAGE_RES_CPG_ZC_EXECUTE = 16,
+	MESSAGE_RES_CPG_PARTIAL_DELIVER_CALLBACK = 17,
+	MESSAGE_RES_CPG_PARTIAL_SEND = 18,
 };
 
 enum lib_cpg_confchg_reason {
@@ -83,6 +86,12 @@ enum lib_cpg_confchg_reason {
 	CONFCHG_CPG_REASON_NODEDOWN = 3,
 	CONFCHG_CPG_REASON_NODEUP = 4,
 	CONFCHG_CPG_REASON_PROCDOWN = 5
+};
+
+enum lib_cpg_partial_types {
+	LIBCPG_PARTIAL_FIRST = 1,
+	LIBCPG_PARTIAL_CONTINUED = 2,
+	LIBCPG_PARTIAL_LAST = 3,
 };
 
 typedef struct {
@@ -200,10 +209,23 @@ struct res_lib_cpg_local_get {
 	mar_uint32_t local_nodeid __attribute__((aligned(8)));
 };
 
+struct res_lib_cpg_partial_send {
+	struct qb_ipc_response_header header __attribute__((aligned(8)));
+};
+
 struct req_lib_cpg_mcast {
 	struct qb_ipc_response_header header __attribute__((aligned(8)));
 	mar_uint32_t guarantee __attribute__((aligned(8)));
 	mar_uint32_t msglen __attribute__((aligned(8)));
+	mar_uint8_t message[] __attribute__((aligned(8)));
+};
+
+struct req_lib_cpg_partial_mcast {
+	struct qb_ipc_response_header header __attribute__((aligned(8)));
+	mar_uint32_t guarantee __attribute__((aligned(8)));
+	mar_uint32_t msglen __attribute__((aligned(8)));
+	mar_uint32_t fraglen __attribute__((aligned(8)));
+	mar_uint32_t type __attribute__((aligned(8)));
 	mar_uint8_t message[] __attribute__((aligned(8)));
 };
 
@@ -220,6 +242,17 @@ struct res_lib_cpg_deliver_callback {
 	mar_uint32_t msglen __attribute__((aligned(8)));
 	mar_uint32_t nodeid __attribute__((aligned(8)));
 	mar_uint32_t pid __attribute__((aligned(8)));
+	mar_uint8_t message[] __attribute__((aligned(8)));
+};
+
+struct res_lib_cpg_partial_deliver_callback {
+	struct qb_ipc_response_header header __attribute__((aligned(8)));
+	mar_cpg_name_t group_name __attribute__((aligned(8)));
+	mar_uint32_t msglen __attribute__((aligned(8)));
+	mar_uint32_t fraglen __attribute__((aligned(8)));
+	mar_uint32_t nodeid __attribute__((aligned(8)));
+	mar_uint32_t pid __attribute__((aligned(8)));
+	mar_uint32_t type __attribute__((aligned(8)));
 	mar_uint8_t message[] __attribute__((aligned(8)));
 };
 
