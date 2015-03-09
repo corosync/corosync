@@ -1412,7 +1412,7 @@ static int object_priv_get (
 	int res;
 	struct object_instance *object_instance;
 
-	objdb_unlock();
+	objdb_lock();
 	res = hdb_handle_get (&object_instance_database,
 		object_handle, (void *)&object_instance);
 	if (res != 0) {
