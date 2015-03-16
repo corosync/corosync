@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009-2014 Red Hat, Inc.
+ * Copyright (c) 2009-2015 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -2615,8 +2615,10 @@ static void message_handler_req_lib_votequorum_trackstart (void *conn,
 	const struct req_lib_votequorum_trackstart *req_lib_votequorum_trackstart = message;
 	struct res_lib_votequorum_status res_lib_votequorum_status;
 	struct quorum_pd *quorum_pd = (struct quorum_pd *)corosync_api->ipc_private_data_get (conn);
+	cs_error_t error = CS_OK;
 
 	ENTER();
+
 	/*
 	 * If an immediate listing of the current cluster membership
 	 * is requested, generate membership list
@@ -2625,6 +2627,11 @@ static void message_handler_req_lib_votequorum_trackstart (void *conn,
 	    req_lib_votequorum_trackstart->track_flags & CS_TRACK_CHANGES) {
 		log_printf(LOGSYS_LEVEL_DEBUG, "sending initial status to %p", conn);
 		votequorum_exec_send_quorum_notification(conn, req_lib_votequorum_trackstart->context);
+	}
+
+	if (quorum_pd->tracking_enabled) {
+		error = CS_ERR_EXIST;
+		goto response_send;
 	}
 
 	/*
@@ -2640,9 +2647,10 @@ static void message_handler_req_lib_votequorum_trackstart (void *conn,
 		list_add (&quorum_pd->list, &trackers_list);
 	}
 
+response_send:
 	res_lib_votequorum_status.header.size = sizeof(res_lib_votequorum_status);
 	res_lib_votequorum_status.header.id = MESSAGE_RES_VOTEQUORUM_STATUS;
-	res_lib_votequorum_status.header.error = CS_OK;
+	res_lib_votequorum_status.header.error = error;
 	corosync_api->ipc_response_send(conn, &res_lib_votequorum_status, sizeof(res_lib_votequorum_status));
 
 	LEAVE();
