@@ -511,6 +511,7 @@ static int net_deliver_fn (
 	 */
 	message_type = (char *)iovec->iov_base;
 	if (instance->flushing == 1 && *message_type == MESSAGE_TYPE_MEMB_JOIN) {
+		log_printf(instance->totemudp_log_level_warning, "JOIN or LEAVE message was thrown away during flush operation.");
 		iovec->iov_len = FRAME_SIZE_MAX;
 		return (0);
 	}
