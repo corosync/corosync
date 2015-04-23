@@ -246,7 +246,7 @@ static int corosync_main_config_log_destination_set (
 	if (map_get_string(key_name, &value) == CS_OK) {
 		if (deprecated) {
 			log_printf(LOGSYS_LEVEL_WARNING,
-			 "Warning: the %s config paramater has been obsoleted."
+			 "Warning: the %s config parameter has been obsoleted."
 			 " See corosync.conf man page %s directive.",
 			 key, replacement);
 		}
@@ -344,7 +344,7 @@ static int corosync_main_config_set (
 		int syslog_priority;
 
 		log_printf(LOGSYS_LEVEL_WARNING,
-		 "Warning: the syslog_level config paramater has been obsoleted."
+		 "Warning: the syslog_level config parameter has been obsoleted."
 		 " See corosync.conf man page syslog_priority directive.");
 
 		syslog_priority = logsys_priority_id_get(value);
