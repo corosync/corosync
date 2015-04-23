@@ -160,7 +160,7 @@ Implicit way is achieved by setting recovery policy to QUIT and let process exit
 If this happened, object is not deleted and corosync watchdog will take required action.
 
 .P
-Explicit way is usefull for situations, when developer can deal with some non-fatal fall of application.
+Explicit way is useful for situations, when developer can deal with some non-fatal fall of application.
 This mode is achieved by setting policy to RESTART and using SAM same as without Confdb integration.
 If real fail is needed (like too many restarts at all, per/sec, ...), it's possible to use \fBsam_mark_failed(3)\fR
 and let corosync watchdog take required action.
