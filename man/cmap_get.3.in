@@ -35,7 +35,7 @@
 
 .SH NAME
 .P
-cmap_get \- Retreive value from CMAP
+cmap_get \- Retrieve value from CMAP
 
 .SH SYNOPSIS
 .P
@@ -74,7 +74,7 @@ Also shortcuts for different types are defined
 .P
 The
 .B cmap_get
-function is used to retreive key from cmap previously set by
+function is used to retrieve key from cmap previously set by
 .B cmap_set(3)
 function. The
 .I handle
