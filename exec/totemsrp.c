@@ -316,6 +316,8 @@ struct totemsrp_instance {
 
 	struct srp_addr my_left_memb_list[PROCESSOR_COUNT_MAX];
 
+	unsigned int my_leave_memb_list[PROCESSOR_COUNT_MAX];
+	
 	int my_proc_list_entries;
 
 	int my_failed_list_entries;
@@ -329,6 +331,8 @@ struct totemsrp_instance {
 	int my_deliver_memb_entries;
 
 	int my_left_memb_entries;
+	
+	int my_leave_memb_entries;
 
 	struct memb_ring_id my_ring_id;
 
@@ -513,6 +517,8 @@ struct totemsrp_instance {
 	uint32_t threaded_mode_enabled;
 
 	uint32_t waiting_trans_ack;
+
+	int 	flushing;
 	
 	void * token_recv_event_handle;
 	void * token_sent_event_handle;
@@ -1476,6 +1482,52 @@ static void memb_set_print (
 	}
 }
 #endif
+static void my_leave_memb_clear(
+        struct totemsrp_instance *instance)
+{
+        memset(instance->my_leave_memb_list, 0, sizeof(instance->my_leave_memb_list));
+        instance->my_leave_memb_entries = 0;
+}
+
+static unsigned int my_leave_memb_match(
+        struct totemsrp_instance *instance,
+        unsigned int nodeid)
+{
+        int i;
+        unsigned int ret = 0;
+
+        for (i = 0; i < instance->my_leave_memb_entries; i++){
+                if (instance->my_leave_memb_list[i] ==  nodeid){
+                        ret = nodeid;
+                        break;
+                }
+        }
+        return ret;
+}
+
+static void my_leave_memb_set(
+        struct totemsrp_instance *instance,
+        unsigned int nodeid)
+{
+        int i, found = 0;
+        for (i = 0; i < instance->my_leave_memb_entries; i++){
+                if (instance->my_leave_memb_list[i] ==  nodeid){
+                        found = 1;
+                        break;
+                }
+        }
+        if (found == 1) {
+                return;
+        }
+        if (instance->my_leave_memb_entries < (PROCESSOR_COUNT_MAX - 1)) {
+                instance->my_leave_memb_list[instance->my_leave_memb_entries] = nodeid;
+                instance->my_leave_memb_entries++;
+        } else {
+                log_printf (instance->totemsrp_log_level_warning,
+                        "Cannot set LEAVE nodeid=%d", nodeid);
+        }
+}
+
 
 static void *totemsrp_buffer_alloc (struct totemsrp_instance *instance)
 {
@@ -1837,6 +1889,7 @@ static void memb_state_operational_enter (struct totemsrp_instance *instance)
 	unsigned int res;
 	char left_node_msg[1024];
 	char joined_node_msg[1024];
+	char failed_node_msg[1024];
 
 	instance->originated_orf_token = 0;
 
@@ -2008,14 +2061,29 @@ static void memb_state_operational_enter (struct totemsrp_instance *instance)
 
 	if (instance->my_left_memb_entries) {
 		int sptr = 0;
+		int sptr2 = 0;
 		sptr += snprintf(left_node_msg, sizeof(left_node_msg)-sptr, " left:");
 		for (i=0; i< instance->my_left_memb_entries; i++) {
 			sptr += snprintf(left_node_msg+sptr, sizeof(left_node_msg)-sptr, " %u", left_list[i]);
 		}
+		for (i=0; i< instance->my_left_memb_entries; i++) {
+			if (my_leave_memb_match(instance, left_list[i]) == 0) {
+				if (sptr2 == 0) {
+					sptr2 += snprintf(failed_node_msg, sizeof(failed_node_msg)-sptr2, " failed:");
+				}
+				sptr2 += snprintf(failed_node_msg+sptr2, sizeof(left_node_msg)-sptr2, " %u", left_list[i]);
+			}		
+		}
+		if (sptr2 == 0) {
+			failed_node_msg[0] = '\0';
+		}
 	}
 	else {
 		left_node_msg[0] = '\0';
+		failed_node_msg[0] = '\0';
 	}
+
+	my_leave_memb_clear(instance);
 
 	log_printf (instance->totemsrp_log_level_debug,
 		"entering OPERATIONAL state.");
@@ -2025,6 +2093,13 @@ static void memb_state_operational_enter (struct totemsrp_instance *instance)
 		instance->my_ring_id.seq,
 		joined_node_msg,
 		left_node_msg);
+
+	if (strlen(failed_node_msg)) {
+		log_printf (instance->totemsrp_log_level_notice,
+			"Failed to receive the leave message.%s",
+			failed_node_msg);
+	}
+
 	instance->memb_state = MEMB_STATE_OPERATIONAL;
 
 	instance->stats.operational_entered++;
@@ -3597,8 +3672,9 @@ static int message_handler_orf_token (
 		return (0);
 	}
 #endif
-
+	instance->flushing = 1;
 	totemrrp_recv_flush (instance->totemrrp_context);
+	instance->flushing = 0;
 
 	/*
 	 * Determine if we should hold (in reality drop) the token
@@ -4130,6 +4206,32 @@ static void memb_join_process (
 	memb_set_print ("my_faillist", instance->my_failed_list, instance->my_failed_list_entries);
 -*/
 
+	if (memb_join->header.type == MESSAGE_TYPE_MEMB_JOIN) {
+		if (instance->flushing) {
+			if (memb_join->header.nodeid == LEAVE_DUMMY_NODEID) {
+				log_printf (instance->totemsrp_log_level_warning,
+			    		"Discarding LEAVE message during flush, nodeid=%u", 
+						memb_join->failed_list_entries > 0 ? failed_list[memb_join->failed_list_entries - 1 ].addr[0].nodeid : LEAVE_DUMMY_NODEID);
+				if (memb_join->failed_list_entries > 0) {
+					my_leave_memb_set(instance, failed_list[memb_join->failed_list_entries - 1 ].addr[0].nodeid);
+				}
+			} else {
+				log_printf (instance->totemsrp_log_level_warning,
+			    		"Discarding JOIN message during flush, nodeid=%d", memb_join->header.nodeid);
+			}
+			return;
+		} else {
+			if (memb_join->header.nodeid == LEAVE_DUMMY_NODEID) {
+				log_printf (instance->totemsrp_log_level_debug,
+		    		"Recieve LEAVE message from %u", memb_join->failed_list_entries > 0 ? failed_list[memb_join->failed_list_entries - 1 ].addr[0].nodeid : LEAVE_DUMMY_NODEID);
+				if (memb_join->failed_list_entries > 0) {
+					my_leave_memb_set(instance, failed_list[memb_join->failed_list_entries - 1 ].addr[0].nodeid);
+				}
+			}
+		}
+		
+	}
+
 	if (memb_set_equal (proc_list,
 		memb_join->proc_list_entries,
 		instance->my_proc_list,
@@ -4572,6 +4674,7 @@ void main_deliver_fn (
 			    (unsigned int)msg_len);
 		return;
 	}
+
 
 	switch (message_header->type) {
 	case MESSAGE_TYPE_ORF_TOKEN:
