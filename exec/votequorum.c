@@ -1011,7 +1011,10 @@ static void are_we_quorate(unsigned int total_votes)
 	}
 
 	if ((auto_tie_breaker != ATB_NONE) &&
+	    /* Must be a half (or half-1) split */
 	    (total_votes == (us->expected_votes / 2)) &&
+	    /* If the 'other' partition in a split might have quorum then we can't run ATB */
+	    (previous_quorum_members_entries - quorum_members_entries < quorum) &&
 	    (check_auto_tie_breaker() == 1)) {
 		quorate = 1;
 	}
@@ -1331,6 +1334,34 @@ static char *votequorum_readconfig(int runtime)
 		log_printf(LOGSYS_LEVEL_CRIT, "two_node has been disabled, please fix your corosync.conf");
 		two_node = 0;
 	}
+
+	/* If ATB is set and the cluster has an odd number of nodes then wait_for_all needs
+	 * to be set so that an isolated half+1 without the tie breaker node
+	 * does not have quorum on reboot.
+	 */
+	if ((auto_tie_breaker != ATB_NONE) && (node_expected_votes % 2) &&
+	    (!wait_for_all)) {
+		if (last_man_standing) {
+			/* if LMS is set too, it's a fatal configuration error. We can't dictate to the user what
+			 *  they might want so we'll just quit.
+			 */
+			log_printf(LOGSYS_LEVEL_CRIT, "auto_tie_breaker is set, the cluster has an odd number of nodes\n");
+			log_printf(LOGSYS_LEVEL_CRIT, "and last_man_standing is also set. With this situation a better\n");
+			log_printf(LOGSYS_LEVEL_CRIT, "solution would be to disable LMS, leave ATB enabled, and also\n");
+			log_printf(LOGSYS_LEVEL_CRIT, "enable wait_for_all (mandatory for ATB in odd-numbered clusters).\n");
+			log_printf(LOGSYS_LEVEL_CRIT, "Due to this ambiguity, corosync will fail to start. Please fix your corosync.conf\n");
+			error = (char *)"configuration error: auto_tie_breaker & last_man_standing not available in odd sized cluster";
+			goto out;
+		}
+		else {
+			log_printf(LOGSYS_LEVEL_CRIT, "auto_tie_breaker is set and the cluster has an odd number of nodes.\n");
+			log_printf(LOGSYS_LEVEL_CRIT, "wait_for_all needs to be set for this configuration but it is missing\n");
+			log_printf(LOGSYS_LEVEL_CRIT, "Therefore auto_tie_breaker has been disabled. Please fix your corosync.conf\n");
+			auto_tie_breaker = ATB_NONE;
+			icmap_set_uint32("runtime.votequorum.atb_type", auto_tie_breaker);
+		}
+	}
+
 	/*
 	 * quorum device is not compatible with last_man_standing and auto_tie_breaker
 	 * neither lms or atb can be set at runtime, so there is no need to check for
