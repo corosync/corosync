@@ -1,6 +1,7 @@
 # Copyright (c) 2009 Red Hat, Inc.
 #
-# Authors: Andrew Beekhof
+# Authors:Jan Friesse (jfriesse@redhat.com)
+#         Andrew Beekhof
 #         Steven Dake (sdake@redhat.com)
 #
 # This software licensed under BSD license, the text of which follows:
@@ -31,43 +32,14 @@
 
 MAINTAINERCLEANFILES    = Makefile.in
 
-EXTRA_DIST		= COROSYNC-MIB.txt corosync-signals.conf \
-			  corosync.conf.example \
-			  corosync.conf.example.udpu \
-			  corosync.xml.example \
-			  xml2conf.xsl \
-			  lenses/corosync.aug \
-			  lenses/tests/test_corosync.aug
+EXTRA_DIST		= corosync.in
 
-corosysconfdir		= ${COROSYSCONFDIR}
+corosync: corosync.in
+	sed -e 's#@''LOGDIR@#${LOGDIR}#g' \
+	    $< > $@
 
-corosysconf_DATA	= corosync.conf.example \
-			  corosync.conf.example.udpu
+logrotatecorosyncdir    = ${LOGROTATEDIR}
+logrotatecorosync_DATA  = corosync
 
-if INSTALL_AUGEAS
-corolensdir		= ${datadir}/augeas/lenses
-corolens_DATA		= lenses/corosync.aug
-
-corolenstestdir		= ${corolensdir}/tests
-corolenstest_DATA	= lenses/tests/test_corosync.aug
-endif
-
-if INSTALL_XMLCONF
-corosysxmlconfdir	= ${COROSYSCONFDIR}
-corosysxmlconf_DATA	= corosync.xml.example
-
-corosysxmlxsltdir	= ${datadir}/corosync
-corosysxmlxslt_DATA	= xml2conf.xsl
-endif
-
-if INSTALL_MIB
-mibdir			= $(datadir)/snmp/mibs
-mib_DATA		= COROSYNC-MIB.txt
-endif
-
-if INSTALL_DBUSCONF
-dbusdir			= $(sysconfdir)/dbus-1/system.d
-dbus_DATA		= corosync-signals.conf
-endif
-
-SUBDIRS = logrotate
+clean-local:
+	rm -f corosync

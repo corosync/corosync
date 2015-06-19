@@ -199,7 +199,8 @@ AC_CONFIG_FILES([Makefile
 		 tools/Makefile
 		 conf/Makefile
 		 qdevices/Makefile
-		 Doxyfile])
+		 Doxyfile
+		 conf/logrotate/Makefile])
 
 ### Local business
 
@@ -368,6 +369,16 @@ AC_ARG_WITH([initwrappersdir],
 	[  --with-initwrappersdir=DIR   : path to init wrappers files directory. ],
 	[ INITWRAPPERSDIR="$withval" ],
 	[ INITWRAPPERSDIR="$datarootdir/corosync" ])
+
+AC_ARG_WITH([logdir],
+	[  --logdir=DIR   : the base directory for corosync logging files. ],
+	[ LOGDIR="$withval" ],
+	[ LOGDIR="$localstatedir/log/cluster" ])
+
+AC_ARG_WITH([logrotatedir],
+	[  --logrotatedir=DIR   : the base directory for logrorate.d files.  ],
+	[ LOGROTATEDIR="$withval" ],
+	[ LOGROTATEDIR="$sysconfdir/logrotate.d" ])
 
 AC_ARG_ENABLE([snmp],
 	[  --enable-snmp                   : SNMP protocol support ],
@@ -674,6 +685,8 @@ AC_SUBST([SYSTEMDDIR])
 AC_SUBST([UPSTARTDIR])
 INITWRAPPERSDIR=$(eval echo ${INITWRAPPERSDIR})
 AC_SUBST([INITWRAPPERSDIR])
+AC_SUBST([LOGDIR])
+AC_SUBST([LOGROTATEDIR])
 
 AC_SUBST([SOMAJOR])
 AC_SUBST([SOMINOR])
@@ -716,6 +729,8 @@ AC_MSG_RESULT([  System init.d directory  = ${INITDDIR}])
 AC_MSG_RESULT([  System systemd directory = ${SYSTEMDDIR}])
 AC_MSG_RESULT([  System upstart directory = ${UPSTARTDIR}])
 AC_MSG_RESULT([  System init wraps dir    = ${INITWRAPPERSDIR}])
+AC_MSG_RESULT([  Log directory            = ${LOGDIR}])
+AC_MSG_RESULT([  Log rotate directory     = ${LOGROTATEDIR}])
 AC_MSG_RESULT([  corosync config dir      = ${COROSYSCONFDIR}])
 AC_MSG_RESULT([  Features                 =${PACKAGE_FEATURES}])
 AC_MSG_RESULT([])

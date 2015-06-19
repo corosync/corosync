@@ -196,6 +196,7 @@ fi
 %config(noreplace) %{_sysconfdir}/corosync/corosync.conf.example.udpu
 %config(noreplace) %{_sysconfdir}/sysconfig/corosync-notifyd
 %config(noreplace) %{_sysconfdir}/sysconfig/corosync
+%config(noreplace) %{_sysconfdir}/logrotate.d/corosync
 %if %{with dbus}
 %{_sysconfdir}/dbus-1/system.d/corosync-signals.conf
 %endif
