@@ -199,8 +199,10 @@ crypto_cipher and crypto_hash.
 .TP
 rrp_mode
 This specifies the mode of redundant ring, which may be none, active, or
-passive.  Active replication offers slightly lower latency from transmit
-to delivery in faulty network environments but with less performance.
+passive.  Currently only 'passive' is supported or tested
+(using  'active'  is  not recommended). Active replication offers
+slightly lower latency from transmit to delivery in faulty network
+environments but with less performance.
 Passive replication may nearly double the speed of the totem protocol
 if the protocol doesn't become cpu bound.  The final option is none, in
 which case only one network interface will be used to operate the totem
