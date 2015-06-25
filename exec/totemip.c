@@ -626,7 +626,7 @@ int totemip_iface_check(struct totem_ip_address *bindnet,
 					memcpy(&network, RTA_DATA(tb[IFA_LOCAL]), sizeof(uint32_t));
 					memcpy(&addr, bindnet->addr, sizeof(uint32_t));
 
-					if ((addr & netmask) == (network & netmask)) {
+					if ((addr) == (network & netmask)) {
 						memcpy(ipaddr.addr, RTA_DATA(tb[IFA_ADDRESS]), TOTEMIP_ADDRLEN);
 						found_if = 1;
 					}
