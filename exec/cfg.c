@@ -177,15 +177,15 @@ static struct corosync_lib_handler cfg_lib_engine[] =
 	},
 	{ /* 2 */
 		.lib_handler_fn		= message_handler_req_lib_cfg_killnode,
-		.flow_control		= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
+		.flow_control		= CS_LIB_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 3 */
 		.lib_handler_fn		= message_handler_req_lib_cfg_tryshutdown,
-		.flow_control		= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
+		.flow_control		= CS_LIB_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 4 */
 		.lib_handler_fn		= message_handler_req_lib_cfg_replytoshutdown,
-		.flow_control		= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
+		.flow_control		= CS_LIB_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 5 */
 		.lib_handler_fn		= message_handler_req_lib_cfg_get_node_addrs,
@@ -197,7 +197,7 @@ static struct corosync_lib_handler cfg_lib_engine[] =
 	},
 	{ /* 7 */
 		.lib_handler_fn		= message_handler_req_lib_cfg_reload_config,
-		.flow_control		= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
+		.flow_control		= CS_LIB_FLOW_CONTROL_REQUIRED
 	}
 };
 
