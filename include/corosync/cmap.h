@@ -283,7 +283,7 @@ extern cs_error_t cmap_iter_init(cmap_handle_t handle, const char *prefix, cmap_
  * length of returned value and/or type is returned.
  *
  * @param handle cmap handle
- * @param cmap_iter_handle handle of iteration returned by cmap_iter_init
+ * @param iter_handle handle of iteration returned by cmap_iter_init
  * @param key_name place to store name of key. Maximum length is CMAP_KEYNAME_MAXLEN
  * @param value_len length of value
  * @param type type of value
