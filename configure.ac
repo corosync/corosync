@@ -373,12 +373,12 @@ AC_ARG_WITH([initwrappersdir],
 	[ INITWRAPPERSDIR="$datarootdir/corosync" ])
 
 AC_ARG_WITH([logdir],
-	[  --logdir=DIR   : the base directory for corosync logging files. ],
+	[  --with-logdir=DIR       : the base directory for corosync logging files. ],
 	[ LOGDIR="$withval" ],
 	[ LOGDIR="$localstatedir/log/cluster" ])
 
 AC_ARG_WITH([logrotatedir],
-	[  --logrotatedir=DIR   : the base directory for logrorate.d files.  ],
+	[  --with-logrotatedir=DIR : the base directory for logrorate.d files.  ],
 	[ LOGROTATEDIR="$withval" ],
 	[ LOGROTATEDIR="$sysconfdir/logrotate.d" ])
 
