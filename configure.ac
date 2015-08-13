@@ -78,7 +78,7 @@ if ! ${MAKE-make} --version /cannot/make/this >/dev/null 2>&1; then
 	AC_MSG_ERROR([you don't seem to have GNU make; it is required])
 fi
 
-sinclude(coroysync-default.m4)
+sinclude(corosync-default.m4)
 
 AC_PROG_CC
 AC_PROG_CXX
