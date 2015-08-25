@@ -202,6 +202,8 @@ AC_CONFIG_FILES([Makefile
 		 conf/Makefile
 		 qdevices/Makefile
 		 Doxyfile
+		 conf/corosync.conf.example
+		 conf/corosync.conf.example.udpu
 		 conf/logrotate/Makefile])
 
 ### Local business
