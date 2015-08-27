@@ -36,6 +36,8 @@
 #ifndef COROSYNC_VOTEQUORUM_H_DEFINED
 #define COROSYNC_VOTEQUORUM_H_DEFINED
 
+#include <corosync/corotypes.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
