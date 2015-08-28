@@ -34,6 +34,7 @@
 .TH CPG_ZCB_FREE 2009-04-15 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
 .SH NAME
 cpg_zcb_free \- Frees a zero copy buffer
+.SH SYNOPSIS
 .B #include <corosync/cpg.h>
 .sp
 .BI "int cpg_zcb_fre(cpg_handle_t " handle ", void *" buffer ");
