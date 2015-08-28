@@ -18,7 +18,7 @@ logging {
 	fileline: off
 	to_logfile: yes
 	to_syslog: yes
-	logfile: /var/log/cluster/corosync.log
+	logfile: @LOGDIR@/corosync.log
 	debug: off
 	timestamp: on
 	logger_subsys {

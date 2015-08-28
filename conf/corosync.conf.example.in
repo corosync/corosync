@@ -59,7 +59,7 @@ logging {
 	# Log to a log file. When set to "no", the "logfile" option
 	# must not be set.
 	to_logfile: yes
-	logfile: /var/log/cluster/corosync.log
+	logfile: @LOGDIR@/corosync.log
 	# Log to the system log daemon. When in doubt, set to yes.
 	to_syslog: yes
 	# Log debug messages (very verbose). When in doubt, leave off.
