@@ -39,7 +39,8 @@
 extern "C" {
 #endif
 
-#define QNETD_PROGRAM_NAME	"corosync-qnetd"
+#define QNETD_PROGRAM_NAME		"corosync-qnetd"
+#define QNETD_DEFAULT_HOST_PORT		4433
 
 #ifdef __cplusplus
 }

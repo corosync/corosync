@@ -32,6 +32,8 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <config.h>
+
 #include <stdio.h>
 #include <nss.h>
 #include <pk11func.h>
@@ -47,6 +49,7 @@
 #include <syslog.h>
 #include <signal.h>
 
+#include "qnetd-defines.h"
 #include "msg.h"
 #include "msgio.h"
 #include "tlv.h"
@@ -58,13 +61,11 @@
 #include "dynar.h"
 #include "timer-list.h"
 
-#define QNETD_HOST      NULL
-#define QNETD_PORT      4433
 #define QNETD_LISTEN_BACKLOG	10
 #define QNETD_MAX_CLIENT_SEND_SIZE	(1 << 15)
 #define QNETD_MAX_CLIENT_RECEIVE_SIZE	(1 << 15)
 
-#define NSS_DB_DIR	"nssdb"
+#define NSS_DB_DIR      COROSYSCONFDIR "/qnetd/nssdb"
 #define QNETD_CERT_NICKNAME	"QNetd Cert"
 
 #define QNETD_TLS_SUPPORTED			TLV_TLS_SUPPORTED
@@ -85,6 +86,8 @@ struct qnetd_instance {
 	struct qnetd_poll_array poll_array;
 	enum tlv_tls_supported tls_supported;
 	int tls_client_cert_required;
+	const char *host_addr;
+	uint16_t host_port;
 };
 
 /*
@@ -309,6 +312,7 @@ qnetd_client_check_tls(struct qnetd_instance *instance, struct qnetd_client *cli
 		if (client->tls_started && instance->tls_client_cert_required && !client->tls_peer_certificate_verified) {
 			check_certificate = 1;
 		}
+		break;
 	case TLV_TLS_REQUIRED:
 		tls_required = 1;
 
@@ -1029,10 +1033,46 @@ signal_handlers_register(void)
 	sigaction(SIGINT, &act, NULL);
 }
 
+static void
+usage(void)
+{
+	printf("usage: %s [-h listen_addr] [-p listen_port]\n", QNETD_PROGRAM_NAME);
+}
+
+static void
+cli_parse(int argc, char * const argv[], char **host_addr, uint16_t *host_port)
+{
+	int ch;
+	char *ep;
+
+	*host_addr = NULL;
+	*host_port = QNETD_DEFAULT_HOST_PORT;
+
+	while ((ch = getopt(argc, argv, "h:p:")) != -1) {
+		switch (ch) {
+		case 'h':
+			*host_addr = strdup(optarg);
+			break;
+		case 'p':
+			*host_port = strtol(optarg, &ep, 10);
+			if (*host_port <= 0 || *host_port > ((uint16_t)~0) || *ep != '\0') {
+				errx(1, "host port must be in range 0-65535");
+			}
+			break;
+		case '?':
+			usage();
+			exit(1);
+			break;
+		}
+	}
+}
+
 int
-main(void)
+main(int argc, char *argv[])
 {
 	struct qnetd_instance instance;
+	char *host_addr;
+	uint16_t host_port;
 
 	/*
 	 * INIT
@@ -1048,16 +1088,20 @@ main(void)
 		qnetd_err_nss();
 	}
 
+	cli_parse(argc, argv, &host_addr, &host_port);
+
 	if (qnetd_instance_init(&instance, QNETD_MAX_CLIENT_RECEIVE_SIZE, QNETD_MAX_CLIENT_SEND_SIZE,
 	    QNETD_TLS_SUPPORTED, QNETD_TLS_CLIENT_CERT_REQUIRED) == -1) {
 		errx(1, "Can't initialize qnetd");
 	}
+	instance.host_addr = host_addr;
+	instance.host_port = host_port;
 
 	if (qnetd_instance_init_certs(&instance) == -1) {
 		qnetd_err_nss();
 	}
 
-	instance.server.socket = nss_sock_create_listen_socket(QNETD_HOST, QNETD_PORT, PR_AF_INET6);
+	instance.server.socket = nss_sock_create_listen_socket(instance.host_addr, instance.host_port, PR_AF_INET6);
 	if (instance.server.socket == NULL) {
 		qnetd_err_nss();
 	}

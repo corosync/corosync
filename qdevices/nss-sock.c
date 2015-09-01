@@ -39,8 +39,14 @@
 int
 nss_sock_init_nss(char *config_dir)
 {
-	if (NSS_Init(config_dir) != SECSuccess) {
-		return (-1);
+	if (config_dir == NULL) {
+		if (NSS_NoDB_Init(NULL) != SECSuccess) {
+			return (-1);
+		}
+	} else {
+		if (NSS_Init(config_dir) != SECSuccess) {
+			return (-1);
+		}
 	}
 
 	if (NSS_SetDomesticPolicy() != SECSuccess) {

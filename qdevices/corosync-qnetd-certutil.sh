@@ -196,7 +196,7 @@ sign_cluster_cert() {
     fi
 
     echo "Signing cluster certificate"
-    certutil -C -m `get_serial_no` -i "$CERTIFICATE_FILE" -o "$CRT_FILE" -c "$CA_NICKNAME" -d "$DB_DIR"
+    certutil -C -v "$CRT_VALIDITY" -m `get_serial_no` -i "$CERTIFICATE_FILE" -o "$CRT_FILE" -c "$CA_NICKNAME" -d "$DB_DIR"
 
     echo "Certificate stored in $CRT_FILE"
 }

@@ -32,6 +32,8 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <config.h>
+
 #include <stdio.h>
 #include <nss.h>
 #include <secerr.h>
@@ -47,6 +49,15 @@
 #include <err.h>
 #include <keyhi.h>
 
+/*
+ * Needed for creating nspr handle from unix fd
+ */
+#include <private/pprio.h>
+
+#include <cmap.h>
+#include <votequorum.h>
+
+#include "qnetd-defines.h"
 #include "dynar.h"
 #include "nss-sock.h"
 #include "tlv.h"
@@ -55,30 +66,19 @@
 #include "qnetd-log.h"
 #include "timer-list.h"
 
-#define NSS_DB_DIR	"node/nssdb"
+#define NSS_DB_DIR	COROSYSCONFDIR "/qdevice-net/nssdb"
 
-#define QNETD_HOST	"localhost"
-#define QNETD_PORT	4433
+/*
+ * It's usually not a good idea to change following defines
+ */
+#define QDEVICE_NET_INITIAL_MSG_RECEIVE_SIZE	(1 << 15)
+#define QDEVICE_NET_INITIAL_MSG_SEND_SIZE	(1 << 15)
+#define QDEVICE_NET_MIN_MSG_SEND_SIZE		QDEVICE_NET_INITIAL_MSG_SEND_SIZE
+#define QDEVICE_NET_MAX_MSG_RECEIVE_SIZE	(1 << 24)
 
 #define QNETD_NSS_SERVER_CN		"Qnetd Server"
 #define QDEVICE_NET_NSS_CLIENT_CERT_NICKNAME	"Cluster Cert"
-
-#define QDEVICE_NET_CLUSTER_NAME		"Testcluster"
-
-#define QDEVICE_NET_INITIAL_MSG_RECEIVE_SIZE	(1 << 15)
-#define QDEVICE_NET_INITIAL_MSG_SEND_SIZE	(1 << 15)
-
-#define QDEVICE_NET_MIN_MSG_SEND_SIZE		QDEVICE_NET_INITIAL_MSG_SEND_SIZE
-
-#define QDEVICE_NET_MAX_MSG_RECEIVE_SIZE	(1 << 24)
-
-#define QDEVICE_NET_TLS_SUPPORTED	TLV_TLS_SUPPORTED
-
-#define QDEVICE_NET_NODE_ID		42
-
-#define QDEVICE_NET_DECISION_ALGORITHM		TLV_DECISION_ALGORITHM_TYPE_TEST
-
-#define QDEVICE_NET_HEARTBEAT_INTERVAL		10000
+#define QDEVICE_NET_VOTEQUORUM_DEVICE_NAME	"QdeviceNet"
 
 #define qdevice_net_log			qnetd_log
 #define qdevice_net_log_nss		qnetd_log_nss
@@ -88,6 +88,8 @@
 
 #define QDEVICE_NET_LOG_TARGET_STDERR		QNETD_LOG_TARGET_STDERR
 #define QDEVICE_NET_LOG_TARGET_SYSLOG		QNETD_LOG_TARGET_SYSLOG
+
+#define MAX_CS_TRY_AGAIN	10
 
 enum qdevice_net_state {
 	QDEVICE_NET_STATE_WAITING_PREINIT_REPLY,
@@ -118,12 +120,21 @@ struct qdevice_net_instance {
 	enum tlv_tls_supported tls_supported;
 	int using_tls;
 	uint32_t node_id;
-	uint32_t heartbeat_interval;
+	uint32_t heartbeat_interval;		/* Heartbeat interval during normal operation */
+	uint32_t sync_heartbeat_interval;	/* Heartbeat interval during corosync sync */
+	const char *host_addr;
+	uint16_t host_port;
+	const char *cluster_name;
 	enum tlv_decision_algorithm_type decision_algorithm;
 	struct timer_list main_timer_list;
 	struct timer_list_entry *echo_request_timer;
 	int schedule_disconnect;
+	cmap_handle_t cmap_handle;
+	votequorum_handle_t votequorum_handle;
+	PRFileDesc *votequorum_poll_fd;
 };
+
+static votequorum_ring_id_t global_last_received_ring_id;
 
 static void
 err_nss(void) {
@@ -819,8 +830,9 @@ qdevice_net_socket_write(struct qdevice_net_instance *instance)
 }
 
 
-#define QDEVICE_NET_POLL_NO_FDS		1
+#define QDEVICE_NET_POLL_NO_FDS		2
 #define QDEVICE_NET_POLL_SOCKET		0
+#define QDEVICE_NET_POLL_VOTEQUORUM	1
 
 static int
 qdevice_net_poll(struct qdevice_net_instance *instance)
@@ -834,6 +846,8 @@ qdevice_net_poll(struct qdevice_net_instance *instance)
 	if (instance->sending_msg || instance->sending_echo_request_msg) {
 		pfds[QDEVICE_NET_POLL_SOCKET].in_flags |= PR_POLL_WRITE;
 	}
+	pfds[QDEVICE_NET_POLL_VOTEQUORUM].fd = instance->votequorum_poll_fd;
+	pfds[QDEVICE_NET_POLL_VOTEQUORUM].in_flags = PR_POLL_READ;
 
 	instance->schedule_disconnect = 0;
 
@@ -847,6 +861,11 @@ qdevice_net_poll(struct qdevice_net_instance *instance)
 						instance->schedule_disconnect = 1;
 					}
 
+					break;
+				case QDEVICE_NET_POLL_VOTEQUORUM:
+					if (votequorum_dispatch(instance->votequorum_handle, CS_DISPATCH_ALL) != CS_OK) {
+						errx(1, "Can't dispatch votequorum messages");
+					}
 					break;
 				default:
 					errx(1, "Unhandled read poll descriptor %u", i);
@@ -902,7 +921,8 @@ qdevice_net_poll(struct qdevice_net_instance *instance)
 static int
 qdevice_net_instance_init(struct qdevice_net_instance *instance, size_t initial_receive_size,
     size_t initial_send_size, size_t min_send_size, size_t max_receive_size, enum tlv_tls_supported tls_supported,
-    uint32_t node_id, enum tlv_decision_algorithm_type decision_algorithm, uint32_t heartbeat_interval)
+    uint32_t node_id, enum tlv_decision_algorithm_type decision_algorithm, uint32_t heartbeat_interval,
+    const char *host_addr, uint16_t host_port, const char *cluster_name)
 {
 
 	memset(instance, 0, sizeof(*instance));
@@ -914,6 +934,9 @@ qdevice_net_instance_init(struct qdevice_net_instance *instance, size_t initial_
 	instance->node_id = node_id;
 	instance->decision_algorithm = decision_algorithm;
 	instance->heartbeat_interval = heartbeat_interval;
+	instance->host_addr = host_addr;
+	instance->host_port = host_port;
+	instance->cluster_name = cluster_name;
 	dynar_init(&instance->receive_buffer, initial_receive_size);
 	dynar_init(&instance->send_buffer, initial_send_size);
 	dynar_init(&instance->echo_request_send_buffer, initial_send_size);
@@ -933,36 +956,239 @@ qdevice_net_instance_destroy(struct qdevice_net_instance *instance)
 	dynar_destroy(&instance->send_buffer);
 	dynar_destroy(&instance->echo_request_send_buffer);
 
+	/*
+	 * Close cmap and votequorum connections
+	 */
+	if (votequorum_qdevice_unregister(instance->votequorum_handle, QDEVICE_NET_VOTEQUORUM_DEVICE_NAME) != CS_OK) {
+		qdevice_net_log_nss(LOG_WARNING, "Unable to unregister votequorum device");
+	}
+	votequorum_finalize(instance->votequorum_handle);
+	cmap_finalize(instance->cmap_handle);
+
 	return (0);
+}
+
+static void
+qdevice_net_init_cmap(cmap_handle_t *handle)
+{
+	cs_error_t res;
+	int no_retries;
+
+	no_retries = 0;
+
+	while ((res = cmap_initialize(handle)) == CS_ERR_TRY_AGAIN && no_retries++ < MAX_CS_TRY_AGAIN) {
+		sleep(1);
+	}
+
+        if (res != CS_OK) {
+		errx(1, "Failed to initialize the cmap API. Error %s", cs_strerror(res));
+	}
+}
+
+/*
+ * Check string to value on, off, yes, no, 0, 1. Return 1 if value is on, yes or 1, 0 if
+ * value is off, no or 0 and -1 otherwise.
+ */
+static int
+qdevice_net_parse_bool_str(const char *str)
+{
+
+	if (strcasecmp(str, "yes") == 0 || strcasecmp(str, "on") == 0 || strcasecmp(str, "1") == 0) {
+		return (1);
+	} else if (strcasecmp(str, "no") == 0 || strcasecmp(str, "off") == 0 || strcasecmp(str, "0") == 0) {
+		return (0);
+	}
+
+	return (-1);
+}
+
+static void
+qdevice_net_instance_init_from_cmap(struct qdevice_net_instance *instance, cmap_handle_t cmap_handle)
+{
+	uint32_t node_id;
+	enum tlv_tls_supported tls_supported;
+	int i;
+	char *str;
+	enum tlv_decision_algorithm_type decision_algorithm;
+	uint32_t heartbeat_interval;
+	uint32_t sync_heartbeat_interval;
+	char *host_addr;
+	int host_port;
+	char *ep;
+	char *cluster_name;
+
+	/*
+	 * Check if provider is net
+	 */
+	if (cmap_get_string(cmap_handle, "quorum.device.model", &str) != CS_OK) {
+		errx(1, "Can't read quorum.device.model cmap key.");
+	}
+
+	if (strcmp(str, "net") != 0) {
+		free(str);
+		errx(1, "Configured device model is not net. This qdevice provider is only for net.");
+	}
+	free(str);
+
+	/*
+	 * Get nodeid
+	 */
+	if (cmap_get_uint32(cmap_handle, "runtime.votequorum.this_node_id", &node_id) != CS_OK) {
+		errx(1, "Unable to retrive this node nodeid.");
+	}
+
+	/*
+	 * Check tls
+	 */
+	if (cmap_get_string(cmap_handle, "quorum.device.net.tls", &str) == CS_OK) {
+		if ((i = qdevice_net_parse_bool_str(str)) == -1) {
+			free(str);
+			errx(1, "quorum.device.net.tls value is not valid.");
+		}
+
+		if (i == 1) {
+			tls_supported = TLV_TLS_SUPPORTED;
+		} else {
+			tls_supported = TLV_TLS_UNSUPPORTED;
+		}
+
+		free(str);
+	}
+
+	/*
+	 * Host
+	 */
+	if (cmap_get_string(cmap_handle, "quorum.device.net.host", &str) != CS_OK) {
+		free(str);
+		errx(1, "Qdevice net daemon address is not defined (quorum.device.net.host)");
+	}
+	host_addr = str;
+
+	if (cmap_get_string(cmap_handle, "quorum.device.net.port", &str) == CS_OK) {
+		host_port = strtol(str, &ep, 10);
+
+		free(str);
+
+		if (host_port <= 0 || host_port > ((uint16_t)~0) || *ep != '\0') {
+			errx(1, "quorum.device.net.port must be in range 0-65535");
+		}
+	} else {
+		host_port = QNETD_DEFAULT_HOST_PORT;
+	}
+
+	/*
+	 * Cluster name
+	 */
+	if (cmap_get_string(cmap_handle, "totem.cluster_name", &str) != CS_OK) {
+		errx(1, "Cluster name (totem.cluster_name) has to be defined.");
+	}
+	cluster_name = str;
+
+	/*
+	 * Configure timeouts
+	 */
+	if (cmap_get_uint32(cmap_handle, "quorum.device.timeout", &heartbeat_interval) != CS_OK) {
+		heartbeat_interval = VOTEQUORUM_QDEVICE_DEFAULT_TIMEOUT;
+	}
+	heartbeat_interval = heartbeat_interval * 0.8;
+
+	if (cmap_get_uint32(cmap_handle, "quorum.device.sync_timeout", &sync_heartbeat_interval) != CS_OK) {
+		sync_heartbeat_interval = VOTEQUORUM_QDEVICE_DEFAULT_SYNC_TIMEOUT;
+	}
+	sync_heartbeat_interval = sync_heartbeat_interval * 0.8;
+
+
+	/*
+	 * Choose decision algorithm
+	 */
+	decision_algorithm = TLV_DECISION_ALGORITHM_TYPE_TEST;
+
+	/*
+	 * Really initialize instance
+	 */
+	if (qdevice_net_instance_init(instance,
+	    QDEVICE_NET_INITIAL_MSG_RECEIVE_SIZE, QDEVICE_NET_INITIAL_MSG_SEND_SIZE,
+	    QDEVICE_NET_MIN_MSG_SEND_SIZE, QDEVICE_NET_MAX_MSG_RECEIVE_SIZE,
+	    tls_supported, node_id, decision_algorithm,
+	    heartbeat_interval,
+	    host_addr, host_port, cluster_name) == -1) {
+		errx(1, "Can't initialize qdevice-net");
+	}
+
+	instance->cmap_handle = cmap_handle;
+}
+
+static void qdevice_net_votequorum_notification(votequorum_handle_t votequorum_handle,
+    uint64_t context, uint32_t quorate,
+    votequorum_ring_id_t ring_id, uint32_t node_list_entries, votequorum_node_t node_list[])
+{
+
+	memcpy(&global_last_received_ring_id, &ring_id, sizeof(ring_id));
+}
+
+static void
+qdevice_net_init_votequorum(struct qdevice_net_instance *instance)
+{
+	votequorum_callbacks_t votequorum_callbacks;
+	votequorum_handle_t votequorum_handle;
+	cs_error_t res;
+	int no_retries;
+	int fd;
+
+	memset(&votequorum_callbacks, 0, sizeof(votequorum_callbacks));
+	votequorum_callbacks.votequorum_notify_fn = qdevice_net_votequorum_notification;
+
+	no_retries = 0;
+
+	while ((res = votequorum_initialize(&votequorum_handle, &votequorum_callbacks)) == CS_ERR_TRY_AGAIN &&
+	    no_retries++ < MAX_CS_TRY_AGAIN) {
+		sleep(1);
+	}
+
+        if (res != CS_OK) {
+		errx(1, "Failed to initialize the votequorum API. Error %s", cs_strerror(res));
+	}
+
+	if ((res = votequorum_trackstart(votequorum_handle, 0, CS_TRACK_CHANGES)) != CS_OK) {
+		errx(1, "Can't start tracking votequorum changes. Error %s", cs_strerror(res));
+	}
+
+	if ((res = votequorum_qdevice_register(votequorum_handle, QDEVICE_NET_VOTEQUORUM_DEVICE_NAME)) != CS_OK) {
+		errx(1, "Can't register votequorum device. Error %s", cs_strerror(res));
+	}
+
+	instance->votequorum_handle = votequorum_handle;
+
+	votequorum_fd_get(votequorum_handle, &fd);
+	if ((instance->votequorum_poll_fd = PR_CreateSocketPollFd(fd)) == NULL) {
+		err_nss();
+	}
+
 }
 
 int
 main(void)
 {
 	struct qdevice_net_instance instance;
+	cmap_handle_t cmap_handle;
 
 	/*
 	 * Init
 	 */
+	qdevice_net_init_cmap(&cmap_handle);
+	qdevice_net_instance_init_from_cmap(&instance, cmap_handle);
+
 	qdevice_net_log_init(QDEVICE_NET_LOG_TARGET_STDERR);
         qdevice_net_log_set_debug(1);
 
-	if (nss_sock_init_nss((char *)NSS_DB_DIR) != 0) {
+	if (nss_sock_init_nss((instance.tls_supported != TLV_TLS_UNSUPPORTED ? (char *)NSS_DB_DIR : NULL)) != 0) {
 		err_nss();
-	}
-
-	if (qdevice_net_instance_init(&instance,
-	    QDEVICE_NET_INITIAL_MSG_RECEIVE_SIZE, QDEVICE_NET_INITIAL_MSG_SEND_SIZE,
-	    QDEVICE_NET_MIN_MSG_SEND_SIZE, QDEVICE_NET_MAX_MSG_RECEIVE_SIZE,
-	    QDEVICE_NET_TLS_SUPPORTED, QDEVICE_NET_NODE_ID, QDEVICE_NET_DECISION_ALGORITHM,
-	    QDEVICE_NET_HEARTBEAT_INTERVAL) == -1) {
-		errx(1, "Can't initialize qdevice-net");
 	}
 
 	/*
 	 * Try to connect to qnetd host
 	 */
-	instance.socket = nss_sock_create_client_socket(QNETD_HOST, QNETD_PORT, PR_AF_UNSPEC, 100);
+	instance.socket = nss_sock_create_client_socket(instance.host_addr, instance.host_port, PR_AF_UNSPEC, 100);
 	if (instance.socket == NULL) {
 		err_nss();
 	}
@@ -971,11 +1197,13 @@ main(void)
 		err_nss();
 	}
 
+	qdevice_net_init_votequorum(&instance);
+
 	/*
 	 * Create and schedule send of preinit message to qnetd
 	 */
 	instance.expected_msg_seq_num = 1;
-	if (msg_create_preinit(&instance.send_buffer, QDEVICE_NET_CLUSTER_NAME, 1, instance.expected_msg_seq_num) == 0) {
+	if (msg_create_preinit(&instance.send_buffer, instance.cluster_name, 1, instance.expected_msg_seq_num) == 0) {
 		errx(1, "Can't allocate buffer");
 	}
 	if (qdevice_net_schedule_send(&instance) != 0) {

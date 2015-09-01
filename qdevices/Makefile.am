@@ -50,7 +50,8 @@ corosync_qnetd_CFLAGS		= $(nss_CFLAGS)
 corosync_qnetd_LDADD		= $(nss_LIBS)
 
 corosync_qdevice_net_CFLAGS	= $(nss_CFLAGS)
-corosync_qdevice_net_LDADD	= $(nss_LIBS)
+corosync_qdevice_net_LDADD	= $(nss_LIBS) $(LIBQB_LIBS) $(top_builddir)/lib/libcmap.la \
+				    $(top_builddir)/lib/libvotequorum.la
 
 corosync-qnetd-certutil: corosync-qnetd-certutil.sh
 	sed -e 's#@''DATADIR@#${datadir}#g' \
