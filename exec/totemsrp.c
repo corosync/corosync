@@ -3664,7 +3664,6 @@ static int message_handler_orf_token (
 		break;
 
 	case MEMB_STATE_OPERATIONAL:
-		messages_free (instance, token->aru);
 		/*
 		 * Do NOT add break, this case should also execute code in gather case.
 		 */
@@ -3698,6 +3697,13 @@ static int message_handler_orf_token (
 		if (sq_lte_compare (token->token_seq, instance->my_token_seq)) {
 			return (0); /* discard token */
 		}
+
+		/* Call messages_free() base on acceptable token messages. */
+
+		if (instance->memb_state == MEMB_STATE_OPERATIONAL) {
+			messages_free(instance, token->aru);
+		}
+
 		last_aru = instance->my_last_aru;
 		instance->my_last_aru = token->aru;
 
