@@ -692,6 +692,8 @@ static void timer_function_merge_detect_timeout (void *data);
 static void *totemsrp_buffer_alloc (struct totemsrp_instance *instance);
 static void totemsrp_buffer_release (struct totemsrp_instance *instance, void *ptr);
 static const char* gsfrom_to_msg(enum gather_state_from gsfrom);
+static unsigned int find_orf_deliver_end_point_for_old_ring (
+	struct totemsrp_instance *instance);
 
 void main_deliver_fn (
 	void *context,
@@ -1933,7 +1935,8 @@ static void memb_state_operational_enter (struct totemsrp_instance *instance)
 	aru_save = instance->my_aru;
 	instance->my_aru = instance->old_ring_state_aru;
 
-	messages_deliver_to_app (instance, 0, instance->old_ring_state_high_seq_received);
+	messages_deliver_to_app (instance, 0,
+		find_orf_deliver_end_point_for_old_ring(instance));
 
 	/*
 	 * Calculate joined and left list
@@ -3568,6 +3571,107 @@ static void update_my_last_aru (
 	instance->my_last_aru = token_aru;
 }
 
+#define TOTEMSRP_SAFE 1
+
+static unsigned int find_orf_deliver_end_point (
+	struct totemsrp_instance *instance)
+{
+	struct sort_queue_item *regular_message;
+	unsigned int agreed_end_point;
+	unsigned int safe_end_point;
+	unsigned int deliver_end_point;
+	unsigned int range;
+	unsigned int i;
+	int res;
+
+	agreed_end_point = instance->my_aru;
+	safe_end_point = instance->my_last_aru;
+	if (sq_lt_compare(instance->my_before_last_aru, safe_end_point)) {
+		safe_end_point = instance->my_before_last_aru;
+	}
+	if (sq_lt_compare(agreed_end_point, safe_end_point)) {
+		safe_end_point = agreed_end_point;
+	}
+
+	range = agreed_end_point - instance->my_high_delivered;
+	deliver_end_point = instance->my_high_delivered;
+
+	for (i = 1; i <= range; i++) {
+		void *ptr;
+
+		res = sq_item_get(&instance->regular_sort_queue,
+			instance->my_high_delivered + i, &ptr);
+		if (res != 0) {
+			break;
+		}
+
+		regular_message = ptr;
+
+		if (regular_message->mcast->guarantee == TOTEMSRP_SAFE) {
+			/* safe-delivery */
+			if (sq_lt_compare(safe_end_point, instance->my_high_delivered + i)) {
+				break;
+			}
+		}
+
+		/* agreed-delivery */
+		deliver_end_point = instance->my_high_delivered + i;
+	}
+
+	return deliver_end_point;
+}
+
+static unsigned int find_orf_deliver_end_point_for_old_ring (
+	struct totemsrp_instance *instance)
+{
+	struct sort_queue_item *regular_message;
+	unsigned int agreed_end_point;
+	unsigned int safe_end_point;
+	unsigned int deliver_end_point;
+	unsigned int range;
+	unsigned int i;
+	int res;
+
+	/* safe-delivery: old_ring_status_aru is useless for skipping hole here,
+	   because it was not updated properly during message exchanging. Only
+	   old_ring_state_high_seq_received was updated(see
+	   deliver_messages_from_recovery_to_regular()), so here we use it and
+	   sq_item_get()'s return valuse to detect hole.
+	 */
+	agreed_end_point = instance->old_ring_state_high_seq_received;
+	safe_end_point = instance->my_high_ring_delivered;
+	if (sq_lt_compare(agreed_end_point, safe_end_point)) {
+		safe_end_point = agreed_end_point;
+	}
+
+	range = agreed_end_point - instance->my_high_delivered;
+	deliver_end_point = instance->my_high_delivered;
+
+	for (i = 1; i <= range; i++) {
+		void *ptr;
+
+		res = sq_item_get(&instance->regular_sort_queue,
+			instance->my_high_delivered + i, &ptr);
+		if (res != 0) {
+			break;
+		}
+
+		regular_message = ptr;
+
+		if (regular_message->mcast->guarantee == TOTEMSRP_SAFE) {
+			/* safe-delivery */
+			if (sq_lt_compare(safe_end_point, instance->my_high_delivered + i)) {
+				break;
+			}
+		}
+
+		/* agreed-delivery */
+		deliver_end_point = instance->my_high_delivered + i;
+	}
+
+	return deliver_end_point;
+}
+
 /*
  * message handler called when TOKEN message type received
  */
@@ -3850,7 +3954,7 @@ printf ("token seq %d\n", token->seq);
 #endif
 			if (instance->memb_state == MEMB_STATE_OPERATIONAL) {
 				messages_deliver_to_app (instance, 0,
-					instance->my_high_seq_received);
+					find_orf_deliver_end_point(instance));
 			}
 
 			/*
@@ -4093,7 +4197,8 @@ static int message_handler_mcast (
 
 	update_aru (instance);
 	if (instance->memb_state == MEMB_STATE_OPERATIONAL) {
-		messages_deliver_to_app (instance, 0, instance->my_high_seq_received);
+		messages_deliver_to_app (instance, 0,
+			find_orf_deliver_end_point(instance));
 	}
 
 /* TODO remove from retrans message queue for old ring in recovery state */
