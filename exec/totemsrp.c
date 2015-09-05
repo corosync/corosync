@@ -664,7 +664,7 @@ static void memb_state_gather_enter (struct totemsrp_instance *instance, enum ga
 static void messages_deliver_to_app (struct totemsrp_instance *instance, int skip, unsigned int end_point);
 static int orf_token_mcast (struct totemsrp_instance *instance, struct orf_token *oken,
 	int fcc_mcasts_allowed);
-static void messages_free (struct totemsrp_instance *instance, unsigned int token_aru);
+static void messages_free (struct totemsrp_instance *instance);
 
 static void memb_ring_id_set (struct totemsrp_instance *instance,
 	const struct memb_ring_id *ring_id);
@@ -2577,8 +2577,7 @@ static int orf_token_remcast (
  * Free all freeable messages from ring
  */
 static void messages_free (
-	struct totemsrp_instance *instance,
-	unsigned int token_aru)
+	struct totemsrp_instance *instance)
 {
 	struct sort_queue_item *regular_message;
 	unsigned int i;
@@ -2587,9 +2586,9 @@ static void messages_free (
 	unsigned int release_to;
 	unsigned int range = 0;
 
-	release_to = token_aru;
-	if (sq_lt_compare (instance->my_last_aru, release_to)) {
-		release_to = instance->my_last_aru;
+	release_to = instance->my_last_aru;
+	if (sq_lt_compare (instance->my_before_last_aru, release_to)) {
+		release_to = instance->my_before_last_aru;
 	}
 	if (sq_lt_compare (instance->my_high_delivered, release_to)) {
 		release_to = instance->my_high_delivered;
@@ -3712,13 +3711,13 @@ static int message_handler_orf_token (
 			return (0); /* discard token */
 		}
 
+		update_my_last_aru(instance, token->aru);
+
 		/* Call messages_free() base on acceptable token messages. */
 
 		if (instance->memb_state == MEMB_STATE_OPERATIONAL) {
-			messages_free(instance, token->aru);
+			messages_free(instance);
 		}
-
-		update_my_last_aru(instance, token->aru);
 
 		transmits_allowed = fcc_calculate (instance, token);
 		mcasted_retransmit = orf_token_rtr (instance, token, &transmits_allowed);
