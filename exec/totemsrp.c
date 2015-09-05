@@ -312,6 +312,19 @@ struct totemsrp_instance {
 
 	struct srp_addr my_memb_list[PROCESSOR_COUNT_MAX];
 
+	/* safe-delivery: Set by Recovery protocol step 2 to my_trans_memb_list when
+	   my_received_flg is set to 1, and means because this processor has
+	   received all old ring messages shared by all processors in 
+	   my_trans_memb_list during that last Reocvery step 2, so it made a
+	   promise to my_trans_memb_list that it will DO deliver those messages
+	   according to safe-delivery requirement. But if Recovery failed
+	   at step 2(because, for example, token lost), some processor may 
+	   installed the new ring but the others may not, then those not installed
+	   the new ring will destined to install another small TC, but they were
+	   made promise to the old bigger my_trans_memb_list that it will DO
+	   deliver, so they need this my_deliver_memb_list to remember the
+	   old bigger my_trans_memb_list as the filter to delivery messages
+	   when they finally successfully run into Recovery step 3. */
 	struct srp_addr my_deliver_memb_list[PROCESSOR_COUNT_MAX];
 
 	struct srp_addr my_left_memb_list[PROCESSOR_COUNT_MAX];
@@ -346,6 +359,15 @@ struct totemsrp_instance {
 
 	int my_seq_unchanged;
 
+	/* safe-delivery: Writen by Recovery protocol Step 2, read by Membership
+	   protocol to set to commit token, used by next round Recovery protocol
+	   step 1 to keep my_deliver_memb_list unchanged.
+
+	   Set to 1 to indicate this processor had received all old ring messages 
+	   shared by all processors in my_trans_memb_list during the last Recovery
+	   protocol step 2. Init to 0 by ORF protocol so in the first round of
+	   Recovery step 1, my_deliver_memb_list can be set to my_trans_memb_list
+	   directly. */
 	int my_received_flg;
 
 	unsigned int my_high_seq_received;
@@ -723,7 +745,7 @@ static void totemsrp_instance_initialize (struct totemsrp_instance *instance)
 
 	list_init (&instance->token_callback_sent_listhead);
 
-	instance->my_received_flg = 1;
+	instance->my_received_flg = 0;
 
 	instance->my_token_seq = SEQNO_START_TOKEN - 1;
 
@@ -1951,8 +1973,6 @@ static void memb_state_operational_enter (struct totemsrp_instance *instance)
 		left_list, instance->my_left_memb_entries,
 		0, 0, &instance->my_ring_id);
 
-// TODO we need to filter to ensure we only deliver those
-// messages which are part of instance->my_deliver_memb
 	messages_deliver_to_app (instance, 1, instance->old_ring_state_high_seq_received);
 
 	instance->my_aru = aru_save;
@@ -2004,37 +2024,8 @@ static void memb_state_operational_enter (struct totemsrp_instance *instance)
 		sizeof (struct srp_addr) * instance->my_memb_entries);
 
 	instance->my_failed_list_entries = 0;
-	/*
-	 * TODO Not exactly to spec
-	 *
-	 * At the entry to this function all messages without a gap are
-	 * deliered.
-	 *
-	 * This code throw away messages from the last gap in the sort queue
-	 * to my_high_seq_received
-	 *
-	 * What should really happen is we should deliver all messages up to
-	 * a gap, then delier the transitional configuration, then deliver
-	 * the messages between the first gap and my_high_seq_received, then
-	 * deliver a regular configuration, then deliver the regular
-	 * configuration
-	 *
-	 * Unfortunately totempg doesn't appear to like this operating mode
-	 * which needs more inspection
-	 */
-	i = instance->my_high_seq_received + 1;
-	do {
-		void *ptr;
 
-		i -= 1;
-		res = sq_item_get (&instance->regular_sort_queue, i, &ptr);
-		if (i == 0) {
-			break;
-		}
-	} while (res);
-
-	instance->my_high_delivered = i;
-
+	instance->my_high_delivered = instance->my_high_seq_received;
 	for (i = 0; i <= instance->my_high_delivered; i++) {
 		void *ptr;
 
@@ -2106,7 +2097,7 @@ static void memb_state_operational_enter (struct totemsrp_instance *instance)
 	instance->stats.operational_entered++;
 	instance->stats.continuous_gather = 0;
 
-	instance->my_received_flg = 1;
+	instance->my_received_flg = 0;
 
 	reset_pause_timeout (instance);
 
@@ -2330,6 +2321,8 @@ static void memb_state_recovery_enter (
 			instance->my_deliver_memb_entries = instance->my_trans_memb_entries;
 			memcpy (instance->my_deliver_memb_list, instance->my_trans_memb_list,
 				sizeof (struct srp_addr) * instance->my_trans_memb_entries);
+			/* safe-delivery: This seems optional. */
+			instance->my_received_flg = 0;
 			local_received_flg = 0;
 			break;
 		}
@@ -3045,8 +3038,6 @@ static void memb_state_commit_token_update (
 {
 	struct srp_addr *addr;
 	struct memb_commit_token_memb_entry *memb_list;
-	unsigned int high_aru;
-	unsigned int i;
 
 	addr = (struct srp_addr *)instance->commit_token->end_of_commit_token;
 	memb_list = (struct memb_commit_token_memb_entry *)(addr + instance->commit_token->addr_entries);
@@ -3060,46 +3051,10 @@ static void memb_state_commit_token_update (
 		&instance->my_old_ring_id, sizeof (struct memb_ring_id));
 
 	memb_list[instance->commit_token->memb_index].aru = instance->old_ring_state_aru;
-	/*
-	 *  TODO high delivered is really instance->my_aru, but with safe this
-	 * could change?
-	 */
-	instance->my_received_flg =
-		(instance->my_aru == instance->my_high_seq_received);
 
 	memb_list[instance->commit_token->memb_index].received_flg = instance->my_received_flg;
 
 	memb_list[instance->commit_token->memb_index].high_delivered = instance->my_high_delivered;
-	/*
-	 * find high aru up to current memb_index for all matching ring ids
-	 * if any ring id matching memb_index has aru less then high aru set
-	 * received flag for that entry to false
-	 */
-	high_aru = memb_list[instance->commit_token->memb_index].aru;
-	for (i = 0; i <= instance->commit_token->memb_index; i++) {
-		if (memcmp (&memb_list[instance->commit_token->memb_index].ring_id,
-			&memb_list[i].ring_id,
-			sizeof (struct memb_ring_id)) == 0) {
-
-			if (sq_lt_compare (high_aru, memb_list[i].aru)) {
-				high_aru = memb_list[i].aru;
-			}
-		}
-	}
-
-	for (i = 0; i <= instance->commit_token->memb_index; i++) {
-		if (memcmp (&memb_list[instance->commit_token->memb_index].ring_id,
-			&memb_list[i].ring_id,
-			sizeof (struct memb_ring_id)) == 0) {
-
-			if (sq_lt_compare (memb_list[i].aru, high_aru)) {
-				memb_list[i].received_flg = 0;
-				if (i == instance->commit_token->memb_index) {
-					instance->my_received_flg = 0;
-				}
-			}
-		}
-	}
 
 	instance->commit_token->header.nodeid = instance->my_id.addr[0].nodeid;
 	instance->commit_token->memb_index += 1;
