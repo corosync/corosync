@@ -357,6 +357,11 @@ struct totemsrp_instance {
 
 	unsigned int my_last_aru;
 
+	/* safe-delivery: ORF protocol: Keeps the token aru before last, for
+	   delivery and releasing messages even without a token in hand. 
+	 */
+	unsigned int my_before_last_aru;
+
 	int my_seq_unchanged;
 
 	/* safe-delivery: Writen by Recovery protocol Step 2, read by Membership
@@ -2009,6 +2014,7 @@ static void memb_state_operational_enter (struct totemsrp_instance *instance)
 	 */
 	sq_copy (&instance->regular_sort_queue, &instance->recovery_sort_queue);
 	instance->my_last_aru = SEQNO_START_MSG;
+	instance->my_before_last_aru = SEQNO_START_MSG;
 
 	/* When making my_proc_list smaller, ensure that the
 	 * now non-used entries are zero-ed out. There are some suspect
@@ -3554,6 +3560,15 @@ static void fcc_token_update (
  */
 
 unsigned long long int tv_old;
+
+static void update_my_last_aru (
+	struct totemsrp_instance *instance,
+	unsigned int token_aru)
+{
+	instance->my_before_last_aru = instance->my_last_aru;
+	instance->my_last_aru = token_aru;
+}
+
 /*
  * message handler called when TOKEN message type received
  */
@@ -3570,7 +3585,6 @@ static int message_handler_orf_token (
 	unsigned int transmits_allowed;
 	unsigned int mcasted_retransmit;
 	unsigned int mcasted_regular;
-	unsigned int last_aru;
 
 #ifdef GIVEINFO
 	unsigned long long tv_current;
@@ -3704,8 +3718,7 @@ static int message_handler_orf_token (
 			messages_free(instance, token->aru);
 		}
 
-		last_aru = instance->my_last_aru;
-		instance->my_last_aru = token->aru;
+		update_my_last_aru(instance, token->aru);
 
 		transmits_allowed = fcc_calculate (instance, token);
 		mcasted_retransmit = orf_token_rtr (instance, token, &transmits_allowed);
@@ -3738,7 +3751,7 @@ printf ("token seq %d\n", token->seq);
 				token->aru_addr = instance->my_id.addr[0].nodeid;
 			}
 		}
-		if (token->aru == last_aru && token->aru_addr != 0) {
+		if (token->aru == instance->my_before_last_aru && token->aru_addr != 0) {
 			instance->my_aru_count += 1;
 		} else {
 			instance->my_aru_count = 0;
