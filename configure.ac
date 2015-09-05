@@ -10,7 +10,7 @@ AC_INIT([corosync],
 
 AC_USE_SYSTEM_EXTENSIONS
 
-AM_INIT_AUTOMAKE([-Wno-portability])
+AM_INIT_AUTOMAKE([-Wno-portability 1.11])
 
 LT_PREREQ([2.2.6])
 LT_INIT
@@ -78,7 +78,7 @@ if ! ${MAKE-make} --version /cannot/make/this >/dev/null 2>&1; then
 	AC_MSG_ERROR([you don't seem to have GNU make; it is required])
 fi
 
-sinclude(coroysync-default.m4)
+sinclude(corosync-default.m4)
 
 AC_PROG_CC
 AC_PROG_CXX
@@ -163,6 +163,9 @@ AC_CHECK_LIB([pthread], [pthread_create])
 AC_CHECK_LIB([socket], [socket])
 AC_CHECK_LIB([nsl], [t_open])
 AC_CHECK_LIB([rt], [sched_getscheduler])
+AC_CHECK_LIB([z], [crc32],
+    AM_CONDITIONAL([BUILD_CPGHUM], true),
+    AM_CONDITIONAL([BUILD_CPGHUM], false))
 
 # Checks for library functions.
 AC_FUNC_ALLOCA
@@ -198,7 +201,8 @@ AC_CONFIG_FILES([Makefile
 		 tools/Makefile
 		 conf/Makefile
 		 qdevices/Makefile
-		 Doxyfile])
+		 Doxyfile
+		 conf/logrotate/Makefile])
 
 ### Local business
 
@@ -367,6 +371,16 @@ AC_ARG_WITH([initwrappersdir],
 	[  --with-initwrappersdir=DIR   : path to init wrappers files directory. ],
 	[ INITWRAPPERSDIR="$withval" ],
 	[ INITWRAPPERSDIR="$datarootdir/corosync" ])
+
+AC_ARG_WITH([logdir],
+	[  --with-logdir=DIR       : the base directory for corosync logging files. ],
+	[ LOGDIR="$withval" ],
+	[ LOGDIR="$localstatedir/log/cluster" ])
+
+AC_ARG_WITH([logrotatedir],
+	[  --with-logrotatedir=DIR : the base directory for logrorate.d files.  ],
+	[ LOGROTATEDIR="$withval" ],
+	[ LOGROTATEDIR="$sysconfdir/logrotate.d" ])
 
 AC_ARG_ENABLE([snmp],
 	[  --enable-snmp                   : SNMP protocol support ],
@@ -673,6 +687,8 @@ AC_SUBST([SYSTEMDDIR])
 AC_SUBST([UPSTARTDIR])
 INITWRAPPERSDIR=$(eval echo ${INITWRAPPERSDIR})
 AC_SUBST([INITWRAPPERSDIR])
+AC_SUBST([LOGDIR])
+AC_SUBST([LOGROTATEDIR])
 
 AC_SUBST([SOMAJOR])
 AC_SUBST([SOMINOR])
@@ -715,6 +731,8 @@ AC_MSG_RESULT([  System init.d directory  = ${INITDDIR}])
 AC_MSG_RESULT([  System systemd directory = ${SYSTEMDDIR}])
 AC_MSG_RESULT([  System upstart directory = ${UPSTARTDIR}])
 AC_MSG_RESULT([  System init wraps dir    = ${INITWRAPPERSDIR}])
+AC_MSG_RESULT([  Log directory            = ${LOGDIR}])
+AC_MSG_RESULT([  Log rotate directory     = ${LOGROTATEDIR}])
 AC_MSG_RESULT([  corosync config dir      = ${COROSYSCONFDIR}])
 AC_MSG_RESULT([  Features                 =${PACKAGE_FEATURES}])
 AC_MSG_RESULT([])

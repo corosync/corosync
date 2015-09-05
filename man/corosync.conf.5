@@ -199,8 +199,10 @@ crypto_cipher and crypto_hash.
 .TP
 rrp_mode
 This specifies the mode of redundant ring, which may be none, active, or
-passive.  Active replication offers slightly lower latency from transmit
-to delivery in faulty network environments but with less performance.
+passive.  Currently only 'passive' is supported or tested
+(using  'active'  is  not recommended). Active replication offers
+slightly lower latency from transmit to delivery in faulty network
+environments but with less performance.
 Passive replication may nearly double the speed of the totem protocol
 if the protocol doesn't become cpu bound.  The final option is none, in
 which case only one network interface will be used to operate the totem
@@ -212,6 +214,10 @@ be chosen.
 
 The maximum number of interface directives that is allowed for either 
 modes (active or passive) is 2.
+
+When using multiple interfaces, make sure to use different multicast
+address/port (port for same address must differ by at least two) pair
+for each interface (this is checked by parser) to make rrp works.
 
 .TP
 netmtu
@@ -236,18 +242,6 @@ that some device in the network doesn't support large frames.
 Choose hardware carefully if intending to use large frame support.
 
 The default is 1500.
-
-.TP
-vsftype
-This directive controls the virtual synchrony filter type used to identify
-a primary component.  The preferred choice is YKD dynamic linear voting,
-however, for clusters larger then 32 nodes YKD consumes alot of memory.  For
-large scale clusters that are created by changing the MAX_PROCESSORS_COUNT
-#define in the C code totem.h file, the virtual synchrony filter "none" is
-recommended but then AMF and DLCK services (which are currently experimental)
-are not safe for use.
-
-The default is ykd.  The vsftype can also be set to none.
 
 .TP
 transport
@@ -292,10 +286,16 @@ by reducing the token timeout.
 
 .TP
 token
-This timeout specifies in milliseconds until a token loss is declared after not
+This timeout is used directly or as a base for real token timeout calculation (explained in
+.B token_coefficient
+section). Token timeout specifies in milliseconds until a token loss is declared after not
 receiving a token.  This is the time spent detecting a failure of a processor
 in the current configuration.  Reforming a new configuration takes about 50
 milliseconds in addition to this timeout.
+
+For real token timeout used by totem it's possible to read cmap value of
+.B runtime.config.token
+key.
 
 The default is 1000 milliseconds.
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009-2012 Red Hat, Inc.
+ * Copyright (c) 2009-2014 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -36,6 +36,7 @@
 #include <config.h>
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -68,6 +69,12 @@ typedef enum {
 	CMD_UNREGISTER_QDEVICE
 } command_t;
 
+typedef enum {
+	SORT_ADDR,
+	SORT_NODEID,
+	SORT_NODENAME
+} sorttype_t;
+
 /*
  * global vars
  */
@@ -96,10 +103,18 @@ static quorum_callbacks_t q_callbacks = {
 /*
  * quorum call back vars
  */
+
+/* Containing struct to keep votequorum & normal quorum bits together */
+typedef struct {
+      struct votequorum_info *vq_info; /* Might be NULL if votequorum not present */
+      char *name;  /* Might be IP address or NULL */
+      int node_id; /* Always present */
+} view_list_entry_t;
+
+static view_list_entry_t *g_view_list;
 static uint32_t g_quorate;
 static uint64_t g_ring_id;
 static uint32_t g_view_list_entries;
-static uint32_t *g_view_list = NULL;
 static uint32_t g_called;
 
 /*
@@ -141,6 +156,7 @@ static void show_usage(const char *name)
 	printf("  -e <expected>  change expected votes for the cluster (*)\n");
 	printf("  -H             show nodeids in hexadecimal rather than decimal\n");
 	printf("  -i             show node IP addresses instead of the resolved name\n");
+	printf("  -o <a|i>       order by [a] IP address (default), [i] nodeid,\n");
 	printf("  -f             forcefully unregister a quorum device *DANGEROUS* (*)\n");
 	printf("  -h             show this help text\n");
 	printf("  -V             show version and exit\n");
@@ -334,6 +350,8 @@ static void quorum_notification_fn(
 	uint32_t view_list_entries,
 	uint32_t *view_list)
 {
+        int i;
+
 	g_called = 1;
 	g_quorate = quorate;
 	g_ring_id = ring_id;
@@ -341,9 +359,13 @@ static void quorum_notification_fn(
 	if (g_view_list) {
 		free(g_view_list);
 	}
-	g_view_list = malloc(sizeof(uint32_t) * view_list_entries);
+	g_view_list = malloc(sizeof(view_list_entry_t) * view_list_entries);
 	if (g_view_list) {
-		memcpy(g_view_list, view_list,sizeof(uint32_t) * view_list_entries);
+	        for (i=0; i< view_list_entries; i++) {
+		        g_view_list[i].node_id = view_list[i];
+			g_view_list[i].name = NULL;
+			g_view_list[i].vq_info = NULL;
+		}
 	}
 }
 
@@ -368,23 +390,53 @@ static void print_uint32_padded(uint32_t value)
 	print_string_padded(buf);
 }
 
-static void display_nodes_data(nodeid_format_t nodeid_format, name_format_t name_format)
+/* for qsort */
+static int compare_nodeids(const void *one, const void *two)
+{
+      const view_list_entry_t *info1 = one;
+      const view_list_entry_t *info2 = two;
+
+      if (info1->node_id == info2->node_id) {
+	  return 0;
+      }
+      if (info1->node_id > info2->node_id) {
+	  return 1;
+      }
+      return -1;
+}
+
+static int compare_nodenames(const void *one, const void *two)
+{
+      const view_list_entry_t *info1 = one;
+      const view_list_entry_t *info2 = two;
+
+      return strcmp(info1->name, info2->name);
+}
+
+static void display_nodes_data(nodeid_format_t nodeid_format, name_format_t name_format, sorttype_t sort_type)
 {
 	int i, display_qdevice = 0;
 	struct votequorum_info info[g_view_list_entries];
-
 	/*
 	 * cache node info because we need to parse them twice
 	 */
 	if (v_handle) {
 		for (i=0; i < g_view_list_entries; i++) {
-			if (votequorum_getinfo(v_handle, g_view_list[i], &info[i]) != CS_OK) {
-				printf("Unable to get node %u info\n", g_view_list[i]);
+			if (votequorum_getinfo(v_handle, g_view_list[i].node_id, &info[i]) != CS_OK) {
+				printf("Unable to get node %u info\n", g_view_list[i].node_id);
 			}
+			g_view_list[i].vq_info = &info[i];
 			if (info[i].flags & VOTEQUORUM_INFO_QDEVICE_REGISTERED) {
 				display_qdevice = 1;
 			}
 		}
+	}
+
+	/* 
+	 * Get node names
+	 */
+	for (i=0; i < g_view_list_entries; i++) {
+	        g_view_list[i].name = strdup(node_name(g_view_list[i].node_id, name_format));
 	}
 
 	printf("\nMembership information\n");
@@ -399,11 +451,18 @@ static void display_nodes_data(nodeid_format_t nodeid_format, name_format_t name
 	}
 	printf("Name\n");
 
+	/* corosync sends them already sorted by address */
+	if (sort_type == SORT_NODEID) {
+		qsort(g_view_list, g_view_list_entries, sizeof(view_list_entry_t), compare_nodeids);
+	}
+	if (sort_type == SORT_NODENAME) {
+		qsort(g_view_list, g_view_list_entries, sizeof(view_list_entry_t), compare_nodenames);
+	}
 	for (i=0; i < g_view_list_entries; i++) {
 		if (nodeid_format == NODEID_FORMAT_DECIMAL) {
-			print_uint32_padded(g_view_list[i]);
+			print_uint32_padded(g_view_list[i].node_id);
 		} else {
-			printf("0x%08x ", g_view_list[i]);
+			printf("0x%08x ", g_view_list[i].node_id);
 		}
 		if (v_handle) {
 			int votes = -1;
@@ -426,14 +485,17 @@ static void display_nodes_data(nodeid_format_t nodeid_format, name_format_t name
 				}
 			}
 		}
-		printf("%s", node_name(g_view_list[i], name_format));
-		if (g_view_list[i] == our_nodeid) {
+		printf("%s", g_view_list[i].name);
+		if (g_view_list[i].node_id == our_nodeid) {
 			printf(" (local)");
 		}
 		printf("\n");
 	}
 
 	if (g_view_list_entries) {
+	        for (i=0; i < g_view_list_entries; i++) {
+		        free(g_view_list[i].name);
+		}
 		free(g_view_list);
 		g_view_list = NULL;
 	}
@@ -451,7 +513,7 @@ static void display_nodes_data(nodeid_format_t nodeid_format, name_format_t name
 }
 
 static int display_quorum_data(int is_quorate,
-			       nodeid_format_t nodeid_format, name_format_t name_format,
+			       nodeid_format_t nodeid_format, name_format_t name_format, sorttype_t sort_type,
 			       int loop)
 {
 	struct votequorum_info info;
@@ -504,7 +566,7 @@ static int display_quorum_data(int is_quorate,
 		fprintf(stderr, "Unable to get node info: %s\n", cs_strerror(err));
 	}
 
-	display_nodes_data(nodeid_format, name_format);
+	display_nodes_data(nodeid_format, name_format, sort_type);
 
 	return err;
 }
@@ -514,7 +576,7 @@ static int display_quorum_data(int is_quorate,
  *         0 if not quorate
  *        -1 on error
  */
-static int show_status(nodeid_format_t nodeid_format, name_format_t name_format)
+static int show_status(nodeid_format_t nodeid_format, name_format_t name_format, sorttype_t sort_type)
 {
 	int is_quorate;
 	int err;
@@ -548,7 +610,7 @@ quorum_err:
 		return -1;
 	}
 
-	err = display_quorum_data(is_quorate, nodeid_format, name_format, 0);
+	err = display_quorum_data(is_quorate, nodeid_format, name_format, sort_type, 0);
 	if (err != CS_OK) {
 		return -1;
 	}
@@ -556,13 +618,13 @@ quorum_err:
 	return is_quorate;
 }
 
-static int monitor_status(nodeid_format_t nodeid_format, name_format_t name_format) {
+static int monitor_status(nodeid_format_t nodeid_format, name_format_t name_format, sorttype_t sort_type) {
 	int err;
 	int loop = 0;
 
 	if (q_type == QUORUM_FREE) {
 		printf("\nQuorum is not configured - cannot monitor\n");
-		return show_status(nodeid_format, name_format);
+		return show_status(nodeid_format, name_format, sort_type);
 	}
 
 	err=quorum_trackstart(q_handle, CS_TRACK_CHANGES);
@@ -577,7 +639,7 @@ static int monitor_status(nodeid_format_t nodeid_format, name_format_t name_form
 			fprintf(stderr, "Unable to dispatch quorum status: %s\n", cs_strerror(err));
 			goto quorum_err;
 		}
-		err = display_quorum_data(g_quorate, nodeid_format, name_format, loop);
+		err = display_quorum_data(g_quorate, nodeid_format, name_format, sort_type, loop);
 		printf("\n");
 		loop = 1;
 		if (err != CS_OK) {
@@ -590,7 +652,7 @@ quorum_err:
 	return -1;
 }
 
-static int show_nodes(nodeid_format_t nodeid_format, name_format_t name_format)
+static int show_nodes(nodeid_format_t nodeid_format, name_format_t name_format, sorttype_t sort_type)
 {
 	int err;
 	int result = EXIT_FAILURE;
@@ -610,7 +672,7 @@ static int show_nodes(nodeid_format_t nodeid_format, name_format_t name_format)
 		}
 	}
 
-	display_nodes_data(nodeid_format, name_format);
+	display_nodes_data(nodeid_format, name_format, sort_type);
 
 	result = EXIT_SUCCESS;
 err_exit:
@@ -705,7 +767,7 @@ static void close_all(void) {
 }
 
 int main (int argc, char *argv[]) {
-	const char *options = "VHslpmfe:v:hin:";
+	const char *options = "VHslpmfe:v:hin:o:";
 	char *endptr;
 	int opt;
 	int votes = 0;
@@ -715,6 +777,8 @@ int main (int argc, char *argv[]) {
 	nodeid_format_t nodeid_format = NODEID_FORMAT_DECIMAL;
 	name_format_t address_format = ADDRESS_FORMAT_NAME;
 	command_t command_opt = CMD_SHOWSTATUS;
+	sorttype_t sort_opt = SORT_ADDR;
+	char sortchar;
 	long int l;
 
 	if (init_all()) {
@@ -787,6 +851,21 @@ int main (int argc, char *argv[]) {
 				exit(2);
 			}
 			break;
+		case 'o':
+			sortchar = optarg[0];
+			switch (sortchar) {
+			        case 'a': sort_opt = SORT_ADDR;
+					break;
+			        case 'i': sort_opt = SORT_NODEID;
+					break;
+			        case 'n': sort_opt = SORT_NODENAME;
+					break;
+			        default:
+					fprintf(stderr, "Invalid ordering option. valid orders are a(address), i(node ID) or n(name)\n");
+					exit(2);
+					break;
+			}
+			break;
 		case 'V':
 			printf("corosync-quorumtool version: %s\n", VERSION);
 			exit(0);
@@ -805,10 +884,10 @@ int main (int argc, char *argv[]) {
 		ret = -1;
 		break;
 	case CMD_SHOWNODES:
-		ret = show_nodes(nodeid_format, address_format);
+		ret = show_nodes(nodeid_format, address_format, sort_opt);
 		break;
 	case CMD_SHOWSTATUS:
-		ret = show_status(nodeid_format, address_format);
+		ret = show_status(nodeid_format, address_format, sort_opt);
 		break;
 	case CMD_SETVOTES:
 		if (!nodeid_set) {
@@ -820,7 +899,7 @@ int main (int argc, char *argv[]) {
 		ret = set_expected(votes);
 		break;
 	case CMD_MONITOR:
-		ret = monitor_status(nodeid_format, address_format);
+		ret = monitor_status(nodeid_format, address_format, sort_opt);
 		break;
 	case CMD_UNREGISTER_QDEVICE:
 		ret = unregister_qdevice();

@@ -115,12 +115,13 @@ start()
 	else
 		$prog $COROSYNC_OPTIONS > /dev/null 2>&1
 
-		if ! wait_for_ipc; then
+		if [ "$?" != 0 ] || ! wait_for_ipc; then
 			failure
 			rtrn=1
+		else
+			touch $LOCK_FILE
+			success
 		fi
-		touch $LOCK_FILE
-		success
 	fi
 	echo
 }

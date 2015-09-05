@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009-2014 Red Hat, Inc.
+ * Copyright (c) 2009-2015 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -150,6 +150,7 @@ static int votequorum_exec_send_quorum_notification(void *conn, uint64_t context
 
 #define VOTEQUORUM_RECONFIG_PARAM_EXPECTED_VOTES 1
 #define VOTEQUORUM_RECONFIG_PARAM_NODE_VOTES     2
+#define VOTEQUORUM_RECONFIG_PARAM_CANCEL_WFA     3
 
 static int votequorum_exec_send_reconfigure(uint8_t param, unsigned int nodeid, uint32_t value);
 
@@ -627,7 +628,7 @@ static int is_in_nodelist(int nodeid, unsigned int *members, int entries)
 }
 
 /*
- * The algorithm for a list of time-breaker nodes is:
+ * The algorithm for a list of tie-breaker nodes is:
  * travel the list of nodes in the auto_tie_breaker list,
  * if the node IS in our current partition, check if the
  * nodes earlier in the atb list are in the 'previous' partition;
@@ -1010,7 +1011,10 @@ static void are_we_quorate(unsigned int total_votes)
 	}
 
 	if ((auto_tie_breaker != ATB_NONE) &&
+	    /* Must be a half (or half-1) split */
 	    (total_votes == (us->expected_votes / 2)) &&
+	    /* If the 'other' partition in a split might have quorum then we can't run ATB */
+	    (previous_quorum_members_entries - quorum_members_entries < quorum) &&
 	    (check_auto_tie_breaker() == 1)) {
 		quorate = 1;
 	}
@@ -1289,7 +1293,12 @@ static char *votequorum_readconfig(int runtime)
 		icmap_get_uint8("quorum.auto_tie_breaker", &atb);
 		icmap_get_string("quorum.auto_tie_breaker_node", &atb_string);
 
-		if (!atb) {
+		/* auto_tie_breaker defaults to LOWEST */
+		if (atb) {
+		    auto_tie_breaker = ATB_LOWEST;
+		    icmap_set_uint32("runtime.votequorum.atb_type", auto_tie_breaker);
+		}
+		else {
 			auto_tie_breaker = ATB_NONE;
 			if (atb_string) {
 				log_printf(LOGSYS_LEVEL_WARNING,
@@ -1315,6 +1324,42 @@ static char *votequorum_readconfig(int runtime)
 		    update_ev_tracking_barrier(ev_tracking_barrier);
 		}
 
+	}
+
+	/* two_node and auto_tie_breaker are not compatible as two_node uses
+	 * a fence race to decide quorum whereas ATB decides based on node id
+	 */
+	if (two_node && auto_tie_breaker != ATB_NONE) {
+	        log_printf(LOGSYS_LEVEL_CRIT, "two_node and auto_tie_breaker are both specified but are not compatible.");
+		log_printf(LOGSYS_LEVEL_CRIT, "two_node has been disabled, please fix your corosync.conf");
+		two_node = 0;
+	}
+
+	/* If ATB is set and the cluster has an odd number of nodes then wait_for_all needs
+	 * to be set so that an isolated half+1 without the tie breaker node
+	 * does not have quorum on reboot.
+	 */
+	if ((auto_tie_breaker != ATB_NONE) && (node_expected_votes % 2) &&
+	    (!wait_for_all)) {
+		if (last_man_standing) {
+			/* if LMS is set too, it's a fatal configuration error. We can't dictate to the user what
+			 *  they might want so we'll just quit.
+			 */
+			log_printf(LOGSYS_LEVEL_CRIT, "auto_tie_breaker is set, the cluster has an odd number of nodes\n");
+			log_printf(LOGSYS_LEVEL_CRIT, "and last_man_standing is also set. With this situation a better\n");
+			log_printf(LOGSYS_LEVEL_CRIT, "solution would be to disable LMS, leave ATB enabled, and also\n");
+			log_printf(LOGSYS_LEVEL_CRIT, "enable wait_for_all (mandatory for ATB in odd-numbered clusters).\n");
+			log_printf(LOGSYS_LEVEL_CRIT, "Due to this ambiguity, corosync will fail to start. Please fix your corosync.conf\n");
+			error = (char *)"configuration error: auto_tie_breaker & last_man_standing not available in odd sized cluster";
+			goto out;
+		}
+		else {
+			log_printf(LOGSYS_LEVEL_CRIT, "auto_tie_breaker is set and the cluster has an odd number of nodes.\n");
+			log_printf(LOGSYS_LEVEL_CRIT, "wait_for_all needs to be set for this configuration but it is missing\n");
+			log_printf(LOGSYS_LEVEL_CRIT, "Therefore auto_tie_breaker has been disabled. Please fix your corosync.conf\n");
+			auto_tie_breaker = ATB_NONE;
+			icmap_set_uint32("runtime.votequorum.atb_type", auto_tie_breaker);
+		}
 	}
 
 	/*
@@ -1487,6 +1532,7 @@ static void votequorum_refresh_config(
 {
 	int old_votes, old_expected_votes;
 	uint8_t reloading;
+	uint8_t cancel_wfa;
 
 	ENTER();
 
@@ -1496,6 +1542,15 @@ static void votequorum_refresh_config(
 	 */
 	if (icmap_get_uint8("config.totemconfig_reload_in_progress", &reloading) == CS_OK && reloading) {
 		return ;
+	}
+
+	icmap_get_uint8("quorum.cancel_wait_for_all", &cancel_wfa);
+	if (strcmp(key_name, "quorum.cancel_wait_for_all") == 0 &&
+	    cancel_wfa >= 1) {
+	        icmap_set_uint8("quorum.cancel_wait_for_all", 0);
+		votequorum_exec_send_reconfigure(VOTEQUORUM_RECONFIG_PARAM_CANCEL_WFA,
+						 us->node_id, 0);
+		return;
 	}
 
 	old_votes = us->votes;
@@ -2070,6 +2125,14 @@ static void message_handler_req_exec_votequorum_reconfigure (
 		recalculate_quorum(1, 0);  /* Allow decrease */
 		break;
 
+	case VOTEQUORUM_RECONFIG_PARAM_CANCEL_WFA:
+	        update_wait_for_all_status(0);
+		log_printf(LOGSYS_LEVEL_INFO, "wait_for_all_status reset by user on node %d.",
+			   req_exec_quorum_reconfigure->nodeid);
+		recalculate_quorum(0, 0);
+
+	        break;
+
 	}
 
 	LEAVE();
@@ -2583,8 +2646,10 @@ static void message_handler_req_lib_votequorum_trackstart (void *conn,
 	const struct req_lib_votequorum_trackstart *req_lib_votequorum_trackstart = message;
 	struct res_lib_votequorum_status res_lib_votequorum_status;
 	struct quorum_pd *quorum_pd = (struct quorum_pd *)corosync_api->ipc_private_data_get (conn);
+	cs_error_t error = CS_OK;
 
 	ENTER();
+
 	/*
 	 * If an immediate listing of the current cluster membership
 	 * is requested, generate membership list
@@ -2593,6 +2658,11 @@ static void message_handler_req_lib_votequorum_trackstart (void *conn,
 	    req_lib_votequorum_trackstart->track_flags & CS_TRACK_CHANGES) {
 		log_printf(LOGSYS_LEVEL_DEBUG, "sending initial status to %p", conn);
 		votequorum_exec_send_quorum_notification(conn, req_lib_votequorum_trackstart->context);
+	}
+
+	if (quorum_pd->tracking_enabled) {
+		error = CS_ERR_EXIST;
+		goto response_send;
 	}
 
 	/*
@@ -2608,9 +2678,10 @@ static void message_handler_req_lib_votequorum_trackstart (void *conn,
 		list_add (&quorum_pd->list, &trackers_list);
 	}
 
+response_send:
 	res_lib_votequorum_status.header.size = sizeof(res_lib_votequorum_status);
 	res_lib_votequorum_status.header.id = MESSAGE_RES_VOTEQUORUM_STATUS;
-	res_lib_votequorum_status.header.error = CS_OK;
+	res_lib_votequorum_status.header.error = error;
 	corosync_api->ipc_response_send(conn, &res_lib_votequorum_status, sizeof(res_lib_votequorum_status));
 
 	LEAVE();

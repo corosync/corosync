@@ -40,6 +40,7 @@ Conflicts: openais <= 0.89, openais-devel <= 0.89
 BuildRequires: groff
 BuildRequires: libqb-devel
 BuildRequires: nss-devel
+BuildRequires: zlib-devel
 %if %{with runautogen}
 BuildRequires: autoconf automake libtool
 %endif
@@ -195,6 +196,7 @@ fi
 %config(noreplace) %{_sysconfdir}/corosync/corosync.conf.example.udpu
 %config(noreplace) %{_sysconfdir}/sysconfig/corosync-notifyd
 %config(noreplace) %{_sysconfdir}/sysconfig/corosync
+%config(noreplace) %{_sysconfdir}/logrotate.d/corosync
 %if %{with dbus}
 %{_sysconfdir}/dbus-1/system.d/corosync-signals.conf
 %endif

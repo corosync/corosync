@@ -186,6 +186,13 @@ cs_error_t cpg_fd_get (
 	int *fd);
 
 /**
+ * Get maximum size of a message that will not be fragmented
+ */
+cs_error_t cpg_max_atomic_msgsize_get (
+	cpg_handle_t handle,
+	uint32_t *size);
+
+/**
  * Get contexts for a CPG handle
  */
 cs_error_t cpg_context_get (

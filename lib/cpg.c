@@ -1,7 +1,7 @@
 /*
  * vi: set autoindent tabstop=4 shiftwidth=4 :
  *
- * Copyright (c) 2006-2012 Red Hat, Inc.
+ * Copyright (c) 2006-2015 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -70,6 +70,12 @@
 #endif
 
 /*
+ * Maximum number of times to retry a send when transmitting
+ * a large message fragment
+ */
+#define MAX_RETRIES 100
+
+/*
  * ZCB files have following umask (umask is same as used in libqb)
  */
 #define CPG_MEMORY_MAP_UMASK		077
@@ -83,6 +89,14 @@ struct cpg_inst {
 		cpg_model_v1_data_t model_v1_data;
 	};
 	struct list_head iteration_list_head;
+    uint32_t max_msg_size;
+    char *assembly_buf;
+    uint32_t assembly_buf_ptr;
+    int assembling; /* Flag that says we have started assembling a message.
+					 * It's here to catch the situation where a node joins
+					 * the cluster/group in the middle of a CPG message send
+					 * so we don't pass on a partial message to the client.
+					 */
 };
 static void cpg_inst_free (void *inst);
 
@@ -210,6 +224,8 @@ cs_error_t cpg_model_initialize (
 		}
 	}
 
+	/* Allow space for corosync internal headers */
+	cpg_inst->max_msg_size = IPC_REQUEST_SIZE - 1024;
 	cpg_inst->model_data.model = model;
 	cpg_inst->context = context;
 
@@ -291,6 +307,25 @@ cs_error_t cpg_fd_get (
 	return (error);
 }
 
+cs_error_t cpg_max_atomic_msgsize_get (
+	cpg_handle_t handle,
+	uint32_t *size)
+{
+	cs_error_t error;
+	struct cpg_inst *cpg_inst;
+
+	error = hdb_error_to_cs (hdb_handle_get (&cpg_handle_t_db, handle, (void *)&cpg_inst));
+	if (error != CS_OK) {
+		return (error);
+	}
+
+	*size = cpg_inst->max_msg_size;
+
+	hdb_handle_put (&cpg_handle_t_db, handle);
+
+	return (error);
+}
+
 cs_error_t cpg_context_get (
 	cpg_handle_t handle,
 	void **context)
@@ -339,6 +374,7 @@ cs_error_t cpg_dispatch (
 	struct cpg_inst *cpg_inst;
 	struct res_lib_cpg_confchg_callback *res_cpg_confchg_callback;
 	struct res_lib_cpg_deliver_callback *res_cpg_deliver_callback;
+	struct res_lib_cpg_partial_deliver_callback *res_cpg_partial_deliver_callback;
 	struct res_lib_cpg_totem_confchg_callback *res_cpg_totem_confchg_callback;
 	struct cpg_inst cpg_inst_copy;
 	struct qb_ipc_response_header *dispatch_data;
@@ -361,7 +397,7 @@ cs_error_t cpg_dispatch (
 
 	/*
 	 * Timeout instantly for CS_DISPATCH_ONE_NONBLOCKING or CS_DISPATCH_ALL and
-	 * wait indefinately for CS_DISPATCH_ONE or CS_DISPATCH_BLOCKING
+	 * wait indefinitely for CS_DISPATCH_ONE or CS_DISPATCH_BLOCKING
 	 */
 	if (dispatch_types == CS_DISPATCH_ALL || dispatch_types == CS_DISPATCH_ONE_NONBLOCKING) {
 		timeout = 0;
@@ -426,6 +462,43 @@ cs_error_t cpg_dispatch (
 					res_cpg_deliver_callback->pid,
 					&res_cpg_deliver_callback->message,
 					res_cpg_deliver_callback->msglen);
+				break;
+
+			case MESSAGE_RES_CPG_PARTIAL_DELIVER_CALLBACK:
+				res_cpg_partial_deliver_callback = (struct res_lib_cpg_partial_deliver_callback *)dispatch_data;
+
+				marshall_from_mar_cpg_name_t (
+					&group_name,
+					&res_cpg_partial_deliver_callback->group_name);
+
+				if (res_cpg_partial_deliver_callback->type == LIBCPG_PARTIAL_FIRST) {
+					/*
+					 * Allocate a buffer to contain a full message.
+					 */
+					cpg_inst->assembly_buf = malloc(res_cpg_partial_deliver_callback->msglen);
+					if (!cpg_inst->assembly_buf) {
+						error = CS_ERR_NO_MEMORY;
+						goto error_put;
+					}
+					cpg_inst->assembling = 1;
+					cpg_inst->assembly_buf_ptr = 0;
+				}
+				if (cpg_inst->assembling) {
+					memcpy(cpg_inst->assembly_buf + cpg_inst->assembly_buf_ptr,
+					       res_cpg_partial_deliver_callback->message, res_cpg_partial_deliver_callback->fraglen);
+					cpg_inst->assembly_buf_ptr += res_cpg_partial_deliver_callback->fraglen;
+
+					if (res_cpg_partial_deliver_callback->type == LIBCPG_PARTIAL_LAST) {
+						cpg_inst_copy.model_v1_data.cpg_deliver_fn (handle,
+							&group_name,
+							res_cpg_partial_deliver_callback->nodeid,
+							res_cpg_partial_deliver_callback->pid,
+							cpg_inst->assembly_buf,
+							res_cpg_partial_deliver_callback->msglen);
+						free(cpg_inst->assembly_buf);
+						cpg_inst->assembling = 0;
+					}
+				}
 				break;
 
 			case MESSAGE_RES_CPG_CONFCHG_CALLBACK:
@@ -921,6 +994,12 @@ cs_error_t cpg_zcb_mcast_joined (
 	if (error != CS_OK) {
 		return (error);
 	}
+
+	if (msg_len > IPC_REQUEST_SIZE) {
+		error = CS_ERR_TOO_BIG;
+		goto error_exit;
+	}
+
 	req_lib_cpg_mcast = (struct req_lib_cpg_mcast *)(((char *)msg) - sizeof (struct req_lib_cpg_mcast));
 	req_lib_cpg_mcast->header.size = sizeof (struct req_lib_cpg_mcast) +
 		msg_len;
@@ -957,6 +1036,88 @@ error_exit:
 	return (error);
 }
 
+static cs_error_t send_fragments (
+	struct cpg_inst *cpg_inst,
+	cpg_guarantee_t guarantee,
+	size_t msg_len,
+	const struct iovec *iovec,
+	unsigned int iov_len)
+{
+	int i;
+	cs_error_t error = CS_OK;
+	struct iovec iov[2];
+	struct req_lib_cpg_partial_mcast req_lib_cpg_mcast;
+	struct res_lib_cpg_partial_send res_lib_cpg_partial_send;
+	size_t sent = 0;
+	size_t iov_sent = 0;
+	int retry_count;
+
+	req_lib_cpg_mcast.header.id = MESSAGE_REQ_CPG_PARTIAL_MCAST;
+	req_lib_cpg_mcast.guarantee = guarantee;
+	req_lib_cpg_mcast.msglen = msg_len;
+
+	iov[0].iov_base = (void *)&req_lib_cpg_mcast;
+	iov[0].iov_len = sizeof (struct req_lib_cpg_partial_mcast);
+
+	i=0;
+	iov_sent = 0 ;
+	qb_ipcc_fc_enable_max_set(cpg_inst->c,  2);
+
+	while (error == CS_OK && sent < msg_len) {
+
+		retry_count = 0;
+		if ( (iovec[i].iov_len - iov_sent) > cpg_inst->max_msg_size) {
+			iov[1].iov_len = cpg_inst->max_msg_size;
+		}
+		else {
+			iov[1].iov_len = iovec[i].iov_len - iov_sent;
+		}
+
+		if (sent == 0) {
+			req_lib_cpg_mcast.type = LIBCPG_PARTIAL_FIRST;
+		}
+		else if ((sent + iov[1].iov_len) == msg_len) {
+			req_lib_cpg_mcast.type = LIBCPG_PARTIAL_LAST;
+		}
+		else {
+			req_lib_cpg_mcast.type = LIBCPG_PARTIAL_CONTINUED;
+		}
+
+		req_lib_cpg_mcast.fraglen = iov[1].iov_len;
+		req_lib_cpg_mcast.header.size = sizeof (struct req_lib_cpg_partial_mcast) + iov[1].iov_len;
+		iov[1].iov_base = (char *)iovec[i].iov_base + iov_sent;
+
+	resend:
+		error = coroipcc_msg_send_reply_receive (cpg_inst->c, iov, 2,
+							 &res_lib_cpg_partial_send,
+							 sizeof (res_lib_cpg_partial_send));
+
+		if (error == CS_ERR_TRY_AGAIN) {
+			fprintf(stderr, "sleep. counter=%d\n", retry_count);
+			if (++retry_count > MAX_RETRIES) {
+				goto error_exit;
+			}
+			usleep(10000);
+			goto resend;
+		}
+
+		iov_sent += iov[1].iov_len;
+		sent += iov[1].iov_len;
+
+		/* Next iovec */
+		if (iov_sent >= iovec[i].iov_len) {
+			i++;
+			iov_sent = 0;
+		}
+		error = res_lib_cpg_partial_send.header.error;
+	}
+error_exit:
+	qb_ipcc_fc_enable_max_set(cpg_inst->c,  1);
+
+	return error;
+}
+
+
 cs_error_t cpg_mcast_joined (
 	cpg_handle_t handle,
 	cpg_guarantee_t guarantee,
@@ -979,6 +1140,11 @@ cs_error_t cpg_mcast_joined (
 		msg_len += iovec[i].iov_len;
 	}
 
+	if (msg_len > cpg_inst->max_msg_size) {
+		error = send_fragments(cpg_inst, guarantee, msg_len, iovec, iov_len);
+		goto error_exit;
+	}
+
 	req_lib_cpg_mcast.header.size = sizeof (struct req_lib_cpg_mcast) +
 		msg_len;
 
@@ -994,6 +1160,7 @@ cs_error_t cpg_mcast_joined (
 	error = qb_to_cs_error(qb_ipcc_sendv(cpg_inst->c, iov, iov_len + 1));
 	qb_ipcc_fc_enable_max_set(cpg_inst->c,  1);
 
+error_exit:
 	hdb_handle_put (&cpg_handle_t_db, handle);
 
 	return (error);

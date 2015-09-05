@@ -58,6 +58,11 @@ cpgbench_LDADD		= $(LIBQB_LIBS) $(top_builddir)/lib/libcpg.la
 cpgbenchzc_LDADD	= $(LIBQB_LIBS) $(top_builddir)/lib/libcpg.la
 testsam_LDADD		= $(LIBQB_LIBS) $(top_builddir)/lib/libsam.la
 
+if BUILD_CPGHUM
+noinst_PROGRAMS	        += cpghum
+cpghum_LDADD            = $(LIBQB_LIBS) $(top_builddir)/lib/libcpg.la -lz
+endif
+
 ploadstart: ploadstart.sh
 	sed -e 's#@''BASHPATH@#${BASHPATH}#g' $< > $@
 	chmod 755 $@

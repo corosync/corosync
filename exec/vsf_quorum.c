@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2012 Red Hat, Inc.
+ * Copyright (c) 2008-2015 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -409,6 +409,7 @@ static void message_handler_req_lib_quorum_trackstart (void *conn,
 	const struct req_lib_quorum_trackstart *req_lib_quorum_trackstart = msg;
 	struct qb_ipc_response_header res;
 	struct quorum_pd *quorum_pd = (struct quorum_pd *)corosync_api->ipc_private_data_get (conn);
+	cs_error_t error = CS_OK;
 
 	log_printf(LOGSYS_LEVEL_DEBUG, "got trackstart request on %p", conn);
 
@@ -420,6 +421,11 @@ static void message_handler_req_lib_quorum_trackstart (void *conn,
 	    req_lib_quorum_trackstart->track_flags & CS_TRACK_CHANGES) {
 		log_printf(LOGSYS_LEVEL_DEBUG, "sending initial status to %p", conn);
 		send_library_notification(conn);
+	}
+
+	if (quorum_pd->tracking_enabled) {
+		error = CS_ERR_EXIST;
+		goto response_send;
 	}
 
 	/*
@@ -434,10 +440,11 @@ static void message_handler_req_lib_quorum_trackstart (void *conn,
 		list_add (&quorum_pd->list, &lib_trackers_list);
 	}
 
+response_send:
 	/* send status */
 	res.size = sizeof(res);
 	res.id = MESSAGE_RES_QUORUM_TRACKSTART;
-	res.error = CS_OK;
+	res.error = error;
 	corosync_api->ipc_response_send(conn, &res, sizeof(struct qb_ipc_response_header));
 }
 

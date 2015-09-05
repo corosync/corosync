@@ -512,7 +512,7 @@ char *ykd_init (
 	struct corosync_api_v1 *corosync_api,
 	quorum_set_quorate_fn_t set_primary)
 {
-	const char *error = "";
+	const char *error = NULL;
 
 	ykd_primary_callback_fn = set_primary;
 	api = corosync_api;

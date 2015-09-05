@@ -178,6 +178,13 @@ struct rrp_algo {
 		const struct totem_ip_address *member,
 		unsigned int iface_no);
 
+	void (*membership_changed) (
+		struct totemrrp_instance *instance,
+	        enum totem_configuration_type configuration_type,
+		const struct srp_addr *member_list, size_t member_list_entries,
+		const struct srp_addr *left_list, size_t left_list_entries,
+		const struct srp_addr *joined_list, size_t joined_list_entries,
+		const struct memb_ring_id *ring_id);
 };
 
 #define STATUS_STR_LEN 512
@@ -324,6 +331,15 @@ static int none_member_remove (
 	struct totemrrp_instance *instance,
 	const struct totem_ip_address *member,
 	unsigned int iface_no);
+
+static void none_membership_changed (
+	struct totemrrp_instance *instance,
+	enum totem_configuration_type configuration_type,
+	const struct srp_addr *member_list, size_t member_list_entries,
+	const struct srp_addr *left_list, size_t left_list_entries,
+	const struct srp_addr *joined_list, size_t joined_list_entries,
+	const struct memb_ring_id *ring_id);
+
 /*
  * Passive Replication Forward Declerations
  */
@@ -400,6 +416,15 @@ static int passive_member_remove (
 	struct totemrrp_instance *instance,
 	const struct totem_ip_address *member,
 	unsigned int iface_no);
+
+static void passive_membership_changed (
+	struct totemrrp_instance *instance,
+	enum totem_configuration_type configuration_type,
+	const struct srp_addr *member_list, size_t member_list_entries,
+	const struct srp_addr *left_list, size_t left_list_entries,
+	const struct srp_addr *joined_list, size_t joined_list_entries,
+	const struct memb_ring_id *ring_id);
+
 /*
  * Active Replication Forward Definitions
  */
@@ -471,6 +496,14 @@ static int active_member_remove (
 	struct totemrrp_instance *instance,
 	const struct totem_ip_address *member,
 	unsigned int iface_no);
+
+static void active_membership_changed (
+	struct totemrrp_instance *instance,
+	enum totem_configuration_type configuration_type,
+	const struct srp_addr *member_list, size_t member_list_entries,
+	const struct srp_addr *left_list, size_t left_list_entries,
+	const struct srp_addr *joined_list, size_t joined_list_entries,
+	const struct memb_ring_id *ring_id);
 
 static void active_timer_expired_token_start (
 	struct active_instance *active_instance);
@@ -546,7 +579,8 @@ struct rrp_algo none_algo = {
 	.ring_reenable		= none_ring_reenable,
 	.mcast_recv_empty	= none_mcast_recv_empty,
 	.member_add		= none_member_add,
-	.member_remove		= none_member_remove
+	.member_remove		= none_member_remove,
+	.membership_changed	= none_membership_changed
 };
 
 struct rrp_algo passive_algo = {
@@ -565,7 +599,8 @@ struct rrp_algo passive_algo = {
 	.ring_reenable		= passive_ring_reenable,
 	.mcast_recv_empty	= passive_mcast_recv_empty,
 	.member_add		= passive_member_add,
-	.member_remove		= passive_member_remove
+	.member_remove		= passive_member_remove,
+	.membership_changed	= passive_membership_changed
 };
 
 struct rrp_algo active_algo = {
@@ -584,7 +619,8 @@ struct rrp_algo active_algo = {
 	.ring_reenable		= active_ring_reenable,
 	.mcast_recv_empty	= active_mcast_recv_empty,
 	.member_add		= active_member_add,
-	.member_remove		= active_member_remove
+	.member_remove		= active_member_remove,
+	.membership_changed	= active_membership_changed
 };
 
 struct rrp_algo *rrp_algos[] = {
@@ -778,6 +814,40 @@ static int none_member_remove (
 	return (res);
 }
 
+static void none_membership_changed (
+	struct totemrrp_instance *rrp_instance,
+	enum totem_configuration_type configuration_type,
+	const struct srp_addr *member_list, size_t member_list_entries,
+	const struct srp_addr *left_list, size_t left_list_entries,
+	const struct srp_addr *joined_list, size_t joined_list_entries,
+	const struct memb_ring_id *ring_id)
+{
+	int i;
+
+	for (i = 0; i < left_list_entries; i++) {
+		if (left_list->no_addrs < 1 ||
+		    (left_list[i].addr[0].family != AF_INET && left_list[i].addr[0].family != AF_INET6)) {
+			log_printf(rrp_instance->totemrrp_log_level_error,
+				"Membership left list contains incorrect address. "
+				"This is sign of misconfiguration between nodes!");
+		} else {
+			totemnet_member_set_active(rrp_instance->net_handles[0],
+			    &left_list[i].addr[0], 0);
+		}
+	}
+
+	for (i = 0; i < joined_list_entries; i++) {
+		if (joined_list->no_addrs < 1 ||
+		    (joined_list[i].addr[0].family != AF_INET && joined_list[i].addr[0].family != AF_INET6)) {
+			log_printf(rrp_instance->totemrrp_log_level_error,
+				"Membership join list contains incorrect address. "
+				"This is sign of misconfiguration between nodes!");
+		} else {
+			totemnet_member_set_active(rrp_instance->net_handles[0],
+			    &joined_list[i].addr[0], 1);
+		}
+	}
+}
 
 /*
  * Passive Replication Implementation
@@ -1220,6 +1290,45 @@ static int passive_member_remove (
 	return (res);
 }
 
+static void passive_membership_changed (
+	struct totemrrp_instance *rrp_instance,
+	enum totem_configuration_type configuration_type,
+	const struct srp_addr *member_list, size_t member_list_entries,
+	const struct srp_addr *left_list, size_t left_list_entries,
+	const struct srp_addr *joined_list, size_t joined_list_entries,
+	const struct memb_ring_id *ring_id)
+{
+	int i;
+	int interface;
+
+	for (interface = 0; interface < rrp_instance->interface_count; interface++) {
+		for (i = 0; i < left_list_entries; i++) {
+			if (left_list->no_addrs < interface + 1 ||
+			    (left_list[i].addr[interface].family != AF_INET &&
+			     left_list[i].addr[interface].family != AF_INET6)) {
+				log_printf(rrp_instance->totemrrp_log_level_error,
+					"Membership left list contains incorrect address. "
+					"This is sign of misconfiguration between nodes!");
+			} else {
+				totemnet_member_set_active(rrp_instance->net_handles[interface],
+				    &left_list[i].addr[interface], 0);
+			}
+		}
+
+		for (i = 0; i < joined_list_entries; i++) {
+			if (joined_list->no_addrs < interface + 1 ||
+			    (joined_list[i].addr[interface].family != AF_INET &&
+			     joined_list[i].addr[interface].family != AF_INET6)) {
+				log_printf(rrp_instance->totemrrp_log_level_error,
+					"Membership join list contains incorrect address. "
+					"This is sign of misconfiguration between nodes!");
+			} else {
+				totemnet_member_set_active(rrp_instance->net_handles[interface],
+				    &joined_list[i].addr[interface], 1);
+			}
+		}
+	}
+}
 
 static void passive_ring_reenable (
 	struct totemrrp_instance *instance,
@@ -1433,6 +1542,7 @@ static void active_timer_problem_decrementer_cancel (
         qb_loop_timer_del (
 		active_instance->rrp_instance->poll_handle,
 		active_instance->timer_problem_decrementer);
+	active_instance->timer_problem_decrementer = 0;
 }
 
 
@@ -1590,6 +1700,46 @@ static int active_member_remove (
 	int res;
 	res = totemnet_member_remove (instance->net_handles[iface_no], member);
 	return (res);
+}
+
+static void active_membership_changed (
+	struct totemrrp_instance *rrp_instance,
+	enum totem_configuration_type configuration_type,
+	const struct srp_addr *member_list, size_t member_list_entries,
+	const struct srp_addr *left_list, size_t left_list_entries,
+	const struct srp_addr *joined_list, size_t joined_list_entries,
+	const struct memb_ring_id *ring_id)
+{
+	int i;
+	int interface;
+
+	for (interface = 0; interface < rrp_instance->interface_count; interface++) {
+		for (i = 0; i < left_list_entries; i++) {
+			if (left_list->no_addrs < interface + 1 ||
+			    (left_list[i].addr[interface].family != AF_INET &&
+			     left_list[i].addr[interface].family != AF_INET6)) {
+				log_printf(rrp_instance->totemrrp_log_level_error,
+					"Membership left list contains incorrect address. "
+					"This is sign of misconfiguration between nodes!");
+			} else {
+				totemnet_member_set_active(rrp_instance->net_handles[interface],
+				    &left_list[i].addr[interface], 0);
+			}
+		}
+
+		for (i = 0; i < joined_list_entries; i++) {
+			if (joined_list->no_addrs < interface + 1 ||
+			    (joined_list[i].addr[interface].family != AF_INET &&
+			     joined_list[i].addr[interface].family != AF_INET6)) {
+				log_printf(rrp_instance->totemrrp_log_level_error,
+					"Membership join list contains incorrect address. "
+					"This is sign of misconfiguration between nodes!");
+			} else {
+				totemnet_member_set_active(rrp_instance->net_handles[interface],
+				    &joined_list[i].addr[interface], 1);
+			}
+		}
+	}
 }
 
 static void active_iface_check (struct totemrrp_instance *instance)
@@ -1760,13 +1910,21 @@ void rrp_deliver_fn (
 		}
 	} else 
 	if (hdr->type == MESSAGE_TYPE_RING_TEST_ACTIVATE) {
-		log_printf (
-			rrp_instance->totemrrp_log_level_notice,
-			"Automatically recovered ring %d", hdr->ring_number);
 
 		if (hdr->endian_detector != ENDIAN_LOCAL) {
 			test_active_msg_endian_convert(hdr, &tmp_msg);
 			hdr = &tmp_msg;
+		}
+
+		log_printf (
+			rrp_instance->totemrrp_log_level_debug,
+			"Received ring test activate message for ring %d sent by node %u",
+			hdr->ring_number,
+			hdr->nodeid_activator);
+
+		if (rrp_instance->stats.faulty[deliver_fn_context->iface_no]) {
+			log_printf (rrp_instance->totemrrp_log_level_notice,
+			    "Automatically recovered ring %d", hdr->ring_number);
 		}
 
 		totemrrp_ring_reenable (rrp_instance, deliver_fn_context->iface_no);
@@ -2156,4 +2314,22 @@ int totemrrp_member_remove (
 	res = instance->rrp_algo->member_remove (instance, member, iface_no);
 
 	return (res);
+}
+
+void totemrrp_membership_changed (
+        void *rrp_context,
+	enum totem_configuration_type configuration_type,
+	const struct srp_addr *member_list, size_t member_list_entries,
+	const struct srp_addr *left_list, size_t left_list_entries,
+	const struct srp_addr *joined_list, size_t joined_list_entries,
+	const struct memb_ring_id *ring_id)
+{
+	struct totemrrp_instance *instance = (struct totemrrp_instance *)rrp_context;
+
+	instance->rrp_algo->membership_changed (instance,
+	    configuration_type,
+	    member_list, member_list_entries,
+	    left_list, left_list_entries,
+	    joined_list, joined_list_entries,
+	    ring_id);
 }
