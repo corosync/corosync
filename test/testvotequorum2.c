@@ -100,7 +100,7 @@ static void usage(const char *command)
         printf("      -p <num>  Number of times to poll qdevice (default 0=infinte)\n");
         printf("      -t <secs> Time (in seconds) to wait between polls (default=1)\n");
         printf("      -n <name> Name of quorum device (default QDEVICE)\n");
-        printf("      -c        Cast vote (default yes)\n");
+        printf("      -c        Don't cast vote (default is to cast vote)\n");
         printf("      -q        Don't print device status every poll time (default=will print)\n");
         printf("      -m        Master wins (default no)\n");
         printf("      -1        Print status once and exit\n");
@@ -127,7 +127,7 @@ int main(int argc, char *argv[])
 		        master_wins = 1;
 			break;
 		case 'c':
-		        cast_vote = 1;
+		        cast_vote = 0;
 			break;
 		case '1':
 		        once = 1;

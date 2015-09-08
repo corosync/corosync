@@ -416,6 +416,7 @@ static int compare_nodenames(const void *one, const void *two)
 static void display_nodes_data(nodeid_format_t nodeid_format, name_format_t name_format, sorttype_t sort_type)
 {
 	int i, display_qdevice = 0;
+	unsigned int our_flags = 0;
 	struct votequorum_info info[g_view_list_entries];
 	/*
 	 * cache node info because we need to parse them twice
@@ -488,6 +489,7 @@ static void display_nodes_data(nodeid_format_t nodeid_format, name_format_t name
 		printf("%s", g_view_list[i].name);
 		if (g_view_list[i].node_id == our_nodeid) {
 			printf(" (local)");
+			our_flags = info[i].flags;
 		}
 		printf("\n");
 	}
@@ -506,8 +508,21 @@ static void display_nodes_data(nodeid_format_t nodeid_format, name_format_t name
 		} else {
 			printf("0x%08x ", VOTEQUORUM_QDEVICE_NODEID);
 		}
-		print_uint32_padded(info[0].qdevice_votes);
-		printf("           %s\n", info[0].qdevice_name);
+		/* If the quorum device is inactive on this node then show votes as 0
+		   so that the display is not confusing */
+		if (our_flags & VOTEQUORUM_INFO_QDEVICE_CAST_VOTE) {
+			print_uint32_padded(info[0].qdevice_votes);
+		}
+		else {
+			print_uint32_padded(0);
+		}
+		printf("           %s", info[0].qdevice_name);
+		if (our_flags & VOTEQUORUM_INFO_QDEVICE_CAST_VOTE) {
+			printf("\n");
+		}
+		else {
+			printf(" (votes %d)\n", info[0].qdevice_votes);
+		}
 	}
 
 }
