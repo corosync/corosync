@@ -32,64 +32,90 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <sys/types.h>
-#include <arpa/inet.h>
-
 #include <inttypes.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include "qnetd-clients-list.h"
+#include "node-list.h"
 
 void
-qnetd_clients_list_init(struct qnetd_clients_list *clients_list)
+node_list_init(struct node_list *list)
 {
 
-	TAILQ_INIT(clients_list);
+	TAILQ_INIT(list);
 }
 
-struct qnetd_client *
-qnetd_clients_list_add(struct qnetd_clients_list *clients_list, PRFileDesc *sock, PRNetAddr *addr,
-	size_t max_receive_size, size_t max_send_size)
+struct node_list_entry *
+node_list_add(struct node_list *list, uint32_t node_id, uint32_t data_center_id,
+    enum tlv_node_state node_state)
 {
-	struct qnetd_client *client;
+	struct node_list_entry *node;
 
-	client = (struct qnetd_client *)malloc(sizeof(*client));
-	if (client == NULL) {
+	node = (struct node_list_entry *)malloc(sizeof(*node));
+	if (node == NULL) {
 		return (NULL);
 	}
 
-	qnetd_client_init(client, sock, addr, max_receive_size, max_send_size);
+	memset(node, 0, sizeof(*node));
 
-	TAILQ_INSERT_TAIL(clients_list, client, entries);
+	node->node_id = node_id;
+	node->data_center_id = data_center_id;
+	node->node_state = node_state;
 
-	return (client);
+	TAILQ_INSERT_TAIL(list, node, entries);
+
+	return (node);
+}
+
+struct node_list_entry *
+node_list_add_from_node_info(struct node_list *list, const struct tlv_node_info *node_info)
+{
+
+	return (node_list_add(list, node_info->node_id, node_info->data_center_id,
+	    node_info->node_state));
 }
 
 void
-qnetd_clients_list_free(struct qnetd_clients_list *clients_list)
+node_list_entry_to_tlv_node_info(const struct node_list_entry *node,
+    struct tlv_node_info *node_info)
 {
-	struct qnetd_client *client;
-	struct qnetd_client *client_next;
 
-	client = TAILQ_FIRST(clients_list);
+	node_info->node_id = node->node_id;
+	node_info->data_center_id = node->data_center_id;
+	node_info->node_state = node->node_state;
+}
 
-	while (client != NULL) {
-		client_next = TAILQ_NEXT(client, entries);
+void
+node_list_free(struct node_list *list)
+{
+	struct node_list_entry *node;
+	struct node_list_entry *node_next;
 
-		free(client);
+	node = TAILQ_FIRST(list);
 
-		client = client_next;
+	while (node != NULL) {
+		node_next = TAILQ_NEXT(node, entries);
+
+		free(node);
+
+		node = node_next;
 	}
 
-	TAILQ_INIT(clients_list);
+	TAILQ_INIT(list);
 }
 
 void
-qnetd_clients_list_del(struct qnetd_clients_list *clients_list, struct qnetd_client *client)
+node_list_del(struct node_list *list, struct node_list_entry *node)
 {
 
-	TAILQ_REMOVE(clients_list, client, entries);
-	qnetd_client_destroy(client);
-	free(client);
+	TAILQ_REMOVE(list, node, entries);
+
+	free(node);
+}
+
+int
+node_list_is_empty(struct node_list *list)
+{
+
+	return (TAILQ_EMPTY(list));
 }

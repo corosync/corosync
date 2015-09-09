@@ -41,7 +41,7 @@
 #include <nspr.h>
 
 #include "qnetd-client.h"
-#include "qnetd-clients-list.h"
+#include "qnetd-client-list.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -64,10 +64,12 @@ extern unsigned int	 qnetd_poll_array_size(struct qnetd_poll_array *poll_array);
 
 extern PRPollDesc	*qnetd_poll_array_add(struct qnetd_poll_array *poll_array);
 
-extern PRPollDesc 	*qnetd_poll_array_get(const struct qnetd_poll_array *poll_array, unsigned int pos);
+extern PRPollDesc 	*qnetd_poll_array_get(const struct qnetd_poll_array *poll_array,
+    unsigned int pos);
 
-extern PRPollDesc	*qnetd_poll_array_create_from_clients_list(struct qnetd_poll_array *poll_array,
-    const struct qnetd_clients_list *clients_list, PRFileDesc *extra_fd, PRInt16 extra_fd_in_flags);
+extern PRPollDesc	*qnetd_poll_array_create_from_client_list(
+    struct qnetd_poll_array *poll_array, const struct qnetd_client_list *client_list,
+    PRFileDesc *extra_fd, PRInt16 extra_fd_in_flags);
 
 #ifdef __cplusplus
 }

@@ -55,13 +55,14 @@
 #include "tlv.h"
 #include "nss-sock.h"
 #include "qnetd-client.h"
-#include "qnetd-clients-list.h"
+#include "qnetd-client-list.h"
 #include "qnetd-poll-array.h"
 #include "qnetd-log.h"
 #include "dynar.h"
 #include "timer-list.h"
 
-#define QNETD_LISTEN_BACKLOG	10
+#define QNETD_LISTEN_BACKLOG		10
+#define QNETD_MAX_CLIENT_SEND_BUFFERS	10
 #define QNETD_MAX_CLIENT_SEND_SIZE	(1 << 15)
 #define QNETD_MAX_CLIENT_RECEIVE_SIZE	(1 << 15)
 
@@ -81,8 +82,9 @@ struct qnetd_instance {
 		SECKEYPrivateKey *private_key;
 	} server;
 	size_t max_client_receive_size;
+	size_t max_client_send_buffers;
 	size_t max_client_send_size;
-	struct qnetd_clients_list clients;
+	struct qnetd_client_list clients;
 	struct qnetd_poll_array poll_array;
 	enum tlv_tls_supported tls_supported;
 	int tls_client_cert_required;
@@ -143,48 +145,41 @@ qnetd_client_log_msg_decode_error(int ret)
 }
 
 static int
-qnetd_client_net_schedule_send(struct qnetd_client *client)
-{
-	if (client->sending_msg) {
-		/*
-		 * Client is already sending msg
-		 */
-		return (-1);
-	}
-
-	client->msg_already_sent_bytes = 0;
-	client->sending_msg = 1;
-
-	return (0);
-}
-
-static int
 qnetd_client_send_err(struct qnetd_client *client, int add_msg_seq_number, uint32_t msg_seq_number,
     enum tlv_reply_error_code reply)
 {
+	struct send_buffer_list_entry *send_buffer;
 
-	if (msg_create_server_error(&client->send_buffer, add_msg_seq_number, msg_seq_number, reply) == 0) {
-		qnetd_log(LOG_ERR, "Can't alloc server error msg. Disconnecting client connection.");
+	send_buffer = send_buffer_list_get_new(&client->send_buffer_list);
+	if (send_buffer == NULL) {
+		qnetd_log(LOG_ERR, "Can't alloc server error msg from list. "
+		    "Disconnecting client connection.");
+
+		return (-1);
+	}
+
+	if (msg_create_server_error(&send_buffer->buffer, add_msg_seq_number,
+	    msg_seq_number, reply) == 0) {
+		qnetd_log(LOG_ERR, "Can't alloc server error msg. "
+		    "Disconnecting client connection.");
 
 		return (-1);
 	};
 
-	if (qnetd_client_net_schedule_send(client) != 0) {
-		qnetd_log(LOG_ERR, "Can't schedule send of error message. Disconnecting client connection.");
-
-		return (-1);
-	}
+	send_buffer_list_put(&client->send_buffer_list, send_buffer);
 
 	return (0);
 }
 
 static int
 qnetd_client_msg_received_preinit(struct qnetd_instance *instance, struct qnetd_client *client,
-	const struct msg_decoded *msg)
+    const struct msg_decoded *msg)
 {
+	struct send_buffer_list_entry *send_buffer;
 
 	if (msg->cluster_name == NULL) {
-		qnetd_log(LOG_ERR, "Received preinit message without cluster name. Sending error reply.");
+		qnetd_log(LOG_ERR, "Received preinit message without cluster name. "
+		    "Sending error reply.");
 
 		if (qnetd_client_send_err(client, msg->seq_number_set, msg->seq_number,
 		    TLV_REPLY_ERROR_CODE_DOESNT_CONTAIN_REQUIRED_OPTION) != 0) {
@@ -210,25 +205,30 @@ qnetd_client_msg_received_preinit(struct qnetd_instance *instance, struct qnetd_
 	client->cluster_name_len = msg->cluster_name_len;
 	client->preinit_received = 1;
 
-	if (msg_create_preinit_reply(&client->send_buffer, msg->seq_number_set, msg->seq_number,
+	send_buffer = send_buffer_list_get_new(&client->send_buffer_list);
+	if (send_buffer == NULL) {
+		qnetd_log(LOG_ERR, "Can't alloc preinit reply msg from list. "
+		    "Disconnecting client connection.");
+
+		return (-1);
+	}
+
+	if (msg_create_preinit_reply(&send_buffer->buffer, msg->seq_number_set, msg->seq_number,
 	    instance->tls_supported, instance->tls_client_cert_required) == 0) {
-		qnetd_log(LOG_ERR, "Can't alloc preinit reply msg. Disconnecting client connection.");
+		qnetd_log(LOG_ERR, "Can't alloc preinit reply msg. "
+		    "Disconnecting client connection.");
 
 		return (-1);
 	};
 
-	if (qnetd_client_net_schedule_send(client) != 0) {
-		qnetd_log(LOG_ERR, "Can't schedule send of preinit message. Disconnecting client connection.");
-
-		return (-1);
-	}
+	send_buffer_list_put(&client->send_buffer_list, send_buffer);
 
 	return (0);
 }
 
 static int
-qnetd_client_msg_received_preinit_reply(struct qnetd_instance *instance, struct qnetd_client *client,
-	const struct msg_decoded *msg)
+qnetd_client_msg_received_preinit_reply(struct qnetd_instance *instance,
+    struct qnetd_client *client, const struct msg_decoded *msg)
 {
 
 	qnetd_log(LOG_ERR, "Received preinit reply. Sending back error message");
@@ -243,12 +243,13 @@ qnetd_client_msg_received_preinit_reply(struct qnetd_instance *instance, struct 
 
 static int
 qnetd_client_msg_received_starttls(struct qnetd_instance *instance, struct qnetd_client *client,
-	const struct msg_decoded *msg)
+    const struct msg_decoded *msg)
 {
 	PRFileDesc *new_pr_fd;
 
 	if (!client->preinit_received) {
-		qnetd_log(LOG_ERR, "Received starttls before preinit message. Sending error reply.");
+		qnetd_log(LOG_ERR, "Received starttls before preinit message. "
+		    "Sending error reply.");
 
 		if (qnetd_client_send_err(client, msg->seq_number_set, msg->seq_number,
 		    TLV_REPLY_ERROR_CODE_PREINIT_REQUIRED) != 0) {
@@ -274,8 +275,9 @@ qnetd_client_msg_received_starttls(struct qnetd_instance *instance, struct qnetd
 
 static int
 qnetd_client_msg_received_server_error(struct qnetd_instance *instance, struct qnetd_client *client,
-	const struct msg_decoded *msg)
+    const struct msg_decoded *msg)
 {
+
 	qnetd_log(LOG_ERR, "Received server error. Sending back error message");
 
 	if (qnetd_client_send_err(client, msg->seq_number_set, msg->seq_number,
@@ -292,7 +294,8 @@ qnetd_client_msg_received_server_error(struct qnetd_instance *instance, struct q
  * -2 - Error reply sent, but no need to disconnect client
  */
 static int
-qnetd_client_check_tls(struct qnetd_instance *instance, struct qnetd_client *client, const struct msg_decoded *msg)
+qnetd_client_check_tls(struct qnetd_instance *instance, struct qnetd_client *client,
+    const struct msg_decoded *msg)
 {
 	int check_certificate;
 	int tls_required;
@@ -309,7 +312,8 @@ qnetd_client_check_tls(struct qnetd_instance *instance, struct qnetd_client *cli
 	case TLV_TLS_SUPPORTED:
 		tls_required = 0;
 
-		if (client->tls_started && instance->tls_client_cert_required && !client->tls_peer_certificate_verified) {
+		if (client->tls_started && instance->tls_client_cert_required &&
+		    !client->tls_peer_certificate_verified) {
 			check_certificate = 1;
 		}
 		break;
@@ -326,7 +330,8 @@ qnetd_client_check_tls(struct qnetd_instance *instance, struct qnetd_client *cli
 	}
 
 	if (tls_required && !client->tls_started) {
-		qnetd_log(LOG_ERR, "TLS is required but doesn't started yet. Sending back error message");
+		qnetd_log(LOG_ERR, "TLS is required but doesn't started yet. "
+		    "Sending back error message");
 
 		if (qnetd_client_send_err(client, msg->seq_number_set, msg->seq_number,
 		    TLV_REPLY_ERROR_CODE_TLS_REQUIRED) != 0) {
@@ -340,13 +345,15 @@ qnetd_client_check_tls(struct qnetd_instance *instance, struct qnetd_client *cli
 		peer_cert = SSL_PeerCertificate(client->socket);
 
 		if (peer_cert == NULL) {
-			qnetd_log(LOG_ERR, "Client doesn't sent valid certificate. Disconnecting client");
+			qnetd_log(LOG_ERR, "Client doesn't sent valid certificate. "
+			    "Disconnecting client");
 
 			return (-1);
 		}
 
 		if (CERT_VerifyCertName(peer_cert, client->cluster_name) != SECSuccess) {
-			qnetd_log(LOG_ERR, "Client doesn't sent certificate with valid CN. Disconnecting client");
+			qnetd_log(LOG_ERR, "Client doesn't sent certificate with valid CN. "
+			    "Disconnecting client");
 
 			CERT_DestroyCertificate(peer_cert);
 
@@ -363,13 +370,14 @@ qnetd_client_check_tls(struct qnetd_instance *instance, struct qnetd_client *cli
 
 static int
 qnetd_client_msg_received_init(struct qnetd_instance *instance, struct qnetd_client *client,
-	const struct msg_decoded *msg)
+    const struct msg_decoded *msg)
 {
 	int res;
 	enum msg_type *supported_msgs;
 	size_t no_supported_msgs;
 	enum tlv_opt_type *supported_opts;
 	size_t no_supported_opts;
+	struct send_buffer_list_entry *send_buffer;
 
 	supported_msgs = NULL;
 	supported_opts = NULL;
@@ -392,7 +400,8 @@ qnetd_client_msg_received_init(struct qnetd_instance *instance, struct qnetd_cli
 	}
 
 	if (!msg->node_id_set) {
-		qnetd_log(LOG_ERR, "Received init message without node id set. Sending error reply.");
+		qnetd_log(LOG_ERR, "Received init message without node id set. "
+		    "Sending error reply.");
 
 		if (qnetd_client_send_err(client, msg->seq_number_set, msg->seq_number,
 		    TLV_REPLY_ERROR_CODE_DOESNT_CONTAIN_REQUIRED_OPTION) != 0) {
@@ -409,7 +418,8 @@ qnetd_client_msg_received_init(struct qnetd_instance *instance, struct qnetd_cli
 		 */
 /*
 		for (i = 0; i < msg->no_supported_messages; i++) {
-			qnetd_log(LOG_DEBUG, "Client supports %u message", (int)msg->supported_messages[i]);
+			qnetd_log(LOG_DEBUG, "Client supports %u message",
+			    (int)msg->supported_messages[i]);
 		}
 */
 
@@ -426,7 +436,8 @@ qnetd_client_msg_received_init(struct qnetd_instance *instance, struct qnetd_cli
 		 */
 /*
 		for (i = 0; i < msg->no_supported_options; i++) {
-			qnetd_log(LOG_DEBUG, "Client supports %u option", (int)msg->supported_messages[i]);
+			qnetd_log(LOG_DEBUG, "Client supports %u option",
+			    (int)msg->supported_messages[i]);
 		}
 */
 
@@ -440,27 +451,32 @@ qnetd_client_msg_received_init(struct qnetd_instance *instance, struct qnetd_cli
 	client->node_id = msg->node_id;
 	client->init_received = 1;
 
-	if (msg_create_init_reply(&client->send_buffer, msg->seq_number_set, msg->seq_number,
+	send_buffer = send_buffer_list_get_new(&client->send_buffer_list);
+	if (send_buffer == NULL) {
+		qnetd_log(LOG_ERR, "Can't alloc init reply msg from list. "
+		    "Disconnecting client connection.");
+
+		return (-1);
+	}
+
+	if (msg_create_init_reply(&send_buffer->buffer, msg->seq_number_set, msg->seq_number,
 	    supported_msgs, no_supported_msgs, supported_opts, no_supported_opts,
 	    instance->max_client_receive_size, instance->max_client_send_size,
-	    qnetd_static_supported_decision_algorithms, QNETD_STATIC_SUPPORTED_DECISION_ALGORITHMS_SIZE) == -1) {
+	    qnetd_static_supported_decision_algorithms,
+	    QNETD_STATIC_SUPPORTED_DECISION_ALGORITHMS_SIZE) == -1) {
 		qnetd_log(LOG_ERR, "Can't alloc init reply msg. Disconnecting client connection.");
 
 		return (-1);
 	}
 
-	if (qnetd_client_net_schedule_send(client) != 0) {
-		qnetd_log(LOG_ERR, "Can't schedule send of init reply message. Disconnecting client connection.");
-
-		return (-1);
-	}
+	send_buffer_list_put(&client->send_buffer_list, send_buffer);
 
 	return (0);
 }
 
 static int
 qnetd_client_msg_received_init_reply(struct qnetd_instance *instance, struct qnetd_client *client,
-	const struct msg_decoded *msg)
+    const struct msg_decoded *msg)
 {
 	qnetd_log(LOG_ERR, "Received init reply. Sending back error message");
 
@@ -473,8 +489,8 @@ qnetd_client_msg_received_init_reply(struct qnetd_instance *instance, struct qne
 }
 
 static int
-qnetd_client_msg_received_set_option_reply(struct qnetd_instance *instance, struct qnetd_client *client,
-	const struct msg_decoded *msg)
+qnetd_client_msg_received_set_option_reply(struct qnetd_instance *instance,
+    struct qnetd_client *client, const struct msg_decoded *msg)
 {
 	qnetd_log(LOG_ERR, "Received set option reply. Sending back error message");
 
@@ -488,17 +504,19 @@ qnetd_client_msg_received_set_option_reply(struct qnetd_instance *instance, stru
 
 static int
 qnetd_client_msg_received_set_option(struct qnetd_instance *instance, struct qnetd_client *client,
-	const struct msg_decoded *msg)
+    const struct msg_decoded *msg)
 {
 	int res;
 	size_t zi;
+	struct send_buffer_list_entry *send_buffer;
 
 	if ((res = qnetd_client_check_tls(instance, client, msg)) != 0) {
 		return (res == -1 ? -1 : 0);
 	}
 
 	if (!client->init_received) {
-		qnetd_log(LOG_ERR, "Received set option message before init message. Sending error reply.");
+		qnetd_log(LOG_ERR, "Received set option message before init message. "
+		    "Sending error reply.");
 
 		if (qnetd_client_send_err(client, msg->seq_number_set, msg->seq_number,
 		    TLV_REPLY_ERROR_CODE_INIT_REQUIRED) != 0) {
@@ -515,14 +533,15 @@ qnetd_client_msg_received_set_option(struct qnetd_instance *instance, struct qne
 		res = 0;
 
 		for (zi = 0; zi < QNETD_STATIC_SUPPORTED_DECISION_ALGORITHMS_SIZE && !res; zi++) {
-			if (qnetd_static_supported_decision_algorithms[zi] == msg->decision_algorithm) {
+			if (qnetd_static_supported_decision_algorithms[zi] ==
+			    msg->decision_algorithm) {
 				res = 1;
 			}
 		}
 
 		if (!res) {
-			qnetd_log(LOG_ERR, "Client requested unsupported decision algorithm %u. Sending error reply.",
-			    msg->decision_algorithm);
+			qnetd_log(LOG_ERR, "Client requested unsupported decision algorithm %u. "
+			    "Sending error reply.", msg->decision_algorithm);
 
 			if (qnetd_client_send_err(client, msg->seq_number_set, msg->seq_number,
 			    TLV_REPLY_ERROR_CODE_UNSUPPORTED_DECISION_ALGORITHM) != 0) {
@@ -539,10 +558,11 @@ qnetd_client_msg_received_set_option(struct qnetd_instance *instance, struct qne
 		/*
 		 * Check if heartbeat interval is valid
 		 */
-		if (msg->heartbeat_interval != 0 && (msg->heartbeat_interval < QNETD_HEARTBEAT_INTERVAL_MIN ||
+		if (msg->heartbeat_interval != 0 &&
+		    (msg->heartbeat_interval < QNETD_HEARTBEAT_INTERVAL_MIN ||
 		    msg->heartbeat_interval > QNETD_HEARTBEAT_INTERVAL_MAX)) {
-			qnetd_log(LOG_ERR, "Client requested invalid heartbeat interval %u. Sending error reply.",
-			    msg->heartbeat_interval);
+			qnetd_log(LOG_ERR, "Client requested invalid heartbeat interval %u. "
+			    "Sending error reply.", msg->heartbeat_interval);
 
 			if (qnetd_client_send_err(client, msg->seq_number_set, msg->seq_number,
 			    TLV_REPLY_ERROR_CODE_INVALID_HEARTBEAT_INTERVAL) != 0) {
@@ -555,18 +575,23 @@ qnetd_client_msg_received_set_option(struct qnetd_instance *instance, struct qne
 		client->heartbeat_interval = msg->heartbeat_interval;
 	}
 
-	if (msg_create_set_option_reply(&client->send_buffer, msg->seq_number_set, msg->seq_number,
+	send_buffer = send_buffer_list_get_new(&client->send_buffer_list);
+	if (send_buffer == NULL) {
+		qnetd_log(LOG_ERR, "Can't alloc set option reply msg from list. "
+		    "Disconnecting client connection.");
+
+		return (-1);
+	}
+
+	if (msg_create_set_option_reply(&send_buffer->buffer, msg->seq_number_set, msg->seq_number,
 	    client->decision_algorithm, client->heartbeat_interval) == -1) {
-		qnetd_log(LOG_ERR, "Can't alloc set option reply msg. Disconnecting client connection.");
+		qnetd_log(LOG_ERR, "Can't alloc set option reply msg. "
+		    "Disconnecting client connection.");
 
 		return (-1);
 	}
 
-	if (qnetd_client_net_schedule_send(client) != 0) {
-		qnetd_log(LOG_ERR, "Can't schedule send of set option reply message. Disconnecting client connection.");
-
-		return (-1);
-	}
+	send_buffer_list_put(&client->send_buffer_list, send_buffer);
 
 	return (0);
 }
@@ -590,13 +615,15 @@ qnetd_client_msg_received_echo_request(struct qnetd_instance *instance, struct q
 	const struct msg_decoded *msg, const struct dynar *msg_orig)
 {
 	int res;
+	struct send_buffer_list_entry *send_buffer;
 
 	if ((res = qnetd_client_check_tls(instance, client, msg)) != 0) {
 		return (res == -1 ? -1 : 0);
 	}
 
 	if (!client->init_received) {
-		qnetd_log(LOG_ERR, "Received echo request before init message. Sending error reply.");
+		qnetd_log(LOG_ERR, "Received echo request before init message. "
+		    "Sending error reply.");
 
 		if (qnetd_client_send_err(client, msg->seq_number_set, msg->seq_number,
 		    TLV_REPLY_ERROR_CODE_INIT_REQUIRED) != 0) {
@@ -606,15 +633,89 @@ qnetd_client_msg_received_echo_request(struct qnetd_instance *instance, struct q
 		return (0);
 	}
 
-	if (msg_create_echo_reply(&client->send_buffer, msg_orig) == -1) {
+	send_buffer = send_buffer_list_get_new(&client->send_buffer_list);
+	if (send_buffer == NULL) {
+		qnetd_log(LOG_ERR, "Can't alloc echo reply msg from list. "
+		    "Disconnecting client connection.");
+
+		return (-1);
+	}
+
+	if (msg_create_echo_reply(&send_buffer->buffer, msg_orig) == -1) {
 		qnetd_log(LOG_ERR, "Can't alloc echo reply msg. Disconnecting client connection.");
 
 		return (-1);
 	}
 
-	if (qnetd_client_net_schedule_send(client) != 0) {
-		qnetd_log(LOG_ERR, "Can't schedule send of echo reply message. Disconnecting client connection.");
+	send_buffer_list_put(&client->send_buffer_list, send_buffer);
 
+	return (0);
+}
+
+static int
+qnetd_client_msg_received_node_list(struct qnetd_instance *instance, struct qnetd_client *client,
+    const struct msg_decoded *msg)
+{
+	int res;
+	struct send_buffer_list_entry *send_buffer;
+
+	if ((res = qnetd_client_check_tls(instance, client, msg)) != 0) {
+		return (res == -1 ? -1 : 0);
+	}
+
+	if (!client->init_received) {
+		qnetd_log(LOG_ERR, "Received set option message before init message. "
+		    "Sending error reply.");
+
+		if (qnetd_client_send_err(client, msg->seq_number_set, msg->seq_number,
+		    TLV_REPLY_ERROR_CODE_INIT_REQUIRED) != 0) {
+			return (-1);
+		}
+
+		return (0);
+	}
+
+	if (!msg->node_list_type_set) {
+		qnetd_log(LOG_ERR, "Received node list message without node list type set. "
+		    "Sending error reply.");
+
+		if (qnetd_client_send_err(client, msg->seq_number_set, msg->seq_number,
+		    TLV_REPLY_ERROR_CODE_DOESNT_CONTAIN_REQUIRED_OPTION) != 0) {
+			return (-1);
+		}
+
+		return (0);
+	}
+
+	send_buffer = send_buffer_list_get_new(&client->send_buffer_list);
+	if (send_buffer == NULL) {
+		qnetd_log(LOG_ERR, "Can't alloc node list reply msg from list. "
+		    "Disconnecting client connection.");
+
+		return (-1);
+	}
+
+	if (msg_create_node_list_reply(&send_buffer->buffer, msg->seq_number_set, msg->seq_number,
+	    TLV_VOTE_ACK) == -1) {
+		qnetd_log(LOG_ERR, "Can't alloc node list reply msg. "
+		    "Disconnecting client connection.");
+
+		return (-1);
+	}
+
+	send_buffer_list_put(&client->send_buffer_list, send_buffer);
+
+	return (0);
+}
+
+static int
+qnetd_client_msg_received_node_list_reply(struct qnetd_instance *instance, struct qnetd_client *client,
+	const struct msg_decoded *msg)
+{
+	qnetd_log(LOG_ERR, "Received node list reply. Sending back error message");
+
+	if (qnetd_client_send_err(client, msg->seq_number_set, msg->seq_number,
+	    TLV_REPLY_ERROR_CODE_UNEXPECTED_MESSAGE) != 0) {
 		return (-1);
 	}
 
@@ -674,14 +775,21 @@ qnetd_client_msg_received(struct qnetd_instance *instance, struct qnetd_client *
 		ret_val = qnetd_client_msg_received_set_option_reply(instance, client, &msg);
 		break;
 	case MSG_TYPE_ECHO_REQUEST:
-		ret_val = qnetd_client_msg_received_echo_request(instance, client, &msg, &client->receive_buffer);
+		ret_val = qnetd_client_msg_received_echo_request(instance, client, &msg,
+		    &client->receive_buffer);
 		break;
 	case MSG_TYPE_ECHO_REPLY:
 		ret_val = qnetd_client_msg_received_echo_reply(instance, client, &msg);
 		break;
+	case MSG_TYPE_NODE_LIST:
+		ret_val = qnetd_client_msg_received_node_list(instance, client, &msg);
+		break;
+	case MSG_TYPE_NODE_LIST_REPLY:
+		ret_val = qnetd_client_msg_received_node_list_reply(instance, client, &msg);
+		break;
 	default:
-		qnetd_log(LOG_ERR, "Unsupported message %u received from client. Sending back error message",
-		    msg.type);
+		qnetd_log(LOG_ERR, "Unsupported message %u received from client. "
+		    "Sending back error message", msg.type);
 
 		if (qnetd_client_send_err(client, msg.seq_number_set, msg.seq_number,
 		    TLV_REPLY_ERROR_CODE_UNSUPPORTED_MESSAGE) != 0) {
@@ -711,11 +819,20 @@ static int
 qnetd_client_net_write(struct qnetd_instance *instance, struct qnetd_client *client)
 {
 	int res;
+	struct send_buffer_list_entry *send_buffer;
 
-	res = msgio_write(client->socket, &client->send_buffer, &client->msg_already_sent_bytes);
+	send_buffer = send_buffer_list_get_active(&client->send_buffer_list);
+	if (send_buffer == NULL) {
+		qnetd_log_nss(LOG_CRIT, "send_buffer_list_get_active returned NULL");
+
+		return (-1);
+	}
+
+	res = msgio_write(client->socket, &send_buffer->buffer,
+	    &send_buffer->msg_already_sent_bytes);
 
 	if (res == 1) {
-		client->sending_msg = 0;
+		send_buffer_list_delete(&client->send_buffer_list, send_buffer);
 
 		if (qnetd_client_net_write_finished(instance, client) == -1) {
 			return (-1);
@@ -750,8 +867,8 @@ qnetd_client_net_read(struct qnetd_instance *instance, struct qnetd_client *clie
 
 	orig_skipping_msg = client->skipping_msg;
 
-	res = msgio_read(client->socket, &client->receive_buffer, &client->msg_already_received_bytes,
-	    &client->skipping_msg);
+	res = msgio_read(client->socket, &client->receive_buffer,
+	    &client->msg_already_received_bytes, &client->skipping_msg);
 
 	if (!orig_skipping_msg && client->skipping_msg) {
 		qnetd_log(LOG_DEBUG, "msgio_read set skipping_msg");
@@ -770,7 +887,8 @@ qnetd_client_net_read(struct qnetd_instance *instance, struct qnetd_client *clie
 		ret_val = -1;
 		break;
 	case -2:
-		qnetd_log_nss(LOG_ERR, "Unhandled error when reading from client. Disconnecting client");
+		qnetd_log_nss(LOG_ERR, "Unhandled error when reading from client. "
+		    "Disconnecting client");
 		ret_val = -1;
 		break;
 	case -3:
@@ -826,7 +944,8 @@ qnetd_client_accept(struct qnetd_instance *instance)
 	PRFileDesc *client_socket;
 	struct qnetd_client *client;
 
-        if ((client_socket = PR_Accept(instance->server.socket, &client_addr, PR_INTERVAL_NO_TIMEOUT)) == NULL) {
+        if ((client_socket = PR_Accept(instance->server.socket, &client_addr,
+	    PR_INTERVAL_NO_TIMEOUT)) == NULL) {
 		qnetd_log_nss(LOG_ERR, "Can't accept connection");
 		return (-1);
 	}
@@ -836,8 +955,9 @@ qnetd_client_accept(struct qnetd_instance *instance)
 		return (-1);
 	}
 
-	client = qnetd_clients_list_add(&instance->clients, client_socket, &client_addr,
-	    instance->max_client_receive_size, instance->max_client_send_size);
+	client = qnetd_client_list_add(&instance->clients, client_socket, &client_addr,
+	    instance->max_client_receive_size, instance->max_client_send_buffers,
+	    instance->max_client_send_size);
 	if (client == NULL) {
 		qnetd_log(LOG_ERR, "Can't add client to list");
 		return (-2);
@@ -851,7 +971,7 @@ qnetd_client_disconnect(struct qnetd_instance *instance, struct qnetd_client *cl
 {
 
 	PR_Close(client->socket);
-	qnetd_clients_list_del(&instance->clients, client);
+	qnetd_client_list_del(&instance->clients, client);
 }
 
 static int
@@ -867,7 +987,7 @@ qnetd_poll(struct qnetd_instance *instance)
 	client = NULL;
 	client_disconnect = 0;
 
-	pfds = qnetd_poll_array_create_from_clients_list(&instance->poll_array,
+	pfds = qnetd_poll_array_create_from_client_list(&instance->poll_array,
 	    &instance->clients, instance->server.socket, PR_POLL_READ);
 
 	if (pfds == NULL) {
@@ -921,14 +1041,16 @@ qnetd_poll(struct qnetd_instance *instance)
 			}
 
 			if (!client_disconnect &&
-			    pfds[i].out_flags & (PR_POLL_ERR|PR_POLL_NVAL|PR_POLL_HUP|PR_POLL_EXCEPT)) {
+			    pfds[i].out_flags &
+			    (PR_POLL_ERR|PR_POLL_NVAL|PR_POLL_HUP|PR_POLL_EXCEPT)) {
 				if (i == 0) {
 					if (pfds[i].out_flags != PR_POLL_NVAL) {
 						/*
-						 * Poll ERR on listening socket is fatal error. POLL_NVAL is
-						 * used as a signal to quit poll loop.
+						 * Poll ERR on listening socket is fatal error.
+						 * POLL_NVAL is used as a signal to quit poll loop.
 						 */
-						qnetd_log(LOG_CRIT, "POLL_ERR (%u) on listening socket", pfds[i].out_flags);
+						qnetd_log(LOG_CRIT, "POLL_ERR (%u) on listening "
+						    "socket", pfds[i].out_flags);
 					} else {
 						qnetd_log(LOG_DEBUG, "Listening socket is closed");
 					}
@@ -936,8 +1058,8 @@ qnetd_poll(struct qnetd_instance *instance)
 					return (-1);
 
 				} else {
-					qnetd_log(LOG_DEBUG, "POLL_ERR (%u) on client socket. Disconnecting.",
-					    pfds[i].out_flags);
+					qnetd_log(LOG_DEBUG, "POLL_ERR (%u) on client socket. "
+					    "Disconnecting.", pfds[i].out_flags);
 
 					client_disconnect = 1;
 				}
@@ -974,15 +1096,17 @@ qnetd_instance_init_certs(struct qnetd_instance *instance)
 
 static int
 qnetd_instance_init(struct qnetd_instance *instance, size_t max_client_receive_size,
-    size_t max_client_send_size, enum tlv_tls_supported tls_supported, int tls_client_cert_required)
+    size_t max_client_send_buffers, size_t max_client_send_size,
+    enum tlv_tls_supported tls_supported, int tls_client_cert_required)
 {
 
 	memset(instance, 0, sizeof(*instance));
 
 	qnetd_poll_array_init(&instance->poll_array);
-	qnetd_clients_list_init(&instance->clients);
+	qnetd_client_list_init(&instance->clients);
 
 	instance->max_client_receive_size = max_client_receive_size;
+	instance->max_client_send_buffers = max_client_send_buffers;
 	instance->max_client_send_size = max_client_send_size;
 
 	instance->tls_supported = tls_supported;
@@ -1007,7 +1131,7 @@ qnetd_instance_destroy(struct qnetd_instance *instance)
 	}
 
 	qnetd_poll_array_destroy(&instance->poll_array);
-	qnetd_clients_list_free(&instance->clients);
+	qnetd_client_list_free(&instance->clients);
 
 	return (0);
 }
@@ -1090,7 +1214,8 @@ main(int argc, char *argv[])
 
 	cli_parse(argc, argv, &host_addr, &host_port);
 
-	if (qnetd_instance_init(&instance, QNETD_MAX_CLIENT_RECEIVE_SIZE, QNETD_MAX_CLIENT_SEND_SIZE,
+	if (qnetd_instance_init(&instance, QNETD_MAX_CLIENT_RECEIVE_SIZE,
+	    QNETD_MAX_CLIENT_SEND_BUFFERS, QNETD_MAX_CLIENT_SEND_SIZE,
 	    QNETD_TLS_SUPPORTED, QNETD_TLS_CLIENT_CERT_REQUIRED) == -1) {
 		errx(1, "Can't initialize qnetd");
 	}
@@ -1101,7 +1226,8 @@ main(int argc, char *argv[])
 		qnetd_err_nss();
 	}
 
-	instance.server.socket = nss_sock_create_listen_socket(instance.host_addr, instance.host_port, PR_AF_INET6);
+	instance.server.socket = nss_sock_create_listen_socket(instance.host_addr,
+	    instance.host_port, PR_AF_INET6);
 	if (instance.server.socket == NULL) {
 		qnetd_err_nss();
 	}

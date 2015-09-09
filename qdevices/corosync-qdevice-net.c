@@ -48,6 +48,7 @@
 #include <getopt.h>
 #include <err.h>
 #include <keyhi.h>
+#include <poll.h>
 
 /*
  * Needed for creating nspr handle from unix fd
@@ -65,6 +66,7 @@
 #include "msgio.h"
 #include "qnetd-log.h"
 #include "timer-list.h"
+#include "send-buffer-list.h"
 
 #define NSS_DB_DIR	COROSYSCONFDIR "/qdevice-net/nssdb"
 
@@ -79,6 +81,8 @@
 #define QNETD_NSS_SERVER_CN		"Qnetd Server"
 #define QDEVICE_NET_NSS_CLIENT_CERT_NICKNAME	"Cluster Cert"
 #define QDEVICE_NET_VOTEQUORUM_DEVICE_NAME	"QdeviceNet"
+
+#define QDEVICE_NET_MAX_SEND_BUFFERS		10
 
 #define qdevice_net_log			qnetd_log
 #define qdevice_net_log_nss		qnetd_log_nss
@@ -105,14 +109,9 @@ struct qdevice_net_instance {
 	size_t max_receive_size;
 	size_t min_send_size;
 	struct dynar receive_buffer;
-	struct dynar send_buffer;
-	struct dynar echo_request_send_buffer;
-	int sending_msg;
+	struct send_buffer_list send_buffer_list;
 	int skipping_msg;
-	int sending_echo_request_msg;
 	size_t msg_already_received_bytes;
-	size_t msg_already_sent_bytes;
-	size_t echo_request_msg_already_sent_bytes;
 	enum qdevice_net_state state;
 	uint32_t expected_msg_seq_num;
 	uint32_t echo_request_expected_msg_seq_num;
@@ -138,7 +137,8 @@ static votequorum_ring_id_t global_last_received_ring_id;
 
 static void
 err_nss(void) {
-	errx(1, "nss error %d: %s", PR_GetError(), PR_ErrorToString(PR_GetError(), PR_LANGUAGE_I_DEFAULT));
+	errx(1, "nss error %d: %s", PR_GetError(), PR_ErrorToString(PR_GetError(),
+	    PR_LANGUAGE_I_DEFAULT));
 }
 
 static SECStatus
@@ -168,46 +168,34 @@ qdevice_net_nss_get_client_auth_data(void *arg, PRFileDesc *sock, struct CERTDis
 }
 
 static int
-qdevice_net_schedule_send(struct qdevice_net_instance *instance)
-{
-	if (instance->sending_msg) {
-		/*
-		 * Msg is already scheduled for send
-		 */
-		return (-1);
-	}
-
-	instance->msg_already_sent_bytes = 0;
-	instance->sending_msg = 1;
-
-	return (0);
-}
-
-static int
 qdevice_net_schedule_echo_request_send(struct qdevice_net_instance *instance)
 {
-	if (instance->sending_echo_request_msg) {
-		qdevice_net_log(LOG_ERR, "Can't schedule send of echo request msg, because "
-		    "previous message wasn't yet sent. Disconnecting from server.");
-		return (-1);
-	}
+	struct send_buffer_list_entry *send_buffer;
 
-	if (instance->echo_reply_received_msg_seq_num != instance->echo_request_expected_msg_seq_num) {
+	if (instance->echo_reply_received_msg_seq_num !=
+	    instance->echo_request_expected_msg_seq_num) {
 		qdevice_net_log(LOG_ERR, "Server didn't send echo reply message on time. "
 		    "Disconnecting from server.");
 		return (-1);
 	}
 
+	send_buffer = send_buffer_list_get_new(&instance->send_buffer_list);
+	if (send_buffer == NULL) {
+		qdevice_net_log(LOG_CRIT, "Can't allocate send list buffer for reply msg.");
+
+		return (-1);
+	}
+
 	instance->echo_request_expected_msg_seq_num++;
 
-	if (msg_create_echo_request(&instance->echo_request_send_buffer, 1, instance->echo_request_expected_msg_seq_num) == -1) {
+	if (msg_create_echo_request(&send_buffer->buffer, 1,
+	    instance->echo_request_expected_msg_seq_num) == -1) {
 		qdevice_net_log(LOG_ERR, "Can't allocate send buffer for echo request msg");
 
 		return (-1);
 	}
 
-	instance->echo_request_msg_already_sent_bytes = 0;
-	instance->sending_echo_request_msg = 1;
+	send_buffer_list_put(&instance->send_buffer_list, send_buffer);
 
 	return (0);
 }
@@ -241,7 +229,8 @@ qdevice_net_log_msg_decode_error(int ret)
  *  1 - Use TLS
  */
 static int
-qdevice_net_check_tls_compatibility(enum tlv_tls_supported server_tls, enum tlv_tls_supported client_tls)
+qdevice_net_check_tls_compatibility(enum tlv_tls_supported server_tls,
+    enum tlv_tls_supported client_tls)
 {
 	int res;
 
@@ -275,7 +264,8 @@ qdevice_net_check_tls_compatibility(enum tlv_tls_supported server_tls, enum tlv_
 }
 
 static int
-qdevice_net_msg_received_preinit(struct qdevice_net_instance *instance, const struct msg_decoded *msg)
+qdevice_net_msg_received_preinit(struct qdevice_net_instance *instance,
+    const struct msg_decoded *msg)
 {
 
 	qdevice_net_log(LOG_ERR, "Received unexpected preinit message. Disconnecting from server");
@@ -284,11 +274,13 @@ qdevice_net_msg_received_preinit(struct qdevice_net_instance *instance, const st
 }
 
 static int
-qdevice_net_msg_check_seq_number(struct qdevice_net_instance *instance, const struct msg_decoded *msg)
+qdevice_net_msg_check_seq_number(struct qdevice_net_instance *instance,
+    const struct msg_decoded *msg)
 {
 
 	if (!msg->seq_number_set || msg->seq_number != instance->expected_msg_seq_num) {
-		qdevice_net_log(LOG_ERR, "Received message doesn't contain seq_number or it's not expected one.");
+		qdevice_net_log(LOG_ERR, "Received message doesn't contain seq_number or "
+		    "it's not expected one.");
 
 		return (-1);
 	}
@@ -297,7 +289,8 @@ qdevice_net_msg_check_seq_number(struct qdevice_net_instance *instance, const st
 }
 
 static int
-qdevice_net_msg_check_echo_reply_seq_number(struct qdevice_net_instance *instance, const struct msg_decoded *msg)
+qdevice_net_msg_check_echo_reply_seq_number(struct qdevice_net_instance *instance,
+    const struct msg_decoded *msg)
 {
 
 	if (!msg->seq_number_set) {
@@ -307,7 +300,8 @@ qdevice_net_msg_check_echo_reply_seq_number(struct qdevice_net_instance *instanc
 	}
 
 	if (msg->seq_number != instance->echo_request_expected_msg_seq_num) {
-		qdevice_net_log(LOG_ERR, "Server doesn't replied in expected time. Closing connection");
+		qdevice_net_log(LOG_ERR, "Server doesn't replied in expected time. "
+		    "Closing connection");
 
 		return (-1);
 	}
@@ -322,12 +316,20 @@ qdevice_net_send_init(struct qdevice_net_instance *instance)
 	size_t no_supported_msgs;
 	enum tlv_opt_type *supported_opts;
 	size_t no_supported_opts;
+	struct send_buffer_list_entry *send_buffer;
 
 	tlv_get_supported_options(&supported_opts, &no_supported_opts);
 	msg_get_supported_messages(&supported_msgs, &no_supported_msgs);
 	instance->expected_msg_seq_num++;
 
-	if (msg_create_init(&instance->send_buffer, 1, instance->expected_msg_seq_num,
+	send_buffer = send_buffer_list_get_new(&instance->send_buffer_list);
+	if (send_buffer == NULL) {
+		qdevice_net_log(LOG_ERR, "Can't allocate send list buffer for init msg");
+
+		return (-1);
+	}
+
+	if (msg_create_init(&send_buffer->buffer, 1, instance->expected_msg_seq_num,
 	    supported_msgs, no_supported_msgs, supported_opts, no_supported_opts,
 	    instance->node_id) == 0) {
 		qdevice_net_log(LOG_ERR, "Can't allocate send buffer for init msg");
@@ -335,11 +337,7 @@ qdevice_net_send_init(struct qdevice_net_instance *instance)
 		return (-1);
 	}
 
-	if (qdevice_net_schedule_send(instance) != 0) {
-		qdevice_net_log(LOG_ERR, "Can't schedule send of init msg");
-
-		return (-1);
-	}
+	send_buffer_list_put(&instance->send_buffer_list, send_buffer);
 
 	instance->state = QDEVICE_NET_STATE_WAITING_INIT_REPLY;
 
@@ -348,12 +346,15 @@ qdevice_net_send_init(struct qdevice_net_instance *instance)
 
 
 static int
-qdevice_net_msg_received_preinit_reply(struct qdevice_net_instance *instance, const struct msg_decoded *msg)
+qdevice_net_msg_received_preinit_reply(struct qdevice_net_instance *instance,
+    const struct msg_decoded *msg)
 {
 	int res;
+	struct send_buffer_list_entry *send_buffer;
 
 	if (instance->state != QDEVICE_NET_STATE_WAITING_PREINIT_REPLY) {
-		qdevice_net_log(LOG_ERR, "Received unexpected preinit reply message. Disconnecting from server");
+		qdevice_net_log(LOG_ERR, "Received unexpected preinit reply message. "
+		    "Disconnecting from server");
 
 		return (-1);
 	}
@@ -366,7 +367,8 @@ qdevice_net_msg_received_preinit_reply(struct qdevice_net_instance *instance, co
 	 * Check TLS support
 	 */
 	if (!msg->tls_supported_set || !msg->tls_client_cert_required_set) {
-		qdevice_net_log(LOG_ERR, "Required tls_supported or tls_client_cert_required option is unset");
+		qdevice_net_log(LOG_ERR, "Required tls_supported or tls_client_cert_required "
+		    "option is unset");
 
 		return (-1);
 	}
@@ -381,18 +383,23 @@ qdevice_net_msg_received_preinit_reply(struct qdevice_net_instance *instance, co
 		/*
 		 * Start TLS
 		 */
+		send_buffer = send_buffer_list_get_new(&instance->send_buffer_list);
+		if (send_buffer == NULL) {
+			qdevice_net_log(LOG_ERR, "Can't allocate send list buffer for "
+			    "starttls msg");
+
+			return (-1);
+		}
+
 		instance->expected_msg_seq_num++;
-		if (msg_create_starttls(&instance->send_buffer, 1, instance->expected_msg_seq_num) == 0) {
+		if (msg_create_starttls(&send_buffer->buffer, 1,
+		    instance->expected_msg_seq_num) == 0) {
 			qdevice_net_log(LOG_ERR, "Can't allocate send buffer for starttls msg");
 
 			return (-1);
 		}
 
-		if (qdevice_net_schedule_send(instance) != 0) {
-			qdevice_net_log(LOG_ERR, "Can't schedule send of starttls msg");
-
-			return (-1);
-		}
+		send_buffer_list_put(&instance->send_buffer_list, send_buffer);
 
 		instance->state = QDEVICE_NET_STATE_WAITING_STARTTLS_BEING_SENT;
 	} else if (res == 0) {
@@ -405,13 +412,16 @@ qdevice_net_msg_received_preinit_reply(struct qdevice_net_instance *instance, co
 }
 
 static int
-qdevice_net_msg_received_init_reply(struct qdevice_net_instance *instance, const struct msg_decoded *msg)
+qdevice_net_msg_received_init_reply(struct qdevice_net_instance *instance,
+    const struct msg_decoded *msg)
 {
 	size_t zi;
 	int res;
+	struct send_buffer_list_entry *send_buffer;
 
 	if (instance->state != QDEVICE_NET_STATE_WAITING_INIT_REPLY) {
-		qdevice_net_log(LOG_ERR, "Received unexpected init reply message. Disconnecting from server");
+		qdevice_net_log(LOG_ERR, "Received unexpected init reply message. "
+		    "Disconnecting from server");
 
 		return (-1);
 	}
@@ -421,13 +431,15 @@ qdevice_net_msg_received_init_reply(struct qdevice_net_instance *instance, const
 	}
 
 	if (!msg->server_maximum_request_size_set || !msg->server_maximum_reply_size_set) {
-		qdevice_net_log(LOG_ERR, "Required maximum_request_size or maximum_reply_size option is unset");
+		qdevice_net_log(LOG_ERR, "Required maximum_request_size or maximum_reply_size "
+		    "option is unset");
 
 		return (-1);
 	}
 
 	if (msg->supported_messages == NULL || msg->supported_options == NULL) {
-		qdevice_net_log(LOG_ERR, "Required supported messages or supported options option is unset");
+		qdevice_net_log(LOG_ERR, "Required supported messages or supported options "
+		    "option is unset");
 
 		return (-1);
 	}
@@ -440,16 +452,16 @@ qdevice_net_msg_received_init_reply(struct qdevice_net_instance *instance, const
 
 	if (msg->server_maximum_request_size < instance->min_send_size) {
 		qdevice_net_log(LOG_ERR,
-		    "Server accepts maximum %zu bytes message but this client minimum is %zu bytes.",
-		    msg->server_maximum_request_size, instance->min_send_size);
+		    "Server accepts maximum %zu bytes message but this client minimum "
+		    "is %zu bytes.", msg->server_maximum_request_size, instance->min_send_size);
 
 		return (-1);
 	}
 
 	if (msg->server_maximum_reply_size > instance->max_receive_size) {
 		qdevice_net_log(LOG_ERR,
-		    "Server may send message up to %zu bytes message but this client maximum is %zu bytes.",
-		    msg->server_maximum_reply_size, instance->max_receive_size);
+		    "Server may send message up to %zu bytes message but this client maximum "
+		    "is %zu bytes.", msg->server_maximum_reply_size, instance->max_receive_size);
 
 		return (-1);
 	}
@@ -458,8 +470,8 @@ qdevice_net_msg_received_init_reply(struct qdevice_net_instance *instance, const
 	 * Change buffer sizes
 	 */
 	dynar_set_max_size(&instance->receive_buffer, msg->server_maximum_reply_size);
-	dynar_set_max_size(&instance->send_buffer, msg->server_maximum_request_size);
-	dynar_set_max_size(&instance->echo_request_send_buffer, msg->server_maximum_request_size);
+	send_buffer_list_set_max_buffer_size(&instance->send_buffer_list,
+	    msg->server_maximum_request_size);
 
 
 	/*
@@ -482,20 +494,23 @@ qdevice_net_msg_received_init_reply(struct qdevice_net_instance *instance, const
 	/*
 	 * Send set options message
 	 */
+	send_buffer = send_buffer_list_get_new(&instance->send_buffer_list);
+	if (send_buffer == NULL) {
+		qdevice_net_log(LOG_ERR, "Can't allocate send list buffer for set option msg");
+
+		return (-1);
+	}
+
 	instance->expected_msg_seq_num++;
 
-	if (msg_create_set_option(&instance->send_buffer, 1, instance->expected_msg_seq_num,
+	if (msg_create_set_option(&send_buffer->buffer, 1, instance->expected_msg_seq_num,
 	    1, instance->decision_algorithm, 1, instance->heartbeat_interval) == 0) {
 		qdevice_net_log(LOG_ERR, "Can't allocate send buffer for set option msg");
 
 		return (-1);
 	}
 
-	if (qdevice_net_schedule_send(instance) != 0) {
-		qdevice_net_log(LOG_ERR, "Can't schedule send of set option msg");
-
-		return (-1);
-	}
+	send_buffer_list_put(&instance->send_buffer_list, send_buffer);
 
 	instance->state = QDEVICE_NET_STATE_WAITING_SET_OPTION_REPLY;
 
@@ -503,7 +518,8 @@ qdevice_net_msg_received_init_reply(struct qdevice_net_instance *instance, const
 }
 
 static int
-qdevice_net_msg_received_stattls(struct qdevice_net_instance *instance, const struct msg_decoded *msg)
+qdevice_net_msg_received_stattls(struct qdevice_net_instance *instance,
+    const struct msg_decoded *msg)
 {
 
 	qdevice_net_log(LOG_ERR, "Received unexpected starttls message. Disconnecting from server");
@@ -512,24 +528,28 @@ qdevice_net_msg_received_stattls(struct qdevice_net_instance *instance, const st
 }
 
 static int
-qdevice_net_msg_received_server_error(struct qdevice_net_instance *instance, const struct msg_decoded *msg)
+qdevice_net_msg_received_server_error(struct qdevice_net_instance *instance,
+    const struct msg_decoded *msg)
 {
 
 	if (!msg->reply_error_code_set) {
-		qdevice_net_log(LOG_ERR, "Received server error without error code set. Disconnecting from server");
+		qdevice_net_log(LOG_ERR, "Received server error without error code set. "
+		    "Disconnecting from server");
 	} else {
-		qdevice_net_log(LOG_ERR, "Received server error %"PRIu16". Disconnecting from server",
-		    msg->reply_error_code);
+		qdevice_net_log(LOG_ERR, "Received server error %"PRIu16". "
+		    "Disconnecting from server", msg->reply_error_code);
 	}
 
 	return (-1);
 }
 
 static int
-qdevice_net_msg_received_set_option(struct qdevice_net_instance *instance, const struct msg_decoded *msg)
+qdevice_net_msg_received_set_option(struct qdevice_net_instance *instance,
+    const struct msg_decoded *msg)
 {
 
-	qdevice_net_log(LOG_ERR, "Received unexpected set option message. Disconnecting from server");
+	qdevice_net_log(LOG_ERR, "Received unexpected set option message. "
+	    "Disconnecting from server");
 
 	return (-1);
 }
@@ -552,8 +572,180 @@ qdevice_net_timer_send_heartbeat(void *data1, void *data2)
 	return (-1);
 }
 
+static uint32_t
+qdevice_net_autogenerate_node_id(const char *addr, int clear_node_high_byte)
+{
+	struct addrinfo *ainfo;
+	struct addrinfo ahints;
+	int ret, i;
+
+	memset(&ahints, 0, sizeof(ahints));
+	ahints.ai_socktype = SOCK_DGRAM;
+	ahints.ai_protocol = IPPROTO_UDP;
+	/*
+	 * Hardcoded AF_INET because autogenerated nodeid is valid only for ipv4
+	 */
+	ahints.ai_family   = AF_INET;
+
+	ret = getaddrinfo(addr, NULL, &ahints, &ainfo);
+	if (ret != 0)
+		return (0);
+
+	if (ainfo->ai_family != AF_INET) {
+
+		freeaddrinfo(ainfo);
+
+		return (0);
+	}
+
+        memcpy(&i, &((struct sockaddr_in *)ainfo->ai_addr)->sin_addr, sizeof(struct in_addr));
+	freeaddrinfo(ainfo);
+
+	ret = htonl(i);
+
+	if (clear_node_high_byte) {
+		ret &= 0x7FFFFFFF;
+	}
+
+	return (ret);
+}
+
 static int
-qdevice_net_msg_received_set_option_reply(struct qdevice_net_instance *instance, const struct msg_decoded *msg)
+qdevice_net_get_nodelist(cmap_handle_t cmap_handle, struct node_list *list)
+{
+	cs_error_t cs_err;
+	cmap_iter_handle_t iter_handle;
+	char key_name[CMAP_KEYNAME_MAXLEN + 1];
+	char tmp_key[CMAP_KEYNAME_MAXLEN + 1];
+	int res;
+	int ret_value;
+	unsigned int node_pos;
+	uint32_t node_id;
+	uint32_t data_center_id;
+	char *tmp_str;
+	char *addr0_str;
+	int clear_node_high_byte;
+
+	ret_value = 0;
+
+	node_list_init(list);
+
+	cs_err = cmap_iter_init(cmap_handle, "nodelist.node.", &iter_handle);
+	if (cs_err != CS_OK) {
+		return (-1);
+	}
+
+	while ((cs_err = cmap_iter_next(cmap_handle, iter_handle, key_name, NULL, NULL)) == CS_OK) {
+		res = sscanf(key_name, "nodelist.node.%u.%s", &node_pos, tmp_key);
+		if (res != 2) {
+			continue;
+		}
+
+		if (strcmp(tmp_key, "ring0_addr") != 0) {
+			continue;
+		}
+
+		snprintf(tmp_key, CMAP_KEYNAME_MAXLEN, "nodelist.node.%u.nodeid", node_pos);
+		cs_err = cmap_get_uint32(cmap_handle, tmp_key, &node_id);
+
+		if (cs_err == CS_ERR_NOT_EXIST) {
+			/*
+			 * Nodeid doesn't exists -> autogenerate node id
+			 */
+			clear_node_high_byte = 0;
+
+			if (cmap_get_string(cmap_handle, "totem.clear_node_high_bit", &tmp_str) == CS_OK) {
+				if (strcmp (tmp_str, "yes") == 0) {
+					clear_node_high_byte = 1;
+				}
+
+				free(tmp_str);
+			}
+
+			if (cmap_get_string(cmap_handle, key_name, &addr0_str) != CS_OK) {
+				return (-1);
+			}
+
+			node_id = qdevice_net_autogenerate_node_id(addr0_str, clear_node_high_byte);
+
+			free(addr0_str);
+		} else if (cs_err != CS_OK) {
+			ret_value = -1;
+
+			goto iter_finalize;
+		}
+
+		snprintf(tmp_key, CMAP_KEYNAME_MAXLEN, "nodelist.node.%u.datacenterid", node_pos);
+		if (cmap_get_uint32(cmap_handle, tmp_key, &data_center_id) != CS_OK) {
+			data_center_id = 0;
+		}
+
+		if (node_list_add(list, node_id, data_center_id, TLV_NODE_STATE_NOT_SET) == NULL) {
+			ret_value = -1;
+
+			goto iter_finalize;
+		}
+	}
+
+iter_finalize:
+	cmap_iter_finalize(cmap_handle, iter_handle);
+
+	return (ret_value);
+}
+
+static int
+qdevice_net_send_config_node_list(struct qdevice_net_instance *instance, int initial)
+{
+	struct node_list nlist;
+	struct send_buffer_list_entry *send_buffer;
+	uint64_t config_version;
+	int send_config_version;
+
+	/*
+	 * Send initial node list
+	 */
+	if (qdevice_net_get_nodelist(instance->cmap_handle, &nlist) != 0) {
+		qdevice_net_log(LOG_ERR, "Can't get initial configuration node list.");
+
+		return (-1);
+	}
+
+	send_buffer = send_buffer_list_get_new(&instance->send_buffer_list);
+	if (send_buffer == NULL) {
+		qdevice_net_log(LOG_ERR, "Can't allocate send list buffer for config "
+		    "node list msg");
+
+		node_list_free(&nlist);
+
+		return (-1);
+	}
+
+	if (cmap_get_uint64(instance->cmap_handle, "totem.config_version",
+	    &config_version) == CS_OK) {
+		send_config_version = 1;
+	} else {
+		config_version = 0;
+		send_config_version = 0;
+	}
+
+	if (msg_create_node_list(&send_buffer->buffer, 0, 0,
+	    (initial ? TLV_NODE_LIST_TYPE_INITIAL_CONFIG : TLV_NODE_LIST_TYPE_CHANGED_CONFIG),
+	    0, NULL, send_config_version, config_version, &nlist) == 0) {
+		qdevice_net_log(LOG_ERR, "Can't allocate send buffer for config list msg");
+
+		node_list_free(&nlist);
+
+		return (-1);
+	}
+
+	send_buffer_list_put(&instance->send_buffer_list, send_buffer);
+
+	return (0);
+}
+
+static int
+qdevice_net_msg_received_set_option_reply(struct qdevice_net_instance *instance,
+    const struct msg_decoded *msg)
 {
 
 	if (qdevice_net_msg_check_seq_number(instance, msg) != 0) {
@@ -561,13 +753,14 @@ qdevice_net_msg_received_set_option_reply(struct qdevice_net_instance *instance,
 	}
 
 	if (!msg->decision_algorithm_set || !msg->heartbeat_interval_set) {
-		qdevice_net_log(LOG_ERR, "Received set option reply message without required options. "
-		    "Disconnecting from server");
+		qdevice_net_log(LOG_ERR, "Received set option reply message without "
+		    "required options. Disconnecting from server");
 	}
 
 	if (msg->decision_algorithm != instance->decision_algorithm ||
 	    msg->heartbeat_interval != instance->heartbeat_interval) {
-		qdevice_net_log(LOG_ERR, "Server doesn't accept sent decision algorithm or heartbeat interval.");
+		qdevice_net_log(LOG_ERR, "Server doesn't accept sent decision algorithm or "
+		    "heartbeat interval.");
 
 		return (-1);
 	}
@@ -576,8 +769,9 @@ qdevice_net_msg_received_set_option_reply(struct qdevice_net_instance *instance,
 	 * Server accepted heartbeat interval -> schedule regular sending of echo request
 	 */
 	if (instance->heartbeat_interval > 0) {
-		instance->echo_request_timer = timer_list_add(&instance->main_timer_list, instance->heartbeat_interval,
-		    qdevice_net_timer_send_heartbeat, (void *)instance, NULL);
+		instance->echo_request_timer = timer_list_add(&instance->main_timer_list,
+		    instance->heartbeat_interval, qdevice_net_timer_send_heartbeat,
+		    (void *)instance, NULL);
 
 		if (instance->echo_request_timer == NULL) {
 			qdevice_net_log(LOG_ERR, "Can't schedule regular sending of heartbeat.");
@@ -586,20 +780,27 @@ qdevice_net_msg_received_set_option_reply(struct qdevice_net_instance *instance,
 		}
 	}
 
+	if (qdevice_net_send_config_node_list(instance, 1) != 0) {
+		return (-1);
+	}
+
 	return (0);
 }
 
 static int
-qdevice_net_msg_received_echo_request(struct qdevice_net_instance *instance, const struct msg_decoded *msg)
+qdevice_net_msg_received_echo_request(struct qdevice_net_instance *instance,
+    const struct msg_decoded *msg)
 {
 
-	qdevice_net_log(LOG_ERR, "Received unexpected echo request message. Disconnecting from server");
+	qdevice_net_log(LOG_ERR, "Received unexpected echo request message. "
+	    "Disconnecting from server");
 
 	return (-1);
 }
 
 static int
-qdevice_net_msg_received_echo_reply(struct qdevice_net_instance *instance, const struct msg_decoded *msg)
+qdevice_net_msg_received_echo_reply(struct qdevice_net_instance *instance,
+    const struct msg_decoded *msg)
 {
 
 	if (qdevice_net_msg_check_echo_reply_seq_number(instance, msg) != 0) {
@@ -611,6 +812,26 @@ qdevice_net_msg_received_echo_reply(struct qdevice_net_instance *instance, const
 	return (0);
 }
 
+static int
+qdevice_net_msg_received_node_list(struct qdevice_net_instance *instance,
+    const struct msg_decoded *msg)
+{
+
+	qdevice_net_log(LOG_ERR, "Received unexpected echo request message. "
+	    "Disconnecting from server");
+
+	return (-1);
+}
+
+static int
+qdevice_net_msg_received_node_list_reply(struct qdevice_net_instance *instance,
+    const struct msg_decoded *msg)
+{
+
+	qdevice_net_log(LOG_INFO, "Received node list reply %u", msg->vote);
+
+	return (0);
+}
 
 static int
 qdevice_net_msg_received(struct qdevice_net_instance *instance)
@@ -662,8 +883,15 @@ qdevice_net_msg_received(struct qdevice_net_instance *instance)
 	case MSG_TYPE_ECHO_REPLY:
 		ret_val = qdevice_net_msg_received_echo_reply(instance, &msg);
 		break;
+	case MSG_TYPE_NODE_LIST:
+		ret_val = qdevice_net_msg_received_node_list(instance, &msg);
+		break;
+	case MSG_TYPE_NODE_LIST_REPLY:
+		ret_val = qdevice_net_msg_received_node_list_reply(instance, &msg);
+		break;
 	default:
-		qdevice_net_log(LOG_ERR, "Received unsupported message %u. Disconnecting from server", msg.type);
+		qdevice_net_log(LOG_ERR, "Received unsupported message %u. "
+		    "Disconnecting from server", msg.type);
 		ret_val = -1;
 		break;
 	}
@@ -685,8 +913,8 @@ qdevice_net_socket_read(struct qdevice_net_instance *instance)
 
 	orig_skipping_msg = instance->skipping_msg;
 
-	res = msgio_read(instance->socket, &instance->receive_buffer, &instance->msg_already_received_bytes,
-	    &instance->skipping_msg);
+	res = msgio_read(instance->socket, &instance->receive_buffer,
+	    &instance->msg_already_received_bytes, &instance->skipping_msg);
 
 	if (!orig_skipping_msg && instance->skipping_msg) {
 		qdevice_net_log(LOG_DEBUG, "msgio_read set skipping_msg");
@@ -705,20 +933,23 @@ qdevice_net_socket_read(struct qdevice_net_instance *instance)
 		ret_val = -1;
 		break;
 	case -2:
-		qdevice_net_log_nss(LOG_ERR, "Unhandled error when reading from server. Disconnecting from server");
+		qdevice_net_log_nss(LOG_ERR, "Unhandled error when reading from server. "
+		    "Disconnecting from server");
 		ret_val = -1;
 		break;
 	case -3:
-		qdevice_net_log(LOG_ERR, "Can't store message header from server. Disconnecting from server");
+		qdevice_net_log(LOG_ERR, "Can't store message header from server. "
+		    "Disconnecting from server");
 		ret_val = -1;
 		break;
 	case -4:
-		qdevice_net_log(LOG_ERR, "Can't store message from server. Disconnecting from server");
+		qdevice_net_log(LOG_ERR, "Can't store message from server. "
+		    "Disconnecting from server");
 		ret_val = -1;
 		break;
 	case -5:
-		qdevice_net_log(LOG_WARNING, "Server sent unsupported msg type %u. Disconnecting from server",
-			    msg_get_type(&instance->receive_buffer));
+		qdevice_net_log(LOG_WARNING, "Server sent unsupported msg type %u. "
+		    "Disconnecting from server", msg_get_type(&instance->receive_buffer));
 		ret_val = -1;
 		break;
 	case -6:
@@ -762,8 +993,8 @@ qdevice_net_socket_write_finished(struct qdevice_net_instance *instance)
 		 */
 		if ((new_pr_fd = nss_sock_start_ssl_as_client(instance->socket, QNETD_NSS_SERVER_CN,
 		    qdevice_net_nss_bad_cert_hook,
-		    qdevice_net_nss_get_client_auth_data, (void *)QDEVICE_NET_NSS_CLIENT_CERT_NICKNAME,
-		    0, NULL)) == NULL) {
+		    qdevice_net_nss_get_client_auth_data,
+		    (void *)QDEVICE_NET_NSS_CLIENT_CERT_NICKNAME, 0, NULL)) == NULL) {
 			qdevice_net_log_nss(LOG_ERR, "Can't start TLS");
 
 			return (-1);
@@ -786,31 +1017,28 @@ static int
 qdevice_net_socket_write(struct qdevice_net_instance *instance)
 {
 	int res;
-	int send_echo_request;
+	struct send_buffer_list_entry *send_buffer;
+	enum msg_type sent_msg_type;
 
-	/*
-	 * Echo request has extra buffer and special processing. Messages other then echo request
-	 * has higher priority, but if echo request send was not completed
-	 * it's necesary to complete it.
-	 */
-	send_echo_request = !(instance->sending_msg && instance->echo_request_msg_already_sent_bytes == 0);
+	send_buffer = send_buffer_list_get_active(&instance->send_buffer_list);
+	if (send_buffer == NULL) {
+		qdevice_net_log(LOG_CRIT, "send_buffer_list_get_active returned NULL");
 
-	if (!send_echo_request) {
-		res = msgio_write(instance->socket, &instance->send_buffer, &instance->msg_already_sent_bytes);
-	} else {
-		res = msgio_write(instance->socket, &instance->echo_request_send_buffer,
-		    &instance->echo_request_msg_already_sent_bytes);
+		return (-1);
 	}
 
-	if (res == 1) {
-		if (!send_echo_request) {
-			instance->sending_msg = 0;
+	res = msgio_write(instance->socket, &send_buffer->buffer,
+	    &send_buffer->msg_already_sent_bytes);
 
+	if (res == 1) {
+		sent_msg_type = msg_get_type(&send_buffer->buffer);
+
+		send_buffer_list_delete(&instance->send_buffer_list, send_buffer);
+
+		if (sent_msg_type != MSG_TYPE_ECHO_REQUEST) {
 			if (qdevice_net_socket_write_finished(instance) == -1) {
 				return (-1);
 			}
-		} else {
-			instance->sending_echo_request_msg = 0;
 		}
 	}
 
@@ -843,7 +1071,7 @@ qdevice_net_poll(struct qdevice_net_instance *instance)
 
 	pfds[QDEVICE_NET_POLL_SOCKET].fd = instance->socket;
 	pfds[QDEVICE_NET_POLL_SOCKET].in_flags = PR_POLL_READ;
-	if (instance->sending_msg || instance->sending_echo_request_msg) {
+	if (!send_buffer_list_empty(&instance->send_buffer_list)) {
 		pfds[QDEVICE_NET_POLL_SOCKET].in_flags |= PR_POLL_WRITE;
 	}
 	pfds[QDEVICE_NET_POLL_VOTEQUORUM].fd = instance->votequorum_poll_fd;
@@ -863,7 +1091,8 @@ qdevice_net_poll(struct qdevice_net_instance *instance)
 
 					break;
 				case QDEVICE_NET_POLL_VOTEQUORUM:
-					if (votequorum_dispatch(instance->votequorum_handle, CS_DISPATCH_ALL) != CS_OK) {
+					if (votequorum_dispatch(instance->votequorum_handle,
+					    CS_DISPATCH_ALL) != CS_OK) {
 						errx(1, "Can't dispatch votequorum messages");
 					}
 					break;
@@ -888,10 +1117,12 @@ qdevice_net_poll(struct qdevice_net_instance *instance)
 			}
 
 			if (!instance->schedule_disconnect &&
-			    pfds[i].out_flags & (PR_POLL_ERR|PR_POLL_NVAL|PR_POLL_HUP|PR_POLL_EXCEPT)) {
+			    pfds[i].out_flags &
+			    (PR_POLL_ERR|PR_POLL_NVAL|PR_POLL_HUP|PR_POLL_EXCEPT)) {
 				switch (i) {
 				case QDEVICE_NET_POLL_SOCKET:
-					qdevice_net_log(LOG_CRIT, "POLL_ERR (%u) on main socket", pfds[i].out_flags);
+					qdevice_net_log(LOG_CRIT, "POLL_ERR (%u) on main socket",
+					    pfds[i].out_flags);
 
 					return (-1);
 
@@ -920,8 +1151,9 @@ qdevice_net_poll(struct qdevice_net_instance *instance)
 
 static int
 qdevice_net_instance_init(struct qdevice_net_instance *instance, size_t initial_receive_size,
-    size_t initial_send_size, size_t min_send_size, size_t max_receive_size, enum tlv_tls_supported tls_supported,
-    uint32_t node_id, enum tlv_decision_algorithm_type decision_algorithm, uint32_t heartbeat_interval,
+    size_t initial_send_size, size_t min_send_size, size_t max_receive_size,
+    enum tlv_tls_supported tls_supported, uint32_t node_id,
+    enum tlv_decision_algorithm_type decision_algorithm, uint32_t heartbeat_interval,
     const char *host_addr, uint16_t host_port, const char *cluster_name)
 {
 
@@ -938,8 +1170,8 @@ qdevice_net_instance_init(struct qdevice_net_instance *instance, size_t initial_
 	instance->host_port = host_port;
 	instance->cluster_name = cluster_name;
 	dynar_init(&instance->receive_buffer, initial_receive_size);
-	dynar_init(&instance->send_buffer, initial_send_size);
-	dynar_init(&instance->echo_request_send_buffer, initial_send_size);
+	send_buffer_list_init(&instance->send_buffer_list, QDEVICE_NET_MAX_SEND_BUFFERS,
+	    initial_send_size);
 	timer_list_init(&instance->main_timer_list);
 
 	instance->tls_supported = tls_supported;
@@ -953,13 +1185,13 @@ qdevice_net_instance_destroy(struct qdevice_net_instance *instance)
 
 	timer_list_free(&instance->main_timer_list);
 	dynar_destroy(&instance->receive_buffer);
-	dynar_destroy(&instance->send_buffer);
-	dynar_destroy(&instance->echo_request_send_buffer);
+	send_buffer_list_free(&instance->send_buffer_list);
 
 	/*
 	 * Close cmap and votequorum connections
 	 */
-	if (votequorum_qdevice_unregister(instance->votequorum_handle, QDEVICE_NET_VOTEQUORUM_DEVICE_NAME) != CS_OK) {
+	if (votequorum_qdevice_unregister(instance->votequorum_handle,
+	    QDEVICE_NET_VOTEQUORUM_DEVICE_NAME) != CS_OK) {
 		qdevice_net_log_nss(LOG_WARNING, "Unable to unregister votequorum device");
 	}
 	votequorum_finalize(instance->votequorum_handle);
@@ -976,8 +1208,9 @@ qdevice_net_init_cmap(cmap_handle_t *handle)
 
 	no_retries = 0;
 
-	while ((res = cmap_initialize(handle)) == CS_ERR_TRY_AGAIN && no_retries++ < MAX_CS_TRY_AGAIN) {
-		sleep(1);
+	while ((res = cmap_initialize(handle)) == CS_ERR_TRY_AGAIN &&
+	    no_retries++ < MAX_CS_TRY_AGAIN) {
+		poll(NULL, 0, 1000);
 	}
 
         if (res != CS_OK) {
@@ -993,9 +1226,13 @@ static int
 qdevice_net_parse_bool_str(const char *str)
 {
 
-	if (strcasecmp(str, "yes") == 0 || strcasecmp(str, "on") == 0 || strcasecmp(str, "1") == 0) {
+	if (strcasecmp(str, "yes") == 0 ||
+	    strcasecmp(str, "on") == 0 ||
+	    strcasecmp(str, "1") == 0) {
 		return (1);
-	} else if (strcasecmp(str, "no") == 0 || strcasecmp(str, "off") == 0 || strcasecmp(str, "0") == 0) {
+	} else if (strcasecmp(str, "no") == 0 ||
+	    strcasecmp(str, "off") == 0 ||
+	    strcasecmp(str, "0") == 0) {
 		return (0);
 	}
 
@@ -1003,7 +1240,8 @@ qdevice_net_parse_bool_str(const char *str)
 }
 
 static void
-qdevice_net_instance_init_from_cmap(struct qdevice_net_instance *instance, cmap_handle_t cmap_handle)
+qdevice_net_instance_init_from_cmap(struct qdevice_net_instance *instance,
+    cmap_handle_t cmap_handle)
 {
 	uint32_t node_id;
 	enum tlv_tls_supported tls_supported;
@@ -1026,7 +1264,8 @@ qdevice_net_instance_init_from_cmap(struct qdevice_net_instance *instance, cmap_
 
 	if (strcmp(str, "net") != 0) {
 		free(str);
-		errx(1, "Configured device model is not net. This qdevice provider is only for net.");
+		errx(1, "Configured device model is not net. "
+		    "This qdevice provider is only for net.");
 	}
 	free(str);
 
@@ -1067,11 +1306,12 @@ qdevice_net_instance_init_from_cmap(struct qdevice_net_instance *instance, cmap_
 	if (cmap_get_string(cmap_handle, "quorum.device.net.port", &str) == CS_OK) {
 		host_port = strtol(str, &ep, 10);
 
-		free(str);
 
 		if (host_port <= 0 || host_port > ((uint16_t)~0) || *ep != '\0') {
 			errx(1, "quorum.device.net.port must be in range 0-65535");
 		}
+
+		free(str);
 	} else {
 		host_port = QNETD_DEFAULT_HOST_PORT;
 	}
@@ -1092,7 +1332,8 @@ qdevice_net_instance_init_from_cmap(struct qdevice_net_instance *instance, cmap_
 	}
 	heartbeat_interval = heartbeat_interval * 0.8;
 
-	if (cmap_get_uint32(cmap_handle, "quorum.device.sync_timeout", &sync_heartbeat_interval) != CS_OK) {
+	if (cmap_get_uint32(cmap_handle, "quorum.device.sync_timeout",
+	    &sync_heartbeat_interval) != CS_OK) {
 		sync_heartbeat_interval = VOTEQUORUM_QDEVICE_DEFAULT_SYNC_TIMEOUT;
 	}
 	sync_heartbeat_interval = sync_heartbeat_interval * 0.8;
@@ -1140,9 +1381,9 @@ qdevice_net_init_votequorum(struct qdevice_net_instance *instance)
 
 	no_retries = 0;
 
-	while ((res = votequorum_initialize(&votequorum_handle, &votequorum_callbacks)) == CS_ERR_TRY_AGAIN &&
-	    no_retries++ < MAX_CS_TRY_AGAIN) {
-		sleep(1);
+	while ((res = votequorum_initialize(&votequorum_handle,
+	    &votequorum_callbacks)) == CS_ERR_TRY_AGAIN && no_retries++ < MAX_CS_TRY_AGAIN) {
+		poll(NULL, 0, 1000);
 	}
 
         if (res != CS_OK) {
@@ -1153,7 +1394,8 @@ qdevice_net_init_votequorum(struct qdevice_net_instance *instance)
 		errx(1, "Can't start tracking votequorum changes. Error %s", cs_strerror(res));
 	}
 
-	if ((res = votequorum_qdevice_register(votequorum_handle, QDEVICE_NET_VOTEQUORUM_DEVICE_NAME)) != CS_OK) {
+	if ((res = votequorum_qdevice_register(votequorum_handle,
+	    QDEVICE_NET_VOTEQUORUM_DEVICE_NAME)) != CS_OK) {
 		errx(1, "Can't register votequorum device. Error %s", cs_strerror(res));
 	}
 
@@ -1166,11 +1408,13 @@ qdevice_net_init_votequorum(struct qdevice_net_instance *instance)
 
 }
 
+
 int
 main(void)
 {
 	struct qdevice_net_instance instance;
 	cmap_handle_t cmap_handle;
+	struct send_buffer_list_entry *send_buffer;
 
 	/*
 	 * Init
@@ -1181,14 +1425,16 @@ main(void)
 	qdevice_net_log_init(QDEVICE_NET_LOG_TARGET_STDERR);
         qdevice_net_log_set_debug(1);
 
-	if (nss_sock_init_nss((instance.tls_supported != TLV_TLS_UNSUPPORTED ? (char *)NSS_DB_DIR : NULL)) != 0) {
+	if (nss_sock_init_nss((instance.tls_supported != TLV_TLS_UNSUPPORTED ?
+	    (char *)NSS_DB_DIR : NULL)) != 0) {
 		err_nss();
 	}
 
 	/*
 	 * Try to connect to qnetd host
 	 */
-	instance.socket = nss_sock_create_client_socket(instance.host_addr, instance.host_port, PR_AF_UNSPEC, 100);
+	instance.socket = nss_sock_create_client_socket(instance.host_addr, instance.host_port,
+	    PR_AF_UNSPEC, 100);
 	if (instance.socket == NULL) {
 		err_nss();
 	}
@@ -1202,13 +1448,18 @@ main(void)
 	/*
 	 * Create and schedule send of preinit message to qnetd
 	 */
+	send_buffer = send_buffer_list_get_new(&instance.send_buffer_list);
+	if (send_buffer == NULL) {
+		errx(1, "Can't allocate send buffer list");
+	}
+
 	instance.expected_msg_seq_num = 1;
-	if (msg_create_preinit(&instance.send_buffer, instance.cluster_name, 1, instance.expected_msg_seq_num) == 0) {
+	if (msg_create_preinit(&send_buffer->buffer, instance.cluster_name, 1,
+	    instance.expected_msg_seq_num) == 0) {
 		errx(1, "Can't allocate buffer");
 	}
-	if (qdevice_net_schedule_send(&instance) != 0) {
-		errx(1, "Can't schedule send of preinit msg");
-	}
+
+	send_buffer_list_put(&instance.send_buffer_list, send_buffer);
 
 	instance.state = QDEVICE_NET_STATE_WAITING_PREINIT_REPLY;
 

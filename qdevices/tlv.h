@@ -58,6 +58,13 @@ enum tlv_opt_type {
 	TLV_OPT_SUPPORTED_DECISION_ALGORITHMS = 10,
 	TLV_OPT_DECISION_ALGORITHM = 11,
 	TLV_OPT_HEARTBEAT_INTERVAL = 12,
+	TLV_OPT_RING_ID = 13,
+	TLV_OPT_CONFIG_VERSION = 14,
+	TLV_OPT_DATA_CENTER_ID = 15,
+	TLV_OPT_NODE_STATE = 16,
+	TLV_OPT_NODE_INFO = 17,
+	TLV_OPT_NODE_LIST_TYPE = 18,
+	TLV_OPT_VOTE = 19,
 };
 
 enum tlv_tls_supported {
@@ -87,22 +94,61 @@ enum tlv_decision_algorithm_type {
 	TLV_DECISION_ALGORITHM_TYPE_TEST = 0,
 };
 
-struct tlv_iterator {
-	const struct dynar *msg;
-	size_t current_pos;
-	size_t msg_header_len;
+struct tlv_ring_id {
+	uint32_t node_id;
+	uint64_t seq;
 };
 
-extern int			 tlv_add(struct dynar *msg, enum tlv_opt_type opt_type, uint16_t opt_len,
-    const void *value);
+enum tlv_node_state {
+	TLV_NODE_STATE_NOT_SET = 0,
+	TLV_NODE_STATE_MEMBER = 1,
+	TLV_NODE_STATE_DEAD = 2,
+	TLV_NODE_STATE_LEAVING = 3,
+};
 
-extern int			 tlv_add_u32(struct dynar *msg, enum tlv_opt_type opt_type, uint32_t u32);
+enum tlv_node_list_type {
+	TLV_NODE_LIST_TYPE_INITIAL_CONFIG = 0,
+	TLV_NODE_LIST_TYPE_CHANGED_CONFIG = 1,
+	TLV_NODE_LIST_TYPE_MEMBERSHIP = 2,
+};
 
-extern int			 tlv_add_u8(struct dynar *msg, enum tlv_opt_type opt_type, uint8_t u8);
+enum tlv_vote {
+	TLV_VOTE_UNDECIDED = 0,
+	TLV_VOTE_ACK = 1,
+	TLV_VOTE_NACK = 2,
+};
 
-extern int			 tlv_add_u16(struct dynar *msg, enum tlv_opt_type opt_type, uint16_t u16);
+struct tlv_node_info {
+	uint32_t node_id;
+	uint32_t data_center_id;		// 0 - data center id was not set
+	enum tlv_node_state node_state;		// TLV_NODE_STATE_NOT_SET - state was not set
+};
 
-extern int			 tlv_add_string(struct dynar *msg, enum tlv_opt_type opt_type, const char *str);
+struct tlv_iterator {
+	const char *msg;
+	size_t msg_len;
+	size_t current_pos;
+	size_t msg_header_len;
+	int iter_next_called;
+};
+
+extern int			 tlv_add(struct dynar *msg, enum tlv_opt_type opt_type,
+    uint16_t opt_len, const void *value);
+
+extern int			 tlv_add_u32(struct dynar *msg, enum tlv_opt_type opt_type,
+    uint32_t u32);
+
+extern int			 tlv_add_u8(struct dynar *msg, enum tlv_opt_type opt_type,
+    uint8_t u8);
+
+extern int			 tlv_add_u16(struct dynar *msg, enum tlv_opt_type opt_type,
+    uint16_t u16);
+
+extern int			 tlv_add_u64(struct dynar *msg, enum tlv_opt_type opt_type,
+    uint64_t u64);
+
+extern int			 tlv_add_string(struct dynar *msg, enum tlv_opt_type opt_type,
+    const char *str);
 
 extern int			 tlv_add_u16_array(struct dynar *msg, enum tlv_opt_type opt_type,
     const uint16_t *array, size_t array_size);
@@ -110,15 +156,19 @@ extern int			 tlv_add_u16_array(struct dynar *msg, enum tlv_opt_type opt_type,
 extern int			 tlv_add_supported_options(struct dynar *msg,
     const enum tlv_opt_type *supported_options, size_t no_supported_options);
 
-extern int			 tlv_add_msg_seq_number(struct dynar *msg, uint32_t msg_seq_number);
+extern int			 tlv_add_msg_seq_number(struct dynar *msg,
+    uint32_t msg_seq_number);
 
 extern int			 tlv_add_cluster_name(struct dynar *msg, const char *cluster_name);
 
-extern int			 tlv_add_tls_supported(struct dynar *msg, enum tlv_tls_supported tls_supported);
+extern int			 tlv_add_tls_supported(struct dynar *msg,
+    enum tlv_tls_supported tls_supported);
 
-extern int			 tlv_add_tls_client_cert_required(struct dynar *msg, int tls_client_cert_required);
+extern int			 tlv_add_tls_client_cert_required(struct dynar *msg,
+    int tls_client_cert_required);
 
-extern int			 tlv_add_reply_error_code(struct dynar *msg, enum tlv_reply_error_code error_code);
+extern int			 tlv_add_reply_error_code(struct dynar *msg,
+    enum tlv_reply_error_code error_code);
 
 extern int			 tlv_add_node_id(struct dynar *msg, uint32_t node_id);
 
@@ -134,7 +184,31 @@ extern int			 tlv_add_supported_decision_algorithms(struct dynar *msg,
 extern int			 tlv_add_decision_algorithm(struct dynar *msg,
     enum tlv_decision_algorithm_type decision_algorithm);
 
-extern int			 tlv_add_heartbeat_interval(struct dynar *msg, uint32_t heartbeat_interval);
+extern int			 tlv_add_heartbeat_interval(struct dynar *msg,
+    uint32_t heartbeat_interval);
+
+extern int			 tlv_add_ring_id(struct dynar *msg,
+    const struct tlv_ring_id *ring_id);
+
+extern int			 tlv_add_config_version(struct dynar *msg,
+    uint64_t config_version);
+
+extern int			 tlv_add_data_center_id(struct dynar *msg,
+    uint32_t data_center_id);
+
+extern int			 tlv_add_node_state(struct dynar *msg,
+    enum tlv_node_state node_state);
+
+extern int			 tlv_add_node_info(struct dynar *msg,
+    const struct tlv_node_info *node_info);
+
+extern int			 tlv_add_node_list_type(struct dynar *msg,
+    enum tlv_node_list_type node_list_type);
+
+extern int			 tlv_add_vote(struct dynar *msg, enum tlv_vote vote);
+
+extern void			 tlv_iter_init_str(const char *msg, size_t msg_len,
+    size_t msg_header_len, struct tlv_iterator *tlv_iter);
 
 extern void			 tlv_iter_init(const struct dynar *msg, size_t msg_header_len,
     struct tlv_iterator *tlv_iter);
@@ -152,12 +226,14 @@ extern int			 tlv_iter_decode_u8(struct tlv_iterator *tlv_iter, uint8_t *res);
 extern int			 tlv_iter_decode_tls_supported(struct tlv_iterator *tlv_iter,
     enum tlv_tls_supported *tls_supported);
 
-extern int			 tlv_iter_decode_u32(struct tlv_iterator *tlv_iter, uint32_t *res);
+extern int			 tlv_iter_decode_u32(struct tlv_iterator *tlv_iter,
+    uint32_t *res);
 
-extern int			 tlv_iter_decode_str(struct tlv_iterator *tlv_iter, char **str, size_t *str_len);
+extern int			 tlv_iter_decode_str(struct tlv_iterator *tlv_iter, char **str,
+    size_t *str_len);
 
-extern int			 tlv_iter_decode_client_cert_required(struct tlv_iterator *tlv_iter,
-    uint8_t *client_cert_required);
+extern int			 tlv_iter_decode_client_cert_required(
+    struct tlv_iterator *tlv_iter, uint8_t *client_cert_required);
 
 extern int			 tlv_iter_decode_u16_array(struct tlv_iterator *tlv_iter,
     uint16_t **u16a, size_t *no_items);
@@ -165,16 +241,37 @@ extern int			 tlv_iter_decode_u16_array(struct tlv_iterator *tlv_iter,
 extern int			 tlv_iter_decode_supported_options(struct tlv_iterator *tlv_iter,
     enum tlv_opt_type **supported_options, size_t *no_supported_options);
 
-extern int			 tlv_iter_decode_supported_decision_algorithms(struct tlv_iterator *tlv_iter,
-    enum tlv_decision_algorithm_type **supported_decision_algorithms, size_t *no_supported_decision_algorithms);
+extern int			 tlv_iter_decode_supported_decision_algorithms(
+    struct tlv_iterator *tlv_iter,
+    enum tlv_decision_algorithm_type **supported_decision_algorithms,
+    size_t *no_supported_decision_algorithms);
 
-extern int			 tlv_iter_decode_u16(struct tlv_iterator *tlv_iter, uint16_t *u16);
+extern int			 tlv_iter_decode_u16(struct tlv_iterator *tlv_iter,
+    uint16_t *u16);
+
+extern int			 tlv_iter_decode_u64(struct tlv_iterator *tlv_iter,
+    uint64_t *u64);
 
 extern int			 tlv_iter_decode_reply_error_code(struct tlv_iterator *tlv_iter,
     enum tlv_reply_error_code *reply_error_code);
 
 extern int			 tlv_iter_decode_decision_algorithm(struct tlv_iterator *tlv_iter,
     enum tlv_decision_algorithm_type *decision_algorithm);
+
+extern int			 tlv_iter_decode_ring_id(struct tlv_iterator *tlv_iter,
+    struct tlv_ring_id *ring_id);
+
+extern int			 tlv_iter_decode_node_state(struct tlv_iterator *tlv_iter,
+    enum tlv_node_state *node_state);
+
+extern int			 tlv_iter_decode_node_info(struct tlv_iterator *tlv_iter,
+    struct tlv_node_info *node_info);
+
+extern int			 tlv_iter_decode_node_list_type(struct tlv_iterator *tlv_iter,
+    enum tlv_node_list_type *node_list_type);
+
+extern int			 tlv_iter_decode_vote(struct tlv_iterator *tlv_iter,
+    enum tlv_vote *vote);
 
 extern void			 tlv_get_supported_options(enum tlv_opt_type **supported_options,
     size_t *no_supported_options);

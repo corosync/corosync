@@ -32,29 +32,33 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _MSGIO_H_
-#define _MSGIO_H_
+#ifndef _QNETD_CLIENT_LIST_H_
+#define _QNETD_CLIENT_LIST_H_
 
-#include <nspr.h>
+#include <sys/types.h>
+#include <inttypes.h>
 
-#include "dynar.h"
+#include "qnetd-client.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-extern ssize_t	msgio_send(PRFileDesc *sock, const char *msg, size_t msg_len,
-    size_t *start_pos);
+TAILQ_HEAD(qnetd_client_list, qnetd_client);
 
-extern ssize_t	msgio_send_blocking(PRFileDesc *sock, const char *msg, size_t msg_len);
+extern void			 qnetd_client_list_init(struct qnetd_client_list *client_list);
 
-extern int	msgio_write(PRFileDesc *sock, const struct dynar *msg, size_t *already_sent_bytes);
+extern struct qnetd_client	*qnetd_client_list_add(struct qnetd_client_list *client_list,
+    PRFileDesc *sock, PRNetAddr *addr, size_t max_receive_size, size_t max_send_buffers,
+    size_t max_send_size);
 
-extern int	msgio_read(PRFileDesc *sock, struct dynar *msg, size_t *already_received_bytes,
-    int *skipping_msg);
+extern void			 qnetd_client_list_free(struct qnetd_client_list *client_list);
+
+extern void			 qnetd_client_list_del(struct qnetd_client_list *client_list,
+    struct qnetd_client *client);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* _MSGIO_H_ */
+#endif /* _QNETD_CLIENT_LIST_H_ */

@@ -32,29 +32,49 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _MSGIO_H_
-#define _MSGIO_H_
+#ifndef _NODE_LIST_H_
+#define _NODE_LIST_H_
 
-#include <nspr.h>
+#include <sys/types.h>
 
-#include "dynar.h"
+#include <sys/queue.h>
+#include <inttypes.h>
+
+#include "tlv.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-extern ssize_t	msgio_send(PRFileDesc *sock, const char *msg, size_t msg_len,
-    size_t *start_pos);
+struct node_list_entry {
+	uint32_t node_id;
+	uint32_t data_center_id;
+	enum tlv_node_state node_state;
+	TAILQ_ENTRY(node_list_entry) entries;
+};
 
-extern ssize_t	msgio_send_blocking(PRFileDesc *sock, const char *msg, size_t msg_len);
+TAILQ_HEAD(node_list, node_list_entry);
 
-extern int	msgio_write(PRFileDesc *sock, const struct dynar *msg, size_t *already_sent_bytes);
+extern void				 node_list_init(struct node_list *list);
 
-extern int	msgio_read(PRFileDesc *sock, struct dynar *msg, size_t *already_received_bytes,
-    int *skipping_msg);
+extern struct node_list_entry		*node_list_add(struct node_list *list,
+    uint32_t node_id, uint32_t data_center_id, enum tlv_node_state node_state);
+
+extern struct node_list_entry		*node_list_add_from_node_info(
+    struct node_list *list, const struct tlv_node_info *node_info);
+
+extern void				 node_list_free(struct node_list *list);
+
+extern void				 node_list_del(struct node_list *list,
+    struct node_list_entry *node);
+
+extern int				 node_list_is_empty(struct node_list *list);
+
+extern void				 node_list_entry_to_tlv_node_info(
+    const struct node_list_entry *node, struct tlv_node_info *node_info);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* _MSGIO_H_ */
+#endif /* _NODE_LIST_H_ */

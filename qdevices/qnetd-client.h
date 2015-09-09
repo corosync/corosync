@@ -43,6 +43,7 @@
 #include <nspr.h>
 #include "dynar.h"
 #include "tlv.h"
+#include "send-buffer-list.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -52,10 +53,8 @@ struct qnetd_client {
 	PRFileDesc *socket;
 	PRNetAddr addr;
 	struct dynar receive_buffer;
-	struct dynar send_buffer;
+	struct send_buffer_list send_buffer_list;
 	size_t msg_already_received_bytes;
-	size_t msg_already_sent_bytes;
-	int sending_msg;	// Have message to sent
 	int skipping_msg;	// When incorrect message was received skip it
 	int tls_started;	// Set after TLS started
 	int tls_peer_certificate_verified;	// Certificate is verified only once
@@ -71,8 +70,8 @@ struct qnetd_client {
 	TAILQ_ENTRY(qnetd_client) entries;
 };
 
-extern void		qnetd_client_init(struct qnetd_client *client, PRFileDesc *sock, PRNetAddr *addr,
-    size_t max_receive_size, size_t max_send_size);
+extern void		qnetd_client_init(struct qnetd_client *client, PRFileDesc *sock,
+    PRNetAddr *addr, size_t max_receive_size, size_t max_send_buffers, size_t max_send_size);
 
 extern void		qnetd_client_destroy(struct qnetd_client *client);
 

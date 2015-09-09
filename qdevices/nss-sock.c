@@ -146,7 +146,8 @@ nss_sock_create_listen_socket(const char *hostname, uint16_t port, PRIntn af)
 
 		addr_iter = NULL;
 
-		while ((addr_iter = PR_EnumerateAddrInfo(addr_iter, addr_info, port, &addr)) != NULL) {
+		while ((addr_iter = PR_EnumerateAddrInfo(addr_iter, addr_info, port,
+		    &addr)) != NULL) {
 			if (addr.raw.family == af) {
 				sock = nss_sock_create_socket(af, 1);
 				if (sock == NULL) {
@@ -188,7 +189,8 @@ nss_sock_create_listen_socket(const char *hostname, uint16_t port, PRIntn af)
  * PR_AF_INET.
  */
 PRFileDesc *
-nss_sock_create_client_socket(const char *hostname, uint16_t port, PRIntn af, PRIntervalTime timeout)
+nss_sock_create_client_socket(const char *hostname, uint16_t port, PRIntn af,
+    PRIntervalTime timeout)
 {
 	PRNetAddr addr;
 	PRFileDesc *sock;
@@ -241,8 +243,9 @@ nss_sock_create_client_socket(const char *hostname, uint16_t port, PRIntn af, PR
  * verification fails.
  */
 PRFileDesc *
-nss_sock_start_ssl_as_client(PRFileDesc *input_sock, const char *ssl_url, SSLBadCertHandler bad_cert_hook,
-    SSLGetClientAuthData client_auth_hook, void *client_auth_hook_arg, int force_handshake, int *reset_would_block)
+nss_sock_start_ssl_as_client(PRFileDesc *input_sock, const char *ssl_url,
+    SSLBadCertHandler bad_cert_hook, SSLGetClientAuthData client_auth_hook,
+    void *client_auth_hook_arg, int force_handshake, int *reset_would_block)
 {
 	PRFileDesc *ssl_sock;
 
@@ -269,7 +272,8 @@ nss_sock_start_ssl_as_client(PRFileDesc *input_sock, const char *ssl_url, SSLBad
 	}
 
 	if (client_auth_hook != NULL &&
-	    (SSL_GetClientAuthDataHook(ssl_sock, client_auth_hook, client_auth_hook_arg) != SECSuccess)) {
+	    (SSL_GetClientAuthDataHook(ssl_sock, client_auth_hook,
+	    client_auth_hook_arg) != SECSuccess)) {
 		return (NULL);
 	}
 
@@ -292,8 +296,9 @@ nss_sock_start_ssl_as_client(PRFileDesc *input_sock, const char *ssl_url, SSLBad
 }
 
 PRFileDesc *
-nss_sock_start_ssl_as_server(PRFileDesc *input_sock, CERTCertificate *server_cert, SECKEYPrivateKey *server_key,
-    int require_client_cert, int force_handshake, int *reset_would_block)
+nss_sock_start_ssl_as_server(PRFileDesc *input_sock, CERTCertificate *server_cert,
+    SECKEYPrivateKey *server_key, int require_client_cert, int force_handshake,
+    int *reset_would_block)
 {
 	PRFileDesc *ssl_sock;
 
@@ -306,7 +311,8 @@ nss_sock_start_ssl_as_server(PRFileDesc *input_sock, CERTCertificate *server_cer
 		return (NULL);
 	}
 
-	if (SSL_ConfigSecureServer(ssl_sock, server_cert, server_key, NSS_FindCertKEAType(server_cert)) != SECSuccess) {
+	if (SSL_ConfigSecureServer(ssl_sock, server_cert, server_key,
+	    NSS_FindCertKEAType(server_cert)) != SECSuccess) {
 		return (NULL);
 	}
 

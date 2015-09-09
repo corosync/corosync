@@ -39,12 +39,14 @@ sbin_PROGRAMS		= corosync-qnetd corosync-qdevice-net
 sbin_SCRIPTS             = corosync-qnetd-certutil
 
 corosync_qnetd_SOURCES	= corosync-qnetd.c dynar.c msg.c msgio.c nss-sock.c  \
-			    qnetd-client.c qnetd-clients-list.c qnetd-log.c \
-			    qnetd-poll-array.c timer-list.c tlv.c
+			    qnetd-client.c qnetd-client-list.c qnetd-log.c \
+			    qnetd-poll-array.c timer-list.c tlv.c send-buffer-list.c \
+			    node-list.c
 
 corosync_qdevice_net_SOURCES	= corosync-qdevice-net.c dynar.c msg.c msgio.c nss-sock.c  \
-			    qnetd-client.c qnetd-clients-list.c qnetd-log.c \
-			    qnetd-poll-array.c timer-list.c tlv.c
+			    qnetd-client.c qnetd-client-list.c qnetd-log.c \
+			    qnetd-poll-array.c timer-list.c tlv.c send-buffer-list.c \
+			    node-list.c
 
 corosync_qnetd_CFLAGS		= $(nss_CFLAGS)
 corosync_qnetd_LDADD		= $(nss_LIBS)

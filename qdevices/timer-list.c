@@ -48,7 +48,8 @@ timer_list_init(struct timer_list *tlist)
 }
 
 struct timer_list_entry *
-timer_list_add(struct timer_list *tlist, PRUint32 interval, timer_list_cb_fn func, void *data1, void *data2)
+timer_list_add(struct timer_list *tlist, PRUint32 interval, timer_list_cb_fn func, void *data1,
+    void *data2)
 {
 	struct timer_list_entry *entry;
 

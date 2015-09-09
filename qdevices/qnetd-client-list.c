@@ -32,32 +32,64 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _QNETD_CLIENTS_LIST_H_
-#define _QNETD_CLIENTS_LIST_H_
-
 #include <sys/types.h>
+#include <arpa/inet.h>
+
 #include <inttypes.h>
+#include <stdlib.h>
+#include <string.h>
 
-#include "qnetd-client.h"
+#include "qnetd-client-list.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+void
+qnetd_client_list_init(struct qnetd_client_list *client_list)
+{
 
-TAILQ_HEAD(qnetd_clients_list, qnetd_client);
-
-extern void			 qnetd_clients_list_init(struct qnetd_clients_list *clients_list);
-
-extern struct qnetd_client	*qnetd_clients_list_add(struct qnetd_clients_list *clients_list,
-    PRFileDesc *sock, PRNetAddr *addr, size_t max_receive_size, size_t max_send_size);
-
-extern void			 qnetd_clients_list_free(struct qnetd_clients_list *clients_list);
-
-extern void			 qnetd_clients_list_del(struct qnetd_clients_list *clients_list,
-    struct qnetd_client *client);
-
-#ifdef __cplusplus
+	TAILQ_INIT(client_list);
 }
-#endif
 
-#endif /* _QNETD_CLIENTS_LIST_H_ */
+struct qnetd_client *
+qnetd_client_list_add(struct qnetd_client_list *client_list, PRFileDesc *sock, PRNetAddr *addr,
+	size_t max_receive_size, size_t max_send_buffers, size_t max_send_size)
+{
+	struct qnetd_client *client;
+
+	client = (struct qnetd_client *)malloc(sizeof(*client));
+	if (client == NULL) {
+		return (NULL);
+	}
+
+	qnetd_client_init(client, sock, addr, max_receive_size, max_send_buffers, max_send_size);
+
+	TAILQ_INSERT_TAIL(client_list, client, entries);
+
+	return (client);
+}
+
+void
+qnetd_client_list_free(struct qnetd_client_list *client_list)
+{
+	struct qnetd_client *client;
+	struct qnetd_client *client_next;
+
+	client = TAILQ_FIRST(client_list);
+
+	while (client != NULL) {
+		client_next = TAILQ_NEXT(client, entries);
+
+		free(client);
+
+		client = client_next;
+	}
+
+	TAILQ_INIT(client_list);
+}
+
+void
+qnetd_client_list_del(struct qnetd_client_list *client_list, struct qnetd_client *client)
+{
+
+	TAILQ_REMOVE(client_list, client, entries);
+	qnetd_client_destroy(client);
+	free(client);
+}

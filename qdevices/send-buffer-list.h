@@ -32,10 +32,10 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _MSGIO_H_
-#define _MSGIO_H_
+#ifndef _SEND_BUFFER_LIST_H_
+#define _SEND_BUFFER_LIST_H_
 
-#include <nspr.h>
+#include <sys/queue.h>
 
 #include "dynar.h"
 
@@ -43,18 +43,50 @@
 extern "C" {
 #endif
 
-extern ssize_t	msgio_send(PRFileDesc *sock, const char *msg, size_t msg_len,
-    size_t *start_pos);
+struct send_buffer_list_entry {
+	struct dynar buffer;
+	size_t msg_already_sent_bytes;
 
-extern ssize_t	msgio_send_blocking(PRFileDesc *sock, const char *msg, size_t msg_len);
+	TAILQ_ENTRY(send_buffer_list_entry) entries;
+};
 
-extern int	msgio_write(PRFileDesc *sock, const struct dynar *msg, size_t *already_sent_bytes);
+struct send_buffer_list {
+	size_t max_list_entries;
+	size_t allocated_list_entries;
 
-extern int	msgio_read(PRFileDesc *sock, struct dynar *msg, size_t *already_received_bytes,
-    int *skipping_msg);
+	size_t max_buffer_size;
+
+	TAILQ_HEAD(, send_buffer_list_entry) list;
+	TAILQ_HEAD(, send_buffer_list_entry) free_list;
+};
+
+extern void				 send_buffer_list_init(struct send_buffer_list *sblist,
+    size_t max_list_entries, size_t max_buffer_size);
+
+extern struct send_buffer_list_entry	*send_buffer_list_get_new(struct send_buffer_list *sblist);
+
+extern void				 send_buffer_list_put(struct send_buffer_list *sblist,
+    struct send_buffer_list_entry *sblist_entry);
+
+extern struct send_buffer_list_entry	*send_buffer_list_get_active(
+    const struct send_buffer_list *sblist);
+
+extern void				 send_buffer_list_delete(struct send_buffer_list *sblist,
+    struct send_buffer_list_entry *sblist_entry);
+
+extern int				 send_buffer_list_empty(
+    const struct send_buffer_list *sblist);
+
+extern void				 send_buffer_list_free(struct send_buffer_list *sblist);
+
+extern void				 send_buffer_list_set_max_buffer_size(
+    struct send_buffer_list *sblist, size_t max_buffer_size);
+
+extern void				 send_buffer_list_set_max_list_entries(
+    struct send_buffer_list *sblist, size_t max_list_entries);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* _MSGIO_H_ */
+#endif /* _SEND_BUFFER_LIST_H_ */

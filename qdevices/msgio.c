@@ -87,7 +87,10 @@ msgio_send_blocking(PRFileDesc *sock, const char *msg, size_t msg_len)
 }
 
 /*
- * -1 means send returned 0, -2  unhandled error. 0 = success but whole buffer is still not sent, 1 = all data was sent
+ * -1 = send returned 0,
+ * -2 = unhandled error.
+ *  0 = success but whole buffer is still not sent
+ *  1 = all data was sent
  */
 int
 msgio_write(PRFileDesc *sock, const struct dynar *msg, size_t *already_sent_bytes)
@@ -100,7 +103,8 @@ msgio_write(PRFileDesc *sock, const struct dynar *msg, size_t *already_sent_byte
 		to_send = MSGIO_LOCAL_BUF_SIZE;
 	}
 
-	sent = PR_Send(sock, dynar_data(msg) + *already_sent_bytes, to_send, 0, PR_INTERVAL_NO_TIMEOUT);
+	sent = PR_Send(sock, dynar_data(msg) + *already_sent_bytes, to_send, 0,
+	    PR_INTERVAL_NO_TIMEOUT);
 
 	if (sent > 0) {
 		*already_sent_bytes += sent;
@@ -183,7 +187,8 @@ msgio_read(PRFileDesc *sock, struct dynar *msg, size_t *already_received_bytes, 
 			if (!msg_is_valid_msg_type(msg)) {
 				*skipping_msg = 1;
 				ret = -5;
-			} else if (msg_get_header_length() + msg_get_len(msg) > dynar_max_size(msg)) {
+			} else if ((msg_get_header_length() + msg_get_len(msg)) >
+			    dynar_max_size(msg)) {
 				*skipping_msg = 1;
 				ret = -6;
 			}

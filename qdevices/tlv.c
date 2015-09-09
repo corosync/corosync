@@ -39,12 +39,24 @@
 #include <stdlib.h>
 #include <string.h>
 
+/*
+ * 64-bit variant of ntoh is not exactly standard...
+ */
+#if defined(__linux__)
+#include <endian.h>
+#elif defined(__FreeBSD__) || defined(__NetBSD__)
+#include <sys/endian.h>
+#elif defined(__OpenBSD__)
+#include <sys/types.h>
+#define be64toh(x) betoh64(x)
+#endif
+
 #include "tlv.h"
 
 #define TLV_TYPE_LENGTH		2
 #define TLV_LENGTH_LENGTH	2
 
-#define TLV_STATIC_SUPPORTED_OPTIONS_SIZE      13
+#define TLV_STATIC_SUPPORTED_OPTIONS_SIZE      20
 
 enum tlv_opt_type tlv_static_supported_options[TLV_STATIC_SUPPORTED_OPTIONS_SIZE] = {
     TLV_OPT_MSG_SEQ_NUMBER,
@@ -60,6 +72,13 @@ enum tlv_opt_type tlv_static_supported_options[TLV_STATIC_SUPPORTED_OPTIONS_SIZE
     TLV_OPT_SUPPORTED_DECISION_ALGORITHMS,
     TLV_OPT_DECISION_ALGORITHM,
     TLV_OPT_HEARTBEAT_INTERVAL,
+    TLV_OPT_RING_ID,
+    TLV_OPT_CONFIG_VERSION,
+    TLV_OPT_DATA_CENTER_ID,
+    TLV_OPT_NODE_STATE,
+    TLV_OPT_NODE_INFO,
+    TLV_OPT_NODE_LIST_TYPE,
+    TLV_OPT_VOTE,
 };
 
 int
@@ -110,6 +129,16 @@ tlv_add_u16(struct dynar *msg, enum tlv_opt_type opt_type, uint16_t u16)
 }
 
 int
+tlv_add_u64(struct dynar *msg, enum tlv_opt_type opt_type, uint64_t u64)
+{
+	uint64_t nu64;
+
+	nu64 = htobe64(u64);
+
+	return (tlv_add(msg, opt_type, sizeof(nu64), &nu64));
+}
+
+int
 tlv_add_string(struct dynar *msg, enum tlv_opt_type opt_type, const char *str)
 {
 
@@ -145,7 +174,8 @@ tlv_add_tls_client_cert_required(struct dynar *msg, int tls_client_cert_required
 }
 
 int
-tlv_add_u16_array(struct dynar *msg, enum tlv_opt_type opt_type, const uint16_t *array, size_t array_size)
+tlv_add_u16_array(struct dynar *msg, enum tlv_opt_type opt_type, const uint16_t *array,
+    size_t array_size)
 {
 	size_t i;
 	uint16_t *nu16a;
@@ -195,8 +225,8 @@ tlv_add_supported_options(struct dynar *msg, const enum tlv_opt_type *supported_
 }
 
 int
-tlv_add_supported_decision_algorithms(struct dynar *msg, const enum tlv_decision_algorithm_type *supported_algorithms,
-    size_t no_supported_algorithms)
+tlv_add_supported_decision_algorithms(struct dynar *msg,
+    const enum tlv_decision_algorithm_type *supported_algorithms, size_t no_supported_algorithms)
 {
 	uint16_t *u16a;
 	size_t i;
@@ -211,7 +241,8 @@ tlv_add_supported_decision_algorithms(struct dynar *msg, const enum tlv_decision
 		u16a[i] = (uint16_t)supported_algorithms[i];
 	}
 
-	res = (tlv_add_u16_array(msg, TLV_OPT_SUPPORTED_DECISION_ALGORITHMS, u16a, no_supported_algorithms));
+	res = (tlv_add_u16_array(msg, TLV_OPT_SUPPORTED_DECISION_ALGORITHMS, u16a,
+	    no_supported_algorithms));
 
 	free(u16a);
 
@@ -260,13 +291,113 @@ tlv_add_heartbeat_interval(struct dynar *msg, uint32_t heartbeat_interval)
 	return (tlv_add_u32(msg, TLV_OPT_HEARTBEAT_INTERVAL, heartbeat_interval));
 }
 
+int
+tlv_add_ring_id(struct dynar *msg, const struct tlv_ring_id *ring_id)
+{
+	uint64_t nu64;
+	uint32_t nu32;
+	char tmp_buf[12];
+
+	nu32 = htonl(ring_id->node_id);
+	nu64 = htobe64(ring_id->seq);
+
+	memcpy(tmp_buf, &nu32, sizeof(nu32));
+	memcpy(tmp_buf + sizeof(nu32), &nu64, sizeof(nu64));
+
+	return (tlv_add(msg, TLV_OPT_RING_ID, sizeof(tmp_buf), tmp_buf));
+}
+
+int
+tlv_add_config_version(struct dynar *msg, uint64_t config_version)
+{
+
+	return (tlv_add_u64(msg, TLV_OPT_CONFIG_VERSION, config_version));
+}
+
+int
+tlv_add_data_center_id(struct dynar *msg, uint32_t data_center_id)
+{
+
+	return (tlv_add_u32(msg, TLV_OPT_DATA_CENTER_ID, data_center_id));
+}
+
+int
+tlv_add_node_state(struct dynar *msg, enum tlv_node_state node_state)
+{
+
+	return (tlv_add_u8(msg, TLV_OPT_NODE_STATE, node_state));
+}
+
+int
+tlv_add_node_info(struct dynar *msg, const struct tlv_node_info *node_info)
+{
+	struct dynar opt_value;
+	int res;
+
+	res = 0;
+	/*
+	 * Create sub message,
+	 */
+	dynar_init(&opt_value, 1024);
+	if ((res = tlv_add_node_id(&opt_value, node_info->node_id)) != 0) {
+		goto exit_dynar_destroy;
+	}
+
+	if (node_info->data_center_id != 0) {
+		if ((res = tlv_add_data_center_id(&opt_value, node_info->data_center_id)) != 0) {
+			goto exit_dynar_destroy;
+		}
+	}
+
+	if (node_info->node_state != TLV_NODE_STATE_NOT_SET) {
+		if ((res = tlv_add_node_state(&opt_value, node_info->node_state)) != 0) {
+			goto exit_dynar_destroy;
+		}
+	}
+
+	res = tlv_add(msg, TLV_OPT_NODE_INFO, dynar_size(&opt_value), dynar_data(&opt_value));
+	if (res != 0) {
+		goto exit_dynar_destroy;
+	}
+
+
+exit_dynar_destroy:
+	dynar_destroy(&opt_value);
+
+	return (res);
+}
+
+int
+tlv_add_node_list_type(struct dynar *msg, enum tlv_node_list_type node_list_type)
+{
+
+	return (tlv_add_u8(msg, TLV_OPT_NODE_LIST_TYPE, node_list_type));
+}
+
+int
+tlv_add_vote(struct dynar *msg, enum tlv_vote vote)
+{
+
+	return (tlv_add_u8(msg, TLV_OPT_VOTE, vote));
+}
+
+void
+tlv_iter_init_str(const char *msg, size_t msg_len, size_t msg_header_len,
+    struct tlv_iterator *tlv_iter)
+{
+
+	tlv_iter->msg = msg;
+	tlv_iter->msg_len = msg_len;
+	tlv_iter->current_pos = 0;
+	tlv_iter->msg_header_len = msg_header_len;
+	tlv_iter->iter_next_called = 0;
+}
+
 void
 tlv_iter_init(const struct dynar *msg, size_t msg_header_len, struct tlv_iterator *tlv_iter)
 {
 
-	tlv_iter->msg = msg;
-	tlv_iter->current_pos = 0;
-	tlv_iter->msg_header_len = msg_header_len;
+	tlv_iter_init_str(dynar_data(msg), dynar_size(msg), msg_header_len, tlv_iter);
 }
 
 enum tlv_opt_type
@@ -275,7 +406,7 @@ tlv_iter_get_type(const struct tlv_iterator *tlv_iter)
 	uint16_t ntype;
 	uint16_t type;
 
-	memcpy(&ntype, dynar_data(tlv_iter->msg) + tlv_iter->current_pos, sizeof(ntype));
+	memcpy(&ntype, tlv_iter->msg + tlv_iter->current_pos, sizeof(ntype));
 	type = ntohs(ntype);
 
 	return (type);
@@ -287,7 +418,7 @@ tlv_iter_get_len(const struct tlv_iterator *tlv_iter)
 	uint16_t nlen;
 	uint16_t len;
 
-	memcpy(&nlen, dynar_data(tlv_iter->msg) + tlv_iter->current_pos + TLV_TYPE_LENGTH, sizeof(nlen));
+	memcpy(&nlen, tlv_iter->msg + tlv_iter->current_pos + TLV_TYPE_LENGTH, sizeof(nlen));
 	len = ntohs(nlen);
 
 	return (len);
@@ -297,7 +428,7 @@ const char *
 tlv_iter_get_data(const struct tlv_iterator *tlv_iter)
 {
 
-	return (dynar_data(tlv_iter->msg) + tlv_iter->current_pos + TLV_TYPE_LENGTH + TLV_LENGTH_LENGTH);
+	return (tlv_iter->msg + tlv_iter->current_pos + TLV_TYPE_LENGTH + TLV_LENGTH_LENGTH);
 }
 
 int
@@ -305,7 +436,8 @@ tlv_iter_next(struct tlv_iterator *tlv_iter)
 {
 	uint16_t len;
 
-	if (tlv_iter->current_pos == 0) {
+	if (tlv_iter->iter_next_called == 0) {
+		tlv_iter->iter_next_called = 1;
 		tlv_iter->current_pos = tlv_iter->msg_header_len;
 
 		goto check_tlv_validity;
@@ -313,7 +445,8 @@ tlv_iter_next(struct tlv_iterator *tlv_iter)
 
 	len = tlv_iter_get_len(tlv_iter);
 
-	if (tlv_iter->current_pos + TLV_TYPE_LENGTH + TLV_LENGTH_LENGTH + len >= dynar_size(tlv_iter->msg)) {
+	if (tlv_iter->current_pos + TLV_TYPE_LENGTH + TLV_LENGTH_LENGTH + len >=
+	    tlv_iter->msg_len) {
 		return (0);
 	}
 
@@ -325,7 +458,7 @@ check_tlv_validity:
 	 */
 	len = tlv_iter_get_len(tlv_iter);
 
-	if (tlv_iter->current_pos + TLV_TYPE_LENGTH + TLV_LENGTH_LENGTH + len > dynar_size(tlv_iter->msg)) {
+	if (tlv_iter->current_pos + TLV_TYPE_LENGTH + TLV_LENGTH_LENGTH + len > tlv_iter->msg_len) {
 		return (-1);
 	}
 
@@ -433,8 +566,8 @@ tlv_iter_decode_u16_array(struct tlv_iterator *tlv_iter, uint16_t **u16a, size_t
 }
 
 int
-tlv_iter_decode_supported_options(struct tlv_iterator *tlv_iter, enum tlv_opt_type **supported_options,
-    size_t *no_supported_options)
+tlv_iter_decode_supported_options(struct tlv_iterator *tlv_iter,
+    enum tlv_opt_type **supported_options, size_t *no_supported_options)
 {
 	uint16_t *u16a;
 	enum tlv_opt_type *tlv_opt_array;
@@ -465,7 +598,8 @@ tlv_iter_decode_supported_options(struct tlv_iterator *tlv_iter, enum tlv_opt_ty
 
 int
 tlv_iter_decode_supported_decision_algorithms(struct tlv_iterator *tlv_iter,
-    enum tlv_decision_algorithm_type **supported_decision_algorithms, size_t *no_supported_decision_algorithms)
+    enum tlv_decision_algorithm_type **supported_decision_algorithms,
+    size_t *no_supported_decision_algorithms)
 {
 	uint16_t *u16a;
 	enum tlv_decision_algorithm_type *tlv_decision_algorithm_type_array;
@@ -517,7 +651,28 @@ tlv_iter_decode_u16(struct tlv_iterator *tlv_iter, uint16_t *u16)
 }
 
 int
-tlv_iter_decode_reply_error_code(struct tlv_iterator *tlv_iter, enum tlv_reply_error_code *reply_error_code)
+tlv_iter_decode_u64(struct tlv_iterator *tlv_iter, uint64_t *u64)
+{
+	const char *opt_data;
+	uint64_t opt_len;
+	uint64_t nu64;
+
+	opt_len = tlv_iter_get_len(tlv_iter);
+	opt_data = tlv_iter_get_data(tlv_iter);
+
+	if (opt_len != sizeof(nu64)) {
+		return (-1);
+	}
+
+	memcpy(&nu64, opt_data, sizeof(nu64));
+	*u64 = be64toh(nu64);
+
+	return (0);
+}
+
+int
+tlv_iter_decode_reply_error_code(struct tlv_iterator *tlv_iter,
+    enum tlv_reply_error_code *reply_error_code)
 {
 
 	return (tlv_iter_decode_u16(tlv_iter, (uint16_t *)reply_error_code));
@@ -527,24 +682,28 @@ int
 tlv_iter_decode_tls_supported(struct tlv_iterator *tlv_iter, enum tlv_tls_supported *tls_supported)
 {
 	uint8_t u8;
+	enum tlv_tls_supported tmp_tls_supported;
 
 	if (tlv_iter_decode_u8(tlv_iter, &u8) != 0) {
 		return (-1);
 	}
 
-	*tls_supported = u8;
+	tmp_tls_supported = u8;
 
-	if (*tls_supported != TLV_TLS_UNSUPPORTED &&
-	    *tls_supported != TLV_TLS_SUPPORTED &&
-	    *tls_supported != TLV_TLS_REQUIRED) {
+	if (tmp_tls_supported != TLV_TLS_UNSUPPORTED &&
+	    tmp_tls_supported != TLV_TLS_SUPPORTED &&
+	    tmp_tls_supported != TLV_TLS_REQUIRED) {
 		return (-4);
 	}
+
+	*tls_supported = tmp_tls_supported;
 
 	return (0);
 }
 
 int
-tlv_iter_decode_decision_algorithm(struct tlv_iterator *tlv_iter, enum tlv_decision_algorithm_type *decision_algorithm)
+tlv_iter_decode_decision_algorithm(struct tlv_iterator *tlv_iter,
+    enum tlv_decision_algorithm_type *decision_algorithm)
 {
 	uint16_t u16;
 
@@ -553,6 +712,158 @@ tlv_iter_decode_decision_algorithm(struct tlv_iterator *tlv_iter, enum tlv_decis
 	}
 
 	*decision_algorithm = (enum tlv_decision_algorithm_type)u16;
+
+	return (0);
+}
+
+int
+tlv_iter_decode_ring_id(struct tlv_iterator *tlv_iter, struct tlv_ring_id *ring_id)
+{
+	const char *opt_data;
+	uint16_t opt_len;
+	uint32_t nu32;
+	uint64_t nu64;
+	char tmp_buf[12];
+
+	opt_len = tlv_iter_get_len(tlv_iter);
+	opt_data = tlv_iter_get_data(tlv_iter);
+
+	if (opt_len != sizeof(tmp_buf)) {
+		return (-1);
+	}
+
+	memcpy(&nu32, opt_data, sizeof(nu32));
+	memcpy(&nu64, opt_data + sizeof(nu32), sizeof(nu64));
+
+	ring_id->node_id = ntohl(nu32);
+	ring_id->seq = be64toh(nu64);
+
+	return (0);
+}
+
+int
+tlv_iter_decode_node_state(struct tlv_iterator *tlv_iter, enum tlv_node_state *node_state)
+{
+	uint8_t u8;
+	enum tlv_node_state tmp_node_state;
+
+	if (tlv_iter_decode_u8(tlv_iter, &u8) != 0) {
+		return (-1);
+	}
+
+	tmp_node_state = u8;
+
+	if (tmp_node_state != TLV_NODE_STATE_MEMBER &&
+	    tmp_node_state != TLV_NODE_STATE_DEAD &&
+	    tmp_node_state != TLV_NODE_STATE_LEAVING) {
+		return (-4);
+	}
+
+	*node_state = tmp_node_state;
+
+	return (0);
+}
+
+int
+tlv_iter_decode_node_info(struct tlv_iterator *tlv_iter, struct tlv_node_info *node_info)
+{
+	struct tlv_iterator data_tlv_iter;
+	int iter_res;
+	int res;
+	enum tlv_opt_type opt_type;
+	struct tlv_node_info tmp_node_info;
+
+	memset(&tmp_node_info, 0, sizeof(tmp_node_info));
+
+	tlv_iter_init_str(tlv_iter_get_data(tlv_iter), tlv_iter_get_len(tlv_iter), 0,
+	    &data_tlv_iter);
+
+	while ((iter_res = tlv_iter_next(&data_tlv_iter)) > 0) {
+		opt_type = tlv_iter_get_type(&data_tlv_iter);
+
+		switch (opt_type) {
+		case TLV_OPT_NODE_ID:
+			if ((res = tlv_iter_decode_u32(&data_tlv_iter,
+			    &tmp_node_info.node_id)) != 0) {
+				return (res);
+			}
+			break;
+		case TLV_OPT_DATA_CENTER_ID:
+			if ((res = tlv_iter_decode_u32(&data_tlv_iter,
+			    &tmp_node_info.data_center_id)) != 0) {
+				return (res);
+			}
+			break;
+		case TLV_OPT_NODE_STATE:
+			if ((res = tlv_iter_decode_node_state(&data_tlv_iter,
+			    &tmp_node_info.node_state)) != 0) {
+				return (res);
+			}
+			break;
+		default:
+			/*
+			 * Other options are not processed
+			 */
+			break;
+		}
+	}
+
+	if (iter_res != 0) {
+		return (-3);
+	}
+
+	if (tmp_node_info.node_id == 0) {
+		return (-4);
+	}
+
+	memcpy(node_info, &tmp_node_info, sizeof(tmp_node_info));
+
+	return (0);
+}
+
+int
+tlv_iter_decode_node_list_type(struct tlv_iterator *tlv_iter,
+    enum tlv_node_list_type *node_list_type)
+{
+	uint8_t u8;
+	enum tlv_node_list_type tmp_node_list_type;
+
+	if (tlv_iter_decode_u8(tlv_iter, &u8) != 0) {
+		return (-1);
+	}
+
+	tmp_node_list_type = u8;
+
+	if (tmp_node_list_type != TLV_NODE_LIST_TYPE_INITIAL_CONFIG &&
+	    tmp_node_list_type != TLV_NODE_LIST_TYPE_CHANGED_CONFIG &&
+	    tmp_node_list_type != TLV_NODE_LIST_TYPE_MEMBERSHIP) {
+		return (-4);
+	}
+
+	*node_list_type = tmp_node_list_type;
+
+	return (0);
+}
+
+int
+tlv_iter_decode_vote(struct tlv_iterator *tlv_iter, enum tlv_vote *vote)
+{
+	uint8_t u8;
+	enum tlv_vote tmp_vote;
+
+	if (tlv_iter_decode_u8(tlv_iter, &u8) != 0) {
+		return (-1);
+	}
+
+	tmp_vote = u8;
+
+	if (tmp_vote != TLV_VOTE_UNDECIDED &&
+	    tmp_vote != TLV_VOTE_ACK &&
+	    tmp_vote != TLV_VOTE_NACK) {
+		return (-4);
+	}
+
+	*vote = tmp_vote;
 
 	return (0);
 }
