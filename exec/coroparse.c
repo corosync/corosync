@@ -84,7 +84,12 @@ enum main_cp_cb_data_state {
 	MAIN_CP_CB_DATA_STATE_NODELIST,
 	MAIN_CP_CB_DATA_STATE_NODELIST_NODE,
 	MAIN_CP_CB_DATA_STATE_PLOAD,
-	MAIN_CP_CB_DATA_STATE_QB
+	MAIN_CP_CB_DATA_STATE_QB,
+	MAIN_CP_CB_DATA_STATE_RESOURCES,
+	MAIN_CP_CB_DATA_STATE_RESOURCES_SYSTEM,
+	MAIN_CP_CB_DATA_STATE_RESOURCES_PROCESS,
+	MAIN_CP_CB_DATA_STATE_RESOURCES_SYSTEM_MEMUSED,
+	MAIN_CP_CB_DATA_STATE_RESOURCES_PROCESS_MEMUSED
 };
 
 typedef int (*parser_cb_f)(const char *path,
@@ -859,6 +864,38 @@ static int main_config_parser_cb(const char *path,
 				add_as_string = 0;
 			}
 			break;
+		case MAIN_CP_CB_DATA_STATE_RESOURCES:
+			if (strcmp(key, "watchdog_timeout") == 0) {
+				val_type = ICMAP_VALUETYPE_UINT32;
+				if (safe_atoq(value, &val, val_type) != 0) {
+					goto atoi_error;
+				}
+				icmap_set_uint32_r(config_map,path, val);
+				add_as_string = 0;
+			}
+			break;
+		case MAIN_CP_CB_DATA_STATE_RESOURCES_SYSTEM:
+			break;
+		case MAIN_CP_CB_DATA_STATE_RESOURCES_SYSTEM_MEMUSED:
+			if (strcmp(key, "poll_period") == 0) {
+				if (str_to_ull(value, &ull) != 0) {
+					goto atoi_error;
+				}
+				icmap_set_uint64_r(config_map,path, ull);
+				add_as_string = 0;
+			}
+			break;
+		case MAIN_CP_CB_DATA_STATE_RESOURCES_PROCESS:
+			break;
+		case MAIN_CP_CB_DATA_STATE_RESOURCES_PROCESS_MEMUSED:
+			if (strcmp(key, "poll_period") == 0) {
+				if (str_to_ull(value, &ull) != 0) {
+					goto atoi_error;
+				}
+				icmap_set_uint64_r(config_map,path, ull);
+				add_as_string = 0;
+			}
+			break;
 		}
 
 		if (add_as_string) {
@@ -909,6 +946,21 @@ static int main_config_parser_cb(const char *path,
 		if (strcmp(path, "nodelist.node") == 0) {
 			*state = MAIN_CP_CB_DATA_STATE_NODELIST_NODE;
 			data->ring0_addr_added = 0;
+		}
+		if (strcmp(path, "resources") == 0) {
+			*state = MAIN_CP_CB_DATA_STATE_RESOURCES;
+		}
+		if (strcmp(path, "resources.system") == 0) {
+			*state = MAIN_CP_CB_DATA_STATE_RESOURCES_SYSTEM;
+		}
+		if (strcmp(path, "resources.system.memory_used") == 0) {
+			*state = MAIN_CP_CB_DATA_STATE_RESOURCES_SYSTEM_MEMUSED;
+		}
+		if (strcmp(path, "resources.process") == 0) {
+			*state = MAIN_CP_CB_DATA_STATE_RESOURCES_PROCESS;
+		}
+		if (strcmp(path, "resources.process.memory_used") == 0) {
+			*state = MAIN_CP_CB_DATA_STATE_RESOURCES_PROCESS_MEMUSED;
 		}
 		break;
 	case PARSER_CB_SECTION_END:
@@ -1089,6 +1141,21 @@ static int main_config_parser_cb(const char *path,
 		case MAIN_CP_CB_DATA_STATE_NODELIST:
 		case MAIN_CP_CB_DATA_STATE_TOTEM:
 		case MAIN_CP_CB_DATA_STATE_QB:
+			break;
+		case MAIN_CP_CB_DATA_STATE_RESOURCES:
+			*state = MAIN_CP_CB_DATA_STATE_NORMAL;
+			break;
+		case MAIN_CP_CB_DATA_STATE_RESOURCES_SYSTEM:
+			*state = MAIN_CP_CB_DATA_STATE_RESOURCES;
+			break;
+		case MAIN_CP_CB_DATA_STATE_RESOURCES_SYSTEM_MEMUSED:
+			*state = MAIN_CP_CB_DATA_STATE_RESOURCES_SYSTEM;
+			break;
+		case MAIN_CP_CB_DATA_STATE_RESOURCES_PROCESS:
+			*state = MAIN_CP_CB_DATA_STATE_RESOURCES;
+			break;
+		case MAIN_CP_CB_DATA_STATE_RESOURCES_PROCESS_MEMUSED:
+			*state = MAIN_CP_CB_DATA_STATE_RESOURCES_PROCESS;
 			break;
 		}
 		break;
