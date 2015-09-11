@@ -690,11 +690,13 @@ static void wd_top_level_key_changed(
 	if (icmap_get_uint32("resources.watchdog_timeout", &tmp_value_32) == CS_OK) {
 		if (tmp_value_32 >= 2 && tmp_value_32 <= 120) {
 			watchdog_timeout_apply (tmp_value_32);
+			return;
 		}
 	}
-	else {
-		watchdog_timeout_apply (WD_DEFAULT_TIMEOUT_SEC);
-	}
+
+	log_printf (LOGSYS_LEVEL_WARNING,
+		"Set watchdog_timeout is out of range (2..120).");
+	icmap_set_uint32("resources.watchdog_timeout", watchdog_timeout);
 }
 
 static void watchdog_timeout_get_initial (void)
@@ -712,8 +714,14 @@ static void watchdog_timeout_get_initial (void)
 	else {
 		if (tmp_value_32 >= 2 && tmp_value_32 <= 120) {
 			watchdog_timeout_apply (tmp_value_32);
-		} else {
+		}
+		else {
+			log_printf (LOGSYS_LEVEL_WARNING,
+				"Set watchdog_timeout is out of range (2..120).");
+			log_printf (LOGSYS_LEVEL_INFO,
+				"use default value %d seconds.", WD_DEFAULT_TIMEOUT_SEC);
 			watchdog_timeout_apply (WD_DEFAULT_TIMEOUT_SEC);
+			icmap_set_uint32("resources.watchdog_timeout", watchdog_timeout);
 		}
 	}
 
