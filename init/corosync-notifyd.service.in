@@ -1,6 +1,6 @@
 [Unit]
 Description=Corosync Dbus and snmp notifier
-Wants=corosync.service
+Requires=corosync.service
 After=corosync.service
 
 [Service]
@@ -8,7 +8,6 @@ EnvironmentFile=-@SYSCONFDIR@/sysconfig/corosync-notifyd
 EnvironmentFile=-@SYSCONFDIR@/default/corosync-notifyd
 ExecStart=@SBINDIR@/corosync-notifyd -f $OPTIONS
 Type=simple
-Restart=on-failure
 
 [Install]
 WantedBy=multi-user.target
