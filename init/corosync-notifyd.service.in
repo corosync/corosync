@@ -7,7 +7,7 @@ After=corosync.service
 EnvironmentFile=-@SYSCONFDIR@/sysconfig/corosync-notifyd
 EnvironmentFile=-@SYSCONFDIR@/default/corosync-notifyd
 ExecStart=@SBINDIR@/corosync-notifyd -f $OPTIONS
-Type=simple
+Type=notify
 
 [Install]
 WantedBy=multi-user.target
