@@ -32,55 +32,64 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _QNETD_CLIENT_H_
-#define _QNETD_CLIENT_H_
-
 #include <sys/types.h>
 
-#include <sys/queue.h>
-#include <inttypes.h>
+#include <err.h>
 
-#include <nspr.h>
-#include "dynar.h"
-#include "tlv.h"
-#include "send-buffer-list.h"
-#include "node-list.h"
+#include "qnetd-algorithm.h"
+#include "qnetd-algo-test.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+enum tlv_reply_error_code
+qnetd_algorithm_client_init(struct qnetd_client *client)
+{
 
-struct qnetd_client {
-	PRFileDesc *socket;
-	PRNetAddr addr;
-	struct dynar receive_buffer;
-	struct send_buffer_list send_buffer_list;
-	size_t msg_already_received_bytes;
-	int skipping_msg;	// When incorrect message was received skip it
-	int tls_started;	// Set after TLS started
-	int tls_peer_certificate_verified;	// Certificate is verified only once
-	int preinit_received;
-	int init_received;
-	char *cluster_name;
-	size_t cluster_name_len;
-	uint8_t node_id_set;
-	uint32_t node_id;
-	enum tlv_decision_algorithm_type decision_algorithm;
-	uint32_t heartbeat_interval;
-	enum tlv_reply_error_code skipping_msg_reason;
-	void *algorithm_data;
-	struct node_list configuration_nodes;
-	struct node_list membership_nodes;
-	TAILQ_ENTRY(qnetd_client) entries;
-};
+	switch (client->decision_algorithm) {
+	case TLV_DECISION_ALGORITHM_TYPE_TEST:
+		return (qnetd_algo_test_client_init(client));
+		break;
+	default:
+		errx(1, "qnetd_algorithm_client_init unhandled decision algorithm");
+		break;
+	}
 
-extern void		qnetd_client_init(struct qnetd_client *client, PRFileDesc *sock,
-    PRNetAddr *addr, size_t max_receive_size, size_t max_send_buffers, size_t max_send_size);
-
-extern void		qnetd_client_destroy(struct qnetd_client *client);
-
-#ifdef __cplusplus
+	return (TLV_REPLY_ERROR_CODE_INTERNAL_ERROR);
 }
-#endif
 
-#endif /* _QNETD_CLIENT_H_ */
+enum tlv_reply_error_code
+qnetd_algorithm_config_node_list_received(struct qnetd_client *client,
+    const struct node_list *nodes, int initial, enum tlv_vote *result_vote)
+{
+
+	switch (client->decision_algorithm) {
+	case TLV_DECISION_ALGORITHM_TYPE_TEST:
+		return (qnetd_algo_test_config_node_list_received(client, nodes, initial,
+		    result_vote));
+		break;
+	default:
+		errx(1, "qnetd_algorithm_config_node_list_received unhandled "
+		    "decision algorithm");
+		break;
+	}
+
+	return (TLV_REPLY_ERROR_CODE_INTERNAL_ERROR);
+
+}
+
+enum tlv_reply_error_code
+qnetd_algorithm_membership_node_list_received(struct qnetd_client *client,
+    const struct node_list *nodes, enum tlv_vote *result_vote)
+{
+
+	switch (client->decision_algorithm) {
+	case TLV_DECISION_ALGORITHM_TYPE_TEST:
+		return (qnetd_algo_test_membership_node_list_received(client, nodes,
+		    result_vote));
+		break;
+	default:
+		errx(1, "qnetd_algorithm_membership_node_list_received unhandled "
+		    "decision algorithm");
+		break;
+	}
+
+	return (TLV_REPLY_ERROR_CODE_INTERNAL_ERROR);
+}

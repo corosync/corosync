@@ -100,6 +100,7 @@ enum qdevice_net_state {
 	QDEVICE_NET_STATE_WAITING_STARTTLS_BEING_SENT,
 	QDEVICE_NET_STATE_WAITING_INIT_REPLY,
 	QDEVICE_NET_STATE_WAITING_SET_OPTION_REPLY,
+	QDEVICE_NET_STATE_WAITING_VOTEQUORUM_CMAP_EVENTS,
 };
 
 struct qdevice_net_instance {
@@ -113,7 +114,7 @@ struct qdevice_net_instance {
 	int skipping_msg;
 	size_t msg_already_received_bytes;
 	enum qdevice_net_state state;
-	uint32_t expected_msg_seq_num;
+	uint32_t last_msg_seq_num;
 	uint32_t echo_request_expected_msg_seq_num;
 	uint32_t echo_reply_received_msg_seq_num;
 	enum tlv_tls_supported tls_supported;
@@ -278,7 +279,7 @@ qdevice_net_msg_check_seq_number(struct qdevice_net_instance *instance,
     const struct msg_decoded *msg)
 {
 
-	if (!msg->seq_number_set || msg->seq_number != instance->expected_msg_seq_num) {
+	if (!msg->seq_number_set || msg->seq_number != instance->last_msg_seq_num) {
 		qdevice_net_log(LOG_ERR, "Received message doesn't contain seq_number or "
 		    "it's not expected one.");
 
@@ -320,7 +321,7 @@ qdevice_net_send_init(struct qdevice_net_instance *instance)
 
 	tlv_get_supported_options(&supported_opts, &no_supported_opts);
 	msg_get_supported_messages(&supported_msgs, &no_supported_msgs);
-	instance->expected_msg_seq_num++;
+	instance->last_msg_seq_num++;
 
 	send_buffer = send_buffer_list_get_new(&instance->send_buffer_list);
 	if (send_buffer == NULL) {
@@ -329,7 +330,8 @@ qdevice_net_send_init(struct qdevice_net_instance *instance)
 		return (-1);
 	}
 
-	if (msg_create_init(&send_buffer->buffer, 1, instance->expected_msg_seq_num,
+	if (msg_create_init(&send_buffer->buffer, 1, instance->last_msg_seq_num,
+	    instance->decision_algorithm,
 	    supported_msgs, no_supported_msgs, supported_opts, no_supported_opts,
 	    instance->node_id) == 0) {
 		qdevice_net_log(LOG_ERR, "Can't allocate send buffer for init msg");
@@ -391,9 +393,9 @@ qdevice_net_msg_received_preinit_reply(struct qdevice_net_instance *instance,
 			return (-1);
 		}
 
-		instance->expected_msg_seq_num++;
+		instance->last_msg_seq_num++;
 		if (msg_create_starttls(&send_buffer->buffer, 1,
-		    instance->expected_msg_seq_num) == 0) {
+		    instance->last_msg_seq_num) == 0) {
 			qdevice_net_log(LOG_ERR, "Can't allocate send buffer for starttls msg");
 
 			return (-1);
@@ -427,6 +429,20 @@ qdevice_net_msg_received_init_reply(struct qdevice_net_instance *instance,
 	}
 
 	if (qdevice_net_msg_check_seq_number(instance, msg) != 0) {
+		return (-1);
+	}
+
+	if (!msg->reply_error_code_set) {
+		qdevice_net_log(LOG_ERR, "Received init reply message without error code."
+		    "Disconnecting from server");
+
+		return (-1);
+	}
+
+	if (msg->reply_error_code != TLV_REPLY_ERROR_CODE_NO_ERROR) {
+		qdevice_net_log(LOG_ERR, "Received init reply message with error code %"PRIu16". "
+		    "Disconnecting from server", msg->reply_error_code);
+
 		return (-1);
 	}
 
@@ -501,10 +517,10 @@ qdevice_net_msg_received_init_reply(struct qdevice_net_instance *instance,
 		return (-1);
 	}
 
-	instance->expected_msg_seq_num++;
+	instance->last_msg_seq_num++;
 
-	if (msg_create_set_option(&send_buffer->buffer, 1, instance->expected_msg_seq_num,
-	    1, instance->decision_algorithm, 1, instance->heartbeat_interval) == 0) {
+	if (msg_create_set_option(&send_buffer->buffer, 1, instance->last_msg_seq_num,
+	    1, instance->heartbeat_interval) == 0) {
 		qdevice_net_log(LOG_ERR, "Can't allocate send buffer for set option msg");
 
 		return (-1);
@@ -518,7 +534,7 @@ qdevice_net_msg_received_init_reply(struct qdevice_net_instance *instance,
 }
 
 static int
-qdevice_net_msg_received_stattls(struct qdevice_net_instance *instance,
+qdevice_net_msg_received_starttls(struct qdevice_net_instance *instance,
     const struct msg_decoded *msg)
 {
 
@@ -690,7 +706,26 @@ qdevice_net_get_nodelist(cmap_handle_t cmap_handle, struct node_list *list)
 iter_finalize:
 	cmap_iter_finalize(cmap_handle, iter_handle);
 
+	if (ret_value != 0) {
+		node_list_free(list);
+	}
+
 	return (ret_value);
+}
+
+static
+int qdevice_net_get_cmap_config_version(cmap_handle_t cmap_handle, uint64_t *config_version)
+{
+	int res;
+
+	if (cmap_get_uint64(cmap_handle, "totem.config_version", config_version) == CS_OK) {
+		res = 1;
+	} else {
+		*config_version = 0;
+		res = 0;
+	}
+
+	return (res);
 }
 
 static int
@@ -720,17 +755,14 @@ qdevice_net_send_config_node_list(struct qdevice_net_instance *instance, int ini
 		return (-1);
 	}
 
-	if (cmap_get_uint64(instance->cmap_handle, "totem.config_version",
-	    &config_version) == CS_OK) {
-		send_config_version = 1;
-	} else {
-		config_version = 0;
-		send_config_version = 0;
-	}
+	send_config_version = qdevice_net_get_cmap_config_version(instance->cmap_handle,
+	    &config_version);
 
-	if (msg_create_node_list(&send_buffer->buffer, 0, 0,
+	instance->last_msg_seq_num++;
+
+	if (msg_create_node_list(&send_buffer->buffer, 1, instance->last_msg_seq_num,
 	    (initial ? TLV_NODE_LIST_TYPE_INITIAL_CONFIG : TLV_NODE_LIST_TYPE_CHANGED_CONFIG),
-	    0, NULL, send_config_version, config_version, &nlist) == 0) {
+	    0, NULL, send_config_version, config_version, 0, TLV_QUORATE_INQUORATE, &nlist) == 0) {
 		qdevice_net_log(LOG_ERR, "Can't allocate send buffer for config list msg");
 
 		node_list_free(&nlist);
@@ -739,6 +771,21 @@ qdevice_net_send_config_node_list(struct qdevice_net_instance *instance, int ini
 	}
 
 	send_buffer_list_put(&instance->send_buffer_list, send_buffer);
+
+	return (0);
+}
+
+static int
+qdevice_net_register_votequorum_callbacks(struct qdevice_net_instance *instance)
+{
+	cs_error_t res;
+
+	if ((res = votequorum_trackstart(instance->votequorum_handle, 0, CS_TRACK_CHANGES)) != CS_OK) {
+		qdevice_net_log(LOG_ERR, "Can't start tracking votequorum changes. Error %s",
+		    cs_strerror(res));
+
+		return (-1);
+	}
 
 	return (0);
 }
@@ -780,9 +827,18 @@ qdevice_net_msg_received_set_option_reply(struct qdevice_net_instance *instance,
 		}
 	}
 
+	/*
+	 * Now we can finally really send node list and initialize qdevice
+	 */
 	if (qdevice_net_send_config_node_list(instance, 1) != 0) {
 		return (-1);
 	}
+
+	if (qdevice_net_register_votequorum_callbacks(instance) != 0) {
+		return (-1);
+	}
+
+	instance->state = QDEVICE_NET_STATE_WAITING_VOTEQUORUM_CMAP_EVENTS;
 
 	return (0);
 }
@@ -863,7 +919,7 @@ qdevice_net_msg_received(struct qdevice_net_instance *instance)
 		ret_val = qdevice_net_msg_received_preinit_reply(instance, &msg);
 		break;
 	case MSG_TYPE_STARTTLS:
-		ret_val = qdevice_net_msg_received_stattls(instance, &msg);
+		ret_val = qdevice_net_msg_received_starttls(instance, &msg);
 		break;
 	case MSG_TYPE_SERVER_ERROR:
 		ret_val = qdevice_net_msg_received_server_error(instance, &msg);
@@ -1141,7 +1197,8 @@ qdevice_net_poll(struct qdevice_net_instance *instance)
 
 	if (instance->schedule_disconnect) {
 		/*
-		 * Schedule disconnect can be set by this function or by some timer_list callback
+		 * Schedule disconnect can be set by this function, by some timer_list callback
+		 * or cmap/votequorum callbacks
 		 */
 		return (-1);
 	}
@@ -1359,13 +1416,118 @@ qdevice_net_instance_init_from_cmap(struct qdevice_net_instance *instance,
 	instance->cmap_handle = cmap_handle;
 }
 
-static void qdevice_net_votequorum_notification(votequorum_handle_t votequorum_handle,
-    uint64_t context, uint32_t quorate,
-    votequorum_ring_id_t ring_id, uint32_t node_list_entries, votequorum_node_t node_list[])
+static enum tlv_node_state
+qdevice_net_convert_votequorum_to_tlv_node_state(uint32_t votequorum_node_state)
 {
+	enum tlv_node_state res;
+
+	switch (votequorum_node_state) {
+	case VOTEQUORUM_NODESTATE_MEMBER: res = TLV_NODE_STATE_MEMBER; break;
+	case VOTEQUORUM_NODESTATE_DEAD: res = TLV_NODE_STATE_DEAD; break;
+	case VOTEQUORUM_NODESTATE_LEAVING: res = TLV_NODE_STATE_LEAVING; break;
+	default:
+		errx(1, "qdevice_net_convert_votequorum_to_tlv_node_state: Unhandled votequorum "
+		    "node state %"PRIu32, votequorum_node_state);
+		break;
+	}
+
+	return (res);
+}
+
+static int
+qdevice_net_send_membership_node_list(struct qdevice_net_instance *instance,
+    enum tlv_quorate quorate, const struct tlv_ring_id *ring_id,
+    uint32_t node_list_entries, votequorum_node_t node_list[])
+{
+	struct node_list nlist;
+	struct send_buffer_list_entry *send_buffer;
+	uint64_t config_version;
+	int send_config_version;
+	uint32_t i;
+
+	node_list_init(&nlist);
+
+	for (i = 0; i < node_list_entries; i++) {
+		if (node_list[i].nodeid == 0) {
+			continue;
+		}
+
+		if (node_list_add(&nlist, node_list[i].nodeid, 0,
+		    qdevice_net_convert_votequorum_to_tlv_node_state(node_list[i].state)) == NULL) {
+			qdevice_net_log(LOG_ERR, "Can't allocate membership node list.");
+
+			node_list_free(&nlist);
+
+			return (-1);
+		}
+	}
+
+	send_buffer = send_buffer_list_get_new(&instance->send_buffer_list);
+	if (send_buffer == NULL) {
+		qdevice_net_log(LOG_ERR, "Can't allocate send list buffer for config "
+		    "node list msg");
+
+		node_list_free(&nlist);
+
+		return (-1);
+	}
+
+	instance->last_msg_seq_num++;
+
+	send_config_version = qdevice_net_get_cmap_config_version(instance->cmap_handle,
+	    &config_version);
+
+	if (msg_create_node_list(&send_buffer->buffer, 1, instance->last_msg_seq_num,
+	    TLV_NODE_LIST_TYPE_MEMBERSHIP,
+	    1, ring_id, send_config_version, config_version, 0, TLV_QUORATE_INQUORATE, &nlist) == 0) {
+		qdevice_net_log(LOG_ERR, "Can't allocate send buffer for config list msg");
+
+		node_list_free(&nlist);
+
+		return (-1);
+	}
+
+	send_buffer_list_put(&instance->send_buffer_list, send_buffer);
+
+	return (0);
+}
+
+static void
+qdevice_net_convert_votequorum_to_tlv_ring_id(struct tlv_ring_id *tlv_rid,
+    const votequorum_ring_id_t *votequorum_rid)
+{
+
+	tlv_rid->node_id = votequorum_rid->nodeid;
+	tlv_rid->seq = votequorum_rid->seq;
+}
+
+static void
+qdevice_net_votequorum_notification(votequorum_handle_t votequorum_handle,
+    uint64_t context, uint32_t quorate,
+    votequorum_ring_id_t votequorum_ring_id,
+    uint32_t node_list_entries, votequorum_node_t node_list[])
+{
+	struct qdevice_net_instance *instance;
+	struct tlv_ring_id ring_id;
+
+	if (votequorum_context_get(votequorum_handle, (void **)&instance) != CS_OK) {
+		errx(1, "Fatal error. Can't get votequorum context");
+	}
+
+	qdevice_net_convert_votequorum_to_tlv_ring_id(&ring_id, &votequorum_ring_id);
+
+	if (qdevice_net_send_membership_node_list(instance,
+	    (quorate ? TLV_QUORATE_QUORATE : TLV_QUORATE_INQUORATE),
+	    &ring_id, node_list_entries, node_list) != 0) {
+		/*
+		 * Fatal error -> schedule disconnect
+		 */
+		instance->schedule_disconnect = 1;
+	}
 
 	memcpy(&global_last_received_ring_id, &ring_id, sizeof(ring_id));
 }
+
 
 static void
 qdevice_net_init_votequorum(struct qdevice_net_instance *instance)
@@ -1390,13 +1552,13 @@ qdevice_net_init_votequorum(struct qdevice_net_instance *instance)
 		errx(1, "Failed to initialize the votequorum API. Error %s", cs_strerror(res));
 	}
 
-	if ((res = votequorum_trackstart(votequorum_handle, 0, CS_TRACK_CHANGES)) != CS_OK) {
-		errx(1, "Can't start tracking votequorum changes. Error %s", cs_strerror(res));
-	}
-
 	if ((res = votequorum_qdevice_register(votequorum_handle,
 	    QDEVICE_NET_VOTEQUORUM_DEVICE_NAME)) != CS_OK) {
 		errx(1, "Can't register votequorum device. Error %s", cs_strerror(res));
+	}
+
+	if ((res = votequorum_context_set(votequorum_handle, (void *)instance)) != CS_OK) {
+		errx(1, "Can't set votequorum context. Error %s", cs_strerror(res));
 	}
 
 	instance->votequorum_handle = votequorum_handle;
@@ -1405,7 +1567,6 @@ qdevice_net_init_votequorum(struct qdevice_net_instance *instance)
 	if ((instance->votequorum_poll_fd = PR_CreateSocketPollFd(fd)) == NULL) {
 		err_nss();
 	}
-
 }
 
 
@@ -1453,9 +1614,9 @@ main(void)
 		errx(1, "Can't allocate send buffer list");
 	}
 
-	instance.expected_msg_seq_num = 1;
+	instance.last_msg_seq_num = 1;
 	if (msg_create_preinit(&send_buffer->buffer, instance.cluster_name, 1,
-	    instance.expected_msg_seq_num) == 0) {
+	    instance.last_msg_seq_num) == 0) {
 		errx(1, "Can't allocate buffer");
 	}
 

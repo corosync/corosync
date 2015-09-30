@@ -65,6 +65,7 @@ enum tlv_opt_type {
 	TLV_OPT_NODE_INFO = 17,
 	TLV_OPT_NODE_LIST_TYPE = 18,
 	TLV_OPT_VOTE = 19,
+	TLV_OPT_QUORATE = 20,
 };
 
 enum tlv_tls_supported {
@@ -113,9 +114,15 @@ enum tlv_node_list_type {
 };
 
 enum tlv_vote {
-	TLV_VOTE_UNDECIDED = 0,
 	TLV_VOTE_ACK = 1,
 	TLV_VOTE_NACK = 2,
+	TLV_VOTE_ASK_LATER = 3,
+	TLV_VOTE_WAIT_FOR_REPLY = 4,
+};
+
+enum tlv_quorate {
+	TLV_QUORATE_INQUORATE = 0,
+	TLV_QUORATE_QUORATE = 1,
 };
 
 struct tlv_node_info {
@@ -207,6 +214,8 @@ extern int			 tlv_add_node_list_type(struct dynar *msg,
 
 extern int			 tlv_add_vote(struct dynar *msg, enum tlv_vote vote);
 
+extern int			 tlv_add_quorate(struct dynar *msg, enum tlv_quorate quorate);
+
 extern void			 tlv_iter_init_str(const char *msg, size_t msg_len,
     size_t msg_header_len, struct tlv_iterator *tlv_iter);
 
@@ -272,6 +281,9 @@ extern int			 tlv_iter_decode_node_list_type(struct tlv_iterator *tlv_iter,
 
 extern int			 tlv_iter_decode_vote(struct tlv_iterator *tlv_iter,
     enum tlv_vote *vote);
+
+extern int			 tlv_iter_decode_quorate(struct tlv_iterator *tlv_iter,
+    enum tlv_quorate *quorate);
 
 extern void			 tlv_get_supported_options(enum tlv_opt_type **supported_options,
     size_t *no_supported_options);

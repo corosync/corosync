@@ -266,6 +266,7 @@ msg_convert_msg_type_array_to_u16_array(const enum msg_type *msg_type_array, siz
 
 size_t
 msg_create_init(struct dynar *msg, int add_msg_seq_number, uint32_t msg_seq_number,
+    enum tlv_decision_algorithm_type decision_algorithm,
     const enum msg_type *supported_msgs, size_t no_supported_msgs,
     const enum tlv_opt_type *supported_opts, size_t no_supported_opts, uint32_t node_id)
 {
@@ -311,6 +312,10 @@ msg_create_init(struct dynar *msg, int add_msg_seq_number, uint32_t msg_seq_numb
 		goto small_buf_err;
         }
 
+	if (tlv_add_decision_algorithm(msg, decision_algorithm) == -1) {
+		goto small_buf_err;
+	}
+
 	msg_set_len(msg, dynar_size(msg) - (MSG_TYPE_LENGTH + MSG_LENGTH_LENGTH));
 
 	return (dynar_size(msg));
@@ -321,6 +326,7 @@ small_buf_err:
 
 size_t
 msg_create_init_reply(struct dynar *msg, int add_msg_seq_number, uint32_t msg_seq_number,
+    enum tlv_reply_error_code reply_error_code,
     const enum msg_type *supported_msgs, size_t no_supported_msgs,
     const enum tlv_opt_type *supported_opts, size_t no_supported_opts,
     size_t server_maximum_request_size, size_t server_maximum_reply_size,
@@ -336,6 +342,10 @@ msg_create_init_reply(struct dynar *msg, int add_msg_seq_number, uint32_t msg_se
 
 	msg_add_type(msg, MSG_TYPE_INIT_REPLY);
 	msg_add_len(msg);
+
+	if (tlv_add_reply_error_code(msg, reply_error_code) == -1) {
+		goto small_buf_err;
+	}
 
 	if (supported_msgs != NULL && no_supported_msgs > 0) {
 		u16a = msg_convert_msg_type_array_to_u16_array(supported_msgs, no_supported_msgs);
@@ -390,7 +400,6 @@ small_buf_err:
 
 size_t
 msg_create_set_option(struct dynar *msg, int add_msg_seq_number, uint32_t msg_seq_number,
-    int add_decision_algorithm, enum tlv_decision_algorithm_type decision_algorithm,
     int add_heartbeat_interval, uint32_t heartbeat_interval)
 {
 
@@ -401,12 +410,6 @@ msg_create_set_option(struct dynar *msg, int add_msg_seq_number, uint32_t msg_se
 
 	if (add_msg_seq_number) {
 		if (tlv_add_msg_seq_number(msg, msg_seq_number) == -1) {
-			goto small_buf_err;
-		}
-	}
-
-	if (add_decision_algorithm) {
-		if (tlv_add_decision_algorithm(msg, decision_algorithm) == -1) {
 			goto small_buf_err;
 		}
 	}
@@ -502,7 +505,9 @@ size_t
 msg_create_node_list(struct dynar *msg, int add_msg_seq_number,
     uint32_t msg_seq_number, enum tlv_node_list_type node_list_type,
     int add_ring_id, const struct tlv_ring_id *ring_id,
-    int add_config_version, uint64_t config_version, const struct node_list *nodes)
+    int add_config_version, uint64_t config_version,
+    int add_quorate, enum tlv_quorate quorate,
+    const struct node_list *nodes)
 {
 	struct node_list_entry *node_info;
 	struct tlv_node_info tlv_ni;
@@ -817,6 +822,13 @@ msg_decode(const struct dynar *msg, struct msg_decoded *decoded_msg)
 			}
 
 			decoded_msg->vote_set = 1;
+			break;
+		case TLV_OPT_QUORATE:
+			if ((res = tlv_iter_decode_quorate(&tlv_iter, &decoded_msg->quorate)) != 0) {
+				return (res);
+			}
+
+			decoded_msg->quorate_set = 1;
 			break;
 		default:
 			/*

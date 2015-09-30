@@ -56,7 +56,7 @@
 #define TLV_TYPE_LENGTH		2
 #define TLV_LENGTH_LENGTH	2
 
-#define TLV_STATIC_SUPPORTED_OPTIONS_SIZE      20
+#define TLV_STATIC_SUPPORTED_OPTIONS_SIZE      21
 
 enum tlv_opt_type tlv_static_supported_options[TLV_STATIC_SUPPORTED_OPTIONS_SIZE] = {
     TLV_OPT_MSG_SEQ_NUMBER,
@@ -79,6 +79,7 @@ enum tlv_opt_type tlv_static_supported_options[TLV_STATIC_SUPPORTED_OPTIONS_SIZE
     TLV_OPT_NODE_INFO,
     TLV_OPT_NODE_LIST_TYPE,
     TLV_OPT_VOTE,
+    TLV_OPT_QUORATE,
 };
 
 int
@@ -379,6 +380,13 @@ tlv_add_vote(struct dynar *msg, enum tlv_vote vote)
 {
 
 	return (tlv_add_u8(msg, TLV_OPT_VOTE, vote));
+}
+
+int
+tlv_add_quorate(struct dynar *msg, enum tlv_quorate quorate)
+{
+
+	return (tlv_add_u8(msg, TLV_OPT_QUORATE, quorate));
 }
 
 void
@@ -857,13 +865,36 @@ tlv_iter_decode_vote(struct tlv_iterator *tlv_iter, enum tlv_vote *vote)
 
 	tmp_vote = u8;
 
-	if (tmp_vote != TLV_VOTE_UNDECIDED &&
-	    tmp_vote != TLV_VOTE_ACK &&
-	    tmp_vote != TLV_VOTE_NACK) {
+	if (tmp_vote != TLV_VOTE_ACK &&
+	    tmp_vote != TLV_VOTE_NACK &&
+	    tmp_vote != TLV_VOTE_ASK_LATER &&
+	    tmp_vote != TLV_VOTE_WAIT_FOR_REPLY) {
 		return (-4);
 	}
 
 	*vote = tmp_vote;
+
+	return (0);
+}
+
+int
+tlv_iter_decode_quorate(struct tlv_iterator *tlv_iter, enum tlv_quorate *quorate)
+{
+	uint8_t u8;
+	enum tlv_quorate tmp_quorate;
+
+	if (tlv_iter_decode_u8(tlv_iter, &u8) != 0) {
+		return (-1);
+	}
+
+	tmp_quorate = u8;
+
+	if (tmp_quorate != TLV_QUORATE_QUORATE &&
+	    tmp_quorate != TLV_QUORATE_INQUORATE) {
+		return (-4);
+	}
+
+	*quorate = tmp_quorate;
 
 	return (0);
 }
