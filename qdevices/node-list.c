@@ -75,6 +75,25 @@ node_list_add_from_node_info(struct node_list *list, const struct tlv_node_info 
 	    node_info->node_state));
 }
 
+int
+node_list_clone(struct node_list *dst_list, const struct node_list *src_list)
+{
+	struct node_list_entry *node_entry;
+
+	node_list_init(dst_list);
+
+	TAILQ_FOREACH(node_entry, src_list, entries) {
+		if (node_list_add(dst_list, node_entry->node_id, node_entry->data_center_id,
+		    node_entry->node_state) == NULL) {
+			node_list_free(dst_list);
+
+			return (-1);
+		}
+	}
+
+	return (0);
+}
+
 void
 node_list_entry_to_tlv_node_info(const struct node_list_entry *node,
     struct tlv_node_info *node_info)

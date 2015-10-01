@@ -148,14 +148,14 @@ extern size_t		msg_create_echo_reply(struct dynar *msg,
     const struct dynar *echo_request_msg);
 
 extern size_t		msg_create_node_list(struct dynar *msg,
-    int add_msg_seq_number, uint32_t msg_seq_number, enum tlv_node_list_type node_list_type,
+    uint32_t msg_seq_number, enum tlv_node_list_type node_list_type,
     int add_ring_id, const struct tlv_ring_id *ring_id,
     int add_config_version, uint64_t config_version,
     int add_quorate, enum tlv_quorate quorate,
     const struct node_list *nodes);
 
-extern size_t		msg_create_node_list_reply(struct dynar *msg, int add_msg_seq_number,
-    uint32_t msg_seq_number, enum tlv_vote vote);
+extern size_t		msg_create_node_list_reply(struct dynar *msg, uint32_t msg_seq_number,
+    enum tlv_vote vote);
 
 extern size_t		msg_get_header_length(void);
 

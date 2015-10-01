@@ -697,16 +697,55 @@ qnetd_client_msg_received_node_list(struct qnetd_instance *instance, struct qnet
 		return (0);
 	}
 
+	if (!msg->seq_number_set) {
+		qnetd_log(LOG_ERR, "Received node list message without seq number set. "
+		    "Sending error reply.");
+
+		if (qnetd_client_send_err(client, msg->seq_number_set, msg->seq_number,
+		    TLV_REPLY_ERROR_CODE_DOESNT_CONTAIN_REQUIRED_OPTION) != 0) {
+			return (-1);
+		}
+
+		return (0);
+	}
+
 	switch (msg->node_list_type) {
 	case TLV_NODE_LIST_TYPE_INITIAL_CONFIG:
-		reply_error_code = qnetd_algorithm_config_node_list_received(client,
-		    &msg->nodes, 1, &result_vote);
-		break;
 	case TLV_NODE_LIST_TYPE_CHANGED_CONFIG:
+		reply_error_code = qnetd_algorithm_config_node_list_received(client,
+		    msg->seq_number, msg->config_version_set, msg->config_version,
+		    &msg->nodes,
+		    (msg->node_list_type == TLV_NODE_LIST_TYPE_INITIAL_CONFIG),
+		    &result_vote);
 		break;
 	case TLV_NODE_LIST_TYPE_MEMBERSHIP:
+		if (!msg->ring_id_set) {
+			qnetd_log(LOG_ERR, "Received node list message without ring id number set. "
+			    "Sending error reply.");
+
+			if (qnetd_client_send_err(client, msg->seq_number_set, msg->seq_number,
+			    TLV_REPLY_ERROR_CODE_DOESNT_CONTAIN_REQUIRED_OPTION) != 0) {
+				return (-1);
+			}
+
+			return (0);
+		}
+
+		if (!msg->quorate_set) {
+			qnetd_log(LOG_ERR, "Received node list message without quorate set. "
+			    "Sending error reply.");
+
+			if (qnetd_client_send_err(client, msg->seq_number_set, msg->seq_number,
+			    TLV_REPLY_ERROR_CODE_DOESNT_CONTAIN_REQUIRED_OPTION) != 0) {
+				return (-1);
+			}
+
+			return (0);
+		}
+
 		reply_error_code = qnetd_algorithm_membership_node_list_received(client,
-		    &msg->nodes, &result_vote);
+		    msg->seq_number, msg->config_version_set, msg->config_version,
+		    &msg->ring_id, msg->quorate, &msg->nodes, &result_vote);
 		break;
 	default:
 		errx(1, "qnetd_client_msg_received_node_list fatal error. "
@@ -726,6 +765,35 @@ qnetd_client_msg_received_node_list(struct qnetd_instance *instance, struct qnet
 		return (0);
 	}
 
+	/*
+	 * Store node list for future use
+	 */
+	switch (msg->node_list_type) {
+	case TLV_NODE_LIST_TYPE_INITIAL_CONFIG:
+	case TLV_NODE_LIST_TYPE_CHANGED_CONFIG:
+		node_list_free(&client->configuration_node_list);
+		if (node_list_clone(&client->configuration_node_list, &msg->nodes) == -1) {
+			qnetd_log(LOG_ERR, "Can't alloc config node list clone. "
+			    "Disconnecting client connection.");
+
+			return (-1);
+		}
+		break;
+	case TLV_NODE_LIST_TYPE_MEMBERSHIP:
+		node_list_free(&client->last_membership_node_list);
+		if (node_list_clone(&client->last_membership_node_list, &msg->nodes) == -1) {
+			qnetd_log(LOG_ERR, "Can't alloc membership node list clone. "
+			    "Disconnecting client connection.");
+
+			return (-1);
+		}
+		break;
+	default:
+		errx(1, "qnetd_client_msg_received_node_list fatal error. "
+		    "Unhandled node_list_type");
+		break;
+	}
+
 	send_buffer = send_buffer_list_get_new(&client->send_buffer_list);
 	if (send_buffer == NULL) {
 		qnetd_log(LOG_ERR, "Can't alloc node list reply msg from list. "
@@ -734,8 +802,7 @@ qnetd_client_msg_received_node_list(struct qnetd_instance *instance, struct qnet
 		return (-1);
 	}
 
-	if (msg_create_node_list_reply(&send_buffer->buffer, msg->seq_number_set, msg->seq_number,
-	    result_vote) == -1) {
+	if (msg_create_node_list_reply(&send_buffer->buffer, msg->seq_number, result_vote) == -1) {
 		qnetd_log(LOG_ERR, "Can't alloc node list reply msg. "
 		    "Disconnecting client connection.");
 
@@ -1012,9 +1079,11 @@ qnetd_client_accept(struct qnetd_instance *instance)
 }
 
 static void
-qnetd_client_disconnect(struct qnetd_instance *instance, struct qnetd_client *client)
+qnetd_client_disconnect(struct qnetd_instance *instance, struct qnetd_client *client,
+    int server_going_down)
 {
 
+	qnetd_algorithm_client_disconnect(client, server_going_down);
 	PR_Close(client->socket);
 	qnetd_client_list_del(&instance->clients, client);
 }
@@ -1114,7 +1183,7 @@ qnetd_poll(struct qnetd_instance *instance)
 			 * If client is scheduled for disconnect, disconnect it
 			 */
 			if (client_disconnect) {
-				qnetd_client_disconnect(instance, client);
+				qnetd_client_disconnect(instance, client, 0);
 			}
 		}
 	}
@@ -1170,7 +1239,7 @@ qnetd_instance_destroy(struct qnetd_instance *instance)
 	while (client != NULL) {
 		client_next = TAILQ_NEXT(client, entries);
 
-		qnetd_client_disconnect(instance, client);
+		qnetd_client_disconnect(instance, client, 1);
 
 		client = client_next;
 	}

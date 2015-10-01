@@ -63,6 +63,9 @@ extern struct node_list_entry		*node_list_add(struct node_list *list,
 extern struct node_list_entry		*node_list_add_from_node_info(
     struct node_list *list, const struct tlv_node_info *node_info);
 
+extern int				 node_list_clone(struct node_list *dst_list,
+    const struct node_list *src_list);
+
 extern void				 node_list_free(struct node_list *list);
 
 extern void				 node_list_del(struct node_list *list,

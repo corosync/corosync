@@ -48,12 +48,16 @@ qnetd_client_init(struct qnetd_client *client, PRFileDesc *sock, PRNetAddr *addr
 	memcpy(&client->addr, addr, sizeof(*addr));
 	dynar_init(&client->receive_buffer, max_receive_size);
 	send_buffer_list_init(&client->send_buffer_list, max_send_buffers, max_send_size);
+	node_list_init(&client->configuration_node_list);
+	node_list_init(&client->last_membership_node_list);
 }
 
 void
 qnetd_client_destroy(struct qnetd_client *client)
 {
 
-	dynar_destroy(&client->receive_buffer);
+	node_list_free(&client->last_membership_node_list);
+	node_list_free(&client->configuration_node_list);
 	send_buffer_list_free(&client->send_buffer_list);
+	dynar_destroy(&client->receive_buffer);
 }

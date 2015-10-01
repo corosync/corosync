@@ -44,11 +44,17 @@ extern "C" {
 extern enum tlv_reply_error_code	qnetd_algo_test_client_init(struct qnetd_client *client);
 
 extern enum tlv_reply_error_code	qnetd_algo_test_config_node_list_received(
-    struct qnetd_client *client, const struct node_list *nodes, int initial,
+    struct qnetd_client *client, uint32_t msg_seq_num, int config_version_set,
+    uint64_t config_version, const struct node_list *nodes, int initial,
     enum tlv_vote *result_vote);
 
 extern enum tlv_reply_error_code	qnetd_algo_test_membership_node_list_received(
-    struct qnetd_client *client, const struct node_list *nodes, enum tlv_vote *result_vote);
+    struct qnetd_client *client, uint32_t msg_seq_num, int config_version_set,
+    uint64_t config_version, const struct tlv_ring_id *ring_id, enum tlv_quorate quorate,
+    const struct node_list *nodes, enum tlv_vote *result_vote);
+
+extern void				qnetd_algo_test_client_disconnect(
+    struct qnetd_client *client, int server_going_down);
 
 #ifdef __cplusplus
 }

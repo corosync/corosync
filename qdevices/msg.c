@@ -502,7 +502,7 @@ small_buf_err:
 }
 
 size_t
-msg_create_node_list(struct dynar *msg, int add_msg_seq_number,
+msg_create_node_list(struct dynar *msg,
     uint32_t msg_seq_number, enum tlv_node_list_type node_list_type,
     int add_ring_id, const struct tlv_ring_id *ring_id,
     int add_config_version, uint64_t config_version,
@@ -517,10 +517,8 @@ msg_create_node_list(struct dynar *msg, int add_msg_seq_number,
 	msg_add_type(msg, MSG_TYPE_NODE_LIST);
 	msg_add_len(msg);
 
-	if (add_msg_seq_number) {
-		if (tlv_add_msg_seq_number(msg, msg_seq_number) == -1) {
-			goto small_buf_err;
-		}
+	if (tlv_add_msg_seq_number(msg, msg_seq_number) == -1) {
+		goto small_buf_err;
 	}
 
 	if (tlv_add_node_list_type(msg, node_list_type) == -1) {
@@ -535,6 +533,12 @@ msg_create_node_list(struct dynar *msg, int add_msg_seq_number,
 
 	if (add_config_version) {
 		if (tlv_add_config_version(msg, config_version) == -1) {
+			goto small_buf_err;
+		}
+	}
+
+	if (add_quorate) {
+		if (tlv_add_quorate(msg, quorate) == -1) {
 			goto small_buf_err;
 		}
 	}
@@ -556,7 +560,7 @@ small_buf_err:
 }
 
 size_t
-msg_create_node_list_reply(struct dynar *msg, int add_msg_seq_number, uint32_t msg_seq_number,
+msg_create_node_list_reply(struct dynar *msg, uint32_t msg_seq_number,
     enum tlv_vote vote)
 {
 
@@ -565,10 +569,8 @@ msg_create_node_list_reply(struct dynar *msg, int add_msg_seq_number, uint32_t m
 	msg_add_type(msg, MSG_TYPE_NODE_LIST_REPLY);
 	msg_add_len(msg);
 
-	if (add_msg_seq_number) {
-		if (tlv_add_msg_seq_number(msg, msg_seq_number) == -1) {
-			goto small_buf_err;
-		}
+	if (tlv_add_msg_seq_number(msg, msg_seq_number) == -1) {
+		goto small_buf_err;
 	}
 
 	if (tlv_add_vote(msg, vote) == -1) {

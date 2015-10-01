@@ -69,8 +69,8 @@ struct qnetd_client {
 	uint32_t heartbeat_interval;
 	enum tlv_reply_error_code skipping_msg_reason;
 	void *algorithm_data;
-	struct node_list configuration_nodes;
-	struct node_list membership_nodes;
+	struct node_list configuration_node_list;
+	struct node_list last_membership_node_list;
 	TAILQ_ENTRY(qnetd_client) entries;
 };
 

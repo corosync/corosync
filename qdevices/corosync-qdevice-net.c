@@ -760,7 +760,7 @@ qdevice_net_send_config_node_list(struct qdevice_net_instance *instance, int ini
 
 	instance->last_msg_seq_num++;
 
-	if (msg_create_node_list(&send_buffer->buffer, 1, instance->last_msg_seq_num,
+	if (msg_create_node_list(&send_buffer->buffer, instance->last_msg_seq_num,
 	    (initial ? TLV_NODE_LIST_TYPE_INITIAL_CONFIG : TLV_NODE_LIST_TYPE_CHANGED_CONFIG),
 	    0, NULL, send_config_version, config_version, 0, TLV_QUORATE_INQUORATE, &nlist) == 0) {
 		qdevice_net_log(LOG_ERR, "Can't allocate send buffer for config list msg");
@@ -1477,9 +1477,9 @@ qdevice_net_send_membership_node_list(struct qdevice_net_instance *instance,
 	send_config_version = qdevice_net_get_cmap_config_version(instance->cmap_handle,
 	    &config_version);
 
-	if (msg_create_node_list(&send_buffer->buffer, 1, instance->last_msg_seq_num,
+	if (msg_create_node_list(&send_buffer->buffer, instance->last_msg_seq_num,
 	    TLV_NODE_LIST_TYPE_MEMBERSHIP,
-	    1, ring_id, send_config_version, config_version, 0, TLV_QUORATE_INQUORATE, &nlist) == 0) {
+	    1, ring_id, send_config_version, config_version, 1, quorate, &nlist) == 0) {
 		qdevice_net_log(LOG_ERR, "Can't allocate send buffer for config list msg");
 
 		node_list_free(&nlist);
