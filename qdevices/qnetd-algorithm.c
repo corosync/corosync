@@ -38,6 +38,7 @@
 
 #include "qnetd-algorithm.h"
 #include "qnetd-algo-test.h"
+#include "qnetd-algo-ffsplit.h"
 
 enum tlv_reply_error_code
 qnetd_algorithm_client_init(struct qnetd_client *client)
@@ -46,6 +47,9 @@ qnetd_algorithm_client_init(struct qnetd_client *client)
 	switch (client->decision_algorithm) {
 	case TLV_DECISION_ALGORITHM_TYPE_TEST:
 		return (qnetd_algo_test_client_init(client));
+		break;
+	case TLV_DECISION_ALGORITHM_TYPE_FFSPLIT:
+		return (qnetd_algo_ffsplit_client_init(client));
 		break;
 	default:
 		errx(1, "qnetd_algorithm_client_init unhandled decision algorithm");
@@ -64,6 +68,10 @@ qnetd_algorithm_config_node_list_received(struct qnetd_client *client,
 	switch (client->decision_algorithm) {
 	case TLV_DECISION_ALGORITHM_TYPE_TEST:
 		return (qnetd_algo_test_config_node_list_received(client, msg_seq_num,
+		    config_version_set, config_version, nodes, initial, result_vote));
+		break;
+	case TLV_DECISION_ALGORITHM_TYPE_FFSPLIT:
+		return (qnetd_algo_ffsplit_config_node_list_received(client, msg_seq_num,
 		    config_version_set, config_version, nodes, initial, result_vote));
 		break;
 	default:
@@ -88,6 +96,10 @@ qnetd_algorithm_membership_node_list_received(struct qnetd_client *client,
 		return (qnetd_algo_test_membership_node_list_received(client, msg_seq_num,
 		    config_version_set, config_version, ring_id, quorate, nodes, result_vote));
 		break;
+	case TLV_DECISION_ALGORITHM_TYPE_FFSPLIT:
+		return (qnetd_algo_ffsplit_membership_node_list_received(client, msg_seq_num,
+		    config_version_set, config_version, ring_id, quorate, nodes, result_vote));
+		break;
 	default:
 		errx(1, "qnetd_algorithm_membership_node_list_received unhandled "
 		    "decision algorithm");
@@ -104,6 +116,9 @@ qnetd_algorithm_client_disconnect(struct qnetd_client *client, int server_going_
 	switch (client->decision_algorithm) {
 	case TLV_DECISION_ALGORITHM_TYPE_TEST:
 		qnetd_algo_test_client_disconnect(client, server_going_down);
+		break;
+	case TLV_DECISION_ALGORITHM_TYPE_FFSPLIT:
+		qnetd_algo_ffsplit_client_disconnect(client, server_going_down);
 		break;
 	default:
 		errx(1, "qnetd_algorithm_client_disconnect unhandled decision algorithm");

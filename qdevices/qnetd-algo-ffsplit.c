@@ -32,57 +32,59 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _QNETD_CLIENT_H_
-#define _QNETD_CLIENT_H_
-
 #include <sys/types.h>
 
-#include <sys/queue.h>
-#include <inttypes.h>
+#include <string.h>
 
-#include <nspr.h>
-#include "dynar.h"
-#include "tlv.h"
-#include "send-buffer-list.h"
-#include "node-list.h"
+#include "qnetd-algo-ffsplit.h"
+#include "qnetd-log.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+enum tlv_reply_error_code
+qnetd_algo_ffsplit_client_init(struct qnetd_client *client)
+{
 
-struct qnetd_client {
-	PRFileDesc *socket;
-	PRNetAddr addr;
-	struct dynar receive_buffer;
-	struct send_buffer_list send_buffer_list;
-	size_t msg_already_received_bytes;
-	int skipping_msg;	// When incorrect message was received skip it
-	int tls_started;	// Set after TLS started
-	int tls_peer_certificate_verified;	// Certificate is verified only once
-	int preinit_received;
-	int init_received;
-	char *cluster_name;
-	size_t cluster_name_len;
-	uint8_t node_id_set;
-	uint32_t node_id;
-	enum tlv_decision_algorithm_type decision_algorithm;
-	uint32_t heartbeat_interval;
-	enum tlv_reply_error_code skipping_msg_reason;
-	void *algorithm_data;
-	struct node_list configuration_node_list;
-	struct node_list last_membership_node_list;
-	struct qnetd_cluster *cluster;
-	TAILQ_ENTRY(qnetd_client) entries;
-	TAILQ_ENTRY(qnetd_client) cluster_entries;
-};
-
-extern void		qnetd_client_init(struct qnetd_client *client, PRFileDesc *sock,
-    PRNetAddr *addr, size_t max_receive_size, size_t max_send_buffers, size_t max_send_size);
-
-extern void		qnetd_client_destroy(struct qnetd_client *client);
-
-#ifdef __cplusplus
+	return (TLV_REPLY_ERROR_CODE_NO_ERROR);
 }
-#endif
 
-#endif /* _QNETD_CLIENT_H_ */
+enum tlv_reply_error_code
+qnetd_algo_ffsplit_config_node_list_received(struct qnetd_client *client,
+    uint32_t msg_seq_num, int config_version_set, uint64_t config_version,
+    const struct node_list *nodes, int initial, enum tlv_vote *result_vote)
+{
+
+	*result_vote = TLV_VOTE_ASK_LATER;
+
+	return (TLV_REPLY_ERROR_CODE_NO_ERROR);
+}
+
+/*
+ * Called after client sent membership node list.
+ * All client fields are already set. Nodes is actual node list.
+ * msg_seq_num is 32-bit number set by client. If client sent config file version,
+ * config_version_set is set to 1 and config_version contains valid config file version.
+ * ring_id and quorate are copied from client votequorum callback.
+ *
+ * Function has to return result_vote. This can be one of ack/nack, ask_later (client
+ * should ask later for a vote) or wait_for_reply (client should wait for reply).
+ *
+ * Return TLV_REPLY_ERROR_CODE_NO_ERROR on success, different TLV_REPLY_ERROR_CODE_*
+ * on failure (error is send back to client)
+ */
+
+enum tlv_reply_error_code
+qnetd_algo_ffsplit_membership_node_list_received(struct qnetd_client *client,
+    uint32_t msg_seq_num, int config_version_set, uint64_t config_version,
+    const struct tlv_ring_id *ring_id, enum tlv_quorate quorate,
+    const struct node_list *nodes, enum tlv_vote *result_vote)
+{
+
+	*result_vote = TLV_VOTE_ASK_LATER;
+
+	return (TLV_REPLY_ERROR_CODE_NO_ERROR);
+}
+
+void
+qnetd_algo_ffsplit_client_disconnect(struct qnetd_client *client, int server_going_down)
+{
+
+}

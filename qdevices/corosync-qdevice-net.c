@@ -84,6 +84,8 @@
 
 #define QDEVICE_NET_MAX_SEND_BUFFERS		10
 
+#define QDEVICE_NET_DEFAULT_ALGORITHM		TLV_DECISION_ALGORITHM_TYPE_TEST
+
 #define qdevice_net_log			qnetd_log
 #define qdevice_net_log_nss		qnetd_log_nss
 #define qdevice_net_log_init		qnetd_log_init
@@ -1399,7 +1401,19 @@ qdevice_net_instance_init_from_cmap(struct qdevice_net_instance *instance,
 	/*
 	 * Choose decision algorithm
 	 */
-	decision_algorithm = TLV_DECISION_ALGORITHM_TYPE_TEST;
+	if (cmap_get_string(cmap_handle, "quorum.device.net.algorithm", &str) != CS_OK) {
+		decision_algorithm = QDEVICE_NET_DEFAULT_ALGORITHM;
+	} else {
+		if (strcmp(str, "test") == 0) {
+			decision_algorithm = TLV_DECISION_ALGORITHM_TYPE_TEST;
+		} else if (strcmp(str, "ffsplit") == 0) {
+			decision_algorithm = TLV_DECISION_ALGORITHM_TYPE_FFSPLIT;
+		} else {
+			errx(1, "Unknown decision algorithm %s", str);
+		}
+
+		free(str);
+	}
 
 	/*
 	 * Really initialize instance

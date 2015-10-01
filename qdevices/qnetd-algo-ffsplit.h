@@ -32,57 +32,32 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _QNETD_CLIENT_H_
-#define _QNETD_CLIENT_H_
+#ifndef _QNETD_ALGO_FFSPLIT_H_
+#define _QNETD_ALGO_FFSPLIT_H_
 
-#include <sys/types.h>
-
-#include <sys/queue.h>
-#include <inttypes.h>
-
-#include <nspr.h>
-#include "dynar.h"
-#include "tlv.h"
-#include "send-buffer-list.h"
-#include "node-list.h"
+#include "qnetd-algorithm.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-struct qnetd_client {
-	PRFileDesc *socket;
-	PRNetAddr addr;
-	struct dynar receive_buffer;
-	struct send_buffer_list send_buffer_list;
-	size_t msg_already_received_bytes;
-	int skipping_msg;	// When incorrect message was received skip it
-	int tls_started;	// Set after TLS started
-	int tls_peer_certificate_verified;	// Certificate is verified only once
-	int preinit_received;
-	int init_received;
-	char *cluster_name;
-	size_t cluster_name_len;
-	uint8_t node_id_set;
-	uint32_t node_id;
-	enum tlv_decision_algorithm_type decision_algorithm;
-	uint32_t heartbeat_interval;
-	enum tlv_reply_error_code skipping_msg_reason;
-	void *algorithm_data;
-	struct node_list configuration_node_list;
-	struct node_list last_membership_node_list;
-	struct qnetd_cluster *cluster;
-	TAILQ_ENTRY(qnetd_client) entries;
-	TAILQ_ENTRY(qnetd_client) cluster_entries;
-};
+extern enum tlv_reply_error_code	qnetd_algo_ffsplit_client_init(struct qnetd_client *client);
 
-extern void		qnetd_client_init(struct qnetd_client *client, PRFileDesc *sock,
-    PRNetAddr *addr, size_t max_receive_size, size_t max_send_buffers, size_t max_send_size);
+extern enum tlv_reply_error_code	qnetd_algo_ffsplit_config_node_list_received(
+    struct qnetd_client *client, uint32_t msg_seq_num, int config_version_set,
+    uint64_t config_version, const struct node_list *nodes, int initial,
+    enum tlv_vote *result_vote);
 
-extern void		qnetd_client_destroy(struct qnetd_client *client);
+extern enum tlv_reply_error_code	qnetd_algo_ffsplit_membership_node_list_received(
+    struct qnetd_client *client, uint32_t msg_seq_num, int config_version_set,
+    uint64_t config_version, const struct tlv_ring_id *ring_id, enum tlv_quorate quorate,
+    const struct node_list *nodes, enum tlv_vote *result_vote);
+
+extern void				qnetd_algo_ffsplit_client_disconnect(
+    struct qnetd_client *client, int server_going_down);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* _QNETD_CLIENT_H_ */
+#endif /* _QNETD_ALGO_FFSPLIT_H_ */

@@ -61,6 +61,7 @@
 #include "dynar.h"
 #include "timer-list.h"
 #include "qnetd-algorithm.h"
+#include "qnetd-cluster-list.h"
 
 #define QNETD_LISTEN_BACKLOG		10
 #define QNETD_MAX_CLIENT_SEND_BUFFERS	10
@@ -86,6 +87,7 @@ struct qnetd_instance {
 	size_t max_client_send_buffers;
 	size_t max_client_send_size;
 	struct qnetd_client_list clients;
+	struct qnetd_cluster_list clusters;
 	struct qnetd_poll_array poll_array;
 	enum tlv_tls_supported tls_supported;
 	int tls_client_cert_required;
@@ -101,11 +103,12 @@ PRFileDesc *global_server_socket;
 /*
  * Decision algorithms supported in this server
  */
-#define QNETD_STATIC_SUPPORTED_DECISION_ALGORITHMS_SIZE		1
+#define QNETD_STATIC_SUPPORTED_DECISION_ALGORITHMS_SIZE		2
 
 enum tlv_decision_algorithm_type
     qnetd_static_supported_decision_algorithms[QNETD_STATIC_SUPPORTED_DECISION_ALGORITHMS_SIZE] = {
 	TLV_DECISION_ALGORITHM_TYPE_TEST,
+	TLV_DECISION_ALGORITHM_TYPE_FFSPLIT,
 };
 
 static void
@@ -177,6 +180,7 @@ qnetd_client_msg_received_preinit(struct qnetd_instance *instance, struct qnetd_
     const struct msg_decoded *msg)
 {
 	struct send_buffer_list_entry *send_buffer;
+	struct qnetd_cluster *cluster;
 
 	if (msg->cluster_name == NULL) {
 		qnetd_log(LOG_ERR, "Received preinit message without cluster name. "
@@ -201,10 +205,24 @@ qnetd_client_msg_received_preinit(struct qnetd_instance *instance, struct qnetd_
 
 		return (0);
 	}
+	memset(client->cluster_name, 0, msg->cluster_name_len + 1);
+	memcpy(client->cluster_name, msg->cluster_name, msg->cluster_name_len);
 
-	memcpy(client->cluster_name, msg->cluster_name, msg->cluster_name_len + 1);
 	client->cluster_name_len = msg->cluster_name_len;
 	client->preinit_received = 1;
+
+	cluster = qnetd_cluster_list_add_client(&instance->clusters, client);
+	if (cluster == NULL) {
+		qnetd_log(LOG_ERR, "Can't add client to cluster list. Sending error reply.");
+
+		if (qnetd_client_send_err(client, msg->seq_number_set, msg->seq_number,
+		    TLV_REPLY_ERROR_CODE_INTERNAL_ERROR) != 0) {
+			return (-1);
+		}
+
+		return (0);
+	}
+	client->cluster = cluster;
 
 	send_buffer = send_buffer_list_get_new(&client->send_buffer_list);
 	if (send_buffer == NULL) {
@@ -1085,6 +1103,7 @@ qnetd_client_disconnect(struct qnetd_instance *instance, struct qnetd_client *cl
 
 	qnetd_algorithm_client_disconnect(client, server_going_down);
 	PR_Close(client->socket);
+	qnetd_cluster_list_del_client(&instance->clusters, client->cluster, client);
 	qnetd_client_list_del(&instance->clients, client);
 }
 
@@ -1218,6 +1237,7 @@ qnetd_instance_init(struct qnetd_instance *instance, size_t max_client_receive_s
 
 	qnetd_poll_array_init(&instance->poll_array);
 	qnetd_client_list_init(&instance->clients);
+	qnetd_cluster_list_init(&instance->clusters);
 
 	instance->max_client_receive_size = max_client_receive_size;
 	instance->max_client_send_buffers = max_client_send_buffers;
@@ -1245,6 +1265,7 @@ qnetd_instance_destroy(struct qnetd_instance *instance)
 	}
 
 	qnetd_poll_array_destroy(&instance->poll_array);
+	qnetd_cluster_list_free(&instance->clusters);
 	qnetd_client_list_free(&instance->clients);
 
 	return (0);

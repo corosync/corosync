@@ -41,7 +41,8 @@ sbin_SCRIPTS             = corosync-qnetd-certutil
 corosync_qnetd_SOURCES	= corosync-qnetd.c dynar.c msg.c msgio.c nss-sock.c  \
 			    qnetd-client.c qnetd-client-list.c qnetd-log.c \
 			    qnetd-poll-array.c timer-list.c tlv.c send-buffer-list.c \
-			    node-list.c qnetd-algo-test.c qnetd-algorithm.c
+			    node-list.c qnetd-algo-test.c qnetd-algorithm.c \
+			    qnetd-algo-ffsplit.c qnetd-cluster-list.c
 
 corosync_qdevice_net_SOURCES	= corosync-qdevice-net.c dynar.c msg.c msgio.c nss-sock.c  \
 			    qnetd-client.c qnetd-client-list.c qnetd-log.c \
@@ -59,5 +60,14 @@ corosync-qnetd-certutil: corosync-qnetd-certutil.sh
 	sed -e 's#@''DATADIR@#${datadir}#g' \
 	    -e 's#@''BASHPATH@#${BASHPATH}#g' \
 	    $< > $@
+
+TESTS				= qnetd-cluster-list.test
+check_PROGRAMS			= qnetd-cluster-list.test
+
+qnetd_cluster_list_test_SOURCES	= qnetd-cluster-list.c test-qnetd-cluster-list.c \
+				    qnetd-client-list.c qnetd-client.c dynar.c node-list.c \
+				    send-buffer-list.c
+qnetd_cluster_list_test_CFLAGS  = $(nss_CFLAGS)
+qnetd_cluster_list_test_LDADD	= $(nss_LIBS)
 
 endif

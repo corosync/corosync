@@ -32,57 +32,45 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _QNETD_CLIENT_H_
-#define _QNETD_CLIENT_H_
+#ifndef _QNETD_CLUSTER_LIST_H_
+#define _QNETD_CLUSTER_LIST_H_
 
 #include <sys/types.h>
 
 #include <sys/queue.h>
 #include <inttypes.h>
 
-#include <nspr.h>
-#include "dynar.h"
 #include "tlv.h"
-#include "send-buffer-list.h"
-#include "node-list.h"
+#include "qnetd-client-list.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-struct qnetd_client {
-	PRFileDesc *socket;
-	PRNetAddr addr;
-	struct dynar receive_buffer;
-	struct send_buffer_list send_buffer_list;
-	size_t msg_already_received_bytes;
-	int skipping_msg;	// When incorrect message was received skip it
-	int tls_started;	// Set after TLS started
-	int tls_peer_certificate_verified;	// Certificate is verified only once
-	int preinit_received;
-	int init_received;
+struct qnetd_cluster {
 	char *cluster_name;
 	size_t cluster_name_len;
-	uint8_t node_id_set;
-	uint32_t node_id;
-	enum tlv_decision_algorithm_type decision_algorithm;
-	uint32_t heartbeat_interval;
-	enum tlv_reply_error_code skipping_msg_reason;
-	void *algorithm_data;
-	struct node_list configuration_node_list;
-	struct node_list last_membership_node_list;
-	struct qnetd_cluster *cluster;
-	TAILQ_ENTRY(qnetd_client) entries;
-	TAILQ_ENTRY(qnetd_client) cluster_entries;
+	struct qnetd_client_list client_list;
+	TAILQ_ENTRY(qnetd_cluster) entries;
 };
 
-extern void		qnetd_client_init(struct qnetd_client *client, PRFileDesc *sock,
-    PRNetAddr *addr, size_t max_receive_size, size_t max_send_buffers, size_t max_send_size);
+TAILQ_HEAD(qnetd_cluster_list, qnetd_cluster);
 
-extern void		qnetd_client_destroy(struct qnetd_client *client);
+extern void				 qnetd_cluster_list_init(struct qnetd_cluster_list *list);
+
+extern struct qnetd_cluster		*qnetd_cluster_list_find_by_name(
+    struct qnetd_cluster_list *list, const char *cluster_name, size_t cluster_name_len);
+
+extern struct qnetd_cluster		*qnetd_cluster_list_add_client(
+    struct qnetd_cluster_list *list, struct qnetd_client *client);
+
+extern void				 qnetd_cluster_list_del_client(
+    struct qnetd_cluster_list *list, struct qnetd_cluster *cluster, struct qnetd_client *client);
+
+extern void				 qnetd_cluster_list_free(struct qnetd_cluster_list *list);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* _QNETD_CLIENT_H_ */
+#endif /* _QNETD_CLUSTER_LIST_H_ */
