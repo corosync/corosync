@@ -88,3 +88,20 @@ qnetd_algo_ffsplit_client_disconnect(struct qnetd_client *client, int server_goi
 {
 
 }
+
+enum tlv_reply_error_code
+qnetd_algo_ffsplit_ask_for_vote_received(struct qnetd_client *client, uint32_t msg_seq_num,
+    enum tlv_vote *result_vote)
+{
+
+	*result_vote = TLV_VOTE_ASK_LATER;
+
+	return (TLV_REPLY_ERROR_CODE_UNSUPPORTED_DECISION_ALGORITHM_MESSAGE);
+}
+
+enum tlv_reply_error_code
+qnetd_algo_ffsplit_vote_info_reply_received(struct qnetd_client *client, uint32_t msg_seq_num)
+{
+
+	return (TLV_REPLY_ERROR_CODE_UNSUPPORTED_DECISION_ALGORITHM_MESSAGE);
+}

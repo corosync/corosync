@@ -59,6 +59,10 @@ enum msg_type {
 	MSG_TYPE_ECHO_REPLY = 9,
 	MSG_TYPE_NODE_LIST = 10,
 	MSG_TYPE_NODE_LIST_REPLY = 11,
+	MSG_TYPE_ASK_FOR_VOTE = 12,
+	MSG_TYPE_ASK_FOR_VOTE_REPLY = 13,
+	MSG_TYPE_VOTE_INFO = 14,
+	MSG_TYPE_VOTE_INFO_REPLY = 15,
 };
 
 struct msg_decoded {
@@ -156,6 +160,16 @@ extern size_t		msg_create_node_list(struct dynar *msg,
 
 extern size_t		msg_create_node_list_reply(struct dynar *msg, uint32_t msg_seq_number,
     enum tlv_vote vote);
+
+extern size_t		msg_create_ask_for_vote(struct dynar *msg, uint32_t msg_seq_number);
+
+extern size_t		msg_create_ask_for_vote_reply(struct dynar *msg, uint32_t msg_seq_number,
+    enum tlv_vote vote);
+
+extern size_t		msg_create_vote_info(struct dynar *msg, uint32_t msg_seq_number,
+    enum tlv_vote vote);
+
+extern size_t		msg_create_vote_info_reply(struct dynar *msg, uint32_t msg_seq_number);
 
 extern size_t		msg_get_header_length(void);
 

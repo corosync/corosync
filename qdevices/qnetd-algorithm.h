@@ -60,6 +60,12 @@ extern enum tlv_reply_error_code	qnetd_algorithm_membership_node_list_received(
 extern void				qnetd_algorithm_client_disconnect(
     struct qnetd_client *client, int server_going_down);
 
+extern enum tlv_reply_error_code	qnetd_algorithm_ask_for_vote_received(
+    struct qnetd_client *client, uint32_t msg_seq_num, enum tlv_vote *result_vote);
+
+extern enum tlv_reply_error_code	qnetd_algorithm_vote_info_reply_received(
+    struct qnetd_client *client, uint32_t msg_seq_num);
+
 #ifdef __cplusplus
 }
 #endif

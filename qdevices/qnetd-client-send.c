@@ -32,38 +32,63 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _QNETD_ALGO_TEST_H_
-#define _QNETD_ALGO_TEST_H_
+#include <sys/types.h>
 
-#include "qnetd-algorithm.h"
+#include <string.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include "qnetd-client-send.h"
+#include "qnetd-log.h"
+#include "msg.h"
 
-extern enum tlv_reply_error_code	qnetd_algo_test_client_init(struct qnetd_client *client);
+int
+qnetd_client_send_err(struct qnetd_client *client, int add_msg_seq_number, uint32_t msg_seq_number,
+    enum tlv_reply_error_code reply)
+{
+	struct send_buffer_list_entry *send_buffer;
 
-extern enum tlv_reply_error_code	qnetd_algo_test_config_node_list_received(
-    struct qnetd_client *client, uint32_t msg_seq_num, int config_version_set,
-    uint64_t config_version, const struct node_list *nodes, int initial,
-    enum tlv_vote *result_vote);
+	send_buffer = send_buffer_list_get_new(&client->send_buffer_list);
+	if (send_buffer == NULL) {
+		qnetd_log(LOG_ERR, "Can't alloc server error msg from list. "
+		    "Disconnecting client connection.");
 
-extern enum tlv_reply_error_code	qnetd_algo_test_membership_node_list_received(
-    struct qnetd_client *client, uint32_t msg_seq_num, int config_version_set,
-    uint64_t config_version, const struct tlv_ring_id *ring_id, enum tlv_quorate quorate,
-    const struct node_list *nodes, enum tlv_vote *result_vote);
+		return (-1);
+	}
 
-extern void				qnetd_algo_test_client_disconnect(
-    struct qnetd_client *client, int server_going_down);
+	if (msg_create_server_error(&send_buffer->buffer, add_msg_seq_number,
+	    msg_seq_number, reply) == 0) {
+		qnetd_log(LOG_ERR, "Can't alloc server error msg. "
+		    "Disconnecting client connection.");
 
-extern enum tlv_reply_error_code	qnetd_algo_test_ask_for_vote_received(
-    struct qnetd_client *client, uint32_t msg_seq_num, enum tlv_vote *result_vote);
+		return (-1);
+	};
 
-extern enum tlv_reply_error_code	qnetd_algo_test_vote_info_reply_received(
-    struct qnetd_client *client, uint32_t msg_seq_num);
+	send_buffer_list_put(&client->send_buffer_list, send_buffer);
 
-#ifdef __cplusplus
+	return (0);
 }
-#endif
 
-#endif /* _QNETD_ALGO_TEST_H_ */
+int
+qnetd_client_send_vote_info(struct qnetd_client *client, uint32_t msg_seq_number,
+    enum tlv_vote vote)
+{
+	struct send_buffer_list_entry *send_buffer;
+
+	send_buffer = send_buffer_list_get_new(&client->send_buffer_list);
+	if (send_buffer == NULL) {
+		qnetd_log(LOG_ERR, "Can't alloc vote info msg from list. "
+		    "Disconnecting client connection.");
+
+		return (-1);
+	}
+
+	if (msg_create_vote_info(&send_buffer->buffer, msg_seq_number, vote) == 0) {
+		qnetd_log(LOG_ERR, "Can't alloc vote info msg. "
+		    "Disconnecting client connection.");
+
+		return (-1);
+	};
+
+	send_buffer_list_put(&client->send_buffer_list, send_buffer);
+
+	return (0);
+}

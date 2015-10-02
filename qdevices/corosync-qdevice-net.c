@@ -672,7 +672,8 @@ qdevice_net_get_nodelist(cmap_handle_t cmap_handle, struct node_list *list)
 			 */
 			clear_node_high_byte = 0;
 
-			if (cmap_get_string(cmap_handle, "totem.clear_node_high_bit", &tmp_str) == CS_OK) {
+			if (cmap_get_string(cmap_handle, "totem.clear_node_high_bit",
+			    &tmp_str) == CS_OK) {
 				if (strcmp (tmp_str, "yes") == 0) {
 					clear_node_high_byte = 1;
 				}
@@ -782,7 +783,8 @@ qdevice_net_register_votequorum_callbacks(struct qdevice_net_instance *instance)
 {
 	cs_error_t res;
 
-	if ((res = votequorum_trackstart(instance->votequorum_handle, 0, CS_TRACK_CHANGES)) != CS_OK) {
+	if ((res = votequorum_trackstart(instance->votequorum_handle, 0,
+	    CS_TRACK_CHANGES)) != CS_OK) {
 		qdevice_net_log(LOG_ERR, "Can't start tracking votequorum changes. Error %s",
 		    cs_strerror(res));
 

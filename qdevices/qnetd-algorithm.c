@@ -125,3 +125,42 @@ qnetd_algorithm_client_disconnect(struct qnetd_client *client, int server_going_
 		break;
 	}
 }
+
+enum tlv_reply_error_code
+qnetd_algorithm_ask_for_vote_received(struct qnetd_client *client, uint32_t msg_seq_num,
+    enum tlv_vote *result_vote)
+{
+
+	switch (client->decision_algorithm) {
+	case TLV_DECISION_ALGORITHM_TYPE_TEST:
+		return (qnetd_algo_test_ask_for_vote_received(client, msg_seq_num, result_vote));
+		break;
+	case TLV_DECISION_ALGORITHM_TYPE_FFSPLIT:
+		return (qnetd_algo_ffsplit_ask_for_vote_received(client, msg_seq_num, result_vote));
+		break;
+	default:
+		errx(1, "qnetd_algorithm_ask_for_vote_received unhandled decision algorithm");
+		break;
+	}
+
+	return (TLV_REPLY_ERROR_CODE_INTERNAL_ERROR);
+}
+
+enum tlv_reply_error_code
+qnetd_algorithm_vote_info_reply_received(struct qnetd_client *client, uint32_t msg_seq_num)
+{
+
+	switch (client->decision_algorithm) {
+	case TLV_DECISION_ALGORITHM_TYPE_TEST:
+		return (qnetd_algo_test_vote_info_reply_received(client, msg_seq_num));
+		break;
+	case TLV_DECISION_ALGORITHM_TYPE_FFSPLIT:
+		return (qnetd_algo_ffsplit_vote_info_reply_received(client, msg_seq_num));
+		break;
+	default:
+		errx(1, "qnetd_algorithm_vote_info_reply_received unhandled decision algorithm");
+		break;
+	}
+
+	return (TLV_REPLY_ERROR_CODE_INTERNAL_ERROR);
+}

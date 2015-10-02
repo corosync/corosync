@@ -62,6 +62,7 @@
 #include "timer-list.h"
 #include "qnetd-algorithm.h"
 #include "qnetd-cluster-list.h"
+#include "qnetd-client-send.h"
 
 #define QNETD_LISTEN_BACKLOG		10
 #define QNETD_MAX_CLIENT_SEND_BUFFERS	10
@@ -148,39 +149,12 @@ qnetd_client_log_msg_decode_error(int ret)
 	}
 }
 
-static int
-qnetd_client_send_err(struct qnetd_client *client, int add_msg_seq_number, uint32_t msg_seq_number,
-    enum tlv_reply_error_code reply)
-{
-	struct send_buffer_list_entry *send_buffer;
-
-	send_buffer = send_buffer_list_get_new(&client->send_buffer_list);
-	if (send_buffer == NULL) {
-		qnetd_log(LOG_ERR, "Can't alloc server error msg from list. "
-		    "Disconnecting client connection.");
-
-		return (-1);
-	}
-
-	if (msg_create_server_error(&send_buffer->buffer, add_msg_seq_number,
-	    msg_seq_number, reply) == 0) {
-		qnetd_log(LOG_ERR, "Can't alloc server error msg. "
-		    "Disconnecting client connection.");
-
-		return (-1);
-	};
-
-	send_buffer_list_put(&client->send_buffer_list, send_buffer);
-
-	return (0);
-}
 
 static int
 qnetd_client_msg_received_preinit(struct qnetd_instance *instance, struct qnetd_client *client,
     const struct msg_decoded *msg)
 {
 	struct send_buffer_list_entry *send_buffer;
-	struct qnetd_cluster *cluster;
 
 	if (msg->cluster_name == NULL) {
 		qnetd_log(LOG_ERR, "Received preinit message without cluster name. "
@@ -211,19 +185,6 @@ qnetd_client_msg_received_preinit(struct qnetd_instance *instance, struct qnetd_
 	client->cluster_name_len = msg->cluster_name_len;
 	client->preinit_received = 1;
 
-	cluster = qnetd_cluster_list_add_client(&instance->clusters, client);
-	if (cluster == NULL) {
-		qnetd_log(LOG_ERR, "Can't add client to cluster list. Sending error reply.");
-
-		if (qnetd_client_send_err(client, msg->seq_number_set, msg->seq_number,
-		    TLV_REPLY_ERROR_CODE_INTERNAL_ERROR) != 0) {
-			return (-1);
-		}
-
-		return (0);
-	}
-	client->cluster = cluster;
-
 	send_buffer = send_buffer_list_get_new(&client->send_buffer_list);
 	if (send_buffer == NULL) {
 		qnetd_log(LOG_ERR, "Can't alloc preinit reply msg from list. "
@@ -246,11 +207,11 @@ qnetd_client_msg_received_preinit(struct qnetd_instance *instance, struct qnetd_
 }
 
 static int
-qnetd_client_msg_received_preinit_reply(struct qnetd_instance *instance,
-    struct qnetd_client *client, const struct msg_decoded *msg)
+qnetd_client_msg_received_unexpected_msg(struct qnetd_client *client,
+    const struct msg_decoded *msg, const char *msg_str)
 {
 
-	qnetd_log(LOG_ERR, "Received preinit reply. Sending back error message");
+	qnetd_log(LOG_ERR, "Received %s message. Sending back error message", msg_str);
 
 	if (qnetd_client_send_err(client, msg->seq_number_set, msg->seq_number,
 	    TLV_REPLY_ERROR_CODE_UNEXPECTED_MESSAGE) != 0) {
@@ -258,6 +219,14 @@ qnetd_client_msg_received_preinit_reply(struct qnetd_instance *instance,
 	}
 
 	return (0);
+}
+
+static int
+qnetd_client_msg_received_preinit_reply(struct qnetd_instance *instance,
+    struct qnetd_client *client, const struct msg_decoded *msg)
+{
+
+	return (qnetd_client_msg_received_unexpected_msg(client, msg, "preinit reply"));
 }
 
 static int
@@ -297,14 +266,7 @@ qnetd_client_msg_received_server_error(struct qnetd_instance *instance, struct q
     const struct msg_decoded *msg)
 {
 
-	qnetd_log(LOG_ERR, "Received server error. Sending back error message");
-
-	if (qnetd_client_send_err(client, msg->seq_number_set, msg->seq_number,
-	    TLV_REPLY_ERROR_CODE_UNEXPECTED_MESSAGE) != 0) {
-		return (-1);
-	}
-
-	return (0);
+	return (qnetd_client_msg_received_unexpected_msg(client, msg, "server error"));
 }
 
 /*
@@ -399,6 +361,7 @@ qnetd_client_msg_received_init(struct qnetd_instance *instance, struct qnetd_cli
 	size_t no_supported_opts;
 	struct send_buffer_list_entry *send_buffer;
 	enum tlv_reply_error_code reply_error_code;
+	struct qnetd_cluster *cluster;
 
 	supported_msgs = NULL;
 	supported_opts = NULL;
@@ -491,6 +454,17 @@ qnetd_client_msg_received_init(struct qnetd_instance *instance, struct qnetd_cli
 		client->decision_algorithm = msg->decision_algorithm;
 	}
 
+	if (reply_error_code == TLV_REPLY_ERROR_CODE_NO_ERROR) {
+		cluster = qnetd_cluster_list_add_client(&instance->clusters, client);
+		if (cluster == NULL) {
+			qnetd_log(LOG_ERR, "Can't add client to cluster list. "
+			    "Sending error reply.");
+
+			reply_error_code = TLV_REPLY_ERROR_CODE_INTERNAL_ERROR;
+		} else {
+			client->cluster = cluster;
+		}
+	}
 
 	if (reply_error_code == TLV_REPLY_ERROR_CODE_NO_ERROR) {
 		reply_error_code = qnetd_algorithm_client_init(client);
@@ -531,28 +505,16 @@ static int
 qnetd_client_msg_received_init_reply(struct qnetd_instance *instance, struct qnetd_client *client,
     const struct msg_decoded *msg)
 {
-	qnetd_log(LOG_ERR, "Received init reply. Sending back error message");
 
-	if (qnetd_client_send_err(client, msg->seq_number_set, msg->seq_number,
-	    TLV_REPLY_ERROR_CODE_UNEXPECTED_MESSAGE) != 0) {
-		return (-1);
-	}
-
-	return (0);
+	return (qnetd_client_msg_received_unexpected_msg(client, msg, "init reply"));
 }
 
 static int
 qnetd_client_msg_received_set_option_reply(struct qnetd_instance *instance,
     struct qnetd_client *client, const struct msg_decoded *msg)
 {
-	qnetd_log(LOG_ERR, "Received set option reply. Sending back error message");
 
-	if (qnetd_client_send_err(client, msg->seq_number_set, msg->seq_number,
-	    TLV_REPLY_ERROR_CODE_UNEXPECTED_MESSAGE) != 0) {
-		return (-1);
-	}
-
-	return (0);
+	return (qnetd_client_msg_received_unexpected_msg(client, msg, "set option reply"));
 }
 
 static int
@@ -622,21 +584,15 @@ qnetd_client_msg_received_set_option(struct qnetd_instance *instance, struct qne
 
 static int
 qnetd_client_msg_received_echo_reply(struct qnetd_instance *instance, struct qnetd_client *client,
-	const struct msg_decoded *msg)
+    const struct msg_decoded *msg)
 {
-	qnetd_log(LOG_ERR, "Received echo reply. Sending back error message");
 
-	if (qnetd_client_send_err(client, msg->seq_number_set, msg->seq_number,
-	    TLV_REPLY_ERROR_CODE_UNEXPECTED_MESSAGE) != 0) {
-		return (-1);
-	}
-
-	return (0);
+	return (qnetd_client_msg_received_unexpected_msg(client, msg, "echo reply"));
 }
 
 static int
 qnetd_client_msg_received_echo_request(struct qnetd_instance *instance, struct qnetd_client *client,
-	const struct msg_decoded *msg, const struct dynar *msg_orig)
+    const struct msg_decoded *msg, const struct dynar *msg_orig)
 {
 	int res;
 	struct send_buffer_list_entry *send_buffer;
@@ -692,7 +648,7 @@ qnetd_client_msg_received_node_list(struct qnetd_instance *instance, struct qnet
 	}
 
 	if (!client->init_received) {
-		qnetd_log(LOG_ERR, "Received set option message before init message. "
+		qnetd_log(LOG_ERR, "Received node list message before init message. "
 		    "Sending error reply.");
 
 		if (qnetd_client_send_err(client, msg->seq_number_set, msg->seq_number,
@@ -833,14 +789,156 @@ qnetd_client_msg_received_node_list(struct qnetd_instance *instance, struct qnet
 }
 
 static int
-qnetd_client_msg_received_node_list_reply(struct qnetd_instance *instance, struct qnetd_client *client,
-	const struct msg_decoded *msg)
+qnetd_client_msg_received_node_list_reply(struct qnetd_instance *instance,
+    struct qnetd_client *client, const struct msg_decoded *msg)
 {
-	qnetd_log(LOG_ERR, "Received node list reply. Sending back error message");
 
-	if (qnetd_client_send_err(client, msg->seq_number_set, msg->seq_number,
-	    TLV_REPLY_ERROR_CODE_UNEXPECTED_MESSAGE) != 0) {
+	return (qnetd_client_msg_received_unexpected_msg(client, msg, "node list reply"));
+}
+
+static int
+qnetd_client_msg_received_ask_for_vote(struct qnetd_instance *instance, struct qnetd_client *client,
+    const struct msg_decoded *msg)
+{
+	int res;
+	struct send_buffer_list_entry *send_buffer;
+	enum tlv_reply_error_code reply_error_code;
+	enum tlv_vote result_vote;
+
+	reply_error_code = TLV_REPLY_ERROR_CODE_NO_ERROR;
+
+	if ((res = qnetd_client_check_tls(instance, client, msg)) != 0) {
+		return (res == -1 ? -1 : 0);
+	}
+
+	if (!client->init_received) {
+		qnetd_log(LOG_ERR, "Received ask for vote message before init message. "
+		    "Sending error reply.");
+
+		if (qnetd_client_send_err(client, msg->seq_number_set, msg->seq_number,
+		    TLV_REPLY_ERROR_CODE_INIT_REQUIRED) != 0) {
+			return (-1);
+		}
+
+		return (0);
+	}
+
+	if (!msg->seq_number_set) {
+		qnetd_log(LOG_ERR, "Received ask for vote message without seq number set. "
+		    "Sending error reply.");
+
+		if (qnetd_client_send_err(client, msg->seq_number_set, msg->seq_number,
+		    TLV_REPLY_ERROR_CODE_DOESNT_CONTAIN_REQUIRED_OPTION) != 0) {
+			return (-1);
+		}
+
+		return (0);
+	}
+
+	reply_error_code = qnetd_algorithm_ask_for_vote_received(client, msg->seq_number,
+	    &result_vote);
+
+	if (reply_error_code != TLV_REPLY_ERROR_CODE_NO_ERROR) {
+		qnetd_log(LOG_ERR, "Algorithm returned error code. "
+		    "Sending error reply.");
+
+		if (qnetd_client_send_err(client, msg->seq_number_set, msg->seq_number,
+		    reply_error_code) != 0) {
+			return (-1);
+		}
+
+		return (0);
+	}
+
+	send_buffer = send_buffer_list_get_new(&client->send_buffer_list);
+	if (send_buffer == NULL) {
+		qnetd_log(LOG_ERR, "Can't alloc ask for vote reply msg from list. "
+		    "Disconnecting client connection.");
+
 		return (-1);
+	}
+
+	if (msg_create_ask_for_vote_reply(&send_buffer->buffer, msg->seq_number,
+	    result_vote) == -1) {
+		qnetd_log(LOG_ERR, "Can't alloc ask for vote reply msg. "
+		    "Disconnecting client connection.");
+
+		return (-1);
+	}
+
+	send_buffer_list_put(&client->send_buffer_list, send_buffer);
+
+	return (0);
+}
+
+static int
+qnetd_client_msg_received_ask_for_vote_reply(struct qnetd_instance *instance,
+    struct qnetd_client *client, const struct msg_decoded *msg)
+{
+
+	return (qnetd_client_msg_received_unexpected_msg(client, msg, "ask for vote reply"));
+}
+
+static int
+qnetd_client_msg_received_vote_info(struct qnetd_instance *instance, struct qnetd_client *client,
+    const struct msg_decoded *msg)
+{
+
+	return (qnetd_client_msg_received_unexpected_msg(client, msg, "vote info"));
+}
+
+static int
+qnetd_client_msg_received_vote_info_reply(struct qnetd_instance *instance,
+    struct qnetd_client *client, const struct msg_decoded *msg)
+{
+	int res;
+	enum tlv_reply_error_code reply_error_code;
+	enum tlv_vote result_vote;
+
+	reply_error_code = TLV_REPLY_ERROR_CODE_NO_ERROR;
+
+	if ((res = qnetd_client_check_tls(instance, client, msg)) != 0) {
+		return (res == -1 ? -1 : 0);
+	}
+
+	if (!client->init_received) {
+		qnetd_log(LOG_ERR, "Received vote info reply before init message. "
+		    "Sending error reply.");
+
+		if (qnetd_client_send_err(client, msg->seq_number_set, msg->seq_number,
+		    TLV_REPLY_ERROR_CODE_INIT_REQUIRED) != 0) {
+			return (-1);
+		}
+
+		return (0);
+	}
+
+	if (!msg->seq_number_set) {
+		qnetd_log(LOG_ERR, "Received vote info reply message without seq number set. "
+		    "Sending error reply.");
+
+		if (qnetd_client_send_err(client, msg->seq_number_set, msg->seq_number,
+		    TLV_REPLY_ERROR_CODE_DOESNT_CONTAIN_REQUIRED_OPTION) != 0) {
+			return (-1);
+		}
+
+		return (0);
+	}
+
+	reply_error_code = qnetd_algorithm_membership_node_list_received(client,
+	    msg->seq_number, msg->config_version_set, msg->config_version,
+	    &msg->ring_id, msg->quorate, &msg->nodes, &result_vote);
+
+	if (reply_error_code != TLV_REPLY_ERROR_CODE_NO_ERROR) {
+		qnetd_log(LOG_ERR, "Algorithm returned error code. "
+		    "Sending error reply.");
+
+		if (qnetd_client_send_err(client, msg->seq_number_set, msg->seq_number,
+		    reply_error_code) != 0) {
+			return (-1);
+		}
+
+		return (0);
 	}
 
 	return (0);
@@ -910,6 +1008,18 @@ qnetd_client_msg_received(struct qnetd_instance *instance, struct qnetd_client *
 		break;
 	case MSG_TYPE_NODE_LIST_REPLY:
 		ret_val = qnetd_client_msg_received_node_list_reply(instance, client, &msg);
+		break;
+	case MSG_TYPE_ASK_FOR_VOTE:
+		ret_val = qnetd_client_msg_received_ask_for_vote(instance, client, &msg);
+		break;
+	case MSG_TYPE_ASK_FOR_VOTE_REPLY:
+		ret_val = qnetd_client_msg_received_ask_for_vote_reply(instance, client, &msg);
+		break;
+	case MSG_TYPE_VOTE_INFO:
+		ret_val = qnetd_client_msg_received_vote_info(instance, client, &msg);
+		break;
+	case MSG_TYPE_VOTE_INFO_REPLY:
+		ret_val = qnetd_client_msg_received_vote_info_reply(instance, client, &msg);
 		break;
 	default:
 		qnetd_log(LOG_ERR, "Unsupported message %u received from client. "
@@ -1103,7 +1213,9 @@ qnetd_client_disconnect(struct qnetd_instance *instance, struct qnetd_client *cl
 
 	qnetd_algorithm_client_disconnect(client, server_going_down);
 	PR_Close(client->socket);
-	qnetd_cluster_list_del_client(&instance->clusters, client->cluster, client);
+	if (client->cluster != NULL) {
+		qnetd_cluster_list_del_client(&instance->clusters, client->cluster, client);
+	}
 	qnetd_client_list_del(&instance->clients, client);
 }
 

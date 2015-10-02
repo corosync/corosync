@@ -44,7 +44,7 @@
 #define MSG_TYPE_LENGTH		2
 #define MSG_LENGTH_LENGTH	4
 
-#define MSG_STATIC_SUPPORTED_MESSAGES_SIZE	12
+#define MSG_STATIC_SUPPORTED_MESSAGES_SIZE	16
 
 enum msg_type msg_static_supported_messages[MSG_STATIC_SUPPORTED_MESSAGES_SIZE] = {
     MSG_TYPE_PREINIT,
@@ -59,6 +59,10 @@ enum msg_type msg_static_supported_messages[MSG_STATIC_SUPPORTED_MESSAGES_SIZE] 
     MSG_TYPE_ECHO_REPLY,
     MSG_TYPE_NODE_LIST,
     MSG_TYPE_NODE_LIST_REPLY,
+    MSG_TYPE_ASK_FOR_VOTE,
+    MSG_TYPE_ASK_FOR_VOTE_REPLY,
+    MSG_TYPE_VOTE_INFO,
+    MSG_TYPE_VOTE_INFO_REPLY,
 };
 
 size_t
@@ -585,6 +589,98 @@ small_buf_err:
 	return (0);
 }
 
+size_t
+msg_create_ask_for_vote(struct dynar *msg, uint32_t msg_seq_number)
+{
+
+	dynar_clean(msg);
+
+	msg_add_type(msg, MSG_TYPE_ASK_FOR_VOTE);
+	msg_add_len(msg);
+
+	if (tlv_add_msg_seq_number(msg, msg_seq_number) == -1) {
+		goto small_buf_err;
+	}
+
+	msg_set_len(msg, dynar_size(msg) - (MSG_TYPE_LENGTH + MSG_LENGTH_LENGTH));
+
+	return (dynar_size(msg));
+
+small_buf_err:
+	return (0);
+}
+
+size_t
+msg_create_ask_for_vote_reply(struct dynar *msg, uint32_t msg_seq_number, enum tlv_vote vote)
+{
+
+	dynar_clean(msg);
+
+	msg_add_type(msg, MSG_TYPE_ASK_FOR_VOTE_REPLY);
+	msg_add_len(msg);
+
+	if (tlv_add_msg_seq_number(msg, msg_seq_number) == -1) {
+		goto small_buf_err;
+	}
+
+	if (tlv_add_vote(msg, vote) == -1) {
+		goto small_buf_err;
+	}
+
+	msg_set_len(msg, dynar_size(msg) - (MSG_TYPE_LENGTH + MSG_LENGTH_LENGTH));
+
+	return (dynar_size(msg));
+
+small_buf_err:
+	return (0);
+}
+
+size_t
+msg_create_vote_info(struct dynar *msg, uint32_t msg_seq_number, enum tlv_vote vote)
+{
+
+	dynar_clean(msg);
+
+	msg_add_type(msg, MSG_TYPE_VOTE_INFO);
+	msg_add_len(msg);
+
+	if (tlv_add_msg_seq_number(msg, msg_seq_number) == -1) {
+		goto small_buf_err;
+	}
+
+	if (tlv_add_vote(msg, vote) == -1) {
+		goto small_buf_err;
+	}
+
+	msg_set_len(msg, dynar_size(msg) - (MSG_TYPE_LENGTH + MSG_LENGTH_LENGTH));
+
+	return (dynar_size(msg));
+
+small_buf_err:
+	return (0);
+}
+
+size_t
+msg_create_vote_info_reply(struct dynar *msg, uint32_t msg_seq_number)
+{
+
+	dynar_clean(msg);
+
+	msg_add_type(msg, MSG_TYPE_VOTE_INFO_REPLY);
+	msg_add_len(msg);
+
+	if (tlv_add_msg_seq_number(msg, msg_seq_number) == -1) {
+		goto small_buf_err;
+	}
+
+	msg_set_len(msg, dynar_size(msg) - (MSG_TYPE_LENGTH + MSG_LENGTH_LENGTH));
+
+	return (dynar_size(msg));
+
+small_buf_err:
+	return (0);
+}
+
 int
 msg_is_valid_msg_type(const struct dynar *msg)
 {
@@ -826,7 +922,8 @@ msg_decode(const struct dynar *msg, struct msg_decoded *decoded_msg)
 			decoded_msg->vote_set = 1;
 			break;
 		case TLV_OPT_QUORATE:
-			if ((res = tlv_iter_decode_quorate(&tlv_iter, &decoded_msg->quorate)) != 0) {
+			if ((res = tlv_iter_decode_quorate(&tlv_iter,
+			    &decoded_msg->quorate)) != 0) {
 				return (res);
 			}
 

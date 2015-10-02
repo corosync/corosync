@@ -32,38 +32,25 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _QNETD_ALGO_TEST_H_
-#define _QNETD_ALGO_TEST_H_
+#ifndef _QNETD_CLIENT_SEND_H_
+#define _QNETD_CLIENT_SEND_H_
 
-#include "qnetd-algorithm.h"
+#include <sys/types.h>
+
+#include "qnetd-client.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-extern enum tlv_reply_error_code	qnetd_algo_test_client_init(struct qnetd_client *client);
+extern int		qnetd_client_send_err(struct qnetd_client *client,
+    int add_msg_seq_number, uint32_t msg_seq_number, enum tlv_reply_error_code reply);
 
-extern enum tlv_reply_error_code	qnetd_algo_test_config_node_list_received(
-    struct qnetd_client *client, uint32_t msg_seq_num, int config_version_set,
-    uint64_t config_version, const struct node_list *nodes, int initial,
-    enum tlv_vote *result_vote);
-
-extern enum tlv_reply_error_code	qnetd_algo_test_membership_node_list_received(
-    struct qnetd_client *client, uint32_t msg_seq_num, int config_version_set,
-    uint64_t config_version, const struct tlv_ring_id *ring_id, enum tlv_quorate quorate,
-    const struct node_list *nodes, enum tlv_vote *result_vote);
-
-extern void				qnetd_algo_test_client_disconnect(
-    struct qnetd_client *client, int server_going_down);
-
-extern enum tlv_reply_error_code	qnetd_algo_test_ask_for_vote_received(
-    struct qnetd_client *client, uint32_t msg_seq_num, enum tlv_vote *result_vote);
-
-extern enum tlv_reply_error_code	qnetd_algo_test_vote_info_reply_received(
-    struct qnetd_client *client, uint32_t msg_seq_num);
+extern int		qnetd_client_send_vote_info(struct qnetd_client *client,
+    uint32_t msg_seq_number, enum tlv_vote vote);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* _QNETD_ALGO_TEST_H_ */
+#endif /* _QNETD_CLIENT_SEND_H_ */

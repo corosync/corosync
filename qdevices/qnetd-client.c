@@ -56,6 +56,7 @@ void
 qnetd_client_destroy(struct qnetd_client *client)
 {
 
+	free(client->cluster_name);
 	node_list_free(&client->last_membership_node_list);
 	node_list_free(&client->configuration_node_list);
 	send_buffer_list_free(&client->send_buffer_list);

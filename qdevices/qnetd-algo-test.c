@@ -38,6 +38,19 @@
 
 #include "qnetd-algo-test.h"
 #include "qnetd-log.h"
+#include "qnetd-cluster-list.h"
+
+static void
+qnetd_algo_test_dump_cluster(struct qnetd_cluster *cluster)
+{
+	struct qnetd_client *client;
+
+	qnetd_log(LOG_INFO, "algo-test:   Cluster dump:");
+	TAILQ_FOREACH(client, &cluster->client_list, cluster_entries) {
+		qnetd_log(LOG_INFO, "algo-test:     client = %p, node_id = %"PRIx32,
+		    client, client->node_id);
+	}
+}
 
 /*
  * Called right after client sent init message. This happens after initial accept of client,
@@ -46,6 +59,7 @@
  * - client->cluster_name (client->cluster_name_len)
  * - client->node_id (client->node_id_set = 1)
  * - client->decision_algorithm
+ * - client->cluster
  *
  * Callback is designed mainly for allocating client->algorithm_data.
  *
@@ -65,7 +79,9 @@ qnetd_algo_test_client_init(struct qnetd_client *client)
 	qnetd_log(LOG_INFO, "algo-test:   tls peer certificate verified = %u",
 	    client->tls_peer_certificate_verified);
 	qnetd_log(LOG_INFO, "algo-test:   node_id = %"PRIx32, client->node_id);
-	qnetd_log(LOG_INFO, "algo-test:   pointer = 0x%p", client);
+	qnetd_log(LOG_INFO, "algo-test:   pointer = %p", client);
+
+	qnetd_algo_test_dump_cluster(client->cluster);
 
 	client->algorithm_data = malloc(sizeof(int));
 	if (client->algorithm_data == NULL) {
@@ -188,6 +204,11 @@ qnetd_algo_test_membership_node_list_received(struct qnetd_client *client,
 	return (TLV_REPLY_ERROR_CODE_NO_ERROR);
 }
 
+/*
+ * Called after client disconnect. Client structure is still existing (and it's part
+ * of a client->cluster), but it is destroyed (and removed from cluster) right after
+ * this callback finishes. Callback is used mainly for destroing client->algorithm_data.
+ */
 void
 qnetd_algo_test_client_disconnect(struct qnetd_client *client, int server_going_down)
 {
@@ -198,4 +219,31 @@ qnetd_algo_test_client_disconnect(struct qnetd_client *client, int server_going_
 	qnetd_log(LOG_INFO, "algo-test:   server going down %u", server_going_down);
 
 	free(client->algorithm_data);
+}
+
+/*
+ * Called after client sent ask for vote message. This is usually happening after server
+ * replied TLV_VOTE_ASK_LATER.
+ */
+enum tlv_reply_error_code
+qnetd_algo_test_ask_for_vote_received(struct qnetd_client *client, uint32_t msg_seq_num,
+    enum tlv_vote *result_vote)
+{
+
+	qnetd_log(LOG_INFO, "algo-test: Client %p (cluster %s, node_id %"PRIx32") "
+	    "asked for a vote", client, client->cluster_name, client->node_id);
+
+	*result_vote = TLV_VOTE_ACK;
+
+	return (TLV_REPLY_ERROR_CODE_NO_ERROR);
+}
+
+enum tlv_reply_error_code
+qnetd_algo_test_vote_info_reply_received(struct qnetd_client *client, uint32_t msg_seq_num)
+{
+
+	qnetd_log(LOG_INFO, "algo-test: Client %p (cluster %s, node_id %"PRIx32") "
+	    "replied back to vote info message", client, client->cluster_name, client->node_id);
+
+	return (TLV_REPLY_ERROR_CODE_NO_ERROR);
 }
