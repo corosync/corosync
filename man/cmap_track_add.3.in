@@ -73,7 +73,7 @@ in callback)
 .PP
 .I notify_fn
 is pointer to function which is called when value is changed. It's definition and meaning of parameters
-is discussed bellow.
+is discussed below.
 .I user_data
 argument is passed directly to
 .I notify_fn
