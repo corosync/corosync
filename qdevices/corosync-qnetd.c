@@ -71,7 +71,7 @@
 #define QNETD_MAX_CLIENT_SEND_SIZE	(1 << 15)
 #define QNETD_MAX_CLIENT_RECEIVE_SIZE	(1 << 15)
 
-#define NSS_DB_DIR      COROSYSCONFDIR "/qnetd/nssdb"
+#define NSS_DB_DIR      COROSYSCONFDIR "/qdevice/net/qnetd/nssdb"
 #define QNETD_CERT_NICKNAME	"QNetd Cert"
 
 #define QNETD_TLS_SUPPORTED			TLV_TLS_SUPPORTED

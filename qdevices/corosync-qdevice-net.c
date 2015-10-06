@@ -68,7 +68,7 @@
 #include "timer-list.h"
 #include "send-buffer-list.h"
 
-#define NSS_DB_DIR	COROSYSCONFDIR "/qdevice-net/nssdb"
+#define NSS_DB_DIR	COROSYSCONFDIR "/qdevice/net/node/nssdb"
 
 /*
  * It's usually not a good idea to change following defines

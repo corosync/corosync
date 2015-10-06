@@ -59,6 +59,7 @@ corosync_qdevice_net_LDADD	= $(nss_LIBS) $(LIBQB_LIBS) $(top_builddir)/lib/libcm
 corosync-qnetd-certutil: corosync-qnetd-certutil.sh
 	sed -e 's#@''DATADIR@#${datadir}#g' \
 	    -e 's#@''BASHPATH@#${BASHPATH}#g' \
+	    -e 's#@''COROSYSCONFDIR@#${COROSYSCONFDIR}#g' \
 	    $< > $@
 
 TESTS				= qnetd-cluster-list.test
