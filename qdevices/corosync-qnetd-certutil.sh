@@ -347,7 +347,7 @@ case "$OPERATION" in
         DB_DIR="$DB_DIR_NODE"
     ;;
     "quick_start")
-	DB_DIR=""
+        DB_DIR=""
     ;;
     *)
         usage
@@ -433,13 +433,13 @@ case "$OPERATION" in
             exit 2
         fi
 
-	if [ "$qnetd_addr" == "" ];then
+        if [ "$qnetd_addr" == "" ];then
             echo "No QNetd server address provided." >&2
 
             exit 2
         fi
 
-	if [ "$master_node" == "" ];then
+        if [ "$master_node" == "" ];then
             echo "No nodes provided." >&2
 
             exit 2
