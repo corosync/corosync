@@ -1359,7 +1359,6 @@ qdevice_net_instance_init_from_cmap(struct qdevice_net_instance *instance,
 	 * Host
 	 */
 	if (cmap_get_string(cmap_handle, "quorum.device.net.host", &str) != CS_OK) {
-		free(str);
 		errx(1, "Qdevice net daemon address is not defined (quorum.device.net.host)");
 	}
 	host_addr = str;
