@@ -233,20 +233,11 @@ import_pk12() {
     pk12util -i "$CERTIFICATE_FILE" -d "$DB_DIR" -W ""
 }
 
-#    echo "- On QNetd server sign and export cluster certificate by running $0 -s -c `basename $CRQ_FILE_BASE` -n Cluster"
-#    echo "- Copy exported CRT to node where certificate request was created"
-#    echo "- Import certificate on node where certificate request was created by running $0 -M -c cluster-Cluster.crt"
-#    echo "- Copy output $P12_FILE_BASE to all other cluster nodes"
-#    echo "- On all other nodes in cluster:"
-#    echo "  - Init database by running $0 -i -c `basename $CA_EXPORT_FILE`"
-#    echo "  - Import cluster certificate and key: $0 -m -c `basename $P12_FILE_BASE`"
-
 quick_start() {
     qnetd_addr="$1"
     master_node="$2"
     other_nodes="$3"
 
-set -x
     # Sanity check
     for i in "$qnetd_addr" "$master_node" $other_nodes;do
         if ssh root@$i "[ -d \"$DB_DIR_QNETD\" ] || [ -d \"$DB_DIR_NODE\" ]";then
