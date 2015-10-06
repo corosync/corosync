@@ -61,8 +61,6 @@
 #include "dynar.h"
 #include "timer-list.h"
 #include "qnetd-algorithm.h"
-#include "qnetd-algo-test.h"
-#include "qnetd-algo-ffsplit.h"
 #include "qnetd-cluster-list.h"
 #include "qnetd-client-send.h"
 
@@ -1383,16 +1381,6 @@ qnetd_instance_destroy(struct qnetd_instance *instance)
 	qnetd_client_list_free(&instance->clients);
 
 	return (0);
-}
-
-static void algorithms_register(void)
-{
-	if (qnetd_algo_test_register() != TLV_REPLY_ERROR_CODE_NO_ERROR) {
-		errx(1, "Failed to register decision algorithm 'test' ");
-	}
-	if (qnetd_algo_ffsplit_register() != TLV_REPLY_ERROR_CODE_NO_ERROR) {
-		errx(1, "Failed to register decision algorithm 'ffsplit' ");
-	}
 }
 
 static void

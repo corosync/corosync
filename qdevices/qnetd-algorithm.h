@@ -92,6 +92,8 @@ struct qnetd_algorithm {
 extern enum tlv_reply_error_code	qnetd_algorithm_register(
 	enum tlv_decision_algorithm_type algorithm_number, struct qnetd_algorithm *algorithm);
 
+extern void algorithms_register(void);
+
 #define MAX_QNETD_ALGORITHMS 10
 
 #ifdef __cplusplus
