@@ -40,23 +40,19 @@
 #include "qnetd-algo-test.h"
 #include "qnetd-algo-ffsplit.h"
 
+static struct qnetd_algorithm *qnetd_algorithm[MAX_QNETD_ALGORITHMS];
+
 enum tlv_reply_error_code
 qnetd_algorithm_client_init(struct qnetd_client *client)
 {
+	if (client->decision_algorithm >= MAX_QNETD_ALGORITHMS ||
+	    qnetd_algorithm[client->decision_algorithm] == NULL) {
 
-	switch (client->decision_algorithm) {
-	case TLV_DECISION_ALGORITHM_TYPE_TEST:
-		return (qnetd_algo_test_client_init(client));
-		break;
-	case TLV_DECISION_ALGORITHM_TYPE_FFSPLIT:
-		return (qnetd_algo_ffsplit_client_init(client));
-		break;
-	default:
 		errx(1, "qnetd_algorithm_client_init unhandled decision algorithm");
-		break;
+		return (TLV_REPLY_ERROR_CODE_INTERNAL_ERROR);
 	}
 
-	return (TLV_REPLY_ERROR_CODE_INTERNAL_ERROR);
+	return qnetd_algorithm[client->decision_algorithm]->init(client);
 }
 
 enum tlv_reply_error_code
@@ -64,24 +60,17 @@ qnetd_algorithm_config_node_list_received(struct qnetd_client *client,
     uint32_t msg_seq_num, int config_version_set, uint64_t config_version,
     const struct node_list *nodes, int initial, enum tlv_vote *result_vote)
 {
+	if (client->decision_algorithm >= MAX_QNETD_ALGORITHMS ||
+	    qnetd_algorithm[client->decision_algorithm] == NULL) {
 
-	switch (client->decision_algorithm) {
-	case TLV_DECISION_ALGORITHM_TYPE_TEST:
-		return (qnetd_algo_test_config_node_list_received(client, msg_seq_num,
-		    config_version_set, config_version, nodes, initial, result_vote));
-		break;
-	case TLV_DECISION_ALGORITHM_TYPE_FFSPLIT:
-		return (qnetd_algo_ffsplit_config_node_list_received(client, msg_seq_num,
-		    config_version_set, config_version, nodes, initial, result_vote));
-		break;
-	default:
 		errx(1, "qnetd_algorithm_config_node_list_received unhandled "
-		    "decision algorithm");
-		break;
+		     "decision algorithm");
+		return (TLV_REPLY_ERROR_CODE_INTERNAL_ERROR);
 	}
 
-	return (TLV_REPLY_ERROR_CODE_INTERNAL_ERROR);
-
+	return qnetd_algorithm[client->decision_algorithm]->config_node_list_received(
+		client, msg_seq_num,
+		config_version_set, config_version, nodes, initial, result_vote);
 }
 
 enum tlv_reply_error_code
@@ -91,59 +80,45 @@ qnetd_algorithm_membership_node_list_received(struct qnetd_client *client,
     const struct node_list *nodes, enum tlv_vote *result_vote)
 {
 
-	switch (client->decision_algorithm) {
-	case TLV_DECISION_ALGORITHM_TYPE_TEST:
-		return (qnetd_algo_test_membership_node_list_received(client, msg_seq_num,
-		    config_version_set, config_version, ring_id, quorate, nodes, result_vote));
-		break;
-	case TLV_DECISION_ALGORITHM_TYPE_FFSPLIT:
-		return (qnetd_algo_ffsplit_membership_node_list_received(client, msg_seq_num,
-		    config_version_set, config_version, ring_id, quorate, nodes, result_vote));
-		break;
-	default:
+	if (client->decision_algorithm >= MAX_QNETD_ALGORITHMS ||
+	    qnetd_algorithm[client->decision_algorithm] == NULL) {
+
 		errx(1, "qnetd_algorithm_membership_node_list_received unhandled "
 		    "decision algorithm");
-		break;
+		return (TLV_REPLY_ERROR_CODE_INTERNAL_ERROR);
 	}
 
-	return (TLV_REPLY_ERROR_CODE_INTERNAL_ERROR);
+	return qnetd_algorithm[client->decision_algorithm]->membership_node_list_received(
+		client, msg_seq_num,
+		config_version_set, config_version, ring_id, quorate, nodes, result_vote);
 }
 
 void
 qnetd_algorithm_client_disconnect(struct qnetd_client *client, int server_going_down)
 {
+	if (client->decision_algorithm >= MAX_QNETD_ALGORITHMS ||
+	    qnetd_algorithm[client->decision_algorithm] == NULL) {
 
-	switch (client->decision_algorithm) {
-	case TLV_DECISION_ALGORITHM_TYPE_TEST:
-		qnetd_algo_test_client_disconnect(client, server_going_down);
-		break;
-	case TLV_DECISION_ALGORITHM_TYPE_FFSPLIT:
-		qnetd_algo_ffsplit_client_disconnect(client, server_going_down);
-		break;
-	default:
 		errx(1, "qnetd_algorithm_client_disconnect unhandled decision algorithm");
-		break;
+		return;
 	}
+
+	qnetd_algorithm[client->decision_algorithm]->client_disconnect(client, server_going_down);
 }
 
 enum tlv_reply_error_code
 qnetd_algorithm_ask_for_vote_received(struct qnetd_client *client, uint32_t msg_seq_num,
     enum tlv_vote *result_vote)
 {
+	if (client->decision_algorithm >= MAX_QNETD_ALGORITHMS ||
+	    qnetd_algorithm[client->decision_algorithm] == NULL) {
 
-	switch (client->decision_algorithm) {
-	case TLV_DECISION_ALGORITHM_TYPE_TEST:
-		return (qnetd_algo_test_ask_for_vote_received(client, msg_seq_num, result_vote));
-		break;
-	case TLV_DECISION_ALGORITHM_TYPE_FFSPLIT:
-		return (qnetd_algo_ffsplit_ask_for_vote_received(client, msg_seq_num, result_vote));
-		break;
-	default:
 		errx(1, "qnetd_algorithm_ask_for_vote_received unhandled decision algorithm");
-		break;
+		return (TLV_REPLY_ERROR_CODE_INTERNAL_ERROR);
 	}
 
-	return (TLV_REPLY_ERROR_CODE_INTERNAL_ERROR);
+	return qnetd_algorithm[client->decision_algorithm]->ask_for_vote_received(
+		client, msg_seq_num, result_vote);
 }
 
 enum tlv_reply_error_code
@@ -163,4 +138,19 @@ qnetd_algorithm_vote_info_reply_received(struct qnetd_client *client, uint32_t m
 	}
 
 	return (TLV_REPLY_ERROR_CODE_INTERNAL_ERROR);
+}
+
+
+enum tlv_reply_error_code
+qnetd_algorithm_register(enum tlv_decision_algorithm_type algorithm_number, struct qnetd_algorithm *algorithm)
+{
+	if (algorithm_number >= MAX_QNETD_ALGORITHMS) {
+		return TLV_REPLY_ERROR_CODE_UNSUPPORTED_DECISION_ALGORITHM;
+	}
+
+	if (qnetd_algorithm[algorithm_number] != NULL) {
+		return TLV_REPLY_ERROR_CODE_DECISION_ALGORITHM_ALREADY_REGISTERED;
+	}
+	qnetd_algorithm[algorithm_number] = algorithm;
+	return TLV_REPLY_ERROR_CODE_NO_ERROR;
 }

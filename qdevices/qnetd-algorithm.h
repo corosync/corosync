@@ -66,6 +66,34 @@ extern enum tlv_reply_error_code	qnetd_algorithm_ask_for_vote_received(
 extern enum tlv_reply_error_code	qnetd_algorithm_vote_info_reply_received(
     struct qnetd_client *client, uint32_t msg_seq_num);
 
+struct qnetd_algorithm {
+	enum tlv_reply_error_code (*init)(struct qnetd_client *client);
+
+	void (*client_disconnect)(struct qnetd_client *client, int server_going_down);
+
+	enum tlv_reply_error_code (*membership_node_list_received)(
+		struct qnetd_client *client,
+		uint32_t msg_seq_num, int config_version_set, uint64_t config_version,
+		const struct tlv_ring_id *ring_id, enum tlv_quorate quorate,
+		const struct node_list *nodes, enum tlv_vote *result_vote);
+
+	enum tlv_reply_error_code (*config_node_list_received)(
+		struct qnetd_client *client,
+		uint32_t msg_seq_num, int config_version_set, uint64_t config_version,
+		const struct node_list *nodes, int initial, enum tlv_vote *result_vote);
+
+	enum tlv_reply_error_code (*ask_for_vote_received)(
+		struct qnetd_client *client, uint32_t msg_seq_num, enum tlv_vote *result_vote);
+
+	enum tlv_reply_error_code (*vote_info_reply_received)(struct qnetd_client *client, uint32_t msg_seq_num);
+
+};
+
+extern enum tlv_reply_error_code	qnetd_algorithm_register(
+	enum tlv_decision_algorithm_type algorithm_number, struct qnetd_algorithm *algorithm);
+
+#define MAX_QNETD_ALGORITHMS 10
+
 #ifdef __cplusplus
 }
 #endif

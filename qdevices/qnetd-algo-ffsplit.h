@@ -62,6 +62,8 @@ extern enum tlv_reply_error_code	qnetd_algo_ffsplit_ask_for_vote_received(
 extern enum tlv_reply_error_code	qnetd_algo_ffsplit_vote_info_reply_received(
     struct qnetd_client *client, uint32_t msg_seq_num);
 
+extern enum tlv_reply_error_code qnetd_algo_ffsplit_register(void);
+
 #ifdef __cplusplus
 }
 #endif
