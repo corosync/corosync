@@ -39,6 +39,7 @@
 #include "qnetd-algo-test.h"
 #include "qnetd-log.h"
 #include "qnetd-cluster-list.h"
+#include "qnetd-client-send.h"
 
 static void
 qnetd_algo_test_dump_cluster(struct qnetd_cluster *cluster)

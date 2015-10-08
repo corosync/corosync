@@ -267,13 +267,22 @@ qdevice_net_check_tls_compatibility(enum tlv_tls_supported server_tls,
 }
 
 static int
+qdevice_net_msg_received_unexpected_msg(struct qdevice_net_instance *instance,
+    const struct msg_decoded *msg, const char *msg_str)
+{
+
+	qdevice_net_log(LOG_ERR, "Received unexpected %s message. Disconnecting from server",
+	    msg_str);
+
+	return (-1);
+}
+
+static int
 qdevice_net_msg_received_preinit(struct qdevice_net_instance *instance,
     const struct msg_decoded *msg)
 {
 
-	qdevice_net_log(LOG_ERR, "Received unexpected preinit message. Disconnecting from server");
-
-	return (-1);
+	return (qdevice_net_msg_received_unexpected_msg(instance, msg, "preinit"));
 }
 
 static int
@@ -344,6 +353,31 @@ qdevice_net_send_init(struct qdevice_net_instance *instance)
 	send_buffer_list_put(&instance->send_buffer_list, send_buffer);
 
 	instance->state = QDEVICE_NET_STATE_WAITING_INIT_REPLY;
+
+	return (0);
+}
+
+static int
+qdevice_net_send_ask_for_vote(struct qdevice_net_instance *instance)
+{
+	struct send_buffer_list_entry *send_buffer;
+
+	send_buffer = send_buffer_list_get_new(&instance->send_buffer_list);
+	if (send_buffer == NULL) {
+		qdevice_net_log(LOG_ERR, "Can't allocate send list buffer for ask for vote msg");
+
+		return (-1);
+	}
+
+	instance->last_msg_seq_num++;
+
+	if (msg_create_ask_for_vote(&send_buffer->buffer, instance->last_msg_seq_num) == 0) {
+		qdevice_net_log(LOG_ERR, "Can't allocate send buffer for ask for vote msg");
+
+		return (-1);
+	}
+
+	send_buffer_list_put(&instance->send_buffer_list, send_buffer);
 
 	return (0);
 }
@@ -540,9 +574,7 @@ qdevice_net_msg_received_starttls(struct qdevice_net_instance *instance,
     const struct msg_decoded *msg)
 {
 
-	qdevice_net_log(LOG_ERR, "Received unexpected starttls message. Disconnecting from server");
-
-	return (-1);
+	return (qdevice_net_msg_received_unexpected_msg(instance, msg, "starttls"));
 }
 
 static int
@@ -566,10 +598,7 @@ qdevice_net_msg_received_set_option(struct qdevice_net_instance *instance,
     const struct msg_decoded *msg)
 {
 
-	qdevice_net_log(LOG_ERR, "Received unexpected set option message. "
-	    "Disconnecting from server");
-
-	return (-1);
+	return (qdevice_net_msg_received_unexpected_msg(instance, msg, "set option"));
 }
 
 static int
@@ -799,6 +828,13 @@ qdevice_net_msg_received_set_option_reply(struct qdevice_net_instance *instance,
     const struct msg_decoded *msg)
 {
 
+	if (instance->state != QDEVICE_NET_STATE_WAITING_SET_OPTION_REPLY) {
+		qdevice_net_log(LOG_ERR, "Received unexpected set option reply message. "
+		    "Disconnecting from server");
+
+		return (-1);
+	}
+
 	if (qdevice_net_msg_check_seq_number(instance, msg) != 0) {
 		return (-1);
 	}
@@ -852,10 +888,7 @@ qdevice_net_msg_received_echo_request(struct qdevice_net_instance *instance,
     const struct msg_decoded *msg)
 {
 
-	qdevice_net_log(LOG_ERR, "Received unexpected echo request message. "
-	    "Disconnecting from server");
-
-	return (-1);
+	return (qdevice_net_msg_received_unexpected_msg(instance, msg, "echo request"));
 }
 
 static int
@@ -877,10 +910,7 @@ qdevice_net_msg_received_node_list(struct qdevice_net_instance *instance,
     const struct msg_decoded *msg)
 {
 
-	qdevice_net_log(LOG_ERR, "Received unexpected echo request message. "
-	    "Disconnecting from server");
-
-	return (-1);
+	return (qdevice_net_msg_received_unexpected_msg(instance, msg, "node list"));
 }
 
 static int
@@ -888,9 +918,103 @@ qdevice_net_msg_received_node_list_reply(struct qdevice_net_instance *instance,
     const struct msg_decoded *msg)
 {
 
-	qdevice_net_log(LOG_INFO, "Received node list reply %u", msg->vote);
+	if (instance->state != QDEVICE_NET_STATE_WAITING_VOTEQUORUM_CMAP_EVENTS) {
+		qdevice_net_log(LOG_ERR, "Received unexpected node list reply message. "
+		    "Disconnecting from server");
+
+		return (-1);
+	}
+
+	if (!msg->vote_set || !msg->seq_number_set) {
+		qdevice_net_log(LOG_ERR, "Received node list reply message without "
+		    "required options. Disconnecting from server");
+	}
+
+	qdevice_net_log(LOG_INFO, "Received node list reply seq=%"PRIu32", vote=%u",
+	    msg->seq_number, msg->vote);
 
 	return (0);
+}
+
+static int
+qdevice_net_msg_received_ask_for_vote(struct qdevice_net_instance *instance,
+    const struct msg_decoded *msg)
+{
+
+	return (qdevice_net_msg_received_unexpected_msg(instance, msg, "ask for vote"));
+}
+
+static int
+qdevice_net_msg_received_ask_for_vote_reply(struct qdevice_net_instance *instance,
+    const struct msg_decoded *msg)
+{
+
+	if (instance->state != QDEVICE_NET_STATE_WAITING_VOTEQUORUM_CMAP_EVENTS) {
+		qdevice_net_log(LOG_ERR, "Received unexpected ask for vote reply message. "
+		    "Disconnecting from server");
+
+		return (-1);
+	}
+
+	if (!msg->vote_set || !msg->seq_number_set) {
+		qdevice_net_log(LOG_ERR, "Received node list reply message without "
+		    "required options. Disconnecting from server");
+	}
+
+	qdevice_net_log(LOG_INFO, "Received ask for vote reply seq=%"PRIu32", vote=%u",
+	    msg->seq_number, msg->vote);
+
+	return (0);
+}
+
+static int
+qdevice_net_msg_received_vote_info(struct qdevice_net_instance *instance,
+    const struct msg_decoded *msg)
+{
+	struct send_buffer_list_entry *send_buffer;
+
+	if (instance->state != QDEVICE_NET_STATE_WAITING_VOTEQUORUM_CMAP_EVENTS) {
+		qdevice_net_log(LOG_ERR, "Received unexpected vote info message. "
+		    "Disconnecting from server");
+
+		return (-1);
+	}
+
+	if (!msg->vote_set || !msg->seq_number_set) {
+		qdevice_net_log(LOG_ERR, "Received node list reply message without "
+		    "required options. Disconnecting from server");
+	}
+
+	qdevice_net_log(LOG_INFO, "Received vote info seq=%"PRIu32", vote=%u",
+	    msg->seq_number, msg->vote);
+
+	/*
+	 * Create reply message
+	 */
+	send_buffer = send_buffer_list_get_new(&instance->send_buffer_list);
+	if (send_buffer == NULL) {
+		qdevice_net_log(LOG_ERR, "Can't allocate send list buffer for "
+		    "vote info reply msg");
+
+		return (-1);
+	}
+
+	if (msg_create_vote_info_reply(&send_buffer->buffer, msg->seq_number) == 0) {
+		qdevice_net_log(LOG_ERR, "Can't allocate send buffer for "
+		    "vote info reply list msg");
+
+		return (-1);
+	}
+
+	return (0);
+}
+
+static int
+qdevice_net_msg_received_vote_info_reply(struct qdevice_net_instance *instance,
+    const struct msg_decoded *msg)
+{
+
+	return (qdevice_net_msg_received_unexpected_msg(instance, msg, "vote info reply"));
 }
 
 static int
@@ -948,6 +1072,18 @@ qdevice_net_msg_received(struct qdevice_net_instance *instance)
 		break;
 	case MSG_TYPE_NODE_LIST_REPLY:
 		ret_val = qdevice_net_msg_received_node_list_reply(instance, &msg);
+		break;
+	case MSG_TYPE_ASK_FOR_VOTE:
+		ret_val = qdevice_net_msg_received_ask_for_vote(instance, &msg);
+		break;
+	case MSG_TYPE_ASK_FOR_VOTE_REPLY:
+		ret_val = qdevice_net_msg_received_ask_for_vote_reply(instance, &msg);
+		break;
+	case MSG_TYPE_VOTE_INFO:
+		ret_val = qdevice_net_msg_received_vote_info(instance, &msg);
+		break;
+	case MSG_TYPE_VOTE_INFO_REPLY:
+		ret_val = qdevice_net_msg_received_vote_info_reply(instance, &msg);
 		break;
 	default:
 		qdevice_net_log(LOG_ERR, "Received unsupported message %u. "
