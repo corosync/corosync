@@ -272,7 +272,7 @@ quick_start() {
     ssh "root@$qnetd_addr" "$0 -s -c \"/tmp/$CRQ_FILE_BASE\" -n \"$CLUSTER_NAME\""
 
     # Copy exported CRT to master node
-    scp "root@$qnetd_addr:$DB_DIR_QNETD/cluster-$CLUSTER_NAME.crt" "root@master_node:$DB_DIR_NODE"
+    scp "root@$qnetd_addr:$DB_DIR_QNETD/cluster-$CLUSTER_NAME.crt" "root@$master_node:$DB_DIR_NODE"
 
     # Import certificate
     ssh "root@$master_node" "$0 -M -c \"$DB_DIR_NODE/cluster-$CLUSTER_NAME.crt\""
