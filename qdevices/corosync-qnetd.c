@@ -104,12 +104,13 @@ PRFileDesc *global_server_socket;
 /*
  * Decision algorithms supported in this server
  */
-#define QNETD_STATIC_SUPPORTED_DECISION_ALGORITHMS_SIZE		2
+#define QNETD_STATIC_SUPPORTED_DECISION_ALGORITHMS_SIZE		3
 
 enum tlv_decision_algorithm_type
     qnetd_static_supported_decision_algorithms[QNETD_STATIC_SUPPORTED_DECISION_ALGORITHMS_SIZE] = {
 	TLV_DECISION_ALGORITHM_TYPE_TEST,
 	TLV_DECISION_ALGORITHM_TYPE_FFSPLIT,
+	TLV_DECISION_ALGORITHM_TYPE_2NODELMS,
 };
 
 static void

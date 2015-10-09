@@ -1545,6 +1545,8 @@ qdevice_net_instance_init_from_cmap(struct qdevice_net_instance *instance,
 			decision_algorithm = TLV_DECISION_ALGORITHM_TYPE_TEST;
 		} else if (strcmp(str, "ffsplit") == 0) {
 			decision_algorithm = TLV_DECISION_ALGORITHM_TYPE_FFSPLIT;
+		} else if (strcmp(str, "2nodelms") == 0) {
+			decision_algorithm = TLV_DECISION_ALGORITHM_TYPE_2NODELMS;
 		} else {
 			errx(1, "Unknown decision algorithm %s", str);
 		}

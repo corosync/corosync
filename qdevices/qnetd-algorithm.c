@@ -39,6 +39,7 @@
 #include "qnetd-algorithm.h"
 #include "qnetd-algo-test.h"
 #include "qnetd-algo-ffsplit.h"
+#include "qnetd-algo-2nodelms.h"
 
 static struct qnetd_algorithm *qnetd_algorithm[MAX_QNETD_ALGORITHMS];
 
@@ -157,5 +158,8 @@ void algorithms_register(void)
 	}
 	if (qnetd_algo_ffsplit_register() != TLV_REPLY_ERROR_CODE_NO_ERROR) {
 		errx(1, "Failed to register decision algorithm 'ffsplit' ");
+	}
+	if (qnetd_algo_2nodelms_register() != TLV_REPLY_ERROR_CODE_NO_ERROR) {
+		errx(1, "Failed to register decision algorithm '2nodelms' ");
 	}
 }

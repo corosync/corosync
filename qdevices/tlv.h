@@ -96,6 +96,7 @@ enum tlv_reply_error_code {
 enum tlv_decision_algorithm_type {
 	TLV_DECISION_ALGORITHM_TYPE_TEST = 0,
 	TLV_DECISION_ALGORITHM_TYPE_FFSPLIT = 1,
+	TLV_DECISION_ALGORITHM_TYPE_2NODELMS = 2,
 };
 
 struct tlv_ring_id {
