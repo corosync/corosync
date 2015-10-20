@@ -32,38 +32,55 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _NSS_SOCK_H_
-#define _NSS_SOCK_H_
+#include "qdevice-net-instance.h"
 
-#include <nss.h>
-#include <ssl.h>
+int
+qdevice_net_instance_init(struct qdevice_net_instance *instance, size_t initial_receive_size,
+    size_t initial_send_size, size_t min_send_size, size_t max_send_buffers,
+    size_t max_receive_size,
+    enum tlv_tls_supported tls_supported, uint32_t node_id,
+    enum tlv_decision_algorithm_type decision_algorithm, uint32_t heartbeat_interval,
+    uint32_t sync_heartbeat_interval, uint32_t cast_vote_timer_interval,
+    const char *host_addr, uint16_t host_port, const char *cluster_name)
+{
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+	memset(instance, 0, sizeof(*instance));
 
-extern void		nss_sock_err(int eval);
+	instance->initial_receive_size = initial_receive_size;
+	instance->initial_send_size = initial_send_size;
+	instance->min_send_size = min_send_size;
+	instance->max_receive_size = max_receive_size;
+	instance->node_id = node_id;
+	instance->decision_algorithm = decision_algorithm;
+	instance->heartbeat_interval = heartbeat_interval;
+	instance->sync_heartbeat_interval = sync_heartbeat_interval;
+	instance->cast_vote_timer_interval = cast_vote_timer_interval;
+	instance->cast_vote_timer = NULL;
+	instance->host_addr = host_addr;
+	instance->host_port = host_port;
+	instance->cluster_name = cluster_name;
 
-extern int		nss_sock_init_nss(char *config_dir);
+	dynar_init(&instance->receive_buffer, initial_receive_size);
 
-extern PRFileDesc	*nss_sock_create_listen_socket(const char *hostname, uint16_t port,
-    PRIntn af);
+	send_buffer_list_init(&instance->send_buffer_list, max_send_buffers,
+	    initial_send_size);
 
-extern int		nss_sock_set_nonblocking(PRFileDesc *sock);
+	timer_list_init(&instance->main_timer_list);
 
-extern PRFileDesc 	*nss_sock_create_client_socket(const char *hostname, uint16_t port,
-    PRIntn af, PRIntervalTime timeout);
+	instance->tls_supported = tls_supported;
 
-extern PRFileDesc	*nss_sock_start_ssl_as_client(PRFileDesc *input_sock, const char *ssl_url,
-    SSLBadCertHandler bad_cert_hook, SSLGetClientAuthData client_auth_hook,
-    void *client_auth_hook_arg, int force_handshake, int *reset_would_block);
-
-extern PRFileDesc	*nss_sock_start_ssl_as_server(PRFileDesc *input_sock,
-    CERTCertificate *server_cert, SECKEYPrivateKey *server_key, int require_client_cert,
-    int force_handshake, int *reset_would_block);
-
-#ifdef __cplusplus
+	return (0);
 }
-#endif
 
-#endif /* _NSS_SOCK_H_ */
+int
+qdevice_net_instance_destroy(struct qdevice_net_instance *instance)
+{
+
+	dynar_destroy(&instance->receive_buffer);
+
+	send_buffer_list_free(&instance->send_buffer_list);
+
+	timer_list_free(&instance->main_timer_list);
+
+	return (0);
+}

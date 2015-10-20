@@ -32,9 +32,17 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <err.h>
+
 #include <prnetdb.h>
 
 #include "nss-sock.h"
+
+void
+nss_sock_err(int eval) {
+	errx(eval, "nss error %d: %s", PR_GetError(), PR_ErrorToString(PR_GetError(),
+	    PR_LANGUAGE_I_DEFAULT));
+}
 
 int
 nss_sock_init_nss(char *config_dir)

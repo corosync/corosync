@@ -36,7 +36,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 
-#include "qnetd-defines.h"
+#include "qnet-config.h"
 #include "qnetd-log.h"
 
 static int qnetd_log_config_target = 0;

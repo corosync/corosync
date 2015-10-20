@@ -58,91 +58,19 @@
 #include <cmap.h>
 #include <votequorum.h>
 
-#include "qnetd-defines.h"
+#include "qnet-config.h"
 #include "dynar.h"
 #include "nss-sock.h"
 #include "tlv.h"
 #include "msg.h"
 #include "msgio.h"
-#include "qnetd-log.h"
+#include "qdevice-net-log.h"
 #include "timer-list.h"
 #include "send-buffer-list.h"
-
-#define NSS_DB_DIR	COROSYSCONFDIR "/qdevice/net/node/nssdb"
-
-/*
- * It's usually not a good idea to change following defines
- */
-#define QDEVICE_NET_INITIAL_MSG_RECEIVE_SIZE	(1 << 15)
-#define QDEVICE_NET_INITIAL_MSG_SEND_SIZE	(1 << 15)
-#define QDEVICE_NET_MIN_MSG_SEND_SIZE		QDEVICE_NET_INITIAL_MSG_SEND_SIZE
-#define QDEVICE_NET_MAX_MSG_RECEIVE_SIZE	(1 << 24)
-
-#define QNETD_NSS_SERVER_CN		"Qnetd Server"
-#define QDEVICE_NET_NSS_CLIENT_CERT_NICKNAME	"Cluster Cert"
-#define QDEVICE_NET_VOTEQUORUM_DEVICE_NAME	"QdeviceNet"
-
-#define QDEVICE_NET_MAX_SEND_BUFFERS		10
-
-#define QDEVICE_NET_DEFAULT_ALGORITHM		TLV_DECISION_ALGORITHM_TYPE_TEST
-
-#define qdevice_net_log			qnetd_log
-#define qdevice_net_log_nss		qnetd_log_nss
-#define qdevice_net_log_init		qnetd_log_init
-#define qdevice_net_log_close		qnetd_log_close
-#define qdevice_net_log_set_debug	qnetd_log_set_debug
-
-#define QDEVICE_NET_LOG_TARGET_STDERR		QNETD_LOG_TARGET_STDERR
-#define QDEVICE_NET_LOG_TARGET_SYSLOG		QNETD_LOG_TARGET_SYSLOG
-
-#define MAX_CS_TRY_AGAIN	10
-
-enum qdevice_net_state {
-	QDEVICE_NET_STATE_WAITING_PREINIT_REPLY,
-	QDEVICE_NET_STATE_WAITING_STARTTLS_BEING_SENT,
-	QDEVICE_NET_STATE_WAITING_INIT_REPLY,
-	QDEVICE_NET_STATE_WAITING_SET_OPTION_REPLY,
-	QDEVICE_NET_STATE_WAITING_VOTEQUORUM_CMAP_EVENTS,
-};
-
-struct qdevice_net_instance {
-	PRFileDesc *socket;
-	size_t initial_send_size;
-	size_t initial_receive_size;
-	size_t max_receive_size;
-	size_t min_send_size;
-	struct dynar receive_buffer;
-	struct send_buffer_list send_buffer_list;
-	int skipping_msg;
-	size_t msg_already_received_bytes;
-	enum qdevice_net_state state;
-	uint32_t last_msg_seq_num;
-	uint32_t echo_request_expected_msg_seq_num;
-	uint32_t echo_reply_received_msg_seq_num;
-	enum tlv_tls_supported tls_supported;
-	int using_tls;
-	uint32_t node_id;
-	uint32_t heartbeat_interval;		/* Heartbeat interval during normal operation */
-	uint32_t sync_heartbeat_interval;	/* Heartbeat interval during corosync sync */
-	const char *host_addr;
-	uint16_t host_port;
-	const char *cluster_name;
-	enum tlv_decision_algorithm_type decision_algorithm;
-	struct timer_list main_timer_list;
-	struct timer_list_entry *echo_request_timer;
-	int schedule_disconnect;
-	cmap_handle_t cmap_handle;
-	votequorum_handle_t votequorum_handle;
-	PRFileDesc *votequorum_poll_fd;
-};
-
-static votequorum_ring_id_t global_last_received_ring_id;
-
-static void
-err_nss(void) {
-	errx(1, "nss error %d: %s", PR_GetError(), PR_ErrorToString(PR_GetError(),
-	    PR_LANGUAGE_I_DEFAULT));
-}
+#include "qdevice-net-instance.h"
+#include "qdevice-net-send.h"
+#include "qdevice-net-votequorum.h"
+#include "qdevice-net-cast-vote-timer.h"
 
 static SECStatus
 qdevice_net_nss_bad_cert_hook(void *arg, PRFileDesc *fd) {
@@ -165,42 +93,10 @@ static SECStatus
 qdevice_net_nss_get_client_auth_data(void *arg, PRFileDesc *sock, struct CERTDistNamesStr *caNames,
     struct CERTCertificateStr **pRetCert, struct SECKEYPrivateKeyStr **pRetKey)
 {
+
 	qdevice_net_log(LOG_DEBUG, "Sending client auth data.");
 
 	return (NSS_GetClientAuthData(arg, sock, caNames, pRetCert, pRetKey));
-}
-
-static int
-qdevice_net_schedule_echo_request_send(struct qdevice_net_instance *instance)
-{
-	struct send_buffer_list_entry *send_buffer;
-
-	if (instance->echo_reply_received_msg_seq_num !=
-	    instance->echo_request_expected_msg_seq_num) {
-		qdevice_net_log(LOG_ERR, "Server didn't send echo reply message on time. "
-		    "Disconnecting from server.");
-		return (-1);
-	}
-
-	send_buffer = send_buffer_list_get_new(&instance->send_buffer_list);
-	if (send_buffer == NULL) {
-		qdevice_net_log(LOG_CRIT, "Can't allocate send list buffer for reply msg.");
-
-		return (-1);
-	}
-
-	instance->echo_request_expected_msg_seq_num++;
-
-	if (msg_create_echo_request(&send_buffer->buffer, 1,
-	    instance->echo_request_expected_msg_seq_num) == -1) {
-		qdevice_net_log(LOG_ERR, "Can't allocate send buffer for echo request msg");
-
-		return (-1);
-	}
-
-	send_buffer_list_put(&instance->send_buffer_list, send_buffer);
-
-	return (0);
 }
 
 static void
@@ -321,67 +217,6 @@ qdevice_net_msg_check_echo_reply_seq_number(struct qdevice_net_instance *instanc
 	return (0);
 }
 
-static int
-qdevice_net_send_init(struct qdevice_net_instance *instance)
-{
-	enum msg_type *supported_msgs;
-	size_t no_supported_msgs;
-	enum tlv_opt_type *supported_opts;
-	size_t no_supported_opts;
-	struct send_buffer_list_entry *send_buffer;
-
-	tlv_get_supported_options(&supported_opts, &no_supported_opts);
-	msg_get_supported_messages(&supported_msgs, &no_supported_msgs);
-	instance->last_msg_seq_num++;
-
-	send_buffer = send_buffer_list_get_new(&instance->send_buffer_list);
-	if (send_buffer == NULL) {
-		qdevice_net_log(LOG_ERR, "Can't allocate send list buffer for init msg");
-
-		return (-1);
-	}
-
-	if (msg_create_init(&send_buffer->buffer, 1, instance->last_msg_seq_num,
-	    instance->decision_algorithm,
-	    supported_msgs, no_supported_msgs, supported_opts, no_supported_opts,
-	    instance->node_id) == 0) {
-		qdevice_net_log(LOG_ERR, "Can't allocate send buffer for init msg");
-
-		return (-1);
-	}
-
-	send_buffer_list_put(&instance->send_buffer_list, send_buffer);
-
-	instance->state = QDEVICE_NET_STATE_WAITING_INIT_REPLY;
-
-	return (0);
-}
-
-static int
-qdevice_net_send_ask_for_vote(struct qdevice_net_instance *instance)
-{
-	struct send_buffer_list_entry *send_buffer;
-
-	send_buffer = send_buffer_list_get_new(&instance->send_buffer_list);
-	if (send_buffer == NULL) {
-		qdevice_net_log(LOG_ERR, "Can't allocate send list buffer for ask for vote msg");
-
-		return (-1);
-	}
-
-	instance->last_msg_seq_num++;
-
-	if (msg_create_ask_for_vote(&send_buffer->buffer, instance->last_msg_seq_num) == 0) {
-		qdevice_net_log(LOG_ERR, "Can't allocate send buffer for ask for vote msg");
-
-		return (-1);
-	}
-
-	send_buffer_list_put(&instance->send_buffer_list, send_buffer);
-
-	return (0);
-}
-
 
 static int
 qdevice_net_msg_received_preinit_reply(struct qdevice_net_instance *instance,
@@ -390,7 +225,7 @@ qdevice_net_msg_received_preinit_reply(struct qdevice_net_instance *instance,
 	int res;
 	struct send_buffer_list_entry *send_buffer;
 
-	if (instance->state != QDEVICE_NET_STATE_WAITING_PREINIT_REPLY) {
+	if (instance->state != QDEVICE_NET_INSTANCE_STATE_WAITING_PREINIT_REPLY) {
 		qdevice_net_log(LOG_ERR, "Received unexpected preinit reply message. "
 		    "Disconnecting from server");
 
@@ -439,7 +274,7 @@ qdevice_net_msg_received_preinit_reply(struct qdevice_net_instance *instance,
 
 		send_buffer_list_put(&instance->send_buffer_list, send_buffer);
 
-		instance->state = QDEVICE_NET_STATE_WAITING_STARTTLS_BEING_SENT;
+		instance->state = QDEVICE_NET_INSTANCE_STATE_WAITING_STARTTLS_BEING_SENT;
 	} else if (res == 0) {
 		if (qdevice_net_send_init(instance) != 0) {
 			return (-1);
@@ -457,7 +292,7 @@ qdevice_net_msg_received_init_reply(struct qdevice_net_instance *instance,
 	int res;
 	struct send_buffer_list_entry *send_buffer;
 
-	if (instance->state != QDEVICE_NET_STATE_WAITING_INIT_REPLY) {
+	if (instance->state != QDEVICE_NET_INSTANCE_STATE_WAITING_INIT_REPLY) {
 		qdevice_net_log(LOG_ERR, "Received unexpected init reply message. "
 		    "Disconnecting from server");
 
@@ -564,7 +399,7 @@ qdevice_net_msg_received_init_reply(struct qdevice_net_instance *instance,
 
 	send_buffer_list_put(&instance->send_buffer_list, send_buffer);
 
-	instance->state = QDEVICE_NET_STATE_WAITING_SET_OPTION_REPLY;
+	instance->state = QDEVICE_NET_INSTANCE_STATE_WAITING_SET_OPTION_REPLY;
 
 	return (0);
 }
@@ -608,7 +443,7 @@ qdevice_net_timer_send_heartbeat(void *data1, void *data2)
 
 	instance = (struct qdevice_net_instance *)data1;
 
-	if (qdevice_net_schedule_echo_request_send(instance) == -1) {
+	if (qdevice_net_send_echo_request(instance) == -1) {
 		instance->schedule_disconnect = 1;
 		return (0);
 	}
@@ -617,194 +452,6 @@ qdevice_net_timer_send_heartbeat(void *data1, void *data2)
 	 * Schedule this function callback again
 	 */
 	return (-1);
-}
-
-static uint32_t
-qdevice_net_autogenerate_node_id(const char *addr, int clear_node_high_byte)
-{
-	struct addrinfo *ainfo;
-	struct addrinfo ahints;
-	int ret, i;
-
-	memset(&ahints, 0, sizeof(ahints));
-	ahints.ai_socktype = SOCK_DGRAM;
-	ahints.ai_protocol = IPPROTO_UDP;
-	/*
-	 * Hardcoded AF_INET because autogenerated nodeid is valid only for ipv4
-	 */
-	ahints.ai_family   = AF_INET;
-
-	ret = getaddrinfo(addr, NULL, &ahints, &ainfo);
-	if (ret != 0)
-		return (0);
-
-	if (ainfo->ai_family != AF_INET) {
-
-		freeaddrinfo(ainfo);
-
-		return (0);
-	}
-
-        memcpy(&i, &((struct sockaddr_in *)ainfo->ai_addr)->sin_addr, sizeof(struct in_addr));
-	freeaddrinfo(ainfo);
-
-	ret = htonl(i);
-
-	if (clear_node_high_byte) {
-		ret &= 0x7FFFFFFF;
-	}
-
-	return (ret);
-}
-
-static int
-qdevice_net_get_nodelist(cmap_handle_t cmap_handle, struct node_list *list)
-{
-	cs_error_t cs_err;
-	cmap_iter_handle_t iter_handle;
-	char key_name[CMAP_KEYNAME_MAXLEN + 1];
-	char tmp_key[CMAP_KEYNAME_MAXLEN + 1];
-	int res;
-	int ret_value;
-	unsigned int node_pos;
-	uint32_t node_id;
-	uint32_t data_center_id;
-	char *tmp_str;
-	char *addr0_str;
-	int clear_node_high_byte;
-
-	ret_value = 0;
-
-	node_list_init(list);
-
-	cs_err = cmap_iter_init(cmap_handle, "nodelist.node.", &iter_handle);
-	if (cs_err != CS_OK) {
-		return (-1);
-	}
-
-	while ((cs_err = cmap_iter_next(cmap_handle, iter_handle, key_name, NULL, NULL)) == CS_OK) {
-		res = sscanf(key_name, "nodelist.node.%u.%s", &node_pos, tmp_key);
-		if (res != 2) {
-			continue;
-		}
-
-		if (strcmp(tmp_key, "ring0_addr") != 0) {
-			continue;
-		}
-
-		snprintf(tmp_key, CMAP_KEYNAME_MAXLEN, "nodelist.node.%u.nodeid", node_pos);
-		cs_err = cmap_get_uint32(cmap_handle, tmp_key, &node_id);
-
-		if (cs_err == CS_ERR_NOT_EXIST) {
-			/*
-			 * Nodeid doesn't exists -> autogenerate node id
-			 */
-			clear_node_high_byte = 0;
-
-			if (cmap_get_string(cmap_handle, "totem.clear_node_high_bit",
-			    &tmp_str) == CS_OK) {
-				if (strcmp (tmp_str, "yes") == 0) {
-					clear_node_high_byte = 1;
-				}
-
-				free(tmp_str);
-			}
-
-			if (cmap_get_string(cmap_handle, key_name, &addr0_str) != CS_OK) {
-				return (-1);
-			}
-
-			node_id = qdevice_net_autogenerate_node_id(addr0_str, clear_node_high_byte);
-
-			free(addr0_str);
-		} else if (cs_err != CS_OK) {
-			ret_value = -1;
-
-			goto iter_finalize;
-		}
-
-		snprintf(tmp_key, CMAP_KEYNAME_MAXLEN, "nodelist.node.%u.datacenterid", node_pos);
-		if (cmap_get_uint32(cmap_handle, tmp_key, &data_center_id) != CS_OK) {
-			data_center_id = 0;
-		}
-
-		if (node_list_add(list, node_id, data_center_id, TLV_NODE_STATE_NOT_SET) == NULL) {
-			ret_value = -1;
-
-			goto iter_finalize;
-		}
-	}
-
-iter_finalize:
-	cmap_iter_finalize(cmap_handle, iter_handle);
-
-	if (ret_value != 0) {
-		node_list_free(list);
-	}
-
-	return (ret_value);
-}
-
-static
-int qdevice_net_get_cmap_config_version(cmap_handle_t cmap_handle, uint64_t *config_version)
-{
-	int res;
-
-	if (cmap_get_uint64(cmap_handle, "totem.config_version", config_version) == CS_OK) {
-		res = 1;
-	} else {
-		*config_version = 0;
-		res = 0;
-	}
-
-	return (res);
-}
-
-static int
-qdevice_net_send_config_node_list(struct qdevice_net_instance *instance, int initial)
-{
-	struct node_list nlist;
-	struct send_buffer_list_entry *send_buffer;
-	uint64_t config_version;
-	int send_config_version;
-
-	/*
-	 * Send initial node list
-	 */
-	if (qdevice_net_get_nodelist(instance->cmap_handle, &nlist) != 0) {
-		qdevice_net_log(LOG_ERR, "Can't get initial configuration node list.");
-
-		return (-1);
-	}
-
-	send_buffer = send_buffer_list_get_new(&instance->send_buffer_list);
-	if (send_buffer == NULL) {
-		qdevice_net_log(LOG_ERR, "Can't allocate send list buffer for config "
-		    "node list msg");
-
-		node_list_free(&nlist);
-
-		return (-1);
-	}
-
-	send_config_version = qdevice_net_get_cmap_config_version(instance->cmap_handle,
-	    &config_version);
-
-	instance->last_msg_seq_num++;
-
-	if (msg_create_node_list(&send_buffer->buffer, instance->last_msg_seq_num,
-	    (initial ? TLV_NODE_LIST_TYPE_INITIAL_CONFIG : TLV_NODE_LIST_TYPE_CHANGED_CONFIG),
-	    0, NULL, send_config_version, config_version, 0, TLV_QUORATE_INQUORATE, &nlist) == 0) {
-		qdevice_net_log(LOG_ERR, "Can't allocate send buffer for config list msg");
-
-		node_list_free(&nlist);
-
-		return (-1);
-	}
-
-	send_buffer_list_put(&instance->send_buffer_list, send_buffer);
-
-	return (0);
 }
 
 static int
@@ -828,7 +475,7 @@ qdevice_net_msg_received_set_option_reply(struct qdevice_net_instance *instance,
     const struct msg_decoded *msg)
 {
 
-	if (instance->state != QDEVICE_NET_STATE_WAITING_SET_OPTION_REPLY) {
+	if (instance->state != QDEVICE_NET_INSTANCE_STATE_WAITING_SET_OPTION_REPLY) {
 		qdevice_net_log(LOG_ERR, "Received unexpected set option reply message. "
 		    "Disconnecting from server");
 
@@ -878,7 +525,12 @@ qdevice_net_msg_received_set_option_reply(struct qdevice_net_instance *instance,
 		return (-1);
 	}
 
-	instance->state = QDEVICE_NET_STATE_WAITING_VOTEQUORUM_CMAP_EVENTS;
+	if (qdevice_net_cast_vote_timer_update(instance, TLV_VOTE_WAIT_FOR_REPLY) != 0) {
+		errx(1, "qdevice_net_msg_received_set_option_reply fatal error. Can't update "
+		    "cast vote timer vote");
+	}
+
+	instance->state = QDEVICE_NET_INSTANCE_STATE_WAITING_VOTEQUORUM_CMAP_EVENTS;
 
 	return (0);
 }
@@ -918,7 +570,7 @@ qdevice_net_msg_received_node_list_reply(struct qdevice_net_instance *instance,
     const struct msg_decoded *msg)
 {
 
-	if (instance->state != QDEVICE_NET_STATE_WAITING_VOTEQUORUM_CMAP_EVENTS) {
+	if (instance->state != QDEVICE_NET_INSTANCE_STATE_WAITING_VOTEQUORUM_CMAP_EVENTS) {
 		qdevice_net_log(LOG_ERR, "Received unexpected node list reply message. "
 		    "Disconnecting from server");
 
@@ -930,8 +582,15 @@ qdevice_net_msg_received_node_list_reply(struct qdevice_net_instance *instance,
 		    "required options. Disconnecting from server");
 	}
 
+	/*
+	 * TODO API
+	 */
 	qdevice_net_log(LOG_INFO, "Received node list reply seq=%"PRIu32", vote=%u",
 	    msg->seq_number, msg->vote);
+
+	if (qdevice_net_cast_vote_timer_update(instance, msg->vote) != 0) {
+		return (-1);
+	}
 
 	return (0);
 }
@@ -949,7 +608,7 @@ qdevice_net_msg_received_ask_for_vote_reply(struct qdevice_net_instance *instanc
     const struct msg_decoded *msg)
 {
 
-	if (instance->state != QDEVICE_NET_STATE_WAITING_VOTEQUORUM_CMAP_EVENTS) {
+	if (instance->state != QDEVICE_NET_INSTANCE_STATE_WAITING_VOTEQUORUM_CMAP_EVENTS) {
 		qdevice_net_log(LOG_ERR, "Received unexpected ask for vote reply message. "
 		    "Disconnecting from server");
 
@@ -961,8 +620,15 @@ qdevice_net_msg_received_ask_for_vote_reply(struct qdevice_net_instance *instanc
 		    "required options. Disconnecting from server");
 	}
 
+	/*
+	 * TODO API
+	 */
 	qdevice_net_log(LOG_INFO, "Received ask for vote reply seq=%"PRIu32", vote=%u",
 	    msg->seq_number, msg->vote);
+
+	if (qdevice_net_cast_vote_timer_update(instance, msg->vote) != 0) {
+		return (-1);
+	}
 
 	return (0);
 }
@@ -973,7 +639,7 @@ qdevice_net_msg_received_vote_info(struct qdevice_net_instance *instance,
 {
 	struct send_buffer_list_entry *send_buffer;
 
-	if (instance->state != QDEVICE_NET_STATE_WAITING_VOTEQUORUM_CMAP_EVENTS) {
+	if (instance->state != QDEVICE_NET_INSTANCE_STATE_WAITING_VOTEQUORUM_CMAP_EVENTS) {
 		qdevice_net_log(LOG_ERR, "Received unexpected vote info message. "
 		    "Disconnecting from server");
 
@@ -985,8 +651,15 @@ qdevice_net_msg_received_vote_info(struct qdevice_net_instance *instance,
 		    "required options. Disconnecting from server");
 	}
 
+	/*
+	 * TODO API
+	 */
 	qdevice_net_log(LOG_INFO, "Received vote info seq=%"PRIu32", vote=%u",
 	    msg->seq_number, msg->vote);
+
+	if (qdevice_net_cast_vote_timer_update(instance, msg->vote) != 0) {
+		return (-1);
+	}
 
 	/*
 	 * Create reply message
@@ -1183,7 +856,7 @@ qdevice_net_socket_write_finished(struct qdevice_net_instance *instance)
 {
 	PRFileDesc *new_pr_fd;
 
-	if (instance->state == QDEVICE_NET_STATE_WAITING_STARTTLS_BEING_SENT) {
+	if (instance->state == QDEVICE_NET_INSTANCE_STATE_WAITING_STARTTLS_BEING_SENT) {
 		/*
 		 * StartTLS sent to server. Begin with TLS handshake
 		 */
@@ -1252,7 +925,6 @@ qdevice_net_socket_write(struct qdevice_net_instance *instance)
 
 	return (0);
 }
-
 
 #define QDEVICE_NET_POLL_NO_FDS		2
 #define QDEVICE_NET_POLL_SOCKET		0
@@ -1346,57 +1018,6 @@ qdevice_net_poll(struct qdevice_net_instance *instance)
 	return (0);
 }
 
-static int
-qdevice_net_instance_init(struct qdevice_net_instance *instance, size_t initial_receive_size,
-    size_t initial_send_size, size_t min_send_size, size_t max_receive_size,
-    enum tlv_tls_supported tls_supported, uint32_t node_id,
-    enum tlv_decision_algorithm_type decision_algorithm, uint32_t heartbeat_interval,
-    const char *host_addr, uint16_t host_port, const char *cluster_name)
-{
-
-	memset(instance, 0, sizeof(*instance));
-
-	instance->initial_receive_size = initial_receive_size;
-	instance->initial_send_size = initial_send_size;
-	instance->min_send_size = min_send_size;
-	instance->max_receive_size = max_receive_size;
-	instance->node_id = node_id;
-	instance->decision_algorithm = decision_algorithm;
-	instance->heartbeat_interval = heartbeat_interval;
-	instance->host_addr = host_addr;
-	instance->host_port = host_port;
-	instance->cluster_name = cluster_name;
-	dynar_init(&instance->receive_buffer, initial_receive_size);
-	send_buffer_list_init(&instance->send_buffer_list, QDEVICE_NET_MAX_SEND_BUFFERS,
-	    initial_send_size);
-	timer_list_init(&instance->main_timer_list);
-
-	instance->tls_supported = tls_supported;
-
-	return (0);
-}
-
-static int
-qdevice_net_instance_destroy(struct qdevice_net_instance *instance)
-{
-
-	timer_list_free(&instance->main_timer_list);
-	dynar_destroy(&instance->receive_buffer);
-	send_buffer_list_free(&instance->send_buffer_list);
-
-	/*
-	 * Close cmap and votequorum connections
-	 */
-	if (votequorum_qdevice_unregister(instance->votequorum_handle,
-	    QDEVICE_NET_VOTEQUORUM_DEVICE_NAME) != CS_OK) {
-		qdevice_net_log_nss(LOG_WARNING, "Unable to unregister votequorum device");
-	}
-	votequorum_finalize(instance->votequorum_handle);
-	cmap_finalize(instance->cmap_handle);
-
-	return (0);
-}
-
 static void
 qdevice_net_init_cmap(cmap_handle_t *handle)
 {
@@ -1406,7 +1027,7 @@ qdevice_net_init_cmap(cmap_handle_t *handle)
 	no_retries = 0;
 
 	while ((res = cmap_initialize(handle)) == CS_ERR_TRY_AGAIN &&
-	    no_retries++ < MAX_CS_TRY_AGAIN) {
+	    no_retries++ < QDEVICE_NET_MAX_CS_TRY_AGAIN) {
 		poll(NULL, 0, 1000);
 	}
 
@@ -1447,6 +1068,7 @@ qdevice_net_instance_init_from_cmap(struct qdevice_net_instance *instance,
 	enum tlv_decision_algorithm_type decision_algorithm;
 	uint32_t heartbeat_interval;
 	uint32_t sync_heartbeat_interval;
+	uint32_t cast_vote_timer_interval;
 	char *host_addr;
 	int host_port;
 	char *ep;
@@ -1526,6 +1148,7 @@ qdevice_net_instance_init_from_cmap(struct qdevice_net_instance *instance,
 	if (cmap_get_uint32(cmap_handle, "quorum.device.timeout", &heartbeat_interval) != CS_OK) {
 		heartbeat_interval = VOTEQUORUM_QDEVICE_DEFAULT_TIMEOUT;
 	}
+	cast_vote_timer_interval = heartbeat_interval * 0.5;
 	heartbeat_interval = heartbeat_interval * 0.8;
 
 	if (cmap_get_uint32(cmap_handle, "quorum.device.sync_timeout",
@@ -1559,169 +1182,15 @@ qdevice_net_instance_init_from_cmap(struct qdevice_net_instance *instance,
 	 */
 	if (qdevice_net_instance_init(instance,
 	    QDEVICE_NET_INITIAL_MSG_RECEIVE_SIZE, QDEVICE_NET_INITIAL_MSG_SEND_SIZE,
-	    QDEVICE_NET_MIN_MSG_SEND_SIZE, QDEVICE_NET_MAX_MSG_RECEIVE_SIZE,
+	    QDEVICE_NET_MIN_MSG_SEND_SIZE, QDEVICE_NET_MAX_SEND_BUFFERS, QDEVICE_NET_MAX_MSG_RECEIVE_SIZE,
 	    tls_supported, node_id, decision_algorithm,
-	    heartbeat_interval,
+	    heartbeat_interval, sync_heartbeat_interval, cast_vote_timer_interval,
 	    host_addr, host_port, cluster_name) == -1) {
 		errx(1, "Can't initialize qdevice-net");
 	}
 
 	instance->cmap_handle = cmap_handle;
 }
-
-static enum tlv_node_state
-qdevice_net_convert_votequorum_to_tlv_node_state(uint32_t votequorum_node_state)
-{
-	enum tlv_node_state res;
-
-	switch (votequorum_node_state) {
-	case VOTEQUORUM_NODESTATE_MEMBER: res = TLV_NODE_STATE_MEMBER; break;
-	case VOTEQUORUM_NODESTATE_DEAD: res = TLV_NODE_STATE_DEAD; break;
-	case VOTEQUORUM_NODESTATE_LEAVING: res = TLV_NODE_STATE_LEAVING; break;
-	default:
-		errx(1, "qdevice_net_convert_votequorum_to_tlv_node_state: Unhandled votequorum "
-		    "node state %"PRIu32, votequorum_node_state);
-		break;
-	}
-
-	return (res);
-}
-
-static int
-qdevice_net_send_membership_node_list(struct qdevice_net_instance *instance,
-    enum tlv_quorate quorate, const struct tlv_ring_id *ring_id,
-    uint32_t node_list_entries, votequorum_node_t node_list[])
-{
-	struct node_list nlist;
-	struct send_buffer_list_entry *send_buffer;
-	uint64_t config_version;
-	int send_config_version;
-	uint32_t i;
-
-	node_list_init(&nlist);
-
-	for (i = 0; i < node_list_entries; i++) {
-		if (node_list[i].nodeid == 0) {
-			continue;
-		}
-
-		if (node_list_add(&nlist, node_list[i].nodeid, 0,
-		    qdevice_net_convert_votequorum_to_tlv_node_state(node_list[i].state)) == NULL) {
-			qdevice_net_log(LOG_ERR, "Can't allocate membership node list.");
-
-			node_list_free(&nlist);
-
-			return (-1);
-		}
-	}
-
-	send_buffer = send_buffer_list_get_new(&instance->send_buffer_list);
-	if (send_buffer == NULL) {
-		qdevice_net_log(LOG_ERR, "Can't allocate send list buffer for config "
-		    "node list msg");
-
-		node_list_free(&nlist);
-
-		return (-1);
-	}
-
-	instance->last_msg_seq_num++;
-
-	send_config_version = qdevice_net_get_cmap_config_version(instance->cmap_handle,
-	    &config_version);
-
-	if (msg_create_node_list(&send_buffer->buffer, instance->last_msg_seq_num,
-	    TLV_NODE_LIST_TYPE_MEMBERSHIP,
-	    1, ring_id, send_config_version, config_version, 1, quorate, &nlist) == 0) {
-		qdevice_net_log(LOG_ERR, "Can't allocate send buffer for config list msg");
-
-		node_list_free(&nlist);
-
-		return (-1);
-	}
-
-	send_buffer_list_put(&instance->send_buffer_list, send_buffer);
-
-	return (0);
-}
-
-static void
-qdevice_net_convert_votequorum_to_tlv_ring_id(struct tlv_ring_id *tlv_rid,
-    const votequorum_ring_id_t *votequorum_rid)
-{
-
-	tlv_rid->node_id = votequorum_rid->nodeid;
-	tlv_rid->seq = votequorum_rid->seq;
-}
-
-static void
-qdevice_net_votequorum_notification(votequorum_handle_t votequorum_handle,
-    uint64_t context, uint32_t quorate,
-    votequorum_ring_id_t votequorum_ring_id,
-    uint32_t node_list_entries, votequorum_node_t node_list[])
-{
-	struct qdevice_net_instance *instance;
-	struct tlv_ring_id ring_id;
-
-	if (votequorum_context_get(votequorum_handle, (void **)&instance) != CS_OK) {
-		errx(1, "Fatal error. Can't get votequorum context");
-	}
-
-	qdevice_net_convert_votequorum_to_tlv_ring_id(&ring_id, &votequorum_ring_id);
-
-	if (qdevice_net_send_membership_node_list(instance,
-	    (quorate ? TLV_QUORATE_QUORATE : TLV_QUORATE_INQUORATE),
-	    &ring_id, node_list_entries, node_list) != 0) {
-		/*
-		 * Fatal error -> schedule disconnect
-		 */
-		instance->schedule_disconnect = 1;
-	}
-
-	memcpy(&global_last_received_ring_id, &ring_id, sizeof(ring_id));
-}
-
-
-static void
-qdevice_net_init_votequorum(struct qdevice_net_instance *instance)
-{
-	votequorum_callbacks_t votequorum_callbacks;
-	votequorum_handle_t votequorum_handle;
-	cs_error_t res;
-	int no_retries;
-	int fd;
-
-	memset(&votequorum_callbacks, 0, sizeof(votequorum_callbacks));
-	votequorum_callbacks.votequorum_notify_fn = qdevice_net_votequorum_notification;
-
-	no_retries = 0;
-
-	while ((res = votequorum_initialize(&votequorum_handle,
-	    &votequorum_callbacks)) == CS_ERR_TRY_AGAIN && no_retries++ < MAX_CS_TRY_AGAIN) {
-		poll(NULL, 0, 1000);
-	}
-
-        if (res != CS_OK) {
-		errx(1, "Failed to initialize the votequorum API. Error %s", cs_strerror(res));
-	}
-
-	if ((res = votequorum_qdevice_register(votequorum_handle,
-	    QDEVICE_NET_VOTEQUORUM_DEVICE_NAME)) != CS_OK) {
-		errx(1, "Can't register votequorum device. Error %s", cs_strerror(res));
-	}
-
-	if ((res = votequorum_context_set(votequorum_handle, (void *)instance)) != CS_OK) {
-		errx(1, "Can't set votequorum context. Error %s", cs_strerror(res));
-	}
-
-	instance->votequorum_handle = votequorum_handle;
-
-	votequorum_fd_get(votequorum_handle, &fd);
-	if ((instance->votequorum_poll_fd = PR_CreateSocketPollFd(fd)) == NULL) {
-		err_nss();
-	}
-}
-
 
 int
 main(void)
@@ -1740,8 +1209,8 @@ main(void)
         qdevice_net_log_set_debug(1);
 
 	if (nss_sock_init_nss((instance.tls_supported != TLV_TLS_UNSUPPORTED ?
-	    (char *)NSS_DB_DIR : NULL)) != 0) {
-		err_nss();
+	    (char *)QDEVICE_NET_NSS_DB_DIR : NULL)) != 0) {
+		nss_sock_err(1);
 	}
 
 	/*
@@ -1750,14 +1219,14 @@ main(void)
 	instance.socket = nss_sock_create_client_socket(instance.host_addr, instance.host_port,
 	    PR_AF_UNSPEC, 100);
 	if (instance.socket == NULL) {
-		err_nss();
+		nss_sock_err(1);
 	}
 
 	if (nss_sock_set_nonblocking(instance.socket) != 0) {
-		err_nss();
+		nss_sock_err(1);
 	}
 
-	qdevice_net_init_votequorum(&instance);
+	qdevice_net_votequorum_init(&instance);
 
 	/*
 	 * Create and schedule send of preinit message to qnetd
@@ -1775,7 +1244,7 @@ main(void)
 
 	send_buffer_list_put(&instance.send_buffer_list, send_buffer);
 
-	instance.state = QDEVICE_NET_STATE_WAITING_PREINIT_REPLY;
+	instance.state = QDEVICE_NET_INSTANCE_STATE_WAITING_PREINIT_REPLY;
 
 	/*
 	 * Main loop
@@ -1787,15 +1256,26 @@ main(void)
 	 * Cleanup
 	 */
 	if (PR_Close(instance.socket) != PR_SUCCESS) {
-		err_nss();
+		qdevice_net_log_nss(LOG_WARNING, "Unable to close connection");
 	}
+
+	/*
+	 * Close cmap and votequorum connections
+	 */
+	if (votequorum_qdevice_unregister(instance.votequorum_handle,
+	    QDEVICE_NET_VOTEQUORUM_DEVICE_NAME) != CS_OK) {
+		qdevice_net_log_nss(LOG_WARNING, "Unable to unregister votequorum device");
+	}
+
+	votequorum_finalize(instance.votequorum_handle);
+	cmap_finalize(instance.cmap_handle);
 
 	qdevice_net_instance_destroy(&instance);
 
 	SSL_ClearSessionCache();
 
 	if (NSS_Shutdown() != SECSuccess) {
-		err_nss();
+		nss_sock_err(1);
 	}
 
 	PR_Cleanup();

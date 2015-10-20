@@ -32,38 +32,28 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _NSS_SOCK_H_
-#define _NSS_SOCK_H_
+#ifndef _QDEVICE_NET_LOG_H_
+#define _QDEVICE_NET_LOG_H_
 
-#include <nss.h>
-#include <ssl.h>
+#include <syslog.h>
+
+#include "qnetd-log.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-extern void		nss_sock_err(int eval);
+#define qdevice_net_log                 qnetd_log
+#define qdevice_net_log_nss             qnetd_log_nss
+#define qdevice_net_log_init            qnetd_log_init
+#define qdevice_net_log_close           qnetd_log_close
+#define qdevice_net_log_set_debug       qnetd_log_set_debug
 
-extern int		nss_sock_init_nss(char *config_dir);
-
-extern PRFileDesc	*nss_sock_create_listen_socket(const char *hostname, uint16_t port,
-    PRIntn af);
-
-extern int		nss_sock_set_nonblocking(PRFileDesc *sock);
-
-extern PRFileDesc 	*nss_sock_create_client_socket(const char *hostname, uint16_t port,
-    PRIntn af, PRIntervalTime timeout);
-
-extern PRFileDesc	*nss_sock_start_ssl_as_client(PRFileDesc *input_sock, const char *ssl_url,
-    SSLBadCertHandler bad_cert_hook, SSLGetClientAuthData client_auth_hook,
-    void *client_auth_hook_arg, int force_handshake, int *reset_would_block);
-
-extern PRFileDesc	*nss_sock_start_ssl_as_server(PRFileDesc *input_sock,
-    CERTCertificate *server_cert, SECKEYPrivateKey *server_key, int require_client_cert,
-    int force_handshake, int *reset_would_block);
+#define QDEVICE_NET_LOG_TARGET_STDERR           QNETD_LOG_TARGET_STDERR
+#define QDEVICE_NET_LOG_TARGET_SYSLOG           QNETD_LOG_TARGET_SYSLOG
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* _NSS_SOCK_H_ */
+#endif /* _QDEVICE_NET_LOG_H_ */

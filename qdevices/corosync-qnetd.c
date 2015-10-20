@@ -49,7 +49,7 @@
 #include <syslog.h>
 #include <signal.h>
 
-#include "qnetd-defines.h"
+#include "qnet-config.h"
 #include "msg.h"
 #include "msgio.h"
 #include "tlv.h"
@@ -63,20 +63,6 @@
 #include "qnetd-algorithm.h"
 #include "qnetd-cluster-list.h"
 #include "qnetd-client-send.h"
-
-#define QNETD_LISTEN_BACKLOG		10
-#define QNETD_MAX_CLIENT_SEND_BUFFERS	10
-#define QNETD_MAX_CLIENT_SEND_SIZE	(1 << 15)
-#define QNETD_MAX_CLIENT_RECEIVE_SIZE	(1 << 15)
-
-#define NSS_DB_DIR      COROSYSCONFDIR "/qdevice/net/qnetd/nssdb"
-#define QNETD_CERT_NICKNAME	"QNetd Cert"
-
-#define QNETD_TLS_SUPPORTED			TLV_TLS_SUPPORTED
-#define QNETD_TLS_CLIENT_CERT_REQUIRED		1
-
-#define QNETD_HEARTBEAT_INTERVAL_MIN		1000
-#define QNETD_HEARTBEAT_INTERVAL_MAX		200000
 
 struct qnetd_instance {
 	struct {
@@ -1452,7 +1438,7 @@ main(int argc, char *argv[])
 	qnetd_log_init(QNETD_LOG_TARGET_STDERR);
 	qnetd_log_set_debug(1);
 
-	if (nss_sock_init_nss((char *)NSS_DB_DIR) != 0) {
+	if (nss_sock_init_nss((char *)QNETD_NSS_DB_DIR) != 0) {
 		qnetd_err_nss();
 	}
 

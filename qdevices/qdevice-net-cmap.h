@@ -32,38 +32,25 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _NSS_SOCK_H_
-#define _NSS_SOCK_H_
+#ifndef _QDEVICE_NET_CMAP_H_
+#define _QDEVICE_NET_CMAP_H_
 
-#include <nss.h>
-#include <ssl.h>
+#include <cmap.h>
+
+#include "node-list.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-extern void		nss_sock_err(int eval);
+extern int		qdevice_net_cmap_get_nodelist(cmap_handle_t cmap_handle,
+    struct node_list *list);
 
-extern int		nss_sock_init_nss(char *config_dir);
-
-extern PRFileDesc	*nss_sock_create_listen_socket(const char *hostname, uint16_t port,
-    PRIntn af);
-
-extern int		nss_sock_set_nonblocking(PRFileDesc *sock);
-
-extern PRFileDesc 	*nss_sock_create_client_socket(const char *hostname, uint16_t port,
-    PRIntn af, PRIntervalTime timeout);
-
-extern PRFileDesc	*nss_sock_start_ssl_as_client(PRFileDesc *input_sock, const char *ssl_url,
-    SSLBadCertHandler bad_cert_hook, SSLGetClientAuthData client_auth_hook,
-    void *client_auth_hook_arg, int force_handshake, int *reset_would_block);
-
-extern PRFileDesc	*nss_sock_start_ssl_as_server(PRFileDesc *input_sock,
-    CERTCertificate *server_cert, SECKEYPrivateKey *server_key, int require_client_cert,
-    int force_handshake, int *reset_would_block);
+extern int		qdevice_net_cmap_get_config_version(cmap_handle_t cmap_handle,
+    uint64_t *config_version);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* _NSS_SOCK_H_ */
+#endif /* _QDEVICE_NET_CMAP_H_ */

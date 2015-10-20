@@ -32,38 +32,34 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _NSS_SOCK_H_
-#define _NSS_SOCK_H_
+#ifndef _QDEVICE_NET_SEND_H_
+#define _QDEVICE_NET_SEND_H_
 
-#include <nss.h>
-#include <ssl.h>
+#include <sys/types.h>
+
+#include "qdevice-net-instance.h"
+#include "qdevice-net-cmap.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-extern void		nss_sock_err(int eval);
+extern int		qdevice_net_send_echo_request(struct qdevice_net_instance *instance);
 
-extern int		nss_sock_init_nss(char *config_dir);
+extern int		qdevice_net_send_init(struct qdevice_net_instance *instance);
 
-extern PRFileDesc	*nss_sock_create_listen_socket(const char *hostname, uint16_t port,
-    PRIntn af);
+extern int		qdevice_net_send_ask_for_vote(struct qdevice_net_instance *instance);
 
-extern int		nss_sock_set_nonblocking(PRFileDesc *sock);
+extern int		qdevice_net_send_config_node_list(struct qdevice_net_instance *instance,
+    int initial);
 
-extern PRFileDesc 	*nss_sock_create_client_socket(const char *hostname, uint16_t port,
-    PRIntn af, PRIntervalTime timeout);
-
-extern PRFileDesc	*nss_sock_start_ssl_as_client(PRFileDesc *input_sock, const char *ssl_url,
-    SSLBadCertHandler bad_cert_hook, SSLGetClientAuthData client_auth_hook,
-    void *client_auth_hook_arg, int force_handshake, int *reset_would_block);
-
-extern PRFileDesc	*nss_sock_start_ssl_as_server(PRFileDesc *input_sock,
-    CERTCertificate *server_cert, SECKEYPrivateKey *server_key, int require_client_cert,
-    int force_handshake, int *reset_would_block);
+extern int		qdevice_net_send_membership_node_list(
+    struct qdevice_net_instance *instance,
+    enum tlv_quorate quorate, const struct tlv_ring_id *ring_id,
+    uint32_t node_list_entries, votequorum_node_t node_list[]);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* _NSS_SOCK_H_ */
+#endif /* _QDEVICE_NET_SEND_H_ */
