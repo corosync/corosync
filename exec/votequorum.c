@@ -1054,6 +1054,7 @@ static void are_we_quorate(unsigned int total_votes)
 	    (sync_in_progress == 0)) {
 		quorum_callback(quorum_members, quorum_members_entries,
 				cluster_is_quorate, &quorum_ringid);
+		votequorum_exec_send_quorum_notification(NULL, 0L);
 	}
 
 	LEAVE();
@@ -1119,8 +1120,6 @@ static void recalculate_quorum(int allow_decrease, int by_current_nodes)
 
 	quorum = calculate_quorum(allow_decrease, cluster_members, &total_votes);
 	are_we_quorate(total_votes);
-
-	votequorum_exec_send_quorum_notification(NULL, 0L);
 
 	LEAVE();
 }
@@ -2352,6 +2351,8 @@ static void votequorum_sync_activate (void)
 	recalculate_quorum(0, 0);
 	quorum_callback(quorum_members, quorum_members_entries,
 			cluster_is_quorate, &quorum_ringid);
+	votequorum_exec_send_quorum_notification(NULL, 0L);
+
 	sync_in_progress = 0;
 }
 
