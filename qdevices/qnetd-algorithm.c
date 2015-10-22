@@ -40,6 +40,7 @@
 #include "qnetd-algo-test.h"
 #include "qnetd-algo-ffsplit.h"
 #include "qnetd-algo-2nodelms.h"
+#include "qnetd-algo-lms.h"
 
 static struct qnetd_algorithm *qnetd_algorithm[MAX_QNETD_ALGORITHMS];
 
@@ -161,5 +162,8 @@ void algorithms_register(void)
 	}
 	if (qnetd_algo_2nodelms_register() != TLV_REPLY_ERROR_CODE_NO_ERROR) {
 		errx(1, "Failed to register decision algorithm '2nodelms' ");
+	}
+	if (qnetd_algo_lms_register() != TLV_REPLY_ERROR_CODE_NO_ERROR) {
+		errx(1, "Failed to register decision algorithm 'lms' ");
 	}
 }
