@@ -37,7 +37,10 @@
 
 #include <stdio.h>
 #include <netdb.h>
+#include <err.h>
+#include <poll.h>
 
+#include "qnet-config.h"
 #include "qdevice-net-cmap.h"
 
 static uint32_t
@@ -179,4 +182,22 @@ qdevice_net_cmap_get_config_version(cmap_handle_t cmap_handle, uint64_t *config_
 	}
 
 	return (res);
+}
+
+void
+qdevice_net_cmap_init(cmap_handle_t *handle)
+{
+	cs_error_t res;
+	int no_retries;
+
+	no_retries = 0;
+
+	while ((res = cmap_initialize(handle)) == CS_ERR_TRY_AGAIN &&
+	    no_retries++ < QDEVICE_NET_MAX_CS_TRY_AGAIN) {
+		poll(NULL, 0, 1000);
+	}
+
+        if (res != CS_OK) {
+		errx(1, "Failed to initialize the cmap API. Error %s", cs_strerror(res));
+	}
 }

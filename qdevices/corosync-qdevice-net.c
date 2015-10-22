@@ -1018,23 +1018,6 @@ qdevice_net_poll(struct qdevice_net_instance *instance)
 	return (0);
 }
 
-static void
-qdevice_net_init_cmap(cmap_handle_t *handle)
-{
-	cs_error_t res;
-	int no_retries;
-
-	no_retries = 0;
-
-	while ((res = cmap_initialize(handle)) == CS_ERR_TRY_AGAIN &&
-	    no_retries++ < QDEVICE_NET_MAX_CS_TRY_AGAIN) {
-		poll(NULL, 0, 1000);
-	}
-
-        if (res != CS_OK) {
-		errx(1, "Failed to initialize the cmap API. Error %s", cs_strerror(res));
-	}
-}
 
 /*
  * Check string to value on, off, yes, no, 0, 1. Return 1 if value is on, yes or 1, 0 if
@@ -1204,7 +1187,7 @@ main(void)
 	/*
 	 * Init
 	 */
-	qdevice_net_init_cmap(&cmap_handle);
+	qdevice_net_cmap_init(&cmap_handle);
 	qdevice_net_instance_init_from_cmap(&instance, cmap_handle);
 
 	qdevice_net_log_init(QDEVICE_NET_LOG_TARGET_STDERR);

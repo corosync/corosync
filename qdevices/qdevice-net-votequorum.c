@@ -81,25 +81,25 @@ qdevice_net_votequorum_notify_callback(votequorum_handle_t votequorum_handle,
     uint32_t node_list_entries, votequorum_node_t node_list[])
 {
 	struct qdevice_net_instance *instance;
-	struct tlv_ring_id ring_id;
+	struct tlv_ring_id tlv_rid;
 	uint32_t u32;
 
 	if (votequorum_context_get(votequorum_handle, (void **)&instance) != CS_OK) {
 		errx(1, "Fatal error. Can't get votequorum context");
 	}
 
-	qdevice_net_votequorum_ring_id_to_tlv(&ring_id, &votequorum_ring_id);
+	qdevice_net_votequorum_ring_id_to_tlv(&tlv_rid, &votequorum_ring_id);
 
 	if (qdevice_net_send_membership_node_list(instance,
 	    (quorate ? TLV_QUORATE_QUORATE : TLV_QUORATE_INQUORATE),
-	    &ring_id, node_list_entries, node_list) != 0) {
+	    &tlv_rid, node_list_entries, node_list) != 0) {
 		/*
 		 * Fatal error -> schedule disconnect
 		 */
 		instance->schedule_disconnect = 1;
 	}
 
-	memcpy(&instance->last_received_votequorum_ring_id, &ring_id, sizeof(ring_id));
+	memcpy(&instance->last_received_votequorum_ring_id, &votequorum_ring_id, sizeof(votequorum_ring_id));
 
 	if (qdevice_net_cast_vote_timer_update(instance, TLV_VOTE_WAIT_FOR_REPLY) != 0) {
 		errx(1, "qdevice_net_votequorum_notify_callback fatal error. "

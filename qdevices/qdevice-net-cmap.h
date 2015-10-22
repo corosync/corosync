@@ -49,6 +49,8 @@ extern int		qdevice_net_cmap_get_nodelist(cmap_handle_t cmap_handle,
 extern int		qdevice_net_cmap_get_config_version(cmap_handle_t cmap_handle,
     uint64_t *config_version);
 
+extern void		qdevice_net_cmap_init(cmap_handle_t *handle);
+
 #ifdef __cplusplus
 }
 #endif

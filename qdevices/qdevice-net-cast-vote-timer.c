@@ -108,7 +108,7 @@ qdevice_net_cast_vote_timer_update(struct qdevice_net_instance *instance, enum t
 			    qdevice_net_cast_vote_timer_callback, (void *)instance, NULL);
 
 			if (instance->cast_vote_timer == NULL) {
-				qdevice_net_log(LOG_ERR, "Can't schedule sending of votequroum poll");
+				qdevice_net_log(LOG_ERR, "Can't schedule sending of votequorum poll");
 
 				return (-1);
 			}
