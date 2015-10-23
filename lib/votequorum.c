@@ -435,7 +435,8 @@ cs_error_t votequorum_dispatch (
 	struct votequorum_inst *votequorum_inst;
 	votequorum_callbacks_t callbacks;
 	struct qb_ipc_response_header *dispatch_data;
-	struct res_lib_votequorum_notification *res_lib_votequorum_notification;
+	struct res_lib_votequorum_quorum_notification *res_lib_votequorum_quorum_notification;
+	struct res_lib_votequorum_nodelist_notification *res_lib_votequorum_nodelist_notification;
 	struct res_lib_votequorum_expectedvotes_notification *res_lib_votequorum_expectedvotes_notification;
 	char dispatch_buf[IPC_DISPATCH_SIZE];
 	votequorum_ring_id_t ring_id;
@@ -503,20 +504,29 @@ cs_error_t votequorum_dispatch (
 		 */
 		switch (dispatch_data->id) {
 
-		case MESSAGE_RES_VOTEQUORUM_NOTIFICATION:
-			if (callbacks.votequorum_notify_fn == NULL) {
+		case MESSAGE_RES_VOTEQUORUM_QUORUM_NOTIFICATION:
+			if (callbacks.votequorum_quorum_notify_fn == NULL) {
 				break;
 			}
-			res_lib_votequorum_notification = (struct res_lib_votequorum_notification *)dispatch_data;
-			marshall_from_mar_votequorum_ring_id (&ring_id, &res_lib_votequorum_notification->ring_id);
+			res_lib_votequorum_quorum_notification = (struct res_lib_votequorum_quorum_notification *)dispatch_data;
 
-			callbacks.votequorum_notify_fn ( handle,
-							 res_lib_votequorum_notification->context,
-							 res_lib_votequorum_notification->quorate,
-							 ring_id,
-							 res_lib_votequorum_notification->node_list_entries,
-							 (votequorum_node_t *)res_lib_votequorum_notification->node_list );
-				;
+			callbacks.votequorum_quorum_notify_fn ( handle,
+								res_lib_votequorum_quorum_notification->context,
+								res_lib_votequorum_quorum_notification->quorate );
+			break;
+
+		case MESSAGE_RES_VOTEQUORUM_NODELIST_NOTIFICATION:
+			if (callbacks.votequorum_nodelist_notify_fn == NULL) {
+				break;
+			}
+			res_lib_votequorum_nodelist_notification = (struct res_lib_votequorum_nodelist_notification *)dispatch_data;
+			marshall_from_mar_votequorum_ring_id (&ring_id, &res_lib_votequorum_nodelist_notification->ring_id);
+
+			callbacks.votequorum_nodelist_notify_fn ( handle,
+								  res_lib_votequorum_nodelist_notification->context,
+								  ring_id,
+								  res_lib_votequorum_nodelist_notification->node_list_entries,
+								  (votequorum_node_t *)res_lib_votequorum_nodelist_notification->node_list );
 			break;
 
 		case MESSAGE_RES_VOTEQUORUM_EXPECTEDVOTES_NOTIFICATION:

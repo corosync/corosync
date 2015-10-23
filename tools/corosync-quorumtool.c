@@ -125,14 +125,14 @@ static uint32_t g_vq_called;
 static void votequorum_notification_fn(
 	votequorum_handle_t handle,
 	uint64_t context,
-	uint32_t quorate,
 	votequorum_ring_id_t ring_id,
 	uint32_t node_list_entries,
 	votequorum_node_t node_list[]);
 static votequorum_handle_t v_handle;
 static votequorum_callbacks_t v_callbacks = {
-	.votequorum_notify_fn = votequorum_notification_fn,
-	.votequorum_expectedvotes_notify_fn = NULL
+	.votequorum_quorum_notify_fn = NULL,
+	.votequorum_expectedvotes_notify_fn = NULL,
+	.votequorum_nodelist_notify_fn = votequorum_notification_fn,
 };
 static uint32_t our_nodeid = 0;
 
@@ -356,12 +356,10 @@ static const char *node_name(uint32_t nodeid, name_format_t name_format)
 static void votequorum_notification_fn(
 	votequorum_handle_t handle,
 	uint64_t context,
-	uint32_t quorate,
 	votequorum_ring_id_t ring_id,
 	uint32_t node_list_entries,
 	votequorum_node_t node_list[])
 {
-	fprintf(stderr, "CC: VQ notify, ring nodeid is %d\n", ring_id.nodeid);
 	g_ring_id_rep_node = ring_id.nodeid;
 	g_vq_called = 1;
 }
@@ -708,9 +706,13 @@ static int monitor_status(nodeid_format_t nodeid_format, name_format_t name_form
 			goto quorum_err;
 		}
 		if (using_votequorum()) {
-			err = votequorum_dispatch(v_handle, CS_DISPATCH_ONE);
-			if (err != CS_OK) {
-				fprintf(stderr, "Unable to dispatch votequorum status: %s\n", cs_strerror(err));
+			g_vq_called = 0;
+			while (!g_vq_called) {
+				err = votequorum_dispatch(v_handle, CS_DISPATCH_ONE);
+				if (err != CS_OK) {
+					fprintf(stderr, "Unable to dispatch votequorum status: %s\n", cs_strerror(err));
+					goto quorum_err;
+				}
 			}
 		}
 

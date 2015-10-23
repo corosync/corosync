@@ -76,10 +76,19 @@ static void votequorum_expectedvotes_notification_fn(
 }
 
 
-static void votequorum_notification_fn(
+static void votequorum_quorum_notification_fn(
 	votequorum_handle_t handle,
 	uint64_t context,
-	uint32_t quorate,
+	uint32_t quorate
+	)
+{
+	printf("votequorum quorum notification called \n");
+	printf("  quorate         = %d\n", quorate);
+}
+
+static void votequorum_nodelist_notification_fn(
+	votequorum_handle_t handle,
+	uint64_t context,
 	votequorum_ring_id_t ring_id,
 	uint32_t node_list_entries,
 	votequorum_node_t node_list[]
@@ -87,8 +96,7 @@ static void votequorum_notification_fn(
 {
 	int i;
 
-	printf("votequorum notification called \n");
-	printf("  quorate         = %d\n", quorate);
+	printf("votequorum nodelist notification called \n");
 	printf("  number of nodes = %d\n", node_list_entries);
 	printf("  current ringid  = (%u.%"PRIu64")\n", ring_id.nodeid, ring_id.seq);
 
@@ -110,7 +118,8 @@ int main(int argc, char *argv[])
 		return 0;
 	}
 
-	callbacks.votequorum_notify_fn = votequorum_notification_fn;
+	callbacks.votequorum_quorum_notify_fn = votequorum_quorum_notification_fn;
+	callbacks.votequorum_nodelist_notify_fn = votequorum_nodelist_notification_fn;
 	callbacks.votequorum_expectedvotes_notify_fn = votequorum_expectedvotes_notification_fn;
 
 	if ( (err=votequorum_initialize(&g_handle, &callbacks)) != CS_OK)

@@ -102,12 +102,16 @@ typedef struct {
 } votequorum_ring_id_t;
 
 /**
- * @brief The votequorum_notification_fn_t callback
+ * @brief The votequorum_quorum_notification_fn_t callback
  */
-typedef void (*votequorum_notification_fn_t) (
+typedef void (*votequorum_quorum_notification_fn_t) (
 	votequorum_handle_t handle,
 	uint64_t context,
-	uint32_t quorate,
+	uint32_t quorate);
+
+typedef void (*votequorum_nodelist_notification_fn_t) (
+	votequorum_handle_t handle,
+	uint64_t context,
 	votequorum_ring_id_t ring_id,
 	uint32_t node_list_entries,
 	votequorum_node_t node_list[]);
@@ -124,8 +128,9 @@ typedef void (*votequorum_expectedvotes_notification_fn_t) (
  * @brief The votequorum_callbacks_t struct
  */
 typedef struct {
-	votequorum_notification_fn_t votequorum_notify_fn;
+	votequorum_quorum_notification_fn_t votequorum_quorum_notify_fn;
 	votequorum_expectedvotes_notification_fn_t votequorum_expectedvotes_notify_fn;
+	votequorum_nodelist_notification_fn_t votequorum_nodelist_notify_fn;
 } votequorum_callbacks_t;
 
 /**
