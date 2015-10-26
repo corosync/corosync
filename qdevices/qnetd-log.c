@@ -35,12 +35,34 @@
 #include <syslog.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include <time.h>
 
 #include "qnet-config.h"
 #include "qnetd-log.h"
 
 static int qnetd_log_config_target = 0;
 static int qnetd_log_config_debug = 0;
+
+static const char qnetd_log_month_str[][4] = {
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+};
+
+struct qnetd_log_syslog_prio_to_str_item {
+	int priority;
+	const char *priority_str;
+};
+
+static struct qnetd_log_syslog_prio_to_str_item qnetd_syslog_prio_to_str_array[] = {
+    {LOG_EMERG,		"emerg"},
+    {LOG_ALERT,		"alert"},
+    {LOG_CRIT,		"crit"},
+    {LOG_ERR,		"error"},
+    {LOG_WARNING,	"warning"},
+    {LOG_NOTICE,	"notice"},
+    {LOG_INFO,		"info"},
+    {LOG_DEBUG,		"debug"},
+    {-1, NULL}};
 
 void
 qnetd_log_init(int target)
@@ -53,13 +75,35 @@ qnetd_log_init(int target)
 	}
 }
 
+static const char *
+qnetd_log_syslog_prio_to_str(int priority)
+{
+
+	if (priority >= LOG_EMERG && priority <= LOG_DEBUG) {
+		return (qnetd_syslog_prio_to_str_array[priority].priority_str);
+	} else {
+		return ("none");
+	}
+}
+
 void
 qnetd_log_printf(int priority, const char *format, ...)
 {
 	va_list ap;
+	time_t current_time;
+	struct tm tm_res;
 
 	if (priority != LOG_DEBUG || (qnetd_log_config_debug)) {
 		if (qnetd_log_config_target & QNETD_LOG_TARGET_STDERR) {
+			current_time = time(NULL);
+			localtime_r(&current_time, &tm_res);
+
+			fprintf(stderr, "%s %02d %02d:%02d:%02d ",
+			    qnetd_log_month_str[tm_res.tm_mon], tm_res.tm_mday, tm_res.tm_hour,
+			    tm_res.tm_min, tm_res.tm_sec);
+
+			fprintf(stderr, "%-7s ", qnetd_log_syslog_prio_to_str(priority));
+
 			va_start(ap, format);
 			vfprintf(stderr, format, ap);
 			fprintf(stderr, "\n");

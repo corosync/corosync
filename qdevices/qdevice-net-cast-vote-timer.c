@@ -67,10 +67,14 @@ qdevice_net_cast_vote_timer_callback(void *data1, void *data2)
 	    instance->last_received_votequorum_ring_id);
 
 	if (res != CS_OK && res != CS_ERR_TRY_AGAIN) {
-		qdevice_net_log(LOG_CRIT, "Can't call votequorum_qdevice_poll. Error %u", res);
+		if (res == CS_ERR_MESSAGE_ERROR) {
+			qdevice_net_log(LOG_INFO, "votequorum_qdevice_poll called with old ring id, rescheduling timer");
+		} else {
+			qdevice_net_log(LOG_CRIT, "Can't call votequorum_qdevice_poll. Error %u", res);
 
-		instance->schedule_disconnect = 1;
-		return (0);
+			instance->schedule_disconnect = 1;
+			return (0);
+		}
 	}
 
 	/*

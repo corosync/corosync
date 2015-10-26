@@ -1395,21 +1395,31 @@ signal_handlers_register(void)
 static void
 usage(void)
 {
-	printf("usage: %s [-h listen_addr] [-p listen_port]\n", QNETD_PROGRAM_NAME);
+
+	printf("usage: %s [-df] [-l listen_addr] [-p listen_port]\n", QNETD_PROGRAM_NAME);
 }
 
 static void
-cli_parse(int argc, char * const argv[], char **host_addr, uint16_t *host_port)
+cli_parse(int argc, char * const argv[], char **host_addr, uint16_t *host_port, int *foreground,
+    int *debug_log)
 {
 	int ch;
 	char *ep;
 
 	*host_addr = NULL;
 	*host_port = QNETD_DEFAULT_HOST_PORT;
+	*foreground = 0;
+	*debug_log = 0;
 
-	while ((ch = getopt(argc, argv, "h:p:")) != -1) {
+	while ((ch = getopt(argc, argv, "fdl:p:")) != -1) {
 		switch (ch) {
-		case 'h':
+		case 'f':
+			*foreground = 1;
+			break;
+		case 'd':
+			*debug_log = 1;
+			break;
+		case 'l':
 			*host_addr = strdup(optarg);
 			break;
 		case 'p':
@@ -1432,12 +1442,18 @@ main(int argc, char *argv[])
 	struct qnetd_instance instance;
 	char *host_addr;
 	uint16_t host_port;
+	int foreground;
+	int debug_log;
 
-	/*
-	 * INIT
-	 */
-	qnetd_log_init(QNETD_LOG_TARGET_STDERR);
-	qnetd_log_set_debug(1);
+	cli_parse(argc, argv, &host_addr, &host_port, &foreground, &debug_log);
+
+	if (foreground) {
+		qnetd_log_init(QNETD_LOG_TARGET_STDERR);
+	} else {
+		qnetd_log_init(QNETD_LOG_TARGET_SYSLOG);
+	}
+
+	qnetd_log_set_debug(debug_log);
 
 	if (nss_sock_init_nss((char *)QNETD_NSS_DB_DIR) != 0) {
 		qnetd_err_nss();
@@ -1447,7 +1463,6 @@ main(int argc, char *argv[])
 		qnetd_err_nss();
 	}
 
-	cli_parse(argc, argv, &host_addr, &host_port);
 
 	if (qnetd_instance_init(&instance, QNETD_MAX_CLIENT_RECEIVE_SIZE,
 	    QNETD_MAX_CLIENT_SEND_BUFFERS, QNETD_MAX_CLIENT_SEND_SIZE,
