@@ -57,6 +57,8 @@ extern void			 qnetd_client_list_free(struct qnetd_client_list *client_list);
 extern void			 qnetd_client_list_del(struct qnetd_client_list *client_list,
     struct qnetd_client *client);
 
+extern size_t			 qnetd_client_list_no_clients(struct qnetd_client_list *client_list);
+
 #ifdef __cplusplus
 }
 #endif

@@ -71,6 +71,7 @@
 #include "qdevice-net-send.h"
 #include "qdevice-net-votequorum.h"
 #include "qdevice-net-cast-vote-timer.h"
+#include "utils.h"
 
 static SECStatus
 qdevice_net_nss_bad_cert_hook(void *arg, PRFileDesc *fd) {
@@ -1018,28 +1019,6 @@ qdevice_net_poll(struct qdevice_net_instance *instance)
 	return (0);
 }
 
-
-/*
- * Check string to value on, off, yes, no, 0, 1. Return 1 if value is on, yes or 1, 0 if
- * value is off, no or 0 and -1 otherwise.
- */
-static int
-qdevice_net_parse_bool_str(const char *str)
-{
-
-	if (strcasecmp(str, "yes") == 0 ||
-	    strcasecmp(str, "on") == 0 ||
-	    strcasecmp(str, "1") == 0) {
-		return (1);
-	} else if (strcasecmp(str, "no") == 0 ||
-	    strcasecmp(str, "off") == 0 ||
-	    strcasecmp(str, "0") == 0) {
-		return (0);
-	}
-
-	return (-1);
-}
-
 static void
 qdevice_net_instance_init_from_cmap(struct qdevice_net_instance *instance,
     cmap_handle_t cmap_handle)
@@ -1082,7 +1061,7 @@ qdevice_net_instance_init_from_cmap(struct qdevice_net_instance *instance,
 	 * Check tls
 	 */
 	if (cmap_get_string(cmap_handle, "quorum.device.net.tls", &str) == CS_OK) {
-		if ((i = qdevice_net_parse_bool_str(str)) == -1) {
+		if ((i = utils_parse_bool_str(str)) == -1) {
 			free(str);
 			errx(1, "quorum.device.net.tls value is not valid.");
 		}

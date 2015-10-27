@@ -32,54 +32,20 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _QNET_CONFIG_H_
-#define _QNET_CONFIG_H_
+#ifndef _UTILS_H_
+#define _UTILS_H_
+
+#include <sys/types.h>
+#include <inttypes.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-/*
- * There are "hardcoded" defines for both qnetd and qdevice-net. It's not so good
- * idea to change them as long as you are not 100% sure what you are doing.
- */
-
-#define QNETD_PROGRAM_NAME			"corosync-qnetd"
-#define QNETD_DEFAULT_HOST_PORT			4433
-#define QNETD_LISTEN_BACKLOG			10
-#define QNETD_MAX_CLIENT_SEND_BUFFERS		10
-#define QNETD_MAX_CLIENT_SEND_SIZE		(1 << 15)
-#define QNETD_MAX_CLIENT_RECEIVE_SIZE		(1 << 15)
-#define QNETD_DEFAULT_MAX_CLIENTS		0
-
-#define QNETD_NSS_DB_DIR			COROSYSCONFDIR "/qdevice/net/qnetd/nssdb"
-#define QNETD_CERT_NICKNAME			"QNetd Cert"
-
-#define QNETD_DEFAULT_TLS_SUPPORTED		TLV_TLS_SUPPORTED
-#define QNETD_DEFAULT_TLS_CLIENT_CERT_REQUIRED	1
-
-#define QNETD_HEARTBEAT_INTERVAL_MIN		1000
-#define QNETD_HEARTBEAT_INTERVAL_MAX		200000
-
-#define QDEVICE_NET_NSS_DB_DIR			COROSYSCONFDIR "/qdevice/net/node/nssdb"
-
-#define QDEVICE_NET_INITIAL_MSG_RECEIVE_SIZE	(1 << 15)
-#define QDEVICE_NET_INITIAL_MSG_SEND_SIZE	(1 << 15)
-#define QDEVICE_NET_MIN_MSG_SEND_SIZE		QDEVICE_NET_INITIAL_MSG_SEND_SIZE
-#define QDEVICE_NET_MAX_MSG_RECEIVE_SIZE	(1 << 24)
-
-#define QNETD_NSS_SERVER_CN			"Qnetd Server"
-#define QDEVICE_NET_NSS_CLIENT_CERT_NICKNAME	"Cluster Cert"
-#define QDEVICE_NET_VOTEQUORUM_DEVICE_NAME	"QdeviceNet"
-
-#define QDEVICE_NET_MAX_SEND_BUFFERS		10
-
-#define QDEVICE_NET_DEFAULT_ALGORITHM		TLV_DECISION_ALGORITHM_TYPE_TEST
-
-#define QDEVICE_NET_MAX_CS_TRY_AGAIN		10
+extern int		utils_parse_bool_str(const char *str);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* _QNET_CONFIG_H_ */
+#endif /* _UTILS_H_ */

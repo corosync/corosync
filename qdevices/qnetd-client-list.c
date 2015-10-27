@@ -93,3 +93,18 @@ qnetd_client_list_del(struct qnetd_client_list *client_list, struct qnetd_client
 	qnetd_client_destroy(client);
 	free(client);
 }
+
+size_t
+qnetd_client_list_no_clients(struct qnetd_client_list *client_list)
+{
+	size_t res;
+	struct qnetd_client *client;
+
+	res = 0;
+
+	TAILQ_FOREACH(client, client_list, entries) {
+		res++;
+	}
+
+	return (res);
+}

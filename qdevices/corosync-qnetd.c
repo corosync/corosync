@@ -48,6 +48,7 @@
 #include <keyhi.h>
 #include <syslog.h>
 #include <signal.h>
+#include <errno.h>
 
 #include "qnet-config.h"
 #include "msg.h"
@@ -63,6 +64,7 @@
 #include "qnetd-algorithm.h"
 #include "qnetd-cluster-list.h"
 #include "qnetd-client-send.h"
+#include "utils.h"
 
 struct qnetd_instance {
 	struct {
@@ -73,6 +75,7 @@ struct qnetd_instance {
 	size_t max_client_receive_size;
 	size_t max_client_send_buffers;
 	size_t max_client_send_size;
+	size_t max_clients;
 	struct qnetd_client_list clients;
 	struct qnetd_cluster_list clusters;
 	struct qnetd_poll_array poll_array;
@@ -1180,6 +1183,15 @@ qnetd_client_accept(struct qnetd_instance *instance)
 		return (-1);
 	}
 
+	if (instance->max_clients != 0 &&
+	    qnetd_client_list_no_clients(&instance->clients) >= instance->max_clients) {
+		qnetd_log(LOG_ERR, "Maximum clients reached. Not accepting connection");
+
+		PR_Close(client_socket);
+
+		return (-1);
+	}
+
 	client = qnetd_client_list_add(&instance->clients, client_socket, &client_addr,
 	    instance->max_client_receive_size, instance->max_client_send_buffers,
 	    instance->max_client_send_size);
@@ -1282,7 +1294,7 @@ qnetd_poll(struct qnetd_instance *instance)
 						 * Poll ERR on listening socket is fatal error.
 						 * POLL_NVAL is used as a signal to quit poll loop.
 						 */
-						qnetd_log(LOG_CRIT, "POLL_ERR (%u) on listening "
+						 qnetd_log(LOG_CRIT, "POLL_ERR (%u) on listening "
 						    "socket", pfds[i].out_flags);
 					} else {
 						qnetd_log(LOG_DEBUG, "Listening socket is closed");
@@ -1330,7 +1342,7 @@ qnetd_instance_init_certs(struct qnetd_instance *instance)
 static int
 qnetd_instance_init(struct qnetd_instance *instance, size_t max_client_receive_size,
     size_t max_client_send_buffers, size_t max_client_send_size,
-    enum tlv_tls_supported tls_supported, int tls_client_cert_required)
+    enum tlv_tls_supported tls_supported, int tls_client_cert_required, size_t max_clients)
 {
 
 	memset(instance, 0, sizeof(*instance));
@@ -1345,6 +1357,8 @@ qnetd_instance_init(struct qnetd_instance *instance, size_t max_client_receive_s
 
 	instance->tls_supported = tls_supported;
 	instance->tls_client_cert_required = tls_client_cert_required;
+
+	instance->max_clients = max_clients;
 
 	return (0);
 }
@@ -1381,6 +1395,15 @@ signal_int_handler(int sig)
 }
 
 static void
+signal_term_handler(int sig)
+{
+
+	qnetd_log(LOG_DEBUG, "SIGTERM received - closing server socket");
+
+	PR_Close(global_server_socket);
+}
+
+static void
 signal_handlers_register(void)
 {
 	struct sigaction act;
@@ -1390,28 +1413,40 @@ signal_handlers_register(void)
 	act.sa_flags = SA_RESTART;
 
 	sigaction(SIGINT, &act, NULL);
+
+	act.sa_handler = signal_term_handler;
+	sigemptyset(&act.sa_mask);
+	act.sa_flags = SA_RESTART;
+
+	sigaction(SIGTERM, &act, NULL);
 }
 
 static void
 usage(void)
 {
 
-	printf("usage: %s [-df] [-l listen_addr] [-p listen_port]\n", QNETD_PROGRAM_NAME);
+	printf("usage: %s [-df] [-l listen_addr] [-p listen_port] [-s tls]\n", QNETD_PROGRAM_NAME);
+	printf("%14s[-c client_cert_required] [-m max_clients]\n", "");
 }
 
 static void
 cli_parse(int argc, char * const argv[], char **host_addr, uint16_t *host_port, int *foreground,
-    int *debug_log)
+    int *debug_log, enum tlv_tls_supported *tls_supported, int *client_cert_required,
+    size_t *max_clients)
 {
 	int ch;
 	char *ep;
+	long long int tmpll;
 
 	*host_addr = NULL;
 	*host_port = QNETD_DEFAULT_HOST_PORT;
 	*foreground = 0;
 	*debug_log = 0;
+	*tls_supported = QNETD_DEFAULT_TLS_SUPPORTED;
+	*client_cert_required = QNETD_DEFAULT_TLS_CLIENT_CERT_REQUIRED;
+	*max_clients = QNETD_DEFAULT_MAX_CLIENTS;
 
-	while ((ch = getopt(argc, argv, "fdl:p:")) != -1) {
+	while ((ch = getopt(argc, argv, "fdc:l:m:p:s:")) != -1) {
 		switch (ch) {
 		case 'f':
 			*foreground = 1;
@@ -1419,13 +1454,38 @@ cli_parse(int argc, char * const argv[], char **host_addr, uint16_t *host_port, 
 		case 'd':
 			*debug_log = 1;
 			break;
+		case 'c':
+			if ((*client_cert_required = utils_parse_bool_str(optarg)) == -1) {
+				errx(1, "client_cert_required should be on/yes/1, off/no/0");
+			}
+			break;
 		case 'l':
 			*host_addr = strdup(optarg);
+			break;
+		case 'm':
+			errno = 0;
+
+			tmpll = strtoll(optarg, &ep, 10);
+			if (tmpll < 0 || errno != 0 || *ep != '\0') {
+				errx(1, "max clients value %s is invalid", optarg);
+			}
+			*max_clients = (size_t)tmpll;
 			break;
 		case 'p':
 			*host_port = strtol(optarg, &ep, 10);
 			if (*host_port <= 0 || *host_port > ((uint16_t)~0) || *ep != '\0') {
 				errx(1, "host port must be in range 0-65535");
+			}
+			break;
+		case 's':
+			if (strcasecmp(optarg, "on") == 0) {
+				*tls_supported = QNETD_DEFAULT_TLS_SUPPORTED;
+			} else if (strcasecmp(optarg, "off") == 0) {
+				*tls_supported = TLV_TLS_UNSUPPORTED;
+			} else if (strcasecmp(optarg, "req") == 0) {
+				*tls_supported = TLV_TLS_REQUIRED;
+			} else {
+				errx(1, "tls must be one of on, off, req");
 			}
 			break;
 		case '?':
@@ -1444,8 +1504,12 @@ main(int argc, char *argv[])
 	uint16_t host_port;
 	int foreground;
 	int debug_log;
+	enum tlv_tls_supported tls_supported;
+	int client_cert_required;
+	size_t max_clients;
 
-	cli_parse(argc, argv, &host_addr, &host_port, &foreground, &debug_log);
+	cli_parse(argc, argv, &host_addr, &host_port, &foreground, &debug_log, &tls_supported,
+	    &client_cert_required, &max_clients);
 
 	if (foreground) {
 		qnetd_log_init(QNETD_LOG_TARGET_STDERR);
@@ -1455,7 +1519,8 @@ main(int argc, char *argv[])
 
 	qnetd_log_set_debug(debug_log);
 
-	if (nss_sock_init_nss((char *)QNETD_NSS_DB_DIR) != 0) {
+	if (nss_sock_init_nss((tls_supported != TLV_TLS_UNSUPPORTED ?
+	    (char *)QNETD_NSS_DB_DIR : NULL)) != 0) {
 		qnetd_err_nss();
 	}
 
@@ -1466,7 +1531,7 @@ main(int argc, char *argv[])
 
 	if (qnetd_instance_init(&instance, QNETD_MAX_CLIENT_RECEIVE_SIZE,
 	    QNETD_MAX_CLIENT_SEND_BUFFERS, QNETD_MAX_CLIENT_SEND_SIZE,
-	    QNETD_TLS_SUPPORTED, QNETD_TLS_CLIENT_CERT_REQUIRED) == -1) {
+	    tls_supported, client_cert_required, max_clients) == -1) {
 		errx(1, "Can't initialize qnetd");
 	}
 	instance.host_addr = host_addr;

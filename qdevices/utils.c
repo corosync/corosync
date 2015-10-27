@@ -32,54 +32,32 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _QNET_CONFIG_H_
-#define _QNET_CONFIG_H_
+#include <sys/types.h>
+#include <arpa/inet.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include <inttypes.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include "utils.h"
 
 /*
- * There are "hardcoded" defines for both qnetd and qdevice-net. It's not so good
- * idea to change them as long as you are not 100% sure what you are doing.
+ * Check string to value on, off, yes, no, 0, 1. Return 1 if value is on, yes or 1, 0 if
+ * value is off, no or 0 and -1 otherwise.
  */
+int
+utils_parse_bool_str(const char *str)
+{
 
-#define QNETD_PROGRAM_NAME			"corosync-qnetd"
-#define QNETD_DEFAULT_HOST_PORT			4433
-#define QNETD_LISTEN_BACKLOG			10
-#define QNETD_MAX_CLIENT_SEND_BUFFERS		10
-#define QNETD_MAX_CLIENT_SEND_SIZE		(1 << 15)
-#define QNETD_MAX_CLIENT_RECEIVE_SIZE		(1 << 15)
-#define QNETD_DEFAULT_MAX_CLIENTS		0
+	if (strcasecmp(str, "yes") == 0 ||
+	    strcasecmp(str, "on") == 0 ||
+	    strcasecmp(str, "1") == 0) {
+		return (1);
+	} else if (strcasecmp(str, "no") == 0 ||
+	    strcasecmp(str, "off") == 0 ||
+	    strcasecmp(str, "0") == 0) {
+		return (0);
+	}
 
-#define QNETD_NSS_DB_DIR			COROSYSCONFDIR "/qdevice/net/qnetd/nssdb"
-#define QNETD_CERT_NICKNAME			"QNetd Cert"
-
-#define QNETD_DEFAULT_TLS_SUPPORTED		TLV_TLS_SUPPORTED
-#define QNETD_DEFAULT_TLS_CLIENT_CERT_REQUIRED	1
-
-#define QNETD_HEARTBEAT_INTERVAL_MIN		1000
-#define QNETD_HEARTBEAT_INTERVAL_MAX		200000
-
-#define QDEVICE_NET_NSS_DB_DIR			COROSYSCONFDIR "/qdevice/net/node/nssdb"
-
-#define QDEVICE_NET_INITIAL_MSG_RECEIVE_SIZE	(1 << 15)
-#define QDEVICE_NET_INITIAL_MSG_SEND_SIZE	(1 << 15)
-#define QDEVICE_NET_MIN_MSG_SEND_SIZE		QDEVICE_NET_INITIAL_MSG_SEND_SIZE
-#define QDEVICE_NET_MAX_MSG_RECEIVE_SIZE	(1 << 24)
-
-#define QNETD_NSS_SERVER_CN			"Qnetd Server"
-#define QDEVICE_NET_NSS_CLIENT_CERT_NICKNAME	"Cluster Cert"
-#define QDEVICE_NET_VOTEQUORUM_DEVICE_NAME	"QdeviceNet"
-
-#define QDEVICE_NET_MAX_SEND_BUFFERS		10
-
-#define QDEVICE_NET_DEFAULT_ALGORITHM		TLV_DECISION_ALGORITHM_TYPE_TEST
-
-#define QDEVICE_NET_MAX_CS_TRY_AGAIN		10
-
-#ifdef __cplusplus
+	return (-1);
 }
-#endif
-
-#endif /* _QNET_CONFIG_H_ */
