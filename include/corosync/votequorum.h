@@ -107,14 +107,16 @@ typedef struct {
 typedef void (*votequorum_quorum_notification_fn_t) (
 	votequorum_handle_t handle,
 	uint64_t context,
-	uint32_t quorate);
+	uint32_t quorate,
+	uint32_t node_list_entries,
+	votequorum_node_t node_list[]);
 
 typedef void (*votequorum_nodelist_notification_fn_t) (
 	votequorum_handle_t handle,
 	uint64_t context,
 	votequorum_ring_id_t ring_id,
 	uint32_t node_list_entries,
-	votequorum_node_t node_list[]);
+	uint32_t node_list[]);
 
 /**
  * @brief The votequorum_expectedvotes_notification_fn_t callback

@@ -512,7 +512,9 @@ cs_error_t votequorum_dispatch (
 
 			callbacks.votequorum_quorum_notify_fn ( handle,
 								res_lib_votequorum_quorum_notification->context,
-								res_lib_votequorum_quorum_notification->quorate );
+								res_lib_votequorum_quorum_notification->quorate,
+								res_lib_votequorum_quorum_notification->node_list_entries,
+								(votequorum_node_t *)res_lib_votequorum_quorum_notification->node_list );
 			break;
 
 		case MESSAGE_RES_VOTEQUORUM_NODELIST_NOTIFICATION:
@@ -526,7 +528,7 @@ cs_error_t votequorum_dispatch (
 								  res_lib_votequorum_nodelist_notification->context,
 								  ring_id,
 								  res_lib_votequorum_nodelist_notification->node_list_entries,
-								  (votequorum_node_t *)res_lib_votequorum_nodelist_notification->node_list );
+								  res_lib_votequorum_nodelist_notification->node_list );
 			break;
 
 		case MESSAGE_RES_VOTEQUORUM_EXPECTEDVOTES_NOTIFICATION:

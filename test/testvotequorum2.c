@@ -81,7 +81,7 @@ static void votequorum_nodelist_notification_fn(
 	uint64_t context,
 	votequorum_ring_id_t ring_id,
 	uint32_t node_list_entries,
-	votequorum_node_t node_list[])
+	uint32_t node_list[])
 {
 
 	printf("votequorum nodelist notification called \n");

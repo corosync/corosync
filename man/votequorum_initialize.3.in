@@ -51,11 +51,29 @@ argument to uniquely identify the connection.  The
 argument is then used in other function calls to identify the connection to be used
 for communication with the votequorum service.
 .PP
-Every time the voting configuraton changes (eg a node joins or leave the cluster), the callback is called.
+Every time the voting configuration is about to change (eg a node joins or leave the cluster), the callback is called.
 The callback function is described by the following type definitions:
 
 .nf
-typedef void (*votequorum_notification_fn_t) (
+typedef void (*votequorum_nodelist_notification_fn_t) (
+	votequorum_handle_t handle,
+	uint64_t context,
+	uint32_t node_list_entries,
+	uint32_t node_list[]
+	);
+
+.fi
+
+Current ring_id (one get in votequorum_quorum_notification_fn) must be passed to
+.B votequorum_qdevice_poll
+to make qdevice voting valid.
+
+.PP
+Every time the quorum state changes (eg a node joins or leave the cluster), the callback is called.
+The callback function is described by the following type definitions:
+
+.nf
+typedef void (*votequorum_quorum_notification_fn_t) (
 	votequorum_handle_t handle,
 	uint64_t context,
 	uint32_t quorate,
@@ -65,9 +83,14 @@ typedef void (*votequorum_notification_fn_t) (
 
 .fi
 
-Current ring_id (one get in votequorum_notification_fn) must be passed to
-.B votequorum_qdevice_poll
-to make qdevice voting valid.
+The difference between votequorum_nodelist_notification_t and votequorum_quorum_notification_t is subtle but important.
+The 'nodelist' callback is sent at the start of a cluster state transition and contains the new ring_id and only the list of
+nodes that are included in the sync state - ie only active nodes. No quorum information is included this callback 
+because it is not available at that time.
+The 'quorum' callback is sent after the cluster state transition has completed and does contain quorum information. 
+In addition, the nodelist contains a list of all nodes known to votequorum (whether up or down) and their state as well 
+as information about the quorum device attached (if any). quorum callbacks will not be sent for qdevice up and down
+events unless they affect quorum.
 
 .PP
 Every time the expected votes are changed, the callback is called.
@@ -86,8 +109,9 @@ argument is of the type:
 
 .nf
 typedef struct {
-	votequorum_notification_fn_t votequorum_notify_fn;
+	votequorum_quorum_notification_fn_t votequorum_quorum_notify_fn;
 	votequorum_expectedvotes_notification_fn_t votequorum_expectedvotes_notify_fn;
+	votequorum_nodelist_notification_fn_t votequorum_nodelist_notify_fn;
 } votequorum_callbacks_t;
 .fi
 .PP

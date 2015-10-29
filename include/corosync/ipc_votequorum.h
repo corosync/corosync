@@ -215,6 +215,8 @@ struct res_lib_votequorum_quorum_notification {
 	struct qb_ipc_response_header header __attribute__((aligned(8)));
 	mar_uint32_t quorate __attribute__((aligned(8)));
 	mar_uint64_t context __attribute__((aligned(8)));
+	mar_uint32_t node_list_entries __attribute__((aligned(8)));
+	struct votequorum_node node_list[] __attribute__((aligned(8)));
 };
 
 struct res_lib_votequorum_nodelist_notification {
@@ -222,7 +224,7 @@ struct res_lib_votequorum_nodelist_notification {
 	mar_uint64_t context __attribute__((aligned(8)));
 	struct mar_votequorum_ring_id ring_id __attribute__((aligned(8)));
 	mar_uint32_t node_list_entries __attribute__((aligned(8)));
-	struct votequorum_node node_list[] __attribute__((aligned(8)));
+	mar_uint32_t node_list[] __attribute__((aligned(8)));
 };
 
 /**

@@ -57,10 +57,12 @@
 static quorum_handle_t q_handle = 0;
 static votequorum_handle_t vq_handle = 0;
 
-static void votequorum_quorum_notification_fn(
+static void votequorum_notification_fn(
 	votequorum_handle_t handle,
 	uint64_t context,
-	uint32_t quorate)
+	uint32_t quorate,
+	uint32_t node_list_entries,
+	votequorum_node_t node_list[])
 {
 	qb_log (LOG_INFO, "VQ notification quorate: %d", quorate);
 }
@@ -118,7 +120,7 @@ static int q_lib_init(void)
 
 	if (vq_handle == 0) {
 		qb_log (LOG_INFO, "votequorum_initialize");
-		vq_callbacks.votequorum_quorum_notify_fn = votequorum_quorum_notification_fn;
+		vq_callbacks.votequorum_quorum_notify_fn = votequorum_notification_fn;
 		vq_callbacks.votequorum_expectedvotes_notify_fn = NULL;
 		ret = CS_ERR_NOT_EXIST;
 		while (ret == CS_ERR_NOT_EXIST && retry > 0) {

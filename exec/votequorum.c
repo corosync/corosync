@@ -820,7 +820,7 @@ static int load_ev_tracking_barrier(void)
 
 static void update_wait_for_all_status(uint8_t wfa_status)
 {
-	ENTER(); 
+	ENTER();
 
 	wait_for_all_status = wfa_status;
 	if (wait_for_all_status) {
@@ -1732,23 +1732,44 @@ static int votequorum_exec_send_quorum_notification(void *conn, uint64_t context
 {
 	struct res_lib_votequorum_quorum_notification *res_lib_votequorum_notification;
 	struct list_head *tmp;
+	struct cluster_node *node;
+	int i = 0;
+	int cluster_members = 0;
 	int size;
 	char buf[sizeof(struct res_lib_votequorum_quorum_notification) + sizeof(struct votequorum_node) * (PROCESSOR_COUNT_MAX + 2)];
 
 	ENTER();
 
-
 	log_printf(LOGSYS_LEVEL_DEBUG, "Sending quorum callback, quorate = %d", cluster_is_quorate);
 
-	size = sizeof(struct res_lib_votequorum_quorum_notification);
+	list_iterate(tmp, &cluster_members_list) {
+		node = list_entry(tmp, struct cluster_node, list);
+		cluster_members++;
+        }
+	if (us->flags & NODE_FLAGS_QDEVICE_REGISTERED) {
+		cluster_members++;
+	}
+
+	size = sizeof(struct res_lib_votequorum_quorum_notification) + sizeof(struct votequorum_node) * cluster_members;
 
 	res_lib_votequorum_notification = (struct res_lib_votequorum_quorum_notification *)&buf;
 	res_lib_votequorum_notification->quorate = cluster_is_quorate;
 	res_lib_votequorum_notification->context = context;
-
+	res_lib_votequorum_notification->node_list_entries = cluster_members;
 	res_lib_votequorum_notification->header.id = MESSAGE_RES_VOTEQUORUM_QUORUM_NOTIFICATION;
 	res_lib_votequorum_notification->header.size = size;
 	res_lib_votequorum_notification->header.error = CS_OK;
+
+	/* Send all known nodes and their states */
+	list_iterate(tmp, &cluster_members_list) {
+		node = list_entry(tmp, struct cluster_node, list);
+		res_lib_votequorum_notification->node_list[i].nodeid = node->node_id;
+		res_lib_votequorum_notification->node_list[i++].state = node->state;
+        }
+	if (us->flags & NODE_FLAGS_QDEVICE_REGISTERED) {
+		res_lib_votequorum_notification->node_list[i].nodeid = VOTEQUORUM_QDEVICE_NODEID;
+		res_lib_votequorum_notification->node_list[i++].state = qdevice->state;
+	}
 
 	/* Send it to all interested parties */
 	if (conn) {
@@ -1773,41 +1794,27 @@ static int votequorum_exec_send_quorum_notification(void *conn, uint64_t context
 static int votequorum_exec_send_nodelist_notification(void *conn, uint64_t context)
 {
 	struct res_lib_votequorum_nodelist_notification *res_lib_votequorum_notification;
-	struct list_head *tmp;
-	struct cluster_node *node;
-	int cluster_members = 0;
 	int i = 0;
 	int size;
-	char buf[sizeof(struct res_lib_votequorum_nodelist_notification) + sizeof(struct votequorum_node) * (PROCESSOR_COUNT_MAX + 2)];
+	struct list_head *tmp;
+	char buf[sizeof(struct res_lib_votequorum_nodelist_notification) + sizeof(uint32_t) * quorum_members_entries];
 
 	ENTER();
 
 	log_printf(LOGSYS_LEVEL_DEBUG, "Sending nodelist callback. ring_id = %d/%lld", quorum_ringid.rep.nodeid, quorum_ringid.seq);
 
-	list_iterate(tmp, &cluster_members_list) {
-		node = list_entry(tmp, struct cluster_node, list);
-		cluster_members++;
-        }
-	if (us->flags & NODE_FLAGS_QDEVICE_REGISTERED) {
-		cluster_members++;
-	}
-
-	size = sizeof(struct res_lib_votequorum_nodelist_notification) + sizeof(struct votequorum_node) * cluster_members;
+	size = sizeof(struct res_lib_votequorum_nodelist_notification) + sizeof(uint32_t) * quorum_members_entries;
 
 	res_lib_votequorum_notification = (struct res_lib_votequorum_nodelist_notification *)&buf;
-	res_lib_votequorum_notification->node_list_entries = cluster_members;
+	res_lib_votequorum_notification->node_list_entries = quorum_members_entries;
 	res_lib_votequorum_notification->ring_id.nodeid = quorum_ringid.rep.nodeid;
 	res_lib_votequorum_notification->ring_id.seq = quorum_ringid.seq;
 	res_lib_votequorum_notification->context = context;
-	list_iterate(tmp, &cluster_members_list) {
-		node = list_entry(tmp, struct cluster_node, list);
-		res_lib_votequorum_notification->node_list[i].nodeid = node->node_id;
-		res_lib_votequorum_notification->node_list[i++].state = node->state;
-        }
-	if (us->flags & NODE_FLAGS_QDEVICE_REGISTERED) {
-		res_lib_votequorum_notification->node_list[i].nodeid = VOTEQUORUM_QDEVICE_NODEID;
-		res_lib_votequorum_notification->node_list[i++].state = qdevice->state;
+
+	for (i=0; i<quorum_members_entries; i++) {
+		res_lib_votequorum_notification->node_list[i] = quorum_members[i];
 	}
+
 	res_lib_votequorum_notification->header.id = MESSAGE_RES_VOTEQUORUM_NODELIST_NOTIFICATION;
 	res_lib_votequorum_notification->header.size = size;
 	res_lib_votequorum_notification->header.error = CS_OK;
@@ -1897,7 +1904,7 @@ static void exec_votequorum_qdevice_reg_endian_convert (void *message)
 
 	ENTER();
 
-	req_exec_quorum_qdevice_reg->operation = swab32(req_exec_quorum_qdevice_reg->operation);	
+	req_exec_quorum_qdevice_reg->operation = swab32(req_exec_quorum_qdevice_reg->operation);
 
 	LEAVE();
 }
@@ -2111,7 +2118,7 @@ static void message_handler_req_exec_votequorum_nodeinfo (
 recalculate:
 	if ((new_node) ||
 	    (nodeid == us->node_id) ||
-	    (node->flags & NODE_FLAGS_FIRST) || 
+	    (node->flags & NODE_FLAGS_FIRST) ||
 	    (old_votes != node->votes) ||
 	    (old_expected != node->expected_votes) ||
 	    (old_flags != node->flags) ||
@@ -2421,6 +2428,7 @@ static int votequorum_sync_process (void)
 static void votequorum_sync_activate (void)
 {
 	recalculate_quorum(0, 0);
+	log_printf(LOGSYS_LEVEL_DEBUG, "CC: quorum_callback sent from sync_activate");
 	quorum_callback(quorum_members, quorum_members_entries,
 			cluster_is_quorate, &quorum_ringid);
 	votequorum_exec_send_quorum_notification(NULL, 0L);

@@ -127,7 +127,7 @@ static void votequorum_notification_fn(
 	uint64_t context,
 	votequorum_ring_id_t ring_id,
 	uint32_t node_list_entries,
-	votequorum_node_t node_list[]);
+	uint32_t node_list[]);
 static votequorum_handle_t v_handle;
 static votequorum_callbacks_t v_callbacks = {
 	.votequorum_quorum_notify_fn = NULL,
@@ -358,7 +358,7 @@ static void votequorum_notification_fn(
 	uint64_t context,
 	votequorum_ring_id_t ring_id,
 	uint32_t node_list_entries,
-	votequorum_node_t node_list[])
+	uint32_t node_list[])
 {
 	g_ring_id_rep_node = ring_id.nodeid;
 	g_vq_called = 1;
