@@ -57,7 +57,6 @@
 
 struct qnetd_algo_lms_partition {
 	struct tlv_ring_id ring_id;
-	struct qnetd_client_list client_list;
 	int num_nodes;
 	TAILQ_ENTRY(qnetd_algo_lms_partition) entries;
 };
@@ -120,7 +119,7 @@ static int create_partitions(struct qnetd_client *client,
 			TAILQ_INSERT_TAIL(&info->partition_list, partition, entries);
 		}
 		partition->num_nodes++;
-		qnetd_log(LOG_DEBUG, "algo-lms: partition %d/%ld (%p) has %d nodes", ring_id->node_id, ring_id->seq, partition, partition->num_nodes);
+
 	}
 	return num_partitions;
 }
@@ -133,6 +132,15 @@ static void free_partitions(struct qnetd_algo_lms_info *info)
 	TAILQ_FOREACH(cur_partition, &info->partition_list, entries) {
 		TAILQ_REMOVE(&info->partition_list, cur_partition, entries);
 		free(cur_partition);
+	}
+}
+
+static void dump_partitions(struct qnetd_algo_lms_info *info)
+{
+	struct qnetd_algo_lms_partition *partition;
+
+	TAILQ_FOREACH(partition, &info->partition_list, entries) {
+		qnetd_log(LOG_DEBUG, "algo-lms: partition %d/%ld (%p) has %d nodes", partition->ring_id.node_id, partition->ring_id.seq, partition, partition->num_nodes);
 	}
 }
 
@@ -149,7 +157,7 @@ static int ring_ids_match(struct qnetd_client *client, const struct tlv_ring_id 
 
 	TAILQ_FOREACH(other_client, &client->cluster->client_list, cluster_entries) {
 		struct qnetd_algo_lms_info *other_info = other_client->algorithm_data;
-		int seen_us = 0;
+		int in_our_partition = 0;
 
 		if (other_client == client) {
 			continue; /* We've seen our membership list */
@@ -159,14 +167,14 @@ static int ring_ids_match(struct qnetd_client *client, const struct tlv_ring_id 
 		 * If the other nodes on our side of a partition have a different ring ID then
 		 * we need to wait until they have all caught up before making a decision
 		 */
-		TAILQ_FOREACH(node_info, &other_client->last_membership_node_list, entries) {
-			if (node_info->node_state == TLV_NODE_STATE_MEMBER && node_info->node_id == client->node_id) {
-				seen_us = 1;
+		TAILQ_FOREACH(node_info, &client->last_membership_node_list, entries) {
+			if (node_info->node_state == TLV_NODE_STATE_MEMBER && node_info->node_id == other_client->node_id) {
+				in_our_partition = 1;
 			}
 		}
 
-		if (seen_us && !rings_eq(ring_id, &other_info->ring_id)) {
-			qnetd_log(LOG_DEBUG, "algo-lms: nodeid %d has different ring_id (%d/%ld) to us (%d/%ld)", other_client->node_id, other_info->ring_id.node_id, other_info->ring_id.seq, ring_id->node_id, ring_id->seq);
+		if (in_our_partition && !rings_eq(ring_id, &other_info->ring_id)) {
+			qnetd_log(LOG_DEBUG, "algo-lms: nodeid %d in our partition has different ring_id (%d/%ld) to us (%d/%ld)", other_client->node_id, other_info->ring_id.node_id, other_info->ring_id.seq, ring_id->node_id, ring_id->seq);
 			return -1; /* ring IDs don't match */
 		}
 	}
@@ -193,6 +201,7 @@ static enum tlv_reply_error_code do_lms_algorithm(struct qnetd_client *client,  
 		qnetd_log(LOG_DEBUG, "algo-lms: Error creating partition list");
 		return (TLV_REPLY_ERROR_CODE_INTERNAL_ERROR);
 	}
+	dump_partitions(info);
 
 	/* Only 1 partition - let votequorum sort it out */
 	if (num_partitions == 1) {

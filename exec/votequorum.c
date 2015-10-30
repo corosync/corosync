@@ -2428,7 +2428,6 @@ static int votequorum_sync_process (void)
 static void votequorum_sync_activate (void)
 {
 	recalculate_quorum(0, 0);
-	log_printf(LOGSYS_LEVEL_DEBUG, "CC: quorum_callback sent from sync_activate");
 	quorum_callback(quorum_members, quorum_members_entries,
 			cluster_is_quorate, &quorum_ringid);
 	votequorum_exec_send_quorum_notification(NULL, 0L);
