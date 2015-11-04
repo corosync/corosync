@@ -167,9 +167,8 @@ qnetd_algo_test_config_node_list_received(struct qnetd_client *client,
 /*
  * Called after client sent membership node list.
  * All client fields are already set. Nodes is actual node list.
- * msg_seq_num is 32-bit number set by client. If client sent config file version,
- * config_version_set is set to 1 and config_version contains valid config file version.
- * ring_id and quorate are copied from client votequorum callback.
+ * msg_seq_num is 32-bit number set by client.
+ * ring_id is copied from client votequorum callback.
  *
  * Function has to return result_vote. This can be one of ack/nack, ask_later (client
  * should ask later for a vote) or wait_for_reply (client should wait for reply).
@@ -180,8 +179,7 @@ qnetd_algo_test_config_node_list_received(struct qnetd_client *client,
 
 enum tlv_reply_error_code
 qnetd_algo_test_membership_node_list_received(struct qnetd_client *client,
-    uint32_t msg_seq_num, int config_version_set, uint64_t config_version,
-    const struct tlv_ring_id *ring_id, enum tlv_quorate quorate,
+    uint32_t msg_seq_num, const struct tlv_ring_id *ring_id,
     const struct node_list *nodes, enum tlv_vote *result_vote)
 {
 
@@ -190,17 +188,38 @@ qnetd_algo_test_membership_node_list_received(struct qnetd_client *client,
 
 	qnetd_log(LOG_INFO, "algo-test:   msg seq num %"PRIu32, msg_seq_num);
 
-	if (config_version_set) {
-		qnetd_log(LOG_INFO, "algo-test:   config version = %"PRIu64, config_version);
-	}
-
 	qnetd_log(LOG_INFO, "algo-test:   ring id = (%"PRIx32".%"PRIx64")",
 	    ring_id->node_id, ring_id->seq);
-	qnetd_log(LOG_INFO, "algo-test:   quorate = %u", quorate);
 
 	qnetd_algo_dump_node_list(client, nodes);
 
 	*result_vote = TLV_VOTE_ACK;
+
+	return (TLV_REPLY_ERROR_CODE_NO_ERROR);
+}
+
+/*
+ * Called after client sent quorum node list.
+ * All client fields are already set. Nodes is actual node list.
+ * msg_seq_num is 32-bit number set by client.
+ * quorate is copied from client votequorum callback.
+ * Function is just informative. If client vote is required to change, it's possible
+ * to use qnetd_client_send_vote_info.
+ *
+ * Return TLV_REPLY_ERROR_CODE_NO_ERROR on success, different TLV_REPLY_ERROR_CODE_*
+ * on failure (error is send back to client)
+ */
+enum tlv_reply_error_code
+qnetd_algo_test_quorum_node_list_received(struct qnetd_client *client,
+    uint32_t msg_seq_num, enum tlv_quorate quorate, const struct node_list *nodes)
+{
+	qnetd_log(LOG_INFO, "algo-test: Client %p (cluster %s, node_id %"PRIx32") "
+	    "sent quorum node list.", client, client->cluster_name, client->node_id);
+
+	qnetd_log(LOG_INFO, "algo-test:   msg seq num %"PRIu32, msg_seq_num);
+	qnetd_log(LOG_INFO, "algo-test:   quorate = %u", quorate);
+
+	qnetd_algo_dump_node_list(client, nodes);
 
 	return (TLV_REPLY_ERROR_CODE_NO_ERROR);
 }
@@ -254,6 +273,7 @@ static struct qnetd_algorithm qnetd_algo_test = {
 	.init                          = qnetd_algo_test_client_init,
 	.config_node_list_received     = qnetd_algo_test_config_node_list_received,
 	.membership_node_list_received = qnetd_algo_test_membership_node_list_received,
+	.quorum_node_list_received     = qnetd_algo_test_quorum_node_list_received,
 	.client_disconnect             = qnetd_algo_test_client_disconnect,
 	.ask_for_vote_received         = qnetd_algo_test_ask_for_vote_received,
 	.vote_info_reply_received      = qnetd_algo_test_vote_info_reply_received,

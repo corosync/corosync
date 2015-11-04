@@ -73,12 +73,19 @@ qnetd_algo_ffsplit_config_node_list_received(struct qnetd_client *client,
 
 enum tlv_reply_error_code
 qnetd_algo_ffsplit_membership_node_list_received(struct qnetd_client *client,
-    uint32_t msg_seq_num, int config_version_set, uint64_t config_version,
-    const struct tlv_ring_id *ring_id, enum tlv_quorate quorate,
+    uint32_t msg_seq_num, const struct tlv_ring_id *ring_id,
     const struct node_list *nodes, enum tlv_vote *result_vote)
 {
 
 	*result_vote = TLV_VOTE_ASK_LATER;
+
+	return (TLV_REPLY_ERROR_CODE_NO_ERROR);
+}
+
+enum tlv_reply_error_code
+qnetd_algo_ffsplit_quorum_node_list_received(struct qnetd_client *client,
+    uint32_t msg_seq_num, enum tlv_quorate quorate, const struct node_list *nodes)
+{
 
 	return (TLV_REPLY_ERROR_CODE_NO_ERROR);
 }
@@ -110,6 +117,7 @@ static struct qnetd_algorithm qnetd_algo_ffsplit = {
 	.init                          = qnetd_algo_ffsplit_client_init,
 	.config_node_list_received     = qnetd_algo_ffsplit_config_node_list_received,
 	.membership_node_list_received = qnetd_algo_ffsplit_membership_node_list_received,
+	.quorum_node_list_received     = qnetd_algo_ffsplit_quorum_node_list_received,
 	.client_disconnect             = qnetd_algo_ffsplit_client_disconnect,
 	.ask_for_vote_received         = qnetd_algo_ffsplit_ask_for_vote_received,
 	.vote_info_reply_received      = qnetd_algo_ffsplit_vote_info_reply_received,

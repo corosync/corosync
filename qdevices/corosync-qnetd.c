@@ -631,6 +631,7 @@ qnetd_client_msg_received_node_list(struct qnetd_instance *instance, struct qnet
 	struct send_buffer_list_entry *send_buffer;
 	enum tlv_reply_error_code reply_error_code;
 	enum tlv_vote result_vote;
+	int add_result_vote;
 
 	reply_error_code = TLV_REPLY_ERROR_CODE_NO_ERROR;
 
@@ -674,6 +675,8 @@ qnetd_client_msg_received_node_list(struct qnetd_instance *instance, struct qnet
 		return (0);
 	}
 
+	add_result_vote = 1;
+
 	switch (msg->node_list_type) {
 	case TLV_NODE_LIST_TYPE_INITIAL_CONFIG:
 	case TLV_NODE_LIST_TYPE_CHANGED_CONFIG:
@@ -696,8 +699,12 @@ qnetd_client_msg_received_node_list(struct qnetd_instance *instance, struct qnet
 			return (0);
 		}
 
+		reply_error_code = qnetd_algorithm_membership_node_list_received(client,
+		    msg->seq_number, &msg->ring_id, &msg->nodes, &result_vote);
+		break;
+	case TLV_NODE_LIST_TYPE_QUORUM:
 		if (!msg->quorate_set) {
-			qnetd_log(LOG_ERR, "Received node list message without quorate set. "
+			qnetd_log(LOG_ERR, "Received quorum list message without quorate set. "
 			    "Sending error reply.");
 
 			if (qnetd_client_send_err(client, msg->seq_number_set, msg->seq_number,
@@ -707,10 +714,9 @@ qnetd_client_msg_received_node_list(struct qnetd_instance *instance, struct qnet
 
 			return (0);
 		}
-
-		reply_error_code = qnetd_algorithm_membership_node_list_received(client,
-		    msg->seq_number, msg->config_version_set, msg->config_version,
-		    &msg->ring_id, msg->quorate, &msg->nodes, &result_vote);
+		reply_error_code = qnetd_algorithm_quorum_node_list_received(client,
+		    msg->seq_number,msg->quorate, &msg->nodes);
+		add_result_vote = 0;
 		break;
 	default:
 		errx(1, "qnetd_client_msg_received_node_list fatal error. "
@@ -753,6 +759,15 @@ qnetd_client_msg_received_node_list(struct qnetd_instance *instance, struct qnet
 			return (-1);
 		}
 		break;
+	case TLV_NODE_LIST_TYPE_QUORUM:
+		node_list_free(&client->last_quorum_node_list);
+		if (node_list_clone(&client->last_quorum_node_list, &msg->nodes) == -1) {
+			qnetd_log(LOG_ERR, "Can't alloc quorum node list clone. "
+			    "Disconnecting client connection.");
+
+			return (-1);
+		}
+		break;
 	default:
 		errx(1, "qnetd_client_msg_received_node_list fatal error. "
 		    "Unhandled node_list_type");
@@ -767,7 +782,8 @@ qnetd_client_msg_received_node_list(struct qnetd_instance *instance, struct qnet
 		return (-1);
 	}
 
-	if (msg_create_node_list_reply(&send_buffer->buffer, msg->seq_number, result_vote) == -1) {
+	if (msg_create_node_list_reply(&send_buffer->buffer, msg->seq_number, add_result_vote,
+	    result_vote) == -1) {
 		qnetd_log(LOG_ERR, "Can't alloc node list reply msg. "
 		    "Disconnecting client connection.");
 
@@ -884,7 +900,6 @@ qnetd_client_msg_received_vote_info_reply(struct qnetd_instance *instance,
 {
 	int res;
 	enum tlv_reply_error_code reply_error_code;
-	enum tlv_vote result_vote;
 
 	reply_error_code = TLV_REPLY_ERROR_CODE_NO_ERROR;
 
@@ -916,9 +931,7 @@ qnetd_client_msg_received_vote_info_reply(struct qnetd_instance *instance,
 		return (0);
 	}
 
-	reply_error_code = qnetd_algorithm_membership_node_list_received(client,
-	    msg->seq_number, msg->config_version_set, msg->config_version,
-	    &msg->ring_id, msg->quorate, &msg->nodes, &result_vote);
+	reply_error_code = qnetd_algorithm_vote_info_reply_received(client, msg->seq_number);
 
 	if (reply_error_code != TLV_REPLY_ERROR_CODE_NO_ERROR) {
 		qnetd_log(LOG_ERR, "Algorithm returned error code. "

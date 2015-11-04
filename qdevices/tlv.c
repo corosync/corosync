@@ -844,7 +844,8 @@ tlv_iter_decode_node_list_type(struct tlv_iterator *tlv_iter,
 
 	if (tmp_node_list_type != TLV_NODE_LIST_TYPE_INITIAL_CONFIG &&
 	    tmp_node_list_type != TLV_NODE_LIST_TYPE_CHANGED_CONFIG &&
-	    tmp_node_list_type != TLV_NODE_LIST_TYPE_MEMBERSHIP) {
+	    tmp_node_list_type != TLV_NODE_LIST_TYPE_MEMBERSHIP &&
+	    tmp_node_list_type != TLV_NODE_LIST_TYPE_QUORUM) {
 		return (-4);
 	}
 

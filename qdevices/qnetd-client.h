@@ -71,6 +71,7 @@ struct qnetd_client {
 	void *algorithm_data;
 	struct node_list configuration_node_list;
 	struct node_list last_membership_node_list;
+	struct node_list last_quorum_node_list;
 	struct qnetd_cluster *cluster;
 	TAILQ_ENTRY(qnetd_client) entries;
 	TAILQ_ENTRY(qnetd_client) cluster_entries;

@@ -168,6 +168,9 @@ static int ring_ids_match(struct qnetd_client *client, const struct tlv_ring_id 
 		 * we need to wait until they have all caught up before making a decision
 		 */
 		TAILQ_FOREACH(node_info, &client->last_membership_node_list, entries) {
+			/*
+			 * TODO: last_membership_node_list state is always set to NOT_SET
+			 */
 			if (node_info->node_state == TLV_NODE_STATE_MEMBER && node_info->node_id == other_client->node_id) {
 				in_our_partition = 1;
 			}
@@ -354,8 +357,7 @@ qnetd_algo_lms_config_node_list_received(struct qnetd_client *client,
 
 enum tlv_reply_error_code
 qnetd_algo_lms_membership_node_list_received(struct qnetd_client *client,
-    uint32_t msg_seq_num, int config_version_set, uint64_t config_version,
-    const struct tlv_ring_id *ring_id, enum tlv_quorate quorate,
+    uint32_t msg_seq_num, const struct tlv_ring_id *ring_id,
     const struct node_list *nodes, enum tlv_vote *result_vote)
 {
 	struct qnetd_algo_lms_info *info = client->algorithm_data;
@@ -365,6 +367,14 @@ qnetd_algo_lms_membership_node_list_received(struct qnetd_client *client,
 	qnetd_log(LOG_DEBUG, "\nalgo-lms: membership list from node %d partition %d/%ld", client->node_id, ring_id->node_id, ring_id->seq);
 
 	return do_lms_algorithm(client, result_vote);
+}
+
+enum tlv_reply_error_code
+qnetd_algo_lms_quorum_node_list_received(struct qnetd_client *client,
+    uint32_t msg_seq_num, enum tlv_quorate quorate, const struct node_list *nodes)
+{
+
+	return (TLV_REPLY_ERROR_CODE_NO_ERROR);
 }
 
 /*
@@ -412,6 +422,7 @@ static struct qnetd_algorithm qnetd_algo_lms = {
 	.init                          = qnetd_algo_lms_client_init,
 	.config_node_list_received     = qnetd_algo_lms_config_node_list_received,
 	.membership_node_list_received = qnetd_algo_lms_membership_node_list_received,
+	.quorum_node_list_received     = qnetd_algo_lms_quorum_node_list_received,
 	.client_disconnect             = qnetd_algo_lms_client_disconnect,
 	.ask_for_vote_received         = qnetd_algo_lms_ask_for_vote_received,
 	.vote_info_reply_received      = qnetd_algo_lms_vote_info_reply_received,

@@ -578,18 +578,20 @@ qdevice_net_msg_received_node_list_reply(struct qdevice_net_instance *instance,
 		return (-1);
 	}
 
-	if (!msg->vote_set || !msg->seq_number_set) {
+	if (!msg->seq_number_set) {
 		qdevice_net_log(LOG_ERR, "Received node list reply message without "
 		    "required options. Disconnecting from server");
+
+		return (-1);
 	}
 
 	/*
 	 * TODO API
 	 */
-	qdevice_net_log(LOG_INFO, "Received node list reply seq=%"PRIu32", vote=%u",
-	    msg->seq_number, msg->vote);
+	qdevice_net_log(LOG_INFO, "Received node list reply seq=%"PRIu32", vote_set=%u, vote=%u",
+	    msg->seq_number, msg->vote_set, (msg->vote_set ? msg->vote : 0));
 
-	if (qdevice_net_cast_vote_timer_update(instance, msg->vote) != 0) {
+	if (msg->vote_set && qdevice_net_cast_vote_timer_update(instance, msg->vote) != 0) {
 		return (-1);
 	}
 

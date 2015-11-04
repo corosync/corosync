@@ -159,7 +159,7 @@ extern size_t		msg_create_node_list(struct dynar *msg,
     const struct node_list *nodes);
 
 extern size_t		msg_create_node_list_reply(struct dynar *msg, uint32_t msg_seq_number,
-    enum tlv_vote vote);
+    int add_result_vote, enum tlv_vote vote);
 
 extern size_t		msg_create_ask_for_vote(struct dynar *msg, uint32_t msg_seq_number);
 

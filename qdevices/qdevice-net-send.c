@@ -173,6 +173,8 @@ qdevice_net_send_config_node_list(struct qdevice_net_instance *instance, int ini
 		return (-1);
 	}
 
+	node_list_free(&nlist);
+
 	send_buffer_list_put(&instance->send_buffer_list, send_buffer);
 
 	return (0);
@@ -180,7 +182,57 @@ qdevice_net_send_config_node_list(struct qdevice_net_instance *instance, int ini
 
 int
 qdevice_net_send_membership_node_list(struct qdevice_net_instance *instance,
-    enum tlv_quorate quorate, const struct tlv_ring_id *ring_id,
+    const struct tlv_ring_id *ring_id,
+    uint32_t node_list_entries, uint32_t node_list[])
+{
+	struct node_list nlist;
+	struct send_buffer_list_entry *send_buffer;
+	uint32_t i;
+
+	node_list_init(&nlist);
+
+	for (i = 0; i < node_list_entries; i++) {
+		if (node_list_add(&nlist, node_list[i], 0, TLV_NODE_STATE_NOT_SET) == NULL) {
+			qdevice_net_log(LOG_ERR, "Can't allocate membership node list.");
+
+			node_list_free(&nlist);
+
+			return (-1);
+		}
+	}
+
+	send_buffer = send_buffer_list_get_new(&instance->send_buffer_list);
+	if (send_buffer == NULL) {
+		qdevice_net_log(LOG_ERR, "Can't allocate send list buffer for membership "
+		    "node list msg");
+
+		node_list_free(&nlist);
+
+		return (-1);
+	}
+
+	instance->last_msg_seq_num++;
+
+	if (msg_create_node_list(&send_buffer->buffer, instance->last_msg_seq_num,
+	    TLV_NODE_LIST_TYPE_MEMBERSHIP,
+	    1, ring_id, 0, 0, 0, 0, &nlist) == 0) {
+		qdevice_net_log(LOG_ERR, "Can't allocate send buffer for membership list msg");
+
+		node_list_free(&nlist);
+
+		return (-1);
+	}
+
+	node_list_free(&nlist);
+
+	send_buffer_list_put(&instance->send_buffer_list, send_buffer);
+
+	return (0);
+}
+
+int
+qdevice_net_send_quorum_node_list(struct qdevice_net_instance *instance,
+    enum tlv_quorate quorate,
     uint32_t node_list_entries, votequorum_node_t node_list[])
 {
 	struct node_list nlist;
@@ -196,7 +248,7 @@ qdevice_net_send_membership_node_list(struct qdevice_net_instance *instance,
 
 		if (node_list_add(&nlist, node_list[i].nodeid, 0,
 		    qdevice_net_votequorum_node_state_to_tlv(node_list[i].state)) == NULL) {
-			qdevice_net_log(LOG_ERR, "Can't allocate membership node list.");
+			qdevice_net_log(LOG_ERR, "Can't allocate quorum node list.");
 
 			node_list_free(&nlist);
 
@@ -206,7 +258,7 @@ qdevice_net_send_membership_node_list(struct qdevice_net_instance *instance,
 
 	send_buffer = send_buffer_list_get_new(&instance->send_buffer_list);
 	if (send_buffer == NULL) {
-		qdevice_net_log(LOG_ERR, "Can't allocate send list buffer for config "
+		qdevice_net_log(LOG_ERR, "Can't allocate send list buffer for quorum "
 		    "node list msg");
 
 		node_list_free(&nlist);
@@ -217,9 +269,9 @@ qdevice_net_send_membership_node_list(struct qdevice_net_instance *instance,
 	instance->last_msg_seq_num++;
 
 	if (msg_create_node_list(&send_buffer->buffer, instance->last_msg_seq_num,
-	    TLV_NODE_LIST_TYPE_MEMBERSHIP,
-	    1, ring_id, 0, 0, 1, quorate, &nlist) == 0) {
-		qdevice_net_log(LOG_ERR, "Can't allocate send buffer for config list msg");
+	    TLV_NODE_LIST_TYPE_QUORUM,
+	    0, NULL, 0, 0, 1, quorate, &nlist) == 0) {
+		qdevice_net_log(LOG_ERR, "Can't allocate send buffer for quorum list msg");
 
 		node_list_free(&nlist);
 

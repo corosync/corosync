@@ -77,8 +77,7 @@ qnetd_algorithm_config_node_list_received(struct qnetd_client *client,
 
 enum tlv_reply_error_code
 qnetd_algorithm_membership_node_list_received(struct qnetd_client *client,
-    uint32_t msg_seq_num, int config_version_set, uint64_t config_version,
-    const struct tlv_ring_id *ring_id, enum tlv_quorate quorate,
+    uint32_t msg_seq_num, const struct tlv_ring_id *ring_id,
     const struct node_list *nodes, enum tlv_vote *result_vote)
 {
 
@@ -92,7 +91,25 @@ qnetd_algorithm_membership_node_list_received(struct qnetd_client *client,
 
 	return qnetd_algorithm[client->decision_algorithm]->membership_node_list_received(
 		client, msg_seq_num,
-		config_version_set, config_version, ring_id, quorate, nodes, result_vote);
+		ring_id, nodes, result_vote);
+}
+
+enum tlv_reply_error_code
+qnetd_algorithm_quorum_node_list_received(struct qnetd_client *client,
+    uint32_t msg_seq_num, enum tlv_quorate quorate,
+    const struct node_list *nodes)
+{
+
+	if (client->decision_algorithm >= MAX_QNETD_ALGORITHMS ||
+	    qnetd_algorithm[client->decision_algorithm] == NULL) {
+
+		errx(1, "qnetd_algorithm_quorum_node_list_received unhandled "
+		    "decision algorithm");
+		return (TLV_REPLY_ERROR_CODE_INTERNAL_ERROR);
+	}
+
+	return qnetd_algorithm[client->decision_algorithm]->quorum_node_list_received(
+		client, msg_seq_num, quorate, nodes);
 }
 
 void

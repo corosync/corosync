@@ -49,9 +49,13 @@ extern enum tlv_reply_error_code	qnetd_algo_lms_config_node_list_received(
     enum tlv_vote *result_vote);
 
 extern enum tlv_reply_error_code	qnetd_algo_lms_membership_node_list_received(
-    struct qnetd_client *client, uint32_t msg_seq_num, int config_version_set,
-    uint64_t config_version, const struct tlv_ring_id *ring_id, enum tlv_quorate quorate,
+    struct qnetd_client *client, uint32_t msg_seq_num,
+    const struct tlv_ring_id *ring_id,
     const struct node_list *nodes, enum tlv_vote *result_vote);
+
+extern enum tlv_reply_error_code	qnetd_algo_lms_quorum_node_list_received(
+    struct qnetd_client *client, uint32_t msg_seq_num,
+    enum tlv_quorate quorate, const struct node_list *nodes);
 
 extern void				qnetd_algo_lms_client_disconnect(
     struct qnetd_client *client, int server_going_down);

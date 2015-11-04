@@ -54,8 +54,11 @@ extern int		qdevice_net_send_config_node_list(struct qdevice_net_instance *insta
     int initial);
 
 extern int		qdevice_net_send_membership_node_list(
-    struct qdevice_net_instance *instance,
-    enum tlv_quorate quorate, const struct tlv_ring_id *ring_id,
+    struct qdevice_net_instance *instance, const struct tlv_ring_id *ring_id,
+    uint32_t node_list_entries, uint32_t node_list[]);
+
+extern int		qdevice_net_send_quorum_node_list(
+    struct qdevice_net_instance *instance, enum tlv_quorate quorate,
     uint32_t node_list_entries, votequorum_node_t node_list[]);
 
 #ifdef __cplusplus

@@ -565,7 +565,7 @@ small_buf_err:
 
 size_t
 msg_create_node_list_reply(struct dynar *msg, uint32_t msg_seq_number,
-    enum tlv_vote vote)
+    int add_result_vote, enum tlv_vote vote)
 {
 
 	dynar_clean(msg);
@@ -577,8 +577,10 @@ msg_create_node_list_reply(struct dynar *msg, uint32_t msg_seq_number,
 		goto small_buf_err;
 	}
 
-	if (tlv_add_vote(msg, vote) == -1) {
-		goto small_buf_err;
+	if (add_result_vote) {
+		if (tlv_add_vote(msg, vote) == -1) {
+			goto small_buf_err;
+		}
 	}
 
 	msg_set_len(msg, dynar_size(msg) - (MSG_TYPE_LENGTH + MSG_LENGTH_LENGTH));

@@ -142,8 +142,7 @@ qnetd_algo_2nodelms_config_node_list_received(struct qnetd_client *client,
 
 enum tlv_reply_error_code
 qnetd_algo_2nodelms_membership_node_list_received(struct qnetd_client *client,
-    uint32_t msg_seq_num, int config_version_set, uint64_t config_version,
-    const struct tlv_ring_id *ring_id, enum tlv_quorate quorate,
+    uint32_t msg_seq_num, const struct tlv_ring_id *ring_id,
     const struct node_list *nodes, enum tlv_vote *result_vote)
 {
 	struct node_list_entry *node_info;
@@ -174,11 +173,9 @@ qnetd_algo_2nodelms_membership_node_list_received(struct qnetd_client *client,
 
 	/* If both nodes are present, then we're OK. return a vote */
 	TAILQ_FOREACH(node_info, nodes, entries) {
-		if (node_info->node_state == TLV_NODE_STATE_MEMBER) {
-			node_count++;
-			if (node_info->node_id < low_node_id) {
-				low_node_id = node_info->node_id;
-			}
+		node_count++;
+		if (node_info->node_id < low_node_id) {
+			low_node_id = node_info->node_id;
 		}
 	}
 
@@ -197,12 +194,10 @@ qnetd_algo_2nodelms_membership_node_list_received(struct qnetd_client *client,
 			continue; /* We've seen our membership list */
 		}
 		TAILQ_FOREACH(node_info, &other_client->last_membership_node_list, entries) {
-			if (node_info->node_state == TLV_NODE_STATE_MEMBER) {
-				node_count++;
-				qnetd_log(LOG_DEBUG, "algo-2nodelms: seen nodeid %d on client %p (ring ID %" PRIu64 ")", node_info->node_id, other_client, other_info->ring_id.seq);
-				if (node_info->node_id < low_node_id) {
-					low_node_id = node_info->node_id;
-				}
+			node_count++;
+			qnetd_log(LOG_DEBUG, "algo-2nodelms: seen nodeid %d on client %p (ring ID %" PRIu64 ")", node_info->node_id, other_client, other_info->ring_id.seq);
+			if (node_info->node_id < low_node_id) {
+				low_node_id = node_info->node_id;
 			}
 		}
 	}
@@ -225,6 +220,14 @@ qnetd_algo_2nodelms_membership_node_list_received(struct qnetd_client *client,
 		qnetd_log(LOG_DEBUG, "algo-2nodelms: cluster %s node-id %d denied vote because lower nodeid %d is active", client->cluster_name, client->node_id, low_node_id);
 		*result_vote = info->last_result = TLV_VOTE_NACK;
 	}
+
+	return (TLV_REPLY_ERROR_CODE_NO_ERROR);
+}
+
+enum tlv_reply_error_code
+qnetd_algo_2nodelms_quorum_node_list_received(struct qnetd_client *client,
+    uint32_t msg_seq_num, enum tlv_quorate quorate, const struct node_list *nodes)
+{
 
 	return (TLV_REPLY_ERROR_CODE_NO_ERROR);
 }
@@ -283,6 +286,7 @@ static struct qnetd_algorithm qnetd_algo_2nodelms = {
 	.init                          = qnetd_algo_2nodelms_client_init,
 	.config_node_list_received     = qnetd_algo_2nodelms_config_node_list_received,
 	.membership_node_list_received = qnetd_algo_2nodelms_membership_node_list_received,
+	.quorum_node_list_received     = qnetd_algo_2nodelms_quorum_node_list_received,
 	.client_disconnect             = qnetd_algo_2nodelms_client_disconnect,
 	.ask_for_vote_received         = qnetd_algo_2nodelms_ask_for_vote_received,
 	.vote_info_reply_received      = qnetd_algo_2nodelms_vote_info_reply_received,
