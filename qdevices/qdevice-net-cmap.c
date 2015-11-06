@@ -138,7 +138,8 @@ qdevice_net_cmap_get_nodelist(cmap_handle_t cmap_handle, struct node_list *list)
 				return (-1);
 			}
 
-			node_id = qdevice_net_cmap_autogenerate_node_id(addr0_str, clear_node_high_byte);
+			node_id = qdevice_net_cmap_autogenerate_node_id(addr0_str,
+			    clear_node_high_byte);
 
 			free(addr0_str);
 		} else if (cs_err != CS_OK) {

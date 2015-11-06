@@ -138,6 +138,8 @@ qdevice_net_send_config_node_list(struct qdevice_net_instance *instance, int ini
 	struct send_buffer_list_entry *send_buffer;
 	uint64_t config_version;
 	int send_config_version;
+	struct node_list_entry *node_info;
+	size_t zi;
 
 	/*
 	 * Send initial node list
@@ -162,6 +164,19 @@ qdevice_net_send_config_node_list(struct qdevice_net_instance *instance, int ini
 	    &config_version);
 
 	instance->last_msg_seq_num++;
+
+	qdevice_net_log(LOG_DEBUG, "Sending config node list seq=%"PRIu32".",
+	    instance->last_msg_seq_num);
+
+	qdevice_net_log(LOG_DEBUG, "  Node list:");
+
+	zi = 0;
+
+	TAILQ_FOREACH(node_info, &nlist, entries) {
+		qdevice_net_log(LOG_DEBUG, "    %zu node_id = %"PRIx32", "
+		    "data_center_id = %"PRIx32, zi, node_info->node_id, node_info->data_center_id);
+		zi++;
+        }
 
 	if (msg_create_node_list(&send_buffer->buffer, instance->last_msg_seq_num,
 	    (initial ? TLV_NODE_LIST_TYPE_INITIAL_CONFIG : TLV_NODE_LIST_TYPE_CHANGED_CONFIG),
@@ -212,6 +227,9 @@ qdevice_net_send_membership_node_list(struct qdevice_net_instance *instance,
 	}
 
 	instance->last_msg_seq_num++;
+
+	qdevice_net_log(LOG_DEBUG, "Sending membership node list seq=%"PRIu32".",
+	    instance->last_msg_seq_num);
 
 	if (msg_create_node_list(&send_buffer->buffer, instance->last_msg_seq_num,
 	    TLV_NODE_LIST_TYPE_MEMBERSHIP,
@@ -267,6 +285,9 @@ qdevice_net_send_quorum_node_list(struct qdevice_net_instance *instance,
 	}
 
 	instance->last_msg_seq_num++;
+
+	qdevice_net_log(LOG_DEBUG, "Sending quorum node list seq=%"PRIu32".",
+	    instance->last_msg_seq_num);
 
 	if (msg_create_node_list(&send_buffer->buffer, instance->last_msg_seq_num,
 	    TLV_NODE_LIST_TYPE_QUORUM,

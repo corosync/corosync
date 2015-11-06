@@ -124,6 +124,7 @@ enum tlv_vote {
 	TLV_VOTE_NACK = 2,
 	TLV_VOTE_ASK_LATER = 3,
 	TLV_VOTE_WAIT_FOR_REPLY = 4,
+	TLV_VOTE_NO_CHANGE = 5,
 };
 
 enum tlv_quorate {

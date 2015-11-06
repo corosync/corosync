@@ -56,6 +56,7 @@ qdevice_net_cast_vote_timer_callback(void *data1, void *data2)
 		break;
 	case TLV_VOTE_ASK_LATER:
 	case TLV_VOTE_WAIT_FOR_REPLY:
+	case TLV_VOTE_NO_CHANGE:
 	default:
 		errx(1, "qdevice_net_timer_cast_vote: Unhandled cast_vote_timer_vote %u\n",
 		    instance->cast_vote_timer_vote);
@@ -68,9 +69,11 @@ qdevice_net_cast_vote_timer_callback(void *data1, void *data2)
 
 	if (res != CS_OK && res != CS_ERR_TRY_AGAIN) {
 		if (res == CS_ERR_MESSAGE_ERROR) {
-			qdevice_net_log(LOG_INFO, "votequorum_qdevice_poll called with old ring id, rescheduling timer");
+			qdevice_net_log(LOG_INFO, "votequorum_qdevice_poll called with old ring id,"
+			    " rescheduling timer");
 		} else {
-			qdevice_net_log(LOG_CRIT, "Can't call votequorum_qdevice_poll. Error %u", res);
+			qdevice_net_log(LOG_CRIT, "Can't call votequorum_qdevice_poll. Error %u",
+			    res);
 
 			instance->schedule_disconnect = 1;
 			return (0);
@@ -97,6 +100,10 @@ qdevice_net_cast_vote_timer_update(struct qdevice_net_instance *instance, enum t
 	case TLV_VOTE_ASK_LATER:
 		timer_needs_running = 0;
 		break;
+	case TLV_VOTE_NO_CHANGE:
+		errx(1, "qdevice_net_cast_vote_timer_update_vote: Incorrect vote parameter %u\n",
+		    vote);
+		break;
 	default:
 		errx(1, "qdevice_net_cast_vote_timer_update_vote: Unhandled vote parameter %u\n",
 		    vote);
@@ -112,9 +119,13 @@ qdevice_net_cast_vote_timer_update(struct qdevice_net_instance *instance, enum t
 			    qdevice_net_cast_vote_timer_callback, (void *)instance, NULL);
 
 			if (instance->cast_vote_timer == NULL) {
-				qdevice_net_log(LOG_ERR, "Can't schedule sending of votequorum poll");
+				qdevice_net_log(LOG_ERR, "Can't schedule sending of "
+				    "votequorum poll");
 
 				return (-1);
+			} else {
+				qdevice_net_log(LOG_DEBUG, "Cast vote timer is now scheduled every "
+				    "%"PRIu32"ms.", instance->cast_vote_timer_interval);
 			}
 		}
 
@@ -125,6 +136,9 @@ qdevice_net_cast_vote_timer_update(struct qdevice_net_instance *instance, enum t
 		if (instance->cast_vote_timer != NULL) {
 			timer_list_delete(&instance->main_timer_list, instance->cast_vote_timer);
 			instance->cast_vote_timer = NULL;
+			qdevice_net_log(LOG_DEBUG, "Cast vote timer is now stopped.");
+		} else {
+			qdevice_net_log(LOG_DEBUG, "Cast vote timer remains stopped.");
 		}
 	}
 

@@ -869,7 +869,8 @@ tlv_iter_decode_vote(struct tlv_iterator *tlv_iter, enum tlv_vote *vote)
 	if (tmp_vote != TLV_VOTE_ACK &&
 	    tmp_vote != TLV_VOTE_NACK &&
 	    tmp_vote != TLV_VOTE_ASK_LATER &&
-	    tmp_vote != TLV_VOTE_WAIT_FOR_REPLY) {
+	    tmp_vote != TLV_VOTE_WAIT_FOR_REPLY &&
+	    tmp_vote != TLV_VOTE_NO_CHANGE) {
 		return (-4);
 	}
 

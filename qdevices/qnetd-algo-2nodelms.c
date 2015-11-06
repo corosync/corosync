@@ -122,7 +122,8 @@ qnetd_algo_2nodelms_config_node_list_received(struct qnetd_client *client,
 		return (TLV_REPLY_ERROR_CODE_UNSUPPORTED_DECISION_ALGORITHM);
 	}
 
-	*result_vote = TLV_VOTE_ASK_LATER;
+	*result_vote = TLV_VOTE_NO_CHANGE;
+
 	return (TLV_REPLY_ERROR_CODE_NO_ERROR);
 }
 
@@ -226,8 +227,11 @@ qnetd_algo_2nodelms_membership_node_list_received(struct qnetd_client *client,
 
 enum tlv_reply_error_code
 qnetd_algo_2nodelms_quorum_node_list_received(struct qnetd_client *client,
-    uint32_t msg_seq_num, enum tlv_quorate quorate, const struct node_list *nodes)
+    uint32_t msg_seq_num, enum tlv_quorate quorate, const struct node_list *nodes,
+    enum tlv_vote *result_vote)
 {
+
+	*result_vote = TLV_VOTE_NO_CHANGE;
 
 	return (TLV_REPLY_ERROR_CODE_NO_ERROR);
 }

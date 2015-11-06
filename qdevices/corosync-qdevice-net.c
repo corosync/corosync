@@ -578,7 +578,7 @@ qdevice_net_msg_received_node_list_reply(struct qdevice_net_instance *instance,
 		return (-1);
 	}
 
-	if (!msg->seq_number_set) {
+	if (!msg->vote_set || !msg->seq_number_set) {
 		qdevice_net_log(LOG_ERR, "Received node list reply message without "
 		    "required options. Disconnecting from server");
 
@@ -588,11 +588,13 @@ qdevice_net_msg_received_node_list_reply(struct qdevice_net_instance *instance,
 	/*
 	 * TODO API
 	 */
-	qdevice_net_log(LOG_INFO, "Received node list reply seq=%"PRIu32", vote_set=%u, vote=%u",
-	    msg->seq_number, msg->vote_set, (msg->vote_set ? msg->vote : 0));
+	qdevice_net_log(LOG_INFO, "Received node list reply seq=%"PRIu32", vote=%u",
+	    msg->seq_number, msg->vote);
 
-	if (msg->vote_set && qdevice_net_cast_vote_timer_update(instance, msg->vote) != 0) {
-		return (-1);
+	if (msg->vote != TLV_VOTE_NO_CHANGE) {
+		if (qdevice_net_cast_vote_timer_update(instance, msg->vote) != 0) {
+			return (-1);
+		}
 	}
 
 	return (0);
@@ -1148,7 +1150,8 @@ qdevice_net_instance_init_from_cmap(struct qdevice_net_instance *instance,
 	 */
 	if (qdevice_net_instance_init(instance,
 	    QDEVICE_NET_INITIAL_MSG_RECEIVE_SIZE, QDEVICE_NET_INITIAL_MSG_SEND_SIZE,
-	    QDEVICE_NET_MIN_MSG_SEND_SIZE, QDEVICE_NET_MAX_SEND_BUFFERS, QDEVICE_NET_MAX_MSG_RECEIVE_SIZE,
+	    QDEVICE_NET_MIN_MSG_SEND_SIZE, QDEVICE_NET_MAX_SEND_BUFFERS,
+	    QDEVICE_NET_MAX_MSG_RECEIVE_SIZE,
 	    tls_supported, node_id, decision_algorithm,
 	    heartbeat_interval, sync_heartbeat_interval, cast_vote_timer_interval,
 	    host_addr, host_port, cluster_name) == -1) {

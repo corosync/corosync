@@ -337,7 +337,8 @@ qnetd_algo_lms_config_node_list_received(struct qnetd_client *client,
 	info->num_config_nodes = node_count;
 	qnetd_log(LOG_DEBUG, "algo-lms: cluster %s config_list has %d nodes", client->cluster_name, node_count);
 
-	*result_vote = TLV_VOTE_ASK_LATER;
+	*result_vote = TLV_VOTE_NO_CHANGE;
+
 	return (TLV_REPLY_ERROR_CODE_NO_ERROR);
 }
 
@@ -371,8 +372,10 @@ qnetd_algo_lms_membership_node_list_received(struct qnetd_client *client,
 
 enum tlv_reply_error_code
 qnetd_algo_lms_quorum_node_list_received(struct qnetd_client *client,
-    uint32_t msg_seq_num, enum tlv_quorate quorate, const struct node_list *nodes)
+    uint32_t msg_seq_num, enum tlv_quorate quorate, const struct node_list *nodes, enum tlv_vote *result_vote)
 {
+
+	*result_vote = TLV_VOTE_NO_CHANGE;
 
 	return (TLV_REPLY_ERROR_CODE_NO_ERROR);
 }

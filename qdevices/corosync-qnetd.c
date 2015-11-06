@@ -631,7 +631,6 @@ qnetd_client_msg_received_node_list(struct qnetd_instance *instance, struct qnet
 	struct send_buffer_list_entry *send_buffer;
 	enum tlv_reply_error_code reply_error_code;
 	enum tlv_vote result_vote;
-	int add_result_vote;
 
 	reply_error_code = TLV_REPLY_ERROR_CODE_NO_ERROR;
 
@@ -675,8 +674,6 @@ qnetd_client_msg_received_node_list(struct qnetd_instance *instance, struct qnet
 		return (0);
 	}
 
-	add_result_vote = 1;
-
 	switch (msg->node_list_type) {
 	case TLV_NODE_LIST_TYPE_INITIAL_CONFIG:
 	case TLV_NODE_LIST_TYPE_CHANGED_CONFIG:
@@ -715,8 +712,7 @@ qnetd_client_msg_received_node_list(struct qnetd_instance *instance, struct qnet
 			return (0);
 		}
 		reply_error_code = qnetd_algorithm_quorum_node_list_received(client,
-		    msg->seq_number,msg->quorate, &msg->nodes);
-		add_result_vote = 0;
+		    msg->seq_number,msg->quorate, &msg->nodes, &result_vote);
 		break;
 	default:
 		errx(1, "qnetd_client_msg_received_node_list fatal error. "
@@ -782,8 +778,7 @@ qnetd_client_msg_received_node_list(struct qnetd_instance *instance, struct qnet
 		return (-1);
 	}
 
-	if (msg_create_node_list_reply(&send_buffer->buffer, msg->seq_number, add_result_vote,
-	    result_vote) == -1) {
+	if (msg_create_node_list_reply(&send_buffer->buffer, msg->seq_number, result_vote) == -1) {
 		qnetd_log(LOG_ERR, "Can't alloc node list reply msg. "
 		    "Disconnecting client connection.");
 

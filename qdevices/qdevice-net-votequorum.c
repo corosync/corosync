@@ -86,15 +86,6 @@ qdevice_net_votequorum_quorum_notify_callback(votequorum_handle_t votequorum_han
 		errx(1, "Fatal error. Can't get votequorum context");
 	}
 
-	if (qdevice_net_send_quorum_node_list(instance,
-	    (quorate ? TLV_QUORATE_QUORATE : TLV_QUORATE_INQUORATE),
-	    node_list_entries, node_list) != 0) {
-		/*
-		 * Fatal error -> schedule disconnect
-		 */
-		instance->schedule_disconnect = 1;
-	}
-
 	qdevice_net_log(LOG_DEBUG, "Votequorum quorum notify callback:");
 	qdevice_net_log(LOG_DEBUG, "  Quorate = %u", quorate);
 
@@ -102,6 +93,15 @@ qdevice_net_votequorum_quorum_notify_callback(votequorum_handle_t votequorum_han
 	for (u32 = 0; u32 < node_list_entries; u32++) {
 		qdevice_net_log(LOG_DEBUG, "    %"PRIu32" nodeid = %"PRIu32", state = %"PRIu32,
 		    u32, node_list[u32].nodeid, node_list[u32].state);
+	}
+
+	if (qdevice_net_send_quorum_node_list(instance,
+	    (quorate ? TLV_QUORATE_QUORATE : TLV_QUORATE_INQUORATE),
+	    node_list_entries, node_list) != 0) {
+		/*
+		 * Fatal error -> schedule disconnect
+		 */
+		instance->schedule_disconnect = 1;
 	}
 }
 
@@ -118,6 +118,16 @@ qdevice_net_votequorum_node_list_notify_callback(votequorum_handle_t votequorum_
 		errx(1, "Fatal error. Can't get votequorum context");
 	}
 
+	qdevice_net_log(LOG_DEBUG, "Votequorum nodelist notify callback:");
+	qdevice_net_log(LOG_DEBUG, "  Ring_id = (%"PRIx32".%"PRIx64")",
+	    votequorum_ring_id.nodeid, votequorum_ring_id.seq);
+
+	qdevice_net_log(LOG_DEBUG, "  Node list (size = %"PRIu32"):", node_list_entries);
+	for (u32 = 0; u32 < node_list_entries; u32++) {
+		qdevice_net_log(LOG_DEBUG, "    %"PRIu32" nodeid = %"PRIu32,
+		    u32, node_list[u32]);
+	}
+
 	qdevice_net_votequorum_ring_id_to_tlv(&tlv_rid, &votequorum_ring_id);
 
 	if (qdevice_net_send_membership_node_list(instance,
@@ -128,66 +138,14 @@ qdevice_net_votequorum_node_list_notify_callback(votequorum_handle_t votequorum_
 		instance->schedule_disconnect = 1;
 	}
 
-	memcpy(&instance->last_received_votequorum_ring_id, &votequorum_ring_id, sizeof(votequorum_ring_id));
+	memcpy(&instance->last_received_votequorum_ring_id, &votequorum_ring_id,
+	    sizeof(votequorum_ring_id));
 
 	if (qdevice_net_cast_vote_timer_update(instance, TLV_VOTE_WAIT_FOR_REPLY) != 0) {
 		errx(1, "qdevice_net_votequorum_notify_callback fatal error. "
 		    "Can't update cast vote timer vote");
 	}
-
-	qdevice_net_log(LOG_DEBUG, "Votequorum nodelist notify callback:");
-	qdevice_net_log(LOG_DEBUG, "  Ring_id = (%"PRIx32".%"PRIx64")",
-	    votequorum_ring_id.nodeid, votequorum_ring_id.seq);
-
-	qdevice_net_log(LOG_DEBUG, "  Node list (size = %"PRIu32"):", node_list_entries);
-	for (u32 = 0; u32 < node_list_entries; u32++) {
-		qdevice_net_log(LOG_DEBUG, "    %"PRIu32" nodeid = %"PRIu32,
-		    u32, node_list[u32]);
-	}
 }
-
-//static void
-//qdevice_net_votequorum_notify_callback(votequorum_handle_t votequorum_handle,
-//    uint64_t context, uint32_t quorate,
-//    votequorum_ring_id_t votequorum_ring_id,
-//    uint32_t node_list_entries, votequorum_node_t node_list[])
-//{
-//	struct qdevice_net_instance *instance;
-//	struct tlv_ring_id tlv_rid;
-//	uint32_t u32;
-//
-//	if (votequorum_context_get(votequorum_handle, (void **)&instance) != CS_OK) {
-//		errx(1, "Fatal error. Can't get votequorum context");
-//	}
-//
-//	qdevice_net_votequorum_ring_id_to_tlv(&tlv_rid, &votequorum_ring_id);
-//
-//	if (qdevice_net_send_membership_node_list(instance,
-//	    (quorate ? TLV_QUORATE_QUORATE : TLV_QUORATE_INQUORATE),
-//	    &tlv_rid, node_list_entries, node_list) != 0) {
-//		/*
-//		 * Fatal error -> schedule disconnect
-//		 */
-//		instance->schedule_disconnect = 1;
-//	}
-//
-//	memcpy(&instance->last_received_votequorum_ring_id, &votequorum_ring_id, sizeof(votequorum_ring_id));
-//
-//	if (qdevice_net_cast_vote_timer_update(instance, TLV_VOTE_WAIT_FOR_REPLY) != 0) {
-//		errx(1, "qdevice_net_votequorum_notify_callback fatal error. "
-//		    "Can't update cast vote timer vote");
-//	}
-//
-//	qdevice_net_log(LOG_DEBUG, "Votequorum notify callback:");
-//	qdevice_net_log(LOG_DEBUG, "  Quorate = %u, ring_id = (%"PRIx32".%"PRIx64")",
-//	    quorate, votequorum_ring_id.nodeid, votequorum_ring_id.seq);
-//
-//	qdevice_net_log(LOG_DEBUG, "  Node list (size = %"PRIu32"):", node_list_entries);
-//	for (u32 = 0; u32 < node_list_entries; u32++) {
-//		qdevice_net_log(LOG_DEBUG, "    %"PRIu32" nodeid = %"PRIu32", state = %"PRIu32,
-//		    u32, node_list[u32].nodeid, node_list[u32].state);
-//	}
-//}
 
 void
 qdevice_net_votequorum_init(struct qdevice_net_instance *instance)
@@ -209,7 +167,8 @@ qdevice_net_votequorum_init(struct qdevice_net_instance *instance)
 	no_retries = 0;
 
 	while ((res = votequorum_initialize(&votequorum_handle,
-	    &votequorum_callbacks)) == CS_ERR_TRY_AGAIN && no_retries++ < QDEVICE_NET_MAX_CS_TRY_AGAIN) {
+	    &votequorum_callbacks)) == CS_ERR_TRY_AGAIN &&
+	    no_retries++ < QDEVICE_NET_MAX_CS_TRY_AGAIN) {
 		poll(NULL, 0, 1000);
 	}
 
