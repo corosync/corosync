@@ -41,7 +41,8 @@ qdevice_net_instance_init(struct qdevice_net_instance *instance, size_t initial_
     enum tlv_tls_supported tls_supported, uint32_t node_id,
     enum tlv_decision_algorithm_type decision_algorithm, uint32_t heartbeat_interval,
     uint32_t sync_heartbeat_interval, uint32_t cast_vote_timer_interval,
-    const char *host_addr, uint16_t host_port, const char *cluster_name)
+    const char *host_addr, uint16_t host_port, const char *cluster_name,
+    const struct tlv_tie_breaker *tie_breaker)
 {
 
 	memset(instance, 0, sizeof(*instance));
@@ -59,6 +60,7 @@ qdevice_net_instance_init(struct qdevice_net_instance *instance, size_t initial_
 	instance->host_addr = host_addr;
 	instance->host_port = host_port;
 	instance->cluster_name = cluster_name;
+	memcpy(&instance->tie_breaker, tie_breaker, sizeof(*tie_breaker));
 
 	dynar_init(&instance->receive_buffer, initial_receive_size);
 

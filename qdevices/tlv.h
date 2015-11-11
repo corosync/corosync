@@ -66,6 +66,7 @@ enum tlv_opt_type {
 	TLV_OPT_NODE_LIST_TYPE = 18,
 	TLV_OPT_VOTE = 19,
 	TLV_OPT_QUORATE = 20,
+	TLV_OPT_TIE_BREAKER = 21,
 };
 
 enum tlv_tls_supported {
@@ -130,6 +131,17 @@ enum tlv_vote {
 enum tlv_quorate {
 	TLV_QUORATE_INQUORATE = 0,
 	TLV_QUORATE_QUORATE = 1,
+};
+
+enum tlv_tie_breaker_mode {
+	TLV_TIE_BREAKER_MODE_LOWEST = 1,
+	TLV_TIE_BREAKER_MODE_HIGHEST = 2,
+	TLV_TIE_BREAKER_MODE_NODE_ID = 3,
+};
+
+struct tlv_tie_breaker {
+	enum tlv_tie_breaker_mode mode;
+	uint32_t node_id;
 };
 
 struct tlv_node_info {
@@ -204,6 +216,9 @@ extern int			 tlv_add_heartbeat_interval(struct dynar *msg,
 extern int			 tlv_add_ring_id(struct dynar *msg,
     const struct tlv_ring_id *ring_id);
 
+extern int			 tlv_add_tie_breaker(struct dynar *msg,
+    const struct tlv_tie_breaker *tie_breaker);
+
 extern int			 tlv_add_config_version(struct dynar *msg,
     uint64_t config_version);
 
@@ -276,6 +291,9 @@ extern int			 tlv_iter_decode_decision_algorithm(struct tlv_iterator *tlv_iter,
 
 extern int			 tlv_iter_decode_ring_id(struct tlv_iterator *tlv_iter,
     struct tlv_ring_id *ring_id);
+
+extern int			 tlv_iter_decode_tie_breaker(struct tlv_iterator *tlv_iter,
+    struct tlv_tie_breaker *tie_breaker);
 
 extern int			 tlv_iter_decode_node_state(struct tlv_iterator *tlv_iter,
     enum tlv_node_state *node_state);

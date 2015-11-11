@@ -110,6 +110,8 @@ struct msg_decoded {
 	enum tlv_vote vote;	// Valid only if vote_set != 0
 	int quorate_set;
 	enum tlv_quorate quorate;	// Valid only if quorate_set != 0
+	int tie_breaker_set;
+	struct tlv_tie_breaker tie_breaker;
 };
 
 extern size_t		msg_create_preinit(struct dynar *msg, const char *cluster_name,
@@ -139,11 +141,13 @@ extern size_t		msg_create_init_reply(struct dynar *msg, int add_msg_seq_number,
 
 extern size_t		msg_create_set_option(struct dynar *msg,
     int add_msg_seq_number, uint32_t msg_seq_number,
-    int add_heartbeat_interval, uint32_t heartbeat_interval);
+    int add_heartbeat_interval, uint32_t heartbeat_interval,
+    int add_tie_breaker, const struct tlv_tie_breaker *tie_breaker);
 
 extern size_t		msg_create_set_option_reply(struct dynar *msg,
     int add_msg_seq_number, uint32_t msg_seq_number,
-    enum tlv_decision_algorithm_type decision_algorithm, uint32_t heartbeat_interval);
+    enum tlv_decision_algorithm_type decision_algorithm, uint32_t heartbeat_interval,
+    int add_tie_breaker, const struct tlv_tie_breaker *tie_breaker);
 
 extern size_t		msg_create_echo_request(struct dynar *msg, int add_msg_seq_number,
     uint32_t msg_seq_number);

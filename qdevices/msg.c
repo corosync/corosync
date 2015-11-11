@@ -404,7 +404,8 @@ small_buf_err:
 
 size_t
 msg_create_set_option(struct dynar *msg, int add_msg_seq_number, uint32_t msg_seq_number,
-    int add_heartbeat_interval, uint32_t heartbeat_interval)
+    int add_heartbeat_interval, uint32_t heartbeat_interval,
+    int add_tie_breaker, const struct tlv_tie_breaker *tie_breaker)
 {
 
 	dynar_clean(msg);
@@ -424,6 +425,12 @@ msg_create_set_option(struct dynar *msg, int add_msg_seq_number, uint32_t msg_se
 		}
 	}
 
+	if (add_tie_breaker) {
+		if (tlv_add_tie_breaker(msg, tie_breaker) == -1) {
+			goto small_buf_err;
+		}
+	}
+
 	msg_set_len(msg, dynar_size(msg) - (MSG_TYPE_LENGTH + MSG_LENGTH_LENGTH));
 
 	return (dynar_size(msg));
@@ -434,7 +441,8 @@ small_buf_err:
 
 size_t
 msg_create_set_option_reply(struct dynar *msg, int add_msg_seq_number, uint32_t msg_seq_number,
-    enum tlv_decision_algorithm_type decision_algorithm, uint32_t heartbeat_interval)
+    enum tlv_decision_algorithm_type decision_algorithm, uint32_t heartbeat_interval,
+    int add_tie_breaker, const struct tlv_tie_breaker *tie_breaker)
 {
 
 	dynar_clean(msg);
@@ -454,6 +462,12 @@ msg_create_set_option_reply(struct dynar *msg, int add_msg_seq_number, uint32_t 
 
 	if (tlv_add_heartbeat_interval(msg, heartbeat_interval) == -1) {
 		goto small_buf_err;
+	}
+
+	if (add_tie_breaker) {
+		if (tlv_add_tie_breaker(msg, tie_breaker) == -1) {
+			goto small_buf_err;
+		}
 	}
 
 	msg_set_len(msg, dynar_size(msg) - (MSG_TYPE_LENGTH + MSG_LENGTH_LENGTH));
@@ -735,6 +749,7 @@ msg_decode(const struct dynar *msg, struct msg_decoded *decoded_msg)
 	uint64_t u64;
 	struct tlv_ring_id ring_id;
 	struct tlv_node_info node_info;
+	struct tlv_tie_breaker tie_breaker;
 	size_t zi;
 	enum tlv_opt_type opt_type;
 	int iter_res;
@@ -928,6 +943,14 @@ msg_decode(const struct dynar *msg, struct msg_decoded *decoded_msg)
 			}
 
 			decoded_msg->quorate_set = 1;
+			break;
+		case TLV_OPT_TIE_BREAKER:
+			if ((res = tlv_iter_decode_tie_breaker(&tlv_iter, &tie_breaker)) != 0) {
+				return (res);
+			}
+
+			decoded_msg->tie_breaker_set = 1;
+			memcpy(&decoded_msg->tie_breaker, &tie_breaker, sizeof(tie_breaker));
 			break;
 		default:
 			/*

@@ -392,7 +392,7 @@ qdevice_net_msg_received_init_reply(struct qdevice_net_instance *instance,
 	instance->last_msg_seq_num++;
 
 	if (msg_create_set_option(&send_buffer->buffer, 1, instance->last_msg_seq_num,
-	    1, instance->heartbeat_interval) == 0) {
+	    1, instance->heartbeat_interval, 1, &instance->tie_breaker) == 0) {
 		qdevice_net_log(LOG_ERR, "Can't allocate send buffer for set option msg");
 
 		return (-1);
@@ -1030,8 +1030,10 @@ qdevice_net_instance_init_from_cmap(struct qdevice_net_instance *instance,
 	uint32_t node_id;
 	enum tlv_tls_supported tls_supported;
 	int i;
+	long int li;
 	char *str;
 	enum tlv_decision_algorithm_type decision_algorithm;
+	struct tlv_tie_breaker tie_breaker;
 	uint32_t heartbeat_interval;
 	uint32_t sync_heartbeat_interval;
 	uint32_t cast_vote_timer_interval;
@@ -1146,6 +1148,31 @@ qdevice_net_instance_init_from_cmap(struct qdevice_net_instance *instance,
 	}
 
 	/*
+	 * Load tie_breaker mode
+	 */
+	memset(&tie_breaker, 0, sizeof(tie_breaker));
+
+	if (cmap_get_string(cmap_handle, "quorum.device.net.tie_breaker", &str) != CS_OK) {
+		tie_breaker.mode = QDEVICE_NET_DEFAULT_TIE_BREAKER_MODE;
+	} else {
+		if (strcmp(str, "lowest") == 0) {
+			tie_breaker.mode = TLV_TIE_BREAKER_MODE_LOWEST;
+		} else if (strcmp(str, "highest") == 0) {
+			tie_breaker.mode = TLV_TIE_BREAKER_MODE_HIGHEST;
+		} else {
+			li = strtol(str, &ep, 10);
+			if (li <= 0 || li > ((uint32_t)~0) || *ep != '\0') {
+				errx(1, "tie_breaker must be lowest|highest|valid_node_id");
+			}
+
+			tie_breaker.mode = TLV_TIE_BREAKER_MODE_NODE_ID;
+			tie_breaker.node_id = li;
+		}
+
+		free(str);
+	}
+
+	/*
 	 * Really initialize instance
 	 */
 	if (qdevice_net_instance_init(instance,
@@ -1154,7 +1181,7 @@ qdevice_net_instance_init_from_cmap(struct qdevice_net_instance *instance,
 	    QDEVICE_NET_MAX_MSG_RECEIVE_SIZE,
 	    tls_supported, node_id, decision_algorithm,
 	    heartbeat_interval, sync_heartbeat_interval, cast_vote_timer_interval,
-	    host_addr, host_port, cluster_name) == -1) {
+	    host_addr, host_port, cluster_name, &tie_breaker) == -1) {
 		errx(1, "Can't initialize qdevice-net");
 	}
 

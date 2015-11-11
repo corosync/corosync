@@ -36,6 +36,7 @@
 
 #include <string.h>
 
+#include "qnet-config.h"
 #include "qnetd-client.h"
 
 void
@@ -51,6 +52,7 @@ qnetd_client_init(struct qnetd_client *client, PRFileDesc *sock, PRNetAddr *addr
 	node_list_init(&client->configuration_node_list);
 	node_list_init(&client->last_membership_node_list);
 	node_list_init(&client->last_quorum_node_list);
+	client->tie_breaker.mode = QNETD_DEFAULT_TIE_BREAKER_MODE;
 }
 
 void

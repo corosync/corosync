@@ -95,6 +95,7 @@ struct qdevice_net_instance {
 	votequorum_handle_t votequorum_handle;
 	PRFileDesc *votequorum_poll_fd;
 	votequorum_ring_id_t last_received_votequorum_ring_id;
+	struct tlv_tie_breaker tie_breaker;
 };
 
 extern int		qdevice_net_instance_init(struct qdevice_net_instance *instance,
@@ -103,7 +104,8 @@ extern int		qdevice_net_instance_init(struct qdevice_net_instance *instance,
     enum tlv_tls_supported tls_supported, uint32_t node_id,
     enum tlv_decision_algorithm_type decision_algorithm, uint32_t heartbeat_interval,
     uint32_t sync_heartbeat_interval, uint32_t cast_vote_timer_interval,
-    const char *host_addr, uint16_t host_port, const char *cluster_name);
+    const char *host_addr, uint16_t host_port, const char *cluster_name,
+    const struct tlv_tie_breaker *tie_breaker);
 
 extern int		qdevice_net_instance_destroy(struct qdevice_net_instance *instance);
 

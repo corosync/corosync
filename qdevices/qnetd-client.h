@@ -66,6 +66,7 @@ struct qnetd_client {
 	uint8_t node_id_set;
 	uint32_t node_id;
 	enum tlv_decision_algorithm_type decision_algorithm;
+	struct tlv_tie_breaker tie_breaker;
 	uint32_t heartbeat_interval;
 	enum tlv_reply_error_code skipping_msg_reason;
 	void *algorithm_data;
@@ -73,6 +74,7 @@ struct qnetd_client {
 	struct node_list last_membership_node_list;
 	struct node_list last_quorum_node_list;
 	struct qnetd_cluster *cluster;
+	struct qnetd_cluster_list *cluster_list;
 	TAILQ_ENTRY(qnetd_client) entries;
 	TAILQ_ENTRY(qnetd_client) cluster_entries;
 };

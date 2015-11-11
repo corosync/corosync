@@ -56,7 +56,7 @@
 #define TLV_TYPE_LENGTH		2
 #define TLV_LENGTH_LENGTH	2
 
-#define TLV_STATIC_SUPPORTED_OPTIONS_SIZE      21
+#define TLV_STATIC_SUPPORTED_OPTIONS_SIZE      22
 
 enum tlv_opt_type tlv_static_supported_options[TLV_STATIC_SUPPORTED_OPTIONS_SIZE] = {
     TLV_OPT_MSG_SEQ_NUMBER,
@@ -80,6 +80,7 @@ enum tlv_opt_type tlv_static_supported_options[TLV_STATIC_SUPPORTED_OPTIONS_SIZE
     TLV_OPT_NODE_LIST_TYPE,
     TLV_OPT_VOTE,
     TLV_OPT_QUORATE,
+    TLV_OPT_TIE_BREAKER,
 };
 
 int
@@ -306,6 +307,23 @@ tlv_add_ring_id(struct dynar *msg, const struct tlv_ring_id *ring_id)
 	memcpy(tmp_buf + sizeof(nu32), &nu64, sizeof(nu64));
 
 	return (tlv_add(msg, TLV_OPT_RING_ID, sizeof(tmp_buf), tmp_buf));
+}
+
+int
+tlv_add_tie_breaker(struct dynar *msg, const struct tlv_tie_breaker *tie_breaker)
+{
+	uint32_t nu32;
+	uint8_t u8;
+	char tmp_buf[5];
+
+	u8 = tie_breaker->mode;
+	nu32 = (tie_breaker->mode == TLV_TIE_BREAKER_MODE_NODE_ID ?
+	    htonl(tie_breaker->node_id) : 0);
+
+	memcpy(tmp_buf, &u8, sizeof(u8));
+	memcpy(tmp_buf + sizeof(u8), &nu32, sizeof(nu32));
+
+	return (tlv_add(msg, TLV_OPT_TIE_BREAKER, sizeof(tmp_buf), tmp_buf));
 }
 
 int
@@ -745,6 +763,41 @@ tlv_iter_decode_ring_id(struct tlv_iterator *tlv_iter, struct tlv_ring_id *ring_
 
 	ring_id->node_id = ntohl(nu32);
 	ring_id->seq = be64toh(nu64);
+
+	return (0);
+}
+
+int
+tlv_iter_decode_tie_breaker(struct tlv_iterator *tlv_iter, struct tlv_tie_breaker *tie_breaker)
+{
+	const char *opt_data;
+	uint16_t opt_len;
+	uint32_t nu32;
+	uint8_t u8;
+	enum tlv_tie_breaker_mode tie_breaker_mode;
+	char tmp_buf[5];
+
+	opt_len = tlv_iter_get_len(tlv_iter);
+	opt_data = tlv_iter_get_data(tlv_iter);
+
+	if (opt_len != sizeof(tmp_buf)) {
+		return (-1);
+	}
+
+	memcpy(&u8, opt_data, sizeof(u8));
+	tie_breaker_mode = u8;
+
+	if (tie_breaker_mode != TLV_TIE_BREAKER_MODE_LOWEST &&
+	    tie_breaker_mode != TLV_TIE_BREAKER_MODE_HIGHEST &&
+	    tie_breaker_mode != TLV_TIE_BREAKER_MODE_NODE_ID) {
+		return (-4);
+	}
+
+	memcpy(&nu32, opt_data + sizeof(u8), sizeof(nu32));
+
+	tie_breaker->mode = tie_breaker_mode;
+	tie_breaker->node_id = (tie_breaker->mode == TLV_TIE_BREAKER_MODE_NODE_ID ?
+	    ntohl(nu32) : 0);
 
 	return (0);
 }
