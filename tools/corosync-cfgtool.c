@@ -88,7 +88,7 @@ static int ringstatusget_do (char *interface_name)
 		printf ("Could not get the local node id, the error is: %d\n", result);
 	}
 	else {
-		printf ("Local node ID %d\n", nodeid);
+		printf ("Local node ID %u\n", nodeid);
 	}
 
 	result = corosync_cfg_ring_status_get (handle,
