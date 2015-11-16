@@ -761,18 +761,6 @@ static int totemudp_build_sockets_ip (
 	}
 
 	/*
-	 * Bind to multicast socket used for multicast receives
-	 */
-	totemip_totemip_to_sockaddr_convert(mcast_address,
-		instance->totem_interface->ip_port, &sockaddr, &addrlen);
-	res = bind (sockets->mcast_recv, (struct sockaddr *)&sockaddr, addrlen);
-	if (res == -1) {
-		LOGSYS_PERROR (errno, instance->totemudp_log_level_warning,
-				"Unable to bind the socket to receive multicast packets");
-		return (-1);
-	}
-
-	/*
 	 * Create local multicast loop socket
 	 */
 	if (socketpair(AF_UNIX, SOCK_DGRAM, 0, sockets->local_mcast_loop) == -1) {
@@ -1054,6 +1042,20 @@ static int totemudp_build_sockets_ip (
 		break;
 	}
 
+	/*
+	 * Bind to multicast socket used for multicast receives
+	 * This needs to happen after all of the multicast setsockopt() calls
+	 * as the kernel seems to only put them into effect (for IPV6) when bind()
+	 * is called.
+	 */
+	totemip_totemip_to_sockaddr_convert(mcast_address,
+		instance->totem_interface->ip_port, &sockaddr, &addrlen);
+	res = bind (sockets->mcast_recv, (struct sockaddr *)&sockaddr, addrlen);
+	if (res == -1) {
+		LOGSYS_PERROR (errno, instance->totemudp_log_level_warning,
+				"Unable to bind the socket to receive multicast packets");
+		return (-1);
+	}
 	return 0;
 }
 
