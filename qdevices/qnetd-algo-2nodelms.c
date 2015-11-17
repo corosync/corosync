@@ -40,10 +40,10 @@
  * qdevice server then we return a vote.
  *
  * If more than one node can see the qdevice server but the nodes can't
- * see each other then we return a vote to the lowest nodeID of the two
+ * see each other then we return a vote to the nominated tie_breaker node
  *
  * If there are more than two nodes, then we don't return a vote.
- * this is not our job (any other ideas??)
+ * this is not our job.
  */
 
 #include <sys/types.h>
@@ -151,6 +151,7 @@ qnetd_algo_2nodelms_membership_node_list_received(struct qnetd_client *client,
 	struct qnetd_algo_2nodelms_info *info = client->algorithm_data;
 	int node_count = 0;
 	int low_node_id = INT_MAX;
+	int high_node_id = 0;
 
 	/* Save this now */
 	memcpy(&info->ring_id, ring_id, sizeof(*ring_id));
@@ -175,12 +176,10 @@ qnetd_algo_2nodelms_membership_node_list_received(struct qnetd_client *client,
 	/* If both nodes are present, then we're OK. return a vote */
 	TAILQ_FOREACH(node_info, nodes, entries) {
 		node_count++;
-		if (node_info->node_id < low_node_id) {
-			low_node_id = node_info->node_id;
-		}
 	}
 
 	qnetd_log(LOG_DEBUG, "algo-2nodelms: cluster %s (client %p nodeid %d) membership list has %d member nodes (ring ID %" PRIu64 ")", client->cluster_name, client, client->node_id, node_count, ring_id->seq);
+
 	if (node_count == 2) {
 		qnetd_log(LOG_DEBUG, "algo-2nodelms: cluster %s running normally. Both nodes active", client->cluster_name);
 		*result_vote = info->last_result = TLV_VOTE_ACK;
@@ -188,18 +187,18 @@ qnetd_algo_2nodelms_membership_node_list_received(struct qnetd_client *client,
 	}
 
 	/* Now look for other clients connected from this cluster that can't see us any more */
+	node_count = 0;
 	TAILQ_FOREACH(other_client, &client->cluster->client_list, cluster_entries) {
 		struct qnetd_algo_2nodelms_info *other_info = other_client->algorithm_data;
 
-		if (other_client == client) {
-			continue; /* We've seen our membership list */
+		node_count++;
+
+		qnetd_log(LOG_DEBUG, "algo-2nodelms: seen nodeid %d on client %p (ring ID %d/%" PRIu64 ")", other_client->node_id, other_client, other_info->ring_id.node_id, other_info->ring_id.seq);
+		if (other_client->node_id < low_node_id) {
+			low_node_id = other_client->node_id;
 		}
-		TAILQ_FOREACH(node_info, &other_client->last_membership_node_list, entries) {
-			node_count++;
-			qnetd_log(LOG_DEBUG, "algo-2nodelms: seen nodeid %d on client %p (ring ID %" PRIu64 ")", node_info->node_id, other_client, other_info->ring_id.seq);
-			if (node_info->node_id < low_node_id) {
-				low_node_id = node_info->node_id;
-			}
+		if (other_client->node_id > high_node_id) {
+			high_node_id = other_client->node_id;
 		}
 	}
 	qnetd_log(LOG_DEBUG, "algo-2nodelms: cluster %s %d nodes running independently", client->cluster_name, node_count);
@@ -211,14 +210,41 @@ qnetd_algo_2nodelms_membership_node_list_received(struct qnetd_client *client,
 		return (TLV_REPLY_ERROR_CODE_NO_ERROR);
 	}
 
-	/* Both nodes are alive. Only give a vote to the lowest node ID */
-	/* More config options will be made available later ... */
-	if (client->node_id == low_node_id) {
-		qnetd_log(LOG_DEBUG, "algo-2nodelms: cluster %s running on low-node-id %d", client->cluster_name, low_node_id);
-		*result_vote = info->last_result = TLV_VOTE_ACK;
-	}
-	else {
-		qnetd_log(LOG_DEBUG, "algo-2nodelms: cluster %s node-id %d denied vote because lower nodeid %d is active", client->cluster_name, client->node_id, low_node_id);
+	/* Both nodes are alive. Only give a vote to the nominated tie-breaker node */
+	switch (client->tie_breaker.mode) {
+
+	case TLV_TIE_BREAKER_MODE_LOWEST:
+		if (client->node_id == low_node_id) {
+			qnetd_log(LOG_DEBUG, "algo-2nodelms: cluster %s running on low node-id %d", client->cluster_name, low_node_id);
+			*result_vote = info->last_result = TLV_VOTE_ACK;
+		}
+		else {
+			qnetd_log(LOG_DEBUG, "algo-2nodelms: cluster %s node-id %d denied vote because low nodeid %d is active", client->cluster_name, client->node_id, low_node_id);
+			*result_vote = info->last_result = TLV_VOTE_NACK;
+		}
+		break;
+	case TLV_TIE_BREAKER_MODE_HIGHEST:
+		if (client->node_id == high_node_id) {
+			qnetd_log(LOG_DEBUG, "algo-2nodelms: cluster %s running on high node-id %d", client->cluster_name, high_node_id);
+			*result_vote = info->last_result = TLV_VOTE_ACK;
+		}
+		else {
+			qnetd_log(LOG_DEBUG, "algo-2nodelms: cluster %s node-id %d denied vote because high nodeid %d is active", client->cluster_name, client->node_id, high_node_id);
+			*result_vote = info->last_result = TLV_VOTE_NACK;
+		}
+		break;
+	case TLV_TIE_BREAKER_MODE_NODE_ID:
+		if (client->node_id == client->tie_breaker.node_id) {
+			qnetd_log(LOG_DEBUG, "algo-2nodelms: cluster %s running on nominated tie-breaker node %d", client->cluster_name, client->tie_breaker.node_id);
+			*result_vote = info->last_result = TLV_VOTE_ACK;
+		}
+		else {
+			qnetd_log(LOG_DEBUG, "algo-2nodelms: cluster %s node-id %d denied vote because nominated tie-breaker nodeid %d is active", client->cluster_name, client->node_id, client->tie_breaker.node_id);
+			*result_vote = info->last_result = TLV_VOTE_NACK;
+		}
+		break;
+	default:
+		qnetd_log(LOG_DEBUG, "algo-2nodelms: cluster %s node-id %d denied vote because tie-breaker option is invalid: %d", client->cluster_name, client->node_id, client->tie_breaker.mode);
 		*result_vote = info->last_result = TLV_VOTE_NACK;
 	}
 
