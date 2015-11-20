@@ -87,7 +87,6 @@ static struct qnetd_algo_lms_partition *find_partition(struct qnetd_algo_lms_inf
 		if (rings_eq(&cur_partition->ring_id, ring_id)) {
 			return cur_partition;
 		}
-		qnetd_log(LOG_DEBUG, "algo-lms: partition %d/%ld not matched to %d/%ld", ring_id->node_id, ring_id->seq, cur_partition->ring_id.node_id, cur_partition->ring_id.seq);
 	}
 
 	return NULL;
@@ -163,19 +162,18 @@ static int ring_ids_match(struct qnetd_client *client, const struct tlv_ring_id 
 			continue; /* We've seen our membership list */
 		}
 
-		/*
-		 * If the other nodes on our side of a partition have a different ring ID then
-		 * we need to wait until they have all caught up before making a decision
-		 */
+		/* Look down our node list and see if this client is known to us */
 		TAILQ_FOREACH(node_info, &client->last_membership_node_list, entries) {
-			/*
-			 * TODO: last_membership_node_list state is always set to NOT_SET
-			 */
-			if (node_info->node_state == TLV_NODE_STATE_MEMBER && node_info->node_id == other_client->node_id) {
+			qnetd_log(LOG_DEBUG, "algo-lms: nodeid %d in our partition", node_info->node_id);
+			if (node_info->node_id == other_client->node_id) {
 				in_our_partition = 1;
 			}
 		}
 
+		/*
+		 * If the other nodes on our side of a partition have a different ring ID then
+		 * we need to wait until they have all caught up before making a decision
+		 */
 		if (in_our_partition && !rings_eq(ring_id, &other_info->ring_id)) {
 			qnetd_log(LOG_DEBUG, "algo-lms: nodeid %d in our partition has different ring_id (%d/%ld) to us (%d/%ld)", other_client->node_id, other_info->ring_id.node_id, other_info->ring_id.seq, ring_id->node_id, ring_id->seq);
 			return -1; /* ring IDs don't match */
@@ -265,25 +263,57 @@ static enum tlv_reply_error_code do_lms_algorithm(struct qnetd_client *client,  
 		}
 	}
 	else {
-		int low_node_id = INT_MAX;
-		struct tlv_ring_id low_node_ring_id = {0LL, 0};
-		/* Look for the lowest node ID */
-		/* TODO: other tie-breakers */
+		int tb_node_id;
+		struct tlv_ring_id tb_node_ring_id = {0LL, 0};
 
+		if (client->tie_breaker.mode == TLV_TIE_BREAKER_MODE_LOWEST) {
+			tb_node_id = INT_MAX;
+		}
+		else {
+			tb_node_id = 0;
+		}
+
+		/* Find the tie_breaker node */
 		TAILQ_FOREACH(other_client, &client->cluster->client_list, cluster_entries) {
 			struct qnetd_algo_lms_info *other_info = other_client->algorithm_data;
-			if (other_client->node_id < low_node_id) {
-				low_node_id = other_client->node_id;
-				memcpy(&low_node_ring_id, &other_info->ring_id, sizeof(struct tlv_ring_id));
-				qnetd_log(LOG_DEBUG, "algo-lms: Looking for low node ID. found (%d/%ld)  %d", low_node_ring_id.node_id, low_node_ring_id.seq, low_node_id);
+
+			switch (client->tie_breaker.mode) {
+
+			case TLV_TIE_BREAKER_MODE_LOWEST:
+				if (other_client->node_id < tb_node_id) {
+					tb_node_id = other_client->node_id;
+					memcpy(&tb_node_ring_id, &other_info->ring_id, sizeof(struct tlv_ring_id));
+					qnetd_log(LOG_DEBUG, "algo-lms: Looking for low node ID. found (%d/%ld)  %d", tb_node_ring_id.node_id, tb_node_ring_id.seq, tb_node_id);
+				}
+			break;
+
+			case TLV_TIE_BREAKER_MODE_HIGHEST:
+				if (other_client->node_id > tb_node_id) {
+					tb_node_id = other_client->node_id;
+					memcpy(&tb_node_ring_id, &other_info->ring_id, sizeof(struct tlv_ring_id));
+					qnetd_log(LOG_DEBUG, "algo-lms: Looking for high node ID. found (%d/%ld)  %d", tb_node_ring_id.node_id, tb_node_ring_id.seq, tb_node_id);
+				}
+			break;
+			case TLV_TIE_BREAKER_MODE_NODE_ID:
+				if (client->tie_breaker.node_id == client->node_id) {
+					tb_node_id = other_client->node_id;
+					memcpy(&tb_node_ring_id, &other_info->ring_id, sizeof(struct tlv_ring_id));
+					qnetd_log(LOG_DEBUG, "algo-lms: Looking for nominated node ID. found (%d/%ld) %d", tb_node_ring_id.node_id, tb_node_ring_id.seq, tb_node_id);
+
+				}
+				break;
+			default:
+				qnetd_log(LOG_DEBUG, "algo-lms: denied vote because tie-breaker option is invalid: %d", client->tie_breaker.mode);
+				memset(&tb_node_ring_id, 0, sizeof(struct tlv_ring_id));
 			}
 		}
-		if (rings_eq(&low_node_ring_id, &info->ring_id)) {
-			qnetd_log(LOG_DEBUG, "algo-lms: We are in the same partition (%d/%ld) as low node id %d. ACK", low_node_ring_id.node_id, low_node_ring_id.seq, low_node_id);
+
+		if (rings_eq(&tb_node_ring_id, &info->ring_id)) {
+			qnetd_log(LOG_DEBUG, "algo-lms: We are in the same partition (%d/%ld) as tie-breaker node id %d. ACK", tb_node_ring_id.node_id, tb_node_ring_id.seq, tb_node_id);
 			*result_vote = info->last_result = TLV_VOTE_ACK;
 		}
 		else {
-			qnetd_log(LOG_DEBUG, "algo-lms: We are NOT in the same partition (%d/%ld) as low node id %d. NACK",  low_node_ring_id.node_id, low_node_ring_id.seq, low_node_id);
+			qnetd_log(LOG_DEBUG, "algo-lms: We are NOT in the same partition (%d/%ld) as tie-breaker node id %d. NACK",  tb_node_ring_id.node_id, tb_node_ring_id.seq, tb_node_id);
 			*result_vote = info->last_result = TLV_VOTE_NACK;
 		}
 	}
@@ -374,10 +404,7 @@ enum tlv_reply_error_code
 qnetd_algo_lms_quorum_node_list_received(struct qnetd_client *client,
     uint32_t msg_seq_num, enum tlv_quorate quorate, const struct node_list *nodes, enum tlv_vote *result_vote)
 {
-
-	*result_vote = TLV_VOTE_NO_CHANGE;
-
-	return (TLV_REPLY_ERROR_CODE_NO_ERROR);
+	return do_lms_algorithm(client, result_vote);
 }
 
 /*
