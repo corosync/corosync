@@ -308,10 +308,10 @@ if __name__ == '__main__':
     elif Environment["all-once"] or NumIter == 0: 
         NumIter = len(Tests)
         scenario = AllOnce(
-            cm, [ InitClusterManager(Environment), TestAgentComponent(Environment), PacketLoss(Environment) ], Audits, Tests)
+            cm, [ BootCluster(Environment), TestAgentComponent(Environment), PacketLoss(Environment) ], Audits, Tests)
     else:
         scenario = RandomTests(
-            cm, [ InitClusterManager(Environment), TestAgentComponent(Environment), PacketLoss(Environment) ], Audits, Tests)
+            cm, [ BootCluster(Environment), TestAgentComponent(Environment), PacketLoss(Environment) ], Audits, Tests)
 
     Environment.log(">>>>>>>>>>>>>>>> BEGINNING " + repr(NumIter) + " TESTS ")
     Environment.log("Stack:            %s" % Environment["Stack"])
