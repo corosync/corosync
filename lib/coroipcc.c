@@ -855,6 +855,46 @@ coroipcc_fd_get (
 	return (res);
 }
 
+static cs_error_t
+coroipcc_dispatch_flush_fd(int fd)
+{
+	struct pollfd ufds;
+	int poll_events;
+	cs_error_t error = CS_OK;
+	int retry = 1;
+	char buf;
+
+	while (retry) {
+		ufds.fd = fd;
+		ufds.events = POLLIN;
+		ufds.revents = 0;
+
+		poll_events = poll (&ufds, 1, 0);
+		if (poll_events == -1 && errno != EINTR) {
+			error = CS_ERR_LIBRARY;
+			retry = 0;
+		}
+
+		if (poll_events == 0) {
+			retry = 0;
+		}
+
+		if (poll_events == 1 && (ufds.revents & (POLLERR|POLLHUP|POLLNVAL))) {
+			error = CS_ERR_LIBRARY;
+			retry = 0;
+		}
+
+		if (error == CS_OK) {
+			error = socket_recv (fd, &buf, 1);
+			if (error != CS_ERR_TRY_AGAIN) {
+				retry = 0;
+			}
+		}
+	}
+
+	return (error);
+}
+
 cs_error_t
 coroipcc_dispatch_get (
 	hdb_handle_t handle,
@@ -872,6 +912,11 @@ coroipcc_dispatch_get (
 	error = hdb_error_to_cs (hdb_handle_get (&ipc_hdb, handle, (void **)&ipc_instance));
 	if (error != CS_OK) {
 		return (error);
+	}
+
+	if (ipc_instance->control_buffer->ipc_closed) {
+		error = CS_ERR_IN_SHUTDOWN;
+		goto error_put;
 	}
 
 	if (shared_mem_dispatch_bytes_left (ipc_instance) > (ipc_instance->dispatch_size/2)) {
@@ -957,6 +1002,14 @@ coroipcc_dispatch_put (hdb_handle_t handle)
 retry_ipc_sem_wait:
 	res = ipc_sem_wait (ipc_instance->control_buffer, SEMAPHORE_DISPATCH, ipc_instance->fd);
 	if (res != CS_OK) {
+	        /*
+		 * IPC was closed earlier in dispatch, flush fd and return CS_ERR_IN_SHUTDOWN
+		 */
+	        if (res == CS_ERR_LIBRARY && ipc_instance->control_buffer->ipc_closed) {
+			coroipcc_dispatch_flush_fd(ipc_instance->fd);
+			res = CS_ERR_IN_SHUTDOWN;
+			goto error_exit;
+		}
 		if (res == CS_ERR_TRY_AGAIN) {
 			priv_change_send (ipc_instance);
 			goto retry_ipc_sem_wait;

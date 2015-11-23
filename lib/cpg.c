@@ -461,6 +461,14 @@ cs_error_t cpg_dispatch (
 			break; /* case CPG_MODEL_V1 */
 		} /* - switch (cpg_inst_copy.model_data.model) */
 		error = coroipcc_dispatch_put (cpg_inst->handle);
+		if (error == CS_ERR_IN_SHUTDOWN) {
+			/*
+			 * Mask error.
+			 */
+			error = CS_OK;
+			goto error_put;
+		}
+
 		if (error != CS_OK) {
 			goto error_put;
 		}

@@ -218,6 +218,14 @@ corosync_cfg_dispatch (
 			break;
 		}
 		error = coroipcc_dispatch_put (cfg_instance->handle);
+		if (error == CS_ERR_IN_SHUTDOWN) {
+			/*
+			 * Mask error.
+			 */
+			error = CS_OK;
+			goto error_put;
+		}
+
 		if (error != CS_OK) {
 			goto error_put;
 		}

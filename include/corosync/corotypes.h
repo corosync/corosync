@@ -99,6 +99,7 @@ typedef enum {
    CS_ERR_NO_SECTIONS = 27,
    CS_ERR_CONTEXT_NOT_FOUND = 28,
    CS_ERR_TOO_MANY_GROUPS = 30,
+   CS_ERR_IN_SHUTDOWN = 31,
    CS_ERR_SECURITY = 100
 } cs_error_t;
 
