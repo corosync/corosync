@@ -61,6 +61,8 @@ extern "C" {
 #define QNETD_HEARTBEAT_INTERVAL_MIN		1000
 #define QNETD_HEARTBEAT_INTERVAL_MAX		200000
 
+#define QNETD_LOCK_FILE				LOCALSTATEDIR"/run/corosync-qnetd.pid"
+
 #define QDEVICE_NET_NSS_DB_DIR			COROSYSCONFDIR "/qdevice/net/node/nssdb"
 
 #define QDEVICE_NET_INITIAL_MSG_RECEIVE_SIZE	(1 << 15)
@@ -80,6 +82,8 @@ extern "C" {
 #define QDEVICE_NET_DEFAULT_TIE_BREAKER_MODE	QNETD_DEFAULT_TIE_BREAKER_MODE
 
 #define QDEVICE_NET_MAX_CS_TRY_AGAIN		10
+
+#define QDEVICE_NET_LOCK_FILE			LOCALSTATEDIR"/run/corosync-qdevice-net.pid"
 
 #ifdef __cplusplus
 }

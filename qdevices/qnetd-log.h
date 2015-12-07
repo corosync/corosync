@@ -36,6 +36,7 @@
 #define _QNETD_LOG_H_
 
 #include <syslog.h>
+#include <stdarg.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -51,11 +52,16 @@ extern "C" {
 extern void		qnetd_log_init(int target);
 
 extern void		qnetd_log_printf(int priority, const char *format, ...)
-    __attribute__((__format__(__printf__, 2, 3)));;
+    __attribute__((__format__(__printf__, 2, 3)));
+
+extern void		qnetd_log_vprintf(int priority, const char *format, va_list ap)
+    __attribute__((__format__(__printf__, 2, 0)));
 
 extern void		qnetd_log_close(void);
 
 extern void		qnetd_log_set_debug(int enabled);
+
+extern void		qnetd_log_set_priority_bump(int enabled);
 
 #ifdef __cplusplus
 }

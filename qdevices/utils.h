@@ -44,6 +44,12 @@ extern "C" {
 
 extern int		utils_parse_bool_str(const char *str);
 
+extern int		utils_flock(const char *lockfile, pid_t pid,
+    void (*log_printf)(int priority, const char *format, ...)
+    __attribute__((__format__(__printf__, 2, 3))));
+
+extern void		utils_tty_detach(void);
+
 #ifdef __cplusplus
 }
 #endif

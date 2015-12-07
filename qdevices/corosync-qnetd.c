@@ -49,6 +49,7 @@
 #include <syslog.h>
 #include <signal.h>
 #include <errno.h>
+#include <unistd.h>
 
 #include "qnet-config.h"
 #include "msg.h"
@@ -297,7 +298,8 @@ qnetd_client_check_tls(struct qnetd_instance *instance, struct qnetd_client *cli
 		}
 		break;
 	default:
-		errx(1, "Unhandled instance tls supported %u\n", instance->tls_supported);
+		qnetd_log(LOG_ERR, "Unhandled instance tls supported %u", instance->tls_supported);
+		exit(1);
 		break;
 	}
 
@@ -721,8 +723,9 @@ qnetd_client_msg_received_node_list(struct qnetd_instance *instance, struct qnet
 		    msg->seq_number,msg->quorate, &msg->nodes, &result_vote);
 		break;
 	default:
-		errx(1, "qnetd_client_msg_received_node_list fatal error. "
+		qnetd_log(LOG_ERR, "qnetd_client_msg_received_node_list fatal error. "
 		    "Unhandled node_list_type");
+		exit(1);
 		break;
 	}
 
@@ -771,8 +774,9 @@ qnetd_client_msg_received_node_list(struct qnetd_instance *instance, struct qnet
 		}
 		break;
 	default:
-		errx(1, "qnetd_client_msg_received_node_list fatal error. "
+		qnetd_log(LOG_ERR, "qnetd_client_msg_received_node_list fatal error. "
 		    "Unhandled node_list_type");
+		exit(1);
 		break;
 	}
 
@@ -1169,7 +1173,8 @@ qnetd_client_net_read(struct qnetd_instance *instance, struct qnetd_client *clie
 		dynar_clean(&client->receive_buffer);
 		break;
 	default:
-		errx(1, "Unhandled msgio_read error %d\n", res);
+		qnetd_log(LOG_ERR, "Unhandled msgio_read error %d\n", res);
+		exit(1);
 		break;
 	}
 
@@ -1445,8 +1450,8 @@ usage(void)
 
 static void
 cli_parse(int argc, char * const argv[], char **host_addr, uint16_t *host_port, int *foreground,
-    int *debug_log, enum tlv_tls_supported *tls_supported, int *client_cert_required,
-    size_t *max_clients)
+    int *debug_log, int *bump_log_priority, enum tlv_tls_supported *tls_supported,
+    int *client_cert_required, size_t *max_clients)
 {
 	int ch;
 	char *ep;
@@ -1456,6 +1461,7 @@ cli_parse(int argc, char * const argv[], char **host_addr, uint16_t *host_port, 
 	*host_port = QNETD_DEFAULT_HOST_PORT;
 	*foreground = 0;
 	*debug_log = 0;
+	*bump_log_priority = 0;
 	*tls_supported = QNETD_DEFAULT_TLS_SUPPORTED;
 	*client_cert_required = QNETD_DEFAULT_TLS_CLIENT_CERT_REQUIRED;
 	*max_clients = QNETD_DEFAULT_MAX_CLIENTS;
@@ -1466,6 +1472,9 @@ cli_parse(int argc, char * const argv[], char **host_addr, uint16_t *host_port, 
 			*foreground = 1;
 			break;
 		case 'd':
+			if (*debug_log) {
+				*bump_log_priority = 1;
+			}
 			*debug_log = 1;
 			break;
 		case 'c':
@@ -1518,12 +1527,13 @@ main(int argc, char *argv[])
 	uint16_t host_port;
 	int foreground;
 	int debug_log;
+	int bump_log_priority;
 	enum tlv_tls_supported tls_supported;
 	int client_cert_required;
 	size_t max_clients;
 
-	cli_parse(argc, argv, &host_addr, &host_port, &foreground, &debug_log, &tls_supported,
-	    &client_cert_required, &max_clients);
+	cli_parse(argc, argv, &host_addr, &host_port, &foreground, &debug_log, &bump_log_priority,
+	    &tls_supported, &client_cert_required, &max_clients);
 
 	if (foreground) {
 		qnetd_log_init(QNETD_LOG_TARGET_STDERR);
@@ -1532,7 +1542,20 @@ main(int argc, char *argv[])
 	}
 
 	qnetd_log_set_debug(debug_log);
+	qnetd_log_set_priority_bump(bump_log_priority);
 
+	/*
+	 * Daemonize
+	 */
+	if (!foreground) {
+		utils_tty_detach();
+	}
+
+	if (utils_flock(QNETD_LOCK_FILE, getpid(), qnetd_log_printf) != 0) {
+		exit(1);
+	}
+
+	qnetd_log_printf(LOG_DEBUG, "Initializing nss");
 	if (nss_sock_init_nss((tls_supported != TLV_TLS_UNSUPPORTED ?
 	    (char *)QNETD_NSS_DB_DIR : NULL)) != 0) {
 		qnetd_err_nss();
@@ -1542,11 +1565,11 @@ main(int argc, char *argv[])
 		qnetd_err_nss();
 	}
 
-
 	if (qnetd_instance_init(&instance, QNETD_MAX_CLIENT_RECEIVE_SIZE,
 	    QNETD_MAX_CLIENT_SEND_BUFFERS, QNETD_MAX_CLIENT_SEND_SIZE,
 	    tls_supported, client_cert_required, max_clients) == -1) {
-		errx(1, "Can't initialize qnetd");
+		qnetd_log(LOG_ERR, "Can't initialize qnetd");
+		exit(1);
 	}
 	instance.host_addr = host_addr;
 	instance.host_port = host_port;
@@ -1555,6 +1578,7 @@ main(int argc, char *argv[])
 		qnetd_err_nss();
 	}
 
+	qnetd_log_printf(LOG_DEBUG, "Creating listening socket");
 	instance.server.socket = nss_sock_create_listen_socket(instance.host_addr,
 	    instance.host_port, PR_AF_INET6);
 	if (instance.server.socket == NULL) {
@@ -1572,8 +1596,10 @@ main(int argc, char *argv[])
 	global_server_socket = instance.server.socket;
 	signal_handlers_register();
 
+	qnetd_log_printf(LOG_DEBUG, "Registering algorithms");
 	algorithms_register();
 
+	qnetd_log_printf(LOG_DEBUG, "QNetd ready to provide service");
 	/*
 	 * MAIN LOOP
 	 */
