@@ -32,41 +32,56 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _QNETD_LOG_H_
-#define _QNETD_LOG_H_
+#ifndef _QNETD_INSTANCE_H_
+#define _QNETD_INSTANCE_H_
 
-#include <syslog.h>
-#include <stdarg.h>
+#include <sys/types.h>
+
+#include <certt.h>
+#include <keyhi.h>
+#include <sys/queue.h>
+
+#include "qnetd-client-list.h"
+#include "qnetd-cluster-list.h"
+#include "qnetd-poll-array.h"
+#include "qnet-config.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#define QNETD_LOG_TARGET_STDERR		1
-#define QNETD_LOG_TARGET_SYSLOG		2
+struct qnetd_instance {
+	struct {
+		PRFileDesc *socket;
+		CERTCertificate *cert;
+		SECKEYPrivateKey *private_key;
+	} server;
+	size_t max_client_receive_size;
+	size_t max_client_send_buffers;
+	size_t max_client_send_size;
+	size_t max_clients;
+	struct qnetd_client_list clients;
+	struct qnetd_cluster_list clusters;
+	struct qnetd_poll_array poll_array;
+	enum tlv_tls_supported tls_supported;
+	int tls_client_cert_required;
+	const char *host_addr;
+	uint16_t host_port;
+};
 
-#define qnetd_log(...)	qnetd_log_printf(__VA_ARGS__)
-#define qnetd_log_nss(priority, str) qnetd_log_printf(priority, "%s (%d): %s", \
-    str, PR_GetError(), PR_ErrorToString(PR_GetError(), PR_LANGUAGE_I_DEFAULT));
+extern int		qnetd_instance_init(struct qnetd_instance *instance,
+    size_t max_client_receive_size, size_t max_client_send_buffers, size_t max_client_send_size,
+    enum tlv_tls_supported tls_supported, int tls_client_cert_required, size_t max_clients);
 
-extern void		qnetd_log_init(int target);
+extern int		qnetd_instance_destroy(struct qnetd_instance *instance);
 
-extern void		qnetd_log_printf(int priority, const char *format, ...)
-    __attribute__((__format__(__printf__, 2, 3)));
+extern void		qnetd_instance_client_disconnect(struct qnetd_instance *instance,
+    struct qnetd_client *client, int server_going_down);
 
-extern void		qnetd_log_vprintf(int priority, const char *format, va_list ap)
-    __attribute__((__format__(__printf__, 2, 0)));
-
-extern void		qnetd_log_close(void);
-
-extern void		qnetd_log_set_debug(int enabled);
-
-extern void		qnetd_log_set_priority_bump(int enabled);
-
-extern void		qnetd_log_msg_decode_error(int ret);
+extern int		qnetd_instance_init_certs(struct qnetd_instance *instance);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* _QNETD_LOG_H_ */
+#endif /* _QNETD_INSTANCE_H_ */

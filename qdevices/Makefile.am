@@ -43,7 +43,8 @@ corosync_qnetd_SOURCES	= corosync-qnetd.c dynar.c msg.c msgio.c nss-sock.c  \
 			    qnetd-poll-array.c timer-list.c tlv.c send-buffer-list.c \
 			    node-list.c qnetd-algo-test.c qnetd-algorithm.c \
 			    qnetd-algo-ffsplit.c qnetd-cluster-list.c qnetd-client-send.c \
-			    qnetd-algo-2nodelms.c qnetd-algo-lms.c utils.c
+			    qnetd-algo-2nodelms.c qnetd-algo-lms.c utils.c qnetd-instance.c \
+			    qnetd-client-net.c qnetd-client-msg-received.c
 
 corosync_qdevice_net_SOURCES	= corosync-qdevice-net.c dynar.c msg.c msgio.c nss-sock.c  \
 			    qnetd-client.c qnetd-client-list.c qnetd-log.c \

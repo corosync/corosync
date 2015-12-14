@@ -153,3 +153,26 @@ qnetd_log_set_priority_bump(int enabled)
 
 	qnetd_log_config_priority_bump = enabled;
 }
+
+void
+qnetd_log_msg_decode_error(int ret)
+{
+
+	switch (ret) {
+	case -1:
+		qnetd_log(LOG_WARNING, "Received message with option with invalid length");
+		break;
+	case -2:
+		qnetd_log(LOG_CRIT, "Can't allocate memory");
+		break;
+	case -3:
+		qnetd_log(LOG_WARNING, "Received inconsistent msg (tlv len > msg size)");
+		break;
+	case -4:
+		qnetd_log(LOG_WARNING, "Received message with option with invalid value");
+		break;
+	default:
+		qnetd_log(LOG_ERR, "Unknown error occured when decoding message");
+		break;
+	}
+}

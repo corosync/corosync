@@ -35,6 +35,8 @@
 #ifndef _QNET_CONFIG_H_
 #define _QNET_CONFIG_H_
 
+#include "tlv.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -84,6 +86,14 @@ extern "C" {
 #define QDEVICE_NET_MAX_CS_TRY_AGAIN		10
 
 #define QDEVICE_NET_LOCK_FILE			LOCALSTATEDIR"/run/corosync-qdevice-net.pid"
+
+/*
+ * Decision algorithms supported by qnetd
+ */
+#define QNETD_STATIC_SUPPORTED_DECISION_ALGORITHMS_SIZE         4
+
+extern enum tlv_decision_algorithm_type
+    qnetd_static_supported_decision_algorithms[QNETD_STATIC_SUPPORTED_DECISION_ALGORITHMS_SIZE];
 
 #ifdef __cplusplus
 }
