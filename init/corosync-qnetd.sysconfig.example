@@ -1,0 +1,6 @@
+# Corosync Qdevice Network daemon init script configuration file
+
+# COROSYNC_QNETD_OPTIONS specifies options passed to corosync-qnetd command
+# (default is no options).
+# See "man corosync-qnetd" for detailed descriptions of the options.
+COROSYNC_QNETD_OPTIONS=""

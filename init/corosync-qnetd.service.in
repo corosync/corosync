@@ -1,0 +1,13 @@
+[Unit]
+Description=Corosync Cluster Engine
+ConditionKernelCommandLine=!nocluster
+Requires=network-online.target
+After=network-online.target
+
+[Service]
+ExecStart=@INITWRAPPERSDIR@/corosync start
+ExecStop=@INITWRAPPERSDIR@/corosync stop
+Type=forking
+
+[Install]
+WantedBy=multi-user.target

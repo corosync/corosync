@@ -2,3 +2,5 @@ corosync
 corosync-notifyd
 corosync.service
 corosync-notifyd.service
+corosync-qnetd
+corosync-qnetd.service

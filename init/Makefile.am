@@ -47,6 +47,14 @@ initscriptdir	   = $(INITDDIR)
 endif
 initscript_SCRIPTS  = corosync corosync-notifyd
 
+if BUILD_QDEVICES
+initscript_SCRIPTS  += corosync-qnetd
+EXTRA_DIST          += corosync-qnetd.sysconfig.example
+if INSTALL_SYSTEMD
+systemdconf_DATA   += corosync-qnetd.service
+endif
+endif
+
 if INSTALL_UPSTART
 upstartconfdir     = $(UPSTARTDIR)
 upstartconf_DATA   = corosync.conf corosync-notifyd.conf

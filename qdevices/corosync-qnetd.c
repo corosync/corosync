@@ -318,6 +318,13 @@ main(int argc, char *argv[])
 	qnetd_log_set_debug(debug_log);
 	qnetd_log_set_priority_bump(bump_log_priority);
 
+	/*
+	 * Daemonize
+	 */
+	if (!foreground) {
+		utils_tty_detach();
+	}
+
 	if (utils_flock(QNETD_LOCK_FILE, getpid(), qnetd_log_printf) != 0) {
 		exit(1);
 	}
@@ -365,13 +372,6 @@ main(int argc, char *argv[])
 
 	qnetd_log_printf(LOG_DEBUG, "Registering algorithms");
 	algorithms_register();
-
-	/*
-	 * Daemonize
-	 */
-	if (!foreground) {
-		utils_tty_detach();
-	}
 
 	qnetd_log_printf(LOG_DEBUG, "QNetd ready to provide service");
 	/*
