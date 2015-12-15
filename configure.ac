@@ -152,13 +152,19 @@ AC_TYPE_SIGNAL
 
 # Checks for libraries.
 PKG_CHECK_MODULES([nss],[nss])
+SAVE_CPPFLAGS="$CPPFLAGS"
+SAVE_LIBS="$LIBS"
 PKG_CHECK_MODULES([LIBQB], [libqb])
+CPPFLAGS="$CPPFLAGS $LIBQB_CFLAGS"
+LIBS="$LIBS $LIBQB_LIBS"
 AC_CHECK_LIB([qb], [qb_log_thread_priority_set], \
 	     have_qb_log_thread_priority_set="yes", \
 	     have_qb_log_thread_priority_set="no")
 if test "x${have_qb_log_thread_priority_set}" = xyes; then
 	AC_DEFINE_UNQUOTED([HAVE_QB_LOG_THREAD_PRIORITY_SET], 1, [have qb_log_thread_priority_set])
 fi
+CPPFLAGS="$SAVE_CPPFLAGS"
+LIBS="$SAVE_LIBS"
 AC_CHECK_LIB([pthread], [pthread_create])
 AC_CHECK_LIB([socket], [socket])
 AC_CHECK_LIB([nsl], [t_open])
