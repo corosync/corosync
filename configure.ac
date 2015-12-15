@@ -179,10 +179,10 @@ AC_FUNC_REALLOC
 AC_FUNC_SELECT_ARGTYPES
 AC_FUNC_VPRINTF
 
-AC_CHECK_FUNCS([alarm alphasort atexit bzero dup2 endgrent endpwent fcntl \
-		getcwd getpeerucred getpeereid gettimeofday inet_ntoa memmove \
-		memset mkdir scandir select socket strcasecmp strchr strdup \
-		strerror strrchr strspn strstr pthread_setschedparam \
+AC_CHECK_FUNCS([alarm alphasort atexit bzero dup2 endgrent endpwent fdatasync \
+		fcntl getcwd getpeerucred getpeereid gettimeofday inet_ntoa \
+		memmove memset mkdir scandir select socket strcasecmp strchr \
+		strdup strerror strrchr strspn strstr pthread_setschedparam \
 		sched_get_priority_max sched_setscheduler getifaddrs \
 		clock_gettime ftruncate gethostname localtime_r munmap strtol])
 

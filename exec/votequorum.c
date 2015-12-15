@@ -893,7 +893,11 @@ static void update_ev_tracking_barrier(uint32_t ev_t_barrier)
 		log_printf(LOGSYS_LEVEL_WARNING,
 			   "Unable to update ev_tracking_barrier on disk data!!!");
 	}
+#ifdef HAVE_FDATASYNC
 	fdatasync(ev_tracking_fd);
+#else
+	fsync(ev_tracking_fd);
+#endif
 
 	LEAVE();
 }
