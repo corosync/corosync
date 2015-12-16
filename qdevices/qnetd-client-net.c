@@ -40,6 +40,7 @@
 #include "qnetd-log.h"
 #include "qnetd-client-net.h"
 #include "qnetd-client-send.h"
+#include "qnetd-client-msg-received.h"
 
 static int
 qnetd_client_net_write_finished(struct qnetd_instance *instance, struct qnetd_client *client)

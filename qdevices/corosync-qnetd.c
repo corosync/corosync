@@ -218,14 +218,14 @@ static void
 usage(void)
 {
 
-	printf("usage: %s [-df] [-l listen_addr] [-p listen_port] [-s tls]\n", QNETD_PROGRAM_NAME);
+	printf("usage: %s [-46df] [-l listen_addr] [-p listen_port] [-s tls]\n", QNETD_PROGRAM_NAME);
 	printf("%14s[-c client_cert_required] [-m max_clients]\n", "");
 }
 
 static void
 cli_parse(int argc, char * const argv[], char **host_addr, uint16_t *host_port, int *foreground,
     int *debug_log, int *bump_log_priority, enum tlv_tls_supported *tls_supported,
-    int *client_cert_required, size_t *max_clients)
+    int *client_cert_required, size_t *max_clients, PRIntn *address_family)
 {
 	int ch;
 	char *ep;
@@ -239,9 +239,16 @@ cli_parse(int argc, char * const argv[], char **host_addr, uint16_t *host_port, 
 	*tls_supported = QNETD_DEFAULT_TLS_SUPPORTED;
 	*client_cert_required = QNETD_DEFAULT_TLS_CLIENT_CERT_REQUIRED;
 	*max_clients = QNETD_DEFAULT_MAX_CLIENTS;
+	*address_family = PR_AF_UNSPEC;
 
-	while ((ch = getopt(argc, argv, "fdc:l:m:p:s:")) != -1) {
+	while ((ch = getopt(argc, argv, "46fdc:l:m:p:s:")) != -1) {
 		switch (ch) {
+		case '4':
+			*address_family = PR_AF_INET;
+			break;
+		case '6':
+			*address_family = PR_AF_INET6;
+			break;
 		case 'f':
 			*foreground = 1;
 			break;
@@ -305,9 +312,10 @@ main(int argc, char *argv[])
 	enum tlv_tls_supported tls_supported;
 	int client_cert_required;
 	size_t max_clients;
+	PRIntn address_family;
 
 	cli_parse(argc, argv, &host_addr, &host_port, &foreground, &debug_log, &bump_log_priority,
-	    &tls_supported, &client_cert_required, &max_clients);
+	    &tls_supported, &client_cert_required, &max_clients, &address_family);
 
 	if (foreground) {
 		qnetd_log_init(QNETD_LOG_TARGET_STDERR);
@@ -354,7 +362,7 @@ main(int argc, char *argv[])
 
 	qnetd_log_printf(LOG_DEBUG, "Creating listening socket");
 	instance.server.socket = nss_sock_create_listen_socket(instance.host_addr,
-	    instance.host_port, PR_AF_INET6);
+	    instance.host_port, address_family);
 	if (instance.server.socket == NULL) {
 		qnetd_err_nss();
 	}

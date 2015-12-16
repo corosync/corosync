@@ -47,7 +47,7 @@ extern "C" {
  */
 
 #define QNETD_PROGRAM_NAME			"corosync-qnetd"
-#define QNETD_DEFAULT_HOST_PORT			4433
+#define QNETD_DEFAULT_HOST_PORT			5403
 #define QNETD_LISTEN_BACKLOG			10
 #define QNETD_MAX_CLIENT_SEND_BUFFERS		10
 #define QNETD_MAX_CLIENT_SEND_SIZE		(1 << 15)

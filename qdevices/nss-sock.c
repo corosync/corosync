@@ -110,8 +110,8 @@ nss_sock_create_socket(PRIntn af, int reuse_addr)
 
 /*
  * Create listen socket and bind it to address. hostname can be NULL and then
- * any address is used. Address family (af) can be ether PR_AF_INET6 or
- * PR_AF_INET.
+ * any address is used. Address family (af) can be ether PR_AF_INET6,
+ * PR_AF_INET or PR_AF_UNSPEC.
  */
 PRFileDesc *
 nss_sock_create_listen_socket(const char *hostname, uint16_t port, PRIntn af)
@@ -119,7 +119,6 @@ nss_sock_create_listen_socket(const char *hostname, uint16_t port, PRIntn af)
 	PRNetAddr addr;
 	PRFileDesc *sock;
 	PRAddrInfo *addr_info;
-	PRIntn tmp_af;
 	void *addr_iter;
 
 	sock = NULL;
@@ -129,6 +128,9 @@ nss_sock_create_listen_socket(const char *hostname, uint16_t port, PRIntn af)
 
 		if (PR_InitializeNetAddr(PR_IpAddrAny, port, &addr) != PR_SUCCESS) {
 			return (NULL);
+		}
+		if (af == PR_AF_UNSPEC) {
+			af = PR_AF_INET6;
 		}
 		addr.raw.family = af;
 
@@ -143,11 +145,7 @@ nss_sock_create_listen_socket(const char *hostname, uint16_t port, PRIntn af)
 			return (NULL);
 		}
 	} else {
-		tmp_af = PR_AF_UNSPEC;
-		if (af == PR_AF_INET)
-			tmp_af = PR_AF_INET;
-
-		addr_info = PR_GetAddrInfoByName(hostname, tmp_af, PR_AI_ADDRCONFIG);
+		addr_info = PR_GetAddrInfoByName(hostname, af, PR_AI_ADDRCONFIG);
 		if (addr_info == NULL) {
 			return (NULL);
 		}
@@ -156,8 +154,8 @@ nss_sock_create_listen_socket(const char *hostname, uint16_t port, PRIntn af)
 
 		while ((addr_iter = PR_EnumerateAddrInfo(addr_iter, addr_info, port,
 		    &addr)) != NULL) {
-			if (addr.raw.family == af) {
-				sock = nss_sock_create_socket(af, 1);
+			if (af == PR_AF_UNSPEC || addr.raw.family == af) {
+				sock = nss_sock_create_socket(addr.raw.family, 1);
 				if (sock == NULL) {
 					continue ;
 				}
