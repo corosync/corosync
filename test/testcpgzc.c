@@ -154,10 +154,6 @@ static cpg_callbacks_t callbacks = {
 	.cpg_confchg_fn =            ConfchgCallback,
 };
 
-static void sigintr_handler (int signum) __attribute__((noreturn));
-static void sigintr_handler (int signum) {
-	exit (0);
-}
 static struct cpg_name group_name;
 
 int main (int argc, char *argv[]) {
