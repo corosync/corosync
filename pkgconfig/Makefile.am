@@ -35,9 +35,15 @@ EXTRA_DIST		= libtemplate.pc.in corosync.pc.in
 LIBS	= cfg cpg quorum \
 	  totem_pg votequorum sam cmap corosync_common
 
+pkgconfigdir = $(libdir)/pkgconfig
+
 target_LIBS = $(LIBS:%=lib%.pc)
 
 target_PACKAGE = corosync.pc
+
+pkgconfig_DATA = $(target_LIBS) $(target_PACKAGE)
+
+CLEANFILES = $(pkgconfig_DATA)
 
 lib%.pc: libtemplate.pc.in Makefile
 	rm -f $@-t $@
@@ -60,15 +66,3 @@ lib%.pc: libtemplate.pc.in Makefile
 	chmod a-w $@-t
 	mv $@-t $@
 
-all-local: $(target_LIBS) $(target_PACKAGE)
-
-install-exec-local: $(target_LIBS) $(target_PACKAGE)
-	$(INSTALL) -d $(DESTDIR)/$(libdir)/pkgconfig
-	$(INSTALL) -m 644 $(target_LIBS) $(target_PACKAGE) $(DESTDIR)/$(libdir)/pkgconfig
-
-uninstall-local:
-	cd $(DESTDIR)/$(libdir)/pkgconfig && rm -f $(target_LIBS) $(target_PACKAGE)
-	rmdir $(DESTDIR)/$(libdir)/pkgconfig 2> /dev/null || :
-
-clean-local:
-	rm -f *.pc
