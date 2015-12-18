@@ -147,8 +147,6 @@ static struct service_entry my_service_list[SERVICES_COUNT_MAX];
 
 static int my_service_list_entries = 0;
 
-static const struct memb_ring_id sync_ring_id;
-
 static void (*sync_synchronization_completed) (void);
 
 static void sync_deliver_fn (
