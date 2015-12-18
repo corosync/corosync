@@ -39,8 +39,6 @@ EXTRA_DIST		= autogen.sh $(SPEC).in \
 			  build-aux/release.mk \
 			  .version
 
-AUTOMAKE_OPTIONS	= foreign
-
 ACLOCAL_AMFLAGS		= -I m4
 
 MAINTAINERCLEANFILES	= Makefile.in aclocal.m4 configure depcomp \
