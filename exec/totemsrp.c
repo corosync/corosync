@@ -707,7 +707,7 @@ do {												\
 
 static const char* gsfrom_to_msg(enum gather_state_from gsfrom)
 {
-	if (0 <= gsfrom && gsfrom <= TOTEMSRP_GSFROM_MAX) {
+	if (gsfrom <= TOTEMSRP_GSFROM_MAX) {
 		return gather_state_from_desc[gsfrom];
 	}
 	else {
