@@ -25,7 +25,7 @@ Version: @version@
 Release: 1%{?gitver}%{?dist}
 License: BSD
 Group: System Environment/Base
-URL: http://www.corosync.org/
+URL: http://corosync.github.io/corosync/
 Source0: https://github.com/downloads/corosync/corosync/%{name}-%{version}%{?gittarver}.tar.gz
 
 # Runtime bits

@@ -16,7 +16,7 @@ corosync MODULE-IDENTITY
     LAST-UPDATED    "201101211300Z"
     ORGANIZATION    "www.corosync.org"
     CONTACT-INFO    "name:  Yuki Sato
-                     email: discuss@corosync.org"
+                     email: users@clusterlabs.org"
     DESCRIPTION     "Add cluster quorum traps, fix smilint errors, and fix notification block ID"
     REVISION        "201101211300Z"
     DESCRIPTION     "MIB objects for Corosync"

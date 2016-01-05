@@ -85,4 +85,4 @@ When a message is received (decrypt_and_authenticate):
 - If they do match then the message is decrypted using the private key.
 - The message is processed.
 
-Comments welcome mailto:discuss@corosync.org
+Comments welcome mailto:users@clusterlabs.org

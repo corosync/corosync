@@ -6,7 +6,7 @@ AC_PREREQ([2.61])
 
 AC_INIT([corosync],
 	m4_esyscmd([build-aux/git-version-gen .tarball-version]),
-	[discuss@lists.corosync.org])
+	[users@clusterlabs.org])
 
 AC_USE_SYSTEM_EXTENSIONS
 
