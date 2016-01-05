@@ -6,7 +6,7 @@ AC_PREREQ([2.61])
 
 AC_INIT([corosync],
 	m4_esyscmd([build-aux/git-version-gen .tarball-version]),
-	[openais@lists.osdl.org])
+	[users@clusterlabs.org])
 
 AM_INIT_AUTOMAKE([-Wno-portability])
 
