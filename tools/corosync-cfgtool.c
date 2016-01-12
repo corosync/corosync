@@ -131,7 +131,7 @@ static void ringreenable_do (void)
 
 	result = corosync_cfg_ring_reenable (handle);
 	if (result != CS_OK) {
-		printf ("Could not reenable ring error %d\n", result);
+		printf ("Could not re-enable ring error %d\n", result);
 	}
 
 	(void)corosync_cfg_finalize (handle);

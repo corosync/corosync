@@ -52,7 +52,7 @@ function that will execute the callback.
 .PP
 The
 .I context
-option allows to set a tracking context.
+option allows one to set a tracking context.
 .PP
 The
 .I flags
