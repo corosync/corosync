@@ -1,9 +1,9 @@
 /*
- * Copyright (c) 2015 Red Hat, Inc.
+ * Copyright (c) 2015-2016 Red Hat, Inc.
  *
  * All rights reserved.
  *
- * Author: Jan Friesse (jfriesse@redhat.com)
+ * Author: Christine Caulfield (ccaulfie@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
  *
@@ -54,23 +54,12 @@
 #include "qnetd-algo-2nodelms.h"
 #include "qnetd-log.h"
 #include "qnetd-cluster-list.h"
+#include "qnetd-algo-utils.h"
 
 struct qnetd_algo_2nodelms_info {
 	int num_config_nodes;
 	enum tlv_vote last_result;
-	struct tlv_ring_id ring_id;
 };
-
-static int rings_eq(const struct tlv_ring_id *ring_id1, const struct tlv_ring_id *ring_id2)
-{
-	if (ring_id1->node_id == ring_id2->node_id &&
-	    ring_id1->seq == ring_id2->seq) {
-		return 1;
-	}
-	else {
-		return 0;
-	}
-}
 
 enum tlv_reply_error_code
 qnetd_algo_2nodelms_client_init(struct qnetd_client *client)
@@ -153,16 +142,13 @@ qnetd_algo_2nodelms_membership_node_list_received(struct qnetd_client *client,
 	int low_node_id = INT_MAX;
 	int high_node_id = 0;
 
-	/* Save this now */
-	memcpy(&info->ring_id, ring_id, sizeof(*ring_id));
-
 	/* If we're a newcomer and there is another active partition, then we must NACK
 	 * to avoid quorum moving to us from already active nodes.
 	 */
 	if (info->last_result == 0) {
 		TAILQ_FOREACH(other_client, &client->cluster->client_list, cluster_entries) {
 			struct qnetd_algo_2nodelms_info *other_info = other_client->algorithm_data;
-			if (!rings_eq(&info->ring_id, &other_info->ring_id) &&
+			if (!qnetd_algo_rings_eq(&client->last_ring_id, &other_client->last_ring_id) &&
 			    other_info->last_result == TLV_VOTE_ACK) {
 
 				/* Don't save NACK, we need to know subsequently if we haven't been voting */
@@ -189,11 +175,9 @@ qnetd_algo_2nodelms_membership_node_list_received(struct qnetd_client *client,
 	/* Now look for other clients connected from this cluster that can't see us any more */
 	node_count = 0;
 	TAILQ_FOREACH(other_client, &client->cluster->client_list, cluster_entries) {
-		struct qnetd_algo_2nodelms_info *other_info = other_client->algorithm_data;
-
 		node_count++;
 
-		qnetd_log(LOG_DEBUG, "algo-2nodelms: seen nodeid %d on client %p (ring ID %d/%" PRIu64 ")", other_client->node_id, other_client, other_info->ring_id.node_id, other_info->ring_id.seq);
+		qnetd_log(LOG_DEBUG, "algo-2nodelms: seen nodeid %d on client %p (ring ID %d/%" PRIu64 ")", other_client->node_id, other_client, other_client->last_ring_id.node_id, other_client->last_ring_id.seq);
 		if (other_client->node_id < low_node_id) {
 			low_node_id = other_client->node_id;
 		}
