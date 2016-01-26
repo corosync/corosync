@@ -73,6 +73,7 @@ struct qnetd_client {
 	struct node_list configuration_node_list;
 	struct node_list last_membership_node_list;
 	struct node_list last_quorum_node_list;
+	struct tlv_ring_id last_ring_id;
 	struct qnetd_cluster *cluster;
 	struct qnetd_cluster_list *cluster_list;
 	TAILQ_ENTRY(qnetd_client) entries;

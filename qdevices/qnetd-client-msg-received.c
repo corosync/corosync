@@ -605,6 +605,8 @@ qnetd_client_msg_received_node_list(struct qnetd_instance *instance, struct qnet
 			return (0);
 		}
 
+		memcpy(&client->last_ring_id, &msg->ring_id, sizeof(struct tlv_ring_id));
+		qnetd_log(LOG_DEBUG, "CC: client %p (nodeid %d) ring id = %d/%ld", client, client->node_id, client->last_ring_id.node_id, client->last_ring_id.seq);
 		reply_error_code = qnetd_algorithm_membership_node_list_received(client,
 		    msg->seq_number, &msg->ring_id, &msg->nodes, &result_vote);
 		break;
