@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Red Hat, Inc.
+ * Copyright (c) 2015-2016 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -51,6 +51,8 @@ extern void			qdevice_net_votequorum_ring_id_to_tlv(struct tlv_ring_id *tlv_rid,
     const votequorum_ring_id_t *votequorum_rid);
 
 extern void			qdevice_net_votequorum_init(struct qdevice_net_instance *instance);
+
+extern void			qdevice_net_votequorum_destroy(struct qdevice_net_instance *instance);
 
 #ifdef __cplusplus
 }

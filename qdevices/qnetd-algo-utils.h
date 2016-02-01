@@ -32,18 +32,36 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifndef _QNETD_ALGO_UTILS_H_
+#define _QNETD_ALGO_UTILS_H_
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 struct qnetd_algo_partition {
 	struct tlv_ring_id ring_id;
 	int num_nodes;
 	TAILQ_ENTRY(qnetd_algo_partition) entries;
 };
+
 typedef TAILQ_HEAD(, qnetd_algo_partition) partitions_list_t;
 
-int qnetd_algo_all_ring_ids_match(struct qnetd_client *client, const struct tlv_ring_id *ring_id);
-int qnetd_algo_rings_eq(const struct tlv_ring_id *ring_id1, const struct tlv_ring_id *ring_id2);
+extern int				 qnetd_algo_all_ring_ids_match(struct qnetd_client *client,
+    const struct tlv_ring_id *ring_id);
 
-struct qnetd_algo_partition *qnetd_algo_find_partition(partitions_list_t *partitions, const struct tlv_ring_id *ring_id);
-int qnetd_algo_create_partitions(struct qnetd_client *client, partitions_list_t *partitions, const struct tlv_ring_id *ring_id);
-void qnetd_algo_free_partitions(partitions_list_t *partitions);
-void qnetd_algo_dump_partitions(partitions_list_t *partitions);
+extern struct qnetd_algo_partition	*qnetd_algo_find_partition(partitions_list_t *partitions,
+    const struct tlv_ring_id *ring_id);
+
+extern int				 qnetd_algo_create_partitions(struct qnetd_client *client,
+    partitions_list_t *partitions, const struct tlv_ring_id *ring_id);
+
+extern void				 qnetd_algo_free_partitions(partitions_list_t *partitions);
+
+extern void				 qnetd_algo_dump_partitions(partitions_list_t *partitions);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* _QNETD_ALGO_UTILS_H_ */

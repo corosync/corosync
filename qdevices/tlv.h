@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Red Hat, Inc.
+ * Copyright (c) 2015-2016 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -312,6 +312,13 @@ extern int			 tlv_iter_decode_quorate(struct tlv_iterator *tlv_iter,
 
 extern void			 tlv_get_supported_options(enum tlv_opt_type **supported_options,
     size_t *no_supported_options);
+
+extern int			 tlv_ring_id_eq(const struct tlv_ring_id *rid1,
+    const struct tlv_ring_id *rid2);
+
+extern const char *		 tlv_vote_to_str(enum tlv_vote vote);
+
+extern const char *		 tlv_node_state_to_str(enum tlv_node_state state);
 
 #ifdef __cplusplus
 }

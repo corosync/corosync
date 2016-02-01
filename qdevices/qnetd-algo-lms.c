@@ -101,7 +101,7 @@ static enum tlv_reply_error_code do_lms_algorithm(struct qnetd_client *client,  
 	if (info->last_result == 0) {
 		TAILQ_FOREACH(other_client, &client->cluster->client_list, cluster_entries) {
 			struct qnetd_algo_lms_info *other_info = other_client->algorithm_data;
-			if (!qnetd_algo_rings_eq(&client->last_ring_id, &other_client->last_ring_id) &&
+			if (!tlv_ring_id_eq(&client->last_ring_id, &other_client->last_ring_id) &&
 			    other_info->last_result == TLV_VOTE_ACK) {
 				qnetd_algo_free_partitions(&info->partition_list);
 
@@ -136,7 +136,7 @@ static enum tlv_reply_error_code do_lms_algorithm(struct qnetd_client *client,  
 
 	if (!joint_leader) {
 		/* Largest partition is unique, allow us to run if we're in that partition. */
-		if (qnetd_algo_rings_eq(&largest_partition->ring_id, &client->last_ring_id)) {
+		if (tlv_ring_id_eq(&largest_partition->ring_id, &client->last_ring_id)) {
 			qnetd_log(LOG_DEBUG, "algo-lms: We are in the largest partition. ACK\n");
 			*result_vote = info->last_result = TLV_VOTE_ACK;
 		}
@@ -201,7 +201,7 @@ static enum tlv_reply_error_code do_lms_algorithm(struct qnetd_client *client,  
 			}
 		}
 
-		if (client->node_id == tb_node_id || qnetd_algo_rings_eq(&tb_node_ring_id, &client->last_ring_id)) {
+		if (client->node_id == tb_node_id || tlv_ring_id_eq(&tb_node_ring_id, &client->last_ring_id)) {
 			qnetd_log(LOG_DEBUG, "algo-lms: We are in the same partition (%d/%ld) as tie-breaker node id %d. ACK",
 				  tb_node_ring_id.node_id, tb_node_ring_id.seq, tb_node_id);
 			*result_vote = info->last_result = TLV_VOTE_ACK;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Red Hat, Inc.
+ * Copyright (c) 2015-2016 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -38,6 +38,7 @@
 
 #include "qnetd-client-send.h"
 #include "qnetd-log.h"
+#include "qnetd-log-debug.h"
 #include "msg.h"
 
 int
@@ -72,6 +73,8 @@ qnetd_client_send_vote_info(struct qnetd_client *client, uint32_t msg_seq_number
     enum tlv_vote vote)
 {
 	struct send_buffer_list_entry *send_buffer;
+
+	qnetd_log_debug_send_vote_info(client, msg_seq_number, vote);
 
 	send_buffer = send_buffer_list_get_new(&client->send_buffer_list);
 	if (send_buffer == NULL) {

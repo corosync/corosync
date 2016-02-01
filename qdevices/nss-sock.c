@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Red Hat, Inc.
+ * Copyright (c) 2015-2016 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -37,12 +37,6 @@
 #include <prnetdb.h>
 
 #include "nss-sock.h"
-
-void
-nss_sock_err(int eval) {
-	errx(eval, "nss error %d: %s", PR_GetError(), PR_ErrorToString(PR_GetError(),
-	    PR_LANGUAGE_I_DEFAULT));
-}
 
 int
 nss_sock_init_nss(char *config_dir)

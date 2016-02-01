@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016 Red Hat, Inc.
+ * Copyright (c) 2016-2016 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -32,20 +32,16 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _QNETD_CLIENT_MSG_RECEIVED_H_
-#define _QNETD_CLIENT_MSG_RECEIVED_H_
-
-#include <sys/types.h>
+#ifndef _QDEVICE_NET_MSG_RECEIVED_H_
+#define _QDEVICE_NET_MSG_RECEIVED_H_
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-extern int		qnetd_client_msg_received(struct qnetd_instance *instance,
-    struct qnetd_client *client);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* _QNETD_CLIENT_MSG_RECEIVED_H_ */
+#endif /* _QDEVICE_NET_MSG_RECEIVED_H_ */

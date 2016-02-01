@@ -48,7 +48,8 @@
  * If this happens it simply means that qnetd does not yet have the full current view
  * of the cluster and should wait until all of the ring_ids in this membership list match up
  */
-int qnetd_algo_all_ring_ids_match(struct qnetd_client *client, const struct tlv_ring_id *ring_id)
+int
+qnetd_algo_all_ring_ids_match(struct qnetd_client *client, const struct tlv_ring_id *ring_id)
 {
 	struct node_list_entry *node_info;
  	struct qnetd_client *other_client;
@@ -72,40 +73,30 @@ int qnetd_algo_all_ring_ids_match(struct qnetd_client *client, const struct tlv_
 		 * If the other nodes on our side of a partition have a different ring ID then
 		 * we need to wait until they have all caught up before making a decision
 		 */
-		if (in_our_partition && !qnetd_algo_rings_eq(ring_id, &other_client->last_ring_id)) {
+		if (in_our_partition && !tlv_ring_id_eq(ring_id, &other_client->last_ring_id)) {
 			qnetd_log(LOG_DEBUG, "algo-util: nodeid %d in our partition has different ring_id (%d/%ld) to us (%d/%ld)", other_client->node_id, other_client->last_ring_id.node_id, other_client->last_ring_id.seq, ring_id->node_id, ring_id->seq);
-			return -1; /* ring IDs don't match */
+			return (-1); /* ring IDs don't match */
 		}
 	}
-	return 0;
+	return (0);
 }
 
-
-int qnetd_algo_rings_eq(const struct tlv_ring_id *ring_id1, const struct tlv_ring_id *ring_id2)
-{
-	if (ring_id1->node_id == ring_id2->node_id &&
-	    ring_id1->seq == ring_id2->seq) {
-		return 1;
-	}
-	else {
-		return 0;
-	}
-}
-
-struct qnetd_algo_partition *qnetd_algo_find_partition(partitions_list_t *partitions_list, const struct tlv_ring_id *ring_id)
+struct qnetd_algo_partition *
+qnetd_algo_find_partition(partitions_list_t *partitions_list, const struct tlv_ring_id *ring_id)
 {
 	struct qnetd_algo_partition *cur_partition;
 
 	TAILQ_FOREACH(cur_partition, partitions_list, entries) {
-		if (qnetd_algo_rings_eq(&cur_partition->ring_id, ring_id)) {
-			return cur_partition;
+		if (tlv_ring_id_eq(&cur_partition->ring_id, ring_id)) {
+			return (cur_partition);
 		}
 	}
 
-	return NULL;
+	return (NULL);
 }
 
-int qnetd_algo_create_partitions(struct qnetd_client *client, partitions_list_t *partitions_list, const struct tlv_ring_id *ring_id)
+int
+qnetd_algo_create_partitions(struct qnetd_client *client, partitions_list_t *partitions_list, const struct tlv_ring_id *ring_id)
 {
  	struct qnetd_client *other_client;
 	int num_partitions = 0;
@@ -120,7 +111,7 @@ int qnetd_algo_create_partitions(struct qnetd_client *client, partitions_list_t 
 		if (!partition) {
 			partition = malloc(sizeof(struct qnetd_algo_partition));
 			if (!partition) {
-				return -1;
+				return (-1);
 			}
 			partition->num_nodes = 0;
 			memcpy(&partition->ring_id, &other_client->last_ring_id, sizeof(*ring_id));
@@ -130,11 +121,13 @@ int qnetd_algo_create_partitions(struct qnetd_client *client, partitions_list_t 
 		partition->num_nodes++;
 
 	}
-	return num_partitions;
+
+	return (num_partitions);
 }
 
 
-void qnetd_algo_free_partitions(partitions_list_t *partitions_list)
+void
+qnetd_algo_free_partitions(partitions_list_t *partitions_list)
 {
 	struct qnetd_algo_partition *cur_partition;
 
@@ -144,7 +137,8 @@ void qnetd_algo_free_partitions(partitions_list_t *partitions_list)
 	}
 }
 
-void qnetd_algo_dump_partitions(partitions_list_t *partitions_list)
+void
+qnetd_algo_dump_partitions(partitions_list_t *partitions_list)
 {
 	struct qnetd_algo_partition *partition;
 
@@ -153,4 +147,3 @@ void qnetd_algo_dump_partitions(partitions_list_t *partitions_list)
 			  partition->ring_id.node_id, partition->ring_id.seq, partition, partition->num_nodes);
 	}
 }
-

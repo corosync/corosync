@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Red Hat, Inc.
+ * Copyright (c) 2015-2016 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -99,9 +99,7 @@ struct qnetd_algorithm {
 extern enum tlv_reply_error_code	qnetd_algorithm_register(
 	enum tlv_decision_algorithm_type algorithm_number, struct qnetd_algorithm *algorithm);
 
-extern void algorithms_register(void);
-
-#define MAX_QNETD_ALGORITHMS 10
+extern void qnetd_algorithm_register_all(void);
 
 #ifdef __cplusplus
 }

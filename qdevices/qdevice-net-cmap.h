@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Red Hat, Inc.
+ * Copyright (c) 2015-2016 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -38,6 +38,7 @@
 #include <cmap.h>
 
 #include "node-list.h"
+#include "qdevice-net-instance.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -50,6 +51,14 @@ extern int		qdevice_net_cmap_get_config_version(cmap_handle_t cmap_handle,
     uint64_t *config_version);
 
 extern void		qdevice_net_cmap_init(cmap_handle_t *handle);
+
+extern void		qdevice_net_cmap_init_fd(struct qdevice_net_instance *instance);
+
+extern int		qdevice_net_cmap_add_track(struct qdevice_net_instance *instance);
+
+extern int		qdevice_net_cmap_del_track(struct qdevice_net_instance *instance);
+
+extern void		qdevice_net_cmap_destroy(struct qdevice_net_instance *instance);
 
 #ifdef __cplusplus
 }

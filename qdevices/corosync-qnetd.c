@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Red Hat, Inc.
+ * Copyright (c) 2015-2016 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -337,7 +337,7 @@ main(int argc, char *argv[])
 		exit(1);
 	}
 
-	qnetd_log_printf(LOG_DEBUG, "Initializing nss");
+	qnetd_log(LOG_DEBUG, "Initializing nss");
 	if (nss_sock_init_nss((tls_supported != TLV_TLS_UNSUPPORTED ?
 	    (char *)QNETD_NSS_DB_DIR : NULL)) != 0) {
 		qnetd_err_nss();
@@ -360,7 +360,7 @@ main(int argc, char *argv[])
 		qnetd_err_nss();
 	}
 
-	qnetd_log_printf(LOG_DEBUG, "Creating listening socket");
+	qnetd_log(LOG_DEBUG, "Creating listening socket");
 	instance.server.socket = nss_sock_create_listen_socket(instance.host_addr,
 	    instance.host_port, address_family);
 	if (instance.server.socket == NULL) {
@@ -378,10 +378,10 @@ main(int argc, char *argv[])
 	global_server_socket = instance.server.socket;
 	signal_handlers_register();
 
-	qnetd_log_printf(LOG_DEBUG, "Registering algorithms");
-	algorithms_register();
+	qnetd_log(LOG_DEBUG, "Registering algorithms");
+	qnetd_algorithm_register_all();
 
-	qnetd_log_printf(LOG_DEBUG, "QNetd ready to provide service");
+	qnetd_log(LOG_DEBUG, "QNetd ready to provide service");
 	/*
 	 * MAIN LOOP
 	 */

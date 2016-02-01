@@ -31,21 +31,3 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
-
-#ifndef _QNETD_CLIENT_MSG_RECEIVED_H_
-#define _QNETD_CLIENT_MSG_RECEIVED_H_
-
-#include <sys/types.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-extern int		qnetd_client_msg_received(struct qnetd_instance *instance,
-    struct qnetd_client *client);
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif /* _QNETD_CLIENT_MSG_RECEIVED_H_ */

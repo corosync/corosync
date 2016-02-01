@@ -1,6 +1,7 @@
-# Copyright (c) 2012 Red Hat, Inc.
+# Copyright (c) 2012-2016 Red Hat, Inc.
 #
-# Authors: Fabio M. Di Nitto <fdinitto@redhat.com>
+# Authors: Fabio M. Di Nitto (fdinitto@redhat.com)
+#          Jan Friesse (jfriesse@redhat.com)
 #
 # This software licensed under BSD license, the text of which follows:
 #
@@ -44,14 +45,16 @@ corosync_qnetd_SOURCES	= corosync-qnetd.c dynar.c msg.c msgio.c nss-sock.c  \
 			    node-list.c qnetd-algo-test.c qnetd-algorithm.c qnetd-algo-utils.c \
 			    qnetd-algo-ffsplit.c qnetd-cluster-list.c qnetd-client-send.c \
 			    qnetd-algo-2nodelms.c qnetd-algo-lms.c utils.c qnetd-instance.c \
-			    qnetd-client-net.c qnetd-client-msg-received.c
+			    qnetd-client-net.c qnetd-client-msg-received.c qnetd-log-debug.c
 
 corosync_qdevice_net_SOURCES	= corosync-qdevice-net.c dynar.c msg.c msgio.c nss-sock.c  \
 			    qnetd-client.c qnetd-client-list.c qnetd-log.c \
 			    qnetd-poll-array.c timer-list.c tlv.c send-buffer-list.c \
 			    node-list.c qdevice-net-send.c qdevice-net-cmap.c \
 			    qdevice-net-votequorum.c qdevice-net-instance.c \
-			    qdevice-net-cast-vote-timer.c utils.c
+			    qdevice-net-cast-vote-timer.c utils.c qdevice-net-algorithm.c \
+			    qdevice-net-algo-test.c qdevice-net-algo-ffsplit.c \
+			    qdevice-net-algo-2nodelms.c qdevice-net-algo-lms.c
 
 corosync_qnetd_CFLAGS		= $(nss_CFLAGS)
 corosync_qnetd_LDADD		= $(nss_LIBS)

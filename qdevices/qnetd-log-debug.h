@@ -32,20 +32,48 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _QNETD_CLIENT_MSG_RECEIVED_H_
-#define _QNETD_CLIENT_MSG_RECEIVED_H_
+#ifndef _QNETD_LOG_DEBUG_H_
+#define _QNETD_LOG_DEBUG_H_
 
-#include <sys/types.h>
+#include "qnetd-client.h"
+#include "qnetd-cluster-list.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-extern int		qnetd_client_msg_received(struct qnetd_instance *instance,
-    struct qnetd_client *client);
+extern void		qnetd_log_debug_dump_cluster(struct qnetd_cluster *cluster);
+
+extern void		qnetd_log_debug_new_client_connected(struct qnetd_client *client);
+
+extern void		qnetd_log_debug_dump_node_list(struct qnetd_client *client,
+    const struct node_list *nodes);
+
+extern void		qnetd_log_debug_config_node_list_received(struct qnetd_client *client,
+    uint32_t msg_seq_num, int config_version_set, uint64_t config_version,
+    const struct node_list *nodes, int initial);
+
+extern void		qnetd_log_debug_membership_node_list_received(struct qnetd_client *client,
+    uint32_t msg_seq_num, const struct tlv_ring_id *ring_id,
+    const struct node_list *nodes);
+
+extern void		qnetd_log_debug_quorum_node_list_received(struct qnetd_client *client,
+    uint32_t msg_seq_num, enum tlv_quorate quorate, const struct node_list *nodes);
+
+extern void		qnetd_log_debug_client_disconnect(struct qnetd_client *client,
+    int server_going_down);
+
+extern void		qnetd_log_debug_ask_for_vote_received(struct qnetd_client *client,
+    uint32_t msg_seq_num);
+
+extern void		qnetd_log_debug_vote_info_reply_received(struct qnetd_client *client,
+    uint32_t msg_seq_num);
+
+extern void		qnetd_log_debug_send_vote_info(struct qnetd_client *client,
+    uint32_t msg_seq_num, enum tlv_vote vote);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* _QNETD_CLIENT_MSG_RECEIVED_H_ */
+#endif /* _QNETD_LOG_DEBUG_H_ */

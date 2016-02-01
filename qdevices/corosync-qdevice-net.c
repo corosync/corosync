@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Red Hat, Inc.
+ * Copyright (c) 2015-2016 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -72,6 +72,7 @@
 #include "qdevice-net-votequorum.h"
 #include "qdevice-net-cast-vote-timer.h"
 #include "utils.h"
+#include "qdevice-net-algorithm.h"
 
 static SECStatus
 qdevice_net_nss_bad_cert_hook(void *arg, PRFileDesc *fd) {
@@ -129,7 +130,7 @@ qdevice_net_log_msg_decode_error(int ret)
  *  1 - Use TLS
  */
 static int
-qdevice_net_check_tls_compatibility(enum tlv_tls_supported server_tls,
+qdevice_net_msg_received_check_tls_compatibility(enum tlv_tls_supported server_tls,
     enum tlv_tls_supported client_tls)
 {
 	int res;
@@ -171,6 +172,8 @@ qdevice_net_msg_received_unexpected_msg(struct qdevice_net_instance *instance,
 	qdevice_net_log(LOG_ERR, "Received unexpected %s message. Disconnecting from server",
 	    msg_str);
 
+	instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_UNEXPECTED_MSG;
+
 	return (-1);
 }
 
@@ -198,28 +201,6 @@ qdevice_net_msg_check_seq_number(struct qdevice_net_instance *instance,
 }
 
 static int
-qdevice_net_msg_check_echo_reply_seq_number(struct qdevice_net_instance *instance,
-    const struct msg_decoded *msg)
-{
-
-	if (!msg->seq_number_set) {
-		qdevice_net_log(LOG_ERR, "Received echo reply message doesn't contain seq_number.");
-
-		return (-1);
-	}
-
-	if (msg->seq_number != instance->echo_request_expected_msg_seq_num) {
-		qdevice_net_log(LOG_ERR, "Server doesn't replied in expected time. "
-		    "Closing connection");
-
-		return (-1);
-	}
-
-	return (0);
-}
-
-
-static int
 qdevice_net_msg_received_preinit_reply(struct qdevice_net_instance *instance,
     const struct msg_decoded *msg)
 {
@@ -230,10 +211,14 @@ qdevice_net_msg_received_preinit_reply(struct qdevice_net_instance *instance,
 		qdevice_net_log(LOG_ERR, "Received unexpected preinit reply message. "
 		    "Disconnecting from server");
 
+		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_UNEXPECTED_MSG;
+
 		return (-1);
 	}
 
 	if (qdevice_net_msg_check_seq_number(instance, msg) != 0) {
+		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_REQUIRED_OPTION_MISSING;
+
 		return (-1);
 	}
 
@@ -244,13 +229,17 @@ qdevice_net_msg_received_preinit_reply(struct qdevice_net_instance *instance,
 		qdevice_net_log(LOG_ERR, "Required tls_supported or tls_client_cert_required "
 		    "option is unset");
 
+		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_REQUIRED_OPTION_MISSING;
+
 		return (-1);
 	}
 
-	res = qdevice_net_check_tls_compatibility(msg->tls_supported, instance->tls_supported);
+	res = qdevice_net_msg_received_check_tls_compatibility(msg->tls_supported, instance->tls_supported);
 	if (res == -1) {
 		qdevice_net_log(LOG_ERR, "Incompatible tls configuration (server %u client %u)",
 		    msg->tls_supported, instance->tls_supported);
+
+		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_INCOMPATIBLE_TLS;
 
 		return (-1);
 	} else if (res == 1) {
@@ -262,6 +251,9 @@ qdevice_net_msg_received_preinit_reply(struct qdevice_net_instance *instance,
 			qdevice_net_log(LOG_ERR, "Can't allocate send list buffer for "
 			    "starttls msg");
 
+			instance->disconnect_reason =
+			    QDEVICE_NET_DISCONNECT_REASON_CANT_ALLOCATE_MSG_BUFFER;
+
 			return (-1);
 		}
 
@@ -269,6 +261,9 @@ qdevice_net_msg_received_preinit_reply(struct qdevice_net_instance *instance,
 		if (msg_create_starttls(&send_buffer->buffer, 1,
 		    instance->last_msg_seq_num) == 0) {
 			qdevice_net_log(LOG_ERR, "Can't allocate send buffer for starttls msg");
+
+			instance->disconnect_reason =
+			    QDEVICE_NET_DISCONNECT_REASON_CANT_ALLOCATE_MSG_BUFFER;
 
 			return (-1);
 		}
@@ -278,6 +273,9 @@ qdevice_net_msg_received_preinit_reply(struct qdevice_net_instance *instance,
 		instance->state = QDEVICE_NET_INSTANCE_STATE_WAITING_STARTTLS_BEING_SENT;
 	} else if (res == 0) {
 		if (qdevice_net_send_init(instance) != 0) {
+			instance->disconnect_reason =
+			    QDEVICE_NET_DISCONNECT_REASON_CANT_ALLOCATE_MSG_BUFFER;
+
 			return (-1);
 		}
 	}
@@ -297,16 +295,22 @@ qdevice_net_msg_received_init_reply(struct qdevice_net_instance *instance,
 		qdevice_net_log(LOG_ERR, "Received unexpected init reply message. "
 		    "Disconnecting from server");
 
+		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_UNEXPECTED_MSG;
+
 		return (-1);
 	}
 
 	if (qdevice_net_msg_check_seq_number(instance, msg) != 0) {
+		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_REQUIRED_OPTION_MISSING;
+
 		return (-1);
 	}
 
 	if (!msg->reply_error_code_set) {
 		qdevice_net_log(LOG_ERR, "Received init reply message without error code."
 		    "Disconnecting from server");
+
+		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_REQUIRED_OPTION_MISSING;
 
 		return (-1);
 	}
@@ -315,12 +319,15 @@ qdevice_net_msg_received_init_reply(struct qdevice_net_instance *instance,
 		qdevice_net_log(LOG_ERR, "Received init reply message with error code %"PRIu16". "
 		    "Disconnecting from server", msg->reply_error_code);
 
+		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_SERVER_SENT_ERROR;
 		return (-1);
 	}
 
 	if (!msg->server_maximum_request_size_set || !msg->server_maximum_reply_size_set) {
 		qdevice_net_log(LOG_ERR, "Required maximum_request_size or maximum_reply_size "
 		    "option is unset");
+
+		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_REQUIRED_OPTION_MISSING;
 
 		return (-1);
 	}
@@ -329,11 +336,15 @@ qdevice_net_msg_received_init_reply(struct qdevice_net_instance *instance,
 		qdevice_net_log(LOG_ERR, "Required supported messages or supported options "
 		    "option is unset");
 
+		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_REQUIRED_OPTION_MISSING;
+
 		return (-1);
 	}
 
 	if (msg->supported_decision_algorithms == NULL) {
 		qdevice_net_log(LOG_ERR, "Required supported decision algorithms option is unset");
+
+		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_REQUIRED_OPTION_MISSING;
 
 		return (-1);
 	}
@@ -343,6 +354,7 @@ qdevice_net_msg_received_init_reply(struct qdevice_net_instance *instance,
 		    "Server accepts maximum %zu bytes message but this client minimum "
 		    "is %zu bytes.", msg->server_maximum_request_size, instance->min_send_size);
 
+		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_INCOMPATIBLE_MSG_SIZE;
 		return (-1);
 	}
 
@@ -351,6 +363,7 @@ qdevice_net_msg_received_init_reply(struct qdevice_net_instance *instance,
 		    "Server may send message up to %zu bytes message but this client maximum "
 		    "is %zu bytes.", msg->server_maximum_reply_size, instance->max_receive_size);
 
+		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_INCOMPATIBLE_MSG_SIZE;
 		return (-1);
 	}
 
@@ -376,6 +389,9 @@ qdevice_net_msg_received_init_reply(struct qdevice_net_instance *instance,
 	if (!res) {
 		qdevice_net_log(LOG_ERR, "Server doesn't support required decision algorithm");
 
+		instance->disconnect_reason =
+		    QDEVICE_NET_DISCONNECT_REASON_SERVER_DOESNT_SUPPORT_REQUIRED_ALGORITHM;
+
 		return (-1);
 	}
 
@@ -386,6 +402,8 @@ qdevice_net_msg_received_init_reply(struct qdevice_net_instance *instance,
 	if (send_buffer == NULL) {
 		qdevice_net_log(LOG_ERR, "Can't allocate send list buffer for set option msg");
 
+		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_ALLOCATE_MSG_BUFFER;
+
 		return (-1);
 	}
 
@@ -394,6 +412,8 @@ qdevice_net_msg_received_init_reply(struct qdevice_net_instance *instance,
 	if (msg_create_set_option(&send_buffer->buffer, 1, instance->last_msg_seq_num,
 	    1, instance->heartbeat_interval, 1, &instance->tie_breaker) == 0) {
 		qdevice_net_log(LOG_ERR, "Can't allocate send buffer for set option msg");
+
+		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_ALLOCATE_MSG_BUFFER;
 
 		return (-1);
 	}
@@ -421,9 +441,13 @@ qdevice_net_msg_received_server_error(struct qdevice_net_instance *instance,
 	if (!msg->reply_error_code_set) {
 		qdevice_net_log(LOG_ERR, "Received server error without error code set. "
 		    "Disconnecting from server");
+
+		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_REQUIRED_OPTION_MISSING;
 	} else {
 		qdevice_net_log(LOG_ERR, "Received server error %"PRIu16". "
 		    "Disconnecting from server", msg->reply_error_code);
+
+		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_SERVER_SENT_ERROR;
 	}
 
 	return (-1);
@@ -444,7 +468,28 @@ qdevice_net_timer_send_heartbeat(void *data1, void *data2)
 
 	instance = (struct qdevice_net_instance *)data1;
 
+	if (instance->echo_reply_received_msg_seq_num !=
+	    instance->echo_request_expected_msg_seq_num) {
+		qdevice_net_log(LOG_ERR, "Server didn't send echo reply message on time");
+
+		if (qdevice_net_algorithm_echo_reply_not_received(instance) != 0) {
+			qdevice_net_log(LOG_DEBUG, "Algorithm decided to disconnect");
+
+			instance->schedule_disconnect = 1;
+			instance->disconnect_reason =
+			    QDEVICE_NET_DISCONNECT_REASON_ALGO_ECHO_REPLY_NOT_RECEIVED_ERR;
+
+			return (0);
+		} else {
+			qdevice_net_log(LOG_DEBUG, "Algorithm decided to continue send heartbeat");
+
+			return (-1);
+		}
+	}
+
 	if (qdevice_net_send_echo_request(instance) == -1) {
+		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_ALLOCATE_MSG_BUFFER;
+
 		instance->schedule_disconnect = 1;
 		return (0);
 	}
@@ -480,22 +525,32 @@ qdevice_net_msg_received_set_option_reply(struct qdevice_net_instance *instance,
 		qdevice_net_log(LOG_ERR, "Received unexpected set option reply message. "
 		    "Disconnecting from server");
 
+		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_UNEXPECTED_MSG;
+
 		return (-1);
 	}
 
 	if (qdevice_net_msg_check_seq_number(instance, msg) != 0) {
+		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_REQUIRED_OPTION_MISSING;
+
 		return (-1);
 	}
 
 	if (!msg->decision_algorithm_set || !msg->heartbeat_interval_set) {
 		qdevice_net_log(LOG_ERR, "Received set option reply message without "
 		    "required options. Disconnecting from server");
+
+		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_REQUIRED_OPTION_MISSING;
+
+		return (-1);
 	}
 
 	if (msg->decision_algorithm != instance->decision_algorithm ||
 	    msg->heartbeat_interval != instance->heartbeat_interval) {
 		qdevice_net_log(LOG_ERR, "Server doesn't accept sent decision algorithm or "
 		    "heartbeat interval.");
+
+		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_REQUIRED_OPTION_MISSING;
 
 		return (-1);
 	}
@@ -504,6 +559,9 @@ qdevice_net_msg_received_set_option_reply(struct qdevice_net_instance *instance,
 	 * Server accepted heartbeat interval -> schedule regular sending of echo request
 	 */
 	if (instance->heartbeat_interval > 0) {
+		instance->echo_request_expected_msg_seq_num = 0;
+		instance->echo_reply_received_msg_seq_num = 0;
+
 		instance->echo_request_timer = timer_list_add(&instance->main_timer_list,
 		    instance->heartbeat_interval, qdevice_net_timer_send_heartbeat,
 		    (void *)instance, NULL);
@@ -511,24 +569,40 @@ qdevice_net_msg_received_set_option_reply(struct qdevice_net_instance *instance,
 		if (instance->echo_request_timer == NULL) {
 			qdevice_net_log(LOG_ERR, "Can't schedule regular sending of heartbeat.");
 
+			instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_SCHEDULE_HB_TIMER;
+
 			return (-1);
 		}
+	}
+
+	if (qdevice_net_algorithm_connected(instance) != 0) {
+		qdevice_net_log(LOG_DEBUG, "Algorithm returned error. Disconnecting.");
+		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_ALGO_CONNECTED_ERR;
+		return (-1);
 	}
 
 	/*
 	 * Now we can finally really send node list and initialize qdevice
 	 */
-	if (qdevice_net_send_config_node_list(instance, 1) != 0) {
+	if (qdevice_net_send_config_node_list(instance, 1, 1) != 0) {
+		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_ALLOCATE_MSG_BUFFER;
 		return (-1);
 	}
 
 	if (qdevice_net_register_votequorum_callbacks(instance) != 0) {
+		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_REGISTER_VOTEQUORUM_CALLBACK;
+		return (-1);
+	}
+
+	if (qdevice_net_cmap_add_track(instance) != 0) {
+		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_REGISTER_CMAP_CALLBACK;
 		return (-1);
 	}
 
 	if (qdevice_net_cast_vote_timer_update(instance, TLV_VOTE_WAIT_FOR_REPLY) != 0) {
-		errx(1, "qdevice_net_msg_received_set_option_reply fatal error. Can't update "
-		    "cast vote timer vote");
+		qdevice_net_log(LOG_CRIT, "qdevice_net_msg_received_set_option_reply fatal error. "
+		    " Can't update cast vote timer vote");
+		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_SCHEDULE_VOTING_TIMER;
 	}
 
 	instance->state = QDEVICE_NET_INSTANCE_STATE_WAITING_VOTEQUORUM_CMAP_EVENTS;
@@ -549,7 +623,22 @@ qdevice_net_msg_received_echo_reply(struct qdevice_net_instance *instance,
     const struct msg_decoded *msg)
 {
 
-	if (qdevice_net_msg_check_echo_reply_seq_number(instance, msg) != 0) {
+	if (!msg->seq_number_set) {
+		qdevice_net_log(LOG_ERR, "Received echo reply message doesn't contain seq_number.");
+
+		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_REQUIRED_OPTION_MISSING;
+		return (-1);
+	}
+
+	if (msg->seq_number != instance->echo_request_expected_msg_seq_num) {
+		qdevice_net_log(LOG_WARNING, "Received echo reply message seq_number is not expected one.");
+	}
+
+	if (qdevice_net_algorithm_echo_reply_received(instance, msg->seq_number,
+	    msg->seq_number == instance->echo_request_expected_msg_seq_num) != 0) {
+		qdevice_net_log(LOG_DEBUG, "Algorithm returned error. Disconnecting");
+
+		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_ALGO_ECHO_REPLY_RECEIVED_ERR;
 		return (-1);
 	}
 
@@ -570,30 +659,99 @@ static int
 qdevice_net_msg_received_node_list_reply(struct qdevice_net_instance *instance,
     const struct msg_decoded *msg)
 {
+	const char *str;
+	enum tlv_vote result_vote;
+	int res;
 
 	if (instance->state != QDEVICE_NET_INSTANCE_STATE_WAITING_VOTEQUORUM_CMAP_EVENTS) {
 		qdevice_net_log(LOG_ERR, "Received unexpected node list reply message. "
 		    "Disconnecting from server");
 
+		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_UNEXPECTED_MSG;
 		return (-1);
 	}
 
-	if (!msg->vote_set || !msg->seq_number_set) {
+	if (!msg->vote_set || !msg->seq_number_set || !msg->node_list_type_set) {
 		qdevice_net_log(LOG_ERR, "Received node list reply message without "
 		    "required options. Disconnecting from server");
 
+		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_REQUIRED_OPTION_MISSING;
 		return (-1);
 	}
 
-	/*
-	 * TODO API
-	 */
-	qdevice_net_log(LOG_INFO, "Received node list reply seq=%"PRIu32", vote=%u",
-	    msg->seq_number, msg->vote);
+	if (msg->node_list_type == TLV_NODE_LIST_TYPE_MEMBERSHIP && !msg->ring_id_set) {
+		qdevice_net_log(LOG_ERR, "Received node list reply message with type membership "
+		    "without ring id set. Disconnecting from server");
 
-	if (msg->vote != TLV_VOTE_NO_CHANGE) {
-		if (qdevice_net_cast_vote_timer_update(instance, msg->vote) != 0) {
-			return (-1);
+		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_REQUIRED_OPTION_MISSING;
+		return (-1);
+	}
+
+	switch (msg->node_list_type) {
+	case TLV_NODE_LIST_TYPE_INITIAL_CONFIG: str = "initial config"; break;
+	case TLV_NODE_LIST_TYPE_CHANGED_CONFIG: str = "changed config"; break;
+	case TLV_NODE_LIST_TYPE_MEMBERSHIP: str ="membership"; break;
+	case TLV_NODE_LIST_TYPE_QUORUM: str ="quorum"; break;
+	default:
+		qdevice_net_log(LOG_CRIT, "qdevice_net_msg_received_node_list_reply fatal error. "
+		    "Unhandled node_list_type (debug output)");
+		exit(1);
+		break;
+	}
+	qdevice_net_log(LOG_DEBUG, "Received %s node list reply", str);
+	qdevice_net_log(LOG_DEBUG, "  seq = %"PRIu32, msg->seq_number);
+	qdevice_net_log(LOG_DEBUG, "  vote = %s", tlv_vote_to_str(msg->vote));
+	if (msg->ring_id_set) {
+		qdevice_net_log(LOG_DEBUG, "  ring id = (%"PRIx32".%"PRIx64")",
+		    msg->ring_id.node_id, msg->ring_id.seq);
+	}
+
+	/*
+	 * Call algorithm
+	 */
+	result_vote = msg->vote;
+
+	switch (msg->node_list_type) {
+	case TLV_NODE_LIST_TYPE_INITIAL_CONFIG:
+	case TLV_NODE_LIST_TYPE_CHANGED_CONFIG:
+		res = qdevice_net_algorithm_config_node_list_reply_received(instance,
+		    msg->seq_number, (msg->node_list_type == TLV_NODE_LIST_TYPE_INITIAL_CONFIG),
+		    &result_vote);
+		break;
+	case TLV_NODE_LIST_TYPE_MEMBERSHIP:
+		res = qdevice_net_algorithm_membership_node_list_reply_received(instance,
+		    msg->seq_number, &msg->ring_id, &result_vote);
+		break;
+	case TLV_NODE_LIST_TYPE_QUORUM:
+		res = qdevice_net_algorithm_quorum_node_list_reply_received(instance,
+		    msg->seq_number, &result_vote);
+		break;
+	default:
+		qdevice_net_log(LOG_CRIT, "qdevice_net_msg_received_node_list_reply fatal error. "
+		    "Unhandled node_list_type (algorithm call)");
+		exit(1);
+		break;
+	}
+
+	if (res != 0) {
+		qdevice_net_log(LOG_DEBUG, "Algorithm returned error. Disconnecting.");
+
+		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_ALGO_NODE_LIST_REPLY_ERR;
+		return (-1);
+	} else {
+		qdevice_net_log(LOG_DEBUG, "Algorithm result vote is %s", tlv_vote_to_str(msg->vote));
+	}
+
+	if (result_vote != TLV_VOTE_NO_CHANGE) {
+		if (msg->node_list_type == TLV_NODE_LIST_TYPE_MEMBERSHIP &&
+		    !tlv_ring_id_eq(&msg->ring_id, &instance->last_sent_ring_id)) {
+			qdevice_net_log(LOG_INFO, "Received membership node list reply with "
+			    "old ring id. Not updating timer");
+		} else {
+			if (qdevice_net_cast_vote_timer_update(instance, result_vote) != 0) {
+				instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_SCHEDULE_VOTING_TIMER;
+				return (-1);
+			}
 		}
 	}
 
@@ -612,26 +770,42 @@ static int
 qdevice_net_msg_received_ask_for_vote_reply(struct qdevice_net_instance *instance,
     const struct msg_decoded *msg)
 {
+	enum tlv_vote result_vote;
 
 	if (instance->state != QDEVICE_NET_INSTANCE_STATE_WAITING_VOTEQUORUM_CMAP_EVENTS) {
 		qdevice_net_log(LOG_ERR, "Received unexpected ask for vote reply message. "
 		    "Disconnecting from server");
 
+		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_UNEXPECTED_MSG;
 		return (-1);
 	}
 
 	if (!msg->vote_set || !msg->seq_number_set) {
 		qdevice_net_log(LOG_ERR, "Received node list reply message without "
 		    "required options. Disconnecting from server");
+
+		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_REQUIRED_OPTION_MISSING;
+		return (-1);
 	}
 
-	/*
-	 * TODO API
-	 */
-	qdevice_net_log(LOG_INFO, "Received ask for vote reply seq=%"PRIu32", vote=%u",
-	    msg->seq_number, msg->vote);
+	qdevice_net_log(LOG_DEBUG, "Received ask for vote reply");
+	qdevice_net_log(LOG_DEBUG, "  seq = %"PRIu32, msg->seq_number);
+	qdevice_net_log(LOG_DEBUG, "  vote = %s", tlv_vote_to_str(msg->vote));
 
-	if (qdevice_net_cast_vote_timer_update(instance, msg->vote) != 0) {
+	result_vote = msg->vote;
+
+	if (qdevice_net_algorithm_ask_for_vote_reply_received(instance, msg->seq_number,
+	    &result_vote) != 0) {
+		qdevice_net_log(LOG_DEBUG, "Algorithm returned error. Disconnecting.");
+
+		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_ALGO_ASK_FOR_VOTE_REPLY_ERR;
+		return (-1);
+	} else {
+		qdevice_net_log(LOG_DEBUG, "Algorithm result vote is %s", tlv_vote_to_str(msg->vote));
+	}
+
+	if (qdevice_net_cast_vote_timer_update(instance, result_vote) != 0) {
+		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_SCHEDULE_VOTING_TIMER;
 		return (-1);
 	}
 
@@ -643,26 +817,40 @@ qdevice_net_msg_received_vote_info(struct qdevice_net_instance *instance,
     const struct msg_decoded *msg)
 {
 	struct send_buffer_list_entry *send_buffer;
+	enum tlv_vote result_vote;
 
 	if (instance->state != QDEVICE_NET_INSTANCE_STATE_WAITING_VOTEQUORUM_CMAP_EVENTS) {
 		qdevice_net_log(LOG_ERR, "Received unexpected vote info message. "
 		    "Disconnecting from server");
 
+		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_UNEXPECTED_MSG;
 		return (-1);
 	}
 
 	if (!msg->vote_set || !msg->seq_number_set) {
 		qdevice_net_log(LOG_ERR, "Received node list reply message without "
 		    "required options. Disconnecting from server");
+		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_REQUIRED_OPTION_MISSING;
+		return (-1);
 	}
 
-	/*
-	 * TODO API
-	 */
-	qdevice_net_log(LOG_INFO, "Received vote info seq=%"PRIu32", vote=%u",
-	    msg->seq_number, msg->vote);
+	qdevice_net_log(LOG_DEBUG, "Received vote info");
+	qdevice_net_log(LOG_DEBUG, "  seq = %"PRIu32, msg->seq_number);
+	qdevice_net_log(LOG_DEBUG, "  vote = %s", tlv_vote_to_str(msg->vote));
 
-	if (qdevice_net_cast_vote_timer_update(instance, msg->vote) != 0) {
+	result_vote = msg->vote;
+	if (qdevice_net_algorithm_vote_info_received(instance, msg->seq_number,
+	    &result_vote) != 0) {
+		qdevice_net_log(LOG_DEBUG, "Algorithm returned error. Disconnecting.");
+
+		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_ALGO_VOTE_INFO_ERR;
+		return (-1);
+	} else {
+		qdevice_net_log(LOG_DEBUG, "Algorithm result vote is %s", tlv_vote_to_str(result_vote));
+	}
+
+	if (qdevice_net_cast_vote_timer_update(instance, result_vote) != 0) {
+		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_SCHEDULE_VOTING_TIMER;
 		return (-1);
 	}
 
@@ -674,6 +862,7 @@ qdevice_net_msg_received_vote_info(struct qdevice_net_instance *instance,
 		qdevice_net_log(LOG_ERR, "Can't allocate send list buffer for "
 		    "vote info reply msg");
 
+		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_ALLOCATE_MSG_BUFFER;
 		return (-1);
 	}
 
@@ -681,6 +870,7 @@ qdevice_net_msg_received_vote_info(struct qdevice_net_instance *instance,
 		qdevice_net_log(LOG_ERR, "Can't allocate send buffer for "
 		    "vote info reply list msg");
 
+		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_ALLOCATE_MSG_BUFFER;
 		return (-1);
 	}
 
@@ -711,6 +901,7 @@ qdevice_net_msg_received(struct qdevice_net_instance *instance)
 		 */
 		qdevice_net_log_msg_decode_error(res);
 		qdevice_net_log(LOG_ERR, "Disconnecting from server");
+		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_MSG_DECODE_ERROR;
 
 		return (-1);
 	}
@@ -766,6 +957,8 @@ qdevice_net_msg_received(struct qdevice_net_instance *instance)
 	default:
 		qdevice_net_log(LOG_ERR, "Received unsupported message %u. "
 		    "Disconnecting from server", msg.type);
+		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_UNEXPECTED_MSG;
+
 		ret_val = -1;
 		break;
 	}
@@ -804,32 +997,38 @@ qdevice_net_socket_read(struct qdevice_net_instance *instance)
 		break;
 	case -1:
 		qdevice_net_log(LOG_DEBUG, "Server closed connection");
+		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_SERVER_CLOSED_CONNECTION;
 		ret_val = -1;
 		break;
 	case -2:
 		qdevice_net_log_nss(LOG_ERR, "Unhandled error when reading from server. "
 		    "Disconnecting from server");
+		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_READ_MESSAGE;
 		ret_val = -1;
 		break;
 	case -3:
 		qdevice_net_log(LOG_ERR, "Can't store message header from server. "
 		    "Disconnecting from server");
+		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_READ_MESSAGE;
 		ret_val = -1;
 		break;
 	case -4:
 		qdevice_net_log(LOG_ERR, "Can't store message from server. "
 		    "Disconnecting from server");
+		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_READ_MESSAGE;
 		ret_val = -1;
 		break;
 	case -5:
 		qdevice_net_log(LOG_WARNING, "Server sent unsupported msg type %u. "
 		    "Disconnecting from server", msg_get_type(&instance->receive_buffer));
+		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_UNSUPPORTED_MSG;
 		ret_val = -1;
 		break;
 	case -6:
 		qdevice_net_log(LOG_WARNING,
 		    "Server wants to send too long message %u bytes. Disconnecting from server",
 		    msg_get_len(&instance->receive_buffer));
+		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_READ_MESSAGE;
 		ret_val = -1;
 		break;
 	case 1:
@@ -841,7 +1040,8 @@ qdevice_net_socket_read(struct qdevice_net_instance *instance)
 				ret_val = -1;
 			}
 		} else {
-			errx(1, "net_socket_read in skipping msg state");
+			qdevice_net_log(LOG_CRIT, "net_socket_read in skipping msg state");
+			exit(1);
 		}
 
 		instance->skipping_msg = 0;
@@ -849,7 +1049,8 @@ qdevice_net_socket_read(struct qdevice_net_instance *instance)
 		dynar_clean(&instance->receive_buffer);
 		break;
 	default:
-		errx(1, "qdevice_net_socket_read unhandled error %d", res);
+		qdevice_net_log(LOG_CRIT, "qdevice_net_socket_read unhandled error %d", res);
+		exit(1);
 		break;
 	}
 
@@ -870,7 +1071,7 @@ qdevice_net_socket_write_finished(struct qdevice_net_instance *instance)
 		    qdevice_net_nss_get_client_auth_data,
 		    (void *)QDEVICE_NET_NSS_CLIENT_CERT_NICKNAME, 0, NULL)) == NULL) {
 			qdevice_net_log_nss(LOG_ERR, "Can't start TLS");
-
+			instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_START_TLS;
 			return (-1);
 		}
 
@@ -878,6 +1079,9 @@ qdevice_net_socket_write_finished(struct qdevice_net_instance *instance)
 		 * And send init msg
 		 */
 		if (qdevice_net_send_init(instance) != 0) {
+			instance->disconnect_reason =
+			    QDEVICE_NET_DISCONNECT_REASON_CANT_ALLOCATE_MSG_BUFFER;
+
 			return (-1);
 		}
 
@@ -897,6 +1101,7 @@ qdevice_net_socket_write(struct qdevice_net_instance *instance)
 	send_buffer = send_buffer_list_get_active(&instance->send_buffer_list);
 	if (send_buffer == NULL) {
 		qdevice_net_log(LOG_CRIT, "send_buffer_list_get_active returned NULL");
+		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_SEND_MESSAGE;
 
 		return (-1);
 	}
@@ -918,12 +1123,13 @@ qdevice_net_socket_write(struct qdevice_net_instance *instance)
 
 	if (res == -1) {
 		qdevice_net_log_nss(LOG_CRIT, "PR_Send returned 0");
-
+		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_SERVER_CLOSED_CONNECTION;
 		return (-1);
 	}
 
 	if (res == -2) {
 		qdevice_net_log_nss(LOG_ERR, "Unhandled error when sending message to server");
+		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_SEND_MESSAGE;
 
 		return (-1);
 	}
@@ -931,9 +1137,10 @@ qdevice_net_socket_write(struct qdevice_net_instance *instance)
 	return (0);
 }
 
-#define QDEVICE_NET_POLL_NO_FDS		2
+#define QDEVICE_NET_POLL_NO_FDS		3
 #define QDEVICE_NET_POLL_SOCKET		0
 #define QDEVICE_NET_POLL_VOTEQUORUM	1
+#define QDEVICE_NET_POLL_CMAP		2
 
 static int
 qdevice_net_poll(struct qdevice_net_instance *instance)
@@ -949,6 +1156,9 @@ qdevice_net_poll(struct qdevice_net_instance *instance)
 	}
 	pfds[QDEVICE_NET_POLL_VOTEQUORUM].fd = instance->votequorum_poll_fd;
 	pfds[QDEVICE_NET_POLL_VOTEQUORUM].in_flags = PR_POLL_READ;
+
+	pfds[QDEVICE_NET_POLL_CMAP].fd = instance->cmap_poll_fd;
+	pfds[QDEVICE_NET_POLL_CMAP].in_flags = PR_POLL_READ;
 
 	instance->schedule_disconnect = 0;
 
@@ -966,11 +1176,24 @@ qdevice_net_poll(struct qdevice_net_instance *instance)
 				case QDEVICE_NET_POLL_VOTEQUORUM:
 					if (votequorum_dispatch(instance->votequorum_handle,
 					    CS_DISPATCH_ALL) != CS_OK) {
-						errx(1, "Can't dispatch votequorum messages");
+						qdevice_net_log(LOG_ERR, "Can't dispatch votequorum messages");
+						instance->schedule_disconnect = 1;
+						instance->disconnect_reason =
+						    QDEVICE_NET_DISCONNECT_REASON_COROSYNC_CONNECTION_CLOSED;
+					}
+					break;
+				case QDEVICE_NET_POLL_CMAP:
+					if (cmap_dispatch(instance->cmap_handle,
+					    CS_DISPATCH_ALL) != CS_OK) {
+						qdevice_net_log(LOG_ERR, "Can't dispatch cmap messages");
+						instance->schedule_disconnect = 1;
+						instance->disconnect_reason =
+						    QDEVICE_NET_DISCONNECT_REASON_COROSYNC_CONNECTION_CLOSED;
 					}
 					break;
 				default:
-					errx(1, "Unhandled read poll descriptor %u", i);
+					qdevice_net_log(LOG_CRIT, "Unhandled read on poll descriptor %u", i);
+					exit(1);
 					break;
 				}
 			}
@@ -984,7 +1207,8 @@ qdevice_net_poll(struct qdevice_net_instance *instance)
 
 					break;
 				default:
-					errx(1, "Unhandled write poll descriptor %u", i);
+					qdevice_net_log(LOG_CRIT, "Unhandled write on poll descriptor %u", i);
+					exit(1);
 					break;
 				}
 			}
@@ -994,14 +1218,17 @@ qdevice_net_poll(struct qdevice_net_instance *instance)
 			    (PR_POLL_ERR|PR_POLL_NVAL|PR_POLL_HUP|PR_POLL_EXCEPT)) {
 				switch (i) {
 				case QDEVICE_NET_POLL_SOCKET:
-					qdevice_net_log(LOG_CRIT, "POLL_ERR (%u) on main socket",
+					qdevice_net_log(LOG_ERR, "POLL_ERR (%u) on main socket",
 					    pfds[i].out_flags);
 
-					return (-1);
+					instance->schedule_disconnect = 1;
+					instance->disconnect_reason =
+					    QDEVICE_NET_DISCONNECT_REASON_SERVER_CLOSED_CONNECTION;
 
 					break;
 				default:
-					errx(1, "Unhandled poll err on descriptor %u", i);
+					qdevice_net_log(LOG_CRIT, "Unhandled error on poll descriptor %u", i);
+					exit(1);
 					break;
 				}
 			}
@@ -1041,6 +1268,7 @@ qdevice_net_instance_init_from_cmap(struct qdevice_net_instance *instance,
 	int host_port;
 	char *ep;
 	char *cluster_name;
+	uint32_t connect_timeout;
 
 	/*
 	 * Check if provider is net
@@ -1173,6 +1401,23 @@ qdevice_net_instance_init_from_cmap(struct qdevice_net_instance *instance,
 	}
 
 	/*
+	 * Get connect timeout
+	 */
+	if (cmap_get_string(cmap_handle, "quorum.device.net.connect_timeout", &str) != CS_OK) {
+		connect_timeout = QDEVICE_NET_CONNECT_TIMEOUT;
+	} else {
+		li = strtol(str, &ep, 10);
+		if (li < QDEVICE_NET_MIN_CONNECT_TIMEOUT || li > QDEVICE_NET_MAX_CONNECT_TIMEOUT || *ep != '\0') {
+			errx(1, "connect_timeout must be valid number in range <%lu,%lu>",
+			    QDEVICE_NET_MIN_CONNECT_TIMEOUT, QDEVICE_NET_MAX_CONNECT_TIMEOUT);
+		}
+
+		connect_timeout = li;
+
+		free(str);
+	}
+
+	/*
 	 * Really initialize instance
 	 */
 	if (qdevice_net_instance_init(instance,
@@ -1181,11 +1426,12 @@ qdevice_net_instance_init_from_cmap(struct qdevice_net_instance *instance,
 	    QDEVICE_NET_MAX_MSG_RECEIVE_SIZE,
 	    tls_supported, node_id, decision_algorithm,
 	    heartbeat_interval, sync_heartbeat_interval, cast_vote_timer_interval,
-	    host_addr, host_port, cluster_name, &tie_breaker) == -1) {
+	    host_addr, host_port, cluster_name, &tie_breaker, connect_timeout) == -1) {
 		errx(1, "Can't initialize qdevice-net");
 	}
 
 	instance->cmap_handle = cmap_handle;
+	qdevice_net_cmap_init_fd(instance);
 }
 
 int
@@ -1194,6 +1440,7 @@ main(void)
 	struct qdevice_net_instance instance;
 	cmap_handle_t cmap_handle;
 	struct send_buffer_list_entry *send_buffer;
+	int try_connect;
 
 	/*
 	 * Init
@@ -1204,74 +1451,114 @@ main(void)
 	qdevice_net_log_init(QDEVICE_NET_LOG_TARGET_STDERR);
         qdevice_net_log_set_debug(1);
 
+	qdevice_net_log(LOG_DEBUG, "Registering algorithms");
+	qdevice_net_algorithm_register_all();
+
 	if (nss_sock_init_nss((instance.tls_supported != TLV_TLS_UNSUPPORTED ?
 	    (char *)QDEVICE_NET_NSS_DB_DIR : NULL)) != 0) {
-		nss_sock_err(1);
+		qdevice_net_log_nss(LOG_ERR, "Can't init nss");
+		exit(1);
 	}
 
-	/*
-	 * Try to connect to qnetd host
-	 */
-	instance.socket = nss_sock_create_client_socket(instance.host_addr, instance.host_port,
-	    PR_AF_UNSPEC, 100);
-	if (instance.socket == NULL) {
-		nss_sock_err(1);
+
+	if (qdevice_net_algorithm_init(&instance) != 0) {
+		qdevice_net_log(LOG_ERR, "Algorithm init failed");
+		exit(1);
 	}
 
-	if (nss_sock_set_nonblocking(instance.socket) != 0) {
-		nss_sock_err(1);
+	try_connect = 1;
+	while (try_connect) {
+		qdevice_net_votequorum_init(&instance);
+
+		/*
+		 * Try to connect to qnetd host
+		 */
+		instance.socket = nss_sock_create_client_socket(instance.host_addr, instance.host_port,
+		    PR_AF_UNSPEC, PR_MillisecondsToInterval(instance.connect_timeout));
+		if (instance.socket == NULL) {
+			qdevice_net_log_nss(LOG_CRIT, "Can't connect to server");
+			poll(NULL, 0, QDEVICE_NET_PAUSE_BEFORE_RECONNECT);
+
+			continue ;
+		}
+
+		if (nss_sock_set_nonblocking(instance.socket) != 0) {
+			if (PR_Close(instance.socket) != PR_SUCCESS) {
+				qdevice_net_log_nss(LOG_WARNING, "Unable to close connection");
+			}
+
+			qdevice_net_log_nss(LOG_CRIT, "Can't set socket nonblocking");
+			poll(NULL, 0, QDEVICE_NET_PAUSE_BEFORE_RECONNECT);
+
+			continue ;
+		}
+
+		/*
+		 * Create and schedule send of preinit message to qnetd
+		 */
+		send_buffer = send_buffer_list_get_new(&instance.send_buffer_list);
+		if (send_buffer == NULL) {
+			errx(1, "Can't allocate send buffer list");
+		}
+
+		if (msg_create_preinit(&send_buffer->buffer, instance.cluster_name, 1,
+		    instance.last_msg_seq_num) == 0) {
+			errx(1, "Can't allocate buffer");
+		}
+
+		send_buffer_list_put(&instance.send_buffer_list, send_buffer);
+
+		instance.state = QDEVICE_NET_INSTANCE_STATE_WAITING_PREINIT_REPLY;
+
+		/*
+		 * Main loop
+		 */
+		while (qdevice_net_poll(&instance) == 0) {
+		}
+
+		try_connect = qdevice_net_disconnect_reason_try_reconnect(instance.disconnect_reason);
+
+		if (qdevice_net_algorithm_disconnected(&instance, instance.disconnect_reason,
+		    &try_connect) != 0) {
+			qdevice_net_log(LOG_ERR, "Algorithm returned error, force exit");
+			exit(2);
+		}
+
+		if (instance.disconnect_reason == QDEVICE_NET_DISCONNECT_REASON_COROSYNC_CONNECTION_CLOSED) {
+			try_connect = 0;
+		}
+
+		/*
+		 * Cleanup
+		 */
+		if (PR_Close(instance.socket) != PR_SUCCESS) {
+			qdevice_net_log_nss(LOG_WARNING, "Unable to close connection");
+		}
+
+		/*
+		 * Close cmap and votequorum connections
+		 */
+		qdevice_net_votequorum_destroy(&instance);
+		qdevice_net_cmap_del_track(&instance);
+
+		if (try_connect) {
+			/*
+			 * Reinit instance
+			 */
+			qdevice_net_instance_clean(&instance);
+		}
 	}
 
-	qdevice_net_votequorum_init(&instance);
+	qdevice_net_algorithm_destroy(&instance);
 
-	/*
-	 * Create and schedule send of preinit message to qnetd
-	 */
-	send_buffer = send_buffer_list_get_new(&instance.send_buffer_list);
-	if (send_buffer == NULL) {
-		errx(1, "Can't allocate send buffer list");
-	}
-
-	instance.last_msg_seq_num = 1;
-	if (msg_create_preinit(&send_buffer->buffer, instance.cluster_name, 1,
-	    instance.last_msg_seq_num) == 0) {
-		errx(1, "Can't allocate buffer");
-	}
-
-	send_buffer_list_put(&instance.send_buffer_list, send_buffer);
-
-	instance.state = QDEVICE_NET_INSTANCE_STATE_WAITING_PREINIT_REPLY;
-
-	/*
-	 * Main loop
-	 */
-	while (qdevice_net_poll(&instance) == 0) {
-	}
-
-	/*
-	 * Cleanup
-	 */
-	if (PR_Close(instance.socket) != PR_SUCCESS) {
-		qdevice_net_log_nss(LOG_WARNING, "Unable to close connection");
-	}
-
-	/*
-	 * Close cmap and votequorum connections
-	 */
-	if (votequorum_qdevice_unregister(instance.votequorum_handle,
-	    QDEVICE_NET_VOTEQUORUM_DEVICE_NAME) != CS_OK) {
-		qdevice_net_log_nss(LOG_WARNING, "Unable to unregister votequorum device");
-	}
-
-	votequorum_finalize(instance.votequorum_handle);
-	cmap_finalize(instance.cmap_handle);
+	qdevice_net_cmap_destroy(&instance);
 
 	qdevice_net_instance_destroy(&instance);
 
 	SSL_ClearSessionCache();
 
 	if (NSS_Shutdown() != SECSuccess) {
-		nss_sock_err(1);
+		qdevice_net_log_nss(LOG_WARNING, "Can't shutdown NSS");
 	}
 
 	PR_Cleanup();

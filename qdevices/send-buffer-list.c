@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Red Hat, Inc.
+ * Copyright (c) 2015-2016 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -152,6 +152,10 @@ send_buffer_list_free(struct send_buffer_list *sblist)
 
 		entry = entry_next;
 	}
+
+	sblist->allocated_list_entries = 0;
+	TAILQ_INIT(&sblist->list);
+	TAILQ_INIT(&sblist->free_list);
 }
 
 void

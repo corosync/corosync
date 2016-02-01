@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Red Hat, Inc.
+ * Copyright (c) 2015-2016 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -37,7 +37,7 @@
 
 /*
  * Needed for creating nspr handle from unix fd
-  */
+ */
 #include <private/pprio.h>
 
 #include "qnet-config.h"
@@ -45,6 +45,7 @@
 #include "qdevice-net-send.h"
 #include "qdevice-net-log.h"
 #include "qdevice-net-cast-vote-timer.h"
+#include "qdevice-net-algorithm.h"
 #include "nss-sock.h"
 
 enum tlv_node_state
@@ -81,6 +82,7 @@ qdevice_net_votequorum_quorum_notify_callback(votequorum_handle_t votequorum_han
 {
 	struct qdevice_net_instance *instance;
 	uint32_t u32;
+	int algo_send_list;
 
 	if (votequorum_context_get(votequorum_handle, (void **)&instance) != CS_OK) {
 		errx(1, "Fatal error. Can't get votequorum context");
@@ -91,17 +93,32 @@ qdevice_net_votequorum_quorum_notify_callback(votequorum_handle_t votequorum_han
 
 	qdevice_net_log(LOG_DEBUG, "  Node list (size = %"PRIu32"):", node_list_entries);
 	for (u32 = 0; u32 < node_list_entries; u32++) {
-		qdevice_net_log(LOG_DEBUG, "    %"PRIu32" nodeid = %"PRIu32", state = %"PRIu32,
+		qdevice_net_log(LOG_DEBUG, "    %"PRIu32" nodeid = %"PRIx32", state = %"PRIu32,
 		    u32, node_list[u32].nodeid, node_list[u32].state);
 	}
 
-	if (qdevice_net_send_quorum_node_list(instance,
-	    (quorate ? TLV_QUORATE_QUORATE : TLV_QUORATE_INQUORATE),
-	    node_list_entries, node_list) != 0) {
-		/*
-		 * Fatal error -> schedule disconnect
-		 */
+	algo_send_list = 1;
+	if (qdevice_net_algorithm_votequorum_quorum_notify(instance, quorate,
+	    node_list_entries, node_list, &algo_send_list) != 0) {
+		qdevice_net_log(LOG_DEBUG, "Algorithm returned error. Disconnecting.");
+
+		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_ALGO_VOTEQUORUM_QUORUM_NOTIFY_ERR;
 		instance->schedule_disconnect = 1;
+	} else {
+		qdevice_net_log(LOG_DEBUG, "Algorithm decided to %s list",
+		    (algo_send_list ? "send" : "not send"));
+	}
+
+	if (algo_send_list) {
+		if (qdevice_net_send_quorum_node_list(instance,
+		    (quorate ? TLV_QUORATE_QUORATE : TLV_QUORATE_INQUORATE),
+		    node_list_entries, node_list) != 0) {
+			/*
+			 * Fatal error -> schedule disconnect
+			 */
+			instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_ALLOCATE_MSG_BUFFER;
+			instance->schedule_disconnect = 1;
+		}
 	}
 }
 
@@ -113,9 +130,11 @@ qdevice_net_votequorum_node_list_notify_callback(votequorum_handle_t votequorum_
 	struct qdevice_net_instance *instance;
 	struct tlv_ring_id tlv_rid;
 	uint32_t u32;
+	enum tlv_vote result_vote;
 
 	if (votequorum_context_get(votequorum_handle, (void **)&instance) != CS_OK) {
-		errx(1, "Fatal error. Can't get votequorum context");
+		qdevice_net_log(LOG_ERR, "Fatal error. Can't get votequorum context");
+		exit(1);
 	}
 
 	qdevice_net_log(LOG_DEBUG, "Votequorum nodelist notify callback:");
@@ -124,26 +143,43 @@ qdevice_net_votequorum_node_list_notify_callback(votequorum_handle_t votequorum_
 
 	qdevice_net_log(LOG_DEBUG, "  Node list (size = %"PRIu32"):", node_list_entries);
 	for (u32 = 0; u32 < node_list_entries; u32++) {
-		qdevice_net_log(LOG_DEBUG, "    %"PRIu32" nodeid = %"PRIu32,
+		qdevice_net_log(LOG_DEBUG, "    %"PRIu32" nodeid = %"PRIx32,
 		    u32, node_list[u32]);
 	}
 
 	qdevice_net_votequorum_ring_id_to_tlv(&tlv_rid, &votequorum_ring_id);
 
-	if (qdevice_net_send_membership_node_list(instance,
-	    &tlv_rid, node_list_entries, node_list) != 0) {
-		/*
-		 * Fatal error -> schedule disconnect
-		 */
+	result_vote = TLV_VOTE_WAIT_FOR_REPLY;
+	if (qdevice_net_algorithm_votequorum_node_list_notify(instance, &tlv_rid, node_list_entries,
+	    node_list, &result_vote) != 0) {
+		qdevice_net_log(LOG_DEBUG, "Algorithm returned error. Disconnecting.");
+
+		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_ALGO_VOTEQUORUM_NODE_LIST_NOTIFY_ERR;
 		instance->schedule_disconnect = 1;
+	} else {
+		qdevice_net_log(LOG_DEBUG, "Algorithm result vote is %s", tlv_vote_to_str(result_vote));
+	}
+
+	if (result_vote == TLV_VOTE_WAIT_FOR_REPLY || result_vote == TLV_VOTE_ASK_LATER) {
+		if (qdevice_net_send_membership_node_list(instance, &tlv_rid, node_list_entries, node_list) != 0) {
+			/*
+			 * Fatal error -> schedule disconnect
+			 */
+			instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_ALLOCATE_MSG_BUFFER;
+			instance->schedule_disconnect = 1;
+		}
 	}
 
 	memcpy(&instance->last_received_votequorum_ring_id, &votequorum_ring_id,
 	    sizeof(votequorum_ring_id));
 
-	if (qdevice_net_cast_vote_timer_update(instance, TLV_VOTE_WAIT_FOR_REPLY) != 0) {
-		errx(1, "qdevice_net_votequorum_notify_callback fatal error. "
-		    "Can't update cast vote timer vote");
+	if (result_vote != TLV_VOTE_NO_CHANGE && result_vote != TLV_VOTE_ASK_LATER) {
+		if (qdevice_net_cast_vote_timer_update(instance, result_vote) != 0) {
+			qdevice_net_log(LOG_CRIT, "qdevice_net_votequorum_node_list_notify_callback fatal error "
+			    "Can't update cast vote timer");
+			instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_SCHEDULE_VOTING_TIMER;
+			instance->schedule_disconnect = 1;
+		}
 	}
 }
 
@@ -189,6 +225,29 @@ qdevice_net_votequorum_init(struct qdevice_net_instance *instance)
 
 	votequorum_fd_get(votequorum_handle, &fd);
 	if ((instance->votequorum_poll_fd = PR_CreateSocketPollFd(fd)) == NULL) {
-		nss_sock_err(1);
+		qdevice_net_log_nss(LOG_CRIT, "Can't create NSPR votequorum poll fd");
+		exit(1);
+	}
+}
+
+void
+qdevice_net_votequorum_destroy(struct qdevice_net_instance *instance)
+{
+	cs_error_t res;
+
+	res = votequorum_qdevice_unregister(instance->votequorum_handle,
+		QDEVICE_NET_VOTEQUORUM_DEVICE_NAME);
+
+        if (res != CS_OK) {
+                qdevice_net_log(LOG_WARNING, "Unable to unregister votequorum device. Error %s", cs_strerror(res));
+	}
+
+	res = votequorum_finalize(instance->votequorum_handle);
+	if (res != CS_OK) {
+		qdevice_net_log(LOG_WARNING, "Unable to finalize votequorum. Error %s", cs_strerror(res));
+	}
+
+	if (PR_DestroySocketPollFd(instance->votequorum_poll_fd) != PR_SUCCESS) {
+		qdevice_net_log_nss(LOG_WARNING, "Unable to close votequorum connection fd");
 	}
 }

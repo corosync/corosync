@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Red Hat, Inc.
+ * Copyright (c) 2015-2016 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -133,8 +133,64 @@ node_list_del(struct node_list *list, struct node_list_entry *node)
 }
 
 int
-node_list_is_empty(struct node_list *list)
+node_list_is_empty(const struct node_list *list)
 {
 
 	return (TAILQ_EMPTY(list));
+}
+
+struct node_list_entry *
+node_list_find_node_id(const struct node_list *list, uint32_t node_id)
+{
+	struct node_list_entry *node_entry;
+
+	TAILQ_FOREACH(node_entry, list, entries) {
+		if (node_entry->node_id == node_id) {
+			return (node_entry);
+		}
+	}
+
+	return (NULL);
+}
+
+int
+node_list_eq(const struct node_list *list1, const struct node_list *list2)
+{
+	struct node_list_entry *node1_entry;
+	struct node_list_entry *node2_entry;
+	struct node_list tmp_list;
+	int res;
+
+	res = 1;
+
+	if (node_list_clone(&tmp_list, list2) != 0) {
+		return (-1);
+	}
+
+	TAILQ_FOREACH(node1_entry, list1, entries) {
+		node2_entry = node_list_find_node_id(&tmp_list, node1_entry->node_id);
+		if (node2_entry == NULL) {
+			res = 0;
+			goto return_res;
+		}
+
+		if (node1_entry->node_id != node2_entry->node_id ||
+		    node1_entry->data_center_id != node2_entry->data_center_id ||
+		    node1_entry->node_state != node2_entry->node_state) {
+			res = 0;
+			goto return_res;
+		}
+
+		node_list_del(&tmp_list, node2_entry);
+	}
+
+	if (!node_list_is_empty(&tmp_list)) {
+		res = 0;
+		goto return_res;
+	}
+
+return_res:
+	node_list_free(&tmp_list);
+
+	return (res);
 }

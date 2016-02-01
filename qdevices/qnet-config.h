@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Red Hat, Inc.
+ * Copyright (c) 2015-2016 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -87,6 +87,13 @@ extern "C" {
 
 #define QDEVICE_NET_LOCK_FILE			LOCALSTATEDIR"/run/corosync-qdevice-net.pid"
 
+#define QDEVICE_NET_CONNECT_TIMEOUT		(1000*30)
+#define QDEVICE_NET_MIN_CONNECT_TIMEOUT		1L
+#define QDEVICE_NET_MAX_CONNECT_TIMEOUT		(1000*60*10L)
+
+#define QDEVICE_NET_PAUSE_BEFORE_RECONNECT	1000
+
+
 /*
  * Decision algorithms supported by qnetd
  */
@@ -94,6 +101,8 @@ extern "C" {
 
 extern enum tlv_decision_algorithm_type
     qnetd_static_supported_decision_algorithms[QNETD_STATIC_SUPPORTED_DECISION_ALGORITHMS_SIZE];
+
+#define QDEVICE_NET_STATIC_SUPPORTED_DECISION_ALGORITHMS_SIZE	QNETD_STATIC_SUPPORTED_DECISION_ALGORITHMS_SIZE
 
 #ifdef __cplusplus
 }

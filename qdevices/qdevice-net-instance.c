@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Red Hat, Inc.
+ * Copyright (c) 2015-2016 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -42,7 +42,7 @@ qdevice_net_instance_init(struct qdevice_net_instance *instance, size_t initial_
     enum tlv_decision_algorithm_type decision_algorithm, uint32_t heartbeat_interval,
     uint32_t sync_heartbeat_interval, uint32_t cast_vote_timer_interval,
     const char *host_addr, uint16_t host_port, const char *cluster_name,
-    const struct tlv_tie_breaker *tie_breaker)
+    const struct tlv_tie_breaker *tie_breaker, uint32_t connect_timeout)
 {
 
 	memset(instance, 0, sizeof(*instance));
@@ -60,6 +60,10 @@ qdevice_net_instance_init(struct qdevice_net_instance *instance, size_t initial_
 	instance->host_addr = host_addr;
 	instance->host_port = host_port;
 	instance->cluster_name = cluster_name;
+	instance->connect_timeout = connect_timeout;
+	instance->last_msg_seq_num = 1;
+	instance->echo_request_expected_msg_seq_num = 1;
+	instance->echo_reply_received_msg_seq_num = 1;
 	memcpy(&instance->tie_breaker, tie_breaker, sizeof(*tie_breaker));
 
 	dynar_init(&instance->receive_buffer, initial_receive_size);
@@ -69,9 +73,36 @@ qdevice_net_instance_init(struct qdevice_net_instance *instance, size_t initial_
 
 	timer_list_init(&instance->main_timer_list);
 
+	node_list_init(&instance->last_sent_config_node_list);
+
 	instance->tls_supported = tls_supported;
 
 	return (0);
+}
+
+void
+qdevice_net_instance_clean(struct qdevice_net_instance *instance)
+{
+
+	dynar_clean(&instance->receive_buffer);
+
+	send_buffer_list_free(&instance->send_buffer_list);
+
+	instance->skipping_msg = 0;
+	instance->msg_already_received_bytes = 0;
+	instance->state = QDEVICE_NET_INSTANCE_STATE_WAITING_PREINIT_REPLY;
+	instance->echo_request_expected_msg_seq_num = instance->echo_reply_received_msg_seq_num;
+	instance->using_tls = 0;
+
+	node_list_free(&instance->last_sent_config_node_list);
+
+	timer_list_free(&instance->main_timer_list);
+	instance->cast_vote_timer = NULL;
+	instance->echo_request_timer = NULL;
+
+	instance->schedule_disconnect = 0;
+	instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_UNDEFINED;
+	instance->cmap_reload_in_progress = 0;
 }
 
 int
@@ -82,7 +113,12 @@ qdevice_net_instance_destroy(struct qdevice_net_instance *instance)
 
 	send_buffer_list_free(&instance->send_buffer_list);
 
+	node_list_free(&instance->last_sent_config_node_list);
+
 	timer_list_free(&instance->main_timer_list);
+
+	free((void *)instance->cluster_name);
+	free((void *)instance->host_addr);
 
 	return (0);
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Red Hat, Inc.
+ * Copyright (c) 2015-2016 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -51,7 +51,7 @@ extern int		qdevice_net_send_init(struct qdevice_net_instance *instance);
 extern int		qdevice_net_send_ask_for_vote(struct qdevice_net_instance *instance);
 
 extern int		qdevice_net_send_config_node_list(struct qdevice_net_instance *instance,
-    int initial);
+    int initial, int force_send);
 
 extern int		qdevice_net_send_membership_node_list(
     struct qdevice_net_instance *instance, const struct tlv_ring_id *ring_id,

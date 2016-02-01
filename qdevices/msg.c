@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Red Hat, Inc.
+ * Copyright (c) 2015-2016 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -579,6 +579,7 @@ small_buf_err:
 
 size_t
 msg_create_node_list_reply(struct dynar *msg, uint32_t msg_seq_number,
+    enum tlv_node_list_type node_list_type, int add_ring_id, const struct tlv_ring_id *ring_id,
     enum tlv_vote vote)
 {
 
@@ -589,6 +590,16 @@ msg_create_node_list_reply(struct dynar *msg, uint32_t msg_seq_number,
 
 	if (tlv_add_msg_seq_number(msg, msg_seq_number) == -1) {
 		goto small_buf_err;
+	}
+
+	if (tlv_add_node_list_type(msg, node_list_type) == -1) {
+		goto small_buf_err;
+	}
+
+	if (add_ring_id) {
+		if (tlv_add_ring_id(msg, ring_id) == -1) {
+			goto small_buf_err;
+		}
 	}
 
 	if (tlv_add_vote(msg, vote) == -1) {
@@ -728,6 +739,7 @@ msg_decoded_destroy(struct msg_decoded *decoded_msg)
 	free(decoded_msg->cluster_name);
 	free(decoded_msg->supported_messages);
 	free(decoded_msg->supported_options);
+	free(decoded_msg->supported_decision_algorithms);
 	node_list_free(&decoded_msg->nodes);
 
 	msg_decoded_init(decoded_msg);

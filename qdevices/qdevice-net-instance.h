@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Red Hat, Inc.
+ * Copyright (c) 2015-2016 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -46,9 +46,11 @@
 #include <votequorum.h>
 
 #include "dynar.h"
+#include "node-list.h"
 #include "send-buffer-list.h"
 #include "tlv.h"
 #include "timer-list.h"
+#include "qdevice-net-disconnect-reason.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -82,6 +84,7 @@ struct qdevice_net_instance {
 	uint32_t heartbeat_interval;		/* Heartbeat interval during normal operation */
 	uint32_t sync_heartbeat_interval;	/* Heartbeat interval during corosync sync */
 	uint32_t cast_vote_timer_interval;	/* Timer for cast vote */
+	uint32_t connect_timeout;
 	struct timer_list_entry *cast_vote_timer;
 	enum tlv_vote cast_vote_timer_vote;
 	const char *host_addr;
@@ -94,8 +97,16 @@ struct qdevice_net_instance {
 	cmap_handle_t cmap_handle;
 	votequorum_handle_t votequorum_handle;
 	PRFileDesc *votequorum_poll_fd;
+	PRFileDesc *cmap_poll_fd;
 	votequorum_ring_id_t last_received_votequorum_ring_id;
+	struct tlv_ring_id last_sent_ring_id;
 	struct tlv_tie_breaker tie_breaker;
+	void *algorithm_data;
+	cmap_track_handle_t cmap_reload_track_handle;
+	cmap_track_handle_t cmap_nodelist_track_handle;
+	int cmap_reload_in_progress;
+	struct node_list last_sent_config_node_list;
+	enum qdevice_net_disconnect_reason disconnect_reason;
 };
 
 extern int		qdevice_net_instance_init(struct qdevice_net_instance *instance,
@@ -105,7 +116,9 @@ extern int		qdevice_net_instance_init(struct qdevice_net_instance *instance,
     enum tlv_decision_algorithm_type decision_algorithm, uint32_t heartbeat_interval,
     uint32_t sync_heartbeat_interval, uint32_t cast_vote_timer_interval,
     const char *host_addr, uint16_t host_port, const char *cluster_name,
-    const struct tlv_tie_breaker *tie_breaker);
+    const struct tlv_tie_breaker *tie_breaker, uint32_t connect_timeout);
+
+extern void		qdevice_net_instance_clean(struct qdevice_net_instance *instance);
 
 extern int		qdevice_net_instance_destroy(struct qdevice_net_instance *instance);
 

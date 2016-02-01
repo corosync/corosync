@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Red Hat, Inc.
+ * Copyright (c) 2015-2016 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -36,12 +36,20 @@
 #include <sys/socket.h>
 
 #include <stdio.h>
+#include <stdint.h>
 #include <netdb.h>
 #include <err.h>
 #include <poll.h>
 
+/*
+ * Needed for creating nspr handle from unix fd
+ */
+#include <private/pprio.h>
+
 #include "qnet-config.h"
 #include "qdevice-net-cmap.h"
+#include "qdevice-net-log.h"
+#include "qdevice-net-send.h"
 
 static uint32_t
 qdevice_net_cmap_autogenerate_node_id(const char *addr, int clear_node_high_byte)
@@ -200,5 +208,138 @@ qdevice_net_cmap_init(cmap_handle_t *handle)
 
         if (res != CS_OK) {
 		errx(1, "Failed to initialize the cmap API. Error %s", cs_strerror(res));
+	}
+}
+
+void
+qdevice_net_cmap_init_fd(struct qdevice_net_instance *instance)
+{
+	int fd;
+	cs_error_t res;
+
+	if ((res = cmap_context_set(instance->cmap_handle, (void *)instance)) != CS_OK) {
+		qdevice_net_log(LOG_ERR, "Can't set cmap context. Error %s", cs_strerror(res));
+		exit(1);
+	}
+
+	cmap_fd_get(instance->cmap_handle, &fd);
+	if ((instance->cmap_poll_fd = PR_CreateSocketPollFd(fd)) == NULL) {
+		qdevice_net_log_nss(LOG_CRIT, "Can't create NSPR cmap poll fd");
+		exit(1);
+	}
+}
+
+static void
+qdevice_net_cmap_nodelist_reload_cb(cmap_handle_t cmap_handle, cmap_track_handle_t cmap_track_handle,
+    int32_t event, const char *key_name,
+    struct cmap_notify_value new_value, struct cmap_notify_value old_value,
+    void *user_data)
+{
+	cs_error_t cs_res;
+	uint8_t reload;
+	struct qdevice_net_instance *instance;
+
+	if (cmap_context_get(cmap_handle, (const void **)&instance) != CS_OK) {
+		qdevice_net_log(LOG_ERR, "Fatal error. Can't get cmap context");
+		exit(1);
+	}
+
+	/*
+	 * Wait for full reload
+	 */
+	if (strcmp(key_name, "config.totemconfig_reload_in_progress") == 0 &&
+	    new_value.type == CMAP_VALUETYPE_UINT8 && new_value.len == sizeof(reload)) {
+		reload = 1;
+		if (memcmp(new_value.data, &reload, sizeof(reload)) == 0) {
+			/*
+			 * Ignore nodelist changes
+			 */
+			instance->cmap_reload_in_progress = 1;
+			return ;
+		} else {
+			instance->cmap_reload_in_progress = 0;
+		}
+	}
+
+	if (instance->cmap_reload_in_progress) {
+		return ;
+	}
+
+	if (((cs_res = cmap_get_uint8(cmap_handle, "config.totemconfig_reload_in_progress",
+	    &reload)) == CS_OK) && reload == 1) {
+		return ;
+	}
+
+	if (qdevice_net_send_config_node_list(instance, 0, 0) != 0) {
+		/*
+		 * Fatal error -> schedule disconnect
+		 */
+		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_ALLOCATE_MSG_BUFFER;
+		instance->schedule_disconnect = 1;
+	}
+}
+
+int
+qdevice_net_cmap_add_track(struct qdevice_net_instance *instance)
+{
+	cs_error_t res;
+
+	res = cmap_track_add(instance->cmap_handle, "config.totemconfig_reload_in_progress",
+	    CMAP_TRACK_ADD | CMAP_TRACK_MODIFY, qdevice_net_cmap_nodelist_reload_cb,
+	    NULL, &instance->cmap_reload_track_handle);
+
+	if (res != CS_OK) {
+		qdevice_net_log(LOG_ERR, "Can't initialize cmap totemconfig_reload_in_progress tracking");
+		return (-1);
+	}
+
+	res = cmap_track_add(instance->cmap_handle, "nodelist.",
+	    CMAP_TRACK_ADD | CMAP_TRACK_DELETE | CMAP_TRACK_MODIFY | CMAP_TRACK_PREFIX,
+	    qdevice_net_cmap_nodelist_reload_cb,
+	    NULL, &instance->cmap_nodelist_track_handle);
+
+	if (res != CS_OK) {
+		qdevice_net_log(LOG_ERR, "Can't initialize cmap nodelist tracking");
+		return (-1);
+	}
+
+	return (0);
+}
+
+int
+qdevice_net_cmap_del_track(struct qdevice_net_instance *instance)
+{
+	cs_error_t res;
+
+	res = cmap_track_delete(instance->cmap_handle, instance->cmap_reload_track_handle);
+
+	if (res != CS_OK) {
+		qdevice_net_log(LOG_WARNING, "Can't delete cmap totemconfig_reload_in_progress tracking");
+	}
+	instance->cmap_reload_track_handle = 0;
+
+	res = cmap_track_delete(instance->cmap_handle, instance->cmap_nodelist_track_handle);
+	instance->cmap_nodelist_track_handle = 0;
+
+	if (res != CS_OK) {
+		qdevice_net_log(LOG_WARNING, "Can't delete cmap nodelist tracking");
+	}
+
+	return (0);
+}
+
+void
+qdevice_net_cmap_destroy(struct qdevice_net_instance *instance)
+{
+	cs_error_t res;
+
+	res = cmap_finalize(instance->cmap_handle);
+
+        if (res != CS_OK) {
+		qdevice_net_log(LOG_WARNING, "Can't finalize cmap. Error %s", cs_strerror(res));
+	}
+
+	if (PR_DestroySocketPollFd(instance->cmap_poll_fd) != PR_SUCCESS) {
+		qdevice_net_log_nss(LOG_WARNING, "Unable to close votequorum connection fd");
 	}
 }

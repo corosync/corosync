@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Red Hat, Inc.
+ * Copyright (c) 2015-2016 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -71,10 +71,16 @@ extern void				 node_list_free(struct node_list *list);
 extern void				 node_list_del(struct node_list *list,
     struct node_list_entry *node);
 
-extern int				 node_list_is_empty(struct node_list *list);
+extern int				 node_list_is_empty(const struct node_list *list);
 
 extern void				 node_list_entry_to_tlv_node_info(
     const struct node_list_entry *node, struct tlv_node_info *node_info);
+
+extern struct node_list_entry *		 node_list_find_node_id(const struct node_list *list,
+    uint32_t node_id);
+
+extern int				 node_list_eq(const struct node_list *list1,
+    const struct node_list *list2);
 
 #ifdef __cplusplus
 }

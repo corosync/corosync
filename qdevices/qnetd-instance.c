@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Red Hat, Inc.
+ * Copyright (c) 2015-2016 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -38,6 +38,7 @@
 #include "qnetd-instance.h"
 #include "qnetd-client.h"
 #include "qnetd-algorithm.h"
+#include "qnetd-log-debug.h"
 
 int
 qnetd_instance_init(struct qnetd_instance *instance, size_t max_client_receive_size,
@@ -90,7 +91,10 @@ qnetd_instance_client_disconnect(struct qnetd_instance *instance, struct qnetd_c
     int server_going_down)
 {
 
+	qnetd_log_debug_client_disconnect(client, server_going_down);
+
 	qnetd_algorithm_client_disconnect(client, server_going_down);
+
 	PR_Close(client->socket);
 	if (client->cluster != NULL) {
 		qnetd_cluster_list_del_client(&instance->clusters, client->cluster, client);

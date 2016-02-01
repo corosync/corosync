@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Red Hat, Inc.
+ * Copyright (c) 2015-2016 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -40,18 +40,7 @@
 #include "qnetd-log.h"
 #include "qnetd-cluster-list.h"
 #include "qnetd-client-send.h"
-
-static void
-qnetd_algo_test_dump_cluster(struct qnetd_cluster *cluster)
-{
-	struct qnetd_client *client;
-
-	qnetd_log(LOG_INFO, "algo-test:   Cluster dump:");
-	TAILQ_FOREACH(client, &cluster->client_list, cluster_entries) {
-		qnetd_log(LOG_INFO, "algo-test:     client = %p, node_id = %"PRIx32,
-		    client, client->node_id);
-	}
-}
+#include "qnetd-log-debug.h"
 
 /*
  * Called right after client sent init message. This happens after initial accept of client,
@@ -74,15 +63,7 @@ qnetd_algo_test_client_init(struct qnetd_client *client)
 {
 	int *algo_data;
 
-	qnetd_log(LOG_INFO, "algo-test: New client connected");
-	qnetd_log(LOG_INFO, "algo-test:   cluster name = %s", client->cluster_name);
-	qnetd_log(LOG_INFO, "algo-test:   tls started = %u", client->tls_started);
-	qnetd_log(LOG_INFO, "algo-test:   tls peer certificate verified = %u",
-	    client->tls_peer_certificate_verified);
-	qnetd_log(LOG_INFO, "algo-test:   node_id = %"PRIx32, client->node_id);
-	qnetd_log(LOG_INFO, "algo-test:   pointer = %p", client);
-
-	qnetd_algo_test_dump_cluster(client->cluster);
+	qnetd_log(LOG_INFO, "algo-test: client_init");
 
 	client->algorithm_data = malloc(sizeof(int));
 	if (client->algorithm_data == NULL) {
@@ -95,38 +76,6 @@ qnetd_algo_test_client_init(struct qnetd_client *client)
 	return (TLV_REPLY_ERROR_CODE_NO_ERROR);
 }
 
-static const char *
-qnetd_algo_test_node_state_to_str(enum tlv_node_state node_state)
-{
-	switch (node_state) {
-	case TLV_NODE_STATE_NOT_SET: return ("not set"); break;
-	case TLV_NODE_STATE_MEMBER: return ("member"); break;
-	case TLV_NODE_STATE_DEAD: return ("dead"); break;
-	case TLV_NODE_STATE_LEAVING: return ("leaving"); break;
-	default: return ("unhandled"); break;
-	}
-
-	return ("");
-}
-
-
-static void
-qnetd_algo_dump_node_list(struct qnetd_client *client, const struct node_list *nodes)
-{
-	int *algo_data;
-	struct node_list_entry *node_info;
-
-	algo_data = client->algorithm_data;
-
-	qnetd_log(LOG_INFO, "algo-test:   algo data = %u", *algo_data);
-
-	TAILQ_FOREACH(node_info, nodes, entries) {
-		qnetd_log(LOG_INFO, "algo-test:   node_id = %"PRIx32", "
-		    "data_center_id = %"PRIx32", "
-		    "node_state = %s", node_info->node_id, node_info->data_center_id,
-		    qnetd_algo_test_node_state_to_str(node_info->node_state));
-	}
-}
 
 /*
  * Called after client sent configuration node list
@@ -147,17 +96,7 @@ qnetd_algo_test_config_node_list_received(struct qnetd_client *client,
     const struct node_list *nodes, int initial, enum tlv_vote *result_vote)
 {
 
-	qnetd_log(LOG_INFO, "algo-test: Client %p (cluster %s, node_id %"PRIx32") "
-	    "sent %s node list.", client, client->cluster_name, client->node_id,
-	    (initial ? "initial" : "changed"));
-
-	qnetd_log(LOG_INFO, "algo-test:   msg seq num %"PRIu32, msg_seq_num);
-
-	if (config_version_set) {
-		qnetd_log(LOG_INFO, "algo-test:   config version %"PRIu64, config_version);
-	}
-
-	qnetd_algo_dump_node_list(client, nodes);
+	qnetd_log(LOG_INFO, "algo-test: node_list_received");
 
 	*result_vote = TLV_VOTE_NO_CHANGE;
 
@@ -183,15 +122,7 @@ qnetd_algo_test_membership_node_list_received(struct qnetd_client *client,
     const struct node_list *nodes, enum tlv_vote *result_vote)
 {
 
-	qnetd_log(LOG_INFO, "algo-test: Client %p (cluster %s, node_id %"PRIx32") "
-	    "sent membership node list.", client, client->cluster_name, client->node_id);
-
-	qnetd_log(LOG_INFO, "algo-test:   msg seq num %"PRIu32, msg_seq_num);
-
-	qnetd_log(LOG_INFO, "algo-test:   ring id = (%"PRIx32".%"PRIx64")",
-	    ring_id->node_id, ring_id->seq);
-
-	qnetd_algo_dump_node_list(client, nodes);
+	qnetd_log(LOG_INFO, "algo-test: membership_node_list_received");
 
 	*result_vote = TLV_VOTE_ACK;
 
@@ -214,13 +145,8 @@ qnetd_algo_test_quorum_node_list_received(struct qnetd_client *client,
     uint32_t msg_seq_num, enum tlv_quorate quorate, const struct node_list *nodes,
     enum tlv_vote *result_vote)
 {
-	qnetd_log(LOG_INFO, "algo-test: Client %p (cluster %s, node_id %"PRIx32") "
-	    "sent quorum node list.", client, client->cluster_name, client->node_id);
 
-	qnetd_log(LOG_INFO, "algo-test:   msg seq num %"PRIu32, msg_seq_num);
-	qnetd_log(LOG_INFO, "algo-test:   quorate = %u", quorate);
-
-	qnetd_algo_dump_node_list(client, nodes);
+	qnetd_log(LOG_INFO, "algo-test: quorum_node_list_received");
 
 	*result_vote = TLV_VOTE_NO_CHANGE;
 
@@ -236,10 +162,7 @@ void
 qnetd_algo_test_client_disconnect(struct qnetd_client *client, int server_going_down)
 {
 
-	qnetd_log(LOG_INFO, "algo-test: Client %p (cluster %s, node_id %"PRIx32") "
-	    "disconnect", client, client->cluster_name, client->node_id);
-
-	qnetd_log(LOG_INFO, "algo-test:   server going down %u", server_going_down);
+	qnetd_log(LOG_INFO, "algo-test: client_disconnect");
 
 	free(client->algorithm_data);
 }
@@ -253,8 +176,7 @@ qnetd_algo_test_ask_for_vote_received(struct qnetd_client *client, uint32_t msg_
     enum tlv_vote *result_vote)
 {
 
-	qnetd_log(LOG_INFO, "algo-test: Client %p (cluster %s, node_id %"PRIx32") "
-	    "asked for a vote", client, client->cluster_name, client->node_id);
+	qnetd_log(LOG_INFO, "algo-test: ask_for_vote_received");
 
 	*result_vote = TLV_VOTE_ACK;
 
@@ -265,8 +187,7 @@ enum tlv_reply_error_code
 qnetd_algo_test_vote_info_reply_received(struct qnetd_client *client, uint32_t msg_seq_num)
 {
 
-	qnetd_log(LOG_INFO, "algo-test: Client %p (cluster %s, node_id %"PRIx32") "
-	    "replied back to vote info message", client, client->cluster_name, client->node_id);
+	qnetd_log(LOG_INFO, "algo-test: vote_info_reply_received");
 
 	return (TLV_REPLY_ERROR_CODE_NO_ERROR);
 }

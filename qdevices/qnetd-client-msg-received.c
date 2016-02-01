@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Red Hat, Inc.
+ * Copyright (c) 2015-2016 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -37,6 +37,7 @@
 #include "qnetd-algorithm.h"
 #include "qnetd-instance.h"
 #include "qnetd-log.h"
+#include "qnetd-log-debug.h"
 #include "qnetd-client-send.h"
 #include "msg.h"
 #include "nss-sock.h"
@@ -362,6 +363,8 @@ qnetd_client_msg_received_init(struct qnetd_instance *instance, struct qnetd_cli
 	}
 
 	if (reply_error_code == TLV_REPLY_ERROR_CODE_NO_ERROR) {
+		qnetd_log_debug_new_client_connected(client);
+
 		reply_error_code = qnetd_algorithm_client_init(client);
 	}
 
@@ -370,6 +373,8 @@ qnetd_client_msg_received_init(struct qnetd_instance *instance, struct qnetd_cli
 		 * Correct init received
 		 */
 		client->init_received = 1;
+	} else {
+		qnetd_log(LOG_ERR, "Algorithm returned error code. Sending error reply.");
 	}
 
 	send_buffer = send_buffer_list_get_new(&client->send_buffer_list);
@@ -583,9 +588,15 @@ qnetd_client_msg_received_node_list(struct qnetd_instance *instance, struct qnet
 		return (0);
 	}
 
+	result_vote = TLV_VOTE_NO_CHANGE;
+
 	switch (msg->node_list_type) {
 	case TLV_NODE_LIST_TYPE_INITIAL_CONFIG:
 	case TLV_NODE_LIST_TYPE_CHANGED_CONFIG:
+		qnetd_log_debug_config_node_list_received(client, msg->seq_number,
+		    msg->config_version_set, msg->config_version, &msg->nodes,
+		    (msg->node_list_type == TLV_NODE_LIST_TYPE_INITIAL_CONFIG));
+
 		reply_error_code = qnetd_algorithm_config_node_list_received(client,
 		    msg->seq_number, msg->config_version_set, msg->config_version,
 		    &msg->nodes,
@@ -605,8 +616,13 @@ qnetd_client_msg_received_node_list(struct qnetd_instance *instance, struct qnet
 			return (0);
 		}
 
+		/*
+		 * TODO REMOVE THIS memcpy.
+		 */
 		memcpy(&client->last_ring_id, &msg->ring_id, sizeof(struct tlv_ring_id));
-		qnetd_log(LOG_DEBUG, "CC: client %p (nodeid %d) ring id = %d/%ld", client, client->node_id, client->last_ring_id.node_id, client->last_ring_id.seq);
+		qnetd_log_debug_membership_node_list_received(client, msg->seq_number, &msg->ring_id,
+		    &msg->nodes);
+
 		reply_error_code = qnetd_algorithm_membership_node_list_received(client,
 		    msg->seq_number, &msg->ring_id, &msg->nodes, &result_vote);
 		break;
@@ -622,6 +638,10 @@ qnetd_client_msg_received_node_list(struct qnetd_instance *instance, struct qnet
 
 			return (0);
 		}
+
+		qnetd_log_debug_quorum_node_list_received(client, msg->seq_number,msg->quorate,
+		    &msg->nodes);
+
 		reply_error_code = qnetd_algorithm_quorum_node_list_received(client,
 		    msg->seq_number,msg->quorate, &msg->nodes, &result_vote);
 		break;
@@ -642,6 +662,15 @@ qnetd_client_msg_received_node_list(struct qnetd_instance *instance, struct qnet
 		}
 
 		return (0);
+	} else {
+		qnetd_log(LOG_DEBUG, "Algorithm result vote is %s", tlv_vote_to_str(result_vote));
+	}
+
+	if (msg->node_list_type == TLV_NODE_LIST_TYPE_MEMBERSHIP &&
+	    result_vote == TLV_VOTE_NO_CHANGE) {
+		qnetd_log(LOG_ERR, "qnetd_client_msg_received_node_list fatal error. "
+		    "node_list_type is membership and algorithm result vote is no_change");
+		exit(1);
 	}
 
 	/*
@@ -666,6 +695,7 @@ qnetd_client_msg_received_node_list(struct qnetd_instance *instance, struct qnet
 
 			return (-1);
 		}
+		memcpy(&client->last_ring_id, &msg->ring_id, sizeof(struct tlv_ring_id));
 		break;
 	case TLV_NODE_LIST_TYPE_QUORUM:
 		node_list_free(&client->last_quorum_node_list);
@@ -691,7 +721,8 @@ qnetd_client_msg_received_node_list(struct qnetd_instance *instance, struct qnet
 		return (-1);
 	}
 
-	if (msg_create_node_list_reply(&send_buffer->buffer, msg->seq_number, result_vote) == -1) {
+	if (msg_create_node_list_reply(&send_buffer->buffer, msg->seq_number, msg->node_list_type,
+	    msg->ring_id_set, &msg->ring_id, result_vote) == -1) {
 		qnetd_log(LOG_ERR, "Can't alloc node list reply msg. "
 		    "Disconnecting client connection.");
 
@@ -750,6 +781,8 @@ qnetd_client_msg_received_ask_for_vote(struct qnetd_instance *instance, struct q
 		return (0);
 	}
 
+	qnetd_log_debug_ask_for_vote_received(client, msg->seq_number);
+
 	reply_error_code = qnetd_algorithm_ask_for_vote_received(client, msg->seq_number,
 	    &result_vote);
 
@@ -763,6 +796,8 @@ qnetd_client_msg_received_ask_for_vote(struct qnetd_instance *instance, struct q
 		}
 
 		return (0);
+	} else {
+		qnetd_log(LOG_DEBUG, "Algorithm result vote is %s", tlv_vote_to_str(result_vote));
 	}
 
 	send_buffer = send_buffer_list_get_new(&client->send_buffer_list);
@@ -838,6 +873,8 @@ qnetd_client_msg_received_vote_info_reply(struct qnetd_instance *instance,
 
 		return (0);
 	}
+
+	qnetd_log_debug_vote_info_reply_received(client, msg->seq_number);
 
 	reply_error_code = qnetd_algorithm_vote_info_reply_received(client, msg->seq_number);
 

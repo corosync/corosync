@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Red Hat, Inc.
+ * Copyright (c) 2015-2016 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -36,25 +36,26 @@
 
 #include <err.h>
 
+#include "qnet-config.h"
 #include "qnetd-algorithm.h"
 #include "qnetd-algo-test.h"
 #include "qnetd-algo-ffsplit.h"
 #include "qnetd-algo-2nodelms.h"
 #include "qnetd-algo-lms.h"
 
-static struct qnetd_algorithm *qnetd_algorithm[MAX_QNETD_ALGORITHMS];
+static struct qnetd_algorithm *qnetd_algorithm_array[QNETD_STATIC_SUPPORTED_DECISION_ALGORITHMS_SIZE];
 
 enum tlv_reply_error_code
 qnetd_algorithm_client_init(struct qnetd_client *client)
 {
-	if (client->decision_algorithm >= MAX_QNETD_ALGORITHMS ||
-	    qnetd_algorithm[client->decision_algorithm] == NULL) {
+	if (client->decision_algorithm >= QNETD_STATIC_SUPPORTED_DECISION_ALGORITHMS_SIZE ||
+	    qnetd_algorithm_array[client->decision_algorithm] == NULL) {
 
 		errx(1, "qnetd_algorithm_client_init unhandled decision algorithm");
 		return (TLV_REPLY_ERROR_CODE_INTERNAL_ERROR);
 	}
 
-	return (qnetd_algorithm[client->decision_algorithm]->init(client));
+	return (qnetd_algorithm_array[client->decision_algorithm]->init(client));
 }
 
 enum tlv_reply_error_code
@@ -62,15 +63,15 @@ qnetd_algorithm_config_node_list_received(struct qnetd_client *client,
     uint32_t msg_seq_num, int config_version_set, uint64_t config_version,
     const struct node_list *nodes, int initial, enum tlv_vote *result_vote)
 {
-	if (client->decision_algorithm >= MAX_QNETD_ALGORITHMS ||
-	    qnetd_algorithm[client->decision_algorithm] == NULL) {
+	if (client->decision_algorithm >= QNETD_STATIC_SUPPORTED_DECISION_ALGORITHMS_SIZE ||
+	    qnetd_algorithm_array[client->decision_algorithm] == NULL) {
 
 		errx(1, "qnetd_algorithm_config_node_list_received unhandled "
 		     "decision algorithm");
 		return (TLV_REPLY_ERROR_CODE_INTERNAL_ERROR);
 	}
 
-	return (qnetd_algorithm[client->decision_algorithm]->config_node_list_received(
+	return (qnetd_algorithm_array[client->decision_algorithm]->config_node_list_received(
 		client, msg_seq_num,
 		config_version_set, config_version, nodes, initial, result_vote));
 }
@@ -81,15 +82,15 @@ qnetd_algorithm_membership_node_list_received(struct qnetd_client *client,
     const struct node_list *nodes, enum tlv_vote *result_vote)
 {
 
-	if (client->decision_algorithm >= MAX_QNETD_ALGORITHMS ||
-	    qnetd_algorithm[client->decision_algorithm] == NULL) {
+	if (client->decision_algorithm >= QNETD_STATIC_SUPPORTED_DECISION_ALGORITHMS_SIZE ||
+	    qnetd_algorithm_array[client->decision_algorithm] == NULL) {
 
 		errx(1, "qnetd_algorithm_membership_node_list_received unhandled "
 		    "decision algorithm");
 		return (TLV_REPLY_ERROR_CODE_INTERNAL_ERROR);
 	}
 
-	return (qnetd_algorithm[client->decision_algorithm]->membership_node_list_received(
+	return (qnetd_algorithm_array[client->decision_algorithm]->membership_node_list_received(
 		client, msg_seq_num,
 		ring_id, nodes, result_vote));
 }
@@ -100,56 +101,59 @@ qnetd_algorithm_quorum_node_list_received(struct qnetd_client *client,
     const struct node_list *nodes, enum tlv_vote *result_vote)
 {
 
-	if (client->decision_algorithm >= MAX_QNETD_ALGORITHMS ||
-	    qnetd_algorithm[client->decision_algorithm] == NULL) {
+	if (client->decision_algorithm >= QNETD_STATIC_SUPPORTED_DECISION_ALGORITHMS_SIZE ||
+	    qnetd_algorithm_array[client->decision_algorithm] == NULL) {
 
 		errx(1, "qnetd_algorithm_quorum_node_list_received unhandled "
 		    "decision algorithm");
 		return (TLV_REPLY_ERROR_CODE_INTERNAL_ERROR);
 	}
 
-	return (qnetd_algorithm[client->decision_algorithm]->quorum_node_list_received(
+	return (qnetd_algorithm_array[client->decision_algorithm]->quorum_node_list_received(
 		client, msg_seq_num, quorate, nodes, result_vote));
 }
 
 void
 qnetd_algorithm_client_disconnect(struct qnetd_client *client, int server_going_down)
 {
-	if (client->decision_algorithm >= MAX_QNETD_ALGORITHMS ||
-	    qnetd_algorithm[client->decision_algorithm] == NULL) {
+
+	if (client->decision_algorithm >= QNETD_STATIC_SUPPORTED_DECISION_ALGORITHMS_SIZE ||
+	    qnetd_algorithm_array[client->decision_algorithm] == NULL) {
 
 		errx(1, "qnetd_algorithm_client_disconnect unhandled decision algorithm");
 		return;
 	}
 
-	qnetd_algorithm[client->decision_algorithm]->client_disconnect(client, server_going_down);
+	qnetd_algorithm_array[client->decision_algorithm]->client_disconnect(client, server_going_down);
 }
 
 enum tlv_reply_error_code
 qnetd_algorithm_ask_for_vote_received(struct qnetd_client *client, uint32_t msg_seq_num,
     enum tlv_vote *result_vote)
 {
-	if (client->decision_algorithm >= MAX_QNETD_ALGORITHMS ||
-	    qnetd_algorithm[client->decision_algorithm] == NULL) {
+
+	if (client->decision_algorithm >= QNETD_STATIC_SUPPORTED_DECISION_ALGORITHMS_SIZE ||
+	    qnetd_algorithm_array[client->decision_algorithm] == NULL) {
 
 		errx(1, "qnetd_algorithm_ask_for_vote_received unhandled decision algorithm");
 		return (TLV_REPLY_ERROR_CODE_INTERNAL_ERROR);
 	}
 
-	return (qnetd_algorithm[client->decision_algorithm]->ask_for_vote_received(
+	return (qnetd_algorithm_array[client->decision_algorithm]->ask_for_vote_received(
 		client, msg_seq_num, result_vote));
 }
 
 enum tlv_reply_error_code
 qnetd_algorithm_vote_info_reply_received(struct qnetd_client *client, uint32_t msg_seq_num)
 {
-	if (client->decision_algorithm >= MAX_QNETD_ALGORITHMS ||
-	    qnetd_algorithm[client->decision_algorithm] == NULL) {
+
+	if (client->decision_algorithm >= QNETD_STATIC_SUPPORTED_DECISION_ALGORITHMS_SIZE ||
+	    qnetd_algorithm_array[client->decision_algorithm] == NULL) {
 		errx(1, "qnetd_algorithm_vote_info_reply_received unhandled decision algorithm");
 		return (TLV_REPLY_ERROR_CODE_INTERNAL_ERROR);
 	}
 
-	return (qnetd_algorithm[client->decision_algorithm]->vote_info_reply_received(
+	return (qnetd_algorithm_array[client->decision_algorithm]->vote_info_reply_received(
 		client, msg_seq_num));
 
 }
@@ -159,19 +163,24 @@ enum tlv_reply_error_code
 qnetd_algorithm_register(enum tlv_decision_algorithm_type algorithm_number,
     struct qnetd_algorithm *algorithm)
 {
-	if (algorithm_number >= MAX_QNETD_ALGORITHMS) {
+
+	if (algorithm_number >= QNETD_STATIC_SUPPORTED_DECISION_ALGORITHMS_SIZE) {
 		return (TLV_REPLY_ERROR_CODE_UNSUPPORTED_DECISION_ALGORITHM);
 	}
 
-	if (qnetd_algorithm[algorithm_number] != NULL) {
+	if (qnetd_algorithm_array[algorithm_number] != NULL) {
 		return (TLV_REPLY_ERROR_CODE_DECISION_ALGORITHM_ALREADY_REGISTERED);
 	}
-	qnetd_algorithm[algorithm_number] = algorithm;
+
+	qnetd_algorithm_array[algorithm_number] = algorithm;
+
 	return (TLV_REPLY_ERROR_CODE_NO_ERROR);
 }
 
-void algorithms_register(void)
+void
+qnetd_algorithm_register_all(void)
 {
+
 	if (qnetd_algo_test_register() != TLV_REPLY_ERROR_CODE_NO_ERROR) {
 		errx(1, "Failed to register decision algorithm 'test' ");
 	}

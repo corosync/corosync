@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Red Hat, Inc.
+ * Copyright (c) 2015-2016 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -41,13 +41,6 @@ int
 qdevice_net_send_echo_request(struct qdevice_net_instance *instance)
 {
 	struct send_buffer_list_entry *send_buffer;
-
-	if (instance->echo_reply_received_msg_seq_num !=
-	    instance->echo_request_expected_msg_seq_num) {
-		qdevice_net_log(LOG_ERR, "Server didn't send echo reply message on time. "
-		    "Disconnecting from server.");
-		return (-1);
-	}
 
 	send_buffer = send_buffer_list_get_new(&instance->send_buffer_list);
 	if (send_buffer == NULL) {
@@ -120,6 +113,9 @@ qdevice_net_send_ask_for_vote(struct qdevice_net_instance *instance)
 
 	instance->last_msg_seq_num++;
 
+	qdevice_net_log(LOG_DEBUG, "Sending ask for vote seq = %"PRIu32,
+	    instance->last_msg_seq_num);
+
 	if (msg_create_ask_for_vote(&send_buffer->buffer, instance->last_msg_seq_num) == 0) {
 		qdevice_net_log(LOG_ERR, "Can't allocate send buffer for ask for vote msg");
 
@@ -131,23 +127,44 @@ qdevice_net_send_ask_for_vote(struct qdevice_net_instance *instance)
 	return (0);
 }
 
+static
+void qdevice_net_log_debug_node_list(const struct node_list *nlist)
+{
+	struct node_list_entry *node_info;
+	size_t zi;
+
+	qdevice_net_log(LOG_DEBUG, "  Node list:");
+
+	zi = 0;
+
+	TAILQ_FOREACH(node_info, nlist, entries) {
+		qdevice_net_log(LOG_DEBUG, "    %zu node_id = %"PRIx32", "
+		    "data_center_id = %"PRIx32", node_state = %s",
+		    zi, node_info->node_id, node_info->data_center_id,
+		    tlv_node_state_to_str(node_info->node_state));
+		zi++;
+        }
+}
+
 int
-qdevice_net_send_config_node_list(struct qdevice_net_instance *instance, int initial)
+qdevice_net_send_config_node_list(struct qdevice_net_instance *instance, int initial, int force_send)
 {
 	struct node_list nlist;
 	struct send_buffer_list_entry *send_buffer;
 	uint64_t config_version;
 	int send_config_version;
-	struct node_list_entry *node_info;
-	size_t zi;
 
-	/*
-	 * Send initial node list
-	 */
 	if (qdevice_net_cmap_get_nodelist(instance->cmap_handle, &nlist) != 0) {
 		qdevice_net_log(LOG_ERR, "Can't get initial configuration node list.");
 
 		return (-1);
+	}
+
+	/*
+	 * Send only if list changed or force was used
+	 */
+	if (!force_send && node_list_eq(&instance->last_sent_config_node_list, &nlist)) {
+		return (0);
 	}
 
 	send_buffer = send_buffer_list_get_new(&instance->send_buffer_list);
@@ -165,18 +182,18 @@ qdevice_net_send_config_node_list(struct qdevice_net_instance *instance, int ini
 
 	instance->last_msg_seq_num++;
 
-	qdevice_net_log(LOG_DEBUG, "Sending config node list seq=%"PRIu32".",
+	qdevice_net_log(LOG_DEBUG, "Sending config node list seq = %"PRIu32,
 	    instance->last_msg_seq_num);
+	qdevice_net_log_debug_node_list(&nlist);
 
-	qdevice_net_log(LOG_DEBUG, "  Node list:");
+	node_list_free(&instance->last_sent_config_node_list);
+	if (node_list_clone(&instance->last_sent_config_node_list, &nlist) != 0) {
+		qdevice_net_log(LOG_ERR, "Can't allocate last sent config node list clone");
 
-	zi = 0;
+		node_list_free(&nlist);
 
-	TAILQ_FOREACH(node_info, &nlist, entries) {
-		qdevice_net_log(LOG_DEBUG, "    %zu node_id = %"PRIx32", "
-		    "data_center_id = %"PRIx32, zi, node_info->node_id, node_info->data_center_id);
-		zi++;
-        }
+		return (-1);
+	}
 
 	if (msg_create_node_list(&send_buffer->buffer, instance->last_msg_seq_num,
 	    (initial ? TLV_NODE_LIST_TYPE_INITIAL_CONFIG : TLV_NODE_LIST_TYPE_CHANGED_CONFIG),
@@ -228,8 +245,10 @@ qdevice_net_send_membership_node_list(struct qdevice_net_instance *instance,
 
 	instance->last_msg_seq_num++;
 
-	qdevice_net_log(LOG_DEBUG, "Sending membership node list seq=%"PRIu32".",
-	    instance->last_msg_seq_num);
+	qdevice_net_log(LOG_DEBUG, "Sending membership node list seq = %"PRIu32", "
+	    "ringid = (%"PRIx32".%"PRIx64").", instance->last_msg_seq_num,
+	    ring_id->node_id, ring_id->seq);
+	qdevice_net_log_debug_node_list(&nlist);
 
 	if (msg_create_node_list(&send_buffer->buffer, instance->last_msg_seq_num,
 	    TLV_NODE_LIST_TYPE_MEMBERSHIP,
@@ -240,6 +259,8 @@ qdevice_net_send_membership_node_list(struct qdevice_net_instance *instance,
 
 		return (-1);
 	}
+
+	memcpy(&instance->last_sent_ring_id, ring_id, sizeof(instance->last_sent_ring_id));
 
 	node_list_free(&nlist);
 
@@ -286,8 +307,9 @@ qdevice_net_send_quorum_node_list(struct qdevice_net_instance *instance,
 
 	instance->last_msg_seq_num++;
 
-	qdevice_net_log(LOG_DEBUG, "Sending quorum node list seq=%"PRIu32".",
-	    instance->last_msg_seq_num);
+	qdevice_net_log(LOG_DEBUG, "Sending quorum node list seq = %"PRIu32", quorate = %u",
+	    instance->last_msg_seq_num, quorate);
+	qdevice_net_log_debug_node_list(&nlist);
 
 	if (msg_create_node_list(&send_buffer->buffer, instance->last_msg_seq_num,
 	    TLV_NODE_LIST_TYPE_QUORUM,
@@ -298,6 +320,8 @@ qdevice_net_send_quorum_node_list(struct qdevice_net_instance *instance,
 
 		return (-1);
 	}
+
+	node_list_free(&nlist);
 
 	send_buffer_list_put(&instance->send_buffer_list, send_buffer);
 

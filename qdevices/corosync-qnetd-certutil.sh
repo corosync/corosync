@@ -1,7 +1,7 @@
 #!@BASHPATH@
 
 #
-# Copyright (c) 2015 Red Hat, Inc.
+# Copyright (c) 2015-2016 Red Hat, Inc.
 #
 # All rights reserved.
 #

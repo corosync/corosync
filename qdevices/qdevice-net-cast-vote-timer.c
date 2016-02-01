@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Red Hat, Inc.
+ * Copyright (c) 2015-2016 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -75,6 +75,7 @@ qdevice_net_cast_vote_timer_callback(void *data1, void *data2)
 			qdevice_net_log(LOG_CRIT, "Can't call votequorum_qdevice_poll. Error %u",
 			    res);
 
+			instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_SCHEDULE_VOTING_TIMER;
 			instance->schedule_disconnect = 1;
 			return (0);
 		}
@@ -101,8 +102,8 @@ qdevice_net_cast_vote_timer_update(struct qdevice_net_instance *instance, enum t
 		timer_needs_running = 0;
 		break;
 	case TLV_VOTE_NO_CHANGE:
-		errx(1, "qdevice_net_cast_vote_timer_update_vote: Incorrect vote parameter %u\n",
-		    vote);
+		return (0);
+
 		break;
 	default:
 		errx(1, "qdevice_net_cast_vote_timer_update_vote: Unhandled vote parameter %u\n",
