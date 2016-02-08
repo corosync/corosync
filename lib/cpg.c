@@ -52,12 +52,12 @@
 #include <errno.h>
 #include <limits.h>
 
+#include <qb/qblist.h>
 #include <qb/qbdefs.h>
 #include <qb/qbipcc.h>
 #include <qb/qblog.h>
 
 #include <corosync/hdb.h>
-#include <corosync/list.h>
 #include <corosync/corotypes.h>
 #include <corosync/corodefs.h>
 #include <corosync/cpg.h>
@@ -88,7 +88,7 @@ struct cpg_inst {
 		cpg_model_data_t model_data;
 		cpg_model_v1_data_t model_v1_data;
 	};
-	struct list_head iteration_list_head;
+	struct qb_list_head iteration_list_head;
     uint32_t max_msg_size;
     char *assembly_buf;
     uint32_t assembly_buf_ptr;
@@ -106,7 +106,7 @@ struct cpg_iteration_instance_t {
 	cpg_iteration_handle_t cpg_iteration_handle;
 	qb_ipcc_connection_t *conn;
 	hdb_handle_t executive_iteration_handle;
-	struct list_head list;
+	struct qb_list_head list;
 };
 
 DECLARE_HDB_DATABASE(cpg_iteration_handle_t_db,NULL);
@@ -130,7 +130,7 @@ coroipcc_msg_send_reply_receive (
 
 static void cpg_iteration_instance_finalize (struct cpg_iteration_instance_t *cpg_iteration_instance)
 {
-	list_del (&cpg_iteration_instance->list);
+	qb_list_del (&cpg_iteration_instance->list);
 	hdb_handle_destroy (&cpg_iteration_handle_t_db, cpg_iteration_instance->cpg_iteration_handle);
 }
 
@@ -142,7 +142,7 @@ static void cpg_inst_free (void *inst)
 
 static void cpg_inst_finalize (struct cpg_inst *cpg_inst, hdb_handle_t handle)
 {
-	struct list_head *iter, *iter_next;
+	struct qb_list_head *iter, *iter_next;
 	struct cpg_iteration_instance_t *cpg_iteration_instance;
 
 	/*
@@ -151,7 +151,7 @@ static void cpg_inst_finalize (struct cpg_inst *cpg_inst, hdb_handle_t handle)
 	for (iter = cpg_inst->iteration_list_head.next;	iter != &cpg_inst->iteration_list_head;iter = iter_next) {
 		iter_next = iter->next;
 
-		cpg_iteration_instance = list_entry (iter, struct cpg_iteration_instance_t, list);
+		cpg_iteration_instance = qb_list_entry (iter, struct cpg_iteration_instance_t, list);
 
 		cpg_iteration_instance_finalize (cpg_iteration_instance);
 	}
@@ -229,7 +229,7 @@ cs_error_t cpg_model_initialize (
 	cpg_inst->model_data.model = model;
 	cpg_inst->context = context;
 
-	list_init(&cpg_inst->iteration_list_head);
+	qb_list_init(&cpg_inst->iteration_list_head);
 
 	hdb_handle_put (&cpg_handle_t_db, *handle);
 
@@ -1216,7 +1216,7 @@ cs_error_t cpg_iteration_initialize(
 
 	cpg_iteration_instance->conn = cpg_inst->c;
 
-	list_init (&cpg_iteration_instance->list);
+	qb_list_init (&cpg_iteration_instance->list);
 
 	req_lib_cpg_iterationinitialize.header.size = sizeof (struct req_lib_cpg_iterationinitialize);
 	req_lib_cpg_iterationinitialize.header.id = MESSAGE_REQ_CPG_ITERATIONINITIALIZE;
@@ -1242,7 +1242,7 @@ cs_error_t cpg_iteration_initialize(
 		res_lib_cpg_iterationinitialize.iteration_handle;
 	cpg_iteration_instance->cpg_iteration_handle = *cpg_iteration_handle;
 
-	list_add (&cpg_iteration_instance->list, &cpg_inst->iteration_list_head);
+	qb_list_add (&cpg_iteration_instance->list, &cpg_inst->iteration_list_head);
 
 	hdb_handle_put (&cpg_iteration_handle_t_db, *cpg_iteration_handle);
 	hdb_handle_put (&cpg_handle_t_db, handle);

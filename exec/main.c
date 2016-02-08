@@ -104,7 +104,6 @@
 #include <corosync/swab.h>
 #include <corosync/corotypes.h>
 #include <corosync/corodefs.h>
-#include <corosync/list.h>
 #include <corosync/totem/totempg.h>
 #include <corosync/logsys.h>
 #include <corosync/icmap.h>
@@ -890,7 +889,7 @@ static void corosync_setscheduler (void)
 				global_sched_param.sched_priority);
 
 			global_sched_param.sched_priority = 0;
-#ifdef HAVE_QB_LOG_THREAD_PRIORITY_SET
+#ifdef HAVE_LOG_THREAD_PRIORITY_SET
 			qb_log_thread_priority_set (SCHED_OTHER, 0);
 #endif
 		} else {
@@ -898,7 +897,7 @@ static void corosync_setscheduler (void)
 			/*
 			 * Turn on SCHED_RR in logsys system
 			 */
-#ifdef HAVE_QB_LOG_THREAD_PRIORITY_SET
+#ifdef HAVE_LOG_THREAD_PRIORITY_SET
 			res = qb_log_thread_priority_set (SCHED_RR, sched_priority);
 #else
 			res = -1;

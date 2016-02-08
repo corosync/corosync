@@ -44,7 +44,7 @@
 #include <corosync/corotypes.h>
 #include <corosync/corodefs.h>
 #include <corosync/coroapi.h>
-#include <corosync/list.h>
+#include <qb/qblist.h>
 #include <corosync/logsys.h>
 #include <corosync/icmap.h>
 #include "fsm.h"
@@ -108,7 +108,7 @@ struct corosync_service_engine wd_service_engine = {
 	.exec_dump_fn		= NULL
 };
 
-static DECLARE_LIST_INIT (confchg_notify);
+static QB_LIST_DECLARE (confchg_notify);
 
 /*
  * F S M

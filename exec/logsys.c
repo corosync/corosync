@@ -47,7 +47,6 @@
 #include <qb/qbutil.h>
 #include <qb/qblog.h>
 
-#include <corosync/list.h>
 #include <corosync/logsys.h>
 
 /*

@@ -41,11 +41,11 @@
 #include <stdint.h>
 #include <unistd.h>
 
+#include <qb/qblist.h>
 #include <qb/qbipc_common.h>
 
 #include "quorum.h"
 #include <corosync/corodefs.h>
-#include <corosync/list.h>
 #include <corosync/logsys.h>
 #include <corosync/coroapi.h>
 #include <corosync/icmap.h>
@@ -185,7 +185,7 @@ struct cluster_node {
 	uint32_t    votes;
 	uint32_t    expected_votes;
 	uint32_t    flags;
-	struct      list_head list;
+	struct      qb_list_head list;
 };
 
 /*
@@ -200,7 +200,7 @@ static uint8_t cluster_is_quorate;
  */
 
 static struct cluster_node *us;
-static struct list_head cluster_members_list;
+static struct qb_list_head cluster_members_list;
 static unsigned int quorum_members[PROCESSOR_COUNT_MAX];
 static unsigned int previous_quorum_members[PROCESSOR_COUNT_MAX];
 static unsigned int atb_nodelist[PROCESSOR_COUNT_MAX];
@@ -222,11 +222,11 @@ struct quorum_pd {
 	unsigned char track_flags;
 	int tracking_enabled;
 	uint64_t tracking_context;
-	struct list_head list;
+	struct qb_list_head list;
 	void *conn;
 };
 
-static struct list_head trackers_list;
+static struct qb_list_head trackers_list;
 
 /*
  * votequorum timers
@@ -436,20 +436,20 @@ static struct default_service votequorum_service[] = {
 static void node_add_ordered(struct cluster_node *newnode)
 {
 	struct cluster_node *node = NULL;
-	struct list_head *tmp;
-	struct list_head *newlist = &newnode->list;
+	struct qb_list_head *tmp;
+	struct qb_list_head *newlist = &newnode->list;
 
 	ENTER();
 
 	list_iterate(tmp, &cluster_members_list) {
-		node = list_entry(tmp, struct cluster_node, list);
+		node = qb_list_entry(tmp, struct cluster_node, list);
 		if (newnode->node_id < node->node_id) {
 			break;
 		}
 	}
 
 	if (!node) {
-		list_add(&newnode->list, &cluster_members_list);
+		qb_list_add(&newnode->list, &cluster_members_list);
 	} else {
 		newlist->prev = tmp->prev;
 		newlist->next = tmp;
@@ -463,7 +463,7 @@ static void node_add_ordered(struct cluster_node *newnode)
 static struct cluster_node *allocate_node(unsigned int nodeid)
 {
 	struct cluster_node *cl = NULL;
-	struct list_head *tmp;
+	struct qb_list_head *tmp;
 
 	ENTER();
 
@@ -472,7 +472,7 @@ static struct cluster_node *allocate_node(unsigned int nodeid)
 		cluster_nodes_entries++;
 	} else {
 		list_iterate(tmp, &cluster_members_list) {
-			cl = list_entry(tmp, struct cluster_node, list);
+			cl = qb_list_entry(tmp, struct cluster_node, list);
 			if (cl->state == NODESTATE_DEAD) {
 				break;
 			}
@@ -484,7 +484,7 @@ static struct cluster_node *allocate_node(unsigned int nodeid)
 			log_printf(LOGSYS_LEVEL_CRIT, "Unable to find memory for node %u data!!", nodeid);
 			goto out;
 		}
-		list_del(tmp);
+		qb_list_del(tmp);
 	}
 
 	memset(cl, 0, sizeof(struct cluster_node));
@@ -502,7 +502,7 @@ out:
 static struct cluster_node *find_node_by_nodeid(unsigned int nodeid)
 {
 	struct cluster_node *node;
-	struct list_head *tmp;
+	struct qb_list_head *tmp;
 
 	ENTER();
 
@@ -517,7 +517,7 @@ static struct cluster_node *find_node_by_nodeid(unsigned int nodeid)
 	}
 
 	list_iterate(tmp, &cluster_members_list) {
-		node = list_entry(tmp, struct cluster_node, list);
+		node = qb_list_entry(tmp, struct cluster_node, list);
 		if (node->node_id == nodeid) {
 			LEAVE();
 			return node;
@@ -531,14 +531,14 @@ static struct cluster_node *find_node_by_nodeid(unsigned int nodeid)
 static void get_lowest_node_id(void)
 {
 	struct cluster_node *node = NULL;
-	struct list_head *tmp;
+	struct qb_list_head *tmp;
 
 	ENTER();
 
 	lowest_node_id = us->node_id;
 
 	list_iterate(tmp, &cluster_members_list) {
-		node = list_entry(tmp, struct cluster_node, list);
+		node = qb_list_entry(tmp, struct cluster_node, list);
 		if ((node->state == NODESTATE_MEMBER) &&
 		    (node->node_id < lowest_node_id)) {
 			lowest_node_id = node->node_id;
@@ -553,14 +553,14 @@ static void get_lowest_node_id(void)
 static void get_highest_node_id(void)
 {
 	struct cluster_node *node = NULL;
-	struct list_head *tmp;
+	struct qb_list_head *tmp;
 
 	ENTER();
 
 	highest_node_id = us->node_id;
 
 	list_iterate(tmp, &cluster_members_list) {
-		node = list_entry(tmp, struct cluster_node, list);
+		node = qb_list_entry(tmp, struct cluster_node, list);
 		if ((node->state == NODESTATE_MEMBER) &&
 		    (node->node_id > highest_node_id)) {
 			highest_node_id = node->node_id;
@@ -575,13 +575,13 @@ static void get_highest_node_id(void)
 static int check_low_node_id_partition(void)
 {
 	struct cluster_node *node = NULL;
-	struct list_head *tmp;
+	struct qb_list_head *tmp;
 	int found = 0;
 
 	ENTER();
 
 	list_iterate(tmp, &cluster_members_list) {
-		node = list_entry(tmp, struct cluster_node, list);
+		node = qb_list_entry(tmp, struct cluster_node, list);
 		if ((node->state == NODESTATE_MEMBER) &&
 		    (node->node_id == lowest_node_id)) {
 				found = 1;
@@ -595,13 +595,13 @@ static int check_low_node_id_partition(void)
 static int check_high_node_id_partition(void)
 {
 	struct cluster_node *node = NULL;
-	struct list_head *tmp;
+	struct qb_list_head *tmp;
 	int found = 0;
 
 	ENTER();
 
 	list_iterate(tmp, &cluster_members_list) {
-		node = list_entry(tmp, struct cluster_node, list);
+		node = qb_list_entry(tmp, struct cluster_node, list);
 		if ((node->state == NODESTATE_MEMBER) &&
 		    (node->node_id == highest_node_id)) {
 				found = 1;
@@ -740,13 +740,13 @@ static void parse_atb_string(char *atb_string)
 static int check_qdevice_master(void)
 {
 	struct cluster_node *node = NULL;
-	struct list_head *tmp;
+	struct qb_list_head *tmp;
 	int found = 0;
 
 	ENTER();
 
 	list_iterate(tmp, &cluster_members_list) {
-		node = list_entry(tmp, struct cluster_node, list);
+		node = qb_list_entry(tmp, struct cluster_node, list);
 		if ((node->state == NODESTATE_MEMBER) &&
 		    (node->flags & NODE_FLAGS_QDEVICE_MASTER_WINS) &&
 		    (node->flags & NODE_FLAGS_QDEVICE_CAST_VOTE)) {
@@ -908,7 +908,7 @@ static void update_ev_tracking_barrier(uint32_t ev_t_barrier)
 
 static int calculate_quorum(int allow_decrease, unsigned int max_expected, unsigned int *ret_total_votes)
 {
-	struct list_head *nodelist;
+	struct qb_list_head *nodelist;
 	struct cluster_node *node;
 	unsigned int total_votes = 0;
 	unsigned int highest_expected = 0;
@@ -922,7 +922,7 @@ static int calculate_quorum(int allow_decrease, unsigned int max_expected, unsig
 	}
 
 	list_iterate(nodelist, &cluster_members_list) {
-		node = list_entry(nodelist, struct cluster_node, list);
+		node = qb_list_entry(nodelist, struct cluster_node, list);
 
 		log_printf(LOGSYS_LEVEL_DEBUG, "node %u state=%d, votes=%u, expected=%u",
 			   node->node_id, node->state, node->votes, node->expected_votes);
@@ -1068,13 +1068,13 @@ static void get_total_votes(unsigned int *totalvotes, unsigned int *current_memb
 {
 	unsigned int total_votes = 0;
 	unsigned int cluster_members = 0;
-	struct list_head *nodelist;
+	struct qb_list_head *nodelist;
 	struct cluster_node *node;
 
 	ENTER();
 
 	list_iterate(nodelist, &cluster_members_list) {
-		node = list_entry(nodelist, struct cluster_node, list);
+	node = qb_list_entry(nodelist, struct cluster_node, list);
 		if (node->state == NODESTATE_MEMBER) {
 			cluster_members++;
 			total_votes += node->votes;
@@ -1722,7 +1722,7 @@ static int votequorum_exec_send_qdevice_reg(uint32_t operation, const char *qdev
 static int votequorum_exec_send_quorum_notification(void *conn, uint64_t context)
 {
 	struct res_lib_votequorum_notification *res_lib_votequorum_notification;
-	struct list_head *tmp;
+	struct qb_list_head *tmp;
 	struct cluster_node *node;
 	int cluster_members = 0;
 	int i = 0;
@@ -1732,7 +1732,7 @@ static int votequorum_exec_send_quorum_notification(void *conn, uint64_t context
 	ENTER();
 
 	list_iterate(tmp, &cluster_members_list) {
-		node = list_entry(tmp, struct cluster_node, list);
+		node = qb_list_entry(tmp, struct cluster_node, list);
 		cluster_members++;
         }
 	if (us->flags & NODE_FLAGS_QDEVICE_REGISTERED) {
@@ -1748,7 +1748,7 @@ static int votequorum_exec_send_quorum_notification(void *conn, uint64_t context
 	res_lib_votequorum_notification->ring_id.seq = quorum_ringid.seq;
 	res_lib_votequorum_notification->context = context;
 	list_iterate(tmp, &cluster_members_list) {
-		node = list_entry(tmp, struct cluster_node, list);
+		node = qb_list_entry(tmp, struct cluster_node, list);
 		res_lib_votequorum_notification->node_list[i].nodeid = node->node_id;
 		res_lib_votequorum_notification->node_list[i++].state = node->state;
         }
@@ -1769,7 +1769,7 @@ static int votequorum_exec_send_quorum_notification(void *conn, uint64_t context
 		struct quorum_pd *qpd;
 
 		list_iterate(tmp, &trackers_list) {
-			qpd = list_entry(tmp, struct quorum_pd, list);
+			qpd = qb_list_entry(tmp, struct quorum_pd, list);
 			res_lib_votequorum_notification->context = qpd->tracking_context;
 			corosync_api->ipc_dispatch_send(qpd->conn, &buf, size);
 		}
@@ -1784,7 +1784,7 @@ static void votequorum_exec_send_expectedvotes_notification(void)
 {
 	struct res_lib_votequorum_expectedvotes_notification res_lib_votequorum_expectedvotes_notification;
 	struct quorum_pd *qpd;
-	struct list_head *tmp;
+	struct qb_list_head *tmp;
 
 	ENTER();
 
@@ -1796,7 +1796,7 @@ static void votequorum_exec_send_expectedvotes_notification(void)
 	res_lib_votequorum_expectedvotes_notification.expected_votes = us->expected_votes;
 
 	list_iterate(tmp, &trackers_list) {
-		qpd = list_entry(tmp, struct quorum_pd, list);
+		qpd = qb_list_entry(tmp, struct quorum_pd, list);
 		res_lib_votequorum_expectedvotes_notification.context = qpd->tracking_context;
 		corosync_api->ipc_dispatch_send(qpd->conn, &res_lib_votequorum_expectedvotes_notification,
 						sizeof(struct res_lib_votequorum_expectedvotes_notification));
@@ -1858,7 +1858,7 @@ static void message_handler_req_exec_votequorum_qdevice_reg (
 	struct res_lib_votequorum_status res_lib_votequorum_status;
 	int wipe_qdevice_name = 1;
 	struct cluster_node *node = NULL;
-	struct list_head *tmp;
+	struct qb_list_head *tmp;
 	cs_error_t error = CS_OK;
 
 	ENTER();
@@ -1928,7 +1928,7 @@ static void message_handler_req_exec_votequorum_qdevice_reg (
 		break;
 	case VOTEQUORUM_QDEVICE_OPERATION_UNREGISTER:
 		list_iterate(tmp, &cluster_members_list) {
-			node = list_entry(tmp, struct cluster_node, list);
+			node = qb_list_entry(tmp, struct cluster_node, list);
 			if ((node->state == NODESTATE_MEMBER) &&
 			    (node->flags & NODE_FLAGS_QDEVICE_REGISTERED)) {
 				wipe_qdevice_name = 0;
@@ -2094,7 +2094,7 @@ static void message_handler_req_exec_votequorum_reconfigure (
 {
 	const struct req_exec_quorum_reconfigure *req_exec_quorum_reconfigure = message;
 	struct cluster_node *node;
-	struct list_head *nodelist;
+	struct qb_list_head *nodelist;
 
 	ENTER();
 
@@ -2105,7 +2105,7 @@ static void message_handler_req_exec_votequorum_reconfigure (
 	{
 	case VOTEQUORUM_RECONFIG_PARAM_EXPECTED_VOTES:
 		list_iterate(nodelist, &cluster_members_list) {
-			node = list_entry(nodelist, struct cluster_node, list);
+			node = qb_list_entry(nodelist, struct cluster_node, list);
 			if (node->state == NODESTATE_MEMBER) {
 				node->expected_votes = req_exec_quorum_reconfigure->value;
 			}
@@ -2174,8 +2174,8 @@ static char *votequorum_exec_init_fn (struct corosync_api_v1 *api)
 	/*
 	 * make sure we start clean
 	 */
-	list_init(&cluster_members_list);
-	list_init(&trackers_list);
+	qb_list_init(&cluster_members_list);
+	qb_list_init(&trackers_list);
 	qdevice = NULL;
 	us = NULL;
 	memset(cluster_nodes, 0, sizeof(cluster_nodes));
@@ -2400,7 +2400,7 @@ static int quorum_lib_init_fn (void *conn)
 
 	ENTER();
 
-	list_init (&pd->list);
+	qb_list_init (&pd->list);
 	pd->conn = conn;
 
 	LEAVE();
@@ -2414,8 +2414,8 @@ static int quorum_lib_exit_fn (void *conn)
 	ENTER();
 
 	if (quorum_pd->tracking_enabled) {
-		list_del (&quorum_pd->list);
-		list_init (&quorum_pd->list);
+		qb_list_del (&quorum_pd->list);
+		qb_list_init (&quorum_pd->list);
 	}
 
 	LEAVE();
@@ -2473,10 +2473,10 @@ static void message_handler_req_lib_votequorum_getinfo (void *conn, const void *
 	node = find_node_by_nodeid(nodeid);
 	if (node) {
 		struct cluster_node *iternode;
-		struct list_head *nodelist;
+		struct qb_list_head *nodelist;
 
 		list_iterate(nodelist, &cluster_members_list) {
-			iternode = list_entry(nodelist, struct cluster_node, list);
+			iternode = qb_list_entry(nodelist, struct cluster_node, list);
 
 			if (iternode->state == NODESTATE_MEMBER) {
 				highest_expected =
@@ -2680,7 +2680,7 @@ static void message_handler_req_lib_votequorum_trackstart (void *conn,
 		quorum_pd->tracking_enabled = 1;
 		quorum_pd->tracking_context = req_lib_votequorum_trackstart->context;
 
-		list_add (&quorum_pd->list, &trackers_list);
+		qb_list_add (&quorum_pd->list, &trackers_list);
 	}
 
 response_send:
@@ -2704,8 +2704,8 @@ static void message_handler_req_lib_votequorum_trackstop (void *conn,
 	if (quorum_pd->tracking_enabled) {
 		error = CS_OK;
 		quorum_pd->tracking_enabled = 0;
-		list_del (&quorum_pd->list);
-		list_init (&quorum_pd->list);
+		qb_list_del (&quorum_pd->list);
+		qb_list_init (&quorum_pd->list);
 	} else {
 		error = CS_ERR_NOT_EXIST;
 	}

@@ -48,7 +48,6 @@
 
 #include <corosync/corotypes.h>
 #include <corosync/corodefs.h>
-#include <corosync/list.h>
 #include <corosync/mar_gen.h>
 #include <corosync/ipc_cmap.h>
 #include <corosync/logsys.h>

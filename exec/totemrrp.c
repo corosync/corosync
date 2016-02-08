@@ -59,7 +59,6 @@
 #include <limits.h>
 
 #include <corosync/sq.h>
-#include <corosync/list.h>
 #include <corosync/swab.h>
 #include <qb/qbdefs.h>
 #include <qb/qbloop.h>

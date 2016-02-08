@@ -61,7 +61,6 @@
 
 #include <corosync/sq.h>
 #include <corosync/swab.h>
-#include <corosync/list.h>
 #include <qb/qbdefs.h>
 #include <qb/qbloop.h>
 #define LOGSYS_UTILS_ONLY 1
