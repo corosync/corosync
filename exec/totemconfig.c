@@ -50,7 +50,7 @@
 #include <sys/param.h>
 
 #include <corosync/swab.h>
-#include <corosync/list.h>
+#include <qb/qblist.h>
 #include <qb/qbdefs.h>
 #include <corosync/totem/totem.h>
 #include <corosync/config.h>
@@ -843,11 +843,11 @@ static void nodelist_dynamic_notify(
  */
 int totem_config_find_local_addr_in_nodelist(const char *ipaddr_key_prefix, unsigned int *node_pos)
 {
-	struct list_head addrs;
+        struct qb_list_head addrs;
 	struct totem_ip_if_address *if_addr;
 	icmap_iter_t iter, iter2;
 	const char *iter_key, *iter_key2;
-	struct list_head *list;
+        struct qb_list_head *list;
 	const char *ipaddr_key;
 	int ip_version;
 	struct totem_ip_address node_addr;
@@ -907,7 +907,7 @@ int totem_config_find_local_addr_in_nodelist(const char *ipaddr_key_prefix, unsi
 			 */
 			node_found = 0;
 			for (list = addrs.next; list != &addrs; list = list->next) {
-				if_addr = list_entry(list, struct totem_ip_if_address, list);
+                                if_addr = qb_list_entry(list, struct totem_ip_if_address, list);
 
 				if (totemip_equal(&node_addr, &if_addr->ip_addr)) {
 					node_found = 1;

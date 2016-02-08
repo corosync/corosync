@@ -67,10 +67,10 @@
 #include <errno.h>
 
 #include <corosync/sq.h>
-#include <corosync/list.h>
 #include <corosync/hdb.h>
 #include <corosync/swab.h>
 
+#include <qb/qblist.h>
 #include <qb/qbdefs.h>
 #include <qb/qbloop.h>
 #define LOGSYS_UTILS_ONLY 1
@@ -202,15 +202,15 @@ struct totemiba_instance {
 
 	int totemiba_subsys_id;
 
-	struct list_head mcast_send_buf_free;
+        struct qb_list_head mcast_send_buf_free;
 
-	struct list_head token_send_buf_free;
+        struct qb_list_head token_send_buf_free;
 
-	struct list_head mcast_send_buf_head;
+        struct qb_list_head mcast_send_buf_head;
 
-	struct list_head token_send_buf_head;
+        struct qb_list_head token_send_buf_head;
 
-	struct list_head recv_token_recv_buf_head;
+        struct qb_list_head recv_token_recv_buf_head;
 
 	int mcast_seen_joined;
 
@@ -231,7 +231,7 @@ do {								\
 } while (0);
 
 struct recv_buf {
-	struct list_head list_all;
+        struct qb_list_head list_all;
 	struct ibv_recv_wr recv_wr;
 	struct ibv_sge sge;
 	struct ibv_mr *mr;
@@ -239,8 +239,8 @@ struct recv_buf {
 };
 
 struct send_buf {
-	struct list_head list_free;
-	struct list_head list_all;
+        struct qb_list_head list_free;
+        struct qb_list_head list_all;
 	struct ibv_mr *mr;
 	char buffer[MAX_MTU_SIZE];
 };
@@ -254,11 +254,11 @@ wrid2void (uint64_t wr_id) { union u u; u.wr_id = wr_id; return u.v; }
 static void totemiba_instance_initialize (struct totemiba_instance *instance)
 {
 	memset (instance, 0, sizeof (struct totemiba_instance));
-	list_init (&instance->mcast_send_buf_free);
-	list_init (&instance->token_send_buf_free);
-	list_init (&instance->mcast_send_buf_head);
-	list_init (&instance->token_send_buf_head);
-	list_init (&instance->recv_token_recv_buf_head);
+        qb_list_init (&instance->mcast_send_buf_free);
+        qb_list_init (&instance->token_send_buf_free);
+        qb_list_init (&instance->mcast_send_buf_head);
+        qb_list_init (&instance->token_send_buf_head);
+        qb_list_init (&instance->recv_token_recv_buf_head);
 }
 
 static inline struct send_buf *mcast_send_buf_get (
@@ -266,9 +266,9 @@ static inline struct send_buf *mcast_send_buf_get (
 {
 	struct send_buf *send_buf;
 
-	if (list_empty (&instance->mcast_send_buf_free) == 0) {
-		send_buf = list_entry (instance->mcast_send_buf_free.next, struct send_buf, list_free);
-		list_del (&send_buf->list_free);
+        if (qb_list_empty (&instance->mcast_send_buf_free) == 0) {
+                send_buf = qb_list_entry (instance->mcast_send_buf_free.next, struct send_buf, list_free);
+                qb_list_del (&send_buf->list_free);
 		return (send_buf);
 	}
 
@@ -284,8 +284,8 @@ static inline struct send_buf *mcast_send_buf_get (
 		free (send_buf);
 		return (NULL);
 	}
-	list_init (&send_buf->list_all);
-	list_add_tail (&send_buf->list_all, &instance->mcast_send_buf_head);
+        qb_list_init (&send_buf->list_all);
+        qb_list_add_tail (&send_buf->list_all, &instance->mcast_send_buf_head);
 		
 	return (send_buf);
 }
@@ -294,8 +294,8 @@ static inline void mcast_send_buf_put (
 	struct totemiba_instance *instance,
 	struct send_buf *send_buf)
 {
-	list_init (&send_buf->list_free);
-	list_add_tail (&send_buf->list_free, &instance->mcast_send_buf_free);
+        qb_list_init (&send_buf->list_free);
+        qb_list_add_tail (&send_buf->list_free, &instance->mcast_send_buf_free);
 }
 
 static inline struct send_buf *token_send_buf_get (
@@ -303,9 +303,9 @@ static inline struct send_buf *token_send_buf_get (
 {
 	struct send_buf *send_buf;
 
-	if (list_empty (&instance->token_send_buf_free) == 0) {
-		send_buf = list_entry (instance->token_send_buf_free.next, struct send_buf, list_free);
-		list_del (&send_buf->list_free);
+        if (qb_list_empty (&instance->token_send_buf_free) == 0) {
+                send_buf = qb_list_entry (instance->token_send_buf_free.next, struct send_buf, list_free);
+                qb_list_del (&send_buf->list_free);
 		return (send_buf);
 	}
 
@@ -321,34 +321,34 @@ static inline struct send_buf *token_send_buf_get (
 		free (send_buf);
 		return (NULL);
 	}
-	list_init (&send_buf->list_all);
-	list_add_tail (&send_buf->list_all, &instance->token_send_buf_head);
+        qb_list_init (&send_buf->list_all);
+        qb_list_add_tail (&send_buf->list_all, &instance->token_send_buf_head);
 		
 	return (send_buf);
 }
 
 static inline void token_send_buf_destroy (struct totemiba_instance *instance)
 {
-	struct list_head *list;
+        struct qb_list_head *list;
 	struct send_buf *send_buf;
 
         for (list = instance->token_send_buf_head.next; list != &instance->token_send_buf_head;) {
-                send_buf = list_entry (list, struct send_buf, list_all);
+                send_buf = qb_list_entry (list, struct send_buf, list_all);
 		list = list->next;
 		ibv_dereg_mr (send_buf->mr);
 		free (send_buf);
 	}
 
-	list_init (&instance->token_send_buf_free);
-	list_init (&instance->token_send_buf_head);
+        qb_list_init (&instance->token_send_buf_free);
+        qb_list_init (&instance->token_send_buf_head);
 }
 
 static inline void token_send_buf_put (
 	struct totemiba_instance *instance,
 	struct send_buf *send_buf)
 {
-	list_init (&send_buf->list_free);
-	list_add_tail (&send_buf->list_free, &instance->token_send_buf_free);
+        qb_list_init (&send_buf->list_free);
+        qb_list_add_tail (&send_buf->list_free, &instance->token_send_buf_free);
 }
 
 static inline struct recv_buf *recv_token_recv_buf_create (
@@ -374,8 +374,8 @@ static inline struct recv_buf *recv_token_recv_buf_create (
 	recv_buf->sge.lkey = recv_buf->mr->lkey;
 	recv_buf->sge.addr = (uintptr_t)recv_buf->buffer;
 
-	list_init (&recv_buf->list_all);
-	list_add (&recv_buf->list_all, &instance->recv_token_recv_buf_head);
+        qb_list_init (&recv_buf->list_all);
+        qb_list_add (&recv_buf->list_all, &instance->recv_token_recv_buf_head);
 	return (recv_buf);
 }
 
@@ -405,17 +405,17 @@ static inline void recv_token_recv_buf_post_destroy (
 	struct totemiba_instance *instance)
 {
 	struct recv_buf *recv_buf;
-	struct list_head *list;
+        struct qb_list_head *list;
 
 	for (list = instance->recv_token_recv_buf_head.next;
 		list != &instance->recv_token_recv_buf_head;) {
 
-		recv_buf = list_entry (list, struct recv_buf, list_all);
+                recv_buf = qb_list_entry (list, struct recv_buf, list_all);
 		list = list->next;
 		ibv_dereg_mr (recv_buf->mr);
 		free (recv_buf);
 	}
-	list_init (&instance->recv_token_recv_buf_head);
+        qb_list_init (&instance->recv_token_recv_buf_head);
 }
 
 static inline struct recv_buf *mcast_recv_buf_create (struct totemiba_instance *instance)

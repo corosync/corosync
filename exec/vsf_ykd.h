@@ -36,7 +36,6 @@
 
 #include "quorum.h"
 #include <corosync/logsys.h>
-#include <corosync/list.h>
 #include <corosync/coroapi.h>
 
 char *ykd_init(struct corosync_api_v1 *api,

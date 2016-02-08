@@ -58,11 +58,11 @@
 #include <sys/uio.h>
 #include <limits.h>
 
+#include <qb/qblist.h>
 #include <qb/qbdefs.h>
 #include <qb/qbloop.h>
 
 #include <corosync/sq.h>
-#include <corosync/list.h>
 #include <corosync/swab.h>
 #define LOGSYS_UTILS_ONLY 1
 #include <corosync/logsys.h>
@@ -89,7 +89,7 @@
 #define BIND_STATE_LOOPBACK	2
 
 struct totemudpu_member {
-	struct list_head list;
+        struct qb_list_head list;
 	struct totem_ip_address member;
 	int fd;
 	int active;
@@ -149,7 +149,7 @@ struct totemudpu_instance {
 
 	struct iovec totemudpu_iov_recv;
 
-	struct list_head member_list;
+        struct qb_list_head member_list;
 
 	int stats_sent;
 
@@ -227,7 +227,7 @@ static void totemudpu_instance_initialize (struct totemudpu_instance *instance)
 	 */
 	instance->my_memb_entries = 1;
 
-	list_init (&instance->member_list);
+        qb_list_init (&instance->member_list);
 }
 
 #define log_printf(level, format, args...)		\
@@ -338,7 +338,7 @@ static inline void mcast_sendmsg (
 	struct iovec iovec;
 	struct sockaddr_storage sockaddr;
 	int addrlen;
-        struct list_head *list;
+        struct qb_list_head *list;
 	struct totemudpu_member *member;
 
 	/*
@@ -365,7 +365,7 @@ static inline void mcast_sendmsg (
 		list != &instance->member_list;
 		list = list->next) {
 
-                member = list_entry (list,
+                member = qb_list_entry (list,
 			struct totemudpu_member,
 			list);
 
@@ -1123,8 +1123,8 @@ int totemudpu_member_add (
 
 	log_printf (LOGSYS_LEVEL_NOTICE, "adding new UDPU member {%s}",
 		totemip_print(member));
-	list_init (&new_member->list);
-	list_add_tail (&new_member->list, &instance->member_list);
+        qb_list_init (&new_member->list);
+        qb_list_add_tail (&new_member->list, &instance->member_list);
 	memcpy (&new_member->member, member, sizeof (struct totem_ip_address));
 	new_member->fd = totemudpu_create_sending_socket(udpu_context, member);
 	new_member->active = 0;
@@ -1137,7 +1137,7 @@ int totemudpu_member_remove (
 	const struct totem_ip_address *token_target)
 {
 	int found = 0;
-	struct list_head *list;
+        struct qb_list_head *list;
 	struct totemudpu_member *member;
 
 	struct totemudpu_instance *instance = (struct totemudpu_instance *)udpu_context;
@@ -1149,7 +1149,7 @@ int totemudpu_member_remove (
 		list != &instance->member_list;
 		list = list->next) {
 
-		member = list_entry (list,
+                member = qb_list_entry (list,
 			struct totemudpu_member,
 			list);
 
@@ -1175,7 +1175,7 @@ int totemudpu_member_remove (
 	 * Delete the member from the list
 	 */
 	if (found) {
-		list_del (list);
+                qb_list_del (list);
 	}
 
 	instance = NULL;
@@ -1185,7 +1185,7 @@ int totemudpu_member_remove (
 int totemudpu_member_list_rebind_ip (
 	void *udpu_context)
 {
-	struct list_head *list;
+        struct qb_list_head *list;
 	struct totemudpu_member *member;
 
 	struct totemudpu_instance *instance = (struct totemudpu_instance *)udpu_context;
@@ -1194,7 +1194,7 @@ int totemudpu_member_list_rebind_ip (
 		list != &instance->member_list;
 		list = list->next) {
 
-		member = list_entry (list,
+                member = qb_list_entry (list,
 			struct totemudpu_member,
 			list);
 
@@ -1213,7 +1213,7 @@ int totemudpu_member_set_active (
 	const struct totem_ip_address *member_ip,
 	int active)
 {
-	struct list_head *list;
+        struct qb_list_head *list;
 	struct totemudpu_member *member;
 	int addr_found = 0;
 
@@ -1223,7 +1223,7 @@ int totemudpu_member_set_active (
 	 * Find the member to set active flag
 	 */
 	for (list = instance->member_list.next; list != &instance->member_list;	list = list->next) {
-		member = list_entry (list, struct totemudpu_member, list);
+                member = qb_list_entry (list, struct totemudpu_member, list);
 
 		if (totemip_compare (member_ip, &member->member) == 0) {
 			log_printf(LOGSYS_LEVEL_DEBUG,
