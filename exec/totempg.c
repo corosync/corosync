@@ -196,8 +196,9 @@ DECLARE_LIST_INIT(assembly_list_inuse);
 
 DECLARE_LIST_INIT(assembly_list_inuse_trans);
 
-DECLARE_LIST_INIT(assembly_list_free_trans);
-
+/*
+ * Free list is used both for transitional and operational assemblies
+ */
 DECLARE_LIST_INIT(assembly_list_free);
 
 /*
@@ -304,14 +305,11 @@ static struct assembly *assembly_ref (unsigned int nodeid)
 	struct assembly *assembly;
 	struct list_head *list;
 	struct list_head *active_assembly_list_inuse;
-	struct list_head *active_assembly_list_free;
 
 	if (totempg_waiting_transack) {
 		active_assembly_list_inuse = &assembly_list_inuse_trans;
-		active_assembly_list_free = &assembly_list_free_trans;
 	} else {
 		active_assembly_list_inuse = &assembly_list_inuse;
-		active_assembly_list_free = &assembly_list_free;
 	}
 
 	/*
@@ -331,8 +329,8 @@ static struct assembly *assembly_ref (unsigned int nodeid)
 	/*
 	 * Nothing found in inuse list get one from free list if available
 	 */
-	if (list_empty (active_assembly_list_free) == 0) {
-		assembly = list_entry (active_assembly_list_free->next, struct assembly, list);
+	if (list_empty (&assembly_list_free) == 0) {
+		assembly = list_entry (assembly_list_free.next, struct assembly, list);
 		list_del (&assembly->list);
 		list_add (&assembly->list, active_assembly_list_inuse);
 		assembly->nodeid = nodeid;
@@ -363,16 +361,9 @@ static struct assembly *assembly_ref (unsigned int nodeid)
 
 static void assembly_deref (struct assembly *assembly)
 {
-	struct list_head *active_assembly_list_free;
-
-	if (totempg_waiting_transack) {
-		active_assembly_list_free = &assembly_list_free_trans;
-	} else {
-		active_assembly_list_free = &assembly_list_free;
-	}
 
 	list_del (&assembly->list);
-	list_add (&assembly->list, active_assembly_list_free);
+	list_add (&assembly->list, &assembly_list_free);
 }
 
 static void assembly_deref_from_normal_and_trans (int nodeid)
@@ -380,16 +371,13 @@ static void assembly_deref_from_normal_and_trans (int nodeid)
 	int j;
 	struct list_head *list, *list_next;
 	struct list_head *active_assembly_list_inuse;
-	struct list_head *active_assembly_list_free;
 	struct assembly *assembly;
 
 	for (j = 0; j < 2; j++) {
 		if (j == 0) {
 			active_assembly_list_inuse = &assembly_list_inuse;
-			active_assembly_list_free = &assembly_list_free;
 		} else {
 			active_assembly_list_inuse = &assembly_list_inuse_trans;
-			active_assembly_list_free = &assembly_list_free_trans;
 		}
 
 		for (list = active_assembly_list_inuse->next;
@@ -401,7 +389,7 @@ static void assembly_deref_from_normal_and_trans (int nodeid)
 
 			if (nodeid == assembly->nodeid) {
 				list_del (&assembly->list);
-				list_add (&assembly->list, active_assembly_list_free);
+				list_add (&assembly->list, &assembly_list_free);
 			}
 		}
 	}
