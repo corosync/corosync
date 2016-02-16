@@ -148,7 +148,7 @@ qnetd_algo_2nodelms_membership_node_list_received(struct qnetd_client *client,
 	if (info->last_result == 0) {
 		TAILQ_FOREACH(other_client, &client->cluster->client_list, cluster_entries) {
 			struct qnetd_algo_2nodelms_info *other_info = other_client->algorithm_data;
-			if (!tlv_ring_id_eq(&client->last_ring_id, &other_client->last_ring_id) &&
+			if (!tlv_ring_id_eq(ring_id, &other_client->last_ring_id) &&
 			    other_info->last_result == TLV_VOTE_ACK) {
 
 				/* Don't save NACK, we need to know subsequently if we haven't been voting */

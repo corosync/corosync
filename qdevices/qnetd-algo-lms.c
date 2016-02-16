@@ -63,27 +63,36 @@ struct qnetd_algo_lms_info {
 	partitions_list_t partition_list;
 };
 
-static enum tlv_reply_error_code do_lms_algorithm(struct qnetd_client *client,  enum tlv_vote *result_vote)
+static enum tlv_reply_error_code do_lms_algorithm(struct qnetd_client *client, const struct tlv_ring_id *cur_ring_id, enum tlv_vote *result_vote)
 {
  	struct qnetd_client *other_client;
 	struct qnetd_algo_lms_info *info = client->algorithm_data;
 	struct qnetd_algo_partition *cur_partition;
 	struct qnetd_algo_partition *largest_partition;
+	const struct tlv_ring_id *ring_id = cur_ring_id;
 	int num_partitions;
 	int joint_leader;
 
-	if (qnetd_algo_all_ring_ids_match(client, &client->last_ring_id) == -1) {
+	if (qnetd_algo_all_ring_ids_match(client, ring_id) == -1) {
 		qnetd_log(LOG_DEBUG, "algo-lms: nodeid %d: ring ID %d/%ld not unique in this membership, waiting",
-			  client->node_id, client->last_ring_id.node_id, client->last_ring_id.seq);
+			  client->node_id, ring_id->node_id, ring_id->seq);
 		*result_vote = info->last_result = TLV_VOTE_ASK_LATER;
 		return (TLV_REPLY_ERROR_CODE_NO_ERROR);
 	}
 
 	/* Create and count the number of separate partitions */
-	if ( (num_partitions = qnetd_algo_create_partitions(client, &info->partition_list, &client->last_ring_id)) == -1) {
+	if ( (num_partitions = qnetd_algo_create_partitions(client, &info->partition_list, ring_id)) == -1) {
 		qnetd_log(LOG_DEBUG, "algo-lms: Error creating partition list");
 		return (TLV_REPLY_ERROR_CODE_INTERNAL_ERROR);
 	}
+
+	/* This can happen if we are first on the block */
+	if (num_partitions == 0) {
+		qnetd_log(LOG_DEBUG, "algo-lms: No partitions found");
+		*result_vote = info->last_result = TLV_VOTE_ASK_LATER;
+		return (TLV_REPLY_ERROR_CODE_NO_ERROR);
+	}
+
 	qnetd_algo_dump_partitions(&info->partition_list);
 
 	/* Only 1 partition - let votequorum sort it out */
@@ -101,7 +110,7 @@ static enum tlv_reply_error_code do_lms_algorithm(struct qnetd_client *client,  
 	if (info->last_result == 0) {
 		TAILQ_FOREACH(other_client, &client->cluster->client_list, cluster_entries) {
 			struct qnetd_algo_lms_info *other_info = other_client->algorithm_data;
-			if (!tlv_ring_id_eq(&client->last_ring_id, &other_client->last_ring_id) &&
+			if (!tlv_ring_id_eq(ring_id, &other_client->last_ring_id) &&
 			    other_info->last_result == TLV_VOTE_ACK) {
 				qnetd_algo_free_partitions(&info->partition_list);
 
@@ -136,12 +145,12 @@ static enum tlv_reply_error_code do_lms_algorithm(struct qnetd_client *client,  
 
 	if (!joint_leader) {
 		/* Largest partition is unique, allow us to run if we're in that partition. */
-		if (tlv_ring_id_eq(&largest_partition->ring_id, &client->last_ring_id)) {
-			qnetd_log(LOG_DEBUG, "algo-lms: We are in the largest partition. ACK\n");
+		if (tlv_ring_id_eq(&largest_partition->ring_id, ring_id)) {
+			qnetd_log(LOG_DEBUG, "algo-lms: We are in the largest partition. ACK");
 			*result_vote = info->last_result = TLV_VOTE_ACK;
 		}
 		else {
-			qnetd_log(LOG_DEBUG, "algo-lms: We are NOT in the largest partition. NACK\n");
+			qnetd_log(LOG_DEBUG, "algo-lms: We are NOT in the largest partition. NACK");
 			*result_vote = info->last_result = TLV_VOTE_NACK;
 		}
 	}
@@ -201,7 +210,7 @@ static enum tlv_reply_error_code do_lms_algorithm(struct qnetd_client *client,  
 			}
 		}
 
-		if (client->node_id == tb_node_id || tlv_ring_id_eq(&tb_node_ring_id, &client->last_ring_id)) {
+		if (client->node_id == tb_node_id || tlv_ring_id_eq(&tb_node_ring_id, ring_id)) {
 			qnetd_log(LOG_DEBUG, "algo-lms: We are in the same partition (%d/%ld) as tie-breaker node id %d. ACK",
 				  tb_node_ring_id.node_id, tb_node_ring_id.seq, tb_node_id);
 			*result_vote = info->last_result = TLV_VOTE_ACK;
@@ -267,9 +276,10 @@ qnetd_algo_lms_membership_node_list_received(struct qnetd_client *client,
     uint32_t msg_seq_num, const struct tlv_ring_id *ring_id,
     const struct node_list *nodes, enum tlv_vote *result_vote)
 {
-	qnetd_log(LOG_DEBUG, "\nalgo-lms: membership list from node %d partition %d/%ld", client->node_id, ring_id->node_id, ring_id->seq);
+	qnetd_log(LOG_DEBUG, " ");
+	qnetd_log(LOG_DEBUG, "algo-lms: membership list from node %d partition %d/%ld", client->node_id, ring_id->node_id, ring_id->seq);
 
-	return do_lms_algorithm(client, result_vote);
+	return do_lms_algorithm(client, ring_id, result_vote);
 }
 
 /*
@@ -282,8 +292,9 @@ enum tlv_reply_error_code
 qnetd_algo_lms_quorum_node_list_received(struct qnetd_client *client,
     uint32_t msg_seq_num, enum tlv_quorate quorate, const struct node_list *nodes, enum tlv_vote *result_vote)
 {
-	qnetd_log(LOG_DEBUG, "\nalgo-lms: quorum node list from node %d partition %d/%ld", client->node_id, client->last_ring_id.node_id, client->last_ring_id.seq);
-	return do_lms_algorithm(client, result_vote);
+	qnetd_log(LOG_DEBUG, " ");
+	qnetd_log(LOG_DEBUG, "algo-lms: quorum node list from node %d partition %d/%ld", client->node_id, client->last_ring_id.node_id, client->last_ring_id.seq);
+	return do_lms_algorithm(client, &client->last_ring_id, result_vote);
 }
 
 /*
@@ -294,7 +305,7 @@ qnetd_algo_lms_quorum_node_list_received(struct qnetd_client *client,
 void
 qnetd_algo_lms_client_disconnect(struct qnetd_client *client, int server_going_down)
 {
-	qnetd_log(LOG_DEBUG, "\nalgo-lms: Client %p (cluster %s, node_id %"PRIx32") "
+	qnetd_log(LOG_DEBUG, "algo-lms: Client %p (cluster %s, node_id %"PRIx32") "
 	    "disconnect", client, client->cluster_name, client->node_id);
 
 	qnetd_log(LOG_INFO, "algo-lms:   server going down %u", server_going_down);
@@ -310,17 +321,18 @@ enum tlv_reply_error_code
 qnetd_algo_lms_ask_for_vote_received(struct qnetd_client *client, uint32_t msg_seq_num,
     enum tlv_vote *result_vote)
 {
-	qnetd_log(LOG_DEBUG, "\nalgo-lms: Client %p (cluster %s, node_id %"PRIx32") "
+	qnetd_log(LOG_DEBUG, " ");
+	qnetd_log(LOG_DEBUG, "algo-lms: Client %p (cluster %s, node_id %"PRIx32") "
 	    "asked for a vote", client, client->cluster_name, client->node_id);
 
-	return do_lms_algorithm(client, result_vote);
+	return do_lms_algorithm(client, &client->last_ring_id, result_vote);
 }
 
 enum tlv_reply_error_code
 qnetd_algo_lms_vote_info_reply_received(struct qnetd_client *client, uint32_t msg_seq_num)
 {
 
-	qnetd_log(LOG_DEBUG, "\nalgo-lms: Client %p (cluster %s, node_id %"PRIx32") "
+	qnetd_log(LOG_DEBUG, "algo-lms: Client %p (cluster %s, node_id %"PRIx32") "
 	    "replied back to vote info message", client, client->cluster_name, client->node_id);
 
 	return (TLV_REPLY_ERROR_CODE_NO_ERROR);

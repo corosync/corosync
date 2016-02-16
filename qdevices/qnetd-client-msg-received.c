@@ -616,10 +616,6 @@ qnetd_client_msg_received_node_list(struct qnetd_instance *instance, struct qnet
 			return (0);
 		}
 
-		/*
-		 * TODO REMOVE THIS memcpy.
-		 */
-		memcpy(&client->last_ring_id, &msg->ring_id, sizeof(struct tlv_ring_id));
 		qnetd_log_debug_membership_node_list_received(client, msg->seq_number, &msg->ring_id,
 		    &msg->nodes);
 
