@@ -1403,17 +1403,6 @@ static char *votequorum_readconfig(int runtime)
 		}
 	}
 
-	if ((have_qdevice) && (wait_for_all)) {
-		if (!runtime) {
-			error = (char *)"configuration error: quorum.device is not compatible with wait_for_all";
-			goto out;
-		} else {
-			log_printf(LOGSYS_LEVEL_CRIT, "configuration error: quorum.device is not compatible with wait_for_all");
-			log_printf(LOGSYS_LEVEL_CRIT, "disabling quorum device operations");
-			update_qdevice_can_operate(0);
-		}
-	}
-
 	if ((have_qdevice) && (allow_downscale)) {
 		if (!runtime) {
 			error = (char *)"configuration error: quorum.device is not compatible with allow_downscale";
