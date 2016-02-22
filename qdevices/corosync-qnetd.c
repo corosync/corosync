@@ -142,8 +142,8 @@ qnetd_poll(struct qnetd_instance *instance)
 			}
 
 			if (!client_disconnect &&
-			    pfds[i].out_flags &
-			    (PR_POLL_ERR|PR_POLL_NVAL|PR_POLL_HUP|PR_POLL_EXCEPT)) {
+			    (pfds[i].out_flags & (PR_POLL_ERR|PR_POLL_NVAL|PR_POLL_HUP|PR_POLL_EXCEPT)) &&
+			    !(pfds[i].out_flags & (PR_POLL_READ|PR_POLL_WRITE))) {
 				if (i == 0) {
 					if (pfds[i].out_flags != PR_POLL_NVAL) {
 						/*
@@ -367,7 +367,7 @@ main(int argc, char *argv[])
 		qnetd_err_nss();
 	}
 
-	if (nss_sock_set_nonblocking(instance.server.socket) != 0) {
+	if (nss_sock_set_non_blocking(instance.server.socket) != 0) {
 		qnetd_err_nss();
 	}
 

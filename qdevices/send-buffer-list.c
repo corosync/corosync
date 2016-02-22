@@ -96,6 +96,13 @@ send_buffer_list_put(struct send_buffer_list *sblist, struct send_buffer_list_en
 	TAILQ_INSERT_TAIL(&sblist->list, sblist_entry, entries);
 }
 
+void
+send_buffer_list_discard_new(struct send_buffer_list *sblist, struct send_buffer_list_entry *sblist_entry)
+{
+
+	TAILQ_INSERT_HEAD(&sblist->free_list, sblist_entry, entries);
+}
+
 struct send_buffer_list_entry *
 send_buffer_list_get_active(const struct send_buffer_list *sblist)
 {

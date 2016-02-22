@@ -85,6 +85,9 @@ enum qdevice_net_disconnect_reason {
 	/* Can't dispatch cmap or votequroum. This cannot be overwritten and always means end of qdevice-net */
 	QDEVICE_NET_DISCONNECT_REASON_COROSYNC_CONNECTION_CLOSED,
 
+	/* It was not possible to establish connection with qnetd */
+	QDEVICE_NET_DISCONNECT_REASON_CANT_CONNECT_TO_THE_SERVER,
+
 	QDEVICE_NET_DISCONNECT_REASON_ALGO_CONNECTED_ERR,
 	QDEVICE_NET_DISCONNECT_REASON_ALGO_VOTEQUORUM_QUORUM_NOTIFY_ERR,
 	QDEVICE_NET_DISCONNECT_REASON_ALGO_VOTEQUORUM_NODE_LIST_NOTIFY_ERR,
@@ -95,11 +98,13 @@ enum qdevice_net_disconnect_reason {
 	QDEVICE_NET_DISCONNECT_REASON_ALGO_ECHO_REPLY_NOT_RECEIVED_ERR,
 };
 
-#define qdevice_net_disconnect_reason_try_reconnect(reason)	(	\
-    reason == QDEVICE_NET_DISCONNECT_REASON_MSG_DECODE_ERROR ||		\
-    reason == QDEVICE_NET_DISCONNECT_REASON_SERVER_CLOSED_CONNECTION ||	\
-    reason == QDEVICE_NET_DISCONNECT_REASON_CANT_READ_MESSAGE ||	\
-    reason == QDEVICE_NET_DISCONNECT_REASON_CANT_SEND_MESSAGE)
+#define qdevice_net_disconnect_reason_try_reconnect(reason)	(		\
+    reason == QDEVICE_NET_DISCONNECT_REASON_MSG_DECODE_ERROR ||			\
+    reason == QDEVICE_NET_DISCONNECT_REASON_SERVER_CLOSED_CONNECTION ||		\
+    reason == QDEVICE_NET_DISCONNECT_REASON_CANT_READ_MESSAGE ||		\
+    reason == QDEVICE_NET_DISCONNECT_REASON_CANT_SEND_MESSAGE ||		\
+    reason == QDEVICE_NET_DISCONNECT_REASON_CANT_CONNECT_TO_THE_SERVER ||	\
+    reason == QDEVICE_NET_DISCONNECT_REASON_ALGO_ECHO_REPLY_NOT_RECEIVED_ERR)
 
 #ifdef __cplusplus
 }

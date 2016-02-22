@@ -38,7 +38,6 @@
 #include <sys/types.h>
 
 #include "qdevice-net-instance.h"
-#include "qdevice-net-cmap.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -46,12 +45,15 @@ extern "C" {
 
 extern int		qdevice_net_send_echo_request(struct qdevice_net_instance *instance);
 
+extern int		qdevice_net_send_preinit(struct qdevice_net_instance *instance);
+
 extern int		qdevice_net_send_init(struct qdevice_net_instance *instance);
 
 extern int		qdevice_net_send_ask_for_vote(struct qdevice_net_instance *instance);
 
 extern int		qdevice_net_send_config_node_list(struct qdevice_net_instance *instance,
-    int initial, int force_send);
+    const struct node_list *nlist, int config_version_set, uint64_t config_version,
+    int initial);
 
 extern int		qdevice_net_send_membership_node_list(
     struct qdevice_net_instance *instance, const struct tlv_ring_id *ring_id,

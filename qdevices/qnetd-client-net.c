@@ -189,7 +189,7 @@ qnetd_client_net_accept(struct qnetd_instance *instance)
 		return (-1);
 	}
 
-	if (nss_sock_set_nonblocking(client_socket) != 0) {
+	if (nss_sock_set_non_blocking(client_socket) != 0) {
 		qnetd_log_nss(LOG_ERR, "Can't set client socket to non blocking mode");
 
 		PR_Close(client_socket);

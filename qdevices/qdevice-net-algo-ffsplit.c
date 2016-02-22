@@ -37,7 +37,7 @@
 #include <string.h>
 
 #include "qdevice-net-algo-ffsplit.h"
-#include "qdevice-net-log.h"
+#include "qdevice-log.h"
 #include "qdevice-net-send.h"
 #include "qdevice-net-cast-vote-timer.h"
 
@@ -57,9 +57,17 @@ qdevice_net_algo_ffsplit_connected(struct qdevice_net_instance *instance)
 }
 
 int
+qdevice_net_algo_ffsplit_config_node_list_changed(struct qdevice_net_instance *instance,
+    const struct node_list *nlist, int config_version_set, uint64_t config_version,
+    int *send_node_list, enum tlv_vote *vote)
+{
+	return (0);
+}
+
+int
 qdevice_net_algo_ffsplit_votequorum_node_list_notify(struct qdevice_net_instance *instance,
     const struct tlv_ring_id *ring_id, uint32_t node_list_entries, uint32_t node_list[],
-    enum tlv_vote *vote)
+    int *send_node_list, enum tlv_vote *vote)
 {
 
 	return (0);
@@ -67,7 +75,8 @@ qdevice_net_algo_ffsplit_votequorum_node_list_notify(struct qdevice_net_instance
 
 int
 qdevice_net_algo_ffsplit_votequorum_quorum_notify(struct qdevice_net_instance *instance,
-    uint32_t quorate, uint32_t node_list_entries, votequorum_node_t node_list[], int *send_node_list)
+    uint32_t quorate, uint32_t node_list_entries, votequorum_node_t node_list[], int *send_node_list,
+    enum tlv_vote *vote)
 {
 
 	return (0);
@@ -145,6 +154,7 @@ qdevice_net_algo_ffsplit_destroy(struct qdevice_net_instance *instance)
 static struct qdevice_net_algorithm qdevice_net_algo_ffsplit = {
 	.init					= qdevice_net_algo_ffsplit_init,
 	.connected				= qdevice_net_algo_ffsplit_connected,
+	.config_node_list_changed		= qdevice_net_algo_ffsplit_config_node_list_changed,
 	.votequorum_node_list_notify		= qdevice_net_algo_ffsplit_votequorum_node_list_notify,
 	.votequorum_quorum_notify		= qdevice_net_algo_ffsplit_votequorum_quorum_notify,
 	.config_node_list_reply_received	= qdevice_net_algo_ffsplit_config_node_list_reply_received,

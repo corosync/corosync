@@ -68,6 +68,9 @@ extern struct send_buffer_list_entry	*send_buffer_list_get_new(struct send_buffe
 extern void				 send_buffer_list_put(struct send_buffer_list *sblist,
     struct send_buffer_list_entry *sblist_entry);
 
+extern void				 send_buffer_list_discard_new(
+    struct send_buffer_list *sblist, struct send_buffer_list_entry *sblist_entry);
+
 extern struct send_buffer_list_entry	*send_buffer_list_get_active(
     const struct send_buffer_list *sblist);
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2016 Red Hat, Inc.
+ * Copyright (c) 2015-2016 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -32,20 +32,26 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _QDEVICE_NET_MSG_RECEIVED_H_
-#define _QDEVICE_NET_MSG_RECEIVED_H_
+#ifndef _QDEVICE_NET_NSS_H_
+#define _QDEVICE_NET_NSS_H_
 
-#include "qdevice-net-instance.h"
+#include <nspr.h>
+#include <nss.h>
+#include <ssl.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-extern int		qdevice_net_msg_received(struct qdevice_net_instance *instance);
+extern SECStatus		qdevice_net_nss_bad_cert_hook(void *arg, PRFileDesc *fd);
+
+extern SECStatus		qdevice_net_nss_get_client_auth_data(void *arg,
+    PRFileDesc *sock, struct CERTDistNamesStr *caNames,
+    struct CERTCertificateStr **pRetCert, struct SECKEYPrivateKeyStr **pRetKey);
 
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* _QDEVICE_NET_MSG_RECEIVED_H_ */
+#endif /* _QDEVICE_NET_NSS_H_ */

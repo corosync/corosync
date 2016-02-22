@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2016 Red Hat, Inc.
+ * Copyright (c) 2015-2016 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -32,20 +32,65 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _QDEVICE_NET_MSG_RECEIVED_H_
-#define _QDEVICE_NET_MSG_RECEIVED_H_
+#include <config.h>
 
-#include "qdevice-net-instance.h"
+#include "qdevice-config.h"
+#include "qdevice-cmap.h"
+#include "qdevice-log.h"
+#include "qdevice-model.h"
+#include "qdevice-votequorum.h"
+#include "utils.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+int
+main(void)
+{
+	struct qdevice_instance instance;
 
-extern int		qdevice_net_msg_received(struct qdevice_net_instance *instance);
+	qdevice_instance_init(&instance);
+	qdevice_cmap_init(&instance);
+	qdevice_log_init(&instance);
+	qdevice_votequorum_init(&instance);
 
+	qdevice_log(LOG_DEBUG, "Registering qdevice models");
+	qdevice_model_register_all();
 
-#ifdef __cplusplus
+	qdevice_log(LOG_DEBUG, "Configuring qdevice");
+	if (qdevice_instance_configure_from_cmap(&instance) != 0) {
+		return (1);
+	}
+
+	qdevice_log(LOG_DEBUG, "Getting configuration node list");
+	if (qdevice_cmap_store_config_node_list(&instance) != 0) {
+		return (1);
+	}
+
+	qdevice_log(LOG_DEBUG, "Initializing qdevice model");
+	if (qdevice_model_init(&instance) != 0) {
+		return (1);
+	}
+
+	qdevice_log(LOG_DEBUG, "Initializing cmap tracking");
+	if (qdevice_cmap_add_track(&instance) != 0) {
+		return (1);
+	}
+
+	qdevice_log(LOG_DEBUG, "Running qdevice model");
+	if (qdevice_model_run(&instance) != 0) {
+		return (1);
+	}
+
+	qdevice_log(LOG_DEBUG, "Removing cmap tracking");
+	if (qdevice_cmap_del_track(&instance) != 0) {
+		return (1);
+	}
+
+	qdevice_log(LOG_DEBUG, "Destorying qdevice model");
+	qdevice_model_destroy(&instance);
+
+	qdevice_votequorum_destroy(&instance);
+	qdevice_cmap_destroy(&instance);
+	qdevice_log_close(&instance);
+	qdevice_instance_destroy(&instance);
+
+	return (0);
 }
-#endif
-
-#endif /* _QDEVICE_NET_MSG_RECEIVED_H_ */

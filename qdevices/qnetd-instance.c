@@ -93,7 +93,9 @@ qnetd_instance_client_disconnect(struct qnetd_instance *instance, struct qnetd_c
 
 	qnetd_log_debug_client_disconnect(client, server_going_down);
 
-	qnetd_algorithm_client_disconnect(client, server_going_down);
+	if (client->init_received) {
+		qnetd_algorithm_client_disconnect(client, server_going_down);
+	}
 
 	PR_Close(client->socket);
 	if (client->cluster != NULL) {

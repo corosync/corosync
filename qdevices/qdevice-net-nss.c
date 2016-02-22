@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2016 Red Hat, Inc.
+ * Copyright (c) 2015-2016 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -32,20 +32,35 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _QDEVICE_NET_MSG_RECEIVED_H_
-#define _QDEVICE_NET_MSG_RECEIVED_H_
+#include <sslerr.h>
+#include <secerr.h>
 
-#include "qdevice-net-instance.h"
+#include "qdevice-log.h"
+#include "qdevice-net-nss.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+SECStatus
+qdevice_net_nss_bad_cert_hook(void *arg, PRFileDesc *fd) {
+	if (PR_GetError() == SEC_ERROR_EXPIRED_CERTIFICATE ||
+	    PR_GetError() == SEC_ERROR_EXPIRED_ISSUER_CERTIFICATE ||
+	    PR_GetError() == SEC_ERROR_CRL_EXPIRED ||
+	    PR_GetError() == SEC_ERROR_KRL_EXPIRED ||
+	    PR_GetError() == SSL_ERROR_EXPIRED_CERT_ALERT) {
+		qdevice_log(LOG_WARNING, "Server certificate is expired.");
 
-extern int		qdevice_net_msg_received(struct qdevice_net_instance *instance);
+		return (SECSuccess);
+        }
 
+	qdevice_log_nss(LOG_ERR, "Server certificate verification failure.");
 
-#ifdef __cplusplus
+	return (SECFailure);
 }
-#endif
 
-#endif /* _QDEVICE_NET_MSG_RECEIVED_H_ */
+SECStatus
+qdevice_net_nss_get_client_auth_data(void *arg, PRFileDesc *sock, struct CERTDistNamesStr *caNames,
+    struct CERTCertificateStr **pRetCert, struct SECKEYPrivateKeyStr **pRetKey)
+{
+
+	qdevice_log(LOG_DEBUG, "Sending client auth data.");
+
+	return (NSS_GetClientAuthData(arg, sock, caNames, pRetCert, pRetKey));
+}

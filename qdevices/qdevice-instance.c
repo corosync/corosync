@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2016 Red Hat, Inc.
+ * Copyright (c) 2015-2016 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -32,20 +32,64 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _QDEVICE_NET_MSG_RECEIVED_H_
-#define _QDEVICE_NET_MSG_RECEIVED_H_
+#include "qdevice-instance.h"
+#include "qdevice-log.h"
+#include "qdevice-model.h"
 
-#include "qdevice-net-instance.h"
+int
+qdevice_instance_init(struct qdevice_instance *instance)
+{
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+	memset(instance, 0, sizeof(*instance));
 
-extern int		qdevice_net_msg_received(struct qdevice_net_instance *instance);
+	node_list_init(&instance->config_node_list);
 
-
-#ifdef __cplusplus
+	return (0);
 }
-#endif
 
-#endif /* _QDEVICE_NET_MSG_RECEIVED_H_ */
+int
+qdevice_instance_destroy(struct qdevice_instance *instance)
+{
+
+	node_list_free(&instance->config_node_list);
+
+	return (0);
+}
+
+int
+qdevice_instance_configure_from_cmap(struct qdevice_instance *instance)
+{
+	char *str;
+
+	if (cmap_get_string(instance->cmap_handle, "quorum.device.model", &str) != CS_OK) {
+		qdevice_log(LOG_ERR, "Can't read quorum.device.model cmap key.");
+
+		return (-1);
+	}
+
+	if (qdevice_model_str_to_type(str, &instance->model_type) != 0) {
+		qdevice_log(LOG_ERR, "Configured device model %s is not supported.", str);
+		free(str);
+
+		return (-1);
+	}
+	free(str);
+
+	if (cmap_get_uint32(instance->cmap_handle, "runtime.votequorum.this_node_id",
+	    &instance->node_id) != CS_OK) {
+		qdevice_log(LOG_ERR, "Unable to retrive this node nodeid.");
+
+		return (-1);
+	}
+
+	if (cmap_get_uint32(instance->cmap_handle, "quorum.device.timeout", &instance->heartbeat_interval) != CS_OK) {
+		instance->heartbeat_interval = VOTEQUORUM_QDEVICE_DEFAULT_TIMEOUT;
+	}
+
+	if (cmap_get_uint32(instance->cmap_handle, "quorum.device.sync_timeout",
+	    &instance->sync_heartbeat_interval) != CS_OK) {
+		instance->sync_heartbeat_interval = VOTEQUORUM_QDEVICE_DEFAULT_SYNC_TIMEOUT;
+	}
+
+	return (0);
+}

@@ -1,4 +1,5 @@
 corosync-qdevice-net
+corosync-qdevice
 corosync-qnetd-certutil
 corosync-qnetd
 *.test

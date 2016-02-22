@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2016 Red Hat, Inc.
+ * Copyright (c) 2015-2016 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -32,20 +32,16 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _QDEVICE_NET_MSG_RECEIVED_H_
-#define _QDEVICE_NET_MSG_RECEIVED_H_
+#ifndef _QDEVICE_NET_POLL_H_
+#define _QDEVICE_NET_POLL_H_
+
 
 #include "qdevice-net-instance.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-extern int		qdevice_net_msg_received(struct qdevice_net_instance *instance);
-
+extern int		qdevice_net_poll(struct qdevice_net_instance *instance);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* _QDEVICE_NET_MSG_RECEIVED_H_ */
+#endif /* _QDEVICE_NET_POLL_H_ */

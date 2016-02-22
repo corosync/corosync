@@ -37,7 +37,7 @@
 #include <string.h>
 
 #include "qdevice-net-algo-test.h"
-#include "qdevice-net-log.h"
+#include "qdevice-log.h"
 #include "qdevice-net-send.h"
 #include "qdevice-net-cast-vote-timer.h"
 
@@ -52,7 +52,7 @@ qdevice_net_algo_test_init(struct qdevice_net_instance *instance)
 {
 
 	instance->algorithm_data = NULL;
-	qnetd_log(LOG_INFO, "algo-test: Initialized");
+	qdevice_log(LOG_INFO, "algo-test: Initialized");
 
 	return (0);
 }
@@ -66,7 +66,32 @@ int
 qdevice_net_algo_test_connected(struct qdevice_net_instance *instance)
 {
 
-	qnetd_log(LOG_INFO, "algo-test: Connected");
+	qdevice_log(LOG_INFO, "algo-test: Connected");
+
+	return (0);
+}
+
+/*
+ * Called after config node list changed.
+ *
+ * Callback can override send_node_list and vote.
+ * Depending on net_instance->state, they are set acordingly:
+ * If net_instance->state != QDEVICE_NET_INSTANCE_STATE_WAITING_VOTEQUORUM_CMAP_EVENTS
+ *   send_node_list = 0
+ *   if cast_vote_timer_vote != TLV_VOTE_ACK
+ *     vote = TLV_VOTE_NO_CHANGE
+ *   if cast_vote_timer_vote = TLV_VOTE_ACK
+ *     vote = TLV_VOTE_NACK.
+ * Otherwise send_node_list = 0 and vote = TLV_VOTE_NO_CHANGE
+ * If send_node_list is set to non zero, node list is send to qnetd
+ */
+int
+qdevice_net_algo_test_config_node_list_changed(struct qdevice_net_instance *instance,
+    const struct node_list *nlist, int config_version_set, uint64_t config_version,
+    int *send_node_list, enum tlv_vote *vote)
+{
+
+	qdevice_log(LOG_INFO, "algo-test: Config node list changed");
 
 	return (0);
 }
@@ -76,24 +101,22 @@ qdevice_net_algo_test_connected(struct qdevice_net_instance *instance)
  *
  * Callback should return 0 on success or -1 on failure (-> disconnect client).
  *
- * Main responsibility for this function is to set vote variable (variable is set by caller to
- * TLV_VOTE_WAIT_FOR_REPLY).
- *
- * TLV_VOTE_ACK = do not send list and vote ACK
- * TLV_VOTE_NACK = do not send list and vote NACK
- * TLV_VOTE_NO_CHANGE = do not send list and no change in vote
- * TLV_VOTE_WAIT_FOR_REPLY = send list and wait with voting until reply is received
- * TLV_VOTE_ASK_LATER = send list but do not change vote
+ * If net_instance->state != QDEVICE_NET_INSTANCE_STATE_WAITING_VOTEQUORUM_CMAP_EVENTS
+ *   send_node_list = 0
+ *   if cast_vote_timer_vote != TLV_VOTE_ACK
+ *     vote = TLV_VOTE_NO_CHANGE
+ *   if cast_vote_timer_vote = TLV_VOTE_ACK
+ *     vote = TLV_VOTE_NACK.
+ * Otherwise send_node_list = 0 and vote = TLV_VOTE_NO_CHANGE
+ * If send_node_list is set to non zero, node list is send to qnetd
  */
 int
 qdevice_net_algo_test_votequorum_node_list_notify(struct qdevice_net_instance *instance,
     const struct tlv_ring_id *ring_id, uint32_t node_list_entries, uint32_t node_list[],
-    enum tlv_vote *vote)
+    int *send_node_list, enum tlv_vote *vote)
 {
 
-	qnetd_log(LOG_INFO, "algo-test: Votequorum list notify");
-
-	*vote = TLV_VOTE_WAIT_FOR_REPLY;
+	qdevice_log(LOG_INFO, "algo-test: Votequorum list notify");
 
 	return (0);
 }
@@ -103,17 +126,25 @@ qdevice_net_algo_test_votequorum_node_list_notify(struct qdevice_net_instance *i
  *
  * Callback should return 0 on success or -1 on failure (-> disconnect client).
  *
- * Main responsibility is to set send_node_list (set by caller to 1). If send_node_list is set to
- * non zero, node list is send to qnetd
+ * Callback can override send_node_list and vote.
+ * Depending on net_instance->state, they are set acordingly:
+ * If net_instance->state != QDEVICE_NET_INSTANCE_STATE_WAITING_VOTEQUORUM_CMAP_EVENTS
+ *   send_node_list = 0
+ *   if cast_vote_timer_vote != TLV_VOTE_ACK
+ *     vote = TLV_VOTE_NO_CHANGE
+ *   if cast_vote_timer_vote = TLV_VOTE_ACK
+ *     vote = TLV_VOTE_NACK.
+ * Otherwise send_node_list = 0 and vote = TLV_VOTE_NO_CHANGE
+ *
+ * If send_node_list is set to non zero, node list is send to qnetd
  */
 int
 qdevice_net_algo_test_votequorum_quorum_notify(struct qdevice_net_instance *instance,
-    uint32_t quorate, uint32_t node_list_entries, votequorum_node_t node_list[], int *send_node_list)
+    uint32_t quorate, uint32_t node_list_entries, votequorum_node_t node_list[], int *send_node_list,
+    enum tlv_vote *vote)
 {
 
-	qnetd_log(LOG_INFO, "algo-test: Votequorum quorum notify");
-
-	*send_node_list = 1;
+	qdevice_log(LOG_INFO, "algo-test: Votequorum quorum notify");
 
 	return (0);
 }
@@ -129,7 +160,7 @@ qdevice_net_algo_test_config_node_list_reply_received(struct qdevice_net_instanc
     uint32_t seq_number, int initial, enum tlv_vote *vote)
 {
 
-	qnetd_log(LOG_INFO, "algo-test: Config node list reply");
+	qdevice_log(LOG_INFO, "algo-test: Config node list reply");
 
 	return (0);
 }
@@ -149,7 +180,7 @@ qdevice_net_algo_test_membership_node_list_reply_received(struct qdevice_net_ins
     uint32_t seq_number, const struct tlv_ring_id *ring_id, enum tlv_vote *vote)
 {
 
-	qnetd_log(LOG_INFO, "algo-test: Membership node list reply");
+	qdevice_log(LOG_INFO, "algo-test: Membership node list reply");
 
 	return (0);
 }
@@ -165,7 +196,7 @@ qdevice_net_algo_test_quorum_node_list_reply_received(struct qdevice_net_instanc
     uint32_t seq_number, enum tlv_vote *vote)
 {
 
-	qnetd_log(LOG_INFO, "algo-test: Quorum node list reply");
+	qdevice_log(LOG_INFO, "algo-test: Quorum node list reply");
 
 	return (0);
 }
@@ -181,7 +212,7 @@ qdevice_net_algo_test_ask_for_vote_reply_received(struct qdevice_net_instance *i
     uint32_t seq_number, enum tlv_vote *vote)
 {
 
-	qnetd_log(LOG_INFO, "algo-test: Ask for vote reply received");
+	qdevice_log(LOG_INFO, "algo-test: Ask for vote reply received");
 
 	return (0);
 }
@@ -197,7 +228,7 @@ qdevice_net_algo_test_vote_info_received(struct qdevice_net_instance *instance,
     uint32_t seq_number, enum tlv_vote *vote)
 {
 
-	qnetd_log(LOG_INFO, "algo-test: Vote info received");
+	qdevice_log(LOG_INFO, "algo-test: Vote info received");
 
 	return (0);
 }
@@ -213,7 +244,7 @@ qdevice_net_algo_test_echo_reply_received(struct qdevice_net_instance *instance,
     uint32_t seq_number, int is_expected_seq_number)
 {
 
-	qnetd_log(LOG_INFO, "algo-test: Echo reply received");
+	qdevice_log(LOG_INFO, "algo-test: Echo reply received");
 
 	return (is_expected_seq_number ? 0 : -1);
 }
@@ -229,7 +260,7 @@ int
 qdevice_net_algo_test_echo_reply_not_received(struct qdevice_net_instance *instance)
 {
 
-	qnetd_log(LOG_INFO, "algo-test: Echo reply not received");
+	qdevice_log(LOG_INFO, "algo-test: Echo reply not received");
 
 	return (-1);
 }
@@ -247,7 +278,7 @@ qdevice_net_algo_test_disconnected(struct qdevice_net_instance *instance,
     enum qdevice_net_disconnect_reason disconnect_reason, int *try_reconnect)
 {
 
-	qnetd_log(LOG_INFO, "algo-test: Disconnected");
+	qdevice_log(LOG_INFO, "algo-test: Disconnected");
 
 	return (0);
 }
@@ -259,12 +290,13 @@ void
 qdevice_net_algo_test_destroy(struct qdevice_net_instance *instance)
 {
 
-	qnetd_log(LOG_INFO, "algo-test: Destroy");
+	qdevice_log(LOG_INFO, "algo-test: Destroy");
 }
 
 static struct qdevice_net_algorithm qdevice_net_algo_test = {
 	.init					= qdevice_net_algo_test_init,
 	.connected				= qdevice_net_algo_test_connected,
+	.config_node_list_changed		= qdevice_net_algo_test_config_node_list_changed,
 	.votequorum_node_list_notify		= qdevice_net_algo_test_votequorum_node_list_notify,
 	.votequorum_quorum_notify		= qdevice_net_algo_test_votequorum_quorum_notify,
 	.config_node_list_reply_received	= qdevice_net_algo_test_config_node_list_reply_received,

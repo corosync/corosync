@@ -32,17 +32,15 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <err.h>
-
 #include "qnet-config.h"
-#include "qdevice-net-log.h"
+#include "qdevice-log.h"
 #include "qdevice-net-cast-vote-timer.h"
+#include "qdevice-votequorum.h"
 
 static int
 qdevice_net_cast_vote_timer_callback(void *data1, void *data2)
 {
 	struct qdevice_net_instance *instance;
-	cs_error_t res;
 	int cast_vote;
 
 	instance = (struct qdevice_net_instance *)data1;
@@ -58,27 +56,17 @@ qdevice_net_cast_vote_timer_callback(void *data1, void *data2)
 	case TLV_VOTE_WAIT_FOR_REPLY:
 	case TLV_VOTE_NO_CHANGE:
 	default:
-		errx(1, "qdevice_net_timer_cast_vote: Unhandled cast_vote_timer_vote %u\n",
+		qdevice_log(LOG_CRIT, "qdevice_net_timer_cast_vote: Unhandled cast_vote_timer_vote %u\n",
 		    instance->cast_vote_timer_vote);
+		exit(1);
 		break;
 	}
 
-	res = votequorum_qdevice_poll(instance->votequorum_handle,
-	    QDEVICE_NET_VOTEQUORUM_DEVICE_NAME,	cast_vote,
-	    instance->last_received_votequorum_ring_id);
-
-	if (res != CS_OK && res != CS_ERR_TRY_AGAIN) {
-		if (res == CS_ERR_MESSAGE_ERROR) {
-			qdevice_net_log(LOG_INFO, "votequorum_qdevice_poll called with old ring id,"
-			    " rescheduling timer");
-		} else {
-			qdevice_net_log(LOG_CRIT, "Can't call votequorum_qdevice_poll. Error %u",
-			    res);
-
-			instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_SCHEDULE_VOTING_TIMER;
-			instance->schedule_disconnect = 1;
-			return (0);
-		}
+	if (qdevice_votequorum_poll(instance->qdevice_instance_ptr, cast_vote) != 0) {
+		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_SCHEDULE_VOTING_TIMER;
+		instance->schedule_disconnect = 1;
+		instance->cast_vote_timer = NULL;
+		return (0);
 	}
 
 	/*
@@ -106,8 +94,9 @@ qdevice_net_cast_vote_timer_update(struct qdevice_net_instance *instance, enum t
 
 		break;
 	default:
-		errx(1, "qdevice_net_cast_vote_timer_update_vote: Unhandled vote parameter %u\n",
+		qdevice_log(LOG_CRIT, "qdevice_net_cast_vote_timer_update_vote: Unhandled vote parameter %u\n",
 		    vote);
+		exit(1);
 		break;
 	}
 
@@ -120,12 +109,12 @@ qdevice_net_cast_vote_timer_update(struct qdevice_net_instance *instance, enum t
 			    qdevice_net_cast_vote_timer_callback, (void *)instance, NULL);
 
 			if (instance->cast_vote_timer == NULL) {
-				qdevice_net_log(LOG_ERR, "Can't schedule sending of "
+				qdevice_log(LOG_ERR, "Can't schedule sending of "
 				    "votequorum poll");
 
 				return (-1);
 			} else {
-				qdevice_net_log(LOG_DEBUG, "Cast vote timer is now scheduled every "
+				qdevice_log(LOG_DEBUG, "Cast vote timer is now scheduled every "
 				    "%"PRIu32"ms.", instance->cast_vote_timer_interval);
 			}
 		}
@@ -137,9 +126,9 @@ qdevice_net_cast_vote_timer_update(struct qdevice_net_instance *instance, enum t
 		if (instance->cast_vote_timer != NULL) {
 			timer_list_delete(&instance->main_timer_list, instance->cast_vote_timer);
 			instance->cast_vote_timer = NULL;
-			qdevice_net_log(LOG_DEBUG, "Cast vote timer is now stopped.");
+			qdevice_log(LOG_DEBUG, "Cast vote timer is now stopped.");
 		} else {
-			qdevice_net_log(LOG_DEBUG, "Cast vote timer remains stopped.");
+			qdevice_log(LOG_DEBUG, "Cast vote timer remains stopped.");
 		}
 	}
 

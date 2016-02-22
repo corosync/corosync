@@ -146,8 +146,8 @@ struct tlv_tie_breaker {
 
 struct tlv_node_info {
 	uint32_t node_id;
-	uint32_t data_center_id;		// 0 - data center id was not set
-	enum tlv_node_state node_state;		// TLV_NODE_STATE_NOT_SET - state was not set
+	uint32_t data_center_id;		/* 0 - data center id was not set */
+	enum tlv_node_state node_state;		/* TLV_NODE_STATE_NOT_SET - state was not set */
 };
 
 struct tlv_iterator {

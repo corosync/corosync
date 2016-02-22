@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2016 Red Hat, Inc.
+ * Copyright (c) 2015-2016 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -32,20 +32,40 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _QDEVICE_NET_MSG_RECEIVED_H_
-#define _QDEVICE_NET_MSG_RECEIVED_H_
+#ifndef _QDEVICE_MODEL_NET_H_
+#define _QDEVICE_MODEL_NET_H_
 
-#include "qdevice-net-instance.h"
+#include "qdevice-instance.h"
+#include "qdevice-model.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-extern int		qdevice_net_msg_received(struct qdevice_net_instance *instance);
+extern int	qdevice_model_net_init(struct qdevice_instance *instance);
 
+extern int	qdevice_model_net_destroy(struct qdevice_instance *instance);
+
+extern int	qdevice_model_net_run(struct qdevice_instance *instance);
+
+extern int	qdevice_model_net_get_config_node_list_failed(struct qdevice_instance *instance);
+
+extern int	qdevice_model_net_config_node_list_changed(struct qdevice_instance *instance,
+    const struct node_list *nlist, int config_version_set, uint64_t config_version);
+
+extern int	qdevice_model_net_votequorum_quorum_notify(struct qdevice_instance *instance,
+    uint32_t quorate, uint32_t node_list_entries, votequorum_node_t node_list[]);
+
+extern int	qdevice_model_net_votequorum_node_list_notify(struct qdevice_instance *instance,
+    votequorum_ring_id_t votequorum_ring_id, uint32_t node_list_entries, uint32_t node_list[]);
+
+extern int 	qdevice_model_net_votequorum_expected_votes_notify(struct qdevice_instance *instance,
+    uint32_t expected_votes);
+
+extern int	qdevice_model_net_register(void);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* _QDEVICE_NET_MSG_RECEIVED_H_ */
+#endif /* _QDEVICE_MODEL_NET_H_ */

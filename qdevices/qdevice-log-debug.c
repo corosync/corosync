@@ -32,36 +32,24 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _QDEVICE_NET_CMAP_H_
-#define _QDEVICE_NET_CMAP_H_
+#include "qdevice-log-debug.h"
+#include "qdevice-log.h"
 
-#include <cmap.h>
+void
+qdevice_log_debug_dump_node_list(const struct node_list *nlist)
+{
+	struct node_list_entry *node_info;
+	size_t zi;
 
-#include "node-list.h"
-#include "qdevice-net-instance.h"
+	qdevice_log(LOG_DEBUG, "  Node list:");
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+	zi = 0;
 
-extern int		qdevice_net_cmap_get_nodelist(cmap_handle_t cmap_handle,
-    struct node_list *list);
-
-extern int		qdevice_net_cmap_get_config_version(cmap_handle_t cmap_handle,
-    uint64_t *config_version);
-
-extern void		qdevice_net_cmap_init(cmap_handle_t *handle);
-
-extern void		qdevice_net_cmap_init_fd(struct qdevice_net_instance *instance);
-
-extern int		qdevice_net_cmap_add_track(struct qdevice_net_instance *instance);
-
-extern int		qdevice_net_cmap_del_track(struct qdevice_net_instance *instance);
-
-extern void		qdevice_net_cmap_destroy(struct qdevice_net_instance *instance);
-
-#ifdef __cplusplus
+	TAILQ_FOREACH(node_info, nlist, entries) {
+		qdevice_log(LOG_DEBUG, "    %zu node_id = %"PRIx32", "
+		    "data_center_id = %"PRIx32", node_state = %s",
+		    zi, node_info->node_id, node_info->data_center_id,
+		    tlv_node_state_to_str(node_info->node_state));
+		zi++;
+        }
 }
-#endif
-
-#endif /* _QDEVICE_NET_CMAP_H_ */

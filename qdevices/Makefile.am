@@ -35,7 +35,7 @@ if BUILD_QDEVICES
 
 SUBDIRS			=
 
-sbin_PROGRAMS		= corosync-qnetd corosync-qdevice-net
+sbin_PROGRAMS		= corosync-qnetd corosync-qdevice
 
 sbin_SCRIPTS             = corosync-qnetd-certutil
 
@@ -47,20 +47,24 @@ corosync_qnetd_SOURCES	= corosync-qnetd.c dynar.c msg.c msgio.c nss-sock.c  \
 			    qnetd-algo-2nodelms.c qnetd-algo-lms.c utils.c qnetd-instance.c \
 			    qnetd-client-net.c qnetd-client-msg-received.c qnetd-log-debug.c
 
-corosync_qdevice_net_SOURCES	= corosync-qdevice-net.c dynar.c msg.c msgio.c nss-sock.c  \
-			    qnetd-client.c qnetd-client-list.c qnetd-log.c \
-			    qnetd-poll-array.c timer-list.c tlv.c send-buffer-list.c \
-			    node-list.c qdevice-net-send.c qdevice-net-cmap.c \
-			    qdevice-net-votequorum.c qdevice-net-instance.c \
-			    qdevice-net-cast-vote-timer.c utils.c qdevice-net-algorithm.c \
-			    qdevice-net-algo-test.c qdevice-net-algo-ffsplit.c \
-			    qdevice-net-algo-2nodelms.c qdevice-net-algo-lms.c
+corosync_qdevice_SOURCES	= corosync-qdevice.c qdevice-cmap.c qdevice-instance.c node-list.c \
+				  utils.c qdevice-log.c qdevice-log-debug.c qdevice-votequorum.c \
+				  qdevice-model.c \
+				  qdevice-model-net.c \
+				  qdevice-net-instance.c dynar.c send-buffer-list.c timer-list.c \
+				  msg.c msgio.c nss-sock.c tlv.c \
+				  qdevice-net-poll.c qdevice-net-send.c qdevice-net-votequorum.c \
+				  qdevice-net-socket.c qdevice-net-nss.c qdevice-net-msg-received.c \
+				  qdevice-net-cast-vote-timer.c \
+				  qdevice-net-algorithm.c \
+				  qdevice-net-algo-test.c qdevice-net-algo-ffsplit.c \
+				  qdevice-net-algo-2nodelms.c qdevice-net-algo-lms.c
 
 corosync_qnetd_CFLAGS		= $(nss_CFLAGS)
 corosync_qnetd_LDADD		= $(nss_LIBS)
 
-corosync_qdevice_net_CFLAGS	= $(nss_CFLAGS)
-corosync_qdevice_net_LDADD	= $(nss_LIBS) $(LIBQB_LIBS) $(top_builddir)/lib/libcmap.la \
+corosync_qdevice_CFLAGS	= $(nss_CFLAGS)
+corosync_qdevice_LDADD	= $(nss_LIBS) $(LIBQB_LIBS) $(top_builddir)/lib/libcmap.la \
 				    $(top_builddir)/lib/libvotequorum.la
 
 corosync-qnetd-certutil: corosync-qnetd-certutil.sh

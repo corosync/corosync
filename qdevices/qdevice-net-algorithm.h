@@ -38,6 +38,7 @@
 #include <sys/types.h>
 #include <inttypes.h>
 
+#include "node-list.h"
 #include "qdevice-net-instance.h"
 
 #ifdef __cplusplus
@@ -48,12 +49,17 @@ extern int	qdevice_net_algorithm_init(struct qdevice_net_instance *instance);
 
 extern int	qdevice_net_algorithm_connected(struct qdevice_net_instance *instance);
 
+extern int	qdevice_net_algorithm_config_node_list_changed(struct qdevice_net_instance *instance,
+    const struct node_list *nlist, int config_version_set, uint64_t config_version,
+    int *send_node_list, enum tlv_vote *vote);
+
 extern int	qdevice_net_algorithm_votequorum_node_list_notify(struct qdevice_net_instance *instance,
     const struct tlv_ring_id *ring_id, uint32_t node_list_entries, uint32_t node_list[],
-    enum tlv_vote *vote);
+    int *send_node_list, enum tlv_vote *vote);
 
 extern int	qdevice_net_algorithm_votequorum_quorum_notify(struct qdevice_net_instance *instance,
-    uint32_t quorate, uint32_t node_list_entries, votequorum_node_t node_list[], int *send_node_list);
+    uint32_t quorate, uint32_t node_list_entries, votequorum_node_t node_list[], int *send_node_list,
+    enum tlv_vote *vote);
 
 extern int	qdevice_net_algorithm_config_node_list_reply_received(struct qdevice_net_instance *instance,
     uint32_t seq_number, int initial, enum tlv_vote *vote);
@@ -83,11 +89,15 @@ extern void	qdevice_net_algorithm_destroy(struct qdevice_net_instance *instance)
 struct qdevice_net_algorithm {
 	int (*init)(struct qdevice_net_instance *instance);
 	int (*connected)(struct qdevice_net_instance *instance);
+	int (*config_node_list_changed)(struct qdevice_net_instance *instance,
+	    const struct node_list *nlist, int config_version_set, uint64_t config_version,
+	    int *send_node_list, enum tlv_vote *vote);
 	int (*votequorum_node_list_notify)(struct qdevice_net_instance *instance,
 	    const struct tlv_ring_id *ring_id, uint32_t node_list_entries, uint32_t node_list[],
-	    enum tlv_vote *vote);
+	    int *send_node_list, enum tlv_vote *vote);
 	int (*votequorum_quorum_notify)(struct qdevice_net_instance *instance, uint32_t quorate,
-	    uint32_t node_list_entries, votequorum_node_t node_list[], int *send_node_list);
+	    uint32_t node_list_entries, votequorum_node_t node_list[], int *send_node_list,
+	    enum tlv_vote *vote);
 	int (*config_node_list_reply_received)(struct qdevice_net_instance *instance,
 	    uint32_t seq_number, int initial, enum tlv_vote *vote);
 	int (*membership_node_list_reply_received)(struct qdevice_net_instance *instance,
@@ -109,7 +119,7 @@ struct qdevice_net_algorithm {
 extern int		qdevice_net_algorithm_register(
 	enum tlv_decision_algorithm_type algorithm_number, struct qdevice_net_algorithm *algorithm);
 
-extern void qdevice_net_algorithm_register_all(void);
+extern int		qdevice_net_algorithm_register_all(void);
 
 #ifdef __cplusplus
 }

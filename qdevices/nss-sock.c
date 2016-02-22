@@ -32,9 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <err.h>
-
-#include <prnetdb.h>
+#include <limits.h>
 
 #include "nss-sock.h"
 
@@ -62,7 +60,7 @@ nss_sock_init_nss(char *config_dir)
  * Set NSS socket non-blocking
  */
 int
-nss_sock_set_nonblocking(PRFileDesc *sock)
+nss_sock_set_non_blocking(PRFileDesc *sock)
 {
 	PRSocketOptionData sock_opt;
 
@@ -183,11 +181,6 @@ nss_sock_create_listen_socket(const char *hostname, uint16_t port, PRIntn af)
 	return (sock);
 }
 
-/*
- * Create listen socket and bind it to address. hostname can be NULL and then
- * any address is used. Address family (af) can be ether PR_AF_UNSPEC or
- * PR_AF_INET.
- */
 PRFileDesc *
 nss_sock_create_client_socket(const char *hostname, uint16_t port, PRIntn af,
     PRIntervalTime timeout)
@@ -234,6 +227,118 @@ nss_sock_create_client_socket(const char *hostname, uint16_t port, PRIntn af,
 	}
 
 	return (sock);
+}
+
+int
+nss_sock_non_blocking_client_init(const char *host_name, uint16_t port, PRIntn af,
+    struct nss_sock_non_blocking_client *client)
+{
+
+	client->destroyed = 1;
+
+	if ((client->host_name = strdup(host_name)) == NULL) {
+		PR_SetError(PR_OUT_OF_MEMORY_ERROR, 0);
+
+		return (-1);
+	}
+
+	client->port = port;
+	client->af = af;
+
+	client->addr_info = PR_GetAddrInfoByName(client->host_name, af, PR_AI_ADDRCONFIG);
+	if (client->addr_info == NULL) {
+		free(client->host_name);
+
+		return (-1);
+	}
+	client->addr_iter = NULL;
+	client->connect_attempts = 0;
+	client->socket = NULL;
+	client->destroyed = 0;
+
+	return (0);
+}
+
+int
+nss_sock_non_blocking_client_try_next(struct nss_sock_non_blocking_client *client)
+{
+	PRNetAddr addr;
+	PRStatus res;
+
+	if (client->socket != NULL) {
+		PR_Close(client->socket);
+		client->socket = NULL;
+	}
+
+	while ((client->addr_iter = PR_EnumerateAddrInfo(client->addr_iter, client->addr_info,
+	    client->port, &addr)) != NULL) {
+		client->socket = nss_sock_create_socket(addr.raw.family, 0);
+		if (client->socket == NULL) {
+			continue ;
+		}
+
+		if (nss_sock_set_non_blocking(client->socket) == -1) {
+			PR_Close(client->socket);
+			client->socket = NULL;
+			continue ;
+		}
+
+		res = PR_Connect(client->socket, &addr, PR_INTERVAL_NO_TIMEOUT);
+		if (res == PR_SUCCESS || PR_GetError() == PR_IN_PROGRESS_ERROR) {
+			return (0);
+		}
+
+		PR_Close(client->socket);
+		client->socket = NULL;
+
+		if (client->connect_attempts < INT_MAX) {
+			client->connect_attempts++;
+		}
+	}
+
+	if (client->connect_attempts == 0) {
+		PR_SetError(PR_ADDRESS_NOT_AVAILABLE_ERROR, 0);
+	}
+
+	return (-1);
+}
+
+void
+nss_sock_non_blocking_client_destroy(struct nss_sock_non_blocking_client *client)
+{
+
+	if (client->addr_info != NULL) {
+		PR_FreeAddrInfo(client->addr_info);
+	}
+
+	free(client->host_name);
+
+	client->destroyed = 1;
+}
+
+/*
+ * -1 = Client connect failed
+ *  0 = Client connect still in progress
+ *  1 = Client successfuly connected
+ */
+int
+nss_sock_non_blocking_client_succeeded(const PRPollDesc *pfd)
+{
+	int res;
+
+	res = -1;
+
+	if (PR_GetConnectStatus(pfd) == PR_SUCCESS) {
+		res = 1;
+	} else {
+		if (PR_GetError() == PR_IN_PROGRESS_ERROR) {
+			res = 0;
+		} else {
+			res = -1;
+		}
+	}
+
+	return (res);
 }
 
 /*

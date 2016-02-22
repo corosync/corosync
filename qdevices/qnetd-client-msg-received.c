@@ -173,6 +173,8 @@ qnetd_client_msg_received_preinit(struct qnetd_instance *instance, struct qnetd_
 		qnetd_log(LOG_ERR, "Can't alloc preinit reply msg. "
 		    "Disconnecting client connection.");
 
+		send_buffer_list_discard_new(&client->send_buffer_list, send_buffer);
+
 		return (-1);
 	};
 
@@ -393,6 +395,8 @@ qnetd_client_msg_received_init(struct qnetd_instance *instance, struct qnetd_cli
 	    QNETD_STATIC_SUPPORTED_DECISION_ALGORITHMS_SIZE) == -1) {
 		qnetd_log(LOG_ERR, "Can't alloc init reply msg. Disconnecting client connection.");
 
+		send_buffer_list_discard_new(&client->send_buffer_list, send_buffer);
+
 		return (-1);
 	}
 
@@ -479,6 +483,8 @@ qnetd_client_msg_received_set_option(struct qnetd_instance *instance, struct qne
 		qnetd_log(LOG_ERR, "Can't alloc set option reply msg. "
 		    "Disconnecting client connection.");
 
+		send_buffer_list_discard_new(&client->send_buffer_list, send_buffer);
+
 		return (-1);
 	}
 
@@ -528,6 +534,8 @@ qnetd_client_msg_received_echo_request(struct qnetd_instance *instance, struct q
 
 	if (msg_create_echo_reply(&send_buffer->buffer, msg_orig) == -1) {
 		qnetd_log(LOG_ERR, "Can't alloc echo reply msg. Disconnecting client connection.");
+
+		send_buffer_list_discard_new(&client->send_buffer_list, send_buffer);
 
 		return (-1);
 	}
@@ -722,6 +730,8 @@ qnetd_client_msg_received_node_list(struct qnetd_instance *instance, struct qnet
 		qnetd_log(LOG_ERR, "Can't alloc node list reply msg. "
 		    "Disconnecting client connection.");
 
+		send_buffer_list_discard_new(&client->send_buffer_list, send_buffer);
+
 		return (-1);
 	}
 
@@ -808,6 +818,8 @@ qnetd_client_msg_received_ask_for_vote(struct qnetd_instance *instance, struct q
 	    result_vote) == -1) {
 		qnetd_log(LOG_ERR, "Can't alloc ask for vote reply msg. "
 		    "Disconnecting client connection.");
+
+		send_buffer_list_discard_new(&client->send_buffer_list, send_buffer);
 
 		return (-1);
 	}

@@ -32,61 +32,78 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _QNETD_CLIENT_H_
-#define _QNETD_CLIENT_H_
+#ifndef _QDEVICE_INSTANCE_H_
+#define _QDEVICE_INSTANCE_H_
 
 #include <sys/types.h>
 
-#include <sys/queue.h>
-#include <inttypes.h>
+#include <stdlib.h>
+#include <stdint.h>
 
-#include <nspr.h>
-#include "dynar.h"
-#include "tlv.h"
-#include "send-buffer-list.h"
+#include <cmap.h>
+#include <votequorum.h>
+
+#include "qdevice-model-type.h"
 #include "node-list.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-struct qnetd_client {
-	PRFileDesc *socket;
-	PRNetAddr addr;
-	struct dynar receive_buffer;
-	struct send_buffer_list send_buffer_list;
-	size_t msg_already_received_bytes;
-	int skipping_msg;	/* When incorrect message was received skip it */
-	int tls_started;	/* Set after TLS started */
-	int tls_peer_certificate_verified;	/* Certificate is verified only once */
-	int preinit_received;
-	int init_received;
-	char *cluster_name;
-	size_t cluster_name_len;
-	uint8_t node_id_set;
+struct qdevice_instance {
+	cmap_handle_t cmap_handle;
+	int cmap_poll_fd;
+	int cmap_reload_in_progress;
+	cmap_track_handle_t cmap_reload_track_handle;
+	cmap_track_handle_t cmap_nodelist_track_handle;
+	cmap_track_handle_t cmap_logging_track_handle;
+
+	votequorum_handle_t votequorum_handle;
+	int votequorum_poll_fd;
+
+	enum qdevice_model_type model_type;
+
 	uint32_t node_id;
-	enum tlv_decision_algorithm_type decision_algorithm;
-	struct tlv_tie_breaker tie_breaker;
-	uint32_t heartbeat_interval;
-	enum tlv_reply_error_code skipping_msg_reason;
-	void *algorithm_data;
-	struct node_list configuration_node_list;
-	struct node_list last_membership_node_list;
-	struct node_list last_quorum_node_list;
-	struct tlv_ring_id last_ring_id;
-	struct qnetd_cluster *cluster;
-	struct qnetd_cluster_list *cluster_list;
-	TAILQ_ENTRY(qnetd_client) entries;
-	TAILQ_ENTRY(qnetd_client) cluster_entries;
+	uint32_t heartbeat_interval;		/* Heartbeat interval during normal operation */
+	uint32_t sync_heartbeat_interval;	/* Heartbeat interval during corosync sync */
+
+	struct node_list config_node_list;
+	int config_node_list_version_set;
+	uint64_t config_node_list_version;
+
+	/*
+	 * Copy of votequorum_quorum_notify_fn callback paramters.
+	 * Set after model callback is called.
+	 */
+	uint32_t vq_quorum_quorate;
+	uint32_t vq_quorum_node_list_entries;
+	votequorum_node_t *vq_quorum_node_list;
+
+	/*
+	 * Copy of votequorum_nodelist_notify_fn callback paramters.
+	 * Set after model callback is called.
+	 */
+	votequorum_ring_id_t vq_node_list_ring_id;
+	uint32_t vq_node_list_entries;
+	uint32_t *vq_node_list;
+
+	/*
+	 * Copy of votequorum_expectedvotes_notify_fn callback parameters.
+	 * Set after model callback is called.
+	 */
+	uint32_t vq_expected_votes;
+
+	void *model_data;
 };
 
-extern void		qnetd_client_init(struct qnetd_client *client, PRFileDesc *sock,
-    PRNetAddr *addr, size_t max_receive_size, size_t max_send_buffers, size_t max_send_size);
+extern int	qdevice_instance_init(struct qdevice_instance *instance);
 
-extern void		qnetd_client_destroy(struct qnetd_client *client);
+extern int	qdevice_instance_destroy(struct qdevice_instance *instance);
+
+extern int	qdevice_instance_configure_from_cmap(struct qdevice_instance *instance);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* _QNETD_CLIENT_H_ */
+#endif /* _QDEVICE_INSTANCE_H_ */

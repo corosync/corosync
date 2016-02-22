@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2016 Red Hat, Inc.
+ * Copyright (c) 2015-2016 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -32,20 +32,31 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _QDEVICE_NET_MSG_RECEIVED_H_
-#define _QDEVICE_NET_MSG_RECEIVED_H_
+#ifndef _QDEVICE_LOG_H_
+#define _QDEVICE_LOG_H_
 
-#include "qdevice-net-instance.h"
+#include <qb/qbdefs.h>
+#include <qb/qblog.h>
+#include <prerror.h>
+
+#include "qdevice-instance.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-extern int		qdevice_net_msg_received(struct qdevice_net_instance *instance);
+#define qdevice_log	qb_log
+#define qdevice_log_nss(priority, str) qdevice_log(priority, "%s (%d): %s", \
+    str, PR_GetError(), PR_ErrorToString(PR_GetError(), PR_LANGUAGE_I_DEFAULT));
 
+extern void		qdevice_log_init(struct qdevice_instance *instance);
+
+extern void		qdevice_log_configure(struct qdevice_instance *instance);
+
+extern void		qdevice_log_close(struct qdevice_instance *instance);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* _QDEVICE_NET_MSG_RECEIVED_H_ */
+#endif /* _QDEVICE_LOG_H_ */

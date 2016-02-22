@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2016 Red Hat, Inc.
+ * Copyright (c) 2015-2016 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -32,20 +32,38 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _QDEVICE_NET_MSG_RECEIVED_H_
-#define _QDEVICE_NET_MSG_RECEIVED_H_
+#ifndef _QDEVICE_CMAP_H_
+#define _QDEVICE_CMAP_H_
 
-#include "qdevice-net-instance.h"
+#include <cmap.h>
+
+#include "node-list.h"
+#include "qdevice-instance.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-extern int		qdevice_net_msg_received(struct qdevice_net_instance *instance);
+extern int		qdevice_cmap_get_nodelist(cmap_handle_t cmap_handle,
+    struct node_list *list);
 
+extern int		qdevice_cmap_get_config_version(cmap_handle_t cmap_handle,
+    uint64_t *config_version);
+
+extern void		qdevice_cmap_init(struct qdevice_instance *instance);
+
+extern int		qdevice_cmap_add_track(struct qdevice_instance *instance);
+
+extern int		qdevice_cmap_del_track(struct qdevice_instance *instance);
+
+extern void		qdevice_cmap_destroy(struct qdevice_instance *instance);
+
+extern int		qdevice_cmap_dispatch(struct qdevice_instance *instance);
+
+extern int		qdevice_cmap_store_config_node_list(struct qdevice_instance *instance);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* _QDEVICE_NET_MSG_RECEIVED_H_ */
+#endif /* _QDEVICE_CMAP_H_ */

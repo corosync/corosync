@@ -40,10 +40,9 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-#include <prio.h>
+#include "nss-sock.h"
 
-#include <cmap.h>
-#include <votequorum.h>
+#include "qdevice-instance.h"
 
 #include "dynar.h"
 #include "node-list.h"
@@ -57,6 +56,7 @@ extern "C" {
 #endif
 
 enum qdevice_net_instance_state {
+	QDEVICE_NET_INSTANCE_STATE_WAITING_CONNECT,
 	QDEVICE_NET_INSTANCE_STATE_WAITING_PREINIT_REPLY,
 	QDEVICE_NET_INSTANCE_STATE_WAITING_STARTTLS_BEING_SENT,
 	QDEVICE_NET_INSTANCE_STATE_WAITING_INIT_REPLY,
@@ -80,9 +80,8 @@ struct qdevice_net_instance {
 	uint32_t echo_reply_received_msg_seq_num;
 	enum tlv_tls_supported tls_supported;
 	int using_tls;
-	uint32_t node_id;
-	uint32_t heartbeat_interval;		/* Heartbeat interval during normal operation */
-	uint32_t sync_heartbeat_interval;	/* Heartbeat interval during corosync sync */
+	uint32_t heartbeat_interval;            /* Adjusted heartbeat interval during normal operation */
+	uint32_t sync_heartbeat_interval;       /* Adjusted heartbeat interval during corosync sync */
 	uint32_t cast_vote_timer_interval;	/* Timer for cast vote */
 	uint32_t connect_timeout;
 	struct timer_list_entry *cast_vote_timer;
@@ -94,33 +93,32 @@ struct qdevice_net_instance {
 	struct timer_list main_timer_list;
 	struct timer_list_entry *echo_request_timer;
 	int schedule_disconnect;
-	cmap_handle_t cmap_handle;
-	votequorum_handle_t votequorum_handle;
 	PRFileDesc *votequorum_poll_fd;
 	PRFileDesc *cmap_poll_fd;
-	votequorum_ring_id_t last_received_votequorum_ring_id;
 	struct tlv_ring_id last_sent_ring_id;
 	struct tlv_tie_breaker tie_breaker;
 	void *algorithm_data;
-	cmap_track_handle_t cmap_reload_track_handle;
-	cmap_track_handle_t cmap_nodelist_track_handle;
-	int cmap_reload_in_progress;
-	struct node_list last_sent_config_node_list;
 	enum qdevice_net_disconnect_reason disconnect_reason;
+	struct qdevice_instance *qdevice_instance_ptr;
+	struct nss_sock_non_blocking_client non_blocking_client;
+	struct timer_list_entry *connect_timer;
 };
 
 extern int		qdevice_net_instance_init(struct qdevice_net_instance *instance,
     size_t initial_receive_size, size_t initial_send_size, size_t min_send_size,
     size_t max_send_buffers, size_t max_receive_size,
-    enum tlv_tls_supported tls_supported, uint32_t node_id,
+    enum tlv_tls_supported tls_supported,
     enum tlv_decision_algorithm_type decision_algorithm, uint32_t heartbeat_interval,
     uint32_t sync_heartbeat_interval, uint32_t cast_vote_timer_interval,
     const char *host_addr, uint16_t host_port, const char *cluster_name,
-    const struct tlv_tie_breaker *tie_breaker, uint32_t connect_timeout);
+    const struct tlv_tie_breaker *tie_breaker, uint32_t connect_timeout,
+    int cmap_fd, int votequorum_fd);
 
 extern void		qdevice_net_instance_clean(struct qdevice_net_instance *instance);
 
 extern int		qdevice_net_instance_destroy(struct qdevice_net_instance *instance);
+
+extern int		qdevice_net_instance_init_from_cmap(struct qdevice_instance *instance);
 
 #ifdef __cplusplus
 }

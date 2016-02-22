@@ -68,48 +68,48 @@ enum msg_type {
 struct msg_decoded {
 	enum msg_type type;
 	uint8_t seq_number_set;
-	uint32_t seq_number;	// Only valid if seq_number_set != 0
+	uint32_t seq_number;	/* Only valid if seq_number_set != 0 */
 	size_t cluster_name_len;
-	// Valid only if != NULL. Trailing \0 is added but not counted in cluster_name_len
+	/* Valid only if != NULL. Trailing \0 is added but not counted in cluster_name_len */
 	char *cluster_name;
 	uint8_t tls_supported_set;
-	enum tlv_tls_supported tls_supported;	// Valid only if tls_supported_set != 0.
+	enum tlv_tls_supported tls_supported;	/* Valid only if tls_supported_set != 0. */
 	uint8_t tls_client_cert_required_set;
-	uint8_t tls_client_cert_required;	// Valid only if tls_client_cert_required_set != 0
+	uint8_t tls_client_cert_required;	/* Valid only if tls_client_cert_required_set != 0 */
 	size_t no_supported_messages;
-	enum msg_type *supported_messages;	// Valid only if != NULL
+	enum msg_type *supported_messages;	/* Valid only if != NULL */
 	size_t no_supported_options;
-	enum tlv_opt_type *supported_options;	// Valid only if != NULL
+	enum tlv_opt_type *supported_options;	/* Valid only if != NULL */
 	uint8_t reply_error_code_set;
-	enum tlv_reply_error_code reply_error_code;	// Valid only if reply_error_code_set != 0
+	enum tlv_reply_error_code reply_error_code;	/* Valid only if reply_error_code_set != 0 */
 	uint8_t server_maximum_request_size_set;
-	// Valid only if server_maximum_request_size_set != 0
+	/* Valid only if server_maximum_request_size_set != 0 */
 	size_t server_maximum_request_size;
 	uint8_t server_maximum_reply_size_set;
-	size_t server_maximum_reply_size;	// Valid only if server_maximum_reply_size_set != 0
+	size_t server_maximum_reply_size;	/* Valid only if server_maximum_reply_size_set != 0 */
 	uint8_t node_id_set;
 	uint32_t node_id;
 	size_t no_supported_decision_algorithms;
-	// Valid only if != NULL
+	/* Valid only if != NULL */
 	enum tlv_decision_algorithm_type *supported_decision_algorithms;
 	uint8_t decision_algorithm_set;
-	// Valid only if decision_algorithm_set != 0
+	/* Valid only if decision_algorithm_set != 0 */
 	enum tlv_decision_algorithm_type decision_algorithm;
 	uint8_t heartbeat_interval_set;
-	uint32_t heartbeat_interval;	// Valid only if heartbeat_interval_set != 0
+	uint32_t heartbeat_interval;	/* Valid only if heartbeat_interval_set != 0 */
 	uint8_t ring_id_set;
-	struct tlv_ring_id ring_id;	// Valid only if ring_id_set != 0
+	struct tlv_ring_id ring_id;	/* Valid only if ring_id_set != 0 */
 	uint8_t config_version_set;
-	uint64_t config_version;	// Valid only if config_version_set != 0
-	uint32_t data_center_id;	// Valid only if != 0
-	enum tlv_node_state node_state;	// Valid only if != TLV_NODE_STATE_NOT_SET
-	struct node_list nodes;		// Valid only if node_list_is_empty(nodes) != 0
+	uint64_t config_version;	/* Valid only if config_version_set != 0 */
+	uint32_t data_center_id;	/* Valid only if != 0 */
+	enum tlv_node_state node_state;	/* Valid only if != TLV_NODE_STATE_NOT_SET */
+	struct node_list nodes;		/* Valid only if node_list_is_empty(nodes) != 0 */
 	int node_list_type_set;
-	enum tlv_node_list_type node_list_type;	// Valid only if node_list_type_set != 0
+	enum tlv_node_list_type node_list_type;	/* Valid only if node_list_type_set != 0 */
 	int vote_set;
-	enum tlv_vote vote;	// Valid only if vote_set != 0
+	enum tlv_vote vote;	/* Valid only if vote_set != 0 */
 	int quorate_set;
-	enum tlv_quorate quorate;	// Valid only if quorate_set != 0
+	enum tlv_quorate quorate;	/* Valid only if quorate_set != 0 */
 	int tie_breaker_set;
 	struct tlv_tie_breaker tie_breaker;
 };

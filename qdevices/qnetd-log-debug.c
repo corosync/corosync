@@ -128,9 +128,9 @@ void
 qnetd_log_debug_client_disconnect(struct qnetd_client *client, int server_going_down)
 {
 
-	qnetd_log(LOG_DEBUG, "Client %p (cluster %s, node_id %"PRIx32
-		") disconnect%s", client, client->cluster_name, client->node_id,
-		(server_going_down ? " (server is going down)" : ""));
+	qnetd_log(LOG_DEBUG, "Client %p (init_received %u, cluster %s, node_id %"PRIx32
+		") disconnect%s", client, client->init_received, client->cluster_name,
+		client->node_id, (server_going_down ? " (server is going down)" : ""));
 }
 
 void

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2016 Red Hat, Inc.
+ * Copyright (c) 2015-2016 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -32,20 +32,40 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _QDEVICE_NET_MSG_RECEIVED_H_
-#define _QDEVICE_NET_MSG_RECEIVED_H_
+#ifndef _QDEVICE_CONFIG_H_
+#define _QDEVICE_CONFIG_H_
 
-#include "qdevice-net-instance.h"
+#include <qb/qbdefs.h>
+#include <qb/qblog.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-extern int		qdevice_net_msg_received(struct qdevice_net_instance *instance);
+/*
+ * There are "hardcoded" defines for qdevice. It's not so good
+ * idea to change them as long as you are not 100% sure what you are doing.
+ */
+#define QDEVICE_LOCK_FILE			LOCALSTATEDIR"/run/corosync-qdevice.pid"
 
+#define QDEVICE_MAX_CS_TRY_AGAIN		10
+
+#define QDEVICE_PROGRAM_NAME			"qdevice-net"
+#define QDEVICE_LOG_SUBSYS			"QDEVICE"
+#define QDEVICE_LOG_DEFAULT_TO_STDERR		1
+#define QDEVICE_LOG_DEFAULT_TO_SYSLOG		1
+#define QDEVICE_LOG_DEFAULT_TO_LOGFILE		0
+#define QDEVICE_LOG_DEFAULT_SYSLOG_FACILITY	LOG_DAEMON
+#define QDEVICE_LOG_DEFAULT_SYSLOG_PRIORITY	LOG_INFO
+#define QDEVICE_LOG_DEFAULT_DEBUG		0
+#define QDEVICE_LOG_DEFAULT_FILELINE		0
+#define QDEVICE_LOG_DEFAULT_TIMESTAMP		0
+#define QDEVICE_LOG_DEFAULT_FUNCTION_NAME	0
+
+#define QDEVICE_VOTEQUORUM_DEVICE_NAME      "Qdevice"
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* _QDEVICE_NET_MSG_RECEIVED_H_ */
+#endif /* _QDEVICE_CONFIG_H_ */

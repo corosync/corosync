@@ -32,28 +32,21 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _QDEVICE_NET_LOG_H_
-#define _QDEVICE_NET_LOG_H_
+#ifndef _QDEVICE_NET_SOCKET_H_
+#define _QDEVICE_NET_SOCKET_H_
 
-#include <syslog.h>
-
-#include "qnetd-log.h"
+#include "qdevice-net-instance.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#define qdevice_net_log                 qnetd_log
-#define qdevice_net_log_nss             qnetd_log_nss
-#define qdevice_net_log_init            qnetd_log_init
-#define qdevice_net_log_close           qnetd_log_close
-#define qdevice_net_log_set_debug       qnetd_log_set_debug
+extern int		qdevice_net_socket_read(struct qdevice_net_instance *instance);
 
-#define QDEVICE_NET_LOG_TARGET_STDERR           QNETD_LOG_TARGET_STDERR
-#define QDEVICE_NET_LOG_TARGET_SYSLOG           QNETD_LOG_TARGET_SYSLOG
+extern int		qdevice_net_socket_write(struct qdevice_net_instance *instance);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* _QDEVICE_NET_LOG_H_ */
+#endif /* _QDEVICE_NET_SOCKET_H_ */

@@ -32,8 +32,10 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "qdevice-net-log.h"
+#include "qdevice-log.h"
+#include "qdevice-log-debug.h"
 #include "qdevice-net-send.h"
+#include "qdevice-cmap.h"
 #include "qdevice-net-votequorum.h"
 #include "msg.h"
 
@@ -44,7 +46,7 @@ qdevice_net_send_echo_request(struct qdevice_net_instance *instance)
 
 	send_buffer = send_buffer_list_get_new(&instance->send_buffer_list);
 	if (send_buffer == NULL) {
-		qdevice_net_log(LOG_CRIT, "Can't allocate send list buffer for reply msg.");
+		qdevice_log(LOG_CRIT, "Can't allocate send list buffer for reply msg.");
 
 		return (-1);
 	}
@@ -53,12 +55,39 @@ qdevice_net_send_echo_request(struct qdevice_net_instance *instance)
 
 	if (msg_create_echo_request(&send_buffer->buffer, 1,
 	    instance->echo_request_expected_msg_seq_num) == -1) {
-		qdevice_net_log(LOG_ERR, "Can't allocate send buffer for echo request msg");
+		qdevice_log(LOG_ERR, "Can't allocate send buffer for echo request msg");
 
 		return (-1);
 	}
 
 	send_buffer_list_put(&instance->send_buffer_list, send_buffer);
+
+	return (0);
+}
+
+int
+qdevice_net_send_preinit(struct qdevice_net_instance *instance)
+{
+	struct send_buffer_list_entry *send_buffer;
+
+	send_buffer = send_buffer_list_get_new(&instance->send_buffer_list);
+	if (send_buffer == NULL) {
+		qdevice_log(LOG_ERR, "Can't allocate send list buffer for preinit msg");
+
+		return (-1);
+	}
+
+	if (msg_create_preinit(&send_buffer->buffer, instance->cluster_name, 1,
+	    instance->last_msg_seq_num) == 0) {
+		qdevice_log(LOG_ERR, "Can't allocate buffer");
+
+		send_buffer_list_discard_new(&instance->send_buffer_list, send_buffer);
+		return (-1);
+	}
+
+	send_buffer_list_put(&instance->send_buffer_list, send_buffer);
+
+	instance->state = QDEVICE_NET_INSTANCE_STATE_WAITING_PREINIT_REPLY;
 
 	return (0);
 }
@@ -78,7 +107,7 @@ qdevice_net_send_init(struct qdevice_net_instance *instance)
 
 	send_buffer = send_buffer_list_get_new(&instance->send_buffer_list);
 	if (send_buffer == NULL) {
-		qdevice_net_log(LOG_ERR, "Can't allocate send list buffer for init msg");
+		qdevice_log(LOG_ERR, "Can't allocate send list buffer for init msg");
 
 		return (-1);
 	}
@@ -86,9 +115,10 @@ qdevice_net_send_init(struct qdevice_net_instance *instance)
 	if (msg_create_init(&send_buffer->buffer, 1, instance->last_msg_seq_num,
 	    instance->decision_algorithm,
 	    supported_msgs, no_supported_msgs, supported_opts, no_supported_opts,
-	    instance->node_id) == 0) {
-		qdevice_net_log(LOG_ERR, "Can't allocate send buffer for init msg");
+	    instance->qdevice_instance_ptr->node_id) == 0) {
+		qdevice_log(LOG_ERR, "Can't allocate send buffer for init msg");
 
+		send_buffer_list_discard_new(&instance->send_buffer_list, send_buffer);
 		return (-1);
 	}
 
@@ -106,19 +136,20 @@ qdevice_net_send_ask_for_vote(struct qdevice_net_instance *instance)
 
 	send_buffer = send_buffer_list_get_new(&instance->send_buffer_list);
 	if (send_buffer == NULL) {
-		qdevice_net_log(LOG_ERR, "Can't allocate send list buffer for ask for vote msg");
+		qdevice_log(LOG_ERR, "Can't allocate send list buffer for ask for vote msg");
 
 		return (-1);
 	}
 
 	instance->last_msg_seq_num++;
 
-	qdevice_net_log(LOG_DEBUG, "Sending ask for vote seq = %"PRIu32,
+	qdevice_log(LOG_DEBUG, "Sending ask for vote seq = %"PRIu32,
 	    instance->last_msg_seq_num);
 
 	if (msg_create_ask_for_vote(&send_buffer->buffer, instance->last_msg_seq_num) == 0) {
-		qdevice_net_log(LOG_ERR, "Can't allocate send buffer for ask for vote msg");
+		qdevice_log(LOG_ERR, "Can't allocate send buffer for ask for vote msg");
 
+		send_buffer_list_discard_new(&instance->send_buffer_list, send_buffer);
 		return (-1);
 	}
 
@@ -127,85 +158,35 @@ qdevice_net_send_ask_for_vote(struct qdevice_net_instance *instance)
 	return (0);
 }
 
-static
-void qdevice_net_log_debug_node_list(const struct node_list *nlist)
-{
-	struct node_list_entry *node_info;
-	size_t zi;
-
-	qdevice_net_log(LOG_DEBUG, "  Node list:");
-
-	zi = 0;
-
-	TAILQ_FOREACH(node_info, nlist, entries) {
-		qdevice_net_log(LOG_DEBUG, "    %zu node_id = %"PRIx32", "
-		    "data_center_id = %"PRIx32", node_state = %s",
-		    zi, node_info->node_id, node_info->data_center_id,
-		    tlv_node_state_to_str(node_info->node_state));
-		zi++;
-        }
-}
-
 int
-qdevice_net_send_config_node_list(struct qdevice_net_instance *instance, int initial, int force_send)
+qdevice_net_send_config_node_list(struct qdevice_net_instance *instance,
+    const struct node_list *nlist, int config_version_set, uint64_t config_version,
+    int initial)
 {
-	struct node_list nlist;
 	struct send_buffer_list_entry *send_buffer;
-	uint64_t config_version;
-	int send_config_version;
-
-	if (qdevice_net_cmap_get_nodelist(instance->cmap_handle, &nlist) != 0) {
-		qdevice_net_log(LOG_ERR, "Can't get initial configuration node list.");
-
-		return (-1);
-	}
-
-	/*
-	 * Send only if list changed or force was used
-	 */
-	if (!force_send && node_list_eq(&instance->last_sent_config_node_list, &nlist)) {
-		return (0);
-	}
 
 	send_buffer = send_buffer_list_get_new(&instance->send_buffer_list);
 	if (send_buffer == NULL) {
-		qdevice_net_log(LOG_ERR, "Can't allocate send list buffer for config "
+		qdevice_log(LOG_ERR, "Can't allocate send list buffer for config "
 		    "node list msg");
-
-		node_list_free(&nlist);
 
 		return (-1);
 	}
-
-	send_config_version = qdevice_net_cmap_get_config_version(instance->cmap_handle,
-	    &config_version);
 
 	instance->last_msg_seq_num++;
 
-	qdevice_net_log(LOG_DEBUG, "Sending config node list seq = %"PRIu32,
+	qdevice_log(LOG_DEBUG, "Sending config node list seq = %"PRIu32,
 	    instance->last_msg_seq_num);
-	qdevice_net_log_debug_node_list(&nlist);
-
-	node_list_free(&instance->last_sent_config_node_list);
-	if (node_list_clone(&instance->last_sent_config_node_list, &nlist) != 0) {
-		qdevice_net_log(LOG_ERR, "Can't allocate last sent config node list clone");
-
-		node_list_free(&nlist);
-
-		return (-1);
-	}
+	qdevice_log_debug_dump_node_list(nlist);
 
 	if (msg_create_node_list(&send_buffer->buffer, instance->last_msg_seq_num,
 	    (initial ? TLV_NODE_LIST_TYPE_INITIAL_CONFIG : TLV_NODE_LIST_TYPE_CHANGED_CONFIG),
-	    0, NULL, send_config_version, config_version, 0, TLV_QUORATE_INQUORATE, &nlist) == 0) {
-		qdevice_net_log(LOG_ERR, "Can't allocate send buffer for config list msg");
+	    0, NULL, config_version_set, config_version, 0, TLV_QUORATE_INQUORATE, nlist) == 0) {
+		qdevice_log(LOG_ERR, "Can't allocate send buffer for config list msg");
 
-		node_list_free(&nlist);
-
+		send_buffer_list_discard_new(&instance->send_buffer_list, send_buffer);
 		return (-1);
 	}
-
-	node_list_free(&nlist);
 
 	send_buffer_list_put(&instance->send_buffer_list, send_buffer);
 
@@ -225,7 +206,7 @@ qdevice_net_send_membership_node_list(struct qdevice_net_instance *instance,
 
 	for (i = 0; i < node_list_entries; i++) {
 		if (node_list_add(&nlist, node_list[i], 0, TLV_NODE_STATE_NOT_SET) == NULL) {
-			qdevice_net_log(LOG_ERR, "Can't allocate membership node list.");
+			qdevice_log(LOG_ERR, "Can't allocate membership node list.");
 
 			node_list_free(&nlist);
 
@@ -235,7 +216,7 @@ qdevice_net_send_membership_node_list(struct qdevice_net_instance *instance,
 
 	send_buffer = send_buffer_list_get_new(&instance->send_buffer_list);
 	if (send_buffer == NULL) {
-		qdevice_net_log(LOG_ERR, "Can't allocate send list buffer for membership "
+		qdevice_log(LOG_ERR, "Can't allocate send list buffer for membership "
 		    "node list msg");
 
 		node_list_free(&nlist);
@@ -245,18 +226,19 @@ qdevice_net_send_membership_node_list(struct qdevice_net_instance *instance,
 
 	instance->last_msg_seq_num++;
 
-	qdevice_net_log(LOG_DEBUG, "Sending membership node list seq = %"PRIu32", "
+	qdevice_log(LOG_DEBUG, "Sending membership node list seq = %"PRIu32", "
 	    "ringid = (%"PRIx32".%"PRIx64").", instance->last_msg_seq_num,
 	    ring_id->node_id, ring_id->seq);
-	qdevice_net_log_debug_node_list(&nlist);
+	qdevice_log_debug_dump_node_list(&nlist);
 
 	if (msg_create_node_list(&send_buffer->buffer, instance->last_msg_seq_num,
 	    TLV_NODE_LIST_TYPE_MEMBERSHIP,
 	    1, ring_id, 0, 0, 0, 0, &nlist) == 0) {
-		qdevice_net_log(LOG_ERR, "Can't allocate send buffer for membership list msg");
+		qdevice_log(LOG_ERR, "Can't allocate send buffer for membership list msg");
 
 		node_list_free(&nlist);
 
+		send_buffer_list_discard_new(&instance->send_buffer_list, send_buffer);
 		return (-1);
 	}
 
@@ -287,7 +269,7 @@ qdevice_net_send_quorum_node_list(struct qdevice_net_instance *instance,
 
 		if (node_list_add(&nlist, node_list[i].nodeid, 0,
 		    qdevice_net_votequorum_node_state_to_tlv(node_list[i].state)) == NULL) {
-			qdevice_net_log(LOG_ERR, "Can't allocate quorum node list.");
+			qdevice_log(LOG_ERR, "Can't allocate quorum node list.");
 
 			node_list_free(&nlist);
 
@@ -297,7 +279,7 @@ qdevice_net_send_quorum_node_list(struct qdevice_net_instance *instance,
 
 	send_buffer = send_buffer_list_get_new(&instance->send_buffer_list);
 	if (send_buffer == NULL) {
-		qdevice_net_log(LOG_ERR, "Can't allocate send list buffer for quorum "
+		qdevice_log(LOG_ERR, "Can't allocate send list buffer for quorum "
 		    "node list msg");
 
 		node_list_free(&nlist);
@@ -307,17 +289,18 @@ qdevice_net_send_quorum_node_list(struct qdevice_net_instance *instance,
 
 	instance->last_msg_seq_num++;
 
-	qdevice_net_log(LOG_DEBUG, "Sending quorum node list seq = %"PRIu32", quorate = %u",
+	qdevice_log(LOG_DEBUG, "Sending quorum node list seq = %"PRIu32", quorate = %u",
 	    instance->last_msg_seq_num, quorate);
-	qdevice_net_log_debug_node_list(&nlist);
+	qdevice_log_debug_dump_node_list(&nlist);
 
 	if (msg_create_node_list(&send_buffer->buffer, instance->last_msg_seq_num,
 	    TLV_NODE_LIST_TYPE_QUORUM,
 	    0, NULL, 0, 0, 1, quorate, &nlist) == 0) {
-		qdevice_net_log(LOG_ERR, "Can't allocate send buffer for quorum list msg");
+		qdevice_log(LOG_ERR, "Can't allocate send buffer for quorum list msg");
 
 		node_list_free(&nlist);
 
+		send_buffer_list_discard_new(&instance->send_buffer_list, send_buffer);
 		return (-1);
 	}
 

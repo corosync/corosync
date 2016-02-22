@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2016 Red Hat, Inc.
+ * Copyright (c) 2015-2016 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -32,20 +32,28 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _QDEVICE_NET_MSG_RECEIVED_H_
-#define _QDEVICE_NET_MSG_RECEIVED_H_
+#ifndef _QDEVICE_VOTEQUORUM_H_
+#define _QDEVICE_VOTEQUORUM_H_
 
-#include "qdevice-net-instance.h"
+#include <votequorum.h>
+
+#include "qdevice-instance.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-extern int		qdevice_net_msg_received(struct qdevice_net_instance *instance);
+extern void			qdevice_votequorum_init(struct qdevice_instance *instance);
 
+extern void			qdevice_votequorum_destroy(struct qdevice_instance *instance);
+
+extern int			qdevice_votequorum_dispatch(struct qdevice_instance *instance);
+
+extern int			qdevice_votequorum_poll(struct qdevice_instance *instance,
+    int cast_vote);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* _QDEVICE_NET_MSG_RECEIVED_H_ */
+#endif /* _QDEVICE_VOTEQUORUM_H_ */
