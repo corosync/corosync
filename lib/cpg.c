@@ -928,13 +928,16 @@ cs_error_t cpg_zcb_alloc (
 		&res_coroipcs_zc_alloc,
 		sizeof (struct qb_ipc_response_header));
 
+	if (error != CS_OK) {
+		goto error_exit;
+	}
+
 	hdr = (struct coroipcs_zc_header *)buf;
 	hdr->map_size = map_size;
-	*buffer = ((char *)buf) + sizeof (struct coroipcs_zc_header);
+	*buffer = ((char *)buf) + sizeof (struct coroipcs_zc_header) + sizeof (struct req_lib_cpg_mcast);
 
+error_exit:
 	hdb_handle_put (&cpg_handle_t_db, handle);
-	*buffer = ((char *)*buffer) + sizeof (struct req_lib_cpg_mcast);
-
 	return (error);
 }
 
@@ -970,11 +973,18 @@ cs_error_t cpg_zcb_free (
 		&res_coroipcs_zc_free,
 		sizeof (struct qb_ipc_response_header));
 
-	res = munmap ((void *)header, header->map_size);
-	if (res == -1) {
-			return (-1);
+	if (error != CS_OK) {
+		goto error_exit;
 	}
 
+	res = munmap ((void *)header, header->map_size);
+	if (res == -1) {
+		error = qb_to_cs_error(-errno);
+
+		goto error_exit;
+	}
+
+error_exit:
 	hdb_handle_put (&cpg_handle_t_db, handle);
 
 	return (error);
