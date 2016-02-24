@@ -943,11 +943,12 @@ cs_error_t cpg_zcb_free (
 	void *buffer)
 {
 	cs_error_t error;
+	unsigned int res;
 	struct cpg_inst *cpg_inst;
 	mar_req_coroipcc_zc_free_t req_coroipcc_zc_free;
 	struct qb_ipc_response_header res_coroipcs_zc_free;
 	struct iovec iovec;
-	struct coroipcs_zc_header *header = (struct coroipcs_zc_header *)((char *)buffer - sizeof (struct coroipcs_zc_header));
+	struct coroipcs_zc_header *header = (struct coroipcs_zc_header *)((char *)buffer - sizeof (struct coroipcs_zc_header) - sizeof (struct req_lib_cpg_mcast));
 
 	error = hdb_error_to_cs (hdb_handle_get (&cpg_handle_t_db, handle, (void *)&cpg_inst));
 	if (error != CS_OK) {
@@ -969,7 +970,10 @@ cs_error_t cpg_zcb_free (
 		&res_coroipcs_zc_free,
 		sizeof (struct qb_ipc_response_header));
 
-	munmap ((void *)header, header->map_size);
+	res = munmap ((void *)header, header->map_size);
+	if (res == -1) {
+			return (-1);
+	}
 
 	hdb_handle_put (&cpg_handle_t_db, handle);
 
