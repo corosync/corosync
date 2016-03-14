@@ -313,6 +313,7 @@ main(int argc, char *argv[])
 	int client_cert_required;
 	size_t max_clients;
 	PRIntn address_family;
+	int lock_file;
 
 	cli_parse(argc, argv, &host_addr, &host_port, &foreground, &debug_log, &bump_log_priority,
 	    &tls_supported, &client_cert_required, &max_clients, &address_family);
@@ -333,7 +334,7 @@ main(int argc, char *argv[])
 		utils_tty_detach();
 	}
 
-	if (utils_flock(QNETD_LOCK_FILE, getpid(), qnetd_log_printf) != 0) {
+	if ((lock_file = utils_flock(QNETD_LOCK_FILE, getpid(), qnetd_log_printf)) == -1) {
 		exit(1);
 	}
 
