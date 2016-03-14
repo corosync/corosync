@@ -979,7 +979,6 @@ tlv_vote_to_str(enum tlv_vote vote)
 	case TLV_VOTE_ASK_LATER: return ("Ask later"); break;
 	case TLV_VOTE_WAIT_FOR_REPLY: return ("Wait for reply"); break;
 	case TLV_VOTE_NO_CHANGE: return ("No change"); break;
-	default: return ("Unknown vote value"); break;
 	}
 
 	return ("Unknown vote value");
@@ -994,7 +993,6 @@ tlv_node_state_to_str(enum tlv_node_state state)
 	case TLV_NODE_STATE_MEMBER: return ("member"); break;
 	case TLV_NODE_STATE_DEAD: return ("dead"); break;
 	case TLV_NODE_STATE_LEAVING: return ("leaving"); break;
-	default: return ("Unhandled node state"); break;
 	}
 
 	return ("Unhandled node state");
