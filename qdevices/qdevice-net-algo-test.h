@@ -43,7 +43,9 @@ extern "C" {
 
 extern int	qdevice_net_algo_test_init(struct qdevice_net_instance *instance);
 
-extern int	qdevice_net_algo_test_connected(struct qdevice_net_instance *instance);
+extern int	qdevice_net_algo_test_connected(struct qdevice_net_instance *instance,
+    int *send_config_node_list, int *send_membership_node_list, int *send_quorum_node_list,
+    enum tlv_vote *vote);
 
 extern int      qdevice_net_algo_test_config_node_list_changed(
     struct qdevice_net_instance *instance, const struct node_list *nlist,
@@ -83,7 +85,7 @@ extern int	qdevice_net_algo_test_echo_reply_not_received(
     struct qdevice_net_instance *instance);
 
 extern int	qdevice_net_algo_test_disconnected(struct qdevice_net_instance *instance,
-    enum qdevice_net_disconnect_reason disconnect_reason, int *try_reconnect);
+    enum qdevice_net_disconnect_reason disconnect_reason, int *try_reconnect, enum tlv_vote *vote);
 
 extern void	qdevice_net_algo_test_destroy(struct qdevice_net_instance *instance);
 

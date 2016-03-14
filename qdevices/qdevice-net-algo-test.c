@@ -59,11 +59,15 @@ qdevice_net_algo_test_init(struct qdevice_net_instance *instance)
 
 /*
  * Called after qdevice connected to qnetd.
+ * send_config_node_list, send_membership_node_list and send_quorum_node_list can be set to
+ * nonzero (default) to make qdevice-net send given lists to qnetd
+ * vote (default TLV_VOTE_WAIT_FOR_REPLY) can be set to update voting timer
  *
  * Callback should return 0 on success or -1 on failure (-> disconnect client).
  */
 int
-qdevice_net_algo_test_connected(struct qdevice_net_instance *instance)
+qdevice_net_algo_test_connected(struct qdevice_net_instance *instance, int *send_config_node_list,
+    int *send_membership_node_list, int *send_quorum_node_list, enum tlv_vote *vote)
 {
 
 	qdevice_log(LOG_INFO, "algo-test: Connected");
@@ -270,12 +274,13 @@ qdevice_net_algo_test_echo_reply_not_received(struct qdevice_net_instance *insta
  *
  * disconnect_reason contains one of QDEVICE_NET_DISCONNECT_REASON_
  * try_reconnect can be set to non zero value if reconnect to server should be tried
+ * vote (default TLV_VOTE_NO_CHANGE) can be set to update voting timer
  *
  * Callback should return 0 on success, -1 on failure (-> force exit)
  */
 int
 qdevice_net_algo_test_disconnected(struct qdevice_net_instance *instance,
-    enum qdevice_net_disconnect_reason disconnect_reason, int *try_reconnect)
+    enum qdevice_net_disconnect_reason disconnect_reason, int *try_reconnect, enum tlv_vote *vote)
 {
 
 	qdevice_log(LOG_INFO, "algo-test: Disconnected");

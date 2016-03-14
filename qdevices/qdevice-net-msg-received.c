@@ -449,6 +449,10 @@ qdevice_net_msg_received_set_option_reply(struct qdevice_net_instance *instance,
 {
 	struct tlv_ring_id tlv_rid;
 	enum tlv_quorate quorate;
+	int send_config_node_list;
+	int send_membership_node_list;
+	int send_quorum_node_list;
+	enum tlv_vote vote;
 
 	if (instance->state != QDEVICE_NET_INSTANCE_STATE_WAITING_SET_OPTION_REPLY) {
 		qdevice_log(LOG_ERR, "Received unexpected set option reply message. "
@@ -512,45 +516,64 @@ qdevice_net_msg_received_set_option_reply(struct qdevice_net_instance *instance,
 		}
 	}
 
-	if (qdevice_net_algorithm_connected(instance) != 0) {
+	send_config_node_list = 1;
+	send_membership_node_list = 1;
+	send_quorum_node_list = 1;
+	vote = TLV_VOTE_WAIT_FOR_REPLY;
+
+	if (qdevice_net_algorithm_connected(instance, &send_config_node_list, &send_membership_node_list,
+	    &send_quorum_node_list, &vote) != 0) {
 		qdevice_log(LOG_DEBUG, "Algorithm returned error. Disconnecting.");
 		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_ALGO_CONNECTED_ERR;
 		return (-1);
+	} else {
+		qdevice_log(LOG_DEBUG, "Algorithm decided to %s config node list, %s membership "
+		    "node list, %s quorum node list and result vote is %s",
+		    (send_config_node_list ? "send" : "not send"),
+		    (send_membership_node_list ? "send" : "not send"),
+		    (send_quorum_node_list ? "send" : "not send"),
+		    tlv_vote_to_str(vote));
 	}
 
 	/*
 	 * Now we can finally really send node list, votequorum node list and update timer
 	 */
-	if (qdevice_net_send_config_node_list(instance,
-	    &instance->qdevice_instance_ptr->config_node_list,
-	    instance->qdevice_instance_ptr->config_node_list_version_set,
-	    instance->qdevice_instance_ptr->config_node_list_version, 1) != 0) {
-		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_ALLOCATE_MSG_BUFFER;
-		return (-1);
+	if (send_config_node_list) {
+		if (qdevice_net_send_config_node_list(instance,
+		    &instance->qdevice_instance_ptr->config_node_list,
+		    instance->qdevice_instance_ptr->config_node_list_version_set,
+		    instance->qdevice_instance_ptr->config_node_list_version, 1) != 0) {
+			instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_ALLOCATE_MSG_BUFFER;
+			return (-1);
+		}
 	}
 
-	qdevice_net_votequorum_ring_id_to_tlv(&tlv_rid,
-	    &instance->qdevice_instance_ptr->vq_node_list_ring_id);
+	if (send_membership_node_list) {
+		qdevice_net_votequorum_ring_id_to_tlv(&tlv_rid,
+		    &instance->qdevice_instance_ptr->vq_node_list_ring_id);
 
-	if (qdevice_net_send_membership_node_list(instance, &tlv_rid,
-	    instance->qdevice_instance_ptr->vq_node_list_entries,
-	    instance->qdevice_instance_ptr->vq_node_list) != 0) {
-		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_ALLOCATE_MSG_BUFFER;
-		return (-1);
+		if (qdevice_net_send_membership_node_list(instance, &tlv_rid,
+		    instance->qdevice_instance_ptr->vq_node_list_entries,
+		    instance->qdevice_instance_ptr->vq_node_list) != 0) {
+			instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_ALLOCATE_MSG_BUFFER;
+			return (-1);
+		}
 	}
 
-	quorate = (instance->qdevice_instance_ptr->vq_quorum_quorate ?
-	    TLV_QUORATE_QUORATE : TLV_QUORATE_INQUORATE);
+	if (send_quorum_node_list) {
+		quorate = (instance->qdevice_instance_ptr->vq_quorum_quorate ?
+		    TLV_QUORATE_QUORATE : TLV_QUORATE_INQUORATE);
 
-	if (qdevice_net_send_quorum_node_list(instance,
-	    quorate,
-	    instance->qdevice_instance_ptr->vq_quorum_node_list_entries,
-	    instance->qdevice_instance_ptr->vq_quorum_node_list) != 0) {
-		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_ALLOCATE_MSG_BUFFER;
-		return (-1);
+		if (qdevice_net_send_quorum_node_list(instance,
+		    quorate,
+		    instance->qdevice_instance_ptr->vq_quorum_node_list_entries,
+		    instance->qdevice_instance_ptr->vq_quorum_node_list) != 0) {
+			instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_ALLOCATE_MSG_BUFFER;
+			return (-1);
+		}
 	}
 
-	if (qdevice_net_cast_vote_timer_update(instance, TLV_VOTE_WAIT_FOR_REPLY) != 0) {
+	if (qdevice_net_cast_vote_timer_update(instance, vote) != 0) {
 		qdevice_log(LOG_CRIT, "qdevice_net_msg_received_set_option_reply fatal error. "
 		    " Can't update cast vote timer vote");
 		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_SCHEDULE_VOTING_TIMER;

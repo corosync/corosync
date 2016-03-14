@@ -135,6 +135,7 @@ qdevice_model_net_run(struct qdevice_instance *instance)
 	struct qdevice_net_instance *net_instance;
 	int try_connect;
 	int res;
+	enum tlv_vote vote;
 
 	net_instance = instance->model_data;
 
@@ -186,10 +187,20 @@ qdevice_model_net_run(struct qdevice_instance *instance)
 
 		try_connect = qdevice_net_disconnect_reason_try_reconnect(net_instance->disconnect_reason);
 
+		vote = TLV_VOTE_NO_CHANGE;
+
 		if (qdevice_net_algorithm_disconnected(net_instance,
-		    net_instance->disconnect_reason, &try_connect) != 0) {
+		    net_instance->disconnect_reason, &try_connect, &vote) != 0) {
 			qdevice_log(LOG_ERR, "Algorithm returned error, force exit");
 			return (-1);
+		} else {
+			qdevice_log(LOG_ERR, "Algorithm result vote is %s",
+			    tlv_vote_to_str(vote));
+		}
+
+		if (qdevice_net_cast_vote_timer_update(net_instance, vote) != 0) {
+			qdevice_log(LOG_ERR, "qdevice_model_net_run fatal error. "
+			    " Can't update cast vote timer vote");
 		}
 
 		if (net_instance->disconnect_reason ==

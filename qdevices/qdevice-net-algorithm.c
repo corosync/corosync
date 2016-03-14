@@ -59,7 +59,8 @@ qdevice_net_algorithm_init(struct qdevice_net_instance *instance)
 }
 
 int
-qdevice_net_algorithm_connected(struct qdevice_net_instance *instance)
+qdevice_net_algorithm_connected(struct qdevice_net_instance *instance, int *send_config_node_list,
+    int *send_membership_node_list, int *send_quorum_node_list, enum tlv_vote *vote)
 {
 
 	if (instance->decision_algorithm >= QDEVICE_NET_STATIC_SUPPORTED_DECISION_ALGORITHMS_SIZE ||
@@ -68,7 +69,8 @@ qdevice_net_algorithm_connected(struct qdevice_net_instance *instance)
 		exit(1);
 	}
 
-	return (qdevice_net_algorithm_array[instance->decision_algorithm]->connected(instance));
+	return (qdevice_net_algorithm_array[instance->decision_algorithm]->connected(instance,
+	    send_config_node_list, send_membership_node_list, send_quorum_node_list, vote));
 }
 
 int
@@ -236,7 +238,7 @@ qdevice_net_algorithm_echo_reply_not_received(struct qdevice_net_instance *insta
 
 int
 qdevice_net_algorithm_disconnected(struct qdevice_net_instance *instance,
-    enum qdevice_net_disconnect_reason disconnect_reason, int *try_reconnect)
+    enum qdevice_net_disconnect_reason disconnect_reason, int *try_reconnect, enum tlv_vote *vote)
 {
 
 	if (instance->decision_algorithm >= QDEVICE_NET_STATIC_SUPPORTED_DECISION_ALGORITHMS_SIZE ||
@@ -247,7 +249,7 @@ qdevice_net_algorithm_disconnected(struct qdevice_net_instance *instance,
 	}
 
 	return (qdevice_net_algorithm_array[instance->decision_algorithm]->
-	    disconnected(instance, disconnect_reason, try_reconnect));
+	    disconnected(instance, disconnect_reason, try_reconnect, vote));
 }
 
 void
