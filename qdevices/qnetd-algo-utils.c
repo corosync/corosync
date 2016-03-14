@@ -130,15 +130,19 @@ void
 qnetd_algo_free_partitions(partitions_list_t *partitions_list)
 {
 	struct qnetd_algo_partition *cur_partition;
+	struct qnetd_algo_partition *partition_next;
 
-restart:
-	TAILQ_FOREACH(cur_partition, partitions_list, entries) {
-		TAILQ_REMOVE(partitions_list, cur_partition, entries);
+	cur_partition = TAILQ_FIRST(partitions_list);
+
+	while (cur_partition != NULL) {
+		partition_next = TAILQ_NEXT(cur_partition, entries);
+
 		free(cur_partition);
 
-		/* TAILQ doesn't have a safe-removal interator */
-		goto restart;
+		cur_partition = partition_next;
 	}
+
+	TAILQ_INIT(partitions_list);
 }
 
 void
