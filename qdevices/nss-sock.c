@@ -309,9 +309,11 @@ nss_sock_non_blocking_client_destroy(struct nss_sock_non_blocking_client *client
 
 	if (client->addr_info != NULL) {
 		PR_FreeAddrInfo(client->addr_info);
+		client->addr_info = NULL;
 	}
 
 	free(client->host_name);
+	client->host_name = NULL;
 
 	client->destroyed = 1;
 }

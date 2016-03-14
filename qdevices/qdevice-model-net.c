@@ -201,6 +201,18 @@ qdevice_model_net_run(struct qdevice_instance *instance)
 			if (PR_Close(net_instance->socket) != PR_SUCCESS) {
 				qdevice_log_nss(LOG_WARNING, "Unable to close connection");
 			}
+			net_instance->socket = NULL;
+		}
+
+		if (!net_instance->non_blocking_client.destroyed) {
+			nss_sock_non_blocking_client_destroy(&net_instance->non_blocking_client);
+		}
+
+		if (net_instance->non_blocking_client.socket != NULL) {
+			if (PR_Close(net_instance->non_blocking_client.socket) != PR_SUCCESS) {
+				qdevice_log_nss(LOG_WARNING, "Unable to close non-blocking client connection");
+			}
+			net_instance->non_blocking_client.socket = NULL;
 		}
 
 		qdevice_net_instance_clean(net_instance);
