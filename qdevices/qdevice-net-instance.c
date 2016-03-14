@@ -169,17 +169,24 @@ qdevice_net_instance_init_from_cmap(struct qdevice_instance *instance)
 	/*
 	 * Check tls
 	 */
+	tls_supported = QDEVICE_NET_DEFAULT_TLS_SUPPORTED;
+
 	if (cmap_get_string(cmap_handle, "quorum.device.net.tls", &str) == CS_OK) {
 		if ((i = utils_parse_bool_str(str)) == -1) {
-			free(str);
-			qdevice_log(LOG_ERR, "quorum.device.net.tls value is not valid.");
-			return (-1);
-		}
+			if (strcasecmp(str, "required") != 0) {
+				free(str);
+				qdevice_log(LOG_ERR, "quorum.device.net.tls value is not valid.");
 
-		if (i == 1) {
-			tls_supported = TLV_TLS_SUPPORTED;
+				goto error_free_instance;
+			} else {
+				tls_supported = TLV_TLS_REQUIRED;
+			}
 		} else {
-			tls_supported = TLV_TLS_UNSUPPORTED;
+			if (i == 1) {
+				tls_supported = TLV_TLS_SUPPORTED;
+			} else {
+				tls_supported = TLV_TLS_UNSUPPORTED;
+			}
 		}
 
 		free(str);
@@ -190,20 +197,19 @@ qdevice_net_instance_init_from_cmap(struct qdevice_instance *instance)
 	 */
 	if (cmap_get_string(cmap_handle, "quorum.device.net.host", &str) != CS_OK) {
 		qdevice_log(LOG_ERR, "Qdevice net daemon address is not defined (quorum.device.net.host)");
-		return (-1);
+		goto error_free_instance;
 	}
 	host_addr = str;
 
 	if (cmap_get_string(cmap_handle, "quorum.device.net.port", &str) == CS_OK) {
 		host_port = strtol(str, &ep, 10);
 
+		free(str);
 
 		if (host_port <= 0 || host_port > ((uint16_t)~0) || *ep != '\0') {
 			qdevice_log(LOG_ERR, "quorum.device.net.port must be in range 0-65535");
-			return (-1);
+			goto error_free_host_addr;
 		}
-
-		free(str);
 	} else {
 		host_port = QNETD_DEFAULT_HOST_PORT;
 	}
@@ -213,7 +219,7 @@ qdevice_net_instance_init_from_cmap(struct qdevice_instance *instance)
 	 */
 	if (cmap_get_string(cmap_handle, "totem.cluster_name", &str) != CS_OK) {
 		qdevice_log(LOG_ERR, "Cluster name (totem.cluster_name) has to be defined.");
-		return (-1);
+		goto error_free_host_addr;
 	}
 	cluster_name = str;
 
@@ -242,7 +248,7 @@ qdevice_net_instance_init_from_cmap(struct qdevice_instance *instance)
 		} else {
 			qdevice_log(LOG_ERR, "Unknown decision algorithm %s", str);
 			free(str);
-			return (-1);
+			goto error_free_cluster_name;
 		}
 
 		free(str);
@@ -265,7 +271,7 @@ qdevice_net_instance_init_from_cmap(struct qdevice_instance *instance)
 			if (li <= 0 || li > ((uint32_t)~0) || *ep != '\0') {
 				qdevice_log(LOG_ERR, "tie_breaker must be lowest|highest|valid_node_id");
 				free(str);
-				return (-1);
+				goto error_free_cluster_name;
 			}
 
 			tie_breaker.mode = TLV_TIE_BREAKER_MODE_NODE_ID;
@@ -286,7 +292,7 @@ qdevice_net_instance_init_from_cmap(struct qdevice_instance *instance)
 			qdevice_log(LOG_ERR, "connect_timeout must be valid number in range <%lu,%lu>",
 			    QDEVICE_NET_MIN_CONNECT_TIMEOUT, QDEVICE_NET_MAX_CONNECT_TIMEOUT);
 			free(str);
-			return (-1);
+			goto error_free_cluster_name;
 		}
 
 		connect_timeout = li;
@@ -306,11 +312,19 @@ qdevice_net_instance_init_from_cmap(struct qdevice_instance *instance)
 	    host_addr, host_port, cluster_name, &tie_breaker, connect_timeout,
 	    instance->cmap_poll_fd, instance->votequorum_poll_fd) == -1) {
 		qdevice_log(LOG_ERR, "Can't initialize qdevice-net instance");
-		return (-1);
+		goto error_free_instance;
 	}
 
 	net_instance->qdevice_instance_ptr = instance;
 	instance->model_data = net_instance;
 
 	return (0);
+
+error_free_cluster_name:
+	free(cluster_name);
+error_free_host_addr:
+	free(host_addr);
+error_free_instance:
+	free(net_instance);
+	return (-1);
 }
