@@ -354,6 +354,7 @@ qdevice_net_msg_received_init_reply(struct qdevice_net_instance *instance,
 		qdevice_log(LOG_ERR, "Can't allocate send buffer for set option msg");
 
 		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_ALLOCATE_MSG_BUFFER;
+		send_buffer_list_discard_new(&instance->send_buffer_list, send_buffer);
 
 		return (-1);
 	}
@@ -821,8 +822,11 @@ qdevice_net_msg_received_vote_info(struct qdevice_net_instance *instance,
 		    "vote info reply list msg");
 
 		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_ALLOCATE_MSG_BUFFER;
+		send_buffer_list_discard_new(&instance->send_buffer_list, send_buffer);
 		return (-1);
 	}
+
+	send_buffer_list_put(&instance->send_buffer_list, send_buffer);
 
 	return (0);
 }

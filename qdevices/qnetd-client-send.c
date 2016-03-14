@@ -60,6 +60,7 @@ qnetd_client_send_err(struct qnetd_client *client, int add_msg_seq_number, uint3
 		qnetd_log(LOG_ERR, "Can't alloc server error msg. "
 		    "Disconnecting client connection.");
 
+		send_buffer_list_discard_new(&client->send_buffer_list, send_buffer);
 		return (-1);
 	};
 
@@ -88,6 +89,7 @@ qnetd_client_send_vote_info(struct qnetd_client *client, uint32_t msg_seq_number
 		qnetd_log(LOG_ERR, "Can't alloc vote info msg. "
 		    "Disconnecting client connection.");
 
+		send_buffer_list_discard_new(&client->send_buffer_list, send_buffer);
 		return (-1);
 	};
 
