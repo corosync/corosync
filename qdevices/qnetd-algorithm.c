@@ -158,6 +158,20 @@ qnetd_algorithm_vote_info_reply_received(struct qnetd_client *client, uint32_t m
 
 }
 
+enum tlv_reply_error_code
+qnetd_algorithm_timer_callback(struct qnetd_client *client, int *reschedule_timer,
+    int *send_vote, enum tlv_vote *result_vote)
+{
+
+	if (client->decision_algorithm >= QNETD_STATIC_SUPPORTED_DECISION_ALGORITHMS_SIZE ||
+	    qnetd_algorithm_array[client->decision_algorithm] == NULL) {
+		errx(1, "qnetd_algorithm_timer_callback unhandled decision algorithm");
+		return (TLV_REPLY_ERROR_CODE_INTERNAL_ERROR);
+	}
+
+	return (qnetd_algorithm_array[client->decision_algorithm]->timer_callback(
+		client, reschedule_timer, send_vote, result_vote));
+}
 
 enum tlv_reply_error_code
 qnetd_algorithm_register(enum tlv_decision_algorithm_type algorithm_number,

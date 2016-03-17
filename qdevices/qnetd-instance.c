@@ -61,6 +61,8 @@ qnetd_instance_init(struct qnetd_instance *instance, size_t max_client_receive_s
 
 	instance->max_clients = max_clients;
 
+	timer_list_init(&instance->main_timer_list);
+
 	return (0);
 }
 
@@ -69,6 +71,8 @@ qnetd_instance_destroy(struct qnetd_instance *instance)
 {
 	struct qnetd_client *client;
 	struct qnetd_client *client_next;
+
+	timer_list_free(&instance->main_timer_list);
 
 	client = TAILQ_FIRST(&instance->clients);
 	while (client != NULL) {

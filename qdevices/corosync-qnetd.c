@@ -96,7 +96,9 @@ qnetd_poll(struct qnetd_instance *instance)
 	}
 
 	if ((poll_res = PR_Poll(pfds, qnetd_poll_array_size(&instance->poll_array),
-	    PR_INTERVAL_NO_TIMEOUT)) > 0) {
+	    timer_list_time_to_expire(&instance->main_timer_list))) >= 0) {
+		timer_list_expire(&instance->main_timer_list);
+
 		/*
 		 * Walk thru pfds array and process events
 		 */
@@ -112,11 +114,13 @@ qnetd_poll(struct qnetd_instance *instance)
 					client = client_next;
 					client_next = TAILQ_NEXT(client, entries);
 				}
+				client_disconnect = client->schedule_disconnect;
+			} else {
+				client_disconnect = 0;
 			}
 
-			client_disconnect = 0;
-
-			if (!client_disconnect && pfds[i].out_flags & PR_POLL_READ) {
+			if (!client_disconnect && poll_res > 0 &&
+			    pfds[i].out_flags & PR_POLL_READ) {
 				if (i == 0) {
 					qnetd_client_net_accept(instance);
 				} else {
@@ -126,7 +130,8 @@ qnetd_poll(struct qnetd_instance *instance)
 				}
 			}
 
-			if (!client_disconnect && pfds[i].out_flags & PR_POLL_WRITE) {
+			if (!client_disconnect && poll_res > 0 &&
+			    pfds[i].out_flags & PR_POLL_WRITE) {
 				if (i == 0) {
 					/*
 					 * Poll write on listen socket -> fatal error
@@ -141,7 +146,7 @@ qnetd_poll(struct qnetd_instance *instance)
 				}
 			}
 
-			if (!client_disconnect &&
+			if (!client_disconnect && poll_res > 0 &&
 			    (pfds[i].out_flags & (PR_POLL_ERR|PR_POLL_NVAL|PR_POLL_HUP|PR_POLL_EXCEPT)) &&
 			    !(pfds[i].out_flags & (PR_POLL_READ|PR_POLL_WRITE))) {
 				if (i == 0) {
@@ -174,6 +179,7 @@ qnetd_poll(struct qnetd_instance *instance)
 			}
 		}
 	}
+
 
 	return (0);
 }

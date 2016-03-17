@@ -50,7 +50,7 @@ extern void			 qnetd_client_list_init(struct qnetd_client_list *client_list);
 
 extern struct qnetd_client	*qnetd_client_list_add(struct qnetd_client_list *client_list,
     PRFileDesc *sock, PRNetAddr *addr, size_t max_receive_size, size_t max_send_buffers,
-    size_t max_send_size);
+    size_t max_send_size, struct timer_list *main_timer_list);
 
 extern void			 qnetd_client_list_free(struct qnetd_client_list *client_list);
 

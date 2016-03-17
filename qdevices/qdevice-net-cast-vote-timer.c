@@ -115,8 +115,13 @@ qdevice_net_cast_vote_timer_update(struct qdevice_net_instance *instance, enum t
 				return (-1);
 			} else {
 				qdevice_log(LOG_DEBUG, "Cast vote timer is now scheduled every "
-				    "%"PRIu32"ms.", instance->cast_vote_timer_interval);
+				    "%"PRIu32"ms voting %s.", instance->cast_vote_timer_interval,
+				    tlv_vote_to_str(instance->cast_vote_timer_vote));
 			}
+		} else {
+			qdevice_log(LOG_DEBUG, "Cast vote timer remains scheduled every "
+			    "%"PRIu32"ms voting %s.", instance->cast_vote_timer_interval,
+			    tlv_vote_to_str(instance->cast_vote_timer_vote));
 		}
 
 		if (qdevice_net_cast_vote_timer_callback((void *)instance, NULL) != -1) {

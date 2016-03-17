@@ -295,6 +295,13 @@ qnetd_algo_2nodelms_vote_info_reply_received(struct qnetd_client *client, uint32
 	return (TLV_REPLY_ERROR_CODE_NO_ERROR);
 }
 
+enum tlv_reply_error_code
+qnetd_algo_2nodelms_timer_callback(struct qnetd_client *client, int *reschedule_timer,
+    int *send_vote, enum tlv_vote *result_vote)
+{
+
+	return (TLV_REPLY_ERROR_CODE_NO_ERROR);
+}
 
 static struct qnetd_algorithm qnetd_algo_2nodelms = {
 	.init                          = qnetd_algo_2nodelms_client_init,
@@ -304,6 +311,7 @@ static struct qnetd_algorithm qnetd_algo_2nodelms = {
 	.client_disconnect             = qnetd_algo_2nodelms_client_disconnect,
 	.ask_for_vote_received         = qnetd_algo_2nodelms_ask_for_vote_received,
 	.vote_info_reply_received      = qnetd_algo_2nodelms_vote_info_reply_received,
+	.timer_callback                = qnetd_algo_2nodelms_timer_callback,
 };
 
 enum tlv_reply_error_code qnetd_algo_2nodelms_register()

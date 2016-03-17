@@ -45,7 +45,8 @@ corosync_qnetd_SOURCES	= corosync-qnetd.c dynar.c msg.c msgio.c nss-sock.c  \
 			    node-list.c qnetd-algo-test.c qnetd-algorithm.c qnetd-algo-utils.c \
 			    qnetd-algo-ffsplit.c qnetd-cluster-list.c qnetd-client-send.c \
 			    qnetd-algo-2nodelms.c qnetd-algo-lms.c utils.c qnetd-instance.c \
-			    qnetd-client-net.c qnetd-client-msg-received.c qnetd-log-debug.c
+			    qnetd-client-net.c qnetd-client-msg-received.c qnetd-log-debug.c \
+			    qnetd-client-algo-timer.c
 
 corosync_qdevice_SOURCES	= corosync-qdevice.c qdevice-cmap.c qdevice-instance.c node-list.c \
 				  utils.c qdevice-log.c qdevice-log-debug.c qdevice-votequorum.c \

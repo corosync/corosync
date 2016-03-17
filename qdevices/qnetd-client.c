@@ -38,10 +38,12 @@
 
 #include "qnet-config.h"
 #include "qnetd-client.h"
+#include "qnetd-client-algo-timer.h"
 
 void
 qnetd_client_init(struct qnetd_client *client, PRFileDesc *sock, PRNetAddr *addr,
-    size_t max_receive_size, size_t max_send_buffers, size_t max_send_size)
+    size_t max_receive_size, size_t max_send_buffers, size_t max_send_size,
+    struct timer_list *main_timer_list)
 {
 
 	memset(client, 0, sizeof(*client));
@@ -53,12 +55,14 @@ qnetd_client_init(struct qnetd_client *client, PRFileDesc *sock, PRNetAddr *addr
 	node_list_init(&client->last_membership_node_list);
 	node_list_init(&client->last_quorum_node_list);
 	client->tie_breaker.mode = QNETD_DEFAULT_TIE_BREAKER_MODE;
+	client->main_timer_list = main_timer_list;
 }
 
 void
 qnetd_client_destroy(struct qnetd_client *client)
 {
 
+	qnetd_client_algo_timer_abort(client);
 	free(client->cluster_name);
 	node_list_free(&client->last_quorum_node_list);
 	node_list_free(&client->last_membership_node_list);

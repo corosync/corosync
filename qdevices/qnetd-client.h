@@ -76,12 +76,17 @@ struct qnetd_client {
 	struct tlv_ring_id last_ring_id;
 	struct qnetd_cluster *cluster;
 	struct qnetd_cluster_list *cluster_list;
+	struct timer_list *main_timer_list;
+	struct timer_list_entry *algo_timer;
+	uint32_t algo_timer_vote_info_msq_seq_number;
+	int schedule_disconnect;
 	TAILQ_ENTRY(qnetd_client) entries;
 	TAILQ_ENTRY(qnetd_client) cluster_entries;
 };
 
 extern void		qnetd_client_init(struct qnetd_client *client, PRFileDesc *sock,
-    PRNetAddr *addr, size_t max_receive_size, size_t max_send_buffers, size_t max_send_size);
+    PRNetAddr *addr, size_t max_receive_size, size_t max_send_buffers, size_t max_send_size,
+    struct timer_list *main_timer_list);
 
 extern void		qnetd_client_destroy(struct qnetd_client *client);
 

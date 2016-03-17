@@ -69,6 +69,9 @@ extern enum tlv_reply_error_code	qnetd_algorithm_ask_for_vote_received(
 extern enum tlv_reply_error_code	qnetd_algorithm_vote_info_reply_received(
     struct qnetd_client *client, uint32_t msg_seq_num);
 
+extern enum tlv_reply_error_code	qnetd_algorithm_timer_callback(
+    struct qnetd_client *client, int *reschedule_timer, int *send_vote, enum tlv_vote *result_vote);
+
 struct qnetd_algorithm {
 	enum tlv_reply_error_code (*init)(struct qnetd_client *client);
 
@@ -94,6 +97,8 @@ struct qnetd_algorithm {
 	enum tlv_reply_error_code (*vote_info_reply_received)(struct qnetd_client *client,
 	    uint32_t msg_seq_num);
 
+	 enum tlv_reply_error_code (*timer_callback)(struct qnetd_client *client,
+	    int *reschedule_timer, int *send_vote, enum tlv_vote *result_vote);
 };
 
 extern enum tlv_reply_error_code	qnetd_algorithm_register(

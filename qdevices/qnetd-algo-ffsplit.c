@@ -116,6 +116,14 @@ qnetd_algo_ffsplit_vote_info_reply_received(struct qnetd_client *client, uint32_
 	return (TLV_REPLY_ERROR_CODE_UNSUPPORTED_DECISION_ALGORITHM_MESSAGE);
 }
 
+enum tlv_reply_error_code
+qnetd_algo_ffsplit_timer_callback(struct qnetd_client *client, int *reschedule_timer,
+    int *send_vote, enum tlv_vote *result_vote)
+{
+
+	return (TLV_REPLY_ERROR_CODE_NO_ERROR);
+}
+
 static struct qnetd_algorithm qnetd_algo_ffsplit = {
 	.init                          = qnetd_algo_ffsplit_client_init,
 	.config_node_list_received     = qnetd_algo_ffsplit_config_node_list_received,
@@ -124,6 +132,7 @@ static struct qnetd_algorithm qnetd_algo_ffsplit = {
 	.client_disconnect             = qnetd_algo_ffsplit_client_disconnect,
 	.ask_for_vote_received         = qnetd_algo_ffsplit_ask_for_vote_received,
 	.vote_info_reply_received      = qnetd_algo_ffsplit_vote_info_reply_received,
+	.timer_callback                = qnetd_algo_ffsplit_timer_callback,
 };
 
 enum tlv_reply_error_code qnetd_algo_ffsplit_register()

@@ -105,7 +105,9 @@ qdevice_model_net_destroy(struct qdevice_instance *instance)
 		qdevice_log_nss(LOG_WARNING, "Can't shutdown NSS");
 	}
 
-	PR_Cleanup();
+	if (PR_Cleanup() != SECSuccess) {
+		qdevice_log_nss(LOG_WARNING, "Can't shutdown NSPR");
+	}
 
 	free(net_instance);
 

@@ -41,6 +41,7 @@
 #include "qnetd-cluster-list.h"
 #include "qnetd-client-send.h"
 #include "qnetd-log-debug.h"
+#include "qnetd-client-algo-timer.h"
 
 /*
  * Called right after client sent init message. This happens after initial accept of client,
@@ -192,15 +193,35 @@ qnetd_algo_test_vote_info_reply_received(struct qnetd_client *client, uint32_t m
 	return (TLV_REPLY_ERROR_CODE_NO_ERROR);
 }
 
+/*
+ * Called as a result of qnetd_client_algo_timer_schedule function call after timeout expires.
+ *
+ * If send_vote is set by callback to non zero value, result_vote must also be set and such vote is
+ * send to client. Result_vote is ignored if send_vote = 0 (default).
+ *
+ * If reschedule timer (default value = 0) is set to non zero value, callback is called again later
+ * with same timeout as originaly created.
+ *
+ * Return TLV_REPLY_ERROR_CODE_NO_ERROR on success, different TLV_REPLY_ERROR_CODE_*
+ * on failure (error is send back to client)
+ */
+enum tlv_reply_error_code
+qnetd_algo_test_timer_callback(struct qnetd_client *client, int *reschedule_timer,
+    int *send_vote, enum tlv_vote *result_vote)
+{
+
+	return (TLV_REPLY_ERROR_CODE_NO_ERROR);
+}
 
 static struct qnetd_algorithm qnetd_algo_test = {
-	.init                          = qnetd_algo_test_client_init,
-	.config_node_list_received     = qnetd_algo_test_config_node_list_received,
-	.membership_node_list_received = qnetd_algo_test_membership_node_list_received,
-	.quorum_node_list_received     = qnetd_algo_test_quorum_node_list_received,
-	.client_disconnect             = qnetd_algo_test_client_disconnect,
-	.ask_for_vote_received         = qnetd_algo_test_ask_for_vote_received,
-	.vote_info_reply_received      = qnetd_algo_test_vote_info_reply_received,
+	.init				= qnetd_algo_test_client_init,
+	.config_node_list_received	= qnetd_algo_test_config_node_list_received,
+	.membership_node_list_received	= qnetd_algo_test_membership_node_list_received,
+	.quorum_node_list_received	= qnetd_algo_test_quorum_node_list_received,
+	.client_disconnect		= qnetd_algo_test_client_disconnect,
+	.ask_for_vote_received		= qnetd_algo_test_ask_for_vote_received,
+	.vote_info_reply_received	= qnetd_algo_test_vote_info_reply_received,
+	.timer_callback			= qnetd_algo_test_timer_callback,
 };
 
 enum tlv_reply_error_code qnetd_algo_test_register()

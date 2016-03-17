@@ -338,6 +338,13 @@ qnetd_algo_lms_vote_info_reply_received(struct qnetd_client *client, uint32_t ms
 	return (TLV_REPLY_ERROR_CODE_NO_ERROR);
 }
 
+enum tlv_reply_error_code
+qnetd_algo_lms_timer_callback(struct qnetd_client *client, int *reschedule_timer,
+    int *send_vote, enum tlv_vote *result_vote)
+{
+
+	return (TLV_REPLY_ERROR_CODE_NO_ERROR);
+}
 
 static struct qnetd_algorithm qnetd_algo_lms = {
 	.init                          = qnetd_algo_lms_client_init,
@@ -347,6 +354,7 @@ static struct qnetd_algorithm qnetd_algo_lms = {
 	.client_disconnect             = qnetd_algo_lms_client_disconnect,
 	.ask_for_vote_received         = qnetd_algo_lms_ask_for_vote_received,
 	.vote_info_reply_received      = qnetd_algo_lms_vote_info_reply_received,
+	.timer_callback                = qnetd_algo_lms_timer_callback,
 };
 
 enum tlv_reply_error_code qnetd_algo_lms_register()
