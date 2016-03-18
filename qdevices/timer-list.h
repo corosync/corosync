@@ -43,21 +43,31 @@
 extern "C" {
 #endif
 
+/*
+ * PR Interval is 32-bit integer which overflows. Maximum useable interval is around
+ * 6 hours (less). So define max interval as 5 hours
+ */
+#define TIMER_LIST_MAX_INTERVAL			18000000
+
 typedef int (*timer_list_cb_fn)(void *data1, void *data2);
 
 struct timer_list_entry {
+	/* Time when timer was planned */
 	PRIntervalTime epoch;
+	/* Number of miliseconds to expire */
 	PRUint32 interval;
+	/* Time when timer expires (epoch + interval) */
+	PRIntervalTime expire_time;
 	timer_list_cb_fn func;
 	void *user_data1;
 	void *user_data2;
+	int is_active;
 	TAILQ_ENTRY(timer_list_entry) entries;
 };
 
 struct timer_list {
 	TAILQ_HEAD(, timer_list_entry) list;
 	TAILQ_HEAD(, timer_list_entry) free_list;
-	int list_expire_in_progress;
 };
 
 extern void				 timer_list_init(struct timer_list *tlist);

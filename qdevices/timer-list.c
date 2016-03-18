@@ -33,7 +33,6 @@
  */
 
 #include <string.h>
-#include <assert.h>
 
 #include "timer-list.h"
 
@@ -47,15 +46,76 @@ timer_list_init(struct timer_list *tlist)
 	TAILQ_INIT(&tlist->free_list);
 }
 
+static PRIntervalTime
+timer_list_entry_time_to_expire(const struct timer_list_entry *entry, PRIntervalTime current_time)
+{
+	PRIntervalTime diff, half_interval;
+
+	diff = entry->expire_time - current_time;
+	half_interval = ~0;
+	half_interval /= 2;
+
+	if (diff > half_interval) {
+		return (0);
+	}
+
+	return (diff);
+}
+
+static int
+timer_list_entry_cmp(const struct timer_list_entry *entry1,
+    const struct timer_list_entry *entry2, PRIntervalTime current_time)
+{
+	PRIntervalTime diff1, diff2;
+	int res;
+
+	diff1 = timer_list_entry_time_to_expire(entry1, current_time);
+	diff2 = timer_list_entry_time_to_expire(entry2, current_time);
+
+	res = 0;
+
+	if (diff1 < diff2) res = -1;
+	if (diff1 > diff2) res = 1;
+
+	return (res);
+}
+
+static void
+timer_list_insert_into_list(struct timer_list *tlist, struct timer_list_entry *new_entry)
+{
+	struct timer_list_entry *entry;
+
+	/*
+	 * This can overflow and it's not a problem
+	 */
+	new_entry->expire_time = new_entry->epoch + PR_MillisecondsToInterval(new_entry->interval);
+
+	entry = TAILQ_FIRST(&tlist->list);
+	while (entry != NULL) {
+		if (timer_list_entry_cmp(entry, new_entry, new_entry->epoch) > 0) {
+			/*
+			 * Insert new entry right before current entry
+			 */
+			TAILQ_INSERT_BEFORE(entry, new_entry, entries);
+
+			break ;
+		}
+
+		entry = TAILQ_NEXT(entry, entries);
+	}
+
+	if (entry == NULL) {
+		TAILQ_INSERT_TAIL(&tlist->list, new_entry, entries);
+	}
+}
+
 struct timer_list_entry *
 timer_list_add(struct timer_list *tlist, PRUint32 interval, timer_list_cb_fn func, void *data1,
     void *data2)
 {
-	struct timer_list_entry *entry;
+	struct timer_list_entry *new_entry;
 
-	assert(tlist->list_expire_in_progress == 0);
-
-	if (interval > (0xffffffffUL / 4)) {
+	if (interval < 1 && interval > TIMER_LIST_MAX_INTERVAL) {
 		return (NULL);
 	}
 
@@ -63,27 +123,29 @@ timer_list_add(struct timer_list *tlist, PRUint32 interval, timer_list_cb_fn fun
 		/*
 		 * Use free list entry
 		 */
-		entry = TAILQ_FIRST(&tlist->free_list);
-		TAILQ_REMOVE(&tlist->free_list, entry, entries);
+		new_entry = TAILQ_FIRST(&tlist->free_list);
+		TAILQ_REMOVE(&tlist->free_list, new_entry, entries);
 	} else {
 		/*
 		 * Alloc new entry
 		 */
-		entry = malloc(sizeof(*entry));
-		if (entry == NULL) {
+		new_entry = malloc(sizeof(*new_entry));
+		if (new_entry == NULL) {
 			return (NULL);
 		}
 	}
 
-	memset(entry, 0, sizeof(*entry));
-	entry->epoch = PR_IntervalNow();
-	entry->interval = interval;
-	entry->func = func;
-	entry->user_data1 = data1;
-	entry->user_data2 = data2;
-	TAILQ_INSERT_TAIL(&tlist->list, entry, entries);
+	memset(new_entry, 0, sizeof(*new_entry));
+	new_entry->epoch = PR_IntervalNow();
+	new_entry->interval = interval;
+	new_entry->func = func;
+	new_entry->user_data1 = data1;
+	new_entry->user_data2 = data2;
+	new_entry->is_active = 1;
 
-	return (entry);
+	timer_list_insert_into_list(tlist, new_entry);
+
+	return (new_entry);
 }
 
 void
@@ -91,99 +153,57 @@ timer_list_expire(struct timer_list *tlist)
 {
 	PRIntervalTime now;
 	struct timer_list_entry *entry;
-	struct timer_list_entry *entry_next;
-	PRUint32 delta;
 	int res;
-
-	tlist->list_expire_in_progress = 1;
 
 	now = PR_IntervalNow();
 
-	entry = TAILQ_FIRST(&tlist->list);
-
-	while (entry != NULL) {
-		entry_next = TAILQ_NEXT(entry, entries);
-
-		delta = PR_IntervalToMilliseconds(now - entry->epoch);
-		if (delta >= entry->interval) {
+	while ((entry = TAILQ_FIRST(&tlist->list)) != NULL &&
+	    timer_list_entry_time_to_expire(entry, now) == 0) {
+		/*
+		 * Expired
+		 */
+		res = entry->func(entry->user_data1, entry->user_data2);
+		if (res == 0) {
 			/*
-			 * Expired
+			 * Move item to free list
 			 */
-			res = entry->func(entry->user_data1, entry->user_data2);
-			if (res == 0) {
-				/*
-				 * Move item to free list
-				 */
-				TAILQ_REMOVE(&tlist->list, entry, entries);
-				TAILQ_INSERT_HEAD(&tlist->free_list, entry, entries);
-			} else {
-				/*
-				 * Schedule again
-				 */
-				entry->epoch = now;
-			}
+			timer_list_delete(tlist, entry);
+		} else {
+			/*
+			 * Schedule again
+			 */
+			entry->epoch = now;
+			TAILQ_REMOVE(&tlist->list, entry, entries);
+			timer_list_insert_into_list(tlist, entry);
 		}
-
-		entry = entry_next;
 	}
-
-	tlist->list_expire_in_progress = 0;
 }
 
 PRIntervalTime
 timer_list_time_to_expire(struct timer_list *tlist)
 {
-	PRIntervalTime now;
 	struct timer_list_entry *entry;
-	PRUint32 delta;
-	PRUint32 timeout;
-	PRUint32 min_timeout;
-	int min_timeout_set;
 
-	min_timeout_set = 0;
-
-	now = PR_IntervalNow();
-
-	TAILQ_FOREACH(entry, &tlist->list, entries) {
-		delta = PR_IntervalToMilliseconds(now - entry->epoch);
-
-		if (delta >= entry->interval) {
-			/*
-			 * One of timer already expired
-			 */
-			return (PR_INTERVAL_NO_WAIT);
-		}
-
-		timeout = entry->interval - delta;
-
-		if (!min_timeout_set) {
-			min_timeout_set = 1;
-			min_timeout = timeout;
-		}
-
-		if (timeout < min_timeout) {
-			min_timeout = timeout;
-		}
-	}
-
-	if (!min_timeout_set) {
+	entry = TAILQ_FIRST(&tlist->list);
+	if (entry == NULL) {
 		return (PR_INTERVAL_NO_TIMEOUT);
 	}
 
-	return (PR_MillisecondsToInterval(min_timeout));
+	return (timer_list_entry_time_to_expire(entry, PR_IntervalNow()));
 }
 
 void
 timer_list_delete(struct timer_list *tlist, struct timer_list_entry *entry)
 {
 
-	assert(tlist->list_expire_in_progress == 0);
-
-	/*
-	 * Move item to free list
-	 */
-	TAILQ_REMOVE(&tlist->list, entry, entries);
-	TAILQ_INSERT_HEAD(&tlist->free_list, entry, entries);
+	if (entry->is_active) {
+		/*
+		 * Move item to free list
+		 */
+		TAILQ_REMOVE(&tlist->list, entry, entries);
+		TAILQ_INSERT_HEAD(&tlist->free_list, entry, entries);
+		entry->is_active = 0;
+	}
 }
 
 void
