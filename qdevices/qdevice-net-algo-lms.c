@@ -41,19 +41,42 @@
 #include "qdevice-net-send.h"
 #include "qdevice-net-cast-vote-timer.h"
 
+struct algo_lms_instance_data {
+	uint32_t quorate;
+	uint8_t have_wfa;
+	enum tlv_vote vote;
+};
+
 int
 qdevice_net_algo_lms_init(struct qdevice_net_instance *instance)
 {
+	struct algo_lms_instance_data *data;
+	int res;
 
+	data = malloc(sizeof(struct algo_lms_instance_data));
+	if (!data) {
+		return (-1);
+	}
+	instance->algorithm_data = data;
 
+	data->quorate = 0;
+	data->vote = TLV_VOTE_ASK_LATER;
+	res = cmap_get_uint8(instance->qdevice_instance_ptr->cmap_handle, "quorum.wait_for_all", &data->have_wfa);
+	if (res != CS_OK) {
+		qdevice_log(LOG_DEBUG, "algo-lms: Can't get WFA res = %d", res);
+		data->have_wfa = 0;
+	}
+
+	qdevice_log(LOG_DEBUG, "algo-lms: initialised. WFA = %d", data->have_wfa);
 	return (0);
 }
 
-int
-qdevice_net_algo_lms_connected(struct qdevice_net_instance *instance, int *send_config_node_list,
-    int *send_membership_node_list, int *send_quorum_node_list, enum tlv_vote *vote)
-{
 
+int
+qdevice_net_algo_lms_connected(struct qdevice_net_instance *instance,
+    int *send_config_node_list, int *send_membership_node_list, int *send_quorum_node_list,
+    enum tlv_vote *vote)
+{
 	return (0);
 }
 
@@ -71,7 +94,6 @@ qdevice_net_algo_lms_votequorum_node_list_notify(struct qdevice_net_instance *in
     const struct tlv_ring_id *ring_id, uint32_t node_list_entries, uint32_t node_list[],
     int *send_node_list, enum tlv_vote *vote)
 {
-
 	return (0);
 }
 
@@ -80,6 +102,10 @@ qdevice_net_algo_lms_votequorum_quorum_notify(struct qdevice_net_instance *insta
     uint32_t quorate, uint32_t node_list_entries, votequorum_node_t node_list[], int *send_node_list,
     enum tlv_vote *vote)
 {
+	struct algo_lms_instance_data *data = instance->algorithm_data;
+
+	data->quorate = quorate;
+	qdevice_log(LOG_DEBUG, "algo-lms: quorum_notify. quorate = %d", data->quorate);
 
 	return (0);
 }
@@ -96,7 +122,6 @@ int
 qdevice_net_algo_lms_membership_node_list_reply_received(struct qdevice_net_instance *instance,
     uint32_t seq_number, const struct tlv_ring_id *ring_id, enum tlv_vote *vote)
 {
-
 	return (0);
 }
 
@@ -104,7 +129,6 @@ int
 qdevice_net_algo_lms_quorum_node_list_reply_received(struct qdevice_net_instance *instance,
     uint32_t seq_number, enum tlv_vote *vote)
 {
-
 	return (0);
 }
 
@@ -120,7 +144,6 @@ int
 qdevice_net_algo_lms_vote_info_received(struct qdevice_net_instance *instance,
     uint32_t seq_number, enum tlv_vote *vote)
 {
-
 	return (0);
 }
 
@@ -135,6 +158,17 @@ qdevice_net_algo_lms_echo_reply_received(struct qdevice_net_instance *instance,
 int
 qdevice_net_algo_lms_echo_reply_not_received(struct qdevice_net_instance *instance)
 {
+	struct algo_lms_instance_data *data = instance->algorithm_data;
+
+	qdevice_log(LOG_DEBUG, "algo-lms: echo_not_recvd. quorate = %d, WFA = %d", data->quorate, data->have_wfa);
+
+	/* qnetd server is disconnected, if we were already quorate AND WFA is enabled
+	   then we can continue to provide our vote.
+	   Otherwise ... no
+	*/
+	if (data->quorate && data->have_wfa) {
+		return (0);
+	}
 
 	return (-1);
 }
@@ -143,14 +177,22 @@ int
 qdevice_net_algo_lms_disconnected(struct qdevice_net_instance *instance,
     enum qdevice_net_disconnect_reason disconnect_reason, int *try_reconnect, enum tlv_vote *vote)
 {
+	struct algo_lms_instance_data *data = instance->algorithm_data;
 
+	qdevice_log(LOG_DEBUG, "algo-lms: disconnected. quorate = %d, WFA = %d", data->quorate, data->have_wfa);
+	qdevice_log(LOG_DEBUG, "algo-lms: disconnected. reason = %d, WFA = %d", disconnect_reason, data->have_wfa);
+
+	if (!data->quorate || !data->have_wfa) {
+		*vote = TLV_VOTE_NACK;
+	}
+	*try_reconnect = 1;
 	return (0);
 }
 
 void
 qdevice_net_algo_lms_destroy(struct qdevice_net_instance *instance)
 {
-
+	free(instance->algorithm_data);
 }
 
 static struct qdevice_net_algorithm qdevice_net_algo_lms = {

@@ -56,6 +56,7 @@
 #include "qnetd-log.h"
 #include "qnetd-cluster-list.h"
 #include "qnetd-algo-utils.h"
+#include "qnetd-client-algo-timer.h"
 
 struct qnetd_algo_lms_info {
 	int num_config_nodes;
@@ -73,10 +74,15 @@ static enum tlv_reply_error_code do_lms_algorithm(struct qnetd_client *client, c
 	int num_partitions;
 	int joint_leader;
 
+	/* We are running the algorithm, don't do it again unless we say so */
+	qnetd_client_algo_timer_abort(client);
+
 	if (qnetd_algo_all_ring_ids_match(client, ring_id) == -1) {
 		qnetd_log(LOG_DEBUG, "algo-lms: nodeid %d: ring ID %d/%ld not unique in this membership, waiting",
 			  client->node_id, ring_id->node_id, ring_id->seq);
-		*result_vote = info->last_result = TLV_VOTE_ASK_LATER;
+
+		qnetd_client_algo_timer_schedule(client);
+		*result_vote = info->last_result = TLV_VOTE_WAIT_FOR_REPLY;
 		return (TLV_REPLY_ERROR_CODE_NO_ERROR);
 	}
 
@@ -89,7 +95,9 @@ static enum tlv_reply_error_code do_lms_algorithm(struct qnetd_client *client, c
 	/* This can happen if we are first on the block */
 	if (num_partitions == 0) {
 		qnetd_log(LOG_DEBUG, "algo-lms: No partitions found");
-		*result_vote = info->last_result = TLV_VOTE_ASK_LATER;
+
+		qnetd_client_algo_timer_schedule(client);
+		*result_vote = info->last_result = TLV_VOTE_WAIT_FOR_REPLY;
 		return (TLV_REPLY_ERROR_CODE_NO_ERROR);
 	}
 
@@ -315,7 +323,7 @@ qnetd_algo_lms_client_disconnect(struct qnetd_client *client, int server_going_d
 
 /*
  * Called after client sent ask for vote message. This is usually happening after server
- * replied TLV_VOTE_ASK_LATER.
+ * replied TLV_VOTE_WAIT_FOR_REPLY.
  */
 enum tlv_reply_error_code
 qnetd_algo_lms_ask_for_vote_received(struct qnetd_client *client, uint32_t msg_seq_num,
@@ -331,7 +339,6 @@ qnetd_algo_lms_ask_for_vote_received(struct qnetd_client *client, uint32_t msg_s
 enum tlv_reply_error_code
 qnetd_algo_lms_vote_info_reply_received(struct qnetd_client *client, uint32_t msg_seq_num)
 {
-
 	qnetd_log(LOG_DEBUG, "algo-lms: Client %p (cluster %s, node_id %"PRIx32") "
 	    "replied back to vote info message", client, client->cluster_name, client->node_id);
 
@@ -342,8 +349,18 @@ enum tlv_reply_error_code
 qnetd_algo_lms_timer_callback(struct qnetd_client *client, int *reschedule_timer,
     int *send_vote, enum tlv_vote *result_vote)
 {
+	enum tlv_reply_error_code ret;
 
-	return (TLV_REPLY_ERROR_CODE_NO_ERROR);
+	qnetd_log(LOG_DEBUG, "algo-lms: Client %p (cluster %s, node_id %"PRIx32") "
+	    "Timer callback", client, client->cluster_name, client->node_id);
+
+	ret = do_lms_algorithm(client, &client->last_ring_id, result_vote);
+
+	if (ret == TLV_REPLY_ERROR_CODE_NO_ERROR &&
+	    (*result_vote == TLV_VOTE_ACK || *result_vote == TLV_VOTE_NACK)) {
+		*send_vote = 1;
+	}
+	return ret;
 }
 
 static struct qnetd_algorithm qnetd_algo_lms = {
