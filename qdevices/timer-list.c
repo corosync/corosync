@@ -149,6 +149,17 @@ timer_list_add(struct timer_list *tlist, PRUint32 interval, timer_list_cb_fn fun
 }
 
 void
+timer_list_reschedule(struct timer_list *tlist, struct timer_list_entry *entry)
+{
+
+	if (entry->is_active) {
+		entry->epoch = PR_IntervalNow();
+		TAILQ_REMOVE(&tlist->list, entry, entries);
+		timer_list_insert_into_list(tlist, entry);
+	}
+}
+
+void
 timer_list_expire(struct timer_list *tlist)
 {
 	PRIntervalTime now;

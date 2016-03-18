@@ -75,6 +75,9 @@ extern void				 timer_list_init(struct timer_list *tlist);
 extern struct timer_list_entry		*timer_list_add(struct timer_list *tlist,
     PRUint32 interval, timer_list_cb_fn func, void *data1, void *data2);
 
+extern void				 timer_list_reschedule(struct timer_list *tlist,
+    struct timer_list_entry *entry);
+
 extern void				 timer_list_delete(struct timer_list *tlist,
     struct timer_list_entry *entry);
 
