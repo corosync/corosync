@@ -168,7 +168,7 @@ timer_list_expire(struct timer_list *tlist)
 			 * Move item to free list
 			 */
 			timer_list_delete(tlist, entry);
-		} else {
+		} else if (entry->is_active) {
 			/*
 			 * Schedule again
 			 */

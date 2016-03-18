@@ -72,7 +72,6 @@ qnetd_instance_destroy(struct qnetd_instance *instance)
 	struct qnetd_client *client;
 	struct qnetd_client *client_next;
 
-	timer_list_free(&instance->main_timer_list);
 
 	client = TAILQ_FIRST(&instance->clients);
 	while (client != NULL) {
@@ -86,6 +85,7 @@ qnetd_instance_destroy(struct qnetd_instance *instance)
 	qnetd_poll_array_destroy(&instance->poll_array);
 	qnetd_cluster_list_free(&instance->clusters);
 	qnetd_client_list_free(&instance->clients);
+	timer_list_free(&instance->main_timer_list);
 
 	return (0);
 }
