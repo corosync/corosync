@@ -35,6 +35,8 @@
 
 #include <config.h>
 
+#include <poll.h>
+
 #include "qdevice-model.h"
 #include "qdevice-model-net.h"
 #include "qdevice-log.h"
@@ -229,6 +231,13 @@ qdevice_model_net_run(struct qdevice_instance *instance)
 		}
 
 		qdevice_net_instance_clean(net_instance);
+
+		if (try_connect) {
+			/*
+			 * Give qnetd server a little time before reconnect
+			 */
+			poll(NULL, 0, random() % 1000);
+		}
 	}
 
 	return (0);
