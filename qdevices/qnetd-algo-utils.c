@@ -31,16 +31,12 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
-
 #include <sys/types.h>
 #include <string.h>
-
-#include <err.h>
 
 #include "qnetd-log.h"
 #include "qnetd-cluster-list.h"
 #include "qnetd-algo-utils.h"
-
 
 /*
  * Returns -1 if any node that is supposedly in the same cluster partition

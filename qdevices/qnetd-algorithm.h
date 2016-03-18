@@ -101,10 +101,10 @@ struct qnetd_algorithm {
 	    int *reschedule_timer, int *send_vote, enum tlv_vote *result_vote);
 };
 
-extern enum tlv_reply_error_code	qnetd_algorithm_register(
+extern int				qnetd_algorithm_register(
 	enum tlv_decision_algorithm_type algorithm_number, struct qnetd_algorithm *algorithm);
 
-extern void qnetd_algorithm_register_all(void);
+extern int qnetd_algorithm_register_all(void);
 
 #ifdef __cplusplus
 }

@@ -386,7 +386,9 @@ main(int argc, char *argv[])
 	signal_handlers_register();
 
 	qnetd_log(LOG_DEBUG, "Registering algorithms");
-	qnetd_algorithm_register_all();
+	if (qnetd_algorithm_register_all() != 0) {
+		exit(1);
+	}
 
 	qnetd_log(LOG_DEBUG, "QNetd ready to provide service");
 	/*
