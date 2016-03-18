@@ -969,6 +969,17 @@ tlv_ring_id_eq(const struct tlv_ring_id *rid1, const struct tlv_ring_id *rid2)
 	return (rid1->node_id == rid2->node_id && rid1->seq == rid2->seq);
 }
 
+int
+tlv_tie_breaker_eq(const struct tlv_tie_breaker *tb1, const struct tlv_tie_breaker *tb2)
+{
+
+	if (tb1->mode == tb2->mode && tb1->mode == TLV_TIE_BREAKER_MODE_NODE_ID) {
+		return (tb1->node_id == tb2->node_id);
+	}
+
+	return (tb1->mode == tb2->mode);
+}
+
 const char *
 tlv_vote_to_str(enum tlv_vote vote)
 {

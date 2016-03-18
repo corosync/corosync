@@ -91,7 +91,9 @@ enum tlv_reply_error_code {
 	TLV_REPLY_ERROR_CODE_UNSUPPORTED_DECISION_ALGORITHM = 12,
 	TLV_REPLY_ERROR_CODE_INVALID_HEARTBEAT_INTERVAL = 13,
 	TLV_REPLY_ERROR_CODE_UNSUPPORTED_DECISION_ALGORITHM_MESSAGE = 14,
-	TLV_REPLY_ERROR_CODE_DECISION_ALGORITHM_ALREADY_REGISTERED = 15,
+	TLV_REPLY_ERROR_CODE_TIE_BREAKER_DIFFERS_FROM_OTHER_NODES = 15,
+	TLV_REPLY_ERROR_CODE_ALGORITHM_DIFFERS_FROM_OTHER_NODES = 16,
+	TLV_REPLY_ERROR_CODE_DUPLICATE_NODE_ID = 17,
 };
 
 enum tlv_decision_algorithm_type {
@@ -315,6 +317,9 @@ extern void			 tlv_get_supported_options(enum tlv_opt_type **supported_options,
 
 extern int			 tlv_ring_id_eq(const struct tlv_ring_id *rid1,
     const struct tlv_ring_id *rid2);
+
+extern int			 tlv_tie_breaker_eq(const struct tlv_tie_breaker *tb1,
+    const struct tlv_tie_breaker *tb2);
 
 extern const char *		 tlv_vote_to_str(enum tlv_vote vote);
 

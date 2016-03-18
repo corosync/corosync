@@ -246,6 +246,52 @@ qnetd_client_msg_received_server_error(struct qnetd_instance *instance, struct q
 	return (qnetd_client_msg_received_unexpected_msg(client, msg, "server error"));
 }
 
+/*
+ * Checks if new client send information are valid. It means:
+ * - in cluster is no duplicate node with same nodeid
+ * - it has same tie_breaker as other nodes in cluster
+ * - it has same algorithm as other nodes in cluster
+ */
+static enum tlv_reply_error_code
+qnetd_client_msg_received_init_check_new_client(struct qnetd_instance *instance,
+    struct qnetd_client *new_client)
+{
+	struct qnetd_cluster *cluster;
+	struct qnetd_client *client;
+
+	cluster = qnetd_cluster_list_find_by_name(&instance->clusters, new_client->cluster_name,
+	    new_client->cluster_name_len);
+
+	if (cluster == NULL) {
+		return (TLV_REPLY_ERROR_CODE_NO_ERROR);
+	}
+
+	TAILQ_FOREACH(client, &cluster->client_list, cluster_entries) {
+		if (!tlv_tie_breaker_eq(&new_client->tie_breaker, &client->tie_breaker)) {
+			qnetd_log(LOG_ERR, "Received init message contains tie-breaker which "
+			    "differs from rest of cluster. Sending error reply");
+
+			return (TLV_REPLY_ERROR_CODE_TIE_BREAKER_DIFFERS_FROM_OTHER_NODES);
+		}
+
+		if (new_client->decision_algorithm != client->decision_algorithm) {
+			qnetd_log(LOG_ERR, "Received init message contains algorithm which "
+			    "differs from rest of cluster. Sending error reply");
+
+			return (TLV_REPLY_ERROR_CODE_ALGORITHM_DIFFERS_FROM_OTHER_NODES);
+		}
+
+		if (new_client->node_id == client->node_id) {
+			qnetd_log(LOG_ERR, "Received init message contains node id which is "
+			    "duplicate of other node in cluster. Sending error reply");
+
+			return (TLV_REPLY_ERROR_CODE_DUPLICATE_NODE_ID);
+		}
+	}
+
+	return (TLV_REPLY_ERROR_CODE_NO_ERROR);
+}
+
 static int
 qnetd_client_msg_received_init(struct qnetd_instance *instance, struct qnetd_client *client,
     const struct msg_decoded *msg)
@@ -375,6 +421,11 @@ qnetd_client_msg_received_init(struct qnetd_instance *instance, struct qnetd_cli
 		}
 
 		client->decision_algorithm = msg->decision_algorithm;
+	}
+
+	if (reply_error_code == TLV_REPLY_ERROR_CODE_NO_ERROR) {
+		reply_error_code = qnetd_client_msg_received_init_check_new_client(instance,
+		    client);
 	}
 
 	if (reply_error_code == TLV_REPLY_ERROR_CODE_NO_ERROR) {
