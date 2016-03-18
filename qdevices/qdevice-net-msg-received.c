@@ -38,6 +38,7 @@
 #include "qdevice-net-msg-received.h"
 #include "qdevice-net-send.h"
 #include "qdevice-net-votequorum.h"
+#include "qdevice-net-echo-request-timer.h"
 #include "msg.h"
 
 /*
@@ -146,6 +147,8 @@ qdevice_net_msg_received_preinit_reply(struct qdevice_net_instance *instance,
 	int res;
 	struct send_buffer_list_entry *send_buffer;
 
+	qdevice_log(LOG_DEBUG, "Received preinit reply msg");
+
 	if (instance->state != QDEVICE_NET_INSTANCE_STATE_WAITING_PREINIT_REPLY) {
 		qdevice_log(LOG_ERR, "Received unexpected preinit reply message. "
 		    "Disconnecting from server");
@@ -229,7 +232,14 @@ qdevice_net_msg_received_init_reply(struct qdevice_net_instance *instance,
 {
 	size_t zi;
 	int res;
-	struct send_buffer_list_entry *send_buffer;
+	int send_config_node_list;
+	int send_membership_node_list;
+	int send_quorum_node_list;
+	enum tlv_vote vote;
+	struct tlv_ring_id tlv_rid;
+	enum tlv_quorate quorate;
+
+	qdevice_log(LOG_DEBUG, "Received init reply msg");
 
 	if (instance->state != QDEVICE_NET_INSTANCE_STATE_WAITING_INIT_REPLY) {
 		qdevice_log(LOG_ERR, "Received unexpected init reply message. "
@@ -336,159 +346,6 @@ qdevice_net_msg_received_init_reply(struct qdevice_net_instance *instance,
 	}
 
 	/*
-	 * Send set options message
-	 */
-	send_buffer = send_buffer_list_get_new(&instance->send_buffer_list);
-	if (send_buffer == NULL) {
-		qdevice_log(LOG_ERR, "Can't allocate send list buffer for set option msg");
-
-		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_ALLOCATE_MSG_BUFFER;
-
-		return (-1);
-	}
-
-	instance->last_msg_seq_num++;
-
-	if (msg_create_set_option(&send_buffer->buffer, 1, instance->last_msg_seq_num,
-	    1, instance->heartbeat_interval, 1, &instance->tie_breaker) == 0) {
-		qdevice_log(LOG_ERR, "Can't allocate send buffer for set option msg");
-
-		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_ALLOCATE_MSG_BUFFER;
-		send_buffer_list_discard_new(&instance->send_buffer_list, send_buffer);
-
-		return (-1);
-	}
-
-	send_buffer_list_put(&instance->send_buffer_list, send_buffer);
-
-	instance->state = QDEVICE_NET_INSTANCE_STATE_WAITING_SET_OPTION_REPLY;
-
-	return (0);
-}
-
-static int
-qdevice_net_msg_received_starttls(struct qdevice_net_instance *instance,
-    const struct msg_decoded *msg)
-{
-
-	return (qdevice_net_msg_received_unexpected_msg(instance, msg, "starttls"));
-}
-
-static int
-qdevice_net_msg_received_server_error(struct qdevice_net_instance *instance,
-    const struct msg_decoded *msg)
-{
-
-	if (!msg->reply_error_code_set) {
-		qdevice_log(LOG_ERR, "Received server error without error code set. "
-		    "Disconnecting from server");
-
-		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_REQUIRED_OPTION_MISSING;
-	} else {
-		qdevice_log(LOG_ERR, "Received server error %"PRIu16". "
-		    "Disconnecting from server", msg->reply_error_code);
-
-		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_SERVER_SENT_ERROR;
-	}
-
-	return (-1);
-}
-
-static int
-qdevice_net_msg_received_set_option(struct qdevice_net_instance *instance,
-    const struct msg_decoded *msg)
-{
-
-	return (qdevice_net_msg_received_unexpected_msg(instance, msg, "set option"));
-}
-
-static int
-qdevice_net_timer_send_heartbeat(void *data1, void *data2)
-{
-	struct qdevice_net_instance *instance;
-
-	instance = (struct qdevice_net_instance *)data1;
-
-	if (instance->echo_reply_received_msg_seq_num !=
-	    instance->echo_request_expected_msg_seq_num) {
-		qdevice_log(LOG_ERR, "Server didn't send echo reply message on time");
-
-		if (qdevice_net_algorithm_echo_reply_not_received(instance) != 0) {
-			qdevice_log(LOG_DEBUG, "Algorithm decided to disconnect");
-
-			instance->schedule_disconnect = 1;
-			instance->disconnect_reason =
-			    QDEVICE_NET_DISCONNECT_REASON_ALGO_ECHO_REPLY_NOT_RECEIVED_ERR;
-
-			instance->echo_request_timer = NULL;
-			return (0);
-		} else {
-			qdevice_log(LOG_DEBUG, "Algorithm decided to continue send heartbeat");
-
-			return (-1);
-		}
-	}
-
-	if (qdevice_net_send_echo_request(instance) == -1) {
-		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_ALLOCATE_MSG_BUFFER;
-
-		instance->schedule_disconnect = 1;
-		instance->echo_request_timer = NULL;
-		return (0);
-	}
-
-	/*
-	 * Schedule this function callback again
-	 */
-	return (-1);
-}
-
-static int
-qdevice_net_msg_received_set_option_reply(struct qdevice_net_instance *instance,
-    const struct msg_decoded *msg)
-{
-	struct tlv_ring_id tlv_rid;
-	enum tlv_quorate quorate;
-	int send_config_node_list;
-	int send_membership_node_list;
-	int send_quorum_node_list;
-	enum tlv_vote vote;
-
-	if (instance->state != QDEVICE_NET_INSTANCE_STATE_WAITING_SET_OPTION_REPLY) {
-		qdevice_log(LOG_ERR, "Received unexpected set option reply message. "
-		    "Disconnecting from server");
-
-		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_UNEXPECTED_MSG;
-
-		return (-1);
-	}
-
-	if (qdevice_net_msg_check_seq_number(instance, msg) != 0) {
-		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_REQUIRED_OPTION_MISSING;
-
-		return (-1);
-	}
-
-	if (!msg->decision_algorithm_set || !msg->heartbeat_interval_set) {
-		qdevice_log(LOG_ERR, "Received set option reply message without "
-		    "required options. Disconnecting from server");
-
-		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_REQUIRED_OPTION_MISSING;
-
-		return (-1);
-	}
-
-	if (msg->decision_algorithm != instance->decision_algorithm ||
-	    msg->heartbeat_interval != instance->heartbeat_interval) {
-		qdevice_log(LOG_ERR, "Server doesn't accept sent decision algorithm or "
-		    "heartbeat interval.");
-
-		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_REQUIRED_OPTION_MISSING;
-
-		return (-1);
-	}
-
-	/*
 	 * Finally fully connected so it's possible to remove connection timer
 	 */
 	if (instance->connect_timer != NULL) {
@@ -499,22 +356,7 @@ qdevice_net_msg_received_set_option_reply(struct qdevice_net_instance *instance,
 	/*
 	 * Server accepted heartbeat interval -> schedule regular sending of echo request
 	 */
-	if (instance->heartbeat_interval > 0) {
-		instance->echo_request_expected_msg_seq_num = 0;
-		instance->echo_reply_received_msg_seq_num = 0;
-
-		instance->echo_request_timer = timer_list_add(&instance->main_timer_list,
-		    instance->heartbeat_interval, qdevice_net_timer_send_heartbeat,
-		    (void *)instance, NULL);
-
-		if (instance->echo_request_timer == NULL) {
-			qdevice_log(LOG_ERR, "Can't schedule regular sending of heartbeat.");
-
-			instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_SCHEDULE_HB_TIMER;
-
-			return (-1);
-		}
-	}
+	qdevice_net_echo_request_timer_schedule(instance);
 
 	send_config_node_list = 1;
 	send_membership_node_list = 1;
@@ -580,6 +422,67 @@ qdevice_net_msg_received_set_option_reply(struct qdevice_net_instance *instance,
 	}
 
 	instance->state = QDEVICE_NET_INSTANCE_STATE_WAITING_VOTEQUORUM_CMAP_EVENTS;
+
+	return (0);
+}
+
+static int
+qdevice_net_msg_received_starttls(struct qdevice_net_instance *instance,
+    const struct msg_decoded *msg)
+{
+
+	return (qdevice_net_msg_received_unexpected_msg(instance, msg, "starttls"));
+}
+
+static int
+qdevice_net_msg_received_server_error(struct qdevice_net_instance *instance,
+    const struct msg_decoded *msg)
+{
+
+	if (!msg->reply_error_code_set) {
+		qdevice_log(LOG_ERR, "Received server error without error code set. "
+		    "Disconnecting from server");
+
+		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_REQUIRED_OPTION_MISSING;
+	} else {
+		qdevice_log(LOG_ERR, "Received server error %"PRIu16". "
+		    "Disconnecting from server", msg->reply_error_code);
+
+		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_SERVER_SENT_ERROR;
+	}
+
+	return (-1);
+}
+
+static int
+qdevice_net_msg_received_set_option(struct qdevice_net_instance *instance,
+    const struct msg_decoded *msg)
+{
+
+	return (qdevice_net_msg_received_unexpected_msg(instance, msg, "set option"));
+}
+
+static int
+qdevice_net_msg_received_set_option_reply(struct qdevice_net_instance *instance,
+    const struct msg_decoded *msg)
+{
+
+	if (instance->state != QDEVICE_NET_INSTANCE_STATE_WAITING_VOTEQUORUM_CMAP_EVENTS) {
+		qdevice_log(LOG_ERR, "Received unexpected set option reply message. "
+		    "Disconnecting from server");
+
+		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_UNEXPECTED_MSG;
+
+		return (-1);
+	}
+
+	if (qdevice_net_msg_check_seq_number(instance, msg) != 0) {
+		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_REQUIRED_OPTION_MISSING;
+
+		return (-1);
+	}
+
+	qdevice_net_echo_request_timer_schedule(instance);
 
 	return (0);
 }

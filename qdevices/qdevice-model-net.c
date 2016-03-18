@@ -159,7 +159,7 @@ qdevice_model_net_run(struct qdevice_instance *instance)
 			break ;
 		}
 
-		qdevice_log(LOG_DEBUG, "Trying connect to qnetd server %s:%u (timeout = %u)",
+		qdevice_log(LOG_DEBUG, "Trying connect to qnetd server %s:%u (timeout = %ums)",
 		    net_instance->host_addr, net_instance->host_port, net_instance->connect_timeout);
 
 		res = nss_sock_non_blocking_client_init(net_instance->host_addr,

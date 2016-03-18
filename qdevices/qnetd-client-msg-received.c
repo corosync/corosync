@@ -287,6 +287,32 @@ qnetd_client_msg_received_init(struct qnetd_instance *instance, struct qnetd_cli
 		client->node_id = msg->node_id;
 	}
 
+	if (reply_error_code == TLV_REPLY_ERROR_CODE_NO_ERROR && !msg->heartbeat_interval_set) {
+		qnetd_log(LOG_ERR, "Received init message without heartbeat interval set. "
+		    "Sending error reply.");
+
+		reply_error_code = TLV_REPLY_ERROR_CODE_DOESNT_CONTAIN_REQUIRED_OPTION;
+	} else {
+		if (msg->heartbeat_interval < QNETD_HEARTBEAT_INTERVAL_MIN ||
+		    msg->heartbeat_interval > QNETD_HEARTBEAT_INTERVAL_MAX) {
+			qnetd_log(LOG_ERR, "Client requested invalid heartbeat interval %u. "
+			    "Sending error reply.", msg->heartbeat_interval);
+
+			reply_error_code = TLV_REPLY_ERROR_CODE_INVALID_HEARTBEAT_INTERVAL;
+		} else {
+			client->heartbeat_interval = msg->heartbeat_interval;
+		}
+	}
+
+	if (reply_error_code == TLV_REPLY_ERROR_CODE_NO_ERROR && !msg->tie_breaker_set) {
+		qnetd_log(LOG_ERR, "Received init message without tie-breaker set. "
+		    "Sending error reply.");
+
+		reply_error_code = TLV_REPLY_ERROR_CODE_DOESNT_CONTAIN_REQUIRED_OPTION;
+	} else {
+		memcpy(&client->tie_breaker, &msg->tie_breaker, sizeof(msg->tie_breaker));
+	}
+
 	if (msg->supported_messages != NULL) {
 		/*
 		 * Client sent supported messages. For now this is ignored but in the future
@@ -448,9 +474,8 @@ qnetd_client_msg_received_set_option(struct qnetd_instance *instance, struct qne
 		/*
 		 * Check if heartbeat interval is valid
 		 */
-		if (msg->heartbeat_interval != 0 &&
-		    (msg->heartbeat_interval < QNETD_HEARTBEAT_INTERVAL_MIN ||
-		    msg->heartbeat_interval > QNETD_HEARTBEAT_INTERVAL_MAX)) {
+		if (msg->heartbeat_interval < QNETD_HEARTBEAT_INTERVAL_MIN ||
+		    msg->heartbeat_interval > QNETD_HEARTBEAT_INTERVAL_MAX) {
 			qnetd_log(LOG_ERR, "Client requested invalid heartbeat interval %u. "
 			    "Sending error reply.", msg->heartbeat_interval);
 
@@ -465,10 +490,6 @@ qnetd_client_msg_received_set_option(struct qnetd_instance *instance, struct qne
 		client->heartbeat_interval = msg->heartbeat_interval;
 	}
 
-	if (msg->tie_breaker_set) {
-		memcpy(&client->tie_breaker, &msg->tie_breaker, sizeof(msg->tie_breaker));
-	}
-
 	send_buffer = send_buffer_list_get_new(&client->send_buffer_list);
 	if (send_buffer == NULL) {
 		qnetd_log(LOG_ERR, "Can't alloc set option reply msg from list. "
@@ -478,8 +499,7 @@ qnetd_client_msg_received_set_option(struct qnetd_instance *instance, struct qne
 	}
 
 	if (msg_create_set_option_reply(&send_buffer->buffer, msg->seq_number_set, msg->seq_number,
-	    client->decision_algorithm, client->heartbeat_interval,
-	    msg->tie_breaker_set, &msg->tie_breaker) == -1) {
+	    client->heartbeat_interval) == -1) {
 		qnetd_log(LOG_ERR, "Can't alloc set option reply msg. "
 		    "Disconnecting client connection.");
 

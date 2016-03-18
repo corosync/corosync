@@ -272,7 +272,8 @@ size_t
 msg_create_init(struct dynar *msg, int add_msg_seq_number, uint32_t msg_seq_number,
     enum tlv_decision_algorithm_type decision_algorithm,
     const enum msg_type *supported_msgs, size_t no_supported_msgs,
-    const enum tlv_opt_type *supported_opts, size_t no_supported_opts, uint32_t node_id)
+    const enum tlv_opt_type *supported_opts, size_t no_supported_opts, uint32_t node_id,
+    uint32_t heartbeat_interval, const struct tlv_tie_breaker *tie_breaker)
 {
 	uint16_t *u16a;
 	int res;
@@ -317,6 +318,14 @@ msg_create_init(struct dynar *msg, int add_msg_seq_number, uint32_t msg_seq_numb
         }
 
 	if (tlv_add_decision_algorithm(msg, decision_algorithm) == -1) {
+		goto small_buf_err;
+	}
+
+	if (tlv_add_heartbeat_interval(msg, heartbeat_interval) == -1) {
+		goto small_buf_err;
+	}
+
+	if (tlv_add_tie_breaker(msg, tie_breaker) == -1) {
 		goto small_buf_err;
 	}
 
@@ -404,8 +413,7 @@ small_buf_err:
 
 size_t
 msg_create_set_option(struct dynar *msg, int add_msg_seq_number, uint32_t msg_seq_number,
-    int add_heartbeat_interval, uint32_t heartbeat_interval,
-    int add_tie_breaker, const struct tlv_tie_breaker *tie_breaker)
+    int add_heartbeat_interval, uint32_t heartbeat_interval)
 {
 
 	dynar_clean(msg);
@@ -425,12 +433,6 @@ msg_create_set_option(struct dynar *msg, int add_msg_seq_number, uint32_t msg_se
 		}
 	}
 
-	if (add_tie_breaker) {
-		if (tlv_add_tie_breaker(msg, tie_breaker) == -1) {
-			goto small_buf_err;
-		}
-	}
-
 	msg_set_len(msg, dynar_size(msg) - (MSG_TYPE_LENGTH + MSG_LENGTH_LENGTH));
 
 	return (dynar_size(msg));
@@ -441,8 +443,7 @@ small_buf_err:
 
 size_t
 msg_create_set_option_reply(struct dynar *msg, int add_msg_seq_number, uint32_t msg_seq_number,
-    enum tlv_decision_algorithm_type decision_algorithm, uint32_t heartbeat_interval,
-    int add_tie_breaker, const struct tlv_tie_breaker *tie_breaker)
+    uint32_t heartbeat_interval)
 {
 
 	dynar_clean(msg);
@@ -456,18 +457,8 @@ msg_create_set_option_reply(struct dynar *msg, int add_msg_seq_number, uint32_t 
 		}
 	}
 
-	if (tlv_add_decision_algorithm(msg, decision_algorithm) == -1) {
-		goto small_buf_err;
-	}
-
 	if (tlv_add_heartbeat_interval(msg, heartbeat_interval) == -1) {
 		goto small_buf_err;
-	}
-
-	if (add_tie_breaker) {
-		if (tlv_add_tie_breaker(msg, tie_breaker) == -1) {
-			goto small_buf_err;
-		}
 	}
 
 	msg_set_len(msg, dynar_size(msg) - (MSG_TYPE_LENGTH + MSG_LENGTH_LENGTH));

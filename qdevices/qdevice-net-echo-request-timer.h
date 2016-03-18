@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016 Red Hat, Inc.
+ * Copyright (c) 2016-2016 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -32,40 +32,19 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <sys/types.h>
+#ifndef _QDEVICE_NET_ECHO_REQUEST_TIMER_H_
+#define _QDEVICE_NET_ECHO_REQUEST_TIMER_H_
 
-#include <string.h>
+#include "qdevice-net-instance.h"
 
-#include "qnet-config.h"
-#include "qnetd-client.h"
-#include "qnetd-client-algo-timer.h"
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-void
-qnetd_client_init(struct qnetd_client *client, PRFileDesc *sock, PRNetAddr *addr,
-    size_t max_receive_size, size_t max_send_buffers, size_t max_send_size,
-    struct timer_list *main_timer_list)
-{
+extern int	qdevice_net_echo_request_timer_schedule(struct qdevice_net_instance *instance);
 
-	memset(client, 0, sizeof(*client));
-	client->socket = sock;
-	memcpy(&client->addr, addr, sizeof(*addr));
-	dynar_init(&client->receive_buffer, max_receive_size);
-	send_buffer_list_init(&client->send_buffer_list, max_send_buffers, max_send_size);
-	node_list_init(&client->configuration_node_list);
-	node_list_init(&client->last_membership_node_list);
-	node_list_init(&client->last_quorum_node_list);
-	client->main_timer_list = main_timer_list;
+#ifdef __cplusplus
 }
+#endif
 
-void
-qnetd_client_destroy(struct qnetd_client *client)
-{
-
-	qnetd_client_algo_timer_abort(client);
-	free(client->cluster_name);
-	node_list_free(&client->last_quorum_node_list);
-	node_list_free(&client->last_membership_node_list);
-	node_list_free(&client->configuration_node_list);
-	send_buffer_list_free(&client->send_buffer_list);
-	dynar_destroy(&client->receive_buffer);
-}
+#endif /* _QDEVICE_NET_ECHO_REQUEST_TIMER_H_ */

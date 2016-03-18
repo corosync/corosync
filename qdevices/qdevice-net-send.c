@@ -115,7 +115,8 @@ qdevice_net_send_init(struct qdevice_net_instance *instance)
 	if (msg_create_init(&send_buffer->buffer, 1, instance->last_msg_seq_num,
 	    instance->decision_algorithm,
 	    supported_msgs, no_supported_msgs, supported_opts, no_supported_opts,
-	    instance->qdevice_instance_ptr->node_id) == 0) {
+	    instance->qdevice_instance_ptr->node_id, instance->heartbeat_interval,
+	    &instance->tie_breaker) == 0) {
 		qdevice_log(LOG_ERR, "Can't allocate send buffer for init msg");
 
 		send_buffer_list_discard_new(&instance->send_buffer_list, send_buffer);

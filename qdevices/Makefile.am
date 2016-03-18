@@ -56,7 +56,7 @@ corosync_qdevice_SOURCES	= corosync-qdevice.c qdevice-cmap.c qdevice-instance.c 
 				  msg.c msgio.c nss-sock.c tlv.c \
 				  qdevice-net-poll.c qdevice-net-send.c qdevice-net-votequorum.c \
 				  qdevice-net-socket.c qdevice-net-nss.c qdevice-net-msg-received.c \
-				  qdevice-net-cast-vote-timer.c \
+				  qdevice-net-cast-vote-timer.c qdevice-net-echo-request-timer.c \
 				  qdevice-net-algorithm.c \
 				  qdevice-net-algo-test.c qdevice-net-algo-ffsplit.c \
 				  qdevice-net-algo-2nodelms.c qdevice-net-algo-lms.c

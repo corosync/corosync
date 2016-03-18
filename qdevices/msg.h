@@ -126,7 +126,8 @@ extern size_t		msg_create_starttls(struct dynar *msg, int add_msg_seq_number,
 extern size_t		msg_create_init(struct dynar *msg, int add_msg_seq_number,
     uint32_t msg_seq_number, enum tlv_decision_algorithm_type decision_algorithm,
     const enum msg_type *supported_msgs, size_t no_supported_msgs,
-    const enum tlv_opt_type *supported_opts, size_t no_supported_opts, uint32_t node_id);
+    const enum tlv_opt_type *supported_opts, size_t no_supported_opts, uint32_t node_id,
+    uint32_t heartbeat_interval, const struct tlv_tie_breaker *tie_breaker);
 
 extern size_t		msg_create_server_error(struct dynar *msg, int add_msg_seq_number,
     uint32_t msg_seq_number, enum tlv_reply_error_code reply_error_code);
@@ -141,13 +142,10 @@ extern size_t		msg_create_init_reply(struct dynar *msg, int add_msg_seq_number,
 
 extern size_t		msg_create_set_option(struct dynar *msg,
     int add_msg_seq_number, uint32_t msg_seq_number,
-    int add_heartbeat_interval, uint32_t heartbeat_interval,
-    int add_tie_breaker, const struct tlv_tie_breaker *tie_breaker);
+    int add_heartbeat_interval, uint32_t heartbeat_interval);
 
 extern size_t		msg_create_set_option_reply(struct dynar *msg,
-    int add_msg_seq_number, uint32_t msg_seq_number,
-    enum tlv_decision_algorithm_type decision_algorithm, uint32_t heartbeat_interval,
-    int add_tie_breaker, const struct tlv_tie_breaker *tie_breaker);
+    int add_msg_seq_number, uint32_t msg_seq_number, uint32_t heartbeat_interval);
 
 extern size_t		msg_create_echo_request(struct dynar *msg, int add_msg_seq_number,
     uint32_t msg_seq_number);
