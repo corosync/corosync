@@ -32,59 +32,66 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _QNETD_INSTANCE_H_
-#define _QNETD_INSTANCE_H_
+#include "qnetd-dpd-timer.h"
+#include "qnetd-log.h"
 
-#include <sys/types.h>
+static int
+qnetd_dpd_timer_cb(void *data1, void *data2)
+{
+	struct qnetd_instance *instance;
+	struct qnetd_client *client;
 
-#include <certt.h>
-#include <keyhi.h>
-#include <sys/queue.h>
+	instance = (struct qnetd_instance *)data1;
 
-#include "qnetd-client-list.h"
-#include "qnetd-cluster-list.h"
-#include "qnetd-poll-array.h"
-#include "qnet-config.h"
-#include "timer-list.h"
+	TAILQ_FOREACH(client, &instance->clients, entries) {
+		if (!client->init_received) {
+			continue ;
+		}
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+		client->dpd_time_since_last_check += QNETD_DPD_INTERVAL;
 
-struct qnetd_instance {
-	struct {
-		PRFileDesc *socket;
-		CERTCertificate *cert;
-		SECKEYPrivateKey *private_key;
-	} server;
-	size_t max_client_receive_size;
-	size_t max_client_send_buffers;
-	size_t max_client_send_size;
-	size_t max_clients;
-	struct qnetd_client_list clients;
-	struct qnetd_cluster_list clusters;
-	struct qnetd_poll_array poll_array;
-	enum tlv_tls_supported tls_supported;
-	int tls_client_cert_required;
-	const char *host_addr;
-	uint16_t host_port;
-	struct timer_list main_timer_list;
-	struct timer_list_entry *dpd_timer;		/* Dead peer detection timer */
-};
+		if (client->dpd_time_since_last_check > (client->heartbeat_interval * 2)) {
+			if (!client->dpd_msg_received_since_last_check) {
+				qnetd_log(LOG_WARNING, "Client %p doesn't sent any message during "
+				    "%"PRIu32"ms. Disconnecting",
+				    client, client->dpd_time_since_last_check);
 
-extern int		qnetd_instance_init(struct qnetd_instance *instance,
-    size_t max_client_receive_size, size_t max_client_send_buffers, size_t max_client_send_size,
-    enum tlv_tls_supported tls_supported, int tls_client_cert_required, size_t max_clients);
+				client->schedule_disconnect = 1;
+			} else {
+				client->dpd_time_since_last_check = 0;
+				client->dpd_msg_received_since_last_check = 0;
+			}
+		}
+	}
 
-extern int		qnetd_instance_destroy(struct qnetd_instance *instance);
-
-extern void		qnetd_instance_client_disconnect(struct qnetd_instance *instance,
-    struct qnetd_client *client, int server_going_down);
-
-extern int		qnetd_instance_init_certs(struct qnetd_instance *instance);
-
-#ifdef __cplusplus
+	return (-1);
 }
-#endif
 
-#endif /* _QNETD_INSTANCE_H_ */
+int
+qnetd_dpd_timer_init(struct qnetd_instance *instance)
+{
+
+	if (!QNETD_DPD_ENABLED) {
+		return (0);
+	}
+
+	instance->dpd_timer = timer_list_add(&instance->main_timer_list, QNETD_DPD_INTERVAL,
+	    qnetd_dpd_timer_cb, (void *)instance, NULL);
+	if (instance->dpd_timer == NULL) {
+		qnetd_log(LOG_ERR, "Can't initialize dpd timer");
+
+		return (-1);
+	}
+
+	return (0);
+}
+
+void
+qnetd_dpd_timer_destroy(struct qnetd_instance *instance)
+{
+
+	if (instance->dpd_timer != NULL) {
+		timer_list_delete(&instance->main_timer_list, instance->dpd_timer);
+		instance->dpd_timer = NULL;
+	}
+}

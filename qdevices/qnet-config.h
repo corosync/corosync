@@ -63,6 +63,9 @@ extern "C" {
 #define QNETD_HEARTBEAT_INTERVAL_MIN		(1*1000)
 #define QNETD_HEARTBEAT_INTERVAL_MAX		(2*60*1000)
 
+#define QNETD_DPD_ENABLED			1
+#define QNETD_DPD_INTERVAL			(10*1000)
+
 #define QNETD_LOCK_FILE				LOCALSTATEDIR"/run/corosync-qnetd.pid"
 
 #define QDEVICE_NET_NSS_DB_DIR			COROSYSCONFDIR "/qdevice/net/node/nssdb"

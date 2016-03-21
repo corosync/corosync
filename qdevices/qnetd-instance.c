@@ -39,6 +39,7 @@
 #include "qnetd-client.h"
 #include "qnetd-algorithm.h"
 #include "qnetd-log-debug.h"
+#include "qnetd-dpd-timer.h"
 
 int
 qnetd_instance_init(struct qnetd_instance *instance, size_t max_client_receive_size,
@@ -63,6 +64,10 @@ qnetd_instance_init(struct qnetd_instance *instance, size_t max_client_receive_s
 
 	timer_list_init(&instance->main_timer_list);
 
+	if (qnetd_dpd_timer_init(instance) != 0) {
+		return (0);
+	}
+
 	return (0);
 }
 
@@ -72,6 +77,8 @@ qnetd_instance_destroy(struct qnetd_instance *instance)
 	struct qnetd_client *client;
 	struct qnetd_client *client_next;
 
+
+	qnetd_dpd_timer_destroy(instance);
 
 	client = TAILQ_FIRST(&instance->clients);
 	while (client != NULL) {

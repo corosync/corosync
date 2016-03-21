@@ -979,6 +979,8 @@ qnetd_client_msg_received(struct qnetd_instance *instance, struct qnetd_client *
 	int res;
 	int ret_val;
 
+	client->dpd_msg_received_since_last_check = 1;
+
 	msg_decoded_init(&msg);
 
 	res = msg_decode(&client->receive_buffer, &msg);

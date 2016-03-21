@@ -236,7 +236,7 @@ qdevice_model_net_run(struct qdevice_instance *instance)
 			/*
 			 * Give qnetd server a little time before reconnect
 			 */
-			poll(NULL, 0, random() % 1000);
+			(void)poll(NULL, 0, random() % 1000);
 		}
 	}
 
