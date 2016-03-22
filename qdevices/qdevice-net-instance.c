@@ -51,7 +51,7 @@ qdevice_net_instance_init(struct qdevice_net_instance *instance, size_t initial_
     uint32_t sync_heartbeat_interval, uint32_t cast_vote_timer_interval,
     const char *host_addr, uint16_t host_port, const char *cluster_name,
     const struct tlv_tie_breaker *tie_breaker, uint32_t connect_timeout,
-    int cmap_fd, int votequorum_fd)
+    int force_ip_version, int cmap_fd, int votequorum_fd)
 {
 
 	memset(instance, 0, sizeof(*instance));
@@ -72,6 +72,7 @@ qdevice_net_instance_init(struct qdevice_net_instance *instance, size_t initial_
 	instance->last_msg_seq_num = 1;
 	instance->echo_request_expected_msg_seq_num = 1;
 	instance->echo_reply_received_msg_seq_num = 1;
+	instance->force_ip_version = force_ip_version;
 	memcpy(&instance->tie_breaker, tie_breaker, sizeof(*tie_breaker));
 
 	dynar_init(&instance->receive_buffer, initial_receive_size);
@@ -157,6 +158,7 @@ qdevice_net_instance_init_from_cmap(struct qdevice_instance *instance)
 	char *cluster_name;
 	uint32_t connect_timeout;
 	struct qdevice_net_instance *net_instance;
+	int force_ip_version;
 
 	cmap_handle = instance->cmap_handle;
 
@@ -309,6 +311,21 @@ qdevice_net_instance_init_from_cmap(struct qdevice_instance *instance)
 		free(str);
 	}
 
+	if (cmap_get_string(cmap_handle, "quorum.device.net.force_ip_version", &str) != CS_OK) {
+		force_ip_version = 0;
+	} else {
+		li = strtol(str, &ep, 10);
+		if ((li != 0 && li != 4 && li != 6) || *ep != '\0') {
+			qdevice_log(LOG_ERR, "force_ip_version must be one of 0|4|6");
+			free(str);
+			goto error_free_cluster_name;
+		}
+
+		force_ip_version = li;
+
+		free(str);
+	}
+
 	/*
 	 * Really initialize instance
 	 */
@@ -319,6 +336,7 @@ qdevice_net_instance_init_from_cmap(struct qdevice_instance *instance)
 	    tls_supported, decision_algorithm,
 	    heartbeat_interval, sync_heartbeat_interval, cast_vote_timer_interval,
 	    host_addr, host_port, cluster_name, &tie_breaker, connect_timeout,
+	    force_ip_version,
 	    instance->cmap_poll_fd, instance->votequorum_poll_fd) == -1) {
 		qdevice_log(LOG_ERR, "Can't initialize qdevice-net instance");
 		goto error_free_instance;

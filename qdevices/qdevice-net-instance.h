@@ -101,6 +101,7 @@ struct qdevice_net_instance {
 	struct qdevice_instance *qdevice_instance_ptr;
 	struct nss_sock_non_blocking_client non_blocking_client;
 	struct timer_list_entry *connect_timer;
+	int force_ip_version;
 };
 
 extern int		qdevice_net_instance_init(struct qdevice_net_instance *instance,
@@ -110,7 +111,7 @@ extern int		qdevice_net_instance_init(struct qdevice_net_instance *instance,
     enum tlv_decision_algorithm_type decision_algorithm, uint32_t heartbeat_interval,
     uint32_t sync_heartbeat_interval, uint32_t cast_vote_timer_interval,
     const char *host_addr, uint16_t host_port, const char *cluster_name,
-    const struct tlv_tie_breaker *tie_breaker, uint32_t connect_timeout,
+    const struct tlv_tie_breaker *tie_breaker, uint32_t connect_timeout, int force_ip_version,
     int cmap_fd, int votequorum_fd);
 
 extern void		qdevice_net_instance_clean(struct qdevice_net_instance *instance);

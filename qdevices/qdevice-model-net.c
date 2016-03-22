@@ -133,6 +133,23 @@ qdevice_model_net_timer_connect_timeout(void *data1, void *data2)
 	return (0);
 }
 
+static PRIntn
+qdevice_model_net_get_af(const struct qdevice_net_instance *instance)
+{
+	PRIntn af;
+
+	af = PR_AF_UNSPEC;
+	if (instance->force_ip_version == 4) {
+		af = PR_AF_INET;
+	}
+
+	if (instance->force_ip_version == 6) {
+		af = PR_AF_INET6;
+	}
+
+	return (af);
+}
+
 int
 qdevice_model_net_run(struct qdevice_instance *instance)
 {
@@ -165,7 +182,8 @@ qdevice_model_net_run(struct qdevice_instance *instance)
 		    net_instance->host_addr, net_instance->host_port, net_instance->connect_timeout);
 
 		res = nss_sock_non_blocking_client_init(net_instance->host_addr,
-		    net_instance->host_port, PR_AF_UNSPEC, &net_instance->non_blocking_client);
+		    net_instance->host_port, qdevice_model_net_get_af(net_instance),
+		    &net_instance->non_blocking_client);
 		if (res == -1) {
 			qdevice_log_nss(LOG_ERR, "Can't initialize non blocking client connection");
 		}

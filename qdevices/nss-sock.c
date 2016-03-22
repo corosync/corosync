@@ -191,11 +191,17 @@ nss_sock_create_client_socket(const char *hostname, uint16_t port, PRIntn af,
 	void *addr_iter;
 	PRStatus res;
 	int connect_failed;
+	PRIntn tmp_af;
 
 	sock = NULL;
 	connect_failed = 0;
 
-	addr_info = PR_GetAddrInfoByName(hostname, af, PR_AI_ADDRCONFIG);
+	tmp_af = af;
+	if (af == PR_AF_INET6) {
+		tmp_af = PR_AF_UNSPEC;
+	}
+
+	addr_info = PR_GetAddrInfoByName(hostname, tmp_af, PR_AI_ADDRCONFIG);
 	if (addr_info == NULL) {
 		return (NULL);
 	}
@@ -203,6 +209,10 @@ nss_sock_create_client_socket(const char *hostname, uint16_t port, PRIntn af,
 	addr_iter = NULL;
 
 	while ((addr_iter = PR_EnumerateAddrInfo(addr_iter, addr_info, port, &addr)) != NULL) {
+		if (af != PR_AF_UNSPEC && addr.raw.family != af) {
+			continue ;
+		}
+
 		sock = nss_sock_create_socket(addr.raw.family, 0);
 		if (sock == NULL) {
 			continue ;
@@ -233,6 +243,7 @@ int
 nss_sock_non_blocking_client_init(const char *host_name, uint16_t port, PRIntn af,
     struct nss_sock_non_blocking_client *client)
 {
+	PRIntn tmp_af;
 
 	client->destroyed = 1;
 
@@ -245,7 +256,12 @@ nss_sock_non_blocking_client_init(const char *host_name, uint16_t port, PRIntn a
 	client->port = port;
 	client->af = af;
 
-	client->addr_info = PR_GetAddrInfoByName(client->host_name, af, PR_AI_ADDRCONFIG);
+	tmp_af = af;
+	if (af == PR_AF_INET6) {
+		tmp_af = PR_AF_UNSPEC;
+	}
+
+	client->addr_info = PR_GetAddrInfoByName(client->host_name, tmp_af, PR_AI_ADDRCONFIG);
 	if (client->addr_info == NULL) {
 		free(client->host_name);
 
@@ -265,6 +281,11 @@ nss_sock_non_blocking_client_try_next(struct nss_sock_non_blocking_client *clien
 	PRNetAddr addr;
 	PRStatus res;
 
+	if (client->destroyed) {
+		PR_SetError(PR_INVALID_ARGUMENT_ERROR, 0);
+		return (-1);
+	}
+
 	if (client->socket != NULL) {
 		PR_Close(client->socket);
 		client->socket = NULL;
@@ -272,6 +293,10 @@ nss_sock_non_blocking_client_try_next(struct nss_sock_non_blocking_client *clien
 
 	while ((client->addr_iter = PR_EnumerateAddrInfo(client->addr_iter, client->addr_info,
 	    client->port, &addr)) != NULL) {
+		if (client->af != PR_AF_UNSPEC && addr.raw.family != client->af) {
+			continue ;
+		}
+
 		client->socket = nss_sock_create_socket(addr.raw.family, 0);
 		if (client->socket == NULL) {
 			continue ;
@@ -306,6 +331,10 @@ nss_sock_non_blocking_client_try_next(struct nss_sock_non_blocking_client *clien
 void
 nss_sock_non_blocking_client_destroy(struct nss_sock_non_blocking_client *client)
 {
+
+	if (client->destroyed) {
+		return ;
+	}
 
 	if (client->addr_info != NULL) {
 		PR_FreeAddrInfo(client->addr_info);
