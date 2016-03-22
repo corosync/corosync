@@ -284,6 +284,7 @@ extern int totem_config_read (
 	hdb_handle_t object_find_interface_handle;
 	hdb_handle_t object_find_member_handle;
 	const char *transport_type;
+	int transport_type_set;
 	int member_count = 0;
 
 	res = totem_handle_find (objdb, &object_totem_handle);
@@ -454,13 +455,31 @@ printf ("couldn't find totem handle\n");
 	(void)objdb_get_string (objdb, object_totem_handle, "transport", &transport_type);
 
 	if (transport_type) {
+		transport_type_set = 0;
+
+		if (strcmp (transport_type, "udp") == 0) {
+			totem_config->transport_number = TOTEM_TRANSPORT_UDP;
+			transport_type_set = 1;
+		}
+
 		if (strcmp (transport_type, "udpu") == 0) {
 			totem_config->transport_number = TOTEM_TRANSPORT_UDPU;
+			transport_type_set = 1;
 		}
-	}
-	if (transport_type) {
+
+#ifdef HAVE_RDMA
 		if (strcmp (transport_type, "iba") == 0) {
 			totem_config->transport_number = TOTEM_TRANSPORT_RDMA;
+			transport_type_set = 1;
+		}
+#endif
+
+		if (!transport_type_set) {
+			snprintf (error_string_response, sizeof(error_string_response),
+			    "parse error in config: transport type %s is unsupported\n", transport_type);
+
+			*error_string = error_string_response;
+			return -1;
 		}
 	}
 
