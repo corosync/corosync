@@ -212,6 +212,12 @@ qdevice_votequorum_destroy(struct qdevice_instance *instance)
 	free(instance->vq_quorum_node_list); instance->vq_quorum_node_list = NULL;
 	free(instance->vq_node_list); instance->vq_node_list = NULL;
 
+	res = votequorum_trackstop(instance->votequorum_handle);
+	if (res != CS_OK) {
+		qdevice_log(LOG_WARNING, "Can't start tracking votequorum changes. Error %s",
+		    cs_strerror(res));
+	}
+
 	res = votequorum_qdevice_unregister(instance->votequorum_handle,
 		QDEVICE_VOTEQUORUM_DEVICE_NAME);
 
