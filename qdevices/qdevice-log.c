@@ -36,6 +36,8 @@
 #include "qdevice-config.h"
 #include "utils.h"
 
+static int qdevice_log_global_force_debug;
+
 struct qdevice_log_syslog_names {
 	const char *prio_name;
 	int priority;
@@ -271,6 +273,10 @@ qdevice_log_configure(struct qdevice_instance *instance)
 	}
 	strcat(log_format_stderr, log_format_syslog);
 
+	if (qdevice_log_global_force_debug) {
+		debug = 1;
+	}
+
 	/*
 	 * Finally reconfigure log system
 	 */
@@ -289,8 +295,10 @@ qdevice_log_configure(struct qdevice_instance *instance)
 }
 
 void
-qdevice_log_init(struct qdevice_instance *instance)
+qdevice_log_init(struct qdevice_instance *instance, int force_debug)
 {
+	qdevice_log_global_force_debug = force_debug;
+
 	qb_log_init(QDEVICE_PROGRAM_NAME, QDEVICE_LOG_DEFAULT_SYSLOG_FACILITY,
 	    QDEVICE_LOG_DEFAULT_SYSLOG_PRIORITY);
 

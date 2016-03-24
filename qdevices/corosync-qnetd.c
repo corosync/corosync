@@ -32,13 +32,13 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <config.h>
-
 #include <err.h>
 #include <errno.h>
 #include <getopt.h>
 #include <signal.h>
 #include <unistd.h>
+
+#include "qnet-config.h"
 
 #include "nss-sock.h"
 #include "qnetd-algorithm.h"
@@ -224,7 +224,7 @@ static void
 usage(void)
 {
 
-	printf("usage: %s [-46df] [-l listen_addr] [-p listen_port] [-s tls]\n", QNETD_PROGRAM_NAME);
+	printf("usage: %s [-46dfh] [-l listen_addr] [-p listen_port] [-s tls]\n", QNETD_PROGRAM_NAME);
 	printf("%14s[-c client_cert_required] [-m max_clients]\n", "");
 }
 
@@ -247,7 +247,7 @@ cli_parse(int argc, char * const argv[], char **host_addr, uint16_t *host_port, 
 	*max_clients = QNETD_DEFAULT_MAX_CLIENTS;
 	*address_family = PR_AF_UNSPEC;
 
-	while ((ch = getopt(argc, argv, "46fdc:l:m:p:s:")) != -1) {
+	while ((ch = getopt(argc, argv, "46dfhc:l:m:p:s:")) != -1) {
 		switch (ch) {
 		case '4':
 			*address_family = PR_AF_INET;
@@ -298,6 +298,7 @@ cli_parse(int argc, char * const argv[], char **host_addr, uint16_t *host_port, 
 				errx(1, "tls must be one of on, off, req");
 			}
 			break;
+		case 'h':
 		case '?':
 			usage();
 			exit(1);
@@ -307,7 +308,7 @@ cli_parse(int argc, char * const argv[], char **host_addr, uint16_t *host_port, 
 }
 
 int
-main(int argc, char *argv[])
+main(int argc, char * const argv[])
 {
 	struct qnetd_instance instance;
 	char *host_addr;
@@ -320,6 +321,7 @@ main(int argc, char *argv[])
 	size_t max_clients;
 	PRIntn address_family;
 	int lock_file;
+	int another_instance_running;
 
 	cli_parse(argc, argv, &host_addr, &host_port, &foreground, &debug_log, &bump_log_priority,
 	    &tls_supported, &client_cert_required, &max_clients, &address_family);
@@ -340,7 +342,13 @@ main(int argc, char *argv[])
 		utils_tty_detach();
 	}
 
-	if ((lock_file = utils_flock(QNETD_LOCK_FILE, getpid(), qnetd_log_printf)) == -1) {
+	if ((lock_file = utils_flock(QNETD_LOCK_FILE, getpid(), &another_instance_running)) == -1) {
+		if (another_instance_running) {
+			qnetd_log(LOG_ERR, "Another instance is running");
+		} else {
+			qnetd_log_err(LOG_ERR, "Can't acquire lock");
+		}
+
 		exit(1);
 	}
 

@@ -94,6 +94,7 @@ struct qdevice_net_instance {
 	int schedule_disconnect;
 	PRFileDesc *votequorum_poll_fd;
 	PRFileDesc *cmap_poll_fd;
+	PRFileDesc *local_socket_poll_fd;
 	struct tlv_ring_id last_sent_ring_id;
 	struct tlv_tie_breaker tie_breaker;
 	void *algorithm_data;
@@ -112,7 +113,7 @@ extern int		qdevice_net_instance_init(struct qdevice_net_instance *instance,
     uint32_t sync_heartbeat_interval, uint32_t cast_vote_timer_interval,
     const char *host_addr, uint16_t host_port, const char *cluster_name,
     const struct tlv_tie_breaker *tie_breaker, uint32_t connect_timeout, int force_ip_version,
-    int cmap_fd, int votequorum_fd);
+    int cmap_fd, int votequorum_fd, int local_socket_fd);
 
 extern void		qdevice_net_instance_clean(struct qdevice_net_instance *instance);
 

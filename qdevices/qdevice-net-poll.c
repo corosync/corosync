@@ -42,6 +42,7 @@
 enum qdevice_net_poll_pfd {
 	QDEVICE_NET_POLL_VOTEQUORUM,
 	QDEVICE_NET_POLL_CMAP,
+	QDEVICE_NET_POLL_LOCAL_SOCKET,
 	QDEVICE_NET_POLL_SOCKET,
 	QDEVICE_NET_POLL_MAX_PFDS
 };
@@ -142,6 +143,13 @@ qdevice_net_poll_err_socket(struct qdevice_net_instance *instance, const PRPollD
 	}
 }
 
+static void
+qdevice_net_poll_read_local_socket(struct qdevice_net_instance *instance)
+{
+
+//	qdevice_log(LOG_DEBUG, "READ ON LOCAL SOCKET");
+}
+
 int
 qdevice_net_poll(struct qdevice_net_instance *instance)
 {
@@ -158,6 +166,10 @@ qdevice_net_poll(struct qdevice_net_instance *instance)
 
 	pfds[QDEVICE_NET_POLL_CMAP].fd = instance->cmap_poll_fd;
 	pfds[QDEVICE_NET_POLL_CMAP].in_flags = PR_POLL_READ;
+	no_pfds++;
+
+	pfds[QDEVICE_NET_POLL_LOCAL_SOCKET].fd = instance->local_socket_poll_fd;
+	pfds[QDEVICE_NET_POLL_LOCAL_SOCKET].in_flags = PR_POLL_READ;
 	no_pfds++;
 
 	if (instance->state == QDEVICE_NET_INSTANCE_STATE_WAITING_CONNECT &&
@@ -190,6 +202,9 @@ qdevice_net_poll(struct qdevice_net_instance *instance)
 				case QDEVICE_NET_POLL_CMAP:
 					qdevice_net_poll_read_cmap(instance);
 					break;
+				case QDEVICE_NET_POLL_LOCAL_SOCKET:
+					qdevice_net_poll_read_local_socket(instance);
+					break;
 				default:
 					qdevice_log(LOG_CRIT, "Unhandled read on poll descriptor %u", i);
 					exit(1);
@@ -215,6 +230,18 @@ qdevice_net_poll(struct qdevice_net_instance *instance)
 				switch (i) {
 				case QDEVICE_NET_POLL_SOCKET:
 					qdevice_net_poll_err_socket(instance, &pfds[i]);
+					break;
+				case QDEVICE_NET_POLL_LOCAL_SOCKET:
+					if (pfds[i].out_flags != PR_POLL_NVAL) {
+						qdevice_log(LOG_CRIT, "POLLERR (%u) on local socket",
+						    pfds[i].out_flags);
+						exit(1);
+					} else {
+						qdevice_log(LOG_DEBUG, "Local socket is closed");
+						instance->schedule_disconnect = 1;
+						instance->disconnect_reason =
+						    QDEVICE_NET_DISCONNECT_REASON_LOCAL_SOCKET_CLOSED;
+					}
 					break;
 				default:
 					qdevice_log(LOG_CRIT, "Unhandled error on poll descriptor %u", i);

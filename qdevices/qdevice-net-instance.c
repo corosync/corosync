@@ -51,7 +51,7 @@ qdevice_net_instance_init(struct qdevice_net_instance *instance, size_t initial_
     uint32_t sync_heartbeat_interval, uint32_t cast_vote_timer_interval,
     const char *host_addr, uint16_t host_port, const char *cluster_name,
     const struct tlv_tie_breaker *tie_breaker, uint32_t connect_timeout,
-    int force_ip_version, int cmap_fd, int votequorum_fd)
+    int force_ip_version, int cmap_fd, int votequorum_fd, int local_socket_fd)
 {
 
 	memset(instance, 0, sizeof(*instance));
@@ -91,6 +91,11 @@ qdevice_net_instance_init(struct qdevice_net_instance *instance, size_t initial_
 
 	if ((instance->votequorum_poll_fd = PR_CreateSocketPollFd(votequorum_fd)) == NULL) {
 		qdevice_log_nss(LOG_CRIT, "Can't create NSPR votequorum poll fd");
+		return (-1);
+	}
+
+	if ((instance->local_socket_poll_fd = PR_CreateSocketPollFd(local_socket_fd)) == NULL) {
+		qdevice_log_nss(LOG_CRIT, "Can't create NSPR local socket poll fd");
 		return (-1);
 	}
 
@@ -134,6 +139,10 @@ qdevice_net_instance_destroy(struct qdevice_net_instance *instance)
 
 	if (PR_DestroySocketPollFd(instance->cmap_poll_fd) != PR_SUCCESS) {
 		qdevice_log_nss(LOG_WARNING, "Unable to close votequorum connection fd");
+	}
+
+	if (PR_DestroySocketPollFd(instance->local_socket_poll_fd) != PR_SUCCESS) {
+		qdevice_log_nss(LOG_WARNING, "Unable to close local socket poll fd");
 	}
 
 	return (0);
@@ -337,7 +346,8 @@ qdevice_net_instance_init_from_cmap(struct qdevice_instance *instance)
 	    heartbeat_interval, sync_heartbeat_interval, cast_vote_timer_interval,
 	    host_addr, host_port, cluster_name, &tie_breaker, connect_timeout,
 	    force_ip_version,
-	    instance->cmap_poll_fd, instance->votequorum_poll_fd) == -1) {
+	    instance->cmap_poll_fd, instance->votequorum_poll_fd,
+	    instance->local_socket_fd) == -1) {
 		qdevice_log(LOG_ERR, "Can't initialize qdevice-net instance");
 		goto error_free_instance;
 	}

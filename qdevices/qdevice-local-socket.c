@@ -32,44 +32,42 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _QNETD_LOG_H_
-#define _QNETD_LOG_H_
+#include "qdevice-config.h"
+#include "qdevice-log.h"
+#include "qdevice-local-socket.h"
+#include "unix-socket.h"
 
-#include <syslog.h>
-#include <stdarg.h>
+int
+qdevice_local_socket_init(struct qdevice_instance *instance)
+{
+	int local_socket;
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+	local_socket = unix_socket_server_create(QDEVICE_LOCAL_SOCKET_FILE, 1,
+	    QDEVICE_LOCAL_SOCKET_BACKLOG);
+	if (local_socket < 0) {
+		qdevice_log_err(LOG_ERR, "Can't create unix socket");
+		return (-1);
+	}
 
-#define QNETD_LOG_TARGET_STDERR		1
-#define QNETD_LOG_TARGET_SYSLOG		2
+	instance->local_socket_fd = local_socket;
 
-#define qnetd_log(...)	qnetd_log_printf(__VA_ARGS__)
-#define qnetd_log_nss(priority, str) qnetd_log_printf(priority, "%s (%d): %s", \
-    str, PR_GetError(), PR_ErrorToString(PR_GetError(), PR_LANGUAGE_I_DEFAULT));
-
-#define qnetd_log_err(priority, str) qnetd_log_printf(priority, "%s (%d): %s", \
-    str, errno, strerror(errno))
-
-extern void		qnetd_log_init(int target);
-
-extern void		qnetd_log_printf(int priority, const char *format, ...)
-    __attribute__((__format__(__printf__, 2, 3)));
-
-extern void		qnetd_log_vprintf(int priority, const char *format, va_list ap)
-    __attribute__((__format__(__printf__, 2, 0)));
-
-extern void		qnetd_log_close(void);
-
-extern void		qnetd_log_set_debug(int enabled);
-
-extern void		qnetd_log_set_priority_bump(int enabled);
-
-extern void		qnetd_log_msg_decode_error(int ret);
-
-#ifdef __cplusplus
+	return (0);
 }
-#endif
 
-#endif /* _QNETD_LOG_H_ */
+void
+qdevice_local_socket_destroy(struct qdevice_instance *instance)
+{
+
+	if (instance->local_socket_fd < 0) {
+		return ;
+	}
+
+	if (close(instance->local_socket_fd) != 0) {
+		qdevice_log_err(LOG_WARNING, "Can't close unix socket");
+	}
+
+	instance->local_socket_fd = -1;
+	if (unlink(QDEVICE_LOCAL_SOCKET_FILE) != 0) {
+		qdevice_log_err(LOG_WARNING, "Can't unlink unix socket");
+	}
+}

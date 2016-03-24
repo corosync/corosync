@@ -32,44 +32,73 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _QNETD_LOG_H_
-#define _QNETD_LOG_H_
+#include <sys/socket.h>
+#include <sys/un.h>
 
-#include <syslog.h>
-#include <stdarg.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <unistd.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include "unix-socket.h"
 
-#define QNETD_LOG_TARGET_STDERR		1
-#define QNETD_LOG_TARGET_SYSLOG		2
+static int
+unix_socket_set_non_blocking(int fd)
+{
+	int flags;
 
-#define qnetd_log(...)	qnetd_log_printf(__VA_ARGS__)
-#define qnetd_log_nss(priority, str) qnetd_log_printf(priority, "%s (%d): %s", \
-    str, PR_GetError(), PR_ErrorToString(PR_GetError(), PR_LANGUAGE_I_DEFAULT));
+	flags = fcntl(fd, F_GETFL, NULL);
 
-#define qnetd_log_err(priority, str) qnetd_log_printf(priority, "%s (%d): %s", \
-    str, errno, strerror(errno))
+	if (flags < 0) {
+		return (-1);
+	}
 
-extern void		qnetd_log_init(int target);
+	flags |= O_NONBLOCK;
+	if (fcntl(fd, F_SETFL, flags) < 0) {
+		return (-1);
+        }
 
-extern void		qnetd_log_printf(int priority, const char *format, ...)
-    __attribute__((__format__(__printf__, 2, 3)));
-
-extern void		qnetd_log_vprintf(int priority, const char *format, va_list ap)
-    __attribute__((__format__(__printf__, 2, 0)));
-
-extern void		qnetd_log_close(void);
-
-extern void		qnetd_log_set_debug(int enabled);
-
-extern void		qnetd_log_set_priority_bump(int enabled);
-
-extern void		qnetd_log_msg_decode_error(int ret);
-
-#ifdef __cplusplus
+        return (0);
 }
-#endif
 
-#endif /* _QNETD_LOG_H_ */
+int
+unix_socket_server_create(const char *path, int non_blocking, int backlog)
+{
+	int s;
+	struct sockaddr_un sun;
+
+	if (strlen(path) >= sizeof(sun.sun_path)) {
+		errno = ENAMETOOLONG;
+		return (-1);
+	}
+
+	if ((s = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
+		return (-1);
+	}
+
+	memset(&sun, 0, sizeof(sun));
+	sun.sun_family = AF_UNIX;
+
+	strncpy(sun.sun_path, path, sizeof(sun.sun_path));
+	unlink(path);
+	if (bind(s, (struct sockaddr *)&sun, SUN_LEN(&sun)) != 0) {
+		close(s);
+
+		return (-1);
+	}
+
+	if (non_blocking) {
+		if (unix_socket_set_non_blocking(s) != 0) {
+			close(s);
+
+			return (-1);
+		}
+	}
+
+	if (listen(s, backlog) != 0) {
+		close(s);
+
+		return (-1);
+	}
+
+	return (s);
+}

@@ -35,6 +35,8 @@
 #ifndef _QNET_CONFIG_H_
 #define _QNET_CONFIG_H_
 
+#include <config.h>
+
 #include "tlv.h"
 
 #ifdef __cplusplus

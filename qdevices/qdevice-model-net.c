@@ -32,9 +32,6 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-
-#include <config.h>
-
 #include <poll.h>
 
 #include "qdevice-model.h"
@@ -225,8 +222,8 @@ qdevice_model_net_run(struct qdevice_instance *instance)
 			    " Can't update cast vote timer vote");
 		}
 
-		if (net_instance->disconnect_reason ==
-		    QDEVICE_NET_DISCONNECT_REASON_COROSYNC_CONNECTION_CLOSED) {
+		if (net_instance->disconnect_reason == QDEVICE_NET_DISCONNECT_REASON_COROSYNC_CONNECTION_CLOSED ||
+		    net_instance->disconnect_reason == QDEVICE_NET_DISCONNECT_REASON_LOCAL_SOCKET_CLOSED) {
 			try_connect = 0;
 		}
 

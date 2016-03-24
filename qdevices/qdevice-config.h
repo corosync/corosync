@@ -35,6 +35,8 @@
 #ifndef _QDEVICE_CONFIG_H_
 #define _QDEVICE_CONFIG_H_
 
+#include <config.h>
+
 #include <qb/qbdefs.h>
 #include <qb/qblog.h>
 
@@ -47,10 +49,12 @@ extern "C" {
  * idea to change them as long as you are not 100% sure what you are doing.
  */
 #define QDEVICE_LOCK_FILE			LOCALSTATEDIR"/run/corosync-qdevice.pid"
+#define QDEVICE_LOCAL_SOCKET_FILE               LOCALSTATEDIR"/run/corosync-qdevice.sock"
+#define QDEVICE_LOCAL_SOCKET_BACKLOG		10
 
 #define QDEVICE_MAX_CS_TRY_AGAIN		10
 
-#define QDEVICE_PROGRAM_NAME			"qdevice-net"
+#define QDEVICE_PROGRAM_NAME			"corosync-qdevice"
 #define QDEVICE_LOG_SUBSYS			"QDEVICE"
 #define QDEVICE_LOG_DEFAULT_TO_STDERR		1
 #define QDEVICE_LOG_DEFAULT_TO_SYSLOG		1

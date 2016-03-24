@@ -69,18 +69,17 @@ utils_parse_bool_str(const char *str)
 }
 
 int
-utils_flock(const char *lockfile, pid_t pid,
-    void (*log_printf)(int priority, const char *format, ...))
+utils_flock(const char *lockfile, pid_t pid, int *another_instance_running)
 {
 	struct flock lock;
 	char pid_s[17];
 	int fd_flag;
 	int lf;
 
+	*another_instance_running = 0;
+
 	lf = open(lockfile, O_WRONLY | O_CREAT, 0640);
 	if (lf == -1) {
-		log_printf(LOG_ERR, "Cannot create lock file. Error was %s", strerror(errno));
-
 		return (-1);
 	}
 
@@ -96,18 +95,16 @@ retry_fcntl:
 			break;
 		case EAGAIN:
 		case EACCES:
-			log_printf(LOG_ERR, "Another instance is already running.");
+			*another_instance_running = 1;
 			goto error_close;
 			break;
 		default:
-			log_printf(LOG_ERR, "Cannot aquire lock. Error was %s", strerror(errno));
 			goto error_close;
 			break;
 		}
 	}
 
 	if (ftruncate(lf, 0) == -1) {
-		log_printf(LOG_ERR, "Cannot truncate lock file. Error was %s", strerror(errno));
 		goto error_close_unlink;
 	}
 
@@ -119,21 +116,15 @@ retry_write:
 		if (errno == EINTR) {
 			goto retry_write;
 		} else {
-			log_printf(LOG_ERR, "Cannot write pid to lock file. Error was %s",
-			    strerror(errno));
 			goto error_close_unlink;
 		}
 	}
 
 	if ((fd_flag = fcntl(lf, F_GETFD, 0)) == -1) {
-		log_printf(LOG_ERR, "Cannot get close-on exec flag for lock file. Error was %s",
-		    strerror(errno));
 		goto error_close_unlink;
 	}
 	fd_flag |= FD_CLOEXEC;
 	if (fcntl(lf, F_SETFD, fd_flag) == -1) {
-		log_printf(LOG_ERR, "Cannot set close-on-exec flag for lock file. Error was %s",
-		    strerror(errno));
 		goto error_close_unlink;
 	}
 

@@ -49,7 +49,10 @@ extern "C" {
 #define qdevice_log_nss(priority, str) qdevice_log(priority, "%s (%d): %s", \
     str, PR_GetError(), PR_ErrorToString(PR_GetError(), PR_LANGUAGE_I_DEFAULT));
 
-extern void		qdevice_log_init(struct qdevice_instance *instance);
+#define qdevice_log_err(priority, str) qdevice_log(priority, "%s (%d): %s", \
+    str, errno, strerror(errno));
+
+extern void		qdevice_log_init(struct qdevice_instance *instance, int force_debug);
 
 extern void		qdevice_log_configure(struct qdevice_instance *instance);
 

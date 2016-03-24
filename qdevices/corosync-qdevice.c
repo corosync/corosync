@@ -32,24 +32,125 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <config.h>
+#include <signal.h>
 
 #include "qdevice-config.h"
 #include "qdevice-cmap.h"
 #include "qdevice-log.h"
 #include "qdevice-model.h"
 #include "qdevice-votequorum.h"
+#include "qdevice-local-socket.h"
 #include "utils.h"
 
+struct qdevice_instance *global_instance;
+
+static void
+signal_int_handler(int sig)
+{
+	qdevice_log(LOG_DEBUG, "SIGINT received - closing local unix socket");
+	qdevice_local_socket_destroy(global_instance);
+}
+
+static void
+signal_term_handler(int sig)
+{
+	qdevice_log(LOG_DEBUG, "SIGTERM received - closing server socket");
+	qdevice_local_socket_destroy(global_instance);
+}
+
+static void
+signal_handlers_register(void)
+{
+	struct sigaction act;
+
+	act.sa_handler = signal_int_handler;
+	sigemptyset(&act.sa_mask);
+	act.sa_flags = SA_RESTART;
+
+	sigaction(SIGINT, &act, NULL);
+
+	act.sa_handler = signal_term_handler;
+	sigemptyset(&act.sa_mask);
+	act.sa_flags = SA_RESTART;
+
+	sigaction(SIGTERM, &act, NULL);
+}
+
+static void
+usage(void)
+{
+
+	printf("usage: %s [-dfh]\n", QDEVICE_PROGRAM_NAME);
+}
+
+static void
+cli_parse(int argc, char * const argv[], int *foreground, int *force_debug)
+{
+	int ch;
+
+	*foreground = 0;
+	*force_debug = 0;
+
+	while ((ch = getopt(argc, argv, "dfh")) != -1) {
+		switch (ch) {
+		case 'd':
+			*force_debug = 1;
+			break;
+		case 'f':
+			*foreground = 1;
+			break;
+		case 'h':
+		case '?':
+			usage();
+			exit(1);
+			break;
+		}
+	}
+}
+
 int
-main(void)
+main(int argc, char * const argv[])
 {
 	struct qdevice_instance instance;
+	int foreground;
+	int force_debug;
+	int lock_file;
+	int another_instance_running;
+
+	cli_parse(argc, argv, &foreground, &force_debug);
 
 	qdevice_instance_init(&instance);
+	global_instance = &instance;
+
 	qdevice_cmap_init(&instance);
-	qdevice_log_init(&instance);
+	qdevice_log_init(&instance, force_debug);
+
+	/*
+	 * Daemonize
+	 */
+	if (!foreground) {
+		utils_tty_detach();
+	}
+
+	if ((lock_file = utils_flock(QDEVICE_LOCK_FILE, getpid(), &another_instance_running)) == -1) {
+		if (another_instance_running) {
+			qdevice_log(LOG_ERR, "Another instance is running");
+		} else {
+			qdevice_log_err(LOG_ERR, "Can't aquire lock");
+		}
+
+		exit(1);
+	}
+
+	qdevice_log(LOG_DEBUG, "Initializing votequorum");
 	qdevice_votequorum_init(&instance);
+
+	qdevice_log(LOG_DEBUG, "Initializing local socket");
+	if (qdevice_local_socket_init(&instance) != 0) {
+		return (1);
+	}
+
+	signal_handlers_register();
 
 	qdevice_log(LOG_DEBUG, "Registering qdevice models");
 	qdevice_model_register_all();
@@ -87,6 +188,7 @@ main(void)
 	qdevice_log(LOG_DEBUG, "Destorying qdevice model");
 	qdevice_model_destroy(&instance);
 
+	qdevice_local_socket_destroy(&instance);
 	qdevice_votequorum_destroy(&instance);
 	qdevice_cmap_destroy(&instance);
 	qdevice_log_close(&instance);

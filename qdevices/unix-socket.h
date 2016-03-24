@@ -32,44 +32,20 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _QNETD_LOG_H_
-#define _QNETD_LOG_H_
+#ifndef _UNIX_SOCKET_H_
+#define _UNIX_SOCKET_H_
 
-#include <syslog.h>
-#include <stdarg.h>
+#include <sys/types.h>
+#include <inttypes.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#define QNETD_LOG_TARGET_STDERR		1
-#define QNETD_LOG_TARGET_SYSLOG		2
-
-#define qnetd_log(...)	qnetd_log_printf(__VA_ARGS__)
-#define qnetd_log_nss(priority, str) qnetd_log_printf(priority, "%s (%d): %s", \
-    str, PR_GetError(), PR_ErrorToString(PR_GetError(), PR_LANGUAGE_I_DEFAULT));
-
-#define qnetd_log_err(priority, str) qnetd_log_printf(priority, "%s (%d): %s", \
-    str, errno, strerror(errno))
-
-extern void		qnetd_log_init(int target);
-
-extern void		qnetd_log_printf(int priority, const char *format, ...)
-    __attribute__((__format__(__printf__, 2, 3)));
-
-extern void		qnetd_log_vprintf(int priority, const char *format, va_list ap)
-    __attribute__((__format__(__printf__, 2, 0)));
-
-extern void		qnetd_log_close(void);
-
-extern void		qnetd_log_set_debug(int enabled);
-
-extern void		qnetd_log_set_priority_bump(int enabled);
-
-extern void		qnetd_log_msg_decode_error(int ret);
+extern int		unix_socket_server_create(const char *path, int non_blocking, int backlog);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* _QNETD_LOG_H_ */
+#endif /* _UNIX_SOCKET_H_ */

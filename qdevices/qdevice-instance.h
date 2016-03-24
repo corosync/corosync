@@ -61,6 +61,8 @@ struct qdevice_instance {
 	votequorum_handle_t votequorum_handle;
 	int votequorum_poll_fd;
 
+	int local_socket_fd;
+
 	enum qdevice_model_type model_type;
 
 	uint32_t node_id;

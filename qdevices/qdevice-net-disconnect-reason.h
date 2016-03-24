@@ -85,6 +85,9 @@ enum qdevice_net_disconnect_reason {
 	/* Can't dispatch cmap or votequroum. This cannot be overwritten and always means end of qdevice-net */
 	QDEVICE_NET_DISCONNECT_REASON_COROSYNC_CONNECTION_CLOSED,
 
+	/* Local socket closed is reasult of sigint */
+	QDEVICE_NET_DISCONNECT_REASON_LOCAL_SOCKET_CLOSED,
+
 	/* It was not possible to establish connection with qnetd */
 	QDEVICE_NET_DISCONNECT_REASON_CANT_CONNECT_TO_THE_SERVER,
 
