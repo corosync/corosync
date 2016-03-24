@@ -1,0 +1,164 @@
+#!@BASHPATH@
+
+# Authors:
+#  Jan Friesse <jfriesse@redhat.com>
+#
+# License: Revised BSD
+
+# chkconfig: - 20 80
+# description: Corosync Qdevice daemon
+# processname: corosync-qdevice
+#
+### BEGIN INIT INFO
+# Provides:		corosync-qdevice
+# Required-Start:	$corosync
+# Required-Stop:	$corosync
+# Default-Start:
+# Default-Stop:
+# Short-Description:	Starts and stops Corosync Qdevice daemon.
+# Description:		Starts and stops Corosync Qdevice daemon.
+### END INIT INFO
+
+desc="Corosync Qdevice daemon"
+prog="corosync-qdevice"
+
+# set secure PATH
+PATH="/sbin:/bin:/usr/sbin:/usr/bin:@SBINDIR@"
+
+success()
+{
+	echo -ne "[  OK  ]\r"
+}
+
+failure()
+{
+	echo -ne "[FAILED]\r"
+}
+
+status()
+{
+	pid=$(pidof $1 2>/dev/null)
+	res=$?
+	if [ $res -ne 0 ]; then
+		echo "$1 is stopped"
+	else
+		echo "$1 (pid $pid) is running..."
+	fi
+	return $res
+}
+
+# rpm based distros
+if [ -d @SYSCONFDIR@/sysconfig ]; then
+	[ -f @INITDDIR@/functions ] && . @INITDDIR@/functions
+	[ -f @SYSCONFDIR@/sysconfig/$prog ] && . @SYSCONFDIR@/sysconfig/$prog
+	[ -z "$LOCK_FILE" ] && LOCK_FILE="@LOCALSTATEDIR@/lock/subsys/$prog"
+fi
+
+# deb based distros
+if [ -d @SYSCONFDIR@/default ]; then
+	[ -f @SYSCONFDIR@/default/$prog ] && . @SYSCONFDIR@/default/$prog
+	[ -z "$LOCK_FILE" ] && LOCK_FILE="@LOCALSTATEDIR@/lock/$prog"
+fi
+
+# The version of __pids_pidof in /etc/init.d/functions calls pidof with -x
+# This means it matches scripts, including this one.
+# Redefine it here so that status (from the same file) works.
+# Otherwise simultaneous calls to stop() will loop forever
+__pids_pidof() {
+        pidof -c -o $$ -o $PPID -o %PPID "$1" || \
+                pidof -c -o $$ -o $PPID -o %PPID "${1##*/}"
+}
+
+cluster_disabled_at_boot()
+{
+       if grep -q nocluster /proc/cmdline && \
+          [ "$(tty)" = "/dev/console" ]; then
+               echo -e "not configured to run at boot"
+               failure
+               return 1
+       fi
+       return 0
+}
+
+start()
+{
+	echo -n "Starting $desc ($prog): "
+
+	! cluster_disabled_at_boot && return
+
+	# most recent distributions use tmpfs for @LOCALSTATEDIR@/run
+	# to avoid to clean it up on every boot.
+	# they also assume that init scripts will create
+	# required subdirectories for proper operations
+	mkdir -p @LOCALSTATEDIR@/run
+
+	if status $prog > /dev/null 2>&1; then
+		success
+	else
+		$prog $COROSYNC_QNETD_OPTIONS > /dev/null 2>&1
+
+		if [ "$?" != 0 ]; then
+			failure
+			rtrn=1
+		else
+			touch $LOCK_FILE
+			success
+		fi
+	fi
+	echo
+}
+
+stop()
+{
+	! status $prog > /dev/null 2>&1 && return
+
+	echo -n "Signaling $desc ($prog) to terminate: "
+	kill -TERM $(pidof $prog) > /dev/null 2>&1
+	success
+	echo
+
+	echo -n "Waiting for $prog services to unload:"
+	while status $prog > /dev/null 2>&1; do
+		sleep 1
+		echo -n "."
+	done
+
+	rm -f $LOCK_FILE
+	success
+	echo
+}
+
+restart()
+{
+	stop
+	start
+}
+
+rtrn=0
+
+case "$1" in
+start)
+	start
+;;
+restart|reload|force-reload)
+	restart
+;;
+condrestart|try-restart)
+	if status $prog > /dev/null 2>&1; then
+		restart
+	fi
+;;
+status)
+	status $prog
+	rtrn=$?
+;;
+stop)
+	stop
+;;
+*)
+	echo "usage: $0 {start|stop|restart|reload|force-reload|condrestart|try-restart|status}"
+	rtrn=2
+;;
+esac
+
+exit $rtrn

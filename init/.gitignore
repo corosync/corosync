@@ -4,3 +4,5 @@ corosync.service
 corosync-notifyd.service
 corosync-qnetd
 corosync-qnetd.service
+corosync-qdevice
+corosync-qdevice.service

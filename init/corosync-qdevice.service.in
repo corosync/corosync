@@ -1,0 +1,13 @@
+[Unit]
+Description=Corosync Qdevice daemon
+ConditionKernelCommandLine=!nocluster
+Wants=corosync.service
+After=corosync.service
+
+[Service]
+ExecStart=@INITWRAPPERSDIR@/corosync-qdevice start
+ExecStop=@INITWRAPPERSDIR@/corosync-qdevice stop
+Type=forking
+
+[Install]
+WantedBy=multi-user.target

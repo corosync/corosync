@@ -1,12 +1,12 @@
 [Unit]
-Description=Corosync Cluster Engine
+Description=Corosync Qdevice Network daemon
 ConditionKernelCommandLine=!nocluster
 Requires=network-online.target
 After=network-online.target
 
 [Service]
-ExecStart=@INITWRAPPERSDIR@/corosync start
-ExecStop=@INITWRAPPERSDIR@/corosync stop
+ExecStart=@INITWRAPPERSDIR@/corosync-qnetd start
+ExecStop=@INITWRAPPERSDIR@/corosync-qnetd stop
 Type=forking
 
 [Install]

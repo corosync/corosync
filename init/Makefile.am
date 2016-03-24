@@ -48,10 +48,10 @@ endif
 initscript_SCRIPTS  = corosync corosync-notifyd
 
 if BUILD_QDEVICES
-initscript_SCRIPTS  += corosync-qnetd
+initscript_SCRIPTS  += corosync-qnetd corosync-qdevice
 EXTRA_DIST          += corosync-qnetd.sysconfig.example
 if INSTALL_SYSTEMD
-systemdconf_DATA   += corosync-qnetd.service
+systemdconf_DATA   += corosync-qnetd.service corosync-qdevice.service
 endif
 endif
 
