@@ -104,7 +104,7 @@ qdevice_model_net_destroy(struct qdevice_instance *instance)
 		qdevice_log_nss(LOG_WARNING, "Can't shutdown NSS");
 	}
 
-	if (PR_Cleanup() != SECSuccess) {
+	if (PR_Cleanup() != PR_SUCCESS) {
 		qdevice_log_nss(LOG_WARNING, "Can't shutdown NSPR");
 	}
 
@@ -465,6 +465,10 @@ qdevice_model_net_votequorum_expected_votes_notify(struct qdevice_instance *inst
 	struct qdevice_net_instance *net_instance;
 
 	net_instance = instance->model_data;
+
+	qdevice_log(LOG_DEBUG, "qdevice_model_net_votequorum_expected_votes_notify"
+	    " (expected votes old=%"PRIu32" / new=%"PRIu32")",
+	    net_instance->qdevice_instance_ptr->vq_expected_votes, expected_votes);
 
 	return (0);
 }
