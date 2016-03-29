@@ -77,7 +77,6 @@ qnetd_instance_destroy(struct qnetd_instance *instance)
 	struct qnetd_client *client;
 	struct qnetd_client *client_next;
 
-
 	qnetd_dpd_timer_destroy(instance);
 
 	client = TAILQ_FIRST(&instance->clients);

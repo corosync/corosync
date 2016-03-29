@@ -38,6 +38,12 @@
 #include "qdevice-net-send.h"
 #include "qdevice-net-socket.h"
 #include "qdevice-votequorum.h"
+#include "qdevice-ipc.h"
+
+/*
+ * Needed for creating nspr handle from unix fd
+ */
+#include <private/pprio.h>
 
 enum qdevice_net_poll_pfd {
 	QDEVICE_NET_POLL_VOTEQUORUM,
@@ -146,8 +152,21 @@ qdevice_net_poll_err_socket(struct qdevice_net_instance *instance, const PRPollD
 static void
 qdevice_net_poll_read_local_socket(struct qdevice_net_instance *instance)
 {
+	struct unix_socket_client *client;
+	PRFileDesc *prfd;
 
-//	qdevice_log(LOG_DEBUG, "READ ON LOCAL SOCKET");
+	if (qdevice_ipc_accept(instance->qdevice_instance_ptr, &client) != 0) {
+		return ;
+	}
+
+	prfd = PR_CreateSocketPollFd(client->socket);
+	if (prfd == NULL) {
+		qdevice_log_nss(LOG_CRIT, "Can't create NSPR poll fd for IPC client");
+
+		return ;
+	}
+
+	client->user_data = (void *)prfd;
 }
 
 int

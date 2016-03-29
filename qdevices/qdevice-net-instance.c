@@ -347,7 +347,7 @@ qdevice_net_instance_init_from_cmap(struct qdevice_instance *instance)
 	    host_addr, host_port, cluster_name, &tie_breaker, connect_timeout,
 	    force_ip_version,
 	    instance->cmap_poll_fd, instance->votequorum_poll_fd,
-	    instance->local_socket_fd) == -1) {
+	    instance->local_ipc.socket) == -1) {
 		qdevice_log(LOG_ERR, "Can't initialize qdevice-net instance");
 		goto error_free_instance;
 	}

@@ -32,42 +32,24 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "qdevice-config.h"
-#include "qdevice-log.h"
-#include "qdevice-local-socket.h"
-#include "unix-socket.h"
+#ifndef _QDEVICE_IPC_H_
+#define _QDEVICE_IPC_H_
 
-int
-qdevice_local_socket_init(struct qdevice_instance *instance)
-{
-	int local_socket;
+#include "qdevice-instance.h"
 
-	local_socket = unix_socket_server_create(QDEVICE_LOCAL_SOCKET_FILE, 1,
-	    QDEVICE_LOCAL_SOCKET_BACKLOG);
-	if (local_socket < 0) {
-		qdevice_log_err(LOG_ERR, "Can't create unix socket");
-		return (-1);
-	}
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-	instance->local_socket_fd = local_socket;
+extern int		qdevice_ipc_init(struct qdevice_instance *instance);
 
-	return (0);
+extern int		qdevice_ipc_destroy(struct qdevice_instance *instance);
+
+extern int		qdevice_ipc_accept(struct qdevice_instance *instance,
+    struct unix_socket_client **res_client);
+
+#ifdef __cplusplus
 }
+#endif
 
-void
-qdevice_local_socket_destroy(struct qdevice_instance *instance)
-{
-
-	if (instance->local_socket_fd < 0) {
-		return ;
-	}
-
-	if (close(instance->local_socket_fd) != 0) {
-		qdevice_log_err(LOG_WARNING, "Can't close unix socket");
-	}
-
-	instance->local_socket_fd = -1;
-	if (unlink(QDEVICE_LOCAL_SOCKET_FILE) != 0) {
-		qdevice_log_err(LOG_WARNING, "Can't unlink unix socket");
-	}
-}
+#endif /* _QDEVICE_IPC_H_ */

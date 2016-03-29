@@ -79,6 +79,7 @@ qnetd_client_list_free(struct qnetd_client_list *client_list)
 	while (client != NULL) {
 		client_next = TAILQ_NEXT(client, entries);
 
+		qnetd_client_destroy(client);
 		free(client);
 
 		client = client_next;
@@ -92,6 +93,7 @@ qnetd_client_list_del(struct qnetd_client_list *client_list, struct qnetd_client
 {
 
 	TAILQ_REMOVE(client_list, client, entries);
+
 	qnetd_client_destroy(client);
 	free(client);
 }

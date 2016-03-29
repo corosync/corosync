@@ -45,6 +45,7 @@
 
 #include "qdevice-model-type.h"
 #include "node-list.h"
+#include "unix-socket-ipc.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -61,7 +62,7 @@ struct qdevice_instance {
 	votequorum_handle_t votequorum_handle;
 	int votequorum_poll_fd;
 
-	int local_socket_fd;
+	struct unix_socket_ipc local_ipc;
 
 	enum qdevice_model_type model_type;
 

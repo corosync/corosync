@@ -32,24 +32,77 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _QDEVICE_LOCAL_SOCKET_H_
-#define _QDEVICE_LOCAL_SOCKET_H_
+#include <stdlib.h>
+#include <string.h>
 
-#include "qdevice-instance.h"
+#include "unix-socket-client-list.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+void
+unix_socket_client_list_init(struct unix_socket_client_list *client_list)
+{
 
-struct qdevice_local_socket {
-};
-
-extern int		qdevice_local_socket_init(struct qdevice_instance *instance);
-
-extern void		qdevice_local_socket_destroy(struct qdevice_instance *instance);
-
-#ifdef __cplusplus
+	TAILQ_INIT(client_list);
 }
-#endif
 
-#endif /* _QDEVICE_LOCAL_SOCKET_H_ */
+struct unix_socket_client *
+unix_socket_client_list_add(struct unix_socket_client_list *client_list,
+    int sock, size_t max_receive_size, size_t max_send_size, void *user_data)
+{
+	struct unix_socket_client *client;
+
+	client = (struct unix_socket_client *)malloc(sizeof(*client));
+	if (client == NULL) {
+		return (NULL);
+	}
+
+	unix_socket_client_init(client, sock, max_receive_size, max_send_size, user_data);
+
+	TAILQ_INSERT_TAIL(client_list, client, entries);
+
+	return (client);
+}
+
+void
+unix_socket_client_list_free(struct unix_socket_client_list *client_list)
+{
+	struct unix_socket_client *client;
+	struct unix_socket_client *client_next;
+
+	client = TAILQ_FIRST(client_list);
+
+	while (client != NULL) {
+		client_next = TAILQ_NEXT(client, entries);
+
+		unix_socket_client_destroy(client);
+		free(client);
+
+		client = client_next;
+	}
+
+	TAILQ_INIT(client_list);
+}
+
+void
+unix_socket_client_list_del(struct unix_socket_client_list *client_list,
+    struct unix_socket_client *client)
+{
+
+	TAILQ_REMOVE(client_list, client, entries);
+	unix_socket_client_destroy(client);
+	free(client);
+}
+
+size_t
+unix_socket_client_list_no_clients(struct unix_socket_client_list *client_list)
+{
+	size_t res;
+	struct unix_socket_client *client;
+
+	res = 0;
+
+	TAILQ_FOREACH(client, client_list, entries) {
+		res++;
+	}
+
+	return (res);
+}

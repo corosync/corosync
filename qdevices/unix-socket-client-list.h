@@ -32,121 +32,38 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <sys/socket.h>
-#include <sys/un.h>
+#ifndef _UNIX_SOCKET_CLIENT_LIST_H_
+#define _UNIX_SOCKET_CLIENT_LIST_H_
 
-#include <errno.h>
-#include <fcntl.h>
-#include <unistd.h>
+#include <sys/types.h>
+#include <inttypes.h>
 
-#include "unix-socket.h"
+#include "unix-socket-client.h"
 
-static int
-unix_socket_set_non_blocking(int fd)
-{
-	int flags;
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-	flags = fcntl(fd, F_GETFL, NULL);
+TAILQ_HEAD(unix_socket_client_list, unix_socket_client);
 
-	if (flags < 0) {
-		return (-1);
-	}
+extern void				 unix_socket_client_list_init(
+    struct unix_socket_client_list *client_list);
 
-	flags |= O_NONBLOCK;
-	if (fcntl(fd, F_SETFL, flags) < 0) {
-		return (-1);
-        }
+extern struct unix_socket_client	*unix_socket_client_list_add(
+    struct unix_socket_client_list *client_list,
+    int sock, size_t max_receive_size, size_t max_send_size, void *user_data);
 
-        return (0);
+extern void				 unix_socket_client_list_free(
+    struct unix_socket_client_list *client_list);
+
+extern void				 unix_socket_client_list_del(
+    struct unix_socket_client_list *client_list, struct unix_socket_client *client);
+
+extern size_t				 unix_socket_client_list_no_clients(
+    struct unix_socket_client_list *client_list);
+
+#ifdef __cplusplus
 }
+#endif
 
-int
-unix_socket_server_create(const char *path, int non_blocking, int backlog)
-{
-	int s;
-	struct sockaddr_un sun;
-
-	if (strlen(path) >= sizeof(sun.sun_path)) {
-		errno = ENAMETOOLONG;
-		return (-1);
-	}
-
-	if ((s = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
-		return (-1);
-	}
-
-	memset(&sun, 0, sizeof(sun));
-	sun.sun_family = AF_UNIX;
-
-	strncpy(sun.sun_path, path, sizeof(sun.sun_path));
-	unlink(path);
-	if (bind(s, (struct sockaddr *)&sun, SUN_LEN(&sun)) != 0) {
-		close(s);
-
-		return (-1);
-	}
-
-	if (non_blocking) {
-		if (unix_socket_set_non_blocking(s) != 0) {
-			close(s);
-
-			return (-1);
-		}
-	}
-
-	if (listen(s, backlog) != 0) {
-		close(s);
-
-		return (-1);
-	}
-
-	return (s);
-}
-
-int
-unix_socket_server_destroy(int sock, const char *path)
-{
-	int res;
-
-	res = 0;
-
-	if (close(sock) != 0) {
-		res = -1;
-	}
-
-	if (unlink(path) != 0) {
-		res = -1;
-	}
-
-	return (res);
-}
-
-int
-unix_socket_server_accept(int sock, int non_blocking)
-{
-	struct sockaddr_un sun;
-	socklen_t sun_len;
-	int client_sock;
-
-	sun_len = sizeof(sun);
-	if ((client_sock = accept(sock, (struct sockaddr *)&sun, &sun_len)) < 0) {
-		return (-1);
-	}
-
-	if (non_blocking) {
-		if (unix_socket_set_non_blocking(client_sock) != 0) {
-			close(client_sock);
-
-			return (-1);
-		}
-	}
-
-	return (client_sock);
-}
-
-int
-unix_socket_close(int sock)
-{
-
-	return (close(sock));
-}
+#endif /* _UNIX_SOCKET_CLIENT_LIST_H_ */

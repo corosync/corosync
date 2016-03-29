@@ -36,10 +36,10 @@
 
 #include "qdevice-config.h"
 #include "qdevice-cmap.h"
+#include "qdevice-ipc.h"
 #include "qdevice-log.h"
 #include "qdevice-model.h"
 #include "qdevice-votequorum.h"
-#include "qdevice-local-socket.h"
 #include "utils.h"
 
 struct qdevice_instance *global_instance;
@@ -48,14 +48,14 @@ static void
 signal_int_handler(int sig)
 {
 	qdevice_log(LOG_DEBUG, "SIGINT received - closing local unix socket");
-	qdevice_local_socket_destroy(global_instance);
+	qdevice_ipc_destroy(global_instance);
 }
 
 static void
 signal_term_handler(int sig)
 {
 	qdevice_log(LOG_DEBUG, "SIGTERM received - closing server socket");
-	qdevice_local_socket_destroy(global_instance);
+	qdevice_ipc_destroy(global_instance);
 }
 
 static void
@@ -120,7 +120,6 @@ main(int argc, char * const argv[])
 	cli_parse(argc, argv, &foreground, &force_debug);
 
 	qdevice_instance_init(&instance);
-	global_instance = &instance;
 
 	qdevice_cmap_init(&instance);
 	qdevice_log_init(&instance, force_debug);
@@ -146,9 +145,11 @@ main(int argc, char * const argv[])
 	qdevice_votequorum_init(&instance);
 
 	qdevice_log(LOG_DEBUG, "Initializing local socket");
-	if (qdevice_local_socket_init(&instance) != 0) {
+	if (qdevice_ipc_init(&instance) != 0) {
 		return (1);
 	}
+
+	global_instance = &instance;
 
 	signal_handlers_register();
 
@@ -188,7 +189,8 @@ main(int argc, char * const argv[])
 	qdevice_log(LOG_DEBUG, "Destorying qdevice model");
 	qdevice_model_destroy(&instance);
 
-	qdevice_local_socket_destroy(&instance);
+	qdevice_ipc_destroy(&instance);
+
 	qdevice_votequorum_destroy(&instance);
 	qdevice_cmap_destroy(&instance);
 	qdevice_log_close(&instance);

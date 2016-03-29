@@ -32,121 +32,96 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <sys/socket.h>
-#include <sys/un.h>
-
-#include <errno.h>
-#include <fcntl.h>
-#include <unistd.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "unix-socket.h"
+#include "unix-socket-ipc.h"
 
-static int
-unix_socket_set_non_blocking(int fd)
+int
+unix_socket_ipc_init(struct unix_socket_ipc *ipc, const char *socket_file_name, int backlog,
+    size_t max_clients, size_t max_receive_size, size_t max_send_size)
 {
-	int flags;
 
-	flags = fcntl(fd, F_GETFL, NULL);
+	memset(ipc, 0, sizeof(*ipc));
 
-	if (flags < 0) {
+	ipc->socket_file_name = strdup(socket_file_name);
+	if (ipc->socket_file_name == NULL) {
 		return (-1);
 	}
 
-	flags |= O_NONBLOCK;
-	if (fcntl(fd, F_SETFL, flags) < 0) {
-		return (-1);
-        }
+	unix_socket_client_list_init(&ipc->clients);
 
-        return (0);
+	ipc->backlog = backlog;
+	ipc->socket = unix_socket_server_create(ipc->socket_file_name, 1,
+		backlog);
+	if (ipc->socket < 0) {
+		free(ipc->socket_file_name);
+		return (-1);
+	}
+
+	ipc->max_clients = max_clients;
+	ipc->max_receive_size = max_receive_size;
+	ipc->max_send_size = max_send_size;
+
+	return (0);
 }
 
 int
-unix_socket_server_create(const char *path, int non_blocking, int backlog)
-{
-	int s;
-	struct sockaddr_un sun;
-
-	if (strlen(path) >= sizeof(sun.sun_path)) {
-		errno = ENAMETOOLONG;
-		return (-1);
-	}
-
-	if ((s = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
-		return (-1);
-	}
-
-	memset(&sun, 0, sizeof(sun));
-	sun.sun_family = AF_UNIX;
-
-	strncpy(sun.sun_path, path, sizeof(sun.sun_path));
-	unlink(path);
-	if (bind(s, (struct sockaddr *)&sun, SUN_LEN(&sun)) != 0) {
-		close(s);
-
-		return (-1);
-	}
-
-	if (non_blocking) {
-		if (unix_socket_set_non_blocking(s) != 0) {
-			close(s);
-
-			return (-1);
-		}
-	}
-
-	if (listen(s, backlog) != 0) {
-		close(s);
-
-		return (-1);
-	}
-
-	return (s);
-}
-
-int
-unix_socket_server_destroy(int sock, const char *path)
+unix_socket_ipc_destroy(struct unix_socket_ipc *ipc)
 {
 	int res;
 
 	res = 0;
 
-	if (close(sock) != 0) {
+	if (ipc->socket < 0) {
+		return (0);
+	}
+
+	if (unix_socket_server_destroy(ipc->socket, ipc->socket_file_name) != 0) {
 		res = -1;
 	}
 
-	if (unlink(path) != 0) {
-		res = -1;
-	}
+	free(ipc->socket_file_name);
+	ipc->socket_file_name = NULL;
+
+	ipc->socket = -1;
 
 	return (res);
 }
 
+/*
+ *  0 = No error
+ * -1 = Can't accept connection (errno set)
+ * -2 = Too much clients
+ * -3 = Can't add client to list
+ */
 int
-unix_socket_server_accept(int sock, int non_blocking)
+unix_socket_ipc_accept(struct unix_socket_ipc *ipc, struct unix_socket_client **res_client)
 {
-	struct sockaddr_un sun;
-	socklen_t sun_len;
 	int client_sock;
+	struct unix_socket_client *client;
 
-	sun_len = sizeof(sun);
-	if ((client_sock = accept(sock, (struct sockaddr *)&sun, &sun_len)) < 0) {
+	if ((client_sock = unix_socket_server_accept(ipc->socket, 1)) < 0) {
 		return (-1);
 	}
 
-	if (non_blocking) {
-		if (unix_socket_set_non_blocking(client_sock) != 0) {
-			close(client_sock);
+	if (ipc->max_clients != 0 &&
+	    unix_socket_client_list_no_clients(&ipc->clients) >= ipc->max_clients) {
+		unix_socket_close(client_sock);
 
-			return (-1);
-		}
+		return (-2);
 	}
 
-	return (client_sock);
-}
+	client = unix_socket_client_list_add(&ipc->clients, client_sock, ipc->max_receive_size,
+	    ipc->max_send_size, NULL);
+	if (client == NULL) {
+		unix_socket_close(client_sock);
 
-int
-unix_socket_close(int sock)
-{
+		return (-3);
+	}
 
-	return (close(sock));
+	*res_client = client;
+
+	return (0);
 }

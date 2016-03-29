@@ -68,6 +68,12 @@ extern "C" {
 
 #define QDEVICE_VOTEQUORUM_DEVICE_NAME      "Qdevice"
 
+#define QDEVICE_ENABLE_NSS			1
+
+#define QDEVICE_IPC_MAX_CLIENTS			10
+#define QDEVICE_IPC_MAX_RECEIVE_SIZE		(4*1024)
+#define QDEVICE_IPC_MAX_SEND_SIZE		(64*1024)
+
 #ifdef __cplusplus
 }
 #endif

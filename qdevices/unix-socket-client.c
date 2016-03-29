@@ -32,121 +32,26 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <sys/socket.h>
-#include <sys/un.h>
+#include <string.h>
 
-#include <errno.h>
-#include <fcntl.h>
-#include <unistd.h>
+#include "unix-socket-client.h"
 
-#include "unix-socket.h"
-
-static int
-unix_socket_set_non_blocking(int fd)
+void
+unix_socket_client_init(struct unix_socket_client *client, int sock, size_t max_receive_size,
+    size_t max_send_size, void *user_data)
 {
-	int flags;
 
-	flags = fcntl(fd, F_GETFL, NULL);
-
-	if (flags < 0) {
-		return (-1);
-	}
-
-	flags |= O_NONBLOCK;
-	if (fcntl(fd, F_SETFL, flags) < 0) {
-		return (-1);
-        }
-
-        return (0);
+	memset(client, 0, sizeof(*client));
+	client->socket = sock;
+	client->user_data = user_data;
+	dynar_init(&client->receive_buffer, max_receive_size);
+	dynar_init(&client->send_buffer, max_send_size);
 }
 
-int
-unix_socket_server_create(const char *path, int non_blocking, int backlog)
-{
-	int s;
-	struct sockaddr_un sun;
-
-	if (strlen(path) >= sizeof(sun.sun_path)) {
-		errno = ENAMETOOLONG;
-		return (-1);
-	}
-
-	if ((s = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
-		return (-1);
-	}
-
-	memset(&sun, 0, sizeof(sun));
-	sun.sun_family = AF_UNIX;
-
-	strncpy(sun.sun_path, path, sizeof(sun.sun_path));
-	unlink(path);
-	if (bind(s, (struct sockaddr *)&sun, SUN_LEN(&sun)) != 0) {
-		close(s);
-
-		return (-1);
-	}
-
-	if (non_blocking) {
-		if (unix_socket_set_non_blocking(s) != 0) {
-			close(s);
-
-			return (-1);
-		}
-	}
-
-	if (listen(s, backlog) != 0) {
-		close(s);
-
-		return (-1);
-	}
-
-	return (s);
-}
-
-int
-unix_socket_server_destroy(int sock, const char *path)
-{
-	int res;
-
-	res = 0;
-
-	if (close(sock) != 0) {
-		res = -1;
-	}
-
-	if (unlink(path) != 0) {
-		res = -1;
-	}
-
-	return (res);
-}
-
-int
-unix_socket_server_accept(int sock, int non_blocking)
-{
-	struct sockaddr_un sun;
-	socklen_t sun_len;
-	int client_sock;
-
-	sun_len = sizeof(sun);
-	if ((client_sock = accept(sock, (struct sockaddr *)&sun, &sun_len)) < 0) {
-		return (-1);
-	}
-
-	if (non_blocking) {
-		if (unix_socket_set_non_blocking(client_sock) != 0) {
-			close(client_sock);
-
-			return (-1);
-		}
-	}
-
-	return (client_sock);
-}
-
-int
-unix_socket_close(int sock)
+void
+unix_socket_client_destroy(struct unix_socket_client *client)
 {
 
-	return (close(sock));
+	dynar_destroy(&client->send_buffer);
+	dynar_destroy(&client->receive_buffer);
 }
