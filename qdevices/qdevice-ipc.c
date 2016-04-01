@@ -36,6 +36,7 @@
 #include "qdevice-ipc.h"
 #include "qdevice-log.h"
 #include "unix-socket-ipc.h"
+#include "dynar-simple-lex.h"
 
 int
 qdevice_ipc_init(struct qdevice_instance *instance)
@@ -86,9 +87,82 @@ qdevice_ipc_accept(struct qdevice_instance *instance, struct unix_socket_client 
 		res = -1;
 		break;
 	default:
+		unix_socket_client_read_line(*res_client, 1);
 		res = 0;
 		break;
 	}
 
+
 	return (res);
+}
+
+void
+qdevice_ipc_client_disconnect(struct qdevice_instance *instance, struct unix_socket_client *client)
+{
+
+	unix_socket_ipc_client_disconnect(&instance->local_ipc, client);
+}
+
+static void
+qdevice_ipc_parse_line(struct qdevice_instance *instance, struct unix_socket_client *client)
+{
+	struct dynar_simple_lex lex;
+	struct dynar *token;
+	char *str;
+
+	dynar_simple_lex_init(&lex, &client->receive_buffer);
+	token = dynar_simple_lex_token_next(&lex);
+
+	if (token == NULL) {
+		qdevice_log(LOG_ERR, "Can't alloc memory for simple lex");
+
+		return;
+	}
+
+	str = dynar_data(token);
+	if (strcasecmp(str, "") == 0) {
+		qdevice_log(LOG_DEBUG, "IPC client error: No command specified");
+		// SEND ERROR
+	} else if (strcasecmp(str, "shutdown") == 0) {
+		qdevice_log(LOG_DEBUG, "IPC client requested shutdown");
+		// Send output?
+	} else if (strcasecmp(str, "status") == 0) {
+		qdevice_log(LOG_DEBUG, "IPC client requested status display");
+		// Send output
+	} else {
+		qdevice_log(LOG_DEBUG, "IPC client sent unknown command");
+		// Send output
+	}
+
+	dynar_simple_lex_destroy(&lex);
+}
+
+void
+qdevice_ipc_io_read(struct qdevice_instance *instance, struct unix_socket_client *client)
+{
+	int res;
+
+	res = unix_socket_client_io_read(client);
+
+	switch (res) {
+	case 0:
+		/*
+		 * Partial read
+		 */
+		break;
+	case -1:
+		qdevice_log(LOG_DEBUG, "IPC client closed connection");
+		client->schedule_disconnect = 1;
+		break;
+	case -2:
+		qdevice_log(LOG_ERR, "Can't store message from IPC client. Disconnecting client");
+		client->schedule_disconnect = 1;
+		break;
+	case 1:
+		/*
+		 * Full message received
+		 */
+		qdevice_ipc_parse_line(instance, client);
+		break;
+	}
 }

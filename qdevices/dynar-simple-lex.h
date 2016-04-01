@@ -32,81 +32,29 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <string.h>
+#ifndef _DYNAR_SIMPLE_LEX_H_
+#define _DYNAR_SIMPLE_LEX_H_
 
-#include "unix-socket-client.h"
-#include "unix-socket.h"
+#include "dynar.h"
 
-#define UNIX_SOCKET_CLIENT_BUFFER	2
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-void
-unix_socket_client_init(struct unix_socket_client *client, int sock, size_t max_receive_size,
-    size_t max_send_size, void *user_data)
-{
+struct dynar_simple_lex {
+	struct dynar token;
+	struct dynar *input;
+	size_t pos;
+};
 
-	memset(client, 0, sizeof(*client));
-	client->socket = sock;
-	client->user_data = user_data;
-	dynar_init(&client->receive_buffer, max_receive_size);
-	dynar_init(&client->send_buffer, max_send_size);
+extern void	 	 dynar_simple_lex_init(struct dynar_simple_lex *lex, struct dynar *input);
+
+extern void	 	 dynar_simple_lex_destroy(struct dynar_simple_lex *lex);
+
+extern struct dynar	*dynar_simple_lex_token_next(struct dynar_simple_lex *lex);
+
+#ifdef __cplusplus
 }
+#endif
 
-void
-unix_socket_client_destroy(struct unix_socket_client *client)
-{
-
-	dynar_destroy(&client->send_buffer);
-	dynar_destroy(&client->receive_buffer);
-}
-
-void
-unix_socket_client_read_line(struct unix_socket_client *client, int enabled)
-{
-
-	client->reading_line = enabled;
-}
-
-void
-unix_socket_client_write_buffer(struct unix_socket_client *client, int enabled)
-{
-
-	client->writing_buffer = enabled;
-}
-
-/*
- *  1 Full line readed
- *  0 Partial read (no error)
- * -1 End of connection
- * -2 Buffer too long
- */
-int
-unix_socket_client_io_read(struct unix_socket_client *client)
-{
-	char buf[UNIX_SOCKET_CLIENT_BUFFER];
-	ssize_t readed;
-	int res;
-	size_t zi;
-
-	res = 0;
-	readed = unix_socket_read(client->socket, buf, sizeof(buf));
-	if (readed > 0) {
-		client->msg_already_received_bytes += readed;
-		if (dynar_cat(&client->receive_buffer, buf, readed) == -1) {
-			res = -2;
-			goto exit_err;
-		}
-
-		for (zi = 0; zi < readed; zi++) {
-			if (buf[zi] == '\n') {
-				res = 1;
-			}
-		}
-	}
-
-	if (readed == 0) {
-		res = -1;
-	}
-
-exit_err:
-	return (res);
-}
+#endif /* _DYNAR_SIMPLE_LEX_H_ */

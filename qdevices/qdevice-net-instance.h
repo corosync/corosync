@@ -46,10 +46,11 @@
 
 #include "dynar.h"
 #include "node-list.h"
+#include "pr-poll-array.h"
+#include "qdevice-net-disconnect-reason.h"
 #include "send-buffer-list.h"
 #include "tlv.h"
 #include "timer-list.h"
-#include "qdevice-net-disconnect-reason.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -57,6 +58,7 @@ extern "C" {
 
 enum qdevice_net_instance_state {
 	QDEVICE_NET_INSTANCE_STATE_WAITING_CONNECT,
+	QDEVICE_NET_INSTANCE_STATE_SENDING_PREINIT_REPLY,
 	QDEVICE_NET_INSTANCE_STATE_WAITING_PREINIT_REPLY,
 	QDEVICE_NET_INSTANCE_STATE_WAITING_STARTTLS_BEING_SENT,
 	QDEVICE_NET_INSTANCE_STATE_WAITING_INIT_REPLY,
@@ -94,7 +96,7 @@ struct qdevice_net_instance {
 	int schedule_disconnect;
 	PRFileDesc *votequorum_poll_fd;
 	PRFileDesc *cmap_poll_fd;
-	PRFileDesc *local_socket_poll_fd;
+	PRFileDesc *ipc_socket_poll_fd;
 	struct tlv_ring_id last_sent_ring_id;
 	struct tlv_tie_breaker tie_breaker;
 	void *algorithm_data;
@@ -103,6 +105,7 @@ struct qdevice_net_instance {
 	struct nss_sock_non_blocking_client non_blocking_client;
 	struct timer_list_entry *connect_timer;
 	int force_ip_version;
+	struct pr_poll_array poll_array;
 };
 
 extern int		qdevice_net_instance_init(struct qdevice_net_instance *instance,

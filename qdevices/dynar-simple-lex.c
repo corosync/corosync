@@ -33,80 +33,52 @@
  */
 
 #include <string.h>
+#include <ctype.h>
 
-#include "unix-socket-client.h"
-#include "unix-socket.h"
-
-#define UNIX_SOCKET_CLIENT_BUFFER	2
+#include "dynar-simple-lex.h"
 
 void
-unix_socket_client_init(struct unix_socket_client *client, int sock, size_t max_receive_size,
-    size_t max_send_size, void *user_data)
+dynar_simple_lex_init(struct dynar_simple_lex *lex, struct dynar *input)
 {
 
-	memset(client, 0, sizeof(*client));
-	client->socket = sock;
-	client->user_data = user_data;
-	dynar_init(&client->receive_buffer, max_receive_size);
-	dynar_init(&client->send_buffer, max_send_size);
+	memset(lex, 0, sizeof(*lex));
+	lex->input = input;
+	dynar_init(&lex->token, dynar_max_size(input));
 }
 
 void
-unix_socket_client_destroy(struct unix_socket_client *client)
+dynar_simple_lex_destroy(struct dynar_simple_lex *lex)
 {
 
-	dynar_destroy(&client->send_buffer);
-	dynar_destroy(&client->receive_buffer);
+	dynar_destroy(&lex->token);
+	memset(lex, 0, sizeof(*lex));
 }
 
-void
-unix_socket_client_read_line(struct unix_socket_client *client, int enabled)
+struct dynar *
+dynar_simple_lex_token_next(struct dynar_simple_lex *lex)
 {
+	size_t pos;
+	size_t size;
+	char *str;
+	char ch;
 
-	client->reading_line = enabled;
-}
+	dynar_clean(&lex->token);
 
-void
-unix_socket_client_write_buffer(struct unix_socket_client *client, int enabled)
-{
+	size = dynar_size(lex->input);
+	str = dynar_data(lex->input);
 
-	client->writing_buffer = enabled;
-}
+	for (pos = lex->pos; pos < size && isspace(str[pos]) && str[pos] != '\n'; pos++) ;
 
-/*
- *  1 Full line readed
- *  0 Partial read (no error)
- * -1 End of connection
- * -2 Buffer too long
- */
-int
-unix_socket_client_io_read(struct unix_socket_client *client)
-{
-	char buf[UNIX_SOCKET_CLIENT_BUFFER];
-	ssize_t readed;
-	int res;
-	size_t zi;
-
-	res = 0;
-	readed = unix_socket_read(client->socket, buf, sizeof(buf));
-	if (readed > 0) {
-		client->msg_already_received_bytes += readed;
-		if (dynar_cat(&client->receive_buffer, buf, readed) == -1) {
-			res = -2;
-			goto exit_err;
-		}
-
-		for (zi = 0; zi < readed; zi++) {
-			if (buf[zi] == '\n') {
-				res = 1;
-			}
+	for (; pos < size && !isspace(str[pos]); pos++) {
+		if (dynar_cat(&lex->token, &str[pos], sizeof(*str)) != 0) {
+			return (NULL);
 		}
 	}
 
-	if (readed == 0) {
-		res = -1;
-	}
+	ch = '\0';
+	dynar_cat(&lex->token, &ch, sizeof(ch));
 
-exit_err:
-	return (res);
+	lex->pos = pos;
+
+	return (&lex->token);
 }

@@ -36,6 +36,7 @@
 #include "qdevice-net-instance.h"
 #include "qnet-config.h"
 #include "utils.h"
+#include "qdevice-net-poll-array-user-data.h"
 
 /*
  * Needed for creating nspr handle from unix fd
@@ -82,6 +83,8 @@ qdevice_net_instance_init(struct qdevice_net_instance *instance, size_t initial_
 
 	timer_list_init(&instance->main_timer_list);
 
+	pr_poll_array_init(&instance->poll_array, sizeof(struct qdevice_net_poll_array_user_data));
+
 	instance->tls_supported = tls_supported;
 
 	if ((instance->cmap_poll_fd = PR_CreateSocketPollFd(cmap_fd)) == NULL) {
@@ -94,8 +97,8 @@ qdevice_net_instance_init(struct qdevice_net_instance *instance, size_t initial_
 		return (-1);
 	}
 
-	if ((instance->local_socket_poll_fd = PR_CreateSocketPollFd(local_socket_fd)) == NULL) {
-		qdevice_log_nss(LOG_CRIT, "Can't create NSPR local socket poll fd");
+	if ((instance->ipc_socket_poll_fd = PR_CreateSocketPollFd(local_socket_fd)) == NULL) {
+		qdevice_log_nss(LOG_CRIT, "Can't create NSPR IPC socket poll fd");
 		return (-1);
 	}
 
@@ -128,6 +131,8 @@ qdevice_net_instance_destroy(struct qdevice_net_instance *instance)
 
 	send_buffer_list_free(&instance->send_buffer_list);
 
+	pr_poll_array_destroy(&instance->poll_array);
+
 	timer_list_free(&instance->main_timer_list);
 
 	free((void *)instance->cluster_name);
@@ -141,7 +146,7 @@ qdevice_net_instance_destroy(struct qdevice_net_instance *instance)
 		qdevice_log_nss(LOG_WARNING, "Unable to close votequorum connection fd");
 	}
 
-	if (PR_DestroySocketPollFd(instance->local_socket_poll_fd) != PR_SUCCESS) {
+	if (PR_DestroySocketPollFd(instance->ipc_socket_poll_fd) != PR_SUCCESS) {
 		qdevice_log_nss(LOG_WARNING, "Unable to close local socket poll fd");
 	}
 

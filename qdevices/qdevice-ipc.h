@@ -48,6 +48,12 @@ extern int		qdevice_ipc_destroy(struct qdevice_instance *instance);
 extern int		qdevice_ipc_accept(struct qdevice_instance *instance,
     struct unix_socket_client **res_client);
 
+extern void		qdevice_ipc_client_disconnect(struct qdevice_instance *instance,
+    struct unix_socket_client *client);
+
+extern void		qdevice_ipc_io_read(struct qdevice_instance *instance,
+    struct unix_socket_client *client);
+
 #ifdef __cplusplus
 }
 #endif

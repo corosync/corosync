@@ -149,14 +149,14 @@ nss_sock_create_listen_socket(const char *hostname, uint16_t port, PRIntn af)
 			if (af == PR_AF_UNSPEC || addr.raw.family == af) {
 				sock = nss_sock_create_socket(addr.raw.family, 1);
 				if (sock == NULL) {
-					continue ;
+					continue;
 				}
 
 				if (PR_Bind(sock, &addr) != PR_SUCCESS) {
 					PR_Close(sock);
 					sock = NULL;
 
-					continue ;
+					continue;
 				}
 
 				/*
@@ -210,12 +210,12 @@ nss_sock_create_client_socket(const char *hostname, uint16_t port, PRIntn af,
 
 	while ((addr_iter = PR_EnumerateAddrInfo(addr_iter, addr_info, port, &addr)) != NULL) {
 		if (af != PR_AF_UNSPEC && addr.raw.family != af) {
-			continue ;
+			continue;
 		}
 
 		sock = nss_sock_create_socket(addr.raw.family, 0);
 		if (sock == NULL) {
-			continue ;
+			continue;
 		}
 
 		if ((res = PR_Connect(sock, &addr, timeout)) != PR_SUCCESS) {
@@ -294,18 +294,18 @@ nss_sock_non_blocking_client_try_next(struct nss_sock_non_blocking_client *clien
 	while ((client->addr_iter = PR_EnumerateAddrInfo(client->addr_iter, client->addr_info,
 	    client->port, &addr)) != NULL) {
 		if (client->af != PR_AF_UNSPEC && addr.raw.family != client->af) {
-			continue ;
+			continue;
 		}
 
 		client->socket = nss_sock_create_socket(addr.raw.family, 0);
 		if (client->socket == NULL) {
-			continue ;
+			continue;
 		}
 
 		if (nss_sock_set_non_blocking(client->socket) == -1) {
 			PR_Close(client->socket);
 			client->socket = NULL;
-			continue ;
+			continue;
 		}
 
 		res = PR_Connect(client->socket, &addr, PR_INTERVAL_NO_TIMEOUT);

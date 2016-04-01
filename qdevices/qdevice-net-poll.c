@@ -39,19 +39,12 @@
 #include "qdevice-net-socket.h"
 #include "qdevice-votequorum.h"
 #include "qdevice-ipc.h"
+#include "qdevice-net-poll-array-user-data.h"
 
 /*
  * Needed for creating nspr handle from unix fd
  */
 #include <private/pprio.h>
-
-enum qdevice_net_poll_pfd {
-	QDEVICE_NET_POLL_VOTEQUORUM,
-	QDEVICE_NET_POLL_CMAP,
-	QDEVICE_NET_POLL_LOCAL_SOCKET,
-	QDEVICE_NET_POLL_SOCKET,
-	QDEVICE_NET_POLL_MAX_PFDS
-};
 
 static void
 qdevice_net_poll_read_socket(struct qdevice_net_instance *instance)
@@ -110,6 +103,8 @@ qdevice_net_poll_write_socket(struct qdevice_net_instance *instance, const PRPol
 			nss_sock_non_blocking_client_destroy(&instance->non_blocking_client);
 			instance->non_blocking_client.socket = NULL;
 
+			instance->state = QDEVICE_NET_INSTANCE_STATE_SENDING_PREINIT_REPLY;
+
 			qdevice_log(LOG_DEBUG, "Sending preinit msg to qnetd");
 			if (qdevice_net_send_preinit(instance) != 0) {
 				instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_ALLOCATE_MSG_BUFFER;
@@ -150,7 +145,7 @@ qdevice_net_poll_err_socket(struct qdevice_net_instance *instance, const PRPollD
 }
 
 static void
-qdevice_net_poll_read_local_socket(struct qdevice_net_instance *instance)
+qdevice_net_poll_read_ipc_socket(struct qdevice_net_instance *instance)
 {
 	struct unix_socket_client *client;
 	PRFileDesc *prfd;
@@ -161,7 +156,9 @@ qdevice_net_poll_read_local_socket(struct qdevice_net_instance *instance)
 
 	prfd = PR_CreateSocketPollFd(client->socket);
 	if (prfd == NULL) {
-		qdevice_log_nss(LOG_CRIT, "Can't create NSPR poll fd for IPC client");
+		qdevice_log_nss(LOG_CRIT, "Can't create NSPR poll fd for IPC client. "
+		    "Disconnecting client");
+		qdevice_ipc_client_disconnect(instance->qdevice_instance_ptr, client);
 
 		return ;
 	}
@@ -169,60 +166,134 @@ qdevice_net_poll_read_local_socket(struct qdevice_net_instance *instance)
 	client->user_data = (void *)prfd;
 }
 
+static void
+qdevice_net_poll_write_ipc_client(struct qdevice_net_instance *instance, struct unix_socket_client *client)
+{
+}
+
+
+static PRPollDesc *
+qdevice_net_pr_poll_array_create(struct qdevice_net_instance *instance)
+{
+	struct pr_poll_array *poll_array;
+	PRPollDesc *poll_desc;
+	struct qdevice_net_poll_array_user_data *user_data;
+	struct unix_socket_client *ipc_client;
+	const struct unix_socket_client_list *ipc_client_list;
+
+	poll_array = &instance->poll_array;
+	ipc_client_list = &instance->qdevice_instance_ptr->local_ipc.clients;
+
+	pr_poll_array_clean(poll_array);
+
+	if (pr_poll_array_add(poll_array, &poll_desc, (void **)&user_data) < 0) {
+		return (NULL);
+	}
+	poll_desc->fd = instance->votequorum_poll_fd;
+	poll_desc->in_flags = PR_POLL_READ;
+	user_data->type = QDEVICE_NET_POLL_ARRAY_USER_DATA_TYPE_VOTEQUORUM;
+
+	if (pr_poll_array_add(poll_array, &poll_desc, (void **)&user_data) < 0) {
+		return (NULL);
+	}
+	poll_desc->fd = instance->cmap_poll_fd;
+	poll_desc->in_flags = PR_POLL_READ;
+	user_data->type = QDEVICE_NET_POLL_ARRAY_USER_DATA_TYPE_CMAP;
+
+	if (pr_poll_array_add(poll_array, &poll_desc, (void **)&user_data) < 0) {
+		return (NULL);
+	}
+	poll_desc->fd = instance->ipc_socket_poll_fd;
+	poll_desc->in_flags = PR_POLL_READ;
+	user_data->type = QDEVICE_NET_POLL_ARRAY_USER_DATA_TYPE_IPC_SOCKET;
+
+	if (instance->state != QDEVICE_NET_INSTANCE_STATE_WAITING_CONNECT ||
+	    !instance->non_blocking_client.destroyed) {
+		if (pr_poll_array_add(poll_array, &poll_desc, (void **)&user_data) < 0) {
+			return (NULL);
+		}
+
+		user_data->type = QDEVICE_NET_POLL_ARRAY_USER_DATA_TYPE_SOCKET;
+
+		if (instance->state == QDEVICE_NET_INSTANCE_STATE_WAITING_CONNECT) {
+			poll_desc->fd = instance->non_blocking_client.socket;
+			poll_desc->in_flags = PR_POLL_WRITE | PR_POLL_EXCEPT;
+		} else {
+			poll_desc->fd = instance->socket;
+			poll_desc->in_flags = PR_POLL_READ;
+
+			if (!send_buffer_list_empty(&instance->send_buffer_list)) {
+				poll_desc->in_flags |= PR_POLL_WRITE;
+			}
+		}
+	}
+
+	TAILQ_FOREACH(ipc_client, ipc_client_list, entries) {
+		if (!ipc_client->reading_line && !ipc_client->writing_buffer) {
+			continue;
+		}
+
+		if (pr_poll_array_add(poll_array, &poll_desc, (void **)&user_data) < 0) {
+			return (NULL);
+		}
+
+		poll_desc->fd = ipc_client->user_data;
+		if (ipc_client->reading_line) {
+			poll_desc->in_flags |= PR_POLL_READ;
+		}
+
+		if (ipc_client->writing_buffer) {
+			poll_desc->in_flags |= PR_POLL_WRITE;
+		}
+
+		user_data->type = QDEVICE_NET_POLL_ARRAY_USER_DATA_TYPE_IPC_CLIENT;
+		user_data->ipc_client = ipc_client;
+	}
+
+	pr_poll_array_gc(poll_array);
+
+	return (poll_array->array);
+}
+
 int
 qdevice_net_poll(struct qdevice_net_instance *instance)
 {
-	PRPollDesc pfds[QDEVICE_NET_POLL_MAX_PFDS];
+	PRPollDesc *pfds;
 	PRInt32 poll_res;
-	PRIntn no_pfds;
-	int i;
+	ssize_t i;
+	struct qdevice_net_poll_array_user_data *user_data;
+	struct unix_socket_client *ipc_client;
 
-	no_pfds = 0;
-
-	pfds[QDEVICE_NET_POLL_VOTEQUORUM].fd = instance->votequorum_poll_fd;
-	pfds[QDEVICE_NET_POLL_VOTEQUORUM].in_flags = PR_POLL_READ;
-	no_pfds++;
-
-	pfds[QDEVICE_NET_POLL_CMAP].fd = instance->cmap_poll_fd;
-	pfds[QDEVICE_NET_POLL_CMAP].in_flags = PR_POLL_READ;
-	no_pfds++;
-
-	pfds[QDEVICE_NET_POLL_LOCAL_SOCKET].fd = instance->local_socket_poll_fd;
-	pfds[QDEVICE_NET_POLL_LOCAL_SOCKET].in_flags = PR_POLL_READ;
-	no_pfds++;
-
-	if (instance->state == QDEVICE_NET_INSTANCE_STATE_WAITING_CONNECT &&
-	    !instance->non_blocking_client.destroyed) {
-		pfds[QDEVICE_NET_POLL_SOCKET].fd = instance->non_blocking_client.socket;
-		pfds[QDEVICE_NET_POLL_SOCKET].in_flags = PR_POLL_WRITE | PR_POLL_EXCEPT;
-		no_pfds++;
-	} else {
-		pfds[QDEVICE_NET_POLL_SOCKET].fd = instance->socket;
-		pfds[QDEVICE_NET_POLL_SOCKET].in_flags = PR_POLL_READ;
-		if (!send_buffer_list_empty(&instance->send_buffer_list)) {
-			pfds[QDEVICE_NET_POLL_SOCKET].in_flags |= PR_POLL_WRITE;
-		}
-		no_pfds++;
+	pfds = qdevice_net_pr_poll_array_create(instance);
+	if (pfds == NULL) {
+		return (-1);
 	}
 
 	instance->schedule_disconnect = 0;
 
-	if ((poll_res = PR_Poll(pfds, no_pfds,
+	if ((poll_res = PR_Poll(pfds, pr_poll_array_size(&instance->poll_array),
 	    timer_list_time_to_expire(&instance->main_timer_list))) > 0) {
-		for (i = 0; i < no_pfds; i++) {
+		for (i = 0; i < pr_poll_array_size(&instance->poll_array); i++) {
+			user_data = pr_poll_array_get_user_data(&instance->poll_array, i);
+
+			ipc_client = user_data->ipc_client;
+
 			if (pfds[i].out_flags & PR_POLL_READ) {
-				switch (i) {
-				case QDEVICE_NET_POLL_SOCKET:
+				switch (user_data->type) {
+				case QDEVICE_NET_POLL_ARRAY_USER_DATA_TYPE_SOCKET:
 					qdevice_net_poll_read_socket(instance);
 					break;
-				case QDEVICE_NET_POLL_VOTEQUORUM:
+				case QDEVICE_NET_POLL_ARRAY_USER_DATA_TYPE_VOTEQUORUM:
 					qdevice_net_poll_read_votequorum(instance);
 					break;
-				case QDEVICE_NET_POLL_CMAP:
+				case QDEVICE_NET_POLL_ARRAY_USER_DATA_TYPE_CMAP:
 					qdevice_net_poll_read_cmap(instance);
 					break;
-				case QDEVICE_NET_POLL_LOCAL_SOCKET:
-					qdevice_net_poll_read_local_socket(instance);
+				case QDEVICE_NET_POLL_ARRAY_USER_DATA_TYPE_IPC_SOCKET:
+					qdevice_net_poll_read_ipc_socket(instance);
+					break;
+				case QDEVICE_NET_POLL_ARRAY_USER_DATA_TYPE_IPC_CLIENT:
+					qdevice_ipc_io_read(instance->qdevice_instance_ptr, ipc_client);
 					break;
 				default:
 					qdevice_log(LOG_CRIT, "Unhandled read on poll descriptor %u", i);
@@ -232,9 +303,12 @@ qdevice_net_poll(struct qdevice_net_instance *instance)
 			}
 
 			if (!instance->schedule_disconnect && pfds[i].out_flags & PR_POLL_WRITE) {
-				switch (i) {
-				case QDEVICE_NET_POLL_SOCKET:
+				switch (user_data->type) {
+				case QDEVICE_NET_POLL_ARRAY_USER_DATA_TYPE_SOCKET:
 					qdevice_net_poll_write_socket(instance, &pfds[i]);
+					break;
+				case QDEVICE_NET_POLL_ARRAY_USER_DATA_TYPE_IPC_CLIENT:
+					qdevice_net_poll_write_ipc_client(instance, ipc_client);
 					break;
 				default:
 					qdevice_log(LOG_CRIT, "Unhandled write on poll descriptor %u", i);
@@ -246,11 +320,11 @@ qdevice_net_poll(struct qdevice_net_instance *instance)
 			if (!instance->schedule_disconnect &&
 			    (pfds[i].out_flags & (PR_POLL_ERR|PR_POLL_NVAL|PR_POLL_HUP|PR_POLL_EXCEPT)) &&
 			    !(pfds[i].out_flags & (PR_POLL_READ|PR_POLL_WRITE))) {
-				switch (i) {
-				case QDEVICE_NET_POLL_SOCKET:
+				switch (user_data->type) {
+				case QDEVICE_NET_POLL_ARRAY_USER_DATA_TYPE_SOCKET:
 					qdevice_net_poll_err_socket(instance, &pfds[i]);
 					break;
-				case QDEVICE_NET_POLL_LOCAL_SOCKET:
+				case QDEVICE_NET_POLL_ARRAY_USER_DATA_TYPE_IPC_SOCKET:
 					if (pfds[i].out_flags != PR_POLL_NVAL) {
 						qdevice_log(LOG_CRIT, "POLLERR (%u) on local socket",
 						    pfds[i].out_flags);
@@ -262,11 +336,21 @@ qdevice_net_poll(struct qdevice_net_instance *instance)
 						    QDEVICE_NET_DISCONNECT_REASON_LOCAL_SOCKET_CLOSED;
 					}
 					break;
+				case QDEVICE_NET_POLL_ARRAY_USER_DATA_TYPE_IPC_CLIENT:
+					qdevice_log(LOG_DEBUG, "POLL_ERR (%u) on ipc client socket. "
+					    "Disconnecting.",  pfds[i].out_flags);
+					ipc_client->schedule_disconnect = 1;
+					break;
 				default:
 					qdevice_log(LOG_CRIT, "Unhandled error on poll descriptor %u", i);
 					exit(1);
 					break;
 				}
+			}
+
+			if (user_data->type == QDEVICE_NET_POLL_ARRAY_USER_DATA_TYPE_IPC_CLIENT &&
+			    ipc_client->schedule_disconnect) {
+				qdevice_ipc_client_disconnect(instance->qdevice_instance_ptr, ipc_client);
 			}
 		}
 	}

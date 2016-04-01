@@ -50,6 +50,8 @@ extern int		unix_socket_server_accept(int sock, int non_blocking);
 
 extern int		unix_socket_close(int sock);
 
+extern ssize_t		unix_socket_read(int sock, void *buf, size_t len);
+
 #ifdef __cplusplus
 }
 #endif

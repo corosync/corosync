@@ -61,6 +61,9 @@ extern int		unix_socket_ipc_destroy(struct unix_socket_ipc *ipc);
 extern int		unix_socket_ipc_accept(struct unix_socket_ipc *ipc,
     struct unix_socket_client **res_client);
 
+void			unix_socket_ipc_client_disconnect(struct unix_socket_ipc *ipc,
+    struct unix_socket_client *client);
+
 #ifdef __cplusplus
 }
 #endif

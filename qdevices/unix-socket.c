@@ -150,3 +150,10 @@ unix_socket_close(int sock)
 
 	return (close(sock));
 }
+
+ssize_t
+unix_socket_read(int sock, void *buf, size_t len)
+{
+
+	return (recv(sock, buf, len, 0));
+}

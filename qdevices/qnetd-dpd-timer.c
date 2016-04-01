@@ -45,7 +45,7 @@ qnetd_dpd_timer_cb(void *data1, void *data2)
 
 	TAILQ_FOREACH(client, &instance->clients, entries) {
 		if (!client->init_received) {
-			continue ;
+			continue;
 		}
 
 		client->dpd_time_since_last_check += QNETD_DPD_INTERVAL;

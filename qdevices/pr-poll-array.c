@@ -114,7 +114,10 @@ pr_poll_array_add(struct pr_poll_array *poll_array, PRPollDesc **pfds, void **us
 	}
 
 	*pfds = &poll_array->array[pr_poll_array_size(poll_array)];
+	memset(*pfds, 0, sizeof(**pfds));
+
 	*user_data = poll_array->user_data_array + (poll_array->items * poll_array->user_data_size);
+	memset(*user_data, 0, poll_array->user_data_size);
 
 	poll_array->items++;
 

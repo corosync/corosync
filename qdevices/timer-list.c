@@ -98,7 +98,7 @@ timer_list_insert_into_list(struct timer_list *tlist, struct timer_list_entry *n
 			 */
 			TAILQ_INSERT_BEFORE(entry, new_entry, entries);
 
-			break ;
+			break;
 		}
 
 		entry = TAILQ_NEXT(entry, entries);

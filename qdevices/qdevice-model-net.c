@@ -172,7 +172,7 @@ qdevice_model_net_run(struct qdevice_instance *instance)
 			qdevice_log(LOG_CRIT, "Can't schedule connect timer");
 
 			try_connect = 0;
-			break ;
+			break;
 		}
 
 		qdevice_log(LOG_DEBUG, "Trying connect to qnetd server %s:%u (timeout = %ums)",

@@ -125,3 +125,11 @@ unix_socket_ipc_accept(struct unix_socket_ipc *ipc, struct unix_socket_client **
 
 	return (0);
 }
+
+void
+unix_socket_ipc_client_disconnect(struct unix_socket_ipc *ipc, struct unix_socket_client *client)
+{
+
+	unix_socket_close(client->socket);
+	unix_socket_client_list_del(&ipc->clients, client);
+}

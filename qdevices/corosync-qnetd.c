@@ -97,10 +97,8 @@ qnetd_pr_poll_array_create(struct qnetd_instance *instance)
 
 	poll_desc->fd = instance->server.socket;
 	poll_desc->in_flags = PR_POLL_READ;
-	poll_desc->out_flags = 0;
 
 	user_data->type = QNETD_POLL_ARRAY_USER_DATA_TYPE_SOCKET;
-	user_data->client = NULL;
 
 	TAILQ_FOREACH(client, client_list, entries) {
 		if (pr_poll_array_add(poll_array, &poll_desc, (void **)&user_data) < 0) {
@@ -108,10 +106,10 @@ qnetd_pr_poll_array_create(struct qnetd_instance *instance)
 		}
 		poll_desc->fd = client->socket;
 		poll_desc->in_flags = PR_POLL_READ;
+
 		if (!send_buffer_list_empty(&client->send_buffer_list)) {
 			poll_desc->in_flags |= PR_POLL_WRITE;
 		}
-		poll_desc->out_flags = 0;
 
 		user_data->type = QNETD_POLL_ARRAY_USER_DATA_TYPE_CLIENT;
 		user_data->client = client;
