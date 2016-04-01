@@ -41,11 +41,13 @@
 #include "qnet-config.h"
 
 #include "nss-sock.h"
+#include "pr-poll-array.h"
 #include "qnetd-algorithm.h"
 #include "qnetd-instance.h"
 #include "qnetd-log.h"
 #include "qnetd-client-net.h"
 #include "qnetd-client-msg-received.h"
+#include "qnetd-poll-array-user-data.h"
 #include "utils.h"
 
 /*
@@ -75,81 +77,127 @@ qnetd_warn_nss(void) {
 	qnetd_log_nss(LOG_WARNING, "NSS warning");
 }
 
+static PRPollDesc *
+qnetd_pr_poll_array_create(struct qnetd_instance *instance)
+{
+	struct pr_poll_array *poll_array;
+	const struct qnetd_client_list *client_list;
+	struct qnetd_client *client;
+	PRPollDesc *poll_desc;
+	struct qnetd_poll_array_user_data *user_data;
+
+	poll_array = &instance->poll_array;
+	client_list = &instance->clients;
+
+	pr_poll_array_clean(poll_array);
+
+	if (pr_poll_array_add(poll_array, &poll_desc, (void **)&user_data) < 0) {
+		return (NULL);
+	}
+
+	poll_desc->fd = instance->server.socket;
+	poll_desc->in_flags = PR_POLL_READ;
+	poll_desc->out_flags = 0;
+
+	user_data->type = QNETD_POLL_ARRAY_USER_DATA_TYPE_SOCKET;
+	user_data->client = NULL;
+
+	TAILQ_FOREACH(client, client_list, entries) {
+		if (pr_poll_array_add(poll_array, &poll_desc, (void **)&user_data) < 0) {
+			return (NULL);
+		}
+		poll_desc->fd = client->socket;
+		poll_desc->in_flags = PR_POLL_READ;
+		if (!send_buffer_list_empty(&client->send_buffer_list)) {
+			poll_desc->in_flags |= PR_POLL_WRITE;
+		}
+		poll_desc->out_flags = 0;
+
+		user_data->type = QNETD_POLL_ARRAY_USER_DATA_TYPE_CLIENT;
+		user_data->client = client;
+	}
+
+	pr_poll_array_gc(poll_array);
+
+	return (poll_array->array);
+}
+
 static int
 qnetd_poll(struct qnetd_instance *instance)
 {
 	struct qnetd_client *client;
-	struct qnetd_client *client_next;
 	PRPollDesc *pfds;
 	PRInt32 poll_res;
-	int i;
+	ssize_t i;
 	int client_disconnect;
+	struct qnetd_poll_array_user_data *user_data;
 
 	client = NULL;
 	client_disconnect = 0;
 
-	pfds = qnetd_poll_array_create_from_client_list(&instance->poll_array,
-	    &instance->clients, instance->server.socket, PR_POLL_READ);
-
+	pfds = qnetd_pr_poll_array_create(instance);
 	if (pfds == NULL) {
 		return (-1);
 	}
 
-	if ((poll_res = PR_Poll(pfds, qnetd_poll_array_size(&instance->poll_array),
+	if ((poll_res = PR_Poll(pfds, pr_poll_array_size(&instance->poll_array),
 	    timer_list_time_to_expire(&instance->main_timer_list))) >= 0) {
 		timer_list_expire(&instance->main_timer_list);
 
 		/*
 		 * Walk thru pfds array and process events
 		 */
-		for (i = 0; i < qnetd_poll_array_size(&instance->poll_array); i++) {
-			/*
-			 * Also traverse clients list
-			 */
-			if (i > 0) {
-				if (i == 1) {
-					client = TAILQ_FIRST(&instance->clients);
-					client_next = TAILQ_NEXT(client, entries);
-				} else {
-					client = client_next;
-					client_next = TAILQ_NEXT(client, entries);
-				}
-				client_disconnect = client->schedule_disconnect;
-			} else {
+		for (i = 0; i < pr_poll_array_size(&instance->poll_array); i++) {
+			user_data = pr_poll_array_get_user_data(&instance->poll_array, i);
+
+			switch (user_data->type) {
+			case QNETD_POLL_ARRAY_USER_DATA_TYPE_SOCKET:
 				client_disconnect = 0;
+				break;
+			case QNETD_POLL_ARRAY_USER_DATA_TYPE_CLIENT:
+				client = user_data->client;
+				client_disconnect = client->schedule_disconnect;
+				break;
 			}
 
 			if (!client_disconnect && poll_res > 0 &&
 			    pfds[i].out_flags & PR_POLL_READ) {
-				if (i == 0) {
+				switch (user_data->type) {
+				case QNETD_POLL_ARRAY_USER_DATA_TYPE_SOCKET:
 					qnetd_client_net_accept(instance);
-				} else {
+					break;
+				case QNETD_POLL_ARRAY_USER_DATA_TYPE_CLIENT:
 					if (qnetd_client_net_read(instance, client) == -1) {
 						client_disconnect = 1;
 					}
+					break;
 				}
 			}
 
 			if (!client_disconnect && poll_res > 0 &&
 			    pfds[i].out_flags & PR_POLL_WRITE) {
-				if (i == 0) {
+				switch (user_data->type) {
+				case QNETD_POLL_ARRAY_USER_DATA_TYPE_SOCKET:
 					/*
 					 * Poll write on listen socket -> fatal error
 					 */
 					qnetd_log(LOG_CRIT, "POLL_WRITE on listening socket");
 
 					return (-1);
-				} else {
+					break;
+				case QNETD_POLL_ARRAY_USER_DATA_TYPE_CLIENT:
 					if (qnetd_client_net_write(instance, client) == -1) {
 						client_disconnect = 1;
 					}
+					break;
 				}
 			}
 
 			if (!client_disconnect && poll_res > 0 &&
 			    (pfds[i].out_flags & (PR_POLL_ERR|PR_POLL_NVAL|PR_POLL_HUP|PR_POLL_EXCEPT)) &&
 			    !(pfds[i].out_flags & (PR_POLL_READ|PR_POLL_WRITE))) {
-				if (i == 0) {
+				switch (user_data->type) {
+				case QNETD_POLL_ARRAY_USER_DATA_TYPE_SOCKET:
 					if (pfds[i].out_flags != PR_POLL_NVAL) {
 						/*
 						 * Poll ERR on listening socket is fatal error.
@@ -162,12 +210,13 @@ qnetd_poll(struct qnetd_instance *instance)
 					}
 
 					return (-1);
-
-				} else {
+					break;
+				case QNETD_POLL_ARRAY_USER_DATA_TYPE_CLIENT:
 					qnetd_log(LOG_DEBUG, "POLL_ERR (%u) on client socket. "
 					    "Disconnecting.", pfds[i].out_flags);
 
 					client_disconnect = 1;
+					break;
 				}
 			}
 

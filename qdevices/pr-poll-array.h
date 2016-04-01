@@ -32,47 +32,47 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _QNETD_POLL_ARRAY_H_
-#define _QNETD_POLL_ARRAY_H_
+#ifndef _PR_POLL_ARRAY_H_
+#define _PR_POLL_ARRAY_H_
 
 #include <sys/types.h>
 #include <inttypes.h>
 
 #include <nspr.h>
 
-#include "qnetd-client.h"
-#include "qnetd-client-list.h"
-
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-struct qnetd_poll_array {
+struct pr_poll_array {
 	PRPollDesc *array;
-	unsigned int allocated;
-	unsigned int items;
+	char *user_data_array;
+	size_t user_data_size;
+	ssize_t allocated;
+	ssize_t items;
 };
 
+extern void		 pr_poll_array_init(struct pr_poll_array *poll_array, size_t user_data_size);
 
-extern void		 qnetd_poll_array_init(struct qnetd_poll_array *poll_array);
+extern void		 pr_poll_array_destroy(struct pr_poll_array *poll_array);
 
-extern void		 qnetd_poll_array_destroy(struct qnetd_poll_array *poll_array);
+extern void		 pr_poll_array_clean(struct pr_poll_array *poll_array);
 
-extern void		 qnetd_poll_array_clean(struct qnetd_poll_array *poll_array);
+extern ssize_t		 pr_poll_array_size(struct pr_poll_array *poll_array);
 
-extern unsigned int	 qnetd_poll_array_size(struct qnetd_poll_array *poll_array);
+extern ssize_t		 pr_poll_array_add(struct pr_poll_array *poll_array,  PRPollDesc **pfds,
+    void **user_data);
 
-extern PRPollDesc	*qnetd_poll_array_add(struct qnetd_poll_array *poll_array);
+extern PRPollDesc 	*pr_poll_array_get(const struct pr_poll_array *poll_array,
+    ssize_t pos);
 
-extern PRPollDesc 	*qnetd_poll_array_get(const struct qnetd_poll_array *poll_array,
-    unsigned int pos);
+extern void		*pr_poll_array_get_user_data(const struct pr_poll_array *poll_array,
+    ssize_t pos);
 
-extern PRPollDesc	*qnetd_poll_array_create_from_client_list(
-    struct qnetd_poll_array *poll_array, const struct qnetd_client_list *client_list,
-    PRFileDesc *extra_fd, PRInt16 extra_fd_in_flags);
+extern void		 pr_poll_array_gc(struct pr_poll_array *poll_array);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* _QNETD_POLL_ARRAY_H_ */
+#endif /* _PR_POLL_ARRAY_H_ */

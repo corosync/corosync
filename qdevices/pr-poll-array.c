@@ -39,35 +39,38 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "qnetd-poll-array.h"
+#include "pr-poll-array.h"
 
 void
-qnetd_poll_array_init(struct qnetd_poll_array *poll_array)
+pr_poll_array_init(struct pr_poll_array *poll_array, size_t user_data_size)
 {
 
 	memset(poll_array, 0, sizeof(*poll_array));
+	poll_array->user_data_size = user_data_size;
 }
 
 void
-qnetd_poll_array_destroy(struct qnetd_poll_array *poll_array)
+pr_poll_array_destroy(struct pr_poll_array *poll_array)
 {
 
 	free(poll_array->array);
-	qnetd_poll_array_init(poll_array);
+	free(poll_array->user_data_array);
+	pr_poll_array_init(poll_array, poll_array->user_data_size);
 }
 
 void
-qnetd_poll_array_clean(struct qnetd_poll_array *poll_array)
+pr_poll_array_clean(struct pr_poll_array *poll_array)
 {
 
 	poll_array->items = 0;
 }
 
 static int
-qnetd_poll_array_realloc(struct qnetd_poll_array *poll_array,
-    unsigned int new_array_size)
+pr_poll_array_realloc(struct pr_poll_array *poll_array,
+    ssize_t new_array_size)
 {
 	PRPollDesc *new_array;
+	char *new_user_data_array;
 
 	new_array = realloc(poll_array->array,
 	    sizeof(PRPollDesc) * new_array_size);
@@ -76,45 +79,59 @@ qnetd_poll_array_realloc(struct qnetd_poll_array *poll_array,
 		return (-1);
 	}
 
+	if (poll_array->user_data_size > 0) {
+		new_user_data_array = realloc(poll_array->user_data_array,
+		    poll_array->user_data_size * new_array_size);
+
+		if (new_user_data_array == NULL) {
+			return (-1);
+		}
+
+		poll_array->user_data_array = new_user_data_array;
+	}
+
 	poll_array->allocated = new_array_size;
 	poll_array->array = new_array;
 
 	return (0);
 }
 
-unsigned int
-qnetd_poll_array_size(struct qnetd_poll_array *poll_array)
+ssize_t
+pr_poll_array_size(struct pr_poll_array *poll_array)
 {
 
 	return (poll_array->items);
 }
 
-PRPollDesc *
-qnetd_poll_array_add(struct qnetd_poll_array *poll_array)
+ssize_t
+pr_poll_array_add(struct pr_poll_array *poll_array, PRPollDesc **pfds, void **user_data)
 {
 
-	if (qnetd_poll_array_size(poll_array) >= poll_array->allocated) {
-		if (qnetd_poll_array_realloc(poll_array, (poll_array->allocated * 2) + 1)) {
-			return (NULL);
+	if (pr_poll_array_size(poll_array) >= poll_array->allocated) {
+		if (pr_poll_array_realloc(poll_array, (poll_array->allocated * 2) + 1)) {
+			return (-1);
 		}
 	}
 
+	*pfds = &poll_array->array[pr_poll_array_size(poll_array)];
+	*user_data = poll_array->user_data_array + (poll_array->items * poll_array->user_data_size);
+
 	poll_array->items++;
 
-	return (&poll_array->array[qnetd_poll_array_size(poll_array) - 1]);
+	return (poll_array->items - 1);
 }
 
-static void
-qnetd_poll_array_gc(struct qnetd_poll_array *poll_array)
+void
+pr_poll_array_gc(struct pr_poll_array *poll_array)
 {
 
-	if (poll_array->allocated > (qnetd_poll_array_size(poll_array) * 3) + 1) {
-		qnetd_poll_array_realloc(poll_array, (qnetd_poll_array_size(poll_array) * 2) + 1);
+	if (poll_array->allocated > (pr_poll_array_size(poll_array) * 3) + 1) {
+		pr_poll_array_realloc(poll_array, (pr_poll_array_size(poll_array) * 2) + 1);
 	}
 }
 
 PRPollDesc *
-qnetd_poll_array_get(const struct qnetd_poll_array *poll_array, unsigned int pos)
+pr_poll_array_get(const struct pr_poll_array *poll_array, ssize_t pos)
 {
 
 	if (pos >= poll_array->items) {
@@ -124,41 +141,13 @@ qnetd_poll_array_get(const struct qnetd_poll_array *poll_array, unsigned int pos
 	return (&poll_array->array[pos]);
 }
 
-PRPollDesc *
-qnetd_poll_array_create_from_client_list(struct qnetd_poll_array *poll_array,
-    const struct qnetd_client_list *client_list,
-    PRFileDesc *extra_fd, PRInt16 extra_fd_in_flags)
+void *
+pr_poll_array_get_user_data(const struct pr_poll_array *poll_array, ssize_t pos)
 {
-	struct qnetd_client *client;
-	PRPollDesc *poll_desc;
 
-	qnetd_poll_array_clean(poll_array);
-
-	if (extra_fd != NULL) {
-		poll_desc = qnetd_poll_array_add(poll_array);
-		if (poll_desc == NULL) {
-			return (NULL);
-		}
-
-		poll_desc->fd = extra_fd;
-		poll_desc->in_flags = extra_fd_in_flags;
-		poll_desc->out_flags = 0;
+	if (pos >= poll_array->items) {
+		return (NULL);
 	}
 
-	TAILQ_FOREACH(client, client_list, entries) {
-		poll_desc = qnetd_poll_array_add(poll_array);
-		if (poll_desc == NULL) {
-			return (NULL);
-		}
-		poll_desc->fd = client->socket;
-		poll_desc->in_flags = PR_POLL_READ;
-		if (!send_buffer_list_empty(&client->send_buffer_list)) {
-			poll_desc->in_flags |= PR_POLL_WRITE;
-		}
-		poll_desc->out_flags = 0;
-	}
-
-	qnetd_poll_array_gc(poll_array);
-
-	return (poll_array->array);
+	return (poll_array->user_data_array + (pos * poll_array->user_data_size));
 }

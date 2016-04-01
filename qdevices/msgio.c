@@ -129,6 +129,8 @@ msgio_write(PRFileDesc *sock, const struct dynar *msg, size_t *already_sent_byte
 }
 
 /*
+ *  1 Full message received
+ *  0 Partial read (no error)
  * -1 End of connection
  * -2 Unhandled error
  * -3 Fatal error. Unable to store message header

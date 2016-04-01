@@ -32,59 +32,27 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _QNETD_INSTANCE_H_
-#define _QNETD_INSTANCE_H_
+#ifndef _QNETD_POLL_ARRAY_USER_DATA_H_
+#define _QNETD_POLL_ARRAY_USER_DATA_H_
 
-#include <sys/types.h>
-
-#include <certt.h>
-#include <keyhi.h>
-#include <sys/queue.h>
-
-#include "qnetd-client-list.h"
-#include "qnetd-cluster-list.h"
-#include "pr-poll-array.h"
-#include "qnet-config.h"
-#include "timer-list.h"
+#include "qnetd-client.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-struct qnetd_instance {
-	struct {
-		PRFileDesc *socket;
-		CERTCertificate *cert;
-		SECKEYPrivateKey *private_key;
-	} server;
-	size_t max_client_receive_size;
-	size_t max_client_send_buffers;
-	size_t max_client_send_size;
-	size_t max_clients;
-	struct qnetd_client_list clients;
-	struct qnetd_cluster_list clusters;
-	struct pr_poll_array poll_array;
-	enum tlv_tls_supported tls_supported;
-	int tls_client_cert_required;
-	const char *host_addr;
-	uint16_t host_port;
-	struct timer_list main_timer_list;
-	struct timer_list_entry *dpd_timer;		/* Dead peer detection timer */
+enum qnetd_poll_array_user_data_type {
+	QNETD_POLL_ARRAY_USER_DATA_TYPE_SOCKET,
+	QNETD_POLL_ARRAY_USER_DATA_TYPE_CLIENT,
 };
 
-extern int		qnetd_instance_init(struct qnetd_instance *instance,
-    size_t max_client_receive_size, size_t max_client_send_buffers, size_t max_client_send_size,
-    enum tlv_tls_supported tls_supported, int tls_client_cert_required, size_t max_clients);
-
-extern int		qnetd_instance_destroy(struct qnetd_instance *instance);
-
-extern void		qnetd_instance_client_disconnect(struct qnetd_instance *instance,
-    struct qnetd_client *client, int server_going_down);
-
-extern int		qnetd_instance_init_certs(struct qnetd_instance *instance);
+struct qnetd_poll_array_user_data {
+	enum qnetd_poll_array_user_data_type type;
+	struct qnetd_client *client;
+};
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* _QNETD_INSTANCE_H_ */
+#endif /* _QNETD_POLL_ARRAY_USER_DATA_H_ */

@@ -40,6 +40,7 @@
 #include "qnetd-algorithm.h"
 #include "qnetd-log-debug.h"
 #include "qnetd-dpd-timer.h"
+#include "qnetd-poll-array-user-data.h"
 
 int
 qnetd_instance_init(struct qnetd_instance *instance, size_t max_client_receive_size,
@@ -49,7 +50,7 @@ qnetd_instance_init(struct qnetd_instance *instance, size_t max_client_receive_s
 
 	memset(instance, 0, sizeof(*instance));
 
-	qnetd_poll_array_init(&instance->poll_array);
+	pr_poll_array_init(&instance->poll_array, sizeof(struct qnetd_poll_array_user_data));
 	qnetd_client_list_init(&instance->clients);
 	qnetd_cluster_list_init(&instance->clusters);
 
@@ -88,7 +89,7 @@ qnetd_instance_destroy(struct qnetd_instance *instance)
 		client = client_next;
 	}
 
-	qnetd_poll_array_destroy(&instance->poll_array);
+	pr_poll_array_destroy(&instance->poll_array);
 	qnetd_cluster_list_free(&instance->clusters);
 	qnetd_client_list_free(&instance->clients);
 	timer_list_free(&instance->main_timer_list);
