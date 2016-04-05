@@ -59,11 +59,11 @@ dynar_str_cat(struct dynar *dest, const char *str)
 }
 
 int
-dynar_str_catf(struct dynar *dest, const char *format, ...)
+dynar_str_vcatf(struct dynar *dest, const char *format, va_list ap)
 {
 	int to_write;
 	int written;
-	va_list ap;
+	va_list ap_copy;
 	size_t allocated;
 	char buf;
 	char *p;
@@ -71,9 +71,9 @@ dynar_str_catf(struct dynar *dest, const char *format, ...)
 	/*
 	 * Find out how much bytes is needed
 	 */
-	va_start(ap, format);
-	to_write = vsnprintf(&buf, sizeof(buf), format, ap);
-	va_end(ap);
+	va_copy(ap_copy, ap);
+	to_write = vsnprintf(&buf, sizeof(buf), format, ap_copy);
+	va_end(ap_copy);
 
 	if (to_write < 0) {
 		return (-1);
@@ -94,9 +94,9 @@ dynar_str_catf(struct dynar *dest, const char *format, ...)
 
 	p = dynar_data(dest) + dynar_size(dest);
 
-	va_start(ap, format);
-	written = vsnprintf(p, allocated, format, ap);
-	va_end(ap);
+	va_copy(ap_copy, ap);
+	written = vsnprintf(p, allocated, format, ap_copy);
+	va_end(ap_copy);
 
 	if (written >= allocated) {
 		return (-1);
@@ -105,4 +105,17 @@ dynar_str_catf(struct dynar *dest, const char *format, ...)
 	dest->size += written;
 
 	return (written);
+}
+
+int
+dynar_str_catf(struct dynar *dest, const char *format, ...)
+{
+	va_list ap;
+	int res;
+
+	va_start(ap, format);
+	res = dynar_str_vcatf(dest, format, ap);
+	va_end(ap);
+
+	return (res);
 }
