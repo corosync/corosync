@@ -33,9 +33,17 @@
  */
 
 #include <string.h>
-#include <ctype.h>
 
 #include "dynar-simple-lex.h"
+
+/*
+ * Simple_lex is going to be used in protocol and it's not good idea to depend on locale
+ */
+static int
+dynar_simple_lex_is_space(char ch)
+{
+	return (ch == ' ' || ch == '\f' || ch == '\n' || ch == '\r' || ch == '\t' || ch == '\v');
+}
 
 void
 dynar_simple_lex_init(struct dynar_simple_lex *lex, struct dynar *input)
@@ -67,9 +75,9 @@ dynar_simple_lex_token_next(struct dynar_simple_lex *lex)
 	size = dynar_size(lex->input);
 	str = dynar_data(lex->input);
 
-	for (pos = lex->pos; pos < size && isspace(str[pos]) && str[pos] != '\n'; pos++) ;
+	for (pos = lex->pos; pos < size && dynar_simple_lex_is_space(str[pos]) && str[pos] != '\n'; pos++) ;
 
-	for (; pos < size && !isspace(str[pos]); pos++) {
+	for (; pos < size && !dynar_simple_lex_is_space(str[pos]); pos++) {
 		if (dynar_cat(&lex->token, &str[pos], sizeof(*str)) != 0) {
 			return (NULL);
 		}
