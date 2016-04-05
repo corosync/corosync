@@ -38,7 +38,6 @@
 
 #include "qnet-config.h"
 #include "qnetd-client.h"
-#include "qnetd-client-algo-timer.h"
 
 void
 qnetd_client_init(struct qnetd_client *client, PRFileDesc *sock, PRNetAddr *addr,
@@ -61,7 +60,6 @@ void
 qnetd_client_destroy(struct qnetd_client *client)
 {
 
-	qnetd_client_algo_timer_abort(client);
 	free(client->cluster_name);
 	node_list_free(&client->last_quorum_node_list);
 	node_list_free(&client->last_membership_node_list);

@@ -157,3 +157,10 @@ unix_socket_read(int sock, void *buf, size_t len)
 
 	return (recv(sock, buf, len, 0));
 }
+
+ssize_t
+unix_socket_write(int sock, void *buf, size_t len)
+{
+
+	return (send(sock, buf, len, 0));
+}

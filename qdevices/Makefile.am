@@ -56,6 +56,7 @@ corosync_qdevice_SOURCES	= corosync-qdevice.c qdevice-cmap.c qdevice-instance.c 
 				  msg.c msgio.c nss-sock.c tlv.c \
 				  unix-socket.c unix-socket-client.c unix-socket-client-list.c \
 				  unix-socket-ipc.c qdevice-ipc.c pr-poll-array.c dynar-simple-lex.c \
+				  dynar-str.c \
 				  qdevice-net-poll.c qdevice-net-send.c qdevice-net-votequorum.c \
 				  qdevice-net-socket.c qdevice-net-nss.c qdevice-net-msg-received.c \
 				  qdevice-net-cast-vote-timer.c qdevice-net-echo-request-timer.c \
@@ -76,13 +77,15 @@ corosync-qnetd-certutil: corosync-qnetd-certutil.sh
 	    -e 's#@''COROSYSCONFDIR@#${COROSYSCONFDIR}#g' \
 	    $< > $@
 
-TESTS				= qnetd-cluster-list.test
-check_PROGRAMS			= qnetd-cluster-list.test
+TESTS				= qnetd-cluster-list.test dynar.test
+check_PROGRAMS			= qnetd-cluster-list.test dynar.test
 
 qnetd_cluster_list_test_SOURCES	= qnetd-cluster-list.c test-qnetd-cluster-list.c \
 				    qnetd-client-list.c qnetd-client.c dynar.c node-list.c \
 				    send-buffer-list.c
 qnetd_cluster_list_test_CFLAGS  = $(nss_CFLAGS)
 qnetd_cluster_list_test_LDADD	= $(nss_LIBS)
+
+dynar_test_SOURCES		= test-dynar.c dynar.c dynar-str.c
 
 endif

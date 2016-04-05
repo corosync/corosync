@@ -70,6 +70,8 @@ extern void		unix_socket_client_write_buffer(struct unix_socket_client *client, 
 
 extern int		unix_socket_client_io_read(struct unix_socket_client *client);
 
+extern int		unix_socket_client_io_write(struct unix_socket_client *client);
+
 #ifdef __cplusplus
 }
 #endif

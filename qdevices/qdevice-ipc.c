@@ -37,6 +37,7 @@
 #include "qdevice-log.h"
 #include "unix-socket-ipc.h"
 #include "dynar-simple-lex.h"
+#include "dynar-str.h"
 
 int
 qdevice_ipc_init(struct qdevice_instance *instance)
@@ -92,6 +93,13 @@ qdevice_ipc_accept(struct qdevice_instance *instance, struct unix_socket_client 
 		break;
 	}
 
+	(*res_client)->user_data = malloc(sizeof(struct qdevice_ipc_user_data));
+	if ((*res_client)->user_data == NULL) {
+		qdevice_log(LOG_ERR, "Can't alloc IPC client user data");
+		res = -1;
+		qdevice_ipc_client_disconnect(instance, *res_client);
+	}
+	memset((*res_client)->user_data, 0, sizeof(struct qdevice_ipc_user_data));
 
 	return (res);
 }
@@ -100,8 +108,33 @@ void
 qdevice_ipc_client_disconnect(struct qdevice_instance *instance, struct unix_socket_client *client)
 {
 
+	free(client->user_data);
 	unix_socket_ipc_client_disconnect(&instance->local_ipc, client);
 }
+
+int
+qdevice_ipc_send_error(struct qdevice_instance *instance, struct unix_socket_client *client,
+    const char *error_fmt, ...)
+{
+	va_list ap;
+	int res;
+
+	va_start(ap, error_fmt);
+	res = ((dynar_str_cpy(&client->send_buffer, "Error\n") == 0) &&
+	    (dynar_str_vcatf(&client->send_buffer, error_fmt, ap) > 0) &&
+	    (dynar_str_cat(&client->send_buffer, "\n") == 0));
+
+	va_end(ap);
+
+	if (res) {
+		unix_socket_client_write_buffer(client, 1);
+	} else {
+		qdevice_log(LOG_ERR, "Can't send error to client (buffer too small)");
+	}
+
+	return (res ? 0 : -1);
+}
+
 
 static void
 qdevice_ipc_parse_line(struct qdevice_instance *instance, struct unix_socket_client *client)
@@ -121,8 +154,10 @@ qdevice_ipc_parse_line(struct qdevice_instance *instance, struct unix_socket_cli
 
 	str = dynar_data(token);
 	if (strcasecmp(str, "") == 0) {
-		qdevice_log(LOG_DEBUG, "IPC client error: No command specified");
-		// SEND ERROR
+		qdevice_log(LOG_DEBUG, "IPC client doesn't send command");
+		if (qdevice_ipc_send_error(instance, client, "No command specified") != 0) {
+			client->schedule_disconnect = 1;
+		}
 	} else if (strcasecmp(str, "shutdown") == 0) {
 		qdevice_log(LOG_DEBUG, "IPC client requested shutdown");
 		// Send output?
@@ -131,7 +166,9 @@ qdevice_ipc_parse_line(struct qdevice_instance *instance, struct unix_socket_cli
 		// Send output
 	} else {
 		qdevice_log(LOG_DEBUG, "IPC client sent unknown command");
-		// Send output
+		if (qdevice_ipc_send_error(instance, client, "Unknown command '%s'", str) != 0) {
+			client->schedule_disconnect = 1;
+		}
 	}
 
 	dynar_simple_lex_destroy(&lex);
@@ -155,14 +192,52 @@ qdevice_ipc_io_read(struct qdevice_instance *instance, struct unix_socket_client
 		client->schedule_disconnect = 1;
 		break;
 	case -2:
-		qdevice_log(LOG_ERR, "Can't store message from IPC client. Disconnecting client");
+		qdevice_log(LOG_ERR, "Can't store message from IPC client. Disconnecting client.");
+		client->schedule_disconnect = 1;
+		break;
+	case -3:
+		qdevice_log_err(LOG_ERR, "Can't receive message from IPC client. Disconnecting client.");
 		client->schedule_disconnect = 1;
 		break;
 	case 1:
 		/*
 		 * Full message received
 		 */
+		unix_socket_client_read_line(client, 0);
+
 		qdevice_ipc_parse_line(instance, client);
+		break;
+	}
+}
+
+void
+qdevice_ipc_io_write(struct qdevice_instance *instance, struct unix_socket_client *client)
+{
+	int res;
+
+	res = unix_socket_client_io_write(client);
+
+	switch (res) {
+	case 0:
+		/*
+		 * Partial send
+		 */
+		break;
+	case -1:
+		qdevice_log(LOG_DEBUG, "IPC client closed connection");
+		client->schedule_disconnect = 1;
+		break;
+	case -2:
+		qdevice_log_err(LOG_ERR, "Can't send message to IPC client. Disconnecting client");
+		client->schedule_disconnect = 1;
+		break;
+	case 1:
+		/*
+		 * Full message sent
+		 */
+		unix_socket_client_write_buffer(client, 0);
+		client->schedule_disconnect = 1;
+
 		break;
 	}
 }

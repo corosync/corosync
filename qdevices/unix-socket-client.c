@@ -32,6 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <errno.h>
 #include <string.h>
 
 #include "unix-socket-client.h"
@@ -78,6 +79,7 @@ unix_socket_client_write_buffer(struct unix_socket_client *client, int enabled)
  *  0 Partial read (no error)
  * -1 End of connection
  * -2 Buffer too long
+ * -3 Unhandled error
  */
 int
 unix_socket_client_io_read(struct unix_socket_client *client)
@@ -107,6 +109,53 @@ unix_socket_client_io_read(struct unix_socket_client *client)
 		res = -1;
 	}
 
+	if (readed < 0 && errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR) {
+		res = -3;
+	}
+
 exit_err:
+	return (res);
+}
+
+/*
+ *  1 All data succesfully sent
+ *  0 Partial send (no error)
+ * -1 End of connection
+ * -2 Unhandled error
+ */
+int
+unix_socket_client_io_write(struct unix_socket_client *client)
+{
+	ssize_t sent;
+	size_t to_send;
+	int res;
+
+	res = 0;
+
+	to_send = dynar_size(&client->send_buffer) - client->msg_already_sent_bytes;
+	if (to_send > UNIX_SOCKET_CLIENT_BUFFER) {
+		to_send = UNIX_SOCKET_CLIENT_BUFFER;
+	}
+
+	sent = unix_socket_write(client->socket,
+	    dynar_data(&client->send_buffer) + client->msg_already_sent_bytes,
+	    to_send);
+
+	if (sent > 0) {
+		client->msg_already_sent_bytes += sent;
+
+		if (client->msg_already_sent_bytes == dynar_size(&client->send_buffer)) {
+			return (1);
+		}
+	}
+
+	if (sent == 0) {
+		res = -1;
+	}
+
+	if (sent < 0 && errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR) {
+		res = -2;
+	}
+
 	return (res);
 }

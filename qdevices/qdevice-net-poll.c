@@ -149,6 +149,7 @@ qdevice_net_poll_read_ipc_socket(struct qdevice_net_instance *instance)
 {
 	struct unix_socket_client *client;
 	PRFileDesc *prfd;
+	struct qdevice_ipc_user_data *user_data;
 
 	if (qdevice_ipc_accept(instance->qdevice_instance_ptr, &client) != 0) {
 		return ;
@@ -163,14 +164,9 @@ qdevice_net_poll_read_ipc_socket(struct qdevice_net_instance *instance)
 		return ;
 	}
 
-	client->user_data = (void *)prfd;
+	user_data = (struct qdevice_ipc_user_data *)client->user_data;
+	user_data->model_data = (void *)prfd;
 }
-
-static void
-qdevice_net_poll_write_ipc_client(struct qdevice_net_instance *instance, struct unix_socket_client *client)
-{
-}
-
 
 static PRPollDesc *
 qdevice_net_pr_poll_array_create(struct qdevice_net_instance *instance)
@@ -180,6 +176,7 @@ qdevice_net_pr_poll_array_create(struct qdevice_net_instance *instance)
 	struct qdevice_net_poll_array_user_data *user_data;
 	struct unix_socket_client *ipc_client;
 	const struct unix_socket_client_list *ipc_client_list;
+	struct qdevice_ipc_user_data *qdevice_ipc_user_data;
 
 	poll_array = &instance->poll_array;
 	ipc_client_list = &instance->qdevice_instance_ptr->local_ipc.clients;
@@ -237,7 +234,8 @@ qdevice_net_pr_poll_array_create(struct qdevice_net_instance *instance)
 			return (NULL);
 		}
 
-		poll_desc->fd = ipc_client->user_data;
+		qdevice_ipc_user_data = (struct qdevice_ipc_user_data *)ipc_client->user_data;
+		poll_desc->fd = (PRFileDesc *)qdevice_ipc_user_data->model_data;
 		if (ipc_client->reading_line) {
 			poll_desc->in_flags |= PR_POLL_READ;
 		}
@@ -259,10 +257,12 @@ int
 qdevice_net_poll(struct qdevice_net_instance *instance)
 {
 	PRPollDesc *pfds;
+	PRFileDesc *prfd;
 	PRInt32 poll_res;
 	ssize_t i;
 	struct qdevice_net_poll_array_user_data *user_data;
 	struct unix_socket_client *ipc_client;
+	struct qdevice_ipc_user_data *qdevice_ipc_user_data;
 
 	pfds = qdevice_net_pr_poll_array_create(instance);
 	if (pfds == NULL) {
@@ -308,7 +308,7 @@ qdevice_net_poll(struct qdevice_net_instance *instance)
 					qdevice_net_poll_write_socket(instance, &pfds[i]);
 					break;
 				case QDEVICE_NET_POLL_ARRAY_USER_DATA_TYPE_IPC_CLIENT:
-					qdevice_net_poll_write_ipc_client(instance, ipc_client);
+					qdevice_ipc_io_write(instance->qdevice_instance_ptr, ipc_client);
 					break;
 				default:
 					qdevice_log(LOG_CRIT, "Unhandled write on poll descriptor %u", i);
@@ -350,6 +350,13 @@ qdevice_net_poll(struct qdevice_net_instance *instance)
 
 			if (user_data->type == QDEVICE_NET_POLL_ARRAY_USER_DATA_TYPE_IPC_CLIENT &&
 			    ipc_client->schedule_disconnect) {
+				qdevice_ipc_user_data = (struct qdevice_ipc_user_data *)ipc_client->user_data;
+				prfd = (PRFileDesc *)qdevice_ipc_user_data->model_data;
+
+				if (PR_DestroySocketPollFd(prfd) != PR_SUCCESS) {
+					qdevice_log_nss(LOG_WARNING, "Unable to destroy IPC poll socket fd");
+				}
+
 				qdevice_ipc_client_disconnect(instance->qdevice_instance_ptr, ipc_client);
 			}
 		}

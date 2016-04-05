@@ -41,6 +41,7 @@
 #include "qnetd-log-debug.h"
 #include "qnetd-dpd-timer.h"
 #include "qnetd-poll-array-user-data.h"
+#include "qnetd-client-algo-timer.h"
 
 int
 qnetd_instance_init(struct qnetd_instance *instance, size_t max_client_receive_size,
@@ -112,6 +113,7 @@ qnetd_instance_client_disconnect(struct qnetd_instance *instance, struct qnetd_c
 	if (client->cluster != NULL) {
 		qnetd_cluster_list_del_client(&instance->clusters, client->cluster, client);
 	}
+	qnetd_client_algo_timer_abort(client);
 	qnetd_client_list_del(&instance->clients, client);
 }
 
