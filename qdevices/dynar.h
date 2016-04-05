@@ -68,6 +68,7 @@ extern char	*dynar_data(const struct dynar *array);
 
 extern int	 dynar_cat(struct dynar *array, const void *src, size_t size);
 
+extern int	 dynar_prealloc(struct dynar *array, size_t size);
 
 #ifdef __cplusplus
 }

@@ -112,7 +112,7 @@ dynar_realloc(struct dynar *array, size_t new_array_size)
 }
 
 int
-dynar_cat(struct dynar *array, const void *src, size_t size)
+dynar_prealloc(struct dynar *array, size_t size)
 {
 	size_t new_size;
 
@@ -129,6 +129,17 @@ dynar_cat(struct dynar *array, const void *src, size_t size)
 		if (dynar_realloc(array, new_size) == -1) {
 			return (-1);
 		}
+	}
+
+	return (0);
+}
+
+int
+dynar_cat(struct dynar *array, const void *src, size_t size)
+{
+
+	if (dynar_prealloc(array, size) != 0) {
+		return (-1);
 	}
 
 	memmove(array->data + array->size, src, size);
