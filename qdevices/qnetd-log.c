@@ -92,6 +92,7 @@ qnetd_log_vprintf(int priority, const char *format, va_list ap)
 	time_t current_time;
 	struct tm tm_res;
 	int final_priority;
+	va_list ap_copy;
 
 	if (priority != LOG_DEBUG || (qnetd_log_config_debug)) {
 		if (qnetd_log_config_target & QNETD_LOG_TARGET_STDERR) {
@@ -104,7 +105,9 @@ qnetd_log_vprintf(int priority, const char *format, va_list ap)
 
 			fprintf(stderr, "%-7s ", qnetd_log_syslog_prio_to_str(priority));
 
-			vfprintf(stderr, format, ap);
+			va_copy(ap_copy, ap);
+			vfprintf(stderr, format, ap_copy);
+			va_end(ap_copy);
 			fprintf(stderr, "\n");
 		}
 
@@ -114,7 +117,9 @@ qnetd_log_vprintf(int priority, const char *format, va_list ap)
 				final_priority = LOG_INFO;
 			}
 
+			va_copy(ap_copy, ap);
 			vsyslog(final_priority, format, ap);
+			va_end(ap_copy);
 		}
 	}
 }
