@@ -446,7 +446,6 @@ static uint16_t generate_cluster_id (const char *cluster_name)
 
 static int get_cluster_mcast_addr (
 		const char *cluster_name,
-		const struct totem_ip_address *bindnet,
 		unsigned int ringnumber,
 		int ip_version,
 		struct totem_ip_address *res)
@@ -462,7 +461,7 @@ static int get_cluster_mcast_addr (
 	clusterid = generate_cluster_id(cluster_name) + ringnumber;
 	memset (res, 0, sizeof(*res));
 
-	switch (bindnet->family) {
+	switch (ip_version) {
 	case AF_INET:
 		snprintf(addr, sizeof(addr), "239.192.%d.%d", clusterid >> 8, clusterid % 0xFF);
 		break;
@@ -1088,7 +1087,7 @@ extern int totem_config_read (
 		 */
 		if (icmap_get_string(iter_key, &str) == CS_OK) {
 			res = totemip_parse (&totem_config->interfaces[ringnumber].bindnet, str,
-						     totem_config->interfaces[ringnumber].mcast_addr.family);
+			    totem_config->ip_version);
 			free(str);
 		}
 
@@ -1105,10 +1104,13 @@ extern int totem_config_read (
 			 * (if available)
 			 */
 			res = get_cluster_mcast_addr (cluster_name,
-					&totem_config->interfaces[ringnumber].bindnet,
 					ringnumber,
 					totem_config->ip_version,
 					&totem_config->interfaces[ringnumber].mcast_addr);
+			if (res != 0) {
+				*error_string = "Can't autogenerate multicast address";
+				return -1;
+			}
 		}
 
 		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.broadcast", ringnumber);
