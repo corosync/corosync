@@ -59,6 +59,13 @@ dynar_str_cat(struct dynar *dest, const char *str)
 }
 
 int
+dynar_str_prepend(struct dynar *dest, const char *str)
+{
+
+	return (dynar_prepend(dest, str, strlen(str)));
+}
+
+int
 dynar_str_vcatf(struct dynar *dest, const char *format, va_list ap)
 {
 	int to_write;

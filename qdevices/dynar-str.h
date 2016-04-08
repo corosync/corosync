@@ -51,6 +51,8 @@ extern int		dynar_str_catf(struct dynar *dest, const char *format, ...)
 extern int		dynar_str_vcatf(struct dynar *dest, const char *format, va_list ap)
     __attribute__((__format__(__printf__, 2, 0)));
 
+extern int		dynar_str_prepend(struct dynar *dest, const char *str);
+
 #ifdef __cplusplus
 }
 #endif

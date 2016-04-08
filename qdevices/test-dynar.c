@@ -123,5 +123,38 @@ main(void)
 	assert(memcmp(dynar_data(&str), "abcd", 4) == 0);
 	dynar_destroy(&str);
 
+	dynar_init(&str, 10);
+	assert(dynar_str_cat(&str, "abcd") == 0);
+	assert(memcmp(dynar_data(&str), "abcd", 4) == 0);
+	assert(dynar_str_prepend(&str, "e") == 0);
+	assert(dynar_size(&str) == 5);
+	assert(memcmp(dynar_data(&str), "eabcd", 5) == 0);
+	assert(dynar_str_prepend(&str, "fgh") == 0);
+	assert(dynar_size(&str) == 8);
+	assert(memcmp(dynar_data(&str), "fgheabcd", 8) == 0);
+	assert(dynar_str_prepend(&str, "ijk") != 0);
+	assert(dynar_size(&str) == 8);
+	assert(dynar_str_prepend(&str, "ij") == 0);
+	assert(dynar_size(&str) == 10);
+	assert(memcmp(dynar_data(&str), "ijfgheabcd", 10) == 0);
+	dynar_destroy(&str);
+
+	dynar_init(&str, 10);
+	assert(dynar_str_cat(&str, "abcd") == 0);
+	assert(memcmp(dynar_data(&str), "abcd", 4) == 0);
+	assert(dynar_str_prepend(&str, "ef") == 0);
+	assert(dynar_size(&str) == 6);
+	assert(memcmp(dynar_data(&str), "efabcd", 6) == 0);
+	assert(dynar_str_cat(&str, "ij") == 0);
+	assert(dynar_size(&str) == 8);
+	assert(memcmp(dynar_data(&str), "efabcdij", 8) == 0);
+	assert(dynar_str_prepend(&str, "k") == 0);
+	assert(dynar_size(&str) == 9);
+	assert(memcmp(dynar_data(&str), "kefabcdij", 9) == 0);
+	assert(dynar_str_cat(&str, "l") == 0);
+	assert(dynar_size(&str) == 10);
+	assert(memcmp(dynar_data(&str), "kefabcdijl", 10) == 0);
+	dynar_destroy(&str);
+
 	return (0);
 }

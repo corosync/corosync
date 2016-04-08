@@ -147,3 +147,18 @@ dynar_cat(struct dynar *array, const void *src, size_t size)
 
 	return (0);
 }
+
+int
+dynar_prepend(struct dynar *array, const void *src, size_t size)
+{
+
+	if (dynar_prealloc(array, size) != 0) {
+		return (-1);
+	}
+
+	memmove(array->data + size, array->data, array->size);
+	memmove(array->data, src, size);
+	array->size += size;
+
+	return (0);
+}
