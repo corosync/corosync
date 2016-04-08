@@ -54,9 +54,30 @@ qdevice_ipc_init(struct qdevice_instance *instance)
 }
 
 int
+qdevice_ipc_close(struct qdevice_instance *instance)
+{
+	int res;
+
+	res = unix_socket_ipc_close(&instance->local_ipc);
+	if (res != 0) {
+		qdevice_log_err(LOG_WARNING, "Can't close local IPC");
+	}
+
+	return (res);
+}
+
+int
 qdevice_ipc_destroy(struct qdevice_instance *instance)
 {
 	int res;
+	struct unix_socket_client *client;
+	const struct unix_socket_client_list *ipc_client_list;
+
+	ipc_client_list = &instance->local_ipc.clients;
+
+	TAILQ_FOREACH(client, ipc_client_list, entries) {
+		free(client->user_data);
+	}
 
 	res = unix_socket_ipc_destroy(&instance->local_ipc);
 	if (res != 0) {
@@ -264,7 +285,7 @@ qdevice_ipc_io_write(struct qdevice_instance *instance, struct unix_socket_clien
 		client->schedule_disconnect = 1;
 
 		if (ipc_user_data->shutdown_requested) {
-			qdevice_ipc_destroy(instance);
+			qdevice_ipc_close(instance);
 		}
 
 		break;

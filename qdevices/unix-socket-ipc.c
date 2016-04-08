@@ -68,7 +68,7 @@ unix_socket_ipc_init(struct unix_socket_ipc *ipc, const char *socket_file_name, 
 }
 
 int
-unix_socket_ipc_destroy(struct unix_socket_ipc *ipc)
+unix_socket_ipc_close(struct unix_socket_ipc *ipc)
 {
 	int res;
 
@@ -88,6 +88,19 @@ unix_socket_ipc_destroy(struct unix_socket_ipc *ipc)
 	ipc->socket = -1;
 
 	return (res);
+}
+
+int
+unix_socket_ipc_destroy(struct unix_socket_ipc *ipc)
+{
+
+	if (unix_socket_ipc_close(ipc) != 0) {
+		return (-1);
+	}
+
+	unix_socket_client_list_free(&ipc->clients);
+
+	return (0);
 }
 
 /*

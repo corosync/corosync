@@ -48,6 +48,8 @@ struct qdevice_ipc_user_data {
 
 extern int		qdevice_ipc_init(struct qdevice_instance *instance);
 
+extern int		qdevice_ipc_close(struct qdevice_instance *instance);
+
 extern int		qdevice_ipc_destroy(struct qdevice_instance *instance);
 
 extern int		qdevice_ipc_accept(struct qdevice_instance *instance,

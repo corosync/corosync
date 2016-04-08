@@ -37,6 +37,7 @@
 #include "qnet-config.h"
 #include "utils.h"
 #include "qdevice-net-poll-array-user-data.h"
+#include "qdevice-ipc.h"
 
 /*
  * Needed for creating nspr handle from unix fd
@@ -126,6 +127,21 @@ qdevice_net_instance_clean(struct qdevice_net_instance *instance)
 int
 qdevice_net_instance_destroy(struct qdevice_net_instance *instance)
 {
+	struct unix_socket_client *ipc_client;
+	const struct unix_socket_client_list *ipc_client_list;
+	struct qdevice_ipc_user_data *qdevice_ipc_user_data;
+	PRFileDesc *prfd;
+
+	ipc_client_list = &instance->qdevice_instance_ptr->local_ipc.clients;
+
+	TAILQ_FOREACH(ipc_client, ipc_client_list, entries) {
+		qdevice_ipc_user_data = (struct qdevice_ipc_user_data *)ipc_client->user_data;
+		prfd = (PRFileDesc *)qdevice_ipc_user_data->model_data;
+
+		if (PR_DestroySocketPollFd(prfd) != PR_SUCCESS) {
+			qdevice_log_nss(LOG_WARNING, "Unable to destroy client IPC poll socket fd");
+		}
+	}
 
 	dynar_destroy(&instance->receive_buffer);
 

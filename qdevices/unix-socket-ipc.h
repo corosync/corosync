@@ -64,6 +64,8 @@ extern int		unix_socket_ipc_accept(struct unix_socket_ipc *ipc,
 void			unix_socket_ipc_client_disconnect(struct unix_socket_ipc *ipc,
     struct unix_socket_client *client);
 
+extern int		unix_socket_ipc_close(struct unix_socket_ipc *ipc);
+
 #ifdef __cplusplus
 }
 #endif

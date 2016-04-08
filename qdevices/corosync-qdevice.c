@@ -48,14 +48,14 @@ static void
 signal_int_handler(int sig)
 {
 	qdevice_log(LOG_DEBUG, "SIGINT received - closing local unix socket");
-	qdevice_ipc_destroy(global_instance);
+	qdevice_ipc_close(global_instance);
 }
 
 static void
 signal_term_handler(int sig)
 {
 	qdevice_log(LOG_DEBUG, "SIGTERM received - closing server socket");
-	qdevice_ipc_destroy(global_instance);
+	qdevice_ipc_close(global_instance);
 }
 
 static void
@@ -149,10 +149,6 @@ main(int argc, char * const argv[])
 		return (1);
 	}
 
-	global_instance = &instance;
-
-	signal_handlers_register();
-
 	qdevice_log(LOG_DEBUG, "Registering qdevice models");
 	qdevice_model_register_all();
 
@@ -175,6 +171,9 @@ main(int argc, char * const argv[])
 	if (qdevice_cmap_add_track(&instance) != 0) {
 		return (1);
 	}
+
+	global_instance = &instance;
+	signal_handlers_register();
 
 	qdevice_log(LOG_DEBUG, "Running qdevice model");
 	if (qdevice_model_run(&instance) != 0) {

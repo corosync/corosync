@@ -354,7 +354,7 @@ qdevice_net_poll(struct qdevice_net_instance *instance)
 				prfd = (PRFileDesc *)qdevice_ipc_user_data->model_data;
 
 				if (PR_DestroySocketPollFd(prfd) != PR_SUCCESS) {
-					qdevice_log_nss(LOG_WARNING, "Unable to destroy IPC poll socket fd");
+					qdevice_log_nss(LOG_WARNING, "Unable to destroy client IPC poll socket fd");
 				}
 
 				qdevice_ipc_client_disconnect(instance->qdevice_instance_ptr, ipc_client);
