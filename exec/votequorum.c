@@ -202,7 +202,7 @@ static uint8_t cluster_is_quorate;
 
 static struct cluster_node *us;
 static struct list_head cluster_members_list;
-static unsigned int quorum_members[PROCESSOR_COUNT_MAX];
+static unsigned int quorum_members[PROCESSOR_COUNT_MAX+1];
 static unsigned int previous_quorum_members[PROCESSOR_COUNT_MAX];
 static unsigned int atb_nodelist[PROCESSOR_COUNT_MAX];
 static int quorum_members_entries = 0;
@@ -984,6 +984,18 @@ static int calculate_quorum(int allow_decrease, unsigned int max_expected, unsig
 	return newquorum;
 }
 
+static void do_quorum_callback(void)
+{
+	int real_num_entries = quorum_members_entries;
+
+	if (us->flags & NODE_FLAGS_QDEVICE_ALIVE) {
+		quorum_members[quorum_members_entries] = VOTEQUORUM_QDEVICE_NODEID;
+		real_num_entries += 1;
+	}
+	quorum_callback(quorum_members, real_num_entries,
+			cluster_is_quorate, &quorum_ringid);
+}
+
 static void are_we_quorate(unsigned int total_votes)
 {
 	int quorate;
@@ -1057,8 +1069,7 @@ static void are_we_quorate(unsigned int total_votes)
 
 	if ((quorum_change) &&
 	    (sync_in_progress == 0)) {
-		quorum_callback(quorum_members, quorum_members_entries,
-				cluster_is_quorate, &quorum_ringid);
+		do_quorum_callback();
 		votequorum_exec_send_quorum_notification(NULL, 0L);
 	}
 
@@ -2417,8 +2428,7 @@ static int votequorum_sync_process (void)
 static void votequorum_sync_activate (void)
 {
 	recalculate_quorum(0, 0);
-	quorum_callback(quorum_members, quorum_members_entries,
-			cluster_is_quorate, &quorum_ringid);
+	do_quorum_callback();
 	votequorum_exec_send_quorum_notification(NULL, 0L);
 
 	sync_in_progress = 0;
