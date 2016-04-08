@@ -135,6 +135,20 @@ qdevice_ipc_send_error(struct qdevice_instance *instance, struct unix_socket_cli
 	return (res ? 0 : -1);
 }
 
+int
+qdevice_ipc_send_buffer(struct qdevice_instance *instance, struct unix_socket_client *client)
+{
+
+	if (dynar_str_prepend(&client->send_buffer, "OK\n") != 0) {
+		qdevice_log(LOG_ERR, "Can't send error to client (buffer too small)");
+
+		return (-1);
+	}
+
+	unix_socket_client_write_buffer(client, 1);
+
+	return (0);
+}
 
 static void
 qdevice_ipc_parse_line(struct qdevice_instance *instance, struct unix_socket_client *client)
@@ -142,6 +156,9 @@ qdevice_ipc_parse_line(struct qdevice_instance *instance, struct unix_socket_cli
 	struct dynar_simple_lex lex;
 	struct dynar *token;
 	char *str;
+	struct qdevice_ipc_user_data *ipc_user_data;
+
+	ipc_user_data = (struct qdevice_ipc_user_data *)client->user_data;
 
 	dynar_simple_lex_init(&lex, &client->receive_buffer);
 	token = dynar_simple_lex_token_next(&lex);
@@ -160,7 +177,12 @@ qdevice_ipc_parse_line(struct qdevice_instance *instance, struct unix_socket_cli
 		}
 	} else if (strcasecmp(str, "shutdown") == 0) {
 		qdevice_log(LOG_DEBUG, "IPC client requested shutdown");
-		// Send output?
+
+		ipc_user_data->shutdown_requested = 1;
+
+		if (qdevice_ipc_send_buffer(instance, client) != 0) {
+			client->schedule_disconnect = 1;
+		}
 	} else if (strcasecmp(str, "status") == 0) {
 		qdevice_log(LOG_DEBUG, "IPC client requested status display");
 		// Send output
@@ -214,6 +236,9 @@ void
 qdevice_ipc_io_write(struct qdevice_instance *instance, struct unix_socket_client *client)
 {
 	int res;
+	struct qdevice_ipc_user_data *ipc_user_data;
+
+	ipc_user_data = (struct qdevice_ipc_user_data *)client->user_data;
 
 	res = unix_socket_client_io_write(client);
 
@@ -237,6 +262,10 @@ qdevice_ipc_io_write(struct qdevice_instance *instance, struct unix_socket_clien
 		 */
 		unix_socket_client_write_buffer(client, 0);
 		client->schedule_disconnect = 1;
+
+		if (ipc_user_data->shutdown_requested) {
+			qdevice_ipc_destroy(instance);
+		}
 
 		break;
 	}
