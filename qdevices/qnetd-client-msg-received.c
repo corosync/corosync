@@ -56,16 +56,21 @@ qnetd_client_msg_received_check_tls(struct qnetd_instance *instance, struct qnet
 	int check_certificate;
 	int tls_required;
 	CERTCertificate *peer_cert;
+	int case_processed;
 
 	check_certificate = 0;
 	tls_required = 0;
 
+	case_processed = 0;
+
 	switch (instance->tls_supported) {
 	case TLV_TLS_UNSUPPORTED:
+		case_processed = 1;
 		tls_required = 0;
 		check_certificate = 0;
 		break;
 	case TLV_TLS_SUPPORTED:
+		case_processed = 1;
 		tls_required = 0;
 
 		if (client->tls_started && instance->tls_client_cert_required &&
@@ -74,16 +79,22 @@ qnetd_client_msg_received_check_tls(struct qnetd_instance *instance, struct qnet
 		}
 		break;
 	case TLV_TLS_REQUIRED:
+		case_processed = 1;
 		tls_required = 1;
 
 		if (instance->tls_client_cert_required && !client->tls_peer_certificate_verified) {
 			check_certificate = 1;
 		}
 		break;
-	default:
+	/*
+	 * Default is not defined intentionally. Compiler shows warning when new
+	 * tls supported is added
+	 */
+	}
+
+	if (!case_processed) {
 		qnetd_log(LOG_ERR, "Unhandled instance tls supported %u", instance->tls_supported);
 		exit(1);
-		break;
 	}
 
 	if (tls_required && !client->tls_started) {
@@ -624,6 +635,7 @@ qnetd_client_msg_received_node_list(struct qnetd_instance *instance, struct qnet
 	struct send_buffer_list_entry *send_buffer;
 	enum tlv_reply_error_code reply_error_code;
 	enum tlv_vote result_vote;
+	int case_processed;
 
 	reply_error_code = TLV_REPLY_ERROR_CODE_NO_ERROR;
 
@@ -669,9 +681,11 @@ qnetd_client_msg_received_node_list(struct qnetd_instance *instance, struct qnet
 
 	result_vote = TLV_VOTE_NO_CHANGE;
 
+	case_processed = 0;
 	switch (msg->node_list_type) {
 	case TLV_NODE_LIST_TYPE_INITIAL_CONFIG:
 	case TLV_NODE_LIST_TYPE_CHANGED_CONFIG:
+		case_processed = 1;
 		qnetd_log_debug_config_node_list_received(client, msg->seq_number,
 		    msg->config_version_set, msg->config_version, &msg->nodes,
 		    (msg->node_list_type == TLV_NODE_LIST_TYPE_INITIAL_CONFIG));
@@ -683,6 +697,7 @@ qnetd_client_msg_received_node_list(struct qnetd_instance *instance, struct qnet
 		    &result_vote);
 		break;
 	case TLV_NODE_LIST_TYPE_MEMBERSHIP:
+		case_processed = 1;
 		if (!msg->ring_id_set) {
 			qnetd_log(LOG_ERR, "Received node list message without ring id number set. "
 			    "Sending error reply.");
@@ -702,6 +717,7 @@ qnetd_client_msg_received_node_list(struct qnetd_instance *instance, struct qnet
 		    msg->seq_number, &msg->ring_id, &msg->nodes, &result_vote);
 		break;
 	case TLV_NODE_LIST_TYPE_QUORUM:
+		case_processed = 1;
 		if (!msg->quorate_set) {
 			qnetd_log(LOG_ERR, "Received quorum list message without quorate set. "
 			    "Sending error reply.");
@@ -720,11 +736,16 @@ qnetd_client_msg_received_node_list(struct qnetd_instance *instance, struct qnet
 		reply_error_code = qnetd_algorithm_quorum_node_list_received(client,
 		    msg->seq_number,msg->quorate, &msg->nodes, &result_vote);
 		break;
-	default:
+	/*
+	 * Default is not defined intentionally. Compiler shows warning when new
+	 * node list type is added
+	 */
+	}
+
+	if (!case_processed) {
 		qnetd_log(LOG_ERR, "qnetd_client_msg_received_node_list fatal error. "
 		    "Unhandled node_list_type");
 		exit(1);
-		break;
 	}
 
 	if (reply_error_code != TLV_REPLY_ERROR_CODE_NO_ERROR) {
@@ -751,9 +772,11 @@ qnetd_client_msg_received_node_list(struct qnetd_instance *instance, struct qnet
 	/*
 	 * Store node list for future use
 	 */
+	case_processed = 0;
 	switch (msg->node_list_type) {
 	case TLV_NODE_LIST_TYPE_INITIAL_CONFIG:
 	case TLV_NODE_LIST_TYPE_CHANGED_CONFIG:
+		case_processed = 1;
 		node_list_free(&client->configuration_node_list);
 		if (node_list_clone(&client->configuration_node_list, &msg->nodes) == -1) {
 			qnetd_log(LOG_ERR, "Can't alloc config node list clone. "
@@ -763,6 +786,7 @@ qnetd_client_msg_received_node_list(struct qnetd_instance *instance, struct qnet
 		}
 		break;
 	case TLV_NODE_LIST_TYPE_MEMBERSHIP:
+		case_processed = 1;
 		node_list_free(&client->last_membership_node_list);
 		if (node_list_clone(&client->last_membership_node_list, &msg->nodes) == -1) {
 			qnetd_log(LOG_ERR, "Can't alloc membership node list clone. "
@@ -773,6 +797,7 @@ qnetd_client_msg_received_node_list(struct qnetd_instance *instance, struct qnet
 		memcpy(&client->last_ring_id, &msg->ring_id, sizeof(struct tlv_ring_id));
 		break;
 	case TLV_NODE_LIST_TYPE_QUORUM:
+		case_processed = 1;
 		node_list_free(&client->last_quorum_node_list);
 		if (node_list_clone(&client->last_quorum_node_list, &msg->nodes) == -1) {
 			qnetd_log(LOG_ERR, "Can't alloc quorum node list clone. "
@@ -781,11 +806,16 @@ qnetd_client_msg_received_node_list(struct qnetd_instance *instance, struct qnet
 			return (-1);
 		}
 		break;
-	default:
+	/*
+	 * Default is not defined intentionally. Compiler shows warning when new
+	 * node list type is added
+	 */
+	}
+
+	if (!case_processed) {
 		qnetd_log(LOG_ERR, "qnetd_client_msg_received_node_list fatal error. "
 		    "Unhandled node_list_type");
 		exit(1);
-		break;
 	}
 
 	send_buffer = send_buffer_list_get_new(&client->send_buffer_list);
@@ -978,6 +1008,7 @@ qnetd_client_msg_received(struct qnetd_instance *instance, struct qnetd_client *
 	struct msg_decoded msg;
 	int res;
 	int ret_val;
+	int msg_processed;
 
 	client->dpd_msg_received_since_last_check = 1;
 
@@ -1001,57 +1032,80 @@ qnetd_client_msg_received(struct qnetd_instance *instance, struct qnetd_client *
 
 	ret_val = 0;
 
+	msg_processed = 0;
 	switch (msg.type) {
 	case MSG_TYPE_PREINIT:
+		msg_processed = 1;
 		ret_val = qnetd_client_msg_received_preinit(instance, client, &msg);
 		break;
 	case MSG_TYPE_PREINIT_REPLY:
+		msg_processed = 1;
 		ret_val = qnetd_client_msg_received_preinit_reply(instance, client, &msg);
 		break;
 	case MSG_TYPE_STARTTLS:
+		msg_processed = 1;
 		ret_val = qnetd_client_msg_received_starttls(instance, client, &msg);
 		break;
 	case MSG_TYPE_INIT:
+		msg_processed = 1;
 		ret_val = qnetd_client_msg_received_init(instance, client, &msg);
 		break;
 	case MSG_TYPE_INIT_REPLY:
+		msg_processed = 1;
 		ret_val = qnetd_client_msg_received_init_reply(instance, client, &msg);
 		break;
 	case MSG_TYPE_SERVER_ERROR:
+		msg_processed = 1;
 		ret_val = qnetd_client_msg_received_server_error(instance, client, &msg);
 		break;
 	case MSG_TYPE_SET_OPTION:
+		msg_processed = 1;
 		ret_val = qnetd_client_msg_received_set_option(instance, client, &msg);
 		break;
 	case MSG_TYPE_SET_OPTION_REPLY:
+		msg_processed = 1;
 		ret_val = qnetd_client_msg_received_set_option_reply(instance, client, &msg);
 		break;
 	case MSG_TYPE_ECHO_REQUEST:
+		msg_processed = 1;
 		ret_val = qnetd_client_msg_received_echo_request(instance, client, &msg,
 		    &client->receive_buffer);
 		break;
 	case MSG_TYPE_ECHO_REPLY:
+		msg_processed = 1;
 		ret_val = qnetd_client_msg_received_echo_reply(instance, client, &msg);
 		break;
 	case MSG_TYPE_NODE_LIST:
+		msg_processed = 1;
 		ret_val = qnetd_client_msg_received_node_list(instance, client, &msg);
 		break;
 	case MSG_TYPE_NODE_LIST_REPLY:
+		msg_processed = 1;
 		ret_val = qnetd_client_msg_received_node_list_reply(instance, client, &msg);
 		break;
 	case MSG_TYPE_ASK_FOR_VOTE:
+		msg_processed = 1;
 		ret_val = qnetd_client_msg_received_ask_for_vote(instance, client, &msg);
 		break;
 	case MSG_TYPE_ASK_FOR_VOTE_REPLY:
+		msg_processed = 1;
 		ret_val = qnetd_client_msg_received_ask_for_vote_reply(instance, client, &msg);
 		break;
 	case MSG_TYPE_VOTE_INFO:
+		msg_processed = 1;
 		ret_val = qnetd_client_msg_received_vote_info(instance, client, &msg);
 		break;
 	case MSG_TYPE_VOTE_INFO_REPLY:
+		msg_processed = 1;
 		ret_val = qnetd_client_msg_received_vote_info_reply(instance, client, &msg);
 		break;
-	default:
+	/*
+	 * Default is not defined intentionally. Compiler shows warning when new
+	 * msg type is added.
+	 */
+	}
+
+	if (!msg_processed) {
 		qnetd_log(LOG_ERR, "Unsupported message %u received from client. "
 		    "Sending back error message", msg.type);
 
@@ -1059,8 +1113,6 @@ qnetd_client_msg_received(struct qnetd_instance *instance, struct qnetd_client *
 		    TLV_REPLY_ERROR_CODE_UNSUPPORTED_MESSAGE) != 0) {
 			ret_val = -1;
 		}
-
-		break;
 	}
 
 	msg_decoded_destroy(&msg);

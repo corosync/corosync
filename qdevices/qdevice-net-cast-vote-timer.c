@@ -42,24 +42,38 @@ qdevice_net_cast_vote_timer_callback(void *data1, void *data2)
 {
 	struct qdevice_net_instance *instance;
 	int cast_vote;
+	int case_processed;
 
 	instance = (struct qdevice_net_instance *)data1;
 
+	case_processed = 0;
+
 	switch (instance->cast_vote_timer_vote) {
 	case TLV_VOTE_ACK:
+		case_processed = 1;
 		cast_vote = 1;
 		break;
 	case TLV_VOTE_NACK:
+		case_processed = 1;
 		cast_vote = 0;
 		break;
 	case TLV_VOTE_ASK_LATER:
 	case TLV_VOTE_WAIT_FOR_REPLY:
 	case TLV_VOTE_NO_CHANGE:
-	default:
+		/*
+		 * Shouldn't happen
+		 */
+		break;
+	/*
+	 * Default is not defined intentionally. Compiler shows warning when
+	 * new tlv_vote is added.
+	 */
+	}
+
+	if (!case_processed) {
 		qdevice_log(LOG_CRIT, "qdevice_net_timer_cast_vote: Unhandled cast_vote_timer_vote %u\n",
 		    instance->cast_vote_timer_vote);
 		exit(1);
-		break;
 	}
 
 	if (qdevice_votequorum_poll(instance->qdevice_instance_ptr, cast_vote) != 0) {
@@ -79,25 +93,36 @@ int
 qdevice_net_cast_vote_timer_update(struct qdevice_net_instance *instance, enum tlv_vote vote)
 {
 	int timer_needs_running;
+	int case_processed;
+
+	case_processed = 0;
 
 	switch (vote) {
 	case TLV_VOTE_ACK:
 	case TLV_VOTE_NACK:
+		case_processed = 1;
 		timer_needs_running = 1;
 		break;
 	case TLV_VOTE_WAIT_FOR_REPLY:
 	case TLV_VOTE_ASK_LATER:
+		case_processed = 1;
 		timer_needs_running = 0;
 		break;
 	case TLV_VOTE_NO_CHANGE:
+		case_processed = 1;
 		return (0);
 
 		break;
-	default:
+	/*
+	 * Default is not defined intentionally. Compiler shows warning when
+	 * new tlv_vote is added.
+	 */
+	}
+
+	if (!case_processed) {
 		qdevice_log(LOG_CRIT, "qdevice_net_cast_vote_timer_update_vote: Unhandled vote parameter %u\n",
 		    vote);
 		exit(1);
-		break;
 	}
 
 	instance->cast_vote_timer_vote = vote;

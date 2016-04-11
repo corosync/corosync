@@ -955,11 +955,11 @@ msg_decode(const struct dynar *msg, struct msg_decoded *decoded_msg)
 			decoded_msg->tie_breaker_set = 1;
 			memcpy(&decoded_msg->tie_breaker, &tie_breaker, sizeof(tie_breaker));
 			break;
-		default:
-			/*
-			 * Unknown option
-			 */
-			break;
+		/*
+		 * Default is not defined intentionally. Compiler shows warning when
+		 * new tlv option is added. Also protocol ignores unknown options so
+		 * no extra work is needed.
+		 */
 		}
 	}
 

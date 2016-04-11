@@ -263,6 +263,7 @@ qdevice_net_poll(struct qdevice_net_instance *instance)
 	struct qdevice_net_poll_array_user_data *user_data;
 	struct unix_socket_client *ipc_client;
 	struct qdevice_ipc_user_data *qdevice_ipc_user_data;
+	int case_processed;
 
 	pfds = qdevice_net_pr_poll_array_create(instance);
 	if (pfds == NULL) {
@@ -279,52 +280,84 @@ qdevice_net_poll(struct qdevice_net_instance *instance)
 			ipc_client = user_data->ipc_client;
 
 			if (pfds[i].out_flags & PR_POLL_READ) {
+				case_processed = 0;
+
 				switch (user_data->type) {
 				case QDEVICE_NET_POLL_ARRAY_USER_DATA_TYPE_SOCKET:
+					case_processed = 1;
 					qdevice_net_poll_read_socket(instance);
 					break;
 				case QDEVICE_NET_POLL_ARRAY_USER_DATA_TYPE_VOTEQUORUM:
+					case_processed = 1;
 					qdevice_net_poll_read_votequorum(instance);
 					break;
 				case QDEVICE_NET_POLL_ARRAY_USER_DATA_TYPE_CMAP:
+					case_processed = 1;
 					qdevice_net_poll_read_cmap(instance);
 					break;
 				case QDEVICE_NET_POLL_ARRAY_USER_DATA_TYPE_IPC_SOCKET:
+					case_processed = 1;
 					qdevice_net_poll_read_ipc_socket(instance);
 					break;
 				case QDEVICE_NET_POLL_ARRAY_USER_DATA_TYPE_IPC_CLIENT:
+					case_processed = 1;
 					qdevice_ipc_io_read(instance->qdevice_instance_ptr, ipc_client);
 					break;
-				default:
+				/*
+				 * Default is not defined intentionally. Compiler shows warning when
+				 * new poll_array_user_data_type is added
+				 */
+				}
+
+				if (!case_processed) {
 					qdevice_log(LOG_CRIT, "Unhandled read on poll descriptor %u", i);
 					exit(1);
-					break;
 				}
 			}
 
 			if (!instance->schedule_disconnect && pfds[i].out_flags & PR_POLL_WRITE) {
+				case_processed = 0;
+
 				switch (user_data->type) {
 				case QDEVICE_NET_POLL_ARRAY_USER_DATA_TYPE_SOCKET:
+					case_processed = 1;
 					qdevice_net_poll_write_socket(instance, &pfds[i]);
 					break;
 				case QDEVICE_NET_POLL_ARRAY_USER_DATA_TYPE_IPC_CLIENT:
+					case_processed = 1;
 					qdevice_ipc_io_write(instance->qdevice_instance_ptr, ipc_client);
 					break;
-				default:
+				case QDEVICE_NET_POLL_ARRAY_USER_DATA_TYPE_VOTEQUORUM:
+				case QDEVICE_NET_POLL_ARRAY_USER_DATA_TYPE_CMAP:
+				case QDEVICE_NET_POLL_ARRAY_USER_DATA_TYPE_IPC_SOCKET:
+					/*
+					 * Write on votequorum, cmap and ipc socket shouldn't happen.
+					 */
+					break;
+				/*
+				 * Default is not defined intentionally. Compiler shows warning when
+				 * new poll_array_user_data_type is added
+				 */
+				}
+
+				if (!case_processed) {
 					qdevice_log(LOG_CRIT, "Unhandled write on poll descriptor %u", i);
 					exit(1);
-					break;
 				}
 			}
 
 			if (!instance->schedule_disconnect &&
 			    (pfds[i].out_flags & (PR_POLL_ERR|PR_POLL_NVAL|PR_POLL_HUP|PR_POLL_EXCEPT)) &&
 			    !(pfds[i].out_flags & (PR_POLL_READ|PR_POLL_WRITE))) {
+				case_processed = 0;
+
 				switch (user_data->type) {
 				case QDEVICE_NET_POLL_ARRAY_USER_DATA_TYPE_SOCKET:
+					case_processed = 1;
 					qdevice_net_poll_err_socket(instance, &pfds[i]);
 					break;
 				case QDEVICE_NET_POLL_ARRAY_USER_DATA_TYPE_IPC_SOCKET:
+					case_processed = 1;
 					if (pfds[i].out_flags != PR_POLL_NVAL) {
 						qdevice_log(LOG_CRIT, "POLLERR (%u) on local socket",
 						    pfds[i].out_flags);
@@ -337,14 +370,30 @@ qdevice_net_poll(struct qdevice_net_instance *instance)
 					}
 					break;
 				case QDEVICE_NET_POLL_ARRAY_USER_DATA_TYPE_IPC_CLIENT:
+					case_processed = 1;
 					qdevice_log(LOG_DEBUG, "POLL_ERR (%u) on ipc client socket. "
 					    "Disconnecting.",  pfds[i].out_flags);
 					ipc_client->schedule_disconnect = 1;
 					break;
-				default:
+				case QDEVICE_NET_POLL_ARRAY_USER_DATA_TYPE_VOTEQUORUM:
+				case QDEVICE_NET_POLL_ARRAY_USER_DATA_TYPE_CMAP:
+					case_processed = 1;
+					qdevice_log(LOG_DEBUG, "POLL_ERR (%u) on corosync socket. "
+					    "Disconnecting.",  pfds[i].out_flags);
+
+					instance->schedule_disconnect = 1;
+					instance->disconnect_reason =
+						QDEVICE_NET_DISCONNECT_REASON_COROSYNC_CONNECTION_CLOSED;
+					break;
+				/*
+				 * Default is not defined intentionally. Compiler shows warning when
+				 * new poll_array_user_data_type is added
+				 */
+				}
+
+				if (!case_processed) {
 					qdevice_log(LOG_CRIT, "Unhandled error on poll descriptor %u", i);
 					exit(1);
-					break;
 				}
 			}
 

@@ -119,6 +119,14 @@ qdevice_net_msg_received_unexpected_msg(struct qdevice_net_instance *instance,
 }
 
 static int
+qdevice_net_msg_received_init(struct qdevice_net_instance *instance,
+    const struct msg_decoded *msg)
+{
+
+	return (qdevice_net_msg_received_unexpected_msg(instance, msg, "init"));
+}
+
+static int
 qdevice_net_msg_received_preinit(struct qdevice_net_instance *instance,
     const struct msg_decoded *msg)
 {
@@ -540,6 +548,7 @@ qdevice_net_msg_received_node_list_reply(struct qdevice_net_instance *instance,
 	const char *str;
 	enum tlv_vote result_vote;
 	int res;
+	int case_processed;
 
 	if (instance->state != QDEVICE_NET_INSTANCE_STATE_WAITING_VOTEQUORUM_CMAP_EVENTS) {
 		qdevice_log(LOG_ERR, "Received unexpected node list reply message. "
@@ -565,17 +574,25 @@ qdevice_net_msg_received_node_list_reply(struct qdevice_net_instance *instance,
 		return (-1);
 	}
 
+	str = NULL;
+
 	switch (msg->node_list_type) {
 	case TLV_NODE_LIST_TYPE_INITIAL_CONFIG: str = "initial config"; break;
 	case TLV_NODE_LIST_TYPE_CHANGED_CONFIG: str = "changed config"; break;
 	case TLV_NODE_LIST_TYPE_MEMBERSHIP: str ="membership"; break;
 	case TLV_NODE_LIST_TYPE_QUORUM: str ="quorum"; break;
-	default:
+	/*
+	 * Default is not defined intentionally. Compiler shows warning when new node list type
+	 * is added
+	 */
+	}
+
+	if (str == NULL) {
 		qdevice_log(LOG_CRIT, "qdevice_net_msg_received_node_list_reply fatal error. "
 		    "Unhandled node_list_type (debug output)");
 		exit(1);
-		break;
 	}
+
 	qdevice_log(LOG_DEBUG, "Received %s node list reply", str);
 	qdevice_log(LOG_DEBUG, "  seq = "UTILS_PRI_MSG_SEQ, msg->seq_number);
 	qdevice_log(LOG_DEBUG, "  vote = %s", tlv_vote_to_str(msg->vote));
@@ -589,26 +606,35 @@ qdevice_net_msg_received_node_list_reply(struct qdevice_net_instance *instance,
 	 */
 	result_vote = msg->vote;
 
+	case_processed = 0;
 	switch (msg->node_list_type) {
 	case TLV_NODE_LIST_TYPE_INITIAL_CONFIG:
 	case TLV_NODE_LIST_TYPE_CHANGED_CONFIG:
+		case_processed = 1;
 		res = qdevice_net_algorithm_config_node_list_reply_received(instance,
 		    msg->seq_number, (msg->node_list_type == TLV_NODE_LIST_TYPE_INITIAL_CONFIG),
 		    &result_vote);
 		break;
 	case TLV_NODE_LIST_TYPE_MEMBERSHIP:
+		case_processed = 1;
 		res = qdevice_net_algorithm_membership_node_list_reply_received(instance,
 		    msg->seq_number, &msg->ring_id, &result_vote);
 		break;
 	case TLV_NODE_LIST_TYPE_QUORUM:
+		case_processed = 1;
 		res = qdevice_net_algorithm_quorum_node_list_reply_received(instance,
 		    msg->seq_number, &result_vote);
 		break;
-	default:
+	/*
+	 * Default is not defined intentionally. Compiler shows warning when new node list type
+	 * is added
+	 */
+	}
+
+	if (!case_processed) {
 		qdevice_log(LOG_CRIT, "qdevice_net_msg_received_node_list_reply fatal error. "
 		    "Unhandled node_list_type (algorithm call)");
 		exit(1);
-		break;
 	}
 
 	if (res != 0) {
@@ -772,6 +798,7 @@ qdevice_net_msg_received(struct qdevice_net_instance *instance)
 	struct msg_decoded msg;
 	int res;
 	int ret_val;
+	int msg_processed;
 
 	msg_decoded_init(&msg);
 
@@ -789,59 +816,84 @@ qdevice_net_msg_received(struct qdevice_net_instance *instance)
 
 	ret_val = 0;
 
+	msg_processed = 0;
+
 	switch (msg.type) {
+	case MSG_TYPE_INIT:
+		msg_processed = 1;
+		ret_val = qdevice_net_msg_received_init(instance, &msg);
+		break;
 	case MSG_TYPE_PREINIT:
+		msg_processed = 1;
 		ret_val = qdevice_net_msg_received_preinit(instance, &msg);
 		break;
 	case MSG_TYPE_PREINIT_REPLY:
+		msg_processed = 1;
 		ret_val = qdevice_net_msg_received_preinit_reply(instance, &msg);
 		break;
 	case MSG_TYPE_STARTTLS:
+		msg_processed = 1;
 		ret_val = qdevice_net_msg_received_starttls(instance, &msg);
 		break;
 	case MSG_TYPE_SERVER_ERROR:
+		msg_processed = 1;
 		ret_val = qdevice_net_msg_received_server_error(instance, &msg);
 		break;
 	case MSG_TYPE_INIT_REPLY:
+		msg_processed = 1;
 		ret_val = qdevice_net_msg_received_init_reply(instance, &msg);
 		break;
 	case MSG_TYPE_SET_OPTION:
+		msg_processed = 1;
 		ret_val = qdevice_net_msg_received_set_option(instance, &msg);
 		break;
 	case MSG_TYPE_SET_OPTION_REPLY:
+		msg_processed = 1;
 		ret_val = qdevice_net_msg_received_set_option_reply(instance, &msg);
 		break;
 	case MSG_TYPE_ECHO_REQUEST:
+		msg_processed = 1;
 		ret_val = qdevice_net_msg_received_echo_request(instance, &msg);
 		break;
 	case MSG_TYPE_ECHO_REPLY:
+		msg_processed = 1;
 		ret_val = qdevice_net_msg_received_echo_reply(instance, &msg);
 		break;
 	case MSG_TYPE_NODE_LIST:
+		msg_processed = 1;
 		ret_val = qdevice_net_msg_received_node_list(instance, &msg);
 		break;
 	case MSG_TYPE_NODE_LIST_REPLY:
+		msg_processed = 1;
 		ret_val = qdevice_net_msg_received_node_list_reply(instance, &msg);
 		break;
 	case MSG_TYPE_ASK_FOR_VOTE:
+		msg_processed = 1;
 		ret_val = qdevice_net_msg_received_ask_for_vote(instance, &msg);
 		break;
 	case MSG_TYPE_ASK_FOR_VOTE_REPLY:
+		msg_processed = 1;
 		ret_val = qdevice_net_msg_received_ask_for_vote_reply(instance, &msg);
 		break;
 	case MSG_TYPE_VOTE_INFO:
+		msg_processed = 1;
 		ret_val = qdevice_net_msg_received_vote_info(instance, &msg);
 		break;
 	case MSG_TYPE_VOTE_INFO_REPLY:
+		msg_processed = 1;
 		ret_val = qdevice_net_msg_received_vote_info_reply(instance, &msg);
 		break;
-	default:
+	/*
+	 * Default is not defined intentionally. Compiler shows warning when msg type is added
+	 */
+	}
+
+	if (!msg_processed) {
 		qdevice_log(LOG_ERR, "Received unsupported message %u. "
 		    "Disconnecting from server", msg.type);
 		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_UNEXPECTED_MSG;
 
 		ret_val = -1;
-		break;
 	}
 
 	msg_decoded_destroy(&msg);
