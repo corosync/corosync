@@ -194,3 +194,18 @@ qdevice_model_str_to_type(const char *str, enum qdevice_model_type *model_type)
 
 	return (-1);
 }
+
+const char *
+qdevice_mode_type_to_str(enum qdevice_model_type model_type)
+{
+
+	switch (model_type) {
+	case QDEVICE_MODEL_TYPE_NET: return ("Net"); break;
+	case QDEVICE_MODEL_TYPE_ARRAY_SIZE: return ("Unknown model"); break;
+	/*
+	 * Default is not defined intentionally. Compiler shows warning when new model is added
+	 */
+	}
+
+	return ("Unknown model");
+}

@@ -79,13 +79,15 @@ struct qdevice_model {
 	    uint32_t expected_votes);
 };
 
-extern int		qdevice_model_register(
+extern int		 qdevice_model_register(
     enum qdevice_model_type model_type, struct qdevice_model *model);
 
 extern void qdevice_model_register_all(void);
 
-extern int		qdevice_model_str_to_type(const char *str,
+extern int		 qdevice_model_str_to_type(const char *str,
     enum qdevice_model_type *model_type);
+
+extern const char 	*qdevice_mode_type_to_str(enum qdevice_model_type model_type);
 
 #ifdef __cplusplus
 }

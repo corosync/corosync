@@ -38,6 +38,7 @@
 #include "unix-socket-ipc.h"
 #include "dynar-simple-lex.h"
 #include "dynar-str.h"
+#include "qdevice-ipc-cmd.h"
 
 int
 qdevice_ipc_init(struct qdevice_instance *instance)
@@ -163,7 +164,11 @@ qdevice_ipc_send_buffer(struct qdevice_instance *instance, struct unix_socket_cl
 	if (dynar_str_prepend(&client->send_buffer, "OK\n") != 0) {
 		qdevice_log(LOG_ERR, "Can't send error to client (buffer too small)");
 
-		return (-1);
+		if (qdevice_ipc_send_error(instance, client, "Internal IPC buffer too small") != 0) {
+			return (-1);
+		}
+
+		return (0);
 	}
 
 	unix_socket_client_write_buffer(client, 1);
@@ -178,14 +183,21 @@ qdevice_ipc_parse_line(struct qdevice_instance *instance, struct unix_socket_cli
 	struct dynar *token;
 	char *str;
 	struct qdevice_ipc_user_data *ipc_user_data;
+	int verbose;
 
 	ipc_user_data = (struct qdevice_ipc_user_data *)client->user_data;
 
 	dynar_simple_lex_init(&lex, &client->receive_buffer);
 	token = dynar_simple_lex_token_next(&lex);
 
+	verbose = 0;
+
 	if (token == NULL) {
 		qdevice_log(LOG_ERR, "Can't alloc memory for simple lex");
+
+		if (qdevice_ipc_send_error(instance, client, "Command too long") != 0) {
+			client->schedule_disconnect = 1;
+		}
 
 		return;
 	}
@@ -205,8 +217,24 @@ qdevice_ipc_parse_line(struct qdevice_instance *instance, struct unix_socket_cli
 			client->schedule_disconnect = 1;
 		}
 	} else if (strcasecmp(str, "status") == 0) {
-		qdevice_log(LOG_DEBUG, "IPC client requested status display");
-		// Send output
+		token = dynar_simple_lex_token_next(&lex);
+		str = dynar_data(token);
+
+		if (token != NULL && strcmp(str, "") != 0) {
+			if (strcasecmp(str, "verbose") == 0) {
+				verbose = 1;
+			}
+		}
+
+		if (qdevice_ipc_cmd_status(instance, &client->send_buffer, verbose) != 0) {
+			if (qdevice_ipc_send_error(instance, client, "Can't get QDevice status") != 0) {
+				client->schedule_disconnect = 1;
+			}
+		} else {
+			if (qdevice_ipc_send_buffer(instance, client) != 0) {
+				client->schedule_disconnect = 1;
+			}
+		}
 	} else {
 		qdevice_log(LOG_DEBUG, "IPC client sent unknown command");
 		if (qdevice_ipc_send_error(instance, client, "Unknown command '%s'", str) != 0) {

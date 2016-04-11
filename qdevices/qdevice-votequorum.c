@@ -253,6 +253,9 @@ qdevice_votequorum_poll(struct qdevice_instance *instance, int cast_vote)
 {
 	cs_error_t res;
 
+	instance->vq_last_poll = time(NULL);
+	instance->vq_last_poll_cast_vote = cast_vote;
+
 	res = votequorum_qdevice_poll(instance->votequorum_handle,
 	    QDEVICE_VOTEQUORUM_DEVICE_NAME, cast_vote,
 	    instance->vq_node_list_ring_id);

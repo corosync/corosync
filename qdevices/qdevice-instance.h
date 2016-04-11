@@ -96,6 +96,9 @@ struct qdevice_instance {
 	 */
 	uint32_t vq_expected_votes;
 
+	time_t vq_last_poll;
+	int vq_last_poll_cast_vote;
+
 	void *model_data;
 };
 
