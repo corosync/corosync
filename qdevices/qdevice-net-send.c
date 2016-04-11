@@ -38,6 +38,7 @@
 #include "qdevice-cmap.h"
 #include "qdevice-net-votequorum.h"
 #include "msg.h"
+#include "utils.h"
 
 int
 qdevice_net_send_echo_request(struct qdevice_net_instance *instance)
@@ -144,7 +145,7 @@ qdevice_net_send_ask_for_vote(struct qdevice_net_instance *instance)
 
 	instance->last_msg_seq_num++;
 
-	qdevice_log(LOG_DEBUG, "Sending ask for vote seq = %"PRIu32,
+	qdevice_log(LOG_DEBUG, "Sending ask for vote seq = "UTILS_PRI_MSG_SEQ,
 	    instance->last_msg_seq_num);
 
 	if (msg_create_ask_for_vote(&send_buffer->buffer, instance->last_msg_seq_num) == 0) {
@@ -176,7 +177,7 @@ qdevice_net_send_config_node_list(struct qdevice_net_instance *instance,
 
 	instance->last_msg_seq_num++;
 
-	qdevice_log(LOG_DEBUG, "Sending config node list seq = %"PRIu32,
+	qdevice_log(LOG_DEBUG, "Sending config node list seq = "UTILS_PRI_MSG_SEQ,
 	    instance->last_msg_seq_num);
 	qdevice_log_debug_dump_node_list(nlist);
 
@@ -227,8 +228,8 @@ qdevice_net_send_membership_node_list(struct qdevice_net_instance *instance,
 
 	instance->last_msg_seq_num++;
 
-	qdevice_log(LOG_DEBUG, "Sending membership node list seq = %"PRIu32", "
-	    "ringid = (%"PRIx32".%"PRIx64").", instance->last_msg_seq_num,
+	qdevice_log(LOG_DEBUG, "Sending membership node list seq = "UTILS_PRI_MSG_SEQ", "
+	    "ringid = ("UTILS_PRI_RING_ID").", instance->last_msg_seq_num,
 	    ring_id->node_id, ring_id->seq);
 	qdevice_log_debug_dump_node_list(&nlist);
 
@@ -290,7 +291,7 @@ qdevice_net_send_quorum_node_list(struct qdevice_net_instance *instance,
 
 	instance->last_msg_seq_num++;
 
-	qdevice_log(LOG_DEBUG, "Sending quorum node list seq = %"PRIu32", quorate = %u",
+	qdevice_log(LOG_DEBUG, "Sending quorum node list seq = "UTILS_PRI_MSG_SEQ", quorate = %u",
 	    instance->last_msg_seq_num, quorate);
 	qdevice_log_debug_dump_node_list(&nlist);
 

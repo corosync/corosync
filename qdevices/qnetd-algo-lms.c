@@ -57,6 +57,7 @@
 #include "qnetd-cluster-list.h"
 #include "qnetd-algo-utils.h"
 #include "qnetd-client-algo-timer.h"
+#include "utils.h"
 
 struct qnetd_algo_lms_info {
 	int num_config_nodes;
@@ -313,7 +314,7 @@ qnetd_algo_lms_quorum_node_list_received(struct qnetd_client *client,
 void
 qnetd_algo_lms_client_disconnect(struct qnetd_client *client, int server_going_down)
 {
-	qnetd_log(LOG_DEBUG, "algo-lms: Client %p (cluster %s, node_id %"PRIx32") "
+	qnetd_log(LOG_DEBUG, "algo-lms: Client %p (cluster %s, node_id "UTILS_PRI_NODE_ID") "
 	    "disconnect", client, client->cluster_name, client->node_id);
 
 	qnetd_log(LOG_INFO, "algo-lms:   server going down %u", server_going_down);
@@ -330,7 +331,7 @@ qnetd_algo_lms_ask_for_vote_received(struct qnetd_client *client, uint32_t msg_s
     enum tlv_vote *result_vote)
 {
 	qnetd_log(LOG_DEBUG, " ");
-	qnetd_log(LOG_DEBUG, "algo-lms: Client %p (cluster %s, node_id %"PRIx32") "
+	qnetd_log(LOG_DEBUG, "algo-lms: Client %p (cluster %s, node_id "UTILS_PRI_NODE_ID") "
 	    "asked for a vote", client, client->cluster_name, client->node_id);
 
 	return do_lms_algorithm(client, &client->last_ring_id, result_vote);
@@ -339,7 +340,7 @@ qnetd_algo_lms_ask_for_vote_received(struct qnetd_client *client, uint32_t msg_s
 enum tlv_reply_error_code
 qnetd_algo_lms_vote_info_reply_received(struct qnetd_client *client, uint32_t msg_seq_num)
 {
-	qnetd_log(LOG_DEBUG, "algo-lms: Client %p (cluster %s, node_id %"PRIx32") "
+	qnetd_log(LOG_DEBUG, "algo-lms: Client %p (cluster %s, node_id "UTILS_PRI_NODE_ID") "
 	    "replied back to vote info message", client, client->cluster_name, client->node_id);
 
 	return (TLV_REPLY_ERROR_CODE_NO_ERROR);
@@ -351,7 +352,7 @@ qnetd_algo_lms_timer_callback(struct qnetd_client *client, int *reschedule_timer
 {
 	enum tlv_reply_error_code ret;
 
-	qnetd_log(LOG_DEBUG, "algo-lms: Client %p (cluster %s, node_id %"PRIx32") "
+	qnetd_log(LOG_DEBUG, "algo-lms: Client %p (cluster %s, node_id "UTILS_PRI_NODE_ID") "
 	    "Timer callback", client, client->cluster_name, client->node_id);
 
 	ret = do_lms_algorithm(client, &client->last_ring_id, result_vote);

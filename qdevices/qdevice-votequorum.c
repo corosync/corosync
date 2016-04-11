@@ -38,6 +38,7 @@
 #include "qdevice-log.h"
 #include "qdevice-votequorum.h"
 #include "qdevice-model.h"
+#include "utils.h"
 
 static void
 qdevice_votequorum_quorum_notify_callback(votequorum_handle_t votequorum_handle,
@@ -57,7 +58,7 @@ qdevice_votequorum_quorum_notify_callback(votequorum_handle_t votequorum_handle,
 
 	qdevice_log(LOG_DEBUG, "  Node list (size = %"PRIu32"):", node_list_entries);
 	for (u32 = 0; u32 < node_list_entries; u32++) {
-		qdevice_log(LOG_DEBUG, "    %"PRIu32" nodeid = %"PRIx32", state = %"PRIu32,
+		qdevice_log(LOG_DEBUG, "    %"PRIu32" nodeid = "UTILS_PRI_NODE_ID", state = %"PRIu32,
 		    u32, node_list[u32].nodeid, node_list[u32].state);
 	}
 
@@ -93,12 +94,12 @@ qdevice_votequorum_node_list_notify_callback(votequorum_handle_t votequorum_hand
 	}
 
 	qdevice_log(LOG_DEBUG, "Votequorum nodelist notify callback:");
-	qdevice_log(LOG_DEBUG, "  Ring_id = (%"PRIx32".%"PRIx64")",
+	qdevice_log(LOG_DEBUG, "  Ring_id = ("UTILS_PRI_RING_ID")",
 	    votequorum_ring_id.nodeid, votequorum_ring_id.seq);
 
 	qdevice_log(LOG_DEBUG, "  Node list (size = %"PRIu32"):", node_list_entries);
 	for (u32 = 0; u32 < node_list_entries; u32++) {
-		qdevice_log(LOG_DEBUG, "    %"PRIu32" nodeid = %"PRIx32,
+		qdevice_log(LOG_DEBUG, "    %"PRIu32" nodeid = "UTILS_PRI_NODE_ID,
 		    u32, node_list[u32]);
 	}
 
@@ -131,7 +132,7 @@ qdevice_votequorum_expected_votes_notify_callback(votequorum_handle_t votequorum
 	}
 
 	qdevice_log(LOG_DEBUG, "Votequorum expected_votes notify callback:");
-	qdevice_log(LOG_DEBUG, "  Expected_votes: %"PRIu32, expected_votes);
+	qdevice_log(LOG_DEBUG, "  Expected_votes: "UTILS_PRI_EXPECTED_VOTES, expected_votes);
 
 	if (qdevice_model_votequorum_expected_votes_notify(instance, expected_votes) != 0) {
 		qdevice_log(LOG_DEBUG, "qdevice_votequorum_expected_votes_notify_callback returned error -> exit");

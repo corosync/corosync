@@ -40,6 +40,7 @@
 #include "qdevice-net-votequorum.h"
 #include "qdevice-net-echo-request-timer.h"
 #include "msg.h"
+#include "utils.h"
 
 /*
  * -1 - Incompatible tls combination
@@ -576,10 +577,10 @@ qdevice_net_msg_received_node_list_reply(struct qdevice_net_instance *instance,
 		break;
 	}
 	qdevice_log(LOG_DEBUG, "Received %s node list reply", str);
-	qdevice_log(LOG_DEBUG, "  seq = %"PRIu32, msg->seq_number);
+	qdevice_log(LOG_DEBUG, "  seq = "UTILS_PRI_MSG_SEQ, msg->seq_number);
 	qdevice_log(LOG_DEBUG, "  vote = %s", tlv_vote_to_str(msg->vote));
 	if (msg->ring_id_set) {
-		qdevice_log(LOG_DEBUG, "  ring id = (%"PRIx32".%"PRIx64")",
+		qdevice_log(LOG_DEBUG, "  ring id = ("UTILS_PRI_RING_ID")",
 		    msg->ring_id.node_id, msg->ring_id.seq);
 	}
 
@@ -666,7 +667,7 @@ qdevice_net_msg_received_ask_for_vote_reply(struct qdevice_net_instance *instanc
 	}
 
 	qdevice_log(LOG_DEBUG, "Received ask for vote reply");
-	qdevice_log(LOG_DEBUG, "  seq = %"PRIu32, msg->seq_number);
+	qdevice_log(LOG_DEBUG, "  seq = "UTILS_PRI_MSG_SEQ, msg->seq_number);
 	qdevice_log(LOG_DEBUG, "  vote = %s", tlv_vote_to_str(msg->vote));
 
 	result_vote = msg->vote;
@@ -712,7 +713,7 @@ qdevice_net_msg_received_vote_info(struct qdevice_net_instance *instance,
 	}
 
 	qdevice_log(LOG_DEBUG, "Received vote info");
-	qdevice_log(LOG_DEBUG, "  seq = %"PRIu32, msg->seq_number);
+	qdevice_log(LOG_DEBUG, "  seq = "UTILS_PRI_MSG_SEQ, msg->seq_number);
 	qdevice_log(LOG_DEBUG, "  vote = %s", tlv_vote_to_str(msg->vote));
 
 	result_vote = msg->vote;

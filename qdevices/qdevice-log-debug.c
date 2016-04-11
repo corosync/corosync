@@ -34,6 +34,7 @@
 
 #include "qdevice-log-debug.h"
 #include "qdevice-log.h"
+#include "utils.h"
 
 void
 qdevice_log_debug_dump_node_list(const struct node_list *nlist)
@@ -46,8 +47,8 @@ qdevice_log_debug_dump_node_list(const struct node_list *nlist)
 	zi = 0;
 
 	TAILQ_FOREACH(node_info, nlist, entries) {
-		qdevice_log(LOG_DEBUG, "    %zu node_id = %"PRIx32", "
-		    "data_center_id = %"PRIx32", node_state = %s",
+		qdevice_log(LOG_DEBUG, "    %zu node_id = "UTILS_PRI_NODE_ID", "
+		    "data_center_id = "UTILS_PRI_DATACENTER_ID", node_state = %s",
 		    zi, node_info->node_id, node_info->data_center_id,
 		    tlv_node_state_to_str(node_info->node_state));
 		zi++;

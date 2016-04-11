@@ -55,6 +55,7 @@
 #include "qnetd-log.h"
 #include "qnetd-cluster-list.h"
 #include "qnetd-algo-utils.h"
+#include "utils.h"
 
 struct qnetd_algo_2nodelms_info {
 	int num_config_nodes;
@@ -164,7 +165,7 @@ qnetd_algo_2nodelms_membership_node_list_received(struct qnetd_client *client,
 		node_count++;
 	}
 
-	qnetd_log(LOG_DEBUG, "algo-2nodelms: cluster %s (client %p nodeid %d) membership list has %d member nodes (ring ID %" PRIu64 ")", client->cluster_name, client, client->node_id, node_count, ring_id->seq);
+	qnetd_log(LOG_DEBUG, "algo-2nodelms: cluster %s (client %p nodeid "UTILS_PRI_NODE_ID") membership list has %d member nodes (ring ID "UTILS_PRI_RING_ID")", client->cluster_name, client, client->node_id, node_count, ring_id->node_id, ring_id->seq);
 
 	if (node_count == 2) {
 		qnetd_log(LOG_DEBUG, "algo-2nodelms: cluster %s running normally. Both nodes active", client->cluster_name);
@@ -177,7 +178,7 @@ qnetd_algo_2nodelms_membership_node_list_received(struct qnetd_client *client,
 	TAILQ_FOREACH(other_client, &client->cluster->client_list, cluster_entries) {
 		node_count++;
 
-		qnetd_log(LOG_DEBUG, "algo-2nodelms: seen nodeid %d on client %p (ring ID %d/%" PRIu64 ")", other_client->node_id, other_client, other_client->last_ring_id.node_id, other_client->last_ring_id.seq);
+		qnetd_log(LOG_DEBUG, "algo-2nodelms: seen nodeid "UTILS_PRI_NODE_ID" on client %p (ring ID "UTILS_PRI_RING_ID")", other_client->node_id, other_client, other_client->last_ring_id.node_id, other_client->last_ring_id.seq);
 		if (other_client->node_id < low_node_id) {
 			low_node_id = other_client->node_id;
 		}
@@ -254,7 +255,7 @@ qnetd_algo_2nodelms_quorum_node_list_received(struct qnetd_client *client,
 void
 qnetd_algo_2nodelms_client_disconnect(struct qnetd_client *client, int server_going_down)
 {
-	qnetd_log(LOG_INFO, "algo-2nodelms: Client %p (cluster %s, node_id %"PRIx32") "
+	qnetd_log(LOG_INFO, "algo-2nodelms: Client %p (cluster %s, node_id "UTILS_PRI_NODE_ID") "
 	    "disconnect", client, client->cluster_name, client->node_id);
 
 	qnetd_log(LOG_INFO, "algo-2nodelms:   server going down %u", server_going_down);
@@ -272,7 +273,7 @@ qnetd_algo_2nodelms_ask_for_vote_received(struct qnetd_client *client, uint32_t 
 {
 	struct qnetd_algo_2nodelms_info *info = client->algorithm_data;
 
-	qnetd_log(LOG_INFO, "algo-2nodelms: Client %p (cluster %s, node_id %"PRIx32") "
+	qnetd_log(LOG_INFO, "algo-2nodelms: Client %p (cluster %s, node_id "UTILS_PRI_NODE_ID") "
 	    "asked for a vote", client, client->cluster_name, client->node_id);
 
 	if (info->last_result == 0) {
@@ -289,7 +290,7 @@ enum tlv_reply_error_code
 qnetd_algo_2nodelms_vote_info_reply_received(struct qnetd_client *client, uint32_t msg_seq_num)
 {
 
-	qnetd_log(LOG_INFO, "algo-2nodelms: Client %p (cluster %s, node_id %"PRIx32") "
+	qnetd_log(LOG_INFO, "algo-2nodelms: Client %p (cluster %s, node_id "UTILS_PRI_NODE_ID") "
 	    "replied back to vote info message", client, client->cluster_name, client->node_id);
 
 	return (TLV_REPLY_ERROR_CODE_NO_ERROR);

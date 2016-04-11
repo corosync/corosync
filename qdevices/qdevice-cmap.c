@@ -46,6 +46,7 @@
 #include "qdevice-log.h"
 #include "qdevice-log-debug.h"
 #include "qdevice-model.h"
+#include "utils.h"
 
 static uint32_t
 qdevice_cmap_autogenerate_node_id(const char *addr, int clear_node_high_byte)
@@ -260,7 +261,7 @@ qdevice_cmap_node_list_event(struct qdevice_instance *instance)
 
 	qdevice_log(LOG_DEBUG, "Node list changed");
 	if (config_version_set) {
-		qdevice_log(LOG_DEBUG, "  config_version = %"PRIu64, config_version);
+		qdevice_log(LOG_DEBUG, "  config_version = "UTILS_PRI_CONFIG_VERSION, config_version);
 	}
 	qdevice_log_debug_dump_node_list(&nlist);
 

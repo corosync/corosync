@@ -38,6 +38,17 @@
 #include <sys/types.h>
 #include <inttypes.h>
 
+#define UTILS_PRI_NODE_ID		"%" PRIu32
+#define UTILS_PRI_DATACENTER_ID		"%" PRIu32
+/*
+#define UTILS_PRI_NODE_ID		"0x%" PRIx32
+#define UTILS_PRI_DATACENTER_ID		"0x%" PRIx32
+*/
+#define UTILS_PRI_MSG_SEQ		"%" PRIu32
+#define UTILS_PRI_RING_ID		"%" PRIx32 ".%" PRIx64
+#define UTILS_PRI_CONFIG_VERSION	"%" PRIu64
+#define UTILS_PRI_EXPECTED_VOTES	"%" PRIu32
+
 #ifdef __cplusplus
 extern "C" {
 #endif
