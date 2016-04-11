@@ -100,14 +100,17 @@ qdevice_ipc_accept(struct qdevice_instance *instance, struct unix_socket_client 
 	case -1:
 		qdevice_log_err(LOG_ERR, "Can't accept local IPC connection");
 		res = -1;
+		goto return_res;
 		break;
 	case -2:
 		qdevice_log(LOG_ERR, "Maximum IPC clients reached. Not accepting connection");
 		res = -1;
+		goto return_res;
 		break;
 	case -3:
 		qdevice_log(LOG_ERR, "Can't add client to list");
 		res = -1;
+		goto return_res;
 		break;
 	default:
 		unix_socket_client_read_line(*res_client, 1);
@@ -123,6 +126,7 @@ qdevice_ipc_accept(struct qdevice_instance *instance, struct unix_socket_client 
 	}
 	memset((*res_client)->user_data, 0, sizeof(struct qdevice_ipc_user_data));
 
+return_res:
 	return (res);
 }
 

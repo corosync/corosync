@@ -38,7 +38,7 @@
 #include "unix-socket-client.h"
 #include "unix-socket.h"
 
-#define UNIX_SOCKET_CLIENT_BUFFER	2
+#define UNIX_SOCKET_CLIENT_BUFFER	1024
 
 void
 unix_socket_client_init(struct unix_socket_client *client, int sock, size_t max_receive_size,
