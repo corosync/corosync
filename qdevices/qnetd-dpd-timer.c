@@ -52,9 +52,9 @@ qnetd_dpd_timer_cb(void *data1, void *data2)
 
 		if (client->dpd_time_since_last_check > (client->heartbeat_interval * 2)) {
 			if (!client->dpd_msg_received_since_last_check) {
-				qnetd_log(LOG_WARNING, "Client %p doesn't sent any message during "
+				qnetd_log(LOG_WARNING, "Client %s doesn't sent any message during "
 				    "%"PRIu32"ms. Disconnecting",
-				    client, client->dpd_time_since_last_check);
+				    client->addr_str, client->dpd_time_since_last_check);
 
 				client->schedule_disconnect = 1;
 			} else {

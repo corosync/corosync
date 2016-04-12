@@ -53,6 +53,7 @@ extern "C" {
 struct qnetd_client {
 	PRFileDesc *socket;
 	PRNetAddr addr;
+	char *addr_str;
 	struct dynar receive_buffer;
 	struct send_buffer_list send_buffer_list;
 	size_t msg_already_received_bytes;
@@ -87,8 +88,8 @@ struct qnetd_client {
 };
 
 extern void		qnetd_client_init(struct qnetd_client *client, PRFileDesc *sock,
-    PRNetAddr *addr, size_t max_receive_size, size_t max_send_buffers, size_t max_send_size,
-    struct timer_list *main_timer_list);
+    PRNetAddr *addr, char *addr_str, size_t max_receive_size, size_t max_send_buffers,
+    size_t max_send_size, struct timer_list *main_timer_list);
 
 extern void		qnetd_client_destroy(struct qnetd_client *client);
 

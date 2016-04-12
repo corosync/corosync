@@ -57,8 +57,8 @@ qnetd_client_algo_timer_callback(void *data1, void *data2)
 	    &send_vote, &result_vote);
 
 	if (reply_error_code != TLV_REPLY_ERROR_CODE_NO_ERROR) {
-		qnetd_log(LOG_ERR, "Algorithm for client %p returned error code. "
-		    "Sending error reply.", client);
+		qnetd_log(LOG_ERR, "Algorithm for client %s returned error code. "
+		    "Sending error reply.", client->addr_str);
 
 		if (qnetd_client_send_err(client, 0, 0, reply_error_code) != 0) {
 			client->schedule_disconnect = 1;
@@ -67,8 +67,8 @@ qnetd_client_algo_timer_callback(void *data1, void *data2)
 
 		return (0);
 	} else {
-		qnetd_log(LOG_DEBUG, "Algorithm for client %p decided to %s timer and %s vote "
-		    "with value %s", client,
+		qnetd_log(LOG_DEBUG, "Algorithm for client %s decided to %s timer and %s vote "
+		    "with value %s", client->addr_str,
 		    (reschedule_timer ? "reschedule" : "not reschedule"),
 		    (send_vote ? "send" : "not send"),
 		    tlv_vote_to_str(result_vote));

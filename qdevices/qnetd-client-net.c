@@ -42,6 +42,9 @@
 #include "qnetd-client-send.h"
 #include "qnetd-client-msg-received.h"
 
+#define CLIENT_ADDR_STR_LEN_COLON_PORT	(1 + 5 + 1)
+#define CLIENT_ADDR_STR_LEN		(INET6_ADDRSTRLEN + CLIENT_ADDR_STR_LEN_COLON_PORT)
+
 static int
 qnetd_client_net_write_finished(struct qnetd_instance *instance, struct qnetd_client *client)
 {
@@ -182,6 +185,12 @@ qnetd_client_net_accept(struct qnetd_instance *instance)
 	PRNetAddr client_addr;
 	PRFileDesc *client_socket;
 	struct qnetd_client *client;
+	char *client_addr_str;
+	int res_err;
+
+	client_addr_str = NULL;
+
+	res_err = -1;
 
         if ((client_socket = PR_Accept(instance->server.socket, &client_addr,
 	    PR_INTERVAL_NO_TIMEOUT)) == NULL) {
@@ -191,31 +200,48 @@ qnetd_client_net_accept(struct qnetd_instance *instance)
 
 	if (nss_sock_set_non_blocking(client_socket) != 0) {
 		qnetd_log_nss(LOG_ERR, "Can't set client socket to non blocking mode");
-
-		PR_Close(client_socket);
-
-		return (-1);
+		goto exit_close;
 	}
 
 	if (instance->max_clients != 0 &&
 	    qnetd_client_list_no_clients(&instance->clients) >= instance->max_clients) {
 		qnetd_log(LOG_ERR, "Maximum clients reached. Not accepting connection");
+		goto exit_close;
+	}
 
-		PR_Close(client_socket);
+	client_addr_str = malloc(CLIENT_ADDR_STR_LEN);
+	if (client_addr_str == NULL) {
+		qnetd_log(LOG_ERR, "Can't alloc client addr str memory. Not accepting connection");
+		goto exit_close;
+	}
 
-		return (-1);
+	if (PR_NetAddrToString(&client_addr, client_addr_str, CLIENT_ADDR_STR_LEN) != PR_SUCCESS) {
+		qnetd_log_nss(LOG_ERR, "Can't convert client address to string. Not accepting connection");
+		goto exit_close;
+	}
+
+	if (snprintf(client_addr_str + strlen(client_addr_str),
+	    CLIENT_ADDR_STR_LEN_COLON_PORT, ":%"PRIu16,
+	    ntohs(client_addr.ipv6.port)) >= CLIENT_ADDR_STR_LEN_COLON_PORT) {
+		qnetd_log(LOG_ERR, "Can't store port to client addr str. Not accepting connection");
+		goto exit_close;
 	}
 
 	client = qnetd_client_list_add(&instance->clients, client_socket, &client_addr,
+	    client_addr_str,
 	    instance->max_client_receive_size, instance->max_client_send_buffers,
 	    instance->max_client_send_size, &instance->main_timer_list);
 	if (client == NULL) {
 		qnetd_log(LOG_ERR, "Can't add client to list");
-
-		PR_Close(client_socket);
-
-		return (-2);
+		res_err = -2;
+		goto exit_close;
 	}
 
 	return (0);
+
+exit_close:
+	free(client_addr_str);
+	PR_Close(client_socket);
+
+	return (res_err);
 }
