@@ -418,7 +418,7 @@ main(int argc, char * const argv[])
 	instance.host_addr = host_addr;
 	instance.host_port = host_port;
 
-	if (qnetd_instance_init_certs(&instance) == -1) {
+	if (tls_supported != TLV_TLS_UNSUPPORTED && qnetd_instance_init_certs(&instance) == -1) {
 		qnetd_err_nss();
 	}
 
