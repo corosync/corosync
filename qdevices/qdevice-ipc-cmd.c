@@ -53,7 +53,7 @@ qdevice_ipc_cmd_status_add_model(struct qdevice_instance *instance, struct dynar
 {
 
 	return (dynar_str_catf(outbuf, "Model:\t\t\t%s\n",
-		qdevice_mode_type_to_str(instance->model_type)) != -1);
+		qdevice_model_type_to_str(instance->model_type)) != -1);
 }
 
 static int
@@ -255,7 +255,9 @@ qdevice_ipc_cmd_status(struct qdevice_instance *instance, struct dynar *outbuf, 
 	    qdevice_ipc_cmd_status_add_membership_node_list(instance, outbuf, verbose) &&
 	    qdevice_ipc_cmd_status_add_quorum_node_list(instance, outbuf, verbose) &&
 	    qdevice_ipc_cmd_status_add_expected_votes(instance, outbuf, verbose) &&
-	    qdevice_ipc_cmd_status_add_last_poll(instance, outbuf, verbose)) {
+	    qdevice_ipc_cmd_status_add_last_poll(instance, outbuf, verbose) &&
+	    dynar_str_catf(outbuf, "\n") != -1 &&
+	    qdevice_model_ipc_cmd_status(instance, outbuf, verbose) != -1) {
 		return (0);
 	}
 

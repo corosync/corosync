@@ -311,3 +311,20 @@ qdevice_net_algorithm_register_all(void)
 
 	return (0);
 }
+
+const char *
+qdevice_net_algorithm_type_to_str(enum tlv_decision_algorithm_type algo_type)
+{
+
+	switch (algo_type) {
+	case TLV_DECISION_ALGORITHM_TYPE_TEST: return ("Test"); break;
+	case TLV_DECISION_ALGORITHM_TYPE_FFSPLIT: return ("Fifty-Fifty split"); break;
+	case TLV_DECISION_ALGORITHM_TYPE_2NODELMS: return ("2 Node LMS"); break;
+	case TLV_DECISION_ALGORITHM_TYPE_LMS: return ("LMS"); break;
+	/*
+	 * Default is not defined intentionally. Compiler shows warning when new model is added
+	 */
+	}
+
+	return ("Unknown algorithm");
+}

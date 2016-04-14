@@ -151,6 +151,20 @@ qdevice_model_votequorum_expected_votes_notify(struct qdevice_instance *instance
 }
 
 int
+qdevice_model_ipc_cmd_status(struct qdevice_instance *instance, struct dynar *outbuf, int verbose)
+{
+
+	if (instance->model_type >= QDEVICE_MODEL_TYPE_ARRAY_SIZE ||
+	    qdevice_model_array[instance->model_type] == NULL) {
+		qdevice_log(LOG_CRIT, "qdevice_model_ipc_cmd_status unhandled model");
+		exit(1);
+	}
+
+	return (qdevice_model_array[instance->model_type]->
+	    ipc_cmd_status(instance, outbuf, verbose));
+}
+
+int
 qdevice_model_register(enum qdevice_model_type model_type,
     struct qdevice_model *model)
 {
@@ -196,7 +210,7 @@ qdevice_model_str_to_type(const char *str, enum qdevice_model_type *model_type)
 }
 
 const char *
-qdevice_mode_type_to_str(enum qdevice_model_type model_type)
+qdevice_model_type_to_str(enum qdevice_model_type model_type)
 {
 
 	switch (model_type) {

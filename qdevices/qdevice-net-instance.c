@@ -75,6 +75,9 @@ qdevice_net_instance_init(struct qdevice_net_instance *instance, size_t initial_
 	instance->echo_request_expected_msg_seq_num = 1;
 	instance->echo_reply_received_msg_seq_num = 1;
 	instance->force_ip_version = force_ip_version;
+	instance->last_echo_reply_received_time = ((time_t) -1);
+	instance->connected_since_time = ((time_t) -1);
+
 	memcpy(&instance->tie_breaker, tie_breaker, sizeof(*tie_breaker));
 
 	dynar_init(&instance->receive_buffer, initial_receive_size);
@@ -119,9 +122,12 @@ qdevice_net_instance_clean(struct qdevice_net_instance *instance)
 	instance->state = QDEVICE_NET_INSTANCE_STATE_WAITING_PREINIT_REPLY;
 	instance->echo_request_expected_msg_seq_num = instance->echo_reply_received_msg_seq_num;
 	instance->using_tls = 0;
+	instance->tls_client_cert_sent = 0;
 
 	instance->schedule_disconnect = 0;
 	instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_UNDEFINED;
+	instance->last_echo_reply_received_time = ((time_t) -1);
+	instance->connected_since_time = ((time_t) -1);
 }
 
 int

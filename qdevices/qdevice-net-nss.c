@@ -37,6 +37,8 @@
 
 #include "qdevice-log.h"
 #include "qdevice-net-nss.h"
+#include "qdevice-net-instance.h"
+#include "qnet-config.h"
 
 SECStatus
 qdevice_net_nss_bad_cert_hook(void *arg, PRFileDesc *fd) {
@@ -59,8 +61,14 @@ SECStatus
 qdevice_net_nss_get_client_auth_data(void *arg, PRFileDesc *sock, struct CERTDistNamesStr *caNames,
     struct CERTCertificateStr **pRetCert, struct SECKEYPrivateKeyStr **pRetKey)
 {
+	struct qdevice_net_instance *instance;
 
 	qdevice_log(LOG_DEBUG, "Sending client auth data.");
 
-	return (NSS_GetClientAuthData(arg, sock, caNames, pRetCert, pRetKey));
+	instance = (struct qdevice_net_instance *)arg;
+
+	instance->tls_client_cert_sent = 1;
+
+	return (NSS_GetClientAuthData((void *)QDEVICE_NET_NSS_CLIENT_CERT_NICKNAME, sock, caNames,
+	    pRetCert, pRetKey));
 }

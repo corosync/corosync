@@ -81,6 +81,7 @@ struct qdevice_net_instance {
 	uint32_t echo_reply_received_msg_seq_num;
 	enum tlv_tls_supported tls_supported;
 	int using_tls;
+	int tls_client_cert_sent;
 	uint32_t heartbeat_interval;            /* Adjusted heartbeat interval during normal operation */
 	uint32_t sync_heartbeat_interval;       /* Adjusted heartbeat interval during corosync sync */
 	uint32_t cast_vote_timer_interval;	/* Timer for cast vote */
@@ -106,6 +107,8 @@ struct qdevice_net_instance {
 	struct timer_list_entry *connect_timer;
 	int force_ip_version;
 	struct pr_poll_array poll_array;
+	time_t last_echo_reply_received_time;
+	time_t connected_since_time;
 };
 
 extern int		qdevice_net_instance_init(struct qdevice_net_instance *instance,

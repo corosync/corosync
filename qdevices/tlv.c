@@ -1008,3 +1008,16 @@ tlv_node_state_to_str(enum tlv_node_state state)
 
 	return ("Unhandled node state");
 }
+
+extern const char *
+tlv_tls_supported_to_str(enum tlv_tls_supported tls_supported)
+{
+
+	switch (tls_supported) {
+	case TLV_TLS_UNSUPPORTED: return ("Unsupported"); break;
+	case TLV_TLS_SUPPORTED: return ("Supported"); break;
+	case TLV_TLS_REQUIRED: return ("Required"); break;
+	}
+
+	return ("Unhandled tls supported state");
+}

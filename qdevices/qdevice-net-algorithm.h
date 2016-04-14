@@ -121,10 +121,13 @@ struct qdevice_net_algorithm {
 	void (*destroy)(struct qdevice_net_instance *instance);
 };
 
-extern int		qdevice_net_algorithm_register(
+extern int		 qdevice_net_algorithm_register(
 	enum tlv_decision_algorithm_type algorithm_number, struct qdevice_net_algorithm *algorithm);
 
-extern int		qdevice_net_algorithm_register_all(void);
+extern int		 qdevice_net_algorithm_register_all(void);
+
+extern const char 	*qdevice_net_algorithm_type_to_str(
+    enum tlv_decision_algorithm_type algo_type);
 
 #ifdef __cplusplus
 }

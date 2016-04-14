@@ -431,6 +431,7 @@ qdevice_net_msg_received_init_reply(struct qdevice_net_instance *instance,
 	}
 
 	instance->state = QDEVICE_NET_INSTANCE_STATE_WAITING_VOTEQUORUM_CMAP_EVENTS;
+	instance->connected_since_time = time(NULL);
 
 	return (0);
 }
@@ -529,6 +530,7 @@ qdevice_net_msg_received_echo_reply(struct qdevice_net_instance *instance,
 	}
 
 	instance->echo_reply_received_msg_seq_num = msg->seq_number;
+	instance->last_echo_reply_received_time = time(NULL);
 
 	return (0);
 }

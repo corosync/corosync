@@ -325,6 +325,8 @@ extern const char *		 tlv_vote_to_str(enum tlv_vote vote);
 
 extern const char *		 tlv_node_state_to_str(enum tlv_node_state state);
 
+extern const char *		 tlv_tls_supported_to_str(enum tlv_tls_supported tls_supported);
+
 #ifdef __cplusplus
 }
 #endif

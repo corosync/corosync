@@ -62,6 +62,9 @@ extern int	qdevice_model_votequorum_node_list_notify(struct qdevice_instance *in
 extern int 	qdevice_model_votequorum_expected_votes_notify(struct qdevice_instance *instance,
     uint32_t expected_votes);
 
+extern int	qdevice_model_ipc_cmd_status(struct qdevice_instance *instance,
+    struct dynar *outbuf, int verbose);
+
 struct qdevice_model {
 	const char *name;
 	int (*init)(struct qdevice_instance *instance);
@@ -77,6 +80,7 @@ struct qdevice_model {
 	    uint32_t node_list[]);
 	int (*votequorum_expected_votes_notify)(struct qdevice_instance *instance,
 	    uint32_t expected_votes);
+	int (*ipc_cmd_status)(struct qdevice_instance *instance, struct dynar *outbuf, int verbose);
 };
 
 extern int		 qdevice_model_register(
@@ -87,7 +91,7 @@ extern void qdevice_model_register_all(void);
 extern int		 qdevice_model_str_to_type(const char *str,
     enum qdevice_model_type *model_type);
 
-extern const char 	*qdevice_mode_type_to_str(enum qdevice_model_type model_type);
+extern const char 	*qdevice_model_type_to_str(enum qdevice_model_type model_type);
 
 #ifdef __cplusplus
 }

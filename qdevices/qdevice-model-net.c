@@ -39,6 +39,7 @@
 #include "qdevice-log.h"
 #include "qdevice-net-cast-vote-timer.h"
 #include "qdevice-net-instance.h"
+#include "qdevice-net-ipc-cmd.h"
 #include "qdevice-net-algorithm.h"
 #include "qdevice-net-poll.h"
 #include "qdevice-net-send.h"
@@ -473,6 +474,21 @@ qdevice_model_net_votequorum_expected_votes_notify(struct qdevice_instance *inst
 	return (0);
 }
 
+int
+qdevice_model_net_ipc_cmd_status(struct qdevice_instance *instance,
+    struct dynar *outbuf, int verbose)
+{
+	struct qdevice_net_instance *net_instance;
+
+	net_instance = instance->model_data;
+
+	if (!qdevice_net_ipc_cmd_status(net_instance, outbuf, verbose)) {
+		return (-1);
+	}
+
+	return (0);
+}
+
 static struct qdevice_model qdevice_model_net = {
 	.name					= "net",
 	.init					= qdevice_model_net_init,
@@ -483,6 +499,7 @@ static struct qdevice_model qdevice_model_net = {
 	.votequorum_quorum_notify		= qdevice_model_net_votequorum_quorum_notify,
 	.votequorum_node_list_notify		= qdevice_model_net_votequorum_node_list_notify,
 	.votequorum_expected_votes_notify	= qdevice_model_net_votequorum_expected_votes_notify,
+	.ipc_cmd_status				= qdevice_model_net_ipc_cmd_status,
 };
 
 int
