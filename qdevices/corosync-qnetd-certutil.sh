@@ -38,7 +38,7 @@ BASE_DIR="@COROSYSCONFDIR@/qdevice/net"
 DB_DIR_QNETD="$BASE_DIR/qnetd/nssdb"
 DB_DIR_NODE="$BASE_DIR/node/nssdb"
 # Validity of certificate (months)
-CRT_VALIDITY=120
+CRT_VALIDITY=1200
 CA_NICKNAME="QNet CA"
 SERVER_NICKNAME="QNetd Cert"
 CLUSTER_NICKNAME="Cluster Cert"
