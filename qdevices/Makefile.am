@@ -77,8 +77,8 @@ corosync-qnetd-certutil: corosync-qnetd-certutil.sh
 	    -e 's#@''COROSYSCONFDIR@#${COROSYSCONFDIR}#g' \
 	    $< > $@
 
-TESTS				= qnetd-cluster-list.test dynar.test
-check_PROGRAMS			= qnetd-cluster-list.test dynar.test
+TESTS				= qnetd-cluster-list.test dynar.test dynar-simple-lex.test
+check_PROGRAMS			= qnetd-cluster-list.test dynar.test dynar-simple-lex.test
 
 qnetd_cluster_list_test_SOURCES	= qnetd-cluster-list.c test-qnetd-cluster-list.c \
 				    qnetd-client-list.c qnetd-client.c dynar.c node-list.c \
@@ -87,5 +87,6 @@ qnetd_cluster_list_test_CFLAGS  = $(nss_CFLAGS)
 qnetd_cluster_list_test_LDADD	= $(nss_LIBS)
 
 dynar_test_SOURCES		= test-dynar.c dynar.c dynar-str.c
+dynar_simple_lex_test_SOURCES	= test-dynar-simple-lex.c dynar.c dynar-str.c dynar-simple-lex.c
 
 endif

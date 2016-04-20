@@ -50,10 +50,14 @@ add_client(const char *cluster_name, size_t cluster_name_len,
 	PRNetAddr addr;
 	struct qnetd_client *tmp_client;
 	struct qnetd_cluster *tmp_cluster;
+	char *client_addr_str;
 
 	memset(&addr, 0, sizeof(addr));
 
-	tmp_client = qnetd_client_list_add(&clients, NULL, &addr, 1000, 2, 1000, NULL);
+	client_addr_str = strdup("addrstr");
+	assert(client_addr_str != NULL);
+
+	tmp_client = qnetd_client_list_add(&clients, NULL, &addr, client_addr_str, 1000, 2, 1000, NULL);
 	assert(tmp_client != NULL);
 	tmp_client->cluster_name = malloc(cluster_name_len + 1);
 	assert(tmp_client->cluster_name != NULL);

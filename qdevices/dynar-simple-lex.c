@@ -46,11 +46,13 @@ dynar_simple_lex_is_space(char ch)
 }
 
 void
-dynar_simple_lex_init(struct dynar_simple_lex *lex, struct dynar *input)
+dynar_simple_lex_init(struct dynar_simple_lex *lex, struct dynar *input,
+    enum dynar_simple_lex_type lex_type)
 {
 
 	memset(lex, 0, sizeof(*lex));
 	lex->input = input;
+	lex->lex_type = lex_type;
 	dynar_init(&lex->token, dynar_max_size(input));
 }
 
@@ -68,18 +70,125 @@ dynar_simple_lex_token_next(struct dynar_simple_lex *lex)
 	size_t pos;
 	size_t size;
 	char *str;
-	char ch;
+	char ch, ch2;
+	int add_char;
+	int state;
 
 	dynar_clean(&lex->token);
 
 	size = dynar_size(lex->input);
 	str = dynar_data(lex->input);
 
-	for (pos = lex->pos; pos < size && dynar_simple_lex_is_space(str[pos]) && str[pos] != '\n'; pos++) ;
+	state = 1;
+	pos = lex->pos;
 
-	for (; pos < size && !dynar_simple_lex_is_space(str[pos]); pos++) {
-		if (dynar_cat(&lex->token, &str[pos], sizeof(*str)) != 0) {
-			return (NULL);
+	while (state != 0) {
+		if (pos < size) {
+			ch = str[pos];
+		} else {
+			ch = '\0';
+		}
+
+		add_char = 0;
+
+		switch (state) {
+		case 1:
+			/*
+			 * Skip spaces. Newline is special and means end of processing
+			 */
+			if (pos >= size || ch == '\n' || ch == '\r') {
+				state = 0;
+			} else if (dynar_simple_lex_is_space(ch)) {
+				pos++;
+			} else {
+				state = 2;
+			}
+			break;
+		case 2:
+			/*
+			 * Read word
+			 */
+			if (pos >= size) {
+				state = 0;
+			} else if ((lex->lex_type == DYNAR_SIMPLE_LEX_TYPE_BACKSLASH ||
+			    lex->lex_type == DYNAR_SIMPLE_LEX_TYPE_QUOTE) && ch == '\\') {
+				pos++;
+				state = 3;
+			} else if (lex->lex_type == DYNAR_SIMPLE_LEX_TYPE_QUOTE &&
+			    ch == '"') {
+				pos++;
+				state = 4;
+			} else if (dynar_simple_lex_is_space(ch)) {
+				state = 0;
+			} else {
+				pos++;
+				add_char = 1;
+			}
+			break;
+		case 3:
+			/*
+			 * Process backslash
+			 */
+			if (pos >= size || ch == '\n' || ch == '\r') {
+				/*
+				 * End of string. Do not include backslash (it's just ignored)
+				 */
+				state = 0;
+			} else {
+				add_char = 1;
+				state = 2;
+				pos++;
+			}
+			break;
+		case 4:
+			/*
+			 * Quote word
+			 */
+			if (pos >= size) {
+				state = 0;
+			} else if (ch == '\\') {
+				state = 5;
+				pos++;
+			} else if (ch == '"') {
+				state = 2;
+				pos++;
+			} else if (ch == '\n' || ch == '\r') {
+				state = 0;
+			} else {
+				pos++;
+				add_char = 1;
+			}
+			break;
+		case 5:
+			/*
+			 * Quote word backslash
+			 */
+			if (pos >= size || ch == '\n' || ch == '\r') {
+				/*
+				 * End of string. Do not include backslash (it's just ignored)
+				 */
+				state = 0;
+			} else if (ch == '\\' || ch == '"') {
+				add_char = 1;
+				state = 4;
+				pos++;
+			} else {
+				ch2 = '\\';
+				if (dynar_cat(&lex->token, &ch2, sizeof(ch2)) != 0) {
+					return (NULL);
+				}
+
+				add_char = 1;
+				state = 4;
+				pos++;
+			}
+			break;
+		}
+
+		if (add_char) {
+			if (dynar_cat(&lex->token, &ch, sizeof(ch)) != 0) {
+				return (NULL);
+			}
 		}
 	}
 

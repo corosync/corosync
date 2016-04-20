@@ -41,13 +41,21 @@
 extern "C" {
 #endif
 
+enum dynar_simple_lex_type {
+	DYNAR_SIMPLE_LEX_TYPE_PLAIN,
+	DYNAR_SIMPLE_LEX_TYPE_BACKSLASH,
+	DYNAR_SIMPLE_LEX_TYPE_QUOTE,
+};
+
 struct dynar_simple_lex {
 	struct dynar token;
 	struct dynar *input;
+	enum dynar_simple_lex_type lex_type;
 	size_t pos;
 };
 
-extern void	 	 dynar_simple_lex_init(struct dynar_simple_lex *lex, struct dynar *input);
+extern void	 	 dynar_simple_lex_init(struct dynar_simple_lex *lex, struct dynar *input,
+    enum dynar_simple_lex_type lex_type);
 
 extern void	 	 dynar_simple_lex_destroy(struct dynar_simple_lex *lex);
 

@@ -191,7 +191,7 @@ qdevice_ipc_parse_line(struct qdevice_instance *instance, struct unix_socket_cli
 
 	ipc_user_data = (struct qdevice_ipc_user_data *)client->user_data;
 
-	dynar_simple_lex_init(&lex, &client->receive_buffer);
+	dynar_simple_lex_init(&lex, &client->receive_buffer, DYNAR_SIMPLE_LEX_TYPE_PLAIN);
 	token = dynar_simple_lex_token_next(&lex);
 
 	verbose = 0;
