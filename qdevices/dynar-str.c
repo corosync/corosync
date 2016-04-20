@@ -126,3 +126,40 @@ dynar_str_catf(struct dynar *dest, const char *format, ...)
 
 	return (res);
 }
+
+int
+dynar_str_quote_cat(struct dynar *dest, const char *str)
+{
+	size_t zi;
+
+	if (dynar_str_cat(dest, "\"") != 0) {
+		return (-1);
+	}
+
+	for (zi = 0; zi < strlen(str); zi++) {
+		if (str[zi] == '"' || str[zi] == '\\') {
+			if (dynar_str_cat(dest, "\\") != 0) {
+				return (-1);
+			}
+		}
+
+		if (dynar_cat(dest, &str[zi], sizeof(str[zi])) != 0) {
+			return (-1);
+		}
+	}
+
+	if (dynar_str_cat(dest, "\"") != 0) {
+		return (-1);
+	}
+
+	return (0);
+}
+
+int
+dynar_str_quote_cpy(struct dynar *dest, const char *str)
+{
+
+	dynar_clean(dest);
+
+	return (dynar_str_quote_cat(dest, str));
+}

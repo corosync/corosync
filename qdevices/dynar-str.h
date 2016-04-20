@@ -53,6 +53,10 @@ extern int		dynar_str_vcatf(struct dynar *dest, const char *format, va_list ap)
 
 extern int		dynar_str_prepend(struct dynar *dest, const char *str);
 
+extern int		dynar_str_quote_cat(struct dynar *dest, const char *str);
+
+extern int		dynar_str_quote_cpy(struct dynar *dest, const char *str);
+
 #ifdef __cplusplus
 }
 #endif
