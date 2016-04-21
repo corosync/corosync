@@ -90,7 +90,6 @@ enum main_cp_cb_data_state {
 typedef int (*parser_cb_f)(const char *path,
 			char *key,
 			char *value,
-			int depth,
 			enum main_cp_cb_data_state *state,
 			enum parser_cb_type type,
 			const char **error_string,
@@ -289,7 +288,7 @@ static int parse_section(FILE *fp,
 	char new_keyname[ICMAP_KEYNAME_MAXLEN];
 
 	if (strcmp(path, "") == 0) {
-		parser_cb("", NULL, NULL, depth, &state, PARSER_CB_START, error_string, config_map, user_data);
+		parser_cb("", NULL, NULL, &state, PARSER_CB_START, error_string, config_map, user_data);
 	}
 
 	while (fgets (line, sizeof (line), fp)) {
@@ -346,7 +345,7 @@ static int parse_section(FILE *fp,
 
 			/* Only use the new state for items further down the stack */
 			newstate = state;
-			if (!parser_cb(new_keyname, NULL, NULL, depth, &newstate, PARSER_CB_SECTION_START, error_string, config_map, user_data)) {
+			if (!parser_cb(new_keyname, NULL, NULL, &newstate, PARSER_CB_SECTION_START, error_string, config_map, user_data)) {
 				return -1;
 			}
 
@@ -375,7 +374,7 @@ static int parse_section(FILE *fp,
 			}
 			strcat(new_keyname, key);
 
-			if (!parser_cb(new_keyname, key, value, depth, &state, PARSER_CB_ITEM, error_string, config_map, user_data)) {
+			if (!parser_cb(new_keyname, key, value, &state, PARSER_CB_ITEM, error_string, config_map, user_data)) {
 				return -1;
 			}
 
@@ -389,7 +388,7 @@ static int parse_section(FILE *fp,
 				return -1;
 			}
 
-			if (!parser_cb(path, NULL, NULL, depth, &state, PARSER_CB_SECTION_END, error_string, config_map, user_data)) {
+			if (!parser_cb(path, NULL, NULL, &state, PARSER_CB_SECTION_END, error_string, config_map, user_data)) {
 				return -1;
 			}
 
@@ -403,7 +402,7 @@ static int parse_section(FILE *fp,
 	}
 
 	if (strcmp(path, "") == 0) {
-		parser_cb("", NULL, NULL, depth, &state, PARSER_CB_END, error_string, config_map, user_data);
+		parser_cb("", NULL, NULL, &state, PARSER_CB_END, error_string, config_map, user_data);
 	}
 
 	return 0;
@@ -490,7 +489,6 @@ static int str_to_ull(const char *str, unsigned long long int *res)
 static int main_config_parser_cb(const char *path,
 			char *key,
 			char *value,
-			int depth,
 			enum main_cp_cb_data_state *state,
 			enum parser_cb_type type,
 			const char **error_string,
@@ -915,11 +913,6 @@ static int main_config_parser_cb(const char *path,
 		break;
 	case PARSER_CB_SECTION_END:
 		switch (*state) {
-		case MAIN_CP_CB_DATA_STATE_NORMAL:
-			break;
-		case MAIN_CP_CB_DATA_STATE_PLOAD:
-			*state = MAIN_CP_CB_DATA_STATE_NORMAL;
-			break;
 		case MAIN_CP_CB_DATA_STATE_INTERFACE:
 			/*
 			 * Create new interface section
@@ -980,13 +973,6 @@ static int main_config_parser_cb(const char *path,
 				ii++;
 			}
 
-			*state = MAIN_CP_CB_DATA_STATE_TOTEM;
-			break;
-		case MAIN_CP_CB_DATA_STATE_TOTEM:
-			*state = MAIN_CP_CB_DATA_STATE_NORMAL;
-			break;
-		case MAIN_CP_CB_DATA_STATE_QB:
-			*state = MAIN_CP_CB_DATA_STATE_NORMAL;
 			break;
 		case MAIN_CP_CB_DATA_STATE_LOGGER_SUBSYS:
 			if (data->subsys == NULL) {
@@ -1016,7 +1002,6 @@ static int main_config_parser_cb(const char *path,
 
 			free(data->subsys);
 
-			*state = MAIN_CP_CB_DATA_STATE_NORMAL;
 			break;
 		case MAIN_CP_CB_DATA_STATE_LOGGING_DAEMON:
 			if (data->logging_daemon_name == NULL) {
@@ -1086,22 +1071,6 @@ static int main_config_parser_cb(const char *path,
 			free(data->subsys);
 			free(data->logging_daemon_name);
 
-			*state = MAIN_CP_CB_DATA_STATE_NORMAL;
-			break;
-		case MAIN_CP_CB_DATA_STATE_UIDGID:
-			*state = MAIN_CP_CB_DATA_STATE_UIDGID;
-			break;
-		case MAIN_CP_CB_DATA_STATE_MEMBER:
-			*state = MAIN_CP_CB_DATA_STATE_INTERFACE;
-			break;
-		case MAIN_CP_CB_DATA_STATE_QUORUM:
-			*state = MAIN_CP_CB_DATA_STATE_NORMAL;
-			break;
-		case MAIN_CP_CB_DATA_STATE_QDEVICE:
-			*state = MAIN_CP_CB_DATA_STATE_QUORUM;
-			break;
-		case MAIN_CP_CB_DATA_STATE_NODELIST:
-			*state = MAIN_CP_CB_DATA_STATE_NORMAL;
 			break;
 		case MAIN_CP_CB_DATA_STATE_NODELIST_NODE:
 			if (!data->ring0_addr_added) {
@@ -1110,7 +1079,16 @@ static int main_config_parser_cb(const char *path,
 				return (0);
 			}
 			data->node_number++;
-			*state = MAIN_CP_CB_DATA_STATE_NODELIST;
+			break;
+		case MAIN_CP_CB_DATA_STATE_NORMAL:
+		case MAIN_CP_CB_DATA_STATE_PLOAD:
+		case MAIN_CP_CB_DATA_STATE_UIDGID:
+		case MAIN_CP_CB_DATA_STATE_MEMBER:
+		case MAIN_CP_CB_DATA_STATE_QUORUM:
+		case MAIN_CP_CB_DATA_STATE_QDEVICE:
+		case MAIN_CP_CB_DATA_STATE_NODELIST:
+		case MAIN_CP_CB_DATA_STATE_TOTEM:
+		case MAIN_CP_CB_DATA_STATE_QB:
 			break;
 		}
 		break;
@@ -1137,7 +1115,6 @@ atoi_error:
 static int uidgid_config_parser_cb(const char *path,
 			char *key,
 			char *value,
-			int depth,
 			enum main_cp_cb_data_state *state,
 			enum parser_cb_type type,
 			const char **error_string,
