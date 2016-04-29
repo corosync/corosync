@@ -40,47 +40,29 @@
 #include <qb/qbdefs.h>
 #include <qb/qbutil.h>
 
-int corosync_timer_add_absolute (
-		unsigned long long nanosec_from_epoch,
-		void *data,
-		void (*timer_fn) (void *data),
-		corosync_timer_handle_t *handle)
+int corosync_timer_add_absolute(unsigned long long nanosec_from_epoch, void *data, void (*timer_fn)(void *data),
+								corosync_timer_handle_t *handle)
 {
 	uint64_t expire_time = nanosec_from_epoch - qb_util_nano_current_get();
-	return qb_loop_timer_add(cs_poll_handle_get(),
-				QB_LOOP_MED,
-				 expire_time,
-				 data,
-				 timer_fn,
-				 handle);
+	return qb_loop_timer_add(cs_poll_handle_get(), QB_LOOP_MED, expire_time, data, timer_fn, handle);
 }
 
-int corosync_timer_add_duration (
-	unsigned long long nanosec_duration,
-	void *data,
-	void (*timer_fn) (void *data),
-	corosync_timer_handle_t *handle)
+int corosync_timer_add_duration(unsigned long long nanosec_duration, void *data, void (*timer_fn)(void *data),
+								corosync_timer_handle_t *handle)
 {
-	return qb_loop_timer_add(cs_poll_handle_get(),
-				QB_LOOP_MED,
-				 nanosec_duration,
-				 data,
-				 timer_fn,
-				 handle);
+	return qb_loop_timer_add(cs_poll_handle_get(), QB_LOOP_MED, nanosec_duration, data, timer_fn, handle);
 }
 
-void corosync_timer_delete (
-	corosync_timer_handle_t th)
+void corosync_timer_delete(corosync_timer_handle_t th)
 {
 	qb_loop_timer_del(cs_poll_handle_get(), th);
 }
 
-unsigned long long corosync_timer_expire_time_get (
-	corosync_timer_handle_t th)
+unsigned long long corosync_timer_expire_time_get(corosync_timer_handle_t th)
 {
 	uint64_t expire;
 
-	if (th == 0) {
+	if(th == 0) {
 		return (0);
 	}
 
@@ -89,8 +71,7 @@ unsigned long long corosync_timer_expire_time_get (
 	return (expire);
 }
 
-unsigned long long cs_timer_time_get (void)
+unsigned long long cs_timer_time_get(void)
 {
 	return qb_util_nano_from_epoch_get();
 }
-

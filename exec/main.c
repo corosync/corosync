@@ -122,17 +122,14 @@
 #include "schedwrk.h"
 
 #ifdef HAVE_SMALL_MEMORY_FOOTPRINT
-#define IPC_LOGSYS_SIZE			1024*64
+#define IPC_LOGSYS_SIZE 1024 * 64
 #else
-#define IPC_LOGSYS_SIZE			8192*128
+#define IPC_LOGSYS_SIZE 8192 * 128
 #endif
 
-LOGSYS_DECLARE_SYSTEM ("corosync",
-	LOGSYS_MODE_OUTPUT_STDERR | LOGSYS_MODE_OUTPUT_SYSLOG,
-	LOG_DAEMON,
-	LOG_INFO);
+LOGSYS_DECLARE_SYSTEM("corosync", LOGSYS_MODE_OUTPUT_STDERR | LOGSYS_MODE_OUTPUT_SYSLOG, LOG_DAEMON, LOG_INFO);
 
-LOGSYS_DECLARE_SUBSYS ("MAIN");
+LOGSYS_DECLARE_SUBSYS("MAIN");
 
 #define SERVER_BACKLOG 5
 
@@ -152,45 +149,39 @@ struct sched_param global_sched_param;
 
 static corosync_timer_handle_t corosync_stats_timer_handle;
 
-static const char *corosync_lock_file = LOCALSTATEDIR"/run/corosync.pid";
+static const char *corosync_lock_file = LOCALSTATEDIR "/run/corosync.pid";
 
 static int ip_version = AF_INET;
 
-qb_loop_t *cs_poll_handle_get (void)
+qb_loop_t *cs_poll_handle_get(void)
 {
 	return (corosync_poll_handle);
 }
 
-int cs_poll_dispatch_add (qb_loop_t * handle,
-		int fd,
-		int events,
-		void *data,
+int cs_poll_dispatch_add(qb_loop_t *handle, int fd, int events, void *data,
 
-		int (*dispatch_fn) (int fd,
-			int revents,
-			void *data))
+						 int (*dispatch_fn)(int fd, int revents, void *data))
 {
-	return qb_loop_poll_add(handle, QB_LOOP_MED, fd, events, data,
-				dispatch_fn);
+	return qb_loop_poll_add(handle, QB_LOOP_MED, fd, events, data, dispatch_fn);
 }
 
-int cs_poll_dispatch_delete(qb_loop_t * handle, int fd)
+int cs_poll_dispatch_delete(qb_loop_t *handle, int fd)
 {
 	return qb_loop_poll_del(handle, fd);
 }
 
-void corosync_state_dump (void)
+void corosync_state_dump(void)
 {
 	int i;
 
-	for (i = 0; i < SERVICES_COUNT_MAX; i++) {
-		if (corosync_service[i] && corosync_service[i]->exec_dump_fn) {
-			corosync_service[i]->exec_dump_fn ();
+	for(i = 0; i < SERVICES_COUNT_MAX; i++) {
+		if(corosync_service[i] && corosync_service[i]->exec_dump_fn) {
+			corosync_service[i]->exec_dump_fn();
 		}
 	}
 }
 
-static void corosync_blackbox_write_to_file (void)
+static void corosync_blackbox_write_to_file(void)
 {
 	char fname[PATH_MAX];
 	char fdata_fname[PATH_MAX];
@@ -203,59 +194,55 @@ static void corosync_blackbox_write_to_file (void)
 	localtime_r(&cur_time_t, &cur_time_tm);
 
 	strftime(time_str, PATH_MAX, "%Y-%m-%dT%H:%M:%S", &cur_time_tm);
-	snprintf(fname, PATH_MAX, "%s/fdata-%s-%lld",
-	    get_run_dir(),
-	    time_str,
-	    (long long int)getpid());
+	snprintf(fname, PATH_MAX, "%s/fdata-%s-%lld", get_run_dir(), time_str, (long long int)getpid());
 
-	if ((res = qb_log_blackbox_write_to_file(fname)) < 0) {
+	if((res = qb_log_blackbox_write_to_file(fname)) < 0) {
 		LOGSYS_PERROR(-res, LOGSYS_LEVEL_ERROR, "Can't store blackbox file");
 	}
 	snprintf(fdata_fname, sizeof(fdata_fname), "%s/fdata", get_run_dir());
 	unlink(fdata_fname);
-	if (symlink(fname, fdata_fname) == -1) {
-		log_printf(LOGSYS_LEVEL_ERROR, "Can't create symlink to '%s' for corosync blackbox file '%s'",
-		    fname, fdata_fname);
+	if(symlink(fname, fdata_fname) == -1) {
+		log_printf(LOGSYS_LEVEL_ERROR, "Can't create symlink to '%s' for corosync blackbox file '%s'", fname, fdata_fname);
 	}
 }
 
-static void unlink_all_completed (void)
+static void unlink_all_completed(void)
 {
-	api->timer_delete (corosync_stats_timer_handle);
-	qb_loop_stop (corosync_poll_handle);
+	api->timer_delete(corosync_stats_timer_handle);
+	qb_loop_stop(corosync_poll_handle);
 	icmap_fini();
 }
 
-void corosync_shutdown_request (void)
+void corosync_shutdown_request(void)
 {
-	corosync_service_unlink_all (api, unlink_all_completed);
+	corosync_service_unlink_all(api, unlink_all_completed);
 }
 
-static int32_t sig_diag_handler (int num, void *data)
+static int32_t sig_diag_handler(int num, void *data)
 {
-	corosync_state_dump ();
+	corosync_state_dump();
 	return 0;
 }
 
-static int32_t sig_exit_handler (int num, void *data)
+static int32_t sig_exit_handler(int num, void *data)
 {
 	log_printf(LOGSYS_LEVEL_NOTICE, "Node was shut down by a signal");
-	corosync_service_unlink_all (api, unlink_all_completed);
+	corosync_service_unlink_all(api, unlink_all_completed);
 	return 0;
 }
 
-static void sigsegv_handler (int num)
+static void sigsegv_handler(int num)
 {
-	(void)signal (SIGSEGV, SIG_DFL);
-	corosync_blackbox_write_to_file ();
+	(void)signal(SIGSEGV, SIG_DFL);
+	corosync_blackbox_write_to_file();
 	qb_log_fini();
-	raise (SIGSEGV);
+	raise(SIGSEGV);
 }
 
 /*
  * QB wrapper for real signal handler
  */
-static int32_t sig_segv_handler (int num, void *data)
+static int32_t sig_segv_handler(int num, void *data)
 {
 
 	sigsegv_handler(num);
@@ -263,18 +250,18 @@ static int32_t sig_segv_handler (int num, void *data)
 	return 0;
 }
 
-static void sigabrt_handler (int num)
+static void sigabrt_handler(int num)
 {
-	(void)signal (SIGABRT, SIG_DFL);
-	corosync_blackbox_write_to_file ();
+	(void)signal(SIGABRT, SIG_DFL);
+	corosync_blackbox_write_to_file();
 	qb_log_fini();
-	raise (SIGABRT);
+	raise(SIGABRT);
 }
 
 /*
  * QB wrapper for real signal handler
  */
-static int32_t sig_abrt_handler (int num, void *data)
+static int32_t sig_abrt_handler(int num, void *data)
 {
 
 	sigabrt_handler(num);
@@ -286,23 +273,19 @@ static int32_t sig_abrt_handler (int num, void *data)
 
 static void *corosync_group_handle;
 
-static struct totempg_group corosync_group = {
-	.group		= "a",
-	.group_len	= 1
-};
+static struct totempg_group corosync_group = {.group = "a", .group_len = 1 };
 
-static void serialize_lock (void)
+static void serialize_lock(void)
 {
 }
 
-static void serialize_unlock (void)
+static void serialize_unlock(void)
 {
 }
 
-static void corosync_sync_completed (void)
+static void corosync_sync_completed(void)
 {
-	log_printf (LOGSYS_LEVEL_NOTICE,
-		"Completed service synchronization, ready to provide service.");
+	log_printf(LOGSYS_LEVEL_NOTICE, "Completed service synchronization, ready to provide service.");
 	sync_in_process = 0;
 
 	cs_ipcs_sync_state_changed(sync_in_process);
@@ -313,15 +296,13 @@ static void corosync_sync_completed (void)
 	totempg_trans_ack();
 }
 
-static int corosync_sync_callbacks_retrieve (
-	int service_id,
-	struct sync_callbacks *callbacks)
+static int corosync_sync_callbacks_retrieve(int service_id, struct sync_callbacks *callbacks)
 {
-	if (corosync_service[service_id] == NULL) {
+	if(corosync_service[service_id] == NULL) {
 		return (-1);
 	}
 
-	if (callbacks == NULL) {
+	if(callbacks == NULL) {
 		return (0);
 	}
 
@@ -336,96 +317,85 @@ static int corosync_sync_callbacks_retrieve (
 
 static struct memb_ring_id corosync_ring_id;
 
-static void member_object_joined (unsigned int nodeid)
+static void member_object_joined(unsigned int nodeid)
 {
 	char member_ip[ICMAP_KEYNAME_MAXLEN];
 	char member_join_count[ICMAP_KEYNAME_MAXLEN];
 	char member_status[ICMAP_KEYNAME_MAXLEN];
 
-	snprintf(member_ip, ICMAP_KEYNAME_MAXLEN,
-		"runtime.totem.pg.mrp.srp.members.%u.ip", nodeid);
-	snprintf(member_join_count, ICMAP_KEYNAME_MAXLEN,
-		"runtime.totem.pg.mrp.srp.members.%u.join_count", nodeid);
-	snprintf(member_status, ICMAP_KEYNAME_MAXLEN,
-		"runtime.totem.pg.mrp.srp.members.%u.status", nodeid);
+	snprintf(member_ip, ICMAP_KEYNAME_MAXLEN, "runtime.totem.pg.mrp.srp.members.%u.ip", nodeid);
+	snprintf(member_join_count, ICMAP_KEYNAME_MAXLEN, "runtime.totem.pg.mrp.srp.members.%u.join_count", nodeid);
+	snprintf(member_status, ICMAP_KEYNAME_MAXLEN, "runtime.totem.pg.mrp.srp.members.%u.status", nodeid);
 
-	if (icmap_get(member_ip, NULL, NULL, NULL) == CS_OK) {
+	if(icmap_get(member_ip, NULL, NULL, NULL) == CS_OK) {
 		icmap_inc(member_join_count);
 		icmap_set_string(member_status, "joined");
 	} else {
-		icmap_set_string(member_ip, (char*)api->totem_ifaces_print (nodeid));
+		icmap_set_string(member_ip, (char *)api->totem_ifaces_print(nodeid));
 		icmap_set_uint32(member_join_count, 1);
 		icmap_set_string(member_status, "joined");
 	}
 
-	log_printf (LOGSYS_LEVEL_DEBUG,
-		"Member joined: %s", api->totem_ifaces_print (nodeid));
+	log_printf(LOGSYS_LEVEL_DEBUG, "Member joined: %s", api->totem_ifaces_print(nodeid));
 }
 
-static void member_object_left (unsigned int nodeid)
+static void member_object_left(unsigned int nodeid)
 {
 	char member_status[ICMAP_KEYNAME_MAXLEN];
 
-	snprintf(member_status, ICMAP_KEYNAME_MAXLEN,
-		"runtime.totem.pg.mrp.srp.members.%u.status", nodeid);
+	snprintf(member_status, ICMAP_KEYNAME_MAXLEN, "runtime.totem.pg.mrp.srp.members.%u.status", nodeid);
 	icmap_set_string(member_status, "left");
 
-	log_printf (LOGSYS_LEVEL_DEBUG,
-		"Member left: %s", api->totem_ifaces_print (nodeid));
+	log_printf(LOGSYS_LEVEL_DEBUG, "Member left: %s", api->totem_ifaces_print(nodeid));
 }
 
-static void confchg_fn (
-	enum totem_configuration_type configuration_type,
-	const unsigned int *member_list, size_t member_list_entries,
-	const unsigned int *left_list, size_t left_list_entries,
-	const unsigned int *joined_list, size_t joined_list_entries,
-	const struct memb_ring_id *ring_id)
+static void confchg_fn(enum totem_configuration_type configuration_type, const unsigned int *member_list,
+					   size_t member_list_entries, const unsigned int *left_list, size_t left_list_entries,
+					   const unsigned int *joined_list, size_t joined_list_entries, const struct memb_ring_id *ring_id)
 {
 	int i;
 	int abort_activate = 0;
 
-	if (sync_in_process == 1) {
+	if(sync_in_process == 1) {
 		abort_activate = 1;
 	}
 	sync_in_process = 1;
 	cs_ipcs_sync_state_changed(sync_in_process);
-	memcpy (&corosync_ring_id, ring_id, sizeof (struct memb_ring_id));
+	memcpy(&corosync_ring_id, ring_id, sizeof(struct memb_ring_id));
 
-	for (i = 0; i < left_list_entries; i++) {
-		member_object_left (left_list[i]);
+	for(i = 0; i < left_list_entries; i++) {
+		member_object_left(left_list[i]);
 	}
-	for (i = 0; i < joined_list_entries; i++) {
-		member_object_joined (joined_list[i]);
+	for(i = 0; i < joined_list_entries; i++) {
+		member_object_joined(joined_list[i]);
 	}
 	/*
 	 * Call configuration change for all services
 	 */
-	for (i = 0; i < service_count; i++) {
-		if (corosync_service[i] && corosync_service[i]->confchg_fn) {
-			corosync_service[i]->confchg_fn (configuration_type,
-				member_list, member_list_entries,
-				left_list, left_list_entries,
-				joined_list, joined_list_entries, ring_id);
+	for(i = 0; i < service_count; i++) {
+		if(corosync_service[i] && corosync_service[i]->confchg_fn) {
+			corosync_service[i]->confchg_fn(configuration_type, member_list, member_list_entries, left_list,
+											left_list_entries, joined_list, joined_list_entries, ring_id);
 		}
 	}
 
-	if (abort_activate) {
-		sync_abort ();
+	if(abort_activate) {
+		sync_abort();
 	}
-	if (configuration_type == TOTEM_CONFIGURATION_TRANSITIONAL) {
-		sync_save_transitional (member_list, member_list_entries, ring_id);
+	if(configuration_type == TOTEM_CONFIGURATION_TRANSITIONAL) {
+		sync_save_transitional(member_list, member_list_entries, ring_id);
 	}
-	if (configuration_type == TOTEM_CONFIGURATION_REGULAR) {
-		sync_start (member_list, member_list_entries, ring_id);
+	if(configuration_type == TOTEM_CONFIGURATION_REGULAR) {
+		sync_start(member_list, member_list_entries, ring_id);
 	}
 }
 
-static void priv_drop (void)
+static void priv_drop(void)
 {
 	return; /* TODO: we are still not dropping privs */
 }
 
-static void corosync_tty_detach (void)
+static void corosync_tty_detach(void)
 {
 	int devnull;
 
@@ -433,18 +403,18 @@ static void corosync_tty_detach (void)
 	 * Disconnect from TTY if this is not a debug run
 	 */
 
-	switch (fork ()) {
-		case -1:
-			corosync_exit_error (COROSYNC_DONE_FORK);
-			break;
-		case 0:
-			/*
-			 * child which is disconnected, run this process
-			 */
-			break;
-		default:
-			exit (0);
-			break;
+	switch(fork()) {
+	case -1:
+		corosync_exit_error(COROSYNC_DONE_FORK);
+		break;
+	case 0:
+		/*
+		 * child which is disconnected, run this process
+		 */
+		break;
+	default:
+		exit(0);
+		break;
 	}
 
 	/* Create new session */
@@ -454,19 +424,18 @@ static void corosync_tty_detach (void)
 	 * Map stdin/out/err to /dev/null.
 	 */
 	devnull = open("/dev/null", O_RDWR);
-	if (devnull == -1) {
-		corosync_exit_error (COROSYNC_DONE_STD_TO_NULL_REDIR);
+	if(devnull == -1) {
+		corosync_exit_error(COROSYNC_DONE_STD_TO_NULL_REDIR);
 	}
 
-	if (dup2(devnull, 0) < 0 || dup2(devnull, 1) < 0
-	    || dup2(devnull, 2) < 0) {
+	if(dup2(devnull, 0) < 0 || dup2(devnull, 1) < 0 || dup2(devnull, 2) < 0) {
 		close(devnull);
-		corosync_exit_error (COROSYNC_DONE_STD_TO_NULL_REDIR);
+		corosync_exit_error(COROSYNC_DONE_STD_TO_NULL_REDIR);
 	}
 	close(devnull);
 }
 
-static void corosync_mlockall (void)
+static void corosync_mlockall(void)
 {
 	int res;
 	struct rlimit rlimit;
@@ -478,19 +447,18 @@ static void corosync_mlockall (void)
 #define RLIMIT_MEMLOCK RLIMIT_VMEM
 #endif
 
-	setrlimit (RLIMIT_MEMLOCK, &rlimit);
+	setrlimit(RLIMIT_MEMLOCK, &rlimit);
 
-	res = mlockall (MCL_CURRENT | MCL_FUTURE);
-	if (res == -1) {
-		LOGSYS_PERROR (errno, LOGSYS_LEVEL_WARNING,
-			"Could not lock memory of service to avoid page faults");
+	res = mlockall(MCL_CURRENT | MCL_FUTURE);
+	if(res == -1) {
+		LOGSYS_PERROR(errno, LOGSYS_LEVEL_WARNING, "Could not lock memory of service to avoid page faults");
 	};
 }
 
 
-static void corosync_totem_stats_updater (void *data)
+static void corosync_totem_stats_updater(void *data)
 {
-	totempg_stats_t * stats;
+	totempg_stats_t *stats;
 	uint32_t total_mtt_rx_token;
 	uint32_t total_backlog_calc;
 	uint32_t total_token_holdtime;
@@ -526,25 +494,23 @@ static void corosync_totem_stats_updater (void *data)
 	icmap_set_uint64("runtime.totem.pg.mrp.srp.consensus_timeouts", stats->mrp->srp->consensus_timeouts);
 	icmap_set_uint64("runtime.totem.pg.mrp.srp.rx_msg_dropped", stats->mrp->srp->rx_msg_dropped);
 	icmap_set_uint32("runtime.totem.pg.mrp.srp.continuous_gather", stats->mrp->srp->continuous_gather);
-	icmap_set_uint32("runtime.totem.pg.mrp.srp.continuous_sendmsg_failures",
-	    stats->mrp->srp->continuous_sendmsg_failures);
+	icmap_set_uint32("runtime.totem.pg.mrp.srp.continuous_sendmsg_failures", stats->mrp->srp->continuous_sendmsg_failures);
 
 	icmap_set_uint8("runtime.totem.pg.mrp.srp.firewall_enabled_or_nic_failure",
-		stats->mrp->srp->continuous_gather > MAX_NO_CONT_GATHER ? 1 : 0);
+					stats->mrp->srp->continuous_gather > MAX_NO_CONT_GATHER ? 1 : 0);
 
-	if (stats->mrp->srp->continuous_gather > MAX_NO_CONT_GATHER ||
-	    stats->mrp->srp->continuous_sendmsg_failures > MAX_NO_CONT_SENDMSG_FAILURES) {
-		log_printf (LOGSYS_LEVEL_WARNING,
-			"Totem is unable to form a cluster because of an "
-			"operating system or network fault. The most common "
-			"cause of this message is that the local firewall is "
-			"configured improperly.");
+	if(stats->mrp->srp->continuous_gather > MAX_NO_CONT_GATHER
+	   || stats->mrp->srp->continuous_sendmsg_failures > MAX_NO_CONT_SENDMSG_FAILURES) {
+		log_printf(LOGSYS_LEVEL_WARNING, "Totem is unable to form a cluster because of an "
+										 "operating system or network fault. The most common "
+										 "cause of this message is that the local firewall is "
+										 "configured improperly.");
 		icmap_set_uint8("runtime.totem.pg.mrp.srp.firewall_enabled_or_nic_failure", 1);
 	} else {
 		icmap_set_uint8("runtime.totem.pg.mrp.srp.firewall_enabled_or_nic_failure", 0);
 	}
 
-	for (i = 0; i < stats->mrp->srp->rrp->interface_count; i++) {
+	for(i = 0; i < stats->mrp->srp->rrp->interface_count; i++) {
 		snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "runtime.totem.pg.mrp.rrp.%u.faulty", i);
 		icmap_set_uint8(key_name, stats->mrp->srp->rrp->faulty[i]);
 	}
@@ -553,16 +519,14 @@ static void corosync_totem_stats_updater (void *data)
 	total_backlog_calc = 0;
 	token_count = 0;
 	t = stats->mrp->srp->latest_token;
-	while (1) {
-		if (t == 0)
+	while(1) {
+		if(t == 0)
 			prev = TOTEM_TOKEN_STATS_MAX - 1;
 		else
 			prev = t - 1;
-		if (prev == stats->mrp->srp->earliest_token)
-			break;
+		if(prev == stats->mrp->srp->earliest_token) break;
 		/* if tx == 0, then dropped token (not ours) */
-		if (stats->mrp->srp->token[t].tx != 0 ||
-			(stats->mrp->srp->token[t].rx - stats->mrp->srp->token[prev].rx) > 0 ) {
+		if(stats->mrp->srp->token[t].tx != 0 || (stats->mrp->srp->token[t].rx - stats->mrp->srp->token[prev].rx) > 0) {
 			total_mtt_rx_token += (stats->mrp->srp->token[t].rx - stats->mrp->srp->token[prev].rx);
 			total_token_holdtime += (stats->mrp->srp->token[t].tx - stats->mrp->srp->token[t].rx);
 			total_backlog_calc += stats->mrp->srp->token[t].backlog_calc;
@@ -570,7 +534,7 @@ static void corosync_totem_stats_updater (void *data)
 		}
 		t = prev;
 	}
-	if (token_count) {
+	if(token_count) {
 		icmap_set_uint32("runtime.totem.pg.mrp.srp.mtt_rx_token", (total_mtt_rx_token / token_count));
 		icmap_set_uint32("runtime.totem.pg.mrp.srp.avg_token_workload", (total_token_holdtime / token_count));
 		icmap_set_uint32("runtime.totem.pg.mrp.srp.avg_backlog_calc", (total_backlog_calc / token_count));
@@ -578,28 +542,20 @@ static void corosync_totem_stats_updater (void *data)
 
 	cs_ipcs_stats_update();
 
-	api->timer_add_duration (1500 * MILLI_2_NANO_SECONDS, NULL,
-		corosync_totem_stats_updater,
-		&corosync_stats_timer_handle);
+	api->timer_add_duration(1500 * MILLI_2_NANO_SECONDS, NULL, corosync_totem_stats_updater, &corosync_stats_timer_handle);
 }
 
-static void corosync_totem_stats_init (void)
+static void corosync_totem_stats_init(void)
 {
 	icmap_set_uint32("runtime.totem.pg.mrp.srp.mtt_rx_token", 0);
 	icmap_set_uint32("runtime.totem.pg.mrp.srp.avg_token_workload", 0);
 	icmap_set_uint32("runtime.totem.pg.mrp.srp.avg_backlog_calc", 0);
 
 	/* start stats timer */
-	api->timer_add_duration (1500 * MILLI_2_NANO_SECONDS, NULL,
-		corosync_totem_stats_updater,
-		&corosync_stats_timer_handle);
+	api->timer_add_duration(1500 * MILLI_2_NANO_SECONDS, NULL, corosync_totem_stats_updater, &corosync_stats_timer_handle);
 }
 
-static void deliver_fn (
-	unsigned int nodeid,
-	const void *msg,
-	unsigned int msg_len,
-	int endian_conversion_required)
+static void deliver_fn(unsigned int nodeid, const void *msg, unsigned int msg_len, int endian_conversion_required)
 {
 	const struct qb_ipc_request_header *header;
 	int32_t service;
@@ -607,8 +563,8 @@ static void deliver_fn (
 	uint32_t id;
 
 	header = msg;
-	if (endian_conversion_required) {
-		id = swab32 (header->id);
+	if(endian_conversion_required) {
+		id = swab32(header->id);
 	} else {
 		id = header->id;
 	}
@@ -619,31 +575,26 @@ static void deliver_fn (
 	service = id >> 16;
 	fn_id = id & 0xffff;
 
-	if (!corosync_service[service]) {
+	if(!corosync_service[service]) {
 		return;
 	}
-	if (fn_id >= corosync_service[service]->exec_engine_count) {
-		log_printf(LOGSYS_LEVEL_WARNING, "discarded unknown message %d for service %d (max id %d)",
-			fn_id, service, corosync_service[service]->exec_engine_count);
+	if(fn_id >= corosync_service[service]->exec_engine_count) {
+		log_printf(LOGSYS_LEVEL_WARNING, "discarded unknown message %d for service %d (max id %d)", fn_id, service,
+				   corosync_service[service]->exec_engine_count);
 		return;
 	}
 
 	icmap_fast_inc(service_stats_rx[service][fn_id]);
 
-	if (endian_conversion_required) {
+	if(endian_conversion_required) {
 		assert(corosync_service[service]->exec_engine[fn_id].exec_endian_convert_fn != NULL);
-		corosync_service[service]->exec_engine[fn_id].exec_endian_convert_fn
-			((void *)msg);
+		corosync_service[service]->exec_engine[fn_id].exec_endian_convert_fn((void *)msg);
 	}
 
-	corosync_service[service]->exec_engine[fn_id].exec_handler_fn
-		(msg, nodeid);
+	corosync_service[service]->exec_engine[fn_id].exec_handler_fn(msg, nodeid);
 }
 
-int main_mcast (
-        const struct iovec *iovec,
-        unsigned int iov_len,
-        unsigned int guarantee)
+int main_mcast(const struct iovec *iovec, unsigned int iov_len, unsigned int guarantee)
 {
 	const struct qb_ipc_request_header *req = iovec->iov_base;
 	int32_t service;
@@ -652,91 +603,78 @@ int main_mcast (
 	service = req->id >> 16;
 	fn_id = req->id & 0xffff;
 
-	if (corosync_service[service]) {
+	if(corosync_service[service]) {
 		icmap_fast_inc(service_stats_tx[service][fn_id]);
 	}
 
-	return (totempg_groups_mcast_joined (corosync_group_handle, iovec, iov_len, guarantee));
+	return (totempg_groups_mcast_joined(corosync_group_handle, iovec, iov_len, guarantee));
 }
 
-static void corosync_ring_id_create_or_load (
-	struct memb_ring_id *memb_ring_id,
-	const struct totem_ip_address *addr)
+static void corosync_ring_id_create_or_load(struct memb_ring_id *memb_ring_id, const struct totem_ip_address *addr)
 {
 	int fd;
 	int res = 0;
 	char filename[PATH_MAX];
 
-	snprintf (filename, sizeof(filename), "%s/ringid_%s",
-		get_run_dir(), totemip_print (addr));
-	fd = open (filename, O_RDONLY, 0700);
+	snprintf(filename, sizeof(filename), "%s/ringid_%s", get_run_dir(), totemip_print(addr));
+	fd = open(filename, O_RDONLY, 0700);
 	/*
 	 * If file can be opened and read, read the ring id
 	 */
-	if (fd != -1) {
-		res = read (fd, &memb_ring_id->seq, sizeof (uint64_t));
-		close (fd);
+	if(fd != -1) {
+		res = read(fd, &memb_ring_id->seq, sizeof(uint64_t));
+		close(fd);
 	}
 	/*
 	 * If file could not be opened or read, create a new ring id
 	 */
-	if ((fd == -1) || (res != sizeof (uint64_t))) {
+	if((fd == -1) || (res != sizeof(uint64_t))) {
 		memb_ring_id->seq = 0;
 		umask(0);
-		fd = open (filename, O_CREAT|O_RDWR, 0700);
-		if (fd != -1) {
-			res = write (fd, &memb_ring_id->seq, sizeof (uint64_t));
-			close (fd);
-			if (res == -1) {
-				LOGSYS_PERROR (errno, LOGSYS_LEVEL_ERROR,
-					"Couldn't write ringid file '%s'", filename);
+		fd = open(filename, O_CREAT | O_RDWR, 0700);
+		if(fd != -1) {
+			res = write(fd, &memb_ring_id->seq, sizeof(uint64_t));
+			close(fd);
+			if(res == -1) {
+				LOGSYS_PERROR(errno, LOGSYS_LEVEL_ERROR, "Couldn't write ringid file '%s'", filename);
 
-				corosync_exit_error (COROSYNC_DONE_STORE_RINGID);
+				corosync_exit_error(COROSYNC_DONE_STORE_RINGID);
 			}
 		} else {
-			LOGSYS_PERROR (errno, LOGSYS_LEVEL_ERROR,
-				"Couldn't create ringid file '%s'", filename);
+			LOGSYS_PERROR(errno, LOGSYS_LEVEL_ERROR, "Couldn't create ringid file '%s'", filename);
 
-			corosync_exit_error (COROSYNC_DONE_STORE_RINGID);
+			corosync_exit_error(COROSYNC_DONE_STORE_RINGID);
 		}
 	}
 
 	totemip_copy(&memb_ring_id->rep, addr);
-	assert (!totemip_zero_check(&memb_ring_id->rep));
+	assert(!totemip_zero_check(&memb_ring_id->rep));
 }
 
-static void corosync_ring_id_store (
-	const struct memb_ring_id *memb_ring_id,
-	const struct totem_ip_address *addr)
+static void corosync_ring_id_store(const struct memb_ring_id *memb_ring_id, const struct totem_ip_address *addr)
 {
 	char filename[PATH_MAX];
 	int fd;
 	int res;
 
-	snprintf (filename, sizeof(filename), "%s/ringid_%s",
-		get_run_dir(), totemip_print (addr));
+	snprintf(filename, sizeof(filename), "%s/ringid_%s", get_run_dir(), totemip_print(addr));
 
-	fd = open (filename, O_WRONLY, 0700);
-	if (fd == -1) {
-		fd = open (filename, O_CREAT|O_RDWR, 0700);
+	fd = open(filename, O_WRONLY, 0700);
+	if(fd == -1) {
+		fd = open(filename, O_CREAT | O_RDWR, 0700);
 	}
-	if (fd == -1) {
-		LOGSYS_PERROR(errno, LOGSYS_LEVEL_ERROR,
-			"Couldn't store new ring id %llx to stable storage",
-			memb_ring_id->seq);
+	if(fd == -1) {
+		LOGSYS_PERROR(errno, LOGSYS_LEVEL_ERROR, "Couldn't store new ring id %llx to stable storage", memb_ring_id->seq);
 
-		corosync_exit_error (COROSYNC_DONE_STORE_RINGID);
+		corosync_exit_error(COROSYNC_DONE_STORE_RINGID);
 	}
-	log_printf (LOGSYS_LEVEL_DEBUG,
-		"Storing new sequence id for ring %llx", memb_ring_id->seq);
-	res = write (fd, &memb_ring_id->seq, sizeof(memb_ring_id->seq));
-	close (fd);
-	if (res != sizeof(memb_ring_id->seq)) {
-		LOGSYS_PERROR(errno, LOGSYS_LEVEL_ERROR,
-			"Couldn't store new ring id %llx to stable storage",
-			memb_ring_id->seq);
+	log_printf(LOGSYS_LEVEL_DEBUG, "Storing new sequence id for ring %llx", memb_ring_id->seq);
+	res = write(fd, &memb_ring_id->seq, sizeof(memb_ring_id->seq));
+	close(fd);
+	if(res != sizeof(memb_ring_id->seq)) {
+		LOGSYS_PERROR(errno, LOGSYS_LEVEL_ERROR, "Couldn't store new ring id %llx to stable storage", memb_ring_id->seq);
 
-		corosync_exit_error (COROSYNC_DONE_STORE_RINGID);
+		corosync_exit_error(COROSYNC_DONE_STORE_RINGID);
 	}
 }
 
@@ -744,9 +682,9 @@ static qb_loop_timer_handle recheck_the_q_level_timer;
 void corosync_recheck_the_q_level(void *data)
 {
 	totempg_check_q_level(corosync_group_handle);
-	if (cs_ipcs_q_level_get() == TOTEM_Q_LEVEL_CRITICAL) {
-		qb_loop_timer_add(cs_poll_handle_get(), QB_LOOP_MED, 1*QB_TIME_NS_IN_MSEC,
-			NULL, corosync_recheck_the_q_level, &recheck_the_q_level_timer);
+	if(cs_ipcs_q_level_get() == TOTEM_Q_LEVEL_CRITICAL) {
+		qb_loop_timer_add(cs_poll_handle_get(), QB_LOOP_MED, 1 * QB_TIME_NS_IN_MSEC, NULL, corosync_recheck_the_q_level,
+						  &recheck_the_q_level_timer);
 	}
 }
 
@@ -755,14 +693,9 @@ struct sending_allowed_private_data_struct {
 };
 
 
-int corosync_sending_allowed (
-	unsigned int service,
-	unsigned int id,
-	const void *msg,
-	void *sending_allowed_private_data)
+int corosync_sending_allowed(unsigned int service, unsigned int id, const void *msg, void *sending_allowed_private_data)
 {
-	struct sending_allowed_private_data_struct *pd =
-		(struct sending_allowed_private_data_struct *)sending_allowed_private_data;
+	struct sending_allowed_private_data_struct *pd = (struct sending_allowed_private_data_struct *)sending_allowed_private_data;
 	struct iovec reserve_iovec;
 	struct qb_ipc_request_header *header = (struct qb_ipc_request_header *)msg;
 	int sending_allowed;
@@ -770,23 +703,20 @@ int corosync_sending_allowed (
 	reserve_iovec.iov_base = (char *)header;
 	reserve_iovec.iov_len = header->size;
 
-	pd->reserved_msgs = totempg_groups_joined_reserve (
-		corosync_group_handle,
-		&reserve_iovec, 1);
-	if (pd->reserved_msgs == -1) {
+	pd->reserved_msgs = totempg_groups_joined_reserve(corosync_group_handle, &reserve_iovec, 1);
+	if(pd->reserved_msgs == -1) {
 		return -EINVAL;
 	}
 
 	sending_allowed = QB_FALSE;
-	if (corosync_quorum_is_quorate() == 1 ||
-	    corosync_service[service]->allow_inquorate == CS_LIB_ALLOW_INQUORATE) {
+	if(corosync_quorum_is_quorate() == 1 || corosync_service[service]->allow_inquorate == CS_LIB_ALLOW_INQUORATE) {
 		// we are quorate
 		// now check flow control
-		if (corosync_service[service]->lib_engine[id].flow_control == CS_LIB_FLOW_CONTROL_NOT_REQUIRED) {
+		if(corosync_service[service]->lib_engine[id].flow_control == CS_LIB_FLOW_CONTROL_NOT_REQUIRED) {
 			sending_allowed = QB_TRUE;
-		} else if (pd->reserved_msgs && sync_in_process == 0) {
+		} else if(pd->reserved_msgs && sync_in_process == 0) {
 			sending_allowed = QB_TRUE;
-		} else if (pd->reserved_msgs == 0) {
+		} else if(pd->reserved_msgs == 0) {
 			return -ENOBUFS;
 		} else /* (sync_in_process) */ {
 			return -EINPROGRESS;
@@ -798,35 +728,32 @@ int corosync_sending_allowed (
 	return (sending_allowed);
 }
 
-void corosync_sending_allowed_release (void *sending_allowed_private_data)
+void corosync_sending_allowed_release(void *sending_allowed_private_data)
 {
-	struct sending_allowed_private_data_struct *pd =
-		(struct sending_allowed_private_data_struct *)sending_allowed_private_data;
+	struct sending_allowed_private_data_struct *pd = (struct sending_allowed_private_data_struct *)sending_allowed_private_data;
 
-	if (pd->reserved_msgs == -1) {
+	if(pd->reserved_msgs == -1) {
 		return;
 	}
-	totempg_groups_joined_release (pd->reserved_msgs);
+	totempg_groups_joined_release(pd->reserved_msgs);
 }
 
-int message_source_is_local (const mar_message_source_t *source)
+int message_source_is_local(const mar_message_source_t *source)
 {
 	int ret = 0;
 
-	assert (source != NULL);
-	if (source->nodeid == totempg_my_nodeid_get ()) {
+	assert(source != NULL);
+	if(source->nodeid == totempg_my_nodeid_get()) {
 		ret = 1;
 	}
 	return ret;
 }
 
-void message_source_set (
-	mar_message_source_t *source,
-	void *conn)
+void message_source_set(mar_message_source_t *source, void *conn)
 {
-	assert ((source != NULL) && (conn != NULL));
-	memset (source, 0, sizeof (mar_message_source_t));
-	source->nodeid = totempg_my_nodeid_get ();
+	assert((source != NULL) && (conn != NULL));
+	memset(source, 0, sizeof(mar_message_source_t));
+	source->nodeid = totempg_my_nodeid_get();
 	source->conn = conn;
 }
 
@@ -837,15 +764,15 @@ struct scheduler_pause_timeout_data {
 	unsigned long long max_tv_diff;
 };
 
-static void timer_function_scheduler_timeout (void *data)
+static void timer_function_scheduler_timeout(void *data)
 {
 	struct scheduler_pause_timeout_data *timeout_data = (struct scheduler_pause_timeout_data *)data;
 	unsigned long long tv_current;
 	unsigned long long tv_diff;
 
-	tv_current = qb_util_nano_current_get ();
+	tv_current = qb_util_nano_current_get();
 
-	if (timeout_data->tv_prev == 0) {
+	if(timeout_data->tv_prev == 0) {
 		/*
 		 * Initial call -> just pretent everything is ok
 		 */
@@ -856,127 +783,99 @@ static void timer_function_scheduler_timeout (void *data)
 	tv_diff = tv_current - timeout_data->tv_prev;
 	timeout_data->tv_prev = tv_current;
 
-	if (tv_diff > timeout_data->max_tv_diff) {
-		log_printf (LOGSYS_LEVEL_WARNING, "Corosync main process was not scheduled for %0.4f ms "
-		    "(threshold is %0.4f ms). Consider token timeout increase.",
-		    (float)tv_diff / QB_TIME_NS_IN_MSEC, (float)timeout_data->max_tv_diff / QB_TIME_NS_IN_MSEC);
+	if(tv_diff > timeout_data->max_tv_diff) {
+		log_printf(LOGSYS_LEVEL_WARNING, "Corosync main process was not scheduled for %0.4f ms "
+										 "(threshold is %0.4f ms). Consider token timeout increase.",
+				   (float)tv_diff / QB_TIME_NS_IN_MSEC, (float)timeout_data->max_tv_diff / QB_TIME_NS_IN_MSEC);
 	}
 
 	/*
 	 * Set next threshold, because token_timeout can change
 	 */
 	timeout_data->max_tv_diff = timeout_data->totem_config->token_timeout * QB_TIME_NS_IN_MSEC * 0.8;
-	qb_loop_timer_add (corosync_poll_handle,
-		QB_LOOP_MED,
-		timeout_data->totem_config->token_timeout * QB_TIME_NS_IN_MSEC / 3,
-		timeout_data,
-		timer_function_scheduler_timeout,
-		&timeout_data->handle);
+	qb_loop_timer_add(corosync_poll_handle, QB_LOOP_MED, timeout_data->totem_config->token_timeout * QB_TIME_NS_IN_MSEC / 3,
+					  timeout_data, timer_function_scheduler_timeout, &timeout_data->handle);
 }
 
 
-static void corosync_setscheduler (void)
+static void corosync_setscheduler(void)
 {
 #if defined(HAVE_PTHREAD_SETSCHEDPARAM) && defined(HAVE_SCHED_GET_PRIORITY_MAX) && defined(HAVE_SCHED_SETSCHEDULER)
 	int res;
 
-	sched_priority = sched_get_priority_max (SCHED_RR);
-	if (sched_priority != -1) {
+	sched_priority = sched_get_priority_max(SCHED_RR);
+	if(sched_priority != -1) {
 		global_sched_param.sched_priority = sched_priority;
-		res = sched_setscheduler (0, SCHED_RR, &global_sched_param);
-		if (res == -1) {
-			LOGSYS_PERROR(errno, LOGSYS_LEVEL_WARNING,
-				"Could not set SCHED_RR at priority %d",
-				global_sched_param.sched_priority);
+		res = sched_setscheduler(0, SCHED_RR, &global_sched_param);
+		if(res == -1) {
+			LOGSYS_PERROR(errno, LOGSYS_LEVEL_WARNING, "Could not set SCHED_RR at priority %d", global_sched_param.sched_priority);
 
 			global_sched_param.sched_priority = 0;
 #ifdef HAVE_QB_LOG_THREAD_PRIORITY_SET
-			qb_log_thread_priority_set (SCHED_OTHER, 0);
+			qb_log_thread_priority_set(SCHED_OTHER, 0);
 #endif
 		} else {
 
-			/*
-			 * Turn on SCHED_RR in logsys system
-			 */
+/*
+ * Turn on SCHED_RR in logsys system
+ */
 #ifdef HAVE_QB_LOG_THREAD_PRIORITY_SET
-			res = qb_log_thread_priority_set (SCHED_RR, sched_priority);
+			res = qb_log_thread_priority_set(SCHED_RR, sched_priority);
 #else
 			res = -1;
 #endif
-			if (res == -1) {
-				log_printf (LOGSYS_LEVEL_ERROR,
-					    "Could not set logsys thread priority."
-					    " Can't continue because of priority inversions.");
-				corosync_exit_error (COROSYNC_DONE_LOGSETUP);
+			if(res == -1) {
+				log_printf(LOGSYS_LEVEL_ERROR, "Could not set logsys thread priority."
+											   " Can't continue because of priority inversions.");
+				corosync_exit_error(COROSYNC_DONE_LOGSETUP);
 			}
 		}
 	} else {
-		LOGSYS_PERROR (errno, LOGSYS_LEVEL_WARNING,
-			"Could not get maximum scheduler priority");
+		LOGSYS_PERROR(errno, LOGSYS_LEVEL_WARNING, "Could not get maximum scheduler priority");
 		sched_priority = 0;
 	}
 #else
-	log_printf(LOGSYS_LEVEL_WARNING,
-		"The Platform is missing process priority setting features.  Leaving at default.");
+	log_printf(LOGSYS_LEVEL_WARNING, "The Platform is missing process priority setting features.  Leaving at default.");
 #endif
 }
 
-static void
-_logsys_log_printf(int level, int subsys,
-		const char *function_name,
-		const char *file_name,
-		int file_line,
-		const char *format,
-		...) __attribute__((format(printf, 6, 7)));
+static void _logsys_log_printf(int level, int subsys, const char *function_name, const char *file_name, int file_line,
+							   const char *format, ...) __attribute__((format(printf, 6, 7)));
 
-static void
-_logsys_log_printf(int level, int subsys,
-		const char *function_name,
-		const char *file_name,
-		int file_line,
-		const char *format, ...)
+static void _logsys_log_printf(int level, int subsys, const char *function_name, const char *file_name, int file_line,
+							   const char *format, ...)
 {
 	va_list ap;
 
 	va_start(ap, format);
-	qb_log_from_external_source_va(function_name, basename(file_name),
-				    format, level, file_line,
-				    subsys, ap);
+	qb_log_from_external_source_va(function_name, basename(file_name), format, level, file_line, subsys, ap);
 	va_end(ap);
 }
 
-static void fplay_key_change_notify_fn (
-	int32_t event,
-	const char *key_name,
-	struct icmap_notify_value new_val,
-	struct icmap_notify_value old_val,
-	void *user_data)
+static void fplay_key_change_notify_fn(int32_t event, const char *key_name, struct icmap_notify_value new_val,
+									   struct icmap_notify_value old_val, void *user_data)
 {
-	if (strcmp(key_name, "runtime.blackbox.dump_flight_data") == 0) {
-		fprintf(stderr,"Writetofile\n");
-		corosync_blackbox_write_to_file ();
+	if(strcmp(key_name, "runtime.blackbox.dump_flight_data") == 0) {
+		fprintf(stderr, "Writetofile\n");
+		corosync_blackbox_write_to_file();
 	}
-	if (strcmp(key_name, "runtime.blackbox.dump_state") == 0) {
-		fprintf(stderr,"statefump\n");
-		corosync_state_dump ();
+	if(strcmp(key_name, "runtime.blackbox.dump_state") == 0) {
+		fprintf(stderr, "statefump\n");
+		corosync_state_dump();
 	}
 }
 
-static void corosync_fplay_control_init (void)
+static void corosync_fplay_control_init(void)
 {
 	icmap_track_t track = NULL;
 
 	icmap_set_string("runtime.blackbox.dump_flight_data", "no");
 	icmap_set_string("runtime.blackbox.dump_state", "no");
 
-	icmap_track_add("runtime.blackbox.dump_flight_data",
-			ICMAP_TRACK_ADD | ICMAP_TRACK_DELETE | ICMAP_TRACK_MODIFY,
-			fplay_key_change_notify_fn,
-			NULL, &track);
-	icmap_track_add("runtime.blackbox.dump_state",
-			ICMAP_TRACK_ADD | ICMAP_TRACK_DELETE | ICMAP_TRACK_MODIFY,
-			fplay_key_change_notify_fn,
-			NULL, &track);
+	icmap_track_add("runtime.blackbox.dump_flight_data", ICMAP_TRACK_ADD | ICMAP_TRACK_DELETE | ICMAP_TRACK_MODIFY,
+					fplay_key_change_notify_fn, NULL, &track);
+	icmap_track_add("runtime.blackbox.dump_state", ICMAP_TRACK_ADD | ICMAP_TRACK_DELETE | ICMAP_TRACK_MODIFY,
+					fplay_key_change_notify_fn, NULL, &track);
 }
 
 /*
@@ -986,7 +885,7 @@ static void corosync_fplay_control_init (void)
  * Also some RO keys cannot be determined in this stage, so they are set later in
  * other functions (like nodelist.local_node_pos, ...)
  */
-static void set_icmap_ro_keys_flag (void)
+static void set_icmap_ro_keys_flag(void)
 {
 	/*
 	 * Set RO flag for all keys of internal configuration and runtime statistics
@@ -1012,27 +911,25 @@ static void set_icmap_ro_keys_flag (void)
 	icmap_set_ro_access("config.totemconfig_reload_in_progress", CS_FALSE, CS_TRUE);
 }
 
-static void main_service_ready (void)
+static void main_service_ready(void)
 {
 	int res;
 
 	/*
 	 * This must occur after totempg is initialized because "this_ip" must be set
 	 */
-	res = corosync_service_defaults_link_and_init (api);
-	if (res == -1) {
-		log_printf (LOGSYS_LEVEL_ERROR, "Could not initialize default services");
-		corosync_exit_error (COROSYNC_DONE_INIT_SERVICES);
+	res = corosync_service_defaults_link_and_init(api);
+	if(res == -1) {
+		log_printf(LOGSYS_LEVEL_ERROR, "Could not initialize default services");
+		corosync_exit_error(COROSYNC_DONE_INIT_SERVICES);
 	}
 	cs_ipcs_init();
-	corosync_totem_stats_init ();
-	corosync_fplay_control_init ();
-	sync_init (
-		corosync_sync_callbacks_retrieve,
-		corosync_sync_completed);
+	corosync_totem_stats_init();
+	corosync_fplay_control_init();
+	sync_init(corosync_sync_callbacks_retrieve, corosync_sync_completed);
 }
 
-static enum e_corosync_done corosync_flock (const char *lockfile, pid_t pid)
+static enum e_corosync_done corosync_flock(const char *lockfile, pid_t pid)
 {
 	struct flock lock;
 	enum e_corosync_done err;
@@ -1042,9 +939,9 @@ static enum e_corosync_done corosync_flock (const char *lockfile, pid_t pid)
 
 	err = COROSYNC_DONE_EXIT;
 
-	lf = open (lockfile, O_WRONLY | O_CREAT, 0640);
-	if (lf == -1) {
-		log_printf (LOGSYS_LEVEL_ERROR, "Corosync Executive couldn't create lock file.");
+	lf = open(lockfile, O_WRONLY | O_CREAT, 0640);
+	if(lf == -1) {
+		log_printf(LOGSYS_LEVEL_ERROR, "Corosync Executive couldn't create lock file.");
 		return (COROSYNC_DONE_AQUIRE_LOCK);
 	}
 
@@ -1053,58 +950,59 @@ retry_fcntl:
 	lock.l_start = 0;
 	lock.l_whence = SEEK_SET;
 	lock.l_len = 0;
-	if (fcntl (lf, F_SETLK, &lock) == -1) {
-		switch (errno) {
+	if(fcntl(lf, F_SETLK, &lock) == -1) {
+		switch(errno) {
 		case EINTR:
 			goto retry_fcntl;
 			break;
 		case EAGAIN:
 		case EACCES:
-			log_printf (LOGSYS_LEVEL_ERROR, "Another Corosync instance is already running.");
+			log_printf(LOGSYS_LEVEL_ERROR, "Another Corosync instance is already running.");
 			err = COROSYNC_DONE_ALREADY_RUNNING;
 			goto error_close;
 			break;
 		default:
-			log_printf (LOGSYS_LEVEL_ERROR, "Corosync Executive couldn't aquire lock. Error was %s",
-			    strerror(errno));
+			log_printf(LOGSYS_LEVEL_ERROR, "Corosync Executive couldn't aquire lock. Error was %s", strerror(errno));
 			err = COROSYNC_DONE_AQUIRE_LOCK;
 			goto error_close;
 			break;
 		}
 	}
 
-	if (ftruncate (lf, 0) == -1) {
-		log_printf (LOGSYS_LEVEL_ERROR, "Corosync Executive couldn't truncate lock file. Error was %s",
-		    strerror (errno));
+	if(ftruncate(lf, 0) == -1) {
+		log_printf(LOGSYS_LEVEL_ERROR, "Corosync Executive couldn't truncate lock file. Error was %s", strerror(errno));
 		err = COROSYNC_DONE_AQUIRE_LOCK;
 		goto error_close_unlink;
 	}
 
-	memset (pid_s, 0, sizeof (pid_s));
-	snprintf (pid_s, sizeof (pid_s) - 1, "%u\n", pid);
+	memset(pid_s, 0, sizeof(pid_s));
+	snprintf(pid_s, sizeof(pid_s) - 1, "%u\n", pid);
 
 retry_write:
-	if (write (lf, pid_s, strlen (pid_s)) != strlen (pid_s)) {
-		if (errno == EINTR) {
+	if(write(lf, pid_s, strlen(pid_s)) != strlen(pid_s)) {
+		if(errno == EINTR) {
 			goto retry_write;
 		} else {
-			log_printf (LOGSYS_LEVEL_ERROR, "Corosync Executive couldn't write pid to lock file. "
-				"Error was %s", strerror (errno));
+			log_printf(LOGSYS_LEVEL_ERROR, "Corosync Executive couldn't write pid to lock file. "
+										   "Error was %s",
+					   strerror(errno));
 			err = COROSYNC_DONE_AQUIRE_LOCK;
 			goto error_close_unlink;
 		}
 	}
 
-	if ((fd_flag = fcntl (lf, F_GETFD, 0)) == -1) {
-		log_printf (LOGSYS_LEVEL_ERROR, "Corosync Executive couldn't get close-on-exec flag from lock file. "
-			"Error was %s", strerror (errno));
+	if((fd_flag = fcntl(lf, F_GETFD, 0)) == -1) {
+		log_printf(LOGSYS_LEVEL_ERROR, "Corosync Executive couldn't get close-on-exec flag from lock file. "
+									   "Error was %s",
+				   strerror(errno));
 		err = COROSYNC_DONE_AQUIRE_LOCK;
 		goto error_close_unlink;
 	}
 	fd_flag |= FD_CLOEXEC;
-	if (fcntl (lf, F_SETFD, fd_flag) == -1) {
-		log_printf (LOGSYS_LEVEL_ERROR, "Corosync Executive couldn't set close-on-exec flag to lock file. "
-			"Error was %s", strerror (errno));
+	if(fcntl(lf, F_SETFD, fd_flag) == -1) {
+		log_printf(LOGSYS_LEVEL_ERROR, "Corosync Executive couldn't set close-on-exec flag to lock file. "
+									   "Error was %s",
+				   strerror(errno));
 		err = COROSYNC_DONE_AQUIRE_LOCK;
 		goto error_close_unlink;
 	}
@@ -1112,14 +1010,14 @@ retry_write:
 	return (err);
 
 error_close_unlink:
-	unlink (lockfile);
+	unlink(lockfile);
 error_close:
-	close (lf);
+	close(lf);
 
 	return (err);
 }
 
-int main (int argc, char **argv, char **envp)
+int main(int argc, char **argv, char **envp)
 {
 	const char *error_string;
 	struct totem_config totem_config;
@@ -1136,38 +1034,37 @@ int main (int argc, char **argv, char **envp)
 	setprio = 1;
 	testonly = 0;
 
-	while ((ch = getopt (argc, argv, "fprtv")) != EOF) {
+	while((ch = getopt(argc, argv, "fprtv")) != EOF) {
 
-		switch (ch) {
-			case 'f':
-				background = 0;
-				break;
-			case 'p':
-				setprio = 0;
-				break;
-			case 'r':
-				setprio = 1;
-				break;
-			case 't':
-				testonly = 1;
-				break;
-			case 'v':
-				printf ("Corosync Cluster Engine, version '%s'\n", VERSION);
-				printf ("Copyright (c) 2006-2009 Red Hat, Inc.\n");
-				logsys_system_fini();
-				return EXIT_SUCCESS;
+		switch(ch) {
+		case 'f':
+			background = 0;
+			break;
+		case 'p':
+			setprio = 0;
+			break;
+		case 'r':
+			setprio = 1;
+			break;
+		case 't':
+			testonly = 1;
+			break;
+		case 'v':
+			printf("Corosync Cluster Engine, version '%s'\n", VERSION);
+			printf("Copyright (c) 2006-2009 Red Hat, Inc.\n");
+			logsys_system_fini();
+			return EXIT_SUCCESS;
 
-				break;
-			default:
-				fprintf(stderr, \
-					"usage:\n"\
-					"        -f     : Start application in foreground.\n"\
-					"        -p     : Do not set process priority.\n"\
-					"        -t     : Test configuration and exit.\n"\
-					"        -r     : Set round robin realtime scheduling (default).\n"\
-					"        -v     : Display version and SVN revision of Corosync and exit.\n");
-				logsys_system_fini();
-				return EXIT_FAILURE;
+			break;
+		default:
+			fprintf(stderr, "usage:\n"
+							"        -f     : Start application in foreground.\n"
+							"        -p     : Do not set process priority.\n"
+							"        -t     : Test configuration and exit.\n"
+							"        -r     : Set round robin realtime scheduling (default).\n"
+							"        -v     : Display version and SVN revision of Corosync and exit.\n");
+			logsys_system_fini();
+			return EXIT_FAILURE;
 		}
 	}
 
@@ -1176,40 +1073,40 @@ int main (int argc, char **argv, char **envp)
 	 * Lock all memory to avoid page faults which may interrupt
 	 * application healthchecking
 	 */
-	if (setprio) {
-		corosync_setscheduler ();
+	if(setprio) {
+		corosync_setscheduler();
 	}
 
-	corosync_mlockall ();
+	corosync_mlockall();
 
 	/*
 	 * Other signals are registered later via qb_loop_signal_add
 	 */
-	(void)signal (SIGSEGV, sigsegv_handler);
-	(void)signal (SIGABRT, sigabrt_handler);
+	(void)signal(SIGSEGV, sigsegv_handler);
+	(void)signal(SIGABRT, sigabrt_handler);
 #if MSG_NOSIGNAL != 0
-	(void)signal (SIGPIPE, SIG_IGN);
+	(void)signal(SIGPIPE, SIG_IGN);
 #endif
 
-	if (icmap_init() != CS_OK) {
-		log_printf (LOGSYS_LEVEL_ERROR, "Corosync Executive couldn't initialize configuration component.");
-		corosync_exit_error (COROSYNC_DONE_ICMAP);
+	if(icmap_init() != CS_OK) {
+		log_printf(LOGSYS_LEVEL_ERROR, "Corosync Executive couldn't initialize configuration component.");
+		corosync_exit_error(COROSYNC_DONE_ICMAP);
 	}
 	set_icmap_ro_keys_flag();
 
 	/*
 	 * Initialize the corosync_api_v1 definition
 	 */
-	api = apidef_get ();
+	api = apidef_get();
 
 	res = coroparse_configparse(icmap_get_global_map(), &error_string);
-	if (res == -1) {
-		log_printf (LOGSYS_LEVEL_ERROR, "%s", error_string);
-		corosync_exit_error (COROSYNC_DONE_MAINCONFIGREAD);
+	if(res == -1) {
+		log_printf(LOGSYS_LEVEL_ERROR, "%s", error_string);
+		corosync_exit_error(COROSYNC_DONE_MAINCONFIGREAD);
 	}
 
-	res = corosync_log_config_read (&error_string);
-	if (res == -1) {
+	res = corosync_log_config_read(&error_string);
+	if(res == -1) {
 		/*
 		 * if we are here, we _must_ flush the logsys queue
 		 * and try to inform that we couldn't read the config.
@@ -1217,69 +1114,70 @@ int main (int argc, char **argv, char **envp)
 		 * and there is no guarantee that we can print to stderr
 		 * nor that logsys is sending the messages where we expect.
 		 */
-		log_printf (LOGSYS_LEVEL_ERROR, "%s", error_string);
+		log_printf(LOGSYS_LEVEL_ERROR, "%s", error_string);
 		fprintf(stderr, "%s", error_string);
-		syslog (LOGSYS_LEVEL_ERROR, "%s", error_string);
-		corosync_exit_error (COROSYNC_DONE_LOGCONFIGREAD);
+		syslog(LOGSYS_LEVEL_ERROR, "%s", error_string);
+		corosync_exit_error(COROSYNC_DONE_LOGCONFIGREAD);
 	}
 
-	if (!testonly) {
-		log_printf (LOGSYS_LEVEL_NOTICE, "Corosync Cluster Engine ('%s'): started and ready to provide service.", VERSION);
-		log_printf (LOGSYS_LEVEL_INFO, "Corosync built-in features:" PACKAGE_FEATURES "");
+	if(!testonly) {
+		log_printf(LOGSYS_LEVEL_NOTICE, "Corosync Cluster Engine ('%s'): started and ready to provide service.", VERSION);
+		log_printf(LOGSYS_LEVEL_INFO, "Corosync built-in features:" PACKAGE_FEATURES "");
 	}
 
 	/*
 	 * Make sure required directory is present
 	 */
-	res = stat (get_run_dir(), &stat_out);
-	if ((res == -1) || (res == 0 && !S_ISDIR(stat_out.st_mode))) {
-		log_printf (LOGSYS_LEVEL_ERROR, "Required directory not present %s.  Please create it.", get_run_dir());
-		corosync_exit_error (COROSYNC_DONE_DIR_NOT_PRESENT);
+	res = stat(get_run_dir(), &stat_out);
+	if((res == -1) || (res == 0 && !S_ISDIR(stat_out.st_mode))) {
+		log_printf(LOGSYS_LEVEL_ERROR, "Required directory not present %s.  Please create it.", get_run_dir());
+		corosync_exit_error(COROSYNC_DONE_DIR_NOT_PRESENT);
 	}
 
 	res = chdir(get_run_dir());
-	if (res == -1) {
-		log_printf (LOGSYS_LEVEL_ERROR, "Cannot chdir to run directory %s.  "
-		    "Please make sure it has correct context and rights.", get_run_dir());
-		corosync_exit_error (COROSYNC_DONE_DIR_NOT_PRESENT);
+	if(res == -1) {
+		log_printf(LOGSYS_LEVEL_ERROR, "Cannot chdir to run directory %s.  "
+									   "Please make sure it has correct context and rights.",
+				   get_run_dir());
+		corosync_exit_error(COROSYNC_DONE_DIR_NOT_PRESENT);
 	}
 
-	res = totem_config_read (&totem_config, &error_string, &totem_config_warnings);
-	if (res == -1) {
-		log_printf (LOGSYS_LEVEL_ERROR, "%s", error_string);
-		corosync_exit_error (COROSYNC_DONE_MAINCONFIGREAD);
+	res = totem_config_read(&totem_config, &error_string, &totem_config_warnings);
+	if(res == -1) {
+		log_printf(LOGSYS_LEVEL_ERROR, "%s", error_string);
+		corosync_exit_error(COROSYNC_DONE_MAINCONFIGREAD);
 	}
 
-	if (totem_config_warnings & TOTEM_CONFIG_WARNING_MEMBERS_IGNORED) {
-		log_printf (LOGSYS_LEVEL_WARNING, "member section is used together with nodelist. Members ignored.");
+	if(totem_config_warnings & TOTEM_CONFIG_WARNING_MEMBERS_IGNORED) {
+		log_printf(LOGSYS_LEVEL_WARNING, "member section is used together with nodelist. Members ignored.");
 	}
 
-	if (totem_config_warnings & TOTEM_CONFIG_WARNING_MEMBERS_DEPRECATED) {
-		log_printf (LOGSYS_LEVEL_WARNING, "member section is deprecated.");
+	if(totem_config_warnings & TOTEM_CONFIG_WARNING_MEMBERS_DEPRECATED) {
+		log_printf(LOGSYS_LEVEL_WARNING, "member section is deprecated.");
 	}
 
-	if (totem_config_warnings & TOTEM_CONFIG_WARNING_TOTEM_NODEID_IGNORED) {
-		log_printf (LOGSYS_LEVEL_WARNING, "nodeid appears both in totem section and nodelist. Nodelist one is used.");
+	if(totem_config_warnings & TOTEM_CONFIG_WARNING_TOTEM_NODEID_IGNORED) {
+		log_printf(LOGSYS_LEVEL_WARNING, "nodeid appears both in totem section and nodelist. Nodelist one is used.");
 	}
 
-	if (totem_config_warnings != 0) {
-		log_printf (LOGSYS_LEVEL_WARNING, "Please migrate config file to nodelist.");
+	if(totem_config_warnings != 0) {
+		log_printf(LOGSYS_LEVEL_WARNING, "Please migrate config file to nodelist.");
 	}
 
-	res = totem_config_keyread (&totem_config, &error_string);
-	if (res == -1) {
-		log_printf (LOGSYS_LEVEL_ERROR, "%s", error_string);
-		corosync_exit_error (COROSYNC_DONE_MAINCONFIGREAD);
+	res = totem_config_keyread(&totem_config, &error_string);
+	if(res == -1) {
+		log_printf(LOGSYS_LEVEL_ERROR, "%s", error_string);
+		corosync_exit_error(COROSYNC_DONE_MAINCONFIGREAD);
 	}
 
-	res = totem_config_validate (&totem_config, &error_string);
-	if (res == -1) {
-		log_printf (LOGSYS_LEVEL_ERROR, "%s", error_string);
-		corosync_exit_error (COROSYNC_DONE_MAINCONFIGREAD);
+	res = totem_config_validate(&totem_config, &error_string);
+	if(res == -1) {
+		log_printf(LOGSYS_LEVEL_ERROR, "%s", error_string);
+		corosync_exit_error(COROSYNC_DONE_MAINCONFIGREAD);
 	}
 
-	if (testonly) {
-		corosync_exit_error (COROSYNC_DONE_EXIT);
+	if(testonly) {
+		corosync_exit_error(COROSYNC_DONE_EXIT);
 	}
 
 	ip_version = totem_config.ip_version;
@@ -1288,9 +1186,10 @@ int main (int argc, char **argv, char **envp)
 	totem_config.totem_memb_ring_id_store = corosync_ring_id_store;
 
 	totem_config.totem_logging_configuration = totem_logging_configuration;
-	totem_config.totem_logging_configuration.log_subsys_id = _logsys_subsys_create("TOTEM", "totem,"
-			"totemmrp.c,totemrrp.c,totemip.c,totemconfig.c,totemcrypto.c,totemsrp.c,"
-			"totempg.c,totemiba.c,totemudp.c,totemudpu.c,totemnet.c");
+	totem_config.totem_logging_configuration.log_subsys_id =
+	_logsys_subsys_create("TOTEM", "totem,"
+								   "totemmrp.c,totemrrp.c,totemip.c,totemconfig.c,totemcrypto.c,totemsrp.c,"
+								   "totempg.c,totemiba.c,totemudp.c,totemudpu.c,totemnet.c");
 
 	totem_config.totem_logging_configuration.log_level_security = LOGSYS_LEVEL_WARNING;
 	totem_config.totem_logging_configuration.log_level_error = LOGSYS_LEVEL_ERROR;
@@ -1304,36 +1203,30 @@ int main (int argc, char **argv, char **envp)
 	/*
 	 * Now we are fully initialized.
 	 */
-	if (background) {
-		corosync_tty_detach ();
+	if(background) {
+		corosync_tty_detach();
 	}
 
-	corosync_poll_handle = qb_loop_create ();
+	corosync_poll_handle = qb_loop_create();
 
 	memset(&scheduler_pause_timeout_data, 0, sizeof(scheduler_pause_timeout_data));
 	scheduler_pause_timeout_data.totem_config = &totem_config;
-	timer_function_scheduler_timeout (&scheduler_pause_timeout_data);
+	timer_function_scheduler_timeout(&scheduler_pause_timeout_data);
 
-	qb_loop_signal_add(corosync_poll_handle, QB_LOOP_LOW,
-		SIGUSR2, NULL, sig_diag_handler, NULL);
-	qb_loop_signal_add(corosync_poll_handle, QB_LOOP_HIGH,
-		SIGINT, NULL, sig_exit_handler, NULL);
-	qb_loop_signal_add(corosync_poll_handle, QB_LOOP_HIGH,
-		SIGSEGV, NULL, sig_segv_handler, NULL);
-	qb_loop_signal_add(corosync_poll_handle, QB_LOOP_HIGH,
-		SIGABRT, NULL, sig_abrt_handler, NULL);
-	qb_loop_signal_add(corosync_poll_handle, QB_LOOP_HIGH,
-		SIGQUIT, NULL, sig_exit_handler, NULL);
-	qb_loop_signal_add(corosync_poll_handle, QB_LOOP_HIGH,
-		SIGTERM, NULL, sig_exit_handler, NULL);
+	qb_loop_signal_add(corosync_poll_handle, QB_LOOP_LOW, SIGUSR2, NULL, sig_diag_handler, NULL);
+	qb_loop_signal_add(corosync_poll_handle, QB_LOOP_HIGH, SIGINT, NULL, sig_exit_handler, NULL);
+	qb_loop_signal_add(corosync_poll_handle, QB_LOOP_HIGH, SIGSEGV, NULL, sig_segv_handler, NULL);
+	qb_loop_signal_add(corosync_poll_handle, QB_LOOP_HIGH, SIGABRT, NULL, sig_abrt_handler, NULL);
+	qb_loop_signal_add(corosync_poll_handle, QB_LOOP_HIGH, SIGQUIT, NULL, sig_exit_handler, NULL);
+	qb_loop_signal_add(corosync_poll_handle, QB_LOOP_HIGH, SIGTERM, NULL, sig_exit_handler, NULL);
 
-	if (logsys_thread_start() != 0) {
-		log_printf (LOGSYS_LEVEL_ERROR, "Can't initialize log thread");
-		corosync_exit_error (COROSYNC_DONE_LOGCONFIGREAD);
+	if(logsys_thread_start() != 0) {
+		log_printf(LOGSYS_LEVEL_ERROR, "Can't initialize log thread");
+		corosync_exit_error(COROSYNC_DONE_LOGCONFIGREAD);
 	}
 
-	if ((flock_err = corosync_flock (corosync_lock_file, getpid ())) != COROSYNC_DONE_EXIT) {
-		corosync_exit_error (flock_err);
+	if((flock_err = corosync_flock(corosync_lock_file, getpid())) != COROSYNC_DONE_EXIT) {
+		corosync_exit_error(flock_err);
 	}
 
 	/*
@@ -1346,22 +1239,13 @@ int main (int argc, char **argv, char **envp)
 	 * Join multicast group and setup delivery
 	 *  and configuration change functions
 	 */
-	totempg_initialize (
-		corosync_poll_handle,
-		&totem_config);
+	totempg_initialize(corosync_poll_handle, &totem_config);
 
-	totempg_service_ready_register (
-		main_service_ready);
+	totempg_service_ready_register(main_service_ready);
 
-	totempg_groups_initialize (
-		&corosync_group_handle,
-		deliver_fn,
-		confchg_fn);
+	totempg_groups_initialize(&corosync_group_handle, deliver_fn, confchg_fn);
 
-	totempg_groups_join (
-		corosync_group_handle,
-		&corosync_group,
-		1);
+	totempg_groups_join(corosync_group_handle, &corosync_group, 1);
 
 	/*
 	 * Drop root privleges to user 'corosync'
@@ -1371,37 +1255,35 @@ int main (int argc, char **argv, char **envp)
 	 * CAP_SYS_NICE (setscheduler)
 	 * CAP_IPC_LOCK (mlockall)
 	 */
-	priv_drop ();
+	priv_drop();
 
-	schedwrk_init (
-		serialize_lock,
-		serialize_unlock);
+	schedwrk_init(serialize_lock, serialize_unlock);
 
 	/*
 	 * Start main processing loop
 	 */
-	qb_loop_run (corosync_poll_handle);
+	qb_loop_run(corosync_poll_handle);
 
 	/*
 	 * Exit was requested
 	 */
-	totempg_finalize ();
+	totempg_finalize();
 
 	/*
 	 * free the loop resources
 	 */
-	qb_loop_destroy (corosync_poll_handle);
+	qb_loop_destroy(corosync_poll_handle);
 
 	/*
-	 * free up the icmap 
+	 * free up the icmap
 	 */
 
 	/*
 	 * Remove pid lock file
 	 */
-	unlink (corosync_lock_file);
+	unlink(corosync_lock_file);
 
-	corosync_exit_error (COROSYNC_DONE_EXIT);
+	corosync_exit_error(COROSYNC_DONE_EXIT);
 
 	return EXIT_SUCCESS;
 }

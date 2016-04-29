@@ -83,7 +83,7 @@
 
 #define MAX_MTU_SIZE 4096
 
-#define MCAST_REJOIN_MSEC	100
+#define MCAST_REJOIN_MSEC 100
 
 struct totemiba_instance {
 	struct sockaddr bind_addr;
@@ -102,17 +102,11 @@ struct totemiba_instance {
 
 	totemsrp_stats_t *stats;
 
-	void (*totemiba_iface_change_fn) (
-		void *context,
-		const struct totem_ip_address *iface_address);
+	void (*totemiba_iface_change_fn)(void *context, const struct totem_ip_address *iface_address);
 
-	void (*totemiba_deliver_fn) (
-		void *context,
-		const void *msg,
-		unsigned int msg_len);
+	void (*totemiba_deliver_fn)(void *context, const void *msg, unsigned int msg_len);
 
-	void (*totemiba_target_set_completed) (
-		void *context);
+	void (*totemiba_target_set_completed)(void *context);
 
 	void *rrp_context;
 
@@ -190,14 +184,8 @@ struct totemiba_instance {
 
 	struct ibv_cq *send_token_recv_cq;
 
-        void (*totemiba_log_printf) (
-		int level,
-		int subsys,
-		const char *function,
-		const char *file,
-		int line,
-		const char *format,
-		...)__attribute__((format(printf, 6, 7)));
+	void (*totemiba_log_printf)(int level, int subsys, const char *function, const char *file, int line,
+								const char *format, ...) __attribute__((format(printf, 6, 7)));
 
 
 	int totemiba_subsys_id;
@@ -221,21 +209,18 @@ union u {
 	void *v;
 };
 
-#define log_printf(level, format, args...)			\
-do {								\
-        instance->totemiba_log_printf (				\
-			level,					\
-			instance->totemiba_subsys_id,		\
-			__FUNCTION__, __FILE__, __LINE__,	\
-			(const char *)format, ##args);		\
-} while (0);
+#define log_printf(level, format, args...)                                                                   \
+	do {                                                                                                     \
+		instance->totemiba_log_printf(level, instance->totemiba_subsys_id, __FUNCTION__, __FILE__, __LINE__, \
+									  (const char *)format, ##args);                                         \
+	} while(0);
 
 struct recv_buf {
 	struct list_head list_all;
 	struct ibv_recv_wr recv_wr;
 	struct ibv_sge sge;
 	struct ibv_mr *mr;
-	char buffer[MAX_MTU_SIZE + sizeof (struct ibv_grh)];
+	char buffer[MAX_MTU_SIZE + sizeof(struct ibv_grh)];
 };
 
 struct send_buf {
@@ -245,240 +230,232 @@ struct send_buf {
 	char buffer[MAX_MTU_SIZE];
 };
 
-static hdb_handle_t
-void2wrid (void *v) { union u u; u.v = v; return u.wr_id; }
-
-static void *
-wrid2void (uint64_t wr_id) { union u u; u.wr_id = wr_id; return u.v; }
-
-static void totemiba_instance_initialize (struct totemiba_instance *instance)
+static hdb_handle_t void2wrid(void *v)
 {
-	memset (instance, 0, sizeof (struct totemiba_instance));
-	list_init (&instance->mcast_send_buf_free);
-	list_init (&instance->token_send_buf_free);
-	list_init (&instance->mcast_send_buf_head);
-	list_init (&instance->token_send_buf_head);
-	list_init (&instance->recv_token_recv_buf_head);
+	union u u;
+	u.v = v;
+	return u.wr_id;
 }
 
-static inline struct send_buf *mcast_send_buf_get (
-	struct totemiba_instance *instance)
+static void *wrid2void(uint64_t wr_id)
 {
-	struct send_buf *send_buf;
-
-	if (list_empty (&instance->mcast_send_buf_free) == 0) {
-		send_buf = list_entry (instance->mcast_send_buf_free.next, struct send_buf, list_free);
-		list_del (&send_buf->list_free);
-		return (send_buf);
-	}
-
-	send_buf = malloc (sizeof (struct send_buf));
-	if (send_buf == NULL) {
-		return (NULL);
-	}
-	send_buf->mr = ibv_reg_mr (instance->mcast_pd,
-		send_buf->buffer,
-		MAX_MTU_SIZE, IBV_ACCESS_LOCAL_WRITE);
-	if (send_buf->mr == NULL) {
-		log_printf (LOGSYS_LEVEL_ERROR, "couldn't register memory range");
-		free (send_buf);
-		return (NULL);
-	}
-	list_init (&send_buf->list_all);
-	list_add_tail (&send_buf->list_all, &instance->mcast_send_buf_head);
-		
-	return (send_buf);
+	union u u;
+	u.wr_id = wr_id;
+	return u.v;
 }
 
-static inline void mcast_send_buf_put (
-	struct totemiba_instance *instance,
-	struct send_buf *send_buf)
+static void totemiba_instance_initialize(struct totemiba_instance *instance)
 {
-	list_init (&send_buf->list_free);
-	list_add_tail (&send_buf->list_free, &instance->mcast_send_buf_free);
+	memset(instance, 0, sizeof(struct totemiba_instance));
+	list_init(&instance->mcast_send_buf_free);
+	list_init(&instance->token_send_buf_free);
+	list_init(&instance->mcast_send_buf_head);
+	list_init(&instance->token_send_buf_head);
+	list_init(&instance->recv_token_recv_buf_head);
 }
 
-static inline struct send_buf *token_send_buf_get (
-	struct totemiba_instance *instance)
+static inline struct send_buf *mcast_send_buf_get(struct totemiba_instance *instance)
 {
 	struct send_buf *send_buf;
 
-	if (list_empty (&instance->token_send_buf_free) == 0) {
-		send_buf = list_entry (instance->token_send_buf_free.next, struct send_buf, list_free);
-		list_del (&send_buf->list_free);
+	if(list_empty(&instance->mcast_send_buf_free) == 0) {
+		send_buf = list_entry(instance->mcast_send_buf_free.next, struct send_buf, list_free);
+		list_del(&send_buf->list_free);
 		return (send_buf);
 	}
 
-	send_buf = malloc (sizeof (struct send_buf));
-	if (send_buf == NULL) {
+	send_buf = malloc(sizeof(struct send_buf));
+	if(send_buf == NULL) {
 		return (NULL);
 	}
-	send_buf->mr = ibv_reg_mr (instance->send_token_pd,
-		send_buf->buffer,
-		MAX_MTU_SIZE, IBV_ACCESS_LOCAL_WRITE);
-	if (send_buf->mr == NULL) {
-		log_printf (LOGSYS_LEVEL_ERROR, "couldn't register memory range");
-		free (send_buf);
+	send_buf->mr = ibv_reg_mr(instance->mcast_pd, send_buf->buffer, MAX_MTU_SIZE, IBV_ACCESS_LOCAL_WRITE);
+	if(send_buf->mr == NULL) {
+		log_printf(LOGSYS_LEVEL_ERROR, "couldn't register memory range");
+		free(send_buf);
 		return (NULL);
 	}
-	list_init (&send_buf->list_all);
-	list_add_tail (&send_buf->list_all, &instance->token_send_buf_head);
-		
+	list_init(&send_buf->list_all);
+	list_add_tail(&send_buf->list_all, &instance->mcast_send_buf_head);
+
 	return (send_buf);
 }
 
-static inline void token_send_buf_destroy (struct totemiba_instance *instance)
+static inline void mcast_send_buf_put(struct totemiba_instance *instance, struct send_buf *send_buf)
+{
+	list_init(&send_buf->list_free);
+	list_add_tail(&send_buf->list_free, &instance->mcast_send_buf_free);
+}
+
+static inline struct send_buf *token_send_buf_get(struct totemiba_instance *instance)
+{
+	struct send_buf *send_buf;
+
+	if(list_empty(&instance->token_send_buf_free) == 0) {
+		send_buf = list_entry(instance->token_send_buf_free.next, struct send_buf, list_free);
+		list_del(&send_buf->list_free);
+		return (send_buf);
+	}
+
+	send_buf = malloc(sizeof(struct send_buf));
+	if(send_buf == NULL) {
+		return (NULL);
+	}
+	send_buf->mr = ibv_reg_mr(instance->send_token_pd, send_buf->buffer, MAX_MTU_SIZE, IBV_ACCESS_LOCAL_WRITE);
+	if(send_buf->mr == NULL) {
+		log_printf(LOGSYS_LEVEL_ERROR, "couldn't register memory range");
+		free(send_buf);
+		return (NULL);
+	}
+	list_init(&send_buf->list_all);
+	list_add_tail(&send_buf->list_all, &instance->token_send_buf_head);
+
+	return (send_buf);
+}
+
+static inline void token_send_buf_destroy(struct totemiba_instance *instance)
 {
 	struct list_head *list;
 	struct send_buf *send_buf;
 
-        for (list = instance->token_send_buf_head.next; list != &instance->token_send_buf_head;) {
-                send_buf = list_entry (list, struct send_buf, list_all);
+	for(list = instance->token_send_buf_head.next; list != &instance->token_send_buf_head;) {
+		send_buf = list_entry(list, struct send_buf, list_all);
 		list = list->next;
-		ibv_dereg_mr (send_buf->mr);
-		free (send_buf);
+		ibv_dereg_mr(send_buf->mr);
+		free(send_buf);
 	}
 
-	list_init (&instance->token_send_buf_free);
-	list_init (&instance->token_send_buf_head);
+	list_init(&instance->token_send_buf_free);
+	list_init(&instance->token_send_buf_head);
 }
 
-static inline void token_send_buf_put (
-	struct totemiba_instance *instance,
-	struct send_buf *send_buf)
+static inline void token_send_buf_put(struct totemiba_instance *instance, struct send_buf *send_buf)
 {
-	list_init (&send_buf->list_free);
-	list_add_tail (&send_buf->list_free, &instance->token_send_buf_free);
+	list_init(&send_buf->list_free);
+	list_add_tail(&send_buf->list_free, &instance->token_send_buf_free);
 }
 
-static inline struct recv_buf *recv_token_recv_buf_create (
-	struct totemiba_instance *instance)
+static inline struct recv_buf *recv_token_recv_buf_create(struct totemiba_instance *instance)
 {
 	struct recv_buf *recv_buf;
 
-	recv_buf = malloc (sizeof (struct recv_buf));
-	if (recv_buf == NULL) {
+	recv_buf = malloc(sizeof(struct recv_buf));
+	if(recv_buf == NULL) {
 		return (NULL);
 	}
 
-	recv_buf->mr = ibv_reg_mr (instance->recv_token_pd, &recv_buf->buffer,
-		MAX_MTU_SIZE + sizeof (struct ibv_grh),
-		IBV_ACCESS_LOCAL_WRITE);
+	recv_buf->mr =
+	ibv_reg_mr(instance->recv_token_pd, &recv_buf->buffer, MAX_MTU_SIZE + sizeof(struct ibv_grh), IBV_ACCESS_LOCAL_WRITE);
 
 	recv_buf->recv_wr.next = NULL;
 	recv_buf->recv_wr.sg_list = &recv_buf->sge;
 	recv_buf->recv_wr.num_sge = 1;
 	recv_buf->recv_wr.wr_id = (uintptr_t)recv_buf;
 
-	recv_buf->sge.length = MAX_MTU_SIZE + sizeof (struct ibv_grh);
+	recv_buf->sge.length = MAX_MTU_SIZE + sizeof(struct ibv_grh);
 	recv_buf->sge.lkey = recv_buf->mr->lkey;
 	recv_buf->sge.addr = (uintptr_t)recv_buf->buffer;
 
-	list_init (&recv_buf->list_all);
-	list_add (&recv_buf->list_all, &instance->recv_token_recv_buf_head);
+	list_init(&recv_buf->list_all);
+	list_add(&recv_buf->list_all, &instance->recv_token_recv_buf_head);
 	return (recv_buf);
 }
 
-static inline int recv_token_recv_buf_post (struct totemiba_instance *instance, struct recv_buf *recv_buf)
+static inline int recv_token_recv_buf_post(struct totemiba_instance *instance, struct recv_buf *recv_buf)
 {
 	struct ibv_recv_wr *fail_recv;
 	int res;
 
-	res = ibv_post_recv (instance->recv_token_cma_id->qp, &recv_buf->recv_wr, &fail_recv);
+	res = ibv_post_recv(instance->recv_token_cma_id->qp, &recv_buf->recv_wr, &fail_recv);
 
 	return (res);
 }
 
-static inline void recv_token_recv_buf_post_initial (struct totemiba_instance *instance)
+static inline void recv_token_recv_buf_post_initial(struct totemiba_instance *instance)
 {
 	struct recv_buf *recv_buf;
 	unsigned int i;
 
-	for (i = 0; i < TOTAL_READ_POSTS; i++) {
-		recv_buf = recv_token_recv_buf_create (instance);
+	for(i = 0; i < TOTAL_READ_POSTS; i++) {
+		recv_buf = recv_token_recv_buf_create(instance);
 
-		recv_token_recv_buf_post (instance, recv_buf);
+		recv_token_recv_buf_post(instance, recv_buf);
 	}
 }
 
-static inline void recv_token_recv_buf_post_destroy (
-	struct totemiba_instance *instance)
+static inline void recv_token_recv_buf_post_destroy(struct totemiba_instance *instance)
 {
 	struct recv_buf *recv_buf;
 	struct list_head *list;
 
-	for (list = instance->recv_token_recv_buf_head.next;
-		list != &instance->recv_token_recv_buf_head;) {
+	for(list = instance->recv_token_recv_buf_head.next; list != &instance->recv_token_recv_buf_head;) {
 
-		recv_buf = list_entry (list, struct recv_buf, list_all);
+		recv_buf = list_entry(list, struct recv_buf, list_all);
 		list = list->next;
-		ibv_dereg_mr (recv_buf->mr);
-		free (recv_buf);
+		ibv_dereg_mr(recv_buf->mr);
+		free(recv_buf);
 	}
-	list_init (&instance->recv_token_recv_buf_head);
+	list_init(&instance->recv_token_recv_buf_head);
 }
 
-static inline struct recv_buf *mcast_recv_buf_create (struct totemiba_instance *instance)
+static inline struct recv_buf *mcast_recv_buf_create(struct totemiba_instance *instance)
 {
 	struct recv_buf *recv_buf;
 	struct ibv_mr *mr;
 
-	recv_buf = malloc (sizeof (struct recv_buf));
-	if (recv_buf == NULL) {
+	recv_buf = malloc(sizeof(struct recv_buf));
+	if(recv_buf == NULL) {
 		return (NULL);
 	}
 
-	mr = ibv_reg_mr (instance->mcast_pd, &recv_buf->buffer,
-		MAX_MTU_SIZE + sizeof (struct ibv_grh),
-		IBV_ACCESS_LOCAL_WRITE);
+	mr = ibv_reg_mr(instance->mcast_pd, &recv_buf->buffer, MAX_MTU_SIZE + sizeof(struct ibv_grh), IBV_ACCESS_LOCAL_WRITE);
 
 	recv_buf->recv_wr.next = NULL;
 	recv_buf->recv_wr.sg_list = &recv_buf->sge;
 	recv_buf->recv_wr.num_sge = 1;
 	recv_buf->recv_wr.wr_id = (uintptr_t)recv_buf;
 
-	recv_buf->sge.length = MAX_MTU_SIZE + sizeof (struct ibv_grh);
+	recv_buf->sge.length = MAX_MTU_SIZE + sizeof(struct ibv_grh);
 	recv_buf->sge.lkey = mr->lkey;
 	recv_buf->sge.addr = (uintptr_t)recv_buf->buffer;
 
 	return (recv_buf);
 }
 
-static inline int mcast_recv_buf_post (struct totemiba_instance *instance, struct recv_buf *recv_buf)
+static inline int mcast_recv_buf_post(struct totemiba_instance *instance, struct recv_buf *recv_buf)
 {
 	struct ibv_recv_wr *fail_recv;
 	int res;
 
-	res = ibv_post_recv (instance->mcast_cma_id->qp, &recv_buf->recv_wr, &fail_recv);
+	res = ibv_post_recv(instance->mcast_cma_id->qp, &recv_buf->recv_wr, &fail_recv);
 
 	return (res);
 }
 
-static inline void mcast_recv_buf_post_initial (struct totemiba_instance *instance)
+static inline void mcast_recv_buf_post_initial(struct totemiba_instance *instance)
 {
 	struct recv_buf *recv_buf;
 	unsigned int i;
 
-	for (i = 0; i < TOTAL_READ_POSTS; i++) {
-		recv_buf = mcast_recv_buf_create (instance);
+	for(i = 0; i < TOTAL_READ_POSTS; i++) {
+		recv_buf = mcast_recv_buf_create(instance);
 
-		mcast_recv_buf_post (instance, recv_buf);
+		mcast_recv_buf_post(instance, recv_buf);
 	}
 }
 
-static inline void iba_deliver_fn (struct totemiba_instance *instance, uint64_t wr_id, uint32_t bytes)
+static inline void iba_deliver_fn(struct totemiba_instance *instance, uint64_t wr_id, uint32_t bytes)
 {
 	const char *addr;
 	const struct recv_buf *recv_buf;
 
 	recv_buf = wrid2void(wr_id);
-	addr = &recv_buf->buffer[sizeof (struct ibv_grh)];
+	addr = &recv_buf->buffer[sizeof(struct ibv_grh)];
 
-	bytes -= sizeof (struct ibv_grh);
-	instance->totemiba_deliver_fn (instance->rrp_context, addr, bytes);
+	bytes -= sizeof(struct ibv_grh);
+	instance->totemiba_deliver_fn(instance->rrp_context, addr, bytes);
 }
 
-static int mcast_cq_send_event_fn (int fd, int events, void *context)
+static int mcast_cq_send_event_fn(int fd, int events, void *context)
 {
 	struct totemiba_instance *instance = (struct totemiba_instance *)context;
 	struct ibv_wc wc[32];
@@ -487,21 +464,21 @@ static int mcast_cq_send_event_fn (int fd, int events, void *context)
 	int res;
 	int i;
 
-	ibv_get_cq_event (instance->mcast_send_completion_channel, &ev_cq, &ev_ctx);
-	ibv_ack_cq_events (ev_cq, 1);
-	res = ibv_req_notify_cq (ev_cq, 0);
+	ibv_get_cq_event(instance->mcast_send_completion_channel, &ev_cq, &ev_ctx);
+	ibv_ack_cq_events(ev_cq, 1);
+	res = ibv_req_notify_cq(ev_cq, 0);
 
-	res = ibv_poll_cq (instance->mcast_send_cq, 32, wc);
-	if (res > 0) {
-		for (i = 0; i < res; i++) {
-			mcast_send_buf_put (instance, wrid2void(wc[i].wr_id));
+	res = ibv_poll_cq(instance->mcast_send_cq, 32, wc);
+	if(res > 0) {
+		for(i = 0; i < res; i++) {
+			mcast_send_buf_put(instance, wrid2void(wc[i].wr_id));
 		}
 	}
 
 	return (0);
 }
 
-static int mcast_cq_recv_event_fn (int fd, int events, void *context)
+static int mcast_cq_recv_event_fn(int fd, int events, void *context)
 {
 	struct totemiba_instance *instance = (struct totemiba_instance *)context;
 	struct ibv_wc wc[64];
@@ -510,75 +487,64 @@ static int mcast_cq_recv_event_fn (int fd, int events, void *context)
 	int res;
 	int i;
 
-	ibv_get_cq_event (instance->mcast_recv_completion_channel, &ev_cq, &ev_ctx);
-	ibv_ack_cq_events (ev_cq, 1);
-	res = ibv_req_notify_cq (ev_cq, 0);
+	ibv_get_cq_event(instance->mcast_recv_completion_channel, &ev_cq, &ev_ctx);
+	ibv_ack_cq_events(ev_cq, 1);
+	res = ibv_req_notify_cq(ev_cq, 0);
 
-	res = ibv_poll_cq (instance->mcast_recv_cq, 64, wc);
-	if (res > 0) {
-		for (i = 0; i < res; i++) {
-			iba_deliver_fn (instance, wc[i].wr_id, wc[i].byte_len);
-			mcast_recv_buf_post (instance, wrid2void(wc[i].wr_id));
+	res = ibv_poll_cq(instance->mcast_recv_cq, 64, wc);
+	if(res > 0) {
+		for(i = 0; i < res; i++) {
+			iba_deliver_fn(instance, wc[i].wr_id, wc[i].byte_len);
+			mcast_recv_buf_post(instance, wrid2void(wc[i].wr_id));
 		}
 	}
 
 	return (0);
 }
 
-static void mcast_rejoin (void *data)
+static void mcast_rejoin(void *data)
 {
 	int res;
 	struct totemiba_instance *instance = (struct totemiba_instance *)data;
 
-	res = rdma_leave_multicast (instance->mcast_cma_id, &instance->mcast_addr);
-	if (instance->mcast_ah) {
-		ibv_destroy_ah (instance->mcast_ah);
+	res = rdma_leave_multicast(instance->mcast_cma_id, &instance->mcast_addr);
+	if(instance->mcast_ah) {
+		ibv_destroy_ah(instance->mcast_ah);
 		instance->mcast_ah = 0;
 	}
 
-	res = rdma_join_multicast (instance->mcast_cma_id, &instance->mcast_addr, instance);
-	if (res != 0) {
-		log_printf (LOGSYS_LEVEL_DEBUG,
-		    "rdma_join_multicast failed, errno=%d, rejoining in %u ms",
-		    errno,
-		    MCAST_REJOIN_MSEC);
-		qb_loop_timer_add (instance->totemiba_poll_handle,
-			QB_LOOP_MED,
-			MCAST_REJOIN_MSEC * QB_TIME_NS_IN_MSEC,
-			(void *)instance,
-			mcast_rejoin,
-			&instance->mcast_rejoin);
+	res = rdma_join_multicast(instance->mcast_cma_id, &instance->mcast_addr, instance);
+	if(res != 0) {
+		log_printf(LOGSYS_LEVEL_DEBUG, "rdma_join_multicast failed, errno=%d, rejoining in %u ms", errno, MCAST_REJOIN_MSEC);
+		qb_loop_timer_add(instance->totemiba_poll_handle, QB_LOOP_MED, MCAST_REJOIN_MSEC * QB_TIME_NS_IN_MSEC,
+						  (void *)instance, mcast_rejoin, &instance->mcast_rejoin);
 	}
 }
 
-static int mcast_rdma_event_fn (int fd, int events, void *context)
+static int mcast_rdma_event_fn(int fd, int events, void *context)
 {
 	struct totemiba_instance *instance = (struct totemiba_instance *)context;
 	struct rdma_cm_event *event;
 
 	int res;
 
-	res = rdma_get_cm_event (instance->mcast_channel, &event);
-	if (res != 0) {
+	res = rdma_get_cm_event(instance->mcast_channel, &event);
+	if(res != 0) {
 		return (0);
 	}
 
-	switch (event->event) {
+	switch(event->event) {
 	/*
 	 * occurs when we resolve the multicast address
 	 */
 	case RDMA_CM_EVENT_ADDR_RESOLVED:
-		res = rdma_join_multicast (instance->mcast_cma_id, &instance->mcast_addr, instance);
+		res = rdma_join_multicast(instance->mcast_cma_id, &instance->mcast_addr, instance);
 		usleep(1000);
-		if (res == 0) break;
+		if(res == 0) break;
 	case RDMA_CM_EVENT_MULTICAST_ERROR:
-		log_printf (LOGSYS_LEVEL_ERROR, "multicast error, trying to rejoin in %u ms", MCAST_REJOIN_MSEC);
-		qb_loop_timer_add (instance->totemiba_poll_handle,
-			QB_LOOP_MED,
-			MCAST_REJOIN_MSEC * QB_TIME_NS_IN_MSEC,
-			(void *)instance,
-			mcast_rejoin,
-			&instance->mcast_rejoin);
+		log_printf(LOGSYS_LEVEL_ERROR, "multicast error, trying to rejoin in %u ms", MCAST_REJOIN_MSEC);
+		qb_loop_timer_add(instance->totemiba_poll_handle, QB_LOOP_MED, MCAST_REJOIN_MSEC * QB_TIME_NS_IN_MSEC,
+						  (void *)instance, mcast_rejoin, &instance->mcast_rejoin);
 		break;
 	/*
 	 * occurs when the CM joins the multicast group
@@ -586,32 +552,29 @@ static int mcast_rdma_event_fn (int fd, int events, void *context)
 	case RDMA_CM_EVENT_MULTICAST_JOIN:
 		instance->mcast_qpn = event->param.ud.qp_num;
 		instance->mcast_qkey = event->param.ud.qkey;
-		instance->mcast_ah = ibv_create_ah (instance->mcast_pd, &event->param.ud.ah_attr);
+		instance->mcast_ah = ibv_create_ah(instance->mcast_pd, &event->param.ud.ah_attr);
 
-		if (instance->mcast_seen_joined == 0) {
-			log_printf (LOGSYS_LEVEL_DEBUG, "joining mcast 1st time, running callbacks");
-			instance->totemiba_iface_change_fn (instance->rrp_context, &instance->my_id);
-			instance->mcast_seen_joined=1;
+		if(instance->mcast_seen_joined == 0) {
+			log_printf(LOGSYS_LEVEL_DEBUG, "joining mcast 1st time, running callbacks");
+			instance->totemiba_iface_change_fn(instance->rrp_context, &instance->my_id);
+			instance->mcast_seen_joined = 1;
 		}
-		log_printf (LOGSYS_LEVEL_NOTICE, "Joined multicast!");
+		log_printf(LOGSYS_LEVEL_NOTICE, "Joined multicast!");
 		break;
 	case RDMA_CM_EVENT_ADDR_ERROR:
 	case RDMA_CM_EVENT_ROUTE_ERROR:
 	case RDMA_CM_EVENT_DEVICE_REMOVAL:
 		break;
 	default:
-		log_printf (LOGSYS_LEVEL_ERROR, "default %d", event->event);
+		log_printf(LOGSYS_LEVEL_ERROR, "default %d", event->event);
 		break;
 	}
 
-	rdma_ack_cm_event (event);
+	rdma_ack_cm_event(event);
 	return (0);
 }
 
-static int recv_token_cq_send_event_fn (
-	int fd,
-	int revents,
-	void *context)
+static int recv_token_cq_send_event_fn(int fd, int revents, void *context)
 {
 	struct totemiba_instance *instance = (struct totemiba_instance *)context;
 	struct ibv_wc wc[32];
@@ -620,22 +583,22 @@ static int recv_token_cq_send_event_fn (
 	int res;
 	int i;
 
-	ibv_get_cq_event (instance->recv_token_send_completion_channel, &ev_cq, &ev_ctx);
-	ibv_ack_cq_events (ev_cq, 1);
-	res = ibv_req_notify_cq (ev_cq, 0);
+	ibv_get_cq_event(instance->recv_token_send_completion_channel, &ev_cq, &ev_ctx);
+	ibv_ack_cq_events(ev_cq, 1);
+	res = ibv_req_notify_cq(ev_cq, 0);
 
-	res = ibv_poll_cq (instance->recv_token_send_cq, 32, wc);
-	if (res > 0) {
-		for (i = 0; i < res; i++) {
-			iba_deliver_fn (instance, wc[i].wr_id, wc[i].byte_len);
-			ibv_dereg_mr (wrid2void(wc[i].wr_id));
+	res = ibv_poll_cq(instance->recv_token_send_cq, 32, wc);
+	if(res > 0) {
+		for(i = 0; i < res; i++) {
+			iba_deliver_fn(instance, wc[i].wr_id, wc[i].byte_len);
+			ibv_dereg_mr(wrid2void(wc[i].wr_id));
 		}
 	}
 
 	return (0);
 }
 
-static int recv_token_cq_recv_event_fn (int fd, int events, void *context)
+static int recv_token_cq_recv_event_fn(int fd, int events, void *context)
 {
 	struct totemiba_instance *instance = (struct totemiba_instance *)context;
 	struct ibv_wc wc[32];
@@ -644,55 +607,51 @@ static int recv_token_cq_recv_event_fn (int fd, int events, void *context)
 	int res;
 	int i;
 
-	ibv_get_cq_event (instance->recv_token_recv_completion_channel, &ev_cq, &ev_ctx);
-	ibv_ack_cq_events (ev_cq, 1);
-	res = ibv_req_notify_cq (ev_cq, 0);
+	ibv_get_cq_event(instance->recv_token_recv_completion_channel, &ev_cq, &ev_ctx);
+	ibv_ack_cq_events(ev_cq, 1);
+	res = ibv_req_notify_cq(ev_cq, 0);
 
-	res = ibv_poll_cq (instance->recv_token_recv_cq, 32, wc);
-	if (res > 0) {
-		for (i = 0; i < res; i++) {
-			iba_deliver_fn (instance, wc[i].wr_id, wc[i].byte_len);
-			recv_token_recv_buf_post (instance, wrid2void(wc[i].wr_id));
+	res = ibv_poll_cq(instance->recv_token_recv_cq, 32, wc);
+	if(res > 0) {
+		for(i = 0; i < res; i++) {
+			iba_deliver_fn(instance, wc[i].wr_id, wc[i].byte_len);
+			recv_token_recv_buf_post(instance, wrid2void(wc[i].wr_id));
 		}
 	}
 
 	return (0);
 }
 
-static int recv_token_accept_destroy (struct totemiba_instance *instance)
+static int recv_token_accept_destroy(struct totemiba_instance *instance)
 {
-	if (instance->recv_token_accepted == 0) {
+	if(instance->recv_token_accepted == 0) {
 		return (0);
 	}
 
-	qb_loop_poll_del (
-		instance->totemiba_poll_handle,
-		instance->recv_token_recv_completion_channel->fd);
+	qb_loop_poll_del(instance->totemiba_poll_handle, instance->recv_token_recv_completion_channel->fd);
 
-	qb_loop_poll_del (
-		instance->totemiba_poll_handle,
-		instance->recv_token_send_completion_channel->fd);
+	qb_loop_poll_del(instance->totemiba_poll_handle, instance->recv_token_send_completion_channel->fd);
 
-	rdma_destroy_qp (instance->recv_token_cma_id);
+	rdma_destroy_qp(instance->recv_token_cma_id);
 
-	recv_token_recv_buf_post_destroy (instance);
+	recv_token_recv_buf_post_destroy(instance);
 
-	ibv_destroy_cq (instance->recv_token_send_cq);
+	ibv_destroy_cq(instance->recv_token_send_cq);
 
-	ibv_destroy_cq (instance->recv_token_recv_cq);
+	ibv_destroy_cq(instance->recv_token_recv_cq);
 
-	ibv_destroy_comp_channel (instance->recv_token_send_completion_channel);
+	ibv_destroy_comp_channel(instance->recv_token_send_completion_channel);
 
-	ibv_destroy_comp_channel (instance->recv_token_recv_completion_channel);
+	ibv_destroy_comp_channel(instance->recv_token_recv_completion_channel);
 
-	ibv_dealloc_pd (instance->recv_token_pd);
+	ibv_dealloc_pd(instance->recv_token_pd);
 
-	rdma_destroy_id (instance->recv_token_cma_id);
+	rdma_destroy_id(instance->recv_token_cma_id);
 
 	return (0);
 }
 
-static int recv_token_accept_setup (struct totemiba_instance *instance)
+static int recv_token_accept_setup(struct totemiba_instance *instance)
 {
 	struct ibv_qp_init_attr init_qp_attr;
 	int res = 0;
@@ -700,58 +659,56 @@ static int recv_token_accept_setup (struct totemiba_instance *instance)
 	/*
 	 * Allocate the protection domain
 	 */
-	instance->recv_token_pd = ibv_alloc_pd (instance->recv_token_cma_id->verbs);
+	instance->recv_token_pd = ibv_alloc_pd(instance->recv_token_cma_id->verbs);
 
 	/*
 	 * Create a completion channel
 	 */
-	instance->recv_token_recv_completion_channel = ibv_create_comp_channel (instance->recv_token_cma_id->verbs);
-	if (instance->recv_token_recv_completion_channel == NULL) {
-		log_printf (LOGSYS_LEVEL_ERROR, "couldn't create completion channel");
+	instance->recv_token_recv_completion_channel = ibv_create_comp_channel(instance->recv_token_cma_id->verbs);
+	if(instance->recv_token_recv_completion_channel == NULL) {
+		log_printf(LOGSYS_LEVEL_ERROR, "couldn't create completion channel");
 		return (-1);
 	}
 
 	/*
 	 * Create the completion queue
 	 */
-	instance->recv_token_recv_cq = ibv_create_cq (instance->recv_token_cma_id->verbs,
-		COMPLETION_QUEUE_ENTRIES, instance,
-		instance->recv_token_recv_completion_channel, 0);
-	if (instance->recv_token_recv_cq == NULL) {
-		log_printf (LOGSYS_LEVEL_ERROR, "couldn't create completion queue");
+	instance->recv_token_recv_cq = ibv_create_cq(instance->recv_token_cma_id->verbs, COMPLETION_QUEUE_ENTRIES, instance,
+												 instance->recv_token_recv_completion_channel, 0);
+	if(instance->recv_token_recv_cq == NULL) {
+		log_printf(LOGSYS_LEVEL_ERROR, "couldn't create completion queue");
 		return (-1);
 	}
-	res = ibv_req_notify_cq (instance->recv_token_recv_cq, 0);
-	if (res != 0) {
-		log_printf (LOGSYS_LEVEL_ERROR, "couldn't request notifications of the completion queue");
+	res = ibv_req_notify_cq(instance->recv_token_recv_cq, 0);
+	if(res != 0) {
+		log_printf(LOGSYS_LEVEL_ERROR, "couldn't request notifications of the completion queue");
 		return (-1);
 	}
 
 	/*
 	 * Create a completion channel
 	 */
-	instance->recv_token_send_completion_channel = ibv_create_comp_channel (instance->recv_token_cma_id->verbs);
-	if (instance->recv_token_send_completion_channel == NULL) {
-		log_printf (LOGSYS_LEVEL_ERROR, "couldn't create completion channel");
+	instance->recv_token_send_completion_channel = ibv_create_comp_channel(instance->recv_token_cma_id->verbs);
+	if(instance->recv_token_send_completion_channel == NULL) {
+		log_printf(LOGSYS_LEVEL_ERROR, "couldn't create completion channel");
 		return (-1);
 	}
 
 	/*
 	 * Create the completion queue
 	 */
-	instance->recv_token_send_cq = ibv_create_cq (instance->recv_token_cma_id->verbs,
-		COMPLETION_QUEUE_ENTRIES, instance,
-		instance->recv_token_send_completion_channel, 0);
-	if (instance->recv_token_send_cq == NULL) {
-		log_printf (LOGSYS_LEVEL_ERROR, "couldn't create completion queue");
+	instance->recv_token_send_cq = ibv_create_cq(instance->recv_token_cma_id->verbs, COMPLETION_QUEUE_ENTRIES, instance,
+												 instance->recv_token_send_completion_channel, 0);
+	if(instance->recv_token_send_cq == NULL) {
+		log_printf(LOGSYS_LEVEL_ERROR, "couldn't create completion queue");
 		return (-1);
 	}
-	res = ibv_req_notify_cq (instance->recv_token_send_cq, 0);
-	if (res != 0) {
-		log_printf (LOGSYS_LEVEL_ERROR, "couldn't request notifications of the completion queue");
+	res = ibv_req_notify_cq(instance->recv_token_send_cq, 0);
+	if(res != 0) {
+		log_printf(LOGSYS_LEVEL_ERROR, "couldn't request notifications of the completion queue");
 		return (-1);
 	}
-	memset (&init_qp_attr, 0, sizeof (struct ibv_qp_init_attr));
+	memset(&init_qp_attr, 0, sizeof(struct ibv_qp_init_attr));
 	init_qp_attr.cap.max_send_wr = 50;
 	init_qp_attr.cap.max_recv_wr = TOTAL_READ_POSTS;
 	init_qp_attr.cap.max_send_sge = 1;
@@ -761,33 +718,26 @@ static int recv_token_accept_setup (struct totemiba_instance *instance)
 	init_qp_attr.qp_type = IBV_QPT_UD;
 	init_qp_attr.send_cq = instance->recv_token_send_cq;
 	init_qp_attr.recv_cq = instance->recv_token_recv_cq;
-	res = rdma_create_qp (instance->recv_token_cma_id, instance->recv_token_pd,
-		&init_qp_attr);
-	if (res != 0) {
-		log_printf (LOGSYS_LEVEL_ERROR, "couldn't create queue pair");
+	res = rdma_create_qp(instance->recv_token_cma_id, instance->recv_token_pd, &init_qp_attr);
+	if(res != 0) {
+		log_printf(LOGSYS_LEVEL_ERROR, "couldn't create queue pair");
 		return (-1);
 	}
-	
-	recv_token_recv_buf_post_initial (instance);
 
-	qb_loop_poll_add (
-		instance->totemiba_poll_handle,
-		QB_LOOP_MED,
-		instance->recv_token_recv_completion_channel->fd,
-		POLLIN, instance, recv_token_cq_recv_event_fn);
+	recv_token_recv_buf_post_initial(instance);
 
-	qb_loop_poll_add (
-		instance->totemiba_poll_handle,
-		QB_LOOP_MED,
-		instance->recv_token_send_completion_channel->fd,
-		POLLIN, instance, recv_token_cq_send_event_fn);
+	qb_loop_poll_add(instance->totemiba_poll_handle, QB_LOOP_MED, instance->recv_token_recv_completion_channel->fd,
+					 POLLIN, instance, recv_token_cq_recv_event_fn);
+
+	qb_loop_poll_add(instance->totemiba_poll_handle, QB_LOOP_MED, instance->recv_token_send_completion_channel->fd,
+					 POLLIN, instance, recv_token_cq_send_event_fn);
 
 	instance->recv_token_accepted = 1;
 
 	return (res);
 };
 
-static int recv_token_rdma_event_fn (int fd, int events, void *context)
+static int recv_token_rdma_event_fn(int fd, int events, void *context)
 {
 	struct totemiba_instance *instance = (struct totemiba_instance *)context;
 	struct rdma_cm_event *event;
@@ -795,31 +745,31 @@ static int recv_token_rdma_event_fn (int fd, int events, void *context)
 
 	int res;
 
-	res = rdma_get_cm_event (instance->listen_recv_token_channel, &event);
-	if (res != 0) {
+	res = rdma_get_cm_event(instance->listen_recv_token_channel, &event);
+	if(res != 0) {
 		return (0);
 	}
 
-	switch (event->event) {
+	switch(event->event) {
 	case RDMA_CM_EVENT_CONNECT_REQUEST:
-		recv_token_accept_destroy (instance);
+		recv_token_accept_destroy(instance);
 
 		instance->recv_token_cma_id = event->id;
-		recv_token_accept_setup (instance);
-		memset (&conn_param, 0, sizeof (struct rdma_conn_param));
+		recv_token_accept_setup(instance);
+		memset(&conn_param, 0, sizeof(struct rdma_conn_param));
 		conn_param.qp_num = instance->recv_token_cma_id->qp->qp_num;
-		res = rdma_accept (instance->recv_token_cma_id, &conn_param);
+		res = rdma_accept(instance->recv_token_cma_id, &conn_param);
 		break;
 	default:
-		log_printf (LOGSYS_LEVEL_ERROR, "default %d", event->event);
+		log_printf(LOGSYS_LEVEL_ERROR, "default %d", event->event);
 		break;
 	}
 
-	res = rdma_ack_cm_event (event);
+	res = rdma_ack_cm_event(event);
 	return (0);
 }
 
-static int send_token_cq_send_event_fn (int fd, int events, void *context)
+static int send_token_cq_send_event_fn(int fd, int events, void *context)
 {
 	struct totemiba_instance *instance = (struct totemiba_instance *)context;
 	struct ibv_wc wc[32];
@@ -828,21 +778,21 @@ static int send_token_cq_send_event_fn (int fd, int events, void *context)
 	int res;
 	int i;
 
-	ibv_get_cq_event (instance->send_token_send_completion_channel, &ev_cq, &ev_ctx);
-	ibv_ack_cq_events (ev_cq, 1);
-	res = ibv_req_notify_cq (ev_cq, 0);
+	ibv_get_cq_event(instance->send_token_send_completion_channel, &ev_cq, &ev_ctx);
+	ibv_ack_cq_events(ev_cq, 1);
+	res = ibv_req_notify_cq(ev_cq, 0);
 
-	res = ibv_poll_cq (instance->send_token_send_cq, 32, wc);
-	if (res > 0) {
-		for (i = 0; i < res; i++) {
-			token_send_buf_put (instance, wrid2void(wc[i].wr_id));
+	res = ibv_poll_cq(instance->send_token_send_cq, 32, wc);
+	if(res > 0) {
+		for(i = 0; i < res; i++) {
+			token_send_buf_put(instance, wrid2void(wc[i].wr_id));
 		}
 	}
 
 	return (0);
 }
 
-static int send_token_cq_recv_event_fn (int fd, int events, void *context)
+static int send_token_cq_recv_event_fn(int fd, int events, void *context)
 {
 	struct totemiba_instance *instance = (struct totemiba_instance *)context;
 	struct ibv_wc wc[32];
@@ -851,21 +801,21 @@ static int send_token_cq_recv_event_fn (int fd, int events, void *context)
 	int res;
 	int i;
 
-	ibv_get_cq_event (instance->send_token_recv_completion_channel, &ev_cq, &ev_ctx);
-	ibv_ack_cq_events (ev_cq, 1);
-	res = ibv_req_notify_cq (ev_cq, 0);
+	ibv_get_cq_event(instance->send_token_recv_completion_channel, &ev_cq, &ev_ctx);
+	ibv_ack_cq_events(ev_cq, 1);
+	res = ibv_req_notify_cq(ev_cq, 0);
 
-	res = ibv_poll_cq (instance->send_token_recv_cq, 32, wc);
-	if (res > 0) {
-		for (i = 0; i < res; i++) {
-			iba_deliver_fn (instance, wc[i].wr_id, wc[i].byte_len);
+	res = ibv_poll_cq(instance->send_token_recv_cq, 32, wc);
+	if(res > 0) {
+		for(i = 0; i < res; i++) {
+			iba_deliver_fn(instance, wc[i].wr_id, wc[i].byte_len);
 		}
 	}
 
 	return (0);
 }
 
-static int send_token_rdma_event_fn (int fd, int events, void *context)
+static int send_token_rdma_event_fn(int fd, int events, void *context)
 {
 	struct totemiba_instance *instance = (struct totemiba_instance *)context;
 	struct rdma_cm_event *event;
@@ -873,153 +823,140 @@ static int send_token_rdma_event_fn (int fd, int events, void *context)
 
 	int res;
 
-	res = rdma_get_cm_event (instance->send_token_channel, &event);
-	if (res != 0) {
+	res = rdma_get_cm_event(instance->send_token_channel, &event);
+	if(res != 0) {
 		return (0);
 	}
 
-	switch (event->event) {
+	switch(event->event) {
 	/*
 	 * occurs when we resolve the multicast address
 	 */
 	case RDMA_CM_EVENT_ADDR_RESOLVED:
-		res = rdma_resolve_route (instance->send_token_cma_id, 2000);
+		res = rdma_resolve_route(instance->send_token_cma_id, 2000);
 		break;
 	/*
 	 * occurs when the CM joins the multicast group
 	 */
 	case RDMA_CM_EVENT_ROUTE_RESOLVED:
-		memset (&conn_param, 0, sizeof (struct rdma_conn_param));
+		memset(&conn_param, 0, sizeof(struct rdma_conn_param));
 		conn_param.private_data = NULL;
 		conn_param.private_data_len = 0;
-		res = rdma_connect (instance->send_token_cma_id, &conn_param);
+		res = rdma_connect(instance->send_token_cma_id, &conn_param);
 		break;
 	case RDMA_CM_EVENT_ESTABLISHED:
 		instance->send_token_qpn = event->param.ud.qp_num;
 		instance->send_token_qkey = event->param.ud.qkey;
-		instance->send_token_ah = ibv_create_ah (instance->send_token_pd, &event->param.ud.ah_attr);
-		instance->totemiba_target_set_completed (instance->rrp_context);
+		instance->send_token_ah = ibv_create_ah(instance->send_token_pd, &event->param.ud.ah_attr);
+		instance->totemiba_target_set_completed(instance->rrp_context);
 		break;
 
 	case RDMA_CM_EVENT_ADDR_ERROR:
 	case RDMA_CM_EVENT_ROUTE_ERROR:
 	case RDMA_CM_EVENT_MULTICAST_ERROR:
-		log_printf (LOGSYS_LEVEL_ERROR,
-			"send_token_rdma_event_fn multicast error");
+		log_printf(LOGSYS_LEVEL_ERROR, "send_token_rdma_event_fn multicast error");
 		break;
 	case RDMA_CM_EVENT_DEVICE_REMOVAL:
 		break;
 	case RDMA_CM_EVENT_UNREACHABLE:
-		log_printf (LOGSYS_LEVEL_ERROR,
-			"send_token_rdma_event_fn unreachable");
+		log_printf(LOGSYS_LEVEL_ERROR, "send_token_rdma_event_fn unreachable");
 		break;
 	default:
-		log_printf (LOGSYS_LEVEL_ERROR,
-			"send_token_rdma_event_fn unknown event %d",
-			event->event);
+		log_printf(LOGSYS_LEVEL_ERROR, "send_token_rdma_event_fn unknown event %d", event->event);
 		break;
 	}
 
-	rdma_ack_cm_event (event);
+	rdma_ack_cm_event(event);
 	return (0);
 }
 
-static int send_token_bind (struct totemiba_instance *instance)
+static int send_token_bind(struct totemiba_instance *instance)
 {
 	int res;
 	struct ibv_qp_init_attr init_qp_attr;
 
 	instance->send_token_channel = rdma_create_event_channel();
-	if (instance->send_token_channel == NULL) {
-		log_printf (LOGSYS_LEVEL_ERROR, "couldn't create rdma channel");
+	if(instance->send_token_channel == NULL) {
+		log_printf(LOGSYS_LEVEL_ERROR, "couldn't create rdma channel");
 		return (-1);
 	}
 
-	res = rdma_create_id (instance->send_token_channel,
-		&instance->send_token_cma_id, NULL, RDMA_PS_UDP);
-	if (res) {
-		log_printf (LOGSYS_LEVEL_ERROR, "error creating send_token_cma_id");
+	res = rdma_create_id(instance->send_token_channel, &instance->send_token_cma_id, NULL, RDMA_PS_UDP);
+	if(res) {
+		log_printf(LOGSYS_LEVEL_ERROR, "error creating send_token_cma_id");
 		return (-1);
 	}
 
-	res = rdma_bind_addr (instance->send_token_cma_id,
-		&instance->send_token_bind_addr);
-	if (res) {
-		log_printf (LOGSYS_LEVEL_ERROR, "error doing rdma_bind_addr for send token");
+	res = rdma_bind_addr(instance->send_token_cma_id, &instance->send_token_bind_addr);
+	if(res) {
+		log_printf(LOGSYS_LEVEL_ERROR, "error doing rdma_bind_addr for send token");
 		return (-1);
 	}
 
 	/*
 	 * Resolve the send_token address into a GUID
 	 */
-	res = rdma_resolve_addr (instance->send_token_cma_id,
-		&instance->bind_addr, &instance->token_addr, 2000);
-	if (res) {
-		log_printf (LOGSYS_LEVEL_ERROR, "error resolving send token address %d %d", res, errno);
+	res = rdma_resolve_addr(instance->send_token_cma_id, &instance->bind_addr, &instance->token_addr, 2000);
+	if(res) {
+		log_printf(LOGSYS_LEVEL_ERROR, "error resolving send token address %d %d", res, errno);
 		return (-1);
 	}
 
 	/*
 	 * Allocate the protection domain
 	 */
-	instance->send_token_pd = ibv_alloc_pd (instance->send_token_cma_id->verbs);
-	
+	instance->send_token_pd = ibv_alloc_pd(instance->send_token_cma_id->verbs);
+
 	/*
 	 * Create a completion channel
 	 */
-	instance->send_token_recv_completion_channel = ibv_create_comp_channel (instance->send_token_cma_id->verbs);
-	if (instance->send_token_recv_completion_channel == NULL) {
-		log_printf (LOGSYS_LEVEL_ERROR, "couldn't create completion channel");
+	instance->send_token_recv_completion_channel = ibv_create_comp_channel(instance->send_token_cma_id->verbs);
+	if(instance->send_token_recv_completion_channel == NULL) {
+		log_printf(LOGSYS_LEVEL_ERROR, "couldn't create completion channel");
 		return (-1);
 	}
 
 	/*
 	 * Create the completion queue
 	 */
-	instance->send_token_recv_cq = ibv_create_cq (instance->send_token_cma_id->verbs,
-		COMPLETION_QUEUE_ENTRIES, instance,
-		instance->send_token_recv_completion_channel, 0);
-	if (instance->send_token_recv_cq == NULL) {
-		log_printf (LOGSYS_LEVEL_ERROR, "couldn't create completion queue");
+	instance->send_token_recv_cq = ibv_create_cq(instance->send_token_cma_id->verbs, COMPLETION_QUEUE_ENTRIES, instance,
+												 instance->send_token_recv_completion_channel, 0);
+	if(instance->send_token_recv_cq == NULL) {
+		log_printf(LOGSYS_LEVEL_ERROR, "couldn't create completion queue");
 		return (-1);
 	}
-	res = ibv_req_notify_cq (instance->send_token_recv_cq, 0);
-	if (res != 0) {
-		log_printf (LOGSYS_LEVEL_ERROR,
-			"couldn't request notifications of the completion queue");
+	res = ibv_req_notify_cq(instance->send_token_recv_cq, 0);
+	if(res != 0) {
+		log_printf(LOGSYS_LEVEL_ERROR, "couldn't request notifications of the completion queue");
 		return (-1);
 	}
 
 	/*
 	 * Create a completion channel
 	 */
-	instance->send_token_send_completion_channel =
-		ibv_create_comp_channel (instance->send_token_cma_id->verbs);
+	instance->send_token_send_completion_channel = ibv_create_comp_channel(instance->send_token_cma_id->verbs);
 
-	if (instance->send_token_send_completion_channel == NULL) {
-		log_printf (LOGSYS_LEVEL_ERROR, "couldn't create completion channel");
+	if(instance->send_token_send_completion_channel == NULL) {
+		log_printf(LOGSYS_LEVEL_ERROR, "couldn't create completion channel");
 		return (-1);
 	}
-	
+
 	/*
 	 * Create the completion queue
 	 */
-	instance->send_token_send_cq = ibv_create_cq (
-		instance->send_token_cma_id->verbs,
-		COMPLETION_QUEUE_ENTRIES, instance,
-		instance->send_token_send_completion_channel, 0);
-	if (instance->send_token_send_cq == NULL) {
-		log_printf (LOGSYS_LEVEL_ERROR, "couldn't create completion queue");
+	instance->send_token_send_cq = ibv_create_cq(instance->send_token_cma_id->verbs, COMPLETION_QUEUE_ENTRIES, instance,
+												 instance->send_token_send_completion_channel, 0);
+	if(instance->send_token_send_cq == NULL) {
+		log_printf(LOGSYS_LEVEL_ERROR, "couldn't create completion queue");
 		return (-1);
 	}
 
-	res = ibv_req_notify_cq (instance->send_token_send_cq, 0);
-	if (res != 0) {
-		log_printf (LOGSYS_LEVEL_ERROR,
-			"couldn't request notifications of the completion queue");
+	res = ibv_req_notify_cq(instance->send_token_send_cq, 0);
+	if(res != 0) {
+		log_printf(LOGSYS_LEVEL_ERROR, "couldn't request notifications of the completion queue");
 		return (-1);
 	}
-	memset (&init_qp_attr, 0, sizeof (struct ibv_qp_init_attr));
+	memset(&init_qp_attr, 0, sizeof(struct ibv_qp_init_attr));
 	init_qp_attr.cap.max_send_wr = 50;
 	init_qp_attr.cap.max_recv_wr = TOTAL_READ_POSTS;
 	init_qp_attr.cap.max_send_sge = 1;
@@ -1029,91 +966,72 @@ static int send_token_bind (struct totemiba_instance *instance)
 	init_qp_attr.qp_type = IBV_QPT_UD;
 	init_qp_attr.send_cq = instance->send_token_send_cq;
 	init_qp_attr.recv_cq = instance->send_token_recv_cq;
-	res = rdma_create_qp (instance->send_token_cma_id,
-		instance->send_token_pd, &init_qp_attr);
-	if (res != 0) {
-		log_printf (LOGSYS_LEVEL_ERROR, "couldn't create queue pair");
+	res = rdma_create_qp(instance->send_token_cma_id, instance->send_token_pd, &init_qp_attr);
+	if(res != 0) {
+		log_printf(LOGSYS_LEVEL_ERROR, "couldn't create queue pair");
 		return (-1);
 	}
-	
-	qb_loop_poll_add (
-		instance->totemiba_poll_handle,
-		QB_LOOP_MED,
-		instance->send_token_recv_completion_channel->fd,
-		POLLIN, instance, send_token_cq_recv_event_fn);
 
-	qb_loop_poll_add (
-		instance->totemiba_poll_handle,
-		QB_LOOP_MED,
-		instance->send_token_send_completion_channel->fd,
-		POLLIN, instance, send_token_cq_send_event_fn);
+	qb_loop_poll_add(instance->totemiba_poll_handle, QB_LOOP_MED, instance->send_token_recv_completion_channel->fd,
+					 POLLIN, instance, send_token_cq_recv_event_fn);
 
-	qb_loop_poll_add (
-		instance->totemiba_poll_handle,
-		QB_LOOP_MED,
-		instance->send_token_channel->fd,
-		POLLIN, instance, send_token_rdma_event_fn);
+	qb_loop_poll_add(instance->totemiba_poll_handle, QB_LOOP_MED, instance->send_token_send_completion_channel->fd,
+					 POLLIN, instance, send_token_cq_send_event_fn);
+
+	qb_loop_poll_add(instance->totemiba_poll_handle, QB_LOOP_MED, instance->send_token_channel->fd, POLLIN, instance,
+					 send_token_rdma_event_fn);
 
 	instance->send_token_bound = 1;
 	return (0);
 }
 
-static int send_token_unbind (struct totemiba_instance *instance)
+static int send_token_unbind(struct totemiba_instance *instance)
 {
-	if (instance->send_token_bound == 0) {
+	if(instance->send_token_bound == 0) {
 		return (0);
 	}
 
-	qb_loop_poll_del (
-		instance->totemiba_poll_handle,
-		instance->send_token_recv_completion_channel->fd);
-	qb_loop_poll_del (
-		instance->totemiba_poll_handle,
-		instance->send_token_send_completion_channel->fd);
-	qb_loop_poll_del (
-		instance->totemiba_poll_handle,
-		instance->send_token_channel->fd);
+	qb_loop_poll_del(instance->totemiba_poll_handle, instance->send_token_recv_completion_channel->fd);
+	qb_loop_poll_del(instance->totemiba_poll_handle, instance->send_token_send_completion_channel->fd);
+	qb_loop_poll_del(instance->totemiba_poll_handle, instance->send_token_channel->fd);
 
-	if(instance->send_token_ah)
-	{
+	if(instance->send_token_ah) {
 		ibv_destroy_ah(instance->send_token_ah);
 		instance->send_token_ah = 0;
 	}
 
-	rdma_destroy_qp (instance->send_token_cma_id);
-	ibv_destroy_cq (instance->send_token_send_cq);
-	ibv_destroy_cq (instance->send_token_recv_cq);
-	ibv_destroy_comp_channel (instance->send_token_send_completion_channel);
-	ibv_destroy_comp_channel (instance->send_token_recv_completion_channel);
-	token_send_buf_destroy (instance);
-	ibv_dealloc_pd (instance->send_token_pd);
-	rdma_destroy_id (instance->send_token_cma_id);
-	rdma_destroy_event_channel (instance->send_token_channel);
+	rdma_destroy_qp(instance->send_token_cma_id);
+	ibv_destroy_cq(instance->send_token_send_cq);
+	ibv_destroy_cq(instance->send_token_recv_cq);
+	ibv_destroy_comp_channel(instance->send_token_send_completion_channel);
+	ibv_destroy_comp_channel(instance->send_token_recv_completion_channel);
+	token_send_buf_destroy(instance);
+	ibv_dealloc_pd(instance->send_token_pd);
+	rdma_destroy_id(instance->send_token_cma_id);
+	rdma_destroy_event_channel(instance->send_token_channel);
 	return (0);
 }
 
-static int recv_token_bind (struct totemiba_instance *instance)
+static int recv_token_bind(struct totemiba_instance *instance)
 {
 	int res;
 	struct ibv_port_attr port_attr;
 
 	instance->listen_recv_token_channel = rdma_create_event_channel();
-	if (instance->listen_recv_token_channel == NULL) {
-		log_printf (LOGSYS_LEVEL_ERROR, "couldn't create rdma channel");
+	if(instance->listen_recv_token_channel == NULL) {
+		log_printf(LOGSYS_LEVEL_ERROR, "couldn't create rdma channel");
 		return (-1);
 	}
 
-	res = rdma_create_id (instance->listen_recv_token_channel,
-		&instance->listen_recv_token_cma_id, NULL, RDMA_PS_UDP);
-	if (res) {
-		log_printf (LOGSYS_LEVEL_ERROR, "error creating recv_token_cma_id");
+	res = rdma_create_id(instance->listen_recv_token_channel, &instance->listen_recv_token_cma_id, NULL, RDMA_PS_UDP);
+	if(res) {
+		log_printf(LOGSYS_LEVEL_ERROR, "error creating recv_token_cma_id");
 		return (-1);
 	}
 
-	res = rdma_bind_addr (instance->listen_recv_token_cma_id,
-		&instance->bind_addr);
-	if (res) {
-		log_printf (LOGSYS_LEVEL_ERROR, "error doing rdma_bind_addr for recv token");
+	res = rdma_bind_addr(instance->listen_recv_token_cma_id, &instance->bind_addr);
+	if(res) {
+		log_printf(LOGSYS_LEVEL_ERROR, "error doing rdma_bind_addr for recv token");
 		return (-1);
 	}
 
@@ -1124,119 +1042,113 @@ static int recv_token_bind (struct totemiba_instance *instance)
 	 * TODO: Implement MTU discovery also for IP and handle MTU correctly for all structures inside totemsrp,
 	 *       crypto, ...
 	 */
-	res = ibv_query_port (instance->listen_recv_token_cma_id->verbs, instance->listen_recv_token_cma_id->port_num, &port_attr);
-	if ( (1 << (port_attr.active_mtu + 7)) < instance->totem_config->net_mtu + 160) {
-		log_printf (LOGSYS_LEVEL_ERROR, "requested net_mtu is %d and is larger than the active port mtu %d\n",\
-				instance->totem_config->net_mtu + 160, (1 << (port_attr.active_mtu + 7)));
+	res = ibv_query_port(instance->listen_recv_token_cma_id->verbs, instance->listen_recv_token_cma_id->port_num, &port_attr);
+	if((1 << (port_attr.active_mtu + 7)) < instance->totem_config->net_mtu + 160) {
+		log_printf(LOGSYS_LEVEL_ERROR, "requested net_mtu is %d and is larger than the active port mtu %d\n",
+				   instance->totem_config->net_mtu + 160, (1 << (port_attr.active_mtu + 7)));
 		return (-1);
 	}
 
 	/*
 	 * Resolve the recv_token address into a GUID
 	 */
-	res = rdma_listen (instance->listen_recv_token_cma_id, 10);
-	if (res) {
-		log_printf (LOGSYS_LEVEL_ERROR, "error listening %d %d", res, errno);
+	res = rdma_listen(instance->listen_recv_token_cma_id, 10);
+	if(res) {
+		log_printf(LOGSYS_LEVEL_ERROR, "error listening %d %d", res, errno);
 		return (-1);
 	}
 
-	qb_loop_poll_add (
-		instance->totemiba_poll_handle,
-		QB_LOOP_MED,
-		instance->listen_recv_token_channel->fd,
-		POLLIN, instance, recv_token_rdma_event_fn);
+	qb_loop_poll_add(instance->totemiba_poll_handle, QB_LOOP_MED, instance->listen_recv_token_channel->fd, POLLIN,
+					 instance, recv_token_rdma_event_fn);
 
 	return (0);
 }
 
-static int mcast_bind (struct totemiba_instance *instance)
+static int mcast_bind(struct totemiba_instance *instance)
 {
 	int res;
 	struct ibv_qp_init_attr init_qp_attr;
 
 	instance->mcast_channel = rdma_create_event_channel();
-	if (instance->mcast_channel == NULL) {
-		log_printf (LOGSYS_LEVEL_ERROR, "couldn't create rdma channel");
+	if(instance->mcast_channel == NULL) {
+		log_printf(LOGSYS_LEVEL_ERROR, "couldn't create rdma channel");
 		return (-1);
 	}
 
-	res = rdma_create_id (instance->mcast_channel, &instance->mcast_cma_id, NULL, RDMA_PS_UDP);
-	if (res) {
-		log_printf (LOGSYS_LEVEL_ERROR, "error creating mcast_cma_id");
+	res = rdma_create_id(instance->mcast_channel, &instance->mcast_cma_id, NULL, RDMA_PS_UDP);
+	if(res) {
+		log_printf(LOGSYS_LEVEL_ERROR, "error creating mcast_cma_id");
 		return (-1);
 	}
 
-	res = rdma_bind_addr (instance->mcast_cma_id, &instance->local_mcast_bind_addr);
-	if (res) {
-		log_printf (LOGSYS_LEVEL_ERROR, "error doing rdma_bind_addr for mcast");
+	res = rdma_bind_addr(instance->mcast_cma_id, &instance->local_mcast_bind_addr);
+	if(res) {
+		log_printf(LOGSYS_LEVEL_ERROR, "error doing rdma_bind_addr for mcast");
 		return (-1);
 	}
 
 	/*
 	 * Resolve the multicast address into a GUID
 	 */
-	res = rdma_resolve_addr (instance->mcast_cma_id, &instance->local_mcast_bind_addr,
-		&instance->mcast_addr, 5000);
-	if (res) {
-		log_printf (LOGSYS_LEVEL_ERROR, "error resolving multicast address %d %d", res, errno);
+	res = rdma_resolve_addr(instance->mcast_cma_id, &instance->local_mcast_bind_addr, &instance->mcast_addr, 5000);
+	if(res) {
+		log_printf(LOGSYS_LEVEL_ERROR, "error resolving multicast address %d %d", res, errno);
 		return (-1);
 	}
 
 	/*
 	 * Allocate the protection domain
 	 */
-	instance->mcast_pd = ibv_alloc_pd (instance->mcast_cma_id->verbs);
-	
+	instance->mcast_pd = ibv_alloc_pd(instance->mcast_cma_id->verbs);
+
 	/*
 	 * Create a completion channel
 	 */
-	instance->mcast_recv_completion_channel = ibv_create_comp_channel (instance->mcast_cma_id->verbs);
-	if (instance->mcast_recv_completion_channel == NULL) {
-		log_printf (LOGSYS_LEVEL_ERROR, "couldn't create completion channel");
+	instance->mcast_recv_completion_channel = ibv_create_comp_channel(instance->mcast_cma_id->verbs);
+	if(instance->mcast_recv_completion_channel == NULL) {
+		log_printf(LOGSYS_LEVEL_ERROR, "couldn't create completion channel");
 		return (-1);
 	}
 
 	/*
 	 * Create the completion queue
 	 */
-	instance->mcast_recv_cq = ibv_create_cq (instance->mcast_cma_id->verbs,
-		COMPLETION_QUEUE_ENTRIES, instance,
-		instance->mcast_recv_completion_channel, 0);
-	if (instance->mcast_recv_cq == NULL) {
-		log_printf (LOGSYS_LEVEL_ERROR, "couldn't create completion queue");
+	instance->mcast_recv_cq = ibv_create_cq(instance->mcast_cma_id->verbs, COMPLETION_QUEUE_ENTRIES, instance,
+											instance->mcast_recv_completion_channel, 0);
+	if(instance->mcast_recv_cq == NULL) {
+		log_printf(LOGSYS_LEVEL_ERROR, "couldn't create completion queue");
 		return (-1);
 	}
-	res = ibv_req_notify_cq (instance->mcast_recv_cq, 0);
-	if (res != 0) {
-		log_printf (LOGSYS_LEVEL_ERROR, "couldn't request notifications of the completion queue");
+	res = ibv_req_notify_cq(instance->mcast_recv_cq, 0);
+	if(res != 0) {
+		log_printf(LOGSYS_LEVEL_ERROR, "couldn't request notifications of the completion queue");
 		return (-1);
 	}
 
 	/*
 	 * Create a completion channel
 	 */
-	instance->mcast_send_completion_channel = ibv_create_comp_channel (instance->mcast_cma_id->verbs);
-	if (instance->mcast_send_completion_channel == NULL) {
-		log_printf (LOGSYS_LEVEL_ERROR, "couldn't create completion channel");
+	instance->mcast_send_completion_channel = ibv_create_comp_channel(instance->mcast_cma_id->verbs);
+	if(instance->mcast_send_completion_channel == NULL) {
+		log_printf(LOGSYS_LEVEL_ERROR, "couldn't create completion channel");
 		return (-1);
 	}
 
 	/*
 	 * Create the completion queue
 	 */
-	instance->mcast_send_cq = ibv_create_cq (instance->mcast_cma_id->verbs,
-		COMPLETION_QUEUE_ENTRIES, instance,
-		instance->mcast_send_completion_channel, 0);
-	if (instance->mcast_send_cq == NULL) {
-		log_printf (LOGSYS_LEVEL_ERROR, "couldn't create completion queue");
+	instance->mcast_send_cq = ibv_create_cq(instance->mcast_cma_id->verbs, COMPLETION_QUEUE_ENTRIES, instance,
+											instance->mcast_send_completion_channel, 0);
+	if(instance->mcast_send_cq == NULL) {
+		log_printf(LOGSYS_LEVEL_ERROR, "couldn't create completion queue");
 		return (-1);
 	}
-	res = ibv_req_notify_cq (instance->mcast_send_cq, 0);
-	if (res != 0) {
-		log_printf (LOGSYS_LEVEL_ERROR, "couldn't request notifications of the completion queue");
+	res = ibv_req_notify_cq(instance->mcast_send_cq, 0);
+	if(res != 0) {
+		log_printf(LOGSYS_LEVEL_ERROR, "couldn't request notifications of the completion queue");
 		return (-1);
 	}
-	memset (&init_qp_attr, 0, sizeof (struct ibv_qp_init_attr));
+	memset(&init_qp_attr, 0, sizeof(struct ibv_qp_init_attr));
 	init_qp_attr.cap.max_send_wr = 50;
 	init_qp_attr.cap.max_recv_wr = TOTAL_READ_POSTS;
 	init_qp_attr.cap.max_send_sge = 1;
@@ -1246,38 +1158,26 @@ static int mcast_bind (struct totemiba_instance *instance)
 	init_qp_attr.qp_type = IBV_QPT_UD;
 	init_qp_attr.send_cq = instance->mcast_send_cq;
 	init_qp_attr.recv_cq = instance->mcast_recv_cq;
-	res = rdma_create_qp (instance->mcast_cma_id, instance->mcast_pd,
-		&init_qp_attr);
-	if (res != 0) {
-		log_printf (LOGSYS_LEVEL_ERROR, "couldn't create queue pair");
+	res = rdma_create_qp(instance->mcast_cma_id, instance->mcast_pd, &init_qp_attr);
+	if(res != 0) {
+		log_printf(LOGSYS_LEVEL_ERROR, "couldn't create queue pair");
 		return (-1);
 	}
-	
-	mcast_recv_buf_post_initial (instance);
 
-	qb_loop_poll_add (
-		instance->totemiba_poll_handle,
-		QB_LOOP_MED,
-		instance->mcast_recv_completion_channel->fd,
-		POLLIN, instance, mcast_cq_recv_event_fn);
+	mcast_recv_buf_post_initial(instance);
 
-	qb_loop_poll_add (
-		instance->totemiba_poll_handle,
-		QB_LOOP_MED,
-		instance->mcast_send_completion_channel->fd,
-		POLLIN, instance, mcast_cq_send_event_fn);
+	qb_loop_poll_add(instance->totemiba_poll_handle, QB_LOOP_MED, instance->mcast_recv_completion_channel->fd, POLLIN,
+					 instance, mcast_cq_recv_event_fn);
 
-	qb_loop_poll_add (
-		instance->totemiba_poll_handle,
-		QB_LOOP_MED,
-		instance->mcast_channel->fd,
-		POLLIN, instance, mcast_rdma_event_fn);
+	qb_loop_poll_add(instance->totemiba_poll_handle, QB_LOOP_MED, instance->mcast_send_completion_channel->fd, POLLIN,
+					 instance, mcast_cq_send_event_fn);
+
+	qb_loop_poll_add(instance->totemiba_poll_handle, QB_LOOP_MED, instance->mcast_channel->fd, POLLIN, instance, mcast_rdma_event_fn);
 
 	return (0);
 }
 
-static void timer_function_netif_check_timeout (
-      void *data)
+static void timer_function_netif_check_timeout(void *data)
 {
 	struct totemiba_instance *instance = (struct totemiba_instance *)data;
 	int res;
@@ -1285,45 +1185,34 @@ static void timer_function_netif_check_timeout (
 	int interface_num;
 	int addr_len;
 
-	totemip_iface_check (&instance->totem_interface->bindnet,
-		&instance->totem_interface->boundto, &interface_up, &interface_num, instance->totem_config->clear_node_high_bit);
+	totemip_iface_check(&instance->totem_interface->bindnet, &instance->totem_interface->boundto, &interface_up,
+						&interface_num, instance->totem_config->clear_node_high_bit);
 
-	totemip_totemip_to_sockaddr_convert(&instance->totem_interface->boundto,
-		instance->totem_interface->ip_port, (struct sockaddr_storage *)&instance->bind_addr,
-		&addr_len);
+	totemip_totemip_to_sockaddr_convert(&instance->totem_interface->boundto, instance->totem_interface->ip_port,
+										(struct sockaddr_storage *)&instance->bind_addr, &addr_len);
 
-	totemip_totemip_to_sockaddr_convert(&instance->totem_interface->boundto,
-		0, (struct sockaddr_storage *)&instance->send_token_bind_addr,
-		&addr_len);
+	totemip_totemip_to_sockaddr_convert(&instance->totem_interface->boundto, 0,
+										(struct sockaddr_storage *)&instance->send_token_bind_addr, &addr_len);
 
-	totemip_totemip_to_sockaddr_convert(&instance->totem_interface->boundto,
-		0, (struct sockaddr_storage *)&instance->local_mcast_bind_addr,
-		&addr_len);
+	totemip_totemip_to_sockaddr_convert(&instance->totem_interface->boundto, 0,
+										(struct sockaddr_storage *)&instance->local_mcast_bind_addr, &addr_len);
 
-	totemip_totemip_to_sockaddr_convert(&instance->totem_interface->boundto,
-		instance->totem_interface->ip_port, (struct sockaddr_storage *)&instance->my_id,
-		&addr_len);
+	totemip_totemip_to_sockaddr_convert(&instance->totem_interface->boundto, instance->totem_interface->ip_port,
+										(struct sockaddr_storage *)&instance->my_id, &addr_len);
 
-	totemip_sockaddr_to_totemip_convert(
-		(const struct sockaddr_storage *)&instance->bind_addr,
-		&instance->my_id);
+	totemip_sockaddr_to_totemip_convert((const struct sockaddr_storage *)&instance->bind_addr, &instance->my_id);
 
-	memcpy (&instance->my_id, &instance->totem_interface->boundto,
-		sizeof (struct totem_ip_address));
+	memcpy(&instance->my_id, &instance->totem_interface->boundto, sizeof(struct totem_ip_address));
 
-	totemip_totemip_to_sockaddr_convert(&instance->totem_interface->mcast_addr,
-		instance->totem_interface->ip_port,
-		(struct sockaddr_storage *)&instance->mcast_addr, &addr_len);
+	totemip_totemip_to_sockaddr_convert(&instance->totem_interface->mcast_addr, instance->totem_interface->ip_port,
+										(struct sockaddr_storage *)&instance->mcast_addr, &addr_len);
 
-	res = recv_token_bind (instance);
+	res = recv_token_bind(instance);
 
-	res = mcast_bind (instance);
+	res = mcast_bind(instance);
 }
 
-int totemiba_crypto_set (
-	void *iba_context,
-	const char *cipher_type,
-	const char *hash_type)
+int totemiba_crypto_set(void *iba_context, const char *cipher_type, const char *hash_type)
 {
 	struct totemiba_instance *instance = (struct totemiba_instance *)iba_context;
 	int res = 0;
@@ -1333,8 +1222,7 @@ int totemiba_crypto_set (
 	return (res);
 }
 
-int totemiba_finalize (
-	void *iba_context)
+int totemiba_finalize(void *iba_context)
 {
 	struct totemiba_instance *instance = (struct totemiba_instance *)iba_context;
 	int res = 0;
@@ -1347,35 +1235,24 @@ int totemiba_finalize (
 /*
  * Create an instance
  */
-int totemiba_initialize (
-	qb_loop_t *qb_poll_handle,
-	void **iba_context,
-	struct totem_config *totem_config,
-	totemsrp_stats_t *stats,
-	int interface_no,
-	void *context,
+int totemiba_initialize(qb_loop_t *qb_poll_handle, void **iba_context, struct totem_config *totem_config,
+						totemsrp_stats_t *stats, int interface_no, void *context,
 
-	void (*deliver_fn) (
-		void *context,
-		const void *msg,
-		unsigned int msg_len),
+						void (*deliver_fn)(void *context, const void *msg, unsigned int msg_len),
 
-	void (*iface_change_fn) (
-		void *context,
-		const struct totem_ip_address *iface_address),
+						void (*iface_change_fn)(void *context, const struct totem_ip_address *iface_address),
 
-	void (*target_set_completed) (
-		void *context))
+						void (*target_set_completed)(void *context))
 {
 	struct totemiba_instance *instance;
 	int res = 0;
 
-	instance = malloc (sizeof (struct totemiba_instance));
-	if (instance == NULL) {
+	instance = malloc(sizeof(struct totemiba_instance));
+	if(instance == NULL) {
 		return (-1);
 	}
 
-	totemiba_instance_initialize (instance);
+	totemiba_instance_initialize(instance);
 
 	instance->totem_interface = &totem_config->interfaces[interface_no];
 
@@ -1394,12 +1271,8 @@ int totemiba_initialize (
 
 	instance->rrp_context = context;
 
-	qb_loop_timer_add (instance->totemiba_poll_handle,
-		QB_LOOP_MED,
-		100*QB_TIME_NS_IN_MSEC,
-		(void *)instance,
-		timer_function_netif_check_timeout,
-		&instance->timer_netif_check_timeout);
+	qb_loop_timer_add(instance->totemiba_poll_handle, QB_LOOP_MED, 100 * QB_TIME_NS_IN_MSEC, (void *)instance,
+					  timer_function_netif_check_timeout, &instance->timer_netif_check_timeout);
 
 	instance->totemiba_subsys_id = totem_config->totem_logging_configuration.log_subsys_id;
 	instance->totemiba_log_printf = totem_config->totem_logging_configuration.log_printf;
@@ -1408,19 +1281,17 @@ int totemiba_initialize (
 	return (res);
 }
 
-void *totemiba_buffer_alloc (void)
+void *totemiba_buffer_alloc(void)
 {
-	return malloc (MAX_MTU_SIZE);
+	return malloc(MAX_MTU_SIZE);
 }
 
-void totemiba_buffer_release (void *ptr)
+void totemiba_buffer_release(void *ptr)
 {
-	return free (ptr);
+	return free(ptr);
 }
 
-int totemiba_processor_count_set (
-	void *iba_context,
-	int processor_count)
+int totemiba_processor_count_set(void *iba_context, int processor_count)
 {
 	struct totemiba_instance *instance = (struct totemiba_instance *)iba_context;
 	int res = 0;
@@ -1430,7 +1301,7 @@ int totemiba_processor_count_set (
 	return (res);
 }
 
-int totemiba_recv_flush (void *iba_context)
+int totemiba_recv_flush(void *iba_context)
 {
 	struct totemiba_instance *instance = (struct totemiba_instance *)iba_context;
 	int res = 0;
@@ -1440,7 +1311,7 @@ int totemiba_recv_flush (void *iba_context)
 	return (res);
 }
 
-int totemiba_send_flush (void *iba_context)
+int totemiba_send_flush(void *iba_context)
 {
 	struct totemiba_instance *instance = (struct totemiba_instance *)iba_context;
 	int res = 0;
@@ -1450,10 +1321,7 @@ int totemiba_send_flush (void *iba_context)
 	return (res);
 }
 
-int totemiba_token_send (
-	void *iba_context,
-	const void *ms,
-	unsigned int msg_len)
+int totemiba_token_send(void *iba_context, const void *ms, unsigned int msg_len)
 {
 	struct totemiba_instance *instance = (struct totemiba_instance *)iba_context;
 	int res = 0;
@@ -1462,12 +1330,12 @@ int totemiba_token_send (
 	void *msg;
 	struct send_buf *send_buf;
 
-	send_buf = token_send_buf_get (instance);
-	if (send_buf == NULL) {
+	send_buf = token_send_buf_get(instance);
+	if(send_buf == NULL) {
 		return (-1);
 	}
 	msg = send_buf->buffer;
-	memcpy (msg, ms, msg_len);
+	memcpy(msg, ms, msg_len);
 
 	send_wr.next = NULL;
 	send_wr.sg_list = &sge;
@@ -1485,15 +1353,12 @@ int totemiba_token_send (
 	sge.addr = (uintptr_t)msg;
 
 	if(instance->send_token_ah != 0 && instance->send_token_bound)
-		res = ibv_post_send (instance->send_token_cma_id->qp, &send_wr, &failed_send_wr);
+		res = ibv_post_send(instance->send_token_cma_id->qp, &send_wr, &failed_send_wr);
 
 	return (res);
 }
 
-int totemiba_mcast_flush_send (
-	void *iba_context,
-	const void *ms,
-	unsigned int msg_len)
+int totemiba_mcast_flush_send(void *iba_context, const void *ms, unsigned int msg_len)
 {
 	struct totemiba_instance *instance = (struct totemiba_instance *)iba_context;
 	int res = 0;
@@ -1502,13 +1367,13 @@ int totemiba_mcast_flush_send (
 	void *msg;
 	struct send_buf *send_buf;
 
-	send_buf = mcast_send_buf_get (instance);
-	if (send_buf == NULL) {
+	send_buf = mcast_send_buf_get(instance);
+	if(send_buf == NULL) {
 		return (-1);
 	}
 
 	msg = send_buf->buffer;
-	memcpy (msg, ms, msg_len);
+	memcpy(msg, ms, msg_len);
 	send_wr.next = NULL;
 	send_wr.sg_list = &sge;
 	send_wr.num_sge = 1;
@@ -1524,17 +1389,14 @@ int totemiba_mcast_flush_send (
 	sge.lkey = send_buf->mr->lkey;
 	sge.addr = (uintptr_t)msg;
 
-	if (instance->mcast_ah != 0) {
-		res = ibv_post_send (instance->mcast_cma_id->qp, &send_wr, &failed_send_wr);
+	if(instance->mcast_ah != 0) {
+		res = ibv_post_send(instance->mcast_cma_id->qp, &send_wr, &failed_send_wr);
 	}
 
 	return (res);
 }
 
-int totemiba_mcast_noflush_send (
-	void *iba_context,
-	const void *ms,
-	unsigned int msg_len)
+int totemiba_mcast_noflush_send(void *iba_context, const void *ms, unsigned int msg_len)
 {
 	struct totemiba_instance *instance = (struct totemiba_instance *)iba_context;
 	int res = 0;
@@ -1543,13 +1405,13 @@ int totemiba_mcast_noflush_send (
 	void *msg;
 	struct send_buf *send_buf;
 
-	send_buf = mcast_send_buf_get (instance);
-	if (send_buf == NULL) {
+	send_buf = mcast_send_buf_get(instance);
+	if(send_buf == NULL) {
 		return (-1);
 	}
 
 	msg = send_buf->buffer;
-	memcpy (msg, ms, msg_len);
+	memcpy(msg, ms, msg_len);
 	send_wr.next = NULL;
 	send_wr.sg_list = &sge;
 	send_wr.num_sge = 1;
@@ -1565,14 +1427,14 @@ int totemiba_mcast_noflush_send (
 	sge.lkey = send_buf->mr->lkey;
 	sge.addr = (uintptr_t)msg;
 
-	if (instance->mcast_ah != 0) {
-		res = ibv_post_send (instance->mcast_cma_id->qp, &send_wr, &failed_send_wr);
+	if(instance->mcast_ah != 0) {
+		res = ibv_post_send(instance->mcast_cma_id->qp, &send_wr, &failed_send_wr);
 	}
 
 	return (res);
 }
 
-extern int totemiba_iface_check (void *iba_context)
+extern int totemiba_iface_check(void *iba_context)
 {
 	struct totemiba_instance *instance = (struct totemiba_instance *)iba_context;
 	int res = 0;
@@ -1582,55 +1444,50 @@ extern int totemiba_iface_check (void *iba_context)
 	return (res);
 }
 
-extern void totemiba_net_mtu_adjust (void *iba_context, struct totem_config *totem_config)
+extern void totemiba_net_mtu_adjust(void *iba_context, struct totem_config *totem_config)
 {
 	struct totemiba_instance *instance = (struct totemiba_instance *)iba_context;
 	instance = NULL;
 }
 
-const char *totemiba_iface_print (void *iba_context)  {
+const char *totemiba_iface_print(void *iba_context)
+{
 	struct totemiba_instance *instance = (struct totemiba_instance *)iba_context;
 
-        const char *ret_char;
+	const char *ret_char;
 
-        ret_char = totemip_print (&instance->my_id);
+	ret_char = totemip_print(&instance->my_id);
 
-        return (ret_char);
+	return (ret_char);
 }
 
-int totemiba_iface_get (
-	void *iba_context,
-	struct totem_ip_address *addr)
+int totemiba_iface_get(void *iba_context, struct totem_ip_address *addr)
 {
 	struct totemiba_instance *instance = (struct totemiba_instance *)iba_context;
 	int res = 0;
 
-	memcpy (addr, &instance->my_id, sizeof (struct totem_ip_address));
+	memcpy(addr, &instance->my_id, sizeof(struct totem_ip_address));
 
 	return (res);
 }
 
-int totemiba_token_target_set (
-	void *iba_context,
-	const struct totem_ip_address *token_target)
+int totemiba_token_target_set(void *iba_context, const struct totem_ip_address *token_target)
 {
 	struct totemiba_instance *instance = (struct totemiba_instance *)iba_context;
 	int res = 0;
 	int addr_len = 16;
 
-	totemip_totemip_to_sockaddr_convert((struct totem_ip_address *)token_target,
-		instance->totem_interface->ip_port, (struct sockaddr_storage *)&instance->token_addr,
-		&addr_len);
+	totemip_totemip_to_sockaddr_convert((struct totem_ip_address *)token_target, instance->totem_interface->ip_port,
+										(struct sockaddr_storage *)&instance->token_addr, &addr_len);
 
-	res = send_token_unbind (instance);
+	res = send_token_unbind(instance);
 
-	res = send_token_bind (instance);
+	res = send_token_bind(instance);
 
 	return (res);
 }
 
-extern int totemiba_recv_mcast_empty (
-	void *iba_context)
+extern int totemiba_recv_mcast_empty(void *iba_context)
 {
 	struct totemiba_instance *instance = (struct totemiba_instance *)iba_context;
 	int res = 0;
@@ -1639,4 +1496,3 @@ extern int totemiba_recv_mcast_empty (
 
 	return (res);
 }
-

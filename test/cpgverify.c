@@ -56,59 +56,44 @@ struct my_msg {
 };
 
 static int deliveries = 0;
-PK11Context* sha1_context;
+PK11Context *sha1_context;
 
-static void cpg_deliver_fn (
-        cpg_handle_t handle,
-        const struct cpg_name *group_name,
-        uint32_t nodeid,
-        uint32_t pid,
-        void *m,
-        size_t msg_len)
+static void cpg_deliver_fn(cpg_handle_t handle, const struct cpg_name *group_name, uint32_t nodeid, uint32_t pid, void *m, size_t msg_len)
 {
 	const struct my_msg *msg2 = m;
 	unsigned char sha1_compare[20];
 	unsigned int i;
 	unsigned int sha1_len;
 
-	printf ("msg '%s'\n", msg2->buffer);
+	printf("msg '%s'\n", msg2->buffer);
 	PK11_DigestBegin(sha1_context);
 	PK11_DigestOp(sha1_context, msg2->buffer, msg2->msg_size);
 	PK11_DigestFinal(sha1_context, sha1_compare, &sha1_len, sizeof(sha1_compare));
-printf ("SIZE %d HASH: ", msg2->msg_size);
-for (i = 0; i < 20; i++) {
-printf ("%x", sha1_compare[i]);
-}
-printf ("\n");
-	if (memcmp (sha1_compare, msg2->sha1, 20) != 0) {
-		printf ("incorrect hash\n");
-		exit (1);
+	printf("SIZE %d HASH: ", msg2->msg_size);
+	for(i = 0; i < 20; i++) {
+		printf("%x", sha1_compare[i]);
+	}
+	printf("\n");
+	if(memcmp(sha1_compare, msg2->sha1, 20) != 0) {
+		printf("incorrect hash\n");
+		exit(1);
 	}
 	deliveries++;
 }
 
-static void cpg_confchg_fn (
-        cpg_handle_t handle,
-        const struct cpg_name *group_name,
-        const struct cpg_address *member_list, size_t member_list_entries,
-        const struct cpg_address *left_list, size_t left_list_entries,
-        const struct cpg_address *joined_list, size_t joined_list_entries)
+static void cpg_confchg_fn(cpg_handle_t handle, const struct cpg_name *group_name, const struct cpg_address *member_list,
+						   size_t member_list_entries, const struct cpg_address *left_list, size_t left_list_entries,
+						   const struct cpg_address *joined_list, size_t joined_list_entries)
 {
 }
 
-static cpg_callbacks_t callbacks = {
-	cpg_deliver_fn,
-	cpg_confchg_fn
-};
+static cpg_callbacks_t callbacks = { cpg_deliver_fn, cpg_confchg_fn };
 
-static struct cpg_name group_name = {
-        .value = "cpg_bm",
-        .length = 6
-};
+static struct cpg_name group_name = {.value = "cpg_bm", .length = 6 };
 
 
 static unsigned char buffer[200000];
-int main (int argc, char *argv[])
+int main(int argc, char *argv[])
 {
 	cpg_handle_t handle;
 	cs_error_t result;
@@ -122,8 +107,8 @@ int main (int argc, char *argv[])
 	int run_forever = 1;
 	unsigned int sha1_len;
 
-	while ((opt = getopt(argc, argv, options)) != -1) {
-		switch (opt) {
+	while((opt = getopt(argc, argv, options)) != -1) {
+		switch(opt) {
 		case 'i':
 			run_forever = 0;
 			iter = atoi(optarg);
@@ -131,30 +116,30 @@ int main (int argc, char *argv[])
 		}
 	}
 
-	result = cpg_initialize (&handle, &callbacks);
-	if (result != CS_OK) {
-		printf ("Couldn't initialize CPG service %d\n", result);
-		exit (0);
+	result = cpg_initialize(&handle, &callbacks);
+	if(result != CS_OK) {
+		printf("Couldn't initialize CPG service %d\n", result);
+		exit(0);
 	}
 
-	if (NSS_NoDB_Init(".") != SECSuccess) {
-		printf ("Couldn't initialize nss\n");
-		exit (0);
+	if(NSS_NoDB_Init(".") != SECSuccess) {
+		printf("Couldn't initialize nss\n");
+		exit(0);
 	}
 
-	if ((sha1_context = PK11_CreateDigestContext(SEC_OID_SHA1)) == NULL) {
-		printf ("Couldn't initialize nss\n");
-		exit (0);
+	if((sha1_context = PK11_CreateDigestContext(SEC_OID_SHA1)) == NULL) {
+		printf("Couldn't initialize nss\n");
+		exit(0);
 	}
 
-        result = cpg_join (handle, &group_name);
-        if (result != CS_OK) {
-                printf ("cpg_join failed with result %d\n", result);
-                exit (1);
-        }
+	result = cpg_join(handle, &group_name);
+	if(result != CS_OK) {
+		printf("cpg_join failed with result %d\n", result);
+		exit(1);
+	}
 
 	iov[0].iov_base = (void *)&msg;
-	iov[0].iov_len = sizeof (struct my_msg);
+	iov[0].iov_len = sizeof(struct my_msg);
 	iov[1].iov_base = (void *)buffer;
 
 	/*
@@ -164,28 +149,26 @@ int main (int argc, char *argv[])
 	do {
 		msg.msg_size = 100 + rand() % 100000;
 		iov[1].iov_len = msg.msg_size;
-		for (j = 0; j < msg.msg_size; j++) {
+		for(j = 0; j < msg.msg_size; j++) {
 			buffer[j] = j;
 		}
-		sprintf ((char *)buffer,
-			"cpg_mcast_joined: This is message %12d", i);
+		sprintf((char *)buffer, "cpg_mcast_joined: This is message %12d", i);
 
 		PK11_DigestBegin(sha1_context);
 		PK11_DigestOp(sha1_context, buffer, msg.msg_size);
 		PK11_DigestFinal(sha1_context, msg.sha1, &sha1_len, sizeof(msg.sha1));
-try_again_one:
-		result = cpg_mcast_joined (handle, CPG_TYPE_AGREED,
-			iov, 2);
-		if (result == CS_ERR_TRY_AGAIN) {
+	try_again_one:
+		result = cpg_mcast_joined(handle, CPG_TYPE_AGREED, iov, 2);
+		if(result == CS_ERR_TRY_AGAIN) {
 			goto try_again_one;
 		}
-		result = cpg_dispatch (handle, CS_DISPATCH_ALL);
+		result = cpg_dispatch(handle, CS_DISPATCH_ALL);
 		i++;
-	} while (run_forever || i < iter);
+	} while(run_forever || i < iter);
 
 	PK11_DestroyContext(sha1_context, PR_TRUE);
 
-	cpg_finalize (handle);
+	cpg_finalize(handle);
 
 	return (0);
 }

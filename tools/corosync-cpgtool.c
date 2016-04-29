@@ -67,21 +67,21 @@ static void fprint_addrs(FILE *f, int nodeid)
 	int i;
 	corosync_cfg_node_address_t addrs[INTERFACE_MAX];
 
-	if (corosync_cfg_get_node_addrs(cfg_handle, nodeid, INTERFACE_MAX, &numaddrs, addrs) == CS_OK) {
-		for (i=0; i<numaddrs; i++) {
+	if(corosync_cfg_get_node_addrs(cfg_handle, nodeid, INTERFACE_MAX, &numaddrs, addrs) == CS_OK) {
+		for(i = 0; i < numaddrs; i++) {
 			char buf[INET6_ADDRSTRLEN];
 			struct sockaddr_storage *ss = (struct sockaddr_storage *)addrs[i].address;
 			struct sockaddr_in *sin = (struct sockaddr_in *)addrs[i].address;
 			struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)addrs[i].address;
 			void *saddr;
 
-			if (ss->ss_family == AF_INET6)
+			if(ss->ss_family == AF_INET6)
 				saddr = &sin6->sin6_addr;
 			else
 				saddr = &sin->sin_addr;
 
 			inet_ntop(ss->ss_family, saddr, buf, sizeof(buf));
-			if (i != 0) {
+			if(i != 0) {
 				fprintf(f, " ");
 			}
 			fprintf(f, "%s", buf);
@@ -89,122 +89,120 @@ static void fprint_addrs(FILE *f, int nodeid)
 	}
 }
 
-static void fprint_group (FILE *f, int escape, const struct cpg_name *group) {
+static void fprint_group(FILE *f, int escape, const struct cpg_name *group)
+{
 	int i;
 	char c;
 
-	for (i = 0; i < group->length; i++) {
+	for(i = 0; i < group->length; i++) {
 		c = group->value[i];
 
-		if (!escape || (c >= ' ' && c < 0x7f && c != '\\')) {
-			fputc (c, f);
+		if(!escape || (c >= ' ' && c < 0x7f && c != '\\')) {
+			fputc(c, f);
 		} else {
-			if (c == '\\')
-				fprintf (f, "\\\\");
+			if(c == '\\')
+				fprintf(f, "\\\\");
 			else
-				fprintf (f, "\\x%02X", c);
+				fprintf(f, "\\x%02X", c);
 		}
 	}
 }
 
-static int display_groups (char delimiter, int escape)
+static int display_groups(char delimiter, int escape)
 {
 	cs_error_t res;
 	cpg_iteration_handle_t iter_handle;
 	struct cpg_iteration_description_t description;
 
-	res = cpg_iteration_initialize (cpg_handle, CPG_ITERATION_NAME_ONLY, NULL, &iter_handle);
-	if (res != CS_OK) {
-		fprintf (stderr, "Cannot initialize cpg iterator error %d\n", res);
+	res = cpg_iteration_initialize(cpg_handle, CPG_ITERATION_NAME_ONLY, NULL, &iter_handle);
+	if(res != CS_OK) {
+		fprintf(stderr, "Cannot initialize cpg iterator error %d\n", res);
 
 		return 0;
 	}
 
-	while ((res = cpg_iteration_next (iter_handle, &description)) == CS_OK) {
-		fprint_group (stdout, escape, &description.group);
-		fputc ((delimiter ? delimiter : '\n'), stdout);
+	while((res = cpg_iteration_next(iter_handle, &description)) == CS_OK) {
+		fprint_group(stdout, escape, &description.group);
+		fputc((delimiter ? delimiter : '\n'), stdout);
 	}
 
-	if (delimiter)
-		putc ('\n', stdout);
+	if(delimiter) putc('\n', stdout);
 
-	cpg_iteration_finalize (iter_handle);
+	cpg_iteration_finalize(iter_handle);
 
 	return 1;
 }
 
-static inline int group_name_compare (
-	const struct cpg_name *g1,
-	const struct cpg_name *g2)
+static inline int group_name_compare(const struct cpg_name *g1, const struct cpg_name *g2)
 {
-	return (g1->length == g2->length?
-		memcmp (g1->value, g2->value, g1->length):
-		g1->length - g2->length);
+	return (g1->length == g2->length ? memcmp(g1->value, g2->value, g1->length) : g1->length - g2->length);
 }
 
-static int display_groups_with_members (char delimiter, int escape) {
+static int display_groups_with_members(char delimiter, int escape)
+{
 	cs_error_t res;
 	cpg_iteration_handle_t iter_handle;
 	struct cpg_iteration_description_t description;
 	struct cpg_name old_group;
 
-	res = cpg_iteration_initialize (cpg_handle, CPG_ITERATION_ALL, NULL, &iter_handle);
-	if (res != CS_OK) {
-		fprintf (stderr, "Cannot initialize cpg iterator error %d\n", res);
+	res = cpg_iteration_initialize(cpg_handle, CPG_ITERATION_ALL, NULL, &iter_handle);
+	if(res != CS_OK) {
+		fprintf(stderr, "Cannot initialize cpg iterator error %d\n", res);
 
 		return 0;
 	}
 
-	memset (&old_group, 0, sizeof (struct cpg_name));
+	memset(&old_group, 0, sizeof(struct cpg_name));
 
-	if (delimiter) {
-		fprintf (stdout, "GRP_NAME%cPID%cNODEID\n", delimiter, delimiter);
+	if(delimiter) {
+		fprintf(stdout, "GRP_NAME%cPID%cNODEID\n", delimiter, delimiter);
 	} else {
-		fprintf (stdout, "Group Name\t%10s\t%10s\n", "PID", "Node ID");
+		fprintf(stdout, "Group Name\t%10s\t%10s\n", "PID", "Node ID");
 	}
 
-	while ((res = cpg_iteration_next (iter_handle, &description)) == CS_OK) {
-		if (!delimiter && group_name_compare (&old_group, &description.group) != 0) {
-			fprint_group (stdout, escape, &description.group);
-			fprintf (stdout, "\n");
+	while((res = cpg_iteration_next(iter_handle, &description)) == CS_OK) {
+		if(!delimiter && group_name_compare(&old_group, &description.group) != 0) {
+			fprint_group(stdout, escape, &description.group);
+			fprintf(stdout, "\n");
 
-			memcpy (&old_group, &description.group, sizeof (struct cpg_name));
+			memcpy(&old_group, &description.group, sizeof(struct cpg_name));
 		}
 
-		if (!delimiter) {
-			fprintf (stdout, "\t\t%10u\t%10u (", description.pid, description.nodeid);
-			fprint_addrs (stdout, description.nodeid);
-			fprintf (stdout, ")\n");
+		if(!delimiter) {
+			fprintf(stdout, "\t\t%10u\t%10u (", description.pid, description.nodeid);
+			fprint_addrs(stdout, description.nodeid);
+			fprintf(stdout, ")\n");
 		} else {
-			fprint_group (stdout, escape, &description.group);
-			fprintf (stdout, "%c%u%c%u\n", delimiter, description.pid, delimiter, description.nodeid);
+			fprint_group(stdout, escape, &description.group);
+			fprintf(stdout, "%c%u%c%u\n", delimiter, description.pid, delimiter, description.nodeid);
 		}
 	}
 
-	if (res != CS_ERR_NO_SECTIONS) {
-		fprintf (stderr, "cpg iteration error %d\n", res);
+	if(res != CS_ERR_NO_SECTIONS) {
+		fprintf(stderr, "cpg iteration error %d\n", res);
 
 		return 0;
 	}
 
-	cpg_iteration_finalize (iter_handle);
+	cpg_iteration_finalize(iter_handle);
 
 	return 1;
 }
 
-static void usage_do (const char *prog_name)
+static void usage_do(const char *prog_name)
 {
-	printf ("%s [-d delimiter] [-e] [-n] [-h]\n\n", prog_name);
-	printf ("A tool for displaying cpg groups and members.\n");
-	printf ("options:\n");
-	printf ("\t-d\tDelimiter between fields.\n");
-	printf ("\t-e\tDon't escape unprintable characters in group name\n");
-	printf ("\t-n\tDisplay only all existing group names.\n");
-	printf ("\t-h\tDisplay this help.\n");
+	printf("%s [-d delimiter] [-e] [-n] [-h]\n\n", prog_name);
+	printf("A tool for displaying cpg groups and members.\n");
+	printf("options:\n");
+	printf("\t-d\tDelimiter between fields.\n");
+	printf("\t-e\tDon't escape unprintable characters in group name\n");
+	printf("\t-n\tDisplay only all existing group names.\n");
+	printf("\t-h\tDisplay this help.\n");
 }
 
 
-int main (int argc, char *argv[]) {
+int main(int argc, char *argv[])
+{
 	const char *options = "hd:ne";
 	int opt;
 	const char *prog_name = basename(argv[0]);
@@ -213,59 +211,59 @@ int main (int argc, char *argv[]) {
 	operation_t operation = OPER_FULL_OUTPUT;
 	int result;
 
-	while ( (opt = getopt(argc, argv, options)) != -1 ) {
-		switch (opt) {
+	while((opt = getopt(argc, argv, options)) != -1) {
+		switch(opt) {
 		case 'd':
-			if (strlen (optarg) > 0) {
+			if(strlen(optarg) > 0) {
 				delimiter = optarg[0];
 			}
-		break;
+			break;
 
 		case 'n':
 			operation = OPER_NAMES_ONLY;
-		break;
+			break;
 
 		case 'e':
 			escape = 0;
-		break;
+			break;
 
 		case 'h':
-			usage_do (prog_name);
+			usage_do(prog_name);
 			return (EXIT_SUCCESS);
-		break;
+			break;
 
 		case '?':
 		case ':':
 			return (EXIT_FAILURE);
-		break;
+			break;
 		}
 	}
 
-	result = cpg_initialize (&cpg_handle, NULL);
+	result = cpg_initialize(&cpg_handle, NULL);
 
-	if (result != CS_OK) {
-		fprintf (stderr, "Could not initialize corosync cpg API error %d\n", result);
+	if(result != CS_OK) {
+		fprintf(stderr, "Could not initialize corosync cpg API error %d\n", result);
 		return (EXIT_FAILURE);
 	}
 
-	result = corosync_cfg_initialize (&cfg_handle, NULL);
-	if (result != CS_OK) {
-		fprintf (stderr, "Could not initialize corosync configuration API error %d\n", result);
+	result = corosync_cfg_initialize(&cfg_handle, NULL);
+	if(result != CS_OK) {
+		fprintf(stderr, "Could not initialize corosync configuration API error %d\n", result);
 		return (EXIT_FAILURE);
 	}
 
-	switch (operation) {
+	switch(operation) {
 	case OPER_NAMES_ONLY:
-		result = display_groups (delimiter, escape);
+		result = display_groups(delimiter, escape);
 		break;
 
 	case OPER_FULL_OUTPUT:
-		result = display_groups_with_members (delimiter, escape);
+		result = display_groups_with_members(delimiter, escape);
 		break;
 	}
 
-	cpg_finalize (cpg_handle);
-	corosync_cfg_finalize (cfg_handle);
+	cpg_finalize(cpg_handle);
+	corosync_cfg_finalize(cfg_handle);
 
 	return (result ? EXIT_SUCCESS : EXIT_FAILURE);
 }

@@ -65,9 +65,7 @@ typedef enum {
 	COROSYNC_CFG_SHUTDOWN_FLAG_YES = 1,
 } corosync_cfg_shutdown_reply_flags_t;
 
-typedef void (*corosync_cfg_shutdown_callback_t) (
-	corosync_cfg_handle_t cfg_handle,
-	corosync_cfg_shutdown_flags_t flags);
+typedef void (*corosync_cfg_shutdown_callback_t)(corosync_cfg_handle_t cfg_handle, corosync_cfg_shutdown_flags_t flags);
 
 typedef struct {
 	corosync_cfg_shutdown_callback_t corosync_cfg_shutdown_callback;
@@ -83,8 +81,7 @@ typedef struct {
  *  No other sockaddr fields are valid.
  *  Also, you must ignore any part of the sockaddr beyond the length supplied
  */
-typedef struct
-{
+typedef struct {
 	int address_length; /**< @todo FIXME: set but never used */
 	char address[sizeof(struct sockaddr_in6)];
 } corosync_cfg_node_address_t;
@@ -97,68 +94,32 @@ typedef struct
 extern "C" {
 #endif
 
-cs_error_t
-corosync_cfg_initialize (
-	corosync_cfg_handle_t *cfg_handle,
-	const corosync_cfg_callbacks_t *cfg_callbacks);
+cs_error_t corosync_cfg_initialize(corosync_cfg_handle_t *cfg_handle, const corosync_cfg_callbacks_t *cfg_callbacks);
 
-cs_error_t
-corosync_cfg_fd_get (
-	corosync_cfg_handle_t cfg_handle,
-	int32_t *selection_fd);
+cs_error_t corosync_cfg_fd_get(corosync_cfg_handle_t cfg_handle, int32_t *selection_fd);
 
-cs_error_t
-corosync_cfg_dispatch (
-	corosync_cfg_handle_t cfg_handle,
-	cs_dispatch_flags_t dispatch_flags);
+cs_error_t corosync_cfg_dispatch(corosync_cfg_handle_t cfg_handle, cs_dispatch_flags_t dispatch_flags);
 
-cs_error_t
-corosync_cfg_finalize (
-	corosync_cfg_handle_t cfg_handle);
+cs_error_t corosync_cfg_finalize(corosync_cfg_handle_t cfg_handle);
 
-cs_error_t
-corosync_cfg_ring_status_get (
-	corosync_cfg_handle_t cfg_handle,
-	char ***interface_names,
-	char ***status,
-	unsigned int *interface_count);
+cs_error_t corosync_cfg_ring_status_get(corosync_cfg_handle_t cfg_handle, char ***interface_names, char ***status,
+										unsigned int *interface_count);
 
-cs_error_t
-corosync_cfg_ring_reenable (
-	corosync_cfg_handle_t cfg_handle);
+cs_error_t corosync_cfg_ring_reenable(corosync_cfg_handle_t cfg_handle);
 
-cs_error_t
-corosync_cfg_kill_node (
-	corosync_cfg_handle_t cfg_handle,
-	unsigned int nodeid,
-	const char *reason);
+cs_error_t corosync_cfg_kill_node(corosync_cfg_handle_t cfg_handle, unsigned int nodeid, const char *reason);
 
-cs_error_t
-corosync_cfg_try_shutdown (
-	corosync_cfg_handle_t cfg_handle,
-	corosync_cfg_shutdown_flags_t flags);
+cs_error_t corosync_cfg_try_shutdown(corosync_cfg_handle_t cfg_handle, corosync_cfg_shutdown_flags_t flags);
 
 
-cs_error_t
-corosync_cfg_replyto_shutdown (
-	corosync_cfg_handle_t cfg_handle,
-	corosync_cfg_shutdown_reply_flags_t flags);
+cs_error_t corosync_cfg_replyto_shutdown(corosync_cfg_handle_t cfg_handle, corosync_cfg_shutdown_reply_flags_t flags);
 
-cs_error_t
-corosync_cfg_get_node_addrs (
-	corosync_cfg_handle_t cfg_handle,
-	int nodeid,
-	size_t max_addrs,
-	int *num_addrs,
-	corosync_cfg_node_address_t *addrs);
+cs_error_t corosync_cfg_get_node_addrs(corosync_cfg_handle_t cfg_handle, int nodeid, size_t max_addrs, int *num_addrs,
+									   corosync_cfg_node_address_t *addrs);
 
-cs_error_t
-corosync_cfg_local_get (
-	corosync_cfg_handle_t handle,
-	unsigned int *local_nodeid);
+cs_error_t corosync_cfg_local_get(corosync_cfg_handle_t handle, unsigned int *local_nodeid);
 
-cs_error_t corosync_cfg_reload_config (
-	corosync_cfg_handle_t handle);
+cs_error_t corosync_cfg_reload_config(corosync_cfg_handle_t handle);
 
 #ifdef __cplusplus
 }

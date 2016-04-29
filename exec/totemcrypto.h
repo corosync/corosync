@@ -40,38 +40,17 @@
 
 struct crypto_instance;
 
-extern size_t crypto_sec_header_size(
-	const char *crypto_cipher_type,
-	const char *crypto_hash_type);
+extern size_t crypto_sec_header_size(const char *crypto_cipher_type, const char *crypto_hash_type);
 
-extern int crypto_authenticate_and_decrypt (
-	struct crypto_instance *instance,
-	unsigned char *buf,
-	int *buf_len);
+extern int crypto_authenticate_and_decrypt(struct crypto_instance *instance, unsigned char *buf, int *buf_len);
 
-extern int crypto_encrypt_and_sign (
-	struct crypto_instance *instance,
-	const unsigned char *buf_in,
-	const size_t buf_in_len,
-	unsigned char *buf_out, 
-	size_t *buf_out_len);
+extern int crypto_encrypt_and_sign(struct crypto_instance *instance, const unsigned char *buf_in,
+								   const size_t buf_in_len, unsigned char *buf_out, size_t *buf_out_len);
 
-extern struct crypto_instance *crypto_init(
-	const unsigned char *private_key,
-	unsigned int private_key_len,
-	const char *crypto_cipher_type,
-	const char *crypto_hash_type,
-	void (*log_printf_func) (
-		int level,
-		int subsys,
-		const char *function,
-		const char *file,
-		int line,
-		const char *format,
-		...)__attribute__((format(printf, 6, 7))),
-	int log_level_security,
-	int log_level_notice,
-	int log_level_error,
-	int log_subsys_id);
+extern struct crypto_instance *
+crypto_init(const unsigned char *private_key, unsigned int private_key_len, const char *crypto_cipher_type, const char *crypto_hash_type,
+			void (*log_printf_func)(int level, int subsys, const char *function, const char *file, int line,
+									const char *format, ...) __attribute__((format(printf, 6, 7))),
+			int log_level_security, int log_level_notice, int log_level_error, int log_subsys_id);
 
 #endif /* TOTEMCRYPTO_H_DEFINED */

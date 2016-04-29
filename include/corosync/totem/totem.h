@@ -38,28 +38,28 @@
 #include <corosync/hdb.h>
 
 #ifdef HAVE_SMALL_MEMORY_FOOTPRINT
-#define PROCESSOR_COUNT_MAX	16
-#define MESSAGE_SIZE_MAX	1024*64
-#define MESSAGE_QUEUE_MAX	512
+#define PROCESSOR_COUNT_MAX 16
+#define MESSAGE_SIZE_MAX 1024 * 64
+#define MESSAGE_QUEUE_MAX 512
 #else
-#define PROCESSOR_COUNT_MAX	384
-#define MESSAGE_SIZE_MAX	1024*1024 /* (1MB) */
-#define MESSAGE_QUEUE_MAX	((4 * MESSAGE_SIZE_MAX) / totem_config->net_mtu)
+#define PROCESSOR_COUNT_MAX 384
+#define MESSAGE_SIZE_MAX 1024 * 1024 /* (1MB) */
+#define MESSAGE_QUEUE_MAX ((4 * MESSAGE_SIZE_MAX) / totem_config->net_mtu)
 #endif /* HAVE_SMALL_MEMORY_FOOTPRINT */
 
-#define FRAME_SIZE_MAX		10000
-#define TRANSMITS_ALLOWED	16
-#define SEND_THREADS_MAX	16
-#define INTERFACE_MAX		2
+#define FRAME_SIZE_MAX 10000
+#define TRANSMITS_ALLOWED 16
+#define SEND_THREADS_MAX 16
+#define INTERFACE_MAX 2
 
 /**
  * Maximum number of continuous gather states
  */
-#define MAX_NO_CONT_GATHER	3
+#define MAX_NO_CONT_GATHER 3
 /*
  * Maximum number of continuous failures get from sendmsg call
  */
-#define MAX_NO_CONT_SENDMSG_FAILURES	30
+#define MAX_NO_CONT_SENDMSG_FAILURES 30
 
 struct totem_interface {
 	struct totem_ip_address bindnet;
@@ -72,14 +72,8 @@ struct totem_interface {
 };
 
 struct totem_logging_configuration {
-	void (*log_printf) (
-		int level,
-		int subsys,
-		const char *function_name,
-		const char *file_name,
-		int file_line,
-		const char *format,
-		...) __attribute__((format(printf, 6, 7)));
+	void (*log_printf)(int level, int subsys, const char *function_name, const char *file_name, int file_line,
+					   const char *format, ...) __attribute__((format(printf, 6, 7)));
 
 	int log_level_security;
 	int log_level_error;
@@ -93,11 +87,7 @@ struct totem_logging_configuration {
 enum { TOTEM_PRIVATE_KEY_LEN = 128 };
 enum { TOTEM_RRP_MODE_BYTES = 64 };
 
-typedef enum {
-	TOTEM_TRANSPORT_UDP = 0,
-	TOTEM_TRANSPORT_UDPU = 1,
-	TOTEM_TRANSPORT_RDMA = 2
-} totem_transport_t;
+typedef enum { TOTEM_TRANSPORT_UDP = 0, TOTEM_TRANSPORT_UDPU = 1, TOTEM_TRANSPORT_RDMA = 2 } totem_transport_t;
 
 #define MEMB_RING_ID
 struct memb_ring_id {
@@ -188,26 +178,16 @@ struct totem_config {
 
 	int ip_version;
 
-	void (*totem_memb_ring_id_create_or_load) (
-	    struct memb_ring_id *memb_ring_id,
-	    const struct totem_ip_address *addr);
+	void (*totem_memb_ring_id_create_or_load)(struct memb_ring_id *memb_ring_id, const struct totem_ip_address *addr);
 
-	void (*totem_memb_ring_id_store) (
-	    const struct memb_ring_id *memb_ring_id,
-	    const struct totem_ip_address *addr);
+	void (*totem_memb_ring_id_store)(const struct memb_ring_id *memb_ring_id, const struct totem_ip_address *addr);
 };
 
 #define TOTEM_CONFIGURATION_TYPE
-enum totem_configuration_type {
-	TOTEM_CONFIGURATION_REGULAR,
-	TOTEM_CONFIGURATION_TRANSITIONAL
-};
+enum totem_configuration_type { TOTEM_CONFIGURATION_REGULAR, TOTEM_CONFIGURATION_TRANSITIONAL };
 
 #define TOTEM_CALLBACK_TOKEN_TYPE
-enum totem_callback_token_type {
-	TOTEM_CALLBACK_TOKEN_RECEIVED = 1,
-	TOTEM_CALLBACK_TOKEN_SENT = 2
-};
+enum totem_callback_token_type { TOTEM_CALLBACK_TOKEN_RECEIVED = 1, TOTEM_CALLBACK_TOKEN_SENT = 2 };
 
 enum totem_event_type {
 	TOTEM_EVENT_DELIVERY_CONGESTED,
@@ -275,8 +255,8 @@ typedef struct {
 
 } totemsrp_stats_t;
 
- 
- #define TOTEM_CONFIGURATION_TYPE
+
+#define TOTEM_CONFIGURATION_TYPE
 
 typedef struct {
 	totem_stats_header_t hdr;

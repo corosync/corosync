@@ -37,126 +37,110 @@
 #include <corosync/hdb.h>
 #include "schedwrk.h"
 
-static void (*serialize_lock) (void);
-static void (*serialize_unlock) (void);
+static void (*serialize_lock)(void);
+static void (*serialize_unlock)(void);
 
-DECLARE_HDB_DATABASE (schedwrk_instance_database,NULL);
+DECLARE_HDB_DATABASE(schedwrk_instance_database, NULL);
 
 struct schedwrk_instance {
-	int (*schedwrk_fn) (const void *);
+	int (*schedwrk_fn)(const void *);
 	const void *context;
 	void *callback_handle;
 	int lock;
 };
 
 union u {
-  hdb_handle_t h;
-  const void *v;
+	hdb_handle_t h;
+	const void *v;
 };
-static hdb_handle_t
-void2handle (const void *v) { union u u; u.v = v; return u.h; }
-static const void *
-handle2void (hdb_handle_t h) { union u u; u.h = h; return u.v; }
-
-static int schedwrk_do (enum totem_callback_token_type type, const void *context)
+static hdb_handle_t void2handle(const void *v)
 {
-	hdb_handle_t handle = void2handle (context);
+	union u u;
+	u.v = v;
+	return u.h;
+}
+static const void *handle2void(hdb_handle_t h)
+{
+	union u u;
+	u.h = h;
+	return u.v;
+}
+
+static int schedwrk_do(enum totem_callback_token_type type, const void *context)
+{
+	hdb_handle_t handle = void2handle(context);
 	struct schedwrk_instance *instance;
 	int res;
 
-	res = hdb_handle_get (&schedwrk_instance_database,
-		hdb_nocheck_convert (handle),
-		(void *)&instance);
-	if (res != 0) {
+	res = hdb_handle_get(&schedwrk_instance_database, hdb_nocheck_convert(handle), (void *)&instance);
+	if(res != 0) {
 		goto error_exit;
 	}
 
-	if (instance->lock)
-		serialize_lock ();
+	if(instance->lock) serialize_lock();
 
-	res = instance->schedwrk_fn (instance->context);
+	res = instance->schedwrk_fn(instance->context);
 
-	if (instance->lock)
-		serialize_unlock ();
+	if(instance->lock) serialize_unlock();
 
-	if (res == 0) {
-		hdb_handle_destroy (&schedwrk_instance_database, hdb_nocheck_convert (handle));
+	if(res == 0) {
+		hdb_handle_destroy(&schedwrk_instance_database, hdb_nocheck_convert(handle));
 	}
-        hdb_handle_put (&schedwrk_instance_database,
-		hdb_nocheck_convert (handle));
+	hdb_handle_put(&schedwrk_instance_database, hdb_nocheck_convert(handle));
 	return (res);
 
 error_exit:
 	return (-1);
 }
 
-void schedwrk_init (
-	void (*serialize_lock_fn) (void),
-	void (*serialize_unlock_fn) (void))
+void schedwrk_init(void (*serialize_lock_fn)(void), void (*serialize_unlock_fn)(void))
 {
 	serialize_lock = serialize_lock_fn;
 	serialize_unlock = serialize_unlock_fn;
 }
 
-static int schedwrk_internal_create (
-	hdb_handle_t *handle,
-	int (schedwrk_fn) (const void *),
-	const void *context,
-	int lock)
+static int schedwrk_internal_create(hdb_handle_t *handle, int(schedwrk_fn)(const void *), const void *context, int lock)
 {
 	struct schedwrk_instance *instance;
 	int res;
 
-	res = hdb_handle_create (&schedwrk_instance_database,
-		sizeof (struct schedwrk_instance), handle);
-	if (res != 0) {
+	res = hdb_handle_create(&schedwrk_instance_database, sizeof(struct schedwrk_instance), handle);
+	if(res != 0) {
 		goto error_exit;
 	}
-	res = hdb_handle_get (&schedwrk_instance_database, *handle,
-		(void *)&instance);
-	if (res != 0) {
+	res = hdb_handle_get(&schedwrk_instance_database, *handle, (void *)&instance);
+	if(res != 0) {
 		goto error_destroy;
 	}
 
-	totempg_callback_token_create (
-		&instance->callback_handle,
-		TOTEM_CALLBACK_TOKEN_SENT,
-		1,
-		schedwrk_do,
-		handle2void (*handle));
+	totempg_callback_token_create(&instance->callback_handle, TOTEM_CALLBACK_TOKEN_SENT, 1, schedwrk_do, handle2void(*handle));
 
 	instance->schedwrk_fn = schedwrk_fn;
 	instance->context = context;
 	instance->lock = lock;
 
-        hdb_handle_put (&schedwrk_instance_database, *handle);
+	hdb_handle_put(&schedwrk_instance_database, *handle);
 
 	return (0);
 
 error_destroy:
-	hdb_handle_destroy (&schedwrk_instance_database, *handle);
+	hdb_handle_destroy(&schedwrk_instance_database, *handle);
 
 error_exit:
 	return (-1);
 }
 
-int schedwrk_create (
-	hdb_handle_t *handle,
-	int (schedwrk_fn) (const void *),
-	const void *context)
+int schedwrk_create(hdb_handle_t *handle, int(schedwrk_fn)(const void *), const void *context)
 {
-	return schedwrk_internal_create (handle, schedwrk_fn, context, 1);
+	return schedwrk_internal_create(handle, schedwrk_fn, context, 1);
 }
 
-int schedwrk_create_nolock (
-	hdb_handle_t *handle,
-	int (schedwrk_fn) (const void *),
-	const void *context)
+int schedwrk_create_nolock(hdb_handle_t *handle, int(schedwrk_fn)(const void *), const void *context)
 {
-	return schedwrk_internal_create (handle, schedwrk_fn, context, 0);
+	return schedwrk_internal_create(handle, schedwrk_fn, context, 0);
 }
 
-void schedwrk_destroy (hdb_handle_t handle)
+void schedwrk_destroy(hdb_handle_t handle)
 {
-	hdb_handle_destroy (&schedwrk_instance_database, handle);
+	hdb_handle_destroy(&schedwrk_instance_database, handle);
 }

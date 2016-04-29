@@ -44,88 +44,51 @@
 /**
  * Create an instance
  */
-extern int totemudpu_initialize (
-	qb_loop_t *poll_handle,
-	void **udpu_context,
-	struct totem_config *totem_config,
-	totemsrp_stats_t *stats,
-	int interface_no,
-	void *context,
+extern int totemudpu_initialize(qb_loop_t *poll_handle, void **udpu_context, struct totem_config *totem_config,
+								totemsrp_stats_t *stats, int interface_no, void *context,
 
-	void (*deliver_fn) (
-		void *context,
-		const void *msg,
-		unsigned int msg_len),
+								void (*deliver_fn)(void *context, const void *msg, unsigned int msg_len),
 
-	void (*iface_change_fn) (
-		void *context,
-		const struct totem_ip_address *iface_address),
+								void (*iface_change_fn)(void *context, const struct totem_ip_address *iface_address),
 
-	void (*target_set_completed) (
-		void *context));
+								void (*target_set_completed)(void *context));
 
-extern void *totemudpu_buffer_alloc (void);
+extern void *totemudpu_buffer_alloc(void);
 
-extern void totemudpu_buffer_release (void *ptr);
+extern void totemudpu_buffer_release(void *ptr);
 
-extern int totemudpu_processor_count_set (
-	void *udpu_context,
-	int processor_count);
+extern int totemudpu_processor_count_set(void *udpu_context, int processor_count);
 
-extern int totemudpu_token_send (
-	void *udpu_context,
-	const void *msg,
-	unsigned int msg_len);
+extern int totemudpu_token_send(void *udpu_context, const void *msg, unsigned int msg_len);
 
-extern int totemudpu_mcast_flush_send (
-	void *udpu_context,
-	const void *msg,
-	unsigned int msg_len);
+extern int totemudpu_mcast_flush_send(void *udpu_context, const void *msg, unsigned int msg_len);
 
-extern int totemudpu_mcast_noflush_send (
-	void *udpu_context,
-	const void *msg,
-	unsigned int msg_len);
+extern int totemudpu_mcast_noflush_send(void *udpu_context, const void *msg, unsigned int msg_len);
 
-extern int totemudpu_recv_flush (void *udpu_context);
+extern int totemudpu_recv_flush(void *udpu_context);
 
-extern int totemudpu_send_flush (void *udpu_context);
+extern int totemudpu_send_flush(void *udpu_context);
 
-extern int totemudpu_iface_check (void *udpu_context);
+extern int totemudpu_iface_check(void *udpu_context);
 
-extern int totemudpu_finalize (void *udpu_context);
+extern int totemudpu_finalize(void *udpu_context);
 
-extern void totemudpu_net_mtu_adjust (void *udpu_context, struct totem_config *totem_config);
+extern void totemudpu_net_mtu_adjust(void *udpu_context, struct totem_config *totem_config);
 
-extern const char *totemudpu_iface_print (void *udpu_context);
+extern const char *totemudpu_iface_print(void *udpu_context);
 
-extern int totemudpu_iface_get (
-	void *udpu_context,
-	struct totem_ip_address *addr);
+extern int totemudpu_iface_get(void *udpu_context, struct totem_ip_address *addr);
 
-extern int totemudpu_token_target_set (
-	void *udpu_context,
-	const struct totem_ip_address *token_target);
+extern int totemudpu_token_target_set(void *udpu_context, const struct totem_ip_address *token_target);
 
-extern int totemudpu_crypto_set (
-	void *udpu_context,
-	const char *cipher_type,
-	const char *hash_type);
+extern int totemudpu_crypto_set(void *udpu_context, const char *cipher_type, const char *hash_type);
 
-extern int totemudpu_recv_mcast_empty (
-	void *udpu_context);
+extern int totemudpu_recv_mcast_empty(void *udpu_context);
 
-extern int totemudpu_member_add (
-	void *udpu_context,
-	const struct totem_ip_address *member);
+extern int totemudpu_member_add(void *udpu_context, const struct totem_ip_address *member);
 
-extern int totemudpu_member_remove (
-	void *udpu_context,
-	const struct totem_ip_address *member);
+extern int totemudpu_member_remove(void *udpu_context, const struct totem_ip_address *member);
 
-extern int totemudpu_member_set_active (
-	void *udpu_context,
-	const struct totem_ip_address *member_ip,
-	int active);
+extern int totemudpu_member_set_active(void *udpu_context, const struct totem_ip_address *member_ip, int active);
 
 #endif /* TOTEMUDPU_H_DEFINED */

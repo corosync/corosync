@@ -43,7 +43,7 @@
 #include <corosync/list.h>
 #include <corosync/icmap.h>
 
-#define ICMAP_MAX_VALUE_LEN	(16*1024)
+#define ICMAP_MAX_VALUE_LEN (16 * 1024)
 
 struct icmap_item {
 	char *key_name;
@@ -118,23 +118,15 @@ static int icmap_is_valid_name_char(char c);
 /*
  * Helper for getting integer and float value with given type for key key_name and store it in value.
  */
-static cs_error_t icmap_get_int_r(
-	const icmap_map_t map,
-	const char *key_name,
-	void *value,
-	icmap_value_types_t type);
+static cs_error_t icmap_get_int_r(const icmap_map_t map, const char *key_name, void *value, icmap_value_types_t type);
 
 /*
  * Return raw item value data. Internal function used by icmap_get_r which does most
  * of arguments validity checks but doesn't copy data (it returns raw item data
  * pointer). It's not very safe tho it's static.
  */
-static cs_error_t icmap_get_ref_r(
-	const icmap_map_t map,
-	const char *key_name,
-	void **value,
-	size_t *value_len,
-	icmap_value_types_t *type);
+static cs_error_t
+icmap_get_ref_r(const icmap_map_t map, const char *key_name, void **value, size_t *value_len, icmap_value_types_t *type);
 
 /*
  * Function implementation
@@ -143,19 +135,19 @@ static int32_t icmap_tt_to_qbtt(int32_t track_type)
 {
 	int32_t res = 0;
 
-	if (track_type & ICMAP_TRACK_DELETE) {
+	if(track_type & ICMAP_TRACK_DELETE) {
 		res |= QB_MAP_NOTIFY_DELETED;
 	}
 
-	if (track_type & ICMAP_TRACK_MODIFY) {
+	if(track_type & ICMAP_TRACK_MODIFY) {
 		res |= QB_MAP_NOTIFY_REPLACED;
 	}
 
-	if (track_type & ICMAP_TRACK_ADD) {
+	if(track_type & ICMAP_TRACK_ADD) {
 		res |= QB_MAP_NOTIFY_INSERTED;
 	}
 
-	if (track_type & ICMAP_TRACK_PREFIX) {
+	if(track_type & ICMAP_TRACK_PREFIX) {
 		res |= QB_MAP_NOTIFY_RECURSIVE;
 	}
 
@@ -166,35 +158,33 @@ static int32_t icmap_qbtt_to_tt(int32_t track_type)
 {
 	int32_t res = 0;
 
-	if (track_type & QB_MAP_NOTIFY_DELETED) {
+	if(track_type & QB_MAP_NOTIFY_DELETED) {
 		res |= ICMAP_TRACK_DELETE;
 	}
 
-	if (track_type & QB_MAP_NOTIFY_REPLACED) {
+	if(track_type & QB_MAP_NOTIFY_REPLACED) {
 		res |= ICMAP_TRACK_MODIFY;
 	}
 
-	if (track_type & QB_MAP_NOTIFY_INSERTED) {
+	if(track_type & QB_MAP_NOTIFY_INSERTED) {
 		res |= ICMAP_TRACK_ADD;
 	}
 
-	if (track_type & QB_MAP_NOTIFY_RECURSIVE) {
+	if(track_type & QB_MAP_NOTIFY_RECURSIVE) {
 		res |= ICMAP_TRACK_PREFIX;
 	}
 
 	return (res);
 }
 
-static void icmap_map_free_cb(uint32_t event,
-		char* key, void* old_value,
-		void* value, void* user_data)
+static void icmap_map_free_cb(uint32_t event, char *key, void *old_value, void *value, void *user_data)
 {
 	struct icmap_item *item = (struct icmap_item *)old_value;
 
 	/*
 	 * value == old_value -> fast_adjust_int was used, don't free data
 	 */
-	if (item != NULL && value != old_value) {
+	if(item != NULL && value != old_value) {
 		free(item->key_name);
 		free(item);
 	}
@@ -205,13 +195,12 @@ cs_error_t icmap_init_r(icmap_map_t *result)
 	int32_t err;
 
 	*result = malloc(sizeof(struct icmap_map));
-	if (*result == NULL) {
+	if(*result == NULL) {
 		return (CS_ERR_NO_MEMORY);
 	}
 
-        (*result)->qb_map = qb_trie_create();
-	if ((*result)->qb_map == NULL)
-		return (CS_ERR_INIT);
+	(*result)->qb_map = qb_trie_create();
+	if((*result)->qb_map == NULL) return (CS_ERR_INIT);
 
 	err = qb_map_notify_add((*result)->qb_map, NULL, icmap_map_free_cb, QB_MAP_NOTIFY_FREE, NULL);
 
@@ -228,7 +217,7 @@ static void icmap_set_ro_access_free(void)
 	struct list_head *iter = icmap_ro_access_item_list_head.next;
 	struct icmap_ro_access_item *icmap_ro_ai;
 
-	while (iter != &icmap_ro_access_item_list_head) {
+	while(iter != &icmap_ro_access_item_list_head) {
 		icmap_ro_ai = list_entry(iter, struct icmap_ro_access_item, list);
 		list_del(&icmap_ro_ai->list);
 		free(icmap_ro_ai->key_name);
@@ -242,7 +231,7 @@ static void icmap_del_all_track(void)
 	struct list_head *iter = icmap_track_list_head.next;
 	struct icmap_track *icmap_track;
 
-	while (iter != &icmap_track_list_head) {
+	while(iter != &icmap_track_list_head) {
 		icmap_track = list_entry(iter, struct icmap_track, list);
 		icmap_track_delete(icmap_track);
 		iter = icmap_track_list_head.next;
@@ -272,7 +261,7 @@ void icmap_fini(void)
 	icmap_fini_r(icmap_global_map);
 	icmap_set_ro_access_free();
 
-	return ;
+	return;
 }
 
 icmap_map_t icmap_get_global_map(void)
@@ -283,18 +272,16 @@ icmap_map_t icmap_get_global_map(void)
 
 static int icmap_is_valid_name_char(char c)
 {
-	return ((c >= 'a' && c <= 'z') ||
-		(c >= 'A' && c <= 'Z') ||
-		(c >= '0' && c <= '9') ||
-		c == '.' || c == '_' || c == '-' || c == '/' || c == ':');
+	return ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '.' || c == '_'
+			|| c == '-' || c == '/' || c == ':');
 }
 
 void icmap_convert_name_to_valid_name(char *key_name)
 {
 	int i;
 
-	for (i = 0; i < strlen(key_name); i++) {
-		if (!icmap_is_valid_name_char(key_name[i])) {
+	for(i = 0; i < strlen(key_name); i++) {
+		if(!icmap_is_valid_name_char(key_name[i])) {
 			key_name[i] = '_';
 		}
 	}
@@ -304,12 +291,12 @@ static int icmap_check_key_name(const char *key_name)
 {
 	int i;
 
-	if ((strlen(key_name) < ICMAP_KEYNAME_MINLEN) || strlen(key_name) > ICMAP_KEYNAME_MAXLEN) {
+	if((strlen(key_name) < ICMAP_KEYNAME_MINLEN) || strlen(key_name) > ICMAP_KEYNAME_MAXLEN) {
 		return (-1);
 	}
 
-	for (i = 0; i < strlen(key_name); i++) {
-		if (!icmap_is_valid_name_char(key_name[i])) {
+	for(i = 0; i < strlen(key_name); i++) {
+		if(!icmap_is_valid_name_char(key_name[i])) {
 			return (-1);
 		}
 	}
@@ -321,17 +308,37 @@ static size_t icmap_get_valuetype_len(icmap_value_types_t type)
 {
 	size_t res = 0;
 
-	switch (type) {
-	case ICMAP_VALUETYPE_INT8: res = sizeof(int8_t); break;
-	case ICMAP_VALUETYPE_UINT8: res = sizeof(uint8_t); break;
-	case ICMAP_VALUETYPE_INT16: res = sizeof(int16_t); break;
-	case ICMAP_VALUETYPE_UINT16: res = sizeof(uint16_t); break;
-	case ICMAP_VALUETYPE_INT32: res = sizeof(int32_t); break;
-	case ICMAP_VALUETYPE_UINT32: res = sizeof(uint32_t); break;
-	case ICMAP_VALUETYPE_INT64: res = sizeof(int64_t); break;
-	case ICMAP_VALUETYPE_UINT64: res = sizeof(uint64_t); break;
-	case ICMAP_VALUETYPE_FLOAT: res = sizeof(float); break;
-	case ICMAP_VALUETYPE_DOUBLE: res = sizeof(double); break;
+	switch(type) {
+	case ICMAP_VALUETYPE_INT8:
+		res = sizeof(int8_t);
+		break;
+	case ICMAP_VALUETYPE_UINT8:
+		res = sizeof(uint8_t);
+		break;
+	case ICMAP_VALUETYPE_INT16:
+		res = sizeof(int16_t);
+		break;
+	case ICMAP_VALUETYPE_UINT16:
+		res = sizeof(uint16_t);
+		break;
+	case ICMAP_VALUETYPE_INT32:
+		res = sizeof(int32_t);
+		break;
+	case ICMAP_VALUETYPE_UINT32:
+		res = sizeof(uint32_t);
+		break;
+	case ICMAP_VALUETYPE_INT64:
+		res = sizeof(int64_t);
+		break;
+	case ICMAP_VALUETYPE_UINT64:
+		res = sizeof(uint64_t);
+		break;
+	case ICMAP_VALUETYPE_FLOAT:
+		res = sizeof(float);
+		break;
+	case ICMAP_VALUETYPE_DOUBLE:
+		res = sizeof(double);
+		break;
 	case ICMAP_VALUETYPE_STRING:
 	case ICMAP_VALUETYPE_BINARY:
 		res = 0;
@@ -344,24 +351,24 @@ static size_t icmap_get_valuetype_len(icmap_value_types_t type)
 static int icmap_check_value_len(const void *value, size_t value_len, icmap_value_types_t type)
 {
 
-	if (value_len > ICMAP_MAX_VALUE_LEN) {
+	if(value_len > ICMAP_MAX_VALUE_LEN) {
 		return (-1);
 	}
 
-	if (type != ICMAP_VALUETYPE_STRING && type != ICMAP_VALUETYPE_BINARY) {
-		if (icmap_get_valuetype_len(type) == value_len) {
+	if(type != ICMAP_VALUETYPE_STRING && type != ICMAP_VALUETYPE_BINARY) {
+		if(icmap_get_valuetype_len(type) == value_len) {
 			return (0);
 		} else {
 			return (-1);
 		}
 	}
 
-	if (type == ICMAP_VALUETYPE_STRING) {
+	if(type == ICMAP_VALUETYPE_STRING) {
 		/*
 		 * value_len can be shorter then real string length, but never
 		 * longer (+ 1 is because of 0 at the end of string)
 		 */
-		if (value_len > strlen((const char *)value) + 1) {
+		if(value_len > strlen((const char *)value) + 1) {
 			return (-1);
 		} else {
 			return (0);
@@ -375,13 +382,13 @@ static int icmap_item_eq(const struct icmap_item *item, const void *value, size_
 {
 	size_t ptr_len;
 
-	if (item->type != type) {
+	if(item->type != type) {
 		return (0);
 	}
 
-	if (item->type == ICMAP_VALUETYPE_STRING) {
+	if(item->type == ICMAP_VALUETYPE_STRING) {
 		ptr_len = strlen((const char *)value);
-		if (ptr_len > value_len) {
+		if(ptr_len > value_len) {
 			ptr_len = value_len;
 		}
 		ptr_len++;
@@ -389,73 +396,64 @@ static int icmap_item_eq(const struct icmap_item *item, const void *value, size_
 		ptr_len = value_len;
 	}
 
-	if (item->value_len == ptr_len) {
+	if(item->value_len == ptr_len) {
 		return (memcmp(item->value, value, value_len) == 0);
 	};
 
 	return (0);
 }
 
-int icmap_key_value_eq(
-	const icmap_map_t map1,
-	const char *key_name1,
-	const icmap_map_t map2,
-	const char *key_name2)
+int icmap_key_value_eq(const icmap_map_t map1, const char *key_name1, const icmap_map_t map2, const char *key_name2)
 {
 	struct icmap_item *item1, *item2;
 
-	if (map1 == NULL || key_name1 == NULL || map2 == NULL || key_name2 == NULL) {
+	if(map1 == NULL || key_name1 == NULL || map2 == NULL || key_name2 == NULL) {
 		return (0);
 	}
 
 	item1 = qb_map_get(map1->qb_map, key_name1);
 	item2 = qb_map_get(map2->qb_map, key_name2);
 
-	if (item1 == NULL || item2 == NULL) {
+	if(item1 == NULL || item2 == NULL) {
 		return (0);
 	}
 
 	return (icmap_item_eq(item1, item2->value, item2->value_len, item2->type));
 }
 
-cs_error_t icmap_set_r(
-	const icmap_map_t map,
-	const char *key_name,
-	const void *value,
-	size_t value_len,
-	icmap_value_types_t type)
+cs_error_t icmap_set_r(const icmap_map_t map, const char *key_name, const void *value, size_t value_len, icmap_value_types_t type)
 {
 	struct icmap_item *item;
 	struct icmap_item *new_item;
 	size_t new_value_len;
 	size_t new_item_size;
 
-	if (value == NULL || key_name == NULL) {
+	if(value == NULL || key_name == NULL) {
 		return (CS_ERR_INVALID_PARAM);
 	}
 
-	if (icmap_check_value_len(value, value_len, type) != 0) {
+	if(icmap_check_value_len(value, value_len, type) != 0) {
 		return (CS_ERR_INVALID_PARAM);
 	}
 
 	item = qb_map_get(map->qb_map, key_name);
-	if (item != NULL) {
+	if(item != NULL) {
 		/*
 		 * Check that key is really changed
 		 */
-		if (icmap_item_eq(item, value, value_len, type)) {
+		if(icmap_item_eq(item, value, value_len, type)) {
 			return (CS_OK);
 		}
 	} else {
-		if (icmap_check_key_name(key_name) != 0) {
+		if(icmap_check_key_name(key_name) != 0) {
 			return (CS_ERR_NAME_TOO_LONG);
 		}
 	}
 
-	if (type == ICMAP_VALUETYPE_BINARY || type == ICMAP_VALUETYPE_STRING) {
-		if (type == ICMAP_VALUETYPE_STRING) {
+	if(type == ICMAP_VALUETYPE_BINARY || type == ICMAP_VALUETYPE_STRING) {
+		if(type == ICMAP_VALUETYPE_STRING) {
 			new_value_len = strlen((const char *)value);
-			if (new_value_len > value_len) {
+			if(new_value_len > value_len) {
 				new_value_len = value_len;
 			}
 			new_value_len++;
@@ -468,14 +466,14 @@ cs_error_t icmap_set_r(
 
 	new_item_size = sizeof(struct icmap_item) + new_value_len;
 	new_item = malloc(new_item_size);
-	if (new_item == NULL) {
+	if(new_item == NULL) {
 		return (CS_ERR_NO_MEMORY);
 	}
 	memset(new_item, 0, new_item_size);
 
-	if (item == NULL) {
+	if(item == NULL) {
 		new_item->key_name = strdup(key_name);
-		if (new_item->key_name == NULL) {
+		if(new_item->key_name == NULL) {
 			free(new_item);
 			return (CS_ERR_NO_MEMORY);
 		}
@@ -489,7 +487,7 @@ cs_error_t icmap_set_r(
 
 	memcpy(new_item->value, value, new_value_len);
 
-	if (new_item->type == ICMAP_VALUETYPE_STRING) {
+	if(new_item->type == ICMAP_VALUETYPE_STRING) {
 		((char *)new_item->value)[new_value_len - 1] = 0;
 	}
 
@@ -498,11 +496,7 @@ cs_error_t icmap_set_r(
 	return (CS_OK);
 }
 
-cs_error_t icmap_set(
-	const char *key_name,
-	const void *value,
-	size_t value_len,
-	icmap_value_types_t type)
+cs_error_t icmap_set(const char *key_name, const void *value, size_t value_len, icmap_value_types_t type)
 {
 
 	return (icmap_set_r(icmap_global_map, key_name, value, value_len, type));
@@ -523,7 +517,7 @@ cs_error_t icmap_set_uint8_r(const icmap_map_t map, const char *key_name, uint8_
 cs_error_t icmap_set_int16_r(const icmap_map_t map, const char *key_name, int16_t value)
 {
 
-	return (icmap_set_r(map,key_name, &value, sizeof(value), ICMAP_VALUETYPE_INT16));
+	return (icmap_set_r(map, key_name, &value, sizeof(value), ICMAP_VALUETYPE_INT16));
 }
 
 cs_error_t icmap_set_uint16_r(const icmap_map_t map, const char *key_name, uint16_t value)
@@ -571,7 +565,7 @@ cs_error_t icmap_set_double_r(const icmap_map_t map, const char *key_name, doubl
 cs_error_t icmap_set_string_r(const icmap_map_t map, const char *key_name, const char *value)
 {
 
-	if (value == NULL) {
+	if(value == NULL) {
 		return (CS_ERR_INVALID_PARAM);
 	}
 
@@ -648,16 +642,16 @@ cs_error_t icmap_delete_r(const icmap_map_t map, const char *key_name)
 {
 	struct icmap_item *item;
 
-	if (key_name == NULL) {
+	if(key_name == NULL) {
 		return (CS_ERR_INVALID_PARAM);
 	}
 
 	item = qb_map_get(map->qb_map, key_name);
-	if (item == NULL) {
+	if(item == NULL) {
 		return (CS_ERR_NOT_EXIST);
 	}
 
-	if (qb_map_rm(map->qb_map, item->key_name) != QB_TRUE) {
+	if(qb_map_rm(map->qb_map, item->key_name) != QB_TRUE) {
 		return (CS_ERR_NOT_EXIST);
 	}
 
@@ -670,61 +664,52 @@ cs_error_t icmap_delete(const char *key_name)
 	return (icmap_delete_r(icmap_global_map, key_name));
 }
 
-static cs_error_t icmap_get_ref_r(
-	const icmap_map_t map,
-	const char *key_name,
-	void **value,
-	size_t *value_len,
-	icmap_value_types_t *type)
+static cs_error_t
+icmap_get_ref_r(const icmap_map_t map, const char *key_name, void **value, size_t *value_len, icmap_value_types_t *type)
 {
 	struct icmap_item *item;
 
-	if (key_name == NULL) {
+	if(key_name == NULL) {
 		return (CS_ERR_INVALID_PARAM);
 	}
 
 	item = qb_map_get(map->qb_map, key_name);
-	if (item == NULL) {
+	if(item == NULL) {
 		return (CS_ERR_NOT_EXIST);
 	}
 
-	if (type != NULL) {
+	if(type != NULL) {
 		*type = item->type;
 	}
 
-	if (value_len != NULL) {
+	if(value_len != NULL) {
 		*value_len = item->value_len;
 	}
 
-	if (value != NULL) {
+	if(value != NULL) {
 		*value = item->value;
 	}
 
 	return (CS_OK);
 }
 
-cs_error_t icmap_get_r(
-	const icmap_map_t map,
-	const char *key_name,
-	void *value,
-	size_t *value_len,
-	icmap_value_types_t *type)
+cs_error_t icmap_get_r(const icmap_map_t map, const char *key_name, void *value, size_t *value_len, icmap_value_types_t *type)
 {
 	cs_error_t res;
 	void *tmp_value;
 	size_t tmp_value_len;
 
 	res = icmap_get_ref_r(map, key_name, &tmp_value, &tmp_value_len, type);
-	if (res != CS_OK) {
+	if(res != CS_OK) {
 		return (res);
 	}
 
-	if (value == NULL) {
-		if (value_len != NULL) {
+	if(value == NULL) {
+		if(value_len != NULL) {
 			*value_len = tmp_value_len;
 		}
 	} else {
-		if (value_len == NULL || *value_len < tmp_value_len) {
+		if(value_len == NULL || *value_len < tmp_value_len) {
 			return (CS_ERR_INVALID_PARAM);
 		}
 
@@ -736,21 +721,13 @@ cs_error_t icmap_get_r(
 	return (CS_OK);
 }
 
-cs_error_t icmap_get(
-	const char *key_name,
-	void *value,
-	size_t *value_len,
-	icmap_value_types_t *type)
+cs_error_t icmap_get(const char *key_name, void *value, size_t *value_len, icmap_value_types_t *type)
 {
 
 	return (icmap_get_r(icmap_global_map, key_name, value, value_len, type));
 }
 
-static cs_error_t icmap_get_int_r(
-	const icmap_map_t map,
-	const char *key_name,
-	void *value,
-	icmap_value_types_t type)
+static cs_error_t icmap_get_int_r(const icmap_map_t map, const char *key_name, void *value, icmap_value_types_t type)
 {
 	char key_value[16];
 	size_t key_size;
@@ -761,10 +738,9 @@ static cs_error_t icmap_get_int_r(
 	memset(key_value, 0, key_size);
 
 	err = icmap_get(key_name, key_value, &key_size, &key_type);
-	if (err != CS_OK)
-		return (err);
+	if(err != CS_OK) return (err);
 
-	if (key_type != type) {
+	if(key_type != type) {
 		return (CS_ERR_INVALID_PARAM);
 	}
 
@@ -812,7 +788,7 @@ cs_error_t icmap_get_uint32_r(const icmap_map_t map, const char *key_name, uint3
 cs_error_t icmap_get_int64_r(const icmap_map_t map, const char *key_name, int64_t *i64)
 {
 
-	return(icmap_get_int_r(map, key_name, i64, ICMAP_VALUETYPE_INT64));
+	return (icmap_get_int_r(map, key_name, i64, ICMAP_VALUETYPE_INT64));
 }
 
 cs_error_t icmap_get_uint64_r(const icmap_map_t map, const char *key_name, uint64_t *u64)
@@ -872,7 +848,7 @@ cs_error_t icmap_get_uint32(const char *key_name, uint32_t *u32)
 cs_error_t icmap_get_int64(const char *key_name, int64_t *i64)
 {
 
-	return(icmap_get_int64_r(icmap_global_map, key_name, i64));
+	return (icmap_get_int64_r(icmap_global_map, key_name, i64));
 }
 
 cs_error_t icmap_get_uint64(const char *key_name, uint64_t *u64)
@@ -900,8 +876,8 @@ cs_error_t icmap_get_string(const char *key_name, char **str)
 	icmap_value_types_t type;
 
 	res = icmap_get(key_name, NULL, &str_len, &type);
-	if (res != CS_OK || type != ICMAP_VALUETYPE_STRING) {
-		if (res == CS_OK) {
+	if(res != CS_OK || type != ICMAP_VALUETYPE_STRING) {
+		if(res == CS_OK) {
 			res = CS_ERR_INVALID_PARAM;
 		}
 
@@ -909,14 +885,14 @@ cs_error_t icmap_get_string(const char *key_name, char **str)
 	}
 
 	*str = malloc(str_len);
-	if (*str == NULL) {
+	if(*str == NULL) {
 		res = CS_ERR_NO_MEMORY;
 
 		goto return_error;
 	}
 
 	res = icmap_get(key_name, *str, &str_len, &type);
-	if (res != CS_OK) {
+	if(res != CS_OK) {
 		free(*str);
 		goto return_error;
 	}
@@ -927,10 +903,7 @@ return_error:
 	return (res);
 }
 
-cs_error_t icmap_adjust_int_r(
-	const icmap_map_t map,
-	const char *key_name,
-	int32_t step)
+cs_error_t icmap_adjust_int_r(const icmap_map_t map, const char *key_name, int32_t step)
 {
 	struct icmap_item *item;
 	uint8_t u8;
@@ -939,16 +912,16 @@ cs_error_t icmap_adjust_int_r(
 	uint64_t u64;
 	cs_error_t err = CS_OK;
 
-	if (key_name == NULL) {
+	if(key_name == NULL) {
 		return (CS_ERR_INVALID_PARAM);
 	}
 
 	item = qb_map_get(map->qb_map, key_name);
-	if (item == NULL) {
+	if(item == NULL) {
 		return (CS_ERR_NOT_EXIST);
 	}
 
-	switch (item->type) {
+	switch(item->type) {
 	case ICMAP_VALUETYPE_INT8:
 	case ICMAP_VALUETYPE_UINT8:
 		memcpy(&u8, item->value, sizeof(u8));
@@ -984,32 +957,27 @@ cs_error_t icmap_adjust_int_r(
 	return (err);
 }
 
-cs_error_t icmap_adjust_int(
-	const char *key_name,
-	int32_t step)
+cs_error_t icmap_adjust_int(const char *key_name, int32_t step)
 {
 
 	return (icmap_adjust_int_r(icmap_global_map, key_name, step));
 }
 
-cs_error_t icmap_fast_adjust_int_r(
-	const icmap_map_t map,
-	const char *key_name,
-	int32_t step)
+cs_error_t icmap_fast_adjust_int_r(const icmap_map_t map, const char *key_name, int32_t step)
 {
 	struct icmap_item *item;
 	cs_error_t err = CS_OK;
 
-	if (key_name == NULL) {
+	if(key_name == NULL) {
 		return (CS_ERR_INVALID_PARAM);
 	}
 
 	item = qb_map_get(map->qb_map, key_name);
-	if (item == NULL) {
+	if(item == NULL) {
 		return (CS_ERR_NOT_EXIST);
 	}
 
-	switch (item->type) {
+	switch(item->type) {
 	case ICMAP_VALUETYPE_INT8:
 	case ICMAP_VALUETYPE_UINT8:
 		*(uint8_t *)item->value += step;
@@ -1034,16 +1002,14 @@ cs_error_t icmap_fast_adjust_int_r(
 		break;
 	}
 
-	if (err == CS_OK) {
+	if(err == CS_OK) {
 		qb_map_put(map->qb_map, item->key_name, item);
 	}
 
 	return (err);
 }
 
-cs_error_t icmap_fast_adjust_int(
-	const char *key_name,
-	int32_t step)
+cs_error_t icmap_fast_adjust_int(const char *key_name, int32_t step)
 {
 
 	return (icmap_fast_adjust_int_r(icmap_global_map, key_name, step));
@@ -1106,15 +1072,15 @@ const char *icmap_iter_next(icmap_iter_t iter, size_t *value_len, icmap_value_ty
 	const char *res;
 
 	res = qb_map_iter_next(iter, (void **)&item);
-	if (res == NULL) {
+	if(res == NULL) {
 		return (res);
 	}
 
-	if (value_len != NULL) {
+	if(value_len != NULL) {
 		*value_len = item->value_len;
 	}
 
-	if (type != NULL) {
+	if(type != NULL) {
 		*type = item->type;
 	}
 
@@ -1134,11 +1100,11 @@ static void icmap_notify_fn(uint32_t event, char *key, void *old_value, void *va
 	struct icmap_notify_value new_val;
 	struct icmap_notify_value old_val;
 
-	if (value == NULL && old_value == NULL) {
-		return ;
+	if(value == NULL && old_value == NULL) {
+		return;
 	}
 
-	if (new_item != NULL) {
+	if(new_item != NULL) {
 		new_val.type = new_item->type;
 		new_val.len = new_item->value_len;
 		new_val.data = new_item->value;
@@ -1149,7 +1115,7 @@ static void icmap_notify_fn(uint32_t event, char *key, void *old_value, void *va
 	/*
 	 * old_item == new_item if fast functions are used -> don't fill old value
 	 */
-	if (old_item != NULL && old_item != new_item) {
+	if(old_item != NULL && old_item != new_item) {
 		old_val.type = old_item->type;
 		old_val.len = old_item->value_len;
 		old_val.data = old_item->value;
@@ -1157,37 +1123,29 @@ static void icmap_notify_fn(uint32_t event, char *key, void *old_value, void *va
 		memset(&old_val, 0, sizeof(old_val));
 	}
 
-	icmap_track->notify_fn(icmap_qbtt_to_tt(event),
-			key,
-			new_val,
-			old_val,
-			icmap_track->user_data);
+	icmap_track->notify_fn(icmap_qbtt_to_tt(event), key, new_val, old_val, icmap_track->user_data);
 }
 
-cs_error_t icmap_track_add(
-	const char *key_name,
-	int32_t track_type,
-	icmap_notify_fn_t notify_fn,
-	void *user_data,
-	icmap_track_t *icmap_track)
+cs_error_t icmap_track_add(const char *key_name, int32_t track_type, icmap_notify_fn_t notify_fn, void *user_data,
+						   icmap_track_t *icmap_track)
 {
 	int32_t err;
 
-	if (notify_fn == NULL || icmap_track == NULL) {
+	if(notify_fn == NULL || icmap_track == NULL) {
 		return (CS_ERR_INVALID_PARAM);
 	}
 
-	if ((track_type & ~(ICMAP_TRACK_ADD | ICMAP_TRACK_DELETE | ICMAP_TRACK_MODIFY | ICMAP_TRACK_PREFIX)) != 0) {
+	if((track_type & ~(ICMAP_TRACK_ADD | ICMAP_TRACK_DELETE | ICMAP_TRACK_MODIFY | ICMAP_TRACK_PREFIX)) != 0) {
 		return (CS_ERR_INVALID_PARAM);
 	}
 
 	*icmap_track = malloc(sizeof(**icmap_track));
-	if (*icmap_track == NULL) {
+	if(*icmap_track == NULL) {
 		return (CS_ERR_NO_MEMORY);
 	}
 	memset(*icmap_track, 0, sizeof(**icmap_track));
 
-	if (key_name != NULL) {
+	if(key_name != NULL) {
 		(*icmap_track)->key_name = strdup(key_name);
 	};
 
@@ -1195,8 +1153,9 @@ cs_error_t icmap_track_add(
 	(*icmap_track)->notify_fn = notify_fn;
 	(*icmap_track)->user_data = user_data;
 
-	if ((err = qb_map_notify_add(icmap_global_map->qb_map, (*icmap_track)->key_name, icmap_notify_fn,
-					icmap_tt_to_qbtt(track_type), *icmap_track)) != 0) {
+	if((err = qb_map_notify_add(icmap_global_map->qb_map, (*icmap_track)->key_name, icmap_notify_fn,
+								icmap_tt_to_qbtt(track_type), *icmap_track))
+	   != 0) {
 		free((*icmap_track)->key_name);
 		free(*icmap_track);
 
@@ -1204,7 +1163,7 @@ cs_error_t icmap_track_add(
 	}
 
 	list_init(&(*icmap_track)->list);
-	list_add (&(*icmap_track)->list, &icmap_track_list_head);
+	list_add(&(*icmap_track)->list, &icmap_track_list_head);
 
 	return (CS_OK);
 }
@@ -1213,8 +1172,9 @@ cs_error_t icmap_track_delete(icmap_track_t icmap_track)
 {
 	int32_t err;
 
-	if ((err = qb_map_notify_del_2(icmap_global_map->qb_map, icmap_track->key_name,
-				icmap_notify_fn, icmap_tt_to_qbtt(icmap_track->track_type), icmap_track)) != 0) {
+	if((err = qb_map_notify_del_2(icmap_global_map->qb_map, icmap_track->key_name, icmap_notify_fn,
+								  icmap_tt_to_qbtt(icmap_track->track_type), icmap_track))
+	   != 0) {
 		return (qb_to_cs_error(err));
 	}
 
@@ -1235,14 +1195,14 @@ cs_error_t icmap_set_ro_access(const char *key_name, int prefix, int ro_access)
 	struct list_head *iter;
 	struct icmap_ro_access_item *icmap_ro_ai;
 
-	for (iter = icmap_ro_access_item_list_head.next; iter != &icmap_ro_access_item_list_head; iter = iter->next) {
+	for(iter = icmap_ro_access_item_list_head.next; iter != &icmap_ro_access_item_list_head; iter = iter->next) {
 		icmap_ro_ai = list_entry(iter, struct icmap_ro_access_item, list);
 
-		if (icmap_ro_ai->prefix == prefix && strcmp(key_name, icmap_ro_ai->key_name) == 0) {
+		if(icmap_ro_ai->prefix == prefix && strcmp(key_name, icmap_ro_ai->key_name) == 0) {
 			/*
 			 * We found item
 			 */
-			if (ro_access) {
+			if(ro_access) {
 				return (CS_ERR_EXIST);
 			} else {
 				list_del(&icmap_ro_ai->list);
@@ -1254,25 +1214,25 @@ cs_error_t icmap_set_ro_access(const char *key_name, int prefix, int ro_access)
 		}
 	}
 
-	if (!ro_access) {
+	if(!ro_access) {
 		return (CS_ERR_NOT_EXIST);
 	}
 
 	icmap_ro_ai = malloc(sizeof(*icmap_ro_ai));
-	if (icmap_ro_ai == NULL) {
+	if(icmap_ro_ai == NULL) {
 		return (CS_ERR_NO_MEMORY);
 	}
 
 	memset(icmap_ro_ai, 0, sizeof(*icmap_ro_ai));
 	icmap_ro_ai->key_name = strdup(key_name);
-	if (icmap_ro_ai->key_name == NULL) {
+	if(icmap_ro_ai->key_name == NULL) {
 		free(icmap_ro_ai);
 		return (CS_ERR_NO_MEMORY);
 	}
 
 	icmap_ro_ai->prefix = prefix;
 	list_init(&icmap_ro_ai->list);
-	list_add (&icmap_ro_ai->list, &icmap_ro_access_item_list_head);
+	list_add(&icmap_ro_ai->list, &icmap_ro_access_item_list_head);
 
 	return (CS_OK);
 }
@@ -1282,25 +1242,23 @@ int icmap_is_key_ro(const char *key_name)
 	struct list_head *iter;
 	struct icmap_ro_access_item *icmap_ro_ai;
 
-	for (iter = icmap_ro_access_item_list_head.next; iter != &icmap_ro_access_item_list_head; iter = iter->next) {
+	for(iter = icmap_ro_access_item_list_head.next; iter != &icmap_ro_access_item_list_head; iter = iter->next) {
 		icmap_ro_ai = list_entry(iter, struct icmap_ro_access_item, list);
 
-		if (icmap_ro_ai->prefix) {
-			if (strlen(icmap_ro_ai->key_name) > strlen(key_name))
-				continue;
+		if(icmap_ro_ai->prefix) {
+			if(strlen(icmap_ro_ai->key_name) > strlen(key_name)) continue;
 
-			if (strncmp(icmap_ro_ai->key_name, key_name, strlen(icmap_ro_ai->key_name)) == 0) {
+			if(strncmp(icmap_ro_ai->key_name, key_name, strlen(icmap_ro_ai->key_name)) == 0) {
 				return (CS_TRUE);
 			}
 		} else {
-			if (strcmp(icmap_ro_ai->key_name, key_name) == 0) {
+			if(strcmp(icmap_ro_ai->key_name, key_name) == 0) {
 				return (CS_TRUE);
 			}
 		}
 	}
 
 	return (CS_FALSE);
-
 }
 
 cs_error_t icmap_copy_map(icmap_map_t dst_map, const icmap_map_t src_map)
@@ -1313,20 +1271,20 @@ cs_error_t icmap_copy_map(icmap_map_t dst_map, const icmap_map_t src_map)
 	void *value;
 
 	iter = icmap_iter_init_r(src_map, NULL);
-	if (iter == NULL) {
+	if(iter == NULL) {
 		return (CS_ERR_NO_MEMORY);
 	}
 
 	err = CS_OK;
 
-	while ((key_name = icmap_iter_next(iter, &value_len, &value_type)) != NULL) {
+	while((key_name = icmap_iter_next(iter, &value_len, &value_type)) != NULL) {
 		err = icmap_get_ref_r(src_map, key_name, &value, &value_len, &value_type);
-		if (err != CS_OK) {
+		if(err != CS_OK) {
 			goto exit_iter_finalize;
 		}
 
 		err = icmap_set_r(dst_map, key_name, value, value_len, value_type);
-		if (err != CS_OK) {
+		if(err != CS_OK) {
 			goto exit_iter_finalize;
 		}
 	}

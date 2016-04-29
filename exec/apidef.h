@@ -37,6 +37,6 @@
 
 #include <corosync/coroapi.h>
 
-extern struct corosync_api_v1 *apidef_get (void);
+extern struct corosync_api_v1 *apidef_get(void);
 
 #endif /* APIDEF_H_DEFINED*/

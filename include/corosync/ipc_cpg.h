@@ -40,7 +40,7 @@
 #include <corosync/corotypes.h>
 #include <corosync/mar_gen.h>
 
-#define CPG_ZC_PATH_LEN				128
+#define CPG_ZC_PATH_LEN 128
 
 enum req_cpg_types {
 	MESSAGE_REQ_CPG_JOIN = 0,
@@ -99,58 +99,46 @@ typedef struct {
 	char value[CPG_MAX_NAME_LENGTH] __attribute__((aligned(8)));
 } mar_cpg_name_t;
 
-static inline void swab_mar_cpg_name_t (mar_cpg_name_t *to_swab)
+static inline void swab_mar_cpg_name_t(mar_cpg_name_t *to_swab)
 {
-	swab_mar_uint32_t (&to_swab->length);
+	swab_mar_uint32_t(&to_swab->length);
 }
 
-static inline void marshall_from_mar_cpg_name_t (
-	struct cpg_name *dest,
-	const mar_cpg_name_t *src)
+static inline void marshall_from_mar_cpg_name_t(struct cpg_name *dest, const mar_cpg_name_t *src)
 {
 	dest->length = src->length;
-	memcpy (&dest->value, &src->value, CPG_MAX_NAME_LENGTH);
+	memcpy(&dest->value, &src->value, CPG_MAX_NAME_LENGTH);
 }
 
-static inline void marshall_to_mar_cpg_name_t (
-	mar_cpg_name_t *dest,
-	const struct cpg_name *src)
+static inline void marshall_to_mar_cpg_name_t(mar_cpg_name_t *dest, const struct cpg_name *src)
 {
 	dest->length = src->length;
-	memcpy (&dest->value, &src->value, CPG_MAX_NAME_LENGTH);
+	memcpy(&dest->value, &src->value, CPG_MAX_NAME_LENGTH);
 }
 
 typedef struct {
-        mar_uint32_t nodeid __attribute__((aligned(8)));
-        mar_uint32_t pid __attribute__((aligned(8)));
-        mar_uint32_t reason __attribute__((aligned(8)));
+	mar_uint32_t nodeid __attribute__((aligned(8)));
+	mar_uint32_t pid __attribute__((aligned(8)));
+	mar_uint32_t reason __attribute__((aligned(8)));
 } mar_cpg_address_t;
 
-static inline void marshall_from_mar_cpg_address_t (
-	struct cpg_address *dest,
-	const mar_cpg_address_t *src)
+static inline void marshall_from_mar_cpg_address_t(struct cpg_address *dest, const mar_cpg_address_t *src)
 {
 	dest->nodeid = src->nodeid;
 	dest->pid = src->pid;
 	dest->reason = src->reason;
 }
 
-static inline void marshall_to_mar_cpg_address_t (
-	mar_cpg_address_t *dest,
-	const struct cpg_address *src)
+static inline void marshall_to_mar_cpg_address_t(mar_cpg_address_t *dest, const struct cpg_address *src)
 {
 	dest->nodeid = src->nodeid;
 	dest->pid = src->pid;
 	dest->reason = src->reason;
 }
 
-static inline int mar_name_compare (
-		const mar_cpg_name_t *g1,
-		const mar_cpg_name_t *g2)
+static inline int mar_name_compare(const mar_cpg_name_t *g1, const mar_cpg_name_t *g2)
 {
-	return (g1->length == g2->length?
-		memcmp (g1->value, g2->value, g1->length):
-		g1->length - g2->length);
+	return (g1->length == g2->length ? memcmp(g1->value, g2->value, g1->length) : g1->length - g2->length);
 }
 
 typedef struct {
@@ -159,23 +147,20 @@ typedef struct {
 	mar_uint32_t pid;
 } mar_cpg_iteration_description_t;
 
-static inline void marshall_from_mar_cpg_iteration_description_t(
-	struct cpg_iteration_description_t *dest,
-	const mar_cpg_iteration_description_t *src)
+static inline void marshall_from_mar_cpg_iteration_description_t(struct cpg_iteration_description_t *dest,
+																 const mar_cpg_iteration_description_t *src)
 {
 	dest->nodeid = src->nodeid;
 	dest->pid = src->pid;
-	marshall_from_mar_cpg_name_t (&dest->group, &src->group);
+	marshall_from_mar_cpg_name_t(&dest->group, &src->group);
 };
 
 typedef struct {
-        mar_uint32_t nodeid __attribute__((aligned(8)));
-        mar_uint64_t seq __attribute__((aligned(8)));
+	mar_uint32_t nodeid __attribute__((aligned(8)));
+	mar_uint64_t seq __attribute__((aligned(8)));
 } mar_cpg_ring_id_t;
 
-static inline void marshall_from_mar_cpg_ring_id_t (
-	struct cpg_ring_id *dest,
-	const mar_cpg_ring_id_t *src)
+static inline void marshall_from_mar_cpg_ring_id_t(struct cpg_ring_id *dest, const mar_cpg_ring_id_t *src)
 {
 	dest->nodeid = src->nodeid;
 	dest->seq = src->seq;
@@ -279,8 +264,8 @@ struct res_lib_cpg_confchg_callback {
 	mar_uint32_t joined_list_entries __attribute__((aligned(8)));
 	mar_uint32_t left_list_entries __attribute__((aligned(8)));
 	mar_cpg_address_t member_list[];
-//	struct cpg_address left_list[];
-//	struct cpg_address joined_list[];
+	//	struct cpg_address left_list[];
+	//	struct cpg_address joined_list[];
 };
 
 struct res_lib_cpg_totem_confchg_callback {
@@ -331,19 +316,19 @@ struct res_lib_cpg_iterationfinalize {
 };
 
 typedef struct {
-        struct qb_ipc_request_header header __attribute__((aligned(8)));
-        size_t map_size __attribute__((aligned(8)));
-        char path_to_file[CPG_ZC_PATH_LEN] __attribute__((aligned(8)));
+	struct qb_ipc_request_header header __attribute__((aligned(8)));
+	size_t map_size __attribute__((aligned(8)));
+	char path_to_file[CPG_ZC_PATH_LEN] __attribute__((aligned(8)));
 } mar_req_coroipcc_zc_alloc_t __attribute__((aligned(8)));
 
 typedef struct {
-        struct qb_ipc_request_header header __attribute__((aligned(8)));
-        size_t map_size __attribute__((aligned(8)));
+	struct qb_ipc_request_header header __attribute__((aligned(8)));
+	size_t map_size __attribute__((aligned(8)));
 	uint64_t server_address __attribute__((aligned(8)));
 } mar_req_coroipcc_zc_free_t __attribute__((aligned(8)));
 
 typedef struct {
-        struct qb_ipc_request_header header __attribute__((aligned(8)));
+	struct qb_ipc_request_header header __attribute__((aligned(8)));
 	uint64_t server_address __attribute__((aligned(8)));
 } mar_req_coroipcc_zc_execute_t __attribute__((aligned(8)));
 

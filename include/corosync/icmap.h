@@ -45,43 +45,43 @@ extern "C" {
 /*
  * Maximum length of key in icmap
  */
-#define ICMAP_KEYNAME_MAXLEN		255
+#define ICMAP_KEYNAME_MAXLEN 255
 
 /*
  * Minimum lenght of key in icmap
  */
-#define ICMAP_KEYNAME_MINLEN		3
+#define ICMAP_KEYNAME_MINLEN 3
 
 /*
  * Possible types of value. Binary is raw data without trailing zero with given length
  */
 typedef enum {
-    ICMAP_VALUETYPE_INT8	=  1,
-    ICMAP_VALUETYPE_UINT8	=  2,
-    ICMAP_VALUETYPE_INT16	=  3,
-    ICMAP_VALUETYPE_UINT16	=  4,
-    ICMAP_VALUETYPE_INT32	=  5,
-    ICMAP_VALUETYPE_UINT32	=  6,
-    ICMAP_VALUETYPE_INT64	=  7,
-    ICMAP_VALUETYPE_UINT64	=  8,
-    ICMAP_VALUETYPE_FLOAT	=  9,
-    ICMAP_VALUETYPE_DOUBLE	= 10,
-    ICMAP_VALUETYPE_STRING	= 11,
-    ICMAP_VALUETYPE_BINARY	= 12,
+	ICMAP_VALUETYPE_INT8 = 1,
+	ICMAP_VALUETYPE_UINT8 = 2,
+	ICMAP_VALUETYPE_INT16 = 3,
+	ICMAP_VALUETYPE_UINT16 = 4,
+	ICMAP_VALUETYPE_INT32 = 5,
+	ICMAP_VALUETYPE_UINT32 = 6,
+	ICMAP_VALUETYPE_INT64 = 7,
+	ICMAP_VALUETYPE_UINT64 = 8,
+	ICMAP_VALUETYPE_FLOAT = 9,
+	ICMAP_VALUETYPE_DOUBLE = 10,
+	ICMAP_VALUETYPE_STRING = 11,
+	ICMAP_VALUETYPE_BINARY = 12,
 } icmap_value_types_t;
 
 /*
  * Tracking values.
  */
-#define ICMAP_TRACK_ADD		4
-#define ICMAP_TRACK_DELETE	1
-#define ICMAP_TRACK_MODIFY	2
+#define ICMAP_TRACK_ADD 4
+#define ICMAP_TRACK_DELETE 1
+#define ICMAP_TRACK_MODIFY 2
 /*
  * Whole prefix is tracked, instead of key only (so "totem." tracking means that
  * "totem.nodeid", "totem.version", ... applies). This value is also never returned
  * inside of callback and is used only in adding track
  */
-#define ICMAP_TRACK_PREFIX	8
+#define ICMAP_TRACK_PREFIX 8
 
 /*
  * Structure passed as new_value and old_value in change callback. It contains type of
@@ -99,12 +99,8 @@ struct icmap_notify_value {
  * existing 0 type) if there were no old (creating of key) or new (deleting of key) value.
  * user_data are passed when adding tracking.
  */
-typedef void (*icmap_notify_fn_t) (
-	int32_t event,
-	const char *key_name,
-	struct icmap_notify_value new_value,
-	struct icmap_notify_value old_value,
-	void *user_data);
+typedef void (*icmap_notify_fn_t)(int32_t event, const char *key_name, struct icmap_notify_value new_value,
+								  struct icmap_notify_value old_value, void *user_data);
 
 /*
  * icmap type.
@@ -158,30 +154,18 @@ extern icmap_map_t icmap_get_global_map(void);
  * key_name is not found in map, or keys are not equal. != 0 is returned when
  * values are equal.
  */
-extern int icmap_key_value_eq(
-	const icmap_map_t map1,
-	const char *key_name1,
-	const icmap_map_t map2,
-	const char *key_name2);
+extern int icmap_key_value_eq(const icmap_map_t map1, const char *key_name1, const icmap_map_t map2, const char *key_name2);
 
 /*
  * Store value with value_len length and type as key_name name in global icmap.
  */
-extern cs_error_t icmap_set(
-	const char *key_name,
-	const void *value,
-	size_t value_len,
-        icmap_value_types_t type);
+extern cs_error_t icmap_set(const char *key_name, const void *value, size_t value_len, icmap_value_types_t type);
 
 /*
  * Reentrant version of icmap_set
  */
-extern cs_error_t icmap_set_r(
-	const icmap_map_t map,
-	const char *key_name,
-	const void *value,
-	size_t value_len,
-        icmap_value_types_t type);
+extern cs_error_t
+icmap_set_r(const icmap_map_t map, const char *key_name, const void *value, size_t value_len, icmap_value_types_t type);
 
 /*
  * Shortcuts for setting values
@@ -225,21 +209,12 @@ extern cs_error_t icmap_delete_r(const icmap_map_t map, const char *key_name);
  * CS_ERR_INVALID_PARAM is returned. After successful copy of value, value_len is
  * set to actual length of value in map.
  */
-extern cs_error_t icmap_get(
-	const char *key_name,
-	void *value,
-	size_t *value_len,
-        icmap_value_types_t *type);
+extern cs_error_t icmap_get(const char *key_name, void *value, size_t *value_len, icmap_value_types_t *type);
 
 /*
  * Same as icmap_get but it's reentrant and operates on given icmap_map
  */
-extern cs_error_t icmap_get_r(
-	const icmap_map_t map,
-	const char *key_name,
-	void *value,
-	size_t *value_len,
-	icmap_value_types_t *type);
+extern cs_error_t icmap_get_r(const icmap_map_t map, const char *key_name, void *value, size_t *value_len, icmap_value_types_t *type);
 
 /*
  * Shortcuts for icmap_get
@@ -346,12 +321,8 @@ extern void icmap_iter_finalize(icmap_iter_t iter);
  * which is bitwise or of ICMAP_TRACK_* values. notify_fn is called on change, where user_data pointer
  * is passed (unchanged). Value which can be used to delete tracking is passed as icmap_track.
  */
-extern cs_error_t icmap_track_add(
-	const char *key_name,
-	int32_t track_type,
-	icmap_notify_fn_t notify_fn,
-	void *user_data,
-	icmap_track_t *icmap_track);
+extern cs_error_t icmap_track_add(const char *key_name, int32_t track_type, icmap_notify_fn_t notify_fn,
+								  void *user_data, icmap_track_t *icmap_track);
 
 /*
  * Return user data associated with given track

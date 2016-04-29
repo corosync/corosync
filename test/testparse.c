@@ -40,19 +40,19 @@
 #include "../exec/parse.h"
 #include "../exec/print.h"
 
-int main (void)
+int main(void)
 {
 #ifdef CODE_COVERAGE_COMPILE_OUT
 	int result;
 	int error;
 
-	result = amfReadGroups (&error);
-	if (result == -1) {
-		printf ("Parse Error: %s\n", error);
-		exit (-1);
+	result = amfReadGroups(&error);
+	if(result == -1) {
+		printf("Parse Error: %s\n", error);
+		exit(-1);
 	}
 
-        saAmfPrintGroups ();
+	saAmfPrintGroups();
 #endif
 	return (0);
 }

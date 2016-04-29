@@ -63,52 +63,39 @@ static cpg_handle_t handle;
 static pthread_t thread;
 
 #ifndef timersub
-#define timersub(a, b, result)						\
-	do {								\
-		(result)->tv_sec = (a)->tv_sec - (b)->tv_sec;		\
-		(result)->tv_usec = (a)->tv_usec - (b)->tv_usec;	\
-		if ((result)->tv_usec < 0) {				\
-			--(result)->tv_sec;				\
-			(result)->tv_usec += 1000000;			\
-		}							\
-	} while (0)
+#define timersub(a, b, result)                           \
+	do {                                                 \
+		(result)->tv_sec = (a)->tv_sec - (b)->tv_sec;    \
+		(result)->tv_usec = (a)->tv_usec - (b)->tv_usec; \
+		if((result)->tv_usec < 0) {                      \
+			--(result)->tv_sec;                          \
+			(result)->tv_usec += 1000000;                \
+		}                                                \
+	} while(0)
 #endif /* timersub */
 
 static int alarm_notice;
 
-static void cpg_bm_confchg_fn (
-	cpg_handle_t handle_in,
-	const struct cpg_name *group_name,
-	const struct cpg_address *member_list, size_t member_list_entries,
-	const struct cpg_address *left_list, size_t left_list_entries,
-	const struct cpg_address *joined_list, size_t joined_list_entries)
+static void cpg_bm_confchg_fn(cpg_handle_t handle_in, const struct cpg_name *group_name, const struct cpg_address *member_list,
+							  size_t member_list_entries, const struct cpg_address *left_list, size_t left_list_entries,
+							  const struct cpg_address *joined_list, size_t joined_list_entries)
 {
 }
 
 static unsigned int write_count;
 
-static void cpg_bm_deliver_fn (
-        cpg_handle_t handle_in,
-        const struct cpg_name *group_name,
-        uint32_t nodeid,
-        uint32_t pid,
-        void *msg,
-        size_t msg_len)
+static void cpg_bm_deliver_fn(cpg_handle_t handle_in, const struct cpg_name *group_name, uint32_t nodeid, uint32_t pid,
+							  void *msg, size_t msg_len)
 {
 	write_count++;
 }
 
-static cpg_callbacks_t callbacks = {
-	.cpg_deliver_fn 	= cpg_bm_deliver_fn,
-	.cpg_confchg_fn		= cpg_bm_confchg_fn
-};
+static cpg_callbacks_t callbacks = {.cpg_deliver_fn = cpg_bm_deliver_fn, .cpg_confchg_fn = cpg_bm_confchg_fn };
 
 #define ONE_MEG 1048576
 static char data[ONE_MEG];
 
-static void cpg_benchmark (
-	cpg_handle_t handle_in,
-	int write_size)
+static void cpg_benchmark(cpg_handle_t handle_in, int write_size)
 {
 	struct timeval tv1, tv2, tv_elapsed;
 	struct iovec iov;
@@ -119,80 +106,75 @@ static void cpg_benchmark (
 	iov.iov_len = write_size;
 
 	write_count = 0;
-	alarm (10);
+	alarm(10);
 
-	gettimeofday (&tv1, NULL);
+	gettimeofday(&tv1, NULL);
 	do {
-		res = cpg_mcast_joined (handle_in, CPG_TYPE_AGREED, &iov, 1);
-	} while (alarm_notice == 0 && (res == CS_OK || res == CS_ERR_TRY_AGAIN));
-	gettimeofday (&tv2, NULL);
-	timersub (&tv2, &tv1, &tv_elapsed);
+		res = cpg_mcast_joined(handle_in, CPG_TYPE_AGREED, &iov, 1);
+	} while(alarm_notice == 0 && (res == CS_OK || res == CS_ERR_TRY_AGAIN));
+	gettimeofday(&tv2, NULL);
+	timersub(&tv2, &tv1, &tv_elapsed);
 
-	printf ("%5d messages received ", write_count);
-	printf ("%5d bytes per write ", write_size);
-	printf ("%7.3f Seconds runtime ",
-		(tv_elapsed.tv_sec + (tv_elapsed.tv_usec / 1000000.0)));
-	printf ("%9.3f TP/s ",
-		((float)write_count) /  (tv_elapsed.tv_sec + (tv_elapsed.tv_usec / 1000000.0)));
-	printf ("%7.3f MB/s.\n",
-		((float)write_count) * ((float)write_size) /  ((tv_elapsed.tv_sec + (tv_elapsed.tv_usec / 1000000.0)) * 1000000.0));
+	printf("%5d messages received ", write_count);
+	printf("%5d bytes per write ", write_size);
+	printf("%7.3f Seconds runtime ", (tv_elapsed.tv_sec + (tv_elapsed.tv_usec / 1000000.0)));
+	printf("%9.3f TP/s ", ((float)write_count) / (tv_elapsed.tv_sec + (tv_elapsed.tv_usec / 1000000.0)));
+	printf("%7.3f MB/s.\n", ((float)write_count) * ((float)write_size)
+		   / ((tv_elapsed.tv_sec + (tv_elapsed.tv_usec / 1000000.0)) * 1000000.0));
 }
 
-static void sigalrm_handler (int num)
+static void sigalrm_handler(int num)
 {
 	alarm_notice = 1;
 }
 
-static struct cpg_name group_name = {
-	.value = "cpg_bm",
-	.length = 6
-};
+static struct cpg_name group_name = {.value = "cpg_bm", .length = 6 };
 
-static void* dispatch_thread (void *arg)
+static void *dispatch_thread(void *arg)
 {
-	cpg_dispatch (handle, CS_DISPATCH_BLOCKING);
+	cpg_dispatch(handle, CS_DISPATCH_BLOCKING);
 	return NULL;
 }
 
-int main (void) {
+int main(void)
+{
 	unsigned int size;
 	int i;
 	unsigned int res;
 
 	qb_log_init("cpgbench", LOG_USER, LOG_EMERG);
 	qb_log_ctl(QB_LOG_SYSLOG, QB_LOG_CONF_ENABLED, QB_FALSE);
-	qb_log_filter_ctl(QB_LOG_STDERR, QB_LOG_FILTER_ADD,
-			  QB_LOG_FILTER_FILE, "*", LOG_DEBUG);
+	qb_log_filter_ctl(QB_LOG_STDERR, QB_LOG_FILTER_ADD, QB_LOG_FILTER_FILE, "*", LOG_DEBUG);
 	qb_log_ctl(QB_LOG_STDERR, QB_LOG_CONF_ENABLED, QB_TRUE);
 
 	size = 64;
-	signal (SIGALRM, sigalrm_handler);
-	res = cpg_initialize (&handle, &callbacks);
-	if (res != CS_OK) {
-		printf ("cpg_initialize failed with result %d\n", res);
-		exit (1);
+	signal(SIGALRM, sigalrm_handler);
+	res = cpg_initialize(&handle, &callbacks);
+	if(res != CS_OK) {
+		printf("cpg_initialize failed with result %d\n", res);
+		exit(1);
 	}
-	pthread_create (&thread, NULL, dispatch_thread, NULL);
+	pthread_create(&thread, NULL, dispatch_thread, NULL);
 
-	res = cpg_join (handle, &group_name);
-	if (res != CS_OK) {
-		printf ("cpg_join failed with result %d\n", res);
-		exit (1);
+	res = cpg_join(handle, &group_name);
+	if(res != CS_OK) {
+		printf("cpg_join failed with result %d\n", res);
+		exit(1);
 	}
 
-	for (i = 0; i < 10; i++) { /* number of repetitions - up to 50k */
-		cpg_benchmark (handle, size);
-		signal (SIGALRM, sigalrm_handler);
+	for(i = 0; i < 10; i++) { /* number of repetitions - up to 50k */
+		cpg_benchmark(handle, size);
+		signal(SIGALRM, sigalrm_handler);
 		size *= 5;
-		if (size >= (ONE_MEG - 100)) {
+		if(size >= (ONE_MEG - 100)) {
 			break;
 		}
 	}
 
-	res = cpg_finalize (handle);
-	if (res != CS_OK) {
-		printf ("cpg_finalize failed with result %d\n", res);
-		exit (1);
+	res = cpg_finalize(handle);
+	if(res != CS_OK) {
+		printf("cpg_finalize failed with result %d\n", res);
+		exit(1);
 	}
 	return (0);
 }

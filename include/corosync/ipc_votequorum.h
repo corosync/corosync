@@ -36,8 +36,8 @@
 #define IPC_VOTEQUORUM_H_DEFINED
 
 #include <corosync/mar_gen.h>
-#define VOTEQUORUM_QDEVICE_NODEID              0
-#define VOTEQUORUM_QDEVICE_MAX_NAME_LEN      255
+#define VOTEQUORUM_QDEVICE_NODEID 0
+#define VOTEQUORUM_QDEVICE_MAX_NAME_LEN 255
 #define VOTEQUORUM_QDEVICE_DEFAULT_TIMEOUT 10000
 
 enum req_votequorum_types {
@@ -125,20 +125,20 @@ struct res_lib_votequorum_status {
 	struct qb_ipc_response_header header __attribute__((aligned(8)));
 };
 
-#define VOTEQUORUM_INFO_TWONODE                 1
-#define VOTEQUORUM_INFO_QUORATE                 2
-#define VOTEQUORUM_INFO_WAIT_FOR_ALL	        4
-#define VOTEQUORUM_INFO_LAST_MAN_STANDING       8
-#define VOTEQUORUM_INFO_AUTO_TIE_BREAKER       16
-#define VOTEQUORUM_INFO_ALLOW_DOWNSCALE        32
-#define VOTEQUORUM_INFO_QDEVICE_REGISTERED     64
-#define VOTEQUORUM_INFO_QDEVICE_ALIVE         128
-#define VOTEQUORUM_INFO_QDEVICE_CAST_VOTE     256
-#define VOTEQUORUM_INFO_QDEVICE_MASTER_WINS   512
+#define VOTEQUORUM_INFO_TWONODE 1
+#define VOTEQUORUM_INFO_QUORATE 2
+#define VOTEQUORUM_INFO_WAIT_FOR_ALL 4
+#define VOTEQUORUM_INFO_LAST_MAN_STANDING 8
+#define VOTEQUORUM_INFO_AUTO_TIE_BREAKER 16
+#define VOTEQUORUM_INFO_ALLOW_DOWNSCALE 32
+#define VOTEQUORUM_INFO_QDEVICE_REGISTERED 64
+#define VOTEQUORUM_INFO_QDEVICE_ALIVE 128
+#define VOTEQUORUM_INFO_QDEVICE_CAST_VOTE 256
+#define VOTEQUORUM_INFO_QDEVICE_MASTER_WINS 512
 
-#define VOTEQUORUM_NODESTATE_MEMBER     1
-#define VOTEQUORUM_NODESTATE_DEAD       2
-#define VOTEQUORUM_NODESTATE_LEAVING    3
+#define VOTEQUORUM_NODESTATE_MEMBER 1
+#define VOTEQUORUM_NODESTATE_DEAD 2
+#define VOTEQUORUM_NODESTATE_LEAVING 3
 
 struct res_lib_votequorum_getinfo {
 	struct qb_ipc_response_header header __attribute__((aligned(8)));
@@ -174,17 +174,13 @@ struct res_lib_votequorum_expectedvotes_notification {
 	mar_uint32_t expected_votes __attribute__((aligned(8)));
 };
 
-static inline void marshall_from_mar_votequorum_ring_id (
-	votequorum_ring_id_t *dest,
-	const struct mar_votequorum_ring_id *src)
+static inline void marshall_from_mar_votequorum_ring_id(votequorum_ring_id_t *dest, const struct mar_votequorum_ring_id *src)
 {
 	dest->nodeid = src->nodeid;
 	dest->seq = src->seq;
 };
 
-static inline void marshall_to_mar_votequorum_ring_id (
-	struct mar_votequorum_ring_id *dest,
-	const votequorum_ring_id_t *src)
+static inline void marshall_to_mar_votequorum_ring_id(struct mar_votequorum_ring_id *dest, const votequorum_ring_id_t *src)
 {
 	dest->nodeid = src->nodeid;
 	dest->seq = src->seq;

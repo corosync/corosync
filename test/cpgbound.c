@@ -45,38 +45,23 @@
 #include <corosync/corotypes.h>
 #include <corosync/cpg.h>
 
-static void cpg_deliver_fn (
-        cpg_handle_t handle,
-        const struct cpg_name *group_name,
-        uint32_t nodeid,
-        uint32_t pid,
-        void *m,
-        size_t msg_len)
+static void cpg_deliver_fn(cpg_handle_t handle, const struct cpg_name *group_name, uint32_t nodeid, uint32_t pid, void *m, size_t msg_len)
 {
 }
 
-static void cpg_confchg_fn (
-        cpg_handle_t handle,
-        const struct cpg_name *group_name,
-        const struct cpg_address *member_list, size_t member_list_entries,
-        const struct cpg_address *left_list, size_t left_list_entries,
-        const struct cpg_address *joined_list, size_t joined_list_entries)
+static void cpg_confchg_fn(cpg_handle_t handle, const struct cpg_name *group_name, const struct cpg_address *member_list,
+						   size_t member_list_entries, const struct cpg_address *left_list, size_t left_list_entries,
+						   const struct cpg_address *joined_list, size_t joined_list_entries)
 {
 }
 
-static cpg_callbacks_t callbacks = {
-	cpg_deliver_fn,
-	cpg_confchg_fn
-};
+static cpg_callbacks_t callbacks = { cpg_deliver_fn, cpg_confchg_fn };
 
-static struct cpg_name group_name = {
-        .value = "cpg_bm",
-        .length = 6
-};
+static struct cpg_name group_name = {.value = "cpg_bm", .length = 6 };
 
 
 static unsigned char buffer[2000000];
-int main (void)
+int main(void)
 {
 	cpg_handle_t handle;
 	cs_error_t result;
@@ -85,17 +70,17 @@ int main (void)
 	int res;
 	unsigned int msg_size;
 
-	result = cpg_initialize (&handle, &callbacks);
-	if (result != CS_OK) {
-		printf ("Couldn't initialize CPG service %d\n", result);
-		exit (0);
+	result = cpg_initialize(&handle, &callbacks);
+	if(result != CS_OK) {
+		printf("Couldn't initialize CPG service %d\n", result);
+		exit(0);
 	}
 
-        res = cpg_join (handle, &group_name);
-        if (res != CS_OK) {
-                printf ("cpg_join failed with result %d\n", res);
-                exit (1);
-        }
+	res = cpg_join(handle, &group_name);
+	if(res != CS_OK) {
+		printf("cpg_join failed with result %d\n", res);
+		exit(1);
+	}
 
 	iov.iov_base = (void *)buffer;
 
@@ -103,24 +88,23 @@ int main (void)
 	 * Demonstrate cpg_mcast_joined
 	 */
 	msg_size = 1025000;
-	for (i = 0; i < 1000000000; i++) {
+	for(i = 0; i < 1000000000; i++) {
 		iov.iov_len = msg_size;
-try_again_one:
-		result = cpg_mcast_joined (handle, CPG_TYPE_AGREED,
-			&iov, 1);
-		if (result == CS_ERR_TRY_AGAIN) {
+	try_again_one:
+		result = cpg_mcast_joined(handle, CPG_TYPE_AGREED, &iov, 1);
+		if(result == CS_ERR_TRY_AGAIN) {
 			goto try_again_one;
 		}
-		if (result == CS_ERR_INVALID_PARAM) {
-			printf ("found boundary at %d\n", msg_size);
-			exit (1);
+		if(result == CS_ERR_INVALID_PARAM) {
+			printf("found boundary at %d\n", msg_size);
+			exit(1);
 		}
 		msg_size += 1;
-		printf ("msg size %d\n", msg_size);
-		result = cpg_dispatch (handle, CS_DISPATCH_ALL);
+		printf("msg size %d\n", msg_size);
+		result = cpg_dispatch(handle, CS_DISPATCH_ALL);
 	}
 
-	cpg_finalize (handle);
+	cpg_finalize(handle);
 
 	return (0);
 }

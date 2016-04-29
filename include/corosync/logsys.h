@@ -55,24 +55,24 @@ extern "C" {
  *
  * FORK and THREADED are ignored for SUBSYSTEMS
  */
-#define LOGSYS_MODE_OUTPUT_FILE		(1<<0)
-#define LOGSYS_MODE_OUTPUT_STDERR	(1<<1)
-#define LOGSYS_MODE_OUTPUT_SYSLOG	(1<<2)
-#define LOGSYS_MODE_FORK		(1<<3)
-#define LOGSYS_MODE_THREADED		(1<<4)
+#define LOGSYS_MODE_OUTPUT_FILE (1 << 0)
+#define LOGSYS_MODE_OUTPUT_STDERR (1 << 1)
+#define LOGSYS_MODE_OUTPUT_SYSLOG (1 << 2)
+#define LOGSYS_MODE_FORK (1 << 3)
+#define LOGSYS_MODE_THREADED (1 << 4)
 
 /*
  * Log priorities, compliant with syslog and SA Forum Log spec.
  */
-#define LOGSYS_LEVEL_EMERG		LOG_EMERG
-#define LOGSYS_LEVEL_ALERT		LOG_ALERT
-#define LOGSYS_LEVEL_CRIT		LOG_CRIT
-#define LOGSYS_LEVEL_ERROR		LOG_ERR
-#define LOGSYS_LEVEL_WARNING		LOG_WARNING
-#define LOGSYS_LEVEL_NOTICE		LOG_NOTICE
-#define LOGSYS_LEVEL_INFO		LOG_INFO
-#define LOGSYS_LEVEL_DEBUG		LOG_DEBUG
-#define LOGSYS_LEVEL_TRACE		LOG_TRACE
+#define LOGSYS_LEVEL_EMERG LOG_EMERG
+#define LOGSYS_LEVEL_ALERT LOG_ALERT
+#define LOGSYS_LEVEL_CRIT LOG_CRIT
+#define LOGSYS_LEVEL_ERROR LOG_ERR
+#define LOGSYS_LEVEL_WARNING LOG_WARNING
+#define LOGSYS_LEVEL_NOTICE LOG_NOTICE
+#define LOGSYS_LEVEL_INFO LOG_INFO
+#define LOGSYS_LEVEL_DEBUG LOG_DEBUG
+#define LOGSYS_LEVEL_TRACE LOG_TRACE
 
 /*
  * logsys_logger bits
@@ -80,26 +80,25 @@ extern "C" {
  * SUBSYS_COUNT defines the maximum number of subsystems
  * SUBSYS_NAMELEN defines the maximum len of a subsystem name
  */
-#define LOGSYS_MAX_SUBSYS_COUNT		32
-#define LOGSYS_MAX_SUBSYS_NAMELEN	64
-#define LOGSYS_MAX_PERROR_MSG_LEN	128
+#define LOGSYS_MAX_SUBSYS_COUNT 32
+#define LOGSYS_MAX_SUBSYS_NAMELEN 64
+#define LOGSYS_MAX_PERROR_MSG_LEN 128
 
 /*
  * Debug levels
  */
-#define LOGSYS_DEBUG_OFF		0
-#define LOGSYS_DEBUG_ON			1
-#define LOGSYS_DEBUG_TRACE		2
+#define LOGSYS_DEBUG_OFF 0
+#define LOGSYS_DEBUG_ON 1
+#define LOGSYS_DEBUG_TRACE 2
 
 #ifndef LOGSYS_UTILS_ONLY
 
 /*
  * configuration bits that can only be done for the whole system
  */
-extern int logsys_format_set (
-	const char *format);
+extern int logsys_format_set(const char *format);
 
-extern char *logsys_format_get (void);
+extern char *logsys_format_get(void);
 
 /*
  * per system/subsystem settings.
@@ -109,20 +108,13 @@ extern char *logsys_format_get (void);
  *
  * Pass a NULL subsystem to change them all
  */
-extern int logsys_config_syslog_facility_set (
-	const char *subsys,
-	unsigned int facility);
+extern int logsys_config_syslog_facility_set(const char *subsys, unsigned int facility);
 
-extern int logsys_config_syslog_priority_set (
-	const char *subsys,
-	unsigned int priority);
+extern int logsys_config_syslog_priority_set(const char *subsys, unsigned int priority);
 
-extern int logsys_config_mode_set (
-	const char *subsys,
-	unsigned int mode);
+extern int logsys_config_mode_set(const char *subsys, unsigned int mode);
 
-extern unsigned int logsys_config_mode_get (
-	const char *subsys);
+extern unsigned int logsys_config_mode_get(const char *subsys);
 
 void logsys_config_apply(void);
 
@@ -131,62 +123,46 @@ void logsys_config_apply(void);
  * file or if you want to change logfile, the old one will
  * be closed for you.
  */
-extern int logsys_config_file_set (
-	const char *subsys,
-	const char **error_string,
-	const char *file);
+extern int logsys_config_file_set(const char *subsys, const char **error_string, const char *file);
 
-extern int logsys_config_logfile_priority_set (
-	const char *subsys,
-	unsigned int priority);
+extern int logsys_config_logfile_priority_set(const char *subsys, unsigned int priority);
 
 /*
  * enabling debug, disable message priority filtering.
  * everything is sent everywhere. priority values
  * for file and syslog are not overwritten.
  */
-extern int logsys_config_debug_set (
-	const char *subsys,
-	unsigned int value);
+extern int logsys_config_debug_set(const char *subsys, unsigned int value);
 
 /*
  * External API - helpers
  *
  * convert facility/priority to/from name/values
  */
-extern int logsys_priority_id_get (
-	const char *name);
+extern int logsys_priority_id_get(const char *name);
 
-extern const char *logsys_priority_name_get (
-	unsigned int priority);
+extern const char *logsys_priority_name_get(unsigned int priority);
 
-extern int _logsys_system_setup(
-	const char *mainsystem,
-	unsigned int mode,
-	int syslog_facility,
-	int syslog_priority);
+extern int _logsys_system_setup(const char *mainsystem, unsigned int mode, int syslog_facility, int syslog_priority);
 
-extern void logsys_system_fini (void);
+extern void logsys_system_fini(void);
 
-extern int _logsys_config_subsys_get (
-	const char *subsys);
+extern int _logsys_config_subsys_get(const char *subsys);
 
-extern int _logsys_subsys_create (const char *subsys, const char *filename);
+extern int _logsys_subsys_create(const char *subsys, const char *filename);
 
-extern int logsys_thread_start (void);
+extern int logsys_thread_start(void);
 
 static int logsys_subsys_id __attribute__((unused)) = LOGSYS_MAX_SUBSYS_COUNT;
 
-#define LOGSYS_DECLARE_SYSTEM(name,mode,syslog_facility,syslog_priority)\
-__attribute__ ((constructor))						\
-static void logsys_system_init (void)					\
-{									\
-	if (_logsys_system_setup (name,mode,syslog_facility,syslog_priority) < 0) { \
-		fprintf (stderr,					\
-			"Unable to setup logging system: %s.\n", name);	\
-		exit (-1);						\
-	}								\
-}
+#define LOGSYS_DECLARE_SYSTEM(name, mode, syslog_facility, syslog_priority)          \
+	__attribute__((constructor)) static void logsys_system_init(void)                \
+	{                                                                                \
+		if(_logsys_system_setup(name, mode, syslog_facility, syslog_priority) < 0) { \
+			fprintf(stderr, "Unable to setup logging system: %s.\n", name);          \
+			exit(-1);                                                                \
+		}                                                                            \
+	}
 
 #ifdef QB_HAVE_ATTRIBUTE_SECTION
 #define LOGSYS_DECLARE_SECTION assert(__start___verbose != __stop___verbose)
@@ -194,24 +170,22 @@ static void logsys_system_init (void)					\
 #define LOGSYS_DECLARE_SECTION
 #endif
 
-#define LOGSYS_DECLARE_SUBSYS(subsys)					\
-__attribute__ ((constructor))						\
-static void logsys_subsys_init (void)					\
-{									\
-	LOGSYS_DECLARE_SECTION;						\
-	logsys_subsys_id =						\
-		_logsys_subsys_create ((subsys), __FILE__);		\
-	if (logsys_subsys_id == -1) {					\
-		fprintf (stderr,					\
-		"Unable to create logging subsystem: %s.\n", subsys);	\
-		exit (-1);						\
-	}								\
-}
+#define LOGSYS_DECLARE_SUBSYS(subsys)                                             \
+	__attribute__((constructor)) static void logsys_subsys_init(void)             \
+	{                                                                             \
+		LOGSYS_DECLARE_SECTION;                                                   \
+		logsys_subsys_id = _logsys_subsys_create((subsys), __FILE__);             \
+		if(logsys_subsys_id == -1) {                                              \
+			fprintf(stderr, "Unable to create logging subsystem: %s.\n", subsys); \
+			exit(-1);                                                             \
+		}                                                                         \
+	}
 
-#define LOGSYS_PERROR(err_num, level, fmt, args...) do {						\
-		char _error_str[LOGSYS_MAX_PERROR_MSG_LEN];						\
-		const char *_error_ptr = qb_strerror_r(err_num, _error_str, sizeof(_error_str));	\
-		qb_log(level, fmt ": %s (%d)", ##args, _error_ptr, err_num);				\
+#define LOGSYS_PERROR(err_num, level, fmt, args...)                                      \
+	do {                                                                                 \
+		char _error_str[LOGSYS_MAX_PERROR_MSG_LEN];                                      \
+		const char *_error_ptr = qb_strerror_r(err_num, _error_str, sizeof(_error_str)); \
+		qb_log(level, fmt ": %s (%d)", ##args, _error_ptr, err_num);                     \
 	} while(0)
 
 #define log_printf(level, format, args...) qb_log(level, format, ##args)

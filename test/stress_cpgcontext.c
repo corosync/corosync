@@ -51,40 +51,28 @@ struct my_msg {
 	unsigned char buffer[0];
 };
 
-static void cpg_deliver_fn (
-        cpg_handle_t handle,
-        const struct cpg_name *group_name,
-        uint32_t nodeid,
-        uint32_t pid,
-        void *m,
-        size_t msg_len)
+static void cpg_deliver_fn(cpg_handle_t handle, const struct cpg_name *group_name, uint32_t nodeid, uint32_t pid, void *m, size_t msg_len)
 {
 }
 
-static void cpg_confchg_fn (
-        cpg_handle_t handle,
-        const struct cpg_name *group_name,
-        const struct cpg_address *member_list, size_t member_list_entries,
-        const struct cpg_address *left_list, size_t left_list_entries,
-        const struct cpg_address *joined_list, size_t joined_list_entries)
+static void cpg_confchg_fn(cpg_handle_t handle, const struct cpg_name *group_name, const struct cpg_address *member_list,
+						   size_t member_list_entries, const struct cpg_address *left_list, size_t left_list_entries,
+						   const struct cpg_address *joined_list, size_t joined_list_entries)
 {
 }
 
-static cpg_callbacks_t callbacks = {
-	cpg_deliver_fn,
-	cpg_confchg_fn
-};
+static cpg_callbacks_t callbacks = { cpg_deliver_fn, cpg_confchg_fn };
 
-static void sigintr_handler (int num)
+static void sigintr_handler(int num)
 {
-	exit (1);
+	exit(1);
 }
 
 #define ITERATIONS (1000000)
 
 #define INSTANCES 100
 
-int main (void)
+int main(void)
 {
 	cpg_handle_t handle[INSTANCES];
 	cs_error_t res;
@@ -92,43 +80,43 @@ int main (void)
 	int i, j;
 	void *ctx;
 
-	signal (SIGINT, sigintr_handler);
-	for (i = 0; i < INSTANCES; i++) {
-		res = cpg_initialize (&handle[i], &callbacks);
-		if (res != CS_OK) {
-			printf ("FAIL %d\n", res);
-			exit (-1);
+	signal(SIGINT, sigintr_handler);
+	for(i = 0; i < INSTANCES; i++) {
+		res = cpg_initialize(&handle[i], &callbacks);
+		if(res != CS_OK) {
+			printf("FAIL %d\n", res);
+			exit(-1);
 		}
 	}
 
-	for (j = 0; j < ITERATIONS; j++) {
-		for (i = 0; i < INSTANCES; i++) {
-			context[i] = malloc (20);
-			res = cpg_context_set (handle[i], context[i]);
-			if (res != CS_OK) {
-				printf ("FAIL %d\n", res);
-				exit (-1);
+	for(j = 0; j < ITERATIONS; j++) {
+		for(i = 0; i < INSTANCES; i++) {
+			context[i] = malloc(20);
+			res = cpg_context_set(handle[i], context[i]);
+			if(res != CS_OK) {
+				printf("FAIL %d\n", res);
+				exit(-1);
 			}
 		}
 
-		for (i = 0; i < INSTANCES; i++) {
-			res = cpg_context_get (handle[i], &ctx);
-			if (res != CS_OK) {
-				printf ("FAIL %d\n", res);
-				exit (-1);
+		for(i = 0; i < INSTANCES; i++) {
+			res = cpg_context_get(handle[i], &ctx);
+			if(res != CS_OK) {
+				printf("FAIL %d\n", res);
+				exit(-1);
 			}
-			if (ctx != context[i]) {
-				printf ("FAIL\n");
-				exit (-1);
+			if(ctx != context[i]) {
+				printf("FAIL\n");
+				exit(-1);
 			}
-			free (ctx);
+			free(ctx);
 		}
 	}
-	
-	for (i = 0; i < INSTANCES; i++) {
-		cpg_finalize (handle[i]);
+
+	for(i = 0; i < INSTANCES; i++) {
+		cpg_finalize(handle[i]);
 	}
 
-	printf ("PASS\n");
+	printf("PASS\n");
 	return (0);
 }

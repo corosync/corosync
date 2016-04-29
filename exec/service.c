@@ -55,48 +55,20 @@
 #include <qb/qbipcs.h>
 #include <qb/qbloop.h>
 
-LOGSYS_DECLARE_SUBSYS ("SERV");
+LOGSYS_DECLARE_SUBSYS("SERV");
 
 static struct default_service default_services[] = {
-	{
-		.name		= "corosync_cmap",
-		.ver		= 0,
-		.loader		= cmap_get_service_engine_ver0
-	},
-	{
-		.name		= "corosync_cfg",
-		.ver		= 0,
-		.loader		= cfg_get_service_engine_ver0
-	},
-	{
-		.name		= "corosync_cpg",
-		.ver		= 0,
-		.loader		= cpg_get_service_engine_ver0
-	},
-	{
-		.name		= "corosync_pload",
-		.ver		= 0,
-		.loader		= pload_get_service_engine_ver0
-	},
+	{.name = "corosync_cmap", .ver = 0, .loader = cmap_get_service_engine_ver0 },
+	{.name = "corosync_cfg", .ver = 0, .loader = cfg_get_service_engine_ver0 },
+	{.name = "corosync_cpg", .ver = 0, .loader = cpg_get_service_engine_ver0 },
+	{.name = "corosync_pload", .ver = 0, .loader = pload_get_service_engine_ver0 },
 #ifdef HAVE_MONITORING
-	{
-		.name		= "corosync_mon",
-		.ver		= 0,
-		.loader		= mon_get_service_engine_ver0
-	},
+	{.name = "corosync_mon", .ver = 0, .loader = mon_get_service_engine_ver0 },
 #endif
 #ifdef HAVE_WATCHDOG
-	{
-		.name		= "corosync_wd",
-		.ver		= 0,
-		.loader		= wd_get_service_engine_ver0
-	},
+	{.name = "corosync_wd", .ver = 0, .loader = wd_get_service_engine_ver0 },
 #endif
-	{
-		.name		= "corosync_quorum",
-		.ver		= 0,
-		.loader		= vsf_quorum_get_service_engine_ver0
-	},
+	{.name = "corosync_quorum", .ver = 0, .loader = vsf_quorum_get_service_engine_ver0 },
 };
 
 /*
@@ -112,11 +84,9 @@ struct corosync_service_engine *corosync_service[SERVICES_COUNT_MAX];
 const char *service_stats_rx[SERVICES_COUNT_MAX][SERVICE_HANDLER_MAXIMUM_COUNT];
 const char *service_stats_tx[SERVICES_COUNT_MAX][SERVICE_HANDLER_MAXIMUM_COUNT];
 
-static void (*service_unlink_all_complete) (void) = NULL;
+static void (*service_unlink_all_complete)(void) = NULL;
 
-char *corosync_service_link_and_init (
-	struct corosync_api_v1 *corosync_api,
-	struct default_service *service)
+char *corosync_service_link_and_init(struct corosync_api_v1 *corosync_api, struct default_service *service)
 {
 	struct corosync_service_engine *service_engine;
 	int fn;
@@ -131,13 +101,13 @@ char *corosync_service_link_and_init (
 
 	corosync_service[service_engine->id] = service_engine;
 
-	if (service_engine->config_init_fn) {
-		service_engine->config_init_fn (corosync_api);
+	if(service_engine->config_init_fn) {
+		service_engine->config_init_fn(corosync_api);
 	}
 
-	if (service_engine->exec_init_fn) {
-		init_result = service_engine->exec_init_fn (corosync_api);
-		if (init_result) {
+	if(service_engine->exec_init_fn) {
+		init_result = service_engine->exec_init_fn(corosync_api);
+		if(init_result) {
 			return (init_result);
 		}
 	}
@@ -151,16 +121,16 @@ char *corosync_service_link_and_init (
 	snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "internal_configuration.service.%u.ver", service_engine->id);
 	icmap_set_uint32(key_name, service->ver);
 
-	name_sufix = strrchr (service->name, '_');
-	if (name_sufix)
+	name_sufix = strrchr(service->name, '_');
+	if(name_sufix)
 		name_sufix++;
 	else
-		name_sufix = (char*)service->name;
+		name_sufix = (char *)service->name;
 
 	snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "runtime.services.%s.service_id", name_sufix);
 	icmap_set_uint16(key_name, service_engine->id);
 
-	for (fn = 0; fn < service_engine->exec_engine_count; fn++) {
+	for(fn = 0; fn < service_engine->exec_engine_count; fn++) {
 		snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "runtime.services.%s.%d.tx", name_sufix, fn);
 		icmap_set_uint64(key_name, 0);
 		service_stats_tx[service_engine->id][fn] = strdup(key_name);
@@ -170,10 +140,9 @@ char *corosync_service_link_and_init (
 		service_stats_rx[service_engine->id][fn] = strdup(key_name);
 	}
 
-	log_printf (LOGSYS_LEVEL_NOTICE,
-		"Service engine loaded: %s [%d]", service_engine->name, service_engine->id);
+	log_printf(LOGSYS_LEVEL_NOTICE, "Service engine loaded: %s [%d]", service_engine->name, service_engine->id);
 	init_result = (char *)cs_ipcs_service_init(service_engine);
-	if (init_result != NULL) {
+	if(init_result != NULL) {
 		return (init_result);
 	}
 
@@ -194,23 +163,18 @@ static int service_priority_max(void)
 /*
  * use the force
  */
-static unsigned int
-corosync_service_unlink_and_exit_priority (
-	struct corosync_api_v1 *corosync_api,
-	int lowest_priority,
-	int *current_priority,
-	int *current_service_engine)
+static unsigned int corosync_service_unlink_and_exit_priority(struct corosync_api_v1 *corosync_api, int lowest_priority,
+															  int *current_priority, int *current_service_engine)
 {
 	unsigned short service_id;
 	int res;
 
 	for(; *current_priority >= lowest_priority; *current_priority = *current_priority - 1) {
-		for(*current_service_engine = 0;
-			*current_service_engine < SERVICES_COUNT_MAX;
+		for(*current_service_engine = 0; *current_service_engine < SERVICES_COUNT_MAX;
 			*current_service_engine = *current_service_engine + 1) {
 
-			if(corosync_service[*current_service_engine] == NULL ||
-				corosync_service[*current_service_engine]->priority != *current_priority) {
+			if(corosync_service[*current_service_engine] == NULL
+			   || corosync_service[*current_service_engine]->priority != *current_priority) {
 				continue;
 			}
 
@@ -223,9 +187,9 @@ corosync_service_unlink_and_exit_priority (
 			 */
 			service_id = corosync_service[*current_service_engine]->id;
 
-			if (corosync_service[service_id]->exec_exit_fn) {
-				res = corosync_service[service_id]->exec_exit_fn ();
-				if (res == -1) {
+			if(corosync_service[service_id]->exec_exit_fn) {
+				res = corosync_service[service_id]->exec_exit_fn();
+				if(res == -1) {
 					return (-1);
 				}
 			}
@@ -233,11 +197,9 @@ corosync_service_unlink_and_exit_priority (
 			/*
 			 * Exit all ipc connections dependent on this service
 			 */
-			cs_ipcs_service_destroy (*current_service_engine);
+			cs_ipcs_service_destroy(*current_service_engine);
 
-			log_printf(LOGSYS_LEVEL_NOTICE,
-				"Service engine unloaded: %s",
-				corosync_service[*current_service_engine]->name);
+			log_printf(LOGSYS_LEVEL_NOTICE, "Service engine unloaded: %s", corosync_service[*current_service_engine]->name);
 
 			corosync_service[*current_service_engine] = NULL;
 
@@ -253,10 +215,7 @@ corosync_service_unlink_and_exit_priority (
 	return (0);
 }
 
-static unsigned int service_unlink_and_exit (
-	struct corosync_api_v1 *corosync_api,
-	const char *service_name,
-	unsigned int service_ver)
+static unsigned int service_unlink_and_exit(struct corosync_api_v1 *corosync_api, const char *service_name, unsigned int service_ver)
 {
 	unsigned short service_id;
 	char *name_sufix;
@@ -268,34 +227,34 @@ static unsigned int service_unlink_and_exit (
 	char *found_service_name;
 	int service_found;
 
-	name_sufix = strrchr (service_name, '_');
-	if (name_sufix)
+	name_sufix = strrchr(service_name, '_');
+	if(name_sufix)
 		name_sufix++;
 	else
-		name_sufix = (char*)service_name;
+		name_sufix = (char *)service_name;
 
 
 	service_found = 0;
 	found_service_name = NULL;
 	iter = icmap_iter_init("internal_configuration.service.");
-	while ((iter_key_name = icmap_iter_next(iter, NULL, NULL)) != NULL) {
+	while((iter_key_name = icmap_iter_next(iter, NULL, NULL)) != NULL) {
 		res = sscanf(iter_key_name, "internal_configuration.service.%hu.%s", &service_id, key_name);
-		if (res != 2) {
+		if(res != 2) {
 			continue;
 		}
 
 		snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "internal_configuration.service.%hu.name", service_id);
-		if (icmap_get_string(key_name, &found_service_name) != CS_OK) {
+		if(icmap_get_string(key_name, &found_service_name) != CS_OK) {
 			continue;
 		}
 
 		snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "internal_configuration.service.%u.ver", service_id);
-		if (icmap_get_uint32(key_name, &found_service_ver) != CS_OK) {
+		if(icmap_get_uint32(key_name, &found_service_ver) != CS_OK) {
 			free(found_service_name);
 			continue;
 		}
 
-		if (service_ver == found_service_ver && strcmp(found_service_name, service_name) == 0) {
+		if(service_ver == found_service_ver && strcmp(found_service_name, service_name) == 0) {
 			free(found_service_name);
 			service_found = 1;
 			break;
@@ -304,23 +263,20 @@ static unsigned int service_unlink_and_exit (
 	}
 	icmap_iter_finalize(iter);
 
-	if (service_found && service_id < SERVICES_COUNT_MAX
-		&& corosync_service[service_id] != NULL) {
+	if(service_found && service_id < SERVICES_COUNT_MAX && corosync_service[service_id] != NULL) {
 
-		if (corosync_service[service_id]->exec_exit_fn) {
-			res = corosync_service[service_id]->exec_exit_fn ();
-			if (res == -1) {
+		if(corosync_service[service_id]->exec_exit_fn) {
+			res = corosync_service[service_id]->exec_exit_fn();
+			if(res == -1) {
 				return (-1);
 			}
 		}
 
-		log_printf(LOGSYS_LEVEL_NOTICE,
-			"Service engine unloaded: %s",
-			   corosync_service[service_id]->name);
+		log_printf(LOGSYS_LEVEL_NOTICE, "Service engine unloaded: %s", corosync_service[service_id]->name);
 
 		corosync_service[service_id] = NULL;
 
-		cs_ipcs_service_destroy (service_id);
+		cs_ipcs_service_destroy(service_id);
 
 		snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "internal_configuration.service.%u.handle", service_id);
 		icmap_delete(key_name);
@@ -336,31 +292,26 @@ static unsigned int service_unlink_and_exit (
 /*
  * Links default services into the executive
  */
-unsigned int corosync_service_defaults_link_and_init (struct corosync_api_v1 *corosync_api)
+unsigned int corosync_service_defaults_link_and_init(struct corosync_api_v1 *corosync_api)
 {
 	unsigned int i;
 	char *error;
 
-	for (i = 0;
-		i < sizeof (default_services) / sizeof (struct default_service); i++) {
+	for(i = 0; i < sizeof(default_services) / sizeof(struct default_service); i++) {
 
 		default_services[i].loader();
-		error = corosync_service_link_and_init (
-			corosync_api,
-			&default_services[i]);
-		if (error) {
-			log_printf(LOGSYS_LEVEL_ERROR,
-				"Service engine '%s' failed to load for reason '%s'",
-				default_services[i].name,
-				error);
-			corosync_exit_error (COROSYNC_DONE_SERVICE_ENGINE_INIT);
+		error = corosync_service_link_and_init(corosync_api, &default_services[i]);
+		if(error) {
+			log_printf(LOGSYS_LEVEL_ERROR, "Service engine '%s' failed to load for reason '%s'", default_services[i].name, error);
+			corosync_exit_error(COROSYNC_DONE_SERVICE_ENGINE_INIT);
 		}
 	}
 
 	return (0);
 }
 
-static void service_exit_schedwrk_handler (void *data) {
+static void service_exit_schedwrk_handler(void *data)
+{
 	int res;
 	static int current_priority = 0;
 	static int current_service_engine = 0;
@@ -368,53 +319,40 @@ static void service_exit_schedwrk_handler (void *data) {
 	struct seus_handler_data *cb_data = (struct seus_handler_data *)data;
 	struct corosync_api_v1 *api = (struct corosync_api_v1 *)cb_data->api;
 
-	if (called == 0) {
-		log_printf(LOGSYS_LEVEL_NOTICE,
-			"Unloading all Corosync service engines.");
- 		current_priority = service_priority_max ();
+	if(called == 0) {
+		log_printf(LOGSYS_LEVEL_NOTICE, "Unloading all Corosync service engines.");
+		current_priority = service_priority_max();
 		called = 1;
 	}
 
-	res = corosync_service_unlink_and_exit_priority (
-		api,
-		0,
-		&current_priority,
-		&current_service_engine);
-	if (res == 0) {
+	res = corosync_service_unlink_and_exit_priority(api, 0, &current_priority, &current_service_engine);
+	if(res == 0) {
 		service_unlink_all_complete();
 		return;
 	}
 
-	qb_loop_job_add(cs_poll_handle_get(),
-		QB_LOOP_HIGH,
-		data,
-		service_exit_schedwrk_handler);
+	qb_loop_job_add(cs_poll_handle_get(), QB_LOOP_HIGH, data, service_exit_schedwrk_handler);
 }
 
-void corosync_service_unlink_all (
-	struct corosync_api_v1 *api,
-	void (*unlink_all_complete) (void))
+void corosync_service_unlink_all(struct corosync_api_v1 *api, void (*unlink_all_complete)(void))
 {
 	static int called = 0;
 	static struct seus_handler_data cb_data;
 
-	assert (api);
+	assert(api);
 
 	service_unlink_all_complete = unlink_all_complete;
 
-	if (called) {
+	if(called) {
 		return;
 	}
-	if (called == 0) {
+	if(called == 0) {
 		called = 1;
 	}
 
 	cb_data.api = api;
 
-	qb_loop_job_add(cs_poll_handle_get(),
-		QB_LOOP_HIGH,
-		&cb_data,
-		service_exit_schedwrk_handler);
+	qb_loop_job_add(cs_poll_handle_get(), QB_LOOP_HIGH, &cb_data, service_exit_schedwrk_handler);
 }
 
 struct service_unlink_and_exit_data {
@@ -424,45 +362,33 @@ struct service_unlink_and_exit_data {
 	unsigned int ver;
 };
 
-static void service_unlink_and_exit_schedwrk_handler (void *data)
+static void service_unlink_and_exit_schedwrk_handler(void *data)
 {
-	struct service_unlink_and_exit_data *service_unlink_and_exit_data =
-		data;
+	struct service_unlink_and_exit_data *service_unlink_and_exit_data = data;
 	int res;
 
-	res = service_unlink_and_exit (
-		service_unlink_and_exit_data->api,
-		service_unlink_and_exit_data->name,
-		service_unlink_and_exit_data->ver);
+	res = service_unlink_and_exit(service_unlink_and_exit_data->api, service_unlink_and_exit_data->name,
+								  service_unlink_and_exit_data->ver);
 
-	if (res == 0) {
-		free (service_unlink_and_exit_data);
+	if(res == 0) {
+		free(service_unlink_and_exit_data);
 	} else {
-		qb_loop_job_add(cs_poll_handle_get(),
-			QB_LOOP_HIGH,
-			data,
-			service_unlink_and_exit_schedwrk_handler);
+		qb_loop_job_add(cs_poll_handle_get(), QB_LOOP_HIGH, data, service_unlink_and_exit_schedwrk_handler);
 	}
 }
 
-typedef int (*schedwrk_cast) (const void *);
+typedef int (*schedwrk_cast)(const void *);
 
-unsigned int corosync_service_unlink_and_exit (
-        struct corosync_api_v1 *api,
-        const char *service_name,
-        unsigned int service_ver)
+unsigned int corosync_service_unlink_and_exit(struct corosync_api_v1 *api, const char *service_name, unsigned int service_ver)
 {
 	struct service_unlink_and_exit_data *service_unlink_and_exit_data;
 
-	assert (api);
-	service_unlink_and_exit_data = malloc (sizeof (struct service_unlink_and_exit_data));
+	assert(api);
+	service_unlink_and_exit_data = malloc(sizeof(struct service_unlink_and_exit_data));
 	service_unlink_and_exit_data->api = api;
-	service_unlink_and_exit_data->name = strdup (service_name);
+	service_unlink_and_exit_data->name = strdup(service_name);
 	service_unlink_and_exit_data->ver = service_ver;
 
-	qb_loop_job_add(cs_poll_handle_get(),
-		QB_LOOP_HIGH,
-		service_unlink_and_exit_data,
-		service_unlink_and_exit_schedwrk_handler);
+	qb_loop_job_add(cs_poll_handle_get(), QB_LOOP_HIGH, service_unlink_and_exit_data, service_unlink_and_exit_schedwrk_handler);
 	return (0);
 }

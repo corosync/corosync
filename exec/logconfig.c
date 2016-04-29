@@ -40,13 +40,13 @@
 #include <corosync/logsys.h>
 #ifdef LOGCONFIG_USE_ICMAP
 #include <corosync/icmap.h>
-#define MAP_KEYNAME_MAXLEN	ICMAP_KEYNAME_MAXLEN
-#define map_get_string(key_name, value)	icmap_get_string(key_name, value)
+#define MAP_KEYNAME_MAXLEN ICMAP_KEYNAME_MAXLEN
+#define map_get_string(key_name, value) icmap_get_string(key_name, value)
 #else
 #include <corosync/cmap.h>
 static cmap_handle_t cmap_handle;
 static const char *main_logfile;
-#define MAP_KEYNAME_MAXLEN	CMAP_KEYNAME_MAXLEN
+#define MAP_KEYNAME_MAXLEN CMAP_KEYNAME_MAXLEN
 #define map_get_string(key_name, value) cmap_get_string(cmap_handle, key_name, value)
 #endif
 
@@ -76,27 +76,21 @@ static char error_string_response[512];
  *
  * Returns: 0 on success, -1 on failure
  **/
-static int insert_into_buffer(
-	char *target_buffer,
-	size_t bufferlen,
-	const char *entry,
-	const char *after)
+static int insert_into_buffer(char *target_buffer, size_t bufferlen, const char *entry, const char *after)
 {
 	const char *current_format = NULL;
 
 	current_format = logsys_format_get();
 
 	/* if the entry is already in the format we don't add it again */
-	if (strstr(current_format, entry) != NULL) {
+	if(strstr(current_format, entry) != NULL) {
 		return -1;
 	}
 
 	/* if there is no "after", simply prepend the requested entry
 	 * otherwise go for beautiful string manipulation.... </sarcasm> */
-	if (!after) {
-		if (snprintf(target_buffer, bufferlen - 1, "%s%s",
-				entry,
-				current_format) >= bufferlen - 1) {
+	if(!after) {
+		if(snprintf(target_buffer, bufferlen - 1, "%s%s", entry, current_format) >= bufferlen - 1) {
 			return -1;
 		}
 	} else {
@@ -108,18 +102,16 @@ static int insert_into_buffer(
 		 * and afterlen has a meaning or return an error */
 		afterpos = strstr(current_format, after);
 		afterlen = strlen(after);
-		if ((!afterpos) || (!afterlen)) {
+		if((!afterpos) || (!afterlen)) {
 			return -1;
 		}
 
 		templen = afterpos - current_format + afterlen;
-		if (snprintf(target_buffer, templen + 1, "%s", current_format)
-				>= bufferlen - 1) {
+		if(snprintf(target_buffer, templen + 1, "%s", current_format) >= bufferlen - 1) {
 			return -1;
 		}
-		if (snprintf(target_buffer + templen, bufferlen - ( templen + 1 ),
-				"%s%s", entry, current_format + templen)
-				>= bufferlen - ( templen + 1 )) {
+		if(snprintf(target_buffer + templen, bufferlen - (templen + 1), "%s%s", entry, current_format + templen)
+		   >= bufferlen - (templen + 1)) {
 			return -1;
 		}
 	}
@@ -130,28 +122,21 @@ static int insert_into_buffer(
  * format set is the only global specific option that
  * doesn't apply at system/subsystem level.
  */
-static int corosync_main_config_format_set (
-	const char **error_string)
+static int corosync_main_config_format_set(const char **error_string)
 {
 	const char *error_reason;
 	char new_format_buffer[PATH_MAX];
 	char *value = NULL;
 	int err = 0;
 
-	if (map_get_string("logging.fileline", &value) == CS_OK) {
-		if (strcmp (value, "on") == 0) {
-			if (!insert_into_buffer(new_format_buffer,
-					sizeof(new_format_buffer),
-					" %f:%l", "g]")) {
+	if(map_get_string("logging.fileline", &value) == CS_OK) {
+		if(strcmp(value, "on") == 0) {
+			if(!insert_into_buffer(new_format_buffer, sizeof(new_format_buffer), " %f:%l", "g]")) {
 				err = logsys_format_set(new_format_buffer);
-			} else
-			if (!insert_into_buffer(new_format_buffer,
-					sizeof(new_format_buffer),
-					"%f:%l", NULL)) {
+			} else if(!insert_into_buffer(new_format_buffer, sizeof(new_format_buffer), "%f:%l", NULL)) {
 				err = logsys_format_set(new_format_buffer);
 			}
-		} else
-		if (strcmp (value, "off") == 0) {
+		} else if(strcmp(value, "off") == 0) {
 			/* nothing to do here */
 		} else {
 			error_reason = "unknown value for fileline";
@@ -162,25 +147,19 @@ static int corosync_main_config_format_set (
 		free(value);
 	}
 
-	if (err) {
+	if(err) {
 		error_reason = "not enough memory to set logging format buffer";
 		goto parse_error;
 	}
 
-	if (map_get_string("logging.function_name", &value) == CS_OK) {
-		if (strcmp (value, "on") == 0) {
-			if (!insert_into_buffer(new_format_buffer,
-					sizeof(new_format_buffer),
-					"%n:", "f:")) {
+	if(map_get_string("logging.function_name", &value) == CS_OK) {
+		if(strcmp(value, "on") == 0) {
+			if(!insert_into_buffer(new_format_buffer, sizeof(new_format_buffer), "%n:", "f:")) {
 				err = logsys_format_set(new_format_buffer);
-			} else
-			if (!insert_into_buffer(new_format_buffer,
-					sizeof(new_format_buffer),
-					" %n", "g]")) {
+			} else if(!insert_into_buffer(new_format_buffer, sizeof(new_format_buffer), " %n", "g]")) {
 				err = logsys_format_set(new_format_buffer);
 			}
-		} else
-		if (strcmp (value, "off") == 0) {
+		} else if(strcmp(value, "off") == 0) {
 			/* nothing to do here */
 		} else {
 			error_reason = "unknown value for function_name";
@@ -191,20 +170,17 @@ static int corosync_main_config_format_set (
 		free(value);
 	}
 
-	if (err) {
+	if(err) {
 		error_reason = "not enough memory to set logging format buffer";
 		goto parse_error;
 	}
 
-	if (map_get_string("logging.timestamp", &value) == CS_OK) {
-		if (strcmp (value, "on") == 0) {
-			if(!insert_into_buffer(new_format_buffer,
-					sizeof(new_format_buffer),
-					"%t ", NULL)) {
+	if(map_get_string("logging.timestamp", &value) == CS_OK) {
+		if(strcmp(value, "on") == 0) {
+			if(!insert_into_buffer(new_format_buffer, sizeof(new_format_buffer), "%t ", NULL)) {
 				err = logsys_format_set(new_format_buffer);
 			}
-		} else
-		if (strcmp (value, "off") == 0) {
+		} else if(strcmp(value, "off") == 0) {
 			/* nothing to do here */
 		} else {
 			error_reason = "unknown value for timestamp";
@@ -215,7 +191,7 @@ static int corosync_main_config_format_set (
 		free(value);
 	}
 
-	if (err) {
+	if(err) {
 		error_reason = "not enough memory to set logging format buffer";
 		goto parse_error;
 	}
@@ -228,14 +204,8 @@ parse_error:
 	return (-1);
 }
 
-static int corosync_main_config_log_destination_set (
-	const char *path,
-	const char *key,
-	const char *subsys,
-	const char **error_string,
-	unsigned int mode_mask,
-	char deprecated,
-	const char *replacement)
+static int corosync_main_config_log_destination_set(const char *path, const char *key, const char *subsys, const char **error_string,
+													unsigned int mode_mask, char deprecated, const char *replacement)
 {
 	static char formatted_error_reason[128];
 	char *value = NULL;
@@ -243,31 +213,29 @@ static int corosync_main_config_log_destination_set (
 	char key_name[MAP_KEYNAME_MAXLEN];
 
 	snprintf(key_name, MAP_KEYNAME_MAXLEN, "%s.%s", path, key);
-	if (map_get_string(key_name, &value) == CS_OK) {
-		if (deprecated) {
-			log_printf(LOGSYS_LEVEL_WARNING,
-			 "Warning: the %s config parameter has been obsoleted."
-			 " See corosync.conf man page %s directive.",
-			 key, replacement);
+	if(map_get_string(key_name, &value) == CS_OK) {
+		if(deprecated) {
+			log_printf(LOGSYS_LEVEL_WARNING, "Warning: the %s config parameter has been obsoleted."
+											 " See corosync.conf man page %s directive.",
+					   key, replacement);
 		}
 
-		mode = logsys_config_mode_get (subsys);
+		mode = logsys_config_mode_get(subsys);
 
-		if (strcmp (value, "yes") == 0 || strcmp (value, "on") == 0) {
+		if(strcmp(value, "yes") == 0 || strcmp(value, "on") == 0) {
 			mode |= mode_mask;
-			if (logsys_config_mode_set(subsys, mode) < 0) {
-				sprintf (formatted_error_reason, "unable to set mode %s", key);
+			if(logsys_config_mode_set(subsys, mode) < 0) {
+				sprintf(formatted_error_reason, "unable to set mode %s", key);
 				goto parse_error;
 			}
-		} else
-		if (strcmp (value, "no") == 0 || strcmp (value, "off") == 0) {
+		} else if(strcmp(value, "no") == 0 || strcmp(value, "off") == 0) {
 			mode &= ~mode_mask;
-			if (logsys_config_mode_set(subsys, mode) < 0) {
-				sprintf (formatted_error_reason, "unable to unset mode %s", key);
+			if(logsys_config_mode_set(subsys, mode) < 0) {
+				sprintf(formatted_error_reason, "unable to unset mode %s", key);
 				goto parse_error;
 			}
 		} else {
-			sprintf (formatted_error_reason, "unknown value for %s", key);
+			sprintf(formatted_error_reason, "unknown value for %s", key);
 			goto parse_error;
 		}
 	}
@@ -281,10 +249,7 @@ parse_error:
 	return (-1);
 }
 
-static int corosync_main_config_set (
-	const char *path,
-	const char *subsys,
-	const char **error_string)
+static int corosync_main_config_set(const char *path, const char *subsys, const char **error_string)
 {
 	const char *error_reason = error_string_response;
 	char *value = NULL;
@@ -300,38 +265,35 @@ static int corosync_main_config_set (
 	 * by IPC and TOTEM that have a special logging
 	 * handling requirements
 	 */
-	if (subsys != NULL) {
-		if (_logsys_subsys_create(subsys, NULL) < 0) {
+	if(subsys != NULL) {
+		if(_logsys_subsys_create(subsys, NULL) < 0) {
 			error_reason = "unable to create new logging subsystem";
 			goto parse_error;
 		}
 	}
 
 	mode = logsys_config_mode_get(subsys);
-	if (mode < 0) {
+	if(mode < 0) {
 		error_reason = "unable to get mode";
 		goto parse_error;
 	}
 
-	if (corosync_main_config_log_destination_set (path, "to_stderr", subsys, &error_reason,
-	    LOGSYS_MODE_OUTPUT_STDERR, 0, NULL) != 0)
+	if(corosync_main_config_log_destination_set(path, "to_stderr", subsys, &error_reason, LOGSYS_MODE_OUTPUT_STDERR, 0, NULL) != 0)
 		goto parse_error;
 
-	if (corosync_main_config_log_destination_set (path, "to_syslog", subsys, &error_reason,
-	    LOGSYS_MODE_OUTPUT_SYSLOG, 0, NULL) != 0)
+	if(corosync_main_config_log_destination_set(path, "to_syslog", subsys, &error_reason, LOGSYS_MODE_OUTPUT_SYSLOG, 0, NULL) != 0)
 		goto parse_error;
 
 	snprintf(key_name, MAP_KEYNAME_MAXLEN, "%s.%s", path, "syslog_facility");
-	if (map_get_string(key_name, &value) == CS_OK) {
+	if(map_get_string(key_name, &value) == CS_OK) {
 		int syslog_facility;
 
 		syslog_facility = qb_log_facility2int(value);
-		if (syslog_facility < 0) {
+		if(syslog_facility < 0) {
 			error_reason = "unknown syslog facility specified";
 			goto parse_error;
 		}
-		if (logsys_config_syslog_facility_set(subsys,
-						syslog_facility) < 0) {
+		if(logsys_config_syslog_facility_set(subsys, syslog_facility) < 0) {
 			error_reason = "unable to set syslog facility";
 			goto parse_error;
 		}
@@ -340,39 +302,36 @@ static int corosync_main_config_set (
 	}
 
 	snprintf(key_name, MAP_KEYNAME_MAXLEN, "%s.%s", path, "syslog_level");
-	if (map_get_string(key_name, &value) == CS_OK) {
+	if(map_get_string(key_name, &value) == CS_OK) {
 		int syslog_priority;
 
-		log_printf(LOGSYS_LEVEL_WARNING,
-		 "Warning: the syslog_level config parameter has been obsoleted."
-		 " See corosync.conf man page syslog_priority directive.");
+		log_printf(LOGSYS_LEVEL_WARNING, "Warning: the syslog_level config parameter has been obsoleted."
+										 " See corosync.conf man page syslog_priority directive.");
 
 		syslog_priority = logsys_priority_id_get(value);
 		free(value);
 
-		if (syslog_priority < 0) {
+		if(syslog_priority < 0) {
 			error_reason = "unknown syslog level specified";
 			goto parse_error;
 		}
-		if (logsys_config_syslog_priority_set(subsys,
-						syslog_priority) < 0) {
+		if(logsys_config_syslog_priority_set(subsys, syslog_priority) < 0) {
 			error_reason = "unable to set syslog level";
 			goto parse_error;
 		}
 	}
 
 	snprintf(key_name, MAP_KEYNAME_MAXLEN, "%s.%s", path, "syslog_priority");
-	if (map_get_string(key_name, &value) == CS_OK) {
+	if(map_get_string(key_name, &value) == CS_OK) {
 		int syslog_priority;
 
 		syslog_priority = logsys_priority_id_get(value);
 		free(value);
-		if (syslog_priority < 0) {
+		if(syslog_priority < 0) {
 			error_reason = "unknown syslog priority specified";
 			goto parse_error;
 		}
-		if (logsys_config_syslog_priority_set(subsys,
-						syslog_priority) < 0) {
+		if(logsys_config_syslog_priority_set(subsys, syslog_priority) < 0) {
 			error_reason = "unable to set syslog priority";
 			goto parse_error;
 		}
@@ -380,63 +339,60 @@ static int corosync_main_config_set (
 
 #ifdef LOGCONFIG_USE_ICMAP
 	snprintf(key_name, MAP_KEYNAME_MAXLEN, "%s.%s", path, "logfile");
-	if (map_get_string(key_name, &value) == CS_OK) {
-		if (logsys_config_file_set (subsys, &error_reason, value) < 0) {
+	if(map_get_string(key_name, &value) == CS_OK) {
+		if(logsys_config_file_set(subsys, &error_reason, value) < 0) {
 			goto parse_error;
 		}
 		free(value);
 	}
 #else
-	if (!subsys) {
-		if (logsys_config_file_set (subsys, &error_reason, main_logfile) < 0) {
+	if(!subsys) {
+		if(logsys_config_file_set(subsys, &error_reason, main_logfile) < 0) {
 			goto parse_error;
 		}
 	}
 #endif
 
-	if (corosync_main_config_log_destination_set (path, "to_file", subsys, &error_reason,
-	    LOGSYS_MODE_OUTPUT_FILE, 1, "to_logfile") != 0)
+	if(corosync_main_config_log_destination_set(path, "to_file", subsys, &error_reason, LOGSYS_MODE_OUTPUT_FILE, 1,
+												"to_logfile")
+	   != 0)
 		goto parse_error;
 
-	if (corosync_main_config_log_destination_set (path, "to_logfile", subsys, &error_reason,
-	    LOGSYS_MODE_OUTPUT_FILE, 0, NULL) != 0)
+	if(corosync_main_config_log_destination_set(path, "to_logfile", subsys, &error_reason, LOGSYS_MODE_OUTPUT_FILE, 0, NULL) != 0)
 		goto parse_error;
 
 	snprintf(key_name, MAP_KEYNAME_MAXLEN, "%s.%s", path, "logfile_priority");
-	if (map_get_string(key_name, &value) == CS_OK) {
+	if(map_get_string(key_name, &value) == CS_OK) {
 		int logfile_priority;
 
 		logfile_priority = logsys_priority_id_get(value);
 		free(value);
-		if (logfile_priority < 0) {
+		if(logfile_priority < 0) {
 			error_reason = "unknown logfile priority specified";
 			goto parse_error;
 		}
-		if (logsys_config_logfile_priority_set(subsys,
-						logfile_priority) < 0) {
+		if(logsys_config_logfile_priority_set(subsys, logfile_priority) < 0) {
 			error_reason = "unable to set logfile priority";
 			goto parse_error;
 		}
 	}
 
 	snprintf(key_name, MAP_KEYNAME_MAXLEN, "%s.%s", path, "debug");
-	if (map_get_string(key_name, &value) == CS_OK) {
-		if (strcmp (value, "trace") == 0) {
-			if (logsys_config_debug_set (subsys, LOGSYS_DEBUG_TRACE) < 0) {
+	if(map_get_string(key_name, &value) == CS_OK) {
+		if(strcmp(value, "trace") == 0) {
+			if(logsys_config_debug_set(subsys, LOGSYS_DEBUG_TRACE) < 0) {
 				error_reason = "unable to set debug trace";
 				free(value);
 				goto parse_error;
 			}
-		} else
-		if (strcmp (value, "on") == 0) {
-			if (logsys_config_debug_set (subsys, LOGSYS_DEBUG_ON) < 0) {
+		} else if(strcmp(value, "on") == 0) {
+			if(logsys_config_debug_set(subsys, LOGSYS_DEBUG_ON) < 0) {
 				error_reason = "unable to set debug on";
 				free(value);
 				goto parse_error;
 			}
-		} else
-		if (strcmp (value, "off") == 0) {
-			if (logsys_config_debug_set (subsys, LOGSYS_DEBUG_OFF) < 0) {
+		} else if(strcmp(value, "off") == 0) {
+			if(logsys_config_debug_set(subsys, LOGSYS_DEBUG_OFF) < 0) {
 				error_reason = "unable to set debug off";
 				free(value);
 				goto parse_error;
@@ -457,8 +413,7 @@ parse_error:
 	return (-1);
 }
 
-static int corosync_main_config_read_logging (
-	const char **error_string)
+static int corosync_main_config_read_logging(const char **error_string)
 {
 	const char *error_reason;
 #ifdef LOGCONFIG_USE_ICMAP
@@ -473,38 +428,38 @@ static int corosync_main_config_read_logging (
 	int res;
 
 	/* format set is supported only for toplevel */
-	if (corosync_main_config_format_set(&error_reason) < 0) {
+	if(corosync_main_config_format_set(&error_reason) < 0) {
 		goto parse_error;
 	}
 
-	if (corosync_main_config_set ("logging", NULL, &error_reason) < 0) {
+	if(corosync_main_config_set("logging", NULL, &error_reason) < 0) {
 		goto parse_error;
 	}
 
-	/*
-	 * we will need 2 of these to compensate for new logging
-	 * config format
-	 */
+/*
+ * we will need 2 of these to compensate for new logging
+ * config format
+ */
 #ifdef LOGCONFIG_USE_ICMAP
 	iter = icmap_iter_init("logging.logger_subsys.");
-	while ((key_name = icmap_iter_next(iter, NULL, NULL)) != NULL) {
+	while((key_name = icmap_iter_next(iter, NULL, NULL)) != NULL) {
 #else
 	cmap_iter_init(cmap_handle, "logging.logger_subsys.", &iter);
-	while ((cmap_iter_next(cmap_handle, iter, key_name, NULL, NULL)) == CS_OK) {
+	while((cmap_iter_next(cmap_handle, iter, key_name, NULL, NULL)) == CS_OK) {
 #endif
 		res = sscanf(key_name, "logging.logger_subsys.%[^.].%s", key_subsys, key_item);
 
-		if (res != 2) {
-			continue ;
+		if(res != 2) {
+			continue;
 		}
 
-		if (strcmp(key_item, "subsys") != 0) {
-			continue ;
+		if(strcmp(key_item, "subsys") != 0) {
+			continue;
 		}
 
 		snprintf(key_item, MAP_KEYNAME_MAXLEN, "logging.logger_subsys.%s", key_subsys);
 
-		if (corosync_main_config_set(key_item, key_subsys, &error_reason) < 0) {
+		if(corosync_main_config_set(key_item, key_subsys, &error_reason) < 0) {
 			goto parse_error;
 		}
 	}
@@ -523,22 +478,13 @@ parse_error:
 	return (-1);
 }
 
-#ifdef LOGCONFIG_USE_ICMAP 
-static void main_logging_notify(
-		int32_t event,
-		const char *key_name,
-		struct icmap_notify_value new_val,
-		struct icmap_notify_value old_val,
-		void *user_data)
+#ifdef LOGCONFIG_USE_ICMAP
+static void main_logging_notify(int32_t event, const char *key_name, struct icmap_notify_value new_val,
+								struct icmap_notify_value old_val, void *user_data)
 #else
-static void main_logging_notify(
-		cmap_handle_t cmap_handle_unused,
-		cmap_handle_t cmap_track_handle_unused,
-		int32_t event,
-		const char *key_name,
-		struct cmap_notify_value new_val,
-		struct cmap_notify_value old_val,
-		void *user_data)
+static void main_logging_notify(cmap_handle_t cmap_handle_unused, cmap_handle_t cmap_track_handle_unused, int32_t event,
+								const char *key_name, struct cmap_notify_value new_val,
+								struct cmap_notify_value old_val, void *user_data)
 #endif
 {
 	const char *error_string;
@@ -547,14 +493,14 @@ static void main_logging_notify(
 	/* If a full reload happens then suspend updates for individual keys until
 	 * it's all completed
 	 */
-	if (strcmp(key_name, "config.reload_in_progress") == 0) {
-		if (*(uint8_t *)new_val.data == 1) {
+	if(strcmp(key_name, "config.reload_in_progress") == 0) {
+		if(*(uint8_t *)new_val.data == 1) {
 			reload_in_progress = 1;
 		} else {
 			reload_in_progress = 0;
 		}
 	}
-	if (reload_in_progress) {
+	if(reload_in_progress) {
 		log_printf(LOGSYS_LEVEL_DEBUG, "Ignoring key change, reload in progress. %s\n", key_name);
 		return;
 	}
@@ -562,8 +508,8 @@ static void main_logging_notify(
 	/*
 	 * Reload the logsys configuration
 	 */
-	if (logsys_format_set(NULL) == -1) {
-		fprintf (stderr, "Unable to setup logging format.\n");
+	if(logsys_format_set(NULL) == -1) {
+		fprintf(stderr, "Unable to setup logging format.\n");
 	}
 	corosync_main_config_read_logging(&error_string);
 }
@@ -573,52 +519,38 @@ static void add_logsys_config_notification(void)
 {
 	icmap_track_t icmap_track = NULL;
 
-	icmap_track_add("logging.",
-			ICMAP_TRACK_ADD | ICMAP_TRACK_DELETE | ICMAP_TRACK_MODIFY | ICMAP_TRACK_PREFIX,
-			main_logging_notify,
-			NULL,
-			&icmap_track);
+	icmap_track_add("logging.", ICMAP_TRACK_ADD | ICMAP_TRACK_DELETE | ICMAP_TRACK_MODIFY | ICMAP_TRACK_PREFIX,
+					main_logging_notify, NULL, &icmap_track);
 
-	icmap_track_add("config.reload_in_progress",
-			ICMAP_TRACK_ADD | ICMAP_TRACK_MODIFY,
-			main_logging_notify,
-			NULL,
-			&icmap_track);
+	icmap_track_add("config.reload_in_progress", ICMAP_TRACK_ADD | ICMAP_TRACK_MODIFY, main_logging_notify, NULL, &icmap_track);
 }
 #else
 static void add_logsys_config_notification(void)
 {
 	cmap_track_handle_t cmap_track;
 
-	cmap_track_add(cmap_handle, "logging.",
-			CMAP_TRACK_ADD | CMAP_TRACK_DELETE | CMAP_TRACK_MODIFY | CMAP_TRACK_PREFIX,
-			main_logging_notify,
-			NULL,
-			&cmap_track);
+	cmap_track_add(cmap_handle, "logging.", CMAP_TRACK_ADD | CMAP_TRACK_DELETE | CMAP_TRACK_MODIFY | CMAP_TRACK_PREFIX,
+				   main_logging_notify, NULL, &cmap_track);
 
-	cmap_track_add(cmap_handle, "config.reload_in_progress",
-			CMAP_TRACK_ADD | CMAP_TRACK_MODIFY,
-			main_logging_notify,
-			NULL,
-			&cmap_track);
+	cmap_track_add(cmap_handle, "config.reload_in_progress", CMAP_TRACK_ADD | CMAP_TRACK_MODIFY, main_logging_notify,
+				   NULL, &cmap_track);
 }
 #endif
 
-int corosync_log_config_read (
+int corosync_log_config_read(
 #ifndef LOGCONFIG_USE_ICMAP
-	cmap_handle_t cmap_h,
-	const char *default_logfile,
+cmap_handle_t cmap_h, const char *default_logfile,
 #endif
-	const char **error_string)
+const char **error_string)
 {
 	const char *error_reason = error_string_response;
 
 #ifndef LOGCONFIG_USE_ICMAP
-	if (!cmap_h) {
+	if(!cmap_h) {
 		error_reason = "No cmap handle";
 		return (-1);
 	}
-	if (!default_logfile) {
+	if(!default_logfile) {
 		error_reason = "No default logfile";
 		return (-1);
 	}
@@ -626,7 +558,7 @@ int corosync_log_config_read (
 	main_logfile = default_logfile;
 #endif
 
-	if (corosync_main_config_read_logging(error_string) < 0) {
+	if(corosync_main_config_read_logging(error_string) < 0) {
 		error_reason = *error_string;
 		goto parse_error;
 	}
@@ -636,9 +568,7 @@ int corosync_log_config_read (
 	return 0;
 
 parse_error:
-	snprintf (error_string_response, sizeof(error_string_response),
-		 "parse error in config: %s.\n",
-		 error_reason);
+	snprintf(error_string_response, sizeof(error_string_response), "parse error in config: %s.\n", error_reason);
 
 	*error_string = error_string_response;
 	return (-1);

@@ -41,37 +41,37 @@
 
 #include "../exec/timer.h"
 
-void timer_function (void *data)
+void timer_function(void *data)
 {
-	printf ("timer %p\n", data);
+	printf("timer %p\n", data);
 }
 
-int main (void)
+int main(void)
 {
 	int msec;
 	struct timer *timer;
 	int randomvalue;
 	int i;
 
-printf ("adding timers\n");
-	for (i = 0; i < 1000; i++) {
-		timer = (struct timer *)malloc (sizeof (struct timer));
-		randomvalue = random()%5000;
+	printf("adding timers\n");
+	for(i = 0; i < 1000; i++) {
+		timer = (struct timer *)malloc(sizeof(struct timer));
+		randomvalue = random() % 5000;
 		timer->function = timer_function;
 		timer->data = (void *)randomvalue;
-		timer_add_msec_in_future (timer, randomvalue);
+		timer_add_msec_in_future(timer, randomvalue);
 	}
-printf ("done adding timers\n");
+	printf("done adding timers\n");
 
-	for (;;) {
+	for(;;) {
 		msec = timer_expire_get_msec();
-//		printf ("msec to next timer expire %d\n", msec);
-		if (msec == -1) {
-			printf ("no more timers\n");
+		//		printf ("msec to next timer expire %d\n", msec);
+		if(msec == -1) {
+			printf("no more timers\n");
 			break;
 		}
-		poll (0, 0, msec);
-		timer_expire ();
+		poll(0, 0, msec);
+		timer_expire();
 	}
 
 	return (0);

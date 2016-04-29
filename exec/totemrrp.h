@@ -48,8 +48,8 @@
 #include <qb/qbloop.h>
 #include <corosync/totem/totem.h>
 
-#define TOTEMRRP_NOFLUSH	0
-#define TOTEMRRP_FLUSH		1
+#define TOTEMRRP_NOFLUSH 0
+#define TOTEMRRP_FLUSH 1
 
 /*
  * SRP address. Used mainly in totemsrp.c, but we need it here to inform RRP about
@@ -63,108 +63,56 @@ struct srp_addr {
 /**
  * Create an instance
  */
-extern int totemrrp_initialize (
-	qb_loop_t *poll_handle,
-	void **rrp_context,
-	struct totem_config *totem_config,
-	totemsrp_stats_t *stats,
-	void *context,
+extern int totemrrp_initialize(qb_loop_t *poll_handle, void **rrp_context, struct totem_config *totem_config,
+							   totemsrp_stats_t *stats, void *context,
 
-	void (*deliver_fn) (
-		void *context,
-		const void *msg,
-		unsigned int msg_len),
+							   void (*deliver_fn)(void *context, const void *msg, unsigned int msg_len),
 
-	void (*iface_change_fn) (
-		void *context,
-		const struct totem_ip_address *iface_addr,
-		unsigned int iface_no),
+							   void (*iface_change_fn)(void *context, const struct totem_ip_address *iface_addr, unsigned int iface_no),
 
-	void (*token_seqid_get) (
-		const void *msg,
-		unsigned int *seqid,
-		unsigned int *token_is),
+							   void (*token_seqid_get)(const void *msg, unsigned int *seqid, unsigned int *token_is),
 
-	unsigned int (*msgs_missing) (void),
+							   unsigned int (*msgs_missing)(void),
 
-	void (*target_set_completed) (
-		void *context)
-	);
+							   void (*target_set_completed)(void *context));
 
-extern void *totemrrp_buffer_alloc (
-	void *rrp_context);
+extern void *totemrrp_buffer_alloc(void *rrp_context);
 
-extern void totemrrp_buffer_release (
-	void *rrp_context,
-	void *ptr);
+extern void totemrrp_buffer_release(void *rrp_context, void *ptr);
 
-extern int totemrrp_processor_count_set (
-	void *rrp_context,
-	unsigned int processor_count);
+extern int totemrrp_processor_count_set(void *rrp_context, unsigned int processor_count);
 
-extern int totemrrp_token_send (
-	void *rrp_context,
-	const void *msg,
-	unsigned int msg_len);
+extern int totemrrp_token_send(void *rrp_context, const void *msg, unsigned int msg_len);
 
-extern int totemrrp_mcast_noflush_send (
-	void *rrp_context,
-	const void *msg,
-	unsigned int msg_len);
+extern int totemrrp_mcast_noflush_send(void *rrp_context, const void *msg, unsigned int msg_len);
 
-extern int totemrrp_mcast_flush_send (
-	void *rrp_context,
-	const void *msg,
-	unsigned int msg_len);
+extern int totemrrp_mcast_flush_send(void *rrp_context, const void *msg, unsigned int msg_len);
 
-extern int totemrrp_recv_flush (
-	void *rrp_context);
+extern int totemrrp_recv_flush(void *rrp_context);
 
-extern int totemrrp_send_flush (
-	void *rrp_context);
+extern int totemrrp_send_flush(void *rrp_context);
 
-extern int totemrrp_token_target_set (
-	void *rrp_context,
-	struct totem_ip_address *target,
-	unsigned int iface_no);
+extern int totemrrp_token_target_set(void *rrp_context, struct totem_ip_address *target, unsigned int iface_no);
 
-extern int totemrrp_iface_check (void *rrp_context);
+extern int totemrrp_iface_check(void *rrp_context);
 
-extern int totemrrp_finalize (void *rrp_context);
+extern int totemrrp_finalize(void *rrp_context);
 
-extern int totemrrp_ifaces_get (
-	void *rrp_context,
-	char ***status,
-	unsigned int *iface_count);
+extern int totemrrp_ifaces_get(void *rrp_context, char ***status, unsigned int *iface_count);
 
-extern int totemrrp_crypto_set (
-	void *rrp_context,
-	const char *cipher_type,
-	const char *hash_type);
+extern int totemrrp_crypto_set(void *rrp_context, const char *cipher_type, const char *hash_type);
 
-extern int totemrrp_ring_reenable (
-	void *rrp_context,
-	unsigned int iface_no);
+extern int totemrrp_ring_reenable(void *rrp_context, unsigned int iface_no);
 
-extern int totemrrp_mcast_recv_empty (
-	void *rrp_context);
+extern int totemrrp_mcast_recv_empty(void *rrp_context);
 
-extern int totemrrp_member_add (
-        void *net_context,
-        const struct totem_ip_address *member,
-	int iface_no);
+extern int totemrrp_member_add(void *net_context, const struct totem_ip_address *member, int iface_no);
 
-extern int totemrrp_member_remove (
-        void *net_context,
-        const struct totem_ip_address *member,
-	int iface_no);
+extern int totemrrp_member_remove(void *net_context, const struct totem_ip_address *member, int iface_no);
 
-extern void totemrrp_membership_changed (
-	void *rrp_context,
-	enum totem_configuration_type configuration_type,
-	const struct srp_addr *member_list, size_t member_list_entries,
-	const struct srp_addr *left_list, size_t left_list_entries,
-	const struct srp_addr *joined_list, size_t joined_list_entries,
-	const struct memb_ring_id *ring_id);
+extern void totemrrp_membership_changed(void *rrp_context, enum totem_configuration_type configuration_type,
+										const struct srp_addr *member_list, size_t member_list_entries,
+										const struct srp_addr *left_list, size_t left_list_entries, const struct srp_addr *joined_list,
+										size_t joined_list_entries, const struct memb_ring_id *ring_id);
 
 #endif /* TOTEMRRP_H_DEFINED */

@@ -60,44 +60,40 @@
 #include "main.h"
 #include "vsf.h"
 
-LOGSYS_DECLARE_SUBSYS ("QUORUM");
+LOGSYS_DECLARE_SUBSYS("QUORUM");
 
 static struct quorum_callin_functions *corosync_quorum_fns = NULL;
 
-int corosync_quorum_is_quorate (void)
+int corosync_quorum_is_quorate(void)
 {
-	if (corosync_quorum_fns) {
+	if(corosync_quorum_fns) {
 		return corosync_quorum_fns->quorate();
-	}
-	else {
+	} else {
 		return 1;
 	}
 }
 
-int corosync_quorum_register_callback (quorum_callback_fn_t fn, void *context)
+int corosync_quorum_register_callback(quorum_callback_fn_t fn, void *context)
 {
-	if (corosync_quorum_fns) {
+	if(corosync_quorum_fns) {
 		return corosync_quorum_fns->register_callback(fn, context);
-	}
-	else {
+	} else {
 		return 0;
 	}
 }
 
-int corosync_quorum_unregister_callback (quorum_callback_fn_t fn, void *context)
+int corosync_quorum_unregister_callback(quorum_callback_fn_t fn, void *context)
 {
-	if (corosync_quorum_fns) {
+	if(corosync_quorum_fns) {
 		return corosync_quorum_fns->unregister_callback(fn, context);
-	}
-	else {
+	} else {
 		return 0;
 	}
 }
 
-int corosync_quorum_initialize (struct quorum_callin_functions *fns)
+int corosync_quorum_initialize(struct quorum_callin_functions *fns)
 {
-	if (corosync_quorum_fns)
-		return -1;
+	if(corosync_quorum_fns) return -1;
 
 	corosync_quorum_fns = fns;
 	return 0;
@@ -105,7 +101,7 @@ int corosync_quorum_initialize (struct quorum_callin_functions *fns)
 
 int quorum_none(void)
 {
-	if (corosync_quorum_fns)
+	if(corosync_quorum_fns)
 		return 0;
 	else
 		return 1;

@@ -66,41 +66,41 @@ typedef uint64_t cmap_track_handle_t;
 /*
  * Maximum length of key in cmap
  */
-#define CMAP_KEYNAME_MAXLEN            255
+#define CMAP_KEYNAME_MAXLEN 255
 /*
  * Minumum length of key in cmap
  */
-#define CMAP_KEYNAME_MINLEN            3
+#define CMAP_KEYNAME_MINLEN 3
 
 /*
  * Tracking values.
  */
-#define CMAP_TRACK_ADD		4
-#define CMAP_TRACK_DELETE	1
-#define CMAP_TRACK_MODIFY	2
+#define CMAP_TRACK_ADD 4
+#define CMAP_TRACK_DELETE 1
+#define CMAP_TRACK_MODIFY 2
 /*
  * Whole prefix is tracked, instead of key only (so "totem." tracking means that
  * "totem.nodeid", "totem.version", ... applies). This value is also never returned
  * inside of callback and is used only in adding track
  */
-#define CMAP_TRACK_PREFIX	8
+#define CMAP_TRACK_PREFIX 8
 
 /*
  * Possible types of value. Binary is raw data without trailing zero with given length
  */
 typedef enum {
-    CMAP_VALUETYPE_INT8 	=  1,
-    CMAP_VALUETYPE_UINT8	=  2,
-    CMAP_VALUETYPE_INT16	=  3,
-    CMAP_VALUETYPE_UINT16	=  4,
-    CMAP_VALUETYPE_INT32	=  5,
-    CMAP_VALUETYPE_UINT32	=  6,
-    CMAP_VALUETYPE_INT64	=  7,
-    CMAP_VALUETYPE_UINT64	=  8,
-    CMAP_VALUETYPE_FLOAT	=  9,
-    CMAP_VALUETYPE_DOUBLE	= 10,
-    CMAP_VALUETYPE_STRING	= 11,
-    CMAP_VALUETYPE_BINARY	= 12,
+	CMAP_VALUETYPE_INT8 = 1,
+	CMAP_VALUETYPE_UINT8 = 2,
+	CMAP_VALUETYPE_INT16 = 3,
+	CMAP_VALUETYPE_UINT16 = 4,
+	CMAP_VALUETYPE_INT32 = 5,
+	CMAP_VALUETYPE_UINT32 = 6,
+	CMAP_VALUETYPE_INT64 = 7,
+	CMAP_VALUETYPE_UINT64 = 8,
+	CMAP_VALUETYPE_FLOAT = 9,
+	CMAP_VALUETYPE_DOUBLE = 10,
+	CMAP_VALUETYPE_STRING = 11,
+	CMAP_VALUETYPE_BINARY = 12,
 } cmap_value_types_t;
 
 /*
@@ -119,14 +119,9 @@ struct cmap_notify_value {
  * existing 0 type) if there were no old (creating of key) or new (deleting of key) value.
  * user_data are passed when adding tracking.
  */
-typedef void (*cmap_notify_fn_t) (
-	cmap_handle_t cmap_handle,
-	cmap_track_handle_t cmap_track_handle,
-	int32_t event,
-	const char *key_name,
-	struct cmap_notify_value new_value,
-	struct cmap_notify_value old_value,
-	void *user_data);
+typedef void (*cmap_notify_fn_t)(cmap_handle_t cmap_handle, cmap_track_handle_t cmap_track_handle, int32_t event,
+								 const char *key_name, struct cmap_notify_value new_value,
+								 struct cmap_notify_value old_value, void *user_data);
 
 /**
  * Create a new cmap connection
@@ -134,15 +129,13 @@ typedef void (*cmap_notify_fn_t) (
  * @param handle will be filled with handle to be used for all following
  * operations with cht.
  */
-extern cs_error_t cmap_initialize (
-	cmap_handle_t *handle);
+extern cs_error_t cmap_initialize(cmap_handle_t *handle);
 
 /**
  * Close the cmap handle
  * @param handle cmap handle
  */
-extern cs_error_t cmap_finalize (
-	cmap_handle_t handle);
+extern cs_error_t cmap_finalize(cmap_handle_t handle);
 
 /*
  * Get a file descriptor on which to poll.  cmap_handle_t is NOT a
@@ -150,28 +143,20 @@ extern cs_error_t cmap_finalize (
  * @param handle cmap handle initialized by cmap_initialize
  * @param fd file descriptor for poll
  */
-extern cs_error_t cmap_fd_get (
-	cmap_handle_t handle,
-	int *fd);
+extern cs_error_t cmap_fd_get(cmap_handle_t handle, int *fd);
 
 /**
  * Dispatch data from service.
  * @param handle cmap handle initialized by cmap_initialize
  * @param dispatch_types one of standard corosync dispatch values
  */
-extern cs_error_t cmap_dispatch (
-	cmap_handle_t handle,
-	cs_dispatch_flags_t dispatch_types);
+extern cs_error_t cmap_dispatch(cmap_handle_t handle, cs_dispatch_flags_t dispatch_types);
 /*
  * Get/set context variable
  */
-extern cs_error_t cmap_context_get (
-	cmap_handle_t handle,
-	const void **context);
+extern cs_error_t cmap_context_get(cmap_handle_t handle, const void **context);
 
-extern cs_error_t cmap_context_set (
-	cmap_handle_t handle,
-	const void *context);
+extern cs_error_t cmap_context_set(cmap_handle_t handle, const void *context);
 
 
 /**
@@ -182,12 +167,7 @@ extern cs_error_t cmap_context_set (
  * @param value_len length of value to store
  * @param type type to store
  */
-extern cs_error_t cmap_set(
-	cmap_handle_t handle,
-	const char *key_name,
-	const void *value,
-	size_t value_len,
-	cmap_value_types_t type);
+extern cs_error_t cmap_set(cmap_handle_t handle, const char *key_name, const void *value, size_t value_len, cmap_value_types_t type);
 
 /*
  * Shortcuts for cmap_set with given type
@@ -226,12 +206,7 @@ extern cs_error_t cmap_delete(cmap_handle_t handle, const char *key_name);
  * will be returned (value == NULL) or NULL.
  * @param type type of value in cmap
  */
-extern cs_error_t cmap_get(
-	cmap_handle_t handle,
-	const char *key_name,
-	void *value,
-	size_t *value_len,
-	cmap_value_types_t *type);
+extern cs_error_t cmap_get(cmap_handle_t handle, const char *key_name, void *value, size_t *value_len, cmap_value_types_t *type);
 
 /*
  * Shortcuts for cmap_get.
@@ -289,12 +264,8 @@ extern cs_error_t cmap_iter_init(cmap_handle_t handle, const char *prefix, cmap_
  * @param type type of value
  * @return CS_NO_SECTION if there are no more sections to iterate
  */
-extern cs_error_t cmap_iter_next(
-		cmap_handle_t handle,
-		cmap_iter_handle_t iter_handle,
-		char key_name[],
-		size_t *value_len,
-		cmap_value_types_t *type);
+extern cs_error_t cmap_iter_next(cmap_handle_t handle, cmap_iter_handle_t iter_handle, char key_name[],
+								 size_t *value_len, cmap_value_types_t *type);
 
 /**
  * Finalize iterator
@@ -312,13 +283,8 @@ extern cs_error_t cmap_iter_finalize(cmap_handle_t handle, cmap_iter_handle_t it
  * @param user_data given pointer is unchanged passed to notify_fn
  * @param cmap_track_handle handle used for removing of newly created track
  */
-extern cs_error_t cmap_track_add(
-	cmap_handle_t handle,
-	const char *key_name,
-        int32_t track_type,
-	cmap_notify_fn_t notify_fn,
-        void *user_data,
-        cmap_track_handle_t *cmap_track_handle);
+extern cs_error_t cmap_track_add(cmap_handle_t handle, const char *key_name, int32_t track_type,
+								 cmap_notify_fn_t notify_fn, void *user_data, cmap_track_handle_t *cmap_track_handle);
 
 /**
  * Delete track created previously by cmap_track_add

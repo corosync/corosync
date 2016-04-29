@@ -44,75 +44,45 @@
 /**
  * Create an instance
  */
-extern int totemiba_initialize (
-	qb_loop_t* qb_poll_handle,
-	void **iba_handle,
-	struct totem_config *totem_config,
-	totemsrp_stats_t *stats,
-	int interface_no,
-	void *context,
+extern int totemiba_initialize(qb_loop_t *qb_poll_handle, void **iba_handle, struct totem_config *totem_config,
+							   totemsrp_stats_t *stats, int interface_no, void *context,
 
-	void (*deliver_fn) (
-		void *context,
-		const void *msg,
-		unsigned int msg_len),
+							   void (*deliver_fn)(void *context, const void *msg, unsigned int msg_len),
 
-	void (*iface_change_fn) (
-		void *context,
-		const struct totem_ip_address *iface_address),
+							   void (*iface_change_fn)(void *context, const struct totem_ip_address *iface_address),
 
-	void (*target_set_completed) (
-		void *context));
+							   void (*target_set_completed)(void *context));
 
-extern void *totemiba_buffer_alloc (void);
+extern void *totemiba_buffer_alloc(void);
 
-extern void totemiba_buffer_release (void *ptr);
+extern void totemiba_buffer_release(void *ptr);
 
-extern int totemiba_processor_count_set (
-	void *iba_context,
-	int processor_count);
+extern int totemiba_processor_count_set(void *iba_context, int processor_count);
 
-extern int totemiba_token_send (
-	void *iba_context,
-	const void *msg,
-	unsigned int msg_len);
+extern int totemiba_token_send(void *iba_context, const void *msg, unsigned int msg_len);
 
-extern int totemiba_mcast_flush_send (
-	void *iba_context,
-	const void *msg,
-	unsigned int msg_len);
+extern int totemiba_mcast_flush_send(void *iba_context, const void *msg, unsigned int msg_len);
 
-extern int totemiba_mcast_noflush_send (
-	void *iba_context,
-	const void *msg,
-	unsigned int msg_len);
+extern int totemiba_mcast_noflush_send(void *iba_context, const void *msg, unsigned int msg_len);
 
-extern int totemiba_recv_flush (void *iba_context);
+extern int totemiba_recv_flush(void *iba_context);
 
-extern int totemiba_send_flush (void *iba_context);
+extern int totemiba_send_flush(void *iba_context);
 
-extern int totemiba_iface_check (void *iba_context);
+extern int totemiba_iface_check(void *iba_context);
 
-extern int totemiba_finalize (void *iba_context);
+extern int totemiba_finalize(void *iba_context);
 
-extern void totemiba_net_mtu_adjust (void *iba_context, struct totem_config *totem_config);
+extern void totemiba_net_mtu_adjust(void *iba_context, struct totem_config *totem_config);
 
-extern const char *totemiba_iface_print (void *iba_context);
+extern const char *totemiba_iface_print(void *iba_context);
 
-extern int totemiba_iface_get (
-	void *iba_context,
-	struct totem_ip_address *addr);
+extern int totemiba_iface_get(void *iba_context, struct totem_ip_address *addr);
 
-extern int totemiba_token_target_set (
-	void *iba_context,
-	const struct totem_ip_address *token_target);
+extern int totemiba_token_target_set(void *iba_context, const struct totem_ip_address *token_target);
 
-extern int totemiba_crypto_set (
-	void *iba_context,
-	const char *cipher_type,
-	const char *hash_type);
+extern int totemiba_crypto_set(void *iba_context, const char *cipher_type, const char *hash_type);
 
-extern int totemiba_recv_mcast_empty (
-	void *iba_context);
+extern int totemiba_recv_mcast_empty(void *iba_context);
 
 #endif /* TOTEMIBA_H_DEFINED */

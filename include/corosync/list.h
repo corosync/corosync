@@ -48,30 +48,29 @@ struct list_head {
 	struct list_head *prev;
 };
 
-#define DECLARE_LIST_INIT(name) \
-    struct list_head name = { &(name), &(name) }
+#define DECLARE_LIST_INIT(name) struct list_head name = { &(name), &(name) }
 
-static void inline list_init (struct list_head *head)
+static void inline list_init(struct list_head *head)
 {
 	head->next = head;
 	head->prev = head;
 }
 
-static void inline list_add (struct list_head *element, struct list_head *head)
+static void inline list_add(struct list_head *element, struct list_head *head)
 {
 	head->next->prev = element;
 	element->next = head->next;
 	element->prev = head;
 	head->next = element;
 }
-static void inline list_add_tail (struct list_head *element, struct list_head *head)
+static void inline list_add_tail(struct list_head *element, struct list_head *head)
 {
 	head->prev->next = element;
 	element->next = head;
 	element->prev = head->prev;
 	head->prev = element;
 }
-static void inline list_del (struct list_head *_remove)
+static void inline list_del(struct list_head *_remove)
 {
 	_remove->next->prev = _remove->prev;
 	_remove->prev->next = _remove->next;
@@ -81,15 +80,14 @@ static void inline list_del (struct list_head *_remove)
 #endif
 }
 
-#define list_entry(ptr,type,member)\
-	((type *)((char *)(ptr)-(unsigned long)(&((type *)0)->member)))
+#define list_entry(ptr, type, member) ((type *)((char *)(ptr) - (unsigned long)(&((type *)0)->member)))
 
 static inline int list_empty(const struct list_head *l)
 {
 	return l->next == l;
 }
 
-static inline void list_splice (struct list_head *list, struct list_head *head)
+static inline void list_splice(struct list_head *list, struct list_head *head)
 {
 	struct list_head *first;
 	struct list_head *last;

@@ -48,7 +48,7 @@ static votequorum_handle_t g_handle;
 
 static const char *node_state(int state)
 {
-	switch (state) {
+	switch(state) {
 	case VOTEQUORUM_NODESTATE_MEMBER:
 		return "Member";
 		break;
@@ -65,34 +65,24 @@ static const char *node_state(int state)
 }
 
 
-static void votequorum_expectedvotes_notification_fn(
-	votequorum_handle_t handle,
-	uint64_t context,
-	uint32_t expected_votes
-	)
+static void votequorum_expectedvotes_notification_fn(votequorum_handle_t handle, uint64_t context, uint32_t expected_votes)
 {
 	printf("votequorum expectedvotes notification called \n");
 	printf("  expected_votes = %d\n", expected_votes);
 }
 
 
-static void votequorum_notification_fn(
-	votequorum_handle_t handle,
-	uint64_t context,
-	uint32_t quorate,
-	votequorum_ring_id_t ring_id,
-	uint32_t node_list_entries,
-	votequorum_node_t node_list[]
-	)
+static void votequorum_notification_fn(votequorum_handle_t handle, uint64_t context, uint32_t quorate,
+									   votequorum_ring_id_t ring_id, uint32_t node_list_entries, votequorum_node_t node_list[])
 {
 	int i;
 
 	printf("votequorum notification called \n");
 	printf("  quorate         = %d\n", quorate);
 	printf("  number of nodes = %d\n", node_list_entries);
-	printf("  current ringid  = (%u.%"PRIu64")\n", ring_id.nodeid, ring_id.seq);
+	printf("  current ringid  = (%u.%" PRIu64 ")\n", ring_id.nodeid, ring_id.seq);
 
-	for (i = 0; i< node_list_entries; i++) {
+	for(i = 0; i < node_list_entries; i++) {
 		printf("      %d: %s\n", node_list[i].nodeid, node_state(node_list[i].state));
 	}
 	printf("\n");
@@ -105,7 +95,7 @@ int main(int argc, char *argv[])
 	votequorum_callbacks_t callbacks;
 	int err;
 
-	if (argc > 1 && strcmp(argv[1], "-h")==0) {
+	if(argc > 1 && strcmp(argv[1], "-h") == 0) {
 		fprintf(stderr, "usage: %s [new-expected] [new-votes]\n", argv[0]);
 		return 0;
 	}
@@ -113,13 +103,13 @@ int main(int argc, char *argv[])
 	callbacks.votequorum_notify_fn = votequorum_notification_fn;
 	callbacks.votequorum_expectedvotes_notify_fn = votequorum_expectedvotes_notification_fn;
 
-	if ( (err=votequorum_initialize(&g_handle, &callbacks)) != CS_OK)
+	if((err = votequorum_initialize(&g_handle, &callbacks)) != CS_OK)
 		fprintf(stderr, "votequorum_initialize FAILED: %d\n", err);
 
-	if ( (err = votequorum_trackstart(g_handle, g_handle, CS_TRACK_CHANGES)) != CS_OK)
+	if((err = votequorum_trackstart(g_handle, g_handle, CS_TRACK_CHANGES)) != CS_OK)
 		fprintf(stderr, "votequorum_trackstart FAILED: %d\n", err);
 
-	if ( (err=votequorum_getinfo(g_handle, 0, &info)) != CS_OK)
+	if((err = votequorum_getinfo(g_handle, 0, &info)) != CS_OK)
 		fprintf(stderr, "votequorum_getinfo FAILED: %d\n", err);
 	else {
 		printf("node votes       %d\n", info.node_votes);
@@ -128,27 +118,27 @@ int main(int argc, char *argv[])
 		printf("total votes      %d\n", info.total_votes);
 		printf("quorum           %d\n", info.quorum);
 		printf("flags            ");
-		if (info.flags & VOTEQUORUM_INFO_TWONODE) printf("2Node ");
-		if (info.flags & VOTEQUORUM_INFO_QUORATE) printf("Quorate ");
-		if (info.flags & VOTEQUORUM_INFO_WAIT_FOR_ALL) printf("WaitForAll ");
-		if (info.flags & VOTEQUORUM_INFO_LAST_MAN_STANDING) printf("LastManStanding ");
-		if (info.flags & VOTEQUORUM_INFO_AUTO_TIE_BREAKER) printf("AutoTieBreaker ");
-		if (info.flags & VOTEQUORUM_INFO_ALLOW_DOWNSCALE) printf("AllowDownscale ");
+		if(info.flags & VOTEQUORUM_INFO_TWONODE) printf("2Node ");
+		if(info.flags & VOTEQUORUM_INFO_QUORATE) printf("Quorate ");
+		if(info.flags & VOTEQUORUM_INFO_WAIT_FOR_ALL) printf("WaitForAll ");
+		if(info.flags & VOTEQUORUM_INFO_LAST_MAN_STANDING) printf("LastManStanding ");
+		if(info.flags & VOTEQUORUM_INFO_AUTO_TIE_BREAKER) printf("AutoTieBreaker ");
+		if(info.flags & VOTEQUORUM_INFO_ALLOW_DOWNSCALE) printf("AllowDownscale ");
 
 		printf("\n");
 	}
 
-	if (argc >= 2 && atoi(argv[1])) {
-		if ( (err=votequorum_setexpected(g_handle, atoi(argv[1]))) != CS_OK)
+	if(argc >= 2 && atoi(argv[1])) {
+		if((err = votequorum_setexpected(g_handle, atoi(argv[1]))) != CS_OK)
 			fprintf(stderr, "set expected votes FAILED: %d\n", err);
 	}
-	if (argc >= 3 && atoi(argv[2])) {
-		if ( (err=votequorum_setvotes(g_handle, 0, atoi(argv[2]))) != CS_OK)
+	if(argc >= 3 && atoi(argv[2])) {
+		if((err = votequorum_setvotes(g_handle, 0, atoi(argv[2]))) != CS_OK)
 			fprintf(stderr, "set votes FAILED: %d\n", err);
 	}
 
-	if (argc >= 2) {
-		if ( (err=votequorum_getinfo(g_handle, 0, &info)) != CS_OK)
+	if(argc >= 2) {
+		if((err = votequorum_getinfo(g_handle, 0, &info)) != CS_OK)
 			fprintf(stderr, "votequorum_getinfo2 FAILED: %d\n", err);
 		else {
 			printf("-------------------\n");
@@ -158,12 +148,12 @@ int main(int argc, char *argv[])
 			printf("total votes      %d\n", info.total_votes);
 			printf("votequorum           %d\n", info.quorum);
 			printf("flags            ");
-			if (info.flags & VOTEQUORUM_INFO_TWONODE) printf("2Node ");
-			if (info.flags & VOTEQUORUM_INFO_QUORATE) printf("Quorate ");
-			if (info.flags & VOTEQUORUM_INFO_WAIT_FOR_ALL) printf("WaitForAll ");
-			if (info.flags & VOTEQUORUM_INFO_LAST_MAN_STANDING) printf("LastManStanding ");
-			if (info.flags & VOTEQUORUM_INFO_AUTO_TIE_BREAKER) printf("AutoTieBreaker ");
-			if (info.flags & VOTEQUORUM_INFO_ALLOW_DOWNSCALE) printf("AllowDownscale ");
+			if(info.flags & VOTEQUORUM_INFO_TWONODE) printf("2Node ");
+			if(info.flags & VOTEQUORUM_INFO_QUORATE) printf("Quorate ");
+			if(info.flags & VOTEQUORUM_INFO_WAIT_FOR_ALL) printf("WaitForAll ");
+			if(info.flags & VOTEQUORUM_INFO_LAST_MAN_STANDING) printf("LastManStanding ");
+			if(info.flags & VOTEQUORUM_INFO_AUTO_TIE_BREAKER) printf("AutoTieBreaker ");
+			if(info.flags & VOTEQUORUM_INFO_ALLOW_DOWNSCALE) printf("AllowDownscale ");
 			printf("\n");
 		}
 	}
@@ -171,8 +161,8 @@ int main(int argc, char *argv[])
 	printf("Waiting for votequorum events, press ^C to finish\n");
 	printf("-------------------\n");
 
-	while (1) {
-		if (votequorum_dispatch(g_handle, CS_DISPATCH_ALL) != CS_OK) {
+	while(1) {
+		if(votequorum_dispatch(g_handle, CS_DISPATCH_ALL) != CS_OK) {
 			fprintf(stderr, "votequorum_dispatch error\n");
 			return -1;
 		}

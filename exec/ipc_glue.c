@@ -61,16 +61,16 @@
 #include "apidef.h"
 #include "service.h"
 
-LOGSYS_DECLARE_SUBSYS ("MAIN");
+LOGSYS_DECLARE_SUBSYS("MAIN");
 
 static struct corosync_api_v1 *api = NULL;
 static int32_t ipc_not_enough_fds_left = 0;
-static int32_t ipc_fc_is_quorate; /* boolean */
-static int32_t ipc_fc_totem_queue_level; /* percentage used */
-static int32_t ipc_fc_sync_in_process; /* boolean */
+static int32_t ipc_fc_is_quorate;		  /* boolean */
+static int32_t ipc_fc_totem_queue_level;  /* percentage used */
+static int32_t ipc_fc_sync_in_process;	/* boolean */
 static int32_t ipc_allow_connections = 0; /* boolean */
 
-#define CS_IPCS_MAPPER_SERV_NAME		256
+#define CS_IPCS_MAPPER_SERV_NAME 256
 
 struct cs_ipcs_mapper {
 	int32_t id;
@@ -86,13 +86,11 @@ struct outq_item {
 
 static struct cs_ipcs_mapper ipcs_mapper[SERVICES_COUNT_MAX];
 
-static int32_t cs_ipcs_job_add(enum qb_loop_priority p,	void *data, qb_loop_job_dispatch_fn fn);
-static int32_t cs_ipcs_dispatch_add(enum qb_loop_priority p, int32_t fd, int32_t events,
-	void *data, qb_ipcs_dispatch_fn_t fn);
-static int32_t cs_ipcs_dispatch_mod(enum qb_loop_priority p, int32_t fd, int32_t events,
-	void *data, qb_ipcs_dispatch_fn_t fn);
+static int32_t cs_ipcs_job_add(enum qb_loop_priority p, void *data, qb_loop_job_dispatch_fn fn);
+static int32_t cs_ipcs_dispatch_add(enum qb_loop_priority p, int32_t fd, int32_t events, void *data, qb_ipcs_dispatch_fn_t fn);
+static int32_t cs_ipcs_dispatch_mod(enum qb_loop_priority p, int32_t fd, int32_t events, void *data, qb_ipcs_dispatch_fn_t fn);
 static int32_t cs_ipcs_dispatch_del(int32_t fd);
-static void outq_flush (void *data);
+static void outq_flush(void *data);
 
 
 static struct qb_ipcs_poll_handlers corosync_poll_funcs = {
@@ -102,25 +100,24 @@ static struct qb_ipcs_poll_handlers corosync_poll_funcs = {
 	.dispatch_del = cs_ipcs_dispatch_del,
 };
 
-static int32_t cs_ipcs_connection_accept (qb_ipcs_connection_t *c, uid_t euid, gid_t egid);
+static int32_t cs_ipcs_connection_accept(qb_ipcs_connection_t *c, uid_t euid, gid_t egid);
 static void cs_ipcs_connection_created(qb_ipcs_connection_t *c);
-static int32_t cs_ipcs_msg_process(qb_ipcs_connection_t *c,
-		void *data, size_t size);
-static int32_t cs_ipcs_connection_closed (qb_ipcs_connection_t *c);
-static void cs_ipcs_connection_destroyed (qb_ipcs_connection_t *c);
+static int32_t cs_ipcs_msg_process(qb_ipcs_connection_t *c, void *data, size_t size);
+static int32_t cs_ipcs_connection_closed(qb_ipcs_connection_t *c);
+static void cs_ipcs_connection_destroyed(qb_ipcs_connection_t *c);
 
 static struct qb_ipcs_service_handlers corosync_service_funcs = {
-	.connection_accept	= cs_ipcs_connection_accept,
-	.connection_created	= cs_ipcs_connection_created,
-	.msg_process		= cs_ipcs_msg_process,
-	.connection_closed	= cs_ipcs_connection_closed,
-	.connection_destroyed	= cs_ipcs_connection_destroyed,
+	.connection_accept = cs_ipcs_connection_accept,
+	.connection_created = cs_ipcs_connection_created,
+	.msg_process = cs_ipcs_msg_process,
+	.connection_closed = cs_ipcs_connection_closed,
+	.connection_destroyed = cs_ipcs_connection_destroyed,
 };
 
-static const char* cs_ipcs_serv_short_name(int32_t service_id)
+static const char *cs_ipcs_serv_short_name(int32_t service_id)
 {
 	const char *name;
-	switch (service_id) {
+	switch(service_id) {
 	case CFG_SERVICE:
 		name = "cfg";
 		break;
@@ -159,51 +156,48 @@ void cs_ipc_allow_connections(int32_t allow)
 
 int32_t cs_ipcs_service_destroy(int32_t service_id)
 {
-	if (ipcs_mapper[service_id].inst) {
+	if(ipcs_mapper[service_id].inst) {
 		qb_ipcs_destroy(ipcs_mapper[service_id].inst);
 		ipcs_mapper[service_id].inst = NULL;
 	}
 	return 0;
 }
 
-static int32_t cs_ipcs_connection_accept (qb_ipcs_connection_t *c, uid_t euid, gid_t egid)
+static int32_t cs_ipcs_connection_accept(qb_ipcs_connection_t *c, uid_t euid, gid_t egid)
 {
 	int32_t service = qb_ipcs_service_id_get(c);
 	uint8_t u8;
 	char key_name[ICMAP_KEYNAME_MAXLEN];
 
-	if (!ipc_allow_connections) {
+	if(!ipc_allow_connections) {
 		log_printf(LOGSYS_LEVEL_DEBUG, "Denied connection, corosync is not ready");
 		return -EAGAIN;
 	}
 
-	if (corosync_service[service] == NULL ||
-		ipcs_mapper[service].inst == NULL) {
+	if(corosync_service[service] == NULL || ipcs_mapper[service].inst == NULL) {
 		return -ENOSYS;
 	}
 
-	if (ipc_not_enough_fds_left) {
+	if(ipc_not_enough_fds_left) {
 		return -EMFILE;
 	}
 
-	if (euid == 0 || egid == 0) {
+	if(euid == 0 || egid == 0) {
 		return 0;
 	}
 
 	snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "uidgid.uid.%u", euid);
-	if (icmap_get_uint8(key_name, &u8) == CS_OK && u8 == 1)
-		return 0;
+	if(icmap_get_uint8(key_name, &u8) == CS_OK && u8 == 1) return 0;
 
 	snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "uidgid.gid.%u", egid);
-	if (icmap_get_uint8(key_name, &u8) == CS_OK && u8 == 1)
-		return 0;
+	if(icmap_get_uint8(key_name, &u8) == CS_OK && u8 == 1) return 0;
 
 	log_printf(LOGSYS_LEVEL_ERROR, "Denied connection attempt from %d:%d", euid, egid);
 
 	return -EACCES;
 }
 
-static char * pid_to_name (pid_t pid, char *out_name, size_t name_len)
+static char *pid_to_name(pid_t pid, char *out_name, size_t name_len)
 {
 	char *name;
 	char *rest;
@@ -211,29 +205,29 @@ static char * pid_to_name (pid_t pid, char *out_name, size_t name_len)
 	char fname[32];
 	char buf[256];
 
-	snprintf (fname, 32, "/proc/%d/stat", pid);
-	fp = fopen (fname, "r");
-	if (!fp) {
+	snprintf(fname, 32, "/proc/%d/stat", pid);
+	fp = fopen(fname, "r");
+	if(!fp) {
 		return NULL;
 	}
 
-	if (fgets (buf, sizeof (buf), fp) == NULL) {
-		fclose (fp);
+	if(fgets(buf, sizeof(buf), fp) == NULL) {
+		fclose(fp);
 		return NULL;
 	}
-	fclose (fp);
+	fclose(fp);
 
-	name = strrchr (buf, '(');
-	if (!name) {
+	name = strrchr(buf, '(');
+	if(!name) {
 		return NULL;
 	}
 
 	/* move past the bracket */
 	name++;
 
-	rest = strrchr (buf, ')');
+	rest = strrchr(buf, ')');
 
-	if (rest == NULL || rest[1] != ' ') {
+	if(rest == NULL || rest[1] != ' ') {
 		return NULL;
 	}
 
@@ -242,7 +236,7 @@ static char * pid_to_name (pid_t pid, char *out_name, size_t name_len)
 	rest += 2;
 
 	/* copy the name */
-	strncpy (out_name, name, name_len);
+	strncpy(out_name, name, name_len);
 	out_name[name_len - 1] = '\0';
 	return out_name;
 }
@@ -275,7 +269,7 @@ static void cs_ipcs_connection_created(qb_ipcs_connection_t *c)
 
 	size += corosync_service[service]->private_data_size;
 	context = calloc(1, size);
-	if (context == NULL) {
+	if(context == NULL) {
 		qb_ipcs_disconnect(c);
 		return;
 	}
@@ -287,7 +281,7 @@ static void cs_ipcs_connection_created(qb_ipcs_connection_t *c)
 
 	qb_ipcs_context_set(c, context);
 
-	if (corosync_service[service]->lib_init_fn(c) != 0) {
+	if(corosync_service[service]->lib_init_fn(c) != 0) {
 		log_printf(LOG_ERR, "lib_init_fn failed, disconnecting");
 		qb_ipcs_disconnect(c);
 		return;
@@ -296,14 +290,12 @@ static void cs_ipcs_connection_created(qb_ipcs_connection_t *c)
 
 	qb_ipcs_connection_stats_get(c, &stats, QB_FALSE);
 
-	if (stats.client_pid > 0) {
-		if (pid_to_name (stats.client_pid, proc_name, sizeof(proc_name))) {
-			snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "runtime.connections.%s:%u:%p",
-					proc_name, stats.client_pid, c);
+	if(stats.client_pid > 0) {
+		if(pid_to_name(stats.client_pid, proc_name, sizeof(proc_name))) {
+			snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "runtime.connections.%s:%u:%p", proc_name, stats.client_pid, c);
 			set_proc_name = 1;
 		} else {
-			snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "runtime.connections.%u:%p",
-					stats.client_pid, c);
+			snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "runtime.connections.%u:%p", stats.client_pid, c);
 		}
 		set_client_pid = 1;
 	} else {
@@ -313,18 +305,18 @@ static void cs_ipcs_connection_created(qb_ipcs_connection_t *c)
 	icmap_convert_name_to_valid_name(key_name);
 
 	context->icmap_path = strdup(key_name);
-	if (context->icmap_path == NULL) {
+	if(context->icmap_path == NULL) {
 		qb_ipcs_disconnect(c);
 		return;
 	}
 
-	if (set_proc_name) {
+	if(set_proc_name) {
 		snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "%s.name", context->icmap_path);
 		icmap_set_string(key_name, proc_name);
 	}
 
 	snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "%s.client_pid", context->icmap_path);
-	if (set_client_pid) {
+	if(set_client_pid) {
 		icmap_set_uint32(key_name, stats.client_pid);
 	} else {
 		icmap_set_uint32(key_name, 0);
@@ -381,7 +373,7 @@ void *cs_ipcs_private_data_get(void *conn)
 	return &cnx->data[0];
 }
 
-static void cs_ipcs_connection_destroyed (qb_ipcs_connection_t *c)
+static void cs_ipcs_connection_destroyed(qb_ipcs_connection_t *c)
 {
 	struct cs_ipcs_conn_context *context;
 	struct list_head *list, *list_next;
@@ -390,22 +382,21 @@ static void cs_ipcs_connection_destroyed (qb_ipcs_connection_t *c)
 	log_printf(LOG_DEBUG, "%s() ", __func__);
 
 	context = qb_ipcs_context_get(c);
-	if (context) {
-		for (list = context->outq_head.next;
-			list != &context->outq_head; list = list_next) {
+	if(context) {
+		for(list = context->outq_head.next; list != &context->outq_head; list = list_next) {
 
 			list_next = list->next;
-			outq_item = list_entry (list, struct outq_item, list);
+			outq_item = list_entry(list, struct outq_item, list);
 
-			list_del (list);
-			free (outq_item->msg);
-			free (outq_item);
+			list_del(list);
+			free(outq_item->msg);
+			free(outq_item);
 		}
 		free(context);
 	}
 }
 
-static int32_t cs_ipcs_connection_closed (qb_ipcs_connection_t *c)
+static int32_t cs_ipcs_connection_closed(qb_ipcs_connection_t *c)
 {
 	int32_t res = 0;
 	int32_t service = qb_ipcs_service_id_get(c);
@@ -416,7 +407,7 @@ static int32_t cs_ipcs_connection_closed (qb_ipcs_connection_t *c)
 
 	log_printf(LOG_DEBUG, "%s() ", __func__);
 	res = corosync_service[service]->lib_exit_fn(c);
-	if (res != 0) {
+	if(res != 0) {
 		return res;
 	}
 
@@ -426,7 +417,7 @@ static int32_t cs_ipcs_connection_closed (qb_ipcs_connection_t *c)
 
 	snprintf(prefix, ICMAP_KEYNAME_MAXLEN, "%s.", cnx->icmap_path);
 	iter = icmap_iter_init(prefix);
-	while ((key_name = icmap_iter_next(iter, NULL, NULL)) != NULL) {
+	while((key_name = icmap_iter_next(iter, NULL, NULL)) != NULL) {
 		icmap_delete(key_name);
 	}
 	icmap_iter_finalize(iter);
@@ -438,12 +429,10 @@ static int32_t cs_ipcs_connection_closed (qb_ipcs_connection_t *c)
 	return 0;
 }
 
-int cs_ipcs_response_iov_send (void *conn,
-	const struct iovec *iov,
-	unsigned int iov_len)
+int cs_ipcs_response_iov_send(void *conn, const struct iovec *iov, unsigned int iov_len)
 {
 	int32_t rc = qb_ipcs_response_sendv(conn, iov, iov_len);
-	if (rc >= 0) {
+	if(rc >= 0) {
 		return 0;
 	}
 	return rc;
@@ -452,13 +441,13 @@ int cs_ipcs_response_iov_send (void *conn,
 int cs_ipcs_response_send(void *conn, const void *msg, size_t mlen)
 {
 	int32_t rc = qb_ipcs_response_send(conn, msg, mlen);
-	if (rc >= 0) {
+	if(rc >= 0) {
 		return 0;
 	}
 	return rc;
 }
 
-static void outq_flush (void *data)
+static void outq_flush(void *data)
 {
 	qb_ipcs_connection_t *conn = data;
 	struct list_head *list, *list_next;
@@ -466,32 +455,30 @@ static void outq_flush (void *data)
 	int32_t rc;
 	struct cs_ipcs_conn_context *context = qb_ipcs_context_get(conn);
 
-	for (list = context->outq_head.next;
-		list != &context->outq_head; list = list_next) {
+	for(list = context->outq_head.next; list != &context->outq_head; list = list_next) {
 
 		list_next = list->next;
-		outq_item = list_entry (list, struct outq_item, list);
+		outq_item = list_entry(list, struct outq_item, list);
 
 		rc = qb_ipcs_event_send(conn, outq_item->msg, outq_item->mlen);
-		if (rc < 0 && rc != -EAGAIN) {
+		if(rc < 0 && rc != -EAGAIN) {
 			errno = -rc;
 			qb_perror(LOG_ERR, "qb_ipcs_event_send");
 			return;
-		} else if (rc == -EAGAIN) {
+		} else if(rc == -EAGAIN) {
 			break;
 		}
 		assert(rc == outq_item->mlen);
 		context->sent++;
 		context->queued--;
 
-		list_del (list);
-		free (outq_item->msg);
-		free (outq_item);
+		list_del(list);
+		free(outq_item->msg);
+		free(outq_item);
 	}
-	if (list_empty (&context->outq_head)) {
+	if(list_empty(&context->outq_head)) {
 		context->queuing = QB_FALSE;
-		log_printf(LOGSYS_LEVEL_INFO, "Q empty, queued:%d sent:%d.",
-			context->queued, context->sent);
+		log_printf(LOGSYS_LEVEL_INFO, "Q empty, queued:%d sent:%d.", context->queued, context->sent);
 		context->queued = 0;
 		context->sent = 0;
 	} else {
@@ -508,18 +495,18 @@ static void msg_send_or_queue(qb_ipcs_connection_t *conn, const struct iovec *io
 	char *write_buf = 0;
 	struct cs_ipcs_conn_context *context = qb_ipcs_context_get(conn);
 
-	for (i = 0; i < iov_len; i++) {
+	for(i = 0; i < iov_len; i++) {
 		bytes_msg += iov[i].iov_len;
 	}
 
-	if (!context->queuing) {
-		assert(list_empty (&context->outq_head));
+	if(!context->queuing) {
+		assert(list_empty(&context->outq_head));
 		rc = qb_ipcs_event_sendv(conn, iov, iov_len);
-		if (rc == bytes_msg) {
+		if(rc == bytes_msg) {
 			context->sent++;
 			return;
 		}
-		if (rc == -EAGAIN) {
+		if(rc == -EAGAIN) {
 			context->queued = 0;
 			context->sent = 0;
 			context->queuing = QB_TRUE;
@@ -529,26 +516,26 @@ static void msg_send_or_queue(qb_ipcs_connection_t *conn, const struct iovec *io
 			return;
 		}
 	}
-	outq_item = malloc (sizeof (struct outq_item));
-	if (outq_item == NULL) {
+	outq_item = malloc(sizeof(struct outq_item));
+	if(outq_item == NULL) {
 		qb_ipcs_disconnect(conn);
 		return;
 	}
-	outq_item->msg = malloc (bytes_msg);
-	if (outq_item->msg == NULL) {
-		free (outq_item);
+	outq_item->msg = malloc(bytes_msg);
+	if(outq_item->msg == NULL) {
+		free(outq_item);
 		qb_ipcs_disconnect(conn);
 		return;
 	}
 
 	write_buf = outq_item->msg;
-	for (i = 0; i < iov_len; i++) {
-		memcpy (write_buf, iov[i].iov_base, iov[i].iov_len);
+	for(i = 0; i < iov_len; i++) {
+		memcpy(write_buf, iov[i].iov_base, iov[i].iov_len);
 		write_buf += iov[i].iov_len;
 	}
 	outq_item->mlen = bytes_msg;
-	list_init (&outq_item->list);
-	list_add_tail (&outq_item->list, &context->outq_head);
+	list_init(&outq_item->list);
+	list_add_tail(&outq_item->list, &context->outq_head);
 	context->queued++;
 }
 
@@ -557,20 +544,17 @@ int cs_ipcs_dispatch_send(void *conn, const void *msg, size_t mlen)
 	struct iovec iov;
 	iov.iov_base = (void *)msg;
 	iov.iov_len = mlen;
-	msg_send_or_queue (conn, &iov, 1);
+	msg_send_or_queue(conn, &iov, 1);
 	return 0;
 }
 
-int cs_ipcs_dispatch_iov_send (void *conn,
-	const struct iovec *iov,
-	unsigned int iov_len)
+int cs_ipcs_dispatch_iov_send(void *conn, const struct iovec *iov, unsigned int iov_len)
 {
 	msg_send_or_queue(conn, iov, iov_len);
 	return 0;
 }
 
-static int32_t cs_ipcs_msg_process(qb_ipcs_connection_t *c,
-		void *data, size_t size)
+static int32_t cs_ipcs_msg_process(qb_ipcs_connection_t *c, void *data, size_t size)
 {
 	struct qb_ipc_response_header response;
 	struct qb_ipc_request_header *request_pt = (struct qb_ipc_request_header *)data;
@@ -581,10 +565,7 @@ static int32_t cs_ipcs_msg_process(qb_ipcs_connection_t *c,
 	int sending_allowed_private_data;
 	struct cs_ipcs_conn_context *cnx;
 
-	send_ok = corosync_sending_allowed (service,
-			request_pt->id,
-			request_pt,
-			&sending_allowed_private_data);
+	send_ok = corosync_sending_allowed(service, request_pt->id, request_pt, &sending_allowed_private_data);
 
 	is_async_call = (service == CPG_SERVICE && request_pt->id == 2);
 
@@ -592,71 +573,62 @@ static int32_t cs_ipcs_msg_process(qb_ipcs_connection_t *c,
 	 * This happens when the message contains some kind of invalid
 	 * parameter, such as an invalid size
 	 */
-	if (send_ok == -EINVAL) {
-		response.size = sizeof (response);
+	if(send_ok == -EINVAL) {
+		response.size = sizeof(response);
 		response.id = 0;
 		response.error = CS_ERR_INVALID_PARAM;
 
 		cnx = qb_ipcs_context_get(c);
-		if (cnx) {
+		if(cnx) {
 			cnx->invalid_request++;
 		}
 
-		if (is_async_call) {
-			log_printf(LOGSYS_LEVEL_INFO, "*** %s() invalid message! size:%d error:%d",
-				__func__, response.size, response.error);
+		if(is_async_call) {
+			log_printf(LOGSYS_LEVEL_INFO, "*** %s() invalid message! size:%d error:%d", __func__, response.size, response.error);
 		} else {
-			qb_ipcs_response_send (c,
-				&response,
-				sizeof (response));
+			qb_ipcs_response_send(c, &response, sizeof(response));
 		}
 		res = -EINVAL;
-	} else if (send_ok < 0) {
+	} else if(send_ok < 0) {
 		cnx = qb_ipcs_context_get(c);
-		if (cnx) {
+		if(cnx) {
 			cnx->overload++;
 		}
-		if (!is_async_call) {
+		if(!is_async_call) {
 			/*
 			 * Overload, tell library to retry
 			 */
-			response.size = sizeof (response);
+			response.size = sizeof(response);
 			response.id = 0;
 			response.error = CS_ERR_TRY_AGAIN;
-			qb_ipcs_response_send (c,
-				&response,
-				sizeof (response));
+			qb_ipcs_response_send(c, &response, sizeof(response));
 		} else {
-			log_printf(LOGSYS_LEVEL_WARNING,
-				"*** %s() (%d:%d - %d) %s!",
-				__func__, service, request_pt->id,
-				is_async_call, strerror(-send_ok));
+			log_printf(LOGSYS_LEVEL_WARNING, "*** %s() (%d:%d - %d) %s!", __func__, service, request_pt->id,
+					   is_async_call, strerror(-send_ok));
 		}
 		res = -ENOBUFS;
 	}
 
-	if (send_ok >= 0) {
+	if(send_ok >= 0) {
 		corosync_service[service]->lib_engine[request_pt->id].lib_handler_fn(c, request_pt);
 		res = 0;
 	}
-	corosync_sending_allowed_release (&sending_allowed_private_data);
+	corosync_sending_allowed_release(&sending_allowed_private_data);
 	return res;
 }
 
 
-static int32_t cs_ipcs_job_add(enum qb_loop_priority p,	void *data, qb_loop_job_dispatch_fn fn)
+static int32_t cs_ipcs_job_add(enum qb_loop_priority p, void *data, qb_loop_job_dispatch_fn fn)
 {
 	return qb_loop_job_add(cs_poll_handle_get(), p, data, fn);
 }
 
-static int32_t cs_ipcs_dispatch_add(enum qb_loop_priority p, int32_t fd, int32_t events,
-	void *data, qb_ipcs_dispatch_fn_t fn)
+static int32_t cs_ipcs_dispatch_add(enum qb_loop_priority p, int32_t fd, int32_t events, void *data, qb_ipcs_dispatch_fn_t fn)
 {
 	return qb_loop_poll_add(cs_poll_handle_get(), p, fd, events, data, fn);
 }
 
-static int32_t cs_ipcs_dispatch_mod(enum qb_loop_priority p, int32_t fd, int32_t events,
-	void *data, qb_ipcs_dispatch_fn_t fn)
+static int32_t cs_ipcs_dispatch_mod(enum qb_loop_priority p, int32_t fd, int32_t events, void *data, qb_ipcs_dispatch_fn_t fn)
 {
 	return qb_loop_poll_mod(cs_poll_handle_get(), p, fd, events, data, fn);
 }
@@ -669,13 +641,10 @@ static int32_t cs_ipcs_dispatch_del(int32_t fd)
 static void cs_ipcs_low_fds_event(int32_t not_enough, int32_t fds_available)
 {
 	ipc_not_enough_fds_left = not_enough;
-	if (not_enough) {
-		log_printf(LOGSYS_LEVEL_WARNING, "refusing new connections (fds_available:%d)",
-			fds_available);
+	if(not_enough) {
+		log_printf(LOGSYS_LEVEL_WARNING, "refusing new connections (fds_available:%d)", fds_available);
 	} else {
-		log_printf(LOGSYS_LEVEL_NOTICE, "allowing new connections (fds_available:%d)",
-			fds_available);
-
+		log_printf(LOGSYS_LEVEL_NOTICE, "allowing new connections (fds_available:%d)", fds_available);
 	}
 }
 
@@ -690,22 +659,19 @@ static void cs_ipcs_check_for_flow_control(void)
 	int32_t i;
 	int32_t fc_enabled;
 
-	for (i = 0; i < SERVICES_COUNT_MAX; i++) {
-		if (corosync_service[i] == NULL || ipcs_mapper[i].inst == NULL) {
+	for(i = 0; i < SERVICES_COUNT_MAX; i++) {
+		if(corosync_service[i] == NULL || ipcs_mapper[i].inst == NULL) {
 			continue;
 		}
 		fc_enabled = QB_IPCS_RATE_OFF;
-		if (ipc_fc_is_quorate == 1 ||
-			corosync_service[i]->allow_inquorate == CS_LIB_ALLOW_INQUORATE) {
+		if(ipc_fc_is_quorate == 1 || corosync_service[i]->allow_inquorate == CS_LIB_ALLOW_INQUORATE) {
 			/*
 			 * we are quorate
 			 * now check flow control
 			 */
-			if (ipc_fc_totem_queue_level != TOTEM_Q_LEVEL_CRITICAL &&
-			    ipc_fc_sync_in_process == 0) {
+			if(ipc_fc_totem_queue_level != TOTEM_Q_LEVEL_CRITICAL && ipc_fc_sync_in_process == 0) {
 				fc_enabled = QB_FALSE;
-			} else if (ipc_fc_totem_queue_level != TOTEM_Q_LEVEL_CRITICAL &&
-			    i == VOTEQUORUM_SERVICE) {
+			} else if(ipc_fc_totem_queue_level != TOTEM_Q_LEVEL_CRITICAL && i == VOTEQUORUM_SERVICE) {
 				/*
 				 * Allow message processing for votequorum service even
 				 * in sync phase
@@ -715,16 +681,16 @@ static void cs_ipcs_check_for_flow_control(void)
 				fc_enabled = QB_IPCS_RATE_OFF_2;
 			}
 		}
-		if (fc_enabled) {
+		if(fc_enabled) {
 			qb_ipcs_request_rate_limit(ipcs_mapper[i].inst, fc_enabled);
 
-			qb_loop_timer_add(cs_poll_handle_get(), QB_LOOP_MED, 1*QB_TIME_NS_IN_MSEC,
-			       NULL, corosync_recheck_the_q_level, &ipcs_check_for_flow_control_timer);
-		} else if (ipc_fc_totem_queue_level == TOTEM_Q_LEVEL_LOW) {
+			qb_loop_timer_add(cs_poll_handle_get(), QB_LOOP_MED, 1 * QB_TIME_NS_IN_MSEC, NULL,
+							  corosync_recheck_the_q_level, &ipcs_check_for_flow_control_timer);
+		} else if(ipc_fc_totem_queue_level == TOTEM_Q_LEVEL_LOW) {
 			qb_ipcs_request_rate_limit(ipcs_mapper[i].inst, QB_IPCS_RATE_FAST);
-		} else if (ipc_fc_totem_queue_level == TOTEM_Q_LEVEL_GOOD) {
+		} else if(ipc_fc_totem_queue_level == TOTEM_Q_LEVEL_GOOD) {
 			qb_ipcs_request_rate_limit(ipcs_mapper[i].inst, QB_IPCS_RATE_NORMAL);
-		} else if (ipc_fc_totem_queue_level == TOTEM_Q_LEVEL_HIGH) {
+		} else if(ipc_fc_totem_queue_level == TOTEM_Q_LEVEL_HIGH) {
 			qb_ipcs_request_rate_limit(ipcs_mapper[i].inst, QB_IPCS_RATE_SLOW);
 		}
 	}
@@ -757,18 +723,17 @@ void cs_ipcs_stats_update(void)
 	struct cs_ipcs_conn_context *cnx;
 	char key_name[ICMAP_KEYNAME_MAXLEN];
 
-	for (i = 0; i < SERVICES_COUNT_MAX; i++) {
-		if (corosync_service[i] == NULL || ipcs_mapper[i].inst == NULL) {
+	for(i = 0; i < SERVICES_COUNT_MAX; i++) {
+		if(corosync_service[i] == NULL || ipcs_mapper[i].inst == NULL) {
 			continue;
 		}
 		qb_ipcs_stats_get(ipcs_mapper[i].inst, &srv_stats, QB_FALSE);
 
-		for (c = qb_ipcs_connection_first_get(ipcs_mapper[i].inst);
-			 c;
-			 prev = c, c = qb_ipcs_connection_next_get(ipcs_mapper[i].inst, prev), qb_ipcs_connection_unref(prev)) {
+		for(c = qb_ipcs_connection_first_get(ipcs_mapper[i].inst); c;
+			prev = c, c = qb_ipcs_connection_next_get(ipcs_mapper[i].inst, prev), qb_ipcs_connection_unref(prev)) {
 
 			cnx = qb_ipcs_context_get(c);
-			if (cnx == NULL) continue;
+			if(cnx == NULL) continue;
 
 			qb_ipcs_connection_stats_get(c, &stats, QB_FALSE);
 
@@ -808,33 +773,33 @@ void cs_ipcs_stats_update(void)
 	}
 }
 
-static enum qb_ipc_type cs_get_ipc_type (void)
+static enum qb_ipc_type cs_get_ipc_type(void)
 {
 	char *str;
 	int found = 0;
 	enum qb_ipc_type ret = QB_IPC_NATIVE;
 
-	if (icmap_get_string("qb.ipc_type", &str) != CS_OK) {
+	if(icmap_get_string("qb.ipc_type", &str) != CS_OK) {
 		log_printf(LOGSYS_LEVEL_DEBUG, "No configured qb.ipc_type. Using native ipc");
 		return QB_IPC_NATIVE;
 	}
 
-	if (strcmp(str, "native") == 0) {
+	if(strcmp(str, "native") == 0) {
 		ret = QB_IPC_NATIVE;
 		found = 1;
 	}
 
-	if (strcmp(str, "shm") == 0) {
+	if(strcmp(str, "shm") == 0) {
 		ret = QB_IPC_SHM;
 		found = 1;
 	}
 
-	if (strcmp(str, "socket") == 0) {
+	if(strcmp(str, "socket") == 0) {
 		ret = QB_IPC_SOCKET;
 		found = 1;
 	}
 
-	if (found) {
+	if(found) {
 		log_printf(LOGSYS_LEVEL_DEBUG, "Using %s ipc", str);
 	} else {
 		log_printf(LOGSYS_LEVEL_DEBUG, "Unknown ipc type %s", str);
@@ -851,34 +816,25 @@ const char *cs_ipcs_service_init(struct corosync_service_engine *service)
 
 	serv_short_name = cs_ipcs_serv_short_name(service->id);
 
-	if (service->lib_engine_count == 0) {
-		log_printf (LOGSYS_LEVEL_DEBUG,
-			"NOT Initializing IPC on %s [%d]",
-			serv_short_name,
-			service->id);
+	if(service->lib_engine_count == 0) {
+		log_printf(LOGSYS_LEVEL_DEBUG, "NOT Initializing IPC on %s [%d]", serv_short_name, service->id);
 		return NULL;
 	}
 
-	if (strlen(serv_short_name) >= CS_IPCS_MAPPER_SERV_NAME) {
-		log_printf (LOGSYS_LEVEL_ERROR, "service name %s is too long", serv_short_name);
+	if(strlen(serv_short_name) >= CS_IPCS_MAPPER_SERV_NAME) {
+		log_printf(LOGSYS_LEVEL_ERROR, "service name %s is too long", serv_short_name);
 		return "qb_ipcs_run error";
 	}
 
 	ipcs_mapper[service->id].id = service->id;
 	strcpy(ipcs_mapper[service->id].name, serv_short_name);
-	log_printf (LOGSYS_LEVEL_DEBUG,
-		"Initializing IPC on %s [%d]",
-		ipcs_mapper[service->id].name,
-		ipcs_mapper[service->id].id);
-	ipcs_mapper[service->id].inst = qb_ipcs_create(ipcs_mapper[service->id].name,
-		ipcs_mapper[service->id].id,
-		cs_get_ipc_type(),
-		&corosync_service_funcs);
+	log_printf(LOGSYS_LEVEL_DEBUG, "Initializing IPC on %s [%d]", ipcs_mapper[service->id].name, ipcs_mapper[service->id].id);
+	ipcs_mapper[service->id].inst =
+	qb_ipcs_create(ipcs_mapper[service->id].name, ipcs_mapper[service->id].id, cs_get_ipc_type(), &corosync_service_funcs);
 	assert(ipcs_mapper[service->id].inst);
-	qb_ipcs_poll_handlers_set(ipcs_mapper[service->id].inst,
-		&corosync_poll_funcs);
-	if (qb_ipcs_run(ipcs_mapper[service->id].inst) != 0) {
-		log_printf (LOGSYS_LEVEL_ERROR, "Can't initialize IPC");
+	qb_ipcs_poll_handlers_set(ipcs_mapper[service->id].inst, &corosync_poll_funcs);
+	if(qb_ipcs_run(ipcs_mapper[service->id].inst) != 0) {
+		log_printf(LOGSYS_LEVEL_ERROR, "Can't initialize IPC");
 		return "qb_ipcs_run error";
 	}
 
@@ -887,14 +843,13 @@ const char *cs_ipcs_service_init(struct corosync_service_engine *service)
 
 void cs_ipcs_init(void)
 {
-	api = apidef_get ();
+	api = apidef_get();
 
 	qb_loop_poll_low_fds_event_set(cs_poll_handle_get(), cs_ipcs_low_fds_event);
 
-	api->quorum_register_callback (cs_ipcs_fc_quorum_changed, NULL);
-	totempg_queue_level_register_callback (cs_ipcs_totem_queue_level_changed);
+	api->quorum_register_callback(cs_ipcs_fc_quorum_changed, NULL);
+	totempg_queue_level_register_callback(cs_ipcs_totem_queue_level_changed);
 
 	icmap_set_uint64("runtime.connections.active", 0);
 	icmap_set_uint64("runtime.connections.closed", 0);
 }
-

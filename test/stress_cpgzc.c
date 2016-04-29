@@ -53,40 +53,28 @@ struct my_msg {
 };
 
 static int deliveries = 0;
-static void cpg_deliver_fn (
-        cpg_handle_t handle,
-        const struct cpg_name *group_name,
-        uint32_t nodeid,
-        uint32_t pid,
-        void *m,
-        size_t msg_len)
+static void cpg_deliver_fn(cpg_handle_t handle, const struct cpg_name *group_name, uint32_t nodeid, uint32_t pid, void *m, size_t msg_len)
 {
 	deliveries++;
 }
 
-static void cpg_confchg_fn (
-        cpg_handle_t handle,
-        const struct cpg_name *group_name,
-        const struct cpg_address *member_list, size_t member_list_entries,
-        const struct cpg_address *left_list, size_t left_list_entries,
-        const struct cpg_address *joined_list, size_t joined_list_entries)
+static void cpg_confchg_fn(cpg_handle_t handle, const struct cpg_name *group_name, const struct cpg_address *member_list,
+						   size_t member_list_entries, const struct cpg_address *left_list, size_t left_list_entries,
+						   const struct cpg_address *joined_list, size_t joined_list_entries)
 {
 }
 
-static cpg_callbacks_t callbacks = {
-	cpg_deliver_fn,
-	cpg_confchg_fn
-};
+static cpg_callbacks_t callbacks = { cpg_deliver_fn, cpg_confchg_fn };
 
-static void sigintr_handler (int num)
+static void sigintr_handler(int num)
 {
-	exit (1);
+	exit(1);
 }
 
 #define ITERATIONS 100
 #define ALLOCATIONS 2000
 #define MAX_SIZE 100000
-int main (void)
+int main(void)
 {
 	cs_error_t res;
 	cpg_handle_t handle;
@@ -94,48 +82,41 @@ int main (void)
 	void *buffers[ALLOCATIONS];
 	int i, j;
 
-	printf ("stress cpgzc running %d allocations for %d iterations\n",
-		ALLOCATIONS, ITERATIONS);
+	printf("stress cpgzc running %d allocations for %d iterations\n", ALLOCATIONS, ITERATIONS);
 
-	signal (SIGINT, sigintr_handler);
+	signal(SIGINT, sigintr_handler);
 
-	res = cpg_initialize (&handle, &callbacks);
-	if (res != CS_OK) {
-		printf ("FAIL %d\n", res);
-		exit (-1);
+	res = cpg_initialize(&handle, &callbacks);
+	if(res != CS_OK) {
+		printf("FAIL %d\n", res);
+		exit(-1);
 	}
 
-	for (j = 0; j < ITERATIONS; j++) {
-		for (i = 0; i < ALLOCATIONS; i++) {
+	for(j = 0; j < ITERATIONS; j++) {
+		for(i = 0; i < ALLOCATIONS; i++) {
 			buffer_lens[i] = (random() % MAX_SIZE) + 1;
-			res = cpg_zcb_alloc (
-				handle,
-				buffer_lens[i],
-				&buffers[i]);
-			if (res != CS_OK) {
-				printf ("FAIL %d\n", res);
-				exit (-1);
+			res = cpg_zcb_alloc(handle, buffer_lens[i], &buffers[i]);
+			if(res != CS_OK) {
+				printf("FAIL %d\n", res);
+				exit(-1);
 			}
 		}
 
-		for (i = 0; i < ALLOCATIONS; i++) {
-			res = cpg_zcb_free (
-				handle,
-				buffers[i]);
-			if (res != CS_OK) {
-				printf ("FAIL %d\n", res);
-				exit (-1);
+		for(i = 0; i < ALLOCATIONS; i++) {
+			res = cpg_zcb_free(handle, buffers[i]);
+			if(res != CS_OK) {
+				printf("FAIL %d\n", res);
+				exit(-1);
 			}
 		}
 
-		if ((j != 0) &&
-			(j % 20) == 0) {
-			printf ("iteration %d\n", j);
+		if((j != 0) && (j % 20) == 0) {
+			printf("iteration %d\n", j);
 		}
 	}
 
-	cpg_finalize (handle);
+	cpg_finalize(handle);
 
-	printf ("PASS\n");
-	exit (0);
+	printf("PASS\n");
+	exit(0);
 }

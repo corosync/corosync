@@ -54,8 +54,8 @@
  */
 
 struct crypto_config_header {
-	uint8_t	crypto_cipher_type;
-	uint8_t	crypto_hash_type;
+	uint8_t crypto_cipher_type;
+	uint8_t crypto_hash_type;
 	uint8_t __pad0;
 	uint8_t __pad1;
 } __attribute__((packed));
@@ -98,26 +98,26 @@ enum crypto_crypt_t {
 };
 
 CK_MECHANISM_TYPE cipher_to_nss[] = {
-	0,				/* CRYPTO_CIPHER_TYPE_NONE */
-	CKM_AES_CBC_PAD,		/* CRYPTO_CIPHER_TYPE_AES256 */
-	CKM_AES_CBC_PAD,		/* CRYPTO_CIPHER_TYPE_AES192 */
-	CKM_AES_CBC_PAD,		/* CRYPTO_CIPHER_TYPE_AES128 */
-	CKM_DES3_CBC_PAD		/* CRYPTO_CIPHER_TYPE_3DES */
+	0,				 /* CRYPTO_CIPHER_TYPE_NONE */
+	CKM_AES_CBC_PAD, /* CRYPTO_CIPHER_TYPE_AES256 */
+	CKM_AES_CBC_PAD, /* CRYPTO_CIPHER_TYPE_AES192 */
+	CKM_AES_CBC_PAD, /* CRYPTO_CIPHER_TYPE_AES128 */
+	CKM_DES3_CBC_PAD /* CRYPTO_CIPHER_TYPE_3DES */
 };
 
 size_t cipher_key_len[] = {
-	0,				/* CRYPTO_CIPHER_TYPE_NONE */
-	AES_256_KEY_LENGTH,		/* CRYPTO_CIPHER_TYPE_AES256 */
-	AES_192_KEY_LENGTH,		/* CRYPTO_CIPHER_TYPE_AES192 */
-	AES_128_KEY_LENGTH,		/* CRYPTO_CIPHER_TYPE_AES128 */
-	24				/* CRYPTO_CIPHER_TYPE_3DES - no magic in nss headers */
+	0,					/* CRYPTO_CIPHER_TYPE_NONE */
+	AES_256_KEY_LENGTH, /* CRYPTO_CIPHER_TYPE_AES256 */
+	AES_192_KEY_LENGTH, /* CRYPTO_CIPHER_TYPE_AES192 */
+	AES_128_KEY_LENGTH, /* CRYPTO_CIPHER_TYPE_AES128 */
+	24					/* CRYPTO_CIPHER_TYPE_3DES - no magic in nss headers */
 };
 
 size_t cypher_block_len[] = {
 	0,				/* CRYPTO_CIPHER_TYPE_NONE */
-	AES_BLOCK_SIZE,			/* CRYPTO_CIPHER_TYPE_AES256 */
-	AES_BLOCK_SIZE,			/* CRYPTO_CIPHER_TYPE_AES192 */
-	AES_BLOCK_SIZE,			/* CRYPTO_CIPHER_TYPE_AES128 */
+	AES_BLOCK_SIZE, /* CRYPTO_CIPHER_TYPE_AES256 */
+	AES_BLOCK_SIZE, /* CRYPTO_CIPHER_TYPE_AES192 */
+	AES_BLOCK_SIZE, /* CRYPTO_CIPHER_TYPE_AES128 */
 	0				/* CRYPTO_CIPHER_TYPE_3DES */
 };
 
@@ -132,46 +132,46 @@ size_t cypher_block_len[] = {
  */
 
 enum crypto_hash_t {
-	CRYPTO_HASH_TYPE_NONE	= 0,
-	CRYPTO_HASH_TYPE_MD5	= 1,
-	CRYPTO_HASH_TYPE_SHA1	= 2,
-	CRYPTO_HASH_TYPE_SHA256	= 3,
-	CRYPTO_HASH_TYPE_SHA384	= 4,
-	CRYPTO_HASH_TYPE_SHA512	= 5,
-	CRYPTO_HASH_TYPE_2_3	= UINT8_MAX - 1,
-	CRYPTO_HASH_TYPE_2_2	= UINT8_MAX
+	CRYPTO_HASH_TYPE_NONE = 0,
+	CRYPTO_HASH_TYPE_MD5 = 1,
+	CRYPTO_HASH_TYPE_SHA1 = 2,
+	CRYPTO_HASH_TYPE_SHA256 = 3,
+	CRYPTO_HASH_TYPE_SHA384 = 4,
+	CRYPTO_HASH_TYPE_SHA512 = 5,
+	CRYPTO_HASH_TYPE_2_3 = UINT8_MAX - 1,
+	CRYPTO_HASH_TYPE_2_2 = UINT8_MAX
 };
 
 CK_MECHANISM_TYPE hash_to_nss[] = {
-	0,				/* CRYPTO_HASH_TYPE_NONE */
-	CKM_MD5_HMAC,			/* CRYPTO_HASH_TYPE_MD5 */
-	CKM_SHA_1_HMAC,			/* CRYPTO_HASH_TYPE_SHA1 */
-	CKM_SHA256_HMAC,		/* CRYPTO_HASH_TYPE_SHA256 */
-	CKM_SHA384_HMAC,		/* CRYPTO_HASH_TYPE_SHA384 */
-	CKM_SHA512_HMAC			/* CRYPTO_HASH_TYPE_SHA512 */
+	0,				 /* CRYPTO_HASH_TYPE_NONE */
+	CKM_MD5_HMAC,	/* CRYPTO_HASH_TYPE_MD5 */
+	CKM_SHA_1_HMAC,  /* CRYPTO_HASH_TYPE_SHA1 */
+	CKM_SHA256_HMAC, /* CRYPTO_HASH_TYPE_SHA256 */
+	CKM_SHA384_HMAC, /* CRYPTO_HASH_TYPE_SHA384 */
+	CKM_SHA512_HMAC  /* CRYPTO_HASH_TYPE_SHA512 */
 };
 
 size_t hash_len[] = {
-	0,				/* CRYPTO_HASH_TYPE_NONE */
-	MD5_LENGTH,			/* CRYPTO_HASH_TYPE_MD5 */
-	SHA1_LENGTH,			/* CRYPTO_HASH_TYPE_SHA1 */
-	SHA256_LENGTH,			/* CRYPTO_HASH_TYPE_SHA256 */
-	SHA384_LENGTH,			/* CRYPTO_HASH_TYPE_SHA384 */
-	SHA512_LENGTH			/* CRYPTO_HASH_TYPE_SHA512 */
+	0,			   /* CRYPTO_HASH_TYPE_NONE */
+	MD5_LENGTH,	/* CRYPTO_HASH_TYPE_MD5 */
+	SHA1_LENGTH,   /* CRYPTO_HASH_TYPE_SHA1 */
+	SHA256_LENGTH, /* CRYPTO_HASH_TYPE_SHA256 */
+	SHA384_LENGTH, /* CRYPTO_HASH_TYPE_SHA384 */
+	SHA512_LENGTH  /* CRYPTO_HASH_TYPE_SHA512 */
 };
 
 size_t hash_block_len[] = {
-	0,				/* CRYPTO_HASH_TYPE_NONE */
-	MD5_BLOCK_LENGTH,		/* CRYPTO_HASH_TYPE_MD5 */
-	SHA1_BLOCK_LENGTH,		/* CRYPTO_HASH_TYPE_SHA1 */
-	SHA256_BLOCK_LENGTH,		/* CRYPTO_HASH_TYPE_SHA256 */
-	SHA384_BLOCK_LENGTH,		/* CRYPTO_HASH_TYPE_SHA384 */
-	SHA512_BLOCK_LENGTH		/* CRYPTO_HASH_TYPE_SHA512 */
+	0,					 /* CRYPTO_HASH_TYPE_NONE */
+	MD5_BLOCK_LENGTH,	/* CRYPTO_HASH_TYPE_MD5 */
+	SHA1_BLOCK_LENGTH,   /* CRYPTO_HASH_TYPE_SHA1 */
+	SHA256_BLOCK_LENGTH, /* CRYPTO_HASH_TYPE_SHA256 */
+	SHA384_BLOCK_LENGTH, /* CRYPTO_HASH_TYPE_SHA384 */
+	SHA512_BLOCK_LENGTH  /* CRYPTO_HASH_TYPE_SHA512 */
 };
 
 struct crypto_instance {
-	PK11SymKey   *nss_sym_key;
-	PK11SymKey   *nss_sym_key_sign;
+	PK11SymKey *nss_sym_key;
+	PK11SymKey *nss_sym_key_sign;
 
 	unsigned char private_key[1024];
 
@@ -183,14 +183,8 @@ struct crypto_instance {
 
 	unsigned int crypto_header_size;
 
-	void (*log_printf_func) (
-		int level,
-		int subsys,
-		const char *function,
-		const char *file,
-		int line,
-		const char *format,
-		...)__attribute__((format(printf, 6, 7)));
+	void (*log_printf_func)(int level, int subsys, const char *function, const char *file, int line, const char *format, ...)
+	__attribute__((format(printf, 6, 7)));
 
 	int log_level_security;
 	int log_level_notice;
@@ -198,29 +192,26 @@ struct crypto_instance {
 	int log_subsys_id;
 };
 
-#define log_printf(level, format, args...)				\
-do {									\
-	instance->log_printf_func (					\
-		level, instance->log_subsys_id,				\
-		__FUNCTION__, __FILE__, __LINE__,			\
-		(const char *)format, ##args);				\
-} while (0);
+#define log_printf(level, format, args...)                                                                                         \
+	do {                                                                                                                           \
+		instance->log_printf_func(level, instance->log_subsys_id, __FUNCTION__, __FILE__, __LINE__, (const char *)format, ##args); \
+	} while(0);
 
 /*
  * crypt/decrypt functions
  */
 
-static int string_to_crypto_cipher_type(const char* crypto_cipher_type)
+static int string_to_crypto_cipher_type(const char *crypto_cipher_type)
 {
-	if (strcmp(crypto_cipher_type, "none") == 0) {
+	if(strcmp(crypto_cipher_type, "none") == 0) {
 		return CRYPTO_CIPHER_TYPE_NONE;
-	} else if (strcmp(crypto_cipher_type, "aes256") == 0) {
+	} else if(strcmp(crypto_cipher_type, "aes256") == 0) {
 		return CRYPTO_CIPHER_TYPE_AES256;
-	} else if (strcmp(crypto_cipher_type, "aes192") == 0) {
+	} else if(strcmp(crypto_cipher_type, "aes192") == 0) {
 		return CRYPTO_CIPHER_TYPE_AES192;
-	} else if (strcmp(crypto_cipher_type, "aes128") == 0) {
+	} else if(strcmp(crypto_cipher_type, "aes128") == 0) {
 		return CRYPTO_CIPHER_TYPE_AES128;
-	} else if (strcmp(crypto_cipher_type, "3des") == 0) {
+	} else if(strcmp(crypto_cipher_type, "3des") == 0) {
 		return CRYPTO_CIPHER_TYPE_3DES;
 	}
 	return CRYPTO_CIPHER_TYPE_AES256;
@@ -228,10 +219,10 @@ static int string_to_crypto_cipher_type(const char* crypto_cipher_type)
 
 static int init_nss_crypto(struct crypto_instance *instance)
 {
-	PK11SlotInfo*	crypt_slot = NULL;
-	SECItem		crypt_param;
+	PK11SlotInfo *crypt_slot = NULL;
+	SECItem crypt_param;
 
-	if (!cipher_to_nss[instance->crypto_cipher_type]) {
+	if(!cipher_to_nss[instance->crypto_cipher_type]) {
 		return 0;
 	}
 
@@ -240,19 +231,15 @@ static int init_nss_crypto(struct crypto_instance *instance)
 	crypt_param.len = cipher_key_len[instance->crypto_cipher_type];
 
 	crypt_slot = PK11_GetBestSlot(cipher_to_nss[instance->crypto_cipher_type], NULL);
-	if (crypt_slot == NULL) {
-		log_printf(instance->log_level_security, "Unable to find security slot (err %d)",
-			   PR_GetError());
+	if(crypt_slot == NULL) {
+		log_printf(instance->log_level_security, "Unable to find security slot (err %d)", PR_GetError());
 		return -1;
 	}
 
-	instance->nss_sym_key = PK11_ImportSymKey(crypt_slot,
-						  cipher_to_nss[instance->crypto_cipher_type],
-						  PK11_OriginUnwrap, CKA_ENCRYPT|CKA_DECRYPT,
-						  &crypt_param, NULL);
-	if (instance->nss_sym_key == NULL) {
-		log_printf(instance->log_level_security, "Failure to import key into NSS (err %d)",
-			   PR_GetError());
+	instance->nss_sym_key = PK11_ImportSymKey(crypt_slot, cipher_to_nss[instance->crypto_cipher_type],
+											  PK11_OriginUnwrap, CKA_ENCRYPT | CKA_DECRYPT, &crypt_param, NULL);
+	if(instance->nss_sym_key == NULL) {
+		log_printf(instance->log_level_security, "Failure to import key into NSS (err %d)", PR_GetError());
 		return -1;
 	}
 
@@ -261,32 +248,26 @@ static int init_nss_crypto(struct crypto_instance *instance)
 	return 0;
 }
 
-static int encrypt_nss(
-	struct crypto_instance *instance,
-	const unsigned char *buf_in,
-	const size_t buf_in_len,
-	unsigned char *buf_out,
-	size_t *buf_out_len)
+static int encrypt_nss(struct crypto_instance *instance, const unsigned char *buf_in, const size_t buf_in_len,
+					   unsigned char *buf_out, size_t *buf_out_len)
 {
-	PK11Context*	crypt_context = NULL;
-	SECItem		crypt_param;
-	SECItem		*nss_sec_param = NULL;
-	int		tmp1_outlen = 0;
-	unsigned int	tmp2_outlen = 0;
-	unsigned char	*salt = buf_out;
-	unsigned char	*data = buf_out + SALT_SIZE;
-	int		err = -1;
+	PK11Context *crypt_context = NULL;
+	SECItem crypt_param;
+	SECItem *nss_sec_param = NULL;
+	int tmp1_outlen = 0;
+	unsigned int tmp2_outlen = 0;
+	unsigned char *salt = buf_out;
+	unsigned char *data = buf_out + SALT_SIZE;
+	int err = -1;
 
-	if (!cipher_to_nss[instance->crypto_cipher_type]) {
+	if(!cipher_to_nss[instance->crypto_cipher_type]) {
 		memcpy(buf_out, buf_in, buf_in_len);
 		*buf_out_len = buf_in_len;
 		return 0;
 	}
 
-	if (PK11_GenerateRandom (salt, SALT_SIZE) != SECSuccess) {
-		log_printf(instance->log_level_security,
-			"Failure to generate a random number %d",
-			PR_GetError());
+	if(PK11_GenerateRandom(salt, SALT_SIZE) != SECSuccess) {
+		log_printf(instance->log_level_security, "Failure to generate a random number %d", PR_GetError());
 		goto out;
 	}
 
@@ -294,49 +275,34 @@ static int encrypt_nss(
 	crypt_param.data = salt;
 	crypt_param.len = SALT_SIZE;
 
-	nss_sec_param = PK11_ParamFromIV (cipher_to_nss[instance->crypto_cipher_type],
-					  &crypt_param);
-	if (nss_sec_param == NULL) {
-		log_printf(instance->log_level_security,
-			   "Failure to set up PKCS11 param (err %d)",
-			   PR_GetError());
+	nss_sec_param = PK11_ParamFromIV(cipher_to_nss[instance->crypto_cipher_type], &crypt_param);
+	if(nss_sec_param == NULL) {
+		log_printf(instance->log_level_security, "Failure to set up PKCS11 param (err %d)", PR_GetError());
 		goto out;
 	}
 
 	/*
 	 * Create cipher context for encryption
 	 */
-	crypt_context = PK11_CreateContextBySymKey (cipher_to_nss[instance->crypto_cipher_type],
-						    CKA_ENCRYPT,
-						    instance->nss_sym_key,
-						    nss_sec_param);
-	if (!crypt_context) {
-		log_printf(instance->log_level_security,
-			   "PK11_CreateContext failed (encrypt) crypt_type=%d (err %d)",
-			   (int)cipher_to_nss[instance->crypto_cipher_type],
-			   PR_GetError());
+	crypt_context =
+	PK11_CreateContextBySymKey(cipher_to_nss[instance->crypto_cipher_type], CKA_ENCRYPT, instance->nss_sym_key, nss_sec_param);
+	if(!crypt_context) {
+		log_printf(instance->log_level_security, "PK11_CreateContext failed (encrypt) crypt_type=%d (err %d)",
+				   (int)cipher_to_nss[instance->crypto_cipher_type], PR_GetError());
 		goto out;
 	}
 
-	if (PK11_CipherOp(crypt_context, data,
-			  &tmp1_outlen,
-			  FRAME_SIZE_MAX - instance->crypto_header_size,
-			  (unsigned char *)buf_in, buf_in_len) != SECSuccess) {
-		log_printf(instance->log_level_security,
-			   "PK11_CipherOp failed (encrypt) crypt_type=%d (err %d)",
-			   (int)cipher_to_nss[instance->crypto_cipher_type],
-			   PR_GetError());
+	if(PK11_CipherOp(crypt_context, data, &tmp1_outlen, FRAME_SIZE_MAX - instance->crypto_header_size, (unsigned char *)buf_in, buf_in_len)
+	   != SECSuccess) {
+		log_printf(instance->log_level_security, "PK11_CipherOp failed (encrypt) crypt_type=%d (err %d)",
+				   (int)cipher_to_nss[instance->crypto_cipher_type], PR_GetError());
 		goto out;
 	}
 
-	if (PK11_DigestFinal(crypt_context, data + tmp1_outlen,
-			     &tmp2_outlen, FRAME_SIZE_MAX - tmp1_outlen) != SECSuccess) {
-		log_printf(instance->log_level_security,
-			   "PK11_DigestFinal failed (encrypt) crypt_type=%d (err %d)",
-			   (int)cipher_to_nss[instance->crypto_cipher_type],
-			   PR_GetError());
+	if(PK11_DigestFinal(crypt_context, data + tmp1_outlen, &tmp2_outlen, FRAME_SIZE_MAX - tmp1_outlen) != SECSuccess) {
+		log_printf(instance->log_level_security, "PK11_DigestFinal failed (encrypt) crypt_type=%d (err %d)",
+				   (int)cipher_to_nss[instance->crypto_cipher_type], PR_GetError());
 		goto out;
-
 	}
 
 	*buf_out_len = tmp1_outlen + tmp2_outlen + SALT_SIZE;
@@ -344,32 +310,29 @@ static int encrypt_nss(
 	err = 0;
 
 out:
-	if (crypt_context) {
+	if(crypt_context) {
 		PK11_DestroyContext(crypt_context, PR_TRUE);
 	}
-	if (nss_sec_param) {
+	if(nss_sec_param) {
 		SECITEM_FreeItem(nss_sec_param, PR_TRUE);
 	}
 	return err;
 }
 
-static int decrypt_nss (
-	struct crypto_instance *instance,
-	unsigned char *buf,
-	int *buf_len)
+static int decrypt_nss(struct crypto_instance *instance, unsigned char *buf, int *buf_len)
 {
-	PK11Context*	decrypt_context = NULL;
-	SECItem		decrypt_param;
-	int		tmp1_outlen = 0;
-	unsigned int	tmp2_outlen = 0;
-	unsigned char	*salt = buf;
-	unsigned char	*data = salt + SALT_SIZE;
-	int		datalen = *buf_len - SALT_SIZE;
-	unsigned char	outbuf[FRAME_SIZE_MAX];
-	int		outbuf_len;
-	int		err = -1;
+	PK11Context *decrypt_context = NULL;
+	SECItem decrypt_param;
+	int tmp1_outlen = 0;
+	unsigned int tmp2_outlen = 0;
+	unsigned char *salt = buf;
+	unsigned char *data = salt + SALT_SIZE;
+	int datalen = *buf_len - SALT_SIZE;
+	unsigned char outbuf[FRAME_SIZE_MAX];
+	int outbuf_len;
+	int err = -1;
 
-	if (!cipher_to_nss[instance->crypto_cipher_type]) {
+	if(!cipher_to_nss[instance->crypto_cipher_type]) {
 		return 0;
 	}
 
@@ -378,29 +341,20 @@ static int decrypt_nss (
 	decrypt_param.data = salt;
 	decrypt_param.len = SALT_SIZE;
 
-	decrypt_context = PK11_CreateContextBySymKey(cipher_to_nss[instance->crypto_cipher_type],
-						     CKA_DECRYPT,
-						     instance->nss_sym_key, &decrypt_param);
-	if (!decrypt_context) {
-		log_printf(instance->log_level_security,
-			   "PK11_CreateContext (decrypt) failed (err %d)",
-			   PR_GetError());
+	decrypt_context = PK11_CreateContextBySymKey(cipher_to_nss[instance->crypto_cipher_type], CKA_DECRYPT,
+												 instance->nss_sym_key, &decrypt_param);
+	if(!decrypt_context) {
+		log_printf(instance->log_level_security, "PK11_CreateContext (decrypt) failed (err %d)", PR_GetError());
 		goto out;
 	}
 
-	if (PK11_CipherOp(decrypt_context, outbuf, &tmp1_outlen,
-			  sizeof(outbuf), data, datalen) != SECSuccess) {
-		log_printf(instance->log_level_security,
-			   "PK11_CipherOp (decrypt) failed (err %d)",
-			   PR_GetError());
+	if(PK11_CipherOp(decrypt_context, outbuf, &tmp1_outlen, sizeof(outbuf), data, datalen) != SECSuccess) {
+		log_printf(instance->log_level_security, "PK11_CipherOp (decrypt) failed (err %d)", PR_GetError());
 		goto out;
 	}
 
-	if (PK11_DigestFinal(decrypt_context, outbuf + tmp1_outlen, &tmp2_outlen,
-			     sizeof(outbuf) - tmp1_outlen) != SECSuccess) {
-		log_printf(instance->log_level_security,
-			   "PK11_DigestFinal (decrypt) failed (err %d)",
-			   PR_GetError()); 
+	if(PK11_DigestFinal(decrypt_context, outbuf + tmp1_outlen, &tmp2_outlen, sizeof(outbuf) - tmp1_outlen) != SECSuccess) {
+		log_printf(instance->log_level_security, "PK11_DigestFinal (decrypt) failed (err %d)", PR_GetError());
 		goto out;
 	}
 
@@ -414,7 +368,7 @@ static int decrypt_nss (
 	err = 0;
 
 out:
-	if (decrypt_context) {
+	if(decrypt_context) {
 		PK11_DestroyContext(decrypt_context, PR_TRUE);
 	}
 
@@ -426,19 +380,19 @@ out:
  * hash/hmac/digest functions
  */
 
-static int string_to_crypto_hash_type(const char* crypto_hash_type)
+static int string_to_crypto_hash_type(const char *crypto_hash_type)
 {
-	if (strcmp(crypto_hash_type, "none") == 0) {
+	if(strcmp(crypto_hash_type, "none") == 0) {
 		return CRYPTO_HASH_TYPE_NONE;
-	} else if (strcmp(crypto_hash_type, "md5") == 0) {
+	} else if(strcmp(crypto_hash_type, "md5") == 0) {
 		return CRYPTO_HASH_TYPE_MD5;
-	} else if (strcmp(crypto_hash_type, "sha1") == 0) {
+	} else if(strcmp(crypto_hash_type, "sha1") == 0) {
 		return CRYPTO_HASH_TYPE_SHA1;
-	} else if (strcmp(crypto_hash_type, "sha256") == 0) {
+	} else if(strcmp(crypto_hash_type, "sha256") == 0) {
 		return CRYPTO_HASH_TYPE_SHA256;
-	} else if (strcmp(crypto_hash_type, "sha384") == 0) {
+	} else if(strcmp(crypto_hash_type, "sha384") == 0) {
 		return CRYPTO_HASH_TYPE_SHA384;
-	} else if (strcmp(crypto_hash_type, "sha512") == 0) {
+	} else if(strcmp(crypto_hash_type, "sha512") == 0) {
 		return CRYPTO_HASH_TYPE_SHA512;
 	}
 
@@ -447,10 +401,10 @@ static int string_to_crypto_hash_type(const char* crypto_hash_type)
 
 static int init_nss_hash(struct crypto_instance *instance)
 {
-	PK11SlotInfo*	hash_slot = NULL;
-	SECItem		hash_param;
+	PK11SlotInfo *hash_slot = NULL;
+	SECItem hash_param;
 
-	if (!hash_to_nss[instance->crypto_hash_type]) {
+	if(!hash_to_nss[instance->crypto_hash_type]) {
 		return 0;
 	}
 
@@ -459,19 +413,15 @@ static int init_nss_hash(struct crypto_instance *instance)
 	hash_param.len = instance->private_key_len;
 
 	hash_slot = PK11_GetBestSlot(hash_to_nss[instance->crypto_hash_type], NULL);
-	if (hash_slot == NULL) {
-		log_printf(instance->log_level_security, "Unable to find security slot (err %d)",
-			   PR_GetError());
+	if(hash_slot == NULL) {
+		log_printf(instance->log_level_security, "Unable to find security slot (err %d)", PR_GetError());
 		return -1;
 	}
 
-	instance->nss_sym_key_sign = PK11_ImportSymKey(hash_slot,
-						       hash_to_nss[instance->crypto_hash_type],
-						       PK11_OriginUnwrap, CKA_SIGN,
-						       &hash_param, NULL);
-	if (instance->nss_sym_key_sign == NULL) {
-		log_printf(instance->log_level_security, "Failure to import key into NSS (err %d)",
-			   PR_GetError());
+	instance->nss_sym_key_sign =
+	PK11_ImportSymKey(hash_slot, hash_to_nss[instance->crypto_hash_type], PK11_OriginUnwrap, CKA_SIGN, &hash_param, NULL);
+	if(instance->nss_sym_key_sign == NULL) {
+		log_printf(instance->log_level_security, "Failure to import key into NSS (err %d)", PR_GetError());
 		return -1;
 	}
 
@@ -480,62 +430,43 @@ static int init_nss_hash(struct crypto_instance *instance)
 	return 0;
 }
 
-static int calculate_nss_hash(
-	struct crypto_instance *instance,
-	const unsigned char *buf,
-	const size_t buf_len,
-	unsigned char *hash)
+static int calculate_nss_hash(struct crypto_instance *instance, const unsigned char *buf, const size_t buf_len, unsigned char *hash)
 {
-	PK11Context*	hash_context = NULL;
-	SECItem		hash_param;
-	unsigned int	hash_tmp_outlen = 0;
-	unsigned char	hash_block[hash_block_len[instance->crypto_hash_type]];
-	int		err = -1;
+	PK11Context *hash_context = NULL;
+	SECItem hash_param;
+	unsigned int hash_tmp_outlen = 0;
+	unsigned char hash_block[hash_block_len[instance->crypto_hash_type]];
+	int err = -1;
 
 	/* Now do the digest */
 	hash_param.type = siBuffer;
 	hash_param.data = 0;
 	hash_param.len = 0;
 
-	hash_context = PK11_CreateContextBySymKey(hash_to_nss[instance->crypto_hash_type],
-						 CKA_SIGN,
-						 instance->nss_sym_key_sign,
-						 &hash_param);
+	hash_context =
+	PK11_CreateContextBySymKey(hash_to_nss[instance->crypto_hash_type], CKA_SIGN, instance->nss_sym_key_sign, &hash_param);
 
-	if (!hash_context) {
-		log_printf(instance->log_level_security,
-			   "PK11_CreateContext failed (hash) hash_type=%d (err %d)",
-			   (int)hash_to_nss[instance->crypto_hash_type],
-			   PR_GetError());
+	if(!hash_context) {
+		log_printf(instance->log_level_security, "PK11_CreateContext failed (hash) hash_type=%d (err %d)",
+				   (int)hash_to_nss[instance->crypto_hash_type], PR_GetError());
 		goto out;
 	}
 
-	if (PK11_DigestBegin(hash_context) != SECSuccess) {
-		log_printf(instance->log_level_security,
-			   "PK11_DigestBegin failed (hash) hash_type=%d (err %d)",
-			   (int)hash_to_nss[instance->crypto_hash_type],
-			   PR_GetError());
+	if(PK11_DigestBegin(hash_context) != SECSuccess) {
+		log_printf(instance->log_level_security, "PK11_DigestBegin failed (hash) hash_type=%d (err %d)",
+				   (int)hash_to_nss[instance->crypto_hash_type], PR_GetError());
 		goto out;
 	}
 
-	if (PK11_DigestOp(hash_context,
-			  buf,
-			  buf_len) != SECSuccess) {
-		log_printf(instance->log_level_security,
-			   "PK11_DigestOp failed (hash) hash_type=%d (err %d)",
-			   (int)hash_to_nss[instance->crypto_hash_type],
-			   PR_GetError());
+	if(PK11_DigestOp(hash_context, buf, buf_len) != SECSuccess) {
+		log_printf(instance->log_level_security, "PK11_DigestOp failed (hash) hash_type=%d (err %d)",
+				   (int)hash_to_nss[instance->crypto_hash_type], PR_GetError());
 		goto out;
 	}
 
-	if (PK11_DigestFinal(hash_context,
-			     hash_block,
-			     &hash_tmp_outlen,
-			     hash_block_len[instance->crypto_hash_type]) != SECSuccess) {
-		log_printf(instance->log_level_security,
-			   "PK11_DigestFinale failed (hash) hash_type=%d (err %d)",
-			   (int)hash_to_nss[instance->crypto_hash_type],
-			   PR_GetError());
+	if(PK11_DigestFinal(hash_context, hash_block, &hash_tmp_outlen, hash_block_len[instance->crypto_hash_type]) != SECSuccess) {
+		log_printf(instance->log_level_security, "PK11_DigestFinale failed (hash) hash_type=%d (err %d)",
+				   (int)hash_to_nss[instance->crypto_hash_type], PR_GetError());
 		goto out;
 	}
 
@@ -543,7 +474,7 @@ static int calculate_nss_hash(
 	err = 0;
 
 out:
-	if (hash_context) {
+	if(hash_context) {
 		PK11_DestroyContext(hash_context, PR_TRUE);
 	}
 
@@ -556,60 +487,49 @@ out:
 
 static int init_nss_db(struct crypto_instance *instance)
 {
-	if ((!cipher_to_nss[instance->crypto_cipher_type]) &&
-	    (!hash_to_nss[instance->crypto_hash_type])) {
+	if((!cipher_to_nss[instance->crypto_cipher_type]) && (!hash_to_nss[instance->crypto_hash_type])) {
 		return 0;
 	}
 
-	if (NSS_NoDB_Init(".") != SECSuccess) {
-		log_printf(instance->log_level_security, "NSS DB initialization failed (err %d)",
-			   PR_GetError());
+	if(NSS_NoDB_Init(".") != SECSuccess) {
+		log_printf(instance->log_level_security, "NSS DB initialization failed (err %d)", PR_GetError());
 		return -1;
 	}
 
 	return 0;
 }
 
-static int init_nss(struct crypto_instance *instance,
-		    const char *crypto_cipher_type,
-		    const char *crypto_hash_type)
+static int init_nss(struct crypto_instance *instance, const char *crypto_cipher_type, const char *crypto_hash_type)
 {
-	log_printf(instance->log_level_notice,
-		   "Initializing transmit/receive security (NSS) crypto: %s hash: %s",
-		   crypto_cipher_type, crypto_hash_type);
+	log_printf(instance->log_level_notice, "Initializing transmit/receive security (NSS) crypto: %s hash: %s",
+			   crypto_cipher_type, crypto_hash_type);
 
-	if (init_nss_db(instance) < 0) {
+	if(init_nss_db(instance) < 0) {
 		return -1;
 	}
 
-	if (init_nss_crypto(instance) < 0) {
+	if(init_nss_crypto(instance) < 0) {
 		return -1;
 	}
 
-	if (init_nss_hash(instance) < 0) {
+	if(init_nss_hash(instance) < 0) {
 		return -1;
 	}
 
 	return 0;
 }
 
-static int encrypt_and_sign_nss_2_3 (
-	struct crypto_instance *instance,
-	const unsigned char *buf_in,
-	const size_t buf_in_len,
-	unsigned char *buf_out,
-	size_t *buf_out_len)
+static int encrypt_and_sign_nss_2_3(struct crypto_instance *instance, const unsigned char *buf_in,
+									const size_t buf_in_len, unsigned char *buf_out, size_t *buf_out_len)
 {
-	if (encrypt_nss(instance,
-			buf_in, buf_in_len,
-			buf_out + sizeof(struct crypto_config_header), buf_out_len) < 0) {
+	if(encrypt_nss(instance, buf_in, buf_in_len, buf_out + sizeof(struct crypto_config_header), buf_out_len) < 0) {
 		return -1;
 	}
 
 	*buf_out_len += sizeof(struct crypto_config_header);
 
-	if (hash_to_nss[instance->crypto_hash_type]) {
-		if (calculate_nss_hash(instance, buf_out, *buf_out_len, buf_out + *buf_out_len) < 0) {
+	if(hash_to_nss[instance->crypto_hash_type]) {
+		if(calculate_nss_hash(instance, buf_out, *buf_out_len, buf_out + *buf_out_len) < 0) {
 			return -1;
 		}
 		*buf_out_len += hash_len[instance->crypto_hash_type];
@@ -618,20 +538,17 @@ static int encrypt_and_sign_nss_2_3 (
 	return 0;
 }
 
-static int authenticate_nss_2_3 (
-	struct crypto_instance *instance,
-	unsigned char *buf,
-	int *buf_len)
+static int authenticate_nss_2_3(struct crypto_instance *instance, unsigned char *buf, int *buf_len)
 {
-	if (hash_to_nss[instance->crypto_hash_type]) {
-		unsigned char	tmp_hash[hash_len[instance->crypto_hash_type]];
-		int             datalen = *buf_len - hash_len[instance->crypto_hash_type];
+	if(hash_to_nss[instance->crypto_hash_type]) {
+		unsigned char tmp_hash[hash_len[instance->crypto_hash_type]];
+		int datalen = *buf_len - hash_len[instance->crypto_hash_type];
 
-		if (calculate_nss_hash(instance, buf, datalen, tmp_hash) < 0) {
+		if(calculate_nss_hash(instance, buf, datalen, tmp_hash) < 0) {
 			return -1;
 		}
 
-		if (memcmp(tmp_hash, buf + datalen, hash_len[instance->crypto_hash_type]) != 0) {
+		if(memcmp(tmp_hash, buf + datalen, hash_len[instance->crypto_hash_type]) != 0) {
 			log_printf(instance->log_level_error, "Digest does not match");
 			return -1;
 		}
@@ -641,14 +558,11 @@ static int authenticate_nss_2_3 (
 	return 0;
 }
 
-static int decrypt_nss_2_3 (
-	struct crypto_instance *instance,
-	unsigned char *buf,
-	int *buf_len)
+static int decrypt_nss_2_3(struct crypto_instance *instance, unsigned char *buf, int *buf_len)
 {
 	*buf_len -= sizeof(struct crypto_config_header);
 
-	if (decrypt_nss(instance, buf + sizeof(struct crypto_config_header), buf_len) < 0) {
+	if(decrypt_nss(instance, buf + sizeof(struct crypto_config_header), buf_len) < 0) {
 		return -1;
 	}
 
@@ -659,9 +573,7 @@ static int decrypt_nss_2_3 (
  * exported API
  */
 
-size_t crypto_sec_header_size(
-	const char *crypto_cipher_type,
-	const char *crypto_hash_type)
+size_t crypto_sec_header_size(const char *crypto_cipher_type, const char *crypto_hash_type)
 {
 	int crypto_cipher = string_to_crypto_cipher_type(crypto_cipher_type);
 	int crypto_hash = string_to_crypto_hash_type(crypto_hash_type);
@@ -670,17 +582,17 @@ size_t crypto_sec_header_size(
 
 	hdr_size = sizeof(struct crypto_config_header);
 
-	if (crypto_hash) {
+	if(crypto_hash) {
 		hdr_size += hash_len[crypto_hash];
 	}
 
-	if (crypto_cipher) {
+	if(crypto_cipher) {
 		hdr_size += SALT_SIZE;
-		if (cypher_block_len[crypto_cipher]) {
+		if(cypher_block_len[crypto_cipher]) {
 			block_size = cypher_block_len[crypto_cipher];
 		} else {
 			block_size = PK11_GetBlockSize(crypto_cipher, NULL);
-			if (block_size < 0) {
+			if(block_size < 0) {
 				/*
 				 * failsafe. we can potentially lose up to 63
 				 * byte per packet, but better than fragmenting
@@ -708,12 +620,8 @@ size_t crypto_sec_header_size(
  *  and extra buffer but values are hashed and verified.
  */
 
-int crypto_encrypt_and_sign (
-	struct crypto_instance *instance,
-	const unsigned char *buf_in,
-	const size_t buf_in_len,
-	unsigned char *buf_out,
-	size_t *buf_out_len)
+int crypto_encrypt_and_sign(struct crypto_instance *instance, const unsigned char *buf_in, const size_t buf_in_len,
+							unsigned char *buf_out, size_t *buf_out_len)
 {
 	struct crypto_config_header *cch = (struct crypto_config_header *)buf_out;
 	int err;
@@ -723,28 +631,22 @@ int crypto_encrypt_and_sign (
 	cch->__pad0 = 0;
 	cch->__pad1 = 0;
 
-	err = encrypt_and_sign_nss_2_3(instance,
-				       buf_in, buf_in_len,
-				       buf_out, buf_out_len);
+	err = encrypt_and_sign_nss_2_3(instance, buf_in, buf_in_len, buf_out, buf_out_len);
 
 	return err;
 }
 
-int crypto_authenticate_and_decrypt (struct crypto_instance *instance,
-	unsigned char *buf,
-	int *buf_len)
+int crypto_authenticate_and_decrypt(struct crypto_instance *instance, unsigned char *buf, int *buf_len)
 {
 	struct crypto_config_header *cch = (struct crypto_config_header *)buf;
 
-	if (cch->crypto_cipher_type != CRYPTO_CIPHER_TYPE_2_3) {
-		log_printf(instance->log_level_security,
-			   "Incoming packet has different crypto type. Rejecting");
+	if(cch->crypto_cipher_type != CRYPTO_CIPHER_TYPE_2_3) {
+		log_printf(instance->log_level_security, "Incoming packet has different crypto type. Rejecting");
 		return -1;
 	}
 
-	if (cch->crypto_hash_type != CRYPTO_HASH_TYPE_2_3) {
-		log_printf(instance->log_level_security,
-			   "Incoming packet has different hash type. Rejecting");
+	if(cch->crypto_hash_type != CRYPTO_HASH_TYPE_2_3) {
+		log_printf(instance->log_level_security, "Incoming packet has different hash type. Rejecting");
 		return -1;
 	}
 
@@ -752,7 +654,7 @@ int crypto_authenticate_and_decrypt (struct crypto_instance *instance,
 	 * authenticate packet first
 	 */
 
-	if (authenticate_nss_2_3(instance, buf, buf_len) != 0) {
+	if(authenticate_nss_2_3(instance, buf, buf_len) != 0) {
 		return -1;
 	}
 
@@ -760,9 +662,9 @@ int crypto_authenticate_and_decrypt (struct crypto_instance *instance,
 	 * now we can "trust" the padding bytes/future features
 	 */
 
-	if ((cch->__pad0 != 0) || (cch->__pad1 != 0)) {
+	if((cch->__pad0 != 0) || (cch->__pad1 != 0)) {
 		log_printf(instance->log_level_security,
-			   "Incoming packet appears to have features not supported by this version of corosync. Rejecting");
+				   "Incoming packet appears to have features not supported by this version of corosync. Rejecting");
 		return -1;
 	}
 
@@ -770,7 +672,7 @@ int crypto_authenticate_and_decrypt (struct crypto_instance *instance,
 	 * decrypt
 	 */
 
-	if (decrypt_nss_2_3(instance, buf, buf_len) != 0) {
+	if(decrypt_nss_2_3(instance, buf, buf_len) != 0) {
 		return -1;
 	}
 
@@ -783,27 +685,15 @@ int crypto_authenticate_and_decrypt (struct crypto_instance *instance,
 	return 0;
 }
 
-struct crypto_instance *crypto_init(
-	const unsigned char *private_key,
-	unsigned int private_key_len,
-	const char *crypto_cipher_type,
-	const char *crypto_hash_type,
-	void (*log_printf_func) (
-		int level,
-		int subsys,
-                const char *function,
-                const char *file,
-                int line,
-                const char *format,
-                ...)__attribute__((format(printf, 6, 7))),
-	int log_level_security,
-	int log_level_notice,
-	int log_level_error,
-	int log_subsys_id)
+struct crypto_instance *crypto_init(const unsigned char *private_key, unsigned int private_key_len,
+									const char *crypto_cipher_type, const char *crypto_hash_type,
+									void (*log_printf_func)(int level, int subsys, const char *function, const char *file, int line,
+															const char *format, ...) __attribute__((format(printf, 6, 7))),
+									int log_level_security, int log_level_notice, int log_level_error, int log_subsys_id)
 {
 	struct crypto_instance *instance;
 	instance = malloc(sizeof(*instance));
-	if (instance == NULL) {
+	if(instance == NULL) {
 		return (NULL);
 	}
 	memset(instance, 0, sizeof(struct crypto_instance));
@@ -822,9 +712,9 @@ struct crypto_instance *crypto_init(
 	instance->log_level_error = log_level_error;
 	instance->log_subsys_id = log_subsys_id;
 
-	if (init_nss(instance, crypto_cipher_type, crypto_hash_type) < 0) {
+	if(init_nss(instance, crypto_cipher_type, crypto_hash_type) < 0) {
 		free(instance);
-		return(NULL);
+		return (NULL);
 	}
 
 	return (instance);
