@@ -251,6 +251,10 @@ void2wrid (void *v) { union u u; u.v = v; return u.wr_id; }
 static void *
 wrid2void (uint64_t wr_id) { union u u; u.wr_id = wr_id; return u.v; }
 
+/**
+ * @brief totemiba_instance_initialize
+ * @param instance
+ */
 static void totemiba_instance_initialize (struct totemiba_instance *instance)
 {
 	memset (instance, 0, sizeof (struct totemiba_instance));
@@ -261,6 +265,11 @@ static void totemiba_instance_initialize (struct totemiba_instance *instance)
 	list_init (&instance->recv_token_recv_buf_head);
 }
 
+/**
+ * @brief mcast_send_buf_get
+ * @param instance
+ * @return
+ */
 static inline struct send_buf *mcast_send_buf_get (
 	struct totemiba_instance *instance)
 {
@@ -290,6 +299,11 @@ static inline struct send_buf *mcast_send_buf_get (
 	return (send_buf);
 }
 
+/**
+ * @brief mcast_send_buf_put
+ * @param instance
+ * @param send_buf
+ */
 static inline void mcast_send_buf_put (
 	struct totemiba_instance *instance,
 	struct send_buf *send_buf)
@@ -298,6 +312,11 @@ static inline void mcast_send_buf_put (
 	list_add_tail (&send_buf->list_free, &instance->mcast_send_buf_free);
 }
 
+/**
+ * @brief token_send_buf_get
+ * @param instance
+ * @return
+ */
 static inline struct send_buf *token_send_buf_get (
 	struct totemiba_instance *instance)
 {
@@ -327,6 +346,10 @@ static inline struct send_buf *token_send_buf_get (
 	return (send_buf);
 }
 
+/**
+ * @brief token_send_buf_destroy
+ * @param instance
+ */
 static inline void token_send_buf_destroy (struct totemiba_instance *instance)
 {
 	struct list_head *list;
@@ -343,6 +366,11 @@ static inline void token_send_buf_destroy (struct totemiba_instance *instance)
 	list_init (&instance->token_send_buf_head);
 }
 
+/**
+ * @brief token_send_buf_put
+ * @param instance
+ * @param send_buf
+ */
 static inline void token_send_buf_put (
 	struct totemiba_instance *instance,
 	struct send_buf *send_buf)
@@ -351,6 +379,11 @@ static inline void token_send_buf_put (
 	list_add_tail (&send_buf->list_free, &instance->token_send_buf_free);
 }
 
+/**
+ * @brief recv_token_recv_buf_create
+ * @param instance
+ * @return
+ */
 static inline struct recv_buf *recv_token_recv_buf_create (
 	struct totemiba_instance *instance)
 {
@@ -379,6 +412,12 @@ static inline struct recv_buf *recv_token_recv_buf_create (
 	return (recv_buf);
 }
 
+/**
+ * @brief recv_token_recv_buf_post
+ * @param instance
+ * @param recv_buf
+ * @return
+ */
 static inline int recv_token_recv_buf_post (struct totemiba_instance *instance, struct recv_buf *recv_buf)
 {
 	struct ibv_recv_wr *fail_recv;
@@ -389,6 +428,10 @@ static inline int recv_token_recv_buf_post (struct totemiba_instance *instance, 
 	return (res);
 }
 
+/**
+ * @brief recv_token_recv_buf_post_initial
+ * @param instance
+ */
 static inline void recv_token_recv_buf_post_initial (struct totemiba_instance *instance)
 {
 	struct recv_buf *recv_buf;
@@ -401,6 +444,10 @@ static inline void recv_token_recv_buf_post_initial (struct totemiba_instance *i
 	}
 }
 
+/**
+ * @brief recv_token_recv_buf_post_destroy
+ * @param instance
+ */
 static inline void recv_token_recv_buf_post_destroy (
 	struct totemiba_instance *instance)
 {
@@ -418,6 +465,11 @@ static inline void recv_token_recv_buf_post_destroy (
 	list_init (&instance->recv_token_recv_buf_head);
 }
 
+/**
+ * @brief mcast_recv_buf_create
+ * @param instance
+ * @return
+ */
 static inline struct recv_buf *mcast_recv_buf_create (struct totemiba_instance *instance)
 {
 	struct recv_buf *recv_buf;
@@ -444,6 +496,12 @@ static inline struct recv_buf *mcast_recv_buf_create (struct totemiba_instance *
 	return (recv_buf);
 }
 
+/**
+ * @brief mcast_recv_buf_post
+ * @param instance
+ * @param recv_buf
+ * @return
+ */
 static inline int mcast_recv_buf_post (struct totemiba_instance *instance, struct recv_buf *recv_buf)
 {
 	struct ibv_recv_wr *fail_recv;
@@ -454,6 +512,10 @@ static inline int mcast_recv_buf_post (struct totemiba_instance *instance, struc
 	return (res);
 }
 
+/**
+ * @brief mcast_recv_buf_post_initial
+ * @param instance
+ */
 static inline void mcast_recv_buf_post_initial (struct totemiba_instance *instance)
 {
 	struct recv_buf *recv_buf;
@@ -466,6 +528,12 @@ static inline void mcast_recv_buf_post_initial (struct totemiba_instance *instan
 	}
 }
 
+/**
+ * @brief iba_deliver_fn
+ * @param instance
+ * @param wr_id
+ * @param bytes
+ */
 static inline void iba_deliver_fn (struct totemiba_instance *instance, uint64_t wr_id, uint32_t bytes)
 {
 	const char *addr;
@@ -478,6 +546,13 @@ static inline void iba_deliver_fn (struct totemiba_instance *instance, uint64_t 
 	instance->totemiba_deliver_fn (instance->rrp_context, addr, bytes);
 }
 
+/**
+ * @brief mcast_cq_send_event_fn
+ * @param fd
+ * @param events
+ * @param context
+ * @return
+ */
 static int mcast_cq_send_event_fn (int fd, int events, void *context)
 {
 	struct totemiba_instance *instance = (struct totemiba_instance *)context;
@@ -501,6 +576,13 @@ static int mcast_cq_send_event_fn (int fd, int events, void *context)
 	return (0);
 }
 
+/**
+ * @brief mcast_cq_recv_event_fn
+ * @param fd
+ * @param events
+ * @param context
+ * @return
+ */
 static int mcast_cq_recv_event_fn (int fd, int events, void *context)
 {
 	struct totemiba_instance *instance = (struct totemiba_instance *)context;
@@ -525,6 +607,10 @@ static int mcast_cq_recv_event_fn (int fd, int events, void *context)
 	return (0);
 }
 
+/**
+ * @brief mcast_rejoin
+ * @param data
+ */
 static void mcast_rejoin (void *data)
 {
 	int res;
@@ -551,6 +637,13 @@ static void mcast_rejoin (void *data)
 	}
 }
 
+/**
+ * @brief mcast_rdma_event_fn
+ * @param fd
+ * @param events
+ * @param context
+ * @return
+ */
 static int mcast_rdma_event_fn (int fd, int events, void *context)
 {
 	struct totemiba_instance *instance = (struct totemiba_instance *)context;
@@ -608,6 +701,13 @@ static int mcast_rdma_event_fn (int fd, int events, void *context)
 	return (0);
 }
 
+/**
+ * @brief recv_token_cq_send_event_fn
+ * @param fd
+ * @param revents
+ * @param context
+ * @return
+ */
 static int recv_token_cq_send_event_fn (
 	int fd,
 	int revents,
@@ -635,6 +735,13 @@ static int recv_token_cq_send_event_fn (
 	return (0);
 }
 
+/**
+ * @brief recv_token_cq_recv_event_fn
+ * @param fd
+ * @param events
+ * @param context
+ * @return
+ */
 static int recv_token_cq_recv_event_fn (int fd, int events, void *context)
 {
 	struct totemiba_instance *instance = (struct totemiba_instance *)context;
@@ -659,6 +766,11 @@ static int recv_token_cq_recv_event_fn (int fd, int events, void *context)
 	return (0);
 }
 
+/**
+ * @brief recv_token_accept_destroy
+ * @param instance
+ * @return
+ */
 static int recv_token_accept_destroy (struct totemiba_instance *instance)
 {
 	if (instance->recv_token_accepted == 0) {
@@ -692,6 +804,11 @@ static int recv_token_accept_destroy (struct totemiba_instance *instance)
 	return (0);
 }
 
+/**
+ * @brief recv_token_accept_setup
+ * @param instance
+ * @return
+ */
 static int recv_token_accept_setup (struct totemiba_instance *instance)
 {
 	struct ibv_qp_init_attr init_qp_attr;
@@ -787,6 +904,13 @@ static int recv_token_accept_setup (struct totemiba_instance *instance)
 	return (res);
 };
 
+/**
+ * @brief recv_token_rdma_event_fn
+ * @param fd
+ * @param events
+ * @param context
+ * @return
+ */
 static int recv_token_rdma_event_fn (int fd, int events, void *context)
 {
 	struct totemiba_instance *instance = (struct totemiba_instance *)context;
@@ -819,6 +943,13 @@ static int recv_token_rdma_event_fn (int fd, int events, void *context)
 	return (0);
 }
 
+/**
+ * @brief send_token_cq_send_event_fn
+ * @param fd
+ * @param events
+ * @param context
+ * @return
+ */
 static int send_token_cq_send_event_fn (int fd, int events, void *context)
 {
 	struct totemiba_instance *instance = (struct totemiba_instance *)context;
@@ -842,6 +973,13 @@ static int send_token_cq_send_event_fn (int fd, int events, void *context)
 	return (0);
 }
 
+/**
+ * @brief send_token_cq_recv_event_fn
+ * @param fd
+ * @param events
+ * @param context
+ * @return
+ */
 static int send_token_cq_recv_event_fn (int fd, int events, void *context)
 {
 	struct totemiba_instance *instance = (struct totemiba_instance *)context;
@@ -865,6 +1003,13 @@ static int send_token_cq_recv_event_fn (int fd, int events, void *context)
 	return (0);
 }
 
+/**
+ * @brief send_token_rdma_event_fn
+ * @param fd
+ * @param events
+ * @param context
+ * @return
+ */
 static int send_token_rdma_event_fn (int fd, int events, void *context)
 {
 	struct totemiba_instance *instance = (struct totemiba_instance *)context;
@@ -924,6 +1069,11 @@ static int send_token_rdma_event_fn (int fd, int events, void *context)
 	return (0);
 }
 
+/**
+ * @brief send_token_bind
+ * @param instance
+ * @return
+ */
 static int send_token_bind (struct totemiba_instance *instance)
 {
 	int res;
@@ -1058,6 +1208,11 @@ static int send_token_bind (struct totemiba_instance *instance)
 	return (0);
 }
 
+/**
+ * @brief send_token_unbind
+ * @param instance
+ * @return
+ */
 static int send_token_unbind (struct totemiba_instance *instance)
 {
 	if (instance->send_token_bound == 0) {
@@ -1092,6 +1247,11 @@ static int send_token_unbind (struct totemiba_instance *instance)
 	return (0);
 }
 
+/**
+ * @brief recv_token_bind
+ * @param instance
+ * @return
+ */
 static int recv_token_bind (struct totemiba_instance *instance)
 {
 	int res;
@@ -1149,6 +1309,11 @@ static int recv_token_bind (struct totemiba_instance *instance)
 	return (0);
 }
 
+/**
+ * @brief mcast_bind
+ * @param instance
+ * @return
+ */
 static int mcast_bind (struct totemiba_instance *instance)
 {
 	int res;
@@ -1276,6 +1441,10 @@ static int mcast_bind (struct totemiba_instance *instance)
 	return (0);
 }
 
+/**
+ * @brief timer_function_netif_check_timeout
+ * @param data
+ */
 static void timer_function_netif_check_timeout (
       void *data)
 {
@@ -1320,6 +1489,13 @@ static void timer_function_netif_check_timeout (
 	res = mcast_bind (instance);
 }
 
+/**
+ * @brief totemiba_crypto_set
+ * @param iba_context
+ * @param cipher_type
+ * @param hash_type
+ * @return
+ */
 int totemiba_crypto_set (
 	void *iba_context,
 	const char *cipher_type,
@@ -1333,6 +1509,11 @@ int totemiba_crypto_set (
 	return (res);
 }
 
+/**
+ * @brief totemiba_finalize
+ * @param iba_context
+ * @return
+ */
 int totemiba_finalize (
 	void *iba_context)
 {
@@ -1346,6 +1527,16 @@ int totemiba_finalize (
 
 /*
  * Create an instance
+ */
+/**
+ * @brief totemiba_initialize
+ * @param qb_poll_handle
+ * @param iba_context
+ * @param totem_config
+ * @param stats
+ * @param interface_no
+ * @param context
+ * @return
  */
 int totemiba_initialize (
 	qb_loop_t *qb_poll_handle,
@@ -1408,16 +1599,30 @@ int totemiba_initialize (
 	return (res);
 }
 
+/**
+ * @brief totemiba_buffer_alloc
+ * @return
+ */
 void *totemiba_buffer_alloc (void)
 {
 	return malloc (MAX_MTU_SIZE);
 }
 
+/**
+ * @brief totemiba_buffer_release
+ * @param ptr
+ */
 void totemiba_buffer_release (void *ptr)
 {
 	return free (ptr);
 }
 
+/**
+ * @brief totemiba_processor_count_set
+ * @param iba_context
+ * @param processor_count
+ * @return
+ */
 int totemiba_processor_count_set (
 	void *iba_context,
 	int processor_count)
@@ -1430,6 +1635,11 @@ int totemiba_processor_count_set (
 	return (res);
 }
 
+/**
+ * @brief totemiba_recv_flush
+ * @param iba_context
+ * @return
+ */
 int totemiba_recv_flush (void *iba_context)
 {
 	struct totemiba_instance *instance = (struct totemiba_instance *)iba_context;
@@ -1440,6 +1650,11 @@ int totemiba_recv_flush (void *iba_context)
 	return (res);
 }
 
+/**
+ * @brief totemiba_send_flush
+ * @param iba_context
+ * @return
+ */
 int totemiba_send_flush (void *iba_context)
 {
 	struct totemiba_instance *instance = (struct totemiba_instance *)iba_context;
@@ -1450,6 +1665,13 @@ int totemiba_send_flush (void *iba_context)
 	return (res);
 }
 
+/**
+ * @brief totemiba_token_send
+ * @param iba_context
+ * @param ms
+ * @param msg_len
+ * @return
+ */
 int totemiba_token_send (
 	void *iba_context,
 	const void *ms,
@@ -1490,6 +1712,13 @@ int totemiba_token_send (
 	return (res);
 }
 
+/**
+ * @brief totemiba_mcast_flush_send
+ * @param iba_context
+ * @param ms
+ * @param msg_len
+ * @return
+ */
 int totemiba_mcast_flush_send (
 	void *iba_context,
 	const void *ms,
@@ -1531,6 +1760,13 @@ int totemiba_mcast_flush_send (
 	return (res);
 }
 
+/**
+ * @brief totemiba_mcast_noflush_send
+ * @param iba_context
+ * @param ms
+ * @param msg_len
+ * @return
+ */
 int totemiba_mcast_noflush_send (
 	void *iba_context,
 	const void *ms,
@@ -1572,6 +1808,11 @@ int totemiba_mcast_noflush_send (
 	return (res);
 }
 
+/**
+ * @brief totemiba_iface_check
+ * @param iba_context
+ * @return
+ */
 extern int totemiba_iface_check (void *iba_context)
 {
 	struct totemiba_instance *instance = (struct totemiba_instance *)iba_context;
@@ -1582,12 +1823,22 @@ extern int totemiba_iface_check (void *iba_context)
 	return (res);
 }
 
+/**
+ * @brief totemiba_net_mtu_adjust
+ * @param iba_context
+ * @param totem_config
+ */
 extern void totemiba_net_mtu_adjust (void *iba_context, struct totem_config *totem_config)
 {
 	struct totemiba_instance *instance = (struct totemiba_instance *)iba_context;
 	instance = NULL;
 }
 
+/**
+ * @brief totemiba_iface_print
+ * @param iba_context
+ * @return
+ */
 const char *totemiba_iface_print (void *iba_context)  {
 	struct totemiba_instance *instance = (struct totemiba_instance *)iba_context;
 
@@ -1598,6 +1849,12 @@ const char *totemiba_iface_print (void *iba_context)  {
         return (ret_char);
 }
 
+/**
+ * @brief totemiba_iface_get
+ * @param iba_context
+ * @param addr
+ * @return
+ */
 int totemiba_iface_get (
 	void *iba_context,
 	struct totem_ip_address *addr)
@@ -1610,6 +1867,12 @@ int totemiba_iface_get (
 	return (res);
 }
 
+/**
+ * @brief totemiba_token_target_set
+ * @param iba_context
+ * @param token_target
+ * @return
+ */
 int totemiba_token_target_set (
 	void *iba_context,
 	const struct totem_ip_address *token_target)
@@ -1629,6 +1892,11 @@ int totemiba_token_target_set (
 	return (res);
 }
 
+/**
+ * @brief totemiba_recv_mcast_empty
+ * @param iba_context
+ * @return
+ */
 extern int totemiba_recv_mcast_empty (
 	void *iba_context)
 {

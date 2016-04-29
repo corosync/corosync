@@ -67,8 +67,22 @@
     } while (0)
 #endif
 
+/**
+ * @brief alarm_notice
+ */
 static int alarm_notice;
 
+/**
+ * @brief cpg_bm_confchg_fn
+ * @param handle
+ * @param group_name
+ * @param member_list
+ * @param member_list_entries
+ * @param left_list
+ * @param left_list_entries
+ * @param joined_list
+ * @param joined_list_entries
+ */
 static void cpg_bm_confchg_fn (
 	cpg_handle_t handle,
 	const struct cpg_name *group_name,
@@ -78,8 +92,20 @@ static void cpg_bm_confchg_fn (
 {
 }
 
+/**
+ * @brief write_count
+ */
 static unsigned int write_count;
 
+/**
+ * @brief cpg_bm_deliver_fn
+ * @param handle
+ * @param group_name
+ * @param nodeid
+ * @param pid
+ * @param msg
+ * @param msg_len
+ */
 static void cpg_bm_deliver_fn (
         cpg_handle_t handle,
         const struct cpg_name *group_name,
@@ -91,6 +117,9 @@ static void cpg_bm_deliver_fn (
 	write_count++;
 }
 
+/**
+ *
+ */
 static cpg_callbacks_t callbacks = {
 	.cpg_deliver_fn 	= cpg_bm_deliver_fn,
 	.cpg_confchg_fn		= cpg_bm_confchg_fn
@@ -99,6 +128,11 @@ static cpg_callbacks_t callbacks = {
 
 void *data;
 
+/**
+ * @brief cpg_benchmark
+ * @param handle
+ * @param write_size
+ */
 static void cpg_benchmark (
 	cpg_handle_t handle,
 	int write_size)
@@ -144,16 +178,27 @@ retry:
 		((float)write_count) * ((float)write_size) /  ((tv_elapsed.tv_sec + (tv_elapsed.tv_usec / 1000000.0)) * 1000000.0));
 }
 
+/**
+ * @brief sigalrm_handler
+ * @param num
+ */
 static void sigalrm_handler (int num)
 {
 	alarm_notice = 1;
 }
 
+/**
+ *
+ */
 static struct cpg_name group_name = {
 	.value = "cpg_bm",
 	.length = 6
 };
 
+/**
+ * @brief main
+ * @return
+ */
 int main (void) {
 	cpg_handle_t handle;
 	unsigned int size;

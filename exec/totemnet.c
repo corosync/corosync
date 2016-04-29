@@ -48,6 +48,9 @@
 #define LOGSYS_UTILS_ONLY 1
 #include <corosync/logsys.h>
 
+/**
+ * @brief The transport struct
+ */
 struct transport {
 	const char *name;
 	
@@ -205,7 +208,10 @@ struct transport transport_entries[] = {
 	}
 #endif
 };
-	
+
+/**
+ * @brief The totemnet_instance struct
+ */
 struct totemnet_instance {
 	void *transport_context;
 
@@ -232,6 +238,11 @@ do {									\
 		(const char *)format, ##args);				\
 } while (0);
 
+/**
+ * @brief totemnet_instance_initialize
+ * @param instance
+ * @param config
+ */
 static void totemnet_instance_initialize (
 	struct totemnet_instance *instance,
 	struct totem_config *config)
@@ -250,6 +261,13 @@ static void totemnet_instance_initialize (
 	instance->transport = &transport_entries[transport];
 }
 
+/**
+ * @brief totemnet_crypto_set
+ * @param net_context
+ * @param cipher_type
+ * @param hash_type
+ * @return
+ */
 int totemnet_crypto_set (
 	void *net_context,
 	const char *cipher_type,
@@ -264,6 +282,11 @@ int totemnet_crypto_set (
 	return res;
 }
 
+/**
+ * @brief totemnet_finalize
+ * @param net_context
+ * @return
+ */
 int totemnet_finalize (
 	void *net_context)
 {
@@ -275,6 +298,16 @@ int totemnet_finalize (
 	return (res);
 }
 
+/**
+ * @brief totemnet_initialize
+ * @param loop_pt
+ * @param net_context
+ * @param totem_config
+ * @param stats
+ * @param interface_no
+ * @param context
+ * @return
+ */
 int totemnet_initialize (
 	qb_loop_t *loop_pt,
 	void **net_context,
@@ -320,6 +353,11 @@ error_destroy:
 	return (-1);
 }
 
+/**
+ * @brief totemnet_buffer_alloc
+ * @param net_context
+ * @return
+ */
 void *totemnet_buffer_alloc (void *net_context)
 {
 	struct totemnet_instance *instance = net_context;
@@ -328,6 +366,11 @@ void *totemnet_buffer_alloc (void *net_context)
 	return instance->transport->buffer_alloc();
 }
 
+/**
+ * @brief totemnet_buffer_release
+ * @param net_context
+ * @param ptr
+ */
 void totemnet_buffer_release (void *net_context, void *ptr)
 {
 	struct totemnet_instance *instance = net_context;
@@ -336,6 +379,12 @@ void totemnet_buffer_release (void *net_context, void *ptr)
 	instance->transport->buffer_release (ptr);
 }
 
+/**
+ * @brief totemnet_processor_count_set
+ * @param net_context
+ * @param processor_count
+ * @return
+ */
 int totemnet_processor_count_set (
 	void *net_context,
 	int processor_count)
@@ -347,6 +396,11 @@ int totemnet_processor_count_set (
 	return (res);
 }
 
+/**
+ * @brief totemnet_recv_flush
+ * @param net_context
+ * @return
+ */
 int totemnet_recv_flush (void *net_context)
 {
 	struct totemnet_instance *instance = (struct totemnet_instance *)net_context;
@@ -357,6 +411,11 @@ int totemnet_recv_flush (void *net_context)
 	return (res);
 }
 
+/**
+ * @brief totemnet_send_flush
+ * @param net_context
+ * @return
+ */
 int totemnet_send_flush (void *net_context)
 {
 	struct totemnet_instance *instance = (struct totemnet_instance *)net_context;
@@ -367,6 +426,13 @@ int totemnet_send_flush (void *net_context)
 	return (res);
 }
 
+/**
+ * @brief totemnet_token_send
+ * @param net_context
+ * @param msg
+ * @param msg_len
+ * @return
+ */
 int totemnet_token_send (
 	void *net_context,
 	const void *msg,
@@ -379,6 +445,14 @@ int totemnet_token_send (
 
 	return (res);
 }
+
+/**
+ * @brief totemnet_mcast_flush_send
+ * @param net_context
+ * @param msg
+ * @param msg_len
+ * @return
+ */
 int totemnet_mcast_flush_send (
 	void *net_context,
 	const void *msg,
@@ -392,6 +466,13 @@ int totemnet_mcast_flush_send (
 	return (res);
 }
 
+/**
+ * @brief totemnet_mcast_noflush_send
+ * @param net_context
+ * @param msg
+ * @param msg_len
+ * @return
+ */
 int totemnet_mcast_noflush_send (
 	void *net_context,
 	const void *msg,
@@ -405,6 +486,11 @@ int totemnet_mcast_noflush_send (
 	return (res);
 }
 
+/**
+ * @brief totemnet_iface_check
+ * @param net_context
+ * @return
+ */
 extern int totemnet_iface_check (void *net_context)
 {
 	struct totemnet_instance *instance = (struct totemnet_instance *)net_context;
@@ -415,6 +501,12 @@ extern int totemnet_iface_check (void *net_context)
 	return (res);
 }
 
+/**
+ * @brief totemnet_net_mtu_adjust
+ * @param net_context
+ * @param totem_config
+ * @return
+ */
 extern int totemnet_net_mtu_adjust (void *net_context, struct totem_config *totem_config)
 {
 	struct totemnet_instance *instance = (struct totemnet_instance *)net_context;
@@ -424,6 +516,11 @@ extern int totemnet_net_mtu_adjust (void *net_context, struct totem_config *tote
 	return (res);
 }
 
+/**
+ * @brief totemnet_iface_print
+ * @param net_context
+ * @return
+ */
 const char *totemnet_iface_print (void *net_context)  {
 	struct totemnet_instance *instance = (struct totemnet_instance *)net_context;
 	const char *ret_char;
@@ -432,6 +529,12 @@ const char *totemnet_iface_print (void *net_context)  {
 	return (ret_char);
 }
 
+/**
+ * @brief totemnet_iface_get
+ * @param net_context
+ * @param addr
+ * @return
+ */
 int totemnet_iface_get (
 	void *net_context,
 	struct totem_ip_address *addr)
@@ -444,6 +547,12 @@ int totemnet_iface_get (
 	return (res);
 }
 
+/**
+ * @brief totemnet_token_target_set
+ * @param net_context
+ * @param token_target
+ * @return
+ */
 int totemnet_token_target_set (
 	void *net_context,
 	const struct totem_ip_address *token_target)
@@ -456,6 +565,11 @@ int totemnet_token_target_set (
 	return (res);
 }
 
+/**
+ * @brief totemnet_recv_mcast_empty
+ * @param net_context
+ * @return
+ */
 extern int totemnet_recv_mcast_empty (
 	void *net_context)
 {
@@ -467,6 +581,12 @@ extern int totemnet_recv_mcast_empty (
 	return (res);
 }
 
+/**
+ * @brief totemnet_member_add
+ * @param net_context
+ * @param member
+ * @return
+ */
 extern int totemnet_member_add (
 	void *net_context,
 	const struct totem_ip_address *member)
@@ -483,6 +603,12 @@ extern int totemnet_member_add (
 	return (res);
 }
 
+/**
+ * @brief totemnet_member_remove
+ * @param net_context
+ * @param member
+ * @return
+ */
 extern int totemnet_member_remove (
 	void *net_context,
 	const struct totem_ip_address *member)
@@ -499,6 +625,13 @@ extern int totemnet_member_remove (
 	return (res);
 }
 
+/**
+ * @brief totemnet_member_set_active
+ * @param net_context
+ * @param member
+ * @param active
+ * @return
+ */
 int totemnet_member_set_active (
 	void *net_context,
 	const struct totem_ip_address *member,

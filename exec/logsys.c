@@ -84,6 +84,10 @@ static struct syslog_names prioritynames[] =
 /*
  * need unlogical order to preserve 64bit alignment
  */
+
+/**
+ * @brief The logsys_logger struct
+ */
 struct logsys_logger {
 	char subsys[LOGSYS_MAX_SUBSYS_NAMELEN];	/* subsystem name */
 	char *logfile;				/* log to file */
@@ -119,6 +123,11 @@ static char *format_buffer=NULL;
 
 static int logsys_thread_started = 0;
 
+/**
+ * @brief _logsys_config_subsys_get_unlocked
+ * @param subsys
+ * @return
+ */
 static int _logsys_config_subsys_get_unlocked (const char *subsys)
 {
 	unsigned int i;
@@ -140,6 +149,13 @@ static int _logsys_config_subsys_get_unlocked (const char *subsys)
 /*
  * we need a version that can work when somebody else is already
  * holding a config mutex lock or we will never get out of here
+ */
+/**
+ * @brief logsys_config_file_set_unlocked
+ * @param subsysid
+ * @param error_string
+ * @param file
+ * @return
  */
 static int logsys_config_file_set_unlocked (
 		int subsysid,
@@ -252,6 +268,11 @@ static int logsys_config_file_set_unlocked (
 	return (0);
 }
 
+/**
+ * @brief logsys_subsys_init
+ * @param subsys
+ * @param subsysid
+ */
 static void logsys_subsys_init (
 		const char *subsys,
 		int subsysid)
@@ -273,6 +294,11 @@ static void logsys_subsys_init (
 	logsys_loggers[subsysid].file_idx = 0;
 }
 
+/**
+ * @brief _logsys_tags_stringify
+ * @param tags
+ * @return
+ */
 static const char *_logsys_tags_stringify(uint32_t tags)
 {
 	if (tags == QB_LOG_TAG_LIBQB_MSG) {
@@ -282,6 +308,9 @@ static const char *_logsys_tags_stringify(uint32_t tags)
 	}
 }
 
+/**
+ * @brief logsys_system_fini
+ */
 void logsys_system_fini (void)
 {
 	int i;
@@ -300,6 +329,14 @@ void logsys_system_fini (void)
  * Internal API - exported
  */
 
+/**
+ * @brief _logsys_system_setup
+ * @param mainsystem
+ * @param mode
+ * @param syslog_facility
+ * @param syslog_priority
+ * @return
+ */
 int _logsys_system_setup(
 	const char *mainsystem,
 	unsigned int mode,
@@ -411,6 +448,11 @@ int _logsys_system_setup(
 }
 
 
+/**
+ * @brief _logsys_subsys_filename_add
+ * @param s
+ * @param filename
+ */
 static void _logsys_subsys_filename_add (int32_t s, const char *filename)
 {
 	int i;
@@ -433,6 +475,12 @@ static void _logsys_subsys_filename_add (int32_t s, const char *filename)
 	}
 }
 
+/**
+ * @brief _logsys_subsys_create
+ * @param subsys
+ * @param filename
+ * @return
+ */
 int _logsys_subsys_create (const char *subsys, const char *filename)
 {
 	int i;
@@ -467,6 +515,11 @@ int _logsys_subsys_create (const char *subsys, const char *filename)
 	return i;
 }
 
+/**
+ * @brief _logsys_config_subsys_get
+ * @param subsys
+ * @return
+ */
 int _logsys_config_subsys_get (const char *subsys)
 {
 	unsigned int i;
@@ -480,6 +533,12 @@ int _logsys_config_subsys_get (const char *subsys)
 	return i;
 }
 
+/**
+ * @brief _logsys_config_mode_set_unlocked
+ * @param subsysid
+ * @param new_mode
+ * @return
+ */
 static int32_t _logsys_config_mode_set_unlocked(int32_t subsysid, uint32_t new_mode)
 {
 	if ( logsys_loggers[subsysid].mode == new_mode) {
@@ -503,6 +562,12 @@ static int32_t _logsys_config_mode_set_unlocked(int32_t subsysid, uint32_t new_m
 	return 0;
 }
 
+/**
+ * @brief logsys_config_mode_set
+ * @param subsys
+ * @param mode
+ * @return
+ */
 int logsys_config_mode_set (const char *subsys, unsigned int mode)
 {
 	int i;
@@ -525,6 +590,11 @@ int logsys_config_mode_set (const char *subsys, unsigned int mode)
 	return i;
 }
 
+/**
+ * @brief logsys_config_mode_get
+ * @param subsys
+ * @return
+ */
 unsigned int logsys_config_mode_get (const char *subsys)
 {
 	int i;
@@ -537,6 +607,13 @@ unsigned int logsys_config_mode_get (const char *subsys)
 	return logsys_loggers[i].mode;
 }
 
+/**
+ * @brief logsys_config_file_set
+ * @param subsys
+ * @param error_string
+ * @param file
+ * @return
+ */
 int logsys_config_file_set (
 		const char *subsys,
 		const char **error_string,
@@ -567,6 +644,11 @@ int logsys_config_file_set (
 	return res;
 }
 
+/**
+ * @brief logsys_file_format_get
+ * @param file_format
+ * @param buf_len
+ */
 static void
 logsys_file_format_get(char* file_format, int buf_len)
 {
@@ -583,6 +665,11 @@ logsys_file_format_get(char* file_format, int buf_len)
 	}
 }
 
+/**
+ * @brief logsys_format_set
+ * @param format
+ * @return
+ */
 int logsys_format_set (const char *format)
 {
 	int i;
@@ -641,11 +728,21 @@ int logsys_format_set (const char *format)
 	return 0;
 }
 
+/**
+ * @brief logsys_format_get
+ * @return
+ */
 char *logsys_format_get (void)
 {
 	return format_buffer;
 }
 
+/**
+ * @brief logsys_config_syslog_facility_set
+ * @param subsys
+ * @param facility
+ * @return
+ */
 int logsys_config_syslog_facility_set (
 	const char *subsys,
 	unsigned int facility)
@@ -653,6 +750,12 @@ int logsys_config_syslog_facility_set (
 	return qb_log_ctl(QB_LOG_SYSLOG, QB_LOG_CONF_FACILITY, facility);
 }
 
+/**
+ * @brief logsys_config_syslog_priority_set
+ * @param subsys
+ * @param priority
+ * @return
+ */
 int logsys_config_syslog_priority_set (
 	const char *subsys,
 	unsigned int priority)
@@ -680,6 +783,12 @@ int logsys_config_syslog_priority_set (
 	return i;
 }
 
+/**
+ * @brief logsys_config_logfile_priority_set
+ * @param subsys
+ * @param priority
+ * @return
+ */
 int logsys_config_logfile_priority_set (
 	const char *subsys,
 	unsigned int priority)
@@ -707,6 +816,11 @@ int logsys_config_logfile_priority_set (
 }
 
 
+/**
+ * @brief _logsys_config_apply_per_file
+ * @param s
+ * @param filename
+ */
 static void _logsys_config_apply_per_file(int32_t s, const char *filename)
 {
 	uint32_t syslog_priority = logsys_loggers[s].syslog_priority;
@@ -753,6 +867,10 @@ static void _logsys_config_apply_per_file(int32_t s, const char *filename)
 	}
 }
 
+/**
+ * @brief _logsys_config_apply_per_subsys
+ * @param s
+ */
 static void _logsys_config_apply_per_subsys(int32_t s)
 {
 	int32_t f;
@@ -767,6 +885,9 @@ static void _logsys_config_apply_per_subsys(int32_t s)
 	logsys_loggers[s].dirty = QB_FALSE;
 }
 
+/**
+ * @brief logsys_config_apply
+ */
 void logsys_config_apply(void)
 {
 	int32_t s;
@@ -779,6 +900,12 @@ void logsys_config_apply(void)
 	}
 }
 
+/**
+ * @brief logsys_config_debug_set
+ * @param subsys
+ * @param debug
+ * @return
+ */
 int logsys_config_debug_set (
 	const char *subsys,
 	unsigned int debug)
@@ -805,6 +932,11 @@ int logsys_config_debug_set (
 	return i;
 }
 
+/**
+ * @brief logsys_priority_id_get
+ * @param name
+ * @return
+ */
 int logsys_priority_id_get (const char *name)
 {
 	unsigned int i;
@@ -817,6 +949,10 @@ int logsys_priority_id_get (const char *name)
 	return (-1);
 }
 
+/**
+ * @brief logsys_thread_start
+ * @return
+ */
 int logsys_thread_start (void)
 {
 	int i;

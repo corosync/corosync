@@ -39,6 +39,12 @@
 #include <corosync/list.h>
 #include <corosync/coroapi.h>
 
+/**
+ * @brief votequorum_init
+ * @param api
+ * @param q_set_quorate_fn
+ * @return
+ */
 char *votequorum_init(struct corosync_api_v1 *api,
 	quorum_set_quorate_fn_t q_set_quorate_fn);
 

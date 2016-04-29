@@ -70,26 +70,41 @@ LOGSYS_DECLARE_SUBSYS ("YKD");
 
 #define YKD_PROCESSOR_COUNT_MAX 32
 
+/**
+ * @brief The ykd_header_values enum
+ */
 enum ykd_header_values {
 	YKD_HEADER_SENDSTATE = 0,
 	YKD_HEADER_ATTEMPT = 1
 };
 
+/**
+ * @brief The ykd_mode enum
+ */
 enum ykd_mode {
 	YKD_MODE_SENDSTATE = 0,
 	YKD_MODE_ATTEMPT = 1
 };
 
+/**
+ * @brief The ykd_header struct
+ */
 struct ykd_header {
 	int id;
 };
 
+/**
+ * @brief The ykd_session struct
+ */
 struct ykd_session {
 	unsigned int member_list[YKD_PROCESSOR_COUNT_MAX];
 	int member_list_entries;
 	int session_id;
 };
 
+/**
+ * @brief The ykd_state struct
+ */
 struct ykd_state {
 	struct ykd_session last_primary;
 
@@ -104,6 +119,9 @@ struct ykd_state {
 	int session_id;
 };
 
+/**
+ * @brief The state_received struct
+ */
 struct state_received {
 	unsigned int nodeid;
 	int received;
@@ -146,12 +164,18 @@ hdb_handle_t schedwrk_state_send_callback_handle;
 
 static struct corosync_api_v1 *api;
 
+/**
+ *
+ */
 static void (*ykd_primary_callback_fn) (
 	const unsigned int *view_list,
 	size_t view_list_entries,
 	int primary_designated,
 	struct memb_ring_id *ring_id) = NULL;
 
+/**
+ * @brief ykd_state_init
+ */
 static void ykd_state_init (void)
 {
 	ykd_state.session_id = 0;
@@ -161,6 +185,11 @@ static void ykd_state_init (void)
 	ykd_state.last_primary.member_list_entries = 0;
 }
 
+/**
+ * @brief ykd_state_send_msg
+ * @param context
+ * @return
+ */
 static int ykd_state_send_msg (const void *context)
 {
 	struct iovec iovec[2];
@@ -180,6 +209,9 @@ static int ykd_state_send_msg (const void *context)
 	return (res);
 }
 
+/**
+ * @brief ykd_state_send
+ */
 static void ykd_state_send (void)
 {
 	api->schedwrk_create (
@@ -188,6 +220,11 @@ static void ykd_state_send (void)
                 NULL);
 }
 
+/**
+ * @brief ykd_attempt_send_msg
+ * @param context
+ * @return
+ */
 static int ykd_attempt_send_msg (const void *context)
 {
 	struct iovec iovec;
@@ -205,6 +242,9 @@ static int ykd_attempt_send_msg (const void *context)
 	return (res);
 }
 
+/**
+ * @brief ykd_attempt_send
+ */
 static void ykd_attempt_send (void)
 {
 	api->schedwrk_create (
@@ -213,6 +253,9 @@ static void ykd_attempt_send (void)
                 NULL);
 }
 
+/**
+ * @brief compute
+ */
 static void compute (void)
 {
 	int i;
@@ -251,6 +294,13 @@ static void compute (void)
 	}
 }
 
+/**
+ * @brief subquorum
+ * @param member_list
+ * @param member_list_entries
+ * @param session
+ * @return
+ */
 static int subquorum (
 	unsigned int *member_list,
 	int member_list_entries,
@@ -284,6 +334,10 @@ static int subquorum (
 	return (0);
 }
 
+/**
+ * @brief decide
+ * @return
+ */
 static int decide (void)
 {
 	int i;
@@ -304,6 +358,10 @@ static int decide (void)
 	return (1);
 }
 
+/**
+ * @brief ykd_session_endian_convert
+ * @param ykd_session
+ */
 static void ykd_session_endian_convert (struct ykd_session *ykd_session)
 {
 	int i;
@@ -317,6 +375,10 @@ static void ykd_session_endian_convert (struct ykd_session *ykd_session)
 	}
 }
 
+/**
+ * @brief ykd_state_endian_convert
+ * @param state
+ */
 static void ykd_state_endian_convert (struct ykd_state *state)
 {
 	int i;
@@ -335,6 +397,13 @@ static void ykd_state_endian_convert (struct ykd_state *state)
 	}
 }
 
+/**
+ * @brief ykd_deliver_fn
+ * @param nodeid
+ * @param msg
+ * @param msg_len
+ * @param endian_conversion_required
+ */
 static void ykd_deliver_fn (
 	unsigned int nodeid,
 	const void *msg,
@@ -453,7 +522,22 @@ static void ykd_deliver_fn (
 	}
 }
 
+/**
+ * @brief first_run
+ */
 int first_run = 1;
+
+/**
+ * @brief ykd_confchg_fn
+ * @param configuration_type
+ * @param member_list
+ * @param member_list_entries
+ * @param left_list
+ * @param left_list_entries
+ * @param joined_list
+ * @param joined_list_entries
+ * @param ring_id
+ */
 static void ykd_confchg_fn (
 	enum totem_configuration_type configuration_type,
 	const unsigned int *member_list, size_t member_list_entries,
@@ -503,11 +587,20 @@ static void ykd_confchg_fn (
 	ykd_state_send ();
 }
 
+/**
+ *
+ */
 struct corosync_tpg_group ykd_group = {
 	.group		= "ykd",
 	.group_len	= 3
 };
 
+/**
+ * @brief ykd_init
+ * @param corosync_api
+ * @param set_primary
+ * @return
+ */
 char *ykd_init (
 	struct corosync_api_v1 *corosync_api,
 	quorum_set_quorate_fn_t set_primary)

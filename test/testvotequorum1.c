@@ -46,6 +46,11 @@
 
 static votequorum_handle_t g_handle;
 
+/**
+ * @brief node_state
+ * @param state
+ * @return
+ */
 static const char *node_state(int state)
 {
 	switch (state) {
@@ -65,6 +70,12 @@ static const char *node_state(int state)
 }
 
 
+/**
+ * @brief votequorum_expectedvotes_notification_fn
+ * @param handle
+ * @param context
+ * @param expected_votes
+ */
 static void votequorum_expectedvotes_notification_fn(
 	votequorum_handle_t handle,
 	uint64_t context,
@@ -76,6 +87,15 @@ static void votequorum_expectedvotes_notification_fn(
 }
 
 
+/**
+ * @brief votequorum_notification_fn
+ * @param handle
+ * @param context
+ * @param quorate
+ * @param ring_id
+ * @param node_list_entries
+ * @param node_list
+ */
 static void votequorum_notification_fn(
 	votequorum_handle_t handle,
 	uint64_t context,
@@ -99,6 +119,12 @@ static void votequorum_notification_fn(
 }
 
 
+/**
+ * @brief main
+ * @param argc
+ * @param argv
+ * @return
+ */
 int main(int argc, char *argv[])
 {
 	struct votequorum_info info;

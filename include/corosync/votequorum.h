@@ -66,6 +66,9 @@ typedef uint64_t votequorum_handle_t;
 
 /** @} */
 
+/**
+ * @brief The votequorum_info struct
+ */
 struct votequorum_info {
 	unsigned int node_id;
 	unsigned int node_state;
@@ -79,16 +82,25 @@ struct votequorum_info {
 	char qdevice_name[VOTEQUORUM_QDEVICE_MAX_NAME_LEN];
 };
 
+/**
+ * @brief votequorum_node_t struct
+ */
 typedef struct {
 	uint32_t nodeid;
 	uint32_t state;
 } votequorum_node_t;
 
+/**
+ * @brief votequorum_ring_id_t struct
+ */
 typedef struct {
 	uint32_t nodeid;
 	uint64_t seq;
 } votequorum_ring_id_t;
 
+/**
+ * @brief votequorum_notification_fn_t callback
+ */
 typedef void (*votequorum_notification_fn_t) (
 	votequorum_handle_t handle,
 	uint64_t context,
@@ -97,11 +109,17 @@ typedef void (*votequorum_notification_fn_t) (
 	uint32_t node_list_entries,
 	votequorum_node_t node_list[]);
 
+/**
+ * @brief votequorum_expectedvotes_notification_fn_t callback
+ */
 typedef void (*votequorum_expectedvotes_notification_fn_t) (
 	votequorum_handle_t handle,
 	uint64_t context,
 	uint32_t expected_votes);
 
+/**
+ * @brief votequorum_callbacks_t struct
+ */
 typedef struct {
 	votequorum_notification_fn_t votequorum_notify_fn;
 	votequorum_expectedvotes_notification_fn_t votequorum_expectedvotes_notify_fn;
@@ -168,8 +186,13 @@ cs_error_t votequorum_setvotes (
 cs_error_t votequorum_trackstart (
 	votequorum_handle_t handle,
 	uint64_t context,
-	unsigned int flags );
+        unsigned int flags);
 
+/**
+ * @brief votequorum_trackstop
+ * @param handle
+ * @return
+ */
 cs_error_t votequorum_trackstop (
 	votequorum_handle_t handle);
 
@@ -180,6 +203,12 @@ cs_error_t votequorum_context_get (
 	votequorum_handle_t handle,
 	void **context);
 
+/**
+ * @brief votequorum_context_set
+ * @param handle
+ * @param context
+ * @return
+ */
 cs_error_t votequorum_context_set (
 	votequorum_handle_t handle,
 	void *context);

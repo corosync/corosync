@@ -40,6 +40,10 @@
 #include "../exec/parse.h"
 #include "../exec/print.h"
 
+/**
+ * @brief main
+ * @return
+ */
 int main (void)
 {
 #ifdef CODE_COVERAGE_COMPILE_OUT

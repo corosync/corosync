@@ -71,6 +71,10 @@ static uint32_t nodeidStart = 0;
 
 static void print_localnodeid(cpg_handle_t handle);
 
+/**
+ * @brief print_cpgname
+ * @param name
+ */
 static void print_cpgname (const struct cpg_name *name)
 {
 	unsigned int i;
@@ -80,6 +84,12 @@ static void print_cpgname (const struct cpg_name *name)
 	}
 }
 
+/**
+ * @brief node_pid_format
+ * @param nodeid
+ * @param pid
+ * @return
+ */
 static char * node_pid_format(unsigned int nodeid, unsigned int pid) {
 	static char buffer[100];
 	if (show_ip) {
@@ -97,6 +107,9 @@ static char * node_pid_format(unsigned int nodeid, unsigned int pid) {
 	return buffer;
 }
 
+/**
+ * @brief print_time
+ */
 static void
 print_time(void)
 {
@@ -128,7 +141,15 @@ print_time(void)
 	printf("%s\n", buf);
 }
 
-
+/**
+ * @brief DeliverCallback
+ * @param handle
+ * @param groupName
+ * @param nodeid
+ * @param pid
+ * @param msg
+ * @param msg_len
+ */
 static void DeliverCallback (
 	cpg_handle_t handle,
 	const struct cpg_name *groupName,
@@ -143,6 +164,17 @@ static void DeliverCallback (
 		       (const char *)msg);
 }
 
+/**
+ * @brief ConfchgCallback
+ * @param handle
+ * @param groupName
+ * @param member_list
+ * @param member_list_entries
+ * @param left_list
+ * @param left_list_entries
+ * @param joined_list
+ * @param joined_list_entries
+ */
 static void ConfchgCallback (
 	cpg_handle_t handle,
 	const struct cpg_name *groupName,
@@ -209,6 +241,13 @@ static void ConfchgCallback (
 	}
 }
 
+/**
+ * @brief TotemConfchgCallback
+ * @param handle
+ * @param ring_id
+ * @param member_list_entries
+ * @param member_list
+ */
 static void TotemConfchgCallback (
 	cpg_handle_t handle,
         struct cpg_ring_id ring_id,
@@ -230,6 +269,9 @@ static void TotemConfchgCallback (
 	printf ("\n");
 }
 
+/**
+ *
+ */
 static cpg_model_v1_data_t model_data = {
 	.cpg_deliver_fn =            DeliverCallback,
 	.cpg_confchg_fn =            ConfchgCallback,
@@ -237,6 +279,9 @@ static cpg_model_v1_data_t model_data = {
 	.flags =                     CPG_MODEL_V1_DELIVER_INITIAL_TOTEM_CONF,
 };
 
+/**
+ * @brief group_name
+ */
 static struct cpg_name group_name;
 
 #define retrybackoff(counter) {    \
@@ -269,6 +314,10 @@ static struct cpg_name group_name;
 	}                                     \
 } while (counter < max)
 
+/**
+ * @brief print_localnodeid
+ * @param handle
+ */
 static void print_localnodeid(cpg_handle_t handle)
 {
 	char addrStr[128];
@@ -293,6 +342,12 @@ static void print_localnodeid(cpg_handle_t handle)
 	}
 }
 
+/**
+ * @brief main
+ * @param argc
+ * @param argv
+ * @return
+ */
 int main (int argc, char *argv[]) {
 	cpg_handle_t handle;
 	fd_set read_fds;

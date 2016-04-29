@@ -92,6 +92,17 @@ static unsigned int packets_recvd=0;
 static unsigned int send_retries=0;
 static unsigned int send_fails=0;
 
+/**
+ * @brief cpg_bm_confchg_fn
+ * @param handle_in
+ * @param group_name
+ * @param member_list
+ * @param member_list_entries
+ * @param left_list
+ * @param left_list_entries
+ * @param joined_list
+ * @param joined_list_entries
+ */
 static void cpg_bm_confchg_fn (
 	cpg_handle_t handle_in,
 	const struct cpg_name *group_name,
@@ -106,6 +117,15 @@ static unsigned int g_recv_length;
 static unsigned int g_write_size;
 static int g_recv_counter = 0;
 
+/**
+ * @brief cpg_bm_deliver_fn
+ * @param handle_in
+ * @param group_name
+ * @param nodeid
+ * @param pid
+ * @param msg
+ * @param msg_len
+ */
 static void cpg_bm_deliver_fn (
 	cpg_handle_t handle_in,
 	const struct cpg_name *group_name,
@@ -158,21 +178,37 @@ static void cpg_bm_deliver_fn (
 
 }
 
+/**
+ *
+ */
 static cpg_model_v1_data_t model1_data = {
 	.cpg_deliver_fn		= cpg_bm_deliver_fn,
 	.cpg_confchg_fn		= cpg_bm_confchg_fn,
 };
 
+/**
+ *
+ */
 static cpg_callbacks_t callbacks = {
 	.cpg_deliver_fn		= cpg_bm_deliver_fn,
 	.cpg_confchg_fn		= cpg_bm_confchg_fn
 };
 
+/**
+ *
+ */
 static struct cpg_name group_name = {
 	.value = "cpghum",
 	.length = 7
 };
 
+/**
+ * @brief cpg_test
+ * @param handle_in
+ * @param write_size
+ * @param delay_time
+ * @param print_time
+ */
 static void cpg_test (
 	cpg_handle_t handle_in,
 	int write_size,
@@ -227,22 +263,39 @@ static void cpg_test (
 
 }
 
+/**
+ * @brief sigalrm_handler
+ * @param num
+ */
 static void sigalrm_handler (int num)
 {
 	alarm_notice = 1;
 }
 
+/**
+ * @brief sigint_handler
+ * @param num
+ */
 static void sigint_handler (int num)
 {
 	stopped = 1;
 }
 
+/**
+ * @brief dispatch_thread
+ * @param arg
+ * @return
+ */
 static void* dispatch_thread (void *arg)
 {
 	cpg_dispatch (handle, CS_DISPATCH_BLOCKING);
 	return NULL;
 }
 
+/**
+ * @brief usage
+ * @param cmd
+ */
 static void usage(char *cmd)
 {
 	fprintf(stderr, "%s [OPTIONS]\n", cmd);
@@ -276,6 +329,12 @@ static void usage(char *cmd)
 	fprintf(stderr, "\n");
 }
 
+/**
+ * @brief main
+ * @param argc
+ * @param argv
+ * @return
+ */
 int main (int argc, char *argv[]) {
 	int i;
 	unsigned int res;

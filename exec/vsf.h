@@ -39,6 +39,9 @@ struct corosync_vsf_iface_ver0 {
 
 	/**
 	 * Executes a callback whenever component changes
+         * @param api
+         * @param primary_callback_fn
+         * @returns ???
 	 */
 	int (*init) (
 	    struct corosync_api_v1 *api,
@@ -49,8 +52,10 @@ struct corosync_vsf_iface_ver0 {
 		struct memb_ring_id *ring_id));
 
 	/**
-	 * @retval 1 if we are primary component
-	 * @retval 0 if not primary component
+         * Call to determine if we are the primary component.
+         *
+         * @returns 1 if we are primary component
+         * @returns 0 if not primary component
 	 */
 	int (*primary) (void);
 };

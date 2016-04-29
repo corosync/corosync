@@ -117,6 +117,11 @@ static struct qb_ipcs_service_handlers corosync_service_funcs = {
 	.connection_destroyed	= cs_ipcs_connection_destroyed,
 };
 
+/**
+ * @brief cs_ipcs_serv_short_name
+ * @param service_id
+ * @return
+ */
 static const char* cs_ipcs_serv_short_name(int32_t service_id)
 {
 	const char *name;
@@ -152,11 +157,20 @@ static const char* cs_ipcs_serv_short_name(int32_t service_id)
 	return name;
 }
 
+/**
+ * @brief cs_ipc_allow_connections
+ * @param allow
+ */
 void cs_ipc_allow_connections(int32_t allow)
 {
 	ipc_allow_connections = allow;
 }
 
+/**
+ * @brief cs_ipcs_service_destroy
+ * @param service_id
+ * @return
+ */
 int32_t cs_ipcs_service_destroy(int32_t service_id)
 {
 	if (ipcs_mapper[service_id].inst) {
@@ -166,6 +180,13 @@ int32_t cs_ipcs_service_destroy(int32_t service_id)
 	return 0;
 }
 
+/**
+ * @brief cs_ipcs_connection_accept
+ * @param c
+ * @param euid
+ * @param egid
+ * @return
+ */
 static int32_t cs_ipcs_connection_accept (qb_ipcs_connection_t *c, uid_t euid, gid_t egid)
 {
 	int32_t service = qb_ipcs_service_id_get(c);
@@ -203,6 +224,13 @@ static int32_t cs_ipcs_connection_accept (qb_ipcs_connection_t *c, uid_t euid, g
 	return -EACCES;
 }
 
+/**
+ * @brief pid_to_name
+ * @param pid
+ * @param out_name
+ * @param name_len
+ * @return
+ */
 static char * pid_to_name (pid_t pid, char *out_name, size_t name_len)
 {
 	char *name;
@@ -247,6 +275,9 @@ static char * pid_to_name (pid_t pid, char *out_name, size_t name_len)
 	return out_name;
 }
 
+/**
+ * @brief The cs_ipcs_conn_context struct
+ */
 struct cs_ipcs_conn_context {
 	char *icmap_path;
 	struct list_head outq_head;
@@ -258,6 +289,10 @@ struct cs_ipcs_conn_context {
 	char data[1];
 };
 
+/**
+ * @brief cs_ipcs_connection_created
+ * @param c
+ */
 static void cs_ipcs_connection_created(qb_ipcs_connection_t *c)
 {
 	int32_t service = 0;
@@ -364,16 +399,29 @@ static void cs_ipcs_connection_created(qb_ipcs_connection_t *c)
 	icmap_set_uint64(key_name, 0);
 }
 
+/**
+ * @brief cs_ipc_refcnt_inc
+ * @param conn
+ */
 void cs_ipc_refcnt_inc(void *conn)
 {
 	qb_ipcs_connection_ref(conn);
 }
 
+/**
+ * @brief cs_ipc_refcnt_dec
+ * @param conn
+ */
 void cs_ipc_refcnt_dec(void *conn)
 {
 	qb_ipcs_connection_unref(conn);
 }
 
+/**
+ * @brief cs_ipcs_private_data_get
+ * @param conn
+ * @return
+ */
 void *cs_ipcs_private_data_get(void *conn)
 {
 	struct cs_ipcs_conn_context *cnx;
@@ -381,6 +429,10 @@ void *cs_ipcs_private_data_get(void *conn)
 	return &cnx->data[0];
 }
 
+/**
+ * @brief cs_ipcs_connection_destroyed
+ * @param c
+ */
 static void cs_ipcs_connection_destroyed (qb_ipcs_connection_t *c)
 {
 	struct cs_ipcs_conn_context *context;
@@ -405,6 +457,11 @@ static void cs_ipcs_connection_destroyed (qb_ipcs_connection_t *c)
 	}
 }
 
+/**
+ * @brief cs_ipcs_connection_closed
+ * @param c
+ * @return
+ */
 static int32_t cs_ipcs_connection_closed (qb_ipcs_connection_t *c)
 {
 	int32_t res = 0;
@@ -438,6 +495,13 @@ static int32_t cs_ipcs_connection_closed (qb_ipcs_connection_t *c)
 	return 0;
 }
 
+/**
+ * @brief cs_ipcs_response_iov_send
+ * @param conn
+ * @param iov
+ * @param iov_len
+ * @return
+ */
 int cs_ipcs_response_iov_send (void *conn,
 	const struct iovec *iov,
 	unsigned int iov_len)
@@ -449,6 +513,13 @@ int cs_ipcs_response_iov_send (void *conn,
 	return rc;
 }
 
+/**
+ * @brief cs_ipcs_response_send
+ * @param conn
+ * @param msg
+ * @param mlen
+ * @return
+ */
 int cs_ipcs_response_send(void *conn, const void *msg, size_t mlen)
 {
 	int32_t rc = qb_ipcs_response_send(conn, msg, mlen);
@@ -458,6 +529,10 @@ int cs_ipcs_response_send(void *conn, const void *msg, size_t mlen)
 	return rc;
 }
 
+/**
+ * @brief outq_flush
+ * @param data
+ */
 static void outq_flush (void *data)
 {
 	qb_ipcs_connection_t *conn = data;
@@ -499,6 +574,12 @@ static void outq_flush (void *data)
 	}
 }
 
+/**
+ * @brief msg_send_or_queue
+ * @param conn
+ * @param iov
+ * @param iov_len
+ */
 static void msg_send_or_queue(qb_ipcs_connection_t *conn, const struct iovec *iov, uint32_t iov_len)
 {
 	int32_t rc = 0;
@@ -552,6 +633,13 @@ static void msg_send_or_queue(qb_ipcs_connection_t *conn, const struct iovec *io
 	context->queued++;
 }
 
+/**
+ * @brief cs_ipcs_dispatch_send
+ * @param conn
+ * @param msg
+ * @param mlen
+ * @return
+ */
 int cs_ipcs_dispatch_send(void *conn, const void *msg, size_t mlen)
 {
 	struct iovec iov;
@@ -561,6 +649,13 @@ int cs_ipcs_dispatch_send(void *conn, const void *msg, size_t mlen)
 	return 0;
 }
 
+/**
+ * @brief cs_ipcs_dispatch_iov_send
+ * @param conn
+ * @param iov
+ * @param iov_len
+ * @return
+ */
 int cs_ipcs_dispatch_iov_send (void *conn,
 	const struct iovec *iov,
 	unsigned int iov_len)
@@ -569,6 +664,13 @@ int cs_ipcs_dispatch_iov_send (void *conn,
 	return 0;
 }
 
+/**
+ * @brief cs_ipcs_msg_process
+ * @param c
+ * @param data
+ * @param size
+ * @return
+ */
 static int32_t cs_ipcs_msg_process(qb_ipcs_connection_t *c,
 		void *data, size_t size)
 {
@@ -643,29 +745,63 @@ static int32_t cs_ipcs_msg_process(qb_ipcs_connection_t *c,
 	return res;
 }
 
-
+/**
+ * @brief cs_ipcs_job_add
+ * @param p
+ * @param data
+ * @param fn
+ * @return
+ */
 static int32_t cs_ipcs_job_add(enum qb_loop_priority p,	void *data, qb_loop_job_dispatch_fn fn)
 {
 	return qb_loop_job_add(cs_poll_handle_get(), p, data, fn);
 }
 
+/**
+ * @brief cs_ipcs_dispatch_add
+ * @param p
+ * @param fd
+ * @param events
+ * @param data
+ * @param fn
+ * @return
+ */
 static int32_t cs_ipcs_dispatch_add(enum qb_loop_priority p, int32_t fd, int32_t events,
 	void *data, qb_ipcs_dispatch_fn_t fn)
 {
 	return qb_loop_poll_add(cs_poll_handle_get(), p, fd, events, data, fn);
 }
 
+/**
+ * @brief cs_ipcs_dispatch_mod
+ * @param p
+ * @param fd
+ * @param events
+ * @param data
+ * @param fn
+ * @return
+ */
 static int32_t cs_ipcs_dispatch_mod(enum qb_loop_priority p, int32_t fd, int32_t events,
 	void *data, qb_ipcs_dispatch_fn_t fn)
 {
 	return qb_loop_poll_mod(cs_poll_handle_get(), p, fd, events, data, fn);
 }
 
+/**
+ * @brief cs_ipcs_dispatch_del
+ * @param fd
+ * @return
+ */
 static int32_t cs_ipcs_dispatch_del(int32_t fd)
 {
 	return qb_loop_poll_del(cs_poll_handle_get(), fd);
 }
 
+/**
+ * @brief cs_ipcs_low_fds_event
+ * @param not_enough
+ * @param fds_available
+ */
 static void cs_ipcs_low_fds_event(int32_t not_enough, int32_t fds_available)
 {
 	ipc_not_enough_fds_left = not_enough;
@@ -679,12 +815,23 @@ static void cs_ipcs_low_fds_event(int32_t not_enough, int32_t fds_available)
 	}
 }
 
+/**
+ * @brief cs_ipcs_q_level_get
+ * @return
+ */
 int32_t cs_ipcs_q_level_get(void)
 {
 	return ipc_fc_totem_queue_level;
 }
 
+/**
+ * @brief ipcs_check_for_flow_control_timer
+ */
 static qb_loop_timer_handle ipcs_check_for_flow_control_timer;
+
+/**
+ * @brief cs_ipcs_check_for_flow_control
+ */
 static void cs_ipcs_check_for_flow_control(void)
 {
 	int32_t i;
@@ -730,24 +877,40 @@ static void cs_ipcs_check_for_flow_control(void)
 	}
 }
 
+/**
+ * @brief cs_ipcs_fc_quorum_changed
+ * @param quorate
+ * @param context
+ */
 static void cs_ipcs_fc_quorum_changed(int quorate, void *context)
 {
 	ipc_fc_is_quorate = quorate;
 	cs_ipcs_check_for_flow_control();
 }
 
+/**
+ * @brief cs_ipcs_totem_queue_level_changed
+ * @param level
+ */
 static void cs_ipcs_totem_queue_level_changed(enum totem_q_level level)
 {
 	ipc_fc_totem_queue_level = level;
 	cs_ipcs_check_for_flow_control();
 }
 
+/**
+ * @brief cs_ipcs_sync_state_changed
+ * @param sync_in_process
+ */
 void cs_ipcs_sync_state_changed(int32_t sync_in_process)
 {
 	ipc_fc_sync_in_process = sync_in_process;
 	cs_ipcs_check_for_flow_control();
 }
 
+/**
+ * @brief cs_ipcs_stats_update
+ */
 void cs_ipcs_stats_update(void)
 {
 	int32_t i;
@@ -808,6 +971,10 @@ void cs_ipcs_stats_update(void)
 	}
 }
 
+/**
+ * @brief cs_get_ipc_type
+ * @return
+ */
 static enum qb_ipc_type cs_get_ipc_type (void)
 {
 	char *str;
@@ -845,6 +1012,11 @@ static enum qb_ipc_type cs_get_ipc_type (void)
 	return ret;
 }
 
+/**
+ * @brief cs_ipcs_service_init
+ * @param service
+ * @return
+ */
 const char *cs_ipcs_service_init(struct corosync_service_engine *service)
 {
 	const char *serv_short_name;
@@ -885,6 +1057,9 @@ const char *cs_ipcs_service_init(struct corosync_service_engine *service)
 	return NULL;
 }
 
+/**
+ * @brief cs_ipcs_init
+ */
 void cs_ipcs_init(void)
 {
 	api = apidef_get ();

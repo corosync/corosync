@@ -159,6 +159,9 @@ typedef enum {
 #ifndef QUORUM_H_DEFINED
 typedef void (*quorum_callback_fn_t) (int quorate, void *context);
 
+/**
+ * @brief The quorum_callin_functions struct
+ */
 struct quorum_callin_functions {
 	int (*quorate) (void);
 	int (*register_callback) (quorum_callback_fn_t callback_fn, void *contexxt);
@@ -174,6 +177,9 @@ typedef void (*sync_callback_fn_t) (
 #endif /* QUORUM_H_DEFINED */
 
 
+/**
+ * @brief The corosync_api_v1 struct
+ */
 struct corosync_api_v1 {
 	/*
 	 * Time and timer APIs
@@ -414,20 +420,32 @@ struct corosync_api_v1 {
 
 #define SERVICES_COUNT_MAX 64
 
+/**
+ * @brief The corosync_lib_handler struct
+ */
 struct corosync_lib_handler {
 	void (*lib_handler_fn) (void *conn, const void *msg);
 	enum cs_lib_flow_control flow_control;
 };
 
+/**
+ * @brief The corosync_exec_handler struct
+ */
 struct corosync_exec_handler {
 	void (*exec_handler_fn) (const void *msg, unsigned int nodeid);
 	void (*exec_endian_convert_fn) (void *msg);
 };
 
+/**
+ * @brief The corosync_service_engine_iface_ver0 struct
+ */
 struct corosync_service_engine_iface_ver0 {
         struct corosync_service_engine *(*corosync_get_service_engine_ver0) (void);
 };
 
+/**
+ * @brief The corosync_service_engine struct
+ */
 struct corosync_service_engine {
 	const char *name;
 	unsigned short id;

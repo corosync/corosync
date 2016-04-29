@@ -90,9 +90,19 @@ struct totem_logging_configuration {
 	int log_subsys_id;
 };
 
+/**
+ *
+ */
 enum { TOTEM_PRIVATE_KEY_LEN = 128 };
+
+/**
+ *
+ */
 enum { TOTEM_RRP_MODE_BYTES = 64 };
 
+/**
+ * @brief totem_transport_t enum
+ */
 typedef enum {
 	TOTEM_TRANSPORT_UDP = 0,
 	TOTEM_TRANSPORT_UDPU = 1,
@@ -100,11 +110,17 @@ typedef enum {
 } totem_transport_t;
 
 #define MEMB_RING_ID
+/**
+ * @brief The memb_ring_id struct
+ */
 struct memb_ring_id {
 	struct totem_ip_address rep;
 	unsigned long long seq;
 } __attribute__((packed));
 
+/**
+ * @brief The totem_config struct
+ */
 struct totem_config {
 	int version;
 
@@ -198,32 +214,50 @@ struct totem_config {
 };
 
 #define TOTEM_CONFIGURATION_TYPE
+/**
+ * @brief The totem_configuration_type enum
+ */
 enum totem_configuration_type {
 	TOTEM_CONFIGURATION_REGULAR,
 	TOTEM_CONFIGURATION_TRANSITIONAL
 };
 
 #define TOTEM_CALLBACK_TOKEN_TYPE
+/**
+ * @brief The totem_callback_token_type enum
+ */
 enum totem_callback_token_type {
 	TOTEM_CALLBACK_TOKEN_RECEIVED = 1,
 	TOTEM_CALLBACK_TOKEN_SENT = 2
 };
 
+/**
+ * @brief The totem_event_type enum
+ */
 enum totem_event_type {
 	TOTEM_EVENT_DELIVERY_CONGESTED,
 	TOTEM_EVENT_NEW_MSG,
 };
 
+/**
+ * @brief totem_stats_header_t struct
+ */
 typedef struct {
 	int is_dirty;
 	time_t last_updated;
 } totem_stats_header_t;
 
+/**
+ * @brief totemnet_stats_t struct
+ */
 typedef struct {
 	totem_stats_header_t hdr;
 	uint32_t iface_changes;
 } totemnet_stats_t;
 
+/**
+ * @brief totemrrp_stats_t struct
+ */
 typedef struct {
 	totem_stats_header_t hdr;
 	totemnet_stats_t *net;
@@ -232,13 +266,18 @@ typedef struct {
 	uint32_t interface_count;
 } totemrrp_stats_t;
 
-
+/**
+ * @brief totemsrp_token_stats_t struct
+ */
 typedef struct {
 	uint32_t rx;
 	uint32_t tx;
 	int backlog_calc;
 } totemsrp_token_stats_t;
 
+/**
+ * @brief totemsrp_stats_t struct
+ */
 typedef struct {
 	totem_stats_header_t hdr;
 	totemrrp_stats_t *rrp;
@@ -272,17 +311,22 @@ typedef struct {
 	int latest_token;
 #define TOTEM_TOKEN_STATS_MAX 100
 	totemsrp_token_stats_t token[TOTEM_TOKEN_STATS_MAX];
-
 } totemsrp_stats_t;
 
  
- #define TOTEM_CONFIGURATION_TYPE
+#define TOTEM_CONFIGURATION_TYPE
 
+/**
+ * @brief totemmrp_stats_t struct
+ */
 typedef struct {
 	totem_stats_header_t hdr;
 	totemsrp_stats_t *srp;
 } totemmrp_stats_t;
 
+/**
+ * @brief totempg_stats_t struct
+ */
 typedef struct {
 	totem_stats_header_t hdr;
 	totemmrp_stats_t *mrp;

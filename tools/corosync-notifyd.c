@@ -65,6 +65,9 @@
 /*
  * generic declarations
  */
+/**
+ * @brief unnamed enum
+ */
 enum {
 	CS_NTF_LOG,
 	CS_NTF_STDOUT,
@@ -82,6 +85,9 @@ typedef void (*node_quorum_fn_t)(char *nodename, uint32_t nodeid, const char *st
 typedef void (*application_connection_fn_t)(char *nodename, uint32_t nodeid, char *app_name, const char *state);
 typedef void (*rrp_faulty_fn_t)(char *nodename, uint32_t nodeid, uint32_t iface_no, const char *state);
 
+/**
+ * @brief The notify_callbacks struct
+ */
 struct notify_callbacks {
 	node_membership_fn_t node_membership_fn;
 	node_quorum_fn_t node_quorum_fn;
@@ -126,6 +132,9 @@ static void _cs_dbus_init(void);
 #include <net-snmp/library/snmp_client.h>
 #include <net-snmp/library/snmp_debug.h>
 
+/**
+ * @brief The snmp_node_status enum
+ */
 enum snmp_node_status {
        SNMP_NODE_STATUS_UNKNOWN = 0,
        SNMP_NODE_STATUS_JOINED = 1,
@@ -162,11 +171,17 @@ static char *snmp_manager = NULL;
 
 #define CMAP_MAX_RETRIES 10
 
-/*
- * cmap
+/**
+ * @brief cmap_handle
  */
 static cmap_handle_t cmap_handle;
 
+/**
+ * @brief _cs_ip_to_hostname
+ * @param ip
+ * @param name_out
+ * @return
+ */
 static int32_t _cs_ip_to_hostname(char* ip, char* name_out)
 {
 	struct sockaddr_in sa;
@@ -192,6 +207,16 @@ static int32_t _cs_ip_to_hostname(char* ip, char* name_out)
 	return 0;
 }
 
+/**
+ * @brief _cs_cmap_members_key_changed
+ * @param cmap_handle_c
+ * @param cmap_track_handle
+ * @param event
+ * @param key_name
+ * @param new_value
+ * @param old_value
+ * @param user_data
+ */
 static void _cs_cmap_members_key_changed (
 	cmap_handle_t cmap_handle_c,
 	cmap_track_handle_t cmap_track_handle,
@@ -246,6 +271,16 @@ static void _cs_cmap_members_key_changed (
 	free(ip_str);
 }
 
+/**
+ * @brief _cs_cmap_connections_key_changed
+ * @param cmap_handle_c
+ * @param cmap_track_handle
+ * @param event
+ * @param key_name
+ * @param new_value
+ * @param old_value
+ * @param user_data
+ */
 static void _cs_cmap_connections_key_changed (
 	cmap_handle_t cmap_handle_c,
 	cmap_track_handle_t cmap_track_handle,
@@ -280,6 +315,16 @@ static void _cs_cmap_connections_key_changed (
 	}
 }
 
+/**
+ * @brief _cs_cmap_rrp_faulty_key_changed
+ * @param cmap_handle_c
+ * @param cmap_track_handle
+ * @param event
+ * @param key_name
+ * @param new_value
+ * @param old_value
+ * @param user_data
+ */
 static void _cs_cmap_rrp_faulty_key_changed (
 	cmap_handle_t cmap_handle_c,
 	cmap_track_handle_t cmap_track_handle,
@@ -322,6 +367,13 @@ static void _cs_cmap_rrp_faulty_key_changed (
 	}
 }
 
+/**
+ * @brief _cs_cmap_dispatch
+ * @param fd
+ * @param revents
+ * @param data
+ * @return
+ */
 static int
 _cs_cmap_dispatch(int fd, int revents, void *data)
 {
@@ -340,6 +392,14 @@ _cs_cmap_dispatch(int fd, int revents, void *data)
 	return 0;
 }
 
+/**
+ * @brief _cs_quorum_notification
+ * @param handle
+ * @param quorate
+ * @param ring_seq
+ * @param view_list_entries
+ * @param view_list
+ */
 static void _cs_quorum_notification(quorum_handle_t handle,
 	uint32_t quorate, uint64_t ring_seq,
 	uint32_t view_list_entries, uint32_t *view_list)
@@ -356,6 +416,13 @@ static void _cs_quorum_notification(quorum_handle_t handle,
 	}
 }
 
+/**
+ * @brief _cs_quorum_dispatch
+ * @param fd
+ * @param revents
+ * @param data
+ * @return
+ */
 static int
 _cs_quorum_dispatch(int fd, int revents, void *data)
 {
@@ -372,6 +439,9 @@ _cs_quorum_dispatch(int fd, int revents, void *data)
 	return 0;
 }
 
+/**
+ * @brief _cs_quorum_init
+ */
 static void
 _cs_quorum_init(void)
 {
@@ -399,6 +469,9 @@ _cs_quorum_init(void)
 	}
 }
 
+/**
+ * @brief _cs_quorum_finalize
+ */
 static void
 _cs_quorum_finalize(void)
 {
@@ -407,8 +480,8 @@ _cs_quorum_finalize(void)
 
 
 #ifdef HAVE_DBUS
-/*
- * dbus notifications
+/**
+ * @brief _cs_dbus_auto_flush dbus notifications
  */
 static void
 _cs_dbus_auto_flush(void)
@@ -425,6 +498,9 @@ _cs_dbus_auto_flush(void)
 	dbus_connection_unref(db);
 }
 
+/**
+ * @brief _cs_dbus_release
+ */
 static void
 _cs_dbus_release(void)
 {
@@ -440,6 +516,12 @@ _cs_dbus_release(void)
 	db = NULL;
 }
 
+/**
+ * @brief _cs_dbus_node_quorum_event
+ * @param nodename
+ * @param nodeid
+ * @param state
+ */
 static void
 _cs_dbus_node_quorum_event(char *nodename, uint32_t nodeid, const char *state)
 {
@@ -489,6 +571,13 @@ out_free:
 	return;
 }
 
+/**
+ * @brief _cs_dbus_node_membership_event
+ * @param nodename
+ * @param nodeid
+ * @param state
+ * @param ip
+ */
 static void
 _cs_dbus_node_membership_event(char *nodename, uint32_t nodeid, char *state, char* ip)
 {
@@ -539,6 +628,13 @@ out_free:
 	return;
 }
 
+/**
+ * @brief _cs_dbus_application_connection_event
+ * @param nodename
+ * @param nodeid
+ * @param app_name
+ * @param state
+ */
 static void
 _cs_dbus_application_connection_event(char *nodename, uint32_t nodeid, char *app_name, const char *state)
 {
@@ -589,6 +685,13 @@ out_free:
 	return;
 }
 
+/**
+ * @brief _cs_dbus_rrp_faulty_event
+ * @param nodename
+ * @param nodeid
+ * @param iface_no
+ * @param state
+ */
 static void
 _cs_dbus_rrp_faulty_event(char *nodename, uint32_t nodeid, uint32_t iface_no, const char *state)
 {
@@ -639,6 +742,9 @@ out_free:
 	return;
 }
 
+/**
+ * @brief _cs_dbus_init
+ */
 static void
 _cs_dbus_init(void)
 {
@@ -675,6 +781,11 @@ _cs_dbus_init(void)
 #endif /* HAVE_DBUS */
 
 #ifdef ENABLE_SNMP
+/**
+ * @brief snmp_init
+ * @param target
+ * @return
+ */
 static netsnmp_session *snmp_init (const char *target)
 {
 	static netsnmp_session *session = NULL;
@@ -710,6 +821,14 @@ static netsnmp_session *snmp_init (const char *target)
 	return (session);
 }
 
+/**
+ * @brief add_field
+ * @param trap_pdu
+ * @param asn_type
+ * @param prefix
+ * @param value
+ * @param value_size
+ */
 static inline void add_field (
 	netsnmp_pdu *trap_pdu,
 	u_char asn_type,
@@ -724,6 +843,13 @@ static inline void add_field (
 	}
 }
 
+/**
+ * @brief _cs_snmp_node_membership_event
+ * @param nodename
+ * @param nodeid
+ * @param state
+ * @param ip
+ */
 static void
 _cs_snmp_node_membership_event(char *nodename, uint32_t nodeid, char *state, char* ip)
 {
@@ -766,6 +892,12 @@ _cs_snmp_node_membership_event(char *nodename, uint32_t nodeid, char *state, cha
 	}
 }
 
+/**
+ * @brief _cs_snmp_node_quorum_event
+ * @param nodename
+ * @param nodeid
+ * @param state
+ */
 static void
 _cs_snmp_node_quorum_event(char *nodename, uint32_t nodeid,
 			   const char *state)
@@ -808,6 +940,13 @@ _cs_snmp_node_quorum_event(char *nodename, uint32_t nodeid,
 	}
 }
 
+/**
+ * @brief _cs_snmp_rrp_faulty_event
+ * @param nodename
+ * @param nodeid
+ * @param iface_no
+ * @param state
+ */
 static void
 _cs_snmp_rrp_faulty_event(char *nodename, uint32_t nodeid,
 		uint32_t iface_no, const char *state)
@@ -851,6 +990,9 @@ _cs_snmp_rrp_faulty_event(char *nodename, uint32_t nodeid,
 	}
 }
 
+/**
+ * @brief _cs_snmp_init
+ */
 static void
 _cs_snmp_init(void)
 {
@@ -870,12 +1012,25 @@ _cs_snmp_init(void)
 
 #endif /* ENABLE_SNMP */
 
+/**
+ * @brief _cs_syslog_node_membership_event
+ * @param nodename
+ * @param nodeid
+ * @param state
+ * @param ip
+ */
 static void
 _cs_syslog_node_membership_event(char *nodename, uint32_t nodeid, char *state, char* ip)
 {
 	qb_log(LOG_NOTICE, "%s[%d] ip:%s %s", nodename, nodeid, ip, state);
 }
 
+/**
+ * @brief _cs_syslog_node_quorum_event
+ * @param nodename
+ * @param nodeid
+ * @param state
+ */
 static void
 _cs_syslog_node_quorum_event(char *nodename, uint32_t nodeid, const char *state)
 {
@@ -886,6 +1041,13 @@ _cs_syslog_node_quorum_event(char *nodename, uint32_t nodeid, const char *state)
 	}
 }
 
+/**
+ * @brief _cs_syslog_application_connection_event
+ * @param nodename
+ * @param nodeid
+ * @param app_name
+ * @param state
+ */
 static void
 _cs_syslog_application_connection_event(char *nodename, uint32_t nodeid, char* app_name, const char *state)
 {
@@ -896,12 +1058,26 @@ _cs_syslog_application_connection_event(char *nodename, uint32_t nodeid, char* a
 	}
 }
 
+/**
+ * @brief _cs_syslog_rrp_faulty_event
+ * @param nodename
+ * @param nodeid
+ * @param iface_no
+ * @param state
+ */
 static void
 _cs_syslog_rrp_faulty_event(char *nodename, uint32_t nodeid, uint32_t iface_no, const char *state)
 {
 	qb_log(LOG_NOTICE, "%s[%d] interface %u is now %s", nodename, nodeid, iface_no, state);
 }
 
+/**
+ * @brief _cs_node_membership_event
+ * @param nodename
+ * @param nodeid
+ * @param state
+ * @param ip
+ */
 static void
 _cs_node_membership_event(char *nodename, uint32_t nodeid, char *state, char* ip)
 {
@@ -914,6 +1090,11 @@ _cs_node_membership_event(char *nodename, uint32_t nodeid, char *state, char* ip
 	}
 }
 
+/**
+ * @brief _cs_local_node_info_get
+ * @param nodename
+ * @param nodeid
+ */
 static void
 _cs_local_node_info_get(char **nodename, uint32_t *nodeid)
 {
@@ -941,6 +1122,10 @@ _cs_local_node_info_get(char **nodename, uint32_t *nodeid)
 	*nodename = local_nodename;
 }
 
+/**
+ * @brief _cs_node_quorum_event
+ * @param state
+ */
 static void
 _cs_node_quorum_event(const char *state)
 {
@@ -957,6 +1142,11 @@ _cs_node_quorum_event(const char *state)
 	}
 }
 
+/**
+ * @brief _cs_application_connection_event
+ * @param app_name
+ * @param state
+ */
 static void
 _cs_application_connection_event(char *app_name, const char *state)
 {
@@ -973,6 +1163,11 @@ _cs_application_connection_event(char *app_name, const char *state)
 	}
 }
 
+/**
+ * @brief _cs_rrp_faulty_event
+ * @param iface_no
+ * @param state
+ */
 static void
 _cs_rrp_faulty_event(uint32_t iface_no, const char *state)
 {
@@ -989,6 +1184,12 @@ _cs_rrp_faulty_event(uint32_t iface_no, const char *state)
 	}
 }
 
+/**
+ * @brief sig_exit_handler
+ * @param num
+ * @param data
+ * @return
+ */
 static int32_t
 sig_exit_handler(int32_t num, void *data)
 {
@@ -996,6 +1197,9 @@ sig_exit_handler(int32_t num, void *data)
 	return 0;
 }
 
+/**
+ * @brief _cs_cmap_init
+ */
 static void
 _cs_cmap_init(void)
 {
@@ -1046,12 +1250,18 @@ _cs_cmap_init(void)
 	}
 }
 
+/**
+ * @brief _cs_cmap_finalize
+ */
 static void
 _cs_cmap_finalize(void)
 {
 	cmap_finalize (cmap_handle);
 }
 
+/**
+ * @brief _cs_check_config
+ */
 static void
 _cs_check_config(void)
 {
@@ -1085,6 +1295,9 @@ _cs_check_config(void)
 	}
 }
 
+/**
+ * @brief _cs_usage
+ */
 static void
 _cs_usage(void)
 {
@@ -1098,6 +1311,12 @@ _cs_usage(void)
 		"        -h     : Print this help\n\n");
 }
 
+/**
+ * @brief main
+ * @param argc
+ * @param argv
+ * @return
+ */
 int
 main(int argc, char *argv[])
 {

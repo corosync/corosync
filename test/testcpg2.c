@@ -44,6 +44,15 @@
 #include <corosync/corotypes.h>
 #include <corosync/cpg.h>
 
+/**
+ * @brief deliver
+ * @param handle
+ * @param group_name
+ * @param nodeid
+ * @param pid
+ * @param msg
+ * @param msg_len
+ */
 static void deliver(
 	cpg_handle_t handle,
 	const struct cpg_name *group_name,
@@ -55,6 +64,17 @@ static void deliver(
     printf("self delivered nodeid: %x\n", nodeid);
 }
 
+/**
+ * @brief confch
+ * @param handle
+ * @param group_name
+ * @param member_list
+ * @param member_list_entries
+ * @param left_list
+ * @param left_list_entries
+ * @param joined_list
+ * @param joined_list_entries
+ */
 static void confch(
 	cpg_handle_t handle,
 	const struct cpg_name *group_name,
@@ -65,6 +85,12 @@ static void confch(
 	printf("confchg nodeid %x\n", member_list[0].nodeid);
 }
 
+/**
+ * @brief main
+ * @param argc
+ * @param argv
+ * @return
+ */
 int main(int argc, char** argv) {
 	cpg_handle_t handle=0;
 	cpg_callbacks_t cb={&deliver,&confch};

@@ -80,6 +80,9 @@
  */
 #define CPG_MEMORY_MAP_UMASK		077
 
+/**
+ * @brief The cpg_inst struct
+ */
 struct cpg_inst {
 	qb_ipcc_connection_t *c;
 	int finalize;
@@ -102,6 +105,9 @@ static void cpg_inst_free (void *inst);
 
 DECLARE_HDB_DATABASE(cpg_handle_t_db, cpg_inst_free);
 
+/**
+ * @brief The cpg_iteration_instance_t struct
+ */
 struct cpg_iteration_instance_t {
 	cpg_iteration_handle_t cpg_iteration_handle;
 	qb_ipcc_connection_t *conn;
@@ -116,6 +122,15 @@ DECLARE_HDB_DATABASE(cpg_iteration_handle_t_db,NULL);
  * Internal (not visible by API) functions
  */
 
+/**
+ * @brief coroipcc_msg_send_reply_receive
+ * @param c
+ * @param iov
+ * @param iov_len
+ * @param res_msg
+ * @param res_len
+ * @return
+ */
 static cs_error_t
 coroipcc_msg_send_reply_receive (
 	qb_ipcc_connection_t *c,
@@ -128,18 +143,31 @@ coroipcc_msg_send_reply_receive (
 				CS_IPC_TIMEOUT_MS));
 }
 
+/**
+ * @brief cpg_iteration_instance_finalize
+ * @param cpg_iteration_instance
+ */
 static void cpg_iteration_instance_finalize (struct cpg_iteration_instance_t *cpg_iteration_instance)
 {
 	list_del (&cpg_iteration_instance->list);
 	hdb_handle_destroy (&cpg_iteration_handle_t_db, cpg_iteration_instance->cpg_iteration_handle);
 }
 
+/**
+ * @brief cpg_inst_free
+ * @param inst
+ */
 static void cpg_inst_free (void *inst)
 {
 	struct cpg_inst *cpg_inst = (struct cpg_inst *)inst;
 	qb_ipcc_disconnect(cpg_inst->c);
 }
 
+/**
+ * @brief cpg_inst_finalize
+ * @param cpg_inst
+ * @param handle
+ */
 static void cpg_inst_finalize (struct cpg_inst *cpg_inst, hdb_handle_t handle)
 {
 	struct list_head *iter, *iter_next;
@@ -165,6 +193,12 @@ static void cpg_inst_finalize (struct cpg_inst *cpg_inst, hdb_handle_t handle)
  * @{
  */
 
+/**
+ * @brief cpg_initialize
+ * @param handle
+ * @param callbacks
+ * @return
+ */
 cs_error_t cpg_initialize (
 	cpg_handle_t *handle,
 	cpg_callbacks_t *callbacks)
@@ -181,6 +215,14 @@ cs_error_t cpg_initialize (
 	return (cpg_model_initialize (handle, CPG_MODEL_V1, (cpg_model_data_t *)&model_v1_data, NULL));
 }
 
+/**
+ * @brief cpg_model_initialize
+ * @param handle
+ * @param model
+ * @param model_data
+ * @param context
+ * @return
+ */
 cs_error_t cpg_model_initialize (
 	cpg_handle_t *handle,
 	cpg_model_t model,
@@ -243,6 +285,11 @@ error_no_destroy:
 	return (error);
 }
 
+/**
+ * @brief cpg_finalize
+ * @param handle
+ * @return
+ */
 cs_error_t cpg_finalize (
 	cpg_handle_t handle)
 {
@@ -288,6 +335,12 @@ cs_error_t cpg_finalize (
 	return (error);
 }
 
+/**
+ * @brief cpg_fd_get
+ * @param handle
+ * @param fd
+ * @return
+ */
 cs_error_t cpg_fd_get (
 	cpg_handle_t handle,
 	int *fd)
@@ -307,6 +360,12 @@ cs_error_t cpg_fd_get (
 	return (error);
 }
 
+/**
+ * @brief cpg_max_atomic_msgsize_get
+ * @param handle
+ * @param size
+ * @return
+ */
 cs_error_t cpg_max_atomic_msgsize_get (
 	cpg_handle_t handle,
 	uint32_t *size)
@@ -326,6 +385,12 @@ cs_error_t cpg_max_atomic_msgsize_get (
 	return (error);
 }
 
+/**
+ * @brief cpg_context_get
+ * @param handle
+ * @param context
+ * @return
+ */
 cs_error_t cpg_context_get (
 	cpg_handle_t handle,
 	void **context)
@@ -345,6 +410,12 @@ cs_error_t cpg_context_get (
 	return (CS_OK);
 }
 
+/**
+ * @brief cpg_context_set
+ * @param handle
+ * @param context
+ * @return
+ */
 cs_error_t cpg_context_set (
 	cpg_handle_t handle,
 	void *context)
@@ -364,6 +435,12 @@ cs_error_t cpg_context_set (
 	return (CS_OK);
 }
 
+/**
+ * @brief cpg_dispatch
+ * @param handle
+ * @param dispatch_types
+ * @return
+ */
 cs_error_t cpg_dispatch (
 	cpg_handle_t handle,
 	cs_dispatch_flags_t dispatch_types)
@@ -586,6 +663,12 @@ error_put:
 	return (error);
 }
 
+/**
+ * @brief cpg_join
+ * @param handle
+ * @param group
+ * @return
+ */
 cs_error_t cpg_join (
     cpg_handle_t handle,
     const struct cpg_name *group)
@@ -640,6 +723,12 @@ error_exit:
 	return (error);
 }
 
+/**
+ * @brief cpg_leave
+ * @param handle
+ * @param group
+ * @return
+ */
 cs_error_t cpg_leave (
     cpg_handle_t handle,
     const struct cpg_name *group)
@@ -685,6 +774,14 @@ error_exit:
 	return (error);
 }
 
+/**
+ * @brief cpg_membership_get
+ * @param handle
+ * @param group_name
+ * @param member_list
+ * @param member_list_entries
+ * @return
+ */
 cs_error_t cpg_membership_get (
 	cpg_handle_t handle,
 	struct cpg_name *group_name,
@@ -748,6 +845,12 @@ error_exit:
 	return (error);
 }
 
+/**
+ * @brief cpg_local_get
+ * @param handle
+ * @param local_nodeid
+ * @return
+ */
 cs_error_t cpg_local_get (
 	cpg_handle_t handle,
 	unsigned int *local_nodeid)
@@ -786,6 +889,12 @@ error_exit:
 	return (error);
 }
 
+/**
+ * @brief cpg_flow_control_state_get
+ * @param handle
+ * @param flow_control_state
+ * @return
+ */
 cs_error_t cpg_flow_control_state_get (
 	cpg_handle_t handle,
 	cpg_flow_control_state_t *flow_control_state)
@@ -805,6 +914,14 @@ cs_error_t cpg_flow_control_state_get (
 	return (error);
 }
 
+/**
+ * @brief memory_map
+ * @param path
+ * @param file
+ * @param buf
+ * @param bytes
+ * @return
+ */
 static int
 memory_map (char *path, const char *file, void **buf, size_t bytes)
 {
@@ -884,6 +1001,13 @@ error_close_unlink:
 	return -1;
 }
 
+/**
+ * @brief cpg_zcb_alloc
+ * @param handle
+ * @param size
+ * @param buffer
+ * @return
+ */
 cs_error_t cpg_zcb_alloc (
 	cpg_handle_t handle,
 	size_t size,
@@ -941,6 +1065,12 @@ error_exit:
 	return (error);
 }
 
+/**
+ * @brief cpg_zcb_free
+ * @param handle
+ * @param buffer
+ * @return
+ */
 cs_error_t cpg_zcb_free (
 	cpg_handle_t handle,
 	void *buffer)
@@ -990,6 +1120,14 @@ error_exit:
 	return (error);
 }
 
+/**
+ * @brief cpg_zcb_mcast_joined
+ * @param handle
+ * @param guarantee
+ * @param msg
+ * @param msg_len
+ * @return
+ */
 cs_error_t cpg_zcb_mcast_joined (
 	cpg_handle_t handle,
 	cpg_guarantee_t guarantee,
@@ -1050,6 +1188,15 @@ error_exit:
 	return (error);
 }
 
+/**
+ * @brief send_fragments
+ * @param cpg_inst
+ * @param guarantee
+ * @param msg_len
+ * @param iovec
+ * @param iov_len
+ * @return
+ */
 static cs_error_t send_fragments (
 	struct cpg_inst *cpg_inst,
 	cpg_guarantee_t guarantee,
@@ -1132,6 +1279,14 @@ error_exit:
 }
 
 
+/**
+ * @brief cpg_mcast_joined
+ * @param handle
+ * @param guarantee
+ * @param iovec
+ * @param iov_len
+ * @return
+ */
 cs_error_t cpg_mcast_joined (
 	cpg_handle_t handle,
 	cpg_guarantee_t guarantee,
@@ -1180,6 +1335,14 @@ error_exit:
 	return (error);
 }
 
+/**
+ * @brief cpg_iteration_initialize
+ * @param handle
+ * @param iteration_type
+ * @param group
+ * @param cpg_iteration_handle
+ * @return
+ */
 cs_error_t cpg_iteration_initialize(
 	cpg_handle_t handle,
 	cpg_iteration_type_t iteration_type,
@@ -1273,6 +1436,12 @@ error_put_cpg_db:
 	return (error);
 }
 
+/**
+ * @brief cpg_iteration_next
+ * @param handle
+ * @param description
+ * @return
+ */
 cs_error_t cpg_iteration_next(
 	cpg_iteration_handle_t handle,
 	struct cpg_iteration_description_t *description)
@@ -1323,6 +1492,11 @@ error_exit:
 	return (error);
 }
 
+/**
+ * @brief cpg_iteration_finalize
+ * @param handle
+ * @return
+ */
 cs_error_t cpg_iteration_finalize (
 	cpg_iteration_handle_t handle)
 {

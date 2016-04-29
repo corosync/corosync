@@ -42,6 +42,9 @@ extern "C" {
 
 typedef uint64_t quorum_handle_t;
 
+/**
+ * @brief quorum_notification_fn_t callback
+ */
 typedef void (*quorum_notification_fn_t) (
 	quorum_handle_t handle,
 	uint32_t quorate,
@@ -50,6 +53,9 @@ typedef void (*quorum_notification_fn_t) (
 	uint32_t *view_list
 	);
 
+/**
+ * @brief quorum_callbacks_t struct
+ */
 typedef struct {
 	quorum_notification_fn_t quorum_notify_fn;
 } quorum_callbacks_t;
