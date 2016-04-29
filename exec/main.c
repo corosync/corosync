@@ -939,7 +939,7 @@ _logsys_log_printf(int level, int subsys,
 	va_list ap;
 
 	va_start(ap, format);
-	qb_log_from_external_source_va(function_name, file_name,
+	qb_log_from_external_source_va(function_name, basename(file_name),
 				    format, level, file_line,
 				    subsys, ap);
 	va_end(ap);
