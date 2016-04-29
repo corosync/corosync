@@ -58,6 +58,9 @@
 
 #include "util.h"
 
+/**
+ * @brief The votequorum_inst struct
+ */
 struct votequorum_inst {
 	qb_ipcc_connection_t *c;
 	int finalize;
@@ -69,6 +72,12 @@ static void votequorum_inst_free (void *inst);
 
 DECLARE_HDB_DATABASE(votequorum_handle_t_db, votequorum_inst_free);
 
+/**
+ * @brief votequorum_initialize
+ * @param handle
+ * @param callbacks
+ * @return
+ */
 cs_error_t votequorum_initialize (
 	votequorum_handle_t *handle,
 	votequorum_callbacks_t *callbacks)
@@ -110,12 +119,21 @@ error_no_destroy:
 	return (error);
 }
 
+/**
+ * @brief votequorum_inst_free
+ * @param inst
+ */
 static void votequorum_inst_free (void *inst)
 {
 	struct votequorum_inst *vq_inst = (struct votequorum_inst *)inst;
 	qb_ipcc_disconnect(vq_inst->c);
 }
 
+/**
+ * @brief votequorum_finalize
+ * @param handle
+ * @return
+ */
 cs_error_t votequorum_finalize (
 	votequorum_handle_t handle)
 {
@@ -145,6 +163,13 @@ cs_error_t votequorum_finalize (
 }
 
 
+/**
+ * @brief votequorum_getinfo
+ * @param handle
+ * @param nodeid
+ * @param info
+ * @return
+ */
 cs_error_t votequorum_getinfo (
 	votequorum_handle_t handle,
 	unsigned int nodeid,
@@ -199,6 +224,12 @@ error_exit:
 	return (error);
 }
 
+/**
+ * @brief votequorum_setexpected
+ * @param handle
+ * @param expected_votes
+ * @return
+ */
 cs_error_t votequorum_setexpected (
 	votequorum_handle_t handle,
 	unsigned int expected_votes)
@@ -241,6 +272,13 @@ error_exit:
 	return (error);
 }
 
+/**
+ * @brief votequorum_setvotes
+ * @param handle
+ * @param nodeid
+ * @param votes
+ * @return
+ */
 cs_error_t votequorum_setvotes (
 	votequorum_handle_t handle,
 	unsigned int nodeid,
@@ -284,6 +322,13 @@ error_exit:
 	return (error);
 }
 
+/**
+ * @brief votequorum_trackstart
+ * @param handle
+ * @param context
+ * @param flags
+ * @return
+ */
 cs_error_t votequorum_trackstart (
 	votequorum_handle_t handle,
 	uint64_t context,
@@ -327,6 +372,11 @@ error_exit:
 	return (error);
 }
 
+/**
+ * @brief votequorum_trackstop
+ * @param handle
+ * @return
+ */
 cs_error_t votequorum_trackstop (
 	votequorum_handle_t handle)
 {
@@ -367,6 +417,12 @@ error_exit:
 }
 
 
+/**
+ * @brief votequorum_context_get
+ * @param handle
+ * @param context
+ * @return
+ */
 cs_error_t votequorum_context_get (
 	votequorum_handle_t handle,
 	void **context)
@@ -386,6 +442,12 @@ cs_error_t votequorum_context_get (
 	return (CS_OK);
 }
 
+/**
+ * @brief votequorum_context_set
+ * @param handle
+ * @param context
+ * @return
+ */
 cs_error_t votequorum_context_set (
 	votequorum_handle_t handle,
 	void *context)
@@ -406,6 +468,12 @@ cs_error_t votequorum_context_set (
 }
 
 
+/**
+ * @brief votequorum_fd_get
+ * @param handle
+ * @param fd
+ * @return
+ */
 cs_error_t votequorum_fd_get (
         votequorum_handle_t handle,
         int *fd)
@@ -425,6 +493,12 @@ cs_error_t votequorum_fd_get (
 	return (error);
 }
 
+/**
+ * @brief votequorum_dispatch
+ * @param handle
+ * @param dispatch_types
+ * @return
+ */
 cs_error_t votequorum_dispatch (
 	votequorum_handle_t handle,
 	cs_dispatch_flags_t dispatch_types)
@@ -557,6 +631,12 @@ error_put:
 	return (error);
 }
 
+/**
+ * @brief votequorum_qdevice_register
+ * @param handle
+ * @param name
+ * @return
+ */
 cs_error_t votequorum_qdevice_register (
 	votequorum_handle_t handle,
 	const char *name)
@@ -604,6 +684,14 @@ error_exit:
 	return (error);
 }
 
+/**
+ * @brief votequorum_qdevice_poll
+ * @param handle
+ * @param name
+ * @param cast_vote
+ * @param ring_id
+ * @return
+ */
 cs_error_t votequorum_qdevice_poll (
 	votequorum_handle_t handle,
 	const char *name,
@@ -654,6 +742,13 @@ error_exit:
 	return (error);
 }
 
+/**
+ * @brief votequorum_qdevice_master_wins
+ * @param handle
+ * @param name
+ * @param allow
+ * @return
+ */
 cs_error_t votequorum_qdevice_master_wins (
 	votequorum_handle_t handle,
 	const char *name,
@@ -702,6 +797,13 @@ error_exit:
 	return (error);
 }
 
+/**
+ * @brief votequorum_qdevice_update
+ * @param handle
+ * @param oldname
+ * @param newname
+ * @return
+ */
 cs_error_t votequorum_qdevice_update (
 	votequorum_handle_t handle,
 	const char *oldname,
@@ -752,6 +854,12 @@ error_exit:
 	return (error);
 }
 
+/**
+ * @brief votequorum_qdevice_unregister
+ * @param handle
+ * @param name
+ * @return
+ */
 cs_error_t votequorum_qdevice_unregister (
 	votequorum_handle_t handle,
 	const char *name)

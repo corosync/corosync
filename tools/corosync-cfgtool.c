@@ -65,6 +65,11 @@
 		} while (counter < max);			\
 	} while (0)
 
+/**
+ * @brief ringstatusget_do
+ * @param interface_name
+ * @return
+ */
 static int ringstatusget_do (char *interface_name)
 {
 	cs_error_t result;
@@ -117,6 +122,9 @@ static int ringstatusget_do (char *interface_name)
 	return rc;
 }
 
+/**
+ * @brief ringreenable_do
+ */
 static void ringreenable_do (void)
 {
 	cs_error_t result;
@@ -137,6 +145,10 @@ static void ringreenable_do (void)
 	(void)corosync_cfg_finalize (handle);
 }
 
+/**
+ * @brief reload_config_do
+ * @return
+ */
 static int reload_config_do (void)
 {
 	cs_error_t result;
@@ -166,6 +178,9 @@ static int reload_config_do (void)
 	return (rc);
 }
 
+/**
+ * @brief shutdown_do
+ */
 static void shutdown_do(void)
 {
 	cs_error_t result;
@@ -189,6 +204,10 @@ static void shutdown_do(void)
 	(void)corosync_cfg_finalize (handle);
 }
 
+/**
+ * @brief showaddrs_do
+ * @param nodeid
+ */
 static void showaddrs_do(int nodeid)
 {
 	cs_error_t result;
@@ -231,7 +250,10 @@ static void showaddrs_do(int nodeid)
 	(void)corosync_cfg_finalize (handle);
 }
 
-
+/**
+ * @brief killnode_do
+ * @param nodeid
+ */
 static void killnode_do(unsigned int nodeid)
 {
 	cs_error_t result;
@@ -250,7 +272,9 @@ static void killnode_do(unsigned int nodeid)
 	(void)corosync_cfg_finalize (handle);
 }
 
-
+/**
+ * @brief usage_do
+ */
 static void usage_do (void)
 {
 	printf ("corosync-cfgtool [-i <interface ip>] -s] [-r] [-H] [service_name] [-k] [nodeid] [-a] [nodeid]\n\n");
@@ -265,6 +289,12 @@ static void usage_do (void)
 	printf ("\t-H\tShutdown corosync cleanly on this node.\n");
 }
 
+/**
+ * @brief main
+ * @param argc
+ * @param argv
+ * @return
+ */
 int main (int argc, char *argv[]) {
 	const char *options = "i:srRk:a:hH";
 	int opt;

@@ -52,6 +52,9 @@ extern "C" {
 #include "totem.h"
 #include <qb/qbloop.h>
 
+/**
+ * @brief The totempg_group struct
+ */
 struct totempg_group {
 	const void *group;
 	size_t group_len;
@@ -170,6 +173,9 @@ extern int totempg_member_remove (
 	const struct totem_ip_address *member,
 	int ring_no);
 
+/**
+ * @brief The totem_q_level enum
+ */
 enum totem_q_level {
 	TOTEM_Q_LEVEL_LOW,
 	TOTEM_Q_LEVEL_GOOD,
@@ -179,6 +185,9 @@ enum totem_q_level {
 
 void totempg_check_q_level(void *instance);
 
+/**
+ * @brief totem_queue_level_changed_fn
+ */
 typedef void (*totem_queue_level_changed_fn) (enum totem_q_level level);
 extern void totempg_queue_level_register_callback (totem_queue_level_changed_fn);
 

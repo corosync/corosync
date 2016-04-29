@@ -60,15 +60,24 @@ typedef enum {
 	COROSYNC_CFG_SHUTDOWN_FLAG_IMMEDIATE = 2,
 } corosync_cfg_shutdown_flags_t;
 
+/**
+ * @brief enum corosync_cfg_shutdown_reply_flags_t
+ */
 typedef enum {
 	COROSYNC_CFG_SHUTDOWN_FLAG_NO = 0,
 	COROSYNC_CFG_SHUTDOWN_FLAG_YES = 1,
 } corosync_cfg_shutdown_reply_flags_t;
 
+/**
+ * @brief corosync_cfg_shutdown_callback_t callback
+ */
 typedef void (*corosync_cfg_shutdown_callback_t) (
 	corosync_cfg_handle_t cfg_handle,
 	corosync_cfg_shutdown_flags_t flags);
 
+/**
+ * @brief struct corosync_cfg_shutdown_callback_t
+ */
 typedef struct {
 	corosync_cfg_shutdown_callback_t corosync_cfg_shutdown_callback;
 } corosync_cfg_callbacks_t;

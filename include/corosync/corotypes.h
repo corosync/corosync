@@ -116,6 +116,11 @@ typedef enum {
 #define CS_TIME_US_IN_MSEC  1000ULL
 #define CS_TIME_NS_IN_MSEC  1000000ULL
 #define CS_TIME_NS_IN_USEC  1000ULL
+
+/**
+ * @brief cs_timestamp_get
+ * @return
+ */
 static inline uint64_t cs_timestamp_get(void)
 {
 	uint64_t result;

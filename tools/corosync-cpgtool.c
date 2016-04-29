@@ -56,11 +56,19 @@
 static corosync_cfg_handle_t cfg_handle;
 static cpg_handle_t cpg_handle;
 
+/**
+ * @brief operation_t enum
+ */
 typedef enum {
 	OPER_NAMES_ONLY = 1,
 	OPER_FULL_OUTPUT = 2,
 } operation_t;
 
+/**
+ * @brief fprint_addrs
+ * @param f
+ * @param nodeid
+ */
 static void fprint_addrs(FILE *f, int nodeid)
 {
 	int numaddrs;
@@ -89,6 +97,12 @@ static void fprint_addrs(FILE *f, int nodeid)
 	}
 }
 
+/**
+ * @brief fprint_group
+ * @param f
+ * @param escape
+ * @param group
+ */
 static void fprint_group (FILE *f, int escape, const struct cpg_name *group) {
 	int i;
 	char c;
@@ -107,6 +121,12 @@ static void fprint_group (FILE *f, int escape, const struct cpg_name *group) {
 	}
 }
 
+/**
+ * @brief display_groups
+ * @param delimiter
+ * @param escape
+ * @return
+ */
 static int display_groups (char delimiter, int escape)
 {
 	cs_error_t res;
@@ -133,6 +153,12 @@ static int display_groups (char delimiter, int escape)
 	return 1;
 }
 
+/**
+ * @brief group_name_compare
+ * @param g1
+ * @param g2
+ * @return
+ */
 static inline int group_name_compare (
 	const struct cpg_name *g1,
 	const struct cpg_name *g2)
@@ -142,6 +168,12 @@ static inline int group_name_compare (
 		g1->length - g2->length);
 }
 
+/**
+ * @brief display_groups_with_members
+ * @param delimiter
+ * @param escape
+ * @return
+ */
 static int display_groups_with_members (char delimiter, int escape) {
 	cs_error_t res;
 	cpg_iteration_handle_t iter_handle;
@@ -192,6 +224,10 @@ static int display_groups_with_members (char delimiter, int escape) {
 	return 1;
 }
 
+/**
+ * @brief usage_do
+ * @param prog_name
+ */
 static void usage_do (const char *prog_name)
 {
 	printf ("%s [-d delimiter] [-e] [-n] [-h]\n\n", prog_name);
@@ -204,6 +240,12 @@ static void usage_do (const char *prog_name)
 }
 
 
+/**
+ * @brief main
+ * @param argc
+ * @param argv
+ * @return
+ */
 int main (int argc, char *argv[]) {
 	const char *options = "hd:ne";
 	int opt;

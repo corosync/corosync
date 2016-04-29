@@ -45,12 +45,24 @@
 #include <corosync/cpg.h>
 #include <signal.h>
 
+/**
+ * @brief The my_msg struct
+ */
 struct my_msg {
 	unsigned int msg_size;
 	unsigned char sha1[20];
 	unsigned char buffer[0];
 };
 
+/**
+ * @brief cpg_deliver_fn
+ * @param handle
+ * @param group_name
+ * @param nodeid
+ * @param pid
+ * @param m
+ * @param msg_len
+ */
 static void cpg_deliver_fn (
         cpg_handle_t handle,
         const struct cpg_name *group_name,
@@ -61,6 +73,17 @@ static void cpg_deliver_fn (
 {
 }
 
+/**
+ * @brief cpg_confchg_fn
+ * @param handle
+ * @param group_name
+ * @param member_list
+ * @param member_list_entries
+ * @param left_list
+ * @param left_list_entries
+ * @param joined_list
+ * @param joined_list_entries
+ */
 static void cpg_confchg_fn (
         cpg_handle_t handle,
         const struct cpg_name *group_name,
@@ -70,11 +93,18 @@ static void cpg_confchg_fn (
 {
 }
 
+/**
+ *
+ */
 static cpg_callbacks_t callbacks = {
 	cpg_deliver_fn,
 	cpg_confchg_fn
 };
 
+/**
+ * @brief sigintr_handler
+ * @param num
+ */
 static void sigintr_handler (int num)
 {
 	exit (1);
@@ -83,6 +113,10 @@ static void sigintr_handler (int num)
 
 #define ITERATIONS (1000*2000)
 
+/**
+ * @brief main
+ * @return
+ */
 int main (void)
 {
 	cpg_handle_t handle;

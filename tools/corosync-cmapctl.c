@@ -48,6 +48,9 @@
 
 #define MAX_TRY_AGAIN 10
 
+/**
+ * @brief The user_action enum
+ */
 enum user_action {
 	ACTION_GET,
 	ACTION_SET,
@@ -59,6 +62,9 @@ enum user_action {
 	ACTION_LOAD,
 };
 
+/**
+ * @brief The name_to_type_item struct
+ */
 struct name_to_type_item {
 	const char *name;
 	cmap_value_types_t type;
@@ -80,6 +86,11 @@ struct name_to_type_item name_to_type[] = {
 
 int show_binary = 0;
 
+/**
+ * @brief convert_name_to_type
+ * @param name
+ * @return
+ */
 static int convert_name_to_type(const char *name)
 {
 	int i;
@@ -93,6 +104,10 @@ static int convert_name_to_type(const char *name)
 	return (-1);
 }
 
+/**
+ * @brief print_help
+ * @return
+ */
 static int print_help(void)
 {
 	printf("\n");
@@ -141,6 +156,11 @@ static int print_help(void)
 	return (0);
 }
 
+/**
+ * @brief print_binary_key
+ * @param value
+ * @param value_len
+ */
 static void print_binary_key (char *value, size_t value_len)
 {
 	size_t i;
@@ -160,6 +180,14 @@ static void print_binary_key (char *value, size_t value_len)
 	}
 }
 
+/**
+ * @brief print_key
+ * @param handle
+ * @param key_name
+ * @param value_len
+ * @param value
+ * @param type
+ */
 static void print_key(cmap_handle_t handle,
 		const char *key_name,
 		size_t value_len,
@@ -361,6 +389,11 @@ static void print_key(cmap_handle_t handle,
 	printf("\n");
 }
 
+/**
+ * @brief print_iter
+ * @param handle
+ * @param prefix
+ */
 static void print_iter(cmap_handle_t handle, const char *prefix)
 {
 	cmap_iter_handle_t iter_handle;
@@ -381,6 +414,11 @@ static void print_iter(cmap_handle_t handle, const char *prefix)
 	cmap_iter_finalize(handle, iter_handle);
 }
 
+/**
+ * @brief delete_with_prefix
+ * @param handle
+ * @param prefix
+ */
 static void delete_with_prefix(cmap_handle_t handle, const char *prefix)
 {
 	cmap_iter_handle_t iter_handle;
@@ -405,6 +443,16 @@ static void delete_with_prefix(cmap_handle_t handle, const char *prefix)
 	cmap_iter_finalize(handle, iter_handle);
 }
 
+/**
+ * @brief cmap_notify_fn
+ * @param cmap_handle
+ * @param cmap_track_handle
+ * @param event
+ * @param key_name
+ * @param new_val
+ * @param old_val
+ * @param user_data
+ */
 static void cmap_notify_fn(
 	cmap_handle_t cmap_handle,
 	cmap_track_handle_t cmap_track_handle,
@@ -434,6 +482,12 @@ static void cmap_notify_fn(
 
 }
 
+/**
+ * @brief add_track
+ * @param handle
+ * @param key_name
+ * @param prefix
+ */
 static void add_track(cmap_handle_t handle, const char *key_name, int prefix)
 {
 	cmap_track_handle_t track_handle;
@@ -452,6 +506,10 @@ static void add_track(cmap_handle_t handle, const char *key_name, int prefix)
 	}
 }
 
+/**
+ * @brief track_changes
+ * @param handle
+ */
 static void track_changes(cmap_handle_t handle)
 {
 	struct pollfd pfd[2];
@@ -497,6 +555,13 @@ static void track_changes(cmap_handle_t handle)
 	} while (poll_res > 0 && !quit);
 }
 
+/**
+ * @brief set_key_bin
+ * @param handle
+ * @param key_name
+ * @param fname
+ * @return
+ */
 static cs_error_t set_key_bin(cmap_handle_t handle, const char *key_name, const char *fname)
 {
 	FILE *f;
@@ -541,6 +606,13 @@ static cs_error_t set_key_bin(cmap_handle_t handle, const char *key_name, const 
 	return (err);
 }
 
+/**
+ * @brief set_key
+ * @param handle
+ * @param key_name
+ * @param key_type_s
+ * @param key_value_s
+ */
 static void set_key(cmap_handle_t handle, const char *key_name, const char *key_type_s, const char *key_value_s)
 {
 	int64_t i64;
@@ -665,7 +737,11 @@ static void set_key(cmap_handle_t handle, const char *key_name, const char *key_
 	}
 }
 
-
+/**
+ * @brief read_in_config_file
+ * @param handle
+ * @param filename
+ */
 static void read_in_config_file(cmap_handle_t handle, char * filename)
 {
 	int ignore;
@@ -735,6 +811,12 @@ static void read_in_config_file(cmap_handle_t handle, char * filename)
 	fclose (fh);
 }
 
+/**
+ * @brief main
+ * @param argc
+ * @param argv
+ * @return
+ */
 int main(int argc, char *argv[])
 {
 	enum user_action action;

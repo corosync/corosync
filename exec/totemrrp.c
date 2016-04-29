@@ -639,12 +639,23 @@ do {								\
 		format, ##args);				\
 } while (0);
 
+/**
+ * @brief stats_set_interface_faulty
+ * @param rrp_instance
+ * @param iface_no
+ * @param is_faulty
+ */
 static void stats_set_interface_faulty(struct totemrrp_instance *rrp_instance,
 		unsigned int iface_no, int is_faulty)
 {
 	rrp_instance->stats.faulty[iface_no] = (is_faulty ? 1 : 0);
 }
 
+/**
+ * @brief test_active_msg_endian_convert
+ * @param in
+ * @param out
+ */
 static void test_active_msg_endian_convert(const struct message_header *in, struct message_header *out)
 {
 	out->type = in->type;
@@ -654,6 +665,10 @@ static void test_active_msg_endian_convert(const struct message_header *in, stru
 	out->nodeid_activator = swab32(in->nodeid_activator);
 }
 
+/**
+ * @brief timer_function_test_ring_timeout
+ * @param context
+ */
 static void timer_function_test_ring_timeout (void *context)
 {
 	struct deliver_fn_context *deliver_fn_context = (struct deliver_fn_context *)context;
@@ -691,6 +706,14 @@ static void timer_function_test_ring_timeout (void *context)
  * None Replication Implementation
  */
 
+/**
+ * @brief none_mcast_recv
+ * @param rrp_instance
+ * @param iface_no
+ * @param context
+ * @param msg
+ * @param msg_len
+ */
 static void none_mcast_recv (
 	struct totemrrp_instance *rrp_instance,
 	unsigned int iface_no,
@@ -704,6 +727,12 @@ static void none_mcast_recv (
 		msg_len);
 }
 
+/**
+ * @brief none_mcast_flush_send
+ * @param instance
+ * @param msg
+ * @param msg_len
+ */
 static void none_mcast_flush_send (
 	struct totemrrp_instance *instance,
 	const void *msg,
@@ -712,6 +741,12 @@ static void none_mcast_flush_send (
 	totemnet_mcast_flush_send (instance->net_handles[0], msg, msg_len);
 }
 
+/**
+ * @brief none_mcast_noflush_send
+ * @param instance
+ * @param msg
+ * @param msg_len
+ */
 static void none_mcast_noflush_send (
 	struct totemrrp_instance *instance,
 	const void *msg,
@@ -720,6 +755,15 @@ static void none_mcast_noflush_send (
 	totemnet_mcast_noflush_send (instance->net_handles[0], msg, msg_len);
 }
 
+/**
+ * @brief none_token_recv
+ * @param rrp_instance
+ * @param iface_no
+ * @param context
+ * @param msg
+ * @param msg_len
+ * @param token_seq
+ */
 static void none_token_recv (
 	struct totemrrp_instance *rrp_instance,
 	unsigned int iface_no,
@@ -734,6 +778,12 @@ static void none_token_recv (
 		msg_len);
 }
 
+/**
+ * @brief none_token_send
+ * @param instance
+ * @param msg
+ * @param msg_len
+ */
 static void none_token_send (
 	struct totemrrp_instance *instance,
 	const void *msg,
@@ -744,21 +794,38 @@ static void none_token_send (
 		msg, msg_len);
 }
 
+/**
+ * @brief none_recv_flush
+ * @param instance
+ */
 static void none_recv_flush (struct totemrrp_instance *instance)
 {
 	totemnet_recv_flush (instance->net_handles[0]);
 }
 
+/**
+ * @brief none_send_flush
+ * @param instance
+ */
 static void none_send_flush (struct totemrrp_instance *instance)
 {
 	totemnet_send_flush (instance->net_handles[0]);
 }
 
+/**
+ * @brief none_iface_check
+ * @param instance
+ */
 static void none_iface_check (struct totemrrp_instance *instance)
 {
 	totemnet_iface_check (instance->net_handles[0]);
 }
 
+/**
+ * @brief none_processor_count_set
+ * @param instance
+ * @param processor_count
+ */
 static void none_processor_count_set (
 	struct totemrrp_instance *instance,
 	unsigned int processor_count)
@@ -767,6 +834,12 @@ static void none_processor_count_set (
 		processor_count);
 }
 
+/**
+ * @brief none_token_target_set
+ * @param instance
+ * @param token_target
+ * @param iface_no
+ */
 static void none_token_target_set (
 	struct totemrrp_instance *instance,
 	struct totem_ip_address *token_target,
@@ -775,6 +848,11 @@ static void none_token_target_set (
 	totemnet_token_target_set (instance->net_handles[0], token_target);
 }
 
+/**
+ * @brief none_ring_reenable
+ * @param instance
+ * @param iface_no
+ */
 static void none_ring_reenable (
 	struct totemrrp_instance *instance,
 	unsigned int iface_no)
@@ -784,6 +862,11 @@ static void none_ring_reenable (
 	 */
 }
 
+/**
+ * @brief none_mcast_recv_empty
+ * @param instance
+ * @return
+ */
 static int none_mcast_recv_empty (
 	struct totemrrp_instance *instance)
 {
@@ -794,6 +877,13 @@ static int none_mcast_recv_empty (
 	return (res);
 }
 
+/**
+ * @brief none_member_add
+ * @param instance
+ * @param member
+ * @param iface_no
+ * @return
+ */
 static int none_member_add (
 	struct totemrrp_instance *instance,
 	const struct totem_ip_address *member,
@@ -804,6 +894,13 @@ static int none_member_add (
 	return (res);
 }
 
+/**
+ * @brief none_member_remove
+ * @param instance
+ * @param member
+ * @param iface_no
+ * @return
+ */
 static int none_member_remove (
 	struct totemrrp_instance *instance,
 	const struct totem_ip_address *member,
@@ -814,6 +911,18 @@ static int none_member_remove (
 	return (res);
 }
 
+/**
+ * @brief none_membership_changed
+ * @param rrp_instance
+ * @param configuration_type
+ * @param member_list
+ * @param member_list_entries
+ * @param left_list
+ * @param left_list_entries
+ * @param joined_list
+ * @param joined_list_entries
+ * @param ring_id
+ */
 static void none_membership_changed (
 	struct totemrrp_instance *rrp_instance,
 	enum totem_configuration_type configuration_type,
@@ -851,6 +960,12 @@ static void none_membership_changed (
 
 /*
  * Passive Replication Implementation
+ */
+/**
+ * @brief passive_instance_initialize
+ * @param rrp_instance
+ * @param interface_count
+ * @return
  */
 void *passive_instance_initialize (
 	struct totemrrp_instance *rrp_instance,
@@ -900,6 +1015,10 @@ error_exit:
 	return ((void *)instance);
 }
 
+/**
+ * @brief timer_function_passive_token_expired
+ * @param context
+ */
 static void timer_function_passive_token_expired (void *context)
 {
 	struct passive_instance *passive_instance = (struct passive_instance *)context;
@@ -921,6 +1040,10 @@ static void timer_function_passive_problem_decrementer (void *context)
 */
 
 
+/**
+ * @brief passive_timer_expired_token_start
+ * @param passive_instance
+ */
 static void passive_timer_expired_token_start (
 	struct passive_instance *passive_instance)
 {
@@ -933,6 +1056,10 @@ static void passive_timer_expired_token_start (
 		&passive_instance->timer_expired_token);
 }
 
+/**
+ * @brief passive_timer_expired_token_cancel
+ * @param passive_instance
+ */
 static void passive_timer_expired_token_cancel (
 	struct passive_instance *passive_instance)
 {
@@ -968,6 +1095,12 @@ static void passive_timer_problem_decrementer_cancel (
  * rrp_instance is passive rrp instance, iface_no is interface with received messgae/token and
  * is_token_recv_count is boolean variable which donates if message is token (>1) or regular
  * message (= 0)
+ */
+/**
+ * @brief passive_monitor
+ * @param rrp_instance
+ * @param iface_no
+ * @param is_token_recv_count
  */
 static void passive_monitor (
 	struct totemrrp_instance *rrp_instance,
@@ -1075,6 +1208,14 @@ static void passive_monitor (
 	}
 }
 
+/**
+ * @brief passive_mcast_recv
+ * @param rrp_instance
+ * @param iface_no
+ * @param context
+ * @param msg
+ * @param msg_len
+ */
 static void passive_mcast_recv (
 	struct totemrrp_instance *rrp_instance,
 	unsigned int iface_no,
@@ -1104,6 +1245,12 @@ static void passive_mcast_recv (
 	passive_monitor (rrp_instance, iface_no, 0);
 }
 
+/**
+ * @brief passive_mcast_flush_send
+ * @param instance
+ * @param msg
+ * @param msg_len
+ */
 static void passive_mcast_flush_send (
 	struct totemrrp_instance *instance,
 	const void *msg,
@@ -1122,6 +1269,12 @@ static void passive_mcast_flush_send (
 	}
 }
 
+/**
+ * @brief passive_mcast_noflush_send
+ * @param instance
+ * @param msg
+ * @param msg_len
+ */
 static void passive_mcast_noflush_send (
 	struct totemrrp_instance *instance,
 	const void *msg,
@@ -1140,6 +1293,15 @@ static void passive_mcast_noflush_send (
 	}
 }
 
+/**
+ * @brief passive_token_recv
+ * @param rrp_instance
+ * @param iface_no
+ * @param context
+ * @param msg
+ * @param msg_len
+ * @param token_seq
+ */
 static void passive_token_recv (
 	struct totemrrp_instance *rrp_instance,
 	unsigned int iface_no,
@@ -1166,6 +1328,12 @@ static void passive_token_recv (
 	passive_monitor (rrp_instance, iface_no, 1);
 }
 
+/**
+ * @brief passive_token_send
+ * @param instance
+ * @param msg
+ * @param msg_len
+ */
 static void passive_token_send (
 	struct totemrrp_instance *instance,
 	const void *msg,
@@ -1187,6 +1355,10 @@ static void passive_token_send (
 
 }
 
+/**
+ * @brief passive_recv_flush
+ * @param instance
+ */
 static void passive_recv_flush (struct totemrrp_instance *instance)
 {
 	struct passive_instance *rrp_algo_instance = (struct passive_instance *)instance->rrp_algo_instance;
@@ -1200,6 +1372,10 @@ static void passive_recv_flush (struct totemrrp_instance *instance)
 	}
 }
 
+/**
+ * @brief passive_send_flush
+ * @param instance
+ */
 static void passive_send_flush (struct totemrrp_instance *instance)
 {
 	struct passive_instance *rrp_algo_instance = (struct passive_instance *)instance->rrp_algo_instance;
@@ -1213,6 +1389,10 @@ static void passive_send_flush (struct totemrrp_instance *instance)
 	}
 }
 
+/**
+ * @brief passive_iface_check
+ * @param instance
+ */
 static void passive_iface_check (struct totemrrp_instance *instance)
 {
 	struct passive_instance *rrp_algo_instance = (struct passive_instance *)instance->rrp_algo_instance;
@@ -1226,6 +1406,11 @@ static void passive_iface_check (struct totemrrp_instance *instance)
 	}
 }
 
+/**
+ * @brief passive_processor_count_set
+ * @param instance
+ * @param processor_count
+ */
 static void passive_processor_count_set (
 	struct totemrrp_instance *instance,
 	unsigned int processor_count)
@@ -1242,6 +1427,12 @@ static void passive_processor_count_set (
 	}
 }
 
+/**
+ * @brief passive_token_target_set
+ * @param instance
+ * @param token_target
+ * @param iface_no
+ */
 static void passive_token_target_set (
 	struct totemrrp_instance *instance,
 	struct totem_ip_address *token_target,
@@ -1250,6 +1441,11 @@ static void passive_token_target_set (
 	totemnet_token_target_set (instance->net_handles[iface_no], token_target);
 }
 
+/**
+ * @brief passive_mcast_recv_empty
+ * @param instance
+ * @return
+ */
 static int passive_mcast_recv_empty (
 	struct totemrrp_instance *instance)
 {
@@ -1270,6 +1466,13 @@ static int passive_mcast_recv_empty (
 	return (msgs_emptied);
 }
 
+/**
+ * @brief passive_member_add
+ * @param instance
+ * @param member
+ * @param iface_no
+ * @return
+ */
 static int passive_member_add (
 	struct totemrrp_instance *instance,
 	const struct totem_ip_address *member,
@@ -1280,6 +1483,13 @@ static int passive_member_add (
 	return (res);
 }
 
+/**
+ * @brief passive_member_remove
+ * @param instance
+ * @param member
+ * @param iface_no
+ * @return
+ */
 static int passive_member_remove (
 	struct totemrrp_instance *instance,
 	const struct totem_ip_address *member,
@@ -1290,6 +1500,18 @@ static int passive_member_remove (
 	return (res);
 }
 
+/**
+ * @brief passive_membership_changed
+ * @param rrp_instance
+ * @param configuration_type
+ * @param member_list
+ * @param member_list_entries
+ * @param left_list
+ * @param left_list_entries
+ * @param joined_list
+ * @param joined_list_entries
+ * @param ring_id
+ */
 static void passive_membership_changed (
 	struct totemrrp_instance *rrp_instance,
 	enum totem_configuration_type configuration_type,
@@ -1330,6 +1552,11 @@ static void passive_membership_changed (
 	}
 }
 
+/**
+ * @brief passive_ring_reenable
+ * @param instance
+ * @param iface_no
+ */
 static void passive_ring_reenable (
 	struct totemrrp_instance *instance,
 	unsigned int iface_no)
@@ -1356,6 +1583,13 @@ static void passive_ring_reenable (
 
 /*
  * Active Replication Implementation
+ */
+
+/**
+ * @brief active_instance_initialize
+ * @param rrp_instance
+ * @param interface_count
+ * @return
  */
 void *active_instance_initialize (
 	struct totemrrp_instance *rrp_instance,
@@ -1412,6 +1646,11 @@ void *active_instance_initialize (
 error_exit:
 	return ((void *)instance);
 }
+
+/**
+ * @brief timer_function_active_problem_decrementer
+ * @param context
+ */
 static void timer_function_active_problem_decrementer (void *context)
 {
 	struct active_instance *active_instance = (struct active_instance *)context;
@@ -1446,6 +1685,10 @@ static void timer_function_active_problem_decrementer (void *context)
 	}
 }
 
+/**
+ * @brief timer_function_active_token_expired
+ * @param context
+ */
 static void timer_function_active_token_expired (void *context)
 {
 	struct active_instance *active_instance = (struct active_instance *)context;
@@ -1504,6 +1747,10 @@ static void timer_function_active_token_expired (void *context)
 		active_instance->token_len);
 }
 
+/**
+ * @brief active_timer_expired_token_start
+ * @param active_instance
+ */
 static void active_timer_expired_token_start (
 	struct active_instance *active_instance)
 {
@@ -1516,6 +1763,10 @@ static void active_timer_expired_token_start (
 		&active_instance->timer_expired_token);
 }
 
+/**
+ * @brief active_timer_expired_token_cancel
+ * @param active_instance
+ */
 static void active_timer_expired_token_cancel (
 	struct active_instance *active_instance)
 {
@@ -1524,6 +1775,10 @@ static void active_timer_expired_token_cancel (
 		active_instance->timer_expired_token);
 }
 
+/**
+ * @brief active_timer_problem_decrementer_start
+ * @param active_instance
+ */
 static void active_timer_problem_decrementer_start (
 	struct active_instance *active_instance)
 {
@@ -1536,6 +1791,10 @@ static void active_timer_problem_decrementer_start (
 		&active_instance->timer_problem_decrementer);
 }
 
+/**
+ * @brief active_timer_problem_decrementer_cancel
+ * @param active_instance
+ */
 static void active_timer_problem_decrementer_cancel (
 	struct active_instance *active_instance)
 {
@@ -1548,6 +1807,15 @@ static void active_timer_problem_decrementer_cancel (
 
 /*
  * active replication
+ */
+
+/**
+ * @brief active_mcast_recv
+ * @param instance
+ * @param iface_no
+ * @param context
+ * @param msg
+ * @param msg_len
  */
 static void active_mcast_recv (
 	struct totemrrp_instance *instance,
@@ -1562,6 +1830,12 @@ static void active_mcast_recv (
 		msg_len);
 }
 
+/**
+ * @brief active_mcast_flush_send
+ * @param instance
+ * @param msg
+ * @param msg_len
+ */
 static void active_mcast_flush_send (
 	struct totemrrp_instance *instance,
 	const void *msg,
@@ -1577,6 +1851,12 @@ static void active_mcast_flush_send (
 	}
 }
 
+/**
+ * @brief active_mcast_noflush_send
+ * @param instance
+ * @param msg
+ * @param msg_len
+ */
 static void active_mcast_noflush_send (
 	struct totemrrp_instance *instance,
 	const void *msg,
@@ -1592,6 +1872,15 @@ static void active_mcast_noflush_send (
 	}
 }
 
+/**
+ * @brief active_token_recv
+ * @param rrp_instance
+ * @param iface_no
+ * @param context
+ * @param msg
+ * @param msg_len
+ * @param token_seq
+ */
 static void active_token_recv (
 	struct totemrrp_instance *rrp_instance,
 	unsigned int iface_no,
@@ -1638,6 +1927,12 @@ static void active_token_recv (
 	}
 }
 
+/**
+ * @brief active_token_send
+ * @param instance
+ * @param msg
+ * @param msg_len
+ */
 static void active_token_send (
 	struct totemrrp_instance *instance,
 	const void *msg,
@@ -1656,6 +1951,10 @@ static void active_token_send (
 	}
 }
 
+/**
+ * @brief active_recv_flush
+ * @param instance
+ */
 static void active_recv_flush (struct totemrrp_instance *instance)
 {
 	struct active_instance *rrp_algo_instance = (struct active_instance *)instance->rrp_algo_instance;
@@ -1669,6 +1968,10 @@ static void active_recv_flush (struct totemrrp_instance *instance)
 	}
 }
 
+/**
+ * @brief active_send_flush
+ * @param instance
+ */
 static void active_send_flush (struct totemrrp_instance *instance)
 {
 	struct active_instance *rrp_algo_instance = (struct active_instance *)instance->rrp_algo_instance;
@@ -1682,6 +1985,13 @@ static void active_send_flush (struct totemrrp_instance *instance)
 	}
 }
 
+/**
+ * @brief active_member_add
+ * @param instance
+ * @param member
+ * @param iface_no
+ * @return
+ */
 static int active_member_add (
 	struct totemrrp_instance *instance,
 	const struct totem_ip_address *member,
@@ -1692,6 +2002,13 @@ static int active_member_add (
 	return (res);
 }
 
+/**
+ * @brief active_member_remove
+ * @param instance
+ * @param member
+ * @param iface_no
+ * @return
+ */
 static int active_member_remove (
 	struct totemrrp_instance *instance,
 	const struct totem_ip_address *member,
@@ -1702,6 +2019,18 @@ static int active_member_remove (
 	return (res);
 }
 
+/**
+ * @brief active_membership_changed
+ * @param rrp_instance
+ * @param configuration_type
+ * @param member_list
+ * @param member_list_entries
+ * @param left_list
+ * @param left_list_entries
+ * @param joined_list
+ * @param joined_list_entries
+ * @param ring_id
+ */
 static void active_membership_changed (
 	struct totemrrp_instance *rrp_instance,
 	enum totem_configuration_type configuration_type,
@@ -1742,6 +2071,10 @@ static void active_membership_changed (
 	}
 }
 
+/**
+ * @brief active_iface_check
+ * @param instance
+ */
 static void active_iface_check (struct totemrrp_instance *instance)
 {
 	struct active_instance *rrp_algo_instance = (struct active_instance *)instance->rrp_algo_instance;
@@ -1755,6 +2088,11 @@ static void active_iface_check (struct totemrrp_instance *instance)
 	}
 }
 
+/**
+ * @brief active_processor_count_set
+ * @param instance
+ * @param processor_count
+ */
 static void active_processor_count_set (
 	struct totemrrp_instance *instance,
 	unsigned int processor_count)
@@ -1771,6 +2109,12 @@ static void active_processor_count_set (
 	}
 }
 
+/**
+ * @brief active_token_target_set
+ * @param instance
+ * @param token_target
+ * @param iface_no
+ */
 static void active_token_target_set (
 	struct totemrrp_instance *instance,
 	struct totem_ip_address *token_target,
@@ -1779,6 +2123,11 @@ static void active_token_target_set (
 	totemnet_token_target_set (instance->net_handles[iface_no], token_target);
 }
 
+/**
+ * @brief active_mcast_recv_empty
+ * @param instance
+ * @return
+ */
 static int active_mcast_recv_empty (
 	struct totemrrp_instance *instance)
 {
@@ -1799,6 +2148,11 @@ static int active_mcast_recv_empty (
 	return (msgs_emptied);
 }
 
+/**
+ * @brief active_ring_reenable
+ * @param instance
+ * @param iface_no
+ */
 static void active_ring_reenable (
 	struct totemrrp_instance *instance,
 	unsigned int iface_no)
@@ -1826,11 +2180,21 @@ static void active_ring_reenable (
 	}
 }
 
+/**
+ * @brief totemrrp_instance_initialize
+ * @param instance
+ */
 static void totemrrp_instance_initialize (struct totemrrp_instance *instance)
 {
 	memset (instance, 0, sizeof (struct totemrrp_instance));
 }
 
+/**
+ * @brief totemrrp_algorithm_set
+ * @param totem_config
+ * @param instance
+ * @return
+ */
 static int totemrrp_algorithm_set (
 	struct totem_config *totem_config,
 	struct totemrrp_instance *instance)
@@ -1858,6 +2222,12 @@ static int totemrrp_algorithm_set (
 	return (res);
 }
 
+/**
+ * @brief rrp_deliver_fn
+ * @param context
+ * @param msg
+ * @param msg_len
+ */
 void rrp_deliver_fn (
 	void *context,
 	const void *msg,
@@ -1958,6 +2328,11 @@ void rrp_deliver_fn (
 	}
 }
 
+/**
+ * @brief rrp_iface_change_fn
+ * @param context
+ * @param iface_addr
+ */
 void rrp_iface_change_fn (
 	void *context,
 	const struct totem_ip_address *iface_addr)
@@ -1971,6 +2346,11 @@ void rrp_iface_change_fn (
 		deliver_fn_context->iface_no);
 }
 
+/**
+ * @brief totemrrp_finalize
+ * @param rrp_context
+ * @return
+ */
 int totemrrp_finalize (
 	void *rrp_context)
 {
@@ -1985,6 +2365,10 @@ int totemrrp_finalize (
 	return (0);
 }
 
+/**
+ * @brief rrp_target_set_completed
+ * @param context
+ */
 static void rrp_target_set_completed (void *context)
 {
 	struct deliver_fn_context *deliver_fn_context = (struct deliver_fn_context *)context;
@@ -1999,6 +2383,15 @@ static void rrp_target_set_completed (void *context)
 
 /*
  * Create an instance
+ */
+/**
+ * @brief totemrrp_initialize
+ * @param poll_handle
+ * @param rrp_context
+ * @param totem_config
+ * @param stats
+ * @param context
+ * @return
  */
 int totemrrp_initialize (
 	qb_loop_t *poll_handle,
@@ -2115,6 +2508,11 @@ error_destroy:
 	return (res);
 }
 
+/**
+ * @brief totemrrp_buffer_alloc
+ * @param rrp_context
+ * @return
+ */
 void *totemrrp_buffer_alloc (void *rrp_context)
 {
 	struct totemrrp_instance *instance = rrp_context;
@@ -2122,6 +2520,11 @@ void *totemrrp_buffer_alloc (void *rrp_context)
 	return totemnet_buffer_alloc (instance->net_handles[0]);
 }
 
+/**
+ * @brief totemrrp_buffer_release
+ * @param rrp_context
+ * @param ptr
+ */
 void totemrrp_buffer_release (void *rrp_context, void *ptr)
 {
 	struct totemrrp_instance *instance = rrp_context;
@@ -2129,6 +2532,12 @@ void totemrrp_buffer_release (void *rrp_context, void *ptr)
 	totemnet_buffer_release (instance->net_handles[0], ptr);
 }
 
+/**
+ * @brief totemrrp_processor_count_set
+ * @param rrp_context
+ * @param processor_count
+ * @return
+ */
 int totemrrp_processor_count_set (
 	void *rrp_context,
 	unsigned int processor_count)
@@ -2141,6 +2550,13 @@ int totemrrp_processor_count_set (
 	return (0);
 }
 
+/**
+ * @brief totemrrp_token_target_set
+ * @param rrp_context
+ * @param addr
+ * @param iface_no
+ * @return
+ */
 int totemrrp_token_target_set (
 	void *rrp_context,
 	struct totem_ip_address *addr,
@@ -2151,6 +2567,12 @@ int totemrrp_token_target_set (
 
 	return (0);
 }
+
+/**
+ * @brief totemrrp_recv_flush
+ * @param rrp_context
+ * @return
+ */
 int totemrrp_recv_flush (void *rrp_context)
 {
 	struct totemrrp_instance *instance = (struct totemrrp_instance *)rrp_context;
@@ -2160,6 +2582,11 @@ int totemrrp_recv_flush (void *rrp_context)
 	return (0);
 }
 
+/**
+ * @brief totemrrp_send_flush
+ * @param rrp_context
+ * @return
+ */
 int totemrrp_send_flush (void *rrp_context)
 {
 	struct totemrrp_instance *instance = (struct totemrrp_instance *)rrp_context;
@@ -2168,6 +2595,13 @@ int totemrrp_send_flush (void *rrp_context)
 	return (0);
 }
 
+/**
+ * @brief totemrrp_token_send
+ * @param rrp_context
+ * @param msg
+ * @param msg_len
+ * @return
+ */
 int totemrrp_token_send (
 	void *rrp_context,
 	const void *msg,
@@ -2179,6 +2613,13 @@ int totemrrp_token_send (
 	return (0);
 }
 
+/**
+ * @brief totemrrp_mcast_flush_send
+ * @param rrp_context
+ * @param msg
+ * @param msg_len
+ * @return
+ */
 int totemrrp_mcast_flush_send (
 	void *rrp_context,
 	const void *msg,
@@ -2193,6 +2634,13 @@ int totemrrp_mcast_flush_send (
 	return (res);
 }
 
+/**
+ * @brief totemrrp_mcast_noflush_send
+ * @param rrp_context
+ * @param msg
+ * @param msg_len
+ * @return
+ */
 int totemrrp_mcast_noflush_send (
 	void *rrp_context,
 	const void *msg,
@@ -2213,6 +2661,11 @@ int totemrrp_mcast_noflush_send (
 	return (0);
 }
 
+/**
+ * @brief totemrrp_iface_check
+ * @param rrp_context
+ * @return
+ */
 int totemrrp_iface_check (void *rrp_context)
 {
 	struct totemrrp_instance *instance = (struct totemrrp_instance *)rrp_context;
@@ -2222,6 +2675,13 @@ int totemrrp_iface_check (void *rrp_context)
 	return (0);
 }
 
+/**
+ * @brief totemrrp_ifaces_get
+ * @param rrp_context
+ * @param status
+ * @param iface_count
+ * @return
+ */
 int totemrrp_ifaces_get (
 	void *rrp_context,
 	char ***status,
@@ -2237,6 +2697,13 @@ int totemrrp_ifaces_get (
 	return (0);
 }
 
+/**
+ * @brief totemrrp_crypto_set
+ * @param rrp_context
+ * @param cipher_type
+ * @param hash_type
+ * @return
+ */
 int totemrrp_crypto_set (
 	void *rrp_context,
 	const char *cipher_type,
@@ -2255,6 +2722,12 @@ int totemrrp_crypto_set (
  * iface_no indicates the interface number [0, ..., interface_count-1] of the
  * specific ring which will be reenabled. We specify iface_no == interface_count
  * means reenabling all the rings.
+ */
+/**
+ * @brief totemrrp_ring_reenable
+ * @param rrp_context
+ * @param iface_no
+ * @return
  */
 int totemrrp_ring_reenable (
         void *rrp_context,
@@ -2279,6 +2752,11 @@ int totemrrp_ring_reenable (
 	return (res);
 }
 
+/**
+ * @brief totemrrp_mcast_recv_empty
+ * @param rrp_context
+ * @return
+ */
 extern int totemrrp_mcast_recv_empty (
 	void *rrp_context)
 {
@@ -2290,6 +2768,13 @@ extern int totemrrp_mcast_recv_empty (
 	return (res);
 }
 
+/**
+ * @brief totemrrp_member_add
+ * @param rrp_context
+ * @param member
+ * @param iface_no
+ * @return
+ */
 int totemrrp_member_add (
         void *rrp_context,
         const struct totem_ip_address *member,
@@ -2303,6 +2788,13 @@ int totemrrp_member_add (
 	return (res);
 }
 
+/**
+ * @brief totemrrp_member_remove
+ * @param rrp_context
+ * @param member
+ * @param iface_no
+ * @return
+ */
 int totemrrp_member_remove (
         void *rrp_context,
         const struct totem_ip_address *member,
@@ -2316,6 +2808,18 @@ int totemrrp_member_remove (
 	return (res);
 }
 
+/**
+ * @brief totemrrp_membership_changed
+ * @param rrp_context
+ * @param configuration_type
+ * @param member_list
+ * @param member_list_entries
+ * @param left_list
+ * @param left_list_entries
+ * @param joined_list
+ * @param joined_list_entries
+ * @param ring_id
+ */
 void totemrrp_membership_changed (
         void *rrp_context,
 	enum totem_configuration_type configuration_type,

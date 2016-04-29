@@ -50,6 +50,11 @@ static votequorum_ring_id_t last_received_ring_id;
 static votequorum_ring_id_t ring_id_to_send;
 static int no_sent_old_ringid = 0;
 
+/**
+ * @brief print_info
+ * @param ok_to_fail
+ * @return
+ */
 static int print_info(int ok_to_fail)
 {
 	struct votequorum_info info;
@@ -76,6 +81,15 @@ static int print_info(int ok_to_fail)
 	return 0;
 }
 
+/**
+ * @brief votequorum_notification_fn
+ * @param vq_handle
+ * @param context
+ * @param quorate
+ * @param ring_id
+ * @param node_list_entries
+ * @param node_list
+ */
 static void votequorum_notification_fn(
 	votequorum_handle_t vq_handle,
 	uint64_t context,
@@ -93,6 +107,10 @@ static void votequorum_notification_fn(
 	no_sent_old_ringid = 0;
 }
 
+/**
+ * @brief usage
+ * @param command
+ */
 static void usage(const char *command)
 {
   printf("%s [-F <num>] [-p <num>] [-t <time>] [-n <name>] [-c] [-m]\n", command);
@@ -106,6 +124,12 @@ static void usage(const char *command)
         printf("      -1        Print status once and exit\n");
 }
 
+/**
+ * @brief main
+ * @param argc
+ * @param argv
+ * @return
+ */
 int main(int argc, char *argv[])
 {
 	int ret = 0;

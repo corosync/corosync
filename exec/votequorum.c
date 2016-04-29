@@ -346,6 +346,9 @@ static void message_handler_req_lib_votequorum_qdevice_poll (void *conn,
 static void message_handler_req_lib_votequorum_qdevice_master_wins (void *conn,
 							     const void *message);
 
+/**
+ *
+ */
 static struct corosync_lib_handler quorum_lib_service[] =
 {
 	{ /* 0 */
@@ -390,6 +393,9 @@ static struct corosync_lib_handler quorum_lib_service[] =
 	}
 };
 
+/**
+ *
+ */
 static struct corosync_service_engine votequorum_service_engine = {
 	.name				= "corosync vote quorum service v1.0",
 	.id				= VOTEQUORUM_SERVICE,
@@ -411,11 +417,18 @@ static struct corosync_service_engine votequorum_service_engine = {
 	.sync_abort			= votequorum_sync_abort
 };
 
+/**
+ * @brief votequorum_get_service_engine_ver0
+ * @return
+ */
 struct corosync_service_engine *votequorum_get_service_engine_ver0 (void)
 {
 	return (&votequorum_service_engine);
 }
 
+/**
+ *
+ */
 static struct default_service votequorum_service[] = {
 	{
 		.name		= "corosync_votequorum",
@@ -433,6 +446,10 @@ static struct default_service votequorum_service[] = {
 #define list_iterate(v, head) \
 	for (v = (head)->next; v != head; v = v->next)
 
+/**
+ * @brief node_add_ordered
+ * @param newnode
+ */
 static void node_add_ordered(struct cluster_node *newnode)
 {
 	struct cluster_node *node = NULL;
@@ -460,6 +477,11 @@ static void node_add_ordered(struct cluster_node *newnode)
 	LEAVE();
 }
 
+/**
+ * @brief allocate_node
+ * @param nodeid
+ * @return
+ */
 static struct cluster_node *allocate_node(unsigned int nodeid)
 {
 	struct cluster_node *cl = NULL;
@@ -499,6 +521,11 @@ out:
 	return cl;
 }
 
+/**
+ * @brief find_node_by_nodeid
+ * @param nodeid
+ * @return
+ */
 static struct cluster_node *find_node_by_nodeid(unsigned int nodeid)
 {
 	struct cluster_node *node;
@@ -528,6 +555,9 @@ static struct cluster_node *find_node_by_nodeid(unsigned int nodeid)
 	return NULL;
 }
 
+/**
+ * @brief get_lowest_node_id
+ */
 static void get_lowest_node_id(void)
 {
 	struct cluster_node *node = NULL;
@@ -550,6 +580,9 @@ static void get_lowest_node_id(void)
 	LEAVE();
 }
 
+/**
+ * @brief get_highest_node_id
+ */
 static void get_highest_node_id(void)
 {
 	struct cluster_node *node = NULL;
@@ -572,6 +605,10 @@ static void get_highest_node_id(void)
 	LEAVE();
 }
 
+/**
+ * @brief check_low_node_id_partition
+ * @return
+ */
 static int check_low_node_id_partition(void)
 {
 	struct cluster_node *node = NULL;
@@ -592,6 +629,10 @@ static int check_low_node_id_partition(void)
 	return found;
 }
 
+/**
+ * @brief check_high_node_id_partition
+ * @return
+ */
 static int check_high_node_id_partition(void)
 {
 	struct cluster_node *node = NULL;
@@ -612,6 +653,13 @@ static int check_high_node_id_partition(void)
 	return found;
 }
 
+/**
+ * @brief is_in_nodelist
+ * @param nodeid
+ * @param members
+ * @param entries
+ * @return
+ */
 static int is_in_nodelist(int nodeid, unsigned int *members, int entries)
 {
 	int i;
@@ -639,6 +687,10 @@ static int is_in_nodelist(int nodeid, unsigned int *members, int entries)
  * partition then we are quorate.
  *
  * Special cases lowest nodeid, and highest nodeid are handled separately.
+ */
+/**
+ * @brief check_auto_tie_breaker
+ * @return
  */
 static int check_auto_tie_breaker(void)
 {
@@ -696,6 +748,11 @@ static int check_auto_tie_breaker(void)
  *   'highest'
  *   a list of nodeids
  */
+
+/**
+ * @brief parse_atb_string
+ * @param atb_string
+ */
 static void parse_atb_string(char *atb_string)
 {
 	char *ptr;
@@ -737,6 +794,10 @@ static void parse_atb_string(char *atb_string)
 	LEAVE();
 }
 
+/**
+ * @brief check_qdevice_master
+ * @return
+ */
 static int check_qdevice_master(void)
 {
 	struct cluster_node *node = NULL;
@@ -758,6 +819,10 @@ static int check_qdevice_master(void)
 	return found;
 }
 
+/**
+ * @brief decode_flags
+ * @param flags
+ */
 static void decode_flags(uint32_t flags)
 {
 	ENTER();
@@ -778,6 +843,10 @@ static void decode_flags(uint32_t flags)
 
 /*
  * load/save are copied almost pristine from totemsrp,c
+ */
+/**
+ * @brief load_ev_tracking_barrier
+ * @return
  */
 static int load_ev_tracking_barrier(void)
 {
@@ -817,6 +886,10 @@ static int load_ev_tracking_barrier(void)
 	return -1;
 }
 
+/**
+ * @brief update_wait_for_all_status
+ * @param wfa_status
+ */
 static void update_wait_for_all_status(uint8_t wfa_status)
 {
 	ENTER(); 
@@ -833,6 +906,9 @@ static void update_wait_for_all_status(uint8_t wfa_status)
 	LEAVE();
 }
 
+/**
+ * @brief update_two_node
+ */
 static void update_two_node(void)
 {
 	ENTER();
@@ -842,6 +918,10 @@ static void update_two_node(void)
 	LEAVE();
 }
 
+/**
+ * @brief update_ev_barrier
+ * @param expected_votes
+ */
 static void update_ev_barrier(uint32_t expected_votes)
 {
 	ENTER();
@@ -852,6 +932,10 @@ static void update_ev_barrier(uint32_t expected_votes)
 	LEAVE();
 }
 
+/**
+ * @brief update_qdevice_can_operate
+ * @param status
+ */
 static void update_qdevice_can_operate(uint8_t status)
 {
 	ENTER();
@@ -862,6 +946,10 @@ static void update_qdevice_can_operate(uint8_t status)
 	LEAVE();
 }
 
+/**
+ * @brief update_qdevice_master_wins
+ * @param allow
+ */
 static void update_qdevice_master_wins(uint8_t allow)
 {
 	ENTER();
@@ -872,6 +960,10 @@ static void update_qdevice_master_wins(uint8_t allow)
 	LEAVE();
 }
 
+/**
+ * @brief update_ev_tracking_barrier
+ * @param ev_t_barrier
+ */
 static void update_ev_tracking_barrier(uint32_t ev_t_barrier)
 {
 	int res;
@@ -905,7 +997,13 @@ static void update_ev_tracking_barrier(uint32_t ev_t_barrier)
 /*
  * quorum calculation core bits
  */
-
+/**
+ * @brief calculate_quorum
+ * @param allow_decrease
+ * @param max_expected
+ * @param ret_total_votes
+ * @return
+ */
 static int calculate_quorum(int allow_decrease, unsigned int max_expected, unsigned int *ret_total_votes)
 {
 	struct list_head *nodelist;
@@ -983,6 +1081,10 @@ static int calculate_quorum(int allow_decrease, unsigned int max_expected, unsig
 	return newquorum;
 }
 
+/**
+ * @brief are_we_quorate
+ * @param total_votes
+ */
 static void are_we_quorate(unsigned int total_votes)
 {
 	int quorate;
@@ -1064,6 +1166,11 @@ static void are_we_quorate(unsigned int total_votes)
 	LEAVE();
 }
 
+/**
+ * @brief get_total_votes
+ * @param totalvotes
+ * @param current_members
+ */
 static void get_total_votes(unsigned int *totalvotes, unsigned int *current_members)
 {
 	unsigned int total_votes = 0;
@@ -1094,6 +1201,11 @@ static void get_total_votes(unsigned int *totalvotes, unsigned int *current_memb
 
 /*
  * Recalculate cluster quorum, set quorate and notify changes
+ */
+/**
+ * @brief recalculate_quorum
+ * @param allow_decrease
+ * @param by_current_nodes
  */
 static void recalculate_quorum(int allow_decrease, int by_current_nodes)
 {
@@ -1131,7 +1243,13 @@ static void recalculate_quorum(int allow_decrease, int by_current_nodes)
 /*
  * configuration bits and pieces
  */
-
+/**
+ * @brief votequorum_read_nodelist_configuration
+ * @param votes
+ * @param nodes
+ * @param expected_votes
+ * @return
+ */
 static int votequorum_read_nodelist_configuration(uint32_t *votes,
 						  uint32_t *nodes,
 						  uint32_t *expected_votes)
@@ -1190,6 +1308,11 @@ static int votequorum_read_nodelist_configuration(uint32_t *votes,
 	return 1;
 }
 
+/**
+ * @brief votequorum_qdevice_is_configured
+ * @param qdevice_votes
+ * @return
+ */
 static int votequorum_qdevice_is_configured(uint32_t *qdevice_votes)
 {
 	char *qdevice_model = NULL;
@@ -1223,6 +1346,11 @@ static int votequorum_qdevice_is_configured(uint32_t *qdevice_votes)
 #define VOTEQUORUM_READCONFIG_STARTUP 0
 #define VOTEQUORUM_READCONFIG_RUNTIME 1
 
+/**
+ * @brief votequorum_readconfig
+ * @param runtime
+ * @return
+ */
 static char *votequorum_readconfig(int runtime)
 {
 	uint32_t node_votes = 0, qdevice_votes = 0;
@@ -1526,6 +1654,14 @@ out:
 	return error;
 }
 
+/**
+ * @brief votequorum_refresh_config
+ * @param event
+ * @param key_name
+ * @param new_val
+ * @param old_val
+ * @param user_data
+ */
 static void votequorum_refresh_config(
 	int32_t event,
 	const char *key_name,
@@ -1581,6 +1717,9 @@ static void votequorum_refresh_config(
 	LEAVE();
 }
 
+/**
+ * @brief votequorum_exec_add_config_notification
+ */
 static void votequorum_exec_add_config_notification(void)
 {
 	icmap_track_t icmap_track_nodelist = NULL;
@@ -1613,7 +1752,13 @@ static void votequorum_exec_add_config_notification(void)
 /*
  * votequorum_exec core
  */
-
+/**
+ * @brief votequorum_exec_send_reconfigure
+ * @param param
+ * @param nodeid
+ * @param value
+ * @return
+ */
 static int votequorum_exec_send_reconfigure(uint8_t param, unsigned int nodeid, uint32_t value)
 {
 	struct req_exec_quorum_reconfigure req_exec_quorum_reconfigure;
@@ -1641,6 +1786,11 @@ static int votequorum_exec_send_reconfigure(uint8_t param, unsigned int nodeid, 
 	return ret;
 }
 
+/**
+ * @brief votequorum_exec_send_nodeinfo
+ * @param nodeid
+ * @return
+ */
 static int votequorum_exec_send_nodeinfo(uint32_t nodeid)
 {
 	struct req_exec_quorum_nodeinfo req_exec_quorum_nodeinfo;
@@ -1675,6 +1825,12 @@ static int votequorum_exec_send_nodeinfo(uint32_t nodeid)
 	return ret;
 }
 
+/**
+ * @brief votequorum_exec_send_qdevice_reconfigure
+ * @param oldname
+ * @param newname
+ * @return
+ */
 static int votequorum_exec_send_qdevice_reconfigure(const char *oldname, const char *newname)
 {
 	struct req_exec_quorum_qdevice_reconfigure req_exec_quorum_qdevice_reconfigure;
@@ -1697,6 +1853,12 @@ static int votequorum_exec_send_qdevice_reconfigure(const char *oldname, const c
 	return ret;
 }
 
+/**
+ * @brief votequorum_exec_send_qdevice_reg
+ * @param operation
+ * @param qdevice_name_req
+ * @return
+ */
 static int votequorum_exec_send_qdevice_reg(uint32_t operation, const char *qdevice_name_req)
 {
 	struct req_exec_quorum_qdevice_reg req_exec_quorum_qdevice_reg;
@@ -1719,6 +1881,12 @@ static int votequorum_exec_send_qdevice_reg(uint32_t operation, const char *qdev
 	return ret;
 }
 
+/**
+ * @brief votequorum_exec_send_quorum_notification
+ * @param conn
+ * @param context
+ * @return
+ */
 static int votequorum_exec_send_quorum_notification(void *conn, uint64_t context)
 {
 	struct res_lib_votequorum_notification *res_lib_votequorum_notification;
@@ -1780,6 +1948,9 @@ static int votequorum_exec_send_quorum_notification(void *conn, uint64_t context
 	return 0;
 }
 
+/**
+ * @brief votequorum_exec_send_expectedvotes_notification
+ */
 static void votequorum_exec_send_expectedvotes_notification(void)
 {
 	struct res_lib_votequorum_expectedvotes_notification res_lib_votequorum_expectedvotes_notification;
@@ -1805,6 +1976,10 @@ static void votequorum_exec_send_expectedvotes_notification(void)
 	LEAVE();
 }
 
+/**
+ * @brief exec_votequorum_qdevice_reconfigure_endian_convert
+ * @param message
+ */
 static void exec_votequorum_qdevice_reconfigure_endian_convert (void *message)
 {
 	ENTER();
@@ -1812,6 +1987,11 @@ static void exec_votequorum_qdevice_reconfigure_endian_convert (void *message)
 	LEAVE();
 }
 
+/**
+ * @brief message_handler_req_exec_votequorum_qdevice_reconfigure
+ * @param message
+ * @param nodeid
+ */
 static void message_handler_req_exec_votequorum_qdevice_reconfigure (
 	const void *message,
 	unsigned int nodeid)
@@ -1839,6 +2019,10 @@ static void message_handler_req_exec_votequorum_qdevice_reconfigure (
 	LEAVE();
 }
 
+/**
+ * @brief exec_votequorum_qdevice_reg_endian_convert
+ * @param message
+ */
 static void exec_votequorum_qdevice_reg_endian_convert (void *message)
 {
 	struct req_exec_quorum_qdevice_reg *req_exec_quorum_qdevice_reg = message;
@@ -1850,6 +2034,11 @@ static void exec_votequorum_qdevice_reg_endian_convert (void *message)
 	LEAVE();
 }
 
+/**
+ * @brief message_handler_req_exec_votequorum_qdevice_reg
+ * @param message
+ * @param nodeid
+ */
 static void message_handler_req_exec_votequorum_qdevice_reg (
 	const void *message,
 	unsigned int nodeid)
@@ -1944,6 +2133,10 @@ static void message_handler_req_exec_votequorum_qdevice_reg (
 	LEAVE();
 }
 
+/**
+ * @brief exec_votequorum_nodeinfo_endian_convert
+ * @param message
+ */
 static void exec_votequorum_nodeinfo_endian_convert (void *message)
 {
 	struct req_exec_quorum_nodeinfo *nodeinfo = message;
@@ -1958,6 +2151,11 @@ static void exec_votequorum_nodeinfo_endian_convert (void *message)
 	LEAVE();
 }
 
+/**
+ * @brief message_handler_req_exec_votequorum_nodeinfo
+ * @param message
+ * @param sender_nodeid
+ */
 static void message_handler_req_exec_votequorum_nodeinfo (
 	const void *message,
 	unsigned int sender_nodeid)
@@ -2076,6 +2274,10 @@ recalculate:
 	LEAVE();
 }
 
+/**
+ * @brief exec_votequorum_reconfigure_endian_convert
+ * @param message
+ */
 static void exec_votequorum_reconfigure_endian_convert (void *message)
 {
 	struct req_exec_quorum_reconfigure *reconfigure = message;
@@ -2088,6 +2290,11 @@ static void exec_votequorum_reconfigure_endian_convert (void *message)
 	LEAVE();
 }
 
+/**
+ * @brief message_handler_req_exec_votequorum_reconfigure
+ * @param message
+ * @param nodeid
+ */
 static void message_handler_req_exec_votequorum_reconfigure (
 	const void *message,
 	unsigned int nodeid)
@@ -2141,6 +2348,10 @@ static void message_handler_req_exec_votequorum_reconfigure (
 	LEAVE();
 }
 
+/**
+ * @brief votequorum_exec_exit_fn
+ * @return
+ */
 static int votequorum_exec_exit_fn (void)
 {
 	int ret = 0;
@@ -2165,6 +2376,11 @@ static int votequorum_exec_exit_fn (void)
 	return ret;
 }
 
+/**
+ * @brief votequorum_exec_init_fn
+ * @param api
+ * @return
+ */
 static char *votequorum_exec_init_fn (struct corosync_api_v1 *api)
 {
 	char *error = NULL;
@@ -2230,7 +2446,10 @@ static char *votequorum_exec_init_fn (struct corosync_api_v1 *api)
 /*
  * votequorum service core
  */
-
+/**
+ * @brief votequorum_last_man_standing_timer_fn
+ * @param arg
+ */
 static void votequorum_last_man_standing_timer_fn(void *arg)
 {
 	ENTER();
@@ -2243,6 +2462,14 @@ static void votequorum_last_man_standing_timer_fn(void *arg)
 	LEAVE();
 }
 
+/**
+ * @brief votequorum_sync_init
+ * @param trans_list
+ * @param trans_list_entries
+ * @param member_list
+ * @param member_list_entries
+ * @param ring_id
+ */
 static void votequorum_sync_init (
 	const unsigned int *trans_list, size_t trans_list_entries,
 	const unsigned int *member_list, size_t member_list_entries,
@@ -2326,6 +2553,10 @@ static void votequorum_sync_init (
 	LEAVE();
 }
 
+/**
+ * @brief votequorum_sync_process
+ * @return
+ */
 static int votequorum_sync_process (void)
 {
 
@@ -2350,6 +2581,9 @@ static int votequorum_sync_process (void)
 	return 0;
 }
 
+/**
+ * @brief votequorum_sync_activate
+ */
 static void votequorum_sync_activate (void)
 {
 	recalculate_quorum(0, 0);
@@ -2360,11 +2594,20 @@ static void votequorum_sync_activate (void)
 	sync_in_progress = 0;
 }
 
+/**
+ * @brief votequorum_sync_abort
+ */
 static void votequorum_sync_abort (void)
 {
 
 }
 
+/**
+ * @brief votequorum_init
+ * @param api
+ * @param q_set_quorate_fn
+ * @return
+ */
 char *votequorum_init(struct corosync_api_v1 *api,
 	quorum_set_quorate_fn_t q_set_quorate_fn)
 {
@@ -2394,6 +2637,11 @@ char *votequorum_init(struct corosync_api_v1 *api,
  * Library Handler init/fini
  */
 
+/**
+ * @brief quorum_lib_init_fn
+ * @param conn
+ * @return
+ */
 static int quorum_lib_init_fn (void *conn)
 {
 	struct quorum_pd *pd = (struct quorum_pd *)corosync_api->ipc_private_data_get (conn);
@@ -2407,6 +2655,11 @@ static int quorum_lib_init_fn (void *conn)
 	return (0);
 }
 
+/**
+ * @brief quorum_lib_exit_fn
+ * @param conn
+ * @return
+ */
 static int quorum_lib_exit_fn (void *conn)
 {
 	struct quorum_pd *quorum_pd = (struct quorum_pd *)corosync_api->ipc_private_data_get (conn);
@@ -2427,6 +2680,10 @@ static int quorum_lib_exit_fn (void *conn)
  * library internal functions
  */
 
+/**
+ * @brief qdevice_timer_fn
+ * @param arg
+ */
 static void qdevice_timer_fn(void *arg)
 {
 	ENTER();
@@ -2452,6 +2709,11 @@ static void qdevice_timer_fn(void *arg)
  * Library Handler Functions
  */
 
+/**
+ * @brief message_handler_req_lib_votequorum_getinfo
+ * @param conn
+ * @param message
+ */
 static void message_handler_req_lib_votequorum_getinfo (void *conn, const void *message)
 {
 	const struct req_lib_votequorum_getinfo *req_lib_votequorum_getinfo = message;
@@ -2561,6 +2823,11 @@ static void message_handler_req_lib_votequorum_getinfo (void *conn, const void *
 	LEAVE();
 }
 
+/**
+ * @brief message_handler_req_lib_votequorum_setexpected
+ * @param conn
+ * @param message
+ */
 static void message_handler_req_lib_votequorum_setexpected (void *conn, const void *message)
 {
 	const struct req_lib_votequorum_setexpected *req_lib_votequorum_setexpected = message;
@@ -2598,6 +2865,11 @@ error_exit:
 	LEAVE();
 }
 
+/**
+ * @brief message_handler_req_lib_votequorum_setvotes
+ * @param conn
+ * @param message
+ */
 static void message_handler_req_lib_votequorum_setvotes (void *conn, const void *message)
 {
 	const struct req_lib_votequorum_setvotes *req_lib_votequorum_setvotes = message;
@@ -2645,6 +2917,11 @@ error_exit:
 	LEAVE();
 }
 
+/**
+ * @brief message_handler_req_lib_votequorum_trackstart
+ * @param conn
+ * @param message
+ */
 static void message_handler_req_lib_votequorum_trackstart (void *conn,
 							   const void *message)
 {
@@ -2692,6 +2969,11 @@ response_send:
 	LEAVE();
 }
 
+/**
+ * @brief message_handler_req_lib_votequorum_trackstop
+ * @param conn
+ * @param message
+ */
 static void message_handler_req_lib_votequorum_trackstop (void *conn,
 							  const void *message)
 {
@@ -2718,6 +3000,11 @@ static void message_handler_req_lib_votequorum_trackstop (void *conn,
 	LEAVE();
 }
 
+/**
+ * @brief message_handler_req_lib_votequorum_qdevice_register
+ * @param conn
+ * @param message
+ */
 static void message_handler_req_lib_votequorum_qdevice_register (void *conn,
 								 const void *message)
 {
@@ -2774,6 +3061,11 @@ out:
 	LEAVE();
 }
 
+/**
+ * @brief message_handler_req_lib_votequorum_qdevice_unregister
+ * @param conn
+ * @param message
+ */
 static void message_handler_req_lib_votequorum_qdevice_unregister (void *conn,
 								   const void *message)
 {
@@ -2813,6 +3105,11 @@ out:
 	LEAVE();
 }
 
+/**
+ * @brief message_handler_req_lib_votequorum_qdevice_update
+ * @param conn
+ * @param message
+ */
 static void message_handler_req_lib_votequorum_qdevice_update (void *conn,
 							       const void *message)
 {
@@ -2842,6 +3139,11 @@ out:
 	LEAVE();
 }
 
+/**
+ * @brief message_handler_req_lib_votequorum_qdevice_poll
+ * @param conn
+ * @param message
+ */
 static void message_handler_req_lib_votequorum_qdevice_poll (void *conn,
 							     const void *message)
 {
@@ -2908,6 +3210,11 @@ out:
 	LEAVE();
 }
 
+/**
+ * @brief message_handler_req_lib_votequorum_qdevice_master_wins
+ * @param conn
+ * @param message
+ */
 static void message_handler_req_lib_votequorum_qdevice_master_wins (void *conn,
 							     const void *message)
 {

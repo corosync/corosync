@@ -68,6 +68,12 @@ void totemip_nosigpipe(int s)
 #endif
 
 /* Compare two addresses */
+/**
+ * @brief totemip_equal
+ * @param addr1
+ * @param addr2
+ * @return
+ */
 int totemip_equal(const struct totem_ip_address *addr1,
 		  const struct totem_ip_address *addr2)
 {
@@ -92,12 +98,22 @@ int totemip_equal(const struct totem_ip_address *addr1,
 }
 
 /* Copy a totem_ip_address */
+/**
+ * @brief totemip_copy
+ * @param addr1
+ * @param addr2
+ */
 void totemip_copy(struct totem_ip_address *addr1,
 		  const struct totem_ip_address *addr2)
 {
 	memcpy(addr1, addr2, sizeof(struct totem_ip_address));
 }
 
+/**
+ * @brief totemip_copy_endian_convert
+ * @param addr1
+ * @param addr2
+ */
 void totemip_copy_endian_convert(struct totem_ip_address *addr1,
 				 const struct totem_ip_address *addr2)
 {
@@ -110,6 +126,11 @@ void totemip_copy_endian_convert(struct totem_ip_address *addr1,
  * Multicast address range is 224.0.0.0 to 239.255.255.255 this
  * translates to the first 4 bits == 1110 (0xE).
  * http://en.wikipedia.org/wiki/Multicast_address
+ */
+/**
+ * @brief totemip_is_mcast
+ * @param ip_addr
+ * @return
  */
 int32_t totemip_is_mcast(struct totem_ip_address *ip_addr)
 {
@@ -127,6 +148,12 @@ int32_t totemip_is_mcast(struct totem_ip_address *ip_addr)
 }
 
 /* For sorting etc. params are void * for qsort's benefit */
+/**
+ * @brief totemip_compare
+ * @param a
+ * @param b
+ * @return
+ */
 int totemip_compare(const void *a, const void *b)
 {
 	int i;
@@ -179,6 +206,12 @@ int totemip_compare(const void *a, const void *b)
 }
 
 /* Build a localhost totem_ip_address */
+/**
+ * @brief totemip_localhost
+ * @param family
+ * @param localhost
+ * @return
+ */
 int totemip_localhost(int family, struct totem_ip_address *localhost)
 {
 	const char *addr_text;
@@ -202,6 +235,11 @@ int totemip_localhost(int family, struct totem_ip_address *localhost)
 	return 0;
 }
 
+/**
+ * @brief totemip_localhost_check
+ * @param addr
+ * @return
+ */
 int totemip_localhost_check(const struct totem_ip_address *addr)
 {
 	struct totem_ip_address localhost;
@@ -211,6 +249,11 @@ int totemip_localhost_check(const struct totem_ip_address *addr)
 	return totemip_equal(addr, &localhost);
 }
 
+/**
+ * @brief totemip_print
+ * @param addr
+ * @return
+ */
 const char *totemip_print(const struct totem_ip_address *addr)
 {
 	static char buf[INET6_ADDRSTRLEN];
@@ -219,6 +262,14 @@ const char *totemip_print(const struct totem_ip_address *addr)
 }
 
 /* Make a totem_ip_address into a usable sockaddr_storage */
+/**
+ * @brief totemip_totemip_to_sockaddr_convert
+ * @param ip_addr
+ * @param port
+ * @param saddr
+ * @param addrlen
+ * @return
+ */
 int totemip_totemip_to_sockaddr_convert(struct totem_ip_address *ip_addr,
 					uint16_t port, struct sockaddr_storage *saddr, int *addrlen)
 {
@@ -260,6 +311,13 @@ int totemip_totemip_to_sockaddr_convert(struct totem_ip_address *ip_addr,
 /* Converts an address string string into a totem_ip_address.
    family can be AF_INET, AF_INET6 or 0 ("for "don't care")
 */
+/**
+ * @brief totemip_parse
+ * @param totemip
+ * @param addr
+ * @param family
+ * @return
+ */
 int totemip_parse(struct totem_ip_address *totemip, const char *addr, int family)
 {
 	struct addrinfo *ainfo;
@@ -292,6 +350,12 @@ int totemip_parse(struct totem_ip_address *totemip, const char *addr, int family
 }
 
 /* Make a sockaddr_* into a totem_ip_address */
+/**
+ * @brief totemip_sockaddr_to_totemip_convert
+ * @param saddr
+ * @param ip_addr
+ * @return
+ */
 int totemip_sockaddr_to_totemip_convert(const struct sockaddr_storage *saddr,
 					struct totem_ip_address *ip_addr)
 {
@@ -318,6 +382,11 @@ int totemip_sockaddr_to_totemip_convert(const struct sockaddr_storage *saddr,
 	return ret;
 }
 
+/**
+ * @brief totemip_getifaddrs
+ * @param addrs
+ * @return
+ */
 int totemip_getifaddrs(struct list_head *addrs)
 {
 	struct ifaddrs *ifap, *ifa;
@@ -386,6 +455,10 @@ error_free_ifaddrs:
 	return (-1);
 }
 
+/**
+ * @brief totemip_freeifaddrs
+ * @param addrs
+ */
 void totemip_freeifaddrs(struct list_head *addrs)
 {
 	struct totem_ip_if_address *if_addr;
@@ -402,6 +475,15 @@ void totemip_freeifaddrs(struct list_head *addrs)
 	list_init(addrs);
 }
 
+/**
+ * @brief totemip_iface_check
+ * @param bindnet
+ * @param boundto
+ * @param interface_up
+ * @param interface_num
+ * @param mask_high_bit
+ * @return
+ */
 int totemip_iface_check(struct totem_ip_address *bindnet,
 			struct totem_ip_address *boundto,
 			int *interface_up,
@@ -493,6 +575,11 @@ finished:
 #define TOTEMIP_IPV4_HEADER_SIZE	20
 #define TOTEMIP_IPV6_HEADER_SIZE	40
 
+/**
+ * @brief totemip_udpip_header_size
+ * @param family
+ * @return
+ */
 size_t totemip_udpip_header_size(int family)
 {
 	size_t header_size;

@@ -146,11 +146,21 @@ struct cs_fsm_entry mon_fsm_table[] = {
 	{ MON_S_FAILED,  MON_E_FAILURE,		NULL,			{-1} },
 };
 
+/**
+ * @brief mon_get_service_engine_ver0
+ * @return
+ */
 struct corosync_service_engine *mon_get_service_engine_ver0 (void)
 {
 	return (&mon_service_engine);
 }
 
+/**
+ * @brief mon_res_state_to_str
+ * @param fsm
+ * @param state
+ * @return
+ */
 static const char * mon_res_state_to_str(struct cs_fsm* fsm,
 	int32_t state)
 {
@@ -168,6 +178,12 @@ static const char * mon_res_state_to_str(struct cs_fsm* fsm,
 	return NULL;
 }
 
+/**
+ * @brief mon_res_event_to_str
+ * @param fsm
+ * @param event
+ * @return
+ */
 static const char * mon_res_event_to_str(struct cs_fsm* fsm,
 	int32_t event)
 {
@@ -182,6 +198,15 @@ static const char * mon_res_event_to_str(struct cs_fsm* fsm,
 	return NULL;
 }
 
+/**
+ * @brief mon_fsm_cb
+ * @param fsm
+ * @param cb_event
+ * @param curr_state
+ * @param next_state
+ * @param fsm_event
+ * @param data
+ */
 static void mon_fsm_cb (struct cs_fsm *fsm, int cb_event, int32_t curr_state,
 	int32_t next_state, int32_t fsm_event, void *data)
 {
@@ -213,6 +238,12 @@ static void mon_fsm_cb (struct cs_fsm *fsm, int cb_event, int32_t curr_state,
 	}
 }
 
+/**
+ * @brief mon_fsm_state_set
+ * @param fsm
+ * @param next_state
+ * @param inst
+ */
 static void mon_fsm_state_set (struct cs_fsm* fsm,
 	enum mon_resource_state next_state, struct resource_instance* inst)
 {
@@ -234,6 +265,12 @@ static void mon_fsm_state_set (struct cs_fsm* fsm,
 }
 
 
+/**
+ * @brief mon_config_changed
+ * @param fsm
+ * @param event
+ * @param data
+ */
 static void mon_config_changed (struct cs_fsm* fsm, int32_t event, void * data)
 {
 	struct resource_instance * inst = (struct resource_instance *)data;
@@ -312,6 +349,12 @@ static void mon_config_changed (struct cs_fsm* fsm, int32_t event, void * data)
 	}
 }
 
+/**
+ * @brief mon_resource_failed
+ * @param fsm
+ * @param event
+ * @param data
+ */
 void mon_resource_failed (struct cs_fsm* fsm, int32_t event, void * data)
 {
 	struct resource_instance * inst = (struct resource_instance *)data;
@@ -319,6 +362,10 @@ void mon_resource_failed (struct cs_fsm* fsm, int32_t event, void * data)
 	mon_fsm_state_set (fsm, MON_S_FAILED, inst);
 }
 
+/**
+ * @brief percent_mem_used_get
+ * @return
+ */
 static int32_t percent_mem_used_get(void)
 {
 	sg_mem_stats *mem_stats;
@@ -343,6 +390,10 @@ static int32_t percent_mem_used_get(void)
 	return ((total - freemem) * 100) / total;
 }
 
+/**
+ * @brief mem_update_stats_fn
+ * @param data
+ */
 static void mem_update_stats_fn (void *data)
 {
 	struct resource_instance * inst = (struct resource_instance *)data;
@@ -368,6 +419,10 @@ static void mem_update_stats_fn (void *data)
 		inst, inst->update_stats_fn, &inst->timer_handle);
 }
 
+/**
+ * @brief min15_loadavg_get
+ * @return
+ */
 static double min15_loadavg_get(void)
 {
 	sg_load_stats *load_stats;
@@ -385,6 +440,10 @@ static double min15_loadavg_get(void)
 	return load_stats->min15;
 }
 
+/**
+ * @brief load_update_stats_fn
+ * @param data
+ */
 static void load_update_stats_fn (void *data)
 {
 	struct resource_instance * inst = (struct resource_instance *)data;
@@ -410,6 +469,14 @@ static void load_update_stats_fn (void *data)
 		inst, inst->update_stats_fn, &inst->timer_handle);
 }
 
+/**
+ * @brief mon_key_changed_cb
+ * @param event
+ * @param key_name
+ * @param new_value
+ * @param old_value
+ * @param user_data
+ */
 static void mon_key_changed_cb (
 	int32_t event,
 	const char *key_name,
@@ -442,6 +509,10 @@ static void mon_key_changed_cb (
 	}
 }
 
+/**
+ * @brief mon_instance_init
+ * @param inst
+ */
 static void mon_instance_init (struct resource_instance* inst)
 {
 	uint64_t tmp_value;
@@ -492,6 +563,11 @@ static void mon_instance_init (struct resource_instance* inst)
 			mon_key_changed_cb, inst, &icmap_track);
 }
 
+/**
+ * @brief mon_exec_init_fn
+ * @param corosync_api
+ * @return
+ */
 static char *mon_exec_init_fn (struct corosync_api_v1 *corosync_api)
 {
 #ifdef HAVE_LIBSTATGRAB_GE_090

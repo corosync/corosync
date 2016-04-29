@@ -49,16 +49,25 @@
 #include <corosync/quorum.h>
 #include <corosync/votequorum.h>
 
+/**
+ * @brief nodeid_format_t enum
+ */
 typedef enum {
 	NODEID_FORMAT_DECIMAL,
 	NODEID_FORMAT_HEX
 } nodeid_format_t;
 
+/**
+ * @brief name_format_t enum
+ */
 typedef enum {
 	ADDRESS_FORMAT_NAME,
 	ADDRESS_FORMAT_IP
 } name_format_t;
 
+/**
+ * @brief command_t enum
+ */
 typedef enum {
 	CMD_UNKNOWN,
 	CMD_SHOWNODES,
@@ -69,6 +78,9 @@ typedef enum {
 	CMD_UNREGISTER_QDEVICE
 } command_t;
 
+/**
+ * @brief sorttype_t enum
+ */
 typedef enum {
 	SORT_ADDR,
 	SORT_NODEID,
@@ -140,6 +152,10 @@ static corosync_cfg_callbacks_t c_callbacks = {
  */
 static int machine_parsable = 0;
 
+/**
+ * @brief show_usage
+ * @param name
+ */
 static void show_usage(const char *name)
 {
 	printf("usage: \n");
@@ -165,6 +181,12 @@ static void show_usage(const char *name)
 	printf("\n");
 }
 
+/**
+ * @brief get_quorum_type
+ * @param quorum_type
+ * @param quorum_type_len
+ * @return
+ */
 static int get_quorum_type(char *quorum_type, size_t quorum_type_len)
 {
 	int err;
@@ -194,9 +216,10 @@ out:
 	return err;
 }
 
-/*
- * Returns 1 if 'votequorum' is active. The called then knows that
+/**
+ * @brief using_votequorum Returns 1 if 'votequorum' is active. The called then knows that
  * votequorum calls should work and can provide extra information
+ * @return
  */
 static int using_votequorum(void)
 {
@@ -218,6 +241,12 @@ static int using_votequorum(void)
 	return using_voteq;
 }
 
+/**
+ * @brief set_votes
+ * @param nodeid
+ * @param votes
+ * @return
+ */
 static int set_votes(uint32_t nodeid, int votes)
 {
 	int err;
@@ -230,6 +259,11 @@ static int set_votes(uint32_t nodeid, int votes)
 	return err==CS_OK?0:err;
 }
 
+/**
+ * @brief set_expected
+ * @param expected_votes
+ * @return
+ */
 static int set_expected(int expected_votes)
 {
 	int err;
@@ -241,10 +275,11 @@ static int set_expected(int expected_votes)
 	return err==CS_OK?0:err;
 }
 
-/*
- *  node name by nodelist
+/**
+ * @brief node_name_by_nodelist
+ * @param nodeid
+ * @return
  */
-
 static const char *node_name_by_nodelist(uint32_t nodeid)
 {
 	cmap_iter_handle_t iter;
@@ -295,9 +330,13 @@ static const char *node_name_by_nodelist(uint32_t nodeid)
 	return ret_buf;
 }
 
-/*
- * This resolves the first address assigned to a node
+/**
+ * @brief node_name This resolves the first address assigned to a node
  * and returns the name or IP address. Use cfgtool if you need more information.
+ *
+ * @param nodeid
+ * @param name_format
+ * @return
  */
 static const char *node_name(uint32_t nodeid, name_format_t name_format)
 {
@@ -343,6 +382,14 @@ static const char *node_name(uint32_t nodeid, name_format_t name_format)
 	return "";
 }
 
+/**
+ * @brief quorum_notification_fn
+ * @param handle
+ * @param quorate
+ * @param ring_id
+ * @param view_list_entries
+ * @param view_list
+ */
 static void quorum_notification_fn(
 	quorum_handle_t handle,
 	uint32_t quorate,
@@ -369,6 +416,10 @@ static void quorum_notification_fn(
 	}
 }
 
+/**
+ * @brief print_string_padded
+ * @param buf
+ */
 static void print_string_padded(const char *buf)
 {
 	int len, delta;
@@ -382,6 +433,10 @@ static void print_string_padded(const char *buf)
 	printf("%s ", buf);
 }
 
+/**
+ * @brief print_uint32_padded
+ * @param value
+ */
 static void print_uint32_padded(uint32_t value)
 {
 	char buf[12];
@@ -390,7 +445,12 @@ static void print_uint32_padded(uint32_t value)
 	print_string_padded(buf);
 }
 
-/* for qsort */
+/**
+ * @brief compare_nodeids binary function for qsort
+ * @param one
+ * @param two
+ * @return
+ */
 static int compare_nodeids(const void *one, const void *two)
 {
       const view_list_entry_t *info1 = one;
@@ -405,6 +465,12 @@ static int compare_nodeids(const void *one, const void *two)
       return -1;
 }
 
+/**
+ * @brief compare_nodenames
+ * @param one
+ * @param two
+ * @return
+ */
 static int compare_nodenames(const void *one, const void *two)
 {
       const view_list_entry_t *info1 = one;
@@ -413,6 +479,12 @@ static int compare_nodenames(const void *one, const void *two)
       return strcmp(info1->name, info2->name);
 }
 
+/**
+ * @brief display_nodes_data
+ * @param nodeid_format
+ * @param name_format
+ * @param sort_type
+ */
 static void display_nodes_data(nodeid_format_t nodeid_format, name_format_t name_format, sorttype_t sort_type)
 {
 	int i, display_qdevice = 0;
@@ -512,6 +584,15 @@ static void display_nodes_data(nodeid_format_t nodeid_format, name_format_t name
 
 }
 
+/**
+ * @brief display_quorum_data
+ * @param is_quorate
+ * @param nodeid_format
+ * @param name_format
+ * @param sort_type
+ * @param loop
+ * @return
+ */
 static int display_quorum_data(int is_quorate,
 			       nodeid_format_t nodeid_format, name_format_t name_format, sorttype_t sort_type,
 			       int loop)
@@ -571,10 +652,14 @@ static int display_quorum_data(int is_quorate,
 	return err;
 }
 
-/*
- * return  1 if quorate
- *         0 if not quorate
- *        -1 on error
+/**
+ * @brief show_status
+ * @param nodeid_format
+ * @param name_format
+ * @param sort_type
+ * @return  1 if quorate
+ *          0 if not quorate
+ *         -1 on error
  */
 static int show_status(nodeid_format_t nodeid_format, name_format_t name_format, sorttype_t sort_type)
 {
@@ -618,6 +703,13 @@ quorum_err:
 	return is_quorate;
 }
 
+/**
+ * @brief monitor_status
+ * @param nodeid_format
+ * @param name_format
+ * @param sort_type
+ * @return
+ */
 static int monitor_status(nodeid_format_t nodeid_format, name_format_t name_format, sorttype_t sort_type) {
 	int err;
 	int loop = 0;
@@ -652,6 +744,13 @@ quorum_err:
 	return -1;
 }
 
+/**
+ * @brief show_nodes
+ * @param nodeid_format
+ * @param name_format
+ * @param sort_type
+ * @return
+ */
 static int show_nodes(nodeid_format_t nodeid_format, name_format_t name_format, sorttype_t sort_type)
 {
 	int err;
@@ -679,6 +778,10 @@ err_exit:
 	return result;
 }
 
+/**
+ * @brief unregister_qdevice
+ * @return
+ */
 static int unregister_qdevice(void)
 {
 	int err;
@@ -702,11 +805,11 @@ static int unregister_qdevice(void)
 	return 0;
 }
 
-/*
- * return -1 on error
+/**
+ * @brief init_all
+ * @return -1 on error
  *         0 if OK
  */
-
 static int init_all(void) {
 	cmap_handle = 0;
 	q_handle = 0;
@@ -751,6 +854,9 @@ out:
 	return -1;
 }
 
+/**
+ * @brief close_all
+ */
 static void close_all(void) {
 	if (cmap_handle) {
 		cmap_finalize(cmap_handle);
@@ -766,6 +872,12 @@ static void close_all(void) {
 	}
 }
 
+/**
+ * @brief main
+ * @param argc
+ * @param argv
+ * @return
+ */
 int main (int argc, char *argv[]) {
 	const char *options = "VHslpmfe:v:hin:o:";
 	char *endptr;

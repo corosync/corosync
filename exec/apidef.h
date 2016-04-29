@@ -37,6 +37,10 @@
 
 #include <corosync/coroapi.h>
 
+/**
+ * @brief apidef_get
+ * @return
+ */
 extern struct corosync_api_v1 *apidef_get (void);
 
 #endif /* APIDEF_H_DEFINED*/

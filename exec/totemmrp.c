@@ -63,12 +63,30 @@
 
 void *totemsrp_context;
 
+/**
+ * @brief totemmrp_deliver_fn
+ * @param nodeid
+ * @param msg
+ * @param msg_len
+ * @param endian_conversion_required
+ */
 void totemmrp_deliver_fn (
 	unsigned int nodeid,
 	const void *msg,
 	unsigned int msg_len,
 	int endian_conversion_required);
 
+/**
+ * @brief totemmrp_confchg_fn
+ * @param configuration_type
+ * @param member_list
+ * @param member_list_entries
+ * @param left_list
+ * @param left_list_entries
+ * @param joined_list
+ * @param joined_list_entries
+ * @param ring_id
+ */
 void totemmrp_confchg_fn (
 	enum totem_configuration_type configuration_type,
 	const unsigned int *member_list, size_t member_list_entries,
@@ -76,12 +94,18 @@ void totemmrp_confchg_fn (
 	const unsigned int *joined_list, size_t joined_list_entries,
 	const struct memb_ring_id *ring_id);
 
+/**
+ *
+ */
 void (*pg_deliver_fn) (
 	unsigned int nodeid,
 	const void *msg,
 	unsigned int msg_len,
 	int endian_conversion_required) = 0;
 
+/**
+ *
+ */
 void (*pg_confchg_fn) (
 	enum totem_configuration_type configuration_type,
 	const unsigned int *member_list, size_t member_list_entries,
@@ -89,6 +113,13 @@ void (*pg_confchg_fn) (
 	const unsigned int *joined_list, size_t joined_list_entries,
 	const struct memb_ring_id *ring_id) = 0;
 
+/**
+ * @brief totemmrp_deliver_fn
+ * @param nodeid
+ * @param msg
+ * @param msg_len
+ * @param endian_conversion_required
+ */
 void totemmrp_deliver_fn (
 	unsigned int nodeid,
 	const void *msg,
@@ -98,6 +129,17 @@ void totemmrp_deliver_fn (
 	pg_deliver_fn (nodeid, msg, msg_len, endian_conversion_required);
 }
 
+/**
+ * @brief totemmrp_confchg_fn
+ * @param configuration_type
+ * @param member_list
+ * @param member_list_entries
+ * @param left_list
+ * @param left_list_entries
+ * @param joined_list
+ * @param joined_list_entries
+ * @param ring_id
+ */
 void totemmrp_confchg_fn (
 	enum totem_configuration_type configuration_type,
 	const unsigned int *member_list, size_t member_list_entries,
@@ -114,6 +156,13 @@ void totemmrp_confchg_fn (
 
 /*
  * Initialize the totem multiple ring protocol
+ */
+/**
+ * @brief totemmrp_initialize
+ * @param poll_handle
+ * @param totem_config
+ * @param stats
+ * @return
  */
 int totemmrp_initialize (
 	qb_loop_t *poll_handle,
@@ -151,6 +200,9 @@ int totemmrp_initialize (
 	return (result);
 }
 
+/**
+ * @brief totemmrp_finalize
+ */
 void totemmrp_finalize (void)
 {
 	totemsrp_finalize (totemsrp_context);
@@ -158,6 +210,13 @@ void totemmrp_finalize (void)
 
 /*
  * Multicast a message
+ */
+/**
+ * @brief totemmrp_mcast
+ * @param iovec
+ * @param iov_len
+ * @param priority
+ * @return
  */
 int totemmrp_mcast (
 	struct iovec *iovec,
@@ -169,6 +228,10 @@ int totemmrp_mcast (
 
 /*
  * Return number of available messages that can be queued
+ */
+/**
+ * @brief totemmrp_avail
+ * @return
  */
 int totemmrp_avail (void)
 {
@@ -185,17 +248,35 @@ int totemmrp_callback_token_create (
 	return totemsrp_callback_token_create (totemsrp_context, handle_out, type, delete, callback_fn, data);
 }
 
+/**
+ * @brief totemmrp_callback_token_destroy
+ * @param handle_out
+ */
 void totemmrp_callback_token_destroy (
 	void *handle_out)
 {
 	totemsrp_callback_token_destroy (totemsrp_context, handle_out);
 }
 
+/**
+ * @brief totemmrp_event_signal
+ * @param type
+ * @param value
+ */
 void totemmrp_event_signal (enum totem_event_type type, int value)
 {
 	totemsrp_event_signal (totemsrp_context, type, value);
 }
 
+/**
+ * @brief totemmrp_ifaces_get
+ * @param nodeid
+ * @param interfaces
+ * @param interfaces_size
+ * @param status
+ * @param iface_count
+ * @return
+ */
 int totemmrp_ifaces_get (
 	unsigned int nodeid,
 	struct totem_ip_address *interfaces,
@@ -216,6 +297,12 @@ int totemmrp_ifaces_get (
 	return (res);
 }
 
+/**
+ * @brief totemmrp_crypto_set
+ * @param cipher_type
+ * @param hash_type
+ * @return
+ */
 int totemmrp_crypto_set (
 	const char *cipher_type,
 	const char *hash_type)
@@ -225,16 +312,28 @@ int totemmrp_crypto_set (
 				    hash_type);
 }
 
+/**
+ * @brief totemmrp_my_nodeid_get
+ * @return
+ */
 unsigned int totemmrp_my_nodeid_get (void)
 {
 	return (totemsrp_my_nodeid_get (totemsrp_context));
 }
 
+/**
+ * @brief totemmrp_my_family_get
+ * @return
+ */
 int totemmrp_my_family_get (void)
 {
 	return (totemsrp_my_family_get (totemsrp_context));
 }
 
+/**
+ * @brief totemmrp_ring_reenable
+ * @return
+ */
 extern int totemmrp_ring_reenable (void)
 {
 	int res;
@@ -245,6 +344,9 @@ extern int totemmrp_ring_reenable (void)
 	return (res);
 }
 
+/**
+ * @brief totemmrp_service_ready_register
+ */
 extern void totemmrp_service_ready_register (
         void (*totem_service_ready) (void))
 {
@@ -253,6 +355,12 @@ extern void totemmrp_service_ready_register (
 		totem_service_ready);
 }
 
+/**
+ * @brief totemmrp_member_add
+ * @param member
+ * @param ring_no
+ * @return
+ */
 int totemmrp_member_add (
         const struct totem_ip_address *member,
         int ring_no)
@@ -264,6 +372,12 @@ int totemmrp_member_add (
 	return (res);
 }
 
+/**
+ * @brief totemmrp_member_remove
+ * @param member
+ * @param ring_no
+ * @return
+ */
 int totemmrp_member_remove (
        const struct totem_ip_address *member,
         int ring_no)
@@ -275,11 +389,17 @@ int totemmrp_member_remove (
 	return (res);
 }
 
+/**
+ * @brief totemmrp_threaded_mode_enable
+ */
 void totemmrp_threaded_mode_enable (void)
 {
 	totemsrp_threaded_mode_enable (totemsrp_context);
 }
 
+/**
+ * @brief totemmrp_trans_ack
+ */
 void totemmrp_trans_ack (void)
 {
 	totemsrp_trans_ack (totemsrp_context);

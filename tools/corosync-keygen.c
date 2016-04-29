@@ -59,6 +59,12 @@ static const char usage[] =
 	"            application is used from a script.\n";
 
 
+/**
+ * @brief main
+ * @param argc
+ * @param argv
+ * @return
+ */
 int main (int argc, char *argv[])
 {
 	int authkey_fd;

@@ -40,6 +40,9 @@
 extern "C" {
 #endif
 
+/**
+ * @brief sam_recovery_policy_t enum
+ */
 typedef enum {
 	SAM_RECOVERY_POLICY_QUIT = 1,
 	SAM_RECOVERY_POLICY_RESTART = 2,

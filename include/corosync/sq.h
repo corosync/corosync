@@ -37,6 +37,9 @@
 #include <errno.h>
 #include <string.h>
 
+/**
+ * @brief The sq struct
+ */
 struct sq {
 	unsigned int head;
 	unsigned int size;
@@ -65,6 +68,12 @@ struct sq {
  */
 #define ADJUST_ROLLOVER_VALUE 0x10000
 
+/**
+ * @brief sq_lt_compare
+ * @param a
+ * @param b
+ * @return
+ */
 static inline int sq_lt_compare (unsigned int a, unsigned int b) {
 	if ((a > ADJUST_ROLLOVER_POINT) || (b > ADJUST_ROLLOVER_POINT)) {
 		if ((a - ADJUST_ROLLOVER_VALUE) < (b - ADJUST_ROLLOVER_VALUE)) {
@@ -78,6 +87,12 @@ static inline int sq_lt_compare (unsigned int a, unsigned int b) {
 	return (0);
 }
 
+/**
+ * @brief sq_lte_compare
+ * @param a
+ * @param b
+ * @return
+ */
 static inline int sq_lte_compare (unsigned int a, unsigned int b) {
 	if ((a > ADJUST_ROLLOVER_POINT) || (b > ADJUST_ROLLOVER_POINT)) {
 		if ((a - ADJUST_ROLLOVER_VALUE) <= (b - ADJUST_ROLLOVER_VALUE)) {
@@ -91,6 +106,14 @@ static inline int sq_lte_compare (unsigned int a, unsigned int b) {
 	return (0);
 }
 
+/**
+ * @brief sq_init
+ * @param sq
+ * @param item_count
+ * @param size_per_item
+ * @param head_seqid
+ * @return
+ */
 static inline int sq_init (
 	struct sq *sq,
 	int item_count,
@@ -123,6 +146,11 @@ static inline int sq_init (
 	return (0);
 }
 
+/**
+ * @brief sq_reinit
+ * @param sq
+ * @param head_seqid
+ */
 static inline void sq_reinit (struct sq *sq, unsigned int head_seqid)
 {
 	sq->head = 0;
@@ -134,6 +162,11 @@ static inline void sq_reinit (struct sq *sq, unsigned int head_seqid)
 	memset (sq->items_miss_count, 0, sq->item_count * sizeof (unsigned int));
 }
 
+/**
+ * @brief sq_assert
+ * @param sq
+ * @param pos
+ */
 static inline void sq_assert (const struct sq *sq, unsigned int pos)
 {
 	unsigned int i;
@@ -144,6 +177,12 @@ static inline void sq_assert (const struct sq *sq, unsigned int pos)
 		assert (sq->items_inuse[i] == 0);
 	}
 }
+
+/**
+ * @brief sq_copy
+ * @param sq_dest
+ * @param sq_src
+ */
 static inline void sq_copy (struct sq *sq_dest, const struct sq *sq_src)
 {
 	sq_assert (sq_src, 20);
@@ -161,12 +200,23 @@ static inline void sq_copy (struct sq *sq_dest, const struct sq *sq_src)
 		sq_src->item_count * sizeof (unsigned int));
 }
 
+/**
+ * @brief sq_free
+ * @param sq
+ */
 static inline void sq_free (struct sq *sq) {
 	free (sq->items);
 	free (sq->items_inuse);
 	free (sq->items_miss_count);
 }
 
+/**
+ * @brief sq_item_add
+ * @param sq
+ * @param item
+ * @param seqid
+ * @return
+ */
 static inline void *sq_item_add (
 	struct sq *sq,
 	void *item,
@@ -194,6 +244,12 @@ static inline void *sq_item_add (
 	return (sq_item);
 }
 
+/**
+ * @brief sq_item_inuse
+ * @param sq
+ * @param seq_id
+ * @return
+ */
 static inline unsigned int sq_item_inuse (
 	const struct sq *sq,
 	unsigned int seq_id) {
@@ -216,6 +272,12 @@ static inline unsigned int sq_item_inuse (
 	return (sq->items_inuse[sq_position] != 0);
 }
 
+/**
+ * @brief sq_item_miss_count
+ * @param sq
+ * @param seq_id
+ * @return
+ */
 static inline unsigned int sq_item_miss_count (
 	const struct sq *sq,
 	unsigned int seq_id)
@@ -227,12 +289,23 @@ static inline unsigned int sq_item_miss_count (
 	return (sq->items_miss_count[sq_position]);
 }
 
+/**
+ * @brief sq_size_get
+ * @param sq
+ * @return
+ */
 static inline unsigned int sq_size_get (
 	const struct sq *sq)
 {
 	return sq->size;
 }
 
+/**
+ * @brief sq_in_range
+ * @param sq
+ * @param seq_id
+ * @return
+ */
 static inline unsigned int sq_in_range (
 	const struct sq *sq,
 	unsigned int seq_id)
@@ -262,6 +335,13 @@ static inline unsigned int sq_in_range (
 
 }
 
+/**
+ * @brief sq_item_get
+ * @param sq
+ * @param seq_id
+ * @param sq_item_out
+ * @return
+ */
 static inline unsigned int sq_item_get (
 	const struct sq *sq,
 	unsigned int seq_id,
@@ -293,6 +373,11 @@ static inline unsigned int sq_item_get (
 	return (0);
 }
 
+/**
+ * @brief sq_items_release
+ * @param sq
+ * @param seqid
+ */
 static inline void sq_items_release (struct sq *sq, unsigned int seqid)
 {
 	unsigned int oldhead;

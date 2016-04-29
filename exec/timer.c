@@ -40,6 +40,13 @@
 #include <qb/qbdefs.h>
 #include <qb/qbutil.h>
 
+/**
+ * @brief corosync_timer_add_absolute
+ * @param nanosec_from_epoch
+ * @param data
+ * @param handle
+ * @return
+ */
 int corosync_timer_add_absolute (
 		unsigned long long nanosec_from_epoch,
 		void *data,
@@ -55,6 +62,13 @@ int corosync_timer_add_absolute (
 				 handle);
 }
 
+/**
+ * @brief corosync_timer_add_duration
+ * @param nanosec_duration
+ * @param data
+ * @param handle
+ * @return
+ */
 int corosync_timer_add_duration (
 	unsigned long long nanosec_duration,
 	void *data,
@@ -69,12 +83,21 @@ int corosync_timer_add_duration (
 				 handle);
 }
 
+/**
+ * @brief corosync_timer_delete
+ * @param th
+ */
 void corosync_timer_delete (
 	corosync_timer_handle_t th)
 {
 	qb_loop_timer_del(cs_poll_handle_get(), th);
 }
 
+/**
+ * @brief corosync_timer_expire_time_get
+ * @param th
+ * @return
+ */
 unsigned long long corosync_timer_expire_time_get (
 	corosync_timer_handle_t th)
 {
@@ -89,6 +112,10 @@ unsigned long long corosync_timer_expire_time_get (
 	return (expire);
 }
 
+/**
+ * @brief cs_timer_time_get
+ * @return
+ */
 unsigned long long cs_timer_time_get (void)
 {
 	return qb_util_nano_from_epoch_get();

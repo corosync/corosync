@@ -59,15 +59,24 @@ LOGSYS_DECLARE_SUBSYS ("APIDEF");
 /*
  * Remove compile warnings about type name changes in corosync_tpg_group
  */
+/**
+ * @brief typedef_tpg_join callback function
+ */
 typedef int (*typedef_tpg_join) (
 	void *,
 	const struct corosync_tpg_group *,
 	size_t);
 
+/**
+ * @brief typedef_tpg_leave callback function
+ */
 typedef int (*typedef_tpg_leave) (void *,
 	const struct corosync_tpg_group *,
 	size_t);
 
+/**
+ * @brief typedef_tpg_groups_mcast_groups callback function
+ */
 typedef int (*typedef_tpg_groups_mcast_groups) (
 	void *, int,
 	const struct corosync_tpg_group *,
@@ -75,6 +84,9 @@ typedef int (*typedef_tpg_groups_mcast_groups) (
 	const struct iovec *,
 	unsigned int);
 
+/**
+ * @brief typedef_tpg_groups_send_ok callback function
+ */
 typedef int (*typedef_tpg_groups_send_ok) (
 	void *,
 	const struct corosync_tpg_group *,
@@ -82,16 +94,32 @@ typedef int (*typedef_tpg_groups_send_ok) (
 	struct iovec *,
 	int);
 
+/**
+ * @brief _corosync_public_exit_error
+ * @param err
+ * @param file
+ * @param line
+ */
 static inline void _corosync_public_exit_error (cs_fatal_error_t err,
 						const char *file,
 						unsigned int line)
   __attribute__((noreturn));
+
+/**
+ * @brief _corosync_public_exit_error
+ * @param err The error that occured
+ * @param file The source file in which the error occured
+ * @param line The line number associated with the error
+ */
 static inline void _corosync_public_exit_error (
 	cs_fatal_error_t err, const char *file, unsigned int line)
 {
 	_corosync_exit_error (err, file, line);
 }
 
+/**
+ * @brief apidef_corosync_api_v1
+ */
 static struct corosync_api_v1 apidef_corosync_api_v1 = {
 	.timer_add_duration = corosync_timer_add_duration,
 	.timer_add_absolute = corosync_timer_add_absolute,
@@ -144,6 +172,10 @@ static struct corosync_api_v1 apidef_corosync_api_v1 = {
 	.poll_dispatch_delete = cs_poll_dispatch_delete
 };
 
+/**
+ * @brief apidef_get
+ * @return
+ */
 struct corosync_api_v1 *apidef_get (void)
 {
 	return (&apidef_corosync_api_v1);

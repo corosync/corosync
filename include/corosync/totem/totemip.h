@@ -60,6 +60,9 @@ void totemip_nosigpipe(int s);
 
 /* These are the things that get passed around */
 #define TOTEM_IP_ADDRESS
+/**
+ * @brief The totem_ip_address struct
+ */
 struct totem_ip_address
 {
 	unsigned int   nodeid;
@@ -67,6 +70,9 @@ struct totem_ip_address
 	unsigned char  addr[TOTEMIP_ADDRLEN];
 } __attribute__((packed));
 
+/**
+ * @brief The totem_ip_if_address struct
+ */
 struct totem_ip_if_address
 {
 	struct totem_ip_address ip_addr;
@@ -104,11 +110,20 @@ extern int totemip_getifaddrs(struct list_head *addrs);
 
 extern void totemip_freeifaddrs(struct list_head *addrs);
 
-/* These two simulate a zero in_addr by clearing the family field */
+/**
+ * @brief totemip_zero_set These two simulate a zero in_addr by clearing the family field
+ * @param addr
+ */
 static inline void totemip_zero_set(struct totem_ip_address *addr)
 {
 	addr->family = 0;
 }
+
+/**
+ * @brief totemip_zero_check These two simulate a zero in_addr by clearing the family field */
+ * @param addr
+ * @return
+ */
 static inline int totemip_zero_check(const struct totem_ip_address *addr)
 {
 	return (addr->family == 0);

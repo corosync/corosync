@@ -64,6 +64,10 @@ LOGSYS_DECLARE_SUBSYS ("QUORUM");
 
 static struct quorum_callin_functions *corosync_quorum_fns = NULL;
 
+/**
+ * @brief corosync_quorum_is_quorate
+ * @return
+ */
 int corosync_quorum_is_quorate (void)
 {
 	if (corosync_quorum_fns) {
@@ -74,6 +78,12 @@ int corosync_quorum_is_quorate (void)
 	}
 }
 
+/**
+ * @brief corosync_quorum_register_callback
+ * @param fn
+ * @param context
+ * @return
+ */
 int corosync_quorum_register_callback (quorum_callback_fn_t fn, void *context)
 {
 	if (corosync_quorum_fns) {
@@ -84,6 +94,12 @@ int corosync_quorum_register_callback (quorum_callback_fn_t fn, void *context)
 	}
 }
 
+/**
+ * @brief corosync_quorum_unregister_callback
+ * @param fn
+ * @param context
+ * @return
+ */
 int corosync_quorum_unregister_callback (quorum_callback_fn_t fn, void *context)
 {
 	if (corosync_quorum_fns) {
@@ -94,6 +110,11 @@ int corosync_quorum_unregister_callback (quorum_callback_fn_t fn, void *context)
 	}
 }
 
+/**
+ * @brief corosync_quorum_initialize
+ * @param fns
+ * @return
+ */
 int corosync_quorum_initialize (struct quorum_callin_functions *fns)
 {
 	if (corosync_quorum_fns)
@@ -103,6 +124,10 @@ int corosync_quorum_initialize (struct quorum_callin_functions *fns)
 	return 0;
 }
 
+/**
+ * @brief quorum_none
+ * @return
+ */
 int quorum_none(void)
 {
 	if (corosync_quorum_fns)

@@ -53,46 +53,83 @@ typedef uint16_t mar_uint16_t;
 typedef uint32_t mar_uint32_t;
 typedef uint64_t mar_uint64_t;
 
+/**
+ * @brief swab_mar_int8_t
+ * @param to_swab
+ */
 static inline void swab_mar_int8_t (mar_int8_t *to_swab)
 {
 	return;
 }
 
+/**
+ * @brief swab_mar_int16_t
+ * @param to_swab
+ */
 static inline void swab_mar_int16_t (mar_int16_t *to_swab)
 {
 	*to_swab = swab16 (*to_swab);
 }
 
+/**
+ * @brief swab_mar_int32_t
+ * @param to_swab
+ */
 static inline void swab_mar_int32_t (mar_int32_t *to_swab)
 {
 	*to_swab = swab32 (*to_swab);
 }
 
+/**
+ * @brief swab_mar_int64_t
+ * @param to_swab
+ */
 static inline void swab_mar_int64_t (mar_int64_t *to_swab)
 {
 	*to_swab = swab64 (*to_swab);
 }
 
+/**
+ * @brief swab_mar_uint8_t
+ * @param to_swab
+ */
 static inline void swab_mar_uint8_t (mar_uint8_t *to_swab)
 {
 	return;
 }
 
+/**
+ * @brief swab_mar_uint16_t
+ * @param to_swab
+ */
 static inline void swab_mar_uint16_t (mar_uint16_t *to_swab)
 {
 	*to_swab = swab16 (*to_swab);
 }
 
+/**
+ * @brief swab_mar_uint32_t
+ * @param to_swab
+ */
 static inline void swab_mar_uint32_t (mar_uint32_t *to_swab)
 {
 	*to_swab = swab32 (*to_swab);
 }
 
+/**
+ * @brief swab_mar_uint64_t
+ * @param to_swab
+ */
 static inline void swab_mar_uint64_t (mar_uint64_t *to_swab)
 {
 	*to_swab = swab64 (*to_swab);
 }
 
+/**
+ * @brief swabbin
+ * @param data
+ * @param len
+ */
 static inline void swabbin(char *data, size_t len)
 {
 	int i;
@@ -105,25 +142,47 @@ static inline void swabbin(char *data, size_t len)
 	}
 }
 
+/**
+ * @brief swabflt
+ * @param flt
+ */
 static inline void swabflt(float *flt)
 {
 	swabbin((char *)flt, sizeof(*flt));
 }
 
+/**
+ * @brief swabdbl
+ * @param dbl
+ */
 static inline void swabdbl(double *dbl)
 {
 	swabbin((char *)dbl, sizeof(*dbl));
 }
 
+/**
+ * @brief mar_name_t struct
+ */
 typedef struct {
 	mar_uint16_t length __attribute__((aligned(8)));
 	mar_uint8_t value[CS_MAX_NAME_LENGTH] __attribute__((aligned(8)));
 } mar_name_t;
 
+/**
+ * @brief get_mar_name_t
+ * @param name
+ * @return
+ */
 static inline const char *get_mar_name_t (const mar_name_t *name) {
         return ((const char *)name->value);
 }
 
+/**
+ * @brief mar_name_match
+ * @param name1
+ * @param name2
+ * @return
+ */
 static inline int mar_name_match(const mar_name_t *name1, const mar_name_t *name2)
 {
         if (name1->length == name2->length) {
@@ -134,12 +193,20 @@ static inline int mar_name_match(const mar_name_t *name1, const mar_name_t *name
         return 0;
 }
 
-
+/**
+ * @brief swab_mar_name_t
+ * @param to_swab
+ */
 static inline void swab_mar_name_t (mar_name_t *to_swab)
 {
 	swab_mar_uint16_t (&to_swab->length);
 }
 
+/**
+ * @brief marshall_from_mar_name_t
+ * @param dest
+ * @param src
+ */
 static inline void marshall_from_mar_name_t (
 	cs_name_t *dest,
 	const mar_name_t *src)
@@ -148,6 +215,11 @@ static inline void marshall_from_mar_name_t (
 	memcpy (dest->value, src->value, CS_MAX_NAME_LENGTH);
 }
 
+/**
+ * @brief marshall_to_mar_name_t
+ * @param dest
+ * @param src
+ */
 static inline void marshall_to_mar_name_t (
 	mar_name_t *dest,
 	const cs_name_t *src)
@@ -156,13 +228,23 @@ static inline void marshall_to_mar_name_t (
 	memcpy (dest->value, src->value, CS_MAX_NAME_LENGTH);
 }
 
+/**
+ * @brief mar_bool_t enum
+ */
 typedef enum {
 	MAR_FALSE = 0,
 	MAR_TRUE = 1
 } mar_bool_t;
 
+/**
+ * @brief mar_time_t
+ */
 typedef mar_uint64_t mar_time_t;
 
+/**
+ * @brief swab_mar_time_t
+ * @param to_swab
+ */
 static inline void swab_mar_time_t (mar_time_t *to_swab)
 {
 	swab_mar_uint64_t (to_swab);
@@ -184,20 +266,38 @@ static inline void swab_mar_time_t (mar_time_t *to_swab)
 #define MAR_TRACK_CHANGES 0x02
 #define MAR_TRACK_CHANGES_ONLY 0x04
 
+/**
+ * @brief mar_invocation_t
+ */
 typedef mar_uint64_t mar_invocation_t;
 
+/**
+ * @brief swab_mar_invocation_t
+ * @param to_swab
+ */
 static inline void swab_mar_invocation_t (mar_invocation_t *to_swab)
 {
 	swab_mar_uint64_t (to_swab);
 }
 
+/**
+ * @brief mar_size_t
+ */
 typedef mar_uint64_t mar_size_t;
 
+/**
+ * @brief swab_mar_size_t
+ * @param to_swab
+ */
 static inline void swab_mar_size_t (mar_size_t *to_swab)
 {
 	swab_mar_uint64_t (to_swab);
 }
 
+/**
+ * @brief swab_coroipc_request_header_t
+ * @param to_swab
+ */
 static inline void swab_coroipc_request_header_t (struct qb_ipc_request_header *to_swab)
 {
 	swab_mar_int32_t (&to_swab->size);

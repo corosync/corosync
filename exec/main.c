@@ -156,11 +156,23 @@ static const char *corosync_lock_file = LOCALSTATEDIR"/run/corosync.pid";
 
 static int ip_version = AF_INET;
 
+/**
+ * @brief cs_poll_handle_get
+ * @return
+ */
 qb_loop_t *cs_poll_handle_get (void)
 {
 	return (corosync_poll_handle);
 }
 
+/**
+ * @brief cs_poll_dispatch_add
+ * @param handle
+ * @param fd
+ * @param events
+ * @param data
+ * @return
+ */
 int cs_poll_dispatch_add (qb_loop_t * handle,
 		int fd,
 		int events,
@@ -174,11 +186,20 @@ int cs_poll_dispatch_add (qb_loop_t * handle,
 				dispatch_fn);
 }
 
+/**
+ * @brief cs_poll_dispatch_delete
+ * @param handle
+ * @param fd
+ * @return
+ */
 int cs_poll_dispatch_delete(qb_loop_t * handle, int fd)
 {
 	return qb_loop_poll_del(handle, fd);
 }
 
+/**
+ * @brief corosync_state_dump
+ */
 void corosync_state_dump (void)
 {
 	int i;
@@ -190,6 +211,9 @@ void corosync_state_dump (void)
 	}
 }
 
+/**
+ * @brief corosync_blackbox_write_to_file
+ */
 static void corosync_blackbox_write_to_file (void)
 {
 	char fname[PATH_MAX];
@@ -219,6 +243,9 @@ static void corosync_blackbox_write_to_file (void)
 	}
 }
 
+/**
+ * @brief unlink_all_completed
+ */
 static void unlink_all_completed (void)
 {
 	api->timer_delete (corosync_stats_timer_handle);
@@ -226,17 +253,32 @@ static void unlink_all_completed (void)
 	icmap_fini();
 }
 
+/**
+ * @brief corosync_shutdown_request
+ */
 void corosync_shutdown_request (void)
 {
 	corosync_service_unlink_all (api, unlink_all_completed);
 }
 
+/**
+ * @brief sig_diag_handler
+ * @param num
+ * @param data
+ * @return
+ */
 static int32_t sig_diag_handler (int num, void *data)
 {
 	corosync_state_dump ();
 	return 0;
 }
 
+/**
+ * @brief sig_exit_handler
+ * @param num
+ * @param data
+ * @return
+ */
 static int32_t sig_exit_handler (int num, void *data)
 {
 	log_printf(LOGSYS_LEVEL_NOTICE, "Node was shut down by a signal");
@@ -244,6 +286,10 @@ static int32_t sig_exit_handler (int num, void *data)
 	return 0;
 }
 
+/**
+ * @brief sigsegv_handler
+ * @param num
+ */
 static void sigsegv_handler (int num)
 {
 	(void)signal (SIGSEGV, SIG_DFL);
@@ -255,6 +301,12 @@ static void sigsegv_handler (int num)
 /*
  * QB wrapper for real signal handler
  */
+/**
+ * @brief sig_segv_handler
+ * @param num
+ * @param data
+ * @return
+ */
 static int32_t sig_segv_handler (int num, void *data)
 {
 
@@ -263,6 +315,10 @@ static int32_t sig_segv_handler (int num, void *data)
 	return 0;
 }
 
+/**
+ * @brief sigabrt_handler
+ * @param num
+ */
 static void sigabrt_handler (int num)
 {
 	(void)signal (SIGABRT, SIG_DFL);
@@ -273,6 +329,12 @@ static void sigabrt_handler (int num)
 
 /*
  * QB wrapper for real signal handler
+ */
+/**
+ * @brief sig_abrt_handler
+ * @param num
+ * @param data
+ * @return
  */
 static int32_t sig_abrt_handler (int num, void *data)
 {
@@ -291,14 +353,23 @@ static struct totempg_group corosync_group = {
 	.group_len	= 1
 };
 
+/**
+ * @brief serialize_lock
+ */
 static void serialize_lock (void)
 {
 }
 
+/**
+ * @brief serialize_unlock
+ */
 static void serialize_unlock (void)
 {
 }
 
+/**
+ * @brief corosync_sync_completed
+ */
 static void corosync_sync_completed (void)
 {
 	log_printf (LOGSYS_LEVEL_NOTICE,
@@ -313,6 +384,12 @@ static void corosync_sync_completed (void)
 	totempg_trans_ack();
 }
 
+/**
+ * @brief corosync_sync_callbacks_retrieve
+ * @param service_id
+ * @param callbacks
+ * @return
+ */
 static int corosync_sync_callbacks_retrieve (
 	int service_id,
 	struct sync_callbacks *callbacks)
@@ -336,6 +413,10 @@ static int corosync_sync_callbacks_retrieve (
 
 static struct memb_ring_id corosync_ring_id;
 
+/**
+ * @brief member_object_joined
+ * @param nodeid
+ */
 static void member_object_joined (unsigned int nodeid)
 {
 	char member_ip[ICMAP_KEYNAME_MAXLEN];
@@ -362,6 +443,10 @@ static void member_object_joined (unsigned int nodeid)
 		"Member joined: %s", api->totem_ifaces_print (nodeid));
 }
 
+/**
+ * @brief member_object_left
+ * @param nodeid
+ */
 static void member_object_left (unsigned int nodeid)
 {
 	char member_status[ICMAP_KEYNAME_MAXLEN];
@@ -374,6 +459,17 @@ static void member_object_left (unsigned int nodeid)
 		"Member left: %s", api->totem_ifaces_print (nodeid));
 }
 
+/**
+ * @brief confchg_fn
+ * @param configuration_type
+ * @param member_list
+ * @param member_list_entries
+ * @param left_list
+ * @param left_list_entries
+ * @param joined_list
+ * @param joined_list_entries
+ * @param ring_id
+ */
 static void confchg_fn (
 	enum totem_configuration_type configuration_type,
 	const unsigned int *member_list, size_t member_list_entries,
@@ -420,11 +516,17 @@ static void confchg_fn (
 	}
 }
 
+/**
+ * @brief priv_drop
+ */
 static void priv_drop (void)
 {
 	return; /* TODO: we are still not dropping privs */
 }
 
+/**
+ * @brief corosync_tty_detach
+ */
 static void corosync_tty_detach (void)
 {
 	int devnull;
@@ -466,6 +568,9 @@ static void corosync_tty_detach (void)
 	close(devnull);
 }
 
+/**
+ * @brief corosync_mlockall
+ */
 static void corosync_mlockall (void)
 {
 	int res;
@@ -488,6 +593,10 @@ static void corosync_mlockall (void)
 }
 
 
+/**
+ * @brief corosync_totem_stats_updater
+ * @param data
+ */
 static void corosync_totem_stats_updater (void *data)
 {
 	totempg_stats_t * stats;
@@ -583,6 +692,9 @@ static void corosync_totem_stats_updater (void *data)
 		&corosync_stats_timer_handle);
 }
 
+/**
+ * @brief corosync_totem_stats_init
+ */
 static void corosync_totem_stats_init (void)
 {
 	icmap_set_uint32("runtime.totem.pg.mrp.srp.mtt_rx_token", 0);
@@ -595,6 +707,13 @@ static void corosync_totem_stats_init (void)
 		&corosync_stats_timer_handle);
 }
 
+/**
+ * @brief deliver_fn
+ * @param nodeid
+ * @param msg
+ * @param msg_len
+ * @param endian_conversion_required
+ */
 static void deliver_fn (
 	unsigned int nodeid,
 	const void *msg,
@@ -640,6 +759,13 @@ static void deliver_fn (
 		(msg, nodeid);
 }
 
+/**
+ * @brief main_mcast
+ * @param iovec
+ * @param iov_len
+ * @param guarantee
+ * @return
+ */
 int main_mcast (
         const struct iovec *iovec,
         unsigned int iov_len,
@@ -659,6 +785,11 @@ int main_mcast (
 	return (totempg_groups_mcast_joined (corosync_group_handle, iovec, iov_len, guarantee));
 }
 
+/**
+ * @brief corosync_ring_id_create_or_load
+ * @param memb_ring_id
+ * @param addr
+ */
 static void corosync_ring_id_create_or_load (
 	struct memb_ring_id *memb_ring_id,
 	const struct totem_ip_address *addr)
@@ -705,6 +836,11 @@ static void corosync_ring_id_create_or_load (
 	assert (!totemip_zero_check(&memb_ring_id->rep));
 }
 
+/**
+ * @brief corosync_ring_id_store
+ * @param memb_ring_id
+ * @param addr
+ */
 static void corosync_ring_id_store (
 	const struct memb_ring_id *memb_ring_id,
 	const struct totem_ip_address *addr)
@@ -740,6 +876,9 @@ static void corosync_ring_id_store (
 	}
 }
 
+/**
+ * @brief recheck_the_q_level_timer
+ */
 static qb_loop_timer_handle recheck_the_q_level_timer;
 void corosync_recheck_the_q_level(void *data)
 {
@@ -750,11 +889,22 @@ void corosync_recheck_the_q_level(void *data)
 	}
 }
 
+/**
+ * @brief The sending_allowed_private_data_struct struct
+ */
 struct sending_allowed_private_data_struct {
 	int reserved_msgs;
 };
 
 
+/**
+ * @brief corosync_sending_allowed
+ * @param service
+ * @param id
+ * @param msg
+ * @param sending_allowed_private_data
+ * @return
+ */
 int corosync_sending_allowed (
 	unsigned int service,
 	unsigned int id,
@@ -798,6 +948,10 @@ int corosync_sending_allowed (
 	return (sending_allowed);
 }
 
+/**
+ * @brief corosync_sending_allowed_release
+ * @param sending_allowed_private_data
+ */
 void corosync_sending_allowed_release (void *sending_allowed_private_data)
 {
 	struct sending_allowed_private_data_struct *pd =
@@ -809,6 +963,11 @@ void corosync_sending_allowed_release (void *sending_allowed_private_data)
 	totempg_groups_joined_release (pd->reserved_msgs);
 }
 
+/**
+ * @brief message_source_is_local
+ * @param source
+ * @return
+ */
 int message_source_is_local (const mar_message_source_t *source)
 {
 	int ret = 0;
@@ -820,6 +979,11 @@ int message_source_is_local (const mar_message_source_t *source)
 	return ret;
 }
 
+/**
+ * @brief message_source_set
+ * @param source
+ * @param conn
+ */
 void message_source_set (
 	mar_message_source_t *source,
 	void *conn)
@@ -830,6 +994,9 @@ void message_source_set (
 	source->conn = conn;
 }
 
+/**
+ * @brief The scheduler_pause_timeout_data struct
+ */
 struct scheduler_pause_timeout_data {
 	struct totem_config *totem_config;
 	qb_loop_timer_handle handle;
@@ -837,6 +1004,10 @@ struct scheduler_pause_timeout_data {
 	unsigned long long max_tv_diff;
 };
 
+/**
+ * @brief timer_function_scheduler_timeout
+ * @param data
+ */
 static void timer_function_scheduler_timeout (void *data)
 {
 	struct scheduler_pause_timeout_data *timeout_data = (struct scheduler_pause_timeout_data *)data;
@@ -875,6 +1046,9 @@ static void timer_function_scheduler_timeout (void *data)
 }
 
 
+/**
+ * @brief corosync_setscheduler
+ */
 static void corosync_setscheduler (void)
 {
 #if defined(HAVE_PTHREAD_SETSCHEDPARAM) && defined(HAVE_SCHED_GET_PRIORITY_MAX) && defined(HAVE_SCHED_SETSCHEDULER)
@@ -921,6 +1095,15 @@ static void corosync_setscheduler (void)
 #endif
 }
 
+/**
+ * @brief _logsys_log_printf
+ * @param level
+ * @param subsys
+ * @param function_name
+ * @param file_name
+ * @param file_line
+ * @param format
+ */
 static void
 _logsys_log_printf(int level, int subsys,
 		const char *function_name,
@@ -929,6 +1112,15 @@ _logsys_log_printf(int level, int subsys,
 		const char *format,
 		...) __attribute__((format(printf, 6, 7)));
 
+/**
+ * @brief _logsys_log_printf
+ * @param level
+ * @param subsys
+ * @param function_name
+ * @param file_name
+ * @param file_line
+ * @param format
+ */
 static void
 _logsys_log_printf(int level, int subsys,
 		const char *function_name,
@@ -945,6 +1137,14 @@ _logsys_log_printf(int level, int subsys,
 	va_end(ap);
 }
 
+/**
+ * @brief fplay_key_change_notify_fn
+ * @param event
+ * @param key_name
+ * @param new_val
+ * @param old_val
+ * @param user_data
+ */
 static void fplay_key_change_notify_fn (
 	int32_t event,
 	const char *key_name,
@@ -962,6 +1162,9 @@ static void fplay_key_change_notify_fn (
 	}
 }
 
+/**
+ * @brief corosync_fplay_control_init
+ */
 static void corosync_fplay_control_init (void)
 {
 	icmap_track_t track = NULL;
@@ -985,6 +1188,9 @@ static void corosync_fplay_control_init (void)
  *
  * Also some RO keys cannot be determined in this stage, so they are set later in
  * other functions (like nodelist.local_node_pos, ...)
+ */
+/**
+ * @brief set_icmap_ro_keys_flag
  */
 static void set_icmap_ro_keys_flag (void)
 {
@@ -1012,6 +1218,9 @@ static void set_icmap_ro_keys_flag (void)
 	icmap_set_ro_access("config.totemconfig_reload_in_progress", CS_FALSE, CS_TRUE);
 }
 
+/**
+ * @brief main_service_ready
+ */
 static void main_service_ready (void)
 {
 	int res;
@@ -1032,6 +1241,12 @@ static void main_service_ready (void)
 		corosync_sync_completed);
 }
 
+/**
+ * @brief corosync_flock
+ * @param lockfile
+ * @param pid
+ * @return
+ */
 static enum e_corosync_done corosync_flock (const char *lockfile, pid_t pid)
 {
 	struct flock lock;
@@ -1119,6 +1334,13 @@ error_close:
 	return (err);
 }
 
+/**
+ * @brief main
+ * @param argc
+ * @param argv
+ * @param envp
+ * @return
+ */
 int main (int argc, char **argv, char **envp)
 {
 	const char *error_string;

@@ -169,6 +169,9 @@ size_t hash_block_len[] = {
 	SHA512_BLOCK_LENGTH		/* CRYPTO_HASH_TYPE_SHA512 */
 };
 
+/**
+ * @brief The crypto_instance struct
+ */
 struct crypto_instance {
 	PK11SymKey   *nss_sym_key;
 	PK11SymKey   *nss_sym_key_sign;
@@ -210,6 +213,11 @@ do {									\
  * crypt/decrypt functions
  */
 
+/**
+ * @brief string_to_crypto_cipher_type
+ * @param crypto_cipher_type
+ * @return
+ */
 static int string_to_crypto_cipher_type(const char* crypto_cipher_type)
 {
 	if (strcmp(crypto_cipher_type, "none") == 0) {
@@ -226,6 +234,11 @@ static int string_to_crypto_cipher_type(const char* crypto_cipher_type)
 	return CRYPTO_CIPHER_TYPE_AES256;
 }
 
+/**
+ * @brief init_nss_crypto
+ * @param instance
+ * @return
+ */
 static int init_nss_crypto(struct crypto_instance *instance)
 {
 	PK11SlotInfo*	crypt_slot = NULL;
@@ -261,6 +274,15 @@ static int init_nss_crypto(struct crypto_instance *instance)
 	return 0;
 }
 
+/**
+ * @brief encrypt_nss
+ * @param instance
+ * @param buf_in
+ * @param buf_in_len
+ * @param buf_out
+ * @param buf_out_len
+ * @return
+ */
 static int encrypt_nss(
 	struct crypto_instance *instance,
 	const unsigned char *buf_in,
@@ -353,6 +375,13 @@ out:
 	return err;
 }
 
+/**
+ * @brief decrypt_nss
+ * @param instance
+ * @param buf
+ * @param buf_len
+ * @return
+ */
 static int decrypt_nss (
 	struct crypto_instance *instance,
 	unsigned char *buf,
@@ -426,6 +455,11 @@ out:
  * hash/hmac/digest functions
  */
 
+/**
+ * @brief string_to_crypto_hash_type
+ * @param crypto_hash_type
+ * @return
+ */
 static int string_to_crypto_hash_type(const char* crypto_hash_type)
 {
 	if (strcmp(crypto_hash_type, "none") == 0) {
@@ -445,6 +479,11 @@ static int string_to_crypto_hash_type(const char* crypto_hash_type)
 	return CRYPTO_HASH_TYPE_SHA1;
 }
 
+/**
+ * @brief init_nss_hash
+ * @param instance
+ * @return
+ */
 static int init_nss_hash(struct crypto_instance *instance)
 {
 	PK11SlotInfo*	hash_slot = NULL;
@@ -480,6 +519,14 @@ static int init_nss_hash(struct crypto_instance *instance)
 	return 0;
 }
 
+/**
+ * @brief calculate_nss_hash
+ * @param instance
+ * @param buf
+ * @param buf_len
+ * @param hash
+ * @return
+ */
 static int calculate_nss_hash(
 	struct crypto_instance *instance,
 	const unsigned char *buf,
@@ -554,6 +601,11 @@ out:
  * global/glue nss functions
  */
 
+/**
+ * @brief init_nss_db
+ * @param instance
+ * @return
+ */
 static int init_nss_db(struct crypto_instance *instance)
 {
 	if ((!cipher_to_nss[instance->crypto_cipher_type]) &&
@@ -570,6 +622,13 @@ static int init_nss_db(struct crypto_instance *instance)
 	return 0;
 }
 
+/**
+ * @brief init_nss
+ * @param instance
+ * @param crypto_cipher_type
+ * @param crypto_hash_type
+ * @return
+ */
 static int init_nss(struct crypto_instance *instance,
 		    const char *crypto_cipher_type,
 		    const char *crypto_hash_type)
@@ -593,6 +652,15 @@ static int init_nss(struct crypto_instance *instance,
 	return 0;
 }
 
+/**
+ * @brief encrypt_and_sign_nss_2_3
+ * @param instance
+ * @param buf_in
+ * @param buf_in_len
+ * @param buf_out
+ * @param buf_out_len
+ * @return
+ */
 static int encrypt_and_sign_nss_2_3 (
 	struct crypto_instance *instance,
 	const unsigned char *buf_in,
@@ -618,6 +686,13 @@ static int encrypt_and_sign_nss_2_3 (
 	return 0;
 }
 
+/**
+ * @brief authenticate_nss_2_3
+ * @param instance
+ * @param buf
+ * @param buf_len
+ * @return
+ */
 static int authenticate_nss_2_3 (
 	struct crypto_instance *instance,
 	unsigned char *buf,
@@ -641,6 +716,13 @@ static int authenticate_nss_2_3 (
 	return 0;
 }
 
+/**
+ * @brief decrypt_nss_2_3
+ * @param instance
+ * @param buf
+ * @param buf_len
+ * @return
+ */
 static int decrypt_nss_2_3 (
 	struct crypto_instance *instance,
 	unsigned char *buf,
@@ -659,6 +741,12 @@ static int decrypt_nss_2_3 (
  * exported API
  */
 
+/**
+ * @brief crypto_sec_header_size
+ * @param crypto_cipher_type
+ * @param crypto_hash_type
+ * @return
+ */
 size_t crypto_sec_header_size(
 	const char *crypto_cipher_type,
 	const char *crypto_hash_type)
@@ -708,6 +796,15 @@ size_t crypto_sec_header_size(
  *  and extra buffer but values are hashed and verified.
  */
 
+/**
+ * @brief crypto_encrypt_and_sign
+ * @param instance
+ * @param buf_in
+ * @param buf_in_len
+ * @param buf_out
+ * @param buf_out_len
+ * @return
+ */
 int crypto_encrypt_and_sign (
 	struct crypto_instance *instance,
 	const unsigned char *buf_in,
@@ -730,6 +827,13 @@ int crypto_encrypt_and_sign (
 	return err;
 }
 
+/**
+ * @brief crypto_authenticate_and_decrypt
+ * @param instance
+ * @param buf
+ * @param buf_len
+ * @return
+ */
 int crypto_authenticate_and_decrypt (struct crypto_instance *instance,
 	unsigned char *buf,
 	int *buf_len)
@@ -783,6 +887,18 @@ int crypto_authenticate_and_decrypt (struct crypto_instance *instance,
 	return 0;
 }
 
+/**
+ * @brief crypto_init
+ * @param private_key
+ * @param private_key_len
+ * @param crypto_cipher_type
+ * @param crypto_hash_type
+ * @param log_level_security
+ * @param log_level_notice
+ * @param log_level_error
+ * @param log_subsys_id
+ * @return
+ */
 struct crypto_instance *crypto_init(
 	const unsigned char *private_key,
 	unsigned int private_key_len,
