@@ -44,11 +44,18 @@
 #include <qb/qbloop.h>
 #include <corosync/swab.h>
 
+/**
+ * @brief The mar_message_source_t struct
+ */
 typedef struct {
 	uint32_t nodeid __attribute__((aligned(8)));
 	void *conn __attribute__((aligned(8)));
 } mar_message_source_t __attribute__((aligned(8)));
 
+/**
+ * @brief swab_mar_message_source_t
+ * @param to_swab
+ */
 static inline void swab_mar_message_source_t (mar_message_source_t *to_swab)
 {
 	swab32 (to_swab->nodeid);
@@ -61,10 +68,16 @@ static inline void swab_mar_message_source_t (mar_message_source_t *to_swab)
 }
 
 #ifndef TIMER_HANDLE_T
+/**
+ * @brief corosync_timer_handle_t
+ */
 typedef qb_loop_timer_handle corosync_timer_handle_t;
 #define TIMER_HANDLE_T 1
 #endif
 
+/**
+ * @brief The corosync_tpg_group struct
+ */
 struct corosync_tpg_group {
 	const void *group;
 	size_t group_len;
@@ -92,6 +105,9 @@ struct corosync_tpg_group {
 #define MILLI_2_NANO_SECONDS 1000000ULL
 
 #if !defined(TOTEM_IP_ADDRESS)
+/**
+ * @brief The totem_ip_address struct
+ */
 struct totem_ip_address {
 	unsigned int   nodeid;
 	unsigned short family;
@@ -100,6 +116,9 @@ struct totem_ip_address {
 #endif
 
 #if !defined(MEMB_RING_ID)
+/**
+ * @brief The memb_ring_id struct
+ */
 struct memb_ring_id {
 	struct totem_ip_address rep;
 	unsigned long long seq;
@@ -107,6 +126,9 @@ struct memb_ring_id {
 #endif
 
 #if !defined(TOTEM_CONFIGURATION_TYPE)
+/**
+ * @brief The totem_configuration_type enum
+ */
 enum totem_configuration_type {
 	TOTEM_CONFIGURATION_REGULAR,
 	TOTEM_CONFIGURATION_TRANSITIONAL
@@ -114,12 +136,18 @@ enum totem_configuration_type {
 #endif
 
 #if !defined(TOTEM_CALLBACK_TOKEN_TYPE)
+/**
+ * @brief The totem_callback_token_type enum
+ */
 enum totem_callback_token_type {
 	TOTEM_CALLBACK_TOKEN_RECEIVED = 1,
 	TOTEM_CALLBACK_TOKEN_SENT = 2
 };
 #endif
 
+/**
+ * @brief The cs_lib_flow_control enum
+ */
 enum cs_lib_flow_control {
 	CS_LIB_FLOW_CONTROL_REQUIRED = 1,
 	CS_LIB_FLOW_CONTROL_NOT_REQUIRED = 2
@@ -128,12 +156,18 @@ enum cs_lib_flow_control {
 #define COROSYNC_LIB_FLOW_CONTROL_REQUIRED CS_LIB_FLOW_CONTROL_REQUIRED
 #define COROSYNC_LIB_FLOW_CONTROL_NOT_REQUIRED CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 
+/**
+ * @brief The cs_lib_allow_inquorate enum
+ */
 enum cs_lib_allow_inquorate {
 	CS_LIB_DISALLOW_INQUORATE = 0, /* default */
 	CS_LIB_ALLOW_INQUORATE = 1
 };
 
 #if !defined (COROSYNC_FLOW_CONTROL_STATE)
+/**
+ * @brief The cs_flow_control_state enum
+ */
 enum cs_flow_control_state {
 	CS_FLOW_CONTROL_STATE_DISABLED,
 	CS_FLOW_CONTROL_STATE_ENABLED
@@ -143,7 +177,9 @@ enum cs_flow_control_state {
 #define CS_FLOW_CONTROL_STATE_ENABLED CS_FLOW_CONTROL_STATE_ENABLED
 
 #endif /* COROSYNC_FLOW_CONTROL_STATE */
-
+/**
+ * @brief The cs_fatal_error_t enum.
+ */
 typedef enum {
 	COROSYNC_FATAL_ERROR_EXIT = -1,
 	COROSYNC_LIBAIS_SOCKET = -6,
@@ -157,14 +193,23 @@ typedef enum {
 #define corosync_fatal_error_t cs_fatal_error_t;
 
 #ifndef QUORUM_H_DEFINED
+/**
+ *@brief The quorum_callback_fn_t callback
+ */
 typedef void (*quorum_callback_fn_t) (int quorate, void *context);
 
+/**
+ * @brief The quorum_callin_functions struct
+ */
 struct quorum_callin_functions {
 	int (*quorate) (void);
 	int (*register_callback) (quorum_callback_fn_t callback_fn, void *contexxt);
 	int (*unregister_callback) (quorum_callback_fn_t callback_fn, void *context);
 };
 
+/**
+ * @brief The sync_callback_fn_t callback
+ */
 typedef void (*sync_callback_fn_t) (
 	const unsigned int *view_list,
 	size_t view_list_entries,
@@ -174,6 +219,9 @@ typedef void (*sync_callback_fn_t) (
 #endif /* QUORUM_H_DEFINED */
 
 
+/**
+ * @brief The corosync_api_v1 struct
+ */
 struct corosync_api_v1 {
 	/*
 	 * Time and timer APIs
@@ -414,20 +462,32 @@ struct corosync_api_v1 {
 
 #define SERVICES_COUNT_MAX 64
 
+/**
+ * @brief The corosync_lib_handler struct
+ */
 struct corosync_lib_handler {
 	void (*lib_handler_fn) (void *conn, const void *msg);
 	enum cs_lib_flow_control flow_control;
 };
 
+/**
+ * @brief The corosync_exec_handler struct
+ */
 struct corosync_exec_handler {
 	void (*exec_handler_fn) (const void *msg, unsigned int nodeid);
 	void (*exec_endian_convert_fn) (void *msg);
 };
 
+/**
+ * @brief The corosync_service_engine_iface_ver0 struct
+ */
 struct corosync_service_engine_iface_ver0 {
         struct corosync_service_engine *(*corosync_get_service_engine_ver0) (void);
 };
 
+/**
+ * @brief The corosync_service_engine struct
+ */
 struct corosync_service_engine {
 	const char *name;
 	unsigned short id;

@@ -78,14 +78,15 @@ typedef uint64_t cmap_track_handle_t;
 #define CMAP_TRACK_ADD		4
 #define CMAP_TRACK_DELETE	1
 #define CMAP_TRACK_MODIFY	2
-/*
+
+/**
  * Whole prefix is tracked, instead of key only (so "totem." tracking means that
  * "totem.nodeid", "totem.version", ... applies). This value is also never returned
  * inside of callback and is used only in adding track
  */
 #define CMAP_TRACK_PREFIX	8
 
-/*
+/**
  * Possible types of value. Binary is raw data without trailing zero with given length
  */
 typedef enum {
@@ -103,7 +104,7 @@ typedef enum {
     CMAP_VALUETYPE_BINARY	= 12,
 } cmap_value_types_t;
 
-/*
+/**
  * Structure passed as new_value and old_value in change callback. It contains type of
  * key, length of key and pointer to value of key
  */
@@ -113,7 +114,7 @@ struct cmap_notify_value {
 	const void *data;
 };
 
-/*
+/**
  * Prototype for notify callback function. Even is one of CMAP_TRACK_* event, key_name is
  * changed key, new and old_value contains values or are zeroed (in other words, type is non
  * existing 0 type) if there were no old (creating of key) or new (deleting of key) value.
@@ -144,7 +145,7 @@ extern cs_error_t cmap_initialize (
 extern cs_error_t cmap_finalize (
 	cmap_handle_t handle);
 
-/*
+/**
  * Get a file descriptor on which to poll.  cmap_handle_t is NOT a
  * file descriptor and may not be used directly.
  * @param handle cmap handle initialized by cmap_initialize
@@ -162,17 +163,25 @@ extern cs_error_t cmap_fd_get (
 extern cs_error_t cmap_dispatch (
 	cmap_handle_t handle,
 	cs_dispatch_flags_t dispatch_types);
-/*
- * Get/set context variable
+/**
+ * @brief cmap_context_get
+ * @param handle
+ * @param context
+ * @return
  */
 extern cs_error_t cmap_context_get (
 	cmap_handle_t handle,
 	const void **context);
 
+/**
+ * @brief cmap_context_set
+ * @param handle
+ * @param context
+ * @return
+ */
 extern cs_error_t cmap_context_set (
 	cmap_handle_t handle,
 	const void *context);
-
 
 /**
  * Store value in cmap
@@ -212,7 +221,8 @@ extern cs_error_t cmap_set_string(cmap_handle_t handle, const char *key_name, co
 extern cs_error_t cmap_delete(cmap_handle_t handle, const char *key_name);
 
 /**
- * Retrieve value of key key_name and store it in user preallocated value pointer.
+ * @brief Retrieve value of key key_name and store it in user preallocated value pointer.
+ *
  * value can be NULL, and then only value_len and/or type is returned (both of them
  * can also be NULL). If value is not NULL, actual length of value in map is checked
  * against value_len. If *value_len is shorter then length of value in map, error
@@ -248,8 +258,10 @@ extern cs_error_t cmap_get_float(cmap_handle_t handle, const char *key_name, flo
 extern cs_error_t cmap_get_double(cmap_handle_t handle, const char *key_name, double *dbl);
 
 /**
- * Shortcut for cmap_get for string type. Returned string is newly allocated and
- * caller is responsible for freeing memory
+ * @brief Shortcut for cmap_get for string type.
+ *
+ * Returned string is newly allocated and caller is responsible for freeing memory
+ *
  * @param handle cmap handle
  * @param key_name name of key to get value from
  * @param str pointer where char pointer will be stored
@@ -257,21 +269,24 @@ extern cs_error_t cmap_get_double(cmap_handle_t handle, const char *key_name, do
 extern cs_error_t cmap_get_string(cmap_handle_t handle, const char *key_name, char **str);
 
 /**
- * Increment value of key_name if it is [u]int* type
+ * @brief Increment value of key_name if it is [u]int* type
+ *
  * @param handle cmap handle
  * @param key_name key name
  */
 extern cs_error_t cmap_inc(cmap_handle_t handle, const char *key_name);
 
 /**
- * Decrement value of key_name if it is [u]int* type
+ * @brief Decrement value of key_name if it is [u]int* type
+ *
  * @param handle cmap handle
  * @param key_name key name
  */
 extern cs_error_t cmap_dec(cmap_handle_t handle, const char *key_name);
 
 /**
- * Initialize iterator with given prefix
+ * @brief Initialize iterator with given prefix
+ *
  * @param handle cmap handle
  * @param prefix prefix to iterate on
  * @param cmap_iter_handle value used for getting next value of iterator and/or deleting iteration
@@ -279,7 +294,9 @@ extern cs_error_t cmap_dec(cmap_handle_t handle, const char *key_name);
 extern cs_error_t cmap_iter_init(cmap_handle_t handle, const char *prefix, cmap_iter_handle_t *cmap_iter_handle);
 
 /**
- * Return next item in iterator iter. value_len and type are optional (= can be NULL), but if set,
+ * @brief Return next item in iterator iter.
+ *
+ * value_len and type are optional (= can be NULL), but if set,
  * length of returned value and/or type is returned.
  *
  * @param handle cmap handle
@@ -297,14 +314,20 @@ extern cs_error_t cmap_iter_next(
 		cmap_value_types_t *type);
 
 /**
- * Finalize iterator
+ * @brief Finalize iterator
+ * @param handle
+ * @param iter_handle
+ * @return
  */
 extern cs_error_t cmap_iter_finalize(cmap_handle_t handle, cmap_iter_handle_t iter_handle);
 
-/*
- * Add tracking function for given key_name. Tracked changes (add|modify|delete) depend on track_type,
+/**
+ * @brief Add tracking function for given key_name.
+ *
+ * Tracked changes (add|modify|delete) depend on track_type,
  * which is bitwise or of CMAP_TRACK_* values. notify_fn is called on change, where user_data pointer
  * is passed (unchanged). Value which can be used to delete tracking is passed as cmap_track.
+ *
  * @param handle cmap handle
  * @param key_name name of key to track changes on
  * @param track_type bitwise-or of CMAP_TRACK_* values

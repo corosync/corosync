@@ -47,6 +47,9 @@
  */
 #define CFG_MAX_INTERFACES			16
 
+/**
+ * @brief The req_lib_cfg_types enum
+ */
 enum req_lib_cfg_types {
 	MESSAGE_REQ_CFG_RINGSTATUSGET = 0,
 	MESSAGE_REQ_CFG_RINGREENABLE = 1,
@@ -59,6 +62,9 @@ enum req_lib_cfg_types {
 	MESSAGE_REQ_CFG_CRYPTO_SET = 8
 };
 
+/**
+ * @brief The res_lib_cfg_types enum
+ */
 enum res_lib_cfg_types {
         MESSAGE_RES_CFG_RINGSTATUSGET = 0,
         MESSAGE_RES_CFG_RINGREENABLE = 1,
@@ -78,10 +84,16 @@ enum res_lib_cfg_types {
 	MESSAGE_RES_CFG_RELOAD_CONFIG = 15
 };
 
+/**
+ * @brief The req_lib_cfg_ringstatusget struct
+ */
 struct req_lib_cfg_ringstatusget {
 	struct qb_ipc_request_header header __attribute__((aligned(8)));
 };
 
+/**
+ * @brief The res_lib_cfg_ringstatusget struct
+ */
 struct res_lib_cfg_ringstatusget {
 	struct qb_ipc_response_header header __attribute__((aligned(8)));
 	mar_uint32_t interface_count __attribute__((aligned(8)));
@@ -89,52 +101,85 @@ struct res_lib_cfg_ringstatusget {
 	char interface_status[CFG_MAX_INTERFACES][CFG_INTERFACE_STATUS_MAX_LEN] __attribute__((aligned(8)));
 };
 
+/**
+ * @brief The req_lib_cfg_ringreenable struct
+ */
 struct req_lib_cfg_ringreenable {
 	struct qb_ipc_request_header header __attribute__((aligned(8)));
 };
 
+/**
+ * @brief The res_lib_cfg_ringreenable struct
+ */
 struct res_lib_cfg_ringreenable {
 	struct qb_ipc_response_header header __attribute__((aligned(8)));
 };
 
+/**
+ * @brief The req_lib_cfg_killnode struct
+ */
 struct req_lib_cfg_killnode {
 	struct qb_ipc_request_header header __attribute__((aligned(8)));
 	unsigned int nodeid __attribute__((aligned(8)));
 	cs_name_t reason __attribute__((aligned(8)));
 };
 
+/**
+ * @brief The res_lib_cfg_killnode struct
+ */
 struct res_lib_cfg_killnode {
 	struct qb_ipc_response_header header __attribute__((aligned(8)));
 };
 
+/**
+ * @brief The req_lib_cfg_tryshutdown struct
+ */
 struct req_lib_cfg_tryshutdown {
 	struct qb_ipc_request_header header __attribute__((aligned(8)));
 	unsigned int flags;
 };
 
+/**
+ * @brief The res_lib_cfg_tryshutdown struct
+ */
 struct res_lib_cfg_tryshutdown {
 	struct qb_ipc_response_header header __attribute__((aligned(8)));
 };
 
+/**
+ * @brief The req_lib_cfg_replytoshutdown struct
+ */
 struct req_lib_cfg_replytoshutdown {
 	struct qb_ipc_request_header header __attribute__((aligned(8)));
 	unsigned int response;
 };
 
+/**
+ * @brief The res_lib_cfg_replytoshutdown struct
+ */
 struct res_lib_cfg_replytoshutdown {
 	struct qb_ipc_response_header header __attribute__((aligned(8)));
 };
 
+/**
+ * @brief The res_lib_cfg_testshutdown struct
+ */
 struct res_lib_cfg_testshutdown {
 	struct qb_ipc_response_header header __attribute__((aligned(8)));
 	unsigned int flags;
 };
 
+/**
+ * @brief The req_lib_cfg_get_node_addrs struct
+ */
 struct req_lib_cfg_get_node_addrs {
         struct qb_ipc_request_header header __attribute__((aligned(8)));
 	unsigned int nodeid;
 };
 
+/**
+ * @brief The res_lib_cfg_get_node_addrs struct
+ */
 struct res_lib_cfg_get_node_addrs {
         struct qb_ipc_response_header header __attribute__((aligned(8)));
 	unsigned int family;
@@ -143,23 +188,38 @@ struct res_lib_cfg_get_node_addrs {
 	char addrs[];
 };
 
+/**
+ * @brief The req_lib_cfg_local_get struct
+ */
 struct req_lib_cfg_local_get {
 	struct qb_ipc_request_header header __attribute__((aligned(8)));
 };
 
+/**
+ * @brief The res_lib_cfg_local_get struct
+ */
 struct res_lib_cfg_local_get {
 	struct qb_ipc_response_header header __attribute__((aligned(8)));
 	mar_uint32_t local_nodeid __attribute__((aligned(8)));
 };
 
+/**
+ * @brief The req_lib_cfg_reload_config struct
+ */
 struct req_lib_cfg_reload_config {
 	struct qb_ipc_request_header header __attribute__((aligned(8)));
 };
 
+/**
+ * @brief The res_lib_cfg_reload_config struct
+ */
 struct res_lib_cfg_reload_config {
 	struct qb_ipc_response_header header __attribute__((aligned(8)));
 };
 
+/**
+ * @brief corosync_administrative_target_t enum
+ */
 typedef enum {
 	AIS_AMF_ADMINISTRATIVETARGET_SERVICEUNIT = 0,
 	AIS_AMF_ADMINISTRATIVETARGET_SERVICEGROUP = 1,
@@ -167,12 +227,18 @@ typedef enum {
 	AIS_AMF_ADMINISTRATIVETARGET_NODE = 3
 } corosync_administrative_target_t;
 
+/**
+ * @brief corosync_administrative_state_t enum
+ */
 typedef enum {
 	AIS_AMF_ADMINISTRATIVESTATE_UNLOCKED = 0,
 	AIS_AMF_ADMINISTRATIVESTATE_LOCKED = 1,
 	AIS_AMF_ADMINISTRATIVESTATE_STOPPING = 2
 } corosync_administrative_state_t;
 
+/**
+ * @brief corosync_shutdown_flags_t enum
+ */
 typedef enum {
 	CFG_SHUTDOWN_FLAG_REQUEST = 0,
 	CFG_SHUTDOWN_FLAG_REGARDLESS = 1,

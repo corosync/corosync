@@ -37,6 +37,9 @@
 
 #include <netinet/in.h>
 
+/**
+ * @brief The corosync_service_types enum
+ */
 enum corosync_service_types {
 	CMAP_SERVICE = 0,
 	CFG_SERVICE = 1,
