@@ -93,57 +93,102 @@ extern "C" {
 
 #ifndef LOGSYS_UTILS_ONLY
 
-/*
- * configuration bits that can only be done for the whole system
+/**
+ * @brief configuration bits that can only be done for the whole system
+ * @param format
+ * @return
  */
 extern int logsys_format_set (
 	const char *format);
 
+/**
+ * @brief logsys_format_get
+ * @return
+ */
 extern char *logsys_format_get (void);
 
-/*
- * per system/subsystem settings.
+/**
+ * @brief per system/subsystem settings.
  *
  * NOTE: once a subsystem is created and configured, changing
  * the default does NOT affect the subsystems.
  *
  * Pass a NULL subsystem to change them all
+ *
+ * @param subsys
+ * @param facility
+ * @return
  */
 extern int logsys_config_syslog_facility_set (
 	const char *subsys,
 	unsigned int facility);
 
+/**
+ * @brief logsys_config_syslog_priority_set
+ * @param subsys
+ * @param priority
+ * @return
+ */
 extern int logsys_config_syslog_priority_set (
 	const char *subsys,
 	unsigned int priority);
 
+/**
+ * @brief logsys_config_mode_set
+ * @param subsys
+ * @param mode
+ * @return
+ */
 extern int logsys_config_mode_set (
 	const char *subsys,
 	unsigned int mode);
 
+/**
+ * @brief logsys_config_mode_get
+ * @param subsys
+ * @return
+ */
 extern unsigned int logsys_config_mode_get (
 	const char *subsys);
 
+/**
+ * @brief logsys_config_apply
+ */
 void logsys_config_apply(void);
 
-/*
- * to close a logfile, just invoke this function with a NULL
+/**
+ * @brief to close a logfile, just invoke this function with a NULL
  * file or if you want to change logfile, the old one will
  * be closed for you.
+ *
+ * @param subsys
+ * @param error_string
+ * @param file
+ * @return
  */
 extern int logsys_config_file_set (
 	const char *subsys,
 	const char **error_string,
 	const char *file);
 
+/**
+ * @brief logsys_config_logfile_priority_set
+ * @param subsys
+ * @param priority
+ * @return
+ */
 extern int logsys_config_logfile_priority_set (
 	const char *subsys,
 	unsigned int priority);
 
-/*
- * enabling debug, disable message priority filtering.
+/**
+ * @brief enabling debug, disable message priority filtering.
  * everything is sent everywhere. priority values
  * for file and syslog are not overwritten.
+ *
+ * @param subsys
+ * @param value
+ * @return
  */
 extern int logsys_config_debug_set (
 	const char *subsys,
@@ -154,29 +199,75 @@ extern int logsys_config_debug_set (
  *
  * convert facility/priority to/from name/values
  */
+/**
+ * @brief logsys_priority_id_get
+ * @param name
+ * @return
+ */
 extern int logsys_priority_id_get (
 	const char *name);
 
+/**
+ * @brief logsys_priority_name_get
+ * @param priority
+ * @return
+ */
 extern const char *logsys_priority_name_get (
 	unsigned int priority);
 
+/**
+ * @brief _logsys_system_setup
+ * @param mainsystem
+ * @param mode
+ * @param syslog_facility
+ * @param syslog_priority
+ * @return
+ */
 extern int _logsys_system_setup(
 	const char *mainsystem,
 	unsigned int mode,
 	int syslog_facility,
 	int syslog_priority);
 
+/**
+ * @brief logsys_system_fini
+ */
 extern void logsys_system_fini (void);
 
+/**
+ * @brief _logsys_config_subsys_get
+ * @param subsys
+ * @return
+ */
 extern int _logsys_config_subsys_get (
 	const char *subsys);
 
+/**
+ * @brief _logsys_subsys_create
+ * @param subsys
+ * @param filename
+ * @return
+ */
 extern int _logsys_subsys_create (const char *subsys, const char *filename);
 
+/**
+ * @brief logsys_thread_start
+ * @return
+ */
 extern int logsys_thread_start (void);
 
+/**
+ * @brief logsys_subsys_id
+ */
 static int logsys_subsys_id __attribute__((unused)) = LOGSYS_MAX_SUBSYS_COUNT;
 
+/**
+ * @brief The LOGSYS_DECLARE_SYSTEM macro
+ * @param name
+ * @param mode
+ * @param syslog_facility
+ * @param syslog_priority
+ */
 #define LOGSYS_DECLARE_SYSTEM(name,mode,syslog_facility,syslog_priority)\
 __attribute__ ((constructor))						\
 static void logsys_system_init (void)					\
@@ -194,6 +285,10 @@ static void logsys_system_init (void)					\
 #define LOGSYS_DECLARE_SECTION
 #endif
 
+/**
+ * @brief The LOGSYS_DECLARE_SUBSYS macro
+ * @param subsys
+ */
 #define LOGSYS_DECLARE_SUBSYS(subsys)					\
 __attribute__ ((constructor))						\
 static void logsys_subsys_init (void)					\
@@ -208,6 +303,13 @@ static void logsys_subsys_init (void)					\
 	}								\
 }
 
+/**
+ * @brief The LOGSYS_PERROR macro
+ * @param err_num
+ * @param level
+ * @param fmt
+ * @param args
+ */
 #define LOGSYS_PERROR(err_num, level, fmt, args...) do {						\
 		char _error_str[LOGSYS_MAX_PERROR_MSG_LEN];						\
 		const char *_error_ptr = qb_strerror_r(err_num, _error_str, sizeof(_error_str));	\

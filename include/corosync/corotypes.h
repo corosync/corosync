@@ -45,6 +45,9 @@
 extern "C" {
 #endif
 
+/**
+ * @brief cs_time_t
+ */
 typedef int64_t cs_time_t;
 
 #define CS_FALSE 0
@@ -53,17 +56,27 @@ typedef int64_t cs_time_t;
 #define CS_TIME_END    ((cs_time_t)0x7FFFFFFFFFFFFFFFULL)
 #define CS_MAX(x, y) (((x) > (y)) ? (x) : (y))
 
+/**
+ * @brief The cs_name_t struct
+ */
 typedef struct {
    uint16_t length;
    uint8_t value[CS_MAX_NAME_LENGTH];
 } cs_name_t;
 
+
+/**
+ * @brief The cs_version_t struct
+ */
 typedef struct {
    char releaseCode;
    unsigned char majorVersion;
    unsigned char minorVersion;
 } cs_version_t;
 
+/**
+ * @brief The cs_dispatch_flags_t enum
+ */
 typedef enum {
 	CS_DISPATCH_ONE = 1,
 	CS_DISPATCH_ALL = 2,
@@ -75,6 +88,9 @@ typedef enum {
 #define CS_TRACK_CHANGES 0x02
 #define CS_TRACK_CHANGES_ONLY 0x04
 
+/**
+ * @brief The cs_error_t enum
+ */
 typedef enum {
    CS_OK = 1,
    CS_ERR_LIBRARY = 2,
@@ -116,6 +132,11 @@ typedef enum {
 #define CS_TIME_US_IN_MSEC  1000ULL
 #define CS_TIME_NS_IN_MSEC  1000000ULL
 #define CS_TIME_NS_IN_USEC  1000ULL
+
+/**
+ * @brief cs_timestamp_get
+ * @return
+ */
 static inline uint64_t cs_timestamp_get(void)
 {
 	uint64_t result;
@@ -135,9 +156,25 @@ static inline uint64_t cs_timestamp_get(void)
 
 	return result;
 }
-
+/**
+ * @brief qb_to_cs_error
+ * @param result
+ * @return
+ */
 cs_error_t qb_to_cs_error (int result);
+
+/**
+ * @brief cs_strerror
+ * @param err
+ * @return
+ */
 const char * cs_strerror(cs_error_t err);
+
+/**
+ * @brief hdb_error_to_cs
+ * @param res
+ * @return
+ */
 cs_error_t hdb_error_to_cs (int res);
 
 #ifdef __cplusplus

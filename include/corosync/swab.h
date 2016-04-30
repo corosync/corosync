@@ -32,6 +32,10 @@
  */
 #include <sys/types.h>
 
+/**
+ * @brief The swab16 macro
+ * @param x
+ */
 #define swab16(x) \
 ({ \
 	uint16_t __x = (x); \
@@ -40,6 +44,10 @@
 		(((uint16_t)(__x) & (uint16_t)0xff00U) >> 8) )); \
 })
 
+/**
+ * @brief The swab32 macro
+ * @param x
+ */
 #define swab32(x) \
 ({ \
 	uint32_t __x = (x); \
@@ -49,6 +57,11 @@
 		(((uint32_t)(__x) & (uint32_t)0x00ff0000UL) >>  8) | \
 		(((uint32_t)(__x) & (uint32_t)0xff000000UL) >> 24) )); \
 })
+
+/**
+ * @brief The swab64 macro
+ * @param x
+ */
 #define swab64(x) \
 ({ \
 	uint64_t __x = (x); \
