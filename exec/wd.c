@@ -89,6 +89,7 @@ static uint64_t tickle_timeout = (WD_DEFAULT_TIMEOUT_MS / 2);
 static int dog = -1;
 static corosync_timer_handle_t wd_timer;
 static int watchdog_ok = 1;
+static char *watchdog_device = "/dev/watchdog";
 
 struct corosync_service_engine wd_service_engine = {
 	.name			= "corosync watchdog service",
@@ -629,20 +630,33 @@ static void watchdog_timeout_apply (uint32_t new)
 static int setup_watchdog(void)
 {
 	struct watchdog_info ident;
+	char *str;
 
 	ENTER();
-	if (access ("/dev/watchdog", W_OK) != 0) {
-		log_printf (LOGSYS_LEVEL_WARNING, "No Watchdog, try modprobe <a watchdog>");
+
+	if (icmap_get_string("resources.watchdog_device", &str) == CS_OK) {
+		if (strcmp (str, "off") == 0) {
+			log_printf (LOGSYS_LEVEL_WARNING, "Watchdog disabled by configuration");
+			free(str);
+			dog = -1;
+			return -1;
+		} else {
+			watchdog_device = str;
+		}
+	}
+
+	if (access (watchdog_device, W_OK) != 0) {
+		log_printf (LOGSYS_LEVEL_WARNING, "No Watchdog %s, try modprobe <a watchdog>", watchdog_device);
 		dog = -1;
 		return -1;
 	}
 
 	/* here goes, lets hope they have "Magic Close"
 	 */
-	dog = open("/dev/watchdog", O_WRONLY);
+	dog = open(watchdog_device, O_WRONLY);
 
 	if (dog == -1) {
-		log_printf (LOGSYS_LEVEL_WARNING, "Watchdog exists but couldn't be opened.");
+		log_printf (LOGSYS_LEVEL_WARNING, "Watchdog %s exists but couldn't be opened.", watchdog_device);
 		dog = -1;
 		return -1;
 	}
@@ -652,7 +666,7 @@ static int setup_watchdog(void)
 	 */
 
 	ioctl(dog, WDIOC_GETSUPPORT, &ident);
-	log_printf (LOGSYS_LEVEL_INFO, "Watchdog is now been tickled by corosync.");
+	log_printf (LOGSYS_LEVEL_INFO, "Watchdog %s is now been tickled by corosync.", watchdog_device);
 	log_printf (LOGSYS_LEVEL_DEBUG, "%s", ident.identity);
 
 	watchdog_timeout_apply (watchdog_timeout);
