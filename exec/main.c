@@ -94,6 +94,7 @@
 #include <sched.h>
 #include <time.h>
 #include <semaphore.h>
+#include <string.h>
 
 #include <qb/qbdefs.h>
 #include <qb/qblog.h>
@@ -921,6 +922,20 @@ static void corosync_setscheduler (void)
 #endif
 }
 
+
+/* The basename man page contains scary warnings about
+   thread-safety and portability, hence this */
+static const char *corosync_basename(const char *file_name)
+{
+	char *base;
+	base = strrchr (file_name, '/');
+	if (base) {
+		return base + 1;
+	}
+
+	return file_name;
+}
+
 static void
 _logsys_log_printf(int level, int subsys,
 		const char *function_name,
@@ -939,7 +954,7 @@ _logsys_log_printf(int level, int subsys,
 	va_list ap;
 
 	va_start(ap, format);
-	qb_log_from_external_source_va(function_name, basename(file_name),
+	qb_log_from_external_source_va(function_name, corosync_basename(file_name),
 				    format, level, file_line,
 				    subsys, ap);
 	va_end(ap);
