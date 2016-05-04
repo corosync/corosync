@@ -37,35 +37,67 @@ SUBDIRS			=
 
 sbin_PROGRAMS		= corosync-qnetd corosync-qdevice
 
-sbin_SCRIPTS             = corosync-qnetd-certutil corosync-qdevice-net-certutil
+sbin_SCRIPTS            = corosync-qnetd-certutil corosync-qdevice-net-certutil
 
-corosync_qnetd_SOURCES	= corosync-qnetd.c dynar.c msg.c msgio.c nss-sock.c  \
-			    qnetd-client.c qnetd-client-list.c qnetd-log.c \
-			    pr-poll-array.c timer-list.c tlv.c send-buffer-list.c \
-			    node-list.c qnetd-algo-test.c qnetd-algorithm.c qnetd-algo-utils.c \
-			    qnetd-algo-ffsplit.c qnetd-cluster-list.c qnetd-client-send.c \
-			    qnetd-algo-2nodelms.c qnetd-algo-lms.c utils.c qnetd-instance.c \
-			    qnetd-client-net.c qnetd-client-msg-received.c qnetd-log-debug.c \
-			    qnetd-client-algo-timer.c qnetd-dpd-timer.c \
-			    qnetd-ipc.c unix-socket-ipc.c dynar-simple-lex.c dynar-str.c \
-			    unix-socket-client.c unix-socket-client-list.c unix-socket.c \
-			    qnetd-ipc-cmd.c
+EXTRA_DIST		= corosync-qdevice-net-certutil.sh corosync-qnetd-certutil.sh
 
-corosync_qdevice_SOURCES	= corosync-qdevice.c qdevice-cmap.c qdevice-instance.c node-list.c \
-				  utils.c qdevice-log.c qdevice-log-debug.c qdevice-votequorum.c \
-				  qdevice-model.c \
-				  qdevice-model-net.c \
-				  qdevice-net-instance.c dynar.c send-buffer-list.c timer-list.c \
-				  msg.c msgio.c nss-sock.c tlv.c \
-				  unix-socket.c unix-socket-client.c unix-socket-client-list.c \
-				  unix-socket-ipc.c qdevice-ipc.c pr-poll-array.c dynar-simple-lex.c \
-				  dynar-str.c qdevice-ipc-cmd.c qdevice-net-ipc-cmd.c \
-				  qdevice-net-poll.c qdevice-net-send.c qdevice-net-votequorum.c \
-				  qdevice-net-socket.c qdevice-net-nss.c qdevice-net-msg-received.c \
-				  qdevice-net-cast-vote-timer.c qdevice-net-echo-request-timer.c \
-				  qdevice-net-algorithm.c \
-				  qdevice-net-algo-test.c qdevice-net-algo-ffsplit.c \
-				  qdevice-net-algo-2nodelms.c qdevice-net-algo-lms.c
+corosync_qnetd_SOURCES	= corosync-qnetd.c \
+                          dynar.c dynar.h msg.c msg.h msgio.c msgio.h \
+                          nss-sock.c nss-sock.h qnetd-client.c qnetd-client.h \
+                          qnetd-client-list.c qnetd-client-list.h qnetd-log.c qnetd-log.h \
+                          pr-poll-array.c pr-poll-array.h timer-list.c timer-list.h tlv.c tlv.h \
+                          send-buffer-list.c send-buffer-list.h node-list.c node-list.h \
+                          qnetd-algo-test.c qnetd-algo-test.h qnetd-algorithm.c qnetd-algorithm.h \
+                          qnetd-algo-utils.c qnetd-algo-utils.h \
+                          qnetd-algo-ffsplit.c qnetd-algo-ffsplit.h \
+                          qnetd-cluster-list.c qnetd-cluster-list.h \
+                          qnetd-client-send.c qnetd-client-send.h \
+                          qnetd-algo-2nodelms.c qnetd-algo-2nodelms.h qnetd-algo-lms.c qnetd-algo-lms.h \
+                          utils.c utils.h qnetd-instance.c qnetd-instance.h \
+                          qnetd-client-net.c qnetd-client-net.h \
+                          qnetd-client-msg-received.c qnetd-client-msg-received.h \
+                          qnetd-log-debug.c qnetd-log-debug.h \
+                          qnetd-client-algo-timer.c qnetd-client-algo-timer.h \
+                          qnetd-dpd-timer.c qnetd-dpd-timer.h \
+                          qnetd-ipc.c qnetd-ipc.h unix-socket-ipc.c unix-socket-ipc.h \
+                          dynar-simple-lex.c dynar-simple-lex.h dynar-str.c dynar-str.h \
+                          unix-socket-client.c unix-socket-client.h \
+                          unix-socket-client-list.c unix-socket-client-list.h \
+                          unix-socket.c unix-socket.h qnetd-ipc-cmd.c qnetd-ipc-cmd.h \
+                          qnetd-poll-array-user-data.h qnet-config.h
+
+corosync_qdevice_SOURCES = corosync-qdevice.c \
+                           qdevice-cmap.c qdevice-cmap.h \
+                           qdevice-instance.c qdevice-instance.h node-list.c node-list.h \
+                           utils.c utils.h qdevice-log.c qdevice-log.h \
+                           qdevice-log-debug.c qdevice-log-debug.h \
+                           qdevice-votequorum.c qdevice-votequorum.h \
+                           qdevice-model.c qdevice-model.h qdevice-model-net.c qdevice-model-net.h \
+                           qdevice-net-instance.c qdevice-net-instance.h dynar.c dynar.h \
+                           send-buffer-list.c send-buffer-list.h timer-list.c timer-list.h \
+                           msg.c msg.h msgio.c msgio.h nss-sock.c nss-sock.h tlv.c tlv.h \
+                           unix-socket.c unix-socket.h unix-socket-client.c unix-socket-client.h \
+                           unix-socket-client-list.c unix-socket-client-list.h \
+                           unix-socket-ipc.c unix-socket-ipc.h qdevice-ipc.c qdevice-ipc.h \
+                           pr-poll-array.c pr-poll-array.h dynar-simple-lex.c dynar-simple-lex.h \
+                           dynar-str.c dynar-str.h qdevice-ipc-cmd.c qdevice-ipc-cmd.h \
+                           qdevice-net-ipc-cmd.c qdevice-net-ipc-cmd.h \
+                           qdevice-net-poll.c qdevice-net-poll.h \
+                           qdevice-net-send.c qdevice-net-send.h \
+                           qdevice-net-votequorum.c qdevice-net-votequorum.h \
+                           qdevice-net-socket.c qdevice-net-socket.h \
+                           qdevice-net-nss.c qdevice-net-nss.h \
+                           qdevice-net-msg-received.c qdevice-net-msg-received.h \
+                           qdevice-net-cast-vote-timer.c qdevice-net-cast-vote-timer.h \
+                           qdevice-net-echo-request-timer.c qdevice-net-echo-request-timer.h \
+                           qdevice-net-algorithm.c qdevice-net-algorithm.h \
+                           qdevice-net-algo-test.c qdevice-net-algo-test.h \
+                           qdevice-net-algo-ffsplit.c qdevice-net-algo-ffsplit.h \
+                           qdevice-net-algo-2nodelms.c qdevice-net-algo-2nodelms.h \
+                           qdevice-net-algo-lms.c qdevice-net-algo-lms.h \
+                           qdevice-net-poll-array-user-data.h \
+                           qdevice-config.h qnet-config.h qdevice-net-disconnect-reason.h \
+                           qdevice-model-type.h
 
 corosync_qnetd_CFLAGS		= $(nss_CFLAGS)
 corosync_qnetd_LDADD		= $(nss_LIBS)
