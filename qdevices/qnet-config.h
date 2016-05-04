@@ -69,6 +69,12 @@ extern "C" {
 #define QNETD_DPD_INTERVAL			(10*1000)
 
 #define QNETD_LOCK_FILE				LOCALSTATEDIR"/run/corosync-qnetd.pid"
+#define QNETD_LOCAL_SOCKET_FILE			LOCALSTATEDIR"/run/corosync-qnetd.sock"
+#define QNETD_LOCAL_SOCKET_BACKLOG		10
+
+#define QNETD_IPC_MAX_CLIENTS			10
+#define QNETD_IPC_MAX_RECEIVE_SIZE		(4*1024)
+#define QNETD_IPC_MAX_SEND_SIZE			(10*1024*1024)
 
 #define QDEVICE_NET_NSS_DB_DIR			COROSYSCONFDIR "/qdevice/net/node/nssdb"
 

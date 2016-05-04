@@ -46,6 +46,7 @@
 #include "pr-poll-array.h"
 #include "qnet-config.h"
 #include "timer-list.h"
+#include "unix-socket-ipc.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -70,6 +71,8 @@ struct qnetd_instance {
 	uint16_t host_port;
 	struct timer_list main_timer_list;
 	struct timer_list_entry *dpd_timer;		/* Dead peer detection timer */
+	struct unix_socket_ipc local_ipc;
+	PRFileDesc *ipc_socket_poll_fd;
 };
 
 extern int		qnetd_instance_init(struct qnetd_instance *instance,

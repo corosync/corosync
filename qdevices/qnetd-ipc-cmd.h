@@ -32,30 +32,21 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _QNETD_POLL_ARRAY_USER_DATA_H_
-#define _QNETD_POLL_ARRAY_USER_DATA_H_
+#ifndef _QNETD_IPC_CMD_H_
+#define _QNETD_IPC_CMD_H_
 
-#include "qnetd-client.h"
+#include "dynar.h"
+#include "qnetd-instance.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-enum qnetd_poll_array_user_data_type {
-	QNETD_POLL_ARRAY_USER_DATA_TYPE_SOCKET,
-	QNETD_POLL_ARRAY_USER_DATA_TYPE_CLIENT,
-	QNETD_POLL_ARRAY_USER_DATA_TYPE_IPC_SOCKET,
-	QNETD_POLL_ARRAY_USER_DATA_TYPE_IPC_CLIENT,
-};
-
-struct qnetd_poll_array_user_data {
-	enum qnetd_poll_array_user_data_type type;
-	struct qnetd_client *client;
-	struct unix_socket_client *ipc_client;
-};
+extern int	qnetd_ipc_cmd_status(struct qnetd_instance *instance,
+    struct dynar *outbuf, int verbose);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* _QNETD_POLL_ARRAY_USER_DATA_H_ */
+#endif /* _QNETD_IPC_CMD_H_ */

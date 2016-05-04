@@ -32,30 +32,52 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _QNETD_POLL_ARRAY_USER_DATA_H_
-#define _QNETD_POLL_ARRAY_USER_DATA_H_
+#include "dynar-str.h"
+#include "qnetd-ipc-cmd.h"
+#include "qnetd-log.h"
+#include "utils.h"
 
-#include "qnetd-client.h"
+int
+qnetd_ipc_cmd_status(struct qnetd_instance *instance, struct dynar *outbuf, int verbose)
+{
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+	if (dynar_str_catf(outbuf, "QNetd address:\t\t\t%s:%"PRIu16"\n",
+	    (instance->host_addr != NULL ? instance->host_addr : "*"), instance->host_port) == -1) {
+		return (-1);
+	}
 
-enum qnetd_poll_array_user_data_type {
-	QNETD_POLL_ARRAY_USER_DATA_TYPE_SOCKET,
-	QNETD_POLL_ARRAY_USER_DATA_TYPE_CLIENT,
-	QNETD_POLL_ARRAY_USER_DATA_TYPE_IPC_SOCKET,
-	QNETD_POLL_ARRAY_USER_DATA_TYPE_IPC_CLIENT,
-};
+	if (dynar_str_catf(outbuf, "TLS:\t\t\t\t%s%s\n",
+	    tlv_tls_supported_to_str(instance->tls_supported),
+	    ((instance->tls_supported != TLV_TLS_UNSUPPORTED && instance->tls_client_cert_required) ?
+	    " (client certificate required)" : "")) == -1) {
+		return (-1);
+	}
 
-struct qnetd_poll_array_user_data {
-	enum qnetd_poll_array_user_data_type type;
-	struct qnetd_client *client;
-	struct unix_socket_client *ipc_client;
-};
+	if (dynar_str_catf(outbuf, "Connected clients:\t\t%zu\n",
+	    qnetd_client_list_no_clients(&instance->clients)) == -1) {
+		return (-1);
+	}
 
-#ifdef __cplusplus
+	if (dynar_str_catf(outbuf, "Connected clusters:\t\t%zu\n",
+	    qnetd_cluster_list_no_clusters(&instance->clusters)) == -1) {
+		return (-1);
+	}
+
+	if (!verbose) {
+		return (0);
+	}
+
+	if (instance->max_clients != 0) {
+		if (dynar_str_catf(outbuf, "Maximum allowed clients:\t%zu\n",
+		    instance->max_clients) == -1) {
+			return (-1);
+		}
+	}
+
+	if (dynar_str_catf(outbuf, "Maximum send/receive size:\t%zu/%zu bytes\n",
+	    instance->max_client_send_size, instance->max_client_receive_size) == -1) {
+		return (-1);
+	}
+
+	return (0);
 }
-#endif
-
-#endif /* _QNETD_POLL_ARRAY_USER_DATA_H_ */

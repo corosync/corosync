@@ -35,6 +35,8 @@
 #ifndef _DYNAR_STR_H_
 #define _DYNAR_STR_H_
 
+#include <stdarg.h>
+
 #include "dynar.h"
 
 #ifdef __cplusplus

@@ -129,3 +129,18 @@ qnetd_cluster_list_free(struct qnetd_cluster_list *list)
 
 	TAILQ_INIT(list);
 }
+
+size_t
+qnetd_cluster_list_no_clusters(struct qnetd_cluster_list *list)
+{
+	size_t res;
+	struct qnetd_cluster *cluster;
+
+	res = 0;
+
+	TAILQ_FOREACH(cluster, list, entries) {
+		res++;
+	}
+
+	return (res);
+}

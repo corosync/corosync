@@ -44,6 +44,7 @@
 #include "pr-poll-array.h"
 #include "qnetd-algorithm.h"
 #include "qnetd-instance.h"
+#include "qnetd-ipc.h"
 #include "qnetd-log.h"
 #include "qnetd-client-net.h"
 #include "qnetd-client-msg-received.h"
@@ -53,7 +54,7 @@
 /*
  * This is global variable used for comunication with main loop and signal (calls close)
  */
-PRFileDesc *global_server_socket;
+struct qnetd_instance *global_instance;
 
 enum tlv_decision_algorithm_type
     qnetd_static_supported_decision_algorithms[QNETD_STATIC_SUPPORTED_DECISION_ALGORITHMS_SIZE] = {
@@ -64,7 +65,8 @@ enum tlv_decision_algorithm_type
 };
 
 static void
-qnetd_err_nss(void) {
+qnetd_err_nss(void)
+{
 
 	qnetd_log_nss(LOG_CRIT, "NSS error");
 
@@ -72,7 +74,8 @@ qnetd_err_nss(void) {
 }
 
 static void
-qnetd_warn_nss(void) {
+qnetd_warn_nss(void)
+{
 
 	qnetd_log_nss(LOG_WARNING, "NSS warning");
 }
@@ -85,9 +88,12 @@ qnetd_pr_poll_array_create(struct qnetd_instance *instance)
 	struct qnetd_client *client;
 	PRPollDesc *poll_desc;
 	struct qnetd_poll_array_user_data *user_data;
+	const struct unix_socket_client_list *ipc_client_list;
+	struct unix_socket_client *ipc_client;
 
 	poll_array = &instance->poll_array;
 	client_list = &instance->clients;
+	ipc_client_list = &instance->local_ipc.clients;
 
 	pr_poll_array_clean(poll_array);
 
@@ -99,6 +105,14 @@ qnetd_pr_poll_array_create(struct qnetd_instance *instance)
 	poll_desc->in_flags = PR_POLL_READ;
 
 	user_data->type = QNETD_POLL_ARRAY_USER_DATA_TYPE_SOCKET;
+
+	if (pr_poll_array_add(poll_array, &poll_desc, (void **)&user_data) < 0) {
+		return (NULL);
+	}
+
+	poll_desc->fd = instance->ipc_socket_poll_fd;
+	poll_desc->in_flags = PR_POLL_READ;
+	user_data->type = QNETD_POLL_ARRAY_USER_DATA_TYPE_IPC_SOCKET;
 
 	TAILQ_FOREACH(client, client_list, entries) {
 		if (pr_poll_array_add(poll_array, &poll_desc, (void **)&user_data) < 0) {
@@ -115,6 +129,28 @@ qnetd_pr_poll_array_create(struct qnetd_instance *instance)
 		user_data->client = client;
 	}
 
+	TAILQ_FOREACH(ipc_client, ipc_client_list, entries) {
+		if (!ipc_client->reading_line && !ipc_client->writing_buffer) {
+			continue;
+		}
+
+		if (pr_poll_array_add(poll_array, &poll_desc, (void **)&user_data) < 0) {
+			return (NULL);
+		}
+
+		poll_desc->fd = ((struct qnetd_ipc_user_data *)ipc_client->user_data)->nspr_poll_fd;
+		if (ipc_client->reading_line) {
+			poll_desc->in_flags |= PR_POLL_READ;
+		}
+
+		if (ipc_client->writing_buffer) {
+			poll_desc->in_flags |= PR_POLL_WRITE;
+		}
+
+		user_data->type = QNETD_POLL_ARRAY_USER_DATA_TYPE_IPC_CLIENT;
+		user_data->ipc_client = ipc_client;
+	}
+
 	pr_poll_array_gc(poll_array);
 
 	return (poll_array->array);
@@ -129,6 +165,7 @@ qnetd_poll(struct qnetd_instance *instance)
 	ssize_t i;
 	int client_disconnect;
 	struct qnetd_poll_array_user_data *user_data;
+	struct unix_socket_client *ipc_client;
 
 	client = NULL;
 	client_disconnect = 0;
@@ -148,14 +185,22 @@ qnetd_poll(struct qnetd_instance *instance)
 		for (i = 0; i < pr_poll_array_size(&instance->poll_array); i++) {
 			user_data = pr_poll_array_get_user_data(&instance->poll_array, i);
 
+			client = NULL;
+			ipc_client = NULL;
+			client_disconnect = 0;
+
 			switch (user_data->type) {
 			case QNETD_POLL_ARRAY_USER_DATA_TYPE_SOCKET:
-				client_disconnect = 0;
 				break;
 			case QNETD_POLL_ARRAY_USER_DATA_TYPE_CLIENT:
 				client = user_data->client;
 				client_disconnect = client->schedule_disconnect;
 				break;
+			case QNETD_POLL_ARRAY_USER_DATA_TYPE_IPC_SOCKET:
+				break;
+			case QNETD_POLL_ARRAY_USER_DATA_TYPE_IPC_CLIENT:
+				ipc_client = user_data->ipc_client;
+				client_disconnect = ipc_client->schedule_disconnect;
 			}
 
 			if (!client_disconnect && poll_res > 0 &&
@@ -168,6 +213,12 @@ qnetd_poll(struct qnetd_instance *instance)
 					if (qnetd_client_net_read(instance, client) == -1) {
 						client_disconnect = 1;
 					}
+					break;
+				case QNETD_POLL_ARRAY_USER_DATA_TYPE_IPC_SOCKET:
+					qnetd_ipc_accept(instance, &ipc_client);
+					break;
+				case QNETD_POLL_ARRAY_USER_DATA_TYPE_IPC_CLIENT:
+					qnetd_ipc_io_read(instance, ipc_client);
 					break;
 				}
 			}
@@ -188,6 +239,13 @@ qnetd_poll(struct qnetd_instance *instance)
 						client_disconnect = 1;
 					}
 					break;
+				case QNETD_POLL_ARRAY_USER_DATA_TYPE_IPC_SOCKET:
+					qnetd_log(LOG_CRIT, "POLL_WRITE on listening IPC socket");
+					return (-1);
+					break;
+				case QNETD_POLL_ARRAY_USER_DATA_TYPE_IPC_CLIENT:
+					qnetd_ipc_io_write(instance, ipc_client);
+					break;
 				}
 			}
 
@@ -196,6 +254,7 @@ qnetd_poll(struct qnetd_instance *instance)
 			    !(pfds[i].out_flags & (PR_POLL_READ|PR_POLL_WRITE))) {
 				switch (user_data->type) {
 				case QNETD_POLL_ARRAY_USER_DATA_TYPE_SOCKET:
+				case QNETD_POLL_ARRAY_USER_DATA_TYPE_IPC_SOCKET:
 					if (pfds[i].out_flags != PR_POLL_NVAL) {
 						/*
 						 * Poll ERR on listening socket is fatal error.
@@ -215,14 +274,24 @@ qnetd_poll(struct qnetd_instance *instance)
 
 					client_disconnect = 1;
 					break;
+				case QNETD_POLL_ARRAY_USER_DATA_TYPE_IPC_CLIENT:
+					qnetd_log(LOG_DEBUG, "POLL_ERR (%u) on ipc client socket."
+					    " Disconnecting.", pfds[i].out_flags);
+
+					client_disconnect = 1;
+					break;
 				}
 			}
 
 			/*
 			 * If client is scheduled for disconnect, disconnect it
 			 */
-			if (client_disconnect) {
+			if (user_data->type == QNETD_POLL_ARRAY_USER_DATA_TYPE_CLIENT &&
+			    client_disconnect) {
 				qnetd_instance_client_disconnect(instance, client, 0);
+			} else if (user_data->type == QNETD_POLL_ARRAY_USER_DATA_TYPE_IPC_CLIENT &&
+			    (client_disconnect || ipc_client->schedule_disconnect)) {
+				qnetd_ipc_client_disconnect(instance, ipc_client);
 			}
 		}
 	}
@@ -235,18 +304,18 @@ static void
 signal_int_handler(int sig)
 {
 
-	qnetd_log(LOG_DEBUG, "SIGINT received - closing server socket");
+	qnetd_log(LOG_DEBUG, "SIGINT received - closing server IPC socket");
 
-	PR_Close(global_server_socket);
+	qnetd_ipc_close(global_instance);
 }
 
 static void
 signal_term_handler(int sig)
 {
 
-	qnetd_log(LOG_DEBUG, "SIGTERM received - closing server socket");
+	qnetd_log(LOG_DEBUG, "SIGTERM received - closing server IPC socket");
 
-	PR_Close(global_server_socket);
+	qnetd_ipc_close(global_instance);
 }
 
 static void
@@ -422,6 +491,11 @@ main(int argc, char * const argv[])
 		qnetd_err_nss();
 	}
 
+	qnetd_log(LOG_DEBUG, "Initializing local socket");
+	if (qnetd_ipc_init(&instance) != 0) {
+		return (1);
+	}
+
 	qnetd_log(LOG_DEBUG, "Creating listening socket");
 	instance.server.socket = nss_sock_create_listen_socket(instance.host_addr,
 	    instance.host_port, address_family);
@@ -437,7 +511,7 @@ main(int argc, char * const argv[])
 		qnetd_err_nss();
 	}
 
-	global_server_socket = instance.server.socket;
+	global_instance = &instance;
 	signal_handlers_register();
 
 	qnetd_log(LOG_DEBUG, "Registering algorithms");
@@ -455,6 +529,12 @@ main(int argc, char * const argv[])
 	/*
 	 * Cleanup
 	 */
+	qnetd_ipc_destroy(&instance);
+
+	if (PR_Close(instance.server.socket) != PR_SUCCESS) {
+		qnetd_warn_nss();
+	}
+
 	CERT_DestroyCertificate(instance.server.cert);
 	SECKEY_DestroyPrivateKey(instance.server.private_key);
 

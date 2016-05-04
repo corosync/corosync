@@ -69,6 +69,9 @@ extern void				 qnetd_cluster_list_del_client(
 
 extern void				 qnetd_cluster_list_free(struct qnetd_cluster_list *list);
 
+extern size_t				 qnetd_cluster_list_no_clusters(
+    struct qnetd_cluster_list *list);
+
 #ifdef __cplusplus
 }
 #endif

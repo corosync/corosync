@@ -32,30 +32,47 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _QNETD_POLL_ARRAY_USER_DATA_H_
-#define _QNETD_POLL_ARRAY_USER_DATA_H_
+#ifndef _QNETD_IPC_H_
+#define _QNETD_IPC_H_
 
-#include "qnetd-client.h"
+#include "qnetd-instance.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-enum qnetd_poll_array_user_data_type {
-	QNETD_POLL_ARRAY_USER_DATA_TYPE_SOCKET,
-	QNETD_POLL_ARRAY_USER_DATA_TYPE_CLIENT,
-	QNETD_POLL_ARRAY_USER_DATA_TYPE_IPC_SOCKET,
-	QNETD_POLL_ARRAY_USER_DATA_TYPE_IPC_CLIENT,
+struct qnetd_ipc_user_data {
+	int shutdown_requested;
+	PRFileDesc *nspr_poll_fd;
 };
 
-struct qnetd_poll_array_user_data {
-	enum qnetd_poll_array_user_data_type type;
-	struct qnetd_client *client;
-	struct unix_socket_client *ipc_client;
-};
+extern int		qnetd_ipc_init(struct qnetd_instance *instance);
+
+extern int		qnetd_ipc_close(struct qnetd_instance *instance);
+
+extern int		qnetd_ipc_destroy(struct qnetd_instance *instance);
+
+extern int		qnetd_ipc_accept(struct qnetd_instance *instance,
+    struct unix_socket_client **res_client);
+
+extern void		qnetd_ipc_client_disconnect(struct qnetd_instance *instance,
+    struct unix_socket_client *client);
+
+extern void		qnetd_ipc_io_read(struct qnetd_instance *instance,
+    struct unix_socket_client *client);
+
+extern void		qnetd_ipc_io_write(struct qnetd_instance *instance,
+    struct unix_socket_client *client);
+
+extern int		qnetd_ipc_send_error(struct qnetd_instance *instance,
+    struct unix_socket_client *client, const char *error_fmt, ...)
+    __attribute__((__format__(__printf__, 3, 4)));
+
+extern int		qnetd_ipc_send_buffer(struct qnetd_instance *instance,
+    struct unix_socket_client *client);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* _QNETD_POLL_ARRAY_USER_DATA_H_ */
+#endif /* _QNETD_IPC_H_ */

@@ -37,6 +37,7 @@
 
 #include <syslog.h>
 #include <stdarg.h>
+#include <errno.h>
 
 #ifdef __cplusplus
 extern "C" {
