@@ -15,6 +15,7 @@
 %bcond_with upstart
 %bcond_with xmlconf
 %bcond_with runautogen
+%bcond_with qdevices
 
 %global gitver %{?numcomm:.%{numcomm}}%{?alphatag:.%{alphatag}}%{?dirty:.%{dirty}}
 %global gittarver %{?numcomm:.%{numcomm}}%{?alphatag:-%{alphatag}}%{?dirty:-%{dirty}}
@@ -65,6 +66,9 @@ Requires(postun): systemd
 %if %{with xmlconf}
 Requires: libxslt
 %endif
+%if %{with qdevices}
+Requires: nss-tools
+%endif
 
 BuildRoot: %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 
@@ -109,6 +113,9 @@ export rdmacm_LIBS=-lrdmacm \
 %endif
 %if %{with xmlconf}
 	--enable-xmlconf \
+%endif
+%if %{with qdevices}
+	--enable-qdevices \
 %endif
 	--with-initddir=%{_initrddir} \
 	--with-systemddir=%{_unitdir} \
@@ -330,6 +337,115 @@ The Corosync Cluster Engine APIs.
 %{_mandir}/man3/cmap_*3*
 %{_mandir}/man8/cmap_overview.8*
 %{_mandir}/man8/quorum_overview.8*
+
+# optional qdevices
+#
+%if %{with qdevices}
+
+%package -n corosync-qdevice
+Summary: The Corosync Cluster Engine Qdevice
+Group: System Environment/Base
+Requires: corosync
+Requires: nss-tools
+
+%if %{with systemd}
+Requires(post): systemd
+Requires(preun): systemd
+Requires(postun): systemd
+%endif
+
+%description -n corosync-qdevice
+This package contains the Corosync Cluster Engine Qdevice, script for creating
+NSS certificates and an init script.
+
+%post -n corosync-qdevice
+%if %{with systemd} && 0%{?systemd_post:1}
+%systemd_post corosync-qdevice.service
+%else
+if [ $1 -eq 1 ]; then
+	/sbin/chkconfig --add corosync-qdevice || :
+fi
+%endif
+
+%preun -n corosync-qdevice
+%if %{with systemd} && 0%{?systemd_preun:1}
+%systemd_preun corosync-qdevice.service
+%else
+if [ $1 -eq 0 ]; then
+	/sbin/service corosync-qdevice stop &>/dev/null || :
+	/sbin/chkconfig --del corosync-qdevice || :
+fi
+%endif
+
+%postun -n corosync-qdevice
+%if %{with systemd} && 0%{?systemd_postun:1}
+%systemd_postun
+%endif
+
+%files -n corosync-qdevice
+%defattr(-,root,root,-)
+%{_sbindir}/corosync-qdevice
+%{_sbindir}/corosync-qdevice-net-certutil
+%if %{with systemd}
+%{_unitdir}/corosync-qdevice.service
+%dir %{_datadir}/corosync
+%{_datadir}/corosync/corosync-qdevice
+%else
+%{_initrddir}/corosync-qdevice
+%endif
+
+%package -n corosync-qnetd
+Summary: The Corosync Cluster Engine Qdevice Network Daemon
+Group: System Environment/Base
+Requires: nss-tools
+
+%if %{with systemd}
+Requires(post): systemd
+Requires(preun): systemd
+Requires(postun): systemd
+%endif
+
+%description -n corosync-qnetd
+This package contains the Corosync Cluster Engine Qdevice Network Daemon, script for creating
+NSS certificates and an init script.
+
+%post -n corosync-qnetd
+%if %{with systemd} && 0%{?systemd_post:1}
+%systemd_post corosync-qnetd.service
+%else
+if [ $1 -eq 1 ]; then
+	/sbin/chkconfig --add corosync-qnetd || :
+fi
+%endif
+
+%preun -n corosync-qnetd
+%if %{with systemd} && 0%{?systemd_preun:1}
+%systemd_preun corosync-qnetd.service
+%else
+if [ $1 -eq 0 ]; then
+	/sbin/service corosync-qnetd stop &>/dev/null || :
+	/sbin/chkconfig --del corosync-qnetd || :
+fi
+%endif
+
+%postun -n corosync-qnetd
+%if %{with systemd} && 0%{?systemd_postun:1}
+%systemd_postun
+%endif
+
+%files -n corosync-qnetd
+%defattr(-,root,root,-)
+%{_sbindir}/corosync-qnetd
+%{_sbindir}/corosync-qnetd-certutil
+%if %{with systemd}
+%{_unitdir}/corosync-qnetd.service
+%dir %{_datadir}/corosync
+%{_datadir}/corosync/corosync-qnetd
+%else
+%{_initrddir}/corosync-qnetd
+%endif
+
+%endif
 
 %changelog
 * @date@ Autotools generated version <nobody@nowhere.org> - @version@-1-@numcomm@.@alphatag@.@dirty@
