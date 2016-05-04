@@ -37,7 +37,7 @@ SUBDIRS			=
 
 sbin_PROGRAMS		= corosync-qnetd corosync-qdevice
 
-sbin_SCRIPTS             = corosync-qnetd-certutil
+sbin_SCRIPTS             = corosync-qnetd-certutil corosync-qdevice-net-certutil
 
 corosync_qnetd_SOURCES	= corosync-qnetd.c dynar.c msg.c msgio.c nss-sock.c  \
 			    qnetd-client.c qnetd-client-list.c qnetd-log.c \
@@ -75,6 +75,12 @@ corosync_qdevice_LDADD	= $(nss_LIBS) $(LIBQB_LIBS) $(top_builddir)/lib/libcmap.l
 				    $(top_builddir)/lib/libvotequorum.la
 
 corosync-qnetd-certutil: corosync-qnetd-certutil.sh
+	sed -e 's#@''DATADIR@#${datadir}#g' \
+	    -e 's#@''BASHPATH@#${BASHPATH}#g' \
+	    -e 's#@''COROSYSCONFDIR@#${COROSYSCONFDIR}#g' \
+	    $< > $@
+
+corosync-qdevice-net-certutil: corosync-qdevice-net-certutil.sh
 	sed -e 's#@''DATADIR@#${datadir}#g' \
 	    -e 's#@''BASHPATH@#${BASHPATH}#g' \
 	    -e 's#@''COROSYSCONFDIR@#${COROSYSCONFDIR}#g' \
