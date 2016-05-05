@@ -223,8 +223,7 @@ qdevice_model_net_run(struct qdevice_instance *instance)
 			    " Can't update cast vote timer vote");
 		}
 
-		if (net_instance->disconnect_reason == QDEVICE_NET_DISCONNECT_REASON_COROSYNC_CONNECTION_CLOSED ||
-		    net_instance->disconnect_reason == QDEVICE_NET_DISCONNECT_REASON_LOCAL_SOCKET_CLOSED) {
+		if (qdevice_net_disconnect_reason_force_disconnect(net_instance->disconnect_reason)) {
 			try_connect = 0;
 		}
 
