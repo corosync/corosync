@@ -49,7 +49,7 @@ corosyncObjectsNodeName OBJECT-TYPE
 ::= { corosyncObjects 1 }
 
 corosyncObjectsNodeID OBJECT-TYPE
-    SYNTAX      Integer32
+    SYNTAX      Unsigned32
     MAX-ACCESS  accessible-for-notify
     STATUS      current
     DESCRIPTION "The unique integer of the node."
