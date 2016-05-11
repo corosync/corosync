@@ -753,7 +753,7 @@ _cs_snmp_node_membership_event(char *nodename, uint32_t nodeid, char *state, cha
 
 	/* Add extries to the trap */
 	add_field (trap_pdu, ASN_OCTET_STR, SNMP_OID_OBJECT_NODE_NAME, (void*)nodename, strlen (nodename));
-	add_field (trap_pdu, ASN_INTEGER, SNMP_OID_OBJECT_NODE_ID, (void*)&nodeid, sizeof (nodeid));
+	add_field (trap_pdu, ASN_UNSIGNED, SNMP_OID_OBJECT_NODE_ID, (void*)&nodeid, sizeof (nodeid));
 	add_field (trap_pdu, ASN_OCTET_STR, SNMP_OID_OBJECT_NODE_ADDR, (void*)ip, strlen (ip));
 	add_field (trap_pdu, ASN_OCTET_STR, SNMP_OID_OBJECT_NODE_STATUS, (void*)state, strlen (state));
 
@@ -796,7 +796,7 @@ _cs_snmp_node_quorum_event(char *nodename, uint32_t nodeid,
 
 	/* Add extries to the trap */
 	add_field (trap_pdu, ASN_OCTET_STR, SNMP_OID_OBJECT_NODE_NAME, (void*)nodename, strlen (nodename));
-	add_field (trap_pdu, ASN_INTEGER, SNMP_OID_OBJECT_NODE_ID, (void*)&nodeid, sizeof (nodeid));
+	add_field (trap_pdu, ASN_UNSIGNED, SNMP_OID_OBJECT_NODE_ID, (void*)&nodeid, sizeof (nodeid));
 	add_field (trap_pdu, ASN_OCTET_STR, SNMP_OID_OBJECT_QUORUM, (void*)state, strlen (state));
 
 	/* Send and cleanup */
@@ -838,7 +838,7 @@ _cs_snmp_rrp_faulty_event(char *nodename, uint32_t nodeid,
 
 	/* Add extries to the trap */
 	add_field (trap_pdu, ASN_OCTET_STR, SNMP_OID_OBJECT_NODE_NAME, (void*)nodename, strlen (nodename));
-	add_field (trap_pdu, ASN_INTEGER, SNMP_OID_OBJECT_NODE_ID, (void*)&nodeid, sizeof (nodeid));
+	add_field (trap_pdu, ASN_UNSIGNED, SNMP_OID_OBJECT_NODE_ID, (void*)&nodeid, sizeof (nodeid));
 	add_field (trap_pdu, ASN_INTEGER, SNMP_OID_OBJECT_RRP_IFACE_NO, (void*)&iface_no, sizeof (iface_no));
 	add_field (trap_pdu, ASN_OCTET_STR, SNMP_OID_OBJECT_RRP_STATUS, (void*)state, strlen (state));
 
