@@ -43,7 +43,7 @@ The
 .B cpg_zcb_alloc
 function will allocate a zero copy buffer for use with the
 .B cpg_zcb_mcast_joined(3)
-funtion.  This buffer should not be used in another thread while a
+function.  This buffer should not be used in another thread while a
 cpg_zcb_mcast_joined operation is taking place on the buffer.  The buffer is
 allocated via operating system mechanisms to avoid copying in the IPC layer.
 
