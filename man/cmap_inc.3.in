@@ -60,19 +60,19 @@ is name of key to increase value of.
 Function is defined only on values where increase makes sense and is well defined,
 so it can be one of:
 .PP
-\fBCMAP_VALUETYPE_INT8\fR - 8-bit signed interger
+\fBCMAP_VALUETYPE_INT8\fR - 8-bit signed integer
 .PP
 \fBCMAP_VALUETYPE_UINT8\fR - 8-bit unsigned integer
 .PP
-\fBCMAP_VALUETYPE_INT16\fR - 16-bit signed interger
+\fBCMAP_VALUETYPE_INT16\fR - 16-bit signed integer
 .PP
 \fBCMAP_VALUETYPE_UINT16\fR - 16-bit unsigned integer
 .PP
-\fBCMAP_VALUETYPE_INT32\fR - 32-bit signed interger
+\fBCMAP_VALUETYPE_INT32\fR - 32-bit signed integer
 .PP
 \fBCMAP_VALUETYPE_UINT32\fR - 32-bit unsigned integer
 .PP
-\fBCMAP_VALUETYPE_INT64\fR - 64-bit signed interger
+\fBCMAP_VALUETYPE_INT64\fR - 64-bit signed integer
 .PP
 \fBCMAP_VALUETYPE_UINT64\fR - 64-bit unsigned integer
 
