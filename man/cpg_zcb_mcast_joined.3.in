@@ -45,7 +45,7 @@ The
 function will multicast a zero copy buffer message to all the processes that
 have been joined with the
 .B cpg_join(3)
-funtion for the same group name.
+function for the same group name.
 Messages that are sent to any of the groups joined to the parameter
 .I handle
 will be delivered to all subscribed processes in the system.
