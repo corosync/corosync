@@ -49,23 +49,14 @@ struct schedwrk_instance {
 	int lock;
 };
 
-union u {
-  hdb_handle_t h;
-  const void *v;
-};
-static hdb_handle_t
-void2handle (const void *v) { union u u; u.v = v; return u.h; }
-static const void *
-handle2void (hdb_handle_t h) { union u u; u.h = h; return u.v; }
-
 static int schedwrk_do (enum totem_callback_token_type type, const void *context)
 {
-	hdb_handle_t handle = void2handle (context);
+	hdb_handle_t handle = *((hdb_handle_t *)context);
 	struct schedwrk_instance *instance;
 	int res;
 
 	res = hdb_handle_get (&schedwrk_instance_database,
-		hdb_nocheck_convert (handle),
+		handle,
 		(void *)&instance);
 	if (res != 0) {
 		goto error_exit;
@@ -80,10 +71,9 @@ static int schedwrk_do (enum totem_callback_token_type type, const void *context
 		serialize_unlock ();
 
 	if (res == 0) {
-		hdb_handle_destroy (&schedwrk_instance_database, hdb_nocheck_convert (handle));
+		hdb_handle_destroy (&schedwrk_instance_database, handle);
 	}
-        hdb_handle_put (&schedwrk_instance_database,
-		hdb_nocheck_convert (handle));
+        hdb_handle_put (&schedwrk_instance_database, handle);
 	return (res);
 
 error_exit:
@@ -123,7 +113,7 @@ static int schedwrk_internal_create (
 		TOTEM_CALLBACK_TOKEN_SENT,
 		1,
 		schedwrk_do,
-		handle2void (*handle));
+		handle);
 
 	instance->schedwrk_fn = schedwrk_fn;
 	instance->context = context;
@@ -140,6 +130,11 @@ error_exit:
 	return (-1);
 }
 
+/*
+ * handle pointer is internally used by totempg_callback_token_create. To make schedwrk work,
+ * handle must be pointer to ether heap or .text or static memory (not stack) which is not
+ * changed by caller.
+ */
 int schedwrk_create (
 	hdb_handle_t *handle,
 	int (schedwrk_fn) (const void *),
