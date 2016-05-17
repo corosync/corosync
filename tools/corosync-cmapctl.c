@@ -284,15 +284,16 @@ static void print_key(cmap_handle_t handle,
 			break;
 		}
 
-		if (err == CS_OK)
+		if (err == CS_OK) {
 			end_loop = 1;
-
-		if (err == CS_ERR_TRY_AGAIN) {
+		} else if (err == CS_ERR_TRY_AGAIN) {
 			sleep(1);
 			no_retries++;
-		}
 
-		if (no_retries > MAX_TRY_AGAIN) {
+			if (no_retries > MAX_TRY_AGAIN) {
+				end_loop = 1;
+			}
+		} else {
 			end_loop = 1;
 		}
 	};
