@@ -115,7 +115,7 @@ qdevice_net_ipc_cmd_status_add_basic_info(struct qdevice_net_instance *instance,
 	}
 
 	if (dynar_str_catf(outbuf, "Algorithm:\t\t%s\n",
-	    qdevice_net_algorithm_type_to_str(instance->decision_algorithm)) == -1) {
+	    tlv_decision_algorithm_type_to_str(instance->decision_algorithm)) == -1) {
 		return (0);
 	}
 

@@ -126,9 +126,6 @@ extern int		 qdevice_net_algorithm_register(
 
 extern int		 qdevice_net_algorithm_register_all(void);
 
-extern const char 	*qdevice_net_algorithm_type_to_str(
-    enum tlv_decision_algorithm_type algo_type);
-
 #ifdef __cplusplus
 }
 #endif

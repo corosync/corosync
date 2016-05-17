@@ -784,6 +784,9 @@ qnetd_client_msg_received_node_list(struct qnetd_instance *instance, struct qnet
 
 			return (-1);
 		}
+		client->config_version_set = msg->config_version_set;
+		client->config_version = msg->config_version;
+
 		break;
 	case TLV_NODE_LIST_TYPE_MEMBERSHIP:
 		case_processed = 1;
@@ -816,6 +819,14 @@ qnetd_client_msg_received_node_list(struct qnetd_instance *instance, struct qnet
 		qnetd_log(LOG_ERR, "qnetd_client_msg_received_node_list fatal error. "
 		    "Unhandled node_list_type");
 		exit(1);
+	}
+
+	/*
+	 * Store result vote
+	 */
+	client->last_sent_vote = result_vote;
+	if (result_vote == TLV_VOTE_ACK || result_vote == TLV_VOTE_NACK) {
+		client->last_sent_ack_nack_vote = result_vote;
 	}
 
 	send_buffer = send_buffer_list_get_new(&client->send_buffer_list);
@@ -886,6 +897,14 @@ qnetd_client_msg_received_ask_for_vote(struct qnetd_instance *instance, struct q
 		}
 
 		return (0);
+	}
+
+	/*
+	 * Store result vote
+	 */
+	client->last_sent_vote = result_vote;
+	if (result_vote == TLV_VOTE_ACK || result_vote == TLV_VOTE_NACK) {
+		client->last_sent_ack_nack_vote = result_vote;
 	}
 
 	qnetd_log_debug_ask_for_vote_received(client, msg->seq_number);

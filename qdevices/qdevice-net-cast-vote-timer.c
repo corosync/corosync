@@ -60,6 +60,7 @@ qdevice_net_cast_vote_timer_callback(void *data1, void *data2)
 	case TLV_VOTE_ASK_LATER:
 	case TLV_VOTE_WAIT_FOR_REPLY:
 	case TLV_VOTE_NO_CHANGE:
+	case TLV_VOTE_UNDEFINED:
 		/*
 		 * Shouldn't happen
 		 */
@@ -98,6 +99,8 @@ qdevice_net_cast_vote_timer_update(struct qdevice_net_instance *instance, enum t
 	case_processed = 0;
 
 	switch (vote) {
+	case TLV_VOTE_UNDEFINED:
+		break;
 	case TLV_VOTE_ACK:
 	case TLV_VOTE_NACK:
 		case_processed = 1;

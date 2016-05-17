@@ -72,6 +72,8 @@ struct qnetd_client {
 	enum tlv_reply_error_code skipping_msg_reason;
 	void *algorithm_data;
 	struct node_list configuration_node_list;
+	uint8_t config_version_set;
+	uint64_t config_version;
 	struct node_list last_membership_node_list;
 	struct node_list last_quorum_node_list;
 	struct tlv_ring_id last_ring_id;
@@ -83,6 +85,8 @@ struct qnetd_client {
 	int schedule_disconnect;
 	uint32_t dpd_time_since_last_check;
 	uint32_t dpd_msg_received_since_last_check;
+	enum tlv_vote last_sent_vote;
+	enum tlv_vote last_sent_ack_nack_vote;
 	TAILQ_ENTRY(qnetd_client) entries;
 	TAILQ_ENTRY(qnetd_client) cluster_entries;
 };

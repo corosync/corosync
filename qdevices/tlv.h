@@ -123,6 +123,7 @@ enum tlv_node_list_type {
 };
 
 enum tlv_vote {
+	TLV_VOTE_UNDEFINED = 0,
 	TLV_VOTE_ACK = 1,
 	TLV_VOTE_NACK = 2,
 	TLV_VOTE_ASK_LATER = 3,
@@ -326,6 +327,9 @@ extern const char *		 tlv_vote_to_str(enum tlv_vote vote);
 extern const char *		 tlv_node_state_to_str(enum tlv_node_state state);
 
 extern const char *		 tlv_tls_supported_to_str(enum tlv_tls_supported tls_supported);
+
+extern const char *		 tlv_decision_algorithm_type_to_str(
+    enum tlv_decision_algorithm_type algorithm);
 
 #ifdef __cplusplus
 }

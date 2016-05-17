@@ -223,6 +223,7 @@ qnetd_ipc_parse_line(struct qnetd_instance *instance, struct unix_socket_client 
 	char *str;
 	struct qnetd_ipc_user_data *ipc_user_data;
 	int verbose;
+	char *cluster_name;
 
 	ipc_user_data = (struct qnetd_ipc_user_data *)client->user_data;
 
@@ -230,15 +231,10 @@ qnetd_ipc_parse_line(struct qnetd_instance *instance, struct unix_socket_client 
 	token = dynar_simple_lex_token_next(&lex);
 
 	verbose = 0;
+	cluster_name = NULL;
 
 	if (token == NULL) {
-		qnetd_log(LOG_ERR, "Can't alloc memory for simple lex");
-
-		if (qnetd_ipc_send_error(instance, client, "Command too long") != 0) {
-			client->schedule_disconnect = 1;
-		}
-
-		return;
+		goto exit_err_low_mem;
 	}
 
 	str = dynar_data(token);
@@ -257,6 +253,10 @@ qnetd_ipc_parse_line(struct qnetd_instance *instance, struct unix_socket_client 
 		}
 	} else if (strcasecmp(str, "status") == 0) {
 		token = dynar_simple_lex_token_next(&lex);
+		if (token == NULL) {
+			goto exit_err_low_mem;
+		}
+
 		str = dynar_data(token);
 
 		if (token != NULL && strcmp(str, "") != 0) {
@@ -274,6 +274,35 @@ qnetd_ipc_parse_line(struct qnetd_instance *instance, struct unix_socket_client 
 				client->schedule_disconnect = 1;
 			}
 		}
+	} else if (strcasecmp(str, "list") == 0) {
+		while (((token = dynar_simple_lex_token_next(&lex)) != NULL) &&
+		    (str = dynar_data(token), strcmp(str, "") != 0)) {
+			if (strcasecmp(str, "verbose") == 0) {
+				verbose = 1;
+			} else if (strcasecmp(str, "cluster") == 0) {
+				token = dynar_simple_lex_token_next(&lex);
+				if (token == NULL) {
+					goto exit_err_low_mem;
+				}
+
+				if ((cluster_name = strdup(dynar_data(token))) == NULL) {
+					goto exit_err_low_mem;
+				}
+			} else {
+				break;
+			}
+		}
+
+		if (qnetd_ipc_cmd_list(instance, &client->send_buffer, verbose, cluster_name) != 0) {
+			if (qnetd_ipc_send_error(instance, client, "Can't get QNetd cluster list") != 0) {
+				client->schedule_disconnect = 1;
+			}
+		} else {
+			if (qnetd_ipc_send_buffer(instance, client) != 0) {
+				client->schedule_disconnect = 1;
+			}
+		}
+		free(cluster_name); cluster_name = NULL;
 	} else {
 		qnetd_log(LOG_DEBUG, "IPC client sent unknown command");
 		if (qnetd_ipc_send_error(instance, client, "Unknown command '%s'", str) != 0) {
@@ -282,6 +311,15 @@ qnetd_ipc_parse_line(struct qnetd_instance *instance, struct unix_socket_client 
 	}
 
 	dynar_simple_lex_destroy(&lex);
+
+	return ;
+
+exit_err_low_mem:
+	qnetd_log(LOG_ERR, "Can't alloc memory for simple lex");
+
+	if (qnetd_ipc_send_error(instance, client, "Command too long") != 0) {
+		client->schedule_disconnect = 1;
+	}
 }
 
 void

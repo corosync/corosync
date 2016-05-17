@@ -75,6 +75,14 @@ qnetd_client_send_vote_info(struct qnetd_client *client, uint32_t msg_seq_number
 {
 	struct send_buffer_list_entry *send_buffer;
 
+        /*
+	 * Store result vote
+	 */
+	client->last_sent_vote = vote;
+	if (vote == TLV_VOTE_ACK || vote == TLV_VOTE_NACK) {
+		client->last_sent_ack_nack_vote = vote;
+	}
+
 	qnetd_log_debug_send_vote_info(client, msg_seq_number, vote);
 
 	send_buffer = send_buffer_list_get_new(&client->send_buffer_list);

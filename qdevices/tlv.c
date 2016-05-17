@@ -985,6 +985,7 @@ tlv_vote_to_str(enum tlv_vote vote)
 {
 
 	switch (vote) {
+	case TLV_VOTE_UNDEFINED: break;
 	case TLV_VOTE_ACK: return ("ACK"); break;
 	case TLV_VOTE_NACK: return ("NACK"); break;
 	case TLV_VOTE_ASK_LATER: return ("Ask later"); break;
@@ -1009,7 +1010,7 @@ tlv_node_state_to_str(enum tlv_node_state state)
 	return ("Unhandled node state");
 }
 
-extern const char *
+const char *
 tlv_tls_supported_to_str(enum tlv_tls_supported tls_supported)
 {
 
@@ -1020,4 +1021,18 @@ tlv_tls_supported_to_str(enum tlv_tls_supported tls_supported)
 	}
 
 	return ("Unhandled tls supported state");
+}
+
+const char *
+tlv_decision_algorithm_type_to_str(enum tlv_decision_algorithm_type algorithm)
+{
+
+	switch (algorithm) {
+	case TLV_DECISION_ALGORITHM_TYPE_TEST: return ("Test"); break;
+	case TLV_DECISION_ALGORITHM_TYPE_FFSPLIT: return ("Fifty-Fifty split"); break;
+	case TLV_DECISION_ALGORITHM_TYPE_2NODELMS: return ("2 Node LMS"); break;
+	case TLV_DECISION_ALGORITHM_TYPE_LMS: return ("LMS"); break;
+	}
+
+	return ("Unknown algorithm");
 }
