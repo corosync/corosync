@@ -328,7 +328,7 @@ static void sync_service_build_handler (unsigned int nodeid, const void *msg)
 			my_service_list[my_service_list_entries].service_id =
 				req_exec_service_build_message->service_list[i];
 			sprintf (my_service_list[my_service_list_entries].name,
-				"Uknown External Service (id = %d)\n",
+				"Unknown External Service (id = %d)\n",
 				req_exec_service_build_message->service_list[i]);
 			my_service_list[my_service_list_entries].sync_init =
 				dummy_sync_init;
