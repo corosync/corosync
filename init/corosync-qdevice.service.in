@@ -1,5 +1,6 @@
 [Unit]
 Description=Corosync Qdevice daemon
+Documentation=man:corosync-qdevice
 ConditionKernelCommandLine=!nocluster
 Wants=corosync.service
 After=corosync.service
