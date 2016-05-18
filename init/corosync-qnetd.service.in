@@ -1,5 +1,6 @@
 [Unit]
 Description=Corosync Qdevice Network daemon
+Documentation=man:corosync-qnetd
 ConditionKernelCommandLine=!nocluster
 Requires=network-online.target
 After=network-online.target
