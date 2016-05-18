@@ -984,7 +984,7 @@ int totemsrp_initialize (
 			log_printf (instance->totemsrp_log_level_debug,
 				"heartbeat_timeout = heartbeat_failures_allowed * token_retransmit_timeout + max_network_delay");
 			log_printf (instance->totemsrp_log_level_debug,
-				"heartbeat timeout should be less than the token timeout. HeartBeat is Diabled !!");
+				"heartbeat timeout should be less than the token timeout. Heartbeat is disabled!!");
 			instance->use_heartbeat = 0;
 		}
 		else {
