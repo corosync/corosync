@@ -1086,7 +1086,7 @@ retry_fcntl:
 			goto error_close;
 			break;
 		default:
-			log_printf (LOGSYS_LEVEL_ERROR, "Corosync Executive couldn't aquire lock. Error was %s",
+			log_printf (LOGSYS_LEVEL_ERROR, "Corosync Executive couldn't acquire lock. Error was %s",
 			    strerror(errno));
 			err = COROSYNC_DONE_AQUIRE_LOCK;
 			goto error_close;
