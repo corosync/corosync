@@ -149,7 +149,7 @@ function),
 .I len
 is length of value in cmap and
 .I data
-is pointer to value of item. Data storage is dynamically alocated by caller and notify function must not try to
+is pointer to value of item. Data storage is dynamically allocated by caller and notify function must not try to
 free it.
 
 .SH RETURN VALUE
