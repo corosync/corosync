@@ -1,5 +1,6 @@
 [Unit]
 Description=Corosync Cluster Engine
+Documentation=man:corosync man:corosync.conf man:corosync_overview
 ConditionKernelCommandLine=!nocluster
 Requires=network-online.target
 After=network-online.target
