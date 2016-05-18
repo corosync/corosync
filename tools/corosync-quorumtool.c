@@ -742,7 +742,7 @@ static int init_all(void) {
 	}
 
 	if (cmap_get_uint32(cmap_handle, "runtime.votequorum.this_node_id", &our_nodeid) != CS_OK) {
-		fprintf(stderr, "Unable to retrive this node nodeid\n");
+		fprintf(stderr, "Unable to retrieve this_node_id\n");
 		goto out;
 	}
 
