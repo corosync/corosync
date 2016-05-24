@@ -67,4 +67,4 @@ read-only directly in corosync and deleting such key will result in CS_ERR_ACCES
 .SH "SEE ALSO"
 .BR cmap_initialize (3),
 .BR cmap_set (3),
-.BR cmap_overview (8)
+.BR cmap_overview (3)

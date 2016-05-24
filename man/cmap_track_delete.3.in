@@ -67,4 +67,4 @@ is invalid.
 .SH "SEE ALSO"
 .BR cmap_track_add (3),
 .BR cmap_initialize (3),
-.BR cmap_overview (8)
+.BR cmap_overview (3)
