@@ -1238,6 +1238,14 @@ static char *votequorum_readconfig(int runtime)
 	log_printf(LOGSYS_LEVEL_DEBUG, "Reading configuration (runtime: %d)", runtime);
 
 	/*
+	 * Set the few things we re-read at runtime back to their defaults
+	 */
+	if (runtime) {
+		two_node = 0;
+		expected_votes = 0;
+	}
+
+	/*
 	 * gather basic data here
 	 */
 	icmap_get_uint32("quorum.expected_votes", &expected_votes);
