@@ -57,4 +57,4 @@ This call returns the CS_OK value if successful, otherwise an error is returned.
 
 .SH "SEE ALSO"
 .BR cmap_context_get (3),
-.BR cmap_overview (8)
+.BR cmap_overview (3)

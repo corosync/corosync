@@ -58,7 +58,7 @@ This call returns the CS_OK value if successful, otherwise an error is returned.
 .SH ERRORS
 The errors are undocumented.
 .SH "SEE ALSO"
-.BR cpg_overview (8),
+.BR cpg_overview (3),
 .BR cpg_initialize (3),
 .BR cpg_finalize (3),
 .BR cpg_fd_get (3),

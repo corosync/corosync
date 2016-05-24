@@ -32,7 +32,7 @@
 .\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 .\" * THE POSSIBILITY OF SUCH DAMAGE.
 .\" */
-.TH "SAM_OVERVIEW" 8 "21/05/2010" "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
+.TH "SAM_OVERVIEW" 3 "21/05/2010" "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
 
 .SH NAME
 .P
@@ -56,7 +56,7 @@ process will be forcibly killed by being sent a SIGKILL signal.  Once the
 active process terminates, the SAM server will create a new active process.
 
 .P
-The Simple Availability Manager is meant to be used in conjunction with the 
+The Simple Availability Manager is meant to be used in conjunction with the
 cpg service.  Used together, it is possible to restart a cpg process that fails
 healthchecking during operation.
 
@@ -80,7 +80,7 @@ Both application driven health checking and event driven health checking.
 .SH Initializing SAM
 .P
 The SAM library is initialized by \fBsam_initialize(3)\fR.
-\fBsam_initalize(3)\fR may only be called once per process.  Calling it more 
+\fBsam_initalize(3)\fR may only be called once per process.  Calling it more
 then once has undefined results and is not recommended or tested.
 
 .SH Setting warning callback
@@ -98,7 +98,7 @@ active process to force its termination.
 .P
 The active process is registered with SAM by calling \fBsam_register(3)\fR.
 This function should only be called one time in a process.  After a recovery
-action is taken, the new active process will begin execution at the next line 
+action is taken, the new active process will begin execution at the next line
 of code in a user process after \fBsam_register(3)\fR.
 
 .SH Enabling event driven healthchecking

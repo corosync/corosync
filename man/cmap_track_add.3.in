@@ -167,4 +167,4 @@ In the icmap map, prefix tracking is fully supported.
 .BR cmap_initialize (3),
 .BR cmap_get (3),
 .BR cmap_dispatch (3),
-.BR cmap_overview (8)
+.BR cmap_overview (3)

@@ -1,9 +1,10 @@
 .\"/*
-.\" * Copyright (c) 2006-2009 Red Hat, Inc.
+.\" * Copyright (c) 2008, 2012 Red Hat, Inc.
 .\" *
 .\" * All rights reserved.
 .\" *
-.\" * Author: Patrick Caulfield <pcaulfie@redhat.com>
+.\" * Authors: Christine Caulfield <ccaulfie@redhat.com>
+.\" *          Fabio M. Di Nitto   <fdinitto@redhat.com>
 .\" *
 .\" * This software licensed under BSD license, the text of which follows:
 .\" *
@@ -31,52 +32,33 @@
 .\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 .\" * THE POSSIBILITY OF SUCH DAMAGE.
 .\" */
-.TH CPG_OVERVIEW 8 2009-4-15 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
+.TH QUORUM_OVERVIEW 3 2012-02-09 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
 .SH NAME
-cpg_overview \- CPG library overview
+quorum_overview \- Quorum Library Overview
 .SH OVERVIEW
-The CPG library is delivered with the corosync project.  This library is used
-to create distributed applications that operate properly during cluster
-partitions, merges, and faults.
+The quorum library is delivered with the corosync project. It is the external interface to
+the quorum service. This service is loaded into all nodes in a corosync cluster and track
+the quorum status of a node. In order for quorum service to be useful, a quorum provider
+must be configured.
 .PP
 The library provides a mechanism to:
 .PP
-* handle abstraction for multiple instances of a CPG library in one application
+* Query the quorum status
 .PP
-* join one or more groups
-.PP
-* leave one or more groups
-.PP
-* Deliver messages to members of that group
-.PP
-* Deliver configuration changes
-.PP
-* Iterate members of groups
-.PP
-.SH SECURITY
-If encryption is enabled in corosync.conf, the CPG library will encrypt and
-authenticate message contents.  Applications must run as the ais user to be
-validated by corosync on IPC connection, otherwise they will be unable to
-access the corosync services.
-
+* Receive notifications of quorum state changes
+.SH BUGS
+No known bugs at the time of writing. The authors are from outerspace. Deal with it.
 .SH "SEE ALSO"
-.BR cpg_overview (8),
-.BR cpg_initialize (3),
-.BR cpg_finalize (3),
-.BR cpg_fd_get (3),
-.BR cpg_dispatch (3),
-.BR cpg_join (3),
-.BR cpg_leave (3),
-.BR cpg_mcast_joined (3),
-.BR cpg_model_initialize (3),
-.BR cpg_membership_get (3),
-.BR cpg_zcb_alloc (3),
-.BR cpg_zcb_free (3),
-.BR cpg_zcb_mcast_joined (3),
-.BR cpg_context_get (3),
-.BR cpg_context_set (3),
-.BR cpg_local_get (3),
-.BR cpg_iteration_initialize (3),
-.BR cpg_iteration_next (3),
-.BR cpg_iteration_finalize (3)
+.BR corosync-quorumtool (8),
+.BR corosync.conf (5),
+.BR votequorum (5),
+.BR quorum_initialize (3),
+.BR quorum_finalize (3),
+.BR quorum_getquorate (3),
+.BR quorum_trackstart (3),
+.BR quorum_trackstop (3),
+.BR quorum_fd_get (3),
+.BR quorum_dispatch (3),
+.BR quorum_context_set (3),
+.BR quorum_context_get (3)
 .PP

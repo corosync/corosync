@@ -93,4 +93,4 @@ be returned, if \fIhandle\fR is not valid handle.
 .BR cpg_iteration_next (3),
 .BR cpg_iteration_finalize (3),
 .BR cpg_initialize (3),
-.BR cpg_overview (8)
+.BR cpg_overview (3)

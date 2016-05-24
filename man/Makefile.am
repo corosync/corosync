@@ -131,12 +131,12 @@ dist_man_MANS 		= corosync.conf.5 \
 			  corosync-cpgtool.8 \
 			  corosync-notifyd.8 \
 			  corosync-quorumtool.8 \
-			  corosync_overview.8 \
-			  cpg_overview.8 \
-			  quorum_overview.8 \
-			  votequorum_overview.8 \
-			  sam_overview.8 \
-			  cmap_overview.8 \
+			  corosync_overview.7 \
+			  cpg_overview.3 \
+			  quorum_overview.3 \
+			  votequorum_overview.3 \
+			  sam_overview.3 \
+			  cmap_overview.3 \
 			  cmap_keys.8
 
 if INSTALL_XMLCONF

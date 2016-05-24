@@ -58,4 +58,4 @@ CS_ERR_BAD_HANDLE error is returned when handle is invalid.
 .SH "SEE ALSO"
 .BR cmap_initialize (3),
 .BR cmap_dispatch (3),
-.BR cmap_overview (8)
+.BR cmap_overview (3)

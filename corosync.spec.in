@@ -194,7 +194,7 @@ fi
 %endif
 %dir %{_localstatedir}/lib/corosync
 %dir %{_localstatedir}/log/cluster
-%{_mandir}/man8/corosync_overview.8*
+%{_mandir}/man8/corosync_overview.7*
 %{_mandir}/man8/corosync.8*
 %{_mandir}/man8/corosync-blackbox.8*
 %{_mandir}/man8/corosync-cmapctl.8*
@@ -293,12 +293,12 @@ The Corosync Cluster Engine APIs.
 %{_mandir}/man3/quorum_*3*
 %{_mandir}/man3/votequorum_*3*
 %{_mandir}/man3/sam_*3*
-%{_mandir}/man8/cpg_overview.8*
-%{_mandir}/man8/votequorum_overview.8*
-%{_mandir}/man8/sam_overview.8*
+%{_mandir}/man8/cpg_overview.3*
+%{_mandir}/man8/votequorum_overview.3*
+%{_mandir}/man8/sam_overview.3*
 %{_mandir}/man3/cmap_*3*
-%{_mandir}/man8/cmap_overview.8*
-%{_mandir}/man8/quorum_overview.8*
+%{_mandir}/man8/cmap_overview.3*
+%{_mandir}/man8/quorum_overview.3*
 
 %changelog
 * @date@ Autotools generated version <nobody@nowhere.org> - @version@-1-@numcomm@.@alphatag@.@dirty@

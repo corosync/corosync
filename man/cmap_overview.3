@@ -1,10 +1,9 @@
 .\"/*
-.\" * Copyright (c) 2008, 2012 Red Hat, Inc.
+.\" * Copyright (c) 2012 Red Hat, Inc.
 .\" *
 .\" * All rights reserved.
 .\" *
-.\" * Authors: Christine Caulfield <ccaulfie@redhat.com>
-.\" *          Fabio M. Di Nitto   <fdinitto@redhat.com>
+.\" * Author: Jan Friesse (jfriesse@redhat.com)
 .\" *
 .\" * This software licensed under BSD license, the text of which follows:
 .\" *
@@ -16,7 +15,7 @@
 .\" * - Redistributions in binary form must reproduce the above copyright notice,
 .\" *   this list of conditions and the following disclaimer in the documentation
 .\" *   and/or other materials provided with the distribution.
-.\" * - Neither the name of the MontaVista Software, Inc. nor the names of its
+.\" * - Neither the name of the Red Hat, Inc. nor the names of its
 .\" *   contributors may be used to endorse or promote products derived from this
 .\" *   software without specific prior written permission.
 .\" *
@@ -32,33 +31,48 @@
 .\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 .\" * THE POSSIBILITY OF SUCH DAMAGE.
 .\" */
-.TH QUORUM_OVERVIEW 8 2012-02-09 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
+.TH "CMAP_OVERVIEW" 3 "03/02/2012" "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
+
 .SH NAME
-quorum_overview \- Quorum Library Overview
+.P
+cmap_overview \- Overview of the Configuration Map
+
 .SH OVERVIEW
-The quorum library is delivered with the corosync project. It is the external interface to
-the quorum service. This service is loaded into all nodes in a corosync cluster and track
-the quorum status of a node. In order for quorum service to be useful, a quorum provider
-must be configured.
+.P
+The CMAP library is used to interact with the configuration & statistics databases used by corosync.
+
 .PP
 The library provides a mechanism to:
 .PP
-* Query the quorum status
+* Create of new keys
 .PP
-* Receive notifications of quorum state changes
+* Change existing keys
+.PP
+* Remove keys
+.PP
+* Iterate keys with given prefix
+.PP
+* Track changes on keys
+
+Description of most keys created by corosync itself can be found in cmap_keys (8).
+
 .SH BUGS
-No known bugs at the time of writing. The authors are from outerspace. Deal with it.
 .SH "SEE ALSO"
-.BR corosync-quorumtool (8),
-.BR corosync.conf (5),
-.BR votequorum (5),
-.BR quorum_initialize (3),
-.BR quorum_finalize (3),
-.BR quorum_getquorate (3),
-.BR quorum_trackstart (3),
-.BR quorum_trackstop (3),
-.BR quorum_fd_get (3),
-.BR quorum_dispatch (3),
-.BR quorum_context_set (3),
-.BR quorum_context_get (3)
-.PP
+.BR cmap_initialize (3),
+.BR cmap_initialize_map (3),
+.BR cmap_finalize (3),
+.BR cmap_get (3),
+.BR cmap_set (3),
+.BR cmap_delete (3),
+.BR cmap_inc (3),
+.BR cmap_dec (3),
+.BR cmap_fd_get (3),
+.BR cmap_dispatch (3),
+.BR cmap_context_set (3),
+.BR cmap_context_get (3),
+.BR cmap_iter_init (3),
+.BR cmap_iter_next (3),
+.BR cmap_iter_finalize (3),
+.BR cmap_track_add (3),
+.BR cmap_track_delete (3),
+.BR cmap_keys (8)

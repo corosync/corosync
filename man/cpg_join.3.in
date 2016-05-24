@@ -93,7 +93,7 @@ handle is already joined to a group.
 .SH ERRORS
 Not all errors are documented.
 .SH "SEE ALSO"
-.BR cpg_overview (8),
+.BR cpg_overview (3),
 .BR cpg_initialize (3),
 .BR cpg_finalize (3),
 .BR cpg_fd_get (3),

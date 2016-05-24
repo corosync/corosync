@@ -77,4 +77,4 @@ CS_ERR_NO_SECTIONS is returned.
 .BR cmap_iter_next (3),
 .BR cmap_iter_finalize (3),
 .BR cmap_initialize (3),
-.BR cmap_overview (8)
+.BR cmap_overview (3)

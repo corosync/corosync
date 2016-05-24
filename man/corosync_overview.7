@@ -32,7 +32,7 @@
 .\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 .\" * THE POSSIBILITY OF SUCH DAMAGE.
 .\" */
-.TH COROSYNC_OVERVIEW 8 2012-02-13 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
+.TH COROSYNC_OVERVIEW 7 2012-02-13 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
 .SH NAME
 corosync_overview \- Corosync overview
 .SH OVERVIEW
@@ -59,7 +59,7 @@ state.
 The corosync project provides a group message API called CPG.
 The project developers recommend CPG be used for most applications.  The CPG
 service implements a closed group messaging model presenting extended virtual
-synchrony guarantees. 
+synchrony guarantees.
 
 To manage conditions where the process executing the CPG application exchange
 fails, we provide the Simple Availability Manager (sam) to provide simple
@@ -190,6 +190,6 @@ None that are known.
 .SH "SEE ALSO"
 .BR corosync.conf (5),
 .BR corosync-keygen (8),
-.BR cpg_overview (8),
-.BR sam_overview (8)
+.BR cpg_overview (3),
+.BR sam_overview (3)
 .PP
