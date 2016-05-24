@@ -235,6 +235,7 @@ static int corosync_main_config_log_destination_set (
 	const char **error_string,
 	unsigned int mode_mask,
 	char deprecated,
+	char default_value,
 	const char *replacement)
 {
 	static char formatted_error_reason[128];
@@ -268,6 +269,20 @@ static int corosync_main_config_log_destination_set (
 			}
 		} else {
 			sprintf (formatted_error_reason, "unknown value for %s", key);
+			goto parse_error;
+		}
+	}
+	else {
+		/* Set to default */
+		mode = logsys_config_mode_get (subsys);
+		if (default_value) {
+			mode |= mode_mask;
+		}
+		else {
+			mode &= ~mode_mask;
+		}
+		if (logsys_config_mode_set(subsys, mode) < 0) {
+			sprintf (formatted_error_reason, "unable to unset mode %s", key);
 			goto parse_error;
 		}
 	}
@@ -314,11 +329,11 @@ static int corosync_main_config_set (
 	}
 
 	if (corosync_main_config_log_destination_set (path, "to_stderr", subsys, &error_reason,
-	    LOGSYS_MODE_OUTPUT_STDERR, 0, NULL) != 0)
+	    LOGSYS_MODE_OUTPUT_STDERR, 0, 1, NULL) != 0)
 		goto parse_error;
 
 	if (corosync_main_config_log_destination_set (path, "to_syslog", subsys, &error_reason,
-	    LOGSYS_MODE_OUTPUT_SYSLOG, 0, NULL) != 0)
+	    LOGSYS_MODE_OUTPUT_SYSLOG, 0, 1, NULL) != 0)
 		goto parse_error;
 
 	snprintf(key_name, MAP_KEYNAME_MAXLEN, "%s.%s", path, "syslog_facility");
@@ -337,6 +352,14 @@ static int corosync_main_config_set (
 		}
 
 		free(value);
+	}
+	else {
+		/* Set default here in case of a reload */
+		if (logsys_config_syslog_facility_set(subsys,
+						      qb_log_facility2int("daemon")) < 0) {
+			error_reason = "unable to set syslog facility";
+			goto parse_error;
+		}
 	}
 
 	snprintf(key_name, MAP_KEYNAME_MAXLEN, "%s.%s", path, "syslog_level");
@@ -377,6 +400,13 @@ static int corosync_main_config_set (
 			goto parse_error;
 		}
 	}
+	else {
+		if (logsys_config_syslog_priority_set(subsys,
+						      logsys_priority_id_get("info")) < 0) {
+			error_reason = "unable to set syslog level";
+			goto parse_error;
+		}
+	}
 
 #ifdef LOGCONFIG_USE_ICMAP
 	snprintf(key_name, MAP_KEYNAME_MAXLEN, "%s.%s", path, "logfile");
@@ -395,11 +425,11 @@ static int corosync_main_config_set (
 #endif
 
 	if (corosync_main_config_log_destination_set (path, "to_file", subsys, &error_reason,
-	    LOGSYS_MODE_OUTPUT_FILE, 1, "to_logfile") != 0)
+	   LOGSYS_MODE_OUTPUT_FILE, 1, 0, "to_logfile") != 0)
 		goto parse_error;
 
 	if (corosync_main_config_log_destination_set (path, "to_logfile", subsys, &error_reason,
-	    LOGSYS_MODE_OUTPUT_FILE, 0, NULL) != 0)
+	   LOGSYS_MODE_OUTPUT_FILE, 0, 0, NULL) != 0)
 		goto parse_error;
 
 	snprintf(key_name, MAP_KEYNAME_MAXLEN, "%s.%s", path, "logfile_priority");
@@ -415,6 +445,13 @@ static int corosync_main_config_set (
 		if (logsys_config_logfile_priority_set(subsys,
 						logfile_priority) < 0) {
 			error_reason = "unable to set logfile priority";
+			goto parse_error;
+		}
+	}
+	else {
+		if (logsys_config_logfile_priority_set(subsys,
+						      logsys_priority_id_get("info")) < 0) {
+			error_reason = "unable to set syslog level";
 			goto parse_error;
 		}
 	}
@@ -447,6 +484,13 @@ static int corosync_main_config_set (
 			goto parse_error;
 		}
 		free(value);
+	}
+	else {
+		if (logsys_config_debug_set (subsys, LOGSYS_DEBUG_OFF) < 0) {
+			error_reason = "unable to set debug off";
+			free(value);
+			goto parse_error;
+		}
 	}
 
 	return (0);
