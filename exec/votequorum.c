@@ -2173,6 +2173,17 @@ static int votequorum_exec_exit_fn (void)
 	return ret;
 }
 
+static void votequorum_set_icmap_ro_keys(void)
+{
+	icmap_set_ro_access("quorum.allow_downscale", CS_FALSE, CS_TRUE);
+	icmap_set_ro_access("quorum.wait_for_all", CS_FALSE, CS_TRUE);
+	icmap_set_ro_access("quorum.last_man_standing", CS_FALSE, CS_TRUE);
+	icmap_set_ro_access("quorum.last_man_standing_window", CS_FALSE, CS_TRUE);
+	icmap_set_ro_access("quorum.expected_votes_tracking", CS_FALSE, CS_TRUE);
+	icmap_set_ro_access("quorum.auto_tie_breaker", CS_FALSE, CS_TRUE);
+	icmap_set_ro_access("quorum.auto_tie_breaker_node", CS_FALSE, CS_TRUE);
+}
+
 static char *votequorum_exec_init_fn (struct corosync_api_v1 *api)
 {
 	char *error = NULL;
@@ -2219,6 +2230,11 @@ static char *votequorum_exec_init_fn (struct corosync_api_v1 *api)
 		return error;
 	}
 	recalculate_quorum(0, 0);
+
+	/*
+	 * Set RO keys in icmap
+	 */
+	votequorum_set_icmap_ro_keys();
 
 	/*
 	 * Listen for changes

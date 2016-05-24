@@ -1021,7 +1021,13 @@ static void set_icmap_ro_keys_flag (void)
 	icmap_set_ro_access("totem.secauth", CS_FALSE, CS_TRUE);
 	icmap_set_ro_access("totem.ip_version", CS_FALSE, CS_TRUE);
 	icmap_set_ro_access("totem.rrp_mode", CS_FALSE, CS_TRUE);
+	icmap_set_ro_access("totem.transport", CS_FALSE, CS_TRUE);
+	icmap_set_ro_access("totem.cluster_name", CS_FALSE, CS_TRUE);
 	icmap_set_ro_access("totem.netmtu", CS_FALSE, CS_TRUE);
+	icmap_set_ro_access("totem.threads", CS_FALSE, CS_TRUE);
+	icmap_set_ro_access("totem.version", CS_FALSE, CS_TRUE);
+	icmap_set_ro_access("totem.nodeid", CS_FALSE, CS_TRUE);
+	icmap_set_ro_access("totem.clear_node_high_bit", CS_FALSE, CS_TRUE);
 	icmap_set_ro_access("qb.ipc_type", CS_FALSE, CS_TRUE);
 	icmap_set_ro_access("config.reload_in_progress", CS_FALSE, CS_TRUE);
 	icmap_set_ro_access("config.totemconfig_reload_in_progress", CS_FALSE, CS_TRUE);
