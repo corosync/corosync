@@ -104,6 +104,45 @@ unix_socket_server_create(const char *path, int non_blocking, int backlog)
 }
 
 int
+unix_socket_client_create(const char *path, int non_blocking)
+{
+	int s;
+	struct sockaddr_un sun;
+
+	if (strlen(path) >= sizeof(sun.sun_path)) {
+		errno = ENAMETOOLONG;
+		return (-1);
+	}
+
+	if ((s = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
+		return (-1);
+	}
+
+	memset(&sun, 0, sizeof(sun));
+	sun.sun_family = AF_UNIX;
+
+	strncpy(sun.sun_path, path, sizeof(sun.sun_path));
+
+	if (non_blocking) {
+		if (unix_socket_set_non_blocking(s) != 0) {
+			close(s);
+
+			return (-1);
+		}
+	}
+
+	if (connect(s, (struct sockaddr *)&sun, SUN_LEN(&sun)) != 0) {
+		close(s);
+
+		return (-1);
+	}
+
+	return (s);
+}
+
+
+
+int
 unix_socket_server_destroy(int sock, const char *path)
 {
 	int res;

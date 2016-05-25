@@ -35,7 +35,8 @@ if BUILD_QDEVICES
 
 SUBDIRS			=
 
-sbin_PROGRAMS		= corosync-qnetd corosync-qdevice
+sbin_PROGRAMS		= corosync-qnetd corosync-qdevice corosync-qnetd-tool \
+                          corosync-qdevice-tool
 
 sbin_SCRIPTS            = corosync-qnetd-certutil corosync-qdevice-net-certutil
 
@@ -98,6 +99,12 @@ corosync_qdevice_SOURCES = corosync-qdevice.c \
                            qdevice-net-poll-array-user-data.h \
                            qdevice-config.h qnet-config.h qdevice-net-disconnect-reason.h \
                            qdevice-model-type.h
+
+corosync_qnetd_tool_SOURCES = corosync-qnetd-tool.c unix-socket.c unix-socket.h dynar.c dynar.h \
+                              dynar-str.c dynar-str.h
+
+corosync_qdevice_tool_SOURCES = corosync-qdevice-tool.c unix-socket.c unix-socket.h dynar.c dynar.h \
+                                dynar-str.c dynar-str.h
 
 corosync_qnetd_CFLAGS		= $(nss_CFLAGS)
 corosync_qnetd_LDADD		= $(nss_LIBS)

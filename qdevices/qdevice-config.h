@@ -74,6 +74,8 @@ extern "C" {
 #define QDEVICE_IPC_MAX_RECEIVE_SIZE		(4*1024)
 #define QDEVICE_IPC_MAX_SEND_SIZE		(64*1024)
 
+#define QDEVICE_TOOL_PROGRAM_NAME		"corosync-qdevice-tool"
+
 #ifdef __cplusplus
 }
 #endif

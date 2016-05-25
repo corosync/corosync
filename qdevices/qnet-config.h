@@ -84,6 +84,9 @@ extern "C" {
 #define QDEVICE_NET_MAX_MSG_RECEIVE_SIZE	(1 << 24)
 
 #define QNETD_NSS_SERVER_CN			"Qnetd Server"
+
+#define QNETD_TOOL_PROGRAM_NAME			"corosync-qnetd-tool"
+
 #define QDEVICE_NET_NSS_CLIENT_CERT_NICKNAME	"Cluster Cert"
 
 #define QDEVICE_NET_MAX_SEND_BUFFERS		10

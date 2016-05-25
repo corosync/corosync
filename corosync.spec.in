@@ -386,6 +386,7 @@ fi
 %defattr(-,root,root,-)
 %{_sbindir}/corosync-qdevice
 %{_sbindir}/corosync-qdevice-net-certutil
+%{_sbindir}/corosync-qdevice-tool
 %if %{with systemd}
 %{_unitdir}/corosync-qdevice.service
 %dir %{_datadir}/corosync
@@ -437,6 +438,7 @@ fi
 %defattr(-,root,root,-)
 %{_sbindir}/corosync-qnetd
 %{_sbindir}/corosync-qnetd-certutil
+%{_sbindir}/corosync-qnetd-tool
 %if %{with systemd}
 %{_unitdir}/corosync-qnetd.service
 %dir %{_datadir}/corosync
