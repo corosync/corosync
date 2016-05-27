@@ -272,8 +272,9 @@ static int corosync_main_config_log_destination_set (
 			goto parse_error;
 		}
 	}
-	else {
-		/* Set to default */
+	/* Set to default if we are the top-level logger */
+	else if (!subsys && !deprecated) {
+
 		mode = logsys_config_mode_get (subsys);
 		if (default_value) {
 			mode |= mode_mask;
@@ -282,7 +283,7 @@ static int corosync_main_config_log_destination_set (
 			mode &= ~mode_mask;
 		}
 		if (logsys_config_mode_set(subsys, mode) < 0) {
-			sprintf (formatted_error_reason, "unable to unset mode %s", key);
+			sprintf (formatted_error_reason, "unable to change mode %s", key);
 			goto parse_error;
 		}
 	}
