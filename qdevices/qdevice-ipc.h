@@ -71,6 +71,8 @@ extern int		qdevice_ipc_send_error(struct qdevice_instance *instance,
 extern int		qdevice_ipc_send_buffer(struct qdevice_instance *instance,
     struct unix_socket_client *client);
 
+extern int		qdevice_ipc_is_closed(struct qdevice_instance *instance);
+
 #ifdef __cplusplus
 }
 #endif

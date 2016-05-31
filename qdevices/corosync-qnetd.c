@@ -106,6 +106,12 @@ qnetd_pr_poll_array_create(struct qnetd_instance *instance)
 
 	user_data->type = QNETD_POLL_ARRAY_USER_DATA_TYPE_SOCKET;
 
+	if (qnetd_ipc_is_closed(instance)) {
+		qnetd_log(LOG_DEBUG, "Listening socket is closed");
+
+		return (NULL);
+	}
+
 	if (pr_poll_array_add(poll_array, &poll_desc, (void **)&user_data) < 0) {
 		return (NULL);
 	}

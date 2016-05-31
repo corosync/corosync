@@ -80,6 +80,13 @@ qnetd_ipc_close(struct qnetd_instance *instance)
 }
 
 int
+qnetd_ipc_is_closed(struct qnetd_instance *instance)
+{
+
+	return (unix_socket_ipc_is_closed(&instance->local_ipc));
+}
+
+int
 qnetd_ipc_destroy(struct qnetd_instance *instance)
 {
 	int res;

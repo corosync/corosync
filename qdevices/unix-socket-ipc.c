@@ -91,6 +91,13 @@ unix_socket_ipc_close(struct unix_socket_ipc *ipc)
 }
 
 int
+unix_socket_ipc_is_closed(struct unix_socket_ipc *ipc)
+{
+
+	return (ipc->socket < 0);
+}
+
+int
 unix_socket_ipc_destroy(struct unix_socket_ipc *ipc)
 {
 

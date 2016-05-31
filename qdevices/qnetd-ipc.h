@@ -50,6 +50,8 @@ extern int		qnetd_ipc_init(struct qnetd_instance *instance);
 
 extern int		qnetd_ipc_close(struct qnetd_instance *instance);
 
+extern int		qnetd_ipc_is_closed(struct qnetd_instance *instance);
+
 extern int		qnetd_ipc_destroy(struct qnetd_instance *instance);
 
 extern int		qnetd_ipc_accept(struct qnetd_instance *instance,

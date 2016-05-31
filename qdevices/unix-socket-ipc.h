@@ -66,6 +66,8 @@ void			unix_socket_ipc_client_disconnect(struct unix_socket_ipc *ipc,
 
 extern int		unix_socket_ipc_close(struct unix_socket_ipc *ipc);
 
+extern int		unix_socket_ipc_is_closed(struct unix_socket_ipc *ipc);
+
 #ifdef __cplusplus
 }
 #endif

@@ -197,6 +197,14 @@ qdevice_net_pr_poll_array_create(struct qdevice_net_instance *instance)
 	poll_desc->in_flags = PR_POLL_READ;
 	user_data->type = QDEVICE_NET_POLL_ARRAY_USER_DATA_TYPE_CMAP;
 
+	if (qdevice_ipc_is_closed(instance->qdevice_instance_ptr)) {
+		qdevice_log(LOG_DEBUG, "Local socket is closed");
+		instance->schedule_disconnect = 1;
+		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_LOCAL_SOCKET_CLOSED;
+
+		return (NULL);
+	}
+
 	if (pr_poll_array_add(poll_array, &poll_desc, (void **)&user_data) < 0) {
 		return (NULL);
 	}

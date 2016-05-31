@@ -68,6 +68,13 @@ qdevice_ipc_close(struct qdevice_instance *instance)
 }
 
 int
+qdevice_ipc_is_closed(struct qdevice_instance *instance)
+{
+
+	return (unix_socket_ipc_is_closed(&instance->local_ipc));
+}
+
+int
 qdevice_ipc_destroy(struct qdevice_instance *instance)
 {
 	int res;
