@@ -47,6 +47,7 @@
 #include "qnet-config.h"
 #include "timer-list.h"
 #include "unix-socket-ipc.h"
+#include "qnetd-advanced-settings.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -58,9 +59,6 @@ struct qnetd_instance {
 		CERTCertificate *cert;
 		SECKEYPrivateKey *private_key;
 	} server;
-	size_t max_client_receive_size;
-	size_t max_client_send_buffers;
-	size_t max_client_send_size;
 	size_t max_clients;
 	struct qnetd_client_list clients;
 	struct qnetd_cluster_list clusters;
@@ -73,11 +71,12 @@ struct qnetd_instance {
 	struct timer_list_entry *dpd_timer;		/* Dead peer detection timer */
 	struct unix_socket_ipc local_ipc;
 	PRFileDesc *ipc_socket_poll_fd;
+	struct qnetd_advanced_settings *advanced_settings;
 };
 
 extern int		qnetd_instance_init(struct qnetd_instance *instance,
-    size_t max_client_receive_size, size_t max_client_send_buffers, size_t max_client_send_size,
-    enum tlv_tls_supported tls_supported, int tls_client_cert_required, size_t max_clients);
+    enum tlv_tls_supported tls_supported, int tls_client_cert_required, size_t max_clients,
+    struct qnetd_advanced_settings *advanced_settings);
 
 extern int		qnetd_instance_destroy(struct qnetd_instance *instance);
 

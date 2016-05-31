@@ -266,15 +266,15 @@ qdevice_net_instance_init_from_cmap(struct qdevice_instance *instance)
 	 */
 	cast_vote_timer_interval = instance->heartbeat_interval * 0.5;
 	heartbeat_interval = instance->heartbeat_interval * 0.8;
-	if (heartbeat_interval < QDEVICE_HEARTBEAT_INTERVAL_MIN) {
+	if (heartbeat_interval < QDEVICE_NET_HEARTBEAT_INTERVAL_MIN) {
 		qdevice_log(LOG_WARNING, "Heartbeat interval too small %"PRIu32". Adjusting to %"PRIu32".",
-		    heartbeat_interval, QNETD_HEARTBEAT_INTERVAL_MIN);
-		heartbeat_interval = QNETD_HEARTBEAT_INTERVAL_MIN;
+		    heartbeat_interval, QDEVICE_NET_HEARTBEAT_INTERVAL_MIN);
+		heartbeat_interval = QDEVICE_NET_HEARTBEAT_INTERVAL_MIN;
 	}
-	if (heartbeat_interval > QDEVICE_HEARTBEAT_INTERVAL_MAX) {
+	if (heartbeat_interval > QDEVICE_NET_HEARTBEAT_INTERVAL_MAX) {
 		qdevice_log(LOG_WARNING, "Heartbeat interval too big %"PRIu32". Adjusting to %"PRIu32".",
-		    heartbeat_interval, QNETD_HEARTBEAT_INTERVAL_MAX);
-		heartbeat_interval = QNETD_HEARTBEAT_INTERVAL_MAX;
+		    heartbeat_interval, QDEVICE_NET_HEARTBEAT_INTERVAL_MAX);
+		heartbeat_interval = QDEVICE_NET_HEARTBEAT_INTERVAL_MAX;
 	}
 	sync_heartbeat_interval = instance->sync_heartbeat_interval * 0.8;
 

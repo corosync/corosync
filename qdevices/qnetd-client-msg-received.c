@@ -350,8 +350,8 @@ qnetd_client_msg_received_init(struct qnetd_instance *instance, struct qnetd_cli
 
 		reply_error_code = TLV_REPLY_ERROR_CODE_DOESNT_CONTAIN_REQUIRED_OPTION;
 	} else {
-		if (msg->heartbeat_interval < QNETD_HEARTBEAT_INTERVAL_MIN ||
-		    msg->heartbeat_interval > QNETD_HEARTBEAT_INTERVAL_MAX) {
+		if (msg->heartbeat_interval < instance->advanced_settings->heartbeat_interval_min ||
+		    msg->heartbeat_interval > instance->advanced_settings->heartbeat_interval_max) {
 			qnetd_log(LOG_ERR, "Client requested invalid heartbeat interval %u. "
 			    "Sending error reply.", msg->heartbeat_interval);
 
@@ -478,7 +478,8 @@ qnetd_client_msg_received_init(struct qnetd_instance *instance, struct qnetd_cli
 	if (msg_create_init_reply(&send_buffer->buffer, msg->seq_number_set, msg->seq_number,
 	    reply_error_code,
 	    supported_msgs, no_supported_msgs, supported_opts, no_supported_opts,
-	    instance->max_client_receive_size, instance->max_client_send_size,
+	    instance->advanced_settings->max_client_receive_size,
+	    instance->advanced_settings->max_client_send_size,
 	    qnetd_static_supported_decision_algorithms,
 	    QNETD_STATIC_SUPPORTED_DECISION_ALGORITHMS_SIZE) == -1) {
 		qnetd_log(LOG_ERR, "Can't alloc init reply msg. Disconnecting client connection.");
@@ -536,8 +537,8 @@ qnetd_client_msg_received_set_option(struct qnetd_instance *instance, struct qne
 		/*
 		 * Check if heartbeat interval is valid
 		 */
-		if (msg->heartbeat_interval < QNETD_HEARTBEAT_INTERVAL_MIN ||
-		    msg->heartbeat_interval > QNETD_HEARTBEAT_INTERVAL_MAX) {
+		if (msg->heartbeat_interval < instance->advanced_settings->heartbeat_interval_min ||
+		    msg->heartbeat_interval > instance->advanced_settings->heartbeat_interval_max) {
 			qnetd_log(LOG_ERR, "Client requested invalid heartbeat interval %u. "
 			    "Sending error reply.", msg->heartbeat_interval);
 

@@ -229,8 +229,9 @@ qnetd_client_net_accept(struct qnetd_instance *instance)
 
 	client = qnetd_client_list_add(&instance->clients, client_socket, &client_addr,
 	    client_addr_str,
-	    instance->max_client_receive_size, instance->max_client_send_buffers,
-	    instance->max_client_send_size, &instance->main_timer_list);
+	    instance->advanced_settings->max_client_receive_size,
+	    instance->advanced_settings->max_client_send_buffers,
+	    instance->advanced_settings->max_client_send_size, &instance->main_timer_list);
 	if (client == NULL) {
 		qnetd_log(LOG_ERR, "Can't add client to list");
 		res_err = -2;

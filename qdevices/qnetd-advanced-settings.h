@@ -32,50 +32,41 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _QDEVICE_CONFIG_H_
-#define _QDEVICE_CONFIG_H_
-
-#include <config.h>
-
-#include <qb/qbdefs.h>
-#include <qb/qblog.h>
+#ifndef _QNETD_ADVANCED_SETTINGS_H_
+#define _QNETD_ADVANCED_SETTINGS_H_
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-/*
- * There are "hardcoded" defines for qdevice. It's not so good
- * idea to change them as long as you are not 100% sure what you are doing.
- */
-#define QDEVICE_LOCK_FILE			LOCALSTATEDIR"/run/corosync-qdevice.pid"
-#define QDEVICE_LOCAL_SOCKET_FILE               LOCALSTATEDIR"/run/corosync-qdevice.sock"
-#define QDEVICE_LOCAL_SOCKET_BACKLOG		10
+struct qnetd_advanced_settings {
+	int listen_backlog;
+	size_t max_client_send_buffers;
+	size_t max_client_send_size;
+	size_t max_client_receive_size;
+	char *nss_db_dir;
+	char *cert_nickname;
+	uint32_t heartbeat_interval_min;
+	uint32_t heartbeat_interval_max;
+	uint8_t dpd_enabled;
+	uint32_t dpd_interval;
+	char *lock_file;
+	char *local_socket_file;
+	int local_socket_backlog;
+	size_t ipc_max_clients;
+	size_t ipc_max_send_size;
+	size_t ipc_max_receive_size;
+};
 
-#define QDEVICE_MAX_CS_TRY_AGAIN		10
+extern int		qnetd_advanced_settings_init(struct qnetd_advanced_settings *settings);
 
-#define QDEVICE_PROGRAM_NAME			"corosync-qdevice"
-#define QDEVICE_LOG_SUBSYS			"QDEVICE"
-#define QDEVICE_LOG_DEFAULT_TO_STDERR		1
-#define QDEVICE_LOG_DEFAULT_TO_SYSLOG		1
-#define QDEVICE_LOG_DEFAULT_TO_LOGFILE		0
-#define QDEVICE_LOG_DEFAULT_SYSLOG_FACILITY	LOG_DAEMON
-#define QDEVICE_LOG_DEFAULT_SYSLOG_PRIORITY	LOG_INFO
-#define QDEVICE_LOG_DEFAULT_DEBUG		0
-#define QDEVICE_LOG_DEFAULT_FILELINE		0
-#define QDEVICE_LOG_DEFAULT_TIMESTAMP		0
-#define QDEVICE_LOG_DEFAULT_FUNCTION_NAME	0
+extern int		qnetd_advanced_settings_set(struct qnetd_advanced_settings *settings,
+    const char *option, const char *value);
 
-#define QDEVICE_VOTEQUORUM_DEVICE_NAME		"Qdevice"
-
-#define QDEVICE_IPC_MAX_CLIENTS			10
-#define QDEVICE_IPC_MAX_RECEIVE_SIZE		(4*1024)
-#define QDEVICE_IPC_MAX_SEND_SIZE		(64*1024)
-
-#define QDEVICE_TOOL_PROGRAM_NAME		"corosync-qdevice-tool"
+extern void		qnetd_advanced_settings_destroy(struct qnetd_advanced_settings *settings);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* _QDEVICE_CONFIG_H_ */
+#endif /* _QNETD_ADVANCED_SETTINGS_H_ */

@@ -48,7 +48,7 @@ qnetd_dpd_timer_cb(void *data1, void *data2)
 			continue;
 		}
 
-		client->dpd_time_since_last_check += QNETD_DPD_INTERVAL;
+		client->dpd_time_since_last_check += instance->advanced_settings->dpd_interval;
 
 		if (client->dpd_time_since_last_check > (client->heartbeat_interval * 2)) {
 			if (!client->dpd_msg_received_since_last_check) {
@@ -71,11 +71,12 @@ int
 qnetd_dpd_timer_init(struct qnetd_instance *instance)
 {
 
-	if (!QNETD_DPD_ENABLED) {
+	if (!instance->advanced_settings->dpd_enabled) {
 		return (0);
 	}
 
-	instance->dpd_timer = timer_list_add(&instance->main_timer_list, QNETD_DPD_INTERVAL,
+	instance->dpd_timer = timer_list_add(&instance->main_timer_list,
+	    instance->advanced_settings->dpd_interval,
 	    qnetd_dpd_timer_cb, (void *)instance, NULL);
 	if (instance->dpd_timer == NULL) {
 		qnetd_log(LOG_ERR, "Can't initialize dpd timer");

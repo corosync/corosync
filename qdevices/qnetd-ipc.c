@@ -49,9 +49,12 @@ int
 qnetd_ipc_init(struct qnetd_instance *instance)
 {
 
-	if (unix_socket_ipc_init(&instance->local_ipc, QNETD_LOCAL_SOCKET_FILE,
-	    QNETD_LOCAL_SOCKET_BACKLOG, QNETD_IPC_MAX_CLIENTS, QNETD_IPC_MAX_RECEIVE_SIZE,
-	    QNETD_IPC_MAX_SEND_SIZE) != 0) {
+	if (unix_socket_ipc_init(&instance->local_ipc,
+	    instance->advanced_settings->local_socket_file,
+	    instance->advanced_settings->local_socket_backlog,
+	    instance->advanced_settings->ipc_max_clients,
+	    instance->advanced_settings->ipc_max_receive_size,
+	    instance->advanced_settings->ipc_max_send_size) != 0) {
 		qnetd_log_err(LOG_ERR, "Can't create unix socket");
 
 		return (-1);

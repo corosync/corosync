@@ -80,7 +80,7 @@ cli_parse(int argc, char * const argv[], enum qnetd_tool_operation *operation,
 	*operation = QNETD_TOOL_OPERATION_NONE;
 	*verbose = 0;
 	*cluster_name = NULL;
-	*socket_path = strdup(QNETD_LOCAL_SOCKET_FILE);
+	*socket_path = strdup(QNETD_DEFAULT_LOCAL_SOCKET_FILE);
 
 	if (*socket_path == NULL) {
 		errx(QNETD_TOOL_EXIT_CODE_INTERNAL_ERROR,
@@ -260,7 +260,7 @@ main(int argc, char * const argv[])
 
 	cli_parse(argc, argv, &operation, &verbose, &cluster_name, &socket_path);
 
-	dynar_init(&send_str, QNETD_IPC_MAX_RECEIVE_SIZE);
+	dynar_init(&send_str, QNETD_DEFAULT_IPC_MAX_RECEIVE_SIZE);
 
 	sock_fd = unix_socket_client_create(socket_path, 0);
 	if (sock_fd == -1) {

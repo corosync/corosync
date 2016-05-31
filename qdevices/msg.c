@@ -977,3 +977,29 @@ msg_get_supported_messages(enum msg_type **supported_messages, size_t *no_suppor
 	*supported_messages = msg_static_supported_messages;
 	*no_supported_messages = MSG_STATIC_SUPPORTED_MESSAGES_SIZE;
 }
+
+const char *
+msg_type_to_str(enum msg_type type)
+{
+
+	switch (type) {
+	case MSG_TYPE_PREINIT: return ("Preinit"); break;
+	case MSG_TYPE_PREINIT_REPLY: return ("Preinit reply"); break;
+	case MSG_TYPE_STARTTLS: return ("StartTLS"); break;
+	case MSG_TYPE_INIT: return ("Init"); break;
+	case MSG_TYPE_INIT_REPLY: return ("Init reply"); break;
+	case MSG_TYPE_SERVER_ERROR: return ("Server error"); break;
+	case MSG_TYPE_SET_OPTION: return ("Set option"); break;
+	case MSG_TYPE_SET_OPTION_REPLY: return ("Set option reply"); break;
+	case MSG_TYPE_ECHO_REQUEST: return ("Echo request"); break;
+	case MSG_TYPE_ECHO_REPLY: return ("Echo reply"); break;
+	case MSG_TYPE_NODE_LIST: return ("Node list"); break;
+	case MSG_TYPE_NODE_LIST_REPLY: return ("Node list reply"); break;
+	case MSG_TYPE_ASK_FOR_VOTE: return ("Ask for vote"); break;
+	case MSG_TYPE_ASK_FOR_VOTE_REPLY: return ("Ask for vote reply"); break;
+	case MSG_TYPE_VOTE_INFO: return ("Vote info"); break;
+	case MSG_TYPE_VOTE_INFO_REPLY: return ("Vote info reply"); break;
+	}
+
+	return ("Unknown message type");
+}

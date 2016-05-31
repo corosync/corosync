@@ -139,7 +139,8 @@ qdevice_net_socket_write_finished(struct qdevice_net_instance *instance)
 		/*
 		 * StartTLS sent to server. Begin with TLS handshake
 		 */
-		if ((new_pr_fd = nss_sock_start_ssl_as_client(instance->socket, QNETD_NSS_SERVER_CN,
+		if ((new_pr_fd = nss_sock_start_ssl_as_client(instance->socket,
+		    QDEVICE_NET_NSS_SERVER_CN,
 		    qdevice_net_nss_bad_cert_hook,
 		    qdevice_net_nss_get_client_auth_data,
 		    instance, 0, NULL)) == NULL) {

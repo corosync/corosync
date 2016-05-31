@@ -65,7 +65,8 @@ corosync_qnetd_SOURCES	= corosync-qnetd.c \
                           unix-socket-client.c unix-socket-client.h \
                           unix-socket-client-list.c unix-socket-client-list.h \
                           unix-socket.c unix-socket.h qnetd-ipc-cmd.c qnetd-ipc-cmd.h \
-                          qnetd-poll-array-user-data.h qnet-config.h
+                          qnetd-poll-array-user-data.h qnet-config.h dynar-getopt-lex.c \
+                          dynar-getopt-lex.h qnetd-advanced-settings.c
 
 corosync_qdevice_SOURCES = corosync-qdevice.c \
                            qdevice-cmap.c qdevice-cmap.h \
@@ -125,8 +126,10 @@ corosync-qdevice-net-certutil: corosync-qdevice-net-certutil.sh
 	    -e 's#@''COROSYSCONFDIR@#${COROSYSCONFDIR}#g' \
 	    $< > $@
 
-TESTS				= qnetd-cluster-list.test dynar.test dynar-simple-lex.test
-check_PROGRAMS			= qnetd-cluster-list.test dynar.test dynar-simple-lex.test
+TESTS				= qnetd-cluster-list.test dynar.test dynar-simple-lex.test \
+                                  dynar-getopt-lex.test
+check_PROGRAMS			= qnetd-cluster-list.test dynar.test dynar-simple-lex.test \
+                                  dynar-getopt-lex.test
 
 qnetd_cluster_list_test_SOURCES	= qnetd-cluster-list.c test-qnetd-cluster-list.c \
 				    qnetd-client-list.c qnetd-client.c dynar.c node-list.c \
@@ -136,5 +139,6 @@ qnetd_cluster_list_test_LDADD	= $(nss_LIBS)
 
 dynar_test_SOURCES		= test-dynar.c dynar.c dynar-str.c
 dynar_simple_lex_test_SOURCES	= test-dynar-simple-lex.c dynar.c dynar-str.c dynar-simple-lex.c
+dynar_getopt_lex_test_SOURCES	= test-dynar-getopt-lex.c dynar.c dynar-str.c dynar-getopt-lex.c
 
 endif

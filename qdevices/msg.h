@@ -191,6 +191,8 @@ extern int		msg_decode(const struct dynar *msg, struct msg_decoded *decoded_msg)
 extern void		msg_get_supported_messages(enum msg_type **supported_messages,
     size_t *no_supported_messages);
 
+extern const char *	msg_type_to_str(enum msg_type type);
+
 #ifdef __cplusplus
 }
 #endif

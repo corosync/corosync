@@ -193,7 +193,9 @@ dynar_simple_lex_token_next(struct dynar_simple_lex *lex)
 	}
 
 	ch = '\0';
-	dynar_cat(&lex->token, &ch, sizeof(ch));
+	if (dynar_cat(&lex->token, &ch, sizeof(ch)) != 0) {
+		return (NULL);
+	}
 
 	lex->pos = pos;
 

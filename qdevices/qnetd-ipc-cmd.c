@@ -75,7 +75,8 @@ qnetd_ipc_cmd_status(struct qnetd_instance *instance, struct dynar *outbuf, int 
 	}
 
 	if (dynar_str_catf(outbuf, "Maximum send/receive size:\t%zu/%zu bytes\n",
-	    instance->max_client_send_size, instance->max_client_receive_size) == -1) {
+	    instance->advanced_settings->max_client_send_size,
+	    instance->advanced_settings->max_client_receive_size) == -1) {
 		return (-1);
 	}
 

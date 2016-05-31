@@ -32,50 +32,100 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _QDEVICE_CONFIG_H_
-#define _QDEVICE_CONFIG_H_
+#include <string.h>
 
-#include <config.h>
+#include "dynar-getopt-lex.h"
 
-#include <qb/qbdefs.h>
-#include <qb/qblog.h>
+void
+dynar_getopt_lex_init(struct dynar_getopt_lex *lex, struct dynar *input)
+{
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+	memset(lex, 0, sizeof(*lex));
+	lex->input = input;
+	dynar_init(&lex->option, dynar_max_size(input));
+	dynar_init(&lex->value, dynar_max_size(input));
+}
+
+void
+dynar_getopt_lex_destroy(struct dynar_getopt_lex *lex)
+{
+
+	dynar_destroy(&lex->option);
+	dynar_destroy(&lex->value);
+	memset(lex, 0, sizeof(*lex));
+}
 
 /*
- * There are "hardcoded" defines for qdevice. It's not so good
- * idea to change them as long as you are not 100% sure what you are doing.
+ * 0 - no error
+ * -1 - Can't add character
  */
-#define QDEVICE_LOCK_FILE			LOCALSTATEDIR"/run/corosync-qdevice.pid"
-#define QDEVICE_LOCAL_SOCKET_FILE               LOCALSTATEDIR"/run/corosync-qdevice.sock"
-#define QDEVICE_LOCAL_SOCKET_BACKLOG		10
+int
+dynar_getopt_lex_token_next(struct dynar_getopt_lex *lex)
+{
+	size_t pos;
+	size_t size;
+	char *str;
+	char ch;
+	int state;
+	int res;
 
-#define QDEVICE_MAX_CS_TRY_AGAIN		10
+	dynar_clean(&lex->option);
+	dynar_clean(&lex->value);
 
-#define QDEVICE_PROGRAM_NAME			"corosync-qdevice"
-#define QDEVICE_LOG_SUBSYS			"QDEVICE"
-#define QDEVICE_LOG_DEFAULT_TO_STDERR		1
-#define QDEVICE_LOG_DEFAULT_TO_SYSLOG		1
-#define QDEVICE_LOG_DEFAULT_TO_LOGFILE		0
-#define QDEVICE_LOG_DEFAULT_SYSLOG_FACILITY	LOG_DAEMON
-#define QDEVICE_LOG_DEFAULT_SYSLOG_PRIORITY	LOG_INFO
-#define QDEVICE_LOG_DEFAULT_DEBUG		0
-#define QDEVICE_LOG_DEFAULT_FILELINE		0
-#define QDEVICE_LOG_DEFAULT_TIMESTAMP		0
-#define QDEVICE_LOG_DEFAULT_FUNCTION_NAME	0
+	size = dynar_size(lex->input);
+	str = dynar_data(lex->input);
 
-#define QDEVICE_VOTEQUORUM_DEVICE_NAME		"Qdevice"
+	state = 1;
+	pos = lex->pos;
+	res = 0;
 
-#define QDEVICE_IPC_MAX_CLIENTS			10
-#define QDEVICE_IPC_MAX_RECEIVE_SIZE		(4*1024)
-#define QDEVICE_IPC_MAX_SEND_SIZE		(64*1024)
+	while (state != 0 && pos < size) {
+		ch = str[pos];
 
-#define QDEVICE_TOOL_PROGRAM_NAME		"corosync-qdevice-tool"
+		switch (state) {
+		case 1:
+			/*
+			 * Read option name, wait for = or ,
+			 */
+			if (ch == '=') {
+				pos++;
+				state = 2;
+			} else if (ch == ',') {
+				pos++;
+				state = 0;
+			} else {
+				pos++;
+				if (dynar_cat(&lex->option, &ch, sizeof(ch)) != 0) {
+					return (-1);
+				}
+			}
+			break;
+		case 2:
+			/*
+			 * Wait for end of str or ,
+			 */
+			if (ch == ',') {
+				pos++;
+				state = 0;
+			} else {
+				pos++;
+				if (dynar_cat(&lex->value, &ch, sizeof(ch)) != 0) {
+					return (-1);
+				}
+			}
+			break;
+		}
+	}
 
-#ifdef __cplusplus
+	ch = '\0';
+	if (dynar_cat(&lex->option, &ch, sizeof(ch)) != 0) {
+		return (-1);
+	}
+	if (dynar_cat(&lex->value, &ch, sizeof(ch)) != 0) {
+		return (-1);
+	}
+
+	lex->pos = pos;
+
+	return (0);
 }
-#endif
-
-#endif /* _QDEVICE_CONFIG_H_ */

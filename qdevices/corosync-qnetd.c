@@ -40,8 +40,12 @@
 
 #include "qnet-config.h"
 
+#include "dynar.h"
+#include "dynar-str.h"
+#include "dynar-getopt-lex.h"
 #include "nss-sock.h"
 #include "pr-poll-array.h"
+#include "qnetd-advanced-settings.h"
 #include "qnetd-algorithm.h"
 #include "qnetd-instance.h"
 #include "qnetd-ipc.h"
@@ -50,6 +54,7 @@
 #include "qnetd-client-msg-received.h"
 #include "qnetd-poll-array-user-data.h"
 #include "utils.h"
+#include "msg.h"
 
 /*
  * This is global variable used for comunication with main loop and signal (calls close)
@@ -346,14 +351,79 @@ static void
 usage(void)
 {
 
-	printf("usage: %s [-46dfh] [-l listen_addr] [-p listen_port] [-s tls]\n", QNETD_PROGRAM_NAME);
-	printf("%14s[-c client_cert_required] [-m max_clients]\n", "");
+	printf("usage: %s [-46dfhv] [-l listen_addr] [-p listen_port] [-s tls]\n", QNETD_PROGRAM_NAME);
+	printf("%14s[-c client_cert_required] [-m max_clients] [-S option=value]\n", "");
+}
+
+static void
+display_version(void)
+{
+	enum msg_type *supported_messages;
+	size_t no_supported_messages;
+	size_t zi;
+
+	msg_get_supported_messages(&supported_messages, &no_supported_messages);
+	printf("Corosync Qdevice Network Daemon, version '%s'\n\n", VERSION);
+	printf("Supported algorithms: ");
+	for (zi = 0; zi < QNETD_STATIC_SUPPORTED_DECISION_ALGORITHMS_SIZE; zi++) {
+		if (zi != 0) {
+			printf(", ");
+		}
+		printf("%s (%u)",
+		    tlv_decision_algorithm_type_to_str(qnetd_static_supported_decision_algorithms[zi]),
+		    qnetd_static_supported_decision_algorithms[zi]);
+	}
+	printf("\n");
+	printf("Supported message types: ");
+	for (zi = 0; zi < no_supported_messages; zi++) {
+		if (zi != 0) {
+			printf(", ");
+		}
+		printf("%s (%u)", msg_type_to_str(supported_messages[zi]), supported_messages[zi]);
+	}
+	printf("\n");
+}
+
+static void
+cli_parse_long_opt(struct qnetd_advanced_settings *advanced_settings, const char *long_opt)
+{
+	struct dynar_getopt_lex lex;
+	struct dynar dynar_long_opt;
+	const char *opt;
+	const char *val;
+	int res;
+
+	dynar_init(&dynar_long_opt, strlen(long_opt) + 1);
+	if (dynar_str_cpy(&dynar_long_opt, long_opt) != 0) {
+		errx(1, "Can't alloc memory for long option");
+	}
+
+	dynar_getopt_lex_init(&lex, &dynar_long_opt);
+
+	while (dynar_getopt_lex_token_next(&lex) == 0 && strcmp(dynar_data(&lex.option), "") != 0) {
+		opt = dynar_data(&lex.option);
+		val = dynar_data(&lex.value);
+
+		res = qnetd_advanced_settings_set(advanced_settings, opt, val);
+		switch (res) {
+		case -1:
+			errx(1, "Unknown option '%s'", opt);
+			break;
+		case -2:
+			errx(1, "Invalid value '%s' for option '%s'", val, opt);
+			break;
+		}
+	}
+
+	dynar_getopt_lex_destroy(&lex);
+	dynar_destroy(&dynar_long_opt);
 }
 
 static void
 cli_parse(int argc, char * const argv[], char **host_addr, uint16_t *host_port, int *foreground,
     int *debug_log, int *bump_log_priority, enum tlv_tls_supported *tls_supported,
-    int *client_cert_required, size_t *max_clients, PRIntn *address_family)
+    int *client_cert_required, size_t *max_clients, PRIntn *address_family,
+    struct qnetd_advanced_settings *advanced_settings)
 {
 	int ch;
 	char *ep;
@@ -369,7 +439,7 @@ cli_parse(int argc, char * const argv[], char **host_addr, uint16_t *host_port, 
 	*max_clients = QNETD_DEFAULT_MAX_CLIENTS;
 	*address_family = PR_AF_UNSPEC;
 
-	while ((ch = getopt(argc, argv, "46dfhc:l:m:p:s:")) != -1) {
+	while ((ch = getopt(argc, argv, "46dfhvc:l:m:p:S:s:")) != -1) {
 		switch (ch) {
 		case '4':
 			*address_family = PR_AF_INET;
@@ -413,6 +483,9 @@ cli_parse(int argc, char * const argv[], char **host_addr, uint16_t *host_port, 
 				errx(1, "host port must be in range 0-65535");
 			}
 			break;
+		case 'S':
+			cli_parse_long_opt(advanced_settings, optarg);
+			break;
 		case 's':
 			if (strcasecmp(optarg, "on") == 0) {
 				*tls_supported = QNETD_DEFAULT_TLS_SUPPORTED;
@@ -423,6 +496,10 @@ cli_parse(int argc, char * const argv[], char **host_addr, uint16_t *host_port, 
 			} else {
 				errx(1, "tls must be one of on, off, req");
 			}
+			break;
+		case 'v':
+			display_version();
+			exit(1);
 			break;
 		case 'h':
 		case '?':
@@ -437,6 +514,7 @@ int
 main(int argc, char * const argv[])
 {
 	struct qnetd_instance instance;
+	struct qnetd_advanced_settings advanced_settings;
 	char *host_addr;
 	uint16_t host_port;
 	int foreground;
@@ -449,8 +527,12 @@ main(int argc, char * const argv[])
 	int lock_file;
 	int another_instance_running;
 
+	if (qnetd_advanced_settings_init(&advanced_settings) != 0) {
+		errx(1, "Can't alloc memory for advanced settings");
+	}
+
 	cli_parse(argc, argv, &host_addr, &host_port, &foreground, &debug_log, &bump_log_priority,
-	    &tls_supported, &client_cert_required, &max_clients, &address_family);
+	    &tls_supported, &client_cert_required, &max_clients, &address_family, &advanced_settings);
 
 	if (foreground) {
 		qnetd_log_init(QNETD_LOG_TARGET_STDERR);
@@ -468,7 +550,8 @@ main(int argc, char * const argv[])
 		utils_tty_detach();
 	}
 
-	if ((lock_file = utils_flock(QNETD_LOCK_FILE, getpid(), &another_instance_running)) == -1) {
+	if ((lock_file = utils_flock(advanced_settings.lock_file, getpid(),
+	    &another_instance_running)) == -1) {
 		if (another_instance_running) {
 			qnetd_log(LOG_ERR, "Another instance is running");
 		} else {
@@ -480,7 +563,7 @@ main(int argc, char * const argv[])
 
 	qnetd_log(LOG_DEBUG, "Initializing nss");
 	if (nss_sock_init_nss((tls_supported != TLV_TLS_UNSUPPORTED ?
-	    (char *)QNETD_NSS_DB_DIR : NULL)) != 0) {
+	    advanced_settings.nss_db_dir : NULL)) != 0) {
 		qnetd_err_nss();
 	}
 
@@ -488,9 +571,8 @@ main(int argc, char * const argv[])
 		qnetd_err_nss();
 	}
 
-	if (qnetd_instance_init(&instance, QNETD_MAX_CLIENT_RECEIVE_SIZE,
-	    QNETD_MAX_CLIENT_SEND_BUFFERS, QNETD_MAX_CLIENT_SEND_SIZE,
-	    tls_supported, client_cert_required, max_clients) == -1) {
+	if (qnetd_instance_init(&instance, tls_supported, client_cert_required,
+	    max_clients, &advanced_settings) == -1) {
 		qnetd_log(LOG_ERR, "Can't initialize qnetd");
 		exit(1);
 	}
@@ -517,7 +599,8 @@ main(int argc, char * const argv[])
 		qnetd_err_nss();
 	}
 
-	if (PR_Listen(instance.server.socket, QNETD_LISTEN_BACKLOG) != PR_SUCCESS) {
+	if (PR_Listen(instance.server.socket, instance.advanced_settings->listen_backlog) !=
+	    PR_SUCCESS) {
 		qnetd_err_nss();
 	}
 
@@ -553,6 +636,8 @@ main(int argc, char * const argv[])
 	SSL_ShutdownServerSessionIDCache();
 
 	qnetd_instance_destroy(&instance);
+
+	qnetd_advanced_settings_destroy(&advanced_settings);
 
 	if (NSS_Shutdown() != SECSuccess) {
 		qnetd_warn_nss();

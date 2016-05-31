@@ -44,20 +44,18 @@
 #include "qnetd-client-algo-timer.h"
 
 int
-qnetd_instance_init(struct qnetd_instance *instance, size_t max_client_receive_size,
-    size_t max_client_send_buffers, size_t max_client_send_size,
-    enum tlv_tls_supported tls_supported, int tls_client_cert_required, size_t max_clients)
+qnetd_instance_init(struct qnetd_instance *instance,
+    enum tlv_tls_supported tls_supported, int tls_client_cert_required, size_t max_clients,
+    struct qnetd_advanced_settings *advanced_settings)
 {
 
 	memset(instance, 0, sizeof(*instance));
 
+	instance->advanced_settings = advanced_settings;
+
 	pr_poll_array_init(&instance->poll_array, sizeof(struct qnetd_poll_array_user_data));
 	qnetd_client_list_init(&instance->clients);
 	qnetd_cluster_list_init(&instance->clusters);
-
-	instance->max_client_receive_size = max_client_receive_size;
-	instance->max_client_send_buffers = max_client_send_buffers;
-	instance->max_client_send_size = max_client_send_size;
 
 	instance->tls_supported = tls_supported;
 	instance->tls_client_cert_required = tls_client_cert_required;
@@ -121,7 +119,8 @@ int
 qnetd_instance_init_certs(struct qnetd_instance *instance)
 {
 
-	instance->server.cert = PK11_FindCertFromNickname(QNETD_CERT_NICKNAME, NULL);
+	instance->server.cert = PK11_FindCertFromNickname(
+	    instance->advanced_settings->cert_nickname, NULL);
 	if (instance->server.cert == NULL) {
 		return (-1);
 	}
