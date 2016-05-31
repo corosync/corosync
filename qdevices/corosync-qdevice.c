@@ -32,8 +32,13 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <err.h>
 #include <signal.h>
 
+#include "dynar.h"
+#include "dynar-str.h"
+#include "dynar-getopt-lex.h"
+#include "qdevice-advanced-settings.h"
 #include "qdevice-config.h"
 #include "qdevice-cmap.h"
 #include "qdevice-ipc.h"
@@ -80,24 +85,63 @@ static void
 usage(void)
 {
 
-	printf("usage: %s [-dfh]\n", QDEVICE_PROGRAM_NAME);
+	printf("usage: %s [-dfh] [-S option=value[,option2=value2,...]]\n", QDEVICE_PROGRAM_NAME);
 }
 
 static void
-cli_parse(int argc, char * const argv[], int *foreground, int *force_debug)
+cli_parse_long_opt(struct qdevice_advanced_settings *advanced_settings, const char *long_opt)
+{
+	struct dynar_getopt_lex lex;
+	struct dynar dynar_long_opt;
+	const char *opt;
+	const char *val;
+	int res;
+
+	dynar_init(&dynar_long_opt, strlen(long_opt) + 1);
+	if (dynar_str_cpy(&dynar_long_opt, long_opt) != 0) {
+		errx(1, "Can't alloc memory for long option");
+	}
+
+	dynar_getopt_lex_init(&lex, &dynar_long_opt);
+
+	while (dynar_getopt_lex_token_next(&lex) == 0 && strcmp(dynar_data(&lex.option), "") != 0) {
+		opt = dynar_data(&lex.option);
+		val = dynar_data(&lex.value);
+
+		res = qdevice_advanced_settings_set(advanced_settings, opt, val);
+		switch (res) {
+		case -1:
+			errx(1, "Unknown option '%s'", opt);
+			break;
+		case -2:
+			errx(1, "Invalid value '%s' for option '%s'", val, opt);
+			break;
+		}
+	}
+
+	dynar_getopt_lex_destroy(&lex);
+	dynar_destroy(&dynar_long_opt);
+}
+
+static void
+cli_parse(int argc, char * const argv[], int *foreground, int *force_debug,
+    struct qdevice_advanced_settings *advanced_settings)
 {
 	int ch;
 
 	*foreground = 0;
 	*force_debug = 0;
 
-	while ((ch = getopt(argc, argv, "dfh")) != -1) {
+	while ((ch = getopt(argc, argv, "dfhS:")) != -1) {
 		switch (ch) {
 		case 'd':
 			*force_debug = 1;
 			break;
 		case 'f':
 			*foreground = 1;
+			break;
+		case 'S':
+			cli_parse_long_opt(advanced_settings, optarg);
 			break;
 		case 'h':
 		case '?':
@@ -112,14 +156,19 @@ int
 main(int argc, char * const argv[])
 {
 	struct qdevice_instance instance;
+	struct qdevice_advanced_settings advanced_settings;
 	int foreground;
 	int force_debug;
 	int lock_file;
 	int another_instance_running;
 
-	cli_parse(argc, argv, &foreground, &force_debug);
+	if (qdevice_advanced_settings_init(&advanced_settings) != 0) {
+		errx(1, "Can't alloc memory for advanced settings");
+	}
 
-	qdevice_instance_init(&instance);
+	cli_parse(argc, argv, &foreground, &force_debug, &advanced_settings);
+
+	qdevice_instance_init(&instance, &advanced_settings);
 
 	qdevice_cmap_init(&instance);
 	qdevice_log_init(&instance, force_debug);
@@ -131,7 +180,8 @@ main(int argc, char * const argv[])
 		utils_tty_detach();
 	}
 
-	if ((lock_file = utils_flock(QDEVICE_LOCK_FILE, getpid(), &another_instance_running)) == -1) {
+	if ((lock_file = utils_flock(advanced_settings.lock_file, getpid(),
+	    &another_instance_running)) == -1) {
 		if (another_instance_running) {
 			qdevice_log(LOG_ERR, "Another instance is running");
 		} else {
@@ -194,6 +244,7 @@ main(int argc, char * const argv[])
 	qdevice_cmap_destroy(&instance);
 	qdevice_log_close(&instance);
 	qdevice_instance_destroy(&instance);
+	qdevice_advanced_settings_destroy(&advanced_settings);
 
 	return (0);
 }

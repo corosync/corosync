@@ -69,6 +69,6 @@ qdevice_net_nss_get_client_auth_data(void *arg, PRFileDesc *sock, struct CERTDis
 
 	instance->tls_client_cert_sent = 1;
 
-	return (NSS_GetClientAuthData((void *)QDEVICE_NET_NSS_CLIENT_CERT_NICKNAME, sock, caNames,
-	    pRetCert, pRetKey));
+	return (NSS_GetClientAuthData((void *)instance->advanced_settings->net_nss_client_cert_nickname,
+	    sock, caNames, pRetCert, pRetKey));
 }

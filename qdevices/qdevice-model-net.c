@@ -67,7 +67,7 @@ qdevice_model_net_init(struct qdevice_instance *instance)
 
 	qdevice_log(LOG_DEBUG, "Initializing NSS");
 	if (nss_sock_init_nss((net_instance->tls_supported != TLV_TLS_UNSUPPORTED ?
-	    (char *)QDEVICE_NET_NSS_DB_DIR : NULL)) != 0) {
+	    instance->advanced_settings->net_nss_db_dir : NULL)) != 0) {
 		qdevice_log_nss(LOG_ERR, "Can't init nss");
 		return (-1);
 	}
@@ -251,7 +251,8 @@ qdevice_model_net_run(struct qdevice_instance *instance)
 			/*
 			 * Give qnetd server a little time before reconnect
 			 */
-			(void)poll(NULL, 0, random() % 1000);
+			(void)poll(NULL, 0,
+			    random() % instance->advanced_settings->net_delay_before_reconnect);
 		}
 	}
 

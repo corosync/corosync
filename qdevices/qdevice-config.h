@@ -46,13 +46,16 @@ extern "C" {
 
 /*
  * There are "hardcoded" defines for qdevice. It's not so good
- * idea to change them as long as you are not 100% sure what you are doing.
+ * idea to change them as long as you are not 100% sure what you are doing. Also
+ * most of them can be changed in CLI via advanced_settings (-S).
  */
-#define QDEVICE_LOCK_FILE			LOCALSTATEDIR"/run/corosync-qdevice.pid"
-#define QDEVICE_LOCAL_SOCKET_FILE               LOCALSTATEDIR"/run/corosync-qdevice.sock"
-#define QDEVICE_LOCAL_SOCKET_BACKLOG		10
+#define QDEVICE_DEFAULT_LOCK_FILE		LOCALSTATEDIR"/run/corosync-qdevice.pid"
+#define QDEVICE_DEFAULT_LOCAL_SOCKET_FILE	LOCALSTATEDIR"/run/corosync-qdevice.sock"
+#define QDEVICE_DEFAULT_LOCAL_SOCKET_BACKLOG	10
+#define QDEVICE_MIN_LOCAL_SOCKET_BACKLOG	1
 
-#define QDEVICE_MAX_CS_TRY_AGAIN		10
+#define QDEVICE_DEFAULT_MAX_CS_TRY_AGAIN	10
+#define QDEVICE_MIN_MAX_CS_TRY_AGAIN		1
 
 #define QDEVICE_PROGRAM_NAME			"corosync-qdevice"
 #define QDEVICE_LOG_SUBSYS			"QDEVICE"
@@ -66,11 +69,13 @@ extern "C" {
 #define QDEVICE_LOG_DEFAULT_TIMESTAMP		0
 #define QDEVICE_LOG_DEFAULT_FUNCTION_NAME	0
 
-#define QDEVICE_VOTEQUORUM_DEVICE_NAME		"Qdevice"
+#define QDEVICE_DEFAULT_VOTEQUORUM_DEVICE_NAME	"Qdevice"
 
-#define QDEVICE_IPC_MAX_CLIENTS			10
-#define QDEVICE_IPC_MAX_RECEIVE_SIZE		(4*1024)
-#define QDEVICE_IPC_MAX_SEND_SIZE		(64*1024)
+#define QDEVICE_DEFAULT_IPC_MAX_CLIENTS		10
+#define QDEVICE_MIN_IPC_MAX_CLIENTS		0
+#define QDEVICE_DEFAULT_IPC_MAX_RECEIVE_SIZE	(4*1024)
+#define QDEVICE_DEFAULT_IPC_MAX_SEND_SIZE	(64*1024)
+#define QDEVICE_MIN_IPC_RECEIVE_SEND_SIZE	1024
 
 #define QDEVICE_TOOL_PROGRAM_NAME		"corosync-qdevice-tool"
 

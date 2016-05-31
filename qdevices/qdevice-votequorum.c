@@ -166,7 +166,7 @@ qdevice_votequorum_init(struct qdevice_instance *instance)
 
 	while ((res = votequorum_initialize(&votequorum_handle,
 	    &votequorum_callbacks)) == CS_ERR_TRY_AGAIN &&
-	    no_retries++ < QDEVICE_MAX_CS_TRY_AGAIN) {
+	    no_retries++ < instance->advanced_settings->max_cs_try_again) {
 		(void)poll(NULL, 0, 1000);
 	}
 
@@ -176,7 +176,7 @@ qdevice_votequorum_init(struct qdevice_instance *instance)
 	}
 
 	if ((res = votequorum_qdevice_register(votequorum_handle,
-	    QDEVICE_VOTEQUORUM_DEVICE_NAME)) != CS_OK) {
+	    instance->advanced_settings->votequorum_device_name)) != CS_OK) {
 		qdevice_log(LOG_CRIT, "Can't register votequorum device. Error %s", cs_strerror(res));
 		exit(1);
 	}
@@ -220,7 +220,7 @@ qdevice_votequorum_destroy(struct qdevice_instance *instance)
 	}
 
 	res = votequorum_qdevice_unregister(instance->votequorum_handle,
-		QDEVICE_VOTEQUORUM_DEVICE_NAME);
+		instance->advanced_settings->votequorum_device_name);
 
         if (res != CS_OK) {
                 qdevice_log(LOG_WARNING, "Unable to unregister votequorum device. Error %s", cs_strerror(res));
@@ -257,7 +257,7 @@ qdevice_votequorum_poll(struct qdevice_instance *instance, int cast_vote)
 	instance->vq_last_poll_cast_vote = cast_vote;
 
 	res = votequorum_qdevice_poll(instance->votequorum_handle,
-	    QDEVICE_VOTEQUORUM_DEVICE_NAME, cast_vote,
+	    instance->advanced_settings->votequorum_device_name, cast_vote,
 	    instance->vq_node_list_ring_id);
 
 	if (res != CS_OK && res != CS_ERR_TRY_AGAIN) {

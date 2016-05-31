@@ -205,6 +205,13 @@ qnetd_advanced_settings_set(struct qnetd_advanced_settings *settings,
 		}
 
 		settings->ipc_max_send_size = (size_t)tmpll;
+	} else if (strcasecmp(option, "ipc_max_send_size") == 0) {
+		tmpll = strtoll(value, &ep, 10);
+		if (tmpll < QNETD_MIN_IPC_RECEIVE_SEND_SIZE || errno != 0 || *ep != '\0') {
+			return (-2);
+		}
+
+		settings->ipc_max_send_size = (size_t)tmpll;
 	} else {
 		return (-1);
 	}

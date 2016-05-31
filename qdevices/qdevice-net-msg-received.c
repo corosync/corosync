@@ -308,19 +308,21 @@ qdevice_net_msg_received_init_reply(struct qdevice_net_instance *instance,
 		return (-1);
 	}
 
-	if (msg->server_maximum_request_size < instance->min_send_size) {
+	if (msg->server_maximum_request_size < instance->advanced_settings->net_min_msg_send_size) {
 		qdevice_log(LOG_ERR,
 		    "Server accepts maximum %zu bytes message but this client minimum "
-		    "is %zu bytes.", msg->server_maximum_request_size, instance->min_send_size);
+		    "is %zu bytes.", msg->server_maximum_request_size,
+		    instance->advanced_settings->net_min_msg_send_size);
 
 		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_INCOMPATIBLE_MSG_SIZE;
 		return (-1);
 	}
 
-	if (msg->server_maximum_reply_size > instance->max_receive_size) {
+	if (msg->server_maximum_reply_size > instance->advanced_settings->net_max_msg_receive_size) {
 		qdevice_log(LOG_ERR,
 		    "Server may send message up to %zu bytes message but this client maximum "
-		    "is %zu bytes.", msg->server_maximum_reply_size, instance->max_receive_size);
+		    "is %zu bytes.", msg->server_maximum_reply_size,
+		    instance->advanced_settings->net_max_msg_receive_size);
 
 		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_INCOMPATIBLE_MSG_SIZE;
 		return (-1);

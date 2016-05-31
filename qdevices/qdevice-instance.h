@@ -43,6 +43,7 @@
 #include <cmap.h>
 #include <votequorum.h>
 
+#include "qdevice-advanced-settings.h"
 #include "qdevice-model-type.h"
 #include "node-list.h"
 #include "unix-socket-ipc.h"
@@ -100,9 +101,12 @@ struct qdevice_instance {
 	int vq_last_poll_cast_vote;
 
 	void *model_data;
+
+	const struct qdevice_advanced_settings *advanced_settings;
 };
 
-extern int	qdevice_instance_init(struct qdevice_instance *instance);
+extern int	qdevice_instance_init(struct qdevice_instance *instance,
+    const struct qdevice_advanced_settings *advanced_settings);
 
 extern int	qdevice_instance_destroy(struct qdevice_instance *instance);
 

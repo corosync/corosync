@@ -32,68 +32,51 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "qdevice-instance.h"
-#include "qdevice-log.h"
-#include "qdevice-model.h"
+#ifndef _QDEVICE_ADVANCED_SETTINGS_H_
+#define _QDEVICE_ADVANCED_SETTINGS_H_
 
-int
-qdevice_instance_init(struct qdevice_instance *instance,
-    const struct qdevice_advanced_settings *advanced_settings)
-{
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-	memset(instance, 0, sizeof(*instance));
+struct qdevice_advanced_settings {
+	char *lock_file;
+	char *local_socket_file;
+	int local_socket_backlog;
+	int max_cs_try_again;
+	char *votequorum_device_name;
+	size_t ipc_max_clients;
+	size_t ipc_max_send_size;
+	size_t ipc_max_receive_size;
 
-	node_list_init(&instance->config_node_list);
+	/*
+	 * Related to model NET
+	 */
+	char *net_nss_db_dir;
+	size_t net_initial_msg_receive_size;
+	size_t net_initial_msg_send_size;
+	size_t net_min_msg_send_size;
+	size_t net_max_msg_receive_size;
+	size_t net_max_send_buffers;
+	char *net_nss_qnetd_cn;
+	char *net_nss_client_cert_nickname;
+	uint32_t net_heartbeat_interval_min;
+	uint32_t net_heartbeat_interval_max;
+	uint32_t net_min_connect_timeout;
+	uint32_t net_max_connect_timeout;
+	int net_delay_before_reconnect;
+	uint8_t net_test_algorithm_enabled;
+};
 
-	instance->vq_last_poll = ((time_t) -1);
-	instance->advanced_settings = advanced_settings;
+extern int		qdevice_advanced_settings_init(struct qdevice_advanced_settings *settings);
 
-	return (0);
+extern int		qdevice_advanced_settings_set(struct qdevice_advanced_settings *settings,
+    const char *option, const char *value);
+
+extern void		qdevice_advanced_settings_destroy(struct qdevice_advanced_settings *settings);
+
+#ifdef __cplusplus
 }
+#endif
 
-int
-qdevice_instance_destroy(struct qdevice_instance *instance)
-{
-
-	node_list_free(&instance->config_node_list);
-
-	return (0);
-}
-
-int
-qdevice_instance_configure_from_cmap(struct qdevice_instance *instance)
-{
-	char *str;
-
-	if (cmap_get_string(instance->cmap_handle, "quorum.device.model", &str) != CS_OK) {
-		qdevice_log(LOG_ERR, "Can't read quorum.device.model cmap key.");
-
-		return (-1);
-	}
-
-	if (qdevice_model_str_to_type(str, &instance->model_type) != 0) {
-		qdevice_log(LOG_ERR, "Configured device model %s is not supported.", str);
-		free(str);
-
-		return (-1);
-	}
-	free(str);
-
-	if (cmap_get_uint32(instance->cmap_handle, "runtime.votequorum.this_node_id",
-	    &instance->node_id) != CS_OK) {
-		qdevice_log(LOG_ERR, "Unable to retrive this node nodeid.");
-
-		return (-1);
-	}
-
-	if (cmap_get_uint32(instance->cmap_handle, "quorum.device.timeout", &instance->heartbeat_interval) != CS_OK) {
-		instance->heartbeat_interval = VOTEQUORUM_QDEVICE_DEFAULT_TIMEOUT;
-	}
-
-	if (cmap_get_uint32(instance->cmap_handle, "quorum.device.sync_timeout",
-	    &instance->sync_heartbeat_interval) != CS_OK) {
-		instance->sync_heartbeat_interval = VOTEQUORUM_QDEVICE_DEFAULT_SYNC_TIMEOUT;
-	}
-
-	return (0);
-}
+#endif /* _QDEVICE_ADVANCED_SETTINGS_H_ */

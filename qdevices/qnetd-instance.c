@@ -46,7 +46,7 @@
 int
 qnetd_instance_init(struct qnetd_instance *instance,
     enum tlv_tls_supported tls_supported, int tls_client_cert_required, size_t max_clients,
-    struct qnetd_advanced_settings *advanced_settings)
+    const struct qnetd_advanced_settings *advanced_settings)
 {
 
 	memset(instance, 0, sizeof(*instance));

@@ -352,7 +352,7 @@ usage(void)
 {
 
 	printf("usage: %s [-46dfhv] [-l listen_addr] [-p listen_port] [-s tls]\n", QNETD_PROGRAM_NAME);
-	printf("%14s[-c client_cert_required] [-m max_clients] [-S option=value]\n", "");
+	printf("%14s[-c client_cert_required] [-m max_clients] [-S option=value[,option2=value2,...]]\n", "");
 }
 
 static void

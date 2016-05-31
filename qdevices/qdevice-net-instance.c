@@ -32,6 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "qdevice-config.h"
 #include "qdevice-log.h"
 #include "qdevice-net-instance.h"
 #include "qnet-config.h"
@@ -45,23 +46,19 @@
 #include <private/pprio.h>
 
 int
-qdevice_net_instance_init(struct qdevice_net_instance *instance, size_t initial_receive_size,
-    size_t initial_send_size, size_t min_send_size, size_t max_send_buffers,
-    size_t max_receive_size,
+qdevice_net_instance_init(struct qdevice_net_instance *instance,
     enum tlv_tls_supported tls_supported,
     enum tlv_decision_algorithm_type decision_algorithm, uint32_t heartbeat_interval,
     uint32_t sync_heartbeat_interval, uint32_t cast_vote_timer_interval,
     const char *host_addr, uint16_t host_port, const char *cluster_name,
     const struct tlv_tie_breaker *tie_breaker, uint32_t connect_timeout,
-    int force_ip_version, int cmap_fd, int votequorum_fd, int local_socket_fd)
+    int force_ip_version, int cmap_fd, int votequorum_fd, int local_socket_fd,
+    const struct qdevice_advanced_settings *advanced_settings)
 {
 
 	memset(instance, 0, sizeof(*instance));
 
-	instance->initial_receive_size = initial_receive_size;
-	instance->initial_send_size = initial_send_size;
-	instance->min_send_size = min_send_size;
-	instance->max_receive_size = max_receive_size;
+	instance->advanced_settings = advanced_settings;
 	instance->decision_algorithm = decision_algorithm;
 	instance->heartbeat_interval = heartbeat_interval;
 	instance->sync_heartbeat_interval = sync_heartbeat_interval;
@@ -80,10 +77,10 @@ qdevice_net_instance_init(struct qdevice_net_instance *instance, size_t initial_
 
 	memcpy(&instance->tie_breaker, tie_breaker, sizeof(*tie_breaker));
 
-	dynar_init(&instance->receive_buffer, initial_receive_size);
+	dynar_init(&instance->receive_buffer, advanced_settings->net_initial_msg_receive_size);
 
-	send_buffer_list_init(&instance->send_buffer_list, max_send_buffers,
-	    initial_send_size);
+	send_buffer_list_init(&instance->send_buffer_list, advanced_settings->net_max_send_buffers,
+	    advanced_settings->net_initial_msg_send_size);
 
 	timer_list_init(&instance->main_timer_list);
 
@@ -266,15 +263,15 @@ qdevice_net_instance_init_from_cmap(struct qdevice_instance *instance)
 	 */
 	cast_vote_timer_interval = instance->heartbeat_interval * 0.5;
 	heartbeat_interval = instance->heartbeat_interval * 0.8;
-	if (heartbeat_interval < QDEVICE_NET_HEARTBEAT_INTERVAL_MIN) {
+	if (heartbeat_interval < instance->advanced_settings->net_heartbeat_interval_min) {
 		qdevice_log(LOG_WARNING, "Heartbeat interval too small %"PRIu32". Adjusting to %"PRIu32".",
-		    heartbeat_interval, QDEVICE_NET_HEARTBEAT_INTERVAL_MIN);
-		heartbeat_interval = QDEVICE_NET_HEARTBEAT_INTERVAL_MIN;
+		    heartbeat_interval, instance->advanced_settings->net_heartbeat_interval_min);
+		heartbeat_interval = instance->advanced_settings->net_heartbeat_interval_min;
 	}
-	if (heartbeat_interval > QDEVICE_NET_HEARTBEAT_INTERVAL_MAX) {
+	if (heartbeat_interval > instance->advanced_settings->net_heartbeat_interval_max) {
 		qdevice_log(LOG_WARNING, "Heartbeat interval too big %"PRIu32". Adjusting to %"PRIu32".",
-		    heartbeat_interval, QDEVICE_NET_HEARTBEAT_INTERVAL_MAX);
-		heartbeat_interval = QDEVICE_NET_HEARTBEAT_INTERVAL_MAX;
+		    heartbeat_interval, instance->advanced_settings->net_heartbeat_interval_max);
+		heartbeat_interval = instance->advanced_settings->net_heartbeat_interval_max;
 	}
 	sync_heartbeat_interval = instance->sync_heartbeat_interval * 0.8;
 
@@ -301,6 +298,13 @@ qdevice_net_instance_init_from_cmap(struct qdevice_instance *instance)
 		free(str);
 	}
 
+	if (decision_algorithm == TLV_DECISION_ALGORITHM_TYPE_TEST &&
+	    !instance->advanced_settings->net_test_algorithm_enabled) {
+		qdevice_log(LOG_ERR, "Test algorithm is not enabled. You can force enable it by "
+		    "passing -S net_test_algorithm_enabled=on to %s command", QDEVICE_PROGRAM_NAME);
+
+		goto error_free_cluster_name;
+	}
 	/*
 	 * Load tie_breaker mode
 	 */
@@ -335,9 +339,12 @@ qdevice_net_instance_init_from_cmap(struct qdevice_instance *instance)
 		connect_timeout = heartbeat_interval;
 	} else {
 		li = strtol(str, &ep, 10);
-		if (li < QDEVICE_NET_MIN_CONNECT_TIMEOUT || li > QDEVICE_NET_MAX_CONNECT_TIMEOUT || *ep != '\0') {
-			qdevice_log(LOG_ERR, "connect_timeout must be valid number in range <%lu,%lu>",
-			    QDEVICE_NET_MIN_CONNECT_TIMEOUT, QDEVICE_NET_MAX_CONNECT_TIMEOUT);
+		if (li < instance->advanced_settings->net_min_connect_timeout ||
+		    li > instance->advanced_settings->net_max_connect_timeout || *ep != '\0') {
+			qdevice_log(LOG_ERR, "connect_timeout must be valid number in "
+			    "range <%"PRIu32",%"PRIu32">",
+			    instance->advanced_settings->net_min_connect_timeout,
+			    instance->advanced_settings->net_max_connect_timeout);
 			free(str);
 			goto error_free_cluster_name;
 		}
@@ -366,15 +373,12 @@ qdevice_net_instance_init_from_cmap(struct qdevice_instance *instance)
 	 * Really initialize instance
 	 */
 	if (qdevice_net_instance_init(net_instance,
-	    QDEVICE_NET_INITIAL_MSG_RECEIVE_SIZE, QDEVICE_NET_INITIAL_MSG_SEND_SIZE,
-	    QDEVICE_NET_MIN_MSG_SEND_SIZE, QDEVICE_NET_MAX_SEND_BUFFERS,
-	    QDEVICE_NET_MAX_MSG_RECEIVE_SIZE,
 	    tls_supported, decision_algorithm,
 	    heartbeat_interval, sync_heartbeat_interval, cast_vote_timer_interval,
 	    host_addr, host_port, cluster_name, &tie_breaker, connect_timeout,
 	    force_ip_version,
 	    instance->cmap_poll_fd, instance->votequorum_poll_fd,
-	    instance->local_ipc.socket) == -1) {
+	    instance->local_ipc.socket, instance->advanced_settings) == -1) {
 		qdevice_log(LOG_ERR, "Can't initialize qdevice-net instance");
 		goto error_free_instance;
 	}

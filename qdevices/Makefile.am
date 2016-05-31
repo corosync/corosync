@@ -99,7 +99,8 @@ corosync_qdevice_SOURCES = corosync-qdevice.c \
                            qdevice-net-algo-lms.c qdevice-net-algo-lms.h \
                            qdevice-net-poll-array-user-data.h \
                            qdevice-config.h qnet-config.h qdevice-net-disconnect-reason.h \
-                           qdevice-model-type.h
+                           qdevice-model-type.h qdevice-advanced-settings.c \
+                           qdevice-advanced-settings.h dynar-getopt-lex.c dynar-getopt-lex.h
 
 corosync_qnetd_tool_SOURCES = corosync-qnetd-tool.c unix-socket.c unix-socket.h dynar.c dynar.h \
                               dynar-str.c dynar-str.h

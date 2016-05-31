@@ -43,9 +43,12 @@
 int
 qdevice_ipc_init(struct qdevice_instance *instance)
 {
-	if (unix_socket_ipc_init(&instance->local_ipc, QDEVICE_LOCAL_SOCKET_FILE,
-	    QDEVICE_LOCAL_SOCKET_BACKLOG, QDEVICE_IPC_MAX_CLIENTS, QDEVICE_IPC_MAX_RECEIVE_SIZE,
-	    QDEVICE_IPC_MAX_SEND_SIZE) != 0) {
+	if (unix_socket_ipc_init(&instance->local_ipc,
+	    instance->advanced_settings->local_socket_file,
+	    instance->advanced_settings->local_socket_backlog,
+	    instance->advanced_settings->ipc_max_clients,
+	    instance->advanced_settings->ipc_max_receive_size,
+	    instance->advanced_settings->ipc_max_send_size) != 0) {
 		qdevice_log_err(LOG_ERR, "Can't create unix socket");
 
 		return (-1);

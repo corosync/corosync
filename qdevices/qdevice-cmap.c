@@ -218,7 +218,7 @@ qdevice_cmap_init(struct qdevice_instance *instance)
 	no_retries = 0;
 
 	while ((res = cmap_initialize(&instance->cmap_handle)) == CS_ERR_TRY_AGAIN &&
-	    no_retries++ < QDEVICE_MAX_CS_TRY_AGAIN) {
+	    no_retries++ < instance->advanced_settings->max_cs_try_again) {
 		(void)poll(NULL, 0, 1000);
 	}
 
