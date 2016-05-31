@@ -42,6 +42,7 @@
 #include "qnetd-client-send.h"
 #include "qnetd-log-debug.h"
 #include "qnetd-client-algo-timer.h"
+#include "utils.h"
 
 /*
  * Called right after client sent init message. This happens after initial accept of client,
@@ -63,6 +64,11 @@ enum tlv_reply_error_code
 qnetd_algo_test_client_init(struct qnetd_client *client)
 {
 	int *algo_data;
+
+	qnetd_log(LOG_WARNING, "algo-test: Client %s (cluster = '%s', node_id = "
+	    UTILS_PRI_NODE_ID") initiated test algorithm. It's not recommended to use test "
+	    "algorithm because it can create multiple quorate partitions!", client->addr_str,
+	    client->cluster_name, client->node_id);
 
 	qnetd_log(LOG_INFO, "algo-test: client_init");
 
