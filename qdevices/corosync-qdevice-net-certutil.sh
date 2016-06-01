@@ -48,9 +48,9 @@ PWD_FILE_BASE="pwdfile.txt"
 NOISE_FILE_BASE="noise.txt"
 SERIAL_NO_FILE_BASE="serial.txt"
 CA_EXPORT_FILE="$DB_DIR_QNETD/qnetd-cacert.crt"
-CRQ_FILE_BASE="qnetd-node.crq"
+CRQ_FILE_BASE="qdevice-net-node.crq"
 CRT_FILE_BASE="" # Generated from cluster name
-P12_FILE_BASE="qnetd-node.p12"
+P12_FILE_BASE="qdevice-net-node.p12"
 QNETD_CERTUTIL_CMD="corosync-qnetd-certutil"
 
 usage() {
@@ -223,6 +223,12 @@ quick_start() {
 
     # Import certificate
     ssh "root@$master_node" "$0 -M -c \"$DB_DIR_NODE/cluster-$CLUSTER_NAME.crt\""
+
+    # Copy pk12 cert to all nodes and import it
+    for node in $other_nodes;do
+        scp "root@$master_node:$DB_DIR_NODE/$P12_FILE" "$node:$DB_DIR_NODE/$P12_FILE"
+        ssh "root@$node" "$0 -m -c \"$DB_DIR_NODE/$P12_FILE\""
+    done
 }
 
 OPERATION=""
