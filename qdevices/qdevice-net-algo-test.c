@@ -86,7 +86,7 @@ qdevice_net_algo_test_connected(struct qdevice_net_instance *instance, int *send
  *     vote = TLV_VOTE_NO_CHANGE
  *   if cast_vote_timer_vote = TLV_VOTE_ACK
  *     vote = TLV_VOTE_NACK.
- * Otherwise send_node_list = 0 and vote = TLV_VOTE_NO_CHANGE
+ * Otherwise send_node_list = 1 and vote = TLV_VOTE_NO_CHANGE
  * If send_node_list is set to non zero, node list is send to qnetd
  */
 int
@@ -111,7 +111,7 @@ qdevice_net_algo_test_config_node_list_changed(struct qdevice_net_instance *inst
  *     vote = TLV_VOTE_NO_CHANGE
  *   if cast_vote_timer_vote = TLV_VOTE_ACK
  *     vote = TLV_VOTE_NACK.
- * Otherwise send_node_list = 0 and vote = TLV_VOTE_NO_CHANGE
+ * Otherwise send_node_list = 1 and vote = TLV_VOTE_WAIT_FOR_REPLY
  * If send_node_list is set to non zero, node list is send to qnetd
  */
 int
@@ -138,7 +138,7 @@ qdevice_net_algo_test_votequorum_node_list_notify(struct qdevice_net_instance *i
  *     vote = TLV_VOTE_NO_CHANGE
  *   if cast_vote_timer_vote = TLV_VOTE_ACK
  *     vote = TLV_VOTE_NACK.
- * Otherwise send_node_list = 0 and vote = TLV_VOTE_NO_CHANGE
+ * Otherwise send_node_list = 1 and vote = TLV_VOTE_NO_CHANGE
  *
  * If send_node_list is set to non zero, node list is send to qnetd
  */

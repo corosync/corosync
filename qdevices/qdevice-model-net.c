@@ -438,7 +438,7 @@ qdevice_model_net_votequorum_node_list_notify(struct qdevice_instance *instance,
 		}
 	} else {
 		send_node_list = 1;
-		vote = TLV_VOTE_NO_CHANGE;
+		vote = TLV_VOTE_WAIT_FOR_REPLY;
 	}
 
 	if (qdevice_net_algorithm_votequorum_node_list_notify(net_instance, &tlv_rid,
