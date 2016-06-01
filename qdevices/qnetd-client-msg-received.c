@@ -900,14 +900,6 @@ qnetd_client_msg_received_ask_for_vote(struct qnetd_instance *instance, struct q
 		return (0);
 	}
 
-	/*
-	 * Store result vote
-	 */
-	client->last_sent_vote = result_vote;
-	if (result_vote == TLV_VOTE_ACK || result_vote == TLV_VOTE_NACK) {
-		client->last_sent_ack_nack_vote = result_vote;
-	}
-
 	qnetd_log_debug_ask_for_vote_received(client, msg->seq_number);
 
 	reply_error_code = qnetd_algorithm_ask_for_vote_received(client, msg->seq_number,
@@ -925,6 +917,14 @@ qnetd_client_msg_received_ask_for_vote(struct qnetd_instance *instance, struct q
 		return (0);
 	} else {
 		qnetd_log(LOG_DEBUG, "Algorithm result vote is %s", tlv_vote_to_str(result_vote));
+	}
+
+	/*
+	 * Store result vote
+	 */
+	client->last_sent_vote = result_vote;
+	if (result_vote == TLV_VOTE_ACK || result_vote == TLV_VOTE_NACK) {
+		client->last_sent_ack_nack_vote = result_vote;
 	}
 
 	send_buffer = send_buffer_list_get_new(&client->send_buffer_list);
