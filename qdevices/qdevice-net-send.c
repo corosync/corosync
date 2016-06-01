@@ -35,7 +35,6 @@
 #include "qdevice-log.h"
 #include "qdevice-log-debug.h"
 #include "qdevice-net-send.h"
-#include "qdevice-cmap.h"
 #include "qdevice-net-votequorum.h"
 #include "msg.h"
 #include "utils.h"

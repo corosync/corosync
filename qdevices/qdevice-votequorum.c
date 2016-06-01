@@ -53,6 +53,8 @@ qdevice_votequorum_quorum_notify_callback(votequorum_handle_t votequorum_handle,
 		exit(1);
 	}
 
+	instance->sync_in_progress = 0;
+
 	qdevice_log(LOG_DEBUG, "Votequorum quorum notify callback:");
 	qdevice_log(LOG_DEBUG, "  Quorate = %u", quorate);
 
@@ -92,6 +94,8 @@ qdevice_votequorum_node_list_notify_callback(votequorum_handle_t votequorum_hand
 		qdevice_log(LOG_CRIT, "Fatal error. Can't get votequorum context");
 		exit(1);
 	}
+
+	instance->sync_in_progress = 1;
 
 	qdevice_log(LOG_DEBUG, "Votequorum nodelist notify callback:");
 	qdevice_log(LOG_DEBUG, "  Ring_id = ("UTILS_PRI_RING_ID")",

@@ -446,6 +446,13 @@ qdevice_cmap_dispatch(struct qdevice_instance *instance)
 {
 	cs_error_t res;
 
+	/*
+	 * dispatch can block if corosync is during sync phase
+	 */
+	if (instance->sync_in_progress) {
+		return (0);
+	}
+
 	res = cmap_dispatch(instance->cmap_handle, CS_DISPATCH_ALL);
 
 	if (res != CS_OK && res != CS_ERR_TRY_AGAIN) {

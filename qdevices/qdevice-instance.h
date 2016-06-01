@@ -103,6 +103,8 @@ struct qdevice_instance {
 	void *model_data;
 
 	const struct qdevice_advanced_settings *advanced_settings;
+
+	int sync_in_progress;
 };
 
 extern int	qdevice_instance_init(struct qdevice_instance *instance,
