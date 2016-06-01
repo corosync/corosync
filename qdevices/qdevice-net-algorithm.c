@@ -126,6 +126,22 @@ qdevice_net_algorithm_votequorum_quorum_notify(struct qdevice_net_instance *inst
 }
 
 int
+qdevice_net_algorithm_votequorum_expected_votes_notify(struct qdevice_net_instance *instance,
+    uint32_t expected_votes, enum tlv_vote *vote)
+{
+
+	if (instance->decision_algorithm >= QDEVICE_NET_STATIC_SUPPORTED_DECISION_ALGORITHMS_SIZE ||
+	    qdevice_net_algorithm_array[instance->decision_algorithm] == NULL) {
+		qdevice_log(LOG_CRIT, "qdevice_net_algorithm_votequorum_expected_votes_notify "
+		    "unhandled decision algorithm");
+		exit(1);
+	}
+
+	return (qdevice_net_algorithm_array[instance->decision_algorithm]->
+	    votequorum_expected_votes_notify(instance, expected_votes, vote));
+}
+
+int
 qdevice_net_algorithm_config_node_list_reply_received(struct qdevice_net_instance *instance,
     uint32_t seq_number, int initial, enum tlv_vote *vote)
 {

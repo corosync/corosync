@@ -84,6 +84,14 @@ qdevice_net_algo_ffsplit_votequorum_quorum_notify(struct qdevice_net_instance *i
 }
 
 int
+qdevice_net_algo_ffsplit_votequorum_expected_votes_notify(struct qdevice_net_instance *instance,
+    uint32_t expected_votes, enum tlv_vote *vote)
+{
+
+	return (0);
+}
+
+int
 qdevice_net_algo_ffsplit_config_node_list_reply_received(struct qdevice_net_instance *instance,
     uint32_t seq_number, int initial, enum tlv_vote *vote)
 {
@@ -158,6 +166,7 @@ static struct qdevice_net_algorithm qdevice_net_algo_ffsplit = {
 	.config_node_list_changed		= qdevice_net_algo_ffsplit_config_node_list_changed,
 	.votequorum_node_list_notify		= qdevice_net_algo_ffsplit_votequorum_node_list_notify,
 	.votequorum_quorum_notify		= qdevice_net_algo_ffsplit_votequorum_quorum_notify,
+	.votequorum_expected_votes_notify	= qdevice_net_algo_ffsplit_votequorum_expected_votes_notify,
 	.config_node_list_reply_received	= qdevice_net_algo_ffsplit_config_node_list_reply_received,
 	.membership_node_list_reply_received	= qdevice_net_algo_ffsplit_membership_node_list_reply_received,
 	.quorum_node_list_reply_received	= qdevice_net_algo_ffsplit_quorum_node_list_reply_received,

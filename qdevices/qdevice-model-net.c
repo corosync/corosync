@@ -214,7 +214,7 @@ qdevice_model_net_run(struct qdevice_instance *instance)
 			qdevice_log(LOG_ERR, "Algorithm returned error, force exit");
 			return (-1);
 		} else {
-			qdevice_log(LOG_ERR, "Algorithm result vote is %s",
+			qdevice_log(LOG_DEBUG, "Algorithm result vote is %s",
 			    tlv_vote_to_str(vote));
 		}
 
@@ -295,8 +295,12 @@ qdevice_model_net_config_node_list_changed(struct qdevice_instance *instance,
 
 	if (qdevice_net_algorithm_config_node_list_changed(net_instance, nlist, config_version_set,
 	    config_version, &send_node_list, &vote) != 0) {
-		qdevice_log(LOG_ERR, "Algorithm returned error, force exit");
-		return (-1);
+		qdevice_log(LOG_ERR, "Algorithm returned error, Disconnecting");
+
+		net_instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_ALGO_CONFIG_NODE_LIST_CHANGED_ERR;
+		net_instance->schedule_disconnect = 1;
+
+		return (0);
 	} else {
 		qdevice_log(LOG_DEBUG, "Algorithm decided to %s node list and result vote is %s",
 		    (send_node_list ? "send" : "not send"), tlv_vote_to_str(vote));
@@ -307,6 +311,8 @@ qdevice_model_net_config_node_list_changed(struct qdevice_instance *instance,
 				" Can't update cast vote timer vote");
 		net_instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_SCHEDULE_VOTING_TIMER;
 		net_instance->schedule_disconnect = 1;
+
+		return (0);
 	}
 
 	if (send_node_list) {
@@ -314,6 +320,8 @@ qdevice_model_net_config_node_list_changed(struct qdevice_instance *instance,
 		    config_version, 0) != 0) {
 			net_instance->schedule_disconnect = 1;
 			net_instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_ALLOCATE_MSG_BUFFER;
+
+			return (0);
 		}
 	}
 
@@ -371,6 +379,8 @@ qdevice_model_net_votequorum_quorum_notify(struct qdevice_instance *instance,
 
 		net_instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_ALGO_VOTEQUORUM_QUORUM_NOTIFY_ERR;
 		net_instance->schedule_disconnect = 1;
+
+		return (0);
 	} else {
 		qdevice_log(LOG_DEBUG, "Algorithm decided to %s list and result vote is %s",
 		    (send_node_list ? "send" : "not send"), tlv_vote_to_str(vote));
@@ -381,6 +391,8 @@ qdevice_model_net_votequorum_quorum_notify(struct qdevice_instance *instance,
 				" Can't update cast vote timer vote");
 		net_instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_SCHEDULE_VOTING_TIMER;
 		net_instance->schedule_disconnect = 1;
+
+		return (0);
 	}
 
 	if (send_node_list) {
@@ -392,6 +404,8 @@ qdevice_model_net_votequorum_quorum_notify(struct qdevice_instance *instance,
 			 */
 			net_instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_ALLOCATE_MSG_BUFFER;
 			net_instance->schedule_disconnect = 1;
+
+			return (0);
 		}
 	}
 
@@ -433,6 +447,8 @@ qdevice_model_net_votequorum_node_list_notify(struct qdevice_instance *instance,
 
 		net_instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_ALGO_VOTEQUORUM_NODE_LIST_NOTIFY_ERR;
 		net_instance->schedule_disconnect = 1;
+
+		return (0);
 	} else {
 		qdevice_log(LOG_DEBUG, "Algorithm decided to %s list and result vote is %s",
 		    (send_node_list ? "send" : "not send"), tlv_vote_to_str(vote));
@@ -446,6 +462,8 @@ qdevice_model_net_votequorum_node_list_notify(struct qdevice_instance *instance,
 			 */
 			net_instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_ALLOCATE_MSG_BUFFER;
 			net_instance->schedule_disconnect = 1;
+
+			return (0);
 		}
 	}
 
@@ -454,6 +472,8 @@ qdevice_model_net_votequorum_node_list_notify(struct qdevice_instance *instance,
 		    "Can't update cast vote timer");
 		net_instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_SCHEDULE_VOTING_TIMER;
 		net_instance->schedule_disconnect = 1;
+
+		return (0);
 	}
 
 	return (0);
@@ -464,12 +484,36 @@ qdevice_model_net_votequorum_expected_votes_notify(struct qdevice_instance *inst
     uint32_t expected_votes)
 {
 	struct qdevice_net_instance *net_instance;
+	enum tlv_vote vote;
 
 	net_instance = instance->model_data;
 
 	qdevice_log(LOG_DEBUG, "qdevice_model_net_votequorum_expected_votes_notify"
 	    " (expected votes old=%"PRIu32" / new=%"PRIu32")",
 	    net_instance->qdevice_instance_ptr->vq_expected_votes, expected_votes);
+
+	vote = TLV_VOTE_NO_CHANGE;
+
+	if (qdevice_net_algorithm_votequorum_expected_votes_notify(net_instance, expected_votes,
+	    &vote) != 0) {
+		qdevice_log(LOG_DEBUG, "Algorithm returned error. Disconnecting.");
+
+		net_instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_ALGO_VOTEQUORUM_EXPECTED_VOTES_NOTIFY_ERR;
+		net_instance->schedule_disconnect = 1;
+
+		return (0);
+	} else {
+		qdevice_log(LOG_DEBUG, "Algorithm result vote is %s", tlv_vote_to_str(vote));
+	}
+
+	if (qdevice_net_cast_vote_timer_update(net_instance, vote) != 0) {
+		qdevice_log(LOG_CRIT, "qdevice_model_net_votequorum_expected_votes_notify fatal error. "
+				" Can't update cast vote timer vote");
+		net_instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_SCHEDULE_VOTING_TIMER;
+		net_instance->schedule_disconnect = 1;
+
+		return (0);
+	}
 
 	return (0);
 }

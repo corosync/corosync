@@ -63,6 +63,9 @@ extern int	qdevice_net_algorithm_votequorum_quorum_notify(struct qdevice_net_ins
     uint32_t quorate, uint32_t node_list_entries, votequorum_node_t node_list[], int *send_node_list,
     enum tlv_vote *vote);
 
+extern int	qdevice_net_algorithm_votequorum_expected_votes_notify(struct qdevice_net_instance *instance,
+    uint32_t expected_votes, enum tlv_vote *vote);
+
 extern int	qdevice_net_algorithm_config_node_list_reply_received(struct qdevice_net_instance *instance,
     uint32_t seq_number, int initial, enum tlv_vote *vote);
 
@@ -102,6 +105,8 @@ struct qdevice_net_algorithm {
 	int (*votequorum_quorum_notify)(struct qdevice_net_instance *instance, uint32_t quorate,
 	    uint32_t node_list_entries, votequorum_node_t node_list[], int *send_node_list,
 	    enum tlv_vote *vote);
+	int (*votequorum_expected_votes_notify)(struct qdevice_net_instance *instance,
+	    uint32_t expected_votes, enum tlv_vote *vote);
 	int (*config_node_list_reply_received)(struct qdevice_net_instance *instance,
 	    uint32_t seq_number, int initial, enum tlv_vote *vote);
 	int (*membership_node_list_reply_received)(struct qdevice_net_instance *instance,

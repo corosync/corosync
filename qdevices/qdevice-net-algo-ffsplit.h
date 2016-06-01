@@ -59,6 +59,9 @@ extern int	qdevice_net_algo_ffsplit_votequorum_quorum_notify(
     struct qdevice_net_instance *instance, uint32_t quorate, uint32_t node_list_entries,
     votequorum_node_t node_list[], int *send_node_list, enum tlv_vote *vote);
 
+extern int	qdevice_net_algo_ffsplit_votequorum_expected_votes_notify(
+    struct qdevice_net_instance *instance, uint32_t expected_votes, enum tlv_vote *vote);
+
 extern int	qdevice_net_algo_ffsplit_config_node_list_reply_received(
     struct qdevice_net_instance *instance, uint32_t seq_number, int initial, enum tlv_vote *vote);
 

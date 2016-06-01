@@ -152,6 +152,22 @@ qdevice_net_algo_test_votequorum_quorum_notify(struct qdevice_net_instance *inst
 
 	return (0);
 }
+/*
+ * Called after votequorum expected_votes notify is dispatched.
+ *
+ * Callback should return 0 on success or -1 on failure (-> disconnect client).
+ *
+ * Vote is set to TLV_VOTE_NO_CHANGE
+ */
+int
+qdevice_net_algo_test_votequorum_expected_votes_notify(struct qdevice_net_instance *instance,
+    uint32_t expected_votes, enum tlv_vote *vote)
+{
+
+	qdevice_log(LOG_INFO, "algo-test: Votequorum expected votes notify");
+
+	return (0);
+}
 
 /*
  * Called when config node list reply is received. Vote is set to value returned by server (and can
@@ -304,6 +320,7 @@ static struct qdevice_net_algorithm qdevice_net_algo_test = {
 	.config_node_list_changed		= qdevice_net_algo_test_config_node_list_changed,
 	.votequorum_node_list_notify		= qdevice_net_algo_test_votequorum_node_list_notify,
 	.votequorum_quorum_notify		= qdevice_net_algo_test_votequorum_quorum_notify,
+	.votequorum_expected_votes_notify	= qdevice_net_algo_test_votequorum_expected_votes_notify,
 	.config_node_list_reply_received	= qdevice_net_algo_test_config_node_list_reply_received,
 	.membership_node_list_reply_received	= qdevice_net_algo_test_membership_node_list_reply_received,
 	.quorum_node_list_reply_received	= qdevice_net_algo_test_quorum_node_list_reply_received,
