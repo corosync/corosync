@@ -60,7 +60,7 @@ extern int		qnetd_cluster_init(struct qnetd_cluster *cluster,
 
 extern void		qnetd_cluster_destroy(struct qnetd_cluster *cluster);
 
-extern size_t		qnetd_cluster_size(struct qnetd_cluster *cluster);
+extern size_t		qnetd_cluster_size(const struct qnetd_cluster *cluster);
 
 #ifdef __cplusplus
 }

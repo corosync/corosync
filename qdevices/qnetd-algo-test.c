@@ -53,7 +53,8 @@
  * - client->decision_algorithm
  * - client->cluster
  *
- * Callback is designed mainly for allocating client->algorithm_data.
+ * Callback is designed mainly for allocating client->algorithm_data. It's also already
+ * part of the cluster, so can access (alloc) client->cluster->algorithm_data.
  *
  * client is initialized qnetd_client structure.
  *
@@ -79,6 +80,21 @@ qnetd_algo_test_client_init(struct qnetd_client *client)
 
 	algo_data = client->algorithm_data;
 	*algo_data = 42;
+
+	if (qnetd_cluster_size(client->cluster) == 1) {
+		/*
+		 * First client in the cluster
+		 */
+		qnetd_log(LOG_INFO, "algo-test: Initializing cluster->algorithm data");
+
+		client->cluster->algorithm_data = malloc(sizeof(int));
+		if (client->cluster->algorithm_data == NULL) {
+			return (-1);
+		}
+
+		algo_data = client->cluster->algorithm_data;
+		*algo_data = 42;
+	}
 
 	return (TLV_REPLY_ERROR_CODE_NO_ERROR);
 }
@@ -172,6 +188,15 @@ qnetd_algo_test_client_disconnect(struct qnetd_client *client, int server_going_
 	qnetd_log(LOG_INFO, "algo-test: client_disconnect");
 
 	free(client->algorithm_data);
+
+	if (qnetd_cluster_size(client->cluster) == 1) {
+		/*
+		 * Last client in the cluster
+		 */
+		qnetd_log(LOG_INFO, "algo-test: Finalizing cluster->algorithm data");
+
+		free(client->cluster->algorithm_data);
+	}
 }
 
 /*

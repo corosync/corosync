@@ -124,7 +124,7 @@ qnetd_cluster_list_free(struct qnetd_cluster_list *list)
 }
 
 size_t
-qnetd_cluster_list_size(struct qnetd_cluster_list *list)
+qnetd_cluster_list_size(const struct qnetd_cluster_list *list)
 {
 	size_t res;
 	struct qnetd_cluster *cluster;

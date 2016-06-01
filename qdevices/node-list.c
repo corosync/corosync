@@ -194,3 +194,18 @@ return_res:
 
 	return (res);
 }
+
+size_t
+node_list_size(const struct node_list *nlist)
+{
+	struct node_list_entry *node_entry;
+	size_t res;
+
+	res = 0;
+
+	TAILQ_FOREACH(node_entry, nlist, entries) {
+		res++;
+	}
+
+	return (res);
+}

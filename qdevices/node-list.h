@@ -82,6 +82,8 @@ extern struct node_list_entry *		 node_list_find_node_id(const struct node_list 
 extern int				 node_list_eq(const struct node_list *list1,
     const struct node_list *list2);
 
+extern size_t				 node_list_size(const struct node_list *nlist);
+
 #ifdef __cplusplus
 }
 #endif

@@ -66,7 +66,7 @@ qnetd_cluster_destroy(struct qnetd_cluster *cluster)
 }
 
 size_t
-qnetd_cluster_size(struct qnetd_cluster *cluster)
+qnetd_cluster_size(const struct qnetd_cluster *cluster)
 {
 	size_t res;
 	struct qnetd_client *client;
