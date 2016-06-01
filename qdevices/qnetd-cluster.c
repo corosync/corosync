@@ -32,41 +32,50 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _QNETD_CLUSTER_LIST_H_
-#define _QNETD_CLUSTER_LIST_H_
-
-#include <sys/types.h>
-
-#include <sys/queue.h>
 #include <inttypes.h>
+#include <stdlib.h>
+#include <string.h>
 
-#include "qnetd-client-list.h"
 #include "qnetd-cluster.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+int
+qnetd_cluster_init(struct qnetd_cluster *cluster, const char *cluster_name, size_t cluster_name_len)
+{
 
-TAILQ_HEAD(qnetd_cluster_list, qnetd_cluster);
+	memset(cluster, 0, sizeof(*cluster));
 
-extern void				 qnetd_cluster_list_init(struct qnetd_cluster_list *list);
+	cluster->cluster_name = malloc(cluster_name_len + 1);
+	if (cluster->cluster_name == NULL) {
+		return (-1);
+	}
+	memset(cluster->cluster_name, 0, cluster_name_len + 1);
+	memcpy(cluster->cluster_name, cluster_name, cluster_name_len);
 
-extern struct qnetd_cluster		*qnetd_cluster_list_find_by_name(
-    struct qnetd_cluster_list *list, const char *cluster_name, size_t cluster_name_len);
+	cluster->cluster_name_len = cluster_name_len;
+	TAILQ_INIT(&cluster->client_list);
 
-extern struct qnetd_cluster		*qnetd_cluster_list_add_client(
-    struct qnetd_cluster_list *list, struct qnetd_client *client);
-
-extern void				 qnetd_cluster_list_del_client(
-    struct qnetd_cluster_list *list, struct qnetd_cluster *cluster, struct qnetd_client *client);
-
-extern void				 qnetd_cluster_list_free(struct qnetd_cluster_list *list);
-
-extern size_t				 qnetd_cluster_list_size(
-    struct qnetd_cluster_list *list);
-
-#ifdef __cplusplus
+	return (0);
 }
-#endif
 
-#endif /* _QNETD_CLUSTER_LIST_H_ */
+void
+qnetd_cluster_destroy(struct qnetd_cluster *cluster)
+{
+
+	free(cluster->cluster_name);
+	cluster->cluster_name = NULL;
+}
+
+size_t
+qnetd_cluster_size(struct qnetd_cluster *cluster)
+{
+	size_t res;
+	struct qnetd_client *client;
+
+	res = 0;
+
+	TAILQ_FOREACH(client, &cluster->client_list, cluster_entries) {
+		res++;
+	}
+
+	return (res);
+}

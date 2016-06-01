@@ -51,6 +51,7 @@ corosync_qnetd_SOURCES	= corosync-qnetd.c \
                           qnetd-algo-test.c qnetd-algo-test.h qnetd-algorithm.c qnetd-algorithm.h \
                           qnetd-algo-utils.c qnetd-algo-utils.h \
                           qnetd-algo-ffsplit.c qnetd-algo-ffsplit.h \
+                          qnetd-cluster.c qnetd-cluster.h \
                           qnetd-cluster-list.c qnetd-cluster-list.h \
                           qnetd-client-send.c qnetd-client-send.h \
                           qnetd-algo-2nodelms.c qnetd-algo-2nodelms.h qnetd-algo-lms.c qnetd-algo-lms.h \
@@ -133,8 +134,9 @@ check_PROGRAMS			= qnetd-cluster-list.test dynar.test dynar-simple-lex.test \
                                   dynar-getopt-lex.test
 
 qnetd_cluster_list_test_SOURCES	= qnetd-cluster-list.c test-qnetd-cluster-list.c \
-				    qnetd-client-list.c qnetd-client.c dynar.c node-list.c \
-				    send-buffer-list.c
+                                  qnetd-cluster.c qnetd-cluster.h \
+                                  qnetd-client-list.c qnetd-client.c dynar.c node-list.c \
+                                  send-buffer-list.c
 qnetd_cluster_list_test_CFLAGS  = $(nss_CFLAGS)
 qnetd_cluster_list_test_LDADD	= $(nss_LIBS)
 

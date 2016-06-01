@@ -59,7 +59,7 @@ qnetd_ipc_cmd_status(struct qnetd_instance *instance, struct dynar *outbuf, int 
 	}
 
 	if (dynar_str_catf(outbuf, "Connected clusters:\t\t%zu\n",
-	    qnetd_cluster_list_no_clusters(&instance->clusters)) == -1) {
+	    qnetd_cluster_list_size(&instance->clusters)) == -1) {
 		return (-1);
 	}
 

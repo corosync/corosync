@@ -74,19 +74,12 @@ qnetd_cluster_list_add_client(struct qnetd_cluster_list *list, struct qnetd_clie
 			return (NULL);
 		}
 
-		memset(cluster, 0, sizeof(*cluster));
-
-		cluster->cluster_name = malloc(client->cluster_name_len + 1);
-		if (cluster->cluster_name == NULL) {
+		if (qnetd_cluster_init(cluster, client->cluster_name,
+		    client->cluster_name_len) != 0) {
 			free(cluster);
 
 			return (NULL);
 		}
-		memset(cluster->cluster_name, 0, client->cluster_name_len + 1);
-		memcpy(cluster->cluster_name, client->cluster_name, client->cluster_name_len);
-
-		cluster->cluster_name_len = client->cluster_name_len;
-		TAILQ_INIT(&cluster->client_list);
 
 		TAILQ_INSERT_TAIL(list, cluster, entries);
 	}
@@ -106,7 +99,7 @@ qnetd_cluster_list_del_client(struct qnetd_cluster_list *list, struct qnetd_clus
 	if (TAILQ_EMPTY(&cluster->client_list)) {
 		TAILQ_REMOVE(list, cluster, entries);
 
-		free(cluster->cluster_name);
+		qnetd_cluster_destroy(cluster);
 		free(cluster);
 	}
 }
@@ -121,7 +114,7 @@ qnetd_cluster_list_free(struct qnetd_cluster_list *list)
 	while (cluster != NULL) {
 		cluster_next = TAILQ_NEXT(cluster, entries);
 
-		free(cluster->cluster_name);
+		qnetd_cluster_destroy(cluster);
 		free(cluster);
 
 		cluster = cluster_next;
@@ -131,7 +124,7 @@ qnetd_cluster_list_free(struct qnetd_cluster_list *list)
 }
 
 size_t
-qnetd_cluster_list_no_clusters(struct qnetd_cluster_list *list)
+qnetd_cluster_list_size(struct qnetd_cluster_list *list)
 {
 	size_t res;
 	struct qnetd_cluster *cluster;
