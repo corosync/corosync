@@ -75,7 +75,7 @@ qnetd_algo_test_client_init(struct qnetd_client *client)
 
 	client->algorithm_data = malloc(sizeof(int));
 	if (client->algorithm_data == NULL) {
-		return (-1);
+		return (TLV_REPLY_ERROR_CODE_INTERNAL_ERROR);
 	}
 
 	algo_data = client->algorithm_data;
@@ -89,7 +89,7 @@ qnetd_algo_test_client_init(struct qnetd_client *client)
 
 		client->cluster->algorithm_data = malloc(sizeof(int));
 		if (client->cluster->algorithm_data == NULL) {
-			return (-1);
+			return (TLV_REPLY_ERROR_CODE_INTERNAL_ERROR);
 		}
 
 		algo_data = client->cluster->algorithm_data;
