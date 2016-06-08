@@ -40,11 +40,81 @@
 #include "qdevice-log.h"
 #include "qdevice-net-send.h"
 #include "qdevice-net-cast-vote-timer.h"
+#include "qdevice-votequorum.h"
+#include "utils.h"
+
+static int
+check_vqinfo_validity(struct qdevice_net_instance *instance)
+{
+	struct qdevice_instance *qdev_instance;
+	struct votequorum_info vq_info;
+	cs_error_t cs_res;
+	struct node_list_entry *node;
+	uint32_t node_id;
+
+	qdev_instance = instance->qdevice_instance_ptr;
+
+	TAILQ_FOREACH(node, &qdev_instance->config_node_list, entries) {
+		node_id = node->node_id;
+
+		cs_res = votequorum_getinfo(qdev_instance->votequorum_handle, node_id, &vq_info);
+
+		if (cs_res == CS_ERR_NOT_EXIST) {
+			continue ;
+		} else if (cs_res != CS_OK) {
+			qdevice_log(LOG_CRIT, "Can't get votequorum information for node "
+			    UTILS_PRI_NODE_ID ". Error %s", node_id, cs_strerror(cs_res));
+
+			return (-1);
+		}
+
+		if (vq_info.node_votes != 1) {
+			qdevice_log(LOG_CRIT, "50:50 split algorithm works only if all nodes have "
+			    "exactly 1 vote. Node " UTILS_PRI_NODE_ID " has %u votes!",
+			    node_id, vq_info.node_votes);
+
+			return (-1);
+		}
+
+		if (vq_info.qdevice_votes != 1) {
+			qdevice_log(LOG_CRIT, "50:50 split algorithm works only if qdevice has "
+			    "exactly 1 vote. Node "UTILS_PRI_NODE_ID" has %u votes!",
+			    node_id, vq_info.qdevice_votes);
+
+			return (-1);
+		}
+	}
+
+	return (0);
+}
+
+static int
+check_cmap_validity(struct qdevice_net_instance *instance)
+{
+	struct qdevice_instance *qdev_instance;
+	uint32_t qdevice_votes;
+
+	qdev_instance = instance->qdevice_instance_ptr;
+
+	if (cmap_get_uint32(qdev_instance->cmap_handle, "quorum.device.votes", &qdevice_votes) != CS_OK ||
+	    qdevice_votes != 1) {
+		qdevice_log(LOG_CRIT, "50:50 split algorithm works only if quorum.device.votes"
+		    " configuration key is set to 1!");
+
+		return (-1);
+	}
+
+	return (0);
+}
 
 int
 qdevice_net_algo_ffsplit_init(struct qdevice_net_instance *instance)
 {
 
+	if (check_cmap_validity(instance) != 0 ||
+	    check_vqinfo_validity(instance) != 0) {
+		return (-1);
+	}
 
 	return (0);
 }
@@ -62,6 +132,11 @@ qdevice_net_algo_ffsplit_config_node_list_changed(struct qdevice_net_instance *i
     const struct node_list *nlist, int config_version_set, uint64_t config_version,
     int *send_node_list, enum tlv_vote *vote)
 {
+
+	if (check_vqinfo_validity(instance) != 0) {
+		return (-1);
+	}
+
 	return (0);
 }
 
@@ -87,6 +162,10 @@ int
 qdevice_net_algo_ffsplit_votequorum_expected_votes_notify(struct qdevice_net_instance *instance,
     uint32_t expected_votes, enum tlv_vote *vote)
 {
+
+	if (check_vqinfo_validity(instance) != 0) {
+		return (-1);
+	}
 
 	return (0);
 }
@@ -150,6 +229,13 @@ int
 qdevice_net_algo_ffsplit_disconnected(struct qdevice_net_instance *instance,
     enum qdevice_net_disconnect_reason disconnect_reason, int *try_reconnect, enum tlv_vote *vote)
 {
+
+	/*
+	 * We cannot depend on default behavior (until there is no change -> use old vote).
+	 * This could create two quorate clusters (2:2 -> first half get ACK -> first half
+	 * disconnects from qnetd -> second half get ACK -> two quorate clusters)
+	 */
+	*vote = TLV_VOTE_NACK;
 
 	return (0);
 }

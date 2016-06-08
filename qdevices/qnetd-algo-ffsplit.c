@@ -38,12 +38,107 @@
 
 #include "qnetd-algo-ffsplit.h"
 #include "qnetd-log.h"
+#include "qnetd-cluster-list.h"
+#include "qnetd-cluster.h"
+
+struct ffsplit_cluster_data {
+	uint8_t leader_set;
+	uint32_t leader_id;
+};
 
 enum tlv_reply_error_code
 qnetd_algo_ffsplit_client_init(struct qnetd_client *client)
 {
+	struct ffsplit_cluster_data *cluster_data;
+
+	if (qnetd_cluster_size(client->cluster) == 1) {
+		cluster_data = malloc(sizeof(struct ffsplit_cluster_data));
+		if (cluster_data == NULL) {
+			qnetd_log(LOG_ERR, "ffsplit: Can't initialize cluster data for client %s",
+			    client->addr_str);
+
+			return (TLV_REPLY_ERROR_CODE_INTERNAL_ERROR);
+		}
+		memset(cluster_data, 0, sizeof(*cluster_data));
+
+		client->cluster->algorithm_data = cluster_data;
+	}
 
 	return (TLV_REPLY_ERROR_CODE_NO_ERROR);
+}
+
+static int
+qnetd_algo_ffsplit_is_prefered_partition(struct qnetd_client *client,
+    const struct node_list *config_node_list, const struct node_list *membership_node_list)
+{
+	uint32_t prefered_node_id;
+	struct node_list_entry *node_entry;
+
+	switch (client->tie_breaker.mode) {
+	case TLV_TIE_BREAKER_MODE_LOWEST:
+		node_entry = TAILQ_FIRST(config_node_list);
+
+		prefered_node_id = node_entry->node_id;
+
+		TAILQ_FOREACH(node_entry, config_node_list, entries) {
+			if (node_entry->node_id < prefered_node_id) {
+				prefered_node_id = node_entry->node_id;
+			}
+		}
+		break;
+	case TLV_TIE_BREAKER_MODE_HIGHEST:
+		node_entry = TAILQ_FIRST(config_node_list);
+
+		prefered_node_id = node_entry->node_id;
+
+		TAILQ_FOREACH(node_entry, config_node_list, entries) {
+			if (node_entry->node_id > prefered_node_id) {
+				prefered_node_id = node_entry->node_id;
+			}
+		}
+		break;
+	case TLV_TIE_BREAKER_MODE_NODE_ID:
+		prefered_node_id = client->tie_breaker.node_id;
+		break;
+	}
+
+	return (node_list_find_node_id(membership_node_list, prefered_node_id) != NULL);
+}
+
+static enum tlv_vote
+qnetd_algo_ffsplit_do(struct qnetd_client *client, const struct node_list *config_node_list,
+    const struct node_list *membership_node_list)
+{
+	struct ffplist_cluster_data *cluster_data;
+
+	cluster_data = (struct ffplist_cluster_data *)client->cluster->algorithm_data;
+
+	if (node_list_size(config_node_list) % 2 != 0) {
+		/*
+		 * Odd clusters never split into 50:50.
+		 */
+		if (node_list_size(membership_node_list) > node_list_size(config_node_list) / 2) {
+			return (TLV_VOTE_ACK);
+		} else {
+			return (TLV_VOTE_NACK);
+		}
+	} else {
+		if (node_list_size(membership_node_list) > node_list_size(config_node_list) / 2) {
+			return (TLV_VOTE_ACK);
+		} else if (node_list_size(membership_node_list) < node_list_size(config_node_list) / 2) {
+			return (TLV_VOTE_NACK);
+		} else {
+			/*
+			 * 50:50 split
+			 */
+			if (qnetd_algo_ffsplit_is_prefered_partition(client, config_node_list,
+			    membership_node_list)) {
+				return (TLV_VOTE_ACK);
+			} else {
+				return (TLV_VOTE_NACK);
+			}
+		}
+	}
 }
 
 enum tlv_reply_error_code
@@ -52,7 +147,34 @@ qnetd_algo_ffsplit_config_node_list_received(struct qnetd_client *client,
     const struct node_list *nodes, int initial, enum tlv_vote *result_vote)
 {
 
-	*result_vote = TLV_VOTE_NO_CHANGE;
+	if (node_list_size(nodes) == 0) {
+		/*
+		 * Empty node list shouldn't happen
+		 */
+		qnetd_log(LOG_ERR, "ffsplit: Received empty config node list for client %s",
+			    client->addr_str);
+
+		return (TLV_REPLY_ERROR_CODE_INVALID_CONFIG_NODE_LIST);
+	}
+
+	if (node_list_find_node_id(nodes, client->node_id) == NULL) {
+		/*
+		 * Current node is not in node list
+		 */
+		qnetd_log(LOG_ERR, "ffsplit: Received config node list without client %s",
+			    client->addr_str);
+
+		return (TLV_REPLY_ERROR_CODE_INVALID_CONFIG_NODE_LIST);
+	}
+
+	if (initial || node_list_size(&client->last_membership_node_list) == 0) {
+		/*
+		 * Initial node list -> membership is going to be send by client
+		 */
+		*result_vote = TLV_VOTE_ASK_LATER;
+	} else {
+		*result_vote = qnetd_algo_ffsplit_do(client, nodes, &client->last_membership_node_list);
+	}
 
 	return (TLV_REPLY_ERROR_CODE_NO_ERROR);
 }
@@ -77,7 +199,34 @@ qnetd_algo_ffsplit_membership_node_list_received(struct qnetd_client *client,
     const struct node_list *nodes, enum tlv_vote *result_vote)
 {
 
-	*result_vote = TLV_VOTE_ASK_LATER;
+	if (node_list_size(nodes) == 0) {
+		/*
+		 * Empty node list shouldn't happen
+		 */
+		qnetd_log(LOG_ERR, "ffsplit: Received empty membership node list for client %s",
+			    client->addr_str);
+
+		return (TLV_REPLY_ERROR_CODE_INVALID_MEMBERSHIP_NODE_LIST);
+	}
+
+	if (node_list_find_node_id(nodes, client->node_id) == NULL) {
+		/*
+		 * Current node is not in node list
+		 */
+		qnetd_log(LOG_ERR, "ffsplit: Received membership node list without client %s",
+			    client->addr_str);
+
+		return (TLV_REPLY_ERROR_CODE_INVALID_MEMBERSHIP_NODE_LIST);
+	}
+
+	if (node_list_size(&client->configuration_node_list) == 0) {
+		/*
+		 * Config node list not received -> it's going to be sent later
+		 */
+		*result_vote = TLV_VOTE_ASK_LATER;
+	} else {
+		*result_vote = qnetd_algo_ffsplit_do(client, &client->configuration_node_list, nodes);
+	}
 
 	return (TLV_REPLY_ERROR_CODE_NO_ERROR);
 }
@@ -88,6 +237,9 @@ qnetd_algo_ffsplit_quorum_node_list_received(struct qnetd_client *client,
     enum tlv_vote *result_vote)
 {
 
+	/*
+	 * Quorum node list is informative -> no change
+	 */
 	*result_vote = TLV_VOTE_NO_CHANGE;
 
 	return (TLV_REPLY_ERROR_CODE_NO_ERROR);
@@ -97,14 +249,18 @@ void
 qnetd_algo_ffsplit_client_disconnect(struct qnetd_client *client, int server_going_down)
 {
 
+	if (qnetd_cluster_size(client->cluster) == 1) {
+		/*
+		 * Last client in the cluster
+		 */
+		 free(client->cluster->algorithm_data);
+	}
 }
 
 enum tlv_reply_error_code
 qnetd_algo_ffsplit_ask_for_vote_received(struct qnetd_client *client, uint32_t msg_seq_num,
     enum tlv_vote *result_vote)
 {
-
-	*result_vote = TLV_VOTE_ASK_LATER;
 
 	return (TLV_REPLY_ERROR_CODE_UNSUPPORTED_DECISION_ALGORITHM_MESSAGE);
 }
