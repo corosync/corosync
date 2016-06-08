@@ -67,7 +67,7 @@ corosync_qnetd_SOURCES	= corosync-qnetd.c \
                           unix-socket-client-list.c unix-socket-client-list.h \
                           unix-socket.c unix-socket.h qnetd-ipc-cmd.c qnetd-ipc-cmd.h \
                           qnetd-poll-array-user-data.h qnet-config.h dynar-getopt-lex.c \
-                          dynar-getopt-lex.h qnetd-advanced-settings.c
+                          dynar-getopt-lex.h qnetd-advanced-settings.c qnetd-advanced-settings.h
 
 corosync_qdevice_SOURCES = corosync-qdevice.c \
                            qdevice-cmap.c qdevice-cmap.h \
