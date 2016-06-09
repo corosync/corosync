@@ -113,6 +113,7 @@ qdevice_votequorum_node_list_notify_callback(votequorum_handle_t votequorum_hand
 		exit(2);
 	}
 
+	instance->vq_node_list_ring_id_set = 1;
 	memcpy(&instance->vq_node_list_ring_id, &votequorum_ring_id, sizeof(votequorum_ring_id));
 	instance->vq_node_list_entries = node_list_entries;
 	free(instance->vq_node_list);
@@ -234,6 +235,27 @@ qdevice_votequorum_destroy(struct qdevice_instance *instance)
 	if (res != CS_OK) {
 		qdevice_log(LOG_WARNING, "Unable to finalize votequorum. Error %s", cs_strerror(res));
 	}
+}
+
+int
+qdevice_votequorum_wait_for_ring_id(struct qdevice_instance *instance)
+{
+	int no_retries;
+
+	no_retries = 0;
+
+	while (!instance->vq_node_list_ring_id_set &&
+	    qdevice_votequorum_dispatch(instance) != -1 &&
+	    no_retries++ < instance->advanced_settings->max_cs_try_again) {
+		(void)poll(NULL, 0, 1000);
+	}
+
+	if (!instance->vq_node_list_ring_id_set) {
+		qdevice_log(LOG_CRIT, "Can't get initial votequorum membership information.");
+		return (-1);
+	}
+
+	return (0);
 }
 
 int

@@ -52,6 +52,9 @@ extern int			qdevice_votequorum_dispatch(struct qdevice_instance *instance);
 extern int			qdevice_votequorum_poll(struct qdevice_instance *instance,
     int cast_vote);
 
+extern int			qdevice_votequorum_wait_for_ring_id(
+    struct qdevice_instance *instance);
+
 #ifdef __cplusplus
 }
 #endif

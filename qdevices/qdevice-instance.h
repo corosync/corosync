@@ -87,6 +87,7 @@ struct qdevice_instance {
 	 * Copy of votequorum_nodelist_notify_fn callback paramters.
 	 * Set after model callback is called.
 	 */
+	uint8_t vq_node_list_ring_id_set;
 	votequorum_ring_id_t vq_node_list_ring_id;
 	uint32_t vq_node_list_entries;
 	uint32_t *vq_node_list;

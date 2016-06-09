@@ -222,6 +222,11 @@ main(int argc, char * const argv[])
 		return (1);
 	}
 
+	qdevice_log(LOG_DEBUG, "Waiting for ring id");
+	if (qdevice_votequorum_wait_for_ring_id(&instance) != 0) {
+		return (1);
+	}
+
 	global_instance = &instance;
 	signal_handlers_register();
 
