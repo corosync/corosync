@@ -55,9 +55,9 @@ unix_socket_set_non_blocking(int fd)
 	flags |= O_NONBLOCK;
 	if (fcntl(fd, F_SETFL, flags) < 0) {
 		return (-1);
-        }
+	}
 
-        return (0);
+	return (0);
 }
 
 int

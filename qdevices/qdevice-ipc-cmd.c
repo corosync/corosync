@@ -84,7 +84,7 @@ static int
 qdevice_ipc_cmd_status_add_config_node_list(struct qdevice_instance *instance, struct dynar *outbuf,
     int verbose)
 {
-        struct node_list_entry *node_info;
+	struct node_list_entry *node_info;
 	size_t zi;
 
 	if (instance->config_node_list_version_set) {

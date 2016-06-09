@@ -65,7 +65,7 @@ qnetd_algorithm_config_node_list_received(struct qnetd_client *client,
 	if (client->decision_algorithm >= QNETD_STATIC_SUPPORTED_DECISION_ALGORITHMS_SIZE ||
 	    qnetd_algorithm_array[client->decision_algorithm] == NULL) {
 		qnetd_log(LOG_CRIT, "qnetd_algorithm_config_node_list_received unhandled "
-		     "decision algorithm");
+		    "decision algorithm");
 		return (TLV_REPLY_ERROR_CODE_INTERNAL_ERROR);
 	}
 

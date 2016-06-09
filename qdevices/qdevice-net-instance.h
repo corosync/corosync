@@ -78,8 +78,8 @@ struct qdevice_net_instance {
 	enum tlv_tls_supported tls_supported;
 	int using_tls;
 	int tls_client_cert_sent;
-	uint32_t heartbeat_interval;            /* Adjusted heartbeat interval during normal operation */
-	uint32_t sync_heartbeat_interval;       /* Adjusted heartbeat interval during corosync sync */
+	uint32_t heartbeat_interval;		/* Adjusted heartbeat interval during normal operation */
+	uint32_t sync_heartbeat_interval;	/* Adjusted heartbeat interval during corosync sync */
 	uint32_t cast_vote_timer_interval;	/* Timer for cast vote */
 	uint32_t connect_timeout;
 	struct timer_list_entry *cast_vote_timer;

@@ -67,19 +67,21 @@ extern int	qdevice_net_algorithm_votequorum_expected_votes_notify(struct qdevice
     uint32_t expected_votes, enum tlv_vote *vote);
 
 extern int	qdevice_net_algorithm_config_node_list_reply_received(struct qdevice_net_instance *instance,
-    uint32_t seq_number, int initial, enum tlv_vote *vote);
+    uint32_t seq_number, int initial, const struct tlv_ring_id *ring_id, int ring_id_is_valid,
+    enum tlv_vote *vote);
 
 extern int	qdevice_net_algorithm_membership_node_list_reply_received(struct qdevice_net_instance *instance,
-    uint32_t seq_number, const struct tlv_ring_id *ring_id, enum tlv_vote *vote);
+    uint32_t seq_number, const struct tlv_ring_id *ring_id, int ring_id_is_valid, enum tlv_vote *vote);
 
 extern int	qdevice_net_algorithm_quorum_node_list_reply_received(struct qdevice_net_instance *instance,
-    uint32_t seq_number, enum tlv_vote *vote);
+    uint32_t seq_number, const struct tlv_ring_id *ring_id, int ring_id_is_valid, enum tlv_vote *vote);
 
 extern int	qdevice_net_algorithm_ask_for_vote_reply_received(struct qdevice_net_instance *instance,
-    uint32_t seq_number, enum tlv_vote *vote);
+    uint32_t seq_number, const struct tlv_ring_id *ring_id, int ring_id_is_valid, enum tlv_vote *vote);
 
 extern int	qdevice_net_algorithm_vote_info_received(struct qdevice_net_instance *instance,
-    uint32_t seq_number, enum tlv_vote *vote);
+    uint32_t seq_number, const struct tlv_ring_id *ring_id, int ring_id_is_valid,
+    enum tlv_vote *vote);
 
 extern int	qdevice_net_algorithm_echo_reply_received(struct qdevice_net_instance *instance,
     uint32_t seq_number, int is_expected_seq_number);
@@ -108,15 +110,20 @@ struct qdevice_net_algorithm {
 	int (*votequorum_expected_votes_notify)(struct qdevice_net_instance *instance,
 	    uint32_t expected_votes, enum tlv_vote *vote);
 	int (*config_node_list_reply_received)(struct qdevice_net_instance *instance,
-	    uint32_t seq_number, int initial, enum tlv_vote *vote);
+	    uint32_t seq_number, int initial, const struct tlv_ring_id *ring_id, int ring_id_is_valid,
+	    enum tlv_vote *vote);
 	int (*membership_node_list_reply_received)(struct qdevice_net_instance *instance,
-	    uint32_t seq_number, const struct tlv_ring_id *ring_id, enum tlv_vote *vote);
+	    uint32_t seq_number, const struct tlv_ring_id *ring_id, int ring_id_is_valid,
+	    enum tlv_vote *vote);
 	int (*quorum_node_list_reply_received)(struct qdevice_net_instance *instance,
-	    uint32_t seq_number, enum tlv_vote *vote);
+	    uint32_t seq_number, const struct tlv_ring_id *ring_id, int ring_id_is_valid,
+	    enum tlv_vote *vote);
 	int (*ask_for_vote_reply_received)(struct qdevice_net_instance *instance,
-	    uint32_t seq_number, enum tlv_vote *vote);
+	    uint32_t seq_number, const struct tlv_ring_id *ring_id, int ring_id_is_valid,
+	    enum tlv_vote *vote);
 	int (*vote_info_received)(struct qdevice_net_instance *instance,
-	    uint32_t seq_number, enum tlv_vote *vote);
+	    uint32_t seq_number, const struct tlv_ring_id *ring_id, int ring_id_is_valid,
+	    enum tlv_vote *vote);
 	int (*echo_reply_received)(struct qdevice_net_instance *instance,
 	    uint32_t seq_number, int is_expected_seq_number);
 	int (*echo_reply_not_received)(struct qdevice_net_instance *instance);

@@ -52,6 +52,7 @@
  * - client->node_id (client->node_id_set = 1)
  * - client->decision_algorithm
  * - client->cluster
+ * - client->last_ring_id
  *
  * Callback is designed mainly for allocating client->algorithm_data. It's also already
  * part of the cluster, so can access (alloc) client->cluster->algorithm_data.

@@ -281,14 +281,14 @@ qnetd_algo_ffsplit_timer_callback(struct qnetd_client *client, int *reschedule_t
 }
 
 static struct qnetd_algorithm qnetd_algo_ffsplit = {
-	.init                          = qnetd_algo_ffsplit_client_init,
-	.config_node_list_received     = qnetd_algo_ffsplit_config_node_list_received,
-	.membership_node_list_received = qnetd_algo_ffsplit_membership_node_list_received,
-	.quorum_node_list_received     = qnetd_algo_ffsplit_quorum_node_list_received,
-	.client_disconnect             = qnetd_algo_ffsplit_client_disconnect,
-	.ask_for_vote_received         = qnetd_algo_ffsplit_ask_for_vote_received,
-	.vote_info_reply_received      = qnetd_algo_ffsplit_vote_info_reply_received,
-	.timer_callback                = qnetd_algo_ffsplit_timer_callback,
+	.init				= qnetd_algo_ffsplit_client_init,
+	.config_node_list_received	= qnetd_algo_ffsplit_config_node_list_received,
+	.membership_node_list_received	= qnetd_algo_ffsplit_membership_node_list_received,
+	.quorum_node_list_received	= qnetd_algo_ffsplit_quorum_node_list_received,
+	.client_disconnect		= qnetd_algo_ffsplit_client_disconnect,
+	.ask_for_vote_received		= qnetd_algo_ffsplit_ask_for_vote_received,
+	.vote_info_reply_received	= qnetd_algo_ffsplit_vote_info_reply_received,
+	.timer_callback			= qnetd_algo_ffsplit_timer_callback,
 };
 
 enum tlv_reply_error_code qnetd_algo_ffsplit_register()

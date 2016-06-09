@@ -50,7 +50,7 @@ qdevice_net_nss_bad_cert_hook(void *arg, PRFileDesc *fd) {
 		qdevice_log(LOG_WARNING, "Server certificate is expired.");
 
 		return (SECSuccess);
-        }
+	}
 
 	qdevice_log_nss(LOG_ERR, "Server certificate verification failure.");
 

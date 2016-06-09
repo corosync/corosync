@@ -553,6 +553,7 @@ qdevice_net_msg_received_node_list_reply(struct qdevice_net_instance *instance,
 	enum tlv_vote result_vote;
 	int res;
 	int case_processed;
+	int ring_id_is_valid;
 
 	if (instance->state != QDEVICE_NET_INSTANCE_STATE_WAITING_VOTEQUORUM_CMAP_EVENTS) {
 		qdevice_log(LOG_ERR, "Received unexpected node list reply message. "
@@ -570,8 +571,8 @@ qdevice_net_msg_received_node_list_reply(struct qdevice_net_instance *instance,
 		return (-1);
 	}
 
-	if (msg->node_list_type == TLV_NODE_LIST_TYPE_MEMBERSHIP && !msg->ring_id_set) {
-		qdevice_log(LOG_ERR, "Received node list reply message with type membership "
+	if (!msg->ring_id_set) {
+		qdevice_log(LOG_ERR, "Received node list reply message "
 		    "without ring id set. Disconnecting from server");
 
 		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_REQUIRED_OPTION_MISSING;
@@ -600,15 +601,20 @@ qdevice_net_msg_received_node_list_reply(struct qdevice_net_instance *instance,
 	qdevice_log(LOG_DEBUG, "Received %s node list reply", str);
 	qdevice_log(LOG_DEBUG, "  seq = "UTILS_PRI_MSG_SEQ, msg->seq_number);
 	qdevice_log(LOG_DEBUG, "  vote = %s", tlv_vote_to_str(msg->vote));
-	if (msg->ring_id_set) {
-		qdevice_log(LOG_DEBUG, "  ring id = ("UTILS_PRI_RING_ID")",
+	qdevice_log(LOG_DEBUG, "  ring id = ("UTILS_PRI_RING_ID")",
 		    msg->ring_id.node_id, msg->ring_id.seq);
-	}
 
 	/*
 	 * Call algorithm
 	 */
 	result_vote = msg->vote;
+
+	if (!tlv_ring_id_eq(&msg->ring_id, &instance->last_sent_ring_id)) {
+		ring_id_is_valid = 0;
+		qdevice_log(LOG_DEBUG, "Received node list reply with old ring id.");
+	} else {
+		ring_id_is_valid = 1;
+	}
 
 	case_processed = 0;
 	switch (msg->node_list_type) {
@@ -617,17 +623,17 @@ qdevice_net_msg_received_node_list_reply(struct qdevice_net_instance *instance,
 		case_processed = 1;
 		res = qdevice_net_algorithm_config_node_list_reply_received(instance,
 		    msg->seq_number, (msg->node_list_type == TLV_NODE_LIST_TYPE_INITIAL_CONFIG),
-		    &result_vote);
+		    &msg->ring_id, ring_id_is_valid, &result_vote);
 		break;
 	case TLV_NODE_LIST_TYPE_MEMBERSHIP:
 		case_processed = 1;
 		res = qdevice_net_algorithm_membership_node_list_reply_received(instance,
-		    msg->seq_number, &msg->ring_id, &result_vote);
+		    msg->seq_number, &msg->ring_id, ring_id_is_valid, &result_vote);
 		break;
 	case TLV_NODE_LIST_TYPE_QUORUM:
 		case_processed = 1;
 		res = qdevice_net_algorithm_quorum_node_list_reply_received(instance,
-		    msg->seq_number, &result_vote);
+		    msg->seq_number, &msg->ring_id, ring_id_is_valid, &result_vote);
 		break;
 	/*
 	 * Default is not defined intentionally. Compiler shows warning when new node list type
@@ -647,20 +653,12 @@ qdevice_net_msg_received_node_list_reply(struct qdevice_net_instance *instance,
 		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_ALGO_NODE_LIST_REPLY_ERR;
 		return (-1);
 	} else {
-		qdevice_log(LOG_DEBUG, "Algorithm result vote is %s", tlv_vote_to_str(msg->vote));
+		qdevice_log(LOG_DEBUG, "Algorithm result vote is %s", tlv_vote_to_str(result_vote));
 	}
 
-	if (result_vote != TLV_VOTE_NO_CHANGE) {
-		if (msg->node_list_type == TLV_NODE_LIST_TYPE_MEMBERSHIP &&
-		    !tlv_ring_id_eq(&msg->ring_id, &instance->last_sent_ring_id)) {
-			qdevice_log(LOG_INFO, "Received membership node list reply with "
-			    "old ring id. Not updating timer");
-		} else {
-			if (qdevice_net_cast_vote_timer_update(instance, result_vote) != 0) {
-				instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_SCHEDULE_VOTING_TIMER;
-				return (-1);
-			}
-		}
+	if (qdevice_net_cast_vote_timer_update(instance, result_vote) != 0) {
+		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_SCHEDULE_VOTING_TIMER;
+		return (-1);
 	}
 
 	return (0);
@@ -679,6 +677,7 @@ qdevice_net_msg_received_ask_for_vote_reply(struct qdevice_net_instance *instanc
     const struct msg_decoded *msg)
 {
 	enum tlv_vote result_vote;
+	int ring_id_is_valid;
 
 	if (instance->state != QDEVICE_NET_INSTANCE_STATE_WAITING_VOTEQUORUM_CMAP_EVENTS) {
 		qdevice_log(LOG_ERR, "Received unexpected ask for vote reply message. "
@@ -688,7 +687,7 @@ qdevice_net_msg_received_ask_for_vote_reply(struct qdevice_net_instance *instanc
 		return (-1);
 	}
 
-	if (!msg->vote_set || !msg->seq_number_set) {
+	if (!msg->vote_set || !msg->seq_number_set || !msg->ring_id_set) {
 		qdevice_log(LOG_ERR, "Received node list reply message without "
 		    "required options. Disconnecting from server");
 
@@ -699,17 +698,26 @@ qdevice_net_msg_received_ask_for_vote_reply(struct qdevice_net_instance *instanc
 	qdevice_log(LOG_DEBUG, "Received ask for vote reply");
 	qdevice_log(LOG_DEBUG, "  seq = "UTILS_PRI_MSG_SEQ, msg->seq_number);
 	qdevice_log(LOG_DEBUG, "  vote = %s", tlv_vote_to_str(msg->vote));
+	qdevice_log(LOG_DEBUG, "  ring id = ("UTILS_PRI_RING_ID")",
+		    msg->ring_id.node_id, msg->ring_id.seq);
 
 	result_vote = msg->vote;
 
+	if (!tlv_ring_id_eq(&msg->ring_id, &instance->last_sent_ring_id)) {
+		ring_id_is_valid = 0;
+		qdevice_log(LOG_DEBUG, "Received ask for vote reply with old ring id.");
+	} else {
+		ring_id_is_valid = 1;
+	}
+
 	if (qdevice_net_algorithm_ask_for_vote_reply_received(instance, msg->seq_number,
-	    &result_vote) != 0) {
+	    &msg->ring_id, ring_id_is_valid, &result_vote) != 0) {
 		qdevice_log(LOG_DEBUG, "Algorithm returned error. Disconnecting.");
 
 		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_ALGO_ASK_FOR_VOTE_REPLY_ERR;
 		return (-1);
 	} else {
-		qdevice_log(LOG_DEBUG, "Algorithm result vote is %s", tlv_vote_to_str(msg->vote));
+		qdevice_log(LOG_DEBUG, "Algorithm result vote is %s", tlv_vote_to_str(result_vote));
 	}
 
 	if (qdevice_net_cast_vote_timer_update(instance, result_vote) != 0) {
@@ -726,6 +734,7 @@ qdevice_net_msg_received_vote_info(struct qdevice_net_instance *instance,
 {
 	struct send_buffer_list_entry *send_buffer;
 	enum tlv_vote result_vote;
+	int ring_id_is_valid;
 
 	if (instance->state != QDEVICE_NET_INSTANCE_STATE_WAITING_VOTEQUORUM_CMAP_EVENTS) {
 		qdevice_log(LOG_ERR, "Received unexpected vote info message. "
@@ -735,7 +744,7 @@ qdevice_net_msg_received_vote_info(struct qdevice_net_instance *instance,
 		return (-1);
 	}
 
-	if (!msg->vote_set || !msg->seq_number_set) {
+	if (!msg->vote_set || !msg->seq_number_set || !msg->ring_id_set) {
 		qdevice_log(LOG_ERR, "Received node list reply message without "
 		    "required options. Disconnecting from server");
 		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_REQUIRED_OPTION_MISSING;
@@ -745,10 +754,20 @@ qdevice_net_msg_received_vote_info(struct qdevice_net_instance *instance,
 	qdevice_log(LOG_DEBUG, "Received vote info");
 	qdevice_log(LOG_DEBUG, "  seq = "UTILS_PRI_MSG_SEQ, msg->seq_number);
 	qdevice_log(LOG_DEBUG, "  vote = %s", tlv_vote_to_str(msg->vote));
+	qdevice_log(LOG_DEBUG, "  ring id = ("UTILS_PRI_RING_ID")",
+		    msg->ring_id.node_id, msg->ring_id.seq);
 
 	result_vote = msg->vote;
+
+	if (!tlv_ring_id_eq(&msg->ring_id, &instance->last_sent_ring_id)) {
+		ring_id_is_valid = 0;
+		qdevice_log(LOG_DEBUG, "Received vote info with old ring id.");
+	} else {
+		ring_id_is_valid = 1;
+	}
+
 	if (qdevice_net_algorithm_vote_info_received(instance, msg->seq_number,
-	    &result_vote) != 0) {
+	    &msg->ring_id, ring_id_is_valid, &result_vote) != 0) {
 		qdevice_log(LOG_DEBUG, "Algorithm returned error. Disconnecting.");
 
 		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_ALGO_VOTE_INFO_ERR;

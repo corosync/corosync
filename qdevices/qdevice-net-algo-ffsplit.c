@@ -172,40 +172,61 @@ qdevice_net_algo_ffsplit_votequorum_expected_votes_notify(struct qdevice_net_ins
 
 int
 qdevice_net_algo_ffsplit_config_node_list_reply_received(struct qdevice_net_instance *instance,
-    uint32_t seq_number, int initial, enum tlv_vote *vote)
+    uint32_t seq_number, int initial, const struct tlv_ring_id *ring_id, int ring_id_is_valid,
+    enum tlv_vote *vote)
 {
+
+	if (!ring_id_is_valid) {
+		*vote = TLV_VOTE_NO_CHANGE;
+	}
 
 	return (0);
 }
 
 int
 qdevice_net_algo_ffsplit_membership_node_list_reply_received(struct qdevice_net_instance *instance,
-    uint32_t seq_number, const struct tlv_ring_id *ring_id, enum tlv_vote *vote)
+    uint32_t seq_number, const struct tlv_ring_id *ring_id, int ring_id_is_valid, enum tlv_vote *vote)
 {
+
+	if (!ring_id_is_valid) {
+		*vote = TLV_VOTE_NO_CHANGE;
+	}
 
 	return (0);
 }
 
 int
 qdevice_net_algo_ffsplit_quorum_node_list_reply_received(struct qdevice_net_instance *instance,
-    uint32_t seq_number, enum tlv_vote *vote)
+    uint32_t seq_number, const struct tlv_ring_id *ring_id, int ring_id_is_valid, enum tlv_vote *vote)
 {
+
+	if (!ring_id_is_valid) {
+		*vote = TLV_VOTE_NO_CHANGE;
+	}
 
 	return (0);
 }
 
 int
 qdevice_net_algo_ffsplit_ask_for_vote_reply_received(struct qdevice_net_instance *instance,
-    uint32_t seq_number, enum tlv_vote *vote)
+    uint32_t seq_number, const struct tlv_ring_id *ring_id, int ring_id_is_valid, enum tlv_vote *vote)
 {
+
+	if (!ring_id_is_valid) {
+		*vote = TLV_VOTE_NO_CHANGE;
+	}
 
 	return (0);
 }
 
 int
 qdevice_net_algo_ffsplit_vote_info_received(struct qdevice_net_instance *instance,
-    uint32_t seq_number, enum tlv_vote *vote)
+    uint32_t seq_number, const struct tlv_ring_id *ring_id, int ring_id_is_valid, enum tlv_vote *vote)
 {
+
+	if (!ring_id_is_valid) {
+		*vote = TLV_VOTE_NO_CHANGE;
+	}
 
 	return (0);
 }

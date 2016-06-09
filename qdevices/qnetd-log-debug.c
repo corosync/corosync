@@ -60,6 +60,8 @@ qnetd_log_debug_new_client_connected(struct qnetd_client *client)
 	qnetd_log(LOG_DEBUG, "  node_id = "UTILS_PRI_NODE_ID, client->node_id);
 	qnetd_log(LOG_DEBUG, "  pointer = %p", client);
 	qnetd_log(LOG_DEBUG, "  addr_str = %s", client->addr_str);
+	qnetd_log(LOG_DEBUG, "  ring id = (" UTILS_PRI_RING_ID ")", client->last_ring_id.node_id,
+	    client->last_ring_id.seq);
 
 	qnetd_log_debug_dump_cluster(client->cluster);
 }

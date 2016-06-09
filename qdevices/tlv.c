@@ -56,7 +56,7 @@
 #define TLV_TYPE_LENGTH		2
 #define TLV_LENGTH_LENGTH	2
 
-#define TLV_STATIC_SUPPORTED_OPTIONS_SIZE      22
+#define TLV_STATIC_SUPPORTED_OPTIONS_SIZE	22
 
 enum tlv_opt_type tlv_static_supported_options[TLV_STATIC_SUPPORTED_OPTIONS_SIZE] = {
     TLV_OPT_MSG_SEQ_NUMBER,

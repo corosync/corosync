@@ -52,5 +52,5 @@ qdevice_log_debug_dump_node_list(const struct node_list *nlist)
 		    zi, node_info->node_id, node_info->data_center_id,
 		    tlv_node_state_to_str(node_info->node_state));
 		zi++;
-        }
+	}
 }

@@ -171,16 +171,22 @@ qdevice_net_algo_test_votequorum_expected_votes_notify(struct qdevice_net_instan
 
 /*
  * Called when config node list reply is received. Vote is set to value returned by server (and can
- * be overwriten by algorithm).
+ * be overwriten by algorithm). ring_id is returned by server. ring_id_is_valid is set to 1 only if
+ * received ring id matches last sent ring id. It usually make sense to not update timer.
  *
  * Callback should return 0 on success or -1 on failure (-> disconnect client).
  */
 int
 qdevice_net_algo_test_config_node_list_reply_received(struct qdevice_net_instance *instance,
-    uint32_t seq_number, int initial, enum tlv_vote *vote)
+    uint32_t seq_number, int initial, const struct tlv_ring_id *ring_id, int ring_id_is_valid,
+    enum tlv_vote *vote)
 {
 
 	qdevice_log(LOG_INFO, "algo-test: Config node list reply");
+
+	if (!ring_id_is_valid) {
+		*vote = TLV_VOTE_NO_CHANGE;
+	}
 
 	return (0);
 }
@@ -193,14 +199,22 @@ qdevice_net_algo_test_config_node_list_reply_received(struct qdevice_net_instanc
  * with instance->main_timer_list parameter) and ask for reply (qdevice_net_send_ask_for_vote).
  * Another option may be to wait for vote_info message (if server algorithm is configured so).
  *
+ * ring_id and ring_id_is_valid have same meaning as for
+ * qdevice_net_algo_test_config_node_list_reply_received
+ *
  * Callback should return 0 on success or -1 on failure (-> disconnect client).
  */
 int
 qdevice_net_algo_test_membership_node_list_reply_received(struct qdevice_net_instance *instance,
-    uint32_t seq_number, const struct tlv_ring_id *ring_id, enum tlv_vote *vote)
+    uint32_t seq_number, const struct tlv_ring_id *ring_id, int ring_id_is_valid,
+    enum tlv_vote *vote)
 {
 
 	qdevice_log(LOG_INFO, "algo-test: Membership node list reply");
+
+	if (!ring_id_is_valid) {
+		*vote = TLV_VOTE_NO_CHANGE;
+	}
 
 	return (0);
 }
@@ -209,14 +223,22 @@ qdevice_net_algo_test_membership_node_list_reply_received(struct qdevice_net_ins
  * Called when quorum node list reply (reply for votequorum votequorum_quorum_notify_fn)
  * is received. Vote is set to value returned by server (and can be overwriten by algorithm).
  *
+ * ring_id and ring_id_is_valid have same meaning as for
+ * qdevice_net_algo_test_config_node_list_reply_received
+ *
  * Callback should return 0 on success or -1 on failure (-> disconnect client).
  */
 int
 qdevice_net_algo_test_quorum_node_list_reply_received(struct qdevice_net_instance *instance,
-    uint32_t seq_number, enum tlv_vote *vote)
+    uint32_t seq_number, const struct tlv_ring_id *ring_id, int ring_id_is_valid,
+    enum tlv_vote *vote)
 {
 
 	qdevice_log(LOG_INFO, "algo-test: Quorum node list reply");
+
+	if (!ring_id_is_valid) {
+		*vote = TLV_VOTE_NO_CHANGE;
+	}
 
 	return (0);
 }
@@ -225,14 +247,21 @@ qdevice_net_algo_test_quorum_node_list_reply_received(struct qdevice_net_instanc
  * Called when reply for ask for vote message was received.
  * Vote is set to value returned by server (and can be overwriten by algorithm).
  *
+ * ring_id and ring_id_is_valid have same meaning as for
+ * qdevice_net_algo_test_config_node_list_reply_received
+ *
  * Callback should return 0 on success or -1 on failure (-> disconnect client).
  */
 int
 qdevice_net_algo_test_ask_for_vote_reply_received(struct qdevice_net_instance *instance,
-    uint32_t seq_number, enum tlv_vote *vote)
+    uint32_t seq_number, const struct tlv_ring_id *ring_id, int ring_id_is_valid, enum tlv_vote *vote)
 {
 
 	qdevice_log(LOG_INFO, "algo-test: Ask for vote reply received");
+
+	if (!ring_id_is_valid) {
+		*vote = TLV_VOTE_NO_CHANGE;
+	}
 
 	return (0);
 }
@@ -241,14 +270,21 @@ qdevice_net_algo_test_ask_for_vote_reply_received(struct qdevice_net_instance *i
  * Called when vote info message from server was received.
  * Vote is set to value sent by server (and can be overwriten by algorithm).
  *
+ * ring_id and ring_id_is_valid have same meaning as for
+ * qdevice_net_algo_test_config_node_list_reply_received
+ *
  * Callback should return 0 on success or -1 on failure (-> disconnect client).
  */
 int
 qdevice_net_algo_test_vote_info_received(struct qdevice_net_instance *instance,
-    uint32_t seq_number, enum tlv_vote *vote)
+    uint32_t seq_number, const struct tlv_ring_id *ring_id, int ring_id_is_valid, enum tlv_vote *vote)
 {
 
 	qdevice_log(LOG_INFO, "algo-test: Vote info received");
+
+	if (!ring_id_is_valid) {
+		*vote = TLV_VOTE_NO_CHANGE;
+	}
 
 	return (0);
 }

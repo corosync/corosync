@@ -128,7 +128,7 @@ extern "C" {
 /*
  * Decision algorithms supported by qnetd
  */
-#define QNETD_STATIC_SUPPORTED_DECISION_ALGORITHMS_SIZE         4
+#define QNETD_STATIC_SUPPORTED_DECISION_ALGORITHMS_SIZE	4
 
 extern enum tlv_decision_algorithm_type
     qnetd_static_supported_decision_algorithms[QNETD_STATIC_SUPPORTED_DECISION_ALGORITHMS_SIZE];

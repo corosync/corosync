@@ -344,6 +344,15 @@ qnetd_client_msg_received_init(struct qnetd_instance *instance, struct qnetd_cli
 		client->node_id = msg->node_id;
 	}
 
+	if (reply_error_code == TLV_REPLY_ERROR_CODE_NO_ERROR && !msg->ring_id_set) {
+		qnetd_log(LOG_ERR, "Received init message without ring id set. "
+		    "Sending error reply.");
+
+		reply_error_code = TLV_REPLY_ERROR_CODE_DOESNT_CONTAIN_REQUIRED_OPTION;
+	} else {
+		memcpy(&client->last_ring_id, &msg->ring_id, sizeof(struct tlv_ring_id));
+	}
+
 	if (reply_error_code == TLV_REPLY_ERROR_CODE_NO_ERROR && !msg->heartbeat_interval_set) {
 		qnetd_log(LOG_ERR, "Received init message without heartbeat interval set. "
 		    "Sending error reply.");
@@ -839,7 +848,7 @@ qnetd_client_msg_received_node_list(struct qnetd_instance *instance, struct qnet
 	}
 
 	if (msg_create_node_list_reply(&send_buffer->buffer, msg->seq_number, msg->node_list_type,
-	    msg->ring_id_set, &msg->ring_id, result_vote) == -1) {
+	    &client->last_ring_id, result_vote) == -1) {
 		qnetd_log(LOG_ERR, "Can't alloc node list reply msg. "
 		    "Disconnecting client connection.");
 
@@ -936,7 +945,7 @@ qnetd_client_msg_received_ask_for_vote(struct qnetd_instance *instance, struct q
 	}
 
 	if (msg_create_ask_for_vote_reply(&send_buffer->buffer, msg->seq_number,
-	    result_vote) == -1) {
+	    &client->last_ring_id, result_vote) == -1) {
 		qnetd_log(LOG_ERR, "Can't alloc ask for vote reply msg. "
 		    "Disconnecting client connection.");
 

@@ -75,7 +75,7 @@ qnetd_client_send_vote_info(struct qnetd_client *client, uint32_t msg_seq_number
 {
 	struct send_buffer_list_entry *send_buffer;
 
-        /*
+	/*
 	 * Store result vote
 	 */
 	client->last_sent_vote = vote;
@@ -93,7 +93,8 @@ qnetd_client_send_vote_info(struct qnetd_client *client, uint32_t msg_seq_number
 		return (-1);
 	}
 
-	if (msg_create_vote_info(&send_buffer->buffer, msg_seq_number, vote) == 0) {
+	if (msg_create_vote_info(&send_buffer->buffer, msg_seq_number,
+	    &client->last_ring_id, vote) == 0) {
 		qnetd_log(LOG_ERR, "Can't alloc vote info msg. "
 		    "Disconnecting client connection.");
 

@@ -175,7 +175,7 @@ qdevice_votequorum_init(struct qdevice_instance *instance)
 		(void)poll(NULL, 0, 1000);
 	}
 
-        if (res != CS_OK) {
+	if (res != CS_OK) {
 		qdevice_log(LOG_CRIT, "Failed to initialize the votequorum API. Error %s", cs_strerror(res));
 		exit(1);
 	}
@@ -227,8 +227,8 @@ qdevice_votequorum_destroy(struct qdevice_instance *instance)
 	res = votequorum_qdevice_unregister(instance->votequorum_handle,
 		instance->advanced_settings->votequorum_device_name);
 
-        if (res != CS_OK) {
-                qdevice_log(LOG_WARNING, "Unable to unregister votequorum device. Error %s", cs_strerror(res));
+	if (res != CS_OK) {
+		qdevice_log(LOG_WARNING, "Unable to unregister votequorum device. Error %s", cs_strerror(res));
 	}
 
 	res = votequorum_finalize(instance->votequorum_handle);
@@ -244,9 +244,9 @@ qdevice_votequorum_wait_for_ring_id(struct qdevice_instance *instance)
 
 	no_retries = 0;
 
-	while (!instance->vq_node_list_ring_id_set &&
-	    qdevice_votequorum_dispatch(instance) != -1 &&
-	    no_retries++ < instance->advanced_settings->max_cs_try_again) {
+	while (qdevice_votequorum_dispatch(instance) != -1 &&
+	    no_retries++ < instance->advanced_settings->max_cs_try_again &&
+	    !instance->vq_node_list_ring_id_set) {
 		(void)poll(NULL, 0, 1000);
 	}
 

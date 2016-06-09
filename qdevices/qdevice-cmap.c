@@ -222,7 +222,7 @@ qdevice_cmap_init(struct qdevice_instance *instance)
 		(void)poll(NULL, 0, 1000);
 	}
 
-        if (res != CS_OK) {
+	if (res != CS_OK) {
 		errx(1, "Failed to initialize the cmap API. Error %s", cs_strerror(res));
 	}
 
@@ -436,7 +436,7 @@ qdevice_cmap_destroy(struct qdevice_instance *instance)
 
 	res = cmap_finalize(instance->cmap_handle);
 
-        if (res != CS_OK) {
+	if (res != CS_OK) {
 		qdevice_log(LOG_WARNING, "Can't finalize cmap. Error %s", cs_strerror(res));
 	}
 }

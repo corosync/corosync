@@ -143,7 +143,8 @@ qdevice_net_algorithm_votequorum_expected_votes_notify(struct qdevice_net_instan
 
 int
 qdevice_net_algorithm_config_node_list_reply_received(struct qdevice_net_instance *instance,
-    uint32_t seq_number, int initial, enum tlv_vote *vote)
+    uint32_t seq_number, int initial, const struct tlv_ring_id *ring_id, int ring_id_is_valid,
+    enum tlv_vote *vote)
 {
 
 	if (instance->decision_algorithm >= QDEVICE_NET_STATIC_SUPPORTED_DECISION_ALGORITHMS_SIZE ||
@@ -154,12 +155,13 @@ qdevice_net_algorithm_config_node_list_reply_received(struct qdevice_net_instanc
 	}
 
 	return (qdevice_net_algorithm_array[instance->decision_algorithm]->
-	    config_node_list_reply_received(instance, seq_number, initial, vote));
+	    config_node_list_reply_received(instance, seq_number, initial, ring_id,
+	    ring_id_is_valid, vote));
 }
 
 int
 qdevice_net_algorithm_membership_node_list_reply_received(struct qdevice_net_instance *instance,
-    uint32_t seq_number, const struct tlv_ring_id *ring_id, enum tlv_vote *vote)
+    uint32_t seq_number, const struct tlv_ring_id *ring_id, int ring_id_is_valid, enum tlv_vote *vote)
 {
 
 	if (instance->decision_algorithm >= QDEVICE_NET_STATIC_SUPPORTED_DECISION_ALGORITHMS_SIZE ||
@@ -170,12 +172,14 @@ qdevice_net_algorithm_membership_node_list_reply_received(struct qdevice_net_ins
 	}
 
 	return (qdevice_net_algorithm_array[instance->decision_algorithm]->
-	    membership_node_list_reply_received(instance, seq_number, ring_id, vote));
+	    membership_node_list_reply_received(instance, seq_number, ring_id, ring_id_is_valid,
+	    vote));
 }
 
 int
 qdevice_net_algorithm_quorum_node_list_reply_received(struct qdevice_net_instance *instance,
-    uint32_t seq_number, enum tlv_vote *vote)
+    uint32_t seq_number, const struct tlv_ring_id *ring_id, int ring_id_is_valid,
+    enum tlv_vote *vote)
 {
 
 	if (instance->decision_algorithm >= QDEVICE_NET_STATIC_SUPPORTED_DECISION_ALGORITHMS_SIZE ||
@@ -186,12 +190,14 @@ qdevice_net_algorithm_quorum_node_list_reply_received(struct qdevice_net_instanc
 	}
 
 	return (qdevice_net_algorithm_array[instance->decision_algorithm]->
-	    quorum_node_list_reply_received(instance, seq_number, vote));
+	    quorum_node_list_reply_received(instance, seq_number, ring_id, ring_id_is_valid,
+	    vote));
 }
 
 int
 qdevice_net_algorithm_ask_for_vote_reply_received(struct qdevice_net_instance *instance,
-    uint32_t seq_number, enum tlv_vote *vote)
+    uint32_t seq_number, const struct tlv_ring_id *ring_id, int ring_id_is_valid,
+    enum tlv_vote *vote)
 {
 
 	if (instance->decision_algorithm >= QDEVICE_NET_STATIC_SUPPORTED_DECISION_ALGORITHMS_SIZE ||
@@ -202,12 +208,13 @@ qdevice_net_algorithm_ask_for_vote_reply_received(struct qdevice_net_instance *i
 	}
 
 	return (qdevice_net_algorithm_array[instance->decision_algorithm]->
-	    ask_for_vote_reply_received(instance, seq_number, vote));
+	    ask_for_vote_reply_received(instance, seq_number, ring_id, ring_id_is_valid, vote));
 }
 
 int
 qdevice_net_algorithm_vote_info_received(struct qdevice_net_instance *instance,
-    uint32_t seq_number, enum tlv_vote *vote)
+    uint32_t seq_number, const struct tlv_ring_id *ring_id, int ring_id_is_valid,
+    enum tlv_vote *vote)
 {
 
 	if (instance->decision_algorithm >= QDEVICE_NET_STATIC_SUPPORTED_DECISION_ALGORITHMS_SIZE ||
@@ -218,7 +225,7 @@ qdevice_net_algorithm_vote_info_received(struct qdevice_net_instance *instance,
 	}
 
 	return (qdevice_net_algorithm_array[instance->decision_algorithm]->
-	    vote_info_received(instance, seq_number, vote));
+	    vote_info_received(instance, seq_number, ring_id, ring_id_is_valid, vote));
 }
 
 int

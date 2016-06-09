@@ -94,7 +94,7 @@ nss_sock_create_socket(PRIntn af, int reuse_addr)
 		socket_option.value.reuse_addr = PR_TRUE;
 		if (PR_SetSocketOption(sock, &socket_option) != PR_SUCCESS) {
 			return (NULL);
-	         }
+		}
 	}
 
 	return (sock);
@@ -424,8 +424,8 @@ nss_sock_start_ssl_as_client(PRFileDesc *input_sock, const char *ssl_url,
 			 */
 			*reset_would_block = 1;
 		} else {
-	                return (NULL);
-	        }
+			return (NULL);
+		}
 	}
 
 	return (ssl_sock);
@@ -464,16 +464,16 @@ nss_sock_start_ssl_as_server(PRFileDesc *input_sock, CERTCertificate *server_cer
 		return (NULL);
 	}
 
-        if (force_handshake && SSL_ForceHandshake(ssl_sock) != SECSuccess) {
+	if (force_handshake && SSL_ForceHandshake(ssl_sock) != SECSuccess) {
 		if (PR_GetError() == PR_WOULD_BLOCK_ERROR) {
 			/*
 			 * Mask would block error.
 			 */
 			*reset_would_block = 1;
 		} else {
-	                return (NULL);
-	        }
-        }
+			return (NULL);
+		}
+	}
 
 	return (ssl_sock);
 }

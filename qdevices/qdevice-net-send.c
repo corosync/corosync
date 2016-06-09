@@ -100,6 +100,7 @@ qdevice_net_send_init(struct qdevice_net_instance *instance)
 	enum tlv_opt_type *supported_opts;
 	size_t no_supported_opts;
 	struct send_buffer_list_entry *send_buffer;
+	struct tlv_ring_id tlv_rid;
 
 	tlv_get_supported_options(&supported_opts, &no_supported_opts);
 	msg_get_supported_messages(&supported_msgs, &no_supported_msgs);
@@ -112,16 +113,21 @@ qdevice_net_send_init(struct qdevice_net_instance *instance)
 		return (-1);
 	}
 
+	qdevice_net_votequorum_ring_id_to_tlv(&tlv_rid,
+	    &instance->qdevice_instance_ptr->vq_node_list_ring_id);
+
 	if (msg_create_init(&send_buffer->buffer, 1, instance->last_msg_seq_num,
 	    instance->decision_algorithm,
 	    supported_msgs, no_supported_msgs, supported_opts, no_supported_opts,
 	    instance->qdevice_instance_ptr->node_id, instance->heartbeat_interval,
-	    &instance->tie_breaker) == 0) {
+	    &instance->tie_breaker, &tlv_rid) == 0) {
 		qdevice_log(LOG_ERR, "Can't allocate send buffer for init msg");
 
 		send_buffer_list_discard_new(&instance->send_buffer_list, send_buffer);
 		return (-1);
 	}
+
+	memcpy(&instance->last_sent_ring_id, &tlv_rid, sizeof(instance->last_sent_ring_id));
 
 	send_buffer_list_put(&instance->send_buffer_list, send_buffer);
 

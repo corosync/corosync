@@ -47,7 +47,7 @@ extern int	qdevice_net_algo_test_connected(struct qdevice_net_instance *instance
     int *send_config_node_list, int *send_membership_node_list, int *send_quorum_node_list,
     enum tlv_vote *vote);
 
-extern int      qdevice_net_algo_test_config_node_list_changed(
+extern int	qdevice_net_algo_test_config_node_list_changed(
     struct qdevice_net_instance *instance, const struct node_list *nlist,
     int config_version_set, uint64_t config_version, int *send_node_list, enum tlv_vote *vote);
 
@@ -64,22 +64,23 @@ extern int	qdevice_net_algo_test_votequorum_expected_votes_notify(
 
 extern int	qdevice_net_algo_test_config_node_list_reply_received(
     struct qdevice_net_instance *instance, uint32_t seq_number, int initial,
-    enum tlv_vote *vote);
+    const struct tlv_ring_id *ring_id, int ring_id_is_valid, enum tlv_vote *vote);
 
 extern int	qdevice_net_algo_test_membership_node_list_reply_received(
     struct qdevice_net_instance *instance, uint32_t seq_number, const struct tlv_ring_id *ring_id,
-    enum tlv_vote *vote);
+    int ring_id_is_valid, enum tlv_vote *vote);
 
 extern int	qdevice_net_algo_test_quorum_node_list_reply_received(
     struct qdevice_net_instance *instance, uint32_t seq_number,
-    enum tlv_vote *vote);
+    const struct tlv_ring_id *ring_id, int ring_id_is_valid, enum tlv_vote *vote);
 
 extern int	qdevice_net_algo_test_ask_for_vote_reply_received(
     struct qdevice_net_instance *instance, uint32_t seq_number,
-    enum tlv_vote *vote);
+    const struct tlv_ring_id *ring_id, int ring_id_is_valid, enum tlv_vote *vote);
 
 extern int	qdevice_net_algo_test_vote_info_received(struct qdevice_net_instance *instance,
-    uint32_t seq_number, enum tlv_vote *vote);
+    uint32_t seq_number, const struct tlv_ring_id *ring_id, int ring_id_is_valid,
+    enum tlv_vote *vote);
 
 extern int	qdevice_net_algo_test_echo_reply_received(
     struct qdevice_net_instance *instance, uint32_t seq_number, int is_expected_seq_number);

@@ -273,7 +273,8 @@ msg_create_init(struct dynar *msg, int add_msg_seq_number, uint32_t msg_seq_numb
     enum tlv_decision_algorithm_type decision_algorithm,
     const enum msg_type *supported_msgs, size_t no_supported_msgs,
     const enum tlv_opt_type *supported_opts, size_t no_supported_opts, uint32_t node_id,
-    uint32_t heartbeat_interval, const struct tlv_tie_breaker *tie_breaker)
+    uint32_t heartbeat_interval, const struct tlv_tie_breaker *tie_breaker,
+    const struct tlv_ring_id *ring_id)
 {
 	uint16_t *u16a;
 	int res;
@@ -313,9 +314,9 @@ msg_create_init(struct dynar *msg, int add_msg_seq_number, uint32_t msg_seq_numb
 		}
 	}
 
-        if (tlv_add_node_id(msg, node_id) == -1) {
+	if (tlv_add_node_id(msg, node_id) == -1) {
 		goto small_buf_err;
-        }
+	}
 
 	if (tlv_add_decision_algorithm(msg, decision_algorithm) == -1) {
 		goto small_buf_err;
@@ -326,6 +327,10 @@ msg_create_init(struct dynar *msg, int add_msg_seq_number, uint32_t msg_seq_numb
 	}
 
 	if (tlv_add_tie_breaker(msg, tie_breaker) == -1) {
+		goto small_buf_err;
+	}
+
+	if (tlv_add_ring_id(msg, ring_id) == -1) {
 		goto small_buf_err;
 	}
 
@@ -570,7 +575,7 @@ small_buf_err:
 
 size_t
 msg_create_node_list_reply(struct dynar *msg, uint32_t msg_seq_number,
-    enum tlv_node_list_type node_list_type, int add_ring_id, const struct tlv_ring_id *ring_id,
+    enum tlv_node_list_type node_list_type, const struct tlv_ring_id *ring_id,
     enum tlv_vote vote)
 {
 
@@ -587,10 +592,8 @@ msg_create_node_list_reply(struct dynar *msg, uint32_t msg_seq_number,
 		goto small_buf_err;
 	}
 
-	if (add_ring_id) {
-		if (tlv_add_ring_id(msg, ring_id) == -1) {
-			goto small_buf_err;
-		}
+	if (tlv_add_ring_id(msg, ring_id) == -1) {
+		goto small_buf_err;
 	}
 
 	if (tlv_add_vote(msg, vote) == -1) {
@@ -627,7 +630,8 @@ small_buf_err:
 }
 
 size_t
-msg_create_ask_for_vote_reply(struct dynar *msg, uint32_t msg_seq_number, enum tlv_vote vote)
+msg_create_ask_for_vote_reply(struct dynar *msg, uint32_t msg_seq_number,
+    const struct tlv_ring_id *ring_id, enum tlv_vote vote)
 {
 
 	dynar_clean(msg);
@@ -643,6 +647,10 @@ msg_create_ask_for_vote_reply(struct dynar *msg, uint32_t msg_seq_number, enum t
 		goto small_buf_err;
 	}
 
+	if (tlv_add_ring_id(msg, ring_id) == -1) {
+		goto small_buf_err;
+	}
+
 	msg_set_len(msg, dynar_size(msg) - (MSG_TYPE_LENGTH + MSG_LENGTH_LENGTH));
 
 	return (dynar_size(msg));
@@ -652,7 +660,8 @@ small_buf_err:
 }
 
 size_t
-msg_create_vote_info(struct dynar *msg, uint32_t msg_seq_number, enum tlv_vote vote)
+msg_create_vote_info(struct dynar *msg, uint32_t msg_seq_number, const struct tlv_ring_id *ring_id,
+    enum tlv_vote vote)
 {
 
 	dynar_clean(msg);
@@ -665,6 +674,10 @@ msg_create_vote_info(struct dynar *msg, uint32_t msg_seq_number, enum tlv_vote v
 	}
 
 	if (tlv_add_vote(msg, vote) == -1) {
+		goto small_buf_err;
+	}
+
+	if (tlv_add_ring_id(msg, ring_id) == -1) {
 		goto small_buf_err;
 	}
 

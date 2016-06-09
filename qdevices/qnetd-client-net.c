@@ -192,7 +192,7 @@ qnetd_client_net_accept(struct qnetd_instance *instance)
 
 	res_err = -1;
 
-        if ((client_socket = PR_Accept(instance->server.socket, &client_addr,
+	if ((client_socket = PR_Accept(instance->server.socket, &client_addr,
 	    PR_INTERVAL_NO_TIMEOUT)) == NULL) {
 		qnetd_log_nss(LOG_ERR, "Can't accept connection");
 		return (-1);

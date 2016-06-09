@@ -112,23 +112,40 @@ qdevice_net_algo_lms_votequorum_quorum_notify(struct qdevice_net_instance *insta
 
 int
 qdevice_net_algo_lms_config_node_list_reply_received(struct qdevice_net_instance *instance,
-    uint32_t seq_number, int initial, enum tlv_vote *vote)
+    uint32_t seq_number, int initial, const struct tlv_ring_id *ring_id, int ring_id_is_valid,
+    enum tlv_vote *vote)
 {
+
+	if (!ring_id_is_valid) {
+		*vote = TLV_VOTE_NO_CHANGE;
+	}
 
 	return (0);
 }
 
 int
 qdevice_net_algo_lms_membership_node_list_reply_received(struct qdevice_net_instance *instance,
-    uint32_t seq_number, const struct tlv_ring_id *ring_id, enum tlv_vote *vote)
+    uint32_t seq_number, const struct tlv_ring_id *ring_id, int ring_id_is_valid,
+    enum tlv_vote *vote)
 {
+
+	if (!ring_id_is_valid) {
+		*vote = TLV_VOTE_NO_CHANGE;
+	}
+
 	return (0);
 }
 
 int
 qdevice_net_algo_lms_quorum_node_list_reply_received(struct qdevice_net_instance *instance,
-    uint32_t seq_number, enum tlv_vote *vote)
+    uint32_t seq_number, const struct tlv_ring_id *ring_id, int ring_id_is_valid,
+    enum tlv_vote *vote)
 {
+
+	if (!ring_id_is_valid) {
+		*vote = TLV_VOTE_NO_CHANGE;
+	}
+
 	return (0);
 }
 
@@ -142,16 +159,27 @@ qdevice_net_algo_lms_votequorum_expected_votes_notify(struct qdevice_net_instanc
 
 int
 qdevice_net_algo_lms_ask_for_vote_reply_received(struct qdevice_net_instance *instance,
-    uint32_t seq_number, enum tlv_vote *vote)
+    uint32_t seq_number, const struct tlv_ring_id *ring_id, int ring_id_is_valid,
+    enum tlv_vote *vote)
 {
+
+	if (!ring_id_is_valid) {
+		*vote = TLV_VOTE_NO_CHANGE;
+	}
 
 	return (0);
 }
 
 int
 qdevice_net_algo_lms_vote_info_received(struct qdevice_net_instance *instance,
-    uint32_t seq_number, enum tlv_vote *vote)
+    uint32_t seq_number, const struct tlv_ring_id *ring_id, int ring_id_is_valid,
+    enum tlv_vote *vote)
 {
+
+	if (!ring_id_is_valid) {
+		*vote = TLV_VOTE_NO_CHANGE;
+	}
+
 	return (0);
 }
 

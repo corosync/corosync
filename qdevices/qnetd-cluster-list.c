@@ -118,7 +118,7 @@ qnetd_cluster_list_free(struct qnetd_cluster_list *list)
 		free(cluster);
 
 		cluster = cluster_next;
-        }
+	}
 
 	TAILQ_INIT(list);
 }
