@@ -67,7 +67,6 @@ dynar_getopt_lex_token_next(struct dynar_getopt_lex *lex)
 	char *str;
 	char ch;
 	int state;
-	int res;
 
 	dynar_clean(&lex->option);
 	dynar_clean(&lex->value);
@@ -77,7 +76,6 @@ dynar_getopt_lex_token_next(struct dynar_getopt_lex *lex)
 
 	state = 1;
 	pos = lex->pos;
-	res = 0;
 
 	while (state != 0 && pos < size) {
 		ch = str[pos];
