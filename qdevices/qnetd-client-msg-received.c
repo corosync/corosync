@@ -772,13 +772,6 @@ qnetd_client_msg_received_node_list(struct qnetd_instance *instance, struct qnet
 		qnetd_log(LOG_DEBUG, "Algorithm result vote is %s", tlv_vote_to_str(result_vote));
 	}
 
-	if (msg->node_list_type == TLV_NODE_LIST_TYPE_MEMBERSHIP &&
-	    result_vote == TLV_VOTE_NO_CHANGE) {
-		qnetd_log(LOG_ERR, "qnetd_client_msg_received_node_list fatal error. "
-		    "node_list_type is membership and algorithm result vote is no_change");
-		exit(1);
-	}
-
 	/*
 	 * Store node list for future use
 	 */

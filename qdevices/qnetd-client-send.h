@@ -47,7 +47,7 @@ extern int		qnetd_client_send_err(struct qnetd_client *client,
     int add_msg_seq_number, uint32_t msg_seq_number, enum tlv_reply_error_code reply);
 
 extern int		qnetd_client_send_vote_info(struct qnetd_client *client,
-    uint32_t msg_seq_number, enum tlv_vote vote);
+    uint32_t msg_seq_number, const struct tlv_ring_id *ring_id, enum tlv_vote vote);
 
 #ifdef __cplusplus
 }

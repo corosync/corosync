@@ -78,7 +78,8 @@ qnetd_client_algo_timer_callback(void *data1, void *data2)
 		client->algo_timer_vote_info_msq_seq_number++;
 
 		if (qnetd_client_send_vote_info(client,
-		    client->algo_timer_vote_info_msq_seq_number, result_vote) != 0) {
+		    client->algo_timer_vote_info_msq_seq_number, &client->last_ring_id,
+		    result_vote) != 0) {
 			client->schedule_disconnect = 1;
 			return (0);
 		}

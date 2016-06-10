@@ -251,7 +251,7 @@ qnetd_ipc_cmd_list(struct qnetd_instance *instance, struct dynar *outbuf, int ve
 	TAILQ_FOREACH(cluster, &instance->clusters, entries) {
 		if (cluster_name != NULL && strcmp(cluster_name, "") != 0 &&
 		    strcmp(cluster_name, cluster->cluster_name) != 0) {
-			continue ;
+			continue;
 		}
 
 		if (dynar_str_catf(outbuf, "Cluster \"%s\":\n", cluster->cluster_name) == -1) {

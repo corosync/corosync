@@ -79,3 +79,17 @@ qnetd_cluster_size(const struct qnetd_cluster *cluster)
 
 	return (res);
 }
+
+struct qnetd_client *
+qnetd_cluster_find_client_by_node_id(const struct qnetd_cluster *cluster, uint32_t node_id)
+{
+	struct qnetd_client *client;
+
+	TAILQ_FOREACH(client, &cluster->client_list, cluster_entries) {
+		if (client->node_id == node_id) {
+			return (client);
+		}
+	}
+
+	return (NULL);
+}

@@ -191,7 +191,7 @@ qdevice_ipc_cmd_status_add_quorum_node_list(struct qdevice_instance *instance, s
 		node = &instance->vq_quorum_node_list[u32];
 
 		if (node->nodeid == 0) {
-			continue ;
+			continue;
 		}
 
 		if (dynar_str_catf(outbuf, "    %"PRIu32"\tNode ID = "UTILS_PRI_NODE_ID

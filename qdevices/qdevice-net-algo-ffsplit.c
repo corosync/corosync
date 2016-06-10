@@ -60,7 +60,7 @@ check_vqinfo_validity(struct qdevice_net_instance *instance)
 		cs_res = votequorum_getinfo(qdev_instance->votequorum_handle, node_id, &vq_info);
 
 		if (cs_res == CS_ERR_NOT_EXIST) {
-			continue ;
+			continue;
 		} else if (cs_res != CS_OK) {
 			qdevice_log(LOG_CRIT, "Can't get votequorum information for node "
 			    UTILS_PRI_NODE_ID ". Error %s", node_id, cs_strerror(cs_res));
