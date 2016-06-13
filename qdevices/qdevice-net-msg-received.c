@@ -278,7 +278,14 @@ qdevice_net_msg_received_init_reply(struct qdevice_net_instance *instance,
 		qdevice_log(LOG_ERR, "Received init reply message with error code %"PRIu16". "
 		    "Disconnecting from server", msg->reply_error_code);
 
-		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_SERVER_SENT_ERROR;
+		if (msg->reply_error_code == TLV_REPLY_ERROR_CODE_DUPLICATE_NODE_ID) {
+			qdevice_log(LOG_ERR, "Duplicate node id may be result of server not yet "
+			    "accepted this node disconnect. Retry again.");
+			instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_SERVER_SENT_DUPLICATE_NODE_ID_ERROR;
+		} else {
+			instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_SERVER_SENT_ERROR;
+		}
+
 		return (-1);
 	}
 

@@ -70,6 +70,8 @@ enum qdevice_net_disconnect_reason {
 
 	/* Received message with error field set to non TLV_REPLY_ERROR_CODE_NO_ERROR value */
 	QDEVICE_NET_DISCONNECT_REASON_SERVER_SENT_ERROR,
+	/* Received message with error field set to TLV_REPLY_ERROR_CODE_DUPLICATE_NODE_ID value */
+	QDEVICE_NET_DISCONNECT_REASON_SERVER_SENT_DUPLICATE_NODE_ID_ERROR,
 	/* Server doesn't support client selected decision algorithm */
 	QDEVICE_NET_DISCONNECT_REASON_SERVER_DOESNT_SUPPORT_REQUIRED_ALGORITHM,
 
@@ -103,13 +105,14 @@ enum qdevice_net_disconnect_reason {
 	QDEVICE_NET_DISCONNECT_REASON_ALGO_ECHO_REPLY_NOT_RECEIVED_ERR,
 };
 
-#define qdevice_net_disconnect_reason_try_reconnect(reason)	(		\
-    reason == QDEVICE_NET_DISCONNECT_REASON_MSG_DECODE_ERROR ||			\
-    reason == QDEVICE_NET_DISCONNECT_REASON_SERVER_CLOSED_CONNECTION ||		\
-    reason == QDEVICE_NET_DISCONNECT_REASON_CANT_READ_MESSAGE ||		\
-    reason == QDEVICE_NET_DISCONNECT_REASON_CANT_SEND_MESSAGE ||		\
-    reason == QDEVICE_NET_DISCONNECT_REASON_CANT_CONNECT_TO_THE_SERVER ||	\
-    reason == QDEVICE_NET_DISCONNECT_REASON_ALGO_ECHO_REPLY_NOT_RECEIVED_ERR)
+#define qdevice_net_disconnect_reason_try_reconnect(reason) (				\
+    reason == QDEVICE_NET_DISCONNECT_REASON_MSG_DECODE_ERROR ||				\
+    reason == QDEVICE_NET_DISCONNECT_REASON_SERVER_CLOSED_CONNECTION ||			\
+    reason == QDEVICE_NET_DISCONNECT_REASON_CANT_READ_MESSAGE ||			\
+    reason == QDEVICE_NET_DISCONNECT_REASON_CANT_SEND_MESSAGE ||			\
+    reason == QDEVICE_NET_DISCONNECT_REASON_CANT_CONNECT_TO_THE_SERVER ||		\
+    reason == QDEVICE_NET_DISCONNECT_REASON_ALGO_ECHO_REPLY_NOT_RECEIVED_ERR ||		\
+    reason == QDEVICE_NET_DISCONNECT_REASON_SERVER_SENT_DUPLICATE_NODE_ID_ERROR)
 
 #define qdevice_net_disconnect_reason_force_disconnect(reason)	(			\
     reason == QDEVICE_NET_DISCONNECT_REASON_COROSYNC_CONNECTION_CLOSED ||		\
