@@ -299,3 +299,39 @@ qdevice_votequorum_poll(struct qdevice_instance *instance, int cast_vote)
 
 	return (0);
 }
+
+int
+qdevice_votequorum_master_wins(struct qdevice_instance *instance, int allow)
+{
+	cs_error_t res;
+	int final_allow;
+
+	final_allow = allow;
+
+	if (instance->advanced_settings->master_wins ==
+	    QDEVICE_ADVANCED_SETTINGS_MASTER_WINS_FORCE_OFF && allow) {
+		qdevice_log(LOG_WARNING, "Allow of master wins is requested, but user forcibly "
+		    "disallowed it. Keeping master wins disallowed.");
+
+		final_allow = 0;
+	}
+
+	if (instance->advanced_settings->master_wins ==
+	    QDEVICE_ADVANCED_SETTINGS_MASTER_WINS_FORCE_ON && !allow) {
+		qdevice_log(LOG_WARNING, "Disallow of master wins is requested, but user forcibly "
+		    "allowed it. Keeping master wins allowed.");
+
+		final_allow = 1;
+	}
+
+	res = votequorum_qdevice_master_wins(instance->votequorum_handle,
+	    instance->advanced_settings->votequorum_device_name, final_allow);
+
+	if (res != CS_OK) {
+		qdevice_log(LOG_CRIT, "Can't set master wins. Error %s", cs_strerror(res));
+
+		return (-1);
+	}
+
+	return (0);
+}

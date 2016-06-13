@@ -55,6 +55,9 @@ extern int			qdevice_votequorum_poll(struct qdevice_instance *instance,
 extern int			qdevice_votequorum_wait_for_ring_id(
     struct qdevice_instance *instance);
 
+extern int			qdevice_votequorum_master_wins(struct qdevice_instance *instance,
+    int allow);
+
 #ifdef __cplusplus
 }
 #endif

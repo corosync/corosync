@@ -39,6 +39,12 @@
 extern "C" {
 #endif
 
+enum qdevice_advanced_settings_master_wins {
+	QDEVICE_ADVANCED_SETTINGS_MASTER_WINS_MODEL,
+	QDEVICE_ADVANCED_SETTINGS_MASTER_WINS_FORCE_ON,
+	QDEVICE_ADVANCED_SETTINGS_MASTER_WINS_FORCE_OFF,
+};
+
 struct qdevice_advanced_settings {
 	char *lock_file;
 	char *local_socket_file;
@@ -48,6 +54,7 @@ struct qdevice_advanced_settings {
 	size_t ipc_max_clients;
 	size_t ipc_max_send_size;
 	size_t ipc_max_receive_size;
+	enum qdevice_advanced_settings_master_wins master_wins;
 
 	/*
 	 * Related to model NET

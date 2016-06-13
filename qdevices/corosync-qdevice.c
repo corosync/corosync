@@ -207,6 +207,12 @@ main(int argc, char * const argv[])
 		return (1);
 	}
 
+	qdevice_log(LOG_DEBUG, "Configuring master_wins");
+	if (qdevice_votequorum_master_wins(&instance, (advanced_settings.master_wins ==
+	    QDEVICE_ADVANCED_SETTINGS_MASTER_WINS_FORCE_ON ? 1 : 0)) != 0) {
+		return (1);
+	}
+
 	qdevice_log(LOG_DEBUG, "Getting configuration node list");
 	if (qdevice_cmap_store_config_node_list(&instance) != 0) {
 		return (1);

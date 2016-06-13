@@ -85,6 +85,8 @@ qdevice_advanced_settings_init(struct qdevice_advanced_settings *settings)
 	settings->net_delay_before_reconnect = QDEVICE_NET_DEFAULT_DELAY_BEFORE_RECONNECT;
 	settings->net_test_algorithm_enabled = QDEVICE_NET_DEFAULT_TEST_ALGORITHM_ENABLED;
 
+	settings->master_wins = QDEVICE_ADVANCED_SETTINGS_MASTER_WINS_MODEL;
+
 	return (0);
 }
 
@@ -259,6 +261,18 @@ qdevice_advanced_settings_set(struct qdevice_advanced_settings *settings,
 		}
 
 		settings->net_test_algorithm_enabled = (uint8_t)tmpll;
+	} else if (strcasecmp(option, "master_wins") == 0) {
+		tmpll = utils_parse_bool_str(value);
+
+		if (tmpll == 0) {
+			settings->master_wins = QDEVICE_ADVANCED_SETTINGS_MASTER_WINS_FORCE_OFF;
+		} else if (tmpll == 1) {
+			settings->master_wins = QDEVICE_ADVANCED_SETTINGS_MASTER_WINS_FORCE_ON;
+		} else if (strcasecmp(value, "model") == 0) {
+			settings->master_wins = QDEVICE_ADVANCED_SETTINGS_MASTER_WINS_MODEL;
+		} else {
+			return (-2);
+		}
 	} else {
 		return (-1);
 	}
