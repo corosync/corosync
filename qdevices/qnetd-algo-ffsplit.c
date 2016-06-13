@@ -275,61 +275,109 @@ qnetd_algo_ffsplit_is_membership_stable(const struct qnetd_client *client, int c
 	return (1);
 }
 
-/*
- * 0 - Not quarate
- * 1 - Quorate but not fulfilling tie breaker or quorate with more than 50%
- * 2 - Quorate and fulfilling tie breaker
- */
-static unsigned int
-qnetd_algo_ffsplit_get_partition_score(const struct qnetd_client *client,
-    const struct node_list *config_node_list, const struct node_list *membership_node_list)
+static size_t
+qnetd_algo_ffsplit_no_active_clients_in_partition(const struct qnetd_client *client,
+    const struct node_list *membership_node_list)
 {
+	const struct node_list_entry *iter_node;
+	const struct qnetd_client *iter_client;
+	size_t res;
 
-	if (node_list_size(config_node_list) % 2 != 0) {
+	res = 0;
+
+	if (client == NULL || membership_node_list == NULL) {
+		return (0);
+	}
+
+	TAILQ_FOREACH(iter_node, membership_node_list, entries) {
+		iter_client = qnetd_cluster_find_client_by_node_id(client->cluster,
+		    iter_node->node_id);
+		if (iter_client != NULL) {
+			res++;
+		}
+	}
+
+	return (res);
+}
+
+/*
+ * Compares two partitions. Return 1 if client1, config_node_list1, membership_node_list1 is
+ * "better" than client2, config_node_list2, membership_node_list2
+ */
+static int
+qnetd_algo_ffsplit_partition_cmp(const struct qnetd_client *client1,
+    const struct node_list *config_node_list1, const struct node_list *membership_node_list1,
+    const struct qnetd_client *client2,
+    const struct node_list *config_node_list2, const struct node_list *membership_node_list2)
+{
+	size_t part1_active_clients, part2_active_clients;
+
+	if (node_list_size(config_node_list1) % 2 != 0) {
 		/*
 		 * Odd clusters never split into 50:50.
 		 */
-		if (node_list_size(membership_node_list) > node_list_size(config_node_list) / 2) {
+		if (node_list_size(membership_node_list1) > node_list_size(config_node_list1) / 2) {
 			return (1);
 		} else {
 			return (0);
 		}
 	} else {
-		if (node_list_size(membership_node_list) > node_list_size(config_node_list) / 2) {
+		if (node_list_size(membership_node_list1) > node_list_size(config_node_list1) / 2) {
 			return (1);
-		} else if (node_list_size(membership_node_list) < node_list_size(config_node_list) / 2) {
+		} else if (node_list_size(membership_node_list1) < node_list_size(config_node_list1) / 2) {
 			return (0);
+		}
+
+		/*
+		 * 50:50 split
+		 */
+
+		/*
+		 * Check how many active clients are in partitions
+		 */
+		part1_active_clients = qnetd_algo_ffsplit_no_active_clients_in_partition(
+		    client1, membership_node_list1);
+		part2_active_clients = qnetd_algo_ffsplit_no_active_clients_in_partition(
+		    client2, membership_node_list2);
+
+		if (part1_active_clients > part2_active_clients) {
+			return (1);
+		} else if (part1_active_clients < part2_active_clients) {
+			return (0);
+		}
+
+		/*
+		 * Number of active clients in both partitions equals. Use tie-breaker.
+		 */
+
+		if (qnetd_algo_ffsplit_is_prefered_partition(client1, config_node_list1,
+		    membership_node_list1)) {
+			return (1);
 		} else {
-			/*
-			 * 50:50 split
-			 */
-			if (qnetd_algo_ffsplit_is_prefered_partition(client, config_node_list,
-			    membership_node_list)) {
-				return (2);
-			} else {
-				return (1);
-			}
+			return (0);
 		}
 	}
 
-	qnetd_log(LOG_CRIT, "qnetd_algo_ffsplit_get_partition_score unhandled case");
+	qnetd_log(LOG_CRIT, "qnetd_algo_ffsplit_partition_cmp unhandled case");
 	exit(1);
-
-	return (-1);
+	/* NOTREACHED */
 }
 
+/*
+ * Select best partition for given client->cluster.
+ * If there is no partition which could become quorate, NULL is returned
+ */
 static const struct node_list *
 qnetd_algo_ffsplit_select_partition(const struct qnetd_client *client, int client_leaving,
     const struct node_list *config_node_list, const struct node_list *membership_node_list)
 {
-	unsigned int highest_score, iter_score;
 	const struct qnetd_client *iter_client;
-	const struct node_list *result_node_list;
-	const struct node_list *iter_config_node_list;
-	const struct node_list *iter_membership_node_list;
+	const struct qnetd_client *best_client;
+	const struct node_list *best_config_node_list, *best_membership_node_list;
+	const struct node_list *iter_config_node_list, *iter_membership_node_list;
 
-	highest_score = 0;
-	result_node_list = NULL;
+	best_client = NULL;
+	best_config_node_list = best_membership_node_list = NULL;
 
 	/*
 	 * Get highest score
@@ -347,14 +395,16 @@ qnetd_algo_ffsplit_select_partition(const struct qnetd_client *client, int clien
 			iter_membership_node_list = &iter_client->last_membership_node_list;
 		}
 
-		if ((iter_score = qnetd_algo_ffsplit_get_partition_score(iter_client, iter_config_node_list,
-		    iter_membership_node_list)) > highest_score) {
-			highest_score = iter_score;
-			result_node_list = iter_membership_node_list;
+		if (qnetd_algo_ffsplit_partition_cmp(iter_client, iter_config_node_list,
+		    iter_membership_node_list, best_client, best_config_node_list,
+		    best_membership_node_list) > 0) {
+			best_client = iter_client;
+			best_config_node_list = iter_config_node_list;
+			best_membership_node_list = iter_membership_node_list;
 		}
 	}
 
-	return (result_node_list);
+	return (best_membership_node_list);
 }
 
 /*
