@@ -107,7 +107,7 @@ static struct list_head lib_trackers_list;
 static struct list_head internal_trackers_list;
 static struct memb_ring_id quorum_ring_id;
 static size_t quorum_view_list_entries = 0;
-static int quorum_view_list[PROCESSOR_COUNT_MAX+1];
+static int quorum_view_list[PROCESSOR_COUNT_MAX];
 struct quorum_services_api_ver1 *quorum_iface = NULL;
 static char view_buf[64];
 
