@@ -406,6 +406,10 @@ AC_ARG_ENABLE([qdevices],
 	[  --enable-qdevices               : Quorum devices support ],,
 	[ enable_qdevices="no" ])
 AM_CONDITIONAL(BUILD_QDEVICES, test x$enable_qdevices = xyes)
+AC_ARG_ENABLE([qnetd],
+	[  --enable-qnetd                  : Quorum Net Daemon support ],,
+	[ enable_qnetd="no" ])
+AM_CONDITIONAL(BUILD_QNETD, test x$enable_qnetd = xyes)
 
 # *FLAGS handling goes here
 
@@ -486,6 +490,9 @@ if test "x${enable_xmlconf}" = xyes; then
 fi
 if test "x${enable_qdevices}" = xyes; then
 	PACKAGE_FEATURES="$PACKAGE_FEATURES qdevices"
+fi
+if test "x${enable_qnetd}" = xyes; then
+	PACKAGE_FEATURES="$PACKAGE_FEATURES qnetd"
 fi
 
 do_snmp=0

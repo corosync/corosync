@@ -31,16 +31,20 @@
 
 MAINTAINERCLEANFILES    = Makefile.in
 
-if BUILD_QDEVICES
-
 SUBDIRS			=
 
-sbin_PROGRAMS		= corosync-qnetd corosync-qdevice corosync-qnetd-tool \
-                          corosync-qdevice-tool
+bin_PROGRAMS		=
+sbin_PROGRAMS		=
+sbin_SCRIPTS		=
+EXTRA_DIST		=
 
-sbin_SCRIPTS            = corosync-qnetd-certutil corosync-qdevice-net-certutil
+if BUILD_QNETD
 
-EXTRA_DIST		= corosync-qdevice-net-certutil.sh corosync-qnetd-certutil.sh
+bin_PROGRAMS		+= corosync-qnetd corosync-qnetd-tool
+
+sbin_SCRIPTS            += corosync-qnetd-certutil
+
+EXTRA_DIST		+= corosync-qnetd-certutil.sh
 
 corosync_qnetd_SOURCES	= corosync-qnetd.c \
                           dynar.c dynar.h msg.c msg.h msgio.c msgio.h \
@@ -68,6 +72,28 @@ corosync_qnetd_SOURCES	= corosync-qnetd.c \
                           unix-socket.c unix-socket.h qnetd-ipc-cmd.c qnetd-ipc-cmd.h \
                           qnetd-poll-array-user-data.h qnet-config.h dynar-getopt-lex.c \
                           dynar-getopt-lex.h qnetd-advanced-settings.c qnetd-advanced-settings.h
+
+corosync_qnetd_tool_SOURCES = corosync-qnetd-tool.c unix-socket.c unix-socket.h dynar.c dynar.h \
+                              dynar-str.c dynar-str.h
+
+corosync_qnetd_CFLAGS		= $(nss_CFLAGS)
+corosync_qnetd_LDADD		= $(nss_LIBS)
+
+corosync-qnetd-certutil: corosync-qnetd-certutil.sh
+	sed -e 's#@''DATADIR@#${datadir}#g' \
+	    -e 's#@''BASHPATH@#${BASHPATH}#g' \
+	    -e 's#@''COROSYSCONFDIR@#${COROSYSCONFDIR}#g' \
+	    $< > $@
+
+endif
+
+if BUILD_QDEVICES
+
+sbin_PROGRAMS		+= corosync-qdevice corosync-qdevice-tool
+
+sbin_SCRIPTS            += corosync-qdevice-net-certutil
+
+EXTRA_DIST		+= corosync-qdevice-net-certutil.sh
 
 corosync_qdevice_SOURCES = corosync-qdevice.c \
                            qdevice-cmap.c qdevice-cmap.h \
@@ -103,24 +129,12 @@ corosync_qdevice_SOURCES = corosync-qdevice.c \
                            qdevice-model-type.h qdevice-advanced-settings.c \
                            qdevice-advanced-settings.h dynar-getopt-lex.c dynar-getopt-lex.h
 
-corosync_qnetd_tool_SOURCES = corosync-qnetd-tool.c unix-socket.c unix-socket.h dynar.c dynar.h \
-                              dynar-str.c dynar-str.h
-
 corosync_qdevice_tool_SOURCES = corosync-qdevice-tool.c unix-socket.c unix-socket.h dynar.c dynar.h \
                                 dynar-str.c dynar-str.h
 
-corosync_qnetd_CFLAGS		= $(nss_CFLAGS)
-corosync_qnetd_LDADD		= $(nss_LIBS)
-
 corosync_qdevice_CFLAGS	= $(nss_CFLAGS)
 corosync_qdevice_LDADD	= $(nss_LIBS) $(LIBQB_LIBS) $(top_builddir)/lib/libcmap.la \
-				    $(top_builddir)/lib/libvotequorum.la
-
-corosync-qnetd-certutil: corosync-qnetd-certutil.sh
-	sed -e 's#@''DATADIR@#${datadir}#g' \
-	    -e 's#@''BASHPATH@#${BASHPATH}#g' \
-	    -e 's#@''COROSYSCONFDIR@#${COROSYSCONFDIR}#g' \
-	    $< > $@
+                          $(top_builddir)/lib/libvotequorum.la
 
 corosync-qdevice-net-certutil: corosync-qdevice-net-certutil.sh
 	sed -e 's#@''DATADIR@#${datadir}#g' \
