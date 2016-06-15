@@ -49,8 +49,8 @@ extern "C" {
  * idea to change them as long as you are not 100% sure what you are doing. Also
  * most of them can be changed in CLI via advanced_settings (-S).
  */
-#define QDEVICE_DEFAULT_LOCK_FILE		LOCALSTATEDIR"/run/corosync-qdevice.pid"
-#define QDEVICE_DEFAULT_LOCAL_SOCKET_FILE	LOCALSTATEDIR"/run/corosync-qdevice.sock"
+#define QDEVICE_DEFAULT_LOCK_FILE		LOCALSTATEDIR"/run/corosync-qdevice/corosync-qdevice.pid"
+#define QDEVICE_DEFAULT_LOCAL_SOCKET_FILE	LOCALSTATEDIR"/run/corosync-qdevice/corosync-qdevice.sock"
 #define QDEVICE_DEFAULT_LOCAL_SOCKET_BACKLOG	10
 #define QDEVICE_MIN_LOCAL_SOCKET_BACKLOG	1
 

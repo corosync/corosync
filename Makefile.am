@@ -79,12 +79,30 @@ install-exec-local:
 	$(INSTALL) -d $(DESTDIR)/${COROSYSCONFDIR}/uidgid.d
 	$(INSTALL) -d $(DESTDIR)/${localstatedir}/lib/corosync
 	$(INSTALL) -d $(DESTDIR)/${localstatedir}/log/cluster
+if BUILD_QNETD
+	$(INSTALL) -m 750 -d $(DESTDIR)/${localstatedir}/run/corosync-qnetd
+	$(INSTALL) -m 750 -d $(DESTDIR)/${COROSYSCONFDIR}/qnetd
+endif
+if BUILD_QDEVICES
+	$(INSTALL) -m 750 -d $(DESTDIR)/${localstatedir}/run/corosync-qdevice
+	$(INSTALL) -d $(DESTDIR)/${COROSYSCONFDIR}/qdevice/
+	$(INSTALL) -m 750 -d $(DESTDIR)/${COROSYSCONFDIR}/qdevice/net
+endif
 
 uninstall-local:
 	rmdir $(DESTDIR)/${COROSYSCONFDIR}/service.d || :;
 	rmdir $(DESTDIR)/${COROSYSCONFDIR}/uidgid.d || :;
 	rmdir $(DESTDIR)/${localstatedir}/lib/corosync || :;
 	rmdir $(DESTDIR)/${localstatedir}/log/cluster || :;
+if BUILD_QNETD
+	rmdir $(DESTDIR)/${localstatedir}/run/corosync-qnetd || :;
+	rmdir $(DESTDIR)/${COROSYSCONFDIR}/qnetd || :;
+endif
+if BUILD_QDEVICES
+	rmdir $(DESTDIR)/${localstatedir}/run/corosync-qdevice || :;
+	rmdir $(DESTDIR)/${COROSYSCONFDIR}/qdevice/net || :;
+	rmdir $(DESTDIR)/${COROSYSCONFDIR}/qdevice/ || :;
+endif
 
 if AUGTOOL
 check_SCRIPTS = test_lense.sh

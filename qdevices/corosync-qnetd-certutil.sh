@@ -34,7 +34,8 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 #
 
-DB_DIR="@COROSYSCONFDIR@/qdevice/net/qnetd/nssdb"
+CONFIG_DIR="@COROSYSCONFDIR@/qnetd"
+DB_DIR="$CONFIG_DIR/nssdb"
 # Validity of certificate (months)
 CRT_VALIDITY=1200
 CA_NICKNAME="QNet CA"
@@ -59,6 +60,12 @@ usage() {
     exit 0
 }
 
+chown_ref_cfgdir() {
+    if [ "$UID" == "0" ];then
+        chown --reference="$CONFIG_DIR" "$@" 2>/dev/null || chown `stat -f "%u:%g" "$CONFIG_DIR"` "$@" 2>/dev/null || return $?
+    fi
+}
+
 create_new_noise_file() {
     local noise_file="$1"
 
@@ -67,8 +74,8 @@ create_new_noise_file() {
 
         (ps -elf; date; w) | sha1sum | (read sha_sum rest; echo $sha_sum) > "$noise_file"
 
-        chown root:root "$noise_file"
-        chmod 400 "$noise_file"
+        chown_ref_cfgdir "$noise_file"
+        chmod 600 "$noise_file"
     else
         echo "Using existing noise file $noise_file"
     fi
@@ -79,6 +86,8 @@ get_serial_no() {
 
     if ! [ -f "$SERIAL_NO_FILE" ];then
         echo "100" > $SERIAL_NO_FILE
+        chown_ref_cfgdir "$SERIAL_NO_FILE"
+        chmod 600 "$SERIAL_NO_FILE"
     fi
     serial_no=`cat $SERIAL_NO_FILE`
     serial_no=$((serial_no+1))
@@ -96,14 +105,17 @@ init_qnetd_ca() {
     if ! [ -d "$DB_DIR" ];then
         echo "Creating $DB_DIR"
         mkdir -p "$DB_DIR"
-        chown root:root "$DB_DIR"
+        chown_ref_cfgdir "$DB_DIR"
         chmod 700 "$DB_DIR"
     fi
 
     echo "Creating new key and cert db"
     echo -n "" > "$PWD_FILE"
+    chown_ref_cfgdir "$PWD_FILE"
+    chmod 600 "$PWD_FILE"
+
     certutil -N -d "$DB_DIR" -f "$PWD_FILE"
-    chown root:root "$DB_DIR/key3.db" "$DB_DIR/cert8.db" "$DB_DIR/secmod.db"
+    chown_ref_cfgdir "$DB_DIR/key3.db" "$DB_DIR/cert8.db" "$DB_DIR/secmod.db"
     chmod 600 "$DB_DIR/key3.db" "$DB_DIR/cert8.db" "$DB_DIR/secmod.db"
 
     create_new_noise_file "$NOISE_FILE"
@@ -116,6 +128,7 @@ init_qnetd_ca() {
     # Export CA certificate in ascii
     certutil -L -d "$DB_DIR" -n "$CA_NICKNAME" > "$CA_EXPORT_FILE"
     certutil -L -d "$DB_DIR" -n "$CA_NICKNAME" -a >> "$CA_EXPORT_FILE"
+    chown_ref_cfgdir "$CA_EXPORT_FILE"
 
     certutil -S -n "$SERVER_NICKNAME" -s "$SERVER_SUBJECT" -c "$CA_NICKNAME" -t "u,u,u" -m `get_serial_no` \
         -v $CRT_VALIDITY -d "$DB_DIR" -z "$NOISE_FILE" -f "$PWD_FILE"
@@ -133,6 +146,7 @@ sign_cluster_cert() {
 
     echo "Signing cluster certificate"
     certutil -C -v "$CRT_VALIDITY" -m `get_serial_no` -i "$CERTIFICATE_FILE" -o "$CRT_FILE" -c "$CA_NICKNAME" -d "$DB_DIR"
+    chown_ref_cfgdir "$CRT_FILE"
 
     echo "Certificate stored in $CRT_FILE"
 }

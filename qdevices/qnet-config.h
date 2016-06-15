@@ -60,7 +60,7 @@ extern "C" {
 #define QNETD_MIN_CLIENT_RECEIVE_SEND_SIZE		16
 #define QNETD_DEFAULT_MAX_CLIENTS			0
 
-#define QNETD_DEFAULT_NSS_DB_DIR			COROSYSCONFDIR "/qdevice/net/qnetd/nssdb"
+#define QNETD_DEFAULT_NSS_DB_DIR			COROSYSCONFDIR "/qnetd/nssdb"
 #define QNETD_DEFAULT_CERT_NICKNAME			"QNetd Cert"
 
 #define QNETD_DEFAULT_TLS_SUPPORTED			TLV_TLS_SUPPORTED
@@ -74,8 +74,8 @@ extern "C" {
 #define QNETD_DEFAULT_DPD_INTERVAL			(10*1000)
 #define QNETD_MIN_DPD_INTERVAL				1
 
-#define QNETD_DEFAULT_LOCK_FILE				LOCALSTATEDIR"/run/corosync-qnetd.pid"
-#define QNETD_DEFAULT_LOCAL_SOCKET_FILE			LOCALSTATEDIR"/run/corosync-qnetd.sock"
+#define QNETD_DEFAULT_LOCK_FILE				LOCALSTATEDIR"/run/corosync-qnetd/corosync-qnetd.pid"
+#define QNETD_DEFAULT_LOCAL_SOCKET_FILE			LOCALSTATEDIR"/run/corosync-qnetd/corosync-qnetd.sock"
 #define QNETD_DEFAULT_LOCAL_SOCKET_BACKLOG		10
 #define QNETD_MIN_LOCAL_SOCKET_BACKLOG			1
 
@@ -87,7 +87,7 @@ extern "C" {
 
 #define QNETD_TOOL_PROGRAM_NAME				"corosync-qnetd-tool"
 
-#define QDEVICE_NET_DEFAULT_NSS_DB_DIR			COROSYSCONFDIR "/qdevice/net/node/nssdb"
+#define QDEVICE_NET_DEFAULT_NSS_DB_DIR			COROSYSCONFDIR "/qdevice/net/nssdb"
 
 #define QDEVICE_NET_DEFAULT_INITIAL_MSG_RECEIVE_SIZE	(1 << 15)
 #define QDEVICE_NET_DEFAULT_INITIAL_MSG_SEND_SIZE	(1 << 15)

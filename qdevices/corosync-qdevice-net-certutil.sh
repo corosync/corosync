@@ -35,8 +35,8 @@
 #
 
 BASE_DIR="@COROSYSCONFDIR@/qdevice/net"
-DB_DIR_QNETD="$BASE_DIR/qnetd/nssdb"
-DB_DIR_NODE="$BASE_DIR/node/nssdb"
+DB_DIR_QNETD="@COROSYSCONFDIR@/qnetd/nssdb"
+DB_DIR_NODE="$BASE_DIR/nssdb"
 # Validity of certificate (months)
 CRT_VALIDITY=1200
 CA_NICKNAME="QNet CA"
@@ -94,7 +94,7 @@ create_new_noise_file() {
         (ps -elf; date; w) | sha1sum | (read sha_sum rest; echo $sha_sum) > "$noise_file"
 
         chown root:root "$noise_file"
-        chmod 400 "$noise_file"
+        chmod 600 "$noise_file"
     else
         echo "Using existing noise file $noise_file"
     fi
