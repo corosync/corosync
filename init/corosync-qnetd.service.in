@@ -5,9 +5,12 @@ Requires=network-online.target
 After=network-online.target
 
 [Service]
-ExecStart=@INITWRAPPERSDIR@/corosync-qnetd start
-ExecStop=@INITWRAPPERSDIR@/corosync-qnetd stop
-Type=forking
+EnvironmentFile=@SYSCONFDIR@/sysconfig/corosync-qnetd
+ExecStart=@BINDIR@/corosync-qnetd -f $COROSYNC_QNETD_OPTIONS
+Type=simple
+Restart=on-abnormal
+# Uncomment and set user who should be used for executing qnetd
+#User=coroqnetd
 
 [Install]
 WantedBy=multi-user.target

@@ -35,6 +35,7 @@ SUBDIRS			=
 
 bin_PROGRAMS		=
 sbin_PROGRAMS		=
+bin_SCRIPTS		=
 sbin_SCRIPTS		=
 EXTRA_DIST		=
 
@@ -42,7 +43,7 @@ if BUILD_QNETD
 
 bin_PROGRAMS		+= corosync-qnetd corosync-qnetd-tool
 
-sbin_SCRIPTS            += corosync-qnetd-certutil
+bin_SCRIPTS             += corosync-qnetd-certutil
 
 EXTRA_DIST		+= corosync-qnetd-certutil.sh
 

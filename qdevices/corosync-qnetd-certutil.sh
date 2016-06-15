@@ -75,7 +75,7 @@ create_new_noise_file() {
         (ps -elf; date; w) | sha1sum | (read sha_sum rest; echo $sha_sum) > "$noise_file"
 
         chown_ref_cfgdir "$noise_file"
-        chmod 600 "$noise_file"
+        chmod 660 "$noise_file"
     else
         echo "Using existing noise file $noise_file"
     fi
@@ -87,7 +87,7 @@ get_serial_no() {
     if ! [ -f "$SERIAL_NO_FILE" ];then
         echo "100" > $SERIAL_NO_FILE
         chown_ref_cfgdir "$SERIAL_NO_FILE"
-        chmod 600 "$SERIAL_NO_FILE"
+        chmod 660 "$SERIAL_NO_FILE"
     fi
     serial_no=`cat $SERIAL_NO_FILE`
     serial_no=$((serial_no+1))
@@ -106,17 +106,17 @@ init_qnetd_ca() {
         echo "Creating $DB_DIR"
         mkdir -p "$DB_DIR"
         chown_ref_cfgdir "$DB_DIR"
-        chmod 700 "$DB_DIR"
+        chmod 770 "$DB_DIR"
     fi
 
     echo "Creating new key and cert db"
     echo -n "" > "$PWD_FILE"
     chown_ref_cfgdir "$PWD_FILE"
-    chmod 600 "$PWD_FILE"
+    chmod 660 "$PWD_FILE"
 
     certutil -N -d "$DB_DIR" -f "$PWD_FILE"
     chown_ref_cfgdir "$DB_DIR/key3.db" "$DB_DIR/cert8.db" "$DB_DIR/secmod.db"
-    chmod 600 "$DB_DIR/key3.db" "$DB_DIR/cert8.db" "$DB_DIR/secmod.db"
+    chmod 660 "$DB_DIR/key3.db" "$DB_DIR/cert8.db" "$DB_DIR/secmod.db"
 
     create_new_noise_file "$NOISE_FILE"
 

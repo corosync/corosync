@@ -80,13 +80,13 @@ install-exec-local:
 	$(INSTALL) -d $(DESTDIR)/${localstatedir}/lib/corosync
 	$(INSTALL) -d $(DESTDIR)/${localstatedir}/log/cluster
 if BUILD_QNETD
-	$(INSTALL) -m 750 -d $(DESTDIR)/${localstatedir}/run/corosync-qnetd
-	$(INSTALL) -m 750 -d $(DESTDIR)/${COROSYSCONFDIR}/qnetd
+	$(INSTALL) -m 770 -d $(DESTDIR)/${localstatedir}/run/corosync-qnetd
+	$(INSTALL) -m 770 -d $(DESTDIR)/${COROSYSCONFDIR}/qnetd
 endif
 if BUILD_QDEVICES
-	$(INSTALL) -m 750 -d $(DESTDIR)/${localstatedir}/run/corosync-qdevice
+	$(INSTALL) -m 770 -d $(DESTDIR)/${localstatedir}/run/corosync-qdevice
 	$(INSTALL) -d $(DESTDIR)/${COROSYSCONFDIR}/qdevice/
-	$(INSTALL) -m 750 -d $(DESTDIR)/${COROSYSCONFDIR}/qdevice/net
+	$(INSTALL) -m 770 -d $(DESTDIR)/${COROSYSCONFDIR}/qdevice/net
 endif
 
 uninstall-local:

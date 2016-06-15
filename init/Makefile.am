@@ -48,11 +48,19 @@ endif
 initscript_SCRIPTS  = corosync corosync-notifyd
 
 if BUILD_QDEVICES
-initscript_SCRIPTS  += corosync-qnetd corosync-qdevice
-EXTRA_DIST          += corosync-qnetd.sysconfig.example corosync-qnetd.in corosync-qdevice.in \
-                       corosync-qnetd.service.in corosync-qdevice.service.in
+initscript_SCRIPTS  += corosync-qdevice
+EXTRA_DIST          += corosync-qdevice.in corosync-qdevice.service.in
 if INSTALL_SYSTEMD
-systemdconf_DATA   += corosync-qnetd.service corosync-qdevice.service
+systemdconf_DATA   += corosync-qdevice.service
+endif
+endif
+
+if BUILD_QNETD
+initscript_SCRIPTS  += corosync-qnetd
+EXTRA_DIST          += corosync-qnetd.sysconfig.example corosync-qnetd.in \
+                       corosync-qnetd.service.in
+if INSTALL_SYSTEMD
+systemdconf_DATA   += corosync-qnetd.service
 endif
 endif
 
@@ -65,6 +73,7 @@ endif
 	rm -f $@-t $@
 	cat $< | sed \
 		-e 's#@''SBINDIR@#$(sbindir)#g' \
+		-e 's#@''BINDIR@#$(bindir)#g' \
 		-e 's#@''SYSCONFDIR@#$(sysconfdir)#g' \
 		-e 's#@''INITDDIR@#$(INITDDIR)#g' \
 		-e 's#@''INITWRAPPERSDIR@#$(INITWRAPPERSDIR)#g' \

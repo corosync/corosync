@@ -94,7 +94,7 @@ create_new_noise_file() {
         (ps -elf; date; w) | sha1sum | (read sha_sum rest; echo $sha_sum) > "$noise_file"
 
         chown root:root "$noise_file"
-        chmod 600 "$noise_file"
+        chmod 660 "$noise_file"
     else
         echo "Using existing noise file $noise_file"
     fi
@@ -105,6 +105,8 @@ get_serial_no() {
 
     if ! [ -f "$SERIAL_NO_FILE" ];then
         echo "100" > $SERIAL_NO_FILE
+        chown root:root "$DB_DIR"
+        chmod 660 "$SERIAL_NO_FILE"
     fi
     serial_no=`cat $SERIAL_NO_FILE`
     serial_no=$((serial_no+1))
@@ -123,14 +125,16 @@ init_node_ca() {
         echo "Creating $DB_DIR"
         mkdir -p "$DB_DIR"
         chown root:root "$DB_DIR"
-        chmod 700 "$DB_DIR"
+        chmod 770 "$DB_DIR"
     fi
 
     echo "Creating new key and cert db"
     echo -n "" > "$PWD_FILE"
+    chown root:root "$PWD_FILE"
+    chmod 660 "$PWD_FILE"
     certutil -N -d "$DB_DIR" -f "$PWD_FILE"
     chown root:root "$DB_DIR/key3.db" "$DB_DIR/cert8.db" "$DB_DIR/secmod.db"
-    chmod 600 "$DB_DIR/key3.db" "$DB_DIR/cert8.db" "$DB_DIR/secmod.db"
+    chmod 660 "$DB_DIR/key3.db" "$DB_DIR/cert8.db" "$DB_DIR/secmod.db"
 
     create_new_noise_file "$NOISE_FILE"
 
@@ -187,8 +191,8 @@ quick_start() {
 
     # Sanity check
     for i in "$master_node" $other_nodes;do
-        if ssh root@$i "[ -d \"$DB_DIR_QNETD\" ] || [ -d \"$DB_DIR_NODE\" ]";then
-            echo "Node $i seems to be already initialized. Please delete $DB_DIR_QNETD and $DB_DIR_NODE" >&2
+        if ssh root@$i "[ -d \"$DB_DIR_NODE\" ]";then
+            echo "Node $i seems to be already initialized. Please delete $DB_DIR_NODE" >&2
 
             exit 1
         fi

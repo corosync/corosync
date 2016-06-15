@@ -16,6 +16,7 @@
 %bcond_with xmlconf
 %bcond_with runautogen
 %bcond_with qdevices
+%bcond_with qnetd
 
 %global gitver %{?numcomm:.%{numcomm}}%{?alphatag:.%{alphatag}}%{?dirty:.%{dirty}}
 %global gittarver %{?numcomm:.%{numcomm}}%{?alphatag:-%{alphatag}}%{?dirty:-%{dirty}}
@@ -66,8 +67,11 @@ Requires(postun): systemd
 %if %{with xmlconf}
 Requires: libxslt
 %endif
-%if %{with qdevices}
+%if %{with qdevices} || %{with qnetd}
 Requires: nss-tools
+%endif
+%if %{with qnetd}
+BuildRequires: sed
 %endif
 
 BuildRoot: %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
@@ -117,6 +121,9 @@ export rdmacm_LIBS=-lrdmacm \
 %if %{with qdevices}
 	--enable-qdevices \
 %endif
+%if %{with qnetd}
+	--enable-qnetd \
+%endif
 	--with-initddir=%{_initrddir} \
 	--with-systemddir=%{_unitdir} \
 	--with-upstartdir=%{_sysconfdir}/init
@@ -146,6 +153,19 @@ install -m 644 tools/corosync-notifyd.sysconfig.example \
 # /etc/sysconfig/corosync
 install -m 644 init/corosync.sysconfig.example \
    %{buildroot}%{_sysconfdir}/sysconfig/corosync
+
+%if %{with qnetd}
+# /etc/sysconfig/corosync-qnetd
+install -m 644 init/corosync-qnetd.sysconfig.example \
+   %{buildroot}%{_sysconfdir}/sysconfig/corosync-qnetd
+%if %{with systemd}
+sed -i -e 's/^#User=/User=/' \
+   %{buildroot}%{_unitdir}/corosync-qnetd.service
+%else
+sed -i -e 's/^COROSYNC_QNETD_RUNAS=""$/COROSYNC_QNETD_RUNAS="coroqnetd"/' \
+   %{buildroot}%{_sysconfdir}/sysconfig/corosync-qnetd
+%endif
+%endif
 
 %clean
 rm -rf %{buildroot}
@@ -384,6 +404,9 @@ fi
 
 %files -n corosync-qdevice
 %defattr(-,root,root,-)
+%dir %{_sysconfdir}/corosync/qdevice
+%dir %config(noreplace) %{_sysconfdir}/corosync/qdevice/net
+%dir %{_localstatedir}/run/corosync-qdevice
 %{_sbindir}/corosync-qdevice
 %{_sbindir}/corosync-qdevice-net-certutil
 %{_sbindir}/corosync-qdevice-tool
@@ -395,10 +418,17 @@ fi
 %{_initrddir}/corosync-qdevice
 %endif
 
+%endif
+
+# optional qnetd
+#
+%if %{with qnetd}
+
 %package -n corosync-qnetd
 Summary: The Corosync Cluster Engine Qdevice Network Daemon
 Group: System Environment/Base
 Requires: nss-tools
+Requires(pre): shadow-utils
 
 %if %{with systemd}
 Requires(post): systemd
@@ -409,6 +439,12 @@ Requires(postun): systemd
 %description -n corosync-qnetd
 This package contains the Corosync Cluster Engine Qdevice Network Daemon, script for creating
 NSS certificates and an init script.
+
+%pre -n corosync-qnetd
+getent group coroqnetd >/dev/null || groupadd -r coroqnetd
+getent passwd coroqnetd >/dev/null || \
+    useradd -r -g coroqnetd -d / -s /sbin/nologin -c "User for corosync-qnetd" coroqnetd
+exit 0
 
 %post -n corosync-qnetd
 %if %{with systemd} && 0%{?systemd_post:1}
@@ -436,9 +472,12 @@ fi
 
 %files -n corosync-qnetd
 %defattr(-,root,root,-)
-%{_sbindir}/corosync-qnetd
-%{_sbindir}/corosync-qnetd-certutil
-%{_sbindir}/corosync-qnetd-tool
+%dir %config(noreplace) %attr(770, coroqnetd, coroqnetd) %{_sysconfdir}/corosync/qnetd
+%dir %attr(770, coroqnetd, coroqnetd) %{_localstatedir}/run/corosync-qnetd
+%{_bindir}/corosync-qnetd
+%{_bindir}/corosync-qnetd-certutil
+%{_bindir}/corosync-qnetd-tool
+%config(noreplace) %{_sysconfdir}/sysconfig/corosync-qnetd
 %if %{with systemd}
 %{_unitdir}/corosync-qnetd.service
 %dir %{_datadir}/corosync

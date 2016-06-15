@@ -107,6 +107,10 @@ qnetd_algo_ffsplit_is_prefered_partition(const struct qnetd_client *client,
 {
 	uint32_t prefered_node_id;
 	struct node_list_entry *node_entry;
+	int case_processed;
+
+	prefered_node_id = 0;
+	case_processed = 0;
 
 	switch (client->tie_breaker.mode) {
 	case TLV_TIE_BREAKER_MODE_LOWEST:
@@ -119,6 +123,7 @@ qnetd_algo_ffsplit_is_prefered_partition(const struct qnetd_client *client,
 				prefered_node_id = node_entry->node_id;
 			}
 		}
+		case_processed = 1;
 		break;
 	case TLV_TIE_BREAKER_MODE_HIGHEST:
 		node_entry = TAILQ_FIRST(config_node_list);
@@ -130,10 +135,18 @@ qnetd_algo_ffsplit_is_prefered_partition(const struct qnetd_client *client,
 				prefered_node_id = node_entry->node_id;
 			}
 		}
+		case_processed = 1;
 		break;
 	case TLV_TIE_BREAKER_MODE_NODE_ID:
 		prefered_node_id = client->tie_breaker.node_id;
+		case_processed = 1;
 		break;
+	}
+
+	if (!case_processed) {
+		qnetd_log(LOG_CRIT, "qnetd_algo_ffsplit_is_prefered_partition unprocessed "
+		    "tie_breaker.mode");
+		exit(1);
 	}
 
 	return (node_list_find_node_id(membership_node_list, prefered_node_id) != NULL);

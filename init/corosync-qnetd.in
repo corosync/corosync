@@ -95,7 +95,11 @@ start()
 	if status $prog > /dev/null 2>&1; then
 		success
 	else
-		$prog $COROSYNC_QNETD_OPTIONS > /dev/null 2>&1
+		if [ -z "$COROSYNC_QNETD_RUNAS" ];then
+			$prog $COROSYNC_QNETD_OPTIONS > /dev/null 2>&1
+		else
+			runuser -s @BASHPATH@ $COROSYNC_QNETD_RUNAS -c "$prog $COROSYNC_QNETD_OPTIONS > /dev/null 2>&1"
+		fi
 
 		if [ "$?" != 0 ]; then
 			failure

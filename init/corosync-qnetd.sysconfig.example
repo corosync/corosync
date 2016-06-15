@@ -4,3 +4,10 @@
 # (default is no options).
 # See "man corosync-qnetd" for detailed descriptions of the options.
 COROSYNC_QNETD_OPTIONS=""
+
+# COROSYNC_QNETD_RUNAS specifies user under which qnetd daemon should be running
+# (not set or empty is default and means "user who executes init script")
+# Make sure to set correct owner of directories /etc/corosync/qnetd and
+# /var/run/corosync-qnetd
+# This has no effect if systemd unit is used (you have to change unit file)
+COROSYNC_QNETD_RUNAS=""
