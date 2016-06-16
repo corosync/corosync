@@ -324,21 +324,24 @@ qnetd_algo_ffsplit_partition_cmp(const struct qnetd_client *client1,
     const struct node_list *config_node_list2, const struct node_list *membership_node_list2)
 {
 	size_t part1_active_clients, part2_active_clients;
+	int res;
+
+	res = -1;
 
 	if (node_list_size(config_node_list1) % 2 != 0) {
 		/*
 		 * Odd clusters never split into 50:50.
 		 */
 		if (node_list_size(membership_node_list1) > node_list_size(config_node_list1) / 2) {
-			return (1);
+			res = 1; goto exit_res;
 		} else {
-			return (0);
+			res = 0; goto exit_res;
 		}
 	} else {
 		if (node_list_size(membership_node_list1) > node_list_size(config_node_list1) / 2) {
-			return (1);
+			res = 1; goto exit_res;
 		} else if (node_list_size(membership_node_list1) < node_list_size(config_node_list1) / 2) {
-			return (0);
+			res = 0; goto exit_res;
 		}
 
 		/*
@@ -354,9 +357,9 @@ qnetd_algo_ffsplit_partition_cmp(const struct qnetd_client *client1,
 		    client2, membership_node_list2);
 
 		if (part1_active_clients > part2_active_clients) {
-			return (1);
+			res = 1; goto exit_res;
 		} else if (part1_active_clients < part2_active_clients) {
-			return (0);
+			res = 0; goto exit_res;
 		}
 
 		/*
@@ -365,15 +368,20 @@ qnetd_algo_ffsplit_partition_cmp(const struct qnetd_client *client1,
 
 		if (qnetd_algo_ffsplit_is_prefered_partition(client1, config_node_list1,
 		    membership_node_list1)) {
-			return (1);
+			res = 1; goto exit_res;
 		} else {
-			return (0);
+			res = 0; goto exit_res;
 		}
 	}
 
-	qnetd_log(LOG_CRIT, "qnetd_algo_ffsplit_partition_cmp unhandled case");
-	exit(1);
-	/* NOTREACHED */
+exit_res:
+	if (res == -1) {
+		qnetd_log(LOG_CRIT, "qnetd_algo_ffsplit_partition_cmp unhandled case");
+		exit(1);
+		/* NOTREACHED */
+	}
+
+	return (res);
 }
 
 /*

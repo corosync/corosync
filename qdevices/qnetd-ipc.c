@@ -295,6 +295,7 @@ qnetd_ipc_parse_line(struct qnetd_instance *instance, struct unix_socket_client 
 					goto exit_err_low_mem;
 				}
 
+				free(cluster_name); cluster_name = NULL;
 				if ((cluster_name = strdup(dynar_data(token))) == NULL) {
 					goto exit_err_low_mem;
 				}
@@ -312,6 +313,7 @@ qnetd_ipc_parse_line(struct qnetd_instance *instance, struct unix_socket_client 
 				client->schedule_disconnect = 1;
 			}
 		}
+
 		free(cluster_name); cluster_name = NULL;
 	} else {
 		qnetd_log(LOG_DEBUG, "IPC client sent unknown command");
@@ -325,6 +327,8 @@ qnetd_ipc_parse_line(struct qnetd_instance *instance, struct unix_socket_client 
 	return ;
 
 exit_err_low_mem:
+	free(cluster_name); cluster_name = NULL;
+
 	qnetd_log(LOG_ERR, "Can't alloc memory for simple lex");
 
 	if (qnetd_ipc_send_error(instance, client, "Command too long") != 0) {

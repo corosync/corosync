@@ -115,7 +115,7 @@ timer_list_add(struct timer_list *tlist, PRUint32 interval, timer_list_cb_fn fun
 {
 	struct timer_list_entry *new_entry;
 
-	if (interval < 1 && interval > TIMER_LIST_MAX_INTERVAL) {
+	if (interval < 1 || interval > TIMER_LIST_MAX_INTERVAL) {
 		return (NULL);
 	}
 

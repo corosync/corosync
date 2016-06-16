@@ -79,6 +79,9 @@ pr_poll_array_realloc(struct pr_poll_array *poll_array,
 		return (-1);
 	}
 
+	poll_array->allocated = new_array_size;
+	poll_array->array = new_array;
+
 	if (poll_array->user_data_size > 0) {
 		new_user_data_array = realloc(poll_array->user_data_array,
 		    poll_array->user_data_size * new_array_size);
@@ -89,9 +92,6 @@ pr_poll_array_realloc(struct pr_poll_array *poll_array,
 
 		poll_array->user_data_array = new_user_data_array;
 	}
-
-	poll_array->allocated = new_array_size;
-	poll_array->array = new_array;
 
 	return (0);
 }

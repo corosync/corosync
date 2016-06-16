@@ -133,8 +133,9 @@ qdevice_ipc_accept(struct qdevice_instance *instance, struct unix_socket_client 
 		qdevice_log(LOG_ERR, "Can't alloc IPC client user data");
 		res = -1;
 		qdevice_ipc_client_disconnect(instance, *res_client);
+	} else {
+		memset((*res_client)->user_data, 0, sizeof(struct qdevice_ipc_user_data));
 	}
-	memset((*res_client)->user_data, 0, sizeof(struct qdevice_ipc_user_data));
 
 return_res:
 	return (res);
@@ -232,9 +233,8 @@ qdevice_ipc_parse_line(struct qdevice_instance *instance, struct unix_socket_cli
 		}
 	} else if (strcasecmp(str, "status") == 0) {
 		token = dynar_simple_lex_token_next(&lex);
-		str = dynar_data(token);
 
-		if (token != NULL && strcmp(str, "") != 0) {
+		if (token != NULL && (str = dynar_data(token), strcmp(str, "")) != 0) {
 			if (strcasecmp(str, "verbose") == 0) {
 				verbose = 1;
 			}
