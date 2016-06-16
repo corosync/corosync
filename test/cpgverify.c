@@ -180,6 +180,10 @@ try_again_one:
 			goto try_again_one;
 		}
 		result = cpg_dispatch (handle, CS_DISPATCH_ALL);
+		if (result != CS_OK && result != CS_ERR_TRY_AGAIN) {
+			printf("cpg_dispatch failed with result %d\n", result);
+			exit(1);
+		}
 		i++;
 	} while (run_forever || i < iter);
 

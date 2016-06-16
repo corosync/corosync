@@ -310,6 +310,10 @@ corosync_cfg_ring_status_get (
 		&res_lib_cfg_ringstatusget,
 		sizeof (struct res_lib_cfg_ringstatusget), CS_IPC_TIMEOUT_MS));
 
+	if (error != CS_OK) {
+		goto exit_handle_put;
+	}
+
 	*interface_count = res_lib_cfg_ringstatusget.interface_count;
 	*interface_names = malloc (sizeof (char *) * *interface_count);
 	if (*interface_names == NULL) {
@@ -339,7 +343,7 @@ corosync_cfg_ring_status_get (
 			goto error_free_status;
 		}
 	}
-	goto no_error;
+	goto exit_handle_put;
 
 error_free_status:
 	for (j = 0; j < i; j++) {
@@ -351,13 +355,13 @@ error_free_interface_names:
 	for (j = 0; j < i; j++) {
 		free ((*(interface_names))[j]);
 	}
-	
+
 	free (*status);
 
 error_free_interface_names_array:
 	free (*interface_names);
 
-no_error:
+exit_handle_put:
 	(void)hdb_handle_put (&cfg_hdb, cfg_handle);
 
 	return (error);

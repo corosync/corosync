@@ -1190,10 +1190,7 @@ static int test9 (pid_t pid, pid_t old_pid, int test_n) {
 
 		if (instance_id == 3) {
 			printf ("%s iid %d: mark failed\n", __FUNCTION__, instance_id);
-			if (err != CS_OK) {
-				fprintf (stderr, "Can't start hc. Error %d\n", err);
-				return 2;
-			}
+
 			err = sam_mark_failed ();
 			if (err != CS_OK) {
 				fprintf (stderr, "Can't mark failed. Error %d\n", err);

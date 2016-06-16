@@ -1809,6 +1809,7 @@ memory_map (
 
 	res = close (fd);
 	if (res) {
+		munmap (addr, bytes);
 		return (-1);
 	}
 	*buf = addr;

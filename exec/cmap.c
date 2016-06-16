@@ -836,7 +836,7 @@ static cs_error_t cmap_mcast_send(enum cmap_mcast_reason reason, int argc, char 
 		if (item == NULL) {
 			goto free_mem;
 		}
-		memset(item, 0, sizeof(item_len));
+		memset(item, 0, item_len);
 
 		item->value_type = value_type;
 		item->value_len = value_len;

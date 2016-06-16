@@ -153,6 +153,13 @@ static void totem_volatile_config_set_value (struct totem_config *totem_config,
 	/*
 	 * Store totem_config value to cmap runtime section
 	 */
+	if (strlen("runtime.config.") + strlen(key_name) >= ICMAP_KEYNAME_MAXLEN) {
+		/*
+		 * This shouldn't happen
+		 */
+		return ;
+	}
+
 	strcpy(runtime_key_name, "runtime.config.");
 	strcat(runtime_key_name, key_name);
 

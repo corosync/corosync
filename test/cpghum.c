@@ -307,6 +307,11 @@ int main (int argc, char *argv[]) {
 			}
 			break;
 		case 'n':
+			if (strlen(optarg) >= CPG_MAX_NAME_LENGTH) {
+				fprintf(stderr, "CPG name too long\n");
+				exit(1);
+			}
+
 			strcpy(group_name.value, optarg);
 			group_name.length = strlen(group_name.value);
 			break;
@@ -376,7 +381,7 @@ int main (int argc, char *argv[]) {
 	}
 
 	if (listen_only) {
-		int secs;
+		int secs = 0;
 		if (!quiet) {
 			printf("-- Listening on CPG %s\n", group_name.value);
 			printf("-- Ignore any starting \"counters don't match\" error while we catch up\n");

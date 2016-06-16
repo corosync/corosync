@@ -118,6 +118,10 @@ try_again_one:
 		msg_size += 1;
 		printf ("msg size %d\n", msg_size);
 		result = cpg_dispatch (handle, CS_DISPATCH_ALL);
+		if (result != CS_OK && result != CS_ERR_TRY_AGAIN) {
+			printf ("cpg_dispatch failed with result %d\n", res);
+			exit (1);
+		}
 	}
 
 	cpg_finalize (handle);

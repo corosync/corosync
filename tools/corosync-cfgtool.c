@@ -112,7 +112,15 @@ static int ringstatusget_do (char *interface_name)
 				}
 			}
 		}
+
+		for (i = 0; i < interface_count; i++) {
+			free(interface_status[i]);
+			free(interface_names[i]);
+		}
+		free(interface_status);
+		free(interface_names);
 	}
+
 	(void)corosync_cfg_finalize (handle);
 	return rc;
 }
@@ -279,6 +287,7 @@ int main (int argc, char *argv[]) {
 		switch (opt) {
 		case 'i':
 			strncpy(interface_name, optarg, sizeof(interface_name));
+			interface_name[sizeof(interface_name) - 1] = '\0';
 			break;
 		case 's':
 			rc = ringstatusget_do (interface_name);

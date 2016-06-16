@@ -792,6 +792,7 @@ static int load_ev_tracking_barrier(void)
 	ev_tracking_fd = open(filename, O_RDWR, 0700);
 	if (ev_tracking_fd != -1) {
 		res = read (ev_tracking_fd, &ev_tracking_barrier, sizeof(uint32_t));
+		close(ev_tracking_fd);
 		if (res == sizeof (uint32_t)) {
 		        LEAVE();
 			return 0;
@@ -807,6 +808,7 @@ static int load_ev_tracking_barrier(void)
 			log_printf(LOGSYS_LEVEL_WARNING,
 				   "Unable to write to %s", filename);
 		}
+		close(ev_tracking_fd);
 		LEAVE();
 		return 0;
 	}
