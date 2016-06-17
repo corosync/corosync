@@ -95,7 +95,7 @@ start()
 	if status $prog > /dev/null 2>&1; then
 		success
 	else
-		$prog $COROSYNC_QNETD_OPTIONS > /dev/null 2>&1
+		$prog $COROSYNC_QDEVICE_OPTIONS > /dev/null 2>&1
 
 		if [ "$?" != 0 ]; then
 			failure

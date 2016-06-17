@@ -49,7 +49,8 @@ initscript_SCRIPTS  = corosync corosync-notifyd
 
 if BUILD_QDEVICES
 initscript_SCRIPTS  += corosync-qdevice
-EXTRA_DIST          += corosync-qdevice.in corosync-qdevice.service.in
+EXTRA_DIST          += corosync-qdevice.sysconfig.example corosync-qdevice.in \
+                       corosync-qdevice.service.in
 if INSTALL_SYSTEMD
 systemdconf_DATA   += corosync-qdevice.service
 endif

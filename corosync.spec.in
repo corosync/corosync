@@ -154,6 +154,12 @@ install -m 644 tools/corosync-notifyd.sysconfig.example \
 install -m 644 init/corosync.sysconfig.example \
    %{buildroot}%{_sysconfdir}/sysconfig/corosync
 
+%if %{with qdevices}
+# /etc/sysconfig/corosync-qdevice
+install -m 644 init/corosync-qdevice.sysconfig.example \
+   %{buildroot}%{_sysconfdir}/sysconfig/corosync-qdevice
+%endif
+
 %if %{with qnetd}
 # /etc/sysconfig/corosync-qnetd
 install -m 644 init/corosync-qnetd.sysconfig.example \
@@ -410,6 +416,7 @@ fi
 %{_sbindir}/corosync-qdevice
 %{_sbindir}/corosync-qdevice-net-certutil
 %{_sbindir}/corosync-qdevice-tool
+%config(noreplace) %{_sysconfdir}/sysconfig/corosync-qdevice
 %if %{with systemd}
 %{_unitdir}/corosync-qdevice.service
 %dir %{_datadir}/corosync

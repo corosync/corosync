@@ -1,0 +1,6 @@
+# Corosync Qdevice daemon init script configuration file
+
+# COROSYNC_QDEVICE_OPTIONS specifies options passed to corosync-qdevice command
+# (default is no options).
+# See "man corosync-qdevice" for detailed descriptions of the options.
+COROSYNC_QDEVICE_OPTIONS=""
