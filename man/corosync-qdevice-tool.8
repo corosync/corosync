@@ -1,0 +1,126 @@
+.\"/*
+.\" * Copyright (C) 2016 Red Hat, Inc.
+.\" *
+.\" * All rights reserved.
+.\" *
+.\" * Author: Jan Friesse <jfriesse@redhat.com>
+.\" *
+.\" * This software licensed under BSD license, the text of which follows:
+.\" *
+.\" * Redistribution and use in source and binary forms, with or without
+.\" * modification, are permitted provided that the following conditions are met:
+.\" *
+.\" * - Redistributions of source code must retain the above copyright notice,
+.\" *   this list of conditions and the following disclaimer.
+.\" * - Redistributions in binary form must reproduce the above copyright notice,
+.\" *   this list of conditions and the following disclaimer in the documentation
+.\" *   and/or other materials provided with the distribution.
+.\" * - Neither the name of Red Hat, Inc. nor the names of its
+.\" *   contributors may be used to endorse or promote products derived from this
+.\" *   software without specific prior written permission.
+.\" *
+.\" * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+.\" * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+.\" * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+.\" * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+.\" * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+.\" * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+.\" * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+.\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+.\" * THE POSSIBILITY OF SUCH DAMAGE.
+.\" */
+.TH COROSYNC-QDEVICE-TOOL 8 2016-06-24
+.SH NAME
+corosync-qdevice-tool \- corosync-qdevice control interface.
+.SH SYNOPSIS
+.B "corosync-qdevice-tool [-Hhsv] [-p qdevice_ipc_socket_path]"
+.SH DESCRIPTION
+.B corosync-qdevice-tool
+is frontend to internal corosync-qdevice IPC. It's main purpose is to show important
+information about current
+.B corosync-qdevice
+internal state.
+.SH OPTIONS
+.TP
+.B -H
+Properly shutdown
+.B corosync-qdevice
+process
+.TP
+.B -h
+Display short usage
+.TP
+.B -s
+Display status of
+.B corosync-qdevice
+process. Output is described in it's own section.
+.TP
+.B -v
+Display more verbose output for
+.B -s
+option.
+.TP
+.B -p
+Path to
+.B corosync-qdevice
+communication socket.
+
+.SH STATUS COMMAND OUTPUT
+.nf
+Qdevice information
+-------------------
+Model:                  Net
+Node ID:                1
+HB interval:            10000ms
+Sync HB interval:       30000ms
+Configured node list:
+    0   Node ID = 1
+Ring ID:                1.a00000000021b48
+Membership node list:   1
+Quorate:                Yes
+Quorum node list:
+    0   Node ID = 1, State = member
+Expected votes:         2
+Last poll call:         2016-06-24T17:05:20 (cast vote)
+
+Qdevice-net information
+----------------------
+Cluster name:           Cluster
+QNetd host:             localhost:5403
+Connect timeout:        8000ms
+HB interval:            8000ms
+VQ vote timer interval: 5000ms
+TLS:                    Supported
+Algorithm:              Fifty-Fifty split
+Tie-breaker:            Node with lowest node ID
+Poll timer running:     Yes (cast vote)
+State:                  Connected
+TLS active:             Yes (client certificate sent)
+Connected since:        2016-06-24T17:02:35
+Echo reply received:    2016-06-24T17:05:15
+.fi
+
+Output is split into generic qdevice section and model specific section.
+Most of the items are just taken from corosync.conf file. It's good to note
+.I Membership node list
+what is list of nodes in same membership with current node and
+.I Last poll call
+what is timestamp (iso format) of last call of votequorum_qdevice_poll
+function.
+
+For model net, it's good to note
+.I Poll timer running
+item. Internally, model net supports 3 states. Not voting (then
+.I Poll timer running
+is No and it means
+.B corosync-qnetd
+algorithm decides that current node shouldn't get vote),
+voting but not cast vote and voting with cast vote.
+.SH SEE ALSO
+.BR corosync-qnetd (8)
+.BR corosync-qdevice (8)
+.SH AUTHOR
+Jan Friesse
+.PP

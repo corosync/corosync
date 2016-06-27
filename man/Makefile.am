@@ -142,6 +142,11 @@ if INSTALL_XMLCONF
 dist_man_MANS		+= $(xml_man)
 endif
 
+if BUILD_QNETD
+dist_man_MANS		+= corosync-qnetd-tool.8 \
+                           corosync-qnetd-certutil.8
+endif
+
 HTML_DOCS 		= $(dist_man_MANS:%=%.html) $(man_MANS:%=%.html)
 
 # developer man page generation
