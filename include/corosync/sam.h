@@ -64,7 +64,7 @@ typedef int (*sam_hc_callback_t)(void);
  * This function must be called before any other.
  * It is recommended to call it as one of first in application.
  *
- * @param time_interval Time interval in miliseconds of healthcheck. After this time, application
+ * @param time_interval Time interval in milliseconds of healthcheck. After this time, application
  *        will be killed and recovery policy will be taken. This can be zero, which means,
  *        that there is no time limit (only fall of application is checked and only then
  *        recovery action is taken)
@@ -117,7 +117,7 @@ cs_error_t sam_start (void);
 cs_error_t sam_stop (void);
 
 /**
- * @brief Set warning signal to be send.
+ * @brief Set warning signal to be sent.
  *
  * Default signal is SIGTERM. You can use SIGKILL to emulate NOT sending
  * warning signal and just send SIGKILL.
@@ -220,7 +220,7 @@ cs_error_t sam_data_restore (
  * @retval CS_ERR_BAD_HANDLE if you call this function before sam_init or
  *         after sam_finalize
  * @retval CS_ERR_NO_MEMORY if data is too large and malloc/realloc was not
- *         sucesfull
+ *         succesfull
  * @retval CS_ERR_LIBRARY if some internal error appeared (communication with parent
  *         process)
  */
@@ -232,12 +232,12 @@ cs_error_t sam_data_store (
  * @brief Marks child as failed.
  *
  * This can be called only with SAM_RECOVERY_POLICY_CMAP flag set and
- * makes sense only for SAM_RECOVERY_POLICY_RESTART. This will kill child without sending warn
+ * makes sense only for SAM_RECOVERY_POLICY_RESTART. This will kill child without sending warning
  * signal. Cmap state key will be set to failed.
  *
  * @retval CS_OK in case no problem appeared
  * @retval CS_ERR_BAD_HANDLE library was not initialized or was already finalized
- * @retval CS_ERR_INVALID_PARAM recovery policy doesn't has SAM_RECOVERY_POLICY_CMAP flag set
+ * @retval CS_ERR_INVALID_PARAM recovery policy doesn't have SAM_RECOVERY_POLICY_CMAP flag set
  * @retval CS_ERR_LIBRARY if some internal error appeared (communication with parent
  *         process)
  */
