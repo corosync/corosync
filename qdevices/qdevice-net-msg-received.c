@@ -282,6 +282,16 @@ qdevice_net_msg_received_init_reply(struct qdevice_net_instance *instance,
 			qdevice_log(LOG_ERR, "Duplicate node id may be result of server not yet "
 			    "accepted this node disconnect. Retry again.");
 			instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_SERVER_SENT_DUPLICATE_NODE_ID_ERROR;
+		} else if (msg->reply_error_code == TLV_REPLY_ERROR_CODE_TIE_BREAKER_DIFFERS_FROM_OTHER_NODES) {
+			qdevice_log(LOG_ERR, "Configured tie-breaker differs in cluster. This may be "
+			    "result of server not yet accepted this node disconnect. Retry again.");
+			instance->disconnect_reason =
+			    QDEVICE_NET_DISCONNECT_REASON_SERVER_SENT_TIE_BREAKER_DIFFERS_FROM_OTHER_NODES_ERROR;
+		} else if (msg->reply_error_code == TLV_REPLY_ERROR_CODE_ALGORITHM_DIFFERS_FROM_OTHER_NODES) {
+			qdevice_log(LOG_ERR, "Configured algorithm differs in cluster. This may be "
+			    "result of server not yet accepted this node disconnect. Retry again.");
+			instance->disconnect_reason =
+			    QDEVICE_NET_DISCONNECT_REASON_SERVER_SENT_ALGORITHM_DIFFERS_FROM_OTHER_NODES_ERROR;
 		} else {
 			instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_SERVER_SENT_ERROR;
 		}
