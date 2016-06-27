@@ -90,7 +90,13 @@ start()
 	# to avoid to clean it up on every boot.
 	# they also assume that init scripts will create
 	# required subdirectories for proper operations
-	mkdir -p @LOCALSTATEDIR@/run
+	if [ ! -d "@LOCALSTATEDIR@/run/corosync-qnetd" ];then
+		mkdir -p "@LOCALSTATEDIR@/run/corosync-qnetd"
+		chmod 0770 "@LOCALSTATEDIR@/run/corosync-qnetd"
+		if [ ! -z "$COROSYNC_QNETD_RUNAS" ];then
+			chown "$COROSYNC_QNETD_RUNAS:$COROSYNC_QNETD_RUNAS" "@LOCALSTATEDIR@/run/corosync-qnetd"
+		fi
+	fi
 
 	if status $prog > /dev/null 2>&1; then
 		success

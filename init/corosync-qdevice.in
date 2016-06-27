@@ -90,7 +90,10 @@ start()
 	# to avoid to clean it up on every boot.
 	# they also assume that init scripts will create
 	# required subdirectories for proper operations
-	mkdir -p @LOCALSTATEDIR@/run
+	if [ ! -d "@LOCALSTATEDIR@/run/corosync-qdevice" ];then
+		mkdir -p "@LOCALSTATEDIR@/run/corosync-qdevice"
+		chmod 0770 "@LOCALSTATEDIR@/run/corosync-qdevice"
+	fi
 
 	if status $prog > /dev/null 2>&1; then
 		success

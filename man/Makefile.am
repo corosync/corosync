@@ -147,6 +147,10 @@ dist_man_MANS		+= corosync-qnetd-tool.8 \
                            corosync-qnetd-certutil.8
 endif
 
+if BUILD_QDEVICES
+dist_man_MANS		+= corosync-qdevice-tool.8
+endif
+
 HTML_DOCS 		= $(dist_man_MANS:%=%.html) $(man_MANS:%=%.html)
 
 # developer man page generation

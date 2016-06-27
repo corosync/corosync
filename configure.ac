@@ -204,7 +204,8 @@ AC_CONFIG_FILES([Makefile
 		 conf/Makefile
 		 qdevices/Makefile
 		 Doxyfile
-		 conf/logrotate/Makefile])
+		 conf/logrotate/Makefile
+		 conf/tmpfiles.d/Makefile])
 
 ### Local business
 
@@ -392,6 +393,11 @@ AC_ARG_WITH([logrotatedir],
 	[  --with-logrotatedir=DIR : the base directory for logrorate.d files.  ],
 	[ LOGROTATEDIR="$withval" ],
 	[ LOGROTATEDIR="$sysconfdir/logrotate.d" ])
+
+AC_ARG_WITH([tmpfilesdir],
+	[  --with-tmpfilesdir=DIR   : path to tmpfiles.d configuration files directory. ],
+	[ TMPFILESDIR="$withval" ],
+	[ TMPFILESDIR="/lib/tmpfiles.d" ])
 
 AC_ARG_ENABLE([snmp],
 	[  --enable-snmp                   : SNMP protocol support ],
@@ -707,6 +713,7 @@ INITWRAPPERSDIR=$(eval echo ${INITWRAPPERSDIR})
 AC_SUBST([INITWRAPPERSDIR])
 AC_SUBST([LOGDIR])
 AC_SUBST([LOGROTATEDIR])
+AC_SUBST([TMPFILESDIR])
 
 AC_SUBST([SOMAJOR])
 AC_SUBST([SOMINOR])
@@ -749,6 +756,7 @@ AC_MSG_RESULT([  System init.d directory  = ${INITDDIR}])
 AC_MSG_RESULT([  System systemd directory = ${SYSTEMDDIR}])
 AC_MSG_RESULT([  System upstart directory = ${UPSTARTDIR}])
 AC_MSG_RESULT([  System init wraps dir    = ${INITWRAPPERSDIR}])
+AC_MSG_RESULT([  System tmpfiles.d        = ${TMPFILESDIR}])
 AC_MSG_RESULT([  Log directory            = ${LOGDIR}])
 AC_MSG_RESULT([  Log rotate directory     = ${LOGROTATEDIR}])
 AC_MSG_RESULT([  corosync config dir      = ${COROSYSCONFDIR}])

@@ -126,7 +126,8 @@ export rdmacm_LIBS=-lrdmacm \
 %endif
 	--with-initddir=%{_initrddir} \
 	--with-systemddir=%{_unitdir} \
-	--with-upstartdir=%{_sysconfdir}/init
+	--with-upstartdir=%{_sysconfdir}/init \
+	--with-tmpfilesdir=%{_tmpfilesdir}
 
 make %{_smp_mflags}
 
@@ -167,6 +168,8 @@ install -m 644 init/corosync-qnetd.sysconfig.example \
 %if %{with systemd}
 sed -i -e 's/^#User=/User=/' \
    %{buildroot}%{_unitdir}/corosync-qnetd.service
+sed -i -e 's/root/coroqnetd/g' \
+   %{buildroot}%{_tmpfilesdir}/corosync-qnetd.conf
 %else
 sed -i -e 's/^COROSYNC_QNETD_RUNAS=""$/COROSYNC_QNETD_RUNAS="coroqnetd"/' \
    %{buildroot}%{_sysconfdir}/sysconfig/corosync-qnetd
@@ -424,7 +427,7 @@ fi
 %else
 %{_initrddir}/corosync-qdevice
 %endif
-
+%{_mandir}/man8/corosync-qdevice-tool.8*
 %endif
 
 # optional qnetd
@@ -489,10 +492,12 @@ fi
 %{_unitdir}/corosync-qnetd.service
 %dir %{_datadir}/corosync
 %{_datadir}/corosync/corosync-qnetd
+%{_tmpfilesdir}/corosync-qnetd.conf
 %else
 %{_initrddir}/corosync-qnetd
 %endif
-
+%{_mandir}/man8/corosync-qnetd-tool.8*
+%{_mandir}/man8/corosync-qnetd-certutil.8*
 %endif
 
 %changelog
