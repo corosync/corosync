@@ -1,0 +1,223 @@
+.\"/*
+.\" * Copyright (C) 2016 Red Hat, Inc.
+.\" *
+.\" * All rights reserved.
+.\" *
+.\" * Author: Jan Friesse <jfriesse@redhat.com>
+.\" *
+.\" * This software licensed under BSD license, the text of which follows:
+.\" *
+.\" * Redistribution and use in source and binary forms, with or without
+.\" * modification, are permitted provided that the following conditions are met:
+.\" *
+.\" * - Redistributions of source code must retain the above copyright notice,
+.\" *   this list of conditions and the following disclaimer.
+.\" * - Redistributions in binary form must reproduce the above copyright notice,
+.\" *   this list of conditions and the following disclaimer in the documentation
+.\" *   and/or other materials provided with the distribution.
+.\" * - Neither the name of Red Hat, Inc. nor the names of its
+.\" *   contributors may be used to endorse or promote products derived from this
+.\" *   software without specific prior written permission.
+.\" *
+.\" * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+.\" * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+.\" * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+.\" * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+.\" * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+.\" * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+.\" * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+.\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+.\" * THE POSSIBILITY OF SUCH DAMAGE.
+.\" */
+.TH COROSYNC-QNETD 8 2016-06-28
+.SH NAME
+corosync-qnetd \- QNet daemon
+.SH SYNOPSIS
+.B "corosync-qnetd [-46dfhv] [-l listen_addr] [-p listen_port] [-s tls]
+.B [-c client_cert_required] [-m max_clients] [-S option=value[,option2=value2,...]]"
+
+.SH DESCRIPTION
+.B corosync-qnetd
+is daemon running outside of cluster and being able to provide vote to
+.B corosync-qdevice
+model net. It's designed to support multiple clusters and be almost configuration
+and state free. New clusters are handled dynamically and no configuration file exists.
+It's also able to (recommended) run as non root user. Connection between
+.B corosync-qdevice
+model net client can be optionally TLS with client certificate checking. Communication
+protocol between server and client is designed to be very simple and allow backward
+compatibility.
+.SH OPTIONS
+.TP
+.B -4
+and it's counterpart
+.B -6
+are used to force to use only IPv4 or IPv6. Default is to listen on both addresses.
+.TP
+.B -d
+Turn on debug information. By default priority of messages forwarded into syslog
+is not bumped so for most of deployments debug messages are simply thrown. To bump
+up priority use
+.B -d
+parameter twice.
+.TP
+.B -h
+Show short help
+.TP
+.B -v
+Show version and supported communication protocol messages/options.
+.TP
+.B -l
+IP address to listen on. By default daemon listen on any address (wildcard).
+.TP
+.B -p
+TCP port to listen on. Default port is 5403.
+.TP
+.B -s
+Determines if TLS should be used and can be one of
+.I on/off/required
+values (default is
+.I on
+).
+.I on
+means TLS is enabled but client is not required to start TLS,
+.I off
+means TLS is completely disabled, and
+.I required
+means TLS is required.
+.I on
+and
+.I required
+requires NSS database to be properly initialized by running a
+.B corosync-qnetd-certutil
+command.
+.TP
+.B -c
+can be set to
+.I on/off
+value. Option make sense only if TLS is enabled. When
+.B -c
+is
+.I on
+client is required to send it's client certificate (default).
+.TP
+.B -m
+Maximum simultaneous clients. Default is 0 what means no limit.
+.TP
+.B -S
+Set advanced settings described in it's own section. This option
+shouldn't be generally used because most of the options are
+not safe to change.
+.SH UNPRIVILEGED USER CONFIGURATION
+It's generally recommended to be running
+.B corosync-qnetd
+as non root user. If you get package from distribution it's highly
+possible packager made hard work for you. If installation is performed
+from source code, few steps has to be taken.
+
+First it's needed to create unprivileged user/group. Following commands
+can be used (execute as root):
+
+.nf
+# groupadd -r coroqnetd
+# useradd -r -g coroqnetd -d / -s /sbin/nologin -c "User for corosync-qnetd" coroqnetd
+.fi
+
+Next step is to set correct owner to /etc/corosync/qnetd and /var/run/corosync-qnetd
+directories.
+
+.nf
+# chown -R coroqnetd:coroqnetd /etc/corosync/qnetd /var/run/corosync-qnetd
+.fi
+
+Some systems has /var/run directory on tmpfs file system which gets discarded after
+reboot. Solution is to use initscript which takes care of /var/run/corosync-qnetd
+creating and set correct owner and permissions or for systems with systemd, it's possible
+to use tmpfile.d configuration file (installed by default if systemd is enabled during
+corosync compilation).
+
+Last step is to make sure
+.B corosync-qnetd
+is really executed as unpriviliged user. For initscript it's enough to set
+line COROSYNC_QNETD_RUNAS in /etc/(sysconfig|default)/corosync-qnetd file. If file
+is not already installed, use one provided in corosync source code
+(init/corosync-qnetd.sysconfig.example). For systemd overwrite/copy
+corosync-qnetd.service unit file and uncomment/change "User=" directive.
+
+.SH TLS CONFIGURATION
+For TLS to work it's required to create NSS database.
+.B corosync-qnetd-certutil
+is tool to perform required actions automatically. Just execute:
+
+.nf
+# corosync-qnetd-certutil -i
+.fi
+
+If TLS is not required just edit /etc/(sysconfig|default)/corosync-qnetd or
+systemd unit file and add parameter
+.B -s
+.I off
+proper place.
+
+.SH ADVANCED SETTINGS
+Set by using
+.B -S
+option. At the end of description in braces is default value.
+.TP
+.B listen_backlog
+Parameter passed to listen syscall. (10)
+.TP
+.B max_client_send_buffers
+Maximum number of send buffers for one client. (32)
+.TP
+.B max_client_send_size
+Maximum size of one send buffer (message) to be send to client. (32768)
+.TP
+.B max_client_receive_size
+Maximum size of receive buffer for client message (maximum
+allowed message size received by client). (32768)
+.TP
+.B nss_db_dir
+NSS database directory. (/etc/corosync/qnetd/nssdb)
+.TP
+.B cert_nickname
+NSS nickname of qnetd server certificate. (QNetd Cert)
+.TP
+.B heartbeat_interval_min
+Minimal heartbeat timeout accepted by server in ms. (1000)
+.TP
+.B heartbeat_interval_max
+Maximal heartbeat timeout accepted by server in ms. (120000)
+.TP
+.B dpd_enabled
+Dead peer detection enabled. (on)
+.TP
+.B dpd_interval
+How often DPD algorithm detects dead peers in ms. (10000)
+.TP
+.B lock_file
+Lock file location. (/var/run/corosync-qnetd/corosync-qnetd.pid)
+.TP
+.B local_socket_file
+Internal IPC socket file location. (/var/run/corosync-qnetd/corosync-qnetd.sock)
+.TP
+.B local_socket_backlog
+Parameter passed to listen syscall. (10)
+.TP
+.B ipc_max_clients
+Maximum allowed simultaneous IPC clients. (10)
+.TP
+.B ipc_max_receive_size
+Maximum size of message received by IPC client. (4096)
+.TP
+.B ipc_max_send_size
+Maximum size of message allowed to send to IPC client. (10485760)
+.SH SEE ALSO
+.BR corosync-qnetd-tool (8)
+.BR corosync-qnetd-certutil (8)
+.BR corosync-qdevice (8)
+.SH AUTHOR
+Jan Friesse
+.PP
