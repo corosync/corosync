@@ -35,10 +35,12 @@
 #include <sys/types.h>
 #include <sys/file.h>
 #include <arpa/inet.h>
+#include <sys/stat.h>
 
 #include <err.h>
 #include <errno.h>
 #include <inttypes.h>
+#include <libgen.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -75,8 +77,20 @@ utils_flock(const char *lockfile, pid_t pid, int *another_instance_running)
 	char pid_s[17];
 	int fd_flag;
 	int lf;
+	char *dname;
 
 	*another_instance_running = 0;
+
+	/*
+	 * lockfile directory may not exists. Creation of directory should
+	 * be handled by initscript/tmpfiles.d. But as a last chance it
+	 * make sense to try to create it here.
+	 */
+	dname = strdup(lockfile);
+	if (dname != NULL) {
+		(void)mkdir(dirname(dname), 0770);
+		free(dname);
+	}
 
 	lf = open(lockfile, O_WRONLY | O_CREAT, 0640);
 	if (lf == -1) {
