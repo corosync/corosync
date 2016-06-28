@@ -71,7 +71,6 @@ struct qdevice_advanced_settings {
 	uint32_t net_heartbeat_interval_max;
 	uint32_t net_min_connect_timeout;
 	uint32_t net_max_connect_timeout;
-	int net_delay_before_reconnect;
 	uint8_t net_test_algorithm_enabled;
 };
 

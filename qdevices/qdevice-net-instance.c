@@ -116,10 +116,10 @@ qdevice_net_instance_clean(struct qdevice_net_instance *instance)
 
 	instance->skipping_msg = 0;
 	instance->msg_already_received_bytes = 0;
-	instance->state = QDEVICE_NET_INSTANCE_STATE_WAITING_PREINIT_REPLY;
 	instance->echo_request_expected_msg_seq_num = instance->echo_reply_received_msg_seq_num;
 	instance->using_tls = 0;
 	instance->tls_client_cert_sent = 0;
+	instance->state = QDEVICE_NET_INSTANCE_STATE_WAITING_CONNECT;
 
 	instance->schedule_disconnect = 0;
 	instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_UNDEFINED;

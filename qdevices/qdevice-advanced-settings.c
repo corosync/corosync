@@ -82,7 +82,6 @@ qdevice_advanced_settings_init(struct qdevice_advanced_settings *settings)
 	settings->net_heartbeat_interval_max = QDEVICE_NET_DEFAULT_HEARTBEAT_INTERVAL_MAX;
 	settings->net_min_connect_timeout = QDEVICE_NET_DEFAULT_MIN_CONNECT_TIMEOUT;
 	settings->net_max_connect_timeout = QDEVICE_NET_DEFAULT_MAX_CONNECT_TIMEOUT;
-	settings->net_delay_before_reconnect = QDEVICE_NET_DEFAULT_DELAY_BEFORE_RECONNECT;
 	settings->net_test_algorithm_enabled = QDEVICE_NET_DEFAULT_TEST_ALGORITHM_ENABLED;
 
 	settings->master_wins = QDEVICE_ADVANCED_SETTINGS_MASTER_WINS_MODEL;
@@ -248,13 +247,6 @@ qdevice_advanced_settings_set(struct qdevice_advanced_settings *settings,
 		}
 
 		settings->net_max_connect_timeout = (uint32_t)tmpll;
-	} else if (strcasecmp(option, "net_delay_before_reconnect") == 0) {
-		tmpll = strtoll(value, &ep, 10);
-		if (tmpll < QDEVICE_NET_MIN_DELAY_BEFORE_RECONNECT || errno != 0 || *ep != '\0') {
-			return (-2);
-		}
-
-		settings->net_delay_before_reconnect = (int)tmpll;
 	} else if (strcasecmp(option, "net_test_algorithm_enabled") == 0) {
 		if ((tmpll = utils_parse_bool_str(value)) == -1) {
 			return (-2);

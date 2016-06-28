@@ -122,9 +122,6 @@ extern "C" {
 #define QDEVICE_NET_DEFAULT_TEST_ALGORITHM_ENABLED	0
 #endif
 
-#define QDEVICE_NET_DEFAULT_DELAY_BEFORE_RECONNECT	(1000)
-#define QDEVICE_NET_MIN_DELAY_BEFORE_RECONNECT		1
-
 /*
  * Decision algorithms supported by qnetd
  */

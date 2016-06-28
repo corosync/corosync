@@ -155,6 +155,7 @@ qdevice_model_net_run(struct qdevice_instance *instance)
 	int try_connect;
 	int res;
 	enum tlv_vote vote;
+	int delay_before_reconnect;
 
 	net_instance = instance->model_data;
 
@@ -245,15 +246,20 @@ qdevice_model_net_run(struct qdevice_instance *instance)
 			net_instance->non_blocking_client.socket = NULL;
 		}
 
-		qdevice_net_instance_clean(net_instance);
-
-		if (try_connect) {
+		if (try_connect &&
+		    net_instance->state != QDEVICE_NET_INSTANCE_STATE_WAITING_CONNECT) {
 			/*
 			 * Give qnetd server a little time before reconnect
 			 */
-			(void)poll(NULL, 0,
-			    random() % instance->advanced_settings->net_delay_before_reconnect);
+			delay_before_reconnect = random() %
+			    (int)(net_instance->cast_vote_timer_interval * 0.9);
+
+			qdevice_log(LOG_DEBUG, "Sleeping for %u ms before reconnect",
+			    delay_before_reconnect);
+			(void)poll(NULL, 0, delay_before_reconnect);
 		}
+
+		qdevice_net_instance_clean(net_instance);
 	}
 
 	return (0);
