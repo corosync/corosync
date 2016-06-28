@@ -1101,16 +1101,14 @@ extern int totem_config_read (
 		} else {
 			/*
 			 * User not specified address -> autogenerate one from cluster_name key
-			 * (if available)
+			 * (if available). Return code is intentionally ignored, because
+			 * udpu doesn't need mcastaddr and validity of mcastaddr for udp is
+			 * checked later anyway.
 			 */
-			res = get_cluster_mcast_addr (cluster_name,
+			(void)get_cluster_mcast_addr (cluster_name,
 					ringnumber,
 					totem_config->ip_version,
 					&totem_config->interfaces[ringnumber].mcast_addr);
-			if (res != 0) {
-				*error_string = "Can't autogenerate multicast address";
-				return -1;
-			}
 		}
 
 		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.broadcast", ringnumber);
