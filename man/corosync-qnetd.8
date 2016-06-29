@@ -31,7 +31,7 @@
 .\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 .\" * THE POSSIBILITY OF SUCH DAMAGE.
 .\" */
-.TH COROSYNC-QNETD 8 2016-06-28
+.TH COROSYNC-QNETD 8 2016-06-29
 .SH NAME
 corosync-qnetd \- QNet daemon
 .SH SYNOPSIS
@@ -62,6 +62,9 @@ is not bumped so for most of deployments debug messages are simply thrown. To bu
 up priority use
 .B -d
 parameter twice.
+.TP
+.B -f
+Do not daemonize and run on foreground.
 .TP
 .B -h
 Show short help
@@ -147,7 +150,9 @@ is not already installed, use one provided in corosync source code
 corosync-qnetd.service unit file and uncomment/change "User=" directive.
 
 .SH TLS CONFIGURATION
-For TLS to work it's required to create NSS database.
+For TLS to work it's required to create NSS database. If pcs is used following
+steps are not needed because pcs does them automatically.
+
 .B corosync-qnetd-certutil
 is tool to perform required actions automatically. Just execute:
 

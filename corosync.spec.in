@@ -429,6 +429,7 @@ fi
 %endif
 %{_mandir}/man8/corosync-qdevice-tool.8*
 %{_mandir}/man8/corosync-qdevice-net-certutil.8*
+%{_mandir}/man8/corosync-qdevice.8*
 %endif
 
 # optional qnetd

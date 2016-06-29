@@ -150,7 +150,8 @@ endif
 
 if BUILD_QDEVICES
 dist_man_MANS		+= corosync-qdevice-tool.8 \
-                           corosync-qdevice-net-certutil.8
+                           corosync-qdevice-net-certutil.8 \
+                           corosync-qdevice.8
 endif
 
 HTML_DOCS 		= $(dist_man_MANS:%=%.html) $(man_MANS:%=%.html)

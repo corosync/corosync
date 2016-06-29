@@ -1,0 +1,317 @@
+.\"/*
+.\" * Copyright (C) 2016 Red Hat, Inc.
+.\" *
+.\" * All rights reserved.
+.\" *
+.\" * Author: Jan Friesse <jfriesse@redhat.com>
+.\" *
+.\" * This software licensed under BSD license, the text of which follows:
+.\" *
+.\" * Redistribution and use in source and binary forms, with or without
+.\" * modification, are permitted provided that the following conditions are met:
+.\" *
+.\" * - Redistributions of source code must retain the above copyright notice,
+.\" *   this list of conditions and the following disclaimer.
+.\" * - Redistributions in binary form must reproduce the above copyright notice,
+.\" *   this list of conditions and the following disclaimer in the documentation
+.\" *   and/or other materials provided with the distribution.
+.\" * - Neither the name of Red Hat, Inc. nor the names of its
+.\" *   contributors may be used to endorse or promote products derived from this
+.\" *   software without specific prior written permission.
+.\" *
+.\" * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+.\" * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+.\" * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+.\" * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+.\" * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+.\" * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+.\" * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+.\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+.\" * THE POSSIBILITY OF SUCH DAMAGE.
+.\" */
+.TH COROSYNC-QDEVICE 8 2016-06-29
+.SH NAME
+corosync-qdevice \- QDevice daemon
+.SH SYNOPSIS
+.B "corosync-qdevice [-dfh] [-S option=value[,option2=value2,...]]"
+
+.SH DESCRIPTION
+.B corosync-qdevice
+is daemon running on each node of of cluster and being able to provide configured
+number of votes to
+quorum subsystem based on third-party arbiter decision. It's primary use
+is to allow sustain more node failures than standard quorum would allow. It's
+recommended for even-node clusters and very recommended for 2 node cluster.
+.SH OPTIONS
+.TP
+.B -d
+Forcefully turn on debug information without need to change corosync.conf.
+.TP
+.B -f
+Do not daemonize and run on foreground.
+.TP
+.B -h
+Show short help
+.TP
+.B -S
+Set advanced settings described in it's own section. This option
+shouldn't be generally used because most of the options are
+not safe to change.
+.SH CONFIGURATION
+.B corosync-qdevice
+reads it's configuration from corosync.conf file.
+
+Main configuration is within
+.B quorum.device
+subdirective. Each model also has it's own configuration within
+equally named subdirective.
+.TP
+.B model
+Specifies model to be used. This parameter is required.
+.B corosync-qdevice
+is modular and it's able to support multiple different models. Model basically
+defines what type of arbiter is used. Currently only
+.I net
+is supported.
+.TP
+.B timeout
+Specifies how often should
+.B corosync-qdevice
+call votequorum_poll function. It's also used by net model to adjust
+hearbeat timeout. It's usually not recommended to change this value.
+Default is 10000.
+.TP
+.B sync_timeout
+Specifies how often should
+.B corosync-qdevice
+call votequorum_poll function during sync phase. It's usually not recommended to change this value.
+Default is 30000.
+.B votes
+Number of votes provided to cluster by qdevice. Default is (number_of_nodes - 1) or generally
+sum(votes per node) - 1.
+.PP
+Within
+.B quorum.device.net
+subdirective is configuration for model net.
+.TP
+.B tls
+Can be one of
+.I on, off or required
+values and specifies if tls should be used.
+.I on
+value means connection should be tried with TLS but it's not fatal
+error if server doesn't advertise TLS support and then non tls is used.
+.I off
+is used when TLS is not required and it's then not even tried. This is also
+only one mode which doesn't need properly initialized NSS database.
+.I required
+means TLS is absolutelly required and if server doesn't support TLS, qdevice
+exits with error message. Default is on.
+.TP
+.B host
+Specifies IP address or host name of qnetd server to be used. This parameter
+is required.
+.TP
+.B port
+Specifies TCP port of qnetd server. Default is 5403.
+.TP
+.B algorithm
+Decision algorithm. Can be one of the
+.I ffsplit
+or
+.I lms
+values (actually there are also
+.I test
+and
+.I 2nodelms
+, both of them mainly for developers and shouldn't be generally used). Description of
+what algorithm means and how algorithms differs is in it's own section.
+Default value is ffsplit.
+.TP
+.B tie-breaker
+can be one of
+.I lowest
+,
+.I highest
+or valid_node_id (number) values. It's used as a fallback if qdevice has to solve two
+exactly same quality partitions.
+.I lowest
+means partition with lowest node id is choosen.
+.I highest
+means partition with highest node is choosen. And valid_node_id means partition
+where node with given node id is member is choosen.
+.TP
+.B connect_timeout
+Timeout when
+.B corosync-qdevice
+is trying to connect to
+.B corosync-qnetd
+host. Default is 0.8 * quorum.sync_timeout.
+.TP
+.B force_ip_version
+can be one of
+.I 0|4|6
+and allows forcing using given IP version.
+.I 0
+(default value) means IPv6 is prefered and IPv4 should be used as fallback.
+
+.PP
+Logging configuration is within
+.B logging
+directive.
+.B corosync-qdevice
+parses and supports most of the options with exception to
+.B to_logfile
+,
+.B logfile
+and
+.B logfile_priority.
+.B logger_subsys
+sub-directive can be also used if
+.B subsys
+is set to QDEVICE.
+
+.PP
+For
+.B corosync-qdevice
+to work correctly,
+.B nodelist
+directive has to be used and properly configured. Also net model require
+.B totem.cluster_name
+option to be set.
+
+.SH MODEL NET TLS CONFIGURATION
+For model net to make TLS work it's required to create NSS database, import Qnetd
+CA certificate, and get/distribute valid client certificate.
+
+If pcs is used following steps are not needed because pcs does them automatically.
+
+.B corosync-qdevice-net-certutil
+is tool to perform required actions semi-automatically. Please consult help output of
+it and its man page. For first time configuration it may make sense to start with
+.B -Q
+option.
+
+If TLS is not required just edit corosync.conf file and set
+.B quorum.device.net.tls
+to
+.I off
+value.
+
+.SH MODEL NET ALGORITHMS
+Algorithm is used to change behavior of how
+.B corosync-qnetd
+provides vote to given node/partition. Currently there are two algorithms supported.
+.TP
+.B ffsplit
+Make sense only for clusters with even number of nodes. It provides exactly one
+vote to partition with higher number of active nodes. If there are two exactly same partitions,
+it provides it's vote to partition where more clients are connected to qnetd
+server. If also this number equals, tie-breaker is used. It's able to transition
+it's vote if currently active partition partitioned and non-active partition
+still has at least 50% of active nodes. Because of this, vote is not provided
+if qnetd connection is not active.
+
+For use this algorithm it's required to set number of votes per node to 1 (default)
+and qdevice number of votes has to be also 1. This is achieved by setting
+.B quorum.device.votes
+key in corosync.conf file to 1.
+.TP
+.B lms
+Last-man-standing. If the node is the only one left in the cluster that can see the
+qnetd server then we return a vote.
+
+If more than one node can see the qnetd server but some nodes can't
+see each other then we divide the cluster up into 'partitions' based on
+their ring_id and return a vote to nodes in the partition that contains
+a nominated nodeid. (lowest, highest, etc). For LMS to work, number
+of qdevice votes has to be set to default (so just delete
+.B quorum.device.votes
+key from corosync.conf).
+
+.SH ADVANCED SETTINGS
+Set by using
+.B -S
+option. At the end of description in braces is default value. Options
+beginning with
+.B net_
+prefix are specific to model net.
+.TP
+.B lock_file
+Lock file location. (/var/run/corosync-qdevice/corosync-qdevice.pid)
+.TP
+.B local_socket_file
+Internal IPC socket file location. (/var/run/corosync-qdevice/corosync-qdevice.sock)
+.TP
+.B local_socket_backlog
+Parameter passed to listen syscall. (10)
+.TP
+.B max_cs_try_again
+How many times retry to call corosync function which returned CS_ERR_TRY_AGAIN. (10)
+.TP
+.B votequorum_device_name
+Name used for qdevice register. (Qdevice)
+.TP
+.B ipc_max_clients
+Maximum allowed simultaneous IPC clients. (10)
+.TP
+.B ipc_max_receive_size
+Maximum size of message received by IPC client. (4096)
+.TP
+.B ipc_max_send_size
+Maximum size of message allowed to send to IPC client. (65536)
+.TP
+.B master_wins
+Force enable/disable master wins. (default is model)
+.TP
+.B net_nss_db_dir
+NSS database directory. (/etc/corosync/qdevice/net/nssdb)
+.TP
+.B net_initial_msg_receive_size
+Initial (used during connection parameters negotiation)
+maximum size of receive buffer for message (maximum
+allowed message size received from qnetd). (32768)
+.TP
+.B net_initial_msg_send_size
+Initial (used during connection parameters negotiation)
+maximum size of one send buffer (message) to be send to server. (32768)
+.TP
+.B net_min_msg_send_size
+Minimum required size of one send buffer (message) to be send to server. (32768)
+.TP
+.B net_max_msg_receive_size
+Maximum allowed size of receive buffer for message sent by server. (16777216)
+.TP
+.B net_max_send_buffers
+Maximum number of send buffers. (10)
+.TP
+.B net_nss_qnetd_cn
+Canonical name of qnetd server certificate. (Qnetd Server)
+.TP
+.B net_nss_client_cert_nickname
+NSS nickname of qdevice client certificate. (Cluster Cert)
+.TP
+.B net_heartbeat_interval_min
+Minimal heartbeat timeout accepted by client in ms. (1000)
+.TP
+.B net_heartbeat_interval_max
+Maximal heartbeat timeout accepted by client in ms. (120000)
+.TP
+.B net_min_connect_timeout
+Minimal connection timeout accepted by client in ms. (1000)
+.TP
+.B net_max_connect_timeout
+Maximal connection timeout accepted by client in ms. (120000)
+.TP
+.B net_test_algorithm_enabled
+Enable test algorithm. (if built with --enable-debug on, otherwise off)
+.SH SEE ALSO
+.BR corosync-qdevice-tool (8)
+.BR corosync-qdevice-certutil (8)
+.BR corosync-qnetd (8)
+.BR corosync.conf (5)
+.SH AUTHOR
+Jan Friesse
+.PP
