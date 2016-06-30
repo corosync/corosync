@@ -32,11 +32,9 @@ MAINTAINERCLEANFILES    = Makefile.in
 
 EXTRA_DIST		= corosync-qnetd.conf
 
-tmpfilesdirdir		= ${TMPFILESDIR}
-tmpfilesdir_DATA	=
-
 if BUILD_QNETD
 if INSTALL_SYSTEMD
-tmpfilesdir_DATA	+= corosync-qnetd.conf
+tmpfilesdirdir		= ${TMPFILESDIR}
+tmpfilesdir_DATA	= corosync-qnetd.conf
 endif
 endif
