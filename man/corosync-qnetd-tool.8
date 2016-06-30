@@ -38,27 +38,26 @@ corosync-qnetd-tool \- corosync-qnetd control interface.
 .B "corosync-qnetd-tool [-Hhlsv] [-c cluster_name] [-p qnetd_ipc_socket_path]"
 .SH DESCRIPTION
 .B corosync-qnetd-tool
-is frontend to internal corosync-qnetd IPC. It's main purpose is to show important
-information about current
-.B corosync-qnetd
-internal state.
+is a frontend to the internal corosync-qnetd IPC. Its main purpose is to show important
+information about the current internal state of
+.B corosync-qnetd.
 .SH OPTIONS
 .TP
 .B -H
-Properly shutdown
+Properly shutdown the
 .B corosync-qnetd
 process
 .TP
 .B -h
-Display short usage
+Display a short usage text
 .TP
 .B -l
-List all clients connected to
+List all clients connected to the
 .B corosync-qnetd
-process. Output is described in it's own section.
+process. The output is described in its own section below.
 .TP
 .B -s
-Display status of
+Display status of the
 .B corosync-qnetd
 process.
 .TP
@@ -69,14 +68,14 @@ and
 .B -s
 .TP
 .B -c
-Used only with
+Used only with the
 .B -l
-option. By default, information about all clients from all clusters are displayed, with
-this option it's possible to filter only to one cluster with given
+option. By default, information about all clients from all clusters is displayed, with
+this option it's possible to filter information from a single cluster given the
 .I cluster_name.
 .TP
 .B -p
-Path to
+Path to the
 .B corosync-qnetd
 communication socket.
 
@@ -96,31 +95,31 @@ Cluster "Cluster":
  ...
 .fi
 
-Output contains list of clusters. Each cluster has cluster common options
+The output contains a list of clusters. Each cluster has the cluster common options
 .I Algorithm
 and
 .I Tie-breaker
-both configured in corosync.conf file. Information about nodes follows.
+as configured in the corosync.conf file. Information about nodes follows.
 .I Client address
-is  IP address and port of client.
+is the IP address and port of the client.
 .I HB interval
-is heartbeat interval between
+is the heartbeat interval between
 .B corosync-qnetd
 and
 .B corosync-qdevice
 client. This option can be configured in corosync.conf.
 .I Configured node list
-is list of nodes configured in corosync.conf.
+is the list of nodes configured in corosync.conf.
 .I Ring ID
 and
 .I Membership node list
-are self-explaining.
+are self-explanatory.
 .I TLS active
-describes if encrypted transport is used between server and client.
+describes if an encrypted transport is used between server and client.
 .I Vote
 is last vote sent to
 .B corosync-qdevice
-client. Last ACK/NACK vote (if exists) is in parentheses.
+client. The last ACK/NACK vote (if it exists) is in parentheses.
 .SH SEE ALSO
 .BR corosync-qnetd (8)
 .BR corosync-qdevice (8)

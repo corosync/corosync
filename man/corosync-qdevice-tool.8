@@ -38,32 +38,31 @@ corosync-qdevice-tool \- corosync-qdevice control interface.
 .B "corosync-qdevice-tool [-Hhsv] [-p qdevice_ipc_socket_path]"
 .SH DESCRIPTION
 .B corosync-qdevice-tool
-is frontend to internal corosync-qdevice IPC. It's main purpose is to show important
-information about current
-.B corosync-qdevice
-internal state.
+is a frontend to the internal corosync-qdevice IPC. Its main purpose is to show important
+information about the current internal state of
+.B corosync-qdevice.
 .SH OPTIONS
 .TP
 .B -H
-Properly shutdown
+Properly shutdown the
 .B corosync-qdevice
 process
 .TP
 .B -h
-Display short usage
+Display a short usage text
 .TP
 .B -s
-Display status of
+Display the status of the
 .B corosync-qdevice
-process. Output is described in it's own section.
+process. The output is described in its own section below.
 .TP
 .B -v
-Display more verbose output for
+Display more verbose output for the
 .B -s
 option.
 .TP
 .B -p
-Path to
+Path to the
 .B corosync-qdevice
 communication socket.
 
@@ -102,22 +101,22 @@ Connected since:        2016-06-24T17:02:35
 Echo reply received:    2016-06-24T17:05:15
 .fi
 
-Output is split into generic qdevice section and model specific section.
-Most of the items are just taken from corosync.conf file. It's good to note
+The output is split into a generic qdevice section and a model specific section.
+Most of the items are just taken from corosync.conf file. It's helpful to note that the
 .I Membership node list
-what is list of nodes in same membership with current node and
+is the membership list of the current node and should match the quorum node list.
 .I Last poll call
-what is timestamp (iso format) of last call of votequorum_qdevice_poll
+is the timestamp (in iso format) of the last call to the votequorum_qdevice_poll
 function.
 
-For model net, it's good to note
+For model net, it's good to check the
 .I Poll timer running
-item. Internally, model net supports 3 states. Not voting (then
+state. Internally, model net supports 3 states. Not voting (when
 .I Poll timer running
-is No and it means
+is No it means that the
 .B corosync-qnetd
-algorithm decides that current node shouldn't get vote),
-voting but not cast vote and voting with cast vote.
+algorithm decides that the current node shouldn't get a vote),
+voting (without cast vote) and voting (with cast vote).
 .SH SEE ALSO
 .BR corosync-qnetd (8)
 .BR corosync-qdevice (8)
