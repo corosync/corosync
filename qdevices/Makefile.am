@@ -37,15 +37,13 @@ bin_PROGRAMS		=
 sbin_PROGRAMS		=
 bin_SCRIPTS		=
 sbin_SCRIPTS		=
-EXTRA_DIST		=
+EXTRA_DIST		= corosync-qnetd-certutil.sh corosync-qdevice-net-certutil.sh
 
 if BUILD_QNETD
 
 bin_PROGRAMS		+= corosync-qnetd corosync-qnetd-tool
 
 bin_SCRIPTS             += corosync-qnetd-certutil
-
-EXTRA_DIST		+= corosync-qnetd-certutil.sh
 
 corosync_qnetd_SOURCES	= corosync-qnetd.c \
                           dynar.c dynar.h msg.c msg.h msgio.c msgio.h \
@@ -93,8 +91,6 @@ if BUILD_QDEVICES
 sbin_PROGRAMS		+= corosync-qdevice corosync-qdevice-tool
 
 sbin_SCRIPTS            += corosync-qdevice-net-certutil
-
-EXTRA_DIST		+= corosync-qdevice-net-certutil.sh
 
 corosync_qdevice_SOURCES = corosync-qdevice.c \
                            qdevice-cmap.c qdevice-cmap.h \

@@ -36,7 +36,11 @@ MAINTAINERCLEANFILES	= Makefile.in
 
 EXTRA_DIST		= corosync.in corosync-notifyd.in corosync.service.in \
                           corosync-notifyd.service.in corosync.conf.in corosync-notifyd.conf.in \
-                          corosync.sysconfig.example
+                          corosync.sysconfig.example \
+                          corosync-qdevice.sysconfig.example corosync-qdevice.in \
+                          corosync-qdevice.service.in \
+                          corosync-qnetd.sysconfig.example corosync-qnetd.in \
+                          corosync-qnetd.service.in
 
 if INSTALL_SYSTEMD
 systemdconfdir	   = $(SYSTEMDDIR)
@@ -49,8 +53,6 @@ initscript_SCRIPTS  = corosync corosync-notifyd
 
 if BUILD_QDEVICES
 initscript_SCRIPTS  += corosync-qdevice
-EXTRA_DIST          += corosync-qdevice.sysconfig.example corosync-qdevice.in \
-                       corosync-qdevice.service.in
 if INSTALL_SYSTEMD
 systemdconf_DATA   += corosync-qdevice.service
 endif
@@ -58,8 +60,6 @@ endif
 
 if BUILD_QNETD
 initscript_SCRIPTS  += corosync-qnetd
-EXTRA_DIST          += corosync-qnetd.sysconfig.example corosync-qnetd.in \
-                       corosync-qnetd.service.in
 if INSTALL_SYSTEMD
 systemdconf_DATA   += corosync-qnetd.service
 endif
