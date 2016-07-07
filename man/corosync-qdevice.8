@@ -131,7 +131,7 @@ and
 description of what each algorithm means and how the algorithms differ see their individual sections.
 Default value is ffsplit.
 .TP
-.B tie-breaker
+.B tie_breaker
 can be one of
 .I lowest,
 .I highest
@@ -208,7 +208,7 @@ provides votes to a given node/partition. Currently there are two algorithms sup
 This one makes sense only for clusters with even number of nodes. It provides exactly one
 vote to the partition with the highest number of active nodes. If there are two exactly similar partitions,
 it provides its vote to the partition that has the most clients connected to the qnetd
-server. If this number is also equal, then the tie-breaker is used. It is able to transition
+server. If this number is also equal, then the tie_breaker is used. It is able to transition
 its vote if the currently active partition becomes partitioned and a non-active partition
 still has at least 50% of the active nodes. Because of this, a vote is not provided
 if the qnetd connection is not active.
