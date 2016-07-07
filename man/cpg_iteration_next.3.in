@@ -82,4 +82,4 @@ error code is returned.
 
 .SH "SEE ALSO"
 .BR cpg_iteration_initialize (3),
-.BR cpg_overview (8)
+.BR cpg_overview (3)

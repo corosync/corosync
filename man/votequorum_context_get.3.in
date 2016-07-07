@@ -49,7 +49,7 @@ This call returns the CS_OK value if successful, otherwise an error is returned.
 .SH ERRORS
 @COMMONIPCERRORS@
 .SH "SEE ALSO"
-.BR votequorum_overview (8),
+.BR votequorum_overview (3),
 .BR votequorum_initialize (3),
 .BR votequorum_finalize (3),
 .BR votequorum_getinfo (3),
