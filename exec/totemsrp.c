@@ -1543,26 +1543,36 @@ static void totemsrp_buffer_release (struct totemsrp_instance *instance, void *p
 
 static void reset_token_retransmit_timeout (struct totemsrp_instance *instance)
 {
+	int32_t res;
+
 	qb_loop_timer_del (instance->totemsrp_poll_handle,
 		instance->timer_orf_token_retransmit_timeout);
-	qb_loop_timer_add (instance->totemsrp_poll_handle,
+	res = qb_loop_timer_add (instance->totemsrp_poll_handle,
 		QB_LOOP_MED,
 		instance->totem_config->token_retransmit_timeout*QB_TIME_NS_IN_MSEC,
 		(void *)instance,
 		timer_function_token_retransmit_timeout,
 		&instance->timer_orf_token_retransmit_timeout);
+	if (res != 0) {
+		log_printf(instance->totemsrp_log_level_error, "reset_token_retransmit_timeout - qb_loop_timer_add error : %d", res);
+	}
 
 }
 
 static void start_merge_detect_timeout (struct totemsrp_instance *instance)
 {
+	int32_t res;
+
 	if (instance->my_merge_detect_timeout_outstanding == 0) {
-		qb_loop_timer_add (instance->totemsrp_poll_handle,
+		res = qb_loop_timer_add (instance->totemsrp_poll_handle,
 			QB_LOOP_MED,
 			instance->totem_config->merge_timeout*QB_TIME_NS_IN_MSEC,
 			(void *)instance,
 			timer_function_merge_detect_timeout,
 			&instance->timer_merge_detect_timeout);
+		if (res != 0) {
+			log_printf(instance->totemsrp_log_level_error, "start_merge_detect_timeout - qb_loop_timer_add error : %d", res);
+		}
 
 		instance->my_merge_detect_timeout_outstanding = 1;
 	}
@@ -1610,33 +1620,48 @@ static void old_ring_state_reset (struct totemsrp_instance *instance)
 
 static void reset_pause_timeout (struct totemsrp_instance *instance)
 {
+	int32_t res;
+
 	qb_loop_timer_del (instance->totemsrp_poll_handle, instance->timer_pause_timeout);
-	qb_loop_timer_add (instance->totemsrp_poll_handle,
+	res = qb_loop_timer_add (instance->totemsrp_poll_handle,
 		QB_LOOP_MED,
 		instance->totem_config->token_timeout * QB_TIME_NS_IN_MSEC / 5,
 		(void *)instance,
 		timer_function_pause_timeout,
 		&instance->timer_pause_timeout);
+	if (res != 0) {
+		log_printf(instance->totemsrp_log_level_error, "reset_pause_timeout - qb_loop_timer_add error : %d", res);
+	}
 }
 
 static void reset_token_timeout (struct totemsrp_instance *instance) {
+	int32_t res;
+
 	qb_loop_timer_del (instance->totemsrp_poll_handle, instance->timer_orf_token_timeout);
-	qb_loop_timer_add (instance->totemsrp_poll_handle,
+	res = qb_loop_timer_add (instance->totemsrp_poll_handle,
 		QB_LOOP_MED,
 		instance->totem_config->token_timeout*QB_TIME_NS_IN_MSEC,
 		(void *)instance,
 		timer_function_orf_token_timeout,
 		&instance->timer_orf_token_timeout);
+	if (res != 0) {
+		log_printf(instance->totemsrp_log_level_error, "reset_token_timeout - qb_loop_timer_add error : %d", res);
+	}
 }
 
 static void reset_heartbeat_timeout (struct totemsrp_instance *instance) {
+	int32_t res;
+
         qb_loop_timer_del (instance->totemsrp_poll_handle, instance->timer_heartbeat_timeout);
-        qb_loop_timer_add (instance->totemsrp_poll_handle,
+        res = qb_loop_timer_add (instance->totemsrp_poll_handle,
 		QB_LOOP_MED,
                 instance->heartbeat_timeout*QB_TIME_NS_IN_MSEC,
                 (void *)instance,
                 timer_function_heartbeat_timeout,
                 &instance->timer_heartbeat_timeout);
+	if (res != 0) {
+		log_printf(instance->totemsrp_log_level_error, "reset_heartbeat_timeout - qb_loop_timer_add error : %d", res);
+	}
 }
 
 
@@ -1655,12 +1680,17 @@ static void cancel_token_retransmit_timeout (struct totemsrp_instance *instance)
 
 static void start_token_hold_retransmit_timeout (struct totemsrp_instance *instance)
 {
-	qb_loop_timer_add (instance->totemsrp_poll_handle,
+	int32_t res;
+
+	res = qb_loop_timer_add (instance->totemsrp_poll_handle,
 		QB_LOOP_MED,
 		instance->totem_config->token_hold_timeout*QB_TIME_NS_IN_MSEC,
 		(void *)instance,
 		timer_function_token_hold_retransmit_timeout,
 		&instance->timer_orf_token_hold_retransmit_timeout);
+	if (res != 0) {
+		log_printf(instance->totemsrp_log_level_error, "start_token_hold_retransmit_timeout - qb_loop_timer_add error : %d", res);
+	}
 }
 
 static void cancel_token_hold_retransmit_timeout (struct totemsrp_instance *instance)
@@ -1768,6 +1798,7 @@ static void timer_function_heartbeat_timeout (void *data)
 static void memb_timer_function_state_gather (void *data)
 {
 	struct totemsrp_instance *instance = data;
+	int32_t res;
 
 	switch (instance->memb_state) {
 	case MEMB_STATE_OPERATIONAL:
@@ -1783,12 +1814,16 @@ static void memb_timer_function_state_gather (void *data)
 		`*/
 		qb_loop_timer_del (instance->totemsrp_poll_handle, instance->memb_timer_state_gather_join_timeout);
 
-		qb_loop_timer_add (instance->totemsrp_poll_handle,
+		res = qb_loop_timer_add (instance->totemsrp_poll_handle,
 			QB_LOOP_MED,
 			instance->totem_config->join_timeout*QB_TIME_NS_IN_MSEC,
 			(void *)instance,
 			memb_timer_function_state_gather,
 			&instance->memb_timer_state_gather_join_timeout);
+
+		if (res != 0) {
+			log_printf(instance->totemsrp_log_level_error, "memb_timer_function_state_gather - qb_loop_timer_add error : %d", res);
+		}
 		break;
 	}
 }
@@ -2124,6 +2159,8 @@ static void memb_state_gather_enter (
 	struct totemsrp_instance *instance,
 	enum gather_state_from gather_from)
 {
+	int32_t res;
+
 	instance->orf_token_discard = 1;
 
 	instance->originated_orf_token = 0;
@@ -2139,12 +2176,15 @@ static void memb_state_gather_enter (
 	 */
 	qb_loop_timer_del (instance->totemsrp_poll_handle, instance->memb_timer_state_gather_join_timeout);
 
-	qb_loop_timer_add (instance->totemsrp_poll_handle,
+	res = qb_loop_timer_add (instance->totemsrp_poll_handle,
 		QB_LOOP_MED,
 		instance->totem_config->join_timeout*QB_TIME_NS_IN_MSEC,
 		(void *)instance,
 		memb_timer_function_state_gather,
 		&instance->memb_timer_state_gather_join_timeout);
+	if (res != 0) {
+		log_printf(instance->totemsrp_log_level_error, "memb_state_gather_enter - qb_loop_timer_add error(1) : %d", res);
+	}
 
 	/*
 	 * Restart the consensus timeout
@@ -2152,12 +2192,15 @@ static void memb_state_gather_enter (
 	qb_loop_timer_del (instance->totemsrp_poll_handle,
 		instance->memb_timer_state_gather_consensus_timeout);
 
-	qb_loop_timer_add (instance->totemsrp_poll_handle,
+	res = qb_loop_timer_add (instance->totemsrp_poll_handle,
 		QB_LOOP_MED,
 		instance->totem_config->consensus_timeout*QB_TIME_NS_IN_MSEC,
 		(void *)instance,
 		memb_timer_function_gather_consensus_timeout,
 		&instance->memb_timer_state_gather_consensus_timeout);
+	if (res != 0) {
+		log_printf(instance->totemsrp_log_level_error, "memb_state_gather_enter - qb_loop_timer_add error(2) : %d", res);
+	}
 
 	/*
 	 * Cancel the token loss and token retransmission timeouts
