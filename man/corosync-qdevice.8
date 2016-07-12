@@ -78,7 +78,7 @@ defines what type of arbitrator is used. Currently only
 is supported.
 .TP
 .B timeout
-Specifies how often should
+Specifies how often
 .B corosync-qdevice
 should call the votequorum_poll function. It is also used by the net model to adjust
 its hearbeat timeout. It is recommended that you don't change this value.
@@ -142,6 +142,7 @@ means the partition with the lowest node id is chosen.
 .I highest
 means the partition with highest node id is chosen. And valid_node_id means that the partition
 containing the node with the given node id is chosen.
+Default is 'lowest'.
 .TP
 .B connect_timeout
 Timeout when
