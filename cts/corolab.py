@@ -40,6 +40,7 @@ Copyright (c) 2010 Red Hat, Inc.
 
 import sys
 from cts.CTSscenarios import *
+from cts.logging import *
 from corotests import CoroTestList
 from corosync import *
 
@@ -118,12 +119,12 @@ class CoroLabEnvironment(CtsLab):
         self["logrestartcmd"] = "systemctl restart rsyslog.service 2>&1 > /dev/null"
         self["syslogd"] ="rsyslog"
         self["Schema"] = "corosync 2.0"
-        self["Stack"] = "corosync (needle)"
+        self["Stack"] = "corosync"
         self['CMclass'] = corosync_needle
         self["stonith-type"] = "external/ssh"
         self["stonith-params"] = "hostlist=all,livedangerously=yes"
         self["at-boot"] = 0  # Does the cluster software start automatically when the node boot 
-        self["logger"] = ([StdErrLog(self)])
+        self["logger"] = ([StdErrLog(self, 'corosync.log')])
         self["loop-minutes"] = 60
         self["valgrind-prefix"] = None
         self["valgrind-procs"] = "corosync"
@@ -137,6 +138,7 @@ class CoroLabEnvironment(CtsLab):
         self["LogWatcher"] = "remote"
         self["SyslogFacility"] = DefaultFacility
         self["stats"] = 0
+        self.log = LogFactory().log
 
 #
 # Main entry into the test system.
@@ -250,6 +252,14 @@ if __name__ == '__main__':
            skipthis=1
            (name, value) = args[i+1].split('=')
            Environment[name] = value
+
+       elif args[i] == "--once":
+           skipthis=1
+           Environment["all-once"]=1
+
+       elif args[i] == "--stack":
+           skipthis=1
+           Environment["Stack"] = args[i+1]
 
        else:
            try:
