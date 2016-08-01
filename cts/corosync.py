@@ -45,7 +45,9 @@ import string
 import augeas
 from cts.CTS import ClusterManager
 from cts.CTSscenarios import ScenarioComponent
-from cts.CTS import RemoteExec
+from cts.remote import RemoteExec
+from cts.remote import RemoteFactory
+from cts.logging import *
 from cts.CTSvars import CTSvars
 from cts.CTSaudits import ClusterAudit
 from cts.CTSaudits import LogAudit
@@ -409,27 +411,28 @@ class TestAgentComponent(ScenarioComponent):
 ###################################################################
 class TestAgent(object):
 
-    def __init__(self, binary, node, port, env=None):
+    def __init__(self, binary, node, port, Env=None):
         self.node = node
         self.node_address = None
         self.port = port
         self.sock = None
         self.binary = binary
         self.started = False
-        self.rsh = RemoteExec(Env=env)
+        resh = RemoteFactory.rsh
+        self.rsh = RemoteExec(resh)
         self.func_name = None
         self.used = False
-        self.env = env
+        self.env = Env
         self.send_recv = False
 
     def restart(self):
-        self.env.debug('%s:%s restarting' % (self.node, self.binary))
+        LogFactory().debug('%s:%s restarting' % (self.node, self.binary))
         self.stop()
         self.start()
 
     def clean_start(self):
         if self.used or not self.status():
-            self.env.debug('%s:%s cleaning' % (self.node, self.binary))
+            LogFactory().debug('%s:%s cleaning' % (self.node, self.binary))
             self.stop()
             self.start()
 
@@ -450,7 +453,7 @@ class TestAgent(object):
         '''Set up the given ScenarioComponent'''
         if self.status():
             return
-        self.env.debug('%s:%s starting ' % (self.node, self.binary))
+        LogFactory().debug('%s:%s starting ' % (self.node, self.binary))
 
         self.rsh(self.node, self.binary, synchronous=False)
         self.sock = socket.socket (socket.AF_INET, socket.SOCK_STREAM)
@@ -464,7 +467,7 @@ class TestAgent(object):
                 is_connected = True
             except socket.error, msg:
                 if retries > 10:
-                    self.env.log("%s:%s Tried connecting %d times. %s" % (self.node, self.binary, retries, str(msg)))
+                    LogFactory().log("%s:%s Tried connecting %d times. %s" % (self.node, self.binary, retries, str(msg)))
                 if retries > 30:
                     raise RuntimeError("%s:%s can't connect" % (self.node, self.binary))
                 time.sleep(1)
@@ -472,8 +475,8 @@ class TestAgent(object):
         self.used = False
 
     def stop(self):
-        '''Tear down (undo) the given ScenarioComponent'''
-        self.env.debug('%s:%s stopping' % (self.binary, self.node))
+        '''Tear down (undo) the given ScenarioComponent''' 
+        LogFactory().debug('%s:%s stopping' % (self.binary, self.node))
         self.rsh(self.node, "killall " + self.binary + " 2>/dev/null")
         if self.sock:
             self.sock.close ()
@@ -485,7 +488,7 @@ class TestAgent(object):
 
     def kill(self):
         '''Tear down (undo) the given ScenarioComponent'''
-        self.env.log('%s:%s killing' % (self.node, self.binary))
+        LogFactory().log('%s:%s killing' % (self.node, self.binary))
         self.rsh(self.node, "killall -9 " + self.binary + " 2>/dev/null")
         self.started = False
 
@@ -502,7 +505,7 @@ class TestAgent(object):
         try:
             return self.sock.send (real_msg)
         except socket.error, msg:
-            self.env.log("send(%s): %s; error: %s" % (self.node, real_msg, msg))
+            LogFactory().log("send(%s): %s; error: %s" % (self.node, real_msg, msg))
             return 0
 
     def send (self, args):
@@ -533,7 +536,7 @@ class TestAgent(object):
             res = self.read ()
         except RuntimeError, msg:
             res = None
-            self.env.log("send_recv_dynamic: %s(); error: %s" % (self.func_name, msg))
+            LogFactory().log("send_recv_dynamic: %s(); error: %s" % (self.func_name, msg))
 
         return res
 
@@ -552,7 +555,7 @@ class TestAgent(object):
         try:
             sent = self.sock.send (real_msg)
         except socket.error, msg:
-            self.env.log("send_dynamic(%s): %s; error: %s" % (self.node, real_msg, msg))
+            LogFactory().log("send_dynamic(%s): %s; error: %s" % (self.node, real_msg, msg))
 
         if sent == 0:
             raise RuntimeError ("socket connection broken")
@@ -594,7 +597,7 @@ class CpgConfigEvent:
 class CpgTestAgent(TestAgent):
 
     def __init__(self, node, Env=None):
-        TestAgent.__init__(self, "cpg_test_agent", node, 9034, env=Env)
+        TestAgent.__init__(self, "cpg_test_agent", node, 9034, Env)
         self.nodeid = None
 
     def start(self):
@@ -642,7 +645,7 @@ class CpgTestAgent(TestAgent):
 class SamTestAgent(TestAgent):
 
     def __init__(self, node, Env=None):
-        TestAgent.__init__(self, "sam_test_agent", node, 9036, env=Env)
+        TestAgent.__init__(self, "sam_test_agent", node, 9036, Env)
         self.nodeid = None
         self.send_recv = True
 
@@ -650,7 +653,7 @@ class SamTestAgent(TestAgent):
 class VoteQuorumTestAgent(TestAgent):
 
     def __init__(self, node, Env=None):
-        TestAgent.__init__(self, "votequorum_test_agent", node, 9037, env=Env)
+        TestAgent.__init__(self, "votequorum_test_agent", node, 9037, Env)
         self.nodeid = None
         self.send_recv = True
 
