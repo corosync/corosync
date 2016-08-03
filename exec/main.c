@@ -1011,6 +1011,7 @@ static void set_icmap_ro_keys_flag (void)
 	icmap_set_ro_access("runtime.totem.", CS_TRUE, CS_TRUE);
 	icmap_set_ro_access("runtime.services.", CS_TRUE, CS_TRUE);
 	icmap_set_ro_access("runtime.config.", CS_TRUE, CS_TRUE);
+	icmap_set_ro_access("uidgid.config.", CS_TRUE, CS_TRUE);
 
 	/*
 	 * Set RO flag for constrete keys of configuration which can't be changed

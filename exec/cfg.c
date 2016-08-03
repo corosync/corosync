@@ -703,7 +703,7 @@ static void message_handler_req_exec_cfg_reload_config (
 	remove_deleted_entries(temp_map, "totem.");
 	remove_deleted_entries(temp_map, "nodelist.");
 	remove_deleted_entries(temp_map, "quorum.");
-	remove_deleted_entries(temp_map, "uidgid.");
+	remove_deleted_entries(temp_map, "uidgid.config.");
 
 	/* Remove entries that cannot be changed */
 	remove_ro_entries(temp_map);

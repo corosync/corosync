@@ -794,7 +794,7 @@ static int main_config_parser_cb(const char *path,
 					*error_string = error_string_response;
 					return (0);
 				}
-				snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "uidgid.uid.%u",
+				snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "uidgid.config.uid.%u",
 						uid);
 				icmap_set_uint8_r(config_map, key_name, 1);
 				add_as_string = 0;
@@ -804,7 +804,7 @@ static int main_config_parser_cb(const char *path,
 					*error_string = error_string_response;
 					return (0);
 				}
-				snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "uidgid.gid.%u",
+				snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "uidgid.config.gid.%u",
 						gid);
 				icmap_set_uint8_r(config_map, key_name, 1);
 				add_as_string = 0;
@@ -1203,7 +1203,7 @@ static int uidgid_config_parser_cb(const char *path,
 				*error_string = error_string_response;
 				return (0);
 			}
-			snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "uidgid.uid.%u",
+			snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "uidgid.config.uid.%u",
 					uid);
 			icmap_set_uint8_r(config_map, key_name, 1);
 		} else if (strcmp(path, "uidgid.gid") == 0) {
@@ -1212,7 +1212,7 @@ static int uidgid_config_parser_cb(const char *path,
 				*error_string = error_string_response;
 				return (0);
 			}
-			snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "uidgid.gid.%u",
+			snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "uidgid.config.gid.%u",
 					gid);
 			icmap_set_uint8_r(config_map, key_name, 1);
 		} else {
