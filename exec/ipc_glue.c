@@ -194,7 +194,15 @@ static int32_t cs_ipcs_connection_accept (qb_ipcs_connection_t *c, uid_t euid, g
 	if (icmap_get_uint8(key_name, &u8) == CS_OK && u8 == 1)
 		return 0;
 
+	snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "uidgid.config.uid.%u", euid);
+	if (icmap_get_uint8(key_name, &u8) == CS_OK && u8 == 1)
+		return 0;
+
 	snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "uidgid.gid.%u", egid);
+	if (icmap_get_uint8(key_name, &u8) == CS_OK && u8 == 1)
+		return 0;
+
+	snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "uidgid.config.gid.%u", egid);
 	if (icmap_get_uint8(key_name, &u8) == CS_OK && u8 == 1)
 		return 0;
 

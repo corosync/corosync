@@ -275,7 +275,9 @@ State of the client. Can be one of failed, stopped, running and waiting for quor
 .TP
 uidgid.*
 Information about users/groups which are allowed to make IPC connections to
-corosync.
+corosync. Entries loaded from configuration file are stored with
+uidgid.config.* prefix and are pruned on configuration file reload. Dynamic
+entries has uidgid.* prefix and a configuration file reload doesn't affect them.
 
 .TP
 quorum.cancel_wait_for_all
