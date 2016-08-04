@@ -374,7 +374,8 @@ The Corosync Cluster Engine APIs.
 %package -n corosync-qdevice
 Summary: The Corosync Cluster Engine Qdevice
 Group: System Environment/Base
-Requires: corosync
+Requires: %{name} = %{version}-%{release}
+Requires: corosynclib = %{version}-%{release}
 Requires: nss-tools
 
 %if %{with systemd}
