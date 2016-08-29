@@ -38,7 +38,7 @@ totem {
 		# Corosync uses the port you specify here for UDP
 		# messaging, and also the immediately preceding
 		# port. Thus if you set this to 5405, Corosync sends
-		# messages over UDP ports 5405 and 5404.
+		# messages from UDP port 5404 to UDP port 5405.
 		mcastport: 5405
 		# Time-to-live for cluster communication packets. The
 		# number of hops (routers) that this ring will allow
