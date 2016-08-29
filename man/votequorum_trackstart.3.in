@@ -43,7 +43,7 @@ The
 .B votequorum_trackstart
 function is used to enable callbacks notification from the votequorum API.
 .PP
-Every time the voting configuraton changes (eg a node joins or leave the cluster)
+Every time the voting configuration changes (eg a node joins or leave the cluster)
 or the quorum status change or the expected votes changes, the notification is queued.
 .PP
 The notification is dispatched via

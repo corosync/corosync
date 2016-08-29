@@ -177,7 +177,7 @@ qnetd_log_msg_decode_error(int ret)
 		qnetd_log(LOG_WARNING, "Received message with option with invalid value");
 		break;
 	default:
-		qnetd_log(LOG_ERR, "Unknown error occured when decoding message");
+		qnetd_log(LOG_ERR, "Unknown error occurred when decoding message");
 		break;
 	}
 }
