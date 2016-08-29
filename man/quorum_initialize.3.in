@@ -51,7 +51,7 @@ argument to uniquely identify the connection.  The
 argument is then used in other function calls to identify the connection to be used
 for communication with the quorum service.
 .PP
-Every time the voting configuraton changes (eg a node joins or leave the cluster) or the quorum status change,
+Every time the voting configuration changes (eg a node joins or leave the cluster) or the quorum status change,
 the callback is called.
 The callback function is described by the following type definitions:
 

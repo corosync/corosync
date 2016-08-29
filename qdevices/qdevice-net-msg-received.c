@@ -101,7 +101,7 @@ qdevice_net_msg_received_log_msg_decode_error(int ret)
 		qdevice_log(LOG_ERR, "Received message with option with invalid value");
 		break;
 	default:
-		qdevice_log(LOG_ERR, "Unknown error occured when decoding message");
+		qdevice_log(LOG_ERR, "Unknown error occurred when decoding message");
 		break;
 	}
 }

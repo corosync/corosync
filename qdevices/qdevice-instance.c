@@ -275,7 +275,7 @@ qdevice_instance_configure_from_cmap(struct qdevice_instance *instance)
 
 	if (cmap_get_uint32(instance->cmap_handle, "runtime.votequorum.this_node_id",
 	    &instance->node_id) != CS_OK) {
-		qdevice_log(LOG_ERR, "Unable to retrive this node nodeid.");
+		qdevice_log(LOG_ERR, "Unable to retrieve this node nodeid.");
 
 		return (-1);
 	}

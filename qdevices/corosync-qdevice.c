@@ -201,7 +201,7 @@ main(int argc, char * const argv[])
 		if (another_instance_running) {
 			qdevice_log(LOG_ERR, "Another instance is running");
 		} else {
-			qdevice_log_err(LOG_ERR, "Can't aquire lock");
+			qdevice_log_err(LOG_ERR, "Can't acquire lock");
 		}
 
 		exit(1);
