@@ -11,8 +11,8 @@
 #
 ### BEGIN INIT INFO
 # Provides:		corosync-notifyd
-# Required-Start:	$corosync $cman
-# Required-Stop:	$corosync $cman
+# Required-Start:	corosync cman
+# Required-Stop:	corosync cman
 # Default-Start:
 # Default-Stop:
 # Short-Description:	Starts and stops Corosync Notifier.
