@@ -11,8 +11,8 @@
 #
 ### BEGIN INIT INFO
 # Provides:		corosync-qdevice
-# Required-Start:	$corosync
-# Required-Stop:	$corosync
+# Required-Start:	corosync
+# Required-Stop:	corosync
 # Default-Start:
 # Default-Stop:
 # Short-Description:	Starts and stops Corosync Qdevice daemon.
