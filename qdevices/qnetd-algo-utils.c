@@ -65,6 +65,19 @@ qnetd_algo_all_ring_ids_match(struct qnetd_client *client, const struct tlv_ring
 			}
 		}
 
+		if (in_our_partition == 0) {
+			/*
+			 * Also try to look from the other side to see if we are
+			 * not in the other node's membership list.
+			 * Because if so it may mean the membership lists are not equal
+			 */
+			TAILQ_FOREACH(node_info, &other_client->last_membership_node_list, entries) {
+				if (node_info->node_id == client->node_id) {
+					in_our_partition = 1;
+				}
+			}
+		}
+
 		/*
 		 * If the other nodes on our side of a partition have a different ring ID then
 		 * we need to wait until they have all caught up before making a decision
@@ -74,6 +87,7 @@ qnetd_algo_all_ring_ids_match(struct qnetd_client *client, const struct tlv_ring
 			return (-1); /* ring IDs don't match */
 		}
 	}
+
 	return (0);
 }
 

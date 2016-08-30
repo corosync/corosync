@@ -361,6 +361,18 @@ qnetd_algo_lms_timer_callback(struct qnetd_client *client, int *reschedule_timer
 	    (*result_vote == TLV_VOTE_ACK || *result_vote == TLV_VOTE_NACK)) {
 		*send_vote = 1;
 	}
+
+	if (ret == TLV_REPLY_ERROR_CODE_NO_ERROR &&
+	    *result_vote == TLV_VOTE_WAIT_FOR_REPLY) {
+		/*
+		 * Reschedule was called in the do_lms_algorithm but algo_timer is
+		 * not stack based so there can only be one. So if do_lms aborted
+		 * the active timer, and scheduled it again the timer would be aborted
+		 * if reschedule_timer was not set.
+		 */
+		*reschedule_timer = 1;
+	}
+
 	return ret;
 }
 
