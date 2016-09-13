@@ -931,11 +931,7 @@ static int calculate_quorum(int allow_decrease, unsigned int max_expected, unsig
 			   node->node_id, node->state, node->votes, node->expected_votes);
 
 		if (node->state == NODESTATE_MEMBER) {
-			if (max_expected) {
-				node->expected_votes = max_expected;
-			} else {
-				highest_expected = max(highest_expected, node->expected_votes);
-			}
+			highest_expected = max(highest_expected, node->expected_votes);
 			total_votes += node->votes;
 			total_nodes++;
 		}
@@ -984,6 +980,22 @@ static int calculate_quorum(int allow_decrease, unsigned int max_expected, unsig
 
 	LEAVE();
 	return newquorum;
+}
+
+static void update_node_expected_votes(int new_expected_votes)
+{
+	struct list_head *nodelist;
+	struct cluster_node *node;
+
+	if (new_expected_votes) {
+		list_iterate(nodelist, &cluster_members_list) {
+			node = list_entry(nodelist, struct cluster_node, list);
+
+			if (node->state == NODESTATE_MEMBER) {
+				node->expected_votes = new_expected_votes;
+			}
+		}
+	}
 }
 
 static void are_we_quorate(unsigned int total_votes)
@@ -1126,6 +1138,8 @@ static void recalculate_quorum(int allow_decrease, int by_current_nodes)
 	}
 
 	quorum = calculate_quorum(allow_decrease, cluster_members, &total_votes);
+	update_node_expected_votes(cluster_members);
+
 	are_we_quorate(total_votes);
 
 	LEAVE();
@@ -2651,6 +2665,7 @@ static void message_handler_req_lib_votequorum_setexpected (void *conn, const vo
 		error = CS_ERR_INVALID_PARAM;
 		goto error_exit;
 	}
+	update_node_expected_votes(req_lib_votequorum_setexpected->expected_votes);
 
 	votequorum_exec_send_reconfigure(VOTEQUORUM_RECONFIG_PARAM_EXPECTED_VOTES, us->node_id,
 					 req_lib_votequorum_setexpected->expected_votes);
