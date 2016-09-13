@@ -2158,7 +2158,6 @@ static void message_handler_req_exec_votequorum_reconfigure (
 {
 	const struct req_exec_quorum_reconfigure *req_exec_quorum_reconfigure = message;
 	struct cluster_node *node;
-	struct list_head *nodelist;
 
 	ENTER();
 
@@ -2168,12 +2167,8 @@ static void message_handler_req_exec_votequorum_reconfigure (
 	switch(req_exec_quorum_reconfigure->param)
 	{
 	case VOTEQUORUM_RECONFIG_PARAM_EXPECTED_VOTES:
-		list_iterate(nodelist, &cluster_members_list) {
-			node = list_entry(nodelist, struct cluster_node, list);
-			if (node->state == NODESTATE_MEMBER) {
-				node->expected_votes = req_exec_quorum_reconfigure->value;
-			}
-		}
+		update_node_expected_votes(req_exec_quorum_reconfigure->value);
+
 		votequorum_exec_send_expectedvotes_notification();
 		update_ev_barrier(req_exec_quorum_reconfigure->value);
 		if (ev_tracking) {
