@@ -875,7 +875,6 @@ static int main_config_parser_cb(const char *path,
 			}
 			break;
 		case MAIN_CP_CB_DATA_STATE_RESOURCES_SYSTEM:
-			break;
 		case MAIN_CP_CB_DATA_STATE_RESOURCES_SYSTEM_MEMUSED:
 			if (strcmp(key, "poll_period") == 0) {
 				if (str_to_ull(value, &ull) != 0) {
@@ -886,7 +885,6 @@ static int main_config_parser_cb(const char *path,
 			}
 			break;
 		case MAIN_CP_CB_DATA_STATE_RESOURCES_PROCESS:
-			break;
 		case MAIN_CP_CB_DATA_STATE_RESOURCES_PROCESS_MEMUSED:
 			if (strcmp(key, "poll_period") == 0) {
 				if (str_to_ull(value, &ull) != 0) {
