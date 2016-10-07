@@ -617,7 +617,7 @@ static void timer_function_netif_check_timeout (
 			log_printf (instance->totemudpu_log_level_notice,
 				"The network interface [%s] is now up.",
 				totemip_print (&instance->totem_interface->boundto));
-			instance->netif_state_report = NETIF_STATE_REPORT_DOWN;
+			instance->netif_state_report = NETIF_STATE_REPORT_UP;
 			instance->totemudpu_iface_change_fn (instance->context, &instance->my_id);
 		}
 		/*
@@ -638,7 +638,7 @@ static void timer_function_netif_check_timeout (
 				"The network interface is down.");
 			instance->totemudpu_iface_change_fn (instance->context, &instance->my_id);
 		}
-		instance->netif_state_report = NETIF_STATE_REPORT_UP;
+		instance->netif_state_report = NETIF_STATE_REPORT_DOWN;
 
 	}
 }
