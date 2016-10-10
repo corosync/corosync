@@ -81,6 +81,10 @@ fi
 sinclude(corosync-default.m4)
 
 AC_PROG_CC
+AC_PROG_CC_C99
+if test "x$ac_cv_prog_cc_c99" = "xno"; then
+	AC_MSG_ERROR(["C99 support is required"])
+fi
 AC_PROG_INSTALL
 AC_PROG_LN_S
 AC_PROG_MAKE_SET
@@ -561,7 +565,6 @@ WARNLIST="
 	missing-prototypes
 	missing-declarations
 	strict-prototypes
-	declaration-after-statement
 	pointer-arith
 	write-strings
 	cast-align
@@ -572,7 +575,6 @@ WARNLIST="
 	format-nonliteral
 	no-long-long
 	unsigned-char
-	gnu89-inline
 	no-strict-aliasing
 	"
 
