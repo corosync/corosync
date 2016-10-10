@@ -518,12 +518,12 @@ static void message_handler_req_exec_cfg_killnode (
         unsigned int nodeid)
 {
 	const struct req_exec_cfg_killnode *req_exec_cfg_killnode = message;
-	cs_name_t reason;
 
 	ENTER();
-	log_printf(LOGSYS_LEVEL_DEBUG, "request to kill node %d(us=%d): %s",
-		req_exec_cfg_killnode->nodeid, api->totem_nodeid_get(), reason.value);
+	log_printf(LOGSYS_LEVEL_DEBUG, "request to kill node %d(us=%d)",
+		req_exec_cfg_killnode->nodeid, api->totem_nodeid_get());
         if (req_exec_cfg_killnode->nodeid == api->totem_nodeid_get()) {
+		cs_name_t reason;
 		marshall_from_mar_name_t(&reason, &req_exec_cfg_killnode->reason);
 		log_printf(LOGSYS_LEVEL_NOTICE, "Killed by node %d: %s",
 			   nodeid, reason.value);
