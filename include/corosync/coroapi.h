@@ -44,6 +44,8 @@
 #include <qb/qbloop.h>
 #include <corosync/swab.h>
 
+#include <stdbool.h>
+
 /**
  * @brief The mar_message_source_t struct
  */
@@ -278,7 +280,7 @@ struct corosync_api_v1 {
 
 	int (*totem_ring_reenable) (void);
 
-	int (*totem_mcast) (const struct iovec *iovec,
+        bool (*totem_mcast) (const struct iovec *iovec,
 			    unsigned int iov_len, unsigned int guarantee);
 
 	int (*totem_ifaces_get) (
@@ -338,7 +340,7 @@ struct corosync_api_v1 {
 		const struct corosync_tpg_group *groups,
 		size_t group_cnt);
 
-	int (*tpg_joined_mcast) (
+        bool (*tpg_joined_mcast) (
 		void *totempg_groups_instance,
 		const struct iovec *iovec,
 		unsigned int iov_len,
@@ -352,7 +354,7 @@ struct corosync_api_v1 {
 	int (*tpg_joined_release) (
 		int reserved_msgs);
 
-	int (*tpg_groups_mcast) (
+        bool (*tpg_groups_mcast) (
 		void *instance,
 		int guarantee,
 		const struct corosync_tpg_group *groups,
@@ -370,9 +372,9 @@ struct corosync_api_v1 {
 	int (*tpg_groups_release) (
 		int reserved_msgs);
 
-	int (*schedwrk_create) (
+        bool (*schedwrk_create) (
 		hdb_handle_t *handle,
-		int (schedwrk_fn) (const void *),
+                bool (schedwrk_fn) (const void *),
 		const void *context);
 
 	void (*schedwrk_destroy) (hdb_handle_t handle);
@@ -435,9 +437,9 @@ struct corosync_api_v1 {
 
 	void *(*totem_get_stats)(void);
 
-	int (*schedwrk_create_nolock) (
+        bool (*schedwrk_create_nolock) (
 		hdb_handle_t *handle,
-		int (schedwrk_fn) (const void *),
+                bool (schedwrk_fn) (const void *),
 		const void *context);
 
 	int (*poll_dispatch_add) (qb_loop_t * handle,
@@ -494,14 +496,14 @@ struct corosync_service_engine {
 	unsigned short priority; /* Lower priority are loaded first, unloaded last.
 				  * 0 is a special case which always loaded _and_ unloaded last
 				  */
-	unsigned int private_data_size;
+        size_t private_data_size;
 	enum cs_lib_flow_control flow_control;
 	enum cs_lib_allow_inquorate allow_inquorate;
 	char *(*exec_init_fn) (struct corosync_api_v1 *);
 	int (*exec_exit_fn) (void);
 	void (*exec_dump_fn) (void);
-	int (*lib_init_fn) (void *conn);
-	int (*lib_exit_fn) (void *conn);
+        bool (*lib_init_fn) (void *conn);
+        bool (*lib_exit_fn) (void *conn);
 	struct corosync_lib_handler *lib_engine;
 	int lib_engine_count;
 	struct corosync_exec_handler *exec_engine;
@@ -519,7 +521,7 @@ struct corosync_service_engine {
 		const unsigned int *member_list,
 		size_t member_list_entries,
 		const struct memb_ring_id *ring_id);
-	int (*sync_process) (void);
+        bool (*sync_process) (void);
 	void (*sync_activate) (void);
 	void (*sync_abort) (void);
 };

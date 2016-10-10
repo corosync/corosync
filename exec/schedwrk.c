@@ -43,10 +43,10 @@ static void (*serialize_unlock) (void);
 DECLARE_HDB_DATABASE (schedwrk_instance_database,NULL);
 
 struct schedwrk_instance {
-	int (*schedwrk_fn) (const void *);
+	bool (*schedwrk_fn) (const void *);
 	const void *context;
 	void *callback_handle;
-	int lock;
+        bool lock;
 };
 
 static int schedwrk_do (enum totem_callback_token_type type, const void *context)
@@ -88,23 +88,22 @@ void schedwrk_init (
 	serialize_unlock = serialize_unlock_fn;
 }
 
-static int schedwrk_internal_create (
+static bool schedwrk_internal_create (
 	hdb_handle_t *handle,
-	int (schedwrk_fn) (const void *),
+        bool (schedwrk_fn) (const void *),
 	const void *context,
-	int lock)
+        bool lock)
 {
 	struct schedwrk_instance *instance;
-	int res;
 
-	res = hdb_handle_create (&schedwrk_instance_database,
-		sizeof (struct schedwrk_instance), handle);
-	if (res != 0) {
+        bool res = hdb_handle_create (&schedwrk_instance_database,
+                     sizeof (struct schedwrk_instance), handle);
+        if ( ! res) {
 		goto error_exit;
 	}
-	res = hdb_handle_get (&schedwrk_instance_database, *handle,
+        res = hdb_handle_get (&schedwrk_instance_database, *handle,
 		(void *)&instance);
-	if (res != 0) {
+        if ( ! res) {
 		goto error_destroy;
 	}
 
@@ -121,13 +120,13 @@ static int schedwrk_internal_create (
 
         hdb_handle_put (&schedwrk_instance_database, *handle);
 
-	return (0);
+        return true;
 
 error_destroy:
 	hdb_handle_destroy (&schedwrk_instance_database, *handle);
 
 error_exit:
-	return (-1);
+        return false;
 }
 
 /*
@@ -135,20 +134,20 @@ error_exit:
  * handle must be pointer to ether heap or .text or static memory (not stack) which is not
  * changed by caller.
  */
-int schedwrk_create (
+bool schedwrk_create (
 	hdb_handle_t *handle,
-	int (schedwrk_fn) (const void *),
+        bool (schedwrk_fn) (const void *),
 	const void *context)
 {
-	return schedwrk_internal_create (handle, schedwrk_fn, context, 1);
+        return schedwrk_internal_create (handle, schedwrk_fn, context, true);
 }
 
-int schedwrk_create_nolock (
+bool schedwrk_create_nolock (
 	hdb_handle_t *handle,
-	int (schedwrk_fn) (const void *),
+        bool (schedwrk_fn) (const void *),
 	const void *context)
 {
-	return schedwrk_internal_create (handle, schedwrk_fn, context, 0);
+        return schedwrk_internal_create (handle, schedwrk_fn, context, false);
 }
 
 void schedwrk_destroy (hdb_handle_t handle)

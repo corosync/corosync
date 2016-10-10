@@ -88,8 +88,8 @@ static struct corosync_api_v1 *api;
 static char *cmap_exec_init_fn (struct corosync_api_v1 *corosync_api);
 static int cmap_exec_exit_fn(void);
 
-static int cmap_lib_init_fn (void *conn);
-static int cmap_lib_exit_fn (void *conn);
+static bool cmap_lib_init_fn (void *conn);
+static bool cmap_lib_exit_fn (void *conn);
 
 static void message_handler_req_lib_cmap_set(void *conn, const void *message);
 static void message_handler_req_lib_cmap_delete(void *conn, const void *message);
@@ -129,7 +129,7 @@ static void cmap_sync_init (
 	size_t member_list_entries,
 	const struct memb_ring_id *ring_id);
 
-static int cmap_sync_process (void);
+static bool cmap_sync_process (void);
 static void cmap_sync_activate (void);
 static void cmap_sync_abort (void);
 
@@ -297,7 +297,7 @@ static char *cmap_exec_init_fn (
 	return (NULL);
 }
 
-static int cmap_lib_init_fn (void *conn)
+static bool cmap_lib_init_fn (void *conn)
 {
 	struct cmap_conn_info *conn_info = (struct cmap_conn_info *)api->ipc_private_data_get (conn);
 
@@ -309,10 +309,10 @@ static int cmap_lib_init_fn (void *conn)
 	hdb_create(&conn_info->iter_db);
 	hdb_create(&conn_info->track_db);
 
-	return (0);
+        return true;
 }
 
-static int cmap_lib_exit_fn (void *conn)
+static bool cmap_lib_exit_fn (void *conn)
 {
 	struct cmap_conn_info *conn_info = (struct cmap_conn_info *)api->ipc_private_data_get (conn);
 	hdb_handle_t iter_handle = 0;
@@ -347,7 +347,7 @@ static int cmap_lib_exit_fn (void *conn)
 
 	api->ipc_refcnt_dec(conn);
 
-	return (0);
+        return true;
 }
 
 static void cmap_sync_init (
@@ -367,14 +367,12 @@ static void cmap_sync_init (
 	}
 }
 
-static int cmap_sync_process (void)
+static bool cmap_sync_process (void)
 {
 	const char *key = "totem.config_version";
-	cs_error_t ret;
+        cs_error_t ret = cmap_mcast_send(CMAP_MCAST_REASON_SYNC, 1, (char **)&key);
 
-	ret = cmap_mcast_send(CMAP_MCAST_REASON_SYNC, 1, (char **)&key);
-
-	return (ret == CS_OK ? 0 : -1);
+        return CS_OK == ret;
 }
 
 static void cmap_sync_activate (void)
@@ -865,7 +863,9 @@ static cs_error_t cmap_mcast_send(enum cmap_mcast_reason reason, int argc, char 
 	req_exec_cmap_iovec[0].iov_len = sizeof(req_exec_cmap_mcast);
 
 	qb_log(LOG_TRACE, "Sending %u items (%u iovec) for reason %u", argc, argc + 1, reason);
-	err = (api->totem_mcast(req_exec_cmap_iovec, argc + 1, TOTEM_AGREED) == 0 ? CS_OK : CS_ERR_MESSAGE_ERROR);
+        err =   api->totem_mcast(req_exec_cmap_iovec, argc + 1, TOTEM_AGREED)
+              ? CS_OK
+              : CS_ERR_MESSAGE_ERROR;
 
 free_mem:
 	for (i = 0; i < argc; i++) {

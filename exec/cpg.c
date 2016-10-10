@@ -206,9 +206,9 @@ struct join_list_entry {
  */
 static char *cpg_exec_init_fn (struct corosync_api_v1 *);
 
-static int cpg_lib_init_fn (void *conn);
+static bool cpg_lib_init_fn (void *conn);
 
-static int cpg_lib_exit_fn (void *conn);
+static bool cpg_lib_exit_fn (void *conn);
 
 static void message_handler_req_exec_cpg_procjoin (
 	const void *message,
@@ -292,9 +292,9 @@ static void message_handler_req_lib_cpg_zc_execute (
 
 static int cpg_node_joinleave_send (unsigned int pid, const mar_cpg_name_t *group_name, int fn, int reason);
 
-static int cpg_exec_send_downlist(void);
+static bool cpg_exec_send_downlist(void);
 
-static int cpg_exec_send_joinlist(void);
+static bool cpg_exec_send_joinlist(void);
 
 static void downlist_messages_delete (void);
 
@@ -311,7 +311,7 @@ static void cpg_sync_init (
 	size_t member_list_entries,
 	const struct memb_ring_id *ring_id);
 
-static int  cpg_sync_process (void);
+static bool  cpg_sync_process (void);
 
 static void cpg_sync_activate (void);
 
@@ -589,21 +589,21 @@ static void cpg_sync_init (
 	g_req_exec_cpg_downlist.left_nodes = entries;
 }
 
-static int cpg_sync_process (void)
+static bool cpg_sync_process (void)
 {
-	int res = -1;
+        bool res = false;
 
 	if (my_sync_state == CPGSYNC_DOWNLIST) {
 		res = cpg_exec_send_downlist();
-		if (res == -1) {
-			return (-1);
+                if ( ! res) {
+                        return false;
 		}
 		my_sync_state = CPGSYNC_JOINLIST;
 	}
 	if (my_sync_state == CPGSYNC_JOINLIST) {
 		res = cpg_exec_send_joinlist();
 	}
-	return (res);
+        return res;
 }
 
 static void cpg_sync_activate (void)
@@ -1092,7 +1092,7 @@ static void cpg_pd_finalize (struct cpg_pd *cpd)
 	qb_list_del (&cpd->list);
 }
 
-static int cpg_lib_exit_fn (void *conn)
+static bool cpg_lib_exit_fn (void *conn)
 {
 	struct cpg_pd *cpd = (struct cpg_pd *)api->ipc_private_data_get (conn);
 
@@ -1106,14 +1106,13 @@ static int cpg_lib_exit_fn (void *conn)
 	cpg_pd_finalize (cpd);
 
 	api->ipc_refcnt_dec (conn);
-	return (0);
+        return true;
 }
 
 static int cpg_node_joinleave_send (unsigned int pid, const mar_cpg_name_t *group_name, int fn, int reason)
 {
 	struct req_exec_cpg_procjoin req_exec_cpg_procjoin;
-	struct iovec req_exec_cpg_iovec;
-	int result;
+        struct iovec req_exec_cpg_iovec;
 
 	memcpy(&req_exec_cpg_procjoin.group_name, group_name, sizeof(mar_cpg_name_t));
 	req_exec_cpg_procjoin.pid = pid;
@@ -1125,9 +1124,7 @@ static int cpg_node_joinleave_send (unsigned int pid, const mar_cpg_name_t *grou
 	req_exec_cpg_iovec.iov_base = (char *)&req_exec_cpg_procjoin;
 	req_exec_cpg_iovec.iov_len = sizeof(req_exec_cpg_procjoin);
 
-	result = api->totem_mcast (&req_exec_cpg_iovec, 1, TOTEM_AGREED);
-
-	return (result);
+        return api->totem_mcast (&req_exec_cpg_iovec, 1, TOTEM_AGREED);
 }
 
 /* Can byteswap join & leave messages */
@@ -1515,7 +1512,7 @@ static void message_handler_req_exec_cpg_partial_mcast (
 }
 
 
-static int cpg_exec_send_downlist(void)
+static bool cpg_exec_send_downlist(void)
 {
 	struct iovec iov;
 
@@ -1527,10 +1524,10 @@ static int cpg_exec_send_downlist(void)
 	iov.iov_base = (void *)&g_req_exec_cpg_downlist;
 	iov.iov_len = g_req_exec_cpg_downlist.header.size;
 
-	return (api->totem_mcast (&iov, 1, TOTEM_AGREED));
+        return api->totem_mcast (&iov, 1, TOTEM_AGREED);
 }
 
-static int cpg_exec_send_joinlist(void)
+static bool cpg_exec_send_joinlist(void)
 {
 	int count = 0;
 	struct qb_list_head *iter;
@@ -1576,10 +1573,10 @@ static int cpg_exec_send_joinlist(void)
 	req_exec_cpg_iovec.iov_base = buf;
 	req_exec_cpg_iovec.iov_len = res->size;
 
-	return (api->totem_mcast (&req_exec_cpg_iovec, 1, TOTEM_AGREED));
+        return api->totem_mcast (&req_exec_cpg_iovec, 1, TOTEM_AGREED);
 }
 
-static int cpg_lib_init_fn (void *conn)
+static bool cpg_lib_init_fn (void *conn)
 {
 	struct cpg_pd *cpd = (struct cpg_pd *)api->ipc_private_data_get (conn);
 	memset (cpd, 0, sizeof(struct cpg_pd));
@@ -1591,7 +1588,7 @@ static int cpg_lib_init_fn (void *conn)
 
 	api->ipc_refcnt_inc (conn);
 	log_printf(LOGSYS_LEVEL_DEBUG, "lib_init_fn: conn=%p, cpd=%p", conn, cpd);
-	return (0);
+        return true;
 }
 
 /* Join message from the library */
@@ -2054,8 +2051,7 @@ static void message_handler_req_lib_cpg_zc_execute (
 	struct cpg_pd *cpd = (struct cpg_pd *)api->ipc_private_data_get (conn);
 	struct iovec req_exec_cpg_iovec[2];
 	struct req_exec_cpg_mcast req_exec_cpg_mcast;
-	struct req_lib_cpg_mcast *req_lib_cpg_mcast;
-	int result;
+        struct req_lib_cpg_mcast *req_lib_cpg_mcast;
 	cs_error_t error = CS_ERR_NOT_EXIST;
 
 	log_printf(LOGSYS_LEVEL_TRACE, "got ZC mcast request on %p", conn);
@@ -2095,19 +2091,16 @@ static void message_handler_req_lib_cpg_zc_execute (
 		req_exec_cpg_iovec[1].iov_base = (char *)header + sizeof(struct req_lib_cpg_mcast);
 		req_exec_cpg_iovec[1].iov_len = req_exec_cpg_mcast.msglen;
 
-		result = api->totem_mcast (req_exec_cpg_iovec, 2, TOTEM_AGREED);
-		if (result == 0) {
-			res_lib_cpg_mcast.header.error = CS_OK;
-		} else {
-			res_lib_cpg_mcast.header.error = CS_ERR_TRY_AGAIN;
-		}
+                res_lib_cpg_mcast.header.error =   api->totem_mcast (req_exec_cpg_iovec, 2, TOTEM_AGREED)
+                                                 ? CS_OK
+                                                 : CS_ERR_TRY_AGAIN;
+
 	} else {
 		res_lib_cpg_mcast.header.error = error;
 	}
 
 	api->ipc_response_send (conn, &res_lib_cpg_mcast,
 		sizeof (res_lib_cpg_mcast));
-
 }
 
 static void message_handler_req_lib_cpg_membership (void *conn,

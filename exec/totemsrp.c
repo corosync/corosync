@@ -86,6 +86,8 @@
 #define LOGSYS_UTILS_ONLY 1
 #include <corosync/logsys.h>
 
+#include <stdbool.h>
+
 #include "totemsrp.h"
 #include "totemnet.h"
 
@@ -2422,7 +2424,7 @@ void totemsrp_event_signal (void *srp_context, enum totem_event_type type, int v
 	return;
 }
 
-int totemsrp_mcast (
+bool totemsrp_mcast (
 	void *srp_context,
 	struct iovec *iovec,
 	unsigned int iov_len,
@@ -2453,7 +2455,7 @@ int totemsrp_mcast (
 	 */
 	message_item.mcast = totemsrp_buffer_alloc (instance);
 	if (message_item.mcast == 0) {
-		goto error_mcast;
+                return false;
 	}
 
 	/*
@@ -2482,10 +2484,7 @@ int totemsrp_mcast (
 	instance->stats.mcast_tx++;
 	cs_queue_item_add (queue_use, &message_item);
 
-	return (0);
-
-error_mcast:
-	return (-1);
+        return true;
 }
 
 /*

@@ -49,6 +49,8 @@
 #include <inttypes.h>
 #include <qb/qbhdb.h>
 
+#include <stdbool.h>
+
 typedef qb_handle_t hdb_handle_t;
 
 /*
@@ -124,13 +126,12 @@ static inline void hdb_destroy (
  * @param handle_id_out
  * @return
  */
-static inline int hdb_handle_create (
+static inline bool hdb_handle_create (
 	struct hdb_handle_database *handle_database,
 	int instance_size,
 	hdb_handle_t *handle_id_out)
 {
-	return (qb_hdb_handle_create (handle_database, instance_size,
-		handle_id_out));
+        return 0 == qb_hdb_handle_create (handle_database, instance_size, handle_id_out);
 }
 
 /**
@@ -140,12 +141,12 @@ static inline int hdb_handle_create (
  * @param instance
  * @return
  */
-static inline int hdb_handle_get (
+static inline bool hdb_handle_get (
 	struct hdb_handle_database *handle_database,
 	hdb_handle_t handle_in,
 	void **instance)
 {
-	return (qb_hdb_handle_get (handle_database, handle_in, instance));
+        return 0 == qb_hdb_handle_get (handle_database, handle_in, instance);
 }
 
 /**

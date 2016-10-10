@@ -621,7 +621,7 @@ static void deliver_fn (
 		(msg, nodeid);
 }
 
-int main_mcast (
+bool main_mcast (
         const struct iovec *iovec,
         unsigned int iov_len,
         unsigned int guarantee)
@@ -637,7 +637,7 @@ int main_mcast (
 		icmap_fast_inc(service_stats_tx[service][fn_id]);
 	}
 
-	return (totempg_groups_mcast_joined (corosync_group_handle, iovec, iov_len, guarantee));
+        return totempg_groups_mcast_joined (corosync_group_handle, iovec, iov_len, guarantee);
 }
 
 static void corosync_ring_id_create_or_load (

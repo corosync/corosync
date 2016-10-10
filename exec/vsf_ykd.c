@@ -161,11 +161,10 @@ static void ykd_state_init (void)
 	ykd_state.last_primary.member_list_entries = 0;
 }
 
-static int ykd_state_send_msg (const void *context)
+static bool ykd_state_send_msg (const void *context)
 {
 	struct iovec iovec[2];
-	struct ykd_header header;
-	int res;
+        struct ykd_header header;
 
 	header.id = YKD_HEADER_SENDSTATE;
 
@@ -174,10 +173,7 @@ static int ykd_state_send_msg (const void *context)
 	iovec[1].iov_base = (char *)&ykd_state;
 	iovec[1].iov_len = sizeof (struct ykd_state);
 
-	res = api->tpg_joined_mcast (ykd_group_handle, iovec, 2,
-		TOTEM_AGREED);
-
-	return (res);
+        return api->tpg_joined_mcast (ykd_group_handle, iovec, 2, TOTEM_AGREED);
 }
 
 static void ykd_state_send (void)
@@ -188,21 +184,17 @@ static void ykd_state_send (void)
                 NULL);
 }
 
-static int ykd_attempt_send_msg (const void *context)
+static bool ykd_attempt_send_msg (const void *context)
 {
 	struct iovec iovec;
-	struct ykd_header header;
-	int res;
+        struct ykd_header header;
 
 	header.id = YKD_HEADER_ATTEMPT;
 
 	iovec.iov_base = (char *)&header;
 	iovec.iov_len = sizeof (struct ykd_header);
 
-	res = api->tpg_joined_mcast (ykd_group_handle, &iovec, 1,
-		TOTEM_AGREED);
-
-	return (res);
+        return api->tpg_joined_mcast (ykd_group_handle, &iovec, 1, TOTEM_AGREED);
 }
 
 static void ykd_attempt_send (void)

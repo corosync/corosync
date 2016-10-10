@@ -73,8 +73,10 @@ void totemsrp_finalize (void *srp_context);
 
 /**
  * Multicast a message
+ * @return true  - Success
+ *         false - Failure
  */
-int totemsrp_mcast (
+bool totemsrp_mcast (
 	void *srp_context,
 	struct iovec *iovec,
 	unsigned int iov_len,

@@ -108,9 +108,9 @@ static char *cfg_exec_init_fn (struct corosync_api_v1 *corosync_api_v1);
 
 static struct corosync_api_v1 *api;
 
-static int cfg_lib_init_fn (void *conn);
+static bool cfg_lib_init_fn(void *conn);
 
-static int cfg_lib_exit_fn (void *conn);
+static bool cfg_lib_exit_fn (void *conn);
 
 static void message_handler_req_exec_cfg_ringreenable (
         const void *message,
@@ -286,7 +286,7 @@ static void cfg_confchg_fn (
 /*
  * Tell other nodes we are shutting down
  */
-static int send_shutdown(void)
+static void send_shutdown(void)
 {
 	struct req_exec_cfg_shutdown req_exec_cfg_shutdown;
 	struct iovec iovec;
@@ -300,10 +300,9 @@ static int send_shutdown(void)
 	iovec.iov_base = (char *)&req_exec_cfg_shutdown;
 	iovec.iov_len = sizeof (struct req_exec_cfg_shutdown);
 
-	assert (api->totem_mcast (&iovec, 1, TOTEM_SAFE) == 0);
+        assert(api->totem_mcast (&iovec, 1, TOTEM_SAFE));
 
-	LEAVE();
-	return 0;
+        LEAVE();
 }
 
 static void send_test_shutdown(void *only_conn, void *exclude_conn, int status)
@@ -454,17 +453,17 @@ static void remove_ci_from_shutdown(struct cfg_info *ci)
 }
 
 
-int cfg_lib_exit_fn (void *conn)
+static bool cfg_lib_exit_fn (void *conn)
 {
 	struct cfg_info *ci = (struct cfg_info *)api->ipc_private_data_get (conn);
 
 	ENTER();
 	remove_ci_from_shutdown(ci);
 	LEAVE();
-	return (0);
+        return true;
 }
 
-static int cfg_lib_init_fn (void *conn)
+static bool cfg_lib_init_fn (void *conn)
 {
 	struct cfg_info *ci = (struct cfg_info *)api->ipc_private_data_get (conn);
 
@@ -472,7 +471,7 @@ static int cfg_lib_init_fn (void *conn)
 	qb_list_init(&ci->list);
 	LEAVE();
 
-        return (0);
+        return true;
 }
 
 /*
@@ -820,7 +819,7 @@ static void message_handler_req_lib_cfg_ringreenable (
 	iovec.iov_base = (char *)&req_exec_cfg_ringreenable;
 	iovec.iov_len = sizeof (struct req_exec_cfg_ringreenable);
 
-	assert (api->totem_mcast (&iovec, 1, TOTEM_SAFE) == 0);
+        assert(api->totem_mcast (&iovec, 1, TOTEM_SAFE));
 
 	LEAVE();
 }
@@ -1077,7 +1076,7 @@ static void message_handler_req_lib_cfg_reload_config (void *conn, const void *m
 	iovec.iov_base = (char *)&req_exec_cfg_reload_config;
 	iovec.iov_len = sizeof (struct req_exec_cfg_reload_config);
 
-	assert (api->totem_mcast (&iovec, 1, TOTEM_SAFE) == 0);
+        assert(api->totem_mcast (&iovec, 1, TOTEM_SAFE));
 
 	LEAVE();
 }

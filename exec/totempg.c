@@ -830,10 +830,13 @@ void totempg_finalize (void)
 	}
 }
 
-/*
+/**
  * Multicast a message
+ *
+ * \return true  - Success
+ *         false - Failure
  */
-static int mcast_msg (
+static bool mcast_msg (
 	struct iovec *iovec_in,
 	unsigned int iov_len,
 	int guarantee)
@@ -960,7 +963,7 @@ static int mcast_msg (
 			iovecs[2].iov_len = max_packet_size;
 			assert (totemsrp_avail(totemsrp_context) > 0);
 			res = totemsrp_mcast (totemsrp_context, iovecs, 3, guarantee);
-			if (res == -1) {
+                        if ( ! res) {
 				goto error_exit;
 			}
 
@@ -1194,7 +1197,7 @@ int totempg_groups_leave (
 #define MAX_IOVECS_FROM_APP 32
 #define MAX_GROUPS_PER_MSG 32
 
-int totempg_groups_mcast_joined (
+bool totempg_groups_mcast_joined (
 	void *totempg_groups_instance,
 	const struct iovec *iovec,
 	unsigned int iov_len,
@@ -1203,8 +1206,6 @@ int totempg_groups_mcast_joined (
 	struct totempg_group_instance *instance = (struct totempg_group_instance *)totempg_groups_instance;
 	unsigned short group_len[MAX_GROUPS_PER_MSG + 1];
 	struct iovec iovec_mcast[MAX_GROUPS_PER_MSG + 1 + MAX_IOVECS_FROM_APP];
-	int i;
-	unsigned int res;
 
 	if (totempg_threaded_mode == 1) {
 		pthread_mutex_lock (&totempg_mutex);
@@ -1214,25 +1215,25 @@ int totempg_groups_mcast_joined (
 	 * Build group_len structure and the iovec_mcast structure
 	 */
 	group_len[0] = instance->groups_cnt;
-	for (i = 0; i < instance->groups_cnt; i++) {
+        for (size_t i = 0; i < instance->groups_cnt; i++) {
 		group_len[i + 1] = instance->groups[i].group_len;
 		iovec_mcast[i + 1].iov_len = instance->groups[i].group_len;
 		iovec_mcast[i + 1].iov_base = (void *) instance->groups[i].group;
 	}
 	iovec_mcast[0].iov_len = (instance->groups_cnt + 1) * sizeof (unsigned short);
 	iovec_mcast[0].iov_base = group_len;
-	for (i = 0; i < iov_len; i++) {
+        for (unsigned int i = 0; i < iov_len; i++) {
 		iovec_mcast[i + instance->groups_cnt + 1].iov_len = iovec[i].iov_len;
 		iovec_mcast[i + instance->groups_cnt + 1].iov_base = iovec[i].iov_base;
 	}
 
-	res = mcast_msg (iovec_mcast, iov_len + instance->groups_cnt + 1, guarantee);
+        bool res = mcast_msg (iovec_mcast, iov_len + instance->groups_cnt + 1, guarantee);
 
 	if (totempg_threaded_mode == 1) {
 		pthread_mutex_unlock (&totempg_mutex);
 	}
 	
-	return (res);
+        return res;
 }
 
 static void check_q_level(
@@ -1322,7 +1323,7 @@ int totempg_groups_joined_release (int msg_count)
 	return 0;
 }
 
-int totempg_groups_mcast_groups (
+bool totempg_groups_mcast_groups (
 	void *totempg_groups_instance,
 	int guarantee,
 	const struct totempg_group *groups,
@@ -1331,9 +1332,7 @@ int totempg_groups_mcast_groups (
 	unsigned int iov_len)
 {
 	unsigned short group_len[MAX_GROUPS_PER_MSG + 1];
-	struct iovec iovec_mcast[MAX_GROUPS_PER_MSG + 1 + MAX_IOVECS_FROM_APP];
-	int i;
-	unsigned int res;
+        struct iovec iovec_mcast[MAX_GROUPS_PER_MSG + 1 + MAX_IOVECS_FROM_APP];
 
 	if (totempg_threaded_mode == 1) {
 		pthread_mutex_lock (&totempg_mutex);
@@ -1343,24 +1342,24 @@ int totempg_groups_mcast_groups (
 	 * Build group_len structure and the iovec_mcast structure
 	 */
 	group_len[0] = groups_cnt;
-	for (i = 0; i < groups_cnt; i++) {
+        for (size_t i = 0; i < groups_cnt; i++) {
 		group_len[i + 1] = groups[i].group_len;
 		iovec_mcast[i + 1].iov_len = groups[i].group_len;
 		iovec_mcast[i + 1].iov_base = (void *) groups[i].group;
 	}
 	iovec_mcast[0].iov_len = (groups_cnt + 1) * sizeof (unsigned short);
 	iovec_mcast[0].iov_base = group_len;
-	for (i = 0; i < iov_len; i++) {
+        for (unsigned int i = 0; i < iov_len; i++) {
 		iovec_mcast[i + groups_cnt + 1].iov_len = iovec[i].iov_len;
 		iovec_mcast[i + groups_cnt + 1].iov_base = iovec[i].iov_base;
 	}
 
-	res = mcast_msg (iovec_mcast, iov_len + groups_cnt + 1, guarantee);
+        bool res = mcast_msg (iovec_mcast, iov_len + groups_cnt + 1, guarantee);
 
 	if (totempg_threaded_mode == 1) {
 		pthread_mutex_unlock (&totempg_mutex);
 	}
-	return (res);
+        return res;
 }
 
 /*

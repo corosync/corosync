@@ -68,7 +68,7 @@ typedef int (*typedef_tpg_leave) (void *,
 	const struct corosync_tpg_group *,
 	size_t);
 
-typedef int (*typedef_tpg_groups_mcast_groups) (
+typedef bool (*typedef_tpg_groups_mcast_groups) (
 	void *, int,
 	const struct corosync_tpg_group *,
 	size_t groups_cnt,

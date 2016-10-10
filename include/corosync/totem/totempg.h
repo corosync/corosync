@@ -51,6 +51,7 @@ extern "C" {
 #include <netinet/in.h>
 #include "totem.h"
 #include <qb/qbloop.h>
+#include <stdbool.h>
 
 struct totempg_group {
 	const void *group;
@@ -109,7 +110,7 @@ extern int totempg_groups_leave (
 	const struct totempg_group *groups,
 	size_t group_cnt);
 
-extern int totempg_groups_mcast_joined (
+extern bool totempg_groups_mcast_joined (
 	void *instance,
 	const struct iovec *iovec,
 	unsigned int iov_len,
@@ -123,7 +124,7 @@ extern int totempg_groups_joined_reserve (
 extern int totempg_groups_joined_release (
 	int msg_count);
 
-extern int totempg_groups_mcast_groups (
+extern bool totempg_groups_mcast_groups (
 	void *instance,
 	int guarantee,
 	const struct totempg_group *groups,

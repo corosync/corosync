@@ -96,8 +96,8 @@ static void message_handler_req_lib_quorum_gettype (void *conn,
 static void send_library_notification(void *conn);
 static void send_internal_notification(void);
 static char *quorum_exec_init_fn (struct corosync_api_v1 *api);
-static int quorum_lib_init_fn (void *conn);
-static int quorum_lib_exit_fn (void *conn);
+static bool quorum_lib_init_fn (void *conn);
+static bool quorum_lib_exit_fn (void *conn);
 
 static int primary_designated = 0;
 static int quorum_type = 0;
@@ -308,7 +308,7 @@ static char *quorum_exec_init_fn (struct corosync_api_v1 *api)
 	return (NULL);
 }
 
-static int quorum_lib_init_fn (void *conn)
+static bool quorum_lib_init_fn (void *conn)
 {
 	struct quorum_pd *pd = (struct quorum_pd *)corosync_api->ipc_private_data_get (conn);
 
@@ -317,10 +317,10 @@ static int quorum_lib_init_fn (void *conn)
 	qb_list_init (&pd->list);
 	pd->conn = conn;
 
-	return (0);
+        return true;
 }
 
-static int quorum_lib_exit_fn (void *conn)
+static bool quorum_lib_exit_fn (void *conn)
 {
 	struct quorum_pd *quorum_pd = (struct quorum_pd *)corosync_api->ipc_private_data_get (conn);
 
@@ -330,7 +330,7 @@ static int quorum_lib_exit_fn (void *conn)
 		qb_list_del (&quorum_pd->list);
 		qb_list_init (&quorum_pd->list);
 	}
-	return (0);
+        return true;
 }
 
 

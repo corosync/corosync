@@ -757,7 +757,7 @@ static int wd_exec_exit_fn (void)
 		    log_printf (LOGSYS_LEVEL_ERROR, "failed to write %c to dog(%d).", magic, dog);
 		}
 	}
-	return 0;
+        return true;
 }
 
 

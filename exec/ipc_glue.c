@@ -295,7 +295,7 @@ static void cs_ipcs_connection_created(qb_ipcs_connection_t *c)
 
 	qb_ipcs_context_set(c, context);
 
-	if (corosync_service[service]->lib_init_fn(c) != 0) {
+        if ( ! corosync_service[service]->lib_init_fn(c)) {
 		log_printf(LOG_ERR, "lib_init_fn failed, disconnecting");
 		qb_ipcs_disconnect(c);
 		return;
@@ -412,7 +412,6 @@ static void cs_ipcs_connection_destroyed (qb_ipcs_connection_t *c)
 
 static int32_t cs_ipcs_connection_closed (qb_ipcs_connection_t *c)
 {
-	int32_t res = 0;
 	int32_t service = qb_ipcs_service_id_get(c);
 	icmap_iter_t iter;
 	char prefix[ICMAP_KEYNAME_MAXLEN];
@@ -420,8 +419,8 @@ static int32_t cs_ipcs_connection_closed (qb_ipcs_connection_t *c)
 	struct cs_ipcs_conn_context *cnx;
 
 	log_printf(LOG_DEBUG, "%s() ", __func__);
-	res = corosync_service[service]->lib_exit_fn(c);
-	if (res != 0) {
+        bool res = corosync_service[service]->lib_exit_fn(c);
+        if ( ! res) {
 		return res;
 	}
 

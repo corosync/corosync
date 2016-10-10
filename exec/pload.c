@@ -189,11 +189,10 @@ static void pload_send_start (uint32_t count, uint32_t size)
 /*
  * send N empty data messages of size X
  */
-static int pload_send_message (const void *arg)
+static bool pload_send_message (const void *arg)
 {
 	struct req_exec_pload_mcast req_exec_pload_mcast;
-	struct iovec iov[2];
-	unsigned int res;
+        struct iovec iov[2];
 	unsigned int iov_len = 1;
 
 	req_exec_pload_mcast.header.id = SERVICE_ID_MAKE (PLOAD_SERVICE, MESSAGE_REQ_EXEC_PLOAD_MCAST);
@@ -208,19 +207,14 @@ static int pload_send_message (const void *arg)
 	}
 
 	do {
-		res = api->totem_mcast (iov, iov_len, TOTEM_AGREED);
-		if (res == -1) {
+                if ( ! api->totem_mcast (iov, iov_len, TOTEM_AGREED)) {
 			break;
 		} else {
 			msgs_sent++;
 		}
 	} while (msgs_sent < msgs_wanted);
 
-	if (msgs_sent == msgs_wanted) {
-		return (0);
-	} else {
-		return (-1);
-	}
+	return msgs_sent == msgs_wanted;
 }
 
 /*
