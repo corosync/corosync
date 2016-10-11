@@ -85,7 +85,7 @@ struct corosync_tpg_group {
 
 #define TOTEMIP_ADDRLEN (sizeof(struct in6_addr))
 
-#define INTERFACE_MAX 2
+#define INTERFACE_MAX 8
 
 #ifndef MESSAGE_QUEUE_MAX
 #ifdef HAVE_SMALL_MEMORY_FOOTPRINT

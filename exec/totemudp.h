@@ -49,7 +49,6 @@ extern int totemudp_initialize (
 	void **udp_context,
 	struct totem_config *totem_config,
 	totemsrp_stats_t *stats,
-	int interface_no,
 	void *context,
 
 	void (*deliver_fn) (
@@ -59,7 +58,12 @@ extern int totemudp_initialize (
 
 	void (*iface_change_fn) (
 		void *context,
-		const struct totem_ip_address *iface_address),
+		const struct totem_ip_address *iface_address,
+		unsigned int ring_no),
+
+	void (*mtu_changed) (
+		void *context,
+		int net_mtu),
 
 	void (*target_set_completed) (
 		void *context));
@@ -87,6 +91,10 @@ extern int totemudp_mcast_noflush_send (
 	const void *msg,
 	unsigned int msg_len);
 
+extern int totemudp_ifaces_get (void *net_context,
+	char ***status,
+	unsigned int *iface_count);
+
 extern int totemudp_recv_flush (void *udp_context);
 
 extern int totemudp_send_flush (void *udp_context);
@@ -96,12 +104,6 @@ extern int totemudp_iface_check (void *udp_context);
 extern int totemudp_finalize (void *udp_context);
 
 extern void totemudp_net_mtu_adjust (void *udp_context, struct totem_config *totem_config);
-
-extern const char *totemudp_iface_print (void *udp_context);
-
-extern int totemudp_iface_get (
-	void *udp_context,
-	struct totem_ip_address *addr);
 
 extern int totemudp_token_target_set (
 	void *udp_context,

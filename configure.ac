@@ -163,6 +163,7 @@ CPPFLAGS="$SAVE_CPPFLAGS"
 LIBS="$SAVE_LIBS"
 AC_CHECK_LIB([pthread], [pthread_create])
 AC_CHECK_LIB([socket], [socket])
+AC_CHECK_LIB([knet], [knet_handle_new])
 AC_CHECK_LIB([nsl], [t_open])
 AC_CHECK_LIB([rt], [sched_getscheduler])
 AC_CHECK_LIB([z], [crc32],
@@ -451,14 +452,6 @@ if test "x${enable_testagents}" = xyes; then
 	AC_DEFINE_UNQUOTED([HAVE_TESTAGENTS], 1, [have testagents])
 	PACKAGE_FEATURES="$PACKAGE_FEATURES testagents"
 	WITH_LIST="$WITH_LIST --with testagents"
-fi
-
-if test "x${enable_rdma}" = xyes; then
-	PKG_CHECK_MODULES([rdmacm],[rdmacm])
-	PKG_CHECK_MODULES([ibverbs],[ibverbs])
-	AC_DEFINE_UNQUOTED([HAVE_RDMA], 1, [have rdmacm])
-	PACKAGE_FEATURES="$PACKAGE_FEATURES rdma"
-	WITH_LIST="$WITH_LIST --with rdma"
 fi
 
 if test "x${enable_monitoring}" = xyes; then

@@ -73,10 +73,11 @@
 #define WINDOW_SIZE				50
 #define MAX_MESSAGES				17
 #define MISS_COUNT_CONST			5
-#define RRP_PROBLEM_COUNT_TIMEOUT		2000
-#define RRP_PROBLEM_COUNT_THRESHOLD_DEFAULT	10
-#define RRP_PROBLEM_COUNT_THRESHOLD_MIN		2
-#define RRP_AUTORECOVERY_CHECK_TIMEOUT		1000
+
+/* These currently match the defaults in libknet.h */
+#define KNET_PING_INTERVAL                      1000
+#define KNET_PING_TIMEOUT                       2000
+#define KNET_PING_PRECISION                     2048
 
 #define DEFAULT_PORT				5405
 
@@ -110,16 +111,6 @@ static uint32_t *totem_get_param_by_name(struct totem_config *totem_config, cons
 		return &totem_config->fail_to_recv_const;
 	if (strcmp(param_name, "totem.seqno_unchanged_const") == 0)
 		return &totem_config->seqno_unchanged_const;
-	if (strcmp(param_name, "totem.rrp_token_expired_timeout") == 0)
-		return &totem_config->rrp_token_expired_timeout;
-	if (strcmp(param_name, "totem.rrp_problem_count_timeout") == 0)
-		return &totem_config->rrp_problem_count_timeout;
-	if (strcmp(param_name, "totem.rrp_problem_count_threshold") == 0)
-		return &totem_config->rrp_problem_count_threshold;
-	if (strcmp(param_name, "totem.rrp_problem_count_mcast_threshold") == 0)
-		return &totem_config->rrp_problem_count_mcast_threshold;
-	if (strcmp(param_name, "totem.rrp_autorecovery_check_timeout") == 0)
-		return &totem_config->rrp_autorecovery_check_timeout;
 	if (strcmp(param_name, "totem.heartbeat_failures_allowed") == 0)
 		return &totem_config->heartbeat_failures_allowed;
 	if (strcmp(param_name, "totem.max_network_delay") == 0)
@@ -222,21 +213,6 @@ static void totem_volatile_config_read (struct totem_config *totem_config, const
 
 	totem_volatile_config_set_value(totem_config, "totem.send_join", deleted_key, 0, 1);
 
-	totem_volatile_config_set_value(totem_config, "totem.rrp_problem_count_timeout", deleted_key,
-	    RRP_PROBLEM_COUNT_TIMEOUT, 0);
-
-	totem_volatile_config_set_value(totem_config, "totem.rrp_problem_count_threshold", deleted_key,
-	    RRP_PROBLEM_COUNT_THRESHOLD_DEFAULT, 0);
-
-	totem_volatile_config_set_value(totem_config, "totem.rrp_problem_count_mcast_threshold", deleted_key,
-	    totem_config->rrp_problem_count_threshold * 10, 0);
-
-	totem_volatile_config_set_value(totem_config, "totem.rrp_token_expired_timeout", deleted_key,
-	    totem_config->token_retransmit_timeout, 0);
-
-	totem_volatile_config_set_value(totem_config, "totem.rrp_autorecovery_check_timeout", deleted_key,
-	    RRP_AUTORECOVERY_CHECK_TIMEOUT, 0);
-
 	totem_volatile_config_set_value(totem_config, "totem.heartbeat_failures_allowed", deleted_key, 0, 1);
 }
 
@@ -310,33 +286,6 @@ static int totem_volatile_config_validate (
 		goto parse_error;
 	}
 
-	if (totem_config->rrp_problem_count_timeout < MINIMUM_TIMEOUT) {
-		snprintf (local_error_reason, sizeof(local_error_reason),
-			"The RRP problem count timeout parameter (%d ms) may not be less than (%d ms).",
-			totem_config->rrp_problem_count_timeout, MINIMUM_TIMEOUT);
-		goto parse_error;
-	}
-
-	if (totem_config->rrp_problem_count_threshold < RRP_PROBLEM_COUNT_THRESHOLD_MIN) {
-		snprintf (local_error_reason, sizeof(local_error_reason),
-			"The RRP problem count threshold (%d problem count) may not be less than (%d problem count).",
-			totem_config->rrp_problem_count_threshold, RRP_PROBLEM_COUNT_THRESHOLD_MIN);
-		goto parse_error;
-	}
-	if (totem_config->rrp_problem_count_mcast_threshold < RRP_PROBLEM_COUNT_THRESHOLD_MIN) {
-		snprintf (local_error_reason, sizeof(local_error_reason),
-			"The RRP multicast problem count threshold (%d problem count) may not be less than (%d problem count).",
-			totem_config->rrp_problem_count_mcast_threshold, RRP_PROBLEM_COUNT_THRESHOLD_MIN);
-		goto parse_error;
-	}
-
-	if (totem_config->rrp_token_expired_timeout < MINIMUM_TIMEOUT) {
-		snprintf (local_error_reason, sizeof(local_error_reason),
-			"The RRP token expired timeout parameter (%d ms) may not be less than (%d ms).",
-			totem_config->rrp_token_expired_timeout, MINIMUM_TIMEOUT);
-		goto parse_error;
-	}
-
 	return 0;
 
 parse_error:
@@ -353,16 +302,8 @@ static int totem_get_crypto(struct totem_config *totem_config)
 	const char *tmp_cipher;
 	const char *tmp_hash;
 
-	tmp_hash = "sha1";
-	tmp_cipher = "aes256";
-
-	if (icmap_get_string("totem.secauth", &str) == CS_OK) {
-		if (strcmp (str, "off") == 0) {
-			tmp_hash = "none";
-			tmp_cipher = "none";
-		}
-		free(str);
-	}
+	tmp_hash = "none";
+	tmp_cipher = "none";
 
 	if (icmap_get_string("totem.crypto_cipher", &str) == CS_OK) {
 		if (strcmp(str, "none") == 0) {
@@ -376,6 +317,9 @@ static int totem_get_crypto(struct totem_config *totem_config)
 		}
 		if (strcmp(str, "aes128") == 0) {
 			tmp_cipher = "aes128";
+		}
+		if (strcmp(str, "aes256") == 0) {
+			tmp_cipher = "aes256";
 		}
 		if (strcmp(str, "3des") == 0) {
 			tmp_cipher = "3des";
@@ -453,7 +397,7 @@ static uint16_t generate_cluster_id (const char *cluster_name)
 
 static int get_cluster_mcast_addr (
 		const char *cluster_name,
-		unsigned int ringnumber,
+		unsigned int linknumber,
 		int ip_version,
 		struct totem_ip_address *res)
 {
@@ -465,7 +409,7 @@ static int get_cluster_mcast_addr (
 		return (-1);
 	}
 
-	clusterid = generate_cluster_id(cluster_name) + ringnumber;
+	clusterid = generate_cluster_id(cluster_name) + linknumber;
 	memset (res, 0, sizeof(*res));
 
 	switch (ip_version) {
@@ -728,7 +672,7 @@ static void put_nodelist_members_to_config(struct totem_config *totem_config, in
 	char tmp_key2[ICMAP_KEYNAME_MAXLEN];
 	char *node_addr_str;
 	int member_count;
-	unsigned int ringnumber = 0;
+	unsigned int linknumber = 0;
 	int i, j;
 	struct totem_interface *orig_interfaces = NULL;
 	struct totem_interface *new_interfaces = NULL;
@@ -769,7 +713,13 @@ static void put_nodelist_members_to_config(struct totem_config *totem_config, in
 		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "nodelist.node.%u.", node_pos);
 		iter2 = icmap_iter_init(tmp_key);
 		while ((iter_key2 = icmap_iter_next(iter2, NULL, NULL)) != NULL) {
-			res = sscanf(iter_key2, "nodelist.node.%u.ring%u%s", &node_pos, &ringnumber, tmp_key2);
+			unsigned int nodeid;
+
+			snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "nodelist.node.%u.nodeid", node_pos);
+			if (icmap_get_uint32(tmp_key, &nodeid) != CS_OK) {
+			}
+
+			res = sscanf(iter_key2, "nodelist.node.%u.ring%u%s", &node_pos, &linknumber, tmp_key2);
 			if (res != 3 || strcmp(tmp_key2, "_addr") != 0) {
 				continue;
 			}
@@ -778,12 +728,13 @@ static void put_nodelist_members_to_config(struct totem_config *totem_config, in
 				continue;
 			}
 
-			member_count = totem_config->interfaces[ringnumber].member_count;
+			member_count = totem_config->interfaces[linknumber].member_count;
 
-			res = totemip_parse(&totem_config->interfaces[ringnumber].member_list[member_count],
+			res = totemip_parse(&totem_config->interfaces[linknumber].member_list[member_count],
 						node_addr_str, totem_config->ip_version);
 			if (res != -1) {
-				totem_config->interfaces[ringnumber].member_count++;
+				totem_config->interfaces[linknumber].member_list[member_count].nodeid = nodeid;
+				totem_config->interfaces[linknumber].member_count++;
 			}
 			free(node_addr_str);
 		}
@@ -946,7 +897,7 @@ static void config_convert_nodelist_to_interface(struct totem_config *totem_conf
 	char tmp_key[ICMAP_KEYNAME_MAXLEN];
 	char tmp_key2[ICMAP_KEYNAME_MAXLEN];
 	char *node_addr_str;
-	unsigned int ringnumber = 0;
+	unsigned int linknumber = 0;
 	icmap_iter_t iter;
 	const char *iter_key;
 
@@ -957,7 +908,7 @@ static void config_convert_nodelist_to_interface(struct totem_config *totem_conf
 		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "nodelist.node.%u.", node_pos);
 		iter = icmap_iter_init(tmp_key);
 		while ((iter_key = icmap_iter_next(iter, NULL, NULL)) != NULL) {
-			res = sscanf(iter_key, "nodelist.node.%u.ring%u%s", &node_pos, &ringnumber, tmp_key2);
+			res = sscanf(iter_key, "nodelist.node.%u.ring%u%s", &node_pos, &linknumber, tmp_key2);
 			if (res != 3 || strcmp(tmp_key2, "_addr") != 0) {
 				continue ;
 			}
@@ -966,7 +917,7 @@ static void config_convert_nodelist_to_interface(struct totem_config *totem_conf
 				continue;
 			}
 
-			snprintf(tmp_key2, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.bindnetaddr", ringnumber);
+			snprintf(tmp_key2, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.bindnetaddr", linknumber);
 			icmap_set_string(tmp_key2, node_addr_str);
 			free(node_addr_str);
 		}
@@ -982,15 +933,16 @@ extern int totem_config_read (
 {
 	int res = 0;
 	char *str;
-	unsigned int ringnumber = 0;
+	unsigned int linknumber = 0;
 	int member_count = 0;
 	icmap_iter_t iter, member_iter;
 	const char *iter_key;
 	const char *member_iter_key;
-	char ringnumber_key[ICMAP_KEYNAME_MAXLEN];
+	char linknumber_key[ICMAP_KEYNAME_MAXLEN];
 	char tmp_key[ICMAP_KEYNAME_MAXLEN];
 	uint8_t u8;
 	uint16_t u16;
+	uint32_t u32;
 	char *cluster_name = NULL;
 	int i;
 	int local_node_pos;
@@ -1008,7 +960,7 @@ extern int totem_config_read (
 	memset (totem_config->interfaces, 0,
 		sizeof (struct totem_interface) * INTERFACE_MAX);
 
-	strcpy (totem_config->rrp_mode, "none");
+	strcpy (totem_config->link_mode, "passive");
 
 	icmap_get_uint32("totem.version", (uint32_t *)&totem_config->version);
 
@@ -1017,14 +969,14 @@ extern int totem_config_read (
 		return -1;
 	}
 
-	if (icmap_get_string("totem.rrp_mode", &str) == CS_OK) {
-		if (strlen(str) >= TOTEM_RRP_MODE_BYTES) {
-			*error_string = "totem.rrp_mode is too long";
+	if (icmap_get_string("totem.link_mode", &str) == CS_OK) {
+		if (strlen(str) >= TOTEM_LINK_MODE_BYTES) {
+			*error_string = "totem.link_mode is too long";
 			free(str);
 
 			return -1;
 		}
-		strcpy (totem_config->rrp_mode, str);
+		strcpy (totem_config->link_mode, str);
 		free(str);
 	}
 
@@ -1065,7 +1017,7 @@ extern int totem_config_read (
 
 	iter = icmap_iter_init("totem.interface.");
 	while ((iter_key = icmap_iter_next(iter, NULL, NULL)) != NULL) {
-		res = sscanf(iter_key, "totem.interface.%[^.].%s", ringnumber_key, tmp_key);
+		res = sscanf(iter_key, "totem.interface.%[^.].%s", linknumber_key, tmp_key);
 		if (res != 2) {
 			continue;
 		}
@@ -1076,14 +1028,14 @@ extern int totem_config_read (
 
 		member_count = 0;
 
-		ringnumber = atoi(ringnumber_key);
+		linknumber = atoi(linknumber_key);
 
-		if (ringnumber >= INTERFACE_MAX) {
+		if (linknumber >= INTERFACE_MAX) {
 			free(cluster_name);
 
 			snprintf (error_string_response, sizeof(error_string_response),
 			    "parse error in config: interface ring number %u is bigger than allowed maximum %u\n",
-			    ringnumber, INTERFACE_MAX - 1);
+			    linknumber, INTERFACE_MAX - 1);
 
 			*error_string = error_string_response;
 			return -1;
@@ -1093,7 +1045,7 @@ extern int totem_config_read (
 		 * Get the bind net address
 		 */
 		if (icmap_get_string(iter_key, &str) == CS_OK) {
-			res = totemip_parse (&totem_config->interfaces[ringnumber].bindnet, str,
+			res = totemip_parse (&totem_config->interfaces[linknumber].bindnet, str,
 			    totem_config->ip_version);
 			free(str);
 		}
@@ -1101,9 +1053,9 @@ extern int totem_config_read (
 		/*
 		 * Get interface multicast address
 		 */
-		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.mcastaddr", ringnumber);
+		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.mcastaddr", linknumber);
 		if (icmap_get_string(tmp_key, &str) == CS_OK) {
-			res = totemip_parse (&totem_config->interfaces[ringnumber].mcast_addr, str, totem_config->ip_version);
+			res = totemip_parse (&totem_config->interfaces[linknumber].mcast_addr, str, totem_config->ip_version);
 			free(str);
 		} else {
 			/*
@@ -1113,12 +1065,12 @@ extern int totem_config_read (
 			 * checked later anyway.
 			 */
 			(void)get_cluster_mcast_addr (cluster_name,
-					ringnumber,
+					linknumber,
 					totem_config->ip_version,
-					&totem_config->interfaces[ringnumber].mcast_addr);
+					&totem_config->interfaces[linknumber].mcast_addr);
 		}
 
-		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.broadcast", ringnumber);
+		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.broadcast", linknumber);
 		if (icmap_get_string(tmp_key, &str) == CS_OK) {
 			if (strcmp (str, "yes") == 0) {
 				totem_config->broadcast_use = 1;
@@ -1129,27 +1081,53 @@ extern int totem_config_read (
 		/*
 		 * Get mcast port
 		 */
-		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.mcastport", ringnumber);
-		if (icmap_get_uint16(tmp_key, &totem_config->interfaces[ringnumber].ip_port) != CS_OK) {
+		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.mcastport", linknumber);
+		if (icmap_get_uint16(tmp_key, &totem_config->interfaces[linknumber].ip_port) != CS_OK) {
 			if (totem_config->broadcast_use) {
-				totem_config->interfaces[ringnumber].ip_port = DEFAULT_PORT + (2 * ringnumber);
+				totem_config->interfaces[linknumber].ip_port = DEFAULT_PORT + (2 * linknumber);
 			} else {
-				totem_config->interfaces[ringnumber].ip_port = DEFAULT_PORT;
+				totem_config->interfaces[linknumber].ip_port = DEFAULT_PORT;
 			}
 		}
 
 		/*
 		 * Get the TTL
 		 */
-		totem_config->interfaces[ringnumber].ttl = 1;
+		totem_config->interfaces[linknumber].ttl = 1;
 
-		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.ttl", ringnumber);
+		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.ttl", linknumber);
 
 		if (icmap_get_uint8(tmp_key, &u8) == CS_OK) {
-			totem_config->interfaces[ringnumber].ttl = u8;
+			totem_config->interfaces[linknumber].ttl = u8;
 		}
 
-		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.member.", ringnumber);
+		/*
+		 * Get the knet link params
+		 */
+		totem_config->interfaces[linknumber].knet_link_priority = 1;
+		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.knet_link_priority", linknumber);
+
+		if (icmap_get_uint8(tmp_key, &u8) == CS_OK) {
+			totem_config->interfaces[linknumber].knet_link_priority = u8;
+		}
+
+		totem_config->interfaces[linknumber].knet_ping_interval = KNET_PING_INTERVAL;
+		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.knet_ping_interval", linknumber);
+		if (icmap_get_uint32(tmp_key, &u32) == CS_OK) {
+			totem_config->interfaces[linknumber].knet_ping_interval = u32;
+		}
+		totem_config->interfaces[linknumber].knet_ping_timeout = KNET_PING_TIMEOUT;
+		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.knet_ping_timeout", linknumber);
+		if (icmap_get_uint32(tmp_key, &u32) == CS_OK) {
+			totem_config->interfaces[linknumber].knet_ping_timeout = u32;
+		}
+		totem_config->interfaces[linknumber].knet_ping_precision = KNET_PING_PRECISION;
+		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.knet_ping_precision", linknumber);
+		if (icmap_get_uint32(tmp_key, &u32) == CS_OK) {
+			totem_config->interfaces[linknumber].knet_ping_precision = u32;
+		}
+
+		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.member.", linknumber);
 		member_iter = icmap_iter_init(tmp_key);
 		while ((member_iter_key = icmap_iter_next(member_iter, NULL, NULL)) != NULL) {
 			if (member_count == 0) {
@@ -1163,13 +1141,13 @@ extern int totem_config_read (
 			}
 
 			if (icmap_get_string(member_iter_key, &str) == CS_OK) {
-				res = totemip_parse (&totem_config->interfaces[ringnumber].member_list[member_count++],
+				res = totemip_parse (&totem_config->interfaces[linknumber].member_list[member_count++],
 						str, totem_config->ip_version);
 			}
 		}
 		icmap_iter_finalize(member_iter);
 
-		totem_config->interfaces[ringnumber].member_count = member_count;
+		totem_config->interfaces[linknumber].member_count = member_count;
 		totem_config->interface_count++;
 	}
 	icmap_iter_finalize(iter);
@@ -1178,8 +1156,8 @@ extern int totem_config_read (
 	 * Use broadcast is global, so if set, make sure to fill mcast addr correctly
 	 */
 	if (totem_config->broadcast_use) {
-		for (ringnumber = 0; ringnumber < totem_config->interface_count; ringnumber++) {
-			totemip_parse (&totem_config->interfaces[ringnumber].mcast_addr,
+		for (linknumber = 0; linknumber < totem_config->interface_count; linknumber++) {
+			totemip_parse (&totem_config->interfaces[linknumber].mcast_addr,
 				"255.255.255.255", 0);
 		}
 	}
@@ -1202,15 +1180,20 @@ extern int totem_config_read (
 		}
 	}
 
-	totem_config->transport_number = TOTEM_TRANSPORT_UDP;
+	totem_config->transport_number = TOTEM_TRANSPORT_KNET;
 	if (icmap_get_string("totem.transport", &str) == CS_OK) {
 		if (strcmp (str, "udpu") == 0) {
 			totem_config->transport_number = TOTEM_TRANSPORT_UDPU;
 		}
 
-		if (strcmp (str, "iba") == 0) {
-			totem_config->transport_number = TOTEM_TRANSPORT_RDMA;
+		if (strcmp (str, "udp") == 0) {
+			totem_config->transport_number = TOTEM_TRANSPORT_UDP;
 		}
+
+		if (strcmp (str, "knet") == 0) {
+			totem_config->transport_number = TOTEM_TRANSPORT_KNET;
+		}
+
 		free(str);
 	}
 
@@ -1306,6 +1289,15 @@ int totem_config_validate (
 			error_reason = "Can only set ttl on multicast transport types";
 			goto parse_error;
 		}
+		if (totem_config->interfaces[i].knet_link_priority > 255) {
+			error_reason = "Invalid link priority (should be 0..255)";
+			goto parse_error;
+		}
+		if (totem_config->transport_number != TOTEM_TRANSPORT_KNET &&
+		    totem_config->interfaces[i].knet_link_priority != 1) {
+			error_reason = "Can only set link priority on knet transport type";
+			goto parse_error;
+		}
 
 		if (totem_config->interfaces[i].mcast_addr.family == AF_INET6 &&
 			totem_config->node_id == 0) {
@@ -1362,26 +1354,39 @@ int totem_config_validate (
 	}
 
 	/*
-	 * RRP values validation
+	 * KNET Link values validation
 	 */
-	if (strcmp (totem_config->rrp_mode, "none") &&
-		strcmp (totem_config->rrp_mode, "active") &&
-		strcmp (totem_config->rrp_mode, "passive")) {
+	if (strcmp (totem_config->link_mode, "active") &&
+	        strcmp (totem_config->link_mode, "rr") &&
+		strcmp (totem_config->link_mode, "passive")) {
 		snprintf (local_error_reason, sizeof(local_error_reason),
-			"The RRP mode \"%s\" specified is invalid.  It must be none, active, or passive.\n", totem_config->rrp_mode);
+			"The Knet link mode \"%s\" specified is invalid.  It must be active, passive or rr.\n", totem_config->link_mode);
 		goto parse_error;
 	}
 
-	if (strcmp (totem_config->rrp_mode, "none") == 0) {
+	/* Only Knet does multiple interfaces */
+	if (totem_config->transport_number != TOTEM_TRANSPORT_KNET) {
 		interface_max = 1;
 	}
+
 	if (interface_max < totem_config->interface_count) {
 		snprintf (parse_error, sizeof(parse_error),
-			"%d is too many configured interfaces for the rrp_mode setting %s.",
-			totem_config->interface_count,
-			totem_config->rrp_mode);
+			  "%d is too many configured interfaces for non-Knet transport.",
+			  totem_config->interface_count);
 		error_reason = parse_error;
 		goto parse_error;
+	}
+
+	/* Only knet allows crypto */
+	if (totem_config->transport_number != TOTEM_TRANSPORT_KNET) {
+		if ((strcmp(totem_config->crypto_cipher_type, "none") != 0) ||
+		    (strcmp(totem_config->crypto_hash_type, "none") != 0)) {
+
+			snprintf (parse_error, sizeof(parse_error),
+				  "crypto_cipher & crypto_hash are only valid for the Knet transport.");
+			error_reason = parse_error;
+			goto parse_error;
+		}
 	}
 
 	if (totem_config->net_mtu == 0) {
@@ -1526,18 +1531,6 @@ static void debug_dump_totem_config(const struct totem_config *totem_config)
 	    "window size per rotation (%d messages) maximum messages per rotation (%d messages)",
 	    totem_config->window_size, totem_config->max_messages);
 	log_printf(LOGSYS_LEVEL_DEBUG, "missed count const (%d messages)", totem_config->miss_count_const);
-	log_printf(LOGSYS_LEVEL_DEBUG, "RRP token expired timeout (%d ms)",
-	    totem_config->rrp_token_expired_timeout);
-	log_printf(LOGSYS_LEVEL_DEBUG, "RRP token problem counter (%d ms)",
-	    totem_config->rrp_problem_count_timeout);
-	log_printf(LOGSYS_LEVEL_DEBUG, "RRP threshold (%d problem count)",
-	    totem_config->rrp_problem_count_threshold);
-	log_printf(LOGSYS_LEVEL_DEBUG, "RRP multicast threshold (%d problem count)",
-	    totem_config->rrp_problem_count_mcast_threshold);
-	log_printf(LOGSYS_LEVEL_DEBUG, "RRP automatic recovery check timeout (%d ms)",
-	    totem_config->rrp_autorecovery_check_timeout);
-	log_printf(LOGSYS_LEVEL_DEBUG, "RRP mode set to %s.",
-	    totem_config->rrp_mode);
 	log_printf(LOGSYS_LEVEL_DEBUG, "heartbeat_failures_allowed (%d)",
 	    totem_config->heartbeat_failures_allowed);
 	log_printf(LOGSYS_LEVEL_DEBUG, "max_network_delay (%d ms)", totem_config->max_network_delay);

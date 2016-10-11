@@ -495,86 +495,81 @@ static void corosync_totem_stats_updater (void *data)
 	uint32_t total_mtt_rx_token;
 	uint32_t total_backlog_calc;
 	uint32_t total_token_holdtime;
-	int t, prev, i;
+	int t, prev;
 	int32_t token_count;
-	char key_name[ICMAP_KEYNAME_MAXLEN];
 
 	stats = api->totem_get_stats();
 
 	icmap_set_uint32("runtime.totem.pg.msg_reserved", stats->msg_reserved);
 	icmap_set_uint32("runtime.totem.pg.msg_queue_avail", stats->msg_queue_avail);
-	icmap_set_uint64("runtime.totem.pg.mrp.srp.orf_token_tx", stats->mrp->srp->orf_token_tx);
-	icmap_set_uint64("runtime.totem.pg.mrp.srp.orf_token_rx", stats->mrp->srp->orf_token_rx);
-	icmap_set_uint64("runtime.totem.pg.mrp.srp.memb_merge_detect_tx", stats->mrp->srp->memb_merge_detect_tx);
-	icmap_set_uint64("runtime.totem.pg.mrp.srp.memb_merge_detect_rx", stats->mrp->srp->memb_merge_detect_rx);
-	icmap_set_uint64("runtime.totem.pg.mrp.srp.memb_join_tx", stats->mrp->srp->memb_join_tx);
-	icmap_set_uint64("runtime.totem.pg.mrp.srp.memb_join_rx", stats->mrp->srp->memb_join_rx);
-	icmap_set_uint64("runtime.totem.pg.mrp.srp.mcast_tx", stats->mrp->srp->mcast_tx);
-	icmap_set_uint64("runtime.totem.pg.mrp.srp.mcast_retx", stats->mrp->srp->mcast_retx);
-	icmap_set_uint64("runtime.totem.pg.mrp.srp.mcast_rx", stats->mrp->srp->mcast_rx);
-	icmap_set_uint64("runtime.totem.pg.mrp.srp.memb_commit_token_tx", stats->mrp->srp->memb_commit_token_tx);
-	icmap_set_uint64("runtime.totem.pg.mrp.srp.memb_commit_token_rx", stats->mrp->srp->memb_commit_token_rx);
-	icmap_set_uint64("runtime.totem.pg.mrp.srp.token_hold_cancel_tx", stats->mrp->srp->token_hold_cancel_tx);
-	icmap_set_uint64("runtime.totem.pg.mrp.srp.token_hold_cancel_rx", stats->mrp->srp->token_hold_cancel_rx);
-	icmap_set_uint64("runtime.totem.pg.mrp.srp.operational_entered", stats->mrp->srp->operational_entered);
-	icmap_set_uint64("runtime.totem.pg.mrp.srp.operational_token_lost", stats->mrp->srp->operational_token_lost);
-	icmap_set_uint64("runtime.totem.pg.mrp.srp.gather_entered", stats->mrp->srp->gather_entered);
-	icmap_set_uint64("runtime.totem.pg.mrp.srp.gather_token_lost", stats->mrp->srp->gather_token_lost);
-	icmap_set_uint64("runtime.totem.pg.mrp.srp.commit_entered", stats->mrp->srp->commit_entered);
-	icmap_set_uint64("runtime.totem.pg.mrp.srp.commit_token_lost", stats->mrp->srp->commit_token_lost);
-	icmap_set_uint64("runtime.totem.pg.mrp.srp.recovery_entered", stats->mrp->srp->recovery_entered);
-	icmap_set_uint64("runtime.totem.pg.mrp.srp.recovery_token_lost", stats->mrp->srp->recovery_token_lost);
-	icmap_set_uint64("runtime.totem.pg.mrp.srp.consensus_timeouts", stats->mrp->srp->consensus_timeouts);
-	icmap_set_uint64("runtime.totem.pg.mrp.srp.rx_msg_dropped", stats->mrp->srp->rx_msg_dropped);
-	icmap_set_uint32("runtime.totem.pg.mrp.srp.continuous_gather", stats->mrp->srp->continuous_gather);
-	icmap_set_uint32("runtime.totem.pg.mrp.srp.continuous_sendmsg_failures",
-	    stats->mrp->srp->continuous_sendmsg_failures);
+	icmap_set_uint64("runtime.totem.pg.srp.orf_token_tx", stats->srp->orf_token_tx);
+	icmap_set_uint64("runtime.totem.pg.srp.orf_token_rx", stats->srp->orf_token_rx);
+	icmap_set_uint64("runtime.totem.pg.srp.memb_merge_detect_tx", stats->srp->memb_merge_detect_tx);
+	icmap_set_uint64("runtime.totem.pg.srp.memb_merge_detect_rx", stats->srp->memb_merge_detect_rx);
+	icmap_set_uint64("runtime.totem.pg.srp.memb_join_tx", stats->srp->memb_join_tx);
+	icmap_set_uint64("runtime.totem.pg.srp.memb_join_rx", stats->srp->memb_join_rx);
+	icmap_set_uint64("runtime.totem.pg.srp.mcast_tx", stats->srp->mcast_tx);
+	icmap_set_uint64("runtime.totem.pg.srp.mcast_retx", stats->srp->mcast_retx);
+	icmap_set_uint64("runtime.totem.pg.srp.mcast_rx", stats->srp->mcast_rx);
+	icmap_set_uint64("runtime.totem.pg.srp.memb_commit_token_tx", stats->srp->memb_commit_token_tx);
+	icmap_set_uint64("runtime.totem.pg.srp.memb_commit_token_rx", stats->srp->memb_commit_token_rx);
+	icmap_set_uint64("runtime.totem.pg.srp.token_hold_cancel_tx", stats->srp->token_hold_cancel_tx);
+	icmap_set_uint64("runtime.totem.pg.srp.token_hold_cancel_rx", stats->srp->token_hold_cancel_rx);
+	icmap_set_uint64("runtime.totem.pg.srp.operational_entered", stats->srp->operational_entered);
+	icmap_set_uint64("runtime.totem.pg.srp.operational_token_lost", stats->srp->operational_token_lost);
+	icmap_set_uint64("runtime.totem.pg.srp.gather_entered", stats->srp->gather_entered);
+	icmap_set_uint64("runtime.totem.pg.srp.gather_token_lost", stats->srp->gather_token_lost);
+	icmap_set_uint64("runtime.totem.pg.srp.commit_entered", stats->srp->commit_entered);
+	icmap_set_uint64("runtime.totem.pg.srp.commit_token_lost", stats->srp->commit_token_lost);
+	icmap_set_uint64("runtime.totem.pg.srp.recovery_entered", stats->srp->recovery_entered);
+	icmap_set_uint64("runtime.totem.pg.srp.recovery_token_lost", stats->srp->recovery_token_lost);
+	icmap_set_uint64("runtime.totem.pg.srp.consensus_timeouts", stats->srp->consensus_timeouts);
+	icmap_set_uint64("runtime.totem.pg.srp.rx_msg_dropped", stats->srp->rx_msg_dropped);
+	icmap_set_uint32("runtime.totem.pg.srp.continuous_gather", stats->srp->continuous_gather);
+	icmap_set_uint32("runtime.totem.pg.srp.continuous_sendmsg_failures",
+	    stats->srp->continuous_sendmsg_failures);
 
-	icmap_set_uint8("runtime.totem.pg.mrp.srp.firewall_enabled_or_nic_failure",
-		stats->mrp->srp->continuous_gather > MAX_NO_CONT_GATHER ? 1 : 0);
+	icmap_set_uint8("runtime.totem.pg.srp.firewall_enabled_or_nic_failure",
+		stats->srp->continuous_gather > MAX_NO_CONT_GATHER ? 1 : 0);
 
-	if (stats->mrp->srp->continuous_gather > MAX_NO_CONT_GATHER ||
-	    stats->mrp->srp->continuous_sendmsg_failures > MAX_NO_CONT_SENDMSG_FAILURES) {
+	if (stats->srp->continuous_gather > MAX_NO_CONT_GATHER ||
+	    stats->srp->continuous_sendmsg_failures > MAX_NO_CONT_SENDMSG_FAILURES) {
 		log_printf (LOGSYS_LEVEL_WARNING,
 			"Totem is unable to form a cluster because of an "
 			"operating system or network fault. The most common "
 			"cause of this message is that the local firewall is "
 			"configured improperly.");
-		icmap_set_uint8("runtime.totem.pg.mrp.srp.firewall_enabled_or_nic_failure", 1);
+		icmap_set_uint8("runtime.totem.pg.srp.firewall_enabled_or_nic_failure", 1);
 	} else {
-		icmap_set_uint8("runtime.totem.pg.mrp.srp.firewall_enabled_or_nic_failure", 0);
+		icmap_set_uint8("runtime.totem.pg.srp.firewall_enabled_or_nic_failure", 0);
 	}
 
-	for (i = 0; i < stats->mrp->srp->rrp->interface_count; i++) {
-		snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "runtime.totem.pg.mrp.rrp.%u.faulty", i);
-		icmap_set_uint8(key_name, stats->mrp->srp->rrp->faulty[i]);
-	}
 	total_mtt_rx_token = 0;
 	total_token_holdtime = 0;
 	total_backlog_calc = 0;
 	token_count = 0;
-	t = stats->mrp->srp->latest_token;
+	t = stats->srp->latest_token;
 	while (1) {
 		if (t == 0)
 			prev = TOTEM_TOKEN_STATS_MAX - 1;
 		else
 			prev = t - 1;
-		if (prev == stats->mrp->srp->earliest_token)
+		if (prev == stats->srp->earliest_token)
 			break;
 		/* if tx == 0, then dropped token (not ours) */
-		if (stats->mrp->srp->token[t].tx != 0 ||
-			(stats->mrp->srp->token[t].rx - stats->mrp->srp->token[prev].rx) > 0 ) {
-			total_mtt_rx_token += (stats->mrp->srp->token[t].rx - stats->mrp->srp->token[prev].rx);
-			total_token_holdtime += (stats->mrp->srp->token[t].tx - stats->mrp->srp->token[t].rx);
-			total_backlog_calc += stats->mrp->srp->token[t].backlog_calc;
+		if (stats->srp->token[t].tx != 0 ||
+			(stats->srp->token[t].rx - stats->srp->token[prev].rx) > 0 ) {
+			total_mtt_rx_token += (stats->srp->token[t].rx - stats->srp->token[prev].rx);
+			total_token_holdtime += (stats->srp->token[t].tx - stats->srp->token[t].rx);
+			total_backlog_calc += stats->srp->token[t].backlog_calc;
 			token_count++;
 		}
 		t = prev;
 	}
 	if (token_count) {
-		icmap_set_uint32("runtime.totem.pg.mrp.srp.mtt_rx_token", (total_mtt_rx_token / token_count));
-		icmap_set_uint32("runtime.totem.pg.mrp.srp.avg_token_workload", (total_token_holdtime / token_count));
-		icmap_set_uint32("runtime.totem.pg.mrp.srp.avg_backlog_calc", (total_backlog_calc / token_count));
+		icmap_set_uint32("runtime.totem.pg.srp.mtt_rx_token", (total_mtt_rx_token / token_count));
+		icmap_set_uint32("runtime.totem.pg.srp.avg_token_workload", (total_token_holdtime / token_count));
+		icmap_set_uint32("runtime.totem.pg.srp.avg_backlog_calc", (total_backlog_calc / token_count));
 	}
 
 	cs_ipcs_stats_update();
@@ -586,9 +581,9 @@ static void corosync_totem_stats_updater (void *data)
 
 static void corosync_totem_stats_init (void)
 {
-	icmap_set_uint32("runtime.totem.pg.mrp.srp.mtt_rx_token", 0);
-	icmap_set_uint32("runtime.totem.pg.mrp.srp.avg_token_workload", 0);
-	icmap_set_uint32("runtime.totem.pg.mrp.srp.avg_backlog_calc", 0);
+	icmap_set_uint32("runtime.totem.pg.srp.mtt_rx_token", 0);
+	icmap_set_uint32("runtime.totem.pg.srp.avg_token_workload", 0);
+	icmap_set_uint32("runtime.totem.pg.srp.avg_backlog_calc", 0);
 
 	/* start stats timer */
 	api->timer_add_duration (1500 * MILLI_2_NANO_SECONDS, NULL,
@@ -1312,7 +1307,7 @@ int main (int argc, char **argv, char **envp)
 	totem_config.totem_logging_configuration = totem_logging_configuration;
 	totem_config.totem_logging_configuration.log_subsys_id = _logsys_subsys_create("TOTEM", "totem,"
 			"totemmrp.c,totemrrp.c,totemip.c,totemconfig.c,totemcrypto.c,totemsrp.c,"
-			"totempg.c,totemiba.c,totemudp.c,totemudpu.c,totemnet.c");
+			"totempg.c,totemiba.c,totemudp.c,totemudpu.c,totemnet.c,totemknet.c");
 
 	totem_config.totem_logging_configuration.log_level_security = LOGSYS_LEVEL_WARNING;
 	totem_config.totem_logging_configuration.log_level_error = LOGSYS_LEVEL_ERROR;
@@ -1321,6 +1316,7 @@ int main (int argc, char **argv, char **envp)
 	totem_config.totem_logging_configuration.log_level_debug = LOGSYS_LEVEL_DEBUG;
 	totem_config.totem_logging_configuration.log_level_trace = LOGSYS_LEVEL_TRACE;
 	totem_config.totem_logging_configuration.log_printf = _logsys_log_printf;
+
 	logsys_config_apply();
 
 	/*

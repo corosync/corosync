@@ -42,6 +42,7 @@
 #endif
 #include <totemudp.h>
 #include <totemudpu.h>
+#include <totemknet.h>
 #include <totemnet.h>
 #include <qb/qbloop.h>
 
@@ -50,13 +51,12 @@
 
 struct transport {
 	const char *name;
-	
+
 	int (*initialize) (
 		qb_loop_t *loop_pt,
 		void **transport_instance,
 		struct totem_config *totem_config,
 		totemsrp_stats_t *stats,
-		int interface_no,
 		void *context,
 
 		void (*deliver_fn) (
@@ -66,7 +66,12 @@ struct transport {
 
 		void (*iface_change_fn) (
 			void *context,
-			const struct totem_ip_address *iface_address),
+			const struct totem_ip_address *iface_address,
+			unsigned int ring_no),
+
+		void (*mtu_changed) (
+			void *context,
+			int net_mtu),
 
 		void (*target_set_completed) (
 			void *context));
@@ -107,9 +112,10 @@ struct transport {
 
 	const char *(*iface_print) (void *transport_context);
 
-	int (*iface_get) (
+	int (*ifaces_get) (
 		void *transport_context,
-		struct totem_ip_address *addr);
+		char ***status,
+		unsigned int *iface_count);
 
 	int (*token_target_set) (
 		void *transport_context,
@@ -125,11 +131,14 @@ struct transport {
 
 	int (*member_add) (
 		void *transport_context,
-		const struct totem_ip_address *member);
+		const struct totem_ip_address *local,
+		const struct totem_ip_address *member,
+		int ring_no);
 
 	int (*member_remove) (
 		void *transport_context,
-		const struct totem_ip_address *member);
+		const struct totem_ip_address *member,
+		int ring_no);
 
 	int (*member_set_active) (
 		void *transport_context,
@@ -152,8 +161,7 @@ struct transport transport_entries[] = {
 		.iface_check = totemudp_iface_check,
 		.finalize = totemudp_finalize,
 		.net_mtu_adjust = totemudp_net_mtu_adjust,
-		.iface_print = totemudp_iface_print,
-		.iface_get = totemudp_iface_get,
+		.ifaces_get = totemudp_ifaces_get,
 		.token_target_set = totemudp_token_target_set,
 		.crypto_set = totemudp_crypto_set,
 		.recv_mcast_empty = totemudp_recv_mcast_empty
@@ -172,45 +180,41 @@ struct transport transport_entries[] = {
 		.iface_check = totemudpu_iface_check,
 		.finalize = totemudpu_finalize,
 		.net_mtu_adjust = totemudpu_net_mtu_adjust,
-		.iface_print = totemudpu_iface_print,
-		.iface_get = totemudpu_iface_get,
+		.ifaces_get = totemudpu_ifaces_get,
 		.token_target_set = totemudpu_token_target_set,
 		.crypto_set = totemudpu_crypto_set,
 		.recv_mcast_empty = totemudpu_recv_mcast_empty,
 		.member_add = totemudpu_member_add,
 		.member_remove = totemudpu_member_remove,
-		.member_set_active = totemudpu_member_set_active
 	},
-#ifdef HAVE_RDMA
 	{
-		.name = "Infiniband/IP",
-		.initialize = totemiba_initialize,
-		.buffer_alloc = totemiba_buffer_alloc,
-		.buffer_release = totemiba_buffer_release,
-		.processor_count_set = totemiba_processor_count_set,
-		.token_send = totemiba_token_send,
-		.mcast_flush_send = totemiba_mcast_flush_send,
-		.mcast_noflush_send = totemiba_mcast_noflush_send,
-		.recv_flush = totemiba_recv_flush,
-		.send_flush = totemiba_send_flush,
-		.iface_check = totemiba_iface_check,
-		.finalize = totemiba_finalize,
-		.net_mtu_adjust = totemiba_net_mtu_adjust,
-		.iface_print = totemiba_iface_print,
-		.iface_get = totemiba_iface_get,
-		.token_target_set = totemiba_token_target_set,
-		.crypto_set = totemiba_crypto_set,
-		.recv_mcast_empty = totemiba_recv_mcast_empty
+		.name = "Kronosnet",
+		.initialize = totemknet_initialize,
+		.buffer_alloc = totemknet_buffer_alloc,
+		.buffer_release = totemknet_buffer_release,
+		.processor_count_set = totemknet_processor_count_set,
+		.token_send = totemknet_token_send,
+		.mcast_flush_send = totemknet_mcast_flush_send,
+		.mcast_noflush_send = totemknet_mcast_noflush_send,
+		.recv_flush = totemknet_recv_flush,
+		.send_flush = totemknet_send_flush,
+		.iface_check = totemknet_iface_check,
+		.finalize = totemknet_finalize,
+		.net_mtu_adjust = totemknet_net_mtu_adjust,
+		.ifaces_get = totemknet_ifaces_get,
+		.token_target_set = totemknet_token_target_set,
+		.crypto_set = totemknet_crypto_set,
+		.recv_mcast_empty = totemknet_recv_mcast_empty,
+		.member_add = totemknet_member_add,
+		.member_remove = totemknet_member_remove,
 
 	}
-#endif
 };
-	
+
 struct totemnet_instance {
 	void *transport_context;
 
 	struct transport *transport;
-
         void (*totemnet_log_printf) (
                 int level,
 		int subsys,
@@ -280,7 +284,6 @@ int totemnet_initialize (
 	void **net_context,
 	struct totem_config *totem_config,
 	totemsrp_stats_t *stats,
-	int interface_no,
 	void *context,
 
 	void (*deliver_fn) (
@@ -290,7 +293,12 @@ int totemnet_initialize (
 
 	void (*iface_change_fn) (
 		void *context,
-		const struct totem_ip_address *iface_address),
+		const struct totem_ip_address *iface_address,
+		unsigned int ring_no),
+
+	void (*mtu_changed) (
+		void *context,
+		int net_mtu),
 
 	void (*target_set_completed) (
 		void *context))
@@ -306,7 +314,7 @@ int totemnet_initialize (
 
 	res = instance->transport->initialize (loop_pt,
 		&instance->transport_context, totem_config, stats,
-		interface_no, context, deliver_fn, iface_change_fn, target_set_completed);
+		context, deliver_fn, iface_change_fn, mtu_changed, target_set_completed);
 
 	if (res == -1) {
 		goto error_destroy;
@@ -424,23 +432,16 @@ extern int totemnet_net_mtu_adjust (void *net_context, struct totem_config *tote
 	return (res);
 }
 
-const char *totemnet_iface_print (void *net_context)  {
-	struct totemnet_instance *instance = (struct totemnet_instance *)net_context;
-	const char *ret_char;
-
-	ret_char = instance->transport->iface_print (instance->transport_context);
-	return (ret_char);
-}
-
-int totemnet_iface_get (
+int totemnet_ifaces_get (
 	void *net_context,
-	struct totem_ip_address *addr)
+	char ***status,
+	unsigned int *iface_count)
 {
 	struct totemnet_instance *instance = (struct totemnet_instance *)net_context;
 	unsigned int res;
 
-	res = instance->transport->iface_get (instance->transport_context, addr);
-	
+	res = instance->transport->ifaces_get (instance->transport_context, status, iface_count);
+
 	return (res);
 }
 
@@ -469,7 +470,9 @@ extern int totemnet_recv_mcast_empty (
 
 extern int totemnet_member_add (
 	void *net_context,
-	const struct totem_ip_address *member)
+	const struct totem_ip_address *local,
+	const struct totem_ip_address *member,
+	int ring_no)
 {
 	struct totemnet_instance *instance = (struct totemnet_instance *)net_context;
 	unsigned int res = 0;
@@ -477,7 +480,9 @@ extern int totemnet_member_add (
 	if (instance->transport->member_add) {
 		res = instance->transport->member_add (
 			instance->transport_context,
-			member);
+			local,
+			member,
+			ring_no);
 	}
 
 	return (res);
@@ -485,7 +490,8 @@ extern int totemnet_member_add (
 
 extern int totemnet_member_remove (
 	void *net_context,
-	const struct totem_ip_address *member)
+	const struct totem_ip_address *member,
+	int ring_no)
 {
 	struct totemnet_instance *instance = (struct totemnet_instance *)net_context;
 	unsigned int res = 0;
@@ -493,7 +499,8 @@ extern int totemnet_member_remove (
 	if (instance->transport->member_remove) {
 		res = instance->transport->member_remove (
 			instance->transport_context,
-			member);
+			member,
+			ring_no);
 	}
 
 	return (res);

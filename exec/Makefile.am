@@ -33,25 +33,22 @@ MAINTAINERCLEANFILES	= Makefile.in
 
 noinst_HEADERS		= apidef.h cs_queue.h logconfig.h main.h \
 			  quorum.h service.h timer.h totemconfig.h \
-			  totemmrp.h totemnet.h totemudp.h totemiba.h \
-			  totemrrp.h totemudpu.h totemsrp.h util.h vsf.h \
+			  totemnet.h totemudp.h \
+			  totemudpu.h totemsrp.h util.h vsf.h \
 			  schedwrk.h sync.h fsm.h votequorum.h vsf_ykd.h \
-			  totemcrypto.h
+			  totemknet.h
 
 TOTEM_SRC		= totemip.c totemnet.c totemudp.c \
-			  totemudpu.c totemrrp.c totemsrp.c totemmrp.c \
-			  totempg.c totemcrypto.c
+			  totemudpu.c totemsrp.c \
+			  totempg.c totemknet.c
 
-if BUILD_RDMA
-TOTEM_SRC		+= totemiba.c
-endif
 
 lib_LTLIBRARIES		= libtotem_pg.la
 libtotem_pg_la_SOURCES	= $(TOTEM_SRC)
 libtotem_pg_la_CFLAGS	= $(nss_CFLAGS) $(rdmacm_CFLAGS) $(ibverbs_CFLAGS)
 libtotem_pg_la_LDFLAGS	= -version-number $(subst .,:,$(SONAME))
 libtotem_pg_la_LIBADD	= -lpthread $(LIBQB_LIBS) $(nss_LIBS) \
-			  $(rdmacm_LIBS) $(ibverbs_LIBS)
+			  $(rdmacm_LIBS) $(ibverbs_LIBS) -lknet
 
 sbin_PROGRAMS		= corosync
 

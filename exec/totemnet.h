@@ -59,7 +59,6 @@ extern int totemnet_initialize (
 	void **net_context,
 	struct totem_config *totem_config,
 	totemsrp_stats_t *stats,
-	int interface_no,
 	void *context,
 
 	void (*deliver_fn) (
@@ -69,7 +68,12 @@ extern int totemnet_initialize (
 
 	void (*iface_change_fn) (
 		void *context,
-		const struct totem_ip_address *iface_address),
+		const struct totem_ip_address *iface_address,
+		unsigned int iface_no),
+
+	void (*mtu_changed) (
+		void *context,
+		int net_mtu),
 
 	void (*target_set_completed) (
 		void *context));
@@ -109,9 +113,10 @@ extern int totemnet_net_mtu_adjust (void *net_context, struct totem_config *tote
 
 extern const char *totemnet_iface_print (void *net_context);
 
-extern int totemnet_iface_get (
+extern int totemnet_ifaces_get (
 	void *net_context,
-	struct totem_ip_address *addr);
+	char ***status,
+	unsigned int *iface_count);
 
 extern int totemnet_token_target_set (
 	void *net_context,
@@ -127,11 +132,14 @@ extern int totemnet_recv_mcast_empty (
 
 extern int totemnet_member_add (
 	void *net_context,
-	const struct totem_ip_address *member);
+	const struct totem_ip_address *local,
+	const struct totem_ip_address *member,
+	int ring_no);
 
 extern int totemnet_member_remove (
 	void *net_context,
-	const struct totem_ip_address *member);
+	const struct totem_ip_address *member,
+	int ring_no);
 
 extern int totemnet_member_set_active (
 	void *net_context,
