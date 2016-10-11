@@ -249,8 +249,6 @@ static void cmap_config_version_track_cb(
 	struct icmap_notify_value old_value,
 	void *user_data)
 {
-	const char *key = "totem.config_version";
-	cs_error_t ret;
 
 	ENTER();
 
@@ -258,8 +256,8 @@ static void cmap_config_version_track_cb(
 		cmap_my_config_version = 0;
 	}
 
-
-	ret = cmap_mcast_send(CMAP_MCAST_REASON_NEW_CONFIG_VERSION, 1, (char **)&key);
+        const char *key = "totem.config_version";
+        cs_error_t ret = cmap_mcast_send(CMAP_MCAST_REASON_NEW_CONFIG_VERSION, 1, (char **)&key);
 	if (ret != CS_OK) {
 		log_printf(LOGSYS_LEVEL_ERROR, "Can't inform other nodes about new config version");
 	}
@@ -269,7 +267,6 @@ static void cmap_config_version_track_cb(
 
 static int cmap_exec_exit_fn(void)
 {
-
 	if (icmap_track_delete(cmap_config_version_track) != CS_OK) {
 		log_printf(LOGSYS_LEVEL_ERROR, "Can't delete config_version icmap tracker");
 	}
@@ -280,11 +277,9 @@ static int cmap_exec_exit_fn(void)
 static char *cmap_exec_init_fn (
 	struct corosync_api_v1 *corosync_api)
 {
-	cs_error_t ret;
-
 	api = corosync_api;
 
-	ret = icmap_track_add("totem.config_version",
+        cs_error_t ret = icmap_track_add("totem.config_version",
 	    ICMAP_TRACK_ADD | ICMAP_TRACK_DELETE | ICMAP_TRACK_MODIFY,
 	    cmap_config_version_track_cb,
 	    NULL,
@@ -299,12 +294,11 @@ static char *cmap_exec_init_fn (
 
 static int cmap_lib_init_fn (void *conn)
 {
-	struct cmap_conn_info *conn_info = (struct cmap_conn_info *)api->ipc_private_data_get (conn);
-
 	log_printf(LOGSYS_LEVEL_DEBUG, "lib_init_fn: conn=%p", conn);
 
 	api->ipc_refcnt_inc(conn);
 
+        struct cmap_conn_info *conn_info = (struct cmap_conn_info *)api->ipc_private_data_get (conn);
 	memset(conn_info, 0, sizeof(*conn_info));
 	hdb_create(&conn_info->iter_db);
 	hdb_create(&conn_info->track_db);
@@ -314,15 +308,12 @@ static int cmap_lib_init_fn (void *conn)
 
 static int cmap_lib_exit_fn (void *conn)
 {
-	struct cmap_conn_info *conn_info = (struct cmap_conn_info *)api->ipc_private_data_get (conn);
-	hdb_handle_t iter_handle = 0;
-	icmap_iter_t *iter;
-	hdb_handle_t track_handle = 0;
-	icmap_track_t *track;
-
 	log_printf(LOGSYS_LEVEL_DEBUG, "exit_fn for conn=%p", conn);
 
-	hdb_iterator_reset(&conn_info->iter_db);
+        struct cmap_conn_info *conn_info = (struct cmap_conn_info *)api->ipc_private_data_get (conn);
+        hdb_iterator_reset(&conn_info->iter_db);
+        hdb_handle_t iter_handle = 0;
+        icmap_iter_t *iter;
         while (hdb_iterator_next(&conn_info->iter_db,
                 (void*)&iter, &iter_handle) == 0) {
 
@@ -334,6 +325,8 @@ static int cmap_lib_exit_fn (void *conn)
 	hdb_destroy(&conn_info->iter_db);
 
 	hdb_iterator_reset(&conn_info->track_db);
+        hdb_handle_t track_handle = 0;
+        icmap_track_t *track;
         while (hdb_iterator_next(&conn_info->track_db,
                 (void*)&track, &track_handle) == 0) {
 
@@ -369,17 +362,14 @@ static void cmap_sync_init (
 
 static int cmap_sync_process (void)
 {
-	const char *key = "totem.config_version";
-	cs_error_t ret;
-
-	ret = cmap_mcast_send(CMAP_MCAST_REASON_SYNC, 1, (char **)&key);
+        const char *key = "totem.config_version";
+        cs_error_t ret = cmap_mcast_send(CMAP_MCAST_REASON_SYNC, 1, (char **)&key);
 
 	return (ret == CS_OK ? 0 : -1);
 }
 
 static void cmap_sync_activate (void)
 {
-
 	if (cmap_sync_trans_list_entries == 0) {
 		log_printf(LOGSYS_LEVEL_DEBUG, "Single node sync -> no action");
 
@@ -424,8 +414,7 @@ static void cmap_sync_abort (void)
 
 static void message_handler_req_lib_cmap_set(void *conn, const void *message)
 {
-	const struct req_lib_cmap_set *req_lib_cmap_set = message;
-	struct res_lib_cmap_set res_lib_cmap_set;
+        const struct req_lib_cmap_set *req_lib_cmap_set = message;
 	cs_error_t ret;
 
 	if (icmap_is_key_ro((char *)req_lib_cmap_set->key_name.value)) {
@@ -435,6 +424,7 @@ static void message_handler_req_lib_cmap_set(void *conn, const void *message)
 				req_lib_cmap_set->value_len, req_lib_cmap_set->type);
 	}
 
+        struct res_lib_cmap_set res_lib_cmap_set;
 	memset(&res_lib_cmap_set, 0, sizeof(res_lib_cmap_set));
 	res_lib_cmap_set.header.size = sizeof(res_lib_cmap_set);
 	res_lib_cmap_set.header.id = MESSAGE_RES_CMAP_SET;
@@ -445,8 +435,7 @@ static void message_handler_req_lib_cmap_set(void *conn, const void *message)
 
 static void message_handler_req_lib_cmap_delete(void *conn, const void *message)
 {
-	const struct req_lib_cmap_set *req_lib_cmap_set = message;
-	struct res_lib_cmap_delete res_lib_cmap_delete;
+        const struct req_lib_cmap_set *req_lib_cmap_set = message;
 	cs_error_t ret;
 
 	if (icmap_is_key_ro((char *)req_lib_cmap_set->key_name.value)) {
@@ -455,6 +444,7 @@ static void message_handler_req_lib_cmap_delete(void *conn, const void *message)
 		ret = icmap_delete((char *)req_lib_cmap_set->key_name.value);
 	}
 
+        struct res_lib_cmap_delete res_lib_cmap_delete;
 	memset(&res_lib_cmap_delete, 0, sizeof(res_lib_cmap_delete));
 	res_lib_cmap_delete.header.size = sizeof(res_lib_cmap_delete);
 	res_lib_cmap_delete.header.id = MESSAGE_RES_CMAP_DELETE;
@@ -466,16 +456,13 @@ static void message_handler_req_lib_cmap_delete(void *conn, const void *message)
 static void message_handler_req_lib_cmap_get(void *conn, const void *message)
 {
 	const struct req_lib_cmap_get *req_lib_cmap_get = message;
-	struct res_lib_cmap_get *res_lib_cmap_get;
-	struct res_lib_cmap_get error_res_lib_cmap_get;
-	cs_error_t ret;
-	size_t value_len;
+        struct res_lib_cmap_get *res_lib_cmap_get;
+        cs_error_t ret;
 	size_t res_lib_cmap_get_size;
 	icmap_value_types_t type;
 	void *value;
 
-	value_len = req_lib_cmap_get->value_len;
-
+        size_t value_len = req_lib_cmap_get->value_len;
 	res_lib_cmap_get_size = sizeof(*res_lib_cmap_get) + value_len;
 	res_lib_cmap_get = malloc(res_lib_cmap_get_size);
 	if (res_lib_cmap_get == NULL) {
@@ -512,6 +499,7 @@ static void message_handler_req_lib_cmap_get(void *conn, const void *message)
 
 	return ;
 
+	struct res_lib_cmap_get error_res_lib_cmap_get;
 error_exit:
 	memset(&error_res_lib_cmap_get, 0, sizeof(error_res_lib_cmap_get));
 	error_res_lib_cmap_get.header.size = sizeof(error_res_lib_cmap_get);
@@ -523,8 +511,7 @@ error_exit:
 
 static void message_handler_req_lib_cmap_adjust_int(void *conn, const void *message)
 {
-	const struct req_lib_cmap_adjust_int *req_lib_cmap_adjust_int = message;
-	struct res_lib_cmap_adjust_int res_lib_cmap_adjust_int;
+        const struct req_lib_cmap_adjust_int *req_lib_cmap_adjust_int = message;
 	cs_error_t ret;
 
 	if (icmap_is_key_ro((char *)req_lib_cmap_adjust_int->key_name.value)) {
@@ -534,6 +521,7 @@ static void message_handler_req_lib_cmap_adjust_int(void *conn, const void *mess
 		    req_lib_cmap_adjust_int->step);
 	}
 
+        struct res_lib_cmap_adjust_int res_lib_cmap_adjust_int;
 	memset(&res_lib_cmap_adjust_int, 0, sizeof(res_lib_cmap_adjust_int));
 	res_lib_cmap_adjust_int.header.size = sizeof(res_lib_cmap_adjust_int);
 	res_lib_cmap_adjust_int.header.id = MESSAGE_RES_CMAP_ADJUST_INT;
@@ -544,32 +532,30 @@ static void message_handler_req_lib_cmap_adjust_int(void *conn, const void *mess
 
 static void message_handler_req_lib_cmap_iter_init(void *conn, const void *message)
 {
-	const struct req_lib_cmap_iter_init *req_lib_cmap_iter_init = message;
-	struct res_lib_cmap_iter_init res_lib_cmap_iter_init;
-	cs_error_t ret;
-	icmap_iter_t iter;
-	icmap_iter_t *hdb_iter;
+        cs_error_t ret;
 	cmap_iter_handle_t handle = 0ULL;
-	const char *prefix;
-	struct cmap_conn_info *conn_info = (struct cmap_conn_info *)api->ipc_private_data_get (conn);
+        const char *prefix;
 
+        const struct req_lib_cmap_iter_init *req_lib_cmap_iter_init = message;
 	if (req_lib_cmap_iter_init->prefix.length > 0) {
 		prefix = (char *)req_lib_cmap_iter_init->prefix.value;
 	} else {
 		prefix = NULL;
 	}
 
-	iter = icmap_iter_init(prefix);
+        icmap_iter_t iter = icmap_iter_init(prefix);
 	if (iter == NULL) {
 		ret = CS_ERR_NO_SECTIONS;
 		goto reply_send;
 	}
 
+        struct cmap_conn_info *conn_info = (struct cmap_conn_info *)api->ipc_private_data_get (conn);
 	ret = hdb_error_to_cs(hdb_handle_create(&conn_info->iter_db, sizeof(iter), &handle));
 	if (ret != CS_OK) {
 		goto reply_send;
 	}
 
+        icmap_iter_t *hdb_iter;
 	ret = hdb_error_to_cs(hdb_handle_get(&conn_info->iter_db, handle, (void *)&hdb_iter));
 	if (ret != CS_OK) {
 		goto reply_send;
@@ -579,6 +565,7 @@ static void message_handler_req_lib_cmap_iter_init(void *conn, const void *messa
 
 	(void)hdb_handle_put (&conn_info->iter_db, handle);
 
+        struct res_lib_cmap_iter_init res_lib_cmap_iter_init;
 reply_send:
 	memset(&res_lib_cmap_iter_init, 0, sizeof(res_lib_cmap_iter_init));
 	res_lib_cmap_iter_init.header.size = sizeof(res_lib_cmap_iter_init);
@@ -591,8 +578,7 @@ reply_send:
 
 static void message_handler_req_lib_cmap_iter_next(void *conn, const void *message)
 {
-	const struct req_lib_cmap_iter_next *req_lib_cmap_iter_next = message;
-	struct res_lib_cmap_iter_next res_lib_cmap_iter_next;
+        const struct req_lib_cmap_iter_next *req_lib_cmap_iter_next = message;
 	cs_error_t ret;
 	icmap_iter_t *iter;
 	size_t value_len = 0;
@@ -613,6 +599,7 @@ static void message_handler_req_lib_cmap_iter_next(void *conn, const void *messa
 
 	(void)hdb_handle_put (&conn_info->iter_db, req_lib_cmap_iter_next->iter_handle);
 
+        struct res_lib_cmap_iter_next res_lib_cmap_iter_next;
 reply_send:
 	memset(&res_lib_cmap_iter_next, 0, sizeof(res_lib_cmap_iter_next));
 	res_lib_cmap_iter_next.header.size = sizeof(res_lib_cmap_iter_next);
@@ -632,8 +619,7 @@ reply_send:
 
 static void message_handler_req_lib_cmap_iter_finalize(void *conn, const void *message)
 {
-	const struct req_lib_cmap_iter_finalize *req_lib_cmap_iter_finalize = message;
-	struct res_lib_cmap_iter_finalize res_lib_cmap_iter_finalize;
+        const struct req_lib_cmap_iter_finalize *req_lib_cmap_iter_finalize = message;
 	cs_error_t ret;
 	icmap_iter_t *iter;
 	struct cmap_conn_info *conn_info = (struct cmap_conn_info *)api->ipc_private_data_get (conn);
@@ -650,6 +636,7 @@ static void message_handler_req_lib_cmap_iter_finalize(void *conn, const void *m
 
 	(void)hdb_handle_put (&conn_info->iter_db, req_lib_cmap_iter_finalize->iter_handle);
 
+        struct res_lib_cmap_iter_finalize res_lib_cmap_iter_finalize;
 reply_send:
 	memset(&res_lib_cmap_iter_finalize, 0, sizeof(res_lib_cmap_iter_finalize));
 	res_lib_cmap_iter_finalize.header.size = sizeof(res_lib_cmap_iter_finalize);
@@ -665,9 +652,7 @@ static void cmap_notify_fn(int32_t event,
 		struct icmap_notify_value old_val,
 		void *user_data)
 {
-	struct cmap_track_user_data *cmap_track_user_data = (struct cmap_track_user_data *)user_data;
-	struct res_lib_cmap_notify_callback res_lib_cmap_notify_callback;
-	struct iovec iov[3];
+        struct res_lib_cmap_notify_callback res_lib_cmap_notify_callback;
 
 	memset(&res_lib_cmap_notify_callback, 0, sizeof(res_lib_cmap_notify_callback));
 
@@ -681,10 +666,13 @@ static void cmap_notify_fn(int32_t event,
 	res_lib_cmap_notify_callback.old_value_len = old_val.len;
 	res_lib_cmap_notify_callback.event = event;
 	res_lib_cmap_notify_callback.key_name.length = strlen(key_name);
-	res_lib_cmap_notify_callback.track_inst_handle = cmap_track_user_data->track_inst_handle;
+
+        struct cmap_track_user_data *cmap_track_user_data = (struct cmap_track_user_data *)user_data;
+        res_lib_cmap_notify_callback.track_inst_handle = cmap_track_user_data->track_inst_handle;
 
 	memcpy(res_lib_cmap_notify_callback.key_name.value, key_name, strlen(key_name));
 
+        struct iovec iov[3];
 	iov[0].iov_base = (char *)&res_lib_cmap_notify_callback;
 	iov[0].iov_len = sizeof(res_lib_cmap_notify_callback);
 	iov[1].iov_base = (char *)new_val.data;
@@ -909,16 +897,13 @@ static void message_handler_req_exec_cmap_mcast_reason_sync_nv(
 		const void *message,
 		unsigned int nodeid)
 {
-	char member_config_version[ICMAP_KEYNAME_MAXLEN];
-	uint64_t config_version = 0;
-	struct req_exec_cmap_mcast_item *item;
-	mar_size_t value_len;
+        ENTER();
 
-	ENTER();
+        uint64_t config_version = 0;
 
-	item = cmap_mcast_item_find(message, (char *)"totem.config_version");
+        struct req_exec_cmap_mcast_item *item = cmap_mcast_item_find(message, (char *)"totem.config_version");
 	if (item != NULL) {
-		value_len = item->value_len;
+                mar_size_t value_len = item->value_len;
 
 		if (item->value_type == ICMAP_VALUETYPE_NOT_EXIST) {
 			config_version = 0;
@@ -936,6 +921,7 @@ static void message_handler_req_exec_cmap_mcast_reason_sync_nv(
 		cmap_highest_config_version_received = config_version;
 	}
 
+        char member_config_version[ICMAP_KEYNAME_MAXLEN];
 	snprintf(member_config_version, ICMAP_KEYNAME_MAXLEN,
 		"runtime.totem.pg.mrp.srp.members.%u.config_version", nodeid);
 	icmap_set_uint64(member_config_version, config_version);
@@ -972,54 +958,60 @@ static void message_handler_req_exec_cmap_mcast(
 static void exec_cmap_mcast_endian_convert(void *message)
 {
 	struct req_exec_cmap_mcast *req_exec_cmap_mcast = message;
-	const char *p;
-	int i;
-	struct req_exec_cmap_mcast_item *item;
-	uint16_t u16;
-	uint32_t u32;
-	uint64_t u64;
-	float flt;
-	double dbl;
-
 	swab_coroipc_request_header_t(&req_exec_cmap_mcast->header);
 
-	p = (const char *)message + sizeof(*req_exec_cmap_mcast);
+        const char *p = (const char *)message + sizeof(*req_exec_cmap_mcast);
 
-	for (i = 0; i < req_exec_cmap_mcast->no_items; i++) {
-		item = (struct req_exec_cmap_mcast_item *)p;
+        for (int i = 0; i < req_exec_cmap_mcast->no_items; i++) {
+                struct req_exec_cmap_mcast_item *item = (struct req_exec_cmap_mcast_item *)p;
 
 		swab_mar_uint16_t(&item->key_name.length);
 		swab_mar_size_t(&item->value_len);
 
 		switch (item->value_type) {
-		case ICMAP_VALUETYPE_INT16:
-		case ICMAP_VALUETYPE_UINT16:
-			memcpy(&u16, item->value, sizeof(u16));
-			u16 = swab16(u16);
-			memcpy(item->value, &u16, sizeof(u16));
-			break;
-		case ICMAP_VALUETYPE_INT32:
-		case ICMAP_VALUETYPE_UINT32:
-			memcpy(&u32, item->value, sizeof(u32));
-			u32 = swab32(u32);
-			memcpy(item->value, &u32, sizeof(u32));
-			break;
-		case ICMAP_VALUETYPE_INT64:
-		case ICMAP_VALUETYPE_UINT64:
-			memcpy(&u64, item->value, sizeof(u64));
-			u64 = swab64(u64);
-			memcpy(item->value, &u64, sizeof(u64));
-			break;
-		case ICMAP_VALUETYPE_FLOAT:
-			memcpy(&flt, item->value, sizeof(flt));
-			swabflt(&flt);
-			memcpy(item->value, &flt, sizeof(flt));
-			break;
-		case ICMAP_VALUETYPE_DOUBLE:
-			memcpy(&dbl, item->value, sizeof(dbl));
-			swabdbl(&dbl);
-			memcpy(item->value, &dbl, sizeof(dbl));
-			break;
+                        case ICMAP_VALUETYPE_INT16:
+                        case ICMAP_VALUETYPE_UINT16:
+                        {
+                                uint16_t u16;
+                                memcpy(&u16, item->value, sizeof(u16));
+                                u16 = swab16(u16);
+                                memcpy(item->value, &u16, sizeof(u16));
+                                break;
+                        }
+                        case ICMAP_VALUETYPE_INT32:
+                        case ICMAP_VALUETYPE_UINT32:
+                        {
+                                uint32_t u32;
+                                memcpy(&u32, item->value, sizeof(u32));
+                                u32 = swab32(u32);
+                                memcpy(item->value, &u32, sizeof(u32));
+                                break;
+                        }
+                        case ICMAP_VALUETYPE_INT64:
+                        case ICMAP_VALUETYPE_UINT64:
+                        {
+                                uint64_t u64;
+                                memcpy(&u64, item->value, sizeof(u64));
+                                u64 = swab64(u64);
+                                memcpy(item->value, &u64, sizeof(u64));
+                                break;
+                        }
+                        case ICMAP_VALUETYPE_FLOAT:
+                        {
+                                float flt;
+                                memcpy(&flt, item->value, sizeof(flt));
+                                swabflt(&flt);
+                                memcpy(item->value, &flt, sizeof(flt));
+                                break;
+                        }
+                        case ICMAP_VALUETYPE_DOUBLE:
+                        {
+                                double dbl;
+                                memcpy(&dbl, item->value, sizeof(dbl));
+                                swabdbl(&dbl);
+                                memcpy(item->value, &dbl, sizeof(dbl));
+                                break;
+                        }
 		}
 
 		p += MAR_ALIGN_UP(sizeof(*item) + item->value_len, 8);
