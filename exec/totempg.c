@@ -108,7 +108,6 @@
 #define LOGSYS_UTILS_ONLY 1
 #include <corosync/logsys.h>
 
-#include "totemmrp.h"
 #include "totemsrp.h"
 
 #define min(a,b) ((a) < (b)) ? a : b
@@ -169,6 +168,8 @@ static unsigned int totempg_size_limit;
 static totem_queue_level_changed_fn totem_queue_level_changed = NULL;
 
 static uint32_t totempg_threaded_mode = 0;
+
+static void *totemsrp_context;
 
 /*
  * Function and data used to log messages
@@ -745,7 +746,7 @@ int callback_token_received_fn (enum totem_callback_token_type type,
 		}
 		return (0);
 	}
-	if (totemmrp_avail() == 0) {
+	if (totemsrp_avail(totemsrp_context) == 0) {
 		if (totempg_threaded_mode == 1) {
 			pthread_mutex_unlock (&mcast_msg_mutex);
 		}
@@ -770,7 +771,7 @@ int callback_token_received_fn (enum totem_callback_token_type type,
 	iovecs[1].iov_len = mcast_packed_msg_count * sizeof (unsigned short);
 	iovecs[2].iov_base = (void *)&fragmentation_data[0];
 	iovecs[2].iov_len = fragment_size;
-	(void)totemmrp_mcast (iovecs, 3, 0);
+	(void)totemsrp_mcast (totemsrp_context, iovecs, 3, 0);
 
 	mcast_packed_msg_count = 0;
 	fragment_size = 0;
@@ -806,22 +807,24 @@ int totempg_initialize (
 
 	totemsrp_net_mtu_adjust (totem_config);
 
-	res = totemmrp_initialize (
+	res = totemsrp_initialize (
 		poll_handle,
+		&totemsrp_context,
 		totem_config,
 		&totempg_stats,
 		totempg_deliver_fn,
 		totempg_confchg_fn,
 		totempg_waiting_trans_ack_cb);
 
-	totemmrp_callback_token_create (
+	totemsrp_callback_token_create (
+		totemsrp_context,
 		&callback_token_received_handle,
 		TOTEM_CALLBACK_TOKEN_RECEIVED,
 		0,
 		callback_token_received_fn,
 		0);
 
-	totempg_size_limit = (totemmrp_avail() - 1) *
+	totempg_size_limit = (totemsrp_avail(totemsrp_context) - 1) *
 		(totempg_totem_config->net_mtu -
 		sizeof (struct totempg_mcast) - 16);
 
@@ -835,7 +838,7 @@ void totempg_finalize (void)
 	if (totempg_threaded_mode == 1) {
 		pthread_mutex_lock (&totempg_mutex);
 	}
-	totemmrp_finalize ();
+	totemsrp_finalize (totemsrp_context);
 	if (totempg_threaded_mode == 1) {
 		pthread_mutex_unlock (&totempg_mutex);
 	}
@@ -863,7 +866,7 @@ static int mcast_msg (
 	if (totempg_threaded_mode == 1) {
 		pthread_mutex_lock (&mcast_msg_mutex);
 	}
-	totemmrp_event_signal (TOTEM_EVENT_NEW_MSG, 1);
+	totemsrp_event_signal (totemsrp_context, TOTEM_EVENT_NEW_MSG, 1);
 
 	/*
 	 * Remove zero length iovectors from the list
@@ -971,8 +974,8 @@ static int mcast_msg (
 				sizeof(unsigned short);
 			iovecs[2].iov_base = (void *)data_ptr;
 			iovecs[2].iov_len = max_packet_size;
-			assert (totemmrp_avail() > 0);
-			res = totemmrp_mcast (iovecs, 3, guarantee);
+			assert (totemsrp_avail(totemsrp_context) > 0);
+			res = totemsrp_mcast (totemsrp_context, iovecs, 3, guarantee);
 			if (res == -1) {
 				goto error_exit;
 			}
@@ -1026,7 +1029,7 @@ static int msg_count_send_ok (
 {
 	int avail = 0;
 
-	avail = totemmrp_avail ();
+	avail = totemsrp_avail (totemsrp_context);
 	totempg_stats.msg_queue_avail = avail;
 
 	return ((avail - totempg_reserved) > msg_count);
@@ -1038,7 +1041,7 @@ static int byte_count_send_ok (
 	unsigned int msg_count = 0;
 	int avail = 0;
 
-	avail = totemmrp_avail ();
+	avail = totemsrp_avail (totemsrp_context);
 
 	msg_count = (byte_count / (totempg_totem_config->net_mtu - sizeof (struct totempg_mcast) - 16)) + 1;
 
@@ -1071,7 +1074,7 @@ static void send_release (
 
 static uint32_t q_level_precent_used(void)
 {
-	return (100 - (((totemmrp_avail() - totempg_reserved) * 100) / MESSAGE_QUEUE_MAX));
+	return (100 - (((totemsrp_avail(totemsrp_context) - totempg_reserved) * 100) / MESSAGE_QUEUE_MAX));
 }
 
 int totempg_callback_token_create (
@@ -1085,7 +1088,7 @@ int totempg_callback_token_create (
 	if (totempg_threaded_mode == 1) {
 		pthread_mutex_lock (&callback_token_mutex);
 	}
-	res = totemmrp_callback_token_create (handle_out, type, delete,
+	res = totemsrp_callback_token_create (totemsrp_context, handle_out, type, delete,
 		callback_fn, data);
 	if (totempg_threaded_mode == 1) {
 		pthread_mutex_unlock (&callback_token_mutex);
@@ -1099,7 +1102,7 @@ void totempg_callback_token_destroy (
 	if (totempg_threaded_mode == 1) {
 		pthread_mutex_lock (&callback_token_mutex);
 	}
-	totemmrp_callback_token_destroy (handle_out);
+	totemsrp_callback_token_destroy (totemsrp_context, handle_out);
 	if (totempg_threaded_mode == 1) {
 		pthread_mutex_unlock (&callback_token_mutex);
 	}
@@ -1418,7 +1421,8 @@ int totempg_ifaces_get (
 {
 	int res;
 
-	res = totemmrp_ifaces_get (
+	res = totemsrp_ifaces_get (
+		totemsrp_context,
 		nodeid,
 		interfaces,
 		interfaces_size,
@@ -1430,7 +1434,7 @@ int totempg_ifaces_get (
 
 void totempg_event_signal (enum totem_event_type type, int value)
 {
-	totemmrp_event_signal (type, value);
+	totemsrp_event_signal (totemsrp_context, type, value);
 }
 
 void* totempg_get_stats (void)
@@ -1444,7 +1448,7 @@ int totempg_crypto_set (
 {
 	int res;
 
-	res = totemmrp_crypto_set (cipher_type, hash_type);
+	res = totemsrp_crypto_set (totemsrp_context, cipher_type, hash_type);
 
 	return (res);
 }
@@ -1453,7 +1457,7 @@ int totempg_ring_reenable (void)
 {
 	int res;
 
-	res = totemmrp_ring_reenable ();
+	res = totemsrp_ring_reenable (totemsrp_context);
 
 	return (res);
 }
@@ -1464,19 +1468,18 @@ const char *totempg_ifaces_print (unsigned int nodeid)
 	static char iface_string[256 * INTERFACE_MAX];
 	char one_iface[ONE_IFACE_LEN+1];
 	struct totem_ip_address interfaces[INTERFACE_MAX];
-	char **status;
 	unsigned int iface_count;
 	unsigned int i;
 	int res;
 
 	iface_string[0] = '\0';
 
-	res = totempg_ifaces_get (nodeid, interfaces, INTERFACE_MAX, &status, &iface_count);
+	res = totempg_ifaces_get (nodeid, interfaces, INTERFACE_MAX, NULL, &iface_count);
 	if (res == -1) {
 		return ("no interface found for nodeid");
 	}
 
-	res = totempg_ifaces_get (nodeid, interfaces, INTERFACE_MAX, &status, &iface_count);
+	res = totempg_ifaces_get (nodeid, interfaces, INTERFACE_MAX, NULL, &iface_count);
 
 	for (i = 0; i < iface_count; i++) {
 		snprintf (one_iface, ONE_IFACE_LEN,
@@ -1489,17 +1492,17 @@ const char *totempg_ifaces_print (unsigned int nodeid)
 
 unsigned int totempg_my_nodeid_get (void)
 {
-	return (totemmrp_my_nodeid_get());
+	return (totemsrp_my_nodeid_get(totemsrp_context));
 }
 
 int totempg_my_family_get (void)
 {
-	return (totemmrp_my_family_get());
+	return (totemsrp_my_family_get(totemsrp_context));
 }
 extern void totempg_service_ready_register (
 	void (*totem_service_ready) (void))
 {
-	totemmrp_service_ready_register (totem_service_ready);
+	totemsrp_service_ready_register (totemsrp_context, totem_service_ready);
 }
 
 void totempg_queue_level_register_callback (totem_queue_level_changed_fn fn)
@@ -1511,24 +1514,24 @@ extern int totempg_member_add (
 	const struct totem_ip_address *member,
 	int ring_no)
 {
-	return totemmrp_member_add (member, ring_no);
+	return totemsrp_member_add (totemsrp_context, member, ring_no);
 }
 
 extern int totempg_member_remove (
 	const struct totem_ip_address *member,
 	int ring_no)
 {
-	return totemmrp_member_remove (member, ring_no);
+	return totemsrp_member_remove (totemsrp_context, member, ring_no);
 }
 
 void totempg_threaded_mode_enable (void)
 {
 	totempg_threaded_mode = 1;
-	totemmrp_threaded_mode_enable ();
+	totemsrp_threaded_mode_enable (totemsrp_context);
 }
 
 void totempg_trans_ack (void)
 {
-	totemmrp_trans_ack ();
+	totemsrp_trans_ack (totemsrp_context);
 }
 

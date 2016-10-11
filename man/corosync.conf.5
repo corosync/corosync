@@ -62,31 +62,52 @@ qb { }
 This top level directive contains configuration options related to libqb.
 
 .PP
-.PP
-Within the
-.B totem
-directive, an interface directive is required.  There is also one configuration
-option which is required:
-.PP
-.PP
-Within the
-.B interface
-sub-directive of totem there are four parameters which are required.  There is
-one parameter which is optional.
+The 
+.B interface sub-directive of totem is optional for UDP and knet transports.
+
+For knet, multiple interface subsections define parameters for each knet link on the
+system.
+
+For UDP, there should be just one interface section that defines the multicast or
+broadcast options for the link.
+
+For UDPU an interface section is not needed and it is recommended that the nodelist
+is used to define cluster nodes.
 
 .TP
-ringnumber
-This specifies the ring number for the interface.  When using the redundant
-ring protocol, each interface should specify separate ring numbers to uniquely
-identify to the membership protocol which interface to use for which redundant
-ring. The ringnumber must start at 0.
+linknumber
+This specifies the link number for the interface.  When using the knet
+protocol, each interface should specify separate link numbers to uniquely
+identify to the membership protocol which interface to use for which link. 
+The linknumber must start at 0. For UDP the only supported linknumber is 0.
 
 .TP
-bindnetaddr
+knet_link_priority
+This specifies the priority for the link when knet is used in 'passive'
+mode. (see link_mode below)
+
+.TP
+knet_ping_interval
+This specifies the interval between knet link pings. 
+(default 1000 ms)
+
+.TP
+knet_ping_timeout
+If no ping is received within this time, the knet link is declared dead. 
+(default 2000 ms)
+
+.TP
+knet_ping_precision
+How many values of latency are used to calculate
+the average link latency. (default 2048 samples)
+
+.TP
+bindnetaddr (udp only)
 This specifies the network address the corosync executive should bind
-to.
+to when using udp.
 
-bindnetaddr should be an IP address configured on the system, or a network
+bindnetaddr (udp only) 
+should be an IP address configured on the system, or a network
 address.
 
 For example, if the local interface is 192.168.5.92 with netmask
@@ -101,13 +122,13 @@ selection of the network interface within a specific subnet as with IPv4.
 If IPv6 networking is used, the nodeid field in nodelist must be specified.
 
 .TP
-broadcast
+broadcast (udp only)
 This is optional and can be set to yes.  If it is set to yes, the broadcast
 address will be used for communication.  If this option is set, mcastaddr
 should not be set.
 
 .TP
-mcastaddr
+mcastaddr (udp only)
 This is the multicast address used by corosync executive.  The default
 should work for most networks, but the network administrator should be queried
 about a multicast address to use.  Avoid 224.x.x.x because this is a "config"
@@ -117,11 +138,11 @@ This may also be an IPV6 multicast address, in which case IPV6 networking
 will be used.  If IPv6 networking is used, the nodeid field in nodelist must
 be specified.
 
-It's not needed to use this option if cluster_name option is used. If both options
+It's not necessary to use this option if cluster_name option is used. If both options
 are used, mcastaddr has higher priority.
 
 .TP
-mcastport
+mcastport (udp only)
 This specifies the UDP port number.  It is possible to use the same multicast
 address on a network with the corosync services configured for different
 UDP ports.
@@ -131,11 +152,10 @@ If you have multiple clusters on the same network using the same mcastaddr
 please configure the mcastports with a gap.
 
 .TP
-ttl
+ttl (udp only)
 This specifies the Time To Live (TTL). If you run your cluster on a routed
 network then the default of "1" will be too small. This option provides
 a way to increase this up to 255. The valid range is 0..255.
-Note that this is only valid on multicast transport types.
 
 .PP
 .PP
@@ -146,7 +166,7 @@ five are optional, and one is required when IPV6 is configured in the interface
 subdirective.  The required directive controls the version of the totem
 configuration.  The optional option unless using IPV6 directive controls
 identification of the processor.  The optional options control secrecy and
-authentication, the redundant ring mode of operation and maximum network MTU
+authentication, the network mode of operation and maximum network MTU
 field.
 
 .TP
@@ -169,7 +189,8 @@ a subset of the cluster (for example during a rolling upgrade).
 crypto_hash
 This specifies which HMAC authentication should be used to authenticate all
 messages. Valid values are none (no authentication), md5, sha1, sha256,
-sha384 and sha512.
+sha384 and sha512. Encrypted transmission is only supported for
+the knet transport.
 
 The default is sha1.
 
@@ -177,47 +198,34 @@ The default is sha1.
 crypto_cipher
 This specifies which cipher should be used to encrypt all messages.
 Valid values are none (no encryption), aes256, aes192, aes128 and 3des.
-Enabling crypto_cipher, requires also enabling of crypto_hash.
+Enabling crypto_cipher, requires also enabling of crypto_hash. Encrypted
+transmission is only supported for the knet transport.
 
 The default is aes256.
 
 .TP
-secauth
-This specifies that HMAC/SHA1 authentication should be used to authenticate
-all messages.  It further specifies that all data should be encrypted with the
-nss library and aes256 encryption algorithm to protect data from eavesdropping.
+link_mode
+This specifies the Kronosnet mode, which may be passive, active, or
+rr (round-robin). 
+.B passive:
+the active link with the lowest priority will be used. If one or more 
+links share the same priority the one with the lowest link ID will
+be used.
+.B active: 
+All active links will be used simultaneously to send traffic.
+link priority is ignored.
+.B rr:
+Round-Robin policy. Each packet will be sent to the next active link in 
+order.
 
-Enabling this option adds a encryption header to every message sent by totem which
-reduces total throughput. Also encryption and authentication consume extra CPU
-cycles in corosync.
+If only one interface directive is specified, passive is automatically chosen.
 
-The default is on.
-
-WARNING: This parameter is deprecated. It's recomended to use combination of
-crypto_cipher and crypto_hash.
-
-.TP
-rrp_mode
-This specifies the mode of redundant ring, which may be none, active, or
-passive.  Currently only 'passive' is supported or tested
-(using  'active'  is  not recommended). Active replication offers
-slightly lower latency from transmit to delivery in faulty network
-environments but with less performance.
-Passive replication may nearly double the speed of the totem protocol
-if the protocol doesn't become cpu bound.  The final option is none, in
-which case only one network interface will be used to operate the totem
-protocol.
-
-If only one interface directive is specified, none is automatically chosen.
-If multiple interface directives are specified, only active or passive may
-be chosen.
-
-The maximum number of interface directives that is allowed for either 
-modes (active or passive) is 2.
+The maximum number of interface directives that is allowed with Kronosnet
+is 8. For other transports it is 1.
 
 When using multiple interfaces, make sure to use different multicast
 address/port (port for same address must differ by at least two) pair
-for each interface (this is checked by parser) to make rrp works.
+for each interface (this is checked by parser).
 
 .TP
 netmtu
@@ -245,14 +253,9 @@ The default is 1500.
 
 .TP
 transport
-This directive controls the transport mechanism used.  If the interface to
-which corosync is binding is an RDMA interface such as RoCEE or Infiniband, the
-"iba" parameter may be specified.  To avoid the use of multicast entirely, a
-unicast transport parameter "udpu" can be specified.  This requires specifying
-the list of members in nodelist directive, that could potentially make up
-the membership before deployment.
-
-The default is udp.  The transport type can also be set to udpu or iba.
+This directive controls the transport mechanism used.  
+The default is knet.  The transport type can also be set to udpu or udp.
+Only knet allows crypto or multiple interfaces per node.
 
 .TP
 cluster_name
@@ -460,56 +463,6 @@ modern switches.
 
 The default is 5 messages.
 
-.TP
-rrp_problem_count_timeout
-This specifies the time in milliseconds to wait before decrementing the
-problem count by 1 for a particular ring to ensure a link is not marked
-faulty for transient network failures.
-
-The default is 2000 milliseconds.
-
-.TP
-rrp_problem_count_threshold
-This specifies the number of times a problem is detected with a link before
-setting the link faulty.  Once a link is set faulty, no more data is
-transmitted upon it.  Also, the problem counter is no longer decremented when
-the problem count timeout expires.
-
-A problem is detected whenever all tokens from the proceeding processor have
-not been received within the rrp_token_expired_timeout.  The
-rrp_problem_count_threshold * rrp_token_expired_timeout should be atleast 50
-milliseconds less then the token timeout, or a complete reconfiguration
-may occur.
-
-The default is 10 problem counts.
-
-.TP
-rrp_problem_count_mcast_threshold
-This specifies the number of times a problem is detected with multicast before
-setting the link faulty for passive rrp mode. This variable is unused in active
-rrp mode.
-
-The default is 10 times rrp_problem_count_threshold.
-
-.TP
-rrp_token_expired_timeout
-This specifies the time in milliseconds to increment the problem counter for
-the redundant ring protocol after not having received a token from all rings
-for a particular processor.
-
-This value will automatically be calculated from the token timeout and
-problem_count_threshold but may be overridden.  It is not recommended to
-override this value without guidance from the corosync community.
-
-The default is 47 milliseconds.
-
-.TP
-rrp_autorecovery_check_timeout
-This specifies the time in milliseconds to check if the failed ring can be
-auto-recovered.
-
-The default is 1000 milliseconds.
-
 .PP
 Within the
 .B logging
@@ -651,20 +604,18 @@ can contain only
 sub-directive, which specifies every node that should be a member of the membership, and where
 non-default options are needed. Every node must have at least ring0_addr field filled.
 
-For UDPU, every node that should be a member of the membership must be specified.
+Every node that should be a member of the membership must be specified.
 
 Possible options are:
 .TP
 ringX_addr
-This specifies ip address of one of the nodes. X is ring number.
+This specifies ip address of one of the nodes. X is link number. 
 
 .TP
 nodeid
-This configuration option is optional when using IPv4 and required when using
-IPv6.  This is a 32 bit value specifying the node identifier delivered to the
-cluster membership service.  If this is not specified with IPv4, the node id
-will be determined from the 32 bit IP address the system to which the system
-is bound with ring identifier of 0.  The node identifier value of zero is
+This configuration option is required for each node. It is a 32 bit value 
+specifying the node identifier delivered to the
+cluster membership service. The node identifier value of zero is
 reserved and should not be used.
 
 .PP

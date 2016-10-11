@@ -50,8 +50,9 @@
 #define FRAME_SIZE_MAX		10000
 #define TRANSMITS_ALLOWED	16
 #define SEND_THREADS_MAX	16
-#define INTERFACE_MAX		2
 
+/* This must be <= KNET_MAX_LINK */
+#define INTERFACE_MAX		8
 /**
  * Maximum number of continuous gather states
  */
@@ -68,6 +69,10 @@ struct totem_interface {
 	uint16_t ip_port;
 	uint16_t ttl;
 	int member_count;
+	int knet_link_priority;
+	int knet_ping_interval;
+	int knet_ping_timeout;
+	int knet_ping_precision;
 	struct totem_ip_address member_list[PROCESSOR_COUNT_MAX];
 };
 
@@ -90,13 +95,21 @@ struct totem_logging_configuration {
 	int log_subsys_id;
 };
 
-enum { TOTEM_PRIVATE_KEY_LEN = 128 };
-enum { TOTEM_RRP_MODE_BYTES = 64 };
+struct totem_message_header {
+	char type;
+	char encapsulated;
+	unsigned short endian_detector;
+	unsigned int nodeid;
+	unsigned int target_nodeid;
+} __attribute__((packed));
+
+enum { TOTEM_PRIVATE_KEY_LEN = 4096 };
+enum { TOTEM_LINK_MODE_BYTES = 64 };
 
 typedef enum {
 	TOTEM_TRANSPORT_UDP = 0,
 	TOTEM_TRANSPORT_UDPU = 1,
-	TOTEM_TRANSPORT_RDMA = 2
+	TOTEM_TRANSPORT_KNET = 2
 } totem_transport_t;
 
 #define MEMB_RING_ID
@@ -148,17 +161,7 @@ struct totem_config {
 
 	unsigned int seqno_unchanged_const;
 
-	unsigned int rrp_token_expired_timeout;
-
-	unsigned int rrp_problem_count_timeout;
-
-	unsigned int rrp_problem_count_threshold;
-
-	unsigned int rrp_problem_count_mcast_threshold;
-
-	unsigned int rrp_autorecovery_check_timeout;
-
-	char rrp_mode[TOTEM_RRP_MODE_BYTES];
+	char link_mode[TOTEM_LINK_MODE_BYTES];
 
 	struct totem_logging_configuration totem_logging_configuration;
 
@@ -225,15 +228,6 @@ typedef struct {
 } totemnet_stats_t;
 
 typedef struct {
-	totem_stats_header_t hdr;
-	totemnet_stats_t *net;
-	char *algo_name;
-	uint8_t *faulty;
-	uint32_t interface_count;
-} totemrrp_stats_t;
-
-
-typedef struct {
 	uint32_t rx;
 	uint32_t tx;
 	int backlog_calc;
@@ -241,7 +235,6 @@ typedef struct {
 
 typedef struct {
 	totem_stats_header_t hdr;
-	totemrrp_stats_t *rrp;
 	uint64_t orf_token_tx;
 	uint64_t orf_token_rx;
 	uint64_t memb_merge_detect_tx;
@@ -281,11 +274,6 @@ typedef struct {
 typedef struct {
 	totem_stats_header_t hdr;
 	totemsrp_stats_t *srp;
-} totemmrp_stats_t;
-
-typedef struct {
-	totem_stats_header_t hdr;
-	totemmrp_stats_t *mrp;
 	uint32_t msg_reserved;
 	uint32_t msg_queue_avail;
 } totempg_stats_t;

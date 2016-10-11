@@ -108,12 +108,16 @@ struct key_value_list_item {
 };
 
 struct main_cp_cb_data {
-	int ringnumber;
+	int linknumber;
 	char *bindnetaddr;
 	char *mcastaddr;
 	char *broadcast;
 	int mcastport;
 	int ttl;
+	int knet_link_priority;
+	int knet_ping_interval;
+	int knet_ping_timeout;
+	int knet_ping_precision;
 
 	struct list_head logger_subsys_items_head;
 	char *subsys;
@@ -682,13 +686,13 @@ static int main_config_parser_cb(const char *path,
 			break;
 
 		case MAIN_CP_CB_DATA_STATE_INTERFACE:
-			if (strcmp(path, "totem.interface.ringnumber") == 0) {
+			if (strcmp(path, "totem.interface.linknumber") == 0) {
 				val_type = ICMAP_VALUETYPE_UINT8;
 				if (safe_atoq(value, &val, val_type) != 0) {
 					goto atoi_error;
 				}
 
-				data->ringnumber = val;
+				data->linknumber = val;
 				add_as_string = 0;
 			}
 			if (strcmp(path, "totem.interface.bindnetaddr") == 0) {
@@ -717,6 +721,38 @@ static int main_config_parser_cb(const char *path,
 					goto atoi_error;
 				}
 				data->ttl = val;
+				add_as_string = 0;
+			}
+			if (strcmp(path, "totem.interface.knet_link_priority") == 0) {
+				val_type = ICMAP_VALUETYPE_UINT8;
+				if (safe_atoq(value, &val, val_type) != 0) {
+					goto atoi_error;
+				}
+				data->knet_link_priority = val;
+				add_as_string = 0;
+			}
+			if (strcmp(path, "totem.interface.knet_ping_interval") == 0) {
+				val_type = ICMAP_VALUETYPE_UINT32;
+				if (safe_atoq(value, &val, val_type) != 0) {
+					goto atoi_error;
+				}
+				data->knet_ping_interval = val;
+				add_as_string = 0;
+			}
+			if (strcmp(path, "totem.interface.knet_ping_timeout") == 0) {
+				val_type = ICMAP_VALUETYPE_UINT32;
+				if (safe_atoq(value, &val, val_type) != 0) {
+					goto atoi_error;
+				}
+				data->knet_ping_timeout = val;
+				add_as_string = 0;
+			}
+			if (strcmp(path, "totem.interface.knet_ping_precision") == 0) {
+				val_type = ICMAP_VALUETYPE_UINT32;
+				if (safe_atoq(value, &val, val_type) != 0) {
+					goto atoi_error;
+				}
+				data->knet_ping_precision = val;
 				add_as_string = 0;
 			}
 			break;
@@ -903,9 +939,13 @@ static int main_config_parser_cb(const char *path,
 	case PARSER_CB_SECTION_START:
 		if (strcmp(path, "totem.interface") == 0) {
 			*state = MAIN_CP_CB_DATA_STATE_INTERFACE;
-			data->ringnumber = 0;
+			data->linknumber = 0;
 			data->mcastport = -1;
 			data->ttl = -1;
+			data->knet_link_priority = -1;
+			data->knet_ping_interval = -1;
+			data->knet_ping_timeout = -1;
+			data->knet_ping_precision = -1;
 			list_init(&data->member_items_head);
 		};
 		if (strcmp(path, "totem") == 0) {
@@ -969,7 +1009,7 @@ static int main_config_parser_cb(const char *path,
 			 */
 			if (data->bindnetaddr != NULL) {
 				snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.bindnetaddr",
-						data->ringnumber);
+						data->linknumber);
 				icmap_set_string_r(config_map, key_name, data->bindnetaddr);
 
 				free(data->bindnetaddr);
@@ -978,7 +1018,7 @@ static int main_config_parser_cb(const char *path,
 
 			if (data->mcastaddr != NULL) {
 				snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.mcastaddr",
-						data->ringnumber);
+						data->linknumber);
 				icmap_set_string_r(config_map, key_name, data->mcastaddr);
 
 				free(data->mcastaddr);
@@ -987,7 +1027,7 @@ static int main_config_parser_cb(const char *path,
 
 			if (data->broadcast != NULL) {
 				snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.broadcast",
-						data->ringnumber);
+						data->linknumber);
 				icmap_set_string_r(config_map, key_name, data->broadcast);
 
 				free(data->broadcast);
@@ -996,14 +1036,34 @@ static int main_config_parser_cb(const char *path,
 
 			if (data->mcastport > -1) {
 				snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.mcastport",
-						data->ringnumber);
+						data->linknumber);
 				icmap_set_uint16_r(config_map, key_name, data->mcastport);
 			}
 
 			if (data->ttl > -1) {
 				snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.ttl",
-						data->ringnumber);
+						data->linknumber);
 				icmap_set_uint8_r(config_map, key_name, data->ttl);
+			}
+			if (data->knet_link_priority > -1) {
+				snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.knet_link_priority",
+						data->linknumber);
+				icmap_set_uint8_r(config_map, key_name, data->knet_link_priority);
+			}
+			if (data->knet_ping_interval > -1) {
+				snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.knet_ping_interval",
+						data->linknumber);
+				icmap_set_uint32_r(config_map, key_name, data->knet_ping_interval);
+			}
+			if (data->knet_ping_timeout > -1) {
+				snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.knet_ping_timeout",
+						data->linknumber);
+				icmap_set_uint32_r(config_map, key_name, data->knet_ping_timeout);
+			}
+			if (data->knet_ping_precision > -1) {
+				snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.knet_ping_precision",
+						data->linknumber);
+				icmap_set_uint32_r(config_map, key_name, data->knet_ping_precision);
 			}
 
 			ii = 0;
@@ -1012,7 +1072,7 @@ static int main_config_parser_cb(const char *path,
 				kv_item = list_entry(iter, struct key_value_list_item, list);
 
 				snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.member.%u",
-						data->ringnumber, ii);
+						data->linknumber, ii);
 				icmap_set_string_r(config_map, key_name, kv_item->value);
 
 				iter_next = iter->next;

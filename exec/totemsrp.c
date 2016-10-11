@@ -87,7 +87,6 @@
 #include <corosync/logsys.h>
 
 #include "totemsrp.h"
-#include "totemrrp.h"
 #include "totemnet.h"
 
 #include "cs_queue.h"
@@ -100,6 +99,15 @@
 #define RETRANSMIT_ENTRIES_MAX			30
 #define TOKEN_SIZE_MAX				64000 /* bytes */
 #define LEAVE_DUMMY_NODEID                      0
+
+/*
+ * SRP address.
+ * CC: TODO: Can we remove IP address from this and just use nodeids?
+ */
+struct srp_addr {
+	uint8_t no_addrs;
+	struct totem_ip_address addr[INTERFACE_MAX];
+};
 
 /*
  * Rollover handling:
@@ -173,16 +181,8 @@ struct totemsrp_socket {
 	int token;
 };
 
-struct message_header {
-	char type;
-	char encapsulated;
-	unsigned short endian_detector;
-	unsigned int nodeid;
-} __attribute__((packed));
-
-
 struct mcast {
-	struct message_header header;
+	struct totem_message_header header;
 	struct srp_addr system_from;
 	unsigned int seq;
 	int this_seqno;
@@ -199,7 +199,7 @@ struct rtr_item  {
 
 
 struct orf_token {
-	struct message_header header;
+	struct totem_message_header header;
 	unsigned int seq;
 	unsigned int token_seq;
 	unsigned int aru;
@@ -214,7 +214,7 @@ struct orf_token {
 
 
 struct memb_join {
-	struct message_header header;
+	struct totem_message_header header;
 	struct srp_addr system_from;
 	unsigned int proc_list_entries;
 	unsigned int failed_list_entries;
@@ -229,14 +229,14 @@ struct memb_join {
 
 
 struct memb_merge_detect {
-	struct message_header header;
+	struct totem_message_header header;
 	struct srp_addr system_from;
 	struct memb_ring_id ring_id;
 } __attribute__((packed));
 
 
 struct token_hold_cancel {
-	struct message_header header;
+	struct totem_message_header header;
 	struct memb_ring_id ring_id;
 } __attribute__((packed));
 
@@ -250,7 +250,7 @@ struct memb_commit_token_memb_entry {
 
 
 struct memb_commit_token {
-	struct message_header header;
+	struct totem_message_header header;
 	unsigned int token_seq;
 	struct memb_ring_id ring_id;
 	unsigned int retrans_flg;
@@ -317,7 +317,7 @@ struct totemsrp_instance {
 	struct srp_addr my_left_memb_list[PROCESSOR_COUNT_MAX];
 
 	unsigned int my_leave_memb_list[PROCESSOR_COUNT_MAX];
-	
+
 	int my_proc_list_entries;
 
 	int my_failed_list_entries;
@@ -331,7 +331,7 @@ struct totemsrp_instance {
 	int my_deliver_memb_entries;
 
 	int my_left_memb_entries;
-	
+
 	int my_leave_memb_entries;
 
 	struct memb_ring_id my_ring_id;
@@ -492,7 +492,7 @@ struct totemsrp_instance {
 
 	struct timeval tv_old;
 
-	void *totemrrp_context;
+	void *totemnet_context;
 
 	struct totem_config *totem_config;
 
@@ -519,7 +519,7 @@ struct totemsrp_instance {
 	uint32_t waiting_trans_ack;
 
 	int 	flushing;
-	
+
 	void * token_recv_event_handle;
 	void * token_sent_event_handle;
 	char commit_token_storage[40000];
@@ -613,13 +613,6 @@ static int message_handler_token_hold_cancel (
 	int endian_conversion_needed);
 
 static void totemsrp_instance_initialize (struct totemsrp_instance *instance);
-
-static unsigned int main_msgs_missing (void);
-
-static void main_token_seqid_get (
-	const void *msg,
-	unsigned int *seqid,
-	unsigned int *token_is);
 
 static void srp_addr_copy (struct srp_addr *dest, const struct srp_addr *src);
 
@@ -748,27 +741,6 @@ static void totemsrp_instance_initialize (struct totemsrp_instance *instance)
 	instance->waiting_trans_ack = 1;
 }
 
-static void main_token_seqid_get (
-	const void *msg,
-	unsigned int *seqid,
-	unsigned int *token_is)
-{
-	const struct orf_token *token = msg;
-
-	*seqid = 0;
-	*token_is = 0;
-	if (token->header.type == MESSAGE_TYPE_ORF_TOKEN) {
-		*seqid = token->token_seq;
-		*token_is = 1;
-	}
-}
-
-static unsigned int main_msgs_missing (void)
-{
-// TODO
-	return (0);
-}
-
 static int pause_flush (struct totemsrp_instance *instance)
 {
 	uint64_t now_msec;
@@ -785,7 +757,7 @@ static int pause_flush (struct totemsrp_instance *instance)
 		 * -1 indicates an error from recvmsg
 		 */
 		do {
-			res = totemrrp_mcast_recv_empty (instance->totemrrp_context);
+			res = totemnet_recv_mcast_empty (instance->totemnet_context);
 		} while (res == -1);
 	}
 	return (res);
@@ -826,6 +798,17 @@ static int token_event_stats_collector (enum totem_callback_token_type type, con
 	return 0;
 }
 
+static void totempg_mtu_changed(void *context, int net_mtu)
+{
+	struct totemsrp_instance *instance = context;
+
+	instance->totem_config->net_mtu = net_mtu - sizeof (struct mcast);
+
+	log_printf (instance->totemsrp_log_level_debug,
+		    "Net MTU changed to %d, new value is %d",
+		    net_mtu, instance->totem_config->net_mtu);
+}
+
 /*
  * Exported interfaces
  */
@@ -833,7 +816,7 @@ int totemsrp_initialize (
 	qb_loop_t *poll_handle,
 	void **srp_context,
 	struct totem_config *totem_config,
-	totemmrp_stats_t *stats,
+	totempg_stats_t *stats,
 
 	void (*deliver_fn) (
 		unsigned int nodeid,
@@ -923,23 +906,6 @@ int totemsrp_initialize (
 
 	log_printf (instance->totemsrp_log_level_debug,
 		"send threads (%d threads)", totem_config->threads);
-	log_printf (instance->totemsrp_log_level_debug,
-		"RRP token expired timeout (%d ms)",
-		totem_config->rrp_token_expired_timeout);
-	log_printf (instance->totemsrp_log_level_debug,
-		"RRP token problem counter (%d ms)",
-		totem_config->rrp_problem_count_timeout);
-	log_printf (instance->totemsrp_log_level_debug,
-		"RRP threshold (%d problem count)",
-		totem_config->rrp_problem_count_threshold);
-	log_printf (instance->totemsrp_log_level_debug,
-		"RRP multicast threshold (%d problem count)",
-		totem_config->rrp_problem_count_mcast_threshold);
-	log_printf (instance->totemsrp_log_level_debug,
-		"RRP automatic recovery check timeout (%d ms)",
-		totem_config->rrp_autorecovery_check_timeout);
-	log_printf (instance->totemsrp_log_level_debug,
-		"RRP mode set to %s.", instance->totem_config->rrp_mode);
 
 	log_printf (instance->totemsrp_log_level_debug,
 		"heartbeat_failures_allowed (%d)", totem_config->heartbeat_failures_allowed);
@@ -993,20 +959,19 @@ int totemsrp_initialize (
 		}
 	}
 
-	totemrrp_initialize (
+	totemnet_initialize (
 		poll_handle,
-		&instance->totemrrp_context,
+		&instance->totemnet_context,
 		totem_config,
 		stats->srp,
 		instance,
 		main_deliver_fn,
 		main_iface_change_fn,
-		main_token_seqid_get,
-		main_msgs_missing,
+		totempg_mtu_changed,
 		target_set_completed);
 
 	/*
-	 * Must have net_mtu adjusted by totemrrp_initialize first
+	 * Must have net_mtu adjusted by totemnet_initialize first
 	 */
 	cs_queue_init (&instance->new_message_queue,
 		MESSAGE_QUEUE_MAX,
@@ -1040,9 +1005,8 @@ void totemsrp_finalize (
 {
 	struct totemsrp_instance *instance = (struct totemsrp_instance *)srp_context;
 
-
 	memb_leave_message_send (instance);
-	totemrrp_finalize (instance->totemrrp_context);
+	totemnet_finalize (instance->totemnet_context);
 	cs_queue_free (&instance->new_message_queue);
 	cs_queue_free (&instance->new_message_queue_trans);
 	cs_queue_free (&instance->retrans_message_queue);
@@ -1113,7 +1077,7 @@ int totemsrp_ifaces_get (
 	}
 
 finish:
-	totemrrp_ifaces_get (instance->totemrrp_context, status, NULL);
+	totemnet_ifaces_get(instance->totemnet_context, status, iface_count);
 	return (res);
 }
 
@@ -1125,7 +1089,7 @@ int totemsrp_crypto_set (
 	struct totemsrp_instance *instance = (struct totemsrp_instance *)srp_context;
 	int res;
 
-	res = totemrrp_crypto_set(instance->totemrrp_context, cipher_type, hash_type);
+	res = totemnet_crypto_set(instance->totemnet_context, cipher_type, hash_type);
 
 	return (res);
 }
@@ -1153,16 +1117,10 @@ int totemsrp_my_family_get (
 	return (res);
 }
 
-
 int totemsrp_ring_reenable (
         void *srp_context)
 {
-	struct totemsrp_instance *instance = (struct totemsrp_instance *)srp_context;
-
-	totemrrp_ring_reenable (instance->totemrrp_context,
-		instance->totem_config->interface_count);
-
-	return (0);
+       return (0);
 }
 
 
@@ -1532,13 +1490,13 @@ static void my_leave_memb_set(
 static void *totemsrp_buffer_alloc (struct totemsrp_instance *instance)
 {
 	assert (instance != NULL);
-	return totemrrp_buffer_alloc (instance->totemrrp_context);
+	return totemnet_buffer_alloc (instance->totemnet_context);
 }
 
 static void totemsrp_buffer_release (struct totemsrp_instance *instance, void *ptr)
 {
 	assert (instance != NULL);
-	totemrrp_buffer_release (instance->totemrrp_context, ptr);
+	totemnet_buffer_release (instance->totemnet_context, ptr);
 }
 
 static void reset_token_retransmit_timeout (struct totemsrp_instance *instance)
@@ -1758,7 +1716,7 @@ static void timer_function_orf_token_timeout (void *data)
 				"The token was lost in the OPERATIONAL state.");
 			log_printf (instance->totemsrp_log_level_notice,
 				"A processor failed, forming new configuration.");
-			totemrrp_iface_check (instance->totemrrp_context);
+			totemnet_iface_check (instance->totemnet_context);
 			memb_state_gather_enter (instance, TOTEMSRP_GSFROM_THE_TOKEN_WAS_LOST_IN_THE_OPERATIONAL_STATE);
 			instance->stats.operational_token_lost++;
 			break;
@@ -1965,16 +1923,6 @@ static void memb_state_operational_enter (struct totemsrp_instance *instance)
 	instance->my_set_retrans_flg = 0;
 
 	/*
-	 * Inform RRP about transitional change
-	 */
-	totemrrp_membership_changed (
-		instance->totemrrp_context,
-		TOTEM_CONFIGURATION_TRANSITIONAL,
-		instance->my_trans_memb_list, instance->my_trans_memb_entries,
-		instance->my_left_memb_list, instance->my_left_memb_entries,
-		NULL, 0,
-		&instance->my_ring_id);
-	/*
 	 * Deliver transitional configuration to application
 	 */
 	srp_addr_to_nodeid (left_list, instance->my_left_memb_list,
@@ -1994,16 +1942,6 @@ static void memb_state_operational_enter (struct totemsrp_instance *instance)
 
 	instance->my_aru = aru_save;
 
-	/*
-	 * Inform RRP about regular membership change
-	 */
-	totemrrp_membership_changed (
-		instance->totemrrp_context,
-		TOTEM_CONFIGURATION_REGULAR,
-		instance->my_new_memb_list, instance->my_new_memb_entries,
-		NULL, 0,
-		joined_list, joined_list_entries,
-		&instance->my_ring_id);
 	/*
 	 * Deliver regular configuration to application
 	 */
@@ -2107,7 +2045,7 @@ static void memb_state_operational_enter (struct totemsrp_instance *instance)
 					sptr2 += snprintf(failed_node_msg, sizeof(failed_node_msg)-sptr2, " failed:");
 				}
 				sptr2 += snprintf(failed_node_msg+sptr2, sizeof(left_node_msg)-sptr2, " %u", left_list[i]);
-			}		
+			}
 		}
 		if (sptr2 == 0) {
 			failed_node_msg[0] = '\0';
@@ -2319,8 +2257,8 @@ static void memb_state_recovery_enter (
 	/*
 	 * Build regular configuration
 	 */
-	totemrrp_processor_count_set (
-		instance->totemrrp_context,
+	totemnet_processor_count_set (
+		instance->totemnet_context,
 		commit_token->addr_entries);
 
 	/*
@@ -2607,8 +2545,8 @@ static int orf_token_remcast (
 
 	sort_queue_item = ptr;
 
-	totemrrp_mcast_noflush_send (
-		instance->totemrrp_context,
+	totemnet_mcast_noflush_send (
+		instance->totemnet_context,
 		sort_queue_item->mcast,
 		sort_queue_item->msg_len);
 
@@ -2760,8 +2698,8 @@ static int orf_token_mcast (
 		 */
 		sq_item_add (sort_queue, &sort_queue_item, message_item->mcast->seq);
 
-		totemrrp_mcast_noflush_send (
-			instance->totemrrp_context,
+		totemnet_mcast_noflush_send (
+			instance->totemnet_context,
 			message_item->mcast,
 			message_item->msg_len);
 
@@ -2921,7 +2859,7 @@ static int orf_token_rtr (
 
 static void token_retransmit (struct totemsrp_instance *instance)
 {
-	totemrrp_token_send (instance->totemrrp_context,
+	totemnet_token_send (instance->totemnet_context,
 		instance->orf_token_retransmit,
 		instance->orf_token_retransmit_size);
 }
@@ -3005,7 +2943,7 @@ static int token_send (
 		return (0);
 	}
 
-	totemrrp_token_send (instance->totemrrp_context,
+	totemnet_token_send (instance->totemnet_context,
 		orf_token,
 		orf_token_size);
 
@@ -3037,7 +2975,7 @@ static int token_hold_cancel_send (struct totemsrp_instance *instance)
 
 	instance->stats.token_hold_cancel_tx++;
 
-	totemrrp_mcast_flush_send (instance->totemrrp_context, &token_hold_cancel,
+	totemnet_mcast_flush_send (instance->totemnet_context, &token_hold_cancel,
 		sizeof (struct token_hold_cancel));
 
 	return (0);
@@ -3153,17 +3091,14 @@ static void memb_state_commit_token_target_set (
 	struct totemsrp_instance *instance)
 {
 	struct srp_addr *addr;
-	unsigned int i;
 
 	addr = (struct srp_addr *)instance->commit_token->end_of_commit_token;
 
-	for (i = 0; i < instance->totem_config->interface_count; i++) {
-		totemrrp_token_target_set (
-			instance->totemrrp_context,
-			&addr[instance->commit_token->memb_index %
-				instance->commit_token->addr_entries].addr[i],
-			i);
-	}
+	/* Totemnet just looks at the node id */
+	totemnet_token_target_set (
+		instance->totemnet_context,
+		&addr[instance->commit_token->memb_index %
+		      instance->commit_token->addr_entries].addr[0]);
 }
 
 static int memb_state_commit_token_send_recovery (
@@ -3185,7 +3120,7 @@ static int memb_state_commit_token_send_recovery (
 
 	instance->stats.memb_commit_token_tx++;
 
-	totemrrp_token_send (instance->totemrrp_context,
+	totemnet_token_send (instance->totemnet_context,
 		commit_token,
 		commit_token_size);
 
@@ -3214,7 +3149,7 @@ static int memb_state_commit_token_send (
 
 	instance->stats.memb_commit_token_tx++;
 
-	totemrrp_token_send (instance->totemrrp_context,
+	totemnet_token_send (instance->totemnet_context,
 		instance->commit_token,
 		commit_token_size);
 
@@ -3349,8 +3284,8 @@ static void memb_join_message_send (struct totemsrp_instance *instance)
 
 	instance->stats.memb_join_tx++;
 
-	totemrrp_mcast_flush_send (
-		instance->totemrrp_context,
+	totemnet_mcast_flush_send (
+		instance->totemnet_context,
 		memb_join,
 		addr_idx);
 }
@@ -3419,8 +3354,8 @@ static void memb_leave_message_send (struct totemsrp_instance *instance)
 	}
 	instance->stats.memb_join_tx++;
 
-	totemrrp_mcast_flush_send (
-		instance->totemrrp_context,
+	totemnet_mcast_flush_send (
+		instance->totemnet_context,
 		memb_join,
 		addr_idx);
 }
@@ -3439,7 +3374,7 @@ static void memb_merge_detect_transmit (struct totemsrp_instance *instance)
 	assert (memb_merge_detect.header.nodeid);
 
 	instance->stats.memb_merge_detect_tx++;
-	totemrrp_mcast_flush_send (instance->totemrrp_context,
+	totemnet_mcast_flush_send (instance->totemnet_context,
 		&memb_merge_detect,
 		sizeof (struct memb_merge_detect));
 }
@@ -3716,7 +3651,7 @@ static int message_handler_orf_token (
 	}
 #endif
 	instance->flushing = 1;
-	totemrrp_recv_flush (instance->totemrrp_context);
+	totemnet_recv_flush (instance->totemnet_context);
 	instance->flushing = 0;
 
 	/*
@@ -3906,7 +3841,7 @@ printf ("token seq %d\n", token->seq);
 				}
 			}
 
-			totemrrp_send_flush (instance->totemrrp_context);
+			totemnet_send_flush (instance->totemnet_context);
 			token_send (instance, token, forward_token);
 
 #ifdef GIVEINFO
@@ -4253,7 +4188,7 @@ static void memb_join_process (
 		if (instance->flushing) {
 			if (memb_join->header.nodeid == LEAVE_DUMMY_NODEID) {
 				log_printf (instance->totemsrp_log_level_warning,
-			    		"Discarding LEAVE message during flush, nodeid=%u", 
+			    		"Discarding LEAVE message during flush, nodeid=%u",
 						memb_join->failed_list_entries > 0 ? failed_list[memb_join->failed_list_entries - 1 ].addr[0].nodeid : LEAVE_DUMMY_NODEID);
 				if (memb_join->failed_list_entries > 0) {
 					my_leave_memb_set(instance, failed_list[memb_join->failed_list_entries - 1 ].addr[0].nodeid);
@@ -4272,7 +4207,7 @@ static void memb_join_process (
 				}
 			}
 		}
-		
+
 	}
 
 	if (memb_set_equal (proc_list,
@@ -4709,9 +4644,9 @@ void main_deliver_fn (
 	unsigned int msg_len)
 {
 	struct totemsrp_instance *instance = context;
-	const struct message_header *message_header = msg;
+	const struct totem_message_header *message_header = msg;
 
-	if (msg_len < sizeof (struct message_header)) {
+	if (msg_len < sizeof (struct totem_message_header)) {
 		log_printf (instance->totemsrp_log_level_security,
 			    "Received message is too short...  ignoring %u.",
 			    (unsigned int)msg_len);
@@ -4810,12 +4745,12 @@ void totemsrp_service_ready_register (
 int totemsrp_member_add (
         void *context,
         const struct totem_ip_address *member,
-        int ring_no)
+        int link_no)
 {
 	struct totemsrp_instance *instance = (struct totemsrp_instance *)context;
 	int res;
 
-	res = totemrrp_member_add (instance->totemrrp_context, member, ring_no);
+	res = totemnet_member_add (instance->totemnet_context, &instance->my_id.addr[link_no], member, link_no);
 
 	return (res);
 }
@@ -4823,12 +4758,12 @@ int totemsrp_member_add (
 int totemsrp_member_remove (
         void *context,
         const struct totem_ip_address *member,
-        int ring_no)
+        int link_no)
 {
 	struct totemsrp_instance *instance = (struct totemsrp_instance *)context;
 	int res;
 
-	res = totemrrp_member_remove (instance->totemrrp_context, member, ring_no);
+	res = totemnet_member_remove (instance->totemnet_context, member, link_no);
 
 	return (res);
 }
