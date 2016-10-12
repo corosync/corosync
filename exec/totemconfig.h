@@ -37,7 +37,6 @@
 
 #include <netinet/in.h>
 #include <corosync/corotypes.h>
-#include <corosync/list.h>
 #include <qb/qbloop.h>
 #include <corosync/totem/totempg.h>
 
