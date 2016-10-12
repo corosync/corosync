@@ -75,13 +75,13 @@
 #include <sys/uio.h>
 #include <limits.h>
 
+#include <qb/qblist.h>
 #include <qb/qbdefs.h>
 #include <qb/qbutil.h>
 #include <qb/qbloop.h>
 
 #include <corosync/swab.h>
 #include <corosync/sq.h>
-#include <corosync/list.h>
 
 #define LOGSYS_UTILS_ONLY 1
 #include <corosync/logsys.h>
@@ -168,7 +168,7 @@ struct consensus_list_item {
 
 
 struct token_callback_instance {
-	struct list_head list;
+	struct qb_list_head list;
 	int (*callback_fn) (enum totem_callback_token_type type, const void *);
 	enum totem_callback_token_type callback_type;
 	int delete;
@@ -382,9 +382,9 @@ struct totemsrp_instance {
 
 	unsigned int my_high_delivered;
 
-	struct list_head token_callback_received_listhead;
+	struct qb_list_head token_callback_received_listhead;
 
-	struct list_head token_callback_sent_listhead;
+	struct qb_list_head token_callback_sent_listhead;
 
 	char orf_token_retransmit[TOKEN_SIZE_MAX];
 
@@ -712,9 +712,9 @@ static void totemsrp_instance_initialize (struct totemsrp_instance *instance)
 {
 	memset (instance, 0, sizeof (struct totemsrp_instance));
 
-	list_init (&instance->token_callback_received_listhead);
+	qb_list_init (&instance->token_callback_received_listhead);
 
-	list_init (&instance->token_callback_sent_listhead);
+	qb_list_init (&instance->token_callback_sent_listhead);
 
 	instance->my_received_flg = 1;
 
@@ -3405,17 +3405,17 @@ int totemsrp_callback_token_create (
 		return (-1);
 	}
 	*handle_out = (void *)callback_handle;
-	list_init (&callback_handle->list);
+	qb_list_init (&callback_handle->list);
 	callback_handle->callback_fn = callback_fn;
 	callback_handle->data = (void *) data;
 	callback_handle->callback_type = type;
 	callback_handle->delete = delete;
 	switch (type) {
 	case TOTEM_CALLBACK_TOKEN_RECEIVED:
-		list_add (&callback_handle->list, &instance->token_callback_received_listhead);
+		qb_list_add (&callback_handle->list, &instance->token_callback_received_listhead);
 		break;
 	case TOTEM_CALLBACK_TOKEN_SENT:
-		list_add (&callback_handle->list, &instance->token_callback_sent_listhead);
+		qb_list_add (&callback_handle->list, &instance->token_callback_sent_listhead);
 		break;
 	}
 
@@ -3428,7 +3428,7 @@ void totemsrp_callback_token_destroy (void *srp_context, void **handle_out)
 
 	if (*handle_out) {
  		h = (struct token_callback_instance *)*handle_out;
-		list_del (&h->list);
+		qb_list_del (&h->list);
 		free (h);
 		h = NULL;
 		*handle_out = 0;
@@ -3439,9 +3439,8 @@ static void token_callbacks_execute (
 	struct totemsrp_instance *instance,
 	enum totem_callback_token_type type)
 {
-	struct list_head *list;
-	struct list_head *list_next;
-	struct list_head *callback_listhead = 0;
+        struct qb_list_head *list;
+	struct qb_list_head *callback_listhead = 0;
 	struct token_callback_instance *token_callback_instance;
 	int res;
 	int del;
@@ -3457,15 +3456,11 @@ static void token_callbacks_execute (
 		assert (0);
 	}
 
-	for (list = callback_listhead->next; list != callback_listhead;
-		list = list_next) {
-
-		token_callback_instance = list_entry (list, struct token_callback_instance, list);
-
-		list_next = list->next;
+        qb_list_for_each(list, callback_listhead) {
+		token_callback_instance = qb_list_entry (list, struct token_callback_instance, list);
 		del = token_callback_instance->delete;
 		if (del == 1) {
-			list_del (list);
+			qb_list_del (list);
 		}
 
 		res = token_callback_instance->callback_fn (
@@ -3475,7 +3470,7 @@ static void token_callbacks_execute (
 		 * This callback failed to execute, try it again on the next token
 		 */
 		if (res == -1 && del == 1) {
-			list_add (list, callback_listhead);
+			qb_list_add (list, callback_listhead);
 		} else	if (del) {
 			free (token_callback_instance);
 		}

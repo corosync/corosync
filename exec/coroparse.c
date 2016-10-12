@@ -54,7 +54,7 @@
 #include <grp.h>
 #include <pwd.h>
 
-#include <corosync/list.h>
+#include <qb/qblist.h>
 #include <qb/qbutil.h>
 #define LOGSYS_UTILS_ONLY 1
 #include <corosync/logsys.h>
@@ -104,7 +104,7 @@ typedef int (*parser_cb_f)(const char *path,
 struct key_value_list_item {
 	char *key;
 	char *value;
-	struct list_head list;
+	struct qb_list_head list;
 };
 
 struct main_cp_cb_data {
@@ -119,10 +119,10 @@ struct main_cp_cb_data {
 	int knet_ping_timeout;
 	int knet_ping_precision;
 
-	struct list_head logger_subsys_items_head;
+	struct qb_list_head logger_subsys_items_head;
 	char *subsys;
 	char *logging_daemon_name;
-	struct list_head member_items_head;
+	struct qb_list_head member_items_head;
 
 	int node_number;
 	int ring0_addr_added;
@@ -514,7 +514,7 @@ static int main_config_parser_cb(const char *path,
 	static char formated_err[256];
 	struct main_cp_cb_data *data = (struct main_cp_cb_data *)user_data;
 	struct key_value_list_item *kv_item;
-	struct list_head *iter, *iter_next;
+        struct qb_list_head *iter;
 	int uid, gid;
 
 	switch (type) {
@@ -781,8 +781,8 @@ static int main_config_parser_cb(const char *path,
 
 					return (0);
 				}
-				list_init(&kv_item->list);
-				list_add(&kv_item->list, &data->logger_subsys_items_head);
+				qb_list_init(&kv_item->list);
+				qb_list_add(&kv_item->list, &data->logger_subsys_items_head);
 			}
 			add_as_string = 0;
 			break;
@@ -818,8 +818,8 @@ static int main_config_parser_cb(const char *path,
 
 					return (0);
 				}
-				list_init(&kv_item->list);
-				list_add(&kv_item->list, &data->logger_subsys_items_head);
+				qb_list_init(&kv_item->list);
+				qb_list_add(&kv_item->list, &data->logger_subsys_items_head);
 			}
 			add_as_string = 0;
 			break;
@@ -872,8 +872,8 @@ static int main_config_parser_cb(const char *path,
 
 				return (0);
 			}
-			list_init(&kv_item->list);
-			list_add(&kv_item->list, &data->member_items_head);
+			qb_list_init(&kv_item->list);
+			qb_list_add(&kv_item->list, &data->member_items_head);
 			add_as_string = 0;
 			break;
 		case MAIN_CP_CB_DATA_STATE_NODELIST:
@@ -946,7 +946,7 @@ static int main_config_parser_cb(const char *path,
 			data->knet_ping_interval = -1;
 			data->knet_ping_timeout = -1;
 			data->knet_ping_precision = -1;
-			list_init(&data->member_items_head);
+			qb_list_init(&data->member_items_head);
 		};
 		if (strcmp(path, "totem") == 0) {
 			*state = MAIN_CP_CB_DATA_STATE_TOTEM;
@@ -956,12 +956,12 @@ static int main_config_parser_cb(const char *path,
 		}
 		if (strcmp(path, "logging.logger_subsys") == 0) {
 			*state = MAIN_CP_CB_DATA_STATE_LOGGER_SUBSYS;
-			list_init(&data->logger_subsys_items_head);
+			qb_list_init(&data->logger_subsys_items_head);
 			data->subsys = NULL;
 		}
 		if (strcmp(path, "logging.logging_daemon") == 0) {
 			*state = MAIN_CP_CB_DATA_STATE_LOGGING_DAEMON;
-			list_init(&data->logger_subsys_items_head);
+			qb_list_init(&data->logger_subsys_items_head);
 			data->subsys = NULL;
 			data->logging_daemon_name = NULL;
 		}
@@ -1067,15 +1067,13 @@ static int main_config_parser_cb(const char *path,
 			}
 
 			ii = 0;
-			for (iter = data->member_items_head.next;
-			     iter != &data->member_items_head; iter = iter_next) {
-				kv_item = list_entry(iter, struct key_value_list_item, list);
+
+                        qb_list_for_each(iter, &(data->member_items_head)) {
+				kv_item = qb_list_entry(iter, struct key_value_list_item, list);
 
 				snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.member.%u",
 						data->linknumber, ii);
 				icmap_set_string_r(config_map, key_name, kv_item->value);
-
-				iter_next = iter->next;
 
 				free(kv_item->value);
 				free(kv_item->key);
@@ -1091,15 +1089,12 @@ static int main_config_parser_cb(const char *path,
 				return (0);
 			}
 
-			for (iter = data->logger_subsys_items_head.next;
-			     iter != &data->logger_subsys_items_head; iter = iter_next) {
-				kv_item = list_entry(iter, struct key_value_list_item, list);
+                        qb_list_for_each(iter, &(data->logger_subsys_items_head)) {
+				kv_item = qb_list_entry(iter, struct key_value_list_item, list);
 
 				snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "logging.logger_subsys.%s.%s",
 					 data->subsys, kv_item->key);
-				icmap_set_string_r(config_map, key_name, kv_item->value);
-
-				iter_next = iter->next;
+                                icmap_set_string_r(config_map, key_name, kv_item->value);
 
 				free(kv_item->value);
 				free(kv_item->key);
@@ -1120,9 +1115,8 @@ static int main_config_parser_cb(const char *path,
 				return (0);
 			}
 
-			for (iter = data->logger_subsys_items_head.next;
-			     iter != &data->logger_subsys_items_head; iter = iter_next) {
-				kv_item = list_entry(iter, struct key_value_list_item, list);
+                        qb_list_for_each(iter, &(data->logger_subsys_items_head)) {
+				kv_item = qb_list_entry(iter, struct key_value_list_item, list);
 
 				if (data->subsys == NULL) {
 					if (strcmp(data->logging_daemon_name, "corosync") == 0) {
@@ -1148,8 +1142,6 @@ static int main_config_parser_cb(const char *path,
 					}
 				}
 				icmap_set_string_r(config_map, key_name, kv_item->value);
-
-				iter_next = iter->next;
 
 				free(kv_item->value);
 				free(kv_item->key);

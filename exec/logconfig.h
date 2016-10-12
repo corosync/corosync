@@ -36,7 +36,6 @@
 #define LOGCONFIG_H_DEFINED
 
 #include <corosync/logsys.h>
-#include <corosync/list.h>
 #include <corosync/coroapi.h>
 #include <corosync/cmap.h>
 

@@ -62,7 +62,6 @@
 #include <qb/qbloop.h>
 
 #include <corosync/sq.h>
-#include <corosync/list.h>
 #include <corosync/swab.h>
 #include <corosync/logsys.h>
 #include <corosync/totem/totemip.h>
