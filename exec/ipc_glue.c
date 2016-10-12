@@ -81,7 +81,7 @@ struct cs_ipcs_mapper {
 struct outq_item {
 	void *msg;
 	size_t mlen;
-	struct list_head list;
+	struct qb_list_head list;
 };
 
 static struct cs_ipcs_mapper ipcs_mapper[SERVICES_COUNT_MAX];
@@ -257,7 +257,7 @@ static char * pid_to_name (pid_t pid, char *out_name, size_t name_len)
 
 struct cs_ipcs_conn_context {
 	char *icmap_path;
-	struct list_head outq_head;
+	struct qb_list_head outq_head;
 	int32_t queuing;
 	uint32_t queued;
 	uint64_t invalid_request;
@@ -288,7 +288,7 @@ static void cs_ipcs_connection_created(qb_ipcs_connection_t *c)
 		return;
 	}
 
-	list_init(&context->outq_head);
+	qb_list_init(&context->outq_head);
 	context->queuing = QB_FALSE;
 	context->queued = 0;
 	context->sent = 0;
@@ -392,20 +392,17 @@ void *cs_ipcs_private_data_get(void *conn)
 static void cs_ipcs_connection_destroyed (qb_ipcs_connection_t *c)
 {
 	struct cs_ipcs_conn_context *context;
-	struct list_head *list, *list_next;
+        struct qb_list_head *list;
 	struct outq_item *outq_item;
 
 	log_printf(LOG_DEBUG, "%s() ", __func__);
 
 	context = qb_ipcs_context_get(c);
 	if (context) {
-		for (list = context->outq_head.next;
-			list != &context->outq_head; list = list_next) {
+            qb_list_for_each(list, &(context->outq_head)) {
+			outq_item = qb_list_entry (list, struct outq_item, list);
 
-			list_next = list->next;
-			outq_item = list_entry (list, struct outq_item, list);
-
-			list_del (list);
+			qb_list_del (list);
 			free (outq_item->msg);
 			free (outq_item);
 		}
@@ -469,16 +466,13 @@ int cs_ipcs_response_send(void *conn, const void *msg, size_t mlen)
 static void outq_flush (void *data)
 {
 	qb_ipcs_connection_t *conn = data;
-	struct list_head *list, *list_next;
+        struct qb_list_head *list;
 	struct outq_item *outq_item;
 	int32_t rc;
 	struct cs_ipcs_conn_context *context = qb_ipcs_context_get(conn);
 
-	for (list = context->outq_head.next;
-		list != &context->outq_head; list = list_next) {
-
-		list_next = list->next;
-		outq_item = list_entry (list, struct outq_item, list);
+        qb_list_for_each(list, &(context->outq_head)) {
+		outq_item = qb_list_entry (list, struct outq_item, list);
 
 		rc = qb_ipcs_event_send(conn, outq_item->msg, outq_item->mlen);
 		if (rc < 0 && rc != -EAGAIN) {
@@ -492,11 +486,11 @@ static void outq_flush (void *data)
 		context->sent++;
 		context->queued--;
 
-		list_del (list);
+		qb_list_del (list);
 		free (outq_item->msg);
 		free (outq_item);
 	}
-	if (list_empty (&context->outq_head)) {
+	if (qb_list_empty (&context->outq_head)) {
 		context->queuing = QB_FALSE;
 		log_printf(LOGSYS_LEVEL_INFO, "Q empty, queued:%d sent:%d.",
 			context->queued, context->sent);
@@ -521,7 +515,7 @@ static void msg_send_or_queue(qb_ipcs_connection_t *conn, const struct iovec *io
 	}
 
 	if (!context->queuing) {
-		assert(list_empty (&context->outq_head));
+		assert(qb_list_empty (&context->outq_head));
 		rc = qb_ipcs_event_sendv(conn, iov, iov_len);
 		if (rc == bytes_msg) {
 			context->sent++;
@@ -555,8 +549,8 @@ static void msg_send_or_queue(qb_ipcs_connection_t *conn, const struct iovec *io
 		write_buf += iov[i].iov_len;
 	}
 	outq_item->mlen = bytes_msg;
-	list_init (&outq_item->list);
-	list_add_tail (&outq_item->list, &context->outq_head);
+	qb_list_init (&outq_item->list);
+	qb_list_add_tail (&outq_item->list, &context->outq_head);
 	context->queued++;
 }
 

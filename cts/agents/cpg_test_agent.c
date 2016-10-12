@@ -47,7 +47,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 
-#include <corosync/list.h>
+#include <qb/qblist.h>
 #include <qb/qbdefs.h>
 #include <qb/qbutil.h>
 #include <qb/qbloop.h>
@@ -80,7 +80,7 @@ typedef struct {
 #define LOG_STR_SIZE 80
 typedef struct {
 	char log[LOG_STR_SIZE];
-	struct list_head list;
+	struct qb_list_head list;
 } log_entry_t;
 
 static char big_and_buf[HOW_BIG_AND_BUF];
@@ -90,8 +90,8 @@ static cpg_handle_t cpg_handle = 0;
 static corosync_cfg_handle_t cfg_handle = 0;
 static int32_t cpg_fd = -1;
 static int32_t cfg_fd = -1;
-static struct list_head config_chg_log_head;
-static struct list_head msg_log_head;
+static struct qb_list_head config_chg_log_head;
+static struct qb_list_head msg_log_head;
 static pid_t my_pid;
 static uint32_t my_nodeid;
 static int32_t my_seq;
@@ -176,12 +176,12 @@ static void delivery_callback (
 	}
 
 	log_pt = malloc (sizeof(log_entry_t));
-	list_init (&log_pt->list);
+	qb_list_init (&log_pt->list);
 
 	snprintf (log_pt->log, LOG_STR_SIZE, "%u:%d:%d:%s;",
 		msg_pt->nodeid, msg_pt->seq, my_seq,
 		err_status_string (status_buf, 20, status));
-	list_add_tail (&log_pt->list, &msg_log_head);
+	qb_list_add_tail (&log_pt->list, &msg_log_head);
 	total_stored_msgs++;
 	total_msgs_revd++;
 	my_seq++;
@@ -211,20 +211,20 @@ static void config_change_callback (
 	for (i = 0; i < left_list_entries; i++) {
 		if (record_config_events_g > 0) {
 			log_pt = malloc (sizeof(log_entry_t));
-			list_init (&log_pt->list);
+			qb_list_init (&log_pt->list);
 			snprintf (log_pt->log, LOG_STR_SIZE, "%s,%u,%u,left",
 				groupName->value, left_list[i].nodeid,left_list[i].pid);
-			list_add_tail(&log_pt->list, &config_chg_log_head);
+			qb_list_add_tail(&log_pt->list, &config_chg_log_head);
 			qb_log (LOG_INFO, "cpg event %s", log_pt->log);
 		}
 	}
 	for (i = 0; i < joined_list_entries; i++) {
 		if (record_config_events_g > 0) {
 			log_pt = malloc (sizeof(log_entry_t));
-			list_init (&log_pt->list);
+			qb_list_init (&log_pt->list);
 			snprintf (log_pt->log, LOG_STR_SIZE, "%s,%u,%u,join",
 				groupName->value, joined_list[i].nodeid,joined_list[i].pid);
-			list_add_tail (&log_pt->list, &config_chg_log_head);
+			qb_list_add_tail (&log_pt->list, &config_chg_log_head);
 			qb_log (LOG_INFO, "cpg event %s", log_pt->log);
 		}
 	}
@@ -277,16 +277,16 @@ static void record_config_events (int sock)
 static void read_config_event (int sock)
 {
 	const char *empty = "None";
-	struct list_head * list = config_chg_log_head.next;
+	struct qb_list_head * list = config_chg_log_head.next;
 	log_entry_t *entry;
 	ssize_t rc;
 	size_t send_len;
 
 	if (list != &config_chg_log_head) {
-		entry = list_entry (list, log_entry_t, list);
+		entry = qb_list_entry (list, log_entry_t, list);
 		send_len = strlen (entry->log);
 		rc = send (sock, entry->log, send_len, 0);
-		list_del (&entry->list);
+		qb_list_del (&entry->list);
 		free (entry);
 	} else {
 		qb_log (LOG_DEBUG, "no events in list");
@@ -298,7 +298,7 @@ static void read_config_event (int sock)
 
 static void read_messages (int sock, char* atmost_str)
 {
-	struct list_head * list;
+	struct qb_list_head * list;
 	log_entry_t *entry;
 	int atmost = atoi (atmost_str);
 	int packed = 0;
@@ -312,15 +312,15 @@ static void read_messages (int sock, char* atmost_str)
 	big_and_buf[0] = '\0';
 
 	for (list = msg_log_head.next;
-		(!list_empty (&msg_log_head) && packed < atmost); ) {
+		(!qb_list_empty (&msg_log_head) && packed < atmost); ) {
 
-		entry = list_entry (list, log_entry_t, list);
+		entry = qb_list_entry (list, log_entry_t, list);
 
 		strcat (big_and_buf, entry->log);
 		packed++;
 
 		list = list->next;
-		list_del (&entry->list);
+		qb_list_del (&entry->list);
 		free (entry);
 
 		total_stored_msgs--;
@@ -786,8 +786,8 @@ static void my_pre_exit(void)
 int
 main(int argc, char *argv[])
 {
-	list_init (&msg_log_head);
-	list_init (&config_chg_log_head);
+	qb_list_init (&msg_log_head);
+	qb_list_init (&config_chg_log_head);
 
 	if (NSS_NoDB_Init(".") != SECSuccess) {
 		qb_log(LOG_ERR, "Couldn't initialize nss");
