@@ -49,7 +49,7 @@ MAINTAINERCLEANFILES	= Makefile.in aclocal.m4 configure depcomp \
 dist_doc_DATA		= LICENSE INSTALL README.recovery SECURITY AUTHORS
 
 SUBDIRS			= include common_lib lib exec tools test cts pkgconfig \
-			  man init conf qdevices
+			  man init conf qdevices vqsim
 
 coverity:
 	rm -rf cov

@@ -204,6 +204,7 @@ AC_CONFIG_FILES([Makefile
 		 tools/Makefile
 		 conf/Makefile
 		 qdevices/Makefile
+		 vqsim/Makefile
 		 Doxyfile
 		 conf/logrotate/Makefile
 		 conf/tmpfiles.d/Makefile])
@@ -418,6 +419,11 @@ AC_ARG_ENABLE([qnetd],
 	[ enable_qnetd="no" ])
 AM_CONDITIONAL(BUILD_QNETD, test x$enable_qnetd = xyes)
 
+AC_ARG_ENABLE([vqsim],
+	[  --enable-vqsim               : Quorum simulator support ],,
+	[ enable_vqsim="no" ])
+AM_CONDITIONAL(BUILD_VQSIM, test x$enable_vqsim = xyes)
+
 # *FLAGS handling goes here
 
 ENV_CFLAGS="$CFLAGS"
@@ -452,6 +458,14 @@ if test "x${enable_testagents}" = xyes; then
 	AC_DEFINE_UNQUOTED([HAVE_TESTAGENTS], 1, [have testagents])
 	PACKAGE_FEATURES="$PACKAGE_FEATURES testagents"
 	WITH_LIST="$WITH_LIST --with testagents"
+fi
+
+if test "x${enable_rdma}" = xyes; then
+	PKG_CHECK_MODULES([rdmacm],[rdmacm])
+	PKG_CHECK_MODULES([ibverbs],[ibverbs])
+	AC_DEFINE_UNQUOTED([HAVE_RDMA], 1, [have rdmacm])
+	PACKAGE_FEATURES="$PACKAGE_FEATURES rdma"
+	WITH_LIST="$WITH_LIST --with rdma"
 fi
 
 if test "x${enable_monitoring}" = xyes; then
@@ -490,6 +504,16 @@ fi
 if test "x${enable_qdevices}" = xyes; then
 	PACKAGE_FEATURES="$PACKAGE_FEATURES qdevices"
 fi
+
+if test "x${enable_vqsim}" = xyes; then
+	vqsim_readline=no
+	AC_CHECK_HEADERS([readline/readline.h readline/history.h],
+			 [],
+                         AC_MSG_WARN([vqsim will lack readline support]))
+	PACKAGE_FEATURES="$PACKAGE_FEATURES vqsim"
+fi
+AM_CONDITIONAL(VQSIM_READLINE, [test "x${ac_cv_header_readline_readline_h}" = xyes])
+
 if test "x${enable_qnetd}" = xyes; then
 	PACKAGE_FEATURES="$PACKAGE_FEATURES qnetd"
 fi
