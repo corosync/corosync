@@ -32,6 +32,8 @@
 
 MAINTAINERCLEANFILES	= Makefile.in
 
+if BUILD_VQSIM
+
 noinst_PROGRAMS		= vqsim
 
 vqsim_LDADD		= $(top_builddir)/common_lib/libcorosync_common.la \
@@ -45,3 +47,5 @@ endif
 vqsim_DEPENDENCIES	= $(top_builddir)/common_lib/libcorosync_common.la
 
 vqsim_SOURCES	        = vqmain.c parser.c vq_object.c vqsim_vq_engine.c
+
+endif
