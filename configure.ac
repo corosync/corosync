@@ -163,7 +163,7 @@ CPPFLAGS="$SAVE_CPPFLAGS"
 LIBS="$SAVE_LIBS"
 AC_CHECK_LIB([pthread], [pthread_create])
 AC_CHECK_LIB([socket], [socket])
-AC_CHECK_LIB([knet], [knet_handle_new])
+PKG_CHECK_MODULES([KNET],[libknet])
 AC_CHECK_LIB([nsl], [t_open])
 AC_CHECK_LIB([rt], [sched_getscheduler])
 AC_CHECK_LIB([z], [crc32],
