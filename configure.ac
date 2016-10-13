@@ -336,11 +336,6 @@ AC_ARG_ENABLE([testagents],
 	[  --enable-testagents             : Install Test Agents. ],,
 	[ default="no" ])
 
-AC_ARG_ENABLE([rdma],
-	[  --enable-rdma                   : Infiniband RDMA transport support ],,
-	[ enable_rdma="no" ])
-AM_CONDITIONAL(BUILD_RDMA, test x$enable_rdma = xyes)
-
 AC_ARG_ENABLE([monitoring],
 	[  --enable-monitoring             : resource monitoring ],,
 	[ default="no" ])
@@ -458,14 +453,6 @@ if test "x${enable_testagents}" = xyes; then
 	AC_DEFINE_UNQUOTED([HAVE_TESTAGENTS], 1, [have testagents])
 	PACKAGE_FEATURES="$PACKAGE_FEATURES testagents"
 	WITH_LIST="$WITH_LIST --with testagents"
-fi
-
-if test "x${enable_rdma}" = xyes; then
-	PKG_CHECK_MODULES([rdmacm],[rdmacm])
-	PKG_CHECK_MODULES([ibverbs],[ibverbs])
-	AC_DEFINE_UNQUOTED([HAVE_RDMA], 1, [have rdmacm])
-	PACKAGE_FEATURES="$PACKAGE_FEATURES rdma"
-	WITH_LIST="$WITH_LIST --with rdma"
 fi
 
 if test "x${enable_monitoring}" = xyes; then
