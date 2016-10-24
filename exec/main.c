@@ -105,7 +105,6 @@
 #include <corosync/swab.h>
 #include <corosync/corotypes.h>
 #include <corosync/corodefs.h>
-#include <corosync/list.h>
 #include <corosync/totem/totempg.h>
 #include <corosync/logsys.h>
 #include <corosync/icmap.h>
