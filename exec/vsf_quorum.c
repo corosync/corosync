@@ -59,7 +59,7 @@
 #include <qb/qbipc_common.h>
 #include <corosync/corodefs.h>
 #include <corosync/swab.h>
-#include <corosync/list.h>
+#include <qb/qblist.h>
 #include <corosync/mar_gen.h>
 #include <corosync/ipc_quorum.h>
 #include <corosync/mar_gen.h>
@@ -76,12 +76,12 @@ LOGSYS_DECLARE_SUBSYS ("QUORUM");
 struct quorum_pd {
 	unsigned char track_flags;
 	int tracking_enabled;
-	struct list_head list;
+	struct qb_list_head list;
 	void *conn;
 };
 
 struct internal_callback_pd {
-	struct list_head list;
+	struct qb_list_head list;
 	quorum_callback_fn_t callback;
 	void *context;
 };
@@ -103,8 +103,8 @@ static int quorum_lib_exit_fn (void *conn);
 static int primary_designated = 0;
 static int quorum_type = 0;
 static struct corosync_api_v1 *corosync_api;
-static struct list_head lib_trackers_list;
-static struct list_head internal_trackers_list;
+static struct qb_list_head lib_trackers_list;
+static struct qb_list_head internal_trackers_list;
 static struct memb_ring_id quorum_ring_id;
 static size_t quorum_view_list_entries = 0;
 static int quorum_view_list[PROCESSOR_COUNT_MAX];
@@ -223,7 +223,7 @@ static int quorum_register_callback(quorum_callback_fn_t function, void *context
 
 	pd->context  = context;
 	pd->callback = function;
-	list_add (&pd->list, &internal_trackers_list);
+	qb_list_add (&pd->list, &internal_trackers_list);
 
 	return 0;
 }
@@ -231,13 +231,12 @@ static int quorum_register_callback(quorum_callback_fn_t function, void *context
 static int quorum_unregister_callback(quorum_callback_fn_t function, void *context)
 {
 	struct internal_callback_pd *pd;
-	struct list_head *tmp;
+	struct qb_list_head *tmp, *tmp_iter;
 
-	for (tmp = internal_trackers_list.next; tmp != &internal_trackers_list; tmp = tmp->next) {
-
-		pd = list_entry(tmp, struct internal_callback_pd, list);
+	qb_list_for_each_safe(tmp, tmp_iter, &internal_trackers_list) {
+		pd = qb_list_entry(tmp, struct internal_callback_pd, list);
 		if (pd->callback == function && pd->context == context) {
-			list_del(&pd->list);
+			qb_list_del(&pd->list);
 			free(pd);
 			return 0;
 		}
@@ -259,8 +258,8 @@ static char *quorum_exec_init_fn (struct corosync_api_v1 *api)
 	char *error;
 
 	corosync_api = api;
-	list_init (&lib_trackers_list);
-	list_init (&internal_trackers_list);
+	qb_list_init (&lib_trackers_list);
+	qb_list_init (&internal_trackers_list);
 
 	/*
 	 * Tell corosync we have a quorum engine.
@@ -316,7 +315,7 @@ static int quorum_lib_init_fn (void *conn)
 
 	log_printf(LOGSYS_LEVEL_DEBUG, "lib_init_fn: conn=%p", conn);
 
-	list_init (&pd->list);
+	qb_list_init (&pd->list);
 	pd->conn = conn;
 
 	return (0);
@@ -329,8 +328,8 @@ static int quorum_lib_exit_fn (void *conn)
 	log_printf(LOGSYS_LEVEL_DEBUG, "lib_exit_fn: conn=%p", conn);
 
 	if (quorum_pd->tracking_enabled) {
-		list_del (&quorum_pd->list);
-		list_init (&quorum_pd->list);
+		qb_list_del (&quorum_pd->list);
+		qb_list_init (&quorum_pd->list);
 	}
 	return (0);
 }
@@ -338,12 +337,11 @@ static int quorum_lib_exit_fn (void *conn)
 
 static void send_internal_notification(void)
 {
-	struct list_head *tmp;
+	struct qb_list_head *tmp;
 	struct internal_callback_pd *pd;
 
-	for (tmp = internal_trackers_list.next; tmp != &internal_trackers_list; tmp = tmp->next) {
-
-		pd = list_entry(tmp, struct internal_callback_pd, list);
+	qb_list_for_each(tmp, &internal_trackers_list) {
+		pd = qb_list_entry(tmp, struct internal_callback_pd, list);
 
 		pd->callback(primary_designated, pd->context);
 	}
@@ -354,7 +352,7 @@ static void send_library_notification(void *conn)
 	int size = sizeof(struct res_lib_quorum_notification) + sizeof(unsigned int)*quorum_view_list_entries;
 	char buf[size];
 	struct res_lib_quorum_notification *res_lib_quorum_notification = (struct res_lib_quorum_notification *)buf;
-	struct list_head *tmp;
+	struct qb_list_head *tmp;
 	int i;
 
 	log_printf(LOGSYS_LEVEL_DEBUG, "sending quorum notification to %p, length = %d", conn, size);
@@ -377,9 +375,8 @@ static void send_library_notification(void *conn)
 	else {
 		struct quorum_pd *qpd;
 
-		for (tmp = lib_trackers_list.next; tmp != &lib_trackers_list; tmp = tmp->next) {
-
-			qpd = list_entry(tmp, struct quorum_pd, list);
+		qb_list_for_each(tmp, &lib_trackers_list) {
+			qpd = qb_list_entry(tmp, struct quorum_pd, list);
 
 			corosync_api->ipc_dispatch_send(qpd->conn,
 			     res_lib_quorum_notification, size);
@@ -437,7 +434,7 @@ static void message_handler_req_lib_quorum_trackstart (void *conn,
 		quorum_pd->track_flags = req_lib_quorum_trackstart->track_flags;
 		quorum_pd->tracking_enabled = 1;
 
-		list_add (&quorum_pd->list, &lib_trackers_list);
+		qb_list_add (&quorum_pd->list, &lib_trackers_list);
 	}
 
 response_send:
@@ -458,8 +455,8 @@ static void message_handler_req_lib_quorum_trackstop (void *conn, const void *ms
 	if (quorum_pd->tracking_enabled) {
 		res.error = CS_OK;
 		quorum_pd->tracking_enabled = 0;
-		list_del (&quorum_pd->list);
-		list_init (&quorum_pd->list);
+		qb_list_del (&quorum_pd->list);
+		qb_list_init (&quorum_pd->list);
 	} else {
 		res.error = CS_ERR_NOT_EXIST;
 	}

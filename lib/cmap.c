@@ -45,7 +45,6 @@
 #include <corosync/corotypes.h>
 #include <corosync/corodefs.h>
 #include <corosync/hdb.h>
-#include <corosync/list.h>
 #include <qb/qbipcc.h>
 
 #include <corosync/cmap.h>

@@ -40,7 +40,7 @@
 #include <corosync/corotypes.h>
 
 #include <qb/qbdefs.h>
-#include <corosync/list.h>
+#include <qb/qblist.h>
 #include <corosync/icmap.h>
 
 #define ICMAP_MAX_VALUE_LEN	(16*1024)
@@ -63,17 +63,17 @@ struct icmap_track {
 	int32_t track_type;
 	icmap_notify_fn_t notify_fn;
 	void *user_data;
-	struct list_head list;
+	struct qb_list_head list;
 };
 
 struct icmap_ro_access_item {
 	char *key_name;
 	int prefix;
-	struct list_head list;
+	struct qb_list_head list;
 };
 
-DECLARE_LIST_INIT(icmap_ro_access_item_list_head);
-DECLARE_LIST_INIT(icmap_track_list_head);
+QB_LIST_DECLARE (icmap_ro_access_item_list_head);
+QB_LIST_DECLARE (icmap_track_list_head);
 
 /*
  * Static functions declarations
@@ -225,27 +225,26 @@ cs_error_t icmap_init(void)
 
 static void icmap_set_ro_access_free(void)
 {
-	struct list_head *iter = icmap_ro_access_item_list_head.next;
+	struct qb_list_head *iter, *tmp_iter;
 	struct icmap_ro_access_item *icmap_ro_ai;
 
-	while (iter != &icmap_ro_access_item_list_head) {
-		icmap_ro_ai = list_entry(iter, struct icmap_ro_access_item, list);
-		list_del(&icmap_ro_ai->list);
+	qb_list_for_each_safe(iter, tmp_iter, &icmap_ro_access_item_list_head) {
+		icmap_ro_ai = qb_list_entry(iter, struct icmap_ro_access_item, list);
+		qb_list_del(&icmap_ro_ai->list);
 		free(icmap_ro_ai->key_name);
-		free(icmap_ro_ai);
-		iter = icmap_ro_access_item_list_head.next;
+                free(icmap_ro_ai);
 	}
 }
 
 static void icmap_del_all_track(void)
 {
-	struct list_head *iter = icmap_track_list_head.next;
+	struct qb_list_head *iter, *tmp_iter;
 	struct icmap_track *icmap_track;
 
-	while (iter != &icmap_track_list_head) {
-		icmap_track = list_entry(iter, struct icmap_track, list);
+	qb_list_for_each_safe(iter, tmp_iter, &icmap_track_list_head) {
+		icmap_track = qb_list_entry(iter, struct icmap_track, list);
+
 		icmap_track_delete(icmap_track);
-		iter = icmap_track_list_head.next;
 	}
 }
 
@@ -1203,8 +1202,8 @@ cs_error_t icmap_track_add(
 		return (qb_to_cs_error(err));
 	}
 
-	list_init(&(*icmap_track)->list);
-	list_add (&(*icmap_track)->list, &icmap_track_list_head);
+	qb_list_init(&(*icmap_track)->list);
+	qb_list_add (&(*icmap_track)->list, &icmap_track_list_head);
 
 	return (CS_OK);
 }
@@ -1218,7 +1217,7 @@ cs_error_t icmap_track_delete(icmap_track_t icmap_track)
 		return (qb_to_cs_error(err));
 	}
 
-	list_del(&icmap_track->list);
+	qb_list_del(&icmap_track->list);
 	free(icmap_track->key_name);
 	free(icmap_track);
 
@@ -1232,11 +1231,11 @@ void *icmap_track_get_user_data(icmap_track_t icmap_track)
 
 cs_error_t icmap_set_ro_access(const char *key_name, int prefix, int ro_access)
 {
-	struct list_head *iter;
+	struct qb_list_head *iter, *tmp_iter;
 	struct icmap_ro_access_item *icmap_ro_ai;
 
-	for (iter = icmap_ro_access_item_list_head.next; iter != &icmap_ro_access_item_list_head; iter = iter->next) {
-		icmap_ro_ai = list_entry(iter, struct icmap_ro_access_item, list);
+	qb_list_for_each_safe(iter, tmp_iter, &icmap_ro_access_item_list_head) {
+		icmap_ro_ai = qb_list_entry(iter, struct icmap_ro_access_item, list);
 
 		if (icmap_ro_ai->prefix == prefix && strcmp(key_name, icmap_ro_ai->key_name) == 0) {
 			/*
@@ -1245,7 +1244,7 @@ cs_error_t icmap_set_ro_access(const char *key_name, int prefix, int ro_access)
 			if (ro_access) {
 				return (CS_ERR_EXIST);
 			} else {
-				list_del(&icmap_ro_ai->list);
+				qb_list_del(&icmap_ro_ai->list);
 				free(icmap_ro_ai->key_name);
 				free(icmap_ro_ai);
 
@@ -1271,19 +1270,19 @@ cs_error_t icmap_set_ro_access(const char *key_name, int prefix, int ro_access)
 	}
 
 	icmap_ro_ai->prefix = prefix;
-	list_init(&icmap_ro_ai->list);
-	list_add (&icmap_ro_ai->list, &icmap_ro_access_item_list_head);
+	qb_list_init(&icmap_ro_ai->list);
+	qb_list_add (&icmap_ro_ai->list, &icmap_ro_access_item_list_head);
 
 	return (CS_OK);
 }
 
 int icmap_is_key_ro(const char *key_name)
 {
-	struct list_head *iter;
+	struct qb_list_head *iter;
 	struct icmap_ro_access_item *icmap_ro_ai;
 
-	for (iter = icmap_ro_access_item_list_head.next; iter != &icmap_ro_access_item_list_head; iter = iter->next) {
-		icmap_ro_ai = list_entry(iter, struct icmap_ro_access_item, list);
+	qb_list_for_each(iter, &icmap_ro_access_item_list_head) {
+		icmap_ro_ai = qb_list_entry(iter, struct icmap_ro_access_item, list);
 
 		if (icmap_ro_ai->prefix) {
 			if (strlen(icmap_ro_ai->key_name) > strlen(key_name))

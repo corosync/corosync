@@ -53,7 +53,7 @@
 #include <corosync/corotypes.h>
 #include <qb/qbipc_common.h>
 #include <corosync/cfg.h>
-#include <corosync/list.h>
+#include <qb/qblist.h>
 #include <corosync/mar_gen.h>
 #include <corosync/totem/totemip.h>
 #include <corosync/totem/totem.h>
@@ -77,7 +77,7 @@ enum cfg_message_req_types {
 
 #define DEFAULT_SHUTDOWN_TIMEOUT 5
 
-static struct list_head trackers_list;
+static struct qb_list_head trackers_list;
 
 /*
  * Variables controlling a requested shutdown
@@ -91,7 +91,7 @@ static int shutdown_expected;
 
 struct cfg_info
 {
-	struct list_head list;
+	struct qb_list_head list;
 	void *conn;
 	void *tracker_conn;
 	enum {SHUTDOWN_REPLY_UNKNOWN, SHUTDOWN_REPLY_YES, SHUTDOWN_REPLY_NO} shutdown_reply;
@@ -270,7 +270,7 @@ static char *cfg_exec_init_fn (
 {
 	api = corosync_api_v1;
 
-	list_init(&trackers_list);
+	qb_list_init(&trackers_list);
 	return (NULL);
 }
 
@@ -309,7 +309,7 @@ static int send_shutdown(void)
 static void send_test_shutdown(void *only_conn, void *exclude_conn, int status)
 {
 	struct res_lib_cfg_testshutdown res_lib_cfg_testshutdown;
-	struct list_head *iter;
+	struct qb_list_head *iter;
 
 	ENTER();
 	res_lib_cfg_testshutdown.header.size = sizeof(struct res_lib_cfg_testshutdown);
@@ -322,8 +322,8 @@ static void send_test_shutdown(void *only_conn, void *exclude_conn, int status)
 		api->ipc_dispatch_send(only_conn, &res_lib_cfg_testshutdown,
 				       sizeof(res_lib_cfg_testshutdown));
 	} else {
-		for (iter = trackers_list.next; iter != &trackers_list; iter = iter->next) {
-			struct cfg_info *ci = list_entry(iter, struct cfg_info, list);
+		qb_list_for_each(iter, &trackers_list) {
+			struct cfg_info *ci = qb_list_entry(iter, struct cfg_info, list);
 
 			if (ci->conn != exclude_conn) {
 				TRACE1("sending testshutdown to %p", ci->tracker_conn);
@@ -428,9 +428,9 @@ static void remove_ci_from_shutdown(struct cfg_info *ci)
 		api->timer_delete(shutdown_timer);
 	}
 
-	if (!list_empty(&ci->list)) {
-		list_del(&ci->list);
-		list_init(&ci->list);
+	if (!qb_list_empty(&ci->list)) {
+		qb_list_del(&ci->list);
+		qb_list_init(&ci->list);
 
 		/*
 		 * Remove our option
@@ -469,7 +469,7 @@ static int cfg_lib_init_fn (void *conn)
 	struct cfg_info *ci = (struct cfg_info *)api->ipc_private_data_get (conn);
 
 	ENTER();
-	list_init(&ci->list);
+	qb_list_init(&ci->list);
 	LEAVE();
 
         return (0);
@@ -864,7 +864,7 @@ static void message_handler_req_lib_cfg_tryshutdown (
 {
 	struct cfg_info *ci = (struct cfg_info *)api->ipc_private_data_get (conn);
 	const struct req_lib_cfg_tryshutdown *req_lib_cfg_tryshutdown = msg;
-	struct list_head *iter;
+	struct qb_list_head *iter;
 
 	ENTER();
 
@@ -916,8 +916,8 @@ static void message_handler_req_lib_cfg_tryshutdown (
 	 */
 	shutdown_expected = 0;
 
-	for (iter = trackers_list.next; iter != &trackers_list; iter = iter->next) {
-		struct cfg_info *testci = list_entry(iter, struct cfg_info, list);
+	qb_list_for_each(iter, &trackers_list) {
+		struct cfg_info *testci = qb_list_entry(iter, struct cfg_info, list);
 		/*
 		 * It is assumed that we will allow shutdown
 		 */

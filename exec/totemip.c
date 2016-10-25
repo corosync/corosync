@@ -318,7 +318,7 @@ int totemip_sockaddr_to_totemip_convert(const struct sockaddr_storage *saddr,
 	return ret;
 }
 
-int totemip_getifaddrs(struct list_head *addrs)
+int totemip_getifaddrs(struct qb_list_head *addrs)
 {
 	struct ifaddrs *ifap, *ifa;
 	struct totem_ip_if_address *if_addr;
@@ -326,7 +326,7 @@ int totemip_getifaddrs(struct list_head *addrs)
 	if (getifaddrs(&ifap) != 0)
 		return (-1);
 
-	list_init(addrs);
+	qb_list_init(addrs);
 
 	for (ifa = ifap; ifa; ifa = ifa->ifa_next) {
 		if (ifa->ifa_addr == NULL || ifa->ifa_netmask == NULL)
@@ -346,7 +346,7 @@ int totemip_getifaddrs(struct list_head *addrs)
 			goto error_free_ifaddrs;
 		}
 
-		list_init(&if_addr->list);
+		qb_list_init(&if_addr->list);
 
 		memset(if_addr, 0, sizeof(struct totem_ip_if_address));
 
@@ -367,7 +367,7 @@ int totemip_getifaddrs(struct list_head *addrs)
 			goto error_free_addr_name;
 		}
 
-		list_add_tail(&if_addr->list, addrs);
+		qb_list_add_tail(&if_addr->list, addrs);
 	}
 
 	freeifaddrs(ifap);
@@ -386,20 +386,19 @@ error_free_ifaddrs:
 	return (-1);
 }
 
-void totemip_freeifaddrs(struct list_head *addrs)
+void totemip_freeifaddrs(struct qb_list_head *addrs)
 {
 	struct totem_ip_if_address *if_addr;
-	struct list_head *list;
+	struct qb_list_head *list, *tmp_iter;
 
-	for (list = addrs->next; list != addrs;) {
-		if_addr = list_entry(list, struct totem_ip_if_address, list);
-		list = list->next;
+	qb_list_for_each_safe(list, tmp_iter, addrs) {
+		if_addr = qb_list_entry(list, struct totem_ip_if_address, list);
 
 		free(if_addr->name);
-		list_del(&if_addr->list);
+		qb_list_del(&if_addr->list);
 	        free(if_addr);
 	}
-	list_init(addrs);
+	qb_list_init(addrs);
 }
 
 int totemip_iface_check(struct totem_ip_address *bindnet,
@@ -408,8 +407,8 @@ int totemip_iface_check(struct totem_ip_address *bindnet,
 			int *interface_num,
 			int mask_high_bit)
 {
-	struct list_head addrs;
-	struct list_head *list;
+	struct qb_list_head addrs;
+	struct qb_list_head *list;
 	struct totem_ip_if_address *if_addr;
 	struct totem_ip_address bn_netaddr, if_netaddr;
 	socklen_t addr_len;
@@ -425,8 +424,8 @@ int totemip_iface_check(struct totem_ip_address *bindnet,
 		return (-1);
 	}
 
-	for (list = addrs.next; list != &addrs; list = list->next) {
-		if_addr = list_entry(list, struct totem_ip_if_address, list);
+	qb_list_for_each(list, &addrs) {
+		if_addr = qb_list_entry(list, struct totem_ip_if_address, list);
 
 		if (bindnet->family != if_addr->ip_addr.family)
 			continue ;

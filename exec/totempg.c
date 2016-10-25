@@ -101,7 +101,7 @@
 #include <limits.h>
 
 #include <corosync/swab.h>
-#include <corosync/list.h>
+#include <qb/qblist.h>
 #include <qb/qbloop.h>
 #include <qb/qbipcs.h>
 #include <corosync/totem/totempg.h>
@@ -203,7 +203,7 @@ struct assembly {
 	int index;
 	unsigned char last_frag_num;
 	enum throw_away_mode throw_away_mode;
-	struct list_head list;
+	struct qb_list_head list;
 };
 
 static void assembly_deref (struct assembly *assembly);
@@ -211,16 +211,16 @@ static void assembly_deref (struct assembly *assembly);
 static int callback_token_received_fn (enum totem_callback_token_type type,
 	const void *data);
 
-DECLARE_LIST_INIT(assembly_list_inuse);
+QB_LIST_DECLARE(assembly_list_inuse);
 
 /*
  * Free list is used both for transitional and operational assemblies
  */
-DECLARE_LIST_INIT(assembly_list_free);
+QB_LIST_DECLARE(assembly_list_free);
 
-DECLARE_LIST_INIT(assembly_list_inuse_trans);
+QB_LIST_DECLARE(assembly_list_inuse_trans);
 
-DECLARE_LIST_INIT(totempg_groups_list);
+QB_LIST_DECLARE(totempg_groups_list);
 
 /*
  * Staging buffer for packed messages.  Messages are staged in this buffer
@@ -259,7 +259,7 @@ struct totempg_group_instance {
 	int groups_cnt;
 	int32_t q_level;
 
-	struct list_head list;
+	struct qb_list_head list;
 };
 
 static unsigned char next_fragment = 1;
@@ -291,8 +291,8 @@ static void totempg_waiting_trans_ack_cb (int waiting_trans_ack)
 static struct assembly *assembly_ref (unsigned int nodeid)
 {
 	struct assembly *assembly;
-	struct list_head *list;
-	struct list_head *active_assembly_list_inuse;
+	struct qb_list_head *list;
+	struct qb_list_head *active_assembly_list_inuse;
 
 	if (totempg_waiting_transack) {
 		active_assembly_list_inuse = &assembly_list_inuse_trans;
@@ -303,11 +303,8 @@ static struct assembly *assembly_ref (unsigned int nodeid)
 	/*
 	 * Search inuse list for node id and return assembly buffer if found
 	 */
-	for (list = active_assembly_list_inuse->next;
-		list != active_assembly_list_inuse;
-		list = list->next) {
-
-		assembly = list_entry (list, struct assembly, list);
+	qb_list_for_each(list, active_assembly_list_inuse) {
+		assembly = qb_list_entry (list, struct assembly, list);
 
 		if (nodeid == assembly->nodeid) {
 			return (assembly);
@@ -317,10 +314,10 @@ static struct assembly *assembly_ref (unsigned int nodeid)
 	/*
 	 * Nothing found in inuse list get one from free list if available
 	 */
-	if (list_empty (&assembly_list_free) == 0) {
-		assembly = list_entry (assembly_list_free.next, struct assembly, list);
-		list_del (&assembly->list);
-		list_add (&assembly->list, active_assembly_list_inuse);
+	if (qb_list_empty (&assembly_list_free) == 0) {
+		assembly = qb_list_entry (assembly_list_free.next, struct assembly, list);
+		qb_list_del (&assembly->list);
+		qb_list_add (&assembly->list, active_assembly_list_inuse);
 		assembly->nodeid = nodeid;
 		assembly->index = 0;
 		assembly->last_frag_num = 0;
@@ -341,24 +338,23 @@ static struct assembly *assembly_ref (unsigned int nodeid)
 	assembly->index = 0;
 	assembly->last_frag_num = 0;
 	assembly->throw_away_mode = THROW_AWAY_INACTIVE;
-	list_init (&assembly->list);
-	list_add (&assembly->list, active_assembly_list_inuse);
+	qb_list_init (&assembly->list);
+	qb_list_add (&assembly->list, active_assembly_list_inuse);
 
 	return (assembly);
 }
 
 static void assembly_deref (struct assembly *assembly)
 {
-
-	list_del (&assembly->list);
-	list_add (&assembly->list, &assembly_list_free);
+	qb_list_del (&assembly->list);
+	qb_list_add (&assembly->list, &assembly_list_free);
 }
 
 static void assembly_deref_from_normal_and_trans (int nodeid)
 {
 	int j;
-	struct list_head *list, *list_next;
-	struct list_head *active_assembly_list_inuse;
+	struct qb_list_head *list, *tmp_iter;
+	struct qb_list_head *active_assembly_list_inuse;
 	struct assembly *assembly;
 
 	for (j = 0; j < 2; j++) {
@@ -368,16 +364,12 @@ static void assembly_deref_from_normal_and_trans (int nodeid)
 			active_assembly_list_inuse = &assembly_list_inuse_trans;
 		}
 
-		for (list = active_assembly_list_inuse->next;
-			list != active_assembly_list_inuse;
-			list = list_next) {
-
-			list_next = list->next;
-			assembly = list_entry (list, struct assembly, list);
+		qb_list_for_each_safe(list, tmp_iter, active_assembly_list_inuse) {
+			assembly = qb_list_entry (list, struct assembly, list);
 
 			if (nodeid == assembly->nodeid) {
-				list_del (&assembly->list);
-				list_add (&assembly->list, &assembly_list_free);
+				qb_list_del (&assembly->list);
+				qb_list_add (&assembly->list, &assembly_list_free);
 			}
 		}
 	}
@@ -393,7 +385,7 @@ static inline void app_confchg_fn (
 {
 	int i;
 	struct totempg_group_instance *instance;
-	struct list_head *list;
+	struct qb_list_head *list;
 
 	/*
 	 * For every leaving processor, add to free list
@@ -404,11 +396,8 @@ static inline void app_confchg_fn (
 		assembly_deref_from_normal_and_trans (left_list[i]);
 	}
 
-	for (list = totempg_groups_list.next;
-		list != &totempg_groups_list;
-		list = list->next) {
-
-		instance = list_entry (list, struct totempg_group_instance, list);
+	qb_list_for_each(list, &totempg_groups_list) {
+		instance = qb_list_entry (list, struct totempg_group_instance, list);
 
 		if (instance->confchg_fn) {
 			instance->confchg_fn (
@@ -525,7 +514,7 @@ static inline void app_deliver_fn (
 	struct iovec stripped_iovec;
 	unsigned int adjust_iovec;
 	struct iovec *iovec;
-	struct list_head *list;
+	struct qb_list_head *list;
 
         struct iovec aligned_iovec = { NULL, 0 };
 
@@ -553,11 +542,8 @@ static inline void app_deliver_fn (
 
 	iovec = &aligned_iovec;
 
-	for (list = totempg_groups_list.next;
-		list != &totempg_groups_list;
-		list = list->next) {
-
-		instance = list_entry (list, struct totempg_group_instance, list);
+	qb_list_for_each(list, &totempg_groups_list) {
+		instance = qb_list_entry (list, struct totempg_group_instance, list);
 		if (group_matches (iovec, 1, instance->groups, instance->groups_cnt, &adjust_iovec)) {
 			stripped_iovec.iov_len = iovec->iov_len - adjust_iovec;
 			stripped_iovec.iov_base = (char *)iovec->iov_base + adjust_iovec;
@@ -828,7 +814,7 @@ int totempg_initialize (
 		(totempg_totem_config->net_mtu -
 		sizeof (struct totempg_mcast) - 16);
 
-	list_init (&totempg_groups_list);
+	qb_list_init (&totempg_groups_list);
 
 	return (res);
 }
@@ -1144,8 +1130,8 @@ int totempg_groups_initialize (
 	instance->groups = 0;
 	instance->groups_cnt = 0;
 	instance->q_level = QB_LOOP_MED;
-	list_init (&instance->list);
-	list_add (&instance->list, &totempg_groups_list);
+	qb_list_init (&instance->list);
+	qb_list_add (&instance->list, &totempg_groups_list);
 
 	if (totempg_threaded_mode == 1) {
 		pthread_mutex_unlock (&totempg_mutex);
