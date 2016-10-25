@@ -392,14 +392,14 @@ void *cs_ipcs_private_data_get(void *conn)
 static void cs_ipcs_connection_destroyed (qb_ipcs_connection_t *c)
 {
 	struct cs_ipcs_conn_context *context;
-        struct qb_list_head *list;
+	struct qb_list_head *list, *tmp_iter;
 	struct outq_item *outq_item;
 
 	log_printf(LOG_DEBUG, "%s() ", __func__);
 
 	context = qb_ipcs_context_get(c);
 	if (context) {
-            qb_list_for_each(list, &(context->outq_head)) {
+		qb_list_for_each_safe(list, tmp_iter, &(context->outq_head)) {
 			outq_item = qb_list_entry (list, struct outq_item, list);
 
 			qb_list_del (list);
@@ -466,12 +466,12 @@ int cs_ipcs_response_send(void *conn, const void *msg, size_t mlen)
 static void outq_flush (void *data)
 {
 	qb_ipcs_connection_t *conn = data;
-        struct qb_list_head *list;
+	struct qb_list_head *list, *tmp_iter;
 	struct outq_item *outq_item;
 	int32_t rc;
 	struct cs_ipcs_conn_context *context = qb_ipcs_context_get(conn);
 
-        qb_list_for_each(list, &(context->outq_head)) {
+	qb_list_for_each_safe(list, tmp_iter, &(context->outq_head)) {
 		outq_item = qb_list_entry (list, struct outq_item, list);
 
 		rc = qb_ipcs_event_send(conn, outq_item->msg, outq_item->mlen);

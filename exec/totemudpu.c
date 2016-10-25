@@ -319,7 +319,7 @@ static inline void mcast_sendmsg (
 	struct iovec iovec;
 	struct sockaddr_storage sockaddr;
 	int addrlen;
-       struct qb_list_head *list;
+	struct qb_list_head *list;
 	struct totemudpu_member *member;
 
 	iovec.iov_base = (void *)msg;
@@ -329,7 +329,7 @@ static inline void mcast_sendmsg (
 	/*
 	 * Build multicast message
 	 */
-        qb_list_for_each(list, &(instance->member_list)) {
+	qb_list_for_each(list, &(instance->member_list)) {
 		member = qb_list_entry (list,
 			struct totemudpu_member,
 			list);
@@ -1082,7 +1082,7 @@ int totemudpu_member_remove (
 	/*
 	 * Find the member to remove and close its socket
 	 */
-        qb_list_for_each(list, &(instance->member_list)) {
+	qb_list_for_each(list, &(instance->member_list)) {
 		member = qb_list_entry (list,
 			struct totemudpu_member,
 			list);
@@ -1124,7 +1124,7 @@ int totemudpu_member_list_rebind_ip (
 
 	struct totemudpu_instance *instance = (struct totemudpu_instance *)udpu_context;
 
-        qb_list_for_each(list, &(instance->member_list)) {
+	qb_list_for_each(list, &(instance->member_list)) {
 		member = qb_list_entry (list,
 			struct totemudpu_member,
 			list);

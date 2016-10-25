@@ -916,7 +916,7 @@ static void message_handler_req_lib_cfg_tryshutdown (
 	 */
 	shutdown_expected = 0;
 
-        qb_list_for_each(iter, &trackers_list) {
+	qb_list_for_each(iter, &trackers_list) {
 		struct cfg_info *testci = qb_list_entry(iter, struct cfg_info, list);
 		/*
 		 * It is assumed that we will allow shutdown

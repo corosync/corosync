@@ -514,7 +514,7 @@ static int main_config_parser_cb(const char *path,
 	static char formated_err[256];
 	struct main_cp_cb_data *data = (struct main_cp_cb_data *)user_data;
 	struct key_value_list_item *kv_item;
-        struct qb_list_head *iter;
+	struct qb_list_head *iter, *tmp_iter;
 	int uid, gid;
 
 	switch (type) {
@@ -1068,7 +1068,7 @@ static int main_config_parser_cb(const char *path,
 
 			ii = 0;
 
-                        qb_list_for_each(iter, &(data->member_items_head)) {
+			qb_list_for_each_safe(iter, tmp_iter, &(data->member_items_head)) {
 				kv_item = qb_list_entry(iter, struct key_value_list_item, list);
 
 				snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.member.%u",
@@ -1089,7 +1089,7 @@ static int main_config_parser_cb(const char *path,
 				return (0);
 			}
 
-                        qb_list_for_each(iter, &(data->logger_subsys_items_head)) {
+			qb_list_for_each_safe(iter, tmp_iter, &(data->logger_subsys_items_head)) {
 				kv_item = qb_list_entry(iter, struct key_value_list_item, list);
 
 				snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "logging.logger_subsys.%s.%s",
@@ -1115,7 +1115,7 @@ static int main_config_parser_cb(const char *path,
 				return (0);
 			}
 
-                        qb_list_for_each(iter, &(data->logger_subsys_items_head)) {
+			qb_list_for_each_safe(iter, tmp_iter, &(data->logger_subsys_items_head)) {
 				kv_item = qb_list_entry(iter, struct key_value_list_item, list);
 
 				if (data->subsys == NULL) {

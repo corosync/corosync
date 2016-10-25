@@ -3439,7 +3439,7 @@ static void token_callbacks_execute (
 	struct totemsrp_instance *instance,
 	enum totem_callback_token_type type)
 {
-        struct qb_list_head *list;
+	struct qb_list_head *list, *tmp_iter;
 	struct qb_list_head *callback_listhead = 0;
 	struct token_callback_instance *token_callback_instance;
 	int res;
@@ -3456,7 +3456,7 @@ static void token_callbacks_execute (
 		assert (0);
 	}
 
-        qb_list_for_each(list, callback_listhead) {
+	qb_list_for_each_safe(list, tmp_iter, callback_listhead) {
 		token_callback_instance = qb_list_entry (list, struct token_callback_instance, list);
 		del = token_callback_instance->delete;
 		if (del == 1) {

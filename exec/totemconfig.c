@@ -863,7 +863,7 @@ int totem_config_find_local_addr_in_nodelist(const char *ipaddr_key_prefix, unsi
 			 * Try to match ip with if_addrs
 			 */
 			node_found = 0;
-                        qb_list_for_each(list, &(addrs)) {
+			qb_list_for_each(list, &(addrs)) {
 				if_addr = qb_list_entry(list, struct totem_ip_if_address, list);
 
 				if (totemip_equal(&node_addr, &if_addr->ip_addr)) {

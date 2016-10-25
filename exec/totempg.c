@@ -303,7 +303,7 @@ static struct assembly *assembly_ref (unsigned int nodeid)
 	/*
 	 * Search inuse list for node id and return assembly buffer if found
 	 */
-        qb_list_for_each(list, active_assembly_list_inuse) {
+	qb_list_for_each(list, active_assembly_list_inuse) {
 		assembly = qb_list_entry (list, struct assembly, list);
 
 		if (nodeid == assembly->nodeid) {
@@ -353,7 +353,7 @@ static void assembly_deref (struct assembly *assembly)
 static void assembly_deref_from_normal_and_trans (int nodeid)
 {
 	int j;
-        struct qb_list_head *list;
+	struct qb_list_head *list, *tmp_iter;
 	struct qb_list_head *active_assembly_list_inuse;
 	struct assembly *assembly;
 
@@ -364,7 +364,7 @@ static void assembly_deref_from_normal_and_trans (int nodeid)
 			active_assembly_list_inuse = &assembly_list_inuse_trans;
 		}
 
-                qb_list_for_each(list, active_assembly_list_inuse) {
+		qb_list_for_each_safe(list, tmp_iter, active_assembly_list_inuse) {
 			assembly = qb_list_entry (list, struct assembly, list);
 
 			if (nodeid == assembly->nodeid) {
@@ -396,7 +396,7 @@ static inline void app_confchg_fn (
 		assembly_deref_from_normal_and_trans (left_list[i]);
 	}
 
-        qb_list_for_each(list, &totempg_groups_list) {
+	qb_list_for_each(list, &totempg_groups_list) {
 		instance = qb_list_entry (list, struct totempg_group_instance, list);
 
 		if (instance->confchg_fn) {
@@ -542,7 +542,7 @@ static inline void app_deliver_fn (
 
 	iovec = &aligned_iovec;
 
-        qb_list_for_each(list, &totempg_groups_list) {
+	qb_list_for_each(list, &totempg_groups_list) {
 		instance = qb_list_entry (list, struct totempg_group_instance, list);
 		if (group_matches (iovec, 1, instance->groups, instance->groups_cnt, &adjust_iovec)) {
 			stripped_iovec.iov_len = iovec->iov_len - adjust_iovec;
