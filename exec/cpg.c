@@ -660,7 +660,7 @@ static int notify_lib_totem_membership (
 	memcpy (res->member_list, member_list, res->member_list_entries * sizeof (mar_uint32_t));
 
 	if (conn == NULL) {
-                qb_list_for_each(iter, &cpg_pd_list_head) {
+		qb_list_for_each(iter, &cpg_pd_list_head) {
 			struct cpg_pd *cpg_pd = qb_list_entry (iter, struct cpg_pd, list);
 			api->ipc_dispatch_send (cpg_pd->conn, buf, size);
 		}
@@ -689,7 +689,7 @@ static int notify_lib_joinlist(
 
 	count = 0;
 
-        qb_list_for_each(iter, &process_info_list_head) {
+	qb_list_for_each(iter, &process_info_list_head) {
 		struct process_info *pi = qb_list_entry (iter, struct process_info, list);
 		if (mar_name_compare (&pi->group, group_name) == 0) {
 			int i;
@@ -722,7 +722,7 @@ static int notify_lib_joinlist(
 	res->header.error = CS_OK;
 	memcpy(&res->group_name, group_name, sizeof(mar_cpg_name_t));
 
-        qb_list_for_each(iter, &process_info_list_head) {
+	qb_list_for_each(iter, &process_info_list_head) {
 		struct process_info *pi=qb_list_entry (iter, struct process_info, list);
 
 		if (mar_name_compare (&pi->group, group_name) == 0) {
@@ -756,7 +756,7 @@ static int notify_lib_joinlist(
 	if (conn) {
 		api->ipc_dispatch_send (conn, buf, size);
 	} else {
-                qb_list_for_each(iter, &cpg_pd_list_head) {
+	qb_list_for_each(iter, &cpg_pd_list_head) {
 			struct cpg_pd *cpd = qb_list_entry (iter, struct cpg_pd, list);
 			if (mar_name_compare (&cpd->group_name, group_name) == 0) {
 				assert (joined_list_entries <= 1);
@@ -790,7 +790,7 @@ static int notify_lib_joinlist(
 	/*
 	 * Traverse thru cpds and send totem membership for cpd, where it is not send yet
 	 */
-        qb_list_for_each(iter, &cpg_pd_list_head) {
+	qb_list_for_each(iter, &cpg_pd_list_head) {
 		struct cpg_pd *cpd = qb_list_entry (iter, struct cpg_pd, list);
 
 		if ((cpd->flags & CPG_MODEL_V1_DELIVER_INITIAL_TOTEM_CONF) && (cpd->initial_totem_conf_sent == 0)) {
@@ -823,7 +823,7 @@ static struct downlist_msg* downlist_master_choose (void)
 	uint32_t i;
 	int ignore_msg;
 
-        qb_list_for_each(iter, &downlist_messages_head) {
+	qb_list_for_each(iter, &downlist_messages_head) {
 		cmp = qb_list_entry(iter, struct downlist_msg, list);
 		downlist_log("comparing", cmp);
 
@@ -870,7 +870,7 @@ static struct downlist_msg* downlist_master_choose (void)
 static void downlist_master_choose_and_send (void)
 {
 	struct downlist_msg *stored_msg;
-	struct qb_list_head *iter;
+	struct qb_list_head *iter, *tmp_iter;
 	struct process_info *left_pi;
 	qb_map_t *group_map;
 	struct cpg_name cpg_group;
@@ -900,8 +900,8 @@ static void downlist_master_choose_and_send (void)
 	 * confchg event, so we will collect these cpg groups and
 	 * relative left_lists here.
 	 */
-        qb_list_for_each(iter, &process_info_list_head) {
-                struct process_info *pi = qb_list_entry(iter, struct process_info, list);
+	qb_list_for_each_safe(iter, tmp_iter, &process_info_list_head) {
+		struct process_info *pi = qb_list_entry(iter, struct process_info, list);
 
 		left_pi = NULL;
 		for (i = 0; i < stored_msg->left_nodes; i++) {
@@ -963,14 +963,14 @@ static void downlist_master_choose_and_send (void)
  */
 static void joinlist_remove_zombie_pi_entries (void)
 {
-	struct qb_list_head *pi_iter;
+	struct qb_list_head *pi_iter, *tmp_iter;
 	struct qb_list_head *jl_iter;
 	struct process_info *pi;
 	struct joinlist_msg *stored_msg;
 	int found;
 
-        qb_list_for_each(pi_iter, &process_info_list_head) {
-                pi = qb_list_entry (pi_iter, struct process_info, list);
+	qb_list_for_each_safe(pi_iter, tmp_iter, &process_info_list_head) {
+		pi = qb_list_entry (pi_iter, struct process_info, list);
 
 		/*
 		 * Ignore local node
@@ -983,7 +983,7 @@ static void joinlist_remove_zombie_pi_entries (void)
 		 * Try to find message in joinlist messages
 		 */
 		found = 0;
-                qb_list_for_each(jl_iter, &joinlist_messages_head) {
+		qb_list_for_each(jl_iter, &joinlist_messages_head) {
 			stored_msg = qb_list_entry(jl_iter, struct joinlist_msg, list);
 
 			if (stored_msg->sender_nodeid == api->totem_nodeid_get()) {
@@ -1011,7 +1011,7 @@ static void joinlist_inform_clients (void)
 	unsigned int i;
 
 	i = 0;
-        qb_list_for_each(iter, &joinlist_messages_head) {
+	qb_list_for_each(iter, &joinlist_messages_head) {
 		stored_msg = qb_list_entry(iter, struct joinlist_msg, list);
 
 		log_printf (LOG_DEBUG, "joinlist_messages[%u] group:%s, ip:%s, pid:%d",
@@ -1034,9 +1034,9 @@ static void joinlist_inform_clients (void)
 static void downlist_messages_delete (void)
 {
 	struct downlist_msg *stored_msg;
-        struct qb_list_head *iter;
+        struct qb_list_head *iter, *tmp_iter;
 
-        qb_list_for_each(iter, &downlist_messages_head) {
+	qb_list_for_each_safe(iter, tmp_iter, &downlist_messages_head) {
 		stored_msg = qb_list_entry(iter, struct downlist_msg, list);
 		qb_list_del (&stored_msg->list);
 		free (stored_msg);
@@ -1046,9 +1046,9 @@ static void downlist_messages_delete (void)
 static void joinlist_messages_delete (void)
 {
 	struct joinlist_msg *stored_msg;
-        struct qb_list_head *iter;
+	struct qb_list_head *iter, *tmp_iter;
 
-        qb_list_for_each(iter, &joinlist_messages_head) {
+	qb_list_for_each_safe(iter, tmp_iter, &joinlist_messages_head) {
 		stored_msg = qb_list_entry(iter, struct joinlist_msg, list);
 		qb_list_del (&stored_msg->list);
 		free (stored_msg);
@@ -1066,10 +1066,10 @@ static char *cpg_exec_init_fn (struct corosync_api_v1 *corosync_api)
 
 static void cpg_iteration_instance_finalize (struct cpg_iteration_instance *cpg_iteration_instance)
 {
-        struct qb_list_head *iter;
+	struct qb_list_head *iter, *tmp_iter;
 	struct process_info *pi;
 
-        qb_list_for_each(iter, &(cpg_iteration_instance->items_list_head)) {
+	qb_list_for_each_safe(iter, tmp_iter, &(cpg_iteration_instance->items_list_head)) {
 		pi = qb_list_entry (iter, struct process_info, list);
 		qb_list_del (&pi->list);
 		free (pi);
@@ -1081,11 +1081,11 @@ static void cpg_iteration_instance_finalize (struct cpg_iteration_instance *cpg_
 
 static void cpg_pd_finalize (struct cpg_pd *cpd)
 {
-        struct qb_list_head *iter;
+	struct qb_list_head *iter, *tmp_iter;
 	struct cpg_iteration_instance *cpii;
 
-        zcb_all_free(cpd);
-        qb_list_for_each(iter, &(cpd->iteration_instance_list_head)) {
+	zcb_all_free(cpd);
+	qb_list_for_each_safe(iter, tmp_iter, &(cpd->iteration_instance_list_head)) {
 		cpii = qb_list_entry (iter, struct cpg_iteration_instance, list);
 
 		cpg_iteration_instance_finalize (cpii);
@@ -1202,8 +1202,9 @@ static void exec_cpg_partial_mcast_endian_convert (void *msg)
 static struct process_info *process_info_find(const mar_cpg_name_t *group_name, uint32_t pid, unsigned int nodeid) {
 	struct qb_list_head *iter;
 
-        qb_list_for_each(iter, &process_info_list_head) {
-                struct process_info *pi = qb_list_entry (iter, struct process_info, list);
+	qb_list_for_each(iter, &process_info_list_head) {
+		struct process_info *pi = qb_list_entry (iter, struct process_info, list);
+
 		if (pi->pid == pid && pi->nodeid == nodeid &&
 			mar_name_compare (&pi->group, group_name) == 0) {
 				return pi;
@@ -1242,7 +1243,7 @@ static void do_proc_join(
 	 * Insert new process in sorted order so synchronization works properly
 	 */
 	list_to_add = &process_info_list_head;
-        qb_list_for_each(list, &process_info_list_head) {
+	qb_list_for_each(list, &process_info_list_head) {
 		pi_entry = qb_list_entry(list, struct process_info, list);
 		if (pi_entry->nodeid > pi->nodeid ||
 			(pi_entry->nodeid == pi->nodeid && pi_entry->pid > pi->pid)) {
@@ -1270,7 +1271,7 @@ static void do_proc_leave(
 	int reason)
 {
 	struct process_info *pi;
-	struct qb_list_head *iter;
+	struct qb_list_head *iter, *tmp_iter;
 	mar_cpg_address_t notify_info;
 
 	notify_info.pid = pid;
@@ -1282,9 +1283,8 @@ static void do_proc_leave(
 		1, &notify_info,
 		MESSAGE_RES_CPG_CONFCHG_CALLBACK);
 
-        qb_list_for_each(iter, &process_info_list_head) {
+	qb_list_for_each_safe(iter, tmp_iter, &process_info_list_head) {
 		pi = qb_list_entry(iter, struct process_info, list);
-		iter = iter->next;
 
 		if (pi->pid == pid && pi->nodeid == nodeid &&
 			mar_name_compare (&pi->group, name)==0) {
@@ -1329,9 +1329,9 @@ static void message_handler_req_exec_cpg_downlist(
 
 	for (i = 0; i < my_member_list_entries; i++) {
 		found = 0;
-                qb_list_for_each(iter, &downlist_messages_head) {
-
+		qb_list_for_each(iter, &downlist_messages_head) {
 			stored_msg = qb_list_entry(iter, struct downlist_msg, list);
+
 			if (my_member_list[i] == stored_msg->sender_nodeid) {
 				found = 1;
 			}
@@ -1410,7 +1410,7 @@ static void message_handler_req_exec_cpg_mcast (
 	const struct req_exec_cpg_mcast *req_exec_cpg_mcast = message;
 	struct res_lib_cpg_deliver_callback res_lib_cpg_mcast;
 	int msglen = req_exec_cpg_mcast->msglen;
-	struct qb_list_head *iter, *pi_iter;
+	struct qb_list_head *iter, *pi_iter, *tmp_iter;
 	struct cpg_pd *cpd;
 	struct iovec iovec[2];
 	int known_node = 0;
@@ -1429,14 +1429,14 @@ static void message_handler_req_exec_cpg_mcast (
 	iovec[1].iov_base = (char*)message+sizeof(*req_exec_cpg_mcast);
 	iovec[1].iov_len = msglen;
 
-        qb_list_for_each(iter, &cpg_pd_list_head) {
+	qb_list_for_each_safe(iter, tmp_iter, &cpg_pd_list_head) {
 		cpd = qb_list_entry(iter, struct cpg_pd, list);
 		if ((cpd->cpd_state == CPD_STATE_LEAVE_STARTED || cpd->cpd_state == CPD_STATE_JOIN_COMPLETED)
 			&& (mar_name_compare (&cpd->group_name, &req_exec_cpg_mcast->group_name) == 0)) {
 
 			if (!known_node) {
 				/* Try to find, if we know the node */
-                                qb_list_for_each(pi_iter, &process_info_list_head) {
+				qb_list_for_each(pi_iter, &process_info_list_head) {
 					struct process_info *pi = qb_list_entry (pi_iter, struct process_info, list);
 
 					if (pi->nodeid == nodeid &&
@@ -1464,7 +1464,7 @@ static void message_handler_req_exec_cpg_partial_mcast (
 	const struct req_exec_cpg_partial_mcast *req_exec_cpg_mcast = message;
 	struct res_lib_cpg_partial_deliver_callback res_lib_cpg_mcast;
 	int msglen = req_exec_cpg_mcast->fraglen;
-	struct qb_list_head *iter, *pi_iter;
+	struct qb_list_head *iter, *pi_iter, *tmp_iter;
 	struct cpg_pd *cpd;
 	struct iovec iovec[2];
 	int known_node = 0;
@@ -1487,14 +1487,15 @@ static void message_handler_req_exec_cpg_partial_mcast (
 	iovec[1].iov_base = (char*)message+sizeof(*req_exec_cpg_mcast);
 	iovec[1].iov_len = msglen;
 
-        qb_list_for_each(iter, &cpg_pd_list_head) {
-                cpd = qb_list_entry(iter, struct cpg_pd, list);
+	qb_list_for_each_safe(iter, tmp_iter, &cpg_pd_list_head) {
+		cpd = qb_list_entry(iter, struct cpg_pd, list);
+
 		if ((cpd->cpd_state == CPD_STATE_LEAVE_STARTED || cpd->cpd_state == CPD_STATE_JOIN_COMPLETED)
 		    && (mar_name_compare (&cpd->group_name, &req_exec_cpg_mcast->group_name) == 0)) {
 
 			if (!known_node) {
 				/* Try to find, if we know the node */
-                                qb_list_for_each(pi_iter, &process_info_list_head) {
+				qb_list_for_each(pi_iter, &process_info_list_head) {
 					struct process_info *pi = qb_list_entry (pi_iter, struct process_info, list);
 
 					if (pi->nodeid == nodeid &&
@@ -1540,7 +1541,7 @@ static int cpg_exec_send_joinlist(void)
 	struct join_list_entry *jle;
 	struct iovec req_exec_cpg_iovec;
 
-        qb_list_for_each(iter, &process_info_list_head) {
+	qb_list_for_each(iter, &process_info_list_head) {
 		struct process_info *pi = qb_list_entry (iter, struct process_info, list);
 
  		if (pi->nodeid == api->totem_nodeid_get ()) {
@@ -1561,7 +1562,7 @@ static int cpg_exec_send_joinlist(void)
 	jle = (struct join_list_entry *)(buf + sizeof(struct qb_ipc_response_header));
 	res = (struct qb_ipc_response_header *)buf;
 
-        qb_list_for_each(iter, &process_info_list_head) {
+	qb_list_for_each(iter, &process_info_list_head) {
 		struct process_info *pi = qb_list_entry (iter, struct process_info, list);
 
 		if (pi->nodeid == api->totem_nodeid_get ()) {
@@ -1605,7 +1606,7 @@ static void message_handler_req_lib_cpg_join (void *conn, const void *message)
 	struct qb_list_head *iter;
 
 	/* Test, if we don't have same pid and group name joined */
-        qb_list_for_each(iter, &cpg_pd_list_head) {
+	qb_list_for_each(iter, &cpg_pd_list_head) {
 		struct cpg_pd *cpd_item = qb_list_entry (iter, struct cpg_pd, list);
 
 		if (cpd_item->pid == req_lib_cpg_join->pid &&
@@ -1621,7 +1622,7 @@ static void message_handler_req_lib_cpg_join (void *conn, const void *message)
 	 * Same check must be done in process info list, because there may be not yet delivered
 	 * leave of client.
 	 */
-        qb_list_for_each(iter, &process_info_list_head) {
+	qb_list_for_each(iter, &process_info_list_head) {
 		struct process_info *pi = qb_list_entry (iter, struct process_info, list);
 
 		if (pi->nodeid == api->totem_nodeid_get () && pi->pid == req_lib_cpg_join->pid &&
@@ -1821,11 +1822,11 @@ static inline int zcb_free (struct zcb_mapped *zcb_mapped)
 
 static inline int zcb_by_addr_free (struct cpg_pd *cpd, void *addr)
 {
-	struct qb_list_head *list;
+	struct qb_list_head *list, *tmp_iter;
 	struct zcb_mapped *zcb_mapped;
 	unsigned int res = 0;
 
-        qb_list_for_each(list, &(cpd->zcb_mapped_list_head)) {
+	qb_list_for_each_safe(list, tmp_iter, &(cpd->zcb_mapped_list_head)) {
 		zcb_mapped = qb_list_entry (list, struct zcb_mapped, list);
 
 		if (zcb_mapped->addr == addr) {
@@ -1840,13 +1841,11 @@ static inline int zcb_by_addr_free (struct cpg_pd *cpd, void *addr)
 static inline int zcb_all_free (
 	struct cpg_pd *cpd)
 {
-	struct qb_list_head *list;
+	struct qb_list_head *list, *tmp_iter;
 	struct zcb_mapped *zcb_mapped;
 
-        qb_list_for_each(list, &(cpd->zcb_mapped_list_head)) {
+	qb_list_for_each_safe(list, tmp_iter, &(cpd->zcb_mapped_list_head)) {
 		zcb_mapped = qb_list_entry (list, struct zcb_mapped, list);
-
-		list = list->next;
 
 		zcb_free (zcb_mapped);
 	}
@@ -2127,7 +2126,7 @@ static void message_handler_req_lib_cpg_membership (void *conn,
 	res_lib_cpg_membership_get.header.size =
 		sizeof (struct res_lib_cpg_membership_get);
 
-        qb_list_for_each(iter, &process_info_list_head) {
+	qb_list_for_each(iter, &process_info_list_head) {
 		struct process_info *pi = qb_list_entry (iter, struct process_info, list);
 		if (mar_name_compare (&pi->group, &req_lib_cpg_membership_get->group_name) == 0) {
 			res_lib_cpg_membership_get.member_list[member_count].nodeid = pi->nodeid;
@@ -2198,7 +2197,7 @@ static void message_handler_req_lib_cpg_iteration_initialize (
 	/*
 	 * Create copy of process_info list "grouped by" group name
 	 */
-        qb_list_for_each(iter, &process_info_list_head) {
+	qb_list_for_each(iter, &process_info_list_head) {
 		struct process_info *pi = qb_list_entry (iter, struct process_info, list);
 		struct process_info *new_pi;
 
@@ -2256,12 +2255,12 @@ static void message_handler_req_lib_cpg_iteration_initialize (
 		/*
 		 * We will return list "grouped" by "group name", so try to find right place to add
 		 */
-                qb_list_for_each(iter2, &(cpg_iteration_instance->items_list_head)) {
-			 struct process_info *pi2 = qb_list_entry (iter2, struct process_info, list);
+		qb_list_for_each(iter2, &(cpg_iteration_instance->items_list_head)) {
+			struct process_info *pi2 = qb_list_entry (iter2, struct process_info, list);
 
-			 if (mar_name_compare (&pi2->group, &pi->group) == 0) {
+			if (mar_name_compare (&pi2->group, &pi->group) == 0) {
 				break;
-			 }
+			}
 		}
 
 		qb_list_add (&new_pi->list, iter2);

@@ -389,9 +389,9 @@ error_free_ifaddrs:
 void totemip_freeifaddrs(struct qb_list_head *addrs)
 {
 	struct totem_ip_if_address *if_addr;
-	struct qb_list_head *list;
+	struct qb_list_head *list, *tmp_iter;
 
-        qb_list_for_each(list, addrs) {
+	qb_list_for_each_safe(list, tmp_iter, addrs) {
 		if_addr = qb_list_entry(list, struct totem_ip_if_address, list);
 
 		free(if_addr->name);
@@ -424,7 +424,7 @@ int totemip_iface_check(struct totem_ip_address *bindnet,
 		return (-1);
 	}
 
-        qb_list_for_each(list, &addrs) {
+	qb_list_for_each(list, &addrs) {
 		if_addr = qb_list_entry(list, struct totem_ip_if_address, list);
 
 		if (bindnet->family != if_addr->ip_addr.family)

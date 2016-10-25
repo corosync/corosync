@@ -231,9 +231,9 @@ static int quorum_register_callback(quorum_callback_fn_t function, void *context
 static int quorum_unregister_callback(quorum_callback_fn_t function, void *context)
 {
 	struct internal_callback_pd *pd;
-	struct qb_list_head *tmp;
+	struct qb_list_head *tmp, *tmp_iter;
 
-        qb_list_for_each(tmp, &internal_trackers_list) {
+	qb_list_for_each_safe(tmp, tmp_iter, &internal_trackers_list) {
 		pd = qb_list_entry(tmp, struct internal_callback_pd, list);
 		if (pd->callback == function && pd->context == context) {
 			qb_list_del(&pd->list);
@@ -339,7 +339,8 @@ static void send_internal_notification(void)
 {
 	struct qb_list_head *tmp;
 	struct internal_callback_pd *pd;
-        qb_list_for_each(tmp, &internal_trackers_list) {
+
+	qb_list_for_each(tmp, &internal_trackers_list) {
 		pd = qb_list_entry(tmp, struct internal_callback_pd, list);
 
 		pd->callback(primary_designated, pd->context);
@@ -374,7 +375,7 @@ static void send_library_notification(void *conn)
 	else {
 		struct quorum_pd *qpd;
 
-                qb_list_for_each(tmp, &lib_trackers_list) {
+		qb_list_for_each(tmp, &lib_trackers_list) {
 			qpd = qb_list_entry(tmp, struct quorum_pd, list);
 
 			corosync_api->ipc_dispatch_send(qpd->conn,

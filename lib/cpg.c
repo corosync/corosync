@@ -142,13 +142,13 @@ static void cpg_inst_free (void *inst)
 
 static void cpg_inst_finalize (struct cpg_inst *cpg_inst, hdb_handle_t handle)
 {
-        struct qb_list_head *iter;
+	struct qb_list_head *iter, *tmp_iter;
 	struct cpg_iteration_instance_t *cpg_iteration_instance;
 
 	/*
 	 * Traverse thru iteration instances and delete them
 	 */
-        qb_list_for_each(iter, &(cpg_inst->iteration_list_head)) {
+	qb_list_for_each_safe(iter, tmp_iter, &(cpg_inst->iteration_list_head)) {
 		cpg_iteration_instance = qb_list_entry (iter, struct cpg_iteration_instance_t, list);
 
 		cpg_iteration_instance_finalize (cpg_iteration_instance);
