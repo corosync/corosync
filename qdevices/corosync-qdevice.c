@@ -246,7 +246,7 @@ main(int argc, char * const argv[])
 		return (1);
 	}
 
-	qdevice_log(LOG_DEBUG, "Destorying qdevice model");
+	qdevice_log(LOG_DEBUG, "Destroying qdevice model");
 	qdevice_model_destroy(&instance);
 
 	qdevice_ipc_destroy(&instance);
