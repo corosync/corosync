@@ -6,9 +6,10 @@ Wants=corosync.service
 After=corosync.service
 
 [Service]
-ExecStart=@INITWRAPPERSDIR@/corosync-qdevice start
-ExecStop=@INITWRAPPERSDIR@/corosync-qdevice stop
-Type=forking
+EnvironmentFile=-@INITCONFIGDIR@/corosync-qdevice
+ExecStart=@SBINDIR@/corosync-qdevice -f $COROSYNC_QDEVICE_OPTIONS
+Type=notify
+Restart=on-abnormal
 RuntimeDirectory=corosync-qdevice
 RuntimeDirectoryMode=0770
 
