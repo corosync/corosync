@@ -48,6 +48,10 @@
 #include "qdevice-votequorum.h"
 #include "utils.h"
 
+#ifdef HAVE_LIBSYSTEMD
+#include <systemd/sd-daemon.h>
+#endif
+
 struct qdevice_instance *global_instance;
 
 static void
@@ -258,6 +262,9 @@ main(int argc, char * const argv[])
 	signal_handlers_register();
 
 	qdevice_log(LOG_DEBUG, "Running qdevice model");
+#ifdef HAVE_LIBSYSTEMD
+	sd_notify (0, "READY=1");
+#endif
 	if (qdevice_model_run(&instance) != 0) {
 		return (1);
 	}
