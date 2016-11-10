@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016 Red Hat, Inc.
+ * Copyright (c) 2015-2017 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -63,6 +63,8 @@ enum msg_type {
 	MSG_TYPE_ASK_FOR_VOTE_REPLY = 13,
 	MSG_TYPE_VOTE_INFO = 14,
 	MSG_TYPE_VOTE_INFO_REPLY = 15,
+	MSG_TYPE_HEURISTICS_CHANGE = 16,
+	MSG_TYPE_HEURISTICS_CHANGE_REPLY = 17,
 };
 
 struct msg_decoded {
@@ -112,6 +114,7 @@ struct msg_decoded {
 	enum tlv_quorate quorate;	/* Valid only if quorate_set != 0 */
 	int tie_breaker_set;
 	struct tlv_tie_breaker tie_breaker;
+	enum tlv_heuristics heuristics;	/* Always valid but can be TLV_HEURISTICS_UNDEFINED */
 };
 
 extern size_t		msg_create_preinit(struct dynar *msg, const char *cluster_name,
@@ -159,6 +162,7 @@ extern size_t		msg_create_node_list(struct dynar *msg,
     int add_ring_id, const struct tlv_ring_id *ring_id,
     int add_config_version, uint64_t config_version,
     int add_quorate, enum tlv_quorate quorate,
+    int add_heuristics, enum tlv_heuristics heuristics,
     const struct node_list *nodes);
 
 extern size_t		msg_create_node_list_reply(struct dynar *msg, uint32_t msg_seq_number,
@@ -174,6 +178,13 @@ extern size_t		msg_create_vote_info(struct dynar *msg, uint32_t msg_seq_number,
     const struct tlv_ring_id *ring_id, enum tlv_vote vote);
 
 extern size_t		msg_create_vote_info_reply(struct dynar *msg, uint32_t msg_seq_number);
+
+extern size_t		msg_create_heuristics_change(struct dynar *msg, uint32_t msg_seq_number,
+    enum tlv_heuristics heuristics);
+
+extern size_t		msg_create_heuristics_change_reply(struct dynar *msg,
+    uint32_t msg_seq_number, const struct tlv_ring_id *ring_id, enum tlv_heuristics heuristics,
+    enum tlv_vote vote);
 
 extern size_t		msg_get_header_length(void);
 

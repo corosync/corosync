@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016 Red Hat, Inc.
+ * Copyright (c) 2015-2017 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -44,6 +44,7 @@
 #include <votequorum.h>
 
 #include "qdevice-advanced-settings.h"
+#include "qdevice-heuristics.h"
 #include "qdevice-model-type.h"
 #include "node-list.h"
 #include "unix-socket-ipc.h"
@@ -59,6 +60,7 @@ struct qdevice_instance {
 	cmap_track_handle_t cmap_reload_track_handle;
 	cmap_track_handle_t cmap_nodelist_track_handle;
 	cmap_track_handle_t cmap_logging_track_handle;
+	cmap_track_handle_t cmap_heuristics_track_handle;
 
 	votequorum_handle_t votequorum_handle;
 	int votequorum_poll_fd;
@@ -84,13 +86,21 @@ struct qdevice_instance {
 	votequorum_node_t *vq_quorum_node_list;
 
 	/*
-	 * Copy of votequorum_nodelist_notify_fn callback paramters.
-	 * Set after model callback is called.
+	 * Copy of current votequorum_nodelist_notify_fn callback parameters.
+	 * Set after model callback qdevice_votequorum_node_list_notify_callback is called.
 	 */
-	uint8_t vq_node_list_ring_id_set;
+	uint8_t vq_node_list_initial_ring_id_set;
 	votequorum_ring_id_t vq_node_list_ring_id;
 	uint32_t vq_node_list_entries;
 	uint32_t *vq_node_list;
+	uint8_t vq_node_list_initial_heuristics_finished;
+	enum qdevice_heuristics_exec_result vq_node_list_heuristics_result;
+
+	/*
+	 * Copy of current votequorum_nodelist_notify_fn callback ring id
+	 * It's set before any callback is called and used for qdevice_votequorum_poll
+	 */
+	votequorum_ring_id_t vq_poll_ring_id;
 
 	/*
 	 * Copy of votequorum_expectedvotes_notify_fn callback parameters.
@@ -106,6 +116,8 @@ struct qdevice_instance {
 	const struct qdevice_advanced_settings *advanced_settings;
 
 	int sync_in_progress;
+
+	struct qdevice_heuristics_instance heuristics_instance;
 };
 
 extern int	qdevice_instance_init(struct qdevice_instance *instance,
@@ -114,6 +126,8 @@ extern int	qdevice_instance_init(struct qdevice_instance *instance,
 extern int	qdevice_instance_destroy(struct qdevice_instance *instance);
 
 extern int	qdevice_instance_configure_from_cmap(struct qdevice_instance *instance);
+
+extern int	qdevice_instance_configure_from_cmap_heuristics(struct qdevice_instance *instance);
 
 #ifdef __cplusplus
 }

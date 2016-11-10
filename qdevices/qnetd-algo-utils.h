@@ -42,6 +42,7 @@ extern "C" {
 struct qnetd_algo_partition {
 	struct tlv_ring_id ring_id;
 	int num_nodes;
+	int score;
 	TAILQ_ENTRY(qnetd_algo_partition) entries;
 };
 

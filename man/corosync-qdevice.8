@@ -1,5 +1,5 @@
 .\"/*
-.\" * Copyright (C) 2016 Red Hat, Inc.
+.\" * Copyright (C) 2016-2017 Red Hat, Inc.
 .\" *
 .\" * All rights reserved.
 .\" *
@@ -31,7 +31,7 @@
 .\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 .\" * THE POSSIBILITY OF SUCH DAMAGE.
 .\" */
-.TH COROSYNC-QDEVICE 8 2016-06-29
+.TH COROSYNC-QDEVICE 8 2017-10-17
 .SH NAME
 corosync-qdevice \- QDevice daemon
 .SH SYNOPSIS
@@ -93,9 +93,59 @@ Default is 30000.
 .B votes
 The number of votes provided to the cluster by qdevice. Default is (number_of_nodes - 1) or generally
 sum(votes_per_node) - 1.
+
+.PP
+.B quorum.device.heuristics
+subkey holds the configuration of the heuristics. Heuristics are set of commands executed locally on
+startup, cluster membership change, successful connect to
+.B corosync-qnetd
+and optionally also at regular times. When all commands finish successfully
+(their return error code is zero) on time,
+heuristics have passed, otherwise they have failed. The heuristics result is sent to
+.B corosync-qnetd
+and there it's used in calculations to determine which partition should be quorate.
+.TP
+.B timeout
+Specifies maximum time in milliseconds how long
+.B corosync-qdevice
+waits till the heuristics commands finish. If some command doesn't finish before the timeout, it's
+killed and heuristics fail. This timeout is used for heuristics executed at regular times.
+Default value is half of the quorum.device.timeout, so 5000.
+.TP
+.B sync_timeout
+Similar to quorum.device.heuristics.timeout but used during membership changes. Default
+value is half of the quorum.device.sync_timeout, so 15000.
+.TP
+.B interval
+Specifies interval between two regular heuristics execution. Default value is
+3 * quorum.device.timeout, so 30000.
+.TP
+.B mode
+Can be on of
+.I on, sync or off
+and specifies mode of operation of heuristics. Default is
+.I off
+what means heuristics are disabled. When
+.I sync
+is set, heuristics are executed only during startup, membership change and when connection
+to
+.B corosync-qnetd
+is established. When heuristics should be running also on regular basis, this option
+should be set to
+.I on
+value.
+.TP
+.B exec_NAME
+defines executables.
+.I NAME
+can be arbitrary valid cmap key name string and it has no special meaning.
+The value of this variable must contain a command to execute. The alue is parsed (split)
+into arguments similarly as Bourne shell would do. Quoting is possible by
+using backslash and double quotes.
+
 .PP
 .B quorum.device.net
-holds the configuration for model 'net'.
+subkey holds the configuration for model 'net'.
 .TP
 .B tls
 Can be one of
@@ -206,9 +256,13 @@ Algorithms are used to change behavior of how
 provides votes to a given node/partition. Currently there are two algorithms supported.
 .TP
 .B ffsplit
-This one makes sense only for clusters with even number of nodes. It provides exactly one
-vote to the partition with the highest number of active nodes. If there are two exactly similar partitions,
-it provides its vote to the partition that has the most clients connected to the qnetd
+This one makes sense only for clusters with an even number of nodes. It provides exactly one
+vote to the partition with the highest number of active nodes. If there are two exactly
+similar partitions,
+it provides its vote to the partition with higher score. The score is computed
+as (number_of_connected_nodes +
+number_of_connected_nodes_with_passed_heuristics - number_of_connected_nodes_with_failed_heuristics)
+If the scores are equal, the vote is provided to partition with the most clients connected to the qnetd
 server. If this number is also equal, then the tie_breaker is used. It is able to transition
 its vote if the currently active partition becomes partitioned and a non-active partition
 still has at least 50% of the active nodes. Because of this, a vote is not provided
@@ -225,8 +279,12 @@ qnetd server then we return a vote.
 
 If more than one node can see the qnetd server but some nodes can't
 see each other then the cluster is divided up into 'partitions' based on
-their ring_id and this algorithm returns a vote to the largest active partition or, 
-if there is more than 1 equal partition, the partition that contains the tie_breaker 
+their ring_id and this algorithm returns a vote to the partition with highest
+heuristics score (computed the same way as for the
+.B ffsplit
+algorithm), or if there is more than 1 partition with equal scores,
+the largest active partition or,
+if there is more than 1 equal partition, the partition that contains the tie_breaker
 node (lowest, highest, etc). For LMS to work, the number
 of qdevice votes has to be set to default (so just delete
 .B quorum.device.votes
@@ -266,6 +324,36 @@ Maximum size of a message allowed to be sent to an IPC client. (65536)
 .TP
 .B master_wins
 Force enable/disable master wins. (default is model)
+.TP
+.B heuristics_ipc_max_send_buffers
+Maximum number of heuristics worker send buffers. (128)
+.TP
+.B heuristics_ipc_max_send_receive_size
+Maximum size of a message allowed to be send to, or received from heuristics worker. (4096)
+.TP
+.B heuristics_min_timeout
+Minimum heuristics timeout accepted by client in ms. (1000)
+.TP
+.B heuristics_max_timeout
+Maximum heuristics timeout accepted by client in ms. (120000)
+.TP
+.B heuristics_min_interval
+Minimum heuristics interval accepted by client in ms. (1000)
+.TP
+.B heuristics_max_interval
+Maximum heuristics interval accepted by client in ms. (3600000)
+.TP
+.B heuristics_max_execs
+Maximum number of exec_ commands. (32)
+.TP
+.B heuristics_use_execvp
+Use execvp instead of execv for executing commands. (off)
+.TP
+.B heuristics_max_processes
+Maximum number of processes running at one time. (160)
+.B heuristics_kill_list_interval
+Interval between status is gathered and eventually signal is sent
+to processes which didn't finished on time in ms. (5000)
 .TP
 .B net_nss_db_dir
 NSS database directory. (/etc/corosync/qdevice/net/nssdb)
@@ -308,6 +396,33 @@ Maximum connection timeout accepted by client in ms. (120000)
 .TP
 .B net_test_algorithm_enabled
 Enable test algorithm. (if built with --enable-debug on, otherwise off)
+
+.SH EXAMPLE
+Define qdevice with
+.I net
+model connecting to qnetd running on qnetd.example.org host, using ffsplit algorithm.
+Heuristics is set to
+.I sync
+mode and executes two commands.
+
+.nf
+quorum {
+  provider: corosync_votequorum
+  device {
+    votes: 1
+    model: net
+    net {
+      tls: on
+      host: qnetd.example.org
+      algorithm: ffsplit
+    }
+    heuristics {
+      mode: sync
+      exec_ping: /bin/ping -q -c 1 "www.example.org"
+      exec_test_txt_exists: /usr/bin/test -f /tmp/test.txt
+    }
+}
+.fi
 .SH SEE ALSO
 .BR corosync-qdevice-tool (8)
 .BR corosync-qdevice-net-certutil (8)

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016 Red Hat, Inc.
+ * Copyright (c) 2015-2017 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -120,8 +120,8 @@ qdevice_net_algo_ffsplit_init(struct qdevice_net_instance *instance)
 }
 
 int
-qdevice_net_algo_ffsplit_connected(struct qdevice_net_instance *instance, int *send_config_node_list,
-    int *send_membership_node_list, int *send_quorum_node_list, enum tlv_vote *vote)
+qdevice_net_algo_ffsplit_connected(struct qdevice_net_instance *instance, enum tlv_heuristics *heuristics,
+    int *send_config_node_list, int *send_membership_node_list, int *send_quorum_node_list, enum tlv_vote *vote)
 {
 
 	return (0);
@@ -143,7 +143,16 @@ qdevice_net_algo_ffsplit_config_node_list_changed(struct qdevice_net_instance *i
 int
 qdevice_net_algo_ffsplit_votequorum_node_list_notify(struct qdevice_net_instance *instance,
     const struct tlv_ring_id *ring_id, uint32_t node_list_entries, uint32_t node_list[],
-    int *send_node_list, enum tlv_vote *vote)
+    int *pause_cast_vote_timer, enum tlv_vote *vote)
+{
+
+	return (0);
+}
+
+int
+qdevice_net_algo_ffsplit_votequorum_node_list_heuristics_notify(struct qdevice_net_instance *instance,
+    const struct tlv_ring_id *ring_id, uint32_t node_list_entries, uint32_t node_list[],
+    int *send_node_list, enum tlv_vote *vote, enum tlv_heuristics *heuristics)
 {
 
 	return (0);
@@ -247,6 +256,27 @@ qdevice_net_algo_ffsplit_echo_reply_not_received(struct qdevice_net_instance *in
 }
 
 int
+qdevice_net_algo_ffsplit_heuristics_change(struct qdevice_net_instance *instance,
+    enum tlv_heuristics *heuristics, int *send_msg, enum tlv_vote *vote)
+{
+
+	return (0);
+}
+
+int
+qdevice_net_algo_ffsplit_heuristics_change_reply_received(struct qdevice_net_instance *instance,
+    uint32_t seq_number, const struct tlv_ring_id *ring_id, int ring_id_is_valid,
+    enum tlv_heuristics heuristics, enum tlv_vote *vote)
+{
+
+	if (!ring_id_is_valid) {
+		*vote = TLV_VOTE_NO_CHANGE;
+	}
+
+	return (0);
+}
+
+int
 qdevice_net_algo_ffsplit_disconnected(struct qdevice_net_instance *instance,
     enum qdevice_net_disconnect_reason disconnect_reason, int *try_reconnect, enum tlv_vote *vote)
 {
@@ -272,6 +302,7 @@ static struct qdevice_net_algorithm qdevice_net_algo_ffsplit = {
 	.connected				= qdevice_net_algo_ffsplit_connected,
 	.config_node_list_changed		= qdevice_net_algo_ffsplit_config_node_list_changed,
 	.votequorum_node_list_notify		= qdevice_net_algo_ffsplit_votequorum_node_list_notify,
+	.votequorum_node_list_heuristics_notify	= qdevice_net_algo_ffsplit_votequorum_node_list_heuristics_notify,
 	.votequorum_quorum_notify		= qdevice_net_algo_ffsplit_votequorum_quorum_notify,
 	.votequorum_expected_votes_notify	= qdevice_net_algo_ffsplit_votequorum_expected_votes_notify,
 	.config_node_list_reply_received	= qdevice_net_algo_ffsplit_config_node_list_reply_received,
@@ -281,6 +312,8 @@ static struct qdevice_net_algorithm qdevice_net_algo_ffsplit = {
 	.vote_info_received			= qdevice_net_algo_ffsplit_vote_info_received,
 	.echo_reply_received			= qdevice_net_algo_ffsplit_echo_reply_received,
 	.echo_reply_not_received		= qdevice_net_algo_ffsplit_echo_reply_not_received,
+	.heuristics_change			= qdevice_net_algo_ffsplit_heuristics_change,
+	.heuristics_change_reply_received	= qdevice_net_algo_ffsplit_heuristics_change_reply_received,
 	.disconnected				= qdevice_net_algo_ffsplit_disconnected,
 	.destroy				= qdevice_net_algo_ffsplit_destroy,
 };

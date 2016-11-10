@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016 Red Hat, Inc.
+ * Copyright (c) 2015-2017 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -62,12 +62,13 @@ qdevice_net_algo_test_init(struct qdevice_net_instance *instance)
  * send_config_node_list, send_membership_node_list and send_quorum_node_list can be set to
  * nonzero (default) to make qdevice-net send given lists to qnetd
  * vote (default TLV_VOTE_WAIT_FOR_REPLY) can be set to update voting timer
+ * heuristics is result of pre connect heuristics and can be updated
  *
  * Callback should return 0 on success or -1 on failure (-> disconnect client).
  */
 int
-qdevice_net_algo_test_connected(struct qdevice_net_instance *instance, int *send_config_node_list,
-    int *send_membership_node_list, int *send_quorum_node_list, enum tlv_vote *vote)
+qdevice_net_algo_test_connected(struct qdevice_net_instance *instance, enum tlv_heuristics *heuristics,
+    int *send_config_node_list, int *send_membership_node_list, int *send_quorum_node_list, enum tlv_vote *vote)
 {
 
 	qdevice_log(LOG_INFO, "algo-test: Connected");
@@ -101,7 +102,35 @@ qdevice_net_algo_test_config_node_list_changed(struct qdevice_net_instance *inst
 }
 
 /*
- * Called after votequorum node list notify is dispatched.
+ * Called after votequorum node list notify is dispatched but heuristics result is not
+ * yet known (heuristics were just executed). Full list together with result of heuristics
+ * are received in qdevice_net_algo_test_votequorum_node_list_heuristics_notify.
+ * This applies also if heuristics are disabled.
+ *
+ * pause_cast_vote_timer is preset to 1. If after callback this value is still != 0,
+ * cast vote timer is paused until heuristics finishes.
+ *
+ * vote is by default set to TLV_VOTE_NO_CHANGE with exception of situation when
+ *   net_instance->state != QDEVICE_NET_INSTANCE_STATE_WAITING_VOTEQUORUM_CMAP_EVENTS and
+ *   cast_vote_timer_vote = TLV_VOTE_ACK
+ * then vote is set to TLV_VOTE_NACK. This is to allow qnetd disconnection and still vote
+ * ACK as long as no change happens.
+ *
+ * Callback should return 0 on success or -1 on failure (-> disconnect client).
+ */
+int
+qdevice_net_algo_test_votequorum_node_list_notify(struct qdevice_net_instance *instance,
+    const struct tlv_ring_id *ring_id, uint32_t node_list_entries, uint32_t node_list[],
+    int *pause_cast_vote_timer, enum tlv_vote *vote)
+{
+
+	qdevice_log(LOG_INFO, "algo-test: Votequorum list notify");
+
+	return (0);
+}
+
+/*
+ * Called after votequorum node list notify is dispatched and heuristics result is known.
  *
  * Callback should return 0 on success or -1 on failure (-> disconnect client).
  *
@@ -113,14 +142,15 @@ qdevice_net_algo_test_config_node_list_changed(struct qdevice_net_instance *inst
  *     vote = TLV_VOTE_NACK.
  * Otherwise send_node_list = 1 and vote = TLV_VOTE_WAIT_FOR_REPLY
  * If send_node_list is set to non zero, node list is sent to qnetd
+ * heuristics results can be used (and overwrite)
  */
 int
-qdevice_net_algo_test_votequorum_node_list_notify(struct qdevice_net_instance *instance,
+qdevice_net_algo_test_votequorum_node_list_heuristics_notify(struct qdevice_net_instance *instance,
     const struct tlv_ring_id *ring_id, uint32_t node_list_entries, uint32_t node_list[],
-    int *send_node_list, enum tlv_vote *vote)
+    int *send_node_list, enum tlv_vote *vote, enum tlv_heuristics *heuristics)
 {
 
-	qdevice_log(LOG_INFO, "algo-test: Votequorum list notify");
+	qdevice_log(LOG_INFO, "algo-test: Votequorum heuristics list notify");
 
 	return (0);
 }
@@ -172,7 +202,8 @@ qdevice_net_algo_test_votequorum_expected_votes_notify(struct qdevice_net_instan
 /*
  * Called when config node list reply is received. Vote is set to value returned by server (and can
  * be overwriten by algorithm). ring_id is returned by server. ring_id_is_valid is set to 1 only if
- * received ring id matches last sent ring id. It usually makes sense to not update timer.
+ * received ring id matches last sent ring id. If it is 0, then it usually makes sense to not
+ * update timer.
  *
  * Callback should return 0 on success or -1 on failure (-> disconnect client).
  */
@@ -322,6 +353,54 @@ qdevice_net_algo_test_echo_reply_not_received(struct qdevice_net_instance *insta
 }
 
 /*
+ * Called when regular heuristics finished and it's result differs from previous heuristics.
+ *
+ * heuristics contains result of heuristics
+ * send_msg distinquish if message should be sent to qnetd. Default value is 0 if qnetd is not
+ *   connected and 1 otherwise
+ * vote can be set to change cast_vote_timer voting value (default is TLV_VOTE_NO_CHANGE)
+ *
+ * It's not possible to set send_msg to 1 and heuristics to TLV_HEURISTICS_UNDEFINED
+ *
+ * Callback should return 0 on success, -1 on failure (-> force exit)
+ */
+int
+qdevice_net_algo_test_heuristics_change(struct qdevice_net_instance *instance,
+    enum tlv_heuristics *heuristics, int *send_msg, enum tlv_vote *vote)
+{
+
+	qdevice_log(LOG_INFO, "algo-test: Heuristics change");
+
+	return (0);
+}
+
+/*
+ * Called when reply for heuristics change was received.
+ * Vote is set to value returned by server (and can be overwriten by algorithm).
+ *
+ * ring_id and ring_id_is_valid have same meaning as for
+ * qdevice_net_algo_test_config_node_list_reply_received
+ *
+ * heuristics is unmodified value sent to server (and set by qdevice_net_algo_test_heuristics_change)
+ *
+ * Callback should return 0 on success or -1 on failure (-> disconnect client).
+ */
+int
+qdevice_net_algo_test_heuristics_change_reply_received(struct qdevice_net_instance *instance,
+    uint32_t seq_number, const struct tlv_ring_id *ring_id, int ring_id_is_valid,
+    enum tlv_heuristics heuristics, enum tlv_vote *vote)
+{
+
+	qdevice_log(LOG_INFO, "algo-test: heuristics change reply received");
+
+	if (!ring_id_is_valid) {
+		*vote = TLV_VOTE_NO_CHANGE;
+	}
+
+	return (0);
+}
+
+/*
  * Called when client disconnects from server.
  *
  * disconnect_reason contains one of QDEVICE_NET_DISCONNECT_REASON_
@@ -355,6 +434,7 @@ static struct qdevice_net_algorithm qdevice_net_algo_test = {
 	.connected				= qdevice_net_algo_test_connected,
 	.config_node_list_changed		= qdevice_net_algo_test_config_node_list_changed,
 	.votequorum_node_list_notify		= qdevice_net_algo_test_votequorum_node_list_notify,
+	.votequorum_node_list_heuristics_notify	= qdevice_net_algo_test_votequorum_node_list_heuristics_notify,
 	.votequorum_quorum_notify		= qdevice_net_algo_test_votequorum_quorum_notify,
 	.votequorum_expected_votes_notify	= qdevice_net_algo_test_votequorum_expected_votes_notify,
 	.config_node_list_reply_received	= qdevice_net_algo_test_config_node_list_reply_received,
@@ -364,6 +444,8 @@ static struct qdevice_net_algorithm qdevice_net_algo_test = {
 	.vote_info_received			= qdevice_net_algo_test_vote_info_received,
 	.echo_reply_received			= qdevice_net_algo_test_echo_reply_received,
 	.echo_reply_not_received		= qdevice_net_algo_test_echo_reply_not_received,
+	.heuristics_change			= qdevice_net_algo_test_heuristics_change,
+	.heuristics_change_reply_received	= qdevice_net_algo_test_heuristics_change_reply_received,
 	.disconnected				= qdevice_net_algo_test_disconnected,
 	.destroy				= qdevice_net_algo_test_destroy,
 };

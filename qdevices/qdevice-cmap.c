@@ -301,6 +301,17 @@ qdevice_cmap_logging_event(struct qdevice_instance *instance)
 }
 
 static void
+qdevice_cmap_heuristics_event(struct qdevice_instance *instance)
+{
+
+	qdevice_log(LOG_DEBUG, "Heuristics configuration possibly changed");
+	if (qdevice_instance_configure_from_cmap_heuristics(instance) != 0) {
+		qdevice_log(LOG_DEBUG, "qdevice_instance_configure_from_cmap_heuristics returned error -> exit");
+		exit(2);
+	}
+}
+
+static void
 qdevice_cmap_reload_cb(cmap_handle_t cmap_handle, cmap_track_handle_t cmap_track_handle,
     int32_t event, const char *key_name,
     struct cmap_notify_value new_value, struct cmap_notify_value old_value,
@@ -309,15 +320,15 @@ qdevice_cmap_reload_cb(cmap_handle_t cmap_handle, cmap_track_handle_t cmap_track
 	cs_error_t cs_res;
 	uint8_t reload;
 	struct qdevice_instance *instance;
-	int node_list_event;
-	int logging_event;
 	const char *node_list_prefix_str;
 	const char *logging_prefix_str;
+	const char *heuristics_prefix_str;
+	struct qdevice_cmap_change_events events;
 
-	node_list_event = 0;
-	logging_event = 0;
+	memset(&events, 0, sizeof(events));
 	node_list_prefix_str = "nodelist.";
 	logging_prefix_str = "logging.";
+	heuristics_prefix_str = "quorum.device.heuristics.";
 
 	if (cmap_context_get(cmap_handle, (const void **)&instance) != CS_OK) {
 		qdevice_log(LOG_ERR, "Fatal error. Can't get cmap context");
@@ -338,8 +349,9 @@ qdevice_cmap_reload_cb(cmap_handle_t cmap_handle, cmap_track_handle_t cmap_track
 			return ;
 		} else {
 			instance->cmap_reload_in_progress = 0;
-			node_list_event = 1;
-			logging_event = 1;
+			events.node_list = 1;
+			events.logging = 1;
+			events.heuristics = 1;
 		}
 	}
 
@@ -353,19 +365,35 @@ qdevice_cmap_reload_cb(cmap_handle_t cmap_handle, cmap_track_handle_t cmap_track
 	}
 
 	if (strncmp(key_name, node_list_prefix_str, strlen(node_list_prefix_str)) == 0) {
-		node_list_event = 1;
+		events.node_list = 1;
 	}
 
 	if (strncmp(key_name, logging_prefix_str, strlen(logging_prefix_str)) == 0) {
-		logging_event = 1;
+		events.logging = 1;
 	}
 
-	if (logging_event) {
+	if (strncmp(key_name, heuristics_prefix_str, strlen(heuristics_prefix_str)) == 0) {
+		events.heuristics = 1;
+	}
+
+	if (events.logging) {
 		qdevice_cmap_logging_event(instance);
 	}
 
-	if (node_list_event) {
+	if (events.node_list) {
 		qdevice_cmap_node_list_event(instance);
+	}
+
+	if (events.heuristics) {
+		qdevice_cmap_heuristics_event(instance);
+	}
+
+	/*
+	 * Inform model about change
+	 */
+	if (qdevice_model_cmap_changed(instance, &events) != 0) {
+		qdevice_log(LOG_DEBUG, "qdevice_model_cmap_changed returned error -> exit");
+		exit(2);
 	}
 }
 
@@ -403,6 +431,16 @@ qdevice_cmap_add_track(struct qdevice_instance *instance)
 		return (-1);
 	}
 
+	res = cmap_track_add(instance->cmap_handle, "quorum.device.heuristics.",
+	    CMAP_TRACK_ADD | CMAP_TRACK_DELETE | CMAP_TRACK_MODIFY | CMAP_TRACK_PREFIX,
+	    qdevice_cmap_reload_cb,
+	    NULL, &instance->cmap_heuristics_track_handle);
+
+	if (res != CS_OK) {
+		qdevice_log(LOG_ERR, "Can't initialize logging tracking");
+		return (-1);
+	}
+
 	return (0);
 }
 
@@ -424,6 +462,11 @@ qdevice_cmap_del_track(struct qdevice_instance *instance)
 	res = cmap_track_delete(instance->cmap_handle, instance->cmap_logging_track_handle);
 	if (res != CS_OK) {
 		qdevice_log(LOG_WARNING, "Can't delete cmap logging tracking");
+	}
+
+	res = cmap_track_delete(instance->cmap_handle, instance->cmap_heuristics_track_handle);
+	if (res != CS_OK) {
+		qdevice_log(LOG_WARNING, "Can't delete cmap heuristics tracking");
 	}
 
 	return (0);

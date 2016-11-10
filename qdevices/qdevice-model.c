@@ -136,6 +136,23 @@ qdevice_model_votequorum_node_list_notify(struct qdevice_instance *instance,
 }
 
 int
+qdevice_model_votequorum_node_list_heuristics_notify(struct qdevice_instance *instance,
+    votequorum_ring_id_t votequorum_ring_id, uint32_t node_list_entries, uint32_t node_list[],
+    enum qdevice_heuristics_exec_result heuristics_exec_result)
+{
+
+	if (instance->model_type >= QDEVICE_MODEL_TYPE_ARRAY_SIZE ||
+	    qdevice_model_array[instance->model_type] == NULL) {
+		qdevice_log(LOG_CRIT, "qdevice_model_votequorum_node_list_heuristics_notify unhandled model");
+		exit(1);
+	}
+
+	return (qdevice_model_array[instance->model_type]->
+	    votequorum_node_list_heuristics_notify(instance, votequorum_ring_id, node_list_entries,
+		node_list, heuristics_exec_result));
+}
+
+int
 qdevice_model_votequorum_expected_votes_notify(struct qdevice_instance *instance,
     uint32_t expected_votes)
 {
@@ -162,6 +179,21 @@ qdevice_model_ipc_cmd_status(struct qdevice_instance *instance, struct dynar *ou
 
 	return (qdevice_model_array[instance->model_type]->
 	    ipc_cmd_status(instance, outbuf, verbose));
+}
+
+int
+qdevice_model_cmap_changed(struct qdevice_instance *instance,
+    const struct qdevice_cmap_change_events *events)
+{
+
+	if (instance->model_type >= QDEVICE_MODEL_TYPE_ARRAY_SIZE ||
+	    qdevice_model_array[instance->model_type] == NULL) {
+		qdevice_log(LOG_CRIT, "qdevice_model_cmap_chaged unhandled model");
+		exit(1);
+	}
+
+	return (qdevice_model_array[instance->model_type]->
+	    cmap_changed(instance, events));
 }
 
 int

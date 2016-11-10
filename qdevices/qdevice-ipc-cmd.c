@@ -243,6 +243,19 @@ qdevice_ipc_cmd_status_add_last_poll(struct qdevice_instance *instance, struct d
 	return (1);
 }
 
+static int
+qdevice_ipc_cmd_status_add_heuristics(struct qdevice_instance *instance, struct dynar *outbuf,
+    int verbose)
+{
+
+	if (!verbose) {
+		return (1);
+	}
+
+	return (dynar_str_catf(outbuf, "Heuristics:\t\t%s\n",
+	    qdevice_heuristics_mode_to_str(instance->heuristics_instance.mode)) != 0);
+}
+
 int
 qdevice_ipc_cmd_status(struct qdevice_instance *instance, struct dynar *outbuf, int verbose)
 {
@@ -252,6 +265,7 @@ qdevice_ipc_cmd_status(struct qdevice_instance *instance, struct dynar *outbuf, 
 	    qdevice_ipc_cmd_status_add_nodeid(instance, outbuf, verbose) &&
 	    qdevice_ipc_cmd_status_add_intervals(instance, outbuf, verbose) &&
 	    qdevice_ipc_cmd_status_add_config_node_list(instance, outbuf, verbose) &&
+	    qdevice_ipc_cmd_status_add_heuristics(instance, outbuf, verbose) &&
 	    qdevice_ipc_cmd_status_add_membership_node_list(instance, outbuf, verbose) &&
 	    qdevice_ipc_cmd_status_add_quorum_node_list(instance, outbuf, verbose) &&
 	    qdevice_ipc_cmd_status_add_expected_votes(instance, outbuf, verbose) &&

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016 Red Hat, Inc.
+ * Copyright (c) 2015-2017 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -71,6 +71,8 @@ extern int	 dynar_cat(struct dynar *array, const void *src, size_t size);
 extern int	 dynar_prealloc(struct dynar *array, size_t size);
 
 extern int	 dynar_prepend(struct dynar *array, const void *src, size_t size);
+
+extern int	 dynar_set_size(struct dynar *array, size_t size);
 
 #ifdef __cplusplus
 }

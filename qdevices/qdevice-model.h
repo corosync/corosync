@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016 Red Hat, Inc.
+ * Copyright (c) 2015-2017 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -35,8 +35,10 @@
 #ifndef _QDEVICE_MODEL_H_
 #define _QDEVICE_MODEL_H_
 
+#include "qdevice-cmap.h"
 #include "qdevice-instance.h"
 #include "qdevice-model-type.h"
+#include "qdevice-heuristics-exec-result.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -59,11 +61,18 @@ extern int	qdevice_model_votequorum_quorum_notify(struct qdevice_instance *insta
 extern int	qdevice_model_votequorum_node_list_notify(struct qdevice_instance *instance,
     votequorum_ring_id_t votequorum_ring_id, uint32_t node_list_entries, uint32_t node_list[]);
 
+extern int	qdevice_model_votequorum_node_list_heuristics_notify(struct qdevice_instance *instance,
+    votequorum_ring_id_t votequorum_ring_id, uint32_t node_list_entries, uint32_t node_list[],
+    enum qdevice_heuristics_exec_result heuristics_exec_result);
+
 extern int 	qdevice_model_votequorum_expected_votes_notify(struct qdevice_instance *instance,
     uint32_t expected_votes);
 
 extern int	qdevice_model_ipc_cmd_status(struct qdevice_instance *instance,
     struct dynar *outbuf, int verbose);
+
+extern int	qdevice_model_cmap_changed(struct qdevice_instance *instance,
+    const struct qdevice_cmap_change_events *events);
 
 struct qdevice_model {
 	const char *name;
@@ -78,9 +87,14 @@ struct qdevice_model {
 	int (*votequorum_node_list_notify)(struct qdevice_instance *instance,
 	    votequorum_ring_id_t votequorum_ring_id,uint32_t node_list_entries,
 	    uint32_t node_list[]);
+	int (*votequorum_node_list_heuristics_notify)(struct qdevice_instance *instance,
+	    votequorum_ring_id_t votequorum_ring_id,uint32_t node_list_entries,
+	    uint32_t node_list[], enum qdevice_heuristics_exec_result heuristics_exec_result);
 	int (*votequorum_expected_votes_notify)(struct qdevice_instance *instance,
 	    uint32_t expected_votes);
 	int (*ipc_cmd_status)(struct qdevice_instance *instance, struct dynar *outbuf, int verbose);
+	int (*cmap_changed)(struct qdevice_instance *instance,
+	    const struct qdevice_cmap_change_events *events);
 };
 
 extern int		 qdevice_model_register(

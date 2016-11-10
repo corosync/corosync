@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016 Red Hat, Inc.
+ * Copyright (c) 2015-2017 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -44,8 +44,8 @@ extern "C" {
 extern int	qdevice_net_algo_2nodelms_init(struct qdevice_net_instance *instance);
 
 extern int	qdevice_net_algo_2nodelms_connected(struct qdevice_net_instance *instance,
-    int *send_config_node_list, int *send_membership_node_list, int *send_quorum_node_list,
-    enum tlv_vote *vote);
+    enum tlv_heuristics *heuristics, int *send_config_node_list, int *send_membership_node_list,
+    int *send_quorum_node_list, enum tlv_vote *vote);
 
 extern int	qdevice_net_algo_2nodelms_config_node_list_changed(
     struct qdevice_net_instance *instance, const struct node_list *nlist,
@@ -53,7 +53,13 @@ extern int	qdevice_net_algo_2nodelms_config_node_list_changed(
 
 extern int	qdevice_net_algo_2nodelms_votequorum_node_list_notify(
     struct qdevice_net_instance *instance, const struct tlv_ring_id *ring_id,
-    uint32_t node_list_entries, uint32_t node_list[], int *send_node_list, enum tlv_vote *vote);
+    uint32_t node_list_entries, uint32_t node_list[], int *pause_cast_vote_timer,
+    enum tlv_vote *vote);
+
+extern int	qdevice_net_algo_2nodelms_votequorum_node_list_heuristics_notify(
+    struct qdevice_net_instance *instance, const struct tlv_ring_id *ring_id,
+    uint32_t node_list_entries, uint32_t node_list[], int *send_node_list, enum tlv_vote *vote,
+    enum tlv_heuristics *heuristics);
 
 extern int	qdevice_net_algo_2nodelms_votequorum_quorum_notify(
     struct qdevice_net_instance *instance, uint32_t quorate, uint32_t node_list_entries,
@@ -87,6 +93,13 @@ extern int	qdevice_net_algo_2nodelms_echo_reply_received(
 
 extern int	qdevice_net_algo_2nodelms_echo_reply_not_received(
     struct qdevice_net_instance *instance);
+
+extern int	qdevice_net_algo_2nodelms_heuristics_change(struct qdevice_net_instance *instance,
+    enum tlv_heuristics *heuristics, int *send_msg, enum tlv_vote *vote);
+
+extern int	qdevice_net_algo_2nodelms_heuristics_change_reply_received(struct qdevice_net_instance *instance,
+    uint32_t seq_number, const struct tlv_ring_id *ring_id, int ring_id_is_valid, enum tlv_heuristics heuristics,
+    enum tlv_vote *vote);
 
 extern int	qdevice_net_algo_2nodelms_disconnected(struct qdevice_net_instance *instance,
     enum qdevice_net_disconnect_reason disconnect_reason, int *try_reconnect, enum tlv_vote *vote);

@@ -127,7 +127,7 @@ retry_fcntl:
 	snprintf(pid_s, sizeof(pid_s) - 1, "%u\n", pid);
 
 retry_write:
-	if (write(lf, pid_s, strlen(pid_s)) != strlen(pid_s)) {
+	if (write(lf, pid_s, strlen(pid_s)) != (ssize_t)strlen(pid_s)) {
 		if (errno == EINTR) {
 			goto retry_write;
 		} else {
@@ -186,4 +186,23 @@ utils_tty_detach(void)
 		err(1, "Can't dup2 stdin/out/err to /dev/null");
 	}
 	close(devnull);
+}
+
+int
+utils_fd_set_non_blocking(int fd)
+{
+	int flags;
+
+	flags = fcntl(fd, F_GETFL, NULL);
+
+	if (flags < 0) {
+		return (-1);
+	}
+
+	flags |= O_NONBLOCK;
+	if (fcntl(fd, F_SETFL, flags) < 0) {
+		return (-1);
+	}
+
+	return (0);
 }

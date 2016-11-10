@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016 Red Hat, Inc.
+ * Copyright (c) 2015-2017 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -40,6 +40,8 @@
 #include "qdevice-votequorum.h"
 #include "qdevice-ipc.h"
 #include "qdevice-net-poll-array-user-data.h"
+#include "qdevice-heuristics.h"
+#include "qdevice-heuristics-cmd.h"
 
 /*
  * Needed for creating nspr handle from unix fd
@@ -145,6 +147,43 @@ qdevice_net_poll_err_socket(struct qdevice_net_instance *instance, const PRPollD
 }
 
 static void
+qdevice_net_poll_read_heuristics_log(struct qdevice_net_instance *instance)
+{
+	int res;
+
+	res = qdevice_heuristics_log_read_from_pipe(&instance->qdevice_instance_ptr->heuristics_instance);
+	if (res == -1) {
+		instance->schedule_disconnect = 1;
+		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_HEURISTICS_WORKER_CLOSED;
+	}
+}
+
+static void
+qdevice_net_poll_read_heuristics_cmd(struct qdevice_net_instance *instance)
+{
+	int res;
+
+	res = qdevice_heuristics_cmd_read_from_pipe(&instance->qdevice_instance_ptr->heuristics_instance);
+	if (res == -1) {
+		instance->schedule_disconnect = 1;
+		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_HEURISTICS_WORKER_CLOSED;
+	}
+}
+
+static void
+qdevice_net_poll_write_heuristics_cmd(struct qdevice_net_instance *instance)
+{
+	int res;
+
+	res = qdevice_heuristics_cmd_write(&instance->qdevice_instance_ptr->heuristics_instance);
+	if (res == -1) {
+		instance->schedule_disconnect = 1;
+		instance->disconnect_reason =
+		    QDEVICE_NET_DISCONNECT_REASON_HEURISTICS_CANT_SEND_RECEIVE_MSG;
+	}
+}
+
+static void
 qdevice_net_poll_read_ipc_socket(struct qdevice_net_instance *instance)
 {
 	struct unix_socket_client *client;
@@ -213,6 +252,37 @@ qdevice_net_pr_poll_array_create(struct qdevice_net_instance *instance)
 	poll_desc->fd = instance->ipc_socket_poll_fd;
 	poll_desc->in_flags = PR_POLL_READ;
 	user_data->type = QDEVICE_NET_POLL_ARRAY_USER_DATA_TYPE_IPC_SOCKET;
+
+	if (pr_poll_array_add(poll_array, &poll_desc, (void **)&user_data) < 0) {
+		return (NULL);
+	}
+
+	poll_desc->fd = instance->heuristics_pipe_log_recv_poll_fd;
+	poll_desc->in_flags = PR_POLL_READ;
+	user_data->type = QDEVICE_NET_POLL_ARRAY_USER_DATA_TYPE_HEURISTICS_LOG_RECV;
+
+	if (pr_poll_array_add(poll_array, &poll_desc, (void **)&user_data) < 0) {
+		return (NULL);
+	}
+
+	poll_desc->fd = instance->heuristics_pipe_cmd_recv_poll_fd;
+	poll_desc->in_flags = PR_POLL_READ;
+	user_data->type = QDEVICE_NET_POLL_ARRAY_USER_DATA_TYPE_HEURISTICS_CMD_RECV;
+
+	if (pr_poll_array_add(poll_array, &poll_desc, (void **)&user_data) < 0) {
+		return (NULL);
+	}
+
+	if (!send_buffer_list_empty(
+	    &instance->qdevice_instance_ptr->heuristics_instance.cmd_out_buffer_list)) {
+		poll_desc->fd = instance->heuristics_pipe_cmd_send_poll_fd;
+		poll_desc->in_flags = PR_POLL_WRITE;
+		user_data->type = QDEVICE_NET_POLL_ARRAY_USER_DATA_TYPE_HEURISTICS_CMD_SEND;
+
+		if (pr_poll_array_add(poll_array, &poll_desc, (void **)&user_data) < 0) {
+			return (NULL);
+		}
+	}
 
 	if (instance->state != QDEVICE_NET_INSTANCE_STATE_WAITING_CONNECT ||
 	    !instance->non_blocking_client.destroyed) {
@@ -313,6 +383,19 @@ qdevice_net_poll(struct qdevice_net_instance *instance)
 					case_processed = 1;
 					qdevice_ipc_io_read(instance->qdevice_instance_ptr, ipc_client);
 					break;
+				case QDEVICE_NET_POLL_ARRAY_USER_DATA_TYPE_HEURISTICS_CMD_SEND:
+					/*
+					 * Read on heuristics cmd send fd shouldn't happen
+					 */
+					break;
+				case QDEVICE_NET_POLL_ARRAY_USER_DATA_TYPE_HEURISTICS_CMD_RECV:
+					case_processed = 1;
+					qdevice_net_poll_read_heuristics_cmd(instance);
+					break;
+				case QDEVICE_NET_POLL_ARRAY_USER_DATA_TYPE_HEURISTICS_LOG_RECV:
+					case_processed = 1;
+					qdevice_net_poll_read_heuristics_log(instance);
+					break;
 				/*
 				 * Default is not defined intentionally. Compiler shows warning when
 				 * new poll_array_user_data_type is added
@@ -337,11 +420,18 @@ qdevice_net_poll(struct qdevice_net_instance *instance)
 					case_processed = 1;
 					qdevice_ipc_io_write(instance->qdevice_instance_ptr, ipc_client);
 					break;
+				case QDEVICE_NET_POLL_ARRAY_USER_DATA_TYPE_HEURISTICS_CMD_SEND:
+					case_processed = 1;
+					qdevice_net_poll_write_heuristics_cmd(instance);
+					break;
 				case QDEVICE_NET_POLL_ARRAY_USER_DATA_TYPE_VOTEQUORUM:
 				case QDEVICE_NET_POLL_ARRAY_USER_DATA_TYPE_CMAP:
 				case QDEVICE_NET_POLL_ARRAY_USER_DATA_TYPE_IPC_SOCKET:
+				case QDEVICE_NET_POLL_ARRAY_USER_DATA_TYPE_HEURISTICS_CMD_RECV:
+				case QDEVICE_NET_POLL_ARRAY_USER_DATA_TYPE_HEURISTICS_LOG_RECV:
 					/*
-					 * Write on votequorum, cmap and ipc socket shouldn't happen.
+					 * Write on votequorum, cmap, ipc socket and
+					 * heuristics log shouldn't happen.
 					 */
 					break;
 				/*
@@ -394,6 +484,25 @@ qdevice_net_poll(struct qdevice_net_instance *instance)
 					instance->schedule_disconnect = 1;
 					instance->disconnect_reason =
 						QDEVICE_NET_DISCONNECT_REASON_COROSYNC_CONNECTION_CLOSED;
+					break;
+				case QDEVICE_NET_POLL_ARRAY_USER_DATA_TYPE_HEURISTICS_LOG_RECV:
+				case QDEVICE_NET_POLL_ARRAY_USER_DATA_TYPE_HEURISTICS_CMD_RECV:
+				case QDEVICE_NET_POLL_ARRAY_USER_DATA_TYPE_HEURISTICS_CMD_SEND:
+					case_processed = 1;
+
+					/*
+					 * Closed pipe doesn't mean return of PR_POLL_READ. To display
+					 * better log message, we call read log as if POLL_READ would
+					 * be set.
+					 */
+					qdevice_net_poll_read_heuristics_log(instance);
+
+					qdevice_log(LOG_DEBUG, "POLL_ERR (%u) on heuristics pipe. "
+					    "Disconnecting.",  pfds[i].out_flags);
+
+					instance->schedule_disconnect = 1;
+					instance->disconnect_reason =
+						QDEVICE_NET_DISCONNECT_REASON_HEURISTICS_WORKER_CLOSED;
 					break;
 				/*
 				 * Default is not defined intentionally. Compiler shows warning when

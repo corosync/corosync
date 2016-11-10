@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016 Red Hat, Inc.
+ * Copyright (c) 2015-2017 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -52,6 +52,25 @@ dynar_set_max_size(struct dynar *array, size_t maximum_size)
 {
 
 	array->maximum_size = maximum_size;
+}
+
+int
+dynar_set_size(struct dynar *array, size_t size)
+{
+
+	if (size > dynar_max_size(array)) {
+		dynar_set_max_size(array, size);
+	}
+
+	if (size > dynar_size(array)) {
+		if (dynar_prealloc(array, size - dynar_size(array)) == -1) {
+			return (-1);
+		}
+	}
+
+	array->size = size;
+
+	return (0);
 }
 
 void
