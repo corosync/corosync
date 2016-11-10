@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016 Red Hat, Inc.
+ * Copyright (c) 2015-2017 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -490,7 +490,7 @@ qnetd_client_msg_received_init(struct qnetd_instance *instance, struct qnetd_cli
 	    instance->advanced_settings->max_client_receive_size,
 	    instance->advanced_settings->max_client_send_size,
 	    qnetd_static_supported_decision_algorithms,
-	    QNETD_STATIC_SUPPORTED_DECISION_ALGORITHMS_SIZE) == -1) {
+	    QNETD_STATIC_SUPPORTED_DECISION_ALGORITHMS_SIZE) == 0) {
 		qnetd_log(LOG_ERR, "Can't alloc init reply msg. Disconnecting client connection.");
 
 		send_buffer_list_discard_new(&client->send_buffer_list, send_buffer);
@@ -571,7 +571,7 @@ qnetd_client_msg_received_set_option(struct qnetd_instance *instance, struct qne
 	}
 
 	if (msg_create_set_option_reply(&send_buffer->buffer, msg->seq_number_set, msg->seq_number,
-	    client->heartbeat_interval) == -1) {
+	    client->heartbeat_interval) == 0) {
 		qnetd_log(LOG_ERR, "Can't alloc set option reply msg. "
 		    "Disconnecting client connection.");
 
@@ -624,7 +624,7 @@ qnetd_client_msg_received_echo_request(struct qnetd_instance *instance, struct q
 		return (-1);
 	}
 
-	if (msg_create_echo_reply(&send_buffer->buffer, msg_orig) == -1) {
+	if (msg_create_echo_reply(&send_buffer->buffer, msg_orig) == 0) {
 		qnetd_log(LOG_ERR, "Can't alloc echo reply msg. Disconnecting client connection.");
 
 		send_buffer_list_discard_new(&client->send_buffer_list, send_buffer);
@@ -721,10 +721,10 @@ qnetd_client_msg_received_node_list(struct qnetd_instance *instance, struct qnet
 		}
 
 		qnetd_log_debug_membership_node_list_received(client, msg->seq_number, &msg->ring_id,
-		    &msg->nodes);
+		    msg->heuristics, &msg->nodes);
 
 		reply_error_code = qnetd_algorithm_membership_node_list_received(client,
-		    msg->seq_number, &msg->ring_id, &msg->nodes, &result_vote);
+		    msg->seq_number, &msg->ring_id, &msg->nodes, msg->heuristics, &result_vote);
 		break;
 	case TLV_NODE_LIST_TYPE_QUORUM:
 		case_processed = 1;
@@ -801,6 +801,8 @@ qnetd_client_msg_received_node_list(struct qnetd_instance *instance, struct qnet
 			return (-1);
 		}
 		memcpy(&client->last_ring_id, &msg->ring_id, sizeof(struct tlv_ring_id));
+		client->last_membership_heuristics = msg->heuristics;
+		client->last_heuristics = msg->heuristics;
 		break;
 	case TLV_NODE_LIST_TYPE_QUORUM:
 		case_processed = 1;
@@ -841,7 +843,7 @@ qnetd_client_msg_received_node_list(struct qnetd_instance *instance, struct qnet
 	}
 
 	if (msg_create_node_list_reply(&send_buffer->buffer, msg->seq_number, msg->node_list_type,
-	    &client->last_ring_id, result_vote) == -1) {
+	    &client->last_ring_id, result_vote) == 0) {
 		qnetd_log(LOG_ERR, "Can't alloc node list reply msg. "
 		    "Disconnecting client connection.");
 
@@ -938,7 +940,7 @@ qnetd_client_msg_received_ask_for_vote(struct qnetd_instance *instance, struct q
 	}
 
 	if (msg_create_ask_for_vote_reply(&send_buffer->buffer, msg->seq_number,
-	    &client->last_ring_id, result_vote) == -1) {
+	    &client->last_ring_id, result_vote) == 0) {
 		qnetd_log(LOG_ERR, "Can't alloc ask for vote reply msg. "
 		    "Disconnecting client connection.");
 
@@ -1022,6 +1024,105 @@ qnetd_client_msg_received_vote_info_reply(struct qnetd_instance *instance,
 	}
 
 	return (0);
+}
+
+static int
+qnetd_client_msg_received_heuristics_change(struct qnetd_instance *instance, struct qnetd_client *client,
+    const struct msg_decoded *msg)
+{
+	int res;
+	struct send_buffer_list_entry *send_buffer;
+	enum tlv_reply_error_code reply_error_code;
+	enum tlv_vote result_vote;
+
+	reply_error_code = TLV_REPLY_ERROR_CODE_NO_ERROR;
+
+	if ((res = qnetd_client_msg_received_check_tls(instance, client, msg)) != 0) {
+		return (res == -1 ? -1 : 0);
+	}
+
+	if (!client->init_received) {
+		qnetd_log(LOG_ERR, "Received heuristics change message before init message. "
+		    "Sending error reply.");
+
+		if (qnetd_client_send_err(client, msg->seq_number_set, msg->seq_number,
+		    TLV_REPLY_ERROR_CODE_INIT_REQUIRED) != 0) {
+			return (-1);
+		}
+
+		return (0);
+	}
+
+	if (!msg->seq_number_set || msg->heuristics == TLV_HEURISTICS_UNDEFINED) {
+		qnetd_log(LOG_ERR, "Received heuristics change message without seq number set or "
+		    "with undefined heuristics. Sending error reply.");
+
+		if (qnetd_client_send_err(client, msg->seq_number_set, msg->seq_number,
+		    TLV_REPLY_ERROR_CODE_DOESNT_CONTAIN_REQUIRED_OPTION) != 0) {
+			return (-1);
+		}
+
+		return (0);
+	}
+
+	qnetd_log_debug_heuristics_change_received(client, msg->seq_number, msg->heuristics);
+
+	reply_error_code = qnetd_algorithm_heuristics_change_received(client, msg->seq_number,
+	    msg->heuristics, &result_vote);
+
+	if (reply_error_code != TLV_REPLY_ERROR_CODE_NO_ERROR) {
+		qnetd_log(LOG_ERR, "Algorithm returned error code. "
+		    "Sending error reply.");
+
+		if (qnetd_client_send_err(client, msg->seq_number_set, msg->seq_number,
+		    reply_error_code) != 0) {
+			return (-1);
+		}
+
+		return (0);
+	} else {
+		qnetd_log(LOG_DEBUG, "Algorithm result vote is %s", tlv_vote_to_str(result_vote));
+	}
+
+	/*
+	 * Store result vote and heuristics result
+	 */
+	client->last_sent_vote = result_vote;
+	if (result_vote == TLV_VOTE_ACK || result_vote == TLV_VOTE_NACK) {
+		client->last_sent_ack_nack_vote = result_vote;
+	}
+	client->last_regular_heuristics = msg->heuristics;
+	client->last_heuristics = msg->heuristics;
+
+	send_buffer = send_buffer_list_get_new(&client->send_buffer_list);
+	if (send_buffer == NULL) {
+		qnetd_log(LOG_ERR, "Can't alloc heuristics change reply msg from list. "
+		    "Disconnecting client connection.");
+
+		return (-1);
+	}
+
+	if (msg_create_heuristics_change_reply(&send_buffer->buffer, msg->seq_number,
+	    &client->last_ring_id, msg->heuristics, result_vote) == 0) {
+		qnetd_log(LOG_ERR, "Can't alloc heuristics change reply msg. "
+		    "Disconnecting client connection.");
+
+		send_buffer_list_discard_new(&client->send_buffer_list, send_buffer);
+
+		return (-1);
+	}
+
+	send_buffer_list_put(&client->send_buffer_list, send_buffer);
+
+	return (0);
+}
+
+static int
+qnetd_client_msg_received_heuristics_change_reply(struct qnetd_instance *instance, struct qnetd_client *client,
+    const struct msg_decoded *msg)
+{
+
+	return (qnetd_client_msg_received_unexpected_msg(client, msg, "heuristics change reply"));
 }
 
 int
@@ -1120,6 +1221,15 @@ qnetd_client_msg_received(struct qnetd_instance *instance, struct qnetd_client *
 	case MSG_TYPE_VOTE_INFO_REPLY:
 		msg_processed = 1;
 		ret_val = qnetd_client_msg_received_vote_info_reply(instance, client, &msg);
+		break;
+	case MSG_TYPE_HEURISTICS_CHANGE:
+		msg_processed = 1;
+		ret_val = qnetd_client_msg_received_heuristics_change(instance, client, &msg);
+		break;
+	case MSG_TYPE_HEURISTICS_CHANGE_REPLY:
+		msg_processed = 1;
+		ret_val = qnetd_client_msg_received_heuristics_change_reply(instance, client,
+		    &msg);
 		break;
 	/*
 	 * Default is not defined intentionally. Compiler shows warning when new

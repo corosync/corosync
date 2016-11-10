@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016 Red Hat, Inc.
+ * Copyright (c) 2015-2017 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -84,6 +84,7 @@ struct qdevice_net_instance {
 	uint32_t connect_timeout;
 	struct timer_list_entry *cast_vote_timer;
 	enum tlv_vote cast_vote_timer_vote;
+	int cast_vote_timer_paused;
 	const char *host_addr;
 	uint16_t host_port;
 	const char *cluster_name;
@@ -106,6 +107,15 @@ struct qdevice_net_instance {
 	time_t last_echo_reply_received_time;
 	time_t connected_since_time;
 	const struct qdevice_advanced_settings *advanced_settings;
+	PRFileDesc *heuristics_pipe_cmd_send_poll_fd;
+	PRFileDesc *heuristics_pipe_cmd_recv_poll_fd;
+	PRFileDesc *heuristics_pipe_log_recv_poll_fd;
+	struct timer_list_entry *regular_heuristics_timer;
+	int server_supports_heuristics;
+	enum tlv_heuristics latest_regular_heuristics_result;
+	enum tlv_heuristics latest_connect_heuristics_result;
+	enum tlv_heuristics latest_vq_heuristics_result;
+	enum tlv_heuristics latest_heuristics_result;
 };
 
 extern int		qdevice_net_instance_init(struct qdevice_net_instance *instance,
@@ -115,7 +125,9 @@ extern int		qdevice_net_instance_init(struct qdevice_net_instance *instance,
     const char *host_addr, uint16_t host_port, const char *cluster_name,
     const struct tlv_tie_breaker *tie_breaker, uint32_t connect_timeout, int force_ip_version,
     int cmap_fd, int votequorum_fd, int local_socket_fd,
-    const struct qdevice_advanced_settings *advanced_settings);
+    const struct qdevice_advanced_settings *advanced_settings,
+    int heuristics_pipe_cmd_send_fd, int heuristics_pipe_cmd_recv_fd,
+    int heuristics_pipe_log_recv_fd);
 
 extern void		qdevice_net_instance_clean(struct qdevice_net_instance *instance);
 

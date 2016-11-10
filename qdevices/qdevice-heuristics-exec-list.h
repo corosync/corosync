@@ -1,0 +1,88 @@
+/*
+ * Copyright (c) 2015-2017 Red Hat, Inc.
+ *
+ * All rights reserved.
+ *
+ * Author: Jan Friesse (jfriesse@redhat.com)
+ *
+ * This software licensed under BSD license, the text of which follows:
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ * - Redistributions of source code must retain the above copyright notice,
+ *   this list of conditions and the following disclaimer.
+ * - Redistributions in binary form must reproduce the above copyright notice,
+ *   this list of conditions and the following disclaimer in the documentation
+ *   and/or other materials provided with the distribution.
+ * - Neither the name of the Red Hat, Inc. nor the names of its
+ *   contributors may be used to endorse or promote products derived from this
+ *   software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+ * THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+#ifndef _QDEVICE_HEURISTICS_EXEC_LIST_H_
+#define _QDEVICE_HEURISTICS_EXEC_LIST_H_
+
+#include <sys/types.h>
+
+#include <sys/queue.h>
+#include <inttypes.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+struct qdevice_heuristics_exec_list_entry {
+	char *name;
+	char *command;
+	TAILQ_ENTRY(qdevice_heuristics_exec_list_entry) entries;
+};
+
+TAILQ_HEAD(qdevice_heuristics_exec_list, qdevice_heuristics_exec_list_entry);
+
+extern void						 qdevice_heuristics_exec_list_init(
+    struct qdevice_heuristics_exec_list *list);
+
+extern struct qdevice_heuristics_exec_list_entry	*qdevice_heuristics_exec_list_add(
+    struct qdevice_heuristics_exec_list *list, char *name, char *command);
+
+extern void				 		 qdevice_heuristics_exec_list_free(
+    struct qdevice_heuristics_exec_list *list);
+
+extern size_t						 qdevice_heuristics_exec_list_size(
+    const struct qdevice_heuristics_exec_list *list);
+
+extern int						 qdevice_heuristics_exec_list_clone(
+    struct qdevice_heuristics_exec_list *dst_list,
+    const struct qdevice_heuristics_exec_list *src_list);
+
+extern void						 qdevice_heuristics_exec_list_del(
+    struct qdevice_heuristics_exec_list *list, struct qdevice_heuristics_exec_list_entry *entry);
+
+extern int						 qdevice_heuristics_exec_list_is_empty(
+    const struct qdevice_heuristics_exec_list *list);
+
+extern struct qdevice_heuristics_exec_list_entry	*qdevice_heuristics_exec_list_find_name(
+    const struct qdevice_heuristics_exec_list *list, const char *name);
+
+extern int						 qdevice_heuristics_exec_list_eq(
+    const struct qdevice_heuristics_exec_list *list1,
+    const struct qdevice_heuristics_exec_list *list2);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* _QDEVICE_HEURISTICS_EXEC_LIST_H_ */

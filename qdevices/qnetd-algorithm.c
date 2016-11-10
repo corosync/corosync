@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016 Red Hat, Inc.
+ * Copyright (c) 2015-2017 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -77,7 +77,7 @@ qnetd_algorithm_config_node_list_received(struct qnetd_client *client,
 enum tlv_reply_error_code
 qnetd_algorithm_membership_node_list_received(struct qnetd_client *client,
     uint32_t msg_seq_num, const struct tlv_ring_id *ring_id,
-    const struct node_list *nodes, enum tlv_vote *result_vote)
+    const struct node_list *nodes, enum tlv_heuristics heuristics, enum tlv_vote *result_vote)
 {
 
 	if (client->decision_algorithm >= QNETD_STATIC_SUPPORTED_DECISION_ALGORITHMS_SIZE ||
@@ -89,7 +89,7 @@ qnetd_algorithm_membership_node_list_received(struct qnetd_client *client,
 
 	return (qnetd_algorithm_array[client->decision_algorithm]->membership_node_list_received(
 		client, msg_seq_num,
-		ring_id, nodes, result_vote));
+		ring_id, nodes, heuristics, result_vote));
 }
 
 enum tlv_reply_error_code
@@ -152,6 +152,22 @@ qnetd_algorithm_vote_info_reply_received(struct qnetd_client *client, uint32_t m
 	return (qnetd_algorithm_array[client->decision_algorithm]->vote_info_reply_received(
 		client, msg_seq_num));
 
+}
+
+enum tlv_reply_error_code
+qnetd_algorithm_heuristics_change_received(struct qnetd_client *client, uint32_t msg_seq_num,
+    enum tlv_heuristics heuristics, enum tlv_vote *result_vote)
+{
+
+	if (client->decision_algorithm >= QNETD_STATIC_SUPPORTED_DECISION_ALGORITHMS_SIZE ||
+	    qnetd_algorithm_array[client->decision_algorithm] == NULL) {
+		qnetd_log(LOG_CRIT, "qnetd_algorithm_ask_for_vote_received unhandled "
+		    "decision algorithm");
+		return (TLV_REPLY_ERROR_CODE_INTERNAL_ERROR);
+	}
+
+	return (qnetd_algorithm_array[client->decision_algorithm]->heuristics_change_received(
+		client, msg_seq_num, heuristics, result_vote));
 }
 
 enum tlv_reply_error_code

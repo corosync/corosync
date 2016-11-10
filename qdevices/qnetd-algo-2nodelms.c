@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016 Red Hat, Inc.
+ * Copyright (c) 2015-2017 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -134,14 +134,16 @@ qnetd_algo_2nodelms_config_node_list_received(struct qnetd_client *client,
 enum tlv_reply_error_code
 qnetd_algo_2nodelms_membership_node_list_received(struct qnetd_client *client,
     uint32_t msg_seq_num, const struct tlv_ring_id *ring_id,
-    const struct node_list *nodes, enum tlv_vote *result_vote)
+    const struct node_list *nodes, enum tlv_heuristics heuristics,
+    enum tlv_vote *result_vote)
 {
 	struct node_list_entry *node_info;
  	struct qnetd_client *other_client;
 	struct qnetd_algo_2nodelms_info *info = client->algorithm_data;
 	int node_count = 0;
-	int low_node_id = INT_MAX;
-	int high_node_id = 0;
+	uint32_t low_node_id = UINT32_MAX;
+	uint32_t high_node_id = 0;
+	enum tlv_heuristics other_node_heuristics;
 
 	/* If we're a newcomer and there is another active partition, then we must NACK
 	 * to avoid quorum moving to us from already active nodes.
@@ -175,6 +177,7 @@ qnetd_algo_2nodelms_membership_node_list_received(struct qnetd_client *client,
 
 	/* Now look for other clients connected from this cluster that can't see us any more */
 	node_count = 0;
+	other_node_heuristics = TLV_HEURISTICS_UNDEFINED;
 	TAILQ_FOREACH(other_client, &client->cluster->client_list, cluster_entries) {
 		node_count++;
 
@@ -184,6 +187,9 @@ qnetd_algo_2nodelms_membership_node_list_received(struct qnetd_client *client,
 		}
 		if (other_client->node_id > high_node_id) {
 			high_node_id = other_client->node_id;
+		}
+		if (other_client != client) {
+			other_node_heuristics = other_client->last_heuristics;
 		}
 	}
 	qnetd_log(LOG_DEBUG, "algo-2nodelms: cluster %s %d nodes running independently", client->cluster_name, node_count);
@@ -195,7 +201,21 @@ qnetd_algo_2nodelms_membership_node_list_received(struct qnetd_client *client,
 		return (TLV_REPLY_ERROR_CODE_NO_ERROR);
 	}
 
-	/* Both nodes are alive. Only give a vote to the nominated tie-breaker node */
+	/*
+	 * Both nodes are alive.
+	 * Check their heuristics.
+	 */
+	if (tlv_heuristics_cmp(heuristics, other_node_heuristics) > 0) {
+		*result_vote = info->last_result = TLV_VOTE_ACK;
+
+		return (TLV_REPLY_ERROR_CODE_NO_ERROR);
+	} else if (tlv_heuristics_cmp(heuristics, other_node_heuristics) < 0) {
+		*result_vote = info->last_result = TLV_VOTE_NACK;
+
+		return (TLV_REPLY_ERROR_CODE_NO_ERROR);
+	}
+
+	/* Heuristics are equal -> Only give a vote to the nominated tie-breaker node */
 	switch (client->tie_breaker.mode) {
 
 	case TLV_TIE_BREAKER_MODE_LOWEST:
@@ -297,6 +317,18 @@ qnetd_algo_2nodelms_vote_info_reply_received(struct qnetd_client *client, uint32
 }
 
 enum tlv_reply_error_code
+qnetd_algo_2nodelms_heuristics_change_received(struct qnetd_client *client, uint32_t msg_seq_num,
+    enum tlv_heuristics heuristics, enum tlv_vote *result_vote)
+{
+
+	qnetd_log(LOG_INFO, "algo-2nodelms: heuristics change is not supported.");
+
+	*result_vote = TLV_VOTE_NO_CHANGE;
+
+	return (TLV_REPLY_ERROR_CODE_NO_ERROR);
+}
+
+enum tlv_reply_error_code
 qnetd_algo_2nodelms_timer_callback(struct qnetd_client *client, int *reschedule_timer,
     int *send_vote, enum tlv_vote *result_vote)
 {
@@ -312,6 +344,7 @@ static struct qnetd_algorithm qnetd_algo_2nodelms = {
 	.client_disconnect		= qnetd_algo_2nodelms_client_disconnect,
 	.ask_for_vote_received		= qnetd_algo_2nodelms_ask_for_vote_received,
 	.vote_info_reply_received	= qnetd_algo_2nodelms_vote_info_reply_received,
+	.heuristics_change_received	= qnetd_algo_2nodelms_heuristics_change_received,
 	.timer_callback			= qnetd_algo_2nodelms_timer_callback,
 };
 

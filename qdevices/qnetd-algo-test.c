@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016 Red Hat, Inc.
+ * Copyright (c) 2015-2017 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -132,6 +132,8 @@ qnetd_algo_test_config_node_list_received(struct qnetd_client *client,
  * All client fields are already set. Nodes is actual node list.
  * msg_seq_num is 32-bit number set by client.
  * ring_id is copied from client votequorum callback.
+ * heuristics is result of client heuristics (or TLV_HEURISTICS_UNDEFINED if heuristics
+ *  are disabled or not supported by client)
  *
  * Function has to return result_vote. This can be one of ack/nack, ask_later (client
  * should ask later for a vote) or wait_for_reply (client should wait for reply).
@@ -143,7 +145,7 @@ qnetd_algo_test_config_node_list_received(struct qnetd_client *client,
 enum tlv_reply_error_code
 qnetd_algo_test_membership_node_list_received(struct qnetd_client *client,
     uint32_t msg_seq_num, const struct tlv_ring_id *ring_id,
-    const struct node_list *nodes, enum tlv_vote *result_vote)
+    const struct node_list *nodes, enum tlv_heuristics heuristics, enum tlv_vote *result_vote)
 {
 
 	qnetd_log(LOG_INFO, "algo-test: membership_node_list_received");
@@ -226,6 +228,24 @@ qnetd_algo_test_vote_info_reply_received(struct qnetd_client *client, uint32_t m
 }
 
 /*
+ * Called after client sent heuristics change message.
+ * heuristics is result of client regular heuristics (cannot be TLV_HEURISTICS_UNDEFINED)
+ * Variables client->last_regular_heuristics and client->last_heuristics are updated after
+ * the call.
+ */
+enum tlv_reply_error_code
+qnetd_algo_test_heuristics_change_received(struct qnetd_client *client, uint32_t msg_seq_num,
+    enum tlv_heuristics heuristics, enum tlv_vote *result_vote)
+{
+
+	qnetd_log(LOG_INFO, "algo-test: heuristics_change_received");
+
+	*result_vote = TLV_VOTE_NO_CHANGE;
+
+	return (TLV_REPLY_ERROR_CODE_NO_ERROR);
+}
+
+/*
  * Called as a result of qnetd_client_algo_timer_schedule function call after timeout expires.
  *
  * If send_vote is set by callback to non zero value, result_vote must also be set and such vote is
@@ -253,6 +273,7 @@ static struct qnetd_algorithm qnetd_algo_test = {
 	.client_disconnect		= qnetd_algo_test_client_disconnect,
 	.ask_for_vote_received		= qnetd_algo_test_ask_for_vote_received,
 	.vote_info_reply_received	= qnetd_algo_test_vote_info_reply_received,
+	.heuristics_change_received	= qnetd_algo_test_heuristics_change_received,
 	.timer_callback			= qnetd_algo_test_timer_callback,
 };
 

@@ -86,7 +86,7 @@ dynar_str_vcatf(struct dynar *dest, const char *format, va_list ap)
 		return (-1);
 	}
 
-	if (to_write < sizeof(buf)) {
+	if ((size_t)to_write < sizeof(buf)) {
 		/*
 		 * Writing 1 byte string (snprintf writes also '\0') means string is empty
 		 */
@@ -105,7 +105,11 @@ dynar_str_vcatf(struct dynar *dest, const char *format, va_list ap)
 	written = vsnprintf(p, allocated, format, ap_copy);
 	va_end(ap_copy);
 
-	if (written >= allocated) {
+	if (written < 0) {
+		return (-1);
+	}
+
+	if ((size_t)written >= allocated) {
 		return (-1);
 	}
 

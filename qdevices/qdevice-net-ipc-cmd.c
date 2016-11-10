@@ -170,6 +170,38 @@ qdevice_net_ipc_cmd_status_add_state(struct qdevice_net_instance *instance,
 }
 
 static int
+qdevice_net_ipc_cmd_status_add_heuristics(struct qdevice_net_instance *instance,
+    struct dynar *outbuf, int verbose)
+{
+	enum qdevice_heuristics_mode active_heuristics_mode;
+	int heuristics_enabled;
+
+	active_heuristics_mode = instance->qdevice_instance_ptr->heuristics_instance.mode;
+	heuristics_enabled = (active_heuristics_mode == QDEVICE_HEURISTICS_MODE_ENABLED ||
+	    active_heuristics_mode == QDEVICE_HEURISTICS_MODE_SYNC);
+
+	if (!heuristics_enabled) {
+		return (1);
+	}
+
+	if (dynar_str_catf(outbuf, "Heuristics result:\t%s",
+	    tlv_heuristics_to_str(instance->latest_heuristics_result)) == -1) {
+		return (0);
+	}
+
+	if (verbose) {
+		if (dynar_str_catf(outbuf, " (regular: %s, membership: %s, connect: %s)",
+		    tlv_heuristics_to_str(instance->latest_regular_heuristics_result),
+		    tlv_heuristics_to_str(instance->latest_vq_heuristics_result),
+		    tlv_heuristics_to_str(instance->latest_connect_heuristics_result)) == -1) {
+			return (0);
+		}
+	}
+
+	return (dynar_str_catf(outbuf, "\n") != -1);
+}
+
+static int
 qdevice_net_ipc_cmd_status_add_tls_state(struct qdevice_net_instance *instance,
     struct dynar *outbuf, int verbose)
 {
@@ -231,6 +263,7 @@ qdevice_net_ipc_cmd_status(struct qdevice_net_instance *instance, struct dynar *
 	    qdevice_net_ipc_cmd_status_add_tie_breaker(instance, outbuf, verbose) &&
 	    qdevice_net_ipc_cmd_status_add_poll_timer_status(instance, outbuf, verbose) &&
 	    qdevice_net_ipc_cmd_status_add_state(instance, outbuf, verbose) &&
+	    qdevice_net_ipc_cmd_status_add_heuristics(instance, outbuf, verbose) &&
 	    qdevice_net_ipc_cmd_status_add_tls_state(instance, outbuf, verbose) &&
 	    qdevice_net_ipc_cmd_status_add_times(instance, outbuf, verbose)) {
 		return (1);

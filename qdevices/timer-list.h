@@ -85,6 +85,8 @@ extern void				 timer_list_expire(struct timer_list *tlist);
 
 extern PRIntervalTime			 timer_list_time_to_expire(struct timer_list *tlist);
 
+extern uint32_t				 timer_list_time_to_expire_ms(struct timer_list *tlist);
+
 extern void				 timer_list_free(struct timer_list *tlist);
 
 #ifdef __cplusplus

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016 Red Hat, Inc.
+ * Copyright (c) 2015-2017 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -63,6 +63,21 @@ qdevice_advanced_settings_init(struct qdevice_advanced_settings *settings)
 	settings->ipc_max_clients = QDEVICE_DEFAULT_IPC_MAX_CLIENTS;
 	settings->ipc_max_receive_size = QDEVICE_DEFAULT_IPC_MAX_RECEIVE_SIZE;
 	settings->ipc_max_send_size = QDEVICE_DEFAULT_IPC_MAX_SEND_SIZE;
+
+	settings->heuristics_ipc_max_send_buffers = QDEVICE_DEFAULT_HEURISTICS_IPC_MAX_SEND_BUFFERS;
+	settings->heuristics_ipc_max_send_receive_size = QDEVICE_DEFAULT_HEURISTICS_IPC_MAX_SEND_RECEIVE_SIZE;
+
+	settings->heuristics_min_timeout = QDEVICE_DEFAULT_HEURISTICS_MIN_TIMEOUT;
+	settings->heuristics_max_timeout = QDEVICE_DEFAULT_HEURISTICS_MAX_TIMEOUT;
+	settings->heuristics_min_interval = QDEVICE_DEFAULT_HEURISTICS_MIN_INTERVAL;
+	settings->heuristics_max_interval = QDEVICE_DEFAULT_HEURISTICS_MAX_INTERVAL;
+
+	settings->heuristics_max_execs = QDEVICE_DEFAULT_HEURISTICS_MAX_EXECS;
+
+	settings->heuristics_use_execvp = QDEVICE_DEFAULT_HEURISTICS_USE_EXECVP;
+	settings->heuristics_max_processes = QDEVICE_DEFAULT_HEURISTICS_MAX_PROCESSES;
+	settings->heuristics_kill_list_interval = QDEVICE_DEFAULT_HEURISTICS_KILL_LIST_INTERVAL;
+
 	if ((settings->net_nss_db_dir = strdup(QDEVICE_NET_DEFAULT_NSS_DB_DIR)) == NULL) {
 		return (-1);
 	}
@@ -166,6 +181,75 @@ qdevice_advanced_settings_set(struct qdevice_advanced_settings *settings,
 		}
 
 		settings->ipc_max_send_size = (size_t)tmpll;
+	} else if (strcasecmp(option, "heuristics_ipc_max_send_buffers") == 0) {
+		tmpll = strtoll(value, &ep, 10);
+		if (tmpll < QDEVICE_MIN_HEURISTICS_IPC_MAX_SEND_BUFFERS || errno != 0 || *ep != '\0') {
+			return (-2);
+		}
+
+		settings->heuristics_ipc_max_send_buffers = (size_t)tmpll;
+	} else if (strcasecmp(option, "heuristics_ipc_max_send_receive_size") == 0) {
+		tmpll = strtoll(value, &ep, 10);
+		if (tmpll < QDEVICE_MIN_HEURISTICS_IPC_MAX_SEND_RECEIVE_SIZE || errno != 0 || *ep != '\0') {
+			return (-2);
+		}
+
+		settings->heuristics_ipc_max_send_receive_size = (size_t)tmpll;
+	} else if (strcasecmp(option, "heuristics_min_timeout") == 0) {
+		tmpll = strtoll(value, &ep, 10);
+		if (tmpll < QDEVICE_MIN_HEURISTICS_TIMEOUT || errno != 0 || *ep != '\0') {
+			return (-2);
+		}
+
+		settings->heuristics_min_timeout = (uint32_t)tmpll;
+	} else if (strcasecmp(option, "heuristics_max_timeout") == 0) {
+		tmpll = strtoll(value, &ep, 10);
+		if (tmpll < QDEVICE_MIN_HEURISTICS_TIMEOUT || errno != 0 || *ep != '\0') {
+			return (-2);
+		}
+
+		settings->heuristics_max_timeout = (uint32_t)tmpll;
+	} else if (strcasecmp(option, "heuristics_min_interval") == 0) {
+		tmpll = strtoll(value, &ep, 10);
+		if (tmpll < QDEVICE_MIN_HEURISTICS_INTERVAL || errno != 0 || *ep != '\0') {
+			return (-2);
+		}
+
+		settings->heuristics_min_interval = (uint32_t)tmpll;
+	} else if (strcasecmp(option, "heuristics_max_interval") == 0) {
+		tmpll = strtoll(value, &ep, 10);
+		if (tmpll < QDEVICE_MIN_HEURISTICS_INTERVAL || errno != 0 || *ep != '\0') {
+			return (-2);
+		}
+
+		settings->heuristics_max_interval = (uint32_t)tmpll;
+	} else if (strcasecmp(option, "heuristics_max_execs") == 0) {
+		tmpll = strtoll(value, &ep, 10);
+		if (tmpll < QDEVICE_MIN_HEURISTICS_MAX_EXECS || errno != 0 || *ep != '\0') {
+			return (-2);
+		}
+
+		settings->heuristics_max_execs = (size_t)tmpll;
+	} else if (strcasecmp(option, "heuristics_use_execvp") == 0) {
+		if ((tmpll = utils_parse_bool_str(value)) == -1) {
+			return (-2);
+		}
+
+		settings->heuristics_use_execvp = (uint8_t)tmpll;
+	} else if (strcasecmp(option, "heuristics_max_processes") == 0) {
+		tmpll = strtoll(value, &ep, 10);
+		if (tmpll < QDEVICE_MIN_HEURISTICS_MAX_PROCESSES || errno != 0 || *ep != '\0') {
+			return (-2);
+		}
+
+		settings->heuristics_max_processes = (size_t)tmpll;
+	} else if (strcasecmp(option, "heuristics_kill_list_interval") == 0) {
+		tmpll = strtoll(value, &ep, 10);
+		if (tmpll < QDEVICE_MIN_HEURISTICS_KILL_LIST_INTERVAL || errno != 0 || *ep != '\0') {
+			return (-2);
+		}
+
+		settings->heuristics_kill_list_interval = (uint32_t)tmpll;
 	} else if (strcasecmp(option, "net_nss_db_dir") == 0) {
 		free(settings->net_nss_db_dir);
 

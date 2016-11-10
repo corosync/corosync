@@ -54,8 +54,10 @@ qdevice_net_send_echo_request(struct qdevice_net_instance *instance)
 	instance->echo_request_expected_msg_seq_num++;
 
 	if (msg_create_echo_request(&send_buffer->buffer, 1,
-	    instance->echo_request_expected_msg_seq_num) == -1) {
+	    instance->echo_request_expected_msg_seq_num) == 0) {
 		qdevice_log(LOG_ERR, "Can't allocate send buffer for echo request msg");
+
+		send_buffer_list_discard_new(&instance->send_buffer_list, send_buffer);
 
 		return (-1);
 	}
@@ -188,8 +190,41 @@ qdevice_net_send_config_node_list(struct qdevice_net_instance *instance,
 
 	if (msg_create_node_list(&send_buffer->buffer, instance->last_msg_seq_num,
 	    (initial ? TLV_NODE_LIST_TYPE_INITIAL_CONFIG : TLV_NODE_LIST_TYPE_CHANGED_CONFIG),
-	    0, NULL, config_version_set, config_version, 0, TLV_QUORATE_INQUORATE, nlist) == 0) {
+	    0, NULL, config_version_set, config_version, 0, TLV_QUORATE_INQUORATE,
+	    0, TLV_HEURISTICS_UNDEFINED, nlist) == 0) {
 		qdevice_log(LOG_ERR, "Can't allocate send buffer for config list msg");
+
+		send_buffer_list_discard_new(&instance->send_buffer_list, send_buffer);
+		return (-1);
+	}
+
+	send_buffer_list_put(&instance->send_buffer_list, send_buffer);
+
+	return (0);
+}
+
+int
+qdevice_net_send_heuristics_change(struct qdevice_net_instance *instance,
+    enum tlv_heuristics heuristics)
+{
+	struct send_buffer_list_entry *send_buffer;
+
+	send_buffer = send_buffer_list_get_new(&instance->send_buffer_list);
+	if (send_buffer == NULL) {
+		qdevice_log(LOG_ERR, "Can't allocate send list buffer for heuristics change msg");
+
+		return (-1);
+	}
+
+	instance->last_msg_seq_num++;
+
+	qdevice_log(LOG_DEBUG, "Sending heuristics change seq = "UTILS_PRI_MSG_SEQ
+	    ", heuristics = %s",
+	    instance->last_msg_seq_num, tlv_heuristics_to_str(heuristics));
+
+	if (msg_create_heuristics_change(&send_buffer->buffer, instance->last_msg_seq_num,
+	    heuristics) == 0) {
+		qdevice_log(LOG_ERR, "Can't allocate send buffer for heuristics change msg");
 
 		send_buffer_list_discard_new(&instance->send_buffer_list, send_buffer);
 		return (-1);
@@ -203,7 +238,7 @@ qdevice_net_send_config_node_list(struct qdevice_net_instance *instance,
 int
 qdevice_net_send_membership_node_list(struct qdevice_net_instance *instance,
     const struct tlv_ring_id *ring_id,
-    uint32_t node_list_entries, uint32_t node_list[])
+    uint32_t node_list_entries, uint32_t node_list[], enum tlv_heuristics heuristics)
 {
 	struct node_list nlist;
 	struct send_buffer_list_entry *send_buffer;
@@ -234,13 +269,13 @@ qdevice_net_send_membership_node_list(struct qdevice_net_instance *instance,
 	instance->last_msg_seq_num++;
 
 	qdevice_log(LOG_DEBUG, "Sending membership node list seq = "UTILS_PRI_MSG_SEQ", "
-	    "ringid = ("UTILS_PRI_RING_ID").", instance->last_msg_seq_num,
-	    ring_id->node_id, ring_id->seq);
+	    "ringid = ("UTILS_PRI_RING_ID"), heuristics = %s.", instance->last_msg_seq_num,
+	    ring_id->node_id, ring_id->seq, tlv_heuristics_to_str(heuristics));
 	qdevice_log_debug_dump_node_list(&nlist);
 
 	if (msg_create_node_list(&send_buffer->buffer, instance->last_msg_seq_num,
 	    TLV_NODE_LIST_TYPE_MEMBERSHIP,
-	    1, ring_id, 0, 0, 0, 0, &nlist) == 0) {
+	    1, ring_id, 0, 0, 0, 0, 1, heuristics, &nlist) == 0) {
 		qdevice_log(LOG_ERR, "Can't allocate send buffer for membership list msg");
 
 		node_list_free(&nlist);
@@ -302,7 +337,7 @@ qdevice_net_send_quorum_node_list(struct qdevice_net_instance *instance,
 
 	if (msg_create_node_list(&send_buffer->buffer, instance->last_msg_seq_num,
 	    TLV_NODE_LIST_TYPE_QUORUM,
-	    0, NULL, 0, 0, 1, quorate, &nlist) == 0) {
+	    0, NULL, 0, 0, 1, quorate, 0, TLV_HEURISTICS_UNDEFINED, &nlist) == 0) {
 		qdevice_log(LOG_ERR, "Can't allocate send buffer for quorum list msg");
 
 		node_list_free(&nlist);

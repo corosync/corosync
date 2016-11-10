@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016 Red Hat, Inc.
+ * Copyright (c) 2015-2017 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -67,6 +67,7 @@ enum tlv_opt_type {
 	TLV_OPT_VOTE = 19,
 	TLV_OPT_QUORATE = 20,
 	TLV_OPT_TIE_BREAKER = 21,
+	TLV_OPT_HEURISTICS = 22,
 };
 
 enum tlv_tls_supported {
@@ -153,6 +154,12 @@ struct tlv_node_info {
 	uint32_t node_id;
 	uint32_t data_center_id;		/* 0 - data center id was not set */
 	enum tlv_node_state node_state;		/* TLV_NODE_STATE_NOT_SET - state was not set */
+};
+
+enum tlv_heuristics {
+	TLV_HEURISTICS_UNDEFINED = 0,
+	TLV_HEURISTICS_PASS = 1,
+	TLV_HEURISTICS_FAIL = 2,
 };
 
 struct tlv_iterator {
@@ -243,6 +250,9 @@ extern int			 tlv_add_vote(struct dynar *msg, enum tlv_vote vote);
 
 extern int			 tlv_add_quorate(struct dynar *msg, enum tlv_quorate quorate);
 
+extern int			 tlv_add_heuristics(struct dynar *msg,
+    enum tlv_heuristics heuristics);
+
 extern void			 tlv_iter_init_str(const char *msg, size_t msg_len,
     size_t msg_header_len, struct tlv_iterator *tlv_iter);
 
@@ -315,6 +325,9 @@ extern int			 tlv_iter_decode_vote(struct tlv_iterator *tlv_iter,
 extern int			 tlv_iter_decode_quorate(struct tlv_iterator *tlv_iter,
     enum tlv_quorate *quorate);
 
+extern int			 tlv_iter_decode_heuristics(struct tlv_iterator *tlv_iter,
+    enum tlv_heuristics *heuristics);
+
 extern void			 tlv_get_supported_options(enum tlv_opt_type **supported_options,
     size_t *no_supported_options);
 
@@ -324,14 +337,21 @@ extern int			 tlv_ring_id_eq(const struct tlv_ring_id *rid1,
 extern int			 tlv_tie_breaker_eq(const struct tlv_tie_breaker *tb1,
     const struct tlv_tie_breaker *tb2);
 
-extern const char *		 tlv_vote_to_str(enum tlv_vote vote);
+extern const char		*tlv_vote_to_str(enum tlv_vote vote);
 
-extern const char *		 tlv_node_state_to_str(enum tlv_node_state state);
+extern const char		*tlv_node_state_to_str(enum tlv_node_state state);
 
-extern const char *		 tlv_tls_supported_to_str(enum tlv_tls_supported tls_supported);
+extern const char		*tlv_tls_supported_to_str(enum tlv_tls_supported tls_supported);
 
-extern const char *		 tlv_decision_algorithm_type_to_str(
+extern const char		*tlv_decision_algorithm_type_to_str(
     enum tlv_decision_algorithm_type algorithm);
+
+extern const char		*tlv_heuristics_to_str(enum tlv_heuristics heuristics);
+
+/*
+ * Compare h1 and h2. Return -1 if h1 < h2, 0 if h1 == h2 and 1 if h1 > h2
+ */
+extern int			 tlv_heuristics_cmp(enum tlv_heuristics h1, enum tlv_heuristics h2);
 
 #ifdef __cplusplus
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016 Red Hat, Inc.
+ * Copyright (c) 2015-2017 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -288,29 +288,42 @@ qnetd_algo_ffsplit_is_membership_stable(const struct qnetd_client *client, int c
 	return (1);
 }
 
-static size_t
-qnetd_algo_ffsplit_no_active_clients_in_partition(const struct qnetd_client *client,
-    const struct node_list *membership_node_list)
+static void
+qnetd_algo_ffsplit_get_active_clients_in_partition_stats(const struct qnetd_client *client,
+    const struct node_list *client_membership_node_list, enum tlv_heuristics client_heuristics,
+    size_t *no_clients, size_t *no_heuristics_pass, size_t *no_heuristics_fail)
 {
 	const struct node_list_entry *iter_node;
 	const struct qnetd_client *iter_client;
-	size_t res;
+	enum tlv_heuristics iter_heuristics;
 
-	res = 0;
+	*no_clients = 0;
+	*no_heuristics_pass = 0;
+	*no_heuristics_fail = 0;
 
-	if (client == NULL || membership_node_list == NULL) {
-		return (0);
+	if (client == NULL || client_membership_node_list == NULL) {
+		return ;
 	}
 
-	TAILQ_FOREACH(iter_node, membership_node_list, entries) {
+	TAILQ_FOREACH(iter_node, client_membership_node_list, entries) {
 		iter_client = qnetd_cluster_find_client_by_node_id(client->cluster,
 		    iter_node->node_id);
 		if (iter_client != NULL) {
-			res++;
+			(*no_clients)++;
+
+			if (iter_client == client) {
+				iter_heuristics = client_heuristics;
+			} else {
+				iter_heuristics = iter_client->last_heuristics;
+			}
+
+			if (iter_heuristics == TLV_HEURISTICS_PASS) {
+				(*no_heuristics_pass)++;
+			} else if (iter_heuristics == TLV_HEURISTICS_FAIL) {
+				(*no_heuristics_fail)++;
+			}
 		}
 	}
-
-	return (res);
 }
 
 /*
@@ -320,10 +333,16 @@ qnetd_algo_ffsplit_no_active_clients_in_partition(const struct qnetd_client *cli
 static int
 qnetd_algo_ffsplit_partition_cmp(const struct qnetd_client *client1,
     const struct node_list *config_node_list1, const struct node_list *membership_node_list1,
+    enum tlv_heuristics heuristics_1,
     const struct qnetd_client *client2,
-    const struct node_list *config_node_list2, const struct node_list *membership_node_list2)
+    const struct node_list *config_node_list2, const struct node_list *membership_node_list2,
+    enum tlv_heuristics heuristics_2)
 {
 	size_t part1_active_clients, part2_active_clients;
+	size_t part1_no_heuristics_pass, part2_no_heuristics_pass;
+	size_t part1_no_heuristics_fail, part2_no_heuristics_fail;
+	size_t part1_score, part2_score;
+
 	int res;
 
 	res = -1;
@@ -349,12 +368,37 @@ qnetd_algo_ffsplit_partition_cmp(const struct qnetd_client *client1,
 		 */
 
 		/*
-		 * Check how many active clients are in partitions
+		 * Check how many active clients are in partitions and heuristics results
 		 */
-		part1_active_clients = qnetd_algo_ffsplit_no_active_clients_in_partition(
-		    client1, membership_node_list1);
-		part2_active_clients = qnetd_algo_ffsplit_no_active_clients_in_partition(
-		    client2, membership_node_list2);
+		qnetd_algo_ffsplit_get_active_clients_in_partition_stats(client1,
+		    membership_node_list1, heuristics_1, &part1_active_clients,
+		    &part1_no_heuristics_pass, &part1_no_heuristics_fail);
+		qnetd_algo_ffsplit_get_active_clients_in_partition_stats(client2,
+		    membership_node_list2, heuristics_2, &part2_active_clients,
+		    &part2_no_heuristics_pass, &part2_no_heuristics_fail);
+
+		/*
+		 * Partition can contain clients with one of 4 states:
+		 * 1. Not-connected to qnetd (D)
+		 * 2. Disabled heuristics (U)
+		 * 3. Enabled heuristics with pass result (P)
+		 * 4. Enabled heuristics with fail result (F)
+		 *
+		 * The question is, what partition should get vote is kind of hard with
+		 * so much states. Following simple "score" seems to be good enough, but may
+		 * be suboptimal in some cases. As and example let's say there are
+		 * 2 partitions with 4 nodes each. Partition 1 looks like PDDD and partition 2 looks
+		 * like FUUU. Partition 1 score is 1 + (1 - 0), partition 2 score is 4 + (0 - 1).
+		 * Partition 2 wins eventho there is one processor with failed heuristics.
+		 */
+		part1_score = part1_active_clients + (part1_no_heuristics_pass - part1_no_heuristics_fail);
+		part2_score = part2_active_clients + (part2_no_heuristics_pass - part2_no_heuristics_fail);
+
+		if (part1_score > part2_score) {
+			res = 1; goto exit_res;
+		} else if (part1_score < part2_score) {
+			res = 0; goto exit_res;
+		}
 
 		if (part1_active_clients > part2_active_clients) {
 			res = 1; goto exit_res;
@@ -390,15 +434,18 @@ exit_res:
  */
 static const struct node_list *
 qnetd_algo_ffsplit_select_partition(const struct qnetd_client *client, int client_leaving,
-    const struct node_list *config_node_list, const struct node_list *membership_node_list)
+    const struct node_list *config_node_list, const struct node_list *membership_node_list,
+    enum tlv_heuristics client_heuristics)
 {
 	const struct qnetd_client *iter_client;
 	const struct qnetd_client *best_client;
 	const struct node_list *best_config_node_list, *best_membership_node_list;
 	const struct node_list *iter_config_node_list, *iter_membership_node_list;
+	enum tlv_heuristics iter_heuristics, best_heuristics;
 
 	best_client = NULL;
 	best_config_node_list = best_membership_node_list = NULL;
+	best_heuristics = TLV_HEURISTICS_UNDEFINED;
 
 	/*
 	 * Get highest score
@@ -411,17 +458,20 @@ qnetd_algo_ffsplit_select_partition(const struct qnetd_client *client, int clien
 
 			iter_config_node_list = config_node_list;
 			iter_membership_node_list = membership_node_list;
+			iter_heuristics = client_heuristics;
 		} else {
 			iter_config_node_list = &iter_client->configuration_node_list;
 			iter_membership_node_list = &iter_client->last_membership_node_list;
+			iter_heuristics = iter_client->last_heuristics;
 		}
 
 		if (qnetd_algo_ffsplit_partition_cmp(iter_client, iter_config_node_list,
-		    iter_membership_node_list, best_client, best_config_node_list,
-		    best_membership_node_list) > 0) {
+		    iter_membership_node_list, iter_heuristics, best_client, best_config_node_list,
+		    best_membership_node_list, best_heuristics) > 0) {
 			best_client = iter_client;
 			best_config_node_list = iter_config_node_list;
 			best_membership_node_list = iter_membership_node_list;
+			best_heuristics = iter_heuristics;
 		}
 	}
 
@@ -548,7 +598,7 @@ qnetd_algo_ffsplit_no_clients_in_sending_state(struct qnetd_client *client, int 
 static enum tlv_vote
 qnetd_algo_ffsplit_do(struct qnetd_client *client, int client_leaving,
     const struct tlv_ring_id *ring_id, const struct node_list *config_node_list,
-    const struct node_list *membership_node_list)
+    const struct node_list *membership_node_list, enum tlv_heuristics client_heuristics)
 {
 	struct qnetd_algo_ffsplit_cluster_data *cluster_data;
 	const struct node_list *quorate_partition_node_list;
@@ -570,7 +620,7 @@ qnetd_algo_ffsplit_do(struct qnetd_client *client, int client_leaving,
 	qnetd_log(LOG_DEBUG, "ffsplit: Membership for cluster %s is now stable", client->cluster_name);
 
 	quorate_partition_node_list = qnetd_algo_ffsplit_select_partition(client, client_leaving,
-	    config_node_list, membership_node_list);
+	    config_node_list, membership_node_list, client_heuristics);
 	cluster_data->quorate_partition_node_list = quorate_partition_node_list;
 
 	if (quorate_partition_node_list == NULL) {
@@ -636,7 +686,7 @@ qnetd_algo_ffsplit_config_node_list_received(struct qnetd_client *client,
 		*result_vote = TLV_VOTE_ASK_LATER;
 	} else {
 		*result_vote = qnetd_algo_ffsplit_do(client, 0, &client->last_ring_id,
-		    nodes, &client->last_membership_node_list);
+		    nodes, &client->last_membership_node_list, client->last_heuristics);
 	}
 
 	return (TLV_REPLY_ERROR_CODE_NO_ERROR);
@@ -659,7 +709,7 @@ qnetd_algo_ffsplit_config_node_list_received(struct qnetd_client *client,
 enum tlv_reply_error_code
 qnetd_algo_ffsplit_membership_node_list_received(struct qnetd_client *client,
     uint32_t msg_seq_num, const struct tlv_ring_id *ring_id,
-    const struct node_list *nodes, enum tlv_vote *result_vote)
+    const struct node_list *nodes, enum tlv_heuristics heuristics, enum tlv_vote *result_vote)
 {
 
 	if (node_list_size(nodes) == 0) {
@@ -689,7 +739,7 @@ qnetd_algo_ffsplit_membership_node_list_received(struct qnetd_client *client,
 		*result_vote = TLV_VOTE_ASK_LATER;
 	} else {
 		*result_vote = qnetd_algo_ffsplit_do(client, 0, ring_id,
-		    &client->configuration_node_list, nodes);
+		    &client->configuration_node_list, nodes, heuristics);
 	}
 
 	return (TLV_REPLY_ERROR_CODE_NO_ERROR);
@@ -714,7 +764,8 @@ qnetd_algo_ffsplit_client_disconnect(struct qnetd_client *client, int server_goi
 {
 
 	(void)qnetd_algo_ffsplit_do(client, 1, &client->last_ring_id,
-	    &client->configuration_node_list, &client->last_membership_node_list);
+	    &client->configuration_node_list, &client->last_membership_node_list,
+	    client->last_heuristics);
 
 	free(client->algorithm_data);
 
@@ -788,6 +839,26 @@ qnetd_algo_ffsplit_vote_info_reply_received(struct qnetd_client *client, uint32_
 }
 
 enum tlv_reply_error_code
+qnetd_algo_ffsplit_heuristics_change_received(struct qnetd_client *client, uint32_t msg_seq_num,
+    enum tlv_heuristics heuristics, enum tlv_vote *result_vote)
+{
+
+	if (node_list_size(&client->configuration_node_list) == 0 ||
+	    node_list_size(&client->last_membership_node_list) == 0) {
+		/*
+		 * Config or membership node list not received -> it's going to be sent later
+		 */
+		*result_vote = TLV_VOTE_ASK_LATER;
+	} else {
+		*result_vote = qnetd_algo_ffsplit_do(client, 0, &client->last_ring_id,
+		    &client->configuration_node_list, &client->last_membership_node_list,
+		    heuristics);
+	}
+
+	return (TLV_REPLY_ERROR_CODE_NO_ERROR);
+}
+
+enum tlv_reply_error_code
 qnetd_algo_ffsplit_timer_callback(struct qnetd_client *client, int *reschedule_timer,
     int *send_vote, enum tlv_vote *result_vote)
 {
@@ -803,6 +874,7 @@ static struct qnetd_algorithm qnetd_algo_ffsplit = {
 	.client_disconnect		= qnetd_algo_ffsplit_client_disconnect,
 	.ask_for_vote_received		= qnetd_algo_ffsplit_ask_for_vote_received,
 	.vote_info_reply_received	= qnetd_algo_ffsplit_vote_info_reply_received,
+	.heuristics_change_received	= qnetd_algo_ffsplit_heuristics_change_received,
 	.timer_callback			= qnetd_algo_ffsplit_timer_callback,
 };
 

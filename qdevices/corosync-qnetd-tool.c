@@ -277,7 +277,8 @@ main(int argc, char * const argv[])
 		errx(QNETD_TOOL_EXIT_CODE_INTERNAL_ERROR, "Can't store command");
 	}
 
-	if (fprintf(sock, "%s", dynar_data(&send_str)) != strlen(dynar_data(&send_str)) ||
+	res = fprintf(sock, "%s", dynar_data(&send_str));
+	if (res < 0 || (size_t)res != strlen(dynar_data(&send_str)) ||
 	    fflush(sock) != 0) {
 		errx(QNETD_TOOL_EXIT_CODE_INTERNAL_ERROR, "Can't send command");
 	}

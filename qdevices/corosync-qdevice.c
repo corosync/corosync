@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016 Red Hat, Inc.
+ * Copyright (c) 2015-2017 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -41,6 +41,7 @@
 #include "qdevice-advanced-settings.h"
 #include "qdevice-config.h"
 #include "qdevice-cmap.h"
+#include "qdevice-heuristics.h"
 #include "qdevice-ipc.h"
 #include "qdevice-log.h"
 #include "qdevice-model.h"
@@ -79,6 +80,18 @@ signal_handlers_register(void)
 	act.sa_flags = SA_RESTART;
 
 	sigaction(SIGTERM, &act, NULL);
+
+	act.sa_handler = SIG_DFL;
+	sigemptyset(&act.sa_mask);
+	act.sa_flags = SA_RESTART;
+
+	sigaction(SIGCHLD, &act, NULL);
+
+	act.sa_handler = SIG_IGN;
+	sigemptyset(&act.sa_mask);
+	act.sa_flags = SA_RESTART;
+
+	sigaction(SIGPIPE, &act, NULL);
 }
 
 static void
@@ -170,6 +183,9 @@ main(int argc, char * const argv[])
 
 	qdevice_instance_init(&instance, &advanced_settings);
 
+	qdevice_heuristics_init(&instance.heuristics_instance, &advanced_settings);
+	instance.heuristics_instance.qdevice_instance_ptr = &instance;
+
 	qdevice_cmap_init(&instance);
 	qdevice_log_init(&instance, force_debug);
 
@@ -233,6 +249,11 @@ main(int argc, char * const argv[])
 		return (1);
 	}
 
+	qdevice_log(LOG_DEBUG, "Waiting for initial heuristics exec result");
+	if (qdevice_heuristics_wait_for_initial_exec_result(&instance.heuristics_instance) != 0) {
+		return (1);
+	}
+
 	global_instance = &instance;
 	signal_handlers_register();
 
@@ -249,12 +270,21 @@ main(int argc, char * const argv[])
 	qdevice_log(LOG_DEBUG, "Destroying qdevice model");
 	qdevice_model_destroy(&instance);
 
+	qdevice_log(LOG_DEBUG, "Destroying qdevice ipc");
 	qdevice_ipc_destroy(&instance);
 
+	qdevice_log(LOG_DEBUG, "Destroying votequorum and cmap");
 	qdevice_votequorum_destroy(&instance);
 	qdevice_cmap_destroy(&instance);
+
+	qdevice_log(LOG_DEBUG, "Destroying heuristics");
+	qdevice_heuristics_destroy(&instance.heuristics_instance);
+
+	qdevice_log(LOG_DEBUG, "Closing log");
 	qdevice_log_close(&instance);
+
 	qdevice_instance_destroy(&instance);
+
 	qdevice_advanced_settings_destroy(&advanced_settings);
 
 	return (0);
