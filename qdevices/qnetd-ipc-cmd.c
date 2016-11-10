@@ -201,6 +201,25 @@ qnetd_ipc_cmd_list_add_client_info(const struct qnetd_client *client, struct dyn
 		}
 	}
 
+	if (client->last_heuristics != TLV_HEURISTICS_UNDEFINED || verbose) {
+		if (dynar_str_catf(outbuf, "        Heuristics:\t\t%s",
+		    tlv_heuristics_to_str(client->last_heuristics)) == -1) {
+			return (-1);
+		}
+
+		if (verbose) {
+			if (dynar_str_catf(outbuf, " (membership: %s, regular: %s)",
+			    tlv_heuristics_to_str(client->last_membership_heuristics),
+			    tlv_heuristics_to_str(client->last_regular_heuristics)) == -1) {
+				return (-1);
+			}
+		}
+
+		if (dynar_str_catf(outbuf, "\n") == -1) {
+			return (-1);
+		}
+	}
+
 	if (verbose) {
 		if (dynar_str_catf(outbuf, "        TLS active:\t\t%s",
 		    (client->tls_started ? "Yes" : "No")) == -1) {

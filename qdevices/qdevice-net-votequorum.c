@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016 Red Hat, Inc.
+ * Copyright (c) 2015-2017 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -32,8 +32,8 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "qdevice-net-votequorum.h"
 #include "qdevice-log.h"
+#include "qdevice-net-votequorum.h"
 
 enum tlv_node_state
 qdevice_net_votequorum_node_state_to_tlv(uint32_t votequorum_node_state)

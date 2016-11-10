@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016 Red Hat, Inc.
+ * Copyright (c) 2015-2017 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -90,10 +90,10 @@ qnetd_log_debug_config_node_list_received(struct qnetd_client *client,
 	    "sent %s node list.", client->addr_str, client->cluster_name, client->node_id,
 	    (initial ? "initial" : "changed"));
 
-	qnetd_log(LOG_DEBUG, "  msg seq num "UTILS_PRI_MSG_SEQ, msg_seq_num);
+	qnetd_log(LOG_DEBUG, "  msg seq num = "UTILS_PRI_MSG_SEQ, msg_seq_num);
 
 	if (config_version_set) {
-		qnetd_log(LOG_DEBUG, "  config version " UTILS_PRI_CONFIG_VERSION, config_version);
+		qnetd_log(LOG_DEBUG, "  config version = " UTILS_PRI_CONFIG_VERSION, config_version);
 	}
 
 	qnetd_log_debug_dump_node_list(client, nodes);
@@ -102,14 +102,16 @@ qnetd_log_debug_config_node_list_received(struct qnetd_client *client,
 void
 qnetd_log_debug_membership_node_list_received(struct qnetd_client *client,
     uint32_t msg_seq_num, const struct tlv_ring_id *ring_id,
-    const struct node_list *nodes)
+    enum tlv_heuristics heuristics, const struct node_list *nodes)
 {
 	qnetd_log(LOG_DEBUG, "Client %s (cluster %s, node_id "UTILS_PRI_NODE_ID") "
 	    "sent membership node list.", client->addr_str, client->cluster_name, client->node_id);
 
-	qnetd_log(LOG_DEBUG, "  msg seq num "UTILS_PRI_MSG_SEQ, msg_seq_num);
+	qnetd_log(LOG_DEBUG, "  msg seq num = "UTILS_PRI_MSG_SEQ, msg_seq_num);
 
 	qnetd_log(LOG_DEBUG, "  ring id = (" UTILS_PRI_RING_ID ")", ring_id->node_id, ring_id->seq);
+
+	qnetd_log(LOG_DEBUG, "  heuristics = %s ", tlv_heuristics_to_str(heuristics));
 
 	qnetd_log_debug_dump_node_list(client, nodes);
 }
@@ -122,7 +124,7 @@ qnetd_log_debug_quorum_node_list_received(struct qnetd_client *client,
 	qnetd_log(LOG_DEBUG, "Client %s (cluster %s, node_id "UTILS_PRI_NODE_ID") "
 	    "sent quorum node list.", client->addr_str, client->cluster_name, client->node_id);
 
-	qnetd_log(LOG_DEBUG, "  msg seq num "UTILS_PRI_MSG_SEQ, msg_seq_num);
+	qnetd_log(LOG_DEBUG, "  msg seq num = "UTILS_PRI_MSG_SEQ, msg_seq_num);
 	qnetd_log(LOG_DEBUG, "  quorate = %u", quorate);
 
 	qnetd_log_debug_dump_node_list(client, nodes);
@@ -144,7 +146,7 @@ qnetd_log_debug_ask_for_vote_received(struct qnetd_client *client, uint32_t msg_
 
 	qnetd_log(LOG_DEBUG, "Client %s (cluster %s, node_id "UTILS_PRI_NODE_ID") "
 	    "asked for a vote", client->addr_str, client->cluster_name, client->node_id);
-	qnetd_log(LOG_DEBUG, "  msg seq num "UTILS_PRI_MSG_SEQ, msg_seq_num);
+	qnetd_log(LOG_DEBUG, "  msg seq num = "UTILS_PRI_MSG_SEQ, msg_seq_num);
 }
 
 void
@@ -154,7 +156,7 @@ qnetd_log_debug_vote_info_reply_received(struct qnetd_client *client, uint32_t m
 	qnetd_log(LOG_DEBUG, "Client %s (cluster %s, node_id "UTILS_PRI_NODE_ID") "
 	    "replied back to vote info message", client->addr_str, client->cluster_name,
 	    client->node_id);
-	qnetd_log(LOG_DEBUG, "  msg seq num "UTILS_PRI_MSG_SEQ, msg_seq_num);
+	qnetd_log(LOG_DEBUG, "  msg seq num = "UTILS_PRI_MSG_SEQ, msg_seq_num);
 }
 
 void
@@ -163,6 +165,17 @@ qnetd_log_debug_send_vote_info(struct qnetd_client *client, uint32_t msg_seq_num
 
 	qnetd_log(LOG_DEBUG, "Sending vote info to client %s (cluster %s, node_id "UTILS_PRI_NODE_ID") ",
 	    client->addr_str, client->cluster_name, client->node_id);
-	qnetd_log(LOG_DEBUG, "  msg seq num "UTILS_PRI_MSG_SEQ, msg_seq_num);
-	qnetd_log(LOG_DEBUG, "  vote %s", tlv_vote_to_str(vote));
+	qnetd_log(LOG_DEBUG, "  msg seq num = "UTILS_PRI_MSG_SEQ, msg_seq_num);
+	qnetd_log(LOG_DEBUG, "  vote = %s", tlv_vote_to_str(vote));
+}
+
+void
+qnetd_log_debug_heuristics_change_received(struct qnetd_client *client, uint32_t msg_seq_num,
+    enum tlv_heuristics heuristics)
+{
+
+	qnetd_log(LOG_DEBUG, "Client %s (cluster %s, node_id "UTILS_PRI_NODE_ID") "
+	    "sent heuristics change", client->addr_str, client->cluster_name, client->node_id);
+	qnetd_log(LOG_DEBUG, "  msg seq num = "UTILS_PRI_MSG_SEQ, msg_seq_num);
+	qnetd_log(LOG_DEBUG, "  heuristics = %s", tlv_heuristics_to_str(heuristics));
 }

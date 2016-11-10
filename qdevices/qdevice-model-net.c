@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016 Red Hat, Inc.
+ * Copyright (c) 2015-2017 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -41,6 +41,7 @@
 #include "qdevice-net-instance.h"
 #include "qdevice-net-ipc-cmd.h"
 #include "qdevice-net-algorithm.h"
+#include "qdevice-net-heuristics.h"
 #include "qdevice-net-poll.h"
 #include "qdevice-net-send.h"
 #include "qdevice-net-votequorum.h"
@@ -79,6 +80,11 @@ qdevice_model_net_init(struct qdevice_instance *instance)
 
 	if (qdevice_net_algorithm_init(net_instance) != 0) {
 		qdevice_log(LOG_ERR, "Algorithm init failed");
+		return (-1);
+	}
+
+	if (qdevice_net_heuristics_init(net_instance) != 0) {
+		qdevice_log(LOG_ERR, "Can't initialize net heuristics");
 		return (-1);
 	}
 
@@ -207,6 +213,11 @@ qdevice_model_net_run(struct qdevice_instance *instance)
 		}
 
 		try_connect = qdevice_net_disconnect_reason_try_reconnect(net_instance->disconnect_reason);
+
+		/*
+		 * Unpause cast vote timer, because if it is paused we cannot remove tracking
+		 */
+		qdevice_net_cast_vote_timer_set_paused(net_instance, 0);
 
 		vote = TLV_VOTE_NO_CHANGE;
 
@@ -381,7 +392,7 @@ qdevice_model_net_votequorum_quorum_notify(struct qdevice_instance *instance,
 
 	if (qdevice_net_algorithm_votequorum_quorum_notify(net_instance, quorate,
 	    node_list_entries, node_list, &send_node_list, &vote) != 0) {
-		qdevice_log(LOG_DEBUG, "Algorithm returned error. Disconnecting.");
+		qdevice_log(LOG_ERR, "Algorithm returned error. Disconnecting.");
 
 		net_instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_ALGO_VOTEQUORUM_QUORUM_NOTIFY_ERR;
 		net_instance->schedule_disconnect = 1;
@@ -419,17 +430,20 @@ qdevice_model_net_votequorum_quorum_notify(struct qdevice_instance *instance,
 }
 
 int
-qdevice_model_net_votequorum_node_list_notify(struct qdevice_instance *instance,
-    votequorum_ring_id_t votequorum_ring_id, uint32_t node_list_entries, uint32_t node_list[])
+qdevice_model_net_votequorum_node_list_heuristics_notify(struct qdevice_instance *instance,
+    votequorum_ring_id_t votequorum_ring_id, uint32_t node_list_entries, uint32_t node_list[],
+    enum qdevice_heuristics_exec_result heuristics_exec_result)
 {
 	struct qdevice_net_instance *net_instance;
 	struct tlv_ring_id tlv_rid;
 	enum tlv_vote vote;
+	enum tlv_heuristics heuristics;
 	int send_node_list;
 
 	net_instance = instance->model_data;
 
 	qdevice_net_votequorum_ring_id_to_tlv(&tlv_rid, &votequorum_ring_id);
+	heuristics = qdevice_net_heuristics_exec_result_to_tlv(heuristics_exec_result);
 
 	if (net_instance->state != QDEVICE_NET_INSTANCE_STATE_WAITING_VOTEQUORUM_CMAP_EVENTS) {
 		/*
@@ -447,22 +461,24 @@ qdevice_model_net_votequorum_node_list_notify(struct qdevice_instance *instance,
 		vote = TLV_VOTE_WAIT_FOR_REPLY;
 	}
 
-	if (qdevice_net_algorithm_votequorum_node_list_notify(net_instance, &tlv_rid,
-	    node_list_entries, node_list, &send_node_list, &vote) != 0) {
-		qdevice_log(LOG_DEBUG, "Algorithm returned error. Disconnecting.");
+	if (qdevice_net_algorithm_votequorum_node_list_heuristics_notify(net_instance, &tlv_rid,
+	    node_list_entries, node_list, &send_node_list, &vote, &heuristics) != 0) {
+		qdevice_log(LOG_ERR, "Algorithm returned error. Disconnecting.");
 
-		net_instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_ALGO_VOTEQUORUM_NODE_LIST_NOTIFY_ERR;
+		net_instance->disconnect_reason =
+		    QDEVICE_NET_DISCONNECT_REASON_ALGO_VOTEQUORUM_NODE_LIST_HEURISTICS_NOTIFY_ERR;
 		net_instance->schedule_disconnect = 1;
 
 		return (0);
 	} else {
-		qdevice_log(LOG_DEBUG, "Algorithm decided to %s list and result vote is %s",
-		    (send_node_list ? "send" : "not send"), tlv_vote_to_str(vote));
+		qdevice_log(LOG_DEBUG, "Algorithm decided to %s list, result vote is %s and heuristics is %s",
+		    (send_node_list ? "send" : "not send"), tlv_vote_to_str(vote),
+		    tlv_heuristics_to_str(heuristics));
 	}
 
 	if (send_node_list) {
 		if (qdevice_net_send_membership_node_list(net_instance, &tlv_rid,
-		    node_list_entries, node_list) != 0) {
+		    node_list_entries, node_list, heuristics) != 0) {
 			/*
 			 * Fatal error -> schedule disconnect
 			 */
@@ -473,6 +489,11 @@ qdevice_model_net_votequorum_node_list_notify(struct qdevice_instance *instance,
 		}
 	}
 
+	/*
+	 * Unpause cast vote timer
+	 */
+	qdevice_net_cast_vote_timer_set_paused(net_instance, 0);
+
 	if (qdevice_net_cast_vote_timer_update(net_instance, vote) != 0) {
 		qdevice_log(LOG_CRIT, "qdevice_model_net_votequorum_node_list_notify fatal error "
 		    "Can't update cast vote timer");
@@ -481,6 +502,75 @@ qdevice_model_net_votequorum_node_list_notify(struct qdevice_instance *instance,
 
 		return (0);
 	}
+
+	net_instance->latest_vq_heuristics_result = heuristics;
+	net_instance->latest_heuristics_result = heuristics;
+
+	if (qdevice_net_heuristics_schedule_timer(net_instance) != 0) {
+		return (0);
+	}
+
+	return (0);
+}
+
+int
+qdevice_model_net_votequorum_node_list_notify(struct qdevice_instance *instance,
+    votequorum_ring_id_t votequorum_ring_id, uint32_t node_list_entries, uint32_t node_list[])
+{
+	struct qdevice_net_instance *net_instance;
+	struct tlv_ring_id tlv_rid;
+	enum tlv_vote vote;
+	int pause_cast_vote_timer;
+
+	net_instance = instance->model_data;
+
+	/*
+	 * Stop regular heuristics till qdevice_model_net_votequorum_node_list_heuristics_notify
+	 * is called
+	 */
+	if (qdevice_net_heuristics_stop_timer(net_instance) != 0) {
+		return (0);
+	}
+
+	pause_cast_vote_timer = 1;
+	vote = TLV_VOTE_NO_CHANGE;
+
+	if (net_instance->state != QDEVICE_NET_INSTANCE_STATE_WAITING_VOTEQUORUM_CMAP_EVENTS &&
+	    net_instance->cast_vote_timer_vote == TLV_VOTE_ACK) {
+		/*
+		 * Nodelist changed and vote timer still votes ACK. It's needed to start voting
+		 * NACK.
+		 */
+		if (net_instance->cast_vote_timer_vote == TLV_VOTE_ACK) {
+			vote = TLV_VOTE_NACK;
+		}
+	}
+
+	qdevice_net_votequorum_ring_id_to_tlv(&tlv_rid, &votequorum_ring_id);
+
+	if (qdevice_net_algorithm_votequorum_node_list_notify(net_instance, &tlv_rid,
+	    node_list_entries, node_list, &pause_cast_vote_timer, &vote) != 0) {
+		qdevice_log(LOG_ERR, "Algorithm returned error. Disconnecting.");
+
+		net_instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_ALGO_VOTEQUORUM_NODE_LIST_NOTIFY_ERR;
+		net_instance->schedule_disconnect = 1;
+
+		return (0);
+	} else {
+		qdevice_log(LOG_DEBUG, "Algorithm decided to %s cast vote timer and result vote is %s ",
+		    (pause_cast_vote_timer ? "pause" : "not pause"), tlv_vote_to_str(vote));
+	}
+
+	if (qdevice_net_cast_vote_timer_update(net_instance, vote) != 0) {
+		qdevice_log(LOG_CRIT, "qdevice_model_net_votequorum_node_list_notify fatal error "
+		    "Can't update cast vote timer");
+		net_instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_SCHEDULE_VOTING_TIMER;
+		net_instance->schedule_disconnect = 1;
+
+		return (0);
+	}
+
+	qdevice_net_cast_vote_timer_set_paused(net_instance, pause_cast_vote_timer);
 
 	return (0);
 }
@@ -525,6 +615,41 @@ qdevice_model_net_votequorum_expected_votes_notify(struct qdevice_instance *inst
 }
 
 int
+qdevice_model_net_cmap_changed(struct qdevice_instance *instance,
+    const struct qdevice_cmap_change_events *events)
+{
+	struct qdevice_net_instance *net_instance;
+	enum qdevice_heuristics_mode active_heuristics_mode;
+	int heuristics_enabled;
+
+	net_instance = instance->model_data;
+
+	if (events->heuristics) {
+		active_heuristics_mode = instance->heuristics_instance.mode;
+		heuristics_enabled = (active_heuristics_mode == QDEVICE_HEURISTICS_MODE_ENABLED ||
+		    active_heuristics_mode == QDEVICE_HEURISTICS_MODE_SYNC);
+
+		if (net_instance->state == QDEVICE_NET_INSTANCE_STATE_WAITING_VOTEQUORUM_CMAP_EVENTS &&
+		    !net_instance->server_supports_heuristics && heuristics_enabled) {
+			qdevice_log(LOG_ERR, "Heuristics are enabled but not supported by the server");
+
+			net_instance->disconnect_reason =
+			    QDEVICE_NET_DISCONNECT_REASON_SERVER_DOESNT_SUPPORT_REQUIRED_OPT;
+
+			net_instance->schedule_disconnect = 1;
+
+			return (0);
+		}
+
+		if (qdevice_net_heuristics_schedule_timer(net_instance) != 0) {
+			return (0);
+		}
+	}
+
+	return (0);
+}
+
+int
 qdevice_model_net_ipc_cmd_status(struct qdevice_instance *instance,
     struct dynar *outbuf, int verbose)
 {
@@ -548,7 +673,9 @@ static struct qdevice_model qdevice_model_net = {
 	.config_node_list_changed		= qdevice_model_net_config_node_list_changed,
 	.votequorum_quorum_notify		= qdevice_model_net_votequorum_quorum_notify,
 	.votequorum_node_list_notify		= qdevice_model_net_votequorum_node_list_notify,
+	.votequorum_node_list_heuristics_notify	= qdevice_model_net_votequorum_node_list_heuristics_notify,
 	.votequorum_expected_votes_notify	= qdevice_model_net_votequorum_expected_votes_notify,
+	.cmap_changed				= qdevice_model_net_cmap_changed,
 	.ipc_cmd_status				= qdevice_model_net_ipc_cmd_status,
 };
 

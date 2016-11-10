@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016 Red Hat, Inc.
+ * Copyright (c) 2015-2017 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -87,6 +87,9 @@ struct qnetd_client {
 	uint32_t dpd_msg_received_since_last_check;
 	enum tlv_vote last_sent_vote;
 	enum tlv_vote last_sent_ack_nack_vote;
+	enum tlv_heuristics last_membership_heuristics; /* Passed in membership node list */
+	enum tlv_heuristics last_regular_heuristics; /* Passed in heuristics change callback */
+	enum tlv_heuristics last_heuristics; /* Latest heuristics both membership and regular */
 	TAILQ_ENTRY(qnetd_client) entries;
 	TAILQ_ENTRY(qnetd_client) cluster_entries;
 };

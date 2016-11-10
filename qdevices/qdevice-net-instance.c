@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016 Red Hat, Inc.
+ * Copyright (c) 2015-2017 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -53,7 +53,9 @@ qdevice_net_instance_init(struct qdevice_net_instance *instance,
     const char *host_addr, uint16_t host_port, const char *cluster_name,
     const struct tlv_tie_breaker *tie_breaker, uint32_t connect_timeout,
     int force_ip_version, int cmap_fd, int votequorum_fd, int local_socket_fd,
-    const struct qdevice_advanced_settings *advanced_settings)
+    const struct qdevice_advanced_settings *advanced_settings,
+    int heuristics_pipe_cmd_send_fd, int heuristics_pipe_cmd_recv_fd,
+    int heuristics_pipe_log_recv_fd)
 {
 
 	memset(instance, 0, sizeof(*instance));
@@ -100,6 +102,24 @@ qdevice_net_instance_init(struct qdevice_net_instance *instance,
 
 	if ((instance->ipc_socket_poll_fd = PR_CreateSocketPollFd(local_socket_fd)) == NULL) {
 		qdevice_log_nss(LOG_CRIT, "Can't create NSPR IPC socket poll fd");
+		return (-1);
+	}
+
+	if ((instance->heuristics_pipe_cmd_send_poll_fd =
+	    PR_CreateSocketPollFd(heuristics_pipe_cmd_send_fd)) == NULL) {
+		qdevice_log_nss(LOG_CRIT, "Can't create NSPR heuristics pipe command send poll fd");
+		return (-1);
+	}
+
+	if ((instance->heuristics_pipe_cmd_recv_poll_fd =
+	    PR_CreateSocketPollFd(heuristics_pipe_cmd_recv_fd)) == NULL) {
+		qdevice_log_nss(LOG_CRIT, "Can't create NSPR heuristics pipe command recv poll fd");
+		return (-1);
+	}
+
+	if ((instance->heuristics_pipe_log_recv_poll_fd =
+	    PR_CreateSocketPollFd(heuristics_pipe_log_recv_fd)) == NULL) {
+		qdevice_log_nss(LOG_CRIT, "Can't create NSPR heuristics pipe log recv poll fd");
 		return (-1);
 	}
 
@@ -167,6 +187,21 @@ qdevice_net_instance_destroy(struct qdevice_net_instance *instance)
 
 	if (PR_DestroySocketPollFd(instance->ipc_socket_poll_fd) != PR_SUCCESS) {
 		qdevice_log_nss(LOG_WARNING, "Unable to close local socket poll fd");
+	}
+
+	if (PR_DestroySocketPollFd(instance->heuristics_pipe_cmd_send_poll_fd) != PR_SUCCESS) {
+		qdevice_log_nss(LOG_WARNING, "Unable to close heuristics pipe command send poll fd");
+		return (-1);
+	}
+
+	if (PR_DestroySocketPollFd(instance->heuristics_pipe_cmd_recv_poll_fd) != PR_SUCCESS) {
+		qdevice_log_nss(LOG_WARNING, "Unable to close heuristics pipe command recv poll fd");
+		return (-1);
+	}
+
+	if (PR_DestroySocketPollFd(instance->heuristics_pipe_log_recv_poll_fd) != PR_SUCCESS) {
+		qdevice_log_nss(LOG_WARNING, "Unable to close heuristics pipe log recv poll fd");
+		return (-1);
 	}
 
 	return (0);
@@ -378,7 +413,10 @@ qdevice_net_instance_init_from_cmap(struct qdevice_instance *instance)
 	    host_addr, host_port, cluster_name, &tie_breaker, connect_timeout,
 	    force_ip_version,
 	    instance->cmap_poll_fd, instance->votequorum_poll_fd,
-	    instance->local_ipc.socket, instance->advanced_settings) == -1) {
+	    instance->local_ipc.socket, instance->advanced_settings,
+	    instance->heuristics_instance.pipe_cmd_send,
+	    instance->heuristics_instance.pipe_cmd_recv,
+	    instance->heuristics_instance.pipe_log_recv) == -1) {
 		qdevice_log(LOG_ERR, "Can't initialize qdevice-net instance");
 		goto error_free_instance;
 	}

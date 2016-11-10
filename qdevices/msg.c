@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016 Red Hat, Inc.
+ * Copyright (c) 2015-2017 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -44,7 +44,7 @@
 #define MSG_TYPE_LENGTH		2
 #define MSG_LENGTH_LENGTH	4
 
-#define MSG_STATIC_SUPPORTED_MESSAGES_SIZE	16
+#define MSG_STATIC_SUPPORTED_MESSAGES_SIZE	18
 
 enum msg_type msg_static_supported_messages[MSG_STATIC_SUPPORTED_MESSAGES_SIZE] = {
     MSG_TYPE_PREINIT,
@@ -63,6 +63,8 @@ enum msg_type msg_static_supported_messages[MSG_STATIC_SUPPORTED_MESSAGES_SIZE] 
     MSG_TYPE_ASK_FOR_VOTE_REPLY,
     MSG_TYPE_VOTE_INFO,
     MSG_TYPE_VOTE_INFO_REPLY,
+    MSG_TYPE_HEURISTICS_CHANGE,
+    MSG_TYPE_HEURISTICS_CHANGE_REPLY,
 };
 
 size_t
@@ -521,6 +523,7 @@ msg_create_node_list(struct dynar *msg,
     int add_ring_id, const struct tlv_ring_id *ring_id,
     int add_config_version, uint64_t config_version,
     int add_quorate, enum tlv_quorate quorate,
+    int add_heuristics, enum tlv_heuristics heuristics,
     const struct node_list *nodes)
 {
 	struct node_list_entry *node_info;
@@ -561,6 +564,12 @@ msg_create_node_list(struct dynar *msg,
 		node_list_entry_to_tlv_node_info(node_info, &tlv_ni);
 
 		if (tlv_add_node_info(msg, &tlv_ni) == -1) {
+			goto small_buf_err;
+		}
+	}
+
+	if (add_heuristics && heuristics != TLV_HEURISTICS_UNDEFINED) {
+		if (tlv_add_heuristics(msg, heuristics) == -1) {
 			goto small_buf_err;
 		}
 	}
@@ -699,6 +708,66 @@ msg_create_vote_info_reply(struct dynar *msg, uint32_t msg_seq_number)
 	msg_add_len(msg);
 
 	if (tlv_add_msg_seq_number(msg, msg_seq_number) == -1) {
+		goto small_buf_err;
+	}
+
+	msg_set_len(msg, dynar_size(msg) - (MSG_TYPE_LENGTH + MSG_LENGTH_LENGTH));
+
+	return (dynar_size(msg));
+
+small_buf_err:
+	return (0);
+}
+
+size_t
+msg_create_heuristics_change(struct dynar *msg, uint32_t msg_seq_number,
+    enum tlv_heuristics heuristics)
+{
+
+	dynar_clean(msg);
+
+	msg_add_type(msg, MSG_TYPE_HEURISTICS_CHANGE);
+	msg_add_len(msg);
+
+	if (tlv_add_msg_seq_number(msg, msg_seq_number) == -1) {
+		goto small_buf_err;
+	}
+
+	if (tlv_add_heuristics(msg, heuristics) == -1) {
+		goto small_buf_err;
+	}
+
+	msg_set_len(msg, dynar_size(msg) - (MSG_TYPE_LENGTH + MSG_LENGTH_LENGTH));
+
+	return (dynar_size(msg));
+
+small_buf_err:
+	return (0);
+}
+
+size_t
+msg_create_heuristics_change_reply(struct dynar *msg, uint32_t msg_seq_number,
+    const struct tlv_ring_id *ring_id, enum tlv_heuristics heuristics, enum tlv_vote vote)
+{
+
+	dynar_clean(msg);
+
+	msg_add_type(msg, MSG_TYPE_HEURISTICS_CHANGE_REPLY);
+	msg_add_len(msg);
+
+	if (tlv_add_msg_seq_number(msg, msg_seq_number) == -1) {
+		goto small_buf_err;
+	}
+
+	if (tlv_add_vote(msg, vote) == -1) {
+		goto small_buf_err;
+	}
+
+	if (tlv_add_ring_id(msg, ring_id) == -1) {
+		goto small_buf_err;
+	}
+
+	if (tlv_add_heuristics(msg, heuristics) == -1) {
 		goto small_buf_err;
 	}
 
@@ -968,6 +1037,12 @@ msg_decode(const struct dynar *msg, struct msg_decoded *decoded_msg)
 			decoded_msg->tie_breaker_set = 1;
 			memcpy(&decoded_msg->tie_breaker, &tie_breaker, sizeof(tie_breaker));
 			break;
+		case TLV_OPT_HEURISTICS:
+			if ((res = tlv_iter_decode_heuristics(&tlv_iter,
+			    &decoded_msg->heuristics)) != 0) {
+				return (res);
+			}
+			break;
 		/*
 		 * Default is not defined intentionally. Compiler shows warning when
 		 * new tlv option is added. Also protocol ignores unknown options so
@@ -1012,6 +1087,8 @@ msg_type_to_str(enum msg_type type)
 	case MSG_TYPE_ASK_FOR_VOTE_REPLY: return ("Ask for vote reply"); break;
 	case MSG_TYPE_VOTE_INFO: return ("Vote info"); break;
 	case MSG_TYPE_VOTE_INFO_REPLY: return ("Vote info reply"); break;
+	case MSG_TYPE_HEURISTICS_CHANGE: return ("Heuristics change"); break;
+	case MSG_TYPE_HEURISTICS_CHANGE_REPLY: return ("Heuristics change reply"); break;
 	}
 
 	return ("Unknown message type");
