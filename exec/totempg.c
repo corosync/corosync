@@ -315,7 +315,7 @@ static struct assembly *assembly_ref (unsigned int nodeid)
 	 * Nothing found in inuse list get one from free list if available
 	 */
 	if (qb_list_empty (&assembly_list_free) == 0) {
-		assembly = qb_list_entry (assembly_list_free.next, struct assembly, list);
+		assembly = qb_list_first_entry (&assembly_list_free, struct assembly, list);
 		qb_list_del (&assembly->list);
 		qb_list_add (&assembly->list, active_assembly_list_inuse);
 		assembly->nodeid = nodeid;

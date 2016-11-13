@@ -277,13 +277,12 @@ static void record_config_events (int sock)
 static void read_config_event (int sock)
 {
 	const char *empty = "None";
-	struct qb_list_head * list = config_chg_log_head.next;
 	log_entry_t *entry;
 	ssize_t rc;
 	size_t send_len;
 
-	if (list != &config_chg_log_head) {
-		entry = qb_list_entry (list, log_entry_t, list);
+	if (qb_list_empty(&config_chg_log_head) == 0) {
+		entry = qb_list_first_entry (&config_chg_log_head, log_entry_t, list);
 		send_len = strlen (entry->log);
 		rc = send (sock, entry->log, send_len, 0);
 		qb_list_del (&entry->list);
@@ -298,7 +297,8 @@ static void read_config_event (int sock)
 
 static void read_messages (int sock, char* atmost_str)
 {
-	struct qb_list_head * list;
+	struct qb_list_head *iter, *tmp_iter;
+
 	log_entry_t *entry;
 	int atmost = atoi (atmost_str);
 	int packed = 0;
@@ -311,15 +311,16 @@ static void read_messages (int sock, char* atmost_str)
 
 	big_and_buf[0] = '\0';
 
-	for (list = msg_log_head.next;
-		(!qb_list_empty (&msg_log_head) && packed < atmost); ) {
+	qb_list_for_each_safe(iter, tmp_iter, &msg_log_head) {
 
-		entry = qb_list_entry (list, log_entry_t, list);
+		if (packed >= atmost)
+			break;
+
+		entry = qb_list_entry (iter, log_entry_t, list);
 
 		strcat (big_and_buf, entry->log);
 		packed++;
 
-		list = list->next;
 		qb_list_del (&entry->list);
 		free (entry);
 

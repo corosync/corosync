@@ -435,7 +435,6 @@ static void node_add_ordered(struct cluster_node *newnode)
 {
 	struct cluster_node *node = NULL;
 	struct qb_list_head *tmp;
-	struct qb_list_head *newlist = &newnode->list;
 
 	ENTER();
 
@@ -449,10 +448,7 @@ static void node_add_ordered(struct cluster_node *newnode)
 	if (!node) {
 		qb_list_add(&newnode->list, &cluster_members_list);
 	} else {
-		newlist->prev = tmp->prev;
-		newlist->next = tmp;
-		tmp->prev->next = newlist;
-		tmp->prev = newlist;
+		qb_list_add_tail(&newnode->list, &node->list);
 	}
 
 	LEAVE();
