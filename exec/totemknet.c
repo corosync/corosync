@@ -88,9 +88,6 @@
 /* Should match that used by cfg */
 #define CFG_INTERFACE_STATUS_MAX_LEN 512
 
-/* Log messages received from libknet */
-#define LOG_BUFFER_SIZE 8192
-
 struct totemknet_instance {
 	struct crypto_instance *crypto_inst;
 
@@ -457,12 +454,14 @@ static int log_deliver_fn (
 	void *data)
 {
 	struct totemknet_instance *instance = (struct totemknet_instance *)data;
-	char buffer[LOG_BUFFER_SIZE];
+	char buffer[KNET_MAX_LOG_MSG_SIZE*4];
+	char *bufptr = buffer;
+	int done = 0;
 	int len;
 
 	len = read(fd, buffer, sizeof(buffer));
-	if (len) {
-		struct knet_log_msg *msg = (struct knet_log_msg *)buffer;
+	while (done < len) {
+		struct knet_log_msg *msg = (struct knet_log_msg *)bufptr;
 		switch (msg->msglevel) {
 		case KNET_LOG_ERR:
 			libknet_log_printf (LOGSYS_LEVEL_ERROR, "%s", msg->msg);
@@ -477,6 +476,8 @@ static int log_deliver_fn (
 			libknet_log_printf (LOGSYS_LEVEL_DEBUG, "%s", msg->msg);
 			break;
 		}
+		bufptr += KNET_MAX_LOG_MSG_SIZE;
+		done += KNET_MAX_LOG_MSG_SIZE;
 	}
 	return 0;
 }
