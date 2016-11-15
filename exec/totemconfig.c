@@ -78,6 +78,8 @@
 #define KNET_PING_INTERVAL                      1000
 #define KNET_PING_TIMEOUT                       2000
 #define KNET_PING_PRECISION                     2048
+#define KNET_PONG_COUNT                         5
+#define KNET_PMTUD_INTERVAL                     30
 
 #define DEFAULT_PORT				5405
 
@@ -121,6 +123,8 @@ static uint32_t *totem_get_param_by_name(struct totem_config *totem_config, cons
 		return &totem_config->max_messages;
 	if (strcmp(param_name, "totem.miss_count_const") == 0)
 		return &totem_config->miss_count_const;
+	if (strcmp(param_name, "totem.knet_pmtud_interval") == 0)
+		return &totem_config->knet_pmtud_interval;
 
 	return NULL;
 }
@@ -190,6 +194,7 @@ static void totem_volatile_config_read (struct totem_config *totem_config, const
 	totem_volatile_config_set_value(totem_config, "totem.max_messages", deleted_key, MAX_MESSAGES, 0);
 
 	totem_volatile_config_set_value(totem_config, "totem.miss_count_const", deleted_key, MISS_COUNT_CONST, 0);
+	totem_volatile_config_set_value(totem_config, "totem.knet_pmtud_interval", deleted_key, KNET_PMTUD_INTERVAL, 0);
 
 	totem_volatile_config_set_value(totem_config, "totem.token_retransmit", deleted_key,
 	   (int)(totem_config->token_timeout / (totem_config->token_retransmits_before_loss_const + 0.2)), 0);
@@ -1125,6 +1130,11 @@ extern int totem_config_read (
 		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.knet_ping_precision", linknumber);
 		if (icmap_get_uint32(tmp_key, &u32) == CS_OK) {
 			totem_config->interfaces[linknumber].knet_ping_precision = u32;
+		}
+		totem_config->interfaces[linknumber].knet_pong_count = KNET_PONG_COUNT;
+		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.knet_pong_count", linknumber);
+		if (icmap_get_uint32(tmp_key, &u32) == CS_OK) {
+			totem_config->interfaces[linknumber].knet_pong_count = u32;
 		}
 
 		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.member.", linknumber);

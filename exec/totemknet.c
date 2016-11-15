@@ -643,7 +643,7 @@ int totemknet_initialize (
 		KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_CRIT, "knet_handle_new failed");
 		return (-1);
 	}
-	res = knet_handle_pmtud_setfreq(instance->knet_handle, 5);
+	res = knet_handle_pmtud_setfreq(instance->knet_handle, instance->totem_config->knet_pmtud_interval);
 	if (res) {
 		KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_WARNING, "knet_handle_pmtud_setfreq failed");
 	}
@@ -952,6 +952,11 @@ int totemknet_member_add (
 				  instance->totem_config->interfaces[link_no].knet_ping_precision);
 	if (err) {
 		KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_ERROR, "knet_link_set_ping_timers for nodeid %d, link %d failed", member->nodeid, link_no);
+	}
+	err = knet_link_set_pong_count(instance->knet_handle, member->nodeid, link_no,
+				       instance->totem_config->interfaces[link_no].knet_pong_count);
+	if (err) {
+		KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_ERROR, "knet_link_set_pong_count for nodeid %d, link %d failed", member->nodeid, link_no);
 	}
 
 	err = knet_link_set_enable(instance->knet_handle, member->nodeid, link_no, 1);

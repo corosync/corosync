@@ -102,6 +102,10 @@ How many values of latency are used to calculate
 the average link latency. (default 2048 samples)
 
 .TP
+knet_pong_count
+How many valid ping/pongs before a link is marked UP. (default 5)
+
+.TP
 bindnetaddr (udp only)
 This specifies the network address the corosync executive should bind
 to when using udp.
@@ -462,6 +466,11 @@ compared to unicast packets.  The default setting works well for nearly all
 modern switches.
 
 The default is 5 messages.
+
+.TP
+knet_pmtud_interval
+How often the knet PMTUd runs to look for network MTU changes.
+Value in seconds, default: 60
 
 .PP
 Within the

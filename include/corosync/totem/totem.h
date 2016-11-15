@@ -73,6 +73,7 @@ struct totem_interface {
 	int knet_ping_interval;
 	int knet_ping_timeout;
 	int knet_ping_precision;
+	int knet_pong_count;
 	struct totem_ip_address member_list[PROCESSOR_COUNT_MAX];
 };
 
@@ -128,6 +129,7 @@ struct totem_config {
 	unsigned int interface_count;
 	unsigned int node_id;
 	unsigned int clear_node_high_bit;
+	unsigned int knet_pmtud_interval;
 
 	/*
 	 * key information
