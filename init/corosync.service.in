@@ -20,7 +20,7 @@ Type=forking
 #  Specify a period longer than soft_margin as RestartSec.
 #RestartSec=70
 #  rewrite according to environment.
-#ExecStartPre=/sbin/modprobe softdog soft_margin=60
+#ExecStartPre=/sbin/modprobe softdog
 
 [Install]
 WantedBy=multi-user.target
