@@ -64,6 +64,7 @@
 #include <corosync/sq.h>
 #include <corosync/swab.h>
 #include <corosync/logsys.h>
+#include <corosync/icmap.h>
 #include <corosync/totem/totemip.h>
 #include "totemknet.h"
 
@@ -243,10 +244,7 @@ static int dst_host_filter_callback_fn(void *private_data,
 				       size_t *dst_host_ids_entries)
 {
 	struct totem_message_header *header = (struct totem_message_header *)outdata;
-//	struct totemknet_instance *instance = (struct totemknet_instance *)private_data;
 	int res;
-
-//	knet_log_printf (LOGSYS_LEVEL_DEBUG, "Filter notification called: %s target nodeid=%d, len=%ld", tx_rx==KNET_NOTIFY_RX?"RX":"TX", header->target_nodeid, outdata_len);
 
 	*channel = 0;
 	if (header->target_nodeid) {
@@ -550,7 +548,129 @@ static void timer_function_netif_check_timeout (
 						     &instance->my_ids[i],
 						     i);
 }
+static void totemknet_refresh_config(
+	int32_t event,
+	const char *key_name,
+	struct icmap_notify_value new_val,
+	struct icmap_notify_value old_val,
+	void *user_data)
+{
+	uint8_t reloading;
+	uint32_t value;
+	uint32_t link_no;
+	size_t num_nodes;
+	uint16_t host_ids[KNET_MAX_HOST];
+	int i;
+	int err;
+	char path[ICMAP_KEYNAME_MAXLEN];
+	struct totemknet_instance *instance = (struct totemknet_instance *)user_data;
 
+	ENTER();
+
+	/*
+	 * If a full reload is in progress then don't do anything until it's done and
+	 * can reconfigure it all atomically
+	 */
+	if (icmap_get_uint8("config.totemconfig_reload_in_progress", &reloading) == CS_OK && reloading) {
+		return;
+	}
+
+	if (icmap_get_uint32("totem.knet_pmtud_interval", &value) == CS_OK) {
+
+		instance->totem_config->knet_pmtud_interval = value;
+		knet_log_printf (LOGSYS_LEVEL_DEBUG, "knet_pmtud_interval now %d", value);
+		err = knet_handle_pmtud_setfreq(instance->knet_handle, instance->totem_config->knet_pmtud_interval);
+		if (err) {
+			KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_WARNING, "knet_handle_pmtud_setfreq failed");
+		}
+	}
+
+	/* Get link parameters */
+	for (i = 0; i <= instance->num_links; i++) {
+		sprintf(path, "totem.interface.%d.knet_link_priority", i);
+		if (icmap_get_uint32(path, &value) == CS_OK) {
+			instance->totem_config->interfaces[i].knet_link_priority = value;
+			knet_log_printf (LOGSYS_LEVEL_DEBUG, "knet_link_priority on link %d now %d", i, value);
+		}
+
+		sprintf(path, "totem.interface.%d.knet_ping_interval", i);
+		if (icmap_get_uint32(path, &value) == CS_OK) {
+			instance->totem_config->interfaces[i].knet_ping_interval = value;
+			knet_log_printf (LOGSYS_LEVEL_DEBUG, "knet_ping_interval on link %d now %d", i, value);
+		}
+
+		sprintf(path, "totem.interface.%d.knet_ping_timeout", i);
+		if (icmap_get_uint32(path, &value) == CS_OK) {
+			instance->totem_config->interfaces[i].knet_ping_timeout = value;
+			knet_log_printf (LOGSYS_LEVEL_DEBUG, "knet_ping_timeout on link %d now %d", i, value);
+		}
+		sprintf(path, "totem.interface.%d.knet_ping_precision", i);
+		if (icmap_get_uint32(path, &value) == CS_OK) {
+			instance->totem_config->interfaces[i].knet_ping_precision = value;
+			knet_log_printf (LOGSYS_LEVEL_DEBUG, "knet_ping_precision on link %d now %d", i, value);
+		}
+
+		sprintf(path, "totem.interface.%d.knet_pong_count", i);
+		if (icmap_get_uint32(path, &value) == CS_OK) {
+			instance->totem_config->interfaces[i].knet_pong_count = value;
+			knet_log_printf (LOGSYS_LEVEL_DEBUG, "knet_pong_count on link %d now %d", i, value);
+		}
+	}
+
+	/* Configure link parameters for each node */
+	err = knet_host_get_host_list(instance->knet_handle, host_ids, &num_nodes);
+	if (err != 0) {
+		KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_ERROR, "knet_host_get_host_list failed");
+	}
+
+	for (i=0; i<num_nodes; i++) {
+		for (link_no = 0; link_no < instance->num_links; link_no++) {
+
+			err = knet_link_set_ping_timers(instance->knet_handle, host_ids[i], link_no,
+							instance->totem_config->interfaces[link_no].knet_ping_interval,
+							instance->totem_config->interfaces[link_no].knet_ping_timeout,
+							instance->totem_config->interfaces[link_no].knet_ping_precision);
+			if (err) {
+				KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_ERROR, "knet_link_set_ping_timers for node %d link %d failed", host_ids[i], link_no);
+			}
+			err = knet_link_set_pong_count(instance->knet_handle, host_ids[i], link_no,
+						       instance->totem_config->interfaces[link_no].knet_pong_count);
+			if (err) {
+				KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_ERROR, "knet_link_set_pong_count for node %d link %d failed",host_ids[i], link_no);
+			}
+			err = knet_link_set_priority(instance->knet_handle, host_ids[i], link_no,
+						     instance->totem_config->interfaces[link_no].knet_link_priority);
+			if (err) {
+				KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_ERROR, "knet_link_set_priority for node %d link %d failed", host_ids[i], link_no);
+			}
+
+		}
+	}
+
+	LEAVE();
+}
+
+static void totemknet_add_config_notifications(struct totemknet_instance *instance)
+{
+	icmap_track_t icmap_track_totem = NULL;
+	icmap_track_t icmap_track_reload = NULL;
+
+	ENTER();
+
+	icmap_track_add("totem.",
+		ICMAP_TRACK_ADD | ICMAP_TRACK_DELETE | ICMAP_TRACK_MODIFY | ICMAP_TRACK_PREFIX,
+		totemknet_refresh_config,
+		instance,
+		&icmap_track_totem);
+
+	icmap_track_add("config.totemconfig_reload_in_progress",
+		ICMAP_TRACK_ADD | ICMAP_TRACK_MODIFY,
+		totemknet_refresh_config,
+		instance,
+		&icmap_track_reload);
+
+	LEAVE();
+}
 
 /*
  * Create an instance
@@ -732,6 +852,9 @@ int totemknet_initialize (
 		&instance->timer_netif_check_timeout);
 
 	totemknet_start_merge_detect_timeout(instance);
+
+	/* Start listening for config changes */
+	totemknet_add_config_notifications(instance);
 
 	knet_log_printf (LOGSYS_LEVEL_INFO, "totemknet initialized");
 	*knet_context = instance;
