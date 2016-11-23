@@ -1153,7 +1153,7 @@ int totempg_groups_join (
 {
 	struct totempg_group_instance *instance = (struct totempg_group_instance *)totempg_groups_instance;
 	struct totempg_group *new_groups;
-	unsigned int res = 0;
+	int res = 0;
 
 	if (totempg_threaded_mode == 1) {
 		pthread_mutex_lock (&totempg_mutex);
@@ -1163,7 +1163,7 @@ int totempg_groups_join (
 		sizeof (struct totempg_group) *
 		(instance->groups_cnt + group_cnt));
 	if (new_groups == 0) {
-		res = ENOMEM;
+		res = -1;
 		goto error_exit;
 	}
 	memcpy (&new_groups[instance->groups_cnt],
