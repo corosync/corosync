@@ -76,6 +76,7 @@ endif
 		-e 's#@''SBINDIR@#$(sbindir)#g' \
 		-e 's#@''BINDIR@#$(bindir)#g' \
 		-e 's#@''SYSCONFDIR@#$(sysconfdir)#g' \
+		-e 's#@''INITCONFIGDIR@#$(INITCONFIGDIR)#g' \
 		-e 's#@''INITDDIR@#$(INITDDIR)#g' \
 		-e 's#@''INITWRAPPERSDIR@#$(INITWRAPPERSDIR)#g' \
 		-e 's#@''LOCALSTATEDIR@#$(localstatedir)#g' \

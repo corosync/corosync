@@ -6,7 +6,7 @@ Requires=network-online.target
 After=network-online.target
 
 [Service]
-EnvironmentFile=@SYSCONFDIR@/sysconfig/corosync-qnetd
+EnvironmentFile=-@INITCONFIGDIR@/corosync-qnetd
 ExecStart=@BINDIR@/corosync-qnetd -f $COROSYNC_QNETD_OPTIONS
 Type=simple
 Restart=on-abnormal

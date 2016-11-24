@@ -5,7 +5,7 @@ Wants=corosync.service
 After=corosync.service
 
 [Service]
-EnvironmentFile=@SYSCONFDIR@/sysconfig/corosync-notifyd
+EnvironmentFile=-@INITCONFIGDIR@/corosync-notifyd
 ExecStart=@SBINDIR@/corosync-notifyd -f $OPTIONS
 Type=simple
 Restart=on-failure
