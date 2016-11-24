@@ -364,6 +364,13 @@ AC_ARG_ENABLE([upstart],
 	[ enable_upstart="no" ])
 AM_CONDITIONAL(INSTALL_UPSTART, test x$enable_upstart = xyes)
 
+AC_ARG_WITH([initconfigdir],
+	[AS_HELP_STRING([--with-initconfigdir=DIR],
+		[configuration directory @<:@SYSCONFDIR/sysconfig@:>@])],
+	[INITCONFIGDIR="$withval"],
+	[INITCONFIGDIR='${sysconfdir}/sysconfig'])
+AC_SUBST([INITCONFIGDIR])
+
 AC_ARG_WITH([initddir],
 	[  --with-initddir=DIR     : path to init script directory. ],
 	[ INITDDIR="$withval" ],
@@ -771,6 +778,7 @@ AC_MSG_RESULT([  System tmpfiles.d        = ${TMPFILESDIR}])
 AC_MSG_RESULT([  Log directory            = ${LOGDIR}])
 AC_MSG_RESULT([  Log rotate directory     = ${LOGROTATEDIR}])
 AC_MSG_RESULT([  corosync config dir      = ${COROSYSCONFDIR}])
+AC_MSG_RESULT([  init config directory    = ${INITCONFIGDIR}])
 AC_MSG_RESULT([  Features                 =${PACKAGE_FEATURES}])
 AC_MSG_RESULT([])
 AC_MSG_RESULT([$PACKAGE build info:])

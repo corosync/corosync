@@ -47,16 +47,16 @@ status()
 	return $res
 }
 
+[ -f @INITCONFIGDIR@/$prog ] && . @INITCONFIGDIR@/$prog
+
 # rpm based distros
 if [ -d @SYSCONFDIR@/sysconfig ]; then
 	[ -f @INITDDIR@/functions ] && . @INITDDIR@/functions
-	[ -f @SYSCONFDIR@/sysconfig/$prog ] && . @SYSCONFDIR@/sysconfig/$prog
 	[ -z "$LOCK_FILE" ] && LOCK_FILE="@LOCALSTATEDIR@/lock/subsys/$prog"
 fi
 
 # deb based distros
 if [ -d @SYSCONFDIR@/default ]; then
-	[ -f @SYSCONFDIR@/default/$prog ] && . @SYSCONFDIR@/default/$prog
 	[ -z "$LOCK_FILE" ] && LOCK_FILE="@LOCALSTATEDIR@/lock/$prog"
 fi
 

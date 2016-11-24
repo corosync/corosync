@@ -5,14 +5,12 @@
 expect fork
 
 env prog=corosync
-env rpm_sysconf=@SYSCONFDIR@/sysconfig/corosync
+env initconf=@INITCONFIGDIR@/corosync
 env rpm_lockfile=@LOCALSTATEDIR@/lock/subsys/corosync
-env deb_sysconf=@SYSCONFDIR@/default/corosync
 env deb_lockfile=@LOCALSTATEDIR@/lock/corosync
 
 script
-    [ -f "$rpm_sysconf" ] && . $rpm_sysconf
-    [ -f "$deb_sysconf" ] && . $deb_sysconf
+    [ -f "$initconf" ] && . $initconf
     exec $prog $COROSYNC_OPTIONS
 end script
 
@@ -25,8 +23,7 @@ end script
 post-start script
 wait_for_ipc()
 {
-    [ -f "$rpm_sysconf" ] && . $rpm_sysconf
-    [ -f "$deb_sysconf" ] && . $deb_sysconf
+    [ -f "$initconf" ] && . $initconf
     try=0
     max_try=$((COROSYNC_INIT_TIMEOUT*2-1))
     [ "$max_try" -le "0" ] && max_try=120
@@ -43,16 +40,14 @@ wait_for_ipc()
 }
     wait_for_ipc || { stop; exit 1; }
 
-    [ -f "$rpm_sysconf" ] && . $rpm_sysconf
-    [ -f "$deb_sysconf" ] && . $deb_sysconf
+    [ -f "$initconf" ] && . $initconf
     [ -z "$LOCK_FILE" -a -d @SYSCONFDIR@/sysconfig ] && LOCK_FILE="$rpm_lockfile"
     [ -z "$LOCK_FILE" -a -d @SYSCONFDIR@/default ] && LOCK_FILE="$deb_lockfile"
     touch $LOCK_FILE
 end script
 
 post-stop script
-    [ -f "$rpm_sysconf" ] && . $rpm_sysconf
-    [ -f "$deb_sysconf" ] && . $deb_sysconf
+    [ -f "$initconf" ] && . $initconf
     [ -z "$LOCK_FILE" -a -d @SYSCONFDIR@/sysconfig ] && LOCK_FILE="$rpm_lockfile"
     [ -z "$LOCK_FILE" -a -d @SYSCONFDIR@/default ] && LOCK_FILE="$deb_lockfile"
     rm -f $LOCK_FILE
