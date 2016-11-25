@@ -41,7 +41,7 @@ votequorum_finalize \- Terminate a connection to the votequorum service
 .SH DESCRIPTION
 The
 .B votequorum_finalize
-function is used to close a connection to the configuration dabatase API.
+function is used to close a connection to the configuration database API.
 Once the connection is finalized, the handle may not be used again by applications.
 No more callbacks will be dispatched from the
 .B votequorum_dispatch

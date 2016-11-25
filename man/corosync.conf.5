@@ -353,7 +353,7 @@ The default is 50 milliseconds.
 .TP
 send_join
 This timeout specifies in milliseconds an upper range between 0 and send_join
-to wait before sending a join message.  For configurations with less then
+to wait before sending a join message.  For configurations with less than
 32 nodes, this parameter is not necessary.  For larger rings, this parameter
 is necessary to ensure the NIC is not overflowed with join messages on
 formation of a new ring.  A reasonable value for large rings (128 nodes) would
@@ -369,9 +369,9 @@ achieved before starting a new round of membership configuration.  The minimum
 value for consensus must be 1.2 * token.  This value will be automatically
 calculated at 1.2 * token if the user doesn't specify a consensus value.
 
-For two node clusters, a consensus larger then the join timeout but less then
+For two node clusters, a consensus larger than the join timeout but less than
 token is safe.  For three node or larger clusters, consensus should be larger
-then token.  There is an increasing risk of odd membership changes, which stil
+than token.  There is an increasing risk of odd membership changes, which still
 guarantee virtual synchrony,  as node count grows if consensus is less than
 token.
 
@@ -391,7 +391,7 @@ downcheck
 This timeout specifies in milliseconds how long to wait before checking
 that a network interface is back up after it has been downed.
 
-The default is 1000 millseconds.
+The default is 1000 milliseconds.
 
 .TP
 fail_recv_const
@@ -442,7 +442,7 @@ token rotation.  If all processors perform equally well, this value could be
 large (300), which would introduce higher latency from origination to delivery
 for very large rings.  To reduce latency in large rings(16+), the defaults are
 a safe compromise.  If 1 or more slow processor(s) are present among fast
-processors, window_size should be no larger then 256000 / netmtu to avoid
+processors, window_size should be no larger than 256000 / netmtu to avoid
 overflow of the kernel receive buffers.  The user is notified of this by
 the display of a retransmit list in the notification logs.  There is no loss
 of data, but performance is reduced when these errors occur.
@@ -591,7 +591,7 @@ The subsys entry, described below, is mandatory to identify the subsystem.
 .TP
 subsys
 This specifies the subsystem identity (name) for which logging is specified. This is the
-name used by a service in the log_init () call. E.g. 'CPG'. This directive is
+name used by a service in the log_init() call. E.g. 'CPG'. This directive is
 required.
 
 .PP
@@ -618,7 +618,7 @@ Every node that should be a member of the membership must be specified.
 Possible options are:
 .TP
 ringX_addr
-This specifies ip address of one of the nodes. X is link number. 
+This specifies IP address of one of the nodes. X is link number. 
 
 .TP
 nodeid

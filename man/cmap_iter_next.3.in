@@ -60,8 +60,8 @@ argument is iterator handle obtained by
 .B cmap_iter_init(3)
 function. Following key name is stored inside
 .I key_name
-argument, which must be preallocated by caller and its quaranted maximum size is CMAP_KEYNAME_MAXLEN
-(urrently 255).
+argument, which must be preallocated by caller and its guaranteed maximum size is CMAP_KEYNAME_MAXLEN
+(currently 255).
 .I value_len
 is pointer where length of value is stored, but can be NULL.
 .I type

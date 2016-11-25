@@ -60,7 +60,7 @@ function.
 is name of key to delete.
 
 .SH RETURN VALUE
-This call returns the CS_OK value if successful. If  key_name is unspecified, CS_ERR_INVALID_PARAM
+This call returns the CS_OK value if successful. If key_name is unspecified, CS_ERR_INVALID_PARAM
 is returned. For nonexisting keys, CS_ERR_NOT_EXIST error is returned. Some of keys may be tagged
 read-only directly in corosync and deleting such key will result in CS_ERR_ACCESS error.
 

@@ -89,7 +89,7 @@ nodes that are included in the sync state - ie only active nodes. No quorum info
 because it is not available at that time.
 The 'quorum' callback is sent after the cluster state transition has completed and does contain quorum information. 
 In addition, the nodelist contains a list of all nodes known to votequorum (whether up or down) and their state as well 
-as information about the quorum device attached (if any). quorum callbacks will not be sent for qdevice up and down
+as information about the quorum device attached (if any). Quorum callbacks will not be sent for qdevice up and down
 events unless they affect quorum.
 
 .PP
