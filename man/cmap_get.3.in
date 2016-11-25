@@ -127,7 +127,7 @@ then nothing is stored. Type can be one of:
 .PP
 \fBCMAP_VALUETYPE_BINARY\fR - Binary data, byte with zero value has no special meaning
 
-Sortcut functions tests cmap type with it's own type. If type didn't match, CS_ERR_INVALID_PARAM error
+Shortcut functions tests cmap type with it's own type. If type didn't match, CS_ERR_INVALID_PARAM error
 is returned. No conversions are done, so for example
 .B cmap_get_int16
 is not able to return value with

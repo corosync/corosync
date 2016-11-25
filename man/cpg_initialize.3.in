@@ -46,7 +46,7 @@ and
 .B cpg_model_initialize
 should be used in newly written code.
 .PP
-Each application may have several connections to the CPG API.  Each  application
+Each application may have several connections to the CPG API.  Each application
 uses the
 .I handle
 argument to uniquely identify the connection.  The

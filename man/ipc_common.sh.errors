@@ -13,13 +13,13 @@ Permission denied
 The connection failed
 
 .B CS_ERR_INTERRUPT
-System call inturrupted by a signal
+System call interrupted by a signal
 
 .B CS_ERR_NOT_SUPPORTED
-The requested protocol/functuality not supported
+The requested protocol/functionality not supported
 
 .B CS_ERR_MESSAGE_ERROR
 Incorrect auth message received
 
 .B CS_ERR_NO_MEMORY
-Not enough memory to completed the requested task
+Not enough memory to complete the requested task

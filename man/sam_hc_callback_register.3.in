@@ -60,7 +60,7 @@ defined as:
 .fi
 
 .P
-This function will be regulargly called and must return 0 if the process is
+This function will be regularly called and must return 0 if the process is
 functioning normally, or -1 if the process is executing abnormally.  When -1 is
 returned, the SAM server execute the registered recovery policy.
 
@@ -79,7 +79,7 @@ CS_ERR_BAD_HANDLE
 SAM was not initialized and registered or health checking is in running state
 .TP
 CS_ERR_LIBRARY
-internal library call failed. This can occur during fork() or pipe () system
+internal library call failed. This can occur during fork() or pipe() system
 calls and the errno variable can be read to retrieve more information.
 
 .SH "SEE ALSO"

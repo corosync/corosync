@@ -120,7 +120,7 @@ is \fBCMAP_TRACK_DELETE\fR.
 .I old_value
 is previous value of key or unset if
 .I event
-is \fBCMAP_TRACK_ADD\fR or for some special keys set directly by Corosync due to speed optimalizations.
+is \fBCMAP_TRACK_ADD\fR or for some special keys set directly by Corosync due to speed optimizations.
 Both
 .I new_value
 and

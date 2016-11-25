@@ -47,8 +47,8 @@ sam_hc_send \- Send health check confirmation
 .SH DESCRIPTION
 .P
 The \fBsam_hc_send\fR function is used to send healthcheck confirmation from
-the applicatoin.  This function should be called reguarly when configured for
-application driven healthchecking, otherwise recovery actoin will be taken.
+the application.  This function should be called regularly when configured for
+application driven healthchecking, otherwise recovery action will be taken.
 
 When using event driven healthchecking, this function should not be used.
 

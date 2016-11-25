@@ -226,7 +226,7 @@ qnetd server then we return a vote.
 If more than one node can see the qnetd server but some nodes can't
 see each other then the cluster is divided up into 'partitions' based on
 their ring_id and this algorithm returns a vote to the largest active partition or, 
-if there is more than 1 equal partiton, the partition that contains the tie_breaker 
+if there is more than 1 equal partition, the partition that contains the tie_breaker 
 node (lowest, highest, etc). For LMS to work, the number
 of qdevice votes has to be set to default (so just delete
 .B quorum.device.votes

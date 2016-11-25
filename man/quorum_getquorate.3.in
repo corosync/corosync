@@ -41,7 +41,7 @@ quorum_getquorate \- Gets the quorate status of the node.
 .SH DESCRIPTION
 The
 .B quorum_getquorate
-function is used to retrieve the quorate status of the node. quorate is 0 if the node
+function is used to retrieve the quorate status of the node. Quorate is 0 if the node
 is not part of a quorate partition or 1 otherwise.
 .SH RETURN VALUE
 This call returns the CS_OK value if successful, otherwise an error is returned.

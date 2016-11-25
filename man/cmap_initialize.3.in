@@ -48,7 +48,7 @@ cmap_initialize \- Initialize CMAP API
 .P
 The \fBcmap_initialize\fR function is used to initialize a connection to
 the Configuration Map API. Each application may have several connections to the CMAP API.
-Each  application uses the
+Each application uses the
 .I handle
 argument to uniquely identify the connection.  The
 .I handle

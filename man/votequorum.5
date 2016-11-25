@@ -223,7 +223,7 @@ Example chain of events:
 .PP
 NOTES: In order for the cluster to downgrade automatically from 2 nodes
 to a 1 node cluster, the auto_tie_breaker feature must also be enabled (see below).
-If auto_tie_breaker is not enabled, and one more failure occours, the
+If auto_tie_breaker is not enabled, and one more failure occurs, the
 remaining node will not be quorate. LMS does not work with asymmetric voting
 schemes, each node must vote 1. LMS is also incompatible with quorum devices,
 if last_man_standing is specified in corosync.conf then the quorum device 

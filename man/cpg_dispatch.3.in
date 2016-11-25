@@ -44,7 +44,7 @@ The
 function is used to dispatch configuration changes or messages from the
 closed process groups API.
 .PP
-Each application may have several connections to the CPG API.  Each  application
+Each application may have several connections to the CPG API.  Each application
 uses the
 .I handle
 argument to uniquely identify the connection.
