@@ -49,7 +49,7 @@ cmap_iter_finalize (cmap_handle_t \fIhandle\fB, cmap_iter_handle_t \fIiter_handl
 .P
 The
 .B cmap_iter_finalize
-function is used to free up memory asociated with iteration obtained by calling of
+function is used to free up memory associated with iteration obtained by calling of
 .B cmap_iter_init(3)
 function.
 The

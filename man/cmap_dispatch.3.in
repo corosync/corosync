@@ -50,7 +50,7 @@ The
 .B cmap_dispatch
 function is used to dispatch configuration changes.
 .PP
-Each application may have several connections to the CMAP API.  Each  application
+Each application may have several connections to the CMAP API.  Each application
 uses the
 .I handle
 argument to uniquely identify the connection.

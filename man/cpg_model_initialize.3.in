@@ -45,7 +45,7 @@ The
 .B cpg_model_initialize
 function is used to initialize a connection to the closed process groups API.
 .PP
-Each application may have several connections to the CPG API.  Each  application
+Each application may have several connections to the CPG API.  Each application
 uses the
 .I handle
 argument to uniquely identify the connection.  The

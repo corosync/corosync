@@ -82,7 +82,7 @@ Overflow/underflow is not detected and it's ignored.
 This call returns the CS_OK value if successful. If value or key_name are unspecified, CS_ERR_INVALID_PARAM
 is returned. CS_ERR_NOT_EXIST error is returned if key doesn't exist (wasn't created by calling
 .B cmap_set(3)
-first). Some of keys may be tagged read-only directly in corosync and seting such key will result in
+first). Some of keys may be tagged read-only directly in corosync and setting such key will result in
 CS_ERR_ACCESS error.
 
 .SH "SEE ALSO"

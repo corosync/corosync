@@ -48,7 +48,7 @@ cmap_context_set (cmap_handle_t \fIhandle\fB, const void *\fIcontext\fB);\fR
 .SH DESCRIPTION
 .P
 The \fBcmap_context_set\fR function is used to store the context variable for cmap instance.
-It has no meaning insire libcmap itself and will not be touched by the library. It can
+It has no meaning inside libcmap itself and will not be touched by the library. It can
 be retrieved using
 .B cmap_context_get(3).
 

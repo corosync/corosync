@@ -73,7 +73,7 @@ CS_ERR_BAD_HANDLE
 component was not initialized by calling \fBsam_initialize(3)\fR or it was finalized.
 .TP
 CS_ERR_NO_MEMORY
-internal  malloc/realloc failed because data are too large
+internal malloc/realloc failed because data are too large
 .TP
 CS_ERR_LIBRARY
 some internal error appeared (mostly because communication with parent process failed)
