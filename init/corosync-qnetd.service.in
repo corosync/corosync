@@ -12,6 +12,8 @@ Type=simple
 Restart=on-abnormal
 # Uncomment and set user who should be used for executing qnetd
 #User=coroqnetd
+RuntimeDirectory=corosync-qnetd
+RuntimeDirectoryMode=0770
 
 [Install]
 WantedBy=multi-user.target

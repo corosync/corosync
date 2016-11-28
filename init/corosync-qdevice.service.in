@@ -9,6 +9,8 @@ After=corosync.service
 ExecStart=@INITWRAPPERSDIR@/corosync-qdevice start
 ExecStop=@INITWRAPPERSDIR@/corosync-qdevice stop
 Type=forking
+RuntimeDirectory=corosync-qdevice
+RuntimeDirectoryMode=0770
 
 [Install]
 WantedBy=multi-user.target
