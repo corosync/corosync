@@ -70,4 +70,4 @@ dbusdir			= $(sysconfdir)/dbus-1/system.d
 dbus_DATA		= corosync-signals.conf
 endif
 
-SUBDIRS = logrotate tmpfiles.d
+SUBDIRS = logrotate
