@@ -35,7 +35,7 @@
 .SH NAME
 corosync-keygen \- Generate an authentication key for Corosync.
 .SH SYNOPSIS
-.B "corosync-keygen [\-k <filename>] [\-l]"
+.B "corosync-keygen [\-k <filename>] [\-l] [\-h]"
 .SH DESCRIPTION
 
 If you want to configure corosync to use cryptographic techniques to ensure authenticity
@@ -70,6 +70,9 @@ The default is /etc/corosync/authkey.
 Use a less secure random data source that will not require user input to help generate
 entropy.  This may be useful when this utility is used from a script or hardware random number
 generator is not available (f.e. in virtual machine).
+.TP
+.B -h
+Print basic usage.
 
 .SH EXAMPLES
 .TP

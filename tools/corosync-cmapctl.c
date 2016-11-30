@@ -96,7 +96,7 @@ static int convert_name_to_type(const char *name)
 static int print_help(void)
 {
 	printf("\n");
-	printf("usage:  corosync-cmapctl [-b] [-dghsTtp] [params...]\n");
+	printf("usage:  corosync-cmapctl [-b] [-DdghsTt] [-p filename] [params...]\n");
 	printf("\n");
 	printf("    -b show binary values\n");
 	printf("\n");
