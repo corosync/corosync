@@ -35,7 +35,7 @@
 .SH NAME
 corosync-notifyd \- Listen for important corosync events and send dbus and/or snmp traps.
 .SH SYNOPSIS
-.B "corosync-notifyd [\-f] [\-l] [\-o] [\-s] [\-m] [manager] [\-d] [-h]"
+.B "corosync-notifyd [\-f] [\-l] [\-o] [\-s] [\-m manager] [\-d] [-h]"
 .SH DESCRIPTION
 .B corosync-notifyd
 uses corosync API to listen for important cluster events and can log them,
@@ -55,13 +55,13 @@ Print events to stdout (turns on -l).
 Send SNMP traps on all events.
 .TP
 .B -m
-Set the SNMP manager address.
+Set the SNMP Manager IP address (defaults to localhost).
 .TP
 .B -d
 Send DBUS signals on all events.
 .TP
 .B -h
-Print this help
+Print this help.
 .SH EXAMPLES
 .br
 $ corosync-notifyd -o

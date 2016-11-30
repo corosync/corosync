@@ -35,7 +35,7 @@
 .SH NAME
 corosync-quorumtool \- Set and display quorum settings.
 .SH SYNOPSIS
-.B "corosync-quorumtool [\-s] [\-m] [\-l] [\-p] [\-v votes] [\-n nodeid] [\-e expected] [\-h] [\-i] [\-o <a|n|i>] [\-V]"
+.B "corosync-quorumtool [\-s] [\-m] [\-l] [\-p] [\-v votes] [\-n nodeid] [\-e expected] [\-H] [\-i] [\-o <a|n|i>] [\-f] [\-h] [\-V]"
 .SH DESCRIPTION
 Display the current state of quorum in the cluster and set vote quorum options.
 .SH OPTIONS
@@ -48,6 +48,9 @@ constantly monitor quorum status
 .TP
 .B  -l
 list nodes
+.TP
+.B  -p
+when used with -s or -l, generates machine parsable output
 .TP
 .B  -v <votes>
 change the number of votes for a node *
@@ -71,6 +74,9 @@ when used with -s or -l, generates machine parsable output
 Orders the output of the nodes list. By default or with -oa nodes are listed in IP address
 order: as they come from corosync. -on will order the nodes based on their name,
 and -oi will order them based on their node ID.
+.TP
+.B -f
+forcefully unregister a quorum device *DANGEROUS* *
 .TP
 .B  -h (if no other argument)
 show this help text

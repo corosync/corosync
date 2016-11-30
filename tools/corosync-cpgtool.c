@@ -198,7 +198,7 @@ static void usage_do (const char *prog_name)
 	printf ("A tool for displaying cpg groups and members.\n");
 	printf ("options:\n");
 	printf ("\t-d\tDelimiter between fields.\n");
-	printf ("\t-e\tDon't escape unprintable characters in group name\n");
+	printf ("\t-e\tDon't escape unprintable characters in group name.\n");
 	printf ("\t-n\tDisplay only all existing group names.\n");
 	printf ("\t-h\tDisplay this help.\n");
 }

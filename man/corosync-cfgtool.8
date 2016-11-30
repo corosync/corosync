@@ -35,14 +35,11 @@
 .SH "NAME"
 corosync-cfgtool \- An administrative tool for corosync.
 .SH "SYNOPSIS"
-.B corosync\-cfgtool [\-i] [IP_address] [\-s] [\-r] [\-l] [\-u] [\-H] [service_name] [\-v] [version] [\-k] [nodeid] [\-a] [nodeid]
+.B corosync\-cfgtool [\-i IP_address] [\-s] [\-r] [\-R] [\-k nodeid] [\-a nodeid] [\-h] [\-H]
 .SH "DESCRIPTION"
 .B corosync\-cfgtool
 A tool for displaying and configuring active parameters within corosync.
 .SH "OPTIONS"
-.TP 
-.B -h
-Print basic usage.
 .TP
 .B -i
 Finds only information about the specified interface IP address.
@@ -56,20 +53,17 @@ to the shell.
 Reset redundant ring state cluster wide after a fault to
 re-enable redundant ring operation.
 .TP 
-.B -l
-Load a service identified by "service_name".
-.TP 
-.B -u
-Unload a service identified by "service_name".
-.TP 
-.B -a
-Display the IP address(es) of a node.
+.B -R
+Tell all instances of corosync in this cluster to reload corosync.conf.
 .TP 
 .B -k
 Kill a node identified by node id.
 .TP 
-.B -R
-Tell all instances of corosync in this cluster to reload corosync.conf
+.B -a
+Display the IP address(es) of a node.
+.TP
+.B -h
+Print basic usage.
 .TP 
 .B -H
 Shutdown corosync cleanly on this node.

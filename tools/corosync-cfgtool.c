@@ -261,15 +261,17 @@ static void killnode_do(unsigned int nodeid)
 
 static void usage_do (void)
 {
-	printf ("corosync-cfgtool [-i <interface ip>] -s] [-r] [-H] [service_name] [-k] [nodeid] [-a] [nodeid]\n\n");
+	printf ("corosync-cfgtool [-i <interface ip>] [-s] [-r] [-R] [-k nodeid] [-a nodeid] [-h] [-H]\n\n");
 	printf ("A tool for displaying and configuring active parameters within corosync.\n");
 	printf ("options:\n");
+	printf ("\t-i\tFinds only information about the specified interface IP address.\n");
 	printf ("\t-s\tDisplays the status of the current rings on this node.\n");
 	printf ("\t-r\tReset redundant ring state cluster wide after a fault to\n");
 	printf ("\t\tre-enable redundant ring operation.\n");
-	printf ("\t-a\tDisplay the IP address(es) of a node\n");
+	printf ("\t-R\tTell all instances of corosync in this cluster to reload corosync.conf.\n");
 	printf ("\t-k\tKill a node identified by node id.\n");
-	printf ("\t-R\tReload corosync.conf on all nodes.\n");
+	printf ("\t-a\tDisplay the IP address(es) of a node\n");
+	printf ("\t-h\tPrint basic usage.\n");
 	printf ("\t-H\tShutdown corosync cleanly on this node.\n");
 }
 
@@ -306,7 +308,8 @@ int main (int argc, char *argv[]) {
 			shutdown_do();
 			break;
 		case 'a':
-			showaddrs_do( atoi(optarg) );
+			nodeid = atoi (optarg);
+			showaddrs_do(nodeid);
 			break;
 		case 'h':
 			usage_do();

@@ -50,13 +50,14 @@
 #define DEFAULT_KEYFILE COROSYSCONFDIR "/authkey"
 
 static const char usage[] =
-	"Usage: corosync-keygen [-k <keyfile>] [-l]\n"
+	"Usage: corosync-keygen [-k <keyfile>] [-l] [-h]\n"
 	"     -k / --key-file=<filename> -  Write to the specified keyfile\n"
 	"            instead of the default " DEFAULT_KEYFILE ".\n"
 	"     -l / --less-secure -  Use a less secure random number source\n"
 	"            (/dev/urandom) that is guaranteed not to require user\n"
 	"            input for entropy.  This can be used when this\n"
-	"            application is used from a script.\n";
+	"            application is used from a script.\n"
+	"     -h / --help -  Print basic usage.\n";
 
 
 int main (int argc, char *argv[])
