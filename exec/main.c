@@ -1185,8 +1185,8 @@ int main (int argc, char **argv, char **envp)
 					"usage:\n"\
 					"        -f     : Start application in foreground.\n"\
 					"        -p     : Do not set process priority.\n"\
-					"        -t     : Test configuration and exit.\n"\
 					"        -r     : Set round robin realtime scheduling (default).\n"\
+					"        -t     : Test configuration and exit.\n"\
 					"        -v     : Display version and SVN revision of Corosync and exit.\n");
 				logsys_system_fini();
 				return EXIT_FAILURE;

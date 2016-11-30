@@ -1093,9 +1093,9 @@ _cs_usage(void)
 		"        -l     : Log all events.\n"\
 		"        -o     : Print events to stdout (turns on -l).\n"\
 		"        -s     : Send SNMP traps on all events.\n"\
-		"        -m     : SNMP Manager IP address (defaults to localhost).\n"\
+		"        -m     : Set the SNMP Manager IP address (defaults to localhost).\n"\
 		"        -d     : Send DBUS signals on all events.\n"\
-		"        -h     : Print this help\n\n");
+		"        -h     : Print this help.\n\n");
 }
 
 int
