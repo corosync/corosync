@@ -934,8 +934,6 @@ static int mcast_msg (
 				data_ptr = (unsigned char *)iovec[i].iov_base + copy_base;
 			else {
 				data_ptr = fragmentation_data;
-				memcpy (&fragmentation_data[fragment_size],
-				(unsigned char *)iovec[i].iov_base + copy_base, copy_len);
 			}
 
 			memcpy (&fragmentation_data[fragment_size],
