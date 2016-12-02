@@ -18,6 +18,8 @@ end script
 
 pre-start script
     mkdir -p @LOCALSTATEDIR@/run
+    # rewrite according to environment.
+    #[ -c /dev/watchdog ] || modprobe softdog
 end script
 
 post-start script
