@@ -62,7 +62,6 @@
 #include <qb/qblist.h>
 #include <corosync/mar_gen.h>
 #include <corosync/ipc_quorum.h>
-#include <corosync/mar_gen.h>
 #include <corosync/coroapi.h>
 #include <corosync/logsys.h>
 #include <corosync/icmap.h>

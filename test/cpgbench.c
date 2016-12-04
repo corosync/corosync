@@ -40,7 +40,6 @@
 #include <signal.h>
 #include <unistd.h>
 #include <errno.h>
-#include <unistd.h>
 #include <time.h>
 #include <sys/time.h>
 #include <sys/types.h>

@@ -5,7 +5,6 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <netinet/in.h>
 #ifdef HAVE_READLINE_HISTORY_H
 #include <readline/history.h>
