@@ -39,7 +39,6 @@
 #include <fcntl.h>
 #include <stdlib.h>
 #include <errno.h>
-#include <unistd.h>
 #include <poll.h>
 #include <assert.h>
 

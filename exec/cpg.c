@@ -51,8 +51,6 @@
 #include <errno.h>
 #include <time.h>
 #include <assert.h>
-#include <unistd.h>
-#include <netinet/in.h>
 #include <arpa/inet.h>
 #include <sys/mman.h>
 #include <qb/qbmap.h>
