@@ -47,7 +47,6 @@
 #elif defined(__FreeBSD__) || defined(__NetBSD__)
 #include <sys/endian.h>
 #elif defined(__OpenBSD__)
-#include <sys/types.h>
 #define be64toh(x) betoh64(x)
 #endif
 

@@ -46,8 +46,6 @@
 #include <stdio.h>
 #include <errno.h>
 #include <time.h>
-#include <unistd.h>
-#include <netinet/in.h>
 #include <arpa/inet.h>
 
 #include <corosync/corotypes.h>

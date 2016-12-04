@@ -44,7 +44,6 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <poll.h>
-#include <unistd.h>
 #include <fcntl.h>
 
 #include "common_test_agent.h"
