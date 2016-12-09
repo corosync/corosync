@@ -87,7 +87,7 @@ qnetd_algo_2nodelms_client_init(struct qnetd_client *client)
  * should ask later for a vote) or wait_for_reply (client should wait for reply).
  *
  * Return TLV_REPLY_ERROR_CODE_NO_ERROR on success, different TLV_REPLY_ERROR_CODE_*
- * on failure (error is send back to client)
+ * on failure (error is sent back to client)
  */
 enum tlv_reply_error_code
 qnetd_algo_2nodelms_config_node_list_received(struct qnetd_client *client,
@@ -128,7 +128,7 @@ qnetd_algo_2nodelms_config_node_list_received(struct qnetd_client *client,
  * should ask later for a vote) or wait_for_reply (client should wait for reply).
  *
  * Return TLV_REPLY_ERROR_CODE_NO_ERROR on success, different TLV_REPLY_ERROR_CODE_*
- * on failure (error is send back to client)
+ * on failure (error is sent back to client)
  */
 
 enum tlv_reply_error_code

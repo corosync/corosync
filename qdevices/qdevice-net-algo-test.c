@@ -87,7 +87,7 @@ qdevice_net_algo_test_connected(struct qdevice_net_instance *instance, int *send
  *   if cast_vote_timer_vote = TLV_VOTE_ACK
  *     vote = TLV_VOTE_NACK.
  * Otherwise send_node_list = 1 and vote = TLV_VOTE_NO_CHANGE
- * If send_node_list is set to non zero, node list is send to qnetd
+ * If send_node_list is set to non zero, node list is sent to qnetd
  */
 int
 qdevice_net_algo_test_config_node_list_changed(struct qdevice_net_instance *instance,
@@ -112,7 +112,7 @@ qdevice_net_algo_test_config_node_list_changed(struct qdevice_net_instance *inst
  *   if cast_vote_timer_vote = TLV_VOTE_ACK
  *     vote = TLV_VOTE_NACK.
  * Otherwise send_node_list = 1 and vote = TLV_VOTE_WAIT_FOR_REPLY
- * If send_node_list is set to non zero, node list is send to qnetd
+ * If send_node_list is set to non zero, node list is sent to qnetd
  */
 int
 qdevice_net_algo_test_votequorum_node_list_notify(struct qdevice_net_instance *instance,
@@ -140,7 +140,7 @@ qdevice_net_algo_test_votequorum_node_list_notify(struct qdevice_net_instance *i
  *     vote = TLV_VOTE_NACK.
  * Otherwise send_node_list = 1 and vote = TLV_VOTE_NO_CHANGE
  *
- * If send_node_list is set to non zero, node list is send to qnetd
+ * If send_node_list is set to non zero, node list is sent to qnetd
  */
 int
 qdevice_net_algo_test_votequorum_quorum_notify(struct qdevice_net_instance *instance,
@@ -172,7 +172,7 @@ qdevice_net_algo_test_votequorum_expected_votes_notify(struct qdevice_net_instan
 /*
  * Called when config node list reply is received. Vote is set to value returned by server (and can
  * be overwriten by algorithm). ring_id is returned by server. ring_id_is_valid is set to 1 only if
- * received ring id matches last sent ring id. It usually make sense to not update timer.
+ * received ring id matches last sent ring id. It usually makes sense to not update timer.
  *
  * Callback should return 0 on success or -1 on failure (-> disconnect client).
  */
@@ -309,7 +309,7 @@ qdevice_net_algo_test_echo_reply_received(struct qdevice_net_instance *instance,
  * Called when client is about to send echo request but echo reply to previous echo request
  * was not yet received.
  *
- * Callback should return 0 if processing should continue (echo request is not send but timer is
+ * Callback should return 0 if processing should continue (echo request is not sent but timer is
  * scheduled again) otherwise -1 (-> disconnect client).
  */
 int
@@ -322,7 +322,7 @@ qdevice_net_algo_test_echo_reply_not_received(struct qdevice_net_instance *insta
 }
 
 /*
- * Called when client disconnect from server.
+ * Called when client disconnects from server.
  *
  * disconnect_reason contains one of QDEVICE_NET_DISCONNECT_REASON_
  * try_reconnect can be set to non zero value if reconnect to server should be tried
