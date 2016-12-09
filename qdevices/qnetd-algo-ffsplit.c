@@ -458,8 +458,8 @@ qnetd_algo_ffsplit_update_nodes_state(struct qnetd_client *client, int client_le
 
 /*
  * Send vote info. If client_leaving is set, client is ignored. if send_acks
- * is set, only ACK votes are send (nodes in QNETD_ALGO_FFSPLIT_CLIENT_STATE_SENDING_ACK state),
- * otherwise only NACK votes are send (nodes in QNETD_ALGO_FFSPLIT_CLIENT_STATE_SENDING_NACK state)
+ * is set, only ACK votes are sent (nodes in QNETD_ALGO_FFSPLIT_CLIENT_STATE_SENDING_ACK state),
+ * otherwise only NACK votes are sent (nodes in QNETD_ALGO_FFSPLIT_CLIENT_STATE_SENDING_NACK state)
  *
  * Returns number of send votes
  */
