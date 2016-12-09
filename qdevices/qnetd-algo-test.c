@@ -60,7 +60,7 @@
  * client is initialized qnetd_client structure.
  *
  * Return TLV_REPLY_ERROR_CODE_NO_ERROR on success, different TLV_REPLY_ERROR_CODE_*
- * on failure (error is send back to client)
+ * on failure (error is sent back to client)
  */
 enum tlv_reply_error_code
 qnetd_algo_test_client_init(struct qnetd_client *client)
@@ -137,7 +137,7 @@ qnetd_algo_test_config_node_list_received(struct qnetd_client *client,
  * should ask later for a vote) or wait_for_reply (client should wait for reply).
  *
  * Return TLV_REPLY_ERROR_CODE_NO_ERROR on success, different TLV_REPLY_ERROR_CODE_*
- * on failure (error is send back to client)
+ * on failure (error is sent back to client)
  */
 
 enum tlv_reply_error_code
@@ -162,7 +162,7 @@ qnetd_algo_test_membership_node_list_received(struct qnetd_client *client,
  * to use qnetd_client_send_vote_info.
  *
  * Return TLV_REPLY_ERROR_CODE_NO_ERROR on success, different TLV_REPLY_ERROR_CODE_*
- * on failure (error is send back to client)
+ * on failure (error is sent back to client)
  */
 enum tlv_reply_error_code
 qnetd_algo_test_quorum_node_list_received(struct qnetd_client *client,
@@ -229,13 +229,13 @@ qnetd_algo_test_vote_info_reply_received(struct qnetd_client *client, uint32_t m
  * Called as a result of qnetd_client_algo_timer_schedule function call after timeout expires.
  *
  * If send_vote is set by callback to non zero value, result_vote must also be set and such vote is
- * send to client. Result_vote is ignored if send_vote = 0 (default).
+ * sent to client. Result_vote is ignored if send_vote = 0 (default).
  *
  * If reschedule timer (default value = 0) is set to non zero value, callback is called again later
  * with same timeout as originaly created.
  *
  * Return TLV_REPLY_ERROR_CODE_NO_ERROR on success, different TLV_REPLY_ERROR_CODE_*
- * on failure (error is send back to client)
+ * on failure (error is sent back to client)
  */
 enum tlv_reply_error_code
 qnetd_algo_test_timer_callback(struct qnetd_client *client, int *reschedule_timer,
