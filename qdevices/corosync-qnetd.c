@@ -56,6 +56,10 @@
 #include "utils.h"
 #include "msg.h"
 
+#ifdef HAVE_LIBSYSTEMD
+#include <systemd/sd-daemon.h>
+#endif
+
 /*
  * This is global variable used for comunication with main loop and signal (calls close)
  */
@@ -613,6 +617,9 @@ main(int argc, char * const argv[])
 	}
 
 	qnetd_log(LOG_DEBUG, "QNetd ready to provide service");
+#ifdef HAVE_LIBSYSTEMD
+	sd_notify (0, "READY=1");
+#endif
 	/*
 	 * MAIN LOOP
 	 */
