@@ -75,8 +75,8 @@ corosync_qnetd_SOURCES	= corosync-qnetd.c \
 corosync_qnetd_tool_SOURCES = corosync-qnetd-tool.c unix-socket.c unix-socket.h dynar.c dynar.h \
                               dynar-str.c dynar-str.h utils.c utils.h
 
-corosync_qnetd_CFLAGS		= $(nss_CFLAGS)
-corosync_qnetd_LDADD		= $(nss_LIBS)
+corosync_qnetd_CFLAGS		= $(nss_CFLAGS) $(libsystemd_CFLAGS)
+corosync_qnetd_LDADD		= $(nss_LIBS)   $(libsystemd_LIBS)
 
 corosync-qnetd-certutil: corosync-qnetd-certutil.sh
 	sed -e 's#@''DATADIR@#${datadir}#g' \
