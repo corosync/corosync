@@ -1054,7 +1054,7 @@ int totemknet_member_add (
 	/* Casts to remove const */
 	totemip_totemip_to_sockaddr_convert((struct totem_ip_address *)member, port+link_no, &remote_ss, &addrlen);
 	totemip_totemip_to_sockaddr_convert((struct totem_ip_address *)local, port+link_no, &local_ss, &addrlen);
-	err = knet_link_set_config(instance->knet_handle, member->nodeid, link_no, &local_ss, &remote_ss);
+	err = knet_link_set_config(instance->knet_handle, member->nodeid, link_no, KNET_TRANSPORT_UDP, &local_ss, &remote_ss);
 	if (err) {
 		KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_ERROR, "knet_link_set_config failed");
 		return -1;
