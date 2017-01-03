@@ -78,7 +78,7 @@
 #define KNET_PING_INTERVAL                      1000
 #define KNET_PING_TIMEOUT                       2000
 #define KNET_PING_PRECISION                     2048
-#define KNET_PONG_COUNT                         5
+#define KNET_PONG_COUNT                         2
 #define KNET_PMTUD_INTERVAL                     30
 
 #define DEFAULT_PORT				5405
