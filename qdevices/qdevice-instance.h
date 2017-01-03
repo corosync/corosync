@@ -68,8 +68,8 @@ struct qdevice_instance {
 	enum qdevice_model_type model_type;
 
 	uint32_t node_id;
-	uint32_t heartbeat_interval;		/* Heartbeat interval during normal operation */
-	uint32_t sync_heartbeat_interval;	/* Heartbeat interval during corosync sync */
+	uint32_t heartbeat_interval;	  /* Heartbeat interval during normal operation */
+	uint32_t sync_heartbeat_interval; /* Heartbeat interval during corosync sync */
 
 	struct node_list config_node_list;
 	int config_node_list_version_set;
@@ -81,7 +81,7 @@ struct qdevice_instance {
 	 */
 	uint32_t vq_quorum_quorate;
 	uint32_t vq_quorum_node_list_entries;
-	votequorum_node_t *vq_quorum_node_list;
+	votequorum_node_t* vq_quorum_node_list;
 
 	/*
 	 * Copy of votequorum_nodelist_notify_fn callback paramters.
@@ -90,7 +90,7 @@ struct qdevice_instance {
 	uint8_t vq_node_list_ring_id_set;
 	votequorum_ring_id_t vq_node_list_ring_id;
 	uint32_t vq_node_list_entries;
-	uint32_t *vq_node_list;
+	uint32_t* vq_node_list;
 
 	/*
 	 * Copy of votequorum_expectedvotes_notify_fn callback parameters.
@@ -101,19 +101,18 @@ struct qdevice_instance {
 	time_t vq_last_poll;
 	int vq_last_poll_cast_vote;
 
-	void *model_data;
+	void* model_data;
 
-	const struct qdevice_advanced_settings *advanced_settings;
+	const struct qdevice_advanced_settings* advanced_settings;
 
 	int sync_in_progress;
 };
 
-extern int	qdevice_instance_init(struct qdevice_instance *instance,
-    const struct qdevice_advanced_settings *advanced_settings);
+extern int qdevice_instance_init(struct qdevice_instance* instance, const struct qdevice_advanced_settings* advanced_settings);
 
-extern int	qdevice_instance_destroy(struct qdevice_instance *instance);
+extern int qdevice_instance_destroy(struct qdevice_instance* instance);
 
-extern int	qdevice_instance_configure_from_cmap(struct qdevice_instance *instance);
+extern int qdevice_instance_configure_from_cmap(struct qdevice_instance* instance);
 
 #ifdef __cplusplus
 }

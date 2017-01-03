@@ -44,22 +44,16 @@ typedef qb_loop_timer_handle corosync_timer_handle_t;
 #define TIMER_HANDLE_T 1
 #endif
 
-extern int corosync_timer_add_duration (
-	unsigned long long nanosec_duration,
-	void *data,
-	void (*timer_fn) (void *data),
-	corosync_timer_handle_t *handle);
+extern int corosync_timer_add_duration(unsigned long long nanosec_duration, void* data, void (*timer_fn)(void* data),
+									   corosync_timer_handle_t* handle);
 
-extern int corosync_timer_add_absolute (
-	unsigned long long nanoseconds_from_epoch,
-	void *data,
-	void (*timer_fn) (void *data),
-	corosync_timer_handle_t *handle);
+extern int corosync_timer_add_absolute(unsigned long long nanoseconds_from_epoch, void* data,
+									   void (*timer_fn)(void* data), corosync_timer_handle_t* handle);
 
-extern void corosync_timer_delete (corosync_timer_handle_t handle);
+extern void corosync_timer_delete(corosync_timer_handle_t handle);
 
-extern unsigned long long corosync_timer_expire_time_get (corosync_timer_handle_t handle);
+extern unsigned long long corosync_timer_expire_time_get(corosync_timer_handle_t handle);
 
-extern unsigned long long cs_timer_time_get (void);
+extern unsigned long long cs_timer_time_get(void);
 
 #endif /* TIMER_H_DEFINED */

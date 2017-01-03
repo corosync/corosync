@@ -51,7 +51,7 @@ enum qdevice_net_poll_array_user_data_type {
 
 struct qdevice_net_poll_array_user_data {
 	enum qdevice_net_poll_array_user_data_type type;
-	struct unix_socket_client *ipc_client;
+	struct unix_socket_client* ipc_client;
 };
 
 #ifdef __cplusplus

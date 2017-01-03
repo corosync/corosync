@@ -46,11 +46,11 @@ enum qdevice_advanced_settings_master_wins {
 };
 
 struct qdevice_advanced_settings {
-	char *lock_file;
-	char *local_socket_file;
+	char* lock_file;
+	char* local_socket_file;
 	int local_socket_backlog;
 	int max_cs_try_again;
-	char *votequorum_device_name;
+	char* votequorum_device_name;
 	size_t ipc_max_clients;
 	size_t ipc_max_send_size;
 	size_t ipc_max_receive_size;
@@ -59,14 +59,14 @@ struct qdevice_advanced_settings {
 	/*
 	 * Related to model NET
 	 */
-	char *net_nss_db_dir;
+	char* net_nss_db_dir;
 	size_t net_initial_msg_receive_size;
 	size_t net_initial_msg_send_size;
 	size_t net_min_msg_send_size;
 	size_t net_max_msg_receive_size;
 	size_t net_max_send_buffers;
-	char *net_nss_qnetd_cn;
-	char *net_nss_client_cert_nickname;
+	char* net_nss_qnetd_cn;
+	char* net_nss_client_cert_nickname;
 	uint32_t net_heartbeat_interval_min;
 	uint32_t net_heartbeat_interval_max;
 	uint32_t net_min_connect_timeout;
@@ -74,12 +74,11 @@ struct qdevice_advanced_settings {
 	uint8_t net_test_algorithm_enabled;
 };
 
-extern int		qdevice_advanced_settings_init(struct qdevice_advanced_settings *settings);
+extern int qdevice_advanced_settings_init(struct qdevice_advanced_settings* settings);
 
-extern int		qdevice_advanced_settings_set(struct qdevice_advanced_settings *settings,
-    const char *option, const char *value);
+extern int qdevice_advanced_settings_set(struct qdevice_advanced_settings* settings, const char* option, const char* value);
 
-extern void		qdevice_advanced_settings_destroy(struct qdevice_advanced_settings *settings);
+extern void qdevice_advanced_settings_destroy(struct qdevice_advanced_settings* settings);
 
 #ifdef __cplusplus
 }

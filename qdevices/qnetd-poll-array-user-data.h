@@ -50,8 +50,8 @@ enum qnetd_poll_array_user_data_type {
 
 struct qnetd_poll_array_user_data {
 	enum qnetd_poll_array_user_data_type type;
-	struct qnetd_client *client;
-	struct unix_socket_client *ipc_client;
+	struct qnetd_client* client;
+	struct unix_socket_client* ipc_client;
 };
 
 #ifdef __cplusplus

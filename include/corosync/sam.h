@@ -44,13 +44,13 @@ extern "C" {
  * @brief sam_recovery_policy_t enum
  */
 typedef enum {
-	SAM_RECOVERY_POLICY_QUIT = 1,
-	SAM_RECOVERY_POLICY_RESTART = 2,
-	SAM_RECOVERY_POLICY_QUORUM = 0x08,
-	SAM_RECOVERY_POLICY_QUORUM_QUIT = SAM_RECOVERY_POLICY_QUORUM | SAM_RECOVERY_POLICY_QUIT,
+	SAM_RECOVERY_POLICY_QUIT			 = 1,
+	SAM_RECOVERY_POLICY_RESTART		  = 2,
+	SAM_RECOVERY_POLICY_QUORUM		   = 0x08,
+	SAM_RECOVERY_POLICY_QUORUM_QUIT	= SAM_RECOVERY_POLICY_QUORUM | SAM_RECOVERY_POLICY_QUIT,
 	SAM_RECOVERY_POLICY_QUORUM_RESTART = SAM_RECOVERY_POLICY_QUORUM | SAM_RECOVERY_POLICY_RESTART,
-	SAM_RECOVERY_POLICY_CMAP = 0x10,
-	SAM_RECOVERY_POLICY_CONFDB = 0x10,
+	SAM_RECOVERY_POLICY_CMAP			 = 0x10,
+	SAM_RECOVERY_POLICY_CONFDB		   = 0x10,
 } sam_recovery_policy_t;
 
 /**
@@ -76,9 +76,7 @@ typedef int (*sam_hc_callback_t)(void);
  * @retval CS_ERR_BAD_HANDLE in case user is trying to initialize initialized instance
  * @retval CS_ERR_INVALID_PARAM in case recovery_policy had bad value
  */
-cs_error_t sam_initialize (
-        int time_interval,
-        sam_recovery_policy_t recovery_policy);
+cs_error_t sam_initialize(int time_interval, sam_recovery_policy_t recovery_policy);
 
 /**
  * @brief Close the SAM handle.
@@ -91,7 +89,7 @@ cs_error_t sam_initialize (
  * @retval CS_OK in case no problem appeared
  * @retval CS_ERR_BAD_HANDLE library was not initialized by #sam_initialize
  */
-cs_error_t sam_finalize (void);
+cs_error_t sam_finalize(void);
 
 /**
  * @brief Start healthchecking.
@@ -102,7 +100,7 @@ cs_error_t sam_finalize (void);
  * @retval CS_OK in case no problem appeared
  * @retval CS_ERR_BAD_HANDLE component was not registered by #sam_register
  */
-cs_error_t sam_start (void);
+cs_error_t sam_start(void);
 
 /**
  * @brief Stop healthchecking.
@@ -114,7 +112,7 @@ cs_error_t sam_start (void);
  * @retval CS_ERR_BAD_HANDLE healthchecking is not in running state (no sam_start
  *         was called)
  */
-cs_error_t sam_stop (void);
+cs_error_t sam_stop(void);
 
 /**
  * @brief Set warning signal to be sent.
@@ -126,7 +124,7 @@ cs_error_t sam_stop (void);
  * @retval CS_ERR_BAD_HANDLE library was not initialized by #sam_initialize or
  *         is finalized
  */
-cs_error_t sam_warn_signal_set (int warn_signal);
+cs_error_t sam_warn_signal_set(int warn_signal);
 
 /**
  * @brief Register application.
@@ -147,8 +145,7 @@ cs_error_t sam_warn_signal_set (int warn_signal);
  * @retval CS_ERR_LIBRARY internal library call failed. This can be one of pipe or fork
  *         creation. You can get more information from errno
  */
-cs_error_t sam_register (
-	unsigned int *instance_id);
+cs_error_t sam_register(unsigned int* instance_id);
 
 /**
  * @brief Send healthcheck confirmation.
@@ -159,7 +156,7 @@ cs_error_t sam_register (
  * @retval CS_ERR_BAD_HANDLE healthchecking is not in running state (no sam_start was
  *         called, or called after sam_stop/sam_finalize)
  */
-cs_error_t sam_hc_send (void);
+cs_error_t sam_hc_send(void);
 
 /**
  * @brief Register healtcheck callback.
@@ -179,7 +176,7 @@ cs_error_t sam_hc_send (void);
  * @retval CS_ERR_LIBRARY internal library call failed. This can be one of pipe or pthread
  *         creation.
  */
-cs_error_t sam_hc_callback_register (sam_hc_callback_t cb);
+cs_error_t sam_hc_callback_register(sam_hc_callback_t cb);
 
 /**
  * @brief Return size of stored data.
@@ -192,7 +189,7 @@ cs_error_t sam_hc_callback_register (sam_hc_callback_t cb);
  *         sam_finalize
  * @retval CS_ERR_INVALID_PARAM if size parameter is NULL
  */
-cs_error_t sam_data_getsize (size_t *size);
+cs_error_t sam_data_getsize(size_t* size);
 
 /**
  * @brief Return stored data.
@@ -204,9 +201,7 @@ cs_error_t sam_data_getsize (size_t *size);
  * @retval CS_ERR_BAD_HANDLE if you call this function before sam_init or after sam_finalize
  * @retval CS_ERR_INVALID_PARAM if data is NULL or size is less then currently saved user data length
  */
-cs_error_t sam_data_restore (
-	void *data,
-	size_t size);
+cs_error_t sam_data_restore(void* data, size_t size);
 
 /**
  * @brief Store user data.
@@ -224,9 +219,7 @@ cs_error_t sam_data_restore (
  * @retval CS_ERR_LIBRARY if some internal error appeared (communication with parent
  *         process)
  */
-cs_error_t sam_data_store (
-	const void *data,
-	size_t size);
+cs_error_t sam_data_store(const void* data, size_t size);
 
 /**
  * @brief Marks child as failed.
@@ -241,7 +234,7 @@ cs_error_t sam_data_store (
  * @retval CS_ERR_LIBRARY if some internal error appeared (communication with parent
  *         process)
  */
-cs_error_t sam_mark_failed (void);
+cs_error_t sam_mark_failed(void);
 
 #ifdef __cplusplus
 }

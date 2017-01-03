@@ -49,17 +49,16 @@ enum dynar_simple_lex_type {
 
 struct dynar_simple_lex {
 	struct dynar token;
-	struct dynar *input;
+	struct dynar* input;
 	enum dynar_simple_lex_type lex_type;
 	size_t pos;
 };
 
-extern void	 	 dynar_simple_lex_init(struct dynar_simple_lex *lex, struct dynar *input,
-    enum dynar_simple_lex_type lex_type);
+extern void dynar_simple_lex_init(struct dynar_simple_lex* lex, struct dynar* input, enum dynar_simple_lex_type lex_type);
 
-extern void	 	 dynar_simple_lex_destroy(struct dynar_simple_lex *lex);
+extern void dynar_simple_lex_destroy(struct dynar_simple_lex* lex);
 
-extern struct dynar	*dynar_simple_lex_token_next(struct dynar_simple_lex *lex);
+extern struct dynar* dynar_simple_lex_token_next(struct dynar_simple_lex* lex);
 
 #ifdef __cplusplus
 }
