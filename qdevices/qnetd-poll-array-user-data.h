@@ -42,16 +42,16 @@ extern "C" {
 #endif
 
 enum qnetd_poll_array_user_data_type {
-	QNETD_POLL_ARRAY_USER_DATA_TYPE_SOCKET,
-	QNETD_POLL_ARRAY_USER_DATA_TYPE_CLIENT,
-	QNETD_POLL_ARRAY_USER_DATA_TYPE_IPC_SOCKET,
-	QNETD_POLL_ARRAY_USER_DATA_TYPE_IPC_CLIENT,
+    QNETD_POLL_ARRAY_USER_DATA_TYPE_SOCKET,
+    QNETD_POLL_ARRAY_USER_DATA_TYPE_CLIENT,
+    QNETD_POLL_ARRAY_USER_DATA_TYPE_IPC_SOCKET,
+    QNETD_POLL_ARRAY_USER_DATA_TYPE_IPC_CLIENT,
 };
 
 struct qnetd_poll_array_user_data {
-	enum qnetd_poll_array_user_data_type type;
-	struct qnetd_client *client;
-	struct unix_socket_client *ipc_client;
+    enum qnetd_poll_array_user_data_type type;
+    struct qnetd_client* client;
+    struct unix_socket_client* ipc_client;
 };
 
 #ifdef __cplusplus

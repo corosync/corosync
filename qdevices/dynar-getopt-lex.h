@@ -42,17 +42,17 @@ extern "C" {
 #endif
 
 struct dynar_getopt_lex {
-	struct dynar option;
-	struct dynar value;
-	struct dynar *input;
-	size_t pos;
+    struct dynar option;
+    struct dynar value;
+    struct dynar* input;
+    size_t pos;
 };
 
-extern void	 	dynar_getopt_lex_init(struct dynar_getopt_lex *lex, struct dynar *input);
+extern void dynar_getopt_lex_init(struct dynar_getopt_lex* lex, struct dynar* input);
 
-extern void	 	dynar_getopt_lex_destroy(struct dynar_getopt_lex *lex);
+extern void dynar_getopt_lex_destroy(struct dynar_getopt_lex* lex);
 
-extern int		dynar_getopt_lex_token_next(struct dynar_getopt_lex *lex);
+extern int dynar_getopt_lex_token_next(struct dynar_getopt_lex* lex);
 
 #ifdef __cplusplus
 }

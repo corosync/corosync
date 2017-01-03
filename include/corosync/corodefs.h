@@ -41,14 +41,14 @@
  * @brief The corosync_service_types enum
  */
 enum corosync_service_types {
-	CMAP_SERVICE = 0,
-	CFG_SERVICE = 1,
-	CPG_SERVICE = 2,
-	QUORUM_SERVICE = 3,
-	PLOAD_SERVICE = 4,
-	VOTEQUORUM_SERVICE = 5,
-	MON_SERVICE = 6,
-	WD_SERVICE = 7,
+    CMAP_SERVICE       = 0,
+    CFG_SERVICE        = 1,
+    CPG_SERVICE        = 2,
+    QUORUM_SERVICE     = 3,
+    PLOAD_SERVICE      = 4,
+    VOTEQUORUM_SERVICE = 5,
+    MON_SERVICE        = 6,
+    WD_SERVICE         = 7,
 };
 
 #ifdef HAVE_SMALL_MEMORY_FOOTPRINT

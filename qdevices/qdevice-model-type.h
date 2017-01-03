@@ -40,8 +40,8 @@ extern "C" {
 #endif
 
 enum qdevice_model_type {
-	QDEVICE_MODEL_TYPE_NET = 0,
-	QDEVICE_MODEL_TYPE_ARRAY_SIZE,
+    QDEVICE_MODEL_TYPE_NET = 0,
+    QDEVICE_MODEL_TYPE_ARRAY_SIZE,
 };
 
 #ifdef __cplusplus

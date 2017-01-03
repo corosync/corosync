@@ -37,26 +37,23 @@
 
 struct memb_ring_id;
 
-typedef void (*quorum_callback_fn_t) (int quorate, void *context);
+typedef void (*quorum_callback_fn_t)(int quorate, void* context);
 
-typedef void (*quorum_set_quorate_fn_t) (const unsigned int *view_list,
-                                         size_t view_list_entries,
-                                         int quorate, struct memb_ring_id *);
+typedef void (*quorum_set_quorate_fn_t)(const unsigned int* view_list, size_t view_list_entries, int quorate, struct memb_ring_id*);
 
-struct quorum_callin_functions
-{
-	int (*quorate) (void);
-	int (*register_callback) (quorum_callback_fn_t, void*);
-	int (*unregister_callback) (quorum_callback_fn_t, void*);
+struct quorum_callin_functions {
+    int (*quorate)(void);
+    int (*register_callback)(quorum_callback_fn_t, void*);
+    int (*unregister_callback)(quorum_callback_fn_t, void*);
 };
 
-extern int corosync_quorum_is_quorate (void);
+extern int corosync_quorum_is_quorate(void);
 
-extern int corosync_quorum_register_callback (quorum_callback_fn_t fn, void *context);
+extern int corosync_quorum_register_callback(quorum_callback_fn_t fn, void* context);
 
-extern int corosync_quorum_unregister_callback (quorum_callback_fn_t fn, void *context);
+extern int corosync_quorum_unregister_callback(quorum_callback_fn_t fn, void* context);
 
-extern int corosync_quorum_initialize (struct quorum_callin_functions *fns);
+extern int corosync_quorum_initialize(struct quorum_callin_functions* fns);
 
 
 extern int quorum_none(void);

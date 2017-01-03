@@ -40,30 +40,29 @@ extern "C" {
 #endif
 
 struct qnetd_advanced_settings {
-	int listen_backlog;
-	size_t max_client_send_buffers;
-	size_t max_client_send_size;
-	size_t max_client_receive_size;
-	char *nss_db_dir;
-	char *cert_nickname;
-	uint32_t heartbeat_interval_min;
-	uint32_t heartbeat_interval_max;
-	uint8_t dpd_enabled;
-	uint32_t dpd_interval;
-	char *lock_file;
-	char *local_socket_file;
-	int local_socket_backlog;
-	size_t ipc_max_clients;
-	size_t ipc_max_send_size;
-	size_t ipc_max_receive_size;
+    int listen_backlog;
+    size_t max_client_send_buffers;
+    size_t max_client_send_size;
+    size_t max_client_receive_size;
+    char* nss_db_dir;
+    char* cert_nickname;
+    uint32_t heartbeat_interval_min;
+    uint32_t heartbeat_interval_max;
+    uint8_t dpd_enabled;
+    uint32_t dpd_interval;
+    char* lock_file;
+    char* local_socket_file;
+    int local_socket_backlog;
+    size_t ipc_max_clients;
+    size_t ipc_max_send_size;
+    size_t ipc_max_receive_size;
 };
 
-extern int		qnetd_advanced_settings_init(struct qnetd_advanced_settings *settings);
+extern int qnetd_advanced_settings_init(struct qnetd_advanced_settings* settings);
 
-extern int		qnetd_advanced_settings_set(struct qnetd_advanced_settings *settings,
-    const char *option, const char *value);
+extern int qnetd_advanced_settings_set(struct qnetd_advanced_settings* settings, const char* option, const char* value);
 
-extern void		qnetd_advanced_settings_destroy(struct qnetd_advanced_settings *settings);
+extern void qnetd_advanced_settings_destroy(struct qnetd_advanced_settings* settings);
 
 #ifdef __cplusplus
 }

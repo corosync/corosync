@@ -54,36 +54,34 @@ extern "C" {
 #endif
 
 struct qnetd_instance {
-	struct {
-		PRFileDesc *socket;
-		CERTCertificate *cert;
-		SECKEYPrivateKey *private_key;
-	} server;
-	size_t max_clients;
-	struct qnetd_client_list clients;
-	struct qnetd_cluster_list clusters;
-	struct pr_poll_array poll_array;
-	enum tlv_tls_supported tls_supported;
-	int tls_client_cert_required;
-	const char *host_addr;
-	uint16_t host_port;
-	struct timer_list main_timer_list;
-	struct timer_list_entry *dpd_timer;		/* Dead peer detection timer */
-	struct unix_socket_ipc local_ipc;
-	PRFileDesc *ipc_socket_poll_fd;
-	const struct qnetd_advanced_settings *advanced_settings;
+    struct {
+        PRFileDesc* socket;
+        CERTCertificate* cert;
+        SECKEYPrivateKey* private_key;
+    } server;
+    size_t max_clients;
+    struct qnetd_client_list clients;
+    struct qnetd_cluster_list clusters;
+    struct pr_poll_array poll_array;
+    enum tlv_tls_supported tls_supported;
+    int tls_client_cert_required;
+    const char* host_addr;
+    uint16_t host_port;
+    struct timer_list main_timer_list;
+    struct timer_list_entry* dpd_timer; /* Dead peer detection timer */
+    struct unix_socket_ipc local_ipc;
+    PRFileDesc* ipc_socket_poll_fd;
+    const struct qnetd_advanced_settings* advanced_settings;
 };
 
-extern int		qnetd_instance_init(struct qnetd_instance *instance,
-    enum tlv_tls_supported tls_supported, int tls_client_cert_required, size_t max_clients,
-    const struct qnetd_advanced_settings *advanced_settings);
+extern int qnetd_instance_init(struct qnetd_instance* instance, enum tlv_tls_supported tls_supported, int tls_client_cert_required,
+                               size_t max_clients, const struct qnetd_advanced_settings* advanced_settings);
 
-extern int		qnetd_instance_destroy(struct qnetd_instance *instance);
+extern int qnetd_instance_destroy(struct qnetd_instance* instance);
 
-extern void		qnetd_instance_client_disconnect(struct qnetd_instance *instance,
-    struct qnetd_client *client, int server_going_down);
+extern void qnetd_instance_client_disconnect(struct qnetd_instance* instance, struct qnetd_client* client, int server_going_down);
 
-extern int		qnetd_instance_init_certs(struct qnetd_instance *instance);
+extern int qnetd_instance_init_certs(struct qnetd_instance* instance);
 
 #ifdef __cplusplus
 }

@@ -38,246 +38,226 @@
 #include <corosync/hdb.h>
 
 #ifdef HAVE_SMALL_MEMORY_FOOTPRINT
-#define PROCESSOR_COUNT_MAX	16
-#define MESSAGE_SIZE_MAX	1024*64
-#define MESSAGE_QUEUE_MAX	512
+#define PROCESSOR_COUNT_MAX 16
+#define MESSAGE_SIZE_MAX 1024 * 64
+#define MESSAGE_QUEUE_MAX 512
 #else
-#define PROCESSOR_COUNT_MAX	384
-#define MESSAGE_SIZE_MAX	1024*1024 /* (1MB) */
-#define MESSAGE_QUEUE_MAX	((4 * MESSAGE_SIZE_MAX) / totem_config->net_mtu)
+#define PROCESSOR_COUNT_MAX 384
+#define MESSAGE_SIZE_MAX 1024 * 1024 /* (1MB) */
+#define MESSAGE_QUEUE_MAX ((4 * MESSAGE_SIZE_MAX) / totem_config->net_mtu)
 #endif /* HAVE_SMALL_MEMORY_FOOTPRINT */
 
-#define FRAME_SIZE_MAX		10000
-#define TRANSMITS_ALLOWED	16
-#define SEND_THREADS_MAX	16
+#define FRAME_SIZE_MAX 10000
+#define TRANSMITS_ALLOWED 16
+#define SEND_THREADS_MAX 16
 
 /* This must be <= KNET_MAX_LINK */
-#define INTERFACE_MAX		8
+#define INTERFACE_MAX 8
 /**
  * Maximum number of continuous gather states
  */
-#define MAX_NO_CONT_GATHER	3
+#define MAX_NO_CONT_GATHER 3
 /*
  * Maximum number of continuous failures get from sendmsg call
  */
-#define MAX_NO_CONT_SENDMSG_FAILURES	30
+#define MAX_NO_CONT_SENDMSG_FAILURES 30
 
 struct totem_interface {
-	struct totem_ip_address bindnet;
-	struct totem_ip_address boundto;
-	struct totem_ip_address mcast_addr;
-	uint16_t ip_port;
-	uint16_t ttl;
-	int member_count;
-	int knet_link_priority;
-	int knet_ping_interval;
-	int knet_ping_timeout;
-	int knet_ping_precision;
-	int knet_pong_count;
-	struct totem_ip_address member_list[PROCESSOR_COUNT_MAX];
+    struct totem_ip_address bindnet;
+    struct totem_ip_address boundto;
+    struct totem_ip_address mcast_addr;
+    uint16_t ip_port;
+    uint16_t ttl;
+    int member_count;
+    int knet_link_priority;
+    int knet_ping_interval;
+    int knet_ping_timeout;
+    int knet_ping_precision;
+    int knet_pong_count;
+    struct totem_ip_address member_list[PROCESSOR_COUNT_MAX];
 };
 
 struct totem_logging_configuration {
-	void (*log_printf) (
-		int level,
-		int subsys,
-		const char *function_name,
-		const char *file_name,
-		int file_line,
-		const char *format,
-		...) __attribute__((format(printf, 6, 7)));
+    void (*log_printf)(int level, int subsys, const char* function_name, const char* file_name, int file_line,
+                       const char* format, ...) __attribute__((format(printf, 6, 7)));
 
-	int log_level_security;
-	int log_level_error;
-	int log_level_warning;
-	int log_level_notice;
-	int log_level_debug;
-	int log_level_trace;
-	int log_subsys_id;
+    int log_level_security;
+    int log_level_error;
+    int log_level_warning;
+    int log_level_notice;
+    int log_level_debug;
+    int log_level_trace;
+    int log_subsys_id;
 };
 
 struct totem_message_header {
-	char type;
-	char encapsulated;
-	unsigned short endian_detector;
-	unsigned int nodeid;
-	unsigned int target_nodeid;
+    char type;
+    char encapsulated;
+    unsigned short endian_detector;
+    unsigned int nodeid;
+    unsigned int target_nodeid;
 } __attribute__((packed));
 
 enum { TOTEM_PRIVATE_KEY_LEN = 4096 };
 enum { TOTEM_LINK_MODE_BYTES = 64 };
 
-typedef enum {
-	TOTEM_TRANSPORT_UDP = 0,
-	TOTEM_TRANSPORT_UDPU = 1,
-	TOTEM_TRANSPORT_KNET = 2
-} totem_transport_t;
+typedef enum { TOTEM_TRANSPORT_UDP = 0, TOTEM_TRANSPORT_UDPU = 1, TOTEM_TRANSPORT_KNET = 2 } totem_transport_t;
 
 #define MEMB_RING_ID
 struct memb_ring_id {
-	struct totem_ip_address rep;
-	unsigned long long seq;
+    struct totem_ip_address rep;
+    unsigned long long seq;
 } __attribute__((packed));
 
 struct totem_config {
-	int version;
+    int version;
 
-	/*
-	 * network
-	 */
-	struct totem_interface *interfaces;
-	unsigned int interface_count;
-	unsigned int node_id;
-	unsigned int clear_node_high_bit;
-	unsigned int knet_pmtud_interval;
+    /*
+     * network
+     */
+    struct totem_interface* interfaces;
+    unsigned int interface_count;
+    unsigned int node_id;
+    unsigned int clear_node_high_bit;
+    unsigned int knet_pmtud_interval;
 
-	/*
-	 * key information
-	 */
-	unsigned char private_key[TOTEM_PRIVATE_KEY_LEN];
+    /*
+     * key information
+     */
+    unsigned char private_key[TOTEM_PRIVATE_KEY_LEN];
 
-	unsigned int private_key_len;
+    unsigned int private_key_len;
 
-	/*
-	 * Totem configuration parameters
-	 */
-	unsigned int token_timeout;
+    /*
+     * Totem configuration parameters
+     */
+    unsigned int token_timeout;
 
-	unsigned int token_retransmit_timeout;
+    unsigned int token_retransmit_timeout;
 
-	unsigned int token_hold_timeout;
+    unsigned int token_hold_timeout;
 
-	unsigned int token_retransmits_before_loss_const;
+    unsigned int token_retransmits_before_loss_const;
 
-	unsigned int join_timeout;
+    unsigned int join_timeout;
 
-	unsigned int send_join_timeout;
+    unsigned int send_join_timeout;
 
-	unsigned int consensus_timeout;
+    unsigned int consensus_timeout;
 
-	unsigned int merge_timeout;
+    unsigned int merge_timeout;
 
-	unsigned int downcheck_timeout;
+    unsigned int downcheck_timeout;
 
-	unsigned int fail_to_recv_const;
+    unsigned int fail_to_recv_const;
 
-	unsigned int seqno_unchanged_const;
+    unsigned int seqno_unchanged_const;
 
-	char link_mode[TOTEM_LINK_MODE_BYTES];
+    char link_mode[TOTEM_LINK_MODE_BYTES];
 
-	struct totem_logging_configuration totem_logging_configuration;
+    struct totem_logging_configuration totem_logging_configuration;
 
-	unsigned int net_mtu;
+    unsigned int net_mtu;
 
-	unsigned int threads;
+    unsigned int threads;
 
-	unsigned int heartbeat_failures_allowed;
+    unsigned int heartbeat_failures_allowed;
 
-	unsigned int max_network_delay;
+    unsigned int max_network_delay;
 
-	unsigned int window_size;
+    unsigned int window_size;
 
-	unsigned int max_messages;
+    unsigned int max_messages;
 
-	const char *vsf_type;
+    const char* vsf_type;
 
-	unsigned int broadcast_use;
+    unsigned int broadcast_use;
 
-	char *crypto_cipher_type;
+    char* crypto_cipher_type;
 
-	char *crypto_hash_type;
+    char* crypto_hash_type;
 
-	totem_transport_t transport_number;
+    totem_transport_t transport_number;
 
-	unsigned int miss_count_const;
+    unsigned int miss_count_const;
 
-	int ip_version;
+    int ip_version;
 
-	void (*totem_memb_ring_id_create_or_load) (
-	    struct memb_ring_id *memb_ring_id,
-	    const struct totem_ip_address *addr);
+    void (*totem_memb_ring_id_create_or_load)(struct memb_ring_id* memb_ring_id, const struct totem_ip_address* addr);
 
-	void (*totem_memb_ring_id_store) (
-	    const struct memb_ring_id *memb_ring_id,
-	    const struct totem_ip_address *addr);
+    void (*totem_memb_ring_id_store)(const struct memb_ring_id* memb_ring_id, const struct totem_ip_address* addr);
 };
 
 #define TOTEM_CONFIGURATION_TYPE
-enum totem_configuration_type {
-	TOTEM_CONFIGURATION_REGULAR,
-	TOTEM_CONFIGURATION_TRANSITIONAL
-};
+enum totem_configuration_type { TOTEM_CONFIGURATION_REGULAR, TOTEM_CONFIGURATION_TRANSITIONAL };
 
 #define TOTEM_CALLBACK_TOKEN_TYPE
-enum totem_callback_token_type {
-	TOTEM_CALLBACK_TOKEN_RECEIVED = 1,
-	TOTEM_CALLBACK_TOKEN_SENT = 2
-};
+enum totem_callback_token_type { TOTEM_CALLBACK_TOKEN_RECEIVED = 1, TOTEM_CALLBACK_TOKEN_SENT = 2 };
 
 enum totem_event_type {
-	TOTEM_EVENT_DELIVERY_CONGESTED,
-	TOTEM_EVENT_NEW_MSG,
+    TOTEM_EVENT_DELIVERY_CONGESTED,
+    TOTEM_EVENT_NEW_MSG,
 };
 
 typedef struct {
-	int is_dirty;
-	time_t last_updated;
+    int is_dirty;
+    time_t last_updated;
 } totem_stats_header_t;
 
 typedef struct {
-	totem_stats_header_t hdr;
-	uint32_t iface_changes;
+    totem_stats_header_t hdr;
+    uint32_t iface_changes;
 } totemnet_stats_t;
 
 typedef struct {
-	uint32_t rx;
-	uint32_t tx;
-	int backlog_calc;
+    uint32_t rx;
+    uint32_t tx;
+    int backlog_calc;
 } totemsrp_token_stats_t;
 
 typedef struct {
-	totem_stats_header_t hdr;
-	uint64_t orf_token_tx;
-	uint64_t orf_token_rx;
-	uint64_t memb_merge_detect_tx;
-	uint64_t memb_merge_detect_rx;
-	uint64_t memb_join_tx;
-	uint64_t memb_join_rx;
-	uint64_t mcast_tx;
-	uint64_t mcast_retx;
-	uint64_t mcast_rx;
-	uint64_t memb_commit_token_tx;
-	uint64_t memb_commit_token_rx;
-	uint64_t token_hold_cancel_tx;
-	uint64_t token_hold_cancel_rx;
-	uint64_t operational_entered;
-	uint64_t operational_token_lost;
-	uint64_t gather_entered;
-	uint64_t gather_token_lost;
-	uint64_t commit_entered;
-	uint64_t commit_token_lost;
-	uint64_t recovery_entered;
-	uint64_t recovery_token_lost;
-	uint64_t consensus_timeouts;
-	uint64_t rx_msg_dropped;
-	uint32_t continuous_gather;
-	uint32_t continuous_sendmsg_failures;
+    totem_stats_header_t hdr;
+    uint64_t orf_token_tx;
+    uint64_t orf_token_rx;
+    uint64_t memb_merge_detect_tx;
+    uint64_t memb_merge_detect_rx;
+    uint64_t memb_join_tx;
+    uint64_t memb_join_rx;
+    uint64_t mcast_tx;
+    uint64_t mcast_retx;
+    uint64_t mcast_rx;
+    uint64_t memb_commit_token_tx;
+    uint64_t memb_commit_token_rx;
+    uint64_t token_hold_cancel_tx;
+    uint64_t token_hold_cancel_rx;
+    uint64_t operational_entered;
+    uint64_t operational_token_lost;
+    uint64_t gather_entered;
+    uint64_t gather_token_lost;
+    uint64_t commit_entered;
+    uint64_t commit_token_lost;
+    uint64_t recovery_entered;
+    uint64_t recovery_token_lost;
+    uint64_t consensus_timeouts;
+    uint64_t rx_msg_dropped;
+    uint32_t continuous_gather;
+    uint32_t continuous_sendmsg_failures;
 
-	int earliest_token;
-	int latest_token;
+    int earliest_token;
+    int latest_token;
 #define TOTEM_TOKEN_STATS_MAX 100
-	totemsrp_token_stats_t token[TOTEM_TOKEN_STATS_MAX];
+    totemsrp_token_stats_t token[TOTEM_TOKEN_STATS_MAX];
 
 } totemsrp_stats_t;
 
- 
- #define TOTEM_CONFIGURATION_TYPE
+
+#define TOTEM_CONFIGURATION_TYPE
 
 typedef struct {
-	totem_stats_header_t hdr;
-	totemsrp_stats_t *srp;
-	uint32_t msg_reserved;
-	uint32_t msg_queue_avail;
+    totem_stats_header_t hdr;
+    totemsrp_stats_t* srp;
+    uint32_t msg_reserved;
+    uint32_t msg_queue_avail;
 } totempg_stats_t;
 
 #endif /* TOTEM_H_DEFINED */

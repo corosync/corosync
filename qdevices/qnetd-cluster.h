@@ -48,22 +48,20 @@ extern "C" {
 #endif
 
 struct qnetd_cluster {
-	char *cluster_name;
-	size_t cluster_name_len;
-	void *algorithm_data;
-	struct qnetd_client_list client_list;
-	TAILQ_ENTRY(qnetd_cluster) entries;
+    char* cluster_name;
+    size_t cluster_name_len;
+    void* algorithm_data;
+    struct qnetd_client_list client_list;
+    TAILQ_ENTRY(qnetd_cluster) entries;
 };
 
-extern int			qnetd_cluster_init(struct qnetd_cluster *cluster,
-    const char *cluster_name, size_t cluster_name_len);
+extern int qnetd_cluster_init(struct qnetd_cluster* cluster, const char* cluster_name, size_t cluster_name_len);
 
-extern void			qnetd_cluster_destroy(struct qnetd_cluster *cluster);
+extern void qnetd_cluster_destroy(struct qnetd_cluster* cluster);
 
-extern size_t			qnetd_cluster_size(const struct qnetd_cluster *cluster);
+extern size_t qnetd_cluster_size(const struct qnetd_cluster* cluster);
 
-extern struct qnetd_client	*qnetd_cluster_find_client_by_node_id(
-    const struct qnetd_cluster *cluster, uint32_t node_id);
+extern struct qnetd_client* qnetd_cluster_find_client_by_node_id(const struct qnetd_cluster* cluster, uint32_t node_id);
 
 #ifdef __cplusplus
 }

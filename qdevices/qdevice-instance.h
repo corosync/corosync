@@ -53,67 +53,66 @@ extern "C" {
 #endif
 
 struct qdevice_instance {
-	cmap_handle_t cmap_handle;
-	int cmap_poll_fd;
-	int cmap_reload_in_progress;
-	cmap_track_handle_t cmap_reload_track_handle;
-	cmap_track_handle_t cmap_nodelist_track_handle;
-	cmap_track_handle_t cmap_logging_track_handle;
+    cmap_handle_t cmap_handle;
+    int cmap_poll_fd;
+    int cmap_reload_in_progress;
+    cmap_track_handle_t cmap_reload_track_handle;
+    cmap_track_handle_t cmap_nodelist_track_handle;
+    cmap_track_handle_t cmap_logging_track_handle;
 
-	votequorum_handle_t votequorum_handle;
-	int votequorum_poll_fd;
+    votequorum_handle_t votequorum_handle;
+    int votequorum_poll_fd;
 
-	struct unix_socket_ipc local_ipc;
+    struct unix_socket_ipc local_ipc;
 
-	enum qdevice_model_type model_type;
+    enum qdevice_model_type model_type;
 
-	uint32_t node_id;
-	uint32_t heartbeat_interval;		/* Heartbeat interval during normal operation */
-	uint32_t sync_heartbeat_interval;	/* Heartbeat interval during corosync sync */
+    uint32_t node_id;
+    uint32_t heartbeat_interval;      /* Heartbeat interval during normal operation */
+    uint32_t sync_heartbeat_interval; /* Heartbeat interval during corosync sync */
 
-	struct node_list config_node_list;
-	int config_node_list_version_set;
-	uint64_t config_node_list_version;
+    struct node_list config_node_list;
+    int config_node_list_version_set;
+    uint64_t config_node_list_version;
 
-	/*
-	 * Copy of votequorum_quorum_notify_fn callback paramters.
-	 * Set after model callback is called.
-	 */
-	uint32_t vq_quorum_quorate;
-	uint32_t vq_quorum_node_list_entries;
-	votequorum_node_t *vq_quorum_node_list;
+    /*
+     * Copy of votequorum_quorum_notify_fn callback paramters.
+     * Set after model callback is called.
+     */
+    uint32_t vq_quorum_quorate;
+    uint32_t vq_quorum_node_list_entries;
+    votequorum_node_t* vq_quorum_node_list;
 
-	/*
-	 * Copy of votequorum_nodelist_notify_fn callback paramters.
-	 * Set after model callback is called.
-	 */
-	uint8_t vq_node_list_ring_id_set;
-	votequorum_ring_id_t vq_node_list_ring_id;
-	uint32_t vq_node_list_entries;
-	uint32_t *vq_node_list;
+    /*
+     * Copy of votequorum_nodelist_notify_fn callback paramters.
+     * Set after model callback is called.
+     */
+    uint8_t vq_node_list_ring_id_set;
+    votequorum_ring_id_t vq_node_list_ring_id;
+    uint32_t vq_node_list_entries;
+    uint32_t* vq_node_list;
 
-	/*
-	 * Copy of votequorum_expectedvotes_notify_fn callback parameters.
-	 * Set after model callback is called.
-	 */
-	uint32_t vq_expected_votes;
+    /*
+     * Copy of votequorum_expectedvotes_notify_fn callback parameters.
+     * Set after model callback is called.
+     */
+    uint32_t vq_expected_votes;
 
-	time_t vq_last_poll;
-	int vq_last_poll_cast_vote;
+    time_t vq_last_poll;
+    int vq_last_poll_cast_vote;
 
-	void *model_data;
+    void* model_data;
 
-	const struct qdevice_advanced_settings *advanced_settings;
+    const struct qdevice_advanced_settings* advanced_settings;
 
-	int sync_in_progress;
+    int sync_in_progress;
 };
 
-extern int	qdevice_instance_init(struct qdevice_instance *instance,
-    const struct qdevice_advanced_settings *advanced_settings);
+extern int qdevice_instance_init(struct qdevice_instance* instance, const struct qdevice_advanced_settings* advanced_settings);
 
-extern int	qdevice_instance_destroy(struct qdevice_instance *instance);
+extern int qdevice_instance_destroy(struct qdevice_instance* instance);
 
-extern int	qdevice_instance_configure_from_cmap(struct qdevice_instance *instance);
+extern int qdevice_instance_configure_from_cmap(struct qdevice_instance* instance);
 
 #ifdef __cplusplus
 }
