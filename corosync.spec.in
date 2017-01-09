@@ -31,6 +31,7 @@ URL: http://corosync.github.io/corosync/
 Source0: http://build.clusterlabs.org/corosync/releases/%{name}-%{version}%{?gittarver}.tar.gz
 
 # Runtime bits
+# The automatic dependency overridden in favor of explicit version lock
 Requires: corosynclib = %{version}-%{release}
 Requires(pre): /usr/sbin/useradd
 Requires(post): /sbin/chkconfig
@@ -297,7 +298,6 @@ This package contains corosync test agents.
 %package -n corosynclib
 Summary: The Corosync Cluster Engine Libraries
 Group: System Environment/Libraries
-Requires: %{name} = %{version}-%{release}
 
 %description -n corosynclib
 This package contains corosync libraries.
@@ -375,6 +375,7 @@ The Corosync Cluster Engine APIs.
 Summary: The Corosync Cluster Engine Qdevice
 Group: System Environment/Base
 Requires: %{name} = %{version}-%{release}
+# The automatic dependency overridden in favor of explicit version lock
 Requires: corosynclib = %{version}-%{release}
 Requires: nss-tools
 
