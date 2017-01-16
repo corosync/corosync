@@ -1097,7 +1097,26 @@ int totemknet_member_remove (
 	int link_no)
 {
 	struct totemknet_instance *instance = (struct totemknet_instance *)knet_context;
+	int res;
 
+	knet_log_printf (LOGSYS_LEVEL_DEBUG, "knet: member_remove: %d, link=%d", token_target->nodeid, link_no);
+
+	if (token_target->nodeid == instance->our_nodeid) {
+		return 0; /* Don't remove ourself */
+	}
+
+	/* Remove the link first */
+	res = knet_link_set_enable(instance->knet_handle, token_target->nodeid, link_no, 0);
+	if (res != 0) {
+		KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_ERROR, "knet_link_set enable(off) for nodeid %d, link %d failed", token_target->nodeid, link_no);
+		return res;
+	}
+
+	res = knet_link_clear_config(instance->knet_handle, token_target->nodeid, link_no);
+	if (res != 0) {
+		KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_ERROR, "knet_link_clear_config for nodeid %d, link %d failed", token_target->nodeid, link_no);
+		return res;
+	}
 	return knet_host_remove(instance->knet_handle, token_target->nodeid);
 
 }
