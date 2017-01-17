@@ -60,6 +60,9 @@ This top level directive contains configuration options for nodes in cluster.
 .TP
 qb { }
 This top level directive contains configuration options related to libqb.
+.TP
+resources { }
+This top level directive contains configuration options for resources.
 
 .PP
 The 
@@ -639,6 +642,17 @@ This specifies type of IPC to use. Can be one of native (default), shm and socke
 Native means one of shm or socket, depending on what is supported by OS. On systems
 with support for both, SHM is selected. SHM is generally faster, but need to allocate
 ring buffer file in /dev/shm.
+
+.PP
+Within the
+.B resources
+directive it is possible to specify options for resources.
+
+Possible option is:
+.TP
+watchdog_device
+This configuration option controls which watchdog device corosync try to bind to.
+The default value is /dev/watchdog. The value "no" disables the watchdog feature.
 
 .SH "FILES"
 .TP
