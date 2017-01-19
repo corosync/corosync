@@ -43,20 +43,16 @@
  * All service handlers
  */
 struct dynamic_service {
-	char *name;
-	unsigned int ver;
-	unsigned int handle;
+    char* name;
+    unsigned int ver;
+    unsigned int handle;
 };
 #define MAX_DYNAMIC_SERVICES 128
 
 #ifdef LOGCONFIG_USE_ICMAP
-extern int corosync_log_config_read (
-	const char **error_string);
+extern int corosync_log_config_read(const char** error_string);
 #else
-extern int corosync_log_config_read (
-	cmap_handle_t cmap_h,
-	const char *default_logfile,
-	const char **error_string);
+extern int corosync_log_config_read(cmap_handle_t cmap_h, const char* default_logfile, const char** error_string);
 #endif
 
 #endif /* LOGCONFIG_H_DEFINED */

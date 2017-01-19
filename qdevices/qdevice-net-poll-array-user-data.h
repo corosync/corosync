@@ -42,16 +42,16 @@ extern "C" {
 #endif
 
 enum qdevice_net_poll_array_user_data_type {
-	QDEVICE_NET_POLL_ARRAY_USER_DATA_TYPE_VOTEQUORUM,
-	QDEVICE_NET_POLL_ARRAY_USER_DATA_TYPE_CMAP,
-	QDEVICE_NET_POLL_ARRAY_USER_DATA_TYPE_IPC_SOCKET,
-	QDEVICE_NET_POLL_ARRAY_USER_DATA_TYPE_SOCKET,
-	QDEVICE_NET_POLL_ARRAY_USER_DATA_TYPE_IPC_CLIENT,
+    QDEVICE_NET_POLL_ARRAY_USER_DATA_TYPE_VOTEQUORUM,
+    QDEVICE_NET_POLL_ARRAY_USER_DATA_TYPE_CMAP,
+    QDEVICE_NET_POLL_ARRAY_USER_DATA_TYPE_IPC_SOCKET,
+    QDEVICE_NET_POLL_ARRAY_USER_DATA_TYPE_SOCKET,
+    QDEVICE_NET_POLL_ARRAY_USER_DATA_TYPE_IPC_CLIENT,
 };
 
 struct qdevice_net_poll_array_user_data {
-	enum qdevice_net_poll_array_user_data_type type;
-	struct unix_socket_client *ipc_client;
+    enum qdevice_net_poll_array_user_data_type type;
+    struct unix_socket_client* ipc_client;
 };
 
 #ifdef __cplusplus
