@@ -303,8 +303,35 @@ static inline void ucast_sendmsg (
 {
 	int res = 0;
 	struct totem_message_header *header = (struct totem_message_header *)msg;
+	struct msghdr msg_ucast;
+	struct iovec iovec;
 
 	header->target_nodeid = system_to->nodeid;
+
+	iovec.iov_base = (void *)msg;
+	iovec.iov_len = msg_len;
+
+	/*
+	 * Build unicast message
+	 */
+	memset(&msg_ucast, 0, sizeof(msg_ucast));
+	msg_ucast.msg_iov = (void *)&iovec;
+	msg_ucast.msg_iovlen = 1;
+#ifdef HAVE_MSGHDR_CONTROL
+	msg_ucast.msg_control = 0;
+#endif
+#ifdef HAVE_MSGHDR_CONTROLLEN
+	msg_ucast.msg_controllen = 0;
+#endif
+#ifdef HAVE_MSGHDR_FLAGS
+	msg_ucast.msg_flags = 0;
+#endif
+#ifdef HAVE_MSGHDR_ACCRIGHTS
+	msg_ucast.msg_accrights = NULL;
+#endif
+#ifdef HAVE_MSGHDR_ACCRIGHTSLEN
+	msg_ucast.msg_accrightslen = 0;
+#endif
 
 	/*
 	 * Transmit unicast message
@@ -316,14 +343,14 @@ static inline void ucast_sendmsg (
 	 * the receive fn. knet does not do local->local delivery
 	 */
 	if (system_to->nodeid == instance->our_nodeid) {
-		res = write (instance->knet_fd+1, msg, msg_len);
+		res = sendmsg (instance->knet_fd+1, &msg_ucast, MSG_NOSIGNAL);
 		if (res < 0) {
 			KNET_LOGSYS_PERROR (errno, instance->totemknet_log_level_debug,
 				       "sendmsg(ucast-local) failed (non-critical)");
 		}
 	}
 	else {
-		res = write (instance->knet_fd, msg, msg_len);
+		res = sendmsg (instance->knet_fd, &msg_ucast, MSG_NOSIGNAL);
 		if (res < 0) {
 			KNET_LOGSYS_PERROR (errno, instance->totemknet_log_level_debug,
 				       "sendmsg(ucast) failed (non-critical)");
@@ -339,23 +366,51 @@ static inline void mcast_sendmsg (
 {
 	int res;
 	struct totem_message_header *header = (struct totem_message_header *)msg;
+	struct msghdr msg_mcast;
+	struct iovec iovec;
+
+	iovec.iov_base = (void *)msg;
+	iovec.iov_len = msg_len;
 
 	header->target_nodeid = 0;
 
+	/*
+	 * Build multicast message
+	 */
+	memset(&msg_mcast, 0, sizeof(msg_mcast));
+	msg_mcast.msg_iov = (void *)&iovec;
+	msg_mcast.msg_iovlen = 1;
+#ifdef HAVE_MSGHDR_CONTROL
+	msg_mcast.msg_control = 0;
+#endif
+#ifdef HAVE_MSGHDR_CONTROLLEN
+	msg_mcast.msg_controllen = 0;
+#endif
+#ifdef HAVE_MSGHDR_FLAGS
+	msg_mcast.msg_flags = 0;
+#endif
+#ifdef HAVE_MSGHDR_ACCRIGHTS
+	msg_mcast.msg_accrights = NULL;
+#endif
+#ifdef HAVE_MSGHDR_ACCRIGHTSLEN
+	msg_mcast.msg_accrightslen = 0;
+#endif
+
+
 //	log_printf (LOGSYS_LEVEL_DEBUG, "totemknet: mcast_sendmsg. only_active=%d, len=%d", only_active, msg_len);
 
-	res = write (instance->knet_fd, msg, msg_len);
+	res = sendmsg (instance->knet_fd, &msg_mcast, MSG_NOSIGNAL);
 	if (res < msg_len) {
-		knet_log_printf (LOGSYS_LEVEL_DEBUG, "totemknet: mcast_send writev returned %d", res);
+		knet_log_printf (LOGSYS_LEVEL_DEBUG, "totemknet: mcast_send sendmsg returned %d", res);
 	}
 
 	/*
 	 * Also send it to ourself, directly into
 	 * the receive fn. knet does not to local->local delivery
 	 */
-	res = write (instance->knet_fd+1, msg, msg_len);
+	res = sendmsg (instance->knet_fd+1, &msg_mcast, MSG_NOSIGNAL);
 	if (res < msg_len) {
-		knet_log_printf (LOGSYS_LEVEL_DEBUG, "totemknet: mcast_send writev (local) returned %d", res);
+		knet_log_printf (LOGSYS_LEVEL_DEBUG, "totemknet: mcast_send sendmsg (local) returned %d", res);
 	}
 
 	if (!only_active || instance->send_merge_detect_message) {
