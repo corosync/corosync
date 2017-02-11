@@ -283,7 +283,7 @@ static void pmtu_change_callback_fn(void *private_data, unsigned int data_mtu)
 	knet_log_printf (LOGSYS_LEVEL_DEBUG, "Knet pMTU change: %d", data_mtu);
 
 	// TODO: Check this
-	instance->totemknet_mtu_changed(instance->context, data_mtu - totemip_udpip_header_size(AF_INET));
+	instance->totemknet_mtu_changed(instance->context, data_mtu);
 }
 
 int totemknet_crypto_set (
@@ -996,7 +996,6 @@ extern void totemknet_net_mtu_adjust (void *knet_context, struct totem_config *t
 {
 	struct totemknet_instance *instance = (struct totemknet_instance *)knet_context;
 
-	totem_config->net_mtu -= totemip_udpip_header_size(AF_INET) + 23;
 	knet_log_printf(LOG_DEBUG, "totemknet: Returning MTU of %d", totem_config->net_mtu);
 }
 
