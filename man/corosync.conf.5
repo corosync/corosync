@@ -71,9 +71,6 @@ The
 For knet, multiple interface subsections define parameters for each knet link on the
 system.
 
-For UDP, there should be just one interface section that defines the multicast or
-broadcast options for the link.
-
 For UDPU an interface section is not needed and it is recommended that the nodelist
 is used to define cluster nodes.
 
@@ -107,6 +104,10 @@ the average link latency. (default 2048 samples)
 .TP
 knet_pong_count
 How many valid ping/pongs before a link is marked UP. (default 5)
+.TP
+
+knet_transport
+Which IP transport knet should use. valid values are "sctp" or "udp". (default: udp)
 
 .TP
 bindnetaddr (udp only)

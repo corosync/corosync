@@ -74,6 +74,7 @@ struct totem_interface {
 	int knet_ping_timeout;
 	int knet_ping_precision;
 	int knet_pong_count;
+	int knet_transport;
 	struct totem_ip_address member_list[PROCESSOR_COUNT_MAX];
 };
 

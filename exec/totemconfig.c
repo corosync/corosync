@@ -52,6 +52,7 @@
 #include <corosync/swab.h>
 #include <qb/qblist.h>
 #include <qb/qbdefs.h>
+#include <libknet.h>
 #include <corosync/totem/totem.h>
 #include <corosync/config.h>
 #include <corosync/logsys.h>
@@ -80,6 +81,7 @@
 #define KNET_PING_PRECISION                     2048
 #define KNET_PONG_COUNT                         2
 #define KNET_PMTUD_INTERVAL                     30
+#define KNET_DEFAULT_TRANSPORT                  KNET_TRANSPORT_UDP
 
 #define DEFAULT_PORT				5405
 
@@ -1137,6 +1139,21 @@ extern int totem_config_read (
 			totem_config->interfaces[linknumber].knet_pong_count = u32;
 		}
 
+		totem_config->interfaces[linknumber].knet_transport = KNET_DEFAULT_TRANSPORT;
+		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.knet_transport", linknumber);
+		if (icmap_get_string(tmp_key, &str) == CS_OK) {
+			if (strcmp(str, "sctp") == 0) {
+				totem_config->interfaces[linknumber].knet_transport = KNET_TRANSPORT_SCTP;
+			}
+			else if (strcmp(str, "udp") == 0) {
+				totem_config->interfaces[linknumber].knet_transport = KNET_TRANSPORT_UDP;
+			}
+			else {
+				*error_string = "Unrecognised knet_transport. expected 'udp' or 'sctp'";
+				return -1;
+			}
+		}
+
 		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.member.", linknumber);
 		member_iter = icmap_iter_init(tmp_key);
 		while ((member_iter_key = icmap_iter_next(member_iter, NULL, NULL)) != NULL) {
@@ -1400,7 +1417,12 @@ int totem_config_validate (
 	}
 
 	if (totem_config->net_mtu == 0) {
-		totem_config->net_mtu = 1500;
+		if (totem_config->transport_number == TOTEM_TRANSPORT_KNET) {
+			totem_config->net_mtu = KNET_MAX_PACKET_SIZE;
+		}
+		else {
+			totem_config->net_mtu = 1500;
+		}
 	}
 
 	return 0;

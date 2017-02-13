@@ -282,8 +282,8 @@ static void pmtu_change_callback_fn(void *private_data, unsigned int data_mtu)
 	struct totemknet_instance *instance = (struct totemknet_instance *)private_data;
 	knet_log_printf (LOGSYS_LEVEL_DEBUG, "Knet pMTU change: %d", data_mtu);
 
-	// TODO: Check this
-	instance->totemknet_mtu_changed(instance->context, data_mtu);
+	/* We don't need to tell corosync the actual knet MTU */
+//	instance->totemknet_mtu_changed(instance->context, data_mtu);
 }
 
 int totemknet_crypto_set (
@@ -918,7 +918,7 @@ int totemknet_initialize (
 
 void *totemknet_buffer_alloc (void)
 {
-	return malloc (FRAME_SIZE_MAX);
+	return malloc(KNET_MAX_PACKET_SIZE);
 }
 
 void totemknet_buffer_release (void *ptr)
@@ -1111,7 +1111,9 @@ int totemknet_member_add (
 	/* Casts to remove const */
 	totemip_totemip_to_sockaddr_convert((struct totem_ip_address *)member, port+link_no, &remote_ss, &addrlen);
 	totemip_totemip_to_sockaddr_convert((struct totem_ip_address *)local, port+link_no, &local_ss, &addrlen);
-	err = knet_link_set_config(instance->knet_handle, member->nodeid, link_no, KNET_TRANSPORT_UDP, &local_ss, &remote_ss);
+	err = knet_link_set_config(instance->knet_handle, member->nodeid, link_no,
+				   instance->totem_config->interfaces[link_no].knet_transport,
+				   &local_ss, &remote_ss);
 	if (err) {
 		KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_ERROR, "knet_link_set_config failed");
 		return -1;

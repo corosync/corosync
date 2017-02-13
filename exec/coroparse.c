@@ -120,6 +120,7 @@ struct main_cp_cb_data {
 	int knet_ping_precision;
 	int knet_pong_count;
 	int knet_pmtud_interval;
+	char *knet_transport;
 
 	struct qb_list_head logger_subsys_items_head;
 	char *subsys;
@@ -766,6 +767,11 @@ static int main_config_parser_cb(const char *path,
 				data->knet_pong_count = val;
 				add_as_string = 0;
 			}
+			if (strcmp(path, "totem.interface.knet_transport") == 0) {
+				val_type = ICMAP_VALUETYPE_STRING;
+				data->knet_transport = strdup(value);
+				add_as_string = 0;
+			}
 			break;
 		case MAIN_CP_CB_DATA_STATE_LOGGER_SUBSYS:
 			if (strcmp(key, "subsys") == 0) {
@@ -958,6 +964,7 @@ static int main_config_parser_cb(const char *path,
 			data->knet_ping_timeout = -1;
 			data->knet_ping_precision = -1;
 			data->knet_pong_count = -1;
+			data->knet_transport = NULL;
 			qb_list_init(&data->member_items_head);
 		};
 		if (strcmp(path, "totem") == 0) {
@@ -1081,6 +1088,12 @@ static int main_config_parser_cb(const char *path,
 				snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.knet_pong_count",
 						data->linknumber);
 				icmap_set_uint32_r(config_map, key_name, data->knet_pong_count);
+			}
+			if (data->knet_transport) {
+				snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.knet_transport",
+						data->linknumber);
+				icmap_set_string_r(config_map, key_name, data->knet_transport);
+				free(data->knet_transport);
 			}
 
 			ii = 0;
