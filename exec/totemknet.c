@@ -237,10 +237,10 @@ static int dst_host_filter_callback_fn(void *private_data,
 				       const unsigned char *outdata,
 				       ssize_t outdata_len,
 				       uint8_t tx_rx,
-				       uint8_t this_host_id,
-				       uint8_t src_host_id,
+				       knet_node_id_t this_host_id,
+				       knet_node_id_t src_host_id,
 				       int8_t *channel,
-				       uint8_t *dst_host_ids,
+				       knet_node_id_t *dst_host_ids,
 				       size_t *dst_host_ids_entries)
 {
 	struct totem_message_header *header = (struct totem_message_header *)outdata;
@@ -269,7 +269,7 @@ static void socket_error_callback_fn(void *private_data, int datafd, int8_t chan
 	}
 }
 
-static void host_change_callback_fn(void *private_data, uint8_t host_id, uint8_t reachable, uint8_t remote, uint8_t external)
+static void host_change_callback_fn(void *private_data, knet_node_id_t host_id, uint8_t reachable, uint8_t remote, uint8_t external)
 {
 	struct totemknet_instance *instance = (struct totemknet_instance *)private_data;
 
@@ -438,7 +438,7 @@ int totemknet_ifaces_get (void *knet_context,
 {
 	struct totemknet_instance *instance = (struct totemknet_instance *)knet_context;
 	struct knet_link_status link_status;
-	uint8_t host_list[KNET_MAX_HOST];
+	knet_node_id_t host_list[KNET_MAX_HOST];
 	size_t num_hosts;
 	int i,j;
 	char *ptr;
@@ -614,7 +614,7 @@ static void totemknet_refresh_config(
 	uint32_t value;
 	uint32_t link_no;
 	size_t num_nodes;
-	uint8_t host_ids[KNET_MAX_HOST];
+	knet_node_id_t host_ids[KNET_MAX_HOST];
 	int i;
 	int err;
 	char path[ICMAP_KEYNAME_MAXLEN];
@@ -1085,9 +1085,6 @@ int totemknet_member_add (
 	if (member->nodeid == instance->our_nodeid) {
 		return 0; /* Don't add ourself, we send loopback messages directly */
 	}
-
-	/* Temp code to catch nodeids that are too big for knet */
-	assert(member->nodeid < 256);
 
 	/* Keep track of the number of links */
 	if (link_no > instance->num_links) {
