@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Red Hat, Inc.
+ * Copyright (c) 2015-2016 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -80,6 +80,8 @@ static char data[DATASIZE];
 static int send_counter = 0;
 static int do_syslog = 0;
 static int quiet = 0;
+static int report_rtt = 0;
+static unsigned int g_our_nodeid;
 static volatile int stopped;
 
 // stats
@@ -90,6 +92,14 @@ static unsigned int packets_sent=0;
 static unsigned int packets_recvd=0;
 static unsigned int send_retries=0;
 static unsigned int send_fails=0;
+static unsigned long avg_rtt=0;
+static unsigned long max_rtt=0;
+
+struct cpghum_header {
+	unsigned int counter;
+	unsigned int crc;
+	struct timeval timestamp;
+};
 
 static void cpg_bm_confchg_fn (
 	cpg_handle_t handle_in,
@@ -113,9 +123,11 @@ static void cpg_bm_deliver_fn (
 	void *msg,
 	size_t msg_len)
 {
-	int *value = msg;
 	uLong crc=0;
-	uLong recv_crc = value[1] & 0xFFFFFFFF;
+	struct cpghum_header *header = (struct cpghum_header *)msg;
+	uLong recv_crc = header->crc & 0xFFFFFFFF;
+	unsigned int *dataint = (unsigned int *)(data + sizeof(struct cpghum_header));
+	unsigned int datalen = g_write_size - sizeof(struct cpghum_header);
 
 	packets_recvd++;
 	g_recv_length = msg_len;
@@ -130,26 +142,47 @@ static void cpg_bm_deliver_fn (
 	}
 
 	// Sequence counters are incrementing in step?
-	if (*value != g_recv_counter) {
+	if (header->counter != g_recv_counter) {
 		sequence_errors++;
-		fprintf(stderr, "%s: counters don't match. got %d, expected %d\n", group_name->value, *value, g_recv_counter);
+		fprintf(stderr, "%s: counters don't match. got %d, expected %d\n", group_name->value, header->counter, g_recv_counter);
 		if (do_syslog) {
-			syslog(LOG_ERR, "%s: counters don't match. got %d, expected %d\n", group_name->value, *value, g_recv_counter);
+			syslog(LOG_ERR, "%s: counters don't match. got %d, expected %d\n", group_name->value, header->counter, g_recv_counter);
 		}
 		// Catch up or we'll be printing errors for ever
-		g_recv_counter = *value +1;
+		g_recv_counter = header->counter +1;
 	} else {
 		g_recv_counter++;
 	}
 
 	// Check crc
 	crc = crc32(0, NULL, 0);
-	crc = crc32(crc, (Bytef *)&value[2], msg_len-sizeof(int)*2) & 0xFFFFFFFF;
+	crc = crc32(crc, (Bytef *)dataint, datalen) & 0xFFFFFFFF;
 	if (crc != recv_crc) {
 		crc_errors++;
 		fprintf(stderr, "%s: CRCs don't match. got %lx, expected %lx\n", group_name->value, recv_crc, crc);
 		if (do_syslog) {
 			syslog(LOG_ERR, "%s: CRCs don't match. got %lx, expected %lx\n", group_name->value, recv_crc, crc);
+		}
+	}
+
+	// Report RTT
+	if (nodeid == g_our_nodeid && report_rtt) {
+		struct timeval tv1;
+		struct timeval rtt;
+		unsigned long rtt_usecs = rtt.tv_usec + rtt.tv_sec*1000000;
+
+		gettimeofday (&tv1, NULL);
+		timersub(&tv1, &header->timestamp, &rtt);
+
+		rtt_usecs = rtt.tv_usec + rtt.tv_sec*1000000;
+		if (rtt_usecs > max_rtt) {
+			max_rtt = rtt_usecs;
+		}
+		avg_rtt = ((avg_rtt * (g_recv_counter-1)) + rtt_usecs) / g_recv_counter;
+
+		fprintf(stderr, "%s: RTT %ld uS (avg: %ld)\n", group_name->value, rtt_usecs, avg_rtt);
+		if (do_syslog) {
+			syslog(LOG_ERR, "%s: RTT %ld uS (avg: %ld)\n", group_name->value, rtt_usecs, avg_rtt);
 		}
 	}
 
@@ -182,8 +215,10 @@ static void cpg_test (
 	struct iovec iov;
 	unsigned int res;
 	int i;
-	unsigned int *dataint = (unsigned int *)data;
+	unsigned int *dataint = (unsigned int *)(data + sizeof(struct cpghum_header));
+	unsigned int datalen = write_size - sizeof(struct cpghum_header);
 	uLong crc;
+	struct cpghum_header *header = (struct cpghum_header *)data;
 
 	alarm_notice = 0;
 	iov.iov_base = data;
@@ -192,15 +227,17 @@ static void cpg_test (
 	g_recv_count = 0;
 	alarm (print_time);
 
-	gettimeofday (&tv1, NULL);
 	do {
-		dataint[0] = send_counter++;
-		for (i=2; i<(DATASIZE-sizeof(int)*2)/4; i++) {
+		header->counter = send_counter++;
+		for (i=0; i<(datalen/4); i++) {
 			dataint[i] = rand();
 		}
 		crc = crc32(0, NULL, 0);
-		dataint[1] = crc32(crc, (Bytef*)&dataint[2], write_size-sizeof(int)*2);
+		header->crc = crc32(crc, (Bytef*)&dataint[0], datalen);
 	resend:
+		gettimeofday (&tv1, NULL);
+		memcpy(&header->timestamp, &tv1, sizeof(struct timeval));
+
 		res = cpg_mcast_joined (handle_in, CPG_TYPE_AGREED, &iov, 1);
 		if (res == CS_ERR_TRY_AGAIN) {
 			usleep(10000);
@@ -269,6 +306,7 @@ static void usage(char *cmd)
 	fprintf(stderr, "	-r    Number of repetitions, default 100\n");
 	fprintf(stderr, "	-p    Delay between printing output(S), default 10s\n");
 	fprintf(stderr, "	-l    Listen and check CRCs only, don't send (^C to quit)\n");
+	fprintf(stderr, "	-t    Report Round Trip Times for each packet.\n");
 	fprintf(stderr, "	-m    cpg_initialise() model. Default 1.\n");
 	fprintf(stderr, "	-s    Also send errors to syslog (for daemon log correlation).\n");
 	fprintf(stderr, "	-q    Quiet. Don't print messages every 10 seconds (see also -p)\n");
@@ -289,7 +327,7 @@ int main (int argc, char *argv[]) {
 	int listen_only = 0;
 	int model = 1;
 
-	while ( (opt = getopt(argc, argv, "qlsn:d:r:p:m:w:W:")) != -1 ) {
+	while ( (opt = getopt(argc, argv, "qlstn:d:r:p:m:w:W:")) != -1 ) {
 		switch (opt) {
 		case 'w': // Write size in K
 			bs = atoi(optarg);
@@ -313,6 +351,9 @@ int main (int argc, char *argv[]) {
 
 			strcpy(group_name.value, optarg);
 			group_name.length = strlen(group_name.value);
+			break;
+		case 't':
+			report_rtt = 1;
 			break;
 		case 'd':
 			delay_time = atoi(optarg);
@@ -371,6 +412,8 @@ int main (int argc, char *argv[]) {
 		printf ("cpg_initialize failed with result %d\n", res);
 		exit (1);
 	}
+	cpg_local_get(handle, &g_our_nodeid);
+
 	pthread_create (&thread, NULL, dispatch_thread, NULL);
 
 	res = cpg_join (handle, &group_name);
@@ -424,6 +467,8 @@ int main (int argc, char *argv[]) {
 		printf("   packets sent:    %d\n", packets_sent);
 		printf("   send failures:   %d\n", send_fails);
 		printf("   send retries:    %d\n", send_retries);
+		printf("   max RTT:         %ld\n", max_rtt);
+		printf("   avg RTT:         %ld\n", avg_rtt);
 	}
 	if (have_size) {
 		printf("   length errors:   %d\n", length_errors);
