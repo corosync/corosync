@@ -39,6 +39,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <time.h>
+#include <limits.h>
 #include <sys/time.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -94,6 +95,7 @@ static unsigned int send_retries=0;
 static unsigned int send_fails=0;
 static unsigned long avg_rtt=0;
 static unsigned long max_rtt=0;
+static unsigned long min_rtt=LONG_MAX;
 
 struct cpghum_header {
 	unsigned int counter;
@@ -166,7 +168,7 @@ static void cpg_bm_deliver_fn (
 	}
 
 	// Report RTT
-	if (nodeid == g_our_nodeid && report_rtt) {
+	if (nodeid == g_our_nodeid) {
 		struct timeval tv1;
 		struct timeval rtt;
 		unsigned long rtt_usecs = rtt.tv_usec + rtt.tv_sec*1000000;
@@ -178,11 +180,16 @@ static void cpg_bm_deliver_fn (
 		if (rtt_usecs > max_rtt) {
 			max_rtt = rtt_usecs;
 		}
+		if (rtt_usecs < min_rtt) {
+			min_rtt = rtt_usecs;
+		}
 		avg_rtt = ((avg_rtt * (g_recv_counter-1)) + rtt_usecs) / g_recv_counter;
 
-		fprintf(stderr, "%s: RTT %ld uS (avg: %ld)\n", group_name->value, rtt_usecs, avg_rtt);
-		if (do_syslog) {
-			syslog(LOG_ERR, "%s: RTT %ld uS (avg: %ld)\n", group_name->value, rtt_usecs, avg_rtt);
+		if (report_rtt) {
+			fprintf(stderr, "%s: RTT %ld uS (min/avg/max): %ld/%ld/%ld\n", group_name->value, rtt_usecs, min_rtt, avg_rtt, max_rtt);
+			if (do_syslog) {
+				syslog(LOG_ERR, "%s: RTT %ld uS (min/avg/max): %ld/%ld/%ld\n", group_name->value, rtt_usecs, min_rtt, avg_rtt, max_rtt);
+			}
 		}
 	}
 
@@ -258,7 +265,8 @@ static void cpg_test (
 
 	if (!quiet) {
 		printf ("%s: %5d message%s received, ", group_name.value, g_recv_count, g_recv_count==1?"":"s");
-		printf ("%5d bytes per write\n", write_size);
+		printf ("%5d bytes per write. ", write_size);
+		printf ("RTT min/avg/max: %ld/%ld/%ld\n", min_rtt, avg_rtt, max_rtt);
 	}
 
 }
@@ -437,7 +445,9 @@ int main (int argc, char *argv[]) {
 		while (!stopped) {
 			sleep(1);
 			if (++secs > print_time && !quiet) {
-				printf ("%s: %5d message%s received. %d bytes\n", group_name.value, g_recv_count, g_recv_count==1?"":"s", g_recv_length);
+				printf ("%s: %5d message%s received. %d bytes. RTT min/avg/max: %ld/%ld/%ld\n",
+					group_name.value, g_recv_count, g_recv_count==1?"":"s", g_recv_length,
+					min_rtt, avg_rtt, max_rtt);
 				secs = 0;
 				g_recv_count = 0;
 			}
@@ -467,8 +477,6 @@ int main (int argc, char *argv[]) {
 		printf("   packets sent:    %d\n", packets_sent);
 		printf("   send failures:   %d\n", send_fails);
 		printf("   send retries:    %d\n", send_retries);
-		printf("   max RTT:         %ld\n", max_rtt);
-		printf("   avg RTT:         %ld\n", avg_rtt);
 	}
 	if (have_size) {
 		printf("   length errors:   %d\n", length_errors);
@@ -476,6 +484,10 @@ int main (int argc, char *argv[]) {
 	printf("   packets recvd:   %d\n", packets_recvd);
 	printf("   sequence errors: %d\n", sequence_errors);
 	printf("   crc errors:	    %d\n", crc_errors);
+	if (!listen_only) {
+		printf("   max RTT:         %ld\n", max_rtt);
+		printf("   avg RTT:         %ld\n", avg_rtt);
+	}
 	printf("\n");
 	return (0);
 }
