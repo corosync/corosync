@@ -82,6 +82,7 @@ static int send_counter = 0;
 static int do_syslog = 0;
 static int quiet = 0;
 static int report_rtt = 0;
+static int abort_on_error = 0;
 static unsigned int g_our_nodeid;
 static volatile int stopped;
 
@@ -134,40 +135,7 @@ static void cpg_bm_deliver_fn (
 	packets_recvd++;
 	g_recv_length = msg_len;
 
-	// Basic check, packets should all be the right size
-	if (g_write_size && (msg_len != g_write_size)) {
-		length_errors++;
-		fprintf(stderr, "%s: message sizes don't match. got %lu, expected %u\n", group_name->value, msg_len, g_write_size);
-		if (do_syslog) {
-			syslog(LOG_ERR, "%s: message sizes don't match. got %lu, expected %u\n", group_name->value, msg_len, g_write_size);
-		}
-	}
-
-	// Sequence counters are incrementing in step?
-	if (header->counter != g_recv_counter) {
-		sequence_errors++;
-		fprintf(stderr, "%s: counters don't match. got %d, expected %d\n", group_name->value, header->counter, g_recv_counter);
-		if (do_syslog) {
-			syslog(LOG_ERR, "%s: counters don't match. got %d, expected %d\n", group_name->value, header->counter, g_recv_counter);
-		}
-		// Catch up or we'll be printing errors for ever
-		g_recv_counter = header->counter +1;
-	} else {
-		g_recv_counter++;
-	}
-
-	// Check crc
-	crc = crc32(0, NULL, 0);
-	crc = crc32(crc, (Bytef *)dataint, datalen) & 0xFFFFFFFF;
-	if (crc != recv_crc) {
-		crc_errors++;
-		fprintf(stderr, "%s: CRCs don't match. got %lx, expected %lx\n", group_name->value, recv_crc, crc);
-		if (do_syslog) {
-			syslog(LOG_ERR, "%s: CRCs don't match. got %lx, expected %lx\n", group_name->value, recv_crc, crc);
-		}
-	}
-
-	// Report RTT
+	// Report RTT first in case abort_on_error is set
 	if (nodeid == g_our_nodeid) {
 		struct timeval tv1;
 		struct timeval rtt;
@@ -183,7 +151,7 @@ static void cpg_bm_deliver_fn (
 		if (rtt_usecs < min_rtt) {
 			min_rtt = rtt_usecs;
 		}
-		avg_rtt = ((avg_rtt * (g_recv_counter-1)) + rtt_usecs) / g_recv_counter;
+		avg_rtt = ((avg_rtt * g_recv_counter) + rtt_usecs) / (g_recv_counter+1);
 
 		if (report_rtt) {
 			fprintf(stderr, "%s: RTT %ld uS (min/avg/max): %ld/%ld/%ld\n", group_name->value, rtt_usecs, min_rtt, avg_rtt, max_rtt);
@@ -191,6 +159,53 @@ static void cpg_bm_deliver_fn (
 				syslog(LOG_ERR, "%s: RTT %ld uS (min/avg/max): %ld/%ld/%ld\n", group_name->value, rtt_usecs, min_rtt, avg_rtt, max_rtt);
 			}
 		}
+	}
+
+	// Basic check, packets should all be the right size
+	if (g_write_size && (msg_len != g_write_size)) {
+		length_errors++;
+		fprintf(stderr, "%s: message sizes don't match. got %lu, expected %u\n", group_name->value, msg_len, g_write_size);
+		if (do_syslog) {
+			syslog(LOG_ERR, "%s: message sizes don't match. got %lu, expected %u\n", group_name->value, msg_len, g_write_size);
+		}
+
+		if (abort_on_error) {
+			exit(999);
+		}
+	}
+
+	// Sequence counters are incrementing in step?
+	if (header->counter != g_recv_counter) {
+		sequence_errors++;
+		fprintf(stderr, "%s: counters don't match. got %d, expected %d\n", group_name->value, header->counter, g_recv_counter);
+		if (do_syslog) {
+			syslog(LOG_ERR, "%s: counters don't match. got %d, expected %d\n", group_name->value, header->counter, g_recv_counter);
+		}
+
+		if (abort_on_error) {
+			exit(999);
+		}
+
+		// Catch up or we'll be printing errors for ever
+		g_recv_counter = header->counter +1;
+	}
+	else {
+		g_recv_counter++;
+	}
+
+	// Check crc
+	crc = crc32(0, NULL, 0);
+	crc = crc32(crc, (Bytef *)dataint, datalen) & 0xFFFFFFFF;
+	if (crc != recv_crc) {
+		crc_errors++;
+		fprintf(stderr, "%s: CRCs don't match. got %lx, expected %lx\n", group_name->value, recv_crc, crc);
+		if (do_syslog) {
+			syslog(LOG_ERR, "%s: CRCs don't match. got %lx, expected %lx\n", group_name->value, recv_crc, crc);
+		}
+		if (abort_on_error) {
+			exit(999);
+		}
+
 	}
 
 	g_recv_count++;
@@ -317,6 +332,7 @@ static void usage(char *cmd)
 	fprintf(stderr, "	-t    Report Round Trip Times for each packet.\n");
 	fprintf(stderr, "	-m    cpg_initialise() model. Default 1.\n");
 	fprintf(stderr, "	-s    Also send errors to syslog (for daemon log correlation).\n");
+	fprintf(stderr, "	-a    Abort on crc/length/sequence error\n");
 	fprintf(stderr, "	-q    Quiet. Don't print messages every 10 seconds (see also -p)\n");
 	fprintf(stderr, "\n");
 }
@@ -335,7 +351,7 @@ int main (int argc, char *argv[]) {
 	int listen_only = 0;
 	int model = 1;
 
-	while ( (opt = getopt(argc, argv, "qlstn:d:r:p:m:w:W:")) != -1 ) {
+	while ( (opt = getopt(argc, argv, "qlstan:d:r:p:m:w:W:")) != -1 ) {
 		switch (opt) {
 		case 'w': // Write size in K
 			bs = atoi(optarg);
@@ -362,6 +378,9 @@ int main (int argc, char *argv[]) {
 			break;
 		case 't':
 			report_rtt = 1;
+			break;
+		case 'a':
+			abort_on_error = 1;
 			break;
 		case 'd':
 			delay_time = atoi(optarg);
