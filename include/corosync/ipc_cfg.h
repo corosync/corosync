@@ -39,49 +39,49 @@
 #include <corosync/corotypes.h>
 #include <corosync/mar_gen.h>
 
-#define CFG_INTERFACE_NAME_MAX_LEN		128
-#define CFG_INTERFACE_STATUS_MAX_LEN		512
+#define CFG_INTERFACE_NAME_MAX_LEN 128
+#define CFG_INTERFACE_STATUS_MAX_LEN 512
 /*
  * Too keep future ABI compatibility, this value
  * is intentionaly bigger then INTERFACE_MAX
  */
-#define CFG_MAX_INTERFACES			16
+#define CFG_MAX_INTERFACES 16
 
 /**
  * @brief The req_lib_cfg_types enum
  */
 enum req_lib_cfg_types {
-	MESSAGE_REQ_CFG_RINGSTATUSGET = 0,
-	MESSAGE_REQ_CFG_RINGREENABLE = 1,
-	MESSAGE_REQ_CFG_KILLNODE = 2,
-	MESSAGE_REQ_CFG_TRYSHUTDOWN = 3,
+	MESSAGE_REQ_CFG_RINGSTATUSGET   = 0,
+	MESSAGE_REQ_CFG_RINGREENABLE	= 1,
+	MESSAGE_REQ_CFG_KILLNODE		   = 2,
+	MESSAGE_REQ_CFG_TRYSHUTDOWN		= 3,
 	MESSAGE_REQ_CFG_REPLYTOSHUTDOWN = 4,
-	MESSAGE_REQ_CFG_GET_NODE_ADDRS = 5,
-	MESSAGE_REQ_CFG_LOCAL_GET = 6,
-	MESSAGE_REQ_CFG_RELOAD_CONFIG = 7,
-	MESSAGE_REQ_CFG_CRYPTO_SET = 8
+	MESSAGE_REQ_CFG_GET_NODE_ADDRS  = 5,
+	MESSAGE_REQ_CFG_LOCAL_GET		  = 6,
+	MESSAGE_REQ_CFG_RELOAD_CONFIG   = 7,
+	MESSAGE_REQ_CFG_CRYPTO_SET		 = 8
 };
 
 /**
  * @brief The res_lib_cfg_types enum
  */
 enum res_lib_cfg_types {
-        MESSAGE_RES_CFG_RINGSTATUSGET = 0,
-        MESSAGE_RES_CFG_RINGREENABLE = 1,
-        MESSAGE_RES_CFG_STATETRACKSTART = 2,
-        MESSAGE_RES_CFG_STATETRACKSTOP = 3,
-        MESSAGE_RES_CFG_ADMINISTRATIVESTATESET = 4,
-        MESSAGE_RES_CFG_ADMINISTRATIVESTATEGET = 5,
-        MESSAGE_RES_CFG_SERVICELOAD = 6,
-        MESSAGE_RES_CFG_SERVICEUNLOAD = 7,
-	MESSAGE_RES_CFG_KILLNODE = 8,
-	MESSAGE_RES_CFG_TRYSHUTDOWN = 9,
-	MESSAGE_RES_CFG_TESTSHUTDOWN = 10,
-	MESSAGE_RES_CFG_GET_NODE_ADDRS = 11,
-	MESSAGE_RES_CFG_LOCAL_GET = 12,
-	MESSAGE_RES_CFG_REPLYTOSHUTDOWN = 13,
-	MESSAGE_RES_CFG_CRYPTO_SET = 14,
-	MESSAGE_RES_CFG_RELOAD_CONFIG = 15
+	MESSAGE_RES_CFG_RINGSTATUSGET			= 0,
+	MESSAGE_RES_CFG_RINGREENABLE			 = 1,
+	MESSAGE_RES_CFG_STATETRACKSTART		  = 2,
+	MESSAGE_RES_CFG_STATETRACKSTOP		   = 3,
+	MESSAGE_RES_CFG_ADMINISTRATIVESTATESET = 4,
+	MESSAGE_RES_CFG_ADMINISTRATIVESTATEGET = 5,
+	MESSAGE_RES_CFG_SERVICELOAD			  = 6,
+	MESSAGE_RES_CFG_SERVICEUNLOAD			= 7,
+	MESSAGE_RES_CFG_KILLNODE				 = 8,
+	MESSAGE_RES_CFG_TRYSHUTDOWN			  = 9,
+	MESSAGE_RES_CFG_TESTSHUTDOWN			 = 10,
+	MESSAGE_RES_CFG_GET_NODE_ADDRS		   = 11,
+	MESSAGE_RES_CFG_LOCAL_GET				= 12,
+	MESSAGE_RES_CFG_REPLYTOSHUTDOWN		  = 13,
+	MESSAGE_RES_CFG_CRYPTO_SET			   = 14,
+	MESSAGE_RES_CFG_RELOAD_CONFIG			= 15
 };
 
 /**
@@ -173,7 +173,7 @@ struct res_lib_cfg_testshutdown {
  * @brief The req_lib_cfg_get_node_addrs struct
  */
 struct req_lib_cfg_get_node_addrs {
-        struct qb_ipc_request_header header __attribute__((aligned(8)));
+	struct qb_ipc_request_header header __attribute__((aligned(8)));
 	unsigned int nodeid;
 };
 
@@ -181,7 +181,7 @@ struct req_lib_cfg_get_node_addrs {
  * @brief The res_lib_cfg_get_node_addrs struct
  */
 struct res_lib_cfg_get_node_addrs {
-        struct qb_ipc_response_header header __attribute__((aligned(8)));
+	struct qb_ipc_response_header header __attribute__((aligned(8)));
 	unsigned int family;
 	unsigned int num_addrs;
 	/* array of TOTEMIP_ADDRLEN items */
@@ -221,10 +221,10 @@ struct res_lib_cfg_reload_config {
  * @brief corosync_administrative_target_t enum
  */
 typedef enum {
-	AIS_AMF_ADMINISTRATIVETARGET_SERVICEUNIT = 0,
-	AIS_AMF_ADMINISTRATIVETARGET_SERVICEGROUP = 1,
+	AIS_AMF_ADMINISTRATIVETARGET_SERVICEUNIT			   = 0,
+	AIS_AMF_ADMINISTRATIVETARGET_SERVICEGROUP			  = 1,
 	AIS_AMF_ADMINISTRATIVETARGET_COMPONENTSERVICEINSTANCE = 2,
-	AIS_AMF_ADMINISTRATIVETARGET_NODE = 3
+	AIS_AMF_ADMINISTRATIVETARGET_NODE					  = 3
 } corosync_administrative_target_t;
 
 /**
@@ -232,7 +232,7 @@ typedef enum {
  */
 typedef enum {
 	AIS_AMF_ADMINISTRATIVESTATE_UNLOCKED = 0,
-	AIS_AMF_ADMINISTRATIVESTATE_LOCKED = 1,
+	AIS_AMF_ADMINISTRATIVESTATE_LOCKED   = 1,
 	AIS_AMF_ADMINISTRATIVESTATE_STOPPING = 2
 } corosync_administrative_state_t;
 
@@ -240,9 +240,9 @@ typedef enum {
  * @brief corosync_shutdown_flags_t enum
  */
 typedef enum {
-	CFG_SHUTDOWN_FLAG_REQUEST = 0,
+	CFG_SHUTDOWN_FLAG_REQUEST	= 0,
 	CFG_SHUTDOWN_FLAG_REGARDLESS = 1,
-	CFG_SHUTDOWN_FLAG_IMMEDIATE = 2,
+	CFG_SHUTDOWN_FLAG_IMMEDIATE  = 2,
 } corosync_shutdown_flags_t;
 
 

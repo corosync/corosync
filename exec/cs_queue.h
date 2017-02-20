@@ -47,243 +47,250 @@ struct cs_queue {
 	int used;
 	int usedhw;
 	int size;
-	void *items;
+	void* items;
 	int size_per_item;
 	int iterator;
 	pthread_mutex_t mutex;
 	int threaded_mode_enabled;
 };
 
-static inline int cs_queue_init (struct cs_queue *cs_queue, int cs_queue_items, int size_per_item, int threaded_mode_enabled) {
-	cs_queue->head = 0;
-	cs_queue->tail = cs_queue_items - 1;
-	cs_queue->used = 0;
-	cs_queue->usedhw = 0;
-	cs_queue->size = cs_queue_items;
-	cs_queue->size_per_item = size_per_item;
+static inline int cs_queue_init(struct cs_queue* cs_queue, int cs_queue_items, int size_per_item, int threaded_mode_enabled)
+{
+	cs_queue->head					 = 0;
+	cs_queue->tail					 = cs_queue_items - 1;
+	cs_queue->used					 = 0;
+	cs_queue->usedhw				   = 0;
+	cs_queue->size					 = cs_queue_items;
+	cs_queue->size_per_item			= size_per_item;
 	cs_queue->threaded_mode_enabled = threaded_mode_enabled;
 
-	cs_queue->items = malloc (cs_queue_items * size_per_item);
-	if (cs_queue->items == 0) {
+	cs_queue->items = malloc(cs_queue_items * size_per_item);
+	if(cs_queue->items == 0) {
 		return (-ENOMEM);
 	}
-	memset (cs_queue->items, 0, cs_queue_items * size_per_item);
-	if (cs_queue->threaded_mode_enabled) {
-		pthread_mutex_init (&cs_queue->mutex, NULL);
+	memset(cs_queue->items, 0, cs_queue_items * size_per_item);
+	if(cs_queue->threaded_mode_enabled) {
+		pthread_mutex_init(&cs_queue->mutex, NULL);
 	}
 	return (0);
 }
 
-static inline int cs_queue_reinit (struct cs_queue *cs_queue)
+static inline int cs_queue_reinit(struct cs_queue* cs_queue)
 {
-	if (cs_queue->threaded_mode_enabled) {
-		pthread_mutex_lock (&cs_queue->mutex);
+	if(cs_queue->threaded_mode_enabled) {
+		pthread_mutex_lock(&cs_queue->mutex);
 	}
-	cs_queue->head = 0;
-	cs_queue->tail = cs_queue->size - 1;
-	cs_queue->used = 0;
+	cs_queue->head   = 0;
+	cs_queue->tail   = cs_queue->size - 1;
+	cs_queue->used   = 0;
 	cs_queue->usedhw = 0;
 
-	memset (cs_queue->items, 0, cs_queue->size * cs_queue->size_per_item);
-	if (cs_queue->threaded_mode_enabled) {
-		pthread_mutex_unlock (&cs_queue->mutex);
+	memset(cs_queue->items, 0, cs_queue->size * cs_queue->size_per_item);
+	if(cs_queue->threaded_mode_enabled) {
+		pthread_mutex_unlock(&cs_queue->mutex);
 	}
 	return (0);
 }
 
-static inline void cs_queue_free (struct cs_queue *cs_queue) {
-	if (cs_queue->threaded_mode_enabled) {
-		pthread_mutex_destroy (&cs_queue->mutex);
+static inline void cs_queue_free(struct cs_queue* cs_queue)
+{
+	if(cs_queue->threaded_mode_enabled) {
+		pthread_mutex_destroy(&cs_queue->mutex);
 	}
-	free (cs_queue->items);
+	free(cs_queue->items);
 }
 
-static inline int cs_queue_is_full (struct cs_queue *cs_queue) {
+static inline int cs_queue_is_full(struct cs_queue* cs_queue)
+{
 	int full;
 
-	if (cs_queue->threaded_mode_enabled) {
-		pthread_mutex_lock (&cs_queue->mutex);
+	if(cs_queue->threaded_mode_enabled) {
+		pthread_mutex_lock(&cs_queue->mutex);
 	}
 	full = ((cs_queue->size - 1) == cs_queue->used);
-	if (cs_queue->threaded_mode_enabled) {
-		pthread_mutex_unlock (&cs_queue->mutex);
+	if(cs_queue->threaded_mode_enabled) {
+		pthread_mutex_unlock(&cs_queue->mutex);
 	}
 	return (full);
 }
 
-static inline int cs_queue_is_empty (struct cs_queue *cs_queue) {
+static inline int cs_queue_is_empty(struct cs_queue* cs_queue)
+{
 	int empty;
 
-	if (cs_queue->threaded_mode_enabled) {
-		pthread_mutex_lock (&cs_queue->mutex);
+	if(cs_queue->threaded_mode_enabled) {
+		pthread_mutex_lock(&cs_queue->mutex);
 	}
 	empty = (cs_queue->used == 0);
-	if (cs_queue->threaded_mode_enabled) {
-		pthread_mutex_unlock (&cs_queue->mutex);
+	if(cs_queue->threaded_mode_enabled) {
+		pthread_mutex_unlock(&cs_queue->mutex);
 	}
 	return (empty);
 }
 
-static inline void cs_queue_item_add (struct cs_queue *cs_queue, void *item)
+static inline void cs_queue_item_add(struct cs_queue* cs_queue, void* item)
 {
-	char *cs_queue_item;
+	char* cs_queue_item;
 	int cs_queue_position;
 
-	if (cs_queue->threaded_mode_enabled) {
-		pthread_mutex_lock (&cs_queue->mutex);
+	if(cs_queue->threaded_mode_enabled) {
+		pthread_mutex_lock(&cs_queue->mutex);
 	}
 	cs_queue_position = cs_queue->head;
-	cs_queue_item = cs_queue->items;
+	cs_queue_item	 = cs_queue->items;
 	cs_queue_item += cs_queue_position * cs_queue->size_per_item;
-	memcpy (cs_queue_item, item, cs_queue->size_per_item);
+	memcpy(cs_queue_item, item, cs_queue->size_per_item);
 
-	assert (cs_queue->tail != cs_queue->head);
+	assert(cs_queue->tail != cs_queue->head);
 
 	cs_queue->head = (cs_queue->head + 1) % cs_queue->size;
 	cs_queue->used++;
-	if (cs_queue->used > cs_queue->usedhw) {
+	if(cs_queue->used > cs_queue->usedhw) {
 		cs_queue->usedhw = cs_queue->used;
 	}
-	if (cs_queue->threaded_mode_enabled) {
-		pthread_mutex_unlock (&cs_queue->mutex);
+	if(cs_queue->threaded_mode_enabled) {
+		pthread_mutex_unlock(&cs_queue->mutex);
 	}
 }
 
-static inline void *cs_queue_item_get (struct cs_queue *cs_queue)
+static inline void* cs_queue_item_get(struct cs_queue* cs_queue)
 {
-	char *cs_queue_item;
+	char* cs_queue_item;
 	int cs_queue_position;
 
-	if (cs_queue->threaded_mode_enabled) {
-		pthread_mutex_lock (&cs_queue->mutex);
+	if(cs_queue->threaded_mode_enabled) {
+		pthread_mutex_lock(&cs_queue->mutex);
 	}
 	cs_queue_position = (cs_queue->tail + 1) % cs_queue->size;
-	cs_queue_item = cs_queue->items;
+	cs_queue_item	 = cs_queue->items;
 	cs_queue_item += cs_queue_position * cs_queue->size_per_item;
-	if (cs_queue->threaded_mode_enabled) {
-		pthread_mutex_unlock (&cs_queue->mutex);
+	if(cs_queue->threaded_mode_enabled) {
+		pthread_mutex_unlock(&cs_queue->mutex);
 	}
-	return ((void *)cs_queue_item);
+	return ((void*)cs_queue_item);
 }
 
-static inline void cs_queue_item_remove (struct cs_queue *cs_queue) {
-	if (cs_queue->threaded_mode_enabled) {
-		pthread_mutex_lock (&cs_queue->mutex);
+static inline void cs_queue_item_remove(struct cs_queue* cs_queue)
+{
+	if(cs_queue->threaded_mode_enabled) {
+		pthread_mutex_lock(&cs_queue->mutex);
 	}
 	cs_queue->tail = (cs_queue->tail + 1) % cs_queue->size;
 
-	assert (cs_queue->tail != cs_queue->head);
+	assert(cs_queue->tail != cs_queue->head);
 
 	cs_queue->used--;
-	assert (cs_queue->used >= 0);
-	if (cs_queue->threaded_mode_enabled) {
-		pthread_mutex_unlock (&cs_queue->mutex);
+	assert(cs_queue->used >= 0);
+	if(cs_queue->threaded_mode_enabled) {
+		pthread_mutex_unlock(&cs_queue->mutex);
 	}
 }
 
-static inline void cs_queue_items_remove (struct cs_queue *cs_queue, int rel_count)
+static inline void cs_queue_items_remove(struct cs_queue* cs_queue, int rel_count)
 {
-	if (cs_queue->threaded_mode_enabled) {
-		pthread_mutex_lock (&cs_queue->mutex);
+	if(cs_queue->threaded_mode_enabled) {
+		pthread_mutex_lock(&cs_queue->mutex);
 	}
 	cs_queue->tail = (cs_queue->tail + rel_count) % cs_queue->size;
 
-	assert (cs_queue->tail != cs_queue->head);
+	assert(cs_queue->tail != cs_queue->head);
 
 	cs_queue->used -= rel_count;
-	if (cs_queue->threaded_mode_enabled) {
-		pthread_mutex_unlock (&cs_queue->mutex);
+	if(cs_queue->threaded_mode_enabled) {
+		pthread_mutex_unlock(&cs_queue->mutex);
 	}
 }
 
 
-static inline void cs_queue_item_iterator_init (struct cs_queue *cs_queue)
+static inline void cs_queue_item_iterator_init(struct cs_queue* cs_queue)
 {
-	if (cs_queue->threaded_mode_enabled) {
-		pthread_mutex_lock (&cs_queue->mutex);
+	if(cs_queue->threaded_mode_enabled) {
+		pthread_mutex_lock(&cs_queue->mutex);
 	}
 	cs_queue->iterator = (cs_queue->tail + 1) % cs_queue->size;
-	if (cs_queue->threaded_mode_enabled) {
-		pthread_mutex_unlock (&cs_queue->mutex);
+	if(cs_queue->threaded_mode_enabled) {
+		pthread_mutex_unlock(&cs_queue->mutex);
 	}
 }
 
-static inline void *cs_queue_item_iterator_get (struct cs_queue *cs_queue)
+static inline void* cs_queue_item_iterator_get(struct cs_queue* cs_queue)
 {
-	char *cs_queue_item;
+	char* cs_queue_item;
 	int cs_queue_position;
 
-	if (cs_queue->threaded_mode_enabled) {
-		pthread_mutex_lock (&cs_queue->mutex);
+	if(cs_queue->threaded_mode_enabled) {
+		pthread_mutex_lock(&cs_queue->mutex);
 	}
 	cs_queue_position = (cs_queue->iterator) % cs_queue->size;
-	if (cs_queue->iterator == cs_queue->head) {
-		if (cs_queue->threaded_mode_enabled) {
-			pthread_mutex_unlock (&cs_queue->mutex);
+	if(cs_queue->iterator == cs_queue->head) {
+		if(cs_queue->threaded_mode_enabled) {
+			pthread_mutex_unlock(&cs_queue->mutex);
 		}
 		return (0);
 	}
 	cs_queue_item = cs_queue->items;
 	cs_queue_item += cs_queue_position * cs_queue->size_per_item;
-	if (cs_queue->threaded_mode_enabled) {
-		pthread_mutex_unlock (&cs_queue->mutex);
+	if(cs_queue->threaded_mode_enabled) {
+		pthread_mutex_unlock(&cs_queue->mutex);
 	}
-	return ((void *)cs_queue_item);
+	return ((void*)cs_queue_item);
 }
 
-static inline int cs_queue_item_iterator_next (struct cs_queue *cs_queue)
+static inline int cs_queue_item_iterator_next(struct cs_queue* cs_queue)
 {
 	int next_res;
 
-	if (cs_queue->threaded_mode_enabled) {
-		pthread_mutex_lock (&cs_queue->mutex);
+	if(cs_queue->threaded_mode_enabled) {
+		pthread_mutex_lock(&cs_queue->mutex);
 	}
 	cs_queue->iterator = (cs_queue->iterator + 1) % cs_queue->size;
 
 	next_res = cs_queue->iterator == cs_queue->head;
-	if (cs_queue->threaded_mode_enabled) {
-		pthread_mutex_unlock (&cs_queue->mutex);
+	if(cs_queue->threaded_mode_enabled) {
+		pthread_mutex_unlock(&cs_queue->mutex);
 	}
 	return (next_res);
 }
 
-static inline void cs_queue_avail (struct cs_queue *cs_queue, int *avail)
+static inline void cs_queue_avail(struct cs_queue* cs_queue, int* avail)
 {
-	if (cs_queue->threaded_mode_enabled) {
-		pthread_mutex_lock (&cs_queue->mutex);
+	if(cs_queue->threaded_mode_enabled) {
+		pthread_mutex_lock(&cs_queue->mutex);
 	}
 	*avail = cs_queue->size - cs_queue->used - 2;
-	assert (*avail >= 0);
-	if (cs_queue->threaded_mode_enabled) {
-		pthread_mutex_unlock (&cs_queue->mutex);
+	assert(*avail >= 0);
+	if(cs_queue->threaded_mode_enabled) {
+		pthread_mutex_unlock(&cs_queue->mutex);
 	}
 }
 
-static inline int cs_queue_used (struct cs_queue *cs_queue) {
+static inline int cs_queue_used(struct cs_queue* cs_queue)
+{
 	int used;
 
-	if (cs_queue->threaded_mode_enabled) {
-		pthread_mutex_lock (&cs_queue->mutex);
+	if(cs_queue->threaded_mode_enabled) {
+		pthread_mutex_lock(&cs_queue->mutex);
 	}
 	used = cs_queue->used;
-	if (cs_queue->threaded_mode_enabled) {
-		pthread_mutex_unlock (&cs_queue->mutex);
+	if(cs_queue->threaded_mode_enabled) {
+		pthread_mutex_unlock(&cs_queue->mutex);
 	}
 
 	return (used);
 }
 
-static inline int cs_queue_usedhw (struct cs_queue *cs_queue) {
+static inline int cs_queue_usedhw(struct cs_queue* cs_queue)
+{
 	int usedhw;
 
-	if (cs_queue->threaded_mode_enabled) {
-		pthread_mutex_lock (&cs_queue->mutex);
+	if(cs_queue->threaded_mode_enabled) {
+		pthread_mutex_lock(&cs_queue->mutex);
 	}
 
 	usedhw = cs_queue->usedhw;
 
-	if (cs_queue->threaded_mode_enabled) {
-		pthread_mutex_unlock (&cs_queue->mutex);
+	if(cs_queue->threaded_mode_enabled) {
+		pthread_mutex_unlock(&cs_queue->mutex);
 	}
 
 	return (usedhw);

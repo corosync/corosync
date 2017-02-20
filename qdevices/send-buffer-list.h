@@ -60,33 +60,25 @@ struct send_buffer_list {
 	TAILQ_HEAD(, send_buffer_list_entry) free_list;
 };
 
-extern void				 send_buffer_list_init(struct send_buffer_list *sblist,
-    size_t max_list_entries, size_t max_buffer_size);
+extern void send_buffer_list_init(struct send_buffer_list* sblist, size_t max_list_entries, size_t max_buffer_size);
 
-extern struct send_buffer_list_entry	*send_buffer_list_get_new(struct send_buffer_list *sblist);
+extern struct send_buffer_list_entry* send_buffer_list_get_new(struct send_buffer_list* sblist);
 
-extern void				 send_buffer_list_put(struct send_buffer_list *sblist,
-    struct send_buffer_list_entry *sblist_entry);
+extern void send_buffer_list_put(struct send_buffer_list* sblist, struct send_buffer_list_entry* sblist_entry);
 
-extern void				 send_buffer_list_discard_new(
-    struct send_buffer_list *sblist, struct send_buffer_list_entry *sblist_entry);
+extern void send_buffer_list_discard_new(struct send_buffer_list* sblist, struct send_buffer_list_entry* sblist_entry);
 
-extern struct send_buffer_list_entry	*send_buffer_list_get_active(
-    const struct send_buffer_list *sblist);
+extern struct send_buffer_list_entry* send_buffer_list_get_active(const struct send_buffer_list* sblist);
 
-extern void				 send_buffer_list_delete(struct send_buffer_list *sblist,
-    struct send_buffer_list_entry *sblist_entry);
+extern void send_buffer_list_delete(struct send_buffer_list* sblist, struct send_buffer_list_entry* sblist_entry);
 
-extern int				 send_buffer_list_empty(
-    const struct send_buffer_list *sblist);
+extern int send_buffer_list_empty(const struct send_buffer_list* sblist);
 
-extern void				 send_buffer_list_free(struct send_buffer_list *sblist);
+extern void send_buffer_list_free(struct send_buffer_list* sblist);
 
-extern void				 send_buffer_list_set_max_buffer_size(
-    struct send_buffer_list *sblist, size_t max_buffer_size);
+extern void send_buffer_list_set_max_buffer_size(struct send_buffer_list* sblist, size_t max_buffer_size);
 
-extern void				 send_buffer_list_set_max_list_entries(
-    struct send_buffer_list *sblist, size_t max_list_entries);
+extern void send_buffer_list_set_max_list_entries(struct send_buffer_list* sblist, size_t max_list_entries);
 
 #ifdef __cplusplus
 }

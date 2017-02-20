@@ -51,18 +51,18 @@ extern "C" {
 #endif
 
 struct qnetd_client {
-	PRFileDesc *socket;
+	PRFileDesc* socket;
 	PRNetAddr addr;
-	char *addr_str;
+	char* addr_str;
 	struct dynar receive_buffer;
 	struct send_buffer_list send_buffer_list;
 	size_t msg_already_received_bytes;
-	int skipping_msg;	/* When incorrect message was received skip it */
-	int tls_started;	/* Set after TLS started */
-	int tls_peer_certificate_verified;	/* Certificate is verified only once */
+	int skipping_msg;				   /* When incorrect message was received skip it */
+	int tls_started;				   /* Set after TLS started */
+	int tls_peer_certificate_verified; /* Certificate is verified only once */
 	int preinit_received;
 	int init_received;
-	char *cluster_name;
+	char* cluster_name;
 	size_t cluster_name_len;
 	uint8_t node_id_set;
 	uint32_t node_id;
@@ -70,17 +70,17 @@ struct qnetd_client {
 	struct tlv_tie_breaker tie_breaker;
 	uint32_t heartbeat_interval;
 	enum tlv_reply_error_code skipping_msg_reason;
-	void *algorithm_data;
+	void* algorithm_data;
 	struct node_list configuration_node_list;
 	uint8_t config_version_set;
 	uint64_t config_version;
 	struct node_list last_membership_node_list;
 	struct node_list last_quorum_node_list;
 	struct tlv_ring_id last_ring_id;
-	struct qnetd_cluster *cluster;
-	struct qnetd_cluster_list *cluster_list;
-	struct timer_list *main_timer_list;
-	struct timer_list_entry *algo_timer;
+	struct qnetd_cluster* cluster;
+	struct qnetd_cluster_list* cluster_list;
+	struct timer_list* main_timer_list;
+	struct timer_list_entry* algo_timer;
 	uint32_t algo_timer_vote_info_msq_seq_number;
 	int schedule_disconnect;
 	uint32_t dpd_time_since_last_check;
@@ -91,11 +91,10 @@ struct qnetd_client {
 	TAILQ_ENTRY(qnetd_client) cluster_entries;
 };
 
-extern void		qnetd_client_init(struct qnetd_client *client, PRFileDesc *sock,
-    PRNetAddr *addr, char *addr_str, size_t max_receive_size, size_t max_send_buffers,
-    size_t max_send_size, struct timer_list *main_timer_list);
+extern void qnetd_client_init(struct qnetd_client* client, PRFileDesc* sock, PRNetAddr* addr, char* addr_str, size_t max_receive_size,
+							  size_t max_send_buffers, size_t max_send_size, struct timer_list* main_timer_list);
 
-extern void		qnetd_client_destroy(struct qnetd_client *client);
+extern void qnetd_client_destroy(struct qnetd_client* client);
 
 #ifdef __cplusplus
 }

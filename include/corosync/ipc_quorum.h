@@ -62,7 +62,7 @@ enum res_quorum_types {
  * @brief The req_lib_quorum_trackstart struct
  */
 struct req_lib_quorum_trackstart {
-        struct qb_ipc_request_header header __attribute__((aligned(8)));
+	struct qb_ipc_request_header header __attribute__((aligned(8)));
 	unsigned int track_flags;
 };
 

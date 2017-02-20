@@ -63,36 +63,36 @@ typedef qb_handle_t hdb_handle_t;
  * @brief hdb_database_lock
  * @param mutex
  */
-static inline void hdb_database_lock (pthread_mutex_t *mutex)
+static inline void hdb_database_lock(pthread_mutex_t* mutex)
 {
-	pthread_mutex_lock (mutex);
+	pthread_mutex_lock(mutex);
 }
 
 /**
  * @brief hdb_database_unlock
  * @param mutex
  */
-static inline void hdb_database_unlock (pthread_mutex_t *mutex)
+static inline void hdb_database_unlock(pthread_mutex_t* mutex)
 {
-	pthread_mutex_unlock (mutex);
+	pthread_mutex_unlock(mutex);
 }
 
 /**
  * @brief hdb_database_lock_init
  * @param mutex
  */
-static inline void hdb_database_lock_init (pthread_mutex_t *mutex)
+static inline void hdb_database_lock_init(pthread_mutex_t* mutex)
 {
-	pthread_mutex_init (mutex, NULL);
+	pthread_mutex_init(mutex, NULL);
 }
 
 /**
  * @brief hdb_database_lock_destroy
  * @param mutex
  */
-static inline void hdb_database_lock_destroy (pthread_mutex_t *mutex)
+static inline void hdb_database_lock_destroy(pthread_mutex_t* mutex)
 {
-	pthread_mutex_destroy (mutex);
+	pthread_mutex_destroy(mutex);
 }
 
 #define DECLARE_HDB_DATABASE QB_HDB_DECLARE
@@ -101,20 +101,18 @@ static inline void hdb_database_lock_destroy (pthread_mutex_t *mutex)
  * @brief hdb_create
  * @param handle_database
  */
-static inline void hdb_create (
-	struct hdb_handle_database *handle_database)
+static inline void hdb_create(struct hdb_handle_database* handle_database)
 {
-	qb_hdb_create (handle_database);
+	qb_hdb_create(handle_database);
 }
 
 /**
  * @brief hdb_destroy
  * @param handle_database
  */
-static inline void hdb_destroy (
-	struct hdb_handle_database *handle_database)
+static inline void hdb_destroy(struct hdb_handle_database* handle_database)
 {
-	qb_hdb_destroy (handle_database);
+	qb_hdb_destroy(handle_database);
 }
 
 /**
@@ -124,13 +122,9 @@ static inline void hdb_destroy (
  * @param handle_id_out
  * @return
  */
-static inline int hdb_handle_create (
-	struct hdb_handle_database *handle_database,
-	int instance_size,
-	hdb_handle_t *handle_id_out)
+static inline int hdb_handle_create(struct hdb_handle_database* handle_database, int instance_size, hdb_handle_t* handle_id_out)
 {
-	return (qb_hdb_handle_create (handle_database, instance_size,
-		handle_id_out));
+	return (qb_hdb_handle_create(handle_database, instance_size, handle_id_out));
 }
 
 /**
@@ -140,12 +134,9 @@ static inline int hdb_handle_create (
  * @param instance
  * @return
  */
-static inline int hdb_handle_get (
-	struct hdb_handle_database *handle_database,
-	hdb_handle_t handle_in,
-	void **instance)
+static inline int hdb_handle_get(struct hdb_handle_database* handle_database, hdb_handle_t handle_in, void** instance)
 {
-	return (qb_hdb_handle_get (handle_database, handle_in, instance));
+	return (qb_hdb_handle_get(handle_database, handle_in, instance));
 }
 
 /**
@@ -155,12 +146,9 @@ static inline int hdb_handle_get (
  * @param instance
  * @return
  */
-static inline int hdb_handle_get_always (
-	struct hdb_handle_database *handle_database,
-	hdb_handle_t handle_in,
-	void **instance)
+static inline int hdb_handle_get_always(struct hdb_handle_database* handle_database, hdb_handle_t handle_in, void** instance)
 {
-	return (qb_hdb_handle_get_always (handle_database, handle_in, instance));
+	return (qb_hdb_handle_get_always(handle_database, handle_in, instance));
 }
 
 /**
@@ -169,11 +157,9 @@ static inline int hdb_handle_get_always (
  * @param handle_in
  * @return
  */
-static inline int hdb_handle_put (
-	struct hdb_handle_database *handle_database,
-	hdb_handle_t handle_in)
+static inline int hdb_handle_put(struct hdb_handle_database* handle_database, hdb_handle_t handle_in)
 {
-	return (qb_hdb_handle_put (handle_database, handle_in));
+	return (qb_hdb_handle_put(handle_database, handle_in));
 }
 
 /**
@@ -182,11 +168,9 @@ static inline int hdb_handle_put (
  * @param handle_in
  * @return
  */
-static inline int hdb_handle_destroy (
-	struct hdb_handle_database *handle_database,
-	hdb_handle_t handle_in)
+static inline int hdb_handle_destroy(struct hdb_handle_database* handle_database, hdb_handle_t handle_in)
 {
-	return (qb_hdb_handle_destroy (handle_database, handle_in));
+	return (qb_hdb_handle_destroy(handle_database, handle_in));
 }
 
 /**
@@ -195,21 +179,18 @@ static inline int hdb_handle_destroy (
  * @param handle_in
  * @return
  */
-static inline int hdb_handle_refcount_get (
-	struct hdb_handle_database *handle_database,
-	hdb_handle_t handle_in)
+static inline int hdb_handle_refcount_get(struct hdb_handle_database* handle_database, hdb_handle_t handle_in)
 {
-	return (qb_hdb_handle_refcount_get (handle_database, handle_in));
+	return (qb_hdb_handle_refcount_get(handle_database, handle_in));
 }
 
 /**
  * @brief hdb_iterator_reset
  * @param handle_database
  */
-static inline void hdb_iterator_reset (
-	struct hdb_handle_database *handle_database)
+static inline void hdb_iterator_reset(struct hdb_handle_database* handle_database)
 {
-	qb_hdb_iterator_reset (handle_database);
+	qb_hdb_iterator_reset(handle_database);
 }
 
 /**
@@ -219,12 +200,9 @@ static inline void hdb_iterator_reset (
  * @param handle
  * @return
  */
-static inline int hdb_iterator_next (
-	struct hdb_handle_database *handle_database,
-	void **instance,
-	hdb_handle_t *handle)
+static inline int hdb_iterator_next(struct hdb_handle_database* handle_database, void** instance, hdb_handle_t* handle)
 {
-	return (qb_hdb_iterator_next (handle_database, instance, handle));
+	return (qb_hdb_iterator_next(handle_database, instance, handle));
 }
 
 /**
@@ -232,9 +210,9 @@ static inline int hdb_iterator_next (
  * @param handle
  * @return
  */
-static inline unsigned int hdb_base_convert (hdb_handle_t handle)
+static inline unsigned int hdb_base_convert(hdb_handle_t handle)
 {
-	return (qb_hdb_base_convert (handle));
+	return (qb_hdb_base_convert(handle));
 }
 
 /**
@@ -242,9 +220,9 @@ static inline unsigned int hdb_base_convert (hdb_handle_t handle)
  * @param handle
  * @return
  */
-static inline unsigned long long hdb_nocheck_convert (unsigned int handle)
+static inline unsigned long long hdb_nocheck_convert(unsigned int handle)
 {
-	return (qb_hdb_nocheck_convert (handle));
+	return (qb_hdb_nocheck_convert(handle));
 }
 
 #endif /* HDB_H_DEFINED */
