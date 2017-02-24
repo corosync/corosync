@@ -128,10 +128,15 @@
 #define IPC_LOGSYS_SIZE			8192*128
 #endif
 
+/*
+ * LibQB adds default "*" syslog filter so we have to set syslog_priority as low
+ * as possible so filters applied later in _logsys_config_apply_per_file takes
+ * effect.
+ */
 LOGSYS_DECLARE_SYSTEM ("corosync",
 	LOGSYS_MODE_OUTPUT_STDERR | LOGSYS_MODE_OUTPUT_SYSLOG,
 	LOG_DAEMON,
-	LOG_INFO);
+	LOG_EMERG);
 
 LOGSYS_DECLARE_SUBSYS ("MAIN");
 
