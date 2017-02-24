@@ -517,16 +517,24 @@ static int log_deliver_fn (
 		struct knet_log_msg *msg = (struct knet_log_msg *)bufptr;
 		switch (msg->msglevel) {
 		case KNET_LOG_ERR:
-			libknet_log_printf (LOGSYS_LEVEL_ERROR, "%s", msg->msg);
+			libknet_log_printf (LOGSYS_LEVEL_ERROR, "%s: %s",
+					    knet_log_get_subsystem_name(msg->subsystem),
+					    msg->msg);
 			break;
 		case KNET_LOG_WARN:
-			libknet_log_printf (LOGSYS_LEVEL_WARNING, "%s", msg->msg);
+			libknet_log_printf (LOGSYS_LEVEL_WARNING, "%s: %s",
+					    knet_log_get_subsystem_name(msg->subsystem),
+					    msg->msg);
 			break;
 		case KNET_LOG_INFO:
-			libknet_log_printf (LOGSYS_LEVEL_INFO, "%s", msg->msg);
+			libknet_log_printf (LOGSYS_LEVEL_INFO, "%s: %s",
+					    knet_log_get_subsystem_name(msg->subsystem),
+					    msg->msg);
 			break;
 		case KNET_LOG_DEBUG:
-			libknet_log_printf (LOGSYS_LEVEL_DEBUG, "%s", msg->msg);
+			libknet_log_printf (LOGSYS_LEVEL_DEBUG, "%s: %s",
+					    knet_log_get_subsystem_name(msg->subsystem),
+					    msg->msg);
 			break;
 		}
 		bufptr += KNET_MAX_LOG_MSG_SIZE;
