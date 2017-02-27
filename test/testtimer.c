@@ -41,11 +41,19 @@
 
 #include "../exec/timer.h"
 
+/**
+ * @brief timer_function
+ * @param data
+ */
 void timer_function (void *data)
 {
 	printf ("timer %p\n", data);
 }
 
+/**
+ * @brief main
+ * @return
+ */
 int main (void)
 {
 	int msec;

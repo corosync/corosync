@@ -74,6 +74,16 @@ DECLARE_HDB_DATABASE(cmap_track_handle_t_db,NULL);
 /*
  * Function prototypes
  */
+
+/**
+ * @brief cmap_get_int
+ * @param handle
+ * @param key_name
+ * @param value
+ * @param value_size
+ * @param type
+ * @return
+ */
 static cs_error_t cmap_get_int(
 	cmap_handle_t handle,
 	const char *key_name,
@@ -85,6 +95,11 @@ static cs_error_t cmap_adjust_int(cmap_handle_t handle, const char *key_name, in
 
 /*
  * Function implementations
+ */
+/**
+ * @brief cmap_initialize
+ * @param handle
+ * @return
  */
 cs_error_t cmap_initialize (cmap_handle_t *handle)
 {
@@ -121,12 +136,21 @@ error_no_destroy:
 	return (error);
 }
 
+/**
+ * @brief cmap_inst_free
+ * @param inst
+ */
 static void cmap_inst_free (void *inst)
 {
 	struct cmap_inst *cmap_inst = (struct cmap_inst *)inst;
 	qb_ipcc_disconnect(cmap_inst->c);
 }
 
+/**
+ * @brief cmap_finalize
+ * @param handle
+ * @return
+ */
 cs_error_t cmap_finalize(cmap_handle_t handle)
 {
 	struct cmap_inst *cmap_inst;
@@ -166,6 +190,12 @@ cs_error_t cmap_finalize(cmap_handle_t handle)
 	return (CS_OK);
 }
 
+/**
+ * @brief cmap_fd_get
+ * @param handle
+ * @param fd
+ * @return
+ */
 cs_error_t cmap_fd_get(cmap_handle_t handle, int *fd)
 {
 	cs_error_t error;
@@ -183,6 +213,12 @@ cs_error_t cmap_fd_get(cmap_handle_t handle, int *fd)
 	return (error);
 }
 
+/**
+ * @brief cmap_dispatch
+ * @param handle
+ * @param dispatch_types
+ * @return
+ */
 cs_error_t cmap_dispatch (
 	cmap_handle_t handle,
         cs_dispatch_flags_t dispatch_types)
@@ -306,6 +342,12 @@ error_put:
 	return (error);
 }
 
+/**
+ * @brief cmap_context_get
+ * @param handle
+ * @param context
+ * @return
+ */
 cs_error_t cmap_context_get (
 	cmap_handle_t handle,
 	const void **context)
@@ -325,6 +367,12 @@ cs_error_t cmap_context_get (
 	return (CS_OK);
 }
 
+/**
+ * @brief cmap_context_set
+ * @param handle
+ * @param context
+ * @return
+ */
 cs_error_t cmap_context_set (
 	cmap_handle_t handle,
 	const void *context)
@@ -344,6 +392,15 @@ cs_error_t cmap_context_set (
 	return (CS_OK);
 }
 
+/**
+ * @brief cmap_set
+ * @param handle
+ * @param key_name
+ * @param value
+ * @param value_len
+ * @param type
+ * @return
+ */
 cs_error_t cmap_set (
 	cmap_handle_t handle,
 	const char *key_name,
@@ -401,56 +458,133 @@ cs_error_t cmap_set (
 	return (error);
 }
 
+/**
+ * @brief cmap_set_int8
+ * @param handle
+ * @param key_name
+ * @param value
+ * @return
+ */
 cs_error_t cmap_set_int8(cmap_handle_t handle, const char *key_name, int8_t value)
 {
 	return (cmap_set(handle, key_name, &value, sizeof(value), CMAP_VALUETYPE_INT8));
 }
 
+/**
+ * @brief cmap_set_uint8
+ * @param handle
+ * @param key_name
+ * @param value
+ * @return
+ */
 cs_error_t cmap_set_uint8(cmap_handle_t handle, const char *key_name, uint8_t value)
 {
 	return (cmap_set(handle, key_name, &value, sizeof(value), CMAP_VALUETYPE_UINT8));
 }
 
+/**
+ * @brief cmap_set_int16
+ * @param handle
+ * @param key_name
+ * @param value
+ * @return
+ */
 cs_error_t cmap_set_int16(cmap_handle_t handle, const char *key_name, int16_t value)
 {
 	return (cmap_set(handle, key_name, &value, sizeof(value), CMAP_VALUETYPE_INT16));
 }
 
+/**
+ * @brief cmap_set_uint16
+ * @param handle
+ * @param key_name
+ * @param value
+ * @return
+ */
 cs_error_t cmap_set_uint16(cmap_handle_t handle, const char *key_name, uint16_t value)
 {
 	return (cmap_set(handle, key_name, &value, sizeof(value), CMAP_VALUETYPE_UINT16));
 }
 
+/**
+ * @brief cmap_set_int32
+ * @param handle
+ * @param key_name
+ * @param value
+ * @return
+ */
 cs_error_t cmap_set_int32(cmap_handle_t handle, const char *key_name, int32_t value)
 {
 	return (cmap_set(handle, key_name, &value, sizeof(value), CMAP_VALUETYPE_INT32));
 }
 
+/**
+ * @brief cmap_set_uint32
+ * @param handle
+ * @param key_name
+ * @param value
+ * @return
+ */
 cs_error_t cmap_set_uint32(cmap_handle_t handle, const char *key_name, uint32_t value)
 {
 	return (cmap_set(handle, key_name, &value, sizeof(value), CMAP_VALUETYPE_UINT32));
 }
 
+/**
+ * @brief cmap_set_int64
+ * @param handle
+ * @param key_name
+ * @param value
+ * @return
+ */
 cs_error_t cmap_set_int64(cmap_handle_t handle, const char *key_name, int64_t value)
 {
 	return (cmap_set(handle, key_name, &value, sizeof(value), CMAP_VALUETYPE_INT64));
 }
 
+/**
+ * @brief cmap_set_uint64
+ * @param handle
+ * @param key_name
+ * @param value
+ * @return
+ */
 cs_error_t cmap_set_uint64(cmap_handle_t handle, const char *key_name, uint64_t value)
 {
 	return (cmap_set(handle, key_name, &value, sizeof(value), CMAP_VALUETYPE_UINT64));
 }
 
+/**
+ * @brief cmap_set_float
+ * @param handle
+ * @param key_name
+ * @param value
+ * @return
+ */
 cs_error_t cmap_set_float(cmap_handle_t handle, const char *key_name, float value)
 {
 	return (cmap_set(handle, key_name, &value, sizeof(value), CMAP_VALUETYPE_FLOAT));
 }
 
+/**
+ * @brief cmap_set_double
+ * @param handle
+ * @param key_name
+ * @param value
+ * @return
+ */
 cs_error_t cmap_set_double(cmap_handle_t handle, const char *key_name, double value)
 {
 	return (cmap_set(handle, key_name, &value, sizeof(value), CMAP_VALUETYPE_DOUBLE));
 }
 
+/**
+ * @brief cmap_set_string
+ * @param handle
+ * @param key_name
+ * @param value
+ * @return
+ */
 cs_error_t cmap_set_string(cmap_handle_t handle, const char *key_name, const char *value)
 {
 
@@ -461,6 +595,12 @@ cs_error_t cmap_set_string(cmap_handle_t handle, const char *key_name, const cha
 	return (cmap_set(handle, key_name, value, strlen(value), CMAP_VALUETYPE_STRING));
 }
 
+/**
+ * @brief cmap_delete
+ * @param handle
+ * @param key_name
+ * @return
+ */
 cs_error_t cmap_delete(cmap_handle_t handle, const char *key_name)
 {
 	cs_error_t error;
@@ -507,6 +647,15 @@ cs_error_t cmap_delete(cmap_handle_t handle, const char *key_name)
 	return (error);
 }
 
+/**
+ * @brief cmap_get
+ * @param handle
+ * @param key_name
+ * @param value
+ * @param value_len
+ * @param type
+ * @return
+ */
 cs_error_t cmap_get(
 		cmap_handle_t handle,
 		const char *key_name,
@@ -592,6 +741,15 @@ cs_error_t cmap_get(
 	return (error);
 }
 
+/**
+ * @brief cmap_get_int
+ * @param handle
+ * @param key_name
+ * @param value
+ * @param value_size
+ * @param type
+ * @return
+ */
 static cs_error_t cmap_get_int(
 	cmap_handle_t handle,
 	const char *key_name,
@@ -621,66 +779,143 @@ static cs_error_t cmap_get_int(
 	return (CS_OK);
 }
 
+/**
+ * @brief cmap_get_int8
+ * @param handle
+ * @param key_name
+ * @param i8
+ * @return
+ */
 cs_error_t cmap_get_int8(cmap_handle_t handle, const char *key_name, int8_t *i8)
 {
 
 	return (cmap_get_int(handle, key_name, i8, sizeof(*i8), CMAP_VALUETYPE_INT8));
 }
 
+/**
+ * @brief cmap_get_uint8
+ * @param handle
+ * @param key_name
+ * @param u8
+ * @return
+ */
 cs_error_t cmap_get_uint8(cmap_handle_t handle, const char *key_name, uint8_t *u8)
 {
 
 	return (cmap_get_int(handle, key_name, u8, sizeof(*u8), CMAP_VALUETYPE_UINT8));
 }
 
+/**
+ * @brief cmap_get_int16
+ * @param handle
+ * @param key_name
+ * @param i16
+ * @return
+ */
 cs_error_t cmap_get_int16(cmap_handle_t handle, const char *key_name, int16_t *i16)
 {
 
 	return (cmap_get_int(handle, key_name, i16, sizeof(*i16), CMAP_VALUETYPE_INT16));
 }
 
+/**
+ * @brief cmap_get_uint16
+ * @param handle
+ * @param key_name
+ * @param u16
+ * @return
+ */
 cs_error_t cmap_get_uint16(cmap_handle_t handle, const char *key_name, uint16_t *u16)
 {
 
 	return (cmap_get_int(handle, key_name, u16, sizeof(*u16), CMAP_VALUETYPE_UINT16));
 }
 
+/**
+ * @brief cmap_get_int32
+ * @param handle
+ * @param key_name
+ * @param i32
+ * @return
+ */
 cs_error_t cmap_get_int32(cmap_handle_t handle, const char *key_name, int32_t *i32)
 {
 
 	return (cmap_get_int(handle, key_name, i32, sizeof(*i32), CMAP_VALUETYPE_INT32));
 }
 
+/**
+ * @brief cmap_get_uint32
+ * @param handle
+ * @param key_name
+ * @param u32
+ * @return
+ */
 cs_error_t cmap_get_uint32(cmap_handle_t handle, const char *key_name, uint32_t *u32)
 {
 
 	return (cmap_get_int(handle, key_name, u32, sizeof(*u32), CMAP_VALUETYPE_UINT32));
 }
 
+/**
+ * @brief cmap_get_int64
+ * @param handle
+ * @param key_name
+ * @param i64
+ * @return
+ */
 cs_error_t cmap_get_int64(cmap_handle_t handle, const char *key_name, int64_t *i64)
 {
 
 	return (cmap_get_int(handle, key_name, i64, sizeof(*i64), CMAP_VALUETYPE_INT64));
 }
 
+/**
+ * @brief cmap_get_uint64
+ * @param handle
+ * @param key_name
+ * @param u64
+ * @return
+ */
 cs_error_t cmap_get_uint64(cmap_handle_t handle, const char *key_name, uint64_t *u64)
 {
 
 	return (cmap_get_int(handle, key_name, u64, sizeof(*u64), CMAP_VALUETYPE_UINT64));
 }
 
+/**
+ * @brief cmap_get_float
+ * @param handle
+ * @param key_name
+ * @param flt
+ * @return
+ */
 cs_error_t cmap_get_float(cmap_handle_t handle, const char *key_name, float *flt)
 {
 
 	return (cmap_get_int(handle, key_name, flt, sizeof(*flt), CMAP_VALUETYPE_FLOAT));
 }
 
+/**
+ * @brief cmap_get_double
+ * @param handle
+ * @param key_name
+ * @param dbl
+ * @return
+ */
 cs_error_t cmap_get_double(cmap_handle_t handle, const char *key_name, double *dbl)
 {
 
 	return (cmap_get_int(handle, key_name, dbl, sizeof(*dbl), CMAP_VALUETYPE_DOUBLE));
 }
 
+/**
+ * @brief cmap_get_string
+ * @param handle
+ * @param key_name
+ * @param str
+ * @return
+ */
 cs_error_t cmap_get_string(cmap_handle_t handle, const char *key_name, char **str)
 {
 	cs_error_t res;
@@ -717,6 +952,13 @@ return_error:
 	return (res);
 }
 
+/**
+ * @brief cmap_adjust_int
+ * @param handle
+ * @param key_name
+ * @param step
+ * @return
+ */
 static cs_error_t cmap_adjust_int(cmap_handle_t handle, const char *key_name, int32_t step)
 {
 	cs_error_t error;
@@ -765,18 +1007,37 @@ static cs_error_t cmap_adjust_int(cmap_handle_t handle, const char *key_name, in
 	return (error);
 }
 
+/**
+ * @brief cmap_inc
+ * @param handle
+ * @param key_name
+ * @return
+ */
 cs_error_t cmap_inc(cmap_handle_t handle, const char *key_name)
 {
 
 	return (cmap_adjust_int(handle, key_name, 1));
 }
 
+/**
+ * @brief cmap_dec
+ * @param handle
+ * @param key_name
+ * @return
+ */
 cs_error_t cmap_dec(cmap_handle_t handle, const char *key_name)
 {
 
 	return (cmap_adjust_int(handle, key_name, -1));
 }
 
+/**
+ * @brief cmap_iter_init
+ * @param handle
+ * @param prefix
+ * @param cmap_iter_handle
+ * @return
+ */
 cs_error_t cmap_iter_init(
 		cmap_handle_t handle,
 		const char *prefix,
@@ -832,6 +1093,15 @@ cs_error_t cmap_iter_init(
 	return (error);
 }
 
+/**
+ * @brief cmap_iter_next
+ * @param handle
+ * @param iter_handle
+ * @param key_name
+ * @param value_len
+ * @param type
+ * @return
+ */
 cs_error_t cmap_iter_next(
 		cmap_handle_t handle,
 		cmap_iter_handle_t iter_handle,
@@ -890,6 +1160,12 @@ cs_error_t cmap_iter_next(
 	return (error);
 }
 
+/**
+ * @brief cmap_iter_finalize
+ * @param handle
+ * @param iter_handle
+ * @return
+ */
 cs_error_t cmap_iter_finalize(
 		cmap_handle_t handle,
 		cmap_iter_handle_t iter_handle)
@@ -929,6 +1205,16 @@ cs_error_t cmap_iter_finalize(
 	return (error);
 }
 
+/**
+ * @brief cmap_track_add
+ * @param handle
+ * @param key_name
+ * @param track_type
+ * @param notify_fn
+ * @param user_data
+ * @param cmap_track_handle
+ * @return
+ */
 cs_error_t cmap_track_add(
 	cmap_handle_t handle,
 	const char *key_name,
@@ -1020,6 +1306,12 @@ error_put:
 	return (error);
 }
 
+/**
+ * @brief cmap_track_delete
+ * @param handle
+ * @param track_handle
+ * @return
+ */
 cs_error_t cmap_track_delete(
 		cmap_handle_t handle,
 		cmap_track_handle_t track_handle)

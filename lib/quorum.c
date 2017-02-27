@@ -55,6 +55,9 @@
 
 #include "util.h"
 
+/**
+ * @brief The quorum_inst struct
+ */
 struct quorum_inst {
 	qb_ipcc_connection_t *c;
 	int finalize;
@@ -66,6 +69,13 @@ static void quorum_inst_free (void *inst);
 
 DECLARE_HDB_DATABASE(quorum_handle_t_db, quorum_inst_free);
 
+/**
+ * @brief quorum_initialize
+ * @param handle
+ * @param callbacks
+ * @param quorum_type
+ * @return
+ */
 cs_error_t quorum_initialize (
 	quorum_handle_t *handle,
 	quorum_callbacks_t *callbacks,
@@ -133,12 +143,21 @@ error_no_destroy:
 	return (error);
 }
 
+/**
+ * @brief quorum_inst_free
+ * @param inst
+ */
 static void quorum_inst_free (void *inst)
 {
 	struct quorum_inst *quorum_inst = (struct quorum_inst *)inst;
 	qb_ipcc_disconnect(quorum_inst->c);
 }
 
+/**
+ * @brief quorum_finalize
+ * @param handle
+ * @return
+ */
 cs_error_t quorum_finalize (
 	quorum_handle_t handle)
 {
@@ -167,6 +186,12 @@ cs_error_t quorum_finalize (
 	return (CS_OK);
 }
 
+/**
+ * @brief quorum_getquorate
+ * @param handle
+ * @param quorate
+ * @return
+ */
 cs_error_t quorum_getquorate (
 	quorum_handle_t handle,
 	int *quorate)
@@ -209,6 +234,12 @@ error_exit:
 	return (error);
 }
 
+/**
+ * @brief quorum_fd_get
+ * @param handle
+ * @param fd
+ * @return
+ */
 cs_error_t quorum_fd_get (
 	quorum_handle_t handle,
 	int *fd)
@@ -229,6 +260,12 @@ cs_error_t quorum_fd_get (
 }
 
 
+/**
+ * @brief quorum_context_get
+ * @param handle
+ * @param context
+ * @return
+ */
 cs_error_t quorum_context_get (
 	quorum_handle_t handle,
 	const void **context)
@@ -248,6 +285,12 @@ cs_error_t quorum_context_get (
 	return (CS_OK);
 }
 
+/**
+ * @brief quorum_context_set
+ * @param handle
+ * @param context
+ * @return
+ */
 cs_error_t quorum_context_set (
 	quorum_handle_t handle,
 	const void *context)
@@ -268,6 +311,12 @@ cs_error_t quorum_context_set (
 }
 
 
+/**
+ * @brief quorum_trackstart
+ * @param handle
+ * @param flags
+ * @return
+ */
 cs_error_t quorum_trackstart (
 	quorum_handle_t handle,
 	unsigned int flags )
@@ -309,6 +358,11 @@ error_exit:
 	return (error);
 }
 
+/**
+ * @brief quorum_trackstop
+ * @param handle
+ * @return
+ */
 cs_error_t quorum_trackstop (
 	quorum_handle_t handle)
 {
@@ -348,6 +402,12 @@ error_exit:
 	return (error);
 }
 
+/**
+ * @brief quorum_dispatch
+ * @param handle
+ * @param dispatch_types
+ * @return
+ */
 cs_error_t quorum_dispatch (
 	quorum_handle_t handle,
 	cs_dispatch_flags_t dispatch_types)

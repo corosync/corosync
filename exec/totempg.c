@@ -282,12 +282,21 @@ static int msg_count_send_ok (int msg_count);
 
 static int byte_count_send_ok (int byte_count);
 
+/**
+ * @brief totempg_waiting_trans_ack_cb
+ * @param waiting_trans_ack
+ */
 static void totempg_waiting_trans_ack_cb (int waiting_trans_ack)
 {
 	log_printf(LOG_DEBUG, "waiting_trans_ack changed to %u", waiting_trans_ack);
 	totempg_waiting_transack = waiting_trans_ack;
 }
 
+/**
+ * @brief assembly_ref
+ * @param nodeid
+ * @return
+ */
 static struct assembly *assembly_ref (unsigned int nodeid)
 {
 	struct assembly *assembly;
@@ -344,12 +353,20 @@ static struct assembly *assembly_ref (unsigned int nodeid)
 	return (assembly);
 }
 
+/**
+ * @brief assembly_deref
+ * @param assembly
+ */
 static void assembly_deref (struct assembly *assembly)
 {
 	qb_list_del (&assembly->list);
 	qb_list_add (&assembly->list, &assembly_list_free);
 }
 
+/**
+ * @brief assembly_deref_from_normal_and_trans
+ * @param nodeid
+ */
 static void assembly_deref_from_normal_and_trans (int nodeid)
 {
 	int j;
@@ -376,6 +393,17 @@ static void assembly_deref_from_normal_and_trans (int nodeid)
 
 }
 
+/**
+ * @brief app_confchg_fn
+ * @param configuration_type
+ * @param member_list
+ * @param member_list_entries
+ * @param left_list
+ * @param left_list_entries
+ * @param joined_list
+ * @param joined_list_entries
+ * @param ring_id
+ */
 static inline void app_confchg_fn (
 	enum totem_configuration_type configuration_type,
 	const unsigned int *member_list, size_t member_list_entries,
@@ -413,6 +441,11 @@ static inline void app_confchg_fn (
 	}
 }
 
+/**
+ * @brief group_endian_convert
+ * @param msg
+ * @param msg_len
+ */
 static inline void group_endian_convert (
 	void *msg,
 	int msg_len)
@@ -446,6 +479,15 @@ static inline void group_endian_convert (
 	}
 }
 
+/**
+ * @brief group_matches
+ * @param iovec
+ * @param iov_len
+ * @param groups_b
+ * @param group_b_cnt
+ * @param adjust_iovec
+ * @return
+ */
 static inline int group_matches (
 	struct iovec *iovec,
 	unsigned int iov_len,
@@ -504,6 +546,13 @@ static inline int group_matches (
 }
 
 
+/**
+ * @brief app_deliver_fn
+ * @param nodeid
+ * @param msg
+ * @param msg_len
+ * @param endian_conversion_required
+ */
 static inline void app_deliver_fn (
 	unsigned int nodeid,
 	void *msg,
@@ -572,6 +621,17 @@ static inline void app_deliver_fn (
 	}
 }
 
+/**
+ * @brief totempg_confchg_fn
+ * @param configuration_type
+ * @param member_list
+ * @param member_list_entries
+ * @param left_list
+ * @param left_list_entries
+ * @param joined_list
+ * @param joined_list_entries
+ * @param ring_id
+ */
 static void totempg_confchg_fn (
 	enum totem_configuration_type configuration_type,
 	const unsigned int *member_list, size_t member_list_entries,
@@ -587,6 +647,13 @@ static void totempg_confchg_fn (
 		ring_id);
 }
 
+/**
+ * @brief totempg_deliver_fn
+ * @param nodeid
+ * @param msg
+ * @param msg_len
+ * @param endian_conversion_required
+ */
 static void totempg_deliver_fn (
 	unsigned int nodeid,
 	const void *msg,
@@ -715,8 +782,17 @@ static void totempg_deliver_fn (
  * depends on poll abstraction, POSIX, IPV4
  */
 
+/**
+ * @brief callback_token_received_handle
+ */
 void *callback_token_received_handle;
 
+/**
+ * @brief callback_token_received_fn
+ * @param type
+ * @param data
+ * @return
+ */
 int callback_token_received_fn (enum totem_callback_token_type type,
 				const void *data)
 {
@@ -771,6 +847,12 @@ int callback_token_received_fn (enum totem_callback_token_type type,
 /*
  * Initialize the totem process group abstraction
  */
+/**
+ * @brief totempg_initialize
+ * @param poll_handle
+ * @param totem_config
+ * @return
+ */
 int totempg_initialize (
 	qb_loop_t *poll_handle,
 	struct totem_config *totem_config)
@@ -819,6 +901,9 @@ int totempg_initialize (
 	return (res);
 }
 
+/**
+ * @brief totempg_finalize
+ */
 void totempg_finalize (void)
 {
 	if (totempg_threaded_mode == 1) {
@@ -832,6 +917,13 @@ void totempg_finalize (void)
 
 /*
  * Multicast a message
+ */
+/**
+ * @brief mcast_msg
+ * @param iovec_in
+ * @param iov_len
+ * @param guarantee
+ * @return
  */
 static int mcast_msg (
 	struct iovec *iovec_in,
@@ -1008,6 +1100,11 @@ error_exit:
 /*
  * Determine if a message of msg_size could be queued
  */
+/**
+ * @brief msg_count_send_ok
+ * @param msg_count
+ * @return
+ */
 static int msg_count_send_ok (
 	int msg_count)
 {
@@ -1019,6 +1116,11 @@ static int msg_count_send_ok (
 	return ((avail - totempg_reserved) > msg_count);
 }
 
+/**
+ * @brief byte_count_send_ok
+ * @param byte_count
+ * @return
+ */
 static int byte_count_send_ok (
 	int byte_count)
 {
@@ -1032,6 +1134,11 @@ static int byte_count_send_ok (
 	return (avail >= msg_count);
 }
 
+/**
+ * @brief send_reserve
+ * @param msg_size
+ * @return
+ */
 static int send_reserve (
 	int msg_size)
 {
@@ -1044,6 +1151,10 @@ static int send_reserve (
 	return (msg_count);
 }
 
+/**
+ * @brief send_release
+ * @param msg_count
+ */
 static void send_release (
 	int msg_count)
 {
@@ -1056,6 +1167,10 @@ static void send_release (
 #define MESSAGE_QUEUE_MAX	((4 * MESSAGE_SIZE_MAX) / totempg_totem_config->net_mtu)
 #endif /* HAVE_SMALL_MEMORY_FOOTPRINT */
 
+/**
+ * @brief q_level_precent_used
+ * @return
+ */
 static uint32_t q_level_precent_used(void)
 {
 	return (100 - (((totemsrp_avail(totemsrp_context) - totempg_reserved) * 100) / MESSAGE_QUEUE_MAX));
@@ -1080,6 +1195,10 @@ int totempg_callback_token_create (
 	return (res);
 }
 
+/**
+ * @brief totempg_callback_token_destroy
+ * @param handle_out
+ */
 void totempg_callback_token_destroy (
 	void *handle_out)
 {
@@ -1092,10 +1211,11 @@ void totempg_callback_token_destroy (
 	}
 }
 
-/*
- *	vi: set autoindent tabstop=4 shiftwidth=4 :
+/**
+ * @brief totempg_groups_initialize
+ * @param totempg_groups_instance
+ * @return
  */
-
 int totempg_groups_initialize (
 	void **totempg_groups_instance,
 
@@ -1144,6 +1264,13 @@ error_exit:
 	return (-1);
 }
 
+/**
+ * @brief totempg_groups_join
+ * @param totempg_groups_instance
+ * @param groups
+ * @param group_cnt
+ * @return
+ */
 int totempg_groups_join (
 	void *totempg_groups_instance,
 	const struct totempg_group *groups,
@@ -1176,6 +1303,13 @@ error_exit:
 	return (res);
 }
 
+/**
+ * @brief totempg_groups_leave
+ * @param totempg_groups_instance
+ * @param groups
+ * @param group_cnt
+ * @return
+ */
 int totempg_groups_leave (
 	void *totempg_groups_instance,
 	const struct totempg_group *groups,
@@ -1194,6 +1328,14 @@ int totempg_groups_leave (
 #define MAX_IOVECS_FROM_APP 32
 #define MAX_GROUPS_PER_MSG 32
 
+/**
+ * @brief totempg_groups_mcast_joined
+ * @param totempg_groups_instance
+ * @param iovec
+ * @param iov_len
+ * @param guarantee
+ * @return
+ */
 int totempg_groups_mcast_joined (
 	void *totempg_groups_instance,
 	const struct iovec *iovec,
@@ -1235,6 +1377,10 @@ int totempg_groups_mcast_joined (
 	return (res);
 }
 
+/**
+ * @brief check_q_level
+ * @param totempg_groups_instance
+ */
 static void check_q_level(
 	void *totempg_groups_instance)
 {
@@ -1256,6 +1402,10 @@ static void check_q_level(
 	}
 }
 
+/**
+ * @brief totempg_check_q_level
+ * @param totempg_groups_instance
+ */
 void totempg_check_q_level(
 	void *totempg_groups_instance)
 {
@@ -1264,6 +1414,13 @@ void totempg_check_q_level(
 	check_q_level(instance);
 }
 
+/**
+ * @brief totempg_groups_joined_reserve
+ * @param totempg_groups_instance
+ * @param iovec
+ * @param iov_len
+ * @return
+ */
 int totempg_groups_joined_reserve (
 	void *totempg_groups_instance,
 	const struct iovec *iovec,
@@ -1308,6 +1465,11 @@ error_exit:
 }
 
 
+/**
+ * @brief totempg_groups_joined_release
+ * @param msg_count
+ * @return
+ */
 int totempg_groups_joined_release (int msg_count)
 {
 	if (totempg_threaded_mode == 1) {
@@ -1322,6 +1484,16 @@ int totempg_groups_joined_release (int msg_count)
 	return 0;
 }
 
+/**
+ * @brief totempg_groups_mcast_groups
+ * @param totempg_groups_instance
+ * @param guarantee
+ * @param groups
+ * @param groups_cnt
+ * @param iovec
+ * @param iov_len
+ * @return
+ */
 int totempg_groups_mcast_groups (
 	void *totempg_groups_instance,
 	int guarantee,
@@ -1366,6 +1538,15 @@ int totempg_groups_mcast_groups (
 /*
  * Returns -1 if error, 0 if can't send, 1 if can send the message
  */
+/**
+ * @brief totempg_groups_send_ok_groups
+ * @param totempg_groups_instance
+ * @param groups
+ * @param groups_cnt
+ * @param iovec
+ * @param iov_len
+ * @return
+ */
 int totempg_groups_send_ok_groups (
 	void *totempg_groups_instance,
 	const struct totempg_group *groups,
@@ -1396,6 +1577,15 @@ int totempg_groups_send_ok_groups (
 	return (res);
 }
 
+/**
+ * @brief totempg_ifaces_get
+ * @param nodeid
+ * @param interfaces
+ * @param interfaces_size
+ * @param status
+ * @param iface_count
+ * @return
+ */
 int totempg_ifaces_get (
 	unsigned int nodeid,
 	struct totem_ip_address *interfaces,
@@ -1416,16 +1606,31 @@ int totempg_ifaces_get (
 	return (res);
 }
 
+/**
+ * @brief totempg_event_signal
+ * @param type
+ * @param value
+ */
 void totempg_event_signal (enum totem_event_type type, int value)
 {
 	totemsrp_event_signal (totemsrp_context, type, value);
 }
 
+/**
+ * @brief totempg_get_stats
+ * @return
+ */
 void* totempg_get_stats (void)
 {
 	return &totempg_stats;
 }
 
+/**
+ * @brief totempg_crypto_set
+ * @param cipher_type
+ * @param hash_type
+ * @return
+ */
 int totempg_crypto_set (
 	const char *cipher_type,
 	const char *hash_type)
@@ -1437,6 +1642,10 @@ int totempg_crypto_set (
 	return (res);
 }
 
+/**
+ * @brief totempg_ring_reenable
+ * @return
+ */
 int totempg_ring_reenable (void)
 {
 	int res;
@@ -1447,6 +1656,11 @@ int totempg_ring_reenable (void)
 }
 
 #define ONE_IFACE_LEN 63
+/**
+ * @brief totempg_ifaces_print
+ * @param nodeid
+ * @return
+ */
 const char *totempg_ifaces_print (unsigned int nodeid)
 {
 	static char iface_string[256 * INTERFACE_MAX];
@@ -1474,26 +1688,48 @@ const char *totempg_ifaces_print (unsigned int nodeid)
 	return (iface_string);
 }
 
+/**
+ * @brief totempg_my_nodeid_get
+ * @return
+ */
 unsigned int totempg_my_nodeid_get (void)
 {
 	return (totemsrp_my_nodeid_get(totemsrp_context));
 }
 
+/**
+ * @brief totempg_my_family_get
+ * @return
+ */
 int totempg_my_family_get (void)
 {
 	return (totemsrp_my_family_get(totemsrp_context));
 }
+
+/**
+ * @brief totempg_service_ready_register
+ */
 extern void totempg_service_ready_register (
 	void (*totem_service_ready) (void))
 {
 	totemsrp_service_ready_register (totemsrp_context, totem_service_ready);
 }
 
+/**
+ * @brief totempg_queue_level_register_callback
+ * @param fn
+ */
 void totempg_queue_level_register_callback (totem_queue_level_changed_fn fn)
 {
 	totem_queue_level_changed = fn;
 }
 
+/**
+ * @brief totempg_member_add
+ * @param member
+ * @param ring_no
+ * @return
+ */
 extern int totempg_member_add (
 	const struct totem_ip_address *member,
 	int ring_no)
@@ -1501,6 +1737,12 @@ extern int totempg_member_add (
 	return totemsrp_member_add (totemsrp_context, member, ring_no);
 }
 
+/**
+ * @brief totempg_member_remove
+ * @param member
+ * @param ring_no
+ * @return
+ */
 extern int totempg_member_remove (
 	const struct totem_ip_address *member,
 	int ring_no)
@@ -1508,12 +1750,18 @@ extern int totempg_member_remove (
 	return totemsrp_member_remove (totemsrp_context, member, ring_no);
 }
 
+/**
+ * @brief totempg_threaded_mode_enable
+ */
 void totempg_threaded_mode_enable (void)
 {
 	totempg_threaded_mode = 1;
 	totemsrp_threaded_mode_enable (totemsrp_context);
 }
 
+/**
+ * @brief totempg_trans_ack
+ */
 void totempg_trans_ack (void)
 {
 	totemsrp_trans_ack (totemsrp_context);

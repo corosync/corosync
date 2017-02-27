@@ -38,6 +38,12 @@
 #include <corosync/logsys.h>
 #include <corosync/coroapi.h>
 
+/**
+ * @brief ykd_init
+ * @param api
+ * @param set_primary
+ * @return
+ */
 char *ykd_init(struct corosync_api_v1 *api,
 	quorum_set_quorate_fn_t set_primary);
 

@@ -219,6 +219,9 @@ struct res_lib_votequorum_quorum_notification {
 	struct votequorum_node node_list[] __attribute__((aligned(8)));
 };
 
+/**
+ * @brief The res_lib_votequorum_nodelist_notification struct
+ */
 struct res_lib_votequorum_nodelist_notification {
 	struct qb_ipc_response_header header __attribute__((aligned(8)));
 	mar_uint64_t context __attribute__((aligned(8)));

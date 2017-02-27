@@ -172,6 +172,11 @@ do {								\
 /*
  * tell all cluster nodes to start mcasting
  */
+/**
+ * @brief pload_send_start
+ * @param count
+ * @param size
+ */
 static void pload_send_start (uint32_t count, uint32_t size)
 {
 	struct req_exec_pload_start req_exec_pload_start;
@@ -188,6 +193,11 @@ static void pload_send_start (uint32_t count, uint32_t size)
 
 /*
  * send N empty data messages of size X
+ */
+/**
+ * @brief pload_send_message
+ * @param arg
+ * @return
  */
 static int pload_send_message (const void *arg)
 {
@@ -226,6 +236,14 @@ static int pload_send_message (const void *arg)
 /*
  * hook into icmap to read config at runtime
  * we do NOT start by default, ever!
+ */
+/**
+ * @brief pload_read_config
+ * @param event
+ * @param key_name
+ * @param new_val
+ * @param old_val
+ * @param user_data
  */
 static void pload_read_config(
 	int32_t event,
@@ -266,6 +284,11 @@ static void pload_read_config(
 /*
  * exec functions
  */
+/**
+ * @brief pload_exec_init_fn
+ * @param corosync_api
+ * @return
+ */
 static char *pload_exec_init_fn (struct corosync_api_v1 *corosync_api)
 {
 	icmap_track_t pload_track = NULL;
@@ -290,6 +313,10 @@ static char *pload_exec_init_fn (struct corosync_api_v1 *corosync_api)
  * network messages/onwire handlers
  */
 
+/**
+ * @brief req_exec_pload_start_endian_convert
+ * @param msg
+ */
 static void req_exec_pload_start_endian_convert (void *msg)
 {
 	struct req_exec_pload_start *req_exec_pload_start = msg;
@@ -298,6 +325,11 @@ static void req_exec_pload_start_endian_convert (void *msg)
 	req_exec_pload_start->msg_size = swab32(req_exec_pload_start->msg_size);
 }
 
+/**
+ * @brief message_handler_req_exec_pload_start
+ * @param msg
+ * @param nodeid
+ */
 static void message_handler_req_exec_pload_start (
 	const void *msg,
 	unsigned int nodeid)
@@ -322,10 +354,19 @@ static void message_handler_req_exec_pload_start (
 		&start_mcasting_handle);
 }
 
+/**
+ * @brief req_exec_pload_mcast_endian_convert
+ * @param msg
+ */
 static void req_exec_pload_mcast_endian_convert (void *msg)
 {
 }
 
+/**
+ * @brief message_handler_req_exec_pload_mcast
+ * @param msg
+ * @param nodeid
+ */
 static void message_handler_req_exec_pload_mcast (
 	const void *msg,
 	unsigned int nodeid)

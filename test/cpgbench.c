@@ -57,8 +57,14 @@
 #include <corosync/corotypes.h>
 #include <corosync/cpg.h>
 
+/**
+ * @brief handle
+ */
 static cpg_handle_t handle;
 
+/**
+ * @brief thread
+ */
 static pthread_t thread;
 
 #ifndef timersub
@@ -73,8 +79,22 @@ static pthread_t thread;
 	} while (0)
 #endif /* timersub */
 
+/**
+ * @brief alarm_notice
+ */
 static int alarm_notice;
 
+/**
+ * @brief cpg_bm_confchg_fn
+ * @param handle_in
+ * @param group_name
+ * @param member_list
+ * @param member_list_entries
+ * @param left_list
+ * @param left_list_entries
+ * @param joined_list
+ * @param joined_list_entries
+ */
 static void cpg_bm_confchg_fn (
 	cpg_handle_t handle_in,
 	const struct cpg_name *group_name,
@@ -84,8 +104,20 @@ static void cpg_bm_confchg_fn (
 {
 }
 
+/**
+ * @brief write_count
+ */
 static unsigned int write_count;
 
+/**
+ * @brief cpg_bm_deliver_fn
+ * @param handle_in
+ * @param group_name
+ * @param nodeid
+ * @param pid
+ * @param msg
+ * @param msg_len
+ */
 static void cpg_bm_deliver_fn (
         cpg_handle_t handle_in,
         const struct cpg_name *group_name,
@@ -97,14 +129,26 @@ static void cpg_bm_deliver_fn (
 	write_count++;
 }
 
+/**
+ * @brief callbacks
+ */
 static cpg_callbacks_t callbacks = {
 	.cpg_deliver_fn 	= cpg_bm_deliver_fn,
 	.cpg_confchg_fn		= cpg_bm_confchg_fn
 };
 
 #define ONE_MEG 1048576
+
+/**
+ * @brief data
+ */
 static char data[ONE_MEG];
 
+/**
+ * @brief cpg_benchmark
+ * @param handle_in
+ * @param write_size
+ */
 static void cpg_benchmark (
 	cpg_handle_t handle_in,
 	int write_size)
@@ -137,22 +181,38 @@ static void cpg_benchmark (
 		((float)write_count) * ((float)write_size) /  ((tv_elapsed.tv_sec + (tv_elapsed.tv_usec / 1000000.0)) * 1000000.0));
 }
 
+/**
+ * @brief sigalrm_handler
+ * @param num
+ */
 static void sigalrm_handler (int num)
 {
 	alarm_notice = 1;
 }
 
+/**
+ * @brief group_name
+ */
 static struct cpg_name group_name = {
 	.value = "cpg_bm",
 	.length = 6
 };
 
+/**
+ * @brief dispatch_thread
+ * @param arg
+ * @return
+ */
 static void* dispatch_thread (void *arg)
 {
 	cpg_dispatch (handle, CS_DISPATCH_BLOCKING);
 	return NULL;
 }
 
+/**
+ * @brief main
+ * @return
+ */
 int main (void) {
 	unsigned int size;
 	int i;

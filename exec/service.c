@@ -114,6 +114,12 @@ const char *service_stats_tx[SERVICES_COUNT_MAX][SERVICE_HANDLER_MAXIMUM_COUNT];
 
 static void (*service_unlink_all_complete) (void) = NULL;
 
+/**
+ * @brief corosync_service_link_and_init
+ * @param corosync_api
+ * @param service
+ * @return
+ */
 char *corosync_service_link_and_init (
 	struct corosync_api_v1 *corosync_api,
 	struct default_service *service)
@@ -180,6 +186,10 @@ char *corosync_service_link_and_init (
 	return NULL;
 }
 
+/**
+ * @brief service_priority_max
+ * @return
+ */
 static int service_priority_max(void)
 {
 	int lpc = 0, max = 0;
@@ -193,6 +203,14 @@ static int service_priority_max(void)
 
 /*
  * use the force
+ */
+/**
+ * @brief corosync_service_unlink_and_exit_priority
+ * @param corosync_api
+ * @param lowest_priority
+ * @param current_priority
+ * @param current_service_engine
+ * @return
  */
 static unsigned int
 corosync_service_unlink_and_exit_priority (
@@ -253,6 +271,13 @@ corosync_service_unlink_and_exit_priority (
 	return (0);
 }
 
+/**
+ * @brief service_unlink_and_exit
+ * @param corosync_api
+ * @param service_name
+ * @param service_ver
+ * @return
+ */
 static unsigned int service_unlink_and_exit (
 	struct corosync_api_v1 *corosync_api,
 	const char *service_name,
@@ -336,6 +361,11 @@ static unsigned int service_unlink_and_exit (
 /*
  * Links default services into the executive
  */
+/**
+ * @brief corosync_service_defaults_link_and_init
+ * @param corosync_api
+ * @return
+ */
 unsigned int corosync_service_defaults_link_and_init (struct corosync_api_v1 *corosync_api)
 {
 	unsigned int i;
@@ -360,6 +390,10 @@ unsigned int corosync_service_defaults_link_and_init (struct corosync_api_v1 *co
 	return (0);
 }
 
+/**
+ * @brief service_exit_schedwrk_handler
+ * @param data
+ */
 static void service_exit_schedwrk_handler (void *data) {
 	int res;
 	static int current_priority = 0;
@@ -391,6 +425,10 @@ static void service_exit_schedwrk_handler (void *data) {
 		service_exit_schedwrk_handler);
 }
 
+/**
+ * @brief corosync_service_unlink_all
+ * @param api
+ */
 void corosync_service_unlink_all (
 	struct corosync_api_v1 *api,
 	void (*unlink_all_complete) (void))
@@ -417,6 +455,9 @@ void corosync_service_unlink_all (
 		service_exit_schedwrk_handler);
 }
 
+/**
+ * @brief The service_unlink_and_exit_data struct
+ */
 struct service_unlink_and_exit_data {
 	hdb_handle_t handle;
 	struct corosync_api_v1 *api;
@@ -424,6 +465,10 @@ struct service_unlink_and_exit_data {
 	unsigned int ver;
 };
 
+/**
+ * @brief service_unlink_and_exit_schedwrk_handler
+ * @param data
+ */
 static void service_unlink_and_exit_schedwrk_handler (void *data)
 {
 	struct service_unlink_and_exit_data *service_unlink_and_exit_data =
@@ -445,8 +490,18 @@ static void service_unlink_and_exit_schedwrk_handler (void *data)
 	}
 }
 
+/**
+ *
+ */
 typedef int (*schedwrk_cast) (const void *);
 
+/**
+ * @brief corosync_service_unlink_and_exit
+ * @param api
+ * @param service_name
+ * @param service_ver
+ * @return
+ */
 unsigned int corosync_service_unlink_and_exit (
         struct corosync_api_v1 *api,
         const char *service_name,

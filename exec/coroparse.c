@@ -63,6 +63,9 @@
 #include "main.h"
 #include "util.h"
 
+/**
+ * @brief The parser_cb_type enum
+ */
 enum parser_cb_type {
 	PARSER_CB_START,
 	PARSER_CB_END,
@@ -71,6 +74,9 @@ enum parser_cb_type {
 	PARSER_CB_ITEM,
 };
 
+/**
+ * @brief The main_cp_cb_data_state enum
+ */
 enum main_cp_cb_data_state {
 	MAIN_CP_CB_DATA_STATE_NORMAL,
 	MAIN_CP_CB_DATA_STATE_TOTEM,
@@ -101,12 +107,18 @@ typedef int (*parser_cb_f)(const char *path,
 			icmap_map_t config_map,
 			void *user_data);
 
+/**
+ * @brief The key_value_list_item struct
+ */
 struct key_value_list_item {
 	char *key;
 	char *value;
 	struct qb_list_head list;
 };
 
+/**
+ * @brief The main_cp_cb_data struct
+ */
 struct main_cp_cb_data {
 	int linknumber;
 	char *bindnetaddr;
@@ -131,10 +143,25 @@ struct main_cp_cb_data {
 	int ring0_addr_added;
 };
 
+/**
+ * @brief read_config_file_into_icmap
+ * @param error_string
+ * @param config_map
+ * @return
+ */
 static int read_config_file_into_icmap(
 	const char **error_string, icmap_map_t config_map);
+
+/**
+ * @brief error_string_response
+ */
 static char error_string_response[512];
 
+/**
+ * @brief uid_determine
+ * @param req_user
+ * @return
+ */
 static int uid_determine (const char *req_user)
 {
 	int pw_uid = 0;
@@ -189,6 +216,11 @@ static int uid_determine (const char *req_user)
 	return pw_uid;
 }
 
+/**
+ * @brief gid_determine
+ * @param req_group
+ * @return
+ */
 static int gid_determine (const char *req_group)
 {
 	int corosync_gid = 0;
@@ -242,6 +274,13 @@ static int gid_determine (const char *req_group)
 
 	return corosync_gid;
 }
+
+/**
+ * @brief strchr_rs
+ * @param haystack
+ * @param byte
+ * @return
+ */
 static char *strchr_rs (const char *haystack, int byte)
 {
 	const char *end_address = strchr (haystack, byte);
@@ -255,6 +294,12 @@ static char *strchr_rs (const char *haystack, int byte)
 	return ((char *) end_address);
 }
 
+/**
+ * @brief coroparse_configparse
+ * @param config_map
+ * @param error_string
+ * @return
+ */
 int coroparse_configparse (icmap_map_t config_map, const char **error_string)
 {
 	if (read_config_file_into_icmap(error_string, config_map)) {
@@ -264,6 +309,12 @@ int coroparse_configparse (icmap_map_t config_map, const char **error_string)
 	return 0;
 }
 
+/**
+ * @brief remove_whitespace
+ * @param string
+ * @param remove_colon_and_brace
+ * @return
+ */
 static char *remove_whitespace(char *string, int remove_colon_and_brace)
 {
 	char *start;
@@ -282,8 +333,17 @@ static char *remove_whitespace(char *string, int remove_colon_and_brace)
 	return start;
 }
 
-
-
+/**
+ * @brief parse_section
+ * @param fp
+ * @param path
+ * @param error_string
+ * @param depth
+ * @param parser_cb
+ * @param config_map
+ * @param user_data
+ * @return
+ */
 static int parse_section(FILE *fp,
 			 char *path,
 			 const char **error_string,
@@ -420,6 +480,13 @@ static int parse_section(FILE *fp,
 	return 0;
 }
 
+/**
+ * @brief safe_atoq_range
+ * @param value_type
+ * @param min_val
+ * @param max_val
+ * @return
+ */
 static int safe_atoq_range(icmap_value_types_t value_type, long long int *min_val, long long int *max_val)
 {
 	switch (value_type) {
@@ -440,6 +507,13 @@ static int safe_atoq_range(icmap_value_types_t value_type, long long int *min_va
  * Convert string str to long long int res. Type of result is target_type and currently only
  * ICMAP_VALUETYPE_[U]INT[8|16|32] is supported.
  * Return 0 on success, -1 on failure.
+ */
+/**
+ * @brief safe_atoq
+ * @param str
+ * @param res
+ * @param target_type
+ * @return
  */
 static int safe_atoq(const char *str, long long int *res, icmap_value_types_t target_type)
 {
@@ -474,6 +548,12 @@ static int safe_atoq(const char *str, long long int *res, icmap_value_types_t ta
 	return (0);
 }
 
+/**
+ * @brief str_to_ull
+ * @param str
+ * @param res
+ * @return
+ */
 static int str_to_ull(const char *str, unsigned long long int *res)
 {
 	unsigned long long int val;
@@ -498,6 +578,17 @@ static int str_to_ull(const char *str, unsigned long long int *res)
 	return (0);
 }
 
+/**
+ * @brief main_config_parser_cb
+ * @param path
+ * @param key
+ * @param value
+ * @param type
+ * @param error_string
+ * @param config_map
+ * @param user_data
+ * @return
+ */
 static int main_config_parser_cb(const char *path,
 			char *key,
 			char *value,
@@ -1259,6 +1350,17 @@ atoi_error:
 	return (0);
 }
 
+/**
+ * @brief uidgid_config_parser_cb
+ * @param path
+ * @param key
+ * @param value
+ * @param type
+ * @param error_string
+ * @param config_map
+ * @param user_data
+ * @return
+ */
 static int uidgid_config_parser_cb(const char *path,
 			char *key,
 			char *value,
@@ -1313,6 +1415,12 @@ static int uidgid_config_parser_cb(const char *path,
 	return (1);
 }
 
+/**
+ * @brief read_uidgid_files_into_icmap
+ * @param error_string
+ * @param config_map
+ * @return
+ */
 static int read_uidgid_files_into_icmap(
 	const char **error_string,
 	icmap_map_t config_map)
@@ -1363,6 +1471,12 @@ error_exit:
 }
 
 /* Read config file and load into icmap */
+/**
+ * @brief read_config_file_into_icmap
+ * @param error_string
+ * @param config_map
+ * @return
+ */
 static int read_config_file_into_icmap(
 	const char **error_string,
 	icmap_map_t config_map)

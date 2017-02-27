@@ -52,6 +52,10 @@
 static int quit = 0;
 static int show_ip = 0;
 
+/**
+ * @brief print_cpgname
+ * @param name
+ */
 static void print_cpgname (const struct cpg_name *name)
 {
 	int i;
@@ -61,6 +65,15 @@ static void print_cpgname (const struct cpg_name *name)
 	}
 }
 
+/**
+ * @brief DeliverCallback
+ * @param handle
+ * @param groupName
+ * @param nodeid
+ * @param pid
+ * @param msg
+ * @param msg_len
+ */
 static void DeliverCallback (
 	cpg_handle_t handle,
 	const struct cpg_name *groupName,
@@ -83,6 +96,17 @@ static void DeliverCallback (
 	}
 }
 
+/**
+ * @brief ConfchgCallback
+ * @param handle
+ * @param groupName
+ * @param member_list
+ * @param member_list_entries
+ * @param left_list
+ * @param left_list_entries
+ * @param joined_list
+ * @param joined_list_entries
+ */
 static void ConfchgCallback (
 	cpg_handle_t handle,
 	const struct cpg_name *groupName,
@@ -146,6 +170,9 @@ static void ConfchgCallback (
 	}
 }
 
+/**
+ *
+ */
 static cpg_callbacks_t callbacks = {
 	.cpg_deliver_fn =            DeliverCallback,
 	.cpg_confchg_fn =            ConfchgCallback,
@@ -153,6 +180,12 @@ static cpg_callbacks_t callbacks = {
 
 static struct cpg_name group_name;
 
+/**
+ * @brief main
+ * @param argc
+ * @param argv
+ * @return
+ */
 int main (int argc, char *argv[]) {
 	cpg_handle_t handle;
 	int result;

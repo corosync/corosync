@@ -67,6 +67,11 @@ static int test6_sig_delivered = 0;
  * twice. One should succeed, second should fail. After this, we will call every function
  * (none should succeed).
  */
+
+/**
+ * @brief test1
+ * @return
+ */
 static int test1 (void)
 {
 	cs_error_t error;
@@ -176,6 +181,10 @@ static int test1 (void)
 }
 
 
+/**
+ * @brief test2_signal
+ * @param sig
+ */
 static void test2_signal (int sig) {
 	printf ("%s\n", __FUNCTION__);
 
@@ -184,6 +193,10 @@ static void test2_signal (int sig) {
 
 /*
  * This tests recovery policy quit and callback.
+ */
+/**
+ * @brief test2
+ * @return
  */
 static int test2 (void) {
 	cs_error_t error;
@@ -241,6 +254,10 @@ static int test2 (void) {
  * Smoke test. Better to turn off coredump ;) This has no time limit, just restart process
  * when it dies.
  */
+/**
+ * @brief test3
+ * @return
+ */
 static int test3 (void) {
 	cs_error_t error;
 	unsigned int instance_id;
@@ -277,6 +294,10 @@ static int test3 (void) {
 
 /*
  * Test sam_data_store, sam_data_restore and sam_data_getsize
+ */
+/**
+ * @brief test4
+ * @return
  */
 static int test4 (void)
 {
@@ -524,6 +545,10 @@ static int test4 (void)
 	return (0);
 }
 
+/**
+ * @brief test5_hc_cb
+ * @return
+ */
 static int test5_hc_cb (void)
 {
 	cs_error_t res;
@@ -538,8 +563,13 @@ static int test5_hc_cb (void)
 
 	return 0;
 }
+
 /*
  * Test event driven healtchecking.
+ */
+/**
+ * @brief test5
+ * @return
  */
 static int test5 (void)
 {
@@ -601,6 +631,10 @@ static int test5 (void)
 	return 1;
 }
 
+/**
+ * @brief test6_signal
+ * @param sig
+ */
 static void test6_signal (int sig) {
 	cs_error_t error;
 
@@ -614,6 +648,10 @@ static void test6_signal (int sig) {
 
 /*
  * Test warn signal set.
+ */
+/**
+ * @brief test6
+ * @return
  */
 static int test6 (void) {
 	cs_error_t error;
@@ -748,6 +786,10 @@ static void *test7_thread (void *arg)
 /*
  * Test quorum
  */
+/**
+ * @brief test7
+ * @return
+ */
 static int test7 (void) {
 	cmap_handle_t cmap_handle;
 	cs_error_t err;
@@ -855,6 +897,13 @@ static int test7 (void) {
 
 /*
  * Test cmap integration + quit policy
+ */
+/**
+ * @brief test8
+ * @param pid
+ * @param old_pid
+ * @param test_n
+ * @return
  */
 static int test8 (pid_t pid, pid_t old_pid, int test_n) {
 	cmap_handle_t cmap_handle;
@@ -1102,6 +1151,13 @@ static int test8 (pid_t pid, pid_t old_pid, int test_n) {
 /*
  * Test cmap integration + restart policy
  */
+/**
+ * @brief test9
+ * @param pid
+ * @param old_pid
+ * @param test_n
+ * @return
+ */
 static int test9 (pid_t pid, pid_t old_pid, int test_n) {
 	cs_error_t err;
 	cmap_handle_t cmap_handle;
@@ -1231,6 +1287,12 @@ static int test9 (pid_t pid, pid_t old_pid, int test_n) {
 	return (2);
 }
 
+/**
+ * @brief main
+ * @param argc
+ * @param argv
+ * @return
+ */
 int main(int argc, char *argv[])
 {
 	pid_t pid, old_pid;

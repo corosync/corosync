@@ -36,6 +36,11 @@
 #include <config.h>
 #include <corosync/corotypes.h>
 
+/**
+ * @brief qb_to_cs_error
+ * @param result
+ * @return
+ */
 cs_error_t qb_to_cs_error (int result)
 {
 	int32_t res;
@@ -117,6 +122,11 @@ cs_error_t qb_to_cs_error (int result)
 	return err;
 }
 
+/**
+ * @brief hdb_error_to_cs
+ * @param res
+ * @return
+ */
 cs_error_t hdb_error_to_cs (int res)
 {
 	if (res == 0) {
@@ -135,6 +145,11 @@ cs_error_t hdb_error_to_cs (int res)
 	}
 }
 
+/**
+ * @brief cs_strerror
+ * @param err
+ * @return
+ */
 const char * cs_strerror(cs_error_t err)
 {
 	switch (err) {

@@ -238,33 +238,54 @@ struct corosync_service_engine cfg_service_engine = {
 	.confchg_fn				= cfg_confchg_fn
 };
 
+/**
+ * @brief cfg_get_service_engine_ver0
+ * @return
+ */
 struct corosync_service_engine *cfg_get_service_engine_ver0 (void)
 {
 	return (&cfg_service_engine);
 }
 
+/**
+ * @brief The req_exec_cfg_ringreenable struct
+ */
 struct req_exec_cfg_ringreenable {
 	struct qb_ipc_request_header header __attribute__((aligned(8)));
         mar_message_source_t source __attribute__((aligned(8)));
 };
 
+/**
+ * @brief The req_exec_cfg_reload_config struct
+ */
 struct req_exec_cfg_reload_config {
 	struct qb_ipc_request_header header __attribute__((aligned(8)));
 	mar_message_source_t source __attribute__((aligned(8)));
 };
 
+/**
+ * @brief The req_exec_cfg_killnode struct
+ */
 struct req_exec_cfg_killnode {
 	struct qb_ipc_request_header header __attribute__((aligned(8)));
         mar_uint32_t nodeid __attribute__((aligned(8)));
 	mar_name_t reason __attribute__((aligned(8)));
 };
 
+/**
+ * @brief The req_exec_cfg_shutdown struct
+ */
 struct req_exec_cfg_shutdown {
 	struct qb_ipc_request_header header __attribute__((aligned(8)));
 };
 
 /* IMPL */
 
+/**
+ * @brief cfg_exec_init_fn
+ * @param corosync_api_v1
+ * @return
+ */
 static char *cfg_exec_init_fn (
 	struct corosync_api_v1 *corosync_api_v1)
 {
@@ -274,6 +295,17 @@ static char *cfg_exec_init_fn (
 	return (NULL);
 }
 
+/**
+ * @brief cfg_confchg_fn
+ * @param configuration_type
+ * @param member_list
+ * @param member_list_entries
+ * @param left_list
+ * @param left_list_entries
+ * @param joined_list
+ * @param joined_list_entries
+ * @param ring_id
+ */
 static void cfg_confchg_fn (
 	enum totem_configuration_type configuration_type,
 	const unsigned int *member_list, size_t member_list_entries,
@@ -285,6 +317,10 @@ static void cfg_confchg_fn (
 
 /*
  * Tell other nodes we are shutting down
+ */
+/**
+ * @brief send_shutdown
+ * @return
  */
 static int send_shutdown(void)
 {
@@ -306,6 +342,12 @@ static int send_shutdown(void)
 	return 0;
 }
 
+/**
+ * @brief send_test_shutdown
+ * @param only_conn
+ * @param exclude_conn
+ * @param status
+ */
 static void send_test_shutdown(void *only_conn, void *exclude_conn, int status)
 {
 	struct res_lib_cfg_testshutdown res_lib_cfg_testshutdown;
@@ -335,6 +377,9 @@ static void send_test_shutdown(void *only_conn, void *exclude_conn, int status)
 	LEAVE();
 }
 
+/**
+ * @brief check_shutdown_status
+ */
 static void check_shutdown_status(void)
 {
 	ENTER();
@@ -415,6 +460,10 @@ static void shutdown_timer_fn(void *arg)
 	LEAVE();
 }
 
+/**
+ * @brief remove_ci_from_shutdown
+ * @param ci
+ */
 static void remove_ci_from_shutdown(struct cfg_info *ci)
 {
 	ENTER();
@@ -453,7 +502,11 @@ static void remove_ci_from_shutdown(struct cfg_info *ci)
 	LEAVE();
 }
 
-
+/**
+ * @brief cfg_lib_exit_fn
+ * @param conn
+ * @return
+ */
 int cfg_lib_exit_fn (void *conn)
 {
 	struct cfg_info *ci = (struct cfg_info *)api->ipc_private_data_get (conn);
@@ -464,6 +517,11 @@ int cfg_lib_exit_fn (void *conn)
 	return (0);
 }
 
+/**
+ * @brief cfg_lib_init_fn
+ * @param conn
+ * @return
+ */
 static int cfg_lib_init_fn (void *conn)
 {
 	struct cfg_info *ci = (struct cfg_info *)api->ipc_private_data_get (conn);
@@ -477,6 +535,11 @@ static int cfg_lib_init_fn (void *conn)
 
 /*
  * Executive message handlers
+ */
+/**
+ * @brief message_handler_req_exec_cfg_ringreenable
+ * @param message
+ * @param nodeid
  */
 static void message_handler_req_exec_cfg_ringreenable (
         const void *message,
@@ -502,6 +565,10 @@ static void message_handler_req_exec_cfg_ringreenable (
 	LEAVE();
 }
 
+/**
+ * @brief exec_cfg_killnode_endian_convert
+ * @param msg
+ */
 static void exec_cfg_killnode_endian_convert (void *msg)
 {
 	struct req_exec_cfg_killnode *req_exec_cfg_killnode =
@@ -512,7 +579,11 @@ static void exec_cfg_killnode_endian_convert (void *msg)
 	LEAVE();
 }
 
-
+/**
+ * @brief message_handler_req_exec_cfg_killnode
+ * @param message
+ * @param nodeid
+ */
 static void message_handler_req_exec_cfg_killnode (
         const void *message,
         unsigned int nodeid)
@@ -535,6 +606,11 @@ static void message_handler_req_exec_cfg_killnode (
 /*
  * Self shutdown
  */
+/**
+ * @brief message_handler_req_exec_cfg_shutdown
+ * @param message
+ * @param nodeid
+ */
 static void message_handler_req_exec_cfg_shutdown (
         const void *message,
         unsigned int nodeid)
@@ -549,6 +625,12 @@ static void message_handler_req_exec_cfg_shutdown (
 }
 
 /* strcmp replacement that can handle NULLs */
+/**
+ * @brief nullcheck_strcmp
+ * @param left
+ * @param right
+ * @return
+ */
 static int nullcheck_strcmp(const char* left, const char *right)
 {
 	if (!left && right)
@@ -565,6 +647,11 @@ static int nullcheck_strcmp(const char* left, const char *right)
 /*
  * If a key has changed value in the new file, then warn the user and remove it from the temp_map
  */
+/**
+ * @brief delete_and_notify_if_changed
+ * @param temp_map
+ * @param key_name
+ */
 static void delete_and_notify_if_changed(icmap_map_t temp_map, const char *key_name)
 {
 	if (!(icmap_key_value_eq(temp_map, key_name, icmap_get_global_map(), key_name))) {
@@ -579,6 +666,10 @@ static void delete_and_notify_if_changed(icmap_map_t temp_map, const char *key_n
  * entry that the user wants to change but they cannot.
  *
  * Add more here as needed.
+ */
+/**
+ * @brief remove_ro_entries
+ * @param temp_map
  */
 static void remove_ro_entries(icmap_map_t temp_map)
 {
@@ -609,6 +700,11 @@ static void remove_ro_entries(icmap_map_t temp_map)
  *
  * NOTE: This routine depends entirely on the keys returned by the iterators
  * being in alpha-sorted order.
+ */
+/**
+ * @brief remove_deleted_entries
+ * @param temp_map
+ * @param prefix
  */
 static void remove_deleted_entries(icmap_map_t temp_map, const char *prefix)
 {
@@ -662,6 +758,11 @@ static void remove_deleted_entries(icmap_map_t temp_map, const char *prefix)
 
 /*
  * Reload configuration file
+ */
+/**
+ * @brief message_handler_req_exec_cfg_reload_config
+ * @param message
+ * @param nodeid
  */
 static void message_handler_req_exec_cfg_reload_config (
         const void *message,
@@ -742,6 +843,11 @@ reload_return:
 /*
  * Library Interface Implementation
  */
+/**
+ * @brief message_handler_req_lib_cfg_ringstatusget
+ * @param conn
+ * @param msg
+ */
 static void message_handler_req_lib_cfg_ringstatusget (
 	void *conn,
 	const void *msg)
@@ -802,6 +908,11 @@ send_response:
 	LEAVE();
 }
 
+/**
+ * @brief message_handler_req_lib_cfg_ringreenable
+ * @param conn
+ * @param msg
+ */
 static void message_handler_req_lib_cfg_ringreenable (
 	void *conn,
 	const void *msg)
@@ -825,6 +936,11 @@ static void message_handler_req_lib_cfg_ringreenable (
 	LEAVE();
 }
 
+/**
+ * @brief message_handler_req_lib_cfg_killnode
+ * @param conn
+ * @param msg
+ */
 static void message_handler_req_lib_cfg_killnode (
 	void *conn,
 	const void *msg)
@@ -857,7 +973,11 @@ static void message_handler_req_lib_cfg_killnode (
 	LEAVE();
 }
 
-
+/**
+ * @brief message_handler_req_lib_cfg_tryshutdown
+ * @param conn
+ * @param msg
+ */
 static void message_handler_req_lib_cfg_tryshutdown (
 	void *conn,
 	const void *msg)
@@ -976,6 +1096,11 @@ static void message_handler_req_lib_cfg_tryshutdown (
 	LEAVE();
 }
 
+/**
+ * @brief message_handler_req_lib_cfg_replytoshutdown
+ * @param conn
+ * @param msg
+ */
 static void message_handler_req_lib_cfg_replytoshutdown (
 	void *conn,
 	const void *msg)
@@ -1012,6 +1137,11 @@ exit_fn:
 	LEAVE();
 }
 
+/**
+ * @brief message_handler_req_lib_cfg_get_node_addrs
+ * @param conn
+ * @param msg
+ */
 static void message_handler_req_lib_cfg_get_node_addrs (void *conn,
 							const void *msg)
 {
@@ -1047,6 +1177,11 @@ static void message_handler_req_lib_cfg_get_node_addrs (void *conn,
 	api->ipc_response_send(conn, res_lib_cfg_get_node_addrs, res_lib_cfg_get_node_addrs->header.size);
 }
 
+/**
+ * @brief message_handler_req_lib_cfg_local_get
+ * @param conn
+ * @param msg
+ */
 static void message_handler_req_lib_cfg_local_get (void *conn, const void *msg)
 {
 	struct res_lib_cfg_local_get res_lib_cfg_local_get;
@@ -1060,6 +1195,11 @@ static void message_handler_req_lib_cfg_local_get (void *conn, const void *msg)
 		sizeof(res_lib_cfg_local_get));
 }
 
+/**
+ * @brief message_handler_req_lib_cfg_reload_config
+ * @param conn
+ * @param msg
+ */
 static void message_handler_req_lib_cfg_reload_config (void *conn, const void *msg)
 {
 	struct req_exec_cfg_reload_config req_exec_cfg_reload_config;

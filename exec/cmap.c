@@ -143,6 +143,10 @@ static void cmap_config_version_track_cb(
 /*
  * Library Handler Definition
  */
+
+/**
+ *
+ */
 static struct corosync_lib_handler cmap_lib_engine[] =
 {
 	{ /* 0 */
@@ -183,6 +187,9 @@ static struct corosync_lib_handler cmap_lib_engine[] =
 	},
 };
 
+/**
+ *
+ */
 static struct corosync_exec_handler cmap_exec_engine[] =
 {
     { /* 0 - MESSAGE_REQ_EXEC_CMAP_MCAST */
@@ -191,6 +198,9 @@ static struct corosync_exec_handler cmap_exec_engine[] =
     },
 };
 
+/**
+ *
+ */
 struct corosync_service_engine cmap_service_engine = {
 	.name				        = "corosync configuration map access",
 	.id					= CMAP_SERVICE,
@@ -212,11 +222,18 @@ struct corosync_service_engine cmap_service_engine = {
 	.sync_abort				= cmap_sync_abort
 };
 
+/**
+ * @brief cmap_get_service_engine_ver0
+ * @return
+ */
 struct corosync_service_engine *cmap_get_service_engine_ver0 (void)
 {
 	return (&cmap_service_engine);
 }
 
+/**
+ * @brief The req_exec_cmap_mcast_item struct
+ */
 struct req_exec_cmap_mcast_item {
 	mar_name_t key_name __attribute__((aligned(8)));
 	mar_uint8_t value_type __attribute__((aligned(8)));
@@ -224,6 +241,9 @@ struct req_exec_cmap_mcast_item {
 	uint8_t value[] __attribute__((aligned(8)));
 };
 
+/**
+ * @brief The req_exec_cmap_mcast struct
+ */
 struct req_exec_cmap_mcast {
 	struct qb_ipc_request_header header __attribute__((aligned(8)));
         mar_uint8_t reason __attribute__((aligned(8)));
@@ -242,6 +262,14 @@ static uint64_t cmap_my_config_version = 0;
 static int cmap_first_sync = 1;
 static icmap_track_t cmap_config_version_track;
 
+/**
+ * @brief cmap_config_version_track_cb
+ * @param event
+ * @param key_name
+ * @param new_value
+ * @param old_value
+ * @param user_data
+ */
 static void cmap_config_version_track_cb(
 	int32_t event,
 	const char *key_name,
@@ -267,6 +295,10 @@ static void cmap_config_version_track_cb(
 	LEAVE();
 }
 
+/**
+ * @brief cmap_exec_exit_fn
+ * @return
+ */
 static int cmap_exec_exit_fn(void)
 {
 
@@ -277,6 +309,11 @@ static int cmap_exec_exit_fn(void)
 	return 0;
 }
 
+/**
+ * @brief cmap_exec_init_fn
+ * @param corosync_api
+ * @return
+ */
 static char *cmap_exec_init_fn (
 	struct corosync_api_v1 *corosync_api)
 {
@@ -297,6 +334,11 @@ static char *cmap_exec_init_fn (
 	return (NULL);
 }
 
+/**
+ * @brief cmap_lib_init_fn
+ * @param conn
+ * @return
+ */
 static int cmap_lib_init_fn (void *conn)
 {
 	struct cmap_conn_info *conn_info = (struct cmap_conn_info *)api->ipc_private_data_get (conn);
@@ -312,6 +354,11 @@ static int cmap_lib_init_fn (void *conn)
 	return (0);
 }
 
+/**
+ * @brief cmap_lib_exit_fn
+ * @param conn
+ * @return
+ */
 static int cmap_lib_exit_fn (void *conn)
 {
 	struct cmap_conn_info *conn_info = (struct cmap_conn_info *)api->ipc_private_data_get (conn);
@@ -350,6 +397,14 @@ static int cmap_lib_exit_fn (void *conn)
 	return (0);
 }
 
+/**
+ * @brief cmap_sync_init
+ * @param trans_list
+ * @param trans_list_entries
+ * @param member_list
+ * @param member_list_entries
+ * @param ring_id
+ */
 static void cmap_sync_init (
 	const unsigned int *trans_list,
 	size_t trans_list_entries,
@@ -367,6 +422,10 @@ static void cmap_sync_init (
 	}
 }
 
+/**
+ * @brief cmap_sync_process
+ * @return
+ */
 static int cmap_sync_process (void)
 {
 	const char *key = "totem.config_version";
@@ -377,6 +436,9 @@ static int cmap_sync_process (void)
 	return (ret == CS_OK ? 0 : -1);
 }
 
+/**
+ * @brief cmap_sync_activate
+ */
 static void cmap_sync_activate (void)
 {
 
@@ -416,12 +478,20 @@ static void cmap_sync_activate (void)
 	}
 }
 
+/**
+ * @brief cmap_sync_abort
+ */
 static void cmap_sync_abort (void)
 {
 
 
 }
 
+/**
+ * @brief message_handler_req_lib_cmap_set
+ * @param conn
+ * @param message
+ */
 static void message_handler_req_lib_cmap_set(void *conn, const void *message)
 {
 	const struct req_lib_cmap_set *req_lib_cmap_set = message;
@@ -443,6 +513,11 @@ static void message_handler_req_lib_cmap_set(void *conn, const void *message)
 	api->ipc_response_send(conn, &res_lib_cmap_set, sizeof(res_lib_cmap_set));
 }
 
+/**
+ * @brief message_handler_req_lib_cmap_delete
+ * @param conn
+ * @param message
+ */
 static void message_handler_req_lib_cmap_delete(void *conn, const void *message)
 {
 	const struct req_lib_cmap_set *req_lib_cmap_set = message;
@@ -463,6 +538,11 @@ static void message_handler_req_lib_cmap_delete(void *conn, const void *message)
 	api->ipc_response_send(conn, &res_lib_cmap_delete, sizeof(res_lib_cmap_delete));
 }
 
+/**
+ * @brief message_handler_req_lib_cmap_get
+ * @param conn
+ * @param message
+ */
 static void message_handler_req_lib_cmap_get(void *conn, const void *message)
 {
 	const struct req_lib_cmap_get *req_lib_cmap_get = message;
@@ -521,6 +601,11 @@ error_exit:
 	api->ipc_response_send(conn, &error_res_lib_cmap_get, sizeof(error_res_lib_cmap_get));
 }
 
+/**
+ * @brief message_handler_req_lib_cmap_adjust_int
+ * @param conn
+ * @param message
+ */
 static void message_handler_req_lib_cmap_adjust_int(void *conn, const void *message)
 {
 	const struct req_lib_cmap_adjust_int *req_lib_cmap_adjust_int = message;
@@ -542,6 +627,11 @@ static void message_handler_req_lib_cmap_adjust_int(void *conn, const void *mess
 	api->ipc_response_send(conn, &res_lib_cmap_adjust_int, sizeof(res_lib_cmap_adjust_int));
 }
 
+/**
+ * @brief message_handler_req_lib_cmap_iter_init
+ * @param conn
+ * @param message
+ */
 static void message_handler_req_lib_cmap_iter_init(void *conn, const void *message)
 {
 	const struct req_lib_cmap_iter_init *req_lib_cmap_iter_init = message;
@@ -589,6 +679,11 @@ reply_send:
 	api->ipc_response_send(conn, &res_lib_cmap_iter_init, sizeof(res_lib_cmap_iter_init));
 }
 
+/**
+ * @brief message_handler_req_lib_cmap_iter_next
+ * @param conn
+ * @param message
+ */
 static void message_handler_req_lib_cmap_iter_next(void *conn, const void *message)
 {
 	const struct req_lib_cmap_iter_next *req_lib_cmap_iter_next = message;
@@ -630,6 +725,11 @@ reply_send:
 	api->ipc_response_send(conn, &res_lib_cmap_iter_next, sizeof(res_lib_cmap_iter_next));
 }
 
+/**
+ * @brief message_handler_req_lib_cmap_iter_finalize
+ * @param conn
+ * @param message
+ */
 static void message_handler_req_lib_cmap_iter_finalize(void *conn, const void *message)
 {
 	const struct req_lib_cmap_iter_finalize *req_lib_cmap_iter_finalize = message;
@@ -659,6 +759,14 @@ reply_send:
 	api->ipc_response_send(conn, &res_lib_cmap_iter_finalize, sizeof(res_lib_cmap_iter_finalize));
 }
 
+/**
+ * @brief cmap_notify_fn
+ * @param event
+ * @param key_name
+ * @param new_val
+ * @param old_val
+ * @param user_data
+ */
 static void cmap_notify_fn(int32_t event,
 		const char *key_name,
 		struct icmap_notify_value new_val,
@@ -695,6 +803,11 @@ static void cmap_notify_fn(int32_t event,
 	api->ipc_dispatch_iov_send(cmap_track_user_data->conn, iov, 3);
 }
 
+/**
+ * @brief message_handler_req_lib_cmap_track_add
+ * @param conn
+ * @param message
+ */
 static void message_handler_req_lib_cmap_track_add(void *conn, const void *message)
 {
 	const struct req_lib_cmap_track_add *req_lib_cmap_track_add = message;
@@ -798,6 +911,13 @@ reply_send:
 	api->ipc_response_send(conn, &res_lib_cmap_track_delete, sizeof(res_lib_cmap_track_delete));
 }
 
+/**
+ * @brief cmap_mcast_send
+ * @param reason
+ * @param argc
+ * @param argv
+ * @return
+ */
 static cs_error_t cmap_mcast_send(enum cmap_mcast_reason reason, int argc, char *argv[])
 {
 	int i;
@@ -878,6 +998,12 @@ free_mem:
 	return (err);
 }
 
+/**
+ * @brief cmap_mcast_item_find
+ * @param message
+ * @param key
+ * @return
+ */
 static struct req_exec_cmap_mcast_item *cmap_mcast_item_find(
 		const void *message,
 		char *key)
@@ -904,6 +1030,12 @@ static struct req_exec_cmap_mcast_item *cmap_mcast_item_find(
 	return (NULL);
 }
 
+/**
+ * @brief message_handler_req_exec_cmap_mcast_reason_sync_nv
+ * @param reason
+ * @param message
+ * @param nodeid
+ */
 static void message_handler_req_exec_cmap_mcast_reason_sync_nv(
 		enum cmap_mcast_reason reason,
 		const void *message,
@@ -943,6 +1075,11 @@ static void message_handler_req_exec_cmap_mcast_reason_sync_nv(
 	LEAVE();
 }
 
+/**
+ * @brief message_handler_req_exec_cmap_mcast
+ * @param message
+ * @param nodeid
+ */
 static void message_handler_req_exec_cmap_mcast(
 		const void *message,
 		unsigned int nodeid)
@@ -969,6 +1106,10 @@ static void message_handler_req_exec_cmap_mcast(
 	LEAVE();
 }
 
+/**
+ * @brief exec_cmap_mcast_endian_convert
+ * @param message
+ */
 static void exec_cmap_mcast_endian_convert(void *message)
 {
 	struct req_exec_cmap_mcast *req_exec_cmap_mcast = message;

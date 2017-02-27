@@ -39,6 +39,11 @@
 
 #include <corosync/corotypes.h>
 
+/**
+ * @brief hdb_error_to_cs
+ * @param res
+ * @return
+ */
 cs_error_t hdb_error_to_cs (int res);
 
 #ifdef HAVE_SMALL_MEMORY_FOOTPRINT
