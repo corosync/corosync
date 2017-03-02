@@ -144,7 +144,7 @@ struct totemknet_instance {
 
 	void *knet_context;
 
-	char iov_buffer[MAX_BUFFERS][FRAME_SIZE_MAX];
+	char iov_buffer[MAX_BUFFERS][KNET_MAX_PACKET_SIZE];
 
 	int stats_sent;
 

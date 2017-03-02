@@ -79,7 +79,9 @@
 #define MSG_NOSIGNAL 0
 #endif
 
-#define MCAST_SOCKET_BUFFER_SIZE (TRANSMITS_ALLOWED * FRAME_SIZE_MAX)
+#define UDPU_FRAME_SIZE_MAX 10000
+
+#define MCAST_SOCKET_BUFFER_SIZE (TRANSMITS_ALLOWED * UDPU_FRAME_SIZE_MAX)
 #define NETIF_STATE_REPORT_UP		1
 #define NETIF_STATE_REPORT_DOWN		2
 
@@ -143,7 +145,7 @@ struct totemudpu_instance {
 
 	void *udpu_context;
 
-	char iov_buffer[FRAME_SIZE_MAX];
+	char iov_buffer[UDPU_FRAME_SIZE_MAX];
 
 	struct iovec totemudpu_iov_recv;
 
@@ -218,7 +220,7 @@ static void totemudpu_instance_initialize (struct totemudpu_instance *instance)
 
 	instance->totemudpu_iov_recv.iov_base = instance->iov_buffer;
 
-	instance->totemudpu_iov_recv.iov_len = FRAME_SIZE_MAX; //sizeof (instance->iov_buffer);
+	instance->totemudpu_iov_recv.iov_len = UDPU_FRAME_SIZE_MAX; //sizeof (instance->iov_buffer);
 
 	/*
 	 * There is always atleast 1 processor
@@ -453,7 +455,7 @@ static int net_deliver_fn (
 		iovec->iov_base,
 		iovec->iov_len);
 
-	iovec->iov_len = FRAME_SIZE_MAX;
+	iovec->iov_len = UDPU_FRAME_SIZE_MAX;
 	return (0);
 }
 
@@ -779,7 +781,7 @@ int totemudpu_initialize (
 	 * Initialize local variables for totemudpu
 	 */
 	instance->totem_interface = &totem_config->interfaces[0];
-	memset (instance->iov_buffer, 0, FRAME_SIZE_MAX);
+	memset (instance->iov_buffer, 0, UDPU_FRAME_SIZE_MAX);
 
 	instance->totemudpu_poll_handle = poll_handle;
 
@@ -814,7 +816,7 @@ int totemudpu_initialize (
 
 void *totemudpu_buffer_alloc (void)
 {
-	return malloc (FRAME_SIZE_MAX);
+	return malloc (UDPU_FRAME_SIZE_MAX);
 }
 
 void totemudpu_buffer_release (void *ptr)

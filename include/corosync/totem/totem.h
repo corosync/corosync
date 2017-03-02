@@ -35,6 +35,7 @@
 #ifndef TOTEM_H_DEFINED
 #define TOTEM_H_DEFINED
 #include "totemip.h"
+#include "libknet.h"
 #include <corosync/hdb.h>
 
 #ifdef HAVE_SMALL_MEMORY_FOOTPRINT
@@ -47,7 +48,7 @@
 #define MESSAGE_QUEUE_MAX	((4 * MESSAGE_SIZE_MAX) / totem_config->net_mtu)
 #endif /* HAVE_SMALL_MEMORY_FOOTPRINT */
 
-#define FRAME_SIZE_MAX		10000
+#define FRAME_SIZE_MAX		KNET_MAX_PACKET_SIZE
 #define TRANSMITS_ALLOWED	16
 #define SEND_THREADS_MAX	16
 
