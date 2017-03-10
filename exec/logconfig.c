@@ -401,7 +401,7 @@ static int corosync_main_config_set (
 			goto parse_error;
 		}
 	}
-	else {
+	else if(strcmp(key_name, "logging.syslog_priority") == 0){
 		if (logsys_config_syslog_priority_set(subsys,
 						      logsys_priority_id_get("info")) < 0) {
 			error_reason = "unable to set syslog level";
@@ -449,7 +449,7 @@ static int corosync_main_config_set (
 			goto parse_error;
 		}
 	}
-	else {
+	else if(strcmp(key_name,"logging.logfile_priority") == 0){
 		if (logsys_config_logfile_priority_set(subsys,
 						      logsys_priority_id_get("info")) < 0) {
 			error_reason = "unable to set syslog level";
