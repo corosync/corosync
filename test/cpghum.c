@@ -129,7 +129,7 @@ static void cpg_bm_deliver_fn (
 	uLong crc=0;
 	struct cpghum_header *header = (struct cpghum_header *)msg;
 	uLong recv_crc = header->crc & 0xFFFFFFFF;
-	unsigned int *dataint = (unsigned int *)(data + sizeof(struct cpghum_header));
+	unsigned int *dataint = (unsigned int *)((char*)msg + sizeof(struct cpghum_header));
 	unsigned int datalen = g_write_size - sizeof(struct cpghum_header);
 
 	packets_recvd++;
