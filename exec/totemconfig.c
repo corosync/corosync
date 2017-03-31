@@ -794,6 +794,51 @@ static void nodelist_dynamic_notify(
 	put_nodelist_members_to_config(totem_config, 1);
 }
 
+/*
+ * Tries to get local node's IP addr from configuration
+ * Address can be stored in ring0_addr or if ipaddr_key_prefix is not NULL
+ * key with prefix ipaddr_key is used (there can be multiuple of them)
+ * @ring_name: which ring to get the IP addr, either ring0_addr or ring1_addr
+ * @ip_addr: restores the IP addr from configuration
+ *
+ * Return 0 on success (address was found, stored in ip_addr) and negative values on failure.
+ */
+int get_local_addr_from_config(const char *ipaddr_key_prefix, const char* ring_name, struct totem_ip_address * ip_addr)
+{
+	int local_pos = -1, ip_version=0;
+	char tmp_key[ICMAP_KEYNAME_MAXLEN];
+	icmap_iter_t iter;
+	const char *iter_key;
+	const char * ipaddr_key;
+	char * ip_addr_str;
+	strncpy(tmp_key, "nodelist.local_node_pos", sizeof(tmp_key));
+	iter = icmap_iter_init(tmp_key);
+	//find the pos of local node in configuration
+	while ((iter_key = icmap_iter_next(iter, NULL, NULL)) != NULL) {
+		ipaddr_key = (ipaddr_key_prefix != NULL ? iter_key : tmp_key);
+		if (icmap_get_int32(ipaddr_key, &local_pos) != CS_OK) {
+			//failed to find local node in configuration
+			return -1;
+		}
+	}
+
+	snprintf(tmp_key, sizeof(tmp_key), "nodelist.node.%u.%s", local_pos, ring_name);
+	iter = icmap_iter_init(tmp_key);
+	//find the IP addr for local node from configuration
+	while ((iter_key = icmap_iter_next(iter, NULL, NULL)) != NULL) {
+		ipaddr_key = (ipaddr_key_prefix != NULL ? iter_key : tmp_key);
+		if (icmap_get_string(ipaddr_key, &ip_addr_str) != CS_OK) {
+			//failed to get IP addr from configuration
+			free(ip_addr_str);
+			return -2;
+		}
+		if (totemip_parse(ip_addr, ip_addr_str, ip_version) == -1) {
+			continue;
+		}
+	}
+
+	return 0;
+}
 
 /*
  * Tries to find node (node_pos) in config nodelist which address matches any
