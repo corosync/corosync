@@ -118,6 +118,7 @@ static uint32_t g_ring_id_rep_node;
 static uint32_t g_view_list_entries;
 static uint32_t g_called;
 static uint32_t g_vq_called;
+static uint32_t g_show_all_addrs = 0;
 
 /*
  * votequorum bits
@@ -159,6 +160,7 @@ static void show_usage(const char *name)
 	printf("  -s             show quorum status\n");
 	printf("  -m             constantly monitor quorum status\n");
 	printf("  -l             list nodes\n");
+	printf("  -a             show all names or addresses for each node\n");
 	printf("  -p             when used with -s or -l, generates machine parsable output\n");
 	printf("  -v <votes>     change the number of votes for a node (*)\n");
 	printf("  -n <nodeid>    optional nodeid of node for -v\n");
@@ -314,18 +316,25 @@ static const char *node_name(uint32_t nodeid, name_format_t name_format)
 	int err;
 	int numaddrs;
 	corosync_cfg_node_address_t addrs[INTERFACE_MAX];
-	static char buf[INET6_ADDRSTRLEN];
+	static char buf[(INET6_ADDRSTRLEN + 1) * KNET_MAX_LINK];
 	const char *nodelist_name = NULL;
 	socklen_t addrlen;
 	struct sockaddr_storage *ss;
+	int start_addr = 0;
+	int i;
+	int bufptr = 0;
 
+	buf[0] = '\0';
+
+	/* If a name is required, always look for the nodelist node0_addr name first */
 	if (name_format == ADDRESS_FORMAT_NAME) {
 		nodelist_name = node_name_by_nodelist(nodeid);
 	}
-
 	if ((nodelist_name) &&
 	    (strlen(nodelist_name) > 0)) {
-		return nodelist_name;
+		start_addr = 1;
+		strcpy(buf, nodelist_name);
+		bufptr = strlen(buf);
 	}
 
 	err = corosync_cfg_get_node_addrs(c_handle, nodeid, INTERFACE_MAX, &numaddrs, addrs);
@@ -334,23 +343,36 @@ static const char *node_name(uint32_t nodeid, name_format_t name_format)
 		return "";
 	}
 
-	ss = (struct sockaddr_storage *)addrs[0].address;
-
-	if (ss->ss_family == AF_INET6) {
-		addrlen = sizeof(struct sockaddr_in6);
-	} else {
-		addrlen = sizeof(struct sockaddr_in);
+	/* Don't show all addressess */
+	if (!g_show_all_addrs) {
+		numaddrs = 1;
 	}
 
-	if (!getnameinfo(
-		(struct sockaddr *)addrs[0].address, addrlen,
-		buf, sizeof(buf),
-		NULL, 0,
-		(name_format == ADDRESS_FORMAT_IP)?NI_NUMERICHOST:0)) {
-			return buf;
+	for (i=start_addr; i<numaddrs; i++) {
+
+		if (i) {
+			buf[bufptr++] = ',';
+			buf[bufptr++] = ' ';
+		}
+
+		ss = (struct sockaddr_storage *)addrs[i].address;
+
+		if (ss->ss_family == AF_INET6) {
+			addrlen = sizeof(struct sockaddr_in6);
+		} else {
+			addrlen = sizeof(struct sockaddr_in);
+		}
+
+		if (!getnameinfo(
+			    (struct sockaddr *)addrs[i].address, addrlen,
+			    buf+bufptr, sizeof(buf)-bufptr,
+			    NULL, 0,
+			    (name_format == ADDRESS_FORMAT_IP)?NI_NUMERICHOST:0)) {
+			bufptr += strlen(buf+bufptr);
+		}
 	}
 
-	return "";
+	return buf;
 }
 
 
@@ -845,7 +867,7 @@ static void close_all(void) {
 }
 
 int main (int argc, char *argv[]) {
-	const char *options = "VHslpmfe:v:hin:o:";
+	const char *options = "VHaslpmfe:v:hin:o:";
 	char *endptr;
 	int opt;
 	int votes = 0;
@@ -876,6 +898,9 @@ int main (int argc, char *argv[]) {
 			break;
 		case 's':
 			command_opt = CMD_SHOWSTATUS;
+			break;
+		case 'a':
+			g_show_all_addrs = 1;
 			break;
 		case 'm':
 			command_opt = CMD_MONITOR;
