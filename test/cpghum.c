@@ -170,7 +170,7 @@ static void cpg_bm_deliver_fn (
 		}
 
 		if (abort_on_error) {
-			exit(999);
+			exit(2);
 		}
 	}
 
@@ -183,7 +183,7 @@ static void cpg_bm_deliver_fn (
 		}
 
 		if (abort_on_error) {
-			exit(999);
+			exit(2);
 		}
 
 		// Catch up or we'll be printing errors for ever
@@ -203,7 +203,7 @@ static void cpg_bm_deliver_fn (
 			syslog(LOG_ERR, "%s: CRCs don't match. got %lx, expected %lx\n", group_name->value, recv_crc, crc);
 		}
 		if (abort_on_error) {
-			exit(999);
+			exit(2);
 		}
 
 	}
@@ -335,6 +335,9 @@ static void usage(char *cmd)
 	fprintf(stderr, "	-a    Abort on crc/length/sequence error\n");
 	fprintf(stderr, "	-q    Quiet. Don't print messages every 10 seconds (see also -p)\n");
 	fprintf(stderr, "\n");
+	fprintf(stderr, "%s exit code is 0 if no error happened, 1 on generic error and 2 on\n", cmd);
+	fprintf(stderr, "send/crc/length/sequence error");
+	fprintf(stderr, "\n");
 }
 
 int main (int argc, char *argv[]) {
@@ -409,7 +412,7 @@ int main (int argc, char *argv[]) {
 			break;
 		case '?':
 			usage(basename(argv[0]));
-			exit(0);
+			exit(1);
 		}
 	}
 
@@ -508,5 +511,11 @@ int main (int argc, char *argv[]) {
 		printf("   avg RTT:         %ld\n", avg_rtt);
 	}
 	printf("\n");
-	return (0);
+
+	res = 0;
+	if (send_fails > 0 || (have_size && length_errors > 0) || sequence_errors > 0 || crc_errors > 0) {
+		res = 2;
+	}
+
+	return (res);
 }
