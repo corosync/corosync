@@ -1259,6 +1259,11 @@ int main (int argc, char **argv, char **envp)
 		log_printf (LOGSYS_LEVEL_WARNING, "nodeid appears both in totem section and nodelist. Nodelist one is used.");
 	}
 
+	if (totem_config_warnings & TOTEM_CONFIG_BINDNETADDR_NODELIST_SET) {
+		log_printf (LOGSYS_LEVEL_WARNING, "interface section bindnetaddr is used together with nodelist. "
+		    "Nodelist one is going to be used.");
+	}
+
 	if (totem_config_warnings != 0) {
 		log_printf (LOGSYS_LEVEL_WARNING, "Please migrate config file to nodelist.");
 	}
