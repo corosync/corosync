@@ -939,7 +939,7 @@ extern int totem_config_read (
 	uint64_t *warnings)
 {
 	int res = 0;
-	char *str;
+	char *str, *ring0_addr_str;
 	unsigned int linknumber = 0;
 	int member_count = 0;
 	icmap_iter_t iter, member_iter;
@@ -1013,6 +1013,18 @@ extern int totem_config_read (
 		 */
 		config_convert_nodelist_to_interface(totem_config);
 	} else {
+		if (icmap_get_string("nodelist.node.0.ring0_addr", &ring0_addr_str) == CS_OK) {
+			/*
+			 * Both bindnetaddr and ring0_addr are set.
+			 * Log warning information, and use nodelist instead
+			 */
+			*warnings |= TOTEM_CONFIG_BINDNETADDR_NODELIST_SET;
+
+			config_convert_nodelist_to_interface(totem_config);
+
+			free(ring0_addr_str);
+		}
+
 		free(str);
 	}
 
