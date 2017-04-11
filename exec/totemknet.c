@@ -489,12 +489,61 @@ int totemknet_finalize (
 {
 	struct totemknet_instance *instance = (struct totemknet_instance *)knet_context;
 	int res = 0;
+	int i,j;
+	static knet_node_id_t nodes[KNET_MAX_HOST]; /* static to save stack */
+	uint8_t links[KNET_MAX_LINK];
+	size_t num_nodes;
+	size_t num_links;
 
 	knet_log_printf(LOG_DEBUG, "totemknet: finalize");
 
 	qb_loop_poll_del (instance->poll_handle, instance->logpipes[0]);
 	qb_loop_poll_del (instance->poll_handle, instance->knet_fd);
-	knet_handle_free(instance->knet_handle);
+
+	res = knet_host_get_host_list(instance->knet_handle, nodes, &num_nodes);
+	if (res) {
+		knet_log_printf (LOGSYS_LEVEL_ERROR, "Cannot get knet node list for shutdown: %s", strerror(errno));
+		/* Crash out anyway */
+		goto finalise_error;
+	}
+
+	/* Tidily shut down all nodes & links. This ensures that the LEAVE message will be sent */
+	for (i=0; i<num_nodes; i++) {
+		/* Don't try to shut local link down, there isn't one */
+		if (nodes[i] == instance->our_nodeid) {
+			continue;
+		}
+
+		res = knet_link_get_link_list(instance->knet_handle, nodes[i], links, &num_links);
+		if (res) {
+			knet_log_printf (LOGSYS_LEVEL_ERROR, "Cannot get knet link list for node %d: %s", nodes[i], strerror(errno));
+			goto finalise_error;
+		}
+		for (j=0; j<num_links; j++) {
+			res = knet_link_set_enable(instance->knet_handle, nodes[i], links[j], 0);
+			if (res) {
+				knet_log_printf (LOGSYS_LEVEL_ERROR, "totemknet: knet_link_set_enable(node %d, link %d) failed: %s", nodes[i], links[j], strerror(errno));
+			}
+			res = knet_link_clear_config(instance->knet_handle, nodes[i], links[j]);
+			if (res) {
+				knet_log_printf (LOGSYS_LEVEL_ERROR, "totemknet: knet_link_clear_config(node %d, link %d) failed: %s", nodes[i], links[j], strerror(errno));
+			}
+		}
+		res = knet_host_remove(instance->knet_handle, nodes[i]);
+		if (res) {
+			knet_log_printf (LOGSYS_LEVEL_ERROR, "totemknet: knet_host_remove(node %d) failed: %s", nodes[i], strerror(errno));
+		}
+	}
+
+finalise_error:
+	res = knet_handle_setfwd(instance->knet_handle, 0);
+	if (res) {
+		knet_log_printf (LOGSYS_LEVEL_CRIT, "totemknet: knet_handle_setfwd failed: %s", strerror(errno));
+	}
+	res = knet_handle_free(instance->knet_handle);
+	if (res) {
+		knet_log_printf (LOGSYS_LEVEL_CRIT, "totemknet: knet_handle_free failed: %s", strerror(errno));
+	}
 
 	totemknet_stop_merge_detect_timeout(instance);
 
@@ -867,11 +916,11 @@ int totemknet_initialize (
 
 		res = knet_handle_crypto(instance->knet_handle, &crypto_cfg);
 		if (res == -1) {
-			knet_log_printf(LOG_ERR, "knet_handle_crypto failed: %s", strerror(errno));
+			knet_log_printf(LOGSYS_LEVEL_ERROR, "knet_handle_crypto failed: %s", strerror(errno));
 			return -1;
 		}
 		if (res == -2) {
-			knet_log_printf(LOG_ERR, "knet_handle_crypto failed: -2");
+			knet_log_printf(LOGSYS_LEVEL_ERROR, "knet_handle_crypto failed: -2");
 			return -1;
 		}
 		knet_log_printf(LOG_INFO, "kronosnet crypto initialized: %s/%s", crypto_cfg.crypto_cipher_type, crypto_cfg.crypto_hash_type);
