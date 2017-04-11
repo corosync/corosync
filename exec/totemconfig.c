@@ -939,7 +939,8 @@ extern int totem_config_read (
 	uint64_t *warnings)
 {
 	int res = 0;
-	char *str;
+	char *str, *bind_addr_str, *ring0_addr_str;
+	char msg[128];
 	unsigned int linknumber = 0;
 	int member_count = 0;
 	icmap_iter_t iter, member_iter;
@@ -1007,7 +1008,38 @@ extern int totem_config_read (
 
 	totem_config->ip_version = totem_config_get_ip_version();
 
-	if (icmap_get_string("totem.interface.0.bindnetaddr", &str) != CS_OK) {
+	if(icmap_get_string("totem.interface.0.bindnetaddr", &bind_addr_str) == CS_OK) {
+		if(icmap_get_string("nodelist.node.0.ring0_addr", &ring0_addr_str) == CS_OK) {
+			/* check to see if both bindnetaddr and ring0_addr are set
+			 * if yes, log warning information, and use nodelist instead
+			 * if no, no change at all
+			 */
+			*warnings |= TOTEM_CONFIG_BINDNETADDR_NODELIST_SET;
+			if(ring0_addr_str) {
+			    if(bind_addr_str) {
+			        sprintf(msg, "Both bindnetaddr %s and nodelist %s set, we will use nodelist instead",
+			            bind_addr_str, ring0_addr_str);
+			    } else {
+			        sprintf(msg, "Only nodelist %s set, we will use nodelist to set bindnetaddr",
+			            ring0_addr_str);
+			    }
+			    free(ring0_addr_str);
+			    config_convert_nodelist_to_interface(totem_config);
+			} else if (bind_addr_str) {
+			    sprintf(msg, "only bindnetaddr %s set, we will use bindnetaddr",
+			        bind_addr_str);
+			} else {
+			    sprintf(msg, "Both bindnetaddr and nodelist are not set, please check your configuration!");
+			    *error_string = msg;
+			    return -1;
+			}
+			*error_string = msg;
+		}
+		if(bind_addr_str) {
+			free(bind_addr_str);
+		}
+
+	} else if (icmap_get_string("totem.interface.0.bindnetaddr", &str) != CS_OK) {
 		/*
 		 * We were not able to find ring 0 bindnet addr. Try to use nodelist informations
 		 */
