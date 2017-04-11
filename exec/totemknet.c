@@ -81,11 +81,6 @@
 #define MSG_NOSIGNAL 0
 #endif
 
-#define MCAST_SOCKET_BUFFER_SIZE (TRANSMITS_ALLOWED * FRAME_SIZE_MAX)
-
-/* Buffers for sendmmsg/recvmmsg */
-#define MAX_BUFFERS 10
-
 /* Should match that used by cfg */
 #define CFG_INTERFACE_STATUS_MAX_LEN 512
 
@@ -144,7 +139,7 @@ struct totemknet_instance {
 
 	void *knet_context;
 
-	char iov_buffer[MAX_BUFFERS][KNET_MAX_PACKET_SIZE];
+	char iov_buffer[KNET_MAX_PACKET_SIZE];
 
 	int stats_sent;
 
@@ -598,54 +593,49 @@ static int data_deliver_fn (
 	void *data)
 {
 	struct totemknet_instance *instance = (struct totemknet_instance *)data;
-	struct mmsghdr msg_recv[MAX_BUFFERS];
-	struct iovec iov_recv[MAX_BUFFERS];
+	struct msghdr msg_hdr;
+	struct iovec iov_recv;
 	struct sockaddr_storage system_from;
-	int msgs_received;
-	int i;
+	ssize_t msg_len;
 
-	for (i=0; i<MAX_BUFFERS; i++) {
-		iov_recv[i].iov_base = instance->iov_buffer[i];
-		iov_recv[i].iov_len = FRAME_SIZE_MAX;
+	iov_recv.iov_base = instance->iov_buffer;
+	iov_recv.iov_len = KNET_MAX_PACKET_SIZE;
 
-		msg_recv[i].msg_hdr.msg_name = &system_from;
-		msg_recv[i].msg_hdr.msg_namelen = sizeof (struct sockaddr_storage);
-		msg_recv[i].msg_hdr.msg_iov = &iov_recv[i];
-		msg_recv[i].msg_hdr.msg_iovlen = 1;
+	msg_hdr.msg_name = &system_from;
+	msg_hdr.msg_namelen = sizeof (struct sockaddr_storage);
+	msg_hdr.msg_iov = &iov_recv;
+	msg_hdr.msg_iovlen = 1;
 #ifdef HAVE_MSGHDR_CONTROL
-		msg_recv[i].msg_hdr.msg_control = 0;
+	msg_hdr.msg_control = 0;
 #endif
 #ifdef HAVE_MSGHDR_CONTROLLEN
-		msg_recv[i].msg_hdr.msg_controllen = 0;
+	msg_hdr.msg_controllen = 0;
 #endif
 #ifdef HAVE_MSGHDR_FLAGS
-		msg_recv[i].msg_hdr.msg_flags = 0;
+	msg_hdr.msg_flags = 0;
 #endif
 #ifdef HAVE_MSGHDR_ACCRIGHTS
-		msg_recv[i].msg_hdr.msg_accrights = NULL;
+	msg_hdr.msg_accrights = NULL;
 #endif
 #ifdef HAVE_MSGHDR_ACCRIGHTSLEN
-		msg_recv[i].msg_hdr.msg_accrightslen = 0;
+	msg_hdr.msg_accrightslen = 0;
 #endif
-	}
 
-	msgs_received = recvmmsg (fd, msg_recv, MAX_BUFFERS, MSG_NOSIGNAL | MSG_DONTWAIT, NULL);
-	if (msgs_received == -1) {
+	msg_len = recvmsg (fd, &msg_hdr, MSG_NOSIGNAL | MSG_DONTWAIT);
+	if (msg_len <= 0) {
 		return (0);
 	}
 
-	for (i=0; i<msgs_received; i++) {
+	instance->stats_recv += msg_len;
 
-		instance->stats_recv += msg_recv[i].msg_len;
+	/*
+	 * Handle incoming message
+	 */
+	instance->totemknet_deliver_fn (
+		instance->context,
+		instance->iov_buffer,
+		msg_len);
 
-		/*
-		 * Handle incoming message
-		 */
-		instance->totemknet_deliver_fn (
-			instance->context,
-			instance->iov_buffer[i],
-			msg_recv[i].msg_len);
-	}
 	return (0);
 }
 
@@ -1077,44 +1067,41 @@ extern int totemknet_recv_mcast_empty (
 	struct totemknet_instance *instance = (struct totemknet_instance *)knet_context;
 	unsigned int res;
 	struct sockaddr_storage system_from;
-	struct mmsghdr msg_recv[MAX_BUFFERS];
-	struct iovec iov_recv[MAX_BUFFERS];
+	struct msghdr msg_hdr;
+	struct iovec iov_recv;
 	struct pollfd ufd;
 	int nfds;
 	int msg_processed = 0;
-	int i;
 
-	for (i=0; i<MAX_BUFFERS; i++) {
-		iov_recv[i].iov_base = instance->iov_buffer[i];
-		iov_recv[i].iov_len = FRAME_SIZE_MAX;
+	iov_recv.iov_base = instance->iov_buffer;
+	iov_recv.iov_len = KNET_MAX_PACKET_SIZE;
 
-		msg_recv[i].msg_hdr.msg_name = &system_from;
-		msg_recv[i].msg_hdr.msg_namelen = sizeof (struct sockaddr_storage);
-		msg_recv[i].msg_hdr.msg_iov = &iov_recv[i];
-		msg_recv[i].msg_hdr.msg_iovlen = 1;
+	msg_hdr.msg_name = &system_from;
+	msg_hdr.msg_namelen = sizeof (struct sockaddr_storage);
+	msg_hdr.msg_iov = &iov_recv;
+	msg_hdr.msg_iovlen = 1;
 #ifdef HAVE_MSGHDR_CONTROL
-		msg_recv[i].msg_hdr.msg_control = 0;
+	msg_hdr.msg_control = 0;
 #endif
 #ifdef HAVE_MSGHDR_CONTROLLEN
-		msg_recv[i].msg_hdr.msg_controllen = 0;
+	msg_hdr.msg_controllen = 0;
 #endif
 #ifdef HAVE_MSGHDR_FLAGS
-		msg_recv[i].msg_hdr.msg_flags = 0;
+	msg_hdr.msg_flags = 0;
 #endif
 #ifdef HAVE_MSGHDR_ACCRIGHTS
-		msg_recv[i].msg_hdr.msg_accrights = NULL;
+	msg_msg_hdr.msg_accrights = NULL;
 #endif
 #ifdef HAVE_MSGHDR_ACCRIGHTSLEN
-		msg_recv[i].msg_hdr.msg_accrightslen = 0;
+	msg_msg_hdr.msg_accrightslen = 0;
 #endif
-	}
 
 	do {
 		ufd.fd = instance->knet_fd;
 		ufd.events = POLLIN;
 		nfds = poll (&ufd, 1, 0);
 		if (nfds == 1 && ufd.revents & POLLIN) {
-			res = recvmmsg (instance->knet_fd, msg_recv, MAX_BUFFERS, MSG_NOSIGNAL | MSG_DONTWAIT, NULL);
+			res = recvmsg (instance->knet_fd, &msg_hdr, MSG_NOSIGNAL | MSG_DONTWAIT);
 			if (res != -1) {
 				msg_processed = 1;
 			} else {
