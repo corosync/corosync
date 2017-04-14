@@ -56,8 +56,11 @@ qnetd_algo_all_ring_ids_match(struct qnetd_client *client, const struct tlv_ring
 		if (other_client == client) {
 			continue; /* We've seen our membership list */
 		}
+#if (!defined(__i386__))
 		qnetd_log(LOG_DEBUG, "algo-util: all_ring_ids_match: seen nodeid %d (client %p) ring_id (%d/%ld)", other_client->node_id, other_client, other_client->last_ring_id.node_id, other_client->last_ring_id.seq);
-
+#else
+		qnetd_log(LOG_DEBUG, "algo-util: all_ring_ids_match: seen nodeid %d (client %p) ring_id (%d/%lld)", other_client->node_id, other_client, other_client->last_ring_id.node_id, other_client->last_ring_id.seq);
+#endif
 		/* Look down our node list and see if this client is known to us */
 		TAILQ_FOREACH(node_info, &client->last_membership_node_list, entries) {
 			if (node_info->node_id == other_client->node_id) {
@@ -83,7 +86,11 @@ qnetd_algo_all_ring_ids_match(struct qnetd_client *client, const struct tlv_ring
 		 * we need to wait until they have all caught up before making a decision
 		 */
 		if (in_our_partition && !tlv_ring_id_eq(ring_id, &other_client->last_ring_id)) {
+#if (!defined(__i386__))
 			qnetd_log(LOG_DEBUG, "algo-util: nodeid %d in our partition has different ring_id (%d/%ld) to us (%d/%ld)", other_client->node_id, other_client->last_ring_id.node_id, other_client->last_ring_id.seq, ring_id->node_id, ring_id->seq);
+#else
+			qnetd_log(LOG_DEBUG, "algo-util: nodeid %d in our partition has different ring_id (%d/%lld) to us (%d/%lld)", other_client->node_id, other_client->last_ring_id.node_id, other_client->last_ring_id.seq, ring_id->node_id, ring_id->seq);
+#endif
 			return (-1); /* ring IDs don't match */
 		}
 	}
@@ -161,7 +168,12 @@ qnetd_algo_dump_partitions(partitions_list_t *partitions_list)
 	struct qnetd_algo_partition *partition;
 
 	TAILQ_FOREACH(partition, partitions_list, entries) {
+#if (!defined(__i386__))
 		qnetd_log(LOG_DEBUG, "algo-util: partition %d/%ld (%p) has %d nodes",
 			  partition->ring_id.node_id, partition->ring_id.seq, partition, partition->num_nodes);
+#else
+		qnetd_log(LOG_DEBUG, "algo-util: partition %d/%lld (%p) has %d nodes",
+			  partition->ring_id.node_id, partition->ring_id.seq, partition, partition->num_nodes);
+#endif
 	}
 }

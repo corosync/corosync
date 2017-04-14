@@ -164,9 +164,17 @@ static void cpg_bm_deliver_fn (
 	// Basic check, packets should all be the right size
 	if (g_write_size && (msg_len != g_write_size)) {
 		length_errors++;
+#if (!defined(__i386__))
 		fprintf(stderr, "%s: message sizes don't match. got %lu, expected %u\n", group_name->value, msg_len, g_write_size);
+#else
+		fprintf(stderr, "%s: message sizes don't match. got %u, expected %u\n", group_name->value, msg_len, g_write_size);
+#endif
 		if (do_syslog) {
+#if (!defined(__i386__))
 			syslog(LOG_ERR, "%s: message sizes don't match. got %lu, expected %u\n", group_name->value, msg_len, g_write_size);
+#else
+			syslog(LOG_ERR, "%s: message sizes don't match. got %u, expected %u\n", group_name->value, msg_len, g_write_size);
+#endif
 		}
 
 		if (abort_on_error) {
