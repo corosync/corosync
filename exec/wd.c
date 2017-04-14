@@ -753,7 +753,9 @@ static int wd_exec_exit_fn (void)
 
 	if (dog > 0) {
 		log_printf (LOGSYS_LEVEL_INFO, "magically closing the watchdog.");
-		write (dog, &magic, 1);
+		if(write (dog, &magic, 1) == -1) {
+		    return -1;
+		}
 	}
 	return 0;
 }

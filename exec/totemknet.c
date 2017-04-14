@@ -855,7 +855,10 @@ int totemknet_initialize (
 
 	instance->totemknet_target_set_completed = target_set_completed;
 
-	pipe(instance->logpipes);
+	res = pipe(instance->logpipes);
+	if (res) {
+	    return -1;
+	}
 	fcntl(instance->logpipes[0], F_SETFL, O_NONBLOCK);
 	fcntl(instance->logpipes[1], F_SETFL, O_NONBLOCK);
 
