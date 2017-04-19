@@ -855,7 +855,11 @@ int totemknet_initialize (
 
 	instance->totemknet_target_set_completed = target_set_completed;
 
-	pipe(instance->logpipes);
+	res = pipe(instance->logpipes);
+	if (res) {
+	    KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_CRIT, "failed to create pipe for instance->logpipes");
+	    return -1;
+	}
 	fcntl(instance->logpipes[0], F_SETFL, O_NONBLOCK);
 	fcntl(instance->logpipes[1], F_SETFL, O_NONBLOCK);
 
