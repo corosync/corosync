@@ -79,7 +79,7 @@ static enum tlv_reply_error_code do_lms_algorithm(struct qnetd_client *client, c
 	qnetd_client_algo_timer_abort(client);
 
 	if (qnetd_algo_all_ring_ids_match(client, ring_id) == -1) {
-		qnetd_log(LOG_DEBUG, "algo-lms: nodeid %d: ring ID %d/%ld not unique in this membership, waiting",
+		qnetd_log(LOG_DEBUG, "algo-lms: nodeid %d: ring ID (" UTILS_PRI_RING_ID ") not unique in this membership, waiting",
 			  client->node_id, ring_id->node_id, ring_id->seq);
 
 		qnetd_client_algo_timer_schedule(client);
@@ -140,7 +140,7 @@ static enum tlv_reply_error_code do_lms_algorithm(struct qnetd_client *client, c
 		}
 	}
 
-	qnetd_log(LOG_DEBUG, "algo-lms: largest partition is %d/%ld with %d nodes",
+	qnetd_log(LOG_DEBUG, "algo-lms: largest partition is (" UTILS_PRI_RING_ID ") with %d nodes",
 		  largest_partition->ring_id.node_id, largest_partition->ring_id.seq, largest_partition->num_nodes);
 
 	/* Now check if it's really the largest, and not just the joint-largest */
@@ -191,7 +191,7 @@ static enum tlv_reply_error_code do_lms_algorithm(struct qnetd_client *client, c
 				if (other_client->node_id < tb_node_id) {
 					tb_node_id = other_client->node_id;
 					memcpy(&tb_node_ring_id, &other_client->last_ring_id, sizeof(struct tlv_ring_id));
-					qnetd_log(LOG_DEBUG, "algo-lms: Looking for low node ID. found %d (%d/%ld)",
+					qnetd_log(LOG_DEBUG, "algo-lms: Looking for low node ID. found %d (" UTILS_PRI_RING_ID ")",
 						  tb_node_id, tb_node_ring_id.node_id, tb_node_ring_id.seq);
 				}
 			break;
@@ -200,14 +200,14 @@ static enum tlv_reply_error_code do_lms_algorithm(struct qnetd_client *client, c
 				if (other_client->node_id > tb_node_id) {
 					tb_node_id = other_client->node_id;
 					memcpy(&tb_node_ring_id, &other_client->last_ring_id, sizeof(struct tlv_ring_id));
-					qnetd_log(LOG_DEBUG, "algo-lms: Looking for high node ID. found %d (%d/%ld)",
+					qnetd_log(LOG_DEBUG, "algo-lms: Looking for high node ID. found %d (" UTILS_PRI_RING_ID ")",
 						  tb_node_id, tb_node_ring_id.node_id, tb_node_ring_id.seq);
 				}
 			break;
 			case TLV_TIE_BREAKER_MODE_NODE_ID:
 				if (client->tie_breaker.node_id == client->node_id) {
 					memcpy(&tb_node_ring_id, &other_client->last_ring_id, sizeof(struct tlv_ring_id));
-					qnetd_log(LOG_DEBUG, "algo-lms: Looking for nominated node ID. found %d (%d/%ld)",
+					qnetd_log(LOG_DEBUG, "algo-lms: Looking for nominated node ID. found %d (" UTILS_PRI_RING_ID ")",
 						  tb_node_id, tb_node_ring_id.node_id, tb_node_ring_id.seq);
 
 				}
@@ -220,12 +220,12 @@ static enum tlv_reply_error_code do_lms_algorithm(struct qnetd_client *client, c
 		}
 
 		if (client->node_id == tb_node_id || tlv_ring_id_eq(&tb_node_ring_id, ring_id)) {
-			qnetd_log(LOG_DEBUG, "algo-lms: We are in the same partition (%d/%ld) as tie-breaker node id %d. ACK",
+			qnetd_log(LOG_DEBUG, "algo-lms: We are in the same partition (" UTILS_PRI_RING_ID ") as tie-breaker node id %d. ACK",
 				  tb_node_ring_id.node_id, tb_node_ring_id.seq, tb_node_id);
 			*result_vote = info->last_result = TLV_VOTE_ACK;
 		}
 		else {
-			qnetd_log(LOG_DEBUG, "algo-lms: We are NOT in the same partition (%d/%ld) as tie-breaker node id %d. NACK",
+			qnetd_log(LOG_DEBUG, "algo-lms: We are NOT in the same partition (" UTILS_PRI_RING_ID ") as tie-breaker node id %d. NACK",
 				  tb_node_ring_id.node_id, tb_node_ring_id.seq, tb_node_id);
 			*result_vote = info->last_result = TLV_VOTE_NACK;
 		}
@@ -286,7 +286,7 @@ qnetd_algo_lms_membership_node_list_received(struct qnetd_client *client,
     const struct node_list *nodes, enum tlv_vote *result_vote)
 {
 	qnetd_log(LOG_DEBUG, " ");
-	qnetd_log(LOG_DEBUG, "algo-lms: membership list from node %d partition %d/%ld", client->node_id, ring_id->node_id, ring_id->seq);
+	qnetd_log(LOG_DEBUG, "algo-lms: membership list from node %d partition (" UTILS_PRI_RING_ID ")", client->node_id, ring_id->node_id, ring_id->seq);
 
 	return do_lms_algorithm(client, ring_id, result_vote);
 }
@@ -302,7 +302,7 @@ qnetd_algo_lms_quorum_node_list_received(struct qnetd_client *client,
     uint32_t msg_seq_num, enum tlv_quorate quorate, const struct node_list *nodes, enum tlv_vote *result_vote)
 {
 	qnetd_log(LOG_DEBUG, " ");
-	qnetd_log(LOG_DEBUG, "algo-lms: quorum node list from node %d partition %d/%ld", client->node_id, client->last_ring_id.node_id, client->last_ring_id.seq);
+	qnetd_log(LOG_DEBUG, "algo-lms: quorum node list from node %d partition (" UTILS_PRI_RING_ID ")", client->node_id, client->last_ring_id.node_id, client->last_ring_id.seq);
 	return do_lms_algorithm(client, &client->last_ring_id, result_vote);
 }
 
