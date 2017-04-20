@@ -1241,11 +1241,8 @@ static int read_uidgid_files_into_icmap(
 	const char *dirname;
 	DIR *dp;
 	struct dirent *dirent;
-	struct dirent *entry;
 	char filename[PATH_MAX + FILENAME_MAX + 1];
 	int res = 0;
-	size_t len;
-	int return_code;
 	struct stat stat_buf;
 	enum main_cp_cb_data_state state = MAIN_CP_CB_DATA_STATE_NORMAL;
 	char key_name[ICMAP_KEYNAME_MAXLEN];
@@ -1256,17 +1253,9 @@ static int read_uidgid_files_into_icmap(
 	if (dp == NULL)
 		return 0;
 
-	len = offsetof(struct dirent, d_name) + FILENAME_MAX + 1;
-
-	entry = malloc(len);
-	if (entry == NULL) {
-		res = 0;
-		goto error_exit;
-	}
-
-	for (return_code = readdir_r(dp, entry, &dirent);
-		dirent != NULL && return_code == 0;
-		return_code = readdir_r(dp, entry, &dirent)) {
+	for (dirent = readdir(dp);
+		dirent != NULL;
+		dirent = readdir(dp)) {
 
 		snprintf(filename, sizeof (filename), "%s/%s", dirname, dirent->d_name);
 		res = stat (filename, &stat_buf);
@@ -1288,7 +1277,6 @@ static int read_uidgid_files_into_icmap(
 	}
 
 error_exit:
-	free (entry);
 	closedir(dp);
 
 	return res;
