@@ -1177,8 +1177,6 @@ int main (int argc, char **argv, char **envp)
 		corosync_setscheduler ();
 	}
 
-	corosync_mlockall ();
-
 	/*
 	 * Other signals are registered later via qb_loop_signal_add
 	 */
@@ -1309,6 +1307,8 @@ int main (int argc, char **argv, char **envp)
 	if (background) {
 		corosync_tty_detach ();
 	}
+
+	corosync_mlockall ();
 
 	corosync_poll_handle = qb_loop_create ();
 
