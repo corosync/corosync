@@ -259,7 +259,7 @@ static void cpg_flood (
 {
 	struct timeval tv1, tv2, tv_elapsed;
 	struct iovec iov;
-	unsigned int res;
+	unsigned int res = CS_OK;
 
 	alarm_notice = 0;
 	iov.iov_base = data;
@@ -270,7 +270,11 @@ static void cpg_flood (
 
 	gettimeofday (&tv1, NULL);
 	do {
-		set_packet(write_size, send_counter++);
+		/* Only increment the packet counter if it sucessfully sent */
+		if (res != CS_ERR_TRY_AGAIN) {
+			set_packet(write_size, send_counter++);
+		}
+
 		res = cpg_mcast_joined (handle_in, CPG_TYPE_AGREED, &iov, 1);
 		if (res == CS_OK) {
 			packets_sent++;
@@ -374,9 +378,6 @@ static void usage(char *cmd)
 	fprintf(stderr, "\n");
 	fprintf(stderr, "%s can also be asked to simply listen for (and check) packets\n", cmd);
 	fprintf(stderr, "so that there is another node in the cluster connected to the CPG.\n");
-	fprintf(stderr, "\n");
-	fprintf(stderr, "When -l is present, packet size is only checked if specified by -w or -W\n");
-	fprintf(stderr, "and it, obviously, must match that of the sender.\n");
 	fprintf(stderr, "\n");
 	fprintf(stderr, "Multiple copies, in different CPGs, can also be run on the same or\n");
 	fprintf(stderr, "different nodes by using the -n option.\n");
