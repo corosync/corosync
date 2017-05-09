@@ -969,7 +969,8 @@ int totemknet_initialize (
 
 void *totemknet_buffer_alloc (void)
 {
-	return malloc(KNET_MAX_PACKET_SIZE);
+	/* Need to have space for a message AND a struct mcast in case of encapsulated messages */
+	return malloc(KNET_MAX_PACKET_SIZE + 512);
 }
 
 void totemknet_buffer_release (void *ptr)
