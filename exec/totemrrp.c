@@ -932,7 +932,7 @@ static void passive_monitor (
 	}
 
 	/*
-	 * Max is larger then threshold -> start adjusting process
+	 * Max is larger than threshold -> start adjusting process
 	 */
 	if (max > PASSIVE_RECV_COUNT_THRESHOLD) {
 		min_all = min_active = recv_count[iface_no];
@@ -1047,9 +1047,15 @@ static void passive_mcast_flush_send (
 		i++;
 	} while ((i <= instance->interface_count) && (passive_instance->faulty[passive_instance->msg_xmit_iface] == 1));
 
-	if (i <= instance->interface_count) {
-		totemnet_mcast_flush_send (instance->net_handles[passive_instance->msg_xmit_iface], msg, msg_len);
+	if (i > instance->interface_count) {
+		/*
+		 * All interfaces are faulty. It's still needed to send mcast
+		 * message to local host so use first interface.
+		 */
+		passive_instance->msg_xmit_iface = 0;
 	}
+
+	totemnet_mcast_flush_send (instance->net_handles[passive_instance->msg_xmit_iface], msg, msg_len);
 }
 
 static void passive_mcast_noflush_send (
@@ -1065,9 +1071,16 @@ static void passive_mcast_noflush_send (
 		i++;
 	} while ((i <= instance->interface_count) && (passive_instance->faulty[passive_instance->msg_xmit_iface] == 1));
 
-	if (i <= instance->interface_count) {
-		totemnet_mcast_noflush_send (instance->net_handles[passive_instance->msg_xmit_iface], msg, msg_len);
+
+	if (i > instance->interface_count) {
+		/*
+		 * All interfaces are faulty. It's still needed to send mcast
+		 * message to local host so use first interface.
+		 */
+		passive_instance->msg_xmit_iface = 0;
 	}
+
+	totemnet_mcast_noflush_send (instance->net_handles[passive_instance->msg_xmit_iface], msg, msg_len);
 }
 
 static void passive_token_recv (
@@ -1109,12 +1122,17 @@ static void passive_token_send (
 		i++;
 	} while ((i <= instance->interface_count) && (passive_instance->faulty[passive_instance->token_xmit_iface] == 1));
 
-	if (i <= instance->interface_count) {
-		totemnet_token_send (
-		    instance->net_handles[passive_instance->token_xmit_iface],
-		    msg, msg_len);
+	if (i > instance->interface_count) {
+		/*
+		 * All interfaces are faulty. It's still needed to send token
+		 * message to (potentionally) local host so use first interface.
+		 */
+		passive_instance->msg_xmit_iface = 0;
 	}
 
+	totemnet_token_send (
+	    instance->net_handles[passive_instance->token_xmit_iface],
+	    msg, msg_len);
 }
 
 static void passive_recv_flush (struct totemrrp_instance *instance)
@@ -1458,12 +1476,24 @@ static void active_mcast_flush_send (
 	unsigned int msg_len)
 {
 	int i;
+	int msg_sent;
 	struct active_instance *rrp_algo_instance = (struct active_instance *)instance->rrp_algo_instance;
+
+	msg_sent = 0;
 
 	for (i = 0; i < instance->interface_count; i++) {
 		if (rrp_algo_instance->faulty[i] == 0) {
+			msg_sent = 1;
 			totemnet_mcast_flush_send (instance->net_handles[i], msg, msg_len);
 		}
+	}
+
+	if (!msg_sent) {
+		/*
+		 * All interfaces are faulty. It's still needed to send mcast
+		 * message to local host so use first interface.
+		 */
+		totemnet_mcast_flush_send (instance->net_handles[0], msg, msg_len);
 	}
 }
 
@@ -1473,12 +1503,24 @@ static void active_mcast_noflush_send (
 	unsigned int msg_len)
 {
 	int i;
+	int msg_sent;
 	struct active_instance *rrp_algo_instance = (struct active_instance *)instance->rrp_algo_instance;
+
+	msg_sent = 0;
 
 	for (i = 0; i < instance->interface_count; i++) {
 		if (rrp_algo_instance->faulty[i] == 0) {
+			msg_sent = 1;
 			totemnet_mcast_noflush_send (instance->net_handles[i], msg, msg_len);
 		}
+	}
+
+	if (!msg_sent) {
+		/*
+		 * All interfaces are faulty. It's still needed to send mcast
+		 * message to local host so use first interface.
+		 */
+		totemnet_mcast_noflush_send (instance->net_handles[0], msg, msg_len);
 	}
 }
 
@@ -1535,14 +1577,29 @@ static void active_token_send (
 {
 	struct active_instance *rrp_algo_instance = (struct active_instance *)instance->rrp_algo_instance;
 	int i;
+	int msg_sent;
+
+	msg_sent = 0;
 
 	for (i = 0; i < instance->interface_count; i++) {
 		if (rrp_algo_instance->faulty[i] == 0) {
+			msg_sent = 1;
 			totemnet_token_send (
 				instance->net_handles[i],
 				msg, msg_len);
 
 		}
+	}
+
+	if (!msg_sent) {
+		/*
+		 * All interfaces are faulty. It's still needed to send token
+		 * message to (potentionally) local host so use first interface.
+		 */
+		totemnet_token_send (
+			instance->net_handles[0],
+			msg, msg_len);
+
 	}
 }
 
