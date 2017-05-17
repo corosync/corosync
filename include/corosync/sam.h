@@ -56,7 +56,7 @@ typedef enum {
 /**
  * @brief Callback definition for event driven checking
  */
-typedef int (*sam_hc_callback_t)(void);
+typedef int (*sam_hc_callback_t) (void);
 
 /**
  * @brief Create a new SAM connection.
@@ -76,9 +76,7 @@ typedef int (*sam_hc_callback_t)(void);
  * @retval CS_ERR_BAD_HANDLE in case user is trying to initialize initialized instance
  * @retval CS_ERR_INVALID_PARAM in case recovery_policy had bad value
  */
-cs_error_t sam_initialize (
-        int time_interval,
-        sam_recovery_policy_t recovery_policy);
+cs_error_t sam_initialize (int time_interval, sam_recovery_policy_t recovery_policy);
 
 /**
  * @brief Close the SAM handle.
@@ -147,8 +145,7 @@ cs_error_t sam_warn_signal_set (int warn_signal);
  * @retval CS_ERR_LIBRARY internal library call failed. This can be one of pipe or fork
  *         creation. You can get more information from errno
  */
-cs_error_t sam_register (
-	unsigned int *instance_id);
+cs_error_t sam_register (unsigned int *instance_id);
 
 /**
  * @brief Send healthcheck confirmation.
@@ -204,9 +201,7 @@ cs_error_t sam_data_getsize (size_t *size);
  * @retval CS_ERR_BAD_HANDLE if you call this function before sam_init or after sam_finalize
  * @retval CS_ERR_INVALID_PARAM if data is NULL or size is less then currently saved user data length
  */
-cs_error_t sam_data_restore (
-	void *data,
-	size_t size);
+cs_error_t sam_data_restore (void *data, size_t size);
 
 /**
  * @brief Store user data.
@@ -224,9 +219,7 @@ cs_error_t sam_data_restore (
  * @retval CS_ERR_LIBRARY if some internal error appeared (communication with parent
  *         process)
  */
-cs_error_t sam_data_store (
-	const void *data,
-	size_t size);
+cs_error_t sam_data_store (const void *data, size_t size);
 
 /**
  * @brief Marks child as failed.

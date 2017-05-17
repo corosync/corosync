@@ -34,19 +34,11 @@
 #ifndef SCHEDWRK_H_DEFINED
 #define SCHEDWRK_H_DEFINED
 
-extern void schedwrk_init (
-        void (*serialize_lock_fn) (void),
-        void (*serialize_unlock_fn) (void));
+extern void schedwrk_init (void (*serialize_lock_fn) (void), void (*serialize_unlock_fn) (void));
 
-extern int schedwrk_create (
-        hdb_handle_t *handle,
-        int (schedwrk_fn) (const void *),
-        const void *context);
+extern int schedwrk_create (hdb_handle_t *handle, int(schedwrk_fn) (const void *), const void *context);
 
-extern int schedwrk_create_nolock (
-        hdb_handle_t *handle,
-        int (schedwrk_fn) (const void *),
-        const void *context);
+extern int schedwrk_create_nolock (hdb_handle_t *handle, int(schedwrk_fn) (const void *), const void *context);
 
 extern void schedwrk_destroy (hdb_handle_t handle);
 

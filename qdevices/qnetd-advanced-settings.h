@@ -58,12 +58,11 @@ struct qnetd_advanced_settings {
 	size_t ipc_max_receive_size;
 };
 
-extern int		qnetd_advanced_settings_init(struct qnetd_advanced_settings *settings);
+extern int qnetd_advanced_settings_init (struct qnetd_advanced_settings *settings);
 
-extern int		qnetd_advanced_settings_set(struct qnetd_advanced_settings *settings,
-    const char *option, const char *value);
+extern int qnetd_advanced_settings_set (struct qnetd_advanced_settings *settings, const char *option, const char *value);
 
-extern void		qnetd_advanced_settings_destroy(struct qnetd_advanced_settings *settings);
+extern void qnetd_advanced_settings_destroy (struct qnetd_advanced_settings *settings);
 
 #ifdef __cplusplus
 }

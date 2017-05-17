@@ -35,61 +35,38 @@
 #ifndef TOTEMKNET_H_DEFINED
 #define TOTEMKNET_H_DEFINED
 
-#include <sys/types.h>
-#include <sys/socket.h>
 #include <qb/qbloop.h>
+#include <sys/socket.h>
+#include <sys/types.h>
 
 #include <corosync/totem/totem.h>
 
 /**
  * Create an instance
  */
-extern int totemknet_initialize (
-	qb_loop_t *poll_handle,
-	void **knet_context,
-	struct totem_config *totem_config,
-	totemsrp_stats_t *stats,
-	void *context,
+extern int totemknet_initialize (qb_loop_t *poll_handle, void **knet_context, struct totem_config *totem_config,
+								 totemsrp_stats_t *stats, void *context,
 
-	void (*deliver_fn) (
-		void *context,
-		const void *msg,
-		unsigned int msg_len),
+								 void (*deliver_fn) (void *context, const void *msg, unsigned int msg_len),
 
-	void (*iface_change_fn) (
-		void *context,
-		const struct totem_ip_address *iface_address,
-		unsigned int ring_no),
+								 void (*iface_change_fn) (void *context, const struct totem_ip_address *iface_address,
+														  unsigned int ring_no),
 
-	void (*mtu_changed) (
-		void *context,
-		int net_mtu),
+								 void (*mtu_changed) (void *context, int net_mtu),
 
-	void (*target_set_completed) (
-		void *context));
+								 void (*target_set_completed) (void *context));
 
 extern void *totemknet_buffer_alloc (void);
 
 extern void totemknet_buffer_release (void *ptr);
 
-extern int totemknet_processor_count_set (
-	void *knet_context,
-	int processor_count);
+extern int totemknet_processor_count_set (void *knet_context, int processor_count);
 
-extern int totemknet_token_send (
-	void *knet_context,
-	const void *msg,
-	unsigned int msg_len);
+extern int totemknet_token_send (void *knet_context, const void *msg, unsigned int msg_len);
 
-extern int totemknet_mcast_flush_send (
-	void *knet_context,
-	const void *msg,
-	unsigned int msg_len);
+extern int totemknet_mcast_flush_send (void *knet_context, const void *msg, unsigned int msg_len);
 
-extern int totemknet_mcast_noflush_send (
-	void *knet_context,
-	const void *msg,
-	unsigned int msg_len);
+extern int totemknet_mcast_noflush_send (void *knet_context, const void *msg, unsigned int msg_len);
 
 extern int totemknet_recv_flush (void *knet_context);
 
@@ -101,36 +78,19 @@ extern int totemknet_finalize (void *knet_context);
 
 extern void totemknet_net_mtu_adjust (void *knet_context, struct totem_config *totem_config);
 
-extern int totemknet_ifaces_get (void *net_context,
-	char ***status,
-	unsigned int *iface_count);
+extern int totemknet_ifaces_get (void *net_context, char ***status, unsigned int *iface_count);
 
-extern int totemknet_token_target_set (
-	void *knet_context,
-	const struct totem_ip_address *token_target);
+extern int totemknet_token_target_set (void *knet_context, const struct totem_ip_address *token_target);
 
-extern int totemknet_crypto_set (
-	void *knet_context,
-	const char *cipher_type,
-	const char *hash_type);
+extern int totemknet_crypto_set (void *knet_context, const char *cipher_type, const char *hash_type);
 
-extern int totemknet_recv_mcast_empty (
-	void *knet_context);
+extern int totemknet_recv_mcast_empty (void *knet_context);
 
-extern int totemknet_member_add (
-	void *knet_context,
-	const struct totem_ip_address *local,
-	const struct totem_ip_address *member,
-	int ring_no);
+extern int totemknet_member_add (void *knet_context, const struct totem_ip_address *local,
+								 const struct totem_ip_address *member, int ring_no);
 
-extern int totemknet_member_remove (
-	void *knet_context,
-	const struct totem_ip_address *member,
-	int ring_no);
+extern int totemknet_member_remove (void *knet_context, const struct totem_ip_address *member, int ring_no);
 
-extern int totemknet_member_set_active (
-	void *knet_context,
-	const struct totem_ip_address *member_ip,
-	int active);
+extern int totemknet_member_set_active (void *knet_context, const struct totem_ip_address *member_ip, int active);
 
 #endif /* TOTEMKNET_H_DEFINED */

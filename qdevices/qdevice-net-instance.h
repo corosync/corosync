@@ -37,8 +37,8 @@
 
 #include <sys/types.h>
 
-#include <stdlib.h>
 #include <stdint.h>
+#include <stdlib.h>
 
 #include "nss-sock.h"
 
@@ -49,8 +49,8 @@
 #include "pr-poll-array.h"
 #include "qdevice-net-disconnect-reason.h"
 #include "send-buffer-list.h"
-#include "tlv.h"
 #include "timer-list.h"
+#include "tlv.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -78,9 +78,9 @@ struct qdevice_net_instance {
 	enum tlv_tls_supported tls_supported;
 	int using_tls;
 	int tls_client_cert_sent;
-	uint32_t heartbeat_interval;		/* Adjusted heartbeat interval during normal operation */
-	uint32_t sync_heartbeat_interval;	/* Adjusted heartbeat interval during corosync sync */
-	uint32_t cast_vote_timer_interval;	/* Timer for cast vote */
+	uint32_t heartbeat_interval;	   /* Adjusted heartbeat interval during normal operation */
+	uint32_t sync_heartbeat_interval;  /* Adjusted heartbeat interval during corosync sync */
+	uint32_t cast_vote_timer_interval; /* Timer for cast vote */
 	uint32_t connect_timeout;
 	struct timer_list_entry *cast_vote_timer;
 	enum tlv_vote cast_vote_timer_vote;
@@ -108,20 +108,18 @@ struct qdevice_net_instance {
 	const struct qdevice_advanced_settings *advanced_settings;
 };
 
-extern int		qdevice_net_instance_init(struct qdevice_net_instance *instance,
-    enum tlv_tls_supported tls_supported,
-    enum tlv_decision_algorithm_type decision_algorithm, uint32_t heartbeat_interval,
-    uint32_t sync_heartbeat_interval, uint32_t cast_vote_timer_interval,
-    const char *host_addr, uint16_t host_port, const char *cluster_name,
-    const struct tlv_tie_breaker *tie_breaker, uint32_t connect_timeout, int force_ip_version,
-    int cmap_fd, int votequorum_fd, int local_socket_fd,
-    const struct qdevice_advanced_settings *advanced_settings);
+extern int qdevice_net_instance_init (struct qdevice_net_instance *instance, enum tlv_tls_supported tls_supported,
+									  enum tlv_decision_algorithm_type decision_algorithm, uint32_t heartbeat_interval,
+									  uint32_t sync_heartbeat_interval, uint32_t cast_vote_timer_interval, const char *host_addr,
+									  uint16_t host_port, const char *cluster_name, const struct tlv_tie_breaker *tie_breaker,
+									  uint32_t connect_timeout, int force_ip_version, int cmap_fd, int votequorum_fd,
+									  int local_socket_fd, const struct qdevice_advanced_settings *advanced_settings);
 
-extern void		qdevice_net_instance_clean(struct qdevice_net_instance *instance);
+extern void qdevice_net_instance_clean (struct qdevice_net_instance *instance);
 
-extern int		qdevice_net_instance_destroy(struct qdevice_net_instance *instance);
+extern int qdevice_net_instance_destroy (struct qdevice_net_instance *instance);
 
-extern int		qdevice_net_instance_init_from_cmap(struct qdevice_instance *instance);
+extern int qdevice_net_instance_init_from_cmap (struct qdevice_instance *instance);
 
 #ifdef __cplusplus
 }

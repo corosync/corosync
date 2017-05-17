@@ -43,20 +43,17 @@
 extern "C" {
 #endif
 
-extern void			qdevice_votequorum_init(struct qdevice_instance *instance);
+extern void qdevice_votequorum_init (struct qdevice_instance *instance);
 
-extern void			qdevice_votequorum_destroy(struct qdevice_instance *instance);
+extern void qdevice_votequorum_destroy (struct qdevice_instance *instance);
 
-extern int			qdevice_votequorum_dispatch(struct qdevice_instance *instance);
+extern int qdevice_votequorum_dispatch (struct qdevice_instance *instance);
 
-extern int			qdevice_votequorum_poll(struct qdevice_instance *instance,
-    int cast_vote);
+extern int qdevice_votequorum_poll (struct qdevice_instance *instance, int cast_vote);
 
-extern int			qdevice_votequorum_wait_for_ring_id(
-    struct qdevice_instance *instance);
+extern int qdevice_votequorum_wait_for_ring_id (struct qdevice_instance *instance);
 
-extern int			qdevice_votequorum_master_wins(struct qdevice_instance *instance,
-    int allow);
+extern int qdevice_votequorum_master_wins (struct qdevice_instance *instance, int allow);
 
 #ifdef __cplusplus
 }

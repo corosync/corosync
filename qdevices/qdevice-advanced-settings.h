@@ -74,12 +74,11 @@ struct qdevice_advanced_settings {
 	uint8_t net_test_algorithm_enabled;
 };
 
-extern int		qdevice_advanced_settings_init(struct qdevice_advanced_settings *settings);
+extern int qdevice_advanced_settings_init (struct qdevice_advanced_settings *settings);
 
-extern int		qdevice_advanced_settings_set(struct qdevice_advanced_settings *settings,
-    const char *option, const char *value);
+extern int qdevice_advanced_settings_set (struct qdevice_advanced_settings *settings, const char *option, const char *value);
 
-extern void		qdevice_advanced_settings_destroy(struct qdevice_advanced_settings *settings);
+extern void qdevice_advanced_settings_destroy (struct qdevice_advanced_settings *settings);
 
 #ifdef __cplusplus
 }

@@ -57,6 +57,6 @@ enum corosync_service_types {
 #define PROCESSOR_COUNT_MAX 384
 #endif /* HAVE_SMALL_MEMORY_FOOTPRINT */
 
-#define TOTEMIP_ADDRLEN (sizeof(struct in6_addr))
+#define TOTEMIP_ADDRLEN (sizeof (struct in6_addr))
 
 #endif /* CORODEFS_H_DEFINED */

@@ -37,8 +37,8 @@
 
 #include <sys/types.h>
 
-#include <sys/queue.h>
 #include <inttypes.h>
+#include <sys/queue.h>
 
 #include "tlv.h"
 
@@ -50,39 +50,33 @@ struct node_list_entry {
 	uint32_t node_id;
 	uint32_t data_center_id;
 	enum tlv_node_state node_state;
-	TAILQ_ENTRY(node_list_entry) entries;
+	TAILQ_ENTRY (node_list_entry) entries;
 };
 
-TAILQ_HEAD(node_list, node_list_entry);
+TAILQ_HEAD (node_list, node_list_entry);
 
-extern void				 node_list_init(struct node_list *list);
+extern void node_list_init (struct node_list *list);
 
-extern struct node_list_entry		*node_list_add(struct node_list *list,
-    uint32_t node_id, uint32_t data_center_id, enum tlv_node_state node_state);
+extern struct node_list_entry *
+node_list_add (struct node_list *list, uint32_t node_id, uint32_t data_center_id, enum tlv_node_state node_state);
 
-extern struct node_list_entry		*node_list_add_from_node_info(
-    struct node_list *list, const struct tlv_node_info *node_info);
+extern struct node_list_entry *node_list_add_from_node_info (struct node_list *list, const struct tlv_node_info *node_info);
 
-extern int				 node_list_clone(struct node_list *dst_list,
-    const struct node_list *src_list);
+extern int node_list_clone (struct node_list *dst_list, const struct node_list *src_list);
 
-extern void				 node_list_free(struct node_list *list);
+extern void node_list_free (struct node_list *list);
 
-extern void				 node_list_del(struct node_list *list,
-    struct node_list_entry *node);
+extern void node_list_del (struct node_list *list, struct node_list_entry *node);
 
-extern int				 node_list_is_empty(const struct node_list *list);
+extern int node_list_is_empty (const struct node_list *list);
 
-extern void				 node_list_entry_to_tlv_node_info(
-    const struct node_list_entry *node, struct tlv_node_info *node_info);
+extern void node_list_entry_to_tlv_node_info (const struct node_list_entry *node, struct tlv_node_info *node_info);
 
-extern struct node_list_entry *		 node_list_find_node_id(const struct node_list *list,
-    uint32_t node_id);
+extern struct node_list_entry *node_list_find_node_id (const struct node_list *list, uint32_t node_id);
 
-extern int				 node_list_eq(const struct node_list *list1,
-    const struct node_list *list2);
+extern int node_list_eq (const struct node_list *list1, const struct node_list *list2);
 
-extern size_t				 node_list_size(const struct node_list *nlist);
+extern size_t node_list_size (const struct node_list *nlist);
 
 #ifdef __cplusplus
 }

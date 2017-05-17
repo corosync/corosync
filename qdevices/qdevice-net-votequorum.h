@@ -44,11 +44,9 @@
 extern "C" {
 #endif
 
-extern enum tlv_node_state	qdevice_net_votequorum_node_state_to_tlv(
-    uint32_t votequorum_node_state);
+extern enum tlv_node_state qdevice_net_votequorum_node_state_to_tlv (uint32_t votequorum_node_state);
 
-extern void			qdevice_net_votequorum_ring_id_to_tlv(struct tlv_ring_id *tlv_rid,
-    const votequorum_ring_id_t *votequorum_rid);
+extern void qdevice_net_votequorum_ring_id_to_tlv (struct tlv_ring_id *tlv_rid, const votequorum_ring_id_t *votequorum_rid);
 
 #ifdef __cplusplus
 }

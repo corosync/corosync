@@ -47,9 +47,9 @@ extern "C" {
  * PR Interval is 32-bit integer which overflows. Maximum useable interval is around
  * 6 hours (less). So define max interval as 5 hours
  */
-#define TIMER_LIST_MAX_INTERVAL			18000000
+#define TIMER_LIST_MAX_INTERVAL 18000000
 
-typedef int (*timer_list_cb_fn)(void *data1, void *data2);
+typedef int (*timer_list_cb_fn) (void *data1, void *data2);
 
 struct timer_list_entry {
 	/* Time when timer was planned */
@@ -62,30 +62,28 @@ struct timer_list_entry {
 	void *user_data1;
 	void *user_data2;
 	int is_active;
-	TAILQ_ENTRY(timer_list_entry) entries;
+	TAILQ_ENTRY (timer_list_entry) entries;
 };
 
 struct timer_list {
-	TAILQ_HEAD(, timer_list_entry) list;
-	TAILQ_HEAD(, timer_list_entry) free_list;
+	TAILQ_HEAD (, timer_list_entry) list;
+	TAILQ_HEAD (, timer_list_entry) free_list;
 };
 
-extern void				 timer_list_init(struct timer_list *tlist);
+extern void timer_list_init (struct timer_list *tlist);
 
-extern struct timer_list_entry		*timer_list_add(struct timer_list *tlist,
-    PRUint32 interval, timer_list_cb_fn func, void *data1, void *data2);
+extern struct timer_list_entry *
+timer_list_add (struct timer_list *tlist, PRUint32 interval, timer_list_cb_fn func, void *data1, void *data2);
 
-extern void				 timer_list_reschedule(struct timer_list *tlist,
-    struct timer_list_entry *entry);
+extern void timer_list_reschedule (struct timer_list *tlist, struct timer_list_entry *entry);
 
-extern void				 timer_list_delete(struct timer_list *tlist,
-    struct timer_list_entry *entry);
+extern void timer_list_delete (struct timer_list *tlist, struct timer_list_entry *entry);
 
-extern void				 timer_list_expire(struct timer_list *tlist);
+extern void timer_list_expire (struct timer_list *tlist);
 
-extern PRIntervalTime			 timer_list_time_to_expire(struct timer_list *tlist);
+extern PRIntervalTime timer_list_time_to_expire (struct timer_list *tlist);
 
-extern void				 timer_list_free(struct timer_list *tlist);
+extern void timer_list_free (struct timer_list *tlist);
 
 #ifdef __cplusplus
 }

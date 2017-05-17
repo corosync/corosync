@@ -42,11 +42,9 @@
 extern "C" {
 #endif
 
-extern int	qnetd_ipc_cmd_status(struct qnetd_instance *instance,
-    struct dynar *outbuf, int verbose);
+extern int qnetd_ipc_cmd_status (struct qnetd_instance *instance, struct dynar *outbuf, int verbose);
 
-extern int	qnetd_ipc_cmd_list(struct qnetd_instance *instance,
-    struct dynar *outbuf, int verbose, const char *cluster_name);
+extern int qnetd_ipc_cmd_list (struct qnetd_instance *instance, struct dynar *outbuf, int verbose, const char *cluster_name);
 
 #ifdef __cplusplus
 }

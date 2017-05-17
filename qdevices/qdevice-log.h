@@ -35,9 +35,9 @@
 #ifndef _QDEVICE_LOG_H_
 #define _QDEVICE_LOG_H_
 
+#include <prerror.h>
 #include <qb/qbdefs.h>
 #include <qb/qblog.h>
-#include <prerror.h>
 
 #include "qdevice-instance.h"
 
@@ -45,18 +45,17 @@
 extern "C" {
 #endif
 
-#define qdevice_log	qb_log
-#define qdevice_log_nss(priority, str) qdevice_log(priority, "%s (%d): %s", \
-    str, PR_GetError(), PR_ErrorToString(PR_GetError(), PR_LANGUAGE_I_DEFAULT));
+#define qdevice_log qb_log
+#define qdevice_log_nss(priority, str) \
+	qdevice_log (priority, "%s (%d): %s", str, PR_GetError (), PR_ErrorToString (PR_GetError (), PR_LANGUAGE_I_DEFAULT));
 
-#define qdevice_log_err(priority, str) qdevice_log(priority, "%s (%d): %s", \
-    str, errno, strerror(errno));
+#define qdevice_log_err(priority, str) qdevice_log (priority, "%s (%d): %s", str, errno, strerror (errno));
 
-extern void		qdevice_log_init(struct qdevice_instance *instance, int force_debug);
+extern void qdevice_log_init (struct qdevice_instance *instance, int force_debug);
 
-extern void		qdevice_log_configure(struct qdevice_instance *instance);
+extern void qdevice_log_configure (struct qdevice_instance *instance);
 
-extern void		qdevice_log_close(struct qdevice_instance *instance);
+extern void qdevice_log_close (struct qdevice_instance *instance);
 
 #ifdef __cplusplus
 }

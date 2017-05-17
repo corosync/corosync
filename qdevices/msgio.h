@@ -43,15 +43,13 @@
 extern "C" {
 #endif
 
-extern ssize_t	msgio_send(PRFileDesc *sock, const char *msg, size_t msg_len,
-    size_t *start_pos);
+extern ssize_t msgio_send (PRFileDesc *sock, const char *msg, size_t msg_len, size_t *start_pos);
 
-extern ssize_t	msgio_send_blocking(PRFileDesc *sock, const char *msg, size_t msg_len);
+extern ssize_t msgio_send_blocking (PRFileDesc *sock, const char *msg, size_t msg_len);
 
-extern int	msgio_write(PRFileDesc *sock, const struct dynar *msg, size_t *already_sent_bytes);
+extern int msgio_write (PRFileDesc *sock, const struct dynar *msg, size_t *already_sent_bytes);
 
-extern int	msgio_read(PRFileDesc *sock, struct dynar *msg, size_t *already_received_bytes,
-    int *skipping_msg);
+extern int msgio_read (PRFileDesc *sock, struct dynar *msg, size_t *already_received_bytes, int *skipping_msg);
 
 #ifdef __cplusplus
 }

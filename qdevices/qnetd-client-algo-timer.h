@@ -41,14 +41,13 @@
 extern "C" {
 #endif
 
-extern int	qnetd_client_algo_timer_is_scheduled(struct qnetd_client *client);
+extern int qnetd_client_algo_timer_is_scheduled (struct qnetd_client *client);
 
-extern int	qnetd_client_algo_timer_schedule_timeout(struct qnetd_client *client,
-    uint32_t timeout);
+extern int qnetd_client_algo_timer_schedule_timeout (struct qnetd_client *client, uint32_t timeout);
 
-extern int	qnetd_client_algo_timer_schedule(struct qnetd_client *client);
+extern int qnetd_client_algo_timer_schedule (struct qnetd_client *client);
 
-extern int	qnetd_client_algo_timer_abort(struct qnetd_client *client);
+extern int qnetd_client_algo_timer_abort (struct qnetd_client *client);
 
 #ifdef __cplusplus
 }

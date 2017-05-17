@@ -35,10 +35,9 @@
 #define VFS_YKD_H_DEFINED
 
 #include "quorum.h"
-#include <corosync/logsys.h>
 #include <corosync/coroapi.h>
+#include <corosync/logsys.h>
 
-char *ykd_init(struct corosync_api_v1 *api,
-	quorum_set_quorate_fn_t set_primary);
+char *ykd_init (struct corosync_api_v1 *api, quorum_set_quorate_fn_t set_primary);
 
 #endif /* VFS_YKD_H_DEFINED */

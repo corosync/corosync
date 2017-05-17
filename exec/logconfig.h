@@ -35,9 +35,9 @@
 #ifndef LOGCONFIG_H_DEFINED
 #define LOGCONFIG_H_DEFINED
 
-#include <corosync/logsys.h>
-#include <corosync/coroapi.h>
 #include <corosync/cmap.h>
+#include <corosync/coroapi.h>
+#include <corosync/logsys.h>
 
 /**
  * All service handlers
@@ -50,13 +50,9 @@ struct dynamic_service {
 #define MAX_DYNAMIC_SERVICES 128
 
 #ifdef LOGCONFIG_USE_ICMAP
-extern int corosync_log_config_read (
-	const char **error_string);
+extern int corosync_log_config_read (const char **error_string);
 #else
-extern int corosync_log_config_read (
-	cmap_handle_t cmap_h,
-	const char *default_logfile,
-	const char **error_string);
+extern int corosync_log_config_read (cmap_handle_t cmap_h, const char *default_logfile, const char **error_string);
 #endif
 
 #endif /* LOGCONFIG_H_DEFINED */

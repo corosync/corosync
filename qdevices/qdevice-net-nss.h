@@ -43,11 +43,10 @@
 extern "C" {
 #endif
 
-extern SECStatus		qdevice_net_nss_bad_cert_hook(void *arg, PRFileDesc *fd);
+extern SECStatus qdevice_net_nss_bad_cert_hook (void *arg, PRFileDesc *fd);
 
-extern SECStatus		qdevice_net_nss_get_client_auth_data(void *arg,
-    PRFileDesc *sock, struct CERTDistNamesStr *caNames,
-    struct CERTCertificateStr **pRetCert, struct SECKEYPrivateKeyStr **pRetKey);
+extern SECStatus qdevice_net_nss_get_client_auth_data (void *arg, PRFileDesc *sock, struct CERTDistNamesStr *caNames,
+													   struct CERTCertificateStr **pRetCert, struct SECKEYPrivateKeyStr **pRetKey);
 
 
 #ifdef __cplusplus

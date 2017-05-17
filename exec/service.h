@@ -42,36 +42,28 @@ struct corosync_api_v1;
 struct default_service {
 	const char *name;
 	int ver;
-	struct corosync_service_engine *(*loader)(void);
+	struct corosync_service_engine *(*loader) (void);
 };
 
 /**
  * Link and initialize a service
  */
-char *corosync_service_link_and_init (
-	struct corosync_api_v1 *objdb,
-	struct default_service *service_engine);
+char *corosync_service_link_and_init (struct corosync_api_v1 *objdb, struct default_service *service_engine);
 
 /**
  * Unlink and exit a service
  */
-extern unsigned int corosync_service_unlink_and_exit (
-	struct corosync_api_v1 *objdb,
-	const char *service_name,
-	unsigned int service_ver);
+extern unsigned int corosync_service_unlink_and_exit (struct corosync_api_v1 *objdb, const char *service_name, unsigned int service_ver);
 
 /**
  * Unlink and exit all corosync services
  */
-extern void corosync_service_unlink_all (
-	struct corosync_api_v1 *api,
-	void (*unlink_all_complete) (void));
+extern void corosync_service_unlink_all (struct corosync_api_v1 *api, void (*unlink_all_complete) (void));
 
 /**
  * Load all of the default services
  */
-extern unsigned int corosync_service_defaults_link_and_init (
-	struct corosync_api_v1 *objdb);
+extern unsigned int corosync_service_defaults_link_and_init (struct corosync_api_v1 *objdb);
 
 extern struct corosync_service_engine *corosync_service[];
 

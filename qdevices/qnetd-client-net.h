@@ -44,13 +44,11 @@
 extern "C" {
 #endif
 
-extern int		qnetd_client_net_write(struct qnetd_instance *instance,
-    struct qnetd_client *client);
+extern int qnetd_client_net_write (struct qnetd_instance *instance, struct qnetd_client *client);
 
-extern int		qnetd_client_net_read(struct qnetd_instance *instance,
-    struct qnetd_client *client);
+extern int qnetd_client_net_read (struct qnetd_instance *instance, struct qnetd_client *client);
 
-extern int		qnetd_client_net_accept(struct qnetd_instance *instance);
+extern int qnetd_client_net_accept (struct qnetd_instance *instance);
 
 #ifdef __cplusplus
 }

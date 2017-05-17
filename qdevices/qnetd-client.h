@@ -37,14 +37,14 @@
 
 #include <sys/types.h>
 
-#include <sys/queue.h>
 #include <inttypes.h>
+#include <sys/queue.h>
 
-#include <nspr.h>
 #include "dynar.h"
-#include "tlv.h"
-#include "send-buffer-list.h"
 #include "node-list.h"
+#include "send-buffer-list.h"
+#include "tlv.h"
+#include <nspr.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -57,9 +57,9 @@ struct qnetd_client {
 	struct dynar receive_buffer;
 	struct send_buffer_list send_buffer_list;
 	size_t msg_already_received_bytes;
-	int skipping_msg;	/* When incorrect message was received skip it */
-	int tls_started;	/* Set after TLS started */
-	int tls_peer_certificate_verified;	/* Certificate is verified only once */
+	int skipping_msg;				   /* When incorrect message was received skip it */
+	int tls_started;				   /* Set after TLS started */
+	int tls_peer_certificate_verified; /* Certificate is verified only once */
 	int preinit_received;
 	int init_received;
 	char *cluster_name;
@@ -87,15 +87,14 @@ struct qnetd_client {
 	uint32_t dpd_msg_received_since_last_check;
 	enum tlv_vote last_sent_vote;
 	enum tlv_vote last_sent_ack_nack_vote;
-	TAILQ_ENTRY(qnetd_client) entries;
-	TAILQ_ENTRY(qnetd_client) cluster_entries;
+	TAILQ_ENTRY (qnetd_client) entries;
+	TAILQ_ENTRY (qnetd_client) cluster_entries;
 };
 
-extern void		qnetd_client_init(struct qnetd_client *client, PRFileDesc *sock,
-    PRNetAddr *addr, char *addr_str, size_t max_receive_size, size_t max_send_buffers,
-    size_t max_send_size, struct timer_list *main_timer_list);
+extern void qnetd_client_init (struct qnetd_client *client, PRFileDesc *sock, PRNetAddr *addr, char *addr_str, size_t max_receive_size,
+							   size_t max_send_buffers, size_t max_send_size, struct timer_list *main_timer_list);
 
-extern void		qnetd_client_destroy(struct qnetd_client *client);
+extern void qnetd_client_destroy (struct qnetd_client *client);
 
 #ifdef __cplusplus
 }

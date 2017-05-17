@@ -62,7 +62,7 @@ enum res_quorum_types {
  * @brief The req_lib_quorum_trackstart struct
  */
 struct req_lib_quorum_trackstart {
-        struct qb_ipc_request_header header __attribute__((aligned(8)));
+	struct qb_ipc_request_header header __attribute__ ((aligned (8)));
 	unsigned int track_flags;
 };
 
@@ -70,7 +70,7 @@ struct req_lib_quorum_trackstart {
  * @brief The res_lib_quorum_getquorate struct
  */
 struct res_lib_quorum_getquorate {
-	struct qb_ipc_response_header header __attribute__((aligned(8)));
+	struct qb_ipc_response_header header __attribute__ ((aligned (8)));
 	mar_uint32_t quorate;
 };
 
@@ -78,10 +78,10 @@ struct res_lib_quorum_getquorate {
  * @brief The res_lib_quorum_notification struct
  */
 struct res_lib_quorum_notification {
-	struct qb_ipc_response_header header __attribute__((aligned(8)));
-	mar_int32_t quorate __attribute__((aligned(8)));
-	mar_uint64_t ring_seq __attribute__((aligned(8)));
-	mar_uint32_t view_list_entries __attribute__((aligned(8)));
+	struct qb_ipc_response_header header __attribute__ ((aligned (8)));
+	mar_int32_t quorate __attribute__ ((aligned (8)));
+	mar_uint64_t ring_seq __attribute__ ((aligned (8)));
+	mar_uint32_t view_list_entries __attribute__ ((aligned (8)));
 	mar_uint32_t view_list[];
 };
 
@@ -89,7 +89,7 @@ struct res_lib_quorum_notification {
  * @brief The res_lib_quorum_gettype struct
  */
 struct res_lib_quorum_gettype {
-	struct qb_ipc_response_header header __attribute__((aligned(8)));
+	struct qb_ipc_response_header header __attribute__ ((aligned (8)));
 	mar_uint32_t quorum_type;
 };
 

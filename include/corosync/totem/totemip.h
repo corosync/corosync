@@ -37,11 +37,11 @@
 #ifndef TOTEMIP_H_DEFINED
 #define TOTEMIP_H_DEFINED
 
-#include <sys/types.h>
-#include <sys/socket.h>
 #include <netinet/in.h>
-#include <stdint.h>
 #include <qb/qblist.h>
+#include <stdint.h>
+#include <sys/socket.h>
+#include <sys/types.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -51,24 +51,22 @@ extern "C" {
 #ifndef MSG_NOSIGNAL
 #define MSG_NOSIGNAL 0
 #endif
-void totemip_nosigpipe(int s);
+void totemip_nosigpipe (int s);
 #else
 #define totemip_nosigpipe(s)
 #endif
 
-#define TOTEMIP_ADDRLEN (sizeof(struct in6_addr))
+#define TOTEMIP_ADDRLEN (sizeof (struct in6_addr))
 
 /* These are the things that get passed around */
 #define TOTEM_IP_ADDRESS
-struct totem_ip_address
-{
-	unsigned int   nodeid;
+struct totem_ip_address {
+	unsigned int nodeid;
 	unsigned short family;
-	unsigned char  addr[TOTEMIP_ADDRLEN];
-} __attribute__((packed));
+	unsigned char addr[TOTEMIP_ADDRLEN];
+} __attribute__ ((packed));
 
-struct totem_ip_if_address
-{
+struct totem_ip_if_address {
 	struct totem_ip_address ip_addr;
 	struct totem_ip_address mask_addr;
 	int interface_up;
@@ -77,44 +75,36 @@ struct totem_ip_if_address
 	struct qb_list_head list;
 };
 
-extern int totemip_equal(const struct totem_ip_address *addr1,
-			 const struct totem_ip_address *addr2);
-extern int totemip_compare(const void *a, const void *b);
-extern int totemip_is_mcast(struct totem_ip_address *addr);
-extern void totemip_copy(struct totem_ip_address *addr1,
-			 const struct totem_ip_address *addr2);
-extern void totemip_copy_endian_convert(struct totem_ip_address *addr1,
-					const struct totem_ip_address *addr2);
-int totemip_localhost(int family, struct totem_ip_address *localhost);
-extern int totemip_localhost_check(const struct totem_ip_address *addr);
-extern const char *totemip_print(const struct totem_ip_address *addr);
-extern int totemip_sockaddr_to_totemip_convert(const struct sockaddr_storage *saddr,
-					       struct totem_ip_address *ip_addr);
-extern int totemip_totemip_to_sockaddr_convert(struct totem_ip_address *ip_addr,
-					       uint16_t port, struct sockaddr_storage *saddr, int *addrlen);
-extern int totemip_parse(struct totem_ip_address *totemip, const char *addr,
-			 int family);
-extern int totemip_iface_check(struct totem_ip_address *bindnet,
-			       struct totem_ip_address *boundto,
-			       int *interface_up,
-			       int *interface_num,
-			       int mask_high_bit);
+extern int totemip_equal (const struct totem_ip_address *addr1, const struct totem_ip_address *addr2);
+extern int totemip_compare (const void *a, const void *b);
+extern int totemip_is_mcast (struct totem_ip_address *addr);
+extern void totemip_copy (struct totem_ip_address *addr1, const struct totem_ip_address *addr2);
+extern void totemip_copy_endian_convert (struct totem_ip_address *addr1, const struct totem_ip_address *addr2);
+int totemip_localhost (int family, struct totem_ip_address *localhost);
+extern int totemip_localhost_check (const struct totem_ip_address *addr);
+extern const char *totemip_print (const struct totem_ip_address *addr);
+extern int totemip_sockaddr_to_totemip_convert (const struct sockaddr_storage *saddr, struct totem_ip_address *ip_addr);
+extern int totemip_totemip_to_sockaddr_convert (struct totem_ip_address *ip_addr, uint16_t port,
+												struct sockaddr_storage *saddr, int *addrlen);
+extern int totemip_parse (struct totem_ip_address *totemip, const char *addr, int family);
+extern int totemip_iface_check (struct totem_ip_address *bindnet, struct totem_ip_address *boundto, int *interface_up,
+								int *interface_num, int mask_high_bit);
 
-extern int totemip_getifaddrs(struct qb_list_head *addrs);
+extern int totemip_getifaddrs (struct qb_list_head *addrs);
 
-extern void totemip_freeifaddrs(struct qb_list_head *addrs);
+extern void totemip_freeifaddrs (struct qb_list_head *addrs);
 
 /* These two simulate a zero in_addr by clearing the family field */
-static inline void totemip_zero_set(struct totem_ip_address *addr)
+static inline void totemip_zero_set (struct totem_ip_address *addr)
 {
 	addr->family = 0;
 }
-static inline int totemip_zero_check(const struct totem_ip_address *addr)
+static inline int totemip_zero_check (const struct totem_ip_address *addr)
 {
 	return (addr->family == 0);
 }
 
-extern size_t totemip_udpip_header_size(int family);
+extern size_t totemip_udpip_header_size (int family);
 
 #ifdef __cplusplus
 }

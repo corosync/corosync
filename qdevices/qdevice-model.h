@@ -42,56 +42,50 @@
 extern "C" {
 #endif
 
-extern int	qdevice_model_init(struct qdevice_instance *instance);
+extern int qdevice_model_init (struct qdevice_instance *instance);
 
-extern int	qdevice_model_destroy(struct qdevice_instance *instance);
+extern int qdevice_model_destroy (struct qdevice_instance *instance);
 
-extern int	qdevice_model_run(struct qdevice_instance *instance);
+extern int qdevice_model_run (struct qdevice_instance *instance);
 
-extern int	qdevice_model_get_config_node_list_failed(struct qdevice_instance *instance);
+extern int qdevice_model_get_config_node_list_failed (struct qdevice_instance *instance);
 
-extern int	qdevice_model_config_node_list_changed(struct qdevice_instance *instance,
-    const struct node_list *nlist, int config_version_set, uint64_t config_version);
+extern int qdevice_model_config_node_list_changed (struct qdevice_instance *instance, const struct node_list *nlist,
+												   int config_version_set, uint64_t config_version);
 
-extern int	qdevice_model_votequorum_quorum_notify(struct qdevice_instance *instance,
-    uint32_t quorate, uint32_t node_list_entries, votequorum_node_t node_list[]);
+extern int qdevice_model_votequorum_quorum_notify (struct qdevice_instance *instance, uint32_t quorate,
+												   uint32_t node_list_entries, votequorum_node_t node_list[]);
 
-extern int	qdevice_model_votequorum_node_list_notify(struct qdevice_instance *instance,
-    votequorum_ring_id_t votequorum_ring_id, uint32_t node_list_entries, uint32_t node_list[]);
+extern int qdevice_model_votequorum_node_list_notify (struct qdevice_instance *instance, votequorum_ring_id_t votequorum_ring_id,
+													  uint32_t node_list_entries, uint32_t node_list[]);
 
-extern int 	qdevice_model_votequorum_expected_votes_notify(struct qdevice_instance *instance,
-    uint32_t expected_votes);
+extern int qdevice_model_votequorum_expected_votes_notify (struct qdevice_instance *instance, uint32_t expected_votes);
 
-extern int	qdevice_model_ipc_cmd_status(struct qdevice_instance *instance,
-    struct dynar *outbuf, int verbose);
+extern int qdevice_model_ipc_cmd_status (struct qdevice_instance *instance, struct dynar *outbuf, int verbose);
 
 struct qdevice_model {
 	const char *name;
-	int (*init)(struct qdevice_instance *instance);
-	int (*destroy)(struct qdevice_instance *instance);
-	int (*run)(struct qdevice_instance *instance);
-	int (*get_config_node_list_failed)(struct qdevice_instance *instance);
-	int (*config_node_list_changed)(struct qdevice_instance *instance,
-	    const struct node_list *nlist, int config_version_set, uint64_t config_version);
-	int (*votequorum_quorum_notify)(struct qdevice_instance *instance,
-	    uint32_t quorate, uint32_t node_list_entries, votequorum_node_t node_list[]);
-	int (*votequorum_node_list_notify)(struct qdevice_instance *instance,
-	    votequorum_ring_id_t votequorum_ring_id,uint32_t node_list_entries,
-	    uint32_t node_list[]);
-	int (*votequorum_expected_votes_notify)(struct qdevice_instance *instance,
-	    uint32_t expected_votes);
-	int (*ipc_cmd_status)(struct qdevice_instance *instance, struct dynar *outbuf, int verbose);
+	int (*init) (struct qdevice_instance *instance);
+	int (*destroy) (struct qdevice_instance *instance);
+	int (*run) (struct qdevice_instance *instance);
+	int (*get_config_node_list_failed) (struct qdevice_instance *instance);
+	int (*config_node_list_changed) (struct qdevice_instance *instance, const struct node_list *nlist,
+									 int config_version_set, uint64_t config_version);
+	int (*votequorum_quorum_notify) (struct qdevice_instance *instance, uint32_t quorate, uint32_t node_list_entries,
+									 votequorum_node_t node_list[]);
+	int (*votequorum_node_list_notify) (struct qdevice_instance *instance, votequorum_ring_id_t votequorum_ring_id,
+										uint32_t node_list_entries, uint32_t node_list[]);
+	int (*votequorum_expected_votes_notify) (struct qdevice_instance *instance, uint32_t expected_votes);
+	int (*ipc_cmd_status) (struct qdevice_instance *instance, struct dynar *outbuf, int verbose);
 };
 
-extern int		 qdevice_model_register(
-    enum qdevice_model_type model_type, struct qdevice_model *model);
+extern int qdevice_model_register (enum qdevice_model_type model_type, struct qdevice_model *model);
 
-extern void qdevice_model_register_all(void);
+extern void qdevice_model_register_all (void);
 
-extern int		 qdevice_model_str_to_type(const char *str,
-    enum qdevice_model_type *model_type);
+extern int qdevice_model_str_to_type (const char *str, enum qdevice_model_type *model_type);
 
-extern const char 	*qdevice_model_type_to_str(enum qdevice_model_type model_type);
+extern const char *qdevice_model_type_to_str (enum qdevice_model_type model_type);
 
 #ifdef __cplusplus
 }

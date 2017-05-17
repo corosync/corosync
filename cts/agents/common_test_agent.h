@@ -36,8 +36,8 @@
 #define CORO_COMMON_TEST_AGNET_H_DEFINED
 
 #include <corosync/hdb.h>
-#include <qb/qbloop.h>
 #include <qb/qblog.h>
+#include <qb/qbloop.h>
 
 #define OK_STR "OK"
 #define FAIL_STR "FAIL"
@@ -45,13 +45,11 @@
 
 #define HOW_BIG_AND_BUF 4096
 
-typedef void (*ta_do_command_fn) (int sock, char* func, char*args[], int num_args);
+typedef void (*ta_do_command_fn) (int sock, char *func, char *args[], int num_args);
 typedef void (*pre_exit_fn) (void);
 
-int test_agent_run(const char * prog_name, int server_port,
-		   ta_do_command_fn func, pre_exit_fn exit_fn);
+int test_agent_run (const char *prog_name, int server_port, ta_do_command_fn func, pre_exit_fn exit_fn);
 
-qb_loop_t *ta_poll_handle_get(void);
+qb_loop_t *ta_poll_handle_get (void);
 
 #endif /* CORO_COMMON_TEST_AGNET_H_DEFINED */
-

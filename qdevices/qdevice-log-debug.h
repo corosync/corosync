@@ -41,7 +41,7 @@
 extern "C" {
 #endif
 
-extern void		qdevice_log_debug_dump_node_list(const struct node_list *nlist);
+extern void qdevice_log_debug_dump_node_list (const struct node_list *nlist);
 
 #ifdef __cplusplus
 }

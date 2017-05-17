@@ -36,10 +36,10 @@
 #ifndef COROTYPES_H_DEFINED
 #define COROTYPES_H_DEFINED
 
-#include <stdint.h>
 #include <errno.h>
-#include <time.h>
+#include <stdint.h>
 #include <sys/time.h>
+#include <time.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -53,15 +53,15 @@ typedef int64_t cs_time_t;
 #define CS_FALSE 0
 #define CS_TRUE !CS_FALSE
 #define CS_MAX_NAME_LENGTH 256
-#define CS_TIME_END    ((cs_time_t)0x7FFFFFFFFFFFFFFFULL)
+#define CS_TIME_END ((cs_time_t)0x7FFFFFFFFFFFFFFFULL)
 #define CS_MAX(x, y) (((x) > (y)) ? (x) : (y))
 
 /**
  * @brief The cs_name_t struct
  */
 typedef struct {
-   uint16_t length;
-   uint8_t value[CS_MAX_NAME_LENGTH];
+	uint16_t length;
+	uint8_t value[CS_MAX_NAME_LENGTH];
 } cs_name_t;
 
 
@@ -69,9 +69,9 @@ typedef struct {
  * @brief The cs_version_t struct
  */
 typedef struct {
-   char releaseCode;
-   unsigned char majorVersion;
-   unsigned char minorVersion;
+	char releaseCode;
+	unsigned char majorVersion;
+	unsigned char minorVersion;
 } cs_version_t;
 
 /**
@@ -92,52 +92,52 @@ typedef enum {
  * @brief The cs_error_t enum
  */
 typedef enum {
-   CS_OK = 1,
-   CS_ERR_LIBRARY = 2,
-   CS_ERR_VERSION = 3,
-   CS_ERR_INIT = 4,
-   CS_ERR_TIMEOUT = 5,
-   CS_ERR_TRY_AGAIN = 6,
-   CS_ERR_INVALID_PARAM = 7,
-   CS_ERR_NO_MEMORY = 8,
-   CS_ERR_BAD_HANDLE = 9,
-   CS_ERR_BUSY = 10,
-   CS_ERR_ACCESS = 11,
-   CS_ERR_NOT_EXIST = 12,
-   CS_ERR_NAME_TOO_LONG = 13,
-   CS_ERR_EXIST = 14,
-   CS_ERR_NO_SPACE = 15,
-   CS_ERR_INTERRUPT = 16,
-   CS_ERR_NAME_NOT_FOUND = 17,
-   CS_ERR_NO_RESOURCES = 18,
-   CS_ERR_NOT_SUPPORTED = 19,
-   CS_ERR_BAD_OPERATION = 20,
-   CS_ERR_FAILED_OPERATION = 21,
-   CS_ERR_MESSAGE_ERROR = 22,
-   CS_ERR_QUEUE_FULL = 23,
-   CS_ERR_QUEUE_NOT_AVAILABLE = 24,
-   CS_ERR_BAD_FLAGS = 25,
-   CS_ERR_TOO_BIG = 26,
-   CS_ERR_NO_SECTIONS = 27,
-   CS_ERR_CONTEXT_NOT_FOUND = 28,
-   CS_ERR_TOO_MANY_GROUPS = 30,
-   CS_ERR_SECURITY = 100
+	CS_OK = 1,
+	CS_ERR_LIBRARY = 2,
+	CS_ERR_VERSION = 3,
+	CS_ERR_INIT = 4,
+	CS_ERR_TIMEOUT = 5,
+	CS_ERR_TRY_AGAIN = 6,
+	CS_ERR_INVALID_PARAM = 7,
+	CS_ERR_NO_MEMORY = 8,
+	CS_ERR_BAD_HANDLE = 9,
+	CS_ERR_BUSY = 10,
+	CS_ERR_ACCESS = 11,
+	CS_ERR_NOT_EXIST = 12,
+	CS_ERR_NAME_TOO_LONG = 13,
+	CS_ERR_EXIST = 14,
+	CS_ERR_NO_SPACE = 15,
+	CS_ERR_INTERRUPT = 16,
+	CS_ERR_NAME_NOT_FOUND = 17,
+	CS_ERR_NO_RESOURCES = 18,
+	CS_ERR_NOT_SUPPORTED = 19,
+	CS_ERR_BAD_OPERATION = 20,
+	CS_ERR_FAILED_OPERATION = 21,
+	CS_ERR_MESSAGE_ERROR = 22,
+	CS_ERR_QUEUE_FULL = 23,
+	CS_ERR_QUEUE_NOT_AVAILABLE = 24,
+	CS_ERR_BAD_FLAGS = 25,
+	CS_ERR_TOO_BIG = 26,
+	CS_ERR_NO_SECTIONS = 27,
+	CS_ERR_CONTEXT_NOT_FOUND = 28,
+	CS_ERR_TOO_MANY_GROUPS = 30,
+	CS_ERR_SECURITY = 100
 } cs_error_t;
 
 #define CS_IPC_TIMEOUT_MS -1
 
-#define CS_TIME_MS_IN_SEC   1000ULL
-#define CS_TIME_US_IN_SEC   1000000ULL
-#define CS_TIME_NS_IN_SEC   1000000000ULL
-#define CS_TIME_US_IN_MSEC  1000ULL
-#define CS_TIME_NS_IN_MSEC  1000000ULL
-#define CS_TIME_NS_IN_USEC  1000ULL
+#define CS_TIME_MS_IN_SEC 1000ULL
+#define CS_TIME_US_IN_SEC 1000000ULL
+#define CS_TIME_NS_IN_SEC 1000000000ULL
+#define CS_TIME_US_IN_MSEC 1000ULL
+#define CS_TIME_NS_IN_MSEC 1000000ULL
+#define CS_TIME_NS_IN_USEC 1000ULL
 
 /**
  * @brief cs_timestamp_get
  * @return
  */
-static inline uint64_t cs_timestamp_get(void)
+static inline uint64_t cs_timestamp_get (void)
 {
 	uint64_t result;
 
@@ -150,8 +150,7 @@ static inline uint64_t cs_timestamp_get(void)
 	struct timeval time_from_epoch;
 
 	gettimeofday (&time_from_epoch, 0);
-	result = ((time_from_epoch.tv_sec * CS_TIME_NS_IN_SEC) +
-		(time_from_epoch.tv_usec * CS_TIME_NS_IN_USEC));
+	result = ((time_from_epoch.tv_sec * CS_TIME_NS_IN_SEC) + (time_from_epoch.tv_usec * CS_TIME_NS_IN_USEC));
 #endif
 
 	return result;
@@ -168,7 +167,7 @@ cs_error_t qb_to_cs_error (int result);
  * @param err
  * @return
  */
-const char * cs_strerror(cs_error_t err);
+const char *cs_strerror (cs_error_t err);
 
 /**
  * @brief hdb_error_to_cs
@@ -182,4 +181,3 @@ cs_error_t hdb_error_to_cs (int res);
 #endif
 
 #endif /* COROTYPES_H_DEFINED */
-

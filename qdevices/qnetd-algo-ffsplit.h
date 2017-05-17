@@ -41,36 +41,33 @@
 extern "C" {
 #endif
 
-extern enum tlv_reply_error_code	qnetd_algo_ffsplit_client_init(struct qnetd_client *client);
+extern enum tlv_reply_error_code qnetd_algo_ffsplit_client_init (struct qnetd_client *client);
 
-extern enum tlv_reply_error_code	qnetd_algo_ffsplit_config_node_list_received(
-    struct qnetd_client *client, uint32_t msg_seq_num, int config_version_set,
-    uint64_t config_version, const struct node_list *nodes, int initial,
-    enum tlv_vote *result_vote);
+extern enum tlv_reply_error_code
+qnetd_algo_ffsplit_config_node_list_received (struct qnetd_client *client, uint32_t msg_seq_num, int config_version_set,
+											  uint64_t config_version, const struct node_list *nodes, int initial,
+											  enum tlv_vote *result_vote);
 
-extern enum tlv_reply_error_code	qnetd_algo_ffsplit_membership_node_list_received(
-    struct qnetd_client *client, uint32_t msg_seq_num,
-    const struct tlv_ring_id *ring_id,
-    const struct node_list *nodes, enum tlv_vote *result_vote);
+extern enum tlv_reply_error_code
+qnetd_algo_ffsplit_membership_node_list_received (struct qnetd_client *client, uint32_t msg_seq_num,
+												  const struct tlv_ring_id *ring_id, const struct node_list *nodes,
+												  enum tlv_vote *result_vote);
 
-extern enum tlv_reply_error_code	qnetd_algo_ffsplit_quorum_node_list_received(
-    struct qnetd_client *client, uint32_t msg_seq_num,
-    enum tlv_quorate quorate, const struct node_list *nodes, enum tlv_vote *result_vote);
+extern enum tlv_reply_error_code
+qnetd_algo_ffsplit_quorum_node_list_received (struct qnetd_client *client, uint32_t msg_seq_num, enum tlv_quorate quorate,
+											  const struct node_list *nodes, enum tlv_vote *result_vote);
 
-extern void				qnetd_algo_ffsplit_client_disconnect(
-    struct qnetd_client *client, int server_going_down);
+extern void qnetd_algo_ffsplit_client_disconnect (struct qnetd_client *client, int server_going_down);
 
-extern enum tlv_reply_error_code	qnetd_algo_ffsplit_ask_for_vote_received(
-    struct qnetd_client *client, uint32_t msg_seq_num, enum tlv_vote *result_vote);
+extern enum tlv_reply_error_code
+qnetd_algo_ffsplit_ask_for_vote_received (struct qnetd_client *client, uint32_t msg_seq_num, enum tlv_vote *result_vote);
 
-extern enum tlv_reply_error_code	qnetd_algo_ffsplit_vote_info_reply_received(
-    struct qnetd_client *client, uint32_t msg_seq_num);
+extern enum tlv_reply_error_code qnetd_algo_ffsplit_vote_info_reply_received (struct qnetd_client *client, uint32_t msg_seq_num);
 
-extern enum tlv_reply_error_code	qnetd_algo_ffsplit_timer_callback(
-    struct qnetd_client *client, int *reschedule_timer,
-    int *send_vote, enum tlv_vote *result_vote);
+extern enum tlv_reply_error_code qnetd_algo_ffsplit_timer_callback (struct qnetd_client *client, int *reschedule_timer,
+																	int *send_vote, enum tlv_vote *result_vote);
 
-extern enum tlv_reply_error_code qnetd_algo_ffsplit_register(void);
+extern enum tlv_reply_error_code qnetd_algo_ffsplit_register (void);
 
 #ifdef __cplusplus
 }

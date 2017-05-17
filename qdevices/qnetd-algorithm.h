@@ -35,76 +35,68 @@
 #ifndef _QNETD_ALGORITHM_H_
 #define _QNETD_ALGORITHM_H_
 
-#include <sys/types.h>
 #include <inttypes.h>
+#include <sys/types.h>
 
-#include "tlv.h"
 #include "qnetd-client.h"
+#include "tlv.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-extern enum tlv_reply_error_code	qnetd_algorithm_client_init(struct qnetd_client *client);
+extern enum tlv_reply_error_code qnetd_algorithm_client_init (struct qnetd_client *client);
 
-extern enum tlv_reply_error_code	qnetd_algorithm_config_node_list_received(
-    struct qnetd_client *client, uint32_t msg_seq_num, int config_version_set,
-    uint64_t config_version, const struct node_list *nodes, int initial,
-    enum tlv_vote *result_vote);
+extern enum tlv_reply_error_code
+qnetd_algorithm_config_node_list_received (struct qnetd_client *client, uint32_t msg_seq_num, int config_version_set,
+										   uint64_t config_version, const struct node_list *nodes, int initial,
+										   enum tlv_vote *result_vote);
 
-extern enum tlv_reply_error_code	qnetd_algorithm_membership_node_list_received(
-    struct qnetd_client *client, uint32_t msg_seq_num, const struct tlv_ring_id *ring_id,
-    const struct node_list *nodes, enum tlv_vote *result_vote);
+extern enum tlv_reply_error_code
+qnetd_algorithm_membership_node_list_received (struct qnetd_client *client, uint32_t msg_seq_num, const struct tlv_ring_id *ring_id,
+											   const struct node_list *nodes, enum tlv_vote *result_vote);
 
-extern enum tlv_reply_error_code	qnetd_algorithm_quorum_node_list_received(
-    struct qnetd_client *client, uint32_t msg_seq_num, enum tlv_quorate quorate,
-    const struct node_list *nodes, enum tlv_vote *result_vote);
+extern enum tlv_reply_error_code
+qnetd_algorithm_quorum_node_list_received (struct qnetd_client *client, uint32_t msg_seq_num, enum tlv_quorate quorate,
+										   const struct node_list *nodes, enum tlv_vote *result_vote);
 
-extern void				qnetd_algorithm_client_disconnect(
-    struct qnetd_client *client, int server_going_down);
+extern void qnetd_algorithm_client_disconnect (struct qnetd_client *client, int server_going_down);
 
-extern enum tlv_reply_error_code	qnetd_algorithm_ask_for_vote_received(
-    struct qnetd_client *client, uint32_t msg_seq_num, enum tlv_vote *result_vote);
+extern enum tlv_reply_error_code
+qnetd_algorithm_ask_for_vote_received (struct qnetd_client *client, uint32_t msg_seq_num, enum tlv_vote *result_vote);
 
-extern enum tlv_reply_error_code	qnetd_algorithm_vote_info_reply_received(
-    struct qnetd_client *client, uint32_t msg_seq_num);
+extern enum tlv_reply_error_code qnetd_algorithm_vote_info_reply_received (struct qnetd_client *client, uint32_t msg_seq_num);
 
-extern enum tlv_reply_error_code	qnetd_algorithm_timer_callback(
-    struct qnetd_client *client, int *reschedule_timer, int *send_vote, enum tlv_vote *result_vote);
+extern enum tlv_reply_error_code qnetd_algorithm_timer_callback (struct qnetd_client *client, int *reschedule_timer,
+																 int *send_vote, enum tlv_vote *result_vote);
 
 struct qnetd_algorithm {
-	enum tlv_reply_error_code (*init)(struct qnetd_client *client);
+	enum tlv_reply_error_code (*init) (struct qnetd_client *client);
 
-	void (*client_disconnect)(struct qnetd_client *client, int server_going_down);
+	void (*client_disconnect) (struct qnetd_client *client, int server_going_down);
 
-	enum tlv_reply_error_code (*membership_node_list_received)(
-	    struct qnetd_client *client, uint32_t msg_seq_num,
-	    const struct tlv_ring_id *ring_id,
-	    const struct node_list *nodes, enum tlv_vote *result_vote);
+	enum tlv_reply_error_code (*membership_node_list_received) (struct qnetd_client *client, uint32_t msg_seq_num,
+																const struct tlv_ring_id *ring_id,
+																const struct node_list *nodes, enum tlv_vote *result_vote);
 
-	enum tlv_reply_error_code (*quorum_node_list_received)(
-	    struct qnetd_client *client, uint32_t msg_seq_num, enum tlv_quorate quorate,
-	    const struct node_list *nodes, enum tlv_vote *result_vote);
+	enum tlv_reply_error_code (*quorum_node_list_received) (struct qnetd_client *client, uint32_t msg_seq_num, enum tlv_quorate quorate,
+															const struct node_list *nodes, enum tlv_vote *result_vote);
 
-	enum tlv_reply_error_code (*config_node_list_received)(
-	    struct qnetd_client *client,
-	    uint32_t msg_seq_num, int config_version_set, uint64_t config_version,
-	    const struct node_list *nodes, int initial, enum tlv_vote *result_vote);
+	enum tlv_reply_error_code (*config_node_list_received) (struct qnetd_client *client, uint32_t msg_seq_num, int config_version_set,
+															uint64_t config_version, const struct node_list *nodes,
+															int initial, enum tlv_vote *result_vote);
 
-	enum tlv_reply_error_code (*ask_for_vote_received)(
-	    struct qnetd_client *client, uint32_t msg_seq_num, enum tlv_vote *result_vote);
+	enum tlv_reply_error_code (*ask_for_vote_received) (struct qnetd_client *client, uint32_t msg_seq_num, enum tlv_vote *result_vote);
 
-	enum tlv_reply_error_code (*vote_info_reply_received)(struct qnetd_client *client,
-	    uint32_t msg_seq_num);
+	enum tlv_reply_error_code (*vote_info_reply_received) (struct qnetd_client *client, uint32_t msg_seq_num);
 
-	 enum tlv_reply_error_code (*timer_callback)(struct qnetd_client *client,
-	    int *reschedule_timer, int *send_vote, enum tlv_vote *result_vote);
+	enum tlv_reply_error_code (*timer_callback) (struct qnetd_client *client, int *reschedule_timer, int *send_vote,
+												 enum tlv_vote *result_vote);
 };
 
-extern int				qnetd_algorithm_register(
-	enum tlv_decision_algorithm_type algorithm_number, struct qnetd_algorithm *algorithm);
+extern int qnetd_algorithm_register (enum tlv_decision_algorithm_type algorithm_number, struct qnetd_algorithm *algorithm);
 
-extern int qnetd_algorithm_register_all(void);
+extern int qnetd_algorithm_register_all (void);
 
 #ifdef __cplusplus
 }

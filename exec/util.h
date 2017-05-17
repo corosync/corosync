@@ -36,13 +36,13 @@
 #ifndef UTIL_H_DEFINED
 #define UTIL_H_DEFINED
 
-#include <sys/time.h>
 #include <corosync/corotypes.h>
+#include <sys/time.h>
 
 /**
  * Get the time of day and convert to nanoseconds
  */
-extern cs_time_t clust_time_now(void);
+extern cs_time_t clust_time_now (void);
 
 enum e_corosync_done {
 	COROSYNC_DONE_EXIT = 0,
@@ -66,23 +66,21 @@ enum e_corosync_done {
 /**
  * Compare two names.  returns non-zero on match.
  */
-extern int name_match(cs_name_t *name1, cs_name_t *name2);
+extern int name_match (cs_name_t *name1, cs_name_t *name2);
 #define corosync_exit_error(err) _corosync_exit_error ((err), __FILE__, __LINE__)
-extern void _corosync_exit_error (enum e_corosync_done err, const char *file,
-				  unsigned int line) __attribute__((noreturn));
-void _corosync_out_of_memory_error (void) __attribute__((noreturn));
+extern void _corosync_exit_error (enum e_corosync_done err, const char *file, unsigned int line) __attribute__ ((noreturn));
+void _corosync_out_of_memory_error (void) __attribute__ ((noreturn));
 extern char *getcs_name_t (cs_name_t *name);
 extern void setcs_name_t (cs_name_t *name, char *str);
 extern int cs_name_tisEqual (cs_name_t *str1, char *str2);
 /**
  * Get the short name of a service from the service_id.
  */
-const char * short_service_name_get(uint32_t service_id,
-				    char *buf, size_t buf_size);
+const char *short_service_name_get (uint32_t service_id, char *buf, size_t buf_size);
 
 /*
  * Return run directory (ether COROSYNC_RUN_DIR env or LOCALSTATEDIR/lib/corosync)
  */
-const char *get_run_dir(void);
+const char *get_run_dir (void);
 
 #endif /* UTIL_H_DEFINED */

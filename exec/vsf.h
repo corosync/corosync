@@ -36,17 +36,11 @@
 
 struct corosync_api_v1;
 struct corosync_vsf_iface_ver0 {
-
 	/**
 	 * Executes a callback whenever component changes
 	 */
-	int (*init) (
-	    struct corosync_api_v1 *api,
-	    void (*primary_callback_fn) (
-		unsigned int *view_list,
-		int view_list_entries,
-		int primary_designated,
-		struct memb_ring_id *ring_id));
+	int (*init) (struct corosync_api_v1 *api, void (*primary_callback_fn) (unsigned int *view_list, int view_list_entries,
+																		   int primary_designated, struct memb_ring_id *ring_id));
 
 	/**
 	 * @retval 1 if we are primary component

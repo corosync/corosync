@@ -44,23 +44,21 @@
 extern "C" {
 #endif
 
-extern int		qdevice_cmap_get_nodelist(cmap_handle_t cmap_handle,
-    struct node_list *list);
+extern int qdevice_cmap_get_nodelist (cmap_handle_t cmap_handle, struct node_list *list);
 
-extern int		qdevice_cmap_get_config_version(cmap_handle_t cmap_handle,
-    uint64_t *config_version);
+extern int qdevice_cmap_get_config_version (cmap_handle_t cmap_handle, uint64_t *config_version);
 
-extern void		qdevice_cmap_init(struct qdevice_instance *instance);
+extern void qdevice_cmap_init (struct qdevice_instance *instance);
 
-extern int		qdevice_cmap_add_track(struct qdevice_instance *instance);
+extern int qdevice_cmap_add_track (struct qdevice_instance *instance);
 
-extern int		qdevice_cmap_del_track(struct qdevice_instance *instance);
+extern int qdevice_cmap_del_track (struct qdevice_instance *instance);
 
-extern void		qdevice_cmap_destroy(struct qdevice_instance *instance);
+extern void qdevice_cmap_destroy (struct qdevice_instance *instance);
 
-extern int		qdevice_cmap_dispatch(struct qdevice_instance *instance);
+extern int qdevice_cmap_dispatch (struct qdevice_instance *instance);
 
-extern int		qdevice_cmap_store_config_node_list(struct qdevice_instance *instance);
+extern int qdevice_cmap_store_config_node_list (struct qdevice_instance *instance);
 
 #ifdef __cplusplus
 }

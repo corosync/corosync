@@ -46,32 +46,26 @@ struct qnetd_ipc_user_data {
 	PRFileDesc *nspr_poll_fd;
 };
 
-extern int		qnetd_ipc_init(struct qnetd_instance *instance);
+extern int qnetd_ipc_init (struct qnetd_instance *instance);
 
-extern int		qnetd_ipc_close(struct qnetd_instance *instance);
+extern int qnetd_ipc_close (struct qnetd_instance *instance);
 
-extern int		qnetd_ipc_is_closed(struct qnetd_instance *instance);
+extern int qnetd_ipc_is_closed (struct qnetd_instance *instance);
 
-extern int		qnetd_ipc_destroy(struct qnetd_instance *instance);
+extern int qnetd_ipc_destroy (struct qnetd_instance *instance);
 
-extern int		qnetd_ipc_accept(struct qnetd_instance *instance,
-    struct unix_socket_client **res_client);
+extern int qnetd_ipc_accept (struct qnetd_instance *instance, struct unix_socket_client **res_client);
 
-extern void		qnetd_ipc_client_disconnect(struct qnetd_instance *instance,
-    struct unix_socket_client *client);
+extern void qnetd_ipc_client_disconnect (struct qnetd_instance *instance, struct unix_socket_client *client);
 
-extern void		qnetd_ipc_io_read(struct qnetd_instance *instance,
-    struct unix_socket_client *client);
+extern void qnetd_ipc_io_read (struct qnetd_instance *instance, struct unix_socket_client *client);
 
-extern void		qnetd_ipc_io_write(struct qnetd_instance *instance,
-    struct unix_socket_client *client);
+extern void qnetd_ipc_io_write (struct qnetd_instance *instance, struct unix_socket_client *client);
 
-extern int		qnetd_ipc_send_error(struct qnetd_instance *instance,
-    struct unix_socket_client *client, const char *error_fmt, ...)
-    __attribute__((__format__(__printf__, 3, 4)));
+extern int qnetd_ipc_send_error (struct qnetd_instance *instance, struct unix_socket_client *client,
+								 const char *error_fmt, ...) __attribute__ ((__format__ (__printf__, 3, 4)));
 
-extern int		qnetd_ipc_send_buffer(struct qnetd_instance *instance,
-    struct unix_socket_client *client);
+extern int qnetd_ipc_send_buffer (struct qnetd_instance *instance, struct unix_socket_client *client);
 
 #ifdef __cplusplus
 }
