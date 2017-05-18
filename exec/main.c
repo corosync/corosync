@@ -471,6 +471,7 @@ static void corosync_totem_stats_updater (void *data)
 	uint32_t total_token_holdtime;
 	int t, prev;
 	int32_t token_count;
+	const char *cstr;
 
 	stats = api->totem_get_stats();
 
@@ -508,11 +509,21 @@ static void corosync_totem_stats_updater (void *data)
 
 	if (stats->srp->continuous_gather > MAX_NO_CONT_GATHER ||
 	    stats->srp->continuous_sendmsg_failures > MAX_NO_CONT_SENDMSG_FAILURES) {
+		cstr = "";
+
+		if (stats->srp->continuous_sendmsg_failures > MAX_NO_CONT_SENDMSG_FAILURES) {
+			cstr = "number of multicast sendmsg failures is above threshold";
+		}
+
+		if (stats->srp->continuous_gather > MAX_NO_CONT_GATHER) {
+			cstr = "totem is continuously in gather state";
+		}
+
 		log_printf (LOGSYS_LEVEL_WARNING,
 			"Totem is unable to form a cluster because of an "
-			"operating system or network fault. The most common "
+			"operating system or network fault (reason: %s). The most common "
 			"cause of this message is that the local firewall is "
-			"configured improperly.");
+			"configured improperly.", cstr);
 		icmap_set_uint8("runtime.totem.pg.srp.firewall_enabled_or_nic_failure", 1);
 	} else {
 		icmap_set_uint8("runtime.totem.pg.srp.firewall_enabled_or_nic_failure", 0);
