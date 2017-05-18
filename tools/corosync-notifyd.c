@@ -156,6 +156,8 @@ static const char *local_host = "localhost";
 #endif /* ENABLE_SNMP */
 static char snmp_manager_buf[CS_MAX_NAME_LENGTH];
 static char *snmp_manager = NULL;
+static char snmp_community_buf[CS_MAX_NAME_LENGTH];
+static char *snmp_community = NULL;
 
 #define CMAP_MAX_RETRIES 10
 
@@ -693,6 +695,11 @@ static netsnmp_session *snmp_init (const char *target)
 	session->callback = NULL;
 	session->callback_magic = NULL;
 
+	if (snmp_community) {
+		session->community = (u_char *)snmp_community;
+		session->community_len = strlen(snmp_community_buf);
+	}
+
 	session = snmp_add(session,
 #ifdef NETSNMPV54
 		netsnmp_transport_open_client ("snmptrap", target),
@@ -1086,6 +1093,7 @@ static void
 _cs_usage(void)
 {
 	fprintf(stderr,	"usage:\n"\
+		"        -c     : SNMP Community name.\n"\
 		"        -f     : Start application in foreground.\n"\
 		"        -l     : Log all events.\n"\
 		"        -o     : Print events to stdout (turns on -l).\n"\
@@ -1106,8 +1114,13 @@ main(int argc, char *argv[])
 	conf[CS_NTF_SNMP] = QB_FALSE;
 	conf[CS_NTF_DBUS] = QB_FALSE;
 
-	while ((ch = getopt (argc, argv, "floshdm:")) != EOF) {
+	while ((ch = getopt (argc, argv, "c:floshdm:")) != EOF) {
 		switch (ch) {
+			case 'c':
+				strncpy(snmp_community_buf, optarg, sizeof (snmp_community_buf));
+				snmp_community_buf[sizeof (snmp_community_buf) - 1] = '\0';
+				snmp_community = snmp_community_buf;
+				break;
 			case 'f':
 				conf[CS_NTF_FG] = QB_TRUE;
 				break;
