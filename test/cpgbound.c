@@ -45,6 +45,15 @@
 #include <corosync/corotypes.h>
 #include <corosync/cpg.h>
 
+/**
+ * @brief cpg_deliver_fn
+ * @param handle
+ * @param group_name
+ * @param nodeid
+ * @param pid
+ * @param m
+ * @param msg_len
+ */
 static void cpg_deliver_fn (
         cpg_handle_t handle,
         const struct cpg_name *group_name,
@@ -55,6 +64,17 @@ static void cpg_deliver_fn (
 {
 }
 
+/**
+ * @brief cpg_confchg_fn
+ * @param handle
+ * @param group_name
+ * @param member_list
+ * @param member_list_entries
+ * @param left_list
+ * @param left_list_entries
+ * @param joined_list
+ * @param joined_list_entries
+ */
 static void cpg_confchg_fn (
         cpg_handle_t handle,
         const struct cpg_name *group_name,
@@ -64,18 +84,32 @@ static void cpg_confchg_fn (
 {
 }
 
+/**
+ * @brief callbacks
+ */
 static cpg_callbacks_t callbacks = {
 	cpg_deliver_fn,
 	cpg_confchg_fn
 };
 
+/**
+ * @brief group_name
+ */
 static struct cpg_name group_name = {
         .value = "cpg_bm",
         .length = 6
 };
 
 
+/**
+ * @brief buffer
+ */
 static unsigned char buffer[2000000];
+
+/**
+ * @brief main
+ * @return
+ */
 int main (void)
 {
 	cpg_handle_t handle;

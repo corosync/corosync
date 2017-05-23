@@ -77,6 +77,13 @@ struct cs_fsm {
  * so cs_fsm_process() sets the entry and cs_fsm_state_set()
  * sets the new state.
  */
+/**
+ * @brief cs_fsm_process
+ * @param fsm
+ * @param new_event
+ * @param data
+ * @param cb
+ */
 static inline void cs_fsm_process (struct cs_fsm *fsm, int32_t new_event, void * data, cs_fsm_cb cb)
 {
 	int32_t i;
@@ -98,6 +105,13 @@ static inline void cs_fsm_process (struct cs_fsm *fsm, int32_t new_event, void *
 	}
 }
 
+/**
+ * @brief cs_fsm_state_set
+ * @param fsm
+ * @param next_state
+ * @param data
+ * @param cb
+ */
 static inline void cs_fsm_state_set (struct cs_fsm* fsm, int32_t next_state, void* data, cs_fsm_cb cb)
 {
 	int i;

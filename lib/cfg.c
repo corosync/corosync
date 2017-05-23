@@ -62,6 +62,9 @@
 /*
  * Data structure for instance data
  */
+/**
+ * @brief The cfg_inst struct
+ */
 struct cfg_inst {
 	qb_ipcc_connection_t *c;
 	corosync_cfg_callbacks_t callbacks;
@@ -81,6 +84,12 @@ DECLARE_HDB_DATABASE (cfg_hdb, cfg_inst_free);
  * Implementation
  */
 
+/**
+ * @brief corosync_cfg_initialize
+ * @param cfg_handle
+ * @param cfg_callbacks
+ * @return
+ */
 cs_error_t
 corosync_cfg_initialize (
 	corosync_cfg_handle_t *cfg_handle,
@@ -122,6 +131,12 @@ error_no_destroy:
 	return (error);
 }
 
+/**
+ * @brief corosync_cfg_fd_get
+ * @param cfg_handle
+ * @param selection_fd
+ * @return
+ */
 cs_error_t
 corosync_cfg_fd_get (
 	corosync_cfg_handle_t cfg_handle,
@@ -141,6 +156,12 @@ corosync_cfg_fd_get (
 	return (error);
 }
 
+/**
+ * @brief corosync_cfg_dispatch
+ * @param cfg_handle
+ * @param dispatch_flags
+ * @return
+ */
 cs_error_t
 corosync_cfg_dispatch (
 	corosync_cfg_handle_t cfg_handle,
@@ -244,12 +265,21 @@ error_nounlock:
 	return (error);
 }
 
+/**
+ * @brief cfg_inst_free
+ * @param inst
+ */
 static void cfg_inst_free (void *inst)
 {
 	struct cfg_inst *cfg_inst = (struct cfg_inst *)inst;
 	qb_ipcc_disconnect(cfg_inst->c);
 }
 
+/**
+ * @brief corosync_cfg_finalize
+ * @param cfg_handle
+ * @return
+ */
 cs_error_t
 corosync_cfg_finalize (
 	corosync_cfg_handle_t cfg_handle)
@@ -279,6 +309,14 @@ corosync_cfg_finalize (
 	return (error);
 }
 
+/**
+ * @brief corosync_cfg_ring_status_get
+ * @param cfg_handle
+ * @param interface_names
+ * @param status
+ * @param interface_count
+ * @return
+ */
 cs_error_t
 corosync_cfg_ring_status_get (
 	corosync_cfg_handle_t cfg_handle,
@@ -367,6 +405,11 @@ exit_handle_put:
 	return (error);
 }
 
+/**
+ * @brief corosync_cfg_ring_reenable
+ * @param cfg_handle
+ * @return
+ */
 cs_error_t
 corosync_cfg_ring_reenable (
 	corosync_cfg_handle_t cfg_handle)
@@ -399,6 +442,13 @@ corosync_cfg_ring_reenable (
 	return (error);
 }
 
+/**
+ * @brief corosync_cfg_kill_node
+ * @param cfg_handle
+ * @param nodeid
+ * @param reason
+ * @return
+ */
 cs_error_t
 corosync_cfg_kill_node (
 	corosync_cfg_handle_t cfg_handle,
@@ -442,6 +492,12 @@ corosync_cfg_kill_node (
         return (error == CS_OK ? res_lib_cfg_killnode.header.error : error);
 }
 
+/**
+ * @brief corosync_cfg_try_shutdown
+ * @param cfg_handle
+ * @param flags
+ * @return
+ */
 cs_error_t
 corosync_cfg_try_shutdown (
 	corosync_cfg_handle_t cfg_handle,
@@ -477,6 +533,12 @@ corosync_cfg_try_shutdown (
         return (error == CS_OK ? res_lib_cfg_tryshutdown.header.error : error);
 }
 
+/**
+ * @brief corosync_cfg_replyto_shutdown
+ * @param cfg_handle
+ * @param response
+ * @return
+ */
 cs_error_t
 corosync_cfg_replyto_shutdown (
 	corosync_cfg_handle_t cfg_handle,
@@ -510,6 +572,15 @@ corosync_cfg_replyto_shutdown (
 	return (error);
 }
 
+/**
+ * @brief corosync_cfg_get_node_addrs
+ * @param cfg_handle
+ * @param nodeid
+ * @param max_addrs
+ * @param num_addrs
+ * @param addrs
+ * @return
+ */
 cs_error_t corosync_cfg_get_node_addrs (
 	corosync_cfg_handle_t cfg_handle,
 	int nodeid,
@@ -583,6 +654,12 @@ error_put:
 	return (error);
 }
 
+/**
+ * @brief corosync_cfg_local_get
+ * @param handle
+ * @param local_nodeid
+ * @return
+ */
 cs_error_t corosync_cfg_local_get (
 	corosync_cfg_handle_t handle,
 	unsigned int *local_nodeid)
@@ -625,6 +702,11 @@ error_exit:
 	return (error);
 }
 
+/**
+ * @brief corosync_cfg_reload_config
+ * @param handle
+ * @return
+ */
 cs_error_t corosync_cfg_reload_config (
 	corosync_cfg_handle_t handle)
 {

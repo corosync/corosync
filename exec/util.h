@@ -68,12 +68,43 @@ enum e_corosync_done {
  */
 extern int name_match(cs_name_t *name1, cs_name_t *name2);
 #define corosync_exit_error(err) _corosync_exit_error ((err), __FILE__, __LINE__)
+
+/**
+ * @brief _corosync_exit_error
+ * @param err
+ * @param file
+ * @param line
+ */
 extern void _corosync_exit_error (enum e_corosync_done err, const char *file,
 				  unsigned int line) __attribute__((noreturn));
+
+/**
+ * @brief _corosync_out_of_memory_error
+ */
 void _corosync_out_of_memory_error (void) __attribute__((noreturn));
+
+/**
+ * @brief getcs_name_t
+ * @param name
+ * @return
+ */
 extern char *getcs_name_t (cs_name_t *name);
+
+/**
+ * @brief setcs_name_t
+ * @param name
+ * @param str
+ */
 extern void setcs_name_t (cs_name_t *name, char *str);
+
+/**
+ * @brief cs_name_tisEqual
+ * @param str1
+ * @param str2
+ * @return
+ */
 extern int cs_name_tisEqual (cs_name_t *str1, char *str2);
+
 /**
  * Get the short name of a service from the service_id.
  */

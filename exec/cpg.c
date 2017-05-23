@@ -76,6 +76,9 @@ LOGSYS_DECLARE_SUBSYS ("CPG");
 
 #define GROUP_HASH_SIZE 32
 
+/**
+ * @brief The cpg_message_req_types enum
+ */
 enum cpg_message_req_types {
 	MESSAGE_REQ_EXEC_CPG_PROCJOIN = 0,
 	MESSAGE_REQ_EXEC_CPG_PROCLEAVE = 1,
@@ -86,11 +89,15 @@ enum cpg_message_req_types {
 	MESSAGE_REQ_EXEC_CPG_PARTIAL_MCAST = 6,
 };
 
+/**
+ * @brief The zcb_mapped struct
+ */
 struct zcb_mapped {
 	struct qb_list_head list;
 	void *addr;
 	size_t size;
 };
+
 /*
  * state`		exec deliver
  * match group name, pid -> if matched deliver for YES:
@@ -128,6 +135,9 @@ struct zcb_mapped {
  * JOIN_STARTED		YES(CS_OK)
  * JOIN_COMPLETED	YES(CS_OK)
  */
+/**
+ * @brief The cpd_state enum
+ */
 enum cpd_state {
 	CPD_STATE_UNJOINED,
 	CPD_STATE_LEAVE_STARTED,
@@ -135,11 +145,17 @@ enum cpd_state {
 	CPD_STATE_JOIN_COMPLETED
 };
 
+/**
+ * @brief The cpg_sync_state enum
+ */
 enum cpg_sync_state {
 	CPGSYNC_DOWNLIST,
 	CPGSYNC_JOINLIST
 };
 
+/**
+ * @brief The cpg_downlist_state_e enum
+ */
 enum cpg_downlist_state_e {
        CPG_DOWNLIST_NONE,
        CPG_DOWNLIST_WAITING_FOR_MESSAGES,
@@ -149,6 +165,9 @@ static enum cpg_downlist_state_e downlist_state;
 static struct qb_list_head downlist_messages_head;
 static struct qb_list_head joinlist_messages_head;
 
+/**
+ * @brief The cpg_pd struct
+ */
 struct cpg_pd {
 	void *conn;
  	mar_cpg_name_t group_name;
@@ -163,6 +182,9 @@ struct cpg_pd {
 	struct qb_list_head zcb_mapped_list_head;
 };
 
+/**
+ * @brief The cpg_iteration_instance struct
+ */
 struct cpg_iteration_instance {
 	hdb_handle_t handle;
 	struct qb_list_head list;
@@ -188,6 +210,9 @@ static enum cpg_sync_state my_sync_state = CPGSYNC_DOWNLIST;
 
 static mar_cpg_ring_id_t last_sync_ring_id;
 
+/**
+ * @brief The process_info struct
+ */
 struct process_info {
 	unsigned int nodeid;
 	uint32_t pid;
@@ -196,6 +221,9 @@ struct process_info {
 };
 QB_LIST_DECLARE (process_info_list_head);
 
+/**
+ * @brief The join_list_entry struct
+ */
 struct join_list_entry {
 	uint32_t pid;
 	mar_cpg_name_t group_name;
@@ -340,7 +368,7 @@ static inline int zcb_all_free (
 static char *cpg_print_group_name (
 	const mar_cpg_name_t *group);
 
-/*
+/**
  * Library Handler Definition
  */
 static struct corosync_lib_handler cpg_lib_engine[] =
@@ -400,6 +428,9 @@ static struct corosync_lib_handler cpg_lib_engine[] =
 
 };
 
+/**
+ *
+ */
 static struct corosync_exec_handler cpg_exec_engine[] =
 {
 	{ /* 0 - MESSAGE_REQ_EXEC_CPG_PROCJOIN */
@@ -453,11 +484,18 @@ struct corosync_service_engine cpg_service_engine = {
 	.sync_abort                             = cpg_sync_abort
 };
 
+/**
+ * @brief cpg_get_service_engine_ver0
+ * @return
+ */
 struct corosync_service_engine *cpg_get_service_engine_ver0 (void)
 {
 	return (&cpg_service_engine);
 }
 
+/**
+ * @brief The req_exec_cpg_procjoin struct
+ */
 struct req_exec_cpg_procjoin {
 	struct qb_ipc_request_header header __attribute__((aligned(8)));
 	mar_cpg_name_t group_name __attribute__((aligned(8)));
@@ -465,6 +503,9 @@ struct req_exec_cpg_procjoin {
 	mar_uint32_t reason __attribute__((aligned(8)));
 };
 
+/**
+ * @brief The req_exec_cpg_mcast struct
+ */
 struct req_exec_cpg_mcast {
 	struct qb_ipc_request_header header __attribute__((aligned(8)));
 	mar_cpg_name_t group_name __attribute__((aligned(8)));
@@ -474,6 +515,9 @@ struct req_exec_cpg_mcast {
 	mar_uint8_t message[] __attribute__((aligned(8)));
 };
 
+/**
+ * @brief The req_exec_cpg_partial_mcast struct
+ */
 struct req_exec_cpg_partial_mcast {
 	struct qb_ipc_request_header header __attribute__((aligned(8)));
 	mar_cpg_name_t group_name __attribute__((aligned(8)));
@@ -485,12 +529,18 @@ struct req_exec_cpg_partial_mcast {
 	mar_uint8_t message[] __attribute__((aligned(8)));
 };
 
+/**
+ * @brief The req_exec_cpg_downlist_old struct
+ */
 struct req_exec_cpg_downlist_old {
 	struct qb_ipc_request_header header __attribute__((aligned(8)));
 	mar_uint32_t left_nodes __attribute__((aligned(8)));
 	mar_uint32_t nodeids[PROCESSOR_COUNT_MAX]  __attribute__((aligned(8)));
 };
 
+/**
+ * @brief The req_exec_cpg_downlist struct
+ */
 struct req_exec_cpg_downlist {
 	struct qb_ipc_request_header header __attribute__((aligned(8)));
 	/* merge decisions */
@@ -500,6 +550,9 @@ struct req_exec_cpg_downlist {
 	mar_uint32_t nodeids[PROCESSOR_COUNT_MAX]  __attribute__((aligned(8)));
 };
 
+/**
+ * @brief The downlist_msg struct
+ */
 struct downlist_msg {
 	mar_uint32_t sender_nodeid;
 	mar_uint32_t old_members __attribute__((aligned(8)));
@@ -508,6 +561,9 @@ struct downlist_msg {
 	struct qb_list_head list;
 };
 
+/**
+ * @brief The joinlist_msg struct
+ */
 struct joinlist_msg {
 	mar_uint32_t sender_nodeid;
 	uint32_t pid;
@@ -515,10 +571,18 @@ struct joinlist_msg {
 	struct qb_list_head list;
 };
 
+/**
+ * @brief g_req_exec_cpg_downlist
+ */
 static struct req_exec_cpg_downlist g_req_exec_cpg_downlist;
 
 /*
  * Function print group name. It's not reentrant
+ */
+/**
+ * @brief cpg_print_group_name
+ * @param group
+ * @return
  */
 static char *cpg_print_group_name(const mar_cpg_name_t *group)
 {
@@ -547,6 +611,14 @@ static char *cpg_print_group_name(const mar_cpg_name_t *group)
 	return (res);
 }
 
+/**
+ * @brief cpg_sync_init
+ * @param trans_list
+ * @param trans_list_entries
+ * @param member_list
+ * @param member_list_entries
+ * @param ring_id
+ */
 static void cpg_sync_init (
 	const unsigned int *trans_list,
 	size_t trans_list_entries,
@@ -589,6 +661,10 @@ static void cpg_sync_init (
 	g_req_exec_cpg_downlist.left_nodes = entries;
 }
 
+/**
+ * @brief cpg_sync_process
+ * @return
+ */
 static int cpg_sync_process (void)
 {
 	int res = -1;
@@ -606,6 +682,9 @@ static int cpg_sync_process (void)
 	return (res);
 }
 
+/**
+ * @brief cpg_sync_activate
+ */
 static void cpg_sync_activate (void)
 {
 	memcpy (my_old_member_list, my_member_list,
@@ -625,6 +704,9 @@ static void cpg_sync_activate (void)
 	notify_lib_totem_membership (NULL, my_member_list_entries, my_member_list);
 }
 
+/**
+ * @brief cpg_sync_abort
+ */
 static void cpg_sync_abort (void)
 {
 	downlist_state = CPG_DOWNLIST_NONE;
@@ -632,6 +714,13 @@ static void cpg_sync_abort (void)
 	joinlist_messages_delete ();
 }
 
+/**
+ * @brief notify_lib_totem_membership
+ * @param conn
+ * @param member_list_entries
+ * @param member_list
+ * @return
+ */
 static int notify_lib_totem_membership (
 	void *conn,
 	int member_list_entries,
@@ -669,6 +758,17 @@ static int notify_lib_totem_membership (
 	return CS_OK;
 }
 
+/**
+ * @brief notify_lib_joinlist
+ * @param group_name
+ * @param conn
+ * @param joined_list_entries
+ * @param joined_list
+ * @param left_list_entries
+ * @param left_list
+ * @param id
+ * @return
+ */
 static int notify_lib_joinlist(
 	const mar_cpg_name_t *group_name,
 	void *conn,
@@ -801,6 +901,11 @@ static int notify_lib_joinlist(
 	return CS_OK;
 }
 
+/**
+ * @brief downlist_log
+ * @param msg
+ * @param dl
+ */
 static void downlist_log(const char *msg, struct downlist_msg* dl)
 {
 	log_printf (LOG_DEBUG,
@@ -811,6 +916,10 @@ static void downlist_log(const char *msg, struct downlist_msg* dl)
 		    dl->left_nodes);
 }
 
+/**
+ * @brief downlist_master_choose
+ * @return
+ */
 static struct downlist_msg* downlist_master_choose (void)
 {
 	struct downlist_msg *cmp;
@@ -865,6 +974,9 @@ static struct downlist_msg* downlist_master_choose (void)
 	return best;
 }
 
+/**
+ * @brief downlist_master_choose_and_send
+ */
 static void downlist_master_choose_and_send (void)
 {
 	struct downlist_msg *stored_msg;
@@ -959,6 +1071,10 @@ static void downlist_master_choose_and_send (void)
 /*
  * Remove processes that might have left the group while we were suspended.
  */
+
+/**
+ * @brief joinlist_remove_zombie_pi_entries
+ */
 static void joinlist_remove_zombie_pi_entries (void)
 {
 	struct qb_list_head *pi_iter, *tmp_iter;
@@ -1002,6 +1118,9 @@ static void joinlist_remove_zombie_pi_entries (void)
 	}
 }
 
+/**
+ * @brief joinlist_inform_clients
+ */
 static void joinlist_inform_clients (void)
 {
 	struct joinlist_msg *stored_msg;
@@ -1029,6 +1148,9 @@ static void joinlist_inform_clients (void)
 	joinlist_remove_zombie_pi_entries ();
 }
 
+/**
+ * @brief downlist_messages_delete
+ */
 static void downlist_messages_delete (void)
 {
 	struct downlist_msg *stored_msg;
@@ -1041,6 +1163,9 @@ static void downlist_messages_delete (void)
 	}
 }
 
+/**
+ * @brief joinlist_messages_delete
+ */
 static void joinlist_messages_delete (void)
 {
 	struct joinlist_msg *stored_msg;
@@ -1054,6 +1179,11 @@ static void joinlist_messages_delete (void)
 	qb_list_init (&joinlist_messages_head);
 }
 
+/**
+ * @brief cpg_exec_init_fn
+ * @param corosync_api
+ * @return
+ */
 static char *cpg_exec_init_fn (struct corosync_api_v1 *corosync_api)
 {
 	qb_list_init (&downlist_messages_head);
@@ -1062,6 +1192,10 @@ static char *cpg_exec_init_fn (struct corosync_api_v1 *corosync_api)
 	return (NULL);
 }
 
+/**
+ * @brief cpg_iteration_instance_finalize
+ * @param cpg_iteration_instance
+ */
 static void cpg_iteration_instance_finalize (struct cpg_iteration_instance *cpg_iteration_instance)
 {
 	struct qb_list_head *iter, *tmp_iter;
@@ -1077,6 +1211,10 @@ static void cpg_iteration_instance_finalize (struct cpg_iteration_instance *cpg_
 	hdb_handle_destroy (&cpg_iteration_handle_t_db, cpg_iteration_instance->handle);
 }
 
+/**
+ * @brief cpg_pd_finalize
+ * @param cpd
+ */
 static void cpg_pd_finalize (struct cpg_pd *cpd)
 {
 	struct qb_list_head *iter, *tmp_iter;
@@ -1092,6 +1230,11 @@ static void cpg_pd_finalize (struct cpg_pd *cpd)
 	qb_list_del (&cpd->list);
 }
 
+/**
+ * @brief cpg_lib_exit_fn
+ * @param conn
+ * @return
+ */
 static int cpg_lib_exit_fn (void *conn)
 {
 	struct cpg_pd *cpd = (struct cpg_pd *)api->ipc_private_data_get (conn);
@@ -1109,6 +1252,14 @@ static int cpg_lib_exit_fn (void *conn)
 	return (0);
 }
 
+/**
+ * @brief cpg_node_joinleave_send
+ * @param pid
+ * @param group_name
+ * @param fn
+ * @param reason
+ * @return
+ */
 static int cpg_node_joinleave_send (unsigned int pid, const mar_cpg_name_t *group_name, int fn, int reason)
 {
 	struct req_exec_cpg_procjoin req_exec_cpg_procjoin;
@@ -1131,6 +1282,10 @@ static int cpg_node_joinleave_send (unsigned int pid, const mar_cpg_name_t *grou
 }
 
 /* Can byteswap join & leave messages */
+/**
+ * @brief exec_cpg_procjoin_endian_convert
+ * @param msg
+ */
 static void exec_cpg_procjoin_endian_convert (void *msg)
 {
 	struct req_exec_cpg_procjoin *req_exec_cpg_procjoin = msg;
@@ -1140,6 +1295,10 @@ static void exec_cpg_procjoin_endian_convert (void *msg)
 	req_exec_cpg_procjoin->reason = swab32(req_exec_cpg_procjoin->reason);
 }
 
+/**
+ * @brief exec_cpg_joinlist_endian_convert
+ * @param msg_v
+ */
 static void exec_cpg_joinlist_endian_convert (void *msg_v)
 {
 	char *msg = msg_v;
@@ -1155,10 +1314,18 @@ static void exec_cpg_joinlist_endian_convert (void *msg_v)
 	}
 }
 
+/**
+ * @brief exec_cpg_downlist_endian_convert_old
+ * @param msg
+ */
 static void exec_cpg_downlist_endian_convert_old (void *msg)
 {
 }
 
+/**
+ * @brief exec_cpg_downlist_endian_convert
+ * @param msg
+ */
 static void exec_cpg_downlist_endian_convert (void *msg)
 {
 	struct req_exec_cpg_downlist *req_exec_cpg_downlist = msg;
@@ -1172,7 +1339,10 @@ static void exec_cpg_downlist_endian_convert (void *msg)
 	}
 }
 
-
+/**
+ * @brief exec_cpg_mcast_endian_convert
+ * @param msg
+ */
 static void exec_cpg_mcast_endian_convert (void *msg)
 {
 	struct req_exec_cpg_mcast *req_exec_cpg_mcast = msg;
@@ -1184,6 +1354,10 @@ static void exec_cpg_mcast_endian_convert (void *msg)
 	swab_mar_message_source_t (&req_exec_cpg_mcast->source);
 }
 
+/**
+ * @brief exec_cpg_partial_mcast_endian_convert
+ * @param msg
+ */
 static void exec_cpg_partial_mcast_endian_convert (void *msg)
 {
 	struct req_exec_cpg_partial_mcast *req_exec_cpg_mcast = msg;
@@ -1197,6 +1371,13 @@ static void exec_cpg_partial_mcast_endian_convert (void *msg)
 	swab_mar_message_source_t (&req_exec_cpg_mcast->source);
 }
 
+/**
+ * @brief process_info_find
+ * @param group_name
+ * @param pid
+ * @param nodeid
+ * @return
+ */
 static struct process_info *process_info_find(const mar_cpg_name_t *group_name, uint32_t pid, unsigned int nodeid) {
 	struct qb_list_head *iter;
 
@@ -1212,6 +1393,13 @@ static struct process_info *process_info_find(const mar_cpg_name_t *group_name, 
 	return NULL;
 }
 
+/**
+ * @brief do_proc_join
+ * @param name
+ * @param pid
+ * @param nodeid
+ * @param reason
+ */
 static void do_proc_join(
 	const mar_cpg_name_t *name,
 	uint32_t pid,
@@ -1262,6 +1450,13 @@ static void do_proc_join(
 			    MESSAGE_RES_CPG_CONFCHG_CALLBACK);
 }
 
+/**
+ * @brief do_proc_leave
+ * @param name
+ * @param pid
+ * @param nodeid
+ * @param reason
+ */
 static void do_proc_leave(
 	const mar_cpg_name_t *name,
 	uint32_t pid,
@@ -1292,6 +1487,11 @@ static void do_proc_leave(
 	}
 }
 
+/**
+ * @brief message_handler_req_exec_cpg_downlist_old
+ * @param message
+ * @param nodeid
+ */
 static void message_handler_req_exec_cpg_downlist_old (
 	const void *message,
 	unsigned int nodeid)
@@ -1300,6 +1500,11 @@ static void message_handler_req_exec_cpg_downlist_old (
 		nodeid);
 }
 
+/**
+ * @brief message_handler_req_exec_cpg_downlist
+ * @param message
+ * @param nodeid
+ */
 static void message_handler_req_exec_cpg_downlist(
 	const void *message,
 	unsigned int nodeid)
@@ -1343,6 +1548,11 @@ static void message_handler_req_exec_cpg_downlist(
 }
 
 
+/**
+ * @brief message_handler_req_exec_cpg_procjoin
+ * @param message
+ * @param nodeid
+ */
 static void message_handler_req_exec_cpg_procjoin (
 	const void *message,
 	unsigned int nodeid)
@@ -1359,6 +1569,11 @@ static void message_handler_req_exec_cpg_procjoin (
 		CONFCHG_CPG_REASON_JOIN);
 }
 
+/**
+ * @brief message_handler_req_exec_cpg_procleave
+ * @param message
+ * @param nodeid
+ */
 static void message_handler_req_exec_cpg_procleave (
 	const void *message,
 	unsigned int nodeid)
@@ -1377,6 +1592,11 @@ static void message_handler_req_exec_cpg_procleave (
 
 
 /* Got a proclist from another node */
+/**
+ * @brief message_handler_req_exec_cpg_joinlist
+ * @param message_v
+ * @param nodeid
+ */
 static void message_handler_req_exec_cpg_joinlist (
 	const void *message_v,
 	unsigned int nodeid)
@@ -1401,6 +1621,11 @@ static void message_handler_req_exec_cpg_joinlist (
 	}
 }
 
+/**
+ * @brief message_handler_req_exec_cpg_mcast
+ * @param message
+ * @param nodeid
+ */
 static void message_handler_req_exec_cpg_mcast (
 	const void *message,
 	unsigned int nodeid)
@@ -1455,6 +1680,11 @@ static void message_handler_req_exec_cpg_mcast (
 	}
 }
 
+/**
+ * @brief message_handler_req_exec_cpg_partial_mcast
+ * @param message
+ * @param nodeid
+ */
 static void message_handler_req_exec_cpg_partial_mcast (
 	const void *message,
 	unsigned int nodeid)
@@ -1515,6 +1745,10 @@ static void message_handler_req_exec_cpg_partial_mcast (
 }
 
 
+/**
+ * @brief cpg_exec_send_downlist
+ * @return
+ */
 static int cpg_exec_send_downlist(void)
 {
 	struct iovec iov;
@@ -1530,6 +1764,10 @@ static int cpg_exec_send_downlist(void)
 	return (api->totem_mcast (&iov, 1, TOTEM_AGREED));
 }
 
+/**
+ * @brief cpg_exec_send_joinlist
+ * @return
+ */
 static int cpg_exec_send_joinlist(void)
 {
 	int count = 0;
@@ -1579,6 +1817,11 @@ static int cpg_exec_send_joinlist(void)
 	return (api->totem_mcast (&req_exec_cpg_iovec, 1, TOTEM_AGREED));
 }
 
+/**
+ * @brief cpg_lib_init_fn
+ * @param conn
+ * @return
+ */
 static int cpg_lib_init_fn (void *conn)
 {
 	struct cpg_pd *cpd = (struct cpg_pd *)api->ipc_private_data_get (conn);
@@ -1595,6 +1838,11 @@ static int cpg_lib_init_fn (void *conn)
 }
 
 /* Join message from the library */
+/**
+ * @brief message_handler_req_lib_cpg_join
+ * @param conn
+ * @param message
+ */
 static void message_handler_req_lib_cpg_join (void *conn, const void *message)
 {
 	const struct req_lib_cpg_join *req_lib_cpg_join = message;
@@ -1668,6 +1916,11 @@ response_send:
 }
 
 /* Leave message from the library */
+/**
+ * @brief message_handler_req_lib_cpg_leave
+ * @param conn
+ * @param message
+ */
 static void message_handler_req_lib_cpg_leave (void *conn, const void *message)
 {
 	struct res_lib_cpg_leave res_lib_cpg_leave;
@@ -1705,6 +1958,12 @@ static void message_handler_req_lib_cpg_leave (void *conn, const void *message)
 }
 
 /* Finalize message from library */
+
+/**
+ * @brief message_handler_req_lib_cpg_finalize
+ * @param conn
+ * @param message
+ */
 static void message_handler_req_lib_cpg_finalize (
 	void *conn,
 	const void *message)
@@ -1777,6 +2036,14 @@ error_close_unlink:
 	return -1;
 }
 
+/**
+ * @brief zcb_alloc
+ * @param cpd
+ * @param path_to_file
+ * @param size
+ * @param addr
+ * @return
+ */
 static inline int zcb_alloc (
 	struct cpg_pd *cpd,
 	const char *path_to_file,
@@ -1808,6 +2075,11 @@ static inline int zcb_alloc (
 }
 
 
+/**
+ * @brief zcb_free
+ * @param zcb_mapped
+ * @return
+ */
 static inline int zcb_free (struct zcb_mapped *zcb_mapped)
 {
 	unsigned int res;
@@ -1818,6 +2090,12 @@ static inline int zcb_free (struct zcb_mapped *zcb_mapped)
 	return (res);
 }
 
+/**
+ * @brief zcb_by_addr_free
+ * @param cpd
+ * @param addr
+ * @return
+ */
 static inline int zcb_by_addr_free (struct cpg_pd *cpd, void *addr)
 {
 	struct qb_list_head *list, *tmp_iter;
@@ -1836,6 +2114,11 @@ static inline int zcb_by_addr_free (struct cpg_pd *cpd, void *addr)
 	return (res);
 }
 
+/**
+ * @brief zcb_all_free
+ * @param cpd
+ * @return
+ */
 static inline int zcb_all_free (
 	struct cpg_pd *cpd)
 {
@@ -1850,11 +2133,19 @@ static inline int zcb_all_free (
 	return (0);
 }
 
+/**
+ * @brief The u union
+ */
 union u {
 	uint64_t server_addr;
 	void *server_ptr;
 };
 
+/**
+ * @brief void2serveraddr
+ * @param server_ptr
+ * @return
+ */
 static uint64_t void2serveraddr (void *server_ptr)
 {
 	union u u;
@@ -1863,6 +2154,11 @@ static uint64_t void2serveraddr (void *server_ptr)
 	return (u.server_addr);
 }
 
+/**
+ * @brief serveraddr2void
+ * @param server_addr
+ * @return
+ */
 static void *serveraddr2void (uint64_t server_addr)
 {
 	union u u;
@@ -1871,6 +2167,11 @@ static void *serveraddr2void (uint64_t server_addr)
 	return (u.server_ptr);
 };
 
+/**
+ * @brief message_handler_req_lib_cpg_zc_alloc
+ * @param conn
+ * @param message
+ */
 static void message_handler_req_lib_cpg_zc_alloc (
 	void *conn,
 	const void *message)
@@ -1898,6 +2199,11 @@ static void message_handler_req_lib_cpg_zc_alloc (
 		res_header.size);
 }
 
+/**
+ * @brief message_handler_req_lib_cpg_zc_free
+ * @param conn
+ * @param message
+ */
 static void message_handler_req_lib_cpg_zc_free (
 	void *conn,
 	const void *message)
@@ -1921,6 +2227,11 @@ static void message_handler_req_lib_cpg_zc_free (
 }
 
 /* Fragmented mcast message from the library */
+/**
+ * @brief message_handler_req_lib_cpg_partial_mcast
+ * @param conn
+ * @param message
+ */
 static void message_handler_req_lib_cpg_partial_mcast (void *conn, const void *message)
 {
 	const struct req_lib_cpg_partial_mcast *req_lib_cpg_mcast = message;
@@ -1992,6 +2303,12 @@ static void message_handler_req_lib_cpg_partial_mcast (void *conn, const void *m
 }
 
 /* Mcast message from the library */
+
+/**
+ * @brief message_handler_req_lib_cpg_mcast
+ * @param conn
+ * @param message
+ */
 static void message_handler_req_lib_cpg_mcast (void *conn, const void *message)
 {
 	const struct req_lib_cpg_mcast *req_lib_cpg_mcast = message;
@@ -2044,6 +2361,11 @@ static void message_handler_req_lib_cpg_mcast (void *conn, const void *message)
 	}
 }
 
+/**
+ * @brief message_handler_req_lib_cpg_zc_execute
+ * @param conn
+ * @param message
+ */
 static void message_handler_req_lib_cpg_zc_execute (
 	void *conn,
 	const void *message)
@@ -2110,6 +2432,11 @@ static void message_handler_req_lib_cpg_zc_execute (
 
 }
 
+/**
+ * @brief message_handler_req_lib_cpg_membership
+ * @param conn
+ * @param message
+ */
 static void message_handler_req_lib_cpg_membership (void *conn,
 						    const void *message)
 {
@@ -2138,6 +2465,11 @@ static void message_handler_req_lib_cpg_membership (void *conn,
 		sizeof (res_lib_cpg_membership_get));
 }
 
+/**
+ * @brief message_handler_req_lib_cpg_local_get
+ * @param conn
+ * @param message
+ */
 static void message_handler_req_lib_cpg_local_get (void *conn,
 						   const void *message)
 {
@@ -2152,6 +2484,11 @@ static void message_handler_req_lib_cpg_local_get (void *conn,
 		sizeof (res_lib_cpg_local_get));
 }
 
+/**
+ * @brief message_handler_req_lib_cpg_iteration_initialize
+ * @param conn
+ * @param message
+ */
 static void message_handler_req_lib_cpg_iteration_initialize (
 	void *conn,
 	const void *message)
@@ -2293,6 +2630,11 @@ response_send:
 		sizeof (res_lib_cpg_iterationinitialize));
 }
 
+/**
+ * @brief message_handler_req_lib_cpg_iteration_next
+ * @param conn
+ * @param message
+ */
 static void message_handler_req_lib_cpg_iteration_next (
 	void *conn,
 	const void *message)
@@ -2346,6 +2688,11 @@ error_exit:
 		sizeof (res_lib_cpg_iterationnext));
 }
 
+/**
+ * @brief message_handler_req_lib_cpg_iteration_finalize
+ * @param conn
+ * @param message
+ */
 static void message_handler_req_lib_cpg_iteration_finalize (
 	void *conn,
 	const void *message)

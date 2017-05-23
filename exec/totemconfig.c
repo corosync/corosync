@@ -91,6 +91,12 @@ static void add_totem_config_notification(struct totem_config *totem_config);
 
 
 /* All the volatile parameters are uint32s, luckily */
+/**
+ * @brief totem_get_param_by_name
+ * @param totem_config
+ * @param param_name
+ * @return
+ */
 static uint32_t *totem_get_param_by_name(struct totem_config *totem_config, const char *param_name)
 {
 	if (strcmp(param_name, "totem.token") == 0)
@@ -135,6 +141,14 @@ static uint32_t *totem_get_param_by_name(struct totem_config *totem_config, cons
  * Read key_name from icmap. If key is not found or key_name == delete_key or if allow_zero is false
  * and readed value is zero, default value is used and stored into totem_config.
  */
+/**
+ * @brief totem_volatile_config_set_value
+ * @param totem_config
+ * @param key_name
+ * @param deleted_key
+ * @param default_value
+ * @param allow_zero_value
+ */
 static void totem_volatile_config_set_value (struct totem_config *totem_config,
 	const char *key_name, const char *deleted_key, unsigned int default_value,
 	int allow_zero_value)
@@ -168,6 +182,11 @@ static void totem_volatile_config_set_value (struct totem_config *totem_config,
  * Read and validate config values from cmap and store them into totem_config. If key doesn't exists,
  * default value is stored. deleted_key is name of key beeing processed by delete operation
  * from cmap. It is considered as non existing even if it can be read. Can be NULL.
+ */
+/**
+ * @brief totem_volatile_config_read
+ * @param totem_config
+ * @param deleted_key
  */
 static void totem_volatile_config_read (struct totem_config *totem_config, const char *deleted_key)
 {
@@ -223,6 +242,12 @@ static void totem_volatile_config_read (struct totem_config *totem_config, const
 	totem_volatile_config_set_value(totem_config, "totem.heartbeat_failures_allowed", deleted_key, 0, 1);
 }
 
+/**
+ * @brief totem_volatile_config_validate
+ * @param totem_config
+ * @param error_string
+ * @return
+ */
 static int totem_volatile_config_validate (
 	struct totem_config *totem_config,
 	const char **error_string)
@@ -303,6 +328,11 @@ parse_error:
 
 }
 
+/**
+ * @brief totem_get_crypto
+ * @param totem_config
+ * @return
+ */
 static int totem_get_crypto(struct totem_config *totem_config)
 {
 	char *str;
@@ -370,6 +400,10 @@ static int totem_get_crypto(struct totem_config *totem_config)
 	return 0;
 }
 
+/**
+ * @brief totem_config_get_ip_version
+ * @return
+ */
 static int totem_config_get_ip_version(void)
 {
 	int res;
@@ -389,6 +423,11 @@ static int totem_config_get_ip_version(void)
 	return (res);
 }
 
+/**
+ * @brief generate_cluster_id
+ * @param cluster_name
+ * @return
+ */
 static uint16_t generate_cluster_id (const char *cluster_name)
 {
 	int i;
@@ -402,6 +441,15 @@ static uint16_t generate_cluster_id (const char *cluster_name)
 	return (value & 0xFFFF);
 }
 
+/**
+ * @brief get_cluster_mcast_addr
+ * @param cluster_name
+ * @param bindnet
+ * @param ringnumber
+ * @param ip_version
+ * @param res
+ * @return
+ */
 static int get_cluster_mcast_addr (
 		const char *cluster_name,
 		unsigned int linknumber,
@@ -438,6 +486,12 @@ static int get_cluster_mcast_addr (
 	return (err);
 }
 
+/**
+ * @brief generate_nodeid_for_duplicate_test
+ * @param totem_config
+ * @param addr
+ * @return
+ */
 static unsigned int generate_nodeid_for_duplicate_test(
 	struct totem_config *totem_config,
 	char *addr)
@@ -462,6 +516,12 @@ static unsigned int generate_nodeid_for_duplicate_test(
 	return nodeid;
 }
 
+/**
+ * @brief check_for_duplicate_nodeids
+ * @param totem_config
+ * @param error_string
+ * @return
+ */
 static int check_for_duplicate_nodeids(
 	struct totem_config *totem_config,
 	const char **error_string)
@@ -551,7 +611,11 @@ static int check_for_duplicate_nodeids(
 	return retval;
 }
 
-
+/**
+ * @brief find_local_node_in_nodelist
+ * @param totem_config
+ * @return
+ */
 static int find_local_node_in_nodelist(struct totem_config *totem_config)
 {
 	icmap_iter_t iter;
@@ -608,6 +672,12 @@ static int find_local_node_in_nodelist(struct totem_config *totem_config)
  * are changed so for same ring, ip existing in both set1 and set2 are cleared
  * (set to 0), and ips which are only in set1 or set2 remains untouched.
  * totempg_node_add/remove is called.
+ */
+/**
+ * @brief compute_interfaces_diff
+ * @param interface_count
+ * @param set1
+ * @param set2
  */
 static void compute_interfaces_diff(int interface_count,
 	struct totem_interface *set1,
@@ -669,6 +739,11 @@ static void compute_interfaces_diff(int interface_count,
 	}
 }
 
+/**
+ * @brief put_nodelist_members_to_config
+ * @param totem_config
+ * @param reload
+ */
 static void put_nodelist_members_to_config(struct totem_config *totem_config, int reload)
 {
 	icmap_iter_t iter, iter2;
@@ -761,6 +836,14 @@ static void put_nodelist_members_to_config(struct totem_config *totem_config, in
 	}
 }
 
+/**
+ * @brief nodelist_dynamic_notify
+ * @param event
+ * @param key_name
+ * @param new_val
+ * @param old_val
+ * @param user_data
+ */
 static void nodelist_dynamic_notify(
 	int32_t event,
 	const char *key_name,
@@ -804,6 +887,12 @@ static void nodelist_dynamic_notify(
  * match).
  *
  * Returns 1 on success (address was found, node_pos is then correctly set) or 0 on failure.
+ */
+/**
+ * @brief totem_config_find_local_addr_in_nodelist
+ * @param ipaddr_key_prefix
+ * @param node_pos
+ * @return
  */
 int totem_config_find_local_addr_in_nodelist(const char *ipaddr_key_prefix, unsigned int *node_pos)
 {
@@ -897,6 +986,10 @@ int totem_config_find_local_addr_in_nodelist(const char *ipaddr_key_prefix, unsi
 	return (node_found);
 }
 
+/**
+ * @brief config_convert_nodelist_to_interface
+ * @param totem_config
+ */
 static void config_convert_nodelist_to_interface(struct totem_config *totem_config)
 {
 	int res = 0;
@@ -932,7 +1025,13 @@ static void config_convert_nodelist_to_interface(struct totem_config *totem_conf
 	}
 }
 
-
+/**
+ * @brief totem_config_read
+ * @param totem_config
+ * @param error_string
+ * @param warnings
+ * @return
+ */
 extern int totem_config_read (
 	struct totem_config *totem_config,
 	const char **error_string,
@@ -1282,7 +1381,12 @@ extern int totem_config_read (
 	return 0;
 }
 
-
+/**
+ * @brief totem_config_validate
+ * @param totem_config
+ * @param error_string
+ * @return
+ */
 int totem_config_validate (
 	struct totem_config *totem_config,
 	const char **error_string)
@@ -1447,6 +1551,13 @@ parse_error:
 
 }
 
+/**
+ * @brief read_keyfile
+ * @param key_location
+ * @param totem_config
+ * @param error_string
+ * @return
+ */
 static int read_keyfile (
 	const char *key_location,
 	struct totem_config *totem_config,
@@ -1496,6 +1607,12 @@ parse_error:
 	return (-1);
 }
 
+/**
+ * @brief totem_config_keyread
+ * @param totem_config
+ * @param error_string
+ * @return
+ */
 int totem_config_keyread (
 	struct totem_config *totem_config,
 	const char **error_string)
@@ -1556,6 +1673,10 @@ key_error:
 
 }
 
+/**
+ * @brief debug_dump_totem_config
+ * @param totem_config
+ */
 static void debug_dump_totem_config(const struct totem_config *totem_config)
 {
 
@@ -1580,6 +1701,14 @@ static void debug_dump_totem_config(const struct totem_config *totem_config)
 	log_printf(LOGSYS_LEVEL_DEBUG, "max_network_delay (%d ms)", totem_config->max_network_delay);
 }
 
+/**
+ * @brief totem_change_notify
+ * @param event
+ * @param key_name
+ * @param new_val
+ * @param old_val
+ * @param user_data
+ */
 static void totem_change_notify(
 	int32_t event,
 	const char *key_name,
@@ -1636,6 +1765,14 @@ static void totem_change_notify(
 	}
 }
 
+/**
+ * @brief totem_reload_notify
+ * @param event
+ * @param key_name
+ * @param new_val
+ * @param old_val
+ * @param user_data
+ */
 static void totem_reload_notify(
 	int32_t event,
 	const char *key_name,
@@ -1673,6 +1810,10 @@ static void totem_reload_notify(
 	}
 }
 
+/**
+ * @brief add_totem_config_notification
+ * @param totem_config
+ */
 static void add_totem_config_notification(struct totem_config *totem_config)
 {
 	icmap_track_t icmap_track;

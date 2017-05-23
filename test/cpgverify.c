@@ -49,15 +49,30 @@
 #include <nss.h>
 #include <pk11pub.h>
 
+/**
+ * @brief The my_msg struct
+ */
 struct my_msg {
 	unsigned int msg_size;
 	unsigned char sha1[20];
 	unsigned char buffer[0];
 };
 
+/**
+ * @brief deliveries
+ */
 static int deliveries = 0;
 PK11Context* sha1_context;
 
+/**
+ * @brief cpg_deliver_fn
+ * @param handle
+ * @param group_name
+ * @param nodeid
+ * @param pid
+ * @param m
+ * @param msg_len
+ */
 static void cpg_deliver_fn (
         cpg_handle_t handle,
         const struct cpg_name *group_name,
@@ -87,6 +102,17 @@ printf ("\n");
 	deliveries++;
 }
 
+/**
+ * @brief cpg_confchg_fn
+ * @param handle
+ * @param group_name
+ * @param member_list
+ * @param member_list_entries
+ * @param left_list
+ * @param left_list_entries
+ * @param joined_list
+ * @param joined_list_entries
+ */
 static void cpg_confchg_fn (
         cpg_handle_t handle,
         const struct cpg_name *group_name,
@@ -96,17 +122,26 @@ static void cpg_confchg_fn (
 {
 }
 
+/**
+ *
+ */
 static cpg_callbacks_t callbacks = {
 	cpg_deliver_fn,
 	cpg_confchg_fn
 };
 
+/**
+ *
+ */
 static struct cpg_name group_name = {
         .value = "cpg_bm",
         .length = 6
 };
 
 
+/**
+ * @brief buffer
+ */
 static unsigned char buffer[200000];
 int main (int argc, char *argv[])
 {

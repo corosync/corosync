@@ -49,6 +49,12 @@ struct schedwrk_instance {
 	int lock;
 };
 
+/**
+ * @brief schedwrk_do
+ * @param type
+ * @param context
+ * @return
+ */
 static int schedwrk_do (enum totem_callback_token_type type, const void *context)
 {
 	hdb_handle_t handle = *((hdb_handle_t *)context);
@@ -80,6 +86,9 @@ error_exit:
 	return (-1);
 }
 
+/**
+ * @brief schedwrk_init
+ */
 void schedwrk_init (
 	void (*serialize_lock_fn) (void),
 	void (*serialize_unlock_fn) (void))
@@ -88,6 +97,13 @@ void schedwrk_init (
 	serialize_unlock = serialize_unlock_fn;
 }
 
+/**
+ * @brief schedwrk_internal_create
+ * @param handle
+ * @param context
+ * @param lock
+ * @return
+ */
 static int schedwrk_internal_create (
 	hdb_handle_t *handle,
 	int (schedwrk_fn) (const void *),
@@ -134,6 +150,11 @@ error_exit:
  * handle pointer is internally used by totempg_callback_token_create. To make schedwrk work,
  * handle must be pointer to ether heap or .text or static memory (not stack) which is not
  * changed by caller.
+ *
+ * @brief schedwrk_create
+ * @param handle
+ * @param context
+ * @return
  */
 int schedwrk_create (
 	hdb_handle_t *handle,
@@ -143,6 +164,12 @@ int schedwrk_create (
 	return schedwrk_internal_create (handle, schedwrk_fn, context, 1);
 }
 
+/**
+ * @brief schedwrk_create_nolock
+ * @param handle
+ * @param context
+ * @return
+ */
 int schedwrk_create_nolock (
 	hdb_handle_t *handle,
 	int (schedwrk_fn) (const void *),
@@ -151,6 +178,10 @@ int schedwrk_create_nolock (
 	return schedwrk_internal_create (handle, schedwrk_fn, context, 0);
 }
 
+/**
+ * @brief schedwrk_destroy
+ * @param handle
+ */
 void schedwrk_destroy (hdb_handle_t handle)
 {
 	hdb_handle_destroy (&schedwrk_instance_database, handle);

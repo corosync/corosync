@@ -72,6 +72,9 @@
 #define SAM_RP_MASK_C(pol)	(pol & (~SAM_RECOVERY_POLICY_CMAP))
 #define SAM_RP_MASK(pol)	(pol & (~(SAM_RECOVERY_POLICY_QUORUM | SAM_RECOVERY_POLICY_CMAP)))
 
+/**
+ * @brief The sam_internal_status_t enum
+ */
 enum sam_internal_status_t {
 	SAM_INTERNAL_STATUS_NOT_INITIALIZED = 0,
 	SAM_INTERNAL_STATUS_INITIALIZED,
@@ -80,6 +83,9 @@ enum sam_internal_status_t {
 	SAM_INTERNAL_STATUS_FINALIZED
 };
 
+/**
+ * @brief The sam_command_t enum
+ */
 enum sam_command_t {
 	SAM_COMMAND_START,
 	SAM_COMMAND_STOP,
@@ -89,11 +95,17 @@ enum sam_command_t {
 	SAM_COMMAND_MARK_FAILED,
 };
 
+/**
+ * @brief The sam_reply_t enum
+ */
 enum sam_reply_t {
 	SAM_REPLY_OK,
 	SAM_REPLY_ERROR,
 };
 
+/**
+ * @brief The sam_parent_action_t enum
+ */
 enum sam_parent_action_t {
 	SAM_PARENT_ACTION_ERROR,
 	SAM_PARENT_ACTION_RECOVERY,
@@ -101,6 +113,9 @@ enum sam_parent_action_t {
 	SAM_PARENT_ACTION_CONTINUE
 };
 
+/**
+ * @brief The sam_cmap_key_t enum
+ */
 enum sam_cmap_key_t {
 	SAM_CMAP_KEY_RECOVERY,
 	SAM_CMAP_KEY_HC_PERIOD,
@@ -108,6 +123,9 @@ enum sam_cmap_key_t {
 	SAM_CMAP_KEY_STATE,
 };
 
+/**
+ * @brief sam_internal_data
+ */
 static struct {
 	int time_interval;
 	sam_recovery_policy_t recovery_policy;
@@ -140,6 +158,12 @@ static struct {
 
 extern const char *__progname;
 
+/**
+ * @brief sam_cmap_update_key
+ * @param key
+ * @param value
+ * @return
+ */
 static cs_error_t sam_cmap_update_key (enum sam_cmap_key_t key, const char *value)
 {
 	cs_error_t err;
@@ -192,6 +216,10 @@ exit_error:
 	return (err);
 }
 
+/**
+ * @brief sam_cmap_destroy_pid_path
+ * @return
+ */
 static cs_error_t sam_cmap_destroy_pid_path (void)
 {
 	cmap_iter_handle_t iter;
@@ -213,6 +241,10 @@ error_exit:
 	return (err);
 }
 
+/**
+ * @brief sam_cmap_register
+ * @return
+ */
 static cs_error_t sam_cmap_register (void)
 {
 	cs_error_t err;
@@ -242,6 +274,14 @@ destroy_finalize_error:
 	return (err);
 }
 
+/**
+ * @brief quorum_notification_fn
+ * @param handle
+ * @param quorate
+ * @param ring_id
+ * @param view_list_entries
+ * @param view_list
+ */
 static void quorum_notification_fn (
         quorum_handle_t handle,
         uint32_t quorate,
@@ -252,6 +292,12 @@ static void quorum_notification_fn (
 	sam_internal_data.quorate = quorate;
 }
 
+/**
+ * @brief sam_initialize
+ * @param time_interval
+ * @param recovery_policy
+ * @return
+ */
 cs_error_t sam_initialize (
 	int time_interval,
 	sam_recovery_policy_t recovery_policy)
@@ -320,6 +366,13 @@ exit_error:
 /*
  * Wrapper on top of write(2) function. It handles EAGAIN and EINTR states and sends whole buffer if possible.
  */
+/**
+ * @brief sam_safe_write
+ * @param d
+ * @param buf
+ * @param nbyte
+ * @return
+ */
 static size_t sam_safe_write (
 	int d,
 	const void *buf,
@@ -348,6 +401,13 @@ static size_t sam_safe_write (
 /*
  * Wrapper on top of read(2) function. It handles EAGAIN and EINTR states and reads whole buffer if possible.
  */
+/**
+ * @brief sam_safe_read
+ * @param d
+ * @param buf
+ * @param nbyte
+ * @return
+ */
 static size_t sam_safe_read (
 	int d,
 	void *buf,
@@ -374,6 +434,11 @@ static size_t sam_safe_read (
 	return (bytes_read);
 }
 
+/**
+ * @brief sam_read_reply
+ * @param child_fd_in
+ * @return
+ */
 static cs_error_t sam_read_reply (
 	int child_fd_in)
 {
@@ -408,6 +473,11 @@ static cs_error_t sam_read_reply (
 	return (CS_OK);
 }
 
+/**
+ * @brief sam_data_getsize
+ * @param size
+ * @return
+ */
 cs_error_t sam_data_getsize (size_t *size)
 {
 	if (size == NULL) {
@@ -430,6 +500,12 @@ cs_error_t sam_data_getsize (size_t *size)
 	return (CS_OK);
 }
 
+/**
+ * @brief sam_data_restore
+ * @param data
+ * @param size
+ * @return
+ */
 cs_error_t sam_data_restore (
 	void *data,
 	size_t size)
@@ -475,6 +551,12 @@ error_unlock:
 	return (err);
 }
 
+/**
+ * @brief sam_data_store
+ * @param data
+ * @param size
+ * @return
+ */
 cs_error_t sam_data_store (
 	const void *data,
 	size_t size)
@@ -564,6 +646,10 @@ error_unlock:
 	return (err);
 }
 
+/**
+ * @brief sam_start
+ * @return
+ */
 cs_error_t sam_start (void)
 {
 	char command;
@@ -612,6 +698,10 @@ cs_error_t sam_start (void)
 	return (CS_OK);
 }
 
+/**
+ * @brief sam_stop
+ * @return
+ */
 cs_error_t sam_stop (void)
 {
 	char command;
@@ -657,6 +747,10 @@ cs_error_t sam_stop (void)
 	return (CS_OK);
 }
 
+/**
+ * @brief sam_hc_send
+ * @return
+ */
 cs_error_t sam_hc_send (void)
 {
 	char command;
@@ -673,6 +767,10 @@ cs_error_t sam_hc_send (void)
 	return (CS_OK);
 }
 
+/**
+ * @brief sam_finalize
+ * @return
+ */
 cs_error_t sam_finalize (void)
 {
 	cs_error_t error;
@@ -697,6 +795,10 @@ exit_error:
 	return (CS_OK);
 }
 
+/**
+ * @brief sam_mark_failed
+ * @return
+ */
 cs_error_t sam_mark_failed (void)
 {
 	char command;
@@ -718,6 +820,11 @@ cs_error_t sam_mark_failed (void)
 	return (CS_OK);
 }
 
+/**
+ * @brief sam_warn_signal_set
+ * @param warn_signal
+ * @return
+ */
 cs_error_t sam_warn_signal_set (int warn_signal)
 {
 	char command;
@@ -772,6 +879,13 @@ error_unlock:
 	return (err);
 }
 
+/**
+ * @brief sam_parent_reply_send
+ * @param err
+ * @param parent_fd_in
+ * @param parent_fd_out
+ * @return
+ */
 static cs_error_t sam_parent_reply_send (
 	cs_error_t err,
 	int parent_fd_in,
@@ -803,6 +917,12 @@ error_reply:
 }
 
 
+/**
+ * @brief sam_parent_warn_signal_set
+ * @param parent_fd_in
+ * @param parent_fd_out
+ * @return
+ */
 static cs_error_t sam_parent_warn_signal_set (
 	int parent_fd_in,
 	int parent_fd_out)
@@ -829,6 +949,12 @@ error_reply:
 	return (sam_parent_reply_send (err, parent_fd_in, parent_fd_out));
 }
 
+/**
+ * @brief sam_parent_wait_for_quorum
+ * @param parent_fd_in
+ * @param parent_fd_out
+ * @return
+ */
 static cs_error_t sam_parent_wait_for_quorum (
 	int parent_fd_in,
 	int parent_fd_out)
@@ -907,6 +1033,13 @@ error_reply:
 	return (sam_parent_reply_send (err, parent_fd_in, parent_fd_out));
 }
 
+/**
+ * @brief sam_parent_cmap_state_set
+ * @param parent_fd_in
+ * @param parent_fd_out
+ * @param state
+ * @return
+ */
 static cs_error_t sam_parent_cmap_state_set (
 	int parent_fd_in,
 	int parent_fd_out,
@@ -931,6 +1064,12 @@ error_reply:
 	return (sam_parent_reply_send (err, parent_fd_in, parent_fd_out));
 }
 
+/**
+ * @brief sam_parent_kill_child
+ * @param action
+ * @param child_pid
+ * @return
+ */
 static cs_error_t sam_parent_kill_child (
 	int *action,
 	pid_t child_pid)
@@ -956,6 +1095,12 @@ static cs_error_t sam_parent_kill_child (
 	return (CS_OK);
 }
 
+/**
+ * @brief sam_parent_mark_child_failed
+ * @param action
+ * @param child_pid
+ * @return
+ */
 static cs_error_t sam_parent_mark_child_failed (
 	int *action,
 	pid_t child_pid)
@@ -972,6 +1117,12 @@ static cs_error_t sam_parent_mark_child_failed (
 	return (sam_parent_kill_child (action, child_pid));
 }
 
+/**
+ * @brief sam_parent_data_store
+ * @param parent_fd_in
+ * @param parent_fd_out
+ * @return
+ */
 static cs_error_t sam_parent_data_store (
 	int parent_fd_in,
 	int parent_fd_out)
@@ -1016,6 +1167,13 @@ error_reply:
 	return (sam_parent_reply_send (err, parent_fd_in, parent_fd_out));
 }
 
+/**
+ * @brief sam_parent_handler
+ * @param parent_fd_in
+ * @param parent_fd_out
+ * @param child_pid
+ * @return
+ */
 static enum sam_parent_action_t sam_parent_handler (
 	int parent_fd_in,
 	int parent_fd_out,
@@ -1180,6 +1338,11 @@ action_exit:
 	return action;
 }
 
+/**
+ * @brief sam_register
+ * @param instance_id
+ * @return
+ */
 cs_error_t sam_register (
 	unsigned int *instance_id)
 {
@@ -1321,6 +1484,11 @@ error_exit:
 	return (error);
 }
 
+/**
+ * @brief hc_callback_thread
+ * @param unused_param
+ * @return
+ */
 static void *hc_callback_thread (void *unused_param)
 {
 	int poll_error;
@@ -1383,6 +1551,11 @@ static void *hc_callback_thread (void *unused_param)
 	return (unused_param);
 }
 
+/**
+ * @brief sam_hc_callback_register
+ * @param cb
+ * @return
+ */
 cs_error_t sam_hc_callback_register (sam_hc_callback_t cb)
 {
 	cs_error_t error = CS_OK;

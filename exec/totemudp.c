@@ -88,6 +88,9 @@
 
 #define MESSAGE_TYPE_MEMB_JOIN	3
 
+/**
+ * @brief The totemudp_socket struct
+ */
 struct totemudp_socket {
 	int mcast_recv;
 	int mcast_send;
@@ -101,6 +104,9 @@ struct totemudp_socket {
 	int local_mcast_loop[2];
 };
 
+/**
+ * @brief The totemudp_instance struct
+ */
 struct totemudp_instance {
 	qb_loop_t *totemudp_poll_handle;
 
@@ -191,12 +197,24 @@ struct totemudp_instance {
 	struct totem_ip_address token_target;
 };
 
+/**
+ * @brief The work_item struct
+ */
 struct work_item {
 	const void *msg;
 	unsigned int msg_len;
 	struct totemudp_instance *instance;
 };
 
+/**
+ * @brief totemudp_build_sockets
+ * @param instance
+ * @param bindnet_address
+ * @param mcastaddress
+ * @param sockets
+ * @param bound_to
+ * @return
+ */
 static int totemudp_build_sockets (
 	struct totemudp_instance *instance,
 	struct totem_ip_address *bindnet_address,
@@ -206,6 +224,10 @@ static int totemudp_build_sockets (
 
 static struct totem_ip_address localhost;
 
+/**
+ * @brief totemudp_instance_initialize
+ * @param instance
+ */
 static void totemudp_instance_initialize (struct totemudp_instance *instance)
 {
 	memset (instance, 0, sizeof (struct totemudp_instance));
@@ -243,6 +265,13 @@ do {												\
 		fmt ": %s (%d)\n", ##args, _error_ptr, err_num);				\
 	} while(0)
 
+/**
+ * @brief totemudp_crypto_set
+ * @param udp_context
+ * @param cipher_type
+ * @param hash_type
+ * @return
+ */
 int totemudp_crypto_set (
 	void *udp_context,
 	const char *cipher_type,
@@ -253,6 +282,13 @@ int totemudp_crypto_set (
 }
 
 
+/**
+ * @brief ucast_sendmsg
+ * @param instance
+ * @param system_to
+ * @param msg
+ * @param msg_len
+ */
 static inline void ucast_sendmsg (
 	struct totemudp_instance *instance,
 	struct totem_ip_address *system_to,
@@ -307,6 +343,12 @@ static inline void ucast_sendmsg (
 	}
 }
 
+/**
+ * @brief mcast_sendmsg
+ * @param instance
+ * @param msg
+ * @param msg_len
+ */
 static inline void mcast_sendmsg (
 	struct totemudp_instance *instance,
 	const void *msg,
@@ -377,6 +419,11 @@ static inline void mcast_sendmsg (
 }
 
 
+/**
+ * @brief totemudp_finalize
+ * @param udp_context
+ * @return
+ */
 int totemudp_finalize (
 	void *udp_context)
 {
@@ -410,6 +457,13 @@ int totemudp_finalize (
  * Only designed to work with a message with one iov
  */
 
+/**
+ * @brief net_deliver_fn
+ * @param fd
+ * @param revents
+ * @param data
+ * @return
+ */
 static int net_deliver_fn (
 	int fd,
 	int revents,
@@ -483,6 +537,15 @@ static int net_deliver_fn (
 	return (0);
 }
 
+/**
+ * @brief netif_determine
+ * @param instance
+ * @param bindnet
+ * @param bound_to
+ * @param interface_up
+ * @param interface_num
+ * @return
+ */
 static int netif_determine (
 	struct totemudp_instance *instance,
 	struct totem_ip_address *bindnet,
@@ -504,6 +567,10 @@ static int netif_determine (
 /*
  * If the interface is up, the sockets for totem are built.  If the interface is down
  * this function is requeued in the timer list to retry building the sockets later.
+ */
+/**
+ * @brief timer_function_netif_check_timeout
+ * @param data
  */
 static void timer_function_netif_check_timeout (
 	void *data)
@@ -652,6 +719,12 @@ static void timer_function_netif_check_timeout (
 
 /* Set the socket priority to INTERACTIVE to ensure
    that our messages don't get queued behind anything else */
+
+/**
+ * @brief totemudp_traffic_control_set
+ * @param instance
+ * @param sock
+ */
 static void totemudp_traffic_control_set(struct totemudp_instance *instance, int sock)
 {
 #ifdef SO_PRIORITY
@@ -663,6 +736,16 @@ static void totemudp_traffic_control_set(struct totemudp_instance *instance, int
 #endif
 }
 
+/**
+ * @brief totemudp_build_sockets_ip
+ * @param instance
+ * @param mcast_address
+ * @param bindnet_address
+ * @param sockets
+ * @param bound_to
+ * @param interface_num
+ * @return
+ */
 static int totemudp_build_sockets_ip (
 	struct totemudp_instance *instance,
 	struct totem_ip_address *mcast_address,
@@ -1014,6 +1097,15 @@ static int totemudp_build_sockets_ip (
 	return 0;
 }
 
+/**
+ * @brief totemudp_build_sockets
+ * @param instance
+ * @param mcast_address
+ * @param bindnet_address
+ * @param sockets
+ * @param bound_to
+ * @return
+ */
 static int totemudp_build_sockets (
 	struct totemudp_instance *instance,
 	struct totem_ip_address *mcast_address,
@@ -1140,16 +1232,30 @@ int totemudp_initialize (
 	return (0);
 }
 
+/**
+ * @brief totemudp_buffer_alloc
+ * @return
+ */
 void *totemudp_buffer_alloc (void)
 {
 	return malloc (FRAME_SIZE_MAX);
 }
 
+/**
+ * @brief totemudp_buffer_release
+ * @param ptr
+ */
 void totemudp_buffer_release (void *ptr)
 {
 	return free (ptr);
 }
 
+/**
+ * @brief totemudp_processor_count_set
+ * @param udp_context
+ * @param processor_count
+ * @return
+ */
 int totemudp_processor_count_set (
 	void *udp_context,
 	int processor_count)
@@ -1172,6 +1278,11 @@ int totemudp_processor_count_set (
 	return (res);
 }
 
+/**
+ * @brief totemudp_recv_flush
+ * @param udp_context
+ * @return
+ */
 int totemudp_recv_flush (void *udp_context)
 {
 	struct totemudp_instance *instance = (struct totemudp_instance *)udp_context;
@@ -1208,11 +1319,23 @@ int totemudp_recv_flush (void *udp_context)
 	return (res);
 }
 
+/**
+ * @brief totemudp_send_flush
+ * @param udp_context
+ * @return
+ */
 int totemudp_send_flush (void *udp_context)
 {
 	return 0;
 }
 
+/**
+ * @brief totemudp_token_send
+ * @param udp_context
+ * @param msg
+ * @param msg_len
+ * @return
+ */
 int totemudp_token_send (
 	void *udp_context,
 	const void *msg,
@@ -1225,6 +1348,14 @@ int totemudp_token_send (
 
 	return (res);
 }
+
+/**
+ * @brief totemudp_mcast_flush_send
+ * @param udp_context
+ * @param msg
+ * @param msg_len
+ * @return
+ */
 int totemudp_mcast_flush_send (
 	void *udp_context,
 	const void *msg,
@@ -1238,6 +1369,13 @@ int totemudp_mcast_flush_send (
 	return (res);
 }
 
+/**
+ * @brief totemudp_mcast_noflush_send
+ * @param udp_context
+ * @param msg
+ * @param msg_len
+ * @return
+ */
 int totemudp_mcast_noflush_send (
 	void *udp_context,
 	const void *msg,
@@ -1251,6 +1389,11 @@ int totemudp_mcast_noflush_send (
 	return (res);
 }
 
+/**
+ * @brief totemudp_iface_check
+ * @param udp_context
+ * @return
+ */
 extern int totemudp_iface_check (void *udp_context)
 {
 	struct totemudp_instance *instance = (struct totemudp_instance *)udp_context;
@@ -1261,6 +1404,13 @@ extern int totemudp_iface_check (void *udp_context)
 	return (res);
 }
 
+/**
+ * @brief totemudp_ifaces_get
+ * @param net_context
+ * @param status
+ * @param iface_count
+ * @return
+ */
 int totemudp_ifaces_get (
 	void *net_context,
 	char ***status,
@@ -1276,6 +1426,11 @@ int totemudp_ifaces_get (
 	return (0);
 }
 
+/**
+ * @brief totemudp_net_mtu_adjust
+ * @param udp_context
+ * @param totem_config
+ */
 extern void totemudp_net_mtu_adjust (void *udp_context, struct totem_config *totem_config)
 {
 
@@ -1284,6 +1439,12 @@ extern void totemudp_net_mtu_adjust (void *udp_context, struct totem_config *tot
 	totem_config->net_mtu -= totemip_udpip_header_size(totem_config->interfaces[0].bindnet.family);
 }
 
+/**
+ * @brief totemudp_token_target_set
+ * @param udp_context
+ * @param token_target
+ * @return
+ */
 int totemudp_token_target_set (
 	void *udp_context,
 	const struct totem_ip_address *token_target)
@@ -1299,6 +1460,11 @@ int totemudp_token_target_set (
 	return (res);
 }
 
+/**
+ * @brief totemudp_recv_mcast_empty
+ * @param udp_context
+ * @return
+ */
 extern int totemudp_recv_mcast_empty (
 	void *udp_context)
 {

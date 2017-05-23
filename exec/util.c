@@ -68,6 +68,13 @@ static struct service_names servicenames[] =
 	{ NULL, -1 }
 };
 
+/**
+ * @brief short_service_name_get
+ * @param service_id
+ * @param buf
+ * @param buf_size
+ * @return
+ */
 const char * short_service_name_get(uint32_t service_id,
 	char *buf, size_t buf_size)
 {
@@ -113,15 +120,31 @@ cs_time_t clust_time_now(void)
 }
 
 void _corosync_out_of_memory_error (void) __attribute__((noreturn));
+
+/**
+ * @brief _corosync_out_of_memory_error
+ */
 void _corosync_out_of_memory_error (void)
 {
 	assert (0==1);
 	exit (EXIT_FAILURE);
 }
 
+/**
+ * @brief _corosync_exit_error
+ * @param err
+ * @param file
+ * @param line
+ */
 void _corosync_exit_error (
 	enum e_corosync_done err, const char *file, unsigned int line)  __attribute__((noreturn));
 
+/**
+ * @brief _corosync_exit_error
+ * @param err
+ * @param file
+ * @param line
+ */
 void _corosync_exit_error (
 	enum e_corosync_done err, const char *file, unsigned int line)
 {
@@ -138,6 +161,11 @@ void _corosync_exit_error (
 
 #define min(a,b) ((a) < (b) ? (a) : (b))
 
+/**
+ * @brief getcs_name_t
+ * @param name
+ * @return
+ */
 char *getcs_name_t (cs_name_t *name)
 {
 	static char ret_name[CS_MAX_NAME_LENGTH];
@@ -151,6 +179,11 @@ char *getcs_name_t (cs_name_t *name)
 	return ((char *)name->value);
 }
 
+/**
+ * @brief setcs_name_t
+ * @param name
+ * @param str
+ */
 void setcs_name_t (cs_name_t *name, char *str) {
 	strncpy ((char *)name->value, str, sizeof (name->value));
 	((char *)name->value)[sizeof (name->value) - 1] = '\0';
@@ -161,6 +194,12 @@ void setcs_name_t (cs_name_t *name, char *str) {
 	}
 }
 
+/**
+ * @brief cs_name_tisEqual
+ * @param str1
+ * @param str2
+ * @return
+ */
 int cs_name_tisEqual (cs_name_t *str1, char *str2) {
 	if (str1->length == strlen (str2)) {
 		return ((strncmp ((char *)str1->value, (char *)str2,
@@ -170,6 +209,10 @@ int cs_name_tisEqual (cs_name_t *str1, char *str2) {
 	}
 }
 
+/**
+ * @brief get_run_dir
+ * @return
+ */
 const char *get_run_dir(void)
 {
 	static char path[PATH_MAX] = {'\0'};

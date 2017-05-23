@@ -41,6 +41,9 @@
 #include <errno.h>
 #include "assert.h"
 
+/**
+ * @brief The cs_queue struct
+ */
 struct cs_queue {
 	int head;
 	int tail;
@@ -54,6 +57,14 @@ struct cs_queue {
 	int threaded_mode_enabled;
 };
 
+/**
+ * @brief cs_queue_init
+ * @param cs_queue
+ * @param cs_queue_items
+ * @param size_per_item
+ * @param threaded_mode_enabled
+ * @return
+ */
 static inline int cs_queue_init (struct cs_queue *cs_queue, int cs_queue_items, int size_per_item, int threaded_mode_enabled) {
 	cs_queue->head = 0;
 	cs_queue->tail = cs_queue_items - 1;
@@ -74,6 +85,11 @@ static inline int cs_queue_init (struct cs_queue *cs_queue, int cs_queue_items, 
 	return (0);
 }
 
+/**
+ * @brief cs_queue_reinit
+ * @param cs_queue
+ * @return
+ */
 static inline int cs_queue_reinit (struct cs_queue *cs_queue)
 {
 	if (cs_queue->threaded_mode_enabled) {
@@ -91,6 +107,10 @@ static inline int cs_queue_reinit (struct cs_queue *cs_queue)
 	return (0);
 }
 
+/**
+ * @brief cs_queue_free
+ * @param cs_queue
+ */
 static inline void cs_queue_free (struct cs_queue *cs_queue) {
 	if (cs_queue->threaded_mode_enabled) {
 		pthread_mutex_destroy (&cs_queue->mutex);
@@ -98,6 +118,11 @@ static inline void cs_queue_free (struct cs_queue *cs_queue) {
 	free (cs_queue->items);
 }
 
+/**
+ * @brief cs_queue_is_full
+ * @param cs_queue
+ * @return
+ */
 static inline int cs_queue_is_full (struct cs_queue *cs_queue) {
 	int full;
 
@@ -111,6 +136,11 @@ static inline int cs_queue_is_full (struct cs_queue *cs_queue) {
 	return (full);
 }
 
+/**
+ * @brief cs_queue_is_empty
+ * @param cs_queue
+ * @return
+ */
 static inline int cs_queue_is_empty (struct cs_queue *cs_queue) {
 	int empty;
 
@@ -124,6 +154,11 @@ static inline int cs_queue_is_empty (struct cs_queue *cs_queue) {
 	return (empty);
 }
 
+/**
+ * @brief cs_queue_item_add
+ * @param cs_queue
+ * @param item
+ */
 static inline void cs_queue_item_add (struct cs_queue *cs_queue, void *item)
 {
 	char *cs_queue_item;
@@ -149,6 +184,11 @@ static inline void cs_queue_item_add (struct cs_queue *cs_queue, void *item)
 	}
 }
 
+/**
+ * @brief cs_queue_item_get
+ * @param cs_queue
+ * @return
+ */
 static inline void *cs_queue_item_get (struct cs_queue *cs_queue)
 {
 	char *cs_queue_item;
@@ -166,6 +206,10 @@ static inline void *cs_queue_item_get (struct cs_queue *cs_queue)
 	return ((void *)cs_queue_item);
 }
 
+/**
+ * @brief cs_queue_item_remove
+ * @param cs_queue
+ */
 static inline void cs_queue_item_remove (struct cs_queue *cs_queue) {
 	if (cs_queue->threaded_mode_enabled) {
 		pthread_mutex_lock (&cs_queue->mutex);
@@ -181,6 +225,11 @@ static inline void cs_queue_item_remove (struct cs_queue *cs_queue) {
 	}
 }
 
+/**
+ * @brief cs_queue_items_remove
+ * @param cs_queue
+ * @param rel_count
+ */
 static inline void cs_queue_items_remove (struct cs_queue *cs_queue, int rel_count)
 {
 	if (cs_queue->threaded_mode_enabled) {
@@ -196,7 +245,10 @@ static inline void cs_queue_items_remove (struct cs_queue *cs_queue, int rel_cou
 	}
 }
 
-
+/**
+ * @brief cs_queue_item_iterator_init
+ * @param cs_queue
+ */
 static inline void cs_queue_item_iterator_init (struct cs_queue *cs_queue)
 {
 	if (cs_queue->threaded_mode_enabled) {
@@ -208,6 +260,11 @@ static inline void cs_queue_item_iterator_init (struct cs_queue *cs_queue)
 	}
 }
 
+/**
+ * @brief cs_queue_item_iterator_get
+ * @param cs_queue
+ * @return
+ */
 static inline void *cs_queue_item_iterator_get (struct cs_queue *cs_queue)
 {
 	char *cs_queue_item;
@@ -231,6 +288,11 @@ static inline void *cs_queue_item_iterator_get (struct cs_queue *cs_queue)
 	return ((void *)cs_queue_item);
 }
 
+/**
+ * @brief cs_queue_item_iterator_next
+ * @param cs_queue
+ * @return
+ */
 static inline int cs_queue_item_iterator_next (struct cs_queue *cs_queue)
 {
 	int next_res;
@@ -247,6 +309,11 @@ static inline int cs_queue_item_iterator_next (struct cs_queue *cs_queue)
 	return (next_res);
 }
 
+/**
+ * @brief cs_queue_avail
+ * @param cs_queue
+ * @param avail
+ */
 static inline void cs_queue_avail (struct cs_queue *cs_queue, int *avail)
 {
 	if (cs_queue->threaded_mode_enabled) {
@@ -259,6 +326,11 @@ static inline void cs_queue_avail (struct cs_queue *cs_queue, int *avail)
 	}
 }
 
+/**
+ * @brief cs_queue_used
+ * @param cs_queue
+ * @return
+ */
 static inline int cs_queue_used (struct cs_queue *cs_queue) {
 	int used;
 
@@ -273,6 +345,11 @@ static inline int cs_queue_used (struct cs_queue *cs_queue) {
 	return (used);
 }
 
+/**
+ * @brief cs_queue_usedhw
+ * @param cs_queue
+ * @return
+ */
 static inline int cs_queue_usedhw (struct cs_queue *cs_queue) {
 	int usedhw;
 

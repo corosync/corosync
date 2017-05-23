@@ -76,6 +76,14 @@ static char error_string_response[512];
  *
  * Returns: 0 on success, -1 on failure
  **/
+/**
+ * @brief insert_into_buffer
+ * @param target_buffer
+ * @param bufferlen
+ * @param entry
+ * @param after
+ * @return
+ */
 static int insert_into_buffer(
 	char *target_buffer,
 	size_t bufferlen,
@@ -129,6 +137,11 @@ static int insert_into_buffer(
 /*
  * format set is the only global specific option that
  * doesn't apply at system/subsystem level.
+ */
+/**
+ * @brief corosync_main_config_format_set
+ * @param error_string
+ * @return
  */
 static int corosync_main_config_format_set (
 	const char **error_string)
@@ -228,6 +241,17 @@ parse_error:
 	return (-1);
 }
 
+/**
+ * @brief corosync_main_config_log_destination_set
+ * @param path
+ * @param key
+ * @param subsys
+ * @param error_string
+ * @param mode_mask
+ * @param deprecated
+ * @param replacement
+ * @return
+ */
 static int corosync_main_config_log_destination_set (
 	const char *path,
 	const char *key,
@@ -297,6 +321,13 @@ parse_error:
 	return (-1);
 }
 
+/**
+ * @brief corosync_main_config_set
+ * @param path
+ * @param subsys
+ * @param error_string
+ * @return
+ */
 static int corosync_main_config_set (
 	const char *path,
 	const char *subsys,
@@ -502,6 +533,11 @@ parse_error:
 	return (-1);
 }
 
+/**
+ * @brief corosync_main_config_read_logging
+ * @param error_string
+ * @return
+ */
 static int corosync_main_config_read_logging (
 	const char **error_string)
 {
@@ -569,6 +605,14 @@ parse_error:
 }
 
 #ifdef LOGCONFIG_USE_ICMAP 
+/**
+ * @brief main_logging_notify
+ * @param event
+ * @param key_name
+ * @param new_val
+ * @param old_val
+ * @param user_data
+ */
 static void main_logging_notify(
 		int32_t event,
 		const char *key_name,
@@ -576,6 +620,16 @@ static void main_logging_notify(
 		struct icmap_notify_value old_val,
 		void *user_data)
 #else
+/**
+ * @brief main_logging_notify
+ * @param cmap_handle_unused
+ * @param cmap_track_handle_unused
+ * @param event
+ * @param key_name
+ * @param new_val
+ * @param old_val
+ * @param user_data
+ */
 static void main_logging_notify(
 		cmap_handle_t cmap_handle_unused,
 		cmap_handle_t cmap_track_handle_unused,
@@ -614,6 +668,10 @@ static void main_logging_notify(
 }
 
 #ifdef LOGCONFIG_USE_ICMAP
+
+/**
+ * @brief add_logsys_config_notification
+ */
 static void add_logsys_config_notification(void)
 {
 	icmap_track_t icmap_track = NULL;
@@ -631,6 +689,10 @@ static void add_logsys_config_notification(void)
 			&icmap_track);
 }
 #else
+
+/**
+ * @brief add_logsys_config_notification
+ */
 static void add_logsys_config_notification(void)
 {
 	cmap_track_handle_t cmap_track;

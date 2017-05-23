@@ -10,6 +10,14 @@
 
 static quorum_handle_t g_handle;
 
+/**
+ * @brief quorum_notification_fn
+ * @param handle
+ * @param quorate
+ * @param ring_id
+ * @param view_list_entries
+ * @param view_list
+ */
 static void quorum_notification_fn(
 	quorum_handle_t handle,
 	uint32_t quorate,
@@ -31,6 +39,12 @@ static void quorum_notification_fn(
 }
 
 
+/**
+ * @brief main
+ * @param argc
+ * @param argv
+ * @return
+ */
 int main(int argc, char *argv[])
 {
 	int quorate;

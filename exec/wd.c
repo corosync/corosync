@@ -51,6 +51,9 @@
 
 #include "service.h"
 
+/**
+ *
+ */
 typedef enum {
 	WD_RESOURCE_GOOD,
 	WD_RESOURCE_FAILED,
@@ -58,6 +61,9 @@ typedef enum {
 	WD_RESOURCE_NOT_MONITORED
 } wd_resource_state_t;
 
+/**
+ * @brief The resource struct
+ */
 struct resource {
 	char res_path[ICMAP_KEYNAME_MAXLEN];
 	char *recovery;
@@ -91,6 +97,9 @@ static corosync_timer_handle_t wd_timer;
 static int watchdog_ok = 1;
 static char *watchdog_device = "/dev/watchdog";
 
+/**
+ *
+ */
 struct corosync_service_engine wd_service_engine = {
 	.name			= "corosync watchdog service",
 	.id			= WD_SERVICE,
@@ -117,23 +126,32 @@ static QB_LIST_DECLARE (confchg_notify);
 static void wd_config_changed (struct cs_fsm* fsm, int32_t event, void * data);
 static void wd_resource_failed (struct cs_fsm* fsm, int32_t event, void * data);
 
+/**
+ * @brief The wd_resource_state enum
+ */
 enum wd_resource_state {
 	WD_S_RUNNING,
 	WD_S_FAILED,
 	WD_S_STOPPED
 };
 
+/**
+ * @brief The wd_resource_event enum
+ */
 enum wd_resource_event {
 	WD_E_FAILURE,
 	WD_E_CONFIG_CHANGED
 };
 
-const char * wd_running_str		= "running";
-const char * wd_failed_str		= "failed";
-const char * wd_failure_str		= "failure";
-const char * wd_stopped_str		= "stopped";
-const char * wd_config_changed_str	= "config_changed";
+const char * wd_running_str		= "running";          ///<
+const char * wd_failed_str		= "failed";           ///<
+const char * wd_failure_str		= "failure";          ///<
+const char * wd_stopped_str		= "stopped";          ///<
+const char * wd_config_changed_str	= "config_changed";   ///<
 
+/**
+ *
+ */
 struct cs_fsm_entry wd_fsm_table[] = {
 	{ WD_S_STOPPED,	WD_E_CONFIG_CHANGED,	wd_config_changed,	{WD_S_STOPPED, WD_S_RUNNING, -1} },
 	{ WD_S_STOPPED,	WD_E_FAILURE,		NULL,			{-1} },
@@ -143,11 +161,21 @@ struct cs_fsm_entry wd_fsm_table[] = {
 	{ WD_S_FAILED,	WD_E_FAILURE,		NULL,			{-1} },
 };
 
+/**
+ * @brief wd_get_service_engine_ver0
+ * @return
+ */
 struct corosync_service_engine *wd_get_service_engine_ver0 (void)
 {
 	return (&wd_service_engine);
 }
 
+/**
+ * @brief wd_res_state_to_str
+ * @param fsm
+ * @param state
+ * @return
+ */
 static const char * wd_res_state_to_str(struct cs_fsm* fsm,
 	int32_t state)
 {
@@ -165,6 +193,12 @@ static const char * wd_res_state_to_str(struct cs_fsm* fsm,
 	return NULL;
 }
 
+/**
+ * @brief wd_res_event_to_str
+ * @param fsm
+ * @param event
+ * @return
+ */
 static const char * wd_res_event_to_str(struct cs_fsm* fsm,
 	int32_t event)
 {
@@ -179,6 +213,15 @@ static const char * wd_res_event_to_str(struct cs_fsm* fsm,
 	return NULL;
 }
 
+/**
+ * @brief wd_fsm_cb
+ * @param fsm
+ * @param cb_event
+ * @param curr_state
+ * @param next_state
+ * @param fsm_event
+ * @param data
+ */
 static void wd_fsm_cb (struct cs_fsm *fsm, int cb_event, int32_t curr_state,
 	int32_t next_state, int32_t fsm_event, void *data)
 {
@@ -210,8 +253,10 @@ static void wd_fsm_cb (struct cs_fsm *fsm, int cb_event, int32_t curr_state,
 	}
 }
 
-/*
- * returns (CS_TRUE == OK, CS_FALSE == failed)
+/**
+ * @brief wd_resource_state_is_ok
+ * @param ref
+ * @return (CS_TRUE == OK, CS_FALSE == failed)
  */
 static int32_t wd_resource_state_is_ok (struct resource *ref)
 {
@@ -269,6 +314,12 @@ static int32_t wd_resource_state_is_ok (struct resource *ref)
 	return CS_TRUE;
 }
 
+/**
+ * @brief wd_config_changed
+ * @param fsm
+ * @param event
+ * @param data
+ */
 static void wd_config_changed (struct cs_fsm* fsm, int32_t event, void * data)
 {
 	char *state;
@@ -332,6 +383,12 @@ static void wd_config_changed (struct cs_fsm* fsm, int32_t event, void * data)
 	free(state);
 }
 
+/**
+ * @brief wd_resource_failed
+ * @param fsm
+ * @param event
+ * @param data
+ */
 static void wd_resource_failed (struct cs_fsm* fsm, int32_t event, void * data)
 {
 	struct resource* ref = (struct resource*)data;
@@ -356,6 +413,14 @@ static void wd_resource_failed (struct cs_fsm* fsm, int32_t event, void * data)
 	cs_fsm_state_set(fsm, WD_S_FAILED, data, wd_fsm_cb);
 }
 
+/**
+ * @brief wd_key_changed
+ * @param event
+ * @param key_name
+ * @param new_val
+ * @param old_val
+ * @param user_data
+ */
 static void wd_key_changed(
 	int32_t event,
 	const char *key_name,
@@ -402,6 +467,10 @@ static void wd_key_changed(
 	}
 }
 
+/**
+ * @brief wd_resource_check_fn
+ * @param resource_ref
+ */
 static void wd_resource_check_fn (void* resource_ref)
 {
 	struct resource* ref = (struct resource*)resource_ref;
@@ -414,9 +483,12 @@ static void wd_resource_check_fn (void* resource_ref)
 		ref, wd_resource_check_fn, &ref->check_timer);
 }
 
-/*
- * return 0   - fully configured
- * return -1  - partially configured
+/**
+ * @brief wd_resource_create
+ * @param res_path
+ * @param res_name
+ * @return 0   - fully configured
+ *         -1  - partially configured
  */
 static int32_t wd_resource_create (char *res_path, char *res_name)
 {
@@ -494,7 +566,10 @@ static int32_t wd_resource_create (char *res_path, char *res_name)
 	return 0;
 }
 
-
+/**
+ * @brief wd_tickle_fn
+ * @param arg
+ */
 static void wd_tickle_fn (void* arg)
 {
 	ENTER();
@@ -512,6 +587,14 @@ static void wd_tickle_fn (void* arg)
 
 }
 
+/**
+ * @brief wd_resource_created_cb
+ * @param event
+ * @param key_name
+ * @param new_val
+ * @param old_val
+ * @param user_data
+ */
 static void wd_resource_created_cb(
 	int32_t event,
 	const char *key_name,
@@ -541,6 +624,9 @@ static void wd_resource_created_cb(
 	wd_resource_create (tmp_key, res_name);
 }
 
+/**
+ * @brief wd_scan_resources
+ */
 static void wd_scan_resources (void)
 {
 	int res_count = 0;
@@ -582,7 +668,10 @@ static void wd_scan_resources (void)
 	}
 }
 
-
+/**
+ * @brief watchdog_timeout_apply
+ * @param new
+ */
 static void watchdog_timeout_apply (uint32_t new)
 {
 	struct watchdog_info ident;
@@ -627,6 +716,10 @@ static void watchdog_timeout_apply (uint32_t new)
 
 }
 
+/**
+ * @brief setup_watchdog
+ * @return
+ */
 static int setup_watchdog(void)
 {
 	struct watchdog_info ident;
@@ -676,6 +769,14 @@ static int setup_watchdog(void)
 	return 0;
 }
 
+/**
+ * @brief wd_top_level_key_changed
+ * @param event
+ * @param key_name
+ * @param new_val
+ * @param old_val
+ * @param user_data
+ */
 static void wd_top_level_key_changed(
 	int32_t event,
 	const char *key_name,
@@ -699,6 +800,9 @@ static void wd_top_level_key_changed(
 	icmap_set_uint32("resources.watchdog_timeout", watchdog_timeout);
 }
 
+/**
+ * @brief watchdog_timeout_get_initial
+ */
 static void watchdog_timeout_get_initial (void)
 {
 	uint32_t tmp_value_32;
@@ -730,6 +834,11 @@ static void watchdog_timeout_get_initial (void)
 
 }
 
+/**
+ * @brief wd_exec_init_fn
+ * @param corosync_api
+ * @return
+ */
 static char *wd_exec_init_fn (struct corosync_api_v1 *corosync_api)
 {
 
@@ -746,6 +855,10 @@ static char *wd_exec_init_fn (struct corosync_api_v1 *corosync_api)
 	return NULL;
 }
 
+/**
+ * @brief wd_exec_exit_fn
+ * @return
+ */
 static int wd_exec_exit_fn (void)
 {
 	char magic = 'V';

@@ -111,6 +111,9 @@ typedef void (*votequorum_quorum_notification_fn_t) (
 	uint32_t node_list_entries,
 	votequorum_node_t node_list[]);
 
+/**
+ * @brief The votequorum_nodelist_notification_fn_t callback
+ */
 typedef void (*votequorum_nodelist_notification_fn_t) (
 	votequorum_handle_t handle,
 	uint64_t context,

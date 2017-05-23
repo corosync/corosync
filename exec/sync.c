@@ -168,6 +168,10 @@ int (*my_sync_callbacks_retrieve) (
 		int service_id,
                 struct sync_callbacks *callbacks);
 
+/**
+ * @brief sync_init
+ * @return
+ */
 int sync_init (
         int (*sync_callbacks_retrieve) (
                 int service_id,
@@ -201,6 +205,11 @@ int sync_init (
 	return (0);
 }
 
+/**
+ * @brief sync_barrier_handler
+ * @param nodeid
+ * @param msg
+ */
 static void sync_barrier_handler (unsigned int nodeid, const void *msg)
 {
 	const struct req_exec_barrier_message *req_exec_barrier_message = msg;
@@ -242,6 +251,14 @@ static void sync_barrier_handler (unsigned int nodeid, const void *msg)
 	}
 }
 
+/**
+ * @brief dummy_sync_init
+ * @param trans_list
+ * @param trans_list_entries
+ * @param member_list
+ * @param member_list_entries
+ * @param ring_id
+ */
 static void dummy_sync_init (
 	const unsigned int *trans_list,
 	size_t trans_list_entries,
@@ -251,19 +268,35 @@ static void dummy_sync_init (
 {
 }
 
+/**
+ * @brief dummy_sync_abort
+ */
 static void dummy_sync_abort (void)
 {
 }
 
+/**
+ * @brief dummy_sync_process
+ * @return
+ */
 static int dummy_sync_process (void)
 {
 	return (0);
 }
 
+/**
+ * @brief dummy_sync_activate
+ */
 static void dummy_sync_activate (void)
 {
 }
 
+/**
+ * @brief service_entry_compare
+ * @param a
+ * @param b
+ * @return
+ */
 static int service_entry_compare (const void *a, const void *b)
 {
 	const struct service_entry *service_entry_a = a;
@@ -272,6 +305,11 @@ static int service_entry_compare (const void *a, const void *b)
 	return (service_entry_a->service_id > service_entry_b->service_id);
 }
 
+/**
+ * @brief sync_memb_determine
+ * @param nodeid
+ * @param msg
+ */
 static void sync_memb_determine (unsigned int nodeid, const void *msg)
 {
 	const struct req_exec_memb_determine_message *req_exec_memb_determine_message = msg;
@@ -297,6 +335,11 @@ static void sync_memb_determine (unsigned int nodeid, const void *msg)
 	}
 }
 
+/**
+ * @brief sync_service_build_handler
+ * @param nodeid
+ * @param msg
+ */
 static void sync_service_build_handler (unsigned int nodeid, const void *msg)
 {
 	const struct req_exec_service_build_message *req_exec_service_build_message = msg;
@@ -360,6 +403,13 @@ static void sync_service_build_handler (unsigned int nodeid, const void *msg)
 	}
 }
 
+/**
+ * @brief sync_deliver_fn
+ * @param nodeid
+ * @param msg
+ * @param msg_len
+ * @param endian_conversion_required
+ */
 static void sync_deliver_fn (
 	unsigned int nodeid,
 	const void *msg,
@@ -381,6 +431,9 @@ static void sync_deliver_fn (
 	}
 }
 
+/**
+ * @brief memb_determine_message_transmit
+ */
 static void memb_determine_message_transmit (void)
 {
 	struct iovec iovec;
@@ -400,6 +453,9 @@ static void memb_determine_message_transmit (void)
 		&iovec, 1, TOTEMPG_AGREED);
 }
 
+/**
+ * @brief barrier_message_transmit
+ */
 static void barrier_message_transmit (void)
 {
 	struct iovec iovec;
@@ -418,6 +474,10 @@ static void barrier_message_transmit (void)
 		&iovec, 1, TOTEMPG_AGREED);
 }
 
+/**
+ * @brief service_build_message_transmit
+ * @param service_build_message
+ */
 static void service_build_message_transmit (struct req_exec_service_build_message *service_build_message)
 {
 	struct iovec iovec;
@@ -435,12 +495,18 @@ static void service_build_message_transmit (struct req_exec_service_build_messag
 		&iovec, 1, TOTEMPG_AGREED);
 }
 
+/**
+ * @brief sync_barrier_enter
+ */
 static void sync_barrier_enter (void)
 {
 	my_state = SYNC_BARRIER;
 	barrier_message_transmit ();
 }
 
+/**
+ * @brief sync_process_enter
+ */
 static void sync_process_enter (void)
 {
 	int i;
@@ -464,6 +530,12 @@ static void sync_process_enter (void)
 		NULL);
 }
 
+/**
+ * @brief sync_servicelist_build_enter
+ * @param member_list
+ * @param member_list_entries
+ * @param ring_id
+ */
 static void sync_servicelist_build_enter (
 	const unsigned int *member_list,
 	size_t member_list_entries,
@@ -518,6 +590,11 @@ static void sync_servicelist_build_enter (
 	service_build_message_transmit (&service_build);
 }
 
+/**
+ * @brief schedwrk_processor
+ * @param context
+ * @return
+ */
 static int schedwrk_processor (const void *context)
 {
 	int res = 0;
@@ -566,6 +643,12 @@ static int schedwrk_processor (const void *context)
 	return (0);
 }
 
+/**
+ * @brief sync_start
+ * @param member_list
+ * @param member_list_entries
+ * @param ring_id
+ */
 void sync_start (
         const unsigned int *member_list,
         size_t member_list_entries,
@@ -584,6 +667,12 @@ void sync_start (
 	}
 }
 
+/**
+ * @brief sync_save_transitional
+ * @param member_list
+ * @param member_list_entries
+ * @param ring_id
+ */
 void sync_save_transitional (
         const unsigned int *member_list,
         size_t member_list_entries,
@@ -595,6 +684,9 @@ void sync_save_transitional (
 	my_trans_list_entries = member_list_entries;
 }
 
+/**
+ * @brief sync_abort
+ */
 void sync_abort (void)
 {
 	ENTER();
@@ -611,6 +703,10 @@ void sync_abort (void)
 	memset (&my_ring_id, 0,	sizeof (struct memb_ring_id));
 }
 
+/**
+ * @brief sync_memb_list_determine
+ * @param ring_id
+ */
 void sync_memb_list_determine (const struct memb_ring_id *ring_id)
 {
 	ENTER();
@@ -620,6 +716,9 @@ void sync_memb_list_determine (const struct memb_ring_id *ring_id)
 	memb_determine_message_transmit ();
 }
 
+/**
+ * @brief sync_memb_list_abort
+ */
 void sync_memb_list_abort (void)
 {
 	ENTER();
