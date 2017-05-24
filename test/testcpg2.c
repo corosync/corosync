@@ -35,57 +35,61 @@
 #include <config.h>
 
 #include <assert.h>
-#include <stdio.h>
 #include <poll.h>
-#include <sys/types.h>
+#include <stdio.h>
 #include <sys/socket.h>
+#include <sys/types.h>
 #include <sys/uio.h>
 
 #include <corosync/corotypes.h>
 #include <corosync/cpg.h>
 
 static void deliver(
-	cpg_handle_t handle,
-	const struct cpg_name *group_name,
-	uint32_t nodeid,
-	uint32_t pid,
-	void *msg,
-	size_t msg_len)
+        const cpg_handle_t     handle,
+        const struct cpg_name *group_name,
+        const uint32_t         nodeid,
+        const uint32_t         pid,
+              void * const     msg,
+        const size_t           msg_len)
 {
-    printf("self delivered nodeid: %x\n", nodeid);
+	printf ("self delivered nodeid: %x\n", nodeid);
 }
 
 static void confch(
-	cpg_handle_t handle,
-	const struct cpg_name *group_name,
-	const struct cpg_address *member_list, size_t member_list_entries,
-	const struct cpg_address *left_list, size_t left_list_entries,
-	const struct cpg_address *joined_list, size_t joined_list_entries)
+        const cpg_handle_t        handle,
+        const struct cpg_name *   group_name,
+        const struct cpg_address *member_list,
+        const size_t              member_list_entries,
+        const struct cpg_address *left_list,
+        const size_t              left_list_entries,
+        const struct cpg_address *joined_list,
+        const size_t              joined_list_entries)
 {
-	printf("confchg nodeid %x\n", member_list[0].nodeid);
+	printf ("confchg nodeid %x\n", member_list[0].nodeid);
 }
 
-int main(int argc, char** argv) {
-	cpg_handle_t handle=0;
-	cpg_callbacks_t cb={&deliver,&confch};
-	unsigned int nodeid=0;
-	struct cpg_name group={3,"foo"};
-	struct iovec msg={(void *)"hello", 5}; /* discard const */
+int main (int argc, char **argv)
+{
+	cpg_handle_t handle = 0;
+	cpg_callbacks_t cb = { &deliver, &confch };
+	unsigned int nodeid = 0;
+	struct cpg_name group = { 3, "foo" };
+	struct iovec msg = { (void *)"hello", 5 }; /* discard const */
 
 	struct pollfd pfd;
 	int fd;
 
 	printf ("All of the nodeids should match on a single node configuration\n for the test to pass.");
-	assert(CS_OK==cpg_initialize(&handle, &cb));
-	assert(CS_OK==cpg_local_get(handle,&nodeid));
-	printf("local_get: %x\n", nodeid);
-	assert(CS_OK==cpg_join(handle, &group));
-	assert(CS_OK==cpg_mcast_joined(handle,CPG_TYPE_AGREED,&msg,1));
+	assert (CS_OK == cpg_initialize (&handle, &cb));
+	assert (CS_OK == cpg_local_get (handle, &nodeid));
+	printf ("local_get: %x\n", nodeid);
+	assert (CS_OK == cpg_join (handle, &group));
+	assert (CS_OK == cpg_mcast_joined (handle, CPG_TYPE_AGREED, &msg, 1));
 	cpg_fd_get (handle, &fd);
 	pfd.fd = fd;
 	pfd.events = POLLIN;
 
-	assert(poll (&pfd, 1, 1000) == 1);
-	cpg_dispatch(handle, CS_DISPATCH_ALL);
+	assert (poll (&pfd, 1, 1000) == 1);
+	cpg_dispatch (handle, CS_DISPATCH_ALL);
 	return (0);
 }

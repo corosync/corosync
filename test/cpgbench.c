@@ -34,22 +34,22 @@
 
 #include <config.h>
 
+#include <arpa/inet.h>
+#include <errno.h>
+#include <netinet/in.h>
+#include <pthread.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <signal.h>
-#include <unistd.h>
-#include <errno.h>
-#include <time.h>
+#include <sys/select.h>
+#include <sys/socket.h>
 #include <sys/time.h>
 #include <sys/types.h>
-#include <sys/socket.h>
-#include <sys/select.h>
 #include <sys/uio.h>
 #include <sys/un.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <pthread.h>
+#include <time.h>
+#include <unistd.h>
 
 #include <qb/qblog.h>
 #include <qb/qbutil.h>
@@ -76,38 +76,39 @@ static pthread_t thread;
 static int alarm_notice;
 
 static void cpg_bm_confchg_fn (
-	cpg_handle_t handle_in,
-	const struct cpg_name *group_name,
-	const struct cpg_address *member_list, size_t member_list_entries,
-	const struct cpg_address *left_list, size_t left_list_entries,
-	const struct cpg_address *joined_list, size_t joined_list_entries)
+	const cpg_handle_t             handle_in,
+	const struct cpg_name    *group_name,
+	const struct cpg_address *member_list,
+        const size_t              member_list_entries,
+	const struct cpg_address *left_list,
+        const size_t              left_list_entries,
+	const struct cpg_address *joined_list,
+        const size_t              joined_list_entries)
 {
 }
 
 static unsigned int write_count;
 
 static void cpg_bm_deliver_fn (
-        cpg_handle_t handle_in,
+        cpg_handle_t           handle_in,
         const struct cpg_name *group_name,
-        uint32_t nodeid,
-        uint32_t pid,
-        void *msg,
-        size_t msg_len)
+        uint32_t               nodeid,
+        uint32_t               pid,
+        void *                 msg,
+        size_t                 msg_len)
 {
 	write_count++;
 }
 
 static cpg_callbacks_t callbacks = {
-	.cpg_deliver_fn 	= cpg_bm_deliver_fn,
-	.cpg_confchg_fn		= cpg_bm_confchg_fn
+	.cpg_deliver_fn = cpg_bm_deliver_fn,
+	.cpg_confchg_fn = cpg_bm_confchg_fn
 };
 
 #define ONE_MEG 1048576
 static char data[ONE_MEG];
 
-static void cpg_benchmark (
-	cpg_handle_t handle_in,
-	int write_size)
+static void cpg_benchmark (cpg_handle_t handle_in, int write_size)
 {
 	struct timeval tv1, tv2, tv_elapsed;
 	struct iovec iov;
@@ -128,13 +129,10 @@ static void cpg_benchmark (
 	timersub (&tv2, &tv1, &tv_elapsed);
 
 	printf ("%5d messages received ", write_count);
-	printf ("%5d bytes per write ", write_size);
-	printf ("%7.3f Seconds runtime ",
-		(tv_elapsed.tv_sec + (tv_elapsed.tv_usec / 1000000.0)));
-	printf ("%9.3f TP/s ",
-		((float)write_count) /  (tv_elapsed.tv_sec + (tv_elapsed.tv_usec / 1000000.0)));
-	printf ("%7.3f MB/s.\n",
-		((float)write_count) * ((float)write_size) /  ((tv_elapsed.tv_sec + (tv_elapsed.tv_usec / 1000000.0)) * 1000000.0));
+	printf ("%5d bytes per write ",   write_size);
+	printf ("%7.3f Seconds runtime ", (tv_elapsed.tv_sec + (tv_elapsed.tv_usec / 1000000.0)));
+	printf ("%9.3f TP/s ",            ((float)write_count) / (tv_elapsed.tv_sec + (tv_elapsed.tv_usec / 1000000.0)));
+	printf ("%7.3f MB/s.\n",          ((float)write_count) * ((float)write_size) / ((tv_elapsed.tv_sec + (tv_elapsed.tv_usec / 1000000.0)) * 1000000.0));
 }
 
 static void sigalrm_handler (int num)
@@ -142,27 +140,24 @@ static void sigalrm_handler (int num)
 	alarm_notice = 1;
 }
 
-static struct cpg_name group_name = {
-	.value = "cpg_bm",
-	.length = 6
-};
+static struct cpg_name group_name = {.value = "cpg_bm", .length = 6 };
 
-static void* dispatch_thread (void *arg)
+static void *dispatch_thread (void *arg)
 {
 	cpg_dispatch (handle, CS_DISPATCH_BLOCKING);
 	return NULL;
 }
 
-int main (void) {
+int main (void)
+{
 	unsigned int size;
 	int i;
 	unsigned int res;
 
-	qb_log_init("cpgbench", LOG_USER, LOG_EMERG);
-	qb_log_ctl(QB_LOG_SYSLOG, QB_LOG_CONF_ENABLED, QB_FALSE);
-	qb_log_filter_ctl(QB_LOG_STDERR, QB_LOG_FILTER_ADD,
-			  QB_LOG_FILTER_FILE, "*", LOG_DEBUG);
-	qb_log_ctl(QB_LOG_STDERR, QB_LOG_CONF_ENABLED, QB_TRUE);
+	qb_log_init ("cpgbench", LOG_USER, LOG_EMERG);
+	qb_log_ctl (QB_LOG_SYSLOG, QB_LOG_CONF_ENABLED, QB_FALSE);
+	qb_log_filter_ctl (QB_LOG_STDERR, QB_LOG_FILTER_ADD, QB_LOG_FILTER_FILE, "*", LOG_DEBUG);
+	qb_log_ctl (QB_LOG_STDERR, QB_LOG_CONF_ENABLED, QB_TRUE);
 
 	size = 64;
 	signal (SIGALRM, sigalrm_handler);

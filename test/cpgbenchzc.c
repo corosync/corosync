@@ -34,24 +34,24 @@
 
 #include <config.h>
 
+#include <arpa/inet.h>
+#include <errno.h>
+#include <netinet/in.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <signal.h>
-#include <unistd.h>
-#include <errno.h>
-#include <time.h>
+#include <sys/select.h>
+#include <sys/socket.h>
 #include <sys/time.h>
 #include <sys/types.h>
-#include <sys/socket.h>
-#include <sys/select.h>
 #include <sys/un.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
+#include <time.h>
+#include <unistd.h>
 
+#include "../lib/util.h"
 #include <corosync/corotypes.h>
 #include <corosync/cpg.h>
-#include "../lib/util.h"
 
 #ifndef timersub
 #define timersub(a, b, result)					\
@@ -68,38 +68,39 @@
 static int alarm_notice;
 
 static void cpg_bm_confchg_fn (
-	cpg_handle_t handle,
-	const struct cpg_name *group_name,
-	const struct cpg_address *member_list, size_t member_list_entries,
-	const struct cpg_address *left_list, size_t left_list_entries,
-	const struct cpg_address *joined_list, size_t joined_list_entries)
+	const cpg_handle_t        handle,
+	const struct cpg_name *   group_name,
+	const struct cpg_address *member_list,
+        const size_t              member_list_entries,
+	const struct cpg_address *left_list,
+        const size_t              left_list_entries,
+	const struct cpg_address *joined_list,
+        const  size_t             joined_list_entries)
 {
 }
 
 static unsigned int write_count;
 
 static void cpg_bm_deliver_fn (
-        cpg_handle_t handle,
+        cpg_handle_t           handle,
         const struct cpg_name *group_name,
-        uint32_t nodeid,
-        uint32_t pid,
-        void *msg,
-        size_t msg_len)
+        uint32_t               nodeid,
+        uint32_t               pid,
+        void *                 msg,
+        size_t                 msg_len)
 {
 	write_count++;
 }
 
 static cpg_callbacks_t callbacks = {
-	.cpg_deliver_fn 	= cpg_bm_deliver_fn,
-	.cpg_confchg_fn		= cpg_bm_confchg_fn
+	.cpg_deliver_fn = cpg_bm_deliver_fn,
+	.cpg_confchg_fn = cpg_bm_confchg_fn
 };
 
 
 void *data;
 
-static void cpg_benchmark (
-	cpg_handle_t handle,
-	int write_size)
+static void cpg_benchmark (cpg_handle_t handle, int write_size)
 {
 	struct timeval tv1, tv2, tv_elapsed;
 	unsigned int res;
@@ -133,13 +134,10 @@ retry:
 	timersub (&tv2, &tv1, &tv_elapsed);
 
 	printf ("%5d messages received ", write_count);
-	printf ("%5d bytes per write ", write_size);
-	printf ("%7.3f Seconds runtime ",
-		(tv_elapsed.tv_sec + (tv_elapsed.tv_usec / 1000000.0)));
-	printf ("%9.3f TP/s ",
-		((float)write_count) /  (tv_elapsed.tv_sec + (tv_elapsed.tv_usec / 1000000.0)));
-	printf ("%7.3f MB/s.\n",
-		((float)write_count) * ((float)write_size) /  ((tv_elapsed.tv_sec + (tv_elapsed.tv_usec / 1000000.0)) * 1000000.0));
+	printf ("%5d bytes per write ",   write_size);
+	printf ("%7.3f Seconds runtime ", (tv_elapsed.tv_sec + (tv_elapsed.tv_usec / 1000000.0)));
+	printf ("%9.3f TP/s ",            ((float)write_count) / (tv_elapsed.tv_sec + (tv_elapsed.tv_usec / 1000000.0)));
+	printf ("%7.3f MB/s.\n",          ((float)write_count) * ((float)write_size) / ((tv_elapsed.tv_sec + (tv_elapsed.tv_usec / 1000000.0)) * 1000000.0));
 }
 
 static void sigalrm_handler (int num)
@@ -152,12 +150,12 @@ static struct cpg_name group_name = {
 	.length = 6
 };
 
-int main (void) {
+int main (void)
+{
 	cpg_handle_t handle;
 	unsigned int size;
 	int i;
 	unsigned int res;
-
 
 
 	size = 1000;
@@ -175,7 +173,7 @@ int main (void) {
 
 	res = cpg_join (handle, &group_name);
 	if (res != CS_OK) {
-		printf ("cpg_join failed with result %s\n", cs_strerror(res));
+		printf ("cpg_join failed with result %s\n", cs_strerror (res));
 		exit (1);
 	}
 
@@ -186,7 +184,7 @@ int main (void) {
 
 	res = cpg_finalize (handle);
 	if (res != CS_OK) {
-		printf ("cpg_finalize failed with result %s\n", cs_strerror(res));
+		printf ("cpg_finalize failed with result %s\n", cs_strerror (res));
 		exit (1);
 	}
 	return (0);

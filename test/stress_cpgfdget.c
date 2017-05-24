@@ -34,16 +34,16 @@
 
 #include <config.h>
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
 #include <arpa/inet.h>
-#include <errno.h>
-#include <string.h>
 #include <corosync/corotypes.h>
 #include <corosync/cpg.h>
+#include <errno.h>
+#include <netinet/in.h>
 #include <signal.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/socket.h>
 
 struct my_msg {
 	unsigned int msg_size;
@@ -52,21 +52,24 @@ struct my_msg {
 };
 
 static void cpg_deliver_fn (
-        cpg_handle_t handle,
+        const cpg_handle_t     handle,
         const struct cpg_name *group_name,
-        uint32_t nodeid,
-        uint32_t pid,
-        void *m,
-        size_t msg_len)
+        const uint32_t         nodeid,
+        const uint32_t         pid,
+              void * const     m,
+        const size_t           msg_len)
 {
 }
 
 static void cpg_confchg_fn (
-        cpg_handle_t handle,
-        const struct cpg_name *group_name,
-        const struct cpg_address *member_list, size_t member_list_entries,
-        const struct cpg_address *left_list, size_t left_list_entries,
-        const struct cpg_address *joined_list, size_t joined_list_entries)
+        const cpg_handle_t        handle,
+        const struct cpg_name *   group_name,
+        const struct cpg_address *member_list,
+        const size_t              member_list_entries,
+        const struct cpg_address *left_list,
+        const size_t              left_list_entries,
+        const struct cpg_address *joined_list,
+        const size_t              joined_list_entries)
 {
 }
 
@@ -81,7 +84,7 @@ static void sigintr_handler (int num)
 }
 
 
-#define ITERATIONS (1000*2000)
+#define ITERATIONS (1000 * 2000)
 
 int main (void)
 {
@@ -109,7 +112,7 @@ int main (void)
 			exit (-1);
 		}
 	}
-	
+
 	cpg_finalize (handle);
 
 	printf ("PASS\n");

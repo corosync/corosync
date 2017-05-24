@@ -34,17 +34,17 @@
 
 #include <config.h>
 
-#include <unistd.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <sys/socket.h>
-#include <sys/uio.h>
-#include <netinet/in.h>
 #include <arpa/inet.h>
-#include <errno.h>
-#include <string.h>
 #include <corosync/corotypes.h>
 #include <corosync/cpg.h>
+#include <errno.h>
+#include <netinet/in.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <sys/uio.h>
+#include <unistd.h>
 
 #include <nss.h>
 #include <pk11pub.h>
@@ -56,15 +56,15 @@ struct my_msg {
 };
 
 static int deliveries = 0;
-PK11Context* sha1_context;
+PK11Context *sha1_context;
 
 static void cpg_deliver_fn (
-        cpg_handle_t handle,
+        const cpg_handle_t     handle,
         const struct cpg_name *group_name,
-        uint32_t nodeid,
-        uint32_t pid,
-        void *m,
-        size_t msg_len)
+        const uint32_t         nodeid,
+        const uint32_t         pid,
+              void * const     m,
+        const size_t           msg_len)
 {
 	const struct my_msg *msg2 = m;
 	unsigned char sha1_compare[20];
@@ -72,14 +72,14 @@ static void cpg_deliver_fn (
 	unsigned int sha1_len;
 
 	printf ("msg '%s'\n", msg2->buffer);
-	PK11_DigestBegin(sha1_context);
-	PK11_DigestOp(sha1_context, msg2->buffer, msg2->msg_size);
-	PK11_DigestFinal(sha1_context, sha1_compare, &sha1_len, sizeof(sha1_compare));
-printf ("SIZE %d HASH: ", msg2->msg_size);
-for (i = 0; i < 20; i++) {
-printf ("%x", sha1_compare[i]);
-}
-printf ("\n");
+	PK11_DigestBegin (sha1_context);
+	PK11_DigestOp (sha1_context, msg2->buffer, msg2->msg_size);
+	PK11_DigestFinal (sha1_context, sha1_compare, &sha1_len, sizeof (sha1_compare));
+	printf ("SIZE %d HASH: ", msg2->msg_size);
+	for (i = 0; i < 20; i++) {
+		printf ("%x", sha1_compare[i]);
+	}
+	printf ("\n");
 	if (memcmp (sha1_compare, msg2->sha1, 20) != 0) {
 		printf ("incorrect hash\n");
 		exit (1);
@@ -88,11 +88,14 @@ printf ("\n");
 }
 
 static void cpg_confchg_fn (
-        cpg_handle_t handle,
-        const struct cpg_name *group_name,
-        const struct cpg_address *member_list, size_t member_list_entries,
-        const struct cpg_address *left_list, size_t left_list_entries,
-        const struct cpg_address *joined_list, size_t joined_list_entries)
+        const cpg_handle_t        handle,
+        const struct cpg_name *   group_name,
+        const struct cpg_address *member_list,
+        const size_t              member_list_entries,
+        const struct cpg_address *left_list,
+        const size_t              left_list_entries,
+        const struct cpg_address *joined_list,
+        const size_t              joined_list_entries)
 {
 }
 
@@ -122,11 +125,11 @@ int main (int argc, char *argv[])
 	int run_forever = 1;
 	unsigned int sha1_len;
 
-	while ((opt = getopt(argc, argv, options)) != -1) {
+	while ((opt = getopt (argc, argv, options)) != -1) {
 		switch (opt) {
 		case 'i':
 			run_forever = 0;
-			iter = atoi(optarg);
+			iter = atoi (optarg);
 			break;
 		}
 	}
@@ -137,21 +140,21 @@ int main (int argc, char *argv[])
 		exit (0);
 	}
 
-	if (NSS_NoDB_Init(".") != SECSuccess) {
+	if (NSS_NoDB_Init (".") != SECSuccess) {
 		printf ("Couldn't initialize nss\n");
 		exit (0);
 	}
 
-	if ((sha1_context = PK11_CreateDigestContext(SEC_OID_SHA1)) == NULL) {
+	if ((sha1_context = PK11_CreateDigestContext (SEC_OID_SHA1)) == NULL) {
 		printf ("Couldn't initialize nss\n");
 		exit (0);
 	}
 
-        result = cpg_join (handle, &group_name);
-        if (result != CS_OK) {
-                printf ("cpg_join failed with result %d\n", result);
-                exit (1);
-        }
+	result = cpg_join (handle, &group_name);
+	if (result != CS_OK) {
+		printf ("cpg_join failed with result %d\n", result);
+		exit (1);
+	}
 
 	iov[0].iov_base = (void *)&msg;
 	iov[0].iov_len = sizeof (struct my_msg);
@@ -162,32 +165,30 @@ int main (int argc, char *argv[])
 	 */
 	i = 0;
 	do {
-		msg.msg_size = 100 + rand() % 100000;
+		msg.msg_size = 100 + rand () % 100000;
 		iov[1].iov_len = msg.msg_size;
 		for (j = 0; j < msg.msg_size; j++) {
 			buffer[j] = j;
 		}
-		sprintf ((char *)buffer,
-			"cpg_mcast_joined: This is message %12d", i);
+		sprintf ((char *)buffer, "cpg_mcast_joined: This is message %12d", i);
 
-		PK11_DigestBegin(sha1_context);
-		PK11_DigestOp(sha1_context, buffer, msg.msg_size);
-		PK11_DigestFinal(sha1_context, msg.sha1, &sha1_len, sizeof(msg.sha1));
-try_again_one:
-		result = cpg_mcast_joined (handle, CPG_TYPE_AGREED,
-			iov, 2);
+		PK11_DigestBegin (sha1_context);
+		PK11_DigestOp (sha1_context, buffer, msg.msg_size);
+		PK11_DigestFinal (sha1_context, msg.sha1, &sha1_len, sizeof (msg.sha1));
+	try_again_one:
+		result = cpg_mcast_joined (handle, CPG_TYPE_AGREED, iov, 2);
 		if (result == CS_ERR_TRY_AGAIN) {
 			goto try_again_one;
 		}
 		result = cpg_dispatch (handle, CS_DISPATCH_ALL);
 		if (result != CS_OK && result != CS_ERR_TRY_AGAIN) {
-			printf("cpg_dispatch failed with result %d\n", result);
-			exit(1);
+			printf ("cpg_dispatch failed with result %d\n", result);
+			exit (1);
 		}
 		i++;
 	} while (run_forever || i < iter);
 
-	PK11_DestroyContext(sha1_context, PR_TRUE);
+	PK11_DestroyContext (sha1_context, PR_TRUE);
 
 	cpg_finalize (handle);
 
