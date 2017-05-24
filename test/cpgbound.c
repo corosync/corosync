@@ -34,33 +34,37 @@
 
 #include <config.h>
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <sys/socket.h>
-#include <sys/uio.h>
-#include <netinet/in.h>
 #include <arpa/inet.h>
-#include <errno.h>
-#include <string.h>
 #include <corosync/corotypes.h>
 #include <corosync/cpg.h>
+#include <errno.h>
+#include <netinet/in.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <sys/uio.h>
 
-static void cpg_deliver_fn (
-        cpg_handle_t handle,
-        const struct cpg_name *group_name,
-        uint32_t nodeid,
-        uint32_t pid,
-        void *m,
-        size_t msg_len)
+
+static void cpg_confchg_fn (
+        const cpg_handle_t        handle,
+        const struct cpg_name *   group_name,
+        const struct cpg_address *member_list,
+        const size_t              member_list_entries,
+        const struct cpg_address *left_list,
+        const size_t              left_list_entries,
+        const struct cpg_address *joined_list,
+        const size_t              joined_list_entries)
 {
 }
 
-static void cpg_confchg_fn (
-        cpg_handle_t handle,
+static void cpg_deliver_fn (
+        const cpg_handle_t     handle,
         const struct cpg_name *group_name,
-        const struct cpg_address *member_list, size_t member_list_entries,
-        const struct cpg_address *left_list, size_t left_list_entries,
-        const struct cpg_address *joined_list, size_t joined_list_entries)
+        const uint32_t         nodeid,
+        const uint32_t         pid,
+              void * const     m,
+        const size_t           msg_len)
 {
 }
 
@@ -91,11 +95,11 @@ int main (void)
 		exit (0);
 	}
 
-        res = cpg_join (handle, &group_name);
-        if (res != CS_OK) {
-                printf ("cpg_join failed with result %d\n", res);
-                exit (1);
-        }
+	res = cpg_join (handle, &group_name);
+	if (res != CS_OK) {
+		printf ("cpg_join failed with result %d\n", res);
+		exit (1);
+	}
 
 	iov.iov_base = (void *)buffer;
 
@@ -106,8 +110,7 @@ int main (void)
 	for (i = 0; i < 1000000000; i++) {
 		iov.iov_len = msg_size;
 try_again_one:
-		result = cpg_mcast_joined (handle, CPG_TYPE_AGREED,
-			&iov, 1);
+		result = cpg_mcast_joined (handle, CPG_TYPE_AGREED, &iov, 1);
 		if (result == CS_ERR_TRY_AGAIN) {
 			goto try_again_one;
 		}

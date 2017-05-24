@@ -34,10 +34,10 @@
 
 #include <config.h>
 
-#include <stdlib.h>
 #include <stdio.h>
-#include <sys/time.h>
+#include <stdlib.h>
 #include <sys/poll.h>
+#include <sys/time.h>
 
 #include "../exec/timer.h"
 
@@ -53,19 +53,18 @@ int main (void)
 	int randomvalue;
 	int i;
 
-printf ("adding timers\n");
+	printf ("adding timers\n");
 	for (i = 0; i < 1000; i++) {
 		timer = (struct timer *)malloc (sizeof (struct timer));
-		randomvalue = random()%5000;
+		randomvalue = random () % 5000;
 		timer->function = timer_function;
 		timer->data = (void *)randomvalue;
 		timer_add_msec_in_future (timer, randomvalue);
 	}
-printf ("done adding timers\n");
+	printf ("done adding timers\n");
 
 	for (;;) {
-		msec = timer_expire_get_msec();
-//		printf ("msec to next timer expire %d\n", msec);
+		msec = timer_expire_get_msec ();
 		if (msec == -1) {
 			printf ("no more timers\n");
 			break;

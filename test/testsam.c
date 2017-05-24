@@ -38,19 +38,19 @@
 
 #include <config.h>
 
-#include <limits.h>
-#include <pthread.h>
-#include <sys/types.h>
-#include <stdio.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <unistd.h>
+#include <corosync/cmap.h>
 #include <corosync/corotypes.h>
 #include <corosync/sam.h>
+#include <limits.h>
+#include <pthread.h>
 #include <signal.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <sys/types.h>
 #include <sys/wait.h>
-#include <corosync/cmap.h>
+#include <unistd.h>
 extern const char *__progname;
 
 static int test2_sig_delivered = 0;
@@ -159,11 +159,10 @@ static int test1 (void)
 			return 1;
 		}
 
-		if (sam_initialize (2, SAM_RECOVERY_POLICY_RESTART) == CS_OK ||
-			sam_start () == CS_OK || sam_stop () == CS_OK ||
-			sam_register (NULL) == CS_OK || sam_hc_send () == CS_OK ||
-			sam_hc_callback_register (NULL) == CS_OK) {
-
+		if (sam_initialize (2, SAM_RECOVERY_POLICY_RESTART) == CS_OK || sam_start () == CS_OK || sam_stop () == CS_OK
+			|| sam_register (NULL) == CS_OK
+			|| sam_hc_send () == CS_OK
+			|| sam_hc_callback_register (NULL) == CS_OK) {
 			fprintf (stderr, "Can call one of function after finalization!\n");
 
 			return 1;
@@ -176,7 +175,8 @@ static int test1 (void)
 }
 
 
-static void test2_signal (int sig) {
+static void test2_signal (int sig)
+{
 	printf ("%s\n", __FUNCTION__);
 
 	test2_sig_delivered = 1;
@@ -185,7 +185,8 @@ static void test2_signal (int sig) {
 /*
  * This tests recovery policy quit and callback.
  */
-static int test2 (void) {
+static int test2 (void)
+{
 	cs_error_t error;
 	unsigned int instance_id;
 
@@ -234,14 +235,14 @@ static int test2 (void) {
 	}
 
 	return 1;
-
 }
 
 /*
  * Smoke test. Better to turn off coredump ;) This has no time limit, just restart process
  * when it dies.
  */
-static int test3 (void) {
+static int test3 (void)
+{
 	cs_error_t error;
 	unsigned int instance_id;
 
@@ -267,12 +268,11 @@ static int test3 (void) {
 		}
 
 		printf ("%s iid %d: Sending signal\n", __FUNCTION__, instance_id);
-		kill(getpid(), SIGSEGV);
+		kill (getpid (), SIGSEGV);
 		return 1;
 	}
 
 	return 0;
-
 }
 
 /*
@@ -590,10 +590,8 @@ static int test5 (void)
 		}
 
 		if (hc_cb_count != 11) {
-			fprintf (stderr, "%s iid %d: Premature killed. hc_cb_count should be 11 and it is %d\n",
-				__FUNCTION__, instance_id - 1, hc_cb_count);
+			fprintf (stderr, "%s iid %d: Premature killed. hc_cb_count should be 11 and it is %d\n", __FUNCTION__, instance_id - 1, hc_cb_count);
 			return 1;
-
 		}
 		return 0;
 	}
@@ -601,7 +599,8 @@ static int test5 (void)
 	return 1;
 }
 
-static void test6_signal (int sig) {
+static void test6_signal (int sig)
+{
 	cs_error_t error;
 
 	printf ("%s\n", __FUNCTION__);
@@ -615,7 +614,8 @@ static void test6_signal (int sig) {
 /*
  * Test warn signal set.
  */
-static int test6 (void) {
+static int test6 (void)
+{
 	cs_error_t error;
 	unsigned int instance_id;
 	int test6_sig_del;
@@ -748,7 +748,8 @@ static void *test7_thread (void *arg)
 /*
  * Test quorum
  */
-static int test7 (void) {
+static int test7 (void)
+{
 	cmap_handle_t cmap_handle;
 	cs_error_t err;
 	unsigned int instance_id;
@@ -762,21 +763,21 @@ static int test7 (void) {
 	}
 
 
-	if (cmap_get_string(cmap_handle, "quorum.provider", &str) != CS_OK) {
+	if (cmap_get_string (cmap_handle, "quorum.provider", &str) != CS_OK) {
 		printf ("Could not get \"provider\" key: %d. Test skipped\n", err);
 		return (1);
 	}
-        if (strcmp(str, "testquorum") != 0) {
+	if (strcmp (str, "testquorum") != 0) {
 		printf ("Provider is not testquorum. Test skipped\n");
-		free(str);
+		free (str);
 		return (1);
-        }
-	free(str);
+	}
+	free (str);
 
 	/*
 	 * Set to not quorate
 	 */
-	err = cmap_set_uint8(cmap_handle, "quorum.quorate", 0);
+	err = cmap_set_uint8 (cmap_handle, "quorum.quorate", 0);
 	if (err != CS_OK) {
 		printf ("Can't set map key. Error %d\n", err);
 		return (2);
@@ -817,7 +818,7 @@ static int test7 (void) {
 		/*
 		 * Set to quorate
 		 */
-		err = cmap_set_uint8(cmap_handle, "quorum.quorate", 1);
+		err = cmap_set_uint8 (cmap_handle, "quorum.quorate", 1);
 		if (err != CS_OK) {
 			printf ("Can't set map key. Error %d\n", err);
 			return (2);
@@ -833,7 +834,7 @@ static int test7 (void) {
 		/*
 		 * Set corosync unquorate
 		 */
-		err = cmap_set_uint8(cmap_handle, "quorum.quorate", 0);
+		err = cmap_set_uint8 (cmap_handle, "quorum.quorate", 0);
 		if (err != CS_OK) {
 			printf ("Can't set map key. Error %d\n", err);
 			return (2);
@@ -856,7 +857,8 @@ static int test7 (void) {
 /*
  * Test cmap integration + quit policy
  */
-static int test8 (pid_t pid, pid_t old_pid, int test_n) {
+static int test8 (pid_t pid, pid_t old_pid, int test_n)
+{
 	cmap_handle_t cmap_handle;
 	cs_error_t err;
 	uint64_t tstamp1, tstamp2;
@@ -879,11 +881,11 @@ static int test8 (pid_t pid, pid_t old_pid, int test_n) {
 		 */
 		printf ("%s Testing if object exists (it shouldn't)\n", __FUNCTION__);
 
-		snprintf(key_name, CMAP_KEYNAME_MAXLEN, "resources.process.%d.state", pid);
-		err = cmap_get_string(cmap_handle, key_name, &str);
+		snprintf (key_name, CMAP_KEYNAME_MAXLEN, "resources.process.%d.state", pid);
+		err = cmap_get_string (cmap_handle, key_name, &str);
 		if (err == CS_OK) {
 			printf ("Could find key \"%s\": %d.\n", key_name, err);
-			free(str);
+			free (str);
 			return (2);
 		}
 	}
@@ -903,33 +905,33 @@ static int test8 (pid_t pid, pid_t old_pid, int test_n) {
 			return 2;
 		}
 
-		snprintf(key_name, CMAP_KEYNAME_MAXLEN, "resources.process.%d.recovery", pid);
-		err = cmap_get_string(cmap_handle, key_name, &str);
+		snprintf (key_name, CMAP_KEYNAME_MAXLEN, "resources.process.%d.recovery", pid);
+		err = cmap_get_string (cmap_handle, key_name, &str);
 		if (err != CS_OK) {
 			printf ("Could not get \"recovery\" key: %d.\n", err);
 			return (2);
 		}
 
-		if (strcmp(str, "quit") != 0) {
+		if (strcmp (str, "quit") != 0) {
 			printf ("Recovery key \"%s\" is not \"quit\".\n", key_name);
-			free(str);
+			free (str);
 			return (2);
 		}
-		free(str);
+		free (str);
 
-		snprintf(key_name, CMAP_KEYNAME_MAXLEN, "resources.process.%d.state", pid);
-		err = cmap_get_string(cmap_handle, key_name, &str);
+		snprintf (key_name, CMAP_KEYNAME_MAXLEN, "resources.process.%d.state", pid);
+		err = cmap_get_string (cmap_handle, key_name, &str);
 		if (err != CS_OK) {
 			printf ("Could not get \"state\" key: %d.\n", err);
 			return (2);
 		}
 
-		if (strcmp(str, "stopped") != 0) {
+		if (strcmp (str, "stopped") != 0) {
 			printf ("State key is not \"stopped\".\n");
-			free(str);
+			free (str);
 			return (2);
 		}
-		free(str);
+		free (str);
 
 		printf ("%s iid %d: start\n", __FUNCTION__, instance_id);
 		err = sam_start ();
@@ -938,18 +940,18 @@ static int test8 (pid_t pid, pid_t old_pid, int test_n) {
 			return 2;
 		}
 
-		err = cmap_get_string(cmap_handle, key_name, &str);
+		err = cmap_get_string (cmap_handle, key_name, &str);
 		if (err != CS_OK) {
 			printf ("Could not get \"state\" key: %d.\n", err);
 			return (2);
 		}
 
-		if (strcmp(str, "running") != 0) {
+		if (strcmp (str, "running") != 0) {
 			printf ("State key is not \"running\".\n");
-			free(str);
+			free (str);
 			return (2);
 		}
-		free(str);
+		free (str);
 
 		printf ("%s iid %d: stop\n", __FUNCTION__, instance_id);
 		err = sam_stop ();
@@ -958,34 +960,34 @@ static int test8 (pid_t pid, pid_t old_pid, int test_n) {
 			return 2;
 		}
 
-		err = cmap_get_string(cmap_handle, key_name, &str);
+		err = cmap_get_string (cmap_handle, key_name, &str);
 		if (err != CS_OK) {
 			printf ("Could not get \"state\" key: %d.\n", err);
 			return (2);
 		}
 
-		if (strcmp(str, "stopped") != 0) {
+		if (strcmp (str, "stopped") != 0) {
 			printf ("State key is not \"stopped\".\n");
-			free(str);
+			free (str);
 			return (2);
 		}
-		free(str);
+		free (str);
 
 		printf ("%s iid %d: sleeping 5\n", __FUNCTION__, instance_id);
 		sleep (5);
 
-		err = cmap_get_string(cmap_handle, key_name, &str);
+		err = cmap_get_string (cmap_handle, key_name, &str);
 		if (err != CS_OK) {
 			printf ("Could not get \"state\" key: %d.\n", err);
 			return (2);
 		}
 
-		if (strcmp(str, "stopped") != 0) {
+		if (strcmp (str, "stopped") != 0) {
 			printf ("State key is not \"stopped\".\n");
-			free(str);
+			free (str);
 			return (2);
 		}
-		free(str);
+		free (str);
 
 		printf ("%s iid %d: start 2\n", __FUNCTION__, instance_id);
 		err = sam_start ();
@@ -994,18 +996,18 @@ static int test8 (pid_t pid, pid_t old_pid, int test_n) {
 			return 2;
 		}
 
-		err = cmap_get_string(cmap_handle, key_name, &str);
+		err = cmap_get_string (cmap_handle, key_name, &str);
 		if (err != CS_OK) {
 			printf ("Could not get \"state\" key: %d.\n", err);
 			return (2);
 		}
 
-		if (strcmp(str, "running") != 0) {
+		if (strcmp (str, "running") != 0) {
 			printf ("State key is not \"running\".\n");
-			free(str);
+			free (str);
 			return (2);
 		}
-		free(str);
+		free (str);
 
 		if (test_n == 2) {
 			printf ("%s iid %d: sleeping 5. Should be killed\n", __FUNCTION__, instance_id);
@@ -1020,8 +1022,8 @@ static int test8 (pid_t pid, pid_t old_pid, int test_n) {
 				return 2;
 			}
 
-			snprintf(key_name, CMAP_KEYNAME_MAXLEN, "resources.process.%d.last_updated", pid);
-			err = cmap_get_uint64(cmap_handle, key_name, &tstamp1);
+			snprintf (key_name, CMAP_KEYNAME_MAXLEN, "resources.process.%d.last_updated", pid);
+			err = cmap_get_uint64 (cmap_handle, key_name, &tstamp1);
 			if (err != CS_OK) {
 				printf ("Could not get \"last_updated\" key: %d.\n", err);
 				return (2);
@@ -1034,12 +1036,12 @@ static int test8 (pid_t pid, pid_t old_pid, int test_n) {
 				return 2;
 			}
 			sleep (1);
-			err = cmap_get_uint64(cmap_handle, key_name, &tstamp2);
+			err = cmap_get_uint64 (cmap_handle, key_name, &tstamp2);
 			if (err != CS_OK) {
 				printf ("Could not get \"last_updated\" key: %d.\n", err);
 				return (2);
 			}
-			msec_diff = (tstamp2 - tstamp1)/CS_TIME_NS_IN_MSEC;
+			msec_diff = (tstamp2 - tstamp1) / CS_TIME_NS_IN_MSEC;
 
 			if (msec_diff < 500 || msec_diff > 2000) {
 				printf ("Difference %d is not within <500, 2000> interval.\n", msec_diff);
@@ -1053,19 +1055,19 @@ static int test8 (pid_t pid, pid_t old_pid, int test_n) {
 				return 2;
 			}
 
-			snprintf(key_name, CMAP_KEYNAME_MAXLEN, "resources.process.%d.state", pid);
-			err = cmap_get_string(cmap_handle, key_name, &str);
+			snprintf (key_name, CMAP_KEYNAME_MAXLEN, "resources.process.%d.state", pid);
+			err = cmap_get_string (cmap_handle, key_name, &str);
 			if (err != CS_OK) {
 				printf ("Could not get \"state\" key: %d.\n", err);
 				return (2);
 			}
 
-			if (strcmp(str, "stopped") != 0) {
+			if (strcmp (str, "stopped") != 0) {
 				printf ("State key is not \"stopped\".\n");
-				free(str);
+				free (str);
 				return (2);
 			}
-			free(str);
+			free (str);
 
 			printf ("%s iid %d: exiting\n", __FUNCTION__, instance_id);
 			return (0);
@@ -1079,19 +1081,19 @@ static int test8 (pid_t pid, pid_t old_pid, int test_n) {
 		 * Previous should be FAILED
 		 */
 
-		snprintf(key_name, CMAP_KEYNAME_MAXLEN, "resources.process.%d.state", pid);
-		err = cmap_get_string(cmap_handle, key_name, &str);
+		snprintf (key_name, CMAP_KEYNAME_MAXLEN, "resources.process.%d.state", pid);
+		err = cmap_get_string (cmap_handle, key_name, &str);
 		if (err != CS_OK) {
 			printf ("Could not get \"state\" key: %d.\n", err);
 			return (2);
 		}
 
-		if (strcmp(str, "failed") != 0) {
+		if (strcmp (str, "failed") != 0) {
 			printf ("State key is not \"failed\".\n");
-			free(str);
+			free (str);
 			return (2);
 		}
-		free(str);
+		free (str);
 
 		return (0);
 	}
@@ -1102,7 +1104,8 @@ static int test8 (pid_t pid, pid_t old_pid, int test_n) {
 /*
  * Test cmap integration + restart policy
  */
-static int test9 (pid_t pid, pid_t old_pid, int test_n) {
+static int test9 (pid_t pid, pid_t old_pid, int test_n)
+{
 	cs_error_t err;
 	cmap_handle_t cmap_handle;
 	unsigned int instance_id;
@@ -1134,33 +1137,33 @@ static int test9 (pid_t pid, pid_t old_pid, int test_n) {
 		printf ("%s: iid %d\n", __FUNCTION__, instance_id);
 
 		if (instance_id < 3) {
-			snprintf(key_name, CMAP_KEYNAME_MAXLEN, "resources.process.%d.recovery", pid);
-			err = cmap_get_string(cmap_handle, key_name, &str);
+			snprintf (key_name, CMAP_KEYNAME_MAXLEN, "resources.process.%d.recovery", pid);
+			err = cmap_get_string (cmap_handle, key_name, &str);
 			if (err != CS_OK) {
 				printf ("Could not get \"recovery\" key: %d.\n", err);
 				return (2);
 			}
 
-			if (strcmp(str, "restart") != 0) {
+			if (strcmp (str, "restart") != 0) {
 				printf ("Recovery key \"%s\" is not \"restart\".\n", str);
-				free(str);
+				free (str);
 				return (2);
 			}
-			free(str);
+			free (str);
 
-			snprintf(key_name, CMAP_KEYNAME_MAXLEN, "resources.process.%d.state", pid);
-			err = cmap_get_string(cmap_handle, key_name, &str);
+			snprintf (key_name, CMAP_KEYNAME_MAXLEN, "resources.process.%d.state", pid);
+			err = cmap_get_string (cmap_handle, key_name, &str);
 			if (err != CS_OK) {
 				printf ("Could not get \"state\" key: %d.\n", err);
 				return (2);
 			}
 
-			if (strcmp(str, "stopped") != 0) {
+			if (strcmp (str, "stopped") != 0) {
 				printf ("State key is not \"stopped\".\n");
-				free(str);
+				free (str);
 				return (2);
 			}
-			free(str);
+			free (str);
 
 			printf ("%s iid %d: start\n", __FUNCTION__, instance_id);
 			err = sam_start ();
@@ -1169,18 +1172,18 @@ static int test9 (pid_t pid, pid_t old_pid, int test_n) {
 				return 2;
 			}
 
-			err = cmap_get_string(cmap_handle, key_name, &str);
+			err = cmap_get_string (cmap_handle, key_name, &str);
 			if (err != CS_OK) {
 				printf ("Could not get \"state\" key: %d.\n", err);
 				return (2);
 			}
 
-			if (strcmp(str, "running") != 0) {
+			if (strcmp (str, "running") != 0) {
 				printf ("State key is not \"running\".\n");
-				free(str);
+				free (str);
 				return (2);
 			}
-			free(str);
+			free (str);
 
 			printf ("%s iid %d: waiting for kill\n", __FUNCTION__, instance_id);
 			sleep (10);
@@ -1211,19 +1214,19 @@ static int test9 (pid_t pid, pid_t old_pid, int test_n) {
 		/*
 		 * Previous should be FAILED
 		 */
-		snprintf(key_name, CMAP_KEYNAME_MAXLEN, "resources.process.%d.state", pid);
-		err = cmap_get_string(cmap_handle, key_name, &str);
+		snprintf (key_name, CMAP_KEYNAME_MAXLEN, "resources.process.%d.state", pid);
+		err = cmap_get_string (cmap_handle, key_name, &str);
 		if (err != CS_OK) {
 			printf ("Could not get \"state\" key: %d.\n", err);
 			return (2);
 		}
 
-		if (strcmp(str, "failed") != 0) {
+		if (strcmp (str, "failed") != 0) {
 			printf ("State key is not \"failed\".\n");
-			free(str);
+			free (str);
 			return (2);
 		}
-		free(str);
+		free (str);
 
 		return (0);
 	}
@@ -1231,7 +1234,7 @@ static int test9 (pid_t pid, pid_t old_pid, int test_n) {
 	return (2);
 }
 
-int main(int argc, char *argv[])
+int main (int argc, char *argv[])
 {
 	pid_t pid, old_pid;
 	int err;

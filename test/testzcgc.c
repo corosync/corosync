@@ -34,17 +34,17 @@
 
 #include <config.h>
 
+#include <arpa/inet.h>
+#include <errno.h>
+#include <netinet/in.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <errno.h>
-#include <unistd.h>
 #include <string.h>
-#include <sys/types.h>
-#include <sys/socket.h>
 #include <sys/select.h>
+#include <sys/socket.h>
+#include <sys/types.h>
 #include <sys/un.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
+#include <unistd.h>
 
 #include <corosync/corotypes.h>
 #include <corosync/cpg.h>
@@ -72,94 +72,83 @@ static void DeliverCallback (
 	if (show_ip) {
 		struct in_addr saddr;
 		saddr.s_addr = nodeid;
-		printf("DeliverCallback: message (len=%lu)from node/pid %s/%d: '%s'\n",
-		       (unsigned long int) msg_len,
-		       inet_ntoa(saddr), pid, (const char *)msg);
-	}
-	else {
-		printf("DeliverCallback: message (len=%lu)from node/pid %d/%d: '%s'\n",
-		       (unsigned long int) msg_len, nodeid, pid,
-		       (const char *)msg);
+		printf ("DeliverCallback: message (len=%lu)from node/pid %s/%d: '%s'\n",
+				(unsigned long int)msg_len,
+				inet_ntoa (saddr),
+				pid,
+				(const char *)msg);
+	} else {
+		printf ("DeliverCallback: message (len=%lu)from node/pid %d/%d: '%s'\n", (unsigned long int)msg_len, nodeid, pid, (const char *)msg);
 	}
 }
 
 static void ConfchgCallback (
-	cpg_handle_t handle,
-	const struct cpg_name *groupName,
-	const struct cpg_address *member_list, size_t member_list_entries,
-	const struct cpg_address *left_list, size_t left_list_entries,
-	const struct cpg_address *joined_list, size_t joined_list_entries)
+        const cpg_handle_t        handle,
+        const struct cpg_name *   group_name,
+        const struct cpg_address *member_list,
+        const size_t              member_list_entries,
+        const struct cpg_address *left_list,
+        const size_t              left_list_entries,
+        const struct cpg_address *joined_list,
+        const size_t              joined_list_entries)
 {
 	int i;
 	struct in_addr saddr;
 
-	printf("\nConfchgCallback: group '");
-	print_cpgname(groupName);
-	printf("'\n");
-	for (i=0; i<joined_list_entries; i++) {
+	printf ("\nConfchgCallback: group '");
+	print_cpgname (group_name);
+	printf ("'\n");
+	for (i = 0; i < joined_list_entries; i++) {
 		if (show_ip) {
 			saddr.s_addr = joined_list[i].nodeid;
-			printf("joined node/pid: %s/%d reason: %d\n",
-			       inet_ntoa (saddr), joined_list[i].pid,
-			       joined_list[i].reason);
-		}
-		else {
-			printf("joined node/pid: %d/%d reason: %d\n",
-			       joined_list[i].nodeid, joined_list[i].pid,
-			       joined_list[i].reason);
+			printf ("joined node/pid: %s/%d reason: %d\n", inet_ntoa (saddr), joined_list[i].pid, joined_list[i].reason);
+		} else {
+			printf ("joined node/pid: %d/%d reason: %d\n", joined_list[i].nodeid, joined_list[i].pid, joined_list[i].reason);
 		}
 	}
 
-	for (i=0; i<left_list_entries; i++) {
+	for (i = 0; i < left_list_entries; i++) {
 		if (show_ip) {
 			saddr.s_addr = left_list[i].nodeid;
-			printf("left node/pid: %s/%d reason: %d\n",
-			       inet_ntoa (saddr), left_list[i].pid,
-			       left_list[i].reason);
-		}
-		else {
-			printf("left node/pid: %d/%d reason: %d\n",
-			       left_list[i].nodeid, left_list[i].pid,
-			       left_list[i].reason);
+			printf ("left node/pid: %s/%d reason: %d\n", inet_ntoa (saddr), left_list[i].pid, left_list[i].reason);
+		} else {
+			printf ("left node/pid: %d/%d reason: %d\n", left_list[i].nodeid, left_list[i].pid, left_list[i].reason);
 		}
 	}
 
-	printf("nodes in group now %lu\n",
-	       (unsigned long int) member_list_entries);
-	for (i=0; i<member_list_entries; i++) {
+	printf ("nodes in group now %lu\n", (unsigned long int)member_list_entries);
+	for (i = 0; i < member_list_entries; i++) {
 		if (show_ip) {
 			saddr.s_addr = member_list[i].nodeid;
-			printf("node/pid: %s/%d\n",
-			       inet_ntoa (saddr), member_list[i].pid);
-		}
-		else {
-			printf("node/pid: %d/%d\n",
-			       member_list[i].nodeid, member_list[i].pid);
+			printf ("node/pid: %s/%d\n", inet_ntoa (saddr), member_list[i].pid);
+		} else {
+			printf ("node/pid: %d/%d\n", member_list[i].nodeid, member_list[i].pid);
 		}
 	}
 
 	/* Is it us??
 	   NOTE: in reality we should also check the nodeid */
-	if (left_list_entries && left_list[0].pid == getpid()) {
-		printf("We have left the building\n");
+	if (left_list_entries && left_list[0].pid == getpid ()) {
+		printf ("We have left the building\n");
 		quit = 1;
 	}
 }
 
 static cpg_callbacks_t callbacks = {
-	.cpg_deliver_fn =            DeliverCallback,
-	.cpg_confchg_fn =            ConfchgCallback,
+	.cpg_deliver_fn = DeliverCallback,
+	.cpg_confchg_fn = ConfchgCallback,
 };
 
 static struct cpg_name group_name;
 
-int main (int argc, char *argv[]) {
+int main (int argc, char *argv[])
+{
 	cpg_handle_t handle;
 	int result;
 	void *buffer;
 	unsigned int i;
 
-	strcpy(group_name.value, "GROUP");
+	strcpy (group_name.value, "GROUP");
 	group_name.length = 6;
 
 	result = cpg_initialize (&handle, &callbacks);
@@ -168,7 +157,7 @@ int main (int argc, char *argv[]) {
 		exit (1);
 	}
 	for (i = 0; i < 100; i++) {
-		cpg_zcb_alloc (handle, 1024*1024, &buffer);
+		cpg_zcb_alloc (handle, 1024 * 1024, &buffer);
 	}
 	return (0);
 }

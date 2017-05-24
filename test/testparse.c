@@ -34,11 +34,11 @@
 
 #include <config.h>
 
-#include <stdio.h>
-#include <stdlib.h>
-#include "../include/saAis.h"
 #include "../exec/parse.h"
 #include "../exec/print.h"
+#include "../include/saAis.h"
+#include <stdio.h>
+#include <stdlib.h>
 
 int main (void)
 {
@@ -52,7 +52,7 @@ int main (void)
 		exit (-1);
 	}
 
-        saAmfPrintGroups ();
+	saAmfPrintGroups ();
 #endif
 	return (0);
 }
