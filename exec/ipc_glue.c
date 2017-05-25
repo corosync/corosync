@@ -272,7 +272,7 @@ static void cs_ipcs_connection_created(qb_ipcs_connection_t *c)
 	struct cs_ipcs_conn_context *context;
 	char proc_name[32];
 	struct qb_ipcs_connection_stats stats;
-	int32_t size = sizeof(struct cs_ipcs_conn_context);
+	size_t size = sizeof(struct cs_ipcs_conn_context);
 	char key_name[ICMAP_KEYNAME_MAXLEN];
 	int set_client_pid = 0;
 	int set_proc_name = 0;
