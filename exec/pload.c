@@ -208,7 +208,7 @@ static int pload_send_message (const void *arg)
 	}
 
 	do {
-		res = api->totem_mcast (iov, iov_len, TOTEM_AGREED);
+		res = api->totem_mcast (iov, iov_len, TOTEM_AGREED) ? 0 : -1;
 		if (res == -1) {
 			break;
 		} else {

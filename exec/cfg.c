@@ -300,7 +300,7 @@ static int send_shutdown(void)
 	iovec.iov_base = (char *)&req_exec_cfg_shutdown;
 	iovec.iov_len = sizeof (struct req_exec_cfg_shutdown);
 
-	assert (api->totem_mcast (&iovec, 1, TOTEM_SAFE) == 0);
+	assert (api->totem_mcast (&iovec, 1, TOTEM_SAFE));
 
 	LEAVE();
 	return 0;
@@ -820,7 +820,7 @@ static void message_handler_req_lib_cfg_ringreenable (
 	iovec.iov_base = (char *)&req_exec_cfg_ringreenable;
 	iovec.iov_len = sizeof (struct req_exec_cfg_ringreenable);
 
-	assert (api->totem_mcast (&iovec, 1, TOTEM_SAFE) == 0);
+	assert (api->totem_mcast (&iovec, 1, TOTEM_SAFE));
 
 	LEAVE();
 }
@@ -1077,7 +1077,7 @@ static void message_handler_req_lib_cfg_reload_config (void *conn, const void *m
 	iovec.iov_base = (char *)&req_exec_cfg_reload_config;
 	iovec.iov_len = sizeof (struct req_exec_cfg_reload_config);
 
-	assert (api->totem_mcast (&iovec, 1, TOTEM_SAFE) == 0);
+	assert (api->totem_mcast (&iovec, 1, TOTEM_SAFE));
 
 	LEAVE();
 }

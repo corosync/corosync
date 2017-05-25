@@ -80,7 +80,7 @@ static unsigned int api_totem_nodeid_get(void)
 	return our_nodeid;
 }
 
-static int api_totem_mcast(const struct iovec *iov, unsigned int iovlen, unsigned int type)
+static bool api_totem_mcast(const struct iovec *iov, unsigned int iovlen, unsigned int type)
 {
 	struct vqsim_msg_header header;
 	struct iovec iovec[iovlen+1];
@@ -104,7 +104,7 @@ static int api_totem_mcast(const struct iovec *iov, unsigned int iovlen, unsigne
 	if (res != total) {
 		fprintf(stderr, "writev wrote only %d of %d bytes\n", res, total);
 	}
-	return 0;
+	return true;
 }
 static void *api_ipc_private_data_get(void *conn)
 {

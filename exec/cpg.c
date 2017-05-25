@@ -1125,7 +1125,7 @@ static int cpg_node_joinleave_send (unsigned int pid, const mar_cpg_name_t *grou
 	req_exec_cpg_iovec.iov_base = (char *)&req_exec_cpg_procjoin;
 	req_exec_cpg_iovec.iov_len = sizeof(req_exec_cpg_procjoin);
 
-	result = api->totem_mcast (&req_exec_cpg_iovec, 1, TOTEM_AGREED);
+	result = api->totem_mcast (&req_exec_cpg_iovec, 1, TOTEM_AGREED) ? 0 : -1;
 
 	return (result);
 }
@@ -1527,7 +1527,7 @@ static int cpg_exec_send_downlist(void)
 	iov.iov_base = (void *)&g_req_exec_cpg_downlist;
 	iov.iov_len = g_req_exec_cpg_downlist.header.size;
 
-	return (api->totem_mcast (&iov, 1, TOTEM_AGREED));
+	return (api->totem_mcast (&iov, 1, TOTEM_AGREED) ? 0 : -1);
 }
 
 static int cpg_exec_send_joinlist(void)
@@ -1576,7 +1576,7 @@ static int cpg_exec_send_joinlist(void)
 	req_exec_cpg_iovec.iov_base = buf;
 	req_exec_cpg_iovec.iov_len = res->size;
 
-	return (api->totem_mcast (&req_exec_cpg_iovec, 1, TOTEM_AGREED));
+	return (api->totem_mcast (&req_exec_cpg_iovec, 1, TOTEM_AGREED) ? 0 : -1);
 }
 
 static int cpg_lib_init_fn (void *conn)
@@ -1979,7 +1979,7 @@ static void message_handler_req_lib_cpg_partial_mcast (void *conn, const void *m
 		req_exec_cpg_iovec[1].iov_base = (char *)&req_lib_cpg_mcast->message;
 		req_exec_cpg_iovec[1].iov_len = msglen;
 
-		result = api->totem_mcast (req_exec_cpg_iovec, 2, TOTEM_AGREED);
+		result = api->totem_mcast (req_exec_cpg_iovec, 2, TOTEM_AGREED) ? 0 : -1;
 		assert(result == 0);
 	} else {
 		log_printf(LOGSYS_LEVEL_ERROR, "*** %p can't mcast to group %s state:%d, error:%d",
@@ -2036,7 +2036,7 @@ static void message_handler_req_lib_cpg_mcast (void *conn, const void *message)
 		req_exec_cpg_iovec[1].iov_base = (char *)&req_lib_cpg_mcast->message;
 		req_exec_cpg_iovec[1].iov_len = msglen;
 
-		result = api->totem_mcast (req_exec_cpg_iovec, 2, TOTEM_AGREED);
+		result = api->totem_mcast (req_exec_cpg_iovec, 2, TOTEM_AGREED) ? 0 : -1;
 		assert(result == 0);
 	} else {
 		log_printf(LOGSYS_LEVEL_ERROR, "*** %p can't mcast to group %s state:%d, error:%d",
@@ -2095,7 +2095,7 @@ static void message_handler_req_lib_cpg_zc_execute (
 		req_exec_cpg_iovec[1].iov_base = (char *)header + sizeof(struct req_lib_cpg_mcast);
 		req_exec_cpg_iovec[1].iov_len = req_exec_cpg_mcast.msglen;
 
-		result = api->totem_mcast (req_exec_cpg_iovec, 2, TOTEM_AGREED);
+		result = api->totem_mcast (req_exec_cpg_iovec, 2, TOTEM_AGREED) ? 0 : -1;
 		if (result == 0) {
 			res_lib_cpg_mcast.header.error = CS_OK;
 		} else {
