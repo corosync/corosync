@@ -46,6 +46,8 @@
 #include <corosync/totem/totem.h>
 #include <qb/qbloop.h>
 
+#include <stdbool.h>
+
 /**
  * Create a protocol instance
  */
@@ -74,7 +76,7 @@ void totemsrp_finalize (void *srp_context);
 /**
  * Multicast a message
  */
-int totemsrp_mcast (
+bool totemsrp_mcast (
 	void *srp_context,
 	struct iovec *iovec,
 	unsigned int iov_len,

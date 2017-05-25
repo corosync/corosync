@@ -2422,7 +2422,7 @@ void totemsrp_event_signal (void *srp_context, enum totem_event_type type, int v
 	return;
 }
 
-int totemsrp_mcast (
+bool totemsrp_mcast (
 	void *srp_context,
 	struct iovec *iovec,
 	unsigned int iov_len,
@@ -2443,7 +2443,7 @@ int totemsrp_mcast (
 
 	if (cs_queue_is_full (queue_use)) {
 		log_printf (instance->totemsrp_log_level_debug, "queue full");
-		return (-1);
+		return false;
 	}
 
 	memset (&message_item, 0, sizeof (struct message_item));
@@ -2453,7 +2453,7 @@ int totemsrp_mcast (
 	 */
 	message_item.mcast = totemsrp_buffer_alloc (instance);
 	if (message_item.mcast == 0) {
-		goto error_mcast;
+		return false;
 	}
 
 	/*
@@ -2482,10 +2482,7 @@ int totemsrp_mcast (
 	instance->stats.mcast_tx++;
 	cs_queue_item_add (queue_use, &message_item);
 
-	return (0);
-
-error_mcast:
-	return (-1);
+	return true;
 }
 
 /*
