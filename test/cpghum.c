@@ -142,7 +142,7 @@ static void cpgh_print_message(int syslog_level, const char *facility_name, cons
 	int start = 0;
 
 	if (machine_readable) {
-		snprintf(msg, sizeof(msg), "%s%c ", facility_name, delimiter);
+		snprintf(msg, sizeof(msg), "%s%c", facility_name, delimiter);
 		start = strlen(msg);
 	}
 
@@ -256,7 +256,7 @@ static void cpg_bm_deliver_fn (
 
 		if (report_rtt) {
 			if (machine_readable) {
-				cpgh_log_printf(CPGH_LOG_RTT, "%ld%c %ld%c %ld%c %ld\n", rtt_usecs, delimiter, min_rtt, delimiter, avg_rtt, delimiter, max_rtt);
+				cpgh_log_printf(CPGH_LOG_RTT, "%ld%c%ld%c%ld%c%ld\n", rtt_usecs, delimiter, min_rtt, delimiter, avg_rtt, delimiter, max_rtt);
 			}
 			else {
 				cpgh_log_printf(CPGH_LOG_RTT, "%s: RTT %ld uS (min/avg/max): %ld/%ld/%ld\n", group_name->value, rtt_usecs, min_rtt, avg_rtt, max_rtt);
@@ -396,7 +396,7 @@ static void cpg_flood (
 
 	if (!quiet) {
 		if (machine_readable) {
-			cpgh_log_printf (CPGH_LOG_PERF, "%d%c %d%c %f%c %f%c %f%c %ld%c %ld%c %ld\n", packets_recvd1, delimiter, write_size, delimiter,
+			cpgh_log_printf (CPGH_LOG_PERF, "%d%c%d%c%f%c%f%c%f%c%ld%c%ld%c%ld\n", packets_recvd1, delimiter, write_size, delimiter,
 					 (tv_elapsed.tv_sec + (tv_elapsed.tv_usec / 1000000.0)), delimiter,
 					 ((float)packets_recvd1) /  (tv_elapsed.tv_sec + (tv_elapsed.tv_usec / 1000000.0)), delimiter,
 					 ((float)packets_recvd1) * ((float)write_size) /  ((tv_elapsed.tv_sec + (tv_elapsed.tv_usec / 1000000.0)) * 1000000.0), delimiter,
@@ -459,7 +459,7 @@ static void cpg_test (
 
 	if (!quiet) {
 		if (machine_readable) {
-			cpgh_log_printf(CPGH_LOG_RTT,  "%d%c %ld%c %ld%c %ld\n", 0, delimiter, min_rtt, delimiter, avg_rtt, delimiter, max_rtt);
+			cpgh_log_printf(CPGH_LOG_RTT,  "%d%c%ld%c%ld%c%ld\n", 0, delimiter, min_rtt, delimiter, avg_rtt, delimiter, max_rtt);
 		}
 		else {
 			cpgh_log_printf(CPGH_LOG_PERF, "%s: %5d message%s received, ", group_name.value, g_recv_count, g_recv_count==1?"":"s");
@@ -715,7 +715,7 @@ int main (int argc, char *argv[]) {
 		}
 
 		if (machine_readable) {
-			cpgh_log_printf(CPGH_LOG_STATS, "%d%c %d%c %d%c %d%c %d%c %d%c %d%c %ld%c %ld%c %ld\n",
+			cpgh_log_printf(CPGH_LOG_STATS, "%d%c%d%c%d%c%d%c%d%c%d%c%d%c%ld%c%ld%c%ld\n",
 					packets_sent, delimiter,
 					send_fails, delimiter,
 					send_retries, delimiter,
@@ -724,8 +724,8 @@ int main (int argc, char *argv[]) {
 					sequence_errors, delimiter,
 					crc_errors, delimiter,
 					min_rtt, delimiter,
-					max_rtt, delimiter,
-					avg_rtt);
+					avg_rtt, delimiter,
+					max_rtt);
 		}
 		else {
 			cpgh_log_printf(CPGH_LOG_STATS, "\n");
