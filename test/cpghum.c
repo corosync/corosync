@@ -101,6 +101,9 @@ static unsigned int send_fails=0;
 static unsigned long avg_rtt=0;
 static unsigned long max_rtt=0;
 static unsigned long min_rtt=LONG_MAX;
+static unsigned long interim_avg_rtt=0;
+static unsigned long interim_max_rtt=0;
+static unsigned long interim_min_rtt=LONG_MAX;
 
 struct cpghum_header {
 	unsigned int counter;
@@ -188,6 +191,36 @@ static void cpgh_log_printf(log_type_t type, const char *format, ...)
 	va_end(ap);
 }
 
+static unsigned long update_rtt(struct timeval *header_timestamp, int packet_count,
+				unsigned long *rtt_min, unsigned long *rtt_avg, unsigned long *rtt_max)
+{
+	struct timeval tv1;
+	struct timeval rtt;
+	unsigned long rtt_usecs;
+
+	gettimeofday (&tv1, NULL);
+	timersub(&tv1, header_timestamp, &rtt);
+
+	rtt_usecs = rtt.tv_usec + rtt.tv_sec*1000000;
+	if (rtt_usecs > *rtt_max) {
+		*rtt_max = rtt_usecs;
+	}
+	if (rtt_usecs < *rtt_min) {
+		*rtt_min = rtt_usecs;
+	}
+
+	/* Don't start the average with 0 */
+	if (*rtt_avg == 0) {
+		*rtt_avg = rtt_usecs;
+	}
+	else {
+		*rtt_avg = ((*rtt_avg * packet_count) + rtt_usecs) / (packet_count+1);
+	}
+
+	return rtt_usecs;
+}
+
+
 static void cpg_bm_deliver_fn (
 	cpg_handle_t handle_in,
 	const struct cpg_name *group_name,
@@ -214,28 +247,12 @@ static void cpg_bm_deliver_fn (
 
 	// Report RTT first in case abort_on_error is set
 	if (nodeid == g_our_nodeid) {
-		struct timeval tv1;
-		struct timeval rtt;
 		unsigned long rtt_usecs;
 
-		gettimeofday (&tv1, NULL);
-		timersub(&tv1, &header->timestamp, &rtt);
+		// For flood
+		update_rtt(&header->timestamp, packets_recvd1, &interim_min_rtt, &interim_avg_rtt, &interim_max_rtt);
 
-		rtt_usecs = rtt.tv_usec + rtt.tv_sec*1000000;
-		if (rtt_usecs > max_rtt) {
-			max_rtt = rtt_usecs;
-		}
-		if (rtt_usecs < min_rtt) {
-			min_rtt = rtt_usecs;
-		}
-
-		/* Don't start the average with 0 */
-		if (avg_rtt == 0) {
-			avg_rtt = rtt_usecs;
-		}
-		else {
-			avg_rtt = ((avg_rtt * g_recv_counter[nodeid]) + rtt_usecs) / (g_recv_counter[nodeid]+1);
-		}
+		rtt_usecs = update_rtt(&header->timestamp, g_recv_counter[nodeid], &min_rtt, &avg_rtt, &max_rtt);
 
 		if (report_rtt) {
 			if (machine_readable) {
@@ -349,6 +366,9 @@ static void cpg_flood (
 
 	alarm (10);
 	packets_recvd1 = 0;
+	interim_avg_rtt = 0;
+	interim_max_rtt = 0;
+	interim_min_rtt = LONG_MAX;
 
 	gettimeofday (&tv1, NULL);
 	do {
@@ -376,10 +396,11 @@ static void cpg_flood (
 
 	if (!quiet) {
 		if (machine_readable) {
-			cpgh_log_printf (CPGH_LOG_PERF, "%d%c %d%c %f%c %f%c %f\n", packets_recvd1, delimiter, write_size, delimiter,
+			cpgh_log_printf (CPGH_LOG_PERF, "%d%c %d%c %f%c %f%c %f%c %ld%c %ld%c %ld\n", packets_recvd1, delimiter, write_size, delimiter,
 					 (tv_elapsed.tv_sec + (tv_elapsed.tv_usec / 1000000.0)), delimiter,
 					 ((float)packets_recvd1) /  (tv_elapsed.tv_sec + (tv_elapsed.tv_usec / 1000000.0)), delimiter,
-					 ((float)packets_recvd1) * ((float)write_size) /  ((tv_elapsed.tv_sec + (tv_elapsed.tv_usec / 1000000.0)) * 1000000.0));
+					 ((float)packets_recvd1) * ((float)write_size) /  ((tv_elapsed.tv_sec + (tv_elapsed.tv_usec / 1000000.0)) * 1000000.0), delimiter,
+					 interim_min_rtt, delimiter, interim_avg_rtt, delimiter, interim_max_rtt);
 		}
 		else {
 			cpgh_log_printf (CPGH_LOG_PERF, "%5d messages received ", packets_recvd1);
@@ -388,8 +409,10 @@ static void cpg_flood (
 					 (tv_elapsed.tv_sec + (tv_elapsed.tv_usec / 1000000.0)));
 			cpgh_log_printf (CPGH_LOG_PERF, "%9.3f TP/s ",
 					 ((float)packets_recvd1) /  (tv_elapsed.tv_sec + (tv_elapsed.tv_usec / 1000000.0)));
-			cpgh_log_printf (CPGH_LOG_PERF, "%7.3f MB/s.\n",
+			cpgh_log_printf (CPGH_LOG_PERF, "%7.3f MB/s ",
 					 ((float)packets_recvd1) * ((float)write_size) /  ((tv_elapsed.tv_sec + (tv_elapsed.tv_usec / 1000000.0)) * 1000000.0));
+			cpgh_log_printf (CPGH_LOG_PERF, "RTT for this size (min/avg/max) %ld/%ld/%ld\n",
+					 interim_min_rtt, interim_avg_rtt, interim_max_rtt);
 		}
 	}
 }
