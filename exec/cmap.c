@@ -800,7 +800,6 @@ reply_send:
 
 static cs_error_t cmap_mcast_send(enum cmap_mcast_reason reason, int argc, char *argv[])
 {
-	int i;
 	size_t value_len;
 	icmap_value_types_t value_type;
 	cs_error_t err;
@@ -818,7 +817,7 @@ static cs_error_t cmap_mcast_send(enum cmap_mcast_reason reason, int argc, char 
 
 	memset(req_exec_cmap_iovec, 0, sizeof(req_exec_cmap_iovec));
 
-	for (i = 0; i < argc; i++) {
+	for (int i = 0; i < argc; ++i) {
 		err = icmap_get(argv[i], NULL, &value_len, &value_type);
 		if (err != CS_OK && err != CS_ERR_NOT_EXIST) {
 			goto free_mem;
@@ -868,7 +867,7 @@ static cs_error_t cmap_mcast_send(enum cmap_mcast_reason reason, int argc, char 
 	err = (api->totem_mcast(req_exec_cmap_iovec, argc + 1, TOTEM_AGREED) == 0 ? CS_OK : CS_ERR_MESSAGE_ERROR);
 
 free_mem:
-	for (i = 0; i < argc; i++) {
+	for (int i = 0; i < argc; ++i) {
 		free(req_exec_cmap_iovec[i + 1].iov_base);
 	}
 
@@ -883,14 +882,13 @@ static struct req_exec_cmap_mcast_item *cmap_mcast_item_find(
 		char *key)
 {
 	const struct req_exec_cmap_mcast *req_exec_cmap_mcast = message;
-	int i;
 	const char *p;
 	struct req_exec_cmap_mcast_item *item;
 	mar_uint16_t key_name_len;
 
 	p = (const char *)message + sizeof(*req_exec_cmap_mcast);
 
-	for (i = 0; i < req_exec_cmap_mcast->no_items; i++) {
+	for (int i = 0; i < req_exec_cmap_mcast->no_items; ++i) {
 		item = (struct req_exec_cmap_mcast_item *)p;
 
 		key_name_len = item->key_name.length;
@@ -973,7 +971,6 @@ static void exec_cmap_mcast_endian_convert(void *message)
 {
 	struct req_exec_cmap_mcast *req_exec_cmap_mcast = message;
 	const char *p;
-	int i;
 	struct req_exec_cmap_mcast_item *item;
 	uint16_t u16;
 	uint32_t u32;
@@ -985,7 +982,7 @@ static void exec_cmap_mcast_endian_convert(void *message)
 
 	p = (const char *)message + sizeof(*req_exec_cmap_mcast);
 
-	for (i = 0; i < req_exec_cmap_mcast->no_items; i++) {
+	for (int i = 0; i < req_exec_cmap_mcast->no_items; ++i) {
 		item = (struct req_exec_cmap_mcast_item *)p;
 
 		swab_mar_uint16_t(&item->key_name.length);

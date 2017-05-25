@@ -504,13 +504,12 @@ static void outq_flush (void *data)
 static void msg_send_or_queue(qb_ipcs_connection_t *conn, const struct iovec *iov, uint32_t iov_len)
 {
 	int32_t rc = 0;
-	int32_t i;
 	int32_t bytes_msg = 0;
 	struct outq_item *outq_item;
 	char *write_buf = 0;
 	struct cs_ipcs_conn_context *context = qb_ipcs_context_get(conn);
 
-	for (i = 0; i < iov_len; i++) {
+	for (int32_t i = 0; i < iov_len; ++i) {
 		bytes_msg += iov[i].iov_len;
 	}
 
@@ -544,7 +543,7 @@ static void msg_send_or_queue(qb_ipcs_connection_t *conn, const struct iovec *io
 	}
 
 	write_buf = outq_item->msg;
-	for (i = 0; i < iov_len; i++) {
+	for (int32_t i = 0; i < iov_len; ++i) {
 		memcpy (write_buf, iov[i].iov_base, iov[i].iov_len);
 		write_buf += iov[i].iov_len;
 	}
@@ -689,10 +688,9 @@ int32_t cs_ipcs_q_level_get(void)
 static qb_loop_timer_handle ipcs_check_for_flow_control_timer;
 static void cs_ipcs_check_for_flow_control(void)
 {
-	int32_t i;
 	int32_t fc_enabled;
 
-	for (i = 0; i < SERVICES_COUNT_MAX; i++) {
+	for (int32_t i = 0; i < SERVICES_COUNT_MAX; ++i) {
 		if (corosync_service[i] == NULL || ipcs_mapper[i].inst == NULL) {
 			continue;
 		}
@@ -752,14 +750,13 @@ void cs_ipcs_sync_state_changed(int32_t sync_in_process)
 
 void cs_ipcs_stats_update(void)
 {
-	int32_t i;
 	struct qb_ipcs_stats srv_stats;
 	struct qb_ipcs_connection_stats stats;
 	qb_ipcs_connection_t *c, *prev;
 	struct cs_ipcs_conn_context *cnx;
 	char key_name[ICMAP_KEYNAME_MAXLEN];
 
-	for (i = 0; i < SERVICES_COUNT_MAX; i++) {
+	for (int32_t i = 0; i < SERVICES_COUNT_MAX; ++i) {
 		if (corosync_service[i] == NULL || ipcs_mapper[i].inst == NULL) {
 			continue;
 		}

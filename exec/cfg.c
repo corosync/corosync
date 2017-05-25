@@ -751,7 +751,6 @@ static void message_handler_req_lib_cfg_ringstatusget (
 	unsigned int iface_count;
 	char **status;
 	const char *totem_ip_string;
-	unsigned int i;
 	cs_error_t res = CS_OK;
 
 	ENTER();
@@ -770,7 +769,7 @@ static void message_handler_req_lib_cfg_ringstatusget (
 
 	res_lib_cfg_ringstatusget.interface_count = iface_count;
 
-	for (i = 0; i < iface_count; i++) {
+	for (unsigned int i = 0; i < iface_count; ++i) {
 		totem_ip_string
 		  = (const char *)api->totem_ip_print (&interfaces[i]);
 

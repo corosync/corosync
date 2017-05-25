@@ -294,7 +294,6 @@ static int parse_section(FILE *fp,
 			 void *user_data)
 {
 	char line[512];
-	int i;
 	char *loc;
 	int ignore_line;
 	char new_keyname[ICMAP_KEYNAME_MAXLEN];
@@ -313,7 +312,7 @@ static int parse_section(FILE *fp,
 		/*
 		 * Clear out white space and tabs
 		 */
-		for (i = strlen (line) - 1; i > -1; i--) {
+		for (int i = strlen (line) - 1; i > -1; --i) {
 			if (line[i] == '\t' || line[i] == ' ') {
 				line[i] = '\0';
 			} else {
@@ -322,7 +321,7 @@ static int parse_section(FILE *fp,
 		}
 
 		ignore_line = 1;
-		for (i = 0; i < strlen (line); i++) {
+		for (int i = 0; i < strlen (line); ++i) {
 			if (line[i] != '\t' && line[i] != ' ') {
 				if (line[i] != '#')
 					ignore_line = 0;

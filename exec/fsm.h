@@ -79,9 +79,7 @@ struct cs_fsm {
  */
 static inline void cs_fsm_process (struct cs_fsm *fsm, int32_t new_event, void * data, cs_fsm_cb cb)
 {
-	int32_t i;
-
-	for (i = 0; i < fsm->entries; i++) {
+	for (int32_t i = 0; i < fsm->entries; ++i) {
 		if (fsm->table[i].event == new_event &&
 		    fsm->table[i].curr_state == fsm->curr_state) {
 
@@ -100,7 +98,6 @@ static inline void cs_fsm_process (struct cs_fsm *fsm, int32_t new_event, void *
 
 static inline void cs_fsm_state_set (struct cs_fsm* fsm, int32_t next_state, void* data, cs_fsm_cb cb)
 {
-	int i;
 	struct cs_fsm_entry *entry = &fsm->table[fsm->curr_entry];
 
 	if (fsm->curr_state == next_state) {
@@ -109,7 +106,7 @@ static inline void cs_fsm_state_set (struct cs_fsm* fsm, int32_t next_state, voi
 	/*
 	 * confirm that "next_state" is in the current entry's next list
 	 */
-	for (i = 0; i < CS_FSM_NEXT_STATE_SIZE; i++) {
+	for (int i = 0; i < CS_FSM_NEXT_STATE_SIZE; ++i) {
 		if (entry->next_states[i] < 0) {
 			break;
 		}
