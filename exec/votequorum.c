@@ -153,7 +153,7 @@ static int votequorum_exec_send_nodelist_notification(void *conn, uint64_t conte
 #define VOTEQUORUM_RECONFIG_PARAM_NODE_VOTES     2
 #define VOTEQUORUM_RECONFIG_PARAM_CANCEL_WFA     3
 
-static int votequorum_exec_send_reconfigure(uint8_t param, unsigned int nodeid, uint32_t value);
+static void votequorum_exec_send_reconfigure(uint8_t param, unsigned int nodeid, uint32_t value);
 
 /*
  * used by req_exec_quorum_qdevice_reg
@@ -253,7 +253,7 @@ static void votequorum_sync_init (
 	size_t member_list_entries,
 	const struct memb_ring_id *ring_id);
 
-static int votequorum_sync_process (void);
+static bool votequorum_sync_process (void);
 static void votequorum_sync_activate (void);
 static void votequorum_sync_abort (void);
 
@@ -265,7 +265,7 @@ static quorum_set_quorate_fn_t quorum_callback;
 
 static char *votequorum_exec_init_fn (struct corosync_api_v1 *api);
 static int votequorum_exec_exit_fn (void);
-static int votequorum_exec_send_nodeinfo(uint32_t nodeid);
+static bool votequorum_exec_send_nodeinfo(uint32_t nodeid);
 
 static void message_handler_req_exec_votequorum_nodeinfo (
 	const void *message,
@@ -311,9 +311,9 @@ static struct corosync_exec_handler votequorum_exec_engine[] =
  * Library Handler and Functions Definitions
  */
 
-static int quorum_lib_init_fn (void *conn);
+static bool quorum_lib_init_fn (void *conn);
 
-static int quorum_lib_exit_fn (void *conn);
+static bool quorum_lib_exit_fn(void *conn);
 
 static void qdevice_timer_fn(void *arg);
 
@@ -1551,7 +1551,7 @@ static void votequorum_refresh_config(
 	 * can reconfigure it all atomically
 	 */
 	if (icmap_get_uint8("config.totemconfig_reload_in_progress", &reloading) == CS_OK && reloading) {
-		return ;
+                return;
 	}
 
 	icmap_get_uint8("quorum.cancel_wait_for_all", &cancel_wfa);
@@ -1627,11 +1627,10 @@ static void votequorum_exec_add_config_notification(void)
  * votequorum_exec core
  */
 
-static int votequorum_exec_send_reconfigure(uint8_t param, unsigned int nodeid, uint32_t value)
+static void votequorum_exec_send_reconfigure(uint8_t param, unsigned int nodeid, uint32_t value)
 {
 	struct req_exec_quorum_reconfigure req_exec_quorum_reconfigure;
-	struct iovec iov[1];
-	int ret;
+        struct iovec iov[1];
 
 	ENTER();
 
@@ -1648,24 +1647,22 @@ static int votequorum_exec_send_reconfigure(uint8_t param, unsigned int nodeid, 
 	iov[0].iov_base = (void *)&req_exec_quorum_reconfigure;
 	iov[0].iov_len = sizeof(req_exec_quorum_reconfigure);
 
-	ret = corosync_api->totem_mcast (iov, 1, TOTEM_AGREED);
+        corosync_api->totem_mcast (iov, 1, TOTEM_AGREED);
 
-	LEAVE();
-	return ret;
+        LEAVE();
 }
 
-static int votequorum_exec_send_nodeinfo(uint32_t nodeid)
+static bool votequorum_exec_send_nodeinfo(uint32_t nodeid)
 {
 	struct req_exec_quorum_nodeinfo req_exec_quorum_nodeinfo;
 	struct iovec iov[1];
-	struct cluster_node *node;
-	int ret;
+        struct cluster_node *node;
 
 	ENTER();
 
 	node = find_node_by_nodeid(nodeid);
 	if (!node) {
-		return -1;
+                return false;
 	}
 
 	req_exec_quorum_nodeinfo.nodeid = nodeid;
@@ -1682,17 +1679,16 @@ static int votequorum_exec_send_nodeinfo(uint32_t nodeid)
 	iov[0].iov_base = (void *)&req_exec_quorum_nodeinfo;
 	iov[0].iov_len = sizeof(req_exec_quorum_nodeinfo);
 
-	ret = corosync_api->totem_mcast (iov, 1, TOTEM_AGREED);
+        bool ret = corosync_api->totem_mcast (iov, 1, TOTEM_AGREED);
 
 	LEAVE();
 	return ret;
 }
 
-static int votequorum_exec_send_qdevice_reconfigure(const char *oldname, const char *newname)
+static bool votequorum_exec_send_qdevice_reconfigure(const char *oldname, const char *newname)
 {
 	struct req_exec_quorum_qdevice_reconfigure req_exec_quorum_qdevice_reconfigure;
-	struct iovec iov[1];
-	int ret;
+        struct iovec iov[1];
 
 	ENTER();
 
@@ -1704,17 +1700,16 @@ static int votequorum_exec_send_qdevice_reconfigure(const char *oldname, const c
 	iov[0].iov_base = (void *)&req_exec_quorum_qdevice_reconfigure;
 	iov[0].iov_len = sizeof(req_exec_quorum_qdevice_reconfigure);
 
-	ret = corosync_api->totem_mcast (iov, 1, TOTEM_AGREED);
+        bool ret = corosync_api->totem_mcast (iov, 1, TOTEM_AGREED);
 
 	LEAVE();
 	return ret;
 }
 
-static int votequorum_exec_send_qdevice_reg(uint32_t operation, const char *qdevice_name_req)
+static bool votequorum_exec_send_qdevice_reg(uint32_t operation, const char *qdevice_name_req)
 {
 	struct req_exec_quorum_qdevice_reg req_exec_quorum_qdevice_reg;
-	struct iovec iov[1];
-	int ret;
+        struct iovec iov[1];
 
 	ENTER();
 
@@ -1726,7 +1721,7 @@ static int votequorum_exec_send_qdevice_reg(uint32_t operation, const char *qdev
 	iov[0].iov_base = (void *)&req_exec_quorum_qdevice_reg;
 	iov[0].iov_len = sizeof(req_exec_quorum_qdevice_reg);
 
-	ret = corosync_api->totem_mcast (iov, 1, TOTEM_AGREED);
+        bool ret = corosync_api->totem_mcast (iov, 1, TOTEM_AGREED);
 
 	LEAVE();
 	return ret;
@@ -2200,7 +2195,7 @@ static void message_handler_req_exec_votequorum_reconfigure (
 
 static int votequorum_exec_exit_fn (void)
 {
-	int ret = 0;
+        bool ret = true;
 
 	ENTER();
 
@@ -2399,7 +2394,7 @@ static void votequorum_sync_init (
 	LEAVE();
 }
 
-static int votequorum_sync_process (void)
+static bool votequorum_sync_process (void)
 {
 	if (!sync_nodeinfo_sent) {
 		votequorum_exec_send_nodeinfo(us->node_id);
@@ -2417,10 +2412,10 @@ static int votequorum_sync_process (void)
 		 * Waiting for qdevice to poll with new ringid or timeout
 		 */
 
-		return (-1);
+                return false;
 	}
 
-	return 0;
+        return true;
 }
 
 static void votequorum_sync_activate (void)
@@ -2467,7 +2462,7 @@ char *votequorum_init(struct corosync_api_v1 *api,
  * Library Handler init/fini
  */
 
-static int quorum_lib_init_fn (void *conn)
+static bool quorum_lib_init_fn (void *conn)
 {
 	struct quorum_pd *pd = (struct quorum_pd *)corosync_api->ipc_private_data_get (conn);
 
@@ -2477,10 +2472,10 @@ static int quorum_lib_init_fn (void *conn)
 	pd->conn = conn;
 
 	LEAVE();
-	return (0);
+        return true;
 }
 
-static int quorum_lib_exit_fn (void *conn)
+static bool quorum_lib_exit_fn (void *conn)
 {
 	struct quorum_pd *quorum_pd = (struct quorum_pd *)corosync_api->ipc_private_data_get (conn);
 
@@ -2493,7 +2488,7 @@ static int quorum_lib_exit_fn (void *conn)
 
 	LEAVE();
 
-	return (0);
+        return true;
 }
 
 /*

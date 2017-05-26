@@ -42,7 +42,7 @@ struct sync_callbacks {
 		const unsigned int *member_list,
 		size_t member_list_entries,
 		const struct memb_ring_id *ring_id);
-	int (*sync_process) (void);
+        bool (*sync_process) (void);
 	void (*sync_activate) (void);
 	void (*sync_abort) (void);
 	const char *name;

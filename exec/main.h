@@ -53,7 +53,7 @@
 
 extern unsigned long long *(*main_clm_get_by_nodeid) (unsigned int node_id);
 
-extern int main_mcast (
+extern bool main_mcast(
 	const struct iovec *iovec,
 	unsigned int iov_len,
 	unsigned int guarantee);

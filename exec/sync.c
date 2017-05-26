@@ -85,7 +85,7 @@ struct service_entry {
 		size_t member_list_entries,
 		const struct memb_ring_id *ring_id);
 	void (*sync_abort) (void);
-	int (*sync_process) (void);
+        bool (*sync_process) (void);
 	void (*sync_activate) (void);
 	enum sync_process_state state;
 	char name[128];
@@ -153,7 +153,7 @@ static void sync_deliver_fn (
 	unsigned int msg_len,
 	int endian_conversion_required);
 
-static int schedwrk_processor (const void *context);
+static bool schedwrk_processor (const void *context);
 
 static void sync_process_enter (void);
 
@@ -255,9 +255,9 @@ static void dummy_sync_abort (void)
 {
 }
 
-static int dummy_sync_process (void)
+static bool dummy_sync_process (void)
 {
-	return (0);
+        return true;
 }
 
 static void dummy_sync_activate (void)
@@ -518,14 +518,11 @@ static void sync_servicelist_build_enter (
 	service_build_message_transmit (&service_build);
 }
 
-static int schedwrk_processor (const void *context)
+static bool schedwrk_processor (const void *context)
 {
-	int res = 0;
-
 	if (my_service_list[my_processing_idx].state == INIT) {
 		unsigned int old_trans_list[PROCESSOR_COUNT_MAX];
 		size_t old_trans_list_entries = 0;
-		int o, m;
 		my_service_list[my_processing_idx].state = PROCESS;
 
 		memcpy (old_trans_list, my_trans_list, my_trans_list_entries *
@@ -533,8 +530,8 @@ static int schedwrk_processor (const void *context)
 		old_trans_list_entries = my_trans_list_entries;
 
 		my_trans_list_entries = 0;
-		for (o = 0; o < old_trans_list_entries; o++) {
-			for (m = 0; m < my_member_list_entries; m++) {
+                for (int o = 0; o < old_trans_list_entries; o++) {
+                        for (int m = 0; m < my_member_list_entries; m++) {
 				if (old_trans_list[o] == my_member_list[m]) {
 					my_trans_list[my_trans_list_entries] = my_member_list[m];
 					my_trans_list_entries++;
@@ -550,20 +547,20 @@ static int schedwrk_processor (const void *context)
 				&my_ring_id);
 		}
 	}
+
+        bool res = true;
 	if (my_service_list[my_processing_idx].state == PROCESS) {
 		my_service_list[my_processing_idx].state = PROCESS;
 		if (my_sync_callbacks_retrieve(my_service_list[my_processing_idx].service_id, NULL) != -1) {
 			res = my_service_list[my_processing_idx].sync_process ();
-		} else {
-			res = 0;
 		}
-		if (res == 0) {
+                if (res) {
 			sync_barrier_enter();
 		} else {
-			return (-1);
+                        return false;
 		}
 	}
-	return (0);
+        return true;
 }
 
 void sync_start (
