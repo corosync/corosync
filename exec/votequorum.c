@@ -1558,8 +1558,10 @@ static void votequorum_refresh_config(
 	if (strcmp(key_name, "quorum.cancel_wait_for_all") == 0 &&
 	    cancel_wfa >= 1) {
 	        icmap_set_uint8("quorum.cancel_wait_for_all", 0);
-		votequorum_exec_send_reconfigure(VOTEQUORUM_RECONFIG_PARAM_CANCEL_WFA,
-						 us->node_id, 0);
+		if (votequorum_exec_send_reconfigure(VOTEQUORUM_RECONFIG_PARAM_CANCEL_WFA,
+						     us->node_id, 0)) {
+			log_printf(LOGSYS_LEVEL_ERROR, "Failed to send Cancel WFA message to other nodes");
+		}
 		return;
 	}
 
@@ -1577,12 +1579,16 @@ static void votequorum_refresh_config(
 	votequorum_exec_send_nodeinfo(us->node_id);
 	votequorum_exec_send_nodeinfo(VOTEQUORUM_QDEVICE_NODEID);
 	if (us->votes != old_votes) {
-		votequorum_exec_send_reconfigure(VOTEQUORUM_RECONFIG_PARAM_NODE_VOTES,
-						 us->node_id, us->votes);
+		if (votequorum_exec_send_reconfigure(VOTEQUORUM_RECONFIG_PARAM_NODE_VOTES,
+						     us->node_id, us->votes)) {
+			log_printf(LOGSYS_LEVEL_ERROR, "Failed to send new votes message to other nodes");
+		}
 	}
 	if (us->expected_votes != old_expected_votes) {
-		votequorum_exec_send_reconfigure(VOTEQUORUM_RECONFIG_PARAM_EXPECTED_VOTES,
-						 us->node_id, us->expected_votes);
+		if (votequorum_exec_send_reconfigure(VOTEQUORUM_RECONFIG_PARAM_EXPECTED_VOTES,
+						     us->node_id, us->expected_votes)) {
+			log_printf(LOGSYS_LEVEL_ERROR, "Failed to send expected votes message to other nodes");
+		}
 	}
 
 	LEAVE();
@@ -2654,8 +2660,13 @@ static void message_handler_req_lib_votequorum_setexpected (void *conn, const vo
 	}
 	update_node_expected_votes(req_lib_votequorum_setexpected->expected_votes);
 
-	votequorum_exec_send_reconfigure(VOTEQUORUM_RECONFIG_PARAM_EXPECTED_VOTES, us->node_id,
-					 req_lib_votequorum_setexpected->expected_votes);
+	if (votequorum_exec_send_reconfigure(VOTEQUORUM_RECONFIG_PARAM_EXPECTED_VOTES, us->node_id,
+					     req_lib_votequorum_setexpected->expected_votes)) {
+		error = CS_ERR_NO_RESOURCES;
+	}
+	else {
+		error = CS_OK;
+	}
 
 error_exit:
 	res_lib_votequorum_status.header.size = sizeof(res_lib_votequorum_status);
@@ -2701,8 +2712,13 @@ static void message_handler_req_lib_votequorum_setvotes (void *conn, const void 
 		goto error_exit;
 	}
 
-	votequorum_exec_send_reconfigure(VOTEQUORUM_RECONFIG_PARAM_NODE_VOTES, nodeid,
-					 req_lib_votequorum_setvotes->votes);
+	if (votequorum_exec_send_reconfigure(VOTEQUORUM_RECONFIG_PARAM_NODE_VOTES, nodeid,
+					     req_lib_votequorum_setvotes->votes)) {
+		error = CS_ERR_NO_RESOURCES;
+	}
+	else {
+		error = CS_OK;
+	}
 
 error_exit:
 	res_lib_votequorum_status.header.size = sizeof(res_lib_votequorum_status);
