@@ -2664,9 +2664,6 @@ static void message_handler_req_lib_votequorum_setexpected (void *conn, const vo
 					     req_lib_votequorum_setexpected->expected_votes)) {
 		error = CS_ERR_NO_RESOURCES;
 	}
-	else {
-		error = CS_OK;
-	}
 
 error_exit:
 	res_lib_votequorum_status.header.size = sizeof(res_lib_votequorum_status);
@@ -2715,9 +2712,6 @@ static void message_handler_req_lib_votequorum_setvotes (void *conn, const void 
 	if (votequorum_exec_send_reconfigure(VOTEQUORUM_RECONFIG_PARAM_NODE_VOTES, nodeid,
 					     req_lib_votequorum_setvotes->votes)) {
 		error = CS_ERR_NO_RESOURCES;
-	}
-	else {
-		error = CS_OK;
 	}
 
 error_exit:
