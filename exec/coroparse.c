@@ -137,28 +137,25 @@ static char error_string_response[512];
 
 static int uid_determine (const char *req_user)
 {
-	int pw_uid = 0;
 	struct passwd passwd;
 	struct passwd* pwdptr = &passwd;
 	struct passwd* temp_pwd_pt;
-	char *pwdbuffer;
-	int  pwdlinelen, rc;
-	long int id;
-	char *ep;
 
-	id = strtol(req_user, &ep, 10);
+	char *ep;
+        long int id = strtol(req_user, &ep, 10);
 	if (*ep == '\0' && id >= 0 && id <= UINT_MAX) {
 		return (id);
 	}
 
-	pwdlinelen = sysconf (_SC_GETPW_R_SIZE_MAX);
+        int pwdlinelen = sysconf (_SC_GETPW_R_SIZE_MAX);
 
 	if (pwdlinelen == -1) {
 	        pwdlinelen = 256;
 	}
 
-	pwdbuffer = malloc (pwdlinelen);
+        char *pwdbuffer = malloc (pwdlinelen);
 
+        int  rc;
 	while ((rc = getpwnam_r (req_user, pwdptr, pwdbuffer, pwdlinelen, &temp_pwd_pt)) == ERANGE) {
 		char *n;
 
@@ -183,7 +180,7 @@ static int uid_determine (const char *req_user)
 	                req_user);
 	        return (-1);
 	}
-	pw_uid = passwd.pw_uid;
+        int pw_uid = passwd.pw_uid;
 	free (pwdbuffer);
 
 	return pw_uid;
@@ -191,28 +188,24 @@ static int uid_determine (const char *req_user)
 
 static int gid_determine (const char *req_group)
 {
-	int corosync_gid = 0;
 	struct group group;
 	struct group * grpptr = &group;
-	struct group * temp_grp_pt;
-	char *grpbuffer;
-	int  grplinelen, rc;
-	long int id;
-	char *ep;
+        struct group * temp_grp_pt;
 
-	id = strtol(req_group, &ep, 10);
+	char *ep;
+        long int id = strtol(req_group, &ep, 10);
 	if (*ep == '\0' && id >= 0 && id <= UINT_MAX) {
 		return (id);
 	}
 
-	grplinelen = sysconf (_SC_GETGR_R_SIZE_MAX);
+        int grplinelen = sysconf (_SC_GETGR_R_SIZE_MAX);
 
 	if (grplinelen == -1) {
 	        grplinelen = 256;
 	}
 
-	grpbuffer = malloc (grplinelen);
-
+        char *grpbuffer = malloc (grplinelen);
+        int rc;
 	while ((rc = getgrnam_r (req_group, grpptr, grpbuffer, grplinelen, &temp_grp_pt)) == ERANGE) {
 		char *n;
 
@@ -237,7 +230,7 @@ static int gid_determine (const char *req_group)
 	                req_group);
 		return (-1);
 	}
-	corosync_gid = group.gr_gid;
+        int corosync_gid = group.gr_gid;
 	free (grpbuffer);
 
 	return corosync_gid;
@@ -248,8 +241,9 @@ static char *strchr_rs (const char *haystack, int byte)
 	if (end_address) {
 		end_address += 1; /* skip past { or = */
 
-		while (*end_address == ' ' || *end_address == '\t')
+                while (*end_address == ' ' || *end_address == '\t') {
 			end_address++;
+                }
 	}
 
 	return ((char *) end_address);
@@ -266,18 +260,18 @@ int coroparse_configparse (icmap_map_t config_map, const char **error_string)
 
 static char *remove_whitespace(char *string, int remove_colon_and_brace)
 {
-	char *start;
-	char *end;
-
-	start = string;
-	while (*start == ' ' || *start == '\t')
+        char *start = string;
+        while (*start == ' ' || *start == '\t') {
 		start++;
+        }
 
-	end = start+(strlen(start))-1;
-	while ((*end == ' ' || *end == '\t' || (remove_colon_and_brace && (*end == ':' || *end == '{'))) && end > start)
+        char *end = start+(strlen(start))-1;
+        while ((*end == ' ' || *end == '\t' || (remove_colon_and_brace && (*end == ':' || *end == '{'))) && end > start) {
 		end--;
-	if (end != start)
+        }
+        if (end != start){
 		*(end+1) = '\0';
+        }
 
 	return start;
 }
@@ -443,13 +437,11 @@ static int safe_atoq_range(icmap_value_types_t value_type, long long int *min_va
  */
 static int safe_atoq(const char *str, long long int *res, icmap_value_types_t target_type)
 {
-	long long int val;
-	long long int min_val, max_val;
 	char *endptr;
 
 	errno = 0;
 
-	val = strtoll(str, &endptr, 10);
+        long long int val = strtoll(str, &endptr, 10);
 	if (errno == ERANGE) {
 		return (-1);
 	}
@@ -462,6 +454,7 @@ static int safe_atoq(const char *str, long long int *res, icmap_value_types_t ta
 		return (-1);
 	}
 
+        long long int min_val, max_val;
 	if (safe_atoq_range(target_type, &min_val, &max_val) != 0) {
 		return (-1);
 	}
@@ -476,12 +469,11 @@ static int safe_atoq(const char *str, long long int *res, icmap_value_types_t ta
 
 static int str_to_ull(const char *str, unsigned long long int *res)
 {
-	unsigned long long int val;
 	char *endptr;
 
 	errno = 0;
 
-	val = strtoull(str, &endptr, 10);
+        unsigned long long int val = strtoull(str, &endptr, 10);
 	if (errno == ERANGE) {
 		return (-1);
 	}

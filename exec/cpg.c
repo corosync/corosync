@@ -524,11 +524,9 @@ static char *cpg_print_group_name(const mar_cpg_name_t *group)
 {
 	static char res[CPG_MAX_NAME_LENGTH * 4 + 1];
 	int dest_pos = 0;
-	char c;
-	int i;
 
-	for (i = 0; i < group->length; i++) {
-		c = group->value[i];
+	for (int i = 0; i < group->length; i++) {
+		char c = group->value[i];
 
 		if (c >= ' ' && c < 0x7f && c != '\\') {
 			res[dest_pos++] = c;
@@ -554,10 +552,6 @@ static void cpg_sync_init (
 	size_t member_list_entries,
 	const struct memb_ring_id *ring_id)
 {
-	int entries;
-	int i, j;
-	int found;
-
 	my_sync_state = CPGSYNC_DOWNLIST;
 
 	memcpy (my_member_list, member_list, member_list_entries *
@@ -569,13 +563,13 @@ static void cpg_sync_init (
 
 	downlist_state = CPG_DOWNLIST_WAITING_FOR_MESSAGES;
 
-	entries = 0;
+	int entries = 0;
 	/*
 	 * Determine list of nodeids for downlist message
 	 */
-	for (i = 0; i < my_old_member_list_entries; i++) {
-		found = 0;
-		for (j = 0; j < trans_list_entries; j++) {
+	for (int i = 0; i < my_old_member_list_entries; i++) {
+		int found = 0;
+		for (int j = 0; j < trans_list_entries; j++) {
 			if (my_old_member_list[i] == trans_list[j]) {
 				found = 1;
 				break;
@@ -637,18 +631,14 @@ static int notify_lib_totem_membership (
 	int member_list_entries,
 	const unsigned int *member_list)
 {
-	struct qb_list_head *iter;
-	char *buf;
-	int size;
-	struct res_lib_cpg_totem_confchg_callback *res;
-
-	size = sizeof(struct res_lib_cpg_totem_confchg_callback) +
+	size_t size = sizeof(struct res_lib_cpg_totem_confchg_callback) +
 		sizeof(mar_uint32_t) * (member_list_entries);
-	buf = alloca(size);
-	if (!buf)
+	char * buf = alloca(size);
+	if (!buf) {
 		return CS_ERR_LIBRARY;
+	}
 
-	res = (struct res_lib_cpg_totem_confchg_callback *)buf;
+	struct res_lib_cpg_totem_confchg_callback *res = (struct res_lib_cpg_totem_confchg_callback *)buf;
 	res->member_list_entries = member_list_entries;
 	res->header.size = size;
 	res->header.id = MESSAGE_RES_CPG_TOTEM_CONFCHG_CALLBACK;
@@ -658,6 +648,7 @@ static int notify_lib_totem_membership (
 	memcpy (res->member_list, member_list, res->member_list_entries * sizeof (mar_uint32_t));
 
 	if (conn == NULL) {
+		struct qb_list_head *iter;
 		qb_list_for_each(iter, &cpg_pd_list_head) {
 			struct cpg_pd *cpg_pd = qb_list_entry (iter, struct cpg_pd, list);
 			api->ipc_dispatch_send (cpg_pd->conn, buf, size);
@@ -678,56 +669,51 @@ static int notify_lib_joinlist(
 	mar_cpg_address_t *left_list,
 	int id)
 {
-	int size;
-	char *buf;
+	int count = 0;
+
 	struct qb_list_head *iter;
-	int count;
-	struct res_lib_cpg_confchg_callback *res;
-	mar_cpg_address_t *retgi;
-
-	count = 0;
-
 	qb_list_for_each(iter, &process_info_list_head) {
 		struct process_info *pi = qb_list_entry (iter, struct process_info, list);
 		if (mar_name_compare (&pi->group, group_name) == 0) {
-			int i;
 			int founded = 0;
 
-			for (i = 0; i < left_list_entries; i++) {
+			for (int i = 0; i < left_list_entries; i++) {
 				if (left_list[i].nodeid == pi->nodeid && left_list[i].pid == pi->pid) {
 					founded++;
 				}
 			}
 
-			if (!founded)
+			if (!founded) {
 				count++;
+			}
 		}
 	}
 
-	size = sizeof(struct res_lib_cpg_confchg_callback) +
+	size_t size = sizeof(struct res_lib_cpg_confchg_callback) +
 		sizeof(mar_cpg_address_t) * (count + left_list_entries + joined_list_entries);
-	buf = alloca(size);
-	if (!buf)
+	char *buf = alloca(size);
+	if (!buf) {
 		return CS_ERR_LIBRARY;
+        }
 
-	res = (struct res_lib_cpg_confchg_callback *)buf;
+        struct res_lib_cpg_confchg_callback *res = (struct res_lib_cpg_confchg_callback *)buf;
 	res->joined_list_entries = joined_list_entries;
 	res->left_list_entries = left_list_entries;
 	res->member_list_entries = count;
-	retgi = res->member_list;
 	res->header.size = size;
 	res->header.id = id;
 	res->header.error = CS_OK;
 	memcpy(&res->group_name, group_name, sizeof(mar_cpg_name_t));
 
+	mar_cpg_address_t *retgi = res->member_list;
+
 	qb_list_for_each(iter, &process_info_list_head) {
 		struct process_info *pi=qb_list_entry (iter, struct process_info, list);
 
 		if (mar_name_compare (&pi->group, group_name) == 0) {
-			int i;
 			int founded = 0;
 
-			for (i = 0;i < left_list_entries; i++) {
+                        for (int i = 0;i < left_list_entries; i++) {
 				if (left_list[i].nodeid == pi->nodeid && left_list[i].pid == pi->pid) {
 					founded++;
 				}
@@ -813,20 +799,15 @@ static void downlist_log(const char *msg, struct downlist_msg* dl)
 
 static struct downlist_msg* downlist_master_choose (void)
 {
-	struct downlist_msg *cmp;
 	struct downlist_msg *best = NULL;
 	struct qb_list_head *iter;
-	uint32_t cmp_members;
-	uint32_t best_members;
-	uint32_t i;
-	int ignore_msg;
 
 	qb_list_for_each(iter, &downlist_messages_head) {
-		cmp = qb_list_entry(iter, struct downlist_msg, list);
+                struct downlist_msg *cmp = qb_list_entry(iter, struct downlist_msg, list);
 		downlist_log("comparing", cmp);
 
-		ignore_msg = 0;
-		for (i = 0; i < cmp->left_nodes; i++) {
+                int ignore_msg = 0;
+                for (uint32_t i = 0; i < cmp->left_nodes; i++) {
 			if (cmp->nodeids[i] == api->totem_nodeid_get()) {
 				log_printf (LOG_DEBUG, "Ignoring this entry because I'm in the left list\n");
 
@@ -844,8 +825,8 @@ static struct downlist_msg* downlist_master_choose (void)
 			continue;
 		}
 
-		best_members = best->old_members - best->left_nodes;
-		cmp_members = cmp->old_members - cmp->left_nodes;
+                uint32_t best_members = best->old_members - best->left_nodes;
+                uint32_t cmp_members = cmp->old_members - cmp->left_nodes;
 
 		if (cmp_members > best_members) {
 			best = cmp;
@@ -867,31 +848,24 @@ static struct downlist_msg* downlist_master_choose (void)
 
 static void downlist_master_choose_and_send (void)
 {
-	struct downlist_msg *stored_msg;
 	struct qb_list_head *iter, *tmp_iter;
-	struct process_info *left_pi;
-	qb_map_t *group_map;
-	struct cpg_name cpg_group;
-	mar_cpg_name_t group;
 	struct confchg_data{
 		struct cpg_name cpg_group;
 		mar_cpg_address_t left_list[CPG_MEMBERS_MAX];
 		int left_list_entries;
 		struct qb_list_head  list;
 	} *pcd;
-	qb_map_iter_t *miter;
-	int i, size;
 
 	downlist_state = CPG_DOWNLIST_APPLYING;
 
-	stored_msg = downlist_master_choose ();
+        struct downlist_msg * stored_msg = downlist_master_choose ();
 	if (!stored_msg) {
 		log_printf (LOGSYS_LEVEL_DEBUG, "NO chosen downlist");
 		return;
 	}
 	downlist_log("chosen downlist", stored_msg);
 
-	group_map = qb_skiplist_create();
+        qb_map_t *group_map = qb_skiplist_create();
 
 	/*
 	 * only the cpg groups included in left nodes should receive
@@ -901,8 +875,8 @@ static void downlist_master_choose_and_send (void)
 	qb_list_for_each_safe(iter, tmp_iter, &process_info_list_head) {
 		struct process_info *pi = qb_list_entry(iter, struct process_info, list);
 
-		left_pi = NULL;
-		for (i = 0; i < stored_msg->left_nodes; i++) {
+		struct process_info *left_pi = NULL;
+		for (int i = 0; i < stored_msg->left_nodes; i++) {
 
 			if (pi->nodeid == stored_msg->nodeids[i]) {
 				left_pi = pi;
@@ -911,6 +885,7 @@ static void downlist_master_choose_and_send (void)
 		}
 
 		if (left_pi) {
+			struct cpg_name cpg_group;
 			marshall_from_mar_cpg_name_t(&cpg_group, &left_pi->group);
 			cpg_group.value[cpg_group.length] = 0;
 
@@ -920,7 +895,7 @@ static void downlist_master_choose_and_send (void)
 				memcpy(&pcd->cpg_group, &cpg_group, sizeof(struct cpg_name));
 				qb_map_put(group_map, pcd->cpg_group.value, pcd);
 			}
-			size = pcd->left_list_entries;
+			int size = pcd->left_list_entries;
 			pcd->left_list[size].nodeid = left_pi->nodeid;
 			pcd->left_list[size].pid = left_pi->pid;
 			pcd->left_list[size].reason = CONFCHG_CPG_REASON_NODEDOWN;
@@ -931,12 +906,13 @@ static void downlist_master_choose_and_send (void)
 	}
 
 	/* send only one confchg event per cpg group */
-	miter = qb_map_iter_create(group_map);
+	qb_map_iter_t *miter = qb_map_iter_create(group_map);
 	while (qb_map_iter_next(miter, (void **)&pcd)) {
+		mar_cpg_name_t group;
 		marshall_to_mar_cpg_name_t(&group, &pcd->cpg_group);
 
 		log_printf (LOG_DEBUG, "left_list_entries:%d", pcd->left_list_entries);
-		for (i=0; i<pcd->left_list_entries; i++) {
+		for (int i=0; i<pcd->left_list_entries; i++) {
 			log_printf (LOG_DEBUG, "left_list[%d] group:%s, ip:%s, pid:%d",
 				i, cpg_print_group_name(&group),
 				(char*)api->totem_ifaces_print(pcd->left_list[i].nodeid),
@@ -962,13 +938,9 @@ static void downlist_master_choose_and_send (void)
 static void joinlist_remove_zombie_pi_entries (void)
 {
 	struct qb_list_head *pi_iter, *tmp_iter;
-	struct qb_list_head *jl_iter;
-	struct process_info *pi;
-	struct joinlist_msg *stored_msg;
-	int found;
-
 	qb_list_for_each_safe(pi_iter, tmp_iter, &process_info_list_head) {
-		pi = qb_list_entry (pi_iter, struct process_info, list);
+                struct process_info *pi = qb_list_entry (pi_iter, struct process_info, list);
+		pi_iter = pi_iter->next;
 
 		/*
 		 * Ignore local node
@@ -980,9 +952,11 @@ static void joinlist_remove_zombie_pi_entries (void)
 		/*
 		 * Try to find message in joinlist messages
 		 */
-		found = 0;
+		struct qb_list_head *jl_iter;
+		int found = 0;
 		qb_list_for_each(jl_iter, &joinlist_messages_head) {
-			stored_msg = qb_list_entry(jl_iter, struct joinlist_msg, list);
+
+                        struct joinlist_msg *stored_msg = qb_list_entry(jl_iter, struct joinlist_msg, list);
 
 			if (stored_msg->sender_nodeid == api->totem_nodeid_get()) {
 				continue ;
@@ -1004,13 +978,10 @@ static void joinlist_remove_zombie_pi_entries (void)
 
 static void joinlist_inform_clients (void)
 {
-	struct joinlist_msg *stored_msg;
 	struct qb_list_head *iter;
-	unsigned int i;
-
-	i = 0;
+	unsigned int i = 0;
 	qb_list_for_each(iter, &joinlist_messages_head) {
-		stored_msg = qb_list_entry(iter, struct joinlist_msg, list);
+		struct joinlist_msg *stored_msg = qb_list_entry(iter, struct joinlist_msg, list);
 
 		log_printf (LOG_DEBUG, "joinlist_messages[%u] group:%s, ip:%s, pid:%d",
 			i++, cpg_print_group_name(&stored_msg->group_name),
@@ -1031,11 +1002,9 @@ static void joinlist_inform_clients (void)
 
 static void downlist_messages_delete (void)
 {
-	struct downlist_msg *stored_msg;
         struct qb_list_head *iter, *tmp_iter;
-
 	qb_list_for_each_safe(iter, tmp_iter, &downlist_messages_head) {
-		stored_msg = qb_list_entry(iter, struct downlist_msg, list);
+                struct downlist_msg *stored_msg = qb_list_entry(iter, struct downlist_msg, list);
 		qb_list_del (&stored_msg->list);
 		free (stored_msg);
 	}
@@ -1043,11 +1012,10 @@ static void downlist_messages_delete (void)
 
 static void joinlist_messages_delete (void)
 {
-	struct joinlist_msg *stored_msg;
 	struct qb_list_head *iter, *tmp_iter;
-
 	qb_list_for_each_safe(iter, tmp_iter, &joinlist_messages_head) {
-		stored_msg = qb_list_entry(iter, struct joinlist_msg, list);
+
+                struct joinlist_msg *stored_msg = qb_list_entry(iter, struct joinlist_msg, list);
 		qb_list_del (&stored_msg->list);
 		free (stored_msg);
 	}
