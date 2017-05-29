@@ -153,7 +153,7 @@ static int votequorum_exec_send_nodelist_notification(void *conn, uint64_t conte
 #define VOTEQUORUM_RECONFIG_PARAM_NODE_VOTES     2
 #define VOTEQUORUM_RECONFIG_PARAM_CANCEL_WFA     3
 
-static int votequorum_exec_send_reconfigure(uint8_t param, unsigned int nodeid, uint32_t value);
+static void votequorum_exec_send_reconfigure(uint8_t param, unsigned int nodeid, uint32_t value);
 
 /*
  * used by req_exec_quorum_qdevice_reg
@@ -1627,11 +1627,10 @@ static void votequorum_exec_add_config_notification(void)
  * votequorum_exec core
  */
 
-static int votequorum_exec_send_reconfigure(uint8_t param, unsigned int nodeid, uint32_t value)
+static void votequorum_exec_send_reconfigure(uint8_t param, unsigned int nodeid, uint32_t value)
 {
 	struct req_exec_quorum_reconfigure req_exec_quorum_reconfigure;
 	struct iovec iov[1];
-	int ret;
 
 	ENTER();
 
@@ -1648,10 +1647,9 @@ static int votequorum_exec_send_reconfigure(uint8_t param, unsigned int nodeid, 
 	iov[0].iov_base = (void *)&req_exec_quorum_reconfigure;
 	iov[0].iov_len = sizeof(req_exec_quorum_reconfigure);
 
-	ret = corosync_api->totem_mcast (iov, 1, TOTEM_AGREED);
+	corosync_api->totem_mcast (iov, 1, TOTEM_AGREED);
 
 	LEAVE();
-	return ret;
 }
 
 static int votequorum_exec_send_nodeinfo(uint32_t nodeid)
