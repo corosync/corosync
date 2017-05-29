@@ -290,9 +290,7 @@ static int icmap_is_valid_name_char(char c)
 
 void icmap_convert_name_to_valid_name(char *key_name)
 {
-	int i;
-
-	for (i = 0; i < strlen(key_name); i++) {
+	for (int i = 0; i < strlen(key_name); ++i) {
 		if (!icmap_is_valid_name_char(key_name[i])) {
 			key_name[i] = '_';
 		}
@@ -301,13 +299,11 @@ void icmap_convert_name_to_valid_name(char *key_name)
 
 static int icmap_check_key_name(const char *key_name)
 {
-	int i;
-
 	if ((strlen(key_name) < ICMAP_KEYNAME_MINLEN) || strlen(key_name) > ICMAP_KEYNAME_MAXLEN) {
 		return (-1);
 	}
 
-	for (i = 0; i < strlen(key_name); i++) {
+	for (int i = 0; i < strlen(key_name); ++i) {
 		if (!icmap_is_valid_name_char(key_name[i])) {
 			return (-1);
 		}
