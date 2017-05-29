@@ -60,6 +60,11 @@ extern int totem_config_keyread (
 	struct totem_config *totem_config,
 	const char **error_string);
 
+extern int get_local_addr_from_config(
+	const char *ipaddr_key_prefix,
+	const char* ring_name,
+	struct totem_ip_address * ip_addr);
+
 extern int totem_config_find_local_addr_in_nodelist(
 	const char *ipaddr_key_prefix,
 	unsigned int *node_pos);

@@ -53,6 +53,7 @@
 
 #include <corosync/totem/totemip.h>
 #include <corosync/swab.h>
+#include "totemconfig.h"
 
 #define LOCALHOST_IPV4 "127.0.0.1"
 #define LOCALHOST_IPV6 "::1"
@@ -416,6 +417,9 @@ int totemip_iface_check(struct totem_ip_address *bindnet,
 	int res = -1;
 	int exact_match_found = 0;
 	int net_match_found = 0;
+	struct totem_ip_address node_addr1, node_addr2;
+	memset(&node_addr1, 0 , sizeof(struct totem_ip_address));
+	memset(&node_addr2, 0 , sizeof(struct totem_ip_address));
 
 	*interface_up = 0;
 	*interface_num = 0;
@@ -423,6 +427,9 @@ int totemip_iface_check(struct totem_ip_address *bindnet,
 	if (totemip_getifaddrs(&addrs) == -1) {
 		return (-1);
 	}
+
+	get_local_addr_from_config(NULL, "ring0_addr", &node_addr1);
+	get_local_addr_from_config(NULL, "ring1_addr", &node_addr2);
 
 	qb_list_for_each(list, &addrs) {
 		if_addr = qb_list_entry(list, struct totem_ip_if_address, list);
@@ -456,6 +463,9 @@ int totemip_iface_check(struct totem_ip_address *bindnet,
 			if_netaddr.addr[si] = if_netaddr.addr[si] & if_addr->mask_addr.addr[si];
 		}
 
+		if (totemip_equal(&bn_netaddr, &if_netaddr) && (totemip_equal(&node_addr1, &if_netaddr) || totemip_equal(&node_addr2, &if_netaddr))) {
+			exact_match_found = 1;
+		}
 		if (exact_match_found || (!net_match_found && totemip_equal(&bn_netaddr, &if_netaddr))) {
 			totemip_copy(boundto, &if_addr->ip_addr);
 			boundto->nodeid = bindnet->nodeid;
