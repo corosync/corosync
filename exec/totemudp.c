@@ -88,6 +88,9 @@
 
 #define MESSAGE_TYPE_MEMB_JOIN	3
 
+static int sendmsg_failures = 0;
+static int use_local_sock = 0;
+
 struct totemudp_socket {
 	int mcast_recv;
 	int mcast_send;
@@ -312,11 +315,29 @@ static inline void ucast_sendmsg (
 		 * Transmit unicast message if all network intefaces fails
 		 * An error here is recovered by totemsrp
 		 */
+		sendmsg_failures++;
+		if ((sendmsg_failures == MAX_NO_CONT_SENDMSG_FAILURES) && (instance->my_memb_entries > 1)) {
+		    log_printf (instance->totemudp_log_level_debug,
+		                       "calling totemudp_iface_check bacause sendmsg_failures reached %d\n", MAX_NO_CONT_SENDMSG_FAILURES);
+		    totemudp_iface_check((void*)instance);
+		}
+
 		res = sendmsg(instance->totemudp_sockets.local_mcast_loop[1], &msg_ucast,
 		                MSG_NOSIGNAL);
 		if(res < 0) {
 		    LOGSYS_PERROR(errno, instance->totemudp_log_level_debug,
                           "sendmsg(ucast: local_mcast_loop) failed (non-critical)");
+		}
+	} else {
+		if (sendmsg_failures > MAX_NO_CONT_SENDMSG_FAILURES) {
+		    sendmsg_failures = MAX_NO_CONT_SENDMSG_FAILURES;
+		}
+		if(sendmsg_failures != 0) {
+		    sendmsg_failures--;
+		    log_printf (instance->totemudp_log_level_debug,"decrease sendmsg_failures to %d", sendmsg_failures);
+		} else if(instance->netif_bind_state != BIND_STATE_REGULAR){
+		    instance->netif_bind_state = BIND_STATE_REGULAR;
+		    log_printf (instance->totemudp_log_level_debug,"set instance->netif_bind_state = BIND_STATE_REGULAR");
 		}
 	}
 }
@@ -537,6 +558,8 @@ static void timer_function_netif_check_timeout (
 	 * If the network interface isn't back up and we are already
 	 * in loopback mode, add timer to check again and return
 	 */
+	log_printf (instance->totemudp_log_level_debug, "instance->netif_bind_state=%d, instance->my_memb_entries=%d, interface_up=%d\n",
+	                            instance->netif_bind_state, instance->my_memb_entries, interface_up);
 	if ((instance->netif_bind_state == BIND_STATE_LOOPBACK &&
 		interface_up == 0) ||
 
@@ -647,6 +670,7 @@ static void timer_function_netif_check_timeout (
 				"The network interface [%s] is now up.",
 				totemip_print (&instance->totem_interface->boundto));
 			instance->netif_state_report = NETIF_STATE_REPORT_DOWN;
+			use_local_sock = 0;
 			instance->totemudp_iface_change_fn (instance->context, &instance->my_id, 0);
 		}
 		/*
@@ -661,7 +685,8 @@ static void timer_function_netif_check_timeout (
 				&instance->timer_netif_check_timeout);
 		}
 
-	} else {
+	} else if (use_local_sock == 0){
+		use_local_sock = 1;
 		if (instance->netif_state_report & NETIF_STATE_REPORT_DOWN) {
 			log_printf (instance->totemudp_log_level_notice,
 				"The network interface is down.");
