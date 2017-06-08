@@ -666,7 +666,7 @@ static int setup_watchdog(void)
 	 */
 
 	ioctl(dog, WDIOC_GETSUPPORT, &ident);
-	log_printf (LOGSYS_LEVEL_INFO, "Watchdog %s is now been tickled by corosync.", watchdog_device);
+	log_printf (LOGSYS_LEVEL_INFO, "Watchdog %s is now being tickled by corosync.", watchdog_device);
 	log_printf (LOGSYS_LEVEL_DEBUG, "%s", ident.identity);
 
 	watchdog_timeout_apply (watchdog_timeout);
