@@ -1159,7 +1159,7 @@ int totemknet_member_add (
 	totemip_totemip_to_sockaddr_convert((struct totem_ip_address *)local, port+link_no, &local_ss, &addrlen);
 	err = knet_link_set_config(instance->knet_handle, member->nodeid, link_no,
 				   instance->totem_config->interfaces[link_no].knet_transport,
-				   &local_ss, &remote_ss);
+				   &local_ss, &remote_ss, KNET_LINK_FLAG_TRAFFICHIPRIO);
 	if (err) {
 		KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_ERROR, "knet_link_set_config failed");
 		return -1;
