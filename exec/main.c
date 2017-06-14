@@ -1355,9 +1355,13 @@ int main (int argc, char **argv, char **envp)
 	 * Join multicast group and setup delivery
 	 *  and configuration change functions
 	 */
-	totempg_initialize (
+	if (totempg_initialize (
 		corosync_poll_handle,
-		&totem_config);
+		&totem_config) != 0) {
+
+		log_printf (LOGSYS_LEVEL_ERROR, "Can't initialize TOTEM layer");
+		corosync_exit_error (COROSYNC_DONE_FATAL_ERR);
+	}
 
 	totempg_service_ready_register (
 		main_service_ready);

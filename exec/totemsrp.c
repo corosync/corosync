@@ -851,6 +851,7 @@ int totemsrp_initialize (
 		int waiting_trans_ack))
 {
 	struct totemsrp_instance *instance;
+	int res;
 
 	instance = malloc (sizeof (struct totemsrp_instance));
 	if (instance == NULL) {
@@ -993,7 +994,7 @@ int totemsrp_initialize (
 		}
 	}
 
-	totemrrp_initialize (
+	res = totemrrp_initialize (
 		poll_handle,
 		&instance->totemrrp_context,
 		totem_config,
@@ -1004,6 +1005,9 @@ int totemsrp_initialize (
 		main_token_seqid_get,
 		main_msgs_missing,
 		target_set_completed);
+	if (res == -1) {
+		goto error_exit;
+	}
 
 	/*
 	 * Must have net_mtu adjusted by totemrrp_initialize first

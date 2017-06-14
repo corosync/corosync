@@ -2150,7 +2150,7 @@ int totemrrp_initialize (
 		deliver_fn_context->iface_no = i;
 		instance->deliver_fn_context[i] = (void *)deliver_fn_context;
 
-		totemnet_initialize (
+		res = totemnet_initialize (
 			poll_handle,
 			&instance->net_handles[i],
 			totem_config,
@@ -2160,6 +2160,10 @@ int totemrrp_initialize (
 			rrp_deliver_fn,
 			rrp_iface_change_fn,
 			rrp_target_set_completed);
+
+		if (res == -1) {
+			goto error_destroy;
+		}
 
 		totemnet_net_mtu_adjust (instance->net_handles[i], totem_config);
 	}

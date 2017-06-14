@@ -814,6 +814,10 @@ int totempg_initialize (
 		totempg_confchg_fn,
 		totempg_waiting_trans_ack_cb);
 
+	if (res == -1) {
+		goto error_exit;
+	}
+
 	totemmrp_callback_token_create (
 		&callback_token_received_handle,
 		TOTEM_CALLBACK_TOKEN_RECEIVED,
@@ -827,6 +831,7 @@ int totempg_initialize (
 
 	list_init (&totempg_groups_list);
 
+error_exit:
 	return (res);
 }
 
