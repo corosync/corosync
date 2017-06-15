@@ -834,6 +834,7 @@ int totemsrp_initialize (
 		int waiting_trans_ack))
 {
 	struct totemsrp_instance *instance;
+	int res;
 
 	instance = malloc (sizeof (struct totemsrp_instance));
 	if (instance == NULL) {
@@ -959,7 +960,7 @@ int totemsrp_initialize (
 		}
 	}
 
-	totemnet_initialize (
+	res = totemnet_initialize (
 		poll_handle,
 		&instance->totemnet_context,
 		totem_config,
@@ -969,6 +970,9 @@ int totemsrp_initialize (
 		main_iface_change_fn,
 		totempg_mtu_changed,
 		target_set_completed);
+	if (res == -1) {
+		goto error_exit;
+	}
 
 	/*
 	 * Must have net_mtu adjusted by totemnet_initialize first
