@@ -206,6 +206,11 @@ do {									\
 		(const char *)format, ##args);				\
 } while (0);
 
+enum sym_key_type {
+	SYM_KEY_TYPE_CRYPT,
+	SYM_KEY_TYPE_HASH
+};
+
 /*
  * crypt/decrypt functions
  */
@@ -226,37 +231,64 @@ static int string_to_crypto_cipher_type(const char* crypto_cipher_type)
 	return CRYPTO_CIPHER_TYPE_AES256;
 }
 
+static PK11SymKey *import_symmetric_key(struct crypto_instance *instance, enum sym_key_type key_type)
+{
+	SECItem key_item;
+	PK11SlotInfo *slot;
+	PK11SymKey *res_key;
+	CK_MECHANISM_TYPE cipher;
+	CK_ATTRIBUTE_TYPE operation;
+
+	memset(&key_item, 0, sizeof(key_item));
+	slot = NULL;
+
+	key_item.type = siBuffer;
+	key_item.data = instance->private_key;
+
+	switch (key_type) {
+	case SYM_KEY_TYPE_CRYPT:
+		key_item.len = cipher_key_len[instance->crypto_cipher_type];
+		cipher = cipher_to_nss[instance->crypto_cipher_type];
+		operation = CKA_ENCRYPT|CKA_DECRYPT;
+		break;
+	case SYM_KEY_TYPE_HASH:
+		key_item.len = instance->private_key_len;
+		cipher = hash_to_nss[instance->crypto_hash_type];
+		operation = CKA_SIGN;
+		break;
+	}
+
+	slot = PK11_GetBestSlot(cipher, NULL);
+	if (slot == NULL) {
+		log_printf(instance->log_level_security, "Unable to find security slot (%d): %s",
+			   PR_GetError(), PR_ErrorToString(PR_GetError(), PR_LANGUAGE_I_DEFAULT));
+		return (NULL);
+	}
+
+	res_key = PK11_ImportSymKey(slot, cipher, PK11_OriginUnwrap, operation, &key_item, NULL);
+	if (res_key == NULL) {
+		log_printf(instance->log_level_security, "Failure to import key into NSS (%d): %s",
+			   PR_GetError(), PR_ErrorToString(PR_GetError(), PR_LANGUAGE_I_DEFAULT));
+		goto exit_err;
+	}
+
+exit_err:
+	PK11_FreeSlot(slot);
+
+	return (res_key);
+}
+
 static int init_nss_crypto(struct crypto_instance *instance)
 {
-	PK11SlotInfo*	crypt_slot = NULL;
-	SECItem		crypt_param;
 
 	if (!cipher_to_nss[instance->crypto_cipher_type]) {
 		return 0;
 	}
 
-	crypt_param.type = siBuffer;
-	crypt_param.data = instance->private_key;
-	crypt_param.len = cipher_key_len[instance->crypto_cipher_type];
-
-	crypt_slot = PK11_GetBestSlot(cipher_to_nss[instance->crypto_cipher_type], NULL);
-	if (crypt_slot == NULL) {
-		log_printf(instance->log_level_security, "Unable to find security slot (err %d)",
-			   PR_GetError());
-		return -1;
-	}
-
-	instance->nss_sym_key = PK11_ImportSymKey(crypt_slot,
-						  cipher_to_nss[instance->crypto_cipher_type],
-						  PK11_OriginUnwrap, CKA_ENCRYPT|CKA_DECRYPT,
-						  &crypt_param, NULL);
+	instance->nss_sym_key = import_symmetric_key(instance, SYM_KEY_TYPE_CRYPT);
 	if (instance->nss_sym_key == NULL) {
-		log_printf(instance->log_level_security, "Failure to import key into NSS (err %d)",
-			   PR_GetError());
 		return -1;
 	}
-
-	PK11_FreeSlot(crypt_slot);
 
 	return 0;
 }
@@ -447,35 +479,15 @@ static int string_to_crypto_hash_type(const char* crypto_hash_type)
 
 static int init_nss_hash(struct crypto_instance *instance)
 {
-	PK11SlotInfo*	hash_slot = NULL;
-	SECItem		hash_param;
 
 	if (!hash_to_nss[instance->crypto_hash_type]) {
 		return 0;
 	}
 
-	hash_param.type = siBuffer;
-	hash_param.data = instance->private_key;
-	hash_param.len = instance->private_key_len;
-
-	hash_slot = PK11_GetBestSlot(hash_to_nss[instance->crypto_hash_type], NULL);
-	if (hash_slot == NULL) {
-		log_printf(instance->log_level_security, "Unable to find security slot (err %d)",
-			   PR_GetError());
-		return -1;
-	}
-
-	instance->nss_sym_key_sign = PK11_ImportSymKey(hash_slot,
-						       hash_to_nss[instance->crypto_hash_type],
-						       PK11_OriginUnwrap, CKA_SIGN,
-						       &hash_param, NULL);
+	instance->nss_sym_key_sign = import_symmetric_key(instance, SYM_KEY_TYPE_HASH);
 	if (instance->nss_sym_key_sign == NULL) {
-		log_printf(instance->log_level_security, "Failure to import key into NSS (err %d)",
-			   PR_GetError());
 		return -1;
 	}
-
-	PK11_FreeSlot(hash_slot);
 
 	return 0;
 }
