@@ -1,10 +1,11 @@
 /*
  * Copyright (c) 2004 MontaVista Software, Inc.
- * Copyright (c) 2005-2011 Red Hat, Inc.
+ * Copyright (c) 2005-2017 Red Hat, Inc.
  *
  * All rights reserved.
  *
  * Author: Steven Dake (sdake@redhat.com)
+ *         Jan Friesse (jfriesse@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
  *
@@ -47,7 +48,13 @@
 
 #include <netinet/in.h>
 
+#include <corosync/totem/totem.h>
+
 #define DEFAULT_KEYFILE COROSYSCONFDIR "/authkey"
+
+#define DEFAULT_KEYFILE_LEN		TOTEM_PRIVATE_KEY_LEN_MIN
+
+#define DEFAULT_RANDOM_DEV		"/dev/random"
 
 static const char usage[] =
 	"Usage: corosync-keygen [-k <keyfile>] [-l] [-h]\n"
@@ -57,6 +64,7 @@ static const char usage[] =
 	"            (/dev/urandom) that is guaranteed not to require user\n"
 	"            input for entropy.  This can be used when this\n"
 	"            application is used from a script.\n"
+	"     -s / --size -  Length of key.\n"
 	"     -h / --help -  Print basic usage.\n";
 
 
@@ -65,20 +73,25 @@ int main (int argc, char *argv[])
 	int authkey_fd;
 	int random_fd;
 	char *keyfile = NULL;
-	unsigned char key[128];
+	unsigned char key[TOTEM_PRIVATE_KEY_LEN_MAX];
 	ssize_t res;
 	ssize_t bytes_read;
+	size_t key_len = DEFAULT_KEYFILE_LEN;
+	const char *random_dev = DEFAULT_RANDOM_DEV;
+	long long int tmpll;
+	char *ep;
 	int c;
 	int option_index;
 	int less_secure = 0;
 	static struct option long_options[] = {
 		{ "key-file",    required_argument, NULL, 'k' },
 		{ "less-secure", no_argument,       NULL, 'l' },
+		{ "size",        required_argument, NULL, 's' },
 		{ "help",        no_argument,       NULL, 'h' },
 		{ 0,             0,                 NULL, 0   },
 	};
 
-	while ((c = getopt_long (argc, argv, "k:lh",
+	while ((c = getopt_long (argc, argv, "k:s:lh",
 			long_options, &option_index)) != -1) {
 		switch (c) {
 		case 'k':
@@ -86,6 +99,20 @@ int main (int argc, char *argv[])
 			break;
 		case 'l':
 			less_secure = 1;
+			random_dev = "/dev/urandom";
+			break;
+		case 's':
+			tmpll = strtoll(optarg, &ep, 10);
+			if (tmpll < TOTEM_PRIVATE_KEY_LEN_MIN ||
+			    tmpll > TOTEM_PRIVATE_KEY_LEN_MAX ||
+			    errno != 0 || *ep != '\0') {
+				printf ("Unsupported key size (supported <%u,%u>)\n",
+				    TOTEM_PRIVATE_KEY_LEN_MIN,
+				    TOTEM_PRIVATE_KEY_LEN_MAX);
+				exit(1);
+			}
+
+			key_len = (size_t)tmpll;
 			break;
 		case 'h':
 			printf ("%s\n", usage);
@@ -103,31 +130,28 @@ int main (int argc, char *argv[])
 		keyfile = (char *)DEFAULT_KEYFILE;
 	}
 
-	if (less_secure) {
-		printf ("Gathering %lu bits for key from /dev/urandom.\n", (unsigned long)(sizeof (key) * 8));
-		random_fd = open ("/dev/urandom", O_RDONLY);
-	} else {
-		printf ("Gathering %lu bits for key from /dev/random.\n", (unsigned long)(sizeof (key) * 8));
-		printf ("Press keys on your keyboard to generate entropy.\n");
-		random_fd = open ("/dev/random", O_RDONLY);
-	}
+	printf ("Gathering %lu bits for key from %s.\n", (unsigned long)(key_len * 8), random_dev);
+	random_fd = open (random_dev, O_RDONLY);
 
 	if (random_fd == -1) {
 		err (1, "Failed to open random source");
 	}
 
+	if (!less_secure) {
+		printf ("Press keys on your keyboard to generate entropy.\n");
+	}
 	/*
 	 * Read random data
 	 */
 	bytes_read = 0;
 
 retry_read:
-	res = read (random_fd, &key[bytes_read], sizeof (key) - bytes_read);
+	res = read (random_fd, &key[bytes_read], key_len - bytes_read);
 	if (res == -1) {
 		err (1, "Could not read /dev/random");
 	}
 	bytes_read += res;
-	if (bytes_read != sizeof (key)) {
+	if (bytes_read != key_len) {
 		printf ("Press keys on your keyboard to generate entropy (bits = %d).\n", (int)(bytes_read * 8));
 		goto retry_read;
 	}
@@ -136,7 +160,7 @@ retry_read:
 	/*
 	 * Open key
 	 */
-	authkey_fd = open (keyfile, O_CREAT|O_WRONLY, 0600);
+	authkey_fd = open (keyfile, O_CREAT|O_WRONLY|O_TRUNC, 0600);
 	if (authkey_fd == -1) {
 		err (2, "Could not create %s", keyfile);
 	}
@@ -149,8 +173,8 @@ retry_read:
 	/*
 	 * Write key
 	 */
-	res = write (authkey_fd, key, sizeof (key));
-	if (res != sizeof (key)) {
+	res = write (authkey_fd, key, key_len);
+	if (res != key_len) {
 		err (4, "Could not write %s", keyfile);
 	}
 
