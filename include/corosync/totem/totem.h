@@ -106,7 +106,11 @@ struct totem_message_header {
 	unsigned int target_nodeid;
 } __attribute__((packed));
 
-enum { TOTEM_PRIVATE_KEY_LEN = 4096 };
+enum {
+	TOTEM_PRIVATE_KEY_LEN_MIN = KNET_MIN_KEY_LEN,
+	TOTEM_PRIVATE_KEY_LEN_MAX = KNET_MAX_KEY_LEN
+};
+
 enum { TOTEM_LINK_MODE_BYTES = 64 };
 
 typedef enum {
@@ -136,7 +140,7 @@ struct totem_config {
 	/*
 	 * key information
 	 */
-	unsigned char private_key[TOTEM_PRIVATE_KEY_LEN];
+	unsigned char private_key[TOTEM_PRIVATE_KEY_LEN_MAX];
 
 	unsigned int private_key_len;
 
