@@ -54,16 +54,17 @@
 
 #define DEFAULT_KEYFILE_LEN		TOTEM_PRIVATE_KEY_LEN_MIN
 
-#define DEFAULT_RANDOM_DEV		"/dev/random"
+#define DEFAULT_RANDOM_DEV		"/dev/urandom"
 
 static const char usage[] =
-	"Usage: corosync-keygen [-k <keyfile>] [-l] [-h]\n"
+	"Usage: corosync-keygen [-k <keyfile>] [-s size] [-m <randomfile>] [-l] [-h]\n"
 	"     -k / --key-file=<filename> -  Write to the specified keyfile\n"
 	"            instead of the default " DEFAULT_KEYFILE ".\n"
-	"     -l / --less-secure -  Use a less secure random number source\n"
-	"            (/dev/urandom) that is guaranteed not to require user\n"
-	"            input for entropy.  This can be used when this\n"
-	"            application is used from a script.\n"
+	"     -r / --random-file -  Random number source file. Default is \n"
+	"            /dev/urandom. As an example /dev/random may be requested\n"
+	"            (that may require user input for entropy).\n"
+	"     -l / --less-secure - Not used, option is kept only\n"
+	"            for compatibility.\n"
 	"     -s / --size -  Length of key.\n"
 	"     -h / --help -  Print basic usage.\n";
 
@@ -82,34 +83,37 @@ int main (int argc, char *argv[])
 	char *ep;
 	int c;
 	int option_index;
-	int less_secure = 0;
 	static struct option long_options[] = {
 		{ "key-file",    required_argument, NULL, 'k' },
 		{ "less-secure", no_argument,       NULL, 'l' },
+		{ "random-file", required_argument, NULL, 'r' },
 		{ "size",        required_argument, NULL, 's' },
 		{ "help",        no_argument,       NULL, 'h' },
 		{ 0,             0,                 NULL, 0   },
 	};
 
-	while ((c = getopt_long (argc, argv, "k:s:lh",
+	while ((c = getopt_long (argc, argv, "k:r:s:lh",
 			long_options, &option_index)) != -1) {
 		switch (c) {
 		case 'k':
 			keyfile = optarg;
 			break;
 		case 'l':
-			less_secure = 1;
-			random_dev = "/dev/urandom";
+			/*
+			 * Only kept for compatibility
+			 */
+			break;
+		case 'r':
+			random_dev = optarg;
 			break;
 		case 's':
 			tmpll = strtoll(optarg, &ep, 10);
 			if (tmpll < TOTEM_PRIVATE_KEY_LEN_MIN ||
 			    tmpll > TOTEM_PRIVATE_KEY_LEN_MAX ||
 			    errno != 0 || *ep != '\0') {
-				printf ("Unsupported key size (supported <%u,%u>)\n",
+				errx (1, "Unsupported key size (supported <%u,%u>)\n",
 				    TOTEM_PRIVATE_KEY_LEN_MIN,
 				    TOTEM_PRIVATE_KEY_LEN_MAX);
-				exit(1);
 			}
 
 			key_len = (size_t)tmpll;
@@ -137,7 +141,7 @@ int main (int argc, char *argv[])
 		err (1, "Failed to open random source");
 	}
 
-	if (!less_secure) {
+	if (strcmp(random_dev, "/dev/random") == 0) {
 		printf ("Press keys on your keyboard to generate entropy.\n");
 	}
 	/*
