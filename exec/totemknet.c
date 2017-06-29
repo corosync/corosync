@@ -459,7 +459,8 @@ int totemknet_ifaces_get (void *knet_context,
 				res = knet_link_get_status(instance->knet_handle,
 							   host_list[j],
 							   i,
-							   &link_status);
+							   &link_status,
+							   sizeof(link_status));
 				if (res == 0) {
 					ptr[j] = '0' + (link_status.enabled |
 							link_status.connected<<1 |
