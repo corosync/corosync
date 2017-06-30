@@ -1454,7 +1454,6 @@ static int read_keyfile (
 {
 	int fd;
 	int res;
-	ssize_t expected_key_len = sizeof (totem_config->private_key);
 	int saved_errno;
 	char error_str[100];
 	const char *error_ptr;
@@ -1468,7 +1467,7 @@ static int read_keyfile (
 		goto parse_error;
 	}
 
-	res = read (fd, totem_config->private_key, expected_key_len);
+	res = read (fd, totem_config->private_key, TOTEM_PRIVATE_KEY_LEN_MAX);
 	saved_errno = errno;
 	close (fd);
 
@@ -1480,14 +1479,14 @@ static int read_keyfile (
 		goto parse_error;
 	}
 
-	totem_config->private_key_len = expected_key_len;
-
-	if (res != expected_key_len) {
+	if (res < TOTEM_PRIVATE_KEY_LEN_MIN) {
 		snprintf (error_string_response, sizeof(error_string_response),
-			"Could only read %d bits of 1024 bits from %s.\n",
-			 res * 8, key_location);
+			"Could only read %d bits of minimum %u bits from %s.\n",
+			 res * 8, TOTEM_PRIVATE_KEY_LEN_MIN * 8, key_location);
 		goto parse_error;
 	}
+
+	totem_config->private_key_len = res;
 
 	return 0;
 
@@ -1505,8 +1504,8 @@ int totem_config_keyread (
 	int res;
 	size_t key_len;
 
-	memset (totem_config->private_key, 0, 128);
-	totem_config->private_key_len = 128;
+	memset (totem_config->private_key, 0, sizeof(totem_config->private_key));
+	totem_config->private_key_len = 0;
 
 	if (strcmp(totem_config->crypto_cipher_type, "none") == 0 &&
 	    strcmp(totem_config->crypto_hash_type, "none") == 0) {
@@ -1523,15 +1522,19 @@ int totem_config_keyread (
 		got_key = 1;
 	} else { /* Or the key itself may be in the cmap */
 		if (icmap_get("totem.key", NULL, &key_len, NULL) == CS_OK) {
-			if (key_len > sizeof (totem_config->private_key)) {
+			if (key_len > sizeof(totem_config->private_key)) {
 				sprintf(error_string_response, "key is too long");
+				goto key_error;
+			}
+			if (key_len < TOTEM_PRIVATE_KEY_LEN_MIN) {
+				sprintf(error_string_response, "key is too short");
 				goto key_error;
 			}
 			if (icmap_get("totem.key", totem_config->private_key, &key_len, NULL) == CS_OK) {
 				totem_config->private_key_len = key_len;
 				got_key = 1;
 			} else {
-				sprintf(error_string_response, "can't store private key");
+				sprintf(error_string_response, "can't load private key");
 				goto key_error;
 			}
 		}

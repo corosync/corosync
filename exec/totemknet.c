@@ -196,6 +196,9 @@ static void totemknet_start_merge_detect_timeout(
 static void totemknet_stop_merge_detect_timeout(
 	void *knet_context);
 
+static void log_flush_messages (
+        void *knet_context);
+
 static void totemknet_instance_initialize (struct totemknet_instance *instance)
 {
 	memset (instance, 0, sizeof (struct totemknet_instance));
@@ -543,6 +546,8 @@ finalise_error:
 
 	totemknet_stop_merge_detect_timeout(instance);
 
+	log_flush_messages(instance);
+
 	return (res);
 }
 
@@ -859,7 +864,7 @@ int totemknet_initialize (
 	res = pipe(instance->logpipes);
 	if (res == -1) {
 	    KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_CRIT, "failed to create pipe for instance->logpipes");
-	    return -1;
+	    goto exit_error;
 	}
 	fcntl(instance->logpipes[0], F_SETFL, O_NONBLOCK);
 	fcntl(instance->logpipes[1], F_SETFL, O_NONBLOCK);
@@ -868,7 +873,7 @@ int totemknet_initialize (
 
 	if (!instance->knet_handle) {
 		KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_CRIT, "knet_handle_new failed");
-		return (-1);
+		goto exit_error;
 	}
 	res = knet_handle_pmtud_setfreq(instance->knet_handle, instance->totem_config->knet_pmtud_interval);
 	if (res) {
@@ -896,7 +901,7 @@ int totemknet_initialize (
 	res = knet_handle_add_datafd(instance->knet_handle, &instance->knet_fd, &channel);
 	if (res) {
 		knet_log_printf(LOG_DEBUG, "knet_handle_add_datafd failed: %s", strerror(errno));
-		return -1;
+		goto exit_error;
 	}
 
 	/* Enable crypto if requested */
@@ -912,11 +917,11 @@ int totemknet_initialize (
 		res = knet_handle_crypto(instance->knet_handle, &crypto_cfg);
 		if (res == -1) {
 			knet_log_printf(LOGSYS_LEVEL_ERROR, "knet_handle_crypto failed: %s", strerror(errno));
-			return -1;
+			goto exit_error;
 		}
 		if (res == -2) {
 			knet_log_printf(LOGSYS_LEVEL_ERROR, "knet_handle_crypto failed: -2");
-			return -1;
+			goto exit_error;
 		}
 		knet_log_printf(LOG_INFO, "kronosnet crypto initialized: %s/%s", crypto_cfg.crypto_cipher_type, crypto_cfg.crypto_hash_type);
 	}
@@ -933,7 +938,7 @@ int totemknet_initialize (
 	for (i=0; i<INTERFACE_MAX; i++) {
 		instance->link_status[i] = malloc(CFG_INTERFACE_STATUS_MAX_LEN);
 		if (!instance->link_status[i]) {
-			return -1;
+			goto exit_error;
 		}
 	}
 
@@ -965,7 +970,12 @@ int totemknet_initialize (
 
 	knet_log_printf (LOGSYS_LEVEL_INFO, "totemknet initialized");
 	*knet_context = instance;
+
 	return (0);
+
+exit_error:
+	log_flush_messages(instance);
+	return (-1);
 }
 
 void *totemknet_buffer_alloc (void)
@@ -1268,4 +1278,20 @@ static void totemknet_stop_merge_detect_timeout(
 
 	qb_loop_timer_del(instance->poll_handle,
 	    instance->timer_merge_detect_timeout);
+}
+
+static void log_flush_messages (void *knet_context)
+{
+	struct pollfd pfd;
+	struct totemknet_instance *instance = (struct totemknet_instance *)knet_context;
+
+	pfd.fd = instance->logpipes[0];
+	pfd.events = POLLIN;
+	pfd.revents = 0;
+
+	while (poll(&pfd, 1, 0) > 0) {
+		if (pfd.revents & POLLIN) {
+			(void)log_deliver_fn(instance->logpipes[0], POLLIN, instance);
+		}
+	}
 }

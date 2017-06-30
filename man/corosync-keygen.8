@@ -31,11 +31,11 @@
 .\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 .\" * THE POSSIBILITY OF SUCH DAMAGE.
 .\" */
-.TH COROSYNC-KEYGEN 8 2010-05-30
+.TH COROSYNC-KEYGEN 8 2017-06-23
 .SH NAME
 corosync-keygen \- Generate an authentication key for Corosync.
 .SH SYNOPSIS
-.B "corosync-keygen [\-k <filename>] [\-l] [\-h]"
+.B "corosync-keygen [\-k <filename>]  [-m <randomfile>] [\-s size] [\-l] [\-h]"
 .SH DESCRIPTION
 
 If you want to configure corosync to use cryptographic techniques to ensure authenticity
@@ -57,8 +57,6 @@ unix#: install -D --group=0 --owner=0 --mode=0400 /path_to_authkey/authkey /etc/
 If a message "Invalid digest" appears from the corosync executive, the keys
 are not consistent between processors.
 .PP
-.B Note: corosync-keygen
-will ask for user input to assist in generating entropy unless the -l option is used.
 .SH OPTIONS
 .TP
 .B -k <filename>
@@ -66,10 +64,16 @@ This specifies the fully qualified path to the shared key to create.
 .br
 The default is /etc/corosync/authkey.
 .TP
+.B -r
+Random number source file. Default is /dev/urandom. As an example /dev/random may be
+used when really superb randomness is needed.
+.TP
+.B -s size
+Size of the generated key in bytes. Default is 1024 bytes. Allowed range is <1024, 4096>.
+.TP
+.TP
 .B -l
-Use a less secure random data source that will not require user input to help generate
-entropy.  This may be useful when this utility is used from a script or hardware random number
-generator is not available (f.e. in virtual machine).
+Option is not used and it's kept only for compatibility.
 .TP
 .B -h
 Print basic usage.
@@ -77,22 +81,38 @@ Print basic usage.
 .SH EXAMPLES
 .TP
 Generate the key.
-.PP
+.nf
 # corosync-keygen
-.br
 Corosync Cluster Engine Authentication key generator.
-.br
-Gathering 1024 bits for key from /dev/random.
-.br
-Press keys on your keyboard to generate entropy.
-.br
-.PP
-$ corosync-keygen -l -k /tmp/authkey
-.br
+Gathering 8192 bits for key from /dev/urandom.
+Writing corosync key to /etc/corosync/authkey
+.fi
+
+.TP
+Generate longer key and store it in the /tmp/authkey file.
+.nf
+$ corosync-keygen -s 2048 -k /tmp/authkey
 Corosync Cluster Engine Authentication key generator.
-.br
+Gathering 16384 bits for key from /dev/urandom.
 Writing corosync key to /tmp/authkey.
-.br
+.fi
+
+.TP
+Generate superb key using /dev/random
+.nf
+# corosync-keygen -r /dev/random
+Corosync Cluster Engine Authentication key generator.
+Gathering 8192 bits for key from /dev/random.
+Press keys on your keyboard to generate entropy.
+Press keys on your keyboard to generate entropy (bits = 96).
+Press keys on your keyboard to generate entropy (bits = 144).
+Press keys on your keyboard to generate entropy (bits = 192).
+ ...
+Press keys on your keyboard to generate entropy (bits = 8112).
+Press keys on your keyboard to generate entropy (bits = 8160).
+Writing corosync key to /etc/corosync/authkey.
+.fi
+
 .SH SEE ALSO
 .BR corosync_overview (8),
 .BR corosync.conf (5),
