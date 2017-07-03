@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011 Red Hat, Inc.
+ * Copyright (c) 2011-2017 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -104,6 +104,12 @@ typedef enum {
     CMAP_VALUETYPE_BINARY	= 12,
 } cmap_value_types_t;
 
+typedef enum {
+	CMAP_MAP_DEFAULT        = 0,
+	CMAP_MAP_ICMAP          = 0,
+	CMAP_MAP_STATS          = 1,
+} cmap_map_t;
+
 /**
  * Structure passed as new_value and old_value in change callback. It contains type of
  * key, length of key and pointer to value of key
@@ -137,6 +143,17 @@ typedef void (*cmap_notify_fn_t) (
  */
 extern cs_error_t cmap_initialize (
 	cmap_handle_t *handle);
+
+/**
+ * Create a new cmap connection on a specified map
+ *
+ * @param handle will be filled with handle to be used for all following
+ * operations with cht.
+ * @param map is the 'map' to use for this connection
+ */
+extern cs_error_t cmap_initialize_map (
+	cmap_handle_t *handle,
+	cmap_map_t map);
 
 /**
  * Close the cmap handle

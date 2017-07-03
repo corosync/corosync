@@ -53,7 +53,6 @@ enum user_action {
 	ACTION_SET,
 	ACTION_DELETE,
 	ACTION_DELETE_PREFIX,
-	ACTION_PRINT_ALL,
 	ACTION_PRINT_PREFIX,
 	ACTION_TRACK,
 	ACTION_LOAD,
@@ -96,7 +95,7 @@ static int convert_name_to_type(const char *name)
 static int print_help(void)
 {
 	printf("\n");
-	printf("usage:  corosync-cmapctl [-b] [-DdghsTt] [-p filename] [params...]\n");
+	printf("usage:  corosync-cmapctl [-b] [-DdghsTt] [-p filename] [-m map] [params...]\n");
 	printf("\n");
 	printf("    -b show binary values\n");
 	printf("\n");
@@ -105,6 +104,10 @@ static int print_help(void)
 	printf("\n");
 	printf("    where type is one of ([i|u][8|16|32|64] | flt | dbl | str | bin)\n");
 	printf("    for bin, value is file name (or - for stdin)\n");
+	printf("\n");
+	printf("    map can be either 'icmap' (the default) which contains corosync\n");
+	printf("    configuration information, or 'stats' which contains statistics\n");
+	printf("    about the networking and IPC traffic in some detail.\n");
 	printf("\n");
 	printf("Load settings from a file:\n");
 	printf("    corosync-cmapctl -p filename\n");
@@ -745,14 +748,16 @@ int main(int argc, char *argv[])
 	int i;
 	size_t value_len;
 	cmap_value_types_t type;
+	cmap_map_t map = CMAP_MAP_DEFAULT;
 	int track_prefix;
+	int map_set = 0;
 	int no_retries;
 	char * settings_file = NULL;
 
 	action = ACTION_PRINT_PREFIX;
 	track_prefix = 1;
 
-	while ((c = getopt(argc, argv, "hgsdDtTbp:")) != -1) {
+	while ((c = getopt(argc, argv, "m:hgsdDtTbp:")) != -1) {
 		switch (c) {
 		case 'h':
 			return print_help();
@@ -783,6 +788,21 @@ int main(int argc, char *argv[])
 		case 'T':
 			action = ACTION_TRACK;
 			break;
+		case 'm':
+			if (strcmp(optarg, "icmap") == 0 ||
+			    strcmp(optarg, "default") == 0) {
+				map = CMAP_MAP_ICMAP;
+				map_set = 1;
+			}
+			if (strcmp(optarg, "stats") == 0) {
+				map = CMAP_MAP_STATS;
+				map_set = 1;
+			}
+			if (!map_set) {
+				fprintf(stderr, "invalid map name, must be 'default', 'icmap' or 'stats'\n");
+				return (EXIT_FAILURE);
+			}
+			break;
 		case '?':
 			return (EXIT_FAILURE);
 			break;
@@ -792,22 +812,19 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if (argc == 1 || (argc == 2 && show_binary)) {
-		action = ACTION_PRINT_ALL;
-	}
-
 	argc -= optind;
 	argv += optind;
 
 	if (argc == 0 &&
 	    action != ACTION_LOAD &&
-	    action != ACTION_PRINT_ALL) {
+	    action != ACTION_PRINT_PREFIX) {
 		fprintf(stderr, "Expected key after options\n");
 		return (EXIT_FAILURE);
 	}
 
 	no_retries = 0;
-	while ((err = cmap_initialize(&handle)) == CS_ERR_TRY_AGAIN && no_retries++ < MAX_TRY_AGAIN) {
+
+	while ((err = cmap_initialize_map(&handle, map)) == CS_ERR_TRY_AGAIN && no_retries++ < MAX_TRY_AGAIN) {
 		sleep(1);
 	}
 
@@ -817,12 +834,13 @@ int main(int argc, char *argv[])
 	}
 
 	switch (action) {
-	case ACTION_PRINT_ALL:
-		print_iter(handle, NULL);
-		break;
 	case ACTION_PRINT_PREFIX:
-		for (i = 0; i < argc; i++) {
-			print_iter(handle, argv[i]);
+		if (argc == 0) {
+			print_iter(handle, NULL);
+		} else {
+			for (i = 0; i < argc; i++) {
+				print_iter(handle, argv[i]);
+			}
 		}
 		break;
 	case ACTION_GET:

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2002-2006 MontaVista Software, Inc.
- * Copyright (c) 2006-2012 Red Hat, Inc.
+ * Copyright (c) 2006-2017 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -120,6 +120,8 @@
 #include "apidef.h"
 #include "service.h"
 #include "schedwrk.h"
+#include "ipcs_stats.h"
+#include "stats.h"
 
 #ifdef HAVE_SMALL_MEMORY_FOOTPRINT
 #define IPC_LOGSYS_SIZE			1024*64
@@ -318,11 +320,11 @@ static void member_object_joined (unsigned int nodeid)
 	char member_status[ICMAP_KEYNAME_MAXLEN];
 
 	snprintf(member_ip, ICMAP_KEYNAME_MAXLEN,
-		"runtime.totem.pg.mrp.srp.members.%u.ip", nodeid);
+		"runtime.members.%u.ip", nodeid);
 	snprintf(member_join_count, ICMAP_KEYNAME_MAXLEN,
-		"runtime.totem.pg.mrp.srp.members.%u.join_count", nodeid);
+		"runtime.members.%u.join_count", nodeid);
 	snprintf(member_status, ICMAP_KEYNAME_MAXLEN,
-		"runtime.totem.pg.mrp.srp.members.%u.status", nodeid);
+		"runtime.members.%u.status", nodeid);
 
 	if (icmap_get(member_ip, NULL, NULL, NULL) == CS_OK) {
 		icmap_inc(member_join_count);
@@ -342,7 +344,7 @@ static void member_object_left (unsigned int nodeid)
 	char member_status[ICMAP_KEYNAME_MAXLEN];
 
 	snprintf(member_status, ICMAP_KEYNAME_MAXLEN,
-		"runtime.totem.pg.mrp.srp.members.%u.status", nodeid);
+		"runtime.members.%u.status", nodeid);
 	icmap_set_string(member_status, "left");
 
 	log_printf (LOGSYS_LEVEL_DEBUG,
@@ -475,37 +477,8 @@ static void corosync_totem_stats_updater (void *data)
 
 	stats = api->totem_get_stats();
 
-	icmap_set_uint32("runtime.totem.pg.msg_reserved", stats->msg_reserved);
-	icmap_set_uint32("runtime.totem.pg.msg_queue_avail", stats->msg_queue_avail);
-	icmap_set_uint64("runtime.totem.pg.srp.orf_token_tx", stats->srp->orf_token_tx);
-	icmap_set_uint64("runtime.totem.pg.srp.orf_token_rx", stats->srp->orf_token_rx);
-	icmap_set_uint64("runtime.totem.pg.srp.memb_merge_detect_tx", stats->srp->memb_merge_detect_tx);
-	icmap_set_uint64("runtime.totem.pg.srp.memb_merge_detect_rx", stats->srp->memb_merge_detect_rx);
-	icmap_set_uint64("runtime.totem.pg.srp.memb_join_tx", stats->srp->memb_join_tx);
-	icmap_set_uint64("runtime.totem.pg.srp.memb_join_rx", stats->srp->memb_join_rx);
-	icmap_set_uint64("runtime.totem.pg.srp.mcast_tx", stats->srp->mcast_tx);
-	icmap_set_uint64("runtime.totem.pg.srp.mcast_retx", stats->srp->mcast_retx);
-	icmap_set_uint64("runtime.totem.pg.srp.mcast_rx", stats->srp->mcast_rx);
-	icmap_set_uint64("runtime.totem.pg.srp.memb_commit_token_tx", stats->srp->memb_commit_token_tx);
-	icmap_set_uint64("runtime.totem.pg.srp.memb_commit_token_rx", stats->srp->memb_commit_token_rx);
-	icmap_set_uint64("runtime.totem.pg.srp.token_hold_cancel_tx", stats->srp->token_hold_cancel_tx);
-	icmap_set_uint64("runtime.totem.pg.srp.token_hold_cancel_rx", stats->srp->token_hold_cancel_rx);
-	icmap_set_uint64("runtime.totem.pg.srp.operational_entered", stats->srp->operational_entered);
-	icmap_set_uint64("runtime.totem.pg.srp.operational_token_lost", stats->srp->operational_token_lost);
-	icmap_set_uint64("runtime.totem.pg.srp.gather_entered", stats->srp->gather_entered);
-	icmap_set_uint64("runtime.totem.pg.srp.gather_token_lost", stats->srp->gather_token_lost);
-	icmap_set_uint64("runtime.totem.pg.srp.commit_entered", stats->srp->commit_entered);
-	icmap_set_uint64("runtime.totem.pg.srp.commit_token_lost", stats->srp->commit_token_lost);
-	icmap_set_uint64("runtime.totem.pg.srp.recovery_entered", stats->srp->recovery_entered);
-	icmap_set_uint64("runtime.totem.pg.srp.recovery_token_lost", stats->srp->recovery_token_lost);
-	icmap_set_uint64("runtime.totem.pg.srp.consensus_timeouts", stats->srp->consensus_timeouts);
-	icmap_set_uint64("runtime.totem.pg.srp.rx_msg_dropped", stats->srp->rx_msg_dropped);
-	icmap_set_uint32("runtime.totem.pg.srp.continuous_gather", stats->srp->continuous_gather);
-	icmap_set_uint32("runtime.totem.pg.srp.continuous_sendmsg_failures",
-	    stats->srp->continuous_sendmsg_failures);
 
-	icmap_set_uint8("runtime.totem.pg.srp.firewall_enabled_or_nic_failure",
-		stats->srp->continuous_gather > MAX_NO_CONT_GATHER ? 1 : 0);
+	stats->srp->firewall_enabled_or_nic_failure = stats->srp->continuous_gather > MAX_NO_CONT_GATHER ? 1 : 0;
 
 	if (stats->srp->continuous_gather > MAX_NO_CONT_GATHER ||
 	    stats->srp->continuous_sendmsg_failures > MAX_NO_CONT_SENDMSG_FAILURES) {
@@ -524,9 +497,9 @@ static void corosync_totem_stats_updater (void *data)
 			"operating system or network fault (reason: %s). The most common "
 			"cause of this message is that the local firewall is "
 			"configured improperly.", cstr);
-		icmap_set_uint8("runtime.totem.pg.srp.firewall_enabled_or_nic_failure", 1);
+		stats->srp->firewall_enabled_or_nic_failure = 1;
 	} else {
-		icmap_set_uint8("runtime.totem.pg.srp.firewall_enabled_or_nic_failure", 0);
+		stats->srp->firewall_enabled_or_nic_failure = 0;
 	}
 
 	total_mtt_rx_token = 0;
@@ -552,12 +525,12 @@ static void corosync_totem_stats_updater (void *data)
 		t = prev;
 	}
 	if (token_count) {
-		icmap_set_uint32("runtime.totem.pg.srp.mtt_rx_token", (total_mtt_rx_token / token_count));
-		icmap_set_uint32("runtime.totem.pg.srp.avg_token_workload", (total_token_holdtime / token_count));
-		icmap_set_uint32("runtime.totem.pg.srp.avg_backlog_calc", (total_backlog_calc / token_count));
+		stats->srp->mtt_rx_token = (total_mtt_rx_token / token_count);
+		stats->srp->avg_token_workload = (total_token_holdtime / token_count);
+		stats->srp->avg_backlog_calc = (total_backlog_calc / token_count);
 	}
 
-	cs_ipcs_stats_update();
+	stats_trigger_trackers();
 
 	api->timer_add_duration (1500 * MILLI_2_NANO_SECONDS, NULL,
 		corosync_totem_stats_updater,
@@ -566,10 +539,6 @@ static void corosync_totem_stats_updater (void *data)
 
 static void corosync_totem_stats_init (void)
 {
-	icmap_set_uint32("runtime.totem.pg.srp.mtt_rx_token", 0);
-	icmap_set_uint32("runtime.totem.pg.srp.avg_token_workload", 0);
-	icmap_set_uint32("runtime.totem.pg.srp.avg_backlog_calc", 0);
-
 	/* start stats timer */
 	api->timer_add_duration (1500 * MILLI_2_NANO_SECONDS, NULL,
 		corosync_totem_stats_updater,
@@ -999,10 +968,9 @@ static void set_icmap_ro_keys_flag (void)
 	 * Set RO flag for all keys of internal configuration and runtime statistics
 	 */
 	icmap_set_ro_access("internal_configuration.", CS_TRUE, CS_TRUE);
-	icmap_set_ro_access("runtime.connections.", CS_TRUE, CS_TRUE);
-	icmap_set_ro_access("runtime.totem.", CS_TRUE, CS_TRUE);
 	icmap_set_ro_access("runtime.services.", CS_TRUE, CS_TRUE);
 	icmap_set_ro_access("runtime.config.", CS_TRUE, CS_TRUE);
+	icmap_set_ro_access("runtime.totem.", CS_TRUE, CS_TRUE);
 	icmap_set_ro_access("uidgid.config.", CS_TRUE, CS_TRUE);
 
 	/*
@@ -1232,6 +1200,11 @@ int main (int argc, char **argv, char **envp)
 		corosync_exit_error (COROSYNC_DONE_MAINCONFIGREAD);
 	}
 
+	if (stats_map_init(api) != CS_OK) {
+		log_printf (LOGSYS_LEVEL_ERROR, "Corosync Executive couldn't initialize statistics component.");
+		corosync_exit_error (COROSYNC_DONE_STATS);
+	}
+
 	res = corosync_log_config_read (&error_string);
 	if (res == -1) {
 		/*
@@ -1336,8 +1309,8 @@ int main (int argc, char **argv, char **envp)
 
 	totem_config.totem_logging_configuration = totem_logging_configuration;
 	totem_config.totem_logging_configuration.log_subsys_id = _logsys_subsys_create("TOTEM", "totem,"
-			"totemmrp.c,totemrrp.c,totemip.c,totemconfig.c,totemcrypto.c,totemsrp.c,"
-			"totempg.c,totemiba.c,totemudp.c,totemudpu.c,totemnet.c,totemknet.c");
+			"totemip.c,totemconfig.c,totemcrypto.c,totemsrp.c,"
+			"totempg.c,totemudp.c,totemudpu.c,totemnet.c,totemknet.c");
 
 	totem_config.totem_logging_configuration.log_level_security = LOGSYS_LEVEL_WARNING;
 	totem_config.totem_logging_configuration.log_level_error = LOGSYS_LEVEL_ERROR;
