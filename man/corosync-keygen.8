@@ -1,5 +1,5 @@
 .\"/*
-.\" * Copyright (C) 2010 Red Hat, Inc.
+.\" * Copyright (C) 2010-2017 Red Hat, Inc.
 .\" *
 .\" * All rights reserved.
 .\" *
@@ -31,7 +31,7 @@
 .\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 .\" * THE POSSIBILITY OF SUCH DAMAGE.
 .\" */
-.TH COROSYNC-KEYGEN 8 2017-06-23
+.TH COROSYNC-KEYGEN 8 2017-07-03
 .SH NAME
 corosync-keygen \- Generate an authentication key for Corosync.
 .SH SYNOPSIS
@@ -104,12 +104,12 @@ Generate superb key using /dev/random
 Corosync Cluster Engine Authentication key generator.
 Gathering 8192 bits for key from /dev/random.
 Press keys on your keyboard to generate entropy.
-Press keys on your keyboard to generate entropy (bits = 96).
-Press keys on your keyboard to generate entropy (bits = 144).
-Press keys on your keyboard to generate entropy (bits = 192).
+Press keys on your keyboard to generate entropy (7928 bits still needed).
+Press keys on your keyboard to generate entropy (7880 bits still needed).
  ...
-Press keys on your keyboard to generate entropy (bits = 8112).
-Press keys on your keyboard to generate entropy (bits = 8160).
+Press keys on your keyboard to generate entropy (104 bits still needed).
+Press keys on your keyboard to generate entropy (56 bits still needed).
+Press keys on your keyboard to generate entropy (8 bits still needed).
 Writing corosync key to /etc/corosync/authkey.
 .fi
 
