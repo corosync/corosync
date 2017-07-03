@@ -1284,14 +1284,21 @@ static void log_flush_messages (void *knet_context)
 {
 	struct pollfd pfd;
 	struct totemknet_instance *instance = (struct totemknet_instance *)knet_context;
+	int cont;
 
-	pfd.fd = instance->logpipes[0];
-	pfd.events = POLLIN;
-	pfd.revents = 0;
+	cont = 1;
 
-	while (poll(&pfd, 1, 0) > 0) {
-		if (pfd.revents & POLLIN) {
-			(void)log_deliver_fn(instance->logpipes[0], POLLIN, instance);
+	while (cont) {
+		pfd.fd = instance->logpipes[0];
+		pfd.events = POLLIN;
+		pfd.revents = 0;
+
+		if ((poll(&pfd, 1, 0) > 0) &&
+		    (pfd.revents & POLLIN) &&
+		    (log_deliver_fn(instance->logpipes[0], POLLIN, instance) == 0)) {
+			cont = 1;
+		} else {
+			cont = 0;
 		}
 	}
 }
