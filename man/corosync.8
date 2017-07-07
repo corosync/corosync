@@ -1,5 +1,5 @@
 .\"/*
-.\" * Copyright (C) 2010 Red Hat, Inc.
+.\" * Copyright (C) 2010-2017 Red Hat, Inc.
 .\" *
 .\" * All rights reserved.
 .\" *
@@ -31,11 +31,11 @@
 .\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 .\" * THE POSSIBILITY OF SUCH DAMAGE.
 .\" */
-.TH COROSYNC 8 2010-05-30
+.TH COROSYNC 8 2017-07-07
 .SH NAME
 corosync \- The Corosync Cluster Engine.
 .SH SYNOPSIS
-.B "corosync [\-f] [\-p] [\-r] [\-t] [\-v]"
+.B "corosync [\-f] [\-P num] [\-p] [\-r] [\-t] [\-v]"
 .SH DESCRIPTION
 .B corosync
 Corosync provides clustering infrastructure such as membership, messaging and quorum.
@@ -45,10 +45,22 @@ Corosync provides clustering infrastructure such as membership, messaging and qu
 Start application in foreground.
 .TP
 .B -p
-Do not set process priority.
+Do not set realtime scheduling.
+.TP
+.B -P
+Set priority of process. Has effect only when
+.B -r
+is not used. Can be ether numeric value with similar meaning as
+.BR nice (1)
+or
+.B max
+/
+.B min
+meaning maximal / minimal priority (so minimal / maximal nice value).
 .TP
 .B -r
-Set round robin realtime scheduling (default).
+Set round robin realtime scheduling with maximal priority (default). When setting
+of scheduler fails, fallback to set maximal priority.
 .TP
 .B -t
 Test configuration and then exit.
