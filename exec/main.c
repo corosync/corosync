@@ -856,8 +856,10 @@ static void timer_function_scheduler_timeout (void *data)
 }
 
 
-static void corosync_setscheduler (void)
+static int corosync_set_rr_scheduler (void)
 {
+	int ret_val = 0;
+
 #if defined(HAVE_PTHREAD_SETSCHEDPARAM) && defined(HAVE_SCHED_GET_PRIORITY_MAX) && defined(HAVE_SCHED_SETSCHEDULER)
 	int res;
 
@@ -874,6 +876,7 @@ static void corosync_setscheduler (void)
 #ifdef HAVE_QB_LOG_THREAD_PRIORITY_SET
 			qb_log_thread_priority_set (SCHED_OTHER, 0);
 #endif
+			ret_val = -1;
 		} else {
 
 			/*
@@ -895,11 +898,15 @@ static void corosync_setscheduler (void)
 		LOGSYS_PERROR (errno, LOGSYS_LEVEL_WARNING,
 			"Could not get maximum scheduler priority");
 		sched_priority = 0;
+		ret_val = -1;
 	}
 #else
 	log_printf(LOGSYS_LEVEL_WARNING,
 		"The Platform is missing process priority setting features.  Leaving at default.");
+	ret_val = -1;
 #endif
+
+	return (ret_val);
 }
 
 
@@ -1126,29 +1133,48 @@ int main (int argc, char **argv, char **envp)
 	const char *error_string;
 	struct totem_config totem_config;
 	int res, ch;
-	int background, setprio, testonly;
+	int background, sched_rr, prio, testonly;
 	struct stat stat_out;
 	enum e_corosync_done flock_err;
 	uint64_t totem_config_warnings;
 	struct scheduler_pause_timeout_data scheduler_pause_timeout_data;
+	long int tmpli;
+	char *ep;
 
 	/* default configuration
 	 */
 	background = 1;
-	setprio = 1;
+	sched_rr = 1;
+	prio = 0;
 	testonly = 0;
 
-	while ((ch = getopt (argc, argv, "fprtv")) != EOF) {
+	while ((ch = getopt (argc, argv, "fP:prtv")) != EOF) {
 
 		switch (ch) {
 			case 'f':
 				background = 0;
 				break;
 			case 'p':
-				setprio = 0;
+				sched_rr = 0;
+				break;
+			case 'P':
+				if (strcmp(optarg, "max") == 0) {
+					prio = INT_MIN;
+				} else if (strcmp(optarg, "min") == 0) {
+					prio = INT_MAX;
+				} else {
+					tmpli = strtol(optarg, &ep, 10);
+					if (errno != 0 || *ep != '\0' || tmpli > INT_MAX || tmpli < INT_MIN) {
+						fprintf(stderr, "Priority value %s is invalid", optarg);
+						logsys_system_fini();
+						return EXIT_FAILURE;
+					}
+
+					prio = tmpli;
+				}
 				break;
 			case 'r':
-				setprio = 1;
+				sched_rr = 1;
 				break;
 			case 't':
 				testonly = 1;
@@ -1164,8 +1190,9 @@ int main (int argc, char **argv, char **envp)
 				fprintf(stderr, \
 					"usage:\n"\
 					"        -f     : Start application in foreground.\n"\
-					"        -p     : Do not set process priority.\n"\
+					"        -p     : Do not set realtime scheduling.\n"\
 					"        -r     : Set round robin realtime scheduling (default).\n"\
+					"        -P num : Set priority of process (no effect when -r is used)\n"\
 					"        -t     : Test configuration and exit.\n"\
 					"        -v     : Display version and SVN revision of Corosync and exit.\n");
 				logsys_system_fini();
@@ -1173,14 +1200,6 @@ int main (int argc, char **argv, char **envp)
 		}
 	}
 
-	/*
-	 * Set round robin realtime scheduling with priority 99
-	 * Lock all memory to avoid page faults which may interrupt
-	 * application healthchecking
-	 */
-	if (setprio) {
-		corosync_setscheduler ();
-	}
 
 	/*
 	 * Other signals are registered later via qb_loop_signal_add
@@ -1287,6 +1306,24 @@ int main (int argc, char **argv, char **envp)
 		corosync_exit_error (COROSYNC_DONE_EXIT);
 	}
 
+	/*
+	 * Set round robin realtime scheduling with priority 99
+	 */
+	if (sched_rr) {
+		if (corosync_set_rr_scheduler () != 0) {
+			prio = INT_MIN;
+		} else {
+			prio = 0;
+		}
+	}
+
+	if (prio != 0) {
+		if (setpriority(PRIO_PGRP, 0, prio) != 0) {
+			LOGSYS_PERROR(errno, LOGSYS_LEVEL_WARNING,
+				"Could not set priority %d", prio);
+		}
+	}
+
 	ip_version = totem_config.ip_version;
 
 	totem_config.totem_memb_ring_id_create_or_load = corosync_ring_id_create_or_load;
@@ -1314,6 +1351,10 @@ int main (int argc, char **argv, char **envp)
 		corosync_tty_detach ();
 	}
 
+	/*
+	 * Lock all memory to avoid page faults which may interrupt
+	 * application healthchecking
+	 */
 	corosync_mlockall ();
 
 	corosync_poll_handle = qb_loop_create ();
