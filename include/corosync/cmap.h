@@ -104,6 +104,12 @@ typedef enum {
     CMAP_VALUETYPE_BINARY	= 12,
 } cmap_value_types_t;
 
+typedef enum {
+	CMAP_MAP_DEFAULT        = 0,
+	CMAP_MAP_ICMAP          = 0,
+	CMAP_MAP_STATS          = 1,
+} cmap_map_t;
+
 /**
  * Structure passed as new_value and old_value in change callback. It contains type of
  * key, length of key and pointer to value of key
@@ -349,6 +355,13 @@ extern cs_error_t cmap_track_add(
  * @param track_handle Track handle
  */
 extern cs_error_t cmap_track_delete(cmap_handle_t handle, cmap_track_handle_t track_handle);
+
+/**
+ * Delete track created previously by cmap_track_add
+ * @param handle cmap handle
+ * @param new_map map type from one of CMAP_MAP_*
+ */
+extern cs_error_t cmap_set_current_map(cmap_handle_t handle, cmap_map_t new_map);
 
 /** @} */
 
