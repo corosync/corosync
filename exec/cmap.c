@@ -54,6 +54,7 @@
 #include <corosync/icmap.h>
 
 #include "service.h"
+#include "stats.h"
 
 LOGSYS_DECLARE_SUBSYS ("CMAP");
 
@@ -61,6 +62,8 @@ LOGSYS_DECLARE_SUBSYS ("CMAP");
 #define ICMAP_VALUETYPE_NOT_EXIST		0
 
 struct cmap_map {
+
+	cs_error_t (*map_init)(const struct corosync_api_v1 *api);
 	cs_error_t (*map_get)(const char *key_name,
 			      void *value,
 			      size_t *value_len,
@@ -92,6 +95,7 @@ struct cmap_map {
 };
 
 struct cmap_map icmap_map = {
+	.map_init = NULL,
 	.map_get = icmap_get,
 	.map_set = icmap_set,
 	.map_adjust_int = icmap_adjust_int,
@@ -103,6 +107,21 @@ struct cmap_map icmap_map = {
 	.map_track_add = icmap_track_add,
 	.map_track_delete = icmap_track_delete,
 	.map_track_get_user_data = icmap_track_get_user_data,
+};
+
+struct cmap_map stats_map = {
+	.map_init = stats_map_init,
+	.map_get = stats_map_get,
+	.map_set = stats_map_set,
+	.map_adjust_int = stats_map_adjust_int,
+	.map_delete = stats_map_delete,
+	.map_is_key_ro = stats_map_is_key_ro,
+	.map_iter_init = stats_map_iter_init,
+	.map_iter_next = stats_map_iter_next,
+	.map_iter_finalize = stats_map_iter_finalize,
+	.map_track_add = stats_map_track_add,
+	.map_track_delete = stats_map_track_delete,
+	.map_track_get_user_data = stats_map_track_get_user_data,
 };
 
 struct cmap_conn_info {
@@ -378,7 +397,7 @@ static int cmap_lib_exit_fn (void *conn)
         while (hdb_iterator_next(&conn_info->iter_db,
                 (void*)&iter, &iter_handle) == 0) {
 
-		icmap_iter_finalize(*iter);
+		conn_info->map_fns.map_iter_finalize(*iter);
 
 		(void)hdb_handle_put (&conn_info->iter_db, iter_handle);
         }
@@ -389,9 +408,9 @@ static int cmap_lib_exit_fn (void *conn)
         while (hdb_iterator_next(&conn_info->track_db,
                 (void*)&track, &track_handle) == 0) {
 
-		free(icmap_track_get_user_data(*track));
+		free(conn_info->map_fns.map_track_get_user_data(*track));
 
-		icmap_track_delete(*track);
+		conn_info->map_fns.map_track_delete(*track);
 
 		(void)hdb_handle_put (&conn_info->track_db, track_handle);
         }
@@ -586,13 +605,8 @@ static void message_handler_req_lib_cmap_adjust_int(void *conn, const void *mess
 	if (conn_info->map_fns.map_is_key_ro((char *)req_lib_cmap_adjust_int->key_name.value)) {
 		ret = CS_ERR_ACCESS;
 	} else {
-		if (conn_info->map_fns.map_adjust_int) {
-			ret = conn_info->map_fns.map_adjust_int((char *)req_lib_cmap_adjust_int->key_name.value,
+		ret = conn_info->map_fns.map_adjust_int((char *)req_lib_cmap_adjust_int->key_name.value,
 								req_lib_cmap_adjust_int->step);
-		}
-		else {
-			ret = CS_ERR_BAD_OPERATION;
-		}
 	}
 
 	memset(&res_lib_cmap_adjust_int, 0, sizeof(res_lib_cmap_adjust_int));
@@ -874,16 +888,16 @@ static void message_handler_req_lib_cmap_set_current_map(void *conn, const void 
 
 	/* Cannot switch maps while there are tracks or iterators active */
 	hdb_iterator_reset(&conn_info->iter_db);
-        while (hdb_iterator_next(&conn_info->iter_db,
-                (void*)&iter, &iter_handle) == 0) {
+	while (hdb_iterator_next(&conn_info->iter_db,
+				 (void*)&iter, &iter_handle) == 0) {
 		handles_open++;
-        }
+	}
 
 	hdb_iterator_reset(&conn_info->track_db);
-        while (hdb_iterator_next(&conn_info->track_db,
-                (void*)&track, &track_handle) == 0) {
+	while (hdb_iterator_next(&conn_info->track_db,
+				 (void*)&track, &track_handle) == 0) {
 		handles_open++;
-        }
+	}
 
 	if (handles_open) {
 		ret = CS_ERR_BUSY;
@@ -895,8 +909,8 @@ static void message_handler_req_lib_cmap_set_current_map(void *conn, const void 
 			conn_info->map_fns = icmap_map;
 			break;
 		case CMAP_SETMAP_STATS:
-			ret = CS_ERR_NOT_SUPPORTED;
-//			conn_info->map_fns = stats_map;
+			conn_info->map_fns = stats_map;
+			conn_info->map_fns.map_init(api);
 			break;
 		default:
 			ret = CS_ERR_NOT_EXIST;
@@ -1050,7 +1064,7 @@ static void message_handler_req_exec_cmap_mcast_reason_sync_nv(
 	}
 
 	snprintf(member_config_version, ICMAP_KEYNAME_MAXLEN,
-		"runtime.totem.pg.mrp.srp.members.%u.config_version", nodeid);
+		"runtime.members.%u.config_version", nodeid);
 	icmap_set_uint64(member_config_version, config_version);
 
 	LEAVE();

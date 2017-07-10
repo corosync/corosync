@@ -40,7 +40,7 @@ noinst_HEADERS		= apidef.h cs_queue.h logconfig.h main.h \
 
 TOTEM_SRC		= totemip.c totemnet.c totemudp.c \
 			  totemudpu.c totemsrp.c \
-			  totempg.c totemknet.c
+			  totempg.c totemknet.c stats.c
 
 
 lib_LTLIBRARIES		= libtotem_pg.la

@@ -180,6 +180,8 @@ struct totemknet_instance {
 	int logpipes[2];
 	int knet_fd;
 };
+/* Awkward. But needed to get stats from knet */
+struct totemknet_instance *global_instance;
 
 struct work_item {
 	const void *msg;
@@ -895,6 +897,7 @@ int totemknet_initialize (
 	if (res) {
 		KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_WARNING, "knet_handle_enable_pmtud_notify failed");
 	}
+	global_instance = instance;
 
 	/* Get an fd into knet */
 	instance->knet_fd = 0;
@@ -1241,6 +1244,44 @@ int totemknet_member_list_rebind_ip (
 	void *knet_context)
 {
 	return (0);
+}
+
+/* For the stats module */
+int totemknet_link_get_status (
+	knet_node_id_t node, uint8_t link,
+	struct knet_link_status *status)
+{
+	int res;
+	int ret = CS_OK;
+
+	/* We are probably not using knet */
+	if (!global_instance) {
+		return CS_ERR_NOT_EXIST;
+	}
+
+	if (link > global_instance->num_links) {
+		return -1; /* no more links */
+	}
+
+	res = knet_link_get_status(global_instance->knet_handle, node, link, status, sizeof(struct knet_link_status));
+	if (res) {
+		switch (errno) {
+			case EINVAL:
+				ret = CS_ERR_INVALID_PARAM;
+				break;
+			case EBUSY:
+				ret = CS_ERR_BUSY;
+				break;
+			case EDEADLK:
+				ret = CS_ERR_TRY_AGAIN;
+				break;
+			default:
+				ret = CS_ERR_LIBRARY;
+				break;
+		}
+	}
+
+	return (ret);
 }
 
 static void timer_function_merge_detect_timeout (

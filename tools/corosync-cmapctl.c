@@ -100,6 +100,9 @@ static int print_help(void)
 	printf("\n");
 	printf("    -b show binary values\n");
 	printf("\n");
+	printf("    map can be 'icmap', 'default' or 'stats'\n");
+	printf("    the default is 'icmap'\n");
+	printf("\n");
 	printf("Set key:\n");
 	printf("    corosync-cmapctl -s key_name type value\n");
 	printf("\n");
