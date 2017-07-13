@@ -76,6 +76,7 @@
 #include <prerror.h>
 
 #include <libknet.h>
+#include <corosync/totem/totemstats.h>
 
 #ifndef MSG_NOSIGNAL
 #define MSG_NOSIGNAL 0
@@ -141,18 +142,6 @@ struct totemknet_instance {
 
 	char iov_buffer[KNET_MAX_PACKET_SIZE];
 
-	int stats_sent;
-
-	int stats_recv;
-
-	int stats_delv;
-
-	int stats_remcasts;
-
-	int stats_orf_token;
-
-	struct timeval stats_tv_start;
-
 	char *link_status[INTERFACE_MAX];
 
 	int num_links;
@@ -164,8 +153,6 @@ struct totemknet_instance {
 	int our_nodeid;
 
 	struct totem_config *totem_config;
-
-	totemsrp_stats_t *stats;
 
 	struct totem_ip_address token_target;
 
@@ -180,6 +167,9 @@ struct totemknet_instance {
 	int logpipes[2];
 	int knet_fd;
 };
+
+/* Awkward. But needed to get stats from knet */
+struct totemknet_instance *global_instance;
 
 struct work_item {
 	const void *msg;
@@ -632,8 +622,6 @@ static int data_deliver_fn (
 		return (0);
 	}
 
-	instance->stats_recv += msg_len;
-
 	/*
 	 * Handle incoming message
 	 */
@@ -820,7 +808,6 @@ int totemknet_initialize (
 	totemknet_instance_initialize (instance);
 
 	instance->totem_config = totem_config;
-	instance->stats = stats;
 
 	/*
 	* Configure logging
@@ -895,6 +882,7 @@ int totemknet_initialize (
 	if (res) {
 		KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_WARNING, "knet_handle_enable_pmtud_notify failed");
 	}
+	global_instance = instance;
 
 	/* Get an fd into knet */
 	instance->knet_fd = 0;
@@ -1204,6 +1192,8 @@ int totemknet_member_add (
 		return -1;
 	}
 
+	/* register stats */
+	stats_knet_add_member(member->nodeid, link_no);
 	return (0);
 }
 
@@ -1220,6 +1210,8 @@ int totemknet_member_remove (
 	if (token_target->nodeid == instance->our_nodeid) {
 		return 0; /* Don't remove ourself */
 	}
+	/* Tidy stats */
+	stats_knet_del_member(token_target->nodeid, link_no);
 
 	/* Remove the link first */
 	res = knet_link_set_enable(instance->knet_handle, token_target->nodeid, link_no, 0);
@@ -1241,6 +1233,44 @@ int totemknet_member_list_rebind_ip (
 	void *knet_context)
 {
 	return (0);
+}
+
+/* For the stats module */
+int totemknet_link_get_status (
+	knet_node_id_t node, uint8_t link,
+	struct knet_link_status *status)
+{
+	int res;
+	int ret = CS_OK;
+
+	/* We are probably not using knet */
+	if (!global_instance) {
+		return CS_ERR_NOT_EXIST;
+	}
+
+	if (link > global_instance->num_links) {
+		return -1; /* no more links */
+	}
+
+	res = knet_link_get_status(global_instance->knet_handle, node, link, status, sizeof(struct knet_link_status));
+	if (res) {
+		switch (errno) {
+			case EINVAL:
+				ret = CS_ERR_INVALID_PARAM;
+				break;
+			case EBUSY:
+				ret = CS_ERR_BUSY;
+				break;
+			case EDEADLK:
+				ret = CS_ERR_TRY_AGAIN;
+				break;
+			default:
+				ret = CS_ERR_LIBRARY;
+				break;
+		}
+	}
+
+	return (ret);
 }
 
 static void timer_function_merge_detect_timeout (

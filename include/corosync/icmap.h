@@ -542,6 +542,11 @@ extern void icmap_convert_name_to_valid_name(char *key_name);
  */
 extern cs_error_t icmap_copy_map(icmap_map_t dst_map, const icmap_map_t src_map);
 
+/*
+ * Returns length of value of given type, or 0 for string and binary data type
+ */
+size_t icmap_get_valuetype_len(icmap_value_types_t type);
+
 #ifdef __cplusplus
 }
 #endif
