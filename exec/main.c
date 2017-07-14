@@ -758,6 +758,11 @@ int corosync_sending_allowed (
 		return -EINVAL;
 	}
 
+	/* Message ID out of range */
+	if (id >= corosync_service[service]->lib_engine_count) {
+		return -EINVAL;
+	}
+
 	sending_allowed = QB_FALSE;
 	if (corosync_quorum_is_quorate() == 1 ||
 	    corosync_service[service]->allow_inquorate == CS_LIB_ALLOW_INQUORATE) {
