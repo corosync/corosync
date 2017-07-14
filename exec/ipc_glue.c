@@ -292,7 +292,7 @@ static void cs_ipcs_connection_created(qb_ipcs_connection_t *c)
 
 	qb_ipcs_connection_stats_get(c, &stats, QB_FALSE);
 
-	if (pid_to_name (stats.client_pid, context->proc_name, sizeof(context->proc_name))) {
+	if (!pid_to_name (stats.client_pid, context->proc_name, sizeof(context->proc_name))) {
 		context->proc_name[0] = '\0';
 	}
 	stats_ipcs_add_connection(service, stats.client_pid, c);

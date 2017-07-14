@@ -167,6 +167,12 @@ struct cs_stats_conv cs_ipcs_global_stats[] = {
 #define NUM_IPCSC_STATS (sizeof(cs_ipcs_conn_stats) / sizeof(struct cs_stats_conv))
 #define NUM_IPCSG_STATS (sizeof(cs_ipcs_global_stats) / sizeof(struct cs_stats_conv))
 
+/* What goes in the trie */
+struct stats_item {
+	char *key_name;
+	struct cs_stats_conv * cs_conv;
+};
+
 /* One of these per tracker */
 struct cs_stats_tracker
 {
@@ -198,11 +204,31 @@ static void stats_map_set_value(struct cs_stats_conv *conv,
 	}
 }
 
+static void stats_add_entry(const char *key, struct cs_stats_conv *cs_conv)
+{
+	struct stats_item *item = malloc(sizeof(struct stats_item));
+
+	if (item) {
+		item->cs_conv = cs_conv;
+		item->key_name = strdup(key);
+		qb_map_put(stats_map, item->key_name, item);
+	}
+}
+static void stats_rm_entry(const char *key)
+{
+	struct stats_item *item = qb_map_get(stats_map, key);
+
+	if (item) {
+		qb_map_rm(stats_map, item->key_name);
+		free(item->key_name);
+		free(item);
+	}
+}
+
 cs_error_t stats_map_init(const struct corosync_api_v1 *corosync_api)
 {
 	int i;
 	char param[ICMAP_KEYNAME_MAXLEN];
-	const char *map_path;
 
 	api = corosync_api;
 
@@ -214,24 +240,15 @@ cs_error_t stats_map_init(const struct corosync_api_v1 *corosync_api)
 	/* Populate the static portions of the trie */
 	for (i = 0; i<NUM_PG_STATS; i++) {
 		sprintf(param, "stats.pg.%s", cs_pg_stats[i].name);
-		map_path = strdup(param);
-		if (map_path) {
-			qb_map_put(stats_map, map_path, &cs_pg_stats[i]);
-		}
+		stats_add_entry(param, &cs_pg_stats[i]);
 	}
 	for (i = 0; i<NUM_SRP_STATS; i++) {
 		sprintf(param, "stats.srp.%s", cs_srp_stats[i].name);
-		map_path = strdup(param);
-		if (map_path) {
-			qb_map_put(stats_map, map_path, &cs_srp_stats[i]);
-		}
+		stats_add_entry(param, &cs_srp_stats[i]);
 	}
 	for (i = 0; i<NUM_IPCSG_STATS; i++) {
 		sprintf(param, "stats.ipcs.%s", cs_ipcs_global_stats[i].name);
-		map_path = strdup(param);
-		if (map_path) {
-			qb_map_put(stats_map, map_path, &cs_ipcs_global_stats[i]);
-		}
+		stats_add_entry(param, &cs_ipcs_global_stats[i]);
 	}
 
 	/* KNET and IPCS stats are added when appropriate */
@@ -244,6 +261,7 @@ cs_error_t stats_map_get(const char *key_name,
 			 icmap_value_types_t *type)
 {
 	struct cs_stats_conv *statinfo;
+	struct stats_item *item;
 	totempg_stats_t *pg_stats;
 	struct knet_link_status link_status;
 	struct ipcs_conn_stats ipcs_conn_stats;
@@ -255,11 +273,12 @@ cs_error_t stats_map_get(const char *key_name,
 	uint32_t pid;
 	void *conn_ptr;
 
-	statinfo = qb_map_get(stats_map, key_name);
-	if (!statinfo) {
+	item = qb_map_get(stats_map, key_name);
+	if (!item) {
 		return CS_ERR_NOT_EXIST;
 	}
 
+	statinfo = item->cs_conv;
 	switch (statinfo->type) {
 		case STAT_PG:
 			pg_stats = api->totem_get_stats();
@@ -340,13 +359,13 @@ icmap_iter_t stats_map_iter_init(const char *prefix)
 const char *stats_map_iter_next(icmap_iter_t iter, size_t *value_len, icmap_value_types_t *type)
 {
 	const char *res;
-	struct cs_stats_conv *statinfo;
+	struct stats_item *item;
 
-	res = qb_map_iter_next(iter, (void **)&statinfo);
+	res = qb_map_iter_next(iter, (void **)&item);
 	if (res == NULL) {
 		return (res);
 	}
-	stats_map_set_value(statinfo, NULL, NULL, value_len, type);
+	stats_map_set_value(item->cs_conv, NULL, NULL, value_len, type);
 
 	return res;
 }
@@ -437,14 +456,10 @@ void stats_knet_add_member(knet_node_id_t nodeid, uint8_t link)
 {
 	int i;
 	char param[ICMAP_KEYNAME_MAXLEN];
-	const char *map_path;
 
 	for (i = 0; i<NUM_KNET_STATS; i++) {
 		sprintf(param, "stats.knet.node%d.link%d.%s", nodeid, link, cs_knet_stats[i].name);
-		map_path = strdup(param);
-		if (map_path) {
-			qb_map_put(stats_map, map_path, &cs_knet_stats[i]);
-		}
+		stats_add_entry(param, &cs_knet_stats[i]);
 	}
 }
 void stats_knet_del_member(knet_node_id_t nodeid, uint8_t link)
@@ -454,7 +469,7 @@ void stats_knet_del_member(knet_node_id_t nodeid, uint8_t link)
 
 	for (i = 0; i<NUM_KNET_STATS; i++) {
 		sprintf(param, "stats.knet.node%d.link%d.%s", nodeid, link, cs_knet_stats[i].name);
-		qb_map_rm(stats_map, param);
+		stats_rm_entry(param);
 	}
 }
 
@@ -464,14 +479,10 @@ void stats_ipcs_add_connection(int service_id, uint32_t pid, void *ptr)
 {
 	int i;
 	char param[ICMAP_KEYNAME_MAXLEN];
-	const char *map_path;
 
 	for (i = 0; i<NUM_IPCSC_STATS; i++) {
 		sprintf(param, "stats.ipcs.service%d.%d.%p.%s", service_id, pid, ptr, cs_ipcs_conn_stats[i].name);
-		map_path = strdup(param);
-		if (map_path) {
-			qb_map_put(stats_map, map_path, &cs_ipcs_conn_stats[i]);
-		}
+		stats_add_entry(param, &cs_ipcs_conn_stats[i]);
 	}
 }
 void stats_ipcs_del_connection(int service_id, uint32_t pid, void *ptr)
@@ -481,6 +492,6 @@ void stats_ipcs_del_connection(int service_id, uint32_t pid, void *ptr)
 
 	for (i = 0; i<NUM_IPCSC_STATS; i++) {
 		sprintf(param, "stats.ipcs.service%d.%d.%p.%s", service_id, pid, ptr, cs_ipcs_conn_stats[i].name);
-		qb_map_rm(stats_map, param);
+		stats_rm_entry(param);
 	}
 }
