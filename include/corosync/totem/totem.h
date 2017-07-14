@@ -36,6 +36,7 @@
 #define TOTEM_H_DEFINED
 #include "totemip.h"
 #include "libknet.h"
+#include "totemstats.h"
 #include <corosync/hdb.h>
 
 #ifdef HAVE_SMALL_MEMORY_FOOTPRINT
@@ -224,66 +225,4 @@ enum totem_event_type {
 	TOTEM_EVENT_DELIVERY_CONGESTED,
 	TOTEM_EVENT_NEW_MSG,
 };
-
-typedef struct {
-	int is_dirty;
-	time_t last_updated;
-} totem_stats_header_t;
-
-typedef struct {
-	totem_stats_header_t hdr;
-	uint32_t iface_changes;
-} totemnet_stats_t;
-
-typedef struct {
-	uint32_t rx;
-	uint32_t tx;
-	int backlog_calc;
-} totemsrp_token_stats_t;
-
-typedef struct {
-	totem_stats_header_t hdr;
-	uint64_t orf_token_tx;
-	uint64_t orf_token_rx;
-	uint64_t memb_merge_detect_tx;
-	uint64_t memb_merge_detect_rx;
-	uint64_t memb_join_tx;
-	uint64_t memb_join_rx;
-	uint64_t mcast_tx;
-	uint64_t mcast_retx;
-	uint64_t mcast_rx;
-	uint64_t memb_commit_token_tx;
-	uint64_t memb_commit_token_rx;
-	uint64_t token_hold_cancel_tx;
-	uint64_t token_hold_cancel_rx;
-	uint64_t operational_entered;
-	uint64_t operational_token_lost;
-	uint64_t gather_entered;
-	uint64_t gather_token_lost;
-	uint64_t commit_entered;
-	uint64_t commit_token_lost;
-	uint64_t recovery_entered;
-	uint64_t recovery_token_lost;
-	uint64_t consensus_timeouts;
-	uint64_t rx_msg_dropped;
-	uint32_t continuous_gather;
-	uint32_t continuous_sendmsg_failures;
-
-	int earliest_token;
-	int latest_token;
-#define TOTEM_TOKEN_STATS_MAX 100
-	totemsrp_token_stats_t token[TOTEM_TOKEN_STATS_MAX];
-
-} totemsrp_stats_t;
-
- 
- #define TOTEM_CONFIGURATION_TYPE
-
-typedef struct {
-	totem_stats_header_t hdr;
-	totemsrp_stats_t *srp;
-	uint32_t msg_reserved;
-	uint32_t msg_queue_avail;
-} totempg_stats_t;
-
 #endif /* TOTEM_H_DEFINED */

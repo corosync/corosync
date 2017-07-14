@@ -96,9 +96,12 @@ static int convert_name_to_type(const char *name)
 static int print_help(void)
 {
 	printf("\n");
-	printf("usage:  corosync-cmapctl [-b] [-DdghsTt] [-p filename] [params...]\n");
+	printf("usage:  corosync-cmapctl [-b] [-DdghsTt] [-p filename] [-m map] [params...]\n");
 	printf("\n");
 	printf("    -b show binary values\n");
+	printf("\n");
+	printf("    map can be 'icmap', 'default' or 'stats'\n");
+	printf("    the default is 'icmap'\n");
 	printf("\n");
 	printf("Set key:\n");
 	printf("    corosync-cmapctl -s key_name type value\n");
@@ -745,6 +748,8 @@ int main(int argc, char *argv[])
 	int i;
 	size_t value_len;
 	cmap_value_types_t type;
+	cmap_map_t map = CMAP_MAP_DEFAULT;
+	int map_set = 0;
 	int track_prefix;
 	int no_retries;
 	char * settings_file = NULL;
@@ -752,7 +757,7 @@ int main(int argc, char *argv[])
 	action = ACTION_PRINT_PREFIX;
 	track_prefix = 1;
 
-	while ((c = getopt(argc, argv, "hgsdDtTbp:")) != -1) {
+	while ((c = getopt(argc, argv, "m:hgsdDtTbp:")) != -1) {
 		switch (c) {
 		case 'h':
 			return print_help();
@@ -783,6 +788,21 @@ int main(int argc, char *argv[])
 		case 'T':
 			action = ACTION_TRACK;
 			break;
+		case 'm':
+			if (strcmp(optarg, "icmap") == 0 ||
+			    strcmp(optarg, "default") == 0) {
+				map = CMAP_MAP_ICMAP;
+				map_set = 1;
+			}
+			if (strcmp(optarg, "stats") == 0) {
+				map = CMAP_MAP_STATS;
+				map_set = 1;
+			}
+			if (!map_set) {
+				fprintf(stderr, "invalid map name, must be 'default', 'icmap' or 'stats'\n");
+				return (EXIT_FAILURE);
+			}
+			break;
 		case '?':
 			return (EXIT_FAILURE);
 			break;
@@ -792,7 +812,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if (argc == 1 || (argc == 2 && show_binary)) {
+	if (argc == 1 || (argc == 2 && show_binary) || (argc == 2 && map_set)) {
 		action = ACTION_PRINT_ALL;
 	}
 
@@ -814,6 +834,14 @@ int main(int argc, char *argv[])
 	if (err != CS_OK) {
 		fprintf (stderr, "Failed to initialize the cmap API. Error %s\n", cs_strerror(err));
 		exit (EXIT_FAILURE);
+	}
+
+	if (map_set) {
+		err = cmap_set_current_map(handle, map);
+		if (err != CS_OK) {
+			fprintf (stderr, "Failed to set the map. error %s\n", cs_strerror(err));
+			exit (EXIT_FAILURE);
+		}
 	}
 
 	switch (action) {
