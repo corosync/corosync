@@ -41,59 +41,58 @@
 extern "C" {
 #endif
 
-extern int	qdevice_net_algo_ffsplit_init(struct qdevice_net_instance *instance);
+extern int qdevice_net_algo_ffsplit_init (struct qdevice_net_instance *instance);
 
-extern int	qdevice_net_algo_ffsplit_connected(struct qdevice_net_instance *instance,
-    int *send_config_node_list, int *send_membership_node_list, int *send_quorum_node_list,
-    enum tlv_vote *vote);
+extern int qdevice_net_algo_ffsplit_connected (struct qdevice_net_instance *instance, int *send_config_node_list,
+											   int *send_membership_node_list, int *send_quorum_node_list, enum tlv_vote *vote);
 
-extern int	qdevice_net_algo_ffsplit_config_node_list_changed(
-    struct qdevice_net_instance *instance, const struct node_list *nlist,
-    int config_version_set, uint64_t config_version, int *send_node_list, enum tlv_vote *vote);
+extern int qdevice_net_algo_ffsplit_config_node_list_changed (struct qdevice_net_instance *instance,
+															  const struct node_list *nlist, int config_version_set,
+															  uint64_t config_version, int *send_node_list, enum tlv_vote *vote);
 
-extern int	qdevice_net_algo_ffsplit_votequorum_node_list_notify(
-    struct qdevice_net_instance *instance, const struct tlv_ring_id *ring_id,
-    uint32_t node_list_entries, uint32_t node_list[], int *send_node_list, enum tlv_vote *vote);
+extern int qdevice_net_algo_ffsplit_votequorum_node_list_notify (struct qdevice_net_instance *instance,
+																 const struct tlv_ring_id *ring_id, uint32_t node_list_entries,
+																 uint32_t node_list[], int *send_node_list, enum tlv_vote *vote);
 
-extern int	qdevice_net_algo_ffsplit_votequorum_quorum_notify(
-    struct qdevice_net_instance *instance, uint32_t quorate, uint32_t node_list_entries,
-    votequorum_node_t node_list[], int *send_node_list, enum tlv_vote *vote);
+extern int qdevice_net_algo_ffsplit_votequorum_quorum_notify (struct qdevice_net_instance *instance, uint32_t quorate,
+															  uint32_t node_list_entries, votequorum_node_t node_list[],
+															  int *send_node_list, enum tlv_vote *vote);
 
-extern int	qdevice_net_algo_ffsplit_votequorum_expected_votes_notify(
-    struct qdevice_net_instance *instance, uint32_t expected_votes, enum tlv_vote *vote);
+extern int qdevice_net_algo_ffsplit_votequorum_expected_votes_notify (struct qdevice_net_instance *instance,
+																	  uint32_t expected_votes, enum tlv_vote *vote);
 
-extern int	qdevice_net_algo_ffsplit_config_node_list_reply_received(
-    struct qdevice_net_instance *instance, uint32_t seq_number, int initial,
-    const struct tlv_ring_id *ring_id, int ring_id_is_valid, enum tlv_vote *vote);
+extern int qdevice_net_algo_ffsplit_config_node_list_reply_received (struct qdevice_net_instance *instance, uint32_t seq_number,
+																	 int initial, const struct tlv_ring_id *ring_id,
+																	 int ring_id_is_valid, enum tlv_vote *vote);
 
-extern int	qdevice_net_algo_ffsplit_membership_node_list_reply_received(
-    struct qdevice_net_instance *instance, uint32_t seq_number, const struct tlv_ring_id *ring_id,
-    int ring_id_is_valid, enum tlv_vote *vote);
+extern int qdevice_net_algo_ffsplit_membership_node_list_reply_received (struct qdevice_net_instance *instance,
+																		 uint32_t seq_number, const struct tlv_ring_id *ring_id,
+																		 int ring_id_is_valid, enum tlv_vote *vote);
 
-extern int	qdevice_net_algo_ffsplit_quorum_node_list_reply_received(
-    struct qdevice_net_instance *instance, uint32_t seq_number,
-    const struct tlv_ring_id *ring_id, int ring_id_is_valid, enum tlv_vote *vote);
+extern int qdevice_net_algo_ffsplit_quorum_node_list_reply_received (struct qdevice_net_instance *instance,
+																	 uint32_t seq_number, const struct tlv_ring_id *ring_id,
+																	 int ring_id_is_valid, enum tlv_vote *vote);
 
-extern int	qdevice_net_algo_ffsplit_ask_for_vote_reply_received(
-    struct qdevice_net_instance *instance, uint32_t seq_number,
-    const struct tlv_ring_id *ring_id, int ring_id_is_valid, enum tlv_vote *vote);
+extern int qdevice_net_algo_ffsplit_ask_for_vote_reply_received (struct qdevice_net_instance *instance,
+																 uint32_t seq_number, const struct tlv_ring_id *ring_id,
+																 int ring_id_is_valid, enum tlv_vote *vote);
 
-extern int	qdevice_net_algo_ffsplit_vote_info_received(struct qdevice_net_instance *instance,
-    uint32_t seq_number, const struct tlv_ring_id *ring_id, int ring_id_is_valid,
-    enum tlv_vote *vote);
+extern int qdevice_net_algo_ffsplit_vote_info_received (struct qdevice_net_instance *instance, uint32_t seq_number,
+														const struct tlv_ring_id *ring_id, int ring_id_is_valid,
+														enum tlv_vote *vote);
 
-extern int	qdevice_net_algo_ffsplit_echo_reply_received(
-    struct qdevice_net_instance *instance, uint32_t seq_number, int is_expected_seq_number);
+extern int qdevice_net_algo_ffsplit_echo_reply_received (struct qdevice_net_instance *instance, uint32_t seq_number,
+														 int is_expected_seq_number);
 
-extern int	qdevice_net_algo_ffsplit_echo_reply_not_received(
-    struct qdevice_net_instance *instance);
+extern int qdevice_net_algo_ffsplit_echo_reply_not_received (struct qdevice_net_instance *instance);
 
-extern int	qdevice_net_algo_ffsplit_disconnected(struct qdevice_net_instance *instance,
-    enum qdevice_net_disconnect_reason disconnect_reason, int *try_reconnect, enum tlv_vote *vote);
+extern int qdevice_net_algo_ffsplit_disconnected (struct qdevice_net_instance *instance,
+												  enum qdevice_net_disconnect_reason disconnect_reason,
+												  int *try_reconnect, enum tlv_vote *vote);
 
-extern void	qdevice_net_algo_ffsplit_destroy(struct qdevice_net_instance *instance);
+extern void qdevice_net_algo_ffsplit_destroy (struct qdevice_net_instance *instance);
 
-extern int	qdevice_net_algo_ffsplit_register(void);
+extern int qdevice_net_algo_ffsplit_register (void);
 
 #ifdef __cplusplus
 }

@@ -37,8 +37,8 @@
 
 #include <sys/types.h>
 
-#include <sys/queue.h>
 #include <inttypes.h>
+#include <sys/queue.h>
 
 #include "dynar.h"
 
@@ -56,21 +56,21 @@ struct unix_socket_client {
 	int writing_buffer;
 	int schedule_disconnect;
 	void *user_data;
-	TAILQ_ENTRY(unix_socket_client) entries;
+	TAILQ_ENTRY (unix_socket_client) entries;
 };
 
-extern void		unix_socket_client_init(struct unix_socket_client *client, int sock,
-    size_t max_receive_size, size_t max_send_size, void *user_data);
+extern void unix_socket_client_init (struct unix_socket_client *client, int sock, size_t max_receive_size,
+									 size_t max_send_size, void *user_data);
 
-extern void		unix_socket_client_destroy(struct unix_socket_client *client);
+extern void unix_socket_client_destroy (struct unix_socket_client *client);
 
-extern void		unix_socket_client_read_line(struct unix_socket_client *client, int enabled);
+extern void unix_socket_client_read_line (struct unix_socket_client *client, int enabled);
 
-extern void		unix_socket_client_write_buffer(struct unix_socket_client *client, int enabled);
+extern void unix_socket_client_write_buffer (struct unix_socket_client *client, int enabled);
 
-extern int		unix_socket_client_io_read(struct unix_socket_client *client);
+extern int unix_socket_client_io_read (struct unix_socket_client *client);
 
-extern int		unix_socket_client_io_write(struct unix_socket_client *client);
+extern int unix_socket_client_io_write (struct unix_socket_client *client);
 
 #ifdef __cplusplus
 }

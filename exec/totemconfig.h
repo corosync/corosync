@@ -35,33 +35,24 @@
 #ifndef TOTEMCONFIG_H_DEFINED
 #define TOTEMCONFIG_H_DEFINED
 
-#include <netinet/in.h>
 #include <corosync/corotypes.h>
-#include <qb/qbloop.h>
 #include <corosync/totem/totempg.h>
+#include <netinet/in.h>
+#include <qb/qbloop.h>
 
 #include "totemsrp.h"
 
-#define TOTEM_CONFIG_WARNING_MEMBERS_IGNORED		(1<<1)
-#define TOTEM_CONFIG_WARNING_MEMBERS_DEPRECATED		(1<<2)
-#define TOTEM_CONFIG_WARNING_TOTEM_NODEID_IGNORED	(1<<3)
-#define TOTEM_CONFIG_BINDNETADDR_NODELIST_SET	(1<<4)
+#define TOTEM_CONFIG_WARNING_MEMBERS_IGNORED (1 << 1)
+#define TOTEM_CONFIG_WARNING_MEMBERS_DEPRECATED (1 << 2)
+#define TOTEM_CONFIG_WARNING_TOTEM_NODEID_IGNORED (1 << 3)
+#define TOTEM_CONFIG_BINDNETADDR_NODELIST_SET (1 << 4)
 
-extern int totem_config_read (
-	struct totem_config *totem_config,
-	const char **error_string,
-	uint64_t *warnings);
+extern int totem_config_read (struct totem_config *totem_config, const char **error_string, uint64_t *warnings);
 
-extern int totem_config_validate (
-	struct totem_config *totem_config,
-	const char **error_string);
+extern int totem_config_validate (struct totem_config *totem_config, const char **error_string);
 
-extern int totem_config_keyread (
-	struct totem_config *totem_config,
-	const char **error_string);
+extern int totem_config_keyread (struct totem_config *totem_config, const char **error_string);
 
-extern int totem_config_find_local_addr_in_nodelist(
-	const char *ipaddr_key_prefix,
-	unsigned int *node_pos);
+extern int totem_config_find_local_addr_in_nodelist (const char *ipaddr_key_prefix, unsigned int *node_pos);
 
 #endif /* TOTEMCONFIG_H_DEFINED */

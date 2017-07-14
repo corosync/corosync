@@ -35,9 +35,9 @@
 #ifndef IPC_CMAP_H_DEFINED
 #define IPC_CMAP_H_DEFINED
 
-#include <netinet/in.h>
 #include <corosync/corotypes.h>
 #include <corosync/mar_gen.h>
+#include <netinet/in.h>
 
 /**
  * @brief The req_cmap_types enum
@@ -74,165 +74,165 @@ enum res_cmap_types {
  * @brief The req_lib_cmap_set struct
  */
 struct req_lib_cmap_set {
-	struct qb_ipc_request_header header __attribute__((aligned(8)));
-	mar_name_t key_name __attribute__((aligned(8)));
-	mar_size_t value_len __attribute__((aligned(8)));
-	mar_uint8_t type __attribute__((aligned(8)));
-	mar_uint8_t value[] __attribute__((aligned(8)));
+	struct qb_ipc_request_header header __attribute__ ((aligned (8)));
+	mar_name_t key_name __attribute__ ((aligned (8)));
+	mar_size_t value_len __attribute__ ((aligned (8)));
+	mar_uint8_t type __attribute__ ((aligned (8)));
+	mar_uint8_t value[] __attribute__ ((aligned (8)));
 };
 
 /**
  * @brief The res_lib_cmap_set struct
  */
 struct res_lib_cmap_set {
-	struct qb_ipc_response_header header __attribute__((aligned(8)));
+	struct qb_ipc_response_header header __attribute__ ((aligned (8)));
 };
 
 /**
  * @brief The req_lib_cmap_delete struct
  */
 struct req_lib_cmap_delete {
-	struct qb_ipc_request_header header __attribute__((aligned(8)));
-	mar_name_t key_name __attribute__((aligned(8)));
+	struct qb_ipc_request_header header __attribute__ ((aligned (8)));
+	mar_name_t key_name __attribute__ ((aligned (8)));
 };
 
 /**
  * @brief The res_lib_cmap_delete struct
  */
 struct res_lib_cmap_delete {
-	struct qb_ipc_response_header header __attribute__((aligned(8)));
+	struct qb_ipc_response_header header __attribute__ ((aligned (8)));
 };
 
 /**
  * @brief The req_lib_cmap_get struct
  */
 struct req_lib_cmap_get {
-	struct qb_ipc_request_header header __attribute__((aligned(8)));
-	mar_name_t key_name __attribute__((aligned(8)));
-	mar_size_t value_len __attribute__((aligned(8)));
+	struct qb_ipc_request_header header __attribute__ ((aligned (8)));
+	mar_name_t key_name __attribute__ ((aligned (8)));
+	mar_size_t value_len __attribute__ ((aligned (8)));
 };
 
 /**
  * @brief The res_lib_cmap_get struct
  */
 struct res_lib_cmap_get {
-	struct qb_ipc_response_header header __attribute__((aligned(8)));
-	mar_size_t value_len __attribute__((aligned(8)));
-	mar_uint8_t type __attribute__((aligned(8)));
-	mar_uint8_t value[] __attribute__((aligned(8)));
+	struct qb_ipc_response_header header __attribute__ ((aligned (8)));
+	mar_size_t value_len __attribute__ ((aligned (8)));
+	mar_uint8_t type __attribute__ ((aligned (8)));
+	mar_uint8_t value[] __attribute__ ((aligned (8)));
 };
 
 /**
  * @brief The req_lib_cmap_adjust_int struct
  */
 struct req_lib_cmap_adjust_int {
-	struct qb_ipc_request_header header __attribute__((aligned(8)));
-	mar_name_t key_name __attribute__((aligned(8)));
-	mar_int32_t step __attribute__((aligned(8)));
+	struct qb_ipc_request_header header __attribute__ ((aligned (8)));
+	mar_name_t key_name __attribute__ ((aligned (8)));
+	mar_int32_t step __attribute__ ((aligned (8)));
 };
 
 /**
  * @brief The res_lib_cmap_adjust_int struct
  */
 struct res_lib_cmap_adjust_int {
-	struct qb_ipc_response_header header __attribute__((aligned(8)));
+	struct qb_ipc_response_header header __attribute__ ((aligned (8)));
 };
 
 /**
  * @brief The req_lib_cmap_iter_init struct
  */
 struct req_lib_cmap_iter_init {
-	struct qb_ipc_request_header header __attribute__((aligned(8)));
-	mar_name_t prefix __attribute__((aligned(8)));
+	struct qb_ipc_request_header header __attribute__ ((aligned (8)));
+	mar_name_t prefix __attribute__ ((aligned (8)));
 };
 
 /**
  * @brief The res_lib_cmap_iter_init struct
  */
 struct res_lib_cmap_iter_init {
-	struct qb_ipc_response_header header __attribute__((aligned(8)));
-	mar_uint64_t iter_handle __attribute__((aligned(8)));
+	struct qb_ipc_response_header header __attribute__ ((aligned (8)));
+	mar_uint64_t iter_handle __attribute__ ((aligned (8)));
 };
 
 /**
  * @brief The req_lib_cmap_iter_next struct
  */
 struct req_lib_cmap_iter_next {
-	struct qb_ipc_request_header header __attribute__((aligned(8)));
-	mar_uint64_t iter_handle __attribute__((aligned(8)));
+	struct qb_ipc_request_header header __attribute__ ((aligned (8)));
+	mar_uint64_t iter_handle __attribute__ ((aligned (8)));
 };
 
 /**
  * @brief The res_lib_cmap_iter_next struct
  */
 struct res_lib_cmap_iter_next {
-	struct qb_ipc_response_header header __attribute__((aligned(8)));
-	mar_name_t key_name __attribute__((aligned(8)));
-	mar_size_t value_len __attribute__((aligned(8)));
-	mar_uint8_t type __attribute__((aligned(8)));
+	struct qb_ipc_response_header header __attribute__ ((aligned (8)));
+	mar_name_t key_name __attribute__ ((aligned (8)));
+	mar_size_t value_len __attribute__ ((aligned (8)));
+	mar_uint8_t type __attribute__ ((aligned (8)));
 };
 
 /**
  * @brief The req_lib_cmap_iter_finalize struct
  */
 struct req_lib_cmap_iter_finalize {
-	struct qb_ipc_request_header header __attribute__((aligned(8)));
-	mar_uint64_t iter_handle __attribute__((aligned(8)));
+	struct qb_ipc_request_header header __attribute__ ((aligned (8)));
+	mar_uint64_t iter_handle __attribute__ ((aligned (8)));
 };
 
 /**
  * @brief The res_lib_cmap_iter_finalize struct
  */
 struct res_lib_cmap_iter_finalize {
-	struct qb_ipc_response_header header __attribute__((aligned(8)));
+	struct qb_ipc_response_header header __attribute__ ((aligned (8)));
 };
 
 /**
  * @brief The req_lib_cmap_track_add struct
  */
 struct req_lib_cmap_track_add {
-	struct qb_ipc_request_header header __attribute__((aligned(8)));
-	mar_name_t key_name __attribute__((aligned(8)));
-	mar_int32_t track_type __attribute__((aligned(8)));
-	mar_uint64_t track_inst_handle __attribute__((aligned(8)));
+	struct qb_ipc_request_header header __attribute__ ((aligned (8)));
+	mar_name_t key_name __attribute__ ((aligned (8)));
+	mar_int32_t track_type __attribute__ ((aligned (8)));
+	mar_uint64_t track_inst_handle __attribute__ ((aligned (8)));
 };
 
 /**
  * @brief The res_lib_cmap_track_add struct
  */
 struct res_lib_cmap_track_add {
-	struct qb_ipc_response_header header __attribute__((aligned(8)));
-	mar_uint64_t track_handle __attribute__((aligned(8)));
+	struct qb_ipc_response_header header __attribute__ ((aligned (8)));
+	mar_uint64_t track_handle __attribute__ ((aligned (8)));
 };
 
 /**
  * @brief The req_lib_cmap_track_delete struct
  */
 struct req_lib_cmap_track_delete {
-	struct qb_ipc_request_header header __attribute__((aligned(8)));
-	mar_uint64_t track_handle __attribute__((aligned(8)));
+	struct qb_ipc_request_header header __attribute__ ((aligned (8)));
+	mar_uint64_t track_handle __attribute__ ((aligned (8)));
 };
 
 /**
  * @brief The res_lib_cmap_track_delete struct
  */
 struct res_lib_cmap_track_delete {
-	struct qb_ipc_response_header header __attribute__((aligned(8)));
-	mar_uint64_t track_inst_handle __attribute__((aligned(8)));
+	struct qb_ipc_response_header header __attribute__ ((aligned (8)));
+	mar_uint64_t track_inst_handle __attribute__ ((aligned (8)));
 };
 
 /**
  * @brief The res_lib_cmap_notify_callback struct
  */
 struct res_lib_cmap_notify_callback {
-	struct qb_ipc_response_header header __attribute__((aligned(8)));
-	mar_uint64_t track_inst_handle __attribute__((aligned(8)));
-	mar_name_t key_name __attribute__((aligned(8)));
-	mar_int32_t event __attribute__((aligned(8)));
-	mar_uint8_t new_value_type __attribute__((aligned(8)));
-	mar_uint8_t old_value_type __attribute__((aligned(8)));
-	mar_size_t new_value_len __attribute__((aligned(8)));
-	mar_size_t old_value_len __attribute__((aligned(8)));
+	struct qb_ipc_response_header header __attribute__ ((aligned (8)));
+	mar_uint64_t track_inst_handle __attribute__ ((aligned (8)));
+	mar_name_t key_name __attribute__ ((aligned (8)));
+	mar_int32_t event __attribute__ ((aligned (8)));
+	mar_uint8_t new_value_type __attribute__ ((aligned (8)));
+	mar_uint8_t old_value_type __attribute__ ((aligned (8)));
+	mar_size_t new_value_len __attribute__ ((aligned (8)));
+	mar_size_t old_value_len __attribute__ ((aligned (8)));
 	/*
 	 * After old_vale_len, there are two items with length of new_value_len
 	 * and old_value_len, only first (as a pointer) is defined

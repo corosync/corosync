@@ -42,8 +42,7 @@
 extern "C" {
 #endif
 
-extern int	qdevice_ipc_cmd_status(struct qdevice_instance *instance, struct dynar *outbuf,
-    int verbose);
+extern int qdevice_ipc_cmd_status (struct qdevice_instance *instance, struct dynar *outbuf, int verbose);
 
 #ifdef __cplusplus
 }

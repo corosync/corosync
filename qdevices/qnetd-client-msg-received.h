@@ -41,8 +41,7 @@
 extern "C" {
 #endif
 
-extern int		qnetd_client_msg_received(struct qnetd_instance *instance,
-    struct qnetd_client *client);
+extern int qnetd_client_msg_received (struct qnetd_instance *instance, struct qnetd_client *client);
 
 #ifdef __cplusplus
 }

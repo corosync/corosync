@@ -35,8 +35,8 @@
 #ifndef _QNETD_CLIENT_LIST_H_
 #define _QNETD_CLIENT_LIST_H_
 
-#include <sys/types.h>
 #include <inttypes.h>
+#include <sys/types.h>
 
 #include "qnetd-client.h"
 
@@ -44,21 +44,19 @@
 extern "C" {
 #endif
 
-TAILQ_HEAD(qnetd_client_list, qnetd_client);
+TAILQ_HEAD (qnetd_client_list, qnetd_client);
 
-extern void			 qnetd_client_list_init(struct qnetd_client_list *client_list);
+extern void qnetd_client_list_init (struct qnetd_client_list *client_list);
 
-extern struct qnetd_client	*qnetd_client_list_add(struct qnetd_client_list *client_list,
-    PRFileDesc *sock, PRNetAddr *addr, char *addr_str, size_t max_receive_size,
-    size_t max_send_buffers, size_t max_send_size, struct timer_list *main_timer_list);
+extern struct qnetd_client *qnetd_client_list_add (struct qnetd_client_list *client_list, PRFileDesc *sock, PRNetAddr *addr,
+												   char *addr_str, size_t max_receive_size, size_t max_send_buffers,
+												   size_t max_send_size, struct timer_list *main_timer_list);
 
-extern void			 qnetd_client_list_free(struct qnetd_client_list *client_list);
+extern void qnetd_client_list_free (struct qnetd_client_list *client_list);
 
-extern void			 qnetd_client_list_del(struct qnetd_client_list *client_list,
-    struct qnetd_client *client);
+extern void qnetd_client_list_del (struct qnetd_client_list *client_list, struct qnetd_client *client);
 
-extern size_t			 qnetd_client_list_no_clients(
-    struct qnetd_client_list *client_list);
+extern size_t qnetd_client_list_no_clients (struct qnetd_client_list *client_list);
 
 #ifdef __cplusplus
 }

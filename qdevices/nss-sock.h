@@ -36,8 +36,8 @@
 #define _NSS_SOCK_H_
 
 #include <nss.h>
-#include <ssl.h>
 #include <prnetdb.h>
+#include <ssl.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -54,34 +54,29 @@ struct nss_sock_non_blocking_client {
 	int destroyed;
 };
 
-extern int		nss_sock_init_nss(char *config_dir);
+extern int nss_sock_init_nss (char *config_dir);
 
-extern PRFileDesc	*nss_sock_create_listen_socket(const char *hostname, uint16_t port,
-    PRIntn af);
+extern PRFileDesc *nss_sock_create_listen_socket (const char *hostname, uint16_t port, PRIntn af);
 
-extern int		nss_sock_set_non_blocking(PRFileDesc *sock);
+extern int nss_sock_set_non_blocking (PRFileDesc *sock);
 
-extern PRFileDesc 	*nss_sock_create_client_socket(const char *hostname, uint16_t port,
-    PRIntn af, PRIntervalTime timeout);
+extern PRFileDesc *nss_sock_create_client_socket (const char *hostname, uint16_t port, PRIntn af, PRIntervalTime timeout);
 
-extern PRFileDesc	*nss_sock_start_ssl_as_client(PRFileDesc *input_sock, const char *ssl_url,
-    SSLBadCertHandler bad_cert_hook, SSLGetClientAuthData client_auth_hook,
-    void *client_auth_hook_arg, int force_handshake, int *reset_would_block);
+extern PRFileDesc *nss_sock_start_ssl_as_client (PRFileDesc *input_sock, const char *ssl_url,
+												 SSLBadCertHandler bad_cert_hook, SSLGetClientAuthData client_auth_hook,
+												 void *client_auth_hook_arg, int force_handshake, int *reset_would_block);
 
-extern PRFileDesc	*nss_sock_start_ssl_as_server(PRFileDesc *input_sock,
-    CERTCertificate *server_cert, SECKEYPrivateKey *server_key, int require_client_cert,
-    int force_handshake, int *reset_would_block);
+extern PRFileDesc *nss_sock_start_ssl_as_server (PRFileDesc *input_sock, CERTCertificate *server_cert, SECKEYPrivateKey *server_key,
+												 int require_client_cert, int force_handshake, int *reset_would_block);
 
-extern int		 nss_sock_non_blocking_client_init(const char *host_name,
-    uint16_t port, PRIntn af, struct nss_sock_non_blocking_client *client);
+extern int nss_sock_non_blocking_client_init (const char *host_name, uint16_t port, PRIntn af,
+											  struct nss_sock_non_blocking_client *client);
 
-extern int		 nss_sock_non_blocking_client_try_next(
-    struct nss_sock_non_blocking_client *client);
+extern int nss_sock_non_blocking_client_try_next (struct nss_sock_non_blocking_client *client);
 
-extern void		 nss_sock_non_blocking_client_destroy(
-    struct nss_sock_non_blocking_client *client);
+extern void nss_sock_non_blocking_client_destroy (struct nss_sock_non_blocking_client *client);
 
-extern int		 nss_sock_non_blocking_client_succeeded(const PRPollDesc *pfd);
+extern int nss_sock_non_blocking_client_succeeded (const PRPollDesc *pfd);
 
 #ifdef __cplusplus
 }

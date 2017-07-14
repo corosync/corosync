@@ -37,8 +37,8 @@
 
 #include <sys/types.h>
 
-#include <sys/queue.h>
 #include <inttypes.h>
+#include <sys/queue.h>
 
 #include "qnetd-client-list.h"
 #include "qnetd-cluster.h"
@@ -47,23 +47,21 @@
 extern "C" {
 #endif
 
-TAILQ_HEAD(qnetd_cluster_list, qnetd_cluster);
+TAILQ_HEAD (qnetd_cluster_list, qnetd_cluster);
 
-extern void				 qnetd_cluster_list_init(struct qnetd_cluster_list *list);
+extern void qnetd_cluster_list_init (struct qnetd_cluster_list *list);
 
-extern struct qnetd_cluster		*qnetd_cluster_list_find_by_name(
-    struct qnetd_cluster_list *list, const char *cluster_name, size_t cluster_name_len);
+extern struct qnetd_cluster *
+qnetd_cluster_list_find_by_name (struct qnetd_cluster_list *list, const char *cluster_name, size_t cluster_name_len);
 
-extern struct qnetd_cluster		*qnetd_cluster_list_add_client(
-    struct qnetd_cluster_list *list, struct qnetd_client *client);
+extern struct qnetd_cluster *qnetd_cluster_list_add_client (struct qnetd_cluster_list *list, struct qnetd_client *client);
 
-extern void				 qnetd_cluster_list_del_client(
-    struct qnetd_cluster_list *list, struct qnetd_cluster *cluster, struct qnetd_client *client);
+extern void qnetd_cluster_list_del_client (struct qnetd_cluster_list *list, struct qnetd_cluster *cluster,
+										   struct qnetd_client *client);
 
-extern void				 qnetd_cluster_list_free(struct qnetd_cluster_list *list);
+extern void qnetd_cluster_list_free (struct qnetd_cluster_list *list);
 
-extern size_t				 qnetd_cluster_list_size(
-    const struct qnetd_cluster_list *list);
+extern size_t qnetd_cluster_list_size (const struct qnetd_cluster_list *list);
 
 #ifdef __cplusplus
 }

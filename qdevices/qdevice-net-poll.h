@@ -38,7 +38,7 @@
 
 #include "qdevice-net-instance.h"
 
-extern int		qdevice_net_poll(struct qdevice_net_instance *instance);
+extern int qdevice_net_poll (struct qdevice_net_instance *instance);
 
 #ifdef __cplusplus
 }

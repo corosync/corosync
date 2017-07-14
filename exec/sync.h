@@ -36,33 +36,20 @@
 #define SYNC_H_DEFINED
 
 struct sync_callbacks {
-	void (*sync_init) (
-		const unsigned int *trans_list,
-		size_t trans_list_entries,
-		const unsigned int *member_list,
-		size_t member_list_entries,
-		const struct memb_ring_id *ring_id);
+	void (*sync_init) (const unsigned int *trans_list, size_t trans_list_entries, const unsigned int *member_list,
+					   size_t member_list_entries, const struct memb_ring_id *ring_id);
 	int (*sync_process) (void);
 	void (*sync_activate) (void);
 	void (*sync_abort) (void);
 	const char *name;
 };
 
-extern int sync_init (
-	int (*sync_callbacks_retrieve) (
-		int service_id,
-		struct sync_callbacks *callbacks),
-	void (*synchronization_completed) (void));
+extern int sync_init (int (*sync_callbacks_retrieve) (int service_id, struct sync_callbacks *callbacks),
+					  void (*synchronization_completed) (void));
 
-extern void sync_start (
-        const unsigned int *member_list,
-        size_t member_list_entries,
-        const struct memb_ring_id *ring_id);
+extern void sync_start (const unsigned int *member_list, size_t member_list_entries, const struct memb_ring_id *ring_id);
 
-extern void sync_save_transitional (
-        const unsigned int *member_list,
-        size_t member_list_entries,
-        const struct memb_ring_id *ring_id);
+extern void sync_save_transitional (const unsigned int *member_list, size_t member_list_entries, const struct memb_ring_id *ring_id);
 
 extern void sync_abort (void);
 

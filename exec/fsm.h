@@ -34,26 +34,25 @@
 #ifndef FSM_H_DEFINED
 #define FSM_H_DEFINED
 
-#include <sys/time.h>
-#include <corosync/corotypes.h>
 #include "util.h"
+#include <corosync/corotypes.h>
+#include <sys/time.h>
 
 struct cs_fsm;
 struct cs_fsm_entry;
-typedef void (*cs_fsm_event_action_fn)(struct cs_fsm* fsm, int32_t event, void * data);
-typedef const char * (*cs_fsm_state_to_str_fn)(struct cs_fsm* fsm, int32_t state);
-typedef const char * (*cs_fsm_event_to_str_fn)(struct cs_fsm* fsm, int32_t event);
+typedef void (*cs_fsm_event_action_fn) (struct cs_fsm *fsm, int32_t event, void *data);
+typedef const char *(*cs_fsm_state_to_str_fn) (struct cs_fsm *fsm, int32_t state);
+typedef const char *(*cs_fsm_event_to_str_fn) (struct cs_fsm *fsm, int32_t event);
 
-typedef void (*cs_fsm_cb)(struct cs_fsm *fsm, int cb_event, int32_t curr_state,
-    int32_t next_state, int32_t fsm_event, void *data);
+typedef void (*cs_fsm_cb) (struct cs_fsm *fsm, int cb_event, int32_t curr_state, int32_t next_state, int32_t fsm_event, void *data);
 
 #define CS_FSM_NEXT_STATE_SIZE 32
 
-#define CS_FSM_STATE_NONE		-1
+#define CS_FSM_STATE_NONE -1
 
-#define CS_FSM_CB_EVENT_PROCESS_NF	0
-#define CS_FSM_CB_EVENT_STATE_SET	1
-#define CS_FSM_CB_EVENT_STATE_SET_NF	2
+#define CS_FSM_CB_EVENT_PROCESS_NF 0
+#define CS_FSM_CB_EVENT_STATE_SET 1
+#define CS_FSM_CB_EVENT_STATE_SET_NF 2
 
 struct cs_fsm_entry {
 	int32_t curr_state;
@@ -77,14 +76,12 @@ struct cs_fsm {
  * so cs_fsm_process() sets the entry and cs_fsm_state_set()
  * sets the new state.
  */
-static inline void cs_fsm_process (struct cs_fsm *fsm, int32_t new_event, void * data, cs_fsm_cb cb)
+static inline void cs_fsm_process (struct cs_fsm *fsm, int32_t new_event, void *data, cs_fsm_cb cb)
 {
 	int32_t i;
 
 	for (i = 0; i < fsm->entries; i++) {
-		if (fsm->table[i].event == new_event &&
-		    fsm->table[i].curr_state == fsm->curr_state) {
-
+		if (fsm->table[i].event == new_event && fsm->table[i].curr_state == fsm->curr_state) {
 			assert (fsm->table[i].handler_fn != NULL);
 			/* set current entry */
 			fsm->curr_entry = i;
@@ -94,11 +91,11 @@ static inline void cs_fsm_process (struct cs_fsm *fsm, int32_t new_event, void *
 	}
 
 	if (cb != NULL) {
-		cb(fsm, CS_FSM_CB_EVENT_PROCESS_NF, fsm->curr_state, CS_FSM_STATE_NONE, new_event, data);
+		cb (fsm, CS_FSM_CB_EVENT_PROCESS_NF, fsm->curr_state, CS_FSM_STATE_NONE, new_event, data);
 	}
 }
 
-static inline void cs_fsm_state_set (struct cs_fsm* fsm, int32_t next_state, void* data, cs_fsm_cb cb)
+static inline void cs_fsm_state_set (struct cs_fsm *fsm, int32_t next_state, void *data, cs_fsm_cb cb)
 {
 	int i;
 	struct cs_fsm_entry *entry = &fsm->table[fsm->curr_entry];
@@ -115,17 +112,15 @@ static inline void cs_fsm_state_set (struct cs_fsm* fsm, int32_t next_state, voi
 		}
 		if (entry->next_states[i] == next_state) {
 			if (cb != NULL) {
-				cb(fsm, CS_FSM_CB_EVENT_STATE_SET, fsm->curr_state, next_state, entry->event, data);
+				cb (fsm, CS_FSM_CB_EVENT_STATE_SET, fsm->curr_state, next_state, entry->event, data);
 			}
 			fsm->curr_state = next_state;
 			return;
 		}
 	}
 	if (cb != NULL) {
-		cb(fsm, CS_FSM_CB_EVENT_STATE_SET_NF, fsm->curr_state, next_state, entry->event, data);
+		cb (fsm, CS_FSM_CB_EVENT_STATE_SET_NF, fsm->curr_state, next_state, entry->event, data);
 	}
 }
 
 #endif /* FSM_H_DEFINED */
-
-

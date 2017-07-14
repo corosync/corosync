@@ -35,26 +35,26 @@
 #ifndef _UNIX_SOCKET_H_
 #define _UNIX_SOCKET_H_
 
-#include <sys/types.h>
 #include <inttypes.h>
+#include <sys/types.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-extern int		unix_socket_server_create(const char *path, int non_blocking, int backlog);
+extern int unix_socket_server_create (const char *path, int non_blocking, int backlog);
 
-extern int		unix_socket_client_create(const char *path, int non_blocking);
+extern int unix_socket_client_create (const char *path, int non_blocking);
 
-extern int		unix_socket_server_destroy(int sock, const char *path);
+extern int unix_socket_server_destroy (int sock, const char *path);
 
-extern int		unix_socket_server_accept(int sock, int non_blocking);
+extern int unix_socket_server_accept (int sock, int non_blocking);
 
-extern int		unix_socket_close(int sock);
+extern int unix_socket_close (int sock);
 
-extern ssize_t		unix_socket_read(int sock, void *buf, size_t len);
+extern ssize_t unix_socket_read (int sock, void *buf, size_t len);
 
-extern ssize_t		unix_socket_write(int sock, void *buf, size_t len);
+extern ssize_t unix_socket_write (int sock, void *buf, size_t len);
 
 #ifdef __cplusplus
 }

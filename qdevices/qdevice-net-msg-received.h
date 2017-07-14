@@ -41,7 +41,7 @@
 extern "C" {
 #endif
 
-extern int		qdevice_net_msg_received(struct qdevice_net_instance *instance);
+extern int qdevice_net_msg_received (struct qdevice_net_instance *instance);
 
 
 #ifdef __cplusplus

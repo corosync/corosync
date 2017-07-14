@@ -41,13 +41,13 @@
 #include <keyhi.h>
 #include <sys/queue.h>
 
-#include "qnetd-client-list.h"
-#include "qnetd-cluster-list.h"
 #include "pr-poll-array.h"
 #include "qnet-config.h"
+#include "qnetd-advanced-settings.h"
+#include "qnetd-client-list.h"
+#include "qnetd-cluster-list.h"
 #include "timer-list.h"
 #include "unix-socket-ipc.h"
-#include "qnetd-advanced-settings.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -68,22 +68,20 @@ struct qnetd_instance {
 	const char *host_addr;
 	uint16_t host_port;
 	struct timer_list main_timer_list;
-	struct timer_list_entry *dpd_timer;		/* Dead peer detection timer */
+	struct timer_list_entry *dpd_timer; /* Dead peer detection timer */
 	struct unix_socket_ipc local_ipc;
 	PRFileDesc *ipc_socket_poll_fd;
 	const struct qnetd_advanced_settings *advanced_settings;
 };
 
-extern int		qnetd_instance_init(struct qnetd_instance *instance,
-    enum tlv_tls_supported tls_supported, int tls_client_cert_required, size_t max_clients,
-    const struct qnetd_advanced_settings *advanced_settings);
+extern int qnetd_instance_init (struct qnetd_instance *instance, enum tlv_tls_supported tls_supported, int tls_client_cert_required,
+								size_t max_clients, const struct qnetd_advanced_settings *advanced_settings);
 
-extern int		qnetd_instance_destroy(struct qnetd_instance *instance);
+extern int qnetd_instance_destroy (struct qnetd_instance *instance);
 
-extern void		qnetd_instance_client_disconnect(struct qnetd_instance *instance,
-    struct qnetd_client *client, int server_going_down);
+extern void qnetd_instance_client_disconnect (struct qnetd_instance *instance, struct qnetd_client *client, int server_going_down);
 
-extern int		qnetd_instance_init_certs(struct qnetd_instance *instance);
+extern int qnetd_instance_init_certs (struct qnetd_instance *instance);
 
 #ifdef __cplusplus
 }

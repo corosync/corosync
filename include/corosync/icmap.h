@@ -34,9 +34,9 @@
 #ifndef ICMAP_H_DEFINED
 #define ICMAP_H_DEFINED
 
-#include <stdlib.h>
 #include <corosync/corotypes.h>
 #include <qb/qbmap.h>
+#include <stdlib.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -45,44 +45,44 @@ extern "C" {
 /**
  * Maximum length of key in icmap
  */
-#define ICMAP_KEYNAME_MAXLEN		255
+#define ICMAP_KEYNAME_MAXLEN 255
 
 /**
  * Minimum lenght of key in icmap
  */
-#define ICMAP_KEYNAME_MINLEN		3
+#define ICMAP_KEYNAME_MINLEN 3
 
 /**
  * Possible types of value. Binary is raw data without trailing zero with given length
  */
 typedef enum {
-    ICMAP_VALUETYPE_INT8	=  1,
-    ICMAP_VALUETYPE_UINT8	=  2,
-    ICMAP_VALUETYPE_INT16	=  3,
-    ICMAP_VALUETYPE_UINT16	=  4,
-    ICMAP_VALUETYPE_INT32	=  5,
-    ICMAP_VALUETYPE_UINT32	=  6,
-    ICMAP_VALUETYPE_INT64	=  7,
-    ICMAP_VALUETYPE_UINT64	=  8,
-    ICMAP_VALUETYPE_FLOAT	=  9,
-    ICMAP_VALUETYPE_DOUBLE	= 10,
-    ICMAP_VALUETYPE_STRING	= 11,
-    ICMAP_VALUETYPE_BINARY	= 12,
+	ICMAP_VALUETYPE_INT8 = 1,
+	ICMAP_VALUETYPE_UINT8 = 2,
+	ICMAP_VALUETYPE_INT16 = 3,
+	ICMAP_VALUETYPE_UINT16 = 4,
+	ICMAP_VALUETYPE_INT32 = 5,
+	ICMAP_VALUETYPE_UINT32 = 6,
+	ICMAP_VALUETYPE_INT64 = 7,
+	ICMAP_VALUETYPE_UINT64 = 8,
+	ICMAP_VALUETYPE_FLOAT = 9,
+	ICMAP_VALUETYPE_DOUBLE = 10,
+	ICMAP_VALUETYPE_STRING = 11,
+	ICMAP_VALUETYPE_BINARY = 12,
 } icmap_value_types_t;
 
 /*
  * Tracking values.
  */
-#define ICMAP_TRACK_ADD		4
-#define ICMAP_TRACK_DELETE	1
-#define ICMAP_TRACK_MODIFY	2
+#define ICMAP_TRACK_ADD 4
+#define ICMAP_TRACK_DELETE 1
+#define ICMAP_TRACK_MODIFY 2
 
 /**
  * Whole prefix is tracked, instead of key only (so "totem." tracking means that
  * "totem.nodeid", "totem.version", ... applies). This value is also never returned
  * inside of callback and is used only in adding track
  */
-#define ICMAP_TRACK_PREFIX	8
+#define ICMAP_TRACK_PREFIX 8
 
 /**
  * Structure passed as new_value and old_value in change callback. It contains type of
@@ -100,12 +100,8 @@ struct icmap_notify_value {
  * existing 0 type) if there were no old (creating of key) or new (deleting of key) value.
  * user_data are passed when adding tracking.
  */
-typedef void (*icmap_notify_fn_t) (
-	int32_t event,
-	const char *key_name,
-	struct icmap_notify_value new_value,
-	struct icmap_notify_value old_value,
-	void *user_data);
+typedef void (*icmap_notify_fn_t) (int32_t event, const char *key_name, struct icmap_notify_value new_value,
+								   struct icmap_notify_value old_value, void *user_data);
 
 /**
  * @brief icmap type.
@@ -131,7 +127,7 @@ typedef struct icmap_track *icmap_track_t;
  * @brief Initialize global icmap
  * @return
  */
-extern cs_error_t icmap_init(void);
+extern cs_error_t icmap_init (void);
 
 /**
  * @brief Initialize additional (local, reentrant) icmap_map. Content of variable
@@ -139,24 +135,24 @@ extern cs_error_t icmap_init(void);
  * @param result
  * @return
  */
-extern cs_error_t icmap_init_r(icmap_map_t *result);
+extern cs_error_t icmap_init_r (icmap_map_t *result);
 
 /**
  * @brief Finalize global icmap
  */
-extern void icmap_fini(void);
+extern void icmap_fini (void);
 
 /**
  * @brief Finalize local, reentrant icmap
  * @param map
  */
-extern void icmap_fini_r(const icmap_map_t map);
+extern void icmap_fini_r (const icmap_map_t map);
 
 /**
  * @brief Return global icmap
  * @return
  */
-extern icmap_map_t icmap_get_global_map(void);
+extern icmap_map_t icmap_get_global_map (void);
 
 /**
  * @brief Compare value of key with name key_name1 in map1 with key with name key_name2
@@ -173,11 +169,7 @@ extern icmap_map_t icmap_get_global_map(void);
  * @param key_name2
  * @return
  */
-extern int icmap_key_value_eq(
-	const icmap_map_t map1,
-	const char *key_name1,
-	const icmap_map_t map2,
-	const char *key_name2);
+extern int icmap_key_value_eq (const icmap_map_t map1, const char *key_name1, const icmap_map_t map2, const char *key_name2);
 
 /**
  * @brief Store value with value_len length and type as key_name name in global icmap.
@@ -187,11 +179,7 @@ extern int icmap_key_value_eq(
  * @param type
  * @return
  */
-extern cs_error_t icmap_set(
-	const char *key_name,
-	const void *value,
-	size_t value_len,
-        icmap_value_types_t type);
+extern cs_error_t icmap_set (const char *key_name, const void *value, size_t value_len, icmap_value_types_t type);
 
 /**
  * @brief Reentrant version of icmap_set
@@ -202,46 +190,42 @@ extern cs_error_t icmap_set(
  * @param type
  * @return
  */
-extern cs_error_t icmap_set_r(
-	const icmap_map_t map,
-	const char *key_name,
-	const void *value,
-	size_t value_len,
-        icmap_value_types_t type);
+extern cs_error_t
+icmap_set_r (const icmap_map_t map, const char *key_name, const void *value, size_t value_len, icmap_value_types_t type);
 
 /*
  * Shortcuts for setting values
  */
-extern cs_error_t icmap_set_int8(const char *key_name, int8_t value);
-extern cs_error_t icmap_set_uint8(const char *key_name, uint8_t value);
-extern cs_error_t icmap_set_int16(const char *key_name, int16_t value);
-extern cs_error_t icmap_set_uint16(const char *key_name, uint16_t value);
-extern cs_error_t icmap_set_int32(const char *key_name, int32_t value);
-extern cs_error_t icmap_set_uint32(const char *key_name, uint32_t value);
-extern cs_error_t icmap_set_int64(const char *key_name, int64_t value);
-extern cs_error_t icmap_set_uint64(const char *key_name, uint64_t value);
-extern cs_error_t icmap_set_float(const char *key_name, float value);
-extern cs_error_t icmap_set_double(const char *key_name, double value);
-extern cs_error_t icmap_set_string(const char *key_name, const char *value);
+extern cs_error_t icmap_set_int8 (const char *key_name, int8_t value);
+extern cs_error_t icmap_set_uint8 (const char *key_name, uint8_t value);
+extern cs_error_t icmap_set_int16 (const char *key_name, int16_t value);
+extern cs_error_t icmap_set_uint16 (const char *key_name, uint16_t value);
+extern cs_error_t icmap_set_int32 (const char *key_name, int32_t value);
+extern cs_error_t icmap_set_uint32 (const char *key_name, uint32_t value);
+extern cs_error_t icmap_set_int64 (const char *key_name, int64_t value);
+extern cs_error_t icmap_set_uint64 (const char *key_name, uint64_t value);
+extern cs_error_t icmap_set_float (const char *key_name, float value);
+extern cs_error_t icmap_set_double (const char *key_name, double value);
+extern cs_error_t icmap_set_string (const char *key_name, const char *value);
 
-extern cs_error_t icmap_set_int8_r(const icmap_map_t map, const char *key_name, int8_t value);
-extern cs_error_t icmap_set_uint8_r(const icmap_map_t map, const char *key_name, uint8_t value);
-extern cs_error_t icmap_set_int16_r(const icmap_map_t map, const char *key_name, int16_t value);
-extern cs_error_t icmap_set_uint16_r(const icmap_map_t map, const char *key_name, uint16_t value);
-extern cs_error_t icmap_set_int32_r(const icmap_map_t map, const char *key_name, int32_t value);
-extern cs_error_t icmap_set_uint32_r(const icmap_map_t map, const char *key_name, uint32_t value);
-extern cs_error_t icmap_set_int64_r(const icmap_map_t map, const char *key_name, int64_t value);
-extern cs_error_t icmap_set_uint64_r(const icmap_map_t map, const char *key_name, uint64_t value);
-extern cs_error_t icmap_set_float_r(const icmap_map_t map, const char *key_name, float value);
-extern cs_error_t icmap_set_double_r(const icmap_map_t map, const char *key_name, double value);
-extern cs_error_t icmap_set_string_r(const icmap_map_t map, const char *key_name, const char *value);
+extern cs_error_t icmap_set_int8_r (const icmap_map_t map, const char *key_name, int8_t value);
+extern cs_error_t icmap_set_uint8_r (const icmap_map_t map, const char *key_name, uint8_t value);
+extern cs_error_t icmap_set_int16_r (const icmap_map_t map, const char *key_name, int16_t value);
+extern cs_error_t icmap_set_uint16_r (const icmap_map_t map, const char *key_name, uint16_t value);
+extern cs_error_t icmap_set_int32_r (const icmap_map_t map, const char *key_name, int32_t value);
+extern cs_error_t icmap_set_uint32_r (const icmap_map_t map, const char *key_name, uint32_t value);
+extern cs_error_t icmap_set_int64_r (const icmap_map_t map, const char *key_name, int64_t value);
+extern cs_error_t icmap_set_uint64_r (const icmap_map_t map, const char *key_name, uint64_t value);
+extern cs_error_t icmap_set_float_r (const icmap_map_t map, const char *key_name, float value);
+extern cs_error_t icmap_set_double_r (const icmap_map_t map, const char *key_name, double value);
+extern cs_error_t icmap_set_string_r (const icmap_map_t map, const char *key_name, const char *value);
 
 /**
  * @brief Delete key from map
  * @param key_name
  * @return
  */
-extern cs_error_t icmap_delete(const char *key_name);
+extern cs_error_t icmap_delete (const char *key_name);
 
 /**
  * @brief icmap_delete_r
@@ -249,7 +233,7 @@ extern cs_error_t icmap_delete(const char *key_name);
  * @param key_name
  * @return
  */
-extern cs_error_t icmap_delete_r(const icmap_map_t map, const char *key_name);
+extern cs_error_t icmap_delete_r (const icmap_map_t map, const char *key_name);
 
 /**
  * @brief Retrieve value of key key_name and store it in user preallocated value pointer.
@@ -266,11 +250,7 @@ extern cs_error_t icmap_delete_r(const icmap_map_t map, const char *key_name);
  * @param type
  * @return
  */
-extern cs_error_t icmap_get(
-	const char *key_name,
-	void *value,
-	size_t *value_len,
-        icmap_value_types_t *type);
+extern cs_error_t icmap_get (const char *key_name, void *value, size_t *value_len, icmap_value_types_t *type);
 
 /**
  * @brief Same as icmap_get but it's reentrant and operates on given icmap_map
@@ -281,40 +261,36 @@ extern cs_error_t icmap_get(
  * @param type
  * @return
  */
-extern cs_error_t icmap_get_r(
-	const icmap_map_t map,
-	const char *key_name,
-	void *value,
-	size_t *value_len,
-	icmap_value_types_t *type);
+extern cs_error_t
+icmap_get_r (const icmap_map_t map, const char *key_name, void *value, size_t *value_len, icmap_value_types_t *type);
 
 /*
  * Shortcuts for icmap_get
  */
-extern cs_error_t icmap_get_int8(const char *key_name, int8_t *i8);
-extern cs_error_t icmap_get_uint8(const char *key_name, uint8_t *u8);
-extern cs_error_t icmap_get_int16(const char *key_name, int16_t *i16);
-extern cs_error_t icmap_get_uint16(const char *key_name, uint16_t *u16);
-extern cs_error_t icmap_get_int32(const char *key_name, int32_t *i32);
-extern cs_error_t icmap_get_uint32(const char *key_name, uint32_t *u32);
-extern cs_error_t icmap_get_int64(const char *key_name, int64_t *i64);
-extern cs_error_t icmap_get_uint64(const char *key_name, uint64_t *u64);
-extern cs_error_t icmap_get_float(const char *key_name, float *flt);
-extern cs_error_t icmap_get_double(const char *key_name, double *dbl);
+extern cs_error_t icmap_get_int8 (const char *key_name, int8_t *i8);
+extern cs_error_t icmap_get_uint8 (const char *key_name, uint8_t *u8);
+extern cs_error_t icmap_get_int16 (const char *key_name, int16_t *i16);
+extern cs_error_t icmap_get_uint16 (const char *key_name, uint16_t *u16);
+extern cs_error_t icmap_get_int32 (const char *key_name, int32_t *i32);
+extern cs_error_t icmap_get_uint32 (const char *key_name, uint32_t *u32);
+extern cs_error_t icmap_get_int64 (const char *key_name, int64_t *i64);
+extern cs_error_t icmap_get_uint64 (const char *key_name, uint64_t *u64);
+extern cs_error_t icmap_get_float (const char *key_name, float *flt);
+extern cs_error_t icmap_get_double (const char *key_name, double *dbl);
 
 /*
  * Shortcuts for icmap_get_r
  */
-extern cs_error_t icmap_get_int8_r(const icmap_map_t map, const char *key_name, int8_t *i8);
-extern cs_error_t icmap_get_uint8_r(const icmap_map_t map, const char *key_name, uint8_t *u8);
-extern cs_error_t icmap_get_int16_r(const icmap_map_t map, const char *key_name, int16_t *i16);
-extern cs_error_t icmap_get_uint16_r(const icmap_map_t map, const char *key_name, uint16_t *u16);
-extern cs_error_t icmap_get_int32_r(const icmap_map_t map, const char *key_name, int32_t *i32);
-extern cs_error_t icmap_get_uint32_r(const icmap_map_t map, const char *key_name, uint32_t *u32);
-extern cs_error_t icmap_get_int64_r(const icmap_map_t map, const char *key_name, int64_t *i64);
-extern cs_error_t icmap_get_uint64_r(const icmap_map_t map, const char *key_name, uint64_t *u64);
-extern cs_error_t icmap_get_float_r(const icmap_map_t map, const char *key_name, float *flt);
-extern cs_error_t icmap_get_double_r(const icmap_map_t map, const char *key_name, double *dbl);
+extern cs_error_t icmap_get_int8_r (const icmap_map_t map, const char *key_name, int8_t *i8);
+extern cs_error_t icmap_get_uint8_r (const icmap_map_t map, const char *key_name, uint8_t *u8);
+extern cs_error_t icmap_get_int16_r (const icmap_map_t map, const char *key_name, int16_t *i16);
+extern cs_error_t icmap_get_uint16_r (const icmap_map_t map, const char *key_name, uint16_t *u16);
+extern cs_error_t icmap_get_int32_r (const icmap_map_t map, const char *key_name, int32_t *i32);
+extern cs_error_t icmap_get_uint32_r (const icmap_map_t map, const char *key_name, uint32_t *u32);
+extern cs_error_t icmap_get_int64_r (const icmap_map_t map, const char *key_name, int64_t *i64);
+extern cs_error_t icmap_get_uint64_r (const icmap_map_t map, const char *key_name, uint64_t *u64);
+extern cs_error_t icmap_get_float_r (const icmap_map_t map, const char *key_name, float *flt);
+extern cs_error_t icmap_get_double_r (const icmap_map_t map, const char *key_name, double *dbl);
 
 /**
  * @brief Shortcut for icmap_get for string type.
@@ -326,7 +302,7 @@ extern cs_error_t icmap_get_double_r(const icmap_map_t map, const char *key_name
  * @param str
  * @return
  */
-extern cs_error_t icmap_get_string(const char *key_name, char **str);
+extern cs_error_t icmap_get_string (const char *key_name, char **str);
 
 /**
  * @brief icmap_adjust_int
@@ -337,7 +313,7 @@ extern cs_error_t icmap_get_string(const char *key_name, char **str);
  * @param step
  * @return
  */
-extern cs_error_t icmap_adjust_int(const char *key_name, int32_t step);
+extern cs_error_t icmap_adjust_int (const char *key_name, int32_t step);
 
 /**
  * @brief icmap_adjust_int_r
@@ -346,7 +322,7 @@ extern cs_error_t icmap_adjust_int(const char *key_name, int32_t step);
  * @param step
  * @return
  */
-extern cs_error_t icmap_adjust_int_r(const icmap_map_t map, const char *key_name, int32_t step);
+extern cs_error_t icmap_adjust_int_r (const icmap_map_t map, const char *key_name, int32_t step);
 
 /**
  * @brief icmap_fast_adjust_int
@@ -360,7 +336,7 @@ extern cs_error_t icmap_adjust_int_r(const icmap_map_t map, const char *key_name
  * @param step
  * @return
  */
-extern cs_error_t icmap_fast_adjust_int(const char *key_name, int32_t step);
+extern cs_error_t icmap_fast_adjust_int (const char *key_name, int32_t step);
 
 /**
  * @brief icmap_fast_adjust_int_r
@@ -369,14 +345,14 @@ extern cs_error_t icmap_fast_adjust_int(const char *key_name, int32_t step);
  * @param step
  * @return
  */
-extern cs_error_t icmap_fast_adjust_int_r(const icmap_map_t map, const char *key_name, int32_t step);
+extern cs_error_t icmap_fast_adjust_int_r (const icmap_map_t map, const char *key_name, int32_t step);
 
 /**
  * @brief Increase stored value by one
  * @param key_name
  * @return
  */
-extern cs_error_t icmap_inc(const char *key_name);
+extern cs_error_t icmap_inc (const char *key_name);
 
 /**
  * @brief icmap_inc_r
@@ -384,14 +360,14 @@ extern cs_error_t icmap_inc(const char *key_name);
  * @param key_name
  * @return
  */
-extern cs_error_t icmap_inc_r(const icmap_map_t map, const char *key_name);
+extern cs_error_t icmap_inc_r (const icmap_map_t map, const char *key_name);
 
 /**
  * @brief Decrease stored value by one
  * @param key_name
  * @return
  */
-extern cs_error_t icmap_dec(const char *key_name);
+extern cs_error_t icmap_dec (const char *key_name);
 
 /**
  * @brief icmap_dec_r
@@ -399,7 +375,7 @@ extern cs_error_t icmap_dec(const char *key_name);
  * @param key_name
  * @return
  */
-extern cs_error_t icmap_dec_r(const icmap_map_t map, const char *key_name);
+extern cs_error_t icmap_dec_r (const icmap_map_t map, const char *key_name);
 
 /**
  * @brief Increase stored value by one.
@@ -410,7 +386,7 @@ extern cs_error_t icmap_dec_r(const icmap_map_t map, const char *key_name);
  * @param key_name
  * @return
  */
-extern cs_error_t icmap_fast_inc(const char *key_name);
+extern cs_error_t icmap_fast_inc (const char *key_name);
 
 /**
  * @brief icmap_fast_inc_r
@@ -418,7 +394,7 @@ extern cs_error_t icmap_fast_inc(const char *key_name);
  * @param key_name
  * @return
  */
-extern cs_error_t icmap_fast_inc_r(const icmap_map_t map, const char *key_name);
+extern cs_error_t icmap_fast_inc_r (const icmap_map_t map, const char *key_name);
 
 /**
  * @brief Decrease stored value by one.
@@ -429,7 +405,7 @@ extern cs_error_t icmap_fast_inc_r(const icmap_map_t map, const char *key_name);
  * @param key_name
  * @return
  */
-extern cs_error_t icmap_fast_dec(const char *key_name);
+extern cs_error_t icmap_fast_dec (const char *key_name);
 
 /**
  * @brief icmap_fast_dec_r
@@ -437,14 +413,14 @@ extern cs_error_t icmap_fast_dec(const char *key_name);
  * @param key_name
  * @return
  */
-extern cs_error_t icmap_fast_dec_r(const icmap_map_t map, const char *key_name);
+extern cs_error_t icmap_fast_dec_r (const icmap_map_t map, const char *key_name);
 
 /**
  * @brief Initialize iterator with given prefix
  * @param prefix
  * @return
  */
-extern icmap_iter_t icmap_iter_init(const char *prefix);
+extern icmap_iter_t icmap_iter_init (const char *prefix);
 
 /**
  * @brief icmap_iter_init_r
@@ -452,7 +428,7 @@ extern icmap_iter_t icmap_iter_init(const char *prefix);
  * @param prefix
  * @return
  */
-extern icmap_iter_t icmap_iter_init_r(const icmap_map_t map, const char *prefix);
+extern icmap_iter_t icmap_iter_init_r (const icmap_map_t map, const char *prefix);
 
 /**
  * @brief Return next item in iterator iter.
@@ -465,13 +441,13 @@ extern icmap_iter_t icmap_iter_init_r(const icmap_map_t map, const char *prefix)
  * @param type
  * @return
  */
-extern const char *icmap_iter_next(icmap_iter_t iter, size_t *value_len, icmap_value_types_t *type);
+extern const char *icmap_iter_next (icmap_iter_t iter, size_t *value_len, icmap_value_types_t *type);
 
 /**
  * @brief Finalize iterator
  * @param iter
  */
-extern void icmap_iter_finalize(icmap_iter_t iter);
+extern void icmap_iter_finalize (icmap_iter_t iter);
 
 /**
  * @brief Add tracking function for given key_name.
@@ -487,26 +463,22 @@ extern void icmap_iter_finalize(icmap_iter_t iter);
  * @param icmap_track
  * @return
  */
-extern cs_error_t icmap_track_add(
-	const char *key_name,
-	int32_t track_type,
-	icmap_notify_fn_t notify_fn,
-	void *user_data,
-	icmap_track_t *icmap_track);
+extern cs_error_t icmap_track_add (const char *key_name, int32_t track_type, icmap_notify_fn_t notify_fn,
+								   void *user_data, icmap_track_t *icmap_track);
 
 /**
  * @brief Return user data associated with given track
  * @param icmap_track
  * @return
  */
-extern void *icmap_track_get_user_data(icmap_track_t icmap_track);
+extern void *icmap_track_get_user_data (icmap_track_t icmap_track);
 
 /**
  * @brief Remove previously added track
  * @param icmap_track
  * @return
  */
-extern cs_error_t icmap_track_delete(icmap_track_t icmap_track);
+extern cs_error_t icmap_track_delete (icmap_track_t icmap_track);
 
 /**
  * @brief Set read-only access for given key (key_name) or prefix,
@@ -519,20 +491,20 @@ extern cs_error_t icmap_track_delete(icmap_track_t icmap_track);
  * @param ro_access
  * @return
  */
-extern cs_error_t icmap_set_ro_access(const char *key_name, int prefix, int ro_access);
+extern cs_error_t icmap_set_ro_access (const char *key_name, int prefix, int ro_access);
 
 /**
  * @brief Check in given key is read only. Returns !0 if so, otherwise (key is rw) 0.
  * @param key_name
  * @return
  */
-extern int icmap_is_key_ro(const char *key_name);
+extern int icmap_is_key_ro (const char *key_name);
 
 /**
  * @brief Converts given key_name to valid key name (replacing all prohibited characters by _)
  * @param key_name
  */
-extern void icmap_convert_name_to_valid_name(char *key_name);
+extern void icmap_convert_name_to_valid_name (char *key_name);
 
 /**
  * @brief Copy content of src_map icmap to dst_map icmap.
@@ -540,7 +512,7 @@ extern void icmap_convert_name_to_valid_name(char *key_name);
  * @param src_map
  * @return
  */
-extern cs_error_t icmap_copy_map(icmap_map_t dst_map, const icmap_map_t src_map);
+extern cs_error_t icmap_copy_map (icmap_map_t dst_map, const icmap_map_t src_map);
 
 #ifdef __cplusplus
 }

@@ -47,34 +47,29 @@
 extern "C" {
 #endif
 
-#include <sys/types.h>
-#include <netinet/in.h>
 #include "totem.h"
+#include <netinet/in.h>
 #include <qb/qbloop.h>
+#include <sys/types.h>
 
 struct totempg_group {
 	const void *group;
 	size_t group_len;
 };
 
-#define TOTEMPG_AGREED			0
-#define TOTEMPG_SAFE			1
+#define TOTEMPG_AGREED 0
+#define TOTEMPG_SAFE 1
 
 /**
  * Initialize the totem process groups abstraction
  */
-extern int totempg_initialize (
-	qb_loop_t* poll_handle,
-	struct totem_config *totem_config
-);
+extern int totempg_initialize (qb_loop_t *poll_handle, struct totem_config *totem_config);
 
 extern void totempg_finalize (void);
 
-extern int totempg_callback_token_create (void **handle_out,
-	enum totem_callback_token_type type,
-	int delete,
-	int (*callback_fn) (enum totem_callback_token_type type, const void *),
-	const void *data);
+extern int totempg_callback_token_create (void **handle_out, enum totem_callback_token_type type, int delete,
+										  int (*callback_fn) (enum totem_callback_token_type type, const void *),
+										  const void *data);
 
 extern void totempg_callback_token_destroy (void *handle);
 
@@ -82,70 +77,36 @@ extern void totempg_callback_token_destroy (void *handle);
  * Initialize a groups instance
  */
 extern int totempg_groups_initialize (
-	void **instance,
+void **instance,
 
-	void (*deliver_fn) (
-		unsigned int nodeid,
-		const void *msg,
-		unsigned int msg_len,
-		int endian_conversion_required),
+void (*deliver_fn) (unsigned int nodeid, const void *msg, unsigned int msg_len, int endian_conversion_required),
 
-	void (*confchg_fn) (
-		enum totem_configuration_type configuration_type,
-		const unsigned int *member_list, size_t member_list_entries,
-		const unsigned int *left_list, size_t left_list_entries,
-		const unsigned int *joined_list, size_t joined_list_entries,
-		const struct memb_ring_id *ring_id));
+void (*confchg_fn) (enum totem_configuration_type configuration_type, const unsigned int *member_list,
+					size_t member_list_entries, const unsigned int *left_list, size_t left_list_entries,
+					const unsigned int *joined_list, size_t joined_list_entries, const struct memb_ring_id *ring_id));
 
 extern int totempg_groups_finalize (void *instance);
 
-extern int totempg_groups_join (
-	void *instance,
-	const struct totempg_group *groups,
-	size_t group_cnt);
+extern int totempg_groups_join (void *instance, const struct totempg_group *groups, size_t group_cnt);
 
-extern int totempg_groups_leave (
-	void *instance,
-	const struct totempg_group *groups,
-	size_t group_cnt);
+extern int totempg_groups_leave (void *instance, const struct totempg_group *groups, size_t group_cnt);
 
-extern int totempg_groups_mcast_joined (
-	void *instance,
-	const struct iovec *iovec,
-	unsigned int iov_len,
-	int guarantee);
+extern int totempg_groups_mcast_joined (void *instance, const struct iovec *iovec, unsigned int iov_len, int guarantee);
 
-extern int totempg_groups_joined_reserve (
-	void *instance,
-	const struct iovec *iovec,
-	unsigned int iov_len);
+extern int totempg_groups_joined_reserve (void *instance, const struct iovec *iovec, unsigned int iov_len);
 
-extern int totempg_groups_joined_release (
-	int msg_count);
+extern int totempg_groups_joined_release (int msg_count);
 
-extern int totempg_groups_mcast_groups (
-	void *instance,
-	int guarantee,
-	const struct totempg_group *groups,
-	size_t groups_cnt,
-	const struct iovec *iovec,
-	unsigned int iov_len);
+extern int totempg_groups_mcast_groups (void *instance, int guarantee, const struct totempg_group *groups,
+										size_t groups_cnt, const struct iovec *iovec, unsigned int iov_len);
 
-extern int totempg_groups_send_ok_groups (
-	void *instance,
-	const struct totempg_group *groups,
-	size_t groups_cnt,
-	const struct iovec *iovec,
-	unsigned int iov_len);
+extern int totempg_groups_send_ok_groups (void *instance, const struct totempg_group *groups, size_t groups_cnt,
+										  const struct iovec *iovec, unsigned int iov_len);
 
-extern int totempg_ifaces_get (
-	unsigned int nodeid,
-        struct totem_ip_address *interfaces,
-        unsigned int interfaces_size,
-	char ***status,
-        unsigned int *iface_count);
+extern int totempg_ifaces_get (unsigned int nodeid, struct totem_ip_address *interfaces, unsigned int interfaces_size,
+							   char ***status, unsigned int *iface_count);
 
-extern void* totempg_get_stats (void);
+extern void *totempg_get_stats (void);
 
 void totempg_event_signal (enum totem_event_type type, int value);
 
@@ -159,25 +120,15 @@ extern int totempg_crypto_set (const char *cipher_type, const char *hash_type);
 
 extern int totempg_ring_reenable (void);
 
-extern void totempg_service_ready_register (
-	void (*totem_service_ready) (void));
+extern void totempg_service_ready_register (void (*totem_service_ready) (void));
 
-extern int totempg_member_add (
-	const struct totem_ip_address *member,
-	int ring_no);
+extern int totempg_member_add (const struct totem_ip_address *member, int ring_no);
 
-extern int totempg_member_remove (
-	const struct totem_ip_address *member,
-	int ring_no);
+extern int totempg_member_remove (const struct totem_ip_address *member, int ring_no);
 
-enum totem_q_level {
-	TOTEM_Q_LEVEL_LOW,
-	TOTEM_Q_LEVEL_GOOD,
-	TOTEM_Q_LEVEL_HIGH,
-	TOTEM_Q_LEVEL_CRITICAL
-};
+enum totem_q_level { TOTEM_Q_LEVEL_LOW, TOTEM_Q_LEVEL_GOOD, TOTEM_Q_LEVEL_HIGH, TOTEM_Q_LEVEL_CRITICAL };
 
-void totempg_check_q_level(void *instance);
+void totempg_check_q_level (void *instance);
 
 typedef void (*totem_queue_level_changed_fn) (enum totem_q_level level);
 extern void totempg_queue_level_register_callback (totem_queue_level_changed_fn);

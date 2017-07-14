@@ -35,8 +35,8 @@
 #ifndef _UNIX_SOCKET_IPC_H_
 #define _UNIX_SOCKET_IPC_H_
 
-#include "unix-socket-client.h"
 #include "unix-socket-client-list.h"
+#include "unix-socket-client.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -52,21 +52,18 @@ struct unix_socket_ipc {
 	size_t max_send_size;
 };
 
-extern int		unix_socket_ipc_init(struct unix_socket_ipc *ipc,
-    const char *socket_file_name, int backlog, size_t max_clients, size_t max_receive_size,
-    size_t max_send_size);
+extern int unix_socket_ipc_init (struct unix_socket_ipc *ipc, const char *socket_file_name, int backlog,
+								 size_t max_clients, size_t max_receive_size, size_t max_send_size);
 
-extern int		unix_socket_ipc_destroy(struct unix_socket_ipc *ipc);
+extern int unix_socket_ipc_destroy (struct unix_socket_ipc *ipc);
 
-extern int		unix_socket_ipc_accept(struct unix_socket_ipc *ipc,
-    struct unix_socket_client **res_client);
+extern int unix_socket_ipc_accept (struct unix_socket_ipc *ipc, struct unix_socket_client **res_client);
 
-void			unix_socket_ipc_client_disconnect(struct unix_socket_ipc *ipc,
-    struct unix_socket_client *client);
+void unix_socket_ipc_client_disconnect (struct unix_socket_ipc *ipc, struct unix_socket_client *client);
 
-extern int		unix_socket_ipc_close(struct unix_socket_ipc *ipc);
+extern int unix_socket_ipc_close (struct unix_socket_ipc *ipc);
 
-extern int		unix_socket_ipc_is_closed(struct unix_socket_ipc *ipc);
+extern int unix_socket_ipc_is_closed (struct unix_socket_ipc *ipc);
 
 #ifdef __cplusplus
 }

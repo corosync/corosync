@@ -37,15 +37,15 @@
 
 #include <sys/types.h>
 
-#include <stdlib.h>
 #include <stdint.h>
+#include <stdlib.h>
 
 #include <cmap.h>
 #include <votequorum.h>
 
+#include "node-list.h"
 #include "qdevice-advanced-settings.h"
 #include "qdevice-model-type.h"
-#include "node-list.h"
 #include "unix-socket-ipc.h"
 
 #ifdef __cplusplus
@@ -68,8 +68,8 @@ struct qdevice_instance {
 	enum qdevice_model_type model_type;
 
 	uint32_t node_id;
-	uint32_t heartbeat_interval;		/* Heartbeat interval during normal operation */
-	uint32_t sync_heartbeat_interval;	/* Heartbeat interval during corosync sync */
+	uint32_t heartbeat_interval;	  /* Heartbeat interval during normal operation */
+	uint32_t sync_heartbeat_interval; /* Heartbeat interval during corosync sync */
 
 	struct node_list config_node_list;
 	int config_node_list_version_set;
@@ -108,12 +108,11 @@ struct qdevice_instance {
 	int sync_in_progress;
 };
 
-extern int	qdevice_instance_init(struct qdevice_instance *instance,
-    const struct qdevice_advanced_settings *advanced_settings);
+extern int qdevice_instance_init (struct qdevice_instance *instance, const struct qdevice_advanced_settings *advanced_settings);
 
-extern int	qdevice_instance_destroy(struct qdevice_instance *instance);
+extern int qdevice_instance_destroy (struct qdevice_instance *instance);
 
-extern int	qdevice_instance_configure_from_cmap(struct qdevice_instance *instance);
+extern int qdevice_instance_configure_from_cmap (struct qdevice_instance *instance);
 
 #ifdef __cplusplus
 }

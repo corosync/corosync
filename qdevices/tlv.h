@@ -35,8 +35,8 @@
 #ifndef _TLV_H_
 #define _TLV_H_
 
-#include <sys/types.h>
 #include <inttypes.h>
+#include <sys/types.h>
 
 #include "dynar.h"
 
@@ -152,7 +152,7 @@ struct tlv_tie_breaker {
 struct tlv_node_info {
 	uint32_t node_id;
 	uint32_t data_center_id;		/* 0 - data center id was not set */
-	enum tlv_node_state node_state;		/* TLV_NODE_STATE_NOT_SET - state was not set */
+	enum tlv_node_state node_state; /* TLV_NODE_STATE_NOT_SET - state was not set */
 };
 
 struct tlv_iterator {
@@ -163,175 +163,129 @@ struct tlv_iterator {
 	int iter_next_called;
 };
 
-extern int			 tlv_add(struct dynar *msg, enum tlv_opt_type opt_type,
-    uint16_t opt_len, const void *value);
+extern int tlv_add (struct dynar *msg, enum tlv_opt_type opt_type, uint16_t opt_len, const void *value);
 
-extern int			 tlv_add_u32(struct dynar *msg, enum tlv_opt_type opt_type,
-    uint32_t u32);
+extern int tlv_add_u32 (struct dynar *msg, enum tlv_opt_type opt_type, uint32_t u32);
 
-extern int			 tlv_add_u8(struct dynar *msg, enum tlv_opt_type opt_type,
-    uint8_t u8);
+extern int tlv_add_u8 (struct dynar *msg, enum tlv_opt_type opt_type, uint8_t u8);
 
-extern int			 tlv_add_u16(struct dynar *msg, enum tlv_opt_type opt_type,
-    uint16_t u16);
+extern int tlv_add_u16 (struct dynar *msg, enum tlv_opt_type opt_type, uint16_t u16);
 
-extern int			 tlv_add_u64(struct dynar *msg, enum tlv_opt_type opt_type,
-    uint64_t u64);
+extern int tlv_add_u64 (struct dynar *msg, enum tlv_opt_type opt_type, uint64_t u64);
 
-extern int			 tlv_add_string(struct dynar *msg, enum tlv_opt_type opt_type,
-    const char *str);
+extern int tlv_add_string (struct dynar *msg, enum tlv_opt_type opt_type, const char *str);
 
-extern int			 tlv_add_u16_array(struct dynar *msg, enum tlv_opt_type opt_type,
-    const uint16_t *array, size_t array_size);
+extern int tlv_add_u16_array (struct dynar *msg, enum tlv_opt_type opt_type, const uint16_t *array, size_t array_size);
 
-extern int			 tlv_add_supported_options(struct dynar *msg,
-    const enum tlv_opt_type *supported_options, size_t no_supported_options);
+extern int tlv_add_supported_options (struct dynar *msg, const enum tlv_opt_type *supported_options, size_t no_supported_options);
 
-extern int			 tlv_add_msg_seq_number(struct dynar *msg,
-    uint32_t msg_seq_number);
+extern int tlv_add_msg_seq_number (struct dynar *msg, uint32_t msg_seq_number);
 
-extern int			 tlv_add_cluster_name(struct dynar *msg, const char *cluster_name);
+extern int tlv_add_cluster_name (struct dynar *msg, const char *cluster_name);
 
-extern int			 tlv_add_tls_supported(struct dynar *msg,
-    enum tlv_tls_supported tls_supported);
+extern int tlv_add_tls_supported (struct dynar *msg, enum tlv_tls_supported tls_supported);
 
-extern int			 tlv_add_tls_client_cert_required(struct dynar *msg,
-    int tls_client_cert_required);
+extern int tlv_add_tls_client_cert_required (struct dynar *msg, int tls_client_cert_required);
 
-extern int			 tlv_add_reply_error_code(struct dynar *msg,
-    enum tlv_reply_error_code error_code);
+extern int tlv_add_reply_error_code (struct dynar *msg, enum tlv_reply_error_code error_code);
 
-extern int			 tlv_add_node_id(struct dynar *msg, uint32_t node_id);
+extern int tlv_add_node_id (struct dynar *msg, uint32_t node_id);
 
-extern int			 tlv_add_server_maximum_request_size(struct dynar *msg,
-    size_t server_maximum_request_size);
+extern int tlv_add_server_maximum_request_size (struct dynar *msg, size_t server_maximum_request_size);
 
-extern int			 tlv_add_server_maximum_reply_size(struct dynar *msg,
-    size_t server_maximum_reply_size);
+extern int tlv_add_server_maximum_reply_size (struct dynar *msg, size_t server_maximum_reply_size);
 
-extern int			 tlv_add_supported_decision_algorithms(struct dynar *msg,
-    const enum tlv_decision_algorithm_type *supported_algorithms, size_t no_supported_algorithms);
+extern int tlv_add_supported_decision_algorithms (struct dynar *msg, const enum tlv_decision_algorithm_type *supported_algorithms,
+												  size_t no_supported_algorithms);
 
-extern int			 tlv_add_decision_algorithm(struct dynar *msg,
-    enum tlv_decision_algorithm_type decision_algorithm);
+extern int tlv_add_decision_algorithm (struct dynar *msg, enum tlv_decision_algorithm_type decision_algorithm);
 
-extern int			 tlv_add_heartbeat_interval(struct dynar *msg,
-    uint32_t heartbeat_interval);
+extern int tlv_add_heartbeat_interval (struct dynar *msg, uint32_t heartbeat_interval);
 
-extern int			 tlv_add_ring_id(struct dynar *msg,
-    const struct tlv_ring_id *ring_id);
+extern int tlv_add_ring_id (struct dynar *msg, const struct tlv_ring_id *ring_id);
 
-extern int			 tlv_add_tie_breaker(struct dynar *msg,
-    const struct tlv_tie_breaker *tie_breaker);
+extern int tlv_add_tie_breaker (struct dynar *msg, const struct tlv_tie_breaker *tie_breaker);
 
-extern int			 tlv_add_config_version(struct dynar *msg,
-    uint64_t config_version);
+extern int tlv_add_config_version (struct dynar *msg, uint64_t config_version);
 
-extern int			 tlv_add_data_center_id(struct dynar *msg,
-    uint32_t data_center_id);
+extern int tlv_add_data_center_id (struct dynar *msg, uint32_t data_center_id);
 
-extern int			 tlv_add_node_state(struct dynar *msg,
-    enum tlv_node_state node_state);
+extern int tlv_add_node_state (struct dynar *msg, enum tlv_node_state node_state);
 
-extern int			 tlv_add_node_info(struct dynar *msg,
-    const struct tlv_node_info *node_info);
+extern int tlv_add_node_info (struct dynar *msg, const struct tlv_node_info *node_info);
 
-extern int			 tlv_add_node_list_type(struct dynar *msg,
-    enum tlv_node_list_type node_list_type);
+extern int tlv_add_node_list_type (struct dynar *msg, enum tlv_node_list_type node_list_type);
 
-extern int			 tlv_add_vote(struct dynar *msg, enum tlv_vote vote);
+extern int tlv_add_vote (struct dynar *msg, enum tlv_vote vote);
 
-extern int			 tlv_add_quorate(struct dynar *msg, enum tlv_quorate quorate);
+extern int tlv_add_quorate (struct dynar *msg, enum tlv_quorate quorate);
 
-extern void			 tlv_iter_init_str(const char *msg, size_t msg_len,
-    size_t msg_header_len, struct tlv_iterator *tlv_iter);
+extern void tlv_iter_init_str (const char *msg, size_t msg_len, size_t msg_header_len, struct tlv_iterator *tlv_iter);
 
-extern void			 tlv_iter_init(const struct dynar *msg, size_t msg_header_len,
-    struct tlv_iterator *tlv_iter);
+extern void tlv_iter_init (const struct dynar *msg, size_t msg_header_len, struct tlv_iterator *tlv_iter);
 
-extern enum tlv_opt_type	 tlv_iter_get_type(const struct tlv_iterator *tlv_iter);
+extern enum tlv_opt_type tlv_iter_get_type (const struct tlv_iterator *tlv_iter);
 
-extern uint16_t			 tlv_iter_get_len(const struct tlv_iterator *tlv_iter);
+extern uint16_t tlv_iter_get_len (const struct tlv_iterator *tlv_iter);
 
-extern const char		*tlv_iter_get_data(const struct tlv_iterator *tlv_iter);
+extern const char *tlv_iter_get_data (const struct tlv_iterator *tlv_iter);
 
-extern int			 tlv_iter_next(struct tlv_iterator *tlv_iter);
+extern int tlv_iter_next (struct tlv_iterator *tlv_iter);
 
-extern int			 tlv_iter_decode_u8(struct tlv_iterator *tlv_iter, uint8_t *res);
+extern int tlv_iter_decode_u8 (struct tlv_iterator *tlv_iter, uint8_t *res);
 
-extern int			 tlv_iter_decode_tls_supported(struct tlv_iterator *tlv_iter,
-    enum tlv_tls_supported *tls_supported);
+extern int tlv_iter_decode_tls_supported (struct tlv_iterator *tlv_iter, enum tlv_tls_supported *tls_supported);
 
-extern int			 tlv_iter_decode_u32(struct tlv_iterator *tlv_iter,
-    uint32_t *res);
+extern int tlv_iter_decode_u32 (struct tlv_iterator *tlv_iter, uint32_t *res);
 
-extern int			 tlv_iter_decode_str(struct tlv_iterator *tlv_iter, char **str,
-    size_t *str_len);
+extern int tlv_iter_decode_str (struct tlv_iterator *tlv_iter, char **str, size_t *str_len);
 
-extern int			 tlv_iter_decode_client_cert_required(
-    struct tlv_iterator *tlv_iter, uint8_t *client_cert_required);
+extern int tlv_iter_decode_client_cert_required (struct tlv_iterator *tlv_iter, uint8_t *client_cert_required);
 
-extern int			 tlv_iter_decode_u16_array(struct tlv_iterator *tlv_iter,
-    uint16_t **u16a, size_t *no_items);
+extern int tlv_iter_decode_u16_array (struct tlv_iterator *tlv_iter, uint16_t **u16a, size_t *no_items);
 
-extern int			 tlv_iter_decode_supported_options(struct tlv_iterator *tlv_iter,
-    enum tlv_opt_type **supported_options, size_t *no_supported_options);
+extern int tlv_iter_decode_supported_options (struct tlv_iterator *tlv_iter, enum tlv_opt_type **supported_options,
+											  size_t *no_supported_options);
 
-extern int			 tlv_iter_decode_supported_decision_algorithms(
-    struct tlv_iterator *tlv_iter,
-    enum tlv_decision_algorithm_type **supported_decision_algorithms,
-    size_t *no_supported_decision_algorithms);
+extern int tlv_iter_decode_supported_decision_algorithms (struct tlv_iterator *tlv_iter,
+														  enum tlv_decision_algorithm_type **supported_decision_algorithms,
+														  size_t *no_supported_decision_algorithms);
 
-extern int			 tlv_iter_decode_u16(struct tlv_iterator *tlv_iter,
-    uint16_t *u16);
+extern int tlv_iter_decode_u16 (struct tlv_iterator *tlv_iter, uint16_t *u16);
 
-extern int			 tlv_iter_decode_u64(struct tlv_iterator *tlv_iter,
-    uint64_t *u64);
+extern int tlv_iter_decode_u64 (struct tlv_iterator *tlv_iter, uint64_t *u64);
 
-extern int			 tlv_iter_decode_reply_error_code(struct tlv_iterator *tlv_iter,
-    enum tlv_reply_error_code *reply_error_code);
+extern int tlv_iter_decode_reply_error_code (struct tlv_iterator *tlv_iter, enum tlv_reply_error_code *reply_error_code);
 
-extern int			 tlv_iter_decode_decision_algorithm(struct tlv_iterator *tlv_iter,
-    enum tlv_decision_algorithm_type *decision_algorithm);
+extern int tlv_iter_decode_decision_algorithm (struct tlv_iterator *tlv_iter, enum tlv_decision_algorithm_type *decision_algorithm);
 
-extern int			 tlv_iter_decode_ring_id(struct tlv_iterator *tlv_iter,
-    struct tlv_ring_id *ring_id);
+extern int tlv_iter_decode_ring_id (struct tlv_iterator *tlv_iter, struct tlv_ring_id *ring_id);
 
-extern int			 tlv_iter_decode_tie_breaker(struct tlv_iterator *tlv_iter,
-    struct tlv_tie_breaker *tie_breaker);
+extern int tlv_iter_decode_tie_breaker (struct tlv_iterator *tlv_iter, struct tlv_tie_breaker *tie_breaker);
 
-extern int			 tlv_iter_decode_node_state(struct tlv_iterator *tlv_iter,
-    enum tlv_node_state *node_state);
+extern int tlv_iter_decode_node_state (struct tlv_iterator *tlv_iter, enum tlv_node_state *node_state);
 
-extern int			 tlv_iter_decode_node_info(struct tlv_iterator *tlv_iter,
-    struct tlv_node_info *node_info);
+extern int tlv_iter_decode_node_info (struct tlv_iterator *tlv_iter, struct tlv_node_info *node_info);
 
-extern int			 tlv_iter_decode_node_list_type(struct tlv_iterator *tlv_iter,
-    enum tlv_node_list_type *node_list_type);
+extern int tlv_iter_decode_node_list_type (struct tlv_iterator *tlv_iter, enum tlv_node_list_type *node_list_type);
 
-extern int			 tlv_iter_decode_vote(struct tlv_iterator *tlv_iter,
-    enum tlv_vote *vote);
+extern int tlv_iter_decode_vote (struct tlv_iterator *tlv_iter, enum tlv_vote *vote);
 
-extern int			 tlv_iter_decode_quorate(struct tlv_iterator *tlv_iter,
-    enum tlv_quorate *quorate);
+extern int tlv_iter_decode_quorate (struct tlv_iterator *tlv_iter, enum tlv_quorate *quorate);
 
-extern void			 tlv_get_supported_options(enum tlv_opt_type **supported_options,
-    size_t *no_supported_options);
+extern void tlv_get_supported_options (enum tlv_opt_type **supported_options, size_t *no_supported_options);
 
-extern int			 tlv_ring_id_eq(const struct tlv_ring_id *rid1,
-    const struct tlv_ring_id *rid2);
+extern int tlv_ring_id_eq (const struct tlv_ring_id *rid1, const struct tlv_ring_id *rid2);
 
-extern int			 tlv_tie_breaker_eq(const struct tlv_tie_breaker *tb1,
-    const struct tlv_tie_breaker *tb2);
+extern int tlv_tie_breaker_eq (const struct tlv_tie_breaker *tb1, const struct tlv_tie_breaker *tb2);
 
-extern const char *		 tlv_vote_to_str(enum tlv_vote vote);
+extern const char *tlv_vote_to_str (enum tlv_vote vote);
 
-extern const char *		 tlv_node_state_to_str(enum tlv_node_state state);
+extern const char *tlv_node_state_to_str (enum tlv_node_state state);
 
-extern const char *		 tlv_tls_supported_to_str(enum tlv_tls_supported tls_supported);
+extern const char *tlv_tls_supported_to_str (enum tlv_tls_supported tls_supported);
 
-extern const char *		 tlv_decision_algorithm_type_to_str(
-    enum tlv_decision_algorithm_type algorithm);
+extern const char *tlv_decision_algorithm_type_to_str (enum tlv_decision_algorithm_type algorithm);
 
 #ifdef __cplusplus
 }

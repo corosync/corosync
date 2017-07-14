@@ -35,65 +35,39 @@
 #ifndef TOTEMUDP_H_DEFINED
 #define TOTEMUDP_H_DEFINED
 
-#include <sys/types.h>
-#include <sys/socket.h>
 #include <qb/qbloop.h>
+#include <sys/socket.h>
+#include <sys/types.h>
 
 #include <corosync/totem/totem.h>
 
 /**
  * Create an instance
  */
-extern int totemudp_initialize (
-	qb_loop_t* poll_handle,
-	void **udp_context,
-	struct totem_config *totem_config,
-	totemsrp_stats_t *stats,
-	void *context,
+extern int totemudp_initialize (qb_loop_t *poll_handle, void **udp_context, struct totem_config *totem_config,
+								totemsrp_stats_t *stats, void *context,
 
-	void (*deliver_fn) (
-		void *context,
-		const void *msg,
-		unsigned int msg_len),
+								void (*deliver_fn) (void *context, const void *msg, unsigned int msg_len),
 
-	void (*iface_change_fn) (
-		void *context,
-		const struct totem_ip_address *iface_address,
-		unsigned int ring_no),
+								void (*iface_change_fn) (void *context, const struct totem_ip_address *iface_address, unsigned int ring_no),
 
-	void (*mtu_changed) (
-		void *context,
-		int net_mtu),
+								void (*mtu_changed) (void *context, int net_mtu),
 
-	void (*target_set_completed) (
-		void *context));
+								void (*target_set_completed) (void *context));
 
 extern void *totemudp_buffer_alloc (void);
 
 extern void totemudp_buffer_release (void *ptr);
 
-extern int totemudp_processor_count_set (
-	void *udp_context,
-	int processor_count);
+extern int totemudp_processor_count_set (void *udp_context, int processor_count);
 
-extern int totemudp_token_send (
-	void *udp_context,
-	const void *msg,
-	unsigned int msg_len);
+extern int totemudp_token_send (void *udp_context, const void *msg, unsigned int msg_len);
 
-extern int totemudp_mcast_flush_send (
-	void *udp_context,
-	const void *msg,
-	unsigned int msg_len);
+extern int totemudp_mcast_flush_send (void *udp_context, const void *msg, unsigned int msg_len);
 
-extern int totemudp_mcast_noflush_send (
-	void *udp_context,
-	const void *msg,
-	unsigned int msg_len);
+extern int totemudp_mcast_noflush_send (void *udp_context, const void *msg, unsigned int msg_len);
 
-extern int totemudp_ifaces_get (void *net_context,
-	char ***status,
-	unsigned int *iface_count);
+extern int totemudp_ifaces_get (void *net_context, char ***status, unsigned int *iface_count);
 
 extern int totemudp_recv_flush (void *udp_context);
 
@@ -105,16 +79,10 @@ extern int totemudp_finalize (void *udp_context);
 
 extern void totemudp_net_mtu_adjust (void *udp_context, struct totem_config *totem_config);
 
-extern int totemudp_token_target_set (
-	void *udp_context,
-	const struct totem_ip_address *token_target);
+extern int totemudp_token_target_set (void *udp_context, const struct totem_ip_address *token_target);
 
-extern int totemudp_crypto_set (
-	void *udp_context,
-	const char *cipher_type,
-	const char *hash_type);
+extern int totemudp_crypto_set (void *udp_context, const char *cipher_type, const char *hash_type);
 
-extern int totemudp_recv_mcast_empty (
-	void *udp_context);
+extern int totemudp_recv_mcast_empty (void *udp_context);
 
 #endif /* TOTEMUDP_H_DEFINED */

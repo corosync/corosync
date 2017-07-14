@@ -40,14 +40,14 @@
 #define _GNU_SOURCE
 #endif
 
-#include <errno.h>
 #include <assert.h>
+#include <errno.h>
+#include <inttypes.h>
+#include <pthread.h>
+#include <qb/qbhdb.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include <pthread.h>
-#include <stdint.h>
-#include <inttypes.h>
-#include <qb/qbhdb.h>
 
 typedef qb_handle_t hdb_handle_t;
 
@@ -101,8 +101,7 @@ static inline void hdb_database_lock_destroy (pthread_mutex_t *mutex)
  * @brief hdb_create
  * @param handle_database
  */
-static inline void hdb_create (
-	struct hdb_handle_database *handle_database)
+static inline void hdb_create (struct hdb_handle_database *handle_database)
 {
 	qb_hdb_create (handle_database);
 }
@@ -111,8 +110,7 @@ static inline void hdb_create (
  * @brief hdb_destroy
  * @param handle_database
  */
-static inline void hdb_destroy (
-	struct hdb_handle_database *handle_database)
+static inline void hdb_destroy (struct hdb_handle_database *handle_database)
 {
 	qb_hdb_destroy (handle_database);
 }
@@ -124,13 +122,9 @@ static inline void hdb_destroy (
  * @param handle_id_out
  * @return
  */
-static inline int hdb_handle_create (
-	struct hdb_handle_database *handle_database,
-	int instance_size,
-	hdb_handle_t *handle_id_out)
+static inline int hdb_handle_create (struct hdb_handle_database *handle_database, int instance_size, hdb_handle_t *handle_id_out)
 {
-	return (qb_hdb_handle_create (handle_database, instance_size,
-		handle_id_out));
+	return (qb_hdb_handle_create (handle_database, instance_size, handle_id_out));
 }
 
 /**
@@ -140,10 +134,7 @@ static inline int hdb_handle_create (
  * @param instance
  * @return
  */
-static inline int hdb_handle_get (
-	struct hdb_handle_database *handle_database,
-	hdb_handle_t handle_in,
-	void **instance)
+static inline int hdb_handle_get (struct hdb_handle_database *handle_database, hdb_handle_t handle_in, void **instance)
 {
 	return (qb_hdb_handle_get (handle_database, handle_in, instance));
 }
@@ -155,10 +146,7 @@ static inline int hdb_handle_get (
  * @param instance
  * @return
  */
-static inline int hdb_handle_get_always (
-	struct hdb_handle_database *handle_database,
-	hdb_handle_t handle_in,
-	void **instance)
+static inline int hdb_handle_get_always (struct hdb_handle_database *handle_database, hdb_handle_t handle_in, void **instance)
 {
 	return (qb_hdb_handle_get_always (handle_database, handle_in, instance));
 }
@@ -169,9 +157,7 @@ static inline int hdb_handle_get_always (
  * @param handle_in
  * @return
  */
-static inline int hdb_handle_put (
-	struct hdb_handle_database *handle_database,
-	hdb_handle_t handle_in)
+static inline int hdb_handle_put (struct hdb_handle_database *handle_database, hdb_handle_t handle_in)
 {
 	return (qb_hdb_handle_put (handle_database, handle_in));
 }
@@ -182,9 +168,7 @@ static inline int hdb_handle_put (
  * @param handle_in
  * @return
  */
-static inline int hdb_handle_destroy (
-	struct hdb_handle_database *handle_database,
-	hdb_handle_t handle_in)
+static inline int hdb_handle_destroy (struct hdb_handle_database *handle_database, hdb_handle_t handle_in)
 {
 	return (qb_hdb_handle_destroy (handle_database, handle_in));
 }
@@ -195,9 +179,7 @@ static inline int hdb_handle_destroy (
  * @param handle_in
  * @return
  */
-static inline int hdb_handle_refcount_get (
-	struct hdb_handle_database *handle_database,
-	hdb_handle_t handle_in)
+static inline int hdb_handle_refcount_get (struct hdb_handle_database *handle_database, hdb_handle_t handle_in)
 {
 	return (qb_hdb_handle_refcount_get (handle_database, handle_in));
 }
@@ -206,8 +188,7 @@ static inline int hdb_handle_refcount_get (
  * @brief hdb_iterator_reset
  * @param handle_database
  */
-static inline void hdb_iterator_reset (
-	struct hdb_handle_database *handle_database)
+static inline void hdb_iterator_reset (struct hdb_handle_database *handle_database)
 {
 	qb_hdb_iterator_reset (handle_database);
 }
@@ -219,10 +200,7 @@ static inline void hdb_iterator_reset (
  * @param handle
  * @return
  */
-static inline int hdb_iterator_next (
-	struct hdb_handle_database *handle_database,
-	void **instance,
-	hdb_handle_t *handle)
+static inline int hdb_iterator_next (struct hdb_handle_database *handle_database, void **instance, hdb_handle_t *handle)
 {
 	return (qb_hdb_iterator_next (handle_database, instance, handle));
 }

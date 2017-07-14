@@ -42,8 +42,7 @@
 extern "C" {
 #endif
 
-extern int		qdevice_net_cast_vote_timer_update(
-	struct qdevice_net_instance *instance, enum tlv_vote vote);
+extern int qdevice_net_cast_vote_timer_update (struct qdevice_net_instance *instance, enum tlv_vote vote);
 
 #ifdef __cplusplus
 }

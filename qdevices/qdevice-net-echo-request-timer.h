@@ -41,7 +41,7 @@
 extern "C" {
 #endif
 
-extern int	qdevice_net_echo_request_timer_schedule(struct qdevice_net_instance *instance);
+extern int qdevice_net_echo_request_timer_schedule (struct qdevice_net_instance *instance);
 
 #ifdef __cplusplus
 }

@@ -46,32 +46,26 @@ struct qdevice_ipc_user_data {
 	int shutdown_requested;
 };
 
-extern int		qdevice_ipc_init(struct qdevice_instance *instance);
+extern int qdevice_ipc_init (struct qdevice_instance *instance);
 
-extern int		qdevice_ipc_close(struct qdevice_instance *instance);
+extern int qdevice_ipc_close (struct qdevice_instance *instance);
 
-extern int		qdevice_ipc_destroy(struct qdevice_instance *instance);
+extern int qdevice_ipc_destroy (struct qdevice_instance *instance);
 
-extern int		qdevice_ipc_accept(struct qdevice_instance *instance,
-    struct unix_socket_client **res_client);
+extern int qdevice_ipc_accept (struct qdevice_instance *instance, struct unix_socket_client **res_client);
 
-extern void		qdevice_ipc_client_disconnect(struct qdevice_instance *instance,
-    struct unix_socket_client *client);
+extern void qdevice_ipc_client_disconnect (struct qdevice_instance *instance, struct unix_socket_client *client);
 
-extern void		qdevice_ipc_io_read(struct qdevice_instance *instance,
-    struct unix_socket_client *client);
+extern void qdevice_ipc_io_read (struct qdevice_instance *instance, struct unix_socket_client *client);
 
-extern void		qdevice_ipc_io_write(struct qdevice_instance *instance,
-    struct unix_socket_client *client);
+extern void qdevice_ipc_io_write (struct qdevice_instance *instance, struct unix_socket_client *client);
 
-extern int		qdevice_ipc_send_error(struct qdevice_instance *instance,
-    struct unix_socket_client *client, const char *error_fmt, ...)
-    __attribute__((__format__(__printf__, 3, 4)));
+extern int qdevice_ipc_send_error (struct qdevice_instance *instance, struct unix_socket_client *client,
+								   const char *error_fmt, ...) __attribute__ ((__format__ (__printf__, 3, 4)));
 
-extern int		qdevice_ipc_send_buffer(struct qdevice_instance *instance,
-    struct unix_socket_client *client);
+extern int qdevice_ipc_send_buffer (struct qdevice_instance *instance, struct unix_socket_client *client);
 
-extern int		qdevice_ipc_is_closed(struct qdevice_instance *instance);
+extern int qdevice_ipc_is_closed (struct qdevice_instance *instance);
 
 #ifdef __cplusplus
 }

@@ -36,8 +36,8 @@
 #define IPC_VOTEQUORUM_H_DEFINED
 
 #include <corosync/mar_gen.h>
-#define VOTEQUORUM_QDEVICE_NODEID              0
-#define VOTEQUORUM_QDEVICE_MAX_NAME_LEN      255
+#define VOTEQUORUM_QDEVICE_NODEID 0
+#define VOTEQUORUM_QDEVICE_MAX_NAME_LEN 255
 #define VOTEQUORUM_QDEVICE_DEFAULT_TIMEOUT 10000
 
 /**
@@ -80,7 +80,7 @@ struct mar_votequorum_ring_id {
  * @brief The req_lib_votequorum_qdevice_register struct
  */
 struct req_lib_votequorum_qdevice_register {
-	struct qb_ipc_request_header header __attribute__((aligned(8)));
+	struct qb_ipc_request_header header __attribute__ ((aligned (8)));
 	char name[VOTEQUORUM_QDEVICE_MAX_NAME_LEN];
 };
 
@@ -88,7 +88,7 @@ struct req_lib_votequorum_qdevice_register {
  * @brief The req_lib_votequorum_qdevice_unregister struct
  */
 struct req_lib_votequorum_qdevice_unregister {
-	struct qb_ipc_request_header header __attribute__((aligned(8)));
+	struct qb_ipc_request_header header __attribute__ ((aligned (8)));
 	char name[VOTEQUORUM_QDEVICE_MAX_NAME_LEN];
 };
 
@@ -96,7 +96,7 @@ struct req_lib_votequorum_qdevice_unregister {
  * @brief The req_lib_votequorum_qdevice_update struct
  */
 struct req_lib_votequorum_qdevice_update {
-	struct qb_ipc_request_header header __attribute__((aligned(8)));
+	struct qb_ipc_request_header header __attribute__ ((aligned (8)));
 	char oldname[VOTEQUORUM_QDEVICE_MAX_NAME_LEN];
 	char newname[VOTEQUORUM_QDEVICE_MAX_NAME_LEN];
 };
@@ -105,17 +105,17 @@ struct req_lib_votequorum_qdevice_update {
  * @brief The req_lib_votequorum_qdevice_poll struct
  */
 struct req_lib_votequorum_qdevice_poll {
-	struct qb_ipc_request_header header __attribute__((aligned(8)));
+	struct qb_ipc_request_header header __attribute__ ((aligned (8)));
 	char name[VOTEQUORUM_QDEVICE_MAX_NAME_LEN];
 	int cast_vote;
-	struct mar_votequorum_ring_id ring_id __attribute__((aligned(8)));
+	struct mar_votequorum_ring_id ring_id __attribute__ ((aligned (8)));
 };
 
 /**
  * @brief The req_lib_votequorum_qdevice_master_wins struct
  */
 struct req_lib_votequorum_qdevice_master_wins {
-	struct qb_ipc_request_header header __attribute__((aligned(8)));
+	struct qb_ipc_request_header header __attribute__ ((aligned (8)));
 	char name[VOTEQUORUM_QDEVICE_MAX_NAME_LEN];
 	unsigned int allow;
 };
@@ -124,7 +124,7 @@ struct req_lib_votequorum_qdevice_master_wins {
  * @brief The req_lib_votequorum_setvotes struct
  */
 struct req_lib_votequorum_setvotes {
-	struct qb_ipc_request_header header __attribute__((aligned(8)));
+	struct qb_ipc_request_header header __attribute__ ((aligned (8)));
 	unsigned int votes;
 	int nodeid;
 };
@@ -133,7 +133,7 @@ struct req_lib_votequorum_setvotes {
  * @brief The req_lib_votequorum_setexpected struct
  */
 struct req_lib_votequorum_setexpected {
-	struct qb_ipc_request_header header __attribute__((aligned(8)));
+	struct qb_ipc_request_header header __attribute__ ((aligned (8)));
 	unsigned int expected_votes;
 };
 
@@ -141,7 +141,7 @@ struct req_lib_votequorum_setexpected {
  * @brief The req_lib_votequorum_trackstart struct
  */
 struct req_lib_votequorum_trackstart {
-	struct qb_ipc_request_header header __attribute__((aligned(8)));
+	struct qb_ipc_request_header header __attribute__ ((aligned (8)));
 	uint64_t context;
 	unsigned int track_flags;
 };
@@ -150,14 +150,14 @@ struct req_lib_votequorum_trackstart {
  * @brief The req_lib_votequorum_general struct
  */
 struct req_lib_votequorum_general {
-	struct qb_ipc_request_header header __attribute__((aligned(8)));
+	struct qb_ipc_request_header header __attribute__ ((aligned (8)));
 };
 
 /**
  * @brief The req_lib_votequorum_getinfo struct
  */
 struct req_lib_votequorum_getinfo {
-	struct qb_ipc_request_header header __attribute__((aligned(8)));
+	struct qb_ipc_request_header header __attribute__ ((aligned (8)));
 	int nodeid;
 };
 
@@ -165,29 +165,29 @@ struct req_lib_votequorum_getinfo {
  * @brief The res_lib_votequorum_status struct
  */
 struct res_lib_votequorum_status {
-	struct qb_ipc_response_header header __attribute__((aligned(8)));
+	struct qb_ipc_response_header header __attribute__ ((aligned (8)));
 };
 
-#define VOTEQUORUM_INFO_TWONODE                 1
-#define VOTEQUORUM_INFO_QUORATE                 2
-#define VOTEQUORUM_INFO_WAIT_FOR_ALL	        4
-#define VOTEQUORUM_INFO_LAST_MAN_STANDING       8
-#define VOTEQUORUM_INFO_AUTO_TIE_BREAKER       16
-#define VOTEQUORUM_INFO_ALLOW_DOWNSCALE        32
-#define VOTEQUORUM_INFO_QDEVICE_REGISTERED     64
-#define VOTEQUORUM_INFO_QDEVICE_ALIVE         128
-#define VOTEQUORUM_INFO_QDEVICE_CAST_VOTE     256
-#define VOTEQUORUM_INFO_QDEVICE_MASTER_WINS   512
+#define VOTEQUORUM_INFO_TWONODE 1
+#define VOTEQUORUM_INFO_QUORATE 2
+#define VOTEQUORUM_INFO_WAIT_FOR_ALL 4
+#define VOTEQUORUM_INFO_LAST_MAN_STANDING 8
+#define VOTEQUORUM_INFO_AUTO_TIE_BREAKER 16
+#define VOTEQUORUM_INFO_ALLOW_DOWNSCALE 32
+#define VOTEQUORUM_INFO_QDEVICE_REGISTERED 64
+#define VOTEQUORUM_INFO_QDEVICE_ALIVE 128
+#define VOTEQUORUM_INFO_QDEVICE_CAST_VOTE 256
+#define VOTEQUORUM_INFO_QDEVICE_MASTER_WINS 512
 
-#define VOTEQUORUM_NODESTATE_MEMBER     1
-#define VOTEQUORUM_NODESTATE_DEAD       2
-#define VOTEQUORUM_NODESTATE_LEAVING    3
+#define VOTEQUORUM_NODESTATE_MEMBER 1
+#define VOTEQUORUM_NODESTATE_DEAD 2
+#define VOTEQUORUM_NODESTATE_LEAVING 3
 
 /**
  * @brief The res_lib_votequorum_getinfo struct
  */
 struct res_lib_votequorum_getinfo {
-	struct qb_ipc_response_header header __attribute__((aligned(8)));
+	struct qb_ipc_response_header header __attribute__ ((aligned (8)));
 	unsigned int nodeid;
 	unsigned int state;
 	unsigned int votes;
@@ -212,28 +212,28 @@ struct votequorum_node {
  * @brief The res_lib_votequorum_quorum_notification struct
  */
 struct res_lib_votequorum_quorum_notification {
-	struct qb_ipc_response_header header __attribute__((aligned(8)));
-	mar_uint32_t quorate __attribute__((aligned(8)));
-	mar_uint64_t context __attribute__((aligned(8)));
-	mar_uint32_t node_list_entries __attribute__((aligned(8)));
-	struct votequorum_node node_list[] __attribute__((aligned(8)));
+	struct qb_ipc_response_header header __attribute__ ((aligned (8)));
+	mar_uint32_t quorate __attribute__ ((aligned (8)));
+	mar_uint64_t context __attribute__ ((aligned (8)));
+	mar_uint32_t node_list_entries __attribute__ ((aligned (8)));
+	struct votequorum_node node_list[] __attribute__ ((aligned (8)));
 };
 
 struct res_lib_votequorum_nodelist_notification {
-	struct qb_ipc_response_header header __attribute__((aligned(8)));
-	mar_uint64_t context __attribute__((aligned(8)));
-	struct mar_votequorum_ring_id ring_id __attribute__((aligned(8)));
-	mar_uint32_t node_list_entries __attribute__((aligned(8)));
-	mar_uint32_t node_list[] __attribute__((aligned(8)));
+	struct qb_ipc_response_header header __attribute__ ((aligned (8)));
+	mar_uint64_t context __attribute__ ((aligned (8)));
+	struct mar_votequorum_ring_id ring_id __attribute__ ((aligned (8)));
+	mar_uint32_t node_list_entries __attribute__ ((aligned (8)));
+	mar_uint32_t node_list[] __attribute__ ((aligned (8)));
 };
 
 /**
  * @brief The res_lib_votequorum_expectedvotes_notification struct
  */
 struct res_lib_votequorum_expectedvotes_notification {
-	struct qb_ipc_response_header header __attribute__((aligned(8)));
-	mar_uint64_t context __attribute__((aligned(8)));
-	mar_uint32_t expected_votes __attribute__((aligned(8)));
+	struct qb_ipc_response_header header __attribute__ ((aligned (8)));
+	mar_uint64_t context __attribute__ ((aligned (8)));
+	mar_uint32_t expected_votes __attribute__ ((aligned (8)));
 };
 
 /**
@@ -241,9 +241,7 @@ struct res_lib_votequorum_expectedvotes_notification {
  * @param dest
  * @param src
  */
-static inline void marshall_from_mar_votequorum_ring_id (
-	votequorum_ring_id_t *dest,
-	const struct mar_votequorum_ring_id *src)
+static inline void marshall_from_mar_votequorum_ring_id (votequorum_ring_id_t *dest, const struct mar_votequorum_ring_id *src)
 {
 	dest->nodeid = src->nodeid;
 	dest->seq = src->seq;
@@ -254,9 +252,7 @@ static inline void marshall_from_mar_votequorum_ring_id (
  * @param dest
  * @param src
  */
-static inline void marshall_to_mar_votequorum_ring_id (
-	struct mar_votequorum_ring_id *dest,
-	const votequorum_ring_id_t *src)
+static inline void marshall_to_mar_votequorum_ring_id (struct mar_votequorum_ring_id *dest, const votequorum_ring_id_t *src)
 {
 	dest->nodeid = src->nodeid;
 	dest->seq = src->seq;

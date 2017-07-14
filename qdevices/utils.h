@@ -35,30 +35,29 @@
 #ifndef _UTILS_H_
 #define _UTILS_H_
 
-#include <sys/types.h>
 #include <inttypes.h>
+#include <sys/types.h>
 
-#define UTILS_PRI_NODE_ID		"%" PRIu32
-#define UTILS_PRI_DATACENTER_ID		"%" PRIu32
+#define UTILS_PRI_NODE_ID "%" PRIu32
+#define UTILS_PRI_DATACENTER_ID "%" PRIu32
 /*
 #define UTILS_PRI_NODE_ID		"0x%" PRIx32
 #define UTILS_PRI_DATACENTER_ID		"0x%" PRIx32
 */
-#define UTILS_PRI_MSG_SEQ		"%" PRIu32
-#define UTILS_PRI_RING_ID		"%" PRIx32 ".%" PRIx64
-#define UTILS_PRI_CONFIG_VERSION	"%" PRIu64
-#define UTILS_PRI_EXPECTED_VOTES	"%" PRIu32
+#define UTILS_PRI_MSG_SEQ "%" PRIu32
+#define UTILS_PRI_RING_ID "%" PRIx32 ".%" PRIx64
+#define UTILS_PRI_CONFIG_VERSION "%" PRIu64
+#define UTILS_PRI_EXPECTED_VOTES "%" PRIu32
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-extern int		utils_parse_bool_str(const char *str);
+extern int utils_parse_bool_str (const char *str);
 
-extern int		utils_flock(const char *lockfile, pid_t pid,
-    int *another_instance_running);
+extern int utils_flock (const char *lockfile, pid_t pid, int *another_instance_running);
 
-extern void		utils_tty_detach(void);
+extern void utils_tty_detach (void);
 
 #ifdef __cplusplus
 }

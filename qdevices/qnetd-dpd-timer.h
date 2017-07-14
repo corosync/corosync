@@ -41,9 +41,9 @@
 extern "C" {
 #endif
 
-extern int		qnetd_dpd_timer_init(struct qnetd_instance *instance);
+extern int qnetd_dpd_timer_init (struct qnetd_instance *instance);
 
-extern void		qnetd_dpd_timer_destroy(struct qnetd_instance *instance);
+extern void qnetd_dpd_timer_destroy (struct qnetd_instance *instance);
 
 #ifdef __cplusplus
 }

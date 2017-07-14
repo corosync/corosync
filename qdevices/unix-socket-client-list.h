@@ -35,8 +35,8 @@
 #ifndef _UNIX_SOCKET_CLIENT_LIST_H_
 #define _UNIX_SOCKET_CLIENT_LIST_H_
 
-#include <sys/types.h>
 #include <inttypes.h>
+#include <sys/types.h>
 
 #include "unix-socket-client.h"
 
@@ -44,23 +44,18 @@
 extern "C" {
 #endif
 
-TAILQ_HEAD(unix_socket_client_list, unix_socket_client);
+TAILQ_HEAD (unix_socket_client_list, unix_socket_client);
 
-extern void				 unix_socket_client_list_init(
-    struct unix_socket_client_list *client_list);
+extern void unix_socket_client_list_init (struct unix_socket_client_list *client_list);
 
-extern struct unix_socket_client	*unix_socket_client_list_add(
-    struct unix_socket_client_list *client_list,
-    int sock, size_t max_receive_size, size_t max_send_size, void *user_data);
+extern struct unix_socket_client *unix_socket_client_list_add (struct unix_socket_client_list *client_list, int sock,
+															   size_t max_receive_size, size_t max_send_size, void *user_data);
 
-extern void				 unix_socket_client_list_free(
-    struct unix_socket_client_list *client_list);
+extern void unix_socket_client_list_free (struct unix_socket_client_list *client_list);
 
-extern void				 unix_socket_client_list_del(
-    struct unix_socket_client_list *client_list, struct unix_socket_client *client);
+extern void unix_socket_client_list_del (struct unix_socket_client_list *client_list, struct unix_socket_client *client);
 
-extern size_t				 unix_socket_client_list_no_clients(
-    struct unix_socket_client_list *client_list);
+extern size_t unix_socket_client_list_no_clients (struct unix_socket_client_list *client_list);
 
 #ifdef __cplusplus
 }

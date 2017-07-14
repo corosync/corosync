@@ -35,11 +35,11 @@
 #ifndef CS_QUEUE_H_DEFINED
 #define CS_QUEUE_H_DEFINED
 
-#include <string.h>
-#include <stdlib.h>
-#include <pthread.h>
-#include <errno.h>
 #include "assert.h"
+#include <errno.h>
+#include <pthread.h>
+#include <stdlib.h>
+#include <string.h>
 
 struct cs_queue {
 	int head;
@@ -54,7 +54,8 @@ struct cs_queue {
 	int threaded_mode_enabled;
 };
 
-static inline int cs_queue_init (struct cs_queue *cs_queue, int cs_queue_items, int size_per_item, int threaded_mode_enabled) {
+static inline int cs_queue_init (struct cs_queue *cs_queue, int cs_queue_items, int size_per_item, int threaded_mode_enabled)
+{
 	cs_queue->head = 0;
 	cs_queue->tail = cs_queue_items - 1;
 	cs_queue->used = 0;
@@ -91,14 +92,16 @@ static inline int cs_queue_reinit (struct cs_queue *cs_queue)
 	return (0);
 }
 
-static inline void cs_queue_free (struct cs_queue *cs_queue) {
+static inline void cs_queue_free (struct cs_queue *cs_queue)
+{
 	if (cs_queue->threaded_mode_enabled) {
 		pthread_mutex_destroy (&cs_queue->mutex);
 	}
 	free (cs_queue->items);
 }
 
-static inline int cs_queue_is_full (struct cs_queue *cs_queue) {
+static inline int cs_queue_is_full (struct cs_queue *cs_queue)
+{
 	int full;
 
 	if (cs_queue->threaded_mode_enabled) {
@@ -111,7 +114,8 @@ static inline int cs_queue_is_full (struct cs_queue *cs_queue) {
 	return (full);
 }
 
-static inline int cs_queue_is_empty (struct cs_queue *cs_queue) {
+static inline int cs_queue_is_empty (struct cs_queue *cs_queue)
+{
 	int empty;
 
 	if (cs_queue->threaded_mode_enabled) {
@@ -166,7 +170,8 @@ static inline void *cs_queue_item_get (struct cs_queue *cs_queue)
 	return ((void *)cs_queue_item);
 }
 
-static inline void cs_queue_item_remove (struct cs_queue *cs_queue) {
+static inline void cs_queue_item_remove (struct cs_queue *cs_queue)
+{
 	if (cs_queue->threaded_mode_enabled) {
 		pthread_mutex_lock (&cs_queue->mutex);
 	}
@@ -259,7 +264,8 @@ static inline void cs_queue_avail (struct cs_queue *cs_queue, int *avail)
 	}
 }
 
-static inline int cs_queue_used (struct cs_queue *cs_queue) {
+static inline int cs_queue_used (struct cs_queue *cs_queue)
+{
 	int used;
 
 	if (cs_queue->threaded_mode_enabled) {
@@ -273,7 +279,8 @@ static inline int cs_queue_used (struct cs_queue *cs_queue) {
 	return (used);
 }
 
-static inline int cs_queue_usedhw (struct cs_queue *cs_queue) {
+static inline int cs_queue_usedhw (struct cs_queue *cs_queue)
+{
 	int usedhw;
 
 	if (cs_queue->threaded_mode_enabled) {

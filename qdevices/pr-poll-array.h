@@ -35,8 +35,8 @@
 #ifndef _PR_POLL_ARRAY_H_
 #define _PR_POLL_ARRAY_H_
 
-#include <sys/types.h>
 #include <inttypes.h>
+#include <sys/types.h>
 
 #include <nspr.h>
 
@@ -52,24 +52,21 @@ struct pr_poll_array {
 	ssize_t items;
 };
 
-extern void		 pr_poll_array_init(struct pr_poll_array *poll_array, size_t user_data_size);
+extern void pr_poll_array_init (struct pr_poll_array *poll_array, size_t user_data_size);
 
-extern void		 pr_poll_array_destroy(struct pr_poll_array *poll_array);
+extern void pr_poll_array_destroy (struct pr_poll_array *poll_array);
 
-extern void		 pr_poll_array_clean(struct pr_poll_array *poll_array);
+extern void pr_poll_array_clean (struct pr_poll_array *poll_array);
 
-extern ssize_t		 pr_poll_array_size(struct pr_poll_array *poll_array);
+extern ssize_t pr_poll_array_size (struct pr_poll_array *poll_array);
 
-extern ssize_t		 pr_poll_array_add(struct pr_poll_array *poll_array,  PRPollDesc **pfds,
-    void **user_data);
+extern ssize_t pr_poll_array_add (struct pr_poll_array *poll_array, PRPollDesc **pfds, void **user_data);
 
-extern PRPollDesc 	*pr_poll_array_get(const struct pr_poll_array *poll_array,
-    ssize_t pos);
+extern PRPollDesc *pr_poll_array_get (const struct pr_poll_array *poll_array, ssize_t pos);
 
-extern void		*pr_poll_array_get_user_data(const struct pr_poll_array *poll_array,
-    ssize_t pos);
+extern void *pr_poll_array_get_user_data (const struct pr_poll_array *poll_array, ssize_t pos);
 
-extern void		 pr_poll_array_gc(struct pr_poll_array *poll_array);
+extern void pr_poll_array_gc (struct pr_poll_array *poll_array);
 
 #ifdef __cplusplus
 }

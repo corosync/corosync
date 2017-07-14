@@ -41,9 +41,9 @@
 extern "C" {
 #endif
 
-extern int		qdevice_net_socket_read(struct qdevice_net_instance *instance);
+extern int qdevice_net_socket_read (struct qdevice_net_instance *instance);
 
-extern int		qdevice_net_socket_write(struct qdevice_net_instance *instance);
+extern int qdevice_net_socket_write (struct qdevice_net_instance *instance);
 
 #ifdef __cplusplus
 }

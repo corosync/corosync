@@ -47,25 +47,25 @@ extern "C" {
  */
 typedef uint64_t votequorum_handle_t;
 
-#define VOTEQUORUM_INFO_TWONODE                  1
-#define VOTEQUORUM_INFO_QUORATE                  2
-#define VOTEQUORUM_INFO_WAIT_FOR_ALL             4
-#define VOTEQUORUM_INFO_LAST_MAN_STANDING        8
-#define VOTEQUORUM_INFO_AUTO_TIE_BREAKER         16
-#define VOTEQUORUM_INFO_ALLOW_DOWNSCALE          32
-#define VOTEQUORUM_INFO_QDEVICE_REGISTERED       64
-#define VOTEQUORUM_INFO_QDEVICE_ALIVE            128
-#define VOTEQUORUM_INFO_QDEVICE_CAST_VOTE        256
-#define VOTEQUORUM_INFO_QDEVICE_MASTER_WINS      512
+#define VOTEQUORUM_INFO_TWONODE 1
+#define VOTEQUORUM_INFO_QUORATE 2
+#define VOTEQUORUM_INFO_WAIT_FOR_ALL 4
+#define VOTEQUORUM_INFO_LAST_MAN_STANDING 8
+#define VOTEQUORUM_INFO_AUTO_TIE_BREAKER 16
+#define VOTEQUORUM_INFO_ALLOW_DOWNSCALE 32
+#define VOTEQUORUM_INFO_QDEVICE_REGISTERED 64
+#define VOTEQUORUM_INFO_QDEVICE_ALIVE 128
+#define VOTEQUORUM_INFO_QDEVICE_CAST_VOTE 256
+#define VOTEQUORUM_INFO_QDEVICE_MASTER_WINS 512
 
-#define VOTEQUORUM_QDEVICE_NODEID                0
-#define VOTEQUORUM_QDEVICE_MAX_NAME_LEN          255
-#define VOTEQUORUM_QDEVICE_DEFAULT_TIMEOUT       10000
-#define VOTEQUORUM_QDEVICE_DEFAULT_SYNC_TIMEOUT  30000
+#define VOTEQUORUM_QDEVICE_NODEID 0
+#define VOTEQUORUM_QDEVICE_MAX_NAME_LEN 255
+#define VOTEQUORUM_QDEVICE_DEFAULT_TIMEOUT 10000
+#define VOTEQUORUM_QDEVICE_DEFAULT_SYNC_TIMEOUT 30000
 
-#define VOTEQUORUM_NODESTATE_MEMBER              1
-#define VOTEQUORUM_NODESTATE_DEAD                2
-#define VOTEQUORUM_NODESTATE_LEAVING             3
+#define VOTEQUORUM_NODESTATE_MEMBER 1
+#define VOTEQUORUM_NODESTATE_DEAD 2
+#define VOTEQUORUM_NODESTATE_LEAVING 3
 
 /** @} */
 
@@ -104,27 +104,16 @@ typedef struct {
 /**
  * @brief The votequorum_quorum_notification_fn_t callback
  */
-typedef void (*votequorum_quorum_notification_fn_t) (
-	votequorum_handle_t handle,
-	uint64_t context,
-	uint32_t quorate,
-	uint32_t node_list_entries,
-	votequorum_node_t node_list[]);
+typedef void (*votequorum_quorum_notification_fn_t) (votequorum_handle_t handle, uint64_t context, uint32_t quorate,
+													 uint32_t node_list_entries, votequorum_node_t node_list[]);
 
-typedef void (*votequorum_nodelist_notification_fn_t) (
-	votequorum_handle_t handle,
-	uint64_t context,
-	votequorum_ring_id_t ring_id,
-	uint32_t node_list_entries,
-	uint32_t node_list[]);
+typedef void (*votequorum_nodelist_notification_fn_t) (votequorum_handle_t handle, uint64_t context, votequorum_ring_id_t ring_id,
+													   uint32_t node_list_entries, uint32_t node_list[]);
 
 /**
  * @brief The votequorum_expectedvotes_notification_fn_t callback
  */
-typedef void (*votequorum_expectedvotes_notification_fn_t) (
-	votequorum_handle_t handle,
-	uint64_t context,
-	uint32_t expected_votes);
+typedef void (*votequorum_expectedvotes_notification_fn_t) (votequorum_handle_t handle, uint64_t context, uint32_t expected_votes);
 
 /**
  * @brief The votequorum_callbacks_t struct
@@ -141,17 +130,14 @@ typedef struct {
  * @param callbacks
  * @return
  */
-cs_error_t votequorum_initialize (
-	votequorum_handle_t *handle,
-	votequorum_callbacks_t *callbacks);
+cs_error_t votequorum_initialize (votequorum_handle_t *handle, votequorum_callbacks_t *callbacks);
 
 /**
  * @brief Close the quorum handle
  * @param handle
  * @return
  */
-cs_error_t votequorum_finalize (
-	votequorum_handle_t handle);
+cs_error_t votequorum_finalize (votequorum_handle_t handle);
 
 /**
  * @brief Dispatch messages and configuration changes
@@ -159,9 +145,7 @@ cs_error_t votequorum_finalize (
  * @param dispatch_types
  * @return
  */
-cs_error_t votequorum_dispatch (
-	votequorum_handle_t handle,
-	cs_dispatch_flags_t dispatch_types);
+cs_error_t votequorum_dispatch (votequorum_handle_t handle, cs_dispatch_flags_t dispatch_types);
 
 /**
  * @brief Get a file descriptor on which to poll.
@@ -172,9 +156,7 @@ cs_error_t votequorum_dispatch (
  * @param fd
  * @return
  */
-cs_error_t votequorum_fd_get (
-	votequorum_handle_t handle,
-	int *fd);
+cs_error_t votequorum_fd_get (votequorum_handle_t handle, int *fd);
 
 /**
  * @brief Get quorum information.
@@ -183,10 +165,7 @@ cs_error_t votequorum_fd_get (
  * @param info
  * @return
  */
-cs_error_t votequorum_getinfo (
-	votequorum_handle_t handle,
-	unsigned int nodeid,
-	struct votequorum_info *info);
+cs_error_t votequorum_getinfo (votequorum_handle_t handle, unsigned int nodeid, struct votequorum_info *info);
 
 /**
  * @brief set expected_votes
@@ -194,9 +173,7 @@ cs_error_t votequorum_getinfo (
  * @param expected_votes
  * @return
  */
-cs_error_t votequorum_setexpected (
-	votequorum_handle_t handle,
-	unsigned int expected_votes);
+cs_error_t votequorum_setexpected (votequorum_handle_t handle, unsigned int expected_votes);
 
 /**
  * @brief set votes for a node
@@ -205,10 +182,7 @@ cs_error_t votequorum_setexpected (
  * @param votes
  * @return
  */
-cs_error_t votequorum_setvotes (
-	votequorum_handle_t handle,
-	unsigned int nodeid,
-	unsigned int votes);
+cs_error_t votequorum_setvotes (votequorum_handle_t handle, unsigned int nodeid, unsigned int votes);
 
 /**
  * @brief Track node and quorum changes
@@ -217,18 +191,14 @@ cs_error_t votequorum_setvotes (
  * @param flags
  * @return
  */
-cs_error_t votequorum_trackstart (
-	votequorum_handle_t handle,
-	uint64_t context,
-        unsigned int flags);
+cs_error_t votequorum_trackstart (votequorum_handle_t handle, uint64_t context, unsigned int flags);
 
 /**
  * @brief votequorum_trackstop
  * @param handle
  * @return
  */
-cs_error_t votequorum_trackstop (
-	votequorum_handle_t handle);
+cs_error_t votequorum_trackstop (votequorum_handle_t handle);
 
 /**
  * @brief Save and retrieve private data/context
@@ -236,9 +206,7 @@ cs_error_t votequorum_trackstop (
  * @param context
  * @return
  */
-cs_error_t votequorum_context_get (
-	votequorum_handle_t handle,
-	void **context);
+cs_error_t votequorum_context_get (votequorum_handle_t handle, void **context);
 
 /**
  * @brief votequorum_context_set
@@ -246,9 +214,7 @@ cs_error_t votequorum_context_get (
  * @param context
  * @return
  */
-cs_error_t votequorum_context_set (
-	votequorum_handle_t handle,
-	void *context);
+cs_error_t votequorum_context_set (votequorum_handle_t handle, void *context);
 
 /**
  * @brief Register a quorum device
@@ -259,9 +225,7 @@ cs_error_t votequorum_context_set (
  * @param name
  * @return
  */
-cs_error_t votequorum_qdevice_register (
-	votequorum_handle_t handle,
-	const char *name);
+cs_error_t votequorum_qdevice_register (votequorum_handle_t handle, const char *name);
 
 /**
  * @brief Unregister a quorum device
@@ -269,9 +233,7 @@ cs_error_t votequorum_qdevice_register (
  * @param name
  * @return
  */
-cs_error_t votequorum_qdevice_unregister (
-	votequorum_handle_t handle,
-	const char *name);
+cs_error_t votequorum_qdevice_unregister (votequorum_handle_t handle, const char *name);
 
 /**
  * @brief Update registered name of a quorum device
@@ -280,10 +242,7 @@ cs_error_t votequorum_qdevice_unregister (
  * @param newname
  * @return
  */
-cs_error_t votequorum_qdevice_update (
-	votequorum_handle_t handle,
-	const char *oldname,
-	const char *newname);
+cs_error_t votequorum_qdevice_update (votequorum_handle_t handle, const char *oldname, const char *newname);
 
 /**
  * @brief Poll a quorum device
@@ -293,11 +252,7 @@ cs_error_t votequorum_qdevice_update (
  * @param ring_id
  * @return
  */
-cs_error_t votequorum_qdevice_poll (
-	votequorum_handle_t handle,
-	const char *name,
-	unsigned int cast_vote,
-	votequorum_ring_id_t ring_id);
+cs_error_t votequorum_qdevice_poll (votequorum_handle_t handle, const char *name, unsigned int cast_vote, votequorum_ring_id_t ring_id);
 
 /**
  * @brief Allow qdevice to tell votequorum if master_wins can be enabled or not
@@ -306,10 +261,7 @@ cs_error_t votequorum_qdevice_poll (
  * @param allow
  * @return
  */
-cs_error_t votequorum_qdevice_master_wins (
-	votequorum_handle_t handle,
-	const char *name,
-	unsigned int allow);
+cs_error_t votequorum_qdevice_master_wins (votequorum_handle_t handle, const char *name, unsigned int allow);
 
 #ifdef __cplusplus
 }
