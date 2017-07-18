@@ -145,6 +145,17 @@ extern cs_error_t cmap_initialize (
 	cmap_handle_t *handle);
 
 /**
+ * Create a new cmap connection on a specified map
+ *
+ * @param handle will be filled with handle to be used for all following
+ * operations with cht.
+ * @param map is the 'map' to use for this connection
+ */
+extern cs_error_t cmap_initialize_map (
+	cmap_handle_t *handle,
+	cmap_map_t map);
+
+/**
  * Close the cmap handle
  * @param handle cmap handle
  */
@@ -355,13 +366,6 @@ extern cs_error_t cmap_track_add(
  * @param track_handle Track handle
  */
 extern cs_error_t cmap_track_delete(cmap_handle_t handle, cmap_track_handle_t track_handle);
-
-/**
- * Delete track created previously by cmap_track_add
- * @param handle cmap handle
- * @param new_map map type from one of CMAP_MAP_*
- */
-extern cs_error_t cmap_set_current_map(cmap_handle_t handle, cmap_map_t new_map);
 
 /** @} */
 

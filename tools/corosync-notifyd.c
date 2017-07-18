@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2012 Red Hat, Inc.
+ * Copyright (c) 2011-2017 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -77,13 +77,13 @@ static int32_t _cs_is_quorate = 0;
 typedef void (*node_membership_fn_t)(char *nodename, uint32_t nodeid, char *state, char* ip);
 typedef void (*node_quorum_fn_t)(char *nodename, uint32_t nodeid, const char *state);
 typedef void (*application_connection_fn_t)(char *nodename, uint32_t nodeid, char *app_name, const char *state);
-typedef void (*rrp_faulty_fn_t)(char *nodename, uint32_t nodeid, uint32_t iface_no, const char *state);
+typedef void (*link_faulty_fn_t)(char *nodename, uint32_t local_nodeid, uint32_t nodeid, uint32_t iface_no, const char *state);
 
 struct notify_callbacks {
 	node_membership_fn_t node_membership_fn;
 	node_quorum_fn_t node_quorum_fn;
 	application_connection_fn_t application_connection_fn;
-	rrp_faulty_fn_t rrp_faulty_fn;
+	link_faulty_fn_t link_faulty_fn;
 };
 
 #define MAX_NOTIFIERS 5
@@ -97,7 +97,7 @@ static quorum_handle_t quorum_handle;
 static void _cs_node_membership_event(char *nodename, uint32_t nodeid, char *state, char* ip);
 static void _cs_node_quorum_event(const char *state);
 static void _cs_application_connection_event(char *app_name, const char *state);
-static void _cs_rrp_faulty_event(uint32_t iface_no, const char *state);
+static void _cs_link_faulty_event(uint32_t nodeid, uint32_t iface_no, const char *state);
 
 #ifdef HAVE_DBUS
 #include <dbus/dbus.h>
@@ -165,6 +165,7 @@ static char *snmp_community = NULL;
  * cmap
  */
 static cmap_handle_t cmap_handle;
+static cmap_handle_t stats_handle;
 
 static int32_t _cs_ip_to_hostname(char* ip, char* name_out)
 {
@@ -214,7 +215,7 @@ static void _cs_cmap_members_key_changed (
 		return ;
 	}
 
-	res = sscanf(key_name, "runtime.totem.pg.mrp.srp.members.%u.%s", &nodeid, tmp_key);
+	res = sscanf(key_name, "runtime.members.%u.%s", &nodeid, tmp_key);
 	if (res != 2)
 		return ;
 
@@ -222,7 +223,7 @@ static void _cs_cmap_members_key_changed (
 		return ;
 	}
 
-	snprintf(tmp_key, CMAP_KEYNAME_MAXLEN, "runtime.totem.pg.mrp.srp.members.%u.ip", nodeid);
+	snprintf(tmp_key, CMAP_KEYNAME_MAXLEN, "runtime.members.%u.ip", nodeid);
 	no_retries = 0;
 	while ((err = cmap_get_string(cmap_handle, tmp_key, &ip_str)) == CS_ERR_TRY_AGAIN &&
 			no_retries++ < CMAP_MAX_RETRIES) {
@@ -279,7 +280,9 @@ static void _cs_cmap_connections_key_changed (
 	}
 }
 
-static void _cs_cmap_rrp_faulty_key_changed (
+
+// CC: TEST
+static void _cs_cmap_link_faulty_key_changed (
 	cmap_handle_t cmap_handle_c,
 	cmap_track_handle_t cmap_track_handle,
 	int32_t event,
@@ -289,23 +292,19 @@ static void _cs_cmap_rrp_faulty_key_changed (
 	void *user_data)
 {
 	uint32_t iface_no;
-	char tmp_key[CMAP_KEYNAME_MAXLEN];
+	uint32_t nodeid;
 	int res;
 	int no_retries;
-	uint8_t faulty;
+	uint8_t connected;
 	cs_error_t err;
 
-	res = sscanf(key_name, "runtime.totem.pg.mrp.rrp.%u.%s", &iface_no, tmp_key);
+	res = sscanf(key_name, "stats.knet.node%u.link%u.connected", &nodeid, &iface_no);
 	if (res != 2) {
 		return ;
 	}
 
-	if (strcmp(tmp_key, "faulty") != 0) {
-		return ;
-	}
-
 	no_retries = 0;
-	while ((err = cmap_get_uint8(cmap_handle, key_name, &faulty)) == CS_ERR_TRY_AGAIN &&
+	while ((err = cmap_get_uint8(cmap_handle, key_name, &connected)) == CS_ERR_TRY_AGAIN &&
 			no_retries++ < CMAP_MAX_RETRIES) {
 		sleep(1);
 	}
@@ -314,10 +313,10 @@ static void _cs_cmap_rrp_faulty_key_changed (
 		return ;
 	}
 
-	if (faulty) {
-		_cs_rrp_faulty_event(iface_no, "faulty");
+	if (connected) {
+		_cs_link_faulty_event(nodeid, iface_no, "disconnected");
 	} else {
-		_cs_rrp_faulty_event(iface_no, "operational");
+		_cs_link_faulty_event(nodeid, iface_no, "operational");
 	}
 }
 
@@ -589,7 +588,7 @@ out_free:
 }
 
 static void
-_cs_dbus_rrp_faulty_event(char *nodename, uint32_t nodeid, uint32_t iface_no, const char *state)
+_cs_dbus_link_faulty_event(char *nodename, uint32_t nodeid, uint32_t iface_no, const char *state)
 {
 	DBusMessage *msg = NULL;
 
@@ -901,9 +900,9 @@ _cs_syslog_application_connection_event(char *nodename, uint32_t nodeid, char* a
 }
 
 static void
-_cs_syslog_rrp_faulty_event(char *nodename, uint32_t nodeid, uint32_t iface_no, const char *state)
+_cs_syslog_link_faulty_event(char *nodename, uint32_t our_nodeid, uint32_t nodeid, uint32_t iface_no, const char *state)
 {
-	qb_log(LOG_NOTICE, "%s[%d] interface %u is now %s", nodename, nodeid, iface_no, state);
+	qb_log(LOG_NOTICE, "%s[%d] link %u to %u is now %s", nodename, our_nodeid, iface_no, nodeid, state);
 }
 
 static void
@@ -978,17 +977,17 @@ _cs_application_connection_event(char *app_name, const char *state)
 }
 
 static void
-_cs_rrp_faulty_event(uint32_t iface_no, const char *state)
+_cs_link_faulty_event(uint32_t nodeid, uint32_t iface_no, const char *state)
 {
 	int i;
 	char *nodename;
-	uint32_t nodeid;
+	uint32_t our_nodeid;
 
-	_cs_local_node_info_get(&nodename, &nodeid);
+	_cs_local_node_info_get(&nodename, &our_nodeid);
 
 	for (i = 0; i < num_notifiers; i++) {
-		if (notifiers[i].rrp_faulty_fn) {
-			notifiers[i].rrp_faulty_fn(nodename, nodeid, iface_no, state);
+		if (notifiers[i].link_faulty_fn) {
+			notifiers[i].link_faulty_fn(nodename, our_nodeid, nodeid, iface_no, state);
 		}
 	}
 }
@@ -1017,7 +1016,31 @@ _cs_cmap_init(void)
 	qb_loop_poll_add(main_loop, QB_LOOP_MED, cmap_fd, POLLIN|POLLNVAL, NULL,
 		_cs_cmap_dispatch);
 
-	rc = cmap_track_add(cmap_handle, "runtime.connections.",
+
+	rc = cmap_initialize_map (&cmap_handle, CMAP_MAP_STATS);
+	if (rc != CS_OK) {
+		qb_log(LOG_ERR, "Failed to initialize the cmap stats API. Error %d", rc);
+		exit (EXIT_FAILURE);
+	}
+	cmap_fd_get(cmap_handle, &cmap_fd);
+
+	qb_loop_poll_add(main_loop, QB_LOOP_MED, cmap_fd, POLLIN|POLLNVAL, NULL,
+		_cs_cmap_dispatch);
+
+
+	rc = cmap_track_add(cmap_handle, "runtime.members.",
+			CMAP_TRACK_ADD | CMAP_TRACK_MODIFY | CMAP_TRACK_PREFIX,
+			_cs_cmap_members_key_changed,
+			NULL,
+			&track_handle);
+	if (rc != CS_OK) {
+		qb_log(LOG_ERR,
+			"Failed to track the members key. Error %d", rc);
+		exit (EXIT_FAILURE);
+	}
+
+	// TODO stats
+	rc = cmap_track_add(stats_handle, "stats.ipcs.",
 			CMAP_TRACK_ADD | CMAP_TRACK_DELETE | CMAP_TRACK_PREFIX,
 			_cs_cmap_connections_key_changed,
 			NULL,
@@ -1028,24 +1051,15 @@ _cs_cmap_init(void)
 		exit (EXIT_FAILURE);
 	}
 
-	rc = cmap_track_add(cmap_handle, "runtime.totem.pg.mrp.srp.members.",
+	// TODO also stats
+	rc = cmap_track_add(stats_handle, "stats.knet.",
 			CMAP_TRACK_ADD | CMAP_TRACK_MODIFY | CMAP_TRACK_PREFIX,
-			_cs_cmap_members_key_changed,
+			_cs_cmap_link_faulty_key_changed,
 			NULL,
 			&track_handle);
 	if (rc != CS_OK) {
 		qb_log(LOG_ERR,
-			"Failed to track the members key. Error %d", rc);
-		exit (EXIT_FAILURE);
-	}
-	rc = cmap_track_add(cmap_handle, "runtime.totem.pg.mrp.rrp.",
-			CMAP_TRACK_ADD | CMAP_TRACK_MODIFY | CMAP_TRACK_PREFIX,
-			_cs_cmap_rrp_faulty_key_changed,
-			NULL,
-			&track_handle);
-	if (rc != CS_OK) {
-		qb_log(LOG_ERR,
-			"Failed to track the rrp key. Error %d", rc);
+			"Failed to track the link status key. Error %d", rc);
 		exit (EXIT_FAILURE);
 	}
 }
@@ -1054,6 +1068,7 @@ static void
 _cs_cmap_finalize(void)
 {
 	cmap_finalize (cmap_handle);
+	cmap_finalize (stats_handle);
 }
 
 static void
@@ -1175,8 +1190,8 @@ main(int argc, char *argv[])
 			_cs_syslog_node_quorum_event;
 		notifiers[num_notifiers].application_connection_fn =
 			_cs_syslog_application_connection_event;
-		notifiers[num_notifiers].rrp_faulty_fn =
-			_cs_syslog_rrp_faulty_event;
+		notifiers[num_notifiers].link_faulty_fn =
+			_cs_syslog_link_faulty_event;
 		num_notifiers++;
 	}
 

@@ -547,6 +547,16 @@ extern cs_error_t icmap_copy_map(icmap_map_t dst_map, const icmap_map_t src_map)
  */
 size_t icmap_get_valuetype_len(icmap_value_types_t type);
 
+/*
+ * Converts track type of icmap to qb
+ */
+int32_t icmap_tt_to_qbtt(int32_t track_type);
+
+/*
+ * Convert track type of qb to icmap
+ */
+int32_t icmap_qbtt_to_tt(int32_t track_type);
+
 #ifdef __cplusplus
 }
 #endif

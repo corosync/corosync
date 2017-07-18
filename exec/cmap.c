@@ -904,7 +904,7 @@ static void message_handler_req_lib_cmap_set_current_map(void *conn, const void 
 		goto reply_send;
 	}
 
-	switch (req_lib_cmap_set_current_map->new_map) {
+	switch (req_lib_cmap_set_current_map->map) {
 		case CMAP_SETMAP_DEFAULT:
 			conn_info->map_fns = icmap_map;
 			break;
@@ -1063,7 +1063,7 @@ static void message_handler_req_exec_cmap_mcast_reason_sync_nv(
 	}
 
 	snprintf(member_config_version, ICMAP_KEYNAME_MAXLEN,
-		"runtime.totem.members.%u.config_version", nodeid);
+		"runtime.members.%u.config_version", nodeid);
 	icmap_set_uint64(member_config_version, config_version);
 
 	LEAVE();

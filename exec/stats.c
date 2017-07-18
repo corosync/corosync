@@ -103,43 +103,47 @@ struct cs_stats_conv cs_srp_stats[] = {
 	{ STAT_SRP, "avg_token_workload",     offsetof(totemsrp_stats_t, avg_token_workload),     ICMAP_VALUETYPE_UINT32},
 	{ STAT_SRP, "avg_backlog_calc",       offsetof(totemsrp_stats_t, avg_backlog_calc),       ICMAP_VALUETYPE_UINT32},
 };
+
 struct cs_stats_conv cs_knet_stats[] = {
-	{ STAT_KNET, "tx_data_packets",  offsetof(struct knet_link_stats, tx_data_packets),  ICMAP_VALUETYPE_UINT64},
-	{ STAT_KNET, "rx_data_packets",  offsetof(struct knet_link_stats, rx_data_packets),  ICMAP_VALUETYPE_UINT64},
-	{ STAT_KNET, "tx_data_bytes",    offsetof(struct knet_link_stats, tx_data_bytes),    ICMAP_VALUETYPE_UINT64},
-	{ STAT_KNET, "rx_data_bytes",    offsetof(struct knet_link_stats, rx_data_bytes),    ICMAP_VALUETYPE_UINT64},
-	{ STAT_KNET, "tx_ping_packets",  offsetof(struct knet_link_stats, tx_ping_packets),  ICMAP_VALUETYPE_UINT64},
-	{ STAT_KNET, "rx_ping_packets",  offsetof(struct knet_link_stats, rx_ping_packets),  ICMAP_VALUETYPE_UINT64},
-	{ STAT_KNET, "tx_ping_bytes",    offsetof(struct knet_link_stats, tx_ping_bytes),    ICMAP_VALUETYPE_UINT64},
-	{ STAT_KNET, "rx_ping_bytes",    offsetof(struct knet_link_stats, rx_ping_bytes),    ICMAP_VALUETYPE_UINT64},
-	{ STAT_KNET, "tx_pong_packets",  offsetof(struct knet_link_stats, tx_pong_packets),  ICMAP_VALUETYPE_UINT64},
-	{ STAT_KNET, "rx_pong_packets",  offsetof(struct knet_link_stats, rx_pong_packets),  ICMAP_VALUETYPE_UINT64},
-	{ STAT_KNET, "tx_pong_bytes",    offsetof(struct knet_link_stats, tx_pong_bytes),    ICMAP_VALUETYPE_UINT64},
-	{ STAT_KNET, "rx_pong_bytes",    offsetof(struct knet_link_stats, rx_pong_bytes),    ICMAP_VALUETYPE_UINT64},
-	{ STAT_KNET, "tx_pmtu_packets",  offsetof(struct knet_link_stats, tx_pmtu_packets),  ICMAP_VALUETYPE_UINT64},
-	{ STAT_KNET, "rx_pmtu_packets",  offsetof(struct knet_link_stats, rx_pmtu_packets),  ICMAP_VALUETYPE_UINT64},
-	{ STAT_KNET, "tx_pmtu_bytes",    offsetof(struct knet_link_stats, tx_pmtu_bytes),    ICMAP_VALUETYPE_UINT64},
-	{ STAT_KNET, "rx_pmtu_bytes",    offsetof(struct knet_link_stats, rx_pmtu_bytes),    ICMAP_VALUETYPE_UINT64},
-	{ STAT_KNET, "tx_total_packets", offsetof(struct knet_link_stats, tx_total_packets), ICMAP_VALUETYPE_UINT64},
-	{ STAT_KNET, "rx_total_packets", offsetof(struct knet_link_stats, rx_total_packets), ICMAP_VALUETYPE_UINT64},
-	{ STAT_KNET, "tx_total_bytes",   offsetof(struct knet_link_stats, tx_total_bytes),   ICMAP_VALUETYPE_UINT64},
-	{ STAT_KNET, "rx_total_bytes",   offsetof(struct knet_link_stats, rx_total_bytes),   ICMAP_VALUETYPE_UINT64},
-	{ STAT_KNET, "tx_total_errors",  offsetof(struct knet_link_stats, tx_total_errors),  ICMAP_VALUETYPE_UINT64},
-	{ STAT_KNET, "rx_total_retries", offsetof(struct knet_link_stats, tx_total_retries), ICMAP_VALUETYPE_UINT64},
-	{ STAT_KNET, "tx_pmtu_errors",   offsetof(struct knet_link_stats, tx_pmtu_errors),   ICMAP_VALUETYPE_UINT32},
-	{ STAT_KNET, "tx_pmtu_retries",  offsetof(struct knet_link_stats, tx_pmtu_retries),  ICMAP_VALUETYPE_UINT32},
-	{ STAT_KNET, "tx_ping_errors",   offsetof(struct knet_link_stats, tx_ping_errors),   ICMAP_VALUETYPE_UINT32},
-	{ STAT_KNET, "tx_ping_retries",  offsetof(struct knet_link_stats, tx_ping_retries),  ICMAP_VALUETYPE_UINT32},
-	{ STAT_KNET, "tx_pong_errors",   offsetof(struct knet_link_stats, tx_pong_errors),   ICMAP_VALUETYPE_UINT32},
-	{ STAT_KNET, "tx_pong_retries",  offsetof(struct knet_link_stats, tx_pong_retries),  ICMAP_VALUETYPE_UINT32},
-	{ STAT_KNET, "tx_data_errors",   offsetof(struct knet_link_stats, tx_data_errors),   ICMAP_VALUETYPE_UINT32},
-	{ STAT_KNET, "tx_data_retries",  offsetof(struct knet_link_stats, tx_data_retries),  ICMAP_VALUETYPE_UINT32},
-	{ STAT_KNET, "latency_min",      offsetof(struct knet_link_stats, latency_min),      ICMAP_VALUETYPE_UINT32},
-	{ STAT_KNET, "latency_max",      offsetof(struct knet_link_stats, latency_max),      ICMAP_VALUETYPE_UINT32},
-	{ STAT_KNET, "latency_ave",      offsetof(struct knet_link_stats, latency_ave),      ICMAP_VALUETYPE_UINT32},
-	{ STAT_KNET, "latency_samples",  offsetof(struct knet_link_stats, latency_samples),  ICMAP_VALUETYPE_UINT32},
-	{ STAT_KNET, "down_count",       offsetof(struct knet_link_stats, down_count),       ICMAP_VALUETYPE_UINT32},
-	{ STAT_KNET, "up_count",         offsetof(struct knet_link_stats, up_count),         ICMAP_VALUETYPE_UINT32},
+	{ STAT_KNET, "enabled",          offsetof(struct knet_link_status, enabled),                ICMAP_VALUETYPE_UINT8},
+	{ STAT_KNET, "connected",        offsetof(struct knet_link_status, connected),              ICMAP_VALUETYPE_UINT8},
+	{ STAT_KNET, "mtu",              offsetof(struct knet_link_status, mtu),                    ICMAP_VALUETYPE_UINT32},
+	{ STAT_KNET, "tx_data_packets",  offsetof(struct knet_link_status, stats.tx_data_packets),  ICMAP_VALUETYPE_UINT64},
+	{ STAT_KNET, "rx_data_packets",  offsetof(struct knet_link_status, stats.rx_data_packets),  ICMAP_VALUETYPE_UINT64},
+	{ STAT_KNET, "tx_data_bytes",    offsetof(struct knet_link_status, stats.tx_data_bytes),    ICMAP_VALUETYPE_UINT64},
+	{ STAT_KNET, "rx_data_bytes",    offsetof(struct knet_link_status, stats.rx_data_bytes),    ICMAP_VALUETYPE_UINT64},
+	{ STAT_KNET, "tx_ping_packets",  offsetof(struct knet_link_status, stats.tx_ping_packets),  ICMAP_VALUETYPE_UINT64},
+	{ STAT_KNET, "rx_ping_packets",  offsetof(struct knet_link_status, stats.rx_ping_packets),  ICMAP_VALUETYPE_UINT64},
+	{ STAT_KNET, "tx_ping_bytes",    offsetof(struct knet_link_status, stats.tx_ping_bytes),    ICMAP_VALUETYPE_UINT64},
+	{ STAT_KNET, "rx_ping_bytes",    offsetof(struct knet_link_status, stats.rx_ping_bytes),    ICMAP_VALUETYPE_UINT64},
+ 	{ STAT_KNET, "tx_pong_packets",  offsetof(struct knet_link_status, stats.tx_pong_packets),  ICMAP_VALUETYPE_UINT64},
+	{ STAT_KNET, "rx_pong_packets",  offsetof(struct knet_link_status, stats.rx_pong_packets),  ICMAP_VALUETYPE_UINT64},
+	{ STAT_KNET, "tx_pong_bytes",    offsetof(struct knet_link_status, stats.tx_pong_bytes),    ICMAP_VALUETYPE_UINT64},
+	{ STAT_KNET, "rx_pong_bytes",    offsetof(struct knet_link_status, stats.rx_pong_bytes),    ICMAP_VALUETYPE_UINT64},
+	{ STAT_KNET, "tx_pmtu_packets",  offsetof(struct knet_link_status, stats.tx_pmtu_packets),  ICMAP_VALUETYPE_UINT64},
+	{ STAT_KNET, "rx_pmtu_packets",  offsetof(struct knet_link_status, stats.rx_pmtu_packets),  ICMAP_VALUETYPE_UINT64},
+	{ STAT_KNET, "tx_pmtu_bytes",    offsetof(struct knet_link_status, stats.tx_pmtu_bytes),    ICMAP_VALUETYPE_UINT64},
+	{ STAT_KNET, "rx_pmtu_bytes",    offsetof(struct knet_link_status, stats.rx_pmtu_bytes),    ICMAP_VALUETYPE_UINT64},
+	{ STAT_KNET, "tx_total_packets", offsetof(struct knet_link_status, stats.tx_total_packets), ICMAP_VALUETYPE_UINT64},
+	{ STAT_KNET, "rx_total_packets", offsetof(struct knet_link_status, stats.rx_total_packets), ICMAP_VALUETYPE_UINT64},
+	{ STAT_KNET, "tx_total_bytes",   offsetof(struct knet_link_status, stats.tx_total_bytes),   ICMAP_VALUETYPE_UINT64},
+	{ STAT_KNET, "rx_total_bytes",   offsetof(struct knet_link_status, stats.rx_total_bytes),   ICMAP_VALUETYPE_UINT64},
+	{ STAT_KNET, "tx_total_errors",  offsetof(struct knet_link_status, stats.tx_total_errors),  ICMAP_VALUETYPE_UINT64},
+	{ STAT_KNET, "rx_total_retries", offsetof(struct knet_link_status, stats.tx_total_retries), ICMAP_VALUETYPE_UINT64},
+	{ STAT_KNET, "tx_pmtu_errors",   offsetof(struct knet_link_status, stats.tx_pmtu_errors),   ICMAP_VALUETYPE_UINT32},
+	{ STAT_KNET, "tx_pmtu_retries",  offsetof(struct knet_link_status, stats.tx_pmtu_retries),  ICMAP_VALUETYPE_UINT32},
+	{ STAT_KNET, "tx_ping_errors",   offsetof(struct knet_link_status, stats.tx_ping_errors),   ICMAP_VALUETYPE_UINT32},
+	{ STAT_KNET, "tx_ping_retries",  offsetof(struct knet_link_status, stats.tx_ping_retries),  ICMAP_VALUETYPE_UINT32},
+	{ STAT_KNET, "tx_pong_errors",   offsetof(struct knet_link_status, stats.tx_pong_errors),   ICMAP_VALUETYPE_UINT32},
+	{ STAT_KNET, "tx_pong_retries",  offsetof(struct knet_link_status, stats.tx_pong_retries),  ICMAP_VALUETYPE_UINT32},
+	{ STAT_KNET, "tx_data_errors",   offsetof(struct knet_link_status, stats.tx_data_errors),   ICMAP_VALUETYPE_UINT32},
+	{ STAT_KNET, "tx_data_retries",  offsetof(struct knet_link_status, stats.tx_data_retries),  ICMAP_VALUETYPE_UINT32},
+	{ STAT_KNET, "latency_min",      offsetof(struct knet_link_status, stats.latency_min),      ICMAP_VALUETYPE_UINT32},
+	{ STAT_KNET, "latency_max",      offsetof(struct knet_link_status, stats.latency_max),      ICMAP_VALUETYPE_UINT32},
+	{ STAT_KNET, "latency_ave",      offsetof(struct knet_link_status, stats.latency_ave),      ICMAP_VALUETYPE_UINT32},
+	{ STAT_KNET, "latency_samples",  offsetof(struct knet_link_status, stats.latency_samples),  ICMAP_VALUETYPE_UINT32},
+	{ STAT_KNET, "down_count",       offsetof(struct knet_link_status, stats.down_count),       ICMAP_VALUETYPE_UINT32},
+	{ STAT_KNET, "up_count",         offsetof(struct knet_link_status, stats.up_count),         ICMAP_VALUETYPE_UINT32},
 };
 struct cs_stats_conv cs_ipcs_conn_stats[] = {
 	{ STAT_IPCSC, "cnx.queueing",        offsetof(struct ipcs_conn_stats, cnx.queuing),          ICMAP_VALUETYPE_INT32},
@@ -178,7 +182,9 @@ struct cs_stats_tracker
 {
 	char *key_name;
 	void *user_data;
+	int32_t events;
 	icmap_notify_fn_t notify_fn;
+	uint64_t old_value;
 	struct qb_list_head list;
 };
 QB_LIST_DECLARE (stats_tracker_list_head);
@@ -303,7 +309,7 @@ cs_error_t stats_map_get(const char *key_name,
 			if (res != CS_OK) {
 				return CS_ERR_LIBRARY;
 			}
-			stats_map_set_value(statinfo, &link_status.stats, value, value_len, type);
+			stats_map_set_value(statinfo, &link_status, value, value_len, type);
 			break;
 		case STAT_IPCSC:
 			if (sscanf(key_name, "stats.ipcs.service%d.%d.%p", &service_id, &pid, &conn_ptr) != 3) {
@@ -393,17 +399,52 @@ void stats_trigger_trackers()
 		res = stats_map_get(tracker->key_name,
 				    &value, &value_len, &type);
 
-		if (res == CS_OK) {
+		/* Check if it has changed */
+		if (res == CS_OK && memcmp(&value, &tracker->old_value, value_len) != 0) {
 			old_val.type = new_val.type = type;
 			old_val.len = new_val.len = value_len;
 			old_val.data = new_val.data = &value;
 
 			tracker->notify_fn(ICMAP_TRACK_MODIFY, tracker->key_name,
 					   old_val, new_val, tracker->user_data);
+
+			memcpy(&tracker->old_value, &value, value_len);
 		}
 	}
 }
 
+
+/* Callback from libqb when a key is added/removed */
+static void stats_map_notify_fn(uint32_t event, char *key, void *old_value, void *value, void *user_data)
+{
+	struct cs_stats_tracker *tracker = user_data;
+	struct icmap_notify_value new_val;
+	struct icmap_notify_value old_val;
+	char new_value[64];
+
+	if (value == NULL && old_value == NULL) {
+		return ;
+	}
+
+	new_val.data = new_value;
+	if (stats_map_get(key,
+			  &new_value,
+			  &new_val.len,
+			  &new_val.type) != CS_OK) {
+	}
+
+	/* We don't know what the old value was
+	   but as this only tracks ADD & DELETE I'm not worried
+	   about it */
+	memcpy(&old_val, &new_val, sizeof(new_val));
+
+	tracker->notify_fn(icmap_qbtt_to_tt(event),
+			   key,
+			   new_val,
+			   old_val,
+			   tracker->user_data);
+
+}
 
 cs_error_t stats_map_track_add(const char *key_name,
 			       int32_t track_type,
@@ -412,8 +453,14 @@ cs_error_t stats_map_track_add(const char *key_name,
 			       icmap_track_t *icmap_track)
 {
 	struct cs_stats_tracker *tracker;
+	size_t value_len;
+	icmap_value_types_t type;
+	cs_error_t err;
 
-	if (track_type & ICMAP_TRACK_PREFIX) {
+	/* We can track adding or deleting a key under a prefix */
+	if ((track_type & ICMAP_TRACK_PREFIX) &&
+	    (!(track_type & ICMAP_TRACK_DELETE) ||
+	     !(track_type & ICMAP_TRACK_ADD))) {
 		return CS_ERR_NOT_SUPPORTED;
 	}
 
@@ -424,18 +471,52 @@ cs_error_t stats_map_track_add(const char *key_name,
 
 	tracker->notify_fn = notify_fn;
 	tracker->user_data = user_data;
-	tracker->key_name = strdup(key_name);
+	if (key_name) {
+		tracker->key_name = strdup(key_name);
+	}
+
+	/* Get initial value */
+	if (stats_map_get(tracker->key_name,
+			  &tracker->old_value, &value_len, &type) == CS_OK) {
+		tracker->old_value = 0ULL;
+	}
+
+	/* Add/delete trackers can use the qb_map tracking */
+	if ((track_type & ICMAP_TRACK_ADD) ||
+	    (track_type & ICMAP_TRACK_DELETE)) {
+		err = qb_map_notify_add(stats_map, tracker->key_name,
+					stats_map_notify_fn,
+					icmap_tt_to_qbtt(track_type),
+					tracker);
+		if (err != 0) {
+			log_printf(LOGSYS_LEVEL_ERROR, "creating stats tracker %s failed. %d\n", tracker->key_name, err);
+			free(tracker->key_name);
+			free(tracker);
+			return (qb_to_cs_error(err));
+		}
+		tracker->events = track_type;
+	}
 
 	qb_list_add (&tracker->list, &stats_tracker_list_head);
 
 	*icmap_track = (icmap_track_t)tracker;
-
 	return CS_OK;
 }
 
 cs_error_t stats_map_track_delete(icmap_track_t icmap_track)
 {
 	struct cs_stats_tracker *tracker = (struct cs_stats_tracker *)icmap_track;
+	int err;
+
+	if ((tracker->events & ICMAP_TRACK_ADD) ||
+	    (tracker->events & ICMAP_TRACK_DELETE)) {
+		err = qb_map_notify_del_2(stats_map,
+					  tracker->key_name, stats_map_notify_fn,
+					  icmap_tt_to_qbtt(tracker->events), tracker);
+		if (err) {
+			log_printf(LOGSYS_LEVEL_ERROR, "deleting tracker %s failed. %d\n", tracker->key_name, err);
+		}
+	}
 
 	qb_list_del(&tracker->list);
 	free(tracker->key_name);

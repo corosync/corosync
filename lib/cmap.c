@@ -121,6 +121,49 @@ error_no_destroy:
 	return (error);
 }
 
+cs_error_t cmap_initialize_map (cmap_handle_t *handle,
+				cmap_map_t map)
+{
+	cs_error_t error;
+	struct iovec iov[1];
+	struct cmap_inst *cmap_inst;
+	struct req_lib_cmap_set_current_map req_lib_cmap_set_current_map;
+	struct qb_ipc_response_header res_lib_cmap_set_current_map;
+
+	error = cmap_initialize(handle);
+
+	if (error == CS_OK) {
+		error = hdb_error_to_cs(hdb_handle_get (&cmap_handle_t_db, *handle, (void *)&cmap_inst));
+		if (error != CS_OK) {
+			return (error);
+		}
+
+		memset(&req_lib_cmap_set_current_map, 0, sizeof(req_lib_cmap_set_current_map));
+		req_lib_cmap_set_current_map.header.size = sizeof(req_lib_cmap_set_current_map);
+		req_lib_cmap_set_current_map.header.id = MESSAGE_REQ_CMAP_SET_CURRENT_MAP;
+		req_lib_cmap_set_current_map.map = map;
+
+		iov[0].iov_base = (char *)&req_lib_cmap_set_current_map;
+		iov[0].iov_len = sizeof(req_lib_cmap_set_current_map);
+
+		error = qb_to_cs_error(qb_ipcc_sendv_recv(
+					       cmap_inst->c,
+					       iov,
+					       1,
+					       &res_lib_cmap_set_current_map,
+					       sizeof (res_lib_cmap_set_current_map), CS_IPC_TIMEOUT_MS));
+
+		if (error == CS_OK) {
+			error = res_lib_cmap_set_current_map.error;
+		}
+
+		(void)hdb_handle_put (&cmap_handle_t_db, *handle);
+
+		return (error);
+	}
+	return (error);
+}
+
 static void cmap_inst_free (void *inst)
 {
 	struct cmap_inst *cmap_inst = (struct cmap_inst *)inst;
@@ -1068,46 +1111,6 @@ cs_error_t cmap_track_delete(
 	}
 
 error_put:
-	(void)hdb_handle_put (&cmap_handle_t_db, handle);
-
-	return (error);
-}
-
-cs_error_t cmap_set_current_map (
-	cmap_handle_t handle,
-	cmap_map_t new_map)
-{
-	cs_error_t error;
-	struct iovec iov[1];
-	struct cmap_inst *cmap_inst;
-	struct req_lib_cmap_set_current_map req_lib_cmap_set_current_map;
-	struct qb_ipc_response_header res_lib_cmap_set_current_map;
-
-
-	error = hdb_error_to_cs(hdb_handle_get (&cmap_handle_t_db, handle, (void *)&cmap_inst));
-	if (error != CS_OK) {
-		return (error);
-	}
-
-	memset(&req_lib_cmap_set_current_map, 0, sizeof(req_lib_cmap_set_current_map));
-	req_lib_cmap_set_current_map.header.size = sizeof(req_lib_cmap_set_current_map);
-	req_lib_cmap_set_current_map.header.id = MESSAGE_REQ_CMAP_SET_CURRENT_MAP;
-	req_lib_cmap_set_current_map.new_map = new_map;
-
-	iov[0].iov_base = (char *)&req_lib_cmap_set_current_map;
-	iov[0].iov_len = sizeof(req_lib_cmap_set_current_map);
-
-	error = qb_to_cs_error(qb_ipcc_sendv_recv(
-		cmap_inst->c,
-		iov,
-		1,
-		&res_lib_cmap_set_current_map,
-		sizeof (res_lib_cmap_set_current_map), CS_IPC_TIMEOUT_MS));
-
-	if (error == CS_OK) {
-		error = res_lib_cmap_set_current_map.error;
-	}
-
 	(void)hdb_handle_put (&cmap_handle_t_db, handle);
 
 	return (error);

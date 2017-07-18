@@ -1178,8 +1178,8 @@ int main (int argc, char **argv, char **envp)
 
 	if (stats_map_init(api) != CS_OK) {
 		log_printf (LOGSYS_LEVEL_ERROR, "Corosync Executive couldn't initialize statistics component.");
- 		corosync_exit_error (COROSYNC_DONE_STATS);
- 	}
+		corosync_exit_error (COROSYNC_DONE_STATS);
+	}
 
 	res = corosync_log_config_read (&error_string);
 	if (res == -1) {

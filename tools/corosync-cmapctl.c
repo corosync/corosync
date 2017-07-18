@@ -106,6 +106,10 @@ static int print_help(void)
 	printf("    where type is one of ([i|u][8|16|32|64] | flt | dbl | str | bin)\n");
 	printf("    for bin, value is file name (or - for stdin)\n");
 	printf("\n");
+	printf("    map can be either 'icmap' (the default) which contains corosync\n");
+	printf("    configuration information, or 'stats' which contains statistics\n");
+	printf("    about the networking and IPC traffic in some detail.\n");
+	printf("\n");
 	printf("Load settings from a file:\n");
 	printf("    corosync-cmapctl -p filename\n");
 	printf("\n");
@@ -746,8 +750,8 @@ int main(int argc, char *argv[])
 	size_t value_len;
 	cmap_value_types_t type;
 	cmap_map_t map = CMAP_MAP_DEFAULT;
-	int map_set = 0;
 	int track_prefix;
+	int map_set = 0;
 	int no_retries;
 	char * settings_file = NULL;
 
@@ -824,21 +828,14 @@ int main(int argc, char *argv[])
 	}
 
 	no_retries = 0;
-	while ((err = cmap_initialize(&handle)) == CS_ERR_TRY_AGAIN && no_retries++ < MAX_TRY_AGAIN) {
+
+	while ((err = cmap_initialize_map(&handle, map)) == CS_ERR_TRY_AGAIN && no_retries++ < MAX_TRY_AGAIN) {
 		sleep(1);
 	}
 
 	if (err != CS_OK) {
 		fprintf (stderr, "Failed to initialize the cmap API. Error %s\n", cs_strerror(err));
 		exit (EXIT_FAILURE);
-	}
-
-	if (map_set) {
-		err = cmap_set_current_map(handle, map);
-		if (err != CS_OK) {
-			fprintf (stderr, "Failed to set the map. error %s\n", cs_strerror(err));
-			exit (EXIT_FAILURE);
-		}
 	}
 
 	switch (action) {

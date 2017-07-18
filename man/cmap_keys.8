@@ -1,5 +1,5 @@
 .\"/*
-.\" * Copyright (c) 2012-2014 Red Hat, Inc.
+.\" * Copyright (c) 2012-2017 Red Hat, Inc.
 .\" *
 .\" * All rights reserved.
 .\" *
@@ -49,7 +49,8 @@ There are 3 main types of keys stored in CMAP:
 
 In this man page, wild-cards have the usual meaning.
 
-.SH KEYS
+.SH ICMAP KEYS
+These keys are in the icmap (default) map
 .TP
 internal_configuration.*
 Internal configuration data. All keys in this prefix are read only.
@@ -84,54 +85,6 @@ Trigger keys for storing fplay data. It's recommended that you the corosync-blac
 to change keys in this prefix.
 
 .TP
-runtime.connections.*
-There is information about total number of active connections in given moment in the
-.B active
-key, number of closed connections during whole runtime of corosync in the
-.B closed
-key and information about each active IPC connection. All keys in this prefix are read-only.
-
-.TP
-runtime.connections.ID.*
-Each IPC connection has a unique ID. This is in the form [[short_name:][PID:]internal_id. On some
-platforms, short_name and PID are not filled and only internal_id is used.
-
-Typical keys in this prefix are:
-
-.B client_pid
-containing PID of IPC connection (unavailable on some platforms).
-
-.B dispatched
-number of dispatched messages.
-
-.B invalid_request
-number of requests made by IPC which are invalid (calling non-existing call, ...).
-
-.B name
-contains short name of the IPC connection (unavailable on some platforms).
-
-.B overload
-is number of requests which were not processed because of overload.
-
-.B queue_size
-contains the number of messages in the queue waiting for send.
-
-.B recv_retries
-is the total number of interrupted receives.
-
-.B requests
-contains the number of requests made by IPC.
-
-.B responses
-is the number of responses sent to the IPC client.
-
-.B send_retries
-contains the total number of interrupted sends.
-
-.B service_id
-contains the ID of service which the IPC is connected to.
-
-.TP
 runtime.config.*
 Contains the values actually in use by the totem membership protocol.
 Values here are either taken from the Corosync configuration file,
@@ -151,8 +104,64 @@ call (so for example 3 in cpg service is receive of multicast message from other
 nodes).
 
 .TP
-runtime.totem.pg.mrp.srp.*
-Prefix containing statistics about totem. All keys here are read only.
+runtime.totem.members.*
+Prefix containing members of the totem single ring protocol. Each member
+keys has format runtime.totem.members.NODEID.KEY, where key is
+one of:
+
+.B config_version
+Config version of the member node.
+
+.TP
+resources.process.PID.*
+Prefix created by applications using SAM with CMAP integration.
+It contains the following keys:
+
+.B recovery
+Recovery policy of the process. Can be one of quit or restart.
+
+.B poll_period
+Value passed in sam_initialize as a time_interval.
+
+.B last_updated
+Last time SAM received a heartbeat from the client.
+
+.B state
+State of the client. Can be one of failed, stopped, running and waiting for quorum.
+
+.TP
+uidgid.*
+Information about users/groups which are allowed to make IPC connections to
+corosync. Entries loaded from configuration file are stored with
+uidgid.config.* prefix and are pruned on configuration file reload. Dynamic
+entries has uidgid.* prefix and a configuration file reload doesn't affect them.
+
+.TP
+quorum.cancel_wait_for_all
+Tells votequorum to cancel waiting for all nodes at cluster startup. Can be used
+to unblock quorum if notes are known to be down. For pcs use only.
+
+.TP
+config.reload_in_progress
+This value will be set to 1 (or created) when a corosync.conf reload is started,
+and set to 0 when the reload is completed. This allows interested subsystems
+to do atomic reconfiguration rather than changing each key. Note that 
+individual add/change/delete notifications will still be sent during a reload.
+
+.TP
+config.totemconfig_reload_in_progress
+This key is similar to
+.B config.totemconfig_reload_in_progress
+but changed after the totem config trigger is processed. It is useful (mainly)
+for situations when
+.B nodelist.local_node_pos
+must be correctly reinstated before anything else.
+
+.SH STATS KEYS
+These keys are in the stats map. All keys in this map are read-only.
+.TP
+stats.srp.*
+Prefix containing statistics about totem.
 Typical key prefixes:
 
 .B commit_entered
@@ -237,68 +246,108 @@ Average time in milliseconds of holding time of token on the current processor.
 Average number of not yet sent messages on the current processor.
 
 .TP
-runtime.totem.pg.mrp.srp.members.*
-Prefix containing members of the totem single ring protocol. Each member
-keys has format runtime.totem.pg.mrp.srp.members.NODEID.KEY, where key is
-one of:
+stats.knet.nodeX.linkY.*
+Statistics about the network traffic to and from each node and link when using
+tke kronosnet transport
 
-.B ip
-IP address of member. It's stored in format r(RING_ID) ip(IP_ADDRESS).
+.B connected
+Whether the link is connected or not
 
-.B join_count
-Number of times the processor joined membership with local cluster. When
-processor fails and rejoins again, this value is incremented.
+.B up_count
+Number of times this link has changed state to UP
 
-.B status
-Status of the processor. Can be one of joined and left.
+.B down_count
+Number of times this link has changed state to DOWN
 
-.B config_version
-Config version of the member node.
+.B latency_ave / latency_max / latency_max
+Calculated latencies of this link. Note that if there has been no traffic
+on the link then latency_min will show a very large number.
+
+.B latency_samples
+The number of samples used to calculate the latency figures, so you have
+some idea of their precision.
+
+.B rx_data_packets / tx_data_packets
+The number of packets sent/received on this link
+
+.B rx_data_bytes / tx_data_bytes
+The number of bytes sent/received on this link
+
+.B rx_pmtu_packets / tx_pmtu_packets
+The number of packets sent/received by the PMTUd subsystem
+
+.B rx_pmtu_bytes / tx_pmtu_bytes
+The number of bytes sent/received by the PMTUd subsystem
+
+.B rx_ping_packets / tx_ping_packets
+The number of packets sent/received as pings
+
+.B rx_ping_bytes / tx_ping_bytes
+The number of bytes sent/received as pings
+
+.B rx_pong_packets / tx_pong_packets
+The number of packets sent/received as pongs
+
+.B rx_pong_bytes / tx_pong_bytes
+The number of bytes sent/received as pongs
+
+.B rx_total_packets / tx_total_packets
+The total number of packets sent/received. The aggregate of all of the above packet stats
+
+.B rx_total_bytes / tx_total_bytes
+The total number of bytes sent/received. The aggregate of all of the above bytes stats
+
+.B tx_data_retries / tx_pmtu_retries / tx_ping_retries / tx_pong_retries / tx_total_retries
+Number of times a transmit operation had to be retried due to the socket returning EAGAIN
 
 .TP
-resources.process.PID.*
-Prefix created by applications using SAM with CMAP integration.
-It contains the following keys:
-
-.B recovery
-Recovery policy of the process. Can be one of quit or restart.
-
-.B poll_period
-Value passed in sam_initialize as a time_interval.
-
-.B last_updated
-Last time SAM received a heartbeat from the client.
-
-.B state
-State of the client. Can be one of failed, stopped, running and waiting for quorum.
+stats.ipcs.*
+There is information about total number of active connections from client programs
+at the time the request was made.
+.B active
+number of closed connections during whole runtime of corosync
+.B closed
+Total number of connnections that have been made since corosync was started
 
 .TP
-uidgid.*
-Information about users/groups which are allowed to make IPC connections to
-corosync. Entries loaded from configuration file are stored with
-uidgid.config.* prefix and are pruned on configuration file reload. Dynamic
-entries has uidgid.* prefix and a configuration file reload doesn't affect them.
+stats.ipcs.ID.*
+Each IPC connection has a unique ID. This is in the form [[serviceX:][PID:]internal_id.
 
-.TP
-quorum.cancel_wait_for_all
-Tells votequorum to cancel waiting for all nodes at cluster startup. Can be used
-to unblock quorum if notes are known to be down. For pcs use only.
+Typical keys in this prefix are:
 
-.TP
-config.reload_in_progress
-This value will be set to 1 (or created) when a corosync.conf reload is started,
-and set to 0 when the reload is completed. This allows interested subsystems
-to do atomic reconfiguration rather than changing each key. Note that 
-individual add/change/delete notifications will still be sent during a reload.
+.B proc_name
+process name of connected process (unavailable on some platforms)
 
-.TP
-config.totemconfig_reload_in_progress
-This key is similar to
-.B config.totemconfig_reload_in_progress
-but changed after the totem config trigger is processed. It is useful (mainly)
-for situations when
-.B nodelist.local_node_pos
-must be correctly reinstated before anything else.
+.B dispatched
+number of dispatched messages.
+
+.B invalid_request
+number of requests made by IPC which are invalid (calling non-existing call, ...).
+
+.B name
+contains short name of the IPC connection (unavailable on some platforms).
+
+.B overload
+is number of requests which were not processed because of overload.
+
+.B queue_size
+contains the number of messages in the queue waiting for send.
+
+.B recv_retries
+is the total number of interrupted receives.
+
+.B requests
+contains the number of requests made by IPC.
+
+.B responses
+is the number of responses sent to the IPC client.
+
+.B send_retries
+contains the total number of interrupted sends.
+
+.B service_id
+contains the ID of service which the IPC is connected to.
+
 
 .SH DYNAMIC CHANGE USER/GROUP PERMISSION TO USE COROSYNC IPC
 Is the same as in the configuration file. eg: to add UID 500 use

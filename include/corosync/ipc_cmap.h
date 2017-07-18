@@ -252,10 +252,11 @@ struct res_lib_cmap_notify_callback {
 
 /**
  * @brief The req_lib_cmap_set_current_map struct
+ * used by cmap_initialize_map()
  */
 struct req_lib_cmap_set_current_map {
 	struct qb_ipc_request_header header __attribute__((aligned(8)));
-	mar_int32_t new_map __attribute__((aligned(8)));
+	mar_int32_t map __attribute__((aligned(8)));
 };
 
 
