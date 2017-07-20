@@ -52,6 +52,7 @@
 
 #include <qb/qbdefs.h>
 #include <qb/qbloop.h>
+#include <qb/qbmap.h>
 #include <qb/qblog.h>
 
 #include <corosync/corotypes.h>
@@ -86,6 +87,11 @@ struct notify_callbacks {
 	link_faulty_fn_t link_faulty_fn;
 };
 
+struct track_item {
+	char key_name[CMAP_KEYNAME_MAXLEN + 1];
+	cmap_track_handle_t track_handle;
+};
+
 #define MAX_NOTIFIERS 5
 static int num_notifiers = 0;
 static struct notify_callbacks notifiers[MAX_NOTIFIERS];
@@ -93,6 +99,7 @@ static uint32_t local_nodeid = 0;
 static char local_nodename[CS_MAX_NAME_LENGTH];
 static qb_loop_t *main_loop;
 static quorum_handle_t quorum_handle;
+static qb_map_t *tracker_map;
 
 static void _cs_node_membership_event(char *nodename, uint32_t nodeid, char *state, char* ip);
 static void _cs_node_quorum_event(const char *state);
@@ -258,18 +265,19 @@ static void _cs_cmap_connections_key_changed (
 	char obj_name[CS_MAX_NAME_LENGTH];
 	char conn_str[CMAP_KEYNAME_MAXLEN];
 	char tmp_key[CMAP_KEYNAME_MAXLEN];
+	int service, pid;
 	int res;
 
-	res = sscanf(key_name, "runtime.connections.%[^.].%s", conn_str, tmp_key);
-	if (res != 2) {
+	res = sscanf(key_name, "stats.ipcs.service%d.%d.%[^.].%s", &service,&pid, conn_str, tmp_key);
+	if (res != 4) {
 		return ;
 	}
 
-	if (strcmp(tmp_key, "service_id") != 0) {
+	if (strcmp(tmp_key, "cnx.procname") != 0) {
 		return ;
 	}
 
-	snprintf(obj_name, CS_MAX_NAME_LENGTH, "%s", conn_str);
+	snprintf(obj_name, CS_MAX_NAME_LENGTH, "%s.%d.%s", conn_str, pid, (char*)new_value.data);
 
 	if (event == CMAP_TRACK_ADD) {
 		_cs_application_connection_event(obj_name, "connected");
@@ -280,8 +288,6 @@ static void _cs_cmap_connections_key_changed (
 	}
 }
 
-
-// CC: TEST
 static void _cs_cmap_link_faulty_key_changed (
 	cmap_handle_t cmap_handle_c,
 	cmap_track_handle_t cmap_track_handle,
@@ -304,7 +310,7 @@ static void _cs_cmap_link_faulty_key_changed (
 	}
 
 	no_retries = 0;
-	while ((err = cmap_get_uint8(cmap_handle, key_name, &connected)) == CS_ERR_TRY_AGAIN &&
+	while ((err = cmap_get_uint8(stats_handle, key_name, &connected)) == CS_ERR_TRY_AGAIN &&
 			no_retries++ < CMAP_MAX_RETRIES) {
 		sleep(1);
 	}
@@ -314,18 +320,55 @@ static void _cs_cmap_link_faulty_key_changed (
 	}
 
 	if (connected) {
-		_cs_link_faulty_event(nodeid, iface_no, "disconnected");
-	} else {
 		_cs_link_faulty_event(nodeid, iface_no, "operational");
+	} else {
+		_cs_link_faulty_event(nodeid, iface_no, "disconnected");
 	}
 }
+
+static void _cs_cmap_link_added_removed (
+	cmap_handle_t cmap_handle_c,
+	cmap_track_handle_t track_handle,
+	int32_t event,
+	const char *key_name,
+	struct cmap_notify_value new_value,
+	struct cmap_notify_value old_value,
+	void *user_data)
+{
+	struct track_item *track_item;
+
+	/* Add/remove a tracker for a new/removed knet link */
+	if (strstr(key_name, ".connected")) {
+		if (event == CMAP_TRACK_ADD) {
+
+			track_item = malloc(sizeof(struct track_item));
+			if (!track_item) {
+				return;
+			}
+			cmap_track_add(stats_handle, key_name, CMAP_TRACK_MODIFY, _cs_cmap_link_faulty_key_changed, NULL, &track_handle);
+
+			strcpy(track_item->key_name, key_name);
+			track_item->track_handle = track_handle;
+			qb_map_put(tracker_map, track_item->key_name, track_item);
+		}
+		else {
+			track_item = qb_map_get(tracker_map, key_name);
+			if (track_item) {
+				cmap_track_delete(stats_handle, track_item->track_handle);
+				qb_map_rm(tracker_map, track_item->key_name);
+				free(track_item);
+			}
+		}
+	}
+}
+
 
 static int
 _cs_cmap_dispatch(int fd, int revents, void *data)
 {
 	cs_error_t err;
 
-	err = cmap_dispatch(cmap_handle, CS_DISPATCH_ONE);
+	err = cmap_dispatch(*(cmap_handle_t *)data, CS_DISPATCH_ONE);
 
 	if (err != CS_OK && err != CS_ERR_TRY_AGAIN && err != CS_ERR_TIMEOUT &&
 		err != CS_ERR_QUEUE_FULL) {
@@ -902,7 +945,7 @@ _cs_syslog_application_connection_event(char *nodename, uint32_t nodeid, char* a
 static void
 _cs_syslog_link_faulty_event(char *nodename, uint32_t our_nodeid, uint32_t nodeid, uint32_t iface_no, const char *state)
 {
-	qb_log(LOG_NOTICE, "%s[%d] link %u to %u is now %s", nodename, our_nodeid, iface_no, nodeid, state);
+	qb_log(LOG_NOTICE, "%s[%d] link %u to node %u is now %s", nodename, our_nodeid, iface_no, nodeid, state);
 }
 
 static void
@@ -999,32 +1042,77 @@ sig_exit_handler(int32_t num, void *data)
 	return 0;
 }
 
+static void track_link_updown_events(void)
+{
+	cmap_iter_handle_t iter_handle;
+	cmap_track_handle_t track_handle;
+
+	char key_name[CMAP_KEYNAME_MAXLEN + 1];
+	size_t value_len;
+	cmap_value_types_t type;
+	cs_error_t err;
+	struct track_item *track_item;
+
+	err = cmap_iter_init(stats_handle, "stats.knet.", &iter_handle);
+	if (err != CS_OK) {
+		fprintf (stderr, "Failed to initialize knet stats iterator. Error %s\n", cs_strerror(err));
+		exit (EXIT_FAILURE);
+	}
+
+	while ((err = cmap_iter_next(stats_handle, iter_handle, key_name, &value_len, &type)) == CS_OK) {
+		if (strstr(key_name, ".connected")) {
+
+			track_item = malloc(sizeof(struct track_item));
+			if (!track_item) {
+				return;
+			}
+
+			if ((err = cmap_track_add(stats_handle, key_name, CMAP_TRACK_MODIFY, _cs_cmap_link_faulty_key_changed, NULL, &track_handle)) != CS_OK) {
+				fprintf (stderr, "Failed to add tracker for %s. Error %s\n", key_name, cs_strerror(err));
+				exit (EXIT_FAILURE);
+			}
+			strcpy(track_item->key_name, key_name);
+			track_item->track_handle = track_handle;
+			qb_map_put(tracker_map, track_item->key_name, track_item);
+
+		}
+	}
+	cmap_iter_finalize(stats_handle, iter_handle);
+}
+
 static void
 _cs_cmap_init(void)
 {
 	cs_error_t rc;
 	int cmap_fd = 0;
+	int stats_fd = 0;
 	cmap_track_handle_t track_handle;
 
-	rc = cmap_initialize (&cmap_handle);
+	tracker_map = qb_trie_create();
+	if (!tracker_map) {
+		qb_log(LOG_ERR, "Failed to initialize the track map. Error %d", rc);
+		exit (EXIT_FAILURE);
+	}
+
+	rc = cmap_initialize_map (&cmap_handle, CMAP_MAP_ICMAP);
 	if (rc != CS_OK) {
 		qb_log(LOG_ERR, "Failed to initialize the cmap API. Error %d", rc);
 		exit (EXIT_FAILURE);
 	}
 	cmap_fd_get(cmap_handle, &cmap_fd);
 
-	qb_loop_poll_add(main_loop, QB_LOOP_MED, cmap_fd, POLLIN|POLLNVAL, NULL,
+	qb_loop_poll_add(main_loop, QB_LOOP_MED, cmap_fd, POLLIN|POLLNVAL, (void*)&cmap_handle,
 		_cs_cmap_dispatch);
 
 
-	rc = cmap_initialize_map (&cmap_handle, CMAP_MAP_STATS);
+	rc = cmap_initialize_map (&stats_handle, CMAP_MAP_STATS);
 	if (rc != CS_OK) {
 		qb_log(LOG_ERR, "Failed to initialize the cmap stats API. Error %d", rc);
 		exit (EXIT_FAILURE);
 	}
-	cmap_fd_get(cmap_handle, &cmap_fd);
+	cmap_fd_get(stats_handle, &stats_fd);
 
-	qb_loop_poll_add(main_loop, QB_LOOP_MED, cmap_fd, POLLIN|POLLNVAL, NULL,
+	qb_loop_poll_add(main_loop, QB_LOOP_MED, stats_fd, POLLIN|POLLNVAL, (void*)&stats_handle,
 		_cs_cmap_dispatch);
 
 
@@ -1039,7 +1127,6 @@ _cs_cmap_init(void)
 		exit (EXIT_FAILURE);
 	}
 
-	// TODO stats
 	rc = cmap_track_add(stats_handle, "stats.ipcs.",
 			CMAP_TRACK_ADD | CMAP_TRACK_DELETE | CMAP_TRACK_PREFIX,
 			_cs_cmap_connections_key_changed,
@@ -1051,17 +1138,18 @@ _cs_cmap_init(void)
 		exit (EXIT_FAILURE);
 	}
 
-	// TODO also stats
 	rc = cmap_track_add(stats_handle, "stats.knet.",
-			CMAP_TRACK_ADD | CMAP_TRACK_MODIFY | CMAP_TRACK_PREFIX,
-			_cs_cmap_link_faulty_key_changed,
+			CMAP_TRACK_ADD | CMAP_TRACK_DELETE | CMAP_TRACK_PREFIX,
+			_cs_cmap_link_added_removed,
 			NULL,
 			&track_handle);
 	if (rc != CS_OK) {
 		qb_log(LOG_ERR,
-			"Failed to track the link status key. Error %d", rc);
+			"Failed to track the knet link status key. Error %d", rc);
 		exit (EXIT_FAILURE);
 	}
+	track_link_updown_events();
+
 }
 
 static void

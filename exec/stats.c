@@ -298,6 +298,7 @@ cs_error_t stats_map_get(const char *key_name,
 			if (sscanf(key_name, "stats.knet.node%d.link%d", &nodeid, &link_no) != 2) {
 				return CS_ERR_NOT_EXIST;
 			}
+
 			/* Validate node & link IDs */
 			if (nodeid <= 0 || nodeid > KNET_MAX_HOST ||
 			    link_no < 0 || link_no > KNET_MAX_LINK) {
@@ -330,7 +331,6 @@ cs_error_t stats_map_get(const char *key_name,
 	}
 	return CS_OK;
 }
-
 
 cs_error_t stats_map_set(const char *key_name,
 			 const void *value,
@@ -396,11 +396,16 @@ void stats_trigger_trackers()
 	qb_list_for_each(iter, &stats_tracker_list_head) {
 
 		tracker = qb_list_entry(iter, struct cs_stats_tracker, list);
+		if (tracker->events & ICMAP_TRACK_PREFIX) {
+			continue;
+		}
+
 		res = stats_map_get(tracker->key_name,
 				    &value, &value_len, &type);
 
 		/* Check if it has changed */
-		if (res == CS_OK && memcmp(&value, &tracker->old_value, value_len) != 0) {
+		if ((res == CS_OK) && (memcmp(&value, &tracker->old_value, value_len) != 0)) {
+
 			old_val.type = new_val.type = type;
 			old_val.len = new_val.len = value_len;
 			old_val.data = new_val.data = &value;

@@ -1,5 +1,5 @@
 .\"/*
-.\" * Copyright (c) 2012 Red Hat, Inc.
+.\" * Copyright (c) 2017 Red Hat, Inc.
 .\" *
 .\" * All rights reserved.
 .\" *
@@ -31,48 +31,43 @@
 .\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 .\" * THE POSSIBILITY OF SUCH DAMAGE.
 .\" */
-.TH "CMAP_OVERVIEW" 8 "03/02/2012" "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
+.TH "CMAP_INITIALIZE_MAP" 3 "20/07/2017" "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
 
 .SH NAME
 .P
-cmap_overview \- Overview of the Configuration Map
+cmap_initialize_map \- Initialize CMAP API with a specific map
 
-.SH OVERVIEW
+.SH SYNOPSIS
 .P
-The CMAP library is used to interact with the configuration & statistics databases used by corosync.
+\fB#include <corosync/cmap.h>\fR
 
-.PP
-The library provides a mechanism to:
-.PP
-* Create of new keys
-.PP
-* Change existing keys
-.PP
-* Remove keys
-.PP
-* Iterate keys with given prefix
-.PP
-* Track changes on keys
+.P
+\fBcs_error_t cmap_initialize_map (cmap_handle_t \fI*handle\fB, cmap_map_t \fImap\fB);\fR
 
-Description of most keys created by corosync itself can be found in cmap_keys (8).
+.SH DESCRIPTION
+.P
+The \fBcmap_initialize_map\fR function is used to initialize a connection to
+the Configuration Map API and specify a particular map to use. Each application may have 
+several connections to the CMAP API and to different maps.
+Each application uses the
+.I handle
+argument to uniquely identify the connection.  The
+.I handle
+argument is then used in other function calls to identify the connection to be used
+for communication with the CMAP service.
+.P
+The 
+.I map
+argument specifies which map to connect to. \fICMAP_MAP_ICMAP\fB is the configuration map
+that contains the current corosyn cconfiguraton and some runtime variables that maybe useful
+to external agents. \fICMAP_MAP_STATS\fB is the statistics map that conains detailed information
+about network and inter-process communications.
 
-.SH BUGS
+
+.SH RETURN VALUE
+This call returns the CS_OK value if successful, otherwise an error is returned.
+
 .SH "SEE ALSO"
 .BR cmap_initialize (3),
-.BR cmap_initialize_map (3),
 .BR cmap_finalize (3),
-.BR cmap_get (3),
-.BR cmap_set (3),
-.BR cmap_delete (3),
-.BR cmap_inc (3),
-.BR cmap_dec (3),
-.BR cmap_fd_get (3),
-.BR cmap_dispatch (3),
-.BR cmap_context_set (3),
-.BR cmap_context_get (3),
-.BR cmap_iter_init (3),
-.BR cmap_iter_next (3),
-.BR cmap_iter_finalize (3),
-.BR cmap_track_add (3),
-.BR cmap_track_delete (3),
-.BR cmap_keys (8)
+.BR cmap_overview (8)
