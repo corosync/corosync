@@ -159,6 +159,9 @@ must be correctly reinstated before anything else.
 
 .SH STATS KEYS
 These keys are in the stats map. All keys in this map are read-only.
+Modification tracking of individual keys is supported in the stats map, but not
+prefixes. Add/Delete operations are supported on prefixes though so you can track
+for new ipc connections or knet interfaces.
 .TP
 stats.srp.*
 Prefix containing statistics about totem.

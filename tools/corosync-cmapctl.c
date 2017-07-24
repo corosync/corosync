@@ -53,7 +53,6 @@ enum user_action {
 	ACTION_SET,
 	ACTION_DELETE,
 	ACTION_DELETE_PREFIX,
-	ACTION_PRINT_ALL,
 	ACTION_PRINT_PREFIX,
 	ACTION_TRACK,
 	ACTION_LOAD,
@@ -813,17 +812,12 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if (argc == 1 || (argc == 2 && show_binary) || (argc == 2 && map_set) ||
-	    (argc == 3 && map_set && show_binary)) {
-		action = ACTION_PRINT_ALL;
-	}
-
 	argc -= optind;
 	argv += optind;
 
 	if (argc == 0 &&
 	    action != ACTION_LOAD &&
-	    action != ACTION_PRINT_ALL) {
+	    action != ACTION_PRINT_PREFIX) {
 		fprintf(stderr, "Expected key after options\n");
 		return (EXIT_FAILURE);
 	}
@@ -840,12 +834,14 @@ int main(int argc, char *argv[])
 	}
 
 	switch (action) {
-	case ACTION_PRINT_ALL:
-		print_iter(handle, NULL);
-		break;
 	case ACTION_PRINT_PREFIX:
-		for (i = 0; i < argc; i++) {
-			print_iter(handle, argv[i]);
+		if (argc == 0) {
+			print_iter(handle, NULL);
+		}
+		else {
+			for (i = 0; i < argc; i++) {
+				print_iter(handle, argv[i]);
+			}
 		}
 		break;
 	case ACTION_GET:

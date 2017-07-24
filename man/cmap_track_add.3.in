@@ -156,6 +156,12 @@ free it.
 This call returns the CS_OK value if successful. It can return CS_ERR_INVALID_PARAM if
 notify_fn is NULL or track_type is invalid value.
 
+.SH NOTES
+Modification tracking of individual keys is supported in the stats map, but not
+prefixes. Add/Delete operations are supported on prefixes though so you can track
+for new ipc connections or knet interfaces.
+In the icmap map, prefix tracking is fully supported.
+
 .SH "SEE ALSO"
 .BR cmap_track_delete (3),
 .BR cmap_initialize (3),

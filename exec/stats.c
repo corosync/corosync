@@ -480,7 +480,7 @@ cs_error_t stats_map_track_add(const char *key_name,
 		tracker->key_name = strdup(key_name);
 	}
 	else {
-		tracker->key_name = strdup("");
+		tracker->key_name = strdup("stats");
 	}
 
 	if (!tracker->key_name) {
