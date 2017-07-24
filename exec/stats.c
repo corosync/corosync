@@ -116,7 +116,7 @@ struct cs_stats_conv cs_knet_stats[] = {
 	{ STAT_KNET, "rx_ping_packets",  offsetof(struct knet_link_status, stats.rx_ping_packets),  ICMAP_VALUETYPE_UINT64},
 	{ STAT_KNET, "tx_ping_bytes",    offsetof(struct knet_link_status, stats.tx_ping_bytes),    ICMAP_VALUETYPE_UINT64},
 	{ STAT_KNET, "rx_ping_bytes",    offsetof(struct knet_link_status, stats.rx_ping_bytes),    ICMAP_VALUETYPE_UINT64},
- 	{ STAT_KNET, "tx_pong_packets",  offsetof(struct knet_link_status, stats.tx_pong_packets),  ICMAP_VALUETYPE_UINT64},
+	{ STAT_KNET, "tx_pong_packets",  offsetof(struct knet_link_status, stats.tx_pong_packets),  ICMAP_VALUETYPE_UINT64},
 	{ STAT_KNET, "rx_pong_packets",  offsetof(struct knet_link_status, stats.rx_pong_packets),  ICMAP_VALUETYPE_UINT64},
 	{ STAT_KNET, "tx_pong_bytes",    offsetof(struct knet_link_status, stats.tx_pong_bytes),    ICMAP_VALUETYPE_UINT64},
 	{ STAT_KNET, "rx_pong_bytes",    offsetof(struct knet_link_status, stats.rx_pong_bytes),    ICMAP_VALUETYPE_UINT64},
@@ -146,19 +146,19 @@ struct cs_stats_conv cs_knet_stats[] = {
 	{ STAT_KNET, "up_count",         offsetof(struct knet_link_status, stats.up_count),         ICMAP_VALUETYPE_UINT32},
 };
 struct cs_stats_conv cs_ipcs_conn_stats[] = {
-	{ STAT_IPCSC, "cnx.queueing",        offsetof(struct ipcs_conn_stats, cnx.queuing),          ICMAP_VALUETYPE_INT32},
-	{ STAT_IPCSC, "cnx.queued",          offsetof(struct ipcs_conn_stats, cnx.queued),           ICMAP_VALUETYPE_UINT32},
-	{ STAT_IPCSC, "cnx.invalid_request", offsetof(struct ipcs_conn_stats, cnx.invalid_request),  ICMAP_VALUETYPE_UINT64},
-	{ STAT_IPCSC, "cnx.overload",        offsetof(struct ipcs_conn_stats, cnx.overload),         ICMAP_VALUETYPE_UINT64},
-	{ STAT_IPCSC, "cnx.sent",            offsetof(struct ipcs_conn_stats, cnx.sent),             ICMAP_VALUETYPE_UINT32},
-	{ STAT_IPCSC, "cnx.procname",        offsetof(struct ipcs_conn_stats, cnx.proc_name),        ICMAP_VALUETYPE_STRING},
-	{ STAT_IPCSC, "conn.requests",       offsetof(struct ipcs_conn_stats, conn.requests),        ICMAP_VALUETYPE_UINT64},
-	{ STAT_IPCSC, "conn.responses",      offsetof(struct ipcs_conn_stats, conn.responses),       ICMAP_VALUETYPE_UINT64},
-	{ STAT_IPCSC, "conn.dispatched",     offsetof(struct ipcs_conn_stats, conn.events),          ICMAP_VALUETYPE_UINT64},
-	{ STAT_IPCSC, "conn.send_retries",   offsetof(struct ipcs_conn_stats, conn.send_retries),    ICMAP_VALUETYPE_UINT64},
-	{ STAT_IPCSC, "conn.recv_retries",   offsetof(struct ipcs_conn_stats, conn.recv_retries),    ICMAP_VALUETYPE_UINT64},
-	{ STAT_IPCSC, "conn.flow_control",   offsetof(struct ipcs_conn_stats, conn.flow_control_state),    ICMAP_VALUETYPE_UINT32},
-	{ STAT_IPCSC, "conn.flow_control_count",   offsetof(struct ipcs_conn_stats, conn.flow_control_count),    ICMAP_VALUETYPE_UINT64},
+	{ STAT_IPCSC, "queueing",        offsetof(struct ipcs_conn_stats, cnx.queuing),          ICMAP_VALUETYPE_INT32},
+	{ STAT_IPCSC, "queued",          offsetof(struct ipcs_conn_stats, cnx.queued),           ICMAP_VALUETYPE_UINT32},
+	{ STAT_IPCSC, "invalid_request", offsetof(struct ipcs_conn_stats, cnx.invalid_request),  ICMAP_VALUETYPE_UINT64},
+	{ STAT_IPCSC, "overload",        offsetof(struct ipcs_conn_stats, cnx.overload),         ICMAP_VALUETYPE_UINT64},
+	{ STAT_IPCSC, "sent",            offsetof(struct ipcs_conn_stats, cnx.sent),             ICMAP_VALUETYPE_UINT32},
+	{ STAT_IPCSC, "procname",        offsetof(struct ipcs_conn_stats, cnx.proc_name),        ICMAP_VALUETYPE_STRING},
+	{ STAT_IPCSC, "requests",        offsetof(struct ipcs_conn_stats, conn.requests),        ICMAP_VALUETYPE_UINT64},
+	{ STAT_IPCSC, "responses",       offsetof(struct ipcs_conn_stats, conn.responses),       ICMAP_VALUETYPE_UINT64},
+	{ STAT_IPCSC, "dispatched",      offsetof(struct ipcs_conn_stats, conn.events),          ICMAP_VALUETYPE_UINT64},
+	{ STAT_IPCSC, "send_retries",    offsetof(struct ipcs_conn_stats, conn.send_retries),    ICMAP_VALUETYPE_UINT64},
+	{ STAT_IPCSC, "recv_retries",    offsetof(struct ipcs_conn_stats, conn.recv_retries),    ICMAP_VALUETYPE_UINT64},
+	{ STAT_IPCSC, "flow_control",    offsetof(struct ipcs_conn_stats, conn.flow_control_state),    ICMAP_VALUETYPE_UINT32},
+	{ STAT_IPCSC, "flow_control_count",   offsetof(struct ipcs_conn_stats, conn.flow_control_count),    ICMAP_VALUETYPE_UINT64},
 };
 struct cs_stats_conv cs_ipcs_global_stats[] = {
 	{ STAT_IPCSG, "global.active",        offsetof(struct ipcs_global_stats, active),           ICMAP_VALUETYPE_UINT64},
@@ -479,6 +479,14 @@ cs_error_t stats_map_track_add(const char *key_name,
 	if (key_name) {
 		tracker->key_name = strdup(key_name);
 	}
+	else {
+		tracker->key_name = strdup("");
+	}
+
+	if (!tracker->key_name) {
+		free(tracker);
+		return CS_ERR_NO_MEMORY;
+	}
 
 	/* Get initial value */
 	if (stats_map_get(tracker->key_name,
@@ -538,23 +546,23 @@ void *stats_map_track_get_user_data(icmap_track_t icmap_track)
 }
 
 /* Called from totemknet to add/remove keys from our map */
-void stats_knet_add_member(knet_node_id_t nodeid, uint8_t link)
+void stats_knet_add_member(knet_node_id_t nodeid, uint8_t link_no)
 {
 	int i;
 	char param[ICMAP_KEYNAME_MAXLEN];
 
 	for (i = 0; i<NUM_KNET_STATS; i++) {
-		sprintf(param, "stats.knet.node%d.link%d.%s", nodeid, link, cs_knet_stats[i].name);
+		sprintf(param, "stats.knet.node%d.link%d.%s", nodeid, link_no, cs_knet_stats[i].name);
 		stats_add_entry(param, &cs_knet_stats[i]);
 	}
 }
-void stats_knet_del_member(knet_node_id_t nodeid, uint8_t link)
+void stats_knet_del_member(knet_node_id_t nodeid, uint8_t link_no)
 {
 	int i;
 	char param[ICMAP_KEYNAME_MAXLEN];
 
 	for (i = 0; i<NUM_KNET_STATS; i++) {
-		sprintf(param, "stats.knet.node%d.link%d.%s", nodeid, link, cs_knet_stats[i].name);
+		sprintf(param, "stats.knet.node%d.link%d.%s", nodeid, link_no, cs_knet_stats[i].name);
 		stats_rm_entry(param);
 	}
 }

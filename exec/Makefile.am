@@ -40,7 +40,7 @@ noinst_HEADERS		= apidef.h cs_queue.h logconfig.h main.h \
 
 TOTEM_SRC		= totemip.c totemnet.c totemudp.c \
 			  totemudpu.c totemsrp.c \
-			  totempg.c totemknet.c stats.c
+			  totempg.c totemknet.c
 
 
 lib_LTLIBRARIES		= libtotem_pg.la
@@ -55,7 +55,7 @@ sbin_PROGRAMS		= corosync
 corosync_SOURCES	= vsf_ykd.c coroparse.c vsf_quorum.c sync.c \
 			  logsys.c cfg.c cmap.c cpg.c pload.c \
 			  votequorum.c util.c schedwrk.c main.c \
-			  apidef.c quorum.c icmap.c timer.c \
+			  apidef.c quorum.c icmap.c timer.c stats.c \
 			  ipc_glue.c service.c logconfig.c totemconfig.c
 
 if BUILD_MONITORING

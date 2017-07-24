@@ -47,7 +47,7 @@ cmap_initialize_map \- Initialize CMAP API with a specific map
 .SH DESCRIPTION
 .P
 The \fBcmap_initialize_map\fR function is used to initialize a connection to
-the Configuration Map API and specify a particular map to use. Each application may have 
+the Configuration Map API and specify a particular map to use. Each application may have
 several connections to the CMAP API and to different maps.
 Each application uses the
 .I handle
@@ -56,7 +56,7 @@ argument to uniquely identify the connection.  The
 argument is then used in other function calls to identify the connection to be used
 for communication with the CMAP service.
 .P
-The 
+The
 .I map
 argument specifies which map to connect to. \fICMAP_MAP_ICMAP\fB is the configuration map
 that contains the current corosyn cconfiguraton and some runtime variables that maybe useful

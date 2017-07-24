@@ -813,7 +813,8 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if (argc == 1 || (argc == 2 && show_binary) || (argc == 2 && map_set)) {
+	if (argc == 1 || (argc == 2 && show_binary) || (argc == 2 && map_set) ||
+	    (argc == 3 && map_set && show_binary)) {
 		action = ACTION_PRINT_ALL;
 	}
 

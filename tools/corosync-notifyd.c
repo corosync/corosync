@@ -273,7 +273,7 @@ static void _cs_cmap_connections_key_changed (
 		return ;
 	}
 
-	if (strcmp(tmp_key, "cnx.procname") != 0) {
+	if (strcmp(tmp_key, "procname") != 0) {
 		return ;
 	}
 
@@ -1083,7 +1083,7 @@ static void track_link_updown_events(void)
 static void
 _cs_cmap_init(void)
 {
-	cs_error_t rc;
+	cs_error_t rc = CS_OK;
 	int cmap_fd = 0;
 	int stats_fd = 0;
 	cmap_track_handle_t track_handle;
