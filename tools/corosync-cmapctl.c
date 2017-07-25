@@ -837,8 +837,7 @@ int main(int argc, char *argv[])
 	case ACTION_PRINT_PREFIX:
 		if (argc == 0) {
 			print_iter(handle, NULL);
-		}
-		else {
+		} else {
 			for (i = 0; i < argc; i++) {
 				print_iter(handle, argv[i]);
 			}

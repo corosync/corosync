@@ -396,7 +396,7 @@ void stats_trigger_trackers()
 	qb_list_for_each(iter, &stats_tracker_list_head) {
 
 		tracker = qb_list_entry(iter, struct cs_stats_tracker, list);
-		if (tracker->events & ICMAP_TRACK_PREFIX) {
+		if (tracker->events & ICMAP_TRACK_PREFIX || !tracker->key_name ) {
 			continue;
 		}
 
@@ -478,19 +478,17 @@ cs_error_t stats_map_track_add(const char *key_name,
 	tracker->user_data = user_data;
 	if (key_name) {
 		tracker->key_name = strdup(key_name);
-	}
-	else {
-		tracker->key_name = strdup("stats");
-	}
-
-	if (!tracker->key_name) {
-		free(tracker);
-		return CS_ERR_NO_MEMORY;
-	}
-
-	/* Get initial value */
-	if (stats_map_get(tracker->key_name,
-			  &tracker->old_value, &value_len, &type) == CS_OK) {
+		if (!tracker->key_name) {
+			free(tracker);
+			return CS_ERR_NO_MEMORY;
+		}
+		/* Get initial value */
+		if (stats_map_get(tracker->key_name,
+				  &tracker->old_value, &value_len, &type) == CS_OK) {
+			tracker->old_value = 0ULL;
+		}
+	} else {
+		tracker->key_name = NULL;
 		tracker->old_value = 0ULL;
 	}
 

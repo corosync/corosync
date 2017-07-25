@@ -350,8 +350,7 @@ static void _cs_cmap_link_added_removed (
 			strcpy(track_item->key_name, key_name);
 			track_item->track_handle = track_handle;
 			qb_map_put(tracker_map, track_item->key_name, track_item);
-		}
-		else {
+		} else {
 			track_item = qb_map_get(tracker_map, key_name);
 			if (track_item) {
 				cmap_track_delete(stats_handle, track_item->track_handle);
