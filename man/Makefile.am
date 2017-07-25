@@ -114,6 +114,7 @@ autogen_man		= cpg_context_get.3 \
 			  cmap_finalize.3 \
 			  cmap_dispatch.3  \
 			  cmap_initialize.3 \
+			  cmap_initialize_map.3 \
 			  cmap_track_add.3 \
 			  cmap_context_set.3 \
 			  cmap_fd_get.3 \

@@ -60,4 +60,5 @@ This call returns the CS_OK value if successful, otherwise an error is returned.
 
 .SH "SEE ALSO"
 .BR cmap_finalize (3),
+.BR cmap_initialize_map (3),
 .BR cmap_overview (8)

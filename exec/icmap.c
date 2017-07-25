@@ -91,21 +91,6 @@ static int icmap_check_key_name(const char *key_name);
 static int icmap_check_value_len(const void *value, size_t value_len, icmap_value_types_t type);
 
 /*
- * Returns length of value of given type, or 0 for string and binary data type
- */
-static size_t icmap_get_valuetype_len(icmap_value_types_t type);
-
-/*
- * Converts track type of icmap to qb
- */
-static int32_t icmap_tt_to_qbtt(int32_t track_type);
-
-/*
- * Convert track type of qb to icmap
- */
-static int32_t icmap_qbtt_to_tt(int32_t track_type);
-
-/*
  * Checks if item has same value as value with value_len and given type. Returns 0 if not, otherwise !0.
  */
 static int icmap_item_eq(const struct icmap_item *item, const void *value, size_t value_len, icmap_value_types_t type);
@@ -139,7 +124,7 @@ static cs_error_t icmap_get_ref_r(
 /*
  * Function implementation
  */
-static int32_t icmap_tt_to_qbtt(int32_t track_type)
+int32_t icmap_tt_to_qbtt(int32_t track_type)
 {
 	int32_t res = 0;
 
@@ -162,7 +147,7 @@ static int32_t icmap_tt_to_qbtt(int32_t track_type)
 	return (res);
 }
 
-static int32_t icmap_qbtt_to_tt(int32_t track_type)
+int32_t icmap_qbtt_to_tt(int32_t track_type)
 {
 	int32_t res = 0;
 
@@ -316,7 +301,7 @@ static int icmap_check_key_name(const char *key_name)
 	return (0);
 }
 
-static size_t icmap_get_valuetype_len(icmap_value_types_t type)
+size_t icmap_get_valuetype_len(icmap_value_types_t type)
 {
 	size_t res = 0;
 

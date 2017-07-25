@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011 Red Hat, Inc.
+ * Copyright (c) 2011-2017 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -52,6 +52,7 @@ enum req_cmap_types {
 	MESSAGE_REQ_CMAP_ITER_FINALIZE = 6,
 	MESSAGE_REQ_CMAP_TRACK_ADD = 7,
 	MESSAGE_REQ_CMAP_TRACK_DELETE = 8,
+	MESSAGE_REQ_CMAP_SET_CURRENT_MAP = 9,
 };
 
 /**
@@ -68,6 +69,12 @@ enum res_cmap_types {
 	MESSAGE_RES_CMAP_TRACK_ADD = 7,
 	MESSAGE_RES_CMAP_TRACK_DELETE = 8,
 	MESSAGE_RES_CMAP_NOTIFY_CALLBACK = 9,
+	MESSAGE_RES_CMAP_SET_CURRENT_MAP = 10,
+};
+
+enum {
+	CMAP_SETMAP_DEFAULT        = 0,
+	CMAP_SETMAP_STATS          = 1,
 };
 
 /**
@@ -242,5 +249,15 @@ struct res_lib_cmap_notify_callback {
 	 */
 	mar_uint8_t new_value[];
 };
+
+/**
+ * @brief The req_lib_cmap_set_current_map struct
+ * used by cmap_initialize_map()
+ */
+struct req_lib_cmap_set_current_map {
+	struct qb_ipc_request_header header __attribute__((aligned(8)));
+	mar_int32_t map __attribute__((aligned(8)));
+};
+
 
 #endif /* IPC_CMAP_H_DEFINED */

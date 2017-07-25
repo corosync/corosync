@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2002-2004 MontaVista Software, Inc.
  * Copyright (c) 2004 Open Source Development Lab
- * Copyright (c) 2006-2011 Red Hat, Inc.
+ * Copyright (c) 2006-2017 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -59,6 +59,7 @@ enum e_corosync_done {
 	COROSYNC_DONE_STD_TO_NULL_REDIR = 19,
 	COROSYNC_DONE_SERVICE_ENGINE_INIT = 20,
 	COROSYNC_DONE_STORE_RINGID = 21,
+	COROSYNC_DONE_STATS = 22,
 	COROSYNC_DONE_PLOAD = 99
 };
 
