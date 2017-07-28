@@ -17,6 +17,7 @@
 %bcond_with runautogen
 %bcond_with qdevices
 %bcond_with qnetd
+%bcond_with libcgroup
 
 %global gitver %{?numcomm:.%{numcomm}}%{?alphatag:.%{alphatag}}%{?dirty:.%{dirty}}
 %global gittarver %{?numcomm:.%{numcomm}}%{?alphatag:-%{alphatag}}%{?dirty:-%{dirty}}
@@ -74,6 +75,9 @@ Requires: nss-tools
 %if %{with qnetd}
 BuildRequires: sed
 %endif
+%if %{with libcgroup}
+BuildRequires: libcgroup-devel
+%endif
 
 BuildRoot: %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 
@@ -124,6 +128,9 @@ export rdmacm_LIBS=-lrdmacm \
 %endif
 %if %{with qnetd}
 	--enable-qnetd \
+%endif
+%if %{with libcgroup}
+	--enable-libcgroup \
 %endif
 	--with-initddir=%{_initrddir} \
 	--with-systemddir=%{_unitdir} \
