@@ -35,7 +35,7 @@
 .SH NAME
 corosync \- The Corosync Cluster Engine.
 .SH SYNOPSIS
-.B "corosync [\-f] [\-P num] [\-p] [\-r] [\-t] [\-v]"
+.B "corosync [\-f] [\-P num] [\-p] [\-r] [-R] [\-t] [\-v]"
 .SH DESCRIPTION
 .B corosync
 Corosync provides clustering infrastructure such as membership, messaging and quorum.
@@ -61,6 +61,10 @@ meaning maximal / minimal priority (so minimal / maximal nice value).
 .B -r
 Set round robin realtime scheduling with maximal priority (default). When setting
 of scheduler fails, fallback to set maximal priority.
+.TP
+.B -R
+Do not try to move Corosync to root cpu cgroup. This feature is available only
+for corosync with libcgroup enabled during the build.
 .TP
 .B -t
 Test configuration and then exit.
