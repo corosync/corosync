@@ -110,6 +110,10 @@
 #include <corosync/logsys.h>
 #include <corosync/icmap.h>
 
+#ifdef HAVE_LIBCGROUP
+#include <libcgroup.h>
+#endif
+
 #include "quorum.h"
 #include "totemsrp.h"
 #include "logconfig.h"
@@ -1134,12 +1138,95 @@ error_close:
 	return (err);
 }
 
+static int corosync_move_to_root_cgroup(void) {
+	int res = -1;
+#ifdef HAVE_LIBCGROUP
+	int cg_ret;
+	struct cgroup *root_cgroup = NULL;
+	struct cgroup_controller *root_cpu_cgroup_controller = NULL;
+	char *current_cgroup_path = NULL;
+
+	cg_ret = cgroup_init();
+	if (cg_ret) {
+		log_printf(LOGSYS_LEVEL_WARNING, "Unable to initialize libcgroup: %s ",
+		    cgroup_strerror(cg_ret));
+
+		goto exit_res;
+	}
+
+	cg_ret = cgroup_get_current_controller_path(getpid(), "cpu", &current_cgroup_path);
+	if (cg_ret) {
+		log_printf(LOGSYS_LEVEL_WARNING, "Unable to get current cpu cgroup path: %s ",
+		    cgroup_strerror(cg_ret));
+
+		goto exit_res;
+	}
+
+	if (strcmp(current_cgroup_path, "/") == 0) {
+		log_printf(LOGSYS_LEVEL_DEBUG, "Corosync is already in root cgroup path");
+
+		res = 0;
+		goto exit_res;
+	}
+
+	root_cgroup = cgroup_new_cgroup("/");
+	if (root_cgroup == NULL) {
+		log_printf(LOGSYS_LEVEL_WARNING, "Can't create root cgroup");
+
+		goto exit_res;
+	}
+
+	root_cpu_cgroup_controller = cgroup_add_controller(root_cgroup, "cpu");
+	if (root_cpu_cgroup_controller == NULL) {
+		log_printf(LOGSYS_LEVEL_WARNING, "Can't create root cgroup cpu controller");
+
+		goto exit_res;
+	}
+
+	cg_ret = cgroup_attach_task(root_cgroup);
+	if (cg_ret) {
+		log_printf(LOGSYS_LEVEL_WARNING, "Can't attach task to root cgroup: %s ",
+		    cgroup_strerror(cg_ret));
+
+		goto exit_res;
+	}
+
+	cg_ret = cgroup_get_current_controller_path(getpid(), "cpu", &current_cgroup_path);
+	if (cg_ret) {
+		log_printf(LOGSYS_LEVEL_WARNING, "Unable to get current cpu cgroup path: %s ",
+		    cgroup_strerror(cg_ret));
+
+		goto exit_res;
+	}
+
+	if (strcmp(current_cgroup_path, "/") == 0) {
+		log_printf(LOGSYS_LEVEL_NOTICE, "Corosync sucesfully moved to root cgroup");
+		res = 0;
+	} else {
+		log_printf(LOGSYS_LEVEL_WARNING, "Can't move Corosync to root cgroup");
+	}
+
+exit_res:
+	if (root_cgroup != NULL) {
+		cgroup_free(&root_cgroup);
+	}
+
+	/*
+	 * libcgroup doesn't define something like cgroup_fini so there is no way how to clean
+	 * it's cache. It has to be called when libcgroup authors decide to implement it.
+	 */
+
+#endif
+	 return (res);
+}
+
+
 int main (int argc, char **argv, char **envp)
 {
 	const char *error_string;
 	struct totem_config totem_config;
 	int res, ch;
-	int background, sched_rr, prio, testonly;
+	int background, sched_rr, prio, testonly, move_to_root_cgroup;
 	struct stat stat_out;
 	enum e_corosync_done flock_err;
 	uint64_t totem_config_warnings;
@@ -1153,8 +1240,9 @@ int main (int argc, char **argv, char **envp)
 	sched_rr = 1;
 	prio = 0;
 	testonly = 0;
+	move_to_root_cgroup = 1;
 
-	while ((ch = getopt (argc, argv, "fP:prtv")) != EOF) {
+	while ((ch = getopt (argc, argv, "fP:pRrtv")) != EOF) {
 
 		switch (ch) {
 			case 'f':
@@ -1179,6 +1267,9 @@ int main (int argc, char **argv, char **envp)
 					prio = tmpli;
 				}
 				break;
+			case 'R':
+				move_to_root_cgroup = 0;
+				break;
 			case 'r':
 				sched_rr = 1;
 				break;
@@ -1198,6 +1289,7 @@ int main (int argc, char **argv, char **envp)
 					"        -f     : Start application in foreground.\n"\
 					"        -p     : Do not set realtime scheduling.\n"\
 					"        -r     : Set round robin realtime scheduling (default).\n"\
+					"        -R     : Do not try move corosync to root cpu cgroup (only for build with libcgroup)\n" \
 					"        -P num : Set priority of process (no effect when -r is used)\n"\
 					"        -t     : Test configuration and exit.\n"\
 					"        -v     : Display version and SVN revision of Corosync and exit.\n");
@@ -1310,6 +1402,15 @@ int main (int argc, char **argv, char **envp)
 
 	if (testonly) {
 		corosync_exit_error (COROSYNC_DONE_EXIT);
+	}
+
+
+	/*
+	 * Try to move corosync into root cpu cgroup. Failure is not fatal and
+	 * error is deliberately ignored.
+	 */
+	if (move_to_root_cgroup) {
+		(void)corosync_move_to_root_cgroup();
 	}
 
 	/*
