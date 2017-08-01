@@ -248,6 +248,7 @@ static PK11SymKey *import_symmetric_key(struct crypto_instance *instance, enum s
 	SECItem wrapped_key;
 	int wrapped_key_len;
 	unsigned char wrapped_key_data[MAX_WRAPPED_KEY_LEN];
+	int case_processed;
 
 	memset(&key_item, 0, sizeof(key_item));
 	slot = NULL;
@@ -258,17 +259,29 @@ static PK11SymKey *import_symmetric_key(struct crypto_instance *instance, enum s
 	key_item.type = siBuffer;
 	key_item.data = instance->private_key;
 
+	case_processed = 0;
 	switch (key_type) {
 	case SYM_KEY_TYPE_CRYPT:
 		key_item.len = cipher_key_len[instance->crypto_cipher_type];
 		cipher = cipher_to_nss[instance->crypto_cipher_type];
 		operation = CKA_ENCRYPT|CKA_DECRYPT;
+		case_processed = 1;
 		break;
 	case SYM_KEY_TYPE_HASH:
 		key_item.len = instance->private_key_len;
 		cipher = hash_to_nss[instance->crypto_hash_type];
 		operation = CKA_SIGN;
+		case_processed = 1;
 		break;
+		/*
+		 * Default is not defined intentionally. Compiler shows warning when
+		 * new key_type is added
+		 */
+	}
+
+	if (!case_processed) {
+		log_printf(instance->log_level_error, "Unknown key_type");
+		goto exit_res_key;
 	}
 
 	slot = PK11_GetBestSlot(cipher, NULL);
