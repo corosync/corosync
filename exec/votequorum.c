@@ -1648,7 +1648,7 @@ static int votequorum_exec_send_reconfigure(uint8_t param, unsigned int nodeid, 
 	iov[0].iov_base = (void *)&req_exec_quorum_reconfigure;
 	iov[0].iov_len = sizeof(req_exec_quorum_reconfigure);
 
-	ret = corosync_api->totem_mcast (iov, 1, TOTEM_AGREED);
+	ret = corosync_api->totem_mcast (iov, 1, TOTEM_AGREED) ? 0 : -1;
 
 	LEAVE();
 	return ret;
@@ -1682,7 +1682,7 @@ static int votequorum_exec_send_nodeinfo(uint32_t nodeid)
 	iov[0].iov_base = (void *)&req_exec_quorum_nodeinfo;
 	iov[0].iov_len = sizeof(req_exec_quorum_nodeinfo);
 
-	ret = corosync_api->totem_mcast (iov, 1, TOTEM_AGREED);
+	ret = corosync_api->totem_mcast (iov, 1, TOTEM_AGREED) ? 0 : -1;
 
 	LEAVE();
 	return ret;
@@ -1704,7 +1704,7 @@ static int votequorum_exec_send_qdevice_reconfigure(const char *oldname, const c
 	iov[0].iov_base = (void *)&req_exec_quorum_qdevice_reconfigure;
 	iov[0].iov_len = sizeof(req_exec_quorum_qdevice_reconfigure);
 
-	ret = corosync_api->totem_mcast (iov, 1, TOTEM_AGREED);
+	ret = corosync_api->totem_mcast (iov, 1, TOTEM_AGREED) ? 0 : -1;
 
 	LEAVE();
 	return ret;
@@ -1726,7 +1726,7 @@ static int votequorum_exec_send_qdevice_reg(uint32_t operation, const char *qdev
 	iov[0].iov_base = (void *)&req_exec_quorum_qdevice_reg;
 	iov[0].iov_len = sizeof(req_exec_quorum_qdevice_reg);
 
-	ret = corosync_api->totem_mcast (iov, 1, TOTEM_AGREED);
+	ret = corosync_api->totem_mcast (iov, 1, TOTEM_AGREED) ? 0 : -1;
 
 	LEAVE();
 	return ret;

@@ -44,6 +44,8 @@
 #include <qb/qbloop.h>
 #include <corosync/swab.h>
 
+#include <stdbool.h>
+
 /**
  * @brief The mar_message_source_t struct
  */
@@ -278,8 +280,8 @@ struct corosync_api_v1 {
 
 	int (*totem_ring_reenable) (void);
 
-	int (*totem_mcast) (const struct iovec *iovec,
-			    unsigned int iov_len, unsigned int guarantee);
+	bool (*totem_mcast) (const struct iovec *iovec,
+				unsigned int iov_len, unsigned int guarantee);
 
 	int (*totem_ifaces_get) (
 		unsigned int nodeid,

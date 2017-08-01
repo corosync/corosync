@@ -991,7 +991,7 @@ static cs_error_t cmap_mcast_send(enum cmap_mcast_reason reason, int argc, char 
 	req_exec_cmap_iovec[0].iov_len = sizeof(req_exec_cmap_mcast);
 
 	qb_log(LOG_TRACE, "Sending %u items (%u iovec) for reason %u", argc, argc + 1, reason);
-	err = (api->totem_mcast(req_exec_cmap_iovec, argc + 1, TOTEM_AGREED) == 0 ? CS_OK : CS_ERR_MESSAGE_ERROR);
+	err = (api->totem_mcast(req_exec_cmap_iovec, argc + 1, TOTEM_AGREED) ? CS_OK : CS_ERR_MESSAGE_ERROR);
 
 free_mem:
 	for (i = 0; i < argc; i++) {
