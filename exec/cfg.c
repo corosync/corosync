@@ -791,8 +791,15 @@ static void message_handler_req_lib_cfg_ringreenable (
 	void *conn,
 	const void *msg)
 {
-
+	struct res_lib_cfg_ringreenable res_lib_cfg_ringreenable;
 	ENTER();
+
+	res_lib_cfg_ringreenable.header.id = MESSAGE_RES_CFG_RINGREENABLE;
+	res_lib_cfg_ringreenable.header.size = sizeof (struct res_lib_cfg_ringreenable);
+	res_lib_cfg_ringreenable.header.error = CS_ERR_NOT_SUPPORTED;
+	api->ipc_response_send (
+		conn, &res_lib_cfg_ringreenable,
+		sizeof (struct res_lib_cfg_ringreenable));
 
 	LEAVE();
 }
