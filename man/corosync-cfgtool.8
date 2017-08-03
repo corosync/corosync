@@ -35,7 +35,7 @@
 .SH "NAME"
 corosync-cfgtool \- An administrative tool for corosync.
 .SH "SYNOPSIS"
-.B corosync\-cfgtool [\-i IP_address] [\-s] [\-r] [\-R] [\-k nodeid] [\-a nodeid] [\-h] [\-H]
+.B corosync\-cfgtool [\-i IP_address] [\-s] [\-R] [\-k nodeid] [\-a nodeid] [\-h] [\-H]
 .SH "DESCRIPTION"
 .B corosync\-cfgtool
 A tool for displaying and configuring active parameters within corosync.
@@ -45,13 +45,14 @@ A tool for displaying and configuring active parameters within corosync.
 Finds only information about the specified interface IP address.
 .TP 
 .B -s
-Displays the status of the current rings on this node.  If any interfaces are 
+Displays the status of the current links on this node.  If any interfaces are
 faulty, 1 is returned by the binary.  If all interfaces are active 0 is returned
 to the shell.
-.TP 
-.B -r
-Reset redundant ring state cluster wide after a fault to
-re-enable redundant ring operation.
+After each link, the nodes on that link are displayed in order with their status
+encoded into a single digit. 1=link enabled, 2=link connected, So a 3 in
+a node position indicates that the link is both enabled and connected.
+The local link (which will only ever be enabled on link 0) shows as enabled but
+not connected for internal reasons.
 .TP 
 .B -R
 Tell all instances of corosync in this cluster to reload corosync.conf.

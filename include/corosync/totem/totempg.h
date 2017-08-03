@@ -157,8 +157,6 @@ extern int totempg_my_family_get (void);
 
 extern int totempg_crypto_set (const char *cipher_type, const char *hash_type);
 
-extern int totempg_ring_reenable (void);
-
 extern void totempg_service_ready_register (
 	void (*totem_service_ready) (void));
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2013 Red Hat, Inc.
+ * Copyright (c) 2006-2017 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -65,7 +65,8 @@
 		} while (counter < max);			\
 	} while (0)
 
-static int ringstatusget_do (char *interface_name)
+static int
+linkstatusget_do (char *interface_name)
 {
 	cs_error_t result;
 	corosync_cfg_handle_t handle;
@@ -76,7 +77,7 @@ static int ringstatusget_do (char *interface_name)
 	unsigned int nodeid;
 	int rc = 0;
 
-	printf ("Printing ring status.\n");
+	printf ("Printing link status.\n");
 	result = corosync_cfg_initialize (&handle, NULL);
 	if (result != CS_OK) {
 		printf ("Could not initialize corosync configuration API error %d\n", result);
@@ -96,7 +97,7 @@ static int ringstatusget_do (char *interface_name)
 				&interface_status,
 				&interface_count);
 	if (result != CS_OK) {
-		printf ("Could not get the ring status, the error is: %d\n", result);
+		printf ("Could not get the link status, the error is: %d\n", result);
 	} else {
 		for (i = 0; i < interface_count; i++) {
 			if ( (interface_name && 
@@ -104,7 +105,7 @@ static int ringstatusget_do (char *interface_name)
 				strcasecmp (interface_name, interface_names[i]) == 0)) ||
 				!interface_name ) {
 
-				printf ("RING ID %d\n", i);
+				printf ("LINK ID %d\n", i);
 				printf ("\tid\t= %s\n", interface_names[i]);
 				printf ("\tstatus\t= %s\n", interface_status[i]);
 				if (strstr(interface_status[i], "FAULTY")) {
@@ -123,26 +124,6 @@ static int ringstatusget_do (char *interface_name)
 
 	(void)corosync_cfg_finalize (handle);
 	return rc;
-}
-
-static void ringreenable_do (void)
-{
-	cs_error_t result;
-	corosync_cfg_handle_t handle;
-
-	printf ("Re-enabling all failed rings.\n");
-	result = corosync_cfg_initialize (&handle, NULL);
-	if (result != CS_OK) {
-		printf ("Could not initialize corosync configuration API error %d\n", result);
-		exit (1);
-	}
-
-	result = corosync_cfg_ring_reenable (handle);
-	if (result != CS_OK) {
-		printf ("Could not re-enable ring error %d\n", result);
-	}
-
-	(void)corosync_cfg_finalize (handle);
 }
 
 static int reload_config_do (void)
@@ -261,13 +242,11 @@ static void killnode_do(unsigned int nodeid)
 
 static void usage_do (void)
 {
-	printf ("corosync-cfgtool [-i <interface ip>] [-s] [-r] [-R] [-k nodeid] [-a nodeid] [-h] [-H]\n\n");
+	printf ("corosync-cfgtool [-i <interface ip>] [-s] [-R] [-k nodeid] [-a nodeid] [-h] [-H]\n\n");
 	printf ("A tool for displaying and configuring active parameters within corosync.\n");
 	printf ("options:\n");
 	printf ("\t-i\tFinds only information about the specified interface IP address.\n");
-	printf ("\t-s\tDisplays the status of the current rings on this node.\n");
-	printf ("\t-r\tReset redundant ring state cluster wide after a fault to\n");
-	printf ("\t\tre-enable redundant ring operation.\n");
+	printf ("\t-s\tDisplays the status of the current links on this node.\n");
 	printf ("\t-R\tTell all instances of corosync in this cluster to reload corosync.conf.\n");
 	printf ("\t-k\tKill a node identified by node id.\n");
 	printf ("\t-a\tDisplay the IP address(es) of a node\n");
@@ -292,13 +271,10 @@ int main (int argc, char *argv[]) {
 			interface_name[sizeof(interface_name) - 1] = '\0';
 			break;
 		case 's':
-			rc = ringstatusget_do (interface_name);
+			rc = linkstatusget_do (interface_name);
 			break;
 		case 'R':
 			rc = reload_config_do ();
-			break;
-		case 'r':
-			ringreenable_do ();
 			break;
 		case 'k':
 			nodeid = atoi (optarg);

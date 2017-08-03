@@ -109,7 +109,6 @@ static struct corosync_api_v1 apidef_corosync_api_v1 = {
 	.ipc_refcnt_dec = cs_ipc_refcnt_dec,
 	.totem_nodeid_get = totempg_my_nodeid_get,
 	.totem_family_get = totempg_my_family_get,
-	.totem_ring_reenable = totempg_ring_reenable,
 	.totem_mcast = main_mcast,
 	.totem_ifaces_get = totempg_ifaces_get,
 	.totem_ifaces_print = totempg_ifaces_print,
