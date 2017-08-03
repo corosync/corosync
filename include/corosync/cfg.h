@@ -163,15 +163,6 @@ corosync_cfg_ring_status_get (
 	unsigned int *interface_count);
 
 /**
- * @brief corosync_cfg_ring_reenable
- * @param cfg_handle
- * @return
- */
-cs_error_t
-corosync_cfg_ring_reenable (
-	corosync_cfg_handle_t cfg_handle);
-
-/**
  * @brief corosync_cfg_kill_node
  * @param cfg_handle
  * @param nodeid

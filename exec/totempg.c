@@ -1442,15 +1442,6 @@ int totempg_crypto_set (
 	return (res);
 }
 
-int totempg_ring_reenable (void)
-{
-	int res;
-
-	res = totemsrp_ring_reenable (totemsrp_context);
-
-	return (res);
-}
-
 #define ONE_IFACE_LEN 63
 const char *totempg_ifaces_print (unsigned int nodeid)
 {

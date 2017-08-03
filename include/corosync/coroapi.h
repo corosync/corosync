@@ -276,8 +276,6 @@ struct corosync_api_v1 {
 
 	int (*totem_family_get) (void);
 
-	int (*totem_ring_reenable) (void);
-
 	int (*totem_mcast) (const struct iovec *iovec,
 			    unsigned int iov_len, unsigned int guarantee);
 

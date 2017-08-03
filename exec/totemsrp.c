@@ -1121,12 +1121,6 @@ int totemsrp_my_family_get (
 	return (res);
 }
 
-int totemsrp_ring_reenable (
-        void *srp_context)
-{
-       return (0);
-}
-
 
 /*
  * Set operations for use by the membership algorithm

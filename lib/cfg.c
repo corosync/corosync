@@ -368,38 +368,6 @@ exit_handle_put:
 }
 
 cs_error_t
-corosync_cfg_ring_reenable (
-	corosync_cfg_handle_t cfg_handle)
-{
-	struct cfg_inst *cfg_inst;
-	struct req_lib_cfg_ringreenable req_lib_cfg_ringreenable;
-	struct res_lib_cfg_ringreenable res_lib_cfg_ringreenable;
-	cs_error_t error;
-	struct iovec iov;
-
-	error = hdb_error_to_cs(hdb_handle_get (&cfg_hdb, cfg_handle, (void *)&cfg_inst));
-	if (error != CS_OK) {
-		return (error);
-	}
-
-	req_lib_cfg_ringreenable.header.size = sizeof (struct req_lib_cfg_ringreenable);
-	req_lib_cfg_ringreenable.header.id = MESSAGE_REQ_CFG_RINGREENABLE;
-
-	iov.iov_base = (void *)&req_lib_cfg_ringreenable,
-	iov.iov_len = sizeof (struct req_lib_cfg_ringreenable);
-
-	error = qb_to_cs_error (qb_ipcc_sendv_recv (cfg_inst->c,
-		&iov,
-		1,
-		&res_lib_cfg_ringreenable,
-		sizeof (struct res_lib_cfg_ringreenable), CS_IPC_TIMEOUT_MS));
-
-	(void)hdb_handle_put (&cfg_hdb, cfg_handle);
-
-	return (error);
-}
-
-cs_error_t
 corosync_cfg_kill_node (
 	corosync_cfg_handle_t cfg_handle,
 	unsigned int nodeid,

@@ -120,9 +120,6 @@ extern int totemsrp_crypto_set (
 	const char *cipher_type,
 	const char *hash_type);
 
-extern int totemsrp_ring_reenable (
-	void *srp_context);
-
 void totemsrp_service_ready_register (
 	void *srp_context,
 	void (*totem_service_ready) (void));
