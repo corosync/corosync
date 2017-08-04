@@ -326,23 +326,10 @@ static inline void ucast_sendmsg (
 	 * An error here is recovered by totemsrp
 	 */
 
-	/*
-	 * If sending to ourself then just pass it through knet back to
-	 * the receive fn. knet does not do local->local delivery
-	 */
-	if (system_to->nodeid == instance->our_nodeid) {
-		res = sendmsg (instance->knet_fd+1, &msg_ucast, MSG_NOSIGNAL);
-		if (res < 0) {
-			KNET_LOGSYS_PERROR (errno, instance->totemknet_log_level_debug,
-				       "sendmsg(ucast-local) failed (non-critical)");
-		}
-	}
-	else {
-		res = sendmsg (instance->knet_fd, &msg_ucast, MSG_NOSIGNAL);
-		if (res < 0) {
-			KNET_LOGSYS_PERROR (errno, instance->totemknet_log_level_debug,
-				       "sendmsg(ucast) failed (non-critical)");
-		}
+	res = sendmsg (instance->knet_fd, &msg_ucast, MSG_NOSIGNAL);
+	if (res < 0) {
+		KNET_LOGSYS_PERROR (errno, instance->totemknet_log_level_debug,
+				    "sendmsg(ucast) failed (non-critical)");
 	}
 }
 
@@ -392,15 +379,6 @@ static inline void mcast_sendmsg (
 		knet_log_printf (LOGSYS_LEVEL_DEBUG, "totemknet: mcast_send sendmsg returned %d", res);
 	}
 
-	/*
-	 * Also send it to ourself, directly into
-	 * the receive fn. knet does not to local->local delivery
-	 */
-	res = sendmsg (instance->knet_fd+1, &msg_mcast, MSG_NOSIGNAL);
-	if (res < msg_len) {
-		knet_log_printf (LOGSYS_LEVEL_DEBUG, "totemknet: mcast_send sendmsg (local) returned %d", res);
-	}
-
 	if (!only_active || instance->send_merge_detect_message) {
 		/*
 		 * Current message was sent to all nodes
@@ -427,7 +405,9 @@ int totemknet_ifaces_get (void *knet_context,
 	struct totemknet_instance *instance = (struct totemknet_instance *)knet_context;
 	struct knet_link_status link_status;
 	knet_node_id_t host_list[KNET_MAX_HOST];
+	uint8_t link_list[KNET_MAX_LINK];
 	size_t num_hosts;
+	size_t num_links;
 	int i,j;
 	char *ptr;
 	int res = 0;
@@ -444,11 +424,25 @@ int totemknet_ifaces_get (void *knet_context,
 		}
 		qsort(host_list, num_hosts, sizeof(uint16_t), node_compare);
 
-		/* num_links is actually the highest link ID */
-		for (i=0; i <= instance->num_links; i++) {
-			ptr = instance->link_status[i];
+		/* This is all a bit "inside-out" because "status" is a set of strings per link
+		 * and knet orders things by host
+		 */
+		for (j=0; j<num_hosts; j++) {
+			res = knet_link_get_link_list(instance->knet_handle,
+						      host_list[j], link_list, &num_links);
+			if (res) {
+				return (-1);
+			}
 
-			for (j=0; j<num_hosts; j++) {
+			for (i=0; i <= instance->num_links; i++) {
+				ptr = instance->link_status[i];
+
+				/* Loopback link */
+				if (i >= num_links) {
+					ptr[j] = '-';
+					continue;
+				}
+
 				res = knet_link_get_status(instance->knet_handle,
 							   host_list[j],
 							   i,
@@ -460,10 +454,10 @@ int totemknet_ifaces_get (void *knet_context,
 							link_status.dynconnected<<2);
 				}
 				else {
-					ptr[j] += '?';
+					ptr[j] = '?';
 				}
+				ptr[num_hosts] = '\0';
 			}
-			ptr[num_hosts] = '\0';
 		}
 		*status = instance->link_status;
 	}
@@ -498,10 +492,6 @@ int totemknet_finalize (
 
 	/* Tidily shut down all nodes & links. This ensures that the LEAVE message will be sent */
 	for (i=0; i<num_nodes; i++) {
-		/* Don't try to shut local link down, there isn't one */
-		if (nodes[i] == instance->our_nodeid) {
-			continue;
-		}
 
 		res = knet_link_get_link_list(instance->knet_handle, nodes[i], links, &num_links);
 		if (res) {
@@ -1130,13 +1120,14 @@ int totemknet_member_add (
 	struct sockaddr_storage local_ss;
 	int addrlen;
 
-	if (member->nodeid == instance->our_nodeid) {
-		return 0; /* Don't add ourself, we send loopback messages directly */
-	}
-
 	/* Keep track of the number of links */
 	if (link_no > instance->num_links) {
 		instance->num_links = link_no;
+	}
+
+	/* Only create 1 loopback link */
+	if (member->nodeid == instance->our_nodeid && link_no > 0) {
+		return 0;
 	}
 
 	knet_log_printf (LOGSYS_LEVEL_DEBUG, "knet: member_add: %d (%s), link=%d", member->nodeid, totemip_print(member), link_no);
@@ -1156,9 +1147,16 @@ int totemknet_member_add (
 	/* Casts to remove const */
 	totemip_totemip_to_sockaddr_convert((struct totem_ip_address *)member, port+link_no, &remote_ss, &addrlen);
 	totemip_totemip_to_sockaddr_convert((struct totem_ip_address *)local, port+link_no, &local_ss, &addrlen);
-	err = knet_link_set_config(instance->knet_handle, member->nodeid, link_no,
-				   instance->totem_config->interfaces[link_no].knet_transport,
-				   &local_ss, &remote_ss, KNET_LINK_FLAG_TRAFFICHIPRIO);
+	if (member->nodeid == instance->our_nodeid) {
+		err = knet_link_set_config(instance->knet_handle, member->nodeid, link_no,
+					   KNET_TRANSPORT_LOOPBACK,
+					   &local_ss, &remote_ss, KNET_LINK_FLAG_TRAFFICHIPRIO);
+	}
+	else {
+		err = knet_link_set_config(instance->knet_handle, member->nodeid, link_no,
+					   instance->totem_config->interfaces[link_no].knet_transport,
+					   &local_ss, &remote_ss, KNET_LINK_FLAG_TRAFFICHIPRIO);
+	}
 	if (err) {
 		KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_ERROR, "knet_link_set_config failed");
 		return -1;
@@ -1207,9 +1205,11 @@ int totemknet_member_remove (
 
 	knet_log_printf (LOGSYS_LEVEL_DEBUG, "knet: member_remove: %d, link=%d", token_target->nodeid, link_no);
 
-	if (token_target->nodeid == instance->our_nodeid) {
-		return 0; /* Don't remove ourself */
+	/* Only link 0 is valid for localhost */
+	if (token_target->nodeid == instance->our_nodeid && link_no > 0) {
+		return 0;
 	}
+
 	/* Tidy stats */
 	stats_knet_del_member(token_target->nodeid, link_no);
 
