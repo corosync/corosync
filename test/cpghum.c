@@ -40,6 +40,7 @@
 #include <errno.h>
 #include <time.h>
 #include <limits.h>
+#include <ctype.h>
 #include <syslog.h>
 #include <stdarg.h>
 #include <sys/time.h>
@@ -53,6 +54,7 @@
 #include <pthread.h>
 #include <zlib.h>
 #include <libgen.h>
+#include <getopt.h>
 
 #include <corosync/corotypes.h>
 #include <corosync/cpg.h>
@@ -88,6 +90,9 @@ static char delimiter = ',';
 static int to_stderr = 0;
 static unsigned int g_our_nodeid;
 static volatile int stopped;
+static unsigned int flood_start = 64;
+static unsigned int flood_multiplier = 5;
+static unsigned long flood_max = (ONE_MEG - 100);
 
 // stats
 static unsigned int length_errors=0;
@@ -503,28 +508,64 @@ static void usage(char *cmd)
 	fprintf(stderr, "%s can handle more than 1 sender in the same CPG provided they are on\n", cmd);
 	fprintf(stderr, "different nodes.\n");
 	fprintf(stderr, "\n");
-	fprintf(stderr, "	-w<num>    Write size in Kbytes, default 4\n");
-	fprintf(stderr, "	-W<num>    Write size in bytes, default 4096\n");
-	fprintf(stderr, "	-n<name>   CPG name to use, default 'cpghum'\n");
-	fprintf(stderr, "	-M         Write machine-readable results\n");
-	fprintf(stderr, "	-D<char>   Delimiter for machine-readable results (default ',')\n");
-	fprintf(stderr, "	-E         Send normal output to stderr instead of stdout\n");
-	fprintf(stderr, "	-d<num>    Delay between sending packets (mS), default 1000\n");
-	fprintf(stderr, "	-r<num>    Number of repetitions, default 100\n");
-	fprintf(stderr, "	-p<num>    Delay between printing output (seconds), default 10s\n");
-	fprintf(stderr, "	-l         Listen and check CRCs only, don't send (^C to quit)\n");
-	fprintf(stderr, "	-t         Report Round Trip Times for each packet.\n");
-	fprintf(stderr, "	-m<num>    cpg_initialise() model. Default 1.\n");
-	fprintf(stderr, "	-s         Also send errors to syslog (for daemon log correlation).\n");
-	fprintf(stderr, "	-f         Flood test CPG (cpgbench). -W starts at 64 in this case.\n");
-	fprintf(stderr, "	-a         Abort on crc/length/sequence error\n");
-	fprintf(stderr, "	-q         Quiet. Don't print messages every 10 seconds (see also -p)\n");
-	fprintf(stderr, "	-qq        Very quiet. Don't print stats at the end\n");
+	fprintf(stderr, " -w<num>,  --size-bytes   Write size in Kbytes, default 4\n");
+	fprintf(stderr, " -W<num>,  --size-kb      Write size in bytes, default 4096\n");
+	fprintf(stderr, " -n<name>, --name         CPG name to use, default 'cpghum'\n");
+	fprintf(stderr, " -M                       Write machine-readable results\n");
+	fprintf(stderr, " -D<char>                 Delimiter for machine-readable results (default ',')\n");
+	fprintf(stderr, " -E                       Send normal output to stderr instead of stdout\n");
+	fprintf(stderr, " -d<num>, --delay         Delay between sending packets (mS), default 1000\n");
+	fprintf(stderr, " -r<num>                  Number of repetitions, default 100\n");
+	fprintf(stderr, " -p<num>                  Delay between printing output (seconds), default 10s\n");
+	fprintf(stderr, " -l, --listen             Listen and check CRCs only, don't send (^C to quit)\n");
+	fprintf(stderr, " -t, --rtt                Report Round Trip Times for each packet.\n");
+	fprintf(stderr, " -m<num>                  cpg_initialise() model. Default 1.\n");
+	fprintf(stderr, " -s                       Also send errors to syslog.\n");
+	fprintf(stderr, " -f, --flood              Flood test CPG (cpgbench). see --flood-* long options\n");
+	fprintf(stderr, " -a                       Abort on crc/length/sequence error\n");
+	fprintf(stderr, " -q, --quiet              Quiet. Don't print messages every 10s (see also -p)\n");
+	fprintf(stderr, " -qq                      Very quiet. Don't print stats at the end\n");
+	fprintf(stderr, "     --flood-start=bytes  Start value for --flood\n");
+	fprintf(stderr, "     --flood-mult=value   Packet size multiplier value for --flood\n");
+	fprintf(stderr, "     --flood-max=bytes    Maximum packet size for --flood\n");
+	fprintf(stderr, "\n");
+	fprintf(stderr, "  values for --flood* and -W can have K or M suffixes to indicate\n");
+	fprintf(stderr, "  Kilobytes or Megabytes\n");
 	fprintf(stderr, "\n");
 	fprintf(stderr, "%s exit code is 0 if no error happened, 1 on generic error and 2 on\n", cmd);
 	fprintf(stderr, "send/crc/length/sequence error");
 	fprintf(stderr, "\n");
 }
+
+/* Parse a size, optionally ending in 'K', 'M' */
+static long parse_bytes(const char *valstring)
+{
+	unsigned int value;
+	int multiplier = 1;
+	char suffix = '\0';
+	int have_suffix = 0;
+
+	/* Suffix is optional */
+	if (sscanf(valstring, "%u%c", &value, &suffix) == 0) {
+		return 0;
+	}
+
+	if (toupper(suffix) == 'M') {
+		multiplier = 1024*1024;
+		have_suffix = 1;
+	}
+	if (toupper(suffix) == 'K') {
+		multiplier = 1024;
+		have_suffix = 1;
+	}
+
+	if (!have_suffix && suffix != '\0') {
+		fprintf(stderr, "Invalid suffix '%c', only K or M supported\n", suffix);
+		return 0;
+	}
+	return value * multiplier;
+}
+
 
 int main (int argc, char *argv[]) {
 	int i;
@@ -540,9 +581,48 @@ int main (int argc, char *argv[]) {
 	int listen_only = 0;
 	int flood = 0;
 	int model = 1;
+	int option_index = 0;
+	struct option long_options[] = {
+		{"flood-start", required_argument, 0,  0  },
+		{"flood-mult",  required_argument, 0,  0  },
+		{"flood-max",   required_argument, 0,  0  },
+		{"size-kb",     required_argument, 0, 'w' },
+		{"size-bytes",  required_argument, 0, 'W' },
+		{"name",        required_argument, 0, 'n' },
+		{"rtt",         no_argument,       0, 't' },
+		{"flood",       no_argument,       0, 'f' },
+		{"quiet",       no_argument,       0, 'q' },
+		{"listen",      no_argument,       0, 'l' },
+		{"help",        no_argument,       0, '?' },
+		{0,             0,                 0,  0  }
+	};
 
-	while ( (opt = getopt(argc, argv, "qlstafMEn:d:r:p:m:w:W:D:")) != -1 ) {
+	while ( (opt = getopt_long(argc, argv, "qlstafMEn:d:r:p:m:w:W:D:",
+				   long_options, &option_index)) != -1 ) {
 		switch (opt) {
+			case 0: // Long-only options
+			if (strcmp(long_options[option_index].name, "flood-start") == 0) {
+				flood_start = parse_bytes(optarg);
+				if (flood_start == 0) {
+					fprintf(stderr, "flood-start value invalid\n");
+					exit(1);
+				}
+			}
+			if (strcmp(long_options[option_index].name, "flood-mult") == 0) {
+				flood_multiplier = parse_bytes(optarg);
+				if (flood_multiplier == 0) {
+					fprintf(stderr, "flood-mult value invalid\n");
+					exit(1);
+				}
+			}
+			if (strcmp(long_options[option_index].name, "flood-max") == 0) {
+				flood_max = parse_bytes(optarg);
+				if (flood_max == 0) {
+					fprintf(stderr, "flood-max value invalid\n");
+					exit(1);
+				}
+			}
+			break;
 		case 'w': // Write size in K
 			bs = atoi(optarg);
 			if (bs > 0) {
@@ -550,8 +630,8 @@ int main (int argc, char *argv[]) {
 				have_size = 1;
 			}
 			break;
-		case 'W': // Write size in bytes
-			bs = atoi(optarg);
+		case 'W': // Write size in bytes (or with a suffix)
+			bs = parse_bytes(optarg);
 			if (bs > 0) {
 				write_size = bs;
 				have_size = 1;
@@ -616,7 +696,7 @@ int main (int argc, char *argv[]) {
 	}
 
 	if (!have_size && flood) {
-		write_size = 64;
+		write_size = flood_start;
 	}
 
 	signal (SIGALRM, sigalrm_handler);
@@ -687,8 +767,8 @@ int main (int argc, char *argv[]) {
 			for (i = 0; i < 10; i++) { /* number of repetitions - up to 50k */
 				cpg_flood (handle, write_size);
 				signal (SIGALRM, sigalrm_handler);
-				write_size *= 5;
-				if (write_size >= (ONE_MEG - 100)) {
+				write_size *= flood_multiplier;
+				if (write_size > flood_max) {
 					break;
 				}
 			}
