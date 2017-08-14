@@ -199,7 +199,7 @@ enum throw_away_mode {
 
 struct assembly {
 	unsigned int nodeid;
-	unsigned char data[MESSAGE_SIZE_MAX];
+	unsigned char data[MESSAGE_SIZE_MAX+KNET_MAX_PACKET_SIZE];
 	int index;
 	unsigned char last_frag_num;
 	enum throw_away_mode throw_away_mode;
@@ -632,6 +632,7 @@ static void totempg_deliver_fn (
 		}
 	}
 
+	assert((assembly->index+msg_len) < sizeof(assembly->data));
 	memcpy (&assembly->data[assembly->index], &data[datasize],
 		msg_len - datasize);
 
