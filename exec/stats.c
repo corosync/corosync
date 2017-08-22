@@ -62,7 +62,7 @@ static qb_map_t *stats_map;
 
 /* Convert iterator number to text and a stats pointer */
 struct cs_stats_conv {
-	enum {STAT_PG, STAT_SRP, STAT_KNET, STAT_IPCSC, STAT_IPCSG} type;
+	enum {STAT_PG, STAT_SRP, STAT_KNET, STAT_KNET_HANDLE, STAT_IPCSC, STAT_IPCSG} type;
 	const char *name;
 	const size_t offset;
 	const icmap_value_types_t value_type;
@@ -145,6 +145,29 @@ struct cs_stats_conv cs_knet_stats[] = {
 	{ STAT_KNET, "down_count",       offsetof(struct knet_link_status, stats.down_count),       ICMAP_VALUETYPE_UINT32},
 	{ STAT_KNET, "up_count",         offsetof(struct knet_link_status, stats.up_count),         ICMAP_VALUETYPE_UINT32},
 };
+struct cs_stats_conv cs_knet_handle_stats[] = {
+	{ STAT_KNET_HANDLE, "tx_uncompressed_packets",      offsetof(struct knet_handle_stats, tx_uncompressed_packets),      ICMAP_VALUETYPE_UINT64},
+	{ STAT_KNET_HANDLE, "tx_compressed_packets",        offsetof(struct knet_handle_stats, tx_compressed_packets),        ICMAP_VALUETYPE_UINT64},
+	{ STAT_KNET_HANDLE, "tx_compressed_original_bytes", offsetof(struct knet_handle_stats, tx_compressed_original_bytes), ICMAP_VALUETYPE_UINT64},
+	{ STAT_KNET_HANDLE, "tx_compressed_size_bytes",     offsetof(struct knet_handle_stats, tx_compressed_size_bytes),     ICMAP_VALUETYPE_UINT64},
+	{ STAT_KNET_HANDLE, "tx_compress_time_min",         offsetof(struct knet_handle_stats, tx_compress_time_min),         ICMAP_VALUETYPE_UINT64},
+	{ STAT_KNET_HANDLE, "tx_compress_time_max",         offsetof(struct knet_handle_stats, tx_compress_time_max),         ICMAP_VALUETYPE_UINT64},
+	{ STAT_KNET_HANDLE, "tx_compress_time_ave",         offsetof(struct knet_handle_stats, tx_compress_time_ave),         ICMAP_VALUETYPE_UINT64},
+	{ STAT_KNET_HANDLE, "rx_compressed_packets",        offsetof(struct knet_handle_stats, rx_compressed_packets),        ICMAP_VALUETYPE_UINT64},
+	{ STAT_KNET_HANDLE, "rx_compressed_original_bytes", offsetof(struct knet_handle_stats, rx_compressed_original_bytes), ICMAP_VALUETYPE_UINT64},
+	{ STAT_KNET_HANDLE, "rx_compressed_size_bytes",     offsetof(struct knet_handle_stats, rx_compressed_size_bytes),     ICMAP_VALUETYPE_UINT64},
+	{ STAT_KNET_HANDLE, "rx_compress_time_min",         offsetof(struct knet_handle_stats, rx_compress_time_min),         ICMAP_VALUETYPE_UINT64},
+	{ STAT_KNET_HANDLE, "rx_compress_time_max",         offsetof(struct knet_handle_stats, rx_compress_time_max),         ICMAP_VALUETYPE_UINT64},
+	{ STAT_KNET_HANDLE, "rx_compress_time_ave",         offsetof(struct knet_handle_stats, rx_compress_time_ave),         ICMAP_VALUETYPE_UINT64},
+	{ STAT_KNET_HANDLE, "tx_crypt_time_min",            offsetof(struct knet_handle_stats, tx_crypt_time_min),            ICMAP_VALUETYPE_UINT64},
+	{ STAT_KNET_HANDLE, "tx_crypt_time_max",            offsetof(struct knet_handle_stats, tx_crypt_time_max),            ICMAP_VALUETYPE_UINT64},
+	{ STAT_KNET_HANDLE, "tx_crypt_time_ave",            offsetof(struct knet_handle_stats, tx_crypt_time_ave),            ICMAP_VALUETYPE_UINT64},
+	{ STAT_KNET_HANDLE, "tx_crypt_byte_overhead",       offsetof(struct knet_handle_stats, tx_crypt_byte_overhead),       ICMAP_VALUETYPE_UINT64},
+	{ STAT_KNET_HANDLE, "rx_crypt_time_min",            offsetof(struct knet_handle_stats, rx_crypt_time_min),            ICMAP_VALUETYPE_UINT64},
+	{ STAT_KNET_HANDLE, "rx_crypt_time_max",            offsetof(struct knet_handle_stats, rx_crypt_time_max),            ICMAP_VALUETYPE_UINT64},
+	{ STAT_KNET_HANDLE, "rx_crypt_time_ave",            offsetof(struct knet_handle_stats, rx_crypt_time_ave),            ICMAP_VALUETYPE_UINT64},
+};
+
 struct cs_stats_conv cs_ipcs_conn_stats[] = {
 	{ STAT_IPCSC, "queueing",        offsetof(struct ipcs_conn_stats, cnx.queuing),          ICMAP_VALUETYPE_INT32},
 	{ STAT_IPCSC, "queued",          offsetof(struct ipcs_conn_stats, cnx.queued),           ICMAP_VALUETYPE_UINT32},
@@ -168,6 +191,7 @@ struct cs_stats_conv cs_ipcs_global_stats[] = {
 #define NUM_PG_STATS (sizeof(cs_pg_stats) / sizeof(struct cs_stats_conv))
 #define NUM_SRP_STATS (sizeof(cs_srp_stats) / sizeof(struct cs_stats_conv))
 #define NUM_KNET_STATS (sizeof(cs_knet_stats) / sizeof(struct cs_stats_conv))
+#define NUM_KNET_HANDLE_STATS (sizeof(cs_knet_handle_stats) / sizeof(struct cs_stats_conv))
 #define NUM_IPCSC_STATS (sizeof(cs_ipcs_conn_stats) / sizeof(struct cs_stats_conv))
 #define NUM_IPCSG_STATS (sizeof(cs_ipcs_global_stats) / sizeof(struct cs_stats_conv))
 
@@ -256,6 +280,10 @@ cs_error_t stats_map_init(const struct corosync_api_v1 *corosync_api)
 		sprintf(param, "stats.ipcs.%s", cs_ipcs_global_stats[i].name);
 		stats_add_entry(param, &cs_ipcs_global_stats[i]);
 	}
+	for (i = 0; i<NUM_KNET_HANDLE_STATS; i++) {
+		sprintf(param, "stats.knet.handle.%s", cs_knet_handle_stats[i].name);
+		stats_add_entry(param, &cs_knet_handle_stats[i]);
+	}
 
 	/* KNET and IPCS stats are added when appropriate */
 	return CS_OK;
@@ -272,6 +300,7 @@ cs_error_t stats_map_get(const char *key_name,
 	struct knet_link_status link_status;
 	struct ipcs_conn_stats ipcs_conn_stats;
 	struct ipcs_global_stats ipcs_global_stats;
+	struct knet_handle_stats knet_handle_stats;
 	int res;
 	int nodeid;
 	int link_no;
@@ -293,6 +322,13 @@ cs_error_t stats_map_get(const char *key_name,
 		case STAT_SRP:
 			pg_stats = api->totem_get_stats();
 			stats_map_set_value(statinfo, pg_stats->srp, value, value_len, type);
+			break;
+		case STAT_KNET_HANDLE:
+			res = totemknet_handle_get_stats(&knet_handle_stats);
+			if (res) {
+				return res;
+			}
+			stats_map_set_value(statinfo, &knet_handle_stats, value, value_len, type);
 			break;
 		case STAT_KNET:
 			if (sscanf(key_name, "stats.knet.node%d.link%d", &nodeid, &link_no) != 2) {
