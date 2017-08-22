@@ -1288,12 +1288,18 @@ int main (int argc, char **argv, char **envp)
 
 	res = coroparse_configparse(icmap_get_global_map(), &error_string);
 	if (res == -1) {
-		log_printf (LOGSYS_LEVEL_ERROR, "%s", error_string);
+		/*
+		 * Logsys can't log properly at this early stage, and we need to get this message out
+		 *
+		 */
+		fprintf (stderr, "%s\n", error_string);
+		syslog (LOGSYS_LEVEL_ERROR, "%s", error_string);
 		corosync_exit_error (COROSYNC_DONE_MAINCONFIGREAD);
 	}
 
 	if (stats_map_init(api) != CS_OK) {
-		log_printf (LOGSYS_LEVEL_ERROR, "Corosync Executive couldn't initialize statistics component.");
+		fprintf (stderr, "Corosync Executive couldn't initialize statistics component.\n");
+		syslog (LOGSYS_LEVEL_ERROR, "Corosync Executive couldn't initialize statistics component.");
 		corosync_exit_error (COROSYNC_DONE_STATS);
 	}
 
