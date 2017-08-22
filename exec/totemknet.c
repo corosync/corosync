@@ -1273,6 +1273,17 @@ int totemknet_link_get_status (
 	return (ret);
 }
 
+int totemknet_handle_get_stats (
+	struct knet_handle_stats *stats)
+{
+	/* We are probably not using knet */
+	if (!global_instance) {
+		return CS_ERR_NOT_EXIST;
+	}
+
+	return knet_handle_get_stats(global_instance->knet_handle, stats, sizeof(struct knet_handle_stats));
+}
+
 static void timer_function_merge_detect_timeout (
 	void *data)
 {

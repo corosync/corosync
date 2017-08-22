@@ -102,6 +102,9 @@ extern int totemknet_link_get_status (
 	knet_node_id_t node, uint8_t link,
 	struct knet_link_status *status);
 
+int totemknet_handle_get_stats (
+	struct knet_handle_stats *stats);
+
 void stats_knet_add_member(knet_node_id_t nodeid, uint8_t link);
 
 void stats_knet_del_member(knet_node_id_t nodeid, uint8_t link);
