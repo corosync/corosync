@@ -652,8 +652,9 @@ directive it is possible to specify options for resources.
 Possible option is:
 .TP
 watchdog_device
-This configuration option controls which watchdog device corosync try to bind to.
-The default value is /dev/watchdog. The value "no" disables the watchdog feature.
+Watchdog device to use.
+The default value is /dev/watchdog.
+The special value "off" disables watchdog usage.
 
 .SH "FILES"
 .TP
