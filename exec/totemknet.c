@@ -1028,7 +1028,7 @@ extern int totemknet_iface_check (void *knet_context)
 	struct totemknet_instance *instance = (struct totemknet_instance *)knet_context;
 	int res = 0;
 
-	knet_log_printf(LOG_DEBUG, "totmeknet: iface_check");
+	knet_log_printf(LOG_DEBUG, "totemknet: iface_check");
 
 	return (res);
 }
