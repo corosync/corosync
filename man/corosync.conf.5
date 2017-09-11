@@ -652,9 +652,8 @@ directive it is possible to specify options for resources.
 Possible option is:
 .TP
 watchdog_device
-Watchdog device to use.
-The default value is /dev/watchdog.
-The special value "off" disables watchdog usage.
+Watchdog device to use, for example /dev/watchdog.
+If unset, empty or "off", no watchdog is used.
 .IP
 In a cluster with properly configured power fencing a watchdog
 provides no additional value.  On the other hand, slow watchdog
