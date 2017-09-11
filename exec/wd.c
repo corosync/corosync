@@ -646,7 +646,7 @@ static int setup_watchdog(void)
 	}
 
 	if (access (watchdog_device, W_OK) != 0) {
-		log_printf (LOGSYS_LEVEL_WARNING, "No Watchdog %s, try modprobe <a watchdog>", watchdog_device);
+		log_printf (LOGSYS_LEVEL_WARNING, "No watchdog %s, try modprobe <a watchdog>", watchdog_device);
 		dog = -1;
 		return -1;
 	}
