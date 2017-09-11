@@ -655,6 +655,13 @@ watchdog_device
 Watchdog device to use.
 The default value is /dev/watchdog.
 The special value "off" disables watchdog usage.
+.IP
+In a cluster with properly configured power fencing a watchdog
+provides no additional value.  On the other hand, slow watchdog
+communication may incur multi-second delays in the Corosync main loop,
+potentially breaking down membership.  IPMI watchdogs are particularly
+notorious in this regard: read about kipmid_max_busy_us in IPMI.txt in
+the Linux kernel documentation.
 
 .SH "FILES"
 .TP
