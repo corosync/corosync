@@ -89,7 +89,7 @@ static uint64_t tickle_timeout = (WD_DEFAULT_TIMEOUT_MS / 2);
 static int dog = -1;
 static corosync_timer_handle_t wd_timer;
 static int watchdog_ok = 1;
-static char *watchdog_device = "/dev/watchdog";
+static char *watchdog_device = NULL;
 
 struct corosync_service_engine wd_service_engine = {
 	.name			= "corosync watchdog service",
@@ -635,7 +635,7 @@ static int setup_watchdog(void)
 	ENTER();
 
 	if (icmap_get_string("resources.watchdog_device", &str) == CS_OK) {
-		if (strcmp (str, "off") == 0) {
+		if (str[0] == 0 || strcmp (str, "off") == 0) {
 			log_printf (LOGSYS_LEVEL_WARNING, "Watchdog disabled by configuration");
 			free(str);
 			dog = -1;
@@ -643,6 +643,10 @@ static int setup_watchdog(void)
 		} else {
 			watchdog_device = str;
 		}
+	} else {
+		log_printf (LOGSYS_LEVEL_WARNING, "Watchdog not enabled by configuration");
+		dog = -1;
+		return -1;
 	}
 
 	if (access (watchdog_device, W_OK) != 0) {
