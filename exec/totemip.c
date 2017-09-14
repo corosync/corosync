@@ -219,7 +219,7 @@ const char *totemip_print(const struct totem_ip_address *addr)
 }
 
 /* Make a totem_ip_address into a usable sockaddr_storage */
-int totemip_totemip_to_sockaddr_convert(struct totem_ip_address *ip_addr,
+int totemip_totemip_to_sockaddr_convert(unsigned int scope_id, struct totem_ip_address *ip_addr,
 					uint16_t port, struct sockaddr_storage *saddr, int *addrlen)
 {
 	int ret = -1;
@@ -246,8 +246,9 @@ int totemip_totemip_to_sockaddr_convert(struct totem_ip_address *ip_addr,
 		sin->sin6_len = sizeof(struct sockaddr_in6);
 #endif
 		sin->sin6_family = ip_addr->family;
-		sin->sin6_port = ntohs(port);
-		sin->sin6_scope_id = 2;
+		sin->sin6_port = htons(port);
+		assert(ip_addr->scope_id);
+		sin->sin6_scope_id = scope_id;
 		memcpy(&sin->sin6_addr, ip_addr->addr, sizeof(struct in6_addr));
 
 		*addrlen = sizeof(struct sockaddr_in6);
@@ -361,6 +362,7 @@ int totemip_getifaddrs(struct qb_list_head *addrs)
 		    &if_addr->ip_addr) == -1) {
 			goto error_free_addr_name;
 		}
+		if_addr->ip_addr.scope_id = if_addr->interface_num;
 
 		if (totemip_sockaddr_to_totemip_convert((const struct sockaddr_storage *)ifa->ifa_netmask,
 		    &if_addr->mask_addr) == -1) {

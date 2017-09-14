@@ -112,6 +112,7 @@ struct totem_ip_address {
 	unsigned int   nodeid;
 	unsigned short family;
 	unsigned char  addr[TOTEMIP_ADDRLEN];
+	unsigned short scope_id;
 } __attribute__((packed));
 #endif
 
