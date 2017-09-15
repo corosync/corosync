@@ -124,16 +124,22 @@ void totemsrp_service_ready_register (
 	void *srp_context,
 	void (*totem_service_ready) (void));
 
+extern int totemsrp_iface_set (
+	void *srp_context,
+	const struct totem_ip_address *interface_addr,
+	unsigned short ip_port,
+	unsigned int iface_no);
+
 extern int totemsrp_member_add (
 	void *srp_context,
 	const struct totem_ip_address *member,
 	int ring_no);
-	
+
 extern int totemsrp_member_remove (
 	void *srp_context,
 	const struct totem_ip_address *member,
 	int ring_no);
-	
+
 void totemsrp_threaded_mode_enable (
 	void *srp_context);
 

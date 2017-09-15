@@ -100,8 +100,9 @@ linkstatusget_do (char *interface_name)
 		printf ("Could not get the link status, the error is: %d\n", result);
 	} else {
 		for (i = 0; i < interface_count; i++) {
-			if ( (interface_name && 
-			     	(interface_name[0]=='\0' || 
+			if ( (interface_name &&
+			      interface_names[i][0] != '\0' &&
+			      (interface_name[0]=='\0' ||
 				strcasecmp (interface_name, interface_names[i]) == 0)) ||
 				!interface_name ) {
 

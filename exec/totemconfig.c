@@ -178,7 +178,7 @@ static void totem_volatile_config_read (struct totem_config *totem_config, const
 
 	totem_volatile_config_set_value(totem_config, "totem.token", deleted_key, TOKEN_TIMEOUT, 0);
 
-	if (totem_config->interface_count > 0 && totem_config->interfaces[0].member_count > 2) {
+	if (totem_config->interfaces[0].member_count > 2) {
 		u32 = TOKEN_COEFFICIENT;
 		icmap_get_uint32("totem.token_coefficient", &u32);
 		totem_config->token_timeout += (totem_config->interfaces[0].member_count - 2) * u32;
@@ -609,8 +609,7 @@ static int find_local_node_in_nodelist(struct totem_config *totem_config)
  * (set to 0), and ips which are only in set1 or set2 remains untouched.
  * totempg_node_add/remove is called.
  */
-static void compute_interfaces_diff(int interface_count,
-	struct totem_interface *set1,
+static void compute_interfaces_diff(struct totem_interface *set1,
 	struct totem_interface *set2)
 {
 	int ring_no, set1_pos, set2_pos;
@@ -618,7 +617,11 @@ static void compute_interfaces_diff(int interface_count,
 
 	memset(&empty_ip_address, 0, sizeof(empty_ip_address));
 
-	for (ring_no = 0; ring_no < interface_count; ring_no++) {
+	for (ring_no = 0; ring_no < INTERFACE_MAX; ring_no++) {
+		if (!set1[ring_no].configured && !set2[ring_no].configured) {
+			continue;
+		}
+
 		for (set1_pos = 0; set1_pos < set1[ring_no].member_count; set1_pos++) {
 			for (set2_pos = 0; set2_pos < set2[ring_no].member_count; set2_pos++) {
 				/*
@@ -637,7 +640,7 @@ static void compute_interfaces_diff(int interface_count,
 		}
 	}
 
-	for (ring_no = 0; ring_no < interface_count; ring_no++) {
+	for (ring_no = 0; ring_no < INTERFACE_MAX; ring_no++) {
 		for (set1_pos = 0; set1_pos < set1[ring_no].member_count; set1_pos++) {
 			/*
 			 * All items which remained in set1 doesn't exists in set2 any longer so
@@ -651,6 +654,9 @@ static void compute_interfaces_diff(int interface_count,
 
 				totempg_member_remove(&set1[ring_no].member_list[set1_pos], ring_no);
 			}
+		}
+		if (!set2[ring_no].configured) {
+			continue;
 		}
 		for (set2_pos = 0; set2_pos < set2[ring_no].member_count; set2_pos++) {
 			/*
@@ -669,6 +675,56 @@ static void compute_interfaces_diff(int interface_count,
 	}
 }
 
+/*
+ * Reconfigure links in totempg. Sets new local IP address and adds params for new links.
+ */
+static void reconfigure_links(struct totem_config *totem_config)
+{
+	int i;
+	char tmp_key[ICMAP_KEYNAME_MAXLEN];
+	char *addr_string;
+	struct totem_ip_address local_ip;
+	int err;
+	unsigned int local_node_pos = find_local_node_in_nodelist(totem_config);
+
+	for (i = 0; i<INTERFACE_MAX; i++) {
+		if (!totem_config->interfaces[i].configured) {
+			continue;
+		}
+
+		log_printf(LOGSYS_LEVEL_INFO, "Configuring link %d\n", i);
+
+		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "nodelist.node.%u.ring%u_addr", local_node_pos, i);
+		if (icmap_get_string(tmp_key, &addr_string) != CS_OK) {
+			continue;
+		}
+
+		err = totemip_parse(&local_ip, addr_string, AF_UNSPEC);
+		if (err != 0) {
+			continue;
+		}
+		local_ip.nodeid = totem_config->node_id;
+
+		/* In case this is a new link, fill in the defaults if there was no interface{} section for it */
+		if (!totem_config->interfaces[i].knet_link_priority)
+			totem_config->interfaces[i].knet_link_priority = 1;
+		if (!totem_config->interfaces[i].knet_ping_interval)
+			totem_config->interfaces[i].knet_ping_interval = KNET_PING_INTERVAL;
+		if (!totem_config->interfaces[i].knet_ping_timeout)
+			totem_config->interfaces[i].knet_ping_timeout = KNET_PING_TIMEOUT;
+		if (!totem_config->interfaces[i].knet_ping_precision)
+			totem_config->interfaces[i].knet_ping_precision = KNET_PING_PRECISION;
+		if (!totem_config->interfaces[i].knet_pong_count)
+			totem_config->interfaces[i].knet_pong_count = KNET_PONG_COUNT;
+		if (!totem_config->interfaces[i].knet_transport)
+			totem_config->interfaces[i].knet_transport = KNET_TRANSPORT_UDP;
+		if (!totem_config->interfaces[i].ip_port)
+			totem_config->interfaces[i].ip_port = DEFAULT_PORT;
+
+		totempg_iface_set(&local_ip, totem_config->interfaces[i].ip_port, i);
+	}
+}
+
 static void put_nodelist_members_to_config(struct totem_config *totem_config, int reload)
 {
 	icmap_iter_t iter, iter2;
@@ -681,7 +737,6 @@ static void put_nodelist_members_to_config(struct totem_config *totem_config, in
 	int member_count;
 	unsigned int linknumber = 0;
 	int i, j;
-	struct totem_interface *orig_interfaces = NULL;
 	struct totem_interface *new_interfaces = NULL;
 
 	if (reload) {
@@ -690,16 +745,12 @@ static void put_nodelist_members_to_config(struct totem_config *totem_config, in
 		 * not all totem structures are initialized so corosync will crash during
 		 * member_add/remove
 		 */
-		orig_interfaces = malloc (sizeof (struct totem_interface) * INTERFACE_MAX);
-		assert(orig_interfaces != NULL);
 		new_interfaces = malloc (sizeof (struct totem_interface) * INTERFACE_MAX);
 		assert(new_interfaces != NULL);
-
-		memcpy(orig_interfaces, totem_config->interfaces, sizeof (struct totem_interface) * INTERFACE_MAX);
 	}
 
 	/* Clear out nodelist so we can put the new one in if needed */
-	for (i = 0; i < totem_config->interface_count; i++) {
+	for (i = 0; i < INTERFACE_MAX; i++) {
 		for (j = 0; j < PROCESSOR_COUNT_MAX; j++) {
 			memset(&totem_config->interfaces[i].member_list[j], 0, sizeof(struct totem_ip_address));
 		}
@@ -743,6 +794,8 @@ static void put_nodelist_members_to_config(struct totem_config *totem_config, in
 				totem_config->interfaces[linknumber].member_list[member_count].nodeid = nodeid;
 				totem_config->interfaces[linknumber].member_count++;
 			}
+
+			totem_config->interfaces[linknumber].configured = 1;
 			free(node_addr_str);
 		}
 
@@ -752,12 +805,14 @@ static void put_nodelist_members_to_config(struct totem_config *totem_config, in
 	icmap_iter_finalize(iter);
 
 	if (reload) {
+		log_printf(LOGSYS_LEVEL_DEBUG, "About to reconfigure links from nodelist.\n");
+		reconfigure_links(totem_config);
+
 		memcpy(new_interfaces, totem_config->interfaces, sizeof (struct totem_interface) * INTERFACE_MAX);
 
-		compute_interfaces_diff(totem_config->interface_count, orig_interfaces, new_interfaces);
+		compute_interfaces_diff(totem_config->orig_interfaces, new_interfaces);
 
 		free(new_interfaces);
-		free(orig_interfaces);
 	}
 }
 
@@ -932,6 +987,196 @@ static void config_convert_nodelist_to_interface(struct totem_config *totem_conf
 	}
 }
 
+static int get_interface_params(struct totem_config *totem_config,
+				const char **error_string, uint64_t *warnings,
+				int reload)
+{
+	int res = 0;
+	unsigned int linknumber = 0;
+	int member_count = 0;
+	int i;
+	icmap_iter_t iter, member_iter;
+	const char *iter_key;
+	const char *member_iter_key;
+	char linknumber_key[ICMAP_KEYNAME_MAXLEN];
+	char tmp_key[ICMAP_KEYNAME_MAXLEN];
+	uint8_t u8;
+	uint32_t u32;
+	char *str;
+	char *cluster_name = NULL;
+
+	if (reload) {
+		for (i=0; i<INTERFACE_MAX; i++) {
+			totem_config->interfaces[i].configured = 0;
+		}
+	}
+
+	iter = icmap_iter_init("totem.interface.");
+	while ((iter_key = icmap_iter_next(iter, NULL, NULL)) != NULL) {
+		res = sscanf(iter_key, "totem.interface.%[^.].%s", linknumber_key, tmp_key);
+		if (res != 2) {
+			continue;
+		}
+
+		if (strcmp(tmp_key, "bindnetaddr") != 0 && totem_config->transport_number == TOTEM_TRANSPORT_UDP) {
+			continue;
+		}
+
+		member_count = 0;
+		linknumber = atoi(linknumber_key);
+
+		if (linknumber >= INTERFACE_MAX) {
+			free(cluster_name);
+
+			snprintf (error_string_response, sizeof(error_string_response),
+			    "parse error in config: interface ring number %u is bigger than allowed maximum %u\n",
+			    linknumber, INTERFACE_MAX - 1);
+
+			*error_string = error_string_response;
+			return -1;
+		}
+
+		/* These things are only valid for the initial read */
+		if (!reload) {
+			/*
+			 * Get the bind net address
+			 */
+			if (icmap_get_string(iter_key, &str) == CS_OK) {
+				res = totemip_parse (&totem_config->interfaces[linknumber].bindnet, str,
+						     totem_config->ip_version);
+				free(str);
+			}
+
+			/*
+			 * Get interface multicast address
+			 */
+			snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.mcastaddr", linknumber);
+			if (icmap_get_string(tmp_key, &str) == CS_OK) {
+				res = totemip_parse (&totem_config->interfaces[linknumber].mcast_addr, str, totem_config->ip_version);
+				free(str);
+			} else {
+				/*
+				 * User not specified address -> autogenerate one from cluster_name key
+				 * (if available). Return code is intentionally ignored, because
+				 * udpu doesn't need mcastaddr and validity of mcastaddr for udp is
+				 * checked later anyway.
+				 */
+				(void)get_cluster_mcast_addr (cluster_name,
+							      linknumber,
+							      totem_config->ip_version,
+							      &totem_config->interfaces[linknumber].mcast_addr);
+			}
+
+			snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.broadcast", linknumber);
+			if (icmap_get_string(tmp_key, &str) == CS_OK) {
+				if (strcmp (str, "yes") == 0) {
+					totem_config->broadcast_use = 1;
+				}
+				free(str);
+			}
+		}
+
+		/* These things are only valid for the initial read OR a newly-defined link */
+		if (!reload || (totem_config->interfaces[linknumber].configured == 0)) {
+
+			/*
+			 * Get mcast port
+			 */
+			snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.mcastport", linknumber);
+			if (icmap_get_uint16(tmp_key, &totem_config->interfaces[linknumber].ip_port) != CS_OK) {
+				if (totem_config->broadcast_use) {
+					totem_config->interfaces[linknumber].ip_port = DEFAULT_PORT + (2 * linknumber);
+				} else {
+					totem_config->interfaces[linknumber].ip_port = DEFAULT_PORT;
+				}
+			}
+
+			/*
+			 * Get the TTL
+			 */
+			totem_config->interfaces[linknumber].ttl = 1;
+
+			snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.ttl", linknumber);
+
+			if (icmap_get_uint8(tmp_key, &u8) == CS_OK) {
+				totem_config->interfaces[linknumber].ttl = u8;
+			}
+
+			totem_config->interfaces[linknumber].knet_transport = KNET_DEFAULT_TRANSPORT;
+			snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.knet_transport", linknumber);
+			if (icmap_get_string(tmp_key, &str) == CS_OK) {
+				if (strcmp(str, "sctp") == 0) {
+					totem_config->interfaces[linknumber].knet_transport = KNET_TRANSPORT_SCTP;
+				}
+				else if (strcmp(str, "udp") == 0) {
+					totem_config->interfaces[linknumber].knet_transport = KNET_TRANSPORT_UDP;
+				}
+				else {
+					*error_string = "Unrecognised knet_transport. expected 'udp' or 'sctp'";
+					return -1;
+				}
+			}
+		}
+		totem_config->interfaces[linknumber].configured = 1;
+
+		/*
+		 * Get the knet link params
+		 */
+		totem_config->interfaces[linknumber].knet_link_priority = 1;
+		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.knet_link_priority", linknumber);
+
+		if (icmap_get_uint8(tmp_key, &u8) == CS_OK) {
+			totem_config->interfaces[linknumber].knet_link_priority = u8;
+		}
+
+		totem_config->interfaces[linknumber].knet_ping_interval = KNET_PING_INTERVAL;
+		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.knet_ping_interval", linknumber);
+		if (icmap_get_uint32(tmp_key, &u32) == CS_OK) {
+			totem_config->interfaces[linknumber].knet_ping_interval = u32;
+		}
+		totem_config->interfaces[linknumber].knet_ping_timeout = KNET_PING_TIMEOUT;
+		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.knet_ping_timeout", linknumber);
+		if (icmap_get_uint32(tmp_key, &u32) == CS_OK) {
+			totem_config->interfaces[linknumber].knet_ping_timeout = u32;
+		}
+		totem_config->interfaces[linknumber].knet_ping_precision = KNET_PING_PRECISION;
+		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.knet_ping_precision", linknumber);
+		if (icmap_get_uint32(tmp_key, &u32) == CS_OK) {
+			totem_config->interfaces[linknumber].knet_ping_precision = u32;
+		}
+		totem_config->interfaces[linknumber].knet_pong_count = KNET_PONG_COUNT;
+		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.knet_pong_count", linknumber);
+		if (icmap_get_uint32(tmp_key, &u32) == CS_OK) {
+			totem_config->interfaces[linknumber].knet_pong_count = u32;
+		}
+
+		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.member.", linknumber);
+		member_iter = icmap_iter_init(tmp_key);
+		while ((member_iter_key = icmap_iter_next(member_iter, NULL, NULL)) != NULL) {
+			if (member_count == 0) {
+				if (icmap_get_string("nodelist.node.0.ring0_addr", &str) == CS_OK) {
+					free(str);
+					*warnings |= TOTEM_CONFIG_WARNING_MEMBERS_IGNORED;
+					break;
+				} else {
+					*warnings |= TOTEM_CONFIG_WARNING_MEMBERS_DEPRECATED;
+				}
+			}
+
+			if (icmap_get_string(member_iter_key, &str) == CS_OK) {
+				res = totemip_parse (&totem_config->interfaces[linknumber].member_list[member_count++],
+						str, totem_config->ip_version);
+			}
+		}
+		icmap_iter_finalize(member_iter);
+
+		totem_config->interfaces[linknumber].member_count = member_count;
+
+	}
+	icmap_iter_finalize(iter);
+
+	return 0;
+}
 
 extern int totem_config_read (
 	struct totem_config *totem_config,
@@ -940,16 +1185,8 @@ extern int totem_config_read (
 {
 	int res = 0;
 	char *str, *ring0_addr_str;
-	unsigned int linknumber = 0;
-	int member_count = 0;
-	icmap_iter_t iter, member_iter;
-	const char *iter_key;
-	const char *member_iter_key;
-	char linknumber_key[ICMAP_KEYNAME_MAXLEN];
 	char tmp_key[ICMAP_KEYNAME_MAXLEN];
-	uint8_t u8;
 	uint16_t u16;
-	uint32_t u32;
 	char *cluster_name = NULL;
 	int i;
 	int local_node_pos;
@@ -1034,177 +1271,27 @@ extern int totem_config_read (
 	 */
 	totem_config->broadcast_use = 0;
 
-	iter = icmap_iter_init("totem.interface.");
-	while ((iter_key = icmap_iter_next(iter, NULL, NULL)) != NULL) {
-		res = sscanf(iter_key, "totem.interface.%[^.].%s", linknumber_key, tmp_key);
-		if (res != 2) {
-			continue;
-		}
-
-		if (strcmp(tmp_key, "bindnetaddr") != 0) {
-			continue;
-		}
-
-		member_count = 0;
-
-		linknumber = atoi(linknumber_key);
-
-		if (linknumber >= INTERFACE_MAX) {
-			free(cluster_name);
-
-			snprintf (error_string_response, sizeof(error_string_response),
-			    "parse error in config: interface ring number %u is bigger than allowed maximum %u\n",
-			    linknumber, INTERFACE_MAX - 1);
-
-			*error_string = error_string_response;
-			return -1;
-		}
-
-		/*
-		 * Get the bind net address
-		 */
-		if (icmap_get_string(iter_key, &str) == CS_OK) {
-			res = totemip_parse (&totem_config->interfaces[linknumber].bindnet, str,
-			    totem_config->ip_version);
-			free(str);
-		}
-
-		/*
-		 * Get interface multicast address
-		 */
-		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.mcastaddr", linknumber);
-		if (icmap_get_string(tmp_key, &str) == CS_OK) {
-			res = totemip_parse (&totem_config->interfaces[linknumber].mcast_addr, str, totem_config->ip_version);
-			free(str);
-		} else {
-			/*
-			 * User not specified address -> autogenerate one from cluster_name key
-			 * (if available). Return code is intentionally ignored, because
-			 * udpu doesn't need mcastaddr and validity of mcastaddr for udp is
-			 * checked later anyway.
-			 */
-			(void)get_cluster_mcast_addr (cluster_name,
-					linknumber,
-					totem_config->ip_version,
-					&totem_config->interfaces[linknumber].mcast_addr);
-		}
-
-		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.broadcast", linknumber);
-		if (icmap_get_string(tmp_key, &str) == CS_OK) {
-			if (strcmp (str, "yes") == 0) {
-				totem_config->broadcast_use = 1;
-			}
-			free(str);
-		}
-
-		/*
-		 * Get mcast port
-		 */
-		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.mcastport", linknumber);
-		if (icmap_get_uint16(tmp_key, &totem_config->interfaces[linknumber].ip_port) != CS_OK) {
-			if (totem_config->broadcast_use) {
-				totem_config->interfaces[linknumber].ip_port = DEFAULT_PORT + (2 * linknumber);
-			} else {
-				totem_config->interfaces[linknumber].ip_port = DEFAULT_PORT;
-			}
-		}
-
-		/*
-		 * Get the TTL
-		 */
-		totem_config->interfaces[linknumber].ttl = 1;
-
-		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.ttl", linknumber);
-
-		if (icmap_get_uint8(tmp_key, &u8) == CS_OK) {
-			totem_config->interfaces[linknumber].ttl = u8;
-		}
-
-		/*
-		 * Get the knet link params
-		 */
-		totem_config->interfaces[linknumber].knet_link_priority = 1;
-		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.knet_link_priority", linknumber);
-
-		if (icmap_get_uint8(tmp_key, &u8) == CS_OK) {
-			totem_config->interfaces[linknumber].knet_link_priority = u8;
-		}
-
-		totem_config->interfaces[linknumber].knet_ping_interval = KNET_PING_INTERVAL;
-		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.knet_ping_interval", linknumber);
-		if (icmap_get_uint32(tmp_key, &u32) == CS_OK) {
-			totem_config->interfaces[linknumber].knet_ping_interval = u32;
-		}
-		totem_config->interfaces[linknumber].knet_ping_timeout = KNET_PING_TIMEOUT;
-		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.knet_ping_timeout", linknumber);
-		if (icmap_get_uint32(tmp_key, &u32) == CS_OK) {
-			totem_config->interfaces[linknumber].knet_ping_timeout = u32;
-		}
-		totem_config->interfaces[linknumber].knet_ping_precision = KNET_PING_PRECISION;
-		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.knet_ping_precision", linknumber);
-		if (icmap_get_uint32(tmp_key, &u32) == CS_OK) {
-			totem_config->interfaces[linknumber].knet_ping_precision = u32;
-		}
-		totem_config->interfaces[linknumber].knet_pong_count = KNET_PONG_COUNT;
-		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.knet_pong_count", linknumber);
-		if (icmap_get_uint32(tmp_key, &u32) == CS_OK) {
-			totem_config->interfaces[linknumber].knet_pong_count = u32;
-		}
-
-		totem_config->interfaces[linknumber].knet_transport = KNET_DEFAULT_TRANSPORT;
-		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.knet_transport", linknumber);
-		if (icmap_get_string(tmp_key, &str) == CS_OK) {
-			if (strcmp(str, "sctp") == 0) {
-				totem_config->interfaces[linknumber].knet_transport = KNET_TRANSPORT_SCTP;
-			}
-			else if (strcmp(str, "udp") == 0) {
-				totem_config->interfaces[linknumber].knet_transport = KNET_TRANSPORT_UDP;
-			}
-			else {
-				*error_string = "Unrecognised knet_transport. expected 'udp' or 'sctp'";
-				return -1;
-			}
-		}
-
-		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.member.", linknumber);
-		member_iter = icmap_iter_init(tmp_key);
-		while ((member_iter_key = icmap_iter_next(member_iter, NULL, NULL)) != NULL) {
-			if (member_count == 0) {
-				if (icmap_get_string("nodelist.node.0.ring0_addr", &str) == CS_OK) {
-					free(str);
-					*warnings |= TOTEM_CONFIG_WARNING_MEMBERS_IGNORED;
-					break;
-				} else {
-					*warnings |= TOTEM_CONFIG_WARNING_MEMBERS_DEPRECATED;
-				}
-			}
-
-			if (icmap_get_string(member_iter_key, &str) == CS_OK) {
-				res = totemip_parse (&totem_config->interfaces[linknumber].member_list[member_count++],
-						str, totem_config->ip_version);
-			}
-		}
-		icmap_iter_finalize(member_iter);
-
-		totem_config->interfaces[linknumber].member_count = member_count;
-		totem_config->interface_count++;
+	res = get_interface_params(totem_config, error_string, warnings, 0);
+	if (res < 0) {
+		return res;
 	}
-	icmap_iter_finalize(iter);
 
 	/*
 	 * Use broadcast is global, so if set, make sure to fill mcast addr correctly
+	 * broadcast is only supported for UDP so just do interface 0;
 	 */
 	if (totem_config->broadcast_use) {
-		for (linknumber = 0; linknumber < totem_config->interface_count; linknumber++) {
-			totemip_parse (&totem_config->interfaces[linknumber].mcast_addr,
-				"255.255.255.255", 0);
-		}
+		totemip_parse (&totem_config->interfaces[0].mcast_addr,
+			       "255.255.255.255", 0);
 	}
 
 	/*
 	 * Store automatically generated items back to icmap
 	 */
-	for (i = 0; i < totem_config->interface_count; i++) {
+	for (i = 0; i < INTERFACE_MAX; i++) {
+		if (!totem_config->interfaces[i].configured) {
+			continue;
+		}
 		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.mcastaddr", i);
 		if (icmap_get_string(tmp_key, &str) == CS_OK) {
 			free(str);
@@ -1290,21 +1377,33 @@ int totem_config_validate (
 	static char local_error_reason[512];
 	char parse_error[512];
 	const char *error_reason = local_error_reason;
-	int i, j;
+	int i;
+	int num_configured = 0;
 	unsigned int interface_max = INTERFACE_MAX;
-	unsigned int port1, port2;
 
-	if (totem_config->interface_count == 0) {
+
+
+	for (i = 0; i < INTERFACE_MAX; i++) {
+		if (totem_config->interfaces[i].configured) {
+			num_configured++;
+		}
+	}
+	if (num_configured == 0) {
 		error_reason = "No interfaces defined";
 		goto parse_error;
 	}
 
-	for (i = 0; i < totem_config->interface_count; i++) {
+	for (i = 0; i < INTERFACE_MAX; i++) {
 		/*
 		 * Some error checking of parsed data to make sure its valid
 		 */
 
 		struct totem_ip_address null_addr;
+
+		if (!totem_config->interfaces[i].configured) {
+			continue;
+		}
+
 		memset (&null_addr, 0, sizeof (struct totem_ip_address));
 
 		if ((totem_config->transport_number == 0) &&
@@ -1361,22 +1460,6 @@ int totem_config_validate (
 			error_reason =  "Not all bind address belong to the same IP family";
 			goto parse_error;
 		}
-
-		/*
-		 * Ensure mcast address/port differs
-		 */
-		if (totem_config->transport_number == TOTEM_TRANSPORT_UDP) {
-			for (j = i + 1; j < totem_config->interface_count; j++) {
-				port1 = totem_config->interfaces[i].ip_port;
-				port2 = totem_config->interfaces[j].ip_port;
-				if (totemip_equal(&totem_config->interfaces[i].mcast_addr,
-				    &totem_config->interfaces[j].mcast_addr) &&
-				    (((port1 > port2 ? port1 : port2)  - (port1 < port2 ? port1 : port2)) <= 1)) {
-					error_reason = "Interfaces multicast address/port pair must differ";
-					goto parse_error;
-				}
-			}
-		}
 	}
 
 	if (totem_config->version != 2) {
@@ -1408,10 +1491,10 @@ int totem_config_validate (
 		interface_max = 1;
 	}
 
-	if (interface_max < totem_config->interface_count) {
+	if (interface_max < num_configured) {
 		snprintf (parse_error, sizeof(parse_error),
 			  "%d is too many configured interfaces for non-Knet transport.",
-			  totem_config->interface_count);
+			  num_configured);
 		error_reason = parse_error;
 		goto parse_error;
 	}
@@ -1649,9 +1732,16 @@ static void totem_reload_notify(
 	struct totem_config *totem_config = (struct totem_config *)user_data;
 	uint32_t local_node_pos;
 	const char *error_string;
+	uint64_t warnings;
 
 	/* Reload has completed */
 	if (*(uint8_t *)new_val.data == 0) {
+
+		totem_config->orig_interfaces = malloc (sizeof (struct totem_interface) * INTERFACE_MAX);
+		assert(totem_config->orig_interfaces != NULL);
+		memcpy(totem_config->orig_interfaces, totem_config->interfaces, sizeof (struct totem_interface) * INTERFACE_MAX);
+
+		get_interface_params(totem_config, &error_string, &warnings, 1);
 		put_nodelist_members_to_config (totem_config, 1);
 		totem_volatile_config_read (totem_config, NULL);
 		log_printf(LOGSYS_LEVEL_DEBUG, "Configuration reloaded. Dumping actual totem config.");
@@ -1669,6 +1759,7 @@ static void totem_reload_notify(
 		if (local_node_pos != -1) {
 			icmap_set_uint32("nodelist.local_node_pos", local_node_pos);
 		}
+		free(totem_config->orig_interfaces);
 
 		icmap_set_uint8("config.totemconfig_reload_in_progress", 0);
 	} else {
