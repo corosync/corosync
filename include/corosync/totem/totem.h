@@ -52,6 +52,9 @@
 #define SEND_THREADS_MAX	16
 #define INTERFACE_MAX		2
 
+#define BIND_MAX_RETRIES	10
+#define BIND_RETRIES_INTERVAL	100
+
 /**
  * Maximum number of continuous gather states
  */

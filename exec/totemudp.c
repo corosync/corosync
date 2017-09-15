@@ -724,8 +724,9 @@ static int totemudp_build_sockets_ip (
 	struct sockaddr_in  *mcast_sin = (struct sockaddr_in *)&mcast_ss;
 	struct sockaddr_in  *boundto_sin = (struct sockaddr_in *)&boundto_ss;
 	unsigned int sendbuf_size;
-        unsigned int recvbuf_size;
-        unsigned int optlen = sizeof (sendbuf_size);
+	unsigned int recvbuf_size;
+	unsigned int optlen = sizeof (sendbuf_size);
+	unsigned int retries;
 	int addrlen;
 	int res;
 	int flag;
@@ -811,10 +812,25 @@ static int totemudp_build_sockets_ip (
 
 	totemip_totemip_to_sockaddr_convert(bound_to, instance->totem_interface->ip_port - 1,
 		&sockaddr, &addrlen);
-	res = bind (sockets->mcast_send, (struct sockaddr *)&sockaddr, addrlen);
-	if (res == -1) {
+
+	retries = 0;
+	while (1) {
+		res = bind (sockets->mcast_send, (struct sockaddr *)&sockaddr, addrlen);
+		if (res == 0) {
+			break;
+		}
 		LOGSYS_PERROR (errno, instance->totemudp_log_level_warning,
 			"Unable to bind the socket to send multicast packets");
+		if (++retries > BIND_MAX_RETRIES) {
+			break;
+		}
+
+		/*
+		 * Wait for a while
+		 */
+		(void)poll(NULL, 0, BIND_RETRIES_INTERVAL * retries);
+	}
+	if (res == -1) {
 		return (-1);
 	}
 
@@ -851,10 +867,25 @@ static int totemudp_build_sockets_ip (
 	 * This has the side effect of binding to the correct interface
 	 */
 	totemip_totemip_to_sockaddr_convert(bound_to, instance->totem_interface->ip_port, &sockaddr, &addrlen);
-	res = bind (sockets->token, (struct sockaddr *)&sockaddr, addrlen);
-	if (res == -1) {
+
+	retries = 0;
+	while (1) {
+		res = bind (sockets->token, (struct sockaddr *)&sockaddr, addrlen);
+		if (res == 0) {
+			break;
+		}
 		LOGSYS_PERROR (errno, instance->totemudp_log_level_warning,
 			"Unable to bind UDP unicast socket");
+		if (++retries > BIND_MAX_RETRIES) {
+			break;
+		}
+
+		/*
+		 * Wait for a while
+		 */
+		(void)poll(NULL, 0, BIND_RETRIES_INTERVAL * retries);
+	}
+	if (res == -1) {
 		return (-1);
 	}
 
@@ -1050,10 +1081,26 @@ static int totemudp_build_sockets_ip (
 	 */
 	totemip_totemip_to_sockaddr_convert(mcast_address,
 		instance->totem_interface->ip_port, &sockaddr, &addrlen);
-	res = bind (sockets->mcast_recv, (struct sockaddr *)&sockaddr, addrlen);
-	if (res == -1) {
+
+	retries = 0;
+	while (1) {
+		res = bind (sockets->mcast_recv, (struct sockaddr *)&sockaddr, addrlen);
+		if (res == 0) {
+			break;
+		}
 		LOGSYS_PERROR (errno, instance->totemudp_log_level_warning,
 				"Unable to bind the socket to receive multicast packets");
+		if (++retries > BIND_MAX_RETRIES) {
+			break;
+		}
+
+		/*
+		 * Wait for a while
+		 */
+		(void)poll(NULL, 0, BIND_RETRIES_INTERVAL * retries);
+	}
+
+	if (res == -1) {
 		return (-1);
 	}
 	return 0;
@@ -1087,6 +1134,13 @@ static int totemudp_build_sockets (
 
 	res = totemudp_build_sockets_ip (instance, mcast_address,
 		bindnet_address, sockets, bound_to, interface_num);
+
+	if (res == -1) {
+		/* if we get here, corosync won't work anyway, so better leaving than faking to work */
+		LOGSYS_PERROR (errno, instance->totemudp_log_level_error,
+			"Unable to create sockets, exiting");
+		exit(EXIT_FAILURE);
+	}
 
 	/* We only send out of the token socket */
 	totemudp_traffic_control_set(instance, sockets->token);

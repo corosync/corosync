@@ -668,6 +668,7 @@ static int totemudpu_build_sockets_ip (
 	int res;
 	unsigned int recvbuf_size;
 	unsigned int optlen = sizeof (recvbuf_size);
+	unsigned int retries = 0;
 
 	/*
 	 * Setup unicast socket
@@ -692,10 +693,24 @@ static int totemudpu_build_sockets_ip (
 	 * This has the side effect of binding to the correct interface
 	 */
 	totemip_totemip_to_sockaddr_convert(bound_to, instance->totem_interface->ip_port, &sockaddr, &addrlen);
-	res = bind (instance->token_socket, (struct sockaddr *)&sockaddr, addrlen);
-	if (res == -1) {
+	while (1) {
+		res = bind (instance->token_socket, (struct sockaddr *)&sockaddr, addrlen);
+		if (res == 0) {
+			break;
+		}
 		LOGSYS_PERROR (errno, instance->totemudpu_log_level_warning,
 			"bind token socket failed");
+		if (++retries > BIND_MAX_RETRIES) {
+			break;
+		}
+
+		/*
+		 * Wait for a while
+		 */
+		(void)poll(NULL, 0, BIND_RETRIES_INTERVAL * retries);
+	}
+
+	if (res == -1) {
 		return (-1);
 	}
 
@@ -740,6 +755,13 @@ static int totemudpu_build_sockets (
 
 	res = totemudpu_build_sockets_ip (instance,
 		bindnet_address, bound_to, interface_num);
+
+	if (res == -1) {
+		/* if we get here, corosync won't work anyway, so better leaving than faking to work */
+		LOGSYS_PERROR (errno, instance->totemudpu_log_level_error,
+					"Unable to create sockets, exiting");
+		exit(EXIT_FAILURE);
+	}
 
 	/* We only send out of the token socket */
 	totemudpu_traffic_control_set(instance, instance->token_socket);
