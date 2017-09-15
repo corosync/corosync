@@ -160,6 +160,11 @@ extern int totempg_crypto_set (const char *cipher_type, const char *hash_type);
 extern void totempg_service_ready_register (
 	void (*totem_service_ready) (void));
 
+extern int totempg_iface_set (
+	struct totem_ip_address *interface_addr,
+	unsigned short ip_port,
+	unsigned int iface_no);
+
 extern int totempg_member_add (
 	const struct totem_ip_address *member,
 	int ring_no);

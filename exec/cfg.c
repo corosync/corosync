@@ -759,6 +759,10 @@ static void message_handler_req_lib_cfg_ringstatusget (
 		totem_ip_string
 		  = (const char *)api->totem_ip_print (&interfaces[i]);
 
+		if (!totem_ip_string) {
+			totem_ip_string="";
+		}
+
 		if (strlen(totem_ip_string) >= CFG_INTERFACE_NAME_MAX_LEN) {
 			log_printf(LOGSYS_LEVEL_ERROR, "String representation of interface %u is too long", i);
 			res = CS_ERR_NAME_TOO_LONG;

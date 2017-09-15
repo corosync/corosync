@@ -1402,6 +1402,22 @@ int totempg_groups_send_ok_groups (
 	return (res);
 }
 
+int totempg_iface_set (
+	struct totem_ip_address *interface_addr,
+	unsigned short ip_port,
+	unsigned int iface_no)
+{
+	int res;
+
+	res = totemsrp_iface_set (
+		totemsrp_context,
+		interface_addr,
+		ip_port,
+		iface_no);
+
+	return (res);
+}
+
 int totempg_ifaces_get (
 	unsigned int nodeid,
 	struct totem_ip_address *interfaces,

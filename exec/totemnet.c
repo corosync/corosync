@@ -129,6 +129,12 @@ struct transport {
 	int (*recv_mcast_empty) (
 		void *transport_context);
 
+	int (*iface_set) (
+		void *transport_context,
+		const struct totem_ip_address *local,
+		unsigned short ip_port,
+		unsigned int ring_no);
+
 	int (*member_add) (
 		void *transport_context,
 		const struct totem_ip_address *local,
@@ -158,6 +164,7 @@ struct transport transport_entries[] = {
 		.mcast_noflush_send = totemudp_mcast_noflush_send,
 		.recv_flush = totemudp_recv_flush,
 		.send_flush = totemudp_send_flush,
+		.iface_set = totemudp_iface_set,
 		.iface_check = totemudp_iface_check,
 		.finalize = totemudp_finalize,
 		.net_mtu_adjust = totemudp_net_mtu_adjust,
@@ -177,6 +184,7 @@ struct transport transport_entries[] = {
 		.mcast_noflush_send = totemudpu_mcast_noflush_send,
 		.recv_flush = totemudpu_recv_flush,
 		.send_flush = totemudpu_send_flush,
+		.iface_set = totemudpu_iface_set,
 		.iface_check = totemudpu_iface_check,
 		.finalize = totemudpu_finalize,
 		.net_mtu_adjust = totemudpu_net_mtu_adjust,
@@ -198,6 +206,7 @@ struct transport transport_entries[] = {
 		.mcast_noflush_send = totemknet_mcast_noflush_send,
 		.recv_flush = totemknet_recv_flush,
 		.send_flush = totemknet_send_flush,
+		.iface_set = totemknet_iface_set,
 		.iface_check = totemknet_iface_check,
 		.finalize = totemknet_finalize,
 		.net_mtu_adjust = totemknet_net_mtu_adjust,
@@ -429,6 +438,19 @@ extern int totemnet_net_mtu_adjust (void *net_context, struct totem_config *tote
 	int res = 0;
 
 	instance->transport->net_mtu_adjust (instance->transport_context, totem_config);
+	return (res);
+}
+
+int totemnet_iface_set (void *net_context,
+	const struct totem_ip_address *interface_addr,
+	unsigned short ip_port,
+	unsigned int iface_no)
+{
+	struct totemnet_instance *instance = (struct totemnet_instance *)net_context;
+	int res;
+
+	res = instance->transport->iface_set (instance->transport_context, interface_addr, ip_port, iface_no);
+
 	return (res);
 }
 

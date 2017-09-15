@@ -105,6 +105,11 @@ extern int totemknet_ifaces_get (void *net_context,
 	char ***status,
 	unsigned int *iface_count);
 
+extern int totemknet_iface_set (void *net_context,
+	const struct totem_ip_address *local_addr,
+	unsigned short ip_port,
+	unsigned int iface_no);
+
 extern int totemknet_token_target_set (
 	void *knet_context,
 	const struct totem_ip_address *token_target);

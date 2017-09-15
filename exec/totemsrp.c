@@ -1037,50 +1037,23 @@ int totemsrp_ifaces_get (
 {
 	struct totemsrp_instance *instance = (struct totemsrp_instance *)srp_context;
 	int res = 0;
-	unsigned int found = 0;
-	unsigned int i;
+	int i;
 
-	for (i = 0; i < instance->my_memb_entries; i++) {
-		if (instance->my_memb_list[i].addr[0].nodeid == nodeid) {
-			found = 1;
-			break;
-		}
-	}
+	*iface_count = INTERFACE_MAX;
 
-	if (found) {
-		*iface_count = instance->totem_config->interface_count;
-
-		if (interfaces_size >= *iface_count) {
-			memcpy (interfaces, instance->my_memb_list[i].addr,
-				sizeof (struct totem_ip_address) * *iface_count);
-		} else {
-			res = -2;
-		}
-
-		goto finish;
-	}
-
-	for (i = 0; i < instance->my_left_memb_entries; i++) {
-		if (instance->my_left_memb_list[i].addr[0].nodeid == nodeid) {
-			found = 1;
-			break;
-		}
-	}
-
-	if (found) {
-		*iface_count = instance->totem_config->interface_count;
-
-		if (interfaces_size >= *iface_count) {
-			memcpy (interfaces, instance->my_left_memb_list[i].addr,
-				sizeof (struct totem_ip_address) * *iface_count);
-		} else {
-			res = -2;
+	if (interfaces_size >= *iface_count) {
+		for (i=0; i<INTERFACE_MAX; i++) {
+			if (instance->totem_config->interfaces[i].configured) {
+				memcpy (&interfaces[i], &instance->my_id.addr[i],
+					sizeof (struct totem_ip_address));
+			} else {
+				memset (&interfaces[i], 0, sizeof (struct totem_ip_address));
+			}
 		}
 	} else {
-		res = -1;
+		res = -2;
 	}
 
-finish:
 	totemnet_ifaces_get(instance->totemnet_context, status, iface_count);
 	return (res);
 }
@@ -4682,12 +4655,34 @@ printf ("wrong message type\n");
 		message_header->endian_detector != ENDIAN_LOCAL);
 }
 
+int totemsrp_iface_set (
+	void *context,
+	const struct totem_ip_address *interface_addr,
+	unsigned short ip_port,
+	unsigned int iface_no)
+{
+	struct totemsrp_instance *instance = context;
+	int res;
+
+	totemip_copy(&instance->my_id.addr[iface_no], interface_addr);
+
+	res = totemnet_iface_set (
+		instance->totemnet_context,
+		interface_addr,
+		ip_port,
+		iface_no);
+
+	return (res);
+}
+
+
 void main_iface_change_fn (
 	void *context,
 	const struct totem_ip_address *iface_addr,
 	unsigned int iface_no)
 {
 	struct totemsrp_instance *instance = context;
+	int num_interfaces;
 	int i;
 
 	totemip_copy (&instance->my_id.addr[iface_no], iface_addr);
@@ -4717,7 +4712,15 @@ void main_iface_change_fn (
 			iface_no);
 	}
 
-	if (instance->iface_changes >= instance->totem_config->interface_count) {
+	num_interfaces = 0;
+	for (i = 0; i < INTERFACE_MAX; i++) {
+		if (instance->totem_config->interfaces[i].configured) {
+			num_interfaces++;
+		}
+	}
+
+
+	if (instance->iface_changes >= num_interfaces) {
 		memb_state_gather_enter (instance, TOTEMSRP_GSFROM_INTERFACE_CHANGE);
 	}
 }
@@ -4738,12 +4741,12 @@ void totemsrp_service_ready_register (
 int totemsrp_member_add (
         void *context,
         const struct totem_ip_address *member,
-        int link_no)
+        int iface_no)
 {
 	struct totemsrp_instance *instance = (struct totemsrp_instance *)context;
 	int res;
 
-	res = totemnet_member_add (instance->totemnet_context, &instance->my_id.addr[link_no], member, link_no);
+	res = totemnet_member_add (instance->totemnet_context, &instance->my_id.addr[iface_no], member, iface_no);
 
 	return (res);
 }
@@ -4751,12 +4754,12 @@ int totemsrp_member_add (
 int totemsrp_member_remove (
         void *context,
         const struct totem_ip_address *member,
-        int link_no)
+        int iface_no)
 {
 	struct totemsrp_instance *instance = (struct totemsrp_instance *)context;
 	int res;
 
-	res = totemnet_member_remove (instance->totemnet_context, member, link_no);
+	res = totemnet_member_remove (instance->totemnet_context, member, iface_no);
 
 	return (res);
 }

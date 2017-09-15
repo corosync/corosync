@@ -144,8 +144,6 @@ struct totemknet_instance {
 
 	char *link_status[INTERFACE_MAX];
 
-	int num_links;
-
 	struct totem_ip_address my_ids[INTERFACE_MAX];
 
 	uint16_t ip_port[INTERFACE_MAX];
@@ -417,12 +415,18 @@ int totemknet_ifaces_get (void *knet_context,
 	 * a count of interfaces.
 	 */
 	if (status) {
+
 		res = knet_host_get_host_list(instance->knet_handle,
 					      host_list, &num_hosts);
 		if (res) {
 			return (-1);
 		}
 		qsort(host_list, num_hosts, sizeof(uint16_t), node_compare);
+
+		for (i=0; i<INTERFACE_MAX; i++) {
+			memset(instance->link_status[i], 'n', CFG_INTERFACE_STATUS_MAX_LEN-1);
+			instance->link_status[i][num_hosts] = '\0';
+		}
 
 		/* This is all a bit "inside-out" because "status" is a set of strings per link
 		 * and knet orders things by host
@@ -434,18 +438,12 @@ int totemknet_ifaces_get (void *knet_context,
 				return (-1);
 			}
 
-			for (i=0; i <= instance->num_links; i++) {
-				ptr = instance->link_status[i];
-
-				/* Loopback link */
-				if (i >= num_links) {
-					ptr[j] = '-';
-					continue;
-				}
+			for (i=0; i < num_links; i++) {
+				ptr = instance->link_status[link_list[i]];
 
 				res = knet_link_get_status(instance->knet_handle,
 							   host_list[j],
-							   i,
+							   link_list[i],
 							   &link_status,
 							   sizeof(link_status));
 				if (res == 0) {
@@ -456,13 +454,12 @@ int totemknet_ifaces_get (void *knet_context,
 				else {
 					ptr[j] = '?';
 				}
-				ptr[num_hosts] = '\0';
 			}
 		}
 		*status = instance->link_status;
 	}
 
-	*iface_count = instance->num_links+1;
+	*iface_count = INTERFACE_MAX;
 
 	return (res);
 }
@@ -629,10 +626,14 @@ static void timer_function_netif_check_timeout (
 	struct totemknet_instance *instance = (struct totemknet_instance *)data;
 	int i;
 
-	for (i=0; i<instance->totem_config->interface_count; i++)
+	for (i=0; i < INTERFACE_MAX; i++) {
+		if (!instance->totem_config->interfaces[i].configured) {
+			continue;
+		}
 		instance->totemknet_iface_change_fn (instance->context,
 						     &instance->my_ids[i],
 						     i);
+	}
 }
 static void totemknet_refresh_config(
 	int32_t event,
@@ -672,7 +673,11 @@ static void totemknet_refresh_config(
 	}
 
 	/* Get link parameters */
-	for (i = 0; i <= instance->num_links; i++) {
+	for (i = 0; i < INTERFACE_MAX; i++) {
+		if (!instance->totem_config->interfaces[i].configured) {
+			continue;
+		}
+
 		sprintf(path, "totem.interface.%d.knet_link_priority", i);
 		if (icmap_get_uint32(path, &value) == CS_OK) {
 			instance->totem_config->interfaces[i].knet_link_priority = value;
@@ -710,7 +715,10 @@ static void totemknet_refresh_config(
 	}
 
 	for (i=0; i<num_nodes; i++) {
-		for (link_no = 0; link_no < instance->num_links; link_no++) {
+		for (link_no = 0; link_no < INTERFACE_MAX; link_no++) {
+			if (host_ids[i] == instance->our_nodeid || !instance->totem_config->interfaces[link_no].configured) {
+				continue;
+			}
 
 			err = knet_link_set_ping_timers(instance->knet_handle, host_ids[i], link_no,
 							instance->totem_config->interfaces[link_no].knet_ping_interval,
@@ -818,7 +826,7 @@ int totemknet_initialize (
 
 	instance->our_nodeid = instance->totem_config->node_id;
 
-	for (i=0; i< instance->totem_config->interface_count; i++) {
+	for (i=0; i< INTERFACE_MAX; i++) {
 		totemip_copy(&instance->my_ids[i], &totem_config->interfaces[i].bindnet);
 		instance->my_ids[i].nodeid = instance->our_nodeid;
 		instance->ip_port[i] = totem_config->interfaces[i].ip_port;
@@ -1107,6 +1115,23 @@ extern int totemknet_recv_mcast_empty (
 	return (msg_processed);
 }
 
+int totemknet_iface_set (void *knet_context,
+	const struct totem_ip_address *local_addr,
+	unsigned short ip_port,
+	unsigned int iface_no)
+{
+	struct totemknet_instance *instance = (struct totemknet_instance *)knet_context;
+
+	totemip_copy(&instance->my_ids[iface_no], local_addr);
+
+	knet_log_printf(LOG_INFO, "Configured link number %d: local addr: %s, port=%d", iface_no, totemip_print(local_addr), ip_port);
+
+	instance->ip_port[iface_no] = ip_port;
+
+	return 0;
+}
+
+
 int totemknet_member_add (
 	void *knet_context,
 	const struct totem_ip_address *local,
@@ -1119,11 +1144,6 @@ int totemknet_member_add (
 	struct sockaddr_storage remote_ss;
 	struct sockaddr_storage local_ss;
 	int addrlen;
-
-	/* Keep track of the number of links */
-	if (link_no > instance->num_links) {
-		instance->num_links = link_no;
-	}
 
 	/* Only create 1 loopback link */
 	if (member->nodeid == instance->our_nodeid && link_no > 0) {
@@ -1144,6 +1164,7 @@ int totemknet_member_add (
 		}
 	}
 
+	memset(&local_ss, 0, sizeof(local_ss));
 	/* Casts to remove const */
 	totemip_totemip_to_sockaddr_convert((struct totem_ip_address *)member, port+link_no, &remote_ss, &addrlen);
 	totemip_totemip_to_sockaddr_convert((struct totem_ip_address *)local, port+link_no, &local_ss, &addrlen);
@@ -1202,6 +1223,8 @@ int totemknet_member_remove (
 {
 	struct totemknet_instance *instance = (struct totemknet_instance *)knet_context;
 	int res;
+	uint8_t link_list[KNET_MAX_LINK];
+	size_t num_links;
 
 	knet_log_printf (LOGSYS_LEVEL_DEBUG, "knet: member_remove: %d, link=%d", token_target->nodeid, link_no);
 
@@ -1225,8 +1248,18 @@ int totemknet_member_remove (
 		KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_ERROR, "knet_link_clear_config for nodeid %d, link %d failed", token_target->nodeid, link_no);
 		return res;
 	}
-	return knet_host_remove(instance->knet_handle, token_target->nodeid);
 
+	/* If this is the last link, then remove the node */
+	res = knet_link_get_link_list(instance->knet_handle,
+				      token_target->nodeid, link_list, &num_links);
+	if (res) {
+		return (0); /* not really  failure */
+	}
+
+	if (num_links == 0) {
+		res = knet_host_remove(instance->knet_handle, token_target->nodeid);
+	}
+	return res;
 }
 
 int totemknet_member_list_rebind_ip (
@@ -1248,8 +1281,8 @@ int totemknet_link_get_status (
 		return CS_ERR_NOT_EXIST;
 	}
 
-	if (link_no > global_instance->num_links) {
-		return -1; /* no more links */
+	if (link_no >= INTERFACE_MAX) {
+		return CS_ERR_NOT_EXIST; /* Invalid link number */
 	}
 
 	res = knet_link_get_status(global_instance->knet_handle, node, link_no, status, sizeof(struct knet_link_status));

@@ -932,9 +932,6 @@ extern int totemudpu_iface_check (void *udpu_context)
 
 extern void totemudpu_net_mtu_adjust (void *udpu_context, struct totem_config *totem_config)
 {
-
-	assert(totem_config->interface_count > 0);
-
 	totem_config->net_mtu -= totemip_udpip_header_size(totem_config->interfaces[0].bindnet.family);
 }
 
@@ -1061,6 +1058,15 @@ static int totemudpu_create_sending_socket(
 
 error_close_fd:
 	close(fd);
+	return (-1);
+}
+
+int totemudpu_iface_set (void *net_context,
+	const struct totem_ip_address *local_addr,
+	unsigned short ip_port,
+	unsigned int iface_no)
+{
+	/* Not supported */
 	return (-1);
 }
 

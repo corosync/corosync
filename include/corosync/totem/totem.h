@@ -74,6 +74,7 @@ struct totem_interface {
 	struct totem_ip_address mcast_addr;
 	uint16_t ip_port;
 	uint16_t ttl;
+	uint8_t  configured;
 	int member_count;
 	int knet_link_priority;
 	int knet_ping_interval;
@@ -137,7 +138,7 @@ struct totem_config {
 	 * network
 	 */
 	struct totem_interface *interfaces;
-	unsigned int interface_count;
+	struct totem_interface *orig_interfaces; /* for reload */
 	unsigned int node_id;
 	unsigned int clear_node_high_bit;
 	unsigned int knet_pmtud_interval;

@@ -105,6 +105,11 @@ extern int totemnet_recv_flush (void *net_context);
 
 extern int totemnet_send_flush (void *net_context);
 
+extern int totemnet_iface_set (void *net_context,
+       const struct totem_ip_address *interface_addr,
+       unsigned short ip_port,
+       unsigned int iface_no);
+
 extern int totemnet_iface_check (void *net_context);
 
 extern int totemnet_finalize (void *net_context);

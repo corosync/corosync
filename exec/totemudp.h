@@ -99,6 +99,11 @@ extern int totemudp_recv_flush (void *udp_context);
 
 extern int totemudp_send_flush (void *udp_context);
 
+extern int totemudp_iface_set (void *net_context,
+       const struct totem_ip_address *local_addr,
+       unsigned short ip_port,
+       unsigned int iface_no);
+
 extern int totemudp_iface_check (void *udp_context);
 
 extern int totemudp_finalize (void *udp_context);
