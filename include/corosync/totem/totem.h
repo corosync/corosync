@@ -55,6 +55,10 @@
 
 /* This must be <= KNET_MAX_LINK */
 #define INTERFACE_MAX		8
+
+#define BIND_MAX_RETRIES	10
+#define BIND_RETRIES_INTERVAL	100
+
 /**
  * Maximum number of continuous gather states
  */
