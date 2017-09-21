@@ -424,7 +424,7 @@ int totemknet_ifaces_get (void *knet_context,
 		qsort(host_list, num_hosts, sizeof(uint16_t), node_compare);
 
 		for (i=0; i<INTERFACE_MAX; i++) {
-			memset(instance->link_status[i], ' ', CFG_INTERFACE_STATUS_MAX_LEN-1);
+			memset(instance->link_status[i], 'n', CFG_INTERFACE_STATUS_MAX_LEN-1);
 			instance->link_status[i][num_hosts] = '\0';
 		}
 

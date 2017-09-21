@@ -1010,6 +1010,9 @@ static int get_interface_params(struct totem_config *totem_config,
 			totem_config->interfaces[i].configured = 0;
 		}
 	}
+	if (icmap_get_string("totem.cluster_name", &cluster_name) != CS_OK) {
+		cluster_name = NULL;
+	}
 
 	iter = icmap_iter_init("totem.interface.");
 	while ((iter_key = icmap_iter_next(iter, NULL, NULL)) != NULL) {
@@ -1187,7 +1190,6 @@ extern int totem_config_read (
 	char *str, *ring0_addr_str;
 	char tmp_key[ICMAP_KEYNAME_MAXLEN];
 	uint16_t u16;
-	char *cluster_name = NULL;
 	int i;
 	int local_node_pos;
 	int nodeid_set;
@@ -1237,10 +1239,6 @@ extern int totem_config_read (
 	icmap_get_uint32("totem.threads", &totem_config->threads);
 
 	icmap_get_uint32("totem.netmtu", &totem_config->net_mtu);
-
-	if (icmap_get_string("totem.cluster_name", &cluster_name) != CS_OK) {
-		cluster_name = NULL;
-	}
 
 	totem_config->ip_version = totem_config_get_ip_version();
 
@@ -1323,8 +1321,6 @@ extern int totem_config_read (
 		free(str);
 	}
 
-	free(cluster_name);
-
 	/*
 	 * Check existence of nodelist
 	 */
@@ -1406,7 +1402,7 @@ int totem_config_validate (
 
 		memset (&null_addr, 0, sizeof (struct totem_ip_address));
 
-		if ((totem_config->transport_number == 0) &&
+		if ((totem_config->transport_number == TOTEM_TRANSPORT_UDP) &&
 			memcmp (&totem_config->interfaces[i].mcast_addr, &null_addr,
 				sizeof (struct totem_ip_address)) == 0) {
 			error_reason = "No multicast address specified";
