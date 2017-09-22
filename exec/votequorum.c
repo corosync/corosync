@@ -81,7 +81,7 @@ static uint8_t two_node = 0;
 static uint8_t wait_for_all = 0;
 static uint8_t wait_for_all_status = 0;
 
-static enum {ATB_NONE, ATB_LOWEST, ATB_HIGHEST, ATB_LIST} auto_tie_breaker = ATB_NONE;
+static enum {ATB_NONE, ATB_LOWEST, ATB_HIGHEST, ATB_LIST} auto_tie_breaker = ATB_NONE, initial_auto_tie_breaker = ATB_NONE;
 static int lowest_node_id = -1;
 static int highest_node_id = -1;
 
@@ -1260,6 +1260,13 @@ static char *votequorum_readconfig(int runtime)
 	if (runtime) {
 		two_node = 0;
 		expected_votes = 0;
+		/* auto_tie_breaker cannot be changed by config reload, but
+		 * we automatically disable it on odd-sized clusters without
+		 * wait_for_all.
+		 * We may need to re-enable it when membership changes to ensure
+		 * that auto_tie_breaker is consistent across all nodes */
+		auto_tie_breaker = initial_auto_tie_breaker;
+		icmap_set_uint32("runtime.votequorum.atb_type", auto_tie_breaker);
 	}
 
 	/*
@@ -1338,6 +1345,7 @@ static char *votequorum_readconfig(int runtime)
 			parse_atb_string(atb_string);
 		}
 		free(atb_string);
+		initial_auto_tie_breaker = auto_tie_breaker;
 
 		/* allow_downscale requires ev_tracking */
 		if (allow_downscale) {
