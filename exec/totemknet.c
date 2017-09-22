@@ -70,11 +70,6 @@
 
 #include "util.h"
 
-#include <nss.h>
-#include <pk11pub.h>
-#include <pkcs11.h>
-#include <prerror.h>
-
 #include <libknet.h>
 #include <corosync/totem/totemstats.h>
 

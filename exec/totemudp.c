@@ -69,11 +69,6 @@
 
 #include "util.h"
 
-#include <nss.h>
-#include <pk11pub.h>
-#include <pkcs11.h>
-#include <prerror.h>
-
 #ifndef MSG_NOSIGNAL
 #define MSG_NOSIGNAL 0
 #endif
