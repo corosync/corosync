@@ -84,6 +84,9 @@
 #define BIND_STATE_REGULAR	1
 #define BIND_STATE_LOOPBACK	2
 
+static int sendmsg_failures = 0;
+static int use_local_sock = 0;
+
 struct totemudpu_member {
 	struct qb_list_head list;
 	struct totem_ip_address member;
@@ -173,6 +176,15 @@ struct totemudpu_instance {
 	struct totem_ip_address token_target;
 
 	int token_socket;
+
+	/*
+	 * Socket used for local multicast delivery. We don't rely on unicast
+	 * loop and rather this UNIX DGRAM socket is used. Socket is created by
+	 * socketpair call and they are used in same way as pipe (so [0] is read
+	 * end and [1] is write end)
+	 */
+	int local_mcast_loop[2];
+
 
 	qb_loop_timer_handle timer_merge_detect_timeout;
 
@@ -302,6 +314,40 @@ static inline void ucast_sendmsg (
 	if (res < 0) {
 		LOGSYS_PERROR (errno, instance->totemudpu_log_level_debug,
 				"sendmsg(ucast) failed (non-critical)");
+
+		msg_ucast.msg_name = NULL;
+		msg_ucast.msg_namelen = 0;
+
+		/*
+		 * Transmit unicast message if all network intefaces fails
+		 * An error here is recovered by totemsrp
+		 */
+		sendmsg_failures++;
+		if ((sendmsg_failures == MAX_NO_CONT_SENDMSG_FAILURES) && (instance->my_memb_entries > 1)) {
+			log_printf (instance->totemudpu_log_level_debug,
+				"calling totemudp_iface_check bacause sendmsg_failures reached %d\n", MAX_NO_CONT_SENDMSG_FAILURES);
+			totemudp_iface_check((void*)instance);
+		}
+
+		log_printf (instance->totemudpu_log_level_debug, "ucast_sendmsg: sendmsg to local_mcast_loop\n");
+
+		res = sendmsg(instance->local_mcast_loop[1], &msg_ucast,
+				MSG_NOSIGNAL);
+		if(res < 0) {
+			LOGSYS_PERROR(errno, instance->totemudpu_log_level_notice,
+				"sendmsg(ucast: local_mcast_loop) failed (non-critical)");
+		}
+	} else {
+		if (sendmsg_failures > MAX_NO_CONT_SENDMSG_FAILURES) {
+			sendmsg_failures = MAX_NO_CONT_SENDMSG_FAILURES;
+		}
+		if(sendmsg_failures != 0) {
+			sendmsg_failures--;
+			log_printf (instance->totemudpu_log_level_debug,"decrease sendmsg_failures to %d", sendmsg_failures);
+		} else if(instance->netif_bind_state != BIND_STATE_REGULAR){
+			instance->netif_bind_state = BIND_STATE_REGULAR;
+			log_printf (instance->totemudpu_log_level_debug,"set instance->netif_bind_state = BIND_STATE_REGULAR");
+		}
 	}
 }
 
@@ -317,6 +363,7 @@ static inline void mcast_sendmsg (
 	struct sockaddr_storage sockaddr;
 	int addrlen;
 	struct qb_list_head *list;
+	int num_nodes = 0, failed_nodes = 0;
 	struct totemudpu_member *member;
 
 	iovec.iov_base = (void *)msg;
@@ -338,6 +385,7 @@ static inline void mcast_sendmsg (
 		if (only_active && !member->active && !instance->send_merge_detect_message)
 			continue ;
 
+		num_nodes++;
 		totemip_totemip_to_sockaddr_convert(&member->member,
 			instance->totem_interface->ip_port, &sockaddr, &addrlen);
 		msg_mcast.msg_name = &sockaddr;
@@ -368,6 +416,24 @@ static inline void mcast_sendmsg (
 		if (res < 0) {
 			LOGSYS_PERROR (errno, instance->totemudpu_log_level_debug,
 				"sendmsg(mcast) failed (non-critical)");
+			failed_nodes++;
+		}
+	}
+
+	log_printf (instance->totemudpu_log_level_security, "num_nodes=%d, failed_nodes=%d\n", num_nodes, failed_nodes);
+	if ((num_nodes != 0) && (failed_nodes == num_nodes)) {
+		/*
+		 * Transmit multicast message to local unix mcast loop
+		 * An error here is recovered by totemsrp
+		 */
+		msg_mcast.msg_name = NULL;
+		msg_mcast.msg_namelen = 0;
+
+		res = sendmsg (instance->local_mcast_loop[1], &msg_mcast,
+			    MSG_NOSIGNAL);
+		if (res < 0) {
+			LOGSYS_PERROR (errno, instance->totemudpu_log_level_debug,
+			       "sendmsg(local mcast loop) failed (non-critical)");
 		}
 	}
 
@@ -390,6 +456,13 @@ int totemudpu_finalize (
 		qb_loop_poll_del (instance->totemudpu_poll_handle,
 			instance->token_socket);
 		close (instance->token_socket);
+	}
+
+	if (instance->local_mcast_loop[0] > 0) {
+		qb_loop_poll_del (instance->totemudpu_poll_handle,
+			instance->local_mcast_loop[0]);
+		close (instance->local_mcast_loop[0]);
+		close (instance->local_mcast_loop[1]);
 	}
 
 	totemudpu_stop_merge_detect_timeout(instance);
@@ -519,6 +592,16 @@ static void timer_function_netif_check_timeout (
 		qb_loop_poll_del (instance->totemudpu_poll_handle,
 			instance->token_socket);
 		close (instance->token_socket);
+		instance->token_socket = 0;
+	}
+
+	if (instance->local_mcast_loop[0] > 0) {
+		qb_loop_poll_del (instance->totemudpu_poll_handle,
+			instance->local_mcast_loop[0]);
+		close (instance->local_mcast_loop[0]);
+		close (instance->local_mcast_loop[1]);
+		instance->local_mcast_loop[0] = 0;
+		instance->local_mcast_loop[0] = 0;
 	}
 
 	if (interface_up == 0) {
@@ -547,14 +630,20 @@ static void timer_function_netif_check_timeout (
 	/*
 	 * Create and bind the multicast and unicast sockets
 	 */
-	totemudpu_build_sockets (instance,
-		bind_address,
-		&instance->totem_interface->boundto);
+	if (instance->token_socket > 0) {
+		qb_loop_poll_add (instance->totemudpu_poll_handle,
+			QB_LOOP_MED,
+			instance->token_socket,
+			POLLIN, instance, net_deliver_fn);
+	}
 
-	qb_loop_poll_add (instance->totemudpu_poll_handle,
-		QB_LOOP_MED,
-		instance->token_socket,
-		POLLIN, instance, net_deliver_fn);
+	if (instance->local_mcast_loop[0] > 0) {
+		log_printf (instance->totemudpu_log_level_notice, "qb_loop_poll_add timer for local_mcast_loop[0]\n");
+		qb_loop_poll_add (instance->totemudpu_poll_handle,
+			QB_LOOP_MED,
+			instance->local_mcast_loop[0],
+			POLLIN, instance, net_deliver_fn);
+	}
 
 	totemip_copy (&instance->my_id, &instance->totem_interface->boundto);
 
@@ -567,6 +656,7 @@ static void timer_function_netif_check_timeout (
 				"The network interface [%s] is now up.",
 				totemip_print (&instance->totem_interface->boundto));
 			instance->netif_state_report = NETIF_STATE_REPORT_DOWN;
+			use_local_sock = 0;
 			instance->totemudpu_iface_change_fn (instance->context, &instance->my_id, 0);
 		}
 		/*
@@ -581,7 +671,8 @@ static void timer_function_netif_check_timeout (
 				&instance->timer_netif_check_timeout);
 		}
 
-	} else {
+	} else if(use_local_sock == 0) {
+			use_local_sock = 1;
 		if (instance->netif_state_report & NETIF_STATE_REPORT_DOWN) {
 			log_printf (instance->totemudpu_log_level_notice,
 				"The network interface is down.");
@@ -606,6 +697,61 @@ static void totemudpu_traffic_control_set(struct totemudpu_instance *instance, i
 #endif
 }
 
+static int totemudp_build_local_sockets (
+    struct totemudpu_instance *instance)
+{
+    int res = 0;
+    int i=0;
+    unsigned int sendbuf_size = MCAST_SOCKET_BUFFER_SIZE;
+    unsigned int recvbuf_size = MCAST_SOCKET_BUFFER_SIZE;
+    unsigned int optlen = sizeof (sendbuf_size);
+
+    /*
+     * Create local multicast loop socket
+     */
+    if (socketpair(AF_UNIX, SOCK_DGRAM, 0, instance->local_mcast_loop) == -1) {
+        LOGSYS_PERROR (errno, instance->totemudpu_log_level_warning,
+           "socket() failed");
+        return (-1);
+    }
+
+    for (i = 0; i < 2; i++) {
+        totemip_nosigpipe (instance->local_mcast_loop[i]);
+        res = fcntl (instance->local_mcast_loop[i], F_SETFL, O_NONBLOCK);
+        if (res == -1) {
+            LOGSYS_PERROR (errno, instance->totemudpu_log_level_warning,
+                "Could not set non-blocking operation on unicast socket");
+            return (-1);
+        }
+    }
+
+    res = setsockopt (instance->local_mcast_loop[0], SOL_SOCKET, SO_RCVBUF, &recvbuf_size, optlen);
+    if (res == -1) {
+        LOGSYS_PERROR (errno, instance->totemudpu_log_level_debug,
+            "Unable to set SO_RCVBUF size on UDP local unicast loop socket");
+        return (-1);
+    }
+    res = setsockopt (instance->local_mcast_loop[1], SOL_SOCKET, SO_SNDBUF, &sendbuf_size, optlen);
+    if (res == -1) {
+        LOGSYS_PERROR (errno, instance->totemudpu_log_level_debug,
+            "Unable to set SO_SNDBUF size on UDP local unicast loop socket");
+        return (-1);
+    }
+    res = getsockopt (instance->local_mcast_loop[0], SOL_SOCKET, SO_RCVBUF, &recvbuf_size, &optlen);
+    if (res == 0) {
+        log_printf (instance->totemudpu_log_level_debug,
+            "Local receive unicast loop socket recv buffer size (%d bytes).", recvbuf_size);
+    }
+    res = getsockopt (instance->local_mcast_loop[1], SOL_SOCKET, SO_SNDBUF, &sendbuf_size, &optlen);
+    if (res == 0) {
+        log_printf (instance->totemudpu_log_level_debug,
+            "Local transmit unicast loop socket send buffer size (%d bytes).", sendbuf_size);
+    }
+
+    return res;
+}
+
+
 static int totemudpu_build_sockets_ip (
 	struct totemudpu_instance *instance,
 	struct totem_ip_address *bindnet_address,
@@ -618,6 +764,15 @@ static int totemudpu_build_sockets_ip (
 	unsigned int recvbuf_size;
 	unsigned int optlen = sizeof (recvbuf_size);
 	unsigned int retries = 0;
+
+	/*
+	 * Build local sockets first
+	 */
+	res = totemudp_build_local_sockets(instance);
+	if(res == -1) {
+		return (-1);
+	}
+
 
 	/*
 	 * Setup unicast socket
@@ -954,7 +1109,7 @@ extern int totemudpu_recv_mcast_empty (
 	struct sockaddr_storage system_from;
 	struct msghdr msg_recv;
 	struct pollfd ufd;
-	int nfds;
+	int nfds, sock, i;
 	int msg_processed = 0;
 
 	/*
@@ -980,19 +1135,32 @@ extern int totemudpu_recv_mcast_empty (
 	msg_recv.msg_accrightslen = 0;
 #endif
 
-	do {
-		ufd.fd = instance->token_socket;
-		ufd.events = POLLIN;
-		nfds = poll (&ufd, 1, 0);
-		if (nfds == 1 && ufd.revents & POLLIN) {
-			res = recvmsg (instance->token_socket, &msg_recv, MSG_NOSIGNAL | MSG_DONTWAIT);
-			if (res != -1) {
-				msg_processed = 1;
-			} else {
-				msg_processed = -1;
-			}
+	log_printf (LOGSYS_LEVEL_DEBUG, "calling totemudpu_recv_mcast_empty\n");
+	for (i = 0; i < 2; i++) {
+		sock = -1;
+		if (i == 0) {
+			sock = instance->token_socket;
 		}
-	} while (nfds == 1);
+		if (i == 1) {
+			sock = instance->local_mcast_loop[0];
+			log_printf (LOGSYS_LEVEL_DEBUG, "recvmsg from local_mcast_loop[0]\n");
+		}
+		assert(sock != -1);
+
+		do {
+			ufd.fd = sock;
+			ufd.events = POLLIN;
+			nfds = poll (&ufd, 1, 0);
+			if (nfds == 1 && ufd.revents & POLLIN) {
+				res = recvmsg (sock, &msg_recv, MSG_NOSIGNAL | MSG_DONTWAIT);
+				if (res != -1) {
+				    msg_processed = 1;
+				} else {
+				    msg_processed = -1;
+				}
+			}
+		} while (nfds == 1);
+	}
 
 	return (msg_processed);
 }
