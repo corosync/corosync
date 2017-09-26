@@ -81,8 +81,6 @@
 #define BIND_STATE_REGULAR	1
 #define BIND_STATE_LOOPBACK	2
 
-#define MESSAGE_TYPE_MEMB_JOIN	3
-
 struct totemudp_socket {
 	int mcast_recv;
 	int mcast_send;
@@ -415,7 +413,6 @@ static int net_deliver_fn (
 	struct iovec *iovec;
 	struct sockaddr_storage system_from;
 	int bytes_received;
-	char *message_type;
 
 	if (instance->flushing == 1) {
 		iovec = &instance->totemudp_iov_recv_flush;
@@ -454,17 +451,6 @@ static int net_deliver_fn (
 	}
 
 	iovec->iov_len = bytes_received;
-
-	/*
-	 * Drop all non-mcast messages (more specifically join
-	 * messages should be dropped)
-	 */
-	message_type = (char *)iovec->iov_base;
-	if (instance->flushing == 1 && *message_type == MESSAGE_TYPE_MEMB_JOIN) {
-		log_printf(instance->totemudp_log_level_warning, "JOIN or LEAVE message was thrown away during flush operation.");
-		iovec->iov_len = FRAME_SIZE_MAX;
-		return (0);
-	}
 
 	/*
 	 * Handle incoming message
