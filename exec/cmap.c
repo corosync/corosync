@@ -361,11 +361,12 @@ static void cmap_sync_init (
 
 	cmap_sync_trans_list_entries = trans_list_entries;
 	cmap_sync_member_list_entries = member_list_entries;
-	cmap_highest_config_version_received = 0;
 
 	if (icmap_get_uint64("totem.config_version", &cmap_my_config_version) != CS_OK) {
 		cmap_my_config_version = 0;
 	}
+
+	cmap_highest_config_version_received = cmap_my_config_version;
 }
 
 static int cmap_sync_process (void)
