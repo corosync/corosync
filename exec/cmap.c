@@ -471,13 +471,6 @@ static void cmap_sync_activate (void)
 		return ;
 	}
 
-	if (cmap_highest_config_version_received == 0) {
-		log_printf(LOGSYS_LEVEL_DEBUG, "Other nodes version is 0 -> no action");
-
-		return ;
-	}
-
-
 	if (cmap_highest_config_version_received != cmap_my_config_version) {
 		log_printf(LOGSYS_LEVEL_ERROR,
 		    "Received config version (%"PRIu64") is different than my config version (%"PRIu64")! Exiting",
