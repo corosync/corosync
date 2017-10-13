@@ -116,6 +116,8 @@ extern int totemnet_finalize (void *net_context);
 
 extern int totemnet_net_mtu_adjust (void *net_context, struct totem_config *totem_config);
 
+extern int totemnet_reconfigure (void *net_context, struct totem_config *totem_config);
+
 extern const char *totemnet_iface_print (void *net_context);
 
 extern int totemnet_ifaces_get (

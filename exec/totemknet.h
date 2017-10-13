@@ -138,4 +138,8 @@ extern int totemknet_member_set_active (
 	const struct totem_ip_address *member_ip,
 	int active);
 
+extern int totemknet_reconfigure (
+	void *knet_context,
+	struct totem_config *totem_config);
+
 #endif /* TOTEMKNET_H_DEFINED */

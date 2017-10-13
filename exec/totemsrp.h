@@ -146,4 +146,8 @@ void totemsrp_threaded_mode_enable (
 void totemsrp_trans_ack (
 	void *srp_context);
 
+int totemsrp_reconfigure (
+	void *context,
+	struct totem_config *totem_config);
+
 #endif /* TOTEMSRP_H_DEFINED */
