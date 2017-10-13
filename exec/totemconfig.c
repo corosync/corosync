@@ -89,9 +89,7 @@ static char error_string_response[512];
 
 static void add_totem_config_notification(struct totem_config *totem_config);
 
-
-/* All the volatile parameters are uint32s, luckily */
-static uint32_t *totem_get_param_by_name(struct totem_config *totem_config, const char *param_name)
+static void *totem_get_param_by_name(struct totem_config *totem_config, const char *param_name)
 {
 	if (strcmp(param_name, "totem.token") == 0)
 		return &totem_config->token_timeout;
@@ -127,6 +125,12 @@ static uint32_t *totem_get_param_by_name(struct totem_config *totem_config, cons
 		return &totem_config->miss_count_const;
 	if (strcmp(param_name, "totem.knet_pmtud_interval") == 0)
 		return &totem_config->knet_pmtud_interval;
+	if (strcmp(param_name, "totem.knet_compression_threshold") == 0)
+		return &totem_config->knet_compression_threshold;
+	if (strcmp(param_name, "totem.knet_compression_level") == 0)
+		return &totem_config->knet_compression_level;
+	if (strcmp(param_name, "totem.knet_compression_model") == 0)
+		return &totem_config->knet_compression_model;
 
 	return NULL;
 }
@@ -135,7 +139,7 @@ static uint32_t *totem_get_param_by_name(struct totem_config *totem_config, cons
  * Read key_name from icmap. If key is not found or key_name == delete_key or if allow_zero is false
  * and readed value is zero, default value is used and stored into totem_config.
  */
-static void totem_volatile_config_set_value (struct totem_config *totem_config,
+static void totem_volatile_config_set_uint32_value (struct totem_config *totem_config,
 	const char *key_name, const char *deleted_key, unsigned int default_value,
 	int allow_zero_value)
 {
@@ -143,8 +147,8 @@ static void totem_volatile_config_set_value (struct totem_config *totem_config,
 
 	if (icmap_get_uint32(key_name, totem_get_param_by_name(totem_config, key_name)) != CS_OK ||
 	    (deleted_key != NULL && strcmp(deleted_key, key_name) == 0) ||
-	    (!allow_zero_value && *totem_get_param_by_name(totem_config, key_name) == 0)) {
-		*totem_get_param_by_name(totem_config, key_name) = default_value;
+	    (!allow_zero_value && *(uint32_t *)totem_get_param_by_name(totem_config, key_name) == 0)) {
+		*(uint32_t *)totem_get_param_by_name(totem_config, key_name) = default_value;
 	}
 
 	/*
@@ -160,7 +164,63 @@ static void totem_volatile_config_set_value (struct totem_config *totem_config,
 	strcpy(runtime_key_name, "runtime.config.");
 	strcat(runtime_key_name, key_name);
 
-	icmap_set_uint32(runtime_key_name, *totem_get_param_by_name(totem_config, key_name));
+	icmap_set_uint32(runtime_key_name, *(uint32_t *)totem_get_param_by_name(totem_config, key_name));
+}
+
+static void totem_volatile_config_set_int32_value (struct totem_config *totem_config,
+	const char *key_name, const char *deleted_key, int default_value,
+	int allow_zero_value)
+{
+	char runtime_key_name[ICMAP_KEYNAME_MAXLEN];
+
+	if (icmap_get_int32(key_name, totem_get_param_by_name(totem_config, key_name)) != CS_OK ||
+	    (deleted_key != NULL && strcmp(deleted_key, key_name) == 0) ||
+	    (!allow_zero_value && *(int32_t *)totem_get_param_by_name(totem_config, key_name) == 0)) {
+		*(int32_t *)totem_get_param_by_name(totem_config, key_name) = default_value;
+	}
+
+	/*
+	 * Store totem_config value to cmap runtime section
+	 */
+	if (strlen("runtime.config.") + strlen(key_name) >= ICMAP_KEYNAME_MAXLEN) {
+		/*
+		 * This shouldn't happen
+		 */
+		return ;
+	}
+
+	strcpy(runtime_key_name, "runtime.config.");
+	strcat(runtime_key_name, key_name);
+
+	icmap_set_int32(runtime_key_name, *(int32_t *)totem_get_param_by_name(totem_config, key_name));
+}
+
+static void totem_volatile_config_set_string_value (struct totem_config *totem_config,
+	const char *key_name, const char *deleted_key, const char *default_value)
+{
+	char runtime_key_name[ICMAP_KEYNAME_MAXLEN];
+	const void **config_value;
+
+	config_value = totem_get_param_by_name(totem_config, key_name);
+	if (icmap_get_string(key_name, totem_get_param_by_name(totem_config, key_name)) != CS_OK ||
+	    (deleted_key != NULL && strcmp(deleted_key, key_name) == 0)) {
+		*config_value = default_value;
+	}
+
+	/*
+	 * Store totem_config value to cmap runtime section
+	 */
+	if (strlen("runtime.config.") + strlen(key_name) >= ICMAP_KEYNAME_MAXLEN) {
+		/*
+		 * This shouldn't happen
+		 */
+		return ;
+	}
+
+	strcpy(runtime_key_name, "runtime.config.");
+	strcat(runtime_key_name, key_name);
+
+	icmap_set_string(runtime_key_name, (char *)*config_value);
 }
 
 
@@ -173,10 +233,10 @@ static void totem_volatile_config_read (struct totem_config *totem_config, const
 {
 	uint32_t u32;
 
-	totem_volatile_config_set_value(totem_config, "totem.token_retransmits_before_loss_const", deleted_key,
+	totem_volatile_config_set_uint32_value(totem_config, "totem.token_retransmits_before_loss_const", deleted_key,
 	    TOKEN_RETRANSMITS_BEFORE_LOSS_CONST, 0);
 
-	totem_volatile_config_set_value(totem_config, "totem.token", deleted_key, TOKEN_TIMEOUT, 0);
+	totem_volatile_config_set_uint32_value(totem_config, "totem.token", deleted_key, TOKEN_TIMEOUT, 0);
 
 	if (totem_config->interfaces[0].member_count > 2) {
 		u32 = TOKEN_COEFFICIENT;
@@ -189,38 +249,46 @@ static void totem_volatile_config_read (struct totem_config *totem_config, const
 		icmap_set_uint32("runtime.config.totem.token", totem_config->token_timeout);
 	}
 
-	totem_volatile_config_set_value(totem_config, "totem.max_network_delay", deleted_key, MAX_NETWORK_DELAY, 0);
+	totem_volatile_config_set_uint32_value(totem_config, "totem.max_network_delay", deleted_key, MAX_NETWORK_DELAY, 0);
 
-	totem_volatile_config_set_value(totem_config, "totem.window_size", deleted_key, WINDOW_SIZE, 0);
+	totem_volatile_config_set_uint32_value(totem_config, "totem.window_size", deleted_key, WINDOW_SIZE, 0);
 
-	totem_volatile_config_set_value(totem_config, "totem.max_messages", deleted_key, MAX_MESSAGES, 0);
+	totem_volatile_config_set_uint32_value(totem_config, "totem.max_messages", deleted_key, MAX_MESSAGES, 0);
 
-	totem_volatile_config_set_value(totem_config, "totem.miss_count_const", deleted_key, MISS_COUNT_CONST, 0);
-	totem_volatile_config_set_value(totem_config, "totem.knet_pmtud_interval", deleted_key, KNET_PMTUD_INTERVAL, 0);
+	totem_volatile_config_set_uint32_value(totem_config, "totem.miss_count_const", deleted_key, MISS_COUNT_CONST, 0);
+	totem_volatile_config_set_uint32_value(totem_config, "totem.knet_pmtud_interval", deleted_key, KNET_PMTUD_INTERVAL, 0);
 
-	totem_volatile_config_set_value(totem_config, "totem.token_retransmit", deleted_key,
+	totem_volatile_config_set_uint32_value(totem_config, "totem.token_retransmit", deleted_key,
 	   (int)(totem_config->token_timeout / (totem_config->token_retransmits_before_loss_const + 0.2)), 0);
 
-	totem_volatile_config_set_value(totem_config, "totem.hold", deleted_key,
+	totem_volatile_config_set_uint32_value(totem_config, "totem.hold", deleted_key,
 	    (int)(totem_config->token_retransmit_timeout * 0.8 - (1000/HZ)), 0);
 
-	totem_volatile_config_set_value(totem_config, "totem.join", deleted_key, JOIN_TIMEOUT, 0);
+	totem_volatile_config_set_uint32_value(totem_config, "totem.join", deleted_key, JOIN_TIMEOUT, 0);
 
-	totem_volatile_config_set_value(totem_config, "totem.consensus", deleted_key,
+	totem_volatile_config_set_uint32_value(totem_config, "totem.consensus", deleted_key,
 	    (int)(float)(1.2 * totem_config->token_timeout), 0);
 
-	totem_volatile_config_set_value(totem_config, "totem.merge", deleted_key, MERGE_TIMEOUT, 0);
+	totem_volatile_config_set_uint32_value(totem_config, "totem.merge", deleted_key, MERGE_TIMEOUT, 0);
 
-	totem_volatile_config_set_value(totem_config, "totem.downcheck", deleted_key, DOWNCHECK_TIMEOUT, 0);
+	totem_volatile_config_set_uint32_value(totem_config, "totem.downcheck", deleted_key, DOWNCHECK_TIMEOUT, 0);
 
-	totem_volatile_config_set_value(totem_config, "totem.fail_recv_const", deleted_key, FAIL_TO_RECV_CONST, 0);
+	totem_volatile_config_set_uint32_value(totem_config, "totem.fail_recv_const", deleted_key, FAIL_TO_RECV_CONST, 0);
 
-	totem_volatile_config_set_value(totem_config, "totem.seqno_unchanged_const", deleted_key,
+	totem_volatile_config_set_uint32_value(totem_config, "totem.seqno_unchanged_const", deleted_key,
 	    SEQNO_UNCHANGED_CONST, 0);
 
-	totem_volatile_config_set_value(totem_config, "totem.send_join", deleted_key, 0, 1);
+	totem_volatile_config_set_uint32_value(totem_config, "totem.send_join", deleted_key, 0, 1);
 
-	totem_volatile_config_set_value(totem_config, "totem.heartbeat_failures_allowed", deleted_key, 0, 1);
+	totem_volatile_config_set_uint32_value(totem_config, "totem.heartbeat_failures_allowed", deleted_key, 0, 1);
+
+	totem_volatile_config_set_uint32_value(totem_config, "totem.knet_compression_threshold", deleted_key, 0, 1);
+
+	totem_volatile_config_set_int32_value(totem_config, "totem.knet_compression_level", deleted_key, 0, 1);
+
+	totem_volatile_config_set_string_value(totem_config, "totem.knet_compression_model", deleted_key, "none");
+
+
 }
 
 static int totem_volatile_config_validate (
@@ -1755,6 +1823,10 @@ static void totem_reload_notify(
 		if (local_node_pos != -1) {
 			icmap_set_uint32("nodelist.local_node_pos", local_node_pos);
 		}
+
+		/* Reconfigure network params as appropriate */
+		totempg_reconfigure();
+
 		free(totem_config->orig_interfaces);
 
 		icmap_set_uint8("config.totemconfig_reload_in_progress", 0);

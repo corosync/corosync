@@ -199,6 +199,12 @@ struct totem_config {
 
 	char *crypto_hash_type;
 
+	char *knet_compression_model;
+
+	uint32_t knet_compression_threshold;
+
+	int knet_compression_level;
+
 	totem_transport_t transport_number;
 
 	unsigned int miss_count_const;

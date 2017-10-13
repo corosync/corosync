@@ -189,6 +189,8 @@ extern void totempg_threaded_mode_enable (void);
 
 extern void totempg_trans_ack (void);
 
+extern int totempg_reconfigure (void);
+
 #ifdef __cplusplus
 }
 #endif

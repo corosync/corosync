@@ -1201,3 +1201,11 @@ static void totemudpu_stop_merge_detect_timeout(
 	qb_loop_timer_del(instance->totemudpu_poll_handle,
 	    instance->timer_merge_detect_timeout);
 }
+
+int totemudpu_reconfigure (
+	void *udpu_context,
+	struct totem_config *totem_config)
+{
+	/* Not supported */
+	return (-1);
+}

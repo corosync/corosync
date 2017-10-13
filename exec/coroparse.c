@@ -618,12 +618,21 @@ static int main_config_parser_cb(const char *path,
 			    (strcmp(path, "totem.max_messages") == 0) ||
 			    (strcmp(path, "totem.miss_count_const") == 0) ||
 			    (strcmp(path, "totem.knet_pmtud_interval") == 0) ||
+			    (strcmp(path, "totem.knet_compression_threshold") == 0) ||
 			    (strcmp(path, "totem.netmtu") == 0)) {
 				val_type = ICMAP_VALUETYPE_UINT32;
 				if (safe_atoq(value, &val, val_type) != 0) {
 					goto atoi_error;
 				}
 				icmap_set_uint32_r(config_map,path, val);
+				add_as_string = 0;
+			}
+			if (strcmp(path, "totem.knet_compression_level") == 0) {
+				val_type = ICMAP_VALUETYPE_INT32;
+				if (safe_atoq(value, &val, val_type) != 0) {
+					goto atoi_error;
+				}
+				icmap_set_int32_r(config_map, path, val);
 				add_as_string = 0;
 			}
 			if (strcmp(path, "totem.config_version") == 0) {

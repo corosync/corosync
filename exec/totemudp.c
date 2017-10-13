@@ -1403,3 +1403,11 @@ int totemudp_iface_set (void *net_context,
 	/* Not supported */
 	return (-1);
 }
+
+int totemudp_reconfigure (
+	void *udp_context,
+	struct totem_config *totem_config)
+{
+	/* Not supported */
+	return (-1);
+}

@@ -4778,3 +4778,13 @@ void totemsrp_trans_ack (void *context)
 	instance->waiting_trans_ack = 0;
 	instance->totemsrp_waiting_trans_ack_cb_fn (0);
 }
+
+
+int totemsrp_reconfigure (void *context, struct totem_config *totem_config)
+{
+	struct totemsrp_instance *instance = (struct totemsrp_instance *)context;
+	int res;
+
+	res = totemnet_reconfigure (instance->totemnet_context, totem_config);
+	return (res);
+}
