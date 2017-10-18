@@ -33,7 +33,7 @@ Source0: http://build.clusterlabs.org/corosync/releases/%{name}-%{version}%{?git
 
 # Runtime bits
 # The automatic dependency overridden in favor of explicit version lock
-Requires: corosynclib{?_isa} = %{version}-%{release}
+Requires: corosynclib%{?_isa} = %{version}-%{release}
 Requires(pre): /usr/sbin/useradd
 Requires(post): /sbin/chkconfig
 Requires(preun): /sbin/chkconfig
@@ -384,7 +384,7 @@ Summary: The Corosync Cluster Engine Qdevice
 Group: System Environment/Base
 Requires: %{name} = %{version}-%{release}
 # The automatic dependency overridden in favor of explicit version lock
-Requires: corosynclib{?_isa} = %{version}-%{release}
+Requires: corosynclib%{?_isa} = %{version}-%{release}
 Requires: nss-tools
 
 %if %{with systemd}
