@@ -269,6 +269,7 @@ static int logsys_subsys_id __attribute__((unused)) = LOGSYS_MAX_SUBSYS_COUNT;
  * @param syslog_priority
  */
 #define LOGSYS_DECLARE_SYSTEM(name,mode,syslog_facility,syslog_priority)\
+QB_LOG_INIT_DATA(logsys_qb_init);					\
 __attribute__ ((constructor))						\
 static void logsys_system_init (void)					\
 {									\
@@ -279,12 +280,6 @@ static void logsys_system_init (void)					\
 	}								\
 }
 
-#ifdef QB_HAVE_ATTRIBUTE_SECTION
-#define LOGSYS_DECLARE_SECTION assert(__start___verbose != __stop___verbose)
-#else
-#define LOGSYS_DECLARE_SECTION
-#endif
-
 /**
  * @brief The LOGSYS_DECLARE_SUBSYS macro
  * @param subsys
@@ -293,7 +288,6 @@ static void logsys_system_init (void)					\
 __attribute__ ((constructor))						\
 static void logsys_subsys_init (void)					\
 {									\
-	LOGSYS_DECLARE_SECTION;						\
 	logsys_subsys_id =						\
 		_logsys_subsys_create ((subsys), __FILE__);		\
 	if (logsys_subsys_id == -1) {					\
