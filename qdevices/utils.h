@@ -60,6 +60,8 @@ extern int		utils_flock(const char *lockfile, pid_t pid,
 
 extern void		utils_tty_detach(void);
 
+extern int		utils_fd_set_non_blocking(int fd);
+
 #ifdef __cplusplus
 }
 #endif

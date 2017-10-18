@@ -203,6 +203,21 @@ timer_list_time_to_expire(struct timer_list *tlist)
 	return (timer_list_entry_time_to_expire(entry, PR_IntervalNow()));
 }
 
+uint32_t
+timer_list_time_to_expire_ms(struct timer_list *tlist)
+{
+	struct timer_list_entry *entry;
+	uint32_t u32;
+
+	entry = TAILQ_FIRST(&tlist->list);
+	if (entry == NULL) {
+		u32 = ~((uint32_t)0);
+		return (u32);
+	}
+
+	return (PR_IntervalToMilliseconds(timer_list_entry_time_to_expire(entry, PR_IntervalNow())));
+}
+
 void
 timer_list_delete(struct timer_list *tlist, struct timer_list_entry *entry)
 {

@@ -1,7 +1,7 @@
-# Copyright (c) 2012-2016 Red Hat, Inc.
+# Copyright (c) 2012-2017 Red Hat, Inc.
 #
-# Authors: Fabio M. Di Nitto (fdinitto@redhat.com)
-#          Jan Friesse (jfriesse@redhat.com)
+# Authors: Jan Friesse (jfriesse@redhat.com)
+#          Fabio M. Di Nitto (fdinitto@redhat.com)
 #
 # This software licensed under BSD license, the text of which follows:
 #
@@ -73,7 +73,7 @@ corosync_qnetd_SOURCES	= corosync-qnetd.c \
                           dynar-getopt-lex.h qnetd-advanced-settings.c qnetd-advanced-settings.h
 
 corosync_qnetd_tool_SOURCES = corosync-qnetd-tool.c unix-socket.c unix-socket.h dynar.c dynar.h \
-                              dynar-str.c dynar-str.h
+                              dynar-str.c dynar-str.h utils.c utils.h
 
 corosync_qnetd_CFLAGS		= $(nss_CFLAGS)
 corosync_qnetd_LDADD		= $(nss_LIBS)
@@ -124,10 +124,26 @@ corosync_qdevice_SOURCES = corosync-qdevice.c \
                            qdevice-net-poll-array-user-data.h \
                            qdevice-config.h qnet-config.h qdevice-net-disconnect-reason.h \
                            qdevice-model-type.h qdevice-advanced-settings.c \
-                           qdevice-advanced-settings.h dynar-getopt-lex.c dynar-getopt-lex.h
+                           qdevice-advanced-settings.h dynar-getopt-lex.c dynar-getopt-lex.h \
+                           qdevice-heuristics.h qdevice-heuristics.c \
+                           qdevice-heuristics-worker.h qdevice-heuristics-worker.c \
+                           qdevice-heuristics-io.h qdevice-heuristics-io.c \
+                           qdevice-heuristics-worker-instance.h \
+                           qdevice-heuristics-worker-log.h qdevice-heuristics-worker-log.c \
+                           qdevice-heuristics-log.h qdevice-heuristics-log.c \
+                           qdevice-heuristics-instance.h qdevice-heuristics-instance.c \
+                           qdevice-heuristics-mode.h qdevice-heuristics-mode.c \
+                           qdevice-heuristics-exec-list.c qdevice-heuristics-exec-list.h \
+                           qdevice-heuristics-cmd.c qdevice-heuristics-cmd.h \
+                           qdevice-heuristics-worker-cmd.c qdevice-heuristics-worker-cmd.h \
+                           qdevice-heuristics-cmd-str.h \
+                           qdevice-heuristics-exec-result.c qdevice-heuristics-exec-result.h \
+                           process-list.h process-list.c \
+                           qdevice-net-heuristics.c qdevice-net-heuristics.h \
+                           qdevice-heuristics-result-notifier.c qdevice-heuristics-result-notifier.h
 
 corosync_qdevice_tool_SOURCES = corosync-qdevice-tool.c unix-socket.c unix-socket.h dynar.c dynar.h \
-                                dynar-str.c dynar-str.h
+                                dynar-str.c dynar-str.h utils.c utils.h
 
 corosync_qdevice_CFLAGS	= $(nss_CFLAGS)
 corosync_qdevice_LDADD	= $(nss_LIBS) $(LIBQB_LIBS) $(top_builddir)/lib/libcmap.la \
@@ -140,9 +156,9 @@ corosync-qdevice-net-certutil: corosync-qdevice-net-certutil.sh
 	    $< > $@
 
 TESTS				= qnetd-cluster-list.test dynar.test dynar-simple-lex.test \
-                                  dynar-getopt-lex.test
+                                  dynar-getopt-lex.test process-list.test
 check_PROGRAMS			= qnetd-cluster-list.test dynar.test dynar-simple-lex.test \
-                                  dynar-getopt-lex.test
+                                  dynar-getopt-lex.test process-list.test
 
 qnetd_cluster_list_test_SOURCES	= qnetd-cluster-list.c test-qnetd-cluster-list.c \
                                   qnetd-cluster.c qnetd-cluster.h \
@@ -154,5 +170,7 @@ qnetd_cluster_list_test_LDADD	= $(nss_LIBS)
 dynar_test_SOURCES		= test-dynar.c dynar.c dynar-str.c
 dynar_simple_lex_test_SOURCES	= test-dynar-simple-lex.c dynar.c dynar-str.c dynar-simple-lex.c
 dynar_getopt_lex_test_SOURCES	= test-dynar-getopt-lex.c dynar.c dynar-str.c dynar-getopt-lex.c
+process_list_test_SOURCES	= test-process-list.c dynar.c dynar-str.c dynar-simple-lex.c \
+                                  process-list.c
 
 endif

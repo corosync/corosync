@@ -82,6 +82,40 @@ qdevice_votequorum_quorum_notify_callback(votequorum_handle_t votequorum_handle,
 	memcpy(instance->vq_quorum_node_list, node_list, sizeof(*node_list) * node_list_entries);
 }
 
+static int
+qdevice_votequorum_heuristics_exec_result_callback(
+    void *heuristics_instance_ptr,
+    uint32_t seq_number, enum qdevice_heuristics_exec_result exec_result)
+{
+	struct qdevice_heuristics_instance *heuristics_instance;
+	struct qdevice_instance *instance;
+
+	heuristics_instance = (struct qdevice_heuristics_instance *)heuristics_instance_ptr;
+	instance = heuristics_instance->qdevice_instance_ptr;
+
+	if (qdevice_heuristics_result_notifier_list_set_active(
+	    &instance->heuristics_instance.exec_result_notifier_list,
+	    qdevice_votequorum_heuristics_exec_result_callback, 0) != 0) {
+		qdevice_log(LOG_CRIT, "Can't deactivate votequrorum heuristics exec callback notifier");
+		exit(2);
+	}
+
+	qdevice_log(LOG_DEBUG, "Votequorum heuristics exec result callback:");
+	qdevice_log(LOG_DEBUG, "  seq_number = %"PRIu32", exec_result = %s",
+	    seq_number, qdevice_heuristics_exec_result_to_str(exec_result));
+
+	if (qdevice_model_votequorum_node_list_heuristics_notify(instance, instance->vq_node_list_ring_id,
+	    instance->vq_node_list_entries, instance->vq_node_list, exec_result) != 0) {
+		qdevice_log(LOG_DEBUG, "qdevice_votequorum_node_list_heuristics_notify_callback returned error -> exit");
+		exit(2);
+	}
+
+	instance->vq_node_list_initial_heuristics_finished = 1;
+	instance->vq_node_list_heuristics_result = exec_result;
+
+	return (0);
+}
+
 static void
 qdevice_votequorum_node_list_notify_callback(votequorum_handle_t votequorum_handle,
     uint64_t context, votequorum_ring_id_t votequorum_ring_id,
@@ -96,6 +130,7 @@ qdevice_votequorum_node_list_notify_callback(votequorum_handle_t votequorum_hand
 	}
 
 	instance->sync_in_progress = 1;
+	memcpy(&instance->vq_poll_ring_id, &votequorum_ring_id, sizeof(votequorum_ring_id));
 
 	qdevice_log(LOG_DEBUG, "Votequorum nodelist notify callback:");
 	qdevice_log(LOG_DEBUG, "  Ring_id = ("UTILS_PRI_RING_ID")",
@@ -113,7 +148,19 @@ qdevice_votequorum_node_list_notify_callback(votequorum_handle_t votequorum_hand
 		exit(2);
 	}
 
-	instance->vq_node_list_ring_id_set = 1;
+	if (qdevice_heuristics_result_notifier_list_set_active(
+	    &instance->heuristics_instance.exec_result_notifier_list,
+	    qdevice_votequorum_heuristics_exec_result_callback, 1) != 0) {
+		qdevice_log(LOG_CRIT, "Can't activate votequrorum heuristics exec callback notifier");
+		exit(2);
+	}
+
+	if (qdevice_heuristics_exec(&instance->heuristics_instance, instance->sync_in_progress) != 0) {
+		qdevice_log(LOG_CRIT, "Can't start heuristics -> exit");
+		exit(2);
+	}
+
+	instance->vq_node_list_initial_ring_id_set = 1;
 	memcpy(&instance->vq_node_list_ring_id, &votequorum_ring_id, sizeof(votequorum_ring_id));
 	instance->vq_node_list_entries = node_list_entries;
 	free(instance->vq_node_list);
@@ -208,6 +255,12 @@ qdevice_votequorum_init(struct qdevice_instance *instance)
 		    cs_strerror(res));
 		exit(1);
 	}
+
+	if (qdevice_heuristics_result_notifier_list_add(&instance->heuristics_instance.exec_result_notifier_list,
+	    qdevice_votequorum_heuristics_exec_result_callback) == NULL) {
+		qdevice_log(LOG_CRIT, "Can't add votequrorum heuristics exec callback into notifier");
+		exit(1);
+	}
 }
 
 void
@@ -246,11 +299,11 @@ qdevice_votequorum_wait_for_ring_id(struct qdevice_instance *instance)
 
 	while (qdevice_votequorum_dispatch(instance) != -1 &&
 	    no_retries++ < instance->advanced_settings->max_cs_try_again &&
-	    !instance->vq_node_list_ring_id_set) {
+	    !instance->vq_node_list_initial_ring_id_set) {
 		(void)poll(NULL, 0, 1000);
 	}
 
-	if (!instance->vq_node_list_ring_id_set) {
+	if (!instance->vq_node_list_initial_ring_id_set) {
 		qdevice_log(LOG_CRIT, "Can't get initial votequorum membership information.");
 		return (-1);
 	}
@@ -284,7 +337,7 @@ qdevice_votequorum_poll(struct qdevice_instance *instance, int cast_vote)
 
 	res = votequorum_qdevice_poll(instance->votequorum_handle,
 	    instance->advanced_settings->votequorum_device_name, cast_vote,
-	    instance->vq_node_list_ring_id);
+	    instance->vq_poll_ring_id);
 
 	if (res != CS_OK && res != CS_ERR_TRY_AGAIN) {
 		if (res == CS_ERR_MESSAGE_ERROR) {

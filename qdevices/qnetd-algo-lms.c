@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016 Red Hat, Inc.
+ * Copyright (c) 2015-2017 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -71,6 +71,7 @@ static enum tlv_reply_error_code do_lms_algorithm(struct qnetd_client *client, c
 	struct qnetd_algo_lms_info *info = client->algorithm_data;
 	struct qnetd_algo_partition *cur_partition;
 	struct qnetd_algo_partition *largest_partition;
+	struct qnetd_algo_partition *best_score_partition;
 	const struct tlv_ring_id *ring_id = cur_ring_id;
 	int num_partitions;
 	int joint_leader;
@@ -131,7 +132,47 @@ static enum tlv_reply_error_code do_lms_algorithm(struct qnetd_client *client, c
 		}
 	}
 
-	/* Find the largest partition */
+	/*
+	 * Find the partition with highest score
+	 */
+	best_score_partition = NULL;
+	TAILQ_FOREACH(cur_partition, &info->partition_list, entries) {
+		if (!best_score_partition ||
+		    best_score_partition->score < cur_partition->score) {
+			best_score_partition = cur_partition;
+		}
+	}
+	qnetd_log(LOG_DEBUG, "algo-lms: best score partition is (" UTILS_PRI_RING_ID ") with score %d",
+		  best_score_partition->ring_id.node_id, best_score_partition->ring_id.seq, best_score_partition->score);
+
+	/* Now check if it's really the highest score, and not just the joint-highest */
+	joint_leader = 0;
+	TAILQ_FOREACH(cur_partition, &info->partition_list, entries) {
+		if (best_score_partition != cur_partition &&
+		    best_score_partition->score == cur_partition->score) {
+			joint_leader = 1;
+		}
+	}
+
+	if (!joint_leader) {
+		/* Partition with highest score is unique, allow us to run if we're in that partition. */
+		if (tlv_ring_id_eq(&best_score_partition->ring_id, ring_id)) {
+			qnetd_log(LOG_DEBUG, "algo-lms: We are in the best score partition. ACK");
+			*result_vote = info->last_result = TLV_VOTE_ACK;
+		}
+		else {
+			qnetd_log(LOG_DEBUG, "algo-lms: We are NOT in the best score partition. NACK");
+			*result_vote = info->last_result = TLV_VOTE_NACK;
+		}
+
+		qnetd_algo_free_partitions(&info->partition_list);
+
+		return (TLV_REPLY_ERROR_CODE_NO_ERROR);
+	}
+
+	/*
+	 * There are multiple partitions with same score. Find the largest partition
+	 */
 	largest_partition = NULL;
 	TAILQ_FOREACH(cur_partition, &info->partition_list, entries) {
 		if (!largest_partition ||
@@ -164,7 +205,7 @@ static enum tlv_reply_error_code do_lms_algorithm(struct qnetd_client *client, c
 		}
 	}
 	else {
-		int tb_node_id;
+		uint32_t tb_node_id;
 		struct tlv_ring_id tb_node_ring_id = {0LL, 0};
 
 		/* Look for the tie-breaker node */
@@ -283,7 +324,7 @@ qnetd_algo_lms_config_node_list_received(struct qnetd_client *client,
 enum tlv_reply_error_code
 qnetd_algo_lms_membership_node_list_received(struct qnetd_client *client,
     uint32_t msg_seq_num, const struct tlv_ring_id *ring_id,
-    const struct node_list *nodes, enum tlv_vote *result_vote)
+    const struct node_list *nodes, enum tlv_heuristics heuristics, enum tlv_vote *result_vote)
 {
 	qnetd_log(LOG_DEBUG, " ");
 	qnetd_log(LOG_DEBUG, "algo-lms: membership list from node %d partition (" UTILS_PRI_RING_ID ")", client->node_id, ring_id->node_id, ring_id->seq);
@@ -347,6 +388,18 @@ qnetd_algo_lms_vote_info_reply_received(struct qnetd_client *client, uint32_t ms
 }
 
 enum tlv_reply_error_code
+qnetd_algo_lms_heuristics_change_received(struct qnetd_client *client, uint32_t msg_seq_num,
+    enum tlv_heuristics heuristics, enum tlv_vote *result_vote)
+{
+
+	qnetd_log(LOG_INFO, "algo-lms: heuristics change is not supported.");
+
+	*result_vote = TLV_VOTE_NO_CHANGE;
+
+	return (TLV_REPLY_ERROR_CODE_NO_ERROR);
+}
+
+enum tlv_reply_error_code
 qnetd_algo_lms_timer_callback(struct qnetd_client *client, int *reschedule_timer,
     int *send_vote, enum tlv_vote *result_vote)
 {
@@ -384,6 +437,7 @@ static struct qnetd_algorithm qnetd_algo_lms = {
 	.client_disconnect		= qnetd_algo_lms_client_disconnect,
 	.ask_for_vote_received		= qnetd_algo_lms_ask_for_vote_received,
 	.vote_info_reply_received	= qnetd_algo_lms_vote_info_reply_received,
+	.heuristics_change_received	= qnetd_algo_lms_heuristics_change_received,
 	.timer_callback			= qnetd_algo_lms_timer_callback,
 };
 

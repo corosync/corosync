@@ -1,5 +1,5 @@
 .\"/*
-.\" * Copyright (C) 2016 Red Hat, Inc.
+.\" * Copyright (C) 2016-2017 Red Hat, Inc.
 .\" *
 .\" * All rights reserved.
 .\" *
@@ -31,7 +31,7 @@
 .\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 .\" * THE POSSIBILITY OF SUCH DAMAGE.
 .\" */
-.TH COROSYNC-QDEVICE-TOOL 8 2016-06-24
+.TH COROSYNC-QDEVICE-TOOL 8 2017-10-17
 .SH NAME
 corosync-qdevice-tool \- corosync-qdevice control interface.
 .SH SYNOPSIS
@@ -76,6 +76,7 @@ HB interval:            10000ms
 Sync HB interval:       30000ms
 Configured node list:
     0   Node ID = 1
+Heuristics:             Enabled
 Ring ID:                1.a00000000021b48
 Membership node list:   1
 Quorate:                Yes
@@ -96,6 +97,7 @@ Algorithm:              Fifty-Fifty split
 Tie-breaker:            Node with lowest node ID
 Poll timer running:     Yes (cast vote)
 State:                  Connected
+Heuristics result:      Pass (regular: Pass, membership: Fail, connect: Fail)
 TLS active:             Yes (client certificate sent)
 Connected since:        2016-06-24T17:02:35
 Echo reply received:    2016-06-24T17:05:15
@@ -113,10 +115,13 @@ For model net, it's good to check the
 .I Poll timer running
 state. Internally, model net supports 3 states. Not voting (when
 .I Poll timer running
-is No it means that the
+is No, what means
+.B corosync-qdevice
+is waiting for
 .B corosync-qnetd
-algorithm decides that the current node shouldn't get a vote),
-voting (without cast vote) and voting (with cast vote).
+reply), voting (without cast vote, it means that the
+.B corosync-qnetd
+algorithm decides that the current node shouldn't get a vote) and voting (with cast vote).
 .SH SEE ALSO
 .BR corosync-qnetd (8)
 .BR corosync-qdevice (8)

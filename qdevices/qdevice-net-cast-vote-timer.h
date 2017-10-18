@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016 Red Hat, Inc.
+ * Copyright (c) 2015-2017 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -43,7 +43,10 @@ extern "C" {
 #endif
 
 extern int		qdevice_net_cast_vote_timer_update(
-	struct qdevice_net_instance *instance, enum tlv_vote vote);
+    struct qdevice_net_instance *instance, enum tlv_vote vote);
+
+extern void		qdevice_net_cast_vote_timer_set_paused(
+    struct qdevice_net_instance *instance, int paused);
 
 #ifdef __cplusplus
 }

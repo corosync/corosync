@@ -44,6 +44,12 @@
 extern "C" {
 #endif
 
+struct qdevice_cmap_change_events {
+	unsigned int logging	: 1;
+	unsigned int node_list	: 1;
+	unsigned int heuristics	: 1;
+};
+
 extern int		qdevice_cmap_get_nodelist(cmap_handle_t cmap_handle,
     struct node_list *list);
 

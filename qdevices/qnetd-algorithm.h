@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016 Red Hat, Inc.
+ * Copyright (c) 2015-2017 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -54,7 +54,7 @@ extern enum tlv_reply_error_code	qnetd_algorithm_config_node_list_received(
 
 extern enum tlv_reply_error_code	qnetd_algorithm_membership_node_list_received(
     struct qnetd_client *client, uint32_t msg_seq_num, const struct tlv_ring_id *ring_id,
-    const struct node_list *nodes, enum tlv_vote *result_vote);
+     const struct node_list *nodes, enum tlv_heuristics heuristics, enum tlv_vote *result_vote);
 
 extern enum tlv_reply_error_code	qnetd_algorithm_quorum_node_list_received(
     struct qnetd_client *client, uint32_t msg_seq_num, enum tlv_quorate quorate,
@@ -69,6 +69,10 @@ extern enum tlv_reply_error_code	qnetd_algorithm_ask_for_vote_received(
 extern enum tlv_reply_error_code	qnetd_algorithm_vote_info_reply_received(
     struct qnetd_client *client, uint32_t msg_seq_num);
 
+extern enum tlv_reply_error_code	qnetd_algorithm_heuristics_change_received(
+    struct qnetd_client *client, uint32_t msg_seq_num, enum tlv_heuristics heuristics,
+    enum tlv_vote *result_vote);
+
 extern enum tlv_reply_error_code	qnetd_algorithm_timer_callback(
     struct qnetd_client *client, int *reschedule_timer, int *send_vote, enum tlv_vote *result_vote);
 
@@ -80,7 +84,7 @@ struct qnetd_algorithm {
 	enum tlv_reply_error_code (*membership_node_list_received)(
 	    struct qnetd_client *client, uint32_t msg_seq_num,
 	    const struct tlv_ring_id *ring_id,
-	    const struct node_list *nodes, enum tlv_vote *result_vote);
+	    const struct node_list *nodes, enum tlv_heuristics, enum tlv_vote *result_vote);
 
 	enum tlv_reply_error_code (*quorum_node_list_received)(
 	    struct qnetd_client *client, uint32_t msg_seq_num, enum tlv_quorate quorate,
@@ -96,6 +100,10 @@ struct qnetd_algorithm {
 
 	enum tlv_reply_error_code (*vote_info_reply_received)(struct qnetd_client *client,
 	    uint32_t msg_seq_num);
+
+	enum tlv_reply_error_code (*heuristics_change_received)(
+	    struct qnetd_client *client, uint32_t msg_seq_num, enum tlv_heuristics heuristics,
+	    enum tlv_vote *result_vote);
 
 	 enum tlv_reply_error_code (*timer_callback)(struct qnetd_client *client,
 	    int *reschedule_timer, int *send_vote, enum tlv_vote *result_vote);

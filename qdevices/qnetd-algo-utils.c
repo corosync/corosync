@@ -125,11 +125,22 @@ qnetd_algo_create_partitions(struct qnetd_client *client, partitions_list_t *par
 				return (-1);
 			}
 			partition->num_nodes = 0;
+			partition->score = 0;
 			memcpy(&partition->ring_id, &other_client->last_ring_id, sizeof(*ring_id));
 			num_partitions++;
 			TAILQ_INSERT_TAIL(partitions_list, partition, entries);
 		}
 		partition->num_nodes++;
+
+		/*
+		 * Score is computer similar way as in the ffsplit algorithm
+		 */
+		partition->score++;
+		if (other_client->last_heuristics == TLV_HEURISTICS_PASS) {
+			partition->score++;
+		} else if (other_client->last_heuristics == TLV_HEURISTICS_FAIL) {
+			partition->score--;
+		}
 
 	}
 

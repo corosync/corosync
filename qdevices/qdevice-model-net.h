@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016 Red Hat, Inc.
+ * Copyright (c) 2015-2017 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -59,8 +59,16 @@ extern int	qdevice_model_net_votequorum_quorum_notify(struct qdevice_instance *i
 extern int	qdevice_model_net_votequorum_node_list_notify(struct qdevice_instance *instance,
     votequorum_ring_id_t votequorum_ring_id, uint32_t node_list_entries, uint32_t node_list[]);
 
+extern int	qdevice_model_net_votequorum_node_list_heuristics_notify(
+    struct qdevice_instance *instance,
+    votequorum_ring_id_t votequorum_ring_id, uint32_t node_list_entries, uint32_t node_list[],
+    enum qdevice_heuristics_exec_result heuristics_exec_result);
+
 extern int 	qdevice_model_net_votequorum_expected_votes_notify(struct qdevice_instance *instance,
     uint32_t expected_votes);
+
+extern int      qdevice_model_net_cmap_changed(struct qdevice_instance *instance,
+    const struct qdevice_cmap_change_events *events);
 
 extern int	qdevice_model_net_ipc_cmd_status(struct qdevice_instance *instance,
     struct dynar *outbuf, int verbose);

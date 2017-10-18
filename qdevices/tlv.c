@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016 Red Hat, Inc.
+ * Copyright (c) 2015-2017 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -35,6 +35,7 @@
 #include <sys/types.h>
 #include <arpa/inet.h>
 
+#include <assert.h>
 #include <inttypes.h>
 #include <stdlib.h>
 #include <string.h>
@@ -55,7 +56,7 @@
 #define TLV_TYPE_LENGTH		2
 #define TLV_LENGTH_LENGTH	2
 
-#define TLV_STATIC_SUPPORTED_OPTIONS_SIZE	22
+#define TLV_STATIC_SUPPORTED_OPTIONS_SIZE	23
 
 enum tlv_opt_type tlv_static_supported_options[TLV_STATIC_SUPPORTED_OPTIONS_SIZE] = {
     TLV_OPT_MSG_SEQ_NUMBER,
@@ -80,6 +81,7 @@ enum tlv_opt_type tlv_static_supported_options[TLV_STATIC_SUPPORTED_OPTIONS_SIZE
     TLV_OPT_VOTE,
     TLV_OPT_QUORATE,
     TLV_OPT_TIE_BREAKER,
+    TLV_OPT_HEURISTICS,
 };
 
 int
@@ -404,6 +406,17 @@ tlv_add_quorate(struct dynar *msg, enum tlv_quorate quorate)
 {
 
 	return (tlv_add_u8(msg, TLV_OPT_QUORATE, quorate));
+}
+
+int
+tlv_add_heuristics(struct dynar *msg, enum tlv_heuristics heuristics)
+{
+
+	if (heuristics == TLV_HEURISTICS_UNDEFINED) {
+		return (-1);
+	}
+
+	return (tlv_add_u8(msg, TLV_OPT_HEURISTICS, heuristics));
 }
 
 void
@@ -953,6 +966,28 @@ tlv_iter_decode_quorate(struct tlv_iterator *tlv_iter, enum tlv_quorate *quorate
 	return (0);
 }
 
+int
+tlv_iter_decode_heuristics(struct tlv_iterator *tlv_iter, enum tlv_heuristics *heuristics)
+{
+	uint8_t u8;
+	enum tlv_heuristics tmp_heuristics;
+
+	if (tlv_iter_decode_u8(tlv_iter, &u8) != 0) {
+		return (-1);
+	}
+
+	tmp_heuristics = u8;
+
+	if (tmp_heuristics != TLV_HEURISTICS_PASS &&
+	    tmp_heuristics != TLV_HEURISTICS_FAIL) {
+		return (-4);
+	}
+
+	*heuristics = tmp_heuristics;
+
+	return (0);
+}
+
 void
 tlv_get_supported_options(enum tlv_opt_type **supported_options, size_t *no_supported_options)
 {
@@ -1034,4 +1069,53 @@ tlv_decision_algorithm_type_to_str(enum tlv_decision_algorithm_type algorithm)
 	}
 
 	return ("Unknown algorithm");
+}
+
+const char *
+tlv_heuristics_to_str(enum tlv_heuristics heuristics)
+{
+
+	switch (heuristics) {
+	case TLV_HEURISTICS_UNDEFINED: return ("Undefined"); break;
+	case TLV_HEURISTICS_PASS: return ("Pass"); break;
+	case TLV_HEURISTICS_FAIL: return ("Fail"); break;
+	}
+
+	return ("Unknown heuristics type");
+}
+
+int
+tlv_heuristics_cmp(enum tlv_heuristics h1, enum tlv_heuristics h2)
+{
+	int res;
+
+	res = -2;
+
+	switch (h1) {
+	case TLV_HEURISTICS_UNDEFINED:
+		switch (h2) {
+		case TLV_HEURISTICS_UNDEFINED: res = 0; break;
+		case TLV_HEURISTICS_PASS: res = -1; break;
+		case TLV_HEURISTICS_FAIL: res = 1; break;
+		}
+		break;
+	case TLV_HEURISTICS_PASS:
+		switch (h2) {
+		case TLV_HEURISTICS_UNDEFINED: res = 1; break;
+		case TLV_HEURISTICS_PASS: res = 0; break;
+		case TLV_HEURISTICS_FAIL: res = 1; break;
+		}
+		break;
+	case TLV_HEURISTICS_FAIL:
+		switch (h2) {
+		case TLV_HEURISTICS_UNDEFINED: res = -1; break;
+		case TLV_HEURISTICS_PASS: res = -1; break;
+		case TLV_HEURISTICS_FAIL: res = 0; break;
+		}
+		break;
+	}
+
+	assert(res == -1 || res == 0 || res == 1);
+
+	return (res);
 }

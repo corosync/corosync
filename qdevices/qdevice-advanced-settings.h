@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016 Red Hat, Inc.
+ * Copyright (c) 2015-2017 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -55,6 +55,16 @@ struct qdevice_advanced_settings {
 	size_t ipc_max_send_size;
 	size_t ipc_max_receive_size;
 	enum qdevice_advanced_settings_master_wins master_wins;
+	size_t heuristics_ipc_max_send_buffers;
+	size_t heuristics_ipc_max_send_receive_size;
+	uint32_t heuristics_min_timeout;
+	uint32_t heuristics_max_timeout;
+	uint32_t heuristics_min_interval;
+	uint32_t heuristics_max_interval;
+	size_t heuristics_max_execs;
+	int heuristics_use_execvp;
+	size_t heuristics_max_processes;
+	uint32_t heuristics_kill_list_interval;
 
 	/*
 	 * Related to model NET

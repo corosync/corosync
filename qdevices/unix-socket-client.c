@@ -38,7 +38,7 @@
 #include "unix-socket-client.h"
 #include "unix-socket.h"
 
-#define UNIX_SOCKET_CLIENT_BUFFER	1024
+#define UNIX_SOCKET_CLIENT_BUFFER	256
 
 void
 unix_socket_client_init(struct unix_socket_client *client, int sock, size_t max_receive_size,
@@ -98,7 +98,7 @@ unix_socket_client_io_read(struct unix_socket_client *client)
 			goto exit_err;
 		}
 
-		for (zi = 0; zi < readed; zi++) {
+		for (zi = 0; zi < (size_t)readed; zi++) {
 			if (buf[zi] == '\n') {
 				res = 1;
 			}

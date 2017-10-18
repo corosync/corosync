@@ -40,25 +40,7 @@
 #include <unistd.h>
 
 #include "unix-socket.h"
-
-static int
-unix_socket_set_non_blocking(int fd)
-{
-	int flags;
-
-	flags = fcntl(fd, F_GETFL, NULL);
-
-	if (flags < 0) {
-		return (-1);
-	}
-
-	flags |= O_NONBLOCK;
-	if (fcntl(fd, F_SETFL, flags) < 0) {
-		return (-1);
-	}
-
-	return (0);
-}
+#include "utils.h"
 
 int
 unix_socket_server_create(const char *path, int non_blocking, int backlog)
@@ -87,7 +69,7 @@ unix_socket_server_create(const char *path, int non_blocking, int backlog)
 	}
 
 	if (non_blocking) {
-		if (unix_socket_set_non_blocking(s) != 0) {
+		if (utils_fd_set_non_blocking(s) != 0) {
 			close(s);
 
 			return (-1);
@@ -124,7 +106,7 @@ unix_socket_client_create(const char *path, int non_blocking)
 	strncpy(sun.sun_path, path, strlen(path));
 
 	if (non_blocking) {
-		if (unix_socket_set_non_blocking(s) != 0) {
+		if (utils_fd_set_non_blocking(s) != 0) {
 			close(s);
 
 			return (-1);
@@ -173,7 +155,7 @@ unix_socket_server_accept(int sock, int non_blocking)
 	}
 
 	if (non_blocking) {
-		if (unix_socket_set_non_blocking(client_sock) != 0) {
+		if (utils_fd_set_non_blocking(client_sock) != 0) {
 			close(client_sock);
 
 			return (-1);

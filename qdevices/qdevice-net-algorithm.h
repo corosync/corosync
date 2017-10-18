@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016 Red Hat, Inc.
+ * Copyright (c) 2015-2017 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -48,8 +48,8 @@ extern "C" {
 extern int	qdevice_net_algorithm_init(struct qdevice_net_instance *instance);
 
 extern int	qdevice_net_algorithm_connected(struct qdevice_net_instance *instance,
-    int *send_config_node_list, int *send_membership_node_list, int *send_quorum_node_list,
-    enum tlv_vote *vote);
+    enum tlv_heuristics *heuristics, int *send_config_node_list, int *send_membership_node_list,
+    int *send_quorum_node_list, enum tlv_vote *vote);
 
 extern int	qdevice_net_algorithm_config_node_list_changed(struct qdevice_net_instance *instance,
     const struct node_list *nlist, int config_version_set, uint64_t config_version,
@@ -57,7 +57,12 @@ extern int	qdevice_net_algorithm_config_node_list_changed(struct qdevice_net_ins
 
 extern int	qdevice_net_algorithm_votequorum_node_list_notify(struct qdevice_net_instance *instance,
     const struct tlv_ring_id *ring_id, uint32_t node_list_entries, uint32_t node_list[],
-    int *send_node_list, enum tlv_vote *vote);
+    int *pause_cast_vote_timer, enum tlv_vote *vote);
+
+extern int	qdevice_net_algorithm_votequorum_node_list_heuristics_notify(
+    struct qdevice_net_instance *instance,
+    const struct tlv_ring_id *ring_id, uint32_t node_list_entries, uint32_t node_list[],
+    int *send_node_list, enum tlv_vote *vote, enum tlv_heuristics *heuristics);
 
 extern int	qdevice_net_algorithm_votequorum_quorum_notify(struct qdevice_net_instance *instance,
     uint32_t quorate, uint32_t node_list_entries, votequorum_node_t node_list[], int *send_node_list,
@@ -88,6 +93,13 @@ extern int	qdevice_net_algorithm_echo_reply_received(struct qdevice_net_instance
 
 extern int	qdevice_net_algorithm_echo_reply_not_received(struct qdevice_net_instance *instance);
 
+extern int	qdevice_net_algorithm_heuristics_change(struct qdevice_net_instance *instance,
+    enum tlv_heuristics *heuristics, int *send_msg, enum tlv_vote *vote);
+
+extern int	qdevice_net_algorithm_heuristics_change_reply_received(struct qdevice_net_instance *instance,
+    uint32_t seq_number, const struct tlv_ring_id *ring_id, int ring_id_is_valid, enum tlv_heuristics heuristics,
+    enum tlv_vote *vote);
+
 extern int	qdevice_net_algorithm_disconnected(struct qdevice_net_instance *instance,
     enum qdevice_net_disconnect_reason disconnect_reason, int *try_reconnect, enum tlv_vote *vote);
 
@@ -96,14 +108,17 @@ extern void	qdevice_net_algorithm_destroy(struct qdevice_net_instance *instance)
 struct qdevice_net_algorithm {
 	int (*init)(struct qdevice_net_instance *instance);
 	int (*connected)(struct qdevice_net_instance *instance,
-	    int *send_config_node_list, int *send_membership_node_list, int *send_quorum_node_list,
-	    enum tlv_vote *vote);
+	    enum tlv_heuristics *heuristics, int *send_config_node_list, int *send_membership_node_list,
+	    int *send_quorum_node_list, enum tlv_vote *vote);
 	int (*config_node_list_changed)(struct qdevice_net_instance *instance,
 	    const struct node_list *nlist, int config_version_set, uint64_t config_version,
 	    int *send_node_list, enum tlv_vote *vote);
 	int (*votequorum_node_list_notify)(struct qdevice_net_instance *instance,
 	    const struct tlv_ring_id *ring_id, uint32_t node_list_entries, uint32_t node_list[],
-	    int *send_node_list, enum tlv_vote *vote);
+	    int *pause_cast_vote_timer, enum tlv_vote *vote);
+	int (*votequorum_node_list_heuristics_notify)(struct qdevice_net_instance *instance,
+	    const struct tlv_ring_id *ring_id, uint32_t node_list_entries, uint32_t node_list[],
+	    int *send_node_list, enum tlv_vote *vote, enum tlv_heuristics *heuristics);
 	int (*votequorum_quorum_notify)(struct qdevice_net_instance *instance, uint32_t quorate,
 	    uint32_t node_list_entries, votequorum_node_t node_list[], int *send_node_list,
 	    enum tlv_vote *vote);
@@ -127,6 +142,11 @@ struct qdevice_net_algorithm {
 	int (*echo_reply_received)(struct qdevice_net_instance *instance,
 	    uint32_t seq_number, int is_expected_seq_number);
 	int (*echo_reply_not_received)(struct qdevice_net_instance *instance);
+	int (*heuristics_change)(struct qdevice_net_instance *instance,
+	    enum tlv_heuristics *heuristics, int *send_msg, enum tlv_vote *vote);
+	int (*heuristics_change_reply_received)(struct qdevice_net_instance *instance,
+	    uint32_t seq_number, const struct tlv_ring_id *ring_id, int ring_id_is_valid,
+	    enum tlv_heuristics heuristics, enum tlv_vote *vote);
 	int (*disconnected)(struct qdevice_net_instance *instance,
 	    enum qdevice_net_disconnect_reason disconnect_reason, int *try_reconnect,
 	    enum tlv_vote *vote);

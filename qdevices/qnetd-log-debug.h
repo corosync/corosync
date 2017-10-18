@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016 Red Hat, Inc.
+ * Copyright (c) 2015-2017 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -55,7 +55,7 @@ extern void		qnetd_log_debug_config_node_list_received(struct qnetd_client *clie
 
 extern void		qnetd_log_debug_membership_node_list_received(struct qnetd_client *client,
     uint32_t msg_seq_num, const struct tlv_ring_id *ring_id,
-    const struct node_list *nodes);
+    enum tlv_heuristics heuristics, const struct node_list *nodes);
 
 extern void		qnetd_log_debug_quorum_node_list_received(struct qnetd_client *client,
     uint32_t msg_seq_num, enum tlv_quorate quorate, const struct node_list *nodes);
@@ -71,6 +71,9 @@ extern void		qnetd_log_debug_vote_info_reply_received(struct qnetd_client *clien
 
 extern void		qnetd_log_debug_send_vote_info(struct qnetd_client *client,
     uint32_t msg_seq_num, enum tlv_vote vote);
+
+extern void		qnetd_log_debug_heuristics_change_received(struct qnetd_client *client,
+    uint32_t msg_seq_num, enum tlv_heuristics heuristics);
 
 #ifdef __cplusplus
 }

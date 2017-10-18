@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016 Red Hat, Inc.
+ * Copyright (c) 2015-2017 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -45,6 +45,10 @@ qdevice_net_cast_vote_timer_callback(void *data1, void *data2)
 	int case_processed;
 
 	instance = (struct qdevice_net_instance *)data1;
+
+	if (instance->cast_vote_timer_paused) {
+		return (-1);
+	}
 
 	case_processed = 0;
 
@@ -166,4 +170,19 @@ qdevice_net_cast_vote_timer_update(struct qdevice_net_instance *instance, enum t
 	}
 
 	return (0);
+}
+
+void
+qdevice_net_cast_vote_timer_set_paused(struct qdevice_net_instance *instance, int paused)
+{
+
+	if (paused != instance->cast_vote_timer_paused) {
+		instance->cast_vote_timer_paused = paused;
+
+		if (instance->cast_vote_timer_paused) {
+			qdevice_log(LOG_DEBUG, "Cast vote timer is now paused.");
+		} else {
+			qdevice_log(LOG_DEBUG, "Cast vote timer is no longer paused.");
+		}
+	}
 }

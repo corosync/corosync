@@ -35,6 +35,7 @@
 #include "qdevice-log.h"
 #include "qdevice-net-algorithm.h"
 #include "qdevice-net-cast-vote-timer.h"
+#include "qdevice-net-heuristics.h"
 #include "qdevice-net-msg-received.h"
 #include "qdevice-net-send.h"
 #include "qdevice-net-votequorum.h"
@@ -241,12 +242,7 @@ qdevice_net_msg_received_init_reply(struct qdevice_net_instance *instance,
 {
 	size_t zi;
 	int res;
-	int send_config_node_list;
-	int send_membership_node_list;
-	int send_quorum_node_list;
-	enum tlv_vote vote;
-	struct tlv_ring_id tlv_rid;
-	enum tlv_quorate quorate;
+	enum qdevice_heuristics_mode active_heuristics_mode;
 
 	qdevice_log(LOG_DEBUG, "Received init reply msg");
 
@@ -374,6 +370,32 @@ qdevice_net_msg_received_init_reply(struct qdevice_net_instance *instance,
 	}
 
 	/*
+	 * Check if server supports heuristics
+	 */
+	res = 0;
+	for (zi = 0; zi < msg->no_supported_options; zi++) {
+		if (msg->supported_options[zi] == TLV_OPT_HEURISTICS) {
+			res = 1;
+		}
+	}
+
+	instance->server_supports_heuristics = res;
+
+	if (!res) {
+		active_heuristics_mode = instance->qdevice_instance_ptr->heuristics_instance.mode;
+
+		if (active_heuristics_mode == QDEVICE_HEURISTICS_MODE_ENABLED ||
+		    active_heuristics_mode == QDEVICE_HEURISTICS_MODE_SYNC) {
+			qdevice_log(LOG_ERR, "Heuristics are enabled but not supported by server");
+
+			instance->disconnect_reason =
+			    QDEVICE_NET_DISCONNECT_REASON_SERVER_DOESNT_SUPPORT_REQUIRED_OPT;
+
+			return (-1);
+		}
+	}
+
+	/*
 	 * Finally fully connected so it's possible to remove connection timer
 	 */
 	if (instance->connect_timer != NULL) {
@@ -384,73 +406,17 @@ qdevice_net_msg_received_init_reply(struct qdevice_net_instance *instance,
 	/*
 	 * Server accepted heartbeat interval -> schedule regular sending of echo request
 	 */
-	qdevice_net_echo_request_timer_schedule(instance);
-
-	send_config_node_list = 1;
-	send_membership_node_list = 1;
-	send_quorum_node_list = 1;
-	vote = TLV_VOTE_WAIT_FOR_REPLY;
-
-	if (qdevice_net_algorithm_connected(instance, &send_config_node_list, &send_membership_node_list,
-	    &send_quorum_node_list, &vote) != 0) {
-		qdevice_log(LOG_DEBUG, "Algorithm returned error. Disconnecting.");
-		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_ALGO_CONNECTED_ERR;
+	if (qdevice_net_echo_request_timer_schedule(instance) != 0) {
 		return (-1);
-	} else {
-		qdevice_log(LOG_DEBUG, "Algorithm decided to %s config node list, %s membership "
-		    "node list, %s quorum node list and result vote is %s",
-		    (send_config_node_list ? "send" : "not send"),
-		    (send_membership_node_list ? "send" : "not send"),
-		    (send_quorum_node_list ? "send" : "not send"),
-		    tlv_vote_to_str(vote));
 	}
 
 	/*
-	 * Now we can finally really send node list, votequorum node list and update timer
+	 * Run heuristics (even when it is disabled, undefined result is ok, rest of sending
+	 * is handled by qdevice_net_connect_heuristics_exec_result_callback
 	 */
-	if (send_config_node_list) {
-		if (qdevice_net_send_config_node_list(instance,
-		    &instance->qdevice_instance_ptr->config_node_list,
-		    instance->qdevice_instance_ptr->config_node_list_version_set,
-		    instance->qdevice_instance_ptr->config_node_list_version, 1) != 0) {
-			instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_ALLOCATE_MSG_BUFFER;
-			return (-1);
-		}
+	if (qdevice_net_heuristics_exec_after_connect(instance) != 0) {
+		return (-1);
 	}
-
-	if (send_membership_node_list) {
-		qdevice_net_votequorum_ring_id_to_tlv(&tlv_rid,
-		    &instance->qdevice_instance_ptr->vq_node_list_ring_id);
-
-		if (qdevice_net_send_membership_node_list(instance, &tlv_rid,
-		    instance->qdevice_instance_ptr->vq_node_list_entries,
-		    instance->qdevice_instance_ptr->vq_node_list) != 0) {
-			instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_ALLOCATE_MSG_BUFFER;
-			return (-1);
-		}
-	}
-
-	if (send_quorum_node_list) {
-		quorate = (instance->qdevice_instance_ptr->vq_quorum_quorate ?
-		    TLV_QUORATE_QUORATE : TLV_QUORATE_INQUORATE);
-
-		if (qdevice_net_send_quorum_node_list(instance,
-		    quorate,
-		    instance->qdevice_instance_ptr->vq_quorum_node_list_entries,
-		    instance->qdevice_instance_ptr->vq_quorum_node_list) != 0) {
-			instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_ALLOCATE_MSG_BUFFER;
-			return (-1);
-		}
-	}
-
-	if (qdevice_net_cast_vote_timer_update(instance, vote) != 0) {
-		qdevice_log(LOG_CRIT, "qdevice_net_msg_received_set_option_reply fatal error. "
-		    " Can't update cast vote timer vote");
-		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_SCHEDULE_VOTING_TIMER;
-	}
-
-	instance->state = QDEVICE_NET_INSTANCE_STATE_WAITING_VOTEQUORUM_CMAP_EVENTS;
-	instance->connected_since_time = time(NULL);
 
 	return (0);
 }
@@ -511,7 +477,9 @@ qdevice_net_msg_received_set_option_reply(struct qdevice_net_instance *instance,
 		return (-1);
 	}
 
-	qdevice_net_echo_request_timer_schedule(instance);
+	if (qdevice_net_echo_request_timer_schedule(instance) != 0) {
+		return (-1);
+	}
 
 	return (0);
 }
@@ -705,7 +673,7 @@ qdevice_net_msg_received_ask_for_vote_reply(struct qdevice_net_instance *instanc
 	}
 
 	if (!msg->vote_set || !msg->seq_number_set || !msg->ring_id_set) {
-		qdevice_log(LOG_ERR, "Received node list reply message without "
+		qdevice_log(LOG_ERR, "Received ask for vote reply message without "
 		    "required options. Disconnecting from server");
 
 		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_REQUIRED_OPTION_MISSING;
@@ -832,6 +800,72 @@ qdevice_net_msg_received_vote_info_reply(struct qdevice_net_instance *instance,
 	return (qdevice_net_msg_received_unexpected_msg(instance, msg, "vote info reply"));
 }
 
+static int
+qdevice_net_msg_received_heuristics_change(struct qdevice_net_instance *instance,
+    const struct msg_decoded *msg)
+{
+
+	return (qdevice_net_msg_received_unexpected_msg(instance, msg, "heuristics change"));
+}
+
+static int
+qdevice_net_msg_received_heuristics_change_reply(struct qdevice_net_instance *instance,
+    const struct msg_decoded *msg)
+{
+	enum tlv_vote result_vote;
+	int ring_id_is_valid;
+
+	if (instance->state != QDEVICE_NET_INSTANCE_STATE_WAITING_VOTEQUORUM_CMAP_EVENTS) {
+		qdevice_log(LOG_ERR, "Received unexpected heuristics change reply message. "
+		    "Disconnecting from server");
+
+		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_UNEXPECTED_MSG;
+		return (-1);
+	}
+
+	if (!msg->vote_set || !msg->seq_number_set || !msg->ring_id_set ||
+	    msg->heuristics == TLV_HEURISTICS_UNDEFINED) {
+		qdevice_log(LOG_ERR, "Received heuristics change reply message without "
+		    "required options. Disconnecting from server");
+
+		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_REQUIRED_OPTION_MISSING;
+		return (-1);
+	}
+
+	qdevice_log(LOG_DEBUG, "Received heuristics change reply");
+	qdevice_log(LOG_DEBUG, "  seq = "UTILS_PRI_MSG_SEQ, msg->seq_number);
+	qdevice_log(LOG_DEBUG, "  vote = %s", tlv_vote_to_str(msg->vote));
+	qdevice_log(LOG_DEBUG, "  ring id = ("UTILS_PRI_RING_ID")",
+		    msg->ring_id.node_id, msg->ring_id.seq);
+	qdevice_log(LOG_DEBUG, "  heuristics = %s", tlv_heuristics_to_str(msg->heuristics));
+
+	result_vote = msg->vote;
+
+	if (!tlv_ring_id_eq(&msg->ring_id, &instance->last_sent_ring_id)) {
+		ring_id_is_valid = 0;
+		qdevice_log(LOG_DEBUG, "Received heuristics change reply with old ring id.");
+	} else {
+		ring_id_is_valid = 1;
+	}
+
+	if (qdevice_net_algorithm_heuristics_change_reply_received(instance, msg->seq_number,
+	    &msg->ring_id, ring_id_is_valid, msg->heuristics, &result_vote) != 0) {
+		qdevice_log(LOG_DEBUG, "Algorithm returned error. Disconnecting.");
+
+		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_ALGO_HEURISTICS_CHANGE_REPLY_ERR;
+		return (-1);
+	} else {
+		qdevice_log(LOG_DEBUG, "Algorithm result vote is %s", tlv_vote_to_str(result_vote));
+	}
+
+	if (qdevice_net_cast_vote_timer_update(instance, result_vote) != 0) {
+		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_SCHEDULE_VOTING_TIMER;
+		return (-1);
+	}
+
+	return (0);
+}
+
 int
 qdevice_net_msg_received(struct qdevice_net_instance *instance)
 {
@@ -923,6 +957,13 @@ qdevice_net_msg_received(struct qdevice_net_instance *instance)
 		msg_processed = 1;
 		ret_val = qdevice_net_msg_received_vote_info_reply(instance, &msg);
 		break;
+	case MSG_TYPE_HEURISTICS_CHANGE:
+		msg_processed = 1;
+		ret_val = qdevice_net_msg_received_heuristics_change(instance, &msg);
+		break;
+	case MSG_TYPE_HEURISTICS_CHANGE_REPLY:
+		msg_processed = 1;
+		ret_val = qdevice_net_msg_received_heuristics_change_reply(instance, &msg);
 	/*
 	 * Default is not defined intentionally. Compiler shows warning when msg type is added
 	 */
