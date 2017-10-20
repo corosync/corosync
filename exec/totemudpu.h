@@ -133,4 +133,8 @@ extern int totemudpu_member_remove (
 	const struct totem_ip_address *member,
 	int ring_no);
 
+extern int totemudpu_reconfigure (
+	void *udpu_context,
+	struct totem_config *totem_config);
+
 #endif /* TOTEMUDPU_H_DEFINED */

@@ -122,4 +122,8 @@ extern int totemudp_crypto_set (
 extern int totemudp_recv_mcast_empty (
 	void *udp_context);
 
+extern int totemudp_reconfigure (
+	void *udp_context,
+	struct totem_config *totem_config);
+
 #endif /* TOTEMUDP_H_DEFINED */

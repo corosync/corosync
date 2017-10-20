@@ -906,6 +906,10 @@ int totemknet_initialize (
 		}
 		knet_log_printf(LOG_INFO, "kronosnet crypto initialized: %s/%s", crypto_cfg.crypto_cipher_type, crypto_cfg.crypto_hash_type);
 	}
+
+	/* Set up compression */
+	totemknet_reconfigure(instance, instance->totem_config);
+
 	knet_handle_setfwd(instance->knet_handle, 1);
 
 	instance->link_mode = KNET_LINK_POLICY_PASSIVE;
@@ -1262,6 +1266,28 @@ int totemknet_member_list_rebind_ip (
 {
 	return (0);
 }
+
+int totemknet_reconfigure (
+	void *knet_context,
+	struct totem_config *totem_config)
+{
+	struct totemknet_instance *instance = (struct totemknet_instance *)knet_context;
+	struct knet_handle_compress_cfg compress_cfg;
+	int res = 0;
+
+	if (totem_config->knet_compression_model) {
+		strcpy(compress_cfg.compress_model, totem_config->knet_compression_model);
+		compress_cfg.compress_threshold = totem_config->knet_compression_threshold;
+		compress_cfg.compress_level = totem_config->knet_compression_level;
+
+		res = knet_handle_compress(instance->knet_handle, &compress_cfg);
+		if (res) {
+			KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_ERROR, "knet_handle_compress failed");
+		}
+	}
+	return (res);
+}
+
 
 /* For the stats module */
 int totemknet_link_get_status (

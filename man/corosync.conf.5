@@ -332,6 +332,27 @@ the corosync community.
 The default is 238 milliseconds.
 
 .TP
+knet_compression_model
+The (optional) type of compression used by kronosnet. The values available depend on 
+the build and also avaialable libraries. Typically zlib and lz4 will be available 
+but bzip2 and others could also be allowed. The default is 'none'
+
+.TP
+knet_compression_threshold
+Tells knet to NOT compress any packets that are smaller than the value
+indicated. Default 100 bytes.
+
+Set to 0 to reset to the default.
+Set to 1 to compress everything.
+
+.TP
+knet_compression_level
+Many compression libraries allow tuning of compression parameters. For example
+0 or 1 ... 9 are commonly used to determine the level of compression. This value
+is passed unmodified to the compression library so it is recommended to consult
+the library's documentation for more detailed information.
+
+.TP
 hold
 This timeout specifies in milliseconds how long the token should be held by
 the representative when the protocol is under low utilization.   It is not
