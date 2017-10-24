@@ -49,16 +49,13 @@ status()
 
 [ -f @INITCONFIGDIR@/$prog ] && . @INITCONFIGDIR@/$prog
 
-# rpm based distros
-if [ -d @SYSCONFDIR@/sysconfig ]; then
+case '@INITCONFIGDIR@' in
+    */sysconfig) # rpm based distros
 	[ -f @INITDDIR@/functions ] && . @INITDDIR@/functions
-	[ -z "$LOCK_FILE" ] && LOCK_FILE="@LOCALSTATEDIR@/lock/subsys/$prog"
-fi
-
-# deb based distros
-if [ -d @SYSCONFDIR@/default ]; then
-	[ -z "$LOCK_FILE" ] && LOCK_FILE="@LOCALSTATEDIR@/lock/$prog"
-fi
+	[ -z "$LOCK_FILE" ] && LOCK_FILE="@LOCALSTATEDIR@/lock/subsys/$prog";;
+    */default) # deb based distros
+	[ -z "$LOCK_FILE" ] && LOCK_FILE="@LOCALSTATEDIR@/lock/$prog";;
+esac
 
 # The version of __pids_pidof in /etc/init.d/functions calls pidof with -x
 # This means it matches scripts, including this one.
