@@ -625,6 +625,10 @@ static void timer_function_netif_check_timeout (
 		if (!instance->totem_config->interfaces[i].configured) {
 			continue;
 		}
+		if (!instance->my_ids[i].nodeid) {
+			libknet_log_printf(LOGSYS_LEVEL_ERROR, "With knet, you must specify nodeid for each node in nodelist");
+			corosync_exit_error(COROSYNC_DONE_FATAL_ERR);
+		}
 		instance->totemknet_iface_change_fn (instance->context,
 						     &instance->my_ids[i],
 						     i);
