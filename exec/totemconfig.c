@@ -1356,27 +1356,6 @@ extern int totem_config_read (
 			       "255.255.255.255", 0);
 	}
 
-	/*
-	 * Store automatically generated items back to icmap
-	 */
-	for (i = 0; i < INTERFACE_MAX; i++) {
-		if (!totem_config->interfaces[i].configured) {
-			continue;
-		}
-		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.mcastaddr", i);
-		if (icmap_get_string(tmp_key, &str) == CS_OK) {
-			free(str);
-		} else {
-			str = (char *)totemip_print(&totem_config->interfaces[i].mcast_addr);
-			icmap_set_string(tmp_key, str);
-		}
-
-		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.mcastport", i);
-		if (icmap_get_uint16(tmp_key, &u16) != CS_OK) {
-			icmap_set_uint16(tmp_key, totem_config->interfaces[i].ip_port);
-		}
-	}
-
 	totem_config->transport_number = TOTEM_TRANSPORT_KNET;
 	if (icmap_get_string("totem.transport", &str) == CS_OK) {
 		if (strcmp (str, "udpu") == 0) {
@@ -1392,6 +1371,29 @@ extern int totem_config_read (
 		}
 
 		free(str);
+	}
+
+	/*
+	 * Store automatically generated items back to icmap only for UDP
+	 */
+	if (totem_config->transport_number == TOTEM_TRANSPORT_UDP) {
+		for (i = 0; i < INTERFACE_MAX; i++) {
+			if (!totem_config->interfaces[i].configured) {
+				continue;
+			}
+			snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.mcastaddr", i);
+			if (icmap_get_string(tmp_key, &str) == CS_OK) {
+				free(str);
+			} else {
+				str = (char *)totemip_print(&totem_config->interfaces[i].mcast_addr);
+				icmap_set_string(tmp_key, str);
+			}
+
+			snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.mcastport", i);
+			if (icmap_get_uint16(tmp_key, &u16) != CS_OK) {
+				icmap_set_uint16(tmp_key, totem_config->interfaces[i].ip_port);
+			}
+		}
 	}
 
 	/*
@@ -1411,6 +1413,10 @@ extern int totem_config_read (
 			nodeid_set = (totem_config->node_id != 0);
 			if (icmap_get_uint32(tmp_key, &totem_config->node_id) == CS_OK && nodeid_set) {
 				*warnings |= TOTEM_CONFIG_WARNING_TOTEM_NODEID_IGNORED;
+			}
+			if ((totem_config->transport_number == TOTEM_TRANSPORT_KNET) && (!totem_config->node_id)) {
+				*error_string = "With knet, you must specify nodeid for each node in nodelist";
+				return -1;
 			}
 
 			/*
