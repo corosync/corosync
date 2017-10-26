@@ -1412,6 +1412,10 @@ extern int totem_config_read (
 			if (icmap_get_uint32(tmp_key, &totem_config->node_id) == CS_OK && nodeid_set) {
 				*warnings |= TOTEM_CONFIG_WARNING_TOTEM_NODEID_IGNORED;
 			}
+			if ((totem_config->transport_number == TOTEM_TRANSPORT_KNET) && (!totem_config->node_id)) {
+				*error_string = "With knet, you must specify nodeid for each node in nodelist";
+				return -1;
+			}
 
 			/*
 			 * Make localnode ring0_addr read only, so we can be sure that local
