@@ -96,6 +96,10 @@
 #include <semaphore.h>
 #include <string.h>
 
+#ifdef HAVE_LIBSYSTEMD
+#include <systemd/sd-daemon.h>
+#endif
+
 #include <qb/qbdefs.h>
 #include <qb/qblog.h>
 #include <qb/qbloop.h>
@@ -292,6 +296,10 @@ static void corosync_sync_completed (void)
 	 * Inform totem to start using new message queue again
 	 */
 	totempg_trans_ack();
+
+#ifdef HAVE_LIBSYSTEMD
+	sd_notify (0, "READY=1");
+#endif
 }
 
 static int corosync_sync_callbacks_retrieve (

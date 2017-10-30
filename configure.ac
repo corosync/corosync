@@ -486,6 +486,8 @@ if test "x${enable_augeas}" = xyes; then
 	PACKAGE_FEATURES="$PACKAGE_FEATURES augeas"
 fi
 if test "x${enable_systemd}" = xyes; then
+	PKG_CHECK_MODULES([libsystemd], [libsystemd])
+	AC_DEFINE([HAVE_LIBSYSTEMD], [1], [have systemd interface library])
 	PACKAGE_FEATURES="$PACKAGE_FEATURES systemd"
 	WITH_LIST="$WITH_LIST --with systemd"
 fi
