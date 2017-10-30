@@ -248,9 +248,6 @@ fi
 %if %{with systemd}
 %{_unitdir}/corosync.service
 %{_unitdir}/corosync-notifyd.service
-%dir %{_datadir}/corosync
-%{_datadir}/corosync/corosync
-%{_datadir}/corosync/corosync-notifyd
 %else
 %{_initrddir}/corosync
 %{_initrddir}/corosync-notifyd
@@ -429,8 +426,6 @@ fi
 %config(noreplace) %{_sysconfdir}/sysconfig/corosync-qdevice
 %if %{with systemd}
 %{_unitdir}/corosync-qdevice.service
-%dir %{_datadir}/corosync
-%{_datadir}/corosync/corosync-qdevice
 %else
 %{_initrddir}/corosync-qdevice
 %endif
@@ -499,8 +494,6 @@ fi
 %config(noreplace) %{_sysconfdir}/sysconfig/corosync-qnetd
 %if %{with systemd}
 %{_unitdir}/corosync-qnetd.service
-%dir %{_datadir}/corosync
-%{_datadir}/corosync/corosync-qnetd
 %else
 %{_initrddir}/corosync-qnetd
 %endif

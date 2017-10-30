@@ -45,23 +45,24 @@ EXTRA_DIST		= corosync.in corosync-notifyd.in corosync.service.in \
 if INSTALL_SYSTEMD
 systemdconfdir	   = $(SYSTEMDDIR)
 systemdconf_DATA   = corosync.service corosync-notifyd.service
-initscriptdir	   = $(INITWRAPPERSDIR)
 else
 initscriptdir	   = $(INITDDIR)
-endif
 initscript_SCRIPTS  = corosync corosync-notifyd
+endif
 
 if BUILD_QDEVICES
-initscript_SCRIPTS  += corosync-qdevice
 if INSTALL_SYSTEMD
 systemdconf_DATA   += corosync-qdevice.service
+else
+initscript_SCRIPTS  += corosync-qdevice
 endif
 endif
 
 if BUILD_QNETD
-initscript_SCRIPTS  += corosync-qnetd
 if INSTALL_SYSTEMD
 systemdconf_DATA   += corosync-qnetd.service
+else
+initscript_SCRIPTS  += corosync-qnetd
 endif
 endif
 
@@ -78,7 +79,6 @@ endif
 		-e 's#@''SYSCONFDIR@#$(sysconfdir)#g' \
 		-e 's#@''INITCONFIGDIR@#$(INITCONFIGDIR)#g' \
 		-e 's#@''INITDDIR@#$(INITDDIR)#g' \
-		-e 's#@''INITWRAPPERSDIR@#$(INITWRAPPERSDIR)#g' \
 		-e 's#@''LOCALSTATEDIR@#$(localstatedir)#g' \
 		-e 's#@''BASHPATH@#${BASHPATH}#g' \
 	    > $@-t
