@@ -1,7 +1,7 @@
 [Unit]
 Description=Corosync Dbus and snmp notifier
 Documentation=man:corosync-notifyd
-Wants=corosync.service
+Requires=corosync.service
 After=corosync.service
 
 [Service]
