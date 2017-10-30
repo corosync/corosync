@@ -7,7 +7,7 @@ After=corosync.service
 [Service]
 EnvironmentFile=-@INITCONFIGDIR@/corosync-notifyd
 ExecStart=@SBINDIR@/corosync-notifyd -f $OPTIONS
-Type=simple
+Type=notify
 Restart=on-failure
 
 [Install]
