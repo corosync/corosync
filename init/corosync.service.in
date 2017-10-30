@@ -6,9 +6,9 @@ Requires=network-online.target
 After=network-online.target
 
 [Service]
-ExecStart=@INITWRAPPERSDIR@/corosync start
-ExecStop=@INITWRAPPERSDIR@/corosync stop
-Type=forking
+EnvironmentFile=-@INITCONFIGDIR@/corosync
+ExecStart=@SBINDIR@/corosync -f $OPTIONS
+Type=notify
 
 # The following config is for corosync with enabled watchdog service.
 #
