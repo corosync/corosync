@@ -386,11 +386,6 @@ AC_ARG_WITH([upstartdir],
 	[ UPSTARTDIR="$withval" ],
 	[ UPSTARTDIR="$sysconfdir/init" ])
 
-AC_ARG_WITH([initwrappersdir],
-	[  --with-initwrappersdir=DIR   : path to init wrappers files directory. ],
-	[ INITWRAPPERSDIR="$withval" ],
-	[ INITWRAPPERSDIR="$datarootdir/corosync" ])
-
 AC_ARG_WITH([logdir],
 	[  --with-logdir=DIR       : the base directory for corosync logging files. ],
 	[ LOGDIR="$withval" ],
@@ -729,8 +724,6 @@ AC_SUBST([BASHPATH])
 AC_SUBST([INITDDIR])
 AC_SUBST([SYSTEMDDIR])
 AC_SUBST([UPSTARTDIR])
-INITWRAPPERSDIR=$(eval echo ${INITWRAPPERSDIR})
-AC_SUBST([INITWRAPPERSDIR])
 AC_SUBST([LOGDIR])
 AC_SUBST([LOGROTATEDIR])
 
@@ -774,7 +767,6 @@ AC_MSG_RESULT([  System configuration     = ${sysconfdir}])
 AC_MSG_RESULT([  System init.d directory  = ${INITDDIR}])
 AC_MSG_RESULT([  System systemd directory = ${SYSTEMDDIR}])
 AC_MSG_RESULT([  System upstart directory = ${UPSTARTDIR}])
-AC_MSG_RESULT([  System init wraps dir    = ${INITWRAPPERSDIR}])
 AC_MSG_RESULT([  Log directory            = ${LOGDIR}])
 AC_MSG_RESULT([  Log rotate directory     = ${LOGROTATEDIR}])
 AC_MSG_RESULT([  corosync config dir      = ${COROSYSCONFDIR}])
