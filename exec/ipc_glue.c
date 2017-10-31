@@ -706,6 +706,38 @@ cs_error_t cs_ipcs_get_conn_stats(int service_id, uint32_t pid, void *conn_ptr, 
 	return CS_OK;
 }
 
+void cs_ipcs_clear_stats()
+{
+	struct cs_ipcs_conn_context *cnx;
+	struct ipcs_conn_stats ipcs_stats;
+	qb_ipcs_connection_t *c, *prev;
+	int service_id;
+
+	/* Global stats are easy */
+	memset(&global_stats, 0, sizeof(global_stats));
+
+	for (service_id = 0; service_id < SERVICES_COUNT_MAX; service_id++) {
+		if (!ipcs_mapper[service_id].inst) {
+			continue;
+		}
+
+		for (c = qb_ipcs_connection_first_get(ipcs_mapper[service_id].inst);
+		     c;
+		     prev = c, c = qb_ipcs_connection_next_get(ipcs_mapper[service_id].inst, prev), qb_ipcs_connection_unref(prev)) {
+			/* Get stats with 'clear_after_read' set */
+			qb_ipcs_connection_stats_get(c, &ipcs_stats.conn, QB_TRUE);
+
+			/* Our own stats */
+			cnx = qb_ipcs_context_get(c);
+			if (cnx == NULL) continue;
+			cnx->invalid_request = 0;
+			cnx->overload = 0;
+			cnx->sent = 0;
+
+		}
+	}
+}
+
 static enum qb_ipc_type cs_get_ipc_type (void)
 {
 	char *str;

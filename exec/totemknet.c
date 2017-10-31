@@ -1289,6 +1289,14 @@ int totemknet_reconfigure (
 }
 
 
+void totemknet_stats_clear (
+	void *knet_context)
+{
+	struct totemknet_instance *instance = (struct totemknet_instance *)knet_context;
+
+	(void) knet_handle_clear_stats(instance->knet_handle, KNET_CLEARSTATS_HANDLE_AND_LINK);
+}
+
 /* For the stats module */
 int totemknet_link_get_status (
 	knet_node_id_t node, uint8_t link_no,

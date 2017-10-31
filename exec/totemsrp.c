@@ -4788,3 +4788,13 @@ int totemsrp_reconfigure (void *context, struct totem_config *totem_config)
 	res = totemnet_reconfigure (instance->totemnet_context, totem_config);
 	return (res);
 }
+
+void totemsrp_stats_clear (void *context, int flags)
+{
+	struct totemsrp_instance *instance = (struct totemsrp_instance *)context;
+
+	memset(&instance->stats, 0, sizeof(totemsrp_stats_t));
+	if (flags & TOTEMPG_STATS_CLEAR_TRANSPORT) {
+		totemnet_stats_clear (instance->totemnet_context);
+	}
+}

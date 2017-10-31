@@ -118,6 +118,8 @@ extern int totemnet_net_mtu_adjust (void *net_context, struct totem_config *tote
 
 extern int totemnet_reconfigure (void *net_context, struct totem_config *totem_config);
 
+extern void totemnet_stats_clear (void *net_context);
+
 extern const char *totemnet_iface_print (void *net_context);
 
 extern int totemnet_ifaces_get (

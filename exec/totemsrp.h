@@ -150,4 +150,7 @@ int totemsrp_reconfigure (
 	void *context,
 	struct totem_config *totem_config);
 
+void totemsrp_stats_clear (
+	void *srp_context, int flags);
+
 #endif /* TOTEMSRP_H_DEFINED */

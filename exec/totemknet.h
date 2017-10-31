@@ -142,4 +142,7 @@ extern int totemknet_reconfigure (
 	void *knet_context,
 	struct totem_config *totem_config);
 
+extern void totemknet_stats_clear (
+	void *knet_context);
+
 #endif /* TOTEMKNET_H_DEFINED */

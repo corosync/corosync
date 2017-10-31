@@ -109,5 +109,9 @@ void stats_knet_add_member(knet_node_id_t nodeid, uint8_t link);
 
 void stats_knet_del_member(knet_node_id_t nodeid, uint8_t link);
 
+#define TOTEMPG_STATS_CLEAR_TOTEM     1
+#define TOTEMPG_STATS_CLEAR_TRANSPORT 2
+
+extern void totempg_stats_clear (int flags);
 
 #endif /* TOTEMSTATS_H_DEFINED */
