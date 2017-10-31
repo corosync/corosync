@@ -351,6 +351,22 @@ contains the total number of interrupted sends.
 .B service_id
 contains the ID of service which the IPC is connected to.
 
+.TP
+stats.clear.*
+These are write-only keys used to clear the stats for various subsystems
+
+.B totem
+Clears the pg & srp totem stats.
+
+.B knet
+Clears the knet stats
+
+.B ipc
+Clears the ipc stats
+
+.B all
+Clears all of the above stats
+
 
 .SH DYNAMIC CHANGE USER/GROUP PERMISSION TO USE COROSYNC IPC
 Is the same as in the configuration file. eg: to add UID 500 use
