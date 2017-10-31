@@ -154,6 +154,9 @@ struct transport {
 	int (*reconfigure) (
 		void *net_context,
 		struct totem_config *totem_config);
+
+	void (*stats_clear) (
+		void *net_context);
 };
 
 struct transport transport_entries[] = {
@@ -222,7 +225,8 @@ struct transport transport_entries[] = {
 		.recv_mcast_empty = totemknet_recv_mcast_empty,
 		.member_add = totemknet_member_add,
 		.member_remove = totemknet_member_remove,
-		.reconfigure = totemknet_reconfigure
+		.reconfigure = totemknet_reconfigure,
+		.stats_clear = totemknet_stats_clear
 	}
 };
 
@@ -564,4 +568,15 @@ int totemnet_reconfigure (
 			totem_config);
 
 	return (res);
+}
+
+void totemnet_stats_clear (
+	void *net_context)
+{
+	struct totemnet_instance *instance = (struct totemnet_instance *)net_context;
+
+	if (instance->transport->stats_clear) {
+		instance->transport->stats_clear (
+			instance->transport_context);
+	}
 }

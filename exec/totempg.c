@@ -1526,6 +1526,15 @@ extern int totempg_reconfigure (void)
 	return totemsrp_reconfigure (totemsrp_context, totempg_totem_config);
 }
 
+extern void totempg_stats_clear (int flags)
+{
+	if (flags & TOTEMPG_STATS_CLEAR_TOTEM) {
+		totempg_stats.msg_reserved = 0;
+		totempg_stats.msg_queue_avail = 0;
+	}
+	return totemsrp_stats_clear (totemsrp_context, flags);
+}
+
 void totempg_threaded_mode_enable (void)
 {
 	totempg_threaded_mode = 1;

@@ -58,3 +58,4 @@ struct ipcs_conn_stats
 
 cs_error_t cs_ipcs_get_conn_stats(int service_id, uint32_t pid, void *conn_ptr, struct ipcs_conn_stats *ipcs_stats);
 void cs_ipcs_get_global_stats(struct ipcs_global_stats *ipcs_stats);
+void cs_ipcs_clear_stats(void);

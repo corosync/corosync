@@ -368,12 +368,40 @@ cs_error_t stats_map_get(const char *key_name,
 	return CS_OK;
 }
 
+#define STATS_CLEAR       "stats.clear."
+#define STATS_CLEAR_KNET  "stats.clear.knet"
+#define STATS_CLEAR_IPC   "stats.clear.ipc"
+#define STATS_CLEAR_TOTEM "stats.clear.totem"
+#define STATS_CLEAR_ALL   "stats.clear.all"
+
 cs_error_t stats_map_set(const char *key_name,
 			 const void *value,
 			 size_t value_len,
 			 icmap_value_types_t type)
 {
-	return CS_ERR_NOT_SUPPORTED;
+	int cleared = 0;
+
+	if (strncmp(key_name, STATS_CLEAR_KNET, strlen(STATS_CLEAR_KNET)) == 0) {
+		totempg_stats_clear(TOTEMPG_STATS_CLEAR_TRANSPORT);
+		cleared = 1;
+	}
+	if (strncmp(key_name, STATS_CLEAR_IPC, strlen(STATS_CLEAR_IPC)) == 0) {
+		cs_ipcs_clear_stats();
+		cleared = 1;
+	}
+	if (strncmp(key_name, STATS_CLEAR_TOTEM, strlen(STATS_CLEAR_TOTEM)) == 0) {
+		totempg_stats_clear(TOTEMPG_STATS_CLEAR_TOTEM);
+		cleared = 1;
+	}
+	if (strncmp(key_name, STATS_CLEAR_ALL, strlen(STATS_CLEAR_ALL)) == 0) {
+		totempg_stats_clear(TOTEMPG_STATS_CLEAR_TRANSPORT | TOTEMPG_STATS_CLEAR_TOTEM);
+		cs_ipcs_clear_stats();
+		cleared = 1;
+	}
+	if (!cleared) {
+		return CS_ERR_NOT_SUPPORTED;
+	}
+	return CS_OK;
 }
 
 cs_error_t stats_map_adjust_int(const char *key_name, int32_t step)
@@ -388,8 +416,12 @@ cs_error_t stats_map_delete(const char *key_name)
 
 int stats_map_is_key_ro(const char *key_name)
 {
-	/* It's all read-only */
-	return 1;
+	/* It's all read-only apart from the 'clear' destinations */
+	if (strncmp(key_name, STATS_CLEAR, strlen(STATS_CLEAR)) == 0) {
+		return 0;
+	} else {
+		return 1;
+	}
 }
 
 icmap_iter_t stats_map_iter_init(const char *prefix)
