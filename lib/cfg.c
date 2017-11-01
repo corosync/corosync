@@ -480,7 +480,7 @@ corosync_cfg_replyto_shutdown (
 
 cs_error_t corosync_cfg_get_node_addrs (
 	corosync_cfg_handle_t cfg_handle,
-	int nodeid,
+	unsigned int nodeid,
 	size_t max_addrs,
 	int *num_addrs,
 	corosync_cfg_node_address_t *addrs)

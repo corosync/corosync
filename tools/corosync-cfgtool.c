@@ -179,7 +179,7 @@ static void shutdown_do(void)
 	(void)corosync_cfg_finalize (handle);
 }
 
-static void showaddrs_do(int nodeid)
+static void showaddrs_do(unsigned int nodeid)
 {
 	cs_error_t result;
 	corosync_cfg_handle_t handle;
