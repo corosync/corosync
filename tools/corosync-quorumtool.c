@@ -167,7 +167,6 @@ static void show_usage(const char *name)
 	printf("  -e <expected>  change expected votes for the cluster (*)\n");
 	printf("  -H             show nodeids in hexadecimal rather than decimal\n");
 	printf("  -i             show node IP addresses instead of the resolved name\n");
-	printf("  -p             when used with -s or -l, generates machine parsable output\n");
 	printf("  -o <a|n|i>     order by [a] IP address (default), [n] name, [i] nodeid\n");
 	printf("  -f             forcefully unregister a quorum device *DANGEROUS* (*)\n");
 	printf("  -h             show this help text\n");
