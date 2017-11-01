@@ -61,7 +61,7 @@ typedef enum {
 	OPER_FULL_OUTPUT = 2,
 } operation_t;
 
-static void fprint_addrs(FILE *f, int nodeid)
+static void fprint_addrs(FILE *f, unsigned int nodeid)
 {
 	int numaddrs;
 	int i;
