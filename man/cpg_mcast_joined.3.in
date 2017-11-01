@@ -35,6 +35,7 @@
 .SH NAME
 cpg_mcast_joined \- Multicasts to all groups joined to a handle
 .SH SYNOPSIS
+.nf
 .B #include <sys/uio.h>
 .B #include <corosync/cpg.h>
 .sp
@@ -112,7 +113,7 @@ struct iovec
 .PP
 The
 .I iov_len
-argument describes the number of entires in the
+argument describes the number of entries in the
 .I iovec
 argument.
 
