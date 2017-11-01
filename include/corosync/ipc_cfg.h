@@ -173,7 +173,7 @@ struct res_lib_cfg_testshutdown {
  * @brief The req_lib_cfg_get_node_addrs struct
  */
 struct req_lib_cfg_get_node_addrs {
-        struct qb_ipc_request_header header __attribute__((aligned(8)));
+	struct qb_ipc_request_header header __attribute__((aligned(8)));
 	unsigned int nodeid;
 };
 
