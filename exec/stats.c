@@ -280,10 +280,6 @@ cs_error_t stats_map_init(const struct corosync_api_v1 *corosync_api)
 		sprintf(param, "stats.ipcs.%s", cs_ipcs_global_stats[i].name);
 		stats_add_entry(param, &cs_ipcs_global_stats[i]);
 	}
-	for (i = 0; i<NUM_KNET_HANDLE_STATS; i++) {
-		sprintf(param, "stats.knet.handle.%s", cs_knet_handle_stats[i].name);
-		stats_add_entry(param, &cs_knet_handle_stats[i]);
-	}
 
 	/* KNET and IPCS stats are added when appropriate */
 	return CS_OK;
@@ -633,6 +629,18 @@ void stats_knet_del_member(knet_node_id_t nodeid, uint8_t link_no)
 	}
 }
 
+/* This is separated out from  stats_map_init() because we don't know whether
+   knet is in use until much later in the startup */
+void stats_knet_add_handle(void)
+{
+	int i;
+	char param[ICMAP_KEYNAME_MAXLEN];
+
+	for (i = 0; i<NUM_KNET_HANDLE_STATS; i++) {
+		sprintf(param, "stats.knet.handle.%s", cs_knet_handle_stats[i].name);
+		stats_add_entry(param, &cs_knet_handle_stats[i]);
+	}
+}
 
 /* Called from ipc_glue to add/remove keys from our map */
 void stats_ipcs_add_connection(int service_id, uint32_t pid, void *ptr)
