@@ -56,6 +56,7 @@ enum user_action {
 	ACTION_PRINT_PREFIX,
 	ACTION_TRACK,
 	ACTION_LOAD,
+	ACTION_CLEARSTATS,
 };
 
 struct name_to_type_item {
@@ -739,6 +740,14 @@ static void read_in_config_file(cmap_handle_t handle, char * filename)
 	fclose (fh);
 }
 
+static void clear_stats(cmap_handle_t handle, char *clear_opt)
+{
+	char key_name[CMAP_KEYNAME_MAXLEN + 1];
+
+	sprintf(key_name, "stats.clear.%s", clear_opt);
+	cmap_set_uint32(handle, key_name, 1);
+}
+
 int main(int argc, char *argv[])
 {
 	enum user_action action;
@@ -752,12 +761,13 @@ int main(int argc, char *argv[])
 	int track_prefix;
 	int map_set = 0;
 	int no_retries;
+	char * clear_opt = NULL;
 	char * settings_file = NULL;
 
 	action = ACTION_PRINT_PREFIX;
 	track_prefix = 1;
 
-	while ((c = getopt(argc, argv, "m:hgsdDtTbp:")) != -1) {
+	while ((c = getopt(argc, argv, "m:hgsdDtTbp:C:")) != -1) {
 		switch (c) {
 		case 'h':
 			return print_help();
@@ -780,6 +790,22 @@ int main(int argc, char *argv[])
 		case 'p':
 			settings_file = optarg;
 			action = ACTION_LOAD;
+			break;
+		case 'C':
+			if (strcmp(optarg, "knet") == 0 ||
+			    strcmp(optarg, "totem") == 0 ||
+			    strcmp(optarg, "ipc") == 0 ||
+			    strcmp(optarg, "all") == 0) {
+				action = ACTION_CLEARSTATS;
+				clear_opt = optarg;
+
+				/* Force the map to be STATS */
+				map = CMAP_MAP_STATS;
+			}
+			else {
+				fprintf(stderr, "argument to -C should be 'knet', 'totem', 'ipc' or 'all'\n");
+				return (EXIT_FAILURE);
+			}
 			break;
 		case 't':
 			action = ACTION_TRACK;
@@ -817,6 +843,7 @@ int main(int argc, char *argv[])
 
 	if (argc == 0 &&
 	    action != ACTION_LOAD &&
+	    action != ACTION_CLEARSTATS &&
 	    action != ACTION_PRINT_PREFIX) {
 		fprintf(stderr, "Expected key after options\n");
 		return (EXIT_FAILURE);
@@ -882,6 +909,9 @@ int main(int argc, char *argv[])
 		}
 
 		set_key(handle, argv[0], argv[1], argv[2]);
+		break;
+	case ACTION_CLEARSTATS:
+		clear_stats(handle, clear_opt);
 		break;
 
 	}
