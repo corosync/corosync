@@ -953,6 +953,9 @@ int totemknet_initialize (
 	/* Start listening for config changes */
 	totemknet_add_config_notifications(instance);
 
+	/* Add stats keys to icmap */
+	stats_knet_add_handle();
+
 	knet_log_printf (LOGSYS_LEVEL_INFO, "totemknet initialized");
 	*knet_context = instance;
 
