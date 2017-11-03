@@ -35,7 +35,7 @@
 .SH "NAME"
 corosync-cfgtool \- An administrative tool for corosync.
 .SH "SYNOPSIS"
-.B corosync\-cfgtool [\-i IP_address] [\-s] [\-R] [\-k nodeid] [\-a nodeid] [\-h] [\-H]
+.B corosync\-cfgtool [\-i IP_address] [[\-b] \-s] [\-R] [\-k nodeid] [\-a nodeid] [\-h] [\-H]
 .SH "DESCRIPTION"
 .B corosync\-cfgtool
 A tool for displaying and configuring active parameters within corosync.
@@ -45,14 +45,31 @@ A tool for displaying and configuring active parameters within corosync.
 Finds only information about the specified interface IP address.
 .TP 
 .B -s
-Displays the status of the current links on this node.  If any interfaces are
-faulty, 1 is returned by the binary.  If all interfaces are active 0 is returned
-to the shell.
+Displays the status of the current links on this node for UDP/UDPU, while extended status
+for KNET. If any interfaces are faulty, 1 is returned by the binary. If all interfaces are
+active 0 is returned to the shell.
+After each link, the nodes on that link are displayed in order with their status,
+for example there are 3 nodes with KNET transportation:
+LINK ID 0:
+    id     = 192.168.100.80
+    status:
+        node 0: link enabled: 1     link connected: 1
+        node 1: link enabled: 1     link connected: 1
+        node 2: link enabled: 1     link connected: 1
+.TP
+.B -b
+Displays the brief status of the current links on this node (KNET only) when used
+with "-s". If any interfaces are faulty, 1 is returned by the binary. If all interfaces
+are active 0 is returned to the shell.
 After each link, the nodes on that link are displayed in order with their status
 encoded into a single digit. 1=link enabled, 2=link connected, So a 3 in
 a node position indicates that the link is both enabled and connected.
 The local link (which will only ever be enabled on link 0) shows as enabled but
 not connected for internal reasons.
+The output will be:
+LINK ID 0:
+    id     = 192.168.100.80
+    status = 333
 .TP 
 .B -R
 Tell all instances of corosync in this cluster to reload corosync.conf.

@@ -66,7 +66,7 @@
 	} while (0)
 
 static int
-linkstatusget_do (char *interface_name)
+linkstatusget_do (char *interface_name, int brief)
 {
 	cs_error_t result;
 	corosync_cfg_handle_t handle;
@@ -76,6 +76,7 @@ linkstatusget_do (char *interface_name)
 	unsigned int i;
 	unsigned int nodeid;
 	int rc = 0;
+	int len, s = 0, t;
 
 	printf ("Printing link status.\n");
 	result = corosync_cfg_initialize (&handle, NULL);
@@ -108,9 +109,21 @@ linkstatusget_do (char *interface_name)
 
 				printf ("LINK ID %d\n", i);
 				printf ("\tid\t= %s\n", interface_names[i]);
-				printf ("\tstatus\t= %s\n", interface_status[i]);
-				if (strstr(interface_status[i], "FAULTY")) {
-					rc = 1;
+				if((!brief) && (strcmp(interface_status[i], "OK") != 0) &&
+					(!strstr(interface_status[i], "FAULTY"))) {
+					len = strlen(interface_status[i]);
+					printf ("\tstatus:\n");
+					while(s < len) {
+						t = interface_status[i][s] - '0';
+						printf("\t\tnode %d:\n", s++);
+						printf("link enabled:%d\t", t&1? 1 : 0);
+						printf("link connected:%d\n", t&2? 1: 0);
+					}
+				} else {
+					printf ("\tstatus\t= %s\n", interface_status[i]);
+					if (strstr(interface_status[i], "FAULTY")) {
+						rc = 1;
+					}
 				}
 			}
 		}
@@ -243,11 +256,12 @@ static void killnode_do(unsigned int nodeid)
 
 static void usage_do (void)
 {
-	printf ("corosync-cfgtool [-i <interface ip>] [-s] [-R] [-k nodeid] [-a nodeid] [-h] [-H]\n\n");
+	printf ("corosync-cfgtool [-i <interface ip>] [[-b] -s] [-R] [-k nodeid] [-a nodeid] [-h] [-H]\n\n");
 	printf ("A tool for displaying and configuring active parameters within corosync.\n");
 	printf ("options:\n");
 	printf ("\t-i\tFinds only information about the specified interface IP address.\n");
-	printf ("\t-s\tDisplays the status of the current links on this node.\n");
+	printf ("\t-s\tDisplays the status of the current links on this node(UDP/UDPU), while extended status for KNET.\n");
+	printf ("\t-b\tDisplays the brief status of the current links on this node when used with -s.(KNET only)\n");
 	printf ("\t-R\tTell all instances of corosync in this cluster to reload corosync.conf.\n");
 	printf ("\t-k\tKill a node identified by node id.\n");
 	printf ("\t-a\tDisplay the IP address(es) of a node\n");
@@ -256,11 +270,12 @@ static void usage_do (void)
 }
 
 int main (int argc, char *argv[]) {
-	const char *options = "i:srRk:a:hH";
+	const char *options = "i:sbrRk:a:hH";
 	int opt;
 	unsigned int nodeid;
 	char interface_name[128] = "";
 	int rc=0;
+	int getstatus=0, brief=0;
 
 	if (argc == 1) {
 		usage_do ();
@@ -272,7 +287,10 @@ int main (int argc, char *argv[]) {
 			interface_name[sizeof(interface_name) - 1] = '\0';
 			break;
 		case 's':
-			rc = linkstatusget_do (interface_name);
+			getstatus=1;
+			break;
+		case 'b':
+			brief = 1;
 			break;
 		case 'R':
 			rc = reload_config_do ();
@@ -292,6 +310,11 @@ int main (int argc, char *argv[]) {
 			usage_do();
 			break;
 		}
+	}
+	if(getstatus) {
+		linkstatusget_do(interface_name, brief);
+	} else if (brief) {
+		usage_do();
 	}
 
 	return (rc);
