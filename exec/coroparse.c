@@ -147,7 +147,7 @@ static int uid_determine (const char *req_user)
 	char *ep;
 
 	id = strtol(req_user, &ep, 10);
-	if (*ep == '\0' && id >= 0 && id <= UINT_MAX) {
+	if (*req_user != '\0' && *ep == '\0' && id >= 0 && id <= UINT_MAX) {
 		return (id);
 	}
 
@@ -201,7 +201,7 @@ static int gid_determine (const char *req_group)
 	char *ep;
 
 	id = strtol(req_group, &ep, 10);
-	if (*ep == '\0' && id >= 0 && id <= UINT_MAX) {
+	if (*req_group != '\0' && *ep == '\0' && id >= 0 && id <= UINT_MAX) {
 		return (id);
 	}
 
