@@ -152,7 +152,7 @@ static cs_error_t sam_cmap_update_key (enum sam_cmap_key_t key, const char *valu
 	case SAM_CMAP_KEY_RECOVERY:
 		svalue = ssvalue[SAM_RP_MASK (sam_internal_data.recovery_policy)];
 
-		snprintf(key_name, CMAP_KEYNAME_MAXLEN, "%s%s", sam_internal_data.cmap_pid_path,
+		snprintf(key_name, strlen(sam_internal_data.cmap_pid_path) + 9, "%s%s", sam_internal_data.cmap_pid_path,
 				"recovery");
 		if ((err = cmap_set_string(sam_internal_data.cmap_handle, key_name, svalue)) != CS_OK) {
 			goto exit_error;
@@ -161,7 +161,7 @@ static cs_error_t sam_cmap_update_key (enum sam_cmap_key_t key, const char *valu
 	case SAM_CMAP_KEY_HC_PERIOD:
 		hc_period = sam_internal_data.time_interval;
 
-		snprintf(key_name, CMAP_KEYNAME_MAXLEN, "%s%s", sam_internal_data.cmap_pid_path,
+		snprintf(key_name, strlen(sam_internal_data.cmap_pid_path) + 12, "%s%s", sam_internal_data.cmap_pid_path,
 				"poll_period");
 		if ((err = cmap_set_uint64(sam_internal_data.cmap_handle, key_name, hc_period)) != CS_OK) {
 			goto exit_error;
@@ -170,7 +170,7 @@ static cs_error_t sam_cmap_update_key (enum sam_cmap_key_t key, const char *valu
 	case SAM_CMAP_KEY_LAST_HC:
 		last_hc = cs_timestamp_get();
 
-		snprintf(key_name, CMAP_KEYNAME_MAXLEN, "%s%s", sam_internal_data.cmap_pid_path,
+		snprintf(key_name, strlen(sam_internal_data.cmap_pid_path) + 13, "%s%s", sam_internal_data.cmap_pid_path,
 				"last_updated");
 		if ((err = cmap_set_uint64(sam_internal_data.cmap_handle, key_name, last_hc)) != CS_OK) {
 			goto exit_error;
@@ -178,7 +178,7 @@ static cs_error_t sam_cmap_update_key (enum sam_cmap_key_t key, const char *valu
 		break;
 	case SAM_CMAP_KEY_STATE:
 		svalue = value;
-		snprintf(key_name, CMAP_KEYNAME_MAXLEN, "%s%s", sam_internal_data.cmap_pid_path,
+		snprintf(key_name, strlen(sam_internal_data.cmap_pid_path) + 6, "%s%s", sam_internal_data.cmap_pid_path,
 				"state");
 		if ((err = cmap_set_string(sam_internal_data.cmap_handle, key_name, svalue)) != CS_OK) {
 			goto exit_error;
