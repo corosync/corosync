@@ -37,6 +37,7 @@
 #include <string.h>
 #include <signal.h>
 #include <unistd.h>
+#include <assert.h>
 #include <errno.h>
 #include <time.h>
 #include <limits.h>
@@ -142,6 +143,12 @@ typedef enum
 } log_type_t;
 
 static void cpgh_print_message(int syslog_level, const char *facility_name, const char *format, va_list ap)
+    __attribute__((format(printf, 3, 0)));
+
+static void cpgh_log_printf(log_type_t type, const char *format, ...)
+    __attribute__((format(printf, 2, 3)));
+
+static void cpgh_print_message(int syslog_level, const char *facility_name, const char *format, va_list ap)
 {
 	char msg[1024];
 	int start = 0;
@@ -151,7 +158,8 @@ static void cpgh_print_message(int syslog_level, const char *facility_name, cons
 		start = strlen(msg);
 	}
 
-	vsnprintf(msg+start, sizeof(msg)-start, format, ap);
+	assert(vsnprintf(msg+start, sizeof(msg)-start, format, ap) < sizeof(msg)-start);
+
 	if (to_stderr || (syslog_level <= LOG_ERR)) {
 		fprintf(stderr, "%s", msg);
 	}
