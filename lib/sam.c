@@ -152,8 +152,13 @@ static cs_error_t sam_cmap_update_key (enum sam_cmap_key_t key, const char *valu
 	case SAM_CMAP_KEY_RECOVERY:
 		svalue = ssvalue[SAM_RP_MASK (sam_internal_data.recovery_policy)];
 
-		snprintf(key_name, CMAP_KEYNAME_MAXLEN, "%s%s", sam_internal_data.cmap_pid_path,
-				"recovery");
+		if (snprintf(key_name, CMAP_KEYNAME_MAXLEN, "%s%s", sam_internal_data.cmap_pid_path,
+		    "recovery") >= CMAP_KEYNAME_MAXLEN) {
+
+			err = CS_ERR_NAME_TOO_LONG;
+			goto exit_error;
+		}
+
 		if ((err = cmap_set_string(sam_internal_data.cmap_handle, key_name, svalue)) != CS_OK) {
 			goto exit_error;
 		}
@@ -161,8 +166,13 @@ static cs_error_t sam_cmap_update_key (enum sam_cmap_key_t key, const char *valu
 	case SAM_CMAP_KEY_HC_PERIOD:
 		hc_period = sam_internal_data.time_interval;
 
-		snprintf(key_name, CMAP_KEYNAME_MAXLEN, "%s%s", sam_internal_data.cmap_pid_path,
-				"poll_period");
+		if (snprintf(key_name, CMAP_KEYNAME_MAXLEN, "%s%s", sam_internal_data.cmap_pid_path,
+		    "poll_period") >= CMAP_KEYNAME_MAXLEN) {
+
+			err = CS_ERR_NAME_TOO_LONG;
+			goto exit_error;
+		}
+
 		if ((err = cmap_set_uint64(sam_internal_data.cmap_handle, key_name, hc_period)) != CS_OK) {
 			goto exit_error;
 		}
@@ -170,16 +180,25 @@ static cs_error_t sam_cmap_update_key (enum sam_cmap_key_t key, const char *valu
 	case SAM_CMAP_KEY_LAST_HC:
 		last_hc = cs_timestamp_get();
 
-		snprintf(key_name, CMAP_KEYNAME_MAXLEN, "%s%s", sam_internal_data.cmap_pid_path,
-				"last_updated");
+		if (snprintf(key_name, CMAP_KEYNAME_MAXLEN, "%s%s", sam_internal_data.cmap_pid_path,
+		    "last_updated") >= CMAP_KEYNAME_MAXLEN) {
+
+			err = CS_ERR_NAME_TOO_LONG;
+			goto exit_error;
+		}
 		if ((err = cmap_set_uint64(sam_internal_data.cmap_handle, key_name, last_hc)) != CS_OK) {
 			goto exit_error;
 		}
 		break;
 	case SAM_CMAP_KEY_STATE:
 		svalue = value;
-		snprintf(key_name, CMAP_KEYNAME_MAXLEN, "%s%s", sam_internal_data.cmap_pid_path,
-				"state");
+		if (snprintf(key_name, CMAP_KEYNAME_MAXLEN, "%s%s", sam_internal_data.cmap_pid_path,
+		    "state") >= CMAP_KEYNAME_MAXLEN) {
+
+			err = CS_ERR_NAME_TOO_LONG;
+			goto exit_error;
+		}
+
 		if ((err = cmap_set_string(sam_internal_data.cmap_handle, key_name, svalue)) != CS_OK) {
 			goto exit_error;
 		}
