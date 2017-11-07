@@ -211,8 +211,8 @@ static void config_change_callback (
 		if (record_config_events_g > 0) {
 			log_pt = malloc (sizeof(log_entry_t));
 			qb_list_init (&log_pt->list);
-			snprintf (log_pt->log, LOG_STR_SIZE, "%s,%u,%u,left",
-				groupName->value, left_list[i].nodeid,left_list[i].pid);
+			assert(snprintf (log_pt->log, LOG_STR_SIZE, "%s,%u,%u,left",
+			    groupName->value, left_list[i].nodeid,left_list[i].pid) < LOG_STR_SIZE);
 			qb_list_add_tail(&log_pt->list, &config_chg_log_head);
 			qb_log (LOG_INFO, "cpg event %s", log_pt->log);
 		}
@@ -221,8 +221,8 @@ static void config_change_callback (
 		if (record_config_events_g > 0) {
 			log_pt = malloc (sizeof(log_entry_t));
 			qb_list_init (&log_pt->list);
-			snprintf (log_pt->log, LOG_STR_SIZE, "%s,%u,%u,join",
-				groupName->value, joined_list[i].nodeid,joined_list[i].pid);
+			assert(snprintf (log_pt->log, LOG_STR_SIZE, "%s,%u,%u,join",
+			    groupName->value, joined_list[i].nodeid,joined_list[i].pid) < LOG_STR_SIZE);
 			qb_list_add_tail (&log_pt->list, &config_chg_log_head);
 			qb_log (LOG_INFO, "cpg event %s", log_pt->log);
 		}
