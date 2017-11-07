@@ -518,7 +518,7 @@ static void display_nodes_data(nodeid_format_t nodeid_format, name_format_t name
 				if (info[i].flags & VOTEQUORUM_INFO_QDEVICE_REGISTERED) {
 					char buf[10];
 
-					snprintf(buf, sizeof(buf) - 1,
+					snprintf(buf, sizeof(buf),
 						 "%s,%s,%s",
 						 info[i].flags & VOTEQUORUM_INFO_QDEVICE_ALIVE?"A":"NA",
 						 info[i].flags & VOTEQUORUM_INFO_QDEVICE_CAST_VOTE?"V":"NV",
