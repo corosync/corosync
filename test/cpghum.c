@@ -141,31 +141,15 @@ typedef enum
 	CPGH_LOG_ERR   = 16
 } log_type_t;
 
-static void cpgh_print_message(int syslog_level, const char *facility_name, const char *format, va_list ap)
-{
-	char msg[1024];
-	int start = 0;
-
-	if (machine_readable) {
-		snprintf(msg, sizeof(msg), "%s%c", facility_name, delimiter);
-		start = strlen(msg);
-	}
-
-	vsnprintf(msg+start, sizeof(msg)-start, format, ap);
-	if (to_stderr || (syslog_level <= LOG_ERR)) {
-		fprintf(stderr, "%s", msg);
-	}
-	else {
-		printf("%s", msg);
-	}
-	if (do_syslog) {
-		syslog(syslog_level, "%s", msg);
-	}
-}
-
+static void cpgh_log_printf(log_type_t type, const char *format, ...)
+	__attribute__ ((format (gnu_printf, 2, 3)));
 static void cpgh_log_printf(log_type_t type, const char *format, ...)
 {
 	va_list ap;
+	int syslog_level = -1;
+	const char *facility_name = NULL;
+	char msg[1024];
+	int start = 0;
 
 	if (!(type & g_log_mask)) {
 		return;
@@ -175,24 +159,45 @@ static void cpgh_log_printf(log_type_t type, const char *format, ...)
 
 	switch (type) {
 	case CPGH_LOG_INFO:
-		cpgh_print_message(LOG_INFO, "[Info]", format, ap);
+		syslog_level = LOG_INFO;
+		facility_name = "[info]";
 		break;
 	case CPGH_LOG_PERF:
-		cpgh_print_message(LOG_INFO, "[Perf]", format, ap);
+		syslog_level = LOG_INFO;
+		facility_name = "[Perf]";
 		break;
 	case CPGH_LOG_RTT:
-		cpgh_print_message(LOG_INFO, "[RTT]", format, ap);
+		syslog_level = LOG_INFO;
+		facility_name = "[RTT]";
 		break;
 	case CPGH_LOG_STATS:
-		cpgh_print_message(LOG_INFO, "[Stats]", format, ap);
+		syslog_level = LOG_INFO;
+		facility_name = "[Stats]";
 		break;
 	case CPGH_LOG_ERR:
-		cpgh_print_message(LOG_ERR, "[Err]", format, ap);
+		syslog_level = LOG_ERR;
+		facility_name = "[Err]";
 		break;
 	default:
 		break;
 	}
 
+	if(syslog_level != -1) {
+		if (machine_readable) {
+			snprintf(msg, sizeof(msg), "%s%c", facility_name, delimiter);
+			start = strlen(msg);
+		}
+
+		vsnprintf(msg+start, sizeof(msg)-start, format, ap);
+		if (to_stderr || (syslog_level <= LOG_ERR)) {
+			fprintf(stderr, "%s", msg);
+		} else {
+			printf("%s", msg);
+		}
+		if (do_syslog) {
+			syslog(syslog_level, "%s", msg);
+		}
+	}
 	va_end(ap);
 }
 
