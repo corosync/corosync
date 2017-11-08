@@ -63,6 +63,7 @@ BuildRequires: dbus-devel
 %endif
 %if %{with systemd}
 BuildRequires: systemd-units
+BuildRequires: systemd-devel
 Requires(post): systemd
 Requires(preun): systemd
 Requires(postun): systemd
