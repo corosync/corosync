@@ -122,7 +122,7 @@ Specifies interval between two regular heuristics execution. Default value is
 .TP
 .B mode
 Can be on of
-.I on, sync or off
+.IR on ", " sync " or " off
 and specifies mode of operation of heuristics. Default is
 .I off
 what means heuristics are disabled. When
@@ -149,7 +149,7 @@ subkey holds the configuration for model 'net'.
 .TP
 .B tls
 Can be one of
-.I on, off or required
+.IR on ", " off " or " required
 and specifies if tls should be used.
 .I on
 means a connection with TLS is attempted first, but if the server doesn't advertise TLS support 
@@ -159,7 +159,8 @@ is used then TLS is not required and it's then not even tried. This mode is the
 only one which doesn't need a properly initialized NSS database.
 .I required
 means TLS is required and if the server doesn't support TLS, qdevice will
-exit with error message. Default is on.
+exit with error message. Default is
+.IR on .
 .TP
 .B host
 Specifies the IP address or host name of the qnetd server to be used. This parameter
@@ -172,19 +173,20 @@ Specifies TCP port of qnetd server. Default is 5403.
 Decision algorithm. Can be one of the
 .I ffsplit
 or
-.I lms.
+.IR lms .
 (actually there are also
 .I test
 and
-.I 2nodelms
-, both of which are mainly for developers and shouldn't be used for production clusters). For a 
-description of what each algorithm means and how the algorithms differ see their individual sections.
-Default value is ffsplit.
+.IR 2nodelms ,
+both of which are mainly for developers and shouldn't be used for production clusters).
+For a description of what each algorithm means and how the algorithms differ see their
+individual sections.
+Default value is
+.IR ffsplit .
 .TP
 .B tie_breaker
 can be one of
-.I lowest,
-.I highest
+.IR lowest ", " highest
 or valid_node_id (number) values. It's used as a fallback if qdevice has to decide between two or more
 equal partitions.
 .I lowest
@@ -192,7 +194,8 @@ means the partition with the lowest node id is chosen.
 .I highest
 means the partition with highest node id is chosen. And valid_node_id means that the partition
 containing the node with the given node id is chosen.
-Default is 'lowest'.
+Default is
+.IR lowest .
 .TP
 .B connect_timeout
 Timeout when
@@ -214,10 +217,9 @@ Logging configuration is within the
 directive.
 .B corosync-qdevice
 parses and supports most of the options with exception of
-.B to_logfile,
-.B logfile
+.BR to_logfile ", " logfile
 and
-.B logfile_priority.
+.BR logfile_priority .
 The 
 .B logger_subsys
 sub-directive can be also used if
@@ -248,7 +250,7 @@ option.
 If TLS is not required just edit corosync.conf file and set
 .B quorum.device.net.tls
 to
-.I off.
+.IR off .
 
 .SH MODEL NET ALGORITHMS
 Algorithms are used to change behavior of how
