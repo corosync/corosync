@@ -75,8 +75,8 @@ corosync_qnetd_SOURCES	= corosync-qnetd.c \
 corosync_qnetd_tool_SOURCES = corosync-qnetd-tool.c unix-socket.c unix-socket.h dynar.c dynar.h \
                               dynar-str.c dynar-str.h utils.c utils.h
 
-corosync_qnetd_CFLAGS		= $(nss_CFLAGS)
-corosync_qnetd_LDADD		= $(nss_LIBS)
+corosync_qnetd_CFLAGS		= $(nss_CFLAGS) $(libsystemd_CFLAGS)
+corosync_qnetd_LDADD		= $(nss_LIBS)   $(libsystemd_LIBS)
 
 corosync-qnetd-certutil: corosync-qnetd-certutil.sh
 	sed -e 's#@''DATADIR@#${datadir}#g' \
@@ -145,8 +145,9 @@ corosync_qdevice_SOURCES = corosync-qdevice.c \
 corosync_qdevice_tool_SOURCES = corosync-qdevice-tool.c unix-socket.c unix-socket.h dynar.c dynar.h \
                                 dynar-str.c dynar-str.h utils.c utils.h
 
-corosync_qdevice_CFLAGS	= $(nss_CFLAGS)
-corosync_qdevice_LDADD	= $(nss_LIBS) $(LIBQB_LIBS) $(top_builddir)/lib/libcmap.la \
+corosync_qdevice_CFLAGS	= $(nss_CFLAGS) $(libsystemd_CFLAGS)
+corosync_qdevice_LDADD	= $(nss_LIBS)   $(libsystemd_LIBS) $(LIBQB_LIBS) \
+                          $(top_builddir)/lib/libcmap.la \
                           $(top_builddir)/lib/libvotequorum.la
 
 corosync-qdevice-net-certutil: corosync-qdevice-net-certutil.sh

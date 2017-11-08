@@ -60,6 +60,10 @@
 #include <corosync/quorum.h>
 #include <corosync/cmap.h>
 
+#ifdef HAVE_LIBSYSTEMD
+#include <systemd/sd-daemon.h>
+#endif
+
 /*
  * generic declarations
  */
@@ -1317,6 +1321,10 @@ main(int argc, char *argv[])
 			   NULL,
 			   sig_exit_handler,
 			   NULL);
+
+#ifdef HAVE_LIBSYSTEMD
+	sd_notify (0, "READY=1");
+#endif
 
 	qb_loop_run(main_loop);
 
