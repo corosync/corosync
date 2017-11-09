@@ -80,15 +80,19 @@ is supported.
 .B timeout
 Specifies how often
 .B corosync-qdevice
-should call the votequorum_poll function. It is also used by the net model to adjust
+should call the votequorum_poll function. It is also used by the
+.I net
+model to adjust
 its hearbeat timeout. It is recommended that you don't change this value.
-Default is 10000.
+Default is
+.IR 10000 .
 .TP
 .B sync_timeout
 Specifies how often
 .B corosync-qdevice
 should call the votequorum_poll function during a sync phase. It is recommended that you don't change this value.
-Default is 30000.
+Default is
+.IR 30000 .
 .TP
 .B votes
 The number of votes provided to the cluster by qdevice. Default is (number_of_nodes - 1) or generally
@@ -110,22 +114,28 @@ Specifies maximum time in milliseconds how long
 .B corosync-qdevice
 waits till the heuristics commands finish. If some command doesn't finish before the timeout, it's
 killed and heuristics fail. This timeout is used for heuristics executed at regular times.
-Default value is half of the quorum.device.timeout, so 5000.
+Default value is half of the
+.BR quorum.device.timeout ", so"
+.IR 5000 .
 .TP
 .B sync_timeout
 Similar to quorum.device.heuristics.timeout but used during membership changes. Default
-value is half of the quorum.device.sync_timeout, so 15000.
+value is half of the
+.BR quorum.device.sync_timeout ", so"
+.IR 15000 .
 .TP
 .B interval
 Specifies interval between two regular heuristics execution. Default value is
-3 * quorum.device.timeout, so 30000.
+3 *
+.BR quorum.device.timeout ", so"
+.IR 30000 .
 .TP
 .B mode
-Can be on of
+Can be one of
 .IR on ", " sync " or " off
 and specifies mode of operation of heuristics. Default is
-.I off
-what means heuristics are disabled. When
+.IR off ,
+which means heuristics are disabled. When
 .I sync
 is set, heuristics are executed only during startup, membership change and when connection
 to
@@ -145,7 +155,9 @@ using backslash and double quotes.
 
 .PP
 .B quorum.device.net
-subkey holds the configuration for model 'net'.
+subkey holds the configuration for
+.B model
+.IR net .
 .TP
 .B tls
 Can be one of
@@ -167,7 +179,8 @@ Specifies the IP address or host name of the qnetd server to be used. This param
 is required.
 .TP
 .B port
-Specifies TCP port of qnetd server. Default is 5403.
+Specifies TCP port of qnetd server. Default is
+.IR 5403 .
 .TP
 .B algorithm
 Decision algorithm. Can be one of the
@@ -202,7 +215,8 @@ Timeout when
 .B corosync-qdevice
 is trying to connect to
 .B corosync-qnetd
-host. Default is 0.8 * quorum.sync_timeout.
+host. Default is 0.8 *
+.BR quorum.sync_timeout .
 .TP
 .B force_ip_version
 can be one of
@@ -224,19 +238,25 @@ The
 .B logger_subsys
 sub-directive can be also used if
 .B subsys
-is set to QDEVICE.
+is set to
+.IR QDEVICE .
 
 .PP
 For
 .B corosync-qdevice
 to work correctly, the
 .B nodelist
-directive has to be used and properly configured. Also the net model requires that
+directive has to be used and properly configured. Also the
+.I net
+model requires that
 .B totem.cluster_name
 option is set.
 
 .SH MODEL NET TLS CONFIGURATION
-For model net to work using TLS, it's necessary to create the NSS database, import Qnetd
+For
+.B model
+.I net
+to work using TLS, it's necessary to create the NSS database, import Qnetd
 CA certificate, and get/distribute a valid client certificate.
 
 If pcs is used (recommended) the following steps are not needed because pcs does them automatically.
@@ -298,7 +318,9 @@ Set by using
 option. The default value is shown in parentheses)  Options
 beginning with
 .B net_
-prefix are specific to model net.
+prefix are specific to
+.B model
+.IR net .
 .TP
 .B lock_file
 Lock file location. (/var/run/corosync-qdevice/corosync-qdevice.pid)
@@ -353,6 +375,7 @@ Use execvp instead of execv for executing commands. (off)
 .TP
 .B heuristics_max_processes
 Maximum number of processes running at one time. (160)
+.TP
 .B heuristics_kill_list_interval
 Interval between status is gathered and eventually signal is sent
 to processes which didn't finished on time in ms. (5000)
@@ -402,7 +425,9 @@ Enable test algorithm. (if built with --enable-debug on, otherwise off)
 .SH EXAMPLE
 Define qdevice with
 .I net
-model connecting to qnetd running on qnetd.example.org host, using ffsplit algorithm.
+model connecting to qnetd running on qnetd.example.org host, using
+.I ffsplit
+algorithm.
 Heuristics is set to
 .I sync
 mode and executes two commands.
