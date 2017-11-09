@@ -2,7 +2,7 @@
 Description=Corosync Qdevice daemon
 Documentation=man:corosync-qdevice
 ConditionKernelCommandLine=!nocluster
-Wants=corosync.service
+Requires=corosync.service
 After=corosync.service
 
 [Service]
