@@ -64,7 +64,6 @@ LOGSYS_DECLARE_SUBSYS ("SYNC");
 #define MESSAGE_REQ_SYNC_SERVICE_BUILD 1
 
 enum sync_process_state {
-	INIT,
 	PROCESS,
 	ACTIVATE
 };
@@ -142,6 +141,8 @@ static void sync_deliver_fn (
 static int schedwrk_processor (const void *context);
 
 static void sync_process_enter (void);
+
+static void sync_process_call_init (void);
 
 static struct totempg_group sync_group = {
     .group      = "sync",
@@ -227,15 +228,6 @@ static void sync_barrier_handler (unsigned int nodeid, const void *msg)
 	}
 }
 
-static void dummy_sync_init (
-	const unsigned int *trans_list,
-	size_t trans_list_entries,
-	const unsigned int *member_list,
-	size_t member_list_entries,
-	const struct memb_ring_id *ring_id)
-{
-}
-
 static void dummy_sync_abort (void)
 {
 }
@@ -281,15 +273,14 @@ static void sync_service_build_handler (unsigned int nodeid, const void *msg)
 			}
 		}
 		if (found == 0) {
-			my_service_list[my_service_list_entries].state =
-				INIT;
+			my_service_list[my_service_list_entries].state = PROCESS;
 			my_service_list[my_service_list_entries].service_id =
 				req_exec_service_build_message->service_list[i];
 			sprintf (my_service_list[my_service_list_entries].name,
 				"Unknown External Service (id = %d)\n",
 				req_exec_service_build_message->service_list[i]);
 			my_service_list[my_service_list_entries].sync_init =
-				dummy_sync_init;
+				NULL;
 			my_service_list[my_service_list_entries].sync_abort =
 				dummy_sync_abort;
 			my_service_list[my_service_list_entries].sync_process =
@@ -316,6 +307,7 @@ static void sync_service_build_handler (unsigned int nodeid, const void *msg)
 		}
 	}
 	if (barrier_reached) {
+		log_printf (LOGSYS_LEVEL_DEBUG, "enter sync process");
 		sync_process_enter ();
 	}
 }
@@ -379,6 +371,38 @@ static void sync_barrier_enter (void)
 	barrier_message_transmit ();
 }
 
+static void sync_process_call_init (void)
+{
+	unsigned int old_trans_list[PROCESSOR_COUNT_MAX];
+	size_t old_trans_list_entries = 0;
+	int o, m;
+	int i;
+
+	memcpy (old_trans_list, my_trans_list, my_trans_list_entries *
+		sizeof (unsigned int));
+	old_trans_list_entries = my_trans_list_entries;
+
+	my_trans_list_entries = 0;
+	for (o = 0; o < old_trans_list_entries; o++) {
+		for (m = 0; m < my_member_list_entries; m++) {
+			if (old_trans_list[o] == my_member_list[m]) {
+				my_trans_list[my_trans_list_entries] = my_member_list[m];
+				my_trans_list_entries++;
+				break;
+			}
+		}
+	}
+
+	for (i = 0; i < my_service_list_entries; i++) {
+		if (my_sync_callbacks_retrieve(my_service_list[i].service_id, NULL) != -1) {
+			my_service_list[i].sync_init (my_trans_list,
+				my_trans_list_entries, my_member_list,
+				my_member_list_entries,
+				&my_ring_id);
+		}
+	}
+}
+
 static void sync_process_enter (void)
 {
 	int i;
@@ -396,6 +420,7 @@ static void sync_process_enter (void)
 	for (i = 0; i < my_processor_list_entries; i++) {
 		my_processor_list[i].received = 0;
 	}
+
 	schedwrk_create (&my_schedwrk_handle,
 		schedwrk_processor,
 		NULL);
@@ -435,7 +460,7 @@ static void sync_servicelist_build_enter (
 		if (sync_callbacks.sync_init == NULL) {
 			continue;
 		}
-		my_service_list[my_service_list_entries].state = INIT;
+		my_service_list[my_service_list_entries].state = PROCESS;
 		my_service_list[my_service_list_entries].service_id = i;
 		strcpy (my_service_list[my_service_list_entries].name,
 			sync_callbacks.name);
@@ -453,42 +478,16 @@ static void sync_servicelist_build_enter (
 	service_build.service_list_entries = my_service_list_entries;
 
 	service_build_message_transmit (&service_build);
+
+	log_printf (LOGSYS_LEVEL_DEBUG, "call init for locally known services");
+	sync_process_call_init ();
 }
 
 static int schedwrk_processor (const void *context)
 {
 	int res = 0;
 
-	if (my_service_list[my_processing_idx].state == INIT) {
-		unsigned int old_trans_list[PROCESSOR_COUNT_MAX];
-		size_t old_trans_list_entries = 0;
-		int o, m;
-		my_service_list[my_processing_idx].state = PROCESS;
-
-		memcpy (old_trans_list, my_trans_list, my_trans_list_entries *
-			sizeof (unsigned int));
-		old_trans_list_entries = my_trans_list_entries;
-
-		my_trans_list_entries = 0;
-		for (o = 0; o < old_trans_list_entries; o++) {
-			for (m = 0; m < my_member_list_entries; m++) {
-				if (old_trans_list[o] == my_member_list[m]) {
-					my_trans_list[my_trans_list_entries] = my_member_list[m];
-					my_trans_list_entries++;
-					break;
-				}
-			}
-		}
-
-		if (my_sync_callbacks_retrieve(my_service_list[my_processing_idx].service_id, NULL) != -1) {
-			my_service_list[my_processing_idx].sync_init (my_trans_list,
-				my_trans_list_entries, my_member_list,
-				my_member_list_entries,
-				&my_ring_id);
-		}
-	}
 	if (my_service_list[my_processing_idx].state == PROCESS) {
-		my_service_list[my_processing_idx].state = PROCESS;
 		if (my_sync_callbacks_retrieve(my_service_list[my_processing_idx].service_id, NULL) != -1) {
 			res = my_service_list[my_processing_idx].sync_process ();
 		} else {
