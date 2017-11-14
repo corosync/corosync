@@ -103,7 +103,8 @@ sum(votes_per_node) - 1.
 subkey holds the configuration of the heuristics. Heuristics are set of commands executed locally on
 startup, cluster membership change, successful connect to
 .B corosync-qnetd
-and optionally also at regular times. When all commands finish successfully
+and optionally also at regular times. Commands are executed in parallel.
+When all commands finish successfully
 (their return error code is zero) on time,
 heuristics have passed, otherwise they have failed. The heuristics result is sent to
 .B corosync-qnetd
