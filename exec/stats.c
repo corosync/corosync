@@ -163,9 +163,11 @@ struct cs_stats_conv cs_knet_handle_stats[] = {
 	{ STAT_KNET_HANDLE, "tx_crypt_time_max",            offsetof(struct knet_handle_stats, tx_crypt_time_max),            ICMAP_VALUETYPE_UINT64},
 	{ STAT_KNET_HANDLE, "tx_crypt_time_ave",            offsetof(struct knet_handle_stats, tx_crypt_time_ave),            ICMAP_VALUETYPE_UINT64},
 	{ STAT_KNET_HANDLE, "tx_crypt_byte_overhead",       offsetof(struct knet_handle_stats, tx_crypt_byte_overhead),       ICMAP_VALUETYPE_UINT64},
+	{ STAT_KNET_HANDLE, "tx_crypt_packets",             offsetof(struct knet_handle_stats, tx_crypt_packets),             ICMAP_VALUETYPE_UINT64},
 	{ STAT_KNET_HANDLE, "rx_crypt_time_min",            offsetof(struct knet_handle_stats, rx_crypt_time_min),            ICMAP_VALUETYPE_UINT64},
 	{ STAT_KNET_HANDLE, "rx_crypt_time_max",            offsetof(struct knet_handle_stats, rx_crypt_time_max),            ICMAP_VALUETYPE_UINT64},
 	{ STAT_KNET_HANDLE, "rx_crypt_time_ave",            offsetof(struct knet_handle_stats, rx_crypt_time_ave),            ICMAP_VALUETYPE_UINT64},
+	{ STAT_KNET_HANDLE, "rx_crypt_packets",             offsetof(struct knet_handle_stats, rx_crypt_packets),             ICMAP_VALUETYPE_UINT64},
 };
 
 struct cs_stats_conv cs_ipcs_conn_stats[] = {
