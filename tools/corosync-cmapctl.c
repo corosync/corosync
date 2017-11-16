@@ -96,7 +96,7 @@ static int convert_name_to_type(const char *name)
 static int print_help(void)
 {
 	printf("\n");
-	printf("usage:  corosync-cmapctl [-b] [-DdghsTt] [-p filename] [-m map] [params...]\n");
+	printf("usage:  corosync-cmapctl [-b] [-DdghsTCt] [-p filename] [-m map] [params...]\n");
 	printf("\n");
 	printf("    -b show binary values\n");
 	printf("\n");
@@ -109,6 +109,10 @@ static int print_help(void)
 	printf("    map can be either 'icmap' (the default) which contains corosync\n");
 	printf("    configuration information, or 'stats' which contains statistics\n");
 	printf("    about the networking and IPC traffic in some detail.\n");
+	printf("\n");
+	printf("Clear stats:\n");
+	printf("    corosync-cmapctl -C [knet|ipc|totem|all]\n");
+	printf("    The 'stats' map is implied\n");
 	printf("\n");
 	printf("Load settings from a file:\n");
 	printf("    corosync-cmapctl -p filename\n");
