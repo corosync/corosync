@@ -115,7 +115,7 @@ linkstatusget_do (char *interface_name, int brief)
 					printf ("\tstatus:\n");
 					while(s < len) {
 						t = interface_status[i][s] - '0';
-						printf("\t\tnode %d:\n", s++);
+						printf("\t\tnode %d:\t", s++);
 						printf("link enabled:%d\t", t&1? 1 : 0);
 						printf("link connected:%d\n", t&2? 1: 0);
 					}
