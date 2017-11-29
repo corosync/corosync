@@ -65,6 +65,15 @@
 		} while (counter < max);			\
 	} while (0)
 
+enum user_action {
+	ACTION_NOOP=0,
+	ACTION_LINKSTATUS_GET,
+	ACTION_RELOAD_CONFIG,
+	ACTION_SHUTDOW,
+	ACTION_SHOWADDR,
+	ACTION_KILL_NODE,
+};
+
 static int
 linkstatusget_do (char *interface_name, int brief)
 {
@@ -260,10 +269,10 @@ static void killnode_do(unsigned int nodeid)
 
 static void usage_do (void)
 {
-	printf ("corosync-cfgtool [-i <interface ip>] [[-b] -s] [-R] [-k nodeid] [-a nodeid] [-h] [-H]\n\n");
+	printf ("corosync-cfgtool [[-i <interface ip>] [-b] -s] [-R] [-k nodeid] [-a nodeid] [-h] [-H]\n\n");
 	printf ("A tool for displaying and configuring active parameters within corosync.\n");
 	printf ("options:\n");
-	printf ("\t-i\tFinds only information about the specified interface IP address.\n");
+	printf ("\t-i\tFinds only information about the specified interface IP address when used with -s..\n");
 	printf ("\t-s\tDisplays the status of the current links on this node(UDP/UDPU), while extended status for KNET.\n");
 	printf ("\t-b\tDisplays the brief status of the current links on this node when used with -s.(KNET only)\n");
 	printf ("\t-R\tTell all instances of corosync in this cluster to reload corosync.conf.\n");
@@ -276,14 +285,12 @@ static void usage_do (void)
 int main (int argc, char *argv[]) {
 	const char *options = "i:sbrRk:a:hH";
 	int opt;
-	unsigned int nodeid;
+	unsigned int nodeid = 0;
 	char interface_name[128] = "";
-	int rc=0;
-	int getstatus=0, brief=0;
+	int rc = 0;
+	enum user_action action = ACTION_NOOP;
+	int brief = 0;
 
-	if (argc == 1) {
-		usage_do ();
-	}
 	while ( (opt = getopt(argc, argv, options)) != -1 ) {
 		switch (opt) {
 		case 'i':
@@ -291,34 +298,53 @@ int main (int argc, char *argv[]) {
 			interface_name[sizeof(interface_name) - 1] = '\0';
 			break;
 		case 's':
-			getstatus=1;
+			action = ACTION_LINKSTATUS_GET;
 			break;
 		case 'b':
 			brief = 1;
 			break;
 		case 'R':
-			rc = reload_config_do ();
+			action = ACTION_RELOAD_CONFIG;
 			break;
 		case 'k':
 			nodeid = atoi (optarg);
-			killnode_do(nodeid);
+			action = ACTION_KILL_NODE;
 			break;
 		case 'H':
-			shutdown_do();
+			action = ACTION_SHUTDOW;
 			break;
 		case 'a':
 			nodeid = atoi (optarg);
-			showaddrs_do(nodeid);
+			action = ACTION_SHOWADDR;
+			break;
+		case '?':
+			return (EXIT_FAILURE);
 			break;
 		case 'h':
-			usage_do();
+		default:
 			break;
 		}
 	}
-	if(getstatus) {
-		linkstatusget_do(interface_name, brief);
-	} else if (brief) {
+	switch(action) {
+	case ACTION_LINKSTATUS_GET:
+		rc = linkstatusget_do(interface_name, brief);
+		break;
+	case ACTION_RELOAD_CONFIG:
+		rc = reload_config_do();
+		break;
+	case ACTION_KILL_NODE:
+		killnode_do(nodeid);
+		break;
+	case ACTION_SHUTDOW:
+		shutdown_do();
+		break;
+	case ACTION_SHOWADDR:
+		showaddrs_do(nodeid);
+		break;
+	case ACTION_NOOP:
+	default:
 		usage_do();
+		break;
 	}
 
 	return (rc);
