@@ -639,7 +639,8 @@ Every node that should be a member of the membership must be specified.
 Possible options are:
 .TP
 ringX_addr
-This specifies IP address of one of the nodes. X is link number. 
+This specifies IP or network hostname address of the particular node.
+X is a link number.
 
 .TP
 nodeid
@@ -647,6 +648,16 @@ This configuration option is required for each node for Kronosnet mode.
 It is a 32 bit value specifying the node identifier delivered to the
 cluster membership service. The node identifier value of zero is
 reserved and should not be used. If knet is set, this field must be set.
+
+.TP
+name
+This optional configuration option provides a unified way for the
+client software (e.g. pacemaker) atop, respectively the end users,
+to guide establishing a nominal (self-)identification for each node
+in case neither respective
+.B ringX_addr
+specifies a network hostname nor other means are available/effective
+in this process.
 
 .PP
 Within the

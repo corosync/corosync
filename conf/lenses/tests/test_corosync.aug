@@ -77,6 +77,7 @@ nodelist {
 	node {
 		ring0_addr: 192.168.122.1
 		nodeid: 1
+		name: balalaika
 		quorum_votes: 2
 	}
 
@@ -84,6 +85,7 @@ nodelist {
 		ring0_addr: 192.168.122.2
 		ring1_addr: 192.168.123.1
 		nodeid: 2
+		name: cythara
 	}
 }\n"
 
@@ -155,9 +157,11 @@ test Corosync.lns get conf =
     { "node"
       { "ring0_addr" = "192.168.122.1" }
       { "nodeid" = "1" }
+      { "name" = "balalaika" }
       { "quorum_votes" = "2" } }
     { }
     { "node"
       { "ring0_addr" = "192.168.122.2" }
       { "ring1_addr" = "192.168.123.1" }
-      { "nodeid" = "2" } } }
+      { "nodeid" = "2" }
+      { "name" = "cythara" } } }
