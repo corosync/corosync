@@ -167,6 +167,7 @@ let node =
   let setting =
    qstr /ring[0-9]_addr/
    |kv "nodeid" Rx.integer
+   |kv "name" Rx.hostname
    |kv "quorum_votes" Rx.integer in
   section "node" setting
 
