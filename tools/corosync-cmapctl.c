@@ -100,6 +100,9 @@ static int print_help(void)
 	printf("\n");
 	printf("    -b show binary values\n");
 	printf("\n");
+	printf("    -m select map to use\n");
+	printf("          The  default  map is 'icmap' which contains configuration information and some runtime variables used by corosync. \n");
+	printf("          A 'stats' map is also available which displays network statistics - in great detail when knet is used as the transport.\n");
 	printf("Set key:\n");
 	printf("    corosync-cmapctl -s key_name type value\n");
 	printf("\n");
