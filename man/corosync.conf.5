@@ -231,10 +231,6 @@ If only one interface directive is specified, passive is automatically chosen.
 The maximum number of interface directives that is allowed with Kronosnet
 is 8. For other transports it is 1.
 
-When using multiple interfaces, make sure to use different multicast
-address/port (port for same address must differ by at least two) pair
-for each interface (this is checked by parser).
-
 .TP
 netmtu
 This specifies the network maximum transmit unit.  To set this value beyond
@@ -333,7 +329,7 @@ The default is 238 milliseconds.
 
 .TP
 knet_compression_model
-The (optional) type of compression used by kronosnet. The values available depend on
+The (optional) type of compression used by Kronosnet. The values available depend on
 the build and also avaialable libraries. Typically zlib and lz4 will be available
 but bzip2 and others could also be allowed. The default is 'none'
 
@@ -647,8 +643,8 @@ This specifies IP address of one of the nodes. X is link number.
 
 .TP
 nodeid
-This configuration option is required for each node. It is a 32 bit value 
-specifying the node identifier delivered to the
+This configuration option is required for each node for Kronosnet mode.
+It is a 32 bit value specifying the node identifier delivered to the
 cluster membership service. The node identifier value of zero is
 reserved and should not be used. If knet is set, this field must be set.
 
