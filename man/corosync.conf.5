@@ -670,6 +670,16 @@ will be determined from the 32 bit IP address the system to which the system
 is bound with ring identifier of 0.  The node identifier value of zero is
 reserved and should not be used.
 
+.TP
+name
+This optional configuration option provides a unified way for the
+client software (e.g. pacemaker) atop, respectively the end users,
+to guide establishing a nominal (self-)identification for each node
+in case neither respective
+.B ringX_addr
+specifies a network hostname nor other means are available/effective
+in this process. Option is not used by Corosync itself.
+
 .PP
 Within the
 .B qb
