@@ -1479,6 +1479,9 @@ const char *totempg_ifaces_print (unsigned int nodeid)
 	res = totempg_ifaces_get (nodeid, interfaces, INTERFACE_MAX, NULL, &iface_count);
 
 	for (i = 0; i < iface_count; i++) {
+		if (!interfaces[i].family) {
+			continue;
+		}
 		snprintf (one_iface, ONE_IFACE_LEN,
 			  "r(%d) ip(%s) ",
 			  i, totemip_print (&interfaces[i]));

@@ -75,10 +75,16 @@ static void fprint_addrs(FILE *f, unsigned int nodeid)
 			struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)addrs[i].address;
 			void *saddr;
 
-			if (ss->ss_family == AF_INET6)
+			if (!ss->ss_family) {
+				continue;
+			}
+
+			if (ss->ss_family == AF_INET6) {
 				saddr = &sin6->sin6_addr;
-			else
+			}
+			else {
 				saddr = &sin->sin_addr;
+			}
 
 			inet_ntop(ss->ss_family, saddr, buf, sizeof(buf));
 			if (i != 0) {
