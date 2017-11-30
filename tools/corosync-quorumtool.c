@@ -349,17 +349,21 @@ static const char *node_name(uint32_t nodeid, name_format_t name_format)
 
 	for (i=start_addr; i<numaddrs; i++) {
 
-		if (i) {
-			buf[bufptr++] = ',';
-			buf[bufptr++] = ' ';
-		}
-
 		ss = (struct sockaddr_storage *)addrs[i].address;
+
+		if (!ss->ss_family) {
+			continue;
+		}
 
 		if (ss->ss_family == AF_INET6) {
 			addrlen = sizeof(struct sockaddr_in6);
 		} else {
 			addrlen = sizeof(struct sockaddr_in);
+		}
+
+		if (i) {
+			buf[bufptr++] = ',';
+			buf[bufptr++] = ' ';
 		}
 
 		if (!getnameinfo(

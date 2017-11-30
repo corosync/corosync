@@ -494,12 +494,14 @@ cs_error_t corosync_cfg_get_node_addrs (
 	struct iovec iov;
 	const char *addr_buf;
 	char response_buf[IPC_RESPONSE_SIZE];
+	char zeroes[sizeof(struct sockaddr_storage)];
 
 	error = hdb_error_to_cs(hdb_handle_get (&cfg_hdb, cfg_handle,
 		(void *)&cfg_inst));
 	if (error != CS_OK) {
 		return (error);
 	}
+	memset(zeroes, 0, sizeof(zeroes));
 
 	req_lib_cfg_get_node_addrs.header.size = sizeof (req_lib_cfg_get_node_addrs);
 	req_lib_cfg_get_node_addrs.header.id = MESSAGE_REQ_CFG_GET_NODE_ADDRS;
@@ -533,14 +535,26 @@ cs_error_t corosync_cfg_get_node_addrs (
 
 		if (res_lib_cfg_get_node_addrs->family == AF_INET) {
 			in = (struct sockaddr_in *)addrs[i].address;
-			in->sin_family = AF_INET;
+			if (memcmp(addr_buf, zeroes, addrlen) == 0) {
+				in->sin_family = 0;
+			} else {
+				in->sin_family = AF_INET;
+			}
 			memcpy(&in->sin_addr, addr_buf, sizeof(struct in_addr));
 		}
 		if (res_lib_cfg_get_node_addrs->family == AF_INET6) {
 			in6 = (struct sockaddr_in6 *)addrs[i].address;
-			in6->sin6_family = AF_INET6;
+
+			if (memcmp(addr_buf, zeroes, addrlen) == 0) {
+				in6->sin6_family = 0;
+			} else {
+				in6->sin6_family = AF_INET6;
+			}
 			memcpy(&in6->sin6_addr, addr_buf, sizeof(struct in6_addr));
 		}
+
+		/* Mark it as unused */
+
 	}
 	*num_addrs = res_lib_cfg_get_node_addrs->num_addrs;
 	errno = error = res_lib_cfg_get_node_addrs->header.error;
