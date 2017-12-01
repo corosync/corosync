@@ -221,15 +221,15 @@ static int32_t wd_resource_state_is_ok (struct resource *ref)
 	uint64_t allowed_period;
 	char key_name[ICMAP_KEYNAME_MAXLEN];
 
-	snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "%s%s", ref->res_path, "last_updated");
-	if (icmap_get_uint64(key_name, &last_updated) != CS_OK) {
+	if ((snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "%s%s", ref->res_path, "last_updated") >= ICMAP_KEYNAME_MAXLEN) ||
+		(icmap_get_uint64(key_name, &last_updated) != CS_OK)) {
 		/* key does not exist.
 		*/
 		return CS_FALSE;
 	}
 
-	snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "%s%s", ref->res_path, "state");
-	if (icmap_get_string(key_name, &state) != CS_OK || strcmp(state, "disabled") == 0) {
+	if ((snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "%s%s", ref->res_path, "state") >= ICMAP_KEYNAME_MAXLEN) ||
+		(icmap_get_string(key_name, &state) != CS_OK || strcmp(state, "disabled") == 0)) {
 		/* key does not exist.
 		*/
 		if (state != NULL)
@@ -279,8 +279,8 @@ static void wd_config_changed (struct cs_fsm* fsm, int32_t event, void * data)
 
 	next_timeout = ref->check_timeout;
 
-	snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "%s%s", ref->res_path, "poll_period");
-	if (icmap_get_uint64(ref->res_path, &tmp_value) == CS_OK) {
+	if ((snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "%s%s", ref->res_path, "poll_period") >= ICMAP_KEYNAME_MAXLEN) ||
+		(icmap_get_uint64(ref->res_path, &tmp_value) == CS_OK)) {
 		if (tmp_value >= WD_MIN_TIMEOUT_MS && tmp_value <= WD_MAX_TIMEOUT_MS) {
 			log_printf (LOGSYS_LEVEL_DEBUG,
 				"poll_period changing from:%"PRIu64" to %"PRIu64".",
@@ -299,8 +299,8 @@ static void wd_config_changed (struct cs_fsm* fsm, int32_t event, void * data)
 		}
 	}
 
-	snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "%s%s", ref->res_path, "recovery");
-	if (icmap_get_string(key_name, &ref->recovery) != CS_OK) {
+	if ((snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "%s%s", ref->res_path, "recovery") >= ICMAP_KEYNAME_MAXLEN) ||
+		(icmap_get_string(key_name, &ref->recovery) != CS_OK)) {
 		/* key does not exist.
 		 */
 		log_printf (LOGSYS_LEVEL_WARNING,
@@ -308,8 +308,8 @@ static void wd_config_changed (struct cs_fsm* fsm, int32_t event, void * data)
 		cs_fsm_state_set(&ref->fsm, WD_S_STOPPED, ref, wd_fsm_cb);
 		return;
 	}
-	snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "%s%s", ref->res_path, "state");
-	if (icmap_get_string(key_name, &state) != CS_OK) {
+	if ((snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "%s%s", ref->res_path, "state") >= ICMAP_KEYNAME_MAXLEN) ||
+		(icmap_get_string(key_name, &state) != CS_OK)) {
 		/* key does not exist.
 		*/
 		log_printf (LOGSYS_LEVEL_WARNING,
