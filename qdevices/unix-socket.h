@@ -35,6 +35,7 @@
 #ifndef _UNIX_SOCKET_H_
 #define _UNIX_SOCKET_H_
 
+#include <string.h>
 #include <sys/types.h>
 #include <inttypes.h>
 

@@ -40,6 +40,9 @@
 #include <qb/qbdefs.h>
 #include <qb/qblog.h>
 
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <string.h>
 #include "qdevice-heuristics-mode.h"
 
 #ifdef __cplusplus
