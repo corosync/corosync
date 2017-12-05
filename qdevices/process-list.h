@@ -35,6 +35,7 @@
 #ifndef _PROCESS_LIST_H_
 #define _PROCESS_LIST_H_
 
+#include <signal.h>
 #include <sys/queue.h>
 
 #include "dynar.h"
