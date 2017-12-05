@@ -2,7 +2,7 @@
 
 #include <stdio.h>
 #include <sys/types.h>
-#include <wait.h>
+#include <sys/wait.h>
 #include <qb/qblog.h>
 #include <qb/qbloop.h>
 #include <sys/poll.h>

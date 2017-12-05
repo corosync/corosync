@@ -37,6 +37,8 @@
 
 #include <cmap.h>
 
+#include <arpa/inet.h>
+#include <netinet/in.h>
 #include "node-list.h"
 #include "qdevice-instance.h"
 
