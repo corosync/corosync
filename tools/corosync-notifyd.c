@@ -146,6 +146,7 @@ enum snmp_node_status {
 #define SNMP_OID_OBJECT_NODE_ID		SNMP_OID_OBJECT_ROOT ".2"
 #define SNMP_OID_OBJECT_NODE_STATUS	SNMP_OID_OBJECT_ROOT ".3"
 #define SNMP_OID_OBJECT_NODE_ADDR	SNMP_OID_OBJECT_ROOT ".4"
+#define SNMP_OID_OBJECT_LOCAL_NODE_ID		SNMP_OID_OBJECT_ROOT ".5"
 
 #define SNMP_OID_OBJECT_RINGSEQ		SNMP_OID_OBJECT_ROOT ".20"
 #define SNMP_OID_OBJECT_QUORUM		SNMP_OID_OBJECT_ROOT ".21"
@@ -153,14 +154,14 @@ enum snmp_node_status {
 #define SNMP_OID_OBJECT_APP_NAME	SNMP_OID_OBJECT_ROOT ".40"
 #define SNMP_OID_OBJECT_APP_STATUS	SNMP_OID_OBJECT_ROOT ".41"
 
-#define SNMP_OID_OBJECT_RRP_IFACE_NO	SNMP_OID_OBJECT_ROOT ".60"
-#define SNMP_OID_OBJECT_RRP_STATUS	SNMP_OID_OBJECT_ROOT ".61"
+#define SNMP_OID_OBJECT_LINK_IFACE_NO	SNMP_OID_OBJECT_ROOT ".60"
+#define SNMP_OID_OBJECT_LINK_STATUS	SNMP_OID_OBJECT_ROOT ".61"
 
 #define SNMP_OID_TRAPS_ROOT		SNMP_OID_COROSYNC ".0"
 #define SNMP_OID_TRAPS_NODE		SNMP_OID_TRAPS_ROOT ".1"
 #define SNMP_OID_TRAPS_QUORUM		SNMP_OID_TRAPS_ROOT ".2"
 #define SNMP_OID_TRAPS_APP		SNMP_OID_TRAPS_ROOT ".3"
-#define SNMP_OID_TRAPS_RRP		SNMP_OID_TRAPS_ROOT ".4"
+#define SNMP_OID_TRAPS_LINK		SNMP_OID_TRAPS_ROOT ".4"
 
 #define CS_TIMESTAMP_STR_LEN 20
 static const char *local_host = "localhost";
@@ -634,7 +635,7 @@ out_free:
 }
 
 static void
-_cs_dbus_link_faulty_event(char *nodename, uint32_t nodeid, uint32_t iface_no, const char *state)
+_cs_dbus_link_faulty_event(char *nodename, uint32_t local_nodeid, uint32_t nodeid, uint32_t iface_no, const char *state)
 {
 	DBusMessage *msg = NULL;
 
@@ -665,11 +666,12 @@ _cs_dbus_link_faulty_event(char *nodename, uint32_t nodeid, uint32_t iface_no, c
 
 	if (!dbus_message_append_args(msg,
 			DBUS_TYPE_STRING, &nodename,
+			DBUS_TYPE_UINT32, &local_nodeid,
 			DBUS_TYPE_UINT32, &nodeid,
 			DBUS_TYPE_UINT32, &iface_no,
 			DBUS_TYPE_STRING, &state,
 			DBUS_TYPE_INVALID)) {
-		qb_log(LOG_ERR, "error adding args to rrp signal");
+		qb_log(LOG_ERR, "error adding args to link signal");
 		goto out_unlock;
 	}
 
@@ -710,8 +712,8 @@ _cs_dbus_init(void)
 		_cs_dbus_node_quorum_event;
 	notifiers[num_notifiers].application_connection_fn =
 		_cs_dbus_application_connection_event;
-	notifiers[num_notifiers].rrp_faulty_fn =
-		_cs_dbus_rrp_faulty_event;
+	notifiers[num_notifiers].link_faulty_fn =
+		_cs_dbus_link_faulty_event;
 
 	num_notifiers++;
 }
@@ -858,7 +860,7 @@ _cs_snmp_node_quorum_event(char *nodename, uint32_t nodeid,
 }
 
 static void
-_cs_snmp_rrp_faulty_event(char *nodename, uint32_t nodeid,
+_cs_snmp_link_faulty_event(char *nodename, uint32_t local_nodeid, uint32_t nodeid,
 		uint32_t iface_no, const char *state)
 {
 	int ret;
@@ -883,13 +885,14 @@ _cs_snmp_rrp_faulty_event(char *nodename, uint32_t nodeid,
 	/* send uptime */
 	sprintf (csysuptime, "%ld", now);
 	snmp_add_var (trap_pdu, sysuptime_oid, sizeof (sysuptime_oid) / sizeof (oid), 't', csysuptime);
-	snmp_add_var (trap_pdu, snmptrap_oid, sizeof (snmptrap_oid) / sizeof (oid), 'o', SNMP_OID_TRAPS_RRP);
+	snmp_add_var (trap_pdu, snmptrap_oid, sizeof (snmptrap_oid) / sizeof (oid), 'o', SNMP_OID_TRAPS_LINK);
 
 	/* Add extries to the trap */
 	add_field (trap_pdu, ASN_OCTET_STR, SNMP_OID_OBJECT_NODE_NAME, (void*)nodename, strlen (nodename));
+	add_field (trap_pdu, ASN_UNSIGNED, SNMP_OID_OBJECT_LOCAL_NODE_ID, (void*)&local_nodeid, sizeof (local_nodeid));
 	add_field (trap_pdu, ASN_UNSIGNED, SNMP_OID_OBJECT_NODE_ID, (void*)&nodeid, sizeof (nodeid));
-	add_field (trap_pdu, ASN_INTEGER, SNMP_OID_OBJECT_RRP_IFACE_NO, (void*)&iface_no, sizeof (iface_no));
-	add_field (trap_pdu, ASN_OCTET_STR, SNMP_OID_OBJECT_RRP_STATUS, (void*)state, strlen (state));
+	add_field (trap_pdu, ASN_INTEGER, SNMP_OID_OBJECT_LINK_IFACE_NO, (void*)&iface_no, sizeof (iface_no));
+	add_field (trap_pdu, ASN_OCTET_STR, SNMP_OID_OBJECT_LINK_STATUS, (void*)state, strlen (state));
 
 	/* Send and cleanup */
 	ret = snmp_send (session, trap_pdu);
@@ -912,8 +915,8 @@ _cs_snmp_init(void)
 	notifiers[num_notifiers].node_quorum_fn =
 		_cs_snmp_node_quorum_event;
 	notifiers[num_notifiers].application_connection_fn = NULL;
-	notifiers[num_notifiers].rrp_faulty_fn =
-		_cs_snmp_rrp_faulty_event;
+	notifiers[num_notifiers].link_faulty_fn =
+		_cs_snmp_link_faulty_event;
 	num_notifiers++;
 }
 

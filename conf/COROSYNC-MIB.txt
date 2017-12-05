@@ -13,10 +13,12 @@ IMPORTS
 ;
 
 corosync MODULE-IDENTITY
-    LAST-UPDATED    "201101211300Z"
+    LAST-UPDATED    "201801121241Z"
     ORGANIZATION    "www.corosync.org"
     CONTACT-INFO    "name:  Yuki Sato
                      email: users@clusterlabs.org"
+    DESCRIPTION     "*RRP* related staff has changed to *Link* staff"
+    REVISION        "201801121241Z"
     DESCRIPTION     "Add cluster quorum traps, fix smilint errors, and fix notification block ID"
     REVISION        "201101211300Z"
     DESCRIPTION     "MIB objects for Corosync"
@@ -70,6 +72,12 @@ corosyncObjectsNodeAddress OBJECT-TYPE
     DESCRIPTION "The address of the node."
 ::= { corosyncObjects 4 }
 
+corosyncObjectsLocalNodeID OBJECT-TYPE
+    SYNTAX      Unsigned32
+    MAX-ACCESS  accessible-for-notify
+    STATUS      current
+    DESCRIPTION "The unique integer of local node."
+::= { corosyncObjects 5 }
 
 --
 -- Quorum Information
@@ -94,7 +102,7 @@ corosyncObjectsQuorumStatus OBJECT-TYPE
 ::= { corosyncObjects 21 }
 
 --
--- RRP Information
+-- Link Information
 ---
 
 corosyncObjectsIfaceNo OBJECT-TYPE
@@ -104,12 +112,12 @@ corosyncObjectsIfaceNo OBJECT-TYPE
     DESCRIPTION "The integer of interface."
 ::= { corosyncObjects 60 }
 
-corosyncObjectsRRPStatus OBJECT-TYPE
+corosyncObjectsLinkStatus OBJECT-TYPE
     SYNTAX	OCTET STRING
     MAX-ACCESS  accessible-for-notify
     STATUS      current
     DESCRIPTION
-	"RRP Status"
+	"Link Status"
 ::= { corosyncObjects 61 }
 
 --
@@ -174,14 +182,15 @@ corosyncNoticesAppStatus NOTIFICATION-TYPE
        name and the new state (either 'connected' or 'disconnected')."
 ::= { corosyncNotices 3 }
 
-corosyncNoticesRRPStatus NOTIFICATION-TYPE
+corosyncNoticesLinkStatus NOTIFICATION-TYPE
     OBJECTS	{ corosyncObjectsNodeName,
+		  corosyncObjectsLocalNodeID,
 		  corosyncObjectsNodeID,
 		  corosyncObjectsIfaceNo,
-		  corosyncObjectsRRPStatus }
+		  corosyncObjectsLinkStatus }
     STATUS  current
     DESCRIPTION
-      "Produced when the interface of RRP is marked failed or operational.
+      "Produced when the interface of Link is marked failed or operational.
 
        The notification also includes the node name, nodeid, iface number
        and the new state (either 'failed' or 'operational')."
@@ -211,7 +220,7 @@ corosyncObjectGroup OBJECT-GROUP
 	      corosyncObjectsAppName,
 	      corosyncObjectsAppStatus,
 	      corosyncObjectsIfaceNo,
-	      corosyncObjectsRRPStatus
+	      corosyncObjectsLinkStatus
             }
     STATUS      current
     DESCRIPTION "Corosync Object Conformance Group"
@@ -221,7 +230,7 @@ corosyncNotificationGroup NOTIFICATION-GROUP
     NOTIFICATIONS { corosyncNoticesNodeStatus,
                     corosyncNoticesQuorumStatus,
 		    corosyncNoticesAppStatus,
-		    corosyncNoticesRRPStatus
+		    corosyncNoticesLinkStatus
                   }
     STATUS      current
     DESCRIPTION "Corosync Notification Conformance Group"
