@@ -61,6 +61,7 @@ extern int totem_config_keyread (
 	const char **error_string);
 
 extern int totem_config_find_local_addr_in_nodelist(
+	struct totem_config *totem_config,
 	const char *ipaddr_key_prefix,
 	unsigned int *node_pos);
 
