@@ -278,9 +278,10 @@ equal to highest of collected versions, corosync is terminated.
 
 .TP
 ip_version
-Specifies version of IP to use for communication. Value can be one of
-ipv4 or ipv6. Default (if unspecified) is ipv4.
-
+For udp or udpu, this specifies version of IP to use for communication.
+The value can be one of ipv4 or ipv6. Default (if unspecified) is ipv4.
+This does not apply to knet where both ipv4 and ipv6 address can be used,
+provided they are consistent on each link.
 
 Within the
 .B totem

@@ -440,20 +440,25 @@ static int totem_get_crypto(struct totem_config *totem_config)
 	return 0;
 }
 
-static int totem_config_get_ip_version(void)
+static int totem_config_get_ip_version(struct totem_config *totem_config)
 {
 	int res;
 	char *str;
 
 	res = AF_INET;
-	if (icmap_get_string("totem.ip_version", &str) == CS_OK) {
-		if (strcmp(str, "ipv4") == 0) {
-			res = AF_INET;
+	if (totem_config->transport_number == TOTEM_TRANSPORT_KNET ||
+	    totem_config->transport_number == 0) {
+		res = AF_UNSPEC;
+	} else {
+		if (icmap_get_string("totem.ip_version", &str) == CS_OK) {
+			if (strcmp(str, "ipv4") == 0) {
+				res = AF_INET;
+			}
+			if (strcmp(str, "ipv6") == 0) {
+				res = AF_INET6;
+			}
+			free(str);
 		}
-		if (strcmp(str, "ipv6") == 0) {
-			res = AF_INET6;
-		}
-		free(str);
 	}
 
 	return (res);
@@ -930,7 +935,7 @@ static void nodelist_dynamic_notify(
  *
  * Returns 1 on success (address was found, node_pos is then correctly set) or 0 on failure.
  */
-int totem_config_find_local_addr_in_nodelist(const char *ipaddr_key_prefix, unsigned int *node_pos)
+int totem_config_find_local_addr_in_nodelist(struct totem_config *totem_config, const char *ipaddr_key_prefix, unsigned int *node_pos)
 {
 	struct qb_list_head addrs;
 	struct totem_ip_if_address *if_addr;
@@ -949,7 +954,7 @@ int totem_config_find_local_addr_in_nodelist(const char *ipaddr_key_prefix, unsi
 		return 0;
 	}
 
-	ip_version = totem_config_get_ip_version();
+	ip_version = totem_config_get_ip_version(totem_config);
 
 	iter = icmap_iter_init("nodelist.node.");
 
@@ -1033,7 +1038,7 @@ static void config_convert_nodelist_to_interface(struct totem_config *totem_conf
 	icmap_iter_t iter;
 	const char *iter_key;
 
-	if (totem_config_find_local_addr_in_nodelist(NULL, &node_pos)) {
+	if (totem_config_find_local_addr_in_nodelist(totem_config, NULL, &node_pos)) {
 		/*
 		 * We found node, so create interface section
 		 */
@@ -1310,7 +1315,7 @@ extern int totem_config_read (
 
 	icmap_get_uint32("totem.netmtu", &totem_config->net_mtu);
 
-	totem_config->ip_version = totem_config_get_ip_version();
+	totem_config->ip_version = totem_config_get_ip_version(totem_config);
 
 	if (icmap_get_string("totem.interface.0.bindnetaddr", &str) != CS_OK) {
 		/*
@@ -1449,7 +1454,7 @@ int totem_config_validate (
 	static char local_error_reason[512];
 	char parse_error[512];
 	const char *error_reason = local_error_reason;
-	int i;
+	int i,j;
 	int num_configured = 0;
 	unsigned int interface_max = INTERFACE_MAX;
 
@@ -1527,10 +1532,16 @@ int totem_config_validate (
 				goto parse_error;
 			}
 		}
-
-		if (totem_config->interfaces[0].bindnet.family != totem_config->interfaces[i].bindnet.family) {
-			error_reason =  "Not all bind address belong to the same IP family";
-			goto parse_error;
+		/* Verify that all nodes on the same knet link have the same IP family */
+		for (j=1; j<totem_config->interfaces[i].member_count; j++) {
+			if (totem_config->interfaces[i].configured) {
+				if (totem_config->interfaces[i].member_list[j].family !=
+				    totem_config->interfaces[i].member_list[0].family) {
+					snprintf (local_error_reason, sizeof(local_error_reason),
+						  "Nodes for link %d have different IP families", i);
+					goto parse_error;
+				}
+			}
 		}
 	}
 
