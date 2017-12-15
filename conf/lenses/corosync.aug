@@ -40,6 +40,7 @@ let interface =
     kv "ringnumber" Rx.integer
     |kv "mcastport" Rx.integer
     |kv "ttl" Rx.integer
+    |kv "broadcast" /yes|no/
     |qstr /bindnetaddr|mcastaddr/ in
   section "interface" setting
 
