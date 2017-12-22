@@ -40,6 +40,7 @@ let interface =
     kv "ringnumber" Rx.integer
     |kv "mcastport" Rx.integer
     |kv "ttl" Rx.integer
+    |kv "broadcast" /yes|no/
     |qstr /bindnetaddr|mcastaddr/ in
   section "interface" setting
 
@@ -53,7 +54,7 @@ let totem =
     |kv "crypto_type" /nss|aes256|aes192|aes128|3des/
     |kv "crypto_cipher" /none|nss|aes256|aes192|aes128|3des/
     |kv "crypto_hash" /none|md5|sha1|sha256|sha384|sha512/
-    |kv "transport" /udp|iba/
+    |kv "transport" /udp|iba|udpu/
     |kv "version" Rx.integer
     |kv "nodeid" Rx.integer
     |kv "threads" Rx.integer
@@ -76,6 +77,7 @@ let totem =
     |kv "rrp_problem_count_timeout" Rx.integer
     |kv "rrp_problem_count_threshold" Rx.integer
     |kv "rrp_token_expired_timeout" Rx.integer
+    |qstr /cluster_name/
     |interface in
   section "totem" setting
 
