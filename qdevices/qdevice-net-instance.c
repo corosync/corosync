@@ -274,12 +274,12 @@ qdevice_net_instance_init_from_cmap(struct qdevice_instance *instance)
 	if (cmap_get_string(cmap_handle, "quorum.device.net.port", &str) == CS_OK) {
 		host_port = strtol(str, &ep, 10);
 
-		free(str);
-
 		if (host_port <= 0 || host_port > ((uint16_t)~0) || *ep != '\0') {
 			qdevice_log(LOG_ERR, "quorum.device.net.port must be in range 0-65535");
+			free(str);
 			goto error_free_host_addr;
 		}
+		free(str);
 	} else {
 		host_port = QNETD_DEFAULT_HOST_PORT;
 	}
