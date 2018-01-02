@@ -37,19 +37,13 @@
 BASE_DIR="@COROSYSCONFDIR@/qdevice/net"
 DB_DIR_QNETD="@COROSYSCONFDIR@/qnetd/nssdb"
 DB_DIR_NODE="$BASE_DIR/nssdb"
-# Validity of certificate (months)
-CRT_VALIDITY=1200
 CA_NICKNAME="QNet CA"
-SERVER_NICKNAME="QNetd Cert"
 CLUSTER_NICKNAME="Cluster Cert"
-CA_SUBJECT="CN=QNet CA"
-SERVER_SUBJECT="CN=Qnetd Server"
 PWD_FILE_BASE="pwdfile.txt"
 NOISE_FILE_BASE="noise.txt"
 SERIAL_NO_FILE_BASE="serial.txt"
 CA_EXPORT_FILE="$DB_DIR_QNETD/qnetd-cacert.crt"
 CRQ_FILE_BASE="qdevice-net-node.crq"
-CRT_FILE_BASE="" # Generated from cluster name
 P12_FILE_BASE="qdevice-net-node.p12"
 QNETD_CERTUTIL_CMD="corosync-qnetd-certutil"
 
@@ -309,7 +303,6 @@ PWD_FILE="$DB_DIR/$PWD_FILE_BASE"
 NOISE_FILE="$DB_DIR/$NOISE_FILE_BASE"
 SERIAL_NO_FILE="$DB_DIR/$SERIAL_NO_FILE_BASE"
 CRQ_FILE="$DB_DIR/$CRQ_FILE_BASE"
-CRT_FILE="$DB_DIR/cluster-$CLUSTER_NAME.crt"
 P12_FILE="$DB_DIR/$P12_FILE_BASE"
 
 case "$OPERATION" in
