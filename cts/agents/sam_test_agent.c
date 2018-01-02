@@ -1220,7 +1220,6 @@ static void do_command (int sock, char* func, char*args[], int num_args)
 	} else if (strcmp ("sam_stop", func) == 0) {
 		err = sam_stop ();
 		if (err != CS_OK) {
-			err = -1;
 			qb_log (LOG_ERR,"RPC:%s sam_stop failed!", func);
 			snprintf (response, 100, "%s", FAIL_STR);
 		}
