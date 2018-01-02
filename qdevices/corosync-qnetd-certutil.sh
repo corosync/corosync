@@ -40,14 +40,12 @@ DB_DIR="$CONFIG_DIR/nssdb"
 CRT_VALIDITY=1200
 CA_NICKNAME="QNet CA"
 SERVER_NICKNAME="QNetd Cert"
-CLUSTER_NICKNAME="Cluster Cert"
 CA_SUBJECT="CN=QNet CA"
 SERVER_SUBJECT="CN=Qnetd Server"
 PWD_FILE="$DB_DIR/pwdfile.txt"
 NOISE_FILE="$DB_DIR/noise.txt"
 SERIAL_NO_FILE="$DB_DIR/serial.txt"
 CA_EXPORT_FILE="$DB_DIR/qnetd-cacert.crt"
-CRT_FILE_BASE="" # Generated from cluster name
 
 usage() {
     echo "$0: [-i|-s] [-c certificate] [-n cluster_name]"
@@ -62,7 +60,7 @@ usage() {
 
 chown_ref_cfgdir() {
     if [ "$UID" == "0" ];then
-        chown --reference="$CONFIG_DIR" "$@" 2>/dev/null || chown `stat -f "%u:%g" "$CONFIG_DIR"` "$@" 2>/dev/null || return $?
+        chown --reference="$CONFIG_DIR" "$@" 2>/dev/null || chown "$(stat -f "%u:%g" "$CONFIG_DIR")" "$@" 2>/dev/null || return $?
     fi
 }
 
@@ -123,14 +121,14 @@ init_qnetd_ca() {
     echo "Creating new CA"
     # Create self-signed certificate (CA). Asks 3 questions (is this CA, lifetime and critical extension
     echo -e "y\n0\ny\n" | certutil -S -n "$CA_NICKNAME" -s "$CA_SUBJECT" -x \
-        -t "CT,," -m `get_serial_no` -v $CRT_VALIDITY -d "$DB_DIR" \
+        -t "CT,," -m "$(get_serial_no)" -v $CRT_VALIDITY -d "$DB_DIR" \
         -z "$NOISE_FILE" -f "$PWD_FILE" -2
     # Export CA certificate in ascii
     certutil -L -d "$DB_DIR" -n "$CA_NICKNAME" > "$CA_EXPORT_FILE"
     certutil -L -d "$DB_DIR" -n "$CA_NICKNAME" -a >> "$CA_EXPORT_FILE"
     chown_ref_cfgdir "$CA_EXPORT_FILE"
 
-    certutil -S -n "$SERVER_NICKNAME" -s "$SERVER_SUBJECT" -c "$CA_NICKNAME" -t "u,u,u" -m `get_serial_no` \
+    certutil -S -n "$SERVER_NICKNAME" -s "$SERVER_SUBJECT" -c "$CA_NICKNAME" -t "u,u,u" -m "$(get_serial_no)" \
         -v $CRT_VALIDITY -d "$DB_DIR" -z "$NOISE_FILE" -f "$PWD_FILE"
 
     echo "QNetd CA certificate is exported as $CA_EXPORT_FILE"
@@ -145,7 +143,7 @@ sign_cluster_cert() {
     fi
 
     echo "Signing cluster certificate"
-    certutil -C -v "$CRT_VALIDITY" -m `get_serial_no` -i "$CERTIFICATE_FILE" -o "$CRT_FILE" -c "$CA_NICKNAME" -d "$DB_DIR"
+    certutil -C -v "$CRT_VALIDITY" -m "$(get_serial_no)" -i "$CERTIFICATE_FILE" -o "$CRT_FILE" -c "$CA_NICKNAME" -d "$DB_DIR"
     chown_ref_cfgdir "$CRT_FILE"
 
     echo "Certificate stored in $CRT_FILE"
