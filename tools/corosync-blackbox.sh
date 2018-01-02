@@ -29,6 +29,6 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 
-corosync-cmapctl -s runtime.blackbox.dump_state str $(date +%s)
-corosync-cmapctl -s runtime.blackbox.dump_flight_data str $(date +%s)
+corosync-cmapctl -s runtime.blackbox.dump_state str "$(date +%s)"
+corosync-cmapctl -s runtime.blackbox.dump_flight_data str "$(date +%s)"
 qb-blackbox "@LOCALSTATEDIR@/lib/corosync/fdata"
