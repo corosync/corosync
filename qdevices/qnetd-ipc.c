@@ -174,7 +174,8 @@ void
 qnetd_ipc_client_disconnect(struct qnetd_instance *instance, struct unix_socket_client *client)
 {
 
-	if (PR_DestroySocketPollFd(
+	if ((struct qnetd_ipc_user_data *)(client)->user_data != NULL &&
+	    PR_DestroySocketPollFd(
 	    ((struct qnetd_ipc_user_data *)(client)->user_data)->nspr_poll_fd) != PR_SUCCESS) {
 		qnetd_log_nss(LOG_WARNING, "Unable to destroy client IPC poll socket fd");
 	}
