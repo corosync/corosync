@@ -369,7 +369,7 @@ case "$OPERATION" in
 
         master_node="$1"
         shift 1
-        other_nodes="$@"
+        other_nodes="$*"
 
         if [ "$CLUSTER_NAME" == "" ];then
             echo "You have to specify cluster name" >&2
