@@ -161,6 +161,7 @@ process_list_parse_command(const char *command, size_t *no_params)
 			if (res_argv[zi] == NULL) {
 				process_list_free_argv(*no_params, res_argv);
 				res_argv = NULL;
+				goto exit_res;
 			}
 			zi++;
 		}
