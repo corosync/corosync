@@ -536,7 +536,9 @@ static void display_nodes_data(nodeid_format_t nodeid_format, name_format_t name
 		printf("%s", g_view_list[i].name);
 		if (g_view_list[i].node_id == our_nodeid) {
 			printf(" (local)");
-			our_flags = info[i].flags;
+			if (v_handle) {
+				our_flags = info[i].flags;
+			}
 		}
 		printf("\n");
 	}
