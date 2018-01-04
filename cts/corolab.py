@@ -3,6 +3,8 @@
 '''CTS: Cluster Testing System: Lab environment module
  '''
 
+from __future__ import print_function
+
 __copyright__='''
 Copyright (c) 2010 Red Hat, Inc.
 
@@ -63,35 +65,35 @@ DefaultFacility = "daemon"
 
 
 def usage(arg):
-    print "Illegal argument " + arg
-    print "usage: " + sys.argv[0] +" [options] number-of-iterations" 
-    print "\nCommon options: "  
-    print "\t [--at-boot (1|0)],         does the cluster software start at boot time" 
-    print "\t [--nodes 'node list'],     list of cluster nodes separated by whitespace" 
-    print "\t [--limit-nodes max],       only use the first 'max' cluster nodes supplied with --nodes" 
-    print "\t [--logfile path],          where should the test software look for logs from cluster nodes" 
-    print "\t [--rrp-bindaddr addr],       extra interface used for rrp, provide the bindaddr" 
-    print "\t [--outputfile path],       optional location for the test software to write logs to" 
-    print "\t [--syslog-facility name],  which syslog facility should the test software log to" 
-    print "\t [--choose testcase-name],  run only the named test" 
-    print "\t [--list-tests],            list the valid tests" 
-    print "\t [--benchmark],             add the timing information" 
-    print "\t "
-    print "Additional (less common) options: "  
-    print "\t [--trunc (truncate logfile before starting)]" 
-    print "\t [--xmit-loss lost-rate(0.0-1.0)]" 
-    print "\t [--recv-loss lost-rate(0.0-1.0)]" 
-    print "\t [--standby (1 | 0 | yes | no)]" 
-    print "\t [--fencing (1 | 0 | yes | no)]" 
-    print "\t [--once],                 run all valid tests once" 
-    print "\t [--no-loop-tests],        dont run looping/time-based tests" 
-    print "\t [--no-unsafe-tests],      dont run tests that are unsafe for use with ocfs2/drbd" 
-    print "\t [--valgrind-tests],       include tests using valgrind" 
-    print "\t [--experimental-tests],   include experimental tests" 
-    print "\t [--oprofile 'node list'], list of cluster nodes to run oprofile on]" 
-    print "\t [--qarsh]                 Use the QARSH backdoor to access nodes instead of SSH"
-    print "\t [--seed random_seed]"
-    print "\t [--set option=value]"
+    print("Illegal argument " + arg)
+    print("usage: " + sys.argv[0] +" [options] number-of-iterations")
+    print("\nCommon options: ")
+    print("\t [--at-boot (1|0)],         does the cluster software start at boot time")
+    print("\t [--nodes 'node list'],     list of cluster nodes separated by whitespace")
+    print("\t [--limit-nodes max],       only use the first 'max' cluster nodes supplied with --nodes")
+    print("\t [--logfile path],          where should the test software look for logs from cluster nodes")
+    print("\t [--rrp-bindaddr addr],       extra interface used for rrp, provide the bindaddr")
+    print("\t [--outputfile path],       optional location for the test software to write logs to")
+    print("\t [--syslog-facility name],  which syslog facility should the test software log to")
+    print("\t [--choose testcase-name],  run only the named test")
+    print("\t [--list-tests],            list the valid tests")
+    print("\t [--benchmark],             add the timing information")
+    print("\t ")
+    print("Additional (less common) options: ")
+    print("\t [--trunc (truncate logfile before starting)]")
+    print("\t [--xmit-loss lost-rate(0.0-1.0)]")
+    print("\t [--recv-loss lost-rate(0.0-1.0)]")
+    print("\t [--standby (1 | 0 | yes | no)]")
+    print("\t [--fencing (1 | 0 | yes | no)]")
+    print("\t [--once],                 run all valid tests once")
+    print("\t [--no-loop-tests],        dont run looping/time-based tests")
+    print("\t [--no-unsafe-tests],      dont run tests that are unsafe for use with ocfs2/drbd")
+    print("\t [--valgrind-tests],       include tests using valgrind")
+    print("\t [--experimental-tests],   include experimental tests")
+    print("\t [--oprofile 'node list'], list of cluster nodes to run oprofile on]")
+    print("\t [--qarsh]                 Use the QARSH backdoor to access nodes instead of SSH")
+    print("\t [--seed random_seed]")
+    print("\t [--set option=value]")
     sys.exit(1)
 
 class CoroLabEnvironment(CtsLab):
@@ -271,7 +273,7 @@ if __name__ == '__main__':
         Environment["logger"].append(FileLog(Environment, Environment["OutputFile"]))
 
     if len(node_list) < 1:
-        print "No nodes specified!"
+        print("No nodes specified!")
         sys.exit(1)
 
     if LimitNodes > 0:
