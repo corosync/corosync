@@ -74,7 +74,14 @@
 #define MSG_NOSIGNAL 0
 #endif
 
-#define UDPU_FRAME_SIZE_MAX 10000
+/*
+ * Estimation of required buffer size - it should be at least
+ *   sizeof(memb_join) + PROCESSOR_MAX * 2 * sizeof(srp_addr))
+ * if we want to support PROCESSOR_MAX nodes, but because we don't have
+ * srp_addr and memb_join, we have to use estimation.
+ * TODO: Consider moving srp_addr/memb_join into totem headers instead of totemsrp.c
+ */
+#define UDPU_FRAME_SIZE_MAX	(PROCESSOR_COUNT_MAX * (INTERFACE_MAX * 2 * sizeof(struct totem_ip_address)) + 1024)
 
 #define MCAST_SOCKET_BUFFER_SIZE (TRANSMITS_ALLOWED * UDPU_FRAME_SIZE_MAX)
 #define NETIF_STATE_REPORT_UP		1
@@ -407,6 +414,7 @@ static int net_deliver_fn (
 	struct iovec *iovec;
 	struct sockaddr_storage system_from;
 	int bytes_received;
+	int truncated_packet;
 
 	iovec = &instance->totemudpu_iov_recv;
 
@@ -438,6 +446,31 @@ static int net_deliver_fn (
 		return (0);
 	} else {
 		instance->stats_recv += bytes_received;
+	}
+
+	truncated_packet = 0;
+
+#ifdef HAVE_MSGHDR_FLAGS
+	if (msg_recv.msg_flags & MSG_TRUNC) {
+		truncated_packet = 1;
+	}
+#else
+	/*
+	 * We don't have MSGHDR_FLAGS, but we can (hopefully) safely make assumption that
+	 * if bytes_received == UDPU_FRAME_SIZE_MAX then packet is truncated
+	 */
+	if (bytes_received == UDPU_FRAME_SIZE_MAX) {
+		truncated_packet = 1;
+	}
+#endif
+
+	if (truncated_packet) {
+		log_printf (instance->totemudpu_log_level_error,
+				"Received too big message. This may be because something bad is happening"
+				"on the network (attack?), or you tried join more nodes than corosync is"
+				"compiled with (%u) or bug in the code (bad estimation of "
+				"the UDPU_FRAME_SIZE_MAX). Dropping packet.", PROCESSOR_COUNT_MAX);
+		return (0);
 	}
 
 	iovec->iov_len = bytes_received;
