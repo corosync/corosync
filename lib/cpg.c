@@ -476,7 +476,9 @@ cs_error_t cpg_dispatch (
 					&group_name,
 					&res_cpg_partial_deliver_callback->group_name);
 
-				// Search for assembly data for current messages (nodeid, pid) pair in list of assemblies
+				/*
+				 * Search for assembly data for current messages (nodeid, pid) pair in list of assemblies
+				 */
 				assembly_data = NULL;
 				qb_list_for_each(iter, &(cpg_inst->assembly_list_head)) {
 					struct cpg_assembly_data *current_assembly_data = qb_list_entry (iter, struct cpg_assembly_data, list);
@@ -488,7 +490,9 @@ cs_error_t cpg_dispatch (
 
 				if (res_cpg_partial_deliver_callback->type == LIBCPG_PARTIAL_FIRST) {
 
-					// As this is LIBCPG_PARTIAL_FIRST packet, check that there is no ongoing assembly
+					/*
+					 * As this is LIBCPG_PARTIAL_FIRST packet, check that there is no ongoing assembly
+					 */
 					if (assembly_data) {
 						error = CS_ERR_MESSAGE_ERROR;
 						goto error_put;
@@ -570,7 +574,9 @@ cs_error_t cpg_dispatch (
 					joined_list,
 					res_cpg_confchg_callback->joined_list_entries);
 
-				// If member left while his partial packet was being assembled, assembly data must be removed from list
+				/*
+				 * If member left while his partial packet was being assembled, assembly data must be removed from list
+				 */
 				for (i = 0; i < res_cpg_confchg_callback->left_list_entries; i++) {
 					qb_list_for_each_safe(iter, tmp_iter, &(cpg_inst->assembly_list_head)) {
 						struct cpg_assembly_data *current_assembly_data = qb_list_entry (iter, struct cpg_assembly_data, list);
