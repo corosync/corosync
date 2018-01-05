@@ -575,6 +575,7 @@ static int data_deliver_fn (
 	struct iovec iov_recv;
 	struct sockaddr_storage system_from;
 	ssize_t msg_len;
+	int truncated_packet;
 
 	iov_recv.iov_base = instance->iov_buffer;
 	iov_recv.iov_len = KNET_MAX_PACKET_SIZE;
@@ -601,6 +602,31 @@ static int data_deliver_fn (
 
 	msg_len = recvmsg (fd, &msg_hdr, MSG_NOSIGNAL | MSG_DONTWAIT);
 	if (msg_len <= 0) {
+		return (0);
+	}
+
+	truncated_packet = 0;
+
+#ifdef HAVE_MSGHDR_FLAGS
+	if (msg_hdr.msg_flags & MSG_TRUNC) {
+		truncated_packet = 1;
+	}
+#else
+	/*
+	 * We don't have MSGHDR_FLAGS, but we can (hopefully) safely make assumption that
+	 * if bytes_received == KNET_MAX_PACKET_SIZE then packet is truncated
+	 */
+	if (bytes_received == KNET_MAX_PACKET_SIZE) {
+		truncated_packet = 1;
+	}
+#endif
+
+	if (truncated_packet) {
+		knet_log_printf(instance->totemknet_log_level_error,
+				"Received too big message. This may be because something bad is happening"
+				"on the network (attack?), or you tried join more nodes than corosync is"
+				"compiled with (%u) or bug in the code (bad estimation of "
+				"the KNET_MAX_PACKET_SIZE). Dropping packet.", PROCESSOR_COUNT_MAX);
 		return (0);
 	}
 
