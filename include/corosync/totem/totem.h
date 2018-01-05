@@ -50,6 +50,16 @@
 #endif /* HAVE_SMALL_MEMORY_FOOTPRINT */
 
 #define FRAME_SIZE_MAX		KNET_MAX_PACKET_SIZE
+
+/*
+ * Estimation of required buffer size for totemudp and totemudpu - it should be at least
+ *   sizeof(memb_join) + PROCESSOR_MAX * 2 * sizeof(srp_addr))
+ * if we want to support PROCESSOR_MAX nodes, but because we don't have
+ * srp_addr and memb_join, we have to use estimation.
+ * TODO: Consider moving srp_addr/memb_join into totem headers instead of totemsrp.c
+ */
+#define UDP_RECEIVE_FRAME_SIZE_MAX     (PROCESSOR_COUNT_MAX * (INTERFACE_MAX * 2 * sizeof(struct totem_ip_address)) + 1024)
+
 #define TRANSMITS_ALLOWED	16
 #define SEND_THREADS_MAX	16
 
