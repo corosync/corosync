@@ -194,6 +194,13 @@ WARNING: The clusters behavior is undefined if this option is enabled on only
 a subset of the cluster (for example during a rolling upgrade).
 
 .TP
+crypto_model
+This specifies which cryptographic library should be used by knet. Options
+are nss and openssl.
+
+The default is nss
+
+.TP
 crypto_hash
 This specifies which HMAC authentication should be used to authenticate all
 messages. Valid values are none (no authentication), md5, sha1, sha256,

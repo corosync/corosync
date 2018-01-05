@@ -195,6 +195,8 @@ struct totem_config {
 
 	unsigned int broadcast_use;
 
+	char *crypto_model;
+
 	char *crypto_cipher_type;
 
 	char *crypto_hash_type;

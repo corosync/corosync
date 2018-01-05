@@ -376,14 +376,28 @@ parse_error:
 
 }
 
-static int totem_get_crypto(struct totem_config *totem_config)
+static int totem_get_crypto(struct totem_config *totem_config, const char **error_string)
 {
 	char *str;
 	const char *tmp_cipher;
 	const char *tmp_hash;
+	const char *tmp_model;
 
 	tmp_hash = "none";
 	tmp_cipher = "none";
+	tmp_model = "none";
+
+	if (icmap_get_string("totem.crypto_model", &str) == CS_OK) {
+		if (strcmp(str, "nss") == 0) {
+			tmp_model = "nss";
+		}
+		if (strcmp(str, "openssl") == 0) {
+			tmp_model = "openssl";
+		}
+		free(str);
+	} else {
+		tmp_model = "nss";
+	}
 
 	if (icmap_get_string("totem.crypto_cipher", &str) == CS_OK) {
 		if (strcmp(str, "none") == 0) {
@@ -428,14 +442,22 @@ static int totem_get_crypto(struct totem_config *totem_config)
 
 	if ((strcmp(tmp_cipher, "none") != 0) &&
 	    (strcmp(tmp_hash, "none") == 0)) {
+		*error_string = "crypto_cipher requires crypto_hash with value other than none";
+		return -1;
+	}
+
+	if (strcmp(tmp_model, "none") == 0) {
+		*error_string = "crypto_model should be 'nss' or 'openssl'";
 		return -1;
 	}
 
 	free(totem_config->crypto_cipher_type);
 	free(totem_config->crypto_hash_type);
+	free(totem_config->crypto_model);
 
 	totem_config->crypto_cipher_type = strdup(tmp_cipher);
 	totem_config->crypto_hash_type = strdup(tmp_hash);
+	totem_config->crypto_model = strdup(tmp_model);
 
 	return 0;
 }
@@ -1285,8 +1307,7 @@ extern int totem_config_read (
 
 	icmap_get_uint32("totem.version", (uint32_t *)&totem_config->version);
 
-	if (totem_get_crypto(totem_config) != 0) {
-		*error_string = "crypto_cipher requires crypto_hash with value other than none";
+	if (totem_get_crypto(totem_config, error_string) != 0) {
 		return -1;
 	}
 
