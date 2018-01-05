@@ -452,6 +452,7 @@ static int net_deliver_fn (
 	struct sockaddr_storage system_from;
 	int bytes_received;
 	int res = 0;
+	int truncated_packet;
 
 	if (instance->flushing == 1) {
 		iovec = &instance->totemudp_iov_recv_flush;
@@ -487,6 +488,31 @@ static int net_deliver_fn (
 		return (0);
 	} else {
 		instance->stats_recv += bytes_received;
+	}
+
+	truncated_packet = 0;
+
+#ifdef HAVE_MSGHDR_FLAGS
+	if (msg_recv.msg_flags & MSG_TRUNC) {
+		truncated_packet = 1;
+	}
+#else
+	/*
+	 * We don't have MSGHDR_FLAGS, but we can (hopefully) safely make assumption that
+	 * if bytes_received == FRAME_SIZE_MAX then packet is truncated
+	 */
+	if (bytes_received == FRAME_SIZE_MAX) {
+		truncated_packet = 1;
+	}
+#endif
+
+	if (truncated_packet) {
+		log_printf(instance->totemudp_log_level_error,
+				"Received too big message. This may be because something bad is happening"
+				"on the network (attack?), or you tried join more nodes than corosync is"
+				"compiled with (%u) or bug in the code (bad estimation of "
+				"the FRAME_SIZE_MAX). Dropping packet.", PROCESSOR_COUNT_MAX);
+		return (0);
 	}
 
 	/*
