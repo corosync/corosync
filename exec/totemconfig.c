@@ -468,8 +468,7 @@ static int totem_config_get_ip_version(struct totem_config *totem_config)
 	char *str;
 
 	res = AF_INET;
-	if (totem_config->transport_number == TOTEM_TRANSPORT_KNET ||
-	    totem_config->transport_number == 0) {
+	if (totem_config->transport_number == TOTEM_TRANSPORT_KNET) {
 		res = AF_UNSPEC;
 	} else {
 		if (icmap_get_string("totem.ip_version", &str) == CS_OK) {
@@ -1300,6 +1299,23 @@ extern int totem_config_read (
 		return -1;
 	}
 
+	totem_config->transport_number = TOTEM_TRANSPORT_KNET;
+	if (icmap_get_string("totem.transport", &str) == CS_OK) {
+		if (strcmp (str, "udpu") == 0) {
+			totem_config->transport_number = TOTEM_TRANSPORT_UDPU;
+		}
+
+		if (strcmp (str, "udp") == 0) {
+			totem_config->transport_number = TOTEM_TRANSPORT_UDP;
+		}
+
+		if (strcmp (str, "knet") == 0) {
+			totem_config->transport_number = TOTEM_TRANSPORT_KNET;
+		}
+
+		free(str);
+	}
+
 	memset (totem_config->interfaces, 0,
 		sizeof (struct totem_interface) * INTERFACE_MAX);
 
@@ -1379,22 +1395,6 @@ extern int totem_config_read (
 			       "255.255.255.255", 0);
 	}
 
-	totem_config->transport_number = TOTEM_TRANSPORT_KNET;
-	if (icmap_get_string("totem.transport", &str) == CS_OK) {
-		if (strcmp (str, "udpu") == 0) {
-			totem_config->transport_number = TOTEM_TRANSPORT_UDPU;
-		}
-
-		if (strcmp (str, "udp") == 0) {
-			totem_config->transport_number = TOTEM_TRANSPORT_UDP;
-		}
-
-		if (strcmp (str, "knet") == 0) {
-			totem_config->transport_number = TOTEM_TRANSPORT_KNET;
-		}
-
-		free(str);
-	}
 
 	/*
 	 * Store automatically generated items back to icmap only for UDP
