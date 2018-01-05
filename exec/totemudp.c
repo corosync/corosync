@@ -143,9 +143,9 @@ struct totemudp_instance {
 
 	void *udp_context;
 
-	char iov_buffer[FRAME_SIZE_MAX];
+	char iov_buffer[UDP_RECEIVE_FRAME_SIZE_MAX];
 
-	char iov_buffer_flush[FRAME_SIZE_MAX];
+	char iov_buffer_flush[UDP_RECEIVE_FRAME_SIZE_MAX];
 
 	struct iovec totemudp_iov_recv;
 
@@ -207,10 +207,10 @@ static void totemudp_instance_initialize (struct totemudp_instance *instance)
 
 	instance->totemudp_iov_recv.iov_base = instance->iov_buffer;
 
-	instance->totemudp_iov_recv.iov_len = FRAME_SIZE_MAX; //sizeof (instance->iov_buffer);
+	instance->totemudp_iov_recv.iov_len = UDP_RECEIVE_FRAME_SIZE_MAX; //sizeof (instance->iov_buffer);
 	instance->totemudp_iov_recv_flush.iov_base = instance->iov_buffer_flush;
 
-	instance->totemudp_iov_recv_flush.iov_len = FRAME_SIZE_MAX; //sizeof (instance->iov_buffer);
+	instance->totemudp_iov_recv_flush.iov_len = UDP_RECEIVE_FRAME_SIZE_MAX; //sizeof (instance->iov_buffer);
 
 	/*
 	 * There is always atleast 1 processor
@@ -413,6 +413,7 @@ static int net_deliver_fn (
 	struct iovec *iovec;
 	struct sockaddr_storage system_from;
 	int bytes_received;
+	int truncated_packet;
 
 	if (instance->flushing == 1) {
 		iovec = &instance->totemudp_iov_recv_flush;
@@ -450,6 +451,31 @@ static int net_deliver_fn (
 		instance->stats_recv += bytes_received;
 	}
 
+	truncated_packet = 0;
+
+#ifdef HAVE_MSGHDR_FLAGS
+	if (msg_recv.msg_flags & MSG_TRUNC) {
+		truncated_packet = 1;
+	}
+#else
+	/*
+	 * We don't have MSGHDR_FLAGS, but we can (hopefully) safely make assumption that
+	 * if bytes_received == UDP_RECIEVE_FRAME_SIZE_MAX then packet is truncated
+	 */
+	if (bytes_received == UDP_RECEIVE_FRAME_SIZE_MAX) {
+		truncated_packet = 1;
+	}
+#endif
+
+	if (truncated_packet) {
+		log_printf (instance->totemudp_log_level_error,
+				"Received too big message. This may be because something bad is happening"
+				"on the network (attack?), or you tried join more nodes than corosync is"
+				"compiled with (%u) or bug in the code (bad estimation of "
+				"the UDP_RECEIVE_FRAME_SIZE_MAX). Dropping packet.", PROCESSOR_COUNT_MAX);
+		return (0);
+	}
+
 	iovec->iov_len = bytes_received;
 
 	/*
@@ -460,7 +486,7 @@ static int net_deliver_fn (
 		iovec->iov_base,
 		iovec->iov_len);
 
-	iovec->iov_len = FRAME_SIZE_MAX;
+	iovec->iov_len = UDP_RECEIVE_FRAME_SIZE_MAX;
 	return (0);
 }
 
@@ -1144,7 +1170,7 @@ int totemudp_initialize (
 	 */
 	instance->totem_interface = &totem_config->interfaces[0];
 	totemip_copy (&instance->mcast_address, &instance->totem_interface->mcast_addr);
-	memset (instance->iov_buffer, 0, FRAME_SIZE_MAX);
+	memset (instance->iov_buffer, 0, UDP_RECEIVE_FRAME_SIZE_MAX);
 
 	instance->totemudp_poll_handle = poll_handle;
 
