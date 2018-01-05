@@ -889,7 +889,7 @@ int totemknet_initialize (
 	if (strcmp(instance->totem_config->crypto_cipher_type, "none") != 0) {
 		struct knet_handle_crypto_cfg crypto_cfg;
 
-		strcpy(crypto_cfg.crypto_model, "nss");
+		strcpy(crypto_cfg.crypto_model, instance->totem_config->crypto_model);
 		strcpy(crypto_cfg.crypto_cipher_type, instance->totem_config->crypto_cipher_type);
 		strcpy(crypto_cfg.crypto_hash_type, instance->totem_config->crypto_hash_type);
 		memcpy(crypto_cfg.private_key, instance->totem_config->private_key, instance->totem_config->private_key_len);
