@@ -1476,6 +1476,7 @@ int totem_config_validate (
 	char parse_error[512];
 	const char *error_reason = local_error_reason;
 	int i,j;
+	uint32_t u32;
 	int num_configured = 0;
 	unsigned int interface_max = INTERFACE_MAX;
 
@@ -1488,6 +1489,12 @@ int totem_config_validate (
 	}
 	if (num_configured == 0) {
 		error_reason = "No interfaces defined";
+		goto parse_error;
+	}
+
+	/* Check we found a local node address */
+	if (icmap_get_uint32("nodelist.local_node_pos", &u32) != CS_OK) {
+		error_reason = "No valid address found for local host";
 		goto parse_error;
 	}
 
