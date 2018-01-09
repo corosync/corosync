@@ -164,7 +164,7 @@ class corosync_needle(ClusterManager):
         for c in self.applied_config:
             if 'bindnetaddr' in c:
                 continue
-            elif not self.config.original.has_key(c):
+            elif c not in self.config.original:
                 # new config option (non default)
                 pass
             elif self.applied_config[c] is not self.config.original[c]:
@@ -207,13 +207,13 @@ class corosync_needle(ClusterManager):
             self.install_all_config()
 
     def key_for_node(self, node):
-        if not self.node_to_ip.has_key(node):
+        if node not in self.node_to_ip:
             self.node_to_ip[node] = socket.gethostbyname (node)
         return self.node_to_ip[node]
 
     def StartaCM(self, node, verbose=False):
 
-        if not self.ShouldBeStatus.has_key(node):
+        if node not in self.ShouldBeStatus:
             self.ShouldBeStatus[node] = "down"
 
         if self.ShouldBeStatus[node] != "down":
@@ -222,19 +222,19 @@ class corosync_needle(ClusterManager):
         self.debug('starting corosync on : ' + node)
         ret = ClusterManager.StartaCM(self, node)
         if self.start_cpg:
-            if self.cpg_agent.has_key(node):
+            if node in self.cpg_agent:
                 self.cpg_agent[node].restart()
             else:
                 self.cpg_agent[node] = CpgTestAgent(node, self.Env)
                 self.cpg_agent[node].start()
 
-        if self.sam_agent.has_key(node):
+        if node in self.sam_agent:
             self.sam_agent[node].restart()
 
         # votequorum agent started as needed.
-        if self.applied_config.has_key('quorum/provider'):
+        if 'quorum/provider' in self.applied_config:
             if self.applied_config['quorum/provider'] is 'corosync_votequorum':
-                if self.votequorum_agent.has_key(node):
+                if node in self.votequorum_agent:
                     self.votequorum_agent[node].restart()
                 else:
                     self.votequorum_agent[node] = VoteQuorumTestAgent(node, self.Env)
@@ -247,11 +247,11 @@ class corosync_needle(ClusterManager):
             return 1
 
         self.debug('stoping corosync on : ' + node)
-        if self.cpg_agent.has_key(node):
+        if node in self.cpg_agent:
             self.cpg_agent[node].stop()
-        if self.sam_agent.has_key(node):
+        if node in self.sam_agent:
             self.sam_agent[node].stop()
-        if self.votequorum_agent.has_key(node):
+        if node in self.votequorum_agent:
             self.votequorum_agent[node].stop()
         return ClusterManager.StopaCM(self, node)
 
@@ -381,18 +381,18 @@ class TestAgentComponent(ScenarioComponent):
                 raise RuntimeError ("corosync not up")
 
             if self.CM.start_cpg:
-                if self.CM.cpg_agent.has_key(node):
+                if node in self.CM.cpg_agent:
                     self.CM.cpg_agent[node].clean_start()
                 else:
                     self.CM.cpg_agent[node] = CpgTestAgent(node, CM.Env)
                     self.CM.cpg_agent[node].start()
-            if self.CM.sam_agent.has_key(node):
+            if node in self.CM.sam_agent:
                 self.CM.sam_agent[node].clean_start()
             else:
                 self.CM.sam_agent[node] = SamTestAgent(node, CM.Env)
                 self.CM.sam_agent[node].start()
             # votequorum agent started as needed.
-            if self.CM.applied_config.has_key('quorum/provider'):
+            if 'quorum/provider' in self.CM.applied_config:
                 if CM.applied_config['quorum/provider'] is 'corosync_votequorum':
                     self.CM.votequorum_agent[node] = VoteQuorumTestAgent(node, CM.Env)
                     self.CM.votequorum_agent[node].start()
@@ -402,10 +402,10 @@ class TestAgentComponent(ScenarioComponent):
         '''Tear down (undo) the given ScenarioComponent'''
         self.CM = CM
         for node in self.Env["nodes"]:
-            if self.CM.cpg_agent.has_key(node):
+            if node in self.CM.cpg_agent:
                 self.CM.cpg_agent[node].stop()
             self.CM.sam_agent[node].stop()
-            if self.CM.votequorum_agent.has_key(node):
+            if node in self.CM.votequorum_agent:
                 self.CM.votequorum_agent[node].stop()
 
 ###################################################################
@@ -420,7 +420,7 @@ class TestAgent(object):
         self.started = False
         resh = RemoteFactory.rsh
         self.rsh = RemoteExec(resh)
-        self.func_name = None
+        self.__name__ = None
         self.used = False
         self.env = Env
         self.send_recv = False
@@ -445,7 +445,7 @@ class TestAgent(object):
             self.read()
             self.started = True
             return True
-        except RuntimeError, msg:
+        except RuntimeError as msg:
             self.started = False
             return False
 
@@ -465,7 +465,7 @@ class TestAgent(object):
                 retries = retries + 1
                 self.sock.connect ((ip, self.port))
                 is_connected = True
-            except socket.error, msg:
+            except socket.error as msg:
                 if retries > 10:
                     LogFactory().log("%s:%s Tried connecting %d times. %s" % (self.node, self.binary, retries, str(msg)))
                 if retries > 30:
@@ -502,9 +502,11 @@ class TestAgent(object):
             a_str = str(a)
             real_msg += ":" + str (len (a_str)) + ":" + a_str
         real_msg += ";"
+        if sys.version_info > (3,):
+            real_msg = real_msg.encode("utf8")
         try:
             return self.sock.send (real_msg)
-        except socket.error, msg:
+        except socket.error as msg:
             LogFactory().log("send(%s): %s; error: %s" % (self.node, real_msg, msg))
             return 0
 
@@ -523,7 +525,7 @@ class TestAgent(object):
         try:
             return object.__getattribute__(self, name)
         except:
-            self.func_name = name
+            self.__name__ = name
             if self.send_recv:
                 return self.send_recv_dynamic
             else:
@@ -534,9 +536,9 @@ class TestAgent(object):
 
         try:
             res = self.read ()
-        except RuntimeError, msg:
+        except RuntimeError as msg:
             res = None
-            LogFactory().log("send_recv_dynamic: %s(); error: %s" % (self.func_name, msg))
+            LogFactory().log("send_recv_dynamic: %s(); error: %s" % (self.__name__, msg))
 
         return res
 
@@ -546,15 +548,17 @@ class TestAgent(object):
             raise RuntimeError ("agent not started")
 
         # number of args+func
-        real_msg = str (len (args) + 1) + ":" + str(len(self.func_name)) + ":" + self.func_name
+        real_msg = str (len (args) + 1) + ":" + str(len(self.__name__)) + ":" + self.__name__
         for a in args:
             a_str = str(a)
             real_msg += ":" + str (len (a_str)) + ":" + a_str
         real_msg += ";"
         sent = 0
+        if sys.version_info > (3,):
+            real_msg = bytes(real_msg, encoding = "utf8")
         try:
             sent = self.sock.send (real_msg)
-        except socket.error, msg:
+        except socket.error as msg:
             LogFactory().log("send_dynamic(%s): %s; error: %s" % (self.node, real_msg, msg))
 
         if sent == 0:
@@ -565,15 +569,17 @@ class TestAgent(object):
 
         try:
             msg = self.sock.recv (4096)
-        except socket.error, msg:
+        except socket.error as msg:
             raise RuntimeError(msg)
+        if sys.version_info > (3,):
+            msg = msg.decode("utf8")
 
         if msg == '':
             raise RuntimeError("socket connection broken")
         return msg
 
 
-class CpgConfigEvent:
+class CpgConfigEvent(object):
     def __init__(self, msg):
         info = msg.split(',')
         self.group_name = info[0]

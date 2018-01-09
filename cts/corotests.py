@@ -1,3 +1,6 @@
+from __future__ import division
+from __future__ import print_function
+
 __copyright__='''
 Copyright (c) 2010 Red Hat, Inc.
 '''
@@ -34,7 +37,11 @@ Copyright (c) 2010 Red Hat, Inc.
 
 import random
 import socket
-from UserDict import UserDict
+import sys
+if sys.version_info < (3,):
+    from UserDict import UserDict
+else:
+    from collections import UserDict
 from cts.CTStests import *
 from corosync import CpgTestAgent
 
@@ -134,9 +141,9 @@ class CpgConfigChangeBase(CoroTest):
             elif self.listener is None:
                 self.listener = n
 
-        if self.CM.cpg_agent.has_key(self.wobbly):
+        if self.wobbly in self.CM.cpg_agent:
             self.wobbly_id = self.CM.cpg_agent[self.wobbly].cpg_local_get()
-        if self.CM.cpg_agent.has_key(self.listener):
+        if self.listener in self.CM.cpg_agent:
             self.CM.cpg_agent[self.listener].record_config_events(truncate=True)
 
         return ret
@@ -162,7 +169,7 @@ class CpgConfigChangeBase(CoroTest):
                     waited = waited + 1
                     printit = printit + 1
                     if printit is 60:
-                        print 'waited ' + str(waited) + ' seconds'
+                        print('waited ' + str(waited) + ' seconds')
                         printit = 0
 
             elif str(event.node_id) in str(self.wobbly_id) and not event.is_member:
@@ -318,7 +325,7 @@ class CpgCfgChgOnNodeIsolate(CpgConfigChangeBase):
         self.name="CpgCfgChgOnNodeIsolate"
 
     def config_valid(self, config):
-        if config.has_key('totem/rrp_mode'):
+        if 'totem/rrp_mode' in config:
             return False
         else:
             return True
@@ -345,12 +352,12 @@ class CpgCfgChgOnNodeRestart(CpgConfigChangeBase):
         self.CM.start_cpg = False
 
     def config_valid(self, config):
-        if config.has_key('totem/secauth'):
+        if 'totem/secauth' in config:
             if config['totem/secauth'] is 'on':
                 return False
             else:
                 return True
-        if config.has_key('totem/rrp_mode'):
+        if 'totem/rrp_mode' in config:
             return False
         else:
             return True
@@ -682,6 +689,8 @@ class QuorumState(object):
         assert(info != 'NOT_SUPPORTED')
 
         #self.CM.log('refresh: ' + info)
+        if info is None:
+            return
         params = info.split(':')
 
         self.node_votes = int(params[0])
@@ -707,9 +716,9 @@ class VoteQuorumBase(CoroTest):
         return ret
 
     def config_valid(self, config):
-        if config.has_key('totem/rrp_mode'):
+        if 'totem/rrp_mode' in config:
             return False
-        if config.has_key('quorum/provider'):
+        if 'quorum/provider' in config:
             return False
         return True
 
@@ -766,7 +775,7 @@ class VoteQuorumGoDown(VoteQuorumBase):
             if state.total_votes != nodes_alive:
                 self.failure('unexpected number of total votes:%d, nodes_alive:%d' % (state.total_votes, nodes_alive))
 
-            min = ((len(self.CM.Env["nodes"]) + 2) / 2)
+            min = int((len(self.CM.Env["nodes"]) + 2) / 2)
             if min != state.quorum:
                 self.failure('we should have %d (not %d) as quorum' % (min, state.quorum))
 
@@ -958,8 +967,8 @@ class GenSimulStart(CoroTest):
         ret = self.stopall(None)
         if not ret:
             return self.failure("Setup failed")
-
-        self.CM.clear_all_caches()
+        #clear_all_caches was removed
+        #self.CM.clear_all_caches()
 
         if not self.startall(None):
             return self.failure("Startall failed")
@@ -1112,7 +1121,7 @@ Setup: no config, kmod inserted
         self.need_all_up = False
 
     def config_valid(self, config):
-        return not config.has_key('resources')
+        return 'resources' not in config
 
     def __call__(self, node):
         '''Perform the 'NoWDConfig' test. '''
@@ -1597,7 +1606,7 @@ def CoroTestList(cm, audits):
         h['totem/interface[2]/mcastport'] = '5405'
         configs.append(h)
     else:
-        print 'Not including rrp tests. Use --rrp-binaddr to enable them.'
+        print('Not including rrp tests. Use --rrp-binaddr to enable them.')
 
     num=1
     for cfg in configs:
@@ -1605,7 +1614,7 @@ def CoroTestList(cm, audits):
             bound_test = testclass(cm)
             if bound_test.is_applicable() and bound_test.config_valid(cfg):
                 bound_test.Audits = audits
-                for c in cfg.keys():
+                for c in list(cfg.keys()):
                     bound_test.config[c] = cfg[c]
                 bound_test.name = bound_test.name + '_' + cfg.name
                 result.append(bound_test)
