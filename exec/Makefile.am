@@ -36,7 +36,7 @@ noinst_HEADERS		= apidef.h cs_queue.h logconfig.h main.h \
 			  totemnet.h totemudp.h \
 			  totemudpu.h totemsrp.h util.h vsf.h \
 			  schedwrk.h sync.h fsm.h votequorum.h vsf_ykd.h \
-			  totemknet.h stats.h
+			  totemknet.h stats.h ipcs_stats.h
 
 TOTEM_SRC		= totemip.c totemnet.c totemudp.c \
 			  totemudpu.c totemsrp.c \

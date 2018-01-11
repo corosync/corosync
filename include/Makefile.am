@@ -38,7 +38,7 @@ CS_INTERNAL_H		= ipc_cfg.h ipc_cpg.h ipc_quorum.h 	\
 			quorum.h sq.h ipc_votequorum.h ipc_cmap.h \
 			logsys.h coroapi.h icmap.h mar_gen.h swab.h
 
-TOTEM_H			= totem.h totemip.h totempg.h
+TOTEM_H			= totem.h totemip.h totempg.h totemstats.h
 
 EXTRA_DIST 		= $(noinst_HEADERS)
 
