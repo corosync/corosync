@@ -656,6 +656,8 @@ static void timer_function_netif_check_timeout (
 						     i);
 	}
 }
+
+/* NOTE: this relies on the fact that totem_reload_notify() is called first */
 static void totemknet_refresh_config(
 	int32_t event,
 	const char *key_name,
@@ -670,7 +672,6 @@ static void totemknet_refresh_config(
 	knet_node_id_t host_ids[KNET_MAX_HOST];
 	int i;
 	int err;
-	char path[ICMAP_KEYNAME_MAXLEN];
 	struct totemknet_instance *instance = (struct totemknet_instance *)user_data;
 
 	ENTER();
@@ -690,42 +691,6 @@ static void totemknet_refresh_config(
 		err = knet_handle_pmtud_setfreq(instance->knet_handle, instance->totem_config->knet_pmtud_interval);
 		if (err) {
 			KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_WARNING, "knet_handle_pmtud_setfreq failed");
-		}
-	}
-
-	/* Get link parameters */
-	for (i = 0; i < INTERFACE_MAX; i++) {
-		if (!instance->totem_config->interfaces[i].configured) {
-			continue;
-		}
-
-		sprintf(path, "totem.interface.%d.knet_link_priority", i);
-		if (icmap_get_uint32(path, &value) == CS_OK) {
-			instance->totem_config->interfaces[i].knet_link_priority = value;
-			knet_log_printf (LOGSYS_LEVEL_DEBUG, "knet_link_priority on link %d now %d", i, value);
-		}
-
-		sprintf(path, "totem.interface.%d.knet_ping_interval", i);
-		if (icmap_get_uint32(path, &value) == CS_OK) {
-			instance->totem_config->interfaces[i].knet_ping_interval = value;
-			knet_log_printf (LOGSYS_LEVEL_DEBUG, "knet_ping_interval on link %d now %d", i, value);
-		}
-
-		sprintf(path, "totem.interface.%d.knet_ping_timeout", i);
-		if (icmap_get_uint32(path, &value) == CS_OK) {
-			instance->totem_config->interfaces[i].knet_ping_timeout = value;
-			knet_log_printf (LOGSYS_LEVEL_DEBUG, "knet_ping_timeout on link %d now %d", i, value);
-		}
-		sprintf(path, "totem.interface.%d.knet_ping_precision", i);
-		if (icmap_get_uint32(path, &value) == CS_OK) {
-			instance->totem_config->interfaces[i].knet_ping_precision = value;
-			knet_log_printf (LOGSYS_LEVEL_DEBUG, "knet_ping_precision on link %d now %d", i, value);
-		}
-
-		sprintf(path, "totem.interface.%d.knet_pong_count", i);
-		if (icmap_get_uint32(path, &value) == CS_OK) {
-			instance->totem_config->interfaces[i].knet_pong_count = value;
-			knet_log_printf (LOGSYS_LEVEL_DEBUG, "knet_pong_count on link %d now %d", i, value);
 		}
 	}
 
