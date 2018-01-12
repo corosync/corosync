@@ -965,7 +965,7 @@ static int mcast_msg (
 			iovecs[2].iov_base = (void *)data_ptr;
 			iovecs[2].iov_len = max_packet_size;
 			assert (totemsrp_avail(totemsrp_context) > 0);
-			res = totemsrp_mcast (totemsrp_context, iovecs, 3, guarantee);
+			res = totemsrp_mcast (totemsrp_context, iovecs, 3, guarantee) ? 0 : -1;
 			if (res == -1) {
 				goto error_exit;
 			}
