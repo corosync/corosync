@@ -1,0 +1,24 @@
+language: c
+compiler:
+  - gcc
+before_script:
+  - git clone https://github.com/fabbione/kronosnet.git /tmp/kronosnet/
+  - pushd /tmp/kronosnet/ && ./autogen.sh && ./configure && popd
+  - make -j --directory=/tmp/kronosnet/
+  - sudo make --directory=/tmp/kronosnet/ install
+  - rm -rf /tmp/kronosnet/
+  - curl https://codeload.github.com/ClusterLabs/libqb/tar.gz/v1.0.1 | tar -xzvf - -C /tmp/
+  - pushd /tmp/libqb-1.0.1 && ./autogen.sh && ./configure && popd
+  - make -j --directory=/tmp/libqb-1.0.1
+  - sudo make --directory=/tmp/libqb-1.0.1 install
+  - rm -rf /tmp/libqb/
+script:
+  - sed -i 's/man init/init/g' Makefile.am
+  - sed -i '/man\/Makefile/d' configure.ac
+  - ./autogen.sh
+  - ./configure
+  - make -j
+  - sudo make install
+before_install:
+  - sudo apt-get update -qq
+  - sudo apt-get install -y libnss3-dev libsctp-dev
