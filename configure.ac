@@ -585,6 +585,8 @@ WARNLIST="
 	no-long-long
 	unsigned-char
 	no-strict-aliasing
+	sign-compare
+	sign-conversion
 	"
 
 for j in $WARNLIST; do
