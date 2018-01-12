@@ -89,12 +89,18 @@ mode. (see link_mode below)
 .TP
 knet_ping_interval
 This specifies the interval between knet link pings. 
-(default 1000 ms)
+knet_ping_interval and knet_ping_timeout
+are a pair, if one is specified the other should be too, otherwise one will be calculated from
+the token timeout and one will be taken from the config file.
+(default is token timeout / (knet_pong_count*2))
 
 .TP
 knet_ping_timeout
 If no ping is received within this time, the knet link is declared dead. 
-(default 2000 ms)
+knet_ping_interval and knet_ping_timeout
+are a pair, if one is specified the other should be too, otherwise one will be calculated from
+the token timeout and one will be taken from the config file.
+(default is token timeout / knet_pong_count)
 
 .TP
 knet_ping_precision

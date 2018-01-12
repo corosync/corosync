@@ -700,6 +700,38 @@ static int find_local_node_in_nodelist(struct totem_config *totem_config)
 }
 
 /*
+ * This needs to be done last of all. It would be nice to do it when reading the
+ * interface params, but the totem params need to have them to be read first. We
+ * need both, so this is a way round that circular dependancy.
+ */
+static void calc_knet_ping_timers(struct totem_config *totem_config)
+{
+	char runtime_key_name[ICMAP_KEYNAME_MAXLEN];
+	int interface;
+
+	for (interface = 0; interface < INTERFACE_MAX; interface++) {
+
+		if (totem_config->interfaces[interface].configured) {
+			if (!totem_config->interfaces[interface].knet_ping_timeout) {
+				totem_config->interfaces[interface].knet_ping_timeout =
+					totem_config->token_timeout / totem_config->interfaces[interface].knet_pong_count;
+			}
+			snprintf(runtime_key_name, sizeof(runtime_key_name),
+				 "runtime.config.totem.interface.%d.knet_ping_timeout", interface);
+			icmap_set_uint32(runtime_key_name, totem_config->interfaces[interface].knet_ping_timeout);
+
+			if (!totem_config->interfaces[interface].knet_ping_interval) {
+				totem_config->interfaces[interface].knet_ping_interval =
+					totem_config->token_timeout / (totem_config->interfaces[interface].knet_pong_count * 2);
+			}
+			snprintf(runtime_key_name, sizeof(runtime_key_name),
+				 "runtime.config.totem.interface.%d.knet_ping_interval", interface);
+			icmap_set_uint32(runtime_key_name, totem_config->interfaces[interface].knet_ping_interval);
+		}
+	}
+}
+
+/*
  * Compute difference between two set of totem interface arrays. set1 and set2
  * are changed so for same ring, ip existing in both set1 and set2 are cleared
  * (set to 0), and ips which are only in set1 or set2 remains untouched.
@@ -804,10 +836,9 @@ static void reconfigure_links(struct totem_config *totem_config)
 		/* In case this is a new link, fill in the defaults if there was no interface{} section for it */
 		if (!totem_config->interfaces[i].knet_link_priority)
 			totem_config->interfaces[i].knet_link_priority = 1;
-		if (!totem_config->interfaces[i].knet_ping_interval)
-			totem_config->interfaces[i].knet_ping_interval = KNET_PING_INTERVAL;
-		if (!totem_config->interfaces[i].knet_ping_timeout)
-			totem_config->interfaces[i].knet_ping_timeout = KNET_PING_TIMEOUT;
+
+		/* knet_ping_interval & knet_ping_timeout are set later once we know all the other params */
+
 		if (!totem_config->interfaces[i].knet_ping_precision)
 			totem_config->interfaces[i].knet_ping_precision = KNET_PING_PRECISION;
 		if (!totem_config->interfaces[i].knet_pong_count)
@@ -1103,7 +1134,16 @@ static int get_interface_params(struct totem_config *totem_config,
 
 	if (reload) {
 		for (i=0; i<INTERFACE_MAX; i++) {
+			/*
+			 * Set back to defaults things that might have been configured and
+			 * now have been taken out of corosync.conf. These won't be caught by the
+			 * code below which only looks at interface{} sections that actually exist.
+			 */
 			totem_config->interfaces[i].configured = 0;
+			totem_config->interfaces[i].knet_ping_timeout = 0;
+			totem_config->interfaces[i].knet_ping_interval = 0;
+			totem_config->interfaces[i].knet_ping_precision = KNET_PING_PRECISION;
+			totem_config->interfaces[i].knet_pong_count = KNET_PONG_COUNT;
 		}
 	}
 	if (icmap_get_string("totem.cluster_name", &cluster_name) != CS_OK) {
@@ -1228,12 +1268,12 @@ static int get_interface_params(struct totem_config *totem_config,
 			totem_config->interfaces[linknumber].knet_link_priority = u8;
 		}
 
-		totem_config->interfaces[linknumber].knet_ping_interval = KNET_PING_INTERVAL;
+		totem_config->interfaces[linknumber].knet_ping_interval = 0; /* real default applied later */
 		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.knet_ping_interval", linknumber);
 		if (icmap_get_uint32(tmp_key, &u32) == CS_OK) {
 			totem_config->interfaces[linknumber].knet_ping_interval = u32;
 		}
-		totem_config->interfaces[linknumber].knet_ping_timeout = KNET_PING_TIMEOUT;
+		totem_config->interfaces[linknumber].knet_ping_timeout = 0; /* real default applied later */
 		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.knet_ping_timeout", linknumber);
 		if (icmap_get_uint32(tmp_key, &u32) == CS_OK) {
 			totem_config->interfaces[linknumber].knet_ping_timeout = u32;
@@ -1459,6 +1499,8 @@ extern int totem_config_read (
 	 * Get things that might change in the future (and can depend on totem_config->interfaces);
 	 */
 	totem_volatile_config_read(totem_config, NULL);
+
+	calc_knet_ping_timers(totem_config);
 
 	icmap_set_uint8("config.totemconfig_reload_in_progress", 0);
 
@@ -1855,6 +1897,9 @@ static void totem_reload_notify(
 		get_interface_params(totem_config, &error_string, &warnings, 1);
 		put_nodelist_members_to_config (totem_config, 1);
 		totem_volatile_config_read (totem_config, NULL);
+
+		calc_knet_ping_timers(totem_config);
+
 		log_printf(LOGSYS_LEVEL_DEBUG, "Configuration reloaded. Dumping actual totem config.");
 		debug_dump_totem_config(totem_config);
 		if (totem_volatile_config_validate(totem_config, &error_string) == -1) {
