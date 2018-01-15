@@ -1135,9 +1135,9 @@ static int get_interface_params(struct totem_config *totem_config,
 	if (reload) {
 		for (i=0; i<INTERFACE_MAX; i++) {
 			/*
-			 * Set back to defaults, things that might have been configured and
-			 * now have been taken out, so won't be caught by the code below which
-			 * only looks at interface{} sections that actually exist.
+			 * Set back to defaults things that might have been configured and
+			 * now have been taken out of corosync.conf. These won't be caught by the
+			 * code below which only looks at interface{} sections that actually exist.
 			 */
 			totem_config->interfaces[i].configured = 0;
 			totem_config->interfaces[i].knet_ping_timeout = 0;
