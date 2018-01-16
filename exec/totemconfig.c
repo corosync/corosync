@@ -846,7 +846,7 @@ static void reconfigure_links(struct totem_config *totem_config)
 		if (!totem_config->interfaces[i].knet_transport)
 			totem_config->interfaces[i].knet_transport = KNET_TRANSPORT_UDP;
 		if (!totem_config->interfaces[i].ip_port)
-			totem_config->interfaces[i].ip_port = DEFAULT_PORT;
+			totem_config->interfaces[i].ip_port = DEFAULT_PORT + i;
 
 		totempg_iface_set(&local_ip, totem_config->interfaces[i].ip_port, i);
 	}
@@ -1226,7 +1226,7 @@ static int get_interface_params(struct totem_config *totem_config,
 				if (totem_config->broadcast_use) {
 					totem_config->interfaces[linknumber].ip_port = DEFAULT_PORT + (2 * linknumber);
 				} else {
-					totem_config->interfaces[linknumber].ip_port = DEFAULT_PORT;
+					totem_config->interfaces[linknumber].ip_port = DEFAULT_PORT + linknumber;
 				}
 			}
 

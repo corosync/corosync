@@ -1159,8 +1159,8 @@ int totemknet_member_add (
 
 	memset(&local_ss, 0, sizeof(local_ss));
 	/* Casts to remove const */
-	totemip_totemip_to_sockaddr_convert((struct totem_ip_address *)member, port+link_no, &remote_ss, &addrlen);
-	totemip_totemip_to_sockaddr_convert((struct totem_ip_address *)local, port+link_no, &local_ss, &addrlen);
+	totemip_totemip_to_sockaddr_convert((struct totem_ip_address *)member, port, &remote_ss, &addrlen);
+	totemip_totemip_to_sockaddr_convert((struct totem_ip_address *)local, port, &local_ss, &addrlen);
 	if (member->nodeid == instance->our_nodeid) {
 		err = knet_link_set_config(instance->knet_handle, member->nodeid, link_no,
 					   KNET_TRANSPORT_LOOPBACK,
