@@ -256,6 +256,8 @@ extern int _logsys_subsys_create (const char *subsys, const char *filename);
  */
 extern int logsys_thread_start (void);
 
+extern void logsys_blackbox_set(int enable);
+
 /**
  * @brief logsys_subsys_id
  */

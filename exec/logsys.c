@@ -119,6 +119,8 @@ static char *format_buffer=NULL;
 
 static int logsys_thread_started = 0;
 
+static int logsys_blackbox_enabled = 1;
+
 static int _logsys_config_subsys_get_unlocked (const char *subsys)
 {
 	unsigned int i;
@@ -309,7 +311,6 @@ int _logsys_system_setup(
 	int i;
 	int32_t fidx;
 	char tempsubsys[LOGSYS_MAX_SUBSYS_NAMELEN];
-	int blackbox_enable_res;
 
 	if ((mainsystem == NULL) ||
 	    (strlen(mainsystem) >= LOGSYS_MAX_SUBSYS_NAMELEN)) {
@@ -371,7 +372,12 @@ int _logsys_system_setup(
 			  QB_LOG_FILTER_FILE, "*", LOG_TRACE);
 	qb_log_ctl(QB_LOG_BLACKBOX, QB_LOG_CONF_SIZE, IPC_LOGSYS_SIZE);
 	qb_log_ctl(QB_LOG_BLACKBOX, QB_LOG_CONF_THREADED, QB_FALSE);
-	blackbox_enable_res = qb_log_ctl(QB_LOG_BLACKBOX, QB_LOG_CONF_ENABLED, QB_TRUE);
+
+	/*
+	 * Blackbox is disabled at the init and enabled later based
+	 * on config (logging.blackbox) value.
+	 */
+	qb_log_ctl(QB_LOG_BLACKBOX, QB_LOG_CONF_ENABLED, QB_FALSE);
 
 	if (logsys_format_set(NULL) == -1) {
 		return -1;
@@ -395,14 +401,6 @@ int _logsys_system_setup(
 			_logsys_config_mode_set_unlocked(i, logsys_loggers[i].mode);
 			_logsys_config_apply_per_subsys(i);
 		}
-	}
-
-	if (blackbox_enable_res < 0) {
-		LOGSYS_PERROR (-blackbox_enable_res, LOGSYS_LEVEL_WARNING,
-		    "Unable to initialize log flight recorder. "\
-		    "The most common cause of this error is " \
-		    "not enough space on /dev/shm. Corosync will continue work, " \
-		    "but blackbox will not be available");
 	}
 
 	pthread_mutex_unlock (&logsys_config_mutex);
@@ -767,9 +765,25 @@ static void _logsys_config_apply_per_subsys(int32_t s)
 	logsys_loggers[s].dirty = QB_FALSE;
 }
 
+static void _logsys_config_apply_blackbox(void) {
+	int blackbox_enable_res;
+
+	blackbox_enable_res = qb_log_ctl(QB_LOG_BLACKBOX, QB_LOG_CONF_ENABLED, logsys_blackbox_enabled);
+
+	if (blackbox_enable_res < 0) {
+		LOGSYS_PERROR (-blackbox_enable_res, LOGSYS_LEVEL_WARNING,
+		    "Unable to initialize log flight recorder. "\
+		    "The most common cause of this error is " \
+		    "not enough space on /dev/shm. Corosync will continue work, " \
+		    "but blackbox will not be available");
+	}
+}
+
 void logsys_config_apply(void)
 {
 	int32_t s;
+
+	_logsys_config_apply_blackbox();
 
 	for (s = 0; s <= LOGSYS_MAX_SUBSYS_COUNT; s++) {
 		if (strcmp(logsys_loggers[s].subsys, "") == 0) {
@@ -837,4 +851,14 @@ int logsys_thread_start (void)
 	logsys_thread_started = 1;
 
 	return (0);
+}
+
+void logsys_blackbox_set(int enable)
+{
+
+	pthread_mutex_lock (&logsys_config_mutex);
+
+	logsys_blackbox_enabled = enable;
+
+	pthread_mutex_unlock (&logsys_config_mutex);
 }
