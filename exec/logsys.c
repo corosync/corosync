@@ -861,3 +861,19 @@ void logsys_blackbox_set(int enable)
 
 	pthread_mutex_unlock (&logsys_config_mutex);
 }
+
+/*
+ * To set correct pid to qb blackbox filename after tty dettach (fork) we have to
+ * close (this function) and (if needed) reopen blackbox (logsys_blackbox_postfork function).
+ */
+void logsys_blackbox_prefork(void)
+{
+
+	(void)qb_log_ctl(QB_LOG_BLACKBOX, QB_LOG_CONF_ENABLED, QB_FALSE);
+}
+
+void logsys_blackbox_postfork(void)
+{
+
+	_logsys_config_apply_blackbox();
+}
