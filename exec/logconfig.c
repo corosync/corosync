@@ -127,7 +127,7 @@ static int insert_into_buffer(
 }
 
 /*
- * format set is the only global specific option that
+ * format set is global specific option that
  * doesn't apply at system/subsystem level.
  */
 static int corosync_main_config_format_set (
@@ -218,6 +218,40 @@ static int corosync_main_config_format_set (
 	if (err) {
 		error_reason = "not enough memory to set logging format buffer";
 		goto parse_error;
+	}
+
+	return (0);
+
+parse_error:
+	*error_string = error_reason;
+
+	return (-1);
+}
+
+/*
+ * blackbox is another global specific option that
+ * doesn't apply at system/subsystem level.
+ */
+static int corosync_main_config_blackbox_set (
+	const char **error_string)
+{
+	const char *error_reason;
+	char *value = NULL;
+
+	if (map_get_string("logging.blackbox", &value) == CS_OK) {
+		if (strcmp (value, "on") == 0) {
+			(void)logsys_blackbox_set(QB_TRUE);
+		} else if (strcmp (value, "off") == 0) {
+			(void)logsys_blackbox_set(QB_FALSE);
+		} else {
+			error_reason = "unknown value for blackbox";
+			free(value);
+			goto parse_error;
+		}
+
+		free(value);
+	} else {
+		(void)logsys_blackbox_set(QB_TRUE);
 	}
 
 	return (0);
@@ -519,6 +553,10 @@ static int corosync_main_config_read_logging (
 
 	/* format set is supported only for toplevel */
 	if (corosync_main_config_format_set(&error_reason) < 0) {
+		goto parse_error;
+	}
+
+	if (corosync_main_config_blackbox_set(&error_reason) < 0) {
 		goto parse_error;
 	}
 

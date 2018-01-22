@@ -225,6 +225,7 @@ static void corosync_blackbox_write_to_file (void)
 
 	if ((res = qb_log_blackbox_write_to_file(fname)) < 0) {
 		LOGSYS_PERROR(-res, LOGSYS_LEVEL_ERROR, "Can't store blackbox file");
+		return ;
 	}
 	snprintf(fdata_fname, sizeof(fdata_fname), "%s/fdata", get_run_dir());
 	unlink(fdata_fname);
