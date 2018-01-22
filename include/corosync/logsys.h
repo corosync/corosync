@@ -258,6 +258,11 @@ extern int logsys_thread_start (void);
 
 extern void logsys_blackbox_set(int enable);
 
+extern void logsys_blackbox_prefork(void);
+
+extern void logsys_blackbox_postfork(void);
+
+
 /**
  * @brief logsys_subsys_id
  */
