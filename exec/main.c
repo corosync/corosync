@@ -1460,7 +1460,13 @@ int main (int argc, char **argv, char **envp)
 	 * Now we are fully initialized.
 	 */
 	if (background) {
+		logsys_blackbox_prefork();
+
 		corosync_tty_detach ();
+
+		logsys_blackbox_postfork();
+
+		log_printf (LOGSYS_LEVEL_DEBUG, "Corosync TTY detached");
 	}
 
 	/*
