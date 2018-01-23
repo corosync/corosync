@@ -10,7 +10,6 @@
 %bcond_with monitoring
 %bcond_with snmp
 %bcond_with dbus
-%bcond_with rdma
 %bcond_with systemd
 %bcond_with upstart
 %bcond_with xmlconf
@@ -50,9 +49,6 @@ BuildRequires: autoconf automake libtool
 %if %{with monitoring}
 BuildRequires: libstatgrab-devel
 %endif
-%if %{with rdma}
-BuildRequires: libibverbs-devel librdmacm-devel
-%endif
 %if %{with snmp}
 BuildRequires: net-snmp-devel
 %endif
@@ -83,12 +79,6 @@ BuildRoot: %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 ./autogen.sh
 %endif
 
-%if %{with rdma}
-export ibverbs_CFLAGS=-I/usr/include/infiniband \
-export ibverbs_LIBS=-libverbs \
-export rdmacm_CFLAGS=-I/usr/include/rdma \
-export rdmacm_LIBS=-lrdmacm \
-%endif
 %{configure} \
 %if %{with testagents}
 	--enable-testagents \
@@ -104,9 +94,6 @@ export rdmacm_LIBS=-lrdmacm \
 %endif
 %if %{with dbus}
 	--enable-dbus \
-%endif
-%if %{with rdma}
-	--enable-rdma \
 %endif
 %if %{with systemd}
 	--enable-systemd \
