@@ -207,7 +207,6 @@ AC_CONFIG_FILES([Makefile
 		 cts/CTSvars.py
 		 tools/Makefile
 		 conf/Makefile
-		 qdevices/Makefile
 		 vqsim/Makefile
 		 Doxyfile
 		 conf/logrotate/Makefile])
@@ -405,14 +404,6 @@ AC_ARG_ENABLE([xmlconf],
 	[ enable_xmlconf="no" ])
 AM_CONDITIONAL(INSTALL_XMLCONF, test x$enable_xmlconf = xyes)
 
-AC_ARG_ENABLE([qdevices],
-	[  --enable-qdevices               : Quorum devices support ],,
-	[ enable_qdevices="no" ])
-AM_CONDITIONAL(BUILD_QDEVICES, test x$enable_qdevices = xyes)
-AC_ARG_ENABLE([qnetd],
-	[  --enable-qnetd                  : Quorum Net Daemon support ],,
-	[ enable_qnetd="no" ])
-AM_CONDITIONAL(BUILD_QNETD, test x$enable_qnetd = xyes)
 AC_ARG_ENABLE([libcgroup],
 	[  --enable-libcgroup                  : Enable libcgroup support ],,
 	[ enable_libcgroup="no" ])
@@ -494,10 +485,6 @@ if test "x${enable_xmlconf}" = xyes; then
 	PACKAGE_FEATURES="$PACKAGE_FEATURES xmlconf"
 	WITH_LIST="$WITH_LIST --with xmlconf"
 fi
-if test "x${enable_qdevices}" = xyes; then
-	PACKAGE_FEATURES="$PACKAGE_FEATURES qdevices"
-fi
-
 if test "x${enable_vqsim}" = xyes; then
 	vqsim_readline=no
 	AC_CHECK_HEADERS([readline/readline.h readline/history.h],
@@ -506,10 +493,6 @@ if test "x${enable_vqsim}" = xyes; then
 	PACKAGE_FEATURES="$PACKAGE_FEATURES vqsim"
 fi
 AM_CONDITIONAL(VQSIM_READLINE, [test "x${ac_cv_header_readline_readline_h}" = xyes])
-
-if test "x${enable_qnetd}" = xyes; then
-	PACKAGE_FEATURES="$PACKAGE_FEATURES qnetd"
-fi
 
 do_snmp=0
 if test "x${enable_snmp}" = xyes; then
