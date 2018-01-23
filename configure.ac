@@ -358,11 +358,6 @@ AC_ARG_ENABLE([systemd],
 	[ enable_systemd="no" ])
 AM_CONDITIONAL(INSTALL_SYSTEMD, test x$enable_systemd = xyes)
 
-AC_ARG_ENABLE([upstart],
-	      [  --enable-upstart                : Install upstart service files],,
-	[ enable_upstart="no" ])
-AM_CONDITIONAL(INSTALL_UPSTART, test x$enable_upstart = xyes)
-
 AC_ARG_WITH([initconfigdir],
 	[AS_HELP_STRING([--with-initconfigdir=DIR],
 		[configuration directory @<:@SYSCONFDIR/sysconfig@:>@])],
@@ -379,11 +374,6 @@ AC_ARG_WITH([systemddir],
 	[  --with-systemddir=DIR   : path to systemd unit files directory. ],
 	[ SYSTEMDDIR="$withval" ],
 	[ SYSTEMDDIR="/lib/systemd/system" ])
-
-AC_ARG_WITH([upstartdir],
-	[  --with-upstartdir=DIR   : path to upstart config files directory. ],
-	[ UPSTARTDIR="$withval" ],
-	[ UPSTARTDIR="$sysconfdir/init" ])
 
 AC_ARG_WITH([logdir],
 	[  --with-logdir=DIR       : the base directory for corosync logging files. ],
@@ -476,10 +466,6 @@ if test "x${enable_systemd}" = xyes; then
 	AC_DEFINE([HAVE_LIBSYSTEMD], [1], [have systemd interface library])
 	PACKAGE_FEATURES="$PACKAGE_FEATURES systemd"
 	WITH_LIST="$WITH_LIST --with systemd"
-fi
-if test "x${enable_upstart}" = xyes; then
-	PACKAGE_FEATURES="$PACKAGE_FEATURES upstart"
-	WITH_LIST="$WITH_LIST --with upstart"
 fi
 if test "x${enable_xmlconf}" = xyes; then
 	PACKAGE_FEATURES="$PACKAGE_FEATURES xmlconf"
@@ -706,7 +692,6 @@ fi
 AC_SUBST([BASHPATH])
 AC_SUBST([INITDDIR])
 AC_SUBST([SYSTEMDDIR])
-AC_SUBST([UPSTARTDIR])
 AC_SUBST([LOGDIR])
 AC_SUBST([LOGROTATEDIR])
 
@@ -749,7 +734,6 @@ AC_MSG_RESULT([  State information        = ${localstatedir}])
 AC_MSG_RESULT([  System configuration     = ${sysconfdir}])
 AC_MSG_RESULT([  System init.d directory  = ${INITDDIR}])
 AC_MSG_RESULT([  System systemd directory = ${SYSTEMDDIR}])
-AC_MSG_RESULT([  System upstart directory = ${UPSTARTDIR}])
 AC_MSG_RESULT([  Log directory            = ${LOGDIR}])
 AC_MSG_RESULT([  Log rotate directory     = ${LOGROTATEDIR}])
 AC_MSG_RESULT([  corosync config dir      = ${COROSYSCONFDIR}])
