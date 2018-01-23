@@ -49,7 +49,7 @@ MAINTAINERCLEANFILES	= Makefile.in aclocal.m4 configure depcomp \
 dist_doc_DATA		= LICENSE INSTALL README.recovery SECURITY AUTHORS
 
 SUBDIRS			= include common_lib lib exec tools test cts pkgconfig \
-			  man init conf qdevices vqsim
+			  man init conf vqsim
 
 coverity:
 	rm -rf cov
@@ -79,30 +79,12 @@ install-exec-local:
 	$(INSTALL) -d $(DESTDIR)/${COROSYSCONFDIR}/uidgid.d
 	$(INSTALL) -d $(DESTDIR)/${localstatedir}/lib/corosync
 	$(INSTALL) -d $(DESTDIR)/${localstatedir}/log/cluster
-if BUILD_QNETD
-	$(INSTALL) -m 770 -d $(DESTDIR)/${localstatedir}/run/corosync-qnetd
-	$(INSTALL) -m 770 -d $(DESTDIR)/${COROSYSCONFDIR}/qnetd
-endif
-if BUILD_QDEVICES
-	$(INSTALL) -m 770 -d $(DESTDIR)/${localstatedir}/run/corosync-qdevice
-	$(INSTALL) -d $(DESTDIR)/${COROSYSCONFDIR}/qdevice/
-	$(INSTALL) -m 770 -d $(DESTDIR)/${COROSYSCONFDIR}/qdevice/net
-endif
 
 uninstall-local:
 	rmdir $(DESTDIR)/${COROSYSCONFDIR}/service.d || :;
 	rmdir $(DESTDIR)/${COROSYSCONFDIR}/uidgid.d || :;
 	rmdir $(DESTDIR)/${localstatedir}/lib/corosync || :;
 	rmdir $(DESTDIR)/${localstatedir}/log/cluster || :;
-if BUILD_QNETD
-	rmdir $(DESTDIR)/${localstatedir}/run/corosync-qnetd || :;
-	rmdir $(DESTDIR)/${COROSYSCONFDIR}/qnetd || :;
-endif
-if BUILD_QDEVICES
-	rmdir $(DESTDIR)/${localstatedir}/run/corosync-qdevice || :;
-	rmdir $(DESTDIR)/${COROSYSCONFDIR}/qdevice/net || :;
-	rmdir $(DESTDIR)/${COROSYSCONFDIR}/qdevice/ || :;
-endif
 
 if AUGTOOL
 check_SCRIPTS = test_lense.sh
