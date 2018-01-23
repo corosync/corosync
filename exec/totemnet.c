@@ -37,9 +37,6 @@
 
 #include <assert.h>
 
-#ifdef HAVE_RDMA
-#include <totemiba.h>
-#endif
 #include <totemudp.h>
 #include <totemudpu.h>
 #include <totemknet.h>
