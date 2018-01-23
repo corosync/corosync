@@ -11,7 +11,6 @@
 %bcond_with snmp
 %bcond_with dbus
 %bcond_with systemd
-%bcond_with upstart
 %bcond_with xmlconf
 %bcond_with runautogen
 %bcond_with libcgroup
@@ -98,9 +97,6 @@ BuildRoot: %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 %if %{with systemd}
 	--enable-systemd \
 %endif
-%if %{with upstart}
-	--enable-upstart \
-%endif
 %if %{with xmlconf}
 	--enable-xmlconf \
 %endif
@@ -108,8 +104,7 @@ BuildRoot: %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 	--enable-libcgroup \
 %endif
 	--with-initddir=%{_initrddir} \
-	--with-systemddir=%{_unitdir} \
-	--with-upstartdir=%{_sysconfdir}/init
+	--with-systemddir=%{_unitdir}
 
 make %{_smp_mflags}
 
@@ -206,10 +201,6 @@ fi
 %else
 %{_initrddir}/corosync
 %{_initrddir}/corosync-notifyd
-%endif
-%if %{with upstart}
-%{_sysconfdir}/init/corosync.conf
-%{_sysconfdir}/init/corosync-notifyd.conf
 %endif
 %dir %{_localstatedir}/lib/corosync
 %dir %{_localstatedir}/log/cluster

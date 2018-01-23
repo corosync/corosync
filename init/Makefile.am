@@ -35,7 +35,7 @@
 MAINTAINERCLEANFILES	= Makefile.in
 
 EXTRA_DIST		= corosync.in corosync-notifyd.in corosync.service.in \
-                          corosync-notifyd.service.in corosync.conf.in corosync-notifyd.conf.in \
+                          corosync-notifyd.service.in corosync-notifyd.conf.in \
                           corosync.sysconfig.example
 
 if INSTALL_SYSTEMD
@@ -44,11 +44,6 @@ systemdconf_DATA   = corosync.service corosync-notifyd.service
 else
 initscriptdir	   = $(INITDDIR)
 initscript_SCRIPTS  = corosync corosync-notifyd
-endif
-
-if INSTALL_UPSTART
-upstartconfdir     = $(UPSTARTDIR)
-upstartconf_DATA   = corosync.conf corosync-notifyd.conf
 endif
 
 %: %.in Makefile
@@ -64,7 +59,7 @@ endif
 	    > $@-t
 	mv $@-t $@
 
-all-local: $(initscript_SCRIPTS) $(systemdconf_DATA) $(upstartconf_DATA)
+all-local: $(initscript_SCRIPTS) $(systemdconf_DATA)
 
 clean-local:
-	rm -rf $(initscript_SCRIPTS) $(systemdconf_DATA) $(upstartconf_DATA)
+	rm -rf $(initscript_SCRIPTS) $(systemdconf_DATA)
