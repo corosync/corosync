@@ -45,47 +45,11 @@ balance:~/corosync# make install
 We have strived very hard to avoid dependencies as much as possible, but there
 are two required libraries: LibQB and NSS.
 
-Optional dependencies are support for Infiniband RDMA, DBUS, SNMP and libstatgrab.
+Optional dependencies are support for DBUS, SNMP and libstatgrab.
 
 The nss packages required to build corosync can usually be found by
 installing the "nss-devel" and "nspr-devel" packages (names may vary, please use
 distribution's package manager). Also don't forget to install pkgconfig.
-
------------------------------------------
-* Building with Infiniband RDMA support *
------------------------------------------
-Infiniband RDMA build support is disabled by default.  To enable rdma during
-building:
-balance:~/corosync% ./configure --enable-rdma
-
-Infiniband rdma support requires the libibverbs and librdmacm packages (and
-their -devel counterparts).  Corosync requires the use of pkgconfig in these
-packages.  The Corosync maintainers have sent patches for this feature upstream
-to the Infiniband maintainers.
-
-If your version of these packages don't have pkgconfig support, you will see an
-error during configure such as:
-
-checking for ibverbs... configure: error: Package requirements (ibverbs) were not met:
-
-No package 'ibverbs' found
-
-Consider adjusting the PKG_CONFIG_PATH environment variable if you
-installed software in a non-standard prefix.
-
-Alternatively, you may set the environment variables ibverbs_CFLAGS
-and ibverbs_LIBS to avoid the need to call pkg-config.
-See the pkg-config man page for more details.
-
-** Follow the directions:
-balance:~/corosync/trunk% export ibverbs_CFLAGS=-I/usr/include/infiniband
-balance:~/corosync/trunk% export ibverbs_LIBS=-libverbs
-balance:~/corosync/trunk% export rdmacm_CFLAGS=-I/usr/include/rdma
-balance:~/corosync/trunk% export rdmacm_LIBS=-lrdmacm
-balance:~/corosync/trunk% ./configure --enable-rdma
-
-Hopefully pkgconfig support is added in your distribution's version of
-libibverbs and librdmacm soon if you run into this problem.
 
 -----------------------------------------
 * Building with SNMP/DBUS support *

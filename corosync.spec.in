@@ -10,13 +10,9 @@
 %bcond_with monitoring
 %bcond_with snmp
 %bcond_with dbus
-%bcond_with rdma
 %bcond_with systemd
-%bcond_with upstart
 %bcond_with xmlconf
 %bcond_with runautogen
-%bcond_with qdevices
-%bcond_with qnetd
 %bcond_with libcgroup
 
 %global gitver %{?numcomm:.%{numcomm}}%{?alphatag:.%{alphatag}}%{?dirty:.%{dirty}}
@@ -27,17 +23,12 @@ Summary: The Corosync Cluster Engine and Application Programming Interfaces
 Version: @version@
 Release: 1%{?gitver}%{?dist}
 License: BSD
-Group: System Environment/Base
 URL: http://corosync.github.io/corosync/
 Source0: http://build.clusterlabs.org/corosync/releases/%{name}-%{version}%{?gittarver}.tar.gz
 
 # Runtime bits
 # The automatic dependency overridden in favor of explicit version lock
 Requires: corosynclib%{?_isa} = %{version}-%{release}
-Requires(pre): /usr/sbin/useradd
-Requires(post): /sbin/chkconfig
-Requires(preun): /sbin/chkconfig
-Conflicts: openais <= 0.89, openais-devel <= 0.89
 
 # Build bits
 
@@ -52,9 +43,6 @@ BuildRequires: autoconf automake libtool
 %if %{with monitoring}
 BuildRequires: libstatgrab-devel
 %endif
-%if %{with rdma}
-BuildRequires: libibverbs-devel librdmacm-devel
-%endif
 %if %{with snmp}
 BuildRequires: net-snmp-devel
 %endif
@@ -62,26 +50,19 @@ BuildRequires: net-snmp-devel
 BuildRequires: dbus-devel
 %endif
 %if %{with systemd}
-BuildRequires: systemd-units
+%{?systemd_requires}
+BuildRequires: systemd
 BuildRequires: systemd-devel
-Requires(post): systemd
-Requires(preun): systemd
-Requires(postun): systemd
+%else
+Requires(post): /sbin/chkconfig
+Requires(preun): /sbin/chkconfig
 %endif
 %if %{with xmlconf}
 Requires: libxslt
 %endif
-%if %{with qdevices} || %{with qnetd}
-Requires: nss-tools
-%endif
-%if %{with qnetd}
-BuildRequires: sed
-%endif
 %if %{with libcgroup}
 BuildRequires: libcgroup-devel
 %endif
-
-BuildRoot: %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 
 %prep
 %setup -q -n %{name}-%{version}%{?gittarver}
@@ -91,12 +72,6 @@ BuildRoot: %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 ./autogen.sh
 %endif
 
-%if %{with rdma}
-export ibverbs_CFLAGS=-I/usr/include/infiniband \
-export ibverbs_LIBS=-libverbs \
-export rdmacm_CFLAGS=-I/usr/include/rdma \
-export rdmacm_LIBS=-lrdmacm \
-%endif
 %{configure} \
 %if %{with testagents}
 	--enable-testagents \
@@ -113,36 +88,21 @@ export rdmacm_LIBS=-lrdmacm \
 %if %{with dbus}
 	--enable-dbus \
 %endif
-%if %{with rdma}
-	--enable-rdma \
-%endif
 %if %{with systemd}
 	--enable-systemd \
 %endif
-%if %{with upstart}
-	--enable-upstart \
-%endif
 %if %{with xmlconf}
 	--enable-xmlconf \
-%endif
-%if %{with qdevices}
-	--enable-qdevices \
-%endif
-%if %{with qnetd}
-	--enable-qnetd \
 %endif
 %if %{with libcgroup}
 	--enable-libcgroup \
 %endif
 	--with-initddir=%{_initrddir} \
-	--with-systemddir=%{_unitdir} \
-	--with-upstartdir=%{_sysconfdir}/init
+	--with-systemddir=%{_unitdir}
 
 make %{_smp_mflags}
 
 %install
-rm -rf %{buildroot}
-
 make install DESTDIR=%{buildroot}
 
 %if %{with dbus}
@@ -164,27 +124,7 @@ install -m 644 tools/corosync-notifyd.sysconfig.example \
 install -m 644 init/corosync.sysconfig.example \
    %{buildroot}%{_sysconfdir}/sysconfig/corosync
 
-%if %{with qdevices}
-# /etc/sysconfig/corosync-qdevice
-install -m 644 init/corosync-qdevice.sysconfig.example \
-   %{buildroot}%{_sysconfdir}/sysconfig/corosync-qdevice
-%endif
-
-%if %{with qnetd}
-# /etc/sysconfig/corosync-qnetd
-install -m 644 init/corosync-qnetd.sysconfig.example \
-   %{buildroot}%{_sysconfdir}/sysconfig/corosync-qnetd
-%if %{with systemd}
-sed -i -e 's/^#User=/User=/' \
-   %{buildroot}%{_unitdir}/corosync-qnetd.service
-%else
-sed -i -e 's/^COROSYNC_QNETD_RUNAS=""$/COROSYNC_QNETD_RUNAS="coroqnetd"/' \
-   %{buildroot}%{_sysconfdir}/sysconfig/corosync-qnetd
-%endif
-%endif
-
 %clean
-rm -rf %{buildroot}
 
 %description
 This package contains the Corosync Cluster Engine Executive, several default
@@ -211,11 +151,10 @@ fi
 
 %postun
 %if %{with systemd} && 0%{?systemd_postun:1}
-%systemd_postun
+%systemd_postun corosync.service
 %endif
 
 %files
-%defattr(-,root,root,-)
 %doc LICENSE SECURITY
 %{_sbindir}/corosync
 %{_sbindir}/corosync-keygen
@@ -253,10 +192,6 @@ fi
 %{_initrddir}/corosync
 %{_initrddir}/corosync-notifyd
 %endif
-%if %{with upstart}
-%{_sysconfdir}/init/corosync.conf
-%{_sysconfdir}/init/corosync-notifyd.conf
-%endif
 %dir %{_localstatedir}/lib/corosync
 %dir %{_localstatedir}/log/cluster
 %{_mandir}/man8/corosync_overview.8*
@@ -278,7 +213,6 @@ fi
 
 %package -n corosync-testagents
 Summary: The Corosync Cluster Engine Test Agents
-Group: Development/Libraries
 Requires: %{name} = %{version}-%{release}
 
 %description -n corosync-testagents
@@ -300,13 +234,11 @@ This package contains corosync test agents.
 #
 %package -n corosynclib
 Summary: The Corosync Cluster Engine Libraries
-Group: System Environment/Libraries
 
 %description -n corosynclib
 This package contains corosync libraries.
 
 %files -n corosynclib
-%defattr(-,root,root,-)
 %doc LICENSE
 %{_libdir}/libcfg.so.*
 %{_libdir}/libcpg.so.*
@@ -323,18 +255,15 @@ This package contains corosync libraries.
 
 %package -n corosynclib-devel
 Summary: The Corosync Cluster Engine Development Kit
-Group: Development/Libraries
 Requires: corosynclib%{?_isa} = %{version}-%{release}
 Requires: pkgconfig
 Provides: corosync-devel = %{version}
-Obsoletes: corosync-devel < 0.92-7
 
 %description -n corosynclib-devel
 This package contains include files and man pages used to develop using
 The Corosync Cluster Engine APIs.
 
 %files -n corosynclib-devel
-%defattr(-,root,root,-)
 %doc LICENSE
 %dir %{_includedir}/corosync/
 %{_includedir}/corosync/corodefs.h
@@ -370,139 +299,6 @@ The Corosync Cluster Engine APIs.
 %{_mandir}/man3/cmap_*3*
 %{_mandir}/man8/cmap_overview.8*
 %{_mandir}/man8/quorum_overview.8*
-
-# optional qdevices
-#
-%if %{with qdevices}
-
-%package -n corosync-qdevice
-Summary: The Corosync Cluster Engine Qdevice
-Group: System Environment/Base
-Requires: %{name} = %{version}-%{release}
-# The automatic dependency overridden in favor of explicit version lock
-Requires: corosynclib%{?_isa} = %{version}-%{release}
-Requires: nss-tools
-
-%if %{with systemd}
-Requires(post): systemd
-Requires(preun): systemd
-Requires(postun): systemd
-%endif
-
-%description -n corosync-qdevice
-This package contains the Corosync Cluster Engine Qdevice, script for creating
-NSS certificates and an init script.
-
-%post -n corosync-qdevice
-%if %{with systemd} && 0%{?systemd_post:1}
-%systemd_post corosync-qdevice.service
-%else
-if [ $1 -eq 1 ]; then
-	/sbin/chkconfig --add corosync-qdevice || :
-fi
-%endif
-
-%preun -n corosync-qdevice
-%if %{with systemd} && 0%{?systemd_preun:1}
-%systemd_preun corosync-qdevice.service
-%else
-if [ $1 -eq 0 ]; then
-	/sbin/service corosync-qdevice stop &>/dev/null || :
-	/sbin/chkconfig --del corosync-qdevice || :
-fi
-%endif
-
-%postun -n corosync-qdevice
-%if %{with systemd} && 0%{?systemd_postun:1}
-%systemd_postun
-%endif
-
-%files -n corosync-qdevice
-%defattr(-,root,root,-)
-%dir %{_sysconfdir}/corosync/qdevice
-%dir %config(noreplace) %{_sysconfdir}/corosync/qdevice/net
-%dir %{_localstatedir}/run/corosync-qdevice
-%{_sbindir}/corosync-qdevice
-%{_sbindir}/corosync-qdevice-net-certutil
-%{_sbindir}/corosync-qdevice-tool
-%config(noreplace) %{_sysconfdir}/sysconfig/corosync-qdevice
-%if %{with systemd}
-%{_unitdir}/corosync-qdevice.service
-%else
-%{_initrddir}/corosync-qdevice
-%endif
-%{_mandir}/man8/corosync-qdevice-tool.8*
-%{_mandir}/man8/corosync-qdevice-net-certutil.8*
-%{_mandir}/man8/corosync-qdevice.8*
-%endif
-
-# optional qnetd
-#
-%if %{with qnetd}
-
-%package -n corosync-qnetd
-Summary: The Corosync Cluster Engine Qdevice Network Daemon
-Group: System Environment/Base
-Requires: nss-tools
-Requires(pre): shadow-utils
-
-%if %{with systemd}
-Requires(post): systemd
-Requires(preun): systemd
-Requires(postun): systemd
-%endif
-
-%description -n corosync-qnetd
-This package contains the Corosync Cluster Engine Qdevice Network Daemon, script for creating
-NSS certificates and an init script.
-
-%pre -n corosync-qnetd
-getent group coroqnetd >/dev/null || groupadd -r coroqnetd
-getent passwd coroqnetd >/dev/null || \
-    useradd -r -g coroqnetd -d / -s /sbin/nologin -c "User for corosync-qnetd" coroqnetd
-exit 0
-
-%post -n corosync-qnetd
-%if %{with systemd} && 0%{?systemd_post:1}
-%systemd_post corosync-qnetd.service
-%else
-if [ $1 -eq 1 ]; then
-	/sbin/chkconfig --add corosync-qnetd || :
-fi
-%endif
-
-%preun -n corosync-qnetd
-%if %{with systemd} && 0%{?systemd_preun:1}
-%systemd_preun corosync-qnetd.service
-%else
-if [ $1 -eq 0 ]; then
-	/sbin/service corosync-qnetd stop &>/dev/null || :
-	/sbin/chkconfig --del corosync-qnetd || :
-fi
-%endif
-
-%postun -n corosync-qnetd
-%if %{with systemd} && 0%{?systemd_postun:1}
-%systemd_postun
-%endif
-
-%files -n corosync-qnetd
-%defattr(-,root,root,-)
-%dir %config(noreplace) %attr(770, coroqnetd, coroqnetd) %{_sysconfdir}/corosync/qnetd
-%dir %attr(770, coroqnetd, coroqnetd) %{_localstatedir}/run/corosync-qnetd
-%{_bindir}/corosync-qnetd
-%{_bindir}/corosync-qnetd-certutil
-%{_bindir}/corosync-qnetd-tool
-%config(noreplace) %{_sysconfdir}/sysconfig/corosync-qnetd
-%if %{with systemd}
-%{_unitdir}/corosync-qnetd.service
-%else
-%{_initrddir}/corosync-qnetd
-%endif
-%{_mandir}/man8/corosync-qnetd-tool.8*
-%{_mandir}/man8/corosync-qnetd-certutil.8*
-%{_mandir}/man8/corosync-qnetd.8*
-%endif
 
 %changelog
 * @date@ Autotools generated version <nobody@nowhere.org> - @version@-1-@numcomm@.@alphatag@.@dirty@

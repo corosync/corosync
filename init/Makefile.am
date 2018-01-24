@@ -35,12 +35,8 @@
 MAINTAINERCLEANFILES	= Makefile.in
 
 EXTRA_DIST		= corosync.in corosync-notifyd.in corosync.service.in \
-                          corosync-notifyd.service.in corosync.conf.in corosync-notifyd.conf.in \
-                          corosync.sysconfig.example \
-                          corosync-qdevice.sysconfig.example corosync-qdevice.in \
-                          corosync-qdevice.service.in \
-                          corosync-qnetd.sysconfig.example corosync-qnetd.in \
-                          corosync-qnetd.service.in
+                          corosync-notifyd.service.in corosync-notifyd.conf.in \
+                          corosync.sysconfig.example
 
 if INSTALL_SYSTEMD
 systemdconfdir	   = $(SYSTEMDDIR)
@@ -48,27 +44,6 @@ systemdconf_DATA   = corosync.service corosync-notifyd.service
 else
 initscriptdir	   = $(INITDDIR)
 initscript_SCRIPTS  = corosync corosync-notifyd
-endif
-
-if BUILD_QDEVICES
-if INSTALL_SYSTEMD
-systemdconf_DATA   += corosync-qdevice.service
-else
-initscript_SCRIPTS  += corosync-qdevice
-endif
-endif
-
-if BUILD_QNETD
-if INSTALL_SYSTEMD
-systemdconf_DATA   += corosync-qnetd.service
-else
-initscript_SCRIPTS  += corosync-qnetd
-endif
-endif
-
-if INSTALL_UPSTART
-upstartconfdir     = $(UPSTARTDIR)
-upstartconf_DATA   = corosync.conf corosync-notifyd.conf
 endif
 
 %: %.in Makefile
@@ -84,7 +59,7 @@ endif
 	    > $@-t
 	mv $@-t $@
 
-all-local: $(initscript_SCRIPTS) $(systemdconf_DATA) $(upstartconf_DATA)
+all-local: $(initscript_SCRIPTS) $(systemdconf_DATA)
 
 clean-local:
-	rm -rf $(initscript_SCRIPTS) $(systemdconf_DATA) $(upstartconf_DATA)
+	rm -rf $(initscript_SCRIPTS) $(systemdconf_DATA)

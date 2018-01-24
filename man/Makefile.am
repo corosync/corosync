@@ -37,14 +37,6 @@ MAINTAINERCLEANFILES	= Makefile.in
 xml_man			= corosync-xmlproc.8 \
 			  corosync.xml.5
 
-qnetd_man		= corosync-qnetd-tool.8 \
-                          corosync-qnetd-certutil.8 \
-                          corosync-qnetd.8
-
-qdevices_man		= corosync-qdevice-tool.8 \
-                          corosync-qdevice-net-certutil.8 \
-                          corosync-qdevice.8
-
 INDEX_HTML		= index.html
 
 autogen_man		= cpg_context_get.3 \
@@ -124,8 +116,6 @@ autogen_common		= ipc_common.sh.errors
 
 EXTRA_DIST		= $(INDEX_HTML) \
 			  $(xml_man) \
-			  $(qnetd_man) \
-			  $(qdevices_man) \
 			  $(autogen_man:%=%.in) \
 			  $(autogen_common)
 
@@ -151,14 +141,6 @@ dist_man_MANS 		= corosync.conf.5 \
 
 if INSTALL_XMLCONF
 dist_man_MANS		+= $(xml_man)
-endif
-
-if BUILD_QNETD
-dist_man_MANS		+= $(qnetd_man)
-endif
-
-if BUILD_QDEVICES
-dist_man_MANS		+= $(qdevices_man)
 endif
 
 HTML_DOCS 		= $(dist_man_MANS:%=%.html) $(man_MANS:%=%.html)
