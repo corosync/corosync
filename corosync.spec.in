@@ -23,17 +23,12 @@ Summary: The Corosync Cluster Engine and Application Programming Interfaces
 Version: @version@
 Release: 1%{?gitver}%{?dist}
 License: BSD
-Group: System Environment/Base
 URL: http://corosync.github.io/corosync/
 Source0: http://build.clusterlabs.org/corosync/releases/%{name}-%{version}%{?gittarver}.tar.gz
 
 # Runtime bits
 # The automatic dependency overridden in favor of explicit version lock
 Requires: corosynclib%{?_isa} = %{version}-%{release}
-Requires(pre): /usr/sbin/useradd
-Requires(post): /sbin/chkconfig
-Requires(preun): /sbin/chkconfig
-Conflicts: openais <= 0.89, openais-devel <= 0.89
 
 # Build bits
 
@@ -55,11 +50,12 @@ BuildRequires: net-snmp-devel
 BuildRequires: dbus-devel
 %endif
 %if %{with systemd}
-BuildRequires: systemd-units
+%{?systemd_requires}
+BuildRequires: systemd
 BuildRequires: systemd-devel
-Requires(post): systemd
-Requires(preun): systemd
-Requires(postun): systemd
+%else
+Requires(post): /sbin/chkconfig
+Requires(preun): /sbin/chkconfig
 %endif
 %if %{with xmlconf}
 Requires: libxslt
@@ -67,8 +63,6 @@ Requires: libxslt
 %if %{with libcgroup}
 BuildRequires: libcgroup-devel
 %endif
-
-BuildRoot: %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 
 %prep
 %setup -q -n %{name}-%{version}%{?gittarver}
@@ -109,8 +103,6 @@ BuildRoot: %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 make %{_smp_mflags}
 
 %install
-rm -rf %{buildroot}
-
 make install DESTDIR=%{buildroot}
 
 %if %{with dbus}
@@ -133,7 +125,6 @@ install -m 644 init/corosync.sysconfig.example \
    %{buildroot}%{_sysconfdir}/sysconfig/corosync
 
 %clean
-rm -rf %{buildroot}
 
 %description
 This package contains the Corosync Cluster Engine Executive, several default
@@ -160,11 +151,10 @@ fi
 
 %postun
 %if %{with systemd} && 0%{?systemd_postun:1}
-%systemd_postun
+%systemd_postun corosync.service
 %endif
 
 %files
-%defattr(-,root,root,-)
 %doc LICENSE SECURITY
 %{_sbindir}/corosync
 %{_sbindir}/corosync-keygen
@@ -223,7 +213,6 @@ fi
 
 %package -n corosync-testagents
 Summary: The Corosync Cluster Engine Test Agents
-Group: Development/Libraries
 Requires: %{name} = %{version}-%{release}
 
 %description -n corosync-testagents
@@ -245,13 +234,11 @@ This package contains corosync test agents.
 #
 %package -n corosynclib
 Summary: The Corosync Cluster Engine Libraries
-Group: System Environment/Libraries
 
 %description -n corosynclib
 This package contains corosync libraries.
 
 %files -n corosynclib
-%defattr(-,root,root,-)
 %doc LICENSE
 %{_libdir}/libcfg.so.*
 %{_libdir}/libcpg.so.*
@@ -268,18 +255,15 @@ This package contains corosync libraries.
 
 %package -n corosynclib-devel
 Summary: The Corosync Cluster Engine Development Kit
-Group: Development/Libraries
 Requires: corosynclib%{?_isa} = %{version}-%{release}
 Requires: pkgconfig
 Provides: corosync-devel = %{version}
-Obsoletes: corosync-devel < 0.92-7
 
 %description -n corosynclib-devel
 This package contains include files and man pages used to develop using
 The Corosync Cluster Engine APIs.
 
 %files -n corosynclib-devel
-%defattr(-,root,root,-)
 %doc LICENSE
 %dir %{_includedir}/corosync/
 %{_includedir}/corosync/corodefs.h
