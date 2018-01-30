@@ -171,6 +171,8 @@ static const char *corosync_lock_file = LOCALSTATEDIR"/run/corosync.pid";
 
 static int ip_version = AF_INET;
 
+static volatile sig_atomic_t corosync_child_ready;
+
 qb_loop_t *cs_poll_handle_get (void)
 {
 	return (corosync_poll_handle);
@@ -415,15 +417,38 @@ static void priv_drop (void)
 	return; /* TODO: we are still not dropping privs */
 }
 
+static void corosync_handle_child_ready(int signo) {
+	corosync_child_ready = 1;
+}
+
 static void corosync_tty_detach (void)
 {
 	int devnull;
+	int32_t qb_ret;
+	pid_t workpid;
+	sigset_t sig_blocked, sig_orig;
 
 	/*
-	 * Disconnect from TTY if this is not a debug run
+	 * Disconnect from TTY if this is not a debug run.
+	 * Because there's a danger that now-released main PID will get picked
+	 * by new corosync process (e.g. just with -v switch) and the blackbox
+	 * with the aliasing /dev/shm file storage is hence used anew, stepping
+	 * therefore on the toes of the running daemon and making it possibly
+	 * crash, we synchronize post-fork (so that there's no chance the parent
+	 * exits earlier than we are ready for in the child) and tell libqb to
+	 * either start a new blackbox (applies with unpatched libqb) or just
+	 * rename the respective file reflecting the new pid (with patched one).
+	 * Preconditions: SIGUSR1 is not used for any other purpose this early.
 	 */
+	if (sigemptyset(&sig_blocked) != 0
+	    || sigaddset(&sig_blocked, SIGUSR1) != 0
+	    || sigprocmask(SIG_BLOCK, &sig_blocked, &sig_orig) != 0) {
+		LOGSYS_PERROR(errno, LOGSYS_LEVEL_ERROR,
+		              "Couldn't arrange signal handling around forking");
+		corosync_exit_error (COROSYNC_DONE_FATAL_ERR);
+	}
 
-	switch (fork ()) {
+	switch ((workpid = fork())) {
 		case -1:
 			corosync_exit_error (COROSYNC_DONE_FORK);
 			break;
@@ -431,8 +456,21 @@ static void corosync_tty_detach (void)
 			/*
 			 * child which is disconnected, run this process
 			 */
+			sigprocmask(SIG_SETMASK, &sig_orig, NULL);
+			workpid = getppid();
 			break;
 		default:
+			signal(SIGUSR1, corosync_handle_child_ready);
+			do {
+				sigsuspend(&sig_orig);
+				if (corosync_child_ready) {
+					break;
+				}
+			} while (kill(workpid, 0) == 0);
+			if (!corosync_child_ready) {
+				log_printf(LOGSYS_LEVEL_ERROR, "Child died unexpectedly upon fork");
+				corosync_exit_error (COROSYNC_DONE_FATAL_ERR);
+			}
 			exit (0);
 			break;
 	}
@@ -454,6 +492,32 @@ static void corosync_tty_detach (void)
 		corosync_exit_error (COROSYNC_DONE_STD_TO_NULL_REDIR);
 	}
 	close(devnull);
+
+	/*
+	 * Use the fact that patched libqb will return 1 when QB_LOG_CONF_SIZE
+	 * is being controlled on QB_LOG_BLACKBOX such that the original equals
+	 * new value AND, in turn, the shared-memory materialized file has been
+	 * possibly renamed to reflect the change in PID of the calling process.
+	 * If that isn't the case (unpatched libqb), resort to full off-on cycle
+	 * resulting in the loss of trace items so far.  Then signal to the
+	 * parent that it can proceed with exiting, safe from PID-based races.
+	 */
+	qb_ret = qb_log_ctl(QB_LOG_BLACKBOX, QB_LOG_CONF_SIZE, IPC_LOGSYS_SIZE);
+	if (qb_ret == 1) {
+		/* we are done */
+	} else if (qb_ret < 0
+	           || (qb_ret = qb_log_ctl(QB_LOG_BLACKBOX, QB_LOG_CONF_ENABLED, QB_FALSE)) < 0
+	           || (qb_ret = qb_log_ctl(QB_LOG_BLACKBOX, QB_LOG_CONF_ENABLED, QB_TRUE)) < 0) {
+		LOGSYS_PERROR (-qb_ret, LOGSYS_LEVEL_WARNING,
+		    "Unable to reinitialize log flight recorder. " \
+		    "The most common cause of this error is " \
+		    "not enough space on /dev/shm. Corosync will continue work, " \
+		    "but blackbox will not be available");
+	}
+
+	if (workpid != 1 && workpid == getppid()) {
+		kill(workpid, SIGUSR1);
+	}
 }
 
 static void corosync_mlockall (void)
