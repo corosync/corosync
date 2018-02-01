@@ -185,7 +185,7 @@ static int32_t _cs_ip_to_hostname(char* ip, char* name_out)
 	rc = getnameinfo((struct sockaddr*)&sa, sizeof(sa),
 			name_out, CS_MAX_NAME_LENGTH, NULL, 0, 0);
 	if (rc != 0) {
-		qb_log(LOG_ERR, 0, "error looking up %s : %s", ip, gai_strerror(rc));
+		qb_log(LOG_ERR, "error looking up %s : %s", ip, gai_strerror(rc));
 		return -EINVAL;
 	}
 	return 0;
@@ -214,6 +214,10 @@ static void _cs_cmap_members_key_changed (
 		return ;
 	}
 
+	if (NULL == key_name) {
+		qb_log(LOG_ERR, "key_name: nil");
+	}
+
 	res = sscanf(key_name, "runtime.totem.pg.mrp.srp.members.%u.%s", &nodeid, tmp_key);
 	if (res != 2)
 		return ;
@@ -222,7 +226,11 @@ static void _cs_cmap_members_key_changed (
 		return ;
 	}
 
-	snprintf(tmp_key, CMAP_KEYNAME_MAXLEN, "runtime.totem.pg.mrp.srp.members.%u.ip", nodeid);
+	res = snprintf(tmp_key, CMAP_KEYNAME_MAXLEN, "runtime.totem.pg.mrp.srp.members.%u.ip", nodeid);
+	if (res <= 0 || res >= CMAP_KEYNAME_MAXLEN) {
+		qb_log(LOG_ERR, "temp_key: failed, res: %d, nodeid: %u", res, nodeid);
+		return ;
+	}
 	no_retries = 0;
 	while ((err = cmap_get_string(cmap_handle, tmp_key, &ip_str)) == CS_ERR_TRY_AGAIN &&
 			no_retries++ < CMAP_MAX_RETRIES) {
@@ -236,10 +244,23 @@ static void _cs_cmap_members_key_changed (
 	 * We want the ip out of: "r(0) ip(192.168.100.92)"
 	 */
 	open_bracket = strrchr(ip_str, '(');
+	if (NULL == open_bracket) {
+		qb_log(LOG_ERR, "ip_str: %s", ip_str);
+		free(ip_str);
+		return ;
+	}
 	open_bracket++;
-	close_bracket = strrchr(open_bracket, ')');
+	close_bracket = strchr(open_bracket, ')');
+	if (NULL == close_bracket) {
+		qb_log(LOG_ERR, "open_bracket: %s", open_bracket);
+		free(ip_str);
+		return ;
+	}
 	*close_bracket = '\0';
-	_cs_ip_to_hostname(open_bracket, nodename);
+	res = _cs_ip_to_hostname(open_bracket, nodename);
+	if (res) {
+		strncpy(nodename, open_bracket, CS_MAX_NAME_LENGTH-1);
+	}
 
 	_cs_node_membership_event(nodename, nodeid, (char *)new_value.data, open_bracket);
 	free(ip_str);
