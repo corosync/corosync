@@ -42,6 +42,8 @@ if INSTALL_XMLCONF
 bin_SCRIPTS		+= corosync-xmlproc
 endif
 
+AM_CFLAGS		= $(knet_CFLAGS)
+
 EXTRA_DIST		= $(bin_SCRIPTS) corosync-xmlproc.sh \
 			  corosync-notifyd.sysconfig.example \
                           corosync-blackbox.sh

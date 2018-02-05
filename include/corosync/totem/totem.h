@@ -35,7 +35,7 @@
 #ifndef TOTEM_H_DEFINED
 #define TOTEM_H_DEFINED
 #include "totemip.h"
-#include "libknet.h"
+#include <libknet.h>
 #include <corosync/hdb.h>
 #include <corosync/totem/totemstats.h>
 

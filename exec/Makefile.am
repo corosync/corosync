@@ -67,7 +67,7 @@ endif
 
 corosync_CPPFLAGS	= -DLOGCONFIG_USE_ICMAP=1
 
-corosync_CFLAGS         = $(statgrab_CFLAGS) $(libsystemd_CFLAGS)
+corosync_CFLAGS         = $(statgrab_CFLAGS) $(libsystemd_CFLAGS) $(knet_CFLAGS)
 
 corosync_LDADD		= libtotem_pg.la ../common_lib/libcorosync_common.la \
 			  $(LIBQB_LIBS) $(statgrab_LIBS) $(libsystemd_LIBS)
