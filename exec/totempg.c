@@ -915,7 +915,7 @@ static int mcast_msg (
 		 * fragment_buffer on exit so that max_packet_size + fragment_size
 		 * doesn't exceed the size of the fragment_buffer on the next call.
 		 */
-		if ((copy_len + fragment_size) <
+		if ((iovec[i].iov_len + fragment_size) <
 			(max_packet_size - sizeof (unsigned short))) {
 
 			memcpy (&fragmentation_data[fragment_size],
@@ -973,7 +973,7 @@ static int mcast_msg (
 			iovecs[1].iov_len = mcast_packed_msg_count *
 				sizeof(unsigned short);
 			iovecs[2].iov_base = (void *)data_ptr;
-			iovecs[2].iov_len = max_packet_size;
+			iovecs[2].iov_len = fragment_size + copy_len;
 			assert (totemmrp_avail() > 0);
 			res = totemmrp_mcast (iovecs, 3, guarantee);
 			if (res == -1) {
