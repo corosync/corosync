@@ -909,9 +909,9 @@ static int mcast_msg (
 			(max_packet_size - sizeof (unsigned short))) {
 
 			memcpy (&fragmentation_data[fragment_size],
-				(char *)iovec[i].iov_base + copy_base, iovec[i].iov_len);
-			fragment_size += iovec[i].iov_len;
-			mcast_packed_msg_lens[mcast_packed_msg_count] += iovec[i].iov_len;
+				(char *)iovec[i].iov_base + copy_base, copy_len);
+			fragment_size += copy_len;
+			mcast_packed_msg_lens[mcast_packed_msg_count] += copy_len;
 			next_fragment = 1;
 			copy_len = 0;
 			copy_base = 0;
