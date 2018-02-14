@@ -32,8 +32,14 @@ Requires: corosynclib%{?_isa} = %{version}-%{release}
 
 # Build bits
 
+# OpenSUSE needs groff-full to build html documentation,
+# but there is no clean way to express it here.
 BuildRequires: groff
 BuildRequires: libqb-devel
+# Use file based depedency to allow upstream spec file to
+# build on OpenSUSE since package name differs with Fedora/RHEL/Centos
+# and only recent versions of rpm supports BuildRequires: foo || bar
+# BuildRequires: nss-devel || mozilla-nss-devel
 BuildRequires: /usr/include/nss3/nss.h /usr/include/nspr4/nspr.h
 BuildRequires: libknet1-devel
 BuildRequires: zlib-devel
@@ -47,6 +53,10 @@ BuildRequires: libstatgrab-devel
 BuildRequires: net-snmp-devel
 %endif
 %if %{with dbus}
+# Use file based depedency to allow upstream spec file to
+# build on OpenSUSE since package name differs with Fedora/RHEL/Centos
+# and only recent versions of rpm supports BuildRequires: foo || bar
+# BuildRequires: dbus-devel || dbus-1-devel
 BuildRequires: /usr/include/dbus-1.0/dbus/dbus.h
 %endif
 %if %{with systemd}
