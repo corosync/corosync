@@ -34,7 +34,7 @@ Requires: corosynclib%{?_isa} = %{version}-%{release}
 
 BuildRequires: groff
 BuildRequires: libqb-devel
-BuildRequires: nss-devel
+BuildRequires: /usr/include/nss3/nss.h /usr/include/nspr4/nspr.h
 BuildRequires: libknet1-devel
 BuildRequires: zlib-devel
 %if %{with runautogen}
@@ -47,7 +47,7 @@ BuildRequires: libstatgrab-devel
 BuildRequires: net-snmp-devel
 %endif
 %if %{with dbus}
-BuildRequires: dbus-devel
+BuildRequires: /usr/include/dbus-1.0/dbus/dbus.h
 %endif
 %if %{with systemd}
 %{?systemd_requires}
@@ -98,7 +98,8 @@ BuildRequires: libcgroup-devel
 	--enable-libcgroup \
 %endif
 	--with-initddir=%{_initrddir} \
-	--with-systemddir=%{_unitdir}
+	--with-systemddir=%{_unitdir} \
+	--docdir=%{_docdir}
 
 make %{_smp_mflags}
 
