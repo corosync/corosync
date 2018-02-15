@@ -279,7 +279,7 @@ static const char *node_name_by_nodelist(uint32_t nodeid)
 			continue;
 		}
 
-		if (strcmp(tmp_key, "ring0_addr") != 0) {
+		if (strcmp(tmp_key, "nodeid") != 0) {
 			continue;
 		}
 
@@ -290,7 +290,7 @@ static const char *node_name_by_nodelist(uint32_t nodeid)
 		if (cur_nodeid != nodeid) {
 			continue;
 		}
-		snprintf(tmp_key, CMAP_KEYNAME_MAXLEN, "nodelist.node.%u.ring0_addr", node_pos);
+		snprintf(tmp_key, CMAP_KEYNAME_MAXLEN, "nodelist.node.%u.name", node_pos);
 		if (cmap_get_string(cmap_handle, tmp_key, &str) != CS_OK) {
 			continue;
 		}

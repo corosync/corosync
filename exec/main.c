@@ -623,14 +623,14 @@ int main_mcast (
 
 static void corosync_ring_id_create_or_load (
 	struct memb_ring_id *memb_ring_id,
-	const struct totem_ip_address *addr)
+	unsigned int nodeid)
 {
 	int fd;
 	int res = 0;
 	char filename[PATH_MAX];
 
-	snprintf (filename, sizeof(filename), "%s/ringid_%s",
-		get_run_dir(), totemip_print (addr));
+	snprintf (filename, sizeof(filename), "%s/ringid_%u",
+		get_run_dir(), nodeid);
 	fd = open (filename, O_RDONLY, 0700);
 	/*
 	 * If file can be opened and read, read the ring id
@@ -663,20 +663,19 @@ static void corosync_ring_id_create_or_load (
 		}
 	}
 
-	totemip_copy(&memb_ring_id->rep, addr);
-	assert (!totemip_zero_check(&memb_ring_id->rep));
+	memb_ring_id->rep = nodeid;
 }
 
 static void corosync_ring_id_store (
 	const struct memb_ring_id *memb_ring_id,
-	const struct totem_ip_address *addr)
+	unsigned int nodeid)
 {
 	char filename[PATH_MAX];
 	int fd;
 	int res;
 
-	snprintf (filename, sizeof(filename), "%s/ringid_%s",
-		get_run_dir(), totemip_print (addr));
+	snprintf (filename, sizeof(filename), "%s/ringid_%u",
+		get_run_dir(), nodeid);
 
 	fd = open (filename, O_WRONLY, 0700);
 	if (fd == -1) {

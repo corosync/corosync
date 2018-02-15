@@ -112,7 +112,7 @@ extern void totemudp_net_mtu_adjust (void *udp_context, struct totem_config *tot
 
 extern int totemudp_token_target_set (
 	void *udp_context,
-	const struct totem_ip_address *token_target);
+	unsigned int nodeid);
 
 extern int totemudp_crypto_set (
 	void *udp_context,
@@ -121,6 +121,17 @@ extern int totemudp_crypto_set (
 
 extern int totemudp_recv_mcast_empty (
 	void *udp_context);
+
+extern int totemudp_member_add (
+	void *udpu_context,
+	const struct totem_ip_address *local,
+	const struct totem_ip_address *member,
+	int ring_no);
+
+extern int totemudp_member_remove (
+	void *udpu_context,
+	const struct totem_ip_address *member,
+	int ring_no);
 
 extern int totemudp_reconfigure (
 	void *udp_context,

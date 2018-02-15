@@ -129,7 +129,7 @@ extern int totemnet_ifaces_get (
 
 extern int totemnet_token_target_set (
 	void *net_context,
-	const struct totem_ip_address *token_target);
+	unsigned int target_nodeid);
 
 extern int totemnet_crypto_set (
 	void *net_context,

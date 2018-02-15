@@ -137,7 +137,7 @@ typedef enum {
 
 #define MEMB_RING_ID
 struct memb_ring_id {
-	struct totem_ip_address rep;
+	unsigned int rep;
 	unsigned long long seq;
 } __attribute__((packed));
 
@@ -225,11 +225,11 @@ struct totem_config {
 
 	void (*totem_memb_ring_id_create_or_load) (
 	    struct memb_ring_id *memb_ring_id,
-	    const struct totem_ip_address *addr);
+	    unsigned int nodeid);
 
 	void (*totem_memb_ring_id_store) (
 	    const struct memb_ring_id *memb_ring_id,
-	    const struct totem_ip_address *addr);
+	    unsigned int nodeid);
 };
 
 #define TOTEM_CONFIGURATION_TYPE

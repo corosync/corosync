@@ -957,16 +957,27 @@ extern void totemudpu_net_mtu_adjust (void *udpu_context, struct totem_config *t
 
 int totemudpu_token_target_set (
 	void *udpu_context,
-	const struct totem_ip_address *token_target)
+	unsigned int nodeid)
 {
+
 	struct totemudpu_instance *instance = (struct totemudpu_instance *)udpu_context;
+	struct qb_list_head *list;
+	struct totemudpu_member *member;
 	int res = 0;
 
-	memcpy (&instance->token_target, token_target,
-		sizeof (struct totem_ip_address));
+	qb_list_for_each(list, &(instance->member_list)) {
+		member = qb_list_entry (list,
+			struct totemudpu_member,
+			list);
 
-	instance->totemudpu_target_set_completed (instance->context);
+		if (member->member.nodeid == nodeid) {
+			memcpy (&instance->token_target, &member->member,
+				sizeof (struct totem_ip_address));
 
+			instance->totemudpu_target_set_completed (instance->context);
+			break;
+		}
+	}
 	return (res);
 }
 

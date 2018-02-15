@@ -45,9 +45,12 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <ifaddrs.h>
+#include <netdb.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <sys/param.h>
+#include <sys/utsname.h>
 
 #include <corosync/swab.h>
 #include <qb/qblist.h>
@@ -462,6 +465,267 @@ static int totem_get_crypto(struct totem_config *totem_config, const char **erro
 	return 0;
 }
 
+static int nodelist_byname(const char *find_name, int strip_domain)
+{
+	icmap_iter_t iter;
+	const char *iter_key;
+	char name_str[ICMAP_KEYNAME_MAXLEN];
+	int res = 0;
+	unsigned int node_pos;
+	char *name;
+	unsigned int namelen;
+
+	iter = icmap_iter_init("nodelist.node.");
+	while ((iter_key = icmap_iter_next(iter, NULL, NULL)) != NULL) {
+		res = sscanf(iter_key, "nodelist.node.%u.%s", &node_pos, name_str);
+		if (res != 2) {
+			continue;
+		}
+		if (strcmp(name_str, "name")) {
+			continue;
+		}
+		if (icmap_get_string(iter_key, &name) != CS_OK) {
+			continue;
+		}
+		namelen = strlen(name);
+
+		if (strip_domain) {
+			char *dot;
+			dot = strchr(name, '.');
+			if (dot) {
+				namelen = name - dot - 1;
+			}
+		}
+		if (strncmp(find_name, name, namelen) == 0 &&
+		    strlen(find_name) == strlen(name)) {
+			icmap_iter_finalize(iter);
+			return node_pos;
+		}
+	}
+	icmap_iter_finalize(iter);
+	return -1;
+}
+
+/* Compare two addresses */
+static int ipaddr_equal(struct sockaddr_storage *addr1, struct sockaddr_storage *addr2)
+{
+	int addrlen = 0;
+
+	if (addr1->ss_family != addr2->ss_family)
+		return 0;
+
+	if (addr1->ss_family == AF_INET) {
+		addrlen = sizeof(struct sockaddr_in);
+	}
+	if (addr1->ss_family == AF_INET6) {
+		addrlen = sizeof(struct sockaddr_in6);
+	}
+	assert(addrlen);
+
+	if (memcmp(addr1, addr2, addrlen) == 0)
+		return 1;
+	else
+		return 0;
+
+}
+
+
+/* Finds the local node and returns its position in the nodelist.
+ * Uses nodelist.local_node_pos as a cache to save effort
+ */
+static int find_local_node(int use_cache)
+{
+	char nodename2[PATH_MAX];
+	char name_str[ICMAP_KEYNAME_MAXLEN];
+	icmap_iter_t iter;
+	const char *iter_key;
+	unsigned int cached_pos;
+	char *dot = NULL;
+	const char *node;
+	struct ifaddrs *ifa, *ifa_list;
+	struct sockaddr *sa;
+	int found = 0;
+	int node_pos = -1;
+	int res;
+	struct utsname utsname;
+
+	/* Check for cached value first */
+	if (use_cache) {
+		if (icmap_get_uint32("nodelist.local_node_pos", &cached_pos) == CS_OK) {
+			return cached_pos;
+		}
+	}
+
+	res = uname(&utsname);
+	if (res) {
+		return -1;
+	}
+	node = utsname.nodename;
+
+	/* 1. Exact match */
+	node_pos = nodelist_byname(node, 0);
+	if (node_pos > -1) {
+		found = 1;
+		goto ret_found;
+	}
+
+	/* 2. Try to match with increasingly more
+	 * specific versions of it
+	 */
+	strcpy(nodename2, node);
+	dot = strrchr(nodename2, '.');
+	while (dot) {
+		*dot = '\0';
+
+		node_pos = nodelist_byname(nodename2, 0);
+		if (node_pos > -1) {
+			found = 1;
+			goto ret_found;
+		}
+		dot = strrchr(nodename2, '.');
+	}
+
+	node_pos = nodelist_byname(nodename2, 1);
+	if (node_pos > -1) {
+		found = 1;
+		goto ret_found;
+	}
+
+	/*
+	 * The corosync.conf name may not be related to uname at all,
+	 * they may match a hostname on some network interface.
+	 */
+	if (getifaddrs(&ifa_list))
+		return -1;
+
+	for (ifa = ifa_list; ifa; ifa = ifa->ifa_next) {
+		socklen_t salen = 0;
+
+		/* Restore this */
+		strcpy(nodename2, node);
+		sa = ifa->ifa_addr;
+		if (!sa) {
+			continue;
+		}
+		if (sa->sa_family != AF_INET && sa->sa_family != AF_INET6) {
+			continue;
+		}
+
+		if (sa->sa_family == AF_INET) {
+			salen = sizeof(struct sockaddr_in);
+		}
+		if (sa->sa_family == AF_INET6) {
+			salen = sizeof(struct sockaddr_in6);
+		}
+
+		if (getnameinfo(sa, salen,
+				nodename2, sizeof(nodename2),
+				NULL, 0, 0) == 0) {
+
+			node_pos = nodelist_byname(nodename2, 0);
+			if (node_pos > -1) {
+				found = 1;
+				goto out;
+			}
+
+			/* Truncate this name and try again */
+			dot = strchr(nodename2, '.');
+			if (dot) {
+				*dot = '\0';
+
+				node_pos = nodelist_byname(nodename2, 0);
+				if (node_pos > -1) {
+					found = 1;
+					goto out;
+				}
+			}
+		}
+
+		/* See if it's the IP address that's in corosync.conf */
+		if (getnameinfo(sa, sizeof(*sa),
+				nodename2, sizeof(nodename2),
+				NULL, 0, NI_NUMERICHOST))
+			continue;
+
+		node_pos = nodelist_byname(nodename2, 0);
+		if (node_pos > -1) {
+			found = 1;
+			goto out;
+		}
+	}
+
+ out:
+	if (found) {
+		freeifaddrs(ifa_list);
+		goto ret_found;
+	}
+
+	/*
+	 * This section covers the usecase where the nodename specified in cluster.conf
+	 * is an alias specified in /etc/hosts. For example:
+	 * <ipaddr> hostname alias1 alias2
+	 * and <clusternode name="alias2">
+	 * the above calls use uname and getnameinfo does not return aliases.
+	 * here we take the name specified in cluster.conf, resolve it to an address
+	 * and then compare against all known local ip addresses.
+	 * if we have a match, we found our nodename. In theory this chunk of code
+	 * could replace all the checks above, but let's avoid any possible regressions
+	 * and use it as last.
+	 */
+
+	iter = icmap_iter_init("nodelist.node.");
+	while ((iter_key = icmap_iter_next(iter, NULL, NULL)) != NULL) {
+		char *dbnodename = NULL;
+		struct addrinfo hints;
+		struct addrinfo *result = NULL, *rp = NULL;
+
+		res = sscanf(iter_key, "nodelist.node.%u.%s", &node_pos, name_str);
+		if (res != 2) {
+			continue;
+		}
+		if (strcmp(name_str, "name")) {
+			continue;
+		}
+		if (icmap_get_string(iter_key, &dbnodename) != CS_OK) {
+			continue;
+		}
+
+		memset(&hints, 0, sizeof(struct addrinfo));
+		hints.ai_family = AF_UNSPEC;
+		hints.ai_socktype = SOCK_DGRAM;
+		hints.ai_flags = 0;
+		hints.ai_protocol = IPPROTO_UDP;
+
+		if (getaddrinfo(dbnodename, NULL, &hints, &result)) {
+			continue;
+		}
+
+		for (rp = result; rp != NULL; rp = rp->ai_next) {
+			for (ifa = ifa_list; ifa; ifa = ifa->ifa_next) {
+				if (ifa->ifa_addr &&
+				    ipaddr_equal((struct sockaddr_storage *)rp->ai_addr,
+						 (struct sockaddr_storage *)ifa->ifa_addr)) {
+					freeaddrinfo(result);
+					found = 1;
+					goto out2;
+				}
+			}
+		}
+
+		freeaddrinfo(result);
+	}
+out2:
+	icmap_iter_finalize(iter);
+	freeifaddrs(ifa_list);
+
+ret_found:
+	if (found) {
+		res = icmap_set_uint32("nodelist.local_node_pos", node_pos);
+	}
+
+	return node_pos;
+}
+
 static int totem_config_get_ip_version(struct totem_config *totem_config)
 {
 	int res;
@@ -583,7 +847,7 @@ static int check_for_duplicate_nodeids(
 			continue;
 		}
 
-		if (strcmp(tmp_key, "ring0_addr") != 0) {
+		if (strcmp(tmp_key, "nodeid") != 0) {
 			continue;
 		}
 
@@ -612,7 +876,7 @@ static int check_for_duplicate_nodeids(
 				continue;
 			}
 
-			if (strcmp(tmp_key, "ring0_addr") != 0) {
+			if (strcmp(tmp_key, "nodeid") != 0) {
 				continue;
 			}
 
@@ -647,57 +911,6 @@ static int check_for_duplicate_nodeids(
 	return retval;
 }
 
-
-static int find_local_node_in_nodelist(struct totem_config *totem_config)
-{
-	icmap_iter_t iter;
-	const char *iter_key;
-	int res = 0;
-	unsigned int node_pos;
-	int local_node_pos = -1;
-	struct totem_ip_address bind_addr;
-	int interface_up, interface_num;
-	char tmp_key[ICMAP_KEYNAME_MAXLEN];
-	char *node_addr_str;
-	struct totem_ip_address node_addr;
-
-	res = totemip_iface_check(&totem_config->interfaces[0].bindnet,
-		&bind_addr, &interface_up, &interface_num,
-		totem_config->clear_node_high_bit);
-	if (res == -1) {
-		return (-1);
-	}
-
-	iter = icmap_iter_init("nodelist.node.");
-	while ((iter_key = icmap_iter_next(iter, NULL, NULL)) != NULL) {
-		res = sscanf(iter_key, "nodelist.node.%u.%s", &node_pos, tmp_key);
-		if (res != 2) {
-			continue;
-		}
-
-		if (strcmp(tmp_key, "ring0_addr") != 0) {
-			continue;
-		}
-
-		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "nodelist.node.%u.ring0_addr", node_pos);
-		if (icmap_get_string(tmp_key, &node_addr_str) != CS_OK) {
-			continue;
-		}
-
-		res = totemip_parse (&node_addr, node_addr_str, totem_config->ip_version);
-		free(node_addr_str);
-		if (res == -1) {
-			continue ;
-		}
-
-		if (totemip_equal(&bind_addr, &node_addr)) {
-			local_node_pos = node_pos;
-		}
-	}
-	icmap_iter_finalize(iter);
-
-	return (local_node_pos);
-}
 
 /*
  * This needs to be done last of all. It would be nice to do it when reading the
@@ -813,7 +1026,7 @@ static void reconfigure_links(struct totem_config *totem_config)
 	char *addr_string;
 	struct totem_ip_address local_ip;
 	int err;
-	unsigned int local_node_pos = find_local_node_in_nodelist(totem_config);
+	int local_node_pos = find_local_node(0);
 
 	for (i = 0; i<INTERFACE_MAX; i++) {
 		if (!totem_config->interfaces[i].configured) {
@@ -890,8 +1103,7 @@ static void put_nodelist_members_to_config(struct totem_config *totem_config, in
 		if (res != 2) {
 			continue;
 		}
-
-		if (strcmp(tmp_key, "ring0_addr") != 0) {
+		if (strcmp(tmp_key, "nodeid") != 0) {
 			continue;
 		}
 
@@ -914,14 +1126,12 @@ static void put_nodelist_members_to_config(struct totem_config *totem_config, in
 			}
 
 			member_count = totem_config->interfaces[linknumber].member_count;
-
 			res = totemip_parse(&totem_config->interfaces[linknumber].member_list[member_count],
 						node_addr_str, totem_config->ip_version);
 			if (res != -1) {
 				totem_config->interfaces[linknumber].member_list[member_count].nodeid = nodeid;
 				totem_config->interfaces[linknumber].member_count++;
 			}
-
 			totem_config->interfaces[linknumber].configured = 1;
 			free(node_addr_str);
 		}
@@ -977,112 +1187,11 @@ static void nodelist_dynamic_notify(
 }
 
 
-/*
- * Tries to find node (node_pos) in config nodelist which address matches any
- * local interface. Address can be stored in ring0_addr or if ipaddr_key_prefix is not NULL
- * key with prefix ipaddr_key is used (there can be multiuple of them)
- * This function differs  * from find_local_node_in_nodelist because it doesn't need bindnetaddr,
- * but doesn't work when bind addr is network address (so IP must be exact
- * match).
- *
- * Returns 1 on success (address was found, node_pos is then correctly set) or 0 on failure.
- */
-int totem_config_find_local_addr_in_nodelist(struct totem_config *totem_config, const char *ipaddr_key_prefix, unsigned int *node_pos)
-{
-	struct qb_list_head addrs;
-	struct totem_ip_if_address *if_addr;
-	icmap_iter_t iter, iter2;
-	const char *iter_key, *iter_key2;
-	struct qb_list_head *list;
-	const char *ipaddr_key;
-	int ip_version;
-	struct totem_ip_address node_addr;
-	char *node_addr_str;
-	int node_found = 0;
-	int res = 0;
-	char tmp_key[ICMAP_KEYNAME_MAXLEN];
-
-	if (totemip_getifaddrs(&addrs) == -1) {
-		return 0;
-	}
-
-	ip_version = totem_config_get_ip_version(totem_config);
-
-	iter = icmap_iter_init("nodelist.node.");
-
-	while ((iter_key = icmap_iter_next(iter, NULL, NULL)) != NULL) {
-		res = sscanf(iter_key, "nodelist.node.%u.%s", node_pos, tmp_key);
-		if (res != 2) {
-			continue;
-		}
-
-		if (strcmp(tmp_key, "ring0_addr") != 0) {
-			continue;
-		}
-
-		if (icmap_get_string(iter_key, &node_addr_str) != CS_OK) {
-			continue ;
-		}
-
-		free(node_addr_str);
-
-		/*
-		 * ring0_addr found -> let's iterate thru ipaddr_key_prefix
-		 */
-		snprintf(tmp_key, sizeof(tmp_key), "nodelist.node.%u.%s", *node_pos,
-		    (ipaddr_key_prefix != NULL ? ipaddr_key_prefix : "ring0_addr"));
-
-		iter2 = icmap_iter_init(tmp_key);
-		while ((iter_key2 = icmap_iter_next(iter2, NULL, NULL)) != NULL) {
-			/*
-			 * ring0_addr must be exact match, not prefix
-			 */
-			ipaddr_key = (ipaddr_key_prefix != NULL ? iter_key2 : tmp_key);
-			if (icmap_get_string(ipaddr_key, &node_addr_str) != CS_OK) {
-				continue ;
-			}
-
-			if (totemip_parse(&node_addr, node_addr_str, ip_version) == -1) {
-				free(node_addr_str);
-				continue ;
-			}
-			free(node_addr_str);
-
-			/*
-			 * Try to match ip with if_addrs
-			 */
-			node_found = 0;
-			qb_list_for_each(list, &(addrs)) {
-				if_addr = qb_list_entry(list, struct totem_ip_if_address, list);
-
-				if (totemip_equal(&node_addr, &if_addr->ip_addr)) {
-					node_found = 1;
-					break;
-				}
-			}
-
-			if (node_found) {
-				break ;
-			}
-		}
-
-		icmap_iter_finalize(iter2);
-
-		if (node_found) {
-			break ;
-		}
-	}
-
-	icmap_iter_finalize(iter);
-	totemip_freeifaddrs(&addrs);
-
-	return (node_found);
-}
 
 static void config_convert_nodelist_to_interface(struct totem_config *totem_config)
 {
 	int res = 0;
-	unsigned int node_pos;
+	int node_pos;
 	char tmp_key[ICMAP_KEYNAME_MAXLEN];
 	char tmp_key2[ICMAP_KEYNAME_MAXLEN];
 	char *node_addr_str;
@@ -1090,7 +1199,8 @@ static void config_convert_nodelist_to_interface(struct totem_config *totem_conf
 	icmap_iter_t iter;
 	const char *iter_key;
 
-	if (totem_config_find_local_addr_in_nodelist(totem_config, NULL, &node_pos)) {
+	node_pos = find_local_node(1);
+	if (node_pos > -1) {
 		/*
 		 * We found node, so create interface section
 		 */
@@ -1180,7 +1290,9 @@ static int get_interface_params(struct totem_config *totem_config,
 			/*
 			 * Get the bind net address
 			 */
-			if (icmap_get_string(iter_key, &str) == CS_OK) {
+			snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.bindnetaddr", linknumber);
+
+			if (icmap_get_string(tmp_key, &str) == CS_OK) {
 				res = totemip_parse (&totem_config->interfaces[linknumber].bindnet, str,
 						     totem_config->ip_version);
 				free(str);
@@ -1462,14 +1574,13 @@ extern int totem_config_read (
 	/*
 	 * Check existence of nodelist
 	 */
-	if (icmap_get_string("nodelist.node.0.ring0_addr", &str) == CS_OK) {
+	if (icmap_get_string("nodelist.node.0.name", &str) == CS_OK) {
 		free(str);
 		/*
 		 * find local node
 		 */
-		local_node_pos = find_local_node_in_nodelist(totem_config);
+		local_node_pos = find_local_node(1);
 		if (local_node_pos != -1) {
-			icmap_set_uint32("nodelist.local_node_pos", local_node_pos);
 
 			snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "nodelist.node.%u.nodeid", local_node_pos);
 
@@ -1482,13 +1593,7 @@ extern int totem_config_read (
 				return -1;
 			}
 
-			/*
-			 * Make localnode ring0_addr read only, so we can be sure that local
-			 * node never changes. If rebinding to other IP would be in future
-			 * supported, this must be changed and handled properly!
-			 */
-			snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "nodelist.node.%u.ring0_addr", local_node_pos);
-			icmap_set_ro_access(tmp_key, 0, 1);
+			/* Users must not change this */
 			icmap_set_ro_access("nodelist.local_node_pos", 0, 1);
 		}
 
@@ -1521,8 +1626,6 @@ int totem_config_validate (
 	uint32_t u32;
 	int num_configured = 0;
 	unsigned int interface_max = INTERFACE_MAX;
-
-
 
 	for (i = 0; i < INTERFACE_MAX; i++) {
 		if (totem_config->interfaces[i].configured) {
@@ -1883,7 +1986,6 @@ static void totem_reload_notify(
 	void *user_data)
 {
 	struct totem_config *totem_config = (struct totem_config *)user_data;
-	uint32_t local_node_pos;
 	const char *error_string;
 	uint64_t warnings;
 
@@ -1911,10 +2013,7 @@ static void totem_reload_notify(
 		}
 
 		/* Reinstate the local_node_pos */
-		local_node_pos = find_local_node_in_nodelist(totem_config);
-		if (local_node_pos != -1) {
-			icmap_set_uint32("nodelist.local_node_pos", local_node_pos);
-		}
+		(void)find_local_node(0);
 
 		/* Reconfigure network params as appropriate */
 		totempg_reconfigure();
