@@ -145,6 +145,8 @@ struct totemknet_instance {
 
 	int our_nodeid;
 
+	int loopback_link;
+
 	struct totem_config *totem_config;
 
 	struct totem_ip_address token_target;
@@ -832,6 +834,8 @@ int totemknet_initialize (
 
 	instance->totemknet_target_set_completed = target_set_completed;
 
+	instance->loopback_link = -1;
+
 	res = pipe(instance->logpipes);
 	if (res == -1) {
 	    KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_CRIT, "failed to create pipe for instance->logpipes");
@@ -1043,13 +1047,12 @@ extern void totemknet_net_mtu_adjust (void *knet_context, struct totem_config *t
 
 int totemknet_token_target_set (
 	void *knet_context,
-	const struct totem_ip_address *token_target)
+	unsigned int nodeid)
 {
 	struct totemknet_instance *instance = (struct totemknet_instance *)knet_context;
 	int res = 0;
 
-	memcpy (&instance->token_target, token_target,
-		sizeof (struct totem_ip_address));
+	instance->token_target.nodeid = nodeid;
 
 	instance->totemknet_target_set_completed (instance->context);
 
@@ -1139,18 +1142,23 @@ int totemknet_member_add (
 	int addrlen;
 
 	/* Only create 1 loopback link */
-	if (member->nodeid == instance->our_nodeid && link_no > 0) {
+	// NOTE: THis depends on member_remove being run before member_add when reeconfiguring
+	// otherwise we could be left with no loopback.
+	if (member->nodeid == instance->our_nodeid && instance->loopback_link > -1) {
 		return 0;
 	}
 
 	knet_log_printf (LOGSYS_LEVEL_DEBUG, "knet: member_add: %d (%s), link=%d", member->nodeid, totemip_print(member), link_no);
 	knet_log_printf (LOGSYS_LEVEL_DEBUG, "knet:      local: %d (%s)", local->nodeid, totemip_print(local));
-	if (link_no == 0) {
-		if (knet_host_add(instance->knet_handle, member->nodeid)) {
-			KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_ERROR, "knet_host_add");
-			return -1;
-		}
 
+	// TODO FIXME - prints errors when host already exists
+	err = knet_host_add(instance->knet_handle, member->nodeid);
+	if (err != 0 && errno != EEXIST) {
+		KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_ERROR, "knet_host_add");
+		return -1;
+	}
+
+	if (err == 0) {
 		if (knet_host_set_policy(instance->knet_handle, member->nodeid, instance->link_mode)) {
 			KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_ERROR, "knet_set_policy failed");
 			return -1;
@@ -1161,7 +1169,11 @@ int totemknet_member_add (
 	/* Casts to remove const */
 	totemip_totemip_to_sockaddr_convert((struct totem_ip_address *)member, port, &remote_ss, &addrlen);
 	totemip_totemip_to_sockaddr_convert((struct totem_ip_address *)local, port, &local_ss, &addrlen);
+
 	if (member->nodeid == instance->our_nodeid) {
+		knet_log_printf (LOGSYS_LEVEL_DEBUG, "knet: loopback link is %d\n", link_no);
+
+		instance->loopback_link = link_no;
 		err = knet_link_set_config(instance->knet_handle, member->nodeid, link_no,
 					   KNET_TRANSPORT_LOOPBACK,
 					   &local_ss, &remote_ss, KNET_LINK_FLAG_TRAFFICHIPRIO);
@@ -1221,9 +1233,9 @@ int totemknet_member_remove (
 
 	knet_log_printf (LOGSYS_LEVEL_DEBUG, "knet: member_remove: %d, link=%d", token_target->nodeid, link_no);
 
-	/* Only link 0 is valid for localhost */
-	if (token_target->nodeid == instance->our_nodeid && link_no > 0) {
-		return 0;
+	/* Removing link with the loopback on it */
+	if (token_target->nodeid == instance->our_nodeid && link_no == instance->loopback_link) {
+		instance->loopback_link= -1;
 	}
 
 	/* Tidy stats */

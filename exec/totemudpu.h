@@ -112,7 +112,7 @@ extern void totemudpu_net_mtu_adjust (void *udpu_context, struct totem_config *t
 
 extern int totemudpu_token_target_set (
 	void *udpu_context,
-	const struct totem_ip_address *token_target);
+	unsigned int nodeid);
 
 extern int totemudpu_crypto_set (
 	void *udpu_context,

@@ -564,7 +564,7 @@ static void cpg_sync_init (
 		sizeof (unsigned int));
 	my_member_list_entries = member_list_entries;
 
-	last_sync_ring_id.nodeid = ring_id->rep.nodeid;
+	last_sync_ring_id.nodeid = ring_id->nodeid;
 	last_sync_ring_id.seq = ring_id->seq;
 
 	downlist_state = CPG_DOWNLIST_WAITING_FOR_MESSAGES;

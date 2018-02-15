@@ -112,7 +112,7 @@ extern int totemknet_iface_set (void *net_context,
 
 extern int totemknet_token_target_set (
 	void *knet_context,
-	const struct totem_ip_address *token_target);
+	unsigned int nodeid);
 
 extern int totemknet_crypto_set (
 	void *knet_context,

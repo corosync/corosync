@@ -116,7 +116,7 @@ struct transport {
 
 	int (*token_target_set) (
 		void *transport_context,
-		const struct totem_ip_address *token_target);
+		unsigned int nodeid);
 
 	int (*crypto_set) (
 		void *transport_context,
@@ -176,6 +176,8 @@ struct transport transport_entries[] = {
 		.token_target_set = totemudp_token_target_set,
 		.crypto_set = totemudp_crypto_set,
 		.recv_mcast_empty = totemudp_recv_mcast_empty,
+		.member_add = totemudp_member_add,
+		.member_remove = totemudp_member_remove,
 		.reconfigure = totemudp_reconfigure
 	},
 	{
@@ -476,12 +478,12 @@ int totemnet_ifaces_get (
 
 int totemnet_token_target_set (
 	void *net_context,
-	const struct totem_ip_address *token_target)
+	unsigned int nodeid)
 {
 	struct totemnet_instance *instance = (struct totemnet_instance *)net_context;
 	unsigned int res;
 
-	res = instance->transport->token_target_set (instance->transport_context, token_target);
+	res = instance->transport->token_target_set (instance->transport_context, nodeid);
 
 	return (res);
 }

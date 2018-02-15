@@ -120,7 +120,7 @@ struct totem_ip_address {
  * @brief The memb_ring_id struct
  */
 struct memb_ring_id {
-	struct totem_ip_address rep;
+	unsigned int nodeid;
 	unsigned long long seq;
 } __attribute__((packed));
 #endif

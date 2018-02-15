@@ -110,6 +110,7 @@ linkstatusget_do (char *interface_name, int brief)
 		printf ("Could not get the link status, the error is: %d\n", result);
 	} else {
 		for (i = 0; i < interface_count; i++) {
+			s = 0;
 			if ( (interface_name &&
 			      interface_names[i][0] != '\0' &&
 			      (interface_name[0]=='\0' ||
