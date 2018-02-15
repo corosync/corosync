@@ -128,7 +128,6 @@ struct main_cp_cb_data {
 	struct qb_list_head member_items_head;
 
 	int node_number;
-	int ring0_addr_added;
 };
 
 static int read_config_file_into_icmap(
@@ -917,10 +916,6 @@ static int main_config_parser_cb(const char *path,
 				add_as_string = 0;
 			}
 
-			if (strcmp(key, "ring0_addr") == 0) {
-				data->ring0_addr_added = 1;
-			}
-
 			if (add_as_string) {
 				icmap_set_string_r(config_map, key_name, value);
 				add_as_string = 0;
@@ -1011,7 +1006,6 @@ static int main_config_parser_cb(const char *path,
 		}
 		if (strcmp(path, "nodelist.node") == 0) {
 			*state = MAIN_CP_CB_DATA_STATE_NODELIST_NODE;
-			data->ring0_addr_added = 0;
 		}
 		if (strcmp(path, "resources") == 0) {
 			*state = MAIN_CP_CB_DATA_STATE_RESOURCES;
@@ -1214,11 +1208,6 @@ static int main_config_parser_cb(const char *path,
 
 			break;
 		case MAIN_CP_CB_DATA_STATE_NODELIST_NODE:
-			if (!data->ring0_addr_added) {
-				*error_string = "No ring0_addr specified for node";
-
-				return (0);
-			}
 			data->node_number++;
 			break;
 		case MAIN_CP_CB_DATA_STATE_NORMAL:

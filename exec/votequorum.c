@@ -1172,7 +1172,7 @@ static int votequorum_read_nodelist_configuration(uint32_t *votes,
 			continue;
 		}
 
-		if (strcmp(tmp_key, "ring0_addr") != 0) {
+		if (strcmp(tmp_key, "nodeid") != 0) {
 			continue;
 		}
 
@@ -1813,13 +1813,13 @@ static int votequorum_exec_send_nodelist_notification(void *conn, uint64_t conte
 
 	ENTER();
 
-	log_printf(LOGSYS_LEVEL_DEBUG, "Sending nodelist callback. ring_id = %d/%lld", quorum_ringid.rep.nodeid, quorum_ringid.seq);
+	log_printf(LOGSYS_LEVEL_DEBUG, "Sending nodelist callback. ring_id = %d/%lld", quorum_ringid.nodeid, quorum_ringid.seq);
 
 	size = sizeof(struct res_lib_votequorum_nodelist_notification) + sizeof(uint32_t) * quorum_members_entries;
 
 	res_lib_votequorum_notification = (struct res_lib_votequorum_nodelist_notification *)&buf;
 	res_lib_votequorum_notification->node_list_entries = quorum_members_entries;
-	res_lib_votequorum_notification->ring_id.nodeid = quorum_ringid.rep.nodeid;
+	res_lib_votequorum_notification->ring_id.nodeid = quorum_ringid.nodeid;
 	res_lib_votequorum_notification->ring_id.seq = quorum_ringid.seq;
 	res_lib_votequorum_notification->context = context;
 
@@ -2945,12 +2945,12 @@ static void message_handler_req_lib_votequorum_qdevice_poll (void *conn,
 	}
 
 	if (us->flags & NODE_FLAGS_QDEVICE_REGISTERED) {
-		if (!(req_lib_votequorum_qdevice_poll->ring_id.nodeid == quorum_ringid.rep.nodeid &&
+		if (!(req_lib_votequorum_qdevice_poll->ring_id.nodeid == quorum_ringid.nodeid &&
 		      req_lib_votequorum_qdevice_poll->ring_id.seq == quorum_ringid.seq)) {
 			log_printf(LOGSYS_LEVEL_DEBUG, "Received poll ring id (%u.%"PRIu64") != last sync "
 			    "ring id (%u.%"PRIu64"). Ignoring poll call.",
 			    req_lib_votequorum_qdevice_poll->ring_id.nodeid, req_lib_votequorum_qdevice_poll->ring_id.seq,
-			    quorum_ringid.rep.nodeid, quorum_ringid.seq);
+			    quorum_ringid.nodeid, quorum_ringid.seq);
 			error = CS_ERR_MESSAGE_ERROR;
 			goto out;
 		}

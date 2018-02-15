@@ -81,6 +81,11 @@
 #define BIND_STATE_REGULAR	1
 #define BIND_STATE_LOOPBACK	2
 
+struct totemudp_member {
+	struct qb_list_head list;
+	struct totem_ip_address member;
+};
+
 struct totemudp_socket {
 	int mcast_recv;
 	int mcast_send;
@@ -142,6 +147,8 @@ struct totemudp_instance {
 		...)__attribute__((format(printf, 6, 7)));
 
 	void *udp_context;
+
+	struct qb_list_head member_list;
 
 	char iov_buffer[UDP_RECEIVE_FRAME_SIZE_MAX];
 
@@ -216,6 +223,8 @@ static void totemudp_instance_initialize (struct totemudp_instance *instance)
 	 * There is always atleast 1 processor
 	 */
 	instance->my_memb_entries = 1;
+
+	qb_list_init (&instance->member_list);
 }
 
 #define log_printf(level, format, args...)				\
@@ -1344,16 +1353,26 @@ extern void totemudp_net_mtu_adjust (void *udp_context, struct totem_config *tot
 
 int totemudp_token_target_set (
 	void *udp_context,
-	const struct totem_ip_address *token_target)
+	unsigned int nodeid)
 {
 	struct totemudp_instance *instance = (struct totemudp_instance *)udp_context;
+	struct qb_list_head *list;
+	struct totemudp_member *member;
 	int res = 0;
 
-	memcpy (&instance->token_target, token_target,
-		sizeof (struct totem_ip_address));
+	qb_list_for_each(list, &(instance->member_list)) {
+		member = qb_list_entry (list,
+			struct totemudp_member,
+			list);
 
-	instance->totemudp_target_set_completed (instance->context);
+		if (member->member.nodeid == nodeid) {
+			memcpy (&instance->token_target, &member->member,
+				sizeof (struct totem_ip_address));
 
+			instance->totemudp_target_set_completed (instance->context);
+			break;
+		}
+	}
 	return (res);
 }
 
@@ -1419,6 +1438,65 @@ extern int totemudp_recv_mcast_empty (
 	}
 
 	return (msg_processed);
+}
+
+
+int totemudp_member_add (
+	void *udp_context,
+	const struct totem_ip_address *local,
+	const struct totem_ip_address *member,
+	int ring_no)
+{
+	struct totemudp_instance *instance = (struct totemudp_instance *)udp_context;
+
+	struct totemudp_member *new_member;
+
+	new_member = malloc (sizeof (struct totemudp_member));
+	if (new_member == NULL) {
+		return (-1);
+	}
+
+	memset(new_member, 0, sizeof(*new_member));
+
+	qb_list_init (&new_member->list);
+	qb_list_add_tail (&new_member->list, &instance->member_list);
+	memcpy (&new_member->member, member, sizeof (struct totem_ip_address));
+
+	return (0);
+}
+
+int totemudp_member_remove (
+	void *udp_context,
+	const struct totem_ip_address *token_target,
+	int ring_no)
+{
+	int found = 0;
+	struct qb_list_head *list;
+	struct totemudp_member *member;
+	struct totemudp_instance *instance = (struct totemudp_instance *)udp_context;
+
+	/*
+	 * Find the member to remove and close its socket
+	 */
+	qb_list_for_each(list, &(instance->member_list)) {
+		member = qb_list_entry (list,
+			struct totemudp_member,
+			list);
+
+		if (totemip_compare (token_target, &member->member)==0) {
+			found = 1;
+			break;
+		}
+	}
+
+	/*
+	 * Delete the member from the list
+	 */
+	if (found) {
+		qb_list_del (list);
+	}
+
+	return (0);
 }
 
 int totemudp_iface_set (void *net_context,
