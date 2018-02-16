@@ -1042,6 +1042,7 @@ int totemsrp_ifaces_get (
 	int res = 0;
 
 	memset(interfaces, 0, sizeof(struct totem_ip_address) * interfaces_size);
+	*iface_count = INTERFACE_MAX;
 
 	if (interfaces_size >= *iface_count) {
 		memcpy (interfaces, instance->my_addrs,
@@ -1049,8 +1050,6 @@ int totemsrp_ifaces_get (
 	} else {
 		res = -2;
 	}
-
-	*iface_count = INTERFACE_MAX;
 
 	totemnet_ifaces_get(instance->totemnet_context, status, iface_count);
 	return (res);
