@@ -1,6 +1,6 @@
 
 /*
- * Copyright (c) 2016-2017 Red Hat, Inc.
+ * Copyright (c) 2016-2018 Red Hat, Inc.
  *
  * All rights reserved.
  *

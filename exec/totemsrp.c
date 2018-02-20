@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2003-2006 MontaVista Software, Inc.
- * Copyright (c) 2006-2009 Red Hat, Inc.
+ * Copyright (c) 2006-2018 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -1039,19 +1039,30 @@ int totemsrp_ifaces_get (
 	unsigned int *iface_count)
 {
 	struct totemsrp_instance *instance = (struct totemsrp_instance *)srp_context;
+	struct totem_ip_address *iface_ptr = interfaces;
 	int res = 0;
+	int i,n;
+	int num_ifs = 0;
 
 	memset(interfaces, 0, sizeof(struct totem_ip_address) * interfaces_size);
 	*iface_count = INTERFACE_MAX;
 
-	if (interfaces_size >= *iface_count) {
-		memcpy (interfaces, instance->my_addrs,
-			sizeof (struct totem_ip_address) * *iface_count);
-	} else {
-		res = -2;
+	for (i=0; i<INTERFACE_MAX; i++) {
+		for (n=0; n < instance->totem_config->interfaces[i].member_count; n++) {
+			if (instance->totem_config->interfaces[i].configured &&
+			    instance->totem_config->interfaces[i].member_list[n].nodeid == nodeid) {
+				memcpy(iface_ptr, &instance->totem_config->interfaces[i].member_list[n], sizeof(struct totem_ip_address));
+				iface_ptr += sizeof(struct totem_ip_address);
+				if (++num_ifs > interfaces_size) {
+					res = -2;
+					break;
+				}
+			}
+		}
 	}
 
 	totemnet_ifaces_get(instance->totemnet_context, status, iface_count);
+	*iface_count = num_ifs;
 	return (res);
 }
 
