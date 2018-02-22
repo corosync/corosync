@@ -1637,9 +1637,9 @@ int totem_config_validate (
 		goto parse_error;
 	}
 
-	/* Check we found a local node address */
+	/* Check we found a local node name */
 	if (icmap_get_uint32("nodelist.local_node_pos", &u32) != CS_OK) {
-		error_reason = "No valid address found for local host";
+		error_reason = "No valid name found for local host";
 		goto parse_error;
 	}
 
