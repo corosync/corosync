@@ -1033,6 +1033,7 @@ void totemsrp_finalize (
 int totemsrp_ifaces_get (
 	void *srp_context,
 	unsigned int nodeid,
+	unsigned int *interface_id,
 	struct totem_ip_address *interfaces,
 	unsigned int interfaces_size,
 	char ***status,
@@ -1052,6 +1053,7 @@ int totemsrp_ifaces_get (
 			if (instance->totem_config->interfaces[i].configured &&
 			    instance->totem_config->interfaces[i].member_list[n].nodeid == nodeid) {
 				memcpy(iface_ptr, &instance->totem_config->interfaces[i].member_list[n], sizeof(struct totem_ip_address));
+				interface_id[num_ifs] = i;
 				iface_ptr++;
 				if (++num_ifs > interfaces_size) {
 					res = -2;

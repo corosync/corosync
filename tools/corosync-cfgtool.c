@@ -117,8 +117,8 @@ linkstatusget_do (char *interface_name, int brief)
 				strcasecmp (interface_name, interface_names[i]) == 0)) ||
 				!interface_name ) {
 
-				printf ("LINK ID %d\n", i);
-				printf ("\tid\t= %s\n", interface_names[i]);
+				printf ("LINK ID %c\n", interface_names[i][0]);
+				printf ("\taddr\t= %s\n", interface_names[i]+1);
 				if((!brief) && (strcmp(interface_status[i], "OK") != 0) &&
 					(!strstr(interface_status[i], "FAULTY"))) {
 					len = strlen(interface_status[i]);

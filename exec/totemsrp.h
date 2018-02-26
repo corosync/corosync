@@ -104,6 +104,7 @@ extern void totemsrp_net_mtu_adjust (struct totem_config *totem_config);
 extern int totemsrp_ifaces_get (
 	void *srp_context,
 	unsigned int nodeid,
+	unsigned int *interface_id,
 	struct totem_ip_address *interfaces,
 	unsigned int interfaces_size,
 	char ***status,

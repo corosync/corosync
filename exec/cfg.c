@@ -736,6 +736,8 @@ static void message_handler_req_lib_cfg_ringstatusget (
 	unsigned int iface_count;
 	char **status;
 	const char *totem_ip_string;
+	char ifname[CFG_INTERFACE_NAME_MAX_LEN];
+	unsigned int iface_ids[INTERFACE_MAX];
 	unsigned int i;
 	cs_error_t res = CS_OK;
 
@@ -746,6 +748,7 @@ static void message_handler_req_lib_cfg_ringstatusget (
 
 	api->totem_ifaces_get (
 		api->totem_nodeid_get(),
+		iface_ids,
 		interfaces,
 		INTERFACE_MAX,
 		&status,
@@ -763,11 +766,13 @@ static void message_handler_req_lib_cfg_ringstatusget (
 			totem_ip_string="";
 		}
 
-		if (strlen(totem_ip_string) >= CFG_INTERFACE_NAME_MAX_LEN) {
+		/* Allow for i/f number at the start */
+		if (strlen(totem_ip_string) >= CFG_INTERFACE_NAME_MAX_LEN-3) {
 			log_printf(LOGSYS_LEVEL_ERROR, "String representation of interface %u is too long", i);
 			res = CS_ERR_NAME_TOO_LONG;
 			goto send_response;
 		}
+		snprintf(ifname, sizeof(ifname), "%d %s", iface_ids[i], totem_ip_string);
 
 		if (strlen(status[i]) >= CFG_INTERFACE_STATUS_MAX_LEN) {
 			log_printf(LOGSYS_LEVEL_ERROR, "Status string for interface %u is too long", i);
@@ -778,7 +783,7 @@ static void message_handler_req_lib_cfg_ringstatusget (
 		strcpy ((char *)&res_lib_cfg_ringstatusget.interface_status[i],
 			status[i]);
 		strcpy ((char *)&res_lib_cfg_ringstatusget.interface_name[i],
-			totem_ip_string);
+			ifname);
 	}
 
 send_response:
@@ -999,6 +1004,7 @@ static void message_handler_req_lib_cfg_get_node_addrs (void *conn,
 							const void *msg)
 {
 	struct totem_ip_address node_ifs[INTERFACE_MAX];
+	unsigned int iface_ids[INTERFACE_MAX];
 	char buf[PIPE_BUF];
 	char **status;
 	unsigned int num_interfaces = 0;
@@ -1014,7 +1020,7 @@ static void message_handler_req_lib_cfg_get_node_addrs (void *conn,
 	if (nodeid == 0)
 		nodeid = api->totem_nodeid_get();
 
-	if (api->totem_ifaces_get(nodeid, node_ifs, INTERFACE_MAX, &status, &num_interfaces)) {
+	if (api->totem_ifaces_get(nodeid, iface_ids, node_ifs, INTERFACE_MAX, &status, &num_interfaces)) {
 		ret = CS_ERR_EXIST;
 		num_interfaces = 0;
 	}

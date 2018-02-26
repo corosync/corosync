@@ -834,7 +834,7 @@ int totemknet_initialize (
 
 	instance->totemknet_target_set_completed = target_set_completed;
 
-	instance->loopback_link = -1;
+	instance->loopback_link = 0;
 
 	res = pipe(instance->logpipes);
 	if (res == -1) {
@@ -1145,12 +1145,10 @@ int totemknet_member_add (
 	knet_node_id_t host_ids[KNET_MAX_HOST];
 	size_t num_host_ids;
 
-	/* Only create 1 loopback link.
-	 * NOTE: THis depends on member_remove being run before member_add when reconfiguring
-	 * otherwise we could be left with no loopback.
-	 */
-	if (member->nodeid == instance->our_nodeid && instance->loopback_link > -1) {
-		return 0;
+	/* Only create 1 loopback link and use link 0 */
+	if (member->nodeid == instance->our_nodeid && !instance->loopback_link) {
+		link_no = 0;
+		instance->loopback_link = 1;
 	}
 
 	knet_log_printf (LOGSYS_LEVEL_DEBUG, "knet: member_add: %d (%s), link=%d", member->nodeid, totemip_print(member), link_no);
@@ -1195,7 +1193,6 @@ int totemknet_member_add (
 	if (member->nodeid == instance->our_nodeid) {
 		knet_log_printf (LOGSYS_LEVEL_DEBUG, "knet: loopback link is %d\n", link_no);
 
-		instance->loopback_link = link_no;
 		err = knet_link_set_config(instance->knet_handle, member->nodeid, link_no,
 					   KNET_TRANSPORT_LOOPBACK,
 					   &local_ss, &remote_ss, KNET_LINK_FLAG_TRAFFICHIPRIO);
@@ -1255,9 +1252,9 @@ int totemknet_member_remove (
 
 	knet_log_printf (LOGSYS_LEVEL_DEBUG, "knet: member_remove: %d, link=%d", token_target->nodeid, link_no);
 
-	/* Removing link with the loopback on it */
-	if (token_target->nodeid == instance->our_nodeid && link_no == instance->loopback_link) {
-		instance->loopback_link= -1;
+	/* Don't remove the link with the loopback on it until we shut down */
+	if (token_target->nodeid == instance->our_nodeid) {
+		return 0;
 	}
 
 	/* Tidy stats */
