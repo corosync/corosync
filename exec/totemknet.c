@@ -1140,10 +1140,15 @@ int totemknet_member_add (
 	struct sockaddr_storage remote_ss;
 	struct sockaddr_storage local_ss;
 	int addrlen;
+	int i;
+	int host_found = 0;
+	knet_node_id_t host_ids[KNET_MAX_HOST];
+	size_t num_host_ids;
 
-	/* Only create 1 loopback link */
-	// NOTE: THis depends on member_remove being run before member_add when reeconfiguring
-	// otherwise we could be left with no loopback.
+	/* Only create 1 loopback link.
+	 * NOTE: THis depends on member_remove being run before member_add when reconfiguring
+	 * otherwise we could be left with no loopback.
+	 */
 	if (member->nodeid == instance->our_nodeid && instance->loopback_link > -1) {
 		return 0;
 	}
@@ -1151,12 +1156,29 @@ int totemknet_member_add (
 	knet_log_printf (LOGSYS_LEVEL_DEBUG, "knet: member_add: %d (%s), link=%d", member->nodeid, totemip_print(member), link_no);
 	knet_log_printf (LOGSYS_LEVEL_DEBUG, "knet:      local: %d (%s)", local->nodeid, totemip_print(local));
 
-	// TODO FIXME - prints errors when host already exists
-	err = knet_host_add(instance->knet_handle, member->nodeid);
-	if (err != 0 && errno != EEXIST) {
-		KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_ERROR, "knet_host_add");
+
+	/* Only add the host if it doesn't already exist in knet */
+	err = knet_host_get_host_list(instance->knet_handle, host_ids, &num_host_ids);
+	if (err) {
+		KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_ERROR, "knet_host_get_host_list");
 		return -1;
 	}
+	for (i=0; i<num_host_ids; i++) {
+		if (host_ids[i] == member->nodeid) {
+			host_found = 1;
+		}
+	}
+
+	if (!host_found) {
+		err = knet_host_add(instance->knet_handle, member->nodeid);
+		if (err != 0 && errno != EEXIST) {
+			KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_ERROR, "knet_host_add");
+			return -1;
+		}
+	} else {
+		knet_log_printf (LOGSYS_LEVEL_DEBUG, "nodeid %d already added", member->nodeid);
+	}
+
 
 	if (err == 0) {
 		if (knet_host_set_policy(instance->knet_handle, member->nodeid, instance->link_mode)) {
