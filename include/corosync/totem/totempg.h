@@ -140,6 +140,7 @@ extern int totempg_groups_send_ok_groups (
 
 extern int totempg_ifaces_get (
 	unsigned int nodeid,
+	unsigned int *interface_id,
         struct totem_ip_address *interfaces,
         unsigned int interfaces_size,
 	char ***status,

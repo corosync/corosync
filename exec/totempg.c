@@ -1420,6 +1420,7 @@ int totempg_iface_set (
 
 int totempg_ifaces_get (
 	unsigned int nodeid,
+	unsigned int *interface_id,
 	struct totem_ip_address *interfaces,
 	unsigned int interfaces_size,
 	char ***status,
@@ -1430,6 +1431,7 @@ int totempg_ifaces_get (
 	res = totemsrp_ifaces_get (
 		totemsrp_context,
 		nodeid,
+		interface_id,
 		interfaces,
 		interfaces_size,
 		status,
@@ -1466,17 +1468,18 @@ const char *totempg_ifaces_print (unsigned int nodeid)
 	char one_iface[ONE_IFACE_LEN+1];
 	struct totem_ip_address interfaces[INTERFACE_MAX];
 	unsigned int iface_count;
+	unsigned int iface_ids[INTERFACE_MAX];
 	unsigned int i;
 	int res;
 
 	iface_string[0] = '\0';
 
-	res = totempg_ifaces_get (nodeid, interfaces, INTERFACE_MAX, NULL, &iface_count);
+	res = totempg_ifaces_get (nodeid, iface_ids, interfaces, INTERFACE_MAX, NULL, &iface_count);
 	if (res == -1) {
 		return ("no interface found for nodeid");
 	}
 
-	res = totempg_ifaces_get (nodeid, interfaces, INTERFACE_MAX, NULL, &iface_count);
+	res = totempg_ifaces_get (nodeid, iface_ids, interfaces, INTERFACE_MAX, NULL, &iface_count);
 
 	for (i = 0; i < iface_count; i++) {
 		if (!interfaces[i].family) {
