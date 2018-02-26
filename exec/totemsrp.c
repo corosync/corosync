@@ -1052,7 +1052,7 @@ int totemsrp_ifaces_get (
 			if (instance->totem_config->interfaces[i].configured &&
 			    instance->totem_config->interfaces[i].member_list[n].nodeid == nodeid) {
 				memcpy(iface_ptr, &instance->totem_config->interfaces[i].member_list[n], sizeof(struct totem_ip_address));
-				iface_ptr += sizeof(struct totem_ip_address);
+				iface_ptr++;
 				if (++num_ifs > interfaces_size) {
 					res = -2;
 					break;
