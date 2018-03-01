@@ -117,8 +117,18 @@ linkstatusget_do (char *interface_name, int brief)
 				strcasecmp (interface_name, interface_names[i]) == 0)) ||
 				!interface_name ) {
 
-				printf ("LINK ID %c\n", interface_names[i][0]);
-				printf ("\taddr\t= %s\n", interface_names[i]+1);
+				/*
+				 * Interface_name is "<linkid> <IP address>"
+				 * separate them out
+				 */
+				char *space = strchr(interface_names[i], ' ');
+				if (!space) {
+					continue;
+				}
+				*space = '\0';
+
+				printf ("LINK ID %s\n", interface_names[i]);
+				printf ("\taddr\t= %s\n", space+1);
 				if((!brief) && (strcmp(interface_status[i], "OK") != 0) &&
 					(!strstr(interface_status[i], "FAULTY"))) {
 					len = strlen(interface_status[i]);
