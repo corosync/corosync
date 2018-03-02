@@ -32,41 +32,50 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _UTILS_H_
-#define _UTILS_H_
+#include <stdio.h>
+#include <assert.h>
+#include <string.h>
+#include <errno.h>
 
-#include <sys/types.h>
-#include <inttypes.h>
+#include "utils.h"
 
-#define UTILS_PRI_NODE_ID		"%" PRIu32
-#define UTILS_PRI_DATACENTER_ID		"%" PRIu32
-/*
-#define UTILS_PRI_NODE_ID		"0x%" PRIx32
-#define UTILS_PRI_DATACENTER_ID		"0x%" PRIx32
-*/
-#define UTILS_PRI_MSG_SEQ		"%" PRIu32
-#define UTILS_PRI_RING_ID		"%" PRIx32 ".%" PRIx64
-#define UTILS_PRI_CONFIG_VERSION	"%" PRIu64
-#define UTILS_PRI_EXPECTED_VOTES	"%" PRIu32
+int
+main(void)
+{
+	long long int ll;
+	long long int lli;
+	char buf[32];
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+	assert(utils_strtonum("0", 0, 100, &ll) == 0);
+	assert(ll == 0);
 
-extern int		utils_parse_bool_str(const char *str);
+	assert(utils_strtonum("100", 0, 100, &ll) == 0);
+	assert(ll == 100);
 
-extern int		utils_flock(const char *lockfile, pid_t pid,
-    int *another_instance_running);
+	assert(utils_strtonum("101", 0, 100, &ll) != 0);
+	assert(utils_strtonum("0", 1, 100, &ll) != 0);
 
-extern void		utils_tty_detach(void);
+	errno = ERANGE;
+	assert(utils_strtonum("10", 0, 100, &ll) == 0);
+	assert(ll == 10);
 
-extern int		utils_fd_set_non_blocking(int fd);
+	assert(utils_strtonum("-1", -1, 0, &ll) == 0);
+	assert(ll == -1);
 
-extern int		utils_strtonum(const char *str, long long int min_val,
-    long long int max_val, long long int *res);
+	assert(utils_strtonum("-10", -20, -10, &ll) == 0);
+	assert(ll == -10);
 
-#ifdef __cplusplus
+	assert(utils_strtonum("0", 1, 0, &ll) == -1);
+
+	for (lli = -100; lli <= 100; lli++) {
+		assert(snprintf(buf, sizeof(buf), "%lld", lli) > 0);
+
+		assert(utils_strtonum(buf, -100, 100, &ll) == 0);
+		assert(ll == lli);
+	}
+
+	assert(utils_strtonum("test", -1000, 1000, &ll) == -1);
+	assert(utils_strtonum("12a", -1000, 1000, &ll) == -1);
+
+	return (0);
 }
-#endif
-
-#endif /* _UTILS_H_ */

@@ -156,9 +156,9 @@ corosync-qdevice-net-certutil: corosync-qdevice-net-certutil.sh
 	    $< > $@
 
 TESTS				= qnetd-cluster-list.test dynar.test dynar-simple-lex.test \
-                                  dynar-getopt-lex.test process-list.test
+                                  dynar-getopt-lex.test process-list.test utils.test
 check_PROGRAMS			= qnetd-cluster-list.test dynar.test dynar-simple-lex.test \
-                                  dynar-getopt-lex.test process-list.test
+                                  dynar-getopt-lex.test process-list.test utils.test
 
 qnetd_cluster_list_test_SOURCES	= qnetd-cluster-list.c test-qnetd-cluster-list.c \
                                   qnetd-cluster.c qnetd-cluster.h \
@@ -172,5 +172,6 @@ dynar_simple_lex_test_SOURCES	= test-dynar-simple-lex.c dynar.c dynar-str.c dyna
 dynar_getopt_lex_test_SOURCES	= test-dynar-getopt-lex.c dynar.c dynar-str.c dynar-getopt-lex.c
 process_list_test_SOURCES	= test-process-list.c dynar.c dynar-str.c dynar-simple-lex.c \
                                   process-list.c
+utils_test_SOURCES		= test-utils.c utils.c
 
 endif
