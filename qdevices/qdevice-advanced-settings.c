@@ -33,8 +33,10 @@
  */
 
 #include <stdlib.h>
-#include <string.h>
+
 #include <errno.h>
+#include <limits.h>
+#include <string.h>
 
 #include "dynar.h"
 #include "dynar-getopt-lex.h"
@@ -126,7 +128,6 @@ qdevice_advanced_settings_set(struct qdevice_advanced_settings *settings,
     const char *option, const char *value)
 {
 	long long int tmpll;
-	char *ep;
 
 	if (strcasecmp(option, "lock_file") == 0) {
 		free(settings->lock_file);
@@ -141,15 +142,13 @@ qdevice_advanced_settings_set(struct qdevice_advanced_settings *settings,
 			return (-1);
 		}
 	} else if (strcasecmp(option, "local_socket_backlog") == 0) {
-		tmpll = strtoll(value, &ep, 10);
-		if (tmpll < QDEVICE_MIN_LOCAL_SOCKET_BACKLOG || errno != 0 || *ep != '\0') {
+		if (utils_strtonum(value, QDEVICE_MIN_LOCAL_SOCKET_BACKLOG, INT_MAX, &tmpll) == -1) {
 			return (-2);
 		}
 
 		settings->local_socket_backlog = (int)tmpll;
 	} else if (strcasecmp(option, "max_cs_try_again") == 0) {
-		tmpll = strtoll(value, &ep, 10);
-		if (tmpll < QDEVICE_MIN_MAX_CS_TRY_AGAIN || errno != 0 || *ep != '\0') {
+		if (utils_strtonum(value, QDEVICE_MIN_MAX_CS_TRY_AGAIN, INT_MAX, &tmpll) == -1) {
 			return (-2);
 		}
 
@@ -161,71 +160,70 @@ qdevice_advanced_settings_set(struct qdevice_advanced_settings *settings,
 			return (-1);
 		}
 	} else if (strcasecmp(option, "ipc_max_clients") == 0) {
-		tmpll = strtoll(value, &ep, 10);
-		if (tmpll < QDEVICE_MIN_IPC_MAX_CLIENTS || errno != 0 || *ep != '\0') {
+		if (utils_strtonum(value, QDEVICE_MIN_IPC_MAX_CLIENTS, LLONG_MAX, &tmpll) == -1) {
 			return (-2);
 		}
 
 		settings->ipc_max_clients = (size_t)tmpll;
 	} else if (strcasecmp(option, "ipc_max_receive_size") == 0) {
-		tmpll = strtoll(value, &ep, 10);
-		if (tmpll < QDEVICE_MIN_IPC_RECEIVE_SEND_SIZE || errno != 0 || *ep != '\0') {
+		if (utils_strtonum(value, QDEVICE_MIN_IPC_RECEIVE_SEND_SIZE, LLONG_MAX,
+		    &tmpll) == -1) {
 			return (-2);
 		}
 
 		settings->ipc_max_receive_size = (size_t)tmpll;
 	} else if (strcasecmp(option, "ipc_max_send_size") == 0) {
-		tmpll = strtoll(value, &ep, 10);
-		if (tmpll < QDEVICE_MIN_IPC_RECEIVE_SEND_SIZE || errno != 0 || *ep != '\0') {
+		if (utils_strtonum(value, QDEVICE_MIN_IPC_RECEIVE_SEND_SIZE, LLONG_MAX,
+		    &tmpll) == -1) {
 			return (-2);
 		}
 
 		settings->ipc_max_send_size = (size_t)tmpll;
 	} else if (strcasecmp(option, "heuristics_ipc_max_send_buffers") == 0) {
-		tmpll = strtoll(value, &ep, 10);
-		if (tmpll < QDEVICE_MIN_HEURISTICS_IPC_MAX_SEND_BUFFERS || errno != 0 || *ep != '\0') {
+		if (utils_strtonum(value, QDEVICE_MIN_HEURISTICS_IPC_MAX_SEND_BUFFERS, LLONG_MAX,
+		    &tmpll) == -1) {
 			return (-2);
 		}
 
 		settings->heuristics_ipc_max_send_buffers = (size_t)tmpll;
 	} else if (strcasecmp(option, "heuristics_ipc_max_send_receive_size") == 0) {
-		tmpll = strtoll(value, &ep, 10);
-		if (tmpll < QDEVICE_MIN_HEURISTICS_IPC_MAX_SEND_RECEIVE_SIZE || errno != 0 || *ep != '\0') {
+		if (utils_strtonum(value, QDEVICE_MIN_HEURISTICS_IPC_MAX_SEND_RECEIVE_SIZE, LLONG_MAX,
+		    &tmpll) == -1) {
 			return (-2);
 		}
 
 		settings->heuristics_ipc_max_send_receive_size = (size_t)tmpll;
 	} else if (strcasecmp(option, "heuristics_min_timeout") == 0) {
-		tmpll = strtoll(value, &ep, 10);
-		if (tmpll < QDEVICE_MIN_HEURISTICS_TIMEOUT || errno != 0 || *ep != '\0') {
+		if (utils_strtonum(value, QDEVICE_MIN_HEURISTICS_TIMEOUT, UINT32_MAX,
+		    &tmpll) == -1) {
 			return (-2);
 		}
 
 		settings->heuristics_min_timeout = (uint32_t)tmpll;
 	} else if (strcasecmp(option, "heuristics_max_timeout") == 0) {
-		tmpll = strtoll(value, &ep, 10);
-		if (tmpll < QDEVICE_MIN_HEURISTICS_TIMEOUT || errno != 0 || *ep != '\0') {
+		if (utils_strtonum(value, QDEVICE_MIN_HEURISTICS_TIMEOUT, UINT32_MAX,
+		    &tmpll) == -1) {
 			return (-2);
 		}
 
 		settings->heuristics_max_timeout = (uint32_t)tmpll;
 	} else if (strcasecmp(option, "heuristics_min_interval") == 0) {
-		tmpll = strtoll(value, &ep, 10);
-		if (tmpll < QDEVICE_MIN_HEURISTICS_INTERVAL || errno != 0 || *ep != '\0') {
+		if (utils_strtonum(value, QDEVICE_MIN_HEURISTICS_INTERVAL, UINT32_MAX,
+		    &tmpll) == -1) {
 			return (-2);
 		}
 
 		settings->heuristics_min_interval = (uint32_t)tmpll;
 	} else if (strcasecmp(option, "heuristics_max_interval") == 0) {
-		tmpll = strtoll(value, &ep, 10);
-		if (tmpll < QDEVICE_MIN_HEURISTICS_INTERVAL || errno != 0 || *ep != '\0') {
+		if (utils_strtonum(value, QDEVICE_MIN_HEURISTICS_INTERVAL, UINT32_MAX,
+		    &tmpll) == -1) {
 			return (-2);
 		}
 
 		settings->heuristics_max_interval = (uint32_t)tmpll;
 	} else if (strcasecmp(option, "heuristics_max_execs") == 0) {
-		tmpll = strtoll(value, &ep, 10);
-		if (tmpll < QDEVICE_MIN_HEURISTICS_MAX_EXECS || errno != 0 || *ep != '\0') {
+		if (utils_strtonum(value, QDEVICE_MIN_HEURISTICS_MAX_EXECS, LLONG_MAX,
+		    &tmpll) == -1) {
 			return (-2);
 		}
 
@@ -237,15 +235,15 @@ qdevice_advanced_settings_set(struct qdevice_advanced_settings *settings,
 
 		settings->heuristics_use_execvp = (uint8_t)tmpll;
 	} else if (strcasecmp(option, "heuristics_max_processes") == 0) {
-		tmpll = strtoll(value, &ep, 10);
-		if (tmpll < QDEVICE_MIN_HEURISTICS_MAX_PROCESSES || errno != 0 || *ep != '\0') {
+		if (utils_strtonum(value, QDEVICE_MIN_HEURISTICS_MAX_PROCESSES, LLONG_MAX,
+		    &tmpll) == -1) {
 			return (-2);
 		}
 
 		settings->heuristics_max_processes = (size_t)tmpll;
 	} else if (strcasecmp(option, "heuristics_kill_list_interval") == 0) {
-		tmpll = strtoll(value, &ep, 10);
-		if (tmpll < QDEVICE_MIN_HEURISTICS_KILL_LIST_INTERVAL || errno != 0 || *ep != '\0') {
+		if (utils_strtonum(value, QDEVICE_MIN_HEURISTICS_KILL_LIST_INTERVAL, UINT32_MAX,
+		    &tmpll) == -1) {
 			return (-2);
 		}
 
@@ -257,36 +255,36 @@ qdevice_advanced_settings_set(struct qdevice_advanced_settings *settings,
 			return (-1);
 		}
 	} else if (strcasecmp(option, "net_initial_msg_receive_size") == 0) {
-		tmpll = strtoll(value, &ep, 10);
-		if (tmpll < QDEVICE_NET_MIN_MSG_RECEIVE_SEND_SIZE || errno != 0 || *ep != '\0') {
+		if (utils_strtonum(value, QDEVICE_NET_MIN_MSG_RECEIVE_SEND_SIZE, LLONG_MAX,
+		    &tmpll) == -1) {
 			return (-2);
 		}
 
 		settings->net_initial_msg_receive_size = (size_t)tmpll;
 	} else if (strcasecmp(option, "net_initial_msg_send_size") == 0) {
-		tmpll = strtoll(value, &ep, 10);
-		if (tmpll < QDEVICE_NET_MIN_MSG_RECEIVE_SEND_SIZE || errno != 0 || *ep != '\0') {
+		if (utils_strtonum(value, QDEVICE_NET_MIN_MSG_RECEIVE_SEND_SIZE, LLONG_MAX,
+		    &tmpll) == -1) {
 			return (-2);
 		}
 
 		settings->net_initial_msg_send_size = (size_t)tmpll;
 	} else if (strcasecmp(option, "net_min_msg_send_size") == 0) {
-		tmpll = strtoll(value, &ep, 10);
-		if (tmpll < QDEVICE_NET_MIN_MSG_RECEIVE_SEND_SIZE || errno != 0 || *ep != '\0') {
+		if (utils_strtonum(value, QDEVICE_NET_MIN_MSG_RECEIVE_SEND_SIZE, LLONG_MAX,
+		    &tmpll) == -1) {
 			return (-2);
 		}
 
 		settings->net_min_msg_send_size = (size_t)tmpll;
 	} else if (strcasecmp(option, "net_max_msg_receive_size") == 0) {
-		tmpll = strtoll(value, &ep, 10);
-		if (tmpll < QDEVICE_NET_MIN_MSG_RECEIVE_SEND_SIZE || errno != 0 || *ep != '\0') {
+		if (utils_strtonum(value, QDEVICE_NET_MIN_MSG_RECEIVE_SEND_SIZE, LLONG_MAX,
+		    &tmpll) == -1) {
 			return (-2);
 		}
 
 		settings->net_max_msg_receive_size = (size_t)tmpll;
 	} else if (strcasecmp(option, "net_max_send_buffers") == 0) {
-		tmpll = strtoll(value, &ep, 10);
-		if (tmpll < QDEVICE_NET_MIN_MAX_SEND_BUFFERS || errno != 0 || *ep != '\0') {
+		if (utils_strtonum(value, QDEVICE_NET_MIN_MAX_SEND_BUFFERS, LLONG_MAX,
+		    &tmpll) == -1) {
 			return (-2);
 		}
 
@@ -304,29 +302,29 @@ qdevice_advanced_settings_set(struct qdevice_advanced_settings *settings,
 			return (-1);
 		}
 	} else if (strcasecmp(option, "net_heartbeat_interval_min") == 0) {
-		tmpll = strtoll(value, &ep, 10);
-		if (tmpll < QDEVICE_NET_MIN_HEARTBEAT_INTERVAL || errno != 0 || *ep != '\0') {
+		if (utils_strtonum(value, QDEVICE_NET_MIN_HEARTBEAT_INTERVAL, UINT32_MAX,
+		    &tmpll) == -1) {
 			return (-2);
 		}
 
 		settings->net_heartbeat_interval_min = (uint32_t)tmpll;
 	} else if (strcasecmp(option, "net_heartbeat_interval_max") == 0) {
-		tmpll = strtoll(value, &ep, 10);
-		if (tmpll < QDEVICE_NET_MIN_HEARTBEAT_INTERVAL || errno != 0 || *ep != '\0') {
+		if (utils_strtonum(value, QDEVICE_NET_MIN_HEARTBEAT_INTERVAL, UINT32_MAX,
+		    &tmpll) == -1) {
 			return (-2);
 		}
 
 		settings->net_heartbeat_interval_max = (uint32_t)tmpll;
 	} else if (strcasecmp(option, "net_min_connect_timeout") == 0) {
-		tmpll = strtoll(value, &ep, 10);
-		if (tmpll < QDEVICE_NET_MIN_CONNECT_TIMEOUT || errno != 0 || *ep != '\0') {
+		if (utils_strtonum(value, QDEVICE_NET_MIN_CONNECT_TIMEOUT, UINT32_MAX,
+		    &tmpll) == -1) {
 			return (-2);
 		}
 
 		settings->net_min_connect_timeout = (uint32_t)tmpll;
 	} else if (strcasecmp(option, "net_max_connect_timeout") == 0) {
-		tmpll = strtoll(value, &ep, 10);
-		if (tmpll < QDEVICE_NET_MIN_CONNECT_TIMEOUT || errno != 0 || *ep != '\0') {
+		if (utils_strtonum(value, QDEVICE_NET_MIN_CONNECT_TIMEOUT, UINT32_MAX,
+		    &tmpll) == -1) {
 			return (-2);
 		}
 

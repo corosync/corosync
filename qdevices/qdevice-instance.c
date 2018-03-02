@@ -67,8 +67,7 @@ int
 qdevice_instance_configure_from_cmap_heuristics(struct qdevice_instance *instance)
 {
 	char *str;
-	long int li;
-	char *ep;
+	long long int lli;
 	int i;
 	int res;
 	cs_error_t cs_err;
@@ -87,9 +86,8 @@ qdevice_instance_configure_from_cmap_heuristics(struct qdevice_instance *instanc
 	instance->heuristics_instance.timeout = instance->heartbeat_interval / 2;
 	if (cmap_get_string(instance->cmap_handle,
 	    "quorum.device.heuristics.timeout", &str) == CS_OK) {
-		li = strtol(str, &ep, 10);
-		if (li < instance->advanced_settings->heuristics_min_timeout ||
-		    li > instance->advanced_settings->heuristics_max_timeout || *ep != '\0') {
+		if (utils_strtonum(str, instance->advanced_settings->heuristics_min_timeout,
+		    instance->advanced_settings->heuristics_max_timeout, &lli) == -1) {
 			qdevice_log(LOG_ERR, "heuristics.timeout must be valid number in "
 			    "range <%"PRIu32",%"PRIu32">",
 			    instance->advanced_settings->heuristics_min_timeout,
@@ -98,7 +96,7 @@ qdevice_instance_configure_from_cmap_heuristics(struct qdevice_instance *instanc
 			free(str);
 			return (-1);
 		} else {
-			instance->heuristics_instance.timeout = li;
+			instance->heuristics_instance.timeout = lli;
 		}
 
 		free(str);
@@ -107,9 +105,8 @@ qdevice_instance_configure_from_cmap_heuristics(struct qdevice_instance *instanc
 	instance->heuristics_instance.sync_timeout = instance->sync_heartbeat_interval / 2;
 	if (cmap_get_string(instance->cmap_handle,
 	    "quorum.device.heuristics.sync_timeout", &str) == CS_OK) {
-		li = strtol(str, &ep, 10);
-		if (li < instance->advanced_settings->heuristics_min_timeout ||
-		    li > instance->advanced_settings->heuristics_max_timeout || *ep != '\0') {
+		if (utils_strtonum(str, instance->advanced_settings->heuristics_min_timeout,
+		    instance->advanced_settings->heuristics_max_timeout, &lli) == -1) {
 			qdevice_log(LOG_ERR, "heuristics.sync_timeout must be valid number in "
 			    "range <%"PRIu32",%"PRIu32">",
 			    instance->advanced_settings->heuristics_min_timeout,
@@ -118,7 +115,7 @@ qdevice_instance_configure_from_cmap_heuristics(struct qdevice_instance *instanc
 			free(str);
 			return (-1);
 		} else {
-			instance->heuristics_instance.sync_timeout = li;
+			instance->heuristics_instance.sync_timeout = lli;
 		}
 
 		free(str);
@@ -127,9 +124,8 @@ qdevice_instance_configure_from_cmap_heuristics(struct qdevice_instance *instanc
 	instance->heuristics_instance.interval = instance->heartbeat_interval * 3;
 	if (cmap_get_string(instance->cmap_handle,
 	    "quorum.device.heuristics.interval", &str) == CS_OK) {
-		li = strtol(str, &ep, 10);
-		if (li < instance->advanced_settings->heuristics_min_interval ||
-		    li > instance->advanced_settings->heuristics_max_interval || *ep != '\0') {
+		if (utils_strtonum(str, instance->advanced_settings->heuristics_min_interval,
+		    instance->advanced_settings->heuristics_max_interval, &lli) == -1) {
 			qdevice_log(LOG_ERR, "heuristics.interval must be valid number in "
 			    "range <%"PRIu32",%"PRIu32">",
 			    instance->advanced_settings->heuristics_min_interval,
@@ -138,7 +134,7 @@ qdevice_instance_configure_from_cmap_heuristics(struct qdevice_instance *instanc
 			free(str);
 			return (-1);
 		} else {
-			instance->heuristics_instance.interval = li;
+			instance->heuristics_instance.interval = lli;
 		}
 
 		free(str);

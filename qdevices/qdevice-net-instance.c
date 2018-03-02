@@ -32,6 +32,8 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <limits.h>
+
 #include "qdevice-config.h"
 #include "qdevice-log.h"
 #include "qdevice-net-instance.h"
@@ -214,7 +216,7 @@ qdevice_net_instance_init_from_cmap(struct qdevice_instance *instance)
 	cmap_handle_t cmap_handle;
 	enum tlv_tls_supported tls_supported;
 	int i;
-	long int li;
+	long long int lli;
 	enum tlv_decision_algorithm_type decision_algorithm;
 	struct tlv_tie_breaker tie_breaker;
 	uint32_t heartbeat_interval;
@@ -222,7 +224,6 @@ qdevice_net_instance_init_from_cmap(struct qdevice_instance *instance)
 	uint32_t cast_vote_timer_interval;
 	char *host_addr;
 	int host_port;
-	char *ep;
 	char *cluster_name;
 	uint32_t connect_timeout;
 	struct qdevice_net_instance *net_instance;
@@ -272,14 +273,14 @@ qdevice_net_instance_init_from_cmap(struct qdevice_instance *instance)
 	host_addr = str;
 
 	if (cmap_get_string(cmap_handle, "quorum.device.net.port", &str) == CS_OK) {
-		host_port = strtol(str, &ep, 10);
-
-		if (host_port <= 0 || host_port > ((uint16_t)~0) || *ep != '\0') {
-			qdevice_log(LOG_ERR, "quorum.device.net.port must be in range 0-65535");
+		if (utils_strtonum(optarg, 1, UINT16_MAX, &lli) == -1) {
+			qdevice_log(LOG_ERR, "quorum.device.net.port must be in range 1-%u", UINT16_MAX);
 			free(str);
 			goto error_free_host_addr;
 		}
 		free(str);
+
+		host_port = lli;
 	} else {
 		host_port = QNETD_DEFAULT_HOST_PORT;
 	}
@@ -353,15 +354,14 @@ qdevice_net_instance_init_from_cmap(struct qdevice_instance *instance)
 		} else if (strcmp(str, "highest") == 0) {
 			tie_breaker.mode = TLV_TIE_BREAKER_MODE_HIGHEST;
 		} else {
-			li = strtol(str, &ep, 10);
-			if (li <= 0 || li > ((uint32_t)~0) || *ep != '\0') {
+			if (utils_strtonum(str, 1, UINT32_MAX, &lli) == -1) {
 				qdevice_log(LOG_ERR, "tie_breaker must be lowest|highest|valid_node_id");
 				free(str);
 				goto error_free_cluster_name;
 			}
 
 			tie_breaker.mode = TLV_TIE_BREAKER_MODE_NODE_ID;
-			tie_breaker.node_id = li;
+			tie_breaker.node_id = lli;
 		}
 
 		free(str);
@@ -373,9 +373,8 @@ qdevice_net_instance_init_from_cmap(struct qdevice_instance *instance)
 	if (cmap_get_string(cmap_handle, "quorum.device.net.connect_timeout", &str) != CS_OK) {
 		connect_timeout = heartbeat_interval;
 	} else {
-		li = strtol(str, &ep, 10);
-		if (li < instance->advanced_settings->net_min_connect_timeout ||
-		    li > instance->advanced_settings->net_max_connect_timeout || *ep != '\0') {
+		if (utils_strtonum(str, instance->advanced_settings->net_min_connect_timeout,
+		    instance->advanced_settings->net_max_connect_timeout, &lli) == -1) {
 			qdevice_log(LOG_ERR, "connect_timeout must be valid number in "
 			    "range <%"PRIu32",%"PRIu32">",
 			    instance->advanced_settings->net_min_connect_timeout,
@@ -384,7 +383,7 @@ qdevice_net_instance_init_from_cmap(struct qdevice_instance *instance)
 			goto error_free_cluster_name;
 		}
 
-		connect_timeout = li;
+		connect_timeout = (uint32_t)lli;
 
 		free(str);
 	}
@@ -392,14 +391,14 @@ qdevice_net_instance_init_from_cmap(struct qdevice_instance *instance)
 	if (cmap_get_string(cmap_handle, "quorum.device.net.force_ip_version", &str) != CS_OK) {
 		force_ip_version = 0;
 	} else {
-		li = strtol(str, &ep, 10);
-		if ((li != 0 && li != 4 && li != 6) || *ep != '\0') {
+		if ((utils_strtonum(str, 0, 6, &lli) == -1) ||
+		    (lli != 0 && lli != 4 && lli != 6)) {
 			qdevice_log(LOG_ERR, "force_ip_version must be one of 0|4|6");
 			free(str);
 			goto error_free_cluster_name;
 		}
 
-		force_ip_version = li;
+		force_ip_version = lli;
 
 		free(str);
 	}
