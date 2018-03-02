@@ -35,6 +35,7 @@
 #include <err.h>
 #include <errno.h>
 #include <getopt.h>
+#include <limits.h>
 #include <signal.h>
 #include <unistd.h>
 
@@ -426,7 +427,6 @@ cli_parse(int argc, char * const argv[], char **host_addr, uint16_t *host_port, 
     struct qnetd_advanced_settings *advanced_settings)
 {
 	int ch;
-	char *ep;
 	long long int tmpll;
 
 	*host_addr = NULL;
@@ -469,19 +469,18 @@ cli_parse(int argc, char * const argv[], char **host_addr, uint16_t *host_port, 
 			}
 			break;
 		case 'm':
-			errno = 0;
-
-			tmpll = strtoll(optarg, &ep, 10);
-			if (tmpll < 0 || errno != 0 || *ep != '\0') {
+			if (utils_strtonum(optarg, 0, LLONG_MAX, &tmpll) == -1) {
 				errx(1, "max clients value %s is invalid", optarg);
 			}
+
 			*max_clients = (size_t)tmpll;
 			break;
 		case 'p':
-			*host_port = strtol(optarg, &ep, 10);
-			if (*host_port <= 0 || *host_port > ((uint16_t)~0) || *ep != '\0') {
-				errx(1, "host port must be in range 0-65535");
+			if (utils_strtonum(optarg, 1, UINT16_MAX, &tmpll) == -1) {
+				errx(1, "host port must be in range 1-%u", UINT16_MAX);
 			}
+
+			*host_port = tmpll;
 			break;
 		case 'S':
 			cli_parse_long_opt(advanced_settings, optarg);
