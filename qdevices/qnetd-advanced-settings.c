@@ -33,8 +33,10 @@
  */
 
 #include <stdlib.h>
-#include <string.h>
+
 #include <errno.h>
+#include <limits.h>
+#include <string.h>
 
 #include "dynar.h"
 #include "dynar-getopt-lex.h"
@@ -96,32 +98,27 @@ qnetd_advanced_settings_set(struct qnetd_advanced_settings *settings,
     const char *option, const char *value)
 {
 	long long int tmpll;
-	char *ep;
 
 	if (strcasecmp(option, "listen_backlog") == 0) {
-		tmpll = strtoll(value, &ep, 10);
-		if (tmpll < QNETD_MIN_LISTEN_BACKLOG || errno != 0 || *ep != '\0') {
+		if (utils_strtonum(value, QNETD_MIN_LISTEN_BACKLOG, INT_MAX, &tmpll) == -1) {
 			return (-2);
 		}
 
 		settings->listen_backlog = (int)tmpll;
 	} else if (strcasecmp(option, "max_client_send_buffers") == 0) {
-		tmpll = strtoll(value, &ep, 10);
-		if (tmpll < QNETD_MIN_CLIENT_SEND_BUFFERS || errno != 0 || *ep != '\0') {
+		if (utils_strtonum(value, QNETD_MIN_CLIENT_SEND_BUFFERS, LLONG_MAX, &tmpll) == -1) {
 			return (-2);
 		}
 
 		settings->max_client_send_buffers = (size_t)tmpll;
 	} else if (strcasecmp(option, "max_client_send_size") == 0) {
-		tmpll = strtoll(value, &ep, 10);
-		if (tmpll < QNETD_MIN_CLIENT_RECEIVE_SEND_SIZE || errno != 0 || *ep != '\0') {
+		if (utils_strtonum(value, QNETD_MIN_CLIENT_RECEIVE_SEND_SIZE, LLONG_MAX, &tmpll) == -1) {
 			return (-2);
 		}
 
 		settings->max_client_send_size = (size_t)tmpll;
 	} else if (strcasecmp(option, "max_client_receive_size") == 0) {
-		tmpll = strtoll(value, &ep, 10);
-		if (tmpll < QNETD_MIN_CLIENT_RECEIVE_SEND_SIZE || errno != 0 || *ep != '\0') {
+		if (utils_strtonum(value, QNETD_MIN_CLIENT_RECEIVE_SEND_SIZE, LLONG_MAX, &tmpll) == -1) {
 			return (-2);
 		}
 
@@ -139,15 +136,13 @@ qnetd_advanced_settings_set(struct qnetd_advanced_settings *settings,
 			return (-1);
 		}
 	} else if (strcasecmp(option, "heartbeat_interval_min") == 0) {
-		tmpll = strtoll(value, &ep, 10);
-		if (tmpll < QNETD_MIN_HEARTBEAT_INTERVAL || errno != 0 || *ep != '\0') {
+		if (utils_strtonum(value, QNETD_MIN_HEARTBEAT_INTERVAL, UINT32_MAX, &tmpll) == -1) {
 			return (-2);
 		}
 
 		settings->heartbeat_interval_min = (uint32_t)tmpll;
 	} else if (strcasecmp(option, "heartbeat_interval_max") == 0) {
-		tmpll = strtoll(value, &ep, 10);
-		if (tmpll < QNETD_MIN_HEARTBEAT_INTERVAL || errno != 0 || *ep != '\0') {
+		if (utils_strtonum(value, QNETD_MIN_HEARTBEAT_INTERVAL, UINT32_MAX, &tmpll) == -1) {
 			return (-2);
 		}
 
@@ -159,8 +154,7 @@ qnetd_advanced_settings_set(struct qnetd_advanced_settings *settings,
 
 		settings->dpd_enabled = (uint8_t)tmpll;
 	} else if (strcasecmp(option, "dpd_interval") == 0) {
-		tmpll = strtoll(value, &ep, 10);
-		if (tmpll < QNETD_MIN_DPD_INTERVAL || errno != 0 || *ep != '\0') {
+		if (utils_strtonum(value, QNETD_MIN_DPD_INTERVAL, UINT32_MAX, &tmpll) == -1) {
 			return (-2);
 		}
 
@@ -178,29 +172,25 @@ qnetd_advanced_settings_set(struct qnetd_advanced_settings *settings,
 			return (-1);
 		}
 	} else if (strcasecmp(option, "local_socket_backlog") == 0) {
-		tmpll = strtoll(value, &ep, 10);
-		if (tmpll < QNETD_MIN_LOCAL_SOCKET_BACKLOG || errno != 0 || *ep != '\0') {
+		if (utils_strtonum(value, QNETD_MIN_LOCAL_SOCKET_BACKLOG, INT_MAX, &tmpll) == -1) {
 			return (-2);
 		}
 
 		settings->local_socket_backlog = (int)tmpll;
 	} else if (strcasecmp(option, "ipc_max_clients") == 0) {
-		tmpll = strtoll(value, &ep, 10);
-		if (tmpll < QNETD_MIN_IPC_MAX_CLIENTS || errno != 0 || *ep != '\0') {
+		if (utils_strtonum(value, QNETD_MIN_IPC_MAX_CLIENTS, LLONG_MAX, &tmpll) == -1) {
 			return (-2);
 		}
 
 		settings->ipc_max_clients = (size_t)tmpll;
 	} else if (strcasecmp(option, "ipc_max_receive_size") == 0) {
-		tmpll = strtoll(value, &ep, 10);
-		if (tmpll < QNETD_MIN_IPC_RECEIVE_SEND_SIZE || errno != 0 || *ep != '\0') {
+		if (utils_strtonum(value, QNETD_MIN_IPC_RECEIVE_SEND_SIZE, LLONG_MAX, &tmpll) == -1) {
 			return (-2);
 		}
 
 		settings->ipc_max_receive_size = (size_t)tmpll;
 	} else if (strcasecmp(option, "ipc_max_send_size") == 0) {
-		tmpll = strtoll(value, &ep, 10);
-		if (tmpll < QNETD_MIN_IPC_RECEIVE_SEND_SIZE || errno != 0 || *ep != '\0') {
+		if (utils_strtonum(value, QNETD_MIN_IPC_RECEIVE_SEND_SIZE, LLONG_MAX, &tmpll) == -1) {
 			return (-2);
 		}
 
