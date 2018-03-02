@@ -1257,6 +1257,8 @@ int main (int argc, char **argv, char **envp)
 				} else if (strcmp(optarg, "min") == 0) {
 					prio = INT_MAX;
 				} else {
+					errno = 0;
+
 					tmpli = strtol(optarg, &ep, 10);
 					if (errno != 0 || *ep != '\0' || tmpli > INT_MAX || tmpli < INT_MIN) {
 						fprintf(stderr, "Priority value %s is invalid", optarg);
