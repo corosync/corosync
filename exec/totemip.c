@@ -211,6 +211,28 @@ int totemip_localhost_check(const struct totem_ip_address *addr)
 	return totemip_equal(addr, &localhost);
 }
 
+const char *totemip_sa_print(const struct sockaddr *sa)
+{
+	static char buf[INET6_ADDRSTRLEN];
+
+	buf[0] = 0;
+
+	switch (sa->sa_family) {
+	case AF_INET:
+		inet_ntop(sa->sa_family, &((struct sockaddr_in *)(sa))->sin_addr, buf,
+		    INET6_ADDRSTRLEN);
+		break;
+	case AF_INET6:
+		inet_ntop(sa->sa_family, &((struct sockaddr_in6 *)(sa))->sin6_addr, buf,
+		    INET6_ADDRSTRLEN);
+		break;
+	default:
+		return (NULL);
+	}
+
+	return (buf);
+}
+
 const char *totemip_print(const struct totem_ip_address *addr)
 {
 	static char buf[INET6_ADDRSTRLEN];

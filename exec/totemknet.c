@@ -94,7 +94,8 @@ struct totemknet_instance {
 	void (*totemknet_deliver_fn) (
 		void *context,
 		const void *msg,
-		unsigned int msg_len);
+		unsigned int msg_len,
+		const struct sockaddr_storage *system_from);
 
 	void (*totemknet_iface_change_fn) (
 		void *context,
@@ -648,7 +649,8 @@ static int data_deliver_fn (
 	instance->totemknet_deliver_fn (
 		instance->context,
 		instance->iov_buffer,
-		msg_len);
+		msg_len,
+		&system_from);
 
 	return (0);
 }
@@ -777,7 +779,8 @@ int totemknet_initialize (
 	void (*deliver_fn) (
 		void *context,
 		const void *msg,
-		unsigned int msg_len),
+		unsigned int msg_len,
+		const struct sockaddr_storage *system_from),
 
 	void (*iface_change_fn) (
 		void *context,

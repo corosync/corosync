@@ -665,7 +665,8 @@ static const char* gsfrom_to_msg(enum gather_state_from gsfrom);
 void main_deliver_fn (
 	void *context,
 	const void *msg,
-	unsigned int msg_len);
+	unsigned int msg_len,
+	const struct sockaddr_storage *system_from);
 
 void main_iface_change_fn (
 	void *context,
@@ -4617,7 +4618,8 @@ static int message_handler_token_hold_cancel (
 static int check_message_header_validity(
 	void *context,
 	const void *msg,
-	unsigned int msg_len)
+	unsigned int msg_len,
+	const struct sockaddr_storage *system_from)
 {
 	struct totemsrp_instance *instance = context;
 	const struct totem_message_header *message_header = msg;
@@ -4626,8 +4628,8 @@ static int check_message_header_validity(
 
 	if (msg_len < sizeof (struct totem_message_header)) {
 		log_printf (instance->totemsrp_log_level_security,
-			    "Received message is too short...  Ignoring %u.",
-			    (unsigned int)msg_len);
+			    "Message received from %s is too short...  Ignoring %u.",
+			    totemip_sa_print((struct sockaddr *)system_from), (unsigned int)msg_len);
 		return (-1);
 	}
 
@@ -4675,7 +4677,8 @@ static int check_message_header_validity(
 		}
 
 		log_printf(instance->totemsrp_log_level_security,
-		    "Received message with bad magic number (probably sent by %s).. Ignoring",
+		    "Message received from %s has bad magic number (probably sent by %s).. Ignoring",
+		    totemip_sa_print((struct sockaddr *)system_from),
 		    guessed_str);
 
 		return (-1);
@@ -4683,8 +4686,9 @@ static int check_message_header_validity(
 
 	if (message_header->version != TOTEM_MH_VERSION) {
 		log_printf(instance->totemsrp_log_level_security,
-		"Received message with unsupported version %u... Ignoring",
-		message_header->version);
+		    "Message received from %s has unsupported version %u... Ignoring",
+		    totemip_sa_print((struct sockaddr *)system_from),
+		    message_header->version);
 
 		return (-1);
 	}
@@ -4696,12 +4700,13 @@ static int check_message_header_validity(
 void main_deliver_fn (
 	void *context,
 	const void *msg,
-	unsigned int msg_len)
+	unsigned int msg_len,
+	const struct sockaddr_storage *system_from)
 {
 	struct totemsrp_instance *instance = context;
 	const struct totem_message_header *message_header = msg;
 
-	if (check_message_header_validity(context, msg, msg_len) == -1) {
+	if (check_message_header_validity(context, msg, msg_len, system_from) == -1) {
 		return ;
 	}
 
@@ -4726,7 +4731,8 @@ void main_deliver_fn (
 		break;
 	default:
 		log_printf (instance->totemsrp_log_level_security,
-		    "Type of received message is wrong...  ignoring %d.\n",
+		    "Message received from %s has wrong type...  ignoring %d.\n",
+		    totemip_sa_print((struct sockaddr *)system_from),
 		    (int)message_header->type);
 
 		instance->stats.rx_msg_dropped++;
