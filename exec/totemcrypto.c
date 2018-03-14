@@ -844,10 +844,28 @@ int crypto_authenticate_and_decrypt (struct crypto_instance *instance,
 	int *buf_len)
 {
 	struct crypto_config_header *cch = (struct crypto_config_header *)buf;
+	const char *guessed_str;
 
 	if (cch->crypto_cipher_type != CRYPTO_CIPHER_TYPE_2_3) {
+		guessed_str = NULL;
+
+		if ((cch->crypto_cipher_type == 0xC0 && cch->crypto_hash_type == 0x70) ||
+		    (cch->crypto_cipher_type == 0x70 && cch->crypto_hash_type == 0xC0)) {
+			guessed_str = "Corosync 3.x";
+		} else if (cch->crypto_cipher_type == CRYPTO_CIPHER_TYPE_2_2) {
+			guessed_str = "Corosync 2.2";
+		} else if (cch->crypto_cipher_type == 0x01) {
+			guessed_str = "unencrypted Kronosnet";
+		} else if (cch->crypto_cipher_type >= 0 && cch->crypto_cipher_type <= 5) {
+			guessed_str = "unencrypted Corosync 2.0/2.1/1.x/OpenAIS";
+		} else {
+			guessed_str = "encrypted Kronosnet/Corosync 2.0/2.1/1.x/OpenAIS or unknown";
+		}
+
 		log_printf(instance->log_level_security,
-			   "Incoming packet has different crypto type. Rejecting");
+		   "Unsupported incoming packet (probably sent by %s). Rejecting",
+		   guessed_str);
+
 		return -1;
 	}
 
