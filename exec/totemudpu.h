@@ -54,7 +54,8 @@ extern int totemudpu_initialize (
 	void (*deliver_fn) (
 		void *context,
 		const void *msg,
-		unsigned int msg_len),
+		unsigned int msg_len,
+		const struct sockaddr_storage *system_from),
 
 	void (*iface_change_fn) (
 		void *context,

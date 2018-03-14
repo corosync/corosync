@@ -103,7 +103,8 @@ struct totemudpu_instance {
 	void (*totemudpu_deliver_fn) (
 		void *context,
 		const void *msg,
-		unsigned int msg_len);
+		unsigned int msg_len,
+		const struct sockaddr_storage *system_from);
 
 	void (*totemudpu_iface_change_fn) (
 		void *context,
@@ -472,7 +473,8 @@ static int net_deliver_fn (
 	instance->totemudpu_deliver_fn (
 		instance->context,
 		iovec->iov_base,
-		iovec->iov_len);
+		iovec->iov_len,
+		&system_from);
 
 	iovec->iov_len = UDP_RECEIVE_FRAME_SIZE_MAX;
 	return (0);
@@ -781,7 +783,8 @@ int totemudpu_initialize (
 	void (*deliver_fn) (
 		void *context,
 		const void *msg,
-		unsigned int msg_len),
+		unsigned int msg_len,
+		const struct sockaddr_storage *system_from),
 
 	void (*iface_change_fn) (
 		void *context,
