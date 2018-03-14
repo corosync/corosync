@@ -114,10 +114,18 @@ struct totem_logging_configuration {
 	int log_subsys_id;
 };
 
+
+/*
+ * COrosync TOtem. Also used as an endian_detector.
+ */
+#define TOTEM_MH_MAGIC		0xC070
+#define TOTEM_MH_VERSION	0x03
+
 struct totem_message_header {
+	unsigned short magic;
+	char version;
 	char type;
 	char encapsulated;
-	unsigned short endian_detector;
 	unsigned int nodeid;
 	unsigned int target_nodeid;
 } __attribute__((packed));

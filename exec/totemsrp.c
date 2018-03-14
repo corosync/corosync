@@ -2340,13 +2340,14 @@ static void memb_state_recovery_enter (
 	// TODO	 LEAK
 		message_item.mcast = totemsrp_buffer_alloc (instance);
 		assert (message_item.mcast);
+		message_item.mcast->header.magic = TOTEM_MH_MAGIC;
+		message_item.mcast->header.version = TOTEM_MH_VERSION;
 		message_item.mcast->header.type = MESSAGE_TYPE_MCAST;
 		srp_addr_copy (&message_item.mcast->system_from, &instance->my_id);
 		message_item.mcast->header.encapsulated = MESSAGE_ENCAPSULATED;
 
 		message_item.mcast->header.nodeid = instance->my_id.nodeid;
 		assert (message_item.mcast->header.nodeid);
-		message_item.mcast->header.endian_detector = ENDIAN_LOCAL;
 		memcpy (&message_item.mcast->ring_id, &instance->my_ring_id,
 			sizeof (struct memb_ring_id));
 		message_item.msg_len = sort_queue_item->msg_len + sizeof (struct mcast);
@@ -2428,8 +2429,9 @@ int totemsrp_mcast (
 	 * Set mcast header
 	 */
 	memset(message_item.mcast, 0, sizeof (struct mcast));
+	message_item.mcast->header.magic = TOTEM_MH_MAGIC;
+	message_item.mcast->header.version = TOTEM_MH_VERSION;
 	message_item.mcast->header.type = MESSAGE_TYPE_MCAST;
-	message_item.mcast->header.endian_detector = ENDIAN_LOCAL;
 	message_item.mcast->header.encapsulated = MESSAGE_NOT_ENCAPSULATED;
 
 	message_item.mcast->header.nodeid = instance->my_id.nodeid;
@@ -2934,8 +2936,9 @@ static int token_hold_cancel_send (struct totemsrp_instance *instance)
 	/*
 	 * Build message
 	 */
+	token_hold_cancel.header.magic = TOTEM_MH_MAGIC;
+	token_hold_cancel.header.version = TOTEM_MH_VERSION;
 	token_hold_cancel.header.type = MESSAGE_TYPE_TOKEN_HOLD_CANCEL;
-	token_hold_cancel.header.endian_detector = ENDIAN_LOCAL;
 	token_hold_cancel.header.encapsulated = 0;
 	token_hold_cancel.header.nodeid = instance->my_id.nodeid;
 	memcpy (&token_hold_cancel.ring_id, &instance->my_ring_id,
@@ -2955,8 +2958,9 @@ static int orf_token_send_initial (struct totemsrp_instance *instance)
 	struct orf_token orf_token;
 	int res;
 
+	orf_token.header.magic = TOTEM_MH_MAGIC;
+	orf_token.header.version = TOTEM_MH_VERSION;
 	orf_token.header.type = MESSAGE_TYPE_ORF_TOKEN;
-	orf_token.header.endian_detector = ENDIAN_LOCAL;
 	orf_token.header.encapsulated = 0;
 	orf_token.header.nodeid = instance->my_id.nodeid;
 	assert (orf_token.header.nodeid);
@@ -3178,8 +3182,9 @@ static void memb_state_commit_token_create (
 		instance->my_failed_list, instance->my_failed_list_entries);
 
 	memset (instance->commit_token, 0, sizeof (struct memb_commit_token));
+	instance->commit_token->header.magic = TOTEM_MH_MAGIC;
+	instance->commit_token->header.version = TOTEM_MH_VERSION;
 	instance->commit_token->header.type = MESSAGE_TYPE_MEMB_COMMIT_TOKEN;
-	instance->commit_token->header.endian_detector = ENDIAN_LOCAL;
 	instance->commit_token->header.encapsulated = 0;
 	instance->commit_token->header.nodeid = instance->my_id.nodeid;
 	assert (instance->commit_token->header.nodeid);
@@ -3213,8 +3218,9 @@ static void memb_join_message_send (struct totemsrp_instance *instance)
 	char *addr;
 	unsigned int addr_idx;
 
+	memb_join->header.magic = TOTEM_MH_MAGIC;
+	memb_join->header.version = TOTEM_MH_VERSION;
 	memb_join->header.type = MESSAGE_TYPE_MEMB_JOIN;
-	memb_join->header.endian_detector = ENDIAN_LOCAL;
 	memb_join->header.encapsulated = 0;
 	memb_join->header.nodeid = instance->my_id.nodeid;
 	assert (memb_join->header.nodeid);
@@ -3283,8 +3289,9 @@ static void memb_leave_message_send (struct totemsrp_instance *instance)
 			   &instance->my_id, 1);
 
 
+	memb_join->header.magic = TOTEM_MH_MAGIC;
+	memb_join->header.version = TOTEM_MH_VERSION;
 	memb_join->header.type = MESSAGE_TYPE_MEMB_JOIN;
-	memb_join->header.endian_detector = ENDIAN_LOCAL;
 	memb_join->header.encapsulated = 0;
 	memb_join->header.nodeid = LEAVE_DUMMY_NODEID;
 
@@ -3332,8 +3339,9 @@ static void memb_merge_detect_transmit (struct totemsrp_instance *instance)
 {
 	struct memb_merge_detect memb_merge_detect;
 
+	memb_merge_detect.header.magic = TOTEM_MH_MAGIC;
+	memb_merge_detect.header.version = TOTEM_MH_VERSION;
 	memb_merge_detect.header.type = MESSAGE_TYPE_MEMB_MERGE_DETECT;
-	memb_merge_detect.header.endian_detector = ENDIAN_LOCAL;
 	memb_merge_detect.header.encapsulated = 0;
 	memb_merge_detect.header.nodeid = instance->my_id.nodeid;
 	srp_addr_copy (&memb_merge_detect.system_from, &instance->my_id);
@@ -3912,7 +3920,7 @@ static void messages_deliver_to_app (
 		assert (mcast_in != (struct mcast *)0xdeadbeef);
 
 		endian_conversion_required = 0;
-		if (mcast_in->header.endian_detector != ENDIAN_LOCAL) {
+		if (mcast_in->header.magic != TOTEM_MH_MAGIC) {
 			endian_conversion_required = 1;
 			mcast_endian_convert (mcast_in, &mcast_header);
 		} else {
@@ -4285,8 +4293,9 @@ static void memb_join_endian_convert (const struct memb_join *in, struct memb_jo
 	struct srp_addr *out_proc_list;
 	struct srp_addr *out_failed_list;
 
+	out->header.magic = TOTEM_MH_MAGIC;
+	out->header.version = TOTEM_MH_VERSION;
 	out->header.type = in->header.type;
-	out->header.endian_detector = ENDIAN_LOCAL;
 	out->header.nodeid = swab32 (in->header.nodeid);
 	srp_addr_copy_endian_convert (&out->system_from, &in->system_from);
 	out->proc_list_entries = swab32 (in->proc_list_entries);
@@ -4314,8 +4323,9 @@ static void memb_commit_token_endian_convert (const struct memb_commit_token *in
 	struct memb_commit_token_memb_entry *in_memb_list;
 	struct memb_commit_token_memb_entry *out_memb_list;
 
+	out->header.magic = TOTEM_MH_MAGIC;
+	out->header.version = TOTEM_MH_VERSION;
 	out->header.type = in->header.type;
-	out->header.endian_detector = ENDIAN_LOCAL;
 	out->header.nodeid = swab32 (in->header.nodeid);
 	out->token_seq = swab32 (in->token_seq);
 	out->ring_id.rep = swab32(in->ring_id.rep);
@@ -4348,8 +4358,9 @@ static void orf_token_endian_convert (const struct orf_token *in, struct orf_tok
 {
 	int i;
 
+	out->header.magic = TOTEM_MH_MAGIC;
+	out->header.version = TOTEM_MH_VERSION;
 	out->header.type = in->header.type;
-	out->header.endian_detector = ENDIAN_LOCAL;
 	out->header.nodeid = swab32 (in->header.nodeid);
 	out->seq = swab32 (in->seq);
 	out->token_seq = swab32 (in->token_seq);
@@ -4370,8 +4381,9 @@ static void orf_token_endian_convert (const struct orf_token *in, struct orf_tok
 
 static void mcast_endian_convert (const struct mcast *in, struct mcast *out)
 {
+	out->header.magic = TOTEM_MH_MAGIC;
+	out->header.version = TOTEM_MH_VERSION;
 	out->header.type = in->header.type;
-	out->header.endian_detector = ENDIAN_LOCAL;
 	out->header.nodeid = swab32 (in->header.nodeid);
 	out->header.encapsulated = in->header.encapsulated;
 
@@ -4388,8 +4400,9 @@ static void memb_merge_detect_endian_convert (
 	const struct memb_merge_detect *in,
 	struct memb_merge_detect *out)
 {
+	out->header.magic = TOTEM_MH_MAGIC;
+	out->header.version = TOTEM_MH_VERSION;
 	out->header.type = in->header.type;
-	out->header.endian_detector = ENDIAN_LOCAL;
 	out->header.nodeid = swab32 (in->header.nodeid);
 	out->ring_id.rep = swab32(in->ring_id.rep);
 	out->ring_id.seq = swab64 (in->ring_id.seq);
@@ -4601,6 +4614,85 @@ static int message_handler_token_hold_cancel (
 	return (0);
 }
 
+static int check_message_header_validity(
+	void *context,
+	const void *msg,
+	unsigned int msg_len)
+{
+	struct totemsrp_instance *instance = context;
+	const struct totem_message_header *message_header = msg;
+	const char *guessed_str;
+	const char *msg_byte = msg;
+
+	if (msg_len < sizeof (struct totem_message_header)) {
+		log_printf (instance->totemsrp_log_level_security,
+			    "Received message is too short...  Ignoring %u.",
+			    (unsigned int)msg_len);
+		return (-1);
+	}
+
+	if (message_header->magic != TOTEM_MH_MAGIC &&
+	    message_header->magic != swab16(TOTEM_MH_MAGIC)) {
+		/*
+		 * We've received ether Knet, old version of Corosync,
+		 * or something else. Do some guessing to display (hopefully)
+		 * helpful message
+		 */
+		guessed_str = NULL;
+
+		if (message_header->magic == 0xFFFF) {
+			/*
+			 * Corosync 2.2 used header with two UINT8_MAX
+			 */
+			guessed_str = "Corosync 2.2";
+		} else if (message_header->magic == 0xFEFE) {
+			/*
+			 * Corosync 2.3+ used header with two UINT8_MAX - 1
+			 */
+			guessed_str = "Corosync 2.3+";
+		} else if (msg_byte[0] == 0x01) {
+			/*
+			 * Knet has stable1 with first byte of message == 1
+			 */
+			guessed_str = "unencrypted Kronosnet";
+		} else if (msg_byte[0] >= 0 && msg_byte[0] <= 5) {
+			/*
+			 * Unencrypted Corosync 1.x/OpenAIS has first byte
+			 * 0-5. Collision with Knet (but still worth the try)
+			 */
+			guessed_str = "unencrypted Corosync 2.0/2.1/1.x/OpenAIS";
+		} else {
+			/*
+			 * Encrypted Kronosned packet has a hash at the end of
+			 * the packet and nothing specific at the beginning of the
+			 * packet (just encrypted data).
+			 * Encrypted Corosync 1.x/OpenAIS is quite similar but hash_digest
+			 * is in the beginning of the packet.
+			 *
+			 * So it's not possible to reliably detect ether of them.
+			 */
+			guessed_str = "encrypted Kronosnet/Corosync 2.0/2.1/1.x/OpenAIS or unknown";
+		}
+
+		log_printf(instance->totemsrp_log_level_security,
+		    "Received message with bad magic number (probably sent by %s).. Ignoring",
+		    guessed_str);
+
+		return (-1);
+	}
+
+	if (message_header->version != TOTEM_MH_VERSION) {
+		log_printf(instance->totemsrp_log_level_security,
+		"Received message with unsupported version %u... Ignoring",
+		message_header->version);
+
+		return (-1);
+	}
+
+	return (0);
+}
+
+
 void main_deliver_fn (
 	void *context,
 	const void *msg,
@@ -4609,13 +4701,9 @@ void main_deliver_fn (
 	struct totemsrp_instance *instance = context;
 	const struct totem_message_header *message_header = msg;
 
-	if (msg_len < sizeof (struct totem_message_header)) {
-		log_printf (instance->totemsrp_log_level_security,
-			    "Received message is too short...  ignoring %u.",
-			    (unsigned int)msg_len);
-		return;
+	if (check_message_header_validity(context, msg, msg_len) == -1) {
+		return ;
 	}
-
 
 	switch (message_header->type) {
 	case MESSAGE_TYPE_ORF_TOKEN:
@@ -4637,8 +4725,10 @@ void main_deliver_fn (
 		instance->stats.token_hold_cancel_rx++;
 		break;
 	default:
-		log_printf (instance->totemsrp_log_level_security, "Type of received message is wrong...  ignoring %d.\n", (int)message_header->type);
-printf ("wrong message type\n");
+		log_printf (instance->totemsrp_log_level_security,
+		    "Type of received message is wrong...  ignoring %d.\n",
+		    (int)message_header->type);
+
 		instance->stats.rx_msg_dropped++;
 		return;
 	}
@@ -4649,7 +4739,7 @@ printf ("wrong message type\n");
 		instance,
 		msg,
 		msg_len,
-		message_header->endian_detector != ENDIAN_LOCAL);
+		message_header->magic != TOTEM_MH_MAGIC);
 }
 
 int totemsrp_iface_set (
