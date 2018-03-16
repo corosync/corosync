@@ -133,6 +133,7 @@ linkstatusget_do (char *interface_name, int brief)
 					(!strstr(interface_status[i], "FAULTY"))) {
 					len = strlen(interface_status[i]);
 					printf ("\tstatus:\n");
+					s = 0;
 					while(s < len) {
 						t = interface_status[i][s] - '0';
 						printf("\t\tnode %d:\t", s++);
