@@ -403,6 +403,7 @@ int totemknet_ifaces_get (void *knet_context,
 	uint8_t link_list[KNET_MAX_LINK];
 	size_t num_hosts;
 	size_t num_links;
+	size_t link_idx;
 	int i,j;
 	char *ptr;
 	int res = 0;
@@ -435,8 +436,17 @@ int totemknet_ifaces_get (void *knet_context,
 				return (-1);
 			}
 
+			link_idx = 0;
 			for (i=0; i < num_links; i++) {
-				ptr = instance->link_status[link_list[i]];
+				/*
+				 * Skip over links that are unconfigured to corosync. This is basically
+				 * link0 if corosync isn't using it for comms, as we will still
+				 * have it set up for loopback.
+				 */
+				if (!instance->totem_config->interfaces[link_list[i]].configured) {
+					continue;
+				}
+				ptr = instance->link_status[link_idx++];
 
 				res = knet_link_get_status(instance->knet_handle,
 							   host_list[j],
