@@ -736,6 +736,11 @@ static int authenticate_nss_2_3 (
 		unsigned char	tmp_hash[hash_len[instance->crypto_hash_type]];
 		int             datalen = *buf_len - hash_len[instance->crypto_hash_type];
 
+		if (*buf_len <= hash_len[instance->crypto_hash_type]) {
+			log_printf(instance->log_level_security, "Received message is too short...  ignoring");
+			return -1;
+		}
+
 		if (calculate_nss_hash(instance, buf, datalen, tmp_hash) < 0) {
 			return -1;
 		}
@@ -845,6 +850,12 @@ int crypto_authenticate_and_decrypt (struct crypto_instance *instance,
 {
 	struct crypto_config_header *cch = (struct crypto_config_header *)buf;
 	const char *guessed_str;
+
+	if (*buf_len <= sizeof(struct crypto_config_header)) {
+		log_printf(instance->log_level_security, "Received message is too short...  ignoring");
+
+		return (-1);
+	}
 
 	if (cch->crypto_cipher_type != CRYPTO_CIPHER_TYPE_2_3) {
 		guessed_str = NULL;
