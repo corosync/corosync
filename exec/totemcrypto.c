@@ -808,6 +808,13 @@ size_t crypto_sec_header_size(
 	return hdr_size;
 }
 
+size_t crypto_get_current_sec_header_size(
+	const struct crypto_instance *instance)
+{
+
+	return (instance->crypto_header_size);
+}
+
 /*
  * 2.0 packet format:
  *   crypto_cipher_type | crypto_hash_type | __pad0 | __pad1 | hash | salt | data
@@ -907,7 +914,6 @@ int crypto_authenticate_and_decrypt (struct crypto_instance *instance,
 	/*
 	 * decrypt
 	 */
-
 	if (decrypt_nss_2_3(instance, buf, buf_len) != 0) {
 		return -1;
 	}

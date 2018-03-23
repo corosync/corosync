@@ -268,6 +268,12 @@ static inline void ucast_sendmsg (
 	struct iovec iovec;
 	int addrlen;
 
+	if (msg_len + crypto_get_current_sec_header_size(instance->crypto_inst) > sizeof(buf_out)) {
+		log_printf(LOGSYS_LEVEL_CRIT, "UDP message for ucast is too big. Ignoring message");
+
+		return ;
+	}
+
 	/*
 	 * Encrypt and digest the message
 	 */
@@ -335,6 +341,12 @@ static inline void mcast_sendmsg (
 	struct iovec iovec;
 	struct sockaddr_storage sockaddr;
 	int addrlen;
+
+	if (msg_len + crypto_get_current_sec_header_size(instance->crypto_inst) > sizeof(buf_out)) {
+		log_printf(LOGSYS_LEVEL_CRIT, "UDP message for mcast is too big. Ignoring message");
+
+		return ;
+	}
 
 	/*
 	 * Encrypt and digest the message

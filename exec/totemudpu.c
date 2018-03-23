@@ -271,6 +271,12 @@ static inline void ucast_sendmsg (
 	struct iovec iovec;
 	int addrlen;
 
+	if (msg_len + crypto_get_current_sec_header_size(instance->crypto_inst) > sizeof(buf_out)) {
+		log_printf(LOGSYS_LEVEL_CRIT, "UDPU message for ucast is too big. Ignoring message");
+
+		return ;
+	}
+
 	/*
 	 * Encrypt and digest the message
 	 */
@@ -340,6 +346,12 @@ static inline void mcast_sendmsg (
 	int addrlen;
         struct list_head *list;
 	struct totemudpu_member *member;
+
+	if (msg_len + crypto_get_current_sec_header_size(instance->crypto_inst) > sizeof(buf_out)) {
+		log_printf(LOGSYS_LEVEL_CRIT, "UDPU message for mcast is too big. Ignoring message");
+
+		return ;
+	}
 
 	/*
 	 * Encrypt and digest the message
