@@ -3313,12 +3313,23 @@ static void memb_join_message_send (struct totemsrp_instance *instance)
 	struct memb_join *memb_join = (struct memb_join *)memb_join_data;
 	char *addr;
 	unsigned int addr_idx;
+	size_t msg_len;
 
 	memb_join->header.type = MESSAGE_TYPE_MEMB_JOIN;
 	memb_join->header.endian_detector = ENDIAN_LOCAL;
 	memb_join->header.encapsulated = 0;
 	memb_join->header.nodeid = instance->my_id.addr[0].nodeid;
 	assert (memb_join->header.nodeid);
+
+	msg_len = sizeof(struct memb_join) +
+	    ((instance->my_proc_list_entries + instance->my_failed_list_entries) * sizeof(struct srp_addr));
+
+	if (msg_len > sizeof(memb_join_data)) {
+		log_printf (instance->totemsrp_log_level_error,
+			"memb_join_message too long. Ignoring message.");
+
+		return ;
+	}
 
 	memb_join->ring_seq = instance->my_ring_id.seq;
 	memb_join->proc_list_entries = instance->my_proc_list_entries;
@@ -3346,7 +3357,6 @@ static void memb_join_message_send (struct totemsrp_instance *instance)
 		instance->my_failed_list_entries *
 		sizeof (struct srp_addr);
 
-
 	if (instance->totem_config->send_join_timeout) {
 		usleep (random() % (instance->totem_config->send_join_timeout * 1000));
 	}
@@ -3367,6 +3377,7 @@ static void memb_leave_message_send (struct totemsrp_instance *instance)
 	unsigned int addr_idx;
 	int active_memb_entries;
 	struct srp_addr active_memb[PROCESSOR_COUNT_MAX];
+	size_t msg_len;
 
 	log_printf (instance->totemsrp_log_level_debug,
 		"sending join/leave message");
@@ -3383,6 +3394,15 @@ static void memb_leave_message_send (struct totemsrp_instance *instance)
 			   instance->my_proc_list, instance->my_proc_list_entries,
 			   &instance->my_id, 1);
 
+	msg_len = sizeof(struct memb_join) +
+	    ((active_memb_entries + instance->my_failed_list_entries) * sizeof(struct srp_addr));
+
+	if (msg_len > sizeof(memb_join_data)) {
+		log_printf (instance->totemsrp_log_level_error,
+			"memb_leave message too long. Ignoring message.");
+
+		return ;
+	}
 
 	memb_join->header.type = MESSAGE_TYPE_MEMB_JOIN;
 	memb_join->header.endian_detector = ENDIAN_LOCAL;
