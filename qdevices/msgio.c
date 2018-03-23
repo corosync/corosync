@@ -37,55 +37,6 @@
 
 #define MSGIO_LOCAL_BUF_SIZE			(1 << 10)
 
-ssize_t
-msgio_send(PRFileDesc *sock, const char *msg, size_t msg_len, size_t *start_pos)
-{
-	ssize_t sent_bytes;
-
-	if ((sent_bytes = PR_Send(sock, msg + *start_pos,
-	    msg_len - *start_pos, 0, PR_INTERVAL_NO_TIMEOUT)) != -1) {
-		*start_pos += sent_bytes;
-	}
-
-	return (sent_bytes);
-}
-
-ssize_t
-msgio_send_blocking(PRFileDesc *sock, const char *msg, size_t msg_len)
-{
-	PRPollDesc pfd;
-	size_t already_sent_bytes;
-	PRInt32 res;
-	ssize_t ret;
-
-	already_sent_bytes = 0;
-	ret = 0;
-
-	while (ret != -1 && already_sent_bytes < msg_len) {
-		pfd.fd = sock;
-		pfd.in_flags = PR_POLL_WRITE;
-		pfd.out_flags = 0;
-
-		if ((res = PR_Poll(&pfd, 1, PR_INTERVAL_NO_TIMEOUT)) > 0) {
-			if (pfd.out_flags & PR_POLL_WRITE) {
-				if ((msgio_send(sock, msg, msg_len, &already_sent_bytes) == -1) &&
-				    PR_GetError() != PR_WOULD_BLOCK_ERROR) {
-					ret = -1;
-				} else {
-					ret = already_sent_bytes;
-				}
-			} else if (pfd.out_flags & (PR_POLL_ERR | PR_POLL_NVAL | PR_POLL_HUP)) {
-				PR_SetError(PR_IO_ERROR, 0);
-				ret = -1;
-			}
-		} else {
-			ret = -1;
-		}
-	}
-
-	return (ret);
-}
-
 /*
  * -1 = send returned 0,
  * -2 = unhandled error.
@@ -96,18 +47,21 @@ int
 msgio_write(PRFileDesc *sock, const struct dynar *msg, size_t *already_sent_bytes)
 {
 	PRInt32 sent;
-	PRInt32 to_send;
+	PRInt32 to_send_i32;
+	size_t to_send;
 
 	to_send = dynar_size(msg) - *already_sent_bytes;
 	if (to_send > MSGIO_LOCAL_BUF_SIZE) {
-		to_send = MSGIO_LOCAL_BUF_SIZE;
+		to_send_i32 = MSGIO_LOCAL_BUF_SIZE;
+	} else {
+		to_send_i32 = (PRInt32)to_send;
 	}
 
-	sent = PR_Send(sock, dynar_data(msg) + *already_sent_bytes, to_send, 0,
+	sent = PR_Send(sock, dynar_data(msg) + *already_sent_bytes, to_send_i32, 0,
 	    PR_INTERVAL_NO_TIMEOUT);
 
 	if (sent > 0) {
-		*already_sent_bytes += sent;
+		*already_sent_bytes += (size_t)sent;
 
 		if (*already_sent_bytes == dynar_size(msg)) {
 			/*
@@ -143,7 +97,8 @@ msgio_read(PRFileDesc *sock, struct dynar *msg, size_t *already_received_bytes, 
 {
 	char local_read_buffer[MSGIO_LOCAL_BUF_SIZE];
 	PRInt32 readed;
-	PRInt32 to_read;
+	size_t to_read;
+	PRInt32 to_read_i32;
 	int ret;
 
 	ret = 0;
@@ -161,12 +116,14 @@ msgio_read(PRFileDesc *sock, struct dynar *msg, size_t *already_received_bytes, 
 	}
 
 	if (to_read > MSGIO_LOCAL_BUF_SIZE) {
-		to_read = MSGIO_LOCAL_BUF_SIZE;
+		to_read_i32 = MSGIO_LOCAL_BUF_SIZE;
+	} else {
+		to_read_i32 = (PRInt32)to_read;
 	}
 
-	readed = PR_Recv(sock, local_read_buffer, to_read, 0, PR_INTERVAL_NO_TIMEOUT);
+	readed = PR_Recv(sock, local_read_buffer, to_read_i32, 0, PR_INTERVAL_NO_TIMEOUT);
 	if (readed > 0) {
-		*already_received_bytes += readed;
+		*already_received_bytes += (size_t)readed;
 
 		if (!*skipping_msg) {
 			if (dynar_cat(msg, local_read_buffer, readed) == -1) {
