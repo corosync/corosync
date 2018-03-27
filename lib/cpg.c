@@ -494,8 +494,10 @@ cs_error_t cpg_dispatch (
 					 * As this is LIBCPG_PARTIAL_FIRST packet, check that there is no ongoing assembly
 					 */
 					if (assembly_data) {
-						error = CS_ERR_MESSAGE_ERROR;
-						goto error_put;
+						qb_list_del (&assembly_data->list);
+						free(assembly_data->assembly_buf);
+						free(assembly_data);
+						assembly_data = NULL;
 					}
 
 					assembly_data = malloc(sizeof(struct cpg_assembly_data));
