@@ -491,7 +491,9 @@ cs_error_t cpg_dispatch (
 				if (res_cpg_partial_deliver_callback->type == LIBCPG_PARTIAL_FIRST) {
 
 					/*
-					 * As this is LIBCPG_PARTIAL_FIRST packet, check that there is no ongoing assembly
+					 * As this is LIBCPG_PARTIAL_FIRST packet, check that there is no ongoing assembly.
+					 * Otherwise the sending of packet must have been interrupted and error should have
+					 * been reported to sending client. Therefore here last assembly will be dropped.
 					 */
 					if (assembly_data) {
 						qb_list_del (&assembly_data->list);
