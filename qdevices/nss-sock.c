@@ -160,7 +160,7 @@ nss_sock_create_listen_socket(const char *hostname, uint16_t port, PRIntn af)
 				}
 
 				/*
-				 * Socket is sucesfully bound
+				 * Socket is successfully bound
 				 */
 				break;
 			}
