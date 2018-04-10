@@ -93,7 +93,7 @@ qdevice_heuristics_worker_process_list_notify(enum process_list_notify_reason re
 			}
 		} else {
 			qdevice_heuristics_worker_log_printf(instance, LOG_DEBUG,
-			    "process %s sucesfully finished", entry->name);
+			    "process %s successfully finished", entry->name);
 		}
 		break;
 	}
@@ -245,7 +245,7 @@ qdevice_heuristics_worker_poll(struct qdevice_heuristics_worker_instance *instan
 			break;
 		case 0:
 			/*
-			 * All processes finished sucesfully
+			 * All processes finished successfully
 			 */
 			if (qdevice_heuristics_worker_cmd_write_exec_result(instance,
 			    instance->last_exec_seq_number, QDEVICE_HEURISTICS_EXEC_RESULT_PASS) != 0) {

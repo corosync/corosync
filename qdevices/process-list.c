@@ -417,8 +417,8 @@ process_list_get_no_running(struct process_list *plist)
 
 /*
  * -1 = Not all processes finished
- *  0 = All processes finished sucesfully
- *  1 - All processes finished but some of them not sucesfully
+ *  0 = All processes finished successfully
+ *  1 - All processes finished but some of them not successfully
  */
 int
 process_list_get_summary_result(struct process_list *plist)
@@ -442,7 +442,7 @@ process_list_get_summary_result(struct process_list *plist)
 }
 
 /*
- *  0 = All processes finished sucesfully
+ *  0 = All processes finished successfully
  *  1 = Some process finished and failed
  * -1 = Not all processed finished and none of finished failed
  */
