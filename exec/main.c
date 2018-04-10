@@ -1175,7 +1175,7 @@ static int corosync_move_to_root_cgroup(void) {
 	}
 
 	if (strcmp(current_cgroup_path, "/") == 0) {
-		log_printf(LOGSYS_LEVEL_NOTICE, "Corosync sucesfully moved to root cgroup");
+		log_printf(LOGSYS_LEVEL_NOTICE, "Corosync successfully moved to root cgroup");
 		res = 0;
 	} else {
 		log_printf(LOGSYS_LEVEL_WARNING, "Can't move Corosync to root cgroup");
