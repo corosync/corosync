@@ -3544,6 +3544,165 @@ static void fcc_token_update (
 }
 
 /*
+ * Sanity checkers
+ */
+static int check_orf_token_sanity(
+	const struct totemsrp_instance *instance,
+	const void *msg,
+	size_t msg_len,
+	int endian_conversion_needed)
+{
+	int rtr_entries;
+	const struct orf_token *token = (const struct orf_token *)msg;
+	size_t required_len;
+
+	if (msg_len < sizeof(struct orf_token)) {
+		log_printf (instance->totemsrp_log_level_security,
+		    "Received orf_token message is too short...  ignoring.");
+
+		return (-1);
+	}
+
+	if (endian_conversion_needed) {
+		rtr_entries = swab32(token->rtr_list_entries);
+	} else {
+		rtr_entries = token->rtr_list_entries;
+	}
+
+	required_len = sizeof(struct orf_token) + rtr_entries * sizeof(struct rtr_item);
+	if (msg_len < required_len) {
+		log_printf (instance->totemsrp_log_level_security,
+		    "Received orf_token message is too short...  ignoring.");
+
+		return (-1);
+	}
+
+	return (0);
+}
+
+static int check_mcast_sanity(
+	struct totemsrp_instance *instance,
+	const void *msg,
+	size_t msg_len,
+	int endian_conversion_needed)
+{
+
+	if (msg_len < sizeof(struct mcast)) {
+		log_printf (instance->totemsrp_log_level_security,
+		    "Received mcast message is too short...  ignoring.");
+
+		return (-1);
+	}
+
+	return (0);
+}
+
+static int check_memb_merge_detect_sanity(
+	struct totemsrp_instance *instance,
+	const void *msg,
+	size_t msg_len,
+	int endian_conversion_needed)
+{
+
+	if (msg_len < sizeof(struct memb_merge_detect)) {
+		log_printf (instance->totemsrp_log_level_security,
+		    "Received memb_merge_detect message is too short...  ignoring.");
+
+		return (-1);
+	}
+
+	return (0);
+}
+
+static int check_memb_join_sanity(
+	struct totemsrp_instance *instance,
+	const void *msg,
+	size_t msg_len,
+	int endian_conversion_needed)
+{
+	const struct memb_join *mj_msg = (const struct memb_join *)msg;
+	unsigned int proc_list_entries;
+	unsigned int failed_list_entries;
+	size_t required_len;
+
+	if (msg_len < sizeof(struct memb_join)) {
+		log_printf (instance->totemsrp_log_level_security,
+		    "Received memb_join message is too short...  ignoring.");
+
+		return (-1);
+	}
+
+	proc_list_entries = mj_msg->proc_list_entries;
+	failed_list_entries = mj_msg->failed_list_entries;
+
+	if (endian_conversion_needed) {
+		proc_list_entries = swab32(proc_list_entries);
+		failed_list_entries = swab32(failed_list_entries);
+	}
+
+	required_len = sizeof(struct memb_join) + ((proc_list_entries + failed_list_entries) * sizeof(struct srp_addr));
+	if (msg_len < required_len) {
+		log_printf (instance->totemsrp_log_level_security,
+		    "Received memb_join message is too short...  ignoring.");
+
+		return (-1);
+	}
+
+	return (0);
+}
+
+static int check_memb_commit_token_sanity(
+	struct totemsrp_instance *instance,
+	const void *msg,
+	size_t msg_len,
+	int endian_conversion_needed)
+{
+	const struct memb_commit_token *mct_msg = (const struct memb_commit_token *)msg;
+	unsigned int addr_entries;
+	size_t required_len;
+
+	if (msg_len < sizeof(struct memb_commit_token)) {
+		log_printf (instance->totemsrp_log_level_security,
+		    "Received memb_commit_token message is too short...  ignoring.");
+
+		return (0);
+	}
+
+	addr_entries= mct_msg->addr_entries;
+	if (endian_conversion_needed) {
+		addr_entries = swab32(addr_entries);
+	}
+
+	required_len = sizeof(struct memb_commit_token) +
+	    (addr_entries * (sizeof(struct srp_addr) + sizeof(struct memb_commit_token_memb_entry)));
+	if (msg_len < required_len) {
+		log_printf (instance->totemsrp_log_level_security,
+		    "Received memb_commit_token message is too short...  ignoring.");
+
+		return (-1);
+	}
+
+	return (0);
+}
+
+static int check_token_hold_cancel_sanity(
+	struct totemsrp_instance *instance,
+	const void *msg,
+	size_t msg_len,
+	int endian_conversion_needed)
+{
+
+	if (msg_len < sizeof(struct token_hold_cancel)) {
+		log_printf (instance->totemsrp_log_level_security,
+		    "Received token_hold_cancel message is too short...  ignoring.");
+
+		return (-1);
+	}
+
+	return (0);
+}
+
+/*
  * Message Handlers
  */
 
@@ -3577,6 +3736,10 @@ static int message_handler_orf_token (
 	log_printf (instance->totemsrp_log_level_debug,
 	"Time since last token %0.4f ms", ((float)tv_diff) / 1000000.0);
 #endif
+
+	if (check_orf_token_sanity(instance, msg, msg_len, endian_conversion_needed) == -1) {
+		return (0);
+	}
 
 	if (instance->orf_token_discard) {
 		return (0);
@@ -3973,6 +4136,9 @@ static int message_handler_mcast (
 	struct sq *sort_queue;
 	struct mcast mcast_header;
 
+	if (check_mcast_sanity(instance, msg, msg_len, endian_conversion_needed) == -1) {
+		return (0);
+	}
 
 	if (endian_conversion_needed) {
 		mcast_endian_convert (msg, &mcast_header);
@@ -4085,6 +4251,9 @@ static int message_handler_memb_merge_detect (
 {
 	struct memb_merge_detect memb_merge_detect;
 
+	if (check_memb_merge_detect_sanity(instance, msg, msg_len, endian_conversion_needed) == -1) {
+		return (0);
+	}
 
 	if (endian_conversion_needed) {
 		memb_merge_detect_endian_convert (msg, &memb_merge_detect);
@@ -4449,6 +4618,10 @@ static int message_handler_memb_join (
 	const struct memb_join *memb_join;
 	struct memb_join *memb_join_convert = alloca (msg_len);
 
+	if (check_memb_join_sanity(instance, msg, msg_len, endian_conversion_needed) == -1) {
+		return (0);
+	}
+
 	if (endian_conversion_needed) {
 		memb_join = memb_join_convert;
 		memb_join_endian_convert (msg, memb_join_convert);
@@ -4524,6 +4697,10 @@ static int message_handler_memb_commit_token (
 
 	log_printf (instance->totemsrp_log_level_debug,
 		"got commit token");
+
+	if (check_memb_commit_token_sanity(instance, msg, msg_len, endian_conversion_needed) == -1) {
+		return (0);
+	}
 
 	if (endian_conversion_needed) {
 		memb_commit_token_endian_convert (msg, memb_commit_token_convert);
@@ -4603,6 +4780,10 @@ static int message_handler_token_hold_cancel (
 	int endian_conversion_needed)
 {
 	const struct token_hold_cancel *token_hold_cancel = msg;
+
+	if (check_token_hold_cancel_sanity(instance, msg, msg_len, endian_conversion_needed) == -1) {
+		return (0);
+	}
 
 	if (memcmp (&token_hold_cancel->ring_id, &instance->my_ring_id,
 		sizeof (struct memb_ring_id)) == 0) {
