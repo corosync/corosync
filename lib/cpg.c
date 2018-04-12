@@ -498,7 +498,7 @@ cs_error_t cpg_dispatch (
 					 * been reported to sending client. Therefore here last assembly will be dropped.
 					 */
 					if (assembly_data) {
-						qb_list_del (&assembly_data->list);
+						list_del (&assembly_data->list);
 						free(assembly_data->assembly_buf);
 						free(assembly_data);
 						assembly_data = NULL;
