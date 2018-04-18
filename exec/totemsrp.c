@@ -3164,7 +3164,13 @@ static int srp_addr_compare (const void *a, const void *b)
 	const struct srp_addr *srp_a = (const struct srp_addr *)a;
 	const struct srp_addr *srp_b = (const struct srp_addr *)b;
 
-	return (srp_a->nodeid == srp_b->nodeid);
+	if (srp_a->nodeid < srp_b->nodeid) {
+		return -1;
+	} else if (srp_a->nodeid > srp_b->nodeid) {
+		return 1;
+	} else {
+		return 0;
+	}
 }
 
 static void memb_state_commit_token_create (
