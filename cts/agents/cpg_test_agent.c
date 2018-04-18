@@ -788,7 +788,7 @@ main(int argc, char *argv[])
 	list_init (&msg_log_head);
 	list_init (&config_chg_log_head);
 
-	if (NSS_NoDB_Init(".") != SECSuccess) {
+	if (NSS_NoDB_Init(NULL) != SECSuccess) {
 		qb_log(LOG_ERR, "Couldn't initialize nss");
 		exit (0);
 	}

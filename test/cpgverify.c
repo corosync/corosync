@@ -137,7 +137,7 @@ int main (int argc, char *argv[])
 		exit (0);
 	}
 
-	if (NSS_NoDB_Init(".") != SECSuccess) {
+	if (NSS_NoDB_Init(NULL) != SECSuccess) {
 		printf ("Couldn't initialize nss\n");
 		exit (0);
 	}
