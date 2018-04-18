@@ -670,7 +670,7 @@ static int init_nss_db(struct crypto_instance *instance)
 		return 0;
 	}
 
-	if (NSS_NoDB_Init(".") != SECSuccess) {
+	if (NSS_NoDB_Init(NULL) != SECSuccess) {
 		log_printf(instance->log_level_security, "NSS DB initialization failed (err %d)",
 			   PR_GetError());
 		return -1;
