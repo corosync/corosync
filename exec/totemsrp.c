@@ -1387,25 +1387,35 @@ static void memb_set_and_with_ring_id (
 	return;
 }
 
-#ifdef CODE_COVERAGE
-static void memb_set_print (
-	char *string,
+static void memb_set_log(
+	struct totemsrp_instance *instance,
+	int level,
+	const char *string,
         struct srp_addr *list,
 	int list_entries)
 {
+	char int_buf[32];
+	char list_str[512];
 	int i;
-	int j;
-	printf ("List '%s' contains %d entries:\n", string, list_entries);
+
+	memset(list_str, 0, sizeof(list_str));
 
 	for (i = 0; i < list_entries; i++) {
-		printf ("Address %d with %d rings\n", i, list[i].no_addrs);
-		for (j = 0; j < list[i].no_addrs; j++) {
-			printf ("\tiface %d %s\n", j, totemip_print (&list[i].addr[j]));
-			printf ("\tfamily %d\n", list[i].addr[j].family);
+		if (i == 0) {
+			snprintf(int_buf, sizeof(int_buf), "%u", list[i].nodeid);
+		} else {
+			snprintf(int_buf, sizeof(int_buf), ",%u", list[i].nodeid);
 		}
+
+		if (strlen(list_str) + strlen(int_buf) >= sizeof(list_str)) {
+			break ;
+		}
+		strcat(list_str, int_buf);
 	}
+
+	log_printf(level, "List '%s' contains %d entries: %s", string, list_entries, list_str);
 }
-#endif
+
 static void my_leave_memb_clear(
         struct totemsrp_instance *instance)
 {
@@ -4147,12 +4157,15 @@ static void memb_join_process (
 	proc_list = (struct srp_addr *)memb_join->end_of_memb_join;
 	failed_list = proc_list + memb_join->proc_list_entries;
 
-/*
-	memb_set_print ("proclist", proc_list, memb_join->proc_list_entries);
-	memb_set_print ("faillist", failed_list, memb_join->failed_list_entries);
-	memb_set_print ("my_proclist", instance->my_proc_list, instance->my_proc_list_entries);
-	memb_set_print ("my_faillist", instance->my_failed_list, instance->my_failed_list_entries);
--*/
+	log_printf(instance->totemsrp_log_level_trace, "memb_join_process");
+	memb_set_log(instance, instance->totemsrp_log_level_trace,
+	    "proclist", proc_list, memb_join->proc_list_entries);
+	memb_set_log(instance, instance->totemsrp_log_level_trace,
+	    "faillist", failed_list, memb_join->failed_list_entries);
+	memb_set_log(instance, instance->totemsrp_log_level_trace,
+	    "my_proclist", instance->my_proc_list, instance->my_proc_list_entries);
+	memb_set_log(instance, instance->totemsrp_log_level_trace,
+	    "my_faillist", instance->my_failed_list, instance->my_failed_list_entries);
 
 	if (memb_join->header.type == MESSAGE_TYPE_MEMB_JOIN) {
 		if (instance->flushing) {
