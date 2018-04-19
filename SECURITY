@@ -53,10 +53,12 @@ encrypt_and_sign to prepare the message to be sent.  When the executive
 wants to receive a message from the network, it uses
 authenticate_and_decrypt to verify the message is valid and decrypt it.
 
-Corosync uses AES256/SHA-1 which from the Mozilla Network Security
+Corosync uses AES256/SHA-1 by default from the Mozilla Network Security
 Services (libnss) library.
+It supports the following choices for ciphers: 3des, aes128, aes192, aes256,
+and the following choices for hash algorithms: md5, sha1, sha256, sha384, sha512.
 
-The internal functions utilize the following algorithms:
+The internal functions utilize the following algorithms by default:
 sha1 - hash algorithm secure for using with hmac
 hmac - produces a 16 byte digest from any length input
 
@@ -73,8 +75,8 @@ the private key is read into memory and stored for later use by the code.
 
 When a message is sent (encrypt_and_sign):
 ------------------------------------------
-- The message is encrypted using AES.
-- A digest of that message is then created using SHA256 and based on the
+- The message is encrypted using the chosen cipher (AES256 by default).
+- A digest of that message is then created using the chosen hash algorithm (SHA1 by default) and based on the
   private key.
 - the message is then transmitted.
 
