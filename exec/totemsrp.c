@@ -1180,9 +1180,6 @@ static void memb_consensus_set (
 	int found = 0;
 	int i;
 
-	if (addr->nodeid == LEAVE_DUMMY_NODEID)
-	        return;
-
 	for (i = 0; i < instance->consensus_list_entries; i++) {
 		if (srp_addr_equal(addr, &instance->consensus_list[i].addr)) {
 			found = 1;
@@ -3308,7 +3305,6 @@ static void memb_leave_message_send (struct totemsrp_instance *instance)
 	memb_join->proc_list_entries = active_memb_entries;
 	memb_join->failed_list_entries = instance->my_failed_list_entries;
 	srp_addr_copy (&memb_join->system_from, &instance->my_id);
-	memb_join->system_from.nodeid = LEAVE_DUMMY_NODEID;
 
 	// TODO: CC Maybe use the actual join send routine.
 	/*
@@ -4203,7 +4199,9 @@ static void memb_join_process (
 		instance->my_failed_list,
 		instance->my_failed_list_entries)) {
 
-		memb_consensus_set (instance, &memb_join->system_from);
+		if (memb_join->header.nodeid != LEAVE_DUMMY_NODEID) {
+			memb_consensus_set (instance, &memb_join->system_from);
+		}
 
 		if (memb_consensus_agreed (instance) && instance->failed_to_recv == 1) {
 				instance->failed_to_recv = 0;
