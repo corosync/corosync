@@ -273,7 +273,7 @@ qdevice_net_instance_init_from_cmap(struct qdevice_instance *instance)
 	host_addr = str;
 
 	if (cmap_get_string(cmap_handle, "quorum.device.net.port", &str) == CS_OK) {
-		if (utils_strtonum(optarg, 1, UINT16_MAX, &lli) == -1) {
+		if (utils_strtonum(str, 1, UINT16_MAX, &lli) == -1) {
 			qdevice_log(LOG_ERR, "quorum.device.net.port must be in range 1-%u", UINT16_MAX);
 			free(str);
 			goto error_free_host_addr;
