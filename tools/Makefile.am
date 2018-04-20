@@ -44,7 +44,7 @@ endif
 
 AM_CFLAGS		= $(knet_CFLAGS)
 
-EXTRA_DIST		= $(bin_SCRIPTS) corosync-xmlproc.sh \
+EXTRA_DIST		= corosync-xmlproc.sh \
 			  corosync-notifyd.sysconfig.example \
                           corosync-blackbox.sh
 
