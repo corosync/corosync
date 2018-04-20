@@ -42,7 +42,7 @@ if INSTALL_XMLCONF
 bin_SCRIPTS		+= corosync-xmlproc
 endif
 
-EXTRA_DIST		= $(bin_SCRIPTS) corosync-xmlproc.sh \
+EXTRA_DIST		= corosync-xmlproc.sh \
 			  corosync-notifyd.sysconfig.example \
                           corosync-blackbox.sh
 
