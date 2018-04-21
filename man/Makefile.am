@@ -166,7 +166,9 @@ HTML_DOCS 		= $(dist_man_MANS:%=%.html) $(man_MANS:%=%.html)
 %.3: %.3.in $(autogen_common)
 	@echo Generating $@ man page && \
 	rm -f $@-t-t $@-t $@ && \
-	date="$$(LC_ALL=C date "+%F" $${SOURCE_DATE_EPOCH+-d @$$SOURCE_DATE_EPOCH})" && \
+	DATE_FMT="%Y-%m-%d" && \
+	SOURCE_DATE_EPOCH="$${SOURCE_DATE_EPOCH:-$$(date +%s)}" && \
+	date="$$(date -u -d "@$$SOURCE_DATE_EPOCH" "+$$DATE_FMT" 2>/dev/null || date -u -r "$$SOURCE_DATE_EPOCH" "+$$DATE_FMT" 2>/dev/null || date -u "+$$DATE_FMT")" && \
 	awk "{print}(\$$1 ~ /@COMMONIPCERRORS@/){exit 0}" ${top_srcdir}/man/$@.in > $@-t-t && \
 	cat ${top_srcdir}/man/$(autogen_common) >> $@-t-t && \
 	awk -v p=0 "(\$$1 ~ /@COMMONIPCERRORS@/){p = 1} {if(p==1)print}" ${top_srcdir}/man/$@.in >> $@-t-t && \
