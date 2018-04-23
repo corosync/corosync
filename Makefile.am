@@ -46,7 +46,7 @@ MAINTAINERCLEANFILES	= Makefile.in aclocal.m4 configure depcomp \
 			  autoheader automake autoconf test_lense.sh \
 			  autoscan.log configure.scan ltmain.sh test-driver
 
-dist_doc_DATA		= LICENSE INSTALL README.recovery SECURITY AUTHORS
+dist_doc_DATA		= LICENSE INSTALL README.recovery AUTHORS
 
 SUBDIRS			= include common_lib lib exec tools test cts pkgconfig \
 			  man init conf vqsim
