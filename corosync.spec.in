@@ -168,7 +168,7 @@ fi
 %endif
 
 %files
-%doc LICENSE SECURITY
+%doc LICENSE
 %{_sbindir}/corosync
 %{_sbindir}/corosync-keygen
 %{_sbindir}/corosync-cmapctl

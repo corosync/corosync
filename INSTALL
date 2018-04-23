@@ -184,9 +184,6 @@ Get one or more nodes and run the corosync executive on each node.  Run the
 corosync daemon after following the previous directions.  The daemon must be
 run as UID 0(root).
 
-please read SECURITY to understand the threat model assumed by corosync
-and the techniques corosync use to overcome these threats.
-
 Before running any of the test programs
 ---------------------------------------
 The corosync executive will ensure security by only allowing the UID 0(root) or
@@ -201,8 +198,7 @@ uidgid {
 }
 
 Please note that these users then have full ability to transmit and receive
-messages in the cluster and are not bound by the threat model described in
-SECURITY.
+messages in the cluster.
 
 Try out the corosync cpg functionality
 --------------------------------------
