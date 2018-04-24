@@ -140,13 +140,6 @@ enum cpg_sync_state {
 	CPGSYNC_JOINLIST
 };
 
-enum cpg_downlist_state_e {
-       CPG_DOWNLIST_NONE,
-       CPG_DOWNLIST_WAITING_FOR_MESSAGES,
-       CPG_DOWNLIST_APPLYING,
-};
-static enum cpg_downlist_state_e downlist_state;
-static struct qb_list_head downlist_messages_head;
 static struct qb_list_head joinlist_messages_head;
 
 struct cpg_pd {
@@ -296,9 +289,7 @@ static int cpg_exec_send_downlist(void);
 
 static int cpg_exec_send_joinlist(void);
 
-static void downlist_messages_delete (void);
-
-static void downlist_master_choose_and_send (void);
+static void downlist_inform_clients (void);
 
 static void joinlist_inform_clients (void);
 
@@ -500,14 +491,6 @@ struct req_exec_cpg_downlist {
 	mar_uint32_t nodeids[PROCESSOR_COUNT_MAX]  __attribute__((aligned(8)));
 };
 
-struct downlist_msg {
-	mar_uint32_t sender_nodeid;
-	mar_uint32_t old_members __attribute__((aligned(8)));
-	mar_uint32_t left_nodes __attribute__((aligned(8)));
-	mar_uint32_t nodeids[PROCESSOR_COUNT_MAX]  __attribute__((aligned(8)));
-	struct qb_list_head list;
-};
-
 struct joinlist_msg {
 	mar_uint32_t sender_nodeid;
 	uint32_t pid;
@@ -567,8 +550,6 @@ static void cpg_sync_init (
 	last_sync_ring_id.nodeid = ring_id->nodeid;
 	last_sync_ring_id.seq = ring_id->seq;
 
-	downlist_state = CPG_DOWNLIST_WAITING_FOR_MESSAGES;
-
 	entries = 0;
 	/*
 	 * Determine list of nodeids for downlist message
@@ -612,14 +593,10 @@ static void cpg_sync_activate (void)
 		my_member_list_entries * sizeof (unsigned int));
 	my_old_member_list_entries = my_member_list_entries;
 
-	if (downlist_state == CPG_DOWNLIST_WAITING_FOR_MESSAGES) {
-		downlist_master_choose_and_send ();
-	}
+	downlist_inform_clients ();
 
 	joinlist_inform_clients ();
 
-	downlist_messages_delete ();
-	downlist_state = CPG_DOWNLIST_NONE;
 	joinlist_messages_delete ();
 
 	notify_lib_totem_membership (NULL, my_member_list_entries, my_member_list);
@@ -627,8 +604,7 @@ static void cpg_sync_activate (void)
 
 static void cpg_sync_abort (void)
 {
-	downlist_state = CPG_DOWNLIST_NONE;
-	downlist_messages_delete ();
+
 	joinlist_messages_delete ();
 }
 
@@ -801,73 +777,17 @@ static int notify_lib_joinlist(
 	return CS_OK;
 }
 
-static void downlist_log(const char *msg, struct downlist_msg* dl)
+static void downlist_log(const char *msg, struct req_exec_cpg_downlist *dl)
 {
 	log_printf (LOG_DEBUG,
-		    "%s: sender %s; members(old:%d left:%d)",
+		    "%s: members(old:%d left:%d)",
 		    msg,
-		    api->totem_ifaces_print(dl->sender_nodeid),
 		    dl->old_members,
 		    dl->left_nodes);
 }
 
-static struct downlist_msg* downlist_master_choose (void)
+static void downlist_inform_clients (void)
 {
-	struct downlist_msg *cmp;
-	struct downlist_msg *best = NULL;
-	struct qb_list_head *iter;
-	uint32_t cmp_members;
-	uint32_t best_members;
-	uint32_t i;
-	int ignore_msg;
-
-	qb_list_for_each(iter, &downlist_messages_head) {
-		cmp = qb_list_entry(iter, struct downlist_msg, list);
-		downlist_log("comparing", cmp);
-
-		ignore_msg = 0;
-		for (i = 0; i < cmp->left_nodes; i++) {
-			if (cmp->nodeids[i] == api->totem_nodeid_get()) {
-				log_printf (LOG_DEBUG, "Ignoring this entry because I'm in the left list\n");
-
-				ignore_msg = 1;
-				break;
-			}
-		}
-
-		if (ignore_msg) {
-			continue ;
-		}
-
-		if (best == NULL) {
-			best = cmp;
-			continue;
-		}
-
-		best_members = best->old_members - best->left_nodes;
-		cmp_members = cmp->old_members - cmp->left_nodes;
-
-		if (cmp_members > best_members) {
-			best = cmp;
-		} else if (cmp_members == best_members) {
-			if (cmp->old_members > best->old_members) {
-				best = cmp;
-			} else if (cmp->old_members == best->old_members) {
-				if (cmp->sender_nodeid < best->sender_nodeid) {
-					best = cmp;
-				}
-			}
-		}
-	}
-
-	assert (best != NULL);
-
-	return best;
-}
-
-static void downlist_master_choose_and_send (void)
-{
-	struct downlist_msg *stored_msg;
 	struct qb_list_head *iter, *tmp_iter;
 	struct process_info *left_pi;
 	qb_map_t *group_map;
@@ -882,14 +802,7 @@ static void downlist_master_choose_and_send (void)
 	qb_map_iter_t *miter;
 	int i, size;
 
-	downlist_state = CPG_DOWNLIST_APPLYING;
-
-	stored_msg = downlist_master_choose ();
-	if (!stored_msg) {
-		log_printf (LOGSYS_LEVEL_DEBUG, "NO chosen downlist");
-		return;
-	}
-	downlist_log("chosen downlist", stored_msg);
+	downlist_log("my downlist", &g_req_exec_cpg_downlist);
 
 	group_map = qb_skiplist_create();
 
@@ -902,9 +815,9 @@ static void downlist_master_choose_and_send (void)
 		struct process_info *pi = qb_list_entry(iter, struct process_info, list);
 
 		left_pi = NULL;
-		for (i = 0; i < stored_msg->left_nodes; i++) {
+		for (i = 0; i < g_req_exec_cpg_downlist.left_nodes; i++) {
 
-			if (pi->nodeid == stored_msg->nodeids[i]) {
+			if (pi->nodeid == g_req_exec_cpg_downlist.nodeids[i]) {
 				left_pi = pi;
 				break;
 			}
@@ -1029,18 +942,6 @@ static void joinlist_inform_clients (void)
 	joinlist_remove_zombie_pi_entries ();
 }
 
-static void downlist_messages_delete (void)
-{
-	struct downlist_msg *stored_msg;
-        struct qb_list_head *iter, *tmp_iter;
-
-	qb_list_for_each_safe(iter, tmp_iter, &downlist_messages_head) {
-		stored_msg = qb_list_entry(iter, struct downlist_msg, list);
-		qb_list_del (&stored_msg->list);
-		free (stored_msg);
-	}
-}
-
 static void joinlist_messages_delete (void)
 {
 	struct joinlist_msg *stored_msg;
@@ -1056,7 +957,6 @@ static void joinlist_messages_delete (void)
 
 static char *cpg_exec_init_fn (struct corosync_api_v1 *corosync_api)
 {
-	qb_list_init (&downlist_messages_head);
 	qb_list_init (&joinlist_messages_head);
 	api = corosync_api;
 	return (NULL);
@@ -1305,41 +1205,9 @@ static void message_handler_req_exec_cpg_downlist(
 	unsigned int nodeid)
 {
 	const struct req_exec_cpg_downlist *req_exec_cpg_downlist = message;
-	int i;
-	struct qb_list_head *iter;
-	struct downlist_msg *stored_msg;
-	int found;
 
-	if (downlist_state != CPG_DOWNLIST_WAITING_FOR_MESSAGES) {
-		log_printf (LOGSYS_LEVEL_WARNING, "downlist left_list: %d received in state %d",
-			req_exec_cpg_downlist->left_nodes, downlist_state);
-		return;
-	}
-
-	stored_msg = malloc (sizeof (struct downlist_msg));
-	stored_msg->sender_nodeid = nodeid;
-	stored_msg->old_members = req_exec_cpg_downlist->old_members;
-	stored_msg->left_nodes = req_exec_cpg_downlist->left_nodes;
-	memcpy (stored_msg->nodeids, req_exec_cpg_downlist->nodeids,
-		req_exec_cpg_downlist->left_nodes * sizeof (mar_uint32_t));
-	qb_list_init (&stored_msg->list);
-	qb_list_add (&stored_msg->list, &downlist_messages_head);
-
-	for (i = 0; i < my_member_list_entries; i++) {
-		found = 0;
-		qb_list_for_each(iter, &downlist_messages_head) {
-			stored_msg = qb_list_entry(iter, struct downlist_msg, list);
-
-			if (my_member_list[i] == stored_msg->sender_nodeid) {
-				found = 1;
-			}
-		}
-		if (!found) {
-			return;
-		}
-	}
-
-	downlist_master_choose_and_send ();
+	log_printf (LOGSYS_LEVEL_WARNING, "downlist left_list: %d received",
+			req_exec_cpg_downlist->left_nodes);
 }
 
 
