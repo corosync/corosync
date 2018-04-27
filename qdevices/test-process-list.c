@@ -40,6 +40,7 @@
 #include <string.h>
 #include <poll.h>
 #include <signal.h>
+#include <stdlib.h>
 #include <limits.h>
 #include <unistd.h>
 
