@@ -32,11 +32,16 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <sys/types.h>
+#include <sys/stat.h>
+
 #include <stdio.h>
 #include <assert.h>
 #include <string.h>
 #include <poll.h>
 #include <signal.h>
+#include <limits.h>
+#include <unistd.h>
 
 #include "process-list.h"
 
@@ -78,6 +83,31 @@ plist_notify(enum process_list_notify_reason reason, const struct process_list_e
 	}
 }
 
+static char *
+find_exec_path(const char *exec)
+{
+	struct stat stat_buf;
+	char *res_path;
+	int res;
+
+	assert((res_path = malloc(PATH_MAX)) != NULL);
+	memset(res_path, 0, PATH_MAX);
+
+	res = snprintf(res_path, PATH_MAX, "/bin/%s", exec);
+	assert(res > 0 && res < PATH_MAX);
+	if (stat(res_path, &stat_buf) == 0 && (stat_buf.st_mode & S_IXUSR)) {
+		return (res_path);
+	}
+
+	res = snprintf(res_path, PATH_MAX, "/usr/bin/%s", exec);
+	assert(res > 0 && res < PATH_MAX);
+	if (stat(res_path, &stat_buf) == 0 && (stat_buf.st_mode & S_IXUSR)) {
+		return (res_path);
+	}
+
+	return (NULL);
+}
+
 int
 main(void)
 {
@@ -86,6 +116,10 @@ main(void)
 	int i;
 	int timeout;
 	int no_repeats;
+	char *true_path, *false_path;
+
+	assert((true_path = find_exec_path("true")) != NULL);
+	assert((false_path = find_exec_path("false")) != NULL);
 
 	signal_handlers_register();
 
@@ -143,10 +177,10 @@ main(void)
 	/*
 	 * Test two processes. /bin/true and /bin/false. Accumulated result should be fail
 	 */
-	plist_entry = process_list_add(&plist, "true", "/bin/true");
+	plist_entry = process_list_add(&plist, "true", true_path);
 	assert(plist_entry != NULL);
 
-	plist_entry = process_list_add(&plist, "false", "/bin/false");
+	plist_entry = process_list_add(&plist, "false", false_path);
 	assert(plist_entry != NULL);
 
 	no_executed = 0;
@@ -178,7 +212,7 @@ main(void)
 	/*
 	 * Test two processes. /bin/true and one non-existing. Accumulated result should be fail
 	 */
-	plist_entry = process_list_add(&plist, "true", "/bin/true");
+	plist_entry = process_list_add(&plist, "true", true_path);
 	assert(plist_entry != NULL);
 
 	plist_entry = process_list_add(&plist, "false", "/nonexistingdir/nonexistingfile");
@@ -213,13 +247,13 @@ main(void)
 	/*
 	 * Test three processes /bin/true. Accumulated result should be success.
 	 */
-	plist_entry = process_list_add(&plist, "true", "/bin/true");
+	plist_entry = process_list_add(&plist, "true", true_path);
 	assert(plist_entry != NULL);
 
-	plist_entry = process_list_add(&plist, "true2", "/bin/true");
+	plist_entry = process_list_add(&plist, "true2", true_path);
 	assert(plist_entry != NULL);
 
-	plist_entry = process_list_add(&plist, "true3", "/bin/true");
+	plist_entry = process_list_add(&plist, "true3", true_path);
 	assert(plist_entry != NULL);
 
 	no_executed = 0;
@@ -251,7 +285,7 @@ main(void)
 	/*
 	 * Test two processes. /bin/true and cat. Waiting for maximum of 2 sec
 	 */
-	plist_entry = process_list_add(&plist, "true", "/bin/true");
+	plist_entry = process_list_add(&plist, "true", true_path);
 	assert(plist_entry != NULL);
 
 	plist_entry = process_list_add(&plist, "cat", "/bin/cat /dev/zero");
@@ -326,16 +360,16 @@ main(void)
 	 * Test 3 processes. Test if entries are properly deallocated
 	 */
 	process_list_init(&plist, 3, 1, plist_notify, (void *)0x42);
-	plist_entry = process_list_add(&plist, "true", "/bin/true");
+	plist_entry = process_list_add(&plist, "true", true_path);
 	assert(plist_entry != NULL);
 
-	plist_entry = process_list_add(&plist, "true2", "/bin/true");
+	plist_entry = process_list_add(&plist, "true2", true_path);
 	assert(plist_entry != NULL);
 
-	plist_entry = process_list_add(&plist, "true3", "/bin/true");
+	plist_entry = process_list_add(&plist, "true3", true_path);
 	assert(plist_entry != NULL);
 
-	plist_entry = process_list_add(&plist, "true4", "/bin/true");
+	plist_entry = process_list_add(&plist, "true4", true_path);
 	assert(plist_entry == NULL);
 
 	no_executed = 0;
@@ -364,7 +398,7 @@ main(void)
 
 	process_list_move_active_entries_to_kill_list(&plist);
 
-	plist_entry = process_list_add(&plist, "true", "/bin/true");
+	plist_entry = process_list_add(&plist, "true", true_path);
 	assert(plist_entry != NULL);
 
 	plist_entry = process_list_add(&plist, "ignoresig1", "bash -c \"trap 'echo trap' SIGINT;while true;do sleep 1;done\"");
@@ -373,7 +407,7 @@ main(void)
 	plist_entry = process_list_add(&plist, "ignoresig2", "bash -c \"trap 'echo trap' SIGINT SIGTERM;while true;do sleep 1;done\"");
 	assert(plist_entry != NULL);
 
-	plist_entry = process_list_add(&plist, "true4", "/bin/true");
+	plist_entry = process_list_add(&plist, "true4", true_path);
 	assert(plist_entry == NULL);
 
 	no_executed = 0;
@@ -390,15 +424,15 @@ main(void)
 	assert(process_list_get_summary_result(&plist) == -1);
 	assert(process_list_get_summary_result_short(&plist) == -1);
 
-	plist_entry = process_list_add(&plist, "true4", "/bin/true");
+	plist_entry = process_list_add(&plist, "true4", true_path);
 	assert(plist_entry == NULL);
 
 	process_list_move_active_entries_to_kill_list(&plist);
 
-	plist_entry = process_list_add(&plist, "true4", "/bin/true");
+	plist_entry = process_list_add(&plist, "true4", true_path);
 	assert(plist_entry != NULL);
 
-	plist_entry = process_list_add(&plist, "true5", "/bin/true");
+	plist_entry = process_list_add(&plist, "true5", true_path);
 	assert(plist_entry == NULL);
 
 	assert(process_list_process_kill_list(&plist) == 0);
@@ -415,16 +449,16 @@ main(void)
 	assert(process_list_get_summary_result(&plist) == 0);
 	assert(process_list_get_summary_result_short(&plist) == 0);
 
-	plist_entry = process_list_add(&plist, "true", "/bin/true");
+	plist_entry = process_list_add(&plist, "true", true_path);
 	assert(plist_entry != NULL);
 
-	plist_entry = process_list_add(&plist, "true2", "/bin/true");
+	plist_entry = process_list_add(&plist, "true2", true_path);
 	assert(plist_entry != NULL);
 
-	plist_entry = process_list_add(&plist, "true3", "/bin/true");
+	plist_entry = process_list_add(&plist, "true3", true_path);
 	assert(plist_entry != NULL);
 
-	plist_entry = process_list_add(&plist, "true4", "/bin/true");
+	plist_entry = process_list_add(&plist, "true4", true_path);
 	assert(plist_entry == NULL);
 
 	process_list_free(&plist);
@@ -433,16 +467,16 @@ main(void)
 	 * Test 3 processes and difference between summary and short-circuit summary
 	 */
 	process_list_init(&plist, 3, 1, plist_notify, (void *)0x42);
-	plist_entry = process_list_add(&plist, "true", "/bin/true");
+	plist_entry = process_list_add(&plist, "true", true_path);
 	assert(plist_entry != NULL);
 
-	plist_entry = process_list_add(&plist, "false", "/bin/false");
+	plist_entry = process_list_add(&plist, "false", false_path);
 	assert(plist_entry != NULL);
 
 	plist_entry = process_list_add(&plist, "loop", "bash -c \"while true;do sleep 1;done\"");
 	assert(plist_entry != NULL);
 
-	plist_entry = process_list_add(&plist, "true4", "/bin/true");
+	plist_entry = process_list_add(&plist, "true4", true_path);
 	assert(plist_entry == NULL);
 
 	no_executed = 0;
