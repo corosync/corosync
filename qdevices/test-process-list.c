@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2017 Red Hat, Inc.
+ * Copyright (c) 2015-2018 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -45,6 +45,19 @@
 #include <unistd.h>
 
 #include "process-list.h"
+
+/*
+ * 1 min timeout
+ */
+#define WAIT_FOR_NO_RUNNING_REPEATS		6000
+#define WAIT_FOR_NO_RUNNING_TIMEOUT		60000
+/*
+ * 1 sec timeout
+ */
+/*
+#define WAIT_FOR_NO_RUNNING_REPEATS		100
+#define WAIT_FOR_NO_RUNNING_TIMEOUT		1000
+*/
 
 static int no_executed;
 static int no_finished;
@@ -109,14 +122,34 @@ find_exec_path(const char *exec)
 	return (NULL);
 }
 
+static int
+wait_for_no_running(struct process_list *plist, int no_running, int no_in_kill_list)
+{
+	int timeout;
+	int no_repeats;
+	int i;
+
+	no_repeats = WAIT_FOR_NO_RUNNING_REPEATS;
+	timeout = WAIT_FOR_NO_RUNNING_TIMEOUT / no_repeats;
+
+	for (i = 0; i < no_repeats; i++) {
+		assert(process_list_waitpid(plist) == 0);
+		if (process_list_get_no_running(plist) == no_running &&
+		    process_list_get_kill_list_items(plist) == no_in_kill_list) {
+			return (0);
+		}
+
+		poll(NULL, 0, timeout);
+	}
+
+	return (-1);
+}
+
 int
 main(void)
 {
 	struct process_list plist;
 	struct process_list_entry *plist_entry;
-	int i;
-	int timeout;
-	int no_repeats;
 	char *true_path, *false_path;
 
 	assert((true_path = find_exec_path("true")) != NULL);
@@ -155,20 +188,8 @@ main(void)
 	assert(no_executed == 0);
 	assert(process_list_get_no_running(&plist) == 0);
 
-	/*
-	 * Wait to exit
-	 */
-	no_repeats = 10;
-	timeout = 1000 / no_repeats;
-	for (i = 0; i < no_repeats; i++) {
-		assert(process_list_waitpid(&plist) == 0);
-		if (process_list_get_no_running(&plist) > 0) {
-			poll(NULL, 0, timeout);
-		}
-	}
+	assert(wait_for_no_running(&plist, 0, 0) == 0);
 
-	assert(process_list_waitpid(&plist) == 0);
-	assert(process_list_get_no_running(&plist) == 0);
 	assert(no_finished == 0);
 	assert(process_list_get_summary_result(&plist) == 0);
 	assert(process_list_get_summary_result_short(&plist) == 0);
@@ -193,14 +214,7 @@ main(void)
 	/*
 	 * Wait to exit
 	 */
-	no_repeats = 10;
-	timeout = 1000 / no_repeats;
-	for (i = 0; i < no_repeats; i++) {
-		assert(process_list_waitpid(&plist) == 0);
-		if (process_list_get_no_running(&plist) > 0) {
-			poll(NULL, 0, timeout);
-		}
-	}
+	assert(wait_for_no_running(&plist, 0, 0) == 0);
 
 	assert(process_list_waitpid(&plist) == 0);
 	assert(process_list_get_no_running(&plist) == 0);
@@ -228,17 +242,8 @@ main(void)
 	/*
 	 * Wait to exit
 	 */
-	no_repeats = 10;
-	timeout = 1000 / no_repeats;
-	for (i = 0; i < no_repeats; i++) {
-		assert(process_list_waitpid(&plist) == 0);
-		if (process_list_get_no_running(&plist) > 0) {
-			poll(NULL, 0, timeout);
-		}
-	}
+	assert(wait_for_no_running(&plist, 0, 0) == 0);
 
-	assert(process_list_waitpid(&plist) == 0);
-	assert(process_list_get_no_running(&plist) == 0);
 	assert(no_finished == 2);
 	assert(process_list_get_summary_result(&plist) == 1);
 	assert(process_list_get_summary_result_short(&plist) == 1);
@@ -266,17 +271,8 @@ main(void)
 	/*
 	 * Wait to exit
 	 */
-	no_repeats = 10;
-	timeout = 1000 / no_repeats;
-	for (i = 0; i < no_repeats; i++) {
-		assert(process_list_waitpid(&plist) == 0);
-		if (process_list_get_no_running(&plist) > 0) {
-			poll(NULL, 0, timeout);
-		}
-	}
+	assert(wait_for_no_running(&plist, 0, 0) == 0);
 
-	assert(process_list_waitpid(&plist) == 0);
-	assert(process_list_get_no_running(&plist) == 0);
 	assert(no_finished == 3);
 	assert(process_list_get_summary_result(&plist) == 0);
 	assert(process_list_get_summary_result_short(&plist) == 0);
@@ -284,7 +280,7 @@ main(void)
 	process_list_free(&plist);
 
 	/*
-	 * Test two processes. /bin/true and cat. Waiting for maximum of 2 sec
+	 * Test two processes. /bin/true and cat. Cat blocks so test kill list
 	 */
 	plist_entry = process_list_add(&plist, "true", true_path);
 	assert(plist_entry != NULL);
@@ -298,22 +294,18 @@ main(void)
 	assert(no_executed == 2);
 	assert(process_list_get_no_running(&plist) == 2);
 
-	poll(NULL, 0, 500);
-	assert(process_list_waitpid(&plist) == 0);
-	poll(NULL, 0, 500);
-	assert(process_list_waitpid(&plist) == 0);
+	assert(wait_for_no_running(&plist, 1, 0) == 0);
 
-	assert(process_list_get_no_running(&plist) == 1);
 	assert(no_finished == 1);
 	assert(process_list_get_summary_result(&plist) == -1);
 	assert(process_list_get_summary_result_short(&plist) == -1);
 
 	process_list_move_active_entries_to_kill_list(&plist);
 	assert(process_list_process_kill_list(&plist) == 0);
-	poll(NULL, 0, 500);
-	assert(process_list_process_kill_list(&plist) == 0);
-	poll(NULL, 0, 500);
-	assert(process_list_waitpid(&plist) == 0);
+	/*
+	 * There should be 0 running and 0 in kill list
+	 */
+	assert(wait_for_no_running(&plist, 0, 0) == 0);
 
 	assert(process_list_get_kill_list_items(&plist) == 0);
 
@@ -322,7 +314,7 @@ main(void)
 	process_list_free(&plist);
 
 	/*
-	 * Test two bash proceses. One ignores INT and second ignores INT and TERM. Waiting for maximum of 2 sec
+	 * Test two bash proceses. One ignores INT and second ignores INT and TERM.
 	 */
 	plist_entry = process_list_add(&plist, "ignoresig1", "bash -c \"trap 'echo trap' SIGINT;while true;do sleep 1;done\"");
 	assert(plist_entry != NULL);
@@ -336,6 +328,9 @@ main(void)
 	assert(no_executed == 2);
 	assert(process_list_get_no_running(&plist) == 2);
 
+	/*
+	 * Wait some time. 2 processes should be running
+	 */
 	poll(NULL, 0, 500);
 	assert(process_list_waitpid(&plist) == 0);
 
@@ -345,15 +340,12 @@ main(void)
 	assert(process_list_get_summary_result_short(&plist) == -1);
 
 	process_list_move_active_entries_to_kill_list(&plist);
+	assert(wait_for_no_running(&plist, 0, 2) == 0);
 	assert(process_list_process_kill_list(&plist) == 0);
-	poll(NULL, 0, 500);
-	assert(process_list_waitpid(&plist) == 0);
-	assert(process_list_get_kill_list_items(&plist) == 1);
+	assert(wait_for_no_running(&plist, 0, 1) == 0);
 
 	assert(process_list_process_kill_list(&plist) == 0);
-	poll(NULL, 0, 500);
-	assert(process_list_waitpid(&plist) == 0);
-	assert(process_list_get_kill_list_items(&plist) == 0);
+	assert(wait_for_no_running(&plist, 0, 0) == 0);
 
 	process_list_free(&plist);
 
@@ -370,6 +362,9 @@ main(void)
 	plist_entry = process_list_add(&plist, "true3", true_path);
 	assert(plist_entry != NULL);
 
+	/*
+	 * Insert fails
+	 */
 	plist_entry = process_list_add(&plist, "true4", true_path);
 	assert(plist_entry == NULL);
 
@@ -382,17 +377,8 @@ main(void)
 	/*
 	 * Wait to exit
 	 */
-	no_repeats = 10;
-	timeout = 1000 / no_repeats;
-	for (i = 0; i < no_repeats; i++) {
-		assert(process_list_waitpid(&plist) == 0);
-		if (process_list_get_no_running(&plist) > 0) {
-			poll(NULL, 0, timeout);
-		}
-	}
+	assert(wait_for_no_running(&plist, 0, 0) == 0);
 
-	assert(process_list_waitpid(&plist) == 0);
-	assert(process_list_get_no_running(&plist) == 0);
 	assert(no_finished == 3);
 	assert(process_list_get_summary_result(&plist) == 0);
 	assert(process_list_get_summary_result_short(&plist) == 0);
@@ -417,8 +403,7 @@ main(void)
 	assert(no_executed == 3);
 	assert(process_list_get_no_running(&plist) == 3);
 
-	poll(NULL, 0, 500);
-	assert(process_list_waitpid(&plist) == 0);
+	assert(wait_for_no_running(&plist, 2, 0) == 0);
 
 	assert(process_list_get_no_running(&plist) == 2);
 	assert(no_finished == 1);
@@ -437,14 +422,10 @@ main(void)
 	assert(plist_entry == NULL);
 
 	assert(process_list_process_kill_list(&plist) == 0);
-	poll(NULL, 0, 500);
-	assert(process_list_waitpid(&plist) == 0);
-	assert(process_list_get_kill_list_items(&plist) == 1);
+	assert(wait_for_no_running(&plist, 0, 1) == 0);
 
 	assert(process_list_process_kill_list(&plist) == 0);
-	poll(NULL, 0, 500);
-	assert(process_list_waitpid(&plist) == 0);
-	assert(process_list_get_kill_list_items(&plist) == 0);
+	assert(wait_for_no_running(&plist, 0, 0) == 0);
 
 	process_list_move_active_entries_to_kill_list(&plist);
 	assert(process_list_get_summary_result(&plist) == 0);
@@ -489,26 +470,15 @@ main(void)
 	/*
 	 * Wait to exit
 	 */
-	no_repeats = 10;
-	timeout = 1000 / no_repeats;
-	for (i = 0; i < no_repeats; i++) {
-		assert(process_list_waitpid(&plist) == 0);
-		if (process_list_get_no_running(&plist) > 0) {
-			poll(NULL, 0, timeout);
-		}
-	}
+	assert(wait_for_no_running(&plist, 1, 0) == 0);
 
-	assert(process_list_waitpid(&plist) == 0);
-	assert(process_list_get_no_running(&plist) == 1);
 	assert(no_finished == 2);
 	assert(process_list_get_summary_result(&plist) == -1);
 	assert(process_list_get_summary_result_short(&plist) == 1);
 
 	process_list_move_active_entries_to_kill_list(&plist);
 	assert(process_list_process_kill_list(&plist) == 0);
-	poll(NULL, 0, 500);
-	assert(process_list_waitpid(&plist) == 0);
-	assert(process_list_get_kill_list_items(&plist) == 0);
+	assert(wait_for_no_running(&plist, 0, 0) == 0);
 
 	process_list_free(&plist);
 
@@ -528,6 +498,9 @@ main(void)
 	assert(no_executed == 2);
 	assert(process_list_get_no_running(&plist) == 2);
 
+	/*
+	 * Ensure processes are running after pause
+	 */
 	poll(NULL, 0, 500);
 	assert(process_list_waitpid(&plist) == 0);
 
