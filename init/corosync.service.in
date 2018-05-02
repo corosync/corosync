@@ -7,7 +7,7 @@ After=network-online.target
 
 [Service]
 EnvironmentFile=-@INITCONFIGDIR@/corosync
-ExecStart=@SBINDIR@/corosync -f $OPTIONS
+ExecStart=@SBINDIR@/corosync -f $COROSYNC_OPTIONS
 Type=notify
 
 # The following config is for corosync with enabled watchdog service.
