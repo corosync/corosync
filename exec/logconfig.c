@@ -585,7 +585,14 @@ static int corosync_main_config_read_logging (
 			continue ;
 		}
 
-		snprintf(key_item, MAP_KEYNAME_MAXLEN, "logging.logger_subsys.%s", key_subsys);
+		if (snprintf(key_item, MAP_KEYNAME_MAXLEN, "logging.logger_subsys.%s",
+		    key_subsys) >= MAP_KEYNAME_MAXLEN) {
+			/*
+			 * This should never happen
+			 */
+			error_reason = "Can't snprintf logger_subsys key_item";
+			goto parse_error;
+		}
 
 		if (corosync_main_config_set(key_item, key_subsys, &error_reason) < 0) {
 			goto parse_error;

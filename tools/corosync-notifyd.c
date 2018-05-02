@@ -303,7 +303,14 @@ static void _cs_cmap_connections_key_changed (
 		return ;
 	}
 
-	snprintf(obj_name, CS_MAX_NAME_LENGTH, "%s.%d.%s", conn_str, pid, (char*)new_value.data);
+	if (snprintf(obj_name, CS_MAX_NAME_LENGTH, "%s.%d.%s", conn_str, pid,
+	    (char*)new_value.data) >= CS_MAX_NAME_LENGTH) {
+		/*
+		 * This should never happen
+		 */
+		qb_log(LOG_ERR, "Can't snprintf obj_name");
+		return ;
+	}
 
 	if (event == CMAP_TRACK_ADD) {
 		_cs_application_connection_event(obj_name, "connected");
