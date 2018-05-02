@@ -218,10 +218,13 @@ static void corosync_blackbox_write_to_file (void)
 	localtime_r(&cur_time_t, &cur_time_tm);
 
 	strftime(time_str, PATH_MAX, "%Y-%m-%dT%H:%M:%S", &cur_time_tm);
-	snprintf(fname, PATH_MAX, "%s/fdata-%s-%lld",
+	if (snprintf(fname, PATH_MAX, "%s/fdata-%s-%lld",
 	    get_run_dir(),
 	    time_str,
-	    (long long int)getpid());
+	    (long long int)getpid()) >= PATH_MAX) {
+		log_printf(LOGSYS_LEVEL_ERROR, "Can't snprintf blackbox file name");
+		return ;
+	}
 
 	if ((res = qb_log_blackbox_write_to_file(fname)) < 0) {
 		LOGSYS_PERROR(-res, LOGSYS_LEVEL_ERROR, "Can't store blackbox file");
