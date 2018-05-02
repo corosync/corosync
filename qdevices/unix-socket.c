@@ -60,7 +60,7 @@ unix_socket_server_create(const char *path, int non_blocking, int backlog)
 	memset(&sun, 0, sizeof(sun));
 	sun.sun_family = AF_UNIX;
 
-	strncpy(sun.sun_path, path, strlen(path));
+	strncpy(sun.sun_path, path, sizeof(sun.sun_path) - 1);
 	unlink(path);
 	if (bind(s, (struct sockaddr *)&sun, SUN_LEN(&sun)) != 0) {
 		close(s);
@@ -103,7 +103,7 @@ unix_socket_client_create(const char *path, int non_blocking)
 	memset(&sun, 0, sizeof(sun));
 	sun.sun_family = AF_UNIX;
 
-	strncpy(sun.sun_path, path, strlen(path));
+	strncpy(sun.sun_path, path, sizeof(sun.sun_path) - 1);
 
 	if (non_blocking) {
 		if (utils_fd_set_non_blocking(s) != 0) {
