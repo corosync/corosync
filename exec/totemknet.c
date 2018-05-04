@@ -542,7 +542,7 @@ static int log_deliver_fn (
 	void *data)
 {
 	struct totemknet_instance *instance = (struct totemknet_instance *)data;
-	char buffer[KNET_MAX_LOG_MSG_SIZE*4];
+	char buffer[sizeof(struct knet_log_msg)*4];
 	char *bufptr = buffer;
 	int done = 0;
 	int len;
@@ -572,8 +572,8 @@ static int log_deliver_fn (
 					    msg->msg);
 			break;
 		}
-		bufptr += KNET_MAX_LOG_MSG_SIZE;
-		done += KNET_MAX_LOG_MSG_SIZE;
+		bufptr += sizeof(struct knet_log_msg);
+		done += sizeof(struct knet_log_msg);
 	}
 	return 0;
 }
