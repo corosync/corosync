@@ -1071,6 +1071,41 @@ static void reconfigure_links(struct totem_config *totem_config)
 	}
 }
 
+/* Check for differences in config that can't be done on-the-fly and print an error */
+static void check_things_have_not_changed(struct totem_config *totem_config)
+{
+	int i,j;
+	const char *ip_str;
+	char addr_buf[INET6_ADDRSTRLEN];
+	int changed = 0;
+
+	for (i = 0; i<INTERFACE_MAX; i++) {
+		if (totem_config->interfaces[i].configured) {
+			if (totem_config->interfaces[i].knet_transport !=
+			    totem_config->orig_interfaces[i].knet_transport) {
+				log_printf(LOGSYS_LEVEL_ERROR, "New config has different knet transport for link %d. Internal value was NOT changed.\n", i);
+				changed = 1;
+			}
+			for (j=0; j<totem_config->interfaces[i].member_count; j++) {
+				if (memcmp(&totem_config->interfaces[i].member_list[j],
+					   &totem_config->orig_interfaces[i].member_list[j],
+					   sizeof(struct totem_ip_address))) {
+
+					ip_str = totemip_print(&totem_config->orig_interfaces[i].member_list[j]);
+					strcpy(addr_buf, ip_str);
+					log_printf(LOGSYS_LEVEL_ERROR, "new config has different address for link %d (addr changed from %s to %s). Internal value was NOT changed.\n", i, addr_buf, totemip_print(&totem_config->interfaces[i].member_list[j]));
+					changed = 1;
+				}
+			}
+		}
+	}
+
+	if (changed) {
+		log_printf(LOGSYS_LEVEL_ERROR, "To reconfigure and interface it must be deleted and recreated. A working interface needs to be available to corosync at all times");
+	}
+}
+
+
 static void put_nodelist_members_to_config(struct totem_config *totem_config, int reload)
 {
 	icmap_iter_t iter, iter2;
@@ -1152,6 +1187,8 @@ static void put_nodelist_members_to_config(struct totem_config *totem_config, in
 		reconfigure_links(totem_config);
 
 		memcpy(new_interfaces, totem_config->interfaces, sizeof (struct totem_interface) * INTERFACE_MAX);
+
+		check_things_have_not_changed(totem_config);
 
 		compute_interfaces_diff(totem_config->orig_interfaces, new_interfaces);
 
