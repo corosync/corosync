@@ -1159,9 +1159,14 @@ int totemknet_member_add (
 	size_t num_host_ids;
 
 	/* Only create 1 loopback link and use link 0 */
-	if (member->nodeid == instance->our_nodeid && !instance->loopback_link) {
-		link_no = 0;
-		instance->loopback_link = 1;
+	if (member->nodeid == instance->our_nodeid) {
+		if (!instance->loopback_link) {
+			link_no = 0;
+			instance->loopback_link = 1;
+		} else {
+			/* Already done */
+			return 0;
+		}
 	}
 
 	knet_log_printf (LOGSYS_LEVEL_DEBUG, "knet: member_add: %d (%s), link=%d", member->nodeid, totemip_print(member), link_no);
