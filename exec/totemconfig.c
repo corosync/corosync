@@ -305,6 +305,9 @@ static int totem_volatile_config_validate (
 {
 	static char local_error_reason[512];
 	const char *error_reason = local_error_reason;
+	char name_key[ICMAP_KEYNAME_MAXLEN];
+	char *name_str;
+	int i, num_configured;
 
 	if (totem_config->max_network_delay < MINIMUM_TIMEOUT) {
 		snprintf (local_error_reason, sizeof(local_error_reason),
@@ -367,6 +370,26 @@ static int totem_volatile_config_validate (
 			"The downcheck timeout parameter (%d ms) may not be less than (%d ms).",
 			totem_config->downcheck_timeout, MINIMUM_TIMEOUT);
 		goto parse_error;
+	}
+
+	/* Check that we have nodelist 'name' if there is more than one link */
+	num_configured = 0;
+	for (i = 0; i < INTERFACE_MAX; i++) {
+		if (totem_config->interfaces[i].configured) {
+			num_configured++;
+		}
+	}
+
+	if (num_configured > 1) {
+		for (i=0; i<totem_config->interfaces[0].member_count; i++) {
+			snprintf(name_key, sizeof(name_key), "nodelist.node.%d.name", i);
+
+			if (icmap_get_string(name_key, &name_str) != CS_OK) {
+				snprintf (local_error_reason, sizeof(local_error_reason),
+					  "for a multi-link configuration, all nodes must have a 'name' attribute");
+				goto parse_error;
+			}
+		}
 	}
 
 	return 0;
