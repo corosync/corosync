@@ -307,7 +307,7 @@ static int totem_volatile_config_validate (
 	const char *error_reason = local_error_reason;
 	char name_key[ICMAP_KEYNAME_MAXLEN];
 	char *name_str;
-	int i, num_configured;
+	int i, num_configured, members;
 
 	if (totem_config->max_network_delay < MINIMUM_TIMEOUT) {
 		snprintf (local_error_reason, sizeof(local_error_reason),
@@ -381,6 +381,8 @@ static int totem_volatile_config_validate (
 	}
 
 	if (num_configured > 1) {
+		members = totem_config->interfaces[0].member_count;
+
 		for (i=0; i<totem_config->interfaces[0].member_count; i++) {
 			snprintf(name_key, sizeof(name_key), "nodelist.node.%d.name", i);
 
@@ -390,6 +392,17 @@ static int totem_volatile_config_validate (
 				goto parse_error;
 			}
 		}
+
+		for (i=0; i<num_configured; i++) {
+			if (totem_config->interfaces[i].member_count != members) {
+				snprintf (local_error_reason, sizeof(local_error_reason),
+					  "Not all nodes have the same number of links");
+				goto parse_error;
+			}
+		}
+
+
+
 	}
 
 	return 0;
@@ -954,6 +967,9 @@ static void calc_knet_ping_timers(struct totem_config *totem_config)
 	for (interface = 0; interface < INTERFACE_MAX; interface++) {
 
 		if (totem_config->interfaces[interface].configured) {
+			if (!totem_config->interfaces[interface].knet_pong_count) {
+				totem_config->interfaces[interface].knet_pong_count = KNET_PONG_COUNT;
+			}
 			if (!totem_config->interfaces[interface].knet_ping_timeout) {
 				totem_config->interfaces[interface].knet_ping_timeout =
 					totem_config->token_timeout / totem_config->interfaces[interface].knet_pong_count;
