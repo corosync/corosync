@@ -278,6 +278,16 @@ static inline void ucast_sendmsg (
 	}
 
 	/*
+	 * When we operate in loopback mode, we are binding to localhost. So we need
+	 * to ensure that we are also sending the messages to localhost instead of
+	 * our public IP.
+	 */
+	if ((instance->netif_bind_state == BIND_STATE_LOOPBACK) &&
+		(totemip_equal(&instance->totem_interface->bindnet, system_to))) {
+		system_to = &localhost;
+	}
+
+	/*
 	 * Encrypt and digest the message
 	 */
 	if (crypto_encrypt_and_sign (
@@ -346,6 +356,7 @@ static inline void mcast_sendmsg (
 	int addrlen;
         struct list_head *list;
 	struct totemudpu_member *member;
+	struct totem_ip_address *system_to;
 
 	if (msg_len + crypto_get_current_sec_header_size(instance->crypto_inst) > sizeof(buf_out)) {
 		log_printf(LOGSYS_LEVEL_CRIT, "UDPU message for mcast is too big. Ignoring message");
@@ -388,7 +399,19 @@ static inline void mcast_sendmsg (
 		if (only_active && !member->active && !instance->send_merge_detect_message)
 			continue ;
 
-		totemip_totemip_to_sockaddr_convert(&member->member,
+		system_to = &member->member;
+
+		/*
+		 * When we operate in loopback mode, we are binding to localhost. So we need
+		 * to ensure that we are also sending the messages to localhost instead of
+		 * our public IP.
+		 */
+		if ((instance->netif_bind_state == BIND_STATE_LOOPBACK) &&
+			(totemip_equal(&instance->totem_interface->bindnet, system_to))) {
+			system_to = &localhost;
+		}
+
+		totemip_totemip_to_sockaddr_convert(system_to,
 			instance->totem_interface->ip_port, &sockaddr, &addrlen);
 		msg_mcast.msg_name = &sockaddr;
 		msg_mcast.msg_namelen = addrlen;
