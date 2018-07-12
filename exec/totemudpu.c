@@ -794,7 +794,7 @@ static int totemudpu_build_local_sockets(
 	}
 
 	for (i = 0; i < 2; i++) {
-		totemip_nosigpipe (sockets->local_loop_sock[i]);
+		totemip_nosigpipe (instance->local_loop_sock[i]);
 		res = fcntl (instance->local_loop_sock[i], F_SETFL, O_NONBLOCK);
 		if (res == -1) {
 			LOGSYS_PERROR (errno, instance->totemudpu_log_level_warning,
