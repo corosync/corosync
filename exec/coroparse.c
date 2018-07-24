@@ -589,6 +589,7 @@ static int main_config_parser_cb(const char *path,
 			    (strcmp(path, "totem.nodeid") == 0) ||
 			    (strcmp(path, "totem.threads") == 0) ||
 			    (strcmp(path, "totem.token") == 0) ||
+			    (strcmp(path, "totem.token_warning") == 0) ||
 			    (strcmp(path, "totem.token_coefficient") == 0) ||
 			    (strcmp(path, "totem.token_retransmit") == 0) ||
 			    (strcmp(path, "totem.hold") == 0) ||

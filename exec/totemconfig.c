@@ -62,6 +62,7 @@
 
 #define TOKEN_RETRANSMITS_BEFORE_LOSS_CONST	4
 #define TOKEN_TIMEOUT				1000
+#define TOKEN_WARNING				0
 #define TOKEN_COEFFICIENT			650
 #define JOIN_TIMEOUT				50
 #define MERGE_TIMEOUT				200
@@ -90,6 +91,8 @@ static uint32_t *totem_get_param_by_name(struct totem_config *totem_config, cons
 {
 	if (strcmp(param_name, "totem.token") == 0)
 		return &totem_config->token_timeout;
+	if (strcmp(param_name, "totem.token_warning") == 0)
+		return &totem_config->token_warning;
 	if (strcmp(param_name, "totem.token_retransmit") == 0)
 		return &totem_config->token_retransmit_timeout;
 	if (strcmp(param_name, "totem.hold") == 0)
@@ -192,6 +195,8 @@ static void totem_volatile_config_read (struct totem_config *totem_config, const
 		icmap_set_uint32("runtime.config.totem.token", totem_config->token_timeout);
 	}
 
+	totem_volatile_config_set_value(totem_config, "totem.token_warning", deleted_key, TOKEN_WARNING, 0);
+
 	totem_volatile_config_set_value(totem_config, "totem.max_network_delay", deleted_key, MAX_NETWORK_DELAY, 0);
 
 	totem_volatile_config_set_value(totem_config, "totem.window_size", deleted_key, WINDOW_SIZE, 0);
@@ -258,6 +263,13 @@ static int totem_volatile_config_validate (
 		snprintf (local_error_reason, sizeof(local_error_reason),
 			"The token timeout parameter (%d ms) may not be less than (%d ms).",
 			totem_config->token_timeout, MINIMUM_TIMEOUT);
+		goto parse_error;
+	}
+
+	if (totem_config->token_warning < MINIMUM_TIMEOUT && totem_config->token_warning > 0) {
+		snprintf (local_error_reason, sizeof(local_error_reason),
+			"The token warning parameter (%d ms) must be 0 (disabled) or greater than  (%d ms).",
+			totem_config->token_warning, MINIMUM_TIMEOUT);
 		goto parse_error;
 	}
 
@@ -1524,6 +1536,10 @@ static void debug_dump_totem_config(const struct totem_config *totem_config)
 
 	log_printf(LOGSYS_LEVEL_DEBUG, "Token Timeout (%d ms) retransmit timeout (%d ms)",
 	    totem_config->token_timeout, totem_config->token_retransmit_timeout);
+	if (totem_config->token_warning)
+		log_printf(LOGSYS_LEVEL_DEBUG, "Token warning every %d ms", totem_config->token_warning);
+	else
+		log_printf(LOGSYS_LEVEL_DEBUG, "Token warnings disabled");
 	log_printf(LOGSYS_LEVEL_DEBUG, "token hold (%d ms) retransmits before loss (%d retrans)",
 	    totem_config->token_hold_timeout, totem_config->token_retransmits_before_loss_const);
 	log_printf(LOGSYS_LEVEL_DEBUG, "join (%d ms) send_join (%d ms) consensus (%d ms) merge (%d ms)",
