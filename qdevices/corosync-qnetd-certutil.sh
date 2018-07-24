@@ -60,7 +60,7 @@ usage() {
 
 chown_ref_cfgdir() {
     if [ "$UID" == "0" ];then
-        chown --reference="$CONFIG_DIR" "$@" 2>/dev/null || chown "$(stat -f "%u:%g" "$CONFIG_DIR")" "$@" 2>/dev/null || return $?
+        chown --reference="$CONFIG_DIR" "$@" 2>/dev/null || chown "$(stat --format="%u:%g" "$CONFIG_DIR")" "$@" 2>/dev/null || return $?
     fi
 }
 
