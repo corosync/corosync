@@ -399,6 +399,8 @@ struct totemsrp_instance {
 
 	qb_loop_timer_handle timer_orf_token_timeout;
 
+	qb_loop_timer_handle timer_orf_token_warning;
+
 	qb_loop_timer_handle timer_orf_token_retransmit_timeout;
 
 	qb_loop_timer_handle timer_orf_token_hold_retransmit_timeout;
@@ -657,6 +659,7 @@ static void memb_merge_detect_endian_convert (
 	struct memb_merge_detect *out);
 static void srp_addr_copy_endian_convert (struct srp_addr *out, const struct srp_addr *in);
 static void timer_function_orf_token_timeout (void *data);
+static void timer_function_orf_token_warning (void *data);
 static void timer_function_pause_timeout (void *data);
 static void timer_function_heartbeat_timeout (void *data);
 static void timer_function_token_retransmit_timeout (void *data);
@@ -898,6 +901,14 @@ int totemsrp_initialize (
 	log_printf (instance->totemsrp_log_level_debug,
 		"Token Timeout (%d ms) retransmit timeout (%d ms)",
 		totem_config->token_timeout, totem_config->token_retransmit_timeout);
+	if (totem_config->token_warning) {
+		log_printf(instance->totemsrp_log_level_debug,
+			"Token warning every %d ms",
+			totem_config->token_warning);
+	 } else {
+		log_printf(instance->totemsrp_log_level_debug,
+			"Token warnings disabled");
+	}
 	log_printf (instance->totemsrp_log_level_debug,
 		"token hold (%d ms) retransmits before loss (%d retrans)",
 		totem_config->token_hold_timeout, totem_config->token_retransmits_before_loss_const);
@@ -1638,6 +1649,21 @@ static void reset_pause_timeout (struct totemsrp_instance *instance)
 	}
 }
 
+static void reset_token_warning (struct totemsrp_instance *instance) {
+	int32_t res;
+
+	qb_loop_timer_del (instance->totemsrp_poll_handle, instance->timer_orf_token_warning);
+	res = qb_loop_timer_add (instance->totemsrp_poll_handle,
+		QB_LOOP_MED,
+		instance->totem_config->token_warning*QB_TIME_NS_IN_MSEC,
+		(void *)instance,
+		timer_function_orf_token_warning,
+		&instance->timer_orf_token_warning);
+	if (res != 0) {
+		log_printf(instance->totemsrp_log_level_error, "reset_token_warning - qb_loop_timer_add error : %d", res);
+	}
+}
+
 static void reset_token_timeout (struct totemsrp_instance *instance) {
 	int32_t res;
 
@@ -1651,6 +1677,9 @@ static void reset_token_timeout (struct totemsrp_instance *instance) {
 	if (res != 0) {
 		log_printf(instance->totemsrp_log_level_error, "reset_token_timeout - qb_loop_timer_add error : %d", res);
 	}
+
+	if (instance->totem_config->token_warning)
+		reset_token_warning(instance);
 }
 
 static void reset_heartbeat_timeout (struct totemsrp_instance *instance) {
@@ -1666,6 +1695,8 @@ static void reset_heartbeat_timeout (struct totemsrp_instance *instance) {
 	if (res != 0) {
 		log_printf(instance->totemsrp_log_level_error, "reset_heartbeat_timeout - qb_loop_timer_add error : %d", res);
 	}
+
+	reset_token_timeout (instance);
 }
 
 
@@ -1750,6 +1781,20 @@ static void memb_recovery_state_token_loss (struct totemsrp_instance *instance)
 	old_ring_state_restore (instance);
 	memb_state_gather_enter (instance, TOTEMSRP_GSFROM_THE_TOKEN_WAS_LOST_IN_THE_RECOVERY_STATE);
 	instance->stats.recovery_token_lost++;
+}
+
+static void timer_function_orf_token_warning (void *data)
+{
+	struct totemsrp_instance *instance = data;
+	unsigned long long tv_diff;
+
+	tv_diff = qb_util_nano_current_get () -
+		instance->stats.token_last_received;
+	log_printf (instance->totemsrp_log_level_notice,
+		"Token has not been received in %llu ms ",
+		tv_diff/QB_TIME_NS_IN_MSEC);
+
+	reset_token_warning(instance);
 }
 
 static void timer_function_orf_token_timeout (void *data)
@@ -4227,6 +4272,7 @@ printf ("token seq %d\n", token->seq);
 					instance->my_high_seq_received);
 			}
 
+			instance->stats.token_last_received = qb_util_nano_current_get ();
 			/*
 			 * Deliver messages after token has been transmitted
 			 * to improve performance

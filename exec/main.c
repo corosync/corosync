@@ -479,6 +479,7 @@ static void corosync_totem_stats_updater (void *data)
 	int32_t token_count;
 	char key_name[ICMAP_KEYNAME_MAXLEN];
 	const char *cstr;
+	uint64_t tv_diff;
 
 	stats = api->totem_get_stats();
 
@@ -513,6 +514,9 @@ static void corosync_totem_stats_updater (void *data)
 
 	icmap_set_uint8("runtime.totem.pg.mrp.srp.firewall_enabled_or_nic_failure",
 		stats->mrp->srp->continuous_gather > MAX_NO_CONT_GATHER ? 1 : 0);
+
+	tv_diff = qb_util_nano_current_get () - stats->mrp->srp->token_last_received;
+	icmap_set_uint64("runtime.totem.pg.mrp.srp.token_last_received", tv_diff/QB_TIME_NS_IN_MSEC);
 
 	if (stats->mrp->srp->continuous_gather > MAX_NO_CONT_GATHER ||
 	    stats->mrp->srp->continuous_sendmsg_failures > MAX_NO_CONT_SENDMSG_FAILURES) {

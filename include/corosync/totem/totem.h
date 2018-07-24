@@ -131,6 +131,8 @@ struct totem_config {
 	 */
 	unsigned int token_timeout;
 
+	unsigned int token_warning;
+
 	unsigned int token_retransmit_timeout;
 
 	unsigned int token_hold_timeout;
@@ -270,6 +272,7 @@ typedef struct {
 	uint64_t rx_msg_dropped;
 	uint32_t continuous_gather;
 	uint32_t continuous_sendmsg_failures;
+	uint64_t token_last_received;
 
 	int earliest_token;
 	int latest_token;
