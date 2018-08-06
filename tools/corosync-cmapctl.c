@@ -79,6 +79,7 @@ struct name_to_type_item name_to_type[] = {
 	{"bin", CMAP_VALUETYPE_BINARY}};
 
 int show_binary = 0;
+int quiet = 0;
 
 static int convert_name_to_type(const char *name)
 {
@@ -96,7 +97,7 @@ static int convert_name_to_type(const char *name)
 static int print_help(void)
 {
 	printf("\n");
-	printf("usage:  corosync-cmapctl [-b] [-DdghsTCt] [-p filename] [-m map] [params...]\n");
+	printf("usage:  corosync-cmapctl [-b] [-DdghsqTCt] [-p filename] [-m map] [params...]\n");
 	printf("\n");
 	printf("    -b show binary values\n");
 	printf("\n");
@@ -135,6 +136,9 @@ static int print_help(void)
 	printf("\n");
 	printf("Get key:\n");
 	printf("    corosync-cmapctl [-b] -g key_name...\n");
+	printf("\n");
+	printf("Quiet mode:\n");
+	printf("    corosync-cmapctl [-b] -q -g key_name...\n");
 	printf("\n");
 	printf("Display all keys:\n");
 	printf("    corosync-cmapctl [-b]\n");
@@ -315,41 +319,75 @@ static void print_key(cmap_handle_t handle,
 		return ;
 	}
 
-	printf("%s (", key_name);
+	if (!quiet)
+		printf("%s (", key_name);
 
 	switch (type) {
 	case CMAP_VALUETYPE_INT8:
-		printf("%s) = %"PRId8, "i8", i8);
+		if (!quiet)
+			printf("%s) = %"PRId8, "i8", i8);
+		else
+			printf("%"PRId8, i8);
 		break;
 	case CMAP_VALUETYPE_UINT8:
-		printf("%s) = %"PRIu8, "u8", u8);
+		if (!quiet)
+			printf("%s) = %"PRIu8, "u8", u8);
+                else
+			printf("%"PRIu8, u8);
 		break;
 	case CMAP_VALUETYPE_INT16:
-		printf("%s) = %"PRId16, "i16", i16);
+		if (!quiet)
+			printf("%s) = %"PRId16, "i16", i16);
+		else
+			printf("%"PRId16, i16);
 		break;
 	case CMAP_VALUETYPE_UINT16:
-		printf("%s) = %"PRIu16, "u16", u16);
+		if (!quiet)
+			printf("%s) = %"PRIu16, "u16", u16);
+		else
+			printf("%"PRIu16, u16);
 		break;
 	case CMAP_VALUETYPE_INT32:
-		printf("%s) = %"PRId32, "i32", i32);
+		if (!quiet)
+			printf("%s) = %"PRId32, "i32", i32);
+		else
+			printf("%"PRId32, i32);
 		break;
 	case CMAP_VALUETYPE_UINT32:
-		printf("%s) = %"PRIu32, "u32", u32);
+		if (!quiet)
+			printf("%s) = %"PRIu32, "u32", u32);
+		else
+			printf("%"PRIu32, u32);
 		break;
 	case CMAP_VALUETYPE_INT64:
-		printf("%s) = %"PRId64, "i64", i64);
+		if (!quiet)
+			printf("%s) = %"PRId64, "i64", i64);
+		else
+			printf("%"PRId64, i64);
 		break;
 	case CMAP_VALUETYPE_UINT64:
-		printf("%s) = %"PRIu64, "u64", u64);
+		if (!quiet)
+			printf("%s) = %"PRIu64, "u64", u64);
+		else
+			printf("%"PRIu64, u64);
 		break;
 	case CMAP_VALUETYPE_FLOAT:
-		printf("%s) = %f", "flt", flt);
+		if (!quiet)
+			printf("%s) = %f", "flt", flt);
+		else
+			printf("%f", flt);
 		break;
 	case CMAP_VALUETYPE_DOUBLE:
-		printf("%s) = %lf", "dbl", dbl);
+		if (!quiet)
+			printf("%s) = %lf", "dbl", dbl);
+		else
+			printf("%lf", dbl);
 		break;
 	case CMAP_VALUETYPE_STRING:
-		printf("%s) = %s", "str", str);
+		if (!quiet)
+			printf("%s) = %s", "str", str);
+		else
+			printf("%s", str);
 		if (value == NULL) {
 			free(str);
 		}
@@ -774,13 +812,16 @@ int main(int argc, char *argv[])
 	action = ACTION_PRINT_PREFIX;
 	track_prefix = 1;
 
-	while ((c = getopt(argc, argv, "m:hgsdDtTbp:C:")) != -1) {
+	while ((c = getopt(argc, argv, "m:hqgsdDtTbp:C:")) != -1) {
 		switch (c) {
 		case 'h':
 			return print_help();
 			break;
 		case 'b':
 			show_binary++;
+			break;
+		case 'q':
+			quiet = 1;
 			break;
 		case 'g':
 			action = ACTION_GET;
