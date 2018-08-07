@@ -598,6 +598,7 @@ static int main_config_parser_cb(const char *path,
 			    (strcmp(path, "totem.token_coefficient") == 0) ||
 			    (strcmp(path, "totem.token_retransmit") == 0) ||
 			    (strcmp(path, "totem.token_warning") == 0) ||
+			    (strcmp(path, "totem.kick") == 0) ||
 			    (strcmp(path, "totem.hold") == 0) ||
 			    (strcmp(path, "totem.token_retransmits_before_loss_const") == 0) ||
 			    (strcmp(path, "totem.join") == 0) ||

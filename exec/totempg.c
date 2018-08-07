@@ -1527,6 +1527,11 @@ extern int totempg_member_remove (
 	return totemsrp_member_remove (totemsrp_context, member, ring_no);
 }
 
+extern void totempg_kick (void) 
+{
+	totemsrp_kick (totemsrp_context);
+}
+
 extern int totempg_reconfigure (void)
 {
 	return totemsrp_reconfigure (totemsrp_context, totempg_totem_config);
