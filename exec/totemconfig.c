@@ -66,7 +66,7 @@
 
 #define TOKEN_RETRANSMITS_BEFORE_LOSS_CONST	4
 #define TOKEN_TIMEOUT				1000
-#define TOKEN_WARNING				0
+#define TOKEN_WARNING				75
 #define TOKEN_COEFFICIENT			650
 #define JOIN_TIMEOUT				50
 #define MERGE_TIMEOUT				200
@@ -249,7 +249,7 @@ static void totem_volatile_config_read (struct totem_config *totem_config, const
 
 	totem_volatile_config_set_uint32_value(totem_config, "totem.token", deleted_key, TOKEN_TIMEOUT, 0);
 
-	totem_volatile_config_set_uint32_value(totem_config, "totem.token_warning", deleted_key, TOKEN_WARNING, 0);
+	totem_volatile_config_set_uint32_value(totem_config, "totem.token_warning", deleted_key, TOKEN_WARNING, 1);
 
 	if (totem_config->interfaces[0].member_count > 2) {
 		u32 = TOKEN_COEFFICIENT;
@@ -333,7 +333,14 @@ static int totem_volatile_config_validate (
 			"The token warning parameter (%d%%) must be between 0 (disabled) and 100.",
 			totem_config->token_warning);
 		goto parse_error;
-	}
+	} 
+
+	if (totem_config->token_warning && totem_config->token_timeout * totem_config->token_warning / 100 < totem_config->token_retransmit_timeout) 
+		log_printf (LOGSYS_LEVEL_DEBUG,
+			"The token warning interval (%d ms) is less than the token retransmit timeout (%d ms) "
+			"which can lead to spurious token warnings. Consider increasing the token_warning parameter.",
+			totem_config->token_warning * totem_config->token_timeout / 100,
+			totem_config->token_retransmit_timeout);
 
 	if (totem_config->token_retransmit_timeout < MINIMUM_TIMEOUT) {
 		snprintf (local_error_reason, sizeof(local_error_reason),
