@@ -5147,12 +5147,15 @@ void totemsrp_trans_ack (void *context)
 	instance->totemsrp_waiting_trans_ack_cb_fn (0);
 }
 
+void totemsrp_kick (void *context)
+{
+	timer_function_orf_token_timeout(context);
+}
 
 int totemsrp_reconfigure (void *context, struct totem_config *totem_config)
 {
 	struct totemsrp_instance *instance = (struct totemsrp_instance *)context;
 	int res;
-
 	res = totemnet_reconfigure (instance->totemnet_context, totem_config);
 	return (res);
 }

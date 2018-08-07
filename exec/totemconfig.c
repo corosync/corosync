@@ -99,6 +99,8 @@ static void *totem_get_param_by_name(struct totem_config *totem_config, const ch
 		return &totem_config->token_timeout;
 	if (strcmp(param_name, "totem.token_warning") == 0)
 		return &totem_config->token_warning;
+	if (strcmp(param_name, "totem.kick") == 0)
+		return &totem_config->kick;
 	if (strcmp(param_name, "totem.token_retransmit") == 0)
 		return &totem_config->token_retransmit_timeout;
 	if (strcmp(param_name, "totem.hold") == 0)
@@ -248,6 +250,8 @@ static void totem_volatile_config_read (struct totem_config *totem_config, const
 	    TOKEN_RETRANSMITS_BEFORE_LOSS_CONST, 0);
 
 	totem_volatile_config_set_uint32_value(totem_config, "totem.token", deleted_key, TOKEN_TIMEOUT, 0);
+
+	totem_volatile_config_set_uint32_value(totem_config, "totem.kick", deleted_key, 0, 1);
 
 	totem_volatile_config_set_uint32_value(totem_config, "totem.token_warning", deleted_key, TOKEN_WARNING, 1);
 
@@ -2074,6 +2078,18 @@ static void totem_change_notify(
 	}
 
 	totem_volatile_config_read (totem_config, deleted_key);
+
+	if (totem_config->kick == 1) {
+		log_printf(LOGSYS_LEVEL_ERROR, "Reconfiguration requested");
+		/*totem_volatile_config_set_uint32_value(totem_config, "totem.kick", "totem.kick", 0, 1);*/
+		icmap_set_uint32("totem.kick", 0);
+		icmap_set_uint32("runtime.config.totem.kick", 0);
+		totempg_kick();
+	}
+	
+	if (strcmp(key_name, "totem.kick") || strcmp(key_name, "runtime.config.totem.kick"))
+		return;
+
 	log_printf(LOGSYS_LEVEL_DEBUG, "Totem related config key changed. Dumping actual totem config.");
 	debug_dump_totem_config(totem_config);
 	if (totem_volatile_config_validate(totem_config, &error_string) == -1) {
