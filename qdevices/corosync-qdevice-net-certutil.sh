@@ -46,6 +46,8 @@ CA_EXPORT_FILE="$DB_DIR_QNETD/qnetd-cacert.crt"
 CRQ_FILE_BASE="qdevice-net-node.crq"
 P12_FILE_BASE="qdevice-net-node.p12"
 QNETD_CERTUTIL_CMD="corosync-qnetd-certutil"
+CERTDB_FILES=("cert9.db key4.db pkcs11.txt"
+              "cert8.db key3.db secmod.db")
 
 usage() {
     echo "$0: [-i|-m|-M|-r|-s|-Q] [-c certificate] [-n cluster_name]"
@@ -108,8 +110,23 @@ get_serial_no() {
     echo "$serial_no"
 }
 
+find_certdb_files() {
+    for cert_files_index in ${!CERTDB_FILES[@]};do
+        cert_files=${CERTDB_FILES[$cert_files_index]}
+        test_file=${cert_files%% *}
+        if [ -f "$DB_DIR/$test_file" ];then
+            echo "$cert_files"
+
+            return 0
+        fi
+    done
+
+    return 1
+}
+
 init_node_ca() {
-    if [ -f "$DB_DIR/cert8.db" ];then
+    cert_files=`find_certdb_files`
+    if [ "$cert_files" != "" ];then
         echo "Certificate database already exists. Delete it to continue" >&2
 
         exit 1
@@ -127,8 +144,17 @@ init_node_ca() {
     chown root:root "$PWD_FILE"
     chmod 0660 "$PWD_FILE"
     certutil -N -d "$DB_DIR" -f "$PWD_FILE"
-    chown root:root "$DB_DIR/key3.db" "$DB_DIR/cert8.db" "$DB_DIR/secmod.db"
-    chmod 0660 "$DB_DIR/key3.db" "$DB_DIR/cert8.db" "$DB_DIR/secmod.db"
+    cert_files=`find_certdb_files`
+    if [ "$cert_files" == "" ];then
+        echo "Can't find certificate database files. Certificate database ($DB_DIR) cannot be created" >&2
+
+        exit 1
+    fi
+
+    for fname in $cert_files;do
+        chown root:root "$DB_DIR/$fname"
+        chmod 0660 "$DB_DIR/$fname"
+    done
 
     create_new_noise_file "$NOISE_FILE"
 
@@ -139,7 +165,8 @@ init_node_ca() {
 }
 
 gen_cluster_cert_req() {
-    if ! [ -f "$DB_DIR/cert8.db" ];then
+    cert_files=`find_certdb_files`
+    if [ "$cert_files" == "" ];then
         echo "Certificate database doesn't exists. Use $0 -i to create it" >&2
 
         exit 1
@@ -153,7 +180,8 @@ gen_cluster_cert_req() {
 }
 
 import_signed_cert() {
-    if ! [ -f "$DB_DIR/cert8.db" ];then
+    cert_files=`find_certdb_files`
+    if [ "$cert_files" == "" ];then
         echo "Certificate database doesn't exists. Use $0 -i to create it" >&2
 
         exit 1
@@ -168,7 +196,8 @@ import_signed_cert() {
 }
 
 import_pk12() {
-    if ! [ -f "$DB_DIR/cert8.db" ];then
+    cert_files=`find_certdb_files`
+    if [ "$cert_files" == "" ];then
         echo "Certificate database doesn't exists. Use $0 -i to create it" >&2
 
         exit 1

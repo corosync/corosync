@@ -1,7 +1,7 @@
 #!@BASHPATH@
 
 #
-# Copyright (c) 2015-2016 Red Hat, Inc.
+# Copyright (c) 2015-2018 Red Hat, Inc.
 #
 # All rights reserved.
 #
@@ -46,6 +46,8 @@ PWD_FILE="$DB_DIR/pwdfile.txt"
 NOISE_FILE="$DB_DIR/noise.txt"
 SERIAL_NO_FILE="$DB_DIR/serial.txt"
 CA_EXPORT_FILE="$DB_DIR/qnetd-cacert.crt"
+CERTDB_FILES=("cert9.db key4.db pkcs11.txt"
+              "cert8.db key3.db secmod.db")
 
 usage() {
     echo "$0: [-i|-s] [-c certificate] [-n cluster_name]"
@@ -93,8 +95,23 @@ get_serial_no() {
     echo "$serial_no"
 }
 
+find_certdb_files() {
+    for cert_files_index in ${!CERTDB_FILES[@]};do
+        cert_files=${CERTDB_FILES[$cert_files_index]}
+        test_file=${cert_files%% *}
+        if [ -f "$DB_DIR/$test_file" ];then
+            echo "$cert_files"
+
+            return 0
+        fi
+    done
+
+    return 1
+}
+
 init_qnetd_ca() {
-    if [ -f "$DB_DIR/cert8.db" ];then
+    cert_files=`find_certdb_files`
+    if [ "$cert_files" != "" ];then
         echo "Certificate database ($DB_DIR) already exists. Delete it to initialize new db" >&2
 
         exit 1
@@ -113,8 +130,17 @@ init_qnetd_ca() {
     chmod 0660 "$PWD_FILE"
 
     certutil -N -d "$DB_DIR" -f "$PWD_FILE"
-    chown_ref_cfgdir "$DB_DIR/key3.db" "$DB_DIR/cert8.db" "$DB_DIR/secmod.db"
-    chmod 0660 "$DB_DIR/key3.db" "$DB_DIR/cert8.db" "$DB_DIR/secmod.db"
+    cert_files=`find_certdb_files`
+    if [ "$cert_files" == "" ];then
+        echo "Can't find certificate database files. Certificate database ($DB_DIR) cannot be created" >&2
+
+        exit 1
+    fi
+
+    for fname in $cert_files;do
+        chown_ref_cfgdir "$DB_DIR/$fname"
+        chmod 0660 "$DB_DIR/$fname"
+    done
 
     create_new_noise_file "$NOISE_FILE"
 
@@ -136,8 +162,9 @@ init_qnetd_ca() {
 
 
 sign_cluster_cert() {
-    if ! [ -f "$DB_DIR/cert8.db" ];then
-        echo "Certificate database doesn't exists. Use $0 -I to create it" >&2
+    cert_files=`find_certdb_files`
+    if [ "$cert_files" == "" ];then
+        echo "Certificate database doesn't exists. Use $0 -i to create it" >&2
 
         exit 1
     fi
