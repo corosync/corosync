@@ -74,7 +74,7 @@ qdevice_cmap_autogenerate_node_id(const char *addr, int clear_node_high_byte)
 		return (0);
 	}
 
-	memcpy(&i, &((struct sockaddr_in *)ainfo->ai_addr)->sin_addr, sizeof(struct in_addr));
+	memcpy(&i, &(((struct sockaddr_in *)((void *)ainfo->ai_addr))->sin_addr), sizeof(struct in_addr));
 	freeaddrinfo(ainfo);
 
 	ret = htonl(i);
