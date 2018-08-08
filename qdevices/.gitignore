@@ -4,4 +4,8 @@ corosync-qnetd-certutil
 corosync-qdevice-net-certutil
 corosync-qnetd
 corosync-qnetd-tool
+
+# Testsuite results
 *.test
+*.log
+*.trs
