@@ -61,6 +61,22 @@
 
 static int no_executed;
 static int no_finished;
+static volatile sig_atomic_t sigusr1_received;
+static volatile sig_atomic_t sigusr2_received;
+
+static void
+signal_usr1_handler(int sig)
+{
+
+	sigusr1_received = 1;
+}
+
+static void
+signal_usr2_handler(int sig)
+{
+
+	sigusr2_received = 1;
+}
 
 static void
 signal_handlers_register(void)
@@ -78,6 +94,18 @@ signal_handlers_register(void)
 	act.sa_flags = SA_RESTART;
 
 	sigaction(SIGPIPE, &act, NULL);
+
+	act.sa_handler = signal_usr1_handler;
+	sigemptyset(&act.sa_mask);
+	act.sa_flags = SA_RESTART;
+
+	sigaction(SIGUSR1, &act, NULL);
+
+	act.sa_handler = signal_usr2_handler;
+	sigemptyset(&act.sa_mask);
+	act.sa_flags = SA_RESTART;
+
+	sigaction(SIGUSR2, &act, NULL);
 }
 
 static void
@@ -145,12 +173,44 @@ wait_for_no_running(struct process_list *plist, int no_running, int no_in_kill_l
 	return (-1);
 }
 
+static int
+wait_for_sigusrs_received(void)
+{
+	int timeout;
+	int no_repeats;
+	int i;
+
+	no_repeats = WAIT_FOR_NO_RUNNING_REPEATS;
+	timeout = WAIT_FOR_NO_RUNNING_TIMEOUT / no_repeats;
+
+	for (i = 0; i < no_repeats; i++) {
+		if (sigusr1_received && sigusr2_received) {
+			return (0);
+		}
+
+		poll(NULL, 0, timeout);
+	}
+
+	return (-1);
+}
+
+
 int
 main(void)
 {
 	struct process_list plist;
 	struct process_list_entry *plist_entry;
 	char *true_path, *false_path;
+	char ignore_sigint_cmd[PATH_MAX];
+	char ignore_sigintterm_cmd[PATH_MAX];
+
+	assert(snprintf(ignore_sigint_cmd, PATH_MAX,
+	    "bash -c \"trap 'echo trap' SIGINT;kill -USR1 %ld;while true;do sleep 1;done\"",
+	    (long int)getpid()) < PATH_MAX);
+
+	assert(snprintf(ignore_sigintterm_cmd, PATH_MAX,
+	    "bash -c \"trap 'echo trap' SIGINT SIGTERM;kill -USR2 %ld;while true;do sleep 1;done\"",
+	    (long int)getpid()) < PATH_MAX);
 
 	assert((true_path = find_exec_path("true")) != NULL);
 	assert((false_path = find_exec_path("false")) != NULL);
@@ -316,10 +376,12 @@ main(void)
 	/*
 	 * Test two bash proceses. One ignores INT and second ignores INT and TERM.
 	 */
-	plist_entry = process_list_add(&plist, "ignoresig1", "bash -c \"trap 'echo trap' SIGINT;while true;do sleep 1;done\"");
+	sigusr1_received = 0;
+	plist_entry = process_list_add(&plist, "ignoresig1", ignore_sigint_cmd);
 	assert(plist_entry != NULL);
 
-	plist_entry = process_list_add(&plist, "ignoresig2", "bash -c \"trap 'echo trap' SIGINT SIGTERM;while true;do sleep 1;done\"");
+	sigusr2_received = 0;
+	plist_entry = process_list_add(&plist, "ignoresig2", ignore_sigintterm_cmd);
 	assert(plist_entry != NULL);
 
 	no_executed = 0;
@@ -327,6 +389,7 @@ main(void)
 	assert(process_list_exec_initialized(&plist) == 0);
 	assert(no_executed == 2);
 	assert(process_list_get_no_running(&plist) == 2);
+	assert(wait_for_sigusrs_received() == 0);
 
 	/*
 	 * Wait some time. 2 processes should be running
@@ -388,10 +451,12 @@ main(void)
 	plist_entry = process_list_add(&plist, "true", true_path);
 	assert(plist_entry != NULL);
 
-	plist_entry = process_list_add(&plist, "ignoresig1", "bash -c \"trap 'echo trap' SIGINT;while true;do sleep 1;done\"");
+	sigusr1_received = 0;
+	plist_entry = process_list_add(&plist, "ignoresig1", ignore_sigint_cmd);
 	assert(plist_entry != NULL);
 
-	plist_entry = process_list_add(&plist, "ignoresig2", "bash -c \"trap 'echo trap' SIGINT SIGTERM;while true;do sleep 1;done\"");
+	sigusr2_received = 0;
+	plist_entry = process_list_add(&plist, "ignoresig2", ignore_sigintterm_cmd);
 	assert(plist_entry != NULL);
 
 	plist_entry = process_list_add(&plist, "true4", true_path);
@@ -402,6 +467,7 @@ main(void)
 	assert(process_list_exec_initialized(&plist) == 0);
 	assert(no_executed == 3);
 	assert(process_list_get_no_running(&plist) == 3);
+	assert(wait_for_sigusrs_received() == 0);
 
 	assert(wait_for_no_running(&plist, 2, 0) == 0);
 
@@ -486,10 +552,12 @@ main(void)
 	 * Test process_list_killall by running two bash proceses.
 	 * One ignores INT and second ignores INT and TERM. Waiting for maximum of 2 sec
 	 */
-	plist_entry = process_list_add(&plist, "ignoresig1", "bash -c \"trap 'echo trap' SIGINT;while true;do sleep 1;done\"");
+	sigusr1_received = 0;
+	plist_entry = process_list_add(&plist, "ignoresig1", ignore_sigint_cmd);
 	assert(plist_entry != NULL);
 
-	plist_entry = process_list_add(&plist, "ignoresig2", "bash -c \"trap 'echo trap' SIGINT SIGTERM;while true;do sleep 1;done\"");
+	sigusr2_received = 0;
+	plist_entry = process_list_add(&plist, "ignoresig2", ignore_sigintterm_cmd);
 	assert(plist_entry != NULL);
 
 	no_executed = 0;
@@ -497,6 +565,7 @@ main(void)
 	assert(process_list_exec_initialized(&plist) == 0);
 	assert(no_executed == 2);
 	assert(process_list_get_no_running(&plist) == 2);
+	assert(wait_for_sigusrs_received() == 0);
 
 	/*
 	 * Ensure processes are running after pause
