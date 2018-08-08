@@ -887,15 +887,15 @@ int totemsrp_initialize (
 		"Token Timeout (%d ms) retransmit timeout (%d ms)",
 		totem_config->token_timeout, totem_config->token_retransmit_timeout);
 	if (totem_config->token_warning) {
+		uint32_t token_warning_ms = totem_config->token_warning * totem_config->token_timeout / 100;
 		log_printf(instance->totemsrp_log_level_debug,
 			"Token warning every %d ms (%d%% of Token Timeout)",
-			totem_config->token_warning * totem_config->token_timeout / 100, totem_config->token_warning);
-		if (totem_config->token_timeout * totem_config->token_warning / 100 < totem_config->token_retransmit_timeout)
+			token_warning_ms, totem_config->token_warning);
+		if (token_warning_ms < totem_config->token_retransmit_timeout)
 			log_printf (LOGSYS_LEVEL_DEBUG,
 				"The token warning interval (%d ms) is less than the token retransmit timeout (%d ms) "
 				"which can lead to spurious token warnings. Consider increasing the token_warning parameter.",
-				totem_config->token_warning * totem_config->token_timeout / 100,
-				totem_config->token_retransmit_timeout);
+				token_warning_ms, totem_config->token_retransmit_timeout);
 	} else {
 		log_printf(instance->totemsrp_log_level_debug,
 			"Token warnings disabled");

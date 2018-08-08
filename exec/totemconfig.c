@@ -335,13 +335,6 @@ static int totem_volatile_config_validate (
 		goto parse_error;
 	} 
 
-	if (totem_config->token_warning && totem_config->token_timeout * totem_config->token_warning / 100 < totem_config->token_retransmit_timeout) 
-		log_printf (LOGSYS_LEVEL_DEBUG,
-			"The token warning interval (%d ms) is less than the token retransmit timeout (%d ms) "
-			"which can lead to spurious token warnings. Consider increasing the token_warning parameter.",
-			totem_config->token_warning * totem_config->token_timeout / 100,
-			totem_config->token_retransmit_timeout);
-
 	if (totem_config->token_retransmit_timeout < MINIMUM_TIMEOUT) {
 		snprintf (local_error_reason, sizeof(local_error_reason),
 			"The token retransmit timeout parameter (%d ms) may not be less than (%d ms).",
@@ -2005,10 +1998,17 @@ static void debug_dump_totem_config(const struct totem_config *totem_config)
 
 	log_printf(LOGSYS_LEVEL_DEBUG, "Token Timeout (%d ms) retransmit timeout (%d ms)",
 	    totem_config->token_timeout, totem_config->token_retransmit_timeout);
-	if (totem_config->token_warning)
+	if (totem_config->token_warning) {
+		uint32_t token_warning_ms = totem_config->token_warning * totem_config->token_timeout / 100;
 	 	log_printf(LOGSYS_LEVEL_DEBUG, "Token warning every %d ms (%d%% of Token Timeout)", 
-		    totem_config->token_warning * totem_config->token_timeout / 100, totem_config->token_warning);
-	else
+		    token_warning_ms, totem_config->token_warning);
+		if (token_warning_ms < totem_config->token_retransmit_timeout) 
+			log_printf (LOGSYS_LEVEL_DEBUG,
+				"The token warning interval (%d ms) is less than the token retransmit timeout (%d ms) "
+				"which can lead to spurious token warnings. Consider increasing the token_warning parameter.",
+				token_warning_ms, totem_config->token_retransmit_timeout);
+
+	} else
 		log_printf(LOGSYS_LEVEL_DEBUG, "Token warnings disabled");
 	log_printf(LOGSYS_LEVEL_DEBUG, "token hold (%d ms) retransmits before loss (%d retrans)",
 	    totem_config->token_hold_timeout, totem_config->token_retransmits_before_loss_const);
