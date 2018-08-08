@@ -1,7 +1,7 @@
 #!@BASHPATH@
 
 #
-# Copyright (c) 2015-2016 Red Hat, Inc.
+# Copyright (c) 2015-2018 Red Hat, Inc.
 #
 # All rights reserved.
 #
@@ -207,6 +207,19 @@ import_pk12() {
     pk12util -i "$CERTIFICATE_FILE" -d "$DB_DIR" -W ""
 }
 
+# Wrapper on top of scp which first copies (scp) file to local machine saving to
+# temporary file and then copies to another remote machine. Standard scp doesn't
+# handle situation with two hosts in one command very well when agent forwarding
+# is used and there is no key between two machines.
+remote_scp() {
+    tmp_file=`mktemp`
+
+    scp "$1" "$tmp_file"
+    scp "$tmp_file" "$2"
+
+    rm -f "$tmp_file"
+}
+
 quick_start() {
     qnetd_addr="$1"
     master_node="$2"
@@ -232,7 +245,7 @@ quick_start() {
 
     # Copy CA cert to all nodes and initialize them
     for node in "$master_node" $other_nodes;do
-        scp "root@$qnetd_addr:$CA_EXPORT_FILE" "$node:/tmp"
+        remote_scp "root@$qnetd_addr:$CA_EXPORT_FILE" "root@$node:/tmp/`basename $CA_EXPORT_FILE`"
         ssh "root@$node" "$0 -i -c \"/tmp/`basename $CA_EXPORT_FILE`\" && rm /tmp/`basename $CA_EXPORT_FILE`"
     done
 
@@ -240,20 +253,21 @@ quick_start() {
     ssh "root@$master_node" "$0 -r -n \"$CLUSTER_NAME\""
 
     # Copy exported cert request to qnetd server
-    scp "root@$master_node:$DB_DIR_NODE/$CRQ_FILE_BASE" "root@$qnetd_addr:/tmp"
+    remote_scp "root@$master_node:$DB_DIR_NODE/$CRQ_FILE_BASE" "root@$qnetd_addr:/tmp/$CRQ_FILE_BASE"
 
     # Sign and export cluster certificate
     ssh "root@$qnetd_addr" "$QNETD_CERTUTIL_CMD -s -c \"/tmp/$CRQ_FILE_BASE\" -n \"$CLUSTER_NAME\""
 
     # Copy exported CRT to master node
-    scp "root@$qnetd_addr:$DB_DIR_QNETD/cluster-$CLUSTER_NAME.crt" "root@$master_node:$DB_DIR_NODE"
+    remote_scp "root@$qnetd_addr:$DB_DIR_QNETD/cluster-$CLUSTER_NAME.crt" \
+        "root@$master_node:$DB_DIR_NODE/cluster-$CLUSTER_NAME.crt"
 
     # Import certificate
     ssh "root@$master_node" "$0 -M -c \"$DB_DIR_NODE/cluster-$CLUSTER_NAME.crt\""
 
     # Copy pk12 cert to all nodes and import it
     for node in $other_nodes;do
-        scp "root@$master_node:$DB_DIR_NODE/$P12_FILE" "$node:$DB_DIR_NODE/$P12_FILE"
+        remote_scp "root@$master_node:$DB_DIR_NODE/$P12_FILE" "$node:$DB_DIR_NODE/$P12_FILE"
         ssh "root@$node" "$0 -m -c \"$DB_DIR_NODE/$P12_FILE\""
     done
 }
