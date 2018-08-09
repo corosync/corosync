@@ -1,5 +1,5 @@
 .\"/*
-.\" * Copyright (C) 2016 Red Hat, Inc.
+.\" * Copyright (C) 2016-2018 Red Hat, Inc.
 .\" *
 .\" * All rights reserved.
 .\" *
@@ -31,7 +31,7 @@
 .\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 .\" * THE POSSIBILITY OF SUCH DAMAGE.
 .\" */
-.TH COROSYNC-QNETD 8 2016-06-29
+.TH COROSYNC-QNETD 8 2018-08-09
 .SH NAME
 corosync-qnetd \- QNet daemon
 .SH SYNOPSIS
@@ -164,6 +164,26 @@ systemd unit file and add the parameter
 .B -s
 .I off
 in the proper place.
+
+Depending on configuration of NSS (stored in nss.config file usually in
+/etc/crypto-policies/back-ends/ directory) disabled ciphers or too short keys
+may be rejected. Proper solution is to regenerate NSS databases for both
+.B corosync-qnetd
+and
+.B corosync-qdevice
+daemons. As a quick workaround it's also possible to set environment variable
+.I NSS_IGNORE_SYSTEM_POLICY=1
+before running
+.B corosync-qnetd
+daemon.
+
+When NSS is updated it may also be needed to upgrade database into new format. There is no
+consensus on recommended way, but following command seems to work just fine (if qnetd
+sysconfdir is set to /etc)
+
+.nf
+# certutil -N -d /etc/corosync/qnetd/nssdb -f /etc/corosync/qnetd/nssdb/pwdfile.txt
+.fi
 
 .SH ADVANCED SETTINGS
 Set by the

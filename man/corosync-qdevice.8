@@ -1,5 +1,5 @@
 .\"/*
-.\" * Copyright (C) 2016-2017 Red Hat, Inc.
+.\" * Copyright (C) 2016-2018 Red Hat, Inc.
 .\" *
 .\" * All rights reserved.
 .\" *
@@ -31,7 +31,7 @@
 .\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 .\" * THE POSSIBILITY OF SUCH DAMAGE.
 .\" */
-.TH COROSYNC-QDEVICE 8 2017-10-17
+.TH COROSYNC-QDEVICE 8 2018-08-09
 .SH NAME
 corosync-qdevice \- QDevice daemon
 .SH SYNOPSIS
@@ -272,6 +272,26 @@ If TLS is not required just edit corosync.conf file and set
 .B quorum.device.net.tls
 to
 .IR off .
+
+Depending on configuration of NSS (stored in nss.config file usually in
+/etc/crypto-policies/back-ends/ directory) disabled ciphers or too short keys
+may be rejected. Proper solution is to regenerate NSS databases for both
+.B corosync-qnetd
+and
+.B corosync-qdevice
+daemons. As a quick workaround it's also possible to set environment variable
+.I NSS_IGNORE_SYSTEM_POLICY=1
+before running
+.B corosync-qdevice
+daemon.
+
+When NSS is updated it may also be needed to upgrade database into new format. There is no
+consensus on recommended way, but following command seems to work just fine (if qdevice
+sysconfdir is set to /etc)
+
+.nf
+# certutil -N -d /etc/corosync/qdevice/net/nssdb -f /etc/corosync/qdevice/net/nssdb/pwdfile.txt
+.fi
 
 .SH MODEL NET ALGORITHMS
 Algorithms are used to change behavior of how
