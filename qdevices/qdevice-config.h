@@ -37,9 +37,6 @@
 
 #include <config.h>
 
-#include <qb/qbdefs.h>
-#include <qb/qblog.h>
-
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <string.h>
