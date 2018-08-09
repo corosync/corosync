@@ -59,6 +59,18 @@ file /etc/corosync/qnetd/nssdb/cluster-$ClusterName.crt
 .B -c
 Certificate request file to sign.
 .TP
+.B -G
+Do not set group write bit for new files. This option has effect only when used together with
+.B -i
+option. It is useful when extended security is needed and it's viable to prohibit daemon to change its
+configuration. Expected usage is to first set owner of the /etc/corosync/qnetd directory
+to root:$COROQNETD with permissions 0750 and then create database (as a root):
+
+.nf
+# corosync-qnetd-certutil -i -G
+.fi
+
+.TP
 .B -n
 Name of the cluster.
 .SH NOTES

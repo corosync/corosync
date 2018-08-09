@@ -50,11 +50,12 @@ CERTDB_FILES=("cert9.db key4.db pkcs11.txt"
               "cert8.db key3.db secmod.db")
 
 usage() {
-    echo "$0: [-i|-s] [-c certificate] [-n cluster_name]"
+    echo "$0: [-i|-s] [-c certificate] [-G] [-n cluster_name]"
     echo
     echo " -i                  Initialize QNetd CA and generate server certificate"
     echo " -s                  Sign cluster certificate (needs cluster certificate)"
     echo " -c certificate      CRQ certificate file name"
+    echo " -G                  Do not set group write bit for new files"
     echo " -n cluster_name     Name of cluster (for -s operation)"
 
     exit 0
@@ -63,6 +64,16 @@ usage() {
 chown_ref_cfgdir() {
     if [ "$UID" == "0" ];then
         chown --reference="$CONFIG_DIR" "$@" 2>/dev/null || chown "$(stat -f "%u:%g" "$CONFIG_DIR")" "$@" 2>/dev/null || return $?
+    fi
+}
+
+# get_perm [directory]
+# Return permission based on -G and directory flag
+get_perm() {
+    if [ "$1" == true ];then
+        [ "$SET_GROUP_WRITE_BIT" == true ] && echo "0770" || echo "0750"
+    else
+        [ "$SET_GROUP_WRITE_BIT" == true ] && echo "0660" || echo "0640"
     fi
 }
 
@@ -75,7 +86,7 @@ create_new_noise_file() {
         (ps -elf; date; w) | sha1sum | (read sha_sum rest; echo $sha_sum) > "$noise_file"
 
         chown_ref_cfgdir "$noise_file"
-        chmod 0660 "$noise_file"
+        chmod `get_perm` "$noise_file"
     else
         echo "Using existing noise file $noise_file"
     fi
@@ -87,7 +98,7 @@ get_serial_no() {
     if ! [ -f "$SERIAL_NO_FILE" ];then
         echo "100" > $SERIAL_NO_FILE
         chown_ref_cfgdir "$SERIAL_NO_FILE"
-        chmod 0660 "$SERIAL_NO_FILE"
+        chmod `get_perm` "$SERIAL_NO_FILE"
     fi
     serial_no=`cat $SERIAL_NO_FILE`
     serial_no=$((serial_no+1))
@@ -121,13 +132,13 @@ init_qnetd_ca() {
         echo "Creating $DB_DIR"
         mkdir -p "$DB_DIR"
         chown_ref_cfgdir "$DB_DIR"
-        chmod 0770 "$DB_DIR"
+        chmod `get_perm true` "$DB_DIR"
     fi
 
     echo "Creating new key and cert db"
     echo -n "" > "$PWD_FILE"
     chown_ref_cfgdir "$PWD_FILE"
-    chmod 0660 "$PWD_FILE"
+    chmod `get_perm` "$PWD_FILE"
 
     certutil -N -d "$DB_DIR" -f "$PWD_FILE"
     cert_files=`find_certdb_files`
@@ -139,7 +150,7 @@ init_qnetd_ca() {
 
     for fname in $cert_files;do
         chown_ref_cfgdir "$DB_DIR/$fname"
-        chmod 0660 "$DB_DIR/$fname"
+        chmod `get_perm` "$DB_DIR/$fname"
     done
 
     create_new_noise_file "$NOISE_FILE"
@@ -180,8 +191,9 @@ sign_cluster_cert() {
 OPERATION=""
 CERTIFICATE_FILE=""
 CLUSTER_NAME=""
+SET_GROUP_WRITE_BIT=true
 
-while getopts ":hisc:n:" opt; do
+while getopts ":Ghisc:n:" opt; do
     case $opt in
         i)
             OPERATION=init_qnetd_ca
@@ -194,6 +206,9 @@ while getopts ":hisc:n:" opt; do
             ;;
         c)
             CERTIFICATE_FILE="$OPTARG"
+            ;;
+        G)
+            SET_GROUP_WRITE_BIT=false
             ;;
         n)
             CLUSTER_NAME="$OPTARG"

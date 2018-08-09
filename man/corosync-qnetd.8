@@ -135,10 +135,8 @@ directories.
 .fi
 
 Some systems have the /var/run directory on a tmpfs file system which gets discarded after
-a reboot. The solution is to use an initscript which takes care of the /var/run/corosync-qnetd
-creation and sets the correct owner and permissions. For systems with systemd it's possible
-to use a tmpfile.d configuration file (installed by default if systemd is enabled during
-corosync compilation).
+a reboot. The solution is to use an initscript or systemd unit, because both of them takes
+care of the /var/run/corosync-qnetd creation and sets the correct owner and permissions.
 
 The last step is to make sure
 .B corosync-qnetd
