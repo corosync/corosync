@@ -31,6 +31,7 @@ Source0: http://build.clusterlabs.org/corosync/releases/%{name}-%{version}%{?git
 Requires: corosynclib%{?_isa} = %{version}-%{release}
 
 # Build bits
+BuildRequires: gcc
 
 %if 0%{?suse_version}
 BuildRequires: groff-full
@@ -136,8 +137,6 @@ install -m 644 tools/corosync-notifyd.sysconfig.example \
 # /etc/sysconfig/corosync
 install -m 644 init/corosync.sysconfig.example \
    %{buildroot}%{_sysconfdir}/sysconfig/corosync
-
-%clean
 
 %description
 This package contains the Corosync Cluster Engine Executive, several default
