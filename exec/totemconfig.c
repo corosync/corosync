@@ -88,7 +88,7 @@
 
 #define DEFAULT_PORT				5405
 
-static char error_string_response[512];
+static char error_string_response[768];
 
 static void add_totem_config_notification(struct totem_config *totem_config);
 
