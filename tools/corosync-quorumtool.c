@@ -259,8 +259,8 @@ static int set_expected(int expected_votes)
 static const char *node_name_by_nodelist(uint32_t nodeid)
 {
 	cmap_iter_handle_t iter;
-	char key_name[CMAP_KEYNAME_MAXLEN];
-	char tmp_key[CMAP_KEYNAME_MAXLEN];
+	char key_name[CMAP_KEYNAME_MAXLEN + 1];
+	char tmp_key[CMAP_KEYNAME_MAXLEN + 1];
 	static char ret_buf[_POSIX_HOST_NAME_MAX];
 	char *str = NULL;
 	uint32_t node_pos, cur_nodeid;
