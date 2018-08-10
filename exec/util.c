@@ -152,7 +152,7 @@ char *getcs_name_t (cs_name_t *name)
 }
 
 void setcs_name_t (cs_name_t *name, char *str) {
-	strncpy ((char *)name->value, str, sizeof (name->value));
+	strncpy ((char *)name->value, str, sizeof (name->value) - 1);
 	((char *)name->value)[sizeof (name->value) - 1] = '\0';
 	if (strlen ((char *)name->value) > CS_MAX_NAME_LENGTH) {
 		name->length = CS_MAX_NAME_LENGTH;
