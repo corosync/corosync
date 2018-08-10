@@ -971,6 +971,7 @@ int totemknet_initialize (
 
 exit_error:
 	log_flush_messages(instance);
+	free(instance);
 	return (-1);
 }
 
