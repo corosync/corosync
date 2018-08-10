@@ -917,7 +917,9 @@ cs_error_t cmap_iter_next(
 	}
 
 	if (error == CS_OK) {
-		strncpy(key_name, (const char *)res_lib_cmap_iter_next.key_name.value, CMAP_KEYNAME_MAXLEN);
+		memcpy(key_name, (const char *)res_lib_cmap_iter_next.key_name.value,
+		    res_lib_cmap_iter_next.key_name.length);
+		key_name[res_lib_cmap_iter_next.key_name.length] = '\0';
 
 		if (value_len != NULL) {
 			*value_len = res_lib_cmap_iter_next.value_len;
