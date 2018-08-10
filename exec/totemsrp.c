@@ -3156,6 +3156,7 @@ static int memb_lowest_in_config (struct totemsrp_instance *instance)
 	/*
 	 * find representative by searching for smallest identifier
 	 */
+	assert(token_memb_entries > 0);
 
 	lowest_nodeid = token_memb[0].nodeid;
 	for (i = 1; i < token_memb_entries; i++) {
