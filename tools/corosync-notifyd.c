@@ -99,7 +99,10 @@ struct track_item {
 #define MAX_NOTIFIERS 5
 static int num_notifiers = 0;
 static struct notify_callbacks notifiers[MAX_NOTIFIERS];
-static uint32_t local_nodeid = 0;
+/*
+ * Global variable with local nodeid
+ */
+static uint32_t g_local_nodeid = 0;
 static char local_nodename[CS_MAX_NAME_LENGTH];
 static qb_loop_t *main_loop;
 static quorum_handle_t quorum_handle;
@@ -1000,24 +1003,24 @@ _cs_local_node_info_get(char **nodename, uint32_t *nodeid)
 	cs_error_t rc;
 	corosync_cfg_handle_t cfg_handle;
 
-	if (local_nodeid == 0) {
+	if (g_local_nodeid == 0) {
 		rc = corosync_cfg_initialize(&cfg_handle, NULL);
 		if (rc != CS_OK) {
 			syslog (LOG_ERR, "Failed to initialize the cfg API. Error %d\n", rc);
 			exit (EXIT_FAILURE);
 		}
 
-		rc = corosync_cfg_local_get (cfg_handle, &local_nodeid);
+		rc = corosync_cfg_local_get (cfg_handle, &g_local_nodeid);
 		corosync_cfg_finalize(cfg_handle);
 		if (rc != CS_OK) {
-			local_nodeid = 0;
+			g_local_nodeid = 0;
 			strncpy(local_nodename, "localhost", sizeof (local_nodename));
 			local_nodename[sizeof (local_nodename) - 1] = '\0';
 		} else {
 			gethostname(local_nodename, CS_MAX_NAME_LENGTH);
 		}
 	}
-	*nodeid = local_nodeid;
+	*nodeid = g_local_nodeid;
 	*nodename = local_nodename;
 }
 
