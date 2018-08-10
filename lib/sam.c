@@ -216,7 +216,7 @@ static cs_error_t sam_cmap_destroy_pid_path (void)
 {
 	cmap_iter_handle_t iter;
 	cs_error_t err;
-	char key_name[CMAP_KEYNAME_MAXLEN];
+	char key_name[CMAP_KEYNAME_MAXLEN + 1];
 
 	err = cmap_iter_init(sam_internal_data.cmap_handle, sam_internal_data.cmap_pid_path, &iter);
 	if (err != CS_OK) {

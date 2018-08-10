@@ -318,7 +318,9 @@ extern cs_error_t cmap_iter_init(cmap_handle_t handle, const char *prefix, cmap_
  *
  * @param handle cmap handle
  * @param iter_handle handle of iteration returned by cmap_iter_init
- * @param key_name place to store name of key. Maximum length is CMAP_KEYNAME_MAXLEN
+ * @param key_name place to store name of key. Maximum length is CMAP_KEYNAME_MAXLEN and
+ *                 trailing zero is always added so size of the buffer has to be at least
+ *                 CMAP_KEYNAME_MAXLEN + 1.
  * @param value_len length of value
  * @param type type of value
  * @return CS_NO_SECTION if there are no more sections to iterate
