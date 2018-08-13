@@ -10,6 +10,13 @@ EnvironmentFile=-@INITCONFIGDIR@/corosync
 ExecStart=@SBINDIR@/corosync -f $COROSYNC_OPTIONS
 Type=notify
 
+# In typical systemd deployments, both standard outputs are forwarded to
+# journal (stderr is what's relevant in the pristine corosync configuration),
+# which hazards a message redundancy since the syslog stream usually ends there
+# as well; before editing this line, you may want to check DefaultStandardError
+# in systemd-system.conf(5) and whether /dev/log is a systemd related symlink.
+StandardError=null
+
 # The following config is for corosync with enabled watchdog service.
 #
 #  When corosync watchdog service is being enabled and using with
