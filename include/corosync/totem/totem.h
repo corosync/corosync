@@ -173,6 +173,8 @@ struct totem_config {
 	 */
 	unsigned int token_timeout;
 
+	unsigned int token_warning;
+
 	unsigned int token_retransmit_timeout;
 
 	unsigned int token_hold_timeout;

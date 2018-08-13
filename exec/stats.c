@@ -96,6 +96,7 @@ struct cs_stats_conv cs_srp_stats[] = {
 	{ STAT_SRP, "recovery_token_lost",    offsetof(totemsrp_stats_t, recovery_token_lost),    ICMAP_VALUETYPE_UINT64},
 	{ STAT_SRP, "consensus_timeouts",     offsetof(totemsrp_stats_t, consensus_timeouts),     ICMAP_VALUETYPE_UINT64},
 	{ STAT_SRP, "rx_msg_dropped",         offsetof(totemsrp_stats_t, rx_msg_dropped),         ICMAP_VALUETYPE_UINT64},
+	{ STAT_SRP, "time_since_token_last_received", offsetof(totemsrp_stats_t, time_since_token_last_received), ICMAP_VALUETYPE_UINT64},
 	{ STAT_SRP, "continuous_gather",      offsetof(totemsrp_stats_t, continuous_gather),      ICMAP_VALUETYPE_UINT32},
 	{ STAT_SRP, "continuous_sendmsg_failures", offsetof(totemsrp_stats_t, continuous_sendmsg_failures), ICMAP_VALUETYPE_UINT32},
 	{ STAT_SRP, "firewall_enabled_or_nic_failure", offsetof(totemsrp_stats_t, firewall_enabled_or_nic_failure), ICMAP_VALUETYPE_UINT8},

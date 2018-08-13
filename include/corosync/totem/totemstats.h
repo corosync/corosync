@@ -77,6 +77,7 @@ typedef struct {
 	uint64_t rx_msg_dropped;
 	uint32_t continuous_gather;
 	uint32_t continuous_sendmsg_failures;
+	uint64_t time_since_token_last_received; // relative time
 
 	uint8_t  firewall_enabled_or_nic_failure;
 	uint32_t mtt_rx_token;
