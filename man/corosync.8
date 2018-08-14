@@ -31,7 +31,7 @@
 .\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 .\" * THE POSSIBILITY OF SUCH DAMAGE.
 .\" */
-.TH COROSYNC 8 2017-07-07
+.TH COROSYNC 8 2018-08-14
 .SH NAME
 corosync \- The Corosync Cluster Engine.
 .SH SYNOPSIS
@@ -64,7 +64,9 @@ of scheduler fails, fallback to set maximal priority.
 .TP
 .B -R
 Do not try to move Corosync to root cpu cgroup. This feature is available only
-for corosync with libcgroup enabled during the build.
+for cgroups with RT sched enabled systems (Linux with
+CONFIG_RT_GROUP_SCHED kernel option). It's also expected to be removed as soon as
+systemd gets support for managing RT configuration.
 .TP
 .B -t
 Test configuration and then exit.

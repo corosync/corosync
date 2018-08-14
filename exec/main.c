@@ -113,10 +113,6 @@
 #include <corosync/logsys.h>
 #include <corosync/icmap.h>
 
-#ifdef HAVE_LIBCGROUP
-#include <libcgroup.h>
-#endif
-
 #include "quorum.h"
 #include "totemsrp.h"
 #include "logconfig.h"
@@ -1120,84 +1116,47 @@ error_close:
 }
 
 static int corosync_move_to_root_cgroup(void) {
+	FILE *f;
 	int res = -1;
-#ifdef HAVE_LIBCGROUP
-	int cg_ret;
-	struct cgroup *root_cgroup = NULL;
-	struct cgroup_controller *root_cpu_cgroup_controller = NULL;
-	char *current_cgroup_path = NULL;
 
-	cg_ret = cgroup_init();
-	if (cg_ret) {
-		log_printf(LOGSYS_LEVEL_WARNING, "Unable to initialize libcgroup: %s ",
-		    cgroup_strerror(cg_ret));
-
-		goto exit_res;
-	}
-
-	cg_ret = cgroup_get_current_controller_path(getpid(), "cpu", &current_cgroup_path);
-	if (cg_ret) {
-		log_printf(LOGSYS_LEVEL_WARNING, "Unable to get current cpu cgroup path: %s ",
-		    cgroup_strerror(cg_ret));
-
-		goto exit_res;
-	}
-
-	if (strcmp(current_cgroup_path, "/") == 0) {
-		log_printf(LOGSYS_LEVEL_DEBUG, "Corosync is already in root cgroup path");
+	/*
+	 * /sys/fs/cgroup is hardcoded, because most of Linux distributions are now
+	 * using systemd and systemd uses hardcoded path of cgroup mount point.
+	 *
+	 * This feature is expected to be removed as soon as systemd gets support
+	 * for managing RT configuration.
+	 */
+	f = fopen("/sys/fs/cgroup/cpu/cpu.rt_runtime_us", "rt");
+	if (f == NULL) {
+		log_printf(LOGSYS_LEVEL_DEBUG, "cpu.rt_runtime_us doesn't exists -> "
+		    "system without cgroup or with disabled CONFIG_RT_GROUP_SCHED");
 
 		res = 0;
 		goto exit_res;
 	}
+	(void)fclose(f);
 
-	root_cgroup = cgroup_new_cgroup("/");
-	if (root_cgroup == NULL) {
-		log_printf(LOGSYS_LEVEL_WARNING, "Can't create root cgroup");
-
-		goto exit_res;
-	}
-
-	root_cpu_cgroup_controller = cgroup_add_controller(root_cgroup, "cpu");
-	if (root_cpu_cgroup_controller == NULL) {
-		log_printf(LOGSYS_LEVEL_WARNING, "Can't create root cgroup cpu controller");
+	f = fopen("/sys/fs/cgroup/cpu/tasks", "w");
+	if (f == NULL) {
+		log_printf(LOGSYS_LEVEL_WARNING, "Can't open cgroups tasks file for writing");
 
 		goto exit_res;
 	}
 
-	cg_ret = cgroup_attach_task(root_cgroup);
-	if (cg_ret) {
-		log_printf(LOGSYS_LEVEL_WARNING, "Can't attach task to root cgroup: %s ",
-		    cgroup_strerror(cg_ret));
+	if (fprintf(f, "%jd\n", (intmax_t)getpid()) <= 0) {
+		log_printf(LOGSYS_LEVEL_WARNING, "Can't write corosync pid into cgroups tasks file");
 
-		goto exit_res;
+		goto close_and_exit_res;
 	}
 
-	cg_ret = cgroup_get_current_controller_path(getpid(), "cpu", &current_cgroup_path);
-	if (cg_ret) {
-		log_printf(LOGSYS_LEVEL_WARNING, "Unable to get current cpu cgroup path: %s ",
-		    cgroup_strerror(cg_ret));
+close_and_exit_res:
+	if (fclose(f) != 0) {
+		log_printf(LOGSYS_LEVEL_WARNING, "Can't close cgroups tasks file");
 
 		goto exit_res;
-	}
-
-	if (strcmp(current_cgroup_path, "/") == 0) {
-		log_printf(LOGSYS_LEVEL_NOTICE, "Corosync successfully moved to root cgroup");
-		res = 0;
-	} else {
-		log_printf(LOGSYS_LEVEL_WARNING, "Can't move Corosync to root cgroup");
 	}
 
 exit_res:
-	if (root_cgroup != NULL) {
-		cgroup_free(&root_cgroup);
-	}
-
-	/*
-	 * libcgroup doesn't define something like cgroup_fini so there is no way how to clean
-	 * it's cache. It has to be called when libcgroup authors decide to implement it.
-	 */
-
-#endif
 	 return (res);
 }
 
@@ -1272,7 +1231,8 @@ int main (int argc, char **argv, char **envp)
 					"        -f     : Start application in foreground.\n"\
 					"        -p     : Do not set realtime scheduling.\n"\
 					"        -r     : Set round robin realtime scheduling (default).\n"\
-					"        -R     : Do not try move corosync to root cpu cgroup (valid when built with libcgroup)\n" \
+					"        -R     : Do not try move corosync to root cpu cgroup (valid for cgroups enabled systems)\n"\
+					"                 Feature is expected to be removed - see corosync.8 man page\n" \
 					"        -P num : Set priority of process (no effect when -r is used)\n"\
 					"        -t     : Test configuration and exit.\n"\
 					"        -v     : Display version and SVN revision of Corosync and exit.\n");
