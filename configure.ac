@@ -394,11 +394,6 @@ AC_ARG_ENABLE([xmlconf],
 	[ enable_xmlconf="no" ])
 AM_CONDITIONAL(INSTALL_XMLCONF, test x$enable_xmlconf = xyes)
 
-AC_ARG_ENABLE([libcgroup],
-	[  --enable-libcgroup                  : Enable libcgroup support ],,
-	[ enable_libcgroup="no" ])
-AM_CONDITIONAL(ENABLE_LIBCGROUP, test x$enable_libcgroup = xyes)
-
 AC_ARG_ENABLE([vqsim],
 	[  --enable-vqsim               : Quorum simulator support ],,
 	[ enable_vqsim="no" ])
@@ -526,13 +521,6 @@ if test "x${enable_snmp}" = xyes; then
 	fi
 fi
 AM_CONDITIONAL(BUILD_SNMP, test "${do_snmp}" = "1")
-
-if test "x${enable_libcgroup}" = xyes; then
-    PKG_CHECK_MODULES([libcgroup], [libcgroup])
-    AC_DEFINE_UNQUOTED([HAVE_LIBCGROUP], 1, [have libcgroup])
-    PACKAGE_FEATURES="$PACKAGE_FEATURES libcgroup"
-    WITH_LIST="$WITH_LIST --with libcgroup"
-fi
 
 # extra warnings
 EXTRA_WARNINGS=""

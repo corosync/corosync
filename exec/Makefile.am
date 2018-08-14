@@ -74,10 +74,5 @@ corosync_LDADD		= libtotem_pg.la ../common_lib/libcorosync_common.la \
 
 corosync_DEPENDENCIES	= libtotem_pg.la ../common_lib/libcorosync_common.la
 
-if ENABLE_LIBCGROUP
-corosync_CFLAGS		+= $(libcgroup_CFLAGS)
-corosync_LDADD		+= $(libcgroup_LIBS)
-endif
-
 lint:
 	-splint $(LINT_FLAGS) $(CPPFLAGS) $(CFLAGS) *.c
