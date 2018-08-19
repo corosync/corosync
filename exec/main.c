@@ -969,6 +969,41 @@ static void corosync_fplay_control_init (void)
 			NULL, &track);
 }
 
+static void force_gather_notify_fn(
+	int32_t event,
+	const char *key_name,
+	struct icmap_notify_value new_val,
+	struct icmap_notify_value old_val,
+	void *user_data)
+{
+	char *key_val;
+
+	if (icmap_get_string(key_name, &key_val) == CS_OK && strcmp(key_val, "no") == 0)
+		goto out;
+
+	icmap_set_string("runtime.force_gather", "no");
+
+	if (strcmp(key_name, "runtime.force_gather") == 0) {
+		log_printf(LOGSYS_LEVEL_ERROR, "Forcing into GATHER state\n");
+		totempg_force_gather();
+	}
+
+out:
+	free(key_val);
+}
+
+static void corosync_force_gather_init (void)
+{
+	icmap_track_t track = NULL;
+
+	icmap_set_string("runtime.force_gather", "no");
+
+	icmap_track_add("runtime.force_gather",
+			ICMAP_TRACK_ADD | ICMAP_TRACK_DELETE | ICMAP_TRACK_MODIFY,
+			force_gather_notify_fn,
+			NULL, &track);
+}
+
 /*
  * Set RO flag for keys, which ether doesn't make sense to change by user (statistic)
  * or which when changed are not reflected by runtime (totem.crypto_cipher, ...).
@@ -1023,6 +1058,7 @@ static void main_service_ready (void)
 	cs_ipcs_init();
 	corosync_totem_stats_init ();
 	corosync_fplay_control_init ();
+	corosync_force_gather_init ();
 	sync_init (
 		corosync_sync_callbacks_retrieve,
 		corosync_sync_completed);

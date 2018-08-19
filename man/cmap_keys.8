@@ -66,7 +66,7 @@ key is same as in the configuration file. All values are of string type.
 .TP
 nodelist.*
 Values read from the configuration file. Each node element in the configuration file gets
-assigned it's position starting from zero. So the first node from the config file has
+assigned its position starting from zero. So the first node from the config file has
 nodelist.node.0. prefix. To be a valid entry, each node must have
 .B ring0_addr
 key.
@@ -81,8 +81,13 @@ out nodeid/ring addresses of the local node directly from cmap.
 
 .TP
 runtime.blackbox.*
-Trigger keys for storing fplay data. It's recommended that you the corosync-blackbox command
+Trigger keys for storing fplay data. It's recommended that you use the corosync-blackbox command
 to change keys in this prefix.
+
+.TP
+runtime.force_gather
+Set to 'yes' to force the processor to move into the GATHER state.  This operation
+is dangerous and is not recommended.
 
 .TP
 runtime.config.*
@@ -94,7 +99,7 @@ on individual keys please refer to the man page
 
 .TP
 runtime.services.*
-Prefix with statistics for service engines. Each service has it's own
+Prefix with statistics for service engines. Each service has its own
 .B service_id
 key in the prefix with the name runtime.services.SERVICE., where SERVICE is the lower case
 name of the service. Inside the service prefix is the number of messages received and sent
