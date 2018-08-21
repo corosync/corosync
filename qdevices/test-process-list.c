@@ -47,10 +47,10 @@
 #include "process-list.h"
 
 /*
- * 1 min timeout
+ * 10 min timeout
  */
 #define WAIT_FOR_NO_RUNNING_REPEATS		6000
-#define WAIT_FOR_NO_RUNNING_TIMEOUT		60000
+#define WAIT_FOR_NO_RUNNING_TIMEOUT		600000
 /*
  * 1 sec timeout
  */
