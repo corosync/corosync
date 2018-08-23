@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2013 Red Hat, Inc.
+ * Copyright (c) 2006-2018 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -347,11 +347,23 @@ static int parse_section(FILE *fp,
 
 		/* New section ? */
 		if ((loc = strchr_rs (line, '{'))) {
-			char *section = remove_whitespace(line, 1);
+			char *section;
+			char *after_section;
 			enum main_cp_cb_data_state newstate;
 
-			loc--;
-			*loc = '\0';
+			*(loc-1) = '\0';
+			section = remove_whitespace(line, 1);
+			after_section = remove_whitespace(loc, 0);
+
+			if (strcmp(section, "") == 0) {
+				*error_string = "parser error: Missing section name before opening bracket '{'";
+				return -1;
+			}
+
+			if (strcmp(after_section, "") != 0) {
+				*error_string = "parser error: Extra characters after opening bracket '{'";
+				return -1;
+			}
 
 			if (strlen(path) + strlen(section) + 1 >= ICMAP_KEYNAME_MAXLEN) {
 				*error_string = "parser error: Start of section makes total cmap path too long";
@@ -402,18 +414,33 @@ static int parse_section(FILE *fp,
 		}
 
 		if (strchr_rs (line, '}')) {
+			char *trimmed_line;
+			trimmed_line = remove_whitespace(line, 0);
+
+			if (strcmp(trimmed_line, "}") != 0) {
+				*error_string = "parser error: extra characters before or after closing bracket '}'";
+				return -1;
+			}
+
 			if (depth == 0) {
 				*error_string = "parser error: Unexpected closing brace";
 
 				return -1;
 			}
 
-			if (!parser_cb(path, NULL, NULL, &state, PARSER_CB_SECTION_END, error_string, config_map, user_data)) {
+			if (!parser_cb(path, NULL, NULL, &state, PARSER_CB_SECTION_END, error_string,
+			    config_map, user_data)) {
 				return -1;
 			}
 
 			return 0;
 		}
+
+		/*
+		 * Line is not opening section, ending section or value -> error
+		 */
+		*error_string = "parser error: Line is not opening or closing section or key value";
+		return -1;
 	}
 
 	if (strcmp(path, "") != 0) {
