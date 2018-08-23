@@ -304,6 +304,15 @@ static int parse_section(FILE *fp,
 
 	while (fgets (line, sizeof (line), fp)) {
 		if (strlen(line) > 0) {
+			/*
+			 * Check if complete line was read. Use feof to handle files
+			 * without ending \n at the end of the file
+			 */
+			if ((line[strlen(line) - 1] != '\n') && !feof(fp)) {
+				*error_string = "parser error: Line too long";
+				return -1;
+			}
+
 			if (line[strlen(line) - 1] == '\n')
 				line[strlen(line) - 1] = '\0';
 			if (strlen (line) > 0 && line[strlen(line) - 1] == '\r')
