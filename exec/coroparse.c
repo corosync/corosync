@@ -284,33 +284,41 @@ static char *remove_whitespace(char *string, int remove_colon_and_brace)
 
 
 static int parse_section(FILE *fp,
-			 char *path,
-			 const char **error_string,
-			 int depth,
-			 enum main_cp_cb_data_state state,
-			 parser_cb_f parser_cb,
-			 icmap_map_t config_map,
-			 void *user_data)
+			const char *fname,
+			int *line_no,
+			char *path,
+			const char **error_string,
+			int depth,
+			enum main_cp_cb_data_state state,
+			parser_cb_f parser_cb,
+			icmap_map_t config_map,
+			void *user_data)
 {
 	char line[512];
 	int i;
 	char *loc;
 	int ignore_line;
 	char new_keyname[ICMAP_KEYNAME_MAXLEN];
+	static char formated_err[384];
+	const char *tmp_error_string;
 
 	if (strcmp(path, "") == 0) {
 		parser_cb("", NULL, NULL, &state, PARSER_CB_START, error_string, config_map, user_data);
 	}
 
+	tmp_error_string = NULL;
+
 	while (fgets (line, sizeof (line), fp)) {
+		(*line_no)++;
+
 		if (strlen(line) > 0) {
 			/*
 			 * Check if complete line was read. Use feof to handle files
 			 * without ending \n at the end of the file
 			 */
 			if ((line[strlen(line) - 1] != '\n') && !feof(fp)) {
-				*error_string = "parser error: Line too long";
-				return -1;
+				tmp_error_string = "Line too long";
+				goto parse_error;
 			}
 
 			if (line[strlen(line) - 1] == '\n')
@@ -356,18 +364,18 @@ static int parse_section(FILE *fp,
 			after_section = remove_whitespace(loc, 0);
 
 			if (strcmp(section, "") == 0) {
-				*error_string = "parser error: Missing section name before opening bracket '{'";
-				return -1;
+				tmp_error_string = "Missing section name before opening bracket '{'";
+				goto parse_error;
 			}
 
 			if (strcmp(after_section, "") != 0) {
-				*error_string = "parser error: Extra characters after opening bracket '{'";
-				return -1;
+				tmp_error_string = "Extra characters after opening bracket '{'";
+				goto parse_error;
 			}
 
 			if (strlen(path) + strlen(section) + 1 >= ICMAP_KEYNAME_MAXLEN) {
-				*error_string = "parser error: Start of section makes total cmap path too long";
-				return -1;
+				tmp_error_string = "Start of section makes total cmap path too long";
+				goto parse_error;
 			}
 			strcpy(new_keyname, path);
 			if (strcmp(path, "") != 0) {
@@ -377,11 +385,13 @@ static int parse_section(FILE *fp,
 
 			/* Only use the new state for items further down the stack */
 			newstate = state;
-			if (!parser_cb(new_keyname, NULL, NULL, &newstate, PARSER_CB_SECTION_START, error_string, config_map, user_data)) {
-				return -1;
+			if (!parser_cb(new_keyname, NULL, NULL, &newstate, PARSER_CB_SECTION_START,
+			    &tmp_error_string, config_map, user_data)) {
+				goto parse_error;
 			}
 
-			if (parse_section(fp, new_keyname, error_string, depth + 1, newstate, parser_cb, config_map, user_data))
+			if (parse_section(fp, fname, line_no, new_keyname, error_string, depth + 1, newstate,
+			    parser_cb, config_map, user_data))
 				return -1;
 
 			continue ;
@@ -397,8 +407,8 @@ static int parse_section(FILE *fp,
 			value = remove_whitespace(loc, 0);
 
 			if (strlen(path) + strlen(key) + 1 >= ICMAP_KEYNAME_MAXLEN) {
-				*error_string = "parser error: New key makes total cmap path too long";
-				return -1;
+				tmp_error_string = "New key makes total cmap path too long";
+				goto parse_error;
 			}
 			strcpy(new_keyname, path);
 			if (strcmp(path, "") != 0) {
@@ -406,8 +416,9 @@ static int parse_section(FILE *fp,
 			}
 			strcat(new_keyname, key);
 
-			if (!parser_cb(new_keyname, key, value, &state, PARSER_CB_ITEM, error_string, config_map, user_data)) {
-				return -1;
+			if (!parser_cb(new_keyname, key, value, &state, PARSER_CB_ITEM, &tmp_error_string,
+			    config_map, user_data)) {
+				goto parse_error;
 			}
 
 			continue ;
@@ -418,19 +429,19 @@ static int parse_section(FILE *fp,
 			trimmed_line = remove_whitespace(line, 0);
 
 			if (strcmp(trimmed_line, "}") != 0) {
-				*error_string = "parser error: extra characters before or after closing bracket '}'";
-				return -1;
+				tmp_error_string = "Extra characters before or after closing bracket '}'";
+				goto parse_error;
 			}
 
 			if (depth == 0) {
-				*error_string = "parser error: Unexpected closing brace";
+				tmp_error_string = "Unexpected closing brace";
 
-				return -1;
+				goto parse_error;
 			}
 
-			if (!parser_cb(path, NULL, NULL, &state, PARSER_CB_SECTION_END, error_string,
+			if (!parser_cb(path, NULL, NULL, &state, PARSER_CB_SECTION_END, &tmp_error_string,
 			    config_map, user_data)) {
-				return -1;
+				goto parse_error;
 			}
 
 			return 0;
@@ -439,13 +450,13 @@ static int parse_section(FILE *fp,
 		/*
 		 * Line is not opening section, ending section or value -> error
 		 */
-		*error_string = "parser error: Line is not opening or closing section or key value";
-		return -1;
+		tmp_error_string = "Line is not opening or closing section or key value";
+		goto parse_error;
 	}
 
 	if (strcmp(path, "") != 0) {
-		*error_string = "parser error: Missing closing brace";
-		return -1;
+		tmp_error_string = "Missing closing brace";
+		goto parse_error;
 	}
 
 	if (strcmp(path, "") == 0) {
@@ -453,6 +464,16 @@ static int parse_section(FILE *fp,
 	}
 
 	return 0;
+
+parse_error:
+	if (snprintf(formated_err, sizeof(formated_err), "parser error: %s:%u: %s", fname, *line_no,
+	    tmp_error_string) >= sizeof(formated_err)) {
+		*error_string = "Can't format parser error message";
+	} else {
+		*error_string = formated_err;
+	}
+
+	return -1;
 }
 
 static int safe_atoq_range(icmap_value_types_t value_type, long long int *min_val, long long int *max_val)
@@ -1487,6 +1508,7 @@ static int read_uidgid_files_into_icmap(
 	struct stat stat_buf;
 	enum main_cp_cb_data_state state = MAIN_CP_CB_DATA_STATE_NORMAL;
 	char key_name[ICMAP_KEYNAME_MAXLEN];
+	int line_no;
 
 	dirname = COROSYSCONFDIR "/uidgid.d";
 	dp = opendir (dirname);
@@ -1507,7 +1529,9 @@ static int read_uidgid_files_into_icmap(
 
 			key_name[0] = 0;
 
-			res = parse_section(fp, key_name, error_string, 0, state, uidgid_config_parser_cb, config_map, NULL);
+			line_no = 0;
+			res = parse_section(fp, filename, &line_no, key_name, error_string, 0, state,
+			    uidgid_config_parser_cb, config_map, NULL);
 
 			fclose (fp);
 
@@ -1535,6 +1559,7 @@ static int read_config_file_into_icmap(
 	char key_name[ICMAP_KEYNAME_MAXLEN];
 	struct main_cp_cb_data data;
 	enum main_cp_cb_data_state state = MAIN_CP_CB_DATA_STATE_NORMAL;
+	int line_no;
 
 	filename = getenv ("COROSYNC_MAIN_CONFIG_FILE");
 	if (!filename)
@@ -1553,7 +1578,9 @@ static int read_config_file_into_icmap(
 
 	key_name[0] = 0;
 
-	res = parse_section(fp, key_name, error_string, 0, state, main_config_parser_cb, config_map, &data);
+	line_no = 0;
+	res = parse_section(fp, filename, &line_no, key_name, error_string, 0, state,
+	    main_config_parser_cb, config_map, &data);
 
 	fclose(fp);
 
