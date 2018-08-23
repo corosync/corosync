@@ -275,8 +275,8 @@ static char *remove_whitespace(char *string, int remove_colon_and_brace)
 	end = start+(strlen(start))-1;
 	while ((*end == ' ' || *end == '\t' || (remove_colon_and_brace && (*end == ':' || *end == '{'))) && end > start)
 		end--;
-	if (end != start)
-		*(end+1) = '\0';
+	if (*end != '\0')
+		*(end + 1) = '\0';
 
 	return start;
 }
