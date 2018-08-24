@@ -432,7 +432,7 @@ static int interface_find_and_load (
 	} /* scanning for lcrso loop */
 
 
-	if (scandir_entries > 0) {
+	if (scandir_entries >= 0) {
 		int i;
 		for (i = 0; i < scandir_entries; i++) {
 			free (scandir_list[i]);
@@ -444,7 +444,7 @@ static int interface_find_and_load (
 
 found:
 	*instance_ret = instance;
-	if (scandir_entries > 0) {
+	if (scandir_entries >= 0) {
 		int i;
 		for (i = 0; i < scandir_entries; i++) {
 			free (scandir_list[i]);
