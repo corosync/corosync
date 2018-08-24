@@ -1,7 +1,8 @@
 #!/bin/sh
 # Print a version string.
-scriptversion=2010-10-13.20; # UTC
+scriptversion=2018-08-31.20; # UTC
 
+# Copyright (C) 2018 Red Hat, Inc.
 # Copyright (C) 2007-2010 Free Software Foundation, Inc.
 #
 # This program is free software: you can redistribute it and/or modify
@@ -47,6 +48,17 @@ scriptversion=2010-10-13.20; # UTC
 # It is probably wise to add these two files to .gitignore, so that you
 # don't accidentally commit either generated file.
 #
+# In order to use git archive versions another two files has to be presented:
+#
+# .gitarchive-version - present in checked-out repository and git
+#   archive tarball, but not in the distribution tarball. Used as a last
+#   option for version. File must contain special string $Format:%d$,
+#   which is substitued by git on archive operation.
+#
+# .gitattributes - present in checked-out repository and git archive
+#   tarball, but not in the distribution tarball. Must set export-subst
+#   attribute for .gitarchive-version file.
+#
 # Use the following line in your configure.ac, so that $(VERSION) will
 # automatically be up-to-date each time configure is run (and note that
 # since configure.ac no longer includes a version string, Makefile rules
@@ -67,14 +79,15 @@ scriptversion=2010-10-13.20; # UTC
 #	echo $(VERSION) > $(distdir)/.tarball-version
 
 case $# in
-    1|2) ;;
+    1|2|3) ;;
     *) echo 1>&2 "Usage: $0 \$srcdir/.tarball-version" \
-         '[TAG-NORMALIZATION-SED-SCRIPT]'
+         '[$srcdir/.gitarchive-version] [TAG-NORMALIZATION-SED-SCRIPT]'
        exit 1;;
 esac
 
 tarball_version_file=$1
-tag_sed_script="${2:-s/x/x/}"
+gitarchive_version_file=$2
+tag_sed_script="${3:-s/x/x/}"
 nl='
 '
 
@@ -131,7 +144,20 @@ then
     # Remove the "g" in git describe's output string, to save a byte.
     v=`echo "$v" | sed 's/-/./;s/\(.*\)-g/\1-/'`;
 else
-    v=UNKNOWN
+    if test -f $gitarchive_version_file
+    then
+        v=`sed 's/^.*tag: \(v[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\).*$/\1/' $gitarchive_version_file` || exit 1
+        case $v in
+            *$nl*) v= ;; # reject multi-line output
+            v[0-9]*) ;;
+            *) v= ;;
+        esac
+        test -z "$v" \
+            && echo "$0: WARNING: $gitarchive_version_file doesn't contain valid version tag" 1>&2 \
+            && v=UNKNOWN
+    else
+        v=UNKNOWN
+    fi
 fi
 
 v=`echo "$v" |sed 's/^v//'`
