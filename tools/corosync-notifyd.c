@@ -72,6 +72,8 @@ enum {
 };
 static int conf[CS_NTF_MAX];
 
+static int exit_code = 0;
+
 static int32_t _cs_is_quorate = 0;
 
 typedef void (*node_membership_fn_t)(char *nodename, uint32_t nodeid, char *state, char* ip);
@@ -357,6 +359,8 @@ _cs_cmap_dispatch(int fd, int revents, void *data)
 		qb_log(LOG_ERR, "Could not dispatch cmap events. Error %u", err);
 		qb_loop_stop(main_loop);
 
+		exit_code = 1;
+
 		return -1;
 	}
 
@@ -389,6 +393,8 @@ _cs_quorum_dispatch(int fd, int revents, void *data)
 		err != CS_ERR_QUEUE_FULL) {
 		qb_log(LOG_ERR, "Could not dispatch quorum events. Error %u", err);
 		qb_loop_stop(main_loop);
+
+		exit_code = 1;
 
 		return -1;
 	}
@@ -1251,6 +1257,6 @@ main(int argc, char *argv[])
 	_cs_quorum_finalize();
 	_cs_cmap_finalize();
 
-	return 0;
+	return (exit_code);
 }
 
