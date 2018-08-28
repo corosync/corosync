@@ -86,7 +86,8 @@ to change keys in this prefix.
 
 .TP
 runtime.force_gather
-Set to 'yes' to force the cluster into the GATHER state.  
+Set to 'yes' to force the processor to move into the GATHER state.  This operation
+is dangerous and is not recommended.
 
 .TP
 runtime.config.*
@@ -112,10 +113,6 @@ runtime.totem.members.*
 Prefix containing members of the totem single ring protocol. Each member
 keys has format runtime.totem.members.NODEID.KEY, where key is
 one of:
-
-.TP
-runtime.force_gather
-CW
 
 .B config_version
 Config version of the member node.

@@ -976,19 +976,25 @@ static void force_gather_notify_fn(
 	struct icmap_notify_value old_val,
 	void *user_data)
 {
+	char *key_val;
+
+	if (icmap_get_string(key_name, &key_val) == CS_OK && strcmp(key_val, "no") == 0)
+		goto out;
+
 	icmap_set_string("runtime.force_gather", "no");
 
 	if (strcmp(key_name, "runtime.force_gather") == 0) {
 		log_printf(LOGSYS_LEVEL_ERROR, "Forcing into GATHER state\n");
 		totempg_force_gather();
 	}
+
+out:
+	free(key_val);
 }
 
 static void corosync_force_gather_init (void)
 {
 	icmap_track_t track = NULL;
-
-	fprintf(stderr, "INIT\n");
 
 	icmap_set_string("runtime.force_gather", "no");
 
