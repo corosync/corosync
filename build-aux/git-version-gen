@@ -160,6 +160,14 @@ else
     fi
 fi
 
+if test "$v" = "UNKNOWN"
+then
+  echo "$0: ERROR: Can't find valid version. Please use valid git repository," \
+    "released tarball or version tagged archive" 1>&2
+
+  exit 1
+fi
+
 v=`echo "$v" |sed 's/^v//'`
 
 # Don't declare a version "dirty" merely because a time stamp has changed.
