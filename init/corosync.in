@@ -22,6 +22,7 @@
 
 desc="Corosync Cluster Engine"
 prog="corosync"
+prog_pid_file="@LOCALSTATEDIR@/run/$prog.pid"
 
 # set secure PATH
 PATH="/sbin:/bin:/usr/sbin:/usr/bin:@SBINDIR@"
@@ -36,10 +37,48 @@ failure()
 	echo -ne "[FAILED]\r"
 }
 
+# pid_var_run pid_file
+# Echo pid from given pid_file.
+# Returns LSB exit code for the 'status' action.
+pid_var_run()
+{
+	local pid_file="$1"
+	local pid
+
+	if [ -f "$pid_file" ]; then
+		[ ! -r "$pid_file" ] && return 4
+		pid=$(cat "$pid_file")
+		[ -z "$pid" ] && return 1
+		[ -n "${pid//[0-9]/}" ] && return 1
+		if kill -n 0 "$pid" 2>/dev/null;then
+			echo "$pid"
+			return 0
+		else
+			return 1
+		fi
+	fi
+
+	return 3
+}
+
+# status [-p pid_file] {program}
 status()
 {
-	pid=$(pidof $1 2>/dev/null)
+	local pid_file
+
+	if [ "$1" = "-p" ]; then
+		pid_file=$2
+		shift 2
+	fi
+
+	pid=$(pid_var_run "$pid_file" 2>/dev/null)
 	res=$?
+	if [ $res -ne 0 -a -z "$pid_file" ]; then
+		pid=$(__pids_pidof "$1")
+		[ -n "$pid" ]
+		res=$?
+	fi
+
 	if [ $res -ne 0 ]; then
 		echo "$1 is stopped"
 	else
@@ -107,7 +146,7 @@ start()
 	# required subdirectories for proper operations
 	mkdir -p @LOCALSTATEDIR@/run
 
-	if status $prog > /dev/null 2>&1; then
+	if status -p "$prog_pid_file" "$prog" > /dev/null 2>&1; then
 		success
 	else
 		$prog $COROSYNC_OPTIONS > /dev/null 2>&1
@@ -125,15 +164,15 @@ start()
 
 stop()
 {
-	! status $prog > /dev/null 2>&1 && return
+	! status -p "$prog_pid_file" "$prog" > /dev/null 2>&1 && return
 
 	echo -n "Signaling $desc ($prog) to terminate: "
-	kill -TERM "$(pidof $prog)" > /dev/null 2>&1
+	kill -TERM "$(pid_var_run $prog_pid_file)" > /dev/null 2>&1
 	success
 	echo
 
 	echo -n "Waiting for $prog services to unload:"
-	while status $prog > /dev/null 2>&1; do
+	while status -p "$prog_pid_file" "$prog" > /dev/null 2>&1; do
 		sleep 1
 		echo -n "."
 	done
@@ -159,12 +198,12 @@ restart|reload|force-reload)
 	restart
 ;;
 condrestart|try-restart)
-	if status $prog > /dev/null 2>&1; then
+	if status -p "$prog_pid_file" "$prog" > /dev/null 2>&1; then
 		restart
 	fi
 ;;
 status)
-	status $prog
+	status -p "$prog_pid_file" "$prog"
 	rtrn=$?
 ;;
 stop)
