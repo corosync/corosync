@@ -569,7 +569,7 @@ static int main_config_parser_cb(const char *path,
 	icmap_value_types_t val_type = ICMAP_VALUETYPE_BINARY;
 	unsigned long long int ull;
 	int add_as_string;
-	char key_name[ICMAP_KEYNAME_MAXLEN];
+	char key_name[ICMAP_KEYNAME_MAXLEN + 1];
 	static char formated_err[256];
 	struct main_cp_cb_data *data = (struct main_cp_cb_data *)user_data;
 	struct key_value_list_item *kv_item;
@@ -578,6 +578,24 @@ static int main_config_parser_cb(const char *path,
 	cs_error_t cs_err;
 
 	cs_err = CS_OK;
+
+	/*
+	 * Formally this check is not needed because length is checked by parse_section
+	 */
+	if (strlen(path) >= sizeof(key_name)) {
+		if (snprintf(formated_err, sizeof(formated_err),
+		    "Can't store path \"%s\" into key_name", path) >= sizeof(formated_err)) {
+			*error_string = "Can't format path into key_name error message";
+		} else {
+			*error_string = formated_err;
+		}
+		return (0);
+	}
+	/*
+	 * Key_name is used in atoi_error/icmap_set_error, but many of icmap_set*
+	 * are using path, so initialize key_name to valid value
+	 */
+	strncpy(key_name, path, sizeof(key_name));
 
 	switch (type) {
 	case PARSER_CB_START:
@@ -1405,7 +1423,7 @@ atoi_error:
 
 	snprintf(formated_err, sizeof(formated_err),
 	    "Value of key \"%s\" is expected to be integer in range (%lld..%lld), but \"%s\" was given",
-	    key, min_val, max_val, value);
+	    key_name, min_val, max_val, value);
 	*error_string = formated_err;
 
 	return (0);
@@ -1413,7 +1431,7 @@ atoi_error:
 icmap_set_error:
 	if (snprintf(formated_err, sizeof(formated_err),
 	    "Can't store key \"%s\" into icmap, returned error is %s",
-	    key, cs_strerror(cs_err)) >= sizeof(formated_err)) {
+	    key_name, cs_strerror(cs_err)) >= sizeof(formated_err)) {
 		*error_string = "Can't format parser error message";
 	} else {
 		*error_string = formated_err;
@@ -1486,7 +1504,7 @@ static int uidgid_config_parser_cb(const char *path,
 icmap_set_error:
 	if (snprintf(formated_err, sizeof(formated_err),
 	    "Can't store key \"%s\" into icmap, returned error is %s",
-	    key, cs_strerror(cs_err)) >= sizeof(formated_err)) {
+	    key_name, cs_strerror(cs_err)) >= sizeof(formated_err)) {
 		*error_string = "Can't format parser error message";
 	} else {
 		*error_string = formated_err;
