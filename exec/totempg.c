@@ -1552,3 +1552,7 @@ void totempg_trans_ack (void)
 	totemsrp_trans_ack (totemsrp_context);
 }
 
+void totempg_force_gather (void)
+{
+	totemsrp_force_gather(totemsrp_context);
+}

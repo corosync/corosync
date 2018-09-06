@@ -154,4 +154,7 @@ int totemsrp_reconfigure (
 void totemsrp_stats_clear (
 	void *srp_context, int flags);
 
+void totemsrp_force_gather (
+	void *context);
+
 #endif /* TOTEMSRP_H_DEFINED */

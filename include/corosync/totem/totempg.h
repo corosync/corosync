@@ -192,6 +192,8 @@ extern void totempg_trans_ack (void);
 
 extern int totempg_reconfigure (void);
 
+extern void totempg_force_gather (void);
+
 #ifdef __cplusplus
 }
 #endif
