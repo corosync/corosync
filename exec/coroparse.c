@@ -1421,10 +1421,13 @@ atoi_error:
 	 */
 	assert(safe_atoq_range(val_type, &min_val, &max_val) == 0);
 
-	snprintf(formated_err, sizeof(formated_err),
+	if (snprintf(formated_err, sizeof(formated_err),
 	    "Value of key \"%s\" is expected to be integer in range (%lld..%lld), but \"%s\" was given",
-	    key_name, min_val, max_val, value);
-	*error_string = formated_err;
+	    key_name, min_val, max_val, value) >= sizeof(formated_err)) {
+		*error_string = "Can't format parser error message";
+	} else {
+		*error_string = formated_err;
+	}
 
 	return (0);
 
