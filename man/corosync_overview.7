@@ -1,6 +1,6 @@
 .\"/*
 .\" * Copyright (c) 2005 MontaVista Software, Inc.
-.\" * Copyright (c) 2006-2009 Red Hat, Inc.
+.\" * Copyright (c) 2006-2018 Red Hat, Inc.
 .\" *
 .\" * All rights reserved.
 .\" *
@@ -32,7 +32,7 @@
 .\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 .\" * THE POSSIBILITY OF SUCH DAMAGE.
 .\" */
-.TH COROSYNC_OVERVIEW 7 2012-02-13 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
+.TH COROSYNC_OVERVIEW 7 2018-09-12 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
 .SH NAME
 corosync_overview \- Corosync overview
 .SH OVERVIEW
@@ -81,16 +81,12 @@ a private key must be generated and shared to all processors.
 
 First generate the key on one of the nodes:
 
+.nf
 unix# corosync-keygen
-.br
 Corosync Cluster Engine Authentication key generator.
-.br
-Gathering 1024 bits for key from /dev/random.
-.br
-Press keys on your keyboard to generate entropy.
-.br
+Gathering 2048 bits for key from /dev/urandom.
 Writing corosync key to /etc/corosync/authkey.
-.PP
+.fi
 
 After this operation, a private key will be in the file /etc/corosync/authkey.
 This private key must be copied to every processor in the cluster.  If the
@@ -165,10 +161,14 @@ authenticate and encrypt data used within the Totem protocol.
 The default is /etc/corosync/authkey.
 
 .SH SECURITY
-The corosync executive optionally encrypts all messages sent over the network
-using the AES-128 cipher.  The corosync executive uses HMAC and SHA1 to
-authenticate all messages.  The corosync executive library uses NSS
-as a pseudo random number generator.
+The corosync executive optionally encrypts and signs all messages sent
+over the network. For more details see
+.B crypto_model,
+.B crypto_hash
+and
+.B crypto_cipher
+options in the
+.BR corosync.conf (5).
 
 If membership messages can be captured by intruders, it is possible to execute
 a denial of service attack on the cluster.  In this scenario, the cluster is
