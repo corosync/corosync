@@ -1,3 +1,0 @@
-class CTSvars(object):
-    CTS_home="@prefix@/share/pacemaker/tests/cts"
-    INITDIR="/etc/init.d"
