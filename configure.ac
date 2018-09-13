@@ -202,9 +202,6 @@ AC_CONFIG_FILES([Makefile
 		 man/Makefile
 		 pkgconfig/Makefile
 		 test/Makefile
-		 cts/Makefile
-		 cts/agents/Makefile
-		 cts/CTSvars.py
 		 tools/Makefile
 		 conf/Makefile
 		 vqsim/Makefile
@@ -334,10 +331,6 @@ AC_ARG_ENABLE([dbus],
 	[  --enable-dbus                   : dbus events. ],,
 	[ enable_dbus="no" ])
 
-AC_ARG_ENABLE([testagents],
-	[  --enable-testagents             : Install Test Agents. ],,
-	[ default="no" ])
-
 AC_ARG_ENABLE([monitoring],
 	[  --enable-monitoring             : resource monitoring ],,
 	[ default="no" ])
@@ -427,12 +420,6 @@ if test "x${enable_dbus}" = xyes; then
 	AC_DEFINE_UNQUOTED([HAVE_DBUS], 1, [have dbus])
 	PACKAGE_FEATURES="$PACKAGE_FEATURES dbus"
 	WITH_LIST="$WITH_LIST --with dbus"
-fi
-
-if test "x${enable_testagents}" = xyes; then
-	AC_DEFINE_UNQUOTED([HAVE_TESTAGENTS], 1, [have testagents])
-	PACKAGE_FEATURES="$PACKAGE_FEATURES testagents"
-	WITH_LIST="$WITH_LIST --with testagents"
 fi
 
 if test "x${enable_monitoring}" = xyes; then
@@ -688,7 +675,6 @@ AC_SUBST([SOMINOR])
 AC_SUBST([SOMICRO])
 AC_SUBST([SONAME])
 
-AM_CONDITIONAL(INSTALL_TESTAGENTS, test "${enable_testagents}" = "yes")
 AM_CONDITIONAL(INSTALL_MIB, test "${do_snmp}" = "1")
 AM_CONDITIONAL(INSTALL_DBUSCONF, test "${enable_dbus}" = "yes")
 AM_CONDITIONAL(AUGTOOL, test -n "${AUGTOOL}")
