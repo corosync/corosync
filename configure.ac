@@ -151,7 +151,6 @@ AC_TYPE_SIZE_T
 AC_TYPE_SSIZE_T
 
 # Checks for libraries.
-PKG_CHECK_MODULES([nss],[nss])
 SAVE_CPPFLAGS="$CPPFLAGS"
 SAVE_LIBS="$LIBS"
 PKG_CHECK_MODULES([LIBQB], [libqb])
@@ -171,8 +170,8 @@ PKG_CHECK_MODULES([knet],[libknet])
 AC_CHECK_LIB([nsl], [t_open])
 AC_CHECK_LIB([rt], [sched_getscheduler])
 AC_CHECK_LIB([z], [crc32],
-    AM_CONDITIONAL([BUILD_CPGHUM], true),
-    AM_CONDITIONAL([BUILD_CPGHUM], false))
+    AM_CONDITIONAL([HAVE_CRC32], true),
+    AM_CONDITIONAL([HAVE_CRC32], false))
 
 # Checks for library functions.
 AC_FUNC_ALLOCA
@@ -202,9 +201,6 @@ AC_CONFIG_FILES([Makefile
 		 man/Makefile
 		 pkgconfig/Makefile
 		 test/Makefile
-		 cts/Makefile
-		 cts/agents/Makefile
-		 cts/CTSvars.py
 		 tools/Makefile
 		 conf/Makefile
 		 vqsim/Makefile
@@ -334,10 +330,6 @@ AC_ARG_ENABLE([dbus],
 	[  --enable-dbus                   : dbus events. ],,
 	[ enable_dbus="no" ])
 
-AC_ARG_ENABLE([testagents],
-	[  --enable-testagents             : Install Test Agents. ],,
-	[ default="no" ])
-
 AC_ARG_ENABLE([monitoring],
 	[  --enable-monitoring             : resource monitoring ],,
 	[ default="no" ])
@@ -427,12 +419,6 @@ if test "x${enable_dbus}" = xyes; then
 	AC_DEFINE_UNQUOTED([HAVE_DBUS], 1, [have dbus])
 	PACKAGE_FEATURES="$PACKAGE_FEATURES dbus"
 	WITH_LIST="$WITH_LIST --with dbus"
-fi
-
-if test "x${enable_testagents}" = xyes; then
-	AC_DEFINE_UNQUOTED([HAVE_TESTAGENTS], 1, [have testagents])
-	PACKAGE_FEATURES="$PACKAGE_FEATURES testagents"
-	WITH_LIST="$WITH_LIST --with testagents"
 fi
 
 if test "x${enable_monitoring}" = xyes; then
@@ -667,7 +653,7 @@ INCLUDE_DIRS="$INCLUDE_DIRS -I\$(top_builddir)/include/corosync -I\$(top_srcdir)
 # final build of *FLAGS
 CFLAGS="$ENV_CFLAGS $lt_prog_compiler_pic $SEC_FLAGS $OPT_CFLAGS $GDB_FLAGS \
 	$COVERAGE_CFLAGS $EXTRA_WARNINGS \
-	$WERROR_CFLAGS $NSS_CFLAGS $LIBQB_CFLAGS \
+	$WERROR_CFLAGS $LIBQB_CFLAGS \
 	$SNMP_INCLUDES"
 CPPFLAGS="$ENV_CPPFLAGS $ANSI_CPPFLAGS $INCLUDE_DIRS"
 LDFLAGS="$ENV_LDFLAGS $lt_prog_compiler_pic $SEC_LDFLAGS $COVERAGE_LDFLAGS"
@@ -688,11 +674,9 @@ AC_SUBST([SOMINOR])
 AC_SUBST([SOMICRO])
 AC_SUBST([SONAME])
 
-AM_CONDITIONAL(INSTALL_TESTAGENTS, test "${enable_testagents}" = "yes")
 AM_CONDITIONAL(INSTALL_MIB, test "${do_snmp}" = "1")
 AM_CONDITIONAL(INSTALL_DBUSCONF, test "${enable_dbus}" = "yes")
 AM_CONDITIONAL(AUGTOOL, test -n "${AUGTOOL}")
-AC_SUBST([NSS_LDFLAGS])
 
 AM_CONDITIONAL(BUILD_HTML_DOCS, test -n "${GROFF}")
 

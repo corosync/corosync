@@ -5,7 +5,6 @@
 # Conditionals
 # Invoke "rpmbuild --without <feature>" or "rpmbuild --with <feature>"
 # to disable or enable specific features
-%bcond_with testagents
 %bcond_with watchdog
 %bcond_with monitoring
 %bcond_with snmp
@@ -38,11 +37,6 @@ BuildRequires: groff-full
 BuildRequires: groff
 %endif
 BuildRequires: libqb-devel
-%if 0%{?suse_version}
-BuildRequires: mozilla-nss-devel
-%else
-BuildRequires: nss-devel
-%endif
 BuildRequires: libknet1-devel
 BuildRequires: zlib-devel
 %if %{with runautogen}
@@ -82,9 +76,6 @@ Requires: libxslt
 %endif
 
 %{configure} \
-%if %{with testagents}
-	--enable-testagents \
-%endif
 %if %{with watchdog}
 	--enable-watchdog \
 %endif
@@ -211,29 +202,6 @@ fi
 %{_mandir}/man5/corosync.conf.5*
 %{_mandir}/man5/votequorum.5*
 %{_mandir}/man8/cmap_keys.8*
-
-# optional testagent rpm
-#
-%if %{with testagents}
-
-%package -n corosync-testagents
-Summary: The Corosync Cluster Engine Test Agents
-Requires: %{name} = %{version}-%{release}
-
-%description -n corosync-testagents
-This package contains corosync test agents.
-
-%files -n corosync-testagents
-%defattr(755,root,root,-)
-%{_datadir}/corosync/tests/mem_leak_test.sh
-%{_datadir}/corosync/tests/net_breaker.sh
-%{_datadir}/corosync/tests/cmap-dispatch-deadlock.sh
-%{_datadir}/corosync/tests/shm_leak_audit.sh
-%{_bindir}/cpg_test_agent
-%{_bindir}/sam_test_agent
-%{_bindir}/votequorum_test_agent
-
-%endif
 
 # library
 #
