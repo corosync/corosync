@@ -43,13 +43,11 @@ balance:~/corosync# make install
 * A notice about dependencies *
 -------------------------------
 We have strived very hard to avoid dependencies as much as possible, but there
-are two required libraries: LibQB and NSS.
+are two required libraries: LibQB and KNET.
 
 Optional dependencies are support for DBUS, SNMP and libstatgrab.
 
-The nss packages required to build corosync can usually be found by
-installing the "nss-devel" and "nspr-devel" packages (names may vary, please use
-distribution's package manager). Also don't forget to install pkgconfig.
+Also don't forget to install pkgconfig.
 
 -----------------------------------------
 * Building with SNMP/DBUS support *

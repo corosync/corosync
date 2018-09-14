@@ -37,11 +37,6 @@ BuildRequires: groff-full
 BuildRequires: groff
 %endif
 BuildRequires: libqb-devel
-%if 0%{?suse_version}
-BuildRequires: mozilla-nss-devel
-%else
-BuildRequires: nss-devel
-%endif
 BuildRequires: libknet1-devel
 BuildRequires: zlib-devel
 %if %{with runautogen}

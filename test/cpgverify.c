@@ -43,20 +43,19 @@
 #include <arpa/inet.h>
 #include <errno.h>
 #include <string.h>
+#include <inttypes.h>
 #include <corosync/corotypes.h>
 #include <corosync/cpg.h>
 
-#include <nss.h>
-#include <pk11pub.h>
+#include <zlib.h>
 
 struct my_msg {
 	unsigned int msg_size;
-	unsigned char sha1[20];
+	unsigned char crc32[4];
 	unsigned char buffer[0];
 };
 
 static int deliveries = 0;
-PK11Context* sha1_context;
 
 static void cpg_deliver_fn (
         cpg_handle_t handle,
@@ -67,20 +66,19 @@ static void cpg_deliver_fn (
         size_t msg_len)
 {
 	const struct my_msg *msg2 = m;
-	unsigned char sha1_compare[20];
-	unsigned int i;
-	unsigned int sha1_len;
+	uLong chsum;
+	uint32_t nchsum;
 
 	printf ("msg '%s'\n", msg2->buffer);
-	PK11_DigestBegin(sha1_context);
-	PK11_DigestOp(sha1_context, msg2->buffer, msg2->msg_size);
-	PK11_DigestFinal(sha1_context, sha1_compare, &sha1_len, sizeof(sha1_compare));
-printf ("SIZE %d HASH: ", msg2->msg_size);
-for (i = 0; i < 20; i++) {
-printf ("%x", sha1_compare[i]);
-}
-printf ("\n");
-	if (memcmp (sha1_compare, msg2->sha1, 20) != 0) {
+
+	chsum = crc32(0L, Z_NULL, 0);
+	chsum = crc32(chsum, msg2->buffer, msg2->msg_size) & 0xFFFFFFFF;
+
+	printf ("SIZE %d HASH: 0x%08"PRIx32"\n", msg2->msg_size, (uint32_t)chsum);
+
+	nchsum = ntohl((uint32_t)chsum);
+
+	if (memcmp(&nchsum, msg2->crc32, sizeof(nchsum)) != 0) {
 		printf ("incorrect hash\n");
 		exit (1);
 	}
@@ -120,7 +118,8 @@ int main (int argc, char *argv[])
 	int iter = 1000;
 	int opt;
 	int run_forever = 1;
-	unsigned int sha1_len;
+	uLong chsum;
+	uint32_t nchsum;
 
 	while ((opt = getopt(argc, argv, options)) != -1) {
 		switch (opt) {
@@ -134,16 +133,6 @@ int main (int argc, char *argv[])
 	result = cpg_initialize (&handle, &callbacks);
 	if (result != CS_OK) {
 		printf ("Couldn't initialize CPG service %d\n", result);
-		exit (0);
-	}
-
-	if (NSS_NoDB_Init(NULL) != SECSuccess) {
-		printf ("Couldn't initialize nss\n");
-		exit (0);
-	}
-
-	if ((sha1_context = PK11_CreateDigestContext(SEC_OID_SHA1)) == NULL) {
-		printf ("Couldn't initialize nss\n");
 		exit (0);
 	}
 
@@ -170,9 +159,10 @@ int main (int argc, char *argv[])
 		sprintf ((char *)buffer,
 			"cpg_mcast_joined: This is message %12d", i);
 
-		PK11_DigestBegin(sha1_context);
-		PK11_DigestOp(sha1_context, buffer, msg.msg_size);
-		PK11_DigestFinal(sha1_context, msg.sha1, &sha1_len, sizeof(msg.sha1));
+		chsum = crc32(0L, Z_NULL, 0);
+		chsum = crc32(chsum, buffer, msg.msg_size) & 0xFFFFFFFF;
+		nchsum = ntohl((uint32_t)chsum);
+		memcpy(msg.crc32, &nchsum, sizeof(nchsum)) ;
 try_again_one:
 		result = cpg_mcast_joined (handle, CPG_TYPE_AGREED,
 			iov, 2);
@@ -186,8 +176,6 @@ try_again_one:
 		}
 		i++;
 	} while (run_forever || i < iter);
-
-	PK11_DestroyContext(sha1_context, PR_TRUE);
 
 	cpg_finalize (handle);
 

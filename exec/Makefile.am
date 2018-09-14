@@ -45,9 +45,9 @@ TOTEM_SRC		= totemip.c totemnet.c totemudp.c \
 
 lib_LTLIBRARIES		= libtotem_pg.la
 libtotem_pg_la_SOURCES	= $(TOTEM_SRC)
-libtotem_pg_la_CFLAGS	= $(nss_CFLAGS) $(knet_CFLAGS)
+libtotem_pg_la_CFLAGS	= $(knet_CFLAGS)
 libtotem_pg_la_LDFLAGS	= -version-number $(subst .,:,$(SONAME))
-libtotem_pg_la_LIBADD	= -lpthread $(LIBQB_LIBS) $(nss_LIBS) $(knet_LIBS)
+libtotem_pg_la_LIBADD	= -lpthread $(LIBQB_LIBS) $(knet_LIBS)
 
 sbin_PROGRAMS		= corosync
 

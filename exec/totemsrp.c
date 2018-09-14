@@ -41,8 +41,6 @@
  * 	http://citeseer.ist.psu.edu/amir95totem.html
  *
  * The deviations from the above published protocols are:
- * - encryption of message contents with nss
- * - authentication of meessage contents with SHA1/HMAC
  * - token hold mode where token doesn't rotate on unused ring - reduces cpu
  *   usage on 1.6ghz xeon from 35% to less then .1 % as measured by top
  */
