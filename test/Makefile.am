@@ -34,7 +34,7 @@ MAINTAINERCLEANFILES	= Makefile.in
 
 EXTRA_DIST		= ploadstart.sh
 
-noinst_PROGRAMS		= cpgverify testcpg testcpg2 cpgbench \
+noinst_PROGRAMS		= testcpg testcpg2 cpgbench \
 			  testquorum testvotequorum1 testvotequorum2	\
 			  stress_cpgfdget stress_cpgcontext cpgbound testsam \
 			  testcpgzc cpgbenchzc testzcgc stress_cpgzc
@@ -51,16 +51,15 @@ stress_cpgcontext_LDADD	= $(LIBQB_LIBS) $(top_builddir)/lib/libcpg.la
 testquorum_LDADD	= $(LIBQB_LIBS) $(top_builddir)/lib/libquorum.la
 testvotequorum1_LDADD	= $(LIBQB_LIBS) $(top_builddir)/lib/libvotequorum.la
 testvotequorum2_LDADD	= $(LIBQB_LIBS) $(top_builddir)/lib/libvotequorum.la
-cpgverify_CPPFLAGS	= $(nss_CFLAGS)
-cpgverify_LDADD		= $(LIBQB_LIBS) $(nss_LIBS) $(top_builddir)/lib/libcpg.la
 cpgbound_LDADD		= $(LIBQB_LIBS) $(top_builddir)/lib/libcpg.la
 cpgbench_LDADD		= $(LIBQB_LIBS) $(top_builddir)/lib/libcpg.la
 cpgbenchzc_LDADD	= $(LIBQB_LIBS) $(top_builddir)/lib/libcpg.la
 testsam_LDADD		= $(LIBQB_LIBS) $(top_builddir)/lib/libsam.la
 
-if BUILD_CPGHUM
-noinst_PROGRAMS	        += cpghum
+if HAVE_CRC32
+noinst_PROGRAMS	        += cpghum cpgverify
 cpghum_LDADD            = $(LIBQB_LIBS) $(top_builddir)/lib/libcpg.la -lz
+cpgverify_LDADD		= $(LIBQB_LIBS) $(top_builddir)/lib/libcpg.la -lz
 endif
 
 ploadstart: ploadstart.sh
