@@ -60,7 +60,7 @@ The
 .I map
 argument specifies which map to connect to. \fICMAP_MAP_ICMAP\fB is the configuration map
 that contains the current corosyn cconfiguraton and some runtime variables that maybe useful
-to external agents. \fICMAP_MAP_STATS\fB is the statistics map that conains detailed information
+to external agents. \fICMAP_MAP_STATS\fB is the statistics map that contains detailed information
 about network and inter-process communications.
 
 
