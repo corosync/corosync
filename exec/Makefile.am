@@ -38,24 +38,16 @@ noinst_HEADERS		= apidef.h cs_queue.h logconfig.h main.h \
 			  schedwrk.h sync.h fsm.h votequorum.h vsf_ykd.h \
 			  totemknet.h stats.h ipcs_stats.h
 
-TOTEM_SRC		= totemip.c totemnet.c totemudp.c \
-			  totemudpu.c totemsrp.c \
-			  totempg.c totemknet.c
-
-
-lib_LTLIBRARIES		= libtotem_pg.la
-libtotem_pg_la_SOURCES	= $(TOTEM_SRC)
-libtotem_pg_la_CFLAGS	= $(knet_CFLAGS)
-libtotem_pg_la_LDFLAGS	= -version-number $(subst .,:,$(SONAME))
-libtotem_pg_la_LIBADD	= -lpthread $(LIBQB_LIBS) $(knet_LIBS)
-
 sbin_PROGRAMS		= corosync
 
 corosync_SOURCES	= vsf_ykd.c coroparse.c vsf_quorum.c sync.c \
 			  logsys.c cfg.c cmap.c cpg.c pload.c \
 			  votequorum.c util.c schedwrk.c main.c \
 			  apidef.c quorum.c icmap.c timer.c stats.c \
-			  ipc_glue.c service.c logconfig.c totemconfig.c
+			  ipc_glue.c service.c logconfig.c totemconfig.c \
+			  totemip.c totemnet.c totemudp.c \
+			  totemudpu.c totemsrp.c \
+			  totempg.c totemknet.c
 
 if BUILD_MONITORING
 corosync_SOURCES	+= mon.c
@@ -69,10 +61,10 @@ corosync_CPPFLAGS	= -DLOGCONFIG_USE_ICMAP=1
 
 corosync_CFLAGS         = $(statgrab_CFLAGS) $(libsystemd_CFLAGS) $(knet_CFLAGS)
 
-corosync_LDADD		= libtotem_pg.la ../common_lib/libcorosync_common.la \
-			  $(LIBQB_LIBS) $(statgrab_LIBS) $(libsystemd_LIBS)
+corosync_LDADD		= ../common_lib/libcorosync_common.la \
+			  $(LIBQB_LIBS) $(statgrab_LIBS) $(libsystemd_LIBS) $(knet_LIBS)
 
-corosync_DEPENDENCIES	= libtotem_pg.la ../common_lib/libcorosync_common.la
+corosync_DEPENDENCIES	= ../common_lib/libcorosync_common.la
 
 lint:
 	-splint $(LINT_FLAGS) $(CPPFLAGS) $(CFLAGS) *.c

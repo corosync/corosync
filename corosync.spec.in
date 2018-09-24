@@ -216,7 +216,6 @@ This package contains corosync libraries.
 %{_libdir}/libcfg.so.*
 %{_libdir}/libcpg.so.*
 %{_libdir}/libcmap.so.*
-%{_libdir}/libtotem_pg.so.*
 %{_libdir}/libquorum.so.*
 %{_libdir}/libvotequorum.so.*
 %{_libdir}/libsam.so.*
@@ -256,7 +255,6 @@ The Corosync Cluster Engine APIs.
 %{_libdir}/libcfg.so
 %{_libdir}/libcpg.so
 %{_libdir}/libcmap.so
-%{_libdir}/libtotem_pg.so
 %{_libdir}/libquorum.so
 %{_libdir}/libvotequorum.so
 %{_libdir}/libsam.so
