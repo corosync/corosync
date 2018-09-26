@@ -42,6 +42,6 @@ TOTEM_H			= totem.h totemip.h totempg.h totemstats.h
 
 EXTRA_DIST 		= $(noinst_HEADERS)
 
-noinst_HEADERS          = $(CS_INTERNAL_H:%=corosync/%)
+noinst_HEADERS          = $(CS_INTERNAL_H:%=corosync/%)  $(TOTEM_H:%=corosync/totem/%)
 
-nobase_include_HEADERS	= $(CS_H:%=corosync/%) $(TOTEM_H:%=corosync/totem/%)
+nobase_include_HEADERS	= $(CS_H:%=corosync/%)
