@@ -33,7 +33,7 @@ MAINTAINERCLEANFILES	= Makefile.in
 EXTRA_DIST		= libtemplate.pc.in corosync.pc.in
 
 LIBS	= cfg cpg quorum \
-	  totem_pg votequorum sam cmap corosync_common
+	  votequorum sam cmap corosync_common
 
 pkgconfigdir = $(libdir)/pkgconfig
 
