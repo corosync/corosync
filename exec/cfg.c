@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2005-2006 MontaVista Software, Inc.
- * Copyright (c) 2006-2013 Red Hat, Inc.
+ * Copyright (c) 2006-2018 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -162,6 +162,10 @@ static void message_handler_req_lib_cfg_reload_config (
 	void *conn,
 	const void *msg);
 
+static void message_handler_req_lib_cfg_reopen_log_files (
+	void *conn,
+	const void *msg);
+
 /*
  * Service Handler Definition
  */
@@ -198,6 +202,10 @@ static struct corosync_lib_handler cfg_lib_engine[] =
 	{ /* 7 */
 		.lib_handler_fn		= message_handler_req_lib_cfg_reload_config,
 		.flow_control		= CS_LIB_FLOW_CONTROL_REQUIRED
+	},
+	{ /* 8 */
+		.lib_handler_fn		= message_handler_req_lib_cfg_reopen_log_files,
+		.flow_control		= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	}
 };
 
@@ -1077,6 +1085,27 @@ static void message_handler_req_lib_cfg_reload_config (void *conn, const void *m
 	iovec.iov_len = sizeof (struct req_exec_cfg_reload_config);
 
 	assert (api->totem_mcast (&iovec, 1, TOTEM_SAFE) == 0);
+
+	LEAVE();
+}
+
+static void message_handler_req_lib_cfg_reopen_log_files (void *conn, const void *msg)
+{
+	struct res_lib_cfg_reopen_log_files res_lib_cfg_reopen_log_files;
+	cs_error_t res;
+
+	ENTER();
+
+	log_printf(LOGSYS_LEVEL_DEBUG, "Reopening logging files\n");
+
+	res = logsys_reopen_log_files();
+
+	res_lib_cfg_reopen_log_files.header.size = sizeof(res_lib_cfg_reopen_log_files);
+	res_lib_cfg_reopen_log_files.header.id = MESSAGE_RES_CFG_REOPEN_LOG_FILES;
+	res_lib_cfg_reopen_log_files.header.error = res;
+	api->ipc_response_send(conn,
+			       &res_lib_cfg_reopen_log_files,
+			       sizeof(res_lib_cfg_reopen_log_files));
 
 	LEAVE();
 }

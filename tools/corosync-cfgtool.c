@@ -69,6 +69,7 @@ enum user_action {
 	ACTION_NOOP=0,
 	ACTION_LINKSTATUS_GET,
 	ACTION_RELOAD_CONFIG,
+	ACTION_REOPEN_LOG_FILES,
 	ACTION_SHUTDOW,
 	ACTION_SHOWADDR,
 	ACTION_KILL_NODE,
@@ -189,6 +190,31 @@ static int reload_config_do (void)
 	return (rc);
 }
 
+static int reopen_log_files_do (void)
+{
+	cs_error_t result;
+	corosync_cfg_handle_t handle;
+	int rc;
+
+	rc = 0;
+
+	result = corosync_cfg_initialize (&handle, NULL);
+	if (result != CS_OK) {
+		fprintf (stderr, "Could not initialize corosync configuration API error %s\n", cs_strerror(result));
+		exit (1);
+	}
+
+	result = corosync_cfg_reopen_log_files (handle);
+	if (result != CS_OK) {
+		fprintf (stderr, "Could not reopen corosync logging files. Error %s\n", cs_strerror(result));
+		rc = (int)result;
+	}
+
+	(void)corosync_cfg_finalize (handle);
+
+	return (rc);
+}
+
 static void shutdown_do(void)
 {
 	cs_error_t result;
@@ -280,13 +306,14 @@ static void killnode_do(unsigned int nodeid)
 
 static void usage_do (void)
 {
-	printf ("corosync-cfgtool [[-i <interface ip>] [-b] -s] [-R] [-k nodeid] [-a nodeid] [-h] [-H]\n\n");
+	printf ("corosync-cfgtool [[-i <interface ip>] [-b] -s] [-R] [-L] [-k nodeid] [-a nodeid] [-h] [-H]\n\n");
 	printf ("A tool for displaying and configuring active parameters within corosync.\n");
 	printf ("options:\n");
 	printf ("\t-i\tFinds only information about the specified interface IP address when used with -s..\n");
 	printf ("\t-s\tDisplays the status of the current links on this node(UDP/UDPU), while extended status for KNET.\n");
 	printf ("\t-b\tDisplays the brief status of the current links on this node when used with -s.(KNET only)\n");
 	printf ("\t-R\tTell all instances of corosync in this cluster to reload corosync.conf.\n");
+	printf ("\t-L\tTell corosync to reopen all logging files.\n");
 	printf ("\t-k\tKill a node identified by node id.\n");
 	printf ("\t-a\tDisplay the IP address(es) of a node\n");
 	printf ("\t-h\tPrint basic usage.\n");
@@ -294,7 +321,7 @@ static void usage_do (void)
 }
 
 int main (int argc, char *argv[]) {
-	const char *options = "i:sbrRk:a:hH";
+	const char *options = "i:sbrRLk:a:hH";
 	int opt;
 	unsigned int nodeid = 0;
 	char interface_name[128] = "";
@@ -316,6 +343,9 @@ int main (int argc, char *argv[]) {
 			break;
 		case 'R':
 			action = ACTION_RELOAD_CONFIG;
+			break;
+		case 'L':
+			action = ACTION_REOPEN_LOG_FILES;
 			break;
 		case 'k':
 			nodeid = atoi (optarg);
@@ -342,6 +372,9 @@ int main (int argc, char *argv[]) {
 		break;
 	case ACTION_RELOAD_CONFIG:
 		rc = reload_config_do();
+		break;
+	case ACTION_REOPEN_LOG_FILES:
+		rc = reopen_log_files_do();
 		break;
 	case ACTION_KILL_NODE:
 		killnode_do(nodeid);

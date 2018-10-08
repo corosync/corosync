@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2002-2005 MontaVista Software, Inc.
- * Copyright (c) 2006-2013 Red Hat, Inc.
+ * Copyright (c) 2006-2018 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -639,6 +639,45 @@ cs_error_t corosync_cfg_reload_config (
 	}
 
 	error = res_lib_cfg_reload_config.header.error;
+
+error_exit:
+	(void)hdb_handle_put (&cfg_hdb, handle);
+
+	return (error);
+}
+
+cs_error_t corosync_cfg_reopen_log_files (
+	corosync_cfg_handle_t handle)
+{
+	cs_error_t error;
+	struct cfg_inst *cfg_inst;
+	struct iovec iov;
+	struct req_lib_cfg_reopen_log_files req_lib_cfg_reopen_log_files;
+	struct res_lib_cfg_reopen_log_files res_lib_cfg_reopen_log_files;
+
+	error = hdb_error_to_cs(hdb_handle_get (&cfg_hdb, handle, (void *)&cfg_inst));
+	if (error != CS_OK) {
+		return (error);
+	}
+
+	req_lib_cfg_reopen_log_files.header.size = sizeof (struct qb_ipc_request_header);
+	req_lib_cfg_reopen_log_files.header.id = MESSAGE_REQ_CFG_REOPEN_LOG_FILES;
+
+	iov.iov_base = (void *)&req_lib_cfg_reopen_log_files;
+	iov.iov_len = sizeof (struct req_lib_cfg_reopen_log_files);
+
+	error = qb_to_cs_error (qb_ipcc_sendv_recv (
+		cfg_inst->c,
+		&iov,
+		1,
+		&res_lib_cfg_reopen_log_files,
+		sizeof (struct res_lib_cfg_reopen_log_files), CS_IPC_TIMEOUT_MS));
+
+	if (error != CS_OK) {
+		goto error_exit;
+	}
+
+	error = res_lib_cfg_reopen_log_files.header.error;
 
 error_exit:
 	(void)hdb_handle_put (&cfg_hdb, handle);

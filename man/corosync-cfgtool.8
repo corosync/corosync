@@ -1,5 +1,5 @@
 .\" 
-.\" * Copyright (C) 2010 Red Hat, Inc.
+.\" * Copyright (C) 2010-2018 Red Hat, Inc.
 .\" *
 .\" * All rights reserved.
 .\" *
@@ -31,11 +31,11 @@
 .\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 .\" * THE POSSIBILITY OF SUCH DAMAGE.
 .\" */
-.TH "COROSYNC-CFGTOOL" "8" "2010-05-30" "" ""
+.TH "COROSYNC-CFGTOOL" "8" "2018-10-15" "" ""
 .SH "NAME"
 corosync-cfgtool \- An administrative tool for corosync.
 .SH "SYNOPSIS"
-.B corosync\-cfgtool [[\-i IP_address] [\-b] \-s] [\-R] [\-k nodeid] [\-a nodeid] [\-h] [\-H]
+.B corosync\-cfgtool [[\-i IP_address] [\-b] \-s] [\-R] [\-L] [\-k nodeid] [\-a nodeid] [\-h] [\-H]
 .SH "DESCRIPTION"
 .B corosync\-cfgtool
 A tool for displaying and configuring active parameters within corosync.
@@ -70,19 +70,23 @@ The output will be:
 LINK ID 0:
     id     = 192.168.100.80
     status = 333
-.TP 
+.TP
 .B -R
 Tell all instances of corosync in this cluster to reload corosync.conf.
-.TP 
+.TP
+.B -L
+Tell corosync to reopen all logging files. In contrast to other subcommands,
+nothing is displayed on terminal if call is successful.
+.TP
 .B -k
 Kill a node identified by node id.
-.TP 
+.TP
 .B -a
 Display the IP address(es) of a node.
 .TP
 .B -h
 Print basic usage.
-.TP 
+.TP
 .B -H
 Shutdown corosync cleanly on this node.
 .SH "SEE ALSO"
