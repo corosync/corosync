@@ -59,7 +59,7 @@ enum req_lib_cfg_types {
 	MESSAGE_REQ_CFG_GET_NODE_ADDRS = 5,
 	MESSAGE_REQ_CFG_LOCAL_GET = 6,
 	MESSAGE_REQ_CFG_RELOAD_CONFIG = 7,
-	MESSAGE_REQ_CFG_CRYPTO_SET = 8
+	MESSAGE_REQ_CFG_REOPEN_LOG_FILES = 8
 };
 
 /**
@@ -80,8 +80,8 @@ enum res_lib_cfg_types {
 	MESSAGE_RES_CFG_GET_NODE_ADDRS = 11,
 	MESSAGE_RES_CFG_LOCAL_GET = 12,
 	MESSAGE_RES_CFG_REPLYTOSHUTDOWN = 13,
-	MESSAGE_RES_CFG_CRYPTO_SET = 14,
-	MESSAGE_RES_CFG_RELOAD_CONFIG = 15
+	MESSAGE_RES_CFG_RELOAD_CONFIG = 14,
+	MESSAGE_RES_CFG_REOPEN_LOG_FILES = 15
 };
 
 /**
@@ -214,6 +214,20 @@ struct req_lib_cfg_reload_config {
  * @brief The res_lib_cfg_reload_config struct
  */
 struct res_lib_cfg_reload_config {
+	struct qb_ipc_response_header header __attribute__((aligned(8)));
+};
+
+/**
+ * @brief The req_lib_cfg_reopen_log_files struct
+ */
+struct req_lib_cfg_reopen_log_files {
+	struct qb_ipc_request_header header __attribute__((aligned(8)));
+};
+
+/**
+ * @brief The res_lib_cfg_reopen_log_files struct
+ */
+struct res_lib_cfg_reopen_log_files {
 	struct qb_ipc_response_header header __attribute__((aligned(8)));
 };
 

@@ -43,6 +43,8 @@
 #include <pthread.h>
 #include <limits.h>
 
+#include <corosync/corotypes.h>
+
 #include <qb/qbconfig.h>
 #include <qb/qblog.h>
 
@@ -262,6 +264,7 @@ extern void logsys_blackbox_prefork(void);
 
 extern void logsys_blackbox_postfork(void);
 
+extern cs_error_t logsys_reopen_log_files(void);
 
 /**
  * @brief logsys_subsys_id

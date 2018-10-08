@@ -32,11 +32,18 @@
 
 MAINTAINERCLEANFILES    = Makefile.in
 
-EXTRA_DIST		= corosync.in
+EXTRA_DIST		= corosync-reopen.in corosync-copytruncate.in
 
-corosync: corosync.in
+if HAVE_QB_LOG_FILE_REOPEN
+corosync: corosync-reopen.in
+	sed -e 's#@''LOGDIR@#${LOGDIR}#g' \
+	    -e 's#@''SBINDIR@#$(sbindir)#g' \
+	    $< > $@
+else
+corosync: corosync-copytruncate.in
 	sed -e 's#@''LOGDIR@#${LOGDIR}#g' \
 	    $< > $@
+endif
 
 logrotatecorosyncdir    = ${LOGROTATEDIR}
 logrotatecorosync_DATA  = corosync

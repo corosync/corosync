@@ -233,6 +233,15 @@ corosync_cfg_local_get (
 cs_error_t corosync_cfg_reload_config (
 	corosync_cfg_handle_t handle);
 
+/**
+ * @brief Reopen logging files
+ * @param handle CFG service handle
+ * @return CS_OK on success, CS_ERR_NOT_SUPPORTED if reopening of logging files is not available,
+ *         otherwise one of common errors.
+ */
+cs_error_t corosync_cfg_reopen_log_files (
+	corosync_cfg_handle_t handle);
+
 #ifdef __cplusplus
 }
 #endif

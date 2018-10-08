@@ -1,0 +1,12 @@
+@LOGDIR@/corosync.log {
+	missingok
+	compress
+	daily
+	rotate 31
+	minsize 2048
+	notifempty
+	nocreate
+	postrotate
+		@SBINDIR@/corosync-cfgtool -L
+	endscript
+}

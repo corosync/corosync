@@ -1059,6 +1059,7 @@ static void main_service_ready (void)
 	corosync_totem_stats_init ();
 	corosync_fplay_control_init ();
 	corosync_force_gather_init ();
+
 	sync_init (
 		corosync_sync_callbacks_retrieve,
 		corosync_sync_completed);
