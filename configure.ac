@@ -162,6 +162,14 @@ AC_CHECK_LIB([qb], [qb_log_thread_priority_set], \
 if test "x${have_qb_log_thread_priority_set}" = xyes; then
 	AC_DEFINE_UNQUOTED([HAVE_QB_LOG_THREAD_PRIORITY_SET], 1, [have qb_log_thread_priority_set])
 fi
+AC_CHECK_LIB([qb], [qb_log_file_reopen], \
+	     have_qb_log_file_reopen="yes", \
+	     have_qb_log_file_reopen="no")
+if test "x${have_qb_log_file_reopen}" = xyes; then
+	AC_DEFINE_UNQUOTED([HAVE_QB_LOG_FILE_REOPEN], 1, [have qb_log_file_reopen])
+fi
+AM_CONDITIONAL(HAVE_QB_LOG_FILE_REOPEN, test x$have_qb_log_file_reopen = xyes)
+
 CPPFLAGS="$SAVE_CPPFLAGS"
 LIBS="$SAVE_LIBS"
 AC_CHECK_LIB([pthread], [pthread_create])

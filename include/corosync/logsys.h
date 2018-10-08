@@ -262,6 +262,7 @@ extern void logsys_blackbox_prefork(void);
 
 extern void logsys_blackbox_postfork(void);
 
+extern void logsys_reopen_log_files(void);
 
 /**
  * @brief logsys_subsys_id

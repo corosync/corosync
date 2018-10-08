@@ -1004,6 +1004,41 @@ static void corosync_force_gather_init (void)
 			NULL, &track);
 }
 
+#ifdef HAVE_QB_LOG_FILE_REOPEN
+static void reopen_log_files_notify_fn(
+	int32_t event,
+	const char *key_name,
+	struct icmap_notify_value new_val,
+	struct icmap_notify_value old_val,
+	void *user_data)
+{
+	char *key_val;
+
+	if (icmap_get_string(key_name, &key_val) == CS_OK && strcmp(key_val, "no") == 0)
+		goto out;
+
+	icmap_set_string("runtime.qb.reopen_log_files", "no");
+
+	log_printf(LOGSYS_LEVEL_DEBUG, "Reopening log files\n");
+	logsys_reopen_log_files();
+
+out:
+	free(key_val);
+}
+
+static void corosync_reopen_log_files_init (void)
+{
+	icmap_track_t track = NULL;
+
+	icmap_set_string("runtime.qb.reopen_log_files", "no");
+
+	icmap_track_add("runtime.qb.reopen_log_files",
+			ICMAP_TRACK_ADD | ICMAP_TRACK_DELETE | ICMAP_TRACK_MODIFY,
+			reopen_log_files_notify_fn,
+			NULL, &track);
+}
+#endif
+
 /*
  * Set RO flag for keys, which ether doesn't make sense to change by user (statistic)
  * or which when changed are not reflected by runtime (totem.crypto_cipher, ...).
@@ -1059,6 +1094,11 @@ static void main_service_ready (void)
 	corosync_totem_stats_init ();
 	corosync_fplay_control_init ();
 	corosync_force_gather_init ();
+
+#ifdef HAVE_QB_LOG_FILE_REOPEN
+	corosync_reopen_log_files_init ();
+#endif
+
 	sync_init (
 		corosync_sync_callbacks_retrieve,
 		corosync_sync_completed);
