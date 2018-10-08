@@ -877,3 +877,39 @@ void logsys_blackbox_postfork(void)
 
 	_logsys_config_apply_blackbox();
 }
+
+void logsys_reopen_log_files(void)
+{
+#ifdef HAVE_QB_LOG_FILE_REOPEN
+	int i, j;
+	int num_using_current;
+	int32_t rc;
+
+	pthread_mutex_lock (&logsys_config_mutex);
+
+	for (i = 0; i <= LOGSYS_MAX_SUBSYS_COUNT; i++) {
+		if (logsys_loggers[i].target_id <= 0 || logsys_loggers[i].logfile == NULL) {
+			continue ;
+		}
+
+		num_using_current = 0;
+		for (j = 0; j <= i; j++) {
+			if (logsys_loggers[i].target_id == logsys_loggers[j].target_id) {
+				num_using_current++;
+			}
+		}
+		if (num_using_current == 1) {
+			/*
+			 * First instance of target file. Reopen it.
+			 */
+			rc = qb_log_file_reopen(logsys_loggers[i].target_id, NULL);
+			if (rc != 0) {
+				LOGSYS_PERROR (-rc, LOGSYS_LEVEL_WARNING,
+				    "Unable to reopen log file %s", logsys_loggers[i].logfile);
+			}
+		}
+	}
+
+	pthread_mutex_unlock (&logsys_config_mutex);
+#endif
+}
