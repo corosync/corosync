@@ -108,9 +108,8 @@
 #define LOGSYS_UTILS_ONLY 1
 #include <corosync/logsys.h>
 
+#include "util.h"
 #include "totemsrp.h"
-
-#define min(a,b) ((a) < (b)) ? a : b
 
 struct totempg_mcast_header {
 	short version;

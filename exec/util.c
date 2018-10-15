@@ -136,8 +136,6 @@ void _corosync_exit_error (
 	exit (err);
 }
 
-#define min(a,b) ((a) < (b) ? (a) : (b))
-
 char *getcs_name_t (cs_name_t *name)
 {
 	static char ret_name[CS_MAX_NAME_LENGTH];
