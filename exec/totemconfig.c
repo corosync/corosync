@@ -1137,7 +1137,7 @@ static void check_things_have_not_changed(struct totem_config *totem_config)
 				log_printf(LOGSYS_LEVEL_ERROR, "New config has different knet transport for link %d. Internal value was NOT changed.\n", i);
 				changed = 1;
 			}
-			for (j=0; j<totem_config->interfaces[i].member_count; j++) {
+			for (j=0; j < min(totem_config->interfaces[i].member_count, totem_config->orig_interfaces[i].member_count); j++) {
 				if (memcmp(&totem_config->interfaces[i].member_list[j],
 					   &totem_config->orig_interfaces[i].member_list[j],
 					   sizeof(struct totem_ip_address))) {
@@ -1152,7 +1152,7 @@ static void check_things_have_not_changed(struct totem_config *totem_config)
 	}
 
 	if (changed) {
-		log_printf(LOGSYS_LEVEL_ERROR, "To reconfigure and interface it must be deleted and recreated. A working interface needs to be available to corosync at all times");
+		log_printf(LOGSYS_LEVEL_ERROR, "To reconfigure an interface it must be deleted and recreated. A working interface needs to be available to corosync at all times");
 	}
 }
 

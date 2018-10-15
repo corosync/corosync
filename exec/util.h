@@ -63,6 +63,7 @@ enum e_corosync_done {
 	COROSYNC_DONE_PLOAD = 99
 };
 
+#define min(a,b) ((a) < (b) ? (a) : (b))
 
 /**
  * Compare two names.  returns non-zero on match.
