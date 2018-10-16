@@ -1143,7 +1143,8 @@ static void check_things_have_not_changed(struct totem_config *totem_config)
 					   sizeof(struct totem_ip_address))) {
 
 					ip_str = totemip_print(&totem_config->orig_interfaces[i].member_list[j]);
-					strcpy(addr_buf, ip_str);
+					strncpy(addr_buf, ip_str, sizeof(addr_buf));
+					addr_buf[sizeof(addr_buf) - 1] = '\0';
 					log_printf(LOGSYS_LEVEL_ERROR, "new config has different address for link %d (addr changed from %s to %s). Internal value was NOT changed.\n", i, addr_buf, totemip_print(&totem_config->interfaces[i].member_list[j]));
 					changed = 1;
 				}
