@@ -162,7 +162,6 @@ fi
 %{_bindir}/corosync-blackbox
 %if %{with xmlconf}
 %{_bindir}/corosync-xmlproc
-%config(noreplace) %{_sysconfdir}/corosync/corosync.xml.example
 %dir %{_datadir}/corosync
 %{_datadir}/corosync/xml2conf.xsl
 %{_mandir}/man8/corosync-xmlproc.8*
@@ -171,7 +170,6 @@ fi
 %dir %{_sysconfdir}/corosync
 %dir %{_sysconfdir}/corosync/uidgid.d
 %config(noreplace) %{_sysconfdir}/corosync/corosync.conf.example
-%config(noreplace) %{_sysconfdir}/corosync/corosync.conf.example.udpu
 %config(noreplace) %{_sysconfdir}/sysconfig/corosync-notifyd
 %config(noreplace) %{_sysconfdir}/sysconfig/corosync
 %config(noreplace) %{_sysconfdir}/logrotate.d/corosync
