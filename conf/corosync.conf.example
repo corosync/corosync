@@ -1,51 +1,15 @@
 # Please read the corosync.conf.5 manual page
 totem {
-	version: 2
+	# Set name of the cluster
+	cluster_name: ExampleCluster
 
 	# crypto_cipher and crypto_hash: Used for mutual node authentication.
 	# If you choose to enable this, then do remember to create a shared
 	# secret with "corosync-keygen".
 	# enabling crypto_cipher, requires also enabling of crypto_hash.
+	# crypto works only with knet transport
 	crypto_cipher: none
 	crypto_hash: none
-
-	# interface: define at least one interface to communicate
-	# over. If you define more than one interface stanza, you must
-	# also set rrp_mode.
-	interface {
-                # Rings must be consecutively numbered, starting at 0.
-		ringnumber: 0
-		# This is normally the *network* address of the
-		# interface to bind to. This ensures that you can use
-		# identical instances of this configuration file
-		# across all your cluster nodes, without having to
-		# modify this option.
-		bindnetaddr: 192.168.1.0
-		# However, if you have multiple physical network
-		# interfaces configured for the same subnet, then the
-		# network address alone is not sufficient to identify
-		# the interface Corosync should bind to. In that case,
-		# configure the *host* address of the interface
-		# instead:
-		# bindnetaddr: 192.168.1.1
-		# When selecting a multicast address, consider RFC
-		# 2365 (which, among other things, specifies that
-		# 239.255.x.x addresses are left to the discretion of
-		# the network administrator). Do not reuse multicast
-		# addresses across multiple Corosync clusters sharing
-		# the same network.
-		mcastaddr: 239.255.1.1
-		# Corosync uses the port you specify here for UDP
-		# messaging, and also the immediately preceding
-		# port. Thus if you set this to 5405, Corosync sends
-		# messages from UDP port 5404 to UDP port 5405.
-		mcastport: 5405
-		# Time-to-live for cluster communication packets. The
-		# number of hops (routers) that this ring will allow
-		# itself to pass. Note that multicast routing must be
-		# specifically enabled on most network routers.
-		ttl: 1
-	}
 }
 
 logging {
@@ -53,9 +17,9 @@ logging {
 	# generated. When in doubt, leave off. Potentially useful for
 	# debugging.
 	fileline: off
-	# Log to standard error. When in doubt, set to no. Useful when
+	# Log to standard error. When in doubt, set to yes. Useful when
 	# running in the foreground (when invoking "corosync -f")
-	to_stderr: no
+	to_stderr: yes
 	# Log to a log file. When set to "no", the "logfile" option
 	# must not be set.
 	to_logfile: yes
@@ -65,8 +29,6 @@ logging {
 	# Log debug messages (very verbose). When in doubt, leave off.
 	debug: off
 	# Log messages with time stamps. When in doubt, set to on
-	# (unless you are only logging to syslog, where double
-	# timestamps can be annoying).
 	timestamp: on
 	logger_subsys {
 		subsys: QUORUM
@@ -78,4 +40,30 @@ quorum {
 	# Enable and configure quorum subsystem (default: off)
 	# see also corosync.conf.5 and votequorum.5
 	#provider: corosync_votequorum
+}
+
+nodelist {
+	# Change/uncomment/add node sections to match cluster configuration
+
+	node {
+		# Hostname of the node
+		name: node1
+		# Cluster membership node identifier
+		nodeid: 1
+		# Address of first link
+		#ring0_addr: 192.168.0.1
+		# When knet transport is used it's possible to define up to 8 links
+		#ring1_addr: 192.168.1.1
+	}
+	node {
+		# Hostname of the node
+		name: node2
+		# Cluster membership node identifier
+		nodeid: 2
+		# Address of first link
+		#ring0_addr: 192.168.0.2
+		# When knet transport is used it's possible to define up to 8 links
+		#ring1_addr: 192.168.1.2
+	}
+	# ...
 }
