@@ -484,18 +484,6 @@ int totemip_iface_check(struct totem_ip_address *bindnet,
 			*interface_up = if_addr->interface_up;
 			*interface_num = if_addr->interface_num;
 
-			if (boundto->family == AF_INET && boundto->nodeid == 0) {
-				unsigned int nodeid = 0;
-				memcpy (&nodeid, boundto->addr, sizeof (int));
-#if __BYTE_ORDER == __LITTLE_ENDIAN
-                                nodeid = swab32 (nodeid);
-#endif
-				if (mask_high_bit) {
-					nodeid &= 0x7FFFFFFF;
-				}
-				boundto->nodeid = nodeid;
-			}
-
 			net_match_found = 1;
 			res = 0;
 
