@@ -1149,7 +1149,7 @@ static int votequorum_read_nodelist_configuration(uint32_t *votes,
 	icmap_iter_t iter;
 	const char *iter_key;
 	char tmp_key[ICMAP_KEYNAME_MAXLEN];
-	uint32_t our_pos, node_pos;
+	uint32_t our_pos, node_pos, last_node_pos=-1;
 	uint32_t nodecount = 0;
 	uint32_t nodelist_expected_votes = 0;
 	uint32_t node_votes = 0;
@@ -1172,9 +1172,15 @@ static int votequorum_read_nodelist_configuration(uint32_t *votes,
 			continue;
 		}
 
-		if (strcmp(tmp_key, "nodeid") != 0) {
+		/*
+		 * If current node_pos is the same as the last_node_pos then skip it
+		 * so we only do the code below once per node.
+		 * (icmap keys are always in order)
+		 */
+		if (last_node_pos == node_pos) {
 			continue;
 		}
+		last_node_pos = node_pos;
 
 		nodecount++;
 
