@@ -137,6 +137,7 @@ static int corosync_main_config_format_set (
 	char new_format_buffer[PATH_MAX];
 	char *value = NULL;
 	int err = 0;
+	char timestamp_str_to_add[8];
 
 	if (map_get_string("logging.fileline", &value) == CS_OK) {
 		if (strcmp (value, "on") == 0) {
@@ -196,20 +197,14 @@ static int corosync_main_config_format_set (
 		goto parse_error;
 	}
 
+	memset(timestamp_str_to_add, 0, sizeof(timestamp_str_to_add));
+
 	if (map_get_string("logging.timestamp", &value) == CS_OK) {
 		if (strcmp (value, "on") == 0) {
-			if(!insert_into_buffer(new_format_buffer,
-					sizeof(new_format_buffer),
-					"%t ", NULL)) {
-				err = logsys_format_set(new_format_buffer);
-			}
+			strcpy(timestamp_str_to_add, "%t");
 #ifdef QB_FEATURE_LOG_HIRES_TIMESTAMPS
 		} else if (strcmp (value, "hires") == 0) {
-			if(!insert_into_buffer(new_format_buffer,
-					sizeof(new_format_buffer),
-					"%T ", NULL)) {
-				err = logsys_format_set(new_format_buffer);
-			}
+			strcpy(timestamp_str_to_add, "%T");
 #endif
 		} else if (strcmp (value, "off") == 0) {
 			/* nothing to do here */
@@ -220,6 +215,23 @@ static int corosync_main_config_format_set (
 		}
 
 		free(value);
+	} else {
+		/*
+		 * Display hires timestamp by default, otherwise standard timestamp
+		 */
+#ifdef QB_FEATURE_LOG_HIRES_TIMESTAMPS
+		strcpy(timestamp_str_to_add, "%T");
+#else
+		strcpy(timestamp_str_to_add, "%t");
+#endif
+	}
+
+	if(strcmp(timestamp_str_to_add, "") != 0) {
+		strcat(timestamp_str_to_add, " ");
+		if (insert_into_buffer(new_format_buffer, sizeof(new_format_buffer),
+		    timestamp_str_to_add, NULL) == 0) {
+			err = logsys_format_set(new_format_buffer);
+		}
 	}
 
 	if (err) {
