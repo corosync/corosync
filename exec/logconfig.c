@@ -203,8 +203,15 @@ static int corosync_main_config_format_set (
 					"%t ", NULL)) {
 				err = logsys_format_set(new_format_buffer);
 			}
-		} else
-		if (strcmp (value, "off") == 0) {
+#ifdef QB_FEATURE_LOG_HIRES_TIMESTAMPS
+		} else if (strcmp (value, "hires") == 0) {
+			if(!insert_into_buffer(new_format_buffer,
+					sizeof(new_format_buffer),
+					"%T ", NULL)) {
+				err = logsys_format_set(new_format_buffer);
+			}
+#endif
+		} else if (strcmp (value, "off") == 0) {
 			/* nothing to do here */
 		} else {
 			error_reason = "unknown value for timestamp";
