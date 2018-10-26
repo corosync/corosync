@@ -1237,9 +1237,9 @@ static void put_nodelist_members_to_config(struct totem_config *totem_config, in
 				snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "nodelist.node.%u.ring0_addr", node_pos);
 				if (icmap_get_string(tmp_key, &str) == CS_OK) {
 					nodeid = generate_nodeid(totem_config, str);
-					free(str);
 					log_printf(LOGSYS_LEVEL_DEBUG,
-						   "Generated nodeid = 0x%x for %s\n", nodeid, str);
+						   "Generated nodeid = 0x%x for %s", nodeid, str);
+					free(str);
 				}
 			}
 
