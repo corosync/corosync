@@ -32,7 +32,7 @@
 .\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 .\" * THE POSSIBILITY OF SUCH DAMAGE.
 .\" */
-.TH COROSYNC_CONF 5 2018-10-02 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
+.TH COROSYNC_CONF 5 2018-10-26 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
 .SH NAME
 corosync.conf - corosync executive configuration file
 
@@ -525,7 +525,9 @@ The following 3 options are valid only for the top level logging directive:
 
 .TP
 timestamp
-This specifies that a timestamp is placed on all log messages.
+This specifies that a timestamp is placed on all log messages. It can be one
+of off (no timestamp), on (second precision timestamp) or
+hires (millisecond precision timestamp - only when supported by LibQB).
 
 The default is off.
 

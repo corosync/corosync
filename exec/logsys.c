@@ -567,17 +567,25 @@ int logsys_config_file_set (
 static void
 logsys_file_format_get(char* file_format, int buf_len)
 {
-	char *per_t;
+	char *format_buffer_start;
+	char *str_pos;
+
 	file_format[0] = '\0';
-	per_t = strstr(format_buffer, "%t");
-	if (per_t) {
-		strcpy(file_format, "%t [%P] %H %N");
-		per_t += 2;
-		strncat(file_format, per_t, buf_len - strlen("%t [%P] %H %N"));
-	} else {
-		strcpy(file_format, "[%P] %H %N");
-		strncat(file_format, format_buffer, buf_len - strlen("[%P] %H %N"));
+
+	format_buffer_start = format_buffer;
+
+	if ((str_pos = strstr(format_buffer, "%t"))) {
+		strcpy(file_format, "%t ");
+		format_buffer_start = str_pos + 2;
 	}
+
+	if ((str_pos = strstr(format_buffer, "%T"))) {
+		strcpy(file_format, "%T ");
+		format_buffer_start = str_pos + 2;
+	}
+
+	strcat(file_format, "[%P] %H %N");
+	strncat(file_format, format_buffer_start, buf_len - strlen(file_format));
 }
 
 int logsys_format_set (const char *format)
@@ -609,7 +617,7 @@ int logsys_format_set (const char *format)
 	}
 
 	/*
-	 * This just goes through and remove %t and %p from
+	 * This just goes through and remove %t, %T and %p from
 	 * the format string for syslog.
 	 */
 	w = 0;
@@ -622,7 +630,8 @@ int logsys_format_set (const char *format)
 					continue;
 				}
 				if (format_buffer[c] == 't' ||
-				    format_buffer[c] == 'p') {
+				    format_buffer[c] == 'p' ||
+				    format_buffer[c] == 'T') {
 					c++;
 				} else {
 					c = reminder;
