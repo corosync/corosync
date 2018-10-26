@@ -28,8 +28,8 @@ logging {
 	to_syslog: yes
 	# Log debug messages (very verbose). When in doubt, leave off.
 	debug: off
-	# Log messages with time stamps. When in doubt, set to on
-	timestamp: on
+	# Log messages with time stamps. When in doubt, set to hires (or on)
+	#timestamp: hires
 	logger_subsys {
 		subsys: QUORUM
 		debug: off
