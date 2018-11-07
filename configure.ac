@@ -245,7 +245,7 @@ LIB_MSG_RESULT(m4_shift(m4_shift($@)))dnl
 AC_MSG_CHECKING([whether $CC supports -Wunknown-warning-option -Werror])
 BACKUP="$CPPFLAGS"
 CPPFLAGS="$CPPFLAGS -Werror -Wunknown-warning-option"
-AC_PREPROC_IFELSE([AC_LANG_PROGRAM([])],
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([])],
 		  [unknown_warnings_as_errors='-Wunknown-warning-option -Werror'; AC_MSG_RESULT([yes])],
 		  [unknown_warnings_as_errors=''; AC_MSG_RESULT([no])])
 CPPFLAGS="$BACKUP"
@@ -255,7 +255,7 @@ cc_supports_flag() {
 	BACKUP="$CPPFLAGS"
 	CPPFLAGS="$CPPFLAGS $@ $unknown_warnings_as_errors"
 	AC_MSG_CHECKING([whether $CC supports "$@"])
-	AC_PREPROC_IFELSE([AC_LANG_PROGRAM([])],
+	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([])],
 			  [RC=0; AC_MSG_RESULT([yes])],
 			  [RC=1; AC_MSG_RESULT([no])])
 	CPPFLAGS="$BACKUP"
