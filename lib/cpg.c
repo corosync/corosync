@@ -1164,7 +1164,6 @@ static cs_error_t send_fragments (
 							 sizeof (res_lib_cpg_partial_send));
 
 		if (error == CS_ERR_TRY_AGAIN) {
-			fprintf(stderr, "sleep. counter=%d\n", retry_count);
 			if (++retry_count > MAX_RETRIES) {
 				goto error_exit;
 			}
