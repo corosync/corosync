@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2002-2006 MontaVista Software, Inc.
- * Copyright (c) 2006-2017 Red Hat, Inc.
+ * Copyright (c) 2006-2018 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -167,6 +167,8 @@ static const char *corosync_lock_file = LOCALSTATEDIR"/run/corosync.pid";
 
 static int ip_version = AF_INET;
 
+static char corosync_config_file[PATH_MAX + 1] = COROSYSCONFDIR "/corosync.conf";
+
 qb_loop_t *cs_poll_handle_get (void)
 {
 	return (corosync_poll_handle);
@@ -199,6 +201,12 @@ void corosync_state_dump (void)
 			corosync_service[i]->exec_dump_fn ();
 		}
 	}
+}
+
+const char *corosync_get_config_file(void)
+{
+
+	return (corosync_config_file);
 }
 
 static void corosync_blackbox_write_to_file (void)
@@ -1217,9 +1225,19 @@ int main (int argc, char **argv, char **envp)
 	background = 1;
 	testonly = 0;
 
-	while ((ch = getopt (argc, argv, "ftv")) != EOF) {
+	while ((ch = getopt (argc, argv, "c:ftv")) != EOF) {
 
 		switch (ch) {
+			case 'c':
+				res = snprintf(corosync_config_file, sizeof(corosync_config_file), "%s", optarg);
+				if (res >= sizeof(corosync_config_file)) {
+					fprintf (stderr, "Config file path too long.\n");
+					syslog (LOGSYS_LEVEL_ERROR, "Config file path too long.");
+
+					logsys_system_fini();
+					return EXIT_FAILURE;
+				}
+				break;
 			case 'f':
 				background = 0;
 				break;
@@ -1236,6 +1254,7 @@ int main (int argc, char **argv, char **envp)
 			default:
 				fprintf(stderr, \
 					"usage:\n"\
+					"        -c     : Corosync config file path.\n"\
 					"        -f     : Start application in foreground.\n"\
 					"        -t     : Test configuration and exit.\n"\
 					"        -v     : Display version and SVN revision of Corosync and exit.\n");
@@ -1255,7 +1274,8 @@ int main (int argc, char **argv, char **envp)
 #endif
 
 	if (icmap_init() != CS_OK) {
-		log_printf (LOGSYS_LEVEL_ERROR, "Corosync Executive couldn't initialize configuration component.");
+		fprintf (stderr, "Corosync Executive couldn't initialize configuration component.\n");
+		syslog (LOGSYS_LEVEL_ERROR, "Corosync Executive couldn't initialize configuration component.");
 		corosync_exit_error (COROSYNC_DONE_ICMAP);
 	}
 	set_icmap_ro_keys_flag();

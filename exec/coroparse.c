@@ -49,6 +49,7 @@
 #include <errno.h>
 #include <string.h>
 #include <dirent.h>
+#include <libgen.h>
 #include <limits.h>
 #include <stddef.h>
 #include <grp.h>
@@ -1537,18 +1538,39 @@ static int read_uidgid_files_into_icmap(
 	icmap_map_t config_map)
 {
 	FILE *fp;
-	const char *dirname;
+	char *dirname_res;
 	DIR *dp;
 	struct dirent *dirent;
 	char filename[PATH_MAX + FILENAME_MAX + 1];
+	char uidgid_dirname[PATH_MAX + FILENAME_MAX + 1];
 	int res = 0;
 	struct stat stat_buf;
 	enum main_cp_cb_data_state state = MAIN_CP_CB_DATA_STATE_NORMAL;
 	char key_name[ICMAP_KEYNAME_MAXLEN];
 	int line_no;
 
-	dirname = COROSYSCONFDIR "/uidgid.d";
-	dp = opendir (dirname);
+	/*
+	 * Build uidgid directory based on corosync.conf file location
+	 */
+	res = snprintf(filename, sizeof(filename), "%s",
+	    corosync_get_config_file());
+	if (res >= sizeof(filename)) {
+		*error_string = "uidgid.d path too long";
+
+		return (-1);
+	}
+
+	dirname_res = dirname(filename);
+
+	res = snprintf(uidgid_dirname, sizeof(uidgid_dirname), "%s/%s",
+	    dirname_res, "uidgid.d");
+	if (res >= sizeof(uidgid_dirname)) {
+		*error_string = "uidgid.d path too long";
+
+		return (-1);
+	}
+
+	dp = opendir (uidgid_dirname);
 
 	if (dp == NULL)
 		return 0;
@@ -1557,7 +1579,13 @@ static int read_uidgid_files_into_icmap(
 		dirent != NULL;
 		dirent = readdir(dp)) {
 
-		snprintf(filename, sizeof (filename), "%s/%s", dirname, dirent->d_name);
+		res = snprintf(filename, sizeof (filename), "%s/%s", uidgid_dirname, dirent->d_name);
+		if (res >= sizeof(filename)) {
+			res = -1;
+			*error_string = "uidgid.d dirname path too long";
+
+			goto error_exit;
+		}
 		res = stat (filename, &stat_buf);
 		if (res == 0 && S_ISREG(stat_buf.st_mode)) {
 
@@ -1598,9 +1626,7 @@ static int read_config_file_into_icmap(
 	enum main_cp_cb_data_state state = MAIN_CP_CB_DATA_STATE_NORMAL;
 	int line_no;
 
-	filename = getenv ("COROSYNC_MAIN_CONFIG_FILE");
-	if (!filename)
-		filename = COROSYSCONFDIR "/corosync.conf";
+	filename = corosync_get_config_file();
 
 	fp = fopen (filename, "r");
 	if (fp == NULL) {
