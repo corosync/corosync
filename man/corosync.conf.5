@@ -32,7 +32,7 @@
 .\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 .\" * THE POSSIBILITY OF SUCH DAMAGE.
 .\" */
-.TH COROSYNC_CONF 5 2018-10-26 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
+.TH COROSYNC_CONF 5 2018-11-12 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
 .SH NAME
 corosync.conf - corosync executive configuration file
 
@@ -58,8 +58,8 @@ This top level directive contains configuration options for quorum.
 nodelist { }
 This top level directive contains configuration options for nodes in cluster.
 .TP
-qb { }
-This top level directive contains configuration options related to libqb.
+system { }
+This top level directive contains configuration options related to system.
 .TP
 resources { }
 This top level directive contains configuration options for resources.
@@ -691,16 +691,39 @@ in this process. Option is not used by Corosync itself.
 
 .PP
 Within the
-.B qb
-directive it is possible to specify options for libqb.
+.B system
+directive it is possible to specify system options.
 
-Possible option is:
+Possible options are:
 .TP
-ipc_type
+qb_ipc_type
 This specifies type of IPC to use. Can be one of native (default), shm and socket.
 Native means one of shm or socket, depending on what is supported by OS. On systems
 with support for both, SHM is selected. SHM is generally faster, but need to allocate
 ring buffer file in /dev/shm.
+
+.TP
+sched_rr
+Should be set to yes (default) if corosync should try to set round robin realtime
+scheduling with maximal priority to itself. When setting of scheduler fails, fallback to set
+maximal priority.
+
+.TP
+priority
+Set priority of corosync process. Valid only when sched_rr is set to no.
+Can be ether numeric value with similar meaning as
+.BR nice (1)
+or
+.B max
+/
+.B min
+meaning maximal / minimal priority (so minimal / maximal nice value).
+
+.TP
+move_to_root_cgroup
+Should be set to yes (default) if corosync should try to move itself to root
+cgroup. This feature is available only for systems with cgroups with RT
+sched enabled (Linux with CONFIG_RT_GROUP_SCHED kernel option).
 
 .PP
 Within the
