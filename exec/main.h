@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2002-2006 MontaVista Software, Inc.
- * Copyright (c) 2006-2012 Red Hat, Inc.
+ * Copyright (c) 2006-2018 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -122,6 +122,8 @@ extern void cs_ipc_refcnt_dec(void *conn);
 
 extern void cs_ipc_allow_connections(int32_t allow);
 
-int coroparse_configparse (icmap_map_t config_map, const char **error_string);
+extern int coroparse_configparse (icmap_map_t config_map, const char **error_string);
+
+extern const char *corosync_get_config_file(void);
 
 #endif /* MAIN_H_DEFINED */

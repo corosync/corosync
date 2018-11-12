@@ -35,11 +35,17 @@
 .SH NAME
 corosync \- The Corosync Cluster Engine.
 .SH SYNOPSIS
-.B "corosync [\-f] [\-t] [\-v]"
+.B "corosync [\-c config_file] [\-f] [\-t] [\-v]"
 .SH DESCRIPTION
 .B corosync
 Corosync provides clustering infrastructure such as membership, messaging and quorum.
 .SH OPTIONS
+.TP
+.B -c
+This specifies the fully qualified path to the corosync configuration file. Also used
+as a base directory for uidgid files.
+
+The default is /etc/corosync/corosync.conf.
 .TP
 .B -f
 Start application in foreground.
