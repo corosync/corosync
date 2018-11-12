@@ -84,7 +84,7 @@ enum main_cp_cb_data_state {
 	MAIN_CP_CB_DATA_STATE_NODELIST,
 	MAIN_CP_CB_DATA_STATE_NODELIST_NODE,
 	MAIN_CP_CB_DATA_STATE_PLOAD,
-	MAIN_CP_CB_DATA_STATE_QB,
+	MAIN_CP_CB_DATA_STATE_SYSTEM,
 	MAIN_CP_CB_DATA_STATE_RESOURCES,
 	MAIN_CP_CB_DATA_STATE_RESOURCES_SYSTEM,
 	MAIN_CP_CB_DATA_STATE_RESOURCES_PROCESS,
@@ -780,12 +780,28 @@ static int main_config_parser_cb(const char *path,
 			}
 			break;
 
-		case MAIN_CP_CB_DATA_STATE_QB:
-			if (strcmp(path, "qb.ipc_type") == 0) {
+		case MAIN_CP_CB_DATA_STATE_SYSTEM:
+			if (strcmp(path, "system.qb_ipc_type") == 0) {
 				if ((strcmp(value, "native") != 0) &&
 				    (strcmp(value, "shm") != 0) &&
 				    (strcmp(value, "socket") != 0)) {
-					*error_string = "Invalid qb ipc_type";
+					*error_string = "Invalid system.qb_ipc_type";
+
+					return (0);
+				}
+			}
+			if (strcmp(path, "system.sched_rr") == 0) {
+				if ((strcmp(value, "yes") != 0) &&
+				    (strcmp(value, "no") != 0)) {
+					*error_string = "Invalid system.sched_rr value";
+
+					return (0);
+				}
+			}
+			if (strcmp(path, "system.move_to_root_cgroup") == 0) {
+				if ((strcmp(value, "yes") != 0) &&
+				    (strcmp(value, "no") != 0)) {
+					*error_string = "Invalid system.move_to_root_cgroup";
 
 					return (0);
 				}
@@ -1085,8 +1101,8 @@ static int main_config_parser_cb(const char *path,
 		if (strcmp(path, "totem") == 0) {
 			*state = MAIN_CP_CB_DATA_STATE_TOTEM;
 		};
-		if (strcmp(path, "qb") == 0) {
-			*state = MAIN_CP_CB_DATA_STATE_QB;
+		if (strcmp(path, "system") == 0) {
+			*state = MAIN_CP_CB_DATA_STATE_SYSTEM;
 		}
 		if (strcmp(path, "logging.logger_subsys") == 0) {
 			*state = MAIN_CP_CB_DATA_STATE_LOGGER_SUBSYS;
@@ -1390,7 +1406,7 @@ static int main_config_parser_cb(const char *path,
 		case MAIN_CP_CB_DATA_STATE_QDEVICE:
 		case MAIN_CP_CB_DATA_STATE_NODELIST:
 		case MAIN_CP_CB_DATA_STATE_TOTEM:
-		case MAIN_CP_CB_DATA_STATE_QB:
+		case MAIN_CP_CB_DATA_STATE_SYSTEM:
 			break;
 		case MAIN_CP_CB_DATA_STATE_RESOURCES:
 			*state = MAIN_CP_CB_DATA_STATE_NORMAL;

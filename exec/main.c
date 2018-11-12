@@ -1021,6 +1021,7 @@ static void set_icmap_ro_keys_flag (void)
 	icmap_set_ro_access("runtime.config.", CS_TRUE, CS_TRUE);
 	icmap_set_ro_access("runtime.totem.", CS_TRUE, CS_TRUE);
 	icmap_set_ro_access("uidgid.config.", CS_TRUE, CS_TRUE);
+	icmap_set_ro_access("system.", CS_TRUE, CS_TRUE);
 
 	/*
 	 * Set RO flag for constrete keys of configuration which can't be changed
@@ -1038,7 +1039,6 @@ static void set_icmap_ro_keys_flag (void)
 	icmap_set_ro_access("totem.version", CS_FALSE, CS_TRUE);
 	icmap_set_ro_access("totem.nodeid", CS_FALSE, CS_TRUE);
 	icmap_set_ro_access("totem.clear_node_high_bit", CS_FALSE, CS_TRUE);
-	icmap_set_ro_access("qb.ipc_type", CS_FALSE, CS_TRUE);
 	icmap_set_ro_access("config.reload_in_progress", CS_FALSE, CS_TRUE);
 	icmap_set_ro_access("config.totemconfig_reload_in_progress", CS_FALSE, CS_TRUE);
 }
@@ -1210,54 +1210,25 @@ int main (int argc, char **argv, char **envp)
 	struct scheduler_pause_timeout_data scheduler_pause_timeout_data;
 	long int tmpli;
 	char *ep;
+	char *tmp_str;
 
 	/* default configuration
 	 */
 	background = 1;
-	sched_rr = 1;
-	prio = 0;
 	testonly = 0;
-	move_to_root_cgroup = 1;
 
-	while ((ch = getopt (argc, argv, "fP:pRrtv")) != EOF) {
+	while ((ch = getopt (argc, argv, "ftv")) != EOF) {
 
 		switch (ch) {
 			case 'f':
 				background = 0;
-				break;
-			case 'p':
-				sched_rr = 0;
-				break;
-			case 'P':
-				if (strcmp(optarg, "max") == 0) {
-					prio = INT_MIN;
-				} else if (strcmp(optarg, "min") == 0) {
-					prio = INT_MAX;
-				} else {
-					errno = 0;
-
-					tmpli = strtol(optarg, &ep, 10);
-					if (errno != 0 || *ep != '\0' || tmpli > INT_MAX || tmpli < INT_MIN) {
-						fprintf(stderr, "Priority value %s is invalid", optarg);
-						logsys_system_fini();
-						return EXIT_FAILURE;
-					}
-
-					prio = tmpli;
-				}
-				break;
-			case 'R':
-				move_to_root_cgroup = 0;
-				break;
-			case 'r':
-				sched_rr = 1;
 				break;
 			case 't':
 				testonly = 1;
 				break;
 			case 'v':
 				printf ("Corosync Cluster Engine, version '%s'\n", VERSION);
-				printf ("Copyright (c) 2006-2009 Red Hat, Inc.\n");
+				printf ("Copyright (c) 2006-2018 Red Hat, Inc.\n");
 				logsys_system_fini();
 				return EXIT_SUCCESS;
 
@@ -1266,11 +1237,6 @@ int main (int argc, char **argv, char **envp)
 				fprintf(stderr, \
 					"usage:\n"\
 					"        -f     : Start application in foreground.\n"\
-					"        -p     : Do not set realtime scheduling.\n"\
-					"        -r     : Set round robin realtime scheduling (default).\n"\
-					"        -R     : Do not try move corosync to root cpu cgroup (valid for cgroups enabled systems)\n"\
-					"                 Feature is expected to be removed - see corosync.8 man page\n" \
-					"        -P num : Set priority of process (no effect when -r is used)\n"\
 					"        -t     : Test configuration and exit.\n"\
 					"        -v     : Display version and SVN revision of Corosync and exit.\n");
 				logsys_system_fini();
@@ -1396,12 +1362,49 @@ int main (int argc, char **argv, char **envp)
 	}
 
 
+	move_to_root_cgroup = 1;
+	if (icmap_get_string("system.move_to_root_cgroup", &tmp_str) == CS_OK) {
+		if (strcmp(tmp_str, "yes") != 0) {
+			move_to_root_cgroup = 0;
+		}
+		free(tmp_str);
+	}
+
 	/*
 	 * Try to move corosync into root cpu cgroup. Failure is not fatal and
 	 * error is deliberately ignored.
 	 */
 	if (move_to_root_cgroup) {
 		(void)corosync_move_to_root_cgroup();
+	}
+
+	sched_rr = 1;
+	if (icmap_get_string("system.sched_rr", &tmp_str) == CS_OK) {
+		if (strcmp(tmp_str, "yes") != 0) {
+			sched_rr = 0;
+		}
+		free(tmp_str);
+	}
+
+	prio = 0;
+	if (icmap_get_string("system.priority", &tmp_str) == CS_OK) {
+		if (strcmp(tmp_str, "max") == 0) {
+			prio = INT_MIN;
+		} else if (strcmp(tmp_str, "min") == 0) {
+			prio = INT_MAX;
+		} else {
+			errno = 0;
+
+			tmpli = strtol(tmp_str, &ep, 10);
+			if (errno != 0 || *ep != '\0' || tmpli > INT_MAX || tmpli < INT_MIN) {
+				log_printf (LOGSYS_LEVEL_ERROR, "Priority value %s is invalid", tmp_str);
+				corosync_exit_error (COROSYNC_DONE_MAINCONFIGREAD);
+			}
+
+			prio = tmpli;
+		}
+
+		free(tmp_str);
 	}
 
 	/*
