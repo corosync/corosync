@@ -597,6 +597,7 @@ static void remove_ro_entries(icmap_map_t temp_map)
 	delete_and_notify_if_changed(temp_map, "system.sched_rr");
 	delete_and_notify_if_changed(temp_map, "system.priority");
 	delete_and_notify_if_changed(temp_map, "system.qb_ipc_type");
+	delete_and_notify_if_changed(temp_map, "system.run_dir");
 }
 
 /*
