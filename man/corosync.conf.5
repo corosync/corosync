@@ -695,13 +695,22 @@ reserved and should not be used. If knet is set, this field must be set.
 
 .TP
 name
-This optional configuration option provides a unified way for the
-client software (e.g. pacemaker) atop, respectively the end users,
-to guide establishing a nominal (self-)identification for each node
-in case neither respective
-.B ringX_addr
-specifies a network hostname nor other means are available/effective
-in this process. Option is not used by Corosync itself.
+This option is used mainly with knet transport to identify local node.
+It's also used by client software (pacemaker).
+Algorithm for identifying local node is following:
+.RS
+.IP 1.
+Looks up $HOSTNAME in the nodelist
+.IP 2.
+If this fails strip the domain name from $HOSTNAME and looks up
+that in the nodelist
+.IP 3.
+If this fails look in the nodelist for a fully-qualified name whose
+short version matches the short version of $HOSTNAME
+.IP 4.
+If all this fails then search the interfaces list for an address that
+matches a name in the nodelist
+.RE
 
 .PP
 Within the
