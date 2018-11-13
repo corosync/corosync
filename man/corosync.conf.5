@@ -748,6 +748,13 @@ Should be set to yes (default) if corosync should try to move itself to root
 cgroup. This feature is available only for systems with cgroups with RT
 sched enabled (Linux with CONFIG_RT_GROUP_SCHED kernel option).
 
+.TP
+run_dir
+Existing directory where corosync should chdir into. Corosync stores
+important state files and blackboxes there.
+
+The default is /var/lib/corosync.
+
 .PP
 Within the
 .B resources

@@ -83,7 +83,7 @@ const char * short_service_name_get(uint32_t service_id,
 				    char *buf, size_t buf_size);
 
 /*
- * Return run directory (ether COROSYNC_RUN_DIR env or LOCALSTATEDIR/lib/corosync)
+ * Return run directory (ether icmap system.run_dir or LOCALSTATEDIR/lib/corosync)
  */
 const char *get_run_dir(void);
 

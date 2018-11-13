@@ -45,6 +45,7 @@
 
 #include <corosync/corotypes.h>
 #include <corosync/corodefs.h>
+#include <corosync/icmap.h>
 #include <corosync/logsys.h>
 #include "util.h"
 
@@ -171,14 +172,13 @@ int cs_name_tisEqual (cs_name_t *str1, char *str2) {
 const char *get_run_dir(void)
 {
 	static char path[PATH_MAX] = {'\0'};
-	char *env_run_dir;
+	char *cmap_run_dir;
 	int res;
 
 	if (path[0] == '\0') {
-		env_run_dir = getenv("COROSYNC_RUN_DIR");
-
-		if (env_run_dir != NULL && env_run_dir[0] != '\0') {
-			res = snprintf(path, PATH_MAX, "%s", getenv("COROSYNC_RUN_DIR"));
+		if (icmap_get_string("system.run_dir", &cmap_run_dir) == CS_OK) {
+			res = snprintf(path, PATH_MAX, "%s", cmap_run_dir);
+			free(cmap_run_dir);
 		} else {
 			res = snprintf(path, PATH_MAX, "%s/%s", LOCALSTATEDIR, "lib/corosync");
 		}
