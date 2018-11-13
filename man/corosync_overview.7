@@ -32,7 +32,7 @@
 .\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 .\" * THE POSSIBILITY OF SUCH DAMAGE.
 .\" */
-.TH COROSYNC_OVERVIEW 7 2018-09-12 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
+.TH COROSYNC_OVERVIEW 7 2018-11-13 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
 .SH NAME
 corosync_overview \- Corosync overview
 .SH OVERVIEW
@@ -142,17 +142,6 @@ The corosync executive uses the Totem extended virtual synchrony protocol.  The
 advantage to the end user is excellent performance characteristics and a proven
 protocol with excellent reliability.  This protocol connects the processors
 in a configuration together so they may communicate.
-
-.SH ENVIRONMENT VARIABLES
-The corosync executive process uses four environment variables during startup.
-If these environment variables are not set, defaults will be used.
-
-.TP
-COROSYNC_TOTEM_AUTHKEY_FILE
-This specifies the fully qualified path to the shared key used to
-authenticate and encrypt data used within the Totem protocol.
-
-The default is /etc/corosync/authkey.
 
 .SH SECURITY
 The corosync executive optionally encrypts and signs all messages sent

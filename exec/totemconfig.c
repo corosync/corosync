@@ -2014,13 +2014,9 @@ int totem_config_keyread (
 
 	/* In desperation we read the default filename */
 	if (!got_key) {
-		const char *filename = getenv("COROSYNC_TOTEM_AUTHKEY_FILE");
-		if (!filename)
-			filename = COROSYSCONFDIR "/authkey";
-		res = read_keyfile(filename, totem_config, error_string);
+		res = read_keyfile(COROSYSCONFDIR "/authkey", totem_config, error_string);
 		if (res)
 			goto key_error;
-
 	}
 
 	return (0);

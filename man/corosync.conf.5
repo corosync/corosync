@@ -32,7 +32,7 @@
 .\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 .\" * THE POSSIBILITY OF SUCH DAMAGE.
 .\" */
-.TH COROSYNC_CONF 5 2018-11-12 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
+.TH COROSYNC_CONF 5 2018-11-13 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
 .SH NAME
 corosync.conf - corosync executive configuration file
 
@@ -225,14 +225,28 @@ transmission is only supported for the knet transport.
 The default is none.
 
 .TP
+keyfile
+This specifies the fully qualified path to the shared key used to
+authenticate and encrypt data used within the Totem protocol.
+
+The default is /etc/corosync/authkey.
+
+.TP
+key
+Shared key stored in configuration instead of authkey file. This option
+has lower precedence than keyfile option so it's
+used only when keyfile is not specified.
+Using this option is not recommended for security reasons.
+
+.TP
 link_mode
 This specifies the Kronosnet mode, which may be passive, active, or
-rr (round-robin). 
+rr (round-robin).
 .B passive:
 the active link with the lowest priority will be used. If one or more 
 links share the same priority the one with the lowest link ID will
 be used.
-.B active: 
+.B active:
 All active links will be used simultaneously to send traffic.
 link priority is ignored.
 .B rr:
