@@ -543,6 +543,7 @@ cs_error_t stats_map_track_add(const char *key_name,
 
 	tracker->notify_fn = notify_fn;
 	tracker->user_data = user_data;
+	tracker->events = track_type;
 	if (key_name) {
 		tracker->key_name = strdup(key_name);
 		if (!tracker->key_name) {
@@ -572,7 +573,6 @@ cs_error_t stats_map_track_add(const char *key_name,
 			free(tracker);
 			return (qb_to_cs_error(err));
 		}
-		tracker->events = track_type;
 	}
 
 	qb_list_add (&tracker->list, &stats_tracker_list_head);
