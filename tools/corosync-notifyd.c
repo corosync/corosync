@@ -183,6 +183,9 @@ static char *snmp_community = NULL;
  */
 static cmap_handle_t cmap_handle;
 static cmap_handle_t stats_handle;
+static cmap_track_handle_t cmap_track_handle_runtime_members_key_changed;
+static cmap_track_handle_t cmap_track_handle_stats_ipcs_key_changed;
+static cmap_track_handle_t cmap_track_handle_stats_knet_key_changed;
 
 static int32_t _cs_ip_to_hostname(char* ip, char* name_out)
 {
@@ -1117,7 +1120,6 @@ static void track_link_updown_events(void)
 			strcpy(track_item->key_name, key_name);
 			track_item->track_handle = track_handle;
 			qb_map_put(tracker_map, track_item->key_name, track_item);
-
 		}
 	}
 	cmap_iter_finalize(stats_handle, iter_handle);
@@ -1129,7 +1131,6 @@ _cs_cmap_init(void)
 	cs_error_t rc = CS_OK;
 	int cmap_fd = 0;
 	int stats_fd = 0;
-	cmap_track_handle_t track_handle;
 
 	tracker_map = qb_trie_create();
 	if (!tracker_map) {
@@ -1163,7 +1164,7 @@ _cs_cmap_init(void)
 			CMAP_TRACK_ADD | CMAP_TRACK_MODIFY | CMAP_TRACK_PREFIX,
 			_cs_cmap_members_key_changed,
 			NULL,
-			&track_handle);
+			&cmap_track_handle_runtime_members_key_changed);
 	if (rc != CS_OK) {
 		qb_log(LOG_ERR,
 			"Failed to track the members key. Error %d", rc);
@@ -1174,7 +1175,7 @@ _cs_cmap_init(void)
 			CMAP_TRACK_ADD | CMAP_TRACK_DELETE | CMAP_TRACK_PREFIX,
 			_cs_cmap_connections_key_changed,
 			NULL,
-			&track_handle);
+			&cmap_track_handle_stats_ipcs_key_changed);
 	if (rc != CS_OK) {
 		qb_log(LOG_ERR,
 			"Failed to track the connections key. Error %d", rc);
@@ -1185,19 +1186,31 @@ _cs_cmap_init(void)
 			CMAP_TRACK_ADD | CMAP_TRACK_DELETE | CMAP_TRACK_PREFIX,
 			_cs_cmap_link_added_removed,
 			NULL,
-			&track_handle);
+			&cmap_track_handle_stats_knet_key_changed);
 	if (rc != CS_OK) {
 		qb_log(LOG_ERR,
 			"Failed to track the knet link status key. Error %d", rc);
 		exit (EXIT_FAILURE);
 	}
 	track_link_updown_events();
-
 }
 
 static void
 _cs_cmap_finalize(void)
 {
+	struct qb_map_iter *map_iter;
+	struct track_item *track_item;
+
+	map_iter = qb_map_iter_create(tracker_map);
+	while (qb_map_iter_next(map_iter, (void **)&track_item) != NULL) {
+		cmap_track_delete(stats_handle, track_item->track_handle);
+		free(track_item);
+	}
+	qb_map_iter_free(map_iter);
+
+	cmap_track_delete(cmap_handle, cmap_track_handle_runtime_members_key_changed);
+	cmap_track_delete(stats_handle, cmap_track_handle_stats_ipcs_key_changed);
+	cmap_track_delete(stats_handle, cmap_track_handle_stats_knet_key_changed);
 	cmap_finalize (cmap_handle);
 	cmap_finalize (stats_handle);
 }
