@@ -170,6 +170,9 @@ static char *snmp_community = NULL;
  * cmap
  */
 static cmap_handle_t cmap_handle;
+static cmap_track_handle_t cmap_track_handle_connections_key_changed;
+static cmap_track_handle_t cmap_track_handle_members_key_changed;
+static cmap_track_handle_t cmap_track_handle_rrp_faulty_key_changed;
 
 static int32_t _cs_ip_to_hostname(char* ip, char* name_out)
 {
@@ -1035,7 +1038,6 @@ _cs_cmap_init(void)
 {
 	cs_error_t rc;
 	int cmap_fd = 0;
-	cmap_track_handle_t track_handle;
 
 	rc = cmap_initialize (&cmap_handle);
 	if (rc != CS_OK) {
@@ -1051,7 +1053,7 @@ _cs_cmap_init(void)
 			CMAP_TRACK_ADD | CMAP_TRACK_DELETE | CMAP_TRACK_PREFIX,
 			_cs_cmap_connections_key_changed,
 			NULL,
-			&track_handle);
+			&cmap_track_handle_connections_key_changed);
 	if (rc != CS_OK) {
 		qb_log(LOG_ERR,
 			"Failed to track the connections key. Error %d", rc);
@@ -1062,7 +1064,7 @@ _cs_cmap_init(void)
 			CMAP_TRACK_ADD | CMAP_TRACK_MODIFY | CMAP_TRACK_PREFIX,
 			_cs_cmap_members_key_changed,
 			NULL,
-			&track_handle);
+			&cmap_track_handle_members_key_changed);
 	if (rc != CS_OK) {
 		qb_log(LOG_ERR,
 			"Failed to track the members key. Error %d", rc);
@@ -1072,7 +1074,7 @@ _cs_cmap_init(void)
 			CMAP_TRACK_ADD | CMAP_TRACK_MODIFY | CMAP_TRACK_PREFIX,
 			_cs_cmap_rrp_faulty_key_changed,
 			NULL,
-			&track_handle);
+			&cmap_track_handle_rrp_faulty_key_changed);
 	if (rc != CS_OK) {
 		qb_log(LOG_ERR,
 			"Failed to track the rrp key. Error %d", rc);
@@ -1083,6 +1085,9 @@ _cs_cmap_init(void)
 static void
 _cs_cmap_finalize(void)
 {
+	cmap_track_delete(cmap_handle, cmap_track_handle_connections_key_changed);
+	cmap_track_delete(cmap_handle, cmap_track_handle_members_key_changed);
+	cmap_track_delete(cmap_handle, cmap_track_handle_rrp_faulty_key_changed);
 	cmap_finalize (cmap_handle);
 }
 
