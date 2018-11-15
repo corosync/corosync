@@ -848,7 +848,8 @@ static void message_handler_req_lib_cmap_track_delete(void *conn, const void *me
 		goto reply_send;
 	}
 
-	track_inst_handle = ((struct cmap_track_user_data *)icmap_track_get_user_data(*track))->track_inst_handle;
+	track_inst_handle = ((struct cmap_track_user_data *)
+	    conn_info->map_fns.map_track_get_user_data(*track))->track_inst_handle;
 
 	free(conn_info->map_fns.map_track_get_user_data(*track));
 
