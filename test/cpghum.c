@@ -725,7 +725,11 @@ int main (int argc, char *argv[]) {
 		cpgh_log_printf(CPGH_LOG_ERR, "cpg_initialize failed with result %d\n", res);
 		exit (1);
 	}
-	cpg_local_get(handle, &g_our_nodeid);
+	res = cpg_local_get(handle, &g_our_nodeid);
+	if (res != CS_OK) {
+		cpgh_log_printf(CPGH_LOG_ERR, "cpg_local_get failed with result %d\n", res);
+		exit (1);
+	}
 
 	pthread_create (&thread, NULL, dispatch_thread, NULL);
 
