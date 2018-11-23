@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2017 Red Hat, Inc.
+ * Copyright (c) 2015-2018 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -162,10 +162,13 @@ qdevice_model_net_run(struct qdevice_instance *instance)
 	int res;
 	enum tlv_vote vote;
 	int delay_before_reconnect;
+	int ret_val;
 
 	net_instance = instance->model_data;
 
 	qdevice_log(LOG_DEBUG, "Executing qdevice-net");
+
+	ret_val = -1;
 
 	try_connect = 1;
 	while (try_connect) {
@@ -239,6 +242,13 @@ qdevice_model_net_run(struct qdevice_instance *instance)
 			try_connect = 0;
 		}
 
+		/*
+		 * Return 0 only when local socket was closed -> regular exit
+		 */
+		if (net_instance->disconnect_reason == QDEVICE_NET_DISCONNECT_REASON_LOCAL_SOCKET_CLOSED) {
+			ret_val = 0;
+		}
+
 		if (net_instance->socket != NULL) {
 			if (PR_Close(net_instance->socket) != PR_SUCCESS) {
 				qdevice_log_nss(LOG_WARNING, "Unable to close connection");
@@ -270,10 +280,11 @@ qdevice_model_net_run(struct qdevice_instance *instance)
 			(void)poll(NULL, 0, delay_before_reconnect);
 		}
 
+
 		qdevice_net_instance_clean(net_instance);
 	}
 
-	return (0);
+	return (ret_val);
 }
 
 /*
