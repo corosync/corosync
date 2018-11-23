@@ -41,6 +41,7 @@ Conflicts: openais <= 0.89, openais-devel <= 0.89
 
 # Build bits
 
+BuildRequires: gcc
 BuildRequires: groff
 BuildRequires: libqb-devel
 BuildRequires: nss-devel
