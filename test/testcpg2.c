@@ -86,6 +86,6 @@ int main(int argc, char** argv) {
 	pfd.events = POLLIN;
 
 	assert(poll (&pfd, 1, 1000) == 1);
-	cpg_dispatch(handle, CS_DISPATCH_ALL);
+	assert(cpg_dispatch(handle, CS_DISPATCH_ALL) == CS_OK);
 	return (0);
 }
