@@ -1474,8 +1474,6 @@ static int uidgid_config_parser_cb(const char *path,
 	static char formated_err[256];
 	cs_error_t cs_err;
 
-	cs_err = CS_OK;
-
 	switch (type) {
 	case PARSER_CB_START:
 		break;
