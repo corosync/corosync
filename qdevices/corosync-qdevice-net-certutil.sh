@@ -111,7 +111,7 @@ get_serial_no() {
 }
 
 find_certdb_files() {
-    for cert_files_index in ${!CERTDB_FILES[@]};do
+    for cert_files_index in "${!CERTDB_FILES[@]}";do
         cert_files=${CERTDB_FILES[$cert_files_index]}
         test_file=${cert_files%% *}
         if [ -f "$DB_DIR/$test_file" ];then

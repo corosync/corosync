@@ -86,7 +86,7 @@ create_new_noise_file() {
         (ps -elf; date; w) | sha1sum | (read sha_sum rest; echo $sha_sum) > "$noise_file"
 
         chown_ref_cfgdir "$noise_file"
-        chmod `get_perm` "$noise_file"
+        chmod "$(get_perm)" "$noise_file"
     else
         echo "Using existing noise file $noise_file"
     fi
@@ -98,7 +98,7 @@ get_serial_no() {
     if ! [ -f "$SERIAL_NO_FILE" ];then
         echo "100" > $SERIAL_NO_FILE
         chown_ref_cfgdir "$SERIAL_NO_FILE"
-        chmod `get_perm` "$SERIAL_NO_FILE"
+        chmod "$(get_perm)" "$SERIAL_NO_FILE"
     fi
     serial_no=`cat $SERIAL_NO_FILE`
     serial_no=$((serial_no+1))
@@ -107,7 +107,7 @@ get_serial_no() {
 }
 
 find_certdb_files() {
-    for cert_files_index in ${!CERTDB_FILES[@]};do
+    for cert_files_index in "${!CERTDB_FILES[@]}";do
         cert_files=${CERTDB_FILES[$cert_files_index]}
         test_file=${cert_files%% *}
         if [ -f "$DB_DIR/$test_file" ];then
@@ -132,13 +132,13 @@ init_qnetd_ca() {
         echo "Creating $DB_DIR"
         mkdir -p "$DB_DIR"
         chown_ref_cfgdir "$DB_DIR"
-        chmod `get_perm true` "$DB_DIR"
+        chmod "$(get_perm true)" "$DB_DIR"
     fi
 
     echo "Creating new key and cert db"
     echo -n "" > "$PWD_FILE"
     chown_ref_cfgdir "$PWD_FILE"
-    chmod `get_perm` "$PWD_FILE"
+    chmod "$(get_perm)" "$PWD_FILE"
 
     certutil -N -d "$DB_DIR" -f "$PWD_FILE"
     cert_files=`find_certdb_files`
@@ -150,7 +150,7 @@ init_qnetd_ca() {
 
     for fname in $cert_files;do
         chown_ref_cfgdir "$DB_DIR/$fname"
-        chmod `get_perm` "$DB_DIR/$fname"
+        chmod "$(get_perm)" "$DB_DIR/$fname"
     done
 
     create_new_noise_file "$NOISE_FILE"
