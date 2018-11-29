@@ -5,7 +5,6 @@ includedir=${prefix}/include
 
 Name: @LIB@
 Version: @LIBVERSION@
-Description: Corosync @LIB@ library
-Requires.private: libcorosync_common libqb
+Description: Corosync common library
 Libs: -L${libdir} -l@LIB@
 Cflags: -I${includedir}
