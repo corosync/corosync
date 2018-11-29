@@ -38,6 +38,12 @@
 #include <netinet/in.h>
 #include <corosync/corotypes.h>
 
+/*
+ * Too keep future ABI compatibility, this value
+ * is intentionaly bigger then INTERFACE_MAX
+ */
+#define CFG_MAX_INTERFACES			16
+
 typedef uint64_t corosync_cfg_handle_t;
 
 /**

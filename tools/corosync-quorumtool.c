@@ -314,8 +314,8 @@ static const char *node_name(uint32_t nodeid, name_format_t name_format)
 {
 	int err;
 	int numaddrs;
-	corosync_cfg_node_address_t addrs[INTERFACE_MAX];
-	static char buf[(INET6_ADDRSTRLEN + 1) * KNET_MAX_LINK];
+	corosync_cfg_node_address_t addrs[CFG_MAX_INTERFACES];
+	static char buf[(INET6_ADDRSTRLEN + 1) * CFG_MAX_INTERFACES];
 	const char *nodelist_name = NULL;
 	socklen_t addrlen;
 	struct sockaddr_storage *ss;
@@ -336,7 +336,7 @@ static const char *node_name(uint32_t nodeid, name_format_t name_format)
 		bufptr = strlen(buf);
 	}
 
-	err = corosync_cfg_get_node_addrs(c_handle, nodeid, INTERFACE_MAX, &numaddrs, addrs);
+	err = corosync_cfg_get_node_addrs(c_handle, nodeid, CFG_MAX_INTERFACES, &numaddrs, addrs);
 	if (err != CS_OK) {
 		fprintf(stderr, "Unable to get node address for nodeid %u: %s\n", nodeid, cs_strerror(err));
 		return "";
