@@ -1141,7 +1141,8 @@ static void check_things_have_not_changed(struct totem_config *totem_config)
 		if (totem_config->interfaces[i].configured) {
 			if (totem_config->interfaces[i].knet_transport !=
 			    totem_config->orig_interfaces[i].knet_transport) {
-				log_printf(LOGSYS_LEVEL_ERROR, "New config has different knet transport for link %d. Internal value was NOT changed.\n", i);
+				log_printf(LOGSYS_LEVEL_ERROR,
+					   "New config has different knet transport for link %d. Internal value was NOT changed.\n", i);
 				changed = 1;
 			}
 			for (j=0; j < min(totem_config->interfaces[i].member_count, totem_config->orig_interfaces[i].member_count); j++) {
@@ -1150,10 +1151,16 @@ static void check_things_have_not_changed(struct totem_config *totem_config)
 					   sizeof(struct totem_ip_address))) {
 
 					ip_str = totemip_print(&totem_config->orig_interfaces[i].member_list[j]);
-					strncpy(addr_buf, ip_str, sizeof(addr_buf));
-					addr_buf[sizeof(addr_buf) - 1] = '\0';
-					log_printf(LOGSYS_LEVEL_ERROR, "new config has different address for link %d (addr changed from %s to %s). Internal value was NOT changed.\n", i, addr_buf, totemip_print(&totem_config->interfaces[i].member_list[j]));
-					changed = 1;
+
+					/* if ip_str is NULL then the old address was invalid and is allowed to change */
+					if (ip_str) {
+						strncpy(addr_buf, ip_str, sizeof(addr_buf));
+						addr_buf[sizeof(addr_buf) - 1] = '\0';
+						log_printf(LOGSYS_LEVEL_ERROR,
+							   "new config has different address for link %d (addr changed from %s to %s). Internal value was NOT changed.\n",
+							   i, addr_buf, totemip_print(&totem_config->interfaces[i].member_list[j]));
+						changed = 1;
+					}
 				}
 			}
 		}
@@ -1165,7 +1172,7 @@ static void check_things_have_not_changed(struct totem_config *totem_config)
 }
 
 
-static void put_nodelist_members_to_config(struct totem_config *totem_config, int reload)
+static int put_nodelist_members_to_config(struct totem_config *totem_config, int reload, const char **error_string)
 {
 	icmap_iter_t iter, iter2;
 	const char *iter_key, *iter_key2;
@@ -1246,11 +1253,23 @@ static void put_nodelist_members_to_config(struct totem_config *totem_config, in
 			member_count = totem_config->interfaces[linknumber].member_count;
 			res = totemip_parse(&totem_config->interfaces[linknumber].member_list[member_count],
 						node_addr_str, totem_config->ip_version);
-			if (res != -1) {
+			if (res == 0) {
 				totem_config->interfaces[linknumber].member_list[member_count].nodeid = nodeid;
 				totem_config->interfaces[linknumber].member_count++;
+				totem_config->interfaces[linknumber].configured = 1;
+			} else {
+				sprintf(error_string_response, "failed to parse node address '%s'\n", node_addr_str);
+				*error_string = error_string_response;
+
+				memset(&totem_config->interfaces[linknumber].member_list[member_count], 0,
+				       sizeof(struct totem_ip_address));
+
+				free(node_addr_str);
+				icmap_iter_finalize(iter2);
+				icmap_iter_finalize(iter);
+				return -1;
 			}
-			totem_config->interfaces[linknumber].configured = 1;
+
 			free(node_addr_str);
 		}
 
@@ -1271,6 +1290,7 @@ static void put_nodelist_members_to_config(struct totem_config *totem_config, in
 
 		free(new_interfaces);
 	}
+	return 0;
 }
 
 static void nodelist_dynamic_notify(
@@ -1285,6 +1305,7 @@ static void nodelist_dynamic_notify(
 	unsigned int member_no;
 	char tmp_str[ICMAP_KEYNAME_MAXLEN];
 	uint8_t reloading;
+	const char *error_string;
 	struct totem_config *totem_config = (struct totem_config *)user_data;
 
 	/*
@@ -1303,7 +1324,9 @@ static void nodelist_dynamic_notify(
 		return;
 	}
 
-	put_nodelist_members_to_config(totem_config, 1);
+	if (put_nodelist_members_to_config(totem_config, 1, &error_string)) {
+		log_printf (LOGSYS_LEVEL_ERROR, "%s", error_string);
+	}
 }
 
 
@@ -1537,6 +1560,14 @@ static int get_interface_params(struct totem_config *totem_config,
 			if (icmap_get_string(member_iter_key, &str) == CS_OK) {
 				res = totemip_parse (&totem_config->interfaces[linknumber].member_list[member_count++],
 						str, totem_config->ip_version);
+				if (res) {
+					sprintf(error_string_response, "failed to parse node address '%s'\n", str);
+					*error_string = error_string_response;
+
+					icmap_iter_finalize(member_iter);
+					icmap_iter_finalize(iter);
+					return -1;
+				}
 			}
 		}
 		icmap_iter_finalize(member_iter);
@@ -1730,7 +1761,9 @@ extern int totem_config_read (
 			icmap_set_ro_access("nodelist.local_node_pos", 0, 1);
 		}
 
-		put_nodelist_members_to_config(totem_config, 0);
+		if (put_nodelist_members_to_config(totem_config, 0, error_string)) {
+			return -1;
+		}
 	}
 
 	/*
@@ -2138,7 +2171,9 @@ static void totem_reload_notify(
 		memcpy(totem_config->orig_interfaces, totem_config->interfaces, sizeof (struct totem_interface) * INTERFACE_MAX);
 
 		get_interface_params(totem_config, &error_string, &warnings, 1);
-		put_nodelist_members_to_config (totem_config, 1);
+		if (put_nodelist_members_to_config (totem_config, 1, &error_string)) {
+			log_printf (LOGSYS_LEVEL_ERROR, "%s", error_string);
+		}
 		totem_volatile_config_read (totem_config, NULL);
 
 		calc_knet_ping_timers(totem_config);
