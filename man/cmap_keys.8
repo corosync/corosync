@@ -65,7 +65,8 @@ key is same as in the configuration file. All values are of string type.
 
 .TP
 nodelist.*
-Values read from the configuration file. Each node element in the configuration file gets
+Values are read from the configuration file only (dynamic updates are not allowed).
+Each node element in the configuration file gets
 assigned its position starting from zero. So the first node from the config file has
 nodelist.node.0. prefix. To be a valid entry, each node must have
 .B ring0_addr
@@ -389,53 +390,6 @@ For removal of permissions, simply delete the key
 .br
 # corosync-cmapctl -d uidgid.gid.500
 
-.SH DYNAMIC ADD/REMOVE OF UDPU NODE
-Eg. To add the node with address 10.34.38.108
-and nodeid 3. This node is called NEW and it's not running corosync yet.
-
-.PP
-* Find a node position in the node list which is not used yet. It's recommended that you
-use highest_number + 1. Let's say output of corosync-cmapctl looks like:
-
-.br
-nodelist.local_node_pos (u32) = 1
-.br
-nodelist.node.0.nodeid (u32) = 1
-.br
-nodelist.node.0.ring0_addr (str) = 10.34.38.106
-.br
-nodelist.node.1.nodeid (u32) = 2
-.br
-nodelist.node.1.ring0_addr (str) = 10.34.38.107
-
-So next node position will be 2.
-.PP
-* Add all entries needed for the node on all running nodes, as:
-
-.br
-# corosync-cmapctl -s nodelist.node.2.nodeid u32 3
-.br
-# corosync-cmapctl -s nodelist.node.2.ring0_addr str 10.34.38.108
-
-Always add the ring0_addr key last. The Corosync engine on all nodes should reply
-with
-.I notice  [TOTEM ] adding new UDPU member {10.34.38.108}
-message.
-.PP
-* Add node information to the configuration file on all nodes so that it
-will survive a restart of corosync.
-.PP
-* Copy and edit configuration file to the NEW node.
-.PP
-* Start corosync on the NEW node.
-
-Removal of a UDPU node is a very similar, slightly reversed action, so
-.PP
-* Stop corosync on the OLD node.
-.PP
-* Remove the relevant entries from cmap on all nodes.
-.PP
-* Change the configuration file on all nodes.
 
 .SH "SEE ALSO"
 .BR corosync_overview (7),

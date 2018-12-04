@@ -1293,44 +1293,6 @@ static int put_nodelist_members_to_config(struct totem_config *totem_config, int
 	return 0;
 }
 
-static void nodelist_dynamic_notify(
-	int32_t event,
-	const char *key_name,
-	struct icmap_notify_value new_val,
-	struct icmap_notify_value old_val,
-	void *user_data)
-{
-	int res;
-	unsigned int ring_no;
-	unsigned int member_no;
-	char tmp_str[ICMAP_KEYNAME_MAXLEN];
-	uint8_t reloading;
-	const char *error_string;
-	struct totem_config *totem_config = (struct totem_config *)user_data;
-
-	/*
-	* If a full reload is in progress then don't do anything until it's done and
-	* can reconfigure it all atomically
-	*/
-	if (icmap_get_uint8("config.totemconfig_reload_in_progress", &reloading) == CS_OK && reloading) {
-		return ;
-	}
-
-	res = sscanf(key_name, "nodelist.node.%u.ring%u%s", &member_no, &ring_no, tmp_str);
-	if (res != 3)
-		return ;
-
-	if (strcmp(tmp_str, "_addr") != 0) {
-		return;
-	}
-
-	if (put_nodelist_members_to_config(totem_config, 1, &error_string)) {
-		log_printf (LOGSYS_LEVEL_ERROR, "%s", error_string);
-	}
-}
-
-
-
 static void config_convert_nodelist_to_interface(struct totem_config *totem_config)
 {
 	int res = 0;
@@ -2216,11 +2178,5 @@ static void add_totem_config_notification(struct totem_config *totem_config)
 		ICMAP_TRACK_ADD | ICMAP_TRACK_MODIFY,
 		totem_reload_notify,
 		totem_config,
-		&icmap_track);
-
-	icmap_track_add("nodelist.node.",
-		ICMAP_TRACK_ADD | ICMAP_TRACK_DELETE | ICMAP_TRACK_MODIFY | ICMAP_TRACK_PREFIX,
-		nodelist_dynamic_notify,
-		(void *)totem_config,
 		&icmap_track);
 }
