@@ -775,6 +775,96 @@ potentially breaking down membership.  IPMI watchdogs are particularly
 notorious in this regard: read about kipmid_max_busy_us in IPMI.txt in
 the Linux kernel documentation.
 
+.SH "TO ADD A NEW NODE TO THE CLUSTER"
+For example to add a node with address 10.24.38.108 with nodeid 3. The node has the name NEW 
+(in DNS or /etc/hosts) and is not currently running corosync. The current corosync.conf nodelist 
+looks like this:
+.PP
+.nf
+.RS
+nodelist {
+    node {
+        nodeid: 1
+        ring0_addr: 10.24.38.101
+        name: node1
+    }
+    node {
+        nodeid: 2
+        ring0_addr: 10.24.38.102
+        name: node2
+
+    }
+}
+.RE
+.fi
+.PP
+Add a new entry for the node below the existing nodes. Node entries don't have
+to be in nodeid order, but it will help keep you sane. So the nodelist now looks like this:
+.PP
+.nf
+.RS
+nodelist {
+    node {
+        nodeid: 1
+        ring0_addr: 10.24.38.101
+        name: node1
+    }
+    node {
+        nodeid: 2
+        ring0_addr: 10.24.38.102
+        name: node2
+
+    }
+    node {
+        nodeid: 3
+        ring0_addr: 10.24.38.108
+        name: NEW
+
+    }
+}
+.RE
+.fi
+.PP
+
+.PP
+This file must then be copied onto all three nodes -  the existing two nodes, and the new one.
+On one of the existing corosync nodes, tell corosync to re-read the updated config file into memory:
+.PP
+.nf
+.RS
+corosync-cfgtool -R
+.RE
+.fi
+.PP
+This command only needs to be run on one node in the cluster. You may then start corosync on the NEW node 
+and it should join the cluster. If this doesn't work as expected then check the communications between all
+three nodes is working, and check the syslog files on all nodes for more information. It's important to note
+that the key bit of information about a node failing to join might be on a different node than you expect.
+
+.SH "TO REMOVE A NODE FROM THE CLUSTER"
+This is the reverse procedure to 'Adding a node' above. First you need to shut down the node you will
+be removing from the cluster.
+.PP
+.nf
+.RS
+corosync-cfgtool -H
+.RE
+.fi
+
+
+.PP
+Then delete the nodelist stanza from corosync.conf and finally update corosync on the remaining nodes by
+running
+.PP
+.nf
+.RS
+corosync-cfgtool -R
+.RE
+.fi
+.TP
+on one of them.
+
+
 .SH "FILES"
 .TP
 /etc/corosync/corosync.conf
