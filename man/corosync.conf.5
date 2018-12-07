@@ -865,15 +865,17 @@ corosync-cfgtool -R
 on one of them.
 
 .SH "ADDRESS RESOLUTION"
-corosync resolves ringX_addr names/IP addresses using the getaddrinfo(3) call. This function uses a sophisticated
-algorithm to sort node addresses into a preferred order and corosync always chooses the first address in that list.
-If the node has both IPv4 and IPv6 addresses it is likely that the IPv6 one will be chosen but this is not guaranteed
-(see RFC3484 for more information) as the algorthm matches on prefix length and other criteria.
+corosync resolves ringX_addr names/IP addresses using the getaddrinfo(3) call in two passes.
+First it will check for an IPv6 address, if that fails then it will look for an IPv4 address.
 
-As such it is essential that your DNS or /etc/hosts files are correctly configured so that all addresses for ringX
-appear on the same network (or are reachable with minimal hops) and over the same IP protocol. If this is not
-the case then some nodes might not be able to join the cluster. It is possible to override the search order used
-by getaddrinfo() using the configuration file /etc/gai.conf(5) if necessary, but this is not recommended.
+getaddrinfo() function uses a sophisticated algorithm to sort node addresses into a preferred
+order and corosync always chooses the first address in that list of the required family.
+As such it is essential that your DNS or /etc/hosts files are correctly configured so that
+all addresses for ringX appear on the same network (or are reachable with minimal hops)
+and over the same IP protocol. If this is not the case then some nodes might not be able
+to join the cluster. It is possible to override the search order used
+by getaddrinfo() using the configuration file /etc/gai.conf(5) if necessary,
+but this is not recommended.
 
 If there is any doubt about the order of addresses returned from getaddrinfo() then it might be simpler to use
 IP addresses (v4 or v6) in the ringX_addr field.
