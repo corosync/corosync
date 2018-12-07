@@ -295,8 +295,17 @@ int totemip_parse(struct totem_ip_address *totemip, const char *addr, int family
 	ahints.ai_protocol = IPPROTO_UDP;
 	ahints.ai_family   = family;
 
-	/* Lookup the nodename address */
-	ret = getaddrinfo(addr, NULL, &ahints, &ainfo);
+	/* If no address family specified then try IPv6 first then IPv4 */
+	if (family == AF_UNSPEC) {
+		ahints.ai_family = AF_INET6;
+		ret = getaddrinfo(addr, NULL, &ahints, &ainfo);
+		if (ret) {
+			ahints.ai_family = AF_INET;
+			ret = getaddrinfo(addr, NULL, &ahints, &ainfo);
+		}
+	} else {
+		ret = getaddrinfo(addr, NULL, &ahints, &ainfo);
+	}
 	if (ret)
 		return -1;
 
