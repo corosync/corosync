@@ -864,6 +864,22 @@ corosync-cfgtool -R
 .TP
 on one of them.
 
+.SH "ADDRESS RESOLUTION"
+corosync resolves ringX_addr names/IP addresses using the getaddrinfo(3) call. This function uses a sophisticated
+algorithm to sort node addresses into a preferred order and corosync always chooses the first address in that list.
+If the node has both IPv4 and IPv6 addresses it is likely that the IPv6 one will be chosen but this is not guaranteed
+(see RFC3484 for more information) as the algorthm matches on prefix length and other criteria.
+
+As such it is essential that your DNS or /etc/hosts files are correctly configured so that all addresses for ringX 
+appear on the same network (or are reachable with minimal hops) and over the same IP protocol. If this is not
+the case then some nodes might not be able to join the cluster. It is possible to override the search order used
+by getaddrinfo() using the configuration file /etc/gai.conf(5) if necessary, but this is not recommended.
+
+If there is any doubt about the order of addresses returned from getaddrinfo() then it might be simpler to use
+IP addresses (v4 or v6) in the ringX_addr field.
+
+For UDP/UDPU it is possible to force the IP family using totem.ip_version. This is ignored for knet as links
+can have different IP versions.
 
 .SH "FILES"
 .TP
@@ -875,4 +891,6 @@ The corosync executive configuration file.
 .BR votequorum (5),
 .BR corosync-qdevice (8),
 .BR logrotate (8)
+.BR getaddrinfo (3)
+.BR gai.conf (5)
 .PP
