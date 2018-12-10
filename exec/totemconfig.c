@@ -1400,6 +1400,15 @@ static int get_interface_params(struct totem_config *totem_config,
 			if (icmap_get_string(tmp_key, &str) == CS_OK) {
 				res = totemip_parse (&totem_config->interfaces[linknumber].bindnet, str,
 						     totem_config->ip_version);
+
+				if (res) {
+					sprintf(error_string_response, "failed to parse bindnet address '%s'\n", str);
+					*error_string = error_string_response;
+					free(str);
+
+					return -1;
+				}
+
 				free(str);
 			}
 
@@ -1408,7 +1417,17 @@ static int get_interface_params(struct totem_config *totem_config,
 			 */
 			snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.mcastaddr", linknumber);
 			if (icmap_get_string(tmp_key, &str) == CS_OK) {
-				res = totemip_parse (&totem_config->interfaces[linknumber].mcast_addr, str, totem_config->ip_version);
+				res = totemip_parse (&totem_config->interfaces[linknumber].mcast_addr, str,
+				    totem_config->ip_version);
+
+				if (res) {
+					sprintf(error_string_response, "failed to parse mcast address '%s'\n", str);
+					*error_string = error_string_response;
+					free(str);
+
+					return -1;
+				}
+
 				free(str);
 			} else {
 				/*
@@ -1528,8 +1547,11 @@ static int get_interface_params(struct totem_config *totem_config,
 
 					icmap_iter_finalize(member_iter);
 					icmap_iter_finalize(iter);
+					free(str);
 					return -1;
 				}
+
+				free(str);
 			}
 		}
 		icmap_iter_finalize(member_iter);
