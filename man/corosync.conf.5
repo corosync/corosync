@@ -194,9 +194,9 @@ This configuration option is optional and is only relevant when no nodeid is
 specified.  Some corosync clients require a signed 32 bit nodeid that is greater
 than zero however by default corosync uses all 32 bits of the IPv4 address space
 when generating a nodeid.  Set this option to yes to force the high bit to be
-zero and therefor ensure the nodeid is a positive signed 32 bit integer.
+zero and therefore ensure the nodeid is a positive signed 32 bit integer.
 
-WARNING: The clusters behavior is undefined if this option is enabled on only
+WARNING: Cluster behavior is undefined if this option is enabled on only
 a subset of the cluster (for example during a rolling upgrade).
 
 .TP
@@ -204,7 +204,7 @@ crypto_model
 This specifies which cryptographic library should be used by knet. Options
 are nss and openssl.
 
-The default is nss
+The default is nss.
 
 .TP
 crypto_hash
