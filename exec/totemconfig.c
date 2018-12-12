@@ -1771,6 +1771,7 @@ int totem_config_validate (
 {
 	static char local_error_reason[512];
 	char parse_error[512];
+	static char addr_str_buf[INET6_ADDRSTRLEN];
 	const char *error_reason = local_error_reason;
 	int i,j;
 	uint32_t u32;
@@ -1860,8 +1861,15 @@ int totem_config_validate (
 			if (totem_config->interfaces[i].configured) {
 				if (totem_config->interfaces[i].member_list[j].family !=
 				    totem_config->interfaces[i].member_list[0].family) {
+					memcpy(addr_str_buf,
+					    totemip_print(&(totem_config->interfaces[i].member_list[j])),
+					    sizeof(addr_str_buf));
+
 					snprintf (local_error_reason, sizeof(local_error_reason),
-						  "Nodes for link %d have different IP families", i);
+						  "Nodes for link %d have different IP families "
+						  "(compared %s with %s)", i,
+						  addr_str_buf,
+						  totemip_print(&(totem_config->interfaces[i].member_list[0])));
 					goto parse_error;
 				}
 			}
