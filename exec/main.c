@@ -1220,6 +1220,7 @@ int main (int argc, char **argv, char **envp)
 	long int tmpli;
 	char *ep;
 	char *tmp_str;
+	int log_subsys_id_totem;
 
 	/* default configuration
 	 */
@@ -1322,6 +1323,13 @@ int main (int argc, char **argv, char **envp)
 		log_printf (LOGSYS_LEVEL_NOTICE, "Corosync Cluster Engine ('%s'): started and ready to provide service.", VERSION);
 		log_printf (LOGSYS_LEVEL_INFO, "Corosync built-in features:" PACKAGE_FEATURES "");
 	}
+
+	/*
+	 * Create totem logsys subsys before totem_config_read so log functions can be used
+	 */
+	log_subsys_id_totem = _logsys_subsys_create("TOTEM", "totem,"
+			"totemip.c,totemconfig.c,totemcrypto.c,totemsrp.c,"
+			"totempg.c,totemudp.c,totemudpu.c,totemnet.c,totemknet.c");
 
 	/*
 	 * Make sure required directory is present
@@ -1452,9 +1460,7 @@ int main (int argc, char **argv, char **envp)
 	totem_config.totem_memb_ring_id_store = corosync_ring_id_store;
 
 	totem_config.totem_logging_configuration = totem_logging_configuration;
-	totem_config.totem_logging_configuration.log_subsys_id = _logsys_subsys_create("TOTEM", "totem,"
-			"totemip.c,totemconfig.c,totemcrypto.c,totemsrp.c,"
-			"totempg.c,totemudp.c,totemudpu.c,totemnet.c,totemknet.c");
+	totem_config.totem_logging_configuration.log_subsys_id = log_subsys_id_totem;
 
 	totem_config.totem_logging_configuration.log_level_security = LOGSYS_LEVEL_WARNING;
 	totem_config.totem_logging_configuration.log_level_error = LOGSYS_LEVEL_ERROR;

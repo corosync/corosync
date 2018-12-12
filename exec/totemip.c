@@ -52,6 +52,7 @@
 #include <ifaddrs.h>
 
 #include <corosync/totem/totemip.h>
+#include <corosync/logsys.h>
 #include <corosync/swab.h>
 
 #define LOCALHOST_IPV4 "127.0.0.1"
@@ -289,11 +290,13 @@ int totemip_parse(struct totem_ip_address *totemip, const char *addr, int family
 	struct sockaddr_in *sa;
 	struct sockaddr_in6 *sa6;
 	int ret;
+	int debug_ip_family;
 
 	memset(&ahints, 0, sizeof(ahints));
 	ahints.ai_socktype = SOCK_DGRAM;
 	ahints.ai_protocol = IPPROTO_UDP;
 	ahints.ai_family   = family;
+
 
 	/* If no address family specified then try IPv6 first then IPv4 */
 	if (family == AF_UNSPEC) {
@@ -306,8 +309,18 @@ int totemip_parse(struct totem_ip_address *totemip, const char *addr, int family
 	} else {
 		ret = getaddrinfo(addr, NULL, &ahints, &ainfo);
 	}
-	if (ret)
+
+	debug_ip_family = 4;
+	if (ahints.ai_family == AF_INET6) {
+		debug_ip_family = 6;
+	}
+
+	if (ret) {
+		log_printf (LOGSYS_LEVEL_DEBUG, "totemip_parse: IPv%u address of %s not resolvable",
+		    debug_ip_family, addr);
+
 		return -1;
+	}
 
 	sa = (struct sockaddr_in *)ainfo->ai_addr;
 	sa6 = (struct sockaddr_in6 *)ainfo->ai_addr;
@@ -317,6 +330,9 @@ int totemip_parse(struct totem_ip_address *totemip, const char *addr, int family
 		memcpy(totemip->addr, &sa->sin_addr, sizeof(struct in_addr));
 	else
 		memcpy(totemip->addr, &sa6->sin6_addr, sizeof(struct in6_addr));
+
+	log_printf (LOGSYS_LEVEL_DEBUG, "totemip_parse: IPv%u address of %s resolved as %s",
+		    debug_ip_family, addr, totemip_print(totemip));
 
 	freeaddrinfo(ainfo);
 	return 0;
