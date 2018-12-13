@@ -305,9 +305,22 @@ equal to highest of collected versions, corosync is terminated.
 
 .TP
 ip_version
-For udp or udpu, this specifies version of IP to use for communication.
-The value can be one of ipv4 or ipv6. Default (if unspecified) is ipv4.
-This does not apply to knet where both ipv4 and ipv6 address can be used,
+This specifies version of IP to ask DNS resolver for.
+The value can be one of
+.B ipv4
+(look only for an IPv4 address)
+,
+.B ipv6
+(check only IPv6 address)
+,
+.B ipv4-6
+(first check IPv4 address, if that fails then look for an IPv6 address) and
+.B ipv6-4
+(first check IPv6 address, if that fails then look for an IPv4 address).
+
+Default (if unspecified) is ipv6-4 for knet and udpu transports and ipv4 for udp.
+
+Knet transport allows to have a both ipv4 and ipv6 address,
 provided they are consistent on each link.
 
 Within the
@@ -865,8 +878,8 @@ corosync-cfgtool -R
 on one of them.
 
 .SH "ADDRESS RESOLUTION"
-corosync resolves ringX_addr names/IP addresses using the getaddrinfo(3) call in two passes.
-First it will check for an IPv6 address, if that fails then it will look for an IPv4 address.
+corosync resolves ringX_addr names/IP addresses using the getaddrinfo(3) call with respect
+of totem.ip_version setting.
 
 getaddrinfo() function uses a sophisticated algorithm to sort node addresses into a preferred
 order and corosync always chooses the first address in that list of the required family.
@@ -879,9 +892,6 @@ but this is not recommended.
 
 If there is any doubt about the order of addresses returned from getaddrinfo() then it might be simpler to use
 IP addresses (v4 or v6) in the ringX_addr field.
-
-For UDP/UDPU it is possible to force the IP family using totem.ip_version. This is ignored for knet as links
-can have different IP versions.
 
 .SH "FILES"
 .TP

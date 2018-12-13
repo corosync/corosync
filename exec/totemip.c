@@ -280,10 +280,12 @@ int totemip_totemip_to_sockaddr_convert(struct totem_ip_address *ip_addr,
 	return ret;
 }
 
-/* Converts an address string string into a totem_ip_address.
-   family can be AF_INET, AF_INET6 or 0 ("for "don't care")
-*/
-int totemip_parse(struct totem_ip_address *totemip, const char *addr, int family)
+/*
+ * Converts an address string string into a totem_ip_address. ip_version enum
+ * defines order.
+ */
+int totemip_parse(struct totem_ip_address *totemip, const char *addr,
+    enum totem_ip_version_enum ip_version)
 {
 	struct addrinfo *ainfo;
 	struct addrinfo ahints;
@@ -291,21 +293,35 @@ int totemip_parse(struct totem_ip_address *totemip, const char *addr, int family
 	struct sockaddr_in6 *sa6;
 	int ret;
 	int debug_ip_family;
+	int ai_family1, ai_family2;
 
 	memset(&ahints, 0, sizeof(ahints));
 	ahints.ai_socktype = SOCK_DGRAM;
 	ahints.ai_protocol = IPPROTO_UDP;
-	ahints.ai_family   = family;
 
-	/* If no address family specified then try IPv6 first then IPv4 */
-	if (family == AF_UNSPEC) {
-		ahints.ai_family = AF_INET6;
-		ret = getaddrinfo(addr, NULL, &ahints, &ainfo);
-		if (ret) {
-			ahints.ai_family = AF_INET;
-			ret = getaddrinfo(addr, NULL, &ahints, &ainfo);
-		}
-	} else {
+	ai_family1 = ai_family2 = -1;
+
+	switch (ip_version) {
+	case TOTEM_IP_VERSION_4:
+		ai_family1 = AF_INET;
+		break;
+	case TOTEM_IP_VERSION_6:
+		ai_family1 = AF_INET6;
+		break;
+	case TOTEM_IP_VERSION_4_6:
+		ai_family1 = AF_INET;
+		ai_family2 = AF_INET6;
+		break;
+	case TOTEM_IP_VERSION_6_4:
+		ai_family1 = AF_INET6;
+		ai_family2 = AF_INET;
+		break;
+	}
+
+	ahints.ai_family = ai_family1;
+	ret = getaddrinfo(addr, NULL, &ahints, &ainfo);
+	if (ret && ai_family2 != -1) {
+		ahints.ai_family = ai_family2;
 		ret = getaddrinfo(addr, NULL, &ahints, &ainfo);
 	}
 

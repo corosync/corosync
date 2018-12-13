@@ -165,8 +165,6 @@ static corosync_timer_handle_t corosync_stats_timer_handle;
 
 static const char *corosync_lock_file = LOCALSTATEDIR"/run/corosync.pid";
 
-static int ip_version = AF_INET;
-
 static char corosync_config_file[PATH_MAX + 1] = COROSYSCONFDIR "/corosync.conf";
 
 qb_loop_t *cs_poll_handle_get (void)
@@ -1453,8 +1451,6 @@ int main (int argc, char **argv, char **envp)
 				"Could not set priority %d", prio);
 		}
 	}
-
-	ip_version = totem_config.ip_version;
 
 	totem_config.totem_memb_ring_id_create_or_load = corosync_ring_id_create_or_load;
 	totem_config.totem_memb_ring_id_store = corosync_ring_id_store;
