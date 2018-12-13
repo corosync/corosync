@@ -67,6 +67,13 @@ struct totem_ip_address
 	unsigned char  addr[TOTEMIP_ADDRLEN];
 } __attribute__((packed));
 
+enum totem_ip_version_enum {
+	TOTEM_IP_VERSION_4,		/* Use only AF_INET */
+	TOTEM_IP_VERSION_6,		/* Use only AF_INET6 */
+	TOTEM_IP_VERSION_4_6,		/* Use AF_INET and if it fails, use AF_INET6 */
+	TOTEM_IP_VERSION_6_4		/* Use AF_INET6 and if it fails, use AF_INET */
+};
+
 struct totem_ip_if_address
 {
 	struct totem_ip_address ip_addr;
@@ -94,7 +101,7 @@ extern int totemip_sockaddr_to_totemip_convert(const struct sockaddr_storage *sa
 extern int totemip_totemip_to_sockaddr_convert(struct totem_ip_address *ip_addr,
 					       uint16_t port, struct sockaddr_storage *saddr, int *addrlen);
 extern int totemip_parse(struct totem_ip_address *totemip, const char *addr,
-			 int family);
+			 enum totem_ip_version_enum ip_version);
 extern int totemip_iface_check(struct totem_ip_address *bindnet,
 			       struct totem_ip_address *boundto,
 			       int *interface_up,

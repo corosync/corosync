@@ -739,7 +739,9 @@ static int main_config_parser_cb(const char *path,
 			}
 			if (strcmp(path, "totem.ip_version") == 0) {
 				if ((strcmp(value, "ipv4") != 0) &&
-				    (strcmp(value, "ipv6") != 0)) {
+				    (strcmp(value, "ipv6") != 0) &&
+				    (strcmp(value, "ipv6-4") != 0) &&
+				    (strcmp(value, "ipv4-6") != 0)) {
 					*error_string = "Invalid ip_version type";
 
 					return (0);

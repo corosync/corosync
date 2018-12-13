@@ -231,7 +231,7 @@ struct totem_config {
 
 	unsigned int miss_count_const;
 
-	int ip_version;
+	enum totem_ip_version_enum ip_version;
 
 	void (*totem_memb_ring_id_create_or_load) (
 	    struct memb_ring_id *memb_ring_id,

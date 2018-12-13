@@ -778,24 +778,31 @@ ret_found:
 	return node_pos;
 }
 
-static int totem_config_get_ip_version(struct totem_config *totem_config)
+static enum totem_ip_version_enum totem_config_get_ip_version(struct totem_config *totem_config)
 {
-	int res;
+	enum totem_ip_version_enum res;
 	char *str;
 
-	res = AF_INET;
-	if (totem_config->transport_number == TOTEM_TRANSPORT_KNET) {
-		res = AF_UNSPEC;
-	} else {
-		if (icmap_get_string("totem.ip_version", &str) == CS_OK) {
-			if (strcmp(str, "ipv4") == 0) {
-				res = AF_INET;
-			}
-			if (strcmp(str, "ipv6") == 0) {
-				res = AF_INET6;
-			}
-			free(str);
+	res = TOTEM_IP_VERSION_6_4;
+
+	if (totem_config->transport_number == TOTEM_TRANSPORT_UDP) {
+		res = TOTEM_IP_VERSION_4;
+	}
+
+	if (icmap_get_string("totem.ip_version", &str) == CS_OK) {
+		if (strcmp(str, "ipv4") == 0) {
+			res = TOTEM_IP_VERSION_4;
 		}
+		if (strcmp(str, "ipv6") == 0) {
+			res = TOTEM_IP_VERSION_6;
+		}
+		if (strcmp(str, "ipv6-4") == 0) {
+			res = TOTEM_IP_VERSION_6_4;
+		}
+		if (strcmp(str, "ipv4-6") == 0) {
+			res = TOTEM_IP_VERSION_4_6;
+		}
+		free(str);
 	}
 
 	return (res);
@@ -817,7 +824,7 @@ static uint16_t generate_cluster_id (const char *cluster_name)
 static int get_cluster_mcast_addr (
 		const char *cluster_name,
 		unsigned int linknumber,
-		int ip_version,
+		enum totem_ip_version_enum ip_version,
 		struct totem_ip_address *res)
 {
 	uint16_t clusterid;
@@ -832,10 +839,12 @@ static int get_cluster_mcast_addr (
 	memset (res, 0, sizeof(*res));
 
 	switch (ip_version) {
-	case AF_INET:
+	case TOTEM_IP_VERSION_4:
+	case TOTEM_IP_VERSION_4_6:
 		snprintf(addr, sizeof(addr), "239.192.%d.%d", clusterid >> 8, clusterid % 0xFF);
 		break;
-	case AF_INET6:
+	case TOTEM_IP_VERSION_6:
+	case TOTEM_IP_VERSION_6_4:
 		snprintf(addr, sizeof(addr), "ff15::%x", clusterid);
 		break;
 	default:
@@ -859,7 +868,7 @@ static unsigned int generate_nodeid(
 
 	/* AF_INET hard-coded here because auto-generated nodeids
 	   are only for IPv4 */
-	if (totemip_parse(&totemip, addr, AF_INET) != 0)
+	if (totemip_parse(&totemip, addr, TOTEM_IP_VERSION_4) != 0)
 		return -1;
 
 	memcpy (&nodeid, &totemip.addr, sizeof (unsigned int));
@@ -1104,7 +1113,7 @@ static void reconfigure_links(struct totem_config *totem_config)
 			continue;
 		}
 
-		err = totemip_parse(&local_ip, addr_string, AF_UNSPEC);
+		err = totemip_parse(&local_ip, addr_string, totem_config->ip_version);
 		if (err != 0) {
 			continue;
 		}
@@ -1429,7 +1438,7 @@ static int get_interface_params(struct totem_config *totem_config,
 				}
 
 				free(str);
-			} else {
+			} else if (totem_config->transport_number == TOTEM_TRANSPORT_UDP) {
 				/*
 				 * User not specified address -> autogenerate one from cluster_name key
 				 * (if available). Return code is intentionally ignored, because
@@ -1679,7 +1688,7 @@ extern int totem_config_read (
 	 */
 	if (totem_config->broadcast_use) {
 		totemip_parse (&totem_config->interfaces[0].mcast_addr,
-			       "255.255.255.255", 0);
+			       "255.255.255.255", TOTEM_IP_VERSION_4);
 	}
 
 
