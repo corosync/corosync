@@ -83,8 +83,8 @@ const char * short_service_name_get(uint32_t service_id,
 				    char *buf, size_t buf_size);
 
 /*
- * Return run directory (ether icmap system.run_dir or LOCALSTATEDIR/lib/corosync)
+ * Return state directory (ether icmap system.state_dir or LOCALSTATEDIR/lib/corosync)
  */
-const char *get_run_dir(void);
+const char *get_state_dir(void);
 
 #endif /* UTIL_H_DEFINED */

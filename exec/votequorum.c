@@ -780,7 +780,7 @@ static int load_ev_tracking_barrier(void)
 
 	ENTER();
 
-	snprintf(filename, sizeof(filename) - 1, "%s/ev_tracking", get_run_dir());
+	snprintf(filename, sizeof(filename) - 1, "%s/ev_tracking", get_state_dir());
 
 	ev_tracking_fd = open(filename, O_RDWR, 0700);
 	if (ev_tracking_fd != -1) {

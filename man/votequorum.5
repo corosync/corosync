@@ -32,7 +32,7 @@
 .\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 .\" * THE POSSIBILITY OF SUCH DAMAGE.
 .\" */
-.TH VOTEQUORUM 5 2012-01-24 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
+.TH VOTEQUORUM 5 2018-12-14 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
 .SH NAME
 votequorum \- Votequorum Configuration Overview
 .SH OVERVIEW
@@ -361,7 +361,8 @@ Note that even if the in-memory version of expected_votes is reduced, eg by remo
 or using corosync-quorumtool, the stored value will still be the highest value seen - it
 never gets reduced.
 .PP
-The value is held in the file /var/lib/corosync/ev_tracking which can be deleted if you 
+The value is held in the file ev_tracking (stored in the directory configured in system.state_dir
+or /var/lib/corosync/ when unset) which can be deleted if you
 really do need to reduce the expected votes for any reason, like the node has been moved 
 to a different cluster.
 .PP

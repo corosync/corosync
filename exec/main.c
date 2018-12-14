@@ -221,7 +221,7 @@ static void corosync_blackbox_write_to_file (void)
 
 	strftime(time_str, PATH_MAX, "%Y-%m-%dT%H:%M:%S", &cur_time_tm);
 	if (snprintf(fname, PATH_MAX, "%s/fdata-%s-%lld",
-	    get_run_dir(),
+	    get_state_dir(),
 	    time_str,
 	    (long long int)getpid()) >= PATH_MAX) {
 		log_printf(LOGSYS_LEVEL_ERROR, "Can't snprintf blackbox file name");
@@ -232,7 +232,7 @@ static void corosync_blackbox_write_to_file (void)
 		LOGSYS_PERROR(-res, LOGSYS_LEVEL_ERROR, "Can't store blackbox file");
 		return ;
 	}
-	snprintf(fdata_fname, sizeof(fdata_fname), "%s/fdata", get_run_dir());
+	snprintf(fdata_fname, sizeof(fdata_fname), "%s/fdata", get_state_dir());
 	unlink(fdata_fname);
 	if (symlink(fname, fdata_fname) == -1) {
 		log_printf(LOGSYS_LEVEL_ERROR, "Can't create symlink to '%s' for corosync blackbox file '%s'",
@@ -639,7 +639,7 @@ static void corosync_ring_id_create_or_load (
 	char filename[PATH_MAX];
 
 	snprintf (filename, sizeof(filename), "%s/ringid_%u",
-		get_run_dir(), nodeid);
+		get_state_dir(), nodeid);
 	fd = open (filename, O_RDONLY, 0700);
 	/*
 	 * If file can be opened and read, read the ring id
@@ -684,7 +684,7 @@ static void corosync_ring_id_store (
 	int res;
 
 	snprintf (filename, sizeof(filename), "%s/ringid_%u",
-		get_run_dir(), nodeid);
+		get_state_dir(), nodeid);
 
 	fd = open (filename, O_WRONLY, 0700);
 	if (fd == -1) {
@@ -1332,16 +1332,16 @@ int main (int argc, char **argv, char **envp)
 	/*
 	 * Make sure required directory is present
 	 */
-	res = stat (get_run_dir(), &stat_out);
+	res = stat (get_state_dir(), &stat_out);
 	if ((res == -1) || (res == 0 && !S_ISDIR(stat_out.st_mode))) {
-		log_printf (LOGSYS_LEVEL_ERROR, "Required directory not present %s.  Please create it.", get_run_dir());
+		log_printf (LOGSYS_LEVEL_ERROR, "Required directory not present %s.  Please create it.", get_state_dir());
 		corosync_exit_error (COROSYNC_DONE_DIR_NOT_PRESENT);
 	}
 
-	res = chdir(get_run_dir());
+	res = chdir(get_state_dir());
 	if (res == -1) {
-		log_printf (LOGSYS_LEVEL_ERROR, "Cannot chdir to run directory %s.  "
-		    "Please make sure it has correct context and rights.", get_run_dir());
+		log_printf (LOGSYS_LEVEL_ERROR, "Cannot chdir to state directory %s.  "
+		    "Please make sure it has correct context and rights.", get_state_dir());
 		corosync_exit_error (COROSYNC_DONE_DIR_NOT_PRESENT);
 	}
 
