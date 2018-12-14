@@ -169,16 +169,16 @@ int cs_name_tisEqual (cs_name_t *str1, char *str2) {
 	}
 }
 
-const char *get_run_dir(void)
+const char *get_state_dir(void)
 {
 	static char path[PATH_MAX] = {'\0'};
-	char *cmap_run_dir;
+	char *cmap_state_dir;
 	int res;
 
 	if (path[0] == '\0') {
-		if (icmap_get_string("system.run_dir", &cmap_run_dir) == CS_OK) {
-			res = snprintf(path, PATH_MAX, "%s", cmap_run_dir);
-			free(cmap_run_dir);
+		if (icmap_get_string("system.state_dir", &cmap_state_dir) == CS_OK) {
+			res = snprintf(path, PATH_MAX, "%s", cmap_state_dir);
+			free(cmap_state_dir);
 		} else {
 			res = snprintf(path, PATH_MAX, "%s/%s", LOCALSTATEDIR, "lib/corosync");
 		}
