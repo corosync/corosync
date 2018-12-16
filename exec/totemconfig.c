@@ -1734,7 +1734,7 @@ extern int totem_config_read (
 				*warnings |= TOTEM_CONFIG_WARNING_TOTEM_NODEID_IGNORED;
 			}
 			if ((totem_config->transport_number == TOTEM_TRANSPORT_KNET) && (!totem_config->node_id)) {
-				*error_string = "With knet, you must specify nodeid for current node";
+				*error_string = "Knet requires an explicit nodeid for the local node";
 				return -1;
 			}
 
