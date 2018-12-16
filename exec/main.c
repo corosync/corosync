@@ -1318,7 +1318,7 @@ int main (int argc, char **argv, char **envp)
 	}
 
 	if (!testonly) {
-		log_printf (LOGSYS_LEVEL_NOTICE, "Corosync Cluster Engine ('%s'): started and ready to provide service.", VERSION);
+		log_printf (LOGSYS_LEVEL_NOTICE, "Corosync Cluster Engine %s starting up", VERSION);
 		log_printf (LOGSYS_LEVEL_INFO, "Corosync built-in features:" PACKAGE_FEATURES "");
 	}
 
