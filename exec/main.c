@@ -1334,7 +1334,7 @@ int main (int argc, char **argv, char **envp)
 	 */
 	res = stat (get_state_dir(), &stat_out);
 	if ((res == -1) || (res == 0 && !S_ISDIR(stat_out.st_mode))) {
-		log_printf (LOGSYS_LEVEL_ERROR, "Required directory not present %s.  Please create it.", get_state_dir());
+		log_printf (LOGSYS_LEVEL_ERROR, "State directory %s not present.  Please create it.", get_state_dir());
 		corosync_exit_error (COROSYNC_DONE_DIR_NOT_PRESENT);
 	}
 

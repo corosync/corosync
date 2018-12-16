@@ -1633,7 +1633,7 @@ static int read_config_file_into_icmap(
 		char error_str[100];
 		const char *error_ptr = qb_strerror_r(errno, error_str, sizeof(error_str));
 		snprintf (error_reason, sizeof(error_string_response),
-			"Can't read file %s reason = (%s)",
+			"Can't read file %s: %s",
 			 filename, error_ptr);
 		*error_string = error_reason;
 		return -1;
