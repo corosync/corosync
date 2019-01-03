@@ -857,7 +857,12 @@ int totemknet_initialize (
 	fcntl(instance->logpipes[0], F_SETFL, O_NONBLOCK);
 	fcntl(instance->logpipes[1], F_SETFL, O_NONBLOCK);
 
+#if !defined(KNET_API_VER) || (KNET_API_VER == 1)
 	instance->knet_handle = knet_handle_new(instance->totem_config->node_id, instance->logpipes[1], KNET_LOG_DEBUG);
+#endif
+#if KNET_API_VER == 2
+	instance->knet_handle = knet_handle_new(instance->totem_config->node_id, instance->logpipes[1], KNET_LOG_DEBUG, KNET_HANDLE_FLAG_PRIVILEGED);
+#endif
 
 	if (!instance->knet_handle) {
 		KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_CRIT, "knet_handle_new failed");
