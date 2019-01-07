@@ -36,7 +36,7 @@ noinst_HEADERS		= apidef.h cs_queue.h logconfig.h main.h \
 			  totemnet.h totemudp.h \
 			  totemudpu.h totemsrp.h util.h vsf.h \
 			  schedwrk.h sync.h fsm.h votequorum.h vsf_ykd.h \
-			  totemknet.h stats.h ipcs_stats.h
+			  totemknet.h stats.h ipcs_stats.h etherfilter.h
 
 sbin_PROGRAMS		= corosync
 
@@ -47,7 +47,7 @@ corosync_SOURCES	= vsf_ykd.c coroparse.c vsf_quorum.c sync.c \
 			  ipc_glue.c service.c logconfig.c totemconfig.c \
 			  totemip.c totemnet.c totemudp.c \
 			  totemudpu.c totemsrp.c \
-			  totempg.c totemknet.c
+			  totempg.c totemknet.c etherfilter.c
 
 if BUILD_MONITORING
 corosync_SOURCES	+= mon.c
@@ -59,10 +59,10 @@ endif
 
 corosync_CPPFLAGS	= -DLOGCONFIG_USE_ICMAP=1
 
-corosync_CFLAGS         = $(statgrab_CFLAGS) $(libsystemd_CFLAGS) $(knet_CFLAGS)
+corosync_CFLAGS         = $(statgrab_CFLAGS) $(libsystemd_CFLAGS) $(knet_CFLAGS) $(nozzle_CFLAGS)
 
 corosync_LDADD		= ../common_lib/libcorosync_common.la \
-			  $(LIBQB_LIBS) $(statgrab_LIBS) $(libsystemd_LIBS) $(knet_LIBS)
+			  $(LIBQB_LIBS) $(statgrab_LIBS) $(libsystemd_LIBS) $(knet_LIBS) $(nozzle_LIBS)
 
 corosync_DEPENDENCIES	= ../common_lib/libcorosync_common.la
 
