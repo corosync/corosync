@@ -32,7 +32,7 @@
 .\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 .\" * THE POSSIBILITY OF SUCH DAMAGE.
 .\" */
-.TH COROSYNC_CONF 5 2018-12-14 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
+.TH COROSYNC_CONF 5 2019-01-10 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
 .SH NAME
 corosync.conf - corosync executive configuration file
 
@@ -314,9 +314,11 @@ The value can be one of
 (check only IPv6 address)
 ,
 .B ipv4-6
-(first check IPv4 address, if that fails then look for an IPv6 address) and
+(look for all address families and use first IPv4 address found in the list if there is such address,
+otherwise use first IPv6 address) and
 .B ipv6-4
-(first check IPv6 address, if that fails then look for an IPv4 address).
+(look for all address families and use first IPv6 address found in the list if there is such address,
+otherwise use first IPv4 address).
 
 Default (if unspecified) is ipv6-4 for knet and udpu transports and ipv4 for udp.
 
