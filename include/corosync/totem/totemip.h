@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005-2010 Red Hat, Inc.
+ * Copyright (c) 2005-2019 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -70,8 +70,8 @@ struct totem_ip_address
 enum totem_ip_version_enum {
 	TOTEM_IP_VERSION_4,		/* Use only AF_INET */
 	TOTEM_IP_VERSION_6,		/* Use only AF_INET6 */
-	TOTEM_IP_VERSION_4_6,		/* Use AF_INET and if it fails, use AF_INET6 */
-	TOTEM_IP_VERSION_6_4		/* Use AF_INET6 and if it fails, use AF_INET */
+	TOTEM_IP_VERSION_4_6,		/* Use AF_UNSPEC and filter result preferring AF_INET */
+	TOTEM_IP_VERSION_6_4		/* Use AF_UNSPEC and filter result preferring AF_INET6 */
 };
 
 struct totem_ip_if_address

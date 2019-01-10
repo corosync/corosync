@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005-2011 Red Hat, Inc.
+ * Copyright (c) 2005-2019 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -288,69 +288,113 @@ int totemip_parse(struct totem_ip_address *totemip, const char *addr,
     enum totem_ip_version_enum ip_version)
 {
 	struct addrinfo *ainfo;
+	struct addrinfo *ainfo_iter;
+	struct addrinfo *ainfo_ipv4;
+	struct addrinfo *ainfo_ipv6;
+	struct addrinfo *ainfo_final;
 	struct addrinfo ahints;
 	struct sockaddr_in *sa;
 	struct sockaddr_in6 *sa6;
 	int ret;
 	int debug_ip_family;
-	int ai_family1, ai_family2;
+	int ai_family;
 
 	memset(&ahints, 0, sizeof(ahints));
 	ahints.ai_socktype = SOCK_DGRAM;
 	ahints.ai_protocol = IPPROTO_UDP;
 
-	ai_family1 = ai_family2 = -1;
+	ai_family = AF_UNSPEC;
+	debug_ip_family = 0;
 
 	switch (ip_version) {
 	case TOTEM_IP_VERSION_4:
-		ai_family1 = AF_INET;
+		ai_family = AF_INET;
+		debug_ip_family = 4;
 		break;
 	case TOTEM_IP_VERSION_6:
-		ai_family1 = AF_INET6;
-		break;
-	case TOTEM_IP_VERSION_4_6:
-		ai_family1 = AF_INET;
-		ai_family2 = AF_INET6;
+		ai_family = AF_INET6;
+		debug_ip_family = 6;
 		break;
 	case TOTEM_IP_VERSION_6_4:
-		ai_family1 = AF_INET6;
-		ai_family2 = AF_INET;
+	case TOTEM_IP_VERSION_4_6:
+		/*
+		 * ai_family and debug_ip_family are already set correctly
+		 */
 		break;
 	}
 
-	ahints.ai_family = ai_family1;
+	ahints.ai_family = ai_family;
+
 	ret = getaddrinfo(addr, NULL, &ahints, &ainfo);
-	if (ret && ai_family2 != -1) {
-		ahints.ai_family = ai_family2;
-		ret = getaddrinfo(addr, NULL, &ahints, &ainfo);
+
+	if (ret == 0 && ai_family == AF_UNSPEC) {
+		ainfo_ipv4 = ainfo_ipv6 = NULL;
+
+		/*
+		 * Walk thru results and store first AF_INET and AF_INET6
+		 */
+		for (ainfo_iter = ainfo; ainfo_iter != NULL; ainfo_iter = ainfo_iter->ai_next) {
+			if (ainfo_iter->ai_family == AF_INET && ainfo_ipv4 == NULL) {
+				ainfo_ipv4 = ainfo_iter;
+			}
+
+			if (ainfo_iter->ai_family == AF_INET6 && ainfo_ipv6 == NULL) {
+				ainfo_ipv6 = ainfo_iter;
+			}
+		}
+
+		if (ip_version == TOTEM_IP_VERSION_6_4) {
+			if (ainfo_ipv6 != NULL) {
+				ainfo_final = ainfo_ipv6;
+			} else {
+				ainfo_final = ainfo_ipv4;
+			}
+		} else {
+			if (ainfo_ipv4 != NULL) {
+				ainfo_final = ainfo_ipv4;
+			} else {
+				ainfo_final = ainfo_ipv6;
+			}
+		}
+	} else if (ret == 0) {
+		ainfo_final = ainfo;
+	} else {
+		ainfo_final = NULL;
 	}
 
-	debug_ip_family = 4;
-	if (ahints.ai_family == AF_INET6) {
+	if (ainfo_final == NULL) {
+		if (ret == 0) {
+			freeaddrinfo(ainfo);
+		}
+
+		if (debug_ip_family == 0) {
+			log_printf(LOGSYS_LEVEL_DEBUG, "totemip_parse: IP address of %s not resolvable",
+			    addr);
+		} else {
+			log_printf(LOGSYS_LEVEL_DEBUG, "totemip_parse: IPv%u address of %s not resolvable",
+			    debug_ip_family, addr);
+		}
+
+		return (-1);
+	}
+
+	totemip->family = ainfo_final->ai_family;
+	if (ainfo_final->ai_family == AF_INET) {
+		sa = (struct sockaddr_in *)ainfo_final->ai_addr;
+		memcpy(totemip->addr, &sa->sin_addr, sizeof(struct in_addr));
+		debug_ip_family = 4;
+	} else {
+		sa6 = (struct sockaddr_in6 *)ainfo_final->ai_addr;
+		memcpy(totemip->addr, &sa6->sin6_addr, sizeof(struct in6_addr));
 		debug_ip_family = 6;
 	}
 
-	if (ret) {
-		log_printf (LOGSYS_LEVEL_DEBUG, "totemip_parse: IPv%u address of %s not resolvable",
-		    debug_ip_family, addr);
-
-		return -1;
-	}
-
-	sa = (struct sockaddr_in *)ainfo->ai_addr;
-	sa6 = (struct sockaddr_in6 *)ainfo->ai_addr;
-	totemip->family = ainfo->ai_family;
-
-	if (ainfo->ai_family == AF_INET)
-		memcpy(totemip->addr, &sa->sin_addr, sizeof(struct in_addr));
-	else
-		memcpy(totemip->addr, &sa6->sin6_addr, sizeof(struct in6_addr));
-
-	log_printf (LOGSYS_LEVEL_DEBUG, "totemip_parse: IPv%u address of %s resolved as %s",
+	log_printf(LOGSYS_LEVEL_DEBUG, "totemip_parse: IPv%u address of %s resolved as %s",
 		    debug_ip_family, addr, totemip_print(totemip));
 
 	freeaddrinfo(ainfo);
-	return 0;
+
+	return (0);
 }
 
 /* Make a sockaddr_* into a totem_ip_address */
