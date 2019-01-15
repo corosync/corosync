@@ -63,9 +63,12 @@ This top level directive contains configuration options related to system.
 .TP
 resources { }
 This top level directive contains configuration options for resources.
+.TP
+nozzle { }
+This top level directive contains configuration options for a libnozzle device.
 
 .PP
-The 
+The
 .B interface sub-directive of totem is optional for UDP and knet transports.
 
 For knet, multiple interface subsections define parameters for each knet link on the
@@ -78,7 +81,7 @@ is used to define cluster nodes.
 linknumber
 This specifies the link number for the interface.  When using the knet
 protocol, each interface should specify separate link numbers to uniquely
-identify to the membership protocol which interface to use for which link. 
+identify to the membership protocol which interface to use for which link.
 The linknumber must start at 0. For UDP the only supported linknumber is 0.
 
 .TP
@@ -88,7 +91,7 @@ mode. (see link_mode below)
 
 .TP
 knet_ping_interval
-This specifies the interval between knet link pings. 
+This specifies the interval between knet link pings.
 knet_ping_interval and knet_ping_timeout
 are a pair, if one is specified the other should be too, otherwise one will be calculated from
 the token timeout and one will be taken from the config file.
@@ -96,7 +99,7 @@ the token timeout and one will be taken from the config file.
 
 .TP
 knet_ping_timeout
-If no ping is received within this time, the knet link is declared dead. 
+If no ping is received within this time, the knet link is declared dead.
 knet_ping_interval and knet_ping_timeout
 are a pair, if one is specified the other should be too, otherwise one will be calculated from
 the token timeout and one will be taken from the config file.
@@ -120,7 +123,7 @@ bindnetaddr (udp only)
 This specifies the network address the corosync executive should bind
 to when using udp.
 
-bindnetaddr (udp only) 
+bindnetaddr (udp only)
 should be an IP address configured on the system, or a network
 address.
 
@@ -160,9 +163,9 @@ mcastport (udp only)
 This specifies the UDP port number.  It is possible to use the same multicast
 address on a network with the corosync services configured for different
 UDP ports.
-Please note corosync uses two UDP ports mcastport (for mcast receives) and 
+Please note corosync uses two UDP ports mcastport (for mcast receives) and
 mcastport - 1 (for mcast sends).
-If you have multiple clusters on the same network using the same mcastaddr 
+If you have multiple clusters on the same network using the same mcastaddr
 please configure the mcastports with a gap.
 
 .TP
@@ -243,14 +246,14 @@ link_mode
 This specifies the Kronosnet mode, which may be passive, active, or
 rr (round-robin).
 .B passive:
-the active link with the lowest priority will be used. If one or more 
+the active link with the lowest priority will be used. If one or more
 links share the same priority the one with the lowest link ID will
 be used.
 .B active:
 All active links will be used simultaneously to send traffic.
 link priority is ignored.
 .B rr:
-Round-Robin policy. Each packet will be sent to the next active link in 
+Round-Robin policy. Each packet will be sent to the next active link in
 order.
 
 If only one interface directive is specified, passive is automatically chosen.
@@ -284,7 +287,7 @@ The default is 1500.
 
 .TP
 transport
-This directive controls the transport mechanism used.  
+This directive controls the transport mechanism used.
 The default is knet.  The transport type can also be set to udpu or udp.
 Only knet allows crypto or multiple interfaces per node.
 
@@ -604,7 +607,7 @@ and
 The default is syslog and stderr.
 
 Please note, if you are using to_logfile and want to rotate the file, use logrotate(8)
-with the option 
+with the option
 .B
 copytruncate.
 eg.
@@ -796,6 +799,49 @@ communication may incur multi-second delays in the Corosync main loop,
 potentially breaking down membership.  IPMI watchdogs are particularly
 notorious in this regard: read about kipmid_max_busy_us in IPMI.txt in
 the Linux kernel documentation.
+
+
+.PP
+Within the
+.B nozzle
+directive it is possible to specify options for a libnozzle device. This is a pseudo
+ethernet device that routes network traffic through a channel on the corosync knet network
+(NOT cpg or any corosync internal service) to other nodes in the cluster. This allows
+applications to take advantage of knet features such as multipathing, automatic failover,
+link switching etc. Note that libnozzle is not a reliable transport, but you can tunnel TCP
+through it for reliable communications.
+.br
+libnozzle also supports optional interface up/down scripts that are kept under a
+/etc/corosync/updown.d/ directory. See the knet documentation for more information.
+.br
+Only one nozzle device is allowed.
+.br
+The nozzle stanza takes several options:
+.TP
+name
+The name of the network device to be created. On Linux this may be any name at all, other
+platforms have restrictions on the name.
+.TP
+ipaddr
+The IP address (IPv6 or IPv4) of the interface. The bottom part of this address will be replaced
+by the local node's nodeid in conjunction with ipprefix. so, eg
+ipaddr: 192.168.1.0
+ipprefix: 24
+will make nodeids 1,2,5 use IP addresses 192.168.1.1, 192.168.1.2 & 192.168.1.5.
+If a prefix length of 16 is used then the bottom two bytes will be filled in with nodeid numbers.
+IPv6 addresses must end in '::', the nodeid will be added after the two colons to make the
+local IP address.
+Only one IP address is currently supported in the corosync.conf file. Additional IP addresses
+can be added in the ifup script if necessary.
+.TP
+ipprefix
+specifies the IP address prefix for the nozzle device (see above)
+.TP
+macaddr
+Specifies the MAC address prefix for the nozzle device. As for the IP address, the bottom part
+of the MAC address will be filled in with the node id. In this case no prefix applies, the bottom
+two bytes of the MAC address will always be overwritten with the node id. So specifying
+macaddr: 54:54:12:24:12:12 on nodeid 1 will result in it having a MAC address of 54:54:12:24:00:01
 
 .SH "TO ADD A NEW NODE TO THE CLUSTER"
 For example to add a node with address 10.24.38.108 with nodeid 3. The node has the name NEW
