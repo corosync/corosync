@@ -799,7 +799,12 @@ directive it is possible to specify options for a libnozzle device. This is a ps
 ethernet device that routes network traffic through a channel on the corosync knet network
 (NOT cpg or any corosync internal service) to other nodes in the cluster. This allows
 applications to take advantage of knet features such as multipathing, automatic failover,
-link switching etc. It takes several options:
+link switching etc. Note that libnozzle is not a reliable transport, but you can tunnel TCP
+through it for reliable communications.
+.B
+libnozzle also supports optional interface up/down scripts that are kept under a
+/etc/corosync/updown.d/ directory. See the knet documentation for more information.
+The nozzle stanza takes several options:
 .TP
 name
 The name of the network device to be created. On Linux this may be any name at all, other
@@ -818,11 +823,11 @@ local IP address.
 ipprefix
 specifies the IP address prefix for the nozzle device (see above)
 .TP
-maccaddr
+macaddr
 Specifies the MAC address prefix for the nozzle device. As for the IP address, the bottom part
 of the MAC address will be filled in with the node id. In this case no prefix applies, the bottom
 two bytes of the MAC address will always be overwritten with the node id. So specifying
-macaddr: 54:54:12:12:12 on nodeid 1 will result in it having a MAC address of 54:54:12:00:01
+macaddr: 54:54:12:24:12:12 on nodeid 1 will result in it having a MAC address of 54:54:12:24:00:01
 
 .SH "TO ADD A NEW NODE TO THE CLUSTER"
 For example to add a node with address 10.24.38.108 with nodeid 3. The node has the name NEW

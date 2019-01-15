@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2018 Red Hat, Inc.
+ * Copyright (c) 2016-2019 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -44,6 +44,7 @@
 #include <sys/ioctl.h>
 #include <sys/param.h>
 #include <netinet/in.h>
+#include <net/ethernet.h>
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -73,7 +74,6 @@
 
 #include "main.h"
 #include "util.h"
-#include "etherfilter.h"
 
 #include <libknet.h>
 #include <corosync/totem/totemstats.h>
@@ -228,6 +228,50 @@ do {												\
                 __FUNCTION__, __FILE__, __LINE__,						\
 		fmt ": %s (%d)", ##args, _error_ptr, err_num);				\
 	} while(0)
+
+
+static inline int is_ether_addr_multicast(const uint8_t *addr)
+{
+	return (addr[0] & 0x01);
+}
+static inline int is_ether_addr_broadcast(const uint8_t *addr)
+{
+	return (addr[0] & addr[1] & addr[2] & addr[3] & addr[4] & addr[5]) == 0xFF;
+}
+static inline int is_ether_addr_zero(const uint8_t *addr)
+{
+	return (!addr[0] && !addr[1] && !addr[2] && !addr[3] && !addr[4] && !addr[5]);
+}
+
+static int ether_host_filter_fn(void *private_data,
+				const unsigned char *outdata,
+				ssize_t outdata_len,
+				uint8_t tx_rx,
+				knet_node_id_t this_host_id,
+				knet_node_id_t src_host_id,
+				int8_t *channel,
+				knet_node_id_t *dst_host_ids,
+				size_t *dst_host_ids_entries)
+{
+	struct ether_header *eth_h = (struct ether_header *)outdata;
+	uint8_t *dst_mac = (uint8_t *)eth_h->ether_dhost;
+	uint16_t dst_host_id;
+
+	if (is_ether_addr_zero(dst_mac))
+		return -1;
+
+	if (is_ether_addr_multicast(dst_mac) ||
+	    is_ether_addr_broadcast(dst_mac)) {
+		return 1;
+	}
+
+	memmove(&dst_host_id, &dst_mac[4], 2);
+
+	dst_host_ids[0] = ntohs(dst_host_id);
+	*dst_host_ids_entries = 1;
+
+	return 0;
+}
 
 
 static int dst_host_filter_callback_fn(void *private_data,
@@ -1741,8 +1785,10 @@ static int setup_nozzle(void *knet_context)
 	icmap_get_string(NOZZLE_PREFIX, &prefix_str);
 	icmap_get_string(NOZZLE_MACADDR, &macaddr_str);
 
+
 	if (ipaddr_str && !prefix_str) {
-		knet_log_printf (LOGSYS_LEVEL_ERROR, "No prefix supplied for Nozzle IP address");
+		knet_log_printf (LOGSYS_LEVEL_ERROR, "No IP address or prefix supplied for Nozzle IP address");
+		return 0;
 	}
 
 	res = icmap_get_string(NOZZLE_NAME, &name_str);

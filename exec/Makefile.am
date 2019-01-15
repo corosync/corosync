@@ -36,7 +36,7 @@ noinst_HEADERS		= apidef.h cs_queue.h logconfig.h main.h \
 			  totemnet.h totemudp.h \
 			  totemudpu.h totemsrp.h util.h vsf.h \
 			  schedwrk.h sync.h fsm.h votequorum.h vsf_ykd.h \
-			  totemknet.h stats.h ipcs_stats.h etherfilter.h
+			  totemknet.h stats.h ipcs_stats.h
 
 sbin_PROGRAMS		= corosync
 
@@ -47,7 +47,7 @@ corosync_SOURCES	= vsf_ykd.c coroparse.c vsf_quorum.c sync.c \
 			  ipc_glue.c service.c logconfig.c totemconfig.c \
 			  totemip.c totemnet.c totemudp.c \
 			  totemudpu.c totemsrp.c \
-			  totempg.c totemknet.c etherfilter.c
+			  totempg.c totemknet.c
 
 if BUILD_MONITORING
 corosync_SOURCES	+= mon.c
