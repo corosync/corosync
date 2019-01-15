@@ -175,6 +175,7 @@ LIBS="$SAVE_LIBS"
 AC_CHECK_LIB([pthread], [pthread_create])
 AC_CHECK_LIB([socket], [socket])
 PKG_CHECK_MODULES([knet],[libknet])
+PKG_CHECK_MODULES([nozzle],[libnozzle], [AC_DEFINE_UNQUOTED([HAVE_LIBNOZZLE], 1, [Have libnozzle])], [have_nozzle="no"])
 AC_CHECK_LIB([nsl], [t_open])
 AC_CHECK_LIB([rt], [sched_getscheduler])
 AC_CHECK_LIB([z], [crc32],
@@ -404,6 +405,11 @@ AM_CONDITIONAL(BUILD_VQSIM, test x$enable_vqsim = xyes)
 ENV_CFLAGS="$CFLAGS"
 ENV_CPPFLAGS="$CPPFLAGS"
 ENV_LDFLAGS="$LDFLAGS"
+
+# Add nozzle to Package features if enabled
+if test "x$have_nozzle" != xno; then
+	PACKAGE_FEATURES="$PACKAGE_FEATURES nozzle"
+fi
 
 # debug build stuff
 if test "x${enable_debug}" = xyes; then

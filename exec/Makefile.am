@@ -59,10 +59,10 @@ endif
 
 corosync_CPPFLAGS	= -DLOGCONFIG_USE_ICMAP=1
 
-corosync_CFLAGS         = $(statgrab_CFLAGS) $(libsystemd_CFLAGS) $(knet_CFLAGS)
+corosync_CFLAGS         = $(statgrab_CFLAGS) $(libsystemd_CFLAGS) $(knet_CFLAGS) $(nozzle_CFLAGS)
 
 corosync_LDADD		= ../common_lib/libcorosync_common.la \
-			  $(LIBQB_LIBS) $(statgrab_LIBS) $(libsystemd_LIBS) $(knet_LIBS)
+			  $(LIBQB_LIBS) $(statgrab_LIBS) $(libsystemd_LIBS) $(knet_LIBS) $(nozzle_LIBS)
 
 corosync_DEPENDENCIES	= ../common_lib/libcorosync_common.la
 
