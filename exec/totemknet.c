@@ -1,6 +1,5 @@
-
 /*
- * Copyright (c) 2016-2018 Red Hat, Inc.
+ * Copyright (c) 2016-2019 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -45,6 +44,7 @@
 #include <sys/ioctl.h>
 #include <sys/param.h>
 #include <netinet/in.h>
+#include <net/ethernet.h>
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -60,6 +60,10 @@
 
 #include <qb/qbdefs.h>
 #include <qb/qbloop.h>
+#ifdef HAVE_LIBNOZZLE
+#include <libgen.h>
+#include <libnozzle.h>
+#endif
 
 #include <corosync/sq.h>
 #include <corosync/swab.h>
@@ -68,6 +72,7 @@
 #include <corosync/totem/totemip.h>
 #include "totemknet.h"
 
+#include "main.h"
 #include "util.h"
 
 #include <libknet.h>
@@ -75,6 +80,10 @@
 
 #ifndef MSG_NOSIGNAL
 #define MSG_NOSIGNAL 0
+#endif
+
+#ifdef HAVE_LIBNOZZLE
+static int setup_nozzle(void *knet_context);
 #endif
 
 /* Should match that used by cfg */
@@ -162,6 +171,13 @@ struct totemknet_instance {
 
 	int logpipes[2];
 	int knet_fd;
+#ifdef HAVE_LIBNOZZLE
+	char *nozzle_name;
+	char *nozzle_ipaddr;
+	char *nozzle_prefix;
+	char *nozzle_macaddr;
+	nozzle_t nozzle_handle;
+#endif
 };
 
 /* Awkward. But needed to get stats from knet */
@@ -217,6 +233,46 @@ do {												\
 	} while(0)
 
 
+#ifdef HAVE_LIBNOZZLE
+static inline int is_ether_addr_multicast(const uint8_t *addr)
+{
+	return (addr[0] & 0x01);
+}
+static inline int is_ether_addr_zero(const uint8_t *addr)
+{
+	return (!addr[0] && !addr[1] && !addr[2] && !addr[3] && !addr[4] && !addr[5]);
+}
+
+static int ether_host_filter_fn(void *private_data,
+				const unsigned char *outdata,
+				ssize_t outdata_len,
+				uint8_t tx_rx,
+				knet_node_id_t this_host_id,
+				knet_node_id_t src_host_id,
+				int8_t *channel,
+				knet_node_id_t *dst_host_ids,
+				size_t *dst_host_ids_entries)
+{
+	struct ether_header *eth_h = (struct ether_header *)outdata;
+	uint8_t *dst_mac = (uint8_t *)eth_h->ether_dhost;
+	uint16_t dst_host_id;
+
+	if (is_ether_addr_zero(dst_mac))
+		return -1;
+
+	if (is_ether_addr_multicast(dst_mac)) {
+		return 1;
+	}
+
+	memmove(&dst_host_id, &dst_mac[4], 2);
+
+	dst_host_ids[0] = ntohs(dst_host_id);
+	*dst_host_ids_entries = 1;
+
+	return 0;
+}
+#endif
+
 static int dst_host_filter_callback_fn(void *private_data,
 				       const unsigned char *outdata,
 				       ssize_t outdata_len,
@@ -230,7 +286,17 @@ static int dst_host_filter_callback_fn(void *private_data,
 	struct totem_message_header *header = (struct totem_message_header *)outdata;
 	int res;
 
-	*channel = 0;
+#ifdef HAVE_LIBNOZZLE
+	if (*channel != 0) {
+		return ether_host_filter_fn(private_data,
+					    outdata, outdata_len,
+					    tx_rx,
+					    this_host_id, src_host_id,
+					    channel,
+					    dst_host_ids,
+					    dst_host_ids_entries);
+	}
+#endif
 	if (header->target_nodeid) {
 		dst_host_ids[0] = header->target_nodeid;
 		*dst_host_ids_entries = 1;
@@ -1334,6 +1400,11 @@ int totemknet_reconfigure (
 			KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_ERROR, "knet_handle_compress failed");
 		}
 	}
+
+#ifdef HAVE_LIBNOZZLE
+	/* Set up nozzle device(s) */
+	setup_nozzle(instance);
+#endif
 	return (res);
 }
 
@@ -1454,3 +1525,339 @@ static void log_flush_messages (void *knet_context)
 		}
 	}
 }
+
+
+#ifdef HAVE_LIBNOZZLE
+#define NOZZLE_NAME    "nozzle.name"
+#define NOZZLE_IPADDR  "nozzle.ipaddr"
+#define NOZZLE_PREFIX  "nozzle.ipprefix"
+#define NOZZLE_MACADDR "nozzle.macaddr"
+
+#define NOZZLE_CHANNEL 1
+
+
+static char *get_nozzle_script_dir(void *knet_context)
+{
+	struct totemknet_instance *instance = (struct totemknet_instance *)knet_context;
+	char filename[PATH_MAX + FILENAME_MAX + 1];
+	static char updown_dirname[PATH_MAX + FILENAME_MAX + 1];
+	int res;
+	const char *dirname_res;
+
+	/*
+	 * Build script directory based on corosync.conf file location
+	 */
+	res = snprintf(filename, sizeof(filename), "%s",
+	    corosync_get_config_file());
+	if (res >= sizeof(filename)) {
+		knet_log_printf (LOGSYS_LEVEL_DEBUG, "nozzle up/down path too long");
+		return NULL;
+	}
+
+	dirname_res = dirname(filename);
+
+	res = snprintf(updown_dirname, sizeof(updown_dirname), "%s/%s",
+	    dirname_res, "updown.d");
+	if (res >= sizeof(updown_dirname)) {
+		knet_log_printf (LOGSYS_LEVEL_DEBUG, "nozzle up/down path too long");
+		return NULL;
+	}
+	return updown_dirname;
+}
+
+/*
+ * Deliberately doesn't return the status as caller doesn't care.
+ * The result will be logged though
+ */
+static void run_nozzle_script(struct totemknet_instance *instance, int type, const char *typename)
+{
+	int res;
+	char *exec_string;
+
+	res = nozzle_run_updown(instance->nozzle_handle, type, &exec_string);
+	if (res == -1 && errno != ENOENT) {
+		knet_log_printf (LOGSYS_LEVEL_INFO, "exec nozzle %s script failed: %s", typename, strerror(errno));
+	} else if (res == -2) {
+		knet_log_printf (LOGSYS_LEVEL_INFO, "nozzle %s script failed", typename);
+		knet_log_printf (LOGSYS_LEVEL_INFO, "%s", exec_string);
+	}
+}
+
+/*
+ * Reparse IP address to add in our node ID
+ * IPv6 addresses must end in '::'
+ * IPv4 addresses must just be valid
+ * '/xx' lengths are optional for IPv6, mandatory for IPv4
+ *
+ * Returns the modified IP address as a string to pass into libnozzle
+ */
+static int reparse_nozzle_ip_address(struct totemknet_instance *instance,
+				     const char *input_addr,
+				     const char *prefix, int nodeid,
+				     char *output_addr, size_t output_len)
+{
+	char *coloncolon;
+	int bits;
+	int max_prefix = 64;
+	uint32_t nodeid_mask;
+	uint32_t addr_mask;
+	uint32_t masked_nodeid;
+	struct in_addr *addr;
+	struct totem_ip_address totemip;
+
+	coloncolon = strstr(input_addr, "::");
+	if (!coloncolon) {
+		max_prefix = 30;
+	}
+
+	bits = atoi(prefix);
+	if (bits < 8 || bits > max_prefix) {
+		knet_log_printf(LOGSYS_LEVEL_ERROR, "nozzle IP address prefix must be >= 8 and <= %d (got %d)", max_prefix, bits);
+		return -1;
+	}
+
+	/* IPv6 is easy */
+	if (coloncolon) {
+		memcpy(output_addr, input_addr, coloncolon-input_addr);
+		sprintf(output_addr + (coloncolon-input_addr), "::%x", nodeid);
+		return 0;
+	}
+
+	/* For IPv4 we need to parse the address into binary, mask off the required bits,
+	 * add in the masked_nodeid and 'print' it out again
+	 */
+	nodeid_mask = UINT32_MAX & ((1<<(32 - bits)) - 1);
+	addr_mask   = UINT32_MAX ^ nodeid_mask;
+	masked_nodeid = nodeid & nodeid_mask;
+
+	if (totemip_parse(&totemip, input_addr, AF_INET)) {
+		knet_log_printf(LOGSYS_LEVEL_ERROR, "Failed to parse IPv4 nozzle IP address");
+		return -1;
+	}
+	addr = (struct in_addr *)&totemip.addr;
+	addr->s_addr &= htonl(addr_mask);
+	addr->s_addr |= htonl(masked_nodeid);
+
+	inet_ntop(AF_INET, addr, output_addr, output_len);
+	return 0;
+}
+
+static int create_nozzle_device(void *knet_context, const char *name,
+				const char *ipaddr, const char *prefix,
+				const char *macaddr)
+{
+	struct totemknet_instance *instance = (struct totemknet_instance *)knet_context;
+	char device_name[IFNAMSIZ+1];
+	size_t size = IFNAMSIZ;
+	int8_t channel = NOZZLE_CHANNEL;
+	nozzle_t nozzle_dev;
+	int nozzle_fd;
+	int res;
+	char *updown_dir;
+	char parsed_ipaddr[INET6_ADDRSTRLEN];
+	char mac[19];
+
+	memset(device_name, 0, size);
+	memset(&mac, 0, sizeof(mac));
+	strncpy(device_name, name, size);
+
+	updown_dir = get_nozzle_script_dir(knet_context);
+	knet_log_printf (LOGSYS_LEVEL_INFO, "nozzle script dir is %s", updown_dir);
+
+	nozzle_dev = nozzle_open(device_name, size, updown_dir);
+	if (!nozzle_dev) {
+		knet_log_printf (LOGSYS_LEVEL_ERROR, "Unable to init nozzle device %s: %s", device_name, strerror(errno));
+		return -1;
+	}
+	instance->nozzle_handle = nozzle_dev;
+
+	if (nozzle_set_mac(nozzle_dev, macaddr) < 0) {
+		knet_log_printf (LOGSYS_LEVEL_ERROR, "Unable to add set nozzle MAC to %s: %s", mac, strerror(errno));
+		goto out_clean;
+	}
+
+	if (reparse_nozzle_ip_address(instance, ipaddr, prefix, instance->our_nodeid, parsed_ipaddr, sizeof(parsed_ipaddr))) {
+		/* Prints its own errors */
+		goto out_clean;
+	}
+	knet_log_printf (LOGSYS_LEVEL_INFO, "Local nozzle IP address is %s / %d", parsed_ipaddr, atoi(prefix));
+	if (ipaddr) {
+		if (nozzle_add_ip(nozzle_dev, parsed_ipaddr, prefix) < 0) {
+			knet_log_printf (LOGSYS_LEVEL_ERROR, "Unable to add set nozzle IP addr to %s/%s: %s", parsed_ipaddr, prefix, strerror(errno));
+			goto out_clean;
+		}
+	}
+
+	nozzle_fd = nozzle_get_fd(nozzle_dev);
+	knet_log_printf (LOGSYS_LEVEL_INFO, "Opened '%s' on fd %d", device_name, nozzle_fd);
+
+	res = knet_handle_add_datafd(instance->knet_handle, &nozzle_fd, &channel);
+	if (res != 0) {
+		knet_log_printf (LOGSYS_LEVEL_ERROR, "Unable to add nozzle FD to knet: %s", strerror(errno));
+		goto out_clean;
+	}
+
+	run_nozzle_script(instance, NOZZLE_PREUP, "pre-up");
+
+	res = nozzle_set_up(nozzle_dev);
+	if (res != 0) {
+		knet_log_printf (LOGSYS_LEVEL_ERROR, "Unable to set nozzle interface UP: %s", strerror(errno));
+		goto out_clean;
+	}
+	run_nozzle_script(instance, NOZZLE_UP, "up");
+
+	return 0;
+
+out_clean:
+	nozzle_close(nozzle_dev);
+	return -1;
+}
+
+static int remove_nozzle_device(void *knet_context)
+{
+	struct totemknet_instance *instance = (struct totemknet_instance *)knet_context;
+	int res;
+	int datafd;
+
+	res = knet_handle_get_datafd(instance->knet_handle, NOZZLE_CHANNEL, &datafd);
+	if (res != 0) {
+		knet_log_printf (LOGSYS_LEVEL_ERROR, "Can't find datafd for channel %d: %s", NOZZLE_CHANNEL, strerror(errno));
+		return -1;
+	}
+
+	res = knet_handle_remove_datafd(instance->knet_handle, datafd);
+	if (res != 0) {
+		knet_log_printf (LOGSYS_LEVEL_ERROR, "Can't remove datafd for nozzle channel %d: %s", NOZZLE_CHANNEL, strerror(errno));
+		return -1;
+	}
+
+	run_nozzle_script(instance, NOZZLE_DOWN, "pre-down");
+	res = nozzle_set_down(instance->nozzle_handle);
+	if (res != 0) {
+		knet_log_printf (LOGSYS_LEVEL_ERROR, "Can't set nozzle device down: %s", strerror(errno));
+		return -1;
+	}
+	run_nozzle_script(instance, NOZZLE_POSTDOWN, "post-down");
+
+	res = nozzle_close(instance->nozzle_handle);
+	if (res != 0) {
+		knet_log_printf (LOGSYS_LEVEL_ERROR, "Can't close nozzle device: %s", strerror(errno));
+		return -1;
+	}
+	knet_log_printf (LOGSYS_LEVEL_INFO, "Removed nozzle device");
+	return 0;
+}
+
+static void free_nozzle(struct totemknet_instance *instance)
+{
+	free(instance->nozzle_name);
+	free(instance->nozzle_ipaddr);
+	free(instance->nozzle_prefix);
+	free(instance->nozzle_macaddr);
+
+	instance->nozzle_name =	instance->nozzle_ipaddr = instance->nozzle_prefix =
+		instance->nozzle_macaddr = NULL;
+}
+
+static int setup_nozzle(void *knet_context)
+{
+	struct totemknet_instance *instance = (struct totemknet_instance *)knet_context;
+	char *ipaddr_str = NULL;
+	char *name_str = NULL;
+	char *prefix_str = NULL;
+	char *macaddr_str = NULL;
+	char mac[32];
+	int name_res;
+	int macaddr_res;
+	int res;
+
+	icmap_get_string(NOZZLE_IPADDR, &ipaddr_str);
+	icmap_get_string(NOZZLE_PREFIX, &prefix_str);
+	macaddr_res = icmap_get_string(NOZZLE_MACADDR, &macaddr_str);
+	name_res = icmap_get_string(NOZZLE_NAME, &name_str);
+
+	/* Is is being removed? */
+	if (name_res == CS_ERR_NOT_EXIST && instance->nozzle_handle) {
+		remove_nozzle_device(instance);
+		free_nozzle(instance);
+		goto out_free;
+	}
+
+	if (!name_str) {
+		/* no nozzle */
+		goto out_free;
+	}
+
+	if (!ipaddr_str) {
+		knet_log_printf (LOGSYS_LEVEL_ERROR, "No IP address supplied for Nozzle device");
+		goto out_free;
+	}
+
+	if (!prefix_str) {
+		knet_log_printf (LOGSYS_LEVEL_ERROR, "No prefix supplied for Nozzle IP address");
+		goto out_free;
+	}
+
+	if (macaddr_str && strlen(macaddr_str) != 17) {
+		knet_log_printf (LOGSYS_LEVEL_ERROR, "macaddr for nozzle device is not in the correct format '%s'", macaddr_str);
+		goto out_free;
+	}
+	if (!macaddr_str) {
+		macaddr_str = (char*)"54:54:01:00:00:00";
+	}
+
+	if (instance->nozzle_name &&
+	    (strcmp(name_str, instance->nozzle_name) == 0) &&
+	    (strcmp(ipaddr_str, instance->nozzle_ipaddr) == 0) &&
+	    (strcmp(prefix_str, instance->nozzle_prefix) == 0) &&
+	    ((macaddr_str == NULL && instance->nozzle_macaddr == NULL) ||
+	     strcmp(macaddr_str, instance->nozzle_macaddr) == 0)) {
+		/* Nothing has changed */
+		knet_log_printf (LOGSYS_LEVEL_DEBUG, "Nozzle device info not changed");
+		goto out_free;
+	}
+
+	/* Add nodeid into MAC address */
+	memcpy(mac, macaddr_str, 12);
+	snprintf(mac+12, sizeof(mac) - 13, "%02x:%02x",
+		 instance->our_nodeid >> 8,
+		 instance->our_nodeid & 0xFF);
+	knet_log_printf (LOGSYS_LEVEL_INFO, "Local nozzle MAC address is %s", mac);
+
+	if (name_res == CS_OK && name_str) {
+		/* Reconfigure */
+		if (instance->nozzle_name) {
+			remove_nozzle_device(instance);
+			free_nozzle(instance);
+		}
+
+		res = create_nozzle_device(knet_context, name_str, ipaddr_str, prefix_str,
+					   mac);
+
+		instance->nozzle_name = strdup(name_str);
+		instance->nozzle_ipaddr = strdup(ipaddr_str);
+		instance->nozzle_prefix = strdup(prefix_str);
+		instance->nozzle_macaddr = strdup(macaddr_str);
+		if (!instance->nozzle_name || !instance->nozzle_ipaddr ||
+		    !instance->nozzle_prefix) {
+			knet_log_printf (LOGSYS_LEVEL_ERROR, "strdup failed in nozzle allocation");
+			/*
+			 * This 'free' will cause a complete reconfigure of the device next time we reload
+			 * but will also let the the current device keep working until then.
+			 * remove_nozzle() only needs the, statically-allocated, nozzle_handle
+			 */
+			free_nozzle(instance);
+		}
+	}
+
+out_free:
+	free(name_str);
+	free(ipaddr_str);
+	free(prefix_str);
+	if (macaddr_res == CS_OK) {
+		free(macaddr_str);
+	}
+
+	return res;
+}
+#endif // HAVE_LIBNOZZLE
