@@ -32,7 +32,7 @@
 .\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 .\" * THE POSSIBILITY OF SUCH DAMAGE.
 .\" */
-.TH COROSYNC_CONF 5 2019-01-10 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
+.TH COROSYNC_CONF 5 2019-01-16 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
 .SH NAME
 corosync.conf - corosync executive configuration file
 
@@ -346,6 +346,9 @@ milliseconds in addition to this timeout.
 For real token timeout used by totem it's possible to read cmap value of
 .B runtime.config.totem.token
 key.
+
+Be careful to use the same timeout values on each of the nodes in the cluster
+or unpredictable results may occur.
 
 The default is 1000 milliseconds.
 
