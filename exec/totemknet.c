@@ -57,11 +57,11 @@
 #include <sys/poll.h>
 #include <sys/uio.h>
 #include <limits.h>
-#include <libgen.h>
 
 #include <qb/qbdefs.h>
 #include <qb/qbloop.h>
 #ifdef HAVE_LIBNOZZLE
+#include <libgen.h>
 #include <libnozzle.h>
 #endif
 
@@ -230,13 +230,10 @@ do {												\
 	} while(0)
 
 
+#ifdef HAVE_LIBNOZZLE
 static inline int is_ether_addr_multicast(const uint8_t *addr)
 {
 	return (addr[0] & 0x01);
-}
-static inline int is_ether_addr_broadcast(const uint8_t *addr)
-{
-	return (addr[0] & addr[1] & addr[2] & addr[3] & addr[4] & addr[5]) == 0xFF;
 }
 static inline int is_ether_addr_zero(const uint8_t *addr)
 {
@@ -260,8 +257,7 @@ static int ether_host_filter_fn(void *private_data,
 	if (is_ether_addr_zero(dst_mac))
 		return -1;
 
-	if (is_ether_addr_multicast(dst_mac) ||
-	    is_ether_addr_broadcast(dst_mac)) {
+	if (is_ether_addr_multicast(dst_mac)) {
 		return 1;
 	}
 
@@ -272,7 +268,7 @@ static int ether_host_filter_fn(void *private_data,
 
 	return 0;
 }
-
+#endif
 
 static int dst_host_filter_callback_fn(void *private_data,
 				       const unsigned char *outdata,
@@ -287,6 +283,7 @@ static int dst_host_filter_callback_fn(void *private_data,
 	struct totem_message_header *header = (struct totem_message_header *)outdata;
 	int res;
 
+#ifdef HAVE_LIBNOZZLE
 	if (*channel != 0) {
 		return ether_host_filter_fn(private_data,
 					    outdata, outdata_len,
@@ -296,7 +293,7 @@ static int dst_host_filter_callback_fn(void *private_data,
 					    dst_host_ids,
 					    dst_host_ids_entries);
 	}
-
+#endif
 	if (header->target_nodeid) {
 		dst_host_ids[0] = header->target_nodeid;
 		*dst_host_ids_entries = 1;
@@ -1671,7 +1668,7 @@ static int create_nozzle_device(void *knet_context, const char *name,
 	}
 	instance->nozzle_handle = nozzle_dev;
 
-	if (strlen(macaddr) != 17) {
+	if (macaddr && strlen(macaddr) != 17) {
 		knet_log_printf (LOGSYS_LEVEL_ERROR, "macaddr for nozzle device is not in the correct format '%s'", macaddr);
 		return -1;
 	}
