@@ -50,6 +50,7 @@
 #include <corosync/corotypes.h>
 #include <corosync/totem/totem.h>
 #include <corosync/cfg.h>
+#include <corosync/cmap.h>
 
 #define cs_repeat(result, max, code)				\
 	do {							\
@@ -75,16 +76,33 @@ enum user_action {
 	ACTION_KILL_NODE,
 };
 
+static int node_compare(const void *aptr, const void *bptr)
+{
+	uint32_t a,b;
+
+	a = *(uint32_t *)aptr;
+	b = *(uint32_t *)bptr;
+
+	return a > b;
+}
+
 static int
 linkstatusget_do (char *interface_name, int brief)
 {
 	cs_error_t result;
 	corosync_cfg_handle_t handle;
+	cmap_handle_t cmap_handle;
 	unsigned int interface_count;
 	char **interface_names;
 	char **interface_status;
+	uint32_t nodeid_list[KNET_MAX_HOST];
+	char iter_key[CMAP_KEYNAME_MAXLEN];
 	unsigned int i;
+	cmap_iter_handle_t iter;
 	unsigned int nodeid;
+	unsigned int node_pos;
+	cmap_value_types_t type;
+	size_t value_len;
 	int rc = 0;
 	int len, s = 0, t;
 
@@ -94,6 +112,37 @@ linkstatusget_do (char *interface_name, int brief)
 		printf ("Could not initialize corosync configuration API error %d\n", result);
 		exit (1);
 	}
+
+	result = cmap_initialize (&cmap_handle);
+	if (result != CS_OK) {
+		printf ("Could not initialize corosync cmap API error %d\n", result);
+		exit (1);
+	}
+	/* Get a list of nodes. We do it this way rather than using votequorum as cfgtool
+	 * needs to be independent of quorum type
+	 */
+	result = cmap_iter_init(cmap_handle, "nodelist.node.", &iter);
+	if (result != CS_OK) {
+		printf ("Could not get nodelist from cmap. error %d\n", result);
+		exit (1);
+	}
+
+	while ((cmap_iter_next(cmap_handle, iter, iter_key, &value_len, &type)) == CS_OK) {
+		result = sscanf(iter_key, "nodelist.node.%u.nodeid", &node_pos);
+		if (result != 1) {
+			continue;
+		}
+		if (cmap_get_uint32(cmap_handle, iter_key, &nodeid) == CS_OK) {
+			nodeid_list[s++] = nodeid;
+		}
+	}
+
+	/* totemknet returns nodes in nodeid order - even though it doesn't tell us
+	   what the nodeid is. So sort our node list and we can then look up
+	   knet node pos to get an actual nodeid.
+	   Yep, I really should have totally rewritten the cfg interface for this.
+	*/
+	qsort(nodeid_list, s, sizeof(uint32_t), node_compare);
 
 	result = corosync_cfg_local_get(handle, &nodeid);
 	if (result != CS_OK) {
@@ -134,9 +183,11 @@ linkstatusget_do (char *interface_name, int brief)
 					(!strstr(interface_status[i], "FAULTY"))) {
 					len = strlen(interface_status[i]);
 					printf ("\tstatus:\n");
-					while(s < len) {
+					while (s < len) {
+						nodeid = nodeid_list[s];
 						t = interface_status[i][s] - '0';
-						printf("\t\tnode %d:\t", s++);
+						s++;
+						printf("\t\tnodeid %2d:\t", nodeid);
 						printf("link enabled:%d\t", t&1? 1 : 0);
 						printf("link connected:%d\n", t&2? 1: 0);
 					}
@@ -157,6 +208,7 @@ linkstatusget_do (char *interface_name, int brief)
 		free(interface_names);
 	}
 
+	(void)cmap_finalize (cmap_handle);
 	(void)corosync_cfg_finalize (handle);
 	return rc;
 }

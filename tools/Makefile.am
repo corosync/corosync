@@ -58,7 +58,7 @@ corosync-blackbox: corosync-blackbox.sh
 
 corosync_cmapctl_LDADD	= $(LIBQB_LIBS) $(top_builddir)/lib/libcmap.la
 
-corosync_cfgtool_LDADD	= $(LIBQB_LIBS) $(top_builddir)/lib/libcfg.la
+corosync_cfgtool_LDADD	= $(LIBQB_LIBS) $(top_builddir)/lib/libcfg.la $(top_builddir)/lib/libcmap.la
 
 corosync_cpgtool_LDADD	= $(LIBQB_LIBS) $(top_builddir)/lib/libcfg.la \
 			  $(top_builddir)/lib/libcpg.la
