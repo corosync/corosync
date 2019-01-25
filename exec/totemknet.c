@@ -1572,7 +1572,7 @@ static void run_nozzle_script(struct totemknet_instance *instance, int type, con
 	char *exec_string;
 
 	res = nozzle_run_updown(instance->nozzle_handle, type, &exec_string);
-	if (res == -1) {
+	if (res == -1 && errno != ENOENT) {
 		knet_log_printf (LOGSYS_LEVEL_INFO, "exec nozzle %s script failed: %s", typename, strerror(errno));
 	} else if (res == -2) {
 		knet_log_printf (LOGSYS_LEVEL_INFO, "nozzle %s script failed", typename);
@@ -1783,17 +1783,18 @@ static int setup_nozzle(void *knet_context)
 	icmap_get_string(NOZZLE_PREFIX, &prefix_str);
 	icmap_get_string(NOZZLE_MACADDR, &macaddr_str);
 
-	if (!ipaddr_str) {
+	res = icmap_get_string(NOZZLE_NAME, &name_str);
+
+	if (name_str && !ipaddr_str) {
 		knet_log_printf (LOGSYS_LEVEL_ERROR, "No IP address supplied for Nozzle device");
 		return 0;
 	}
 
-	if (ipaddr_str && !prefix_str) {
+	if (name_str && ipaddr_str && !prefix_str) {
 		knet_log_printf (LOGSYS_LEVEL_ERROR, "No prefix supplied for Nozzle IP address");
 		return 0;
 	}
 
-	res = icmap_get_string(NOZZLE_NAME, &name_str);
 	/* Is is being removed? */
 	if (res == CS_ERR_NOT_EXIST && instance->nozzle_name) {
 		remove_nozzle_device(instance);
@@ -1801,18 +1802,17 @@ static int setup_nozzle(void *knet_context)
 		instance->nozzle_name = NULL;
 	}
 	if (res == CS_OK && name_str) {
-
-		/* Is it a rename ? */
-		if (instance->nozzle_name && strcmp(instance->nozzle_name, name_str) != 0)	{
+		/* Reconfigure */
+		if (instance->nozzle_name) {
 			remove_nozzle_device(instance);
 			free(instance->nozzle_name);
 		}
+
 		res = create_nozzle_device(knet_context, name_str, ipaddr_str, prefix_str,
 					   macaddr_str);
 
 		instance->nozzle_name = name_str;
 	}
-
 	free(ipaddr_str);
 
 	return res;
