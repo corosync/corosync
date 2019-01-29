@@ -48,7 +48,7 @@ endif
 
 %: %.in Makefile
 	rm -f $@-t $@
-	cat $< | sed \
+	cat $< | $(SED) \
 		-e 's#@''SBINDIR@#$(sbindir)#g' \
 		-e 's#@''BINDIR@#$(bindir)#g' \
 		-e 's#@''SYSCONFDIR@#$(sysconfdir)#g' \

@@ -63,7 +63,7 @@ cpgverify_LDADD		= $(LIBQB_LIBS) $(top_builddir)/lib/libcpg.la -lz
 endif
 
 ploadstart: ploadstart.sh
-	sed -e 's#@''BASHPATH@#${BASHPATH}#g' $< > $@
+	$(SED) -e 's#@''BASHPATH@#${BASHPATH}#g' $< > $@
 	chmod 755 $@
 
 LINT_FILES1:=$(filter-out sa_error.c, $(wildcard *.c))

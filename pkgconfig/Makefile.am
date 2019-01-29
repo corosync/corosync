@@ -47,7 +47,7 @@ CLEANFILES = $(pkgconfig_DATA)
 
 lib%.pc: libtemplate.pc.in Makefile
 	rm -f $@-t $@
-	sed \
+	$(SED) \
 		-e 's#@''PREFIX@#$(exec_prefix)#g' \
 		-e 's#@''LIBDIR@#$(libdir)#g' \
 		-e 's#@''LIBVERSION@#$(VERSION)#g' \
@@ -58,7 +58,7 @@ lib%.pc: libtemplate.pc.in Makefile
 
 %: %.in Makefile
 	rm -f $@-t $@
-	sed \
+	$(SED) \
 		-e 's#@''PREFIX@#$(exec_prefix)#g' \
 		-e 's#@''LIBDIR@#$(libdir)#g' \
 		-e 's#@''LIBVERSION@#$(VERSION)#g' \

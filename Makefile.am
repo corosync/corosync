@@ -132,9 +132,9 @@ $(SPEC): $(SPEC).in
 		numcomm=""; \
 	else \
 		gitver="$(shell git describe --abbrev=4 --match='v*' HEAD 2>/dev/null)" && \
-		rpmver=`echo $$gitver | sed -e "s/^v//" -e "s/-.*//g"` && \
-		alphatag=`echo $$gitver | sed -e "s/.*-//" -e "s/^g//"` && \
-		vtag=`echo $$gitver | sed -e "s/-.*//g"` && \
+		rpmver=`echo $$gitver | $(SED) -e "s/^v//" -e "s/-.*//g"` && \
+		alphatag=`echo $$gitver | $(SED) -e "s/.*-//" -e "s/^g//"` && \
+		vtag=`echo $$gitver | $(SED) -e "s/-.*//g"` && \
 		numcomm=`git rev-list $$vtag..HEAD | wc -l` && \
 		git update-index --refresh > /dev/null 2>&1 || true && \
 		dirty=`git diff-index --name-only HEAD 2>/dev/null`; \
@@ -144,7 +144,7 @@ $(SPEC): $(SPEC).in
 	if [ "$$alphatag" = "$$gitver" ]; then alphatag=""; fi && \
 	if [ -n "$$alphatag" ]; then alphatag="%global alphatag $$alphatag"; fi && \
 	if [ -n "$$dirty" ]; then dirty="%global dirty dirty"; fi && \
-	sed \
+	$(SED) \
 		-e "s#@version@#$$rpmver#g" \
 		-e "s#@ALPHATAG@#$$alphatag#g" \
 		-e "s#@NUMCOMM@#$$numcomm#g" \
