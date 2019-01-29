@@ -49,12 +49,12 @@ EXTRA_DIST		= corosync-xmlproc.sh \
                           corosync-blackbox.sh
 
 corosync-xmlproc: corosync-xmlproc.sh
-	sed -e 's#@''DATADIR@#${datadir}#g' \
-	    -e 's#@''BASHPATH@#${BASHPATH}#g' \
-	    $< > $@
+	$(SED) -e 's#@''DATADIR@#${datadir}#g' \
+	       -e 's#@''BASHPATH@#${BASHPATH}#g' \
+	       $< > $@
 
 corosync-blackbox: corosync-blackbox.sh
-	sed -e 's#@''LOCALSTATEDIR@#${localstatedir}#g' $< > $@
+	$(SED) -e 's#@''LOCALSTATEDIR@#${localstatedir}#g' $< > $@
 
 corosync_cmapctl_LDADD	= $(LIBQB_LIBS) $(top_builddir)/lib/libcmap.la
 

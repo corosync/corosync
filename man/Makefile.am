@@ -156,9 +156,9 @@ HTML_DOCS 		= $(dist_man_MANS:%=%.html) $(man_MANS:%=%.html)
 	cat ${top_srcdir}/man/$(autogen_common) >> $@-t-t && \
 	awk -v p=0 "(\$$1 ~ /@COMMONIPCERRORS@/){p = 1} {if(p==1)print}" ${top_srcdir}/man/$@.in >> $@-t-t && \
 	cat $@-t-t | \
-		sed -e 's#@BUILDDATE@#'$$date'#g' \
-		    -e 's#@COMMONIPCERRORS@##g' \
-		    > $@-t && \
+		$(SED) -e 's#@BUILDDATE@#'$$date'#g' \
+		       -e 's#@COMMONIPCERRORS@##g' \
+		       > $@-t && \
 	rm -f $@-t-t && \
 	mv $@-t $@
 

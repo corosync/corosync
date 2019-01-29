@@ -31,7 +31,7 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 
 # Functions to be used at link time (target.lo)
-get_libname=$(shell echo $1 | sed -e "s/\.lo//")
+get_libname=$(shell echo $1 | $(SED) -e "s/\.lo//")
 uc=$(shell echo $(call get_libname,$1) | tr a-z A-Z)
 get_soname=$(subst .,:,$(if $($(call uc,$1)_SONAME),$($(call uc,$1)_SONAME),$(SONAME)))
 get_major=$(firstword $(subst :, ,$(call get_soname,$1)))
