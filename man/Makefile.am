@@ -152,9 +152,9 @@ HTML_DOCS 		= $(dist_man_MANS:%=%.html) $(man_MANS:%=%.html)
 	DATE_FMT="%Y-%m-%d" && \
 	SOURCE_DATE_EPOCH="$${SOURCE_DATE_EPOCH:-$$(date +%s)}" && \
 	date="$$(date -u -d "@$$SOURCE_DATE_EPOCH" "+$$DATE_FMT" 2>/dev/null || date -u -r "$$SOURCE_DATE_EPOCH" "+$$DATE_FMT" 2>/dev/null || date -u "+$$DATE_FMT")" && \
-	awk "{print}(\$$1 ~ /@COMMONIPCERRORS@/){exit 0}" ${top_srcdir}/man/$@.in > $@-t-t && \
+	$(AWK) "{print}(\$$1 ~ /@COMMONIPCERRORS@/){exit 0}" ${top_srcdir}/man/$@.in > $@-t-t && \
 	cat ${top_srcdir}/man/$(autogen_common) >> $@-t-t && \
-	awk -v p=0 "(\$$1 ~ /@COMMONIPCERRORS@/){p = 1} {if(p==1)print}" ${top_srcdir}/man/$@.in >> $@-t-t && \
+	$(AWK) -v p=0 "(\$$1 ~ /@COMMONIPCERRORS@/){p = 1} {if(p==1)print}" ${top_srcdir}/man/$@.in >> $@-t-t && \
 	cat $@-t-t | \
 		$(SED) -e 's#@BUILDDATE@#'$$date'#g' \
 		       -e 's#@COMMONIPCERRORS@##g' \
