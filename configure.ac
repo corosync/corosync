@@ -96,7 +96,6 @@ AC_CHECK_PROGS([AUGTOOL], [augtool])
 AC_CHECK_PROGS([DOT], [dot])
 AC_CHECK_PROGS([DOXYGEN], [doxygen])
 AC_CHECK_PROGS([AWK], [awk])
-AC_CHECK_PROGS([SED], [sed])
 AC_PATH_PROG([BASHPATH], [bash])
 
 # Checks for compiler characteristics.
