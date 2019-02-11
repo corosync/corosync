@@ -172,7 +172,11 @@ struct totemknet_instance {
 	int logpipes[2];
 	int knet_fd;
 #ifdef HAVE_LIBNOZZLE
-	char *nozzle_name;
+#define NOZZLE_MAX_VALUE_LEN 1024
+	char nozzle_name[NOZZLE_MAX_VALUE_LEN+1];
+	char nozzle_ipaddr[NOZZLE_MAX_VALUE_LEN+1];
+	char nozzle_prefix[NOZZLE_MAX_VALUE_LEN+1];
+	char nozzle_macaddr[NOZZLE_MAX_VALUE_LEN+1];
 	nozzle_t nozzle_handle;
 #endif
 };
@@ -1769,6 +1773,14 @@ static int remove_nozzle_device(void *knet_context)
 	return 0;
 }
 
+static void free_nozzle(struct totemknet_instance *instance)
+{
+	remove_nozzle_device(instance);
+	instance->nozzle_name[0] = '\0';
+	instance->nozzle_ipaddr[0] = '\0';
+	instance->nozzle_prefix[0] = '\0';
+	instance->nozzle_macaddr[0] = '\0';
+}
 
 static int setup_nozzle(void *knet_context)
 {
@@ -1785,36 +1797,50 @@ static int setup_nozzle(void *knet_context)
 
 	res = icmap_get_string(NOZZLE_NAME, &name_str);
 
+	if ((strcmp(name_str, instance->nozzle_name) == 0) &&
+	    (strcmp(ipaddr_str, instance->nozzle_ipaddr) == 0) &&
+	    (strcmp(prefix_str, instance->nozzle_prefix) == 0) &&
+	    (strcmp(macaddr_str, instance->nozzle_macaddr) == 0)) {
+		/* Nothing has changed */
+		knet_log_printf (LOGSYS_LEVEL_DEBUG, "Nozzle device info not changed");
+		goto out_free;
+	}
+
 	if (name_str && !ipaddr_str) {
 		knet_log_printf (LOGSYS_LEVEL_ERROR, "No IP address supplied for Nozzle device");
-		return 0;
+		goto out_free;
 	}
 
 	if (name_str && ipaddr_str && !prefix_str) {
 		knet_log_printf (LOGSYS_LEVEL_ERROR, "No prefix supplied for Nozzle IP address");
-		return 0;
+		goto out_free;
 	}
 
 	/* Is is being removed? */
 	if (res == CS_ERR_NOT_EXIST && instance->nozzle_name) {
 		remove_nozzle_device(instance);
-		free(instance->nozzle_name);
-		instance->nozzle_name = NULL;
+		free_nozzle(instance);
 	}
 	if (res == CS_OK && name_str) {
 		/* Reconfigure */
 		if (instance->nozzle_name) {
-			remove_nozzle_device(instance);
-			free(instance->nozzle_name);
+			free_nozzle(instance);
 		}
 
 		res = create_nozzle_device(knet_context, name_str, ipaddr_str, prefix_str,
 					   macaddr_str);
 
-		instance->nozzle_name = name_str;
+		strncpy(instance->nozzle_name, name_str, NOZZLE_MAX_VALUE_LEN);
+		strncpy(instance->nozzle_ipaddr, ipaddr_str, NOZZLE_MAX_VALUE_LEN);
+		strncpy(instance->nozzle_prefix, prefix_str, NOZZLE_MAX_VALUE_LEN);
+		strncpy(instance->nozzle_macaddr, macaddr_str, NOZZLE_MAX_VALUE_LEN);
 	}
-	free(ipaddr_str);
 
+out_free:
+	free(ipaddr_str);
+	free(prefix_str);
+	free(macaddr_str);
+	free(name_str);
 	return res;
 }
 #endif // HAVE_LIBNOZZLE
