@@ -172,11 +172,10 @@ struct totemknet_instance {
 	int logpipes[2];
 	int knet_fd;
 #ifdef HAVE_LIBNOZZLE
-#define NOZZLE_MAX_VALUE_LEN 1024
-	char nozzle_name[NOZZLE_MAX_VALUE_LEN+1];
-	char nozzle_ipaddr[NOZZLE_MAX_VALUE_LEN+1];
-	char nozzle_prefix[NOZZLE_MAX_VALUE_LEN+1];
-	char nozzle_macaddr[NOZZLE_MAX_VALUE_LEN+1];
+	char *nozzle_name;
+	char *nozzle_ipaddr;
+	char *nozzle_prefix;
+	char *nozzle_macaddr;
 	nozzle_t nozzle_handle;
 #endif
 };
@@ -1667,29 +1666,12 @@ static int create_nozzle_device(void *knet_context, const char *name,
 
 	nozzle_dev = nozzle_open(device_name, size, updown_dir);
 	if (!nozzle_dev) {
-		knet_log_printf (LOGSYS_LEVEL_ERROR, "Unable to init nozzle device %s", device_name);
+		knet_log_printf (LOGSYS_LEVEL_ERROR, "Unable to init nozzle device %s: %s", device_name, strerror(errno));
 		return -1;
 	}
 	instance->nozzle_handle = nozzle_dev;
 
-	if (macaddr && strlen(macaddr) != 17) {
-		knet_log_printf (LOGSYS_LEVEL_ERROR, "macaddr for nozzle device is not in the correct format '%s'", macaddr);
-		return -1;
-	}
-
-	if (macaddr) {
-		strncpy(mac, macaddr, 12);
-		snprintf(mac+12, sizeof(mac) - 13, "%02x:%02x",
-			 instance->our_nodeid >> 8,
-			 instance->our_nodeid & 0xFF);
-		knet_log_printf (LOGSYS_LEVEL_INFO, "Local nozzle MAC address is %s", mac);
-
-	} else {
-		snprintf(mac, sizeof(mac) - 1, "54:54:%x:00:%02x:%02x", channel,
-			 instance->our_nodeid >> 8,
-			 instance->our_nodeid & 0xFF);
-	}
-	if (nozzle_set_mac(nozzle_dev, mac) < 0) {
+	if (nozzle_set_mac(nozzle_dev, macaddr) < 0) {
 		knet_log_printf (LOGSYS_LEVEL_ERROR, "Unable to add set nozzle MAC to %s: %s", mac, strerror(errno));
 		goto out_clean;
 	}
@@ -1755,14 +1737,7 @@ static int remove_nozzle_device(void *knet_context)
 		knet_log_printf (LOGSYS_LEVEL_ERROR, "Can't set nozzle device down: %s", strerror(errno));
 		return -1;
 	}
-
 	run_nozzle_script(instance, NOZZLE_POSTDOWN, "post-down");
-
-	res = nozzle_set_down(instance->nozzle_handle);
-	if (res != 0) {
-		knet_log_printf (LOGSYS_LEVEL_ERROR, "Can't 'down' nozzle device: %s", strerror(errno));
-		return -1;
-	}
 
 	res = nozzle_close(instance->nozzle_handle);
 	if (res != 0) {
@@ -1775,11 +1750,13 @@ static int remove_nozzle_device(void *knet_context)
 
 static void free_nozzle(struct totemknet_instance *instance)
 {
-	remove_nozzle_device(instance);
-	instance->nozzle_name[0] = '\0';
-	instance->nozzle_ipaddr[0] = '\0';
-	instance->nozzle_prefix[0] = '\0';
-	instance->nozzle_macaddr[0] = '\0';
+	free(instance->nozzle_name);
+	free(instance->nozzle_ipaddr);
+	free(instance->nozzle_prefix);
+	free(instance->nozzle_macaddr);
+
+	instance->nozzle_name =	instance->nozzle_ipaddr = instance->nozzle_prefix =
+		instance->nozzle_macaddr = NULL;
 }
 
 static int setup_nozzle(void *knet_context)
@@ -1789,58 +1766,88 @@ static int setup_nozzle(void *knet_context)
 	char *name_str = NULL;
 	char *prefix_str = NULL;
 	char *macaddr_str = NULL;
+	char mac[32];
+	int name_res;
+	int macaddr_res;
 	int res;
 
 	icmap_get_string(NOZZLE_IPADDR, &ipaddr_str);
 	icmap_get_string(NOZZLE_PREFIX, &prefix_str);
-	icmap_get_string(NOZZLE_MACADDR, &macaddr_str);
+	macaddr_res = icmap_get_string(NOZZLE_MACADDR, &macaddr_str);
+	name_res = icmap_get_string(NOZZLE_NAME, &name_str);
 
-	res = icmap_get_string(NOZZLE_NAME, &name_str);
+	/* Is is being removed? */
+	if (name_res == CS_ERR_NOT_EXIST && instance->nozzle_handle) {
+		remove_nozzle_device(instance);
+		free_nozzle(instance);
+		goto out_free;
+	}
 
-	if ((strcmp(name_str, instance->nozzle_name) == 0) &&
+	if (!name_str) {
+		/* no nozzle */
+		goto out_free;
+	}
+
+	if (!ipaddr_str) {
+		knet_log_printf (LOGSYS_LEVEL_ERROR, "No IP address supplied for Nozzle device");
+		goto out_free;
+	}
+
+	if (!prefix_str) {
+		knet_log_printf (LOGSYS_LEVEL_ERROR, "No prefix supplied for Nozzle IP address");
+		goto out_free;
+	}
+
+	if (macaddr_str && strlen(macaddr_str) != 17) {
+		knet_log_printf (LOGSYS_LEVEL_ERROR, "macaddr for nozzle device is not in the correct format '%s'", macaddr_str);
+		return -1;
+	}
+	if (!macaddr_str) {
+		macaddr_str = (char*)"54:54:01:00:00:00";
+	}
+
+	if (instance->nozzle_name &&
+	    (strcmp(name_str, instance->nozzle_name) == 0) &&
 	    (strcmp(ipaddr_str, instance->nozzle_ipaddr) == 0) &&
 	    (strcmp(prefix_str, instance->nozzle_prefix) == 0) &&
-	    (strcmp(macaddr_str, instance->nozzle_macaddr) == 0)) {
+	    ((macaddr_str == NULL && instance->nozzle_macaddr == NULL) ||
+	     strcmp(macaddr_str, instance->nozzle_macaddr) == 0)) {
 		/* Nothing has changed */
 		knet_log_printf (LOGSYS_LEVEL_DEBUG, "Nozzle device info not changed");
 		goto out_free;
 	}
 
-	if (name_str && !ipaddr_str) {
-		knet_log_printf (LOGSYS_LEVEL_ERROR, "No IP address supplied for Nozzle device");
-		goto out_free;
-	}
+	/* Add nodeid into MAC address */
+	memcpy(mac, macaddr_str, 12);
+	snprintf(mac+12, sizeof(mac) - 13, "%02x:%02x",
+		 instance->our_nodeid >> 8,
+		 instance->our_nodeid & 0xFF);
+	knet_log_printf (LOGSYS_LEVEL_INFO, "Local nozzle MAC address is %s", mac);
 
-	if (name_str && ipaddr_str && !prefix_str) {
-		knet_log_printf (LOGSYS_LEVEL_ERROR, "No prefix supplied for Nozzle IP address");
-		goto out_free;
-	}
-
-	/* Is is being removed? */
-	if (res == CS_ERR_NOT_EXIST && instance->nozzle_name) {
-		remove_nozzle_device(instance);
-		free_nozzle(instance);
-	}
-	if (res == CS_OK && name_str) {
+	if (name_res == CS_OK && name_str) {
 		/* Reconfigure */
 		if (instance->nozzle_name) {
+			remove_nozzle_device(instance);
 			free_nozzle(instance);
 		}
 
 		res = create_nozzle_device(knet_context, name_str, ipaddr_str, prefix_str,
-					   macaddr_str);
+					   mac);
 
-		strncpy(instance->nozzle_name, name_str, NOZZLE_MAX_VALUE_LEN);
-		strncpy(instance->nozzle_ipaddr, ipaddr_str, NOZZLE_MAX_VALUE_LEN);
-		strncpy(instance->nozzle_prefix, prefix_str, NOZZLE_MAX_VALUE_LEN);
-		strncpy(instance->nozzle_macaddr, macaddr_str, NOZZLE_MAX_VALUE_LEN);
+		instance->nozzle_name = strdup(name_str);
+		instance->nozzle_ipaddr = strdup(ipaddr_str);
+		instance->nozzle_prefix = strdup(prefix_str);
+		instance->nozzle_macaddr = strdup(macaddr_str);
 	}
 
 out_free:
+	free(name_str);
 	free(ipaddr_str);
 	free(prefix_str);
-	free(macaddr_str);
-	free(name_str);
+	if (macaddr_res == CS_OK) {
+		free(macaddr_str);
+	}
+
 	return res;
 }
 #endif // HAVE_LIBNOZZLE
