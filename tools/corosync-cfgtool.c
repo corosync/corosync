@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2017 Red Hat, Inc.
+ * Copyright (c) 2006-2019 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -160,25 +160,29 @@ linkstatusget_do (char *interface_name, int brief)
 		printf ("Could not get the link status, the error is: %d\n", result);
 	} else {
 		for (i = 0; i < interface_count; i++) {
+			char *cur_iface_name_space = strchr(interface_names[i], ' ');
+			int show_current_iface;
+
 			s = 0;
-			if ( (interface_name &&
-			      interface_names[i][0] != '\0' &&
-			      (interface_name[0]=='\0' ||
-				strcasecmp (interface_name, interface_names[i]) == 0)) ||
-				!interface_name ) {
+			/*
+			 * Interface_name is "<linkid> <IP address>"
+			 * separate them out
+			 */
+			if (!cur_iface_name_space) {
+				continue;
+			}
+			*cur_iface_name_space = '\0';
 
-				/*
-				 * Interface_name is "<linkid> <IP address>"
-				 * separate them out
-				 */
-				char *space = strchr(interface_names[i], ' ');
-				if (!space) {
-					continue;
-				}
-				*space = '\0';
+			show_current_iface = 1;
+			if (interface_name != NULL && interface_name[0] != '\0' &&
+			    strcmp(interface_name, interface_names[i]) != 0 &&
+			    strcmp(interface_name, cur_iface_name_space + 1) != 0) {
+				show_current_iface = 0;
+			}
 
+			if (show_current_iface) {
 				printf ("LINK ID %s\n", interface_names[i]);
-				printf ("\taddr\t= %s\n", space+1);
+				printf ("\taddr\t= %s\n", cur_iface_name_space + 1);
 				if((!brief) && (strcmp(interface_status[i], "OK") != 0) &&
 					(!strstr(interface_status[i], "FAULTY"))) {
 					len = strlen(interface_status[i]);
@@ -361,8 +365,8 @@ static void usage_do (void)
 	printf ("corosync-cfgtool [[-i <interface ip>] [-b] -s] [-R] [-L] [-k nodeid] [-a nodeid] [-h] [-H]\n\n");
 	printf ("A tool for displaying and configuring active parameters within corosync.\n");
 	printf ("options:\n");
-	printf ("\t-i\tFinds only information about the specified interface IP address when used with -s..\n");
-	printf ("\t-s\tDisplays the status of the current links on this node(UDP/UDPU), while extended status for KNET.\n");
+	printf ("\t-i\tFinds only information about the specified interface IP address or link id when used with -s..\n");
+	printf ("\t-s\tDisplays the status of the current links on this node(UDP/UDPU), with extended status for KNET.\n");
 	printf ("\t-b\tDisplays the brief status of the current links on this node when used with -s.(KNET only)\n");
 	printf ("\t-R\tTell all instances of corosync in this cluster to reload corosync.conf.\n");
 	printf ("\t-L\tTell corosync to reopen all logging files.\n");
