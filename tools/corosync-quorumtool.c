@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009-2014 Red Hat, Inc.
+ * Copyright (c) 2009-2019 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -74,6 +74,8 @@ typedef enum {
 	SORT_NODEID,
 	SORT_NODENAME
 } sorttype_t;
+
+#define EXIT_NOT_QUORATE	2
 
 /*
  * global vars
@@ -238,7 +240,7 @@ static int set_votes(uint32_t nodeid, int votes)
 			votes, nodeid, cs_strerror(err));
 	}
 
-	return err==CS_OK?0:err;
+	return (err == CS_OK ? EXIT_SUCCESS : EXIT_FAILURE);
 }
 
 static int set_expected(int expected_votes)
@@ -249,7 +251,7 @@ static int set_expected(int expected_votes)
 		fprintf(stderr, "Unable to set expected votes: %s\n", cs_strerror(err));
 	}
 
-	return err==CS_OK?0:err;
+	return (err == CS_OK ? EXIT_SUCCESS : EXIT_FAILURE);
 }
 
 /*
@@ -639,9 +641,9 @@ static int display_quorum_data(int is_quorate,
 }
 
 /*
- * return  1 if quorate
- *         0 if not quorate
- *        -1 on error
+ * return EXIT_SUCCESS if quorate
+ *        EXIT_NOT_QUORATE if not quorate
+ *        EXIT_FAILURE on error
  */
 static int show_status(nodeid_format_t nodeid_format, name_format_t name_format, sorttype_t sort_type)
 {
@@ -690,15 +692,15 @@ static int show_status(nodeid_format_t nodeid_format, name_format_t name_format,
 
 quorum_err:
 	if (err != CS_OK) {
-		return -1;
+		return EXIT_FAILURE;
 	}
 
 	err = display_quorum_data(is_quorate, nodeid_format, name_format, sort_type, 0);
 	if (err != CS_OK) {
-		return -1;
+		return EXIT_FAILURE;
 	}
 
-	return is_quorate;
+	return (is_quorate ? EXIT_SUCCESS : EXIT_NOT_QUORATE);
 }
 
 static int monitor_status(nodeid_format_t nodeid_format, name_format_t name_format, sorttype_t sort_type) {
@@ -751,7 +753,7 @@ static int monitor_status(nodeid_format_t nodeid_format, name_format_t name_form
 	}
 
 quorum_err:
-	return -1;
+	return EXIT_FAILURE;
 }
 
 static int show_nodes(nodeid_format_t nodeid_format, name_format_t name_format, sorttype_t sort_type)
@@ -785,23 +787,30 @@ static int unregister_qdevice(void)
 {
 	int err;
 	struct votequorum_info info;
+	int result;
+
+	result = EXIT_FAILURE;
 
 	err = votequorum_getinfo(v_handle, our_nodeid, &info);
 	if (err != CS_OK) {
 		fprintf(stderr, "Unable to get quorum device info: %s\n", cs_strerror(err));
-		return -1;
+		goto err_exit;
 	}
 
 	if (!(info.flags & VOTEQUORUM_INFO_QDEVICE_REGISTERED)) {
-		return 0;
+		result = EXIT_SUCCESS;
+		goto err_exit;
 	}
 
 	err = votequorum_qdevice_unregister(v_handle, info.qdevice_name);
 	if (err != CS_OK) {
 		fprintf(stderr, "Unable to unregister quorum device: %s\n", cs_strerror(err));
-		return -1;
+		goto err_exit;
 	}
-	return 0;
+
+	result = EXIT_SUCCESS;
+err_exit:
+	return result;
 }
 
 /*
@@ -885,7 +894,7 @@ int main (int argc, char *argv[]) {
 
 	if (init_all()) {
 		close_all();
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	while ( (opt = getopt(argc, argv, options)) != -1 ) {
@@ -895,7 +904,7 @@ int main (int argc, char *argv[]) {
 				command_opt = CMD_UNREGISTER_QDEVICE;
 			} else {
 				fprintf(stderr, "You cannot unregister quorum device, corosync is not using votequorum\n");
-				exit(2);
+				exit(EXIT_FAILURE);
 			}
 			break;
 		case 's':
@@ -929,14 +938,14 @@ int main (int argc, char *argv[]) {
 				}
 			} else {
 				fprintf(stderr, "You cannot change expected votes, corosync is not using votequorum\n");
-				exit(2);
+				exit(EXIT_FAILURE);
 			}
 			break;
 		case 'n':
 			l = strtol(optarg, &endptr, 0);
 			if ((l == 0 && endptr == optarg) || l < 0) {
 				fprintf(stderr, "The nodeid was not valid, try a positive number\n");
-				exit(2);
+				exit(EXIT_FAILURE);
 			}
 			nodeid = l;
 			nodeid_set = 1;
@@ -946,14 +955,14 @@ int main (int argc, char *argv[]) {
 				votes = strtol(optarg, &endptr, 0);
 				if ((votes == 0 && endptr == optarg) || votes < 0) {
 					fprintf(stderr, "New votes value was not valid, try a positive number or zero\n");
-					exit(2);
+					exit(EXIT_FAILURE);
 				} else {
 					command_opt = CMD_SETVOTES;
 				}
 			}
 			else {
 				fprintf(stderr, "You cannot change node votes, corosync is not using votequorum\n");
-				exit(2);
+				exit(EXIT_FAILURE);
 			}
 			break;
 		case 'o':
@@ -967,7 +976,7 @@ int main (int argc, char *argv[]) {
 					break;
 			        default:
 					fprintf(stderr, "Invalid ordering option. valid orders are a(address), i(node ID) or n(name)\n");
-					exit(2);
+					exit(EXIT_FAILURE);
 					break;
 			}
 			break;
@@ -986,7 +995,7 @@ int main (int argc, char *argv[]) {
 	switch (command_opt) {
 	case CMD_UNKNOWN:
 		show_usage(argv[0]);
-		ret = -1;
+		ret = EXIT_FAILURE;
 		break;
 	case CMD_SHOWNODES:
 		ret = show_nodes(nodeid_format, address_format, sort_opt);
