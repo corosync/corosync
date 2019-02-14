@@ -31,7 +31,7 @@
 .\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 .\" * THE POSSIBILITY OF SUCH DAMAGE.
 .\" */
-.TH COROSYNC-QUORUMTOOL 8 2012-01-12
+.TH COROSYNC-QUORUMTOOL 8 2019-02-14
 .SH NAME
 corosync-quorumtool \- Set and display quorum settings.
 .SH SYNOPSIS
@@ -89,6 +89,21 @@ show this help text
 show version and exit
 .PP
 * Starred items only work if votequorum is the quorum provider for corosync
+.SH EXIT STATUS
+corosync-quorumtool may return one of several error codes if it encounters problems.
+.TP
+0
+No problems occurred (quorate for
+.B -s
+operation).
+.TP
+1
+Generic error code.
+.TP
+2
+Not quorate (returned only for
+.B -s
+operation).
 .SH SEE ALSO
 .BR corosync_overview (7),
 .BR votequorum_overview (3),
