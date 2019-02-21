@@ -1800,7 +1800,7 @@ static int setup_nozzle(void *knet_context)
 
 	if (macaddr_str && strlen(macaddr_str) != 17) {
 		knet_log_printf (LOGSYS_LEVEL_ERROR, "macaddr for nozzle device is not in the correct format '%s'", macaddr_str);
-		return -1;
+		goto out_free;
 	}
 	if (!macaddr_str) {
 		macaddr_str = (char*)"54:54:01:00:00:00";
@@ -1838,6 +1838,16 @@ static int setup_nozzle(void *knet_context)
 		instance->nozzle_ipaddr = strdup(ipaddr_str);
 		instance->nozzle_prefix = strdup(prefix_str);
 		instance->nozzle_macaddr = strdup(macaddr_str);
+		if (!instance->nozzle_name || !instance->nozzle_ipaddr ||
+		    !instance->nozzle_prefix) {
+			knet_log_printf (LOGSYS_LEVEL_ERROR, "strdup failed in nozzle allocation");
+			/*
+			 * This 'free' will cause a complete reconfigure of the device next time we reload
+			 * but will also let the the current device keep working until then.
+			 * remove_nozzle() only needs the, statically-allocated, nozzle_handle
+			 */
+			free_nozzle(instance);
+		}
 	}
 
 out_free:
