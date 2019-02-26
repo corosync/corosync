@@ -11,6 +11,7 @@
 %bcond_with dbus
 %bcond_with systemd
 %bcond_with xmlconf
+%bcond_with nozzle
 %bcond_with runautogen
 
 %global gitver %{?numcomm:.%{numcomm}}%{?alphatag:.%{alphatag}}%{?dirty:.%{dirty}}
@@ -55,6 +56,9 @@ BuildRequires: dbus-1-devel
 BuildRequires: dbus-devel
 %endif
 %endif
+%if %{with nozzle}
+BuildRequires: libnozzle1-devel
+%endif
 %if %{with systemd}
 %{?systemd_requires}
 BuildRequires: systemd
@@ -93,6 +97,9 @@ Requires: libxslt
 %endif
 %if %{with xmlconf}
 	--enable-xmlconf \
+%endif
+%if %{with nozzle}
+	--enable-nozzle \
 %endif
 	--with-initddir=%{_initrddir} \
 	--with-systemddir=%{_unitdir} \
