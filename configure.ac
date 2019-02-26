@@ -174,7 +174,6 @@ LIBS="$SAVE_LIBS"
 AC_CHECK_LIB([pthread], [pthread_create])
 AC_CHECK_LIB([socket], [socket])
 PKG_CHECK_MODULES([knet],[libknet])
-PKG_CHECK_MODULES([nozzle],[libnozzle], [AC_DEFINE_UNQUOTED([HAVE_LIBNOZZLE], 1, [Have libnozzle])], [have_nozzle="no"])
 AC_CHECK_LIB([nsl], [t_open])
 AC_CHECK_LIB([rt], [sched_getscheduler])
 AC_CHECK_LIB([z], [crc32],
@@ -395,20 +394,19 @@ AC_ARG_ENABLE([xmlconf],
 AM_CONDITIONAL(INSTALL_XMLCONF, test x$enable_xmlconf = xyes)
 
 AC_ARG_ENABLE([vqsim],
-	[  --enable-vqsim               : Quorum simulator support ],,
+	[  --enable-vqsim                  : Quorum simulator support ],,
 	[ enable_vqsim="no" ])
 AM_CONDITIONAL(BUILD_VQSIM, test x$enable_vqsim = xyes)
+
+AC_ARG_ENABLE([nozzle],
+	[  --enable-nozzle                 : Support for nozzle ],,
+	[ enable_nozzle="no" ])
 
 # *FLAGS handling goes here
 
 ENV_CFLAGS="$CFLAGS"
 ENV_CPPFLAGS="$CPPFLAGS"
 ENV_LDFLAGS="$LDFLAGS"
-
-# Add nozzle to Package features if enabled
-if test "x$have_nozzle" != xno; then
-	PACKAGE_FEATURES="$PACKAGE_FEATURES nozzle"
-fi
 
 # debug build stuff
 if test "x${enable_debug}" = xyes; then
@@ -425,6 +423,7 @@ if test "x${GCC}" = xyes; then
 else
 	GDB_FLAGS="-g"
 fi
+
 
 # Look for dbus-1
 if test "x${enable_dbus}" = xyes; then
@@ -473,6 +472,14 @@ if test "x${enable_vqsim}" = xyes; then
 	PACKAGE_FEATURES="$PACKAGE_FEATURES vqsim"
 fi
 AM_CONDITIONAL(VQSIM_READLINE, [test "x${ac_cv_header_readline_readline_h}" = xyes])
+
+# Look for nozzle
+if test "x${enable_nozzle}" = xyes; then
+	PKG_CHECK_MODULES([nozzle],[libnozzle])
+	AC_DEFINE_UNQUOTED([HAVE_LIBNOZZLE], 1, [have nozzle])
+	PACKAGE_FEATURES="$PACKAGE_FEATURES nozzle"
+	WITH_LIST="$WITH_LIST --with nozzle"
+fi
 
 do_snmp=0
 if test "x${enable_snmp}" = xyes; then
