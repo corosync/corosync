@@ -596,7 +596,7 @@ static int main_config_parser_cb(const char *path,
 	 * Key_name is used in atoi_error/icmap_set_error, but many of icmap_set*
 	 * are using path, so initialize key_name to valid value
 	 */
-	strncpy(key_name, path, sizeof(key_name));
+	strncpy(key_name, path, sizeof(key_name) - 1);
 
 	switch (type) {
 	case PARSER_CB_START:
