@@ -566,6 +566,11 @@ knet_pmtud_interval
 How often the knet PMTUd runs to look for network MTU changes.
 Value in seconds, default: 30
 
+.TP
+knet_enable_access_lists
+Allow knet to drop packets from IP addresses that are not known to corosync.
+Value is 0 (off) and 1 (on). Default: 0.
+
 .PP
 Within the
 .B logging

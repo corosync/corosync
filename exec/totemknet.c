@@ -764,6 +764,16 @@ static void totemknet_refresh_config(
 		return;
 	}
 
+#ifdef HAVE_KNET_ACCESS_LIST
+	if (icmap_get_uint32("totem.knet_enable_access_lists", &value) == CS_OK) {
+		knet_log_printf (LOGSYS_LEVEL_DEBUG, "knet_enable access list: %d", value);
+		err = knet_handle_enable_access_lists(instance->knet_handle, value);
+		if (err) {
+			KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_WARNING, "knet_handle_enable_access_lists failed");
+		}
+	}
+#endif
+
 	if (icmap_get_uint32("totem.knet_pmtud_interval", &value) == CS_OK) {
 
 		instance->totem_config->knet_pmtud_interval = value;
