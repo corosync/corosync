@@ -180,6 +180,15 @@ AC_CHECK_LIB([z], [crc32],
     AM_CONDITIONAL([HAVE_CRC32], true),
     AM_CONDITIONAL([HAVE_CRC32], false))
 
+# this hack is necessary to check for symbols on out of tree builds
+# but it is as horrible as it gets and in theory users should be
+# invoking ./configure with proper LIBRARY_PATH set.
+OLDLIBS="$LIBS"
+LIBS="$knet_LIBS $LIBS"
+AC_CHECK_LIB([knet],[knet_handle_enable_access_lists],
+	     [AC_DEFINE_UNQUOTED([HAVE_KNET_ACCESS_LIST], 1, [have knet access list])])
+LIBS="$OLDLIBS"
+
 # Checks for library functions.
 AC_FUNC_ALLOCA
 AC_FUNC_CLOSEDIR_VOID
