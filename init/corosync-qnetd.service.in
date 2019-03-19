@@ -7,8 +7,8 @@ After=network-online.target
 
 [Service]
 EnvironmentFile=-@INITCONFIGDIR@/corosync-qnetd
-ExecStart=@BINDIR@/corosync-qnetd -f $COROSYNC_QNETD_OPTIONS
-Type=simple
+ExecStart=@BINDIR@/corosync-qnetd $COROSYNC_QNETD_OPTIONS
+Type=forking
 Restart=on-abnormal
 # Uncomment and set user who should be used for executing qnetd
 #User=coroqnetd

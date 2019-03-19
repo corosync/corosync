@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016 Red Hat, Inc.
+ * Copyright (c) 2015-2019 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -32,6 +32,9 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <sys/types.h>
+
+#include <dirent.h>
 #include <limits.h>
 
 #include "nss-sock.h"
@@ -52,6 +55,24 @@ nss_sock_init_nss(char *config_dir)
 	if (NSS_SetDomesticPolicy() != SECSuccess) {
 		return (-1);
 	}
+
+	return (0);
+}
+
+int
+nss_sock_check_db_dir(const char *config_dir)
+{
+	DIR *dirp;
+
+	if (config_dir == NULL) {
+		return (0);
+	}
+
+	if ((dirp = opendir(config_dir)) == NULL) {
+		return (-1);
+	}
+
+	(void)closedir(dirp);
 
 	return (0);
 }
