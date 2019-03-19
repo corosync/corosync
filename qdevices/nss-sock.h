@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016 Red Hat, Inc.
+ * Copyright (c) 2015-2019 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -55,6 +55,8 @@ struct nss_sock_non_blocking_client {
 };
 
 extern int		nss_sock_init_nss(char *config_dir);
+
+extern int		nss_sock_check_db_dir(const char *config_dir);
 
 extern PRFileDesc	*nss_sock_create_listen_socket(const char *hostname, uint16_t port,
     PRIntn af);

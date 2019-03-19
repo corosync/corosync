@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016 Red Hat, Inc.
+ * Copyright (c) 2015-2019 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -541,6 +541,16 @@ main(int argc, char * const argv[])
 
 	qnetd_log_set_debug(debug_log);
 	qnetd_log_set_priority_bump(bump_log_priority);
+
+	/*
+	 * Check that it's possible to open NSS dir if needed
+	 */
+	if (nss_sock_check_db_dir((tls_supported != TLV_TLS_UNSUPPORTED ?
+	    advanced_settings.nss_db_dir : NULL)) != 0) {
+		qnetd_log_err(LOG_ERR, "Can't open NSS DB directory");
+
+		exit (1);
+	}
 
 	/*
 	 * Daemonize
