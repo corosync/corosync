@@ -737,6 +737,24 @@ static void timer_function_netif_check_timeout (
 	}
 }
 
+static void knet_set_access_list_config(struct totemknet_instance *instance)
+{
+#ifdef HAVE_KNET_ACCESS_LIST
+	uint32_t value = 0; /* disable by default */
+	cs_error_t err;
+
+	if (icmap_get_uint32("totem.knet_enable_access_lists", &value) == CS_OK) {
+		knet_log_printf (LOGSYS_LEVEL_DEBUG, "knet_enable access list: %d", value);
+        }
+
+	err = knet_handle_enable_access_lists(instance->knet_handle, value);
+	if (err) {
+	        KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_WARNING, "knet_handle_enable_access_lists failed");
+	}
+#endif
+}
+
+
 /* NOTE: this relies on the fact that totem_reload_notify() is called first */
 static void totemknet_refresh_config(
 	int32_t event,
@@ -764,15 +782,7 @@ static void totemknet_refresh_config(
 		return;
 	}
 
-#ifdef HAVE_KNET_ACCESS_LIST
-	if (icmap_get_uint32("totem.knet_enable_access_lists", &value) == CS_OK) {
-		knet_log_printf (LOGSYS_LEVEL_DEBUG, "knet_enable access list: %d", value);
-		err = knet_handle_enable_access_lists(instance->knet_handle, value);
-		if (err) {
-			KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_WARNING, "knet_handle_enable_access_lists failed");
-		}
-	}
-#endif
+	knet_set_access_list_config(instance);
 
 	if (icmap_get_uint32("totem.knet_pmtud_interval", &value) == CS_OK) {
 
@@ -944,6 +954,9 @@ int totemknet_initialize (
 		KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_CRIT, "knet_handle_new failed");
 		goto exit_error;
 	}
+
+	knet_set_access_list_config(instance);
+
 	res = knet_handle_pmtud_setfreq(instance->knet_handle, instance->totem_config->knet_pmtud_interval);
 	if (res) {
 		KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_WARNING, "knet_handle_pmtud_setfreq failed");
