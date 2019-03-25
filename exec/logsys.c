@@ -104,14 +104,14 @@ struct logsys_logger {
 
 static int logsys_system_needs_init = LOGSYS_LOGGER_NEEDS_INIT;
 
-static struct logsys_logger logsys_loggers[LOGSYS_MAX_SUBSYS_COUNT + 1];
+static struct logsys_logger logsys_loggers[LOGSYS_MAX_SUBSYS_COUNT];
 
 static pthread_mutex_t logsys_config_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static int32_t _logsys_config_mode_set_unlocked(int32_t subsysid, uint32_t new_mode);
 static void _logsys_config_apply_per_file(int32_t s, const char *filename);
 static void _logsys_config_apply_per_subsys(int32_t s);
-static void _logsys_subsys_filename_add (int32_t s, const char *filename);
+static int _logsys_subsys_filename_add (int32_t s, const char *filename);
 static void logsys_file_format_get(char* file_format, int buf_len);
 
 static char *format_buffer=NULL;
@@ -128,7 +128,7 @@ static int _logsys_config_subsys_get_unlocked (const char *subsys)
 		return LOGSYS_MAX_SUBSYS_COUNT;
 	}
 
-	for (i = 0; i <= LOGSYS_MAX_SUBSYS_COUNT; i++) {
+	for (i = 0; i < LOGSYS_MAX_SUBSYS_COUNT; i++) {
 		if (strcmp (logsys_loggers[i].subsys, subsys) == 0) {
 			return i;
 		}
@@ -198,7 +198,7 @@ static int logsys_config_file_set_unlocked (
 		return (-1);
 	}
 
-	for (i = 0; i <= LOGSYS_MAX_SUBSYS_COUNT; i++) {
+	for (i = 0; i < LOGSYS_MAX_SUBSYS_COUNT; i++) {
 		if ((logsys_loggers[i].logfile != NULL) &&
 		    (strcmp (logsys_loggers[i].logfile, file) == 0) &&
 		    (i != subsysid)) {
@@ -212,7 +212,7 @@ static int logsys_config_file_set_unlocked (
 
 	if (logsys_loggers[subsysid].target_id > 0) {
 		int num_using_current = 0;
-		for (i = 0; i <= LOGSYS_MAX_SUBSYS_COUNT; i++) {
+		for (i = 0; i < LOGSYS_MAX_SUBSYS_COUNT; i++) {
 			if (logsys_loggers[subsysid].target_id ==
 				logsys_loggers[i].target_id) {
 				num_using_current++;
@@ -261,10 +261,10 @@ static void logsys_subsys_init (
 		logsys_loggers[subsysid].init_status =
 			LOGSYS_LOGGER_NEEDS_INIT;
 	} else {
-		logsys_loggers[subsysid].mode = logsys_loggers[LOGSYS_MAX_SUBSYS_COUNT].mode;
-		logsys_loggers[subsysid].debug = logsys_loggers[LOGSYS_MAX_SUBSYS_COUNT].debug;
-		logsys_loggers[subsysid].syslog_priority = logsys_loggers[LOGSYS_MAX_SUBSYS_COUNT].syslog_priority;
-		logsys_loggers[subsysid].logfile_priority = logsys_loggers[LOGSYS_MAX_SUBSYS_COUNT].logfile_priority;
+		logsys_loggers[subsysid].mode = logsys_loggers[LOGSYS_MAX_SUBSYS_COUNT - 1].mode;
+		logsys_loggers[subsysid].debug = logsys_loggers[LOGSYS_MAX_SUBSYS_COUNT - 1].debug;
+		logsys_loggers[subsysid].syslog_priority = logsys_loggers[LOGSYS_MAX_SUBSYS_COUNT - 1].syslog_priority;
+		logsys_loggers[subsysid].logfile_priority = logsys_loggers[LOGSYS_MAX_SUBSYS_COUNT - 1].logfile_priority;
 		logsys_loggers[subsysid].init_status = LOGSYS_LOGGER_INIT_DONE;
 	}
 	strncpy (logsys_loggers[subsysid].subsys, subsys,
@@ -338,9 +338,12 @@ int _logsys_system_setup(
 	 * This file (logsys.c) is not exactly QB. We need tag for logsys.c if flightrecorder init
 	 * fails, and QB seems to be closest.
 	 */
-	_logsys_subsys_filename_add (i, "logsys.c");
+	if (_logsys_subsys_filename_add (i, "logsys.c")) {
+		LOGSYS_PERROR(-1, LOGSYS_LEVEL_ERROR, "Unable to create filename in subsys");
+		return -1;
+	}
 
-	i = LOGSYS_MAX_SUBSYS_COUNT;
+	i = LOGSYS_MAX_SUBSYS_COUNT - 1;
 
 	pthread_mutex_lock (&logsys_config_mutex);
 
@@ -408,26 +411,43 @@ int _logsys_system_setup(
 }
 
 
-static void _logsys_subsys_filename_add (int32_t s, const char *filename)
+static int _logsys_subsys_filename_add (int32_t s, const char *filename)
 {
-	int i;
+	int i, err = -1;
+	char *filename_dup;
+	int index_new;
 
 	if (filename == NULL) {
-		return;
+		return 0;
 	}
-	assert(logsys_loggers[s].file_idx < MAX_FILES_PER_SUBSYS);
-	assert(logsys_loggers[s].file_idx >= 0);
+	if (logsys_loggers[s].file_idx >= MAX_FILES_PER_SUBSYS ||
+	logsys_loggers[s].file_idx < 0) {
+		LOGSYS_PERROR(err, LOGSYS_LEVEL_ERROR, "File_index err in logsys_loggers");
+		return err;
+	}
 
-	for (i = 0; i < logsys_loggers[s].file_idx; i++) {
+	for (i = 0; i <= logsys_loggers[s].file_idx; i++) {
 		if (strcmp(logsys_loggers[s].files[i], filename) == 0) {
-			return;
+			return 0;
 		}
 	}
-	logsys_loggers[s].files[logsys_loggers[s].file_idx++] = strdup(filename);
+
+	if(i == MAX_FILES_PER_SUBSYS) {
+		LOGSYS_PERROR(err, LOGSYS_LEVEL_ERROR, "Unable to add one more filename in subsys");
+		return err;
+	}
+	if ((filename_dup = strdup(filename)) == NULL) {
+		LOGSYS_PERROR(errno, LOGSYS_LEVEL_ERROR, "Unable to duplicate a subsys filename");
+		return err;
+	}
+	index_new = logsys_loggers[s].file_idx + 1;
+	logsys_loggers[s].files[index_new] = filename_dup;
 
 	if (logsys_system_needs_init == LOGSYS_LOGGER_INIT_DONE) {
 		_logsys_config_apply_per_file(s, filename);
 	}
+
+	return 0;
 }
 
 int _logsys_subsys_create (const char *subsys, const char *filename)
@@ -443,7 +463,10 @@ int _logsys_subsys_create (const char *subsys, const char *filename)
 
 	i = _logsys_config_subsys_get_unlocked (subsys);
 	if ((i > -1) && (i < LOGSYS_MAX_SUBSYS_COUNT)) {
-		_logsys_subsys_filename_add(i, filename);
+		if (_logsys_subsys_filename_add(i, filename)) {
+			LOGSYS_PERROR(-1, LOGSYS_LEVEL_ERROR, "Unable to create filename in subsys");
+			return -1;
+		}
 		pthread_mutex_unlock (&logsys_config_mutex);
 		return i;
 	}
@@ -451,7 +474,10 @@ int _logsys_subsys_create (const char *subsys, const char *filename)
 	for (i = 0; i < LOGSYS_MAX_SUBSYS_COUNT; i++) {
 		if (strcmp (logsys_loggers[i].subsys, "") == 0) {
 			logsys_subsys_init(subsys, i);
-			_logsys_subsys_filename_add(i, filename);
+			if (_logsys_subsys_filename_add(i, filename)) {
+				LOGSYS_PERROR(-1, LOGSYS_LEVEL_ERROR, "Unable to add filename in subsys");
+				return -1;
+			}
 			break;
 		}
 	}
@@ -511,7 +537,7 @@ int logsys_config_mode_set (const char *subsys, unsigned int mode)
 			i = _logsys_config_mode_set_unlocked(i, mode);
 		}
 	} else {
-		for (i = 0; i <= LOGSYS_MAX_SUBSYS_COUNT; i++) {
+		for (i = 0; i < LOGSYS_MAX_SUBSYS_COUNT; i++) {
 			_logsys_config_mode_set_unlocked(i, mode);
 		}
 		i = 0;
@@ -610,7 +636,7 @@ int logsys_format_set (const char *format)
 	qb_log_format_set(QB_LOG_STDERR, format_buffer);
 
 	logsys_file_format_get(file_format, 128);
-	for (i = 0; i <= LOGSYS_MAX_SUBSYS_COUNT; i++) {
+	for (i = 0; i < LOGSYS_MAX_SUBSYS_COUNT; i++) {
 		if (logsys_loggers[i].target_id > 0) {
 			qb_log_format_set(logsys_loggers[i].target_id, file_format);
 		}
@@ -675,7 +701,7 @@ int logsys_config_syslog_priority_set (
 			i = 0;
 		}
 	} else {
-		for (i = 0; i <= LOGSYS_MAX_SUBSYS_COUNT; i++) {
+		for (i = 0; i < LOGSYS_MAX_SUBSYS_COUNT; i++) {
 			logsys_loggers[i].syslog_priority = priority;
 			logsys_loggers[i].dirty = QB_TRUE;
 		}
@@ -701,7 +727,7 @@ int logsys_config_logfile_priority_set (
 			i = 0;
 		}
 	} else {
-		for (i = 0; i <= LOGSYS_MAX_SUBSYS_COUNT; i++) {
+		for (i = 0; i < LOGSYS_MAX_SUBSYS_COUNT; i++) {
 			logsys_loggers[i].logfile_priority = priority;
 			logsys_loggers[i].dirty = QB_TRUE;
 		}
@@ -816,7 +842,7 @@ int logsys_config_debug_set (
 			i = 0;
 		}
 	} else {
-		for (i = 0; i <= LOGSYS_MAX_SUBSYS_COUNT; i++) {
+		for (i = 0; i < LOGSYS_MAX_SUBSYS_COUNT; i++) {
 			logsys_loggers[i].debug = debug;
 			logsys_loggers[i].dirty = QB_TRUE;
 		}
@@ -850,7 +876,7 @@ int logsys_thread_start (void)
 	}
 
 	qb_log_ctl(QB_LOG_SYSLOG, QB_LOG_CONF_THREADED, QB_TRUE);
-	for (i = 0; i <= LOGSYS_MAX_SUBSYS_COUNT; i++) {
+	for (i = 0; i < LOGSYS_MAX_SUBSYS_COUNT; i++) {
 		if (logsys_loggers[i].target_id > 0) {
 			qb_log_ctl(logsys_loggers[i].target_id, QB_LOG_CONF_THREADED, QB_TRUE);
 		}
