@@ -434,7 +434,7 @@ struct totemsrp_instance {
 
 	void (*totemsrp_log_printf) (
 		int level,
-		int sybsys,
+		int subsys,
 		const char *function,
 		const char *file,
 		int line,
