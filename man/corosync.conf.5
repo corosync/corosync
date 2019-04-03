@@ -216,7 +216,7 @@ messages. Valid values are none (no authentication), md5, sha1, sha256,
 sha384 and sha512. Encrypted transmission is only supported for
 the knet transport.
 
-The default is none.
+The default is sha1.
 
 .TP
 crypto_cipher
@@ -225,7 +225,7 @@ Valid values are none (no encryption), aes256, aes192, aes128 and 3des.
 Enabling crypto_cipher, requires also enabling of crypto_hash. Encrypted
 transmission is only supported for the knet transport.
 
-The default is none.
+The default is aes256.
 
 .TP
 keyfile

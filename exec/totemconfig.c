@@ -434,8 +434,8 @@ static int totem_get_crypto(struct totem_config *totem_config, const char **erro
 	const char *tmp_hash;
 	const char *tmp_model;
 
-	tmp_hash = "none";
-	tmp_cipher = "none";
+	tmp_hash = "sha1";
+	tmp_cipher = "aes256";
 	tmp_model = "none";
 
 	if (icmap_get_string("totem.crypto_model", &str) == CS_OK) {
