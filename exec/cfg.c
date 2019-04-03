@@ -578,6 +578,8 @@ static void remove_ro_entries(icmap_map_t temp_map)
 	delete_and_notify_if_changed(temp_map, "totem.secauth");
 	delete_and_notify_if_changed(temp_map, "totem.crypto_hash");
 	delete_and_notify_if_changed(temp_map, "totem.crypto_cipher");
+	delete_and_notify_if_changed(temp_map, "totem.keyfile");
+	delete_and_notify_if_changed(temp_map, "totem.key");
 	delete_and_notify_if_changed(temp_map, "totem.version");
 	delete_and_notify_if_changed(temp_map, "totem.threads");
 	delete_and_notify_if_changed(temp_map, "totem.ip_version");
