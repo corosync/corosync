@@ -4,7 +4,6 @@ Documentation=man:corosync man:corosync.conf man:corosync_overview
 ConditionKernelCommandLine=!nocluster
 Requires=network-online.target
 After=network-online.target
-StopWhenUnneeded=yes
 
 [Service]
 EnvironmentFile=-@INITCONFIGDIR@/corosync
