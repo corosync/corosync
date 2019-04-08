@@ -1216,7 +1216,7 @@ static int put_nodelist_members_to_config(struct totem_config *totem_config, int
 
 	iter = icmap_iter_init("nodelist.node.");
 	while ((iter_key = icmap_iter_next(iter, NULL, NULL)) != NULL) {
-		res = sscanf(iter_key, "nodelist.node.%u.%s", &node_pos, tmp_key);
+		res = sscanf(iter_key, "nodelist.node.%u.%s", node_pos, tmp_key);
 		if (res != 2) {
 			continue;
 		}
@@ -1237,7 +1237,7 @@ static int put_nodelist_members_to_config(struct totem_config *totem_config, int
 				nodeid = 0;
 			}
 
-			res = sscanf(iter_key2, "nodelist.node.%u.ring%u%s", &node_pos, &linknumber, tmp_key2);
+			res = sscanf(iter_key2, "nodelist.node.%u.ring%u%s", node_pos, linknumber, tmp_key2);
 			if (res != 3 || strcmp(tmp_key2, "_addr") != 0) {
 				continue;
 			}
@@ -1321,7 +1321,7 @@ static void config_convert_nodelist_to_interface(struct totem_config *totem_conf
 		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "nodelist.node.%u.", node_pos);
 		iter = icmap_iter_init(tmp_key);
 		while ((iter_key = icmap_iter_next(iter, NULL, NULL)) != NULL) {
-			res = sscanf(iter_key, "nodelist.node.%u.ring%u%s", &node_pos, &linknumber, tmp_key2);
+			res = sscanf(iter_key, "nodelist.node.%u.ring%u%s", node_pos, linknumber, tmp_key2);
 			if (res != 3 || strcmp(tmp_key2, "_addr") != 0) {
 				continue ;
 			}
