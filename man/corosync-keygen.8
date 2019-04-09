@@ -1,5 +1,5 @@
 .\"/*
-.\" * Copyright (C) 2010-2017 Red Hat, Inc.
+.\" * Copyright (C) 2010-2019 Red Hat, Inc.
 .\" *
 .\" * All rights reserved.
 .\" *
@@ -31,7 +31,7 @@
 .\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 .\" * THE POSSIBILITY OF SUCH DAMAGE.
 .\" */
-.TH COROSYNC-KEYGEN 8 2017-07-03
+.TH COROSYNC-KEYGEN 8 2019-04-09
 .SH NAME
 corosync-keygen \- Generate an authentication key for Corosync.
 .SH SYNOPSIS
@@ -69,7 +69,7 @@ Random number source file. Default is /dev/urandom. As an example /dev/random ma
 used when really superb randomness is needed.
 .TP
 .B -s size
-Size of the generated key in bytes. Default is 1024 bytes. Allowed range is <1024, 4096>.
+Size of the generated key in bytes. Default is 256 bytes. Allowed range is <128, 4096>.
 .TP
 .TP
 .B -l
@@ -84,7 +84,7 @@ Generate the key.
 .nf
 # corosync-keygen
 Corosync Cluster Engine Authentication key generator.
-Gathering 8192 bits for key from /dev/urandom.
+Gathering 2048 bits for key from /dev/urandom.
 Writing corosync key to /etc/corosync/authkey
 .fi
 
@@ -101,15 +101,12 @@ Writing corosync key to /tmp/authkey.
 Generate superb key using /dev/random
 .nf
 # corosync-keygen -r /dev/random
-Corosync Cluster Engine Authentication key generator.
-Gathering 8192 bits for key from /dev/random.
+Gathering 2048 bits for key from /dev/random.
 Press keys on your keyboard to generate entropy.
-Press keys on your keyboard to generate entropy (7928 bits still needed).
-Press keys on your keyboard to generate entropy (7880 bits still needed).
- ...
-Press keys on your keyboard to generate entropy (104 bits still needed).
-Press keys on your keyboard to generate entropy (56 bits still needed).
-Press keys on your keyboard to generate entropy (8 bits still needed).
+Press keys on your keyboard to generate entropy (1128 bits still needed).
+Press keys on your keyboard to generate entropy (504 bits still needed).
+Press keys on your keyboard to generate entropy (128 bits still needed).
+Press keys on your keyboard to generate entropy (32 bits still needed).
 Writing corosync key to /etc/corosync/authkey.
 .fi
 

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2004 MontaVista Software, Inc.
- * Copyright (c) 2005-2017 Red Hat, Inc.
+ * Copyright (c) 2005-2019 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -52,7 +52,7 @@
 
 #define DEFAULT_KEYFILE COROSYSCONFDIR "/authkey"
 
-#define DEFAULT_KEYFILE_LEN		TOTEM_PRIVATE_KEY_LEN_MIN
+#define DEFAULT_KEYFILE_LEN		256
 
 #define DEFAULT_RANDOM_DEV		"/dev/urandom"
 
