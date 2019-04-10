@@ -450,6 +450,14 @@ static int totem_get_crypto(struct totem_config *totem_config, const char **erro
 		tmp_model = "nss";
 	}
 
+	if (icmap_get_string("totem.secauth", &str) == CS_OK) {
+		if (strcmp(str, "on") == 0) {
+			tmp_cipher = "aes256";
+			tmp_hash = "sha256";
+		}
+		free(str);
+	}
+
 	if (icmap_get_string("totem.crypto_cipher", &str) == CS_OK) {
 		if (strcmp(str, "none") == 0) {
 			tmp_cipher = "none";

@@ -228,6 +228,14 @@ transmission is only supported for the knet transport.
 The default is none.
 
 .TP
+secauth
+This implies crypto_cipher=aes256 and crypto_hash=sha256, unless those options
+are explicitly set. Encrypted transmission is only supported for the knet
+transport.
+
+The default is off.
+
+.TP
 keyfile
 This specifies the fully qualified path to the shared key used to
 authenticate and encrypt data used within the Totem protocol.
