@@ -202,7 +202,7 @@ struct cpg_ring_id {
 .PP
 where
 .I nodeid
-is if of node of current Totem leader and seq is increasing number.
+is a 32 bit unique node identifier pertaining the current Totem leader and seq is increasing number.
 
 .PP
 .SH RETURN VALUE
