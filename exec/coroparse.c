@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2018 Red Hat, Inc.
+ * Copyright (c) 2006-2019 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -747,13 +747,11 @@ static int main_config_parser_cb(const char *path,
 					return (0);
 				}
 			}
-			if (strcmp(path, "totem.crypto_type") == 0) {
+			if (strcmp(path, "totem.crypto_model") == 0) {
 				if ((strcmp(value, "nss") != 0) &&
-				    (strcmp(value, "aes256") != 0) &&
-				    (strcmp(value, "aes192") != 0) &&
-				    (strcmp(value, "aes128") != 0) &&
-				    (strcmp(value, "3des") != 0)) {
-					*error_string = "Invalid crypto type";
+				    (strcmp(value, "openssl") != 0)) {
+					*error_string = "Invalid crypto model. "
+					    "Should be nss or openssl";
 
 					return (0);
 				}
@@ -762,9 +760,9 @@ static int main_config_parser_cb(const char *path,
 				if ((strcmp(value, "none") != 0) &&
 				    (strcmp(value, "aes256") != 0) &&
 				    (strcmp(value, "aes192") != 0) &&
-				    (strcmp(value, "aes128") != 0) &&
-				    (strcmp(value, "3des") != 0)) {
-					*error_string = "Invalid cipher type";
+				    (strcmp(value, "aes128") != 0)) {
+					*error_string = "Invalid cipher type. "
+					    "Should be none, aes256, aes192 or aes128";
 
 					return (0);
 				}
@@ -776,7 +774,8 @@ static int main_config_parser_cb(const char *path,
 				    (strcmp(value, "sha256") != 0) &&
 				    (strcmp(value, "sha384") != 0) &&
 				    (strcmp(value, "sha512") != 0)) {
-					*error_string = "Invalid hash type";
+					*error_string = "Invalid hash type. "
+					    "Should be none, md5, sha1, sha256, sha384 or sha512";
 
 					return (0);
 				}

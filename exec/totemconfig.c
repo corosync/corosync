@@ -463,9 +463,6 @@ static int totem_get_crypto(struct totem_config *totem_config, const char **erro
 		if (strcmp(str, "aes128") == 0) {
 			tmp_cipher = "aes128";
 		}
-		if (strcmp(str, "3des") == 0) {
-			tmp_cipher = "3des";
-		}
 		free(str);
 	}
 
