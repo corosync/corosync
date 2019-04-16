@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Red Hat, Inc.
+ * Copyright (c) 2006-2019 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -80,6 +80,7 @@ typedef enum {
  * @brief The cpg_reason_t enum
  */
 typedef enum {
+	CPG_REASON_UNDEFINED = 0,
 	CPG_REASON_JOIN = 1,
 	CPG_REASON_LEAVE = 2,
 	CPG_REASON_NODEDOWN = 3,

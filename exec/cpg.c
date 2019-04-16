@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2015 Red Hat, Inc.
+ * Copyright (c) 2006-2019 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -711,6 +711,7 @@ static int notify_lib_joinlist(
 			if (!founded) {
 				retgi->nodeid = pi->nodeid;
 				retgi->pid = pi->pid;
+				retgi->reason = CPG_REASON_UNDEFINED;
 				retgi++;
 			}
 		}
