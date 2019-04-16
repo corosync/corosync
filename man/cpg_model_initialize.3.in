@@ -1,5 +1,5 @@
 .\"/*
-.\" * Copyright (c) 2010 Red Hat, Inc.
+.\" * Copyright (c) 2010-2019 Red Hat, Inc.
 .\" *
 .\" * All rights reserved.
 .\" *
@@ -32,7 +32,7 @@
 .\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 .\" * THE POSSIBILITY OF SUCH DAMAGE.
 .\" */
-.TH CPG_MODEL_INITIALIZE 3 2010-04-07 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
+.TH CPG_MODEL_INITIALIZE 3 2019-04-16 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
 .SH NAME
 cpg_model_initialize \- Create a new connection to the CPG service
 .SH SYNOPSIS
@@ -166,18 +166,20 @@ struct cpg_address {
 .IP
 .PP
 where nodeid is a 32 bit unique node identifier, pid is the process ID of the process that has joined/left the group
-or sent the message, and reason is an integer code indicating why the node joined/left the group.
+or sent the message, and reason is an integer code indicating why the node joined/left the group (this value is not
+set for the member_list items).
 .PP
 .IP
 .RS
 .ne 18
 .nf
 .PP
-CPG_REASON_JOIN     - the process joined a group using cpg_join().
-CPG_REASON_LEAVE    - the process left a group using cpg_leave()
-CPG_REASON_NODEDOWN - the process left a group because the node left the cluster.
-CPG_REASON_NODEUP   - the process joined a group because it was already a member of a group on a node that has just joined the cluster
-CPG_REASON_PROCDOWN - the process left a group without calling cpg_leave()
+CPG_REASON_JOIN      - the process joined a group using cpg_join().
+CPG_REASON_LEAVE     - the process left a group using cpg_leave()
+CPG_REASON_NODEDOWN  - the process left a group because the node left the cluster.
+CPG_REASON_NODEUP    - the process joined a group because it was already a member of a group on a node that has just joined the cluster
+CPG_REASON_PROCDOWN  - the process left a group without calling cpg_leave()
+CPG_REASON_UNDEFINED - a special value used for the member_list items
 .ta
 .fi
 .RE
