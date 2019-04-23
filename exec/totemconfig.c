@@ -560,27 +560,28 @@ static int nodelist_byname(const char *find_name, int strip_domain)
 	return -1;
 }
 
-/* Compare two addresses */
-static int ipaddr_equal(struct sockaddr_storage *addr1, struct sockaddr_storage *addr2)
+/* Compare two addresses - only address part (sin_addr/sin6_addr) is checked */
+static int ipaddr_equal(const struct sockaddr *addr1, const struct sockaddr *addr2)
 {
 	int addrlen = 0;
+	const void *addr1p, *addr2p;
 
-	if (addr1->ss_family != addr2->ss_family)
+	if (addr1->sa_family != addr2->sa_family)
 		return 0;
 
-	if (addr1->ss_family == AF_INET) {
-		addrlen = sizeof(struct sockaddr_in);
+	if (addr1->sa_family == AF_INET) {
+		addrlen = sizeof(struct in_addr);
+		addr1p = &((struct sockaddr_in *)addr1)->sin_addr;
+		addr2p = &((struct sockaddr_in *)addr2)->sin_addr;
 	}
-	if (addr1->ss_family == AF_INET6) {
-		addrlen = sizeof(struct sockaddr_in6);
+	if (addr1->sa_family == AF_INET6) {
+		addrlen = sizeof(struct in6_addr);
+		addr1p = &((struct sockaddr_in6 *)addr1)->sin6_addr;
+		addr2p = &((struct sockaddr_in6 *)addr2)->sin6_addr;
 	}
 	assert(addrlen);
 
-	if (memcmp(addr1, addr2, addrlen) == 0)
-		return 1;
-	else
-		return 0;
-
+	return (memcmp(addr1p, addr2p, addrlen) == 0);
 }
 
 
@@ -760,8 +761,7 @@ static int find_local_node(int use_cache)
 		for (rp = result; rp != NULL; rp = rp->ai_next) {
 			for (ifa = ifa_list; ifa; ifa = ifa->ifa_next) {
 				if (ifa->ifa_addr &&
-				    ipaddr_equal((struct sockaddr_storage *)rp->ai_addr,
-						 (struct sockaddr_storage *)ifa->ifa_addr)) {
+				    ipaddr_equal(rp->ai_addr, ifa->ifa_addr)) {
 					freeaddrinfo(result);
 					found = 1;
 					goto out2;
