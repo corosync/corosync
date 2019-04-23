@@ -26,6 +26,9 @@
 extern int coroparse_configparse (icmap_map_t config_map, const char **error_string);
 extern int corosync_log_config_read (const char **error_string);
 
+/* 'Keep the compiler happy' time */
+const char *corosync_get_config_file(void);
+
 /* One of these per partition */
 struct vq_partition {
 	TAILQ_HEAD(, vq_node) nodelist;
@@ -70,6 +73,15 @@ static size_t input_buf_term = 0;
 static int is_tty;
 #endif
 
+/* 'Keep the compiler happy' time */
+static char corosync_config_file[PATH_MAX + 1] = COROSYSCONFDIR "/corosync.conf";
+
+const char *corosync_get_config_file(void)
+{
+
+	return (corosync_config_file);
+}
+
 /* Tell all non-quorate nodes to quit */
 static void force_fence(void)
 {
@@ -110,7 +122,7 @@ static void print_quorum_state(struct vq_node *node)
 	}
 
 	fprintf(output_file, "%d:%02d: q=%d ring=[%d/%lld] ", node->partition->num, node->nodeid, node->last_quorate,
-		node->last_ring_id.rep.nodeid, node->last_ring_id.seq);
+		node->last_ring_id.nodeid, node->last_ring_id.seq);
 	fprintf(output_file, "nodes=[");
 	for (i = 0; i < node->last_view_list_entries; i++) {
 		if (i) {
@@ -209,6 +221,7 @@ static int read_corosync_conf(void)
 	        log_printf (LOGSYS_LEVEL_ERROR, "Can't initialize log thread");
 		return -1;
 	}
+
 	return 0;
 }
 
@@ -287,7 +300,7 @@ static void send_partition_to_nodes(struct vq_partition *partition, int newring)
 	TAILQ_FOREACH(vqn, &partition->nodelist, entries) {
 		nodelist[nodes++] = vqn->nodeid;
 		if (first) {
-			partition->ring_id.rep.nodeid = vqn->nodeid;
+			partition->ring_id.nodeid = vqn->nodeid;
 			first = 0;
 		}
 	}
@@ -303,7 +316,7 @@ static void init_partitions(void)
 
 	for (i=0; i<MAX_PARTITIONS; i++) {
 		TAILQ_INIT(&partitions[i].nodelist);
-		partitions[i].ring_id.rep.nodeid = 1000+i;
+		partitions[i].ring_id.nodeid = 1000+i;
 		partitions[i].ring_id.seq = 0;
 		partitions[i].num = i;
 	}

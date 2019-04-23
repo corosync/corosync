@@ -44,6 +44,7 @@ static unsigned int qdevice_timeout = VOTEQUORUM_QDEVICE_DEFAULT_TIMEOUT;
 
 /* 'Keep the compiler happy' time */
 char *get_run_dir(void);
+
 int api_timer_add_duration (
         unsigned long long nanosec_duration,
         void *data,
@@ -262,7 +263,7 @@ static int poll_qdevice(int onoff)
 	int res;
 
 	pollmsg.cast_vote = onoff;
-	pollmsg.ring_id.nodeid = current_ring_id.rep.nodeid;
+	pollmsg.ring_id.nodeid = current_ring_id.nodeid;
 	pollmsg.ring_id.seq = current_ring_id.seq;
 	strcpy(pollmsg.name, QDEVICE_NAME);
 
@@ -374,7 +375,7 @@ static void initial_sync(int nodeid)
 	unsigned int member_list[1] = {nodeid};
 	struct memb_ring_id ring_id;
 
-	ring_id.rep.nodeid = our_nodeid;
+	ring_id.nodeid = our_nodeid;
 	ring_id.seq = 1;
 
 	/* cluster with just us in it */
