@@ -1258,6 +1258,16 @@ static int put_nodelist_members_to_config(struct totem_config *totem_config, int
 				snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "nodelist.node.%u.ring0_addr", node_pos);
 				if (icmap_get_string(tmp_key, &str) == CS_OK) {
 					nodeid = generate_nodeid(totem_config, str);
+					if (nodeid == -1) {
+						sprintf(error_string_response,
+						    "An IPV6 network requires that a node ID be specified "
+						    "for address '%s'.", node_addr_str);
+						*error_string = error_string_response;
+						free(str);
+
+						return (-1);
+					}
+
 					log_printf(LOGSYS_LEVEL_DEBUG,
 						   "Generated nodeid = 0x%x for %s", nodeid, str);
 					free(str);
@@ -1750,6 +1760,13 @@ extern int totem_config_read (
 				icmap_get_string(tmp_key, &str);
 
 				totem_config->node_id = generate_nodeid(totem_config, str);
+				if (totem_config->node_id == -1) {
+					*error_string = "An IPV6 network requires that a node ID be specified";
+
+					free(str);
+					return (-1);
+				}
+
 				totem_config->interfaces[0].member_list[local_node_pos].nodeid = totem_config->node_id;
 
 				free(str);
