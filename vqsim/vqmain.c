@@ -667,14 +667,12 @@ int main(int argc, char **argv)
 {
 	qb_loop_signal_handle sigchld_qb_handle;
 	int ch;
-	char *config_file_name = NULL;
 	char *output_file_name = NULL;
-	char envstring[PATH_MAX];
 
 	while ((ch = getopt (argc, argv, "f:o:nh")) != EOF) {
 		switch (ch) {
 		case 'f':
-			config_file_name = optarg;
+			strncpy(corosync_config_file, optarg, sizeof(corosync_config_file));
 			break;
 		case 'o':
 			output_file_name = optarg;
@@ -688,10 +686,6 @@ int main(int argc, char **argv)
 		}
 	}
 
-	if (config_file_name) {
-		sprintf(envstring, "COROSYNC_MAIN_CONFIG_FILE=%s", config_file_name);
-		putenv(envstring);
-	}
 	if (output_file_name) {
 		output_file = fopen(output_file_name, "w");
 		if (!output_file) {
