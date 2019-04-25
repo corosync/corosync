@@ -178,6 +178,42 @@ char *get_run_dir()
 	return getcwd(cwd_buffer, PATH_MAX);
 }
 
+/* This is different to the one in totemconfig.c in that we already
+ * know the 'local' node ID, so we can just search for that.
+ * It needs to be here rather than at main config read time as it's
+ * (obviously) going to be different for each instance.
+ */
+static void set_local_node_pos(struct corosync_api_v1 *api)
+{
+	icmap_iter_t iter;
+	uint32_t node_pos;
+	char name_str[ICMAP_KEYNAME_MAXLEN];
+	uint32_t nodeid;
+	const char *iter_key;
+	int res;
+
+	iter = icmap_iter_init("nodelist.node.");
+	while ((iter_key = icmap_iter_next(iter, NULL, NULL)) != NULL) {
+		res = sscanf(iter_key, "nodelist.node.%u.%s", &node_pos, name_str);
+		if (res != 2) {
+			continue;
+		}
+		if (strcmp(name_str, "nodeid")) {
+			continue;
+		}
+
+		res = icmap_get_uint32(iter_key, &nodeid);
+		if (res == CS_OK) {
+			if (nodeid == our_nodeid) {
+				res = icmap_set_uint32("nodelist.local_node_pos", node_pos);
+				if (res != CS_OK) {
+					fprintf(stderr, "Failed to find node %d in corosync.conf. Quorum calculations may not be correct:\n", our_nodeid);
+				}
+			}
+		}
+	}
+}
+
 static int load_quorum_instance(struct corosync_api_v1 *api)
 {
 	const char *error_string;
@@ -417,6 +453,7 @@ int fork_new_instance(int nodeid, int *vq_sock, pid_t *childpid)
 		qdevice_timeout = VOTEQUORUM_QDEVICE_DEFAULT_TIMEOUT;
 	}
 
+	set_local_node_pos(&corosync_api);
 	load_quorum_instance(&corosync_api);
 
 	qb_loop_poll_add(poll_loop,
