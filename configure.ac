@@ -470,6 +470,7 @@ if test "x${enable_vqsim}" = xyes; then
 			 [],
                          AC_MSG_WARN([vqsim will lack readline support]))
 	PACKAGE_FEATURES="$PACKAGE_FEATURES vqsim"
+	WITH_LIST="$WITH_LIST --with vqsim"
 fi
 AM_CONDITIONAL(VQSIM_READLINE, [test "x${ac_cv_header_readline_readline_h}" = xyes])
 

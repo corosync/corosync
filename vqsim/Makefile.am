@@ -30,23 +30,25 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 
-MAINTAINERCLEANFILES	= Makefile.in
+MAINTAINERCLEANFILES		= Makefile.in
 
 if BUILD_VQSIM
 
-noinst_PROGRAMS		= vqsim
+noinst_HEADERS			= vqsim.h
 
-vqsim_LDADD		= $(top_builddir)/common_lib/libcorosync_common.la \
-			  ../exec/corosync-votequorum.o ../exec/corosync-icmap.o ../exec/corosync-logsys.o \
-			  ../exec/corosync-coroparse.o ../exec/corosync-logconfig.o \
-			  ../exec/corosync-util.o \
-			  $(LIBQB_LIBS)
+bin_PROGRAMS			= corosync-vqsim
+
+corosync_vqsim_LDADD		= $(top_builddir)/common_lib/libcorosync_common.la \
+				  ../exec/corosync-votequorum.o ../exec/corosync-icmap.o  \
+				  ../exec/corosync-coroparse.o ../exec/corosync-logconfig.o \
+				  ../exec/corosync-util.o ../exec/corosync-logsys.o \
+				$(LIBQB_LIBS)
 if VQSIM_READLINE
-vqsim_LDADD		+= -lreadline
+corosync_vqsim_LDADD		+= -lreadline
 endif
 
-vqsim_DEPENDENCIES	= $(top_builddir)/common_lib/libcorosync_common.la
+corosync_vqsim_DEPENDENCIES	= $(top_builddir)/common_lib/libcorosync_common.la
 
-vqsim_SOURCES	        = vqmain.c parser.c vq_object.c vqsim_vq_engine.c
+corosync_vqsim_SOURCES	        = vqmain.c parser.c vq_object.c vqsim_vq_engine.c
 
 endif

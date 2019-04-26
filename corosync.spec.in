@@ -12,6 +12,7 @@
 %bcond_with systemd
 %bcond_with xmlconf
 %bcond_with nozzle
+%bcond_with vqsim
 %bcond_with runautogen
 
 %global gitver %{?numcomm:.%{numcomm}}%{?alphatag:.%{alphatag}}%{?dirty:.%{dirty}}
@@ -70,6 +71,9 @@ Requires(preun): /sbin/chkconfig
 %if %{with xmlconf}
 Requires: libxslt
 %endif
+%if %{with vqsim}
+BuildRequires: readline-devel
+%endif
 
 %prep
 %setup -q -n %{name}-%{version}%{?gittarver}
@@ -100,6 +104,9 @@ Requires: libxslt
 %endif
 %if %{with nozzle}
 	--enable-nozzle \
+%endif
+%if %{with vqsim}
+	--enable-vqsim \
 %endif
 	--with-initddir=%{_initrddir} \
 	--with-systemddir=%{_unitdir} \
@@ -265,6 +272,25 @@ The Corosync Cluster Engine APIs.
 %{_mandir}/man3/votequorum_*3*
 %{_mandir}/man3/sam_*3*
 %{_mandir}/man3/cmap_*3*
+
+%if %{with vqsim}
+%package -n corosync-vqsim
+Summary: The Corosync Cluster Engine - Votequorum Simulator
+Requires: corosynclib%{?_isa} = %{version}-%{release}
+Requires: pkgconfig
+
+%description -n corosync-vqsim
+A command-line simulator for the corosync votequorum subsystem.
+It uses the same code as the corosync quorum system but forks
+them into subprocesses to simulate nodes.
+Nodes can be added and removed as well as partitioned (to simulate
+network splits)
+
+%files -n corosync-vqsim
+%doc LICENSE
+%{_bindir}/corosync-vqsim
+%{_mandir}/man8/corosync-vqsim.8*
+%endif
 
 %changelog
 * @date@ Autotools generated version <nobody@nowhere.org> - @version@-1-@numcomm@.@alphatag@.@dirty@
