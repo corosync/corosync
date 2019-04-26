@@ -191,6 +191,7 @@ static void set_local_node_pos(struct corosync_api_v1 *api)
 	uint32_t nodeid;
 	const char *iter_key;
 	int res;
+	int found = 0;
 
 	iter = icmap_iter_init("nodelist.node.");
 	while ((iter_key = icmap_iter_next(iter, NULL, NULL)) != NULL) {
@@ -205,12 +206,17 @@ static void set_local_node_pos(struct corosync_api_v1 *api)
 		res = icmap_get_uint32(iter_key, &nodeid);
 		if (res == CS_OK) {
 			if (nodeid == our_nodeid) {
+				found = 1;
 				res = icmap_set_uint32("nodelist.local_node_pos", node_pos);
-				if (res != CS_OK) {
-					fprintf(stderr, "Failed to find node %d in corosync.conf. Quorum calculations may not be correct:\n", our_nodeid);
-				}
 			}
 		}
+	}
+	if (!found) {
+		/* This probably indicates a dynamically-added node
+		 * set the pos to zero and use the votes of the
+		 * first node in corosync.conf
+		 */
+		res = icmap_set_uint32("nodelist.local_node_pos", 0);
 	}
 }
 

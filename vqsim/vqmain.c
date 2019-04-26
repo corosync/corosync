@@ -25,6 +25,7 @@
 /* Easier than including the config file with a ton of conflicting dependencies */
 extern int coroparse_configparse (icmap_map_t config_map, const char **error_string);
 extern int corosync_log_config_read (const char **error_string);
+static int stdin_read_fn(int32_t fd, int32_t revents, void *data);
 
 /* 'Keep the compiler happy' time */
 const char *corosync_get_config_file(void);
@@ -58,8 +59,11 @@ static int check_for_quorum;
 static FILE *output_file;
 static int nosync;
 static qb_loop_timer_handle kb_timer;
+static qb_loop_timer_handle sleep_timer;
 static ssize_t wait_count;
 static ssize_t wait_count_to_unblock;
+static int is_tty;
+static int in_sleep; /* Sleep command from user is active */
 
 static struct vq_node *find_by_pid(pid_t pid);
 static void send_partition_to_nodes(struct vq_partition *partition, int newring);
@@ -70,7 +74,6 @@ static void start_kb_input_timeout(void *data);
 #define INPUT_BUF_SIZE 1024
 static char input_buf[INPUT_BUF_SIZE];
 static size_t input_buf_term = 0;
-static int is_tty;
 #endif
 
 /* 'Keep the compiler happy' time */
@@ -78,7 +81,6 @@ static char corosync_config_file[PATH_MAX + 1] = COROSYSCONFDIR "/corosync.conf"
 
 const char *corosync_get_config_file(void)
 {
-
 	return (corosync_config_file);
 }
 
@@ -449,6 +451,7 @@ void cmd_start_new_node(int nodeid, int partition)
 		return;
 	}
 	qb_loop_poll_del(poll_loop, STDIN_FILENO);
+
 	create_node(nodeid, partition);
 	if (!nosync) {
 		/* Delay kb input handling by 0.25 second when we've just
@@ -571,6 +574,37 @@ void cmd_qdevice_poll(int nodeid, int onoff)
 	}
 }
 
+/* Add STDIN back into the poll loop after a sleep */
+static void finish_wait_timeout(void *data)
+{
+	if (qb_loop_poll_add(poll_loop,
+			     QB_LOOP_MED,
+			     STDIN_FILENO,
+			     POLLIN | POLLERR,
+			     NULL,
+			     stdin_read_fn)) {
+		if (errno != EEXIST) {
+			perror("qb_loop_poll_add2 returned error");
+		}
+	}
+	in_sleep = 0;
+}
+
+void cmd_sleep_timer(uint64_t seconds)
+{
+/* Remove STDIN from the poll loop and add it back when the timeout finishes */
+	in_sleep = 1;
+	qb_loop_poll_del(poll_loop, STDIN_FILENO);
+
+	qb_loop_timer_add(poll_loop,
+			  QB_LOOP_MED,
+			  seconds * QB_TIME_NS_IN_SEC,
+			  NULL,
+			  finish_wait_timeout,
+			  &sleep_timer);
+
+}
+
 /* ---------------------------------- */
 
 #ifndef HAVE_READLINE_READLINE_H
@@ -623,7 +657,16 @@ static void start_kb_input(void)
 
 #ifdef HAVE_READLINE_READLINE_H
 	/* Readline will deal with completed lines when they arrive */
-	rl_callback_handler_install("vqsim> ", parse_input_command);
+
+	/*
+	 * For scripting add '#' to the start of the prompt so that
+	 * parsers can ignore input lines
+	 */
+	if (is_tty) {
+		rl_callback_handler_install("vqsim> ", parse_input_command);
+	} else {
+		rl_callback_handler_install("#vqsim> ", parse_input_command);
+	}
 #else
 	if (is_tty) {
 		printf("vqsim> ");
@@ -631,22 +674,23 @@ static void start_kb_input(void)
 	}
 #endif
 
-	/* Send stdin to readline */
-	if (qb_loop_poll_add(poll_loop,
-			     QB_LOOP_MED,
-			     STDIN_FILENO,
-			     POLLIN | POLLERR,
-			     NULL,
-			     stdin_read_fn)) {
-		if (errno != EEXIST) {
-			perror("qb_loop_poll_add1 returned error");
+	if (!in_sleep) {
+		/* Send stdin to readline */
+		if (qb_loop_poll_add(poll_loop,
+				     QB_LOOP_MED,
+				     STDIN_FILENO,
+				     POLLIN | POLLERR,
+				     NULL,
+				     stdin_read_fn)) {
+			if (errno != EEXIST) {
+				perror("qb_loop_poll_add1 returned error");
+			}
 		}
 	}
 }
 
 static void start_kb_input_timeout(void *data)
 {
-//	fprintf(stderr, "Waiting for nodes to report status timed out\n");
 	start_kb_input();
 }
 
@@ -654,12 +698,15 @@ static void usage(char *program)
 {
 	printf("Usage:\n");
 	printf("\n");
-	printf("%s [-f <config-file>] [-o <output-file>]\n", program);
+	printf("%s [-c <config-file>] [-o <output-file>]\n", program);
 	printf("\n");
-	printf("    -f     config file. defaults to /etc/corosync/corosync.conf\n");
+	printf("    -c     config file. defaults to /etc/corosync/corosync.conf\n");
 	printf("    -o     output file. defaults to stdout\n");
 	printf("    -n     no synchronization (on adding a node)\n");
 	printf("    -h     display this help text\n");
+	printf("\n");
+	printf("%s always takes input from STDIN, but cannot use a file.\n", program);
+	printf("If you want to script it then use\n cat | %s\n", program);
 	printf("\n");
 }
 
@@ -669,9 +716,9 @@ int main(int argc, char **argv)
 	int ch;
 	char *output_file_name = NULL;
 
-	while ((ch = getopt (argc, argv, "f:o:nh")) != EOF) {
+	while ((ch = getopt (argc, argv, "c:o:nh")) != EOF) {
 		switch (ch) {
-		case 'f':
+		case 'c':
 			strncpy(corosync_config_file, optarg, sizeof(corosync_config_file));
 			break;
 		case 'o':
@@ -696,9 +743,8 @@ int main(int argc, char **argv)
 	else {
 		output_file = stdout;
 	}
-#ifndef HAVE_READLINE_READLINE_H
+
 	is_tty = isatty(STDIN_FILENO);
-#endif
 
 	qb_log_filter_ctl(QB_LOG_SYSLOG, QB_LOG_FILTER_ADD,
 			  QB_LOG_FILTER_FUNCTION, "*", LOG_DEBUG);

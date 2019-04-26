@@ -139,6 +139,10 @@ dist_man_MANS 		= corosync.conf.5 \
 			  cmap_overview.3 \
 			  cmap_keys.8
 
+if BUILD_VQSIM
+dist_man_MANS		+= vqsim.8
+endif
+
 if INSTALL_XMLCONF
 dist_man_MANS		+= $(xml_man)
 endif

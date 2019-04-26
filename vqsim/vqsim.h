@@ -75,3 +75,4 @@ void cmd_join_partitions(int part1, int part2);
 void cmd_update_all_partitions(int newring);
 void cmd_qdevice_poll(int nodeid, int onoff);
 void cmd_show_node_states(void);
+void cmd_sleep_timer(uint64_t seconds);

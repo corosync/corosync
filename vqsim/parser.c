@@ -30,6 +30,7 @@ static void do_usage(void)
 	printf("           Enable quorum device in specified nodes\n");
 	printf("autofence  on|off\n");
 	printf("           automatically 'down' nodes on inquorate side on netsplit\n");
+	printf("sleep      <n> Sleep input loop for <n> seconds\n");
 	printf("show       Show current nodes status\n");
 	printf("exit\n\n");
 }
@@ -43,6 +44,7 @@ static void run_join_cmd(int argc, char **argv);
 static void run_move_cmd(int argc, char **argv);
 static void run_exit_cmd(int argc, char **argv);
 static void run_show_cmd(int argc, char **argv);
+static void run_sleep_cmd(int argc, char **argv);
 static void run_autofence_cmd(int argc, char **argv);
 static void run_qdevice_cmd(int argc, char **argv);
 
@@ -59,6 +61,7 @@ static struct cmd_list_struct {
 	{ "autofence", 1, run_autofence_cmd},
 	{ "qdevice", 1, run_qdevice_cmd},
 	{ "show", 0, run_show_cmd},
+	{ "sleep", 1, run_sleep_cmd},
 	{ "exit", 0, run_exit_cmd},
 	{ "quit", 0, run_exit_cmd},
 	{ "q", 0, run_exit_cmd},
@@ -198,6 +201,7 @@ void parse_input_command(char *rl_cmd)
 		}
 	}
 	if (!valid_cmd) {
+		fprintf(stderr, "CC: cmd: '%s'\n", argv[0]);
 		do_usage();
 	}
 	free(cmd);
@@ -322,10 +326,13 @@ static void run_show_cmd(int argc, char **argv)
 	cmd_show_node_states();
 }
 
+static void run_sleep_cmd(int argc, char **argv)
+{
+	cmd_sleep_timer(atol(argv[1]));
+}
+
 static void run_exit_cmd(int argc, char **argv)
 {
 	cmd_stop_all_nodes();
 	exit(0);
 }
-
-
