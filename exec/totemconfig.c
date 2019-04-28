@@ -1370,6 +1370,7 @@ static int get_interface_params(struct totem_config *totem_config,
 	uint32_t u32;
 	char *str;
 	char *cluster_name = NULL;
+	enum totem_ip_version_enum tmp_ip_version = TOTEM_IP_VERSION_4;
 
 	if (reload) {
 		for (i=0; i<INTERFACE_MAX; i++) {
@@ -1460,9 +1461,16 @@ static int get_interface_params(struct totem_config *totem_config,
 				 * udpu doesn't need mcastaddr and validity of mcastaddr for udp is
 				 * checked later anyway.
 				 */
+
+				if (totem_config->interfaces[0].bindnet.family == AF_INET) {
+					tmp_ip_version = TOTEM_IP_VERSION_4;
+				} else if (totem_config->interfaces[0].bindnet.family == AF_INET6) {
+					tmp_ip_version = TOTEM_IP_VERSION_6;
+				}
+
 				(void)get_cluster_mcast_addr (cluster_name,
 							      linknumber,
-							      totem_config->ip_version,
+							      tmp_ip_version,
 							      &totem_config->interfaces[linknumber].mcast_addr);
 			}
 
