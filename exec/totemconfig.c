@@ -1152,7 +1152,8 @@ static void check_things_have_not_changed(struct totem_config *totem_config)
 	int changed = 0;
 
 	for (i = 0; i<INTERFACE_MAX; i++) {
-		if (totem_config->interfaces[i].configured) {
+		if (totem_config->interfaces[i].configured &&
+		    totem_config->orig_interfaces[i].configured) {
 			if (totem_config->interfaces[i].knet_transport !=
 			    totem_config->orig_interfaces[i].knet_transport) {
 				log_printf(LOGSYS_LEVEL_ERROR,
