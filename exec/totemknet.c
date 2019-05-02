@@ -1306,17 +1306,21 @@ int totemknet_member_add (
 		KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_ERROR, "knet_link_set_priority for nodeid %d, link %d failed", member->nodeid, link_no);
 	}
 
-	err = knet_link_set_ping_timers(instance->knet_handle, member->nodeid, link_no,
-				  instance->totem_config->interfaces[link_no].knet_ping_interval,
-				  instance->totem_config->interfaces[link_no].knet_ping_timeout,
-				  instance->totem_config->interfaces[link_no].knet_ping_precision);
-	if (err) {
-		KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_ERROR, "knet_link_set_ping_timers for nodeid %d, link %d failed", member->nodeid, link_no);
-	}
-	err = knet_link_set_pong_count(instance->knet_handle, member->nodeid, link_no,
-				       instance->totem_config->interfaces[link_no].knet_pong_count);
-	if (err) {
-		KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_ERROR, "knet_link_set_pong_count for nodeid %d, link %d failed", member->nodeid, link_no);
+	/* ping timeouts maybe 0 here for a newly added interface so we leave this till later, it will
+	   get done in totemknet_refresh_config */
+	if (instance->totem_config->interfaces[link_no].knet_ping_interval != 0) {
+		err = knet_link_set_ping_timers(instance->knet_handle, member->nodeid, link_no,
+						instance->totem_config->interfaces[link_no].knet_ping_interval,
+						instance->totem_config->interfaces[link_no].knet_ping_timeout,
+						instance->totem_config->interfaces[link_no].knet_ping_precision);
+		if (err) {
+			KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_ERROR, "knet_link_set_ping_timers for nodeid %d, link %d failed", member->nodeid, link_no);
+		}
+		err = knet_link_set_pong_count(instance->knet_handle, member->nodeid, link_no,
+					       instance->totem_config->interfaces[link_no].knet_pong_count);
+		if (err) {
+			KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_ERROR, "knet_link_set_pong_count for nodeid %d, link %d failed", member->nodeid, link_no);
+		}
 	}
 
 	err = knet_link_set_enable(instance->knet_handle, member->nodeid, link_no, 1);
