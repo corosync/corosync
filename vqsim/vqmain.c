@@ -57,18 +57,17 @@ static qb_loop_t *poll_loop;
 static int autofence;
 static int check_for_quorum;
 static FILE *output_file;
-static int nosync;
+static int sync_cmds = 1;
 static qb_loop_timer_handle kb_timer;
-static qb_loop_timer_handle sleep_timer;
-static ssize_t wait_count;
-static ssize_t wait_count_to_unblock;
+static int waiting_for_sync = 0;
 static int is_tty;
-static int in_sleep; /* Sleep command from user is active */
+static int assert_on_timeout;
+static uint64_t command_timeout = 250000000L;
 
 static struct vq_node *find_by_pid(pid_t pid);
 static void send_partition_to_nodes(struct vq_partition *partition, int newring);
-static void start_kb_input(void);
 static void start_kb_input_timeout(void *data);
+static void finish_wait_timeout(void *data);
 
 #ifndef HAVE_READLINE_READLINE_H
 #define INPUT_BUF_SIZE 1024
@@ -146,6 +145,65 @@ static void propogate_vq_message(struct vq_node *vqn, const char *msg, int len)
 	}
 }
 
+
+static void cmd_show_prompt_if_needed(void)
+{
+	qb_loop_timer_del(poll_loop, kb_timer);
+	if (is_tty) {
+		printf("vqsim> ");
+		fflush(stdout);
+	} else {
+		printf("#vqsim> ");
+		fflush(stdout);
+	}
+
+}
+
+void resume_kb_input(int show_status)
+{
+	/* If running synchronously, we don't display
+	   the quorum messages as they come in. So run 'show' commamnd
+	*/
+	if (show_status && waiting_for_sync) {
+		cmd_show_node_states();
+	}
+
+	waiting_for_sync = 0;
+
+	if (qb_loop_poll_add(poll_loop,
+			     QB_LOOP_MED,
+			     STDIN_FILENO,
+			     POLLIN | POLLERR,
+			     NULL,
+			     stdin_read_fn)) {
+		if (errno != EEXIST) {
+			perror("qb_loop_poll_add1 returned error");
+		}
+	}
+	/* Always shows the prompt here, cos we cleared waiting_for_sync */
+	cmd_show_prompt_if_needed();
+}
+
+/* Return true (1) if all nodes in each partition have the same ring id, false(0) otherwise */
+static int all_nodes_consistent(void)
+{
+	int i;
+	struct vq_node *vqn;
+	struct memb_ring_id last_ring_id;
+
+	for (i=0; i<MAX_PARTITIONS; i++) {
+		memset(&last_ring_id, 0, sizeof(last_ring_id));
+		TAILQ_FOREACH(vqn, &partitions[i].nodelist, entries) {
+			if (last_ring_id.seq &&
+			    last_ring_id.seq != vqn->last_ring_id.seq) {
+				return 0;
+			}
+			last_ring_id.seq = vqn->last_ring_id.seq;
+		}
+	}
+	return 1;
+}
+
 static int vq_parent_read_fn(int32_t fd, int32_t revents, void *data)
 {
 	char msgbuf[8192];
@@ -164,13 +222,18 @@ static int vq_parent_read_fn(int32_t fd, int32_t revents, void *data)
 			msg = (void*)msgbuf;
 			switch (msg->type) {
 			case VQMSG_QUORUM:
-				if (!nosync && --wait_count_to_unblock <= 0)
-					qb_loop_timer_del(poll_loop, kb_timer);
 				qmsg = (void*)msgbuf;
 				save_quorum_state(vqn, qmsg);
-				print_quorum_state(vqn);
-				if (!nosync && wait_count_to_unblock <= 0)
-					start_kb_input();
+				if (!sync_cmds) {
+					print_quorum_state(vqn);
+				}
+
+				/* Have the partitions stabilised? */
+				if (sync_cmds && waiting_for_sync &&
+				    all_nodes_consistent()) {
+					qb_loop_timer_del(poll_loop, kb_timer);
+					resume_kb_input(sync_cmds);
+				}
 				break;
 			case VQMSG_EXEC:
 				/* Message from votequorum, pass around the partition */
@@ -206,7 +269,7 @@ static int read_corosync_conf(void)
 	logsys_format_set(NULL);
 	res = coroparse_configparse(icmap_get_global_map(), &error_string);
 	if (res == -1) {
-		log_printf (LOGSYS_LEVEL_INFO, "Error loading corosyc.conf %s", error_string);
+		log_printf (LOGSYS_LEVEL_INFO, "Error loading corosync.conf %s", error_string);
 		return -1;
 	}
 	else {
@@ -236,8 +299,6 @@ static void remove_node(struct vq_node *node)
 	TAILQ_REMOVE(&part->nodelist, node, entries);
 	free(node);
 
-	wait_count--;
-
 	/* Rebuild quorum */
 	send_partition_to_nodes(part, 1);
 }
@@ -265,7 +326,7 @@ static int32_t sigchld_handler(int32_t sig, void *data)
 				sprintf(text, "(exit code %d)", WEXITSTATUS(status));
 				break;
 			}
-			printf("%d:%02d Quit %s\n", vqn->partition->num, vqn->nodeid, exit_status);
+			printf("%d:%02d: Quit %s\n", vqn->partition->num, vqn->nodeid, exit_status);
 
 			remove_node(vqn);
 		}
@@ -324,20 +385,24 @@ static void init_partitions(void)
 	}
 }
 
+static int nodes_in_partition(int part)
+{
+	struct vq_node *vqn;
+	int partnodes = 0;
+
+	TAILQ_FOREACH(vqn, &partitions[part].nodelist, entries) {
+		partnodes++;
+	}
+	return partnodes;
+}
+
+
 static pid_t create_node(int nodeid, int partno)
 {
 	struct vq_node *newvq;
 
 	newvq = malloc(sizeof(struct vq_node));
 	if (newvq) {
-		if (!nosync) {
-			/* Number of expected "quorum" vq messages is a square
-			   of the total nodes count, so increment the node
-			   counter and set new square of this value as
-			   a "to observe" counter */
-			wait_count++;
-			wait_count_to_unblock = wait_count * wait_count;
-		}
 		newvq->last_quorate = -1;  /* mark "uninitialized" */
 		newvq->instance = vq_create_instance(poll_loop, nodeid);
 		if (!newvq->instance) {
@@ -441,30 +506,39 @@ static struct vq_node *find_by_pid(pid_t pid)
 }
 
 /* Routines called from the parser */
-void cmd_start_new_node(int nodeid, int partition)
+
+
+/*
+ * The parser calls this before running a command where
+ * we might have to wait for a result to come back.
+ */
+void cmd_start_sync_command()
+{
+	if (sync_cmds) {
+		qb_loop_poll_del(poll_loop, STDIN_FILENO);
+		qb_loop_timer_add(poll_loop,
+				  QB_LOOP_MED,
+				  command_timeout,
+				  NULL,
+				  finish_wait_timeout,
+				  &kb_timer);
+		waiting_for_sync = 1;
+	}
+}
+
+int cmd_start_new_node(int nodeid, int partition)
 {
 	struct vq_node *node;
 
 	node = find_node(nodeid);
 	if (node) {
 		fprintf(stderr, "ERR: nodeid %d already exists in partition %d\n", nodeid, node->partition->num);
-		return;
+		return -1;
 	}
-	qb_loop_poll_del(poll_loop, STDIN_FILENO);
-
-	create_node(nodeid, partition);
-	if (!nosync) {
-		/* Delay kb input handling by 0.25 second when we've just
-		   added a node; expect that the delay will be cancelled
-		   substantially earlier once it has reported its quorum info
-		   (the delay is in fact a failsafe input enabler here) */
-		qb_loop_timer_add(poll_loop,
-				  QB_LOOP_MED,
-				  250000000,
-				  NULL,
-				  start_kb_input_timeout,
-				  &kb_timer);
+	if (create_node(nodeid, partition) == -1) {
+		return -1;
 	}
+	return 0;
 }
 
 void cmd_stop_all_nodes()
@@ -492,20 +566,21 @@ void cmd_show_node_states()
 	fprintf(output_file, "#autofence: %s\n", autofence?"on":"off");
 }
 
-void cmd_stop_node(int nodeid)
+int cmd_stop_node(int nodeid)
 {
 	struct vq_node *node;
 
 	node = find_node(nodeid);
 	if (!node) {
 		fprintf(stderr, "ERR: nodeid %d is not up\n", nodeid);
-		return;
+		return -1;
 	}
 
 	/* Remove processor */
 	vq_quit(node->instance);
 
 	/* Node will be removed when the child process exits */
+	return 0;
 }
 
 /* Move all nodes in 'nodelist' into partition 'partition' */
@@ -513,6 +588,13 @@ void cmd_move_nodes(int partition, int num_nodes, int *nodelist)
 {
 	int i;
 	struct vq_node *node;
+	struct vq_node *vqn;
+	int total_nodes = num_nodes;
+
+	/* Work out the number of nodes affected */
+	TAILQ_FOREACH(vqn, &partitions[partition].nodelist, entries) {
+		total_nodes++;
+	}
 
 	for (i=0; i<num_nodes; i++) {
 		node = find_node(nodelist[i]);
@@ -535,6 +617,11 @@ void cmd_move_nodes(int partition, int num_nodes, int *nodelist)
 void cmd_join_partitions(int part1, int part2)
 {
 	struct vq_node *vqn;
+	int total_nodes=0;
+
+	/* Work out the number of nodes affected */
+	total_nodes += nodes_in_partition(part1);
+	total_nodes += nodes_in_partition(part2);
 
 	/* TAILQ_FOREACH is not delete safe *sigh* */
 retry:
@@ -552,6 +639,18 @@ void cmd_set_autofence(int onoff)
 {
 	autofence = onoff;
 	fprintf(output_file, "#autofence: %s\n", onoff?"on":"off");
+}
+
+void cmd_set_sync(int onoff)
+{
+	autofence = onoff;
+	fprintf(output_file, "#sync: %s\n", onoff?"on":"off");
+	sync_cmds = onoff;
+}
+
+void cmd_set_assert(int onoff)
+{
+	assert_on_timeout = onoff;
 }
 
 void cmd_update_all_partitions(int newring)
@@ -574,35 +673,22 @@ void cmd_qdevice_poll(int nodeid, int onoff)
 	}
 }
 
-/* Add STDIN back into the poll loop after a sleep */
+/* If we get called then a command has timed-out */
 static void finish_wait_timeout(void *data)
 {
-	if (qb_loop_poll_add(poll_loop,
-			     QB_LOOP_MED,
-			     STDIN_FILENO,
-			     POLLIN | POLLERR,
-			     NULL,
-			     stdin_read_fn)) {
-		if (errno != EEXIST) {
-			perror("qb_loop_poll_add2 returned error");
+	if (command_timeout) {
+		fprintf(stderr, "ERR: Partition(s) not stable within timeout\n");
+		if (assert_on_timeout) {
+			exit(2);
 		}
 	}
-	in_sleep = 0;
+
+	resume_kb_input(sync_cmds);
 }
 
-void cmd_sleep_timer(uint64_t seconds)
+void cmd_set_timeout(uint64_t seconds)
 {
-/* Remove STDIN from the poll loop and add it back when the timeout finishes */
-	in_sleep = 1;
-	qb_loop_poll_del(poll_loop, STDIN_FILENO);
-
-	qb_loop_timer_add(poll_loop,
-			  QB_LOOP_MED,
-			  seconds * QB_TIME_NS_IN_SEC,
-			  NULL,
-			  finish_wait_timeout,
-			  &sleep_timer);
-
+	command_timeout = seconds * QB_TIME_NS_IN_MSEC;
 }
 
 /* ---------------------------------- */
@@ -633,9 +719,9 @@ static void dummy_read_char()
 	parse_input_command((c == EOF) ? NULL : input_buf);
 	input_buf_term = 0;
 
-	if (is_tty) {
-		printf("vqsim> ");
-		fflush(stdout);
+	/* Command executed totally in local context, show a prompt */
+	if (!waiting_for_sync) {
+		resume_kb_input(1);
 	}
 }
 #endif
@@ -651,47 +737,10 @@ static int stdin_read_fn(int32_t fd, int32_t revents, void *data)
 	return 0;
 }
 
-static void start_kb_input(void)
-{
-	wait_count_to_unblock = 0;
-
-#ifdef HAVE_READLINE_READLINE_H
-	/* Readline will deal with completed lines when they arrive */
-
-	/*
-	 * For scripting add '#' to the start of the prompt so that
-	 * parsers can ignore input lines
-	 */
-	if (is_tty) {
-		rl_callback_handler_install("vqsim> ", parse_input_command);
-	} else {
-		rl_callback_handler_install("#vqsim> ", parse_input_command);
-	}
-#else
-	if (is_tty) {
-		printf("vqsim> ");
-		fflush(stdout);
-	}
-#endif
-
-	if (!in_sleep) {
-		/* Send stdin to readline */
-		if (qb_loop_poll_add(poll_loop,
-				     QB_LOOP_MED,
-				     STDIN_FILENO,
-				     POLLIN | POLLERR,
-				     NULL,
-				     stdin_read_fn)) {
-			if (errno != EEXIST) {
-				perror("qb_loop_poll_add1 returned error");
-			}
-		}
-	}
-}
 
 static void start_kb_input_timeout(void *data)
 {
-	start_kb_input();
+	resume_kb_input(1);
 }
 
 static void usage(char *program)
@@ -725,7 +774,7 @@ int main(int argc, char **argv)
 			output_file_name = optarg;
 			break;
 		case 'n':
-			nosync = 1;
+			sync_cmds = 0;
 			break;
 		default:
 			usage(argv[0]);
@@ -763,9 +812,26 @@ int main(int argc, char **argv)
 			   sigchld_handler,
 			   &sigchld_qb_handle);
 
-	/* Create a full cluster of nodes from corosync.conf */
+
+#ifdef HAVE_READLINE_READLINE_H
+	/* Readline will deal with completed lines when they arrive */
+	/*
+	 * For scripting add '#' to the start of the prompt so that
+	 * parsers can ignore input lines
+	 */
+	rl_already_prompted = 1;
+	if (is_tty) {
+		rl_callback_handler_install("vqsim> ", parse_input_command);
+	} else {
+		rl_callback_handler_install("#vqsim> ", parse_input_command);
+	}
+#endif
+
+
+
+/* Create a full cluster of nodes from corosync.conf */
 	read_corosync_conf();
-	if (create_nodes_from_config() && !nosync) {
+	if (create_nodes_from_config() && sync_cmds) {
 		/* Delay kb input handling by 1 second when we've just
 		   added the nodes from corosync.conf; expect that
 		   the delay will be cancelled substantially earlier
@@ -777,8 +843,9 @@ int main(int argc, char **argv)
 				  NULL,
 				  start_kb_input_timeout,
 				  &kb_timer);
+		waiting_for_sync = 1;
 	} else {
-		start_kb_input();
+		resume_kb_input(0);
 	}
 
 	qb_loop_run(poll_loop);
