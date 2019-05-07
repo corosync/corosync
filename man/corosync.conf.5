@@ -362,6 +362,11 @@ For real token timeout used by totem it's possible to read cmap value of
 .B runtime.config.totem.token
 key.
 
+The token_retransmit will be automatically calculated if token or token_retransmits_before_loss_const
+(also explained in
+.B token_retransmits_before_loss_const
+section) set.
+
 Be careful to use the same timeout values on each of the nodes in the cluster
 or unpredictable results may occur.
 
@@ -390,9 +395,15 @@ The default is 650 milliseconds.
 .TP
 token_retransmit
 This timeout specifies in milliseconds after how long before receiving a token
-the token is retransmitted.  This will be automatically calculated if token
-is modified.  It is not recommended to alter this value without guidance from
-the corosync community.
+the token is retransmitted. If not specified in config file, it will be
+automatically calculated if token or token_retransmits_before_loss_const is set (explained in
+.B token_retransmits_before_loss_const
+and
+.B
+token).
+
+The hold will be automatically calculated if token_retransmit is modified. It is not
+recommended to alter this value without guidance from the corosync community.
 
 The default is 238 milliseconds.
 
@@ -420,16 +431,24 @@ the library's documentation for more detailed information.
 .TP
 hold
 This timeout specifies in milliseconds how long the token should be held by
-the representative when the protocol is under low utilization.   It is not
-recommended to alter this value without guidance from the corosync community.
+the representative when the protocol is under low utilization. If not specified in
+config file, it will be automatically calculated if token_retransmit (explained in
+.B token_retransmit
+) modified.
+It is not recommended to alter this value without guidance from the
+corosync community.
 
 The default is 180 milliseconds.
 
 .TP
 token_retransmits_before_loss_const
 This value identifies how many token retransmits should be attempted before
-forming a new configuration.  If this value is set, retransmit and hold will
-be automatically calculated from retransmits_before_loss and token.
+forming a new configuration.
+
+The token_retransmit will be automatically calculated if token or token_retransmits_before_loss_const
+(also explained in
+.B token
+section) set.
 
 The default is 4 retransmissions.
 
