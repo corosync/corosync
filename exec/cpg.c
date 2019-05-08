@@ -194,6 +194,12 @@ struct join_list_entry {
 	mar_cpg_name_t group_name;
 };
 
+struct join_list_confchg_data {
+	mar_cpg_name_t cpg_group;
+	mar_cpg_address_t join_list[CPG_MEMBERS_MAX];
+	int join_list_entries;
+};
+
 /*
  * Service Interfaces required by service_message_handler struct
  */
@@ -312,7 +318,8 @@ static void do_proc_join(
 	const mar_cpg_name_t *name,
 	uint32_t pid,
 	unsigned int nodeid,
-	int reason);
+	int reason,
+	qb_map_t *group_notify_map);
 
 static void do_proc_leave(
 	const mar_cpg_name_t *name,
@@ -723,35 +730,46 @@ static int notify_lib_joinlist(
 	}
 
 	if (joined_list_entries) {
+		int i;
+
 		memcpy (retgi, joined_list, joined_list_entries * sizeof(mar_cpg_address_t));
 		retgi += joined_list_entries;
+
+		for (i=0; i < joined_list_entries; i++) {
+			if (joined_list[i].nodeid == api->totem_nodeid_get()) {
+			qb_list_for_each(iter, &cpg_pd_list_head) {
+					struct cpg_pd *cpd = qb_list_entry (iter, struct cpg_pd, list);
+					if (mar_name_compare (&cpd->group_name, group_name) == 0 &&
+					    joined_list[i].pid == cpd->pid) {
+						cpd->cpd_state = CPD_STATE_JOIN_COMPLETED;
+					}
+				}
+			}
+		}
 	}
 
 	qb_list_for_each(iter, &cpg_pd_list_head) {
 		struct cpg_pd *cpd = qb_list_entry (iter, struct cpg_pd, list);
 		if (mar_name_compare (&cpd->group_name, group_name) == 0) {
-			assert (joined_list_entries <= 1);
-			if (joined_list_entries) {
-				if (joined_list[0].pid == cpd->pid &&
-					joined_list[0].nodeid == api->totem_nodeid_get()) {
-					cpd->cpd_state = CPD_STATE_JOIN_COMPLETED;
-				}
-			}
 			if (cpd->cpd_state == CPD_STATE_JOIN_COMPLETED ||
 				cpd->cpd_state == CPD_STATE_LEAVE_STARTED) {
 
 				api->ipc_dispatch_send (cpd->conn, buf, size);
 				cpd->transition_counter++;
 			}
-			if (left_list_entries) {
-				if (left_list[0].pid == cpd->pid &&
-					left_list[0].nodeid == api->totem_nodeid_get() &&
-					left_list[0].reason == CONFCHG_CPG_REASON_LEAVE) {
+		}
+	}
 
-					cpd->pid = 0;
-					memset (&cpd->group_name, 0, sizeof(cpd->group_name));
-					cpd->cpd_state = CPD_STATE_UNJOINED;
-				}
+	if (left_list_entries &&
+	    left_list[0].nodeid == api->totem_nodeid_get() &&
+	    left_list[0].reason == CONFCHG_CPG_REASON_LEAVE) {
+	qb_list_for_each(iter, &cpg_pd_list_head) {
+			struct cpg_pd *cpd = qb_list_entry (iter, struct cpg_pd, list);
+			if (mar_name_compare (&cpd->group_name, group_name) == 0 &&
+			    left_list[0].pid == cpd->pid) {
+				cpd->pid = 0;
+				memset (&cpd->group_name, 0, sizeof(cpd->group_name));
+				cpd->cpd_state = CPD_STATE_UNJOINED;
 			}
 		}
 	}
@@ -915,6 +933,11 @@ static void joinlist_inform_clients (void)
 	struct joinlist_msg *stored_msg;
 	struct qb_list_head *iter;
 	unsigned int i;
+	qb_map_t *group_notify_map;
+	qb_map_iter_t *miter;
+	struct join_list_confchg_data *jld;
+
+	group_notify_map = qb_skiplist_create();
 
 	i = 0;
 	qb_list_for_each(iter, &joinlist_messages_head) {
@@ -931,8 +954,18 @@ static void joinlist_inform_clients (void)
 		}
 
 		do_proc_join (&stored_msg->group_name, stored_msg->pid, stored_msg->sender_nodeid,
-			CONFCHG_CPG_REASON_NODEUP);
+			CONFCHG_CPG_REASON_NODEUP, group_notify_map);
 	}
+
+	miter = qb_map_iter_create(group_notify_map);
+	while (qb_map_iter_next(miter, (void **)&jld)) {
+		notify_lib_joinlist(&jld->cpg_group,
+				    jld->join_list_entries, jld->join_list,
+				    0, NULL,
+				    MESSAGE_RES_CPG_CONFCHG_CALLBACK);
+		free(jld);
+	}
+	qb_map_iter_free(miter);
 
 	joinlist_remove_zombie_pi_entries ();
 }
@@ -1111,13 +1144,15 @@ static void do_proc_join(
 	const mar_cpg_name_t *name,
 	uint32_t pid,
 	unsigned int nodeid,
-	int reason)
+	int reason,
+	qb_map_t *group_notify_map)
 {
 	struct process_info *pi;
 	struct process_info *pi_entry;
 	mar_cpg_address_t notify_info;
 	struct qb_list_head *list;
 	struct qb_list_head *list_to_add = NULL;
+	int size;
 
 	if (process_info_find (name, pid, nodeid) != NULL) {
 		return ;
@@ -1151,10 +1186,24 @@ static void do_proc_join(
 	notify_info.nodeid = nodeid;
 	notify_info.reason = reason;
 
-	notify_lib_joinlist(&pi->group,
-			    1, &notify_info,
-			    0, NULL,
-			    MESSAGE_RES_CPG_CONFCHG_CALLBACK);
+	if (group_notify_map == NULL) {
+		notify_lib_joinlist(&pi->group,
+				    1, &notify_info,
+				    0, NULL,
+				    MESSAGE_RES_CPG_CONFCHG_CALLBACK);
+	} else {
+		struct join_list_confchg_data *jld = qb_map_get(group_notify_map, pi->group.value);
+		if (jld == NULL) {
+			jld = (struct join_list_confchg_data *)calloc(1, sizeof(struct join_list_confchg_data));
+			memcpy(&jld->cpg_group, &pi->group, sizeof(mar_cpg_name_t));
+			qb_map_put(group_notify_map, jld->cpg_group.value, jld);
+		}
+		size = jld->join_list_entries;
+		jld->join_list[size].nodeid = notify_info.nodeid;
+		jld->join_list[size].pid = notify_info.pid;
+		jld->join_list[size].reason = notify_info.reason;
+		jld->join_list_entries++;
+	}
 }
 
 static void do_proc_leave(
@@ -1219,7 +1268,7 @@ static void message_handler_req_exec_cpg_procjoin (
 
 	do_proc_join (&req_exec_cpg_procjoin->group_name,
 		req_exec_cpg_procjoin->pid, nodeid,
-		CONFCHG_CPG_REASON_JOIN);
+		CONFCHG_CPG_REASON_JOIN, NULL);
 }
 
 static void message_handler_req_exec_cpg_procleave (
