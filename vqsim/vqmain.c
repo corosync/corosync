@@ -718,11 +718,6 @@ static void dummy_read_char()
 
 	parse_input_command((c == EOF) ? NULL : input_buf);
 	input_buf_term = 0;
-
-	/* Command executed totally in local context, show a prompt */
-	if (!waiting_for_sync) {
-		resume_kb_input(1);
-	}
 }
 #endif
 
