@@ -74,6 +74,7 @@
 #define FAIL_TO_RECV_CONST			2500
 #define	SEQNO_UNCHANGED_CONST			30
 #define MINIMUM_TIMEOUT				(int)(1000/HZ)*3
+#define MINIMUM_TIMEOUT_HOLD			(int)(MINIMUM_TIMEOUT * 0.8 - (1000/HZ))
 #define MAX_NETWORK_DELAY			50
 #define WINDOW_SIZE				50
 #define MAX_MESSAGES				17
@@ -313,6 +314,7 @@ static int totem_volatile_config_validate (
 	char name_key[ICMAP_KEYNAME_MAXLEN];
 	char *name_str;
 	int i, num_configured, members;
+	uint32_t tmp_config_value;
 
 	if (totem_config->max_network_delay < MINIMUM_TIMEOUT) {
 		snprintf (local_error_reason, sizeof(local_error_reason),
@@ -336,16 +338,22 @@ static int totem_volatile_config_validate (
 	}
 
 	if (totem_config->token_retransmit_timeout < MINIMUM_TIMEOUT) {
-		snprintf (local_error_reason, sizeof(local_error_reason),
-			"The token retransmit timeout parameter (%d ms) may not be less than (%d ms).",
-			totem_config->token_retransmit_timeout, MINIMUM_TIMEOUT);
-		goto parse_error;
+		if (icmap_get_uint32("totem.token_retransmit", &tmp_config_value) == CS_OK) {
+			snprintf (local_error_reason, sizeof(local_error_reason),
+				"The token retransmit timeout parameter (%d ms) may not be less than (%d ms).",
+				totem_config->token_retransmit_timeout, MINIMUM_TIMEOUT);
+			goto parse_error;
+		} else {
+			snprintf (local_error_reason, sizeof(local_error_reason),
+				"Not appropriate token or token_retransmits_before_loss_const value set");
+			goto parse_error;
+		}
 	}
 
-	if (totem_config->token_hold_timeout < MINIMUM_TIMEOUT) {
+	if (totem_config->token_hold_timeout < MINIMUM_TIMEOUT_HOLD) {
 		snprintf (local_error_reason, sizeof(local_error_reason),
 			"The token hold timeout parameter (%d ms) may not be less than (%d ms).",
-			totem_config->token_hold_timeout, MINIMUM_TIMEOUT);
+			totem_config->token_hold_timeout, MINIMUM_TIMEOUT_HOLD);
 		goto parse_error;
 	}
 
