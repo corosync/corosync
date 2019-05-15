@@ -647,7 +647,6 @@ static int notify_lib_totem_membership (
 
 static int notify_lib_joinlist(
 	const mar_cpg_name_t *group_name,
-	void *conn,
 	int joined_list_entries,
 	mar_cpg_address_t *joined_list,
 	int left_list_entries,
@@ -728,39 +727,34 @@ static int notify_lib_joinlist(
 		retgi += joined_list_entries;
 	}
 
-	if (conn) {
-		api->ipc_dispatch_send (conn, buf, size);
-	} else {
 	qb_list_for_each(iter, &cpg_pd_list_head) {
-			struct cpg_pd *cpd = qb_list_entry (iter, struct cpg_pd, list);
-			if (mar_name_compare (&cpd->group_name, group_name) == 0) {
-				assert (joined_list_entries <= 1);
-				if (joined_list_entries) {
-					if (joined_list[0].pid == cpd->pid &&
-						joined_list[0].nodeid == api->totem_nodeid_get()) {
-						cpd->cpd_state = CPD_STATE_JOIN_COMPLETED;
-					}
+		struct cpg_pd *cpd = qb_list_entry (iter, struct cpg_pd, list);
+		if (mar_name_compare (&cpd->group_name, group_name) == 0) {
+			assert (joined_list_entries <= 1);
+			if (joined_list_entries) {
+				if (joined_list[0].pid == cpd->pid &&
+					joined_list[0].nodeid == api->totem_nodeid_get()) {
+					cpd->cpd_state = CPD_STATE_JOIN_COMPLETED;
 				}
-				if (cpd->cpd_state == CPD_STATE_JOIN_COMPLETED ||
-					cpd->cpd_state == CPD_STATE_LEAVE_STARTED) {
+			}
+			if (cpd->cpd_state == CPD_STATE_JOIN_COMPLETED ||
+				cpd->cpd_state == CPD_STATE_LEAVE_STARTED) {
 
-					api->ipc_dispatch_send (cpd->conn, buf, size);
-					cpd->transition_counter++;
-				}
-				if (left_list_entries) {
-					if (left_list[0].pid == cpd->pid &&
-						left_list[0].nodeid == api->totem_nodeid_get() &&
-						left_list[0].reason == CONFCHG_CPG_REASON_LEAVE) {
+				api->ipc_dispatch_send (cpd->conn, buf, size);
+				cpd->transition_counter++;
+			}
+			if (left_list_entries) {
+				if (left_list[0].pid == cpd->pid &&
+					left_list[0].nodeid == api->totem_nodeid_get() &&
+					left_list[0].reason == CONFCHG_CPG_REASON_LEAVE) {
 
-						cpd->pid = 0;
-						memset (&cpd->group_name, 0, sizeof(cpd->group_name));
-						cpd->cpd_state = CPD_STATE_UNJOINED;
-					}
+					cpd->pid = 0;
+					memset (&cpd->group_name, 0, sizeof(cpd->group_name));
+					cpd->cpd_state = CPD_STATE_UNJOINED;
 				}
 			}
 		}
 	}
-
 
 	/*
 	 * Traverse thru cpds and send totem membership for cpd, where it is not send yet
@@ -858,7 +852,7 @@ static void downlist_inform_clients (void)
 		}
 
 		/* send confchg event */
-		notify_lib_joinlist(&group, NULL,
+		notify_lib_joinlist(&group,
 			0, NULL,
 			pcd->left_list_entries,
 			pcd->left_list,
@@ -1157,7 +1151,7 @@ static void do_proc_join(
 	notify_info.nodeid = nodeid;
 	notify_info.reason = reason;
 
-	notify_lib_joinlist(&pi->group, NULL,
+	notify_lib_joinlist(&pi->group,
 			    1, &notify_info,
 			    0, NULL,
 			    MESSAGE_RES_CPG_CONFCHG_CALLBACK);
@@ -1177,7 +1171,7 @@ static void do_proc_leave(
 	notify_info.nodeid = nodeid;
 	notify_info.reason = reason;
 
-	notify_lib_joinlist(name, NULL,
+	notify_lib_joinlist(name,
 		0, NULL,
 		1, &notify_info,
 		MESSAGE_RES_CPG_CONFCHG_CALLBACK);
