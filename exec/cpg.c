@@ -663,31 +663,37 @@ static int notify_lib_joinlist(
 	int size;
 	char *buf;
 	struct qb_list_head *iter;
-	int count;
+	int member_list_entries;
 	struct res_lib_cpg_confchg_callback *res;
 	mar_cpg_address_t *retgi;
+	int i;
 
-	count = 0;
+	/*
+	 * Find size of member_list (use process_info_list but remove items in left_list)
+	 */
+	member_list_entries = 0;
 
 	qb_list_for_each(iter, &process_info_list_head) {
 		struct process_info *pi = qb_list_entry (iter, struct process_info, list);
+
 		if (mar_name_compare (&pi->group, group_name) == 0) {
-			int i;
-			int founded = 0;
+			int in_left_list = 0;
 
 			for (i = 0; i < left_list_entries; i++) {
 				if (left_list[i].nodeid == pi->nodeid && left_list[i].pid == pi->pid) {
-					founded++;
+					in_left_list = 1;
+					break ;
 				}
 			}
 
-			if (!founded)
-				count++;
+			if (!in_left_list) {
+				member_list_entries++;
+			}
 		}
 	}
 
 	size = sizeof(struct res_lib_cpg_confchg_callback) +
-		sizeof(mar_cpg_address_t) * (count + left_list_entries + joined_list_entries);
+		sizeof(mar_cpg_address_t) * (member_list_entries + left_list_entries + joined_list_entries);
 	buf = alloca(size);
 	if (!buf)
 		return CS_ERR_LIBRARY;
@@ -695,27 +701,30 @@ static int notify_lib_joinlist(
 	res = (struct res_lib_cpg_confchg_callback *)buf;
 	res->joined_list_entries = joined_list_entries;
 	res->left_list_entries = left_list_entries;
-	res->member_list_entries = count;
+	res->member_list_entries = member_list_entries;
 	retgi = res->member_list;
 	res->header.size = size;
 	res->header.id = id;
 	res->header.error = CS_OK;
 	memcpy(&res->group_name, group_name, sizeof(mar_cpg_name_t));
 
+	/*
+	 * Fill res->memberlist. Use process_info_list but remove items in left_list.
+	 */
 	qb_list_for_each(iter, &process_info_list_head) {
-		struct process_info *pi=qb_list_entry (iter, struct process_info, list);
+		struct process_info *pi = qb_list_entry (iter, struct process_info, list);
 
 		if (mar_name_compare (&pi->group, group_name) == 0) {
-			int i;
-			int founded = 0;
+			int in_left_list = 0;
 
-			for (i = 0;i < left_list_entries; i++) {
+			for (i = 0; i < left_list_entries; i++) {
 				if (left_list[i].nodeid == pi->nodeid && left_list[i].pid == pi->pid) {
-					founded++;
+					in_left_list = 1;
+					break ;
 				}
 			}
 
-			if (!founded) {
+			if (!in_left_list) {
 				retgi->nodeid = pi->nodeid;
 				retgi->pid = pi->pid;
 				retgi->reason = CPG_REASON_UNDEFINED;
@@ -724,23 +733,30 @@ static int notify_lib_joinlist(
 		}
 	}
 
+	/*
+	 * Fill res->left_list
+	 */
 	if (left_list_entries) {
 		memcpy (retgi, left_list, left_list_entries * sizeof(mar_cpg_address_t));
 		retgi += left_list_entries;
 	}
 
 	if (joined_list_entries) {
-		int i;
-
+		/*
+		 * Fill res->joined_list
+		 */
 		memcpy (retgi, joined_list, joined_list_entries * sizeof(mar_cpg_address_t));
 		retgi += joined_list_entries;
 
-		for (i=0; i < joined_list_entries; i++) {
+		/*
+		 * Update cpd_state for all local joined processes in group
+		 */
+		for (i = 0; i < joined_list_entries; i++) {
 			if (joined_list[i].nodeid == api->totem_nodeid_get()) {
-			qb_list_for_each(iter, &cpg_pd_list_head) {
+				qb_list_for_each(iter, &cpg_pd_list_head) {
 					struct cpg_pd *cpd = qb_list_entry (iter, struct cpg_pd, list);
-					if (mar_name_compare (&cpd->group_name, group_name) == 0 &&
-					    joined_list[i].pid == cpd->pid) {
+					if (joined_list[i].pid == cpd->pid &&
+					    mar_name_compare (&cpd->group_name, group_name) == 0) {
 						cpd->cpd_state = CPD_STATE_JOIN_COMPLETED;
 					}
 				}
@@ -748,6 +764,9 @@ static int notify_lib_joinlist(
 		}
 	}
 
+	/*
+	 * Send notification to all ipc clients joined in group_name
+	 */
 	qb_list_for_each(iter, &cpg_pd_list_head) {
 		struct cpg_pd *cpd = qb_list_entry (iter, struct cpg_pd, list);
 		if (mar_name_compare (&cpd->group_name, group_name) == 0) {
@@ -760,16 +779,25 @@ static int notify_lib_joinlist(
 		}
 	}
 
-	if (left_list_entries &&
-	    left_list[0].nodeid == api->totem_nodeid_get() &&
-	    left_list[0].reason == CONFCHG_CPG_REASON_LEAVE) {
-	qb_list_for_each(iter, &cpg_pd_list_head) {
-			struct cpg_pd *cpd = qb_list_entry (iter, struct cpg_pd, list);
-			if (mar_name_compare (&cpd->group_name, group_name) == 0 &&
-			    left_list[0].pid == cpd->pid) {
-				cpd->pid = 0;
-				memset (&cpd->group_name, 0, sizeof(cpd->group_name));
-				cpd->cpd_state = CPD_STATE_UNJOINED;
+	if (left_list_entries) {
+		/*
+		 * Zero internal cpd state for all local processes leaving group
+		 * (this loop is not strictly needed because left_list always either
+		 *  contains exactly one process running on local node or more items
+		 *  but none of them is running on local node)
+		 */
+		for (i = 0; i < joined_list_entries; i++) {
+			if (left_list[i].nodeid == api->totem_nodeid_get() &&
+			    left_list[i].reason == CONFCHG_CPG_REASON_LEAVE) {
+				qb_list_for_each(iter, &cpg_pd_list_head) {
+					struct cpg_pd *cpd = qb_list_entry (iter, struct cpg_pd, list);
+					if (left_list[i].pid == cpd->pid &&
+					    mar_name_compare (&cpd->group_name, group_name) == 0) {
+						cpd->pid = 0;
+						memset (&cpd->group_name, 0, sizeof(cpd->group_name));
+						cpd->cpd_state = CPD_STATE_UNJOINED;
+					}
+				}
 			}
 		}
 	}
@@ -966,6 +994,7 @@ static void joinlist_inform_clients (void)
 		free(jld);
 	}
 	qb_map_iter_free(miter);
+	qb_map_destroy(group_notify_map);
 
 	joinlist_remove_zombie_pi_entries ();
 }
