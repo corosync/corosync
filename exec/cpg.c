@@ -652,6 +652,57 @@ static int notify_lib_totem_membership (
 	return CS_OK;
 }
 
+/*
+ * Helper function for notify_lib_joinlist which prepares member_list using
+ * process_info_list with removed left_list items.
+ * member_list_entries - When not NULL it contains number of member_list entries
+ * member_list - When not NULL it is used as pointer to start of preallocated
+ *               array of members. Pointer is adjusted to the end of array on
+ *               exit.
+ */
+static void notify_lib_joinlist_fill_member_list(
+	const mar_cpg_name_t *group_name,
+	int left_list_entries,
+	const mar_cpg_address_t *left_list,
+	int *member_list_entries,
+	mar_cpg_address_t **member_list)
+{
+	struct qb_list_head *iter;
+	int i;
+
+	if (member_list_entries != NULL) {
+		*member_list_entries = 0;
+	}
+
+	qb_list_for_each(iter, &process_info_list_head) {
+		struct process_info *pi = qb_list_entry (iter, struct process_info, list);
+
+		if (mar_name_compare (&pi->group, group_name) == 0) {
+			int in_left_list = 0;
+
+			for (i = 0; i < left_list_entries; i++) {
+				if (left_list[i].nodeid == pi->nodeid && left_list[i].pid == pi->pid) {
+					in_left_list = 1;
+					break ;
+				}
+			}
+
+			if (!in_left_list) {
+				if (member_list_entries != NULL) {
+					(*member_list_entries)++;
+				}
+
+				if (member_list != NULL) {
+					(*member_list)->nodeid = pi->nodeid;
+					(*member_list)->pid = pi->pid;
+					(*member_list)->reason = CPG_REASON_UNDEFINED;
+					(*member_list)++;
+				}
+			}
+		}
+	}
+}
+
 static int notify_lib_joinlist(
 	const mar_cpg_name_t *group_name,
 	int joined_list_entries,
@@ -671,26 +722,8 @@ static int notify_lib_joinlist(
 	/*
 	 * Find size of member_list (use process_info_list but remove items in left_list)
 	 */
-	member_list_entries = 0;
-
-	qb_list_for_each(iter, &process_info_list_head) {
-		struct process_info *pi = qb_list_entry (iter, struct process_info, list);
-
-		if (mar_name_compare (&pi->group, group_name) == 0) {
-			int in_left_list = 0;
-
-			for (i = 0; i < left_list_entries; i++) {
-				if (left_list[i].nodeid == pi->nodeid && left_list[i].pid == pi->pid) {
-					in_left_list = 1;
-					break ;
-				}
-			}
-
-			if (!in_left_list) {
-				member_list_entries++;
-			}
-		}
-	}
+	notify_lib_joinlist_fill_member_list(group_name, left_list_entries, left_list,
+	    &member_list_entries, NULL);
 
 	size = sizeof(struct res_lib_cpg_confchg_callback) +
 		sizeof(mar_cpg_address_t) * (member_list_entries + left_list_entries + joined_list_entries);
@@ -711,27 +744,8 @@ static int notify_lib_joinlist(
 	/*
 	 * Fill res->memberlist. Use process_info_list but remove items in left_list.
 	 */
-	qb_list_for_each(iter, &process_info_list_head) {
-		struct process_info *pi = qb_list_entry (iter, struct process_info, list);
-
-		if (mar_name_compare (&pi->group, group_name) == 0) {
-			int in_left_list = 0;
-
-			for (i = 0; i < left_list_entries; i++) {
-				if (left_list[i].nodeid == pi->nodeid && left_list[i].pid == pi->pid) {
-					in_left_list = 1;
-					break ;
-				}
-			}
-
-			if (!in_left_list) {
-				retgi->nodeid = pi->nodeid;
-				retgi->pid = pi->pid;
-				retgi->reason = CPG_REASON_UNDEFINED;
-				retgi++;
-			}
-		}
-	}
+	notify_lib_joinlist_fill_member_list(group_name, left_list_entries, left_list,
+	    NULL, &retgi);
 
 	/*
 	 * Fill res->left_list
