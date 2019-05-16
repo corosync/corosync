@@ -394,7 +394,11 @@ the token is retransmitted.  This will be automatically calculated if token
 is modified.  It is not recommended to alter this value without guidance from
 the corosync community.
 
-The default is 238 milliseconds.
+The minimum is 30 milliseconds. If not set and error occur, make sure
+token / (token_retransmits_before_loss_const + 0.2) is more than 30.
+
+The default is 238 milliseconds for two nodes cluster. Three or more nodes reference
+.B token_coefficient.
 
 .TP
 knet_compression_model
