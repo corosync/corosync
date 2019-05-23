@@ -88,6 +88,7 @@ extern void totemip_copy_endian_convert(struct totem_ip_address *addr1,
 int totemip_localhost(int family, struct totem_ip_address *localhost);
 extern int totemip_localhost_check(const struct totem_ip_address *addr);
 extern const char *totemip_print(const struct totem_ip_address *addr);
+extern const char *totemip_sa_print(const struct sockaddr *sa);
 extern int totemip_sockaddr_to_totemip_convert(const struct sockaddr_storage *saddr,
 					       struct totem_ip_address *ip_addr);
 extern int totemip_totemip_to_sockaddr_convert(struct totem_ip_address *ip_addr,
