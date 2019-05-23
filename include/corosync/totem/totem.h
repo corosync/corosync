@@ -191,6 +191,8 @@ struct totem_config {
 
 	int ip_version;
 
+	unsigned int block_unlisted_ips;
+
 	void (*totem_memb_ring_id_create_or_load) (
 	    struct memb_ring_id *memb_ring_id,
 	    const struct totem_ip_address *addr);

@@ -91,6 +91,33 @@ int totemip_equal(const struct totem_ip_address *addr1,
 
 }
 
+int totemip_sa_equal(const struct totem_ip_address *totem_ip,
+	const struct sockaddr *sa)
+{
+	int res;
+
+	res = -1;
+
+	if (totem_ip->family != sa->sa_family) {
+		return 0;
+	}
+
+	switch (totem_ip->family) {
+	case AF_INET:
+		res = (memcmp(totem_ip->addr,
+		    &((const struct sockaddr_in *)sa)->sin_addr, sizeof(struct in_addr)) == 0);
+		break;
+	case AF_INET6:
+		res =  (memcmp(totem_ip->addr,
+		    &((const struct sockaddr_in6 *)sa)->sin6_addr, sizeof(struct in6_addr)) == 0);
+		break;
+	default:
+		assert(0);
+	}
+
+	return (res);
+}
+
 /* Copy a totem_ip_address */
 void totemip_copy(struct totem_ip_address *addr1,
 		  const struct totem_ip_address *addr2)

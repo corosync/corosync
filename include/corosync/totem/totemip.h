@@ -79,6 +79,8 @@ struct totem_ip_if_address
 
 extern int totemip_equal(const struct totem_ip_address *addr1,
 			 const struct totem_ip_address *addr2);
+extern int totemip_sa_equal(const struct totem_ip_address *totem_ip,
+			const struct sockaddr *sa);
 extern int totemip_compare(const void *a, const void *b);
 extern int totemip_is_mcast(struct totem_ip_address *addr);
 extern void totemip_copy(struct totem_ip_address *addr1,
