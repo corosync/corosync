@@ -567,13 +567,8 @@ How often the knet PMTUd runs to look for network MTU changes.
 Value in seconds, default: 30
 
 .TP
-knet_enable_access_lists
-Allow knet to drop packets from IP addresses that are not known to corosync.
-Value is 0 (off) and 1 (on). Default: 0.
-
-.TP
 block_unlisted_ips
-Allow UDPU to drop packets from IP addresses that are not known
+Allow UDPU and KNET to drop packets from IP addresses that are not known
 (nodes which don't exist in the nodelist) to corosync.
 Value is yes or no.
 

@@ -708,9 +708,6 @@ static int main_config_parser_cb(const char *path,
 			    (strcmp(path, "totem.miss_count_const") == 0) ||
 			    (strcmp(path, "totem.knet_pmtud_interval") == 0) ||
 			    (strcmp(path, "totem.knet_compression_threshold") == 0) ||
-#ifdef HAVE_KNET_ACCESS_LIST
-			    (strcmp(path, "totem.knet_enable_access_lists") == 0) ||
-#endif
 			    (strcmp(path, "totem.netmtu") == 0)) {
 				val_type = ICMAP_VALUETYPE_UINT32;
 				if (safe_atoq(value, &val, val_type) != 0) {

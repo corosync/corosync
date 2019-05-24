@@ -740,12 +740,11 @@ static void timer_function_netif_check_timeout (
 static void knet_set_access_list_config(struct totemknet_instance *instance)
 {
 #ifdef HAVE_KNET_ACCESS_LIST
-	uint32_t value = 0; /* disable by default */
+	uint32_t value;
 	cs_error_t err;
 
-	if (icmap_get_uint32("totem.knet_enable_access_lists", &value) == CS_OK) {
-		knet_log_printf (LOGSYS_LEVEL_DEBUG, "knet_enable access list: %d", value);
-        }
+	value = instance->totem_config->block_unlisted_ips;
+	knet_log_printf (LOGSYS_LEVEL_DEBUG, "knet_enable access list: %d", value);
 
 	err = knet_handle_enable_access_lists(instance->knet_handle, value);
 	if (err) {
