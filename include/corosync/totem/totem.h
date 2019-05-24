@@ -233,6 +233,8 @@ struct totem_config {
 
 	enum totem_ip_version_enum ip_version;
 
+	unsigned int block_unlisted_ips;
+
 	void (*totem_memb_ring_id_create_or_load) (
 	    struct memb_ring_id *memb_ring_id,
 	    unsigned int nodeid);
