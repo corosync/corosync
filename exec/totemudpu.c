@@ -444,6 +444,32 @@ int totemudpu_finalize (
 	return (res);
 }
 
+static struct totemudpu_member *find_member_by_sockaddr(
+	const void *udpu_context,
+	const struct sockaddr *sa)
+{
+	struct qb_list_head *list;
+	struct totemudpu_member *member;
+	struct totemudpu_member *res_member;
+	const struct totemudpu_instance *instance = (const struct totemudpu_instance *)udpu_context;
+
+	res_member = NULL;
+
+	qb_list_for_each(list, &(instance->member_list)) {
+		member = qb_list_entry (list,
+			struct totemudpu_member,
+			list);
+
+		if (totemip_sa_equal(&member->member, sa)) {
+			res_member = member;
+			break ;
+		}
+	}
+
+	return (res_member);
+}
+
+
 static int net_deliver_fn (
 	int fd,
 	int revents,
@@ -510,6 +536,14 @@ static int net_deliver_fn (
 				"on the network (attack?), or you tried join more nodes than corosync is"
 				"compiled with (%u) or bug in the code (bad estimation of "
 				"the UDP_RECEIVE_FRAME_SIZE_MAX). Dropping packet.", PROCESSOR_COUNT_MAX);
+		return (0);
+	}
+
+	if (instance->totem_config->block_unlisted_ips &&
+	    find_member_by_sockaddr(instance, (const struct sockaddr *)&system_from) == NULL) {
+		log_printf(instance->totemudpu_log_level_debug, "Packet rejected from %s",
+		    totemip_sa_print((const struct sockaddr *)&system_from));
+
 		return (0);
 	}
 

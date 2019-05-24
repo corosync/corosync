@@ -79,6 +79,7 @@
 #define WINDOW_SIZE				50
 #define MAX_MESSAGES				17
 #define MISS_COUNT_CONST			5
+#define BLOCK_UNLISTED_IPS			1
 
 /* These currently match the defaults in libknet.h */
 #define KNET_PING_INTERVAL                      1000
@@ -138,6 +139,8 @@ static void *totem_get_param_by_name(struct totem_config *totem_config, const ch
 		return &totem_config->knet_compression_level;
 	if (strcmp(param_name, "totem.knet_compression_model") == 0)
 		return &totem_config->knet_compression_model;
+	if (strcmp(param_name, "totem.block_unlisted_ips") == 0)
+		return &totem_config->block_unlisted_ips;
 
 	return NULL;
 }
@@ -235,6 +238,55 @@ static void totem_volatile_config_set_string_value (struct totem_config *totem_c
 	icmap_set_string(runtime_key_name, (char *)*config_value);
 }
 
+/*
+ * Read string value stored in key_name from icmap, use it as a boolean (yes/no) type, convert it
+ * to integer value (1/0) and store into totem_config.
+ *
+ * If key is not found or key_name == delete_key default value is used
+ * and stored into totem_config.
+ */
+static void totem_volatile_config_set_boolean_value (struct totem_config *totem_config,
+	const char *key_name, const char *deleted_key, unsigned int default_value)
+{
+	char runtime_key_name[ICMAP_KEYNAME_MAXLEN];
+	char *str;
+	int val;
+
+	str = NULL;
+	val = default_value;
+
+	if ((deleted_key != NULL && strcmp(deleted_key, key_name) == 0) ||
+	    (icmap_get_string(key_name, &str) != CS_OK)) {
+		/*
+		 * Do nothing. str is NULL (icmap_get_string ether not called or
+		 * not changed str).
+		 */
+	} else {
+		if (strcmp(str, "yes") == 0) {
+			val = 1;
+		} else if (strcmp(str, "no") == 0) {
+			val = 0;
+		}
+		free(str);
+	}
+
+	/*
+	 * Store totem_config value to cmap runtime section
+	 */
+	if (strlen("runtime.config.") + strlen(key_name) >= ICMAP_KEYNAME_MAXLEN) {
+		/*
+		 * This shouldn't happen
+		 */
+		return ;
+	}
+
+	strcpy(runtime_key_name, "runtime.config.");
+	strcat(runtime_key_name, key_name);
+
+	*(uint32_t *)totem_get_param_by_name(totem_config, key_name) = val;
+
+	icmap_set_uint32(runtime_key_name, val);
+}
 
 /*
  * Read and validate config values from cmap and store them into totem_config. If key doesn't exists,
@@ -302,7 +354,8 @@ static void totem_volatile_config_read (struct totem_config *totem_config, const
 
 	totem_volatile_config_set_string_value(totem_config, "totem.knet_compression_model", deleted_key, "none");
 
-
+	totem_volatile_config_set_boolean_value(totem_config, "totem.block_unlisted_ips", deleted_key,
+	    BLOCK_UNLISTED_IPS);
 }
 
 static int totem_volatile_config_validate (

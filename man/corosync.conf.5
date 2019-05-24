@@ -32,7 +32,7 @@
 .\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 .\" * THE POSSIBILITY OF SUCH DAMAGE.
 .\" */
-.TH COROSYNC_CONF 5 2019-04-11 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
+.TH COROSYNC_CONF 5 2019-05-24 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
 .SH NAME
 corosync.conf - corosync executive configuration file
 
@@ -570,6 +570,14 @@ Value in seconds, default: 30
 knet_enable_access_lists
 Allow knet to drop packets from IP addresses that are not known to corosync.
 Value is 0 (off) and 1 (on). Default: 0.
+
+.TP
+block_unlisted_ips
+Allow UDPU to drop packets from IP addresses that are not known
+(nodes which don't exist in the nodelist) to corosync.
+Value is yes or no.
+
+The default value is yes.
 
 .PP
 Within the
