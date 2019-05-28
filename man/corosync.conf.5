@@ -157,7 +157,7 @@ version
 This specifies the version of the configuration file.  Currently the only
 valid version for this directive is 2.
 
-.PP
+.TP
 clear_node_high_bit
 This configuration option is optional and is only relevant when no nodeid is
 specified.  Some corosync clients require a signed 32 bit nodeid that is greater
@@ -334,8 +334,8 @@ The default is 180 milliseconds.
 .TP
 token_retransmits_before_loss_const
 This value identifies how many token retransmits should be attempted before
-forming a new configuration.  If this value is set, retransmit and hold will
-be automatically calculated from retransmits_before_loss and token.
+forming a new configuration. It is also used for token_retransmit
+and hold calculations.
 
 The default is 4 retransmissions.
 
