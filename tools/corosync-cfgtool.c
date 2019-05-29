@@ -100,7 +100,7 @@ linkstatusget_do (char *interface_name, int brief)
 	unsigned int i;
 	cmap_iter_handle_t iter;
 	unsigned int nodeid;
-	unsigned int node_pos;
+	int nodeid_match_guard;
 	cmap_value_types_t type;
 	size_t value_len;
 	int rc = 0;
@@ -128,8 +128,12 @@ linkstatusget_do (char *interface_name, int brief)
 	}
 
 	while ((cmap_iter_next(cmap_handle, iter, iter_key, &value_len, &type)) == CS_OK) {
-		result = sscanf(iter_key, "nodelist.node.%u.nodeid", &node_pos);
-		if (result != 1) {
+		nodeid_match_guard = 0;
+		if (sscanf(iter_key, "nodelist.node.%*u.nodeid%n", &nodeid_match_guard) != 0) {
+			continue;
+		}
+		/* check for exact match */
+		if (nodeid_match_guard != strlen(iter_key)) {
 			continue;
 		}
 		if (cmap_get_uint32(cmap_handle, iter_key, &nodeid) == CS_OK) {
