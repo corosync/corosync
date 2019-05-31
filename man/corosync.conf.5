@@ -519,6 +519,14 @@ Allow UDPU to drop packets from IP addresses that are not known
 (nodes which don't exist in the nodelist) to corosync.
 Value is yes or no.
 
+This feature is mainly to protect against the joining of nodes
+with outdated configurations after a cluster split.
+Another use case is to allow the atomic merge of two independent clusters.
+
+Changing the default value is not recommended, the overhead is tiny and
+an existing cluster may fail if corosync is started on an unlisted node
+with an old configuration.
+
 The default value is yes.
 
 .PP
