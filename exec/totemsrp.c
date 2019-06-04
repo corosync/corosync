@@ -616,8 +616,6 @@ static int message_handler_token_hold_cancel (
 
 static void totemsrp_instance_initialize (struct totemsrp_instance *instance);
 
-static void srp_addr_copy (struct srp_addr *dest, const struct srp_addr *src);
-
 static void srp_addr_to_nodeid (
 	struct totemsrp_instance *instance,
 	unsigned int *nodeid_out,
@@ -651,7 +649,7 @@ static void mcast_endian_convert (const struct mcast *in, struct mcast *out);
 static void memb_merge_detect_endian_convert (
 	const struct memb_merge_detect *in,
 	struct memb_merge_detect *out);
-static void srp_addr_copy_endian_convert (struct srp_addr *out, const struct srp_addr *in);
+static struct srp_addr srp_addr_endian_convert (struct srp_addr in);
 static void timer_function_orf_token_timeout (void *data);
 static void timer_function_orf_token_warning (void *data);
 static void timer_function_pause_timeout (void *data);
@@ -1132,11 +1130,6 @@ static int srp_addr_equal (const struct srp_addr *a, const struct srp_addr *b)
 	return 0;
 }
 
-static void srp_addr_copy (struct srp_addr *dest, const struct srp_addr *src)
-{
-	dest->nodeid = src->nodeid;
-}
-
 static void srp_addr_to_nodeid (
 	struct totemsrp_instance *instance,
 	unsigned int *nodeid_out,
@@ -1150,9 +1143,13 @@ static void srp_addr_to_nodeid (
 	}
 }
 
-static void srp_addr_copy_endian_convert (struct srp_addr *out, const struct srp_addr *in)
+static struct srp_addr srp_addr_endian_convert (struct srp_addr in)
 {
-	out->nodeid = swab32 (in->nodeid);
+	struct srp_addr res;
+
+	res.nodeid = swab32 (in.nodeid);
+
+	return (res);
 }
 
 static void memb_consensus_reset (struct totemsrp_instance *instance)
@@ -1179,7 +1176,7 @@ static void memb_set_subtract (
 			}
 		}
 		if (found == 0) {
-			srp_addr_copy (&out_list[*out_list_entries], &one_list[i]);
+			out_list[*out_list_entries] = one_list[i];
 			*out_list_entries = *out_list_entries + 1;
 		}
 		found = 0;
@@ -1202,7 +1199,7 @@ static void memb_consensus_set (
 			break; /* found entry */
 		}
 	}
-	srp_addr_copy (&instance->consensus_list[i].addr, addr);
+	instance->consensus_list[i].addr = *addr;
 	instance->consensus_list[i].set = 1;
 	if (found == 0) {
 		instance->consensus_list_entries++;
@@ -1276,7 +1273,7 @@ static void memb_consensus_notset (
 
 	for (i = 0; i < instance->my_proc_list_entries; i++) {
 		if (memb_consensus_isset (instance, &instance->my_proc_list[i]) == 0) {
-			srp_addr_copy (&no_consensus_list[*no_consensus_list_entries], &instance->my_proc_list[i]);
+			no_consensus_list[*no_consensus_list_entries] = instance->my_proc_list[i];
 			*no_consensus_list_entries = *no_consensus_list_entries + 1;
 		}
 	}
@@ -1358,7 +1355,7 @@ static void memb_set_merge (
 			}
 		}
 		if (found == 0) {
-			srp_addr_copy (&fullset[*fullset_entries], &subset[i]);
+			fullset[*fullset_entries] = subset[i];
 			*fullset_entries = *fullset_entries + 1;
 		}
 		found = 0;
@@ -1392,7 +1389,7 @@ static void memb_set_and_with_ring_id (
 			}
 		}
 		if (found) {
-			srp_addr_copy (&and[*and_entries], &set1[j]);
+			and[*and_entries] = set1[j];
 			*and_entries = *and_entries + 1;
 		}
 		found = 0;
@@ -2408,7 +2405,7 @@ static void memb_state_recovery_enter (
 		message_item.mcast->header.magic = TOTEM_MH_MAGIC;
 		message_item.mcast->header.version = TOTEM_MH_VERSION;
 		message_item.mcast->header.type = MESSAGE_TYPE_MCAST;
-		srp_addr_copy (&message_item.mcast->system_from, &instance->my_id);
+		message_item.mcast->system_from = instance->my_id;
 		message_item.mcast->header.encapsulated = MESSAGE_ENCAPSULATED;
 
 		message_item.mcast->header.nodeid = instance->my_id.nodeid;
@@ -2503,7 +2500,7 @@ int totemsrp_mcast (
 	assert (message_item.mcast->header.nodeid);
 
 	message_item.mcast->guarantee = guarantee;
-	srp_addr_copy (&message_item.mcast->system_from, &instance->my_id);
+	message_item.mcast->system_from = instance->my_id;
 
 	addr = (char *)message_item.mcast;
 	addr_idx = sizeof (struct mcast);
@@ -3311,7 +3308,7 @@ static void memb_join_message_send (struct totemsrp_instance *instance)
 	memb_join->ring_seq = instance->my_ring_id.seq;
 	memb_join->proc_list_entries = instance->my_proc_list_entries;
 	memb_join->failed_list_entries = instance->my_failed_list_entries;
-	srp_addr_copy (&memb_join->system_from, &instance->my_id);
+	memb_join->system_from = instance->my_id;
 
 	/*
 	 * This mess adds the joined and failed processor lists into the join
@@ -3390,7 +3387,7 @@ static void memb_leave_message_send (struct totemsrp_instance *instance)
 	memb_join->ring_seq = instance->my_ring_id.seq;
 	memb_join->proc_list_entries = active_memb_entries;
 	memb_join->failed_list_entries = instance->my_failed_list_entries;
-	srp_addr_copy (&memb_join->system_from, &instance->my_id);
+	memb_join->system_from = instance->my_id;
 
 	// TODO: CC Maybe use the actual join send routine.
 	/*
@@ -3435,7 +3432,7 @@ static void memb_merge_detect_transmit (struct totemsrp_instance *instance)
 	memb_merge_detect.header.type = MESSAGE_TYPE_MEMB_MERGE_DETECT;
 	memb_merge_detect.header.encapsulated = 0;
 	memb_merge_detect.header.nodeid = instance->my_id.nodeid;
-	srp_addr_copy (&memb_merge_detect.system_from, &instance->my_id);
+	memb_merge_detect.system_from = instance->my_id;
 	memcpy (&memb_merge_detect.ring_id, &instance->my_ring_id,
 		sizeof (struct memb_ring_id));
 	assert (memb_merge_detect.header.nodeid);
@@ -4124,7 +4121,7 @@ static void messages_deliver_to_app (
 	unsigned int range = 0;
 	int endian_conversion_required;
 	unsigned int my_high_delivered_stored = 0;
-
+	struct srp_addr aligned_system_from;
 
 	range = end_point - instance->my_high_delivered;
 
@@ -4181,11 +4178,13 @@ static void messages_deliver_to_app (
 			memcpy (&mcast_header, mcast_in, sizeof (struct mcast));
 		}
 
+		aligned_system_from = mcast_header.system_from;
+
 		/*
 		 * Skip messages not originated in instance->my_deliver_memb
 		 */
 		if (skip &&
-			memb_set_subset (&mcast_header.system_from,
+			memb_set_subset (&aligned_system_from,
 				1,
 				instance->my_deliver_memb_list,
 				instance->my_deliver_memb_entries) == 0) {
@@ -4225,6 +4224,7 @@ static int message_handler_mcast (
 	struct sort_queue_item sort_queue_item;
 	struct sq *sort_queue;
 	struct mcast mcast_header;
+	struct srp_addr aligned_system_from;
 
 	if (check_mcast_sanity(instance, msg, msg_len, endian_conversion_needed) == -1) {
 		return (0);
@@ -4256,22 +4256,24 @@ static int message_handler_mcast (
 	if (memcmp (&instance->my_ring_id, &mcast_header.ring_id,
 		sizeof (struct memb_ring_id)) != 0) {
 
+		aligned_system_from = mcast_header.system_from;
+
 		switch (instance->memb_state) {
 		case MEMB_STATE_OPERATIONAL:
 			memb_set_merge (
-				&mcast_header.system_from, 1,
+				&aligned_system_from, 1,
 				instance->my_proc_list, &instance->my_proc_list_entries);
 			memb_state_gather_enter (instance, TOTEMSRP_GSFROM_FOREIGN_MESSAGE_IN_OPERATIONAL_STATE);
 			break;
 
 		case MEMB_STATE_GATHER:
 			if (!memb_set_subset (
-				&mcast_header.system_from,
+				&aligned_system_from,
 				1,
 				instance->my_proc_list,
 				instance->my_proc_list_entries)) {
 
-				memb_set_merge (&mcast_header.system_from, 1,
+				memb_set_merge (&aligned_system_from, 1,
 					instance->my_proc_list, &instance->my_proc_list_entries);
 				memb_state_gather_enter (instance, TOTEMSRP_GSFROM_FOREIGN_MESSAGE_IN_GATHER_STATE);
 				return (0);
@@ -4340,6 +4342,7 @@ static int message_handler_memb_merge_detect (
 	int endian_conversion_needed)
 {
 	struct memb_merge_detect memb_merge_detect;
+	struct srp_addr aligned_system_from;
 
 	if (check_memb_merge_detect_sanity(instance, msg, msg_len, endian_conversion_needed) == -1) {
 		return (0);
@@ -4361,24 +4364,26 @@ static int message_handler_memb_merge_detect (
 		return (0);
 	}
 
+	aligned_system_from = memb_merge_detect.system_from;
+
 	/*
 	 * Execute merge operation
 	 */
 	switch (instance->memb_state) {
 	case MEMB_STATE_OPERATIONAL:
-		memb_set_merge (&memb_merge_detect.system_from, 1,
+		memb_set_merge (&aligned_system_from, 1,
 			instance->my_proc_list, &instance->my_proc_list_entries);
 		memb_state_gather_enter (instance, TOTEMSRP_GSFROM_MERGE_DURING_OPERATIONAL_STATE);
 		break;
 
 	case MEMB_STATE_GATHER:
 		if (!memb_set_subset (
-			&memb_merge_detect.system_from,
+			&aligned_system_from,
 			1,
 			instance->my_proc_list,
 			instance->my_proc_list_entries)) {
 
-			memb_set_merge (&memb_merge_detect.system_from, 1,
+			memb_set_merge (&aligned_system_from, 1,
 				instance->my_proc_list, &instance->my_proc_list_entries);
 			memb_state_gather_enter (instance, TOTEMSRP_GSFROM_MERGE_DURING_GATHER_STATE);
 			return (0);
@@ -4405,9 +4410,11 @@ static void memb_join_process (
 	int gather_entered = 0;
 	int fail_minus_memb_entries = 0;
 	struct srp_addr fail_minus_memb[PROCESSOR_COUNT_MAX];
+	struct srp_addr aligned_system_from;
 
 	proc_list = (struct srp_addr *)memb_join->end_of_memb_join;
 	failed_list = proc_list + memb_join->proc_list_entries;
+	aligned_system_from = memb_join->system_from;
 
 	log_printf(instance->totemsrp_log_level_trace, "memb_join_process");
 	memb_set_log(instance, instance->totemsrp_log_level_trace,
@@ -4456,13 +4463,12 @@ static void memb_join_process (
 		instance->my_failed_list_entries)) {
 
 		if (memb_join->header.nodeid != LEAVE_DUMMY_NODEID) {
-			memb_consensus_set (instance, &memb_join->system_from);
+			memb_consensus_set (instance, &aligned_system_from);
 		}
 
 		if (memb_consensus_agreed (instance) && instance->failed_to_recv == 1) {
 				instance->failed_to_recv = 0;
-				srp_addr_copy (&instance->my_proc_list[0],
-					&instance->my_id);
+				instance->my_proc_list[0] = instance->my_id;
 				instance->my_proc_list_entries = 1;
 				instance->my_failed_list_entries = 0;
 
@@ -4493,7 +4499,7 @@ static void memb_join_process (
 
 		goto out;
 	} else
-	if (memb_set_subset (&memb_join->system_from, 1,
+	if (memb_set_subset (&aligned_system_from, 1,
 		instance->my_failed_list, instance->my_failed_list_entries)) {
 
 		goto out;
@@ -4507,16 +4513,16 @@ static void memb_join_process (
 			failed_list, memb_join->failed_list_entries)) {
 
 			memb_set_merge (
-				&memb_join->system_from, 1,
+				&aligned_system_from, 1,
 				instance->my_failed_list, &instance->my_failed_list_entries);
 		} else {
 			if (memb_set_subset (
-				&memb_join->system_from, 1,
+				&aligned_system_from, 1,
 				instance->my_memb_list,
 				instance->my_memb_entries)) {
 
 				if (memb_set_subset (
-					&memb_join->system_from, 1,
+					&aligned_system_from, 1,
 					instance->my_failed_list,
 					instance->my_failed_list_entries) == 0) {
 
@@ -4562,7 +4568,7 @@ static void memb_join_endian_convert (const struct memb_join *in, struct memb_jo
 	out->header.version = TOTEM_MH_VERSION;
 	out->header.type = in->header.type;
 	out->header.nodeid = swab32 (in->header.nodeid);
-	srp_addr_copy_endian_convert (&out->system_from, &in->system_from);
+	out->system_from = srp_addr_endian_convert(in->system_from);
 	out->proc_list_entries = swab32 (in->proc_list_entries);
 	out->failed_list_entries = swab32 (in->failed_list_entries);
 	out->ring_seq = swab64 (in->ring_seq);
@@ -4573,10 +4579,10 @@ static void memb_join_endian_convert (const struct memb_join *in, struct memb_jo
 	out_failed_list = out_proc_list + out->proc_list_entries;
 
 	for (i = 0; i < out->proc_list_entries; i++) {
-		srp_addr_copy_endian_convert (&out_proc_list[i], &in_proc_list[i]);
+		out_proc_list[i] = srp_addr_endian_convert (in_proc_list[i]);
 	}
 	for (i = 0; i < out->failed_list_entries; i++) {
-		srp_addr_copy_endian_convert (&out_failed_list[i], &in_failed_list[i]);
+		out_failed_list[i] = srp_addr_endian_convert (in_failed_list[i]);
 	}
 }
 
@@ -4602,7 +4608,7 @@ static void memb_commit_token_endian_convert (const struct memb_commit_token *in
 	in_memb_list = (struct memb_commit_token_memb_entry *)(in_addr + out->addr_entries);
 	out_memb_list = (struct memb_commit_token_memb_entry *)(out_addr + out->addr_entries);
 	for (i = 0; i < out->addr_entries; i++) {
-		srp_addr_copy_endian_convert (&out_addr[i], &in_addr[i]);
+		out_addr[i] = srp_addr_endian_convert (in_addr[i]);
 
 		/*
 		 * Only convert the memb entry if it has been set
@@ -4658,7 +4664,7 @@ static void mcast_endian_convert (const struct mcast *in, struct mcast *out)
 	out->ring_id.seq = swab64 (in->ring_id.seq);
 	out->node_id = swab32 (in->node_id);
 	out->guarantee = swab32 (in->guarantee);
-	srp_addr_copy_endian_convert (&out->system_from, &in->system_from);
+	out->system_from = srp_addr_endian_convert(in->system_from);
 }
 
 static void memb_merge_detect_endian_convert (
@@ -4671,7 +4677,7 @@ static void memb_merge_detect_endian_convert (
 	out->header.nodeid = swab32 (in->header.nodeid);
 	out->ring_id.rep = swab32(in->ring_id.rep);
 	out->ring_id.seq = swab64 (in->ring_id.seq);
-	srp_addr_copy_endian_convert (&out->system_from, &in->system_from);
+	out->system_from = srp_addr_endian_convert (in->system_from);
 }
 
 static int ignore_join_under_operational (
@@ -4681,10 +4687,12 @@ static int ignore_join_under_operational (
 	struct srp_addr *proc_list;
 	struct srp_addr *failed_list;
 	unsigned long long ring_seq;
+	struct srp_addr aligned_system_from;
 
 	proc_list = (struct srp_addr *)memb_join->end_of_memb_join;
 	failed_list = proc_list + memb_join->proc_list_entries;
 	ring_seq = memb_join->ring_seq;
+	aligned_system_from = memb_join->system_from;
 
 	if (memb_set_subset (&instance->my_id, 1,
 	    failed_list, memb_join->failed_list_entries)) {
@@ -4695,7 +4703,7 @@ static int ignore_join_under_operational (
 	 * In operational state, my_proc_list is exactly the same as
 	 * my_memb_list.
 	 */
-	if ((memb_set_subset (&memb_join->system_from, 1,
+	if ((memb_set_subset (&aligned_system_from, 1,
 	    instance->my_memb_list, instance->my_memb_entries)) &&
 	    (ring_seq < instance->my_ring_id.seq)) {
 		return (1);
@@ -4712,6 +4720,7 @@ static int message_handler_memb_join (
 {
 	const struct memb_join *memb_join;
 	struct memb_join *memb_join_convert = alloca (msg_len);
+	struct srp_addr aligned_system_from;
 
 	if (check_memb_join_sanity(instance, msg, msg_len, endian_conversion_needed) == -1) {
 		return (0);
@@ -4724,6 +4733,9 @@ static int message_handler_memb_join (
 	} else {
 		memb_join = msg;
 	}
+
+	aligned_system_from = memb_join->system_from;
+
 	/*
 	 * If the process paused because it wasn't scheduled in a timely
 	 * fashion, flush the join messages because they may be queued
@@ -4748,7 +4760,7 @@ static int message_handler_memb_join (
 			break;
 
 		case MEMB_STATE_COMMIT:
-			if (memb_set_subset (&memb_join->system_from,
+			if (memb_set_subset (&aligned_system_from,
 				1,
 				instance->my_new_memb_list,
 				instance->my_new_memb_entries) &&
@@ -4761,7 +4773,7 @@ static int message_handler_memb_join (
 			break;
 
 		case MEMB_STATE_RECOVERY:
-			if (memb_set_subset (&memb_join->system_from,
+			if (memb_set_subset (&aligned_system_from,
 				1,
 				instance->my_new_memb_list,
 				instance->my_new_memb_entries) &&
