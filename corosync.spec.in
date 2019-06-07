@@ -14,6 +14,7 @@
 %bcond_with nozzle
 %bcond_with vqsim
 %bcond_with runautogen
+%bcond_with userflags
 
 %global gitver %{?numcomm:.%{numcomm}}%{?alphatag:.%{alphatag}}%{?dirty:.%{dirty}}
 %global gittarver %{?numcomm:.%{numcomm}}%{?alphatag:-%{alphatag}}%{?dirty:-%{dirty}}
@@ -107,6 +108,9 @@ BuildRequires: readline-devel
 %endif
 %if %{with vqsim}
 	--enable-vqsim \
+%endif
+%if %{with userflags}
+	--enable-user-flags \
 %endif
 	--with-initddir=%{_initrddir} \
 	--with-systemddir=%{_unitdir} \
