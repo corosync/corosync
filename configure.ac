@@ -746,7 +746,7 @@ AC_MSG_RESULT([$PACKAGE build info:])
 AC_MSG_RESULT([  Library SONAME           = ${SONAME}])
 LIB_MSG_RESULT(m4_shift(local_soname_list))dnl
 AC_MSG_RESULT([  Default optimization     = ${OPT_CFLAGS}])
-AC_MSG_RESULT([  Default debug options    = ${GDB_CFLAGS}])
+AC_MSG_RESULT([  Default debug options    = ${GDB_FLAGS}])
 AC_MSG_RESULT([  Extra compiler warnings  = ${EXTRA_WARNING}])
 AC_MSG_RESULT([  Env. defined CFLAG       = ${ENV_CFLAGS}])
 AC_MSG_RESULT([  Env. defined CPPFLAGS    = ${ENV_CPPFLAGS}])
