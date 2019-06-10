@@ -138,23 +138,30 @@ qdevice_heuristics_init(struct qdevice_heuristics_instance *instance,
 }
 
 void
-qdevice_heuristics_destroy(struct qdevice_heuristics_instance *instance)
+qdevice_heuristics_destroy(struct qdevice_heuristics_instance *instance, int wait_for_worker_exit)
 {
 	int status;
 
 	/*
-	 * Close of pipe_cmd_send result is correct and almost instant exit of worker
+	 * Close pipe_cmd_send. Heuristics worker catch the close of the fd and exits
+	 * properly.
 	 */
 	close(instance->pipe_cmd_send);
 
-	qdevice_log(LOG_DEBUG, "Waiting for heuristics worker to finish");
-	if (waitpid(instance->worker_pid, &status, 0) == -1) {
-		qdevice_log_err(LOG_ERR, "Heuristics worker waitpid failed");
-	} else {
-		/*
-		 * Log what left in worker log buffer. Errors can be ignored
-		 */
-		(void)qdevice_heuristics_log_read_from_pipe(instance);
+	/*
+	 * When daemonization is used, heuristics worker is not a child of the corosync-qdevice
+	 * process any longer so it's not possible to wait for its exit.
+	 */
+	if (wait_for_worker_exit) {
+		qdevice_log(LOG_DEBUG, "Waiting for heuristics worker to finish");
+		if (waitpid(instance->worker_pid, &status, 0) == -1) {
+			qdevice_log_err(LOG_ERR, "Heuristics worker waitpid failed");
+		} else {
+			/*
+			 * Log what left in worker log buffer. Errors can be ignored
+			 */
+			(void)qdevice_heuristics_log_read_from_pipe(instance);
+		}
 	}
 
 	close(instance->pipe_cmd_recv);

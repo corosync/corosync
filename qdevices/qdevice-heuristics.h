@@ -48,7 +48,8 @@ extern "C" {
 extern void		qdevice_heuristics_init(struct qdevice_heuristics_instance *instance,
     struct qdevice_advanced_settings *advanced_settings);
 
-extern void		qdevice_heuristics_destroy(struct qdevice_heuristics_instance *instance);
+extern void		qdevice_heuristics_destroy(struct qdevice_heuristics_instance *instance,
+    int wait_for_worker_exit);
 
 extern int		qdevice_heuristics_exec(struct qdevice_heuristics_instance *instance,
     int sync_in_progress);

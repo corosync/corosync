@@ -278,7 +278,7 @@ main(int argc, char * const argv[])
 	qdevice_cmap_destroy(&instance);
 
 	qdevice_log(LOG_DEBUG, "Destroying heuristics");
-	qdevice_heuristics_destroy(&instance.heuristics_instance);
+	qdevice_heuristics_destroy(&instance.heuristics_instance, foreground);
 
 	qdevice_log(LOG_DEBUG, "Closing log");
 	qdevice_log_close(&instance);
