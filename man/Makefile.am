@@ -37,6 +37,8 @@ MAINTAINERCLEANFILES	= Makefile.in
 xml_man			= corosync-xmlproc.8 \
 			  corosync.xml.5
 
+corosync_vqsim_man	= corosync-vqsim.8
+
 INDEX_HTML		= index.html
 
 autogen_man		= cpg_context_get.3 \
@@ -116,6 +118,7 @@ autogen_common		= ipc_common.sh.errors
 
 EXTRA_DIST		= $(INDEX_HTML) \
 			  $(xml_man) \
+			  $(corosync_vqsim_man) \
 			  $(autogen_man:%=%.in) \
 			  $(autogen_common)
 
@@ -140,7 +143,7 @@ dist_man_MANS 		= corosync.conf.5 \
 			  cmap_keys.8
 
 if BUILD_VQSIM
-dist_man_MANS		+= corosync-vqsim.8
+dist_man_MANS		+= $(corosync_vqsim_man)
 endif
 
 if INSTALL_XMLCONF
