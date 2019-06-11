@@ -630,17 +630,20 @@ static int ipaddr_equal(const struct sockaddr *addr1, const struct sockaddr *add
 	if (addr1->sa_family != addr2->sa_family)
 		return 0;
 
-	if (addr1->sa_family == AF_INET) {
+	switch (addr1->sa_family) {
+	case AF_INET:
 		addrlen = sizeof(struct in_addr);
 		addr1p = &((struct sockaddr_in *)addr1)->sin_addr;
 		addr2p = &((struct sockaddr_in *)addr2)->sin_addr;
-	}
-	if (addr1->sa_family == AF_INET6) {
+		break;
+	case AF_INET6:
 		addrlen = sizeof(struct in6_addr);
 		addr1p = &((struct sockaddr_in6 *)addr1)->sin6_addr;
 		addr2p = &((struct sockaddr_in6 *)addr2)->sin6_addr;
+		break;
+	default:
+		assert(0);
 	}
-	assert(addrlen);
 
 	return (memcmp(addr1p, addr2p, addrlen) == 0);
 }
