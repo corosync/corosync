@@ -96,10 +96,10 @@ int totemip_sa_equal(const struct totem_ip_address *totem_ip,
 {
 	int res;
 
-	res = -1;
+	res = 0;
 
 	if (totem_ip->family != sa->sa_family) {
-		return 0;
+		return (res);
 	}
 
 	switch (totem_ip->family) {
