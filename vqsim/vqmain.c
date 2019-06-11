@@ -400,18 +400,6 @@ static void init_partitions(void)
 	}
 }
 
-static int nodes_in_partition(int part)
-{
-	struct vq_node *vqn;
-	int partnodes = 0;
-
-	TAILQ_FOREACH(vqn, &partitions[part].nodelist, entries) {
-		partnodes++;
-	}
-	return partnodes;
-}
-
-
 static pid_t create_node(int nodeid, int partno)
 {
 	struct vq_node *newvq;
@@ -633,21 +621,12 @@ void cmd_move_nodes(int partition, int num_nodes, int *nodelist)
 void cmd_join_partitions(int part1, int part2)
 {
 	struct vq_node *vqn;
-	int total_nodes=0;
 
-	/* Work out the number of nodes affected */
-	total_nodes += nodes_in_partition(part1);
-	total_nodes += nodes_in_partition(part2);
-
-	/* TAILQ_FOREACH is not delete safe *sigh* */
-retry:
-	TAILQ_FOREACH(vqn, &partitions[part2].nodelist, entries) {
-
+	while (!TAILQ_EMPTY(&partitions[part2].nodelist)) {
+		vqn = TAILQ_FIRST(&partitions[part2].nodelist);
 		TAILQ_REMOVE(&vqn->partition->nodelist, vqn, entries);
 		TAILQ_INSERT_TAIL(&partitions[part1].nodelist, vqn, entries);
 		vqn->partition = &partitions[part1];
-
-		goto retry;
 	}
 }
 
