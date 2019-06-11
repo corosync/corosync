@@ -1707,11 +1707,9 @@ static int create_nozzle_device(void *knet_context, const char *name,
 		goto out_clean;
 	}
 	knet_log_printf (LOGSYS_LEVEL_INFO, "Local nozzle IP address is %s / %d", parsed_ipaddr, atoi(prefix));
-	if (ipaddr) {
-		if (nozzle_add_ip(nozzle_dev, parsed_ipaddr, prefix) < 0) {
-			knet_log_printf (LOGSYS_LEVEL_ERROR, "Unable to add set nozzle IP addr to %s/%s: %s", parsed_ipaddr, prefix, strerror(errno));
-			goto out_clean;
-		}
+	if (nozzle_add_ip(nozzle_dev, parsed_ipaddr, prefix) < 0) {
+		knet_log_printf (LOGSYS_LEVEL_ERROR, "Unable to add set nozzle IP addr to %s/%s: %s", parsed_ipaddr, prefix, strerror(errno));
+		goto out_clean;
 	}
 
 	nozzle_fd = nozzle_get_fd(nozzle_dev);
