@@ -1795,8 +1795,12 @@ static int setup_nozzle(void *knet_context)
 	int macaddr_res;
 	int res;
 
-	icmap_get_string(NOZZLE_IPADDR, &ipaddr_str);
-	icmap_get_string(NOZZLE_PREFIX, &prefix_str);
+	/*
+	 * Return value ignored on purpose. icmap_get_string changes
+	 * ipaddr_str/prefix_str only on success.
+	 */
+	(void)icmap_get_string(NOZZLE_IPADDR, &ipaddr_str);
+	(void)icmap_get_string(NOZZLE_PREFIX, &prefix_str);
 	macaddr_res = icmap_get_string(NOZZLE_MACADDR, &macaddr_str);
 	name_res = icmap_get_string(NOZZLE_NAME, &name_str);
 
