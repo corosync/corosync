@@ -208,6 +208,7 @@ static void set_local_node_pos(struct corosync_api_v1 *api)
 			if (nodeid == our_nodeid) {
 				found = 1;
 				res = icmap_set_uint32("nodelist.local_node_pos", node_pos);
+				assert(res == CS_OK);
 			}
 		}
 	}
@@ -217,6 +218,7 @@ static void set_local_node_pos(struct corosync_api_v1 *api)
 		 * first node in corosync.conf
 		 */
 		res = icmap_set_uint32("nodelist.local_node_pos", 0);
+		assert(res == CS_OK);
 	}
 }
 
