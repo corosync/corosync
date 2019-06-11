@@ -222,13 +222,22 @@ static int vq_parent_read_fn(int32_t fd, int32_t revents, void *data)
 		msglen = read(fd, msgbuf, sizeof(msgbuf));
 		if (msglen < 0) {
 			perror("read failed");
-		}
-
-		if (msglen > 0) {
+		} else if (msglen < sizeof(*msg)) {
+			fprintf(stderr, "Received message is too short\n");
+		} else {
 			msg = (void*)msgbuf;
 			switch (msg->type) {
 			case VQMSG_QUORUM:
 				qmsg = (void*)msgbuf;
+				/*
+				 * Check len
+				 */
+				if (msglen < sizeof(*qmsg) ||
+				    qmsg->view_list_entries > MAX_NODES ||
+				    msglen < sizeof(*qmsg) + sizeof(qmsg->view_list[0]) * qmsg->view_list_entries) {
+					fprintf(stderr, "Received quorum message is too short or corrupted\n");
+					return (0);
+				}
 				save_quorum_state(vqn, qmsg);
 				if (!sync_cmds) {
 					print_quorum_state(vqn);
