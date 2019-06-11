@@ -1838,7 +1838,7 @@ static int setup_nozzle(void *knet_context)
 	    (strcmp(name_str, instance->nozzle_name) == 0) &&
 	    (strcmp(ipaddr_str, instance->nozzle_ipaddr) == 0) &&
 	    (strcmp(prefix_str, instance->nozzle_prefix) == 0) &&
-	    ((macaddr_str == NULL && instance->nozzle_macaddr == NULL) ||
+	    (instance->nozzle_macaddr == NULL ||
 	     strcmp(macaddr_str, instance->nozzle_macaddr) == 0)) {
 		/* Nothing has changed */
 		knet_log_printf (LOGSYS_LEVEL_DEBUG, "Nozzle device info not changed");
