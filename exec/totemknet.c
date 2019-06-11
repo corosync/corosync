@@ -1428,8 +1428,10 @@ int totemknet_reconfigure (
 	}
 
 #ifdef HAVE_LIBNOZZLE
-	/* Set up nozzle device(s) */
-	setup_nozzle(instance);
+	/* Set up nozzle device(s). Return code is ignored, because unability
+	 * configure nozzle is not fatal problem, errors are logged and
+	 * there is not much else we can do */
+	(void)setup_nozzle(instance);
 #endif
 	return (res);
 }
@@ -1793,7 +1795,7 @@ static int setup_nozzle(void *knet_context)
 	char mac[32];
 	int name_res;
 	int macaddr_res;
-	int res;
+	int res = -1;
 
 	/*
 	 * Return value ignored on purpose. icmap_get_string changes
