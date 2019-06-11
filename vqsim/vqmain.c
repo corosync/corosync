@@ -759,7 +759,11 @@ int main(int argc, char **argv)
 	while ((ch = getopt (argc, argv, "c:o:nh")) != EOF) {
 		switch (ch) {
 		case 'c':
-			strncpy(corosync_config_file, optarg, sizeof(corosync_config_file));
+			if (strlen(optarg) >= sizeof(sizeof(corosync_config_file) - 1)) {
+				fprintf(stderr, "Corosync config file path too long\n");
+				exit(1);
+			}
+			strncpy(corosync_config_file, optarg, sizeof(corosync_config_file) - 1);
 			break;
 		case 'o':
 			output_file_name = optarg;
@@ -777,7 +781,7 @@ int main(int argc, char **argv)
 		output_file = fopen(output_file_name, "w");
 		if (!output_file) {
 			fprintf(stderr, "Unable to open %s for output: %s\n", output_file_name, strerror(errno));
-			exit(-1);
+			exit(3);
 		}
 	}
 	else {
