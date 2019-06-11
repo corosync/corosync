@@ -138,10 +138,16 @@ static void print_quorum_state(struct vq_node *node)
 static void propogate_vq_message(struct vq_node *vqn, const char *msg, int len)
 {
 	struct vq_node *other_vqn;
+	ssize_t write_res;
 
 	/* Send it to everyone in that node's partition (including itself) */
 	TAILQ_FOREACH(other_vqn, &vqn->partition->nodelist, entries) {
-		write(other_vqn->fd, msg, len);
+		write_res = write(other_vqn->fd, msg, len);
+		/*
+		 * Read counterpart is not ready for receiving non-complete message so
+		 * ensure all required information was send.
+		 */
+		assert(write_res == len);
 	}
 }
 
