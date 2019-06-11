@@ -424,6 +424,7 @@ static pid_t create_node(int nodeid, int partno)
 			fprintf(stderr,
 			        "ERR: could not create vq instance nodeid %d\n",
 				nodeid);
+			free(newvq);
 			return (pid_t) -1;
 		}
 		newvq->partition = &partitions[partno];
