@@ -73,6 +73,7 @@ enum {
 	CS_NTF_SNMP,
 	CS_NTF_DBUS,
 	CS_NTF_FG,
+	CS_NTF_NODNS,
 	CS_NTF_MAX,
 };
 static int conf[CS_NTF_MAX];
@@ -282,7 +283,14 @@ static void _cs_cmap_members_key_changed (
 	if (res) {
 		strncpy(nodename, open_bracket, CS_MAX_NAME_LENGTH-1);
 	}
-
+	if(conf[CS_NTF_NODNS]) {
+		strncpy(nodename, open_bracket, CS_MAX_NAME_LENGTH-1);
+	} else {
+		res = _cs_ip_to_hostname(open_bracket, nodename);
+		if (res) {
+			strncpy(nodename, open_bracket, CS_MAX_NAME_LENGTH-1);
+		}
+	}
 	_cs_node_membership_event(nodename, nodeid, (char *)new_value.data, open_bracket);
 	free(ip_str);
 }
@@ -1258,6 +1266,7 @@ _cs_usage(void)
 		"        -o     : Print events to stdout (turns on -l).\n"\
 		"        -s     : Send SNMP traps on all events.\n"\
 		"        -m     : Set the SNMP Manager IP address (defaults to localhost).\n"\
+		"        -n     : No reverse DNS lookup on cmap members change events.\n"\
 		"        -d     : Send DBUS signals on all events.\n"\
 		"        -h     : Print this help.\n\n");
 }
@@ -1273,7 +1282,7 @@ main(int argc, char *argv[])
 	conf[CS_NTF_SNMP] = QB_FALSE;
 	conf[CS_NTF_DBUS] = QB_FALSE;
 
-	while ((ch = getopt (argc, argv, "c:floshdm:")) != EOF) {
+	while ((ch = getopt (argc, argv, "c:floshdnm:")) != EOF) {
 		switch (ch) {
 			case 'c':
 				strncpy(snmp_community_buf, optarg, sizeof (snmp_community_buf));
@@ -1291,6 +1300,9 @@ main(int argc, char *argv[])
 				strncpy(snmp_manager_buf, optarg, sizeof (snmp_manager_buf));
 				snmp_manager_buf[sizeof (snmp_manager_buf) - 1] = '\0';
 				snmp_manager = snmp_manager_buf;
+				break;
+			case 'n':
+				conf[CS_NTF_NODNS] = QB_TRUE;
 				break;
 			case 'o':
 				conf[CS_NTF_LOG] = QB_TRUE;
