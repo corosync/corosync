@@ -196,7 +196,7 @@ void parse_input_command(char *rl_cmd)
 	}
 
 	/* Ignore null commands */
-	if (strlen(argv[0]) == 0) {
+	if (argc < 1 || strlen(argv[0]) == 0) {
 		free(cmd);
 		resume_kb_input(0);
 		return;
