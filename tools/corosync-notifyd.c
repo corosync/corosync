@@ -279,10 +279,6 @@ static void _cs_cmap_members_key_changed (
 		return ;
 	}
 	*close_bracket = '\0';
-	res = _cs_ip_to_hostname(open_bracket, nodename);
-	if (res) {
-		strncpy(nodename, open_bracket, CS_MAX_NAME_LENGTH-1);
-	}
 	if(conf[CS_NTF_NODNS]) {
 		strncpy(nodename, open_bracket, CS_MAX_NAME_LENGTH-1);
 	} else {
@@ -1266,7 +1262,7 @@ _cs_usage(void)
 		"        -o     : Print events to stdout (turns on -l).\n"\
 		"        -s     : Send SNMP traps on all events.\n"\
 		"        -m     : Set the SNMP Manager IP address (defaults to localhost).\n"\
-		"        -n     : No reverse DNS lookup on cmap members change events.\n"\
+		"        -n     : No reverse DNS lookup on cmap member change events.\n"\
 		"        -d     : Send DBUS signals on all events.\n"\
 		"        -h     : Print this help.\n\n");
 }
