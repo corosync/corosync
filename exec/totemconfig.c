@@ -449,14 +449,15 @@ static int totem_volatile_config_validate (
 	num_configured = 0;
 	for (i = 0; i < INTERFACE_MAX; i++) {
 		if (totem_config->interfaces[i].configured) {
+			if (num_configured == 0) {
+				members = totem_config->interfaces[i].member_count;
+			}
 			num_configured++;
 		}
 	}
 
 	if (num_configured > 1) {
-		members = totem_config->interfaces[0].member_count;
-
-		for (i=0; i<totem_config->interfaces[0].member_count; i++) {
+		for (i=0; i < members; i++) {
 			snprintf(name_key, sizeof(name_key), "nodelist.node.%d.name", i);
 
 			if (icmap_get_string(name_key, &name_str) != CS_OK) {
