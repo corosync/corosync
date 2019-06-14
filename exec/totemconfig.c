@@ -467,7 +467,10 @@ static int totem_volatile_config_validate (
 			}
 		}
 
-		for (i=0; i<num_configured; i++) {
+		for (i=0; i < INTERFACE_MAX; i++) {
+			if (!totem_config->interfaces[i].configured) {
+				continue;
+			}
 			if (totem_config->interfaces[i].member_count != members) {
 				snprintf (local_error_reason, sizeof(local_error_reason),
 					  "Not all nodes have the same number of links");
