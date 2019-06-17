@@ -447,6 +447,7 @@ static int totem_volatile_config_validate (
 
 	/* Check that we have nodelist 'name' if there is more than one link */
 	num_configured = 0;
+	members = -1;
 	for (i = 0; i < INTERFACE_MAX; i++) {
 		if (totem_config->interfaces[i].configured) {
 			if (num_configured == 0) {
@@ -457,6 +458,10 @@ static int totem_volatile_config_validate (
 	}
 
 	if (num_configured > 1) {
+		/*
+		 * This assert is here just to make compiler happy
+		 */
+		assert(members != -1);
 		for (i=0; i < members; i++) {
 			snprintf(name_key, sizeof(name_key), "nodelist.node.%d.name", i);
 
