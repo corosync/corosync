@@ -554,6 +554,14 @@ int totemknet_finalize (
 	qb_loop_poll_del (instance->poll_handle, instance->logpipes[0]);
 	qb_loop_poll_del (instance->poll_handle, instance->knet_fd);
 
+	/*
+	 * Disable forwarding to make knet flush send queue. This ensures that the LEAVE message will be sent.
+	 */
+	res = knet_handle_setfwd(instance->knet_handle, 0);
+	if (res) {
+		knet_log_printf (LOGSYS_LEVEL_CRIT, "totemknet: knet_handle_setfwd failed: %s", strerror(errno));
+	}
+
 	res = knet_host_get_host_list(instance->knet_handle, nodes, &num_nodes);
 	if (res) {
 		knet_log_printf (LOGSYS_LEVEL_ERROR, "Cannot get knet node list for shutdown: %s", strerror(errno));
@@ -561,7 +569,7 @@ int totemknet_finalize (
 		goto finalise_error;
 	}
 
-	/* Tidily shut down all nodes & links. This ensures that the LEAVE message will be sent */
+	/* Tidily shut down all nodes & links. */
 	for (i=0; i<num_nodes; i++) {
 
 		res = knet_link_get_link_list(instance->knet_handle, nodes[i], links, &num_links);
@@ -586,10 +594,6 @@ int totemknet_finalize (
 	}
 
 finalise_error:
-	res = knet_handle_setfwd(instance->knet_handle, 0);
-	if (res) {
-		knet_log_printf (LOGSYS_LEVEL_CRIT, "totemknet: knet_handle_setfwd failed: %s", strerror(errno));
-	}
 	res = knet_handle_free(instance->knet_handle);
 	if (res) {
 		knet_log_printf (LOGSYS_LEVEL_CRIT, "totemknet: knet_handle_free failed: %s", strerror(errno));
