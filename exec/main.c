@@ -692,18 +692,18 @@ static void corosync_ring_id_store (
 	}
 	if (fd == -1) {
 		LOGSYS_PERROR(errno, LOGSYS_LEVEL_ERROR,
-			"Couldn't store new ring id %llx to stable storage",
-			memb_ring_id->seq);
+			"Couldn't store new ring id " CS_PRI_RING_ID_SEQ " to stable storage",
+			    memb_ring_id->seq);
 
 		corosync_exit_error (COROSYNC_DONE_STORE_RINGID);
 	}
 	log_printf (LOGSYS_LEVEL_DEBUG,
-		"Storing new sequence id for ring %llx", memb_ring_id->seq);
+		"Storing new sequence id for ring " CS_PRI_RING_ID_SEQ, memb_ring_id->seq);
 	res = write (fd, &memb_ring_id->seq, sizeof(memb_ring_id->seq));
 	close (fd);
 	if (res != sizeof(memb_ring_id->seq)) {
 		LOGSYS_PERROR(errno, LOGSYS_LEVEL_ERROR,
-			"Couldn't store new ring id %llx to stable storage",
+			"Couldn't store new ring id " CS_PRI_RING_ID_SEQ " to stable storage",
 			memb_ring_id->seq);
 
 		corosync_exit_error (COROSYNC_DONE_STORE_RINGID);

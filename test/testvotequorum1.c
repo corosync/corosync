@@ -91,7 +91,7 @@ static void votequorum_quorum_notification_fn(
 	printf("  quorate         = %d\n", quorate);
 
 	for (i = 0; i< node_list_entries; i++) {
-		printf("      %d: %s\n", node_list[i].nodeid, node_state(node_list[i].state));
+		printf("      " CS_PRI_NODE_ID ": %s\n", node_list[i].nodeid, node_state(node_list[i].state));
 	}
 
 }
@@ -108,11 +108,11 @@ static void votequorum_nodelist_notification_fn(
 
 	printf("votequorum nodelist notification called \n");
 	printf("  number of nodes = %d\n", node_list_entries);
-	printf("  current ringid  = (%u.%"PRIu64")\n", ring_id.nodeid, ring_id.seq);
+	printf("  current ringid  = (" CS_PRI_RING_ID ")\n", ring_id.nodeid, ring_id.seq);
 	printf("  nodes: ");
 
 	for (i = 0; i< node_list_entries; i++) {
-		printf("%d ", node_list[i]);
+		printf(CS_PRI_NODE_ID " ", node_list[i]);
 	}
 	printf("\n\n");
 }

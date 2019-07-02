@@ -324,7 +324,7 @@ static void host_change_callback_fn(void *private_data, knet_node_id_t host_id, 
 	struct totemknet_instance *instance = (struct totemknet_instance *)private_data;
 
 	// TODO: what? if anything.
-	knet_log_printf (LOGSYS_LEVEL_DEBUG, "Knet host change callback. nodeid: %d reachable: %d", host_id, reachable);
+	knet_log_printf (LOGSYS_LEVEL_DEBUG, "Knet host change callback. nodeid: " CS_PRI_NODE_ID " reachable: %d", host_id, reachable);
 }
 
 static void pmtu_change_callback_fn(void *private_data, unsigned int data_mtu)
@@ -574,22 +574,22 @@ int totemknet_finalize (
 
 		res = knet_link_get_link_list(instance->knet_handle, nodes[i], links, &num_links);
 		if (res) {
-			knet_log_printf (LOGSYS_LEVEL_ERROR, "Cannot get knet link list for node %d: %s", nodes[i], strerror(errno));
+			knet_log_printf (LOGSYS_LEVEL_ERROR, "Cannot get knet link list for node " CS_PRI_NODE_ID ": %s", nodes[i], strerror(errno));
 			goto finalise_error;
 		}
 		for (j=0; j<num_links; j++) {
 			res = knet_link_set_enable(instance->knet_handle, nodes[i], links[j], 0);
 			if (res) {
-				knet_log_printf (LOGSYS_LEVEL_ERROR, "totemknet: knet_link_set_enable(node %d, link %d) failed: %s", nodes[i], links[j], strerror(errno));
+				knet_log_printf (LOGSYS_LEVEL_ERROR, "totemknet: knet_link_set_enable(node " CS_PRI_NODE_ID ", link %d) failed: %s", nodes[i], links[j], strerror(errno));
 			}
 			res = knet_link_clear_config(instance->knet_handle, nodes[i], links[j]);
 			if (res) {
-				knet_log_printf (LOGSYS_LEVEL_ERROR, "totemknet: knet_link_clear_config(node %d, link %d) failed: %s", nodes[i], links[j], strerror(errno));
+				knet_log_printf (LOGSYS_LEVEL_ERROR, "totemknet: knet_link_clear_config(node " CS_PRI_NODE_ID ", link %d) failed: %s", nodes[i], links[j], strerror(errno));
 			}
 		}
 		res = knet_host_remove(instance->knet_handle, nodes[i]);
 		if (res) {
-			knet_log_printf (LOGSYS_LEVEL_ERROR, "totemknet: knet_host_remove(node %d) failed: %s", nodes[i], strerror(errno));
+			knet_log_printf (LOGSYS_LEVEL_ERROR, "totemknet: knet_host_remove(node " CS_PRI_NODE_ID ") failed: %s", nodes[i], strerror(errno));
 		}
 	}
 
@@ -814,17 +814,17 @@ static void totemknet_refresh_config(
 							instance->totem_config->interfaces[link_no].knet_ping_timeout,
 							instance->totem_config->interfaces[link_no].knet_ping_precision);
 			if (err) {
-				KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_ERROR, "knet_link_set_ping_timers for node %d link %d failed", host_ids[i], link_no);
+				KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_ERROR, "knet_link_set_ping_timers for node " CS_PRI_NODE_ID " link %d failed", host_ids[i], link_no);
 			}
 			err = knet_link_set_pong_count(instance->knet_handle, host_ids[i], link_no,
 						       instance->totem_config->interfaces[link_no].knet_pong_count);
 			if (err) {
-				KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_ERROR, "knet_link_set_pong_count for node %d link %d failed",host_ids[i], link_no);
+				KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_ERROR, "knet_link_set_pong_count for node " CS_PRI_NODE_ID " link %d failed",host_ids[i], link_no);
 			}
 			err = knet_link_set_priority(instance->knet_handle, host_ids[i], link_no,
 						     instance->totem_config->interfaces[link_no].knet_link_priority);
 			if (err) {
-				KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_ERROR, "knet_link_set_priority for node %d link %d failed", host_ids[i], link_no);
+				KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_ERROR, "knet_link_set_priority for node " CS_PRI_NODE_ID " link %d failed", host_ids[i], link_no);
 			}
 
 		}
@@ -1267,8 +1267,8 @@ int totemknet_member_add (
 		}
 	}
 
-	knet_log_printf (LOGSYS_LEVEL_DEBUG, "knet: member_add: %d (%s), link=%d", member->nodeid, totemip_print(member), link_no);
-	knet_log_printf (LOGSYS_LEVEL_DEBUG, "knet:      local: %d (%s)", local->nodeid, totemip_print(local));
+	knet_log_printf (LOGSYS_LEVEL_DEBUG, "knet: member_add: " CS_PRI_NODE_ID " (%s), link=%d", member->nodeid, totemip_print(member), link_no);
+	knet_log_printf (LOGSYS_LEVEL_DEBUG, "knet:      local: " CS_PRI_NODE_ID " (%s)", local->nodeid, totemip_print(local));
 
 
 	/* Only add the host if it doesn't already exist in knet */
@@ -1290,7 +1290,7 @@ int totemknet_member_add (
 			return -1;
 		}
 	} else {
-		knet_log_printf (LOGSYS_LEVEL_DEBUG, "nodeid %d already added", member->nodeid);
+		knet_log_printf (LOGSYS_LEVEL_DEBUG, "nodeid " CS_PRI_NODE_ID " already added", member->nodeid);
 	}
 
 
@@ -1329,7 +1329,7 @@ int totemknet_member_add (
 	err = knet_link_set_priority(instance->knet_handle, member->nodeid, link_no,
 			       instance->totem_config->interfaces[link_no].knet_link_priority);
 	if (err) {
-		KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_ERROR, "knet_link_set_priority for nodeid %d, link %d failed", member->nodeid, link_no);
+		KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_ERROR, "knet_link_set_priority for nodeid " CS_PRI_NODE_ID ", link %d failed", member->nodeid, link_no);
 	}
 
 	/* ping timeouts maybe 0 here for a newly added interface so we leave this till later, it will
@@ -1340,18 +1340,18 @@ int totemknet_member_add (
 						instance->totem_config->interfaces[link_no].knet_ping_timeout,
 						instance->totem_config->interfaces[link_no].knet_ping_precision);
 		if (err) {
-			KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_ERROR, "knet_link_set_ping_timers for nodeid %d, link %d failed", member->nodeid, link_no);
+			KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_ERROR, "knet_link_set_ping_timers for nodeid " CS_PRI_NODE_ID ", link %d failed", member->nodeid, link_no);
 		}
 		err = knet_link_set_pong_count(instance->knet_handle, member->nodeid, link_no,
 					       instance->totem_config->interfaces[link_no].knet_pong_count);
 		if (err) {
-			KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_ERROR, "knet_link_set_pong_count for nodeid %d, link %d failed", member->nodeid, link_no);
+			KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_ERROR, "knet_link_set_pong_count for nodeid " CS_PRI_NODE_ID ", link %d failed", member->nodeid, link_no);
 		}
 	}
 
 	err = knet_link_set_enable(instance->knet_handle, member->nodeid, link_no, 1);
 	if (err) {
-		KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_ERROR, "knet_link_set_enable for nodeid %d, link %d failed", member->nodeid, link_no);
+		KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_ERROR, "knet_link_set_enable for nodeid " CS_PRI_NODE_ID ", link %d failed", member->nodeid, link_no);
 		return -1;
 	}
 
@@ -1370,7 +1370,7 @@ int totemknet_member_remove (
 	uint8_t link_list[KNET_MAX_LINK];
 	size_t num_links;
 
-	knet_log_printf (LOGSYS_LEVEL_DEBUG, "knet: member_remove: %d, link=%d", token_target->nodeid, link_no);
+	knet_log_printf (LOGSYS_LEVEL_DEBUG, "knet: member_remove: " CS_PRI_NODE_ID ", link=%d", token_target->nodeid, link_no);
 
 	/* Don't remove the link with the loopback on it until we shut down */
 	if (token_target->nodeid == instance->our_nodeid) {
@@ -1383,13 +1383,13 @@ int totemknet_member_remove (
 	/* Remove the link first */
 	res = knet_link_set_enable(instance->knet_handle, token_target->nodeid, link_no, 0);
 	if (res != 0) {
-		KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_ERROR, "knet_link_set enable(off) for nodeid %d, link %d failed", token_target->nodeid, link_no);
+		KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_ERROR, "knet_link_set enable(off) for nodeid " CS_PRI_NODE_ID ", link %d failed", token_target->nodeid, link_no);
 		return res;
 	}
 
 	res = knet_link_clear_config(instance->knet_handle, token_target->nodeid, link_no);
 	if (res != 0) {
-		KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_ERROR, "knet_link_clear_config for nodeid %d, link %d failed", token_target->nodeid, link_no);
+		KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_ERROR, "knet_link_clear_config for nodeid " CS_PRI_NODE_ID ", link %d failed", token_target->nodeid, link_no);
 		return res;
 	}
 

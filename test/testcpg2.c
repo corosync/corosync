@@ -37,6 +37,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <poll.h>
+#include <inttypes.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/uio.h>
@@ -52,7 +53,7 @@ static void deliver(
 	void *msg,
 	size_t msg_len)
 {
-    printf("self delivered nodeid: %x\n", nodeid);
+    printf("self delivered nodeid: " CS_PRI_NODE_ID "\n", nodeid);
 }
 
 static void confch(
@@ -62,7 +63,7 @@ static void confch(
 	const struct cpg_address *left_list, size_t left_list_entries,
 	const struct cpg_address *joined_list, size_t joined_list_entries)
 {
-	printf("confchg nodeid %x\n", member_list[0].nodeid);
+	printf("confchg nodeid " CS_PRI_NODE_ID "\n", member_list[0].nodeid);
 }
 
 int main(int argc, char** argv) {
@@ -78,7 +79,7 @@ int main(int argc, char** argv) {
 	printf ("All of the nodeids should match on a single node configuration\n for the test to pass.");
 	assert(CS_OK==cpg_initialize(&handle, &cb));
 	assert(CS_OK==cpg_local_get(handle,&nodeid));
-	printf("local_get: %x\n", nodeid);
+	printf("local_get: " CS_PRI_NODE_ID "\n", nodeid);
 	assert(CS_OK==cpg_join(handle, &group));
 	assert(CS_OK==cpg_mcast_joined(handle,CPG_TYPE_AGREED,&msg,1));
 	cpg_fd_get (handle, &fd);

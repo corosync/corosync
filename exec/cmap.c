@@ -1050,7 +1050,7 @@ static void message_handler_req_exec_cmap_mcast_reason_sync_nv(
 		}
 	}
 
-	qb_log(LOG_TRACE, "Received config version %"PRIu64" from node %x", config_version, nodeid);
+	qb_log(LOG_TRACE, "Received config version %"PRIu64" from node " CS_PRI_NODE_ID, config_version, nodeid);
 
 	if (nodeid != api->totem_nodeid_get() &&
 	    config_version > cmap_highest_config_version_received) {

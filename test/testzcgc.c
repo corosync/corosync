@@ -39,6 +39,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <string.h>
+#include <inttypes.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/select.h>
@@ -77,7 +78,7 @@ static void DeliverCallback (
 		       inet_ntoa(saddr), pid, (const char *)msg);
 	}
 	else {
-		printf("DeliverCallback: message (len=%lu)from node/pid %d/%d: '%s'\n",
+		printf("DeliverCallback: message (len=%lu)from node/pid " CS_PRI_NODE_ID "/%d: '%s'\n",
 		       (unsigned long int) msg_len, nodeid, pid,
 		       (const char *)msg);
 	}
@@ -104,7 +105,7 @@ static void ConfchgCallback (
 			       joined_list[i].reason);
 		}
 		else {
-			printf("joined node/pid: %d/%d reason: %d\n",
+			printf("joined node/pid: " CS_PRI_NODE_ID "/%d reason: %d\n",
 			       joined_list[i].nodeid, joined_list[i].pid,
 			       joined_list[i].reason);
 		}
@@ -118,7 +119,7 @@ static void ConfchgCallback (
 			       left_list[i].reason);
 		}
 		else {
-			printf("left node/pid: %d/%d reason: %d\n",
+			printf("left node/pid: " CS_PRI_NODE_ID "/%d reason: %d\n",
 			       left_list[i].nodeid, left_list[i].pid,
 			       left_list[i].reason);
 		}
@@ -133,7 +134,7 @@ static void ConfchgCallback (
 			       inet_ntoa (saddr), member_list[i].pid);
 		}
 		else {
-			printf("node/pid: %d/%d\n",
+			printf("node/pid: " CS_PRI_NODE_ID "/%d\n",
 			       member_list[i].nodeid, member_list[i].pid);
 		}
 	}

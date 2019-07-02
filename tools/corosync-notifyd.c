@@ -250,7 +250,7 @@ static void _cs_cmap_members_key_changed (
 
 	res = snprintf(tmp_key, CMAP_KEYNAME_MAXLEN, "runtime.members.%u.ip", nodeid);
 	if (res <= 0 || res >= CMAP_KEYNAME_MAXLEN) {
-		qb_log(LOG_ERR, "temp_key: failed, res: %d, nodeid: %u", res, nodeid);
+		qb_log(LOG_ERR, "temp_key: failed, res: %d, nodeid: " CS_PRI_NODE_ID, res, nodeid);
 		return ;
 	}
 	no_retries = 0;
@@ -969,16 +969,16 @@ _cs_snmp_init(void)
 static void
 _cs_syslog_node_membership_event(char *nodename, uint32_t nodeid, char *state, char* ip)
 {
-	qb_log(LOG_NOTICE, "%s[%d] ip:%s %s", nodename, nodeid, ip, state);
+	qb_log(LOG_NOTICE, "%s[" CS_PRI_NODE_ID "] ip:%s %s", nodename, nodeid, ip, state);
 }
 
 static void
 _cs_syslog_node_quorum_event(char *nodename, uint32_t nodeid, const char *state)
 {
 	if (strcmp(state, "quorate") == 0) {
-		qb_log(LOG_NOTICE, "%s[%d] is now %s", nodename, nodeid, state);
+		qb_log(LOG_NOTICE, "%s[" CS_PRI_NODE_ID "] is now %s", nodename, nodeid, state);
 	} else {
-		qb_log(LOG_NOTICE, "%s[%d] has lost quorum", nodename, nodeid);
+		qb_log(LOG_NOTICE, "%s[" CS_PRI_NODE_ID "] has lost quorum", nodename, nodeid);
 	}
 }
 
@@ -986,16 +986,16 @@ static void
 _cs_syslog_application_connection_event(char *nodename, uint32_t nodeid, char* app_name, const char *state)
 {
 	if (strcmp(state, "connected") == 0) {
-		qb_log(LOG_NOTICE, "%s[%d] %s is now %s to corosync", nodename, nodeid, app_name, state);
+		qb_log(LOG_NOTICE, "%s[" CS_PRI_NODE_ID "] %s is now %s to corosync", nodename, nodeid, app_name, state);
 	} else {
-		qb_log(LOG_NOTICE, "%s[%d] %s is now %s from corosync", nodename, nodeid, app_name, state);
+		qb_log(LOG_NOTICE, "%s[" CS_PRI_NODE_ID "] %s is now %s from corosync", nodename, nodeid, app_name, state);
 	}
 }
 
 static void
 _cs_syslog_link_faulty_event(char *nodename, uint32_t our_nodeid, uint32_t nodeid, uint32_t iface_no, const char *state)
 {
-	qb_log(LOG_NOTICE, "%s[%d] link %u to node %u is now %s", nodename, our_nodeid, iface_no, nodeid, state);
+	qb_log(LOG_NOTICE, "%s[" CS_PRI_NODE_ID "] link %u to node " CS_PRI_NODE_ID " is now %s", nodename, our_nodeid, iface_no, nodeid, state);
 }
 
 static void

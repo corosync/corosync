@@ -1343,7 +1343,7 @@ static int put_nodelist_members_to_config(struct totem_config *totem_config, int
 					}
 
 					log_printf(LOGSYS_LEVEL_DEBUG,
-						   "Generated nodeid = 0x%x for %s", nodeid, str);
+						   "Generated nodeid = " CS_PRI_NODE_ID " for %s", nodeid, str);
 					free(str);
 				}
 			}

@@ -85,7 +85,7 @@ static void votequorum_nodelist_notification_fn(
 {
 
 	printf("votequorum nodelist notification called \n");
-	printf("  current ringid  = (%u.%"PRIu64")\n", ring_id.nodeid, ring_id.seq);
+	printf("  current ringid  = (" CS_PRI_RING_ID ")\n", ring_id.nodeid, ring_id.seq);
 	printf("\n");
 
 	memcpy(&last_received_ring_id, &ring_id, sizeof(ring_id));

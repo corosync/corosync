@@ -475,7 +475,7 @@ static struct cluster_node *allocate_node(unsigned int nodeid)
 		 * this should never happen
 		 */
 		if (!cl) {
-			log_printf(LOGSYS_LEVEL_CRIT, "Unable to find memory for node %u data!!", nodeid);
+			log_printf(LOGSYS_LEVEL_CRIT, "Unable to find memory for node " CS_PRI_NODE_ID " data!!", nodeid);
 			goto out;
 		}
 		qb_list_del(tmp);
@@ -538,7 +538,7 @@ static void get_lowest_node_id(void)
 			lowest_node_id = node->node_id;
 		}
 	}
-	log_printf(LOGSYS_LEVEL_DEBUG, "lowest node id: %d us: %d", lowest_node_id, us->node_id);
+	log_printf(LOGSYS_LEVEL_DEBUG, "lowest node id: " CS_PRI_NODE_ID " us: " CS_PRI_NODE_ID, lowest_node_id, us->node_id);
 	icmap_set_uint32("runtime.votequorum.lowest_node_id", lowest_node_id);
 
 	LEAVE();
@@ -560,7 +560,7 @@ static void get_highest_node_id(void)
 			highest_node_id = node->node_id;
 		}
 	}
-	log_printf(LOGSYS_LEVEL_DEBUG, "highest node id: %d us: %d", highest_node_id, us->node_id);
+	log_printf(LOGSYS_LEVEL_DEBUG, "highest node id: " CS_PRI_NODE_ID " us: " CS_PRI_NODE_ID, highest_node_id, us->node_id);
 	icmap_set_uint32("runtime.votequorum.highest_node_id", highest_node_id);
 
 	LEAVE();
@@ -664,7 +664,7 @@ static int check_auto_tie_breaker(void)
 			 */
 			for (j=0; j<i; j++) {
 				if (is_in_nodelist(atb_nodelist[j], previous_quorum_members, previous_quorum_members_entries)) {
-					log_printf(LOGSYS_LEVEL_DEBUG, "ATB_LIST found node %d in previous partition but not here, quorum denied", atb_nodelist[j]);
+					log_printf(LOGSYS_LEVEL_DEBUG, "ATB_LIST found node " CS_PRI_NODE_ID " in previous partition but not here, quorum denied", atb_nodelist[j]);
 					LEAVE();
 					return 0;
 				}
@@ -674,7 +674,7 @@ static int check_auto_tie_breaker(void)
 			 * None of the other list nodes were in the previous partition, if there
 			 * are enough votes, we can be quorate
 			 */
-			log_printf(LOGSYS_LEVEL_DEBUG, "ATB_LIST found node %d in current partition, we can be quorate", atb_nodelist[i]);
+			log_printf(LOGSYS_LEVEL_DEBUG, "ATB_LIST found node " CS_PRI_NODE_ID " in current partition, we can be quorate", atb_nodelist[i]);
 			LEAVE();
 			return 1;
 		}
@@ -920,7 +920,7 @@ static int calculate_quorum(int allow_decrease, unsigned int max_expected, unsig
 	qb_list_for_each(nodelist, &cluster_members_list) {
 		node = qb_list_entry(nodelist, struct cluster_node, list);
 
-		log_printf(LOGSYS_LEVEL_DEBUG, "node %u state=%d, votes=%u, expected=%u",
+		log_printf(LOGSYS_LEVEL_DEBUG, "node " CS_PRI_NODE_ID " state=%d, votes=%u, expected=%u",
 			   node->node_id, node->state, node->votes, node->expected_votes);
 
 		if (node->state == NODESTATE_MEMBER) {
@@ -1819,7 +1819,7 @@ static int votequorum_exec_send_nodelist_notification(void *conn, uint64_t conte
 
 	ENTER();
 
-	log_printf(LOGSYS_LEVEL_DEBUG, "Sending nodelist callback. ring_id = %d/%lld", quorum_ringid.nodeid, quorum_ringid.seq);
+	log_printf(LOGSYS_LEVEL_DEBUG, "Sending nodelist callback. ring_id = " CS_PRI_RING_ID, quorum_ringid.nodeid, quorum_ringid.seq);
 
 	size = sizeof(struct res_lib_votequorum_nodelist_notification) + sizeof(uint32_t) * quorum_members_entries;
 
@@ -1897,7 +1897,7 @@ static void message_handler_req_exec_votequorum_qdevice_reconfigure (
 
 	ENTER();
 
-	log_printf(LOGSYS_LEVEL_DEBUG, "Received qdevice name change req from node %u [from: %s to: %s]",
+	log_printf(LOGSYS_LEVEL_DEBUG, "Received qdevice name change req from node " CS_PRI_NODE_ID " [from: %s to: %s]",
 		   nodeid,
 		   req_exec_quorum_qdevice_reconfigure->oldname,
 		   req_exec_quorum_qdevice_reconfigure->newname);
@@ -1940,7 +1940,7 @@ static void message_handler_req_exec_votequorum_qdevice_reg (
 
 	ENTER();
 
-	log_printf(LOGSYS_LEVEL_DEBUG, "Received qdevice op %u req from node %u [%s]",
+	log_printf(LOGSYS_LEVEL_DEBUG, "Received qdevice op %u req from node " CS_PRI_NODE_ID " [%s]",
 		   req_exec_quorum_qdevice_reg->operation,
 		   nodeid, req_exec_quorum_qdevice_reg->qdevice_name);
 
@@ -2052,8 +2052,8 @@ static void message_handler_req_exec_votequorum_nodeinfo (
 
 	ENTER();
 
-	log_printf(LOGSYS_LEVEL_DEBUG, "got nodeinfo message from cluster node %u", sender_nodeid);
-	log_printf(LOGSYS_LEVEL_DEBUG, "nodeinfo message[%u]: votes: %d, expected: %d flags: %d",
+	log_printf(LOGSYS_LEVEL_DEBUG, "got nodeinfo message from cluster node " CS_PRI_NODE_ID, sender_nodeid);
+	log_printf(LOGSYS_LEVEL_DEBUG, "nodeinfo message[" CS_PRI_NODE_ID "]: votes: %d, expected: %d flags: %d",
 					nodeid,
 					req_exec_quorum_nodeinfo->votes,
 					req_exec_quorum_nodeinfo->expected_votes,
@@ -2174,7 +2174,7 @@ static void message_handler_req_exec_votequorum_reconfigure (
 
 	ENTER();
 
-	log_printf(LOGSYS_LEVEL_DEBUG, "got reconfigure message from cluster node %u for %u",
+	log_printf(LOGSYS_LEVEL_DEBUG, "got reconfigure message from cluster node " CS_PRI_NODE_ID " for " CS_PRI_NODE_ID,
 					nodeid, req_exec_quorum_reconfigure->nodeid);
 
 	switch(req_exec_quorum_reconfigure->param)
@@ -2201,7 +2201,7 @@ static void message_handler_req_exec_votequorum_reconfigure (
 
 	case VOTEQUORUM_RECONFIG_PARAM_CANCEL_WFA:
 	        update_wait_for_all_status(0);
-		log_printf(LOGSYS_LEVEL_INFO, "wait_for_all_status reset by user on node %d.",
+		log_printf(LOGSYS_LEVEL_INFO, "wait_for_all_status reset by user on node " CS_PRI_NODE_ID ".",
 			   req_exec_quorum_reconfigure->nodeid);
 		recalculate_quorum(0, 0);
 
@@ -2551,7 +2551,7 @@ static void message_handler_req_lib_votequorum_getinfo (void *conn, const void *
 
 	ENTER();
 
-	log_printf(LOGSYS_LEVEL_DEBUG, "got getinfo request on %p for node %u", conn, req_lib_votequorum_getinfo->nodeid);
+	log_printf(LOGSYS_LEVEL_DEBUG, "got getinfo request on %p for node " CS_PRI_NODE_ID, conn, req_lib_votequorum_getinfo->nodeid);
 
 	if (nodeid == VOTEQUORUM_QDEVICE_NODEID) {
 		nodeid = us->node_id;
@@ -2953,8 +2953,8 @@ static void message_handler_req_lib_votequorum_qdevice_poll (void *conn,
 	if (us->flags & NODE_FLAGS_QDEVICE_REGISTERED) {
 		if (!(req_lib_votequorum_qdevice_poll->ring_id.nodeid == quorum_ringid.nodeid &&
 		      req_lib_votequorum_qdevice_poll->ring_id.seq == quorum_ringid.seq)) {
-			log_printf(LOGSYS_LEVEL_DEBUG, "Received poll ring id (%u.%"PRIu64") != last sync "
-			    "ring id (%u.%"PRIu64"). Ignoring poll call.",
+			log_printf(LOGSYS_LEVEL_DEBUG, "Received poll ring id (" CS_PRI_RING_ID ") != last sync "
+			    "ring id (" CS_PRI_RING_ID "). Ignoring poll call.",
 			    req_lib_votequorum_qdevice_poll->ring_id.nodeid, req_lib_votequorum_qdevice_poll->ring_id.seq,
 			    quorum_ringid.nodeid, quorum_ringid.seq);
 			error = CS_ERR_MESSAGE_ERROR;

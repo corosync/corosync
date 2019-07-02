@@ -313,7 +313,7 @@ static int poll_qdevice(int onoff)
 
 	res = send_lib_msg(MESSAGE_REQ_VOTEQUORUM_QDEVICE_POLL, &pollmsg);
 	if (res != CS_OK) {
-		fprintf(stderr, "%d: qdevice poll failed: %d\n", our_nodeid, res);
+		fprintf(stderr, CS_PRI_NODE_ID ": qdevice poll failed: %d\n", our_nodeid, res);
 	}
 	return res;
 }
@@ -362,7 +362,7 @@ static void do_qdevice(int onoff)
 				start_qdevice_poll(1);
 			}
 			else {
-				fprintf(stderr, "%d: qdevice registration failed: %d\n", our_nodeid, res);
+				fprintf(stderr, CS_PRI_NODE_ID ": qdevice registration failed: %d\n", our_nodeid, res);
 			}
 		}
 		else {

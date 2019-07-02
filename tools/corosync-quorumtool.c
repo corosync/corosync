@@ -236,7 +236,7 @@ static int set_votes(uint32_t nodeid, int votes)
 	int err;
 
 	if ((err=votequorum_setvotes(v_handle, nodeid, votes)) != CS_OK) {
-		fprintf(stderr, "Unable to set votes %d for nodeid: %u: %s\n",
+		fprintf(stderr, "Unable to set votes %d for nodeid: " CS_PRI_NODE_ID ": %s\n",
 			votes, nodeid, cs_strerror(err));
 	}
 
@@ -340,7 +340,7 @@ static const char *node_name(uint32_t nodeid, name_format_t name_format)
 
 	err = corosync_cfg_get_node_addrs(c_handle, nodeid, INTERFACE_MAX, &numaddrs, addrs);
 	if (err != CS_OK) {
-		fprintf(stderr, "Unable to get node address for nodeid %u: %s\n", nodeid, cs_strerror(err));
+		fprintf(stderr, "Unable to get node address for nodeid " CS_PRI_NODE_ID ": %s\n", nodeid, cs_strerror(err));
 		return "";
 	}
 
@@ -473,7 +473,7 @@ static void display_nodes_data(nodeid_format_t nodeid_format, name_format_t name
 	if (v_handle) {
 		for (i=0; i < g_view_list_entries; i++) {
 			if (votequorum_getinfo(v_handle, g_view_list[i].node_id, &info[i]) != CS_OK) {
-				printf("Unable to get node %u info\n", g_view_list[i].node_id);
+				printf("Unable to get node " CS_PRI_NODE_ID " info\n", g_view_list[i].node_id);
 			}
 			g_view_list[i].vq_info = &info[i];
 			if (info[i].flags & VOTEQUORUM_INFO_QDEVICE_REGISTERED) {
@@ -600,16 +600,16 @@ static int display_quorum_data(int is_quorate,
 	printf("Quorum provider:  %s\n", quorumtype);
 	printf("Nodes:            %d\n", g_view_list_entries);
 	if (nodeid_format == NODEID_FORMAT_DECIMAL) {
-		printf("Node ID:          %u\n", our_nodeid);
+		printf("Node ID:          " CS_PRI_NODE_ID "\n", our_nodeid);
 	} else {
 		printf("Node ID:          0x%08x\n", our_nodeid);
 	}
 
 	if (v_handle) {
-		printf("Ring ID:          %d/%" PRIu64 "\n", g_ring_id_rep_node, g_ring_id);
+		printf("Ring ID:          " CS_PRI_RING_ID "\n", g_ring_id_rep_node, g_ring_id);
 	}
 	else {
-		printf("Ring ID:          %" PRIu64 "\n", g_ring_id);
+		printf("Ring ID:          " CS_PRI_RING_ID_SEQ "\n", g_ring_id);
 	}
 	printf("Quorate:          %s\n", is_quorate?"Yes":"No");
 
