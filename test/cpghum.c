@@ -44,6 +44,7 @@
 #include <ctype.h>
 #include <syslog.h>
 #include <stdarg.h>
+#include <inttypes.h>
 #include <sys/time.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -249,7 +250,7 @@ static void cpg_bm_deliver_fn (
 	unsigned int datalen;
 
 	if (nodeid > MAX_NODEID) {
-		cpgh_log_printf(CPGH_LOG_ERR, "Got message from invalid nodeid %d (too high for us). Quitting\n", nodeid);
+		cpgh_log_printf(CPGH_LOG_ERR, "Got message from invalid nodeid " CS_PRI_NODE_ID " (too high for us). Quitting\n", nodeid);
 		exit(1);
 	}
 
@@ -280,7 +281,7 @@ static void cpg_bm_deliver_fn (
 	// Basic check, packets should all be the right size
 	if (msg_len != header->size) {
 		length_errors++;
-		cpgh_log_printf(CPGH_LOG_ERR, "%s: message sizes don't match. got %zu, expected %u from node %d\n", group_name->value, msg_len, header->size, nodeid);
+		cpgh_log_printf(CPGH_LOG_ERR, "%s: message sizes don't match. got %zu, expected %u from node " CS_PRI_NODE_ID "\n", group_name->value, msg_len, header->size, nodeid);
 
 		if (abort_on_error) {
 			exit(2);
@@ -294,7 +295,7 @@ static void cpg_bm_deliver_fn (
 		/* Don't report the first mismatch or a newly restarted sender, we're just catching up */
 		if (g_recv_counter[nodeid] && header->counter) {
 			sequence_errors++;
-			cpgh_log_printf(CPGH_LOG_ERR, "%s: counters don't match. got %d, expected %d from node %d\n", group_name->value, header->counter, g_recv_counter[nodeid], nodeid);
+			cpgh_log_printf(CPGH_LOG_ERR, "%s: counters don't match. got %d, expected %d from node " CS_PRI_NODE_ID "\n", group_name->value, header->counter, g_recv_counter[nodeid], nodeid);
 
 			if (abort_on_error) {
 				exit(2);
@@ -316,7 +317,7 @@ static void cpg_bm_deliver_fn (
 	crc = crc32(crc, (Bytef *)dataint, datalen) & 0xFFFFFFFF;
 	if (crc != recv_crc) {
 		crc_errors++;
-		cpgh_log_printf(CPGH_LOG_ERR, "%s: CRCs don't match. got %lx, expected %lx from nodeid %d\n", group_name->value, recv_crc, crc, nodeid);
+		cpgh_log_printf(CPGH_LOG_ERR, "%s: CRCs don't match. got %lx, expected %lx from nodeid " CS_PRI_NODE_ID "\n", group_name->value, recv_crc, crc, nodeid);
 
 		if (abort_on_error) {
 			exit(2);
@@ -750,7 +751,7 @@ int main (int argc, char *argv[]) {
 				if (!machine_readable) {
 					for (i=1; i<MAX_NODEID; i++) {
 						if (g_recv_counter[i]) {
-							cpgh_log_printf(CPGH_LOG_INFO, "%s: %5d message%s of %d bytes received from node %d\n",
+							cpgh_log_printf(CPGH_LOG_INFO, "%s: %5d message%s of %d bytes received from node " CS_PRI_NODE_ID "\n",
 									group_name.value, g_recv_counter[i] - g_recv_start[i],
 									g_recv_counter[i]==1?"":"s",
 									g_recv_size[i], i);

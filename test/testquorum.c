@@ -2,6 +2,7 @@
 
 #include <sys/types.h>
 #include <stdio.h>
+#include <inttypes.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -21,11 +22,11 @@ static void quorum_notification_fn(
 
 	printf("quorum notification called \n");
 	printf("  quorate   = %lu\n", (long unsigned int) quorate);
-	printf("  ring id   = %llu\n", (long long unsigned int) ring_id);
+	printf("  ring id   = " CS_PRI_RING_ID_SEQ "\n", ring_id);
 	printf("  num nodes = %lu ", (long unsigned int) view_list_entries);
 
 	for (i=0; i<view_list_entries; i++) {
-		printf(" %d ", view_list[i]);
+		printf(" " CS_PRI_NODE_ID, view_list[i]);
 	}
 	printf("\n");
 }

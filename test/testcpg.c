@@ -92,7 +92,7 @@ static char * node_pid_format(unsigned int nodeid, unsigned int pid) {
 		sprintf(buffer, "node/pid %s/%d", inet_ntoa(saddr),pid);
 	} 
 	else {
-		sprintf(buffer, "node/pid %d/%d", nodeid, pid);
+		sprintf(buffer, "node/pid " CS_PRI_NODE_ID "/%d", nodeid, pid);
 	} 
 	return buffer;
 }
@@ -193,17 +193,17 @@ static void ConfchgCallback (
 			/* report dynamic nature of nodeid returned from local_get */
 			/*  local get of nodeid might change identity from original! */
 			if(htonl((uint32_t)nodeid) == INADDR_LOOPBACK) {
-				printf("We probably left the building switched identity? start nodeid %d nodeid %d current nodeid %d pid %d\n", nodeidStart, left_list[0].nodeid, nodeid, left_list[0].pid);
+				printf("We probably left the building switched identity? start nodeid " CS_PRI_NODE_ID " nodeid " CS_PRI_NODE_ID " current nodeid " CS_PRI_NODE_ID " pid %d\n", nodeidStart, left_list[0].nodeid, nodeid, left_list[0].pid);
 			} else if(htonl((uint32_t)left_list[0].nodeid) == INADDR_LOOPBACK) {
-				printf("We probably left the building started alone? start nodeid %d nodeid %d current nodeid %d pid %d\n", nodeidStart, left_list[0].nodeid, nodeid, left_list[0].pid);
+				printf("We probably left the building started alone? start nodeid " CS_PRI_NODE_ID " nodeid " CS_PRI_NODE_ID " current nodeid " CS_PRI_NODE_ID " pid %d\n", nodeidStart, left_list[0].nodeid, nodeid, left_list[0].pid);
 			}
 			/* a possibly reliable way to check is based on original address */
 			if(left_list[0].nodeid == nodeidStart) {
-				printf("We have left the building direct match start nodeid %d nodeid %d local get current nodeid %d pid %d\n", nodeidStart, left_list[0].nodeid, nodeid, left_list[0].pid);
+				printf("We have left the building direct match start nodeid " CS_PRI_NODE_ID " nodeid " CS_PRI_NODE_ID " local get current nodeid " CS_PRI_NODE_ID " pid %d\n", nodeidStart, left_list[0].nodeid, nodeid, left_list[0].pid);
 				// quit = 1;
 				restart = 1;
 			} else {
-				printf("Probably another node with matching pid start nodeid %d nodeid %d current nodeid %d pid %d\n", nodeidStart, left_list[0].nodeid, nodeid, left_list[0].pid);
+				printf("Probably another node with matching pid start nodeid " CS_PRI_NODE_ID " nodeid " CS_PRI_NODE_ID " current nodeid " CS_PRI_NODE_ID " pid %d\n", nodeidStart, left_list[0].nodeid, nodeid, left_list[0].pid);
 			}
 		}
 	}
@@ -219,13 +219,13 @@ static void TotemConfchgCallback (
 
 	printf("\n");
 	print_time();
-	printf ("TotemConfchgCallback: ringid (%u.%"PRIu64")\n",
+	printf ("TotemConfchgCallback: ringid (" CS_PRI_RING_ID ")\n",
 		ring_id.nodeid, ring_id.seq);
 
 	printf("active processors %lu: ",
 	       (unsigned long int) member_list_entries);
 	for (i=0; i<member_list_entries; i++) {
-		printf("%d ", member_list[i]);
+		printf(CS_PRI_NODE_ID " ", member_list[i]);
 	}
 	printf ("\n");
 }
@@ -289,7 +289,7 @@ static void print_localnodeid(cpg_handle_t handle)
                            addrStr, (socklen_t)sizeof(addrStr)) == NULL) {
 		addrStr[0] = 0;
 	}
-	printf ("Local node id is %s/%x result %d\n", addrStr, nodeid, result);
+	printf ("Local node id is %s/" CS_PRI_NODE_ID " result %d\n", addrStr, nodeid, result);
 	}
 }
 
@@ -362,7 +362,7 @@ int main (int argc, char *argv[]) {
 				printf ("Could not get local node id\n");
 				retrybackoff(recnt);
 			}
-			printf ("Local node id is %x\n", nodeid);
+			printf ("Local node id is " CS_PRI_NODE_ID "\n", nodeid);
 			nodeidStart = nodeid;
 
 			retries = 0;
@@ -383,7 +383,7 @@ int main (int argc, char *argv[]) {
 
 			printf ("membership list\n");
 			for (i = 0; i < member_list_entries; i++) {
-				printf ("node id %d pid %d\n", member_list[i].nodeid,
+				printf ("node id " CS_PRI_NODE_ID " pid %d\n", member_list[i].nodeid,
 					member_list[i].pid);
 			}
 

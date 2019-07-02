@@ -1412,9 +1412,9 @@ static void memb_set_log(
 
 	for (i = 0; i < list_entries; i++) {
 		if (i == 0) {
-			snprintf(int_buf, sizeof(int_buf), "%u", list[i].nodeid);
+			snprintf(int_buf, sizeof(int_buf), CS_PRI_NODE_ID, list[i].nodeid);
 		} else {
-			snprintf(int_buf, sizeof(int_buf), ",%u", list[i].nodeid);
+			snprintf(int_buf, sizeof(int_buf), "," CS_PRI_NODE_ID, list[i].nodeid);
 		}
 
 		if (strlen(list_str) + strlen(int_buf) >= sizeof(list_str)) {
@@ -1468,7 +1468,7 @@ static void my_leave_memb_set(
                 instance->my_leave_memb_entries++;
         } else {
                 log_printf (instance->totemsrp_log_level_warning,
-                        "Cannot set LEAVE nodeid=%d", nodeid);
+                        "Cannot set LEAVE nodeid=" CS_PRI_NODE_ID, nodeid);
         }
 }
 
@@ -1868,8 +1868,8 @@ static void deliver_messages_from_recovery_to_regular (struct totemsrp_instance 
 		}
 
 		log_printf (instance->totemsrp_log_level_debug,
-			"comparing if ring id is for this processors old ring seqno %d",
-			 mcast->seq);
+			"comparing if ring id is for this processors old ring seqno " CS_PRI_RING_ID_SEQ,
+			 (uint64_t)mcast->seq);
 
 		/*
 		 * Only add this message to the regular sort
@@ -1889,7 +1889,7 @@ static void deliver_messages_from_recovery_to_regular (struct totemsrp_instance 
 			}
 		} else {
 			log_printf (instance->totemsrp_log_level_debug,
-				"-not adding msg with seq no %x", mcast->seq);
+				"-not adding msg with seq no " CS_PRI_RING_ID_SEQ, (uint64_t)mcast->seq);
 		}
 	}
 }
@@ -2053,7 +2053,7 @@ static void memb_state_operational_enter (struct totemsrp_instance *instance)
 		int sptr = 0;
 		sptr += snprintf(joined_node_msg, sizeof(joined_node_msg)-sptr, " joined:");
 		for (i=0; i< joined_list_entries; i++) {
-			sptr += snprintf(joined_node_msg+sptr, sizeof(joined_node_msg)-sptr, " %u", joined_list_totemip[i]);
+			sptr += snprintf(joined_node_msg+sptr, sizeof(joined_node_msg)-sptr, " " CS_PRI_NODE_ID, joined_list_totemip[i]);
 		}
 	}
 	else {
@@ -2065,14 +2065,14 @@ static void memb_state_operational_enter (struct totemsrp_instance *instance)
 		int sptr2 = 0;
 		sptr += snprintf(left_node_msg, sizeof(left_node_msg)-sptr, " left:");
 		for (i=0; i< instance->my_left_memb_entries; i++) {
-			sptr += snprintf(left_node_msg+sptr, sizeof(left_node_msg)-sptr, " %u", left_list[i]);
+			sptr += snprintf(left_node_msg+sptr, sizeof(left_node_msg)-sptr, " " CS_PRI_NODE_ID, left_list[i]);
 		}
 		for (i=0; i< instance->my_left_memb_entries; i++) {
 			if (my_leave_memb_match(instance, left_list[i]) == 0) {
 				if (sptr2 == 0) {
 					sptr2 += snprintf(failed_node_msg, sizeof(failed_node_msg)-sptr2, " failed:");
 				}
-				sptr2 += snprintf(failed_node_msg+sptr2, sizeof(left_node_msg)-sptr2, " %u", left_list[i]);
+				sptr2 += snprintf(failed_node_msg+sptr2, sizeof(left_node_msg)-sptr2, " " CS_PRI_NODE_ID, left_list[i]);
 			}
 		}
 		if (sptr2 == 0) {
@@ -2089,9 +2089,9 @@ static void memb_state_operational_enter (struct totemsrp_instance *instance)
 	log_printf (instance->totemsrp_log_level_debug,
 		"entering OPERATIONAL state.");
 	log_printf (instance->totemsrp_log_level_notice,
-		"A new membership (%u:%lld) was formed. Members%s%s",
+		"A new membership (" CS_PRI_RING_ID ") was formed. Members%s%s",
 		instance->my_ring_id.rep,
-		instance->my_ring_id.seq,
+		(uint64_t)instance->my_ring_id.seq,
 		joined_node_msg,
 		left_node_msg);
 
@@ -2310,15 +2310,14 @@ static void memb_state_recovery_enter (
 
 	for (i = 0; i < instance->my_trans_memb_entries; i++) {
 		log_printf (instance->totemsrp_log_level_debug,
-			"TRANS [%d] member %u:", i, instance->my_trans_memb_list[i].nodeid);
+			"TRANS [%d] member " CS_PRI_NODE_ID ":", i, instance->my_trans_memb_list[i].nodeid);
 	}
 	for (i = 0; i < instance->my_new_memb_entries; i++) {
 		log_printf (instance->totemsrp_log_level_debug,
-			"position [%d] member %u:", i, addr[i].nodeid);
+			"position [%d] member " CS_PRI_NODE_ID ":", i, addr[i].nodeid);
 		log_printf (instance->totemsrp_log_level_debug,
-			"previous ring seq %llx rep %u",
-			memb_list[i].ring_id.seq,
-			memb_list[i].ring_id.rep);
+			"previous ringid (" CS_PRI_RING_ID ")",
+			memb_list[i].ring_id.rep, (uint64_t)memb_list[i].ring_id.seq);
 
 		log_printf (instance->totemsrp_log_level_debug,
 			"aru %x high delivered %x received flag %d",
@@ -4294,9 +4293,9 @@ static int message_handler_mcast (
 	}
 
 	log_printf (instance->totemsrp_log_level_trace,
-		"Received ringid(%u:%lld) seq %x",
+		"Received ringid (" CS_PRI_RING_ID ") seq %x",
 		mcast_header.ring_id.rep,
-		mcast_header.ring_id.seq,
+		(uint64_t)mcast_header.ring_id.seq,
 		mcast_header.seq);
 
 	/*
@@ -4430,20 +4429,20 @@ static void memb_join_process (
 		if (instance->flushing) {
 			if (memb_join->header.nodeid == LEAVE_DUMMY_NODEID) {
 				log_printf (instance->totemsrp_log_level_warning,
-			    		"Discarding LEAVE message during flush, nodeid=%u",
+					"Discarding LEAVE message during flush, nodeid=" CS_PRI_NODE_ID,
 						memb_join->failed_list_entries > 0 ? failed_list[memb_join->failed_list_entries - 1 ].nodeid : LEAVE_DUMMY_NODEID);
 				if (memb_join->failed_list_entries > 0) {
 					my_leave_memb_set(instance, failed_list[memb_join->failed_list_entries - 1 ].nodeid);
 				}
 			} else {
 				log_printf (instance->totemsrp_log_level_warning,
-			    		"Discarding JOIN message during flush, nodeid=%d", memb_join->header.nodeid);
+					"Discarding JOIN message during flush, nodeid=" CS_PRI_NODE_ID, memb_join->header.nodeid);
 			}
 			return;
 		} else {
 			if (memb_join->header.nodeid == LEAVE_DUMMY_NODEID) {
 				log_printf (instance->totemsrp_log_level_debug,
-				    "Received LEAVE message from %u", memb_join->failed_list_entries > 0 ? failed_list[memb_join->failed_list_entries - 1 ].nodeid : LEAVE_DUMMY_NODEID);
+				    "Received LEAVE message from " CS_PRI_NODE_ID, memb_join->failed_list_entries > 0 ? failed_list[memb_join->failed_list_entries - 1 ].nodeid : LEAVE_DUMMY_NODEID);
 				if (memb_join->failed_list_entries > 0) {
 					my_leave_memb_set(instance, failed_list[memb_join->failed_list_entries - 1 ].nodeid);
 				}
@@ -5076,9 +5075,9 @@ void main_iface_change_fn (
 		instance->token_ring_id_seq = instance->my_ring_id.seq;
 		log_printf (
 			instance->totemsrp_log_level_debug,
-			"Created or loaded sequence id %llx.%u for this ring.",
-			instance->my_ring_id.seq,
-			instance->my_ring_id.rep);
+			"Created or loaded sequence id " CS_PRI_RING_ID " for this ring.",
+			instance->my_ring_id.rep,
+			(uint64_t)instance->my_ring_id.seq);
 
 		if (instance->totemsrp_service_ready_fn) {
 			instance->totemsrp_service_ready_fn ();

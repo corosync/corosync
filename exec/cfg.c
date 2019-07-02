@@ -514,11 +514,11 @@ static void message_handler_req_exec_cfg_killnode (
 	cs_name_t reason;
 
 	ENTER();
-	log_printf(LOGSYS_LEVEL_DEBUG, "request to kill node %d(us=%d)",
+	log_printf(LOGSYS_LEVEL_DEBUG, "request to kill node " CS_PRI_NODE_ID " (us=" CS_PRI_NODE_ID ")",
 		req_exec_cfg_killnode->nodeid, api->totem_nodeid_get());
         if (req_exec_cfg_killnode->nodeid == api->totem_nodeid_get()) {
 		marshall_from_mar_name_t(&reason, &req_exec_cfg_killnode->reason);
-		log_printf(LOGSYS_LEVEL_NOTICE, "Killed by node %d: %s",
+		log_printf(LOGSYS_LEVEL_NOTICE, "Killed by node " CS_PRI_NODE_ID " : %s",
 			   nodeid, reason.value);
 		corosync_fatal_error(COROSYNC_FATAL_ERROR_EXIT);
 	}
@@ -534,7 +534,7 @@ static void message_handler_req_exec_cfg_shutdown (
 {
 	ENTER();
 
-	log_printf(LOGSYS_LEVEL_NOTICE, "Node %d was shut down by sysadmin", nodeid);
+	log_printf(LOGSYS_LEVEL_NOTICE, "Node " CS_PRI_NODE_ID " was shut down by sysadmin", nodeid);
 	if (nodeid == api->totem_nodeid_get()) {
 		api->shutdown_request();
 	}
@@ -674,7 +674,7 @@ static void message_handler_req_exec_cfg_reload_config (
 
 	ENTER();
 
-	log_printf(LOGSYS_LEVEL_NOTICE, "Config reload requested by node %d", nodeid);
+	log_printf(LOGSYS_LEVEL_NOTICE, "Config reload requested by node " CS_PRI_NODE_ID, nodeid);
 
 	/*
 	 * Set up a new hashtable as a staging area.

@@ -153,7 +153,7 @@ linkstatusget_do (char *interface_name, int brief)
 		printf ("Could not get the local node id, the error is: %d\n", result);
 	}
 	else {
-		printf ("Local node ID %u\n", nodeid);
+		printf ("Local node ID " CS_PRI_NODE_ID "\n", nodeid);
 	}
 
 	result = corosync_cfg_ring_status_get (handle,
@@ -350,7 +350,7 @@ static void killnode_do(unsigned int nodeid)
 	cs_error_t result;
 	corosync_cfg_handle_t handle;
 
-	printf ("Killing node %d\n", nodeid);
+	printf ("Killing node " CS_PRI_NODE_ID "\n", nodeid);
 	result = corosync_cfg_initialize (&handle, NULL);
 	if (result != CS_OK) {
 		printf ("Could not initialize corosync configuration API error %d\n", result);

@@ -122,7 +122,7 @@ static void log_view_list(const unsigned int *view_list, size_t view_list_entrie
 		memset(view_buf, 0, len);
 
 		for (; i < total; i++) {
-			ret = snprintf(view_buf + pos, len - pos, " %u", view_list[i]);
+			ret = snprintf(view_buf + pos, len - pos, " " CS_PRI_NODE_ID, view_list[i]);
 			if (ret >= len - pos)
 				break;
 			pos += ret;

@@ -1283,7 +1283,7 @@ static void message_handler_req_exec_cpg_downlist_old (
 	const void *message,
 	unsigned int nodeid)
 {
-	log_printf (LOGSYS_LEVEL_WARNING, "downlist OLD from node 0x%x",
+	log_printf (LOGSYS_LEVEL_WARNING, "downlist OLD from node " CS_PRI_NODE_ID,
 		nodeid);
 }
 
@@ -1304,7 +1304,7 @@ static void message_handler_req_exec_cpg_procjoin (
 {
 	const struct req_exec_cpg_procjoin *req_exec_cpg_procjoin = message;
 
-	log_printf(LOGSYS_LEVEL_DEBUG, "got procjoin message from cluster node 0x%x (%s) for pid %u",
+	log_printf(LOGSYS_LEVEL_DEBUG, "got procjoin message from cluster node " CS_PRI_NODE_ID " (%s) for pid %u",
 		nodeid,
 		api->totem_ifaces_print(nodeid),
 		(unsigned int)req_exec_cpg_procjoin->pid);
@@ -1320,7 +1320,7 @@ static void message_handler_req_exec_cpg_procleave (
 {
 	const struct req_exec_cpg_procjoin *req_exec_cpg_procjoin = message;
 
-	log_printf(LOGSYS_LEVEL_DEBUG, "got procleave message from cluster node 0x%x (%s) for pid %u",
+	log_printf(LOGSYS_LEVEL_DEBUG, "got procleave message from cluster node " CS_PRI_NODE_ID " (%s) for pid %u",
 		nodeid,
 		api->totem_ifaces_print(nodeid),
 		(unsigned int)req_exec_cpg_procjoin->pid);
@@ -1341,7 +1341,7 @@ static void message_handler_req_exec_cpg_joinlist (
 	const struct join_list_entry *jle = (const struct join_list_entry *)(message + sizeof(struct qb_ipc_response_header));
 	struct joinlist_msg *stored_msg;
 
-	log_printf(LOGSYS_LEVEL_DEBUG, "got joinlist message from node 0x%x",
+	log_printf(LOGSYS_LEVEL_DEBUG, "got joinlist message from node " CS_PRI_NODE_ID,
 		nodeid);
 
 	while ((const char*)jle < message + res->size) {
@@ -1422,7 +1422,7 @@ static void message_handler_req_exec_cpg_partial_mcast (
 	struct iovec iovec[2];
 	int known_node = 0;
 
-	log_printf(LOGSYS_LEVEL_DEBUG, "Got fragmented message from node %d, size = %d bytes\n", nodeid, msglen);
+	log_printf(LOGSYS_LEVEL_DEBUG, "Got fragmented message from node " CS_PRI_NODE_ID ", size = %d bytes\n", nodeid, msglen);
 
 	res_lib_cpg_mcast.header.id = MESSAGE_RES_CPG_PARTIAL_DELIVER_CALLBACK;
 	res_lib_cpg_mcast.header.size = sizeof(res_lib_cpg_mcast) + msglen;

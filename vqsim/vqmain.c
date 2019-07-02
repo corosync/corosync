@@ -117,19 +117,19 @@ static void print_quorum_state(struct vq_node *node)
 	int i;
 
 	if (node->last_quorate < 0) {
-		fprintf(output_file, "%d:%02d: q=UNINITIALIZED\n",
+		fprintf(output_file, "%d:" CS_PRI_NODE_ID ": q=UNINITIALIZED\n",
 			node->partition->num, node->nodeid);
 		return;
 	}
 
-	fprintf(output_file, "%d:%02d: q=%d ring=[%d/%lld] ", node->partition->num, node->nodeid, node->last_quorate,
-		node->last_ring_id.nodeid, node->last_ring_id.seq);
+	fprintf(output_file, "%d:" CS_PRI_NODE_ID ": q=%d ring=[" CS_PRI_RING_ID "] ", node->partition->num, node->nodeid, node->last_quorate,
+		node->last_ring_id.nodeid, (uint64_t)node->last_ring_id.seq);
 	fprintf(output_file, "nodes=[");
 	for (i = 0; i < node->last_view_list_entries; i++) {
 		if (i) {
 			fprintf(output_file, " ");
 		}
-		fprintf(output_file, "%d", node->last_view_list[i]);
+		fprintf(output_file, CS_PRI_NODE_ID, node->last_view_list[i]);
 	}
 	fprintf(output_file, "]\n");
 
@@ -265,7 +265,7 @@ static int vq_parent_read_fn(int32_t fd, int32_t revents, void *data)
 		}
 	}
 	if (revents == POLLERR) {
-		fprintf(stderr, "pollerr on %d\n", vqn->nodeid);
+		fprintf(stderr, "pollerr on " CS_PRI_NODE_ID "\n", vqn->nodeid);
 	}
 	return 0;
 }
@@ -342,7 +342,7 @@ static int32_t sigchld_handler(int32_t sig, void *data)
 				sprintf(text, "(exit code %d)", WEXITSTATUS(status));
 				break;
 			}
-			printf("%d:%02d: Quit %s\n", vqn->partition->num, vqn->nodeid, exit_status);
+			printf("%d:" CS_PRI_NODE_ID ": Quit %s\n", vqn->partition->num, vqn->nodeid, exit_status);
 
 			remove_node(vqn);
 		}
@@ -353,7 +353,7 @@ static int32_t sigchld_handler(int32_t sig, void *data)
 	if (WIFSIGNALED(status)) {
 		vqn = find_by_pid(pid);
 		if (vqn) {
-			printf("%d:%02d exited on signal %d%s\n", vqn->partition->num, vqn->nodeid, WTERMSIG(status), WCOREDUMP(status)?" (core dumped)":"");
+			printf("%d:" CS_PRI_NODE_ID " exited on signal %d%s\n", vqn->partition->num, vqn->nodeid, WTERMSIG(status), WCOREDUMP(status)?" (core dumped)":"");
 			remove_node(vqn);
 		}
 		else {
@@ -411,7 +411,7 @@ static pid_t create_node(int nodeid, int partno)
 		newvq->instance = vq_create_instance(poll_loop, nodeid);
 		if (!newvq->instance) {
 			fprintf(stderr,
-			        "ERR: could not create vq instance nodeid %d\n",
+			        "ERR: could not create vq instance nodeid " CS_PRI_NODE_ID "\n",
 				nodeid);
 			free(newvq);
 			return (pid_t) -1;
@@ -467,7 +467,7 @@ static size_t create_nodes_from_config(void)
 			pid = create_node(nodeid, 0);
 			if (pid == (pid_t) -1) {
 				fprintf(stderr,
-					"ERR: nodeid %d could not be spawned\n",
+					"ERR: nodeid " CS_PRI_NODE_ID " could not be spawned\n",
 					nodeid);
 				exit(1);
 			}
@@ -537,7 +537,7 @@ int cmd_start_new_node(int nodeid, int partition)
 
 	node = find_node(nodeid);
 	if (node) {
-		fprintf(stderr, "ERR: nodeid %d already exists in partition %d\n", nodeid, node->partition->num);
+		fprintf(stderr, "ERR: nodeid " CS_PRI_NODE_ID " already exists in partition %d\n", nodeid, node->partition->num);
 		return -1;
 	}
 	if (create_node(nodeid, partition) == -1) {
@@ -577,7 +577,7 @@ int cmd_stop_node(int nodeid)
 
 	node = find_node(nodeid);
 	if (!node) {
-		fprintf(stderr, "ERR: nodeid %d is not up\n", nodeid);
+		fprintf(stderr, "ERR: nodeid " CS_PRI_NODE_ID " is not up\n", nodeid);
 		return -1;
 	}
 
@@ -613,7 +613,7 @@ void cmd_move_nodes(int partition, int num_nodes, int *nodelist)
 			node->partition = &partitions[partition];
 		}
 		else {
-			printf("ERR: node %d does not exist\n", nodelist[i]);
+			printf("ERR: node " CS_PRI_NODE_ID " does not exist\n", nodelist[i]);
 		}
 	}
 }
