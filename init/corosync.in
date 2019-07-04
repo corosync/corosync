@@ -37,6 +37,11 @@ failure()
 	echo -ne "[FAILED]\r"
 }
 
+warning()
+{
+	echo -ne "[WARNING]\r"
+}
+
 # pid_var_run pid_file
 # Echo pid from given pid_file.
 # Returns LSB exit code for the 'status' action.
@@ -124,7 +129,7 @@ wait_for_ipc()
 	[ "$max_try" -le "0" ] && max_try=120
 
 	while [ "$try" -le "$max_try" ]; do
-		if corosync-cfgtool -s > /dev/null 2>&1; then
+		if corosync-cpgtool > /dev/null 2>&1; then
 			return 0
 		fi
 		sleep 0.5
@@ -156,7 +161,11 @@ start()
 			rtrn=1
 		else
 			touch $LOCK_FILE
-			success
+			if corosync-cfgtool -s > /dev/null 2>&1; then
+				success
+			else
+				warning
+			fi
 		fi
 	fi
 	echo
