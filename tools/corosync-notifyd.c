@@ -765,7 +765,7 @@ _cs_dbus_init(void)
 #endif /* HAVE_DBUS */
 
 #ifdef ENABLE_SNMP
-static netsnmp_session *snmp_init (const char *target)
+static netsnmp_session *_cs_snmp_session_init (const char *target)
 {
 	static netsnmp_session *session = NULL;
 #ifndef NETSNMPV54
@@ -805,7 +805,7 @@ static netsnmp_session *snmp_init (const char *target)
 	return (session);
 }
 
-static inline void add_field (
+static void _cs_snmp_add_field (
 	netsnmp_pdu *trap_pdu,
 	u_char asn_type,
 	const char *prefix,
@@ -819,38 +819,63 @@ static inline void add_field (
 	}
 }
 
-static void
-_cs_snmp_node_membership_event(char *nodename, uint32_t nodeid, char *state, char* ip)
+static netsnmp_pdu *_cs_snmp_trap_pdu_init (const char *trap_oid)
 {
-	int ret;
-	char csysuptime[CS_TIMESTAMP_STR_LEN];
 	static oid snmptrap_oid[]  = { 1,3,6,1,6,3,1,1,4,1,0 };
 	static oid sysuptime_oid[] = { 1,3,6,1,2,1,1,3,0 };
-	time_t now = time (NULL);
-
+	char csysuptime[CS_TIMESTAMP_STR_LEN];
+	time_t now;
+	struct tm *now_tm;
 	netsnmp_pdu *trap_pdu;
-	netsnmp_session *session = snmp_init (snmp_manager);
-	if (session == NULL) {
-		qb_log(LOG_NOTICE, "Failed to init SNMP session.");
-		return ;
+
+	now = time (NULL);
+	if (now == ((time_t)-1)) {
+		qb_log(LOG_NOTICE, "Failed to get timestamp.");
+		return (NULL);
+	}
+
+	/* format uptime */
+	now_tm = localtime(&now);
+	if (now_tm == NULL || strftime (csysuptime, sizeof(csysuptime), "%s", now_tm) == 0) {
+		qb_log(LOG_NOTICE, "Failed to format timestamp.");
+		return (NULL);
 	}
 
 	trap_pdu = snmp_pdu_create (SNMP_MSG_TRAP2);
 	if (!trap_pdu) {
 		qb_log(LOG_NOTICE, "Failed to create SNMP notification.");
-		return ;
+		return (NULL);
 	}
 
 	/* send uptime */
-	snprintf (csysuptime, CS_TIMESTAMP_STR_LEN, "%ld", now);
 	snmp_add_var (trap_pdu, sysuptime_oid, sizeof (sysuptime_oid) / sizeof (oid), 't', csysuptime);
-	snmp_add_var (trap_pdu, snmptrap_oid, sizeof (snmptrap_oid) / sizeof (oid), 'o', SNMP_OID_TRAPS_NODE);
+	snmp_add_var (trap_pdu, snmptrap_oid, sizeof (snmptrap_oid) / sizeof (oid), 'o', trap_oid);
+
+	return (trap_pdu);
+}
+
+static void
+_cs_snmp_node_membership_event(char *nodename, uint32_t nodeid, char *state, char* ip)
+{
+	int ret;
+	netsnmp_pdu *trap_pdu;
+	netsnmp_session *session = _cs_snmp_session_init (snmp_manager);
+
+	if (session == NULL) {
+		qb_log(LOG_NOTICE, "Failed to init SNMP session.");
+		return ;
+	}
+
+	trap_pdu = _cs_snmp_trap_pdu_init(SNMP_OID_TRAPS_NODE);
+	if (trap_pdu == NULL) {
+		return ;
+	}
 
 	/* Add extries to the trap */
-	add_field (trap_pdu, ASN_OCTET_STR, SNMP_OID_OBJECT_NODE_NAME, (void*)nodename, strlen (nodename));
-	add_field (trap_pdu, ASN_UNSIGNED, SNMP_OID_OBJECT_NODE_ID, (void*)&nodeid, sizeof (nodeid));
-	add_field (trap_pdu, ASN_OCTET_STR, SNMP_OID_OBJECT_NODE_ADDR, (void*)ip, strlen (ip));
-	add_field (trap_pdu, ASN_OCTET_STR, SNMP_OID_OBJECT_NODE_STATUS, (void*)state, strlen (state));
+	_cs_snmp_add_field (trap_pdu, ASN_OCTET_STR, SNMP_OID_OBJECT_NODE_NAME, (void*)nodename, strlen (nodename));
+	_cs_snmp_add_field (trap_pdu, ASN_UNSIGNED, SNMP_OID_OBJECT_NODE_ID, (void*)&nodeid, sizeof (nodeid));
+	_cs_snmp_add_field (trap_pdu, ASN_OCTET_STR, SNMP_OID_OBJECT_NODE_ADDR, (void*)ip, strlen (ip));
+	_cs_snmp_add_field (trap_pdu, ASN_OCTET_STR, SNMP_OID_OBJECT_NODE_STATUS, (void*)state, strlen (state));
 
 	/* Send and cleanup */
 	ret = snmp_send (session, trap_pdu);
@@ -866,33 +891,23 @@ _cs_snmp_node_quorum_event(char *nodename, uint32_t nodeid,
 			   const char *state)
 {
 	int ret;
-	char csysuptime[20];
-	static oid snmptrap_oid[]  = { 1,3,6,1,6,3,1,1,4,1,0 };
-	static oid sysuptime_oid[] = { 1,3,6,1,2,1,1,3,0 };
-	time_t now = time (NULL);
-
 	netsnmp_pdu *trap_pdu;
-	netsnmp_session *session = snmp_init (snmp_manager);
+	netsnmp_session *session = _cs_snmp_session_init (snmp_manager);
+
 	if (session == NULL) {
 		qb_log(LOG_NOTICE, "Failed to init SNMP session.");
 		return ;
 	}
 
-	trap_pdu = snmp_pdu_create (SNMP_MSG_TRAP2);
-	if (!trap_pdu) {
-		qb_log(LOG_NOTICE, "Failed to create SNMP notification.");
+	trap_pdu = _cs_snmp_trap_pdu_init(SNMP_OID_TRAPS_QUORUM);
+	if (trap_pdu == NULL) {
 		return ;
 	}
 
-	/* send uptime */
-	sprintf (csysuptime, "%ld", now);
-	snmp_add_var (trap_pdu, sysuptime_oid, sizeof (sysuptime_oid) / sizeof (oid), 't', csysuptime);
-	snmp_add_var (trap_pdu, snmptrap_oid, sizeof (snmptrap_oid) / sizeof (oid), 'o', SNMP_OID_TRAPS_QUORUM);
-
 	/* Add extries to the trap */
-	add_field (trap_pdu, ASN_OCTET_STR, SNMP_OID_OBJECT_NODE_NAME, (void*)nodename, strlen (nodename));
-	add_field (trap_pdu, ASN_UNSIGNED, SNMP_OID_OBJECT_NODE_ID, (void*)&nodeid, sizeof (nodeid));
-	add_field (trap_pdu, ASN_OCTET_STR, SNMP_OID_OBJECT_QUORUM, (void*)state, strlen (state));
+	_cs_snmp_add_field (trap_pdu, ASN_OCTET_STR, SNMP_OID_OBJECT_NODE_NAME, (void*)nodename, strlen (nodename));
+	_cs_snmp_add_field (trap_pdu, ASN_UNSIGNED, SNMP_OID_OBJECT_NODE_ID, (void*)&nodeid, sizeof (nodeid));
+	_cs_snmp_add_field (trap_pdu, ASN_OCTET_STR, SNMP_OID_OBJECT_QUORUM, (void*)state, strlen (state));
 
 	/* Send and cleanup */
 	ret = snmp_send (session, trap_pdu);
@@ -908,35 +923,25 @@ _cs_snmp_link_faulty_event(char *nodename, uint32_t local_nodeid, uint32_t nodei
 		uint32_t iface_no, const char *state)
 {
 	int ret;
-	char csysuptime[20];
-	static oid snmptrap_oid[]  = { 1,3,6,1,6,3,1,1,4,1,0 };
-	static oid sysuptime_oid[] = { 1,3,6,1,2,1,1,3,0 };
-	time_t now = time (NULL);
-
 	netsnmp_pdu *trap_pdu;
-	netsnmp_session *session = snmp_init (snmp_manager);
+	netsnmp_session *session = _cs_snmp_session_init (snmp_manager);
+
 	if (session == NULL) {
 		qb_log(LOG_NOTICE, "Failed to init SNMP session.");
 		return ;
 	}
 
-	trap_pdu = snmp_pdu_create (SNMP_MSG_TRAP2);
-	if (!trap_pdu) {
-		qb_log(LOG_NOTICE, "Failed to create SNMP notification.");
+	trap_pdu = _cs_snmp_trap_pdu_init(SNMP_OID_TRAPS_LINK);
+	if (trap_pdu == NULL) {
 		return ;
 	}
 
-	/* send uptime */
-	sprintf (csysuptime, "%ld", now);
-	snmp_add_var (trap_pdu, sysuptime_oid, sizeof (sysuptime_oid) / sizeof (oid), 't', csysuptime);
-	snmp_add_var (trap_pdu, snmptrap_oid, sizeof (snmptrap_oid) / sizeof (oid), 'o', SNMP_OID_TRAPS_LINK);
-
 	/* Add extries to the trap */
-	add_field (trap_pdu, ASN_OCTET_STR, SNMP_OID_OBJECT_NODE_NAME, (void*)nodename, strlen (nodename));
-	add_field (trap_pdu, ASN_UNSIGNED, SNMP_OID_OBJECT_LOCAL_NODE_ID, (void*)&local_nodeid, sizeof (local_nodeid));
-	add_field (trap_pdu, ASN_UNSIGNED, SNMP_OID_OBJECT_NODE_ID, (void*)&nodeid, sizeof (nodeid));
-	add_field (trap_pdu, ASN_INTEGER, SNMP_OID_OBJECT_LINK_IFACE_NO, (void*)&iface_no, sizeof (iface_no));
-	add_field (trap_pdu, ASN_OCTET_STR, SNMP_OID_OBJECT_LINK_STATUS, (void*)state, strlen (state));
+	_cs_snmp_add_field (trap_pdu, ASN_OCTET_STR, SNMP_OID_OBJECT_NODE_NAME, (void*)nodename, strlen (nodename));
+	_cs_snmp_add_field (trap_pdu, ASN_UNSIGNED, SNMP_OID_OBJECT_LOCAL_NODE_ID, (void*)&local_nodeid, sizeof (local_nodeid));
+	_cs_snmp_add_field (trap_pdu, ASN_UNSIGNED, SNMP_OID_OBJECT_NODE_ID, (void*)&nodeid, sizeof (nodeid));
+	_cs_snmp_add_field (trap_pdu, ASN_INTEGER, SNMP_OID_OBJECT_LINK_IFACE_NO, (void*)&iface_no, sizeof (iface_no));
+	_cs_snmp_add_field (trap_pdu, ASN_OCTET_STR, SNMP_OID_OBJECT_LINK_STATUS, (void*)state, strlen (state));
 
 	/* Send and cleanup */
 	ret = snmp_send (session, trap_pdu);
