@@ -187,8 +187,11 @@ linkstatusget_do (char *interface_name, int brief)
 			if (show_current_iface) {
 				printf ("LINK ID %s\n", interface_names[i]);
 				printf ("\taddr\t= %s\n", cur_iface_name_space + 1);
-				if((!brief) && (strcmp(interface_status[i], "OK") != 0) &&
-					(!strstr(interface_status[i], "FAULTY"))) {
+				/*
+				 * UDP(U) interface_status is always OK and doesn't contain
+				 * detailed information (only knet does).
+				 */
+				if ((!brief) && (strcmp(interface_status[i], "OK") != 0)) {
 					len = strlen(interface_status[i]);
 					printf ("\tstatus:\n");
 					while (s < len) {
@@ -201,9 +204,6 @@ linkstatusget_do (char *interface_name, int brief)
 					}
 				} else {
 					printf ("\tstatus\t= %s\n", interface_status[i]);
-					if (strstr(interface_status[i], "FAULTY")) {
-						rc = 1;
-					}
 				}
 			}
 		}
