@@ -5072,6 +5072,14 @@ void main_iface_change_fn (
 
 	if (instance->iface_changes++ == 0) {
 		instance->memb_ring_id_create_or_load (&instance->my_ring_id, instance->my_id.nodeid);
+		/*
+		 * Increase the ring_id sequence number. This doesn't follow specification.
+		 * Solves problem with restarted leader node (node with lowest nodeid) before
+		 * rest of the cluster forms new membership and guarantees unique ring_id for
+		 * new singleton configuration.
+		 */
+		instance->my_ring_id.seq++;
+
 		instance->token_ring_id_seq = instance->my_ring_id.seq;
 		log_printf (
 			instance->totemsrp_log_level_debug,
