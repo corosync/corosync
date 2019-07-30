@@ -225,6 +225,7 @@ static void _cs_cmap_members_key_changed (
 
 	if (NULL == key_name) {
 		qb_log(LOG_ERR, "key_name: nil");
+		return ;
 	}
 
 	res = sscanf(key_name, "runtime.totem.pg.mrp.srp.members.%u.%s", &nodeid, tmp_key);
