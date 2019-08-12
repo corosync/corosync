@@ -43,7 +43,7 @@ extern "C" {
 #endif
 
 extern int		qdevice_log_init(struct qdevice_instance *instance, int foreground,
-    int force_debug);
+    int force_debug, int bump_log_priority);
 
 extern void		qdevice_log_configure(struct qdevice_instance *instance);
 

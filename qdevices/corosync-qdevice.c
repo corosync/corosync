@@ -139,17 +139,21 @@ cli_parse_long_opt(struct qdevice_advanced_settings *advanced_settings, const ch
 }
 
 static void
-cli_parse(int argc, char * const argv[], int *foreground, int *force_debug,
+cli_parse(int argc, char * const argv[], int *foreground, int *force_debug, int *bump_log_priority,
     struct qdevice_advanced_settings *advanced_settings)
 {
 	int ch;
 
 	*foreground = 0;
 	*force_debug = 0;
+	*bump_log_priority = 0;
 
 	while ((ch = getopt(argc, argv, "dfhS:")) != -1) {
 		switch (ch) {
 		case 'd':
+			if (*force_debug) {
+				*bump_log_priority = 1;
+			}
 			*force_debug = 1;
 			break;
 		case 'f':
@@ -174,6 +178,7 @@ main(int argc, char * const argv[])
 	struct qdevice_advanced_settings advanced_settings;
 	int foreground;
 	int force_debug;
+	int bump_log_priority;
 	int lock_file;
 	int another_instance_running;
 	int model_run_res;
@@ -182,7 +187,7 @@ main(int argc, char * const argv[])
 		errx(1, "Can't alloc memory for advanced settings");
 	}
 
-	cli_parse(argc, argv, &foreground, &force_debug, &advanced_settings);
+	cli_parse(argc, argv, &foreground, &force_debug, &bump_log_priority, &advanced_settings);
 
 	qdevice_instance_init(&instance, &advanced_settings);
 
@@ -190,7 +195,7 @@ main(int argc, char * const argv[])
 	instance.heuristics_instance.qdevice_instance_ptr = &instance;
 
 	qdevice_cmap_init(&instance);
-	if (qdevice_log_init(&instance, foreground, force_debug) == -1) {
+	if (qdevice_log_init(&instance, foreground, force_debug, bump_log_priority) == -1) {
 		errx(1, "Can't initialize logging");
 	}
 

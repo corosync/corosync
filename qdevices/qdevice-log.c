@@ -82,7 +82,7 @@ qdevice_log_configure(struct qdevice_instance *instance)
 }
 
 int
-qdevice_log_init(struct qdevice_instance *instance, int foreground, int force_debug)
+qdevice_log_init(struct qdevice_instance *instance, int foreground, int force_debug, int bump_log_priority)
 {
 	int res;
 	int log_target;
@@ -98,7 +98,8 @@ qdevice_log_init(struct qdevice_instance *instance, int foreground, int force_de
 	if (res == -1) {
 		return (res);
 	}
-	log_set_priority_bump(1);
+
+	log_set_priority_bump(bump_log_priority);
 
 	qdevice_log_configure(instance);
 
