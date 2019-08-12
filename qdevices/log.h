@@ -53,7 +53,7 @@ extern "C" {
 #define log_err(priority, str) log_printf(priority, "%s (%d): %s", \
     str, errno, strerror(errno))
 
-extern int		log_init(const char *ident, int target);
+extern int		log_init(const char *ident, int target, int syslog_facility);
 
 extern void		log_printf(int priority, const char *format, ...)
     __attribute__((__format__(__printf__, 2, 3)));
@@ -66,6 +66,8 @@ extern void		log_close(void);
 extern void		log_set_debug(int enabled);
 
 extern void		log_set_priority_bump(int enabled);
+
+extern void		log_set_target(int target, int syslog_facility);
 
 extern void		log_msg_decode_error(int ret);
 

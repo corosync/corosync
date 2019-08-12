@@ -43,6 +43,7 @@
 static int log_config_target = 0;
 static int log_config_debug = 0;
 static int log_config_priority_bump = 0;
+static int log_config_syslog_facility = 0;
 static char *log_config_ident = NULL;
 
 static const char log_month_str[][4] = {
@@ -67,19 +68,16 @@ static struct log_syslog_prio_to_str_item syslog_prio_to_str_array[] = {
     {-1, NULL}};
 
 int
-log_init(const char *ident, int target)
+log_init(const char *ident, int target, int syslog_facility)
 {
 
-	log_config_target = target;
 	log_config_ident = strdup(ident);
 
 	if (log_config_ident == NULL) {
 		return (-1);
 	}
 
-	if (log_config_target & LOG_TARGET_SYSLOG) {
-		openlog(QNETD_PROGRAM_NAME, LOG_PID, LOG_DAEMON);
-	}
+	log_set_target(target, syslog_facility);
 
 	return (0);
 }
@@ -166,6 +164,20 @@ log_set_priority_bump(int enabled)
 {
 
 	log_config_priority_bump = enabled;
+}
+
+void
+log_set_target(int target, int syslog_facility)
+{
+
+	log_close();
+
+	log_config_target = target;
+	log_config_syslog_facility = syslog_facility;
+
+	if (log_config_target & LOG_TARGET_SYSLOG) {
+		openlog(log_config_ident, LOG_PID, log_config_syslog_facility);
+	}
 }
 
 void

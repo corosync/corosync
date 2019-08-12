@@ -540,7 +540,7 @@ main(int argc, char * const argv[])
 		log_target |= LOG_TARGET_STDERR;
 	}
 
-	res = log_init(QNETD_PROGRAM_NAME, log_target);
+	res = log_init(QNETD_PROGRAM_NAME, log_target, LOG_DAEMON);
 	if (res == -1) {
 		errx(1, "Can't initialize logging");
 	}
