@@ -50,6 +50,7 @@ corosync_qnetd_SOURCES	= corosync-qnetd.c \
                           nss-sock.c nss-sock.h qnetd-client.c qnetd-client.h \
                           qnetd-client-list.c qnetd-client-list.h log.c log.h \
                           pr-poll-array.c pr-poll-array.h timer-list.c timer-list.h tlv.c tlv.h \
+                          log-common.c log-common.h \
                           send-buffer-list.c send-buffer-list.h node-list.c node-list.h \
                           qnetd-algo-test.c qnetd-algo-test.h qnetd-algorithm.c qnetd-algorithm.h \
                           qnetd-algo-utils.c qnetd-algo-utils.h \

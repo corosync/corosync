@@ -43,6 +43,8 @@ extern "C" {
 
 extern void		log_common_debug_dump_node_list(const struct node_list *nlist);
 
+extern void		log_common_msg_decode_error(int ret);
+
 #ifdef __cplusplus
 }
 #endif

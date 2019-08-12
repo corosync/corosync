@@ -33,6 +33,7 @@
  */
 
 #include "log.h"
+#include "log-common.h"
 #include "qdevice-net-algorithm.h"
 #include "qdevice-net-cast-vote-timer.h"
 #include "qdevice-net-heuristics.h"
@@ -81,29 +82,6 @@ qdevice_net_msg_received_check_tls_compatibility(enum tlv_tls_supported server_t
 	}
 
 	return (res);
-}
-
-static void
-qdevice_net_msg_received_log_msg_decode_error(int ret)
-{
-
-	switch (ret) {
-	case -1:
-		log(LOG_WARNING, "Received message with option with invalid length");
-		break;
-	case -2:
-		log(LOG_CRIT, "Can't allocate memory");
-		break;
-	case -3:
-		log(LOG_WARNING, "Received inconsistent msg (tlv len > msg size)");
-		break;
-	case -4:
-		log(LOG_ERR, "Received message with option with invalid value");
-		break;
-	default:
-		log(LOG_ERR, "Unknown error occurred when decoding message");
-		break;
-	}
 }
 
 static int
@@ -881,7 +859,7 @@ qdevice_net_msg_received(struct qdevice_net_instance *instance)
 		/*
 		 * Error occurred. Disconnect.
 		 */
-		qdevice_net_msg_received_log_msg_decode_error(res);
+		log_common_msg_decode_error(res);
 		log(LOG_ERR, "Disconnecting from server");
 		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_MSG_DECODE_ERROR;
 

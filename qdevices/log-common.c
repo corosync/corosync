@@ -54,3 +54,26 @@ log_common_debug_dump_node_list(const struct node_list *nlist)
 		zi++;
 	}
 }
+
+void
+log_common_msg_decode_error(int ret)
+{
+
+	switch (ret) {
+	case -1:
+		log(LOG_WARNING, "Received message with option with invalid length");
+		break;
+	case -2:
+		log(LOG_CRIT, "Can't allocate memory");
+		break;
+	case -3:
+		log(LOG_WARNING, "Received inconsistent msg (tlv len > msg size)");
+		break;
+	case -4:
+		log(LOG_WARNING, "Received message with option with invalid value");
+		break;
+	default:
+		log(LOG_ERR, "Unknown error occurred when decoding message");
+		break;
+	}
+}

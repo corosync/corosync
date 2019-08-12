@@ -35,6 +35,7 @@
 #include <sys/types.h>
 
 #include "log.h"
+#include "log-common.h"
 #include "qnetd-algorithm.h"
 #include "qnetd-instance.h"
 #include "qnetd-log-debug.h"
@@ -1142,7 +1143,7 @@ qnetd_client_msg_received(struct qnetd_instance *instance, struct qnetd_client *
 		/*
 		 * Error occurred. Send server error.
 		 */
-		log_msg_decode_error(res);
+		log_common_msg_decode_error(res);
 		log(LOG_INFO, "Sending back error message");
 
 		if (qnetd_client_send_err(client, msg.seq_number_set, msg.seq_number,

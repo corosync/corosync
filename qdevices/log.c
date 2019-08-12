@@ -178,26 +178,3 @@ log_set_target(int target, int syslog_facility)
 		openlog(log_config_ident, LOG_PID, log_config_syslog_facility);
 	}
 }
-
-void
-log_msg_decode_error(int ret)
-{
-
-	switch (ret) {
-	case -1:
-		log(LOG_WARNING, "Received message with option with invalid length");
-		break;
-	case -2:
-		log(LOG_CRIT, "Can't allocate memory");
-		break;
-	case -3:
-		log(LOG_WARNING, "Received inconsistent msg (tlv len > msg size)");
-		break;
-	case -4:
-		log(LOG_WARNING, "Received message with option with invalid value");
-		break;
-	default:
-		log(LOG_ERR, "Unknown error occurred when decoding message");
-		break;
-	}
-}
