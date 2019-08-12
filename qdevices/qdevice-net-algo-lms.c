@@ -36,8 +36,8 @@
 
 #include <string.h>
 
+#include "log.h"
 #include "qdevice-net-algo-lms.h"
-#include "qdevice-log.h"
 #include "qdevice-net-send.h"
 #include "qdevice-net-cast-vote-timer.h"
 

@@ -35,10 +35,10 @@
 #include <string.h>
 #include <stdio.h>
 
+#include "log.h"
 #include "qdevice-config.h"
 #include "qdevice-instance.h"
 #include "qdevice-heuristics-exec-list.h"
-#include "qdevice-log.h"
 #include "qdevice-model.h"
 #include "utils.h"
 

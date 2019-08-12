@@ -41,7 +41,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "qdevice-log.h"
+#include "log.h"
 #include "qdevice-heuristics.h"
 #include "qdevice-heuristics-cmd.h"
 #include "qdevice-heuristics-worker.h"

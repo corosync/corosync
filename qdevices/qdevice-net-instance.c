@@ -34,8 +34,8 @@
 
 #include <limits.h>
 
+#include "log.h"
 #include "qdevice-config.h"
-#include "qdevice-log.h"
 #include "qdevice-net-instance.h"
 #include "qnet-config.h"
 #include "utils.h"

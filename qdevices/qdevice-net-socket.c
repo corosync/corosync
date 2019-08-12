@@ -32,10 +32,10 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "log.h"
 #include "msg.h"
 #include "msgio.h"
 #include "qnet-config.h"
-#include "qdevice-log.h"
 #include "qdevice-net-msg-received.h"
 #include "qdevice-net-nss.h"
 #include "qdevice-net-send.h"

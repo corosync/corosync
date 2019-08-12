@@ -32,9 +32,9 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "log.h"
 #include "qdevice-config.h"
 #include "qdevice-ipc.h"
-#include "qdevice-log.h"
 #include "unix-socket-ipc.h"
 #include "dynar-simple-lex.h"
 #include "dynar-str.h"

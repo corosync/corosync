@@ -32,12 +32,12 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "qdevice-log-debug.h"
-#include "qdevice-log.h"
+#include "log.h"
+#include "log-common.h"
 #include "utils.h"
 
 void
-qdevice_log_debug_dump_node_list(const struct node_list *nlist)
+log_common_debug_dump_node_list(const struct node_list *nlist)
 {
 	struct node_list_entry *node_info;
 	size_t zi;

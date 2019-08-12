@@ -32,8 +32,8 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "log.h"
 #include "qnet-config.h"
-#include "qdevice-log.h"
 #include "qdevice-net-cast-vote-timer.h"
 #include "qdevice-votequorum.h"
 

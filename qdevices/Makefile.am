@@ -96,7 +96,7 @@ corosync_qdevice_SOURCES = corosync-qdevice.c \
                            qdevice-cmap.c qdevice-cmap.h \
                            qdevice-instance.c qdevice-instance.h node-list.c node-list.h \
                            utils.c utils.h qdevice-log.c qdevice-log.h \
-                           qdevice-log-debug.c qdevice-log-debug.h \
+                           log-common.c log-common.h \
                            qdevice-votequorum.c qdevice-votequorum.h \
                            qdevice-model.c qdevice-model.h qdevice-model-net.c qdevice-model-net.h \
                            qdevice-net-instance.c qdevice-net-instance.h dynar.c dynar.h \

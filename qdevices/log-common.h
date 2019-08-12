@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016 Red Hat, Inc.
+ * Copyright (c) 2015-2019 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -32,8 +32,8 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _QDEVICE_LOG_DEBUG_H_
-#define _QDEVICE_LOG_DEBUG_H_
+#ifndef _LOG_COMMON_H_
+#define _LOG_COMMON_H_
 
 #include "node-list.h"
 
@@ -41,10 +41,10 @@
 extern "C" {
 #endif
 
-extern void		qdevice_log_debug_dump_node_list(const struct node_list *nlist);
+extern void		log_common_debug_dump_node_list(const struct node_list *nlist);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* _QDEVICE_LOG_DEBUG_H_ */
+#endif /* _LOG_COMMON_H_ */

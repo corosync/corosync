@@ -39,6 +39,7 @@
 #include "dynar.h"
 #include "dynar-str.h"
 #include "dynar-getopt-lex.h"
+#include "log.h"
 #include "qdevice-advanced-settings.h"
 #include "qdevice-config.h"
 #include "qdevice-cmap.h"

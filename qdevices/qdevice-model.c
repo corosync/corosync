@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "qdevice-log.h"
+#include "log.h"
 #include "qdevice-model.h"
 #include "qdevice-model-net.h"
 

@@ -34,9 +34,9 @@
 
 #include <poll.h>
 
+#include "log.h"
 #include "qdevice-model.h"
 #include "qdevice-model-net.h"
-#include "qdevice-log.h"
 #include "qdevice-net-cast-vote-timer.h"
 #include "qdevice-net-instance.h"
 #include "qdevice-net-ipc-cmd.h"

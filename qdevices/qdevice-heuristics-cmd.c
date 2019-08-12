@@ -34,14 +34,15 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "dynar.h"
 #include "dynar-str.h"
+#include "log.h"
 #include "qdevice-heuristics-exec-result.h"
 #include "qdevice-heuristics-cmd.h"
 #include "qdevice-heuristics-cmd-str.h"
 #include "qdevice-heuristics-io.h"
-#include "qdevice-log.h"
 
 static int
 qdevice_heuristics_cmd_process_exec_result(struct qdevice_heuristics_instance *instance,

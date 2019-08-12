@@ -32,9 +32,11 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <string.h>
+
+#include "log.h"
 #include "qdevice-heuristics-io.h"
 #include "qdevice-heuristics-log.h"
-#include "qdevice-log.h"
 
 /*
  * 1 - Line logged

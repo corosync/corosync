@@ -32,10 +32,10 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "log.h"
 #include "qdevice-net-algorithm.h"
 #include "qdevice-net-echo-request-timer.h"
 #include "qdevice-net-send.h"
-#include "qdevice-log.h"
 
 static int
 qdevice_net_echo_request_timer_callback(void *data1, void *data2)

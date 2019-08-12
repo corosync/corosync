@@ -34,9 +34,9 @@
 
 #include <sys/types.h>
 
+#include "log.h"
 #include "qnet-config.h"
 #include "qdevice-net-algorithm.h"
-#include "qdevice-log.h"
 
 #include "qdevice-net-algo-test.h"
 #include "qdevice-net-algo-ffsplit.h"

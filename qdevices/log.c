@@ -37,7 +37,6 @@
 #include <string.h>
 #include <time.h>
 
-#include "qnet-config.h"
 #include "log.h"
 
 static int log_config_target = 0;

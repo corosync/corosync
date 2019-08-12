@@ -32,9 +32,9 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "log.h"
 #include "qdevice-cmap.h"
 #include "qdevice-net-poll.h"
-#include "qdevice-log.h"
 #include "qdevice-net-send.h"
 #include "qdevice-net-socket.h"
 #include "qdevice-votequorum.h"

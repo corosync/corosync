@@ -41,10 +41,11 @@
 #include <stdint.h>
 #include <netdb.h>
 
+#include "log.h"
 #include "qdevice-config.h"
 #include "qdevice-cmap.h"
 #include "qdevice-log.h"
-#include "qdevice-log-debug.h"
+#include "log-common.h"
 #include "qdevice-model.h"
 #include "utils.h"
 
@@ -263,7 +264,7 @@ qdevice_cmap_node_list_event(struct qdevice_instance *instance)
 	if (config_version_set) {
 		log(LOG_DEBUG, "  config_version = "UTILS_PRI_CONFIG_VERSION, config_version);
 	}
-	qdevice_log_debug_dump_node_list(&nlist);
+	log_common_debug_dump_node_list(&nlist);
 
 	if (qdevice_model_config_node_list_changed(instance, &nlist,
 	    config_version_set, config_version) != 0) {

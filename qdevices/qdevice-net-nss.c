@@ -35,7 +35,7 @@
 #include <sslerr.h>
 #include <secerr.h>
 
-#include "qdevice-log.h"
+#include "log.h"
 #include "qdevice-net-nss.h"
 #include "qdevice-net-instance.h"
 #include "qnet-config.h"

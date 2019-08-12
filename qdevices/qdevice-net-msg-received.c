@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "qdevice-log.h"
+#include "log.h"
 #include "qdevice-net-algorithm.h"
 #include "qdevice-net-cast-vote-timer.h"
 #include "qdevice-net-heuristics.h"

@@ -32,8 +32,8 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "qdevice-log.h"
-#include "qdevice-log-debug.h"
+#include "log.h"
+#include "log-common.h"
 #include "qdevice-net-send.h"
 #include "qdevice-net-votequorum.h"
 #include "msg.h"
@@ -186,7 +186,7 @@ qdevice_net_send_config_node_list(struct qdevice_net_instance *instance,
 
 	log(LOG_DEBUG, "Sending config node list seq = "UTILS_PRI_MSG_SEQ,
 	    instance->last_msg_seq_num);
-	qdevice_log_debug_dump_node_list(nlist);
+	log_common_debug_dump_node_list(nlist);
 
 	if (msg_create_node_list(&send_buffer->buffer, instance->last_msg_seq_num,
 	    (initial ? TLV_NODE_LIST_TYPE_INITIAL_CONFIG : TLV_NODE_LIST_TYPE_CHANGED_CONFIG),
@@ -271,7 +271,7 @@ qdevice_net_send_membership_node_list(struct qdevice_net_instance *instance,
 	log(LOG_DEBUG, "Sending membership node list seq = "UTILS_PRI_MSG_SEQ", "
 	    "ringid = ("UTILS_PRI_RING_ID"), heuristics = %s.", instance->last_msg_seq_num,
 	    ring_id->node_id, ring_id->seq, tlv_heuristics_to_str(heuristics));
-	qdevice_log_debug_dump_node_list(&nlist);
+	log_common_debug_dump_node_list(&nlist);
 
 	if (msg_create_node_list(&send_buffer->buffer, instance->last_msg_seq_num,
 	    TLV_NODE_LIST_TYPE_MEMBERSHIP,
@@ -333,7 +333,7 @@ qdevice_net_send_quorum_node_list(struct qdevice_net_instance *instance,
 
 	log(LOG_DEBUG, "Sending quorum node list seq = "UTILS_PRI_MSG_SEQ", quorate = %u",
 	    instance->last_msg_seq_num, quorate);
-	qdevice_log_debug_dump_node_list(&nlist);
+	log_common_debug_dump_node_list(&nlist);
 
 	if (msg_create_node_list(&send_buffer->buffer, instance->last_msg_seq_num,
 	    TLV_NODE_LIST_TYPE_QUORUM,

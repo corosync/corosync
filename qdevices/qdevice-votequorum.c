@@ -34,8 +34,8 @@
 
 #include <poll.h>
 
+#include "log.h"
 #include "qdevice-config.h"
-#include "qdevice-log.h"
 #include "qdevice-votequorum.h"
 #include "qdevice-model.h"
 #include "utils.h"

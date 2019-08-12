@@ -32,8 +32,8 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "log.h"
 #include "qdevice-net-ipc-cmd.h"
-#include "qdevice-log.h"
 #include "dynar-str.h"
 #include "qdevice-net-algorithm.h"
 #include "utils.h"
