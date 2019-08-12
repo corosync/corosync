@@ -37,6 +37,7 @@
 #include <string.h>
 
 #include "log.h"
+#include "log-common.h"
 #include "qnetd-algo-ffsplit.h"
 #include "qnetd-log-debug.h"
 #include "qnetd-cluster-list.h"
@@ -627,7 +628,7 @@ qnetd_algo_ffsplit_do(struct qnetd_client *client, int client_leaving,
 		log(LOG_DEBUG, "ffsplit: No quorate partition was selected");
 	} else {
 		log(LOG_DEBUG, "ffsplit: Quorate partition selected");
-		qnetd_log_debug_dump_node_list(client, quorate_partition_node_list);
+		log_common_debug_dump_node_list(quorate_partition_node_list);
 	}
 
 	qnetd_algo_ffsplit_update_nodes_state(client, client_leaving, quorate_partition_node_list);

@@ -46,9 +46,6 @@ extern void		qnetd_log_debug_dump_cluster(struct qnetd_cluster *cluster);
 
 extern void		qnetd_log_debug_new_client_connected(struct qnetd_client *client);
 
-extern void		qnetd_log_debug_dump_node_list(struct qnetd_client *client,
-    const struct node_list *nodes);
-
 extern void		qnetd_log_debug_config_node_list_received(struct qnetd_client *client,
     uint32_t msg_seq_num, int config_version_set, uint64_t config_version,
     const struct node_list *nodes, int initial);

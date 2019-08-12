@@ -33,6 +33,7 @@
  */
 
 #include "log.h"
+#include "log-common.h"
 #include "qnetd-log-debug.h"
 #include "utils.h"
 
@@ -67,20 +68,6 @@ qnetd_log_debug_new_client_connected(struct qnetd_client *client)
 }
 
 void
-qnetd_log_debug_dump_node_list(struct qnetd_client *client, const struct node_list *nodes)
-{
-	struct node_list_entry *node_info;
-
-	log(LOG_DEBUG, "  node list:");
-	TAILQ_FOREACH(node_info, nodes, entries) {
-		log(LOG_DEBUG, "    node_id = "UTILS_PRI_NODE_ID", "
-		    "data_center_id = "UTILS_PRI_DATACENTER_ID", "
-		    "node_state = %s", node_info->node_id, node_info->data_center_id,
-		    tlv_node_state_to_str(node_info->node_state));
-	}
-}
-
-void
 qnetd_log_debug_config_node_list_received(struct qnetd_client *client,
     uint32_t msg_seq_num, int config_version_set, uint64_t config_version,
     const struct node_list *nodes, int initial)
@@ -96,7 +83,7 @@ qnetd_log_debug_config_node_list_received(struct qnetd_client *client,
 		log(LOG_DEBUG, "  config version = " UTILS_PRI_CONFIG_VERSION, config_version);
 	}
 
-	qnetd_log_debug_dump_node_list(client, nodes);
+	log_common_debug_dump_node_list(nodes);
 }
 
 void
@@ -113,7 +100,7 @@ qnetd_log_debug_membership_node_list_received(struct qnetd_client *client,
 
 	log(LOG_DEBUG, "  heuristics = %s ", tlv_heuristics_to_str(heuristics));
 
-	qnetd_log_debug_dump_node_list(client, nodes);
+	log_common_debug_dump_node_list(nodes);
 }
 
 void
@@ -127,7 +114,7 @@ qnetd_log_debug_quorum_node_list_received(struct qnetd_client *client,
 	log(LOG_DEBUG, "  msg seq num = "UTILS_PRI_MSG_SEQ, msg_seq_num);
 	log(LOG_DEBUG, "  quorate = %u", quorate);
 
-	qnetd_log_debug_dump_node_list(client, nodes);
+	log_common_debug_dump_node_list(nodes);
 }
 
 void
