@@ -525,6 +525,8 @@ main(int argc, char * const argv[])
 	PRIntn address_family;
 	int lock_file;
 	int another_instance_running;
+	int res;
+	int log_target;
 
 	if (qnetd_advanced_settings_init(&advanced_settings) != 0) {
 		errx(1, "Can't alloc memory for advanced settings");
@@ -533,10 +535,14 @@ main(int argc, char * const argv[])
 	cli_parse(argc, argv, &host_addr, &host_port, &foreground, &debug_log, &bump_log_priority,
 	    &tls_supported, &client_cert_required, &max_clients, &address_family, &advanced_settings);
 
+	log_target = LOG_TARGET_SYSLOG;
 	if (foreground) {
-		log_init(QNETD_PROGRAM_NAME, LOG_TARGET_STDERR);
-	} else {
-		log_init(QNETD_PROGRAM_NAME, LOG_TARGET_SYSLOG);
+		log_target |= LOG_TARGET_STDERR;
+	}
+
+	res = log_init(QNETD_PROGRAM_NAME, log_target);
+	if (res == -1) {
+		errx(1, "Can't initialize logging");
 	}
 
 	log_set_debug(debug_log);
