@@ -32,6 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <stdlib.h>
 #include <syslog.h>
 #include <stdio.h>
 #include <string.h>
@@ -70,6 +71,7 @@ int
 log_init(const char *ident, int target, int syslog_facility)
 {
 
+	free(log_config_ident);
 	log_config_ident = strdup(ident);
 
 	if (log_config_ident == NULL) {
@@ -149,6 +151,9 @@ log_close(void)
 	if (log_config_target & LOG_TARGET_SYSLOG) {
 		closelog();
 	}
+
+	free(log_config_ident);
+	log_config_ident = NULL;
 }
 
 void
@@ -169,7 +174,9 @@ void
 log_set_target(int target, int syslog_facility)
 {
 
-	log_close();
+	if (log_config_target & LOG_TARGET_SYSLOG) {
+		closelog();
+	}
 
 	log_config_target = target;
 	log_config_syslog_facility = syslog_facility;
