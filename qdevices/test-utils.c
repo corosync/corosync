@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2018 Red Hat, Inc.
+ * Copyright (c) 2015-2019 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -76,6 +76,21 @@ main(void)
 
 	assert(utils_strtonum("test", -1000, 1000, &ll) == -1);
 	assert(utils_strtonum("12a", -1000, 1000, &ll) == -1);
+
+	assert(utils_parse_bool_str("on") == 1);
+	assert(utils_parse_bool_str("yes") == 1);
+	assert(utils_parse_bool_str("1") == 1);
+	assert(utils_parse_bool_str("ON") == 1);
+	assert(utils_parse_bool_str("YeS") == 1);
+
+	assert(utils_parse_bool_str("off") == 0);
+	assert(utils_parse_bool_str("no") == 0);
+	assert(utils_parse_bool_str("0") == 0);
+	assert(utils_parse_bool_str("oFf") == 0);
+
+	assert(utils_parse_bool_str("of") == -1);
+	assert(utils_parse_bool_str("noo") == -1);
+	assert(utils_parse_bool_str("01") == -1);
 
 	return (0);
 }
