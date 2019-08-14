@@ -72,6 +72,13 @@ vsyslog(int priority, const char *format, va_list ap)
 }
 
 void
+__vsyslog_chk(int priority, int flag, const char *format, va_list ap)
+{
+
+	vsyslog(priority, format, ap);
+}
+
+void
 closelog(void)
 {
 
