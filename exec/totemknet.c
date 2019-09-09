@@ -51,6 +51,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
+#include <pthread.h>
 #include <sched.h>
 #include <time.h>
 #include <sys/time.h>
@@ -171,6 +172,8 @@ struct totemknet_instance {
 
 	int logpipes[2];
 	int knet_fd;
+
+	pthread_mutex_t log_mutex;
 #ifdef HAVE_LIBNOZZLE
 	char *nozzle_name;
 	char *nozzle_ipaddr;
@@ -203,20 +206,36 @@ static void log_flush_messages (
 
 static void totemknet_instance_initialize (struct totemknet_instance *instance)
 {
+	int res;
+
 	memset (instance, 0, sizeof (struct totemknet_instance));
+	res = pthread_mutex_init(&instance->log_mutex, NULL);
+	/*
+	 * There is not too much else what can be done.
+	 */
+	assert(res == 0);
 }
+
+#define knet_log_printf_lock(level, subsys, function, file, line, format, args...)	\
+do {											\
+	(void)pthread_mutex_lock(&instance->log_mutex);					\
+	instance->totemknet_log_printf (						\
+		level, subsys, function, file, line,					\
+		(const char *)format, ##args);						\
+	(void)pthread_mutex_unlock(&instance->log_mutex);				\
+} while (0);
 
 #define knet_log_printf(level, format, args...)		\
 do {							\
-        instance->totemknet_log_printf (		\
+        knet_log_printf_lock (				\
 		level, instance->totemknet_subsys_id,	\
                 __FUNCTION__, __FILE__, __LINE__,	\
 		(const char *)format, ##args);		\
 } while (0);
 
-#define libknet_log_printf(level, format, args...)		\
+#define libknet_log_printf(level, format, args...)	\
 do {							\
-        instance->totemknet_log_printf (		\
+        knet_log_printf_lock (				\
 		level, instance->knet_subsys_id,	\
                 __FUNCTION__, "libknet.h", __LINE__,	\
 		(const char *)format, ##args);		\
@@ -602,6 +621,11 @@ finalise_error:
 	totemknet_stop_merge_detect_timeout(instance);
 
 	log_flush_messages(instance);
+
+	/*
+	 * Error is deliberately ignored
+	 */
+	(void)pthread_mutex_destroy(&instance->log_mutex);
 
 	return (res);
 }
