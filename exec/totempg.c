@@ -617,9 +617,17 @@ static void totempg_deliver_fn (
 	const char *data;
 	int datasize;
 	struct iovec iov_delv;
+	size_t expected_msg_len;
 
 	assembly = assembly_ref (nodeid);
 	assert (assembly);
+
+	if (msg_len < sizeof(struct totempg_mcast)) {
+		log_printf(LOG_WARNING,
+		    "Message (totempg_mcast) received from node %u is too short...  Ignoring.", nodeid);
+
+		return ;
+	}
 
 	/*
 	 * Assemble the header into one block of data and
@@ -635,14 +643,34 @@ static void totempg_deliver_fn (
 	datasize = sizeof (struct totempg_mcast) +
 		msg_count * sizeof (unsigned short);
 
+	if (msg_len < datasize) {
+		log_printf(LOG_WARNING,
+		    "Message (totempg_mcast datasize) received from node %u"
+		    " is too short...  Ignoring.", nodeid);
+
+		return ;
+	}
+
 	memcpy (header, msg, datasize);
 	data = msg;
 
 	msg_lens = (unsigned short *) (header + sizeof (struct totempg_mcast));
-	if (endian_conversion_required) {
-		for (i = 0; i < mcast->msg_count; i++) {
+	expected_msg_len = datasize;
+	for (i = 0; i < mcast->msg_count; i++) {
+		if (endian_conversion_required) {
 			msg_lens[i] = swab16 (msg_lens[i]);
 		}
+
+		expected_msg_len += msg_lens[i];
+	}
+
+	if (msg_len != expected_msg_len) {
+		log_printf(LOG_WARNING,
+		    "Message (totempg_mcast) received from node %u"
+		    " doesn't have expected length of %zu (has %u) bytes...  Ignoring.",
+		    nodeid, expected_msg_len, msg_len);
+
+		return ;
 	}
 
 	memcpy (&assembly->data[assembly->index], &data[datasize],
