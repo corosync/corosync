@@ -612,6 +612,7 @@ static void totempg_deliver_fn (
 		log_printf(LOG_WARNING,
 		    "Message (totempg_mcast) received from node " CS_PRI_NODE_ID " is too short...  Ignoring.", nodeid);
 
+		assert(0);
 		return ;
 	}
 
@@ -634,6 +635,7 @@ static void totempg_deliver_fn (
 		    "Message (totempg_mcast datasize) received from node " CS_PRI_NODE_ID
 		    " is too short...  Ignoring.", nodeid);
 
+		assert(0);
 		return ;
 	}
 
@@ -656,6 +658,7 @@ static void totempg_deliver_fn (
 		    " doesn't have expected length of %zu (has %u) bytes...  Ignoring.",
 		    nodeid, expected_msg_len, msg_len);
 
+		assert(0);
 		return ;
 	}
 
