@@ -578,6 +578,52 @@ static void display_nodes_data(nodeid_format_t nodeid_format, name_format_t name
 
 }
 
+static int display_cluster_data(void) {
+	int err;
+	char *strbuf = NULL;
+	uint64_t config_version = 0;
+
+	printf("Cluster information\n");
+	printf("-------------------\n");
+
+	if ((err = cmap_get_string(cmap_handle, "totem.cluster_name", &strbuf)) != CS_OK) {
+		return err;
+	}
+	if (strbuf) {
+		printf("Cluster Name:     %s\n", strbuf);
+		free(strbuf); strbuf = NULL;
+	}
+
+	if ((err = cmap_get_uint64(cmap_handle, "totem.config_version", &config_version)) != CS_OK) {
+		return err;
+	}
+	printf("Config Version:   %"PRIu64"\n", config_version);
+
+	err = cmap_get_string(cmap_handle, "totem.transport", &strbuf);
+	if (err == CS_OK) {
+		printf("Transport:        %s\n", strbuf);
+		free(strbuf); strbuf = NULL;
+	} else if (err == CS_ERR_NOT_EXIST) {
+		printf("Transport:        knet\n");
+	} else {
+		return err;
+	}
+
+	err = cmap_get_string(cmap_handle, "totem.secauth", &strbuf);
+	if (err == CS_OK) {
+		printf("Secauth:          %s\n", strbuf);
+		free(strbuf); strbuf = NULL;
+	} else if (err == CS_ERR_NOT_EXIST) {
+		printf("Secauth:          off\n");
+	} else {
+		return err;
+	}
+
+	printf("\n");
+
+	return CS_OK;
+}
+
 static int display_quorum_data(int is_quorate,
 			       nodeid_format_t nodeid_format, name_format_t name_format, sorttype_t sort_type,
 			       int loop)
@@ -698,6 +744,11 @@ quorum_err:
 		return EXIT_FAILURE;
 	}
 
+	err = display_cluster_data();
+	if (err != CS_OK) {
+		return EXIT_FAILURE;
+	}
+
 	err = display_quorum_data(is_quorate, nodeid_format, name_format, sort_type, 0);
 	if (err != CS_OK) {
 		return EXIT_FAILURE;
@@ -744,6 +795,12 @@ static int monitor_status(nodeid_format_t nodeid_format, name_format_t name_form
 					goto quorum_err;
 				}
 			}
+		}
+
+		err = display_cluster_data();
+		if (err != CS_OK) {
+			fprintf(stderr, "Unable to display totem cluster data: %s\n", cs_strerror(err));
+			goto quorum_err;
 		}
 
 		err = display_quorum_data(g_quorate, nodeid_format, name_format, sort_type, loop);
