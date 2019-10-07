@@ -128,6 +128,7 @@ struct totem_message_header {
 	char encapsulated;
 	unsigned int nodeid;
 	unsigned int target_nodeid;
+	unsigned int expected_msg_size;
 } __attribute__((packed));
 
 enum {

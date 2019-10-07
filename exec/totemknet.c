@@ -376,6 +376,7 @@ static inline void ucast_sendmsg (
 	struct iovec iovec;
 
 	header->target_nodeid = system_to->nodeid;
+	header->expected_msg_size = msg_len;
 
 	iovec.iov_base = (void *)msg;
 	iovec.iov_len = msg_len;
@@ -429,6 +430,7 @@ static inline void mcast_sendmsg (
 	iovec.iov_len = msg_len;
 
 	header->target_nodeid = 0;
+	header->expected_msg_size = msg_len;
 
 	/*
 	 * Build multicast message
@@ -683,6 +685,7 @@ static int data_deliver_fn (
 	struct sockaddr_storage system_from;
 	ssize_t msg_len;
 	int truncated_packet;
+	struct totem_message_header *header;
 
 	iov_recv.iov_base = instance->iov_buffer;
 	iov_recv.iov_len = KNET_MAX_PACKET_SIZE;
@@ -737,6 +740,15 @@ static int data_deliver_fn (
 		return (0);
 	}
 
+	header = (struct totem_message_header *)instance->iov_buffer;
+
+	if (msg_len != header->expected_msg_size) {
+		knet_log_printf(instance->totemknet_log_level_error,
+				"Received message doesn't have expected size - expected %u received %zu",
+				header->expected_msg_size, msg_len);
+
+		assert(0);
+	}
 	/*
 	 * Handle incoming message
 	 */
