@@ -5127,7 +5127,7 @@ void main_iface_change_fn (
 }
 
 void totemsrp_net_mtu_adjust (struct totem_config *totem_config) {
-	totem_config->net_mtu -= sizeof (struct mcast);
+	totem_config->net_mtu -= 2 * sizeof (struct mcast);
 }
 
 void totemsrp_service_ready_register (
