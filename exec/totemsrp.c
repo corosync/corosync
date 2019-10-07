@@ -803,7 +803,7 @@ static void totempg_mtu_changed(void *context, int net_mtu)
 {
 	struct totemsrp_instance *instance = context;
 
-	instance->totem_config->net_mtu = net_mtu - sizeof (struct mcast);
+	instance->totem_config->net_mtu = net_mtu - 2 * sizeof (struct mcast);
 
 	log_printf (instance->totemsrp_log_level_debug,
 		    "Net MTU changed to %d, new value is %d",
@@ -5112,7 +5112,7 @@ void main_iface_change_fn (
 }
 
 void totemsrp_net_mtu_adjust (struct totem_config *totem_config) {
-	totem_config->net_mtu -= sizeof (struct mcast);
+	totem_config->net_mtu -= 2 * sizeof (struct mcast);
 }
 
 void totemsrp_service_ready_register (
