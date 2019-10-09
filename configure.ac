@@ -325,6 +325,12 @@ AC_ARG_ENABLE([debug],
 	[  --enable-debug                  : enable debug build. ],
 	[ default="no" ])
 
+AC_ARG_WITH([sanitizers],
+	[AS_HELP_STRING([--with-sanitizers=...,...],
+			[enable SANitizer build, do *NOT* use for production. Only ASAN/UBSAN/TSAN are currently supported])],
+	[ SANITIZERS="$withval" ],
+	[ SANITIZERS="" ])
+
 AC_ARG_ENABLE([secure-build],
 	[  --enable-secure-build           : enable PIE/RELRO build. ],
 	[],
@@ -433,6 +439,35 @@ else
 	GDB_FLAGS="-g"
 fi
 
+# --- ASAN/UBSAN/TSAN (see man gcc) ---
+# when using SANitizers, we need to pass the -fsanitize..
+# to both CFLAGS and LDFLAGS. The CFLAGS/LDFLAGS must be
+# specified as first in the list or there will be runtime
+# issues (for example user has to LD_PRELOAD asan for it to work
+# properly).
+
+if test -n "${SANITIZERS}"; then
+	SANITIZERS=$(echo $SANITIZERS | sed -e 's/,/ /g')
+	for SANITIZER in $SANITIZERS; do
+		case $SANITIZER in
+			asan|ASAN)
+				SANITIZERS_CFLAGS="$SANITIZERS_CFLAGS -fsanitize=address"
+				SANITIZERS_LDFLAGS="$SANITIZERS_LDFLAGS -fsanitize=address -lasan"
+				AC_CHECK_LIB([asan],[main],,AC_MSG_ERROR([Unable to find libasan]))
+				;;
+			ubsan|UBSAN)
+				SANITIZERS_CFLAGS="$SANITIZERS_CFLAGS -fsanitize=undefined"
+				SANITIZERS_LDFLAGS="$SANITIZERS_LDFLAGS -fsanitize=undefined -lubsan"
+				AC_CHECK_LIB([ubsan],[main],,AC_MSG_ERROR([Unable to find libubsan]))
+				;;
+			tsan|TSAN)
+				SANITIZERS_CFLAGS="$SANITIZERS_CFLAGS -fsanitize=thread"
+				SANITIZERS_LDFLAGS="$SANITIZERS_LDFLAGS -fsanitize=thread -ltsan"
+				AC_CHECK_LIB([tsan],[main],,AC_MSG_ERROR([Unable to find libtsan]))
+				;;
+		esac
+	done
+fi
 
 # Look for dbus-1
 if test "x${enable_dbus}" = xyes; then
@@ -681,12 +716,12 @@ INCLUDE_DIRS="$INCLUDE_DIRS -I\$(top_builddir)/include -I\$(top_srcdir)/include"
 INCLUDE_DIRS="$INCLUDE_DIRS -I\$(top_builddir)/include/corosync -I\$(top_srcdir)/include/corosync"
 
 # final build of *FLAGS
-CFLAGS="$ENV_CFLAGS $lt_prog_compiler_pic $SEC_FLAGS $OPT_CFLAGS $GDB_FLAGS \
+CFLAGS="$SANITIZERS_CFLAGS $ENV_CFLAGS $lt_prog_compiler_pic $SEC_FLAGS $OPT_CFLAGS $GDB_FLAGS \
 	$COVERAGE_CFLAGS $EXTRA_WARNINGS \
 	$WERROR_CFLAGS $LIBQB_CFLAGS \
 	$SNMP_INCLUDES"
 CPPFLAGS="$ENV_CPPFLAGS $ANSI_CPPFLAGS $INCLUDE_DIRS"
-LDFLAGS="$ENV_LDFLAGS $lt_prog_compiler_pic $SEC_LDFLAGS $COVERAGE_LDFLAGS"
+LDFLAGS="$SANITIZERS_LDFLAGS $ENV_LDFLAGS $lt_prog_compiler_pic $SEC_LDFLAGS $COVERAGE_LDFLAGS"
 
 if test "$ap_cv_cc_as_needed" = "yes"; then
   LDFLAGS="$LDFLAGS -Wl,--as-needed"
