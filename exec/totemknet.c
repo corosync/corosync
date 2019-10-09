@@ -302,9 +302,14 @@ static int dst_host_filter_callback_fn(void *private_data,
 				       knet_node_id_t *dst_host_ids,
 				       size_t *dst_host_ids_entries)
 {
+	struct totemknet_instance *instance = (struct totemknet_instance *)private_data;
 	struct totem_message_header *header = (struct totem_message_header *)outdata;
 	int res;
 
+	if (outdata_len != header->expected_msg_size) {
+		knet_log_printf (LOGSYS_LEVEL_DEBUG, "DEBUG: dst_host_filter missing bytes in %u: received: %zu expected: %u", tx_rx, outdata_len, header->expected_msg_size);
+		assert(0);
+	}
 #ifdef HAVE_LIBNOZZLE
 	if (*channel != 0) {
 		return ether_host_filter_fn(private_data,
