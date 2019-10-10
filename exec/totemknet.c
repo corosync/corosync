@@ -216,6 +216,21 @@ static void totemknet_instance_initialize (struct totemknet_instance *instance)
 	assert(res == 0);
 }
 
+static uint32_t compute_chsum(const unsigned char *data, uint32_t data_len)
+{
+	unsigned int i;
+	unsigned int checksum = 0;
+
+	for (i = 0; i < data_len; i++) {
+		if (checksum & 1) {
+			checksum |= 0x10000;
+		}
+
+		checksum = ((checksum >> 1) + (unsigned char)data[i]) & 0xffff;
+	}
+	return (checksum);
+}
+
 #define knet_log_printf_lock(level, subsys, function, file, line, format, args...)	\
 do {											\
 	(void)pthread_mutex_lock(&instance->log_mutex);					\
@@ -382,6 +397,7 @@ static inline void ucast_sendmsg (
 
 	header->target_nodeid = system_to->nodeid;
 	header->expected_msg_size = msg_len;
+	header->chsum = compute_chsum((unsigned char *)msg + sizeof(struct totem_message_header), msg_len - sizeof(struct totem_message_header));
 
 	iovec.iov_base = (void *)msg;
 	iovec.iov_len = msg_len;
@@ -436,6 +452,7 @@ static inline void mcast_sendmsg (
 
 	header->target_nodeid = 0;
 	header->expected_msg_size = msg_len;
+	header->chsum = compute_chsum((unsigned char *)msg + sizeof(struct totem_message_header), msg_len - sizeof(struct totem_message_header));
 
 	/*
 	 * Build multicast message
@@ -754,6 +771,15 @@ static int data_deliver_fn (
 
 		assert(0);
 	}
+
+	if (header->chsum != compute_chsum((unsigned char *)instance->iov_buffer + sizeof(struct totem_message_header), msg_len - sizeof(struct totem_message_header))) {
+		knet_log_printf(instance->totemknet_log_level_error,
+				"Received message doesn't have expected chsum");
+
+		assert(0);
+
+	}
+
 	/*
 	 * Handle incoming message
 	 */

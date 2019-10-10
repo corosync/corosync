@@ -129,6 +129,7 @@ struct totem_message_header {
 	unsigned int nodeid;
 	unsigned int target_nodeid;
 	unsigned int expected_msg_size;
+	uint32_t chsum;
 } __attribute__((packed));
 
 enum {
