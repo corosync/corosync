@@ -122,6 +122,7 @@ struct totem_logging_configuration {
 #define TOTEM_MH_VERSION	0x03
 
 struct totem_message_header {
+	uint32_t chsum;
 	unsigned short magic;
 	char version;
 	char type;
@@ -129,7 +130,6 @@ struct totem_message_header {
 	unsigned int nodeid;
 	unsigned int target_nodeid;
 	unsigned int expected_msg_size;
-	uint32_t chsum;
 } __attribute__((packed));
 
 enum {

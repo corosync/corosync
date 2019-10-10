@@ -397,7 +397,7 @@ static inline void ucast_sendmsg (
 
 	header->target_nodeid = system_to->nodeid;
 	header->expected_msg_size = msg_len;
-	header->chsum = compute_chsum((unsigned char *)msg + sizeof(struct totem_message_header), msg_len - sizeof(struct totem_message_header));
+	header->chsum = compute_chsum((unsigned char *)msg + sizeof(header->chsum), msg_len - sizeof(header->chsum));
 
 	iovec.iov_base = (void *)msg;
 	iovec.iov_len = msg_len;
@@ -434,6 +434,8 @@ static inline void ucast_sendmsg (
 		KNET_LOGSYS_PERROR (errno, instance->totemknet_log_level_debug,
 				    "sendmsg(ucast) failed (non-critical)");
 	}
+
+	assert(header->chsum == compute_chsum((unsigned char *)msg + sizeof(header->chsum), msg_len - sizeof(header->chsum)));
 }
 
 static inline void mcast_sendmsg (
@@ -452,7 +454,7 @@ static inline void mcast_sendmsg (
 
 	header->target_nodeid = 0;
 	header->expected_msg_size = msg_len;
-	header->chsum = compute_chsum((unsigned char *)msg + sizeof(struct totem_message_header), msg_len - sizeof(struct totem_message_header));
+	header->chsum = compute_chsum((unsigned char *)msg + sizeof(header->chsum), msg_len - sizeof(header->chsum));
 
 	/*
 	 * Build multicast message
@@ -484,6 +486,8 @@ static inline void mcast_sendmsg (
 		knet_log_printf (LOGSYS_LEVEL_DEBUG, "totemknet: mcast_send sendmsg returned %d", res);
 	}
 
+	assert(header->chsum == compute_chsum((unsigned char *)msg + sizeof(header->chsum), msg_len - sizeof(header->chsum)));
+
 	if (!only_active || instance->send_merge_detect_message) {
 		/*
 		 * Current message was sent to all nodes
@@ -491,6 +495,8 @@ static inline void mcast_sendmsg (
 		instance->merge_detect_messages_sent_before_timeout++;
 		instance->send_merge_detect_message = 0;
 	}
+
+	assert(header->chsum == compute_chsum((unsigned char *)msg + sizeof(header->chsum), msg_len - sizeof(header->chsum)));
 }
 
 static int node_compare(const void *aptr, const void *bptr)
@@ -772,7 +778,7 @@ static int data_deliver_fn (
 		assert(0);
 	}
 
-	if (header->chsum != compute_chsum((unsigned char *)instance->iov_buffer + sizeof(struct totem_message_header), msg_len - sizeof(struct totem_message_header))) {
+	if (header->chsum != compute_chsum((unsigned char *)instance->iov_buffer + sizeof(header->chsum), msg_len - sizeof(header->chsum))) {
 		knet_log_printf(instance->totemknet_log_level_error,
 				"Received message doesn't have expected chsum");
 
