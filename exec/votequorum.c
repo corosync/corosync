@@ -1682,6 +1682,7 @@ static int votequorum_exec_send_nodeinfo(uint32_t nodeid)
 		return -1;
 	}
 
+	memset(&req_exec_quorum_nodeinfo, 0, sizeof(req_exec_quorum_nodeinfo));
 	req_exec_quorum_nodeinfo.nodeid = nodeid;
 	req_exec_quorum_nodeinfo.votes = node->votes;
 	req_exec_quorum_nodeinfo.expected_votes = node->expected_votes;

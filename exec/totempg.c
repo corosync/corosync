@@ -920,6 +920,8 @@ static int mcast_msg (
 		return(-1);
 	}
 
+	memset(&mcast, 0, sizeof(mcast));
+
 	mcast.header.version = 0;
 	for (i = 0; i < iov_len; ) {
 		mcast.fragmented = 0;

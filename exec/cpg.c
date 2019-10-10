@@ -1086,6 +1086,8 @@ static int cpg_node_joinleave_send (unsigned int pid, const mar_cpg_name_t *grou
 	struct iovec req_exec_cpg_iovec;
 	int result;
 
+	memset(&req_exec_cpg_procjoin, 0, sizeof(req_exec_cpg_procjoin));
+
 	memcpy(&req_exec_cpg_procjoin.group_name, group_name, sizeof(mar_cpg_name_t));
 	req_exec_cpg_procjoin.pid = pid;
 	req_exec_cpg_procjoin.reason = reason;
@@ -1490,7 +1492,8 @@ static int cpg_exec_send_joinlist(void)
 	int count = 0;
 	struct qb_list_head *iter;
 	struct qb_ipc_response_header *res;
- 	char *buf;
+	char *buf;
+	size_t buf_size;
 	struct join_list_entry *jle;
 	struct iovec req_exec_cpg_iovec;
 
@@ -1506,11 +1509,13 @@ static int cpg_exec_send_joinlist(void)
 	if (!count)
 		return 0;
 
-	buf = alloca(sizeof(struct qb_ipc_response_header) + sizeof(struct join_list_entry) * count);
+	buf_size = sizeof(struct qb_ipc_response_header) + sizeof(struct join_list_entry) * count;
+	buf = alloca(buf_size);
 	if (!buf) {
 		log_printf(LOGSYS_LEVEL_WARNING, "Unable to allocate joinlist buffer");
 		return -1;
 	}
+	memset(buf, 0, buf_size);
 
 	jle = (struct join_list_entry *)(buf + sizeof(struct qb_ipc_response_header));
 	res = (struct qb_ipc_response_header *)buf;
@@ -1977,6 +1982,8 @@ static void message_handler_req_lib_cpg_mcast (void *conn, const void *message)
 	}
 
 	if (error == CS_OK) {
+		memset(&req_exec_cpg_mcast, 0, sizeof(req_exec_cpg_mcast));
+
 		req_exec_cpg_mcast.header.size = sizeof(req_exec_cpg_mcast) + msglen;
 		req_exec_cpg_mcast.header.id = SERVICE_ID_MAKE(CPG_SERVICE,
 			MESSAGE_REQ_EXEC_CPG_MCAST);
