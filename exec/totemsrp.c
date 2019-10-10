@@ -2401,6 +2401,7 @@ static void memb_state_recovery_enter (
 	// TODO	 LEAK
 		message_item.mcast = totemsrp_buffer_alloc (instance);
 		assert (message_item.mcast);
+		memset(message_item.mcast, 0, sizeof (struct mcast));
 		message_item.mcast->header.magic = TOTEM_MH_MAGIC;
 		message_item.mcast->header.version = TOTEM_MH_VERSION;
 		message_item.mcast->header.type = MESSAGE_TYPE_MCAST;

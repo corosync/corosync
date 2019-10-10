@@ -335,6 +335,8 @@ static void barrier_message_transmit (void)
 	struct iovec iovec;
 	struct req_exec_barrier_message req_exec_barrier_message;
 
+	memset(&req_exec_barrier_message, 0, sizeof(req_exec_barrier_message));
+
 	req_exec_barrier_message.header.size = sizeof (struct req_exec_barrier_message);
 	req_exec_barrier_message.header.id = MESSAGE_REQ_SYNC_BARRIER;
 
@@ -435,6 +437,8 @@ static void sync_servicelist_build_enter (
 	int i;
 	int res;
 	struct sync_callbacks sync_callbacks;
+
+	memset(&service_build, 0, sizeof(service_build));
 
 	my_state = SYNC_SERVICELIST_BUILD;
 	for (i = 0; i < member_list_entries; i++) {
