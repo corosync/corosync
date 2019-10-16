@@ -81,7 +81,7 @@
 #define MISS_COUNT_CONST			5
 #define BLOCK_UNLISTED_IPS			1
 
-/* These currently match the defaults in libknet.h */
+/* Currently all but PONG_COUNT match the defaults in libknet.h */
 #define KNET_PING_INTERVAL                      1000
 #define KNET_PING_TIMEOUT                       2000
 #define KNET_PING_PRECISION                     2048
