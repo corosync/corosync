@@ -41,11 +41,6 @@
 
 #define CFG_INTERFACE_NAME_MAX_LEN		128
 #define CFG_INTERFACE_STATUS_MAX_LEN		512
-/*
- * Too keep future ABI compatibility, this value
- * is intentionaly bigger then INTERFACE_MAX
- */
-#define CFG_MAX_INTERFACES			16
 
 /**
  * @brief The req_lib_cfg_types enum

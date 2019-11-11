@@ -305,7 +305,7 @@ static void showaddrs_do(unsigned int nodeid)
 	corosync_cfg_callbacks_t callbacks;
 	int numaddrs;
 	int i;
-	corosync_cfg_node_address_t addrs[INTERFACE_MAX];
+	corosync_cfg_node_address_t addrs[CFG_MAX_INTERFACES];
 
 
 	result = corosync_cfg_initialize (&handle, &callbacks);
@@ -314,7 +314,7 @@ static void showaddrs_do(unsigned int nodeid)
 		exit (1);
 	}
 
-	if (corosync_cfg_get_node_addrs(handle, nodeid, INTERFACE_MAX, &numaddrs, addrs) == CS_OK) {
+	if (corosync_cfg_get_node_addrs(handle, nodeid, CFG_MAX_INTERFACES, &numaddrs, addrs) == CS_OK) {
 		for (i=0; i<numaddrs; i++) {
 			char buf[INET6_ADDRSTRLEN];
 			struct sockaddr_storage *ss = (struct sockaddr_storage *)addrs[i].address;
