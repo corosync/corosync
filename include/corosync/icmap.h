@@ -315,6 +315,7 @@ extern cs_error_t icmap_get_int64_r(const icmap_map_t map, const char *key_name,
 extern cs_error_t icmap_get_uint64_r(const icmap_map_t map, const char *key_name, uint64_t *u64);
 extern cs_error_t icmap_get_float_r(const icmap_map_t map, const char *key_name, float *flt);
 extern cs_error_t icmap_get_double_r(const icmap_map_t map, const char *key_name, double *dbl);
+extern cs_error_t icmap_get_string_r(const icmap_map_t map, const char *key_name, char **str);
 
 /**
  * @brief Shortcut for icmap_get for string type.
