@@ -730,6 +730,40 @@ cs_error_t icmap_get(
 	return (icmap_get_r(icmap_global_map, key_name, value, value_len, type));
 }
 
+cs_error_t icmap_get_string_r(icmap_map_t map, const char *key_name, char **str)
+{
+	cs_error_t res;
+	size_t str_len;
+	icmap_value_types_t type;
+
+	res = icmap_get_r(map, key_name, NULL, &str_len, &type);
+	if (res != CS_OK || type != ICMAP_VALUETYPE_STRING) {
+		if (res == CS_OK) {
+			res = CS_ERR_INVALID_PARAM;
+		}
+
+		goto return_error;
+	}
+
+	*str = malloc(str_len);
+	if (*str == NULL) {
+		res = CS_ERR_NO_MEMORY;
+
+		goto return_error;
+	}
+
+	res = icmap_get_r(map, key_name, *str, &str_len, &type);
+	if (res != CS_OK) {
+		free(*str);
+		goto return_error;
+	}
+
+	return (CS_OK);
+
+return_error:
+	return (res);
+}
+
 static cs_error_t icmap_get_int_r(
 	const icmap_map_t map,
 	const char *key_name,
@@ -744,7 +778,7 @@ static cs_error_t icmap_get_int_r(
 	key_size = sizeof(key_value);
 	memset(key_value, 0, key_size);
 
-	err = icmap_get(key_name, key_value, &key_size, &key_type);
+	err = icmap_get_r(map, key_name, key_value, &key_size, &key_type);
 	if (err != CS_OK)
 		return (err);
 
@@ -817,6 +851,12 @@ cs_error_t icmap_get_double_r(const icmap_map_t map, const char *key_name, doubl
 	return (icmap_get_int_r(map, key_name, dbl, ICMAP_VALUETYPE_DOUBLE));
 }
 
+cs_error_t icmap_get_string(const char *key_name, char **str)
+{
+
+	return (icmap_get_string_r(icmap_global_map, key_name, str));
+}
+
 cs_error_t icmap_get_int8(const char *key_name, int8_t *i8)
 {
 
@@ -875,40 +915,6 @@ cs_error_t icmap_get_double(const char *key_name, double *dbl)
 {
 
 	return (icmap_get_double_r(icmap_global_map, key_name, dbl));
-}
-
-cs_error_t icmap_get_string(const char *key_name, char **str)
-{
-	cs_error_t res;
-	size_t str_len;
-	icmap_value_types_t type;
-
-	res = icmap_get(key_name, NULL, &str_len, &type);
-	if (res != CS_OK || type != ICMAP_VALUETYPE_STRING) {
-		if (res == CS_OK) {
-			res = CS_ERR_INVALID_PARAM;
-		}
-
-		goto return_error;
-	}
-
-	*str = malloc(str_len);
-	if (*str == NULL) {
-		res = CS_ERR_NO_MEMORY;
-
-		goto return_error;
-	}
-
-	res = icmap_get(key_name, *str, &str_len, &type);
-	if (res != CS_OK) {
-		free(*str);
-		goto return_error;
-	}
-
-	return (CS_OK);
-
-return_error:
-	return (res);
 }
 
 cs_error_t icmap_adjust_int_r(
