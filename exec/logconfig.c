@@ -523,7 +523,6 @@ static int corosync_main_config_set (
 	else {
 		if (logsys_config_debug_set (subsys, LOGSYS_DEBUG_OFF) < 0) {
 			error_reason = "unable to set debug off";
-			free(value);
 			goto parse_error;
 		}
 	}
