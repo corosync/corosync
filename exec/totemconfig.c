@@ -470,6 +470,8 @@ static int totem_volatile_config_validate (
 					  "for a multi-link configuration, all nodes must have a 'name' attribute");
 				goto parse_error;
 			}
+
+			free(name_str);
 		}
 
 		for (i=0; i < INTERFACE_MAX; i++) {
@@ -1445,6 +1447,7 @@ static int get_interface_params(struct totem_config *totem_config,
 	char *str;
 	char *cluster_name = NULL;
 	enum totem_ip_version_enum tmp_ip_version = TOTEM_IP_VERSION_4;
+	int ret = 0;
 
 	if (reload) {
 		for (i=0; i<INTERFACE_MAX; i++) {
@@ -1479,14 +1482,13 @@ static int get_interface_params(struct totem_config *totem_config,
 		linknumber = atoi(linknumber_key);
 
 		if (linknumber >= INTERFACE_MAX) {
-			free(cluster_name);
-
 			snprintf (error_string_response, sizeof(error_string_response),
 			    "parse error in config: interface ring number %u is bigger than allowed maximum %u\n",
 			    linknumber, INTERFACE_MAX - 1);
 
 			*error_string = error_string_response;
-			return -1;
+			ret = -1;
+			goto out;
 		}
 
 		/* These things are only valid for the initial read */
@@ -1505,7 +1507,8 @@ static int get_interface_params(struct totem_config *totem_config,
 					*error_string = error_string_response;
 					free(str);
 
-					return -1;
+					ret = -1;
+					goto out;
 				}
 
 				free(str);
@@ -1524,7 +1527,8 @@ static int get_interface_params(struct totem_config *totem_config,
 					*error_string = error_string_response;
 					free(str);
 
-					return -1;
+					ret = -1;
+					goto out;
 				}
 
 				free(str);
@@ -1594,7 +1598,8 @@ static int get_interface_params(struct totem_config *totem_config,
 				}
 				else {
 					*error_string = "Unrecognised knet_transport. expected 'udp' or 'sctp'";
-					return -1;
+					ret = -1;
+					goto out;
 				}
 			}
 		}
@@ -1652,9 +1657,9 @@ static int get_interface_params(struct totem_config *totem_config,
 					*error_string = error_string_response;
 
 					icmap_iter_finalize(member_iter);
-					icmap_iter_finalize(iter);
 					free(str);
-					return -1;
+					ret = -1;
+					goto out;
 				}
 
 				free(str);
@@ -1665,9 +1670,12 @@ static int get_interface_params(struct totem_config *totem_config,
 		totem_config->interfaces[linknumber].member_count = member_count;
 
 	}
-	icmap_iter_finalize(iter);
 
-	return 0;
+out:
+	icmap_iter_finalize(iter);
+	free(cluster_name);
+
+	return (ret);
 }
 
 extern int totem_config_read (
