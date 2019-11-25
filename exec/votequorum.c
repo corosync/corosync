@@ -1271,10 +1271,10 @@ static char *votequorum_readconfig(int runtime)
 	/*
 	 * gather basic data here
 	 */
-	icmap_get_uint32("quorum.expected_votes", &expected_votes);
+	(void)icmap_get_uint32("quorum.expected_votes", &expected_votes);
 	have_nodelist = votequorum_read_nodelist_configuration(&node_votes, &node_count, &node_expected_votes);
 	have_qdevice = votequorum_qdevice_is_configured(&qdevice_votes);
-	icmap_get_uint8("quorum.two_node", &two_node);
+	(void)icmap_get_uint8("quorum.two_node", &two_node);
 
 	/*
 	 * do config verification and enablement
@@ -1319,13 +1319,13 @@ static char *votequorum_readconfig(int runtime)
 			wait_for_all = 1;
 		}
 
-		icmap_get_uint8("quorum.allow_downscale", &allow_downscale);
-		icmap_get_uint8("quorum.wait_for_all", &wait_for_all);
-		icmap_get_uint8("quorum.last_man_standing", &last_man_standing);
-		icmap_get_uint32("quorum.last_man_standing_window", &last_man_standing_window);
-		icmap_get_uint8("quorum.expected_votes_tracking", &ev_tracking);
-		icmap_get_uint8("quorum.auto_tie_breaker", &atb);
-		icmap_get_string("quorum.auto_tie_breaker_node", &atb_string);
+		(void)icmap_get_uint8("quorum.allow_downscale", &allow_downscale);
+		(void)icmap_get_uint8("quorum.wait_for_all", &wait_for_all);
+		(void)icmap_get_uint8("quorum.last_man_standing", &last_man_standing);
+		(void)icmap_get_uint32("quorum.last_man_standing_window", &last_man_standing_window);
+		(void)icmap_get_uint8("quorum.expected_votes_tracking", &ev_tracking);
+		(void)icmap_get_uint8("quorum.auto_tie_breaker", &atb);
+		(void)icmap_get_string("quorum.auto_tie_breaker_node", &atb_string);
 
 		/* auto_tie_breaker defaults to LOWEST */
 		if (atb) {
@@ -1517,7 +1517,7 @@ static char *votequorum_readconfig(int runtime)
 		us->expected_votes = node_expected_votes;
 	} else {
 		us->votes = 1;
-		icmap_get_uint32("quorum.votes", &us->votes);
+		(void)icmap_get_uint32("quorum.votes", &us->votes);
 	}
 
 	if (expected_votes) {
@@ -1568,7 +1568,7 @@ static void votequorum_refresh_config(
 		return ;
 	}
 
-	icmap_get_uint8("quorum.cancel_wait_for_all", &cancel_wfa);
+	(void)icmap_get_uint8("quorum.cancel_wait_for_all", &cancel_wfa);
 	if (strcmp(key_name, "quorum.cancel_wait_for_all") == 0 &&
 	    cancel_wfa >= 1) {
 	        icmap_set_uint8("quorum.cancel_wait_for_all", 0);
