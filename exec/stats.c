@@ -233,6 +233,8 @@ static void stats_map_set_value(struct cs_stats_conv *conv,
 		}
 	}
 	if (value) {
+		assert(value_len != NULL);
+
 		memcpy(value, (char *)(stat_array) + conv->offset, *value_len);
 	}
 }
