@@ -618,6 +618,8 @@ reply_send:
 		res_lib_cmap_iter_next.value_len = value_len;
 		res_lib_cmap_iter_next.type = type;
 
+		assert(strlen(res) <= sizeof(res_lib_cmap_iter_next.key_name.value));
+
 		memcpy(res_lib_cmap_iter_next.key_name.value, res, strlen(res));
 	        res_lib_cmap_iter_next.key_name.length = strlen(res);
 	}
@@ -677,6 +679,8 @@ static void cmap_notify_fn(int32_t event,
 	res_lib_cmap_notify_callback.event = event;
 	res_lib_cmap_notify_callback.key_name.length = strlen(key_name);
 	res_lib_cmap_notify_callback.track_inst_handle = cmap_track_user_data->track_inst_handle;
+
+	assert(strlen(key_name) <= sizeof(res_lib_cmap_notify_callback.key_name.value));
 
 	memcpy(res_lib_cmap_notify_callback.key_name.value, key_name, strlen(key_name));
 
@@ -834,6 +838,9 @@ static cs_error_t cmap_mcast_send(enum cmap_mcast_reason reason, int argc, char 
 		item->value_type = value_type;
 		item->value_len = value_len;
 		item->key_name.length = strlen(argv[i]);
+
+		assert(strlen(argv[i]) < sizeof(item->key_name.value));
+
 		strcpy((char *)item->key_name.value, argv[i]);
 
 		if (value_type != ICMAP_VALUETYPE_NOT_EXIST) {
