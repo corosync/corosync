@@ -437,7 +437,6 @@ static void cpg_test (
 	int delay_time,
 	int print_time)
 {
-	struct timeval tv1, tv2, tv_elapsed;
 	struct iovec iov;
 	unsigned int res;
 
@@ -468,8 +467,6 @@ static void cpg_test (
 		}
 		usleep(delay_time*1000);
 	} while (alarm_notice == 0 && (res == CS_OK || res == CS_ERR_TRY_AGAIN) && stopped == 0);
-	gettimeofday (&tv2, NULL);
-	timersub (&tv2, &tv1, &tv_elapsed);
 
 	if (!quiet) {
 		if (machine_readable) {
