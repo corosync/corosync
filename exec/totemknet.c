@@ -1022,9 +1022,16 @@ int totemknet_initialize (
 	if (strcmp(instance->totem_config->crypto_cipher_type, "none") != 0) {
 		struct knet_handle_crypto_cfg crypto_cfg;
 
+		assert(strlen(instance->totem_config->crypto_model) < sizeof(crypto_cfg.crypto_model));
 		strcpy(crypto_cfg.crypto_model, instance->totem_config->crypto_model);
+
+		assert(strlen(instance->totem_config->crypto_cipher_type) < sizeof(crypto_cfg.crypto_cipher_type));
 		strcpy(crypto_cfg.crypto_cipher_type, instance->totem_config->crypto_cipher_type);
+
+		assert(strlen(instance->totem_config->crypto_hash_type) < sizeof(crypto_cfg.crypto_hash_type));
 		strcpy(crypto_cfg.crypto_hash_type, instance->totem_config->crypto_hash_type);
+
+		assert(instance->totem_config->private_key_len <= sizeof(crypto_cfg.private_key));
 		memcpy(crypto_cfg.private_key, instance->totem_config->private_key, instance->totem_config->private_key_len);
 		crypto_cfg.private_key_len = instance->totem_config->private_key_len;
 
@@ -1450,7 +1457,9 @@ int totemknet_reconfigure (
 	int res = 0;
 
 	if (totem_config->knet_compression_model) {
+		assert(strlen(totem_config->knet_compression_model) < sizeof(compress_cfg.compress_model));
 		strcpy(compress_cfg.compress_model, totem_config->knet_compression_model);
+
 		compress_cfg.compress_threshold = totem_config->knet_compression_threshold;
 		compress_cfg.compress_level = totem_config->knet_compression_level;
 
