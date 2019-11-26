@@ -462,6 +462,9 @@ static void sync_servicelist_build_enter (
 		}
 		my_service_list[my_service_list_entries].state = PROCESS;
 		my_service_list[my_service_list_entries].service_id = i;
+
+		assert(strlen(sync_callbacks.name) < sizeof(my_service_list[my_service_list_entries].name));
+
 		strcpy (my_service_list[my_service_list_entries].name,
 			sync_callbacks.name);
 		my_service_list[my_service_list_entries].sync_init = sync_callbacks.sync_init;
