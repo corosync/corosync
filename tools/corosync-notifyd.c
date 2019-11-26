@@ -382,18 +382,29 @@ static void _cs_cmap_link_added_removed (
 	void *user_data)
 {
 	struct track_item *track_item;
+	cs_error_t err;
 
 	/* Add/remove a tracker for a new/removed knet link */
 	if (strstr(key_name, ".connected")) {
 		if (event == CMAP_TRACK_ADD) {
+			assert(strlen(key_name) < sizeof(track_item->key_name));
 
 			track_item = malloc(sizeof(struct track_item));
 			if (!track_item) {
+				qb_log(LOG_WARNING, "Can't alloc track_item for new/removed knet link");
 				return;
 			}
-			cmap_track_add(stats_handle, key_name, CMAP_TRACK_MODIFY, _cs_cmap_link_faulty_key_changed, NULL, &track_handle);
+			err = cmap_track_add(stats_handle, key_name, CMAP_TRACK_MODIFY,
+			    _cs_cmap_link_faulty_key_changed, NULL, &track_handle);
+			if (err != CS_OK) {
+				qb_log(LOG_WARNING, "Can't add tracker for new/removed knet link");
+
+				free(track_item);
+				return ;
+			}
 
 			strcpy(track_item->key_name, key_name);
+
 			track_item->track_handle = track_handle;
 			qb_map_put(tracker_map, track_item->key_name, track_item);
 		} else {
