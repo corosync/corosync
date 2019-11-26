@@ -326,7 +326,7 @@ cs_error_t stats_map_get(const char *key_name,
 			break;
 		case STAT_KNET_HANDLE:
 			res = totemknet_handle_get_stats(&knet_handle_stats);
-			if (res) {
+			if (res != CS_OK) {
 				return res;
 			}
 			stats_map_set_value(statinfo, &knet_handle_stats, value, value_len, type);

@@ -1515,12 +1515,19 @@ int totemknet_link_get_status (
 int totemknet_handle_get_stats (
 	struct knet_handle_stats *stats)
 {
+	int res;
+
 	/* We are probably not using knet */
 	if (!global_instance) {
 		return CS_ERR_NOT_EXIST;
 	}
 
-	return knet_handle_get_stats(global_instance->knet_handle, stats, sizeof(struct knet_handle_stats));
+	res = knet_handle_get_stats(global_instance->knet_handle, stats, sizeof(struct knet_handle_stats));
+	if (res != 0) {
+		return (qb_to_cs_error(-errno));
+	}
+
+	return CS_OK;
 }
 
 static void timer_function_merge_detect_timeout (
