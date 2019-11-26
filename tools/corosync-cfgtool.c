@@ -302,13 +302,12 @@ static void showaddrs_do(unsigned int nodeid)
 {
 	cs_error_t result;
 	corosync_cfg_handle_t handle;
-	corosync_cfg_callbacks_t callbacks;
 	int numaddrs;
 	int i;
 	corosync_cfg_node_address_t addrs[INTERFACE_MAX];
 
 
-	result = corosync_cfg_initialize (&handle, &callbacks);
+	result = corosync_cfg_initialize (&handle, NULL);
 	if (result != CS_OK) {
 		printf ("Could not initialize corosync configuration API error %d\n", result);
 		exit (1);
