@@ -1713,7 +1713,11 @@ static int votequorum_exec_send_qdevice_reconfigure(const char *oldname, const c
 
 	req_exec_quorum_qdevice_reconfigure.header.id = SERVICE_ID_MAKE(VOTEQUORUM_SERVICE, MESSAGE_REQ_EXEC_VOTEQUORUM_QDEVICE_RECONFIGURE);
 	req_exec_quorum_qdevice_reconfigure.header.size = sizeof(req_exec_quorum_qdevice_reconfigure);
+
+	assert(strlen(oldname) < sizeof(req_exec_quorum_qdevice_reconfigure.oldname));
 	strcpy(req_exec_quorum_qdevice_reconfigure.oldname, oldname);
+
+	assert(strlen(newname) < sizeof(req_exec_quorum_qdevice_reconfigure.newname));
 	strcpy(req_exec_quorum_qdevice_reconfigure.newname, newname);
 
 	iov[0].iov_base = (void *)&req_exec_quorum_qdevice_reconfigure;
@@ -1736,6 +1740,8 @@ static int votequorum_exec_send_qdevice_reg(uint32_t operation, const char *qdev
 	req_exec_quorum_qdevice_reg.header.id = SERVICE_ID_MAKE(VOTEQUORUM_SERVICE, MESSAGE_REQ_EXEC_VOTEQUORUM_QDEVICE_REG);
 	req_exec_quorum_qdevice_reg.header.size = sizeof(req_exec_quorum_qdevice_reg);
 	req_exec_quorum_qdevice_reg.operation = operation;
+
+	assert(strlen(qdevice_name_req) < sizeof(req_exec_quorum_qdevice_reg.qdevice_name));
 	strcpy(req_exec_quorum_qdevice_reg.qdevice_name, qdevice_name_req);
 
 	iov[0].iov_base = (void *)&req_exec_quorum_qdevice_reg;
