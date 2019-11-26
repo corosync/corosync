@@ -214,7 +214,7 @@ static void totem_volatile_config_set_string_value (struct totem_config *totem_c
 
 	config_value = totem_get_param_by_name(totem_config, key_name);
 	old_config_ptr = *config_value;
-	if (icmap_get_string(key_name, totem_get_param_by_name(totem_config, key_name)) != CS_OK ||
+	if (icmap_get_string(key_name, (char **)config_value) != CS_OK ||
 	    (deleted_key != NULL && strcmp(deleted_key, key_name) == 0)) {
 
 		/* Need to strdup() here so that the free() below works for a default and a configured value */
