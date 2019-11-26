@@ -505,6 +505,8 @@ static void stats_map_notify_fn(uint32_t event, char *key, void *old_value, void
 			  &new_value,
 			  &new_val.len,
 			  &new_val.type) != CS_OK) {
+		log_printf(LOGSYS_LEVEL_WARNING, "get value of notified key %s failed", key);
+		return ;
 	}
 
 	/* We don't know what the old value was
