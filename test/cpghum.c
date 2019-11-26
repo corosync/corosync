@@ -178,7 +178,6 @@ static void cpg_test (
 	int delay_time,
 	int print_time)
 {
-	struct timeval tv1, tv2, tv_elapsed;
 	struct iovec iov;
 	unsigned int res;
 	int i;
@@ -192,7 +191,6 @@ static void cpg_test (
 	g_recv_count = 0;
 	alarm (print_time);
 
-	gettimeofday (&tv1, NULL);
 	do {
 		dataint[0] = send_counter++;
 		for (i=2; i<(DATASIZE-sizeof(int)*2)/4; i++) {
@@ -216,8 +214,6 @@ static void cpg_test (
 		}
 		usleep(delay_time*1000);
 	} while (alarm_notice == 0 && (res == CS_OK || res == CS_ERR_TRY_AGAIN) && stopped == 0);
-	gettimeofday (&tv2, NULL);
-	timersub (&tv2, &tv1, &tv_elapsed);
 
 	if (!quiet) {
 		printf ("%s: %5d message%s received, ", group_name.value, g_recv_count, g_recv_count==1?"":"s");
