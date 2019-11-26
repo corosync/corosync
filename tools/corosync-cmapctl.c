@@ -316,6 +316,12 @@ static void print_key(cmap_handle_t handle,
 	if (err != CS_OK) {
 		fprintf(stderr, "Can't get value of %s. Error %s\n", key_name, cs_strerror(err));
 
+		/*
+		 * bin_value was newly allocated
+		 */
+		if (bin_value != NULL && value == NULL) {
+			free(bin_value);
+		}
 		return ;
 	}
 
