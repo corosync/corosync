@@ -2274,7 +2274,7 @@ static void totem_reload_notify(
 {
 	struct totem_config *totem_config = (struct totem_config *)user_data;
 	const char *error_string;
-	uint64_t warnings;
+	uint64_t warnings = 0;
 
 	/* Reload has completed */
 	if (*(uint8_t *)new_val.data == 0) {
