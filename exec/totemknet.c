@@ -967,8 +967,12 @@ int totemknet_initialize (
 	    KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_CRIT, "failed to create pipe for instance->logpipes");
 	    goto exit_error;
 	}
-	fcntl(instance->logpipes[0], F_SETFL, O_NONBLOCK);
-	fcntl(instance->logpipes[1], F_SETFL, O_NONBLOCK);
+	if (fcntl(instance->logpipes[0], F_SETFL, O_NONBLOCK) == -1 ||
+	    fcntl(instance->logpipes[1], F_SETFL, O_NONBLOCK) == -1) {
+		KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_CRIT, "failed to set O_NONBLOCK flag for instance->logpipes");
+		goto exit_error;
+	}
+
 
 #if !defined(KNET_API_VER) || (KNET_API_VER == 1)
 	instance->knet_handle = knet_handle_new(instance->totem_config->node_id, instance->logpipes[1], KNET_LOG_DEBUG);
