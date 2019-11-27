@@ -164,19 +164,22 @@ check_PROGRAMS			= qnetd-cluster-list.test dynar.test dynar-simple-lex.test \
                                   dynar-getopt-lex.test process-list.test utils.test \
                                   log.test
 
-qnetd_cluster_list_test_SOURCES	= qnetd-cluster-list.c test-qnetd-cluster-list.c \
+qnetd_cluster_list_test_SOURCES	= test-qnetd-cluster-list.c qnetd-cluster-list.c qnetd-cluster-list.h \
                                   qnetd-cluster.c qnetd-cluster.h \
-                                  qnetd-client-list.c qnetd-client.c dynar.c node-list.c \
-                                  send-buffer-list.c
+                                  qnetd-client-list.c qnetd-client-list.h \
+                                  qnetd-client.c qnetd-client.h dynar.c dynar.h \
+                                  node-list.c node-list.h send-buffer-list.c send-buffer-list.h
 qnetd_cluster_list_test_CFLAGS  = $(nss_CFLAGS)
 qnetd_cluster_list_test_LDADD	= $(nss_LIBS)
 
-dynar_test_SOURCES		= test-dynar.c dynar.c dynar-str.c
-dynar_simple_lex_test_SOURCES	= test-dynar-simple-lex.c dynar.c dynar-str.c dynar-simple-lex.c
-dynar_getopt_lex_test_SOURCES	= test-dynar-getopt-lex.c dynar.c dynar-str.c dynar-getopt-lex.c
-process_list_test_SOURCES	= test-process-list.c dynar.c dynar-str.c dynar-simple-lex.c \
-                                  process-list.c
-utils_test_SOURCES		= test-utils.c utils.c
-log_test_SOURCES		= test-log.c log.c
+dynar_test_SOURCES		= test-dynar.c dynar.c dynar.h dynar-str.c dynar-str.h
+dynar_simple_lex_test_SOURCES	= test-dynar-simple-lex.c dynar.c dynar.h dynar-str.c dynar-str.h \
+                                  dynar-simple-lex.c dynar-simple-lex.h
+dynar_getopt_lex_test_SOURCES	= test-dynar-getopt-lex.c dynar.c dynar.h dynar-str.c dynar-str.h \
+                                  dynar-getopt-lex.c dynar-getopt-lex.h
+process_list_test_SOURCES	= test-process-list.c dynar.c dynar.h dynar-str.c dynar-str.h \
+                                  dynar-simple-lex.c dynar-simple-lex.h process-list.c process-list.h
+utils_test_SOURCES		= test-utils.c utils.c utils.h
+log_test_SOURCES		= test-log.c log.c log.h
 
 endif
