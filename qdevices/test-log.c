@@ -48,6 +48,9 @@ static int vsyslog_priority;
 static int vsyslog_called;
 static int closelog_called;
 
+extern void __vsyslog_chk(int priority, int flag, const char *format, va_list ap)
+    __attribute__((__format__(__printf__, 3, 0)));
+
 void
 openlog(const char *ident, int option, int facility)
 {
