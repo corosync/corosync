@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2017 Red Hat, Inc.
+ * Copyright (c) 2015-2019 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -51,8 +51,8 @@
 #include <string.h>
 #include <limits.h>
 
+#include "log.h"
 #include "qnetd-algo-2nodelms.h"
-#include "qnetd-log.h"
 #include "qnetd-cluster-list.h"
 #include "qnetd-algo-utils.h"
 #include "utils.h"
@@ -103,10 +103,10 @@ qnetd_algo_2nodelms_config_node_list_received(struct qnetd_client *client,
 		node_count++;
 	}
 	info->num_config_nodes = node_count;
-	qnetd_log(LOG_DEBUG, "algo-2nodelms: cluster %s config_list has %d nodes", client->cluster_name, node_count);
+	log(LOG_DEBUG, "algo-2nodelms: cluster %s config_list has %d nodes", client->cluster_name, node_count);
 
 	if (node_count != 2) {
-		qnetd_log(LOG_INFO, "algo-2nodelms: cluster %s does not have 2 configured nodes, it has %d", client->cluster_name, node_count);
+		log(LOG_INFO, "algo-2nodelms: cluster %s does not have 2 configured nodes, it has %d", client->cluster_name, node_count);
 
 		*result_vote = TLV_VOTE_NACK;
 		return (TLV_REPLY_ERROR_CODE_UNSUPPORTED_DECISION_ALGORITHM);
@@ -156,7 +156,7 @@ qnetd_algo_2nodelms_membership_node_list_received(struct qnetd_client *client,
 
 				/* Don't save NACK, we need to know subsequently if we haven't been voting */
 				*result_vote = TLV_VOTE_NACK;
-				qnetd_log(LOG_DEBUG, "algo-2nodelms: we are a new partition and another active partition exists. NACK");
+				log(LOG_DEBUG, "algo-2nodelms: we are a new partition and another active partition exists. NACK");
 				return (TLV_REPLY_ERROR_CODE_NO_ERROR);
 			}
 		}
@@ -167,10 +167,10 @@ qnetd_algo_2nodelms_membership_node_list_received(struct qnetd_client *client,
 		node_count++;
 	}
 
-	qnetd_log(LOG_DEBUG, "algo-2nodelms: cluster %s (client %p nodeid "UTILS_PRI_NODE_ID") membership list has %d member nodes (ring ID "UTILS_PRI_RING_ID")", client->cluster_name, client, client->node_id, node_count, ring_id->node_id, ring_id->seq);
+	log(LOG_DEBUG, "algo-2nodelms: cluster %s (client %p nodeid "UTILS_PRI_NODE_ID") membership list has %d member nodes (ring ID "UTILS_PRI_RING_ID")", client->cluster_name, client, client->node_id, node_count, ring_id->node_id, ring_id->seq);
 
 	if (node_count == 2) {
-		qnetd_log(LOG_DEBUG, "algo-2nodelms: cluster %s running normally. Both nodes active", client->cluster_name);
+		log(LOG_DEBUG, "algo-2nodelms: cluster %s running normally. Both nodes active", client->cluster_name);
 		*result_vote = info->last_result = TLV_VOTE_ACK;
 		return (TLV_REPLY_ERROR_CODE_NO_ERROR);
 	}
@@ -181,7 +181,7 @@ qnetd_algo_2nodelms_membership_node_list_received(struct qnetd_client *client,
 	TAILQ_FOREACH(other_client, &client->cluster->client_list, cluster_entries) {
 		node_count++;
 
-		qnetd_log(LOG_DEBUG, "algo-2nodelms: seen nodeid "UTILS_PRI_NODE_ID" on client %p (ring ID "UTILS_PRI_RING_ID")", other_client->node_id, other_client, other_client->last_ring_id.node_id, other_client->last_ring_id.seq);
+		log(LOG_DEBUG, "algo-2nodelms: seen nodeid "UTILS_PRI_NODE_ID" on client %p (ring ID "UTILS_PRI_RING_ID")", other_client->node_id, other_client, other_client->last_ring_id.node_id, other_client->last_ring_id.seq);
 		if (other_client->node_id < low_node_id) {
 			low_node_id = other_client->node_id;
 		}
@@ -192,11 +192,11 @@ qnetd_algo_2nodelms_membership_node_list_received(struct qnetd_client *client,
 			other_node_heuristics = other_client->last_heuristics;
 		}
 	}
-	qnetd_log(LOG_DEBUG, "algo-2nodelms: cluster %s %d nodes running independently", client->cluster_name, node_count);
+	log(LOG_DEBUG, "algo-2nodelms: cluster %s %d nodes running independently", client->cluster_name, node_count);
 
 	/* Only 1 node alive .. allow it to continue */
 	if (node_count == 1) {
-		qnetd_log(LOG_DEBUG, "algo-2nodelms: cluster %s running on 'last-man'", client->cluster_name);
+		log(LOG_DEBUG, "algo-2nodelms: cluster %s running on 'last-man'", client->cluster_name);
 		*result_vote = info->last_result = TLV_VOTE_ACK;
 		return (TLV_REPLY_ERROR_CODE_NO_ERROR);
 	}
@@ -220,36 +220,36 @@ qnetd_algo_2nodelms_membership_node_list_received(struct qnetd_client *client,
 
 	case TLV_TIE_BREAKER_MODE_LOWEST:
 		if (client->node_id == low_node_id) {
-			qnetd_log(LOG_DEBUG, "algo-2nodelms: cluster %s running on low node-id %d", client->cluster_name, low_node_id);
+			log(LOG_DEBUG, "algo-2nodelms: cluster %s running on low node-id %d", client->cluster_name, low_node_id);
 			*result_vote = info->last_result = TLV_VOTE_ACK;
 		}
 		else {
-			qnetd_log(LOG_DEBUG, "algo-2nodelms: cluster %s node-id %d denied vote because low nodeid %d is active", client->cluster_name, client->node_id, low_node_id);
+			log(LOG_DEBUG, "algo-2nodelms: cluster %s node-id %d denied vote because low nodeid %d is active", client->cluster_name, client->node_id, low_node_id);
 			*result_vote = info->last_result = TLV_VOTE_NACK;
 		}
 		break;
 	case TLV_TIE_BREAKER_MODE_HIGHEST:
 		if (client->node_id == high_node_id) {
-			qnetd_log(LOG_DEBUG, "algo-2nodelms: cluster %s running on high node-id %d", client->cluster_name, high_node_id);
+			log(LOG_DEBUG, "algo-2nodelms: cluster %s running on high node-id %d", client->cluster_name, high_node_id);
 			*result_vote = info->last_result = TLV_VOTE_ACK;
 		}
 		else {
-			qnetd_log(LOG_DEBUG, "algo-2nodelms: cluster %s node-id %d denied vote because high nodeid %d is active", client->cluster_name, client->node_id, high_node_id);
+			log(LOG_DEBUG, "algo-2nodelms: cluster %s node-id %d denied vote because high nodeid %d is active", client->cluster_name, client->node_id, high_node_id);
 			*result_vote = info->last_result = TLV_VOTE_NACK;
 		}
 		break;
 	case TLV_TIE_BREAKER_MODE_NODE_ID:
 		if (client->node_id == client->tie_breaker.node_id) {
-			qnetd_log(LOG_DEBUG, "algo-2nodelms: cluster %s running on nominated tie-breaker node %d", client->cluster_name, client->tie_breaker.node_id);
+			log(LOG_DEBUG, "algo-2nodelms: cluster %s running on nominated tie-breaker node %d", client->cluster_name, client->tie_breaker.node_id);
 			*result_vote = info->last_result = TLV_VOTE_ACK;
 		}
 		else {
-			qnetd_log(LOG_DEBUG, "algo-2nodelms: cluster %s node-id %d denied vote because nominated tie-breaker nodeid %d is active", client->cluster_name, client->node_id, client->tie_breaker.node_id);
+			log(LOG_DEBUG, "algo-2nodelms: cluster %s node-id %d denied vote because nominated tie-breaker nodeid %d is active", client->cluster_name, client->node_id, client->tie_breaker.node_id);
 			*result_vote = info->last_result = TLV_VOTE_NACK;
 		}
 		break;
 	default:
-		qnetd_log(LOG_DEBUG, "algo-2nodelms: cluster %s node-id %d denied vote because tie-breaker option is invalid: %d", client->cluster_name, client->node_id, client->tie_breaker.mode);
+		log(LOG_DEBUG, "algo-2nodelms: cluster %s node-id %d denied vote because tie-breaker option is invalid: %d", client->cluster_name, client->node_id, client->tie_breaker.mode);
 		*result_vote = info->last_result = TLV_VOTE_NACK;
 	}
 
@@ -275,10 +275,10 @@ qnetd_algo_2nodelms_quorum_node_list_received(struct qnetd_client *client,
 void
 qnetd_algo_2nodelms_client_disconnect(struct qnetd_client *client, int server_going_down)
 {
-	qnetd_log(LOG_INFO, "algo-2nodelms: Client %p (cluster %s, node_id "UTILS_PRI_NODE_ID") "
+	log(LOG_INFO, "algo-2nodelms: Client %p (cluster %s, node_id "UTILS_PRI_NODE_ID") "
 	    "disconnect", client, client->cluster_name, client->node_id);
 
-	qnetd_log(LOG_INFO, "algo-2nodelms:   server going down %u", server_going_down);
+	log(LOG_INFO, "algo-2nodelms:   server going down %u", server_going_down);
 
 	free(client->algorithm_data);
 }
@@ -293,7 +293,7 @@ qnetd_algo_2nodelms_ask_for_vote_received(struct qnetd_client *client, uint32_t 
 {
 	struct qnetd_algo_2nodelms_info *info = client->algorithm_data;
 
-	qnetd_log(LOG_INFO, "algo-2nodelms: Client %p (cluster %s, node_id "UTILS_PRI_NODE_ID") "
+	log(LOG_INFO, "algo-2nodelms: Client %p (cluster %s, node_id "UTILS_PRI_NODE_ID") "
 	    "asked for a vote", client, client->cluster_name, client->node_id);
 
 	if (info->last_result == 0) {
@@ -310,7 +310,7 @@ enum tlv_reply_error_code
 qnetd_algo_2nodelms_vote_info_reply_received(struct qnetd_client *client, uint32_t msg_seq_num)
 {
 
-	qnetd_log(LOG_INFO, "algo-2nodelms: Client %p (cluster %s, node_id "UTILS_PRI_NODE_ID") "
+	log(LOG_INFO, "algo-2nodelms: Client %p (cluster %s, node_id "UTILS_PRI_NODE_ID") "
 	    "replied back to vote info message", client, client->cluster_name, client->node_id);
 
 	return (TLV_REPLY_ERROR_CODE_NO_ERROR);
@@ -321,7 +321,7 @@ qnetd_algo_2nodelms_heuristics_change_received(struct qnetd_client *client, uint
     enum tlv_heuristics heuristics, enum tlv_vote *result_vote)
 {
 
-	qnetd_log(LOG_INFO, "algo-2nodelms: heuristics change is not supported.");
+	log(LOG_INFO, "algo-2nodelms: heuristics change is not supported.");
 
 	*result_vote = TLV_VOTE_NO_CHANGE;
 

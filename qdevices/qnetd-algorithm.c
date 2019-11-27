@@ -34,13 +34,13 @@
 
 #include <sys/types.h>
 
+#include "log.h"
 #include "qnet-config.h"
 #include "qnetd-algorithm.h"
 #include "qnetd-algo-test.h"
 #include "qnetd-algo-ffsplit.h"
 #include "qnetd-algo-2nodelms.h"
 #include "qnetd-algo-lms.h"
-#include "qnetd-log.h"
 
 static struct qnetd_algorithm *qnetd_algorithm_array[QNETD_STATIC_SUPPORTED_DECISION_ALGORITHMS_SIZE];
 
@@ -49,7 +49,7 @@ qnetd_algorithm_client_init(struct qnetd_client *client)
 {
 	if (client->decision_algorithm >= QNETD_STATIC_SUPPORTED_DECISION_ALGORITHMS_SIZE ||
 	    qnetd_algorithm_array[client->decision_algorithm] == NULL) {
-		qnetd_log(LOG_CRIT, "qnetd_algorithm_client_init unhandled decision algorithm");
+		log(LOG_CRIT, "qnetd_algorithm_client_init unhandled decision algorithm");
 
 		return (TLV_REPLY_ERROR_CODE_INTERNAL_ERROR);
 	}
@@ -64,7 +64,7 @@ qnetd_algorithm_config_node_list_received(struct qnetd_client *client,
 {
 	if (client->decision_algorithm >= QNETD_STATIC_SUPPORTED_DECISION_ALGORITHMS_SIZE ||
 	    qnetd_algorithm_array[client->decision_algorithm] == NULL) {
-		qnetd_log(LOG_CRIT, "qnetd_algorithm_config_node_list_received unhandled "
+		log(LOG_CRIT, "qnetd_algorithm_config_node_list_received unhandled "
 		    "decision algorithm");
 		return (TLV_REPLY_ERROR_CODE_INTERNAL_ERROR);
 	}
@@ -82,7 +82,7 @@ qnetd_algorithm_membership_node_list_received(struct qnetd_client *client,
 
 	if (client->decision_algorithm >= QNETD_STATIC_SUPPORTED_DECISION_ALGORITHMS_SIZE ||
 	    qnetd_algorithm_array[client->decision_algorithm] == NULL) {
-		qnetd_log(LOG_CRIT, "qnetd_algorithm_membership_node_list_received unhandled "
+		log(LOG_CRIT, "qnetd_algorithm_membership_node_list_received unhandled "
 		    "decision algorithm");
 		return (TLV_REPLY_ERROR_CODE_INTERNAL_ERROR);
 	}
@@ -100,7 +100,7 @@ qnetd_algorithm_quorum_node_list_received(struct qnetd_client *client,
 
 	if (client->decision_algorithm >= QNETD_STATIC_SUPPORTED_DECISION_ALGORITHMS_SIZE ||
 	    qnetd_algorithm_array[client->decision_algorithm] == NULL) {
-		qnetd_log(LOG_CRIT, "algorithm_quorum_node_list_received unhandled "
+		log(LOG_CRIT, "algorithm_quorum_node_list_received unhandled "
 		    "decision algorithm");
 		return (TLV_REPLY_ERROR_CODE_INTERNAL_ERROR);
 	}
@@ -115,7 +115,7 @@ qnetd_algorithm_client_disconnect(struct qnetd_client *client, int server_going_
 
 	if (client->decision_algorithm >= QNETD_STATIC_SUPPORTED_DECISION_ALGORITHMS_SIZE ||
 	    qnetd_algorithm_array[client->decision_algorithm] == NULL) {
-		qnetd_log(LOG_CRIT, "qnetd_algorithm_client_disconnect unhandled decision "
+		log(LOG_CRIT, "qnetd_algorithm_client_disconnect unhandled decision "
 		    "algorithm");
 		return;
 	}
@@ -130,7 +130,7 @@ qnetd_algorithm_ask_for_vote_received(struct qnetd_client *client, uint32_t msg_
 
 	if (client->decision_algorithm >= QNETD_STATIC_SUPPORTED_DECISION_ALGORITHMS_SIZE ||
 	    qnetd_algorithm_array[client->decision_algorithm] == NULL) {
-		qnetd_log(LOG_CRIT, "qnetd_algorithm_ask_for_vote_received unhandled "
+		log(LOG_CRIT, "qnetd_algorithm_ask_for_vote_received unhandled "
 		    "decision algorithm");
 		return (TLV_REPLY_ERROR_CODE_INTERNAL_ERROR);
 	}
@@ -145,7 +145,7 @@ qnetd_algorithm_vote_info_reply_received(struct qnetd_client *client, uint32_t m
 
 	if (client->decision_algorithm >= QNETD_STATIC_SUPPORTED_DECISION_ALGORITHMS_SIZE ||
 	    qnetd_algorithm_array[client->decision_algorithm] == NULL) {
-		qnetd_log(LOG_CRIT, "qnetd_algorithm_vote_info_reply_received unhandled decision algorithm");
+		log(LOG_CRIT, "qnetd_algorithm_vote_info_reply_received unhandled decision algorithm");
 		return (TLV_REPLY_ERROR_CODE_INTERNAL_ERROR);
 	}
 
@@ -161,7 +161,7 @@ qnetd_algorithm_heuristics_change_received(struct qnetd_client *client, uint32_t
 
 	if (client->decision_algorithm >= QNETD_STATIC_SUPPORTED_DECISION_ALGORITHMS_SIZE ||
 	    qnetd_algorithm_array[client->decision_algorithm] == NULL) {
-		qnetd_log(LOG_CRIT, "qnetd_algorithm_ask_for_vote_received unhandled "
+		log(LOG_CRIT, "qnetd_algorithm_ask_for_vote_received unhandled "
 		    "decision algorithm");
 		return (TLV_REPLY_ERROR_CODE_INTERNAL_ERROR);
 	}
@@ -177,7 +177,7 @@ qnetd_algorithm_timer_callback(struct qnetd_client *client, int *reschedule_time
 
 	if (client->decision_algorithm >= QNETD_STATIC_SUPPORTED_DECISION_ALGORITHMS_SIZE ||
 	    qnetd_algorithm_array[client->decision_algorithm] == NULL) {
-		qnetd_log(LOG_CRIT, "qnetd_algorithm_timer_callback unhandled decision algorithm");
+		log(LOG_CRIT, "qnetd_algorithm_timer_callback unhandled decision algorithm");
 		return (TLV_REPLY_ERROR_CODE_INTERNAL_ERROR);
 	}
 
@@ -191,13 +191,13 @@ qnetd_algorithm_register(enum tlv_decision_algorithm_type algorithm_number,
 {
 
 	if (algorithm_number >= QNETD_STATIC_SUPPORTED_DECISION_ALGORITHMS_SIZE) {
-		qnetd_log(LOG_CRIT, "Failed to register unsupported decision algorithm %u",
+		log(LOG_CRIT, "Failed to register unsupported decision algorithm %u",
 		    algorithm_number);
 		return (-1);
 	}
 
 	if (qnetd_algorithm_array[algorithm_number] != NULL) {
-		qnetd_log(LOG_CRIT, "Failed to register decision algorithm %u, "
+		log(LOG_CRIT, "Failed to register decision algorithm %u, "
 		"it's already registered.", algorithm_number);
 		return (-1);
 	}
@@ -212,19 +212,19 @@ qnetd_algorithm_register_all(void)
 {
 
 	if (qnetd_algo_test_register() != 0) {
-		qnetd_log(LOG_CRIT, "Failed to register decision algorithm 'test'");
+		log(LOG_CRIT, "Failed to register decision algorithm 'test'");
 		return (-1);
 	}
 	if (qnetd_algo_ffsplit_register() != 0) {
-		qnetd_log(LOG_CRIT, "Failed to register decision algorithm 'ffsplit'");
+		log(LOG_CRIT, "Failed to register decision algorithm 'ffsplit'");
 		return (-1);
 	}
 	if (qnetd_algo_2nodelms_register() != 0) {
-		qnetd_log(LOG_CRIT, "Failed to register decision algorithm '2nodelms'");
+		log(LOG_CRIT, "Failed to register decision algorithm '2nodelms'");
 		return (-1);
 	}
 	if (qnetd_algo_lms_register() != 0) {
-		qnetd_log(LOG_CRIT, "Failed to register decision algorithm 'lms'");
+		log(LOG_CRIT, "Failed to register decision algorithm 'lms'");
 		return (-1);
 	}
 

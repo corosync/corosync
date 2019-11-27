@@ -44,13 +44,13 @@
 #include "dynar.h"
 #include "dynar-str.h"
 #include "dynar-getopt-lex.h"
+#include "log.h"
 #include "nss-sock.h"
 #include "pr-poll-array.h"
 #include "qnetd-advanced-settings.h"
 #include "qnetd-algorithm.h"
 #include "qnetd-instance.h"
 #include "qnetd-ipc.h"
-#include "qnetd-log.h"
 #include "qnetd-client-net.h"
 #include "qnetd-client-msg-received.h"
 #include "qnetd-poll-array-user-data.h"
@@ -74,7 +74,7 @@ static void
 qnetd_err_nss(void)
 {
 
-	qnetd_log_nss(LOG_CRIT, "NSS error");
+	log_nss(LOG_CRIT, "NSS error");
 
 	exit(1);
 }
@@ -83,7 +83,7 @@ static void
 qnetd_warn_nss(void)
 {
 
-	qnetd_log_nss(LOG_WARNING, "NSS warning");
+	log_nss(LOG_WARNING, "NSS warning");
 }
 
 static PRPollDesc *
@@ -113,7 +113,7 @@ qnetd_pr_poll_array_create(struct qnetd_instance *instance)
 	user_data->type = QNETD_POLL_ARRAY_USER_DATA_TYPE_SOCKET;
 
 	if (qnetd_ipc_is_closed(instance)) {
-		qnetd_log(LOG_DEBUG, "Listening socket is closed");
+		log(LOG_DEBUG, "Listening socket is closed");
 
 		return (NULL);
 	}
@@ -242,7 +242,7 @@ qnetd_poll(struct qnetd_instance *instance)
 					/*
 					 * Poll write on listen socket -> fatal error
 					 */
-					qnetd_log(LOG_CRIT, "POLL_WRITE on listening socket");
+					log(LOG_CRIT, "POLL_WRITE on listening socket");
 
 					return (-1);
 					break;
@@ -252,7 +252,7 @@ qnetd_poll(struct qnetd_instance *instance)
 					}
 					break;
 				case QNETD_POLL_ARRAY_USER_DATA_TYPE_IPC_SOCKET:
-					qnetd_log(LOG_CRIT, "POLL_WRITE on listening IPC socket");
+					log(LOG_CRIT, "POLL_WRITE on listening IPC socket");
 					return (-1);
 					break;
 				case QNETD_POLL_ARRAY_USER_DATA_TYPE_IPC_CLIENT:
@@ -272,22 +272,22 @@ qnetd_poll(struct qnetd_instance *instance)
 						 * Poll ERR on listening socket is fatal error.
 						 * POLL_NVAL is used as a signal to quit poll loop.
 						 */
-						 qnetd_log(LOG_CRIT, "POLL_ERR (%u) on listening "
+						 log(LOG_CRIT, "POLL_ERR (%u) on listening "
 						    "socket", pfds[i].out_flags);
 					} else {
-						qnetd_log(LOG_DEBUG, "Listening socket is closed");
+						log(LOG_DEBUG, "Listening socket is closed");
 					}
 
 					return (-1);
 					break;
 				case QNETD_POLL_ARRAY_USER_DATA_TYPE_CLIENT:
-					qnetd_log(LOG_DEBUG, "POLL_ERR (%u) on client socket. "
+					log(LOG_DEBUG, "POLL_ERR (%u) on client socket. "
 					    "Disconnecting.", pfds[i].out_flags);
 
 					client_disconnect = 1;
 					break;
 				case QNETD_POLL_ARRAY_USER_DATA_TYPE_IPC_CLIENT:
-					qnetd_log(LOG_DEBUG, "POLL_ERR (%u) on ipc client socket."
+					log(LOG_DEBUG, "POLL_ERR (%u) on ipc client socket."
 					    " Disconnecting.", pfds[i].out_flags);
 
 					client_disconnect = 1;
@@ -316,7 +316,7 @@ static void
 signal_int_handler(int sig)
 {
 
-	qnetd_log(LOG_DEBUG, "SIGINT received - closing server IPC socket");
+	log(LOG_DEBUG, "SIGINT received - closing server IPC socket");
 
 	qnetd_ipc_close(global_instance);
 }
@@ -325,7 +325,7 @@ static void
 signal_term_handler(int sig)
 {
 
-	qnetd_log(LOG_DEBUG, "SIGTERM received - closing server IPC socket");
+	log(LOG_DEBUG, "SIGTERM received - closing server IPC socket");
 
 	qnetd_ipc_close(global_instance);
 }
@@ -534,20 +534,20 @@ main(int argc, char * const argv[])
 	    &tls_supported, &client_cert_required, &max_clients, &address_family, &advanced_settings);
 
 	if (foreground) {
-		qnetd_log_init(QNETD_LOG_TARGET_STDERR);
+		log_init(QNETD_PROGRAM_NAME, LOG_TARGET_STDERR);
 	} else {
-		qnetd_log_init(QNETD_LOG_TARGET_SYSLOG);
+		log_init(QNETD_PROGRAM_NAME, LOG_TARGET_SYSLOG);
 	}
 
-	qnetd_log_set_debug(debug_log);
-	qnetd_log_set_priority_bump(bump_log_priority);
+	log_set_debug(debug_log);
+	log_set_priority_bump(bump_log_priority);
 
 	/*
 	 * Check that it's possible to open NSS dir if needed
 	 */
 	if (nss_sock_check_db_dir((tls_supported != TLV_TLS_UNSUPPORTED ?
 	    advanced_settings.nss_db_dir : NULL)) != 0) {
-		qnetd_log_err(LOG_ERR, "Can't open NSS DB directory");
+		log_err(LOG_ERR, "Can't open NSS DB directory");
 
 		exit (1);
 	}
@@ -562,15 +562,15 @@ main(int argc, char * const argv[])
 	if ((lock_file = utils_flock(advanced_settings.lock_file, getpid(),
 	    &another_instance_running)) == -1) {
 		if (another_instance_running) {
-			qnetd_log(LOG_ERR, "Another instance is running");
+			log(LOG_ERR, "Another instance is running");
 		} else {
-			qnetd_log_err(LOG_ERR, "Can't acquire lock");
+			log_err(LOG_ERR, "Can't acquire lock");
 		}
 
 		exit(1);
 	}
 
-	qnetd_log(LOG_DEBUG, "Initializing nss");
+	log(LOG_DEBUG, "Initializing nss");
 	if (nss_sock_init_nss((tls_supported != TLV_TLS_UNSUPPORTED ?
 	    advanced_settings.nss_db_dir : NULL)) != 0) {
 		qnetd_err_nss();
@@ -582,7 +582,7 @@ main(int argc, char * const argv[])
 
 	if (qnetd_instance_init(&instance, tls_supported, client_cert_required,
 	    max_clients, &advanced_settings) == -1) {
-		qnetd_log(LOG_ERR, "Can't initialize qnetd");
+		log(LOG_ERR, "Can't initialize qnetd");
 		exit(1);
 	}
 	instance.host_addr = host_addr;
@@ -592,12 +592,12 @@ main(int argc, char * const argv[])
 		qnetd_err_nss();
 	}
 
-	qnetd_log(LOG_DEBUG, "Initializing local socket");
+	log(LOG_DEBUG, "Initializing local socket");
 	if (qnetd_ipc_init(&instance) != 0) {
 		return (1);
 	}
 
-	qnetd_log(LOG_DEBUG, "Creating listening socket");
+	log(LOG_DEBUG, "Creating listening socket");
 	instance.server.socket = nss_sock_create_listen_socket(instance.host_addr,
 	    instance.host_port, address_family);
 	if (instance.server.socket == NULL) {
@@ -616,12 +616,12 @@ main(int argc, char * const argv[])
 	global_instance = &instance;
 	signal_handlers_register();
 
-	qnetd_log(LOG_DEBUG, "Registering algorithms");
+	log(LOG_DEBUG, "Registering algorithms");
 	if (qnetd_algorithm_register_all() != 0) {
 		exit(1);
 	}
 
-	qnetd_log(LOG_DEBUG, "QNetd ready to provide service");
+	log(LOG_DEBUG, "QNetd ready to provide service");
 	/*
 	 * MAIN LOOP
 	 */
@@ -656,7 +656,7 @@ main(int argc, char * const argv[])
 		qnetd_warn_nss();
 	}
 
-	qnetd_log_close();
+	log_close();
 
 	return (0);
 }

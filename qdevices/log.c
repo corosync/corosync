@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016 Red Hat, Inc.
+ * Copyright (c) 2015-2019 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -34,26 +34,28 @@
 
 #include <syslog.h>
 #include <stdio.h>
+#include <string.h>
 #include <time.h>
 
 #include "qnet-config.h"
-#include "qnetd-log.h"
+#include "log.h"
 
-static int qnetd_log_config_target = 0;
-static int qnetd_log_config_debug = 0;
-static int qnetd_log_config_priority_bump = 0;
+static int log_config_target = 0;
+static int log_config_debug = 0;
+static int log_config_priority_bump = 0;
+static char *log_config_ident = NULL;
 
-static const char qnetd_log_month_str[][4] = {
+static const char log_month_str[][4] = {
     "Jan", "Feb", "Mar", "Apr", "May", "Jun",
     "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
 };
 
-struct qnetd_log_syslog_prio_to_str_item {
+struct log_syslog_prio_to_str_item {
 	int priority;
 	const char *priority_str;
 };
 
-static struct qnetd_log_syslog_prio_to_str_item qnetd_syslog_prio_to_str_array[] = {
+static struct log_syslog_prio_to_str_item syslog_prio_to_str_array[] = {
     {LOG_EMERG,		"emerg"},
     {LOG_ALERT,		"alert"},
     {LOG_CRIT,		"crit"},
@@ -64,46 +66,53 @@ static struct qnetd_log_syslog_prio_to_str_item qnetd_syslog_prio_to_str_array[]
     {LOG_DEBUG,		"debug"},
     {-1, NULL}};
 
-void
-qnetd_log_init(int target)
+int
+log_init(const char *ident, int target)
 {
 
-	qnetd_log_config_target = target;
+	log_config_target = target;
+	log_config_ident = strdup(ident);
 
-	if (qnetd_log_config_target & QNETD_LOG_TARGET_SYSLOG) {
+	if (log_config_ident == NULL) {
+		return (-1);
+	}
+
+	if (log_config_target & LOG_TARGET_SYSLOG) {
 		openlog(QNETD_PROGRAM_NAME, LOG_PID, LOG_DAEMON);
 	}
+
+	return (0);
 }
 
 static const char *
-qnetd_log_syslog_prio_to_str(int priority)
+log_syslog_prio_to_str(int priority)
 {
 
 	if (priority >= LOG_EMERG && priority <= LOG_DEBUG) {
-		return (qnetd_syslog_prio_to_str_array[priority].priority_str);
+		return (syslog_prio_to_str_array[priority].priority_str);
 	} else {
 		return ("none");
 	}
 }
 
 void
-qnetd_log_vprintf(int priority, const char *format, va_list ap)
+log_vprintf(int priority, const char *format, va_list ap)
 {
 	time_t current_time;
 	struct tm tm_res;
 	int final_priority;
 	va_list ap_copy;
 
-	if (priority != LOG_DEBUG || (qnetd_log_config_debug)) {
-		if (qnetd_log_config_target & QNETD_LOG_TARGET_STDERR) {
+	if (priority != LOG_DEBUG || (log_config_debug)) {
+		if (log_config_target & LOG_TARGET_STDERR) {
 			current_time = time(NULL);
 			localtime_r(&current_time, &tm_res);
 
 			fprintf(stderr, "%s %02d %02d:%02d:%02d ",
-			    qnetd_log_month_str[tm_res.tm_mon], tm_res.tm_mday, tm_res.tm_hour,
+			    log_month_str[tm_res.tm_mon], tm_res.tm_mday, tm_res.tm_hour,
 			    tm_res.tm_min, tm_res.tm_sec);
 
-			fprintf(stderr, "%-7s ", qnetd_log_syslog_prio_to_str(priority));
+			fprintf(stderr, "%-7s ", log_syslog_prio_to_str(priority));
 
 			va_copy(ap_copy, ap);
 			vfprintf(stderr, format, ap_copy);
@@ -111,9 +120,9 @@ qnetd_log_vprintf(int priority, const char *format, va_list ap)
 			fprintf(stderr, "\n");
 		}
 
-		if (qnetd_log_config_target & QNETD_LOG_TARGET_SYSLOG) {
+		if (log_config_target & LOG_TARGET_SYSLOG) {
 			final_priority = priority;
-			if (qnetd_log_config_priority_bump && priority > LOG_INFO) {
+			if (log_config_priority_bump && priority > LOG_INFO) {
 				final_priority = LOG_INFO;
 			}
 
@@ -125,59 +134,59 @@ qnetd_log_vprintf(int priority, const char *format, va_list ap)
 }
 
 void
-qnetd_log_printf(int priority, const char *format, ...)
+log_printf(int priority, const char *format, ...)
 {
 	va_list ap;
 
 	va_start(ap, format);
 
-	qnetd_log_vprintf(priority, format, ap);
+	log_vprintf(priority, format, ap);
 
 	va_end(ap);
 }
 
 void
-qnetd_log_close(void)
+log_close(void)
 {
 
-	if (qnetd_log_config_target & QNETD_LOG_TARGET_SYSLOG) {
+	if (log_config_target & LOG_TARGET_SYSLOG) {
 		closelog();
 	}
 }
 
 void
-qnetd_log_set_debug(int enabled)
+log_set_debug(int enabled)
 {
 
-	qnetd_log_config_debug = enabled;
+	log_config_debug = enabled;
 }
 
 void
-qnetd_log_set_priority_bump(int enabled)
+log_set_priority_bump(int enabled)
 {
 
-	qnetd_log_config_priority_bump = enabled;
+	log_config_priority_bump = enabled;
 }
 
 void
-qnetd_log_msg_decode_error(int ret)
+log_msg_decode_error(int ret)
 {
 
 	switch (ret) {
 	case -1:
-		qnetd_log(LOG_WARNING, "Received message with option with invalid length");
+		log(LOG_WARNING, "Received message with option with invalid length");
 		break;
 	case -2:
-		qnetd_log(LOG_CRIT, "Can't allocate memory");
+		log(LOG_CRIT, "Can't allocate memory");
 		break;
 	case -3:
-		qnetd_log(LOG_WARNING, "Received inconsistent msg (tlv len > msg size)");
+		log(LOG_WARNING, "Received inconsistent msg (tlv len > msg size)");
 		break;
 	case -4:
-		qnetd_log(LOG_WARNING, "Received message with option with invalid value");
+		log(LOG_WARNING, "Received message with option with invalid value");
 		break;
 	default:
-		qnetd_log(LOG_ERR, "Unknown error occurred when decoding message");
+		log(LOG_ERR, "Unknown error occurred when decoding message");
 		break;
 	}
 }

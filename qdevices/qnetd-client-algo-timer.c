@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016 Red Hat, Inc.
+ * Copyright (c) 2015-2019 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "qnetd-log.h"
+#include "log.h"
 #include "qnetd-client-algo-timer.h"
 #include "qnetd-client-send.h"
 #include "qnetd-algorithm.h"
@@ -57,7 +57,7 @@ qnetd_client_algo_timer_callback(void *data1, void *data2)
 	    &send_vote, &result_vote);
 
 	if (reply_error_code != TLV_REPLY_ERROR_CODE_NO_ERROR) {
-		qnetd_log(LOG_ERR, "Algorithm for client %s returned error code. "
+		log(LOG_ERR, "Algorithm for client %s returned error code. "
 		    "Sending error reply.", client->addr_str);
 
 		if (qnetd_client_send_err(client, 0, 0, reply_error_code) != 0) {
@@ -67,7 +67,7 @@ qnetd_client_algo_timer_callback(void *data1, void *data2)
 
 		return (0);
 	} else {
-		qnetd_log(LOG_DEBUG, "Algorithm for client %s decided to %s timer and %s vote "
+		log(LOG_DEBUG, "Algorithm for client %s decided to %s timer and %s vote "
 		    "with value %s", client->addr_str,
 		    (reschedule_timer ? "reschedule" : "not reschedule"),
 		    (send_vote ? "send" : "not send"),
@@ -109,7 +109,7 @@ qnetd_client_algo_timer_schedule_timeout(struct qnetd_client *client, uint32_t t
 
 	if (qnetd_client_algo_timer_is_scheduled(client)) {
 		if (qnetd_client_algo_timer_abort(client) != 0) {
-			qnetd_log(LOG_ERR, "Can't abort algo timer");
+			log(LOG_ERR, "Can't abort algo timer");
 
 			return (-1);
 		}
@@ -118,7 +118,7 @@ qnetd_client_algo_timer_schedule_timeout(struct qnetd_client *client, uint32_t t
 	client->algo_timer = timer_list_add(client->main_timer_list, timeout,
 	    qnetd_client_algo_timer_callback, (void *)client, NULL);
 	if (client->algo_timer == NULL) {
-		qnetd_log(LOG_ERR, "Can't schedule algo timer");
+		log(LOG_ERR, "Can't schedule algo timer");
 
 		return (-1);
 	}

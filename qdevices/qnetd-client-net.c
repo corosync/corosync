@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016 Red Hat, Inc.
+ * Copyright (c) 2015-2019 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -34,10 +34,10 @@
 
 #include <sys/types.h>
 
+#include "log.h"
 #include "msgio.h"
 #include "msg.h"
 #include "nss-sock.h"
-#include "qnetd-log.h"
 #include "qnetd-client-net.h"
 #include "qnetd-client-send.h"
 #include "qnetd-client-msg-received.h"
@@ -64,7 +64,7 @@ qnetd_client_net_write(struct qnetd_instance *instance, struct qnetd_client *cli
 
 	send_buffer = send_buffer_list_get_active(&client->send_buffer_list);
 	if (send_buffer == NULL) {
-		qnetd_log_nss(LOG_CRIT, "send_buffer_list_get_active returned NULL");
+		log_nss(LOG_CRIT, "send_buffer_list_get_active returned NULL");
 
 		return (-1);
 	}
@@ -81,13 +81,13 @@ qnetd_client_net_write(struct qnetd_instance *instance, struct qnetd_client *cli
 	}
 
 	if (res == -1) {
-		qnetd_log_nss(LOG_CRIT, "PR_Send returned 0");
+		log_nss(LOG_CRIT, "PR_Send returned 0");
 
 		return (-1);
 	}
 
 	if (res == -2) {
-		qnetd_log_nss(LOG_ERR, "Unhandled error when sending message to client");
+		log_nss(LOG_ERR, "Unhandled error when sending message to client");
 
 		return (-1);
 	}
@@ -112,7 +112,7 @@ qnetd_client_net_read(struct qnetd_instance *instance, struct qnetd_client *clie
 	    &client->msg_already_received_bytes, &client->skipping_msg);
 
 	if (!orig_skipping_msg && client->skipping_msg) {
-		qnetd_log(LOG_DEBUG, "msgio_read set skipping_msg");
+		log(LOG_DEBUG, "msgio_read set skipping_msg");
 	}
 
 	ret_val = 0;
@@ -124,29 +124,29 @@ qnetd_client_net_read(struct qnetd_instance *instance, struct qnetd_client *clie
 		 */
 		break;
 	case -1:
-		qnetd_log(LOG_DEBUG, "Client closed connection");
+		log(LOG_DEBUG, "Client closed connection");
 		ret_val = -1;
 		break;
 	case -2:
-		qnetd_log_nss(LOG_ERR, "Unhandled error when reading from client. "
+		log_nss(LOG_ERR, "Unhandled error when reading from client. "
 		    "Disconnecting client");
 		ret_val = -1;
 		break;
 	case -3:
-		qnetd_log(LOG_ERR, "Can't store message header from client. Disconnecting client");
+		log(LOG_ERR, "Can't store message header from client. Disconnecting client");
 		ret_val = -1;
 		break;
 	case -4:
-		qnetd_log(LOG_ERR, "Can't store message from client. Skipping message");
+		log(LOG_ERR, "Can't store message from client. Skipping message");
 		client->skipping_msg_reason = TLV_REPLY_ERROR_CODE_ERROR_DECODING_MSG;
 		break;
 	case -5:
-		qnetd_log(LOG_WARNING, "Client sent unsupported msg type %u. Skipping message",
+		log(LOG_WARNING, "Client sent unsupported msg type %u. Skipping message",
 			    msg_get_type(&client->receive_buffer));
 		client->skipping_msg_reason = TLV_REPLY_ERROR_CODE_UNSUPPORTED_MESSAGE;
 		break;
 	case -6:
-		qnetd_log(LOG_WARNING,
+		log(LOG_WARNING,
 		    "Client wants to send too long message %u bytes. Skipping message",
 		    msg_get_len(&client->receive_buffer));
 		client->skipping_msg_reason = TLV_REPLY_ERROR_CODE_MESSAGE_TOO_LONG;
@@ -171,7 +171,7 @@ qnetd_client_net_read(struct qnetd_instance *instance, struct qnetd_client *clie
 		dynar_clean(&client->receive_buffer);
 		break;
 	default:
-		qnetd_log(LOG_ERR, "Unhandled msgio_read error %d\n", res);
+		log(LOG_ERR, "Unhandled msgio_read error %d\n", res);
 		exit(1);
 		break;
 	}
@@ -194,36 +194,36 @@ qnetd_client_net_accept(struct qnetd_instance *instance)
 
 	if ((client_socket = PR_Accept(instance->server.socket, &client_addr,
 	    PR_INTERVAL_NO_TIMEOUT)) == NULL) {
-		qnetd_log_nss(LOG_ERR, "Can't accept connection");
+		log_nss(LOG_ERR, "Can't accept connection");
 		return (-1);
 	}
 
 	if (nss_sock_set_non_blocking(client_socket) != 0) {
-		qnetd_log_nss(LOG_ERR, "Can't set client socket to non blocking mode");
+		log_nss(LOG_ERR, "Can't set client socket to non blocking mode");
 		goto exit_close;
 	}
 
 	if (instance->max_clients != 0 &&
 	    qnetd_client_list_no_clients(&instance->clients) >= instance->max_clients) {
-		qnetd_log(LOG_ERR, "Maximum clients reached. Not accepting connection");
+		log(LOG_ERR, "Maximum clients reached. Not accepting connection");
 		goto exit_close;
 	}
 
 	client_addr_str = malloc(CLIENT_ADDR_STR_LEN);
 	if (client_addr_str == NULL) {
-		qnetd_log(LOG_ERR, "Can't alloc client addr str memory. Not accepting connection");
+		log(LOG_ERR, "Can't alloc client addr str memory. Not accepting connection");
 		goto exit_close;
 	}
 
 	if (PR_NetAddrToString(&client_addr, client_addr_str, CLIENT_ADDR_STR_LEN) != PR_SUCCESS) {
-		qnetd_log_nss(LOG_ERR, "Can't convert client address to string. Not accepting connection");
+		log_nss(LOG_ERR, "Can't convert client address to string. Not accepting connection");
 		goto exit_close;
 	}
 
 	if (snprintf(client_addr_str + strlen(client_addr_str),
 	    CLIENT_ADDR_STR_LEN_COLON_PORT, ":%"PRIu16,
 	    ntohs(client_addr.ipv6.port)) >= CLIENT_ADDR_STR_LEN_COLON_PORT) {
-		qnetd_log(LOG_ERR, "Can't store port to client addr str. Not accepting connection");
+		log(LOG_ERR, "Can't store port to client addr str. Not accepting connection");
 		goto exit_close;
 	}
 
@@ -233,7 +233,7 @@ qnetd_client_net_accept(struct qnetd_instance *instance)
 	    instance->advanced_settings->max_client_send_buffers,
 	    instance->advanced_settings->max_client_send_size, &instance->main_timer_list);
 	if (client == NULL) {
-		qnetd_log(LOG_ERR, "Can't add client to list");
+		log(LOG_ERR, "Can't add client to list");
 		res_err = -2;
 		goto exit_close;
 	}

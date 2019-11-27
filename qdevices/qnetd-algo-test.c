@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2017 Red Hat, Inc.
+ * Copyright (c) 2015-2019 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -36,8 +36,8 @@
 
 #include <string.h>
 
+#include "log.h"
 #include "qnetd-algo-test.h"
-#include "qnetd-log.h"
 #include "qnetd-cluster-list.h"
 #include "qnetd-client-send.h"
 #include "qnetd-log-debug.h"
@@ -67,12 +67,12 @@ qnetd_algo_test_client_init(struct qnetd_client *client)
 {
 	int *algo_data;
 
-	qnetd_log(LOG_WARNING, "algo-test: Client %s (cluster = '%s', node_id = "
+	log(LOG_WARNING, "algo-test: Client %s (cluster = '%s', node_id = "
 	    UTILS_PRI_NODE_ID") initiated test algorithm. It's not recommended to use test "
 	    "algorithm because it can create multiple quorate partitions!", client->addr_str,
 	    client->cluster_name, client->node_id);
 
-	qnetd_log(LOG_INFO, "algo-test: client_init");
+	log(LOG_INFO, "algo-test: client_init");
 
 	client->algorithm_data = malloc(sizeof(int));
 	if (client->algorithm_data == NULL) {
@@ -86,7 +86,7 @@ qnetd_algo_test_client_init(struct qnetd_client *client)
 		/*
 		 * First client in the cluster
 		 */
-		qnetd_log(LOG_INFO, "algo-test: Initializing cluster->algorithm data");
+		log(LOG_INFO, "algo-test: Initializing cluster->algorithm data");
 
 		client->cluster->algorithm_data = malloc(sizeof(int));
 		if (client->cluster->algorithm_data == NULL) {
@@ -120,7 +120,7 @@ qnetd_algo_test_config_node_list_received(struct qnetd_client *client,
     const struct node_list *nodes, int initial, enum tlv_vote *result_vote)
 {
 
-	qnetd_log(LOG_INFO, "algo-test: node_list_received");
+	log(LOG_INFO, "algo-test: node_list_received");
 
 	*result_vote = TLV_VOTE_NO_CHANGE;
 
@@ -148,7 +148,7 @@ qnetd_algo_test_membership_node_list_received(struct qnetd_client *client,
     const struct node_list *nodes, enum tlv_heuristics heuristics, enum tlv_vote *result_vote)
 {
 
-	qnetd_log(LOG_INFO, "algo-test: membership_node_list_received");
+	log(LOG_INFO, "algo-test: membership_node_list_received");
 
 	*result_vote = TLV_VOTE_ACK;
 
@@ -172,7 +172,7 @@ qnetd_algo_test_quorum_node_list_received(struct qnetd_client *client,
     enum tlv_vote *result_vote)
 {
 
-	qnetd_log(LOG_INFO, "algo-test: quorum_node_list_received");
+	log(LOG_INFO, "algo-test: quorum_node_list_received");
 
 	*result_vote = TLV_VOTE_NO_CHANGE;
 
@@ -188,7 +188,7 @@ void
 qnetd_algo_test_client_disconnect(struct qnetd_client *client, int server_going_down)
 {
 
-	qnetd_log(LOG_INFO, "algo-test: client_disconnect");
+	log(LOG_INFO, "algo-test: client_disconnect");
 
 	free(client->algorithm_data);
 
@@ -196,7 +196,7 @@ qnetd_algo_test_client_disconnect(struct qnetd_client *client, int server_going_
 		/*
 		 * Last client in the cluster
 		 */
-		qnetd_log(LOG_INFO, "algo-test: Finalizing cluster->algorithm data");
+		log(LOG_INFO, "algo-test: Finalizing cluster->algorithm data");
 
 		free(client->cluster->algorithm_data);
 	}
@@ -211,7 +211,7 @@ qnetd_algo_test_ask_for_vote_received(struct qnetd_client *client, uint32_t msg_
     enum tlv_vote *result_vote)
 {
 
-	qnetd_log(LOG_INFO, "algo-test: ask_for_vote_received");
+	log(LOG_INFO, "algo-test: ask_for_vote_received");
 
 	*result_vote = TLV_VOTE_ACK;
 
@@ -222,7 +222,7 @@ enum tlv_reply_error_code
 qnetd_algo_test_vote_info_reply_received(struct qnetd_client *client, uint32_t msg_seq_num)
 {
 
-	qnetd_log(LOG_INFO, "algo-test: vote_info_reply_received");
+	log(LOG_INFO, "algo-test: vote_info_reply_received");
 
 	return (TLV_REPLY_ERROR_CODE_NO_ERROR);
 }
@@ -238,7 +238,7 @@ qnetd_algo_test_heuristics_change_received(struct qnetd_client *client, uint32_t
     enum tlv_heuristics heuristics, enum tlv_vote *result_vote)
 {
 
-	qnetd_log(LOG_INFO, "algo-test: heuristics_change_received");
+	log(LOG_INFO, "algo-test: heuristics_change_received");
 
 	*result_vote = TLV_VOTE_NO_CHANGE;
 

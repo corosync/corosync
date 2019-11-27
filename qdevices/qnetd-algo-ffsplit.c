@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2017 Red Hat, Inc.
+ * Copyright (c) 2015-2019 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -36,8 +36,8 @@
 
 #include <string.h>
 
+#include "log.h"
 #include "qnetd-algo-ffsplit.h"
-#include "qnetd-log.h"
 #include "qnetd-log-debug.h"
 #include "qnetd-cluster-list.h"
 #include "qnetd-cluster.h"
@@ -75,7 +75,7 @@ qnetd_algo_ffsplit_client_init(struct qnetd_client *client)
 	if (qnetd_cluster_size(client->cluster) == 1) {
 		cluster_data = malloc(sizeof(*cluster_data));
 		if (cluster_data == NULL) {
-			qnetd_log(LOG_ERR, "ffsplit: Can't initialize cluster data for client %s",
+			log(LOG_ERR, "ffsplit: Can't initialize cluster data for client %s",
 			    client->addr_str);
 
 			return (TLV_REPLY_ERROR_CODE_INTERNAL_ERROR);
@@ -89,7 +89,7 @@ qnetd_algo_ffsplit_client_init(struct qnetd_client *client)
 
 	client_data = malloc(sizeof(*client_data));
 	if (client_data == NULL) {
-		qnetd_log(LOG_ERR, "ffsplit: Can't initialize node data for client %s",
+		log(LOG_ERR, "ffsplit: Can't initialize node data for client %s",
 		    client->addr_str);
 
 		return (TLV_REPLY_ERROR_CODE_INTERNAL_ERROR);
@@ -144,7 +144,7 @@ qnetd_algo_ffsplit_is_preferred_partition(const struct qnetd_client *client,
 	}
 
 	if (!case_processed) {
-		qnetd_log(LOG_CRIT, "qnetd_algo_ffsplit_is_preferred_partition unprocessed "
+		log(LOG_CRIT, "qnetd_algo_ffsplit_is_preferred_partition unprocessed "
 		    "tie_breaker.mode");
 		exit(1);
 	}
@@ -420,7 +420,7 @@ qnetd_algo_ffsplit_partition_cmp(const struct qnetd_client *client1,
 
 exit_res:
 	if (res == -1) {
-		qnetd_log(LOG_CRIT, "qnetd_algo_ffsplit_partition_cmp unhandled case");
+		log(LOG_CRIT, "qnetd_algo_ffsplit_partition_cmp unhandled case");
 		exit(1);
 		/* NOTREACHED */
 	}
@@ -612,21 +612,21 @@ qnetd_algo_ffsplit_do(struct qnetd_client *client, int client_leaving,
 		/*
 		 * Wait until membership is stable
 		 */
-		qnetd_log(LOG_DEBUG, "ffsplit: Membership for cluster %s is not yet stable", client->cluster_name);
+		log(LOG_DEBUG, "ffsplit: Membership for cluster %s is not yet stable", client->cluster_name);
 
 		return (TLV_VOTE_WAIT_FOR_REPLY);
 	}
 
-	qnetd_log(LOG_DEBUG, "ffsplit: Membership for cluster %s is now stable", client->cluster_name);
+	log(LOG_DEBUG, "ffsplit: Membership for cluster %s is now stable", client->cluster_name);
 
 	quorate_partition_node_list = qnetd_algo_ffsplit_select_partition(client, client_leaving,
 	    config_node_list, membership_node_list, client_heuristics);
 	cluster_data->quorate_partition_node_list = quorate_partition_node_list;
 
 	if (quorate_partition_node_list == NULL) {
-		qnetd_log(LOG_DEBUG, "ffsplit: No quorate partition was selected");
+		log(LOG_DEBUG, "ffsplit: No quorate partition was selected");
 	} else {
-		qnetd_log(LOG_DEBUG, "ffsplit: Quorate partition selected");
+		log(LOG_DEBUG, "ffsplit: Quorate partition selected");
 		qnetd_log_debug_dump_node_list(client, quorate_partition_node_list);
 	}
 
@@ -635,14 +635,14 @@ qnetd_algo_ffsplit_do(struct qnetd_client *client, int client_leaving,
 	cluster_data->cluster_state = QNETD_ALGO_FFSPLIT_CLUSTER_STATE_SENDING_NACKS;
 
 	if (qnetd_algo_ffsplit_send_votes(client, client_leaving, ring_id, 0) == 0) {
-		qnetd_log(LOG_DEBUG, "ffsplit: No client gets NACK");
+		log(LOG_DEBUG, "ffsplit: No client gets NACK");
 		/*
 		 * No one gets nack -> send acks
 		 */
 		cluster_data->cluster_state = QNETD_ALGO_FFSPLIT_CLUSTER_STATE_SENDING_ACKS;
 
 		if (qnetd_algo_ffsplit_send_votes(client, client_leaving, ring_id, 1) == 0) {
-			qnetd_log(LOG_DEBUG, "ffsplit: No client gets ACK");
+			log(LOG_DEBUG, "ffsplit: No client gets ACK");
 			/*
 			 * No one gets acks -> finished
 			 */
@@ -663,7 +663,7 @@ qnetd_algo_ffsplit_config_node_list_received(struct qnetd_client *client,
 		/*
 		 * Empty node list shouldn't happen
 		 */
-		qnetd_log(LOG_ERR, "ffsplit: Received empty config node list for client %s",
+		log(LOG_ERR, "ffsplit: Received empty config node list for client %s",
 			    client->addr_str);
 
 		return (TLV_REPLY_ERROR_CODE_INVALID_CONFIG_NODE_LIST);
@@ -673,7 +673,7 @@ qnetd_algo_ffsplit_config_node_list_received(struct qnetd_client *client,
 		/*
 		 * Current node is not in node list
 		 */
-		qnetd_log(LOG_ERR, "ffsplit: Received config node list without client %s",
+		log(LOG_ERR, "ffsplit: Received config node list without client %s",
 			    client->addr_str);
 
 		return (TLV_REPLY_ERROR_CODE_INVALID_CONFIG_NODE_LIST);
@@ -716,7 +716,7 @@ qnetd_algo_ffsplit_membership_node_list_received(struct qnetd_client *client,
 		/*
 		 * Empty node list shouldn't happen
 		 */
-		qnetd_log(LOG_ERR, "ffsplit: Received empty membership node list for client %s",
+		log(LOG_ERR, "ffsplit: Received empty membership node list for client %s",
 			    client->addr_str);
 
 		return (TLV_REPLY_ERROR_CODE_INVALID_MEMBERSHIP_NODE_LIST);
@@ -726,7 +726,7 @@ qnetd_algo_ffsplit_membership_node_list_received(struct qnetd_client *client,
 		/*
 		 * Current node is not in node list
 		 */
-		qnetd_log(LOG_ERR, "ffsplit: Received membership node list without client %s",
+		log(LOG_ERR, "ffsplit: Received membership node list without client %s",
 			    client->addr_str);
 
 		return (TLV_REPLY_ERROR_CODE_INVALID_MEMBERSHIP_NODE_LIST);
@@ -798,7 +798,7 @@ qnetd_algo_ffsplit_vote_info_reply_received(struct qnetd_client *client, uint32_
 	client_data = (struct qnetd_algo_ffsplit_client_data *)client->algorithm_data;
 
 	if (client_data->vote_info_expected_seq_num != msg_seq_num) {
-		qnetd_log(LOG_DEBUG, "ffsplit: Received old vote info reply from client %s",
+		log(LOG_DEBUG, "ffsplit: Received old vote info reply from client %s",
 		    client->addr_str);
 
 		return (TLV_REPLY_ERROR_CODE_NO_ERROR);
@@ -813,13 +813,13 @@ qnetd_algo_ffsplit_vote_info_reply_received(struct qnetd_client *client, uint32_
 
 	if (cluster_data->cluster_state == QNETD_ALGO_FFSPLIT_CLUSTER_STATE_SENDING_NACKS) {
 		if (qnetd_algo_ffsplit_no_clients_in_sending_state(client, 0) == 0) {
-			qnetd_log(LOG_DEBUG, "ffsplit: All NACK votes sent for cluster %s",
+			log(LOG_DEBUG, "ffsplit: All NACK votes sent for cluster %s",
 			     client->cluster_name);
 
 			cluster_data->cluster_state = QNETD_ALGO_FFSPLIT_CLUSTER_STATE_SENDING_ACKS;
 
 			if (qnetd_algo_ffsplit_send_votes(client, 0, &client->last_ring_id, 1) == 0) {
-				qnetd_log(LOG_DEBUG, "ffsplit: No client gets ACK");
+				log(LOG_DEBUG, "ffsplit: No client gets ACK");
 				/*
 				 * No one gets acks -> finished
 				 */
@@ -828,7 +828,7 @@ qnetd_algo_ffsplit_vote_info_reply_received(struct qnetd_client *client, uint32_
 		}
 	} else {
 		if (qnetd_algo_ffsplit_no_clients_in_sending_state(client, 1) == 0) {
-			qnetd_log(LOG_DEBUG, "ffsplit: All ACK votes sent for cluster %s",
+			log(LOG_DEBUG, "ffsplit: All ACK votes sent for cluster %s",
 			     client->cluster_name);
 
 			cluster_data->cluster_state = QNETD_ALGO_FFSPLIT_CLUSTER_STATE_WAITING_FOR_CHANGE;

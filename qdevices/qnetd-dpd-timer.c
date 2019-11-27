@@ -32,8 +32,8 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "log.h"
 #include "qnetd-dpd-timer.h"
-#include "qnetd-log.h"
 
 static int
 qnetd_dpd_timer_cb(void *data1, void *data2)
@@ -52,7 +52,7 @@ qnetd_dpd_timer_cb(void *data1, void *data2)
 
 		if (client->dpd_time_since_last_check > (client->heartbeat_interval * 2)) {
 			if (!client->dpd_msg_received_since_last_check) {
-				qnetd_log(LOG_WARNING, "Client %s doesn't sent any message during "
+				log(LOG_WARNING, "Client %s doesn't sent any message during "
 				    "%"PRIu32"ms. Disconnecting",
 				    client->addr_str, client->dpd_time_since_last_check);
 
@@ -79,7 +79,7 @@ qnetd_dpd_timer_init(struct qnetd_instance *instance)
 	    instance->advanced_settings->dpd_interval,
 	    qnetd_dpd_timer_cb, (void *)instance, NULL);
 	if (instance->dpd_timer == NULL) {
-		qnetd_log(LOG_ERR, "Can't initialize dpd timer");
+		log(LOG_ERR, "Can't initialize dpd timer");
 
 		return (-1);
 	}

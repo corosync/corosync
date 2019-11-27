@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016 Red Hat, Inc.
+ * Copyright (c) 2015-2019 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -36,8 +36,8 @@
 
 #include <string.h>
 
+#include "log.h"
 #include "qnetd-client-send.h"
-#include "qnetd-log.h"
 #include "qnetd-log-debug.h"
 #include "msg.h"
 
@@ -49,7 +49,7 @@ qnetd_client_send_err(struct qnetd_client *client, int add_msg_seq_number, uint3
 
 	send_buffer = send_buffer_list_get_new(&client->send_buffer_list);
 	if (send_buffer == NULL) {
-		qnetd_log(LOG_ERR, "Can't alloc server error msg from list. "
+		log(LOG_ERR, "Can't alloc server error msg from list. "
 		    "Disconnecting client connection.");
 
 		return (-1);
@@ -57,7 +57,7 @@ qnetd_client_send_err(struct qnetd_client *client, int add_msg_seq_number, uint3
 
 	if (msg_create_server_error(&send_buffer->buffer, add_msg_seq_number,
 	    msg_seq_number, reply) == 0) {
-		qnetd_log(LOG_ERR, "Can't alloc server error msg. "
+		log(LOG_ERR, "Can't alloc server error msg. "
 		    "Disconnecting client connection.");
 
 		send_buffer_list_discard_new(&client->send_buffer_list, send_buffer);
@@ -87,14 +87,14 @@ qnetd_client_send_vote_info(struct qnetd_client *client, uint32_t msg_seq_number
 
 	send_buffer = send_buffer_list_get_new(&client->send_buffer_list);
 	if (send_buffer == NULL) {
-		qnetd_log(LOG_ERR, "Can't alloc vote info msg from list. "
+		log(LOG_ERR, "Can't alloc vote info msg from list. "
 		    "Disconnecting client connection.");
 
 		return (-1);
 	}
 
 	if (msg_create_vote_info(&send_buffer->buffer, msg_seq_number, ring_id, vote) == 0) {
-		qnetd_log(LOG_ERR, "Can't alloc vote info msg. "
+		log(LOG_ERR, "Can't alloc vote info msg. "
 		    "Disconnecting client connection.");
 
 		send_buffer_list_discard_new(&client->send_buffer_list, send_buffer);

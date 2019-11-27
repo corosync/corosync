@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016 Red Hat, Inc.
+ * Copyright (c) 2015-2019 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -32,10 +32,10 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "log.h"
 #include "qnet-config.h"
 #include "qnetd-ipc.h"
 #include "qnetd-ipc-cmd.h"
-#include "qnetd-log.h"
 #include "unix-socket-ipc.h"
 #include "dynar-simple-lex.h"
 #include "dynar-str.h"
@@ -55,13 +55,13 @@ qnetd_ipc_init(struct qnetd_instance *instance)
 	    instance->advanced_settings->ipc_max_clients,
 	    instance->advanced_settings->ipc_max_receive_size,
 	    instance->advanced_settings->ipc_max_send_size) != 0) {
-		qnetd_log_err(LOG_ERR, "Can't create unix socket");
+		log_err(LOG_ERR, "Can't create unix socket");
 
 		return (-1);
 	}
 
 	if ((instance->ipc_socket_poll_fd = PR_CreateSocketPollFd(instance->local_ipc.socket)) == NULL) {
-		qnetd_log_nss(LOG_CRIT, "Can't create NSPR IPC socket poll fd");
+		log_nss(LOG_CRIT, "Can't create NSPR IPC socket poll fd");
 
 		return (-1);
 	}
@@ -76,7 +76,7 @@ qnetd_ipc_close(struct qnetd_instance *instance)
 
 	res = unix_socket_ipc_close(&instance->local_ipc);
 	if (res != 0) {
-		qnetd_log_err(LOG_WARNING, "Can't close local IPC");
+		log_err(LOG_WARNING, "Can't close local IPC");
 	}
 
 	return (res);
@@ -103,12 +103,12 @@ qnetd_ipc_destroy(struct qnetd_instance *instance)
 	}
 
 	if (PR_DestroySocketPollFd(instance->ipc_socket_poll_fd) != PR_SUCCESS) {
-		qnetd_log_nss(LOG_WARNING, "Unable to destroy IPC poll socket fd");
+		log_nss(LOG_WARNING, "Unable to destroy IPC poll socket fd");
 	}
 
 	res = unix_socket_ipc_destroy(&instance->local_ipc);
 	if (res != 0) {
-		qnetd_log_err(LOG_WARNING, "Can't destroy local IPC");
+		log_err(LOG_WARNING, "Can't destroy local IPC");
 	}
 
 	return (res);
@@ -125,17 +125,17 @@ qnetd_ipc_accept(struct qnetd_instance *instance, struct unix_socket_client **re
 
 	switch (accept_res) {
 	case -1:
-		qnetd_log_err(LOG_ERR, "Can't accept local IPC connection");
+		log_err(LOG_ERR, "Can't accept local IPC connection");
 		res = -1;
 		goto return_res;
 		break;
 	case -2:
-		qnetd_log(LOG_ERR, "Maximum IPC clients reached. Not accepting connection");
+		log(LOG_ERR, "Maximum IPC clients reached. Not accepting connection");
 		res = -1;
 		goto return_res;
 		break;
 	case -3:
-		qnetd_log(LOG_ERR, "Can't add client to list");
+		log(LOG_ERR, "Can't add client to list");
 		res = -1;
 		goto return_res;
 		break;
@@ -147,7 +147,7 @@ qnetd_ipc_accept(struct qnetd_instance *instance, struct unix_socket_client **re
 
 	(*res_client)->user_data = malloc(sizeof(struct qnetd_ipc_user_data));
 	if ((*res_client)->user_data == NULL) {
-		qnetd_log(LOG_ERR, "Can't alloc IPC client user data");
+		log(LOG_ERR, "Can't alloc IPC client user data");
 		res = -1;
 		qnetd_ipc_client_disconnect(instance, *res_client);
 
@@ -157,7 +157,7 @@ qnetd_ipc_accept(struct qnetd_instance *instance, struct unix_socket_client **re
 
 	prfd = PR_CreateSocketPollFd((*res_client)->socket);
 	if (prfd == NULL) {
-		qnetd_log_nss(LOG_CRIT, "Can't create NSPR poll fd for IPC client. Disconnecting client");
+		log_nss(LOG_CRIT, "Can't create NSPR poll fd for IPC client. Disconnecting client");
 		qnetd_ipc_client_disconnect(instance, *res_client);
 		res = -1;
 
@@ -177,7 +177,7 @@ qnetd_ipc_client_disconnect(struct qnetd_instance *instance, struct unix_socket_
 	if ((struct qnetd_ipc_user_data *)(client)->user_data != NULL &&
 	    PR_DestroySocketPollFd(
 	    ((struct qnetd_ipc_user_data *)(client)->user_data)->nspr_poll_fd) != PR_SUCCESS) {
-		qnetd_log_nss(LOG_WARNING, "Unable to destroy client IPC poll socket fd");
+		log_nss(LOG_WARNING, "Unable to destroy client IPC poll socket fd");
 	}
 
 	free(client->user_data);
@@ -201,7 +201,7 @@ qnetd_ipc_send_error(struct qnetd_instance *instance, struct unix_socket_client 
 	if (res) {
 		unix_socket_client_write_buffer(client, 1);
 	} else {
-		qnetd_log(LOG_ERR, "Can't send ipc error to client (buffer too small)");
+		log(LOG_ERR, "Can't send ipc error to client (buffer too small)");
 	}
 
 	return (res ? 0 : -1);
@@ -212,7 +212,7 @@ qnetd_ipc_send_buffer(struct qnetd_instance *instance, struct unix_socket_client
 {
 
 	if (dynar_str_prepend(&client->send_buffer, "OK\n") != 0) {
-		qnetd_log(LOG_ERR, "Can't send ipc message to client (buffer too small)");
+		log(LOG_ERR, "Can't send ipc message to client (buffer too small)");
 
 		if (qnetd_ipc_send_error(instance, client, "Internal IPC buffer too small") != 0) {
 			return (-1);
@@ -250,12 +250,12 @@ qnetd_ipc_parse_line(struct qnetd_instance *instance, struct unix_socket_client 
 
 	str = dynar_data(token);
 	if (strcasecmp(str, "") == 0) {
-		qnetd_log(LOG_DEBUG, "IPC client doesn't send command");
+		log(LOG_DEBUG, "IPC client doesn't send command");
 		if (qnetd_ipc_send_error(instance, client, "No command specified") != 0) {
 			client->schedule_disconnect = 1;
 		}
 	} else if (strcasecmp(str, "shutdown") == 0) {
-		qnetd_log(LOG_DEBUG, "IPC client requested shutdown");
+		log(LOG_DEBUG, "IPC client requested shutdown");
 
 		ipc_user_data->shutdown_requested = 1;
 
@@ -317,7 +317,7 @@ qnetd_ipc_parse_line(struct qnetd_instance *instance, struct unix_socket_client 
 
 		free(cluster_name); cluster_name = NULL;
 	} else {
-		qnetd_log(LOG_DEBUG, "IPC client sent unknown command");
+		log(LOG_DEBUG, "IPC client sent unknown command");
 		if (qnetd_ipc_send_error(instance, client, "Unknown command '%s'", str) != 0) {
 			client->schedule_disconnect = 1;
 		}
@@ -330,7 +330,7 @@ qnetd_ipc_parse_line(struct qnetd_instance *instance, struct unix_socket_client 
 exit_err_low_mem:
 	free(cluster_name); cluster_name = NULL;
 
-	qnetd_log(LOG_ERR, "Can't alloc memory for simple lex");
+	log(LOG_ERR, "Can't alloc memory for simple lex");
 
 	if (qnetd_ipc_send_error(instance, client, "Command too long") != 0) {
 		client->schedule_disconnect = 1;
@@ -351,15 +351,15 @@ qnetd_ipc_io_read(struct qnetd_instance *instance, struct unix_socket_client *cl
 		 */
 		break;
 	case -1:
-		qnetd_log(LOG_DEBUG, "IPC client closed connection");
+		log(LOG_DEBUG, "IPC client closed connection");
 		client->schedule_disconnect = 1;
 		break;
 	case -2:
-		qnetd_log(LOG_ERR, "Can't store message from IPC client. Disconnecting client.");
+		log(LOG_ERR, "Can't store message from IPC client. Disconnecting client.");
 		client->schedule_disconnect = 1;
 		break;
 	case -3:
-		qnetd_log_err(LOG_ERR, "Can't receive message from IPC client. Disconnecting client.");
+		log_err(LOG_ERR, "Can't receive message from IPC client. Disconnecting client.");
 		client->schedule_disconnect = 1;
 		break;
 	case 1:
@@ -390,11 +390,11 @@ qnetd_ipc_io_write(struct qnetd_instance *instance, struct unix_socket_client *c
 		 */
 		break;
 	case -1:
-		qnetd_log(LOG_DEBUG, "IPC client closed connection");
+		log(LOG_DEBUG, "IPC client closed connection");
 		client->schedule_disconnect = 1;
 		break;
 	case -2:
-		qnetd_log_err(LOG_ERR, "Can't send message to IPC client. Disconnecting client");
+		log_err(LOG_ERR, "Can't send message to IPC client. Disconnecting client");
 		client->schedule_disconnect = 1;
 		break;
 	case 1:
