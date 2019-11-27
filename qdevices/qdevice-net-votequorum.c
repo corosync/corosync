@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2017 Red Hat, Inc.
+ * Copyright (c) 2015-2019 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -45,7 +45,7 @@ qdevice_net_votequorum_node_state_to_tlv(uint32_t votequorum_node_state)
 	case VOTEQUORUM_NODESTATE_DEAD: res = TLV_NODE_STATE_DEAD; break;
 	case VOTEQUORUM_NODESTATE_LEAVING: res = TLV_NODE_STATE_LEAVING; break;
 	default:
-		qdevice_log(LOG_ERR, "qdevice_net_votequorum_node_state_to_tlv: Unhandled votequorum "
+		log(LOG_ERR, "qdevice_net_votequorum_node_state_to_tlv: Unhandled votequorum "
 		    "node state %"PRIu32, votequorum_node_state);
 		exit(1);
 		break;

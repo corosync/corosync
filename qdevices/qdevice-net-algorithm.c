@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2017 Red Hat, Inc.
+ * Copyright (c) 2015-2019 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -51,7 +51,7 @@ qdevice_net_algorithm_init(struct qdevice_net_instance *instance)
 
 	if (instance->decision_algorithm >= QDEVICE_NET_STATIC_SUPPORTED_DECISION_ALGORITHMS_SIZE ||
 	    qdevice_net_algorithm_array[instance->decision_algorithm] == NULL) {
-		qdevice_log(LOG_CRIT, "qdevice_net_algorithm_init unhandled decision algorithm");
+		log(LOG_CRIT, "qdevice_net_algorithm_init unhandled decision algorithm");
 		exit(1);
 	}
 
@@ -65,7 +65,7 @@ qdevice_net_algorithm_connected(struct qdevice_net_instance *instance, enum tlv_
 
 	if (instance->decision_algorithm >= QDEVICE_NET_STATIC_SUPPORTED_DECISION_ALGORITHMS_SIZE ||
 	    qdevice_net_algorithm_array[instance->decision_algorithm] == NULL) {
-		qdevice_log(LOG_CRIT, "qdevice_net_algorithm_connected unhandled decision algorithm");
+		log(LOG_CRIT, "qdevice_net_algorithm_connected unhandled decision algorithm");
 		exit(1);
 	}
 
@@ -81,7 +81,7 @@ qdevice_net_algorithm_config_node_list_changed(struct qdevice_net_instance *inst
 
 	if (instance->decision_algorithm >= QDEVICE_NET_STATIC_SUPPORTED_DECISION_ALGORITHMS_SIZE ||
 	    qdevice_net_algorithm_array[instance->decision_algorithm] == NULL) {
-		qdevice_log(LOG_CRIT, "qdevice_net_algorithm_connected unhandled decision algorithm");
+		log(LOG_CRIT, "qdevice_net_algorithm_connected unhandled decision algorithm");
 		exit(1);
 	}
 
@@ -98,7 +98,7 @@ qdevice_net_algorithm_votequorum_node_list_notify(struct qdevice_net_instance *i
 
 	if (instance->decision_algorithm >= QDEVICE_NET_STATIC_SUPPORTED_DECISION_ALGORITHMS_SIZE ||
 	    qdevice_net_algorithm_array[instance->decision_algorithm] == NULL) {
-		qdevice_log(LOG_CRIT, "qdevice_net_algorithm_votequorum_node_list_notify "
+		log(LOG_CRIT, "qdevice_net_algorithm_votequorum_node_list_notify "
 		    "unhandled decision algorithm");
 		exit(1);
 	}
@@ -115,7 +115,7 @@ qdevice_net_algorithm_votequorum_node_list_heuristics_notify(struct qdevice_net_
 
 	if (instance->decision_algorithm >= QDEVICE_NET_STATIC_SUPPORTED_DECISION_ALGORITHMS_SIZE ||
 	    qdevice_net_algorithm_array[instance->decision_algorithm] == NULL) {
-		qdevice_log(LOG_CRIT, "qdevice_net_algorithm_votequorum_node_list_heuristics_notify "
+		log(LOG_CRIT, "qdevice_net_algorithm_votequorum_node_list_heuristics_notify "
 		    "unhandled decision algorithm");
 		exit(1);
 	}
@@ -133,7 +133,7 @@ qdevice_net_algorithm_votequorum_quorum_notify(struct qdevice_net_instance *inst
 
 	if (instance->decision_algorithm >= QDEVICE_NET_STATIC_SUPPORTED_DECISION_ALGORITHMS_SIZE ||
 	    qdevice_net_algorithm_array[instance->decision_algorithm] == NULL) {
-		qdevice_log(LOG_CRIT, "qdevice_net_algorithm_votequorum_quorum_notify "
+		log(LOG_CRIT, "qdevice_net_algorithm_votequorum_quorum_notify "
 		    "unhandled decision algorithm");
 		exit(1);
 	}
@@ -150,7 +150,7 @@ qdevice_net_algorithm_votequorum_expected_votes_notify(struct qdevice_net_instan
 
 	if (instance->decision_algorithm >= QDEVICE_NET_STATIC_SUPPORTED_DECISION_ALGORITHMS_SIZE ||
 	    qdevice_net_algorithm_array[instance->decision_algorithm] == NULL) {
-		qdevice_log(LOG_CRIT, "qdevice_net_algorithm_votequorum_expected_votes_notify "
+		log(LOG_CRIT, "qdevice_net_algorithm_votequorum_expected_votes_notify "
 		    "unhandled decision algorithm");
 		exit(1);
 	}
@@ -167,7 +167,7 @@ qdevice_net_algorithm_config_node_list_reply_received(struct qdevice_net_instanc
 
 	if (instance->decision_algorithm >= QDEVICE_NET_STATIC_SUPPORTED_DECISION_ALGORITHMS_SIZE ||
 	    qdevice_net_algorithm_array[instance->decision_algorithm] == NULL) {
-		qdevice_log(LOG_CRIT, "qdevice_net_algorithm_config_node_list_reply_received "
+		log(LOG_CRIT, "qdevice_net_algorithm_config_node_list_reply_received "
 		    "unhandled decision algorithm");
 		exit(1);
 	}
@@ -184,7 +184,7 @@ qdevice_net_algorithm_membership_node_list_reply_received(struct qdevice_net_ins
 
 	if (instance->decision_algorithm >= QDEVICE_NET_STATIC_SUPPORTED_DECISION_ALGORITHMS_SIZE ||
 	    qdevice_net_algorithm_array[instance->decision_algorithm] == NULL) {
-		qdevice_log(LOG_CRIT, "qdevice_net_algorithm_membership_node_list_reply_received "
+		log(LOG_CRIT, "qdevice_net_algorithm_membership_node_list_reply_received "
 		    "unhandled decision algorithm");
 		exit(1);
 	}
@@ -202,7 +202,7 @@ qdevice_net_algorithm_quorum_node_list_reply_received(struct qdevice_net_instanc
 
 	if (instance->decision_algorithm >= QDEVICE_NET_STATIC_SUPPORTED_DECISION_ALGORITHMS_SIZE ||
 	    qdevice_net_algorithm_array[instance->decision_algorithm] == NULL) {
-		qdevice_log(LOG_CRIT, "qdevice_net_algorithm_quorum_node_list_reply_received "
+		log(LOG_CRIT, "qdevice_net_algorithm_quorum_node_list_reply_received "
 		    "unhandled decision algorithm");
 		exit(1);
 	}
@@ -220,7 +220,7 @@ qdevice_net_algorithm_ask_for_vote_reply_received(struct qdevice_net_instance *i
 
 	if (instance->decision_algorithm >= QDEVICE_NET_STATIC_SUPPORTED_DECISION_ALGORITHMS_SIZE ||
 	    qdevice_net_algorithm_array[instance->decision_algorithm] == NULL) {
-		qdevice_log(LOG_CRIT, "qdevice_net_algorithm_ask_for_vote_reply_received "
+		log(LOG_CRIT, "qdevice_net_algorithm_ask_for_vote_reply_received "
 		    "unhandled decision algorithm");
 		exit(1);
 	}
@@ -237,7 +237,7 @@ qdevice_net_algorithm_vote_info_received(struct qdevice_net_instance *instance,
 
 	if (instance->decision_algorithm >= QDEVICE_NET_STATIC_SUPPORTED_DECISION_ALGORITHMS_SIZE ||
 	    qdevice_net_algorithm_array[instance->decision_algorithm] == NULL) {
-		qdevice_log(LOG_CRIT, "qdevice_net_algorithm_vote_info_received "
+		log(LOG_CRIT, "qdevice_net_algorithm_vote_info_received "
 		    "unhandled decision algorithm");
 		exit(1);
 	}
@@ -253,7 +253,7 @@ qdevice_net_algorithm_echo_reply_received(struct qdevice_net_instance *instance,
 
 	if (instance->decision_algorithm >= QDEVICE_NET_STATIC_SUPPORTED_DECISION_ALGORITHMS_SIZE ||
 	    qdevice_net_algorithm_array[instance->decision_algorithm] == NULL) {
-		qdevice_log(LOG_CRIT, "qdevice_net_algorithm_echo_reply_received "
+		log(LOG_CRIT, "qdevice_net_algorithm_echo_reply_received "
 		    "unhandled decision algorithm");
 		exit(1);
 	}
@@ -268,7 +268,7 @@ qdevice_net_algorithm_echo_reply_not_received(struct qdevice_net_instance *insta
 
 	if (instance->decision_algorithm >= QDEVICE_NET_STATIC_SUPPORTED_DECISION_ALGORITHMS_SIZE ||
 	    qdevice_net_algorithm_array[instance->decision_algorithm] == NULL) {
-		qdevice_log(LOG_CRIT, "qdevice_net_algorithm_echo_reply_not_received "
+		log(LOG_CRIT, "qdevice_net_algorithm_echo_reply_not_received "
 		    "unhandled decision algorithm");
 		exit(1);
 	}
@@ -284,7 +284,7 @@ qdevice_net_algorithm_heuristics_change(struct qdevice_net_instance *instance,
 
 	if (instance->decision_algorithm >= QDEVICE_NET_STATIC_SUPPORTED_DECISION_ALGORITHMS_SIZE ||
 	    qdevice_net_algorithm_array[instance->decision_algorithm] == NULL) {
-		qdevice_log(LOG_CRIT, "qdevice_net_algorithm_heuristics_change "
+		log(LOG_CRIT, "qdevice_net_algorithm_heuristics_change "
 		    "unhandled decision algorithm");
 		exit(1);
 	}
@@ -301,7 +301,7 @@ qdevice_net_algorithm_heuristics_change_reply_received(struct qdevice_net_instan
 
 	if (instance->decision_algorithm >= QDEVICE_NET_STATIC_SUPPORTED_DECISION_ALGORITHMS_SIZE ||
 	    qdevice_net_algorithm_array[instance->decision_algorithm] == NULL) {
-		qdevice_log(LOG_CRIT, "qdevice_net_algorithm_heuristics_change_reply_received "
+		log(LOG_CRIT, "qdevice_net_algorithm_heuristics_change_reply_received "
 		    "unhandled decision algorithm");
 		exit(1);
 	}
@@ -318,7 +318,7 @@ qdevice_net_algorithm_disconnected(struct qdevice_net_instance *instance,
 
 	if (instance->decision_algorithm >= QDEVICE_NET_STATIC_SUPPORTED_DECISION_ALGORITHMS_SIZE ||
 	    qdevice_net_algorithm_array[instance->decision_algorithm] == NULL) {
-		qdevice_log(LOG_CRIT, "qdevice_net_algorithm_disconnected "
+		log(LOG_CRIT, "qdevice_net_algorithm_disconnected "
 		    "unhandled decision algorithm");
 		exit(1);
 	}
@@ -333,7 +333,7 @@ qdevice_net_algorithm_destroy(struct qdevice_net_instance *instance)
 
 	if (instance->decision_algorithm >= QDEVICE_NET_STATIC_SUPPORTED_DECISION_ALGORITHMS_SIZE ||
 	    qdevice_net_algorithm_array[instance->decision_algorithm] == NULL) {
-		qdevice_log(LOG_CRIT, "qdevice_net_algorithm_destroy "
+		log(LOG_CRIT, "qdevice_net_algorithm_destroy "
 		    "unhandled decision algorithm");
 		exit(1);
 	}
@@ -365,22 +365,22 @@ qdevice_net_algorithm_register_all(void)
 {
 
 	if (qdevice_net_algo_test_register() != 0) {
-		qdevice_log(LOG_CRIT, "Failed to register decision algorithm 'test' ");
+		log(LOG_CRIT, "Failed to register decision algorithm 'test' ");
 		return (-1);
 	}
 
 	if (qdevice_net_algo_ffsplit_register() != 0) {
-		qdevice_log(LOG_CRIT, "Failed to register decision algorithm 'ffsplit' ");
+		log(LOG_CRIT, "Failed to register decision algorithm 'ffsplit' ");
 		return (-1);
 	}
 
 	if (qdevice_net_algo_2nodelms_register() != 0) {
-		qdevice_log(LOG_CRIT, "Failed to register decision algorithm '2nodelms' ");
+		log(LOG_CRIT, "Failed to register decision algorithm '2nodelms' ");
 		return (-1);
 	}
 
 	if (qdevice_net_algo_lms_register() != 0) {
-		qdevice_log(LOG_CRIT, "Failed to register decision algorithm 'lms' ");
+		log(LOG_CRIT, "Failed to register decision algorithm 'lms' ");
 		return (-1);
 	}
 

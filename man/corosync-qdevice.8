@@ -31,7 +31,7 @@
 .\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 .\" * THE POSSIBILITY OF SUCH DAMAGE.
 .\" */
-.TH COROSYNC-QDEVICE 8 2019-04-25
+.TH COROSYNC-QDEVICE 8 2019-08-12
 .SH NAME
 corosync-qdevice \- QDevice daemon
 .SH SYNOPSIS
@@ -231,11 +231,9 @@ Logging configuration is within the
 .B logging
 directive.
 .B corosync-qdevice
-parses and supports most of the options with exception of
-.BR to_logfile ", " logfile
-and
-.BR logfile_priority .
-The 
+parses and supports only
+.BR debug
+option. The
 .B logger_subsys
 sub-directive can be also used if
 .B subsys

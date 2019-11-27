@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2018 Red Hat, Inc.
+ * Copyright (c) 2015-2019 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -54,37 +54,37 @@ qdevice_model_net_init(struct qdevice_instance *instance)
 
 	struct qdevice_net_instance *net_instance;
 
-	qdevice_log(LOG_DEBUG, "Initializing qdevice_net_instance");
+	log(LOG_DEBUG, "Initializing qdevice_net_instance");
 	if (qdevice_net_instance_init_from_cmap(instance) != 0) {
 		return (-1);
 	}
 
 	net_instance = instance->model_data;
 
-	qdevice_log(LOG_DEBUG, "Registering algorithms");
+	log(LOG_DEBUG, "Registering algorithms");
 	if (qdevice_net_algorithm_register_all() != 0) {
 		return (-1);
 	}
 
-	qdevice_log(LOG_DEBUG, "Initializing NSS");
+	log(LOG_DEBUG, "Initializing NSS");
 	if (nss_sock_init_nss((net_instance->tls_supported != TLV_TLS_UNSUPPORTED ?
 	    instance->advanced_settings->net_nss_db_dir : NULL)) != 0) {
-		qdevice_log_nss(LOG_ERR, "Can't init nss");
+		log_nss(LOG_ERR, "Can't init nss");
 		return (-1);
 	}
 
 	if (qdevice_net_cast_vote_timer_update(net_instance, TLV_VOTE_ASK_LATER) != 0) {
-		qdevice_log(LOG_ERR, "Can't update cast vote timer");
+		log(LOG_ERR, "Can't update cast vote timer");
 		return (-1);
 	}
 
 	if (qdevice_net_algorithm_init(net_instance) != 0) {
-		qdevice_log(LOG_ERR, "Algorithm init failed");
+		log(LOG_ERR, "Algorithm init failed");
 		return (-1);
 	}
 
 	if (qdevice_net_heuristics_init(net_instance) != 0) {
-		qdevice_log(LOG_ERR, "Can't initialize net heuristics");
+		log(LOG_ERR, "Can't initialize net heuristics");
 		return (-1);
 	}
 
@@ -98,21 +98,21 @@ qdevice_model_net_destroy(struct qdevice_instance *instance)
 
 	net_instance = instance->model_data;
 
-	qdevice_log(LOG_DEBUG, "Destroying algorithm");
+	log(LOG_DEBUG, "Destroying algorithm");
 	qdevice_net_algorithm_destroy(net_instance);
 
-	qdevice_log(LOG_DEBUG, "Destroying qdevice_net_instance");
+	log(LOG_DEBUG, "Destroying qdevice_net_instance");
 	qdevice_net_instance_destroy(net_instance);
 
-	qdevice_log(LOG_DEBUG, "Shutting down NSS");
+	log(LOG_DEBUG, "Shutting down NSS");
 	SSL_ClearSessionCache();
 
 	if (NSS_Shutdown() != SECSuccess) {
-		qdevice_log_nss(LOG_WARNING, "Can't shutdown NSS");
+		log_nss(LOG_WARNING, "Can't shutdown NSS");
 	}
 
 	if (PR_Cleanup() != PR_SUCCESS) {
-		qdevice_log_nss(LOG_WARNING, "Can't shutdown NSPR");
+		log_nss(LOG_WARNING, "Can't shutdown NSPR");
 	}
 
 	free(net_instance);
@@ -127,7 +127,7 @@ qdevice_model_net_timer_connect_timeout(void *data1, void *data2)
 
 	instance = (struct qdevice_net_instance *)data1;
 
-	qdevice_log(LOG_ERR, "Connect timeout");
+	log(LOG_ERR, "Connect timeout");
 
 	instance->schedule_disconnect = 1;
 
@@ -166,7 +166,7 @@ qdevice_model_net_run(struct qdevice_instance *instance)
 
 	net_instance = instance->model_data;
 
-	qdevice_log(LOG_DEBUG, "Executing qdevice-net");
+	log(LOG_DEBUG, "Executing qdevice-net");
 
 	ret_val = -1;
 
@@ -180,25 +180,25 @@ qdevice_model_net_run(struct qdevice_instance *instance)
 			(void *)net_instance, NULL);
 
 		if (net_instance->connect_timer == NULL) {
-			qdevice_log(LOG_CRIT, "Can't schedule connect timer");
+			log(LOG_CRIT, "Can't schedule connect timer");
 
 			try_connect = 0;
 			break;
 		}
 
-		qdevice_log(LOG_DEBUG, "Trying connect to qnetd server %s:%u (timeout = %ums)",
+		log(LOG_DEBUG, "Trying connect to qnetd server %s:%u (timeout = %ums)",
 		    net_instance->host_addr, net_instance->host_port, net_instance->connect_timeout);
 
 		res = nss_sock_non_blocking_client_init(net_instance->host_addr,
 		    net_instance->host_port, qdevice_model_net_get_af(net_instance),
 		    &net_instance->non_blocking_client);
 		if (res == -1) {
-			qdevice_log_nss(LOG_ERR, "Can't initialize non blocking client connection");
+			log_nss(LOG_ERR, "Can't initialize non blocking client connection");
 		}
 
 		res = nss_sock_non_blocking_client_try_next(&net_instance->non_blocking_client);
 		if (res == -1) {
-			qdevice_log_nss(LOG_ERR, "Can't connect to qnetd host");
+			log_nss(LOG_ERR, "Can't connect to qnetd host");
 			nss_sock_non_blocking_client_destroy(&net_instance->non_blocking_client);
 		}
 
@@ -226,15 +226,15 @@ qdevice_model_net_run(struct qdevice_instance *instance)
 
 		if (qdevice_net_algorithm_disconnected(net_instance,
 		    net_instance->disconnect_reason, &try_connect, &vote) != 0) {
-			qdevice_log(LOG_ERR, "Algorithm returned error, force exit");
+			log(LOG_ERR, "Algorithm returned error, force exit");
 			return (-1);
 		} else {
-			qdevice_log(LOG_DEBUG, "Algorithm result vote is %s",
+			log(LOG_DEBUG, "Algorithm result vote is %s",
 			    tlv_vote_to_str(vote));
 		}
 
 		if (qdevice_net_cast_vote_timer_update(net_instance, vote) != 0) {
-			qdevice_log(LOG_ERR, "qdevice_model_net_run fatal error. "
+			log(LOG_ERR, "qdevice_model_net_run fatal error. "
 			    " Can't update cast vote timer vote");
 		}
 
@@ -251,7 +251,7 @@ qdevice_model_net_run(struct qdevice_instance *instance)
 
 		if (net_instance->socket != NULL) {
 			if (PR_Close(net_instance->socket) != PR_SUCCESS) {
-				qdevice_log_nss(LOG_WARNING, "Unable to close connection");
+				log_nss(LOG_WARNING, "Unable to close connection");
 			}
 			net_instance->socket = NULL;
 		}
@@ -262,7 +262,7 @@ qdevice_model_net_run(struct qdevice_instance *instance)
 
 		if (net_instance->non_blocking_client.socket != NULL) {
 			if (PR_Close(net_instance->non_blocking_client.socket) != PR_SUCCESS) {
-				qdevice_log_nss(LOG_WARNING, "Unable to close non-blocking client connection");
+				log_nss(LOG_WARNING, "Unable to close non-blocking client connection");
 			}
 			net_instance->non_blocking_client.socket = NULL;
 		}
@@ -275,7 +275,7 @@ qdevice_model_net_run(struct qdevice_instance *instance)
 			delay_before_reconnect = random() %
 			    (int)(net_instance->cast_vote_timer_interval * 0.9);
 
-			qdevice_log(LOG_DEBUG, "Sleeping for %u ms before reconnect",
+			log(LOG_DEBUG, "Sleeping for %u ms before reconnect",
 			    delay_before_reconnect);
 			(void)poll(NULL, 0, delay_before_reconnect);
 		}
@@ -323,19 +323,19 @@ qdevice_model_net_config_node_list_changed(struct qdevice_instance *instance,
 
 	if (qdevice_net_algorithm_config_node_list_changed(net_instance, nlist, config_version_set,
 	    config_version, &send_node_list, &vote) != 0) {
-		qdevice_log(LOG_ERR, "Algorithm returned error, Disconnecting");
+		log(LOG_ERR, "Algorithm returned error, Disconnecting");
 
 		net_instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_ALGO_CONFIG_NODE_LIST_CHANGED_ERR;
 		net_instance->schedule_disconnect = 1;
 
 		return (0);
 	} else {
-		qdevice_log(LOG_DEBUG, "Algorithm decided to %s node list and result vote is %s",
+		log(LOG_DEBUG, "Algorithm decided to %s node list and result vote is %s",
 		    (send_node_list ? "send" : "not send"), tlv_vote_to_str(vote));
 	}
 
 	if (qdevice_net_cast_vote_timer_update(net_instance, vote) != 0) {
-		qdevice_log(LOG_CRIT, "qdevice_model_net_config_node_list_changed fatal error. "
+		log(LOG_CRIT, "qdevice_model_net_config_node_list_changed fatal error. "
 				" Can't update cast vote timer vote");
 		net_instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_SCHEDULE_VOTING_TIMER;
 		net_instance->schedule_disconnect = 1;
@@ -403,19 +403,19 @@ qdevice_model_net_votequorum_quorum_notify(struct qdevice_instance *instance,
 
 	if (qdevice_net_algorithm_votequorum_quorum_notify(net_instance, quorate,
 	    node_list_entries, node_list, &send_node_list, &vote) != 0) {
-		qdevice_log(LOG_ERR, "Algorithm returned error. Disconnecting.");
+		log(LOG_ERR, "Algorithm returned error. Disconnecting.");
 
 		net_instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_ALGO_VOTEQUORUM_QUORUM_NOTIFY_ERR;
 		net_instance->schedule_disconnect = 1;
 
 		return (0);
 	} else {
-		qdevice_log(LOG_DEBUG, "Algorithm decided to %s list and result vote is %s",
+		log(LOG_DEBUG, "Algorithm decided to %s list and result vote is %s",
 		    (send_node_list ? "send" : "not send"), tlv_vote_to_str(vote));
 	}
 
 	if (qdevice_net_cast_vote_timer_update(net_instance, vote) != 0) {
-		qdevice_log(LOG_CRIT, "qdevice_model_net_votequorum_quorum_notify fatal error. "
+		log(LOG_CRIT, "qdevice_model_net_votequorum_quorum_notify fatal error. "
 				" Can't update cast vote timer vote");
 		net_instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_SCHEDULE_VOTING_TIMER;
 		net_instance->schedule_disconnect = 1;
@@ -474,7 +474,7 @@ qdevice_model_net_votequorum_node_list_heuristics_notify(struct qdevice_instance
 
 	if (qdevice_net_algorithm_votequorum_node_list_heuristics_notify(net_instance, &tlv_rid,
 	    node_list_entries, node_list, &send_node_list, &vote, &heuristics) != 0) {
-		qdevice_log(LOG_ERR, "Algorithm returned error. Disconnecting.");
+		log(LOG_ERR, "Algorithm returned error. Disconnecting.");
 
 		net_instance->disconnect_reason =
 		    QDEVICE_NET_DISCONNECT_REASON_ALGO_VOTEQUORUM_NODE_LIST_HEURISTICS_NOTIFY_ERR;
@@ -482,7 +482,7 @@ qdevice_model_net_votequorum_node_list_heuristics_notify(struct qdevice_instance
 
 		return (0);
 	} else {
-		qdevice_log(LOG_DEBUG, "Algorithm decided to %s list, result vote is %s and heuristics is %s",
+		log(LOG_DEBUG, "Algorithm decided to %s list, result vote is %s and heuristics is %s",
 		    (send_node_list ? "send" : "not send"), tlv_vote_to_str(vote),
 		    tlv_heuristics_to_str(heuristics));
 	}
@@ -506,7 +506,7 @@ qdevice_model_net_votequorum_node_list_heuristics_notify(struct qdevice_instance
 	qdevice_net_cast_vote_timer_set_paused(net_instance, 0);
 
 	if (qdevice_net_cast_vote_timer_update(net_instance, vote) != 0) {
-		qdevice_log(LOG_CRIT, "qdevice_model_net_votequorum_node_list_notify fatal error "
+		log(LOG_CRIT, "qdevice_model_net_votequorum_node_list_notify fatal error "
 		    "Can't update cast vote timer");
 		net_instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_SCHEDULE_VOTING_TIMER;
 		net_instance->schedule_disconnect = 1;
@@ -561,19 +561,19 @@ qdevice_model_net_votequorum_node_list_notify(struct qdevice_instance *instance,
 
 	if (qdevice_net_algorithm_votequorum_node_list_notify(net_instance, &tlv_rid,
 	    node_list_entries, node_list, &pause_cast_vote_timer, &vote) != 0) {
-		qdevice_log(LOG_ERR, "Algorithm returned error. Disconnecting.");
+		log(LOG_ERR, "Algorithm returned error. Disconnecting.");
 
 		net_instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_ALGO_VOTEQUORUM_NODE_LIST_NOTIFY_ERR;
 		net_instance->schedule_disconnect = 1;
 
 		return (0);
 	} else {
-		qdevice_log(LOG_DEBUG, "Algorithm decided to %s cast vote timer and result vote is %s ",
+		log(LOG_DEBUG, "Algorithm decided to %s cast vote timer and result vote is %s ",
 		    (pause_cast_vote_timer ? "pause" : "not pause"), tlv_vote_to_str(vote));
 	}
 
 	if (qdevice_net_cast_vote_timer_update(net_instance, vote) != 0) {
-		qdevice_log(LOG_CRIT, "qdevice_model_net_votequorum_node_list_notify fatal error "
+		log(LOG_CRIT, "qdevice_model_net_votequorum_node_list_notify fatal error "
 		    "Can't update cast vote timer");
 		net_instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_SCHEDULE_VOTING_TIMER;
 		net_instance->schedule_disconnect = 1;
@@ -595,7 +595,7 @@ qdevice_model_net_votequorum_expected_votes_notify(struct qdevice_instance *inst
 
 	net_instance = instance->model_data;
 
-	qdevice_log(LOG_DEBUG, "qdevice_model_net_votequorum_expected_votes_notify"
+	log(LOG_DEBUG, "qdevice_model_net_votequorum_expected_votes_notify"
 	    " (expected votes old=%"PRIu32" / new=%"PRIu32")",
 	    net_instance->qdevice_instance_ptr->vq_expected_votes, expected_votes);
 
@@ -603,18 +603,18 @@ qdevice_model_net_votequorum_expected_votes_notify(struct qdevice_instance *inst
 
 	if (qdevice_net_algorithm_votequorum_expected_votes_notify(net_instance, expected_votes,
 	    &vote) != 0) {
-		qdevice_log(LOG_DEBUG, "Algorithm returned error. Disconnecting.");
+		log(LOG_DEBUG, "Algorithm returned error. Disconnecting.");
 
 		net_instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_ALGO_VOTEQUORUM_EXPECTED_VOTES_NOTIFY_ERR;
 		net_instance->schedule_disconnect = 1;
 
 		return (0);
 	} else {
-		qdevice_log(LOG_DEBUG, "Algorithm result vote is %s", tlv_vote_to_str(vote));
+		log(LOG_DEBUG, "Algorithm result vote is %s", tlv_vote_to_str(vote));
 	}
 
 	if (qdevice_net_cast_vote_timer_update(net_instance, vote) != 0) {
-		qdevice_log(LOG_CRIT, "qdevice_model_net_votequorum_expected_votes_notify fatal error. "
+		log(LOG_CRIT, "qdevice_model_net_votequorum_expected_votes_notify fatal error. "
 				" Can't update cast vote timer vote");
 		net_instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_SCHEDULE_VOTING_TIMER;
 		net_instance->schedule_disconnect = 1;
@@ -642,7 +642,7 @@ qdevice_model_net_cmap_changed(struct qdevice_instance *instance,
 
 		if (net_instance->state == QDEVICE_NET_INSTANCE_STATE_WAITING_VOTEQUORUM_CMAP_EVENTS &&
 		    !net_instance->server_supports_heuristics && heuristics_enabled) {
-			qdevice_log(LOG_ERR, "Heuristics are enabled but not supported by the server");
+			log(LOG_ERR, "Heuristics are enabled but not supported by the server");
 
 			net_instance->disconnect_reason =
 			    QDEVICE_NET_DISCONNECT_REASON_SERVER_DOESNT_SUPPORT_REQUIRED_OPT;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2017 Red Hat, Inc.
+ * Copyright (c) 2015-2019 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -33,6 +33,7 @@
  */
 
 #include <stdlib.h>
+#include <stdio.h>
 
 #include "dynar.h"
 #include "dynar-str.h"
@@ -54,23 +55,23 @@ qdevice_heuristics_cmd_process_exec_result(struct qdevice_heuristics_instance *i
 
 	if (sscanf(str, QDEVICE_HEURISTICS_CMD_STR_EXEC_RESULT_ADD_SPACE "%"PRIu32" %u", &seq_number,
 	    &exec_result) != 2) {
-		qdevice_log(LOG_CRIT, "Can't parse exec result command (sscanf)");
+		log(LOG_CRIT, "Can't parse exec result command (sscanf)");
 
 		return (-1);
 	}
 
-	qdevice_log(LOG_DEBUG,
+	log(LOG_DEBUG,
 	    "Received heuristics exec result command with seq_no \"%"PRIu32"\" and result \"%s\"", seq_number,
 	    qdevice_heuristics_exec_result_to_str(exec_result));
 
 	if (!instance->waiting_for_result) {
-		qdevice_log(LOG_DEBUG, "Received exec result is not expected. Ignoring.");
+		log(LOG_DEBUG, "Received exec result is not expected. Ignoring.");
 
 		return (0);
 	}
 
 	if (seq_number != instance->expected_reply_seq_number) {
-		qdevice_log(LOG_DEBUG, "Received heuristics exec result seq number %"PRIu32
+		log(LOG_DEBUG, "Received heuristics exec result seq number %"PRIu32
 		    " is not expected one (expected %"PRIu32"). Ignoring.", seq_number,
 		    instance->expected_reply_seq_number);
 
@@ -81,7 +82,7 @@ qdevice_heuristics_cmd_process_exec_result(struct qdevice_heuristics_instance *i
 
 	if (qdevice_heuristics_result_notifier_notify(&instance->exec_result_notifier_list,
 	    (void *)instance, seq_number, exec_result) != 0) {
-		qdevice_log(LOG_DEBUG, "qdevice_heuristics_result_notifier_notify returned non-zero result");
+		log(LOG_DEBUG, "qdevice_heuristics_result_notifier_notify returned non-zero result");
 		return (-1);
 	}
 
@@ -127,7 +128,7 @@ qdevice_heuristics_cmd_process_one_line(struct qdevice_heuristics_instance *inst
 			return (-1);
 		}
 	} else {
-		qdevice_log(LOG_CRIT,
+		log(LOG_CRIT,
 		    "Heuristics worker sent unknown command \"%s\"", str);
 
 		    return (-1);
@@ -140,7 +141,7 @@ qdevice_heuristics_cmd_process_one_line(struct qdevice_heuristics_instance *inst
 
 	memmove(str, str + zi, str_len - zi);
 	if (dynar_set_size(data, str_len - zi) == -1) {
-		qdevice_log(LOG_CRIT,
+		log(LOG_CRIT,
 		    "qdevice_heuristics_cmd_process_one_line: Can't set dynar size");
 		return (-1);
 	}
@@ -184,15 +185,15 @@ qdevice_heuristics_cmd_read_from_pipe(struct qdevice_heuristics_instance *instan
 		 */
 		break;
 	case -1:
-		qdevice_log(LOG_ERR, "Lost connection with heuristics worker");
+		log(LOG_ERR, "Lost connection with heuristics worker");
 		ret = -1;
 		break;
 	case -2:
-		qdevice_log(LOG_ERR, "Heuristics worker sent too long cmd.");
+		log(LOG_ERR, "Heuristics worker sent too long cmd.");
 		ret = -1;
 		break;
 	case -3:
-		qdevice_log(LOG_ERR, "Unhandled error when reading from heuristics worker cmd fd");
+		log(LOG_ERR, "Unhandled error when reading from heuristics worker cmd fd");
 		ret = -1;
 		break;
 	case 1:
@@ -218,7 +219,7 @@ qdevice_heuristics_cmd_write(struct qdevice_heuristics_instance *instance)
 
 	send_buffer = send_buffer_list_get_active(&instance->cmd_out_buffer_list);
 	if (send_buffer == NULL) {
-		qdevice_log(LOG_CRIT, "send_buffer_list_get_active in qdevice_heuristics_cmd_write returned NULL");
+		log(LOG_CRIT, "send_buffer_list_get_active in qdevice_heuristics_cmd_write returned NULL");
 
 		return (-1);
 	}
@@ -231,13 +232,13 @@ qdevice_heuristics_cmd_write(struct qdevice_heuristics_instance *instance)
 	}
 
 	if (res == -1) {
-		qdevice_log(LOG_CRIT, "qdevice_heuristics_io_write returned -1 (write returned 0)");
+		log(LOG_CRIT, "qdevice_heuristics_io_write returned -1 (write returned 0)");
 
 		return (-1);
 	}
 
 	if (res == -2) {
-		qdevice_log(LOG_CRIT, "Unhandled error in during sending message to heuristics "
+		log(LOG_CRIT, "Unhandled error in during sending message to heuristics "
 		    "worker (qdevice_heuristics_io_write returned -2)");
 
 		return (-1);
@@ -274,14 +275,14 @@ qdevice_heuristics_cmd_write_exec_list(struct qdevice_heuristics_instance *insta
 
 	send_buffer = send_buffer_list_get_new(&instance->cmd_out_buffer_list);
 	if (send_buffer == NULL) {
-		qdevice_log(LOG_ERR, "Can't alloc send list for cmd change exec list");
+		log(LOG_ERR, "Can't alloc send list for cmd change exec list");
 
 		return (-1);
 	}
 
 	if (dynar_str_cpy(&send_buffer->buffer, QDEVICE_HEURISTICS_CMD_STR_EXEC_LIST_CLEAR) == -1 ||
 	    dynar_str_cat(&send_buffer->buffer, "\n") == -1) {
-		qdevice_log(LOG_ERR, "Can't alloc list clear message");
+		log(LOG_ERR, "Can't alloc list clear message");
 
 		send_buffer_list_discard_new(&instance->cmd_out_buffer_list, send_buffer);
 
@@ -300,7 +301,7 @@ qdevice_heuristics_cmd_write_exec_list(struct qdevice_heuristics_instance *insta
 	TAILQ_FOREACH(entry, new_exec_list, entries) {
 		send_buffer = send_buffer_list_get_new(&instance->cmd_out_buffer_list);
 		if (send_buffer == NULL) {
-			qdevice_log(LOG_ERR, "Can't alloc send list for cmd change exec list");
+			log(LOG_ERR, "Can't alloc send list for cmd change exec list");
 
 			return (-1);
 		}
@@ -312,7 +313,7 @@ qdevice_heuristics_cmd_write_exec_list(struct qdevice_heuristics_instance *insta
 		    dynar_str_cat(&send_buffer->buffer, entry->command) == -1 ||
 		    qdevice_heuristics_cmd_remove_newlines(&send_buffer->buffer) == -1 ||
 		    dynar_str_cat(&send_buffer->buffer, "\n") == -1) {
-			qdevice_log(LOG_ERR, "Can't alloc list add message");
+			log(LOG_ERR, "Can't alloc list add message");
 
 			send_buffer_list_discard_new(&instance->cmd_out_buffer_list, send_buffer);
 
@@ -333,14 +334,14 @@ qdevice_heuristics_cmd_write_exec(struct qdevice_heuristics_instance *instance,
 
 	send_buffer = send_buffer_list_get_new(&instance->cmd_out_buffer_list);
 	if (send_buffer == NULL) {
-		qdevice_log(LOG_ERR, "Can't alloc send list for cmd change exec list");
+		log(LOG_ERR, "Can't alloc send list for cmd change exec list");
 
 		return (-1);
 	}
 
 	if (dynar_str_cpy(&send_buffer->buffer, QDEVICE_HEURISTICS_CMD_STR_EXEC_ADD_SPACE) == -1 ||
 	    dynar_str_catf(&send_buffer->buffer, "%"PRIu32" %"PRIu32"\n", timeout, seq_number) == -1) {
-		qdevice_log(LOG_ERR, "Can't alloc exec message");
+		log(LOG_ERR, "Can't alloc exec message");
 
 		send_buffer_list_discard_new(&instance->cmd_out_buffer_list, send_buffer);
 

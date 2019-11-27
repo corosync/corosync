@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016 Red Hat, Inc.
+ * Copyright (c) 2015-2019 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -198,7 +198,7 @@ qdevice_cmap_store_config_node_list(struct qdevice_instance *instance)
 	node_list_free(&instance->config_node_list);
 
 	if (qdevice_cmap_get_nodelist(instance->cmap_handle, &instance->config_node_list) != 0) {
-		qdevice_log(LOG_ERR, "Can't get configuration node list.");
+		log(LOG_ERR, "Can't get configuration node list.");
 
 		return (-1);
 	}
@@ -240,12 +240,12 @@ qdevice_cmap_node_list_event(struct qdevice_instance *instance)
 	int config_version_set;
 	uint64_t config_version;
 
-	qdevice_log(LOG_DEBUG, "Node list configuration possibly changed");
+	log(LOG_DEBUG, "Node list configuration possibly changed");
 	if (qdevice_cmap_get_nodelist(instance->cmap_handle, &nlist) != 0) {
-		qdevice_log(LOG_ERR, "Can't get configuration node list.");
+		log(LOG_ERR, "Can't get configuration node list.");
 
 		if (qdevice_model_get_config_node_list_failed(instance) != 0) {
-			qdevice_log(LOG_DEBUG, "qdevice_model_get_config_node_list_failed returned error -> exit");
+			log(LOG_DEBUG, "qdevice_model_get_config_node_list_failed returned error -> exit");
 			exit(2);
 		}
 
@@ -259,26 +259,26 @@ qdevice_cmap_node_list_event(struct qdevice_instance *instance)
 		return ;
 	}
 
-	qdevice_log(LOG_DEBUG, "Node list changed");
+	log(LOG_DEBUG, "Node list changed");
 	if (config_version_set) {
-		qdevice_log(LOG_DEBUG, "  config_version = "UTILS_PRI_CONFIG_VERSION, config_version);
+		log(LOG_DEBUG, "  config_version = "UTILS_PRI_CONFIG_VERSION, config_version);
 	}
 	qdevice_log_debug_dump_node_list(&nlist);
 
 	if (qdevice_model_config_node_list_changed(instance, &nlist,
 	    config_version_set, config_version) != 0) {
-		qdevice_log(LOG_DEBUG, "qdevice_model_config_node_list_changed returned error -> exit");
+		log(LOG_DEBUG, "qdevice_model_config_node_list_changed returned error -> exit");
 		exit(2);
 	}
 
 	node_list_free(&instance->config_node_list);
 	if (node_list_clone(&instance->config_node_list, &nlist) != 0) {
-		qdevice_log(LOG_ERR, "Can't allocate instance->config_node_list clone");
+		log(LOG_ERR, "Can't allocate instance->config_node_list clone");
 
 		node_list_free(&nlist);
 
 		if (qdevice_model_get_config_node_list_failed(instance) != 0) {
-			qdevice_log(LOG_DEBUG, "qdevice_model_get_config_node_list_failed returned error -> exit");
+			log(LOG_DEBUG, "qdevice_model_get_config_node_list_failed returned error -> exit");
 			exit(2);
 		}
 
@@ -296,7 +296,7 @@ static void
 qdevice_cmap_logging_event(struct qdevice_instance *instance)
 {
 
-	qdevice_log(LOG_DEBUG, "Logging configuration possibly changed");
+	log(LOG_DEBUG, "Logging configuration possibly changed");
 	qdevice_log_configure(instance);
 }
 
@@ -304,9 +304,9 @@ static void
 qdevice_cmap_heuristics_event(struct qdevice_instance *instance)
 {
 
-	qdevice_log(LOG_DEBUG, "Heuristics configuration possibly changed");
+	log(LOG_DEBUG, "Heuristics configuration possibly changed");
 	if (qdevice_instance_configure_from_cmap_heuristics(instance) != 0) {
-		qdevice_log(LOG_DEBUG, "qdevice_instance_configure_from_cmap_heuristics returned error -> exit");
+		log(LOG_DEBUG, "qdevice_instance_configure_from_cmap_heuristics returned error -> exit");
 		exit(2);
 	}
 }
@@ -331,7 +331,7 @@ qdevice_cmap_reload_cb(cmap_handle_t cmap_handle, cmap_track_handle_t cmap_track
 	heuristics_prefix_str = "quorum.device.heuristics.";
 
 	if (cmap_context_get(cmap_handle, (const void **)&instance) != CS_OK) {
-		qdevice_log(LOG_ERR, "Fatal error. Can't get cmap context");
+		log(LOG_ERR, "Fatal error. Can't get cmap context");
 		exit(1);
 	}
 
@@ -392,7 +392,7 @@ qdevice_cmap_reload_cb(cmap_handle_t cmap_handle, cmap_track_handle_t cmap_track
 	 * Inform model about change
 	 */
 	if (qdevice_model_cmap_changed(instance, &events) != 0) {
-		qdevice_log(LOG_DEBUG, "qdevice_model_cmap_changed returned error -> exit");
+		log(LOG_DEBUG, "qdevice_model_cmap_changed returned error -> exit");
 		exit(2);
 	}
 }
@@ -407,7 +407,7 @@ qdevice_cmap_add_track(struct qdevice_instance *instance)
 	    NULL, &instance->cmap_reload_track_handle);
 
 	if (res != CS_OK) {
-		qdevice_log(LOG_ERR, "Can't initialize cmap totemconfig_reload_in_progress tracking");
+		log(LOG_ERR, "Can't initialize cmap totemconfig_reload_in_progress tracking");
 		return (-1);
 	}
 
@@ -417,7 +417,7 @@ qdevice_cmap_add_track(struct qdevice_instance *instance)
 	    NULL, &instance->cmap_nodelist_track_handle);
 
 	if (res != CS_OK) {
-		qdevice_log(LOG_ERR, "Can't initialize cmap nodelist tracking");
+		log(LOG_ERR, "Can't initialize cmap nodelist tracking");
 		return (-1);
 	}
 
@@ -427,7 +427,7 @@ qdevice_cmap_add_track(struct qdevice_instance *instance)
 	    NULL, &instance->cmap_logging_track_handle);
 
 	if (res != CS_OK) {
-		qdevice_log(LOG_ERR, "Can't initialize logging tracking");
+		log(LOG_ERR, "Can't initialize logging tracking");
 		return (-1);
 	}
 
@@ -437,7 +437,7 @@ qdevice_cmap_add_track(struct qdevice_instance *instance)
 	    NULL, &instance->cmap_heuristics_track_handle);
 
 	if (res != CS_OK) {
-		qdevice_log(LOG_ERR, "Can't initialize logging tracking");
+		log(LOG_ERR, "Can't initialize logging tracking");
 		return (-1);
 	}
 
@@ -451,22 +451,22 @@ qdevice_cmap_del_track(struct qdevice_instance *instance)
 
 	res = cmap_track_delete(instance->cmap_handle, instance->cmap_reload_track_handle);
 	if (res != CS_OK) {
-		qdevice_log(LOG_WARNING, "Can't delete cmap totemconfig_reload_in_progress tracking");
+		log(LOG_WARNING, "Can't delete cmap totemconfig_reload_in_progress tracking");
 	}
 
 	res = cmap_track_delete(instance->cmap_handle, instance->cmap_nodelist_track_handle);
 	if (res != CS_OK) {
-		qdevice_log(LOG_WARNING, "Can't delete cmap nodelist tracking");
+		log(LOG_WARNING, "Can't delete cmap nodelist tracking");
 	}
 
 	res = cmap_track_delete(instance->cmap_handle, instance->cmap_logging_track_handle);
 	if (res != CS_OK) {
-		qdevice_log(LOG_WARNING, "Can't delete cmap logging tracking");
+		log(LOG_WARNING, "Can't delete cmap logging tracking");
 	}
 
 	res = cmap_track_delete(instance->cmap_handle, instance->cmap_heuristics_track_handle);
 	if (res != CS_OK) {
-		qdevice_log(LOG_WARNING, "Can't delete cmap heuristics tracking");
+		log(LOG_WARNING, "Can't delete cmap heuristics tracking");
 	}
 
 	return (0);
@@ -480,7 +480,7 @@ qdevice_cmap_destroy(struct qdevice_instance *instance)
 	res = cmap_finalize(instance->cmap_handle);
 
 	if (res != CS_OK) {
-		qdevice_log(LOG_WARNING, "Can't finalize cmap. Error %s", cs_strerror(res));
+		log(LOG_WARNING, "Can't finalize cmap. Error %s", cs_strerror(res));
 	}
 }
 
@@ -499,7 +499,7 @@ qdevice_cmap_dispatch(struct qdevice_instance *instance)
 	res = cmap_dispatch(instance->cmap_handle, CS_DISPATCH_ALL);
 
 	if (res != CS_OK && res != CS_ERR_TRY_AGAIN) {
-		qdevice_log(LOG_ERR, "Can't dispatch cmap messages");
+		log(LOG_ERR, "Can't dispatch cmap messages");
 
 		return (-1);
 	}

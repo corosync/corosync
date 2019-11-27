@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016 Red Hat, Inc.
+ * Copyright (c) 2015-2019 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -42,12 +42,12 @@ qdevice_log_debug_dump_node_list(const struct node_list *nlist)
 	struct node_list_entry *node_info;
 	size_t zi;
 
-	qdevice_log(LOG_DEBUG, "  Node list:");
+	log(LOG_DEBUG, "  Node list:");
 
 	zi = 0;
 
 	TAILQ_FOREACH(node_info, nlist, entries) {
-		qdevice_log(LOG_DEBUG, "    %zu node_id = "UTILS_PRI_NODE_ID", "
+		log(LOG_DEBUG, "    %zu node_id = "UTILS_PRI_NODE_ID", "
 		    "data_center_id = "UTILS_PRI_DATACENTER_ID", node_state = %s",
 		    zi, node_info->node_id, node_info->data_center_id,
 		    tlv_node_state_to_str(node_info->node_state));

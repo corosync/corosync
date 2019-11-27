@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016 Red Hat, Inc.
+ * Copyright (c) 2015-2019 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -47,12 +47,12 @@ qdevice_net_nss_bad_cert_hook(void *arg, PRFileDesc *fd) {
 	    PR_GetError() == SEC_ERROR_CRL_EXPIRED ||
 	    PR_GetError() == SEC_ERROR_KRL_EXPIRED ||
 	    PR_GetError() == SSL_ERROR_EXPIRED_CERT_ALERT) {
-		qdevice_log(LOG_WARNING, "Server certificate is expired.");
+		log(LOG_WARNING, "Server certificate is expired.");
 
 		return (SECSuccess);
 	}
 
-	qdevice_log_nss(LOG_ERR, "Server certificate verification failure.");
+	log_nss(LOG_ERR, "Server certificate verification failure.");
 
 	return (SECFailure);
 }
@@ -63,7 +63,7 @@ qdevice_net_nss_get_client_auth_data(void *arg, PRFileDesc *sock, struct CERTDis
 {
 	struct qdevice_net_instance *instance;
 
-	qdevice_log(LOG_DEBUG, "Sending client auth data.");
+	log(LOG_DEBUG, "Sending client auth data.");
 
 	instance = (struct qdevice_net_instance *)arg;
 

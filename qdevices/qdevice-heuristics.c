@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2017 Red Hat, Inc.
+ * Copyright (c) 2015-2019 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -153,9 +153,9 @@ qdevice_heuristics_destroy(struct qdevice_heuristics_instance *instance, int wai
 	 * process any longer so it's not possible to wait for its exit.
 	 */
 	if (wait_for_worker_exit) {
-		qdevice_log(LOG_DEBUG, "Waiting for heuristics worker to finish");
+		log(LOG_DEBUG, "Waiting for heuristics worker to finish");
 		if (waitpid(instance->worker_pid, &status, 0) == -1) {
-			qdevice_log_err(LOG_ERR, "Heuristics worker waitpid failed");
+			log_err(LOG_ERR, "Heuristics worker waitpid failed");
 		} else {
 			/*
 			 * Log what left in worker log buffer. Errors can be ignored
@@ -212,7 +212,7 @@ qdevice_heuristics_change_exec_list(struct qdevice_heuristics_instance *instance
 
 	if (new_exec_list != NULL) {
 		if (qdevice_heuristics_exec_list_clone(&instance->exec_list, new_exec_list) != 0) {
-			qdevice_log(LOG_ERR, "Can't clone exec list");
+			log(LOG_ERR, "Can't clone exec list");
 
 			return (-1);
 		}
@@ -220,7 +220,7 @@ qdevice_heuristics_change_exec_list(struct qdevice_heuristics_instance *instance
 
 	if (qdevice_heuristics_waiting_for_result(instance)) {
 		if (qdevice_heuristics_exec(instance, sync_in_progress) != 0) {
-			qdevice_log(LOG_ERR, "Can't execute heuristics");
+			log(LOG_ERR, "Can't execute heuristics");
 
 			return (-1);
 		}
@@ -310,7 +310,7 @@ qdevice_heuristics_wait_for_initial_exec_result(struct qdevice_heuristics_instan
 					}
 
 					if (!case_processed) {
-						qdevice_log(LOG_CRIT, "Unhandled read on poll descriptor %u", i);
+						log(LOG_CRIT, "Unhandled read on poll descriptor %u", i);
 						exit(1);
 					}
 				}
@@ -335,7 +335,7 @@ qdevice_heuristics_wait_for_initial_exec_result(struct qdevice_heuristics_instan
 					}
 
 					if (!case_processed) {
-						qdevice_log(LOG_CRIT, "Unhandled write on poll descriptor %u", i);
+						log(LOG_CRIT, "Unhandled write on poll descriptor %u", i);
 						exit(1);
 					}
 				}
@@ -356,21 +356,23 @@ qdevice_heuristics_wait_for_initial_exec_result(struct qdevice_heuristics_instan
 							return (-1);
 						}
 
-						qdevice_log(LOG_ERR, "POLLERR (%u) on heuristics pipe. Exiting");
+						log(LOG_ERR, "POLLERR (%u) on heuristics pipe. Exiting",
+						    pfds[i].revents);
 						return (-1);
 						break;
 					case 2:
-						qdevice_log(LOG_ERR, "POLLERR (%u) on corosync socket. Exiting");
+						log(LOG_ERR, "POLLERR (%u) on corosync socket. Exiting",
+						    pfds[i].revents);
 						return (-1);
 						break;
 					}
 				}
 			}
 		} else if (poll_res == 0) {
-			qdevice_log(LOG_ERR, "Timeout waiting for initial heuristics exec result");
+			log(LOG_ERR, "Timeout waiting for initial heuristics exec result");
 			return (-1);
 		} else {
-			qdevice_log_err(LOG_ERR, "Initial heuristics exec result poll failed");
+			log_err(LOG_ERR, "Initial heuristics exec result poll failed");
 			return (-1);
 		}
 	}

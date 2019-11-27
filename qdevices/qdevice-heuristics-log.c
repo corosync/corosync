@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2017 Red Hat, Inc.
+ * Copyright (c) 2015-2019 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -69,7 +69,7 @@ qdevice_heuristics_log_process_one_line(struct dynar *data)
 			} else if (str[zi] == ' ') {
 				status = 1;
 			} else {
-				qdevice_log(LOG_ERR, "Parsing of heuristics log line failed. "
+				log(LOG_ERR, "Parsing of heuristics log line failed. "
 				    "Unexpected char '%c'", str[zi]);
 				return (-1);
 			}
@@ -97,7 +97,7 @@ qdevice_heuristics_log_process_one_line(struct dynar *data)
 	/*
 	 * Do actual logging
 	 */
-	qb_log_from_external_source(__func__, __FILE__, "worker: %s", log_priority, __LINE__, 0, log_str_start);
+	log(log_priority, "worker: %s", log_str_start);
 
 	/*
 	 * Find place where is begining of new "valid" line
@@ -106,7 +106,7 @@ qdevice_heuristics_log_process_one_line(struct dynar *data)
 
 	memmove(str, str + zi, str_len - zi);
 	if (dynar_set_size(data, str_len - zi) == -1) {
-		qdevice_log(LOG_ERR, "qdevice_heuristics_log_process_one_line: Can't set dynar size");
+		log(LOG_ERR, "qdevice_heuristics_log_process_one_line: Can't set dynar size");
 		return (-1);
 	}
 
@@ -150,15 +150,15 @@ qdevice_heuristics_log_read_from_pipe(struct qdevice_heuristics_instance *instan
 		 */
 		break;
 	case -1:
-		qdevice_log(LOG_ERR, "Lost connection with heuristics worker");
+		log(LOG_ERR, "Lost connection with heuristics worker");
 		ret = -1;
 		break;
 	case -2:
-		qdevice_log(LOG_ERR, "Heuristics worker sent too long log. Ignoring line");
+		log(LOG_ERR, "Heuristics worker sent too long log. Ignoring line");
 		dynar_clean(&instance->log_in_buffer);
 		break;
 	case -3:
-		qdevice_log(LOG_ERR, "Unhandled error when reading from heuristics worker log fd");
+		log(LOG_ERR, "Unhandled error when reading from heuristics worker log fd");
 		ret = -1;
 		break;
 	case 1:

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2017 Red Hat, Inc.
+ * Copyright (c) 2015-2019 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -76,7 +76,7 @@ qdevice_net_cast_vote_timer_callback(void *data1, void *data2)
 	}
 
 	if (!case_processed) {
-		qdevice_log(LOG_CRIT, "qdevice_net_timer_cast_vote: Unhandled cast_vote_timer_vote %u\n",
+		log(LOG_CRIT, "qdevice_net_timer_cast_vote: Unhandled cast_vote_timer_vote %u\n",
 		    instance->cast_vote_timer_vote);
 		exit(1);
 	}
@@ -127,7 +127,7 @@ qdevice_net_cast_vote_timer_update(struct qdevice_net_instance *instance, enum t
 	}
 
 	if (!case_processed) {
-		qdevice_log(LOG_CRIT, "qdevice_net_cast_vote_timer_update_vote: Unhandled vote parameter %u\n",
+		log(LOG_CRIT, "qdevice_net_cast_vote_timer_update_vote: Unhandled vote parameter %u\n",
 		    vote);
 		exit(1);
 	}
@@ -141,17 +141,17 @@ qdevice_net_cast_vote_timer_update(struct qdevice_net_instance *instance, enum t
 			    qdevice_net_cast_vote_timer_callback, (void *)instance, NULL);
 
 			if (instance->cast_vote_timer == NULL) {
-				qdevice_log(LOG_ERR, "Can't schedule sending of "
+				log(LOG_ERR, "Can't schedule sending of "
 				    "votequorum poll");
 
 				return (-1);
 			} else {
-				qdevice_log(LOG_DEBUG, "Cast vote timer is now scheduled every "
+				log(LOG_DEBUG, "Cast vote timer is now scheduled every "
 				    "%"PRIu32"ms voting %s.", instance->cast_vote_timer_interval,
 				    tlv_vote_to_str(instance->cast_vote_timer_vote));
 			}
 		} else {
-			qdevice_log(LOG_DEBUG, "Cast vote timer remains scheduled every "
+			log(LOG_DEBUG, "Cast vote timer remains scheduled every "
 			    "%"PRIu32"ms voting %s.", instance->cast_vote_timer_interval,
 			    tlv_vote_to_str(instance->cast_vote_timer_vote));
 		}
@@ -163,9 +163,9 @@ qdevice_net_cast_vote_timer_update(struct qdevice_net_instance *instance, enum t
 		if (instance->cast_vote_timer != NULL) {
 			timer_list_delete(&instance->main_timer_list, instance->cast_vote_timer);
 			instance->cast_vote_timer = NULL;
-			qdevice_log(LOG_DEBUG, "Cast vote timer is now stopped.");
+			log(LOG_DEBUG, "Cast vote timer is now stopped.");
 		} else {
-			qdevice_log(LOG_DEBUG, "Cast vote timer remains stopped.");
+			log(LOG_DEBUG, "Cast vote timer remains stopped.");
 		}
 	}
 
@@ -180,9 +180,9 @@ qdevice_net_cast_vote_timer_set_paused(struct qdevice_net_instance *instance, in
 		instance->cast_vote_timer_paused = paused;
 
 		if (instance->cast_vote_timer_paused) {
-			qdevice_log(LOG_DEBUG, "Cast vote timer is now paused.");
+			log(LOG_DEBUG, "Cast vote timer is now paused.");
 		} else {
-			qdevice_log(LOG_DEBUG, "Cast vote timer is no longer paused.");
+			log(LOG_DEBUG, "Cast vote timer is no longer paused.");
 		}
 	}
 }

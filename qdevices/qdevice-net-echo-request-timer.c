@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016 Red Hat, Inc.
+ * Copyright (c) 2015-2019 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -46,10 +46,10 @@ qdevice_net_echo_request_timer_callback(void *data1, void *data2)
 
 	if (instance->echo_reply_received_msg_seq_num !=
 	    instance->echo_request_expected_msg_seq_num) {
-		qdevice_log(LOG_ERR, "Server didn't send echo reply message on time");
+		log(LOG_ERR, "Server didn't send echo reply message on time");
 
 		if (qdevice_net_algorithm_echo_reply_not_received(instance) != 0) {
-			qdevice_log(LOG_DEBUG, "Algorithm decided to disconnect");
+			log(LOG_DEBUG, "Algorithm decided to disconnect");
 
 			instance->schedule_disconnect = 1;
 			instance->disconnect_reason =
@@ -58,7 +58,7 @@ qdevice_net_echo_request_timer_callback(void *data1, void *data2)
 			instance->echo_request_timer = NULL;
 			return (0);
 		} else {
-			qdevice_log(LOG_DEBUG, "Algorithm decided to continue send heartbeat");
+			log(LOG_DEBUG, "Algorithm decided to continue send heartbeat");
 
 			return (-1);
 		}
@@ -89,13 +89,13 @@ qdevice_net_echo_request_timer_schedule(struct qdevice_net_instance *instance)
 		instance->echo_request_timer = NULL;
 	}
 
-	qdevice_log(LOG_DEBUG, "Scheduling send of heartbeat every %"PRIu32"ms", instance->heartbeat_interval);
+	log(LOG_DEBUG, "Scheduling send of heartbeat every %"PRIu32"ms", instance->heartbeat_interval);
 	instance->echo_request_timer = timer_list_add(&instance->main_timer_list,
 	    instance->heartbeat_interval, qdevice_net_echo_request_timer_callback,
 	    (void *)instance, NULL);
 
 	if (instance->echo_request_timer == NULL) {
-		qdevice_log(LOG_ERR, "Can't schedule regular sending of heartbeat.");
+		log(LOG_ERR, "Can't schedule regular sending of heartbeat.");
 
 		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_SCHEDULE_HB_TIMER;
 

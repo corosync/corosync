@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2017 Red Hat, Inc.
+ * Copyright (c) 2015-2019 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -90,7 +90,7 @@ qdevice_net_poll_write_socket(struct qdevice_net_instance *instance, const PRPol
 			 */
 			res = nss_sock_non_blocking_client_try_next(&instance->non_blocking_client);
 			if (res == -1) {
-				qdevice_log_nss(LOG_ERR, "Can't connect to qnetd host.");
+				log_nss(LOG_ERR, "Can't connect to qnetd host.");
 				nss_sock_non_blocking_client_destroy(&instance->non_blocking_client);
 			}
 		} else if (res == 0) {
@@ -107,13 +107,13 @@ qdevice_net_poll_write_socket(struct qdevice_net_instance *instance, const PRPol
 
 			instance->state = QDEVICE_NET_INSTANCE_STATE_SENDING_PREINIT_REPLY;
 
-			qdevice_log(LOG_DEBUG, "Sending preinit msg to qnetd");
+			log(LOG_DEBUG, "Sending preinit msg to qnetd");
 			if (qdevice_net_send_preinit(instance) != 0) {
 				instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_ALLOCATE_MSG_BUFFER;
 				instance->schedule_disconnect = 1;
 			}
 		} else {
-			qdevice_log(LOG_CRIT, "Unhandled nss_sock_non_blocking_client_succeeded");
+			log(LOG_CRIT, "Unhandled nss_sock_non_blocking_client_succeeded");
 			exit(1);
 		}
 	} else {
@@ -139,7 +139,7 @@ qdevice_net_poll_err_socket(struct qdevice_net_instance *instance, const PRPollD
 			qdevice_net_poll_write_socket(instance, pfd);
 		}
 	} else {
-		qdevice_log(LOG_ERR, "POLL_ERR (%u) on main socket", pfd->out_flags);
+		log(LOG_ERR, "POLL_ERR (%u) on main socket", pfd->out_flags);
 
 		instance->schedule_disconnect = 1;
 		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_SERVER_CLOSED_CONNECTION;
@@ -196,7 +196,7 @@ qdevice_net_poll_read_ipc_socket(struct qdevice_net_instance *instance)
 
 	prfd = PR_CreateSocketPollFd(client->socket);
 	if (prfd == NULL) {
-		qdevice_log_nss(LOG_CRIT, "Can't create NSPR poll fd for IPC client. "
+		log_nss(LOG_CRIT, "Can't create NSPR poll fd for IPC client. "
 		    "Disconnecting client");
 		qdevice_ipc_client_disconnect(instance->qdevice_instance_ptr, client);
 
@@ -221,7 +221,7 @@ qdevice_net_pr_poll_array_create(struct qdevice_net_instance *instance)
 	ipc_client_list = &instance->qdevice_instance_ptr->local_ipc.clients;
 
 	if (qdevice_ipc_is_closed(instance->qdevice_instance_ptr)) {
-		qdevice_log(LOG_DEBUG, "Local socket is closed");
+		log(LOG_DEBUG, "Local socket is closed");
 		instance->schedule_disconnect = 1;
 		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_LOCAL_SOCKET_CLOSED;
 
@@ -403,7 +403,7 @@ qdevice_net_poll(struct qdevice_net_instance *instance)
 				}
 
 				if (!case_processed) {
-					qdevice_log(LOG_CRIT, "Unhandled read on poll descriptor %u", i);
+					log(LOG_CRIT, "Unhandled read on poll descriptor %zu", i);
 					exit(1);
 				}
 			}
@@ -441,7 +441,7 @@ qdevice_net_poll(struct qdevice_net_instance *instance)
 				}
 
 				if (!case_processed) {
-					qdevice_log(LOG_CRIT, "Unhandled write on poll descriptor %u", i);
+					log(LOG_CRIT, "Unhandled write on poll descriptor %zu", i);
 					exit(1);
 				}
 			}
@@ -459,11 +459,11 @@ qdevice_net_poll(struct qdevice_net_instance *instance)
 				case QDEVICE_NET_POLL_ARRAY_USER_DATA_TYPE_IPC_SOCKET:
 					case_processed = 1;
 					if (pfds[i].out_flags != PR_POLL_NVAL) {
-						qdevice_log(LOG_CRIT, "POLLERR (%u) on local socket",
+						log(LOG_CRIT, "POLLERR (%u) on local socket",
 						    pfds[i].out_flags);
 						exit(1);
 					} else {
-						qdevice_log(LOG_DEBUG, "Local socket is closed");
+						log(LOG_DEBUG, "Local socket is closed");
 						instance->schedule_disconnect = 1;
 						instance->disconnect_reason =
 						    QDEVICE_NET_DISCONNECT_REASON_LOCAL_SOCKET_CLOSED;
@@ -471,14 +471,14 @@ qdevice_net_poll(struct qdevice_net_instance *instance)
 					break;
 				case QDEVICE_NET_POLL_ARRAY_USER_DATA_TYPE_IPC_CLIENT:
 					case_processed = 1;
-					qdevice_log(LOG_DEBUG, "POLL_ERR (%u) on ipc client socket. "
+					log(LOG_DEBUG, "POLL_ERR (%u) on ipc client socket. "
 					    "Disconnecting.",  pfds[i].out_flags);
 					ipc_client->schedule_disconnect = 1;
 					break;
 				case QDEVICE_NET_POLL_ARRAY_USER_DATA_TYPE_VOTEQUORUM:
 				case QDEVICE_NET_POLL_ARRAY_USER_DATA_TYPE_CMAP:
 					case_processed = 1;
-					qdevice_log(LOG_DEBUG, "POLL_ERR (%u) on corosync socket. "
+					log(LOG_DEBUG, "POLL_ERR (%u) on corosync socket. "
 					    "Disconnecting.",  pfds[i].out_flags);
 
 					instance->schedule_disconnect = 1;
@@ -497,7 +497,7 @@ qdevice_net_poll(struct qdevice_net_instance *instance)
 					 */
 					qdevice_net_poll_read_heuristics_log(instance);
 
-					qdevice_log(LOG_DEBUG, "POLL_ERR (%u) on heuristics pipe. "
+					log(LOG_DEBUG, "POLL_ERR (%u) on heuristics pipe. "
 					    "Disconnecting.",  pfds[i].out_flags);
 
 					instance->schedule_disconnect = 1;
@@ -511,7 +511,7 @@ qdevice_net_poll(struct qdevice_net_instance *instance)
 				}
 
 				if (!case_processed) {
-					qdevice_log(LOG_CRIT, "Unhandled error on poll descriptor %u", i);
+					log(LOG_CRIT, "Unhandled error on poll descriptor %zu", i);
 					exit(1);
 				}
 			}
@@ -522,7 +522,7 @@ qdevice_net_poll(struct qdevice_net_instance *instance)
 				prfd = (PRFileDesc *)qdevice_ipc_user_data->model_data;
 
 				if (PR_DestroySocketPollFd(prfd) != PR_SUCCESS) {
-					qdevice_log_nss(LOG_WARNING, "Unable to destroy client IPC poll socket fd");
+					log_nss(LOG_WARNING, "Unable to destroy client IPC poll socket fd");
 				}
 
 				qdevice_ipc_client_disconnect(instance->qdevice_instance_ptr, ipc_client);

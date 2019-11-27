@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016 Red Hat, Inc.
+ * Copyright (c) 2015-2019 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -35,24 +35,15 @@
 #ifndef _QDEVICE_LOG_H_
 #define _QDEVICE_LOG_H_
 
-#include <qb/qbdefs.h>
-#include <qb/qblog.h>
-#include <prerror.h>
-
 #include "qdevice-instance.h"
+#include "log.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#define qdevice_log	qb_log
-#define qdevice_log_nss(priority, str) qdevice_log(priority, "%s (%d): %s", \
-    str, PR_GetError(), PR_ErrorToString(PR_GetError(), PR_LANGUAGE_I_DEFAULT));
-
-#define qdevice_log_err(priority, str) qdevice_log(priority, "%s (%d): %s", \
-    str, errno, strerror(errno));
-
-extern void		qdevice_log_init(struct qdevice_instance *instance, int force_debug);
+extern int		qdevice_log_init(struct qdevice_instance *instance, int foreground,
+    int force_debug);
 
 extern void		qdevice_log_configure(struct qdevice_instance *instance);
 

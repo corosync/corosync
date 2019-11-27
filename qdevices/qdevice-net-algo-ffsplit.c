@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2017 Red Hat, Inc.
+ * Copyright (c) 2015-2019 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -62,14 +62,14 @@ check_vqinfo_validity(struct qdevice_net_instance *instance)
 		if (cs_res == CS_ERR_NOT_EXIST) {
 			continue;
 		} else if (cs_res != CS_OK) {
-			qdevice_log(LOG_CRIT, "Can't get votequorum information for node "
+			log(LOG_CRIT, "Can't get votequorum information for node "
 			    UTILS_PRI_NODE_ID ". Error %s", node_id, cs_strerror(cs_res));
 
 			return (-1);
 		}
 
 		if (vq_info.node_votes != 1) {
-			qdevice_log(LOG_CRIT, "50:50 split algorithm works only if all nodes have "
+			log(LOG_CRIT, "50:50 split algorithm works only if all nodes have "
 			    "exactly 1 vote. Node " UTILS_PRI_NODE_ID " has %u votes!",
 			    node_id, vq_info.node_votes);
 
@@ -77,7 +77,7 @@ check_vqinfo_validity(struct qdevice_net_instance *instance)
 		}
 
 		if (vq_info.qdevice_votes != 1) {
-			qdevice_log(LOG_CRIT, "50:50 split algorithm works only if qdevice has "
+			log(LOG_CRIT, "50:50 split algorithm works only if qdevice has "
 			    "exactly 1 vote. Node "UTILS_PRI_NODE_ID" has %u votes!",
 			    node_id, vq_info.qdevice_votes);
 
@@ -98,7 +98,7 @@ check_cmap_validity(struct qdevice_net_instance *instance)
 
 	if (cmap_get_uint32(qdev_instance->cmap_handle, "quorum.device.votes", &qdevice_votes) != CS_OK ||
 	    qdevice_votes != 1) {
-		qdevice_log(LOG_CRIT, "50:50 split algorithm works only if quorum.device.votes"
+		log(LOG_CRIT, "50:50 split algorithm works only if quorum.device.votes"
 		    " configuration key is set to 1!");
 
 		return (-1);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 Red Hat, Inc.
+ * Copyright (c) 2017-2019 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -49,7 +49,7 @@ qdevice_net_heuristics_exec_result_to_tlv(enum qdevice_heuristics_exec_result ex
 	case QDEVICE_HEURISTICS_EXEC_RESULT_PASS: res = TLV_HEURISTICS_PASS; break;
 	case QDEVICE_HEURISTICS_EXEC_RESULT_FAIL: res = TLV_HEURISTICS_FAIL; break;
 	default:
-		qdevice_log(LOG_ERR, "qdevice_net_heuristics_exec_result_to_tlv: Unhandled "
+		log(LOG_ERR, "qdevice_net_heuristics_exec_result_to_tlv: Unhandled "
 		    "heuristics exec result %s",
 		    qdevice_heuristics_exec_result_to_str(exec_result));
 		exit(1);
@@ -76,7 +76,7 @@ qdevice_net_regular_heuristics_exec_result_callback(void *heuristics_instance_pt
 
 	if (qdevice_heuristics_result_notifier_list_set_active(&heuristics_instance->exec_result_notifier_list,
 	    qdevice_net_regular_heuristics_exec_result_callback, 0) != 0) {
-		qdevice_log(LOG_ERR, "Can't deactivate net regular heuristics exec callback notifier");
+		log(LOG_ERR, "Can't deactivate net regular heuristics exec callback notifier");
 
 		net_instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_ACTIVATE_HEURISTICS_RESULT_NOTIFIER;
 		net_instance->schedule_disconnect = 1;
@@ -94,7 +94,7 @@ qdevice_net_regular_heuristics_exec_result_callback(void *heuristics_instance_pt
 	}
 
 	if (net_instance->latest_heuristics_result != heuristics) {
-		qdevice_log(LOG_ERR, "Heuristics result changed from %s to %s",
+		log(LOG_ERR, "Heuristics result changed from %s to %s",
 		    tlv_heuristics_to_str(net_instance->latest_heuristics_result),
 		    tlv_heuristics_to_str(heuristics));
 
@@ -111,7 +111,7 @@ qdevice_net_regular_heuristics_exec_result_callback(void *heuristics_instance_pt
 
 		if (qdevice_net_algorithm_heuristics_change(net_instance, &heuristics, &send_msg,
 		    &vote) == -1) {
-			qdevice_log(LOG_ERR, "Algorithm returned error. Disconnecting.");
+			log(LOG_ERR, "Algorithm returned error. Disconnecting.");
 
 			net_instance->disconnect_reason =
 			    QDEVICE_NET_DISCONNECT_REASON_ALGO_HEURISTICS_CHANGE_ERR;
@@ -119,14 +119,14 @@ qdevice_net_regular_heuristics_exec_result_callback(void *heuristics_instance_pt
 
 			return (0);
 		} else {
-			qdevice_log(LOG_DEBUG, "Algorithm decided to %s message with heuristics result "
+			log(LOG_DEBUG, "Algorithm decided to %s message with heuristics result "
 			    "%s and result vote is %s", (send_msg ? "send" : "not send"),
 			    tlv_heuristics_to_str(heuristics), tlv_vote_to_str(vote));
 		}
 
 		if (send_msg) {
 			if (heuristics == TLV_HEURISTICS_UNDEFINED) {
-				qdevice_log(LOG_ERR, "Inconsistent algorithm result. "
+				log(LOG_ERR, "Inconsistent algorithm result. "
 				    "It's not possible to send message with undefined heuristics. "
 				    "Disconnecting.");
 
@@ -138,7 +138,7 @@ qdevice_net_regular_heuristics_exec_result_callback(void *heuristics_instance_pt
 			}
 
 			if (!net_instance->server_supports_heuristics) {
-				qdevice_log(LOG_ERR, "Server doesn't support heuristics. "
+				log(LOG_ERR, "Server doesn't support heuristics. "
 				    "Disconnecting.");
 
 				net_instance->disconnect_reason =
@@ -157,7 +157,7 @@ qdevice_net_regular_heuristics_exec_result_callback(void *heuristics_instance_pt
 		}
 
 		if (qdevice_net_cast_vote_timer_update(net_instance, vote) != 0) {
-			qdevice_log(LOG_CRIT, "qdevice_net_heuristics_exec_result_callback "
+			log(LOG_CRIT, "qdevice_net_heuristics_exec_result_callback "
 			    "Can't update cast vote timer");
 
 			net_instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_SCHEDULE_VOTING_TIMER;
@@ -199,7 +199,7 @@ qdevice_net_connect_heuristics_exec_result_callback(void *heuristics_instance_pt
 
 	if (qdevice_heuristics_result_notifier_list_set_active(&heuristics_instance->exec_result_notifier_list,
 	    qdevice_net_connect_heuristics_exec_result_callback, 0) != 0) {
-		qdevice_log(LOG_ERR, "Can't deactivate net connect heuristics exec callback notifier");
+		log(LOG_ERR, "Can't deactivate net connect heuristics exec callback notifier");
 
 		net_instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_ACTIVATE_HEURISTICS_RESULT_NOTIFIER;
 		net_instance->schedule_disconnect = 1;
@@ -216,11 +216,11 @@ qdevice_net_connect_heuristics_exec_result_callback(void *heuristics_instance_pt
 
 	if (qdevice_net_algorithm_connected(net_instance, &heuristics, &send_config_node_list,
 	    &send_membership_node_list, &send_quorum_node_list, &vote) != 0) {
-		qdevice_log(LOG_DEBUG, "Algorithm returned error. Disconnecting.");
+		log(LOG_DEBUG, "Algorithm returned error. Disconnecting.");
 		net_instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_ALGO_CONNECTED_ERR;
 		return (0);
 	} else {
-		qdevice_log(LOG_DEBUG, "Algorithm decided to %s config node list, %s membership "
+		log(LOG_DEBUG, "Algorithm decided to %s config node list, %s membership "
 		    "node list, %s quorum node list, heuristics is %s and result vote is %s",
 		    (send_config_node_list ? "send" : "not send"),
 		    (send_membership_node_list ? "send" : "not send"),
@@ -269,7 +269,7 @@ qdevice_net_connect_heuristics_exec_result_callback(void *heuristics_instance_pt
 	}
 
 	if (qdevice_net_cast_vote_timer_update(net_instance, vote) != 0) {
-		qdevice_log(LOG_CRIT, "qdevice_net_msg_received_set_option_reply fatal error. "
+		log(LOG_CRIT, "qdevice_net_msg_received_set_option_reply fatal error. "
 		    " Can't update cast vote timer vote");
 		net_instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_SCHEDULE_VOTING_TIMER;
 	}
@@ -293,18 +293,18 @@ qdevice_net_heuristics_timer_callback(void *data1, void *data2)
 	heuristics_instance = &net_instance->qdevice_instance_ptr->heuristics_instance;
 
 	if (qdevice_heuristics_waiting_for_result(heuristics_instance)) {
-		qdevice_log(LOG_DEBUG, "Not executing regular heuristics because other heuristics is already running.");
+		log(LOG_DEBUG, "Not executing regular heuristics because other heuristics is already running.");
 
 		return (1);
 	}
 
 	net_instance->regular_heuristics_timer = NULL;
 
-	qdevice_log(LOG_DEBUG, "Executing regular heuristics.");
+	log(LOG_DEBUG, "Executing regular heuristics.");
 
 	if (qdevice_heuristics_result_notifier_list_set_active(&heuristics_instance->exec_result_notifier_list,
 	    qdevice_net_regular_heuristics_exec_result_callback, 1) != 0) {
-		qdevice_log(LOG_ERR, "Can't activate net regular heuristics exec callback notifier");
+		log(LOG_ERR, "Can't activate net regular heuristics exec callback notifier");
 
 		net_instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_ACTIVATE_HEURISTICS_RESULT_NOTIFIER;
 		net_instance->schedule_disconnect = 1;
@@ -314,7 +314,7 @@ qdevice_net_heuristics_timer_callback(void *data1, void *data2)
 
 	if (qdevice_heuristics_exec(heuristics_instance,
 	    net_instance->qdevice_instance_ptr->sync_in_progress) != 0) {
-		qdevice_log(LOG_ERR, "Can't execute regular heuristics.");
+		log(LOG_ERR, "Can't execute regular heuristics.");
 
 		net_instance->schedule_disconnect = 1;
 		net_instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_START_HEURISTICS;
@@ -339,14 +339,14 @@ qdevice_net_heuristics_stop_timer(struct qdevice_net_instance *net_instance)
 	heuristics_instance = &instance->heuristics_instance;
 
 	if (net_instance->regular_heuristics_timer != NULL) {
-		qdevice_log(LOG_DEBUG, "Regular heuristics timer stopped");
+		log(LOG_DEBUG, "Regular heuristics timer stopped");
 
 		timer_list_delete(&net_instance->main_timer_list, net_instance->regular_heuristics_timer);
 		net_instance->regular_heuristics_timer = NULL;
 
 		if (qdevice_heuristics_result_notifier_list_set_active(&heuristics_instance->exec_result_notifier_list,
 		    qdevice_net_regular_heuristics_exec_result_callback, 0) != 0) {
-			qdevice_log(LOG_ERR, "Can't deactivate net regular heuristics exec callback notifier");
+			log(LOG_ERR, "Can't deactivate net regular heuristics exec callback notifier");
 
 			net_instance->disconnect_reason =
 			    QDEVICE_NET_DISCONNECT_REASON_CANT_ACTIVATE_HEURISTICS_RESULT_NOTIFIER;
@@ -369,7 +369,7 @@ qdevice_net_heuristics_schedule_timer(struct qdevice_net_instance *net_instance)
 	heuristics_instance = &instance->heuristics_instance;
 
         if (heuristics_instance->mode != QDEVICE_HEURISTICS_MODE_ENABLED) {
-		qdevice_log(LOG_DEBUG, "Not scheduling heuristics timer because mode is not enabled");
+		log(LOG_DEBUG, "Not scheduling heuristics timer because mode is not enabled");
 
 		if (qdevice_net_heuristics_stop_timer(net_instance) != 0) {
 			return (-1);
@@ -379,14 +379,14 @@ qdevice_net_heuristics_schedule_timer(struct qdevice_net_instance *net_instance)
         }
 
 	if (net_instance->regular_heuristics_timer != NULL) {
-		qdevice_log(LOG_DEBUG, "Not scheduling heuristics timer because it is already scheduled");
+		log(LOG_DEBUG, "Not scheduling heuristics timer because it is already scheduled");
 
 		return (0);
 	}
 
 	interval = heuristics_instance->interval;
 
-	qdevice_log(LOG_DEBUG, "Scheduling next regular heuristics in %"PRIu32"ms", interval);
+	log(LOG_DEBUG, "Scheduling next regular heuristics in %"PRIu32"ms", interval);
 
 	net_instance->regular_heuristics_timer = timer_list_add(&net_instance->main_timer_list,
 		interval,
@@ -394,7 +394,7 @@ qdevice_net_heuristics_schedule_timer(struct qdevice_net_instance *net_instance)
 	        (void *)net_instance, NULL);
 
 	if (net_instance->regular_heuristics_timer == NULL) {
-		qdevice_log(LOG_ERR, "Can't schedule regular heuristics.");
+		log(LOG_ERR, "Can't schedule regular heuristics.");
 
 		net_instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_SCHEDULE_HEURISTICS_TIMER;
 		net_instance->schedule_disconnect = 1;
@@ -411,7 +411,7 @@ qdevice_net_heuristics_init(struct qdevice_net_instance *net_instance)
 	if (qdevice_heuristics_result_notifier_list_add(
 	    &net_instance->qdevice_instance_ptr->heuristics_instance.exec_result_notifier_list,
 	    qdevice_net_regular_heuristics_exec_result_callback) == NULL) {
-		qdevice_log(LOG_ERR, "Can't add net regular heuristics exec callback into notifier");
+		log(LOG_ERR, "Can't add net regular heuristics exec callback into notifier");
 
 		return (-1);
 	}
@@ -419,7 +419,7 @@ qdevice_net_heuristics_init(struct qdevice_net_instance *net_instance)
 	if (qdevice_heuristics_result_notifier_list_add(
 	    &net_instance->qdevice_instance_ptr->heuristics_instance.exec_result_notifier_list,
 	    qdevice_net_connect_heuristics_exec_result_callback) == NULL) {
-		qdevice_log(LOG_ERR, "Can't add net connect heuristics exec callback into notifier");
+		log(LOG_ERR, "Can't add net connect heuristics exec callback into notifier");
 
 		return (-1);
 	}
@@ -436,11 +436,11 @@ qdevice_net_heuristics_exec_after_connect(struct qdevice_net_instance *net_insta
 	instance = net_instance->qdevice_instance_ptr;
 	heuristics_instance = &instance->heuristics_instance;
 
-	qdevice_log(LOG_DEBUG, "Executing after-connect heuristics.");
+	log(LOG_DEBUG, "Executing after-connect heuristics.");
 
 	if (qdevice_heuristics_result_notifier_list_set_active(&heuristics_instance->exec_result_notifier_list,
 	    qdevice_net_connect_heuristics_exec_result_callback, 1) != 0) {
-		qdevice_log(LOG_ERR, "Can't activate net connect heuristics exec callback notifier");
+		log(LOG_ERR, "Can't activate net connect heuristics exec callback notifier");
 
 		net_instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_ACTIVATE_HEURISTICS_RESULT_NOTIFIER;
 		net_instance->schedule_disconnect = 1;
@@ -450,7 +450,7 @@ qdevice_net_heuristics_exec_after_connect(struct qdevice_net_instance *net_insta
 
 	if (qdevice_heuristics_exec(heuristics_instance,
 	    instance->sync_in_progress) != 0) {
-		qdevice_log(LOG_ERR, "Can't execute connect heuristics.");
+		log(LOG_ERR, "Can't execute connect heuristics.");
 
 		net_instance->schedule_disconnect = 1;
 		net_instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_START_HEURISTICS;

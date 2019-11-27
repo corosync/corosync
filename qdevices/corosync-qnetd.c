@@ -525,7 +525,6 @@ main(int argc, char * const argv[])
 	PRIntn address_family;
 	int lock_file;
 	int another_instance_running;
-	int res;
 	int log_target;
 
 	if (qnetd_advanced_settings_init(&advanced_settings) != 0) {
@@ -540,8 +539,7 @@ main(int argc, char * const argv[])
 		log_target |= LOG_TARGET_STDERR;
 	}
 
-	res = log_init(QNETD_PROGRAM_NAME, log_target, LOG_DAEMON);
-	if (res == -1) {
+	if (log_init(QNETD_PROGRAM_NAME, log_target, LOG_DAEMON) == -1) {
 		errx(1, "Can't initialize logging");
 	}
 

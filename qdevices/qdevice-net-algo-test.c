@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2017 Red Hat, Inc.
+ * Copyright (c) 2015-2019 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -52,7 +52,7 @@ qdevice_net_algo_test_init(struct qdevice_net_instance *instance)
 {
 
 	instance->algorithm_data = NULL;
-	qdevice_log(LOG_INFO, "algo-test: Initialized");
+	log(LOG_INFO, "algo-test: Initialized");
 
 	return (0);
 }
@@ -71,7 +71,7 @@ qdevice_net_algo_test_connected(struct qdevice_net_instance *instance, enum tlv_
     int *send_config_node_list, int *send_membership_node_list, int *send_quorum_node_list, enum tlv_vote *vote)
 {
 
-	qdevice_log(LOG_INFO, "algo-test: Connected");
+	log(LOG_INFO, "algo-test: Connected");
 
 	return (0);
 }
@@ -96,7 +96,7 @@ qdevice_net_algo_test_config_node_list_changed(struct qdevice_net_instance *inst
     int *send_node_list, enum tlv_vote *vote)
 {
 
-	qdevice_log(LOG_INFO, "algo-test: Config node list changed");
+	log(LOG_INFO, "algo-test: Config node list changed");
 
 	return (0);
 }
@@ -124,7 +124,7 @@ qdevice_net_algo_test_votequorum_node_list_notify(struct qdevice_net_instance *i
     int *pause_cast_vote_timer, enum tlv_vote *vote)
 {
 
-	qdevice_log(LOG_INFO, "algo-test: Votequorum list notify");
+	log(LOG_INFO, "algo-test: Votequorum list notify");
 
 	return (0);
 }
@@ -150,7 +150,7 @@ qdevice_net_algo_test_votequorum_node_list_heuristics_notify(struct qdevice_net_
     int *send_node_list, enum tlv_vote *vote, enum tlv_heuristics *heuristics)
 {
 
-	qdevice_log(LOG_INFO, "algo-test: Votequorum heuristics list notify");
+	log(LOG_INFO, "algo-test: Votequorum heuristics list notify");
 
 	return (0);
 }
@@ -178,7 +178,7 @@ qdevice_net_algo_test_votequorum_quorum_notify(struct qdevice_net_instance *inst
     enum tlv_vote *vote)
 {
 
-	qdevice_log(LOG_INFO, "algo-test: Votequorum quorum notify");
+	log(LOG_INFO, "algo-test: Votequorum quorum notify");
 
 	return (0);
 }
@@ -194,7 +194,7 @@ qdevice_net_algo_test_votequorum_expected_votes_notify(struct qdevice_net_instan
     uint32_t expected_votes, enum tlv_vote *vote)
 {
 
-	qdevice_log(LOG_INFO, "algo-test: Votequorum expected votes notify");
+	log(LOG_INFO, "algo-test: Votequorum expected votes notify");
 
 	return (0);
 }
@@ -213,7 +213,7 @@ qdevice_net_algo_test_config_node_list_reply_received(struct qdevice_net_instanc
     enum tlv_vote *vote)
 {
 
-	qdevice_log(LOG_INFO, "algo-test: Config node list reply");
+	log(LOG_INFO, "algo-test: Config node list reply");
 
 	if (!ring_id_is_valid) {
 		*vote = TLV_VOTE_NO_CHANGE;
@@ -241,7 +241,7 @@ qdevice_net_algo_test_membership_node_list_reply_received(struct qdevice_net_ins
     enum tlv_vote *vote)
 {
 
-	qdevice_log(LOG_INFO, "algo-test: Membership node list reply");
+	log(LOG_INFO, "algo-test: Membership node list reply");
 
 	if (!ring_id_is_valid) {
 		*vote = TLV_VOTE_NO_CHANGE;
@@ -265,7 +265,7 @@ qdevice_net_algo_test_quorum_node_list_reply_received(struct qdevice_net_instanc
     enum tlv_vote *vote)
 {
 
-	qdevice_log(LOG_INFO, "algo-test: Quorum node list reply");
+	log(LOG_INFO, "algo-test: Quorum node list reply");
 
 	if (!ring_id_is_valid) {
 		*vote = TLV_VOTE_NO_CHANGE;
@@ -288,7 +288,7 @@ qdevice_net_algo_test_ask_for_vote_reply_received(struct qdevice_net_instance *i
     uint32_t seq_number, const struct tlv_ring_id *ring_id, int ring_id_is_valid, enum tlv_vote *vote)
 {
 
-	qdevice_log(LOG_INFO, "algo-test: Ask for vote reply received");
+	log(LOG_INFO, "algo-test: Ask for vote reply received");
 
 	if (!ring_id_is_valid) {
 		*vote = TLV_VOTE_NO_CHANGE;
@@ -311,7 +311,7 @@ qdevice_net_algo_test_vote_info_received(struct qdevice_net_instance *instance,
     uint32_t seq_number, const struct tlv_ring_id *ring_id, int ring_id_is_valid, enum tlv_vote *vote)
 {
 
-	qdevice_log(LOG_INFO, "algo-test: Vote info received");
+	log(LOG_INFO, "algo-test: Vote info received");
 
 	if (!ring_id_is_valid) {
 		*vote = TLV_VOTE_NO_CHANGE;
@@ -331,7 +331,7 @@ qdevice_net_algo_test_echo_reply_received(struct qdevice_net_instance *instance,
     uint32_t seq_number, int is_expected_seq_number)
 {
 
-	qdevice_log(LOG_INFO, "algo-test: Echo reply received");
+	log(LOG_INFO, "algo-test: Echo reply received");
 
 	return (is_expected_seq_number ? 0 : -1);
 }
@@ -347,7 +347,7 @@ int
 qdevice_net_algo_test_echo_reply_not_received(struct qdevice_net_instance *instance)
 {
 
-	qdevice_log(LOG_INFO, "algo-test: Echo reply not received");
+	log(LOG_INFO, "algo-test: Echo reply not received");
 
 	return (-1);
 }
@@ -369,7 +369,7 @@ qdevice_net_algo_test_heuristics_change(struct qdevice_net_instance *instance,
     enum tlv_heuristics *heuristics, int *send_msg, enum tlv_vote *vote)
 {
 
-	qdevice_log(LOG_INFO, "algo-test: Heuristics change");
+	log(LOG_INFO, "algo-test: Heuristics change");
 
 	return (0);
 }
@@ -391,7 +391,7 @@ qdevice_net_algo_test_heuristics_change_reply_received(struct qdevice_net_instan
     enum tlv_heuristics heuristics, enum tlv_vote *vote)
 {
 
-	qdevice_log(LOG_INFO, "algo-test: heuristics change reply received");
+	log(LOG_INFO, "algo-test: heuristics change reply received");
 
 	if (!ring_id_is_valid) {
 		*vote = TLV_VOTE_NO_CHANGE;
@@ -414,7 +414,7 @@ qdevice_net_algo_test_disconnected(struct qdevice_net_instance *instance,
     enum qdevice_net_disconnect_reason disconnect_reason, int *try_reconnect, enum tlv_vote *vote)
 {
 
-	qdevice_log(LOG_INFO, "algo-test: Disconnected");
+	log(LOG_INFO, "algo-test: Disconnected");
 
 	return (0);
 }
@@ -426,7 +426,7 @@ void
 qdevice_net_algo_test_destroy(struct qdevice_net_instance *instance)
 {
 
-	qdevice_log(LOG_INFO, "algo-test: Destroy");
+	log(LOG_INFO, "algo-test: Destroy");
 }
 
 static struct qdevice_net_algorithm qdevice_net_algo_test = {

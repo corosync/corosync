@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016 Red Hat, Inc.
+ * Copyright (c) 2015-2019 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -44,7 +44,7 @@ qdevice_model_init(struct qdevice_instance *instance)
 
 	if (instance->model_type >= QDEVICE_MODEL_TYPE_ARRAY_SIZE ||
 	    qdevice_model_array[instance->model_type] == NULL) {
-		qdevice_log(LOG_CRIT, "qdevice_model_init unhandled model");
+		log(LOG_CRIT, "qdevice_model_init unhandled model");
 		exit(1);
 	}
 
@@ -57,7 +57,7 @@ qdevice_model_destroy(struct qdevice_instance *instance)
 
 	if (instance->model_type >= QDEVICE_MODEL_TYPE_ARRAY_SIZE ||
 	    qdevice_model_array[instance->model_type] == NULL) {
-		qdevice_log(LOG_CRIT, "qdevice_model_destroy unhandled model");
+		log(LOG_CRIT, "qdevice_model_destroy unhandled model");
 		exit(1);
 	}
 
@@ -70,7 +70,7 @@ qdevice_model_run(struct qdevice_instance *instance)
 
 	if (instance->model_type >= QDEVICE_MODEL_TYPE_ARRAY_SIZE ||
 	    qdevice_model_array[instance->model_type] == NULL) {
-		qdevice_log(LOG_CRIT, "qdevice_model_run unhandled model");
+		log(LOG_CRIT, "qdevice_model_run unhandled model");
 		exit(1);
 	}
 
@@ -83,7 +83,7 @@ qdevice_model_get_config_node_list_failed(struct qdevice_instance *instance)
 
 	if (instance->model_type >= QDEVICE_MODEL_TYPE_ARRAY_SIZE ||
 	    qdevice_model_array[instance->model_type] == NULL) {
-		qdevice_log(LOG_CRIT, "qdevice_model_run unhandled model");
+		log(LOG_CRIT, "qdevice_model_run unhandled model");
 		exit(1);
 	}
 
@@ -97,7 +97,7 @@ qdevice_model_config_node_list_changed(struct qdevice_instance *instance,
 
 	if (instance->model_type >= QDEVICE_MODEL_TYPE_ARRAY_SIZE ||
 	    qdevice_model_array[instance->model_type] == NULL) {
-		qdevice_log(LOG_CRIT, "qdevice_model_run unhandled model");
+		log(LOG_CRIT, "qdevice_model_run unhandled model");
 		exit(1);
 	}
 
@@ -112,7 +112,7 @@ qdevice_model_votequorum_quorum_notify(struct qdevice_instance *instance,
 
 	if (instance->model_type >= QDEVICE_MODEL_TYPE_ARRAY_SIZE ||
 	    qdevice_model_array[instance->model_type] == NULL) {
-		qdevice_log(LOG_CRIT, "qdevice_model_votequorum_quorum_notify unhandled model");
+		log(LOG_CRIT, "qdevice_model_votequorum_quorum_notify unhandled model");
 		exit(1);
 	}
 
@@ -127,7 +127,7 @@ qdevice_model_votequorum_node_list_notify(struct qdevice_instance *instance,
 
 	if (instance->model_type >= QDEVICE_MODEL_TYPE_ARRAY_SIZE ||
 	    qdevice_model_array[instance->model_type] == NULL) {
-		qdevice_log(LOG_CRIT, "qdevice_model_votequorum_node_list_notify unhandled model");
+		log(LOG_CRIT, "qdevice_model_votequorum_node_list_notify unhandled model");
 		exit(1);
 	}
 
@@ -143,7 +143,7 @@ qdevice_model_votequorum_node_list_heuristics_notify(struct qdevice_instance *in
 
 	if (instance->model_type >= QDEVICE_MODEL_TYPE_ARRAY_SIZE ||
 	    qdevice_model_array[instance->model_type] == NULL) {
-		qdevice_log(LOG_CRIT, "qdevice_model_votequorum_node_list_heuristics_notify unhandled model");
+		log(LOG_CRIT, "qdevice_model_votequorum_node_list_heuristics_notify unhandled model");
 		exit(1);
 	}
 
@@ -159,7 +159,7 @@ qdevice_model_votequorum_expected_votes_notify(struct qdevice_instance *instance
 
 	if (instance->model_type >= QDEVICE_MODEL_TYPE_ARRAY_SIZE ||
 	    qdevice_model_array[instance->model_type] == NULL) {
-		qdevice_log(LOG_CRIT, "qdevice_model_votequorum_expected_votes_notify unhandled model");
+		log(LOG_CRIT, "qdevice_model_votequorum_expected_votes_notify unhandled model");
 		exit(1);
 	}
 
@@ -173,7 +173,7 @@ qdevice_model_ipc_cmd_status(struct qdevice_instance *instance, struct dynar *ou
 
 	if (instance->model_type >= QDEVICE_MODEL_TYPE_ARRAY_SIZE ||
 	    qdevice_model_array[instance->model_type] == NULL) {
-		qdevice_log(LOG_CRIT, "qdevice_model_ipc_cmd_status unhandled model");
+		log(LOG_CRIT, "qdevice_model_ipc_cmd_status unhandled model");
 		exit(1);
 	}
 
@@ -188,7 +188,7 @@ qdevice_model_cmap_changed(struct qdevice_instance *instance,
 
 	if (instance->model_type >= QDEVICE_MODEL_TYPE_ARRAY_SIZE ||
 	    qdevice_model_array[instance->model_type] == NULL) {
-		qdevice_log(LOG_CRIT, "qdevice_model_cmap_chaged unhandled model");
+		log(LOG_CRIT, "qdevice_model_cmap_chaged unhandled model");
 		exit(1);
 	}
 
@@ -219,7 +219,7 @@ qdevice_model_register_all(void)
 {
 
 	if (qdevice_model_net_register() != 0) {
-		qdevice_log(LOG_CRIT, "Failed to register model 'net' ");
+		log(LOG_CRIT, "Failed to register model 'net' ");
 		exit(1);
 	}
 }

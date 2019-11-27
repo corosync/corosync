@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016 Red Hat, Inc.
+ * Copyright (c) 2015-2019 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -89,19 +89,19 @@ qdevice_net_msg_received_log_msg_decode_error(int ret)
 
 	switch (ret) {
 	case -1:
-		qdevice_log(LOG_WARNING, "Received message with option with invalid length");
+		log(LOG_WARNING, "Received message with option with invalid length");
 		break;
 	case -2:
-		qdevice_log(LOG_CRIT, "Can't allocate memory");
+		log(LOG_CRIT, "Can't allocate memory");
 		break;
 	case -3:
-		qdevice_log(LOG_WARNING, "Received inconsistent msg (tlv len > msg size)");
+		log(LOG_WARNING, "Received inconsistent msg (tlv len > msg size)");
 		break;
 	case -4:
-		qdevice_log(LOG_ERR, "Received message with option with invalid value");
+		log(LOG_ERR, "Received message with option with invalid value");
 		break;
 	default:
-		qdevice_log(LOG_ERR, "Unknown error occurred when decoding message");
+		log(LOG_ERR, "Unknown error occurred when decoding message");
 		break;
 	}
 }
@@ -111,7 +111,7 @@ qdevice_net_msg_received_unexpected_msg(struct qdevice_net_instance *instance,
     const struct msg_decoded *msg, const char *msg_str)
 {
 
-	qdevice_log(LOG_ERR, "Received unexpected %s message. Disconnecting from server",
+	log(LOG_ERR, "Received unexpected %s message. Disconnecting from server",
 	    msg_str);
 
 	instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_UNEXPECTED_MSG;
@@ -141,7 +141,7 @@ qdevice_net_msg_check_seq_number(struct qdevice_net_instance *instance,
 {
 
 	if (!msg->seq_number_set || msg->seq_number != instance->last_msg_seq_num) {
-		qdevice_log(LOG_ERR, "Received message doesn't contain seq_number or "
+		log(LOG_ERR, "Received message doesn't contain seq_number or "
 		    "it's not expected one.");
 
 		return (-1);
@@ -157,10 +157,10 @@ qdevice_net_msg_received_preinit_reply(struct qdevice_net_instance *instance,
 	int res;
 	struct send_buffer_list_entry *send_buffer;
 
-	qdevice_log(LOG_DEBUG, "Received preinit reply msg");
+	log(LOG_DEBUG, "Received preinit reply msg");
 
 	if (instance->state != QDEVICE_NET_INSTANCE_STATE_WAITING_PREINIT_REPLY) {
-		qdevice_log(LOG_ERR, "Received unexpected preinit reply message. "
+		log(LOG_ERR, "Received unexpected preinit reply message. "
 		    "Disconnecting from server");
 
 		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_UNEXPECTED_MSG;
@@ -178,7 +178,7 @@ qdevice_net_msg_received_preinit_reply(struct qdevice_net_instance *instance,
 	 * Check TLS support
 	 */
 	if (!msg->tls_supported_set || !msg->tls_client_cert_required_set) {
-		qdevice_log(LOG_ERR, "Required tls_supported or tls_client_cert_required "
+		log(LOG_ERR, "Required tls_supported or tls_client_cert_required "
 		    "option is unset");
 
 		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_REQUIRED_OPTION_MISSING;
@@ -188,7 +188,7 @@ qdevice_net_msg_received_preinit_reply(struct qdevice_net_instance *instance,
 
 	res = qdevice_net_msg_received_check_tls_compatibility(msg->tls_supported, instance->tls_supported);
 	if (res == -1) {
-		qdevice_log(LOG_ERR, "Incompatible tls configuration (server %u client %u)",
+		log(LOG_ERR, "Incompatible tls configuration (server %u client %u)",
 		    msg->tls_supported, instance->tls_supported);
 
 		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_INCOMPATIBLE_TLS;
@@ -200,7 +200,7 @@ qdevice_net_msg_received_preinit_reply(struct qdevice_net_instance *instance,
 		 */
 		send_buffer = send_buffer_list_get_new(&instance->send_buffer_list);
 		if (send_buffer == NULL) {
-			qdevice_log(LOG_ERR, "Can't allocate send list buffer for "
+			log(LOG_ERR, "Can't allocate send list buffer for "
 			    "starttls msg");
 
 			instance->disconnect_reason =
@@ -212,7 +212,7 @@ qdevice_net_msg_received_preinit_reply(struct qdevice_net_instance *instance,
 		instance->last_msg_seq_num++;
 		if (msg_create_starttls(&send_buffer->buffer, 1,
 		    instance->last_msg_seq_num) == 0) {
-			qdevice_log(LOG_ERR, "Can't allocate send buffer for starttls msg");
+			log(LOG_ERR, "Can't allocate send buffer for starttls msg");
 
 			instance->disconnect_reason =
 			    QDEVICE_NET_DISCONNECT_REASON_CANT_ALLOCATE_MSG_BUFFER;
@@ -244,10 +244,10 @@ qdevice_net_msg_received_init_reply(struct qdevice_net_instance *instance,
 	int res;
 	enum qdevice_heuristics_mode active_heuristics_mode;
 
-	qdevice_log(LOG_DEBUG, "Received init reply msg");
+	log(LOG_DEBUG, "Received init reply msg");
 
 	if (instance->state != QDEVICE_NET_INSTANCE_STATE_WAITING_INIT_REPLY) {
-		qdevice_log(LOG_ERR, "Received unexpected init reply message. "
+		log(LOG_ERR, "Received unexpected init reply message. "
 		    "Disconnecting from server");
 
 		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_UNEXPECTED_MSG;
@@ -262,7 +262,7 @@ qdevice_net_msg_received_init_reply(struct qdevice_net_instance *instance,
 	}
 
 	if (!msg->reply_error_code_set) {
-		qdevice_log(LOG_ERR, "Received init reply message without error code."
+		log(LOG_ERR, "Received init reply message without error code."
 		    "Disconnecting from server");
 
 		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_REQUIRED_OPTION_MISSING;
@@ -271,20 +271,20 @@ qdevice_net_msg_received_init_reply(struct qdevice_net_instance *instance,
 	}
 
 	if (msg->reply_error_code != TLV_REPLY_ERROR_CODE_NO_ERROR) {
-		qdevice_log(LOG_ERR, "Received init reply message with error code %"PRIu16". "
+		log(LOG_ERR, "Received init reply message with error code %"PRIu16". "
 		    "Disconnecting from server", msg->reply_error_code);
 
 		if (msg->reply_error_code == TLV_REPLY_ERROR_CODE_DUPLICATE_NODE_ID) {
-			qdevice_log(LOG_ERR, "Duplicate node id may be result of server not yet "
+			log(LOG_ERR, "Duplicate node id may be result of server not yet "
 			    "accepted this node disconnect. Retry again.");
 			instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_SERVER_SENT_DUPLICATE_NODE_ID_ERROR;
 		} else if (msg->reply_error_code == TLV_REPLY_ERROR_CODE_TIE_BREAKER_DIFFERS_FROM_OTHER_NODES) {
-			qdevice_log(LOG_ERR, "Configured tie-breaker differs in cluster. This may be "
+			log(LOG_ERR, "Configured tie-breaker differs in cluster. This may be "
 			    "result of server not yet accepted this node disconnect. Retry again.");
 			instance->disconnect_reason =
 			    QDEVICE_NET_DISCONNECT_REASON_SERVER_SENT_TIE_BREAKER_DIFFERS_FROM_OTHER_NODES_ERROR;
 		} else if (msg->reply_error_code == TLV_REPLY_ERROR_CODE_ALGORITHM_DIFFERS_FROM_OTHER_NODES) {
-			qdevice_log(LOG_ERR, "Configured algorithm differs in cluster. This may be "
+			log(LOG_ERR, "Configured algorithm differs in cluster. This may be "
 			    "result of server not yet accepted this node disconnect. Retry again.");
 			instance->disconnect_reason =
 			    QDEVICE_NET_DISCONNECT_REASON_SERVER_SENT_ALGORITHM_DIFFERS_FROM_OTHER_NODES_ERROR;
@@ -296,7 +296,7 @@ qdevice_net_msg_received_init_reply(struct qdevice_net_instance *instance,
 	}
 
 	if (!msg->server_maximum_request_size_set || !msg->server_maximum_reply_size_set) {
-		qdevice_log(LOG_ERR, "Required maximum_request_size or maximum_reply_size "
+		log(LOG_ERR, "Required maximum_request_size or maximum_reply_size "
 		    "option is unset");
 
 		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_REQUIRED_OPTION_MISSING;
@@ -305,7 +305,7 @@ qdevice_net_msg_received_init_reply(struct qdevice_net_instance *instance,
 	}
 
 	if (msg->supported_messages == NULL || msg->supported_options == NULL) {
-		qdevice_log(LOG_ERR, "Required supported messages or supported options "
+		log(LOG_ERR, "Required supported messages or supported options "
 		    "option is unset");
 
 		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_REQUIRED_OPTION_MISSING;
@@ -314,7 +314,7 @@ qdevice_net_msg_received_init_reply(struct qdevice_net_instance *instance,
 	}
 
 	if (msg->supported_decision_algorithms == NULL) {
-		qdevice_log(LOG_ERR, "Required supported decision algorithms option is unset");
+		log(LOG_ERR, "Required supported decision algorithms option is unset");
 
 		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_REQUIRED_OPTION_MISSING;
 
@@ -322,7 +322,7 @@ qdevice_net_msg_received_init_reply(struct qdevice_net_instance *instance,
 	}
 
 	if (msg->server_maximum_request_size < instance->advanced_settings->net_min_msg_send_size) {
-		qdevice_log(LOG_ERR,
+		log(LOG_ERR,
 		    "Server accepts maximum %zu bytes message but this client minimum "
 		    "is %zu bytes.", msg->server_maximum_request_size,
 		    instance->advanced_settings->net_min_msg_send_size);
@@ -332,7 +332,7 @@ qdevice_net_msg_received_init_reply(struct qdevice_net_instance *instance,
 	}
 
 	if (msg->server_maximum_reply_size > instance->advanced_settings->net_max_msg_receive_size) {
-		qdevice_log(LOG_ERR,
+		log(LOG_ERR,
 		    "Server may send message up to %zu bytes message but this client maximum "
 		    "is %zu bytes.", msg->server_maximum_reply_size,
 		    instance->advanced_settings->net_max_msg_receive_size);
@@ -361,7 +361,7 @@ qdevice_net_msg_received_init_reply(struct qdevice_net_instance *instance,
 	}
 
 	if (!res) {
-		qdevice_log(LOG_ERR, "Server doesn't support required decision algorithm");
+		log(LOG_ERR, "Server doesn't support required decision algorithm");
 
 		instance->disconnect_reason =
 		    QDEVICE_NET_DISCONNECT_REASON_SERVER_DOESNT_SUPPORT_REQUIRED_ALGORITHM;
@@ -386,7 +386,7 @@ qdevice_net_msg_received_init_reply(struct qdevice_net_instance *instance,
 
 		if (active_heuristics_mode == QDEVICE_HEURISTICS_MODE_ENABLED ||
 		    active_heuristics_mode == QDEVICE_HEURISTICS_MODE_SYNC) {
-			qdevice_log(LOG_ERR, "Heuristics are enabled but not supported by server");
+			log(LOG_ERR, "Heuristics are enabled but not supported by server");
 
 			instance->disconnect_reason =
 			    QDEVICE_NET_DISCONNECT_REASON_SERVER_DOESNT_SUPPORT_REQUIRED_OPT;
@@ -435,12 +435,12 @@ qdevice_net_msg_received_server_error(struct qdevice_net_instance *instance,
 {
 
 	if (!msg->reply_error_code_set) {
-		qdevice_log(LOG_ERR, "Received server error without error code set. "
+		log(LOG_ERR, "Received server error without error code set. "
 		    "Disconnecting from server");
 
 		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_REQUIRED_OPTION_MISSING;
 	} else {
-		qdevice_log(LOG_ERR, "Received server error %"PRIu16". "
+		log(LOG_ERR, "Received server error %"PRIu16". "
 		    "Disconnecting from server", msg->reply_error_code);
 
 		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_SERVER_SENT_ERROR;
@@ -463,7 +463,7 @@ qdevice_net_msg_received_set_option_reply(struct qdevice_net_instance *instance,
 {
 
 	if (instance->state != QDEVICE_NET_INSTANCE_STATE_WAITING_VOTEQUORUM_CMAP_EVENTS) {
-		qdevice_log(LOG_ERR, "Received unexpected set option reply message. "
+		log(LOG_ERR, "Received unexpected set option reply message. "
 		    "Disconnecting from server");
 
 		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_UNEXPECTED_MSG;
@@ -498,19 +498,19 @@ qdevice_net_msg_received_echo_reply(struct qdevice_net_instance *instance,
 {
 
 	if (!msg->seq_number_set) {
-		qdevice_log(LOG_ERR, "Received echo reply message doesn't contain seq_number.");
+		log(LOG_ERR, "Received echo reply message doesn't contain seq_number.");
 
 		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_REQUIRED_OPTION_MISSING;
 		return (-1);
 	}
 
 	if (msg->seq_number != instance->echo_request_expected_msg_seq_num) {
-		qdevice_log(LOG_WARNING, "Received echo reply message seq_number is not expected one.");
+		log(LOG_WARNING, "Received echo reply message seq_number is not expected one.");
 	}
 
 	if (qdevice_net_algorithm_echo_reply_received(instance, msg->seq_number,
 	    msg->seq_number == instance->echo_request_expected_msg_seq_num) != 0) {
-		qdevice_log(LOG_DEBUG, "Algorithm returned error. Disconnecting");
+		log(LOG_DEBUG, "Algorithm returned error. Disconnecting");
 
 		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_ALGO_ECHO_REPLY_RECEIVED_ERR;
 		return (-1);
@@ -541,7 +541,7 @@ qdevice_net_msg_received_node_list_reply(struct qdevice_net_instance *instance,
 	int ring_id_is_valid;
 
 	if (instance->state != QDEVICE_NET_INSTANCE_STATE_WAITING_VOTEQUORUM_CMAP_EVENTS) {
-		qdevice_log(LOG_ERR, "Received unexpected node list reply message. "
+		log(LOG_ERR, "Received unexpected node list reply message. "
 		    "Disconnecting from server");
 
 		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_UNEXPECTED_MSG;
@@ -549,7 +549,7 @@ qdevice_net_msg_received_node_list_reply(struct qdevice_net_instance *instance,
 	}
 
 	if (!msg->vote_set || !msg->seq_number_set || !msg->node_list_type_set) {
-		qdevice_log(LOG_ERR, "Received node list reply message without "
+		log(LOG_ERR, "Received node list reply message without "
 		    "required options. Disconnecting from server");
 
 		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_REQUIRED_OPTION_MISSING;
@@ -557,7 +557,7 @@ qdevice_net_msg_received_node_list_reply(struct qdevice_net_instance *instance,
 	}
 
 	if (!msg->ring_id_set) {
-		qdevice_log(LOG_ERR, "Received node list reply message "
+		log(LOG_ERR, "Received node list reply message "
 		    "without ring id set. Disconnecting from server");
 
 		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_REQUIRED_OPTION_MISSING;
@@ -578,15 +578,15 @@ qdevice_net_msg_received_node_list_reply(struct qdevice_net_instance *instance,
 	}
 
 	if (str == NULL) {
-		qdevice_log(LOG_CRIT, "qdevice_net_msg_received_node_list_reply fatal error. "
+		log(LOG_CRIT, "qdevice_net_msg_received_node_list_reply fatal error. "
 		    "Unhandled node_list_type (debug output)");
 		exit(1);
 	}
 
-	qdevice_log(LOG_DEBUG, "Received %s node list reply", str);
-	qdevice_log(LOG_DEBUG, "  seq = "UTILS_PRI_MSG_SEQ, msg->seq_number);
-	qdevice_log(LOG_DEBUG, "  vote = %s", tlv_vote_to_str(msg->vote));
-	qdevice_log(LOG_DEBUG, "  ring id = ("UTILS_PRI_RING_ID")",
+	log(LOG_DEBUG, "Received %s node list reply", str);
+	log(LOG_DEBUG, "  seq = "UTILS_PRI_MSG_SEQ, msg->seq_number);
+	log(LOG_DEBUG, "  vote = %s", tlv_vote_to_str(msg->vote));
+	log(LOG_DEBUG, "  ring id = ("UTILS_PRI_RING_ID")",
 		    msg->ring_id.node_id, msg->ring_id.seq);
 
 	/*
@@ -596,7 +596,7 @@ qdevice_net_msg_received_node_list_reply(struct qdevice_net_instance *instance,
 
 	if (!tlv_ring_id_eq(&msg->ring_id, &instance->last_sent_ring_id)) {
 		ring_id_is_valid = 0;
-		qdevice_log(LOG_DEBUG, "Received node list reply with old ring id.");
+		log(LOG_DEBUG, "Received node list reply with old ring id.");
 	} else {
 		ring_id_is_valid = 1;
 	}
@@ -627,18 +627,18 @@ qdevice_net_msg_received_node_list_reply(struct qdevice_net_instance *instance,
 	}
 
 	if (!case_processed) {
-		qdevice_log(LOG_CRIT, "qdevice_net_msg_received_node_list_reply fatal error. "
+		log(LOG_CRIT, "qdevice_net_msg_received_node_list_reply fatal error. "
 		    "Unhandled node_list_type (algorithm call)");
 		exit(1);
 	}
 
 	if (res != 0) {
-		qdevice_log(LOG_DEBUG, "Algorithm returned error. Disconnecting.");
+		log(LOG_DEBUG, "Algorithm returned error. Disconnecting.");
 
 		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_ALGO_NODE_LIST_REPLY_ERR;
 		return (-1);
 	} else {
-		qdevice_log(LOG_DEBUG, "Algorithm result vote is %s", tlv_vote_to_str(result_vote));
+		log(LOG_DEBUG, "Algorithm result vote is %s", tlv_vote_to_str(result_vote));
 	}
 
 	if (qdevice_net_cast_vote_timer_update(instance, result_vote) != 0) {
@@ -665,7 +665,7 @@ qdevice_net_msg_received_ask_for_vote_reply(struct qdevice_net_instance *instanc
 	int ring_id_is_valid;
 
 	if (instance->state != QDEVICE_NET_INSTANCE_STATE_WAITING_VOTEQUORUM_CMAP_EVENTS) {
-		qdevice_log(LOG_ERR, "Received unexpected ask for vote reply message. "
+		log(LOG_ERR, "Received unexpected ask for vote reply message. "
 		    "Disconnecting from server");
 
 		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_UNEXPECTED_MSG;
@@ -673,36 +673,36 @@ qdevice_net_msg_received_ask_for_vote_reply(struct qdevice_net_instance *instanc
 	}
 
 	if (!msg->vote_set || !msg->seq_number_set || !msg->ring_id_set) {
-		qdevice_log(LOG_ERR, "Received ask for vote reply message without "
+		log(LOG_ERR, "Received ask for vote reply message without "
 		    "required options. Disconnecting from server");
 
 		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_REQUIRED_OPTION_MISSING;
 		return (-1);
 	}
 
-	qdevice_log(LOG_DEBUG, "Received ask for vote reply");
-	qdevice_log(LOG_DEBUG, "  seq = "UTILS_PRI_MSG_SEQ, msg->seq_number);
-	qdevice_log(LOG_DEBUG, "  vote = %s", tlv_vote_to_str(msg->vote));
-	qdevice_log(LOG_DEBUG, "  ring id = ("UTILS_PRI_RING_ID")",
+	log(LOG_DEBUG, "Received ask for vote reply");
+	log(LOG_DEBUG, "  seq = "UTILS_PRI_MSG_SEQ, msg->seq_number);
+	log(LOG_DEBUG, "  vote = %s", tlv_vote_to_str(msg->vote));
+	log(LOG_DEBUG, "  ring id = ("UTILS_PRI_RING_ID")",
 		    msg->ring_id.node_id, msg->ring_id.seq);
 
 	result_vote = msg->vote;
 
 	if (!tlv_ring_id_eq(&msg->ring_id, &instance->last_sent_ring_id)) {
 		ring_id_is_valid = 0;
-		qdevice_log(LOG_DEBUG, "Received ask for vote reply with old ring id.");
+		log(LOG_DEBUG, "Received ask for vote reply with old ring id.");
 	} else {
 		ring_id_is_valid = 1;
 	}
 
 	if (qdevice_net_algorithm_ask_for_vote_reply_received(instance, msg->seq_number,
 	    &msg->ring_id, ring_id_is_valid, &result_vote) != 0) {
-		qdevice_log(LOG_DEBUG, "Algorithm returned error. Disconnecting.");
+		log(LOG_DEBUG, "Algorithm returned error. Disconnecting.");
 
 		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_ALGO_ASK_FOR_VOTE_REPLY_ERR;
 		return (-1);
 	} else {
-		qdevice_log(LOG_DEBUG, "Algorithm result vote is %s", tlv_vote_to_str(result_vote));
+		log(LOG_DEBUG, "Algorithm result vote is %s", tlv_vote_to_str(result_vote));
 	}
 
 	if (qdevice_net_cast_vote_timer_update(instance, result_vote) != 0) {
@@ -722,7 +722,7 @@ qdevice_net_msg_received_vote_info(struct qdevice_net_instance *instance,
 	int ring_id_is_valid;
 
 	if (instance->state != QDEVICE_NET_INSTANCE_STATE_WAITING_VOTEQUORUM_CMAP_EVENTS) {
-		qdevice_log(LOG_ERR, "Received unexpected vote info message. "
+		log(LOG_ERR, "Received unexpected vote info message. "
 		    "Disconnecting from server");
 
 		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_UNEXPECTED_MSG;
@@ -730,35 +730,35 @@ qdevice_net_msg_received_vote_info(struct qdevice_net_instance *instance,
 	}
 
 	if (!msg->vote_set || !msg->seq_number_set || !msg->ring_id_set) {
-		qdevice_log(LOG_ERR, "Received node list reply message without "
+		log(LOG_ERR, "Received node list reply message without "
 		    "required options. Disconnecting from server");
 		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_REQUIRED_OPTION_MISSING;
 		return (-1);
 	}
 
-	qdevice_log(LOG_DEBUG, "Received vote info");
-	qdevice_log(LOG_DEBUG, "  seq = "UTILS_PRI_MSG_SEQ, msg->seq_number);
-	qdevice_log(LOG_DEBUG, "  vote = %s", tlv_vote_to_str(msg->vote));
-	qdevice_log(LOG_DEBUG, "  ring id = ("UTILS_PRI_RING_ID")",
+	log(LOG_DEBUG, "Received vote info");
+	log(LOG_DEBUG, "  seq = "UTILS_PRI_MSG_SEQ, msg->seq_number);
+	log(LOG_DEBUG, "  vote = %s", tlv_vote_to_str(msg->vote));
+	log(LOG_DEBUG, "  ring id = ("UTILS_PRI_RING_ID")",
 		    msg->ring_id.node_id, msg->ring_id.seq);
 
 	result_vote = msg->vote;
 
 	if (!tlv_ring_id_eq(&msg->ring_id, &instance->last_sent_ring_id)) {
 		ring_id_is_valid = 0;
-		qdevice_log(LOG_DEBUG, "Received vote info with old ring id.");
+		log(LOG_DEBUG, "Received vote info with old ring id.");
 	} else {
 		ring_id_is_valid = 1;
 	}
 
 	if (qdevice_net_algorithm_vote_info_received(instance, msg->seq_number,
 	    &msg->ring_id, ring_id_is_valid, &result_vote) != 0) {
-		qdevice_log(LOG_DEBUG, "Algorithm returned error. Disconnecting.");
+		log(LOG_DEBUG, "Algorithm returned error. Disconnecting.");
 
 		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_ALGO_VOTE_INFO_ERR;
 		return (-1);
 	} else {
-		qdevice_log(LOG_DEBUG, "Algorithm result vote is %s", tlv_vote_to_str(result_vote));
+		log(LOG_DEBUG, "Algorithm result vote is %s", tlv_vote_to_str(result_vote));
 	}
 
 	if (qdevice_net_cast_vote_timer_update(instance, result_vote) != 0) {
@@ -771,7 +771,7 @@ qdevice_net_msg_received_vote_info(struct qdevice_net_instance *instance,
 	 */
 	send_buffer = send_buffer_list_get_new(&instance->send_buffer_list);
 	if (send_buffer == NULL) {
-		qdevice_log(LOG_ERR, "Can't allocate send list buffer for "
+		log(LOG_ERR, "Can't allocate send list buffer for "
 		    "vote info reply msg");
 
 		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_ALLOCATE_MSG_BUFFER;
@@ -779,7 +779,7 @@ qdevice_net_msg_received_vote_info(struct qdevice_net_instance *instance,
 	}
 
 	if (msg_create_vote_info_reply(&send_buffer->buffer, msg->seq_number) == 0) {
-		qdevice_log(LOG_ERR, "Can't allocate send buffer for "
+		log(LOG_ERR, "Can't allocate send buffer for "
 		    "vote info reply list msg");
 
 		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_ALLOCATE_MSG_BUFFER;
@@ -816,7 +816,7 @@ qdevice_net_msg_received_heuristics_change_reply(struct qdevice_net_instance *in
 	int ring_id_is_valid;
 
 	if (instance->state != QDEVICE_NET_INSTANCE_STATE_WAITING_VOTEQUORUM_CMAP_EVENTS) {
-		qdevice_log(LOG_ERR, "Received unexpected heuristics change reply message. "
+		log(LOG_ERR, "Received unexpected heuristics change reply message. "
 		    "Disconnecting from server");
 
 		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_UNEXPECTED_MSG;
@@ -825,37 +825,37 @@ qdevice_net_msg_received_heuristics_change_reply(struct qdevice_net_instance *in
 
 	if (!msg->vote_set || !msg->seq_number_set || !msg->ring_id_set ||
 	    msg->heuristics == TLV_HEURISTICS_UNDEFINED) {
-		qdevice_log(LOG_ERR, "Received heuristics change reply message without "
+		log(LOG_ERR, "Received heuristics change reply message without "
 		    "required options. Disconnecting from server");
 
 		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_REQUIRED_OPTION_MISSING;
 		return (-1);
 	}
 
-	qdevice_log(LOG_DEBUG, "Received heuristics change reply");
-	qdevice_log(LOG_DEBUG, "  seq = "UTILS_PRI_MSG_SEQ, msg->seq_number);
-	qdevice_log(LOG_DEBUG, "  vote = %s", tlv_vote_to_str(msg->vote));
-	qdevice_log(LOG_DEBUG, "  ring id = ("UTILS_PRI_RING_ID")",
+	log(LOG_DEBUG, "Received heuristics change reply");
+	log(LOG_DEBUG, "  seq = "UTILS_PRI_MSG_SEQ, msg->seq_number);
+	log(LOG_DEBUG, "  vote = %s", tlv_vote_to_str(msg->vote));
+	log(LOG_DEBUG, "  ring id = ("UTILS_PRI_RING_ID")",
 		    msg->ring_id.node_id, msg->ring_id.seq);
-	qdevice_log(LOG_DEBUG, "  heuristics = %s", tlv_heuristics_to_str(msg->heuristics));
+	log(LOG_DEBUG, "  heuristics = %s", tlv_heuristics_to_str(msg->heuristics));
 
 	result_vote = msg->vote;
 
 	if (!tlv_ring_id_eq(&msg->ring_id, &instance->last_sent_ring_id)) {
 		ring_id_is_valid = 0;
-		qdevice_log(LOG_DEBUG, "Received heuristics change reply with old ring id.");
+		log(LOG_DEBUG, "Received heuristics change reply with old ring id.");
 	} else {
 		ring_id_is_valid = 1;
 	}
 
 	if (qdevice_net_algorithm_heuristics_change_reply_received(instance, msg->seq_number,
 	    &msg->ring_id, ring_id_is_valid, msg->heuristics, &result_vote) != 0) {
-		qdevice_log(LOG_DEBUG, "Algorithm returned error. Disconnecting.");
+		log(LOG_DEBUG, "Algorithm returned error. Disconnecting.");
 
 		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_ALGO_HEURISTICS_CHANGE_REPLY_ERR;
 		return (-1);
 	} else {
-		qdevice_log(LOG_DEBUG, "Algorithm result vote is %s", tlv_vote_to_str(result_vote));
+		log(LOG_DEBUG, "Algorithm result vote is %s", tlv_vote_to_str(result_vote));
 	}
 
 	if (qdevice_net_cast_vote_timer_update(instance, result_vote) != 0) {
@@ -882,7 +882,7 @@ qdevice_net_msg_received(struct qdevice_net_instance *instance)
 		 * Error occurred. Disconnect.
 		 */
 		qdevice_net_msg_received_log_msg_decode_error(res);
-		qdevice_log(LOG_ERR, "Disconnecting from server");
+		log(LOG_ERR, "Disconnecting from server");
 		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_MSG_DECODE_ERROR;
 
 		return (-1);
@@ -970,7 +970,7 @@ qdevice_net_msg_received(struct qdevice_net_instance *instance)
 	}
 
 	if (!msg_processed) {
-		qdevice_log(LOG_ERR, "Received unsupported message %u. "
+		log(LOG_ERR, "Received unsupported message %u. "
 		    "Disconnecting from server", msg.type);
 		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_UNEXPECTED_MSG;
 

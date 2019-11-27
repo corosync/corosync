@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016 Red Hat, Inc.
+ * Copyright (c) 2015-2019 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -57,7 +57,7 @@ qdevice_net_socket_read(struct qdevice_net_instance *instance)
 	    &instance->msg_already_received_bytes, &instance->skipping_msg);
 
 	if (!orig_skipping_msg && instance->skipping_msg) {
-		qdevice_log(LOG_DEBUG, "msgio_read set skipping_msg");
+		log(LOG_DEBUG, "msgio_read set skipping_msg");
 	}
 
 	ret_val = 0;
@@ -69,36 +69,36 @@ qdevice_net_socket_read(struct qdevice_net_instance *instance)
 		 */
 		break;
 	case -1:
-		qdevice_log(LOG_DEBUG, "Server closed connection");
+		log(LOG_DEBUG, "Server closed connection");
 		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_SERVER_CLOSED_CONNECTION;
 		ret_val = -1;
 		break;
 	case -2:
-		qdevice_log(LOG_ERR, "Unhandled error when reading from server. "
+		log(LOG_ERR, "Unhandled error when reading from server. "
 		    "Disconnecting from server");
 		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_READ_MESSAGE;
 		ret_val = -1;
 		break;
 	case -3:
-		qdevice_log(LOG_ERR, "Can't store message header from server. "
+		log(LOG_ERR, "Can't store message header from server. "
 		    "Disconnecting from server");
 		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_READ_MESSAGE;
 		ret_val = -1;
 		break;
 	case -4:
-		qdevice_log(LOG_ERR, "Can't store message from server. "
+		log(LOG_ERR, "Can't store message from server. "
 		    "Disconnecting from server");
 		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_READ_MESSAGE;
 		ret_val = -1;
 		break;
 	case -5:
-		qdevice_log(LOG_WARNING, "Server sent unsupported msg type %u. "
+		log(LOG_WARNING, "Server sent unsupported msg type %u. "
 		    "Disconnecting from server", msg_get_type(&instance->receive_buffer));
 		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_UNSUPPORTED_MSG;
 		ret_val = -1;
 		break;
 	case -6:
-		qdevice_log(LOG_WARNING,
+		log(LOG_WARNING,
 		    "Server wants to send too long message %u bytes. Disconnecting from server",
 		    msg_get_len(&instance->receive_buffer));
 		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_READ_MESSAGE;
@@ -113,7 +113,7 @@ qdevice_net_socket_read(struct qdevice_net_instance *instance)
 				ret_val = -1;
 			}
 		} else {
-			qdevice_log(LOG_CRIT, "net_socket_read in skipping msg state");
+			log(LOG_CRIT, "net_socket_read in skipping msg state");
 			exit(1);
 		}
 
@@ -122,7 +122,7 @@ qdevice_net_socket_read(struct qdevice_net_instance *instance)
 		dynar_clean(&instance->receive_buffer);
 		break;
 	default:
-		qdevice_log(LOG_CRIT, "qdevice_net_socket_read unhandled error %d", res);
+		log(LOG_CRIT, "qdevice_net_socket_read unhandled error %d", res);
 		exit(1);
 		break;
 	}
@@ -144,7 +144,7 @@ qdevice_net_socket_write_finished(struct qdevice_net_instance *instance)
 		    qdevice_net_nss_bad_cert_hook,
 		    qdevice_net_nss_get_client_auth_data,
 		    instance, 0, NULL)) == NULL) {
-			qdevice_log_nss(LOG_ERR, "Can't start TLS");
+			log_nss(LOG_ERR, "Can't start TLS");
 			instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_START_TLS;
 			return (-1);
 		}
@@ -175,7 +175,7 @@ qdevice_net_socket_write(struct qdevice_net_instance *instance)
 
 	send_buffer = send_buffer_list_get_active(&instance->send_buffer_list);
 	if (send_buffer == NULL) {
-		qdevice_log(LOG_CRIT, "send_buffer_list_get_active returned NULL");
+		log(LOG_CRIT, "send_buffer_list_get_active returned NULL");
 		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_SEND_MESSAGE;
 
 		return (-1);
@@ -197,13 +197,13 @@ qdevice_net_socket_write(struct qdevice_net_instance *instance)
 	}
 
 	if (res == -1) {
-		qdevice_log_nss(LOG_CRIT, "PR_Send returned 0");
+		log_nss(LOG_CRIT, "PR_Send returned 0");
 		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_SERVER_CLOSED_CONNECTION;
 		return (-1);
 	}
 
 	if (res == -2) {
-		qdevice_log_nss(LOG_ERR, "Unhandled error when sending message to server");
+		log_nss(LOG_ERR, "Unhandled error when sending message to server");
 		instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_SEND_MESSAGE;
 
 		return (-1);

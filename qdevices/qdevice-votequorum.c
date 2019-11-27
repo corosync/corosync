@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016 Red Hat, Inc.
+ * Copyright (c) 2015-2019 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -49,24 +49,24 @@ qdevice_votequorum_quorum_notify_callback(votequorum_handle_t votequorum_handle,
 	uint32_t u32;
 
 	if (votequorum_context_get(votequorum_handle, (void **)&instance) != CS_OK) {
-		qdevice_log(LOG_CRIT, "Fatal error. Can't get votequorum context");
+		log(LOG_CRIT, "Fatal error. Can't get votequorum context");
 		exit(1);
 	}
 
 	instance->sync_in_progress = 0;
 
-	qdevice_log(LOG_DEBUG, "Votequorum quorum notify callback:");
-	qdevice_log(LOG_DEBUG, "  Quorate = %u", quorate);
+	log(LOG_DEBUG, "Votequorum quorum notify callback:");
+	log(LOG_DEBUG, "  Quorate = %u", quorate);
 
-	qdevice_log(LOG_DEBUG, "  Node list (size = %"PRIu32"):", node_list_entries);
+	log(LOG_DEBUG, "  Node list (size = %"PRIu32"):", node_list_entries);
 	for (u32 = 0; u32 < node_list_entries; u32++) {
-		qdevice_log(LOG_DEBUG, "    %"PRIu32" nodeid = "UTILS_PRI_NODE_ID", state = %"PRIu32,
+		log(LOG_DEBUG, "    %"PRIu32" nodeid = "UTILS_PRI_NODE_ID", state = %"PRIu32,
 		    u32, node_list[u32].nodeid, node_list[u32].state);
 	}
 
 	if (qdevice_model_votequorum_quorum_notify(instance, quorate, node_list_entries,
 	    node_list) != 0) {
-		qdevice_log(LOG_DEBUG, "qdevice_model_votequorum_quorum_notify returned error -> exit");
+		log(LOG_DEBUG, "qdevice_model_votequorum_quorum_notify returned error -> exit");
 		exit(2);
 	}
 
@@ -76,7 +76,7 @@ qdevice_votequorum_quorum_notify_callback(votequorum_handle_t votequorum_handle,
 	free(instance->vq_quorum_node_list);
 	instance->vq_quorum_node_list = malloc(sizeof(*node_list) * node_list_entries);
 	if (instance->vq_quorum_node_list == NULL) {
-		qdevice_log(LOG_CRIT, "Can't alloc votequorum node list memory");
+		log(LOG_CRIT, "Can't alloc votequorum node list memory");
 		exit(1);
 	}
 	memcpy(instance->vq_quorum_node_list, node_list, sizeof(*node_list) * node_list_entries);
@@ -96,17 +96,17 @@ qdevice_votequorum_heuristics_exec_result_callback(
 	if (qdevice_heuristics_result_notifier_list_set_active(
 	    &instance->heuristics_instance.exec_result_notifier_list,
 	    qdevice_votequorum_heuristics_exec_result_callback, 0) != 0) {
-		qdevice_log(LOG_CRIT, "Can't deactivate votequrorum heuristics exec callback notifier");
+		log(LOG_CRIT, "Can't deactivate votequrorum heuristics exec callback notifier");
 		exit(2);
 	}
 
-	qdevice_log(LOG_DEBUG, "Votequorum heuristics exec result callback:");
-	qdevice_log(LOG_DEBUG, "  seq_number = %"PRIu32", exec_result = %s",
+	log(LOG_DEBUG, "Votequorum heuristics exec result callback:");
+	log(LOG_DEBUG, "  seq_number = %"PRIu32", exec_result = %s",
 	    seq_number, qdevice_heuristics_exec_result_to_str(exec_result));
 
 	if (qdevice_model_votequorum_node_list_heuristics_notify(instance, instance->vq_node_list_ring_id,
 	    instance->vq_node_list_entries, instance->vq_node_list, exec_result) != 0) {
-		qdevice_log(LOG_DEBUG, "qdevice_votequorum_node_list_heuristics_notify_callback returned error -> exit");
+		log(LOG_DEBUG, "qdevice_votequorum_node_list_heuristics_notify_callback returned error -> exit");
 		exit(2);
 	}
 
@@ -125,38 +125,38 @@ qdevice_votequorum_node_list_notify_callback(votequorum_handle_t votequorum_hand
 	uint32_t u32;
 
 	if (votequorum_context_get(votequorum_handle, (void **)&instance) != CS_OK) {
-		qdevice_log(LOG_CRIT, "Fatal error. Can't get votequorum context");
+		log(LOG_CRIT, "Fatal error. Can't get votequorum context");
 		exit(1);
 	}
 
 	instance->sync_in_progress = 1;
 	memcpy(&instance->vq_poll_ring_id, &votequorum_ring_id, sizeof(votequorum_ring_id));
 
-	qdevice_log(LOG_DEBUG, "Votequorum nodelist notify callback:");
-	qdevice_log(LOG_DEBUG, "  Ring_id = ("UTILS_PRI_RING_ID")",
+	log(LOG_DEBUG, "Votequorum nodelist notify callback:");
+	log(LOG_DEBUG, "  Ring_id = ("UTILS_PRI_RING_ID")",
 	    votequorum_ring_id.nodeid, votequorum_ring_id.seq);
 
-	qdevice_log(LOG_DEBUG, "  Node list (size = %"PRIu32"):", node_list_entries);
+	log(LOG_DEBUG, "  Node list (size = %"PRIu32"):", node_list_entries);
 	for (u32 = 0; u32 < node_list_entries; u32++) {
-		qdevice_log(LOG_DEBUG, "    %"PRIu32" nodeid = "UTILS_PRI_NODE_ID,
+		log(LOG_DEBUG, "    %"PRIu32" nodeid = "UTILS_PRI_NODE_ID,
 		    u32, node_list[u32]);
 	}
 
 	if (qdevice_model_votequorum_node_list_notify(instance, votequorum_ring_id, node_list_entries,
 	    node_list) != 0) {
-		qdevice_log(LOG_DEBUG, "qdevice_votequorum_node_list_notify_callback returned error -> exit");
+		log(LOG_DEBUG, "qdevice_votequorum_node_list_notify_callback returned error -> exit");
 		exit(2);
 	}
 
 	if (qdevice_heuristics_result_notifier_list_set_active(
 	    &instance->heuristics_instance.exec_result_notifier_list,
 	    qdevice_votequorum_heuristics_exec_result_callback, 1) != 0) {
-		qdevice_log(LOG_CRIT, "Can't activate votequrorum heuristics exec callback notifier");
+		log(LOG_CRIT, "Can't activate votequrorum heuristics exec callback notifier");
 		exit(2);
 	}
 
 	if (qdevice_heuristics_exec(&instance->heuristics_instance, instance->sync_in_progress) != 0) {
-		qdevice_log(LOG_CRIT, "Can't start heuristics -> exit");
+		log(LOG_CRIT, "Can't start heuristics -> exit");
 		exit(2);
 	}
 
@@ -166,7 +166,7 @@ qdevice_votequorum_node_list_notify_callback(votequorum_handle_t votequorum_hand
 	free(instance->vq_node_list);
 	instance->vq_node_list = malloc(sizeof(*node_list) * node_list_entries);
 	if (instance->vq_node_list == NULL) {
-		qdevice_log(LOG_CRIT, "Can't alloc votequorum node list memory");
+		log(LOG_CRIT, "Can't alloc votequorum node list memory");
 		exit(1);
 	}
 	memcpy(instance->vq_node_list, node_list, sizeof(*node_list) * node_list_entries);
@@ -179,15 +179,15 @@ qdevice_votequorum_expected_votes_notify_callback(votequorum_handle_t votequorum
 	struct qdevice_instance *instance;
 
 	if (votequorum_context_get(votequorum_handle, (void **)&instance) != CS_OK) {
-		qdevice_log(LOG_CRIT, "Fatal error. Can't get votequorum context");
+		log(LOG_CRIT, "Fatal error. Can't get votequorum context");
 		exit(1);
 	}
 
-	qdevice_log(LOG_DEBUG, "Votequorum expected_votes notify callback:");
-	qdevice_log(LOG_DEBUG, "  Expected_votes: "UTILS_PRI_EXPECTED_VOTES, expected_votes);
+	log(LOG_DEBUG, "Votequorum expected_votes notify callback:");
+	log(LOG_DEBUG, "  Expected_votes: "UTILS_PRI_EXPECTED_VOTES, expected_votes);
 
 	if (qdevice_model_votequorum_expected_votes_notify(instance, expected_votes) != 0) {
-		qdevice_log(LOG_DEBUG, "qdevice_votequorum_expected_votes_notify_callback returned error -> exit");
+		log(LOG_DEBUG, "qdevice_votequorum_expected_votes_notify_callback returned error -> exit");
 		exit(2);
 	}
 
@@ -223,24 +223,24 @@ qdevice_votequorum_init(struct qdevice_instance *instance)
 	}
 
 	if (res != CS_OK) {
-		qdevice_log(LOG_CRIT, "Failed to initialize the votequorum API. Error %s", cs_strerror(res));
+		log(LOG_CRIT, "Failed to initialize the votequorum API. Error %s", cs_strerror(res));
 		exit(1);
 	}
 
 	if ((res = votequorum_qdevice_register(votequorum_handle,
 	    instance->advanced_settings->votequorum_device_name)) != CS_OK) {
-		qdevice_log(LOG_CRIT, "Can't register votequorum device. Error %s", cs_strerror(res));
+		log(LOG_CRIT, "Can't register votequorum device. Error %s", cs_strerror(res));
 		exit(1);
 	}
 
 	if ((res = votequorum_context_set(votequorum_handle, (void *)instance)) != CS_OK) {
-		qdevice_log(LOG_CRIT, "Can't set votequorum context. Error %s", cs_strerror(res));
+		log(LOG_CRIT, "Can't set votequorum context. Error %s", cs_strerror(res));
 		exit(1);
 	}
 
 	if ((res = votequorum_getinfo(votequorum_handle, VOTEQUORUM_QDEVICE_NODEID,
 	    &vq_info)) != CS_OK) {
-		qdevice_log(LOG_CRIT, "Can't get votequorum information. Error %s", cs_strerror(res));
+		log(LOG_CRIT, "Can't get votequorum information. Error %s", cs_strerror(res));
 		exit(1);
 	}
 	instance->vq_expected_votes = vq_info.node_expected_votes;
@@ -251,14 +251,14 @@ qdevice_votequorum_init(struct qdevice_instance *instance)
 
 	if ((res = votequorum_trackstart(instance->votequorum_handle, 0,
 	    CS_TRACK_CHANGES)) != CS_OK) {
-		qdevice_log(LOG_CRIT, "Can't start tracking votequorum changes. Error %s",
+		log(LOG_CRIT, "Can't start tracking votequorum changes. Error %s",
 		    cs_strerror(res));
 		exit(1);
 	}
 
 	if (qdevice_heuristics_result_notifier_list_add(&instance->heuristics_instance.exec_result_notifier_list,
 	    qdevice_votequorum_heuristics_exec_result_callback) == NULL) {
-		qdevice_log(LOG_CRIT, "Can't add votequrorum heuristics exec callback into notifier");
+		log(LOG_CRIT, "Can't add votequrorum heuristics exec callback into notifier");
 		exit(1);
 	}
 }
@@ -273,7 +273,7 @@ qdevice_votequorum_destroy(struct qdevice_instance *instance)
 
 	res = votequorum_trackstop(instance->votequorum_handle);
 	if (res != CS_OK) {
-		qdevice_log(LOG_WARNING, "Can't start tracking votequorum changes. Error %s",
+		log(LOG_WARNING, "Can't start tracking votequorum changes. Error %s",
 		    cs_strerror(res));
 	}
 
@@ -281,12 +281,12 @@ qdevice_votequorum_destroy(struct qdevice_instance *instance)
 		instance->advanced_settings->votequorum_device_name);
 
 	if (res != CS_OK) {
-		qdevice_log(LOG_WARNING, "Unable to unregister votequorum device. Error %s", cs_strerror(res));
+		log(LOG_WARNING, "Unable to unregister votequorum device. Error %s", cs_strerror(res));
 	}
 
 	res = votequorum_finalize(instance->votequorum_handle);
 	if (res != CS_OK) {
-		qdevice_log(LOG_WARNING, "Unable to finalize votequorum. Error %s", cs_strerror(res));
+		log(LOG_WARNING, "Unable to finalize votequorum. Error %s", cs_strerror(res));
 	}
 }
 
@@ -304,7 +304,7 @@ qdevice_votequorum_wait_for_ring_id(struct qdevice_instance *instance)
 	}
 
 	if (!instance->vq_node_list_initial_ring_id_set) {
-		qdevice_log(LOG_CRIT, "Can't get initial votequorum membership information.");
+		log(LOG_CRIT, "Can't get initial votequorum membership information.");
 		return (-1);
 	}
 
@@ -319,7 +319,7 @@ qdevice_votequorum_dispatch(struct qdevice_instance *instance)
 	res = votequorum_dispatch(instance->votequorum_handle, CS_DISPATCH_ALL);
 
 	if (res != CS_OK && res != CS_ERR_TRY_AGAIN) {
-		qdevice_log(LOG_ERR, "Can't dispatch votequorum messages");
+		log(LOG_ERR, "Can't dispatch votequorum messages");
 
 		return (-1);
 	}
@@ -341,9 +341,9 @@ qdevice_votequorum_poll(struct qdevice_instance *instance, int cast_vote)
 
 	if (res != CS_OK && res != CS_ERR_TRY_AGAIN) {
 		if (res == CS_ERR_MESSAGE_ERROR) {
-			qdevice_log(LOG_INFO, "qdevice_votequorum_poll called with old ring id");
+			log(LOG_INFO, "qdevice_votequorum_poll called with old ring id");
 		} else {
-			qdevice_log(LOG_CRIT, "Can't call votequorum_qdevice_poll. Error %s",
+			log(LOG_CRIT, "Can't call votequorum_qdevice_poll. Error %s",
 			    cs_strerror(res));
 
 			return (-1);
@@ -363,7 +363,7 @@ qdevice_votequorum_master_wins(struct qdevice_instance *instance, int allow)
 
 	if (instance->advanced_settings->master_wins ==
 	    QDEVICE_ADVANCED_SETTINGS_MASTER_WINS_FORCE_OFF && allow) {
-		qdevice_log(LOG_WARNING, "Allow of master wins is requested, but user forcibly "
+		log(LOG_WARNING, "Allow of master wins is requested, but user forcibly "
 		    "disallowed it. Keeping master wins disallowed.");
 
 		final_allow = 0;
@@ -371,7 +371,7 @@ qdevice_votequorum_master_wins(struct qdevice_instance *instance, int allow)
 
 	if (instance->advanced_settings->master_wins ==
 	    QDEVICE_ADVANCED_SETTINGS_MASTER_WINS_FORCE_ON && !allow) {
-		qdevice_log(LOG_WARNING, "Disallow of master wins is requested, but user forcibly "
+		log(LOG_WARNING, "Disallow of master wins is requested, but user forcibly "
 		    "allowed it. Keeping master wins allowed.");
 
 		final_allow = 1;
@@ -381,7 +381,7 @@ qdevice_votequorum_master_wins(struct qdevice_instance *instance, int allow)
 	    instance->advanced_settings->votequorum_device_name, final_allow);
 
 	if (res != CS_OK) {
-		qdevice_log(LOG_CRIT, "Can't set master wins. Error %s", cs_strerror(res));
+		log(LOG_CRIT, "Can't set master wins. Error %s", cs_strerror(res));
 
 		return (-1);
 	}

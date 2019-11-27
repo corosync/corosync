@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2018 Red Hat, Inc.
+ * Copyright (c) 2015-2019 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -34,6 +34,7 @@
 
 #include <err.h>
 #include <signal.h>
+#include <stdio.h>
 
 #include "dynar.h"
 #include "dynar-str.h"
@@ -53,14 +54,14 @@ struct qdevice_instance *global_instance;
 static void
 signal_int_handler(int sig)
 {
-	qdevice_log(LOG_DEBUG, "SIGINT received - closing local unix socket");
+	log(LOG_DEBUG, "SIGINT received - closing local unix socket");
 	qdevice_ipc_close(global_instance);
 }
 
 static void
 signal_term_handler(int sig)
 {
-	qdevice_log(LOG_DEBUG, "SIGTERM received - closing local unix socket");
+	log(LOG_DEBUG, "SIGTERM received - closing local unix socket");
 	qdevice_ipc_close(global_instance);
 }
 
@@ -188,7 +189,9 @@ main(int argc, char * const argv[])
 	instance.heuristics_instance.qdevice_instance_ptr = &instance;
 
 	qdevice_cmap_init(&instance);
-	qdevice_log_init(&instance, force_debug);
+	if (qdevice_log_init(&instance, foreground, force_debug) == -1) {
+		errx(1, "Can't initialize logging");
+	}
 
 	/*
 	 * Daemonize
@@ -200,57 +203,57 @@ main(int argc, char * const argv[])
 	if ((lock_file = utils_flock(advanced_settings.lock_file, getpid(),
 	    &another_instance_running)) == -1) {
 		if (another_instance_running) {
-			qdevice_log(LOG_ERR, "Another instance is running");
+			log(LOG_ERR, "Another instance is running");
 		} else {
-			qdevice_log_err(LOG_ERR, "Can't acquire lock");
+			log_err(LOG_ERR, "Can't acquire lock");
 		}
 
 		exit(1);
 	}
 
-	qdevice_log(LOG_DEBUG, "Initializing votequorum");
+	log(LOG_DEBUG, "Initializing votequorum");
 	qdevice_votequorum_init(&instance);
 
-	qdevice_log(LOG_DEBUG, "Initializing local socket");
+	log(LOG_DEBUG, "Initializing local socket");
 	if (qdevice_ipc_init(&instance) != 0) {
 		return (1);
 	}
 
-	qdevice_log(LOG_DEBUG, "Registering qdevice models");
+	log(LOG_DEBUG, "Registering qdevice models");
 	qdevice_model_register_all();
 
-	qdevice_log(LOG_DEBUG, "Configuring qdevice");
+	log(LOG_DEBUG, "Configuring qdevice");
 	if (qdevice_instance_configure_from_cmap(&instance) != 0) {
 		return (1);
 	}
 
-	qdevice_log(LOG_DEBUG, "Configuring master_wins");
+	log(LOG_DEBUG, "Configuring master_wins");
 	if (qdevice_votequorum_master_wins(&instance, (advanced_settings.master_wins ==
 	    QDEVICE_ADVANCED_SETTINGS_MASTER_WINS_FORCE_ON ? 1 : 0)) != 0) {
 		return (1);
 	}
 
-	qdevice_log(LOG_DEBUG, "Getting configuration node list");
+	log(LOG_DEBUG, "Getting configuration node list");
 	if (qdevice_cmap_store_config_node_list(&instance) != 0) {
 		return (1);
 	}
 
-	qdevice_log(LOG_DEBUG, "Initializing qdevice model");
+	log(LOG_DEBUG, "Initializing qdevice model");
 	if (qdevice_model_init(&instance) != 0) {
 		return (1);
 	}
 
-	qdevice_log(LOG_DEBUG, "Initializing cmap tracking");
+	log(LOG_DEBUG, "Initializing cmap tracking");
 	if (qdevice_cmap_add_track(&instance) != 0) {
 		return (1);
 	}
 
-	qdevice_log(LOG_DEBUG, "Waiting for ring id");
+	log(LOG_DEBUG, "Waiting for ring id");
 	if (qdevice_votequorum_wait_for_ring_id(&instance) != 0) {
 		return (1);
 	}
 
-	qdevice_log(LOG_DEBUG, "Waiting for initial heuristics exec result");
+	log(LOG_DEBUG, "Waiting for initial heuristics exec result");
 	if (qdevice_heuristics_wait_for_initial_exec_result(&instance.heuristics_instance) != 0) {
 		return (1);
 	}
@@ -258,29 +261,29 @@ main(int argc, char * const argv[])
 	global_instance = &instance;
 	signal_handlers_register();
 
-	qdevice_log(LOG_DEBUG, "Running qdevice model");
+	log(LOG_DEBUG, "Running qdevice model");
 	model_run_res = qdevice_model_run(&instance);
 
-	qdevice_log(LOG_DEBUG, "Removing cmap tracking");
+	log(LOG_DEBUG, "Removing cmap tracking");
 	/*
 	 * Ignore error intentionally
 	 */
 	(void)qdevice_cmap_del_track(&instance);
 
-	qdevice_log(LOG_DEBUG, "Destroying qdevice model");
+	log(LOG_DEBUG, "Destroying qdevice model");
 	qdevice_model_destroy(&instance);
 
-	qdevice_log(LOG_DEBUG, "Destroying qdevice ipc");
+	log(LOG_DEBUG, "Destroying qdevice ipc");
 	qdevice_ipc_destroy(&instance);
 
-	qdevice_log(LOG_DEBUG, "Destroying votequorum and cmap");
+	log(LOG_DEBUG, "Destroying votequorum and cmap");
 	qdevice_votequorum_destroy(&instance);
 	qdevice_cmap_destroy(&instance);
 
-	qdevice_log(LOG_DEBUG, "Destroying heuristics");
+	log(LOG_DEBUG, "Destroying heuristics");
 	qdevice_heuristics_destroy(&instance.heuristics_instance, foreground);
 
-	qdevice_log(LOG_DEBUG, "Closing log");
+	log(LOG_DEBUG, "Closing log");
 	qdevice_log_close(&instance);
 
 	qdevice_instance_destroy(&instance);

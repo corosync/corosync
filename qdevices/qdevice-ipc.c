@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016 Red Hat, Inc.
+ * Copyright (c) 2015-2019 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -49,7 +49,7 @@ qdevice_ipc_init(struct qdevice_instance *instance)
 	    instance->advanced_settings->ipc_max_clients,
 	    instance->advanced_settings->ipc_max_receive_size,
 	    instance->advanced_settings->ipc_max_send_size) != 0) {
-		qdevice_log_err(LOG_ERR, "Can't create unix socket");
+		log_err(LOG_ERR, "Can't create unix socket");
 
 		return (-1);
 	}
@@ -64,7 +64,7 @@ qdevice_ipc_close(struct qdevice_instance *instance)
 
 	res = unix_socket_ipc_close(&instance->local_ipc);
 	if (res != 0) {
-		qdevice_log_err(LOG_WARNING, "Can't close local IPC");
+		log_err(LOG_WARNING, "Can't close local IPC");
 	}
 
 	return (res);
@@ -92,7 +92,7 @@ qdevice_ipc_destroy(struct qdevice_instance *instance)
 
 	res = unix_socket_ipc_destroy(&instance->local_ipc);
 	if (res != 0) {
-		qdevice_log_err(LOG_WARNING, "Can't destroy local IPC");
+		log_err(LOG_WARNING, "Can't destroy local IPC");
 	}
 
 	return (res);
@@ -108,17 +108,17 @@ qdevice_ipc_accept(struct qdevice_instance *instance, struct unix_socket_client 
 
 	switch (accept_res) {
 	case -1:
-		qdevice_log_err(LOG_ERR, "Can't accept local IPC connection");
+		log_err(LOG_ERR, "Can't accept local IPC connection");
 		res = -1;
 		goto return_res;
 		break;
 	case -2:
-		qdevice_log(LOG_ERR, "Maximum IPC clients reached. Not accepting connection");
+		log(LOG_ERR, "Maximum IPC clients reached. Not accepting connection");
 		res = -1;
 		goto return_res;
 		break;
 	case -3:
-		qdevice_log(LOG_ERR, "Can't add client to list");
+		log(LOG_ERR, "Can't add client to list");
 		res = -1;
 		goto return_res;
 		break;
@@ -130,7 +130,7 @@ qdevice_ipc_accept(struct qdevice_instance *instance, struct unix_socket_client 
 
 	(*res_client)->user_data = malloc(sizeof(struct qdevice_ipc_user_data));
 	if ((*res_client)->user_data == NULL) {
-		qdevice_log(LOG_ERR, "Can't alloc IPC client user data");
+		log(LOG_ERR, "Can't alloc IPC client user data");
 		res = -1;
 		qdevice_ipc_client_disconnect(instance, *res_client);
 	} else {
@@ -166,7 +166,7 @@ qdevice_ipc_send_error(struct qdevice_instance *instance, struct unix_socket_cli
 	if (res) {
 		unix_socket_client_write_buffer(client, 1);
 	} else {
-		qdevice_log(LOG_ERR, "Can't send ipc error to client (buffer too small)");
+		log(LOG_ERR, "Can't send ipc error to client (buffer too small)");
 	}
 
 	return (res ? 0 : -1);
@@ -177,7 +177,7 @@ qdevice_ipc_send_buffer(struct qdevice_instance *instance, struct unix_socket_cl
 {
 
 	if (dynar_str_prepend(&client->send_buffer, "OK\n") != 0) {
-		qdevice_log(LOG_ERR, "Can't send ipc message to client (buffer too small)");
+		log(LOG_ERR, "Can't send ipc message to client (buffer too small)");
 
 		if (qdevice_ipc_send_error(instance, client, "Internal IPC buffer too small") != 0) {
 			return (-1);
@@ -208,7 +208,7 @@ qdevice_ipc_parse_line(struct qdevice_instance *instance, struct unix_socket_cli
 	verbose = 0;
 
 	if (token == NULL) {
-		qdevice_log(LOG_ERR, "Can't alloc memory for simple lex");
+		log(LOG_ERR, "Can't alloc memory for simple lex");
 
 		if (qdevice_ipc_send_error(instance, client, "Command too long") != 0) {
 			client->schedule_disconnect = 1;
@@ -219,12 +219,12 @@ qdevice_ipc_parse_line(struct qdevice_instance *instance, struct unix_socket_cli
 
 	str = dynar_data(token);
 	if (strcasecmp(str, "") == 0) {
-		qdevice_log(LOG_DEBUG, "IPC client doesn't send command");
+		log(LOG_DEBUG, "IPC client doesn't send command");
 		if (qdevice_ipc_send_error(instance, client, "No command specified") != 0) {
 			client->schedule_disconnect = 1;
 		}
 	} else if (strcasecmp(str, "shutdown") == 0) {
-		qdevice_log(LOG_DEBUG, "IPC client requested shutdown");
+		log(LOG_DEBUG, "IPC client requested shutdown");
 
 		ipc_user_data->shutdown_requested = 1;
 
@@ -250,7 +250,7 @@ qdevice_ipc_parse_line(struct qdevice_instance *instance, struct unix_socket_cli
 			}
 		}
 	} else {
-		qdevice_log(LOG_DEBUG, "IPC client sent unknown command");
+		log(LOG_DEBUG, "IPC client sent unknown command");
 		if (qdevice_ipc_send_error(instance, client, "Unknown command '%s'", str) != 0) {
 			client->schedule_disconnect = 1;
 		}
@@ -273,15 +273,15 @@ qdevice_ipc_io_read(struct qdevice_instance *instance, struct unix_socket_client
 		 */
 		break;
 	case -1:
-		qdevice_log(LOG_DEBUG, "IPC client closed connection");
+		log(LOG_DEBUG, "IPC client closed connection");
 		client->schedule_disconnect = 1;
 		break;
 	case -2:
-		qdevice_log(LOG_ERR, "Can't store message from IPC client. Disconnecting client.");
+		log(LOG_ERR, "Can't store message from IPC client. Disconnecting client.");
 		client->schedule_disconnect = 1;
 		break;
 	case -3:
-		qdevice_log_err(LOG_ERR, "Can't receive message from IPC client. Disconnecting client.");
+		log_err(LOG_ERR, "Can't receive message from IPC client. Disconnecting client.");
 		client->schedule_disconnect = 1;
 		break;
 	case 1:
@@ -312,11 +312,11 @@ qdevice_ipc_io_write(struct qdevice_instance *instance, struct unix_socket_clien
 		 */
 		break;
 	case -1:
-		qdevice_log(LOG_DEBUG, "IPC client closed connection");
+		log(LOG_DEBUG, "IPC client closed connection");
 		client->schedule_disconnect = 1;
 		break;
 	case -2:
-		qdevice_log_err(LOG_ERR, "Can't send message to IPC client. Disconnecting client");
+		log_err(LOG_ERR, "Can't send message to IPC client. Disconnecting client");
 		client->schedule_disconnect = 1;
 		break;
 	case 1:

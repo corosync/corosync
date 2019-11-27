@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2017 Red Hat, Inc.
+ * Copyright (c) 2015-2019 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -63,11 +63,11 @@ qdevice_net_algo_lms_init(struct qdevice_net_instance *instance)
 	data->vote = TLV_VOTE_ASK_LATER;
 	res = cmap_get_uint8(instance->qdevice_instance_ptr->cmap_handle, "quorum.wait_for_all", &data->have_wfa);
 	if (res != CS_OK) {
-		qdevice_log(LOG_DEBUG, "algo-lms: Can't get WFA res = %d", res);
+		log(LOG_DEBUG, "algo-lms: Can't get WFA res = %d", res);
 		data->have_wfa = 0;
 	}
 
-	qdevice_log(LOG_DEBUG, "algo-lms: initialised. WFA = %d", data->have_wfa);
+	log(LOG_DEBUG, "algo-lms: initialised. WFA = %d", data->have_wfa);
 	return (0);
 }
 
@@ -116,7 +116,7 @@ qdevice_net_algo_lms_votequorum_quorum_notify(struct qdevice_net_instance *insta
 	struct algo_lms_instance_data *data = instance->algorithm_data;
 
 	data->quorate = quorate;
-	qdevice_log(LOG_DEBUG, "algo-lms: quorum_notify. quorate = %d", data->quorate);
+	log(LOG_DEBUG, "algo-lms: quorum_notify. quorate = %d", data->quorate);
 
 	return (0);
 }
@@ -207,7 +207,7 @@ qdevice_net_algo_lms_echo_reply_not_received(struct qdevice_net_instance *instan
 {
 	struct algo_lms_instance_data *data = instance->algorithm_data;
 
-	qdevice_log(LOG_DEBUG, "algo-lms: echo_not_recvd. quorate = %d, WFA = %d", data->quorate, data->have_wfa);
+	log(LOG_DEBUG, "algo-lms: echo_not_recvd. quorate = %d, WFA = %d", data->quorate, data->have_wfa);
 
 	/* qnetd server is disconnected, if we were already quorate AND WFA is enabled
 	   then we can continue to provide our vote.
@@ -247,8 +247,8 @@ qdevice_net_algo_lms_disconnected(struct qdevice_net_instance *instance,
 {
 	struct algo_lms_instance_data *data = instance->algorithm_data;
 
-	qdevice_log(LOG_DEBUG, "algo-lms: disconnected. quorate = %d, WFA = %d", data->quorate, data->have_wfa);
-	qdevice_log(LOG_DEBUG, "algo-lms: disconnected. reason = %d, WFA = %d", disconnect_reason, data->have_wfa);
+	log(LOG_DEBUG, "algo-lms: disconnected. quorate = %d, WFA = %d", data->quorate, data->have_wfa);
+	log(LOG_DEBUG, "algo-lms: disconnected. reason = %d, WFA = %d", disconnect_reason, data->have_wfa);
 
 	if (!data->quorate || !data->have_wfa) {
 		*vote = TLV_VOTE_NACK;

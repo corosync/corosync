@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2017 Red Hat, Inc.
+ * Copyright (c) 2015-2019 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -93,35 +93,35 @@ qdevice_net_instance_init(struct qdevice_net_instance *instance,
 	instance->tls_supported = tls_supported;
 
 	if ((instance->cmap_poll_fd = PR_CreateSocketPollFd(cmap_fd)) == NULL) {
-		qdevice_log_nss(LOG_CRIT, "Can't create NSPR cmap poll fd");
+		log_nss(LOG_CRIT, "Can't create NSPR cmap poll fd");
 		return (-1);
 	}
 
 	if ((instance->votequorum_poll_fd = PR_CreateSocketPollFd(votequorum_fd)) == NULL) {
-		qdevice_log_nss(LOG_CRIT, "Can't create NSPR votequorum poll fd");
+		log_nss(LOG_CRIT, "Can't create NSPR votequorum poll fd");
 		return (-1);
 	}
 
 	if ((instance->ipc_socket_poll_fd = PR_CreateSocketPollFd(local_socket_fd)) == NULL) {
-		qdevice_log_nss(LOG_CRIT, "Can't create NSPR IPC socket poll fd");
+		log_nss(LOG_CRIT, "Can't create NSPR IPC socket poll fd");
 		return (-1);
 	}
 
 	if ((instance->heuristics_pipe_cmd_send_poll_fd =
 	    PR_CreateSocketPollFd(heuristics_pipe_cmd_send_fd)) == NULL) {
-		qdevice_log_nss(LOG_CRIT, "Can't create NSPR heuristics pipe command send poll fd");
+		log_nss(LOG_CRIT, "Can't create NSPR heuristics pipe command send poll fd");
 		return (-1);
 	}
 
 	if ((instance->heuristics_pipe_cmd_recv_poll_fd =
 	    PR_CreateSocketPollFd(heuristics_pipe_cmd_recv_fd)) == NULL) {
-		qdevice_log_nss(LOG_CRIT, "Can't create NSPR heuristics pipe command recv poll fd");
+		log_nss(LOG_CRIT, "Can't create NSPR heuristics pipe command recv poll fd");
 		return (-1);
 	}
 
 	if ((instance->heuristics_pipe_log_recv_poll_fd =
 	    PR_CreateSocketPollFd(heuristics_pipe_log_recv_fd)) == NULL) {
-		qdevice_log_nss(LOG_CRIT, "Can't create NSPR heuristics pipe log recv poll fd");
+		log_nss(LOG_CRIT, "Can't create NSPR heuristics pipe log recv poll fd");
 		return (-1);
 	}
 
@@ -164,7 +164,7 @@ qdevice_net_instance_destroy(struct qdevice_net_instance *instance)
 		prfd = (PRFileDesc *)qdevice_ipc_user_data->model_data;
 
 		if (PR_DestroySocketPollFd(prfd) != PR_SUCCESS) {
-			qdevice_log_nss(LOG_WARNING, "Unable to destroy client IPC poll socket fd");
+			log_nss(LOG_WARNING, "Unable to destroy client IPC poll socket fd");
 		}
 	}
 
@@ -180,29 +180,29 @@ qdevice_net_instance_destroy(struct qdevice_net_instance *instance)
 	free((void *)instance->host_addr);
 
 	if (PR_DestroySocketPollFd(instance->votequorum_poll_fd) != PR_SUCCESS) {
-		qdevice_log_nss(LOG_WARNING, "Unable to close votequorum connection fd");
+		log_nss(LOG_WARNING, "Unable to close votequorum connection fd");
 	}
 
 	if (PR_DestroySocketPollFd(instance->cmap_poll_fd) != PR_SUCCESS) {
-		qdevice_log_nss(LOG_WARNING, "Unable to close votequorum connection fd");
+		log_nss(LOG_WARNING, "Unable to close votequorum connection fd");
 	}
 
 	if (PR_DestroySocketPollFd(instance->ipc_socket_poll_fd) != PR_SUCCESS) {
-		qdevice_log_nss(LOG_WARNING, "Unable to close local socket poll fd");
+		log_nss(LOG_WARNING, "Unable to close local socket poll fd");
 	}
 
 	if (PR_DestroySocketPollFd(instance->heuristics_pipe_cmd_send_poll_fd) != PR_SUCCESS) {
-		qdevice_log_nss(LOG_WARNING, "Unable to close heuristics pipe command send poll fd");
+		log_nss(LOG_WARNING, "Unable to close heuristics pipe command send poll fd");
 		return (-1);
 	}
 
 	if (PR_DestroySocketPollFd(instance->heuristics_pipe_cmd_recv_poll_fd) != PR_SUCCESS) {
-		qdevice_log_nss(LOG_WARNING, "Unable to close heuristics pipe command recv poll fd");
+		log_nss(LOG_WARNING, "Unable to close heuristics pipe command recv poll fd");
 		return (-1);
 	}
 
 	if (PR_DestroySocketPollFd(instance->heuristics_pipe_log_recv_poll_fd) != PR_SUCCESS) {
-		qdevice_log_nss(LOG_WARNING, "Unable to close heuristics pipe log recv poll fd");
+		log_nss(LOG_WARNING, "Unable to close heuristics pipe log recv poll fd");
 		return (-1);
 	}
 
@@ -233,7 +233,7 @@ qdevice_net_instance_init_from_cmap(struct qdevice_instance *instance)
 
 	net_instance = malloc(sizeof(*net_instance));
 	if (net_instance == NULL) {
-		qdevice_log(LOG_ERR, "Can't alloc qdevice_net_instance");
+		log(LOG_ERR, "Can't alloc qdevice_net_instance");
 		return (-1);
 	}
 
@@ -246,7 +246,7 @@ qdevice_net_instance_init_from_cmap(struct qdevice_instance *instance)
 		if ((i = utils_parse_bool_str(str)) == -1) {
 			if (strcasecmp(str, "required") != 0) {
 				free(str);
-				qdevice_log(LOG_ERR, "quorum.device.net.tls value is not valid.");
+				log(LOG_ERR, "quorum.device.net.tls value is not valid.");
 
 				goto error_free_instance;
 			} else {
@@ -267,14 +267,14 @@ qdevice_net_instance_init_from_cmap(struct qdevice_instance *instance)
 	 * Host
 	 */
 	if (cmap_get_string(cmap_handle, "quorum.device.net.host", &str) != CS_OK) {
-		qdevice_log(LOG_ERR, "Qdevice net daemon address is not defined (quorum.device.net.host)");
+		log(LOG_ERR, "Qdevice net daemon address is not defined (quorum.device.net.host)");
 		goto error_free_instance;
 	}
 	host_addr = str;
 
 	if (cmap_get_string(cmap_handle, "quorum.device.net.port", &str) == CS_OK) {
 		if (utils_strtonum(str, 1, UINT16_MAX, &lli) == -1) {
-			qdevice_log(LOG_ERR, "quorum.device.net.port must be in range 1-%u", UINT16_MAX);
+			log(LOG_ERR, "quorum.device.net.port must be in range 1-%u", UINT16_MAX);
 			free(str);
 			goto error_free_host_addr;
 		}
@@ -289,7 +289,7 @@ qdevice_net_instance_init_from_cmap(struct qdevice_instance *instance)
 	 * Cluster name
 	 */
 	if (cmap_get_string(cmap_handle, "totem.cluster_name", &str) != CS_OK) {
-		qdevice_log(LOG_ERR, "Cluster name (totem.cluster_name) has to be defined.");
+		log(LOG_ERR, "Cluster name (totem.cluster_name) has to be defined.");
 		goto error_free_host_addr;
 	}
 	cluster_name = str;
@@ -300,12 +300,12 @@ qdevice_net_instance_init_from_cmap(struct qdevice_instance *instance)
 	cast_vote_timer_interval = instance->heartbeat_interval * 0.5;
 	heartbeat_interval = instance->heartbeat_interval * 0.8;
 	if (heartbeat_interval < instance->advanced_settings->net_heartbeat_interval_min) {
-		qdevice_log(LOG_WARNING, "Heartbeat interval too small %"PRIu32". Adjusting to %"PRIu32".",
+		log(LOG_WARNING, "Heartbeat interval too small %"PRIu32". Adjusting to %"PRIu32".",
 		    heartbeat_interval, instance->advanced_settings->net_heartbeat_interval_min);
 		heartbeat_interval = instance->advanced_settings->net_heartbeat_interval_min;
 	}
 	if (heartbeat_interval > instance->advanced_settings->net_heartbeat_interval_max) {
-		qdevice_log(LOG_WARNING, "Heartbeat interval too big %"PRIu32". Adjusting to %"PRIu32".",
+		log(LOG_WARNING, "Heartbeat interval too big %"PRIu32". Adjusting to %"PRIu32".",
 		    heartbeat_interval, instance->advanced_settings->net_heartbeat_interval_max);
 		heartbeat_interval = instance->advanced_settings->net_heartbeat_interval_max;
 	}
@@ -326,7 +326,7 @@ qdevice_net_instance_init_from_cmap(struct qdevice_instance *instance)
 		} else if (strcmp(str, "lms") == 0) {
 			decision_algorithm = TLV_DECISION_ALGORITHM_TYPE_LMS;
 		} else {
-			qdevice_log(LOG_ERR, "Unknown decision algorithm %s", str);
+			log(LOG_ERR, "Unknown decision algorithm %s", str);
 			free(str);
 			goto error_free_cluster_name;
 		}
@@ -336,7 +336,7 @@ qdevice_net_instance_init_from_cmap(struct qdevice_instance *instance)
 
 	if (decision_algorithm == TLV_DECISION_ALGORITHM_TYPE_TEST &&
 	    !instance->advanced_settings->net_test_algorithm_enabled) {
-		qdevice_log(LOG_ERR, "Test algorithm is not enabled. You can force enable it by "
+		log(LOG_ERR, "Test algorithm is not enabled. You can force enable it by "
 		    "passing -S net_test_algorithm_enabled=on to %s command", QDEVICE_PROGRAM_NAME);
 
 		goto error_free_cluster_name;
@@ -355,7 +355,7 @@ qdevice_net_instance_init_from_cmap(struct qdevice_instance *instance)
 			tie_breaker.mode = TLV_TIE_BREAKER_MODE_HIGHEST;
 		} else {
 			if (utils_strtonum(str, 1, UINT32_MAX, &lli) == -1) {
-				qdevice_log(LOG_ERR, "tie_breaker must be lowest|highest|valid_node_id");
+				log(LOG_ERR, "tie_breaker must be lowest|highest|valid_node_id");
 				free(str);
 				goto error_free_cluster_name;
 			}
@@ -375,7 +375,7 @@ qdevice_net_instance_init_from_cmap(struct qdevice_instance *instance)
 	} else {
 		if (utils_strtonum(str, instance->advanced_settings->net_min_connect_timeout,
 		    instance->advanced_settings->net_max_connect_timeout, &lli) == -1) {
-			qdevice_log(LOG_ERR, "connect_timeout must be valid number in "
+			log(LOG_ERR, "connect_timeout must be valid number in "
 			    "range <%"PRIu32",%"PRIu32">",
 			    instance->advanced_settings->net_min_connect_timeout,
 			    instance->advanced_settings->net_max_connect_timeout);
@@ -393,7 +393,7 @@ qdevice_net_instance_init_from_cmap(struct qdevice_instance *instance)
 	} else {
 		if ((utils_strtonum(str, 0, 6, &lli) == -1) ||
 		    (lli != 0 && lli != 4 && lli != 6)) {
-			qdevice_log(LOG_ERR, "force_ip_version must be one of 0|4|6");
+			log(LOG_ERR, "force_ip_version must be one of 0|4|6");
 			free(str);
 			goto error_free_cluster_name;
 		}
@@ -416,7 +416,7 @@ qdevice_net_instance_init_from_cmap(struct qdevice_instance *instance)
 	    instance->heuristics_instance.pipe_cmd_send,
 	    instance->heuristics_instance.pipe_cmd_recv,
 	    instance->heuristics_instance.pipe_log_recv) == -1) {
-		qdevice_log(LOG_ERR, "Can't initialize qdevice-net instance");
+		log(LOG_ERR, "Can't initialize qdevice-net instance");
 		goto error_free_instance;
 	}
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2017 Red Hat, Inc.
+ * Copyright (c) 2015-2019 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -31,6 +31,9 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
+
+#include <string.h>
+#include <stdio.h>
 
 #include "qdevice-config.h"
 #include "qdevice-instance.h"
@@ -88,7 +91,7 @@ qdevice_instance_configure_from_cmap_heuristics(struct qdevice_instance *instanc
 	    "quorum.device.heuristics.timeout", &str) == CS_OK) {
 		if (utils_strtonum(str, instance->advanced_settings->heuristics_min_timeout,
 		    instance->advanced_settings->heuristics_max_timeout, &lli) == -1) {
-			qdevice_log(LOG_ERR, "heuristics.timeout must be valid number in "
+			log(LOG_ERR, "heuristics.timeout must be valid number in "
 			    "range <%"PRIu32",%"PRIu32">",
 			    instance->advanced_settings->heuristics_min_timeout,
 			    instance->advanced_settings->heuristics_max_timeout);
@@ -107,7 +110,7 @@ qdevice_instance_configure_from_cmap_heuristics(struct qdevice_instance *instanc
 	    "quorum.device.heuristics.sync_timeout", &str) == CS_OK) {
 		if (utils_strtonum(str, instance->advanced_settings->heuristics_min_timeout,
 		    instance->advanced_settings->heuristics_max_timeout, &lli) == -1) {
-			qdevice_log(LOG_ERR, "heuristics.sync_timeout must be valid number in "
+			log(LOG_ERR, "heuristics.sync_timeout must be valid number in "
 			    "range <%"PRIu32",%"PRIu32">",
 			    instance->advanced_settings->heuristics_min_timeout,
 			    instance->advanced_settings->heuristics_max_timeout);
@@ -126,7 +129,7 @@ qdevice_instance_configure_from_cmap_heuristics(struct qdevice_instance *instanc
 	    "quorum.device.heuristics.interval", &str) == CS_OK) {
 		if (utils_strtonum(str, instance->advanced_settings->heuristics_min_interval,
 		    instance->advanced_settings->heuristics_max_interval, &lli) == -1) {
-			qdevice_log(LOG_ERR, "heuristics.interval must be valid number in "
+			log(LOG_ERR, "heuristics.interval must be valid number in "
 			    "range <%"PRIu32",%"PRIu32">",
 			    instance->advanced_settings->heuristics_min_interval,
 			    instance->advanced_settings->heuristics_max_interval);
@@ -145,7 +148,7 @@ qdevice_instance_configure_from_cmap_heuristics(struct qdevice_instance *instanc
 	if (cmap_get_string(instance->cmap_handle, "quorum.device.heuristics.mode", &str) == CS_OK) {
 		if ((i = utils_parse_bool_str(str)) == -1) {
 			if (strcasecmp(str, "sync") != 0) {
-				qdevice_log(LOG_ERR, "quorum.device.heuristics.mode value is not valid.");
+				log(LOG_ERR, "quorum.device.heuristics.mode value is not valid.");
 
 				free(str);
 				return (-1);
@@ -177,7 +180,7 @@ qdevice_instance_configure_from_cmap_heuristics(struct qdevice_instance *instanc
 		 */
 		cs_err = cmap_iter_init(instance->cmap_handle, "quorum.device.heuristics.exec_", &iter_handle);
 		if (cs_err != CS_OK) {
-			qdevice_log(LOG_ERR, "Can't iterate quorum.device.heuristics.exec_ keys. "
+			log(LOG_ERR, "Can't iterate quorum.device.heuristics.exec_ keys. "
 			    "Error %s", cs_strerror(cs_err));
 
 			return (-1);
@@ -186,24 +189,24 @@ qdevice_instance_configure_from_cmap_heuristics(struct qdevice_instance *instanc
 		while ((cs_err = cmap_iter_next(instance->cmap_handle, iter_handle, key_name,
 		    &value_len, &type)) == CS_OK) {
 			if (type != CMAP_VALUETYPE_STRING) {
-				qdevice_log(LOG_WARNING, "%s key is not of string type. Ignoring");
+				log(LOG_WARNING, "%s key is not of string type. Ignoring", key_name);
 				continue ;
 			}
 
 			res = sscanf(key_name, "quorum.device.heuristics.exec_%[^.]%s", exec_name, tmp_key);
 			if (res != 1) {
-				qdevice_log(LOG_WARNING, "%s key is not correct heuristics exec name. Ignoring");
+				log(LOG_WARNING, "%s key is not correct heuristics exec name. Ignoring", key_name);
 				continue ;
 			}
 
 			cs_err = cmap_get_string(instance->cmap_handle, key_name, &command);
 			if (cs_err != CS_OK) {
-				qdevice_log(LOG_WARNING, "Can't get value of %s key. Ignoring");
+				log(LOG_WARNING, "Can't get value of %s key. Ignoring", key_name);
 				continue ;
 			}
 
 			if (qdevice_heuristics_exec_list_add(&tmp_exec_list, exec_name, command) == NULL) {
-				qdevice_log(LOG_WARNING, "Can't store value of %s key into list. Ignoring");
+				log(LOG_WARNING, "Can't store value of %s key into list. Ignoring", key_name);
 			}
 
 			free(command);
@@ -212,12 +215,12 @@ qdevice_instance_configure_from_cmap_heuristics(struct qdevice_instance *instanc
 		no_execs = qdevice_heuristics_exec_list_size(&tmp_exec_list);
 
 		if (no_execs == 0) {
-			qdevice_log(LOG_INFO, "No valid heuristics execs defined. Disabling heuristics.");
+			log(LOG_INFO, "No valid heuristics execs defined. Disabling heuristics.");
 			instance->heuristics_instance.mode = QDEVICE_HEURISTICS_MODE_DISABLED;
 			exec_list = NULL;
 			send_exec_list = 1;
 		} else if (no_execs > instance->advanced_settings->heuristics_max_execs) {
-			qdevice_log(LOG_ERR, "Too much (%zu) heuristics execs defined (max is %zu)."
+			log(LOG_ERR, "Too much (%zu) heuristics execs defined (max is %zu)."
 			    " Disabling heuristics.", no_execs,
 			    instance->advanced_settings->heuristics_max_execs);
 			instance->heuristics_instance.mode = QDEVICE_HEURISTICS_MODE_DISABLED;
@@ -225,16 +228,16 @@ qdevice_instance_configure_from_cmap_heuristics(struct qdevice_instance *instanc
 			send_exec_list = 1;
 		} else if (qdevice_heuristics_exec_list_eq(&tmp_exec_list,
 		    &instance->heuristics_instance.exec_list) == 1) {
-			qdevice_log(LOG_DEBUG, "Heuristics list is unchanged");
+			log(LOG_DEBUG, "Heuristics list is unchanged");
 			send_exec_list = 0;
 		} else {
-			qdevice_log(LOG_DEBUG, "Heuristics list changed");
+			log(LOG_DEBUG, "Heuristics list changed");
 			exec_list = &tmp_exec_list;
 			send_exec_list = 1;
 		}
 
 	} else {
-		qdevice_log(LOG_CRIT, "Undefined heuristics mode");
+		log(LOG_CRIT, "Undefined heuristics mode");
 		exit(1);
 	}
 
@@ -256,13 +259,13 @@ qdevice_instance_configure_from_cmap(struct qdevice_instance *instance)
 	char *str;
 
 	if (cmap_get_string(instance->cmap_handle, "quorum.device.model", &str) != CS_OK) {
-		qdevice_log(LOG_ERR, "Can't read quorum.device.model cmap key.");
+		log(LOG_ERR, "Can't read quorum.device.model cmap key.");
 
 		return (-1);
 	}
 
 	if (qdevice_model_str_to_type(str, &instance->model_type) != 0) {
-		qdevice_log(LOG_ERR, "Configured device model %s is not supported.", str);
+		log(LOG_ERR, "Configured device model %s is not supported.", str);
 		free(str);
 
 		return (-1);
@@ -271,7 +274,7 @@ qdevice_instance_configure_from_cmap(struct qdevice_instance *instance)
 
 	if (cmap_get_uint32(instance->cmap_handle, "runtime.votequorum.this_node_id",
 	    &instance->node_id) != CS_OK) {
-		qdevice_log(LOG_ERR, "Unable to retrieve this node nodeid.");
+		log(LOG_ERR, "Unable to retrieve this node nodeid.");
 
 		return (-1);
 	}
