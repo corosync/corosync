@@ -2043,7 +2043,7 @@ static void memb_state_operational_enter (struct totemsrp_instance *instance)
 			struct sort_queue_item *regular_message;
 
 			regular_message = ptr;
-			free (regular_message->mcast);
+			totemsrp_buffer_release (instance, regular_message->mcast);
 		}
 	}
 	sq_items_release (&instance->regular_sort_queue, instance->my_high_delivered);
