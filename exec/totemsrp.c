@@ -1850,17 +1850,7 @@ static void deliver_messages_from_recovery_to_regular (struct totemsrp_instance 
 		 * Convert recovery message into regular message
 		 */
 		mcast = recovery_message_item->mcast;
-		if (mcast->header.encapsulated == MESSAGE_ENCAPSULATED) {
-			/*
-			 * Message is a recovery message encapsulated
-			 * in a new ring message
-			 */
-			regular_message_item.mcast =
-				(struct mcast *)(((char *)recovery_message_item->mcast) + sizeof (struct mcast));
-			regular_message_item.msg_len =
-			recovery_message_item->msg_len - sizeof (struct mcast);
-			mcast = regular_message_item.mcast;
-		} else {
+		if (mcast->header.encapsulated != MESSAGE_ENCAPSULATED) {
 			/*
 			 * TODO this case shouldn't happen
 			 */
@@ -1881,6 +1871,21 @@ static void deliver_messages_from_recovery_to_regular (struct totemsrp_instance 
 
 			res = sq_item_inuse (&instance->regular_sort_queue, mcast->seq);
 			if (res == 0) {
+				/*
+				 * Message is a recovery message encapsulated
+				 * in a new ring message
+				 */
+				regular_message_item.mcast = totemsrp_buffer_alloc (instance);
+				assert(regular_message_item.mcast != NULL);
+
+				regular_message_item.msg_len = recovery_message_item->msg_len - sizeof (struct mcast);
+
+				memcpy(regular_message_item.mcast,
+				    (struct mcast *)(((char *)recovery_message_item->mcast) + sizeof (struct mcast)),
+				    regular_message_item.msg_len);
+
+				mcast = regular_message_item.mcast;
+
 				sq_item_add (&instance->regular_sort_queue,
 					&regular_message_item, mcast->seq);
 				if (sq_lt_compare (instance->old_ring_state_high_seq_received, mcast->seq)) {
