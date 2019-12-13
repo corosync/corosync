@@ -459,8 +459,8 @@ if test "x${enable_testagents}" = xyes; then
 fi
 
 if test "x${enable_rdma}" = xyes; then
-	PKG_CHECK_MODULES([rdmacm],[rdmacm])
-	PKG_CHECK_MODULES([ibverbs],[ibverbs])
+	PKG_CHECK_MODULES([rdmacm],[librdmacm])
+	PKG_CHECK_MODULES([ibverbs],[libibverbs])
 	AC_DEFINE_UNQUOTED([HAVE_RDMA], 1, [have rdmacm])
 	PACKAGE_FEATURES="$PACKAGE_FEATURES rdma"
 	WITH_LIST="$WITH_LIST --with rdma"
