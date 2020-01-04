@@ -140,7 +140,7 @@ dist_man_MANS 		= corosync.conf.5 \
 			  votequorum_overview.3 \
 			  sam_overview.3 \
 			  cmap_overview.3 \
-			  cmap_keys.8
+			  cmap_keys.7
 
 if BUILD_VQSIM
 dist_man_MANS		+= $(corosync_vqsim_man)

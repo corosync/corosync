@@ -217,7 +217,7 @@ fi
 %{_mandir}/man8/corosync-quorumtool.8*
 %{_mandir}/man5/corosync.conf.5*
 %{_mandir}/man5/votequorum.5*
-%{_mandir}/man8/cmap_keys.8*
+%{_mandir}/man7/cmap_keys.7*
 
 # library
 #
