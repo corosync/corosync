@@ -1295,7 +1295,7 @@ static void message_handler_req_exec_cpg_downlist(
 {
 	const struct req_exec_cpg_downlist *req_exec_cpg_downlist = message;
 
-	log_printf (LOGSYS_LEVEL_WARNING, "downlist left_list: %d received",
+	log_printf (LOGSYS_LEVEL_INFO, "downlist left_list: %d received",
 			req_exec_cpg_downlist->left_nodes);
 }
 
