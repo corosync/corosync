@@ -1285,7 +1285,7 @@ static void message_handler_req_exec_cpg_downlist_old (
 	const void *message,
 	unsigned int nodeid)
 {
-	log_printf (LOGSYS_LEVEL_WARNING, "downlist OLD from node " CS_PRI_NODE_ID,
+	log_printf (LOGSYS_LEVEL_DEBUG, "downlist OLD from node " CS_PRI_NODE_ID,
 		nodeid);
 }
 
@@ -1295,7 +1295,7 @@ static void message_handler_req_exec_cpg_downlist(
 {
 	const struct req_exec_cpg_downlist *req_exec_cpg_downlist = message;
 
-	log_printf (LOGSYS_LEVEL_WARNING, "downlist left_list: %d received",
+	log_printf (LOGSYS_LEVEL_DEBUG, "downlist left_list: %d received",
 			req_exec_cpg_downlist->left_nodes);
 }
 
