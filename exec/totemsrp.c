@@ -1916,6 +1916,8 @@ static void memb_state_operational_enter (struct totemsrp_instance *instance)
 	char left_node_msg[1024];
 	char joined_node_msg[1024];
 	char failed_node_msg[1024];
+	struct sort_queue_item *sq_item;
+	unsigned int sq_iter_pos;
 
 	instance->originated_orf_token = 0;
 
@@ -1988,11 +1990,25 @@ static void memb_state_operational_enter (struct totemsrp_instance *instance)
 		joined_list_totemip, joined_list_entries, &instance->my_ring_id);
 
 	/*
+	 * Free all messages from regular sort queue, because it
+	 * is going to be overwriten by recovery_sort_queue
+	 */
+	sq_iter_pos = 0;
+	while ((sq_item = sq_iter_next(&instance->regular_sort_queue, &sq_iter_pos)) != NULL) {
+//		printf("Releasing %u\n", sq_iter_pos);
+		totemsrp_buffer_release(instance, sq_item->mcast);
+	}
+
+	/*
 	 * The recovery sort queue now becomes the regular
 	 * sort queue.  It is necessary to copy the state
 	 * into the regular sort queue.
 	 */
 	sq_copy (&instance->regular_sort_queue, &instance->recovery_sort_queue);
+	/*
+	 * Reinit recovery queue, because it is now copied into regular queue
+	 */
+	sq_reinit (&instance->recovery_sort_queue, SEQNO_START_MSG);
 	instance->my_last_aru = SEQNO_START_MSG;
 
 	/* When making my_proc_list smaller, ensure that the
@@ -2268,6 +2284,9 @@ static void memb_state_recovery_enter (
 	const struct srp_addr *addr;
 	struct memb_commit_token_memb_entry *memb_list;
 	struct memb_ring_id my_new_memb_ring_id_list[PROCESSOR_COUNT_MAX];
+	unsigned int sq_iter_pos;
+	struct sort_queue_item *sq_item;
+	struct message_item *retrans_msg_item;
 
 	addr = (const struct srp_addr *)commit_token->end_of_commit_token;
 	memb_list = (struct memb_commit_token_memb_entry *)(addr + commit_token->addr_entries);
@@ -2279,7 +2298,27 @@ static void memb_state_recovery_enter (
 
 	instance->my_high_ring_delivered = 0;
 
+	/*
+	 * Free all messages from recovery sort queue, because it
+	 * is going to be reinitialized
+	 */
+	sq_iter_pos = 0;
+	while ((sq_item = sq_iter_next(&instance->recovery_sort_queue, &sq_iter_pos)) != NULL) {
+//		printf("Recovery Releasing %u\n", sq_iter_pos);
+		totemsrp_buffer_release(instance, sq_item->mcast);
+	}
+
 	sq_reinit (&instance->recovery_sort_queue, SEQNO_START_MSG);
+
+	while (!cs_queue_is_empty(&instance->retrans_message_queue)) {
+		retrans_msg_item = (struct message_item *)cs_queue_item_get (&instance->retrans_message_queue);
+
+//		printf("Recovery Releasing cs_queue item %p\n", retrans_msg_item->mcast);
+		totemsrp_buffer_release(instance, retrans_msg_item->mcast);
+
+		cs_queue_item_remove (&instance->retrans_message_queue);
+	}
+
 	cs_queue_reinit (&instance->retrans_message_queue);
 
 	low_ring_aru = instance->old_ring_state_high_seq_received;
