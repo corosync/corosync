@@ -80,6 +80,7 @@ static uint8_t two_node = 0;
 
 static uint8_t wait_for_all = 0;
 static uint8_t wait_for_all_status = 0;
+static uint8_t wait_for_all_autoset = 0; /* Wait for all is not set explicitly and follows two_node */
 
 static enum {ATB_NONE, ATB_LOWEST, ATB_HIGHEST, ATB_LIST} auto_tie_breaker = ATB_NONE, initial_auto_tie_breaker = ATB_NONE;
 static int lowest_node_id = -1;
@@ -1315,12 +1316,10 @@ static char *votequorum_readconfig(int runtime)
 	 * Enable special features
 	 */
 	if (!runtime) {
-		if (two_node) {
-			wait_for_all = 1;
-		}
-
 		(void)icmap_get_uint8("quorum.allow_downscale", &allow_downscale);
-		(void)icmap_get_uint8("quorum.wait_for_all", &wait_for_all);
+		if (icmap_get_uint8("quorum.wait_for_all", &wait_for_all) != CS_OK) {
+			wait_for_all_autoset = 1;
+		}
 		(void)icmap_get_uint8("quorum.last_man_standing", &last_man_standing);
 		(void)icmap_get_uint32("quorum.last_man_standing_window", &last_man_standing_window);
 		(void)icmap_get_uint8("quorum.expected_votes_tracking", &ev_tracking);
@@ -1359,6 +1358,15 @@ static char *votequorum_readconfig(int runtime)
 		    update_ev_tracking_barrier(ev_tracking_barrier);
 		}
 
+	}
+
+	/*
+	 * Changing of wait_for_all during runtime is not supported, but changing of two_node is
+	 * and two_node may set wfa if not configured explicitly. It is safe to unset it
+	 * (or set it back) when two_node changes.
+	 */
+	if (wait_for_all_autoset) {
+		wait_for_all = two_node;
 	}
 
 	/* two_node and auto_tie_breaker are not compatible as two_node uses
@@ -1540,6 +1548,12 @@ static char *votequorum_readconfig(int runtime)
 	update_two_node();
 	if (wait_for_all) {
 		update_wait_for_all_status(1);
+	} else if (wait_for_all_autoset && wait_for_all_status) {
+		/*
+		 * Reset wait for all status for consistency when wfa is auto-unset by 2node.
+		 * wait_for_all_status would be ignored by are_we_quorate anyway.
+		 */
+		update_wait_for_all_status(0);
 	}
 
 out:
