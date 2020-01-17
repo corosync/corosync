@@ -1,5 +1,5 @@
 .\"/*
-.\" * Copyright (c) 2012-2018 Red Hat, Inc.
+.\" * Copyright (c) 2012-2020 Red Hat, Inc.
 .\" *
 .\" * All rights reserved.
 .\" *
@@ -357,6 +357,27 @@ contains the total number of interrupted sends.
 .B service_id
 contains the ID of service which the IPC is connected to.
 
+
+.TP
+stats.schedmiss.<n>.*
+If corosync is not scheduled after the required period of time it will
+log this event and also write an entry to the stats cmap under this key.
+There can be up to 10 entries (0..9) in here, when an 11th event happens
+the earliest will be removed.
+
+These events will always be in reverse order, so stats.schedmiss.0.* will
+always be the latest event kept and 9 the oldest. If you want to listen
+for notifications then you are recommended to listen for changes
+to stats.schedmiss.0.timestamp or stats.schedmiss.0.delay.
+
+.B timestamp
+The time of the event in ms since the Epoch (ie time_t * 1000 but with
+valid milliseconds).
+
+.B delay
+The time that corosync was paused (in ms, float value).
+
+
 .TP
 stats.clear.*
 These are write-only keys used to clear the stats for various subsystems
@@ -369,6 +390,9 @@ Clears the knet stats
 
 .B ipc
 Clears the ipc stats
+
+.B schedmiss
+Clears the schedmiss stats
 
 .B all
 Clears all of the above stats
