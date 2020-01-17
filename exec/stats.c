@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 Red Hat, Inc.
+ * Copyright (c) 2017,2020 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -60,9 +60,18 @@ LOGSYS_DECLARE_SUBSYS ("STATS");
 
 static qb_map_t *stats_map;
 
+/* Structure of an element in the schedmiss array */
+struct schedmiss_entry {
+	uint64_t timestamp;
+	float delay;
+};
+#define MAX_SCHEDMISS_EVENTS 10
+static struct schedmiss_entry schedmiss_event[MAX_SCHEDMISS_EVENTS];
+static unsigned int next_schedmiss_event;
+
 /* Convert iterator number to text and a stats pointer */
 struct cs_stats_conv {
-	enum {STAT_PG, STAT_SRP, STAT_KNET, STAT_KNET_HANDLE, STAT_IPCSC, STAT_IPCSG} type;
+	enum {STAT_PG, STAT_SRP, STAT_KNET, STAT_KNET_HANDLE, STAT_IPCSC, STAT_IPCSG, STAT_SCHEDMISS} type;
 	const char *name;
 	const size_t offset;
 	const icmap_value_types_t value_type;
@@ -190,6 +199,10 @@ struct cs_stats_conv cs_ipcs_global_stats[] = {
 	{ STAT_IPCSG, "global.active",        offsetof(struct ipcs_global_stats, active),           ICMAP_VALUETYPE_UINT64},
 	{ STAT_IPCSG, "global.closed",        offsetof(struct ipcs_global_stats, closed),           ICMAP_VALUETYPE_UINT64},
 };
+struct cs_stats_conv cs_schedmiss_stats[] = {
+	{ STAT_SCHEDMISS, "timestamp",    offsetof(struct schedmiss_entry, timestamp), ICMAP_VALUETYPE_UINT64},
+	{ STAT_SCHEDMISS, "delay",        offsetof(struct schedmiss_entry, delay),     ICMAP_VALUETYPE_FLOAT},
+};
 
 #define NUM_PG_STATS (sizeof(cs_pg_stats) / sizeof(struct cs_stats_conv))
 #define NUM_SRP_STATS (sizeof(cs_srp_stats) / sizeof(struct cs_stats_conv))
@@ -286,7 +299,7 @@ cs_error_t stats_map_init(const struct corosync_api_v1 *corosync_api)
 		stats_add_entry(param, &cs_ipcs_global_stats[i]);
 	}
 
-	/* KNET and IPCS stats are added when appropriate */
+	/* KNET, IPCS & SCHEDMISS stats are added when appropriate */
 	return CS_OK;
 }
 
@@ -307,6 +320,9 @@ cs_error_t stats_map_get(const char *key_name,
 	int link_no;
 	int service_id;
 	uint32_t pid;
+	unsigned int num;
+	unsigned int sm_event;
+	char *sm_type;
 	void *conn_ptr;
 
 	item = qb_map_get(stats_map, key_name);
@@ -363,17 +379,128 @@ cs_error_t stats_map_get(const char *key_name,
 			cs_ipcs_get_global_stats(&ipcs_global_stats);
 			stats_map_set_value(statinfo, &ipcs_global_stats, value, value_len, type);
 			break;
+		case STAT_SCHEDMISS:
+			if (sscanf(key_name, "stats.schedmiss.%d", &num) != 1) {
+				return CS_ERR_NOT_EXIST;
+			}
+
+			sm_event = num;
+
+			if (schedmiss_event[next_schedmiss_event].timestamp != 0) { /* We've wrapped round */
+				sm_event = (sm_event + next_schedmiss_event) % MAX_SCHEDMISS_EVENTS;
+			}
+
+			sm_type = strrchr(key_name, '.');
+			if (sm_type == NULL) {
+				return CS_ERR_NOT_EXIST;
+			}
+			sm_type++;
+
+			if (sm_event > MAX_SCHEDMISS_EVENTS) {
+				sm_event -= MAX_SCHEDMISS_EVENTS;
+			}
+			if (strcmp(sm_type, "timestamp") == 0) {
+				memcpy(value, &schedmiss_event[sm_event].timestamp, sizeof(uint64_t));
+				*value_len = sizeof(uint64_t);
+				*type = ICMAP_VALUETYPE_UINT64;
+			}
+			if (strcmp(sm_type, "delay") == 0) {
+				memcpy(value, &schedmiss_event[sm_event].delay, sizeof(float));
+				*value_len = sizeof(float);
+				*type = ICMAP_VALUETYPE_FLOAT;
+			}
+			break;
 		default:
 			return CS_ERR_LIBRARY;
 	}
 	return CS_OK;
 }
 
-#define STATS_CLEAR       "stats.clear."
-#define STATS_CLEAR_KNET  "stats.clear.knet"
-#define STATS_CLEAR_IPC   "stats.clear.ipc"
-#define STATS_CLEAR_TOTEM "stats.clear.totem"
-#define STATS_CLEAR_ALL   "stats.clear.all"
+static void schedmiss_clear_stats(void)
+{
+	int i;
+	char param[ICMAP_KEYNAME_MAXLEN];
+
+	for (i=0; i<MAX_SCHEDMISS_EVENTS; i++) {
+		schedmiss_event[i].timestamp = (uint64_t)0LL;
+		schedmiss_event[i].delay = 0.0f;
+
+		sprintf(param, "stats.schedmiss.%i.timestamp", i);
+		stats_rm_entry(param);
+		sprintf(param, "stats.schedmiss.%i.delay", i);
+		stats_rm_entry(param);
+	}
+}
+
+static void trigger_schedmiss_trackers(unsigned int sm_index)
+{
+	struct cs_stats_tracker *tracker;
+	struct qb_list_head *iter;
+	struct icmap_notify_value new_val;
+	struct icmap_notify_value old_val;
+	char param[ICMAP_KEYNAME_MAXLEN];
+
+	qb_list_for_each(iter, &stats_tracker_list_head) {
+
+		tracker = qb_list_entry(iter, struct cs_stats_tracker, list);
+		if ( !(tracker->events & ICMAP_TRACK_PREFIX) ||
+		     strncmp(tracker->key_name, "stats.schedmiss",15) ) {
+			continue;
+		}
+
+		fprintf(stderr, "CC: Sending schedmiss tracker\n");
+		new_val.type = ICMAP_VALUETYPE_UINT64;
+		new_val.data = &schedmiss_event[sm_index].timestamp;
+		new_val.len  = icmap_get_valuetype_len(ICMAP_VALUETYPE_UINT64);
+		memcpy(&old_val, &new_val, sizeof(new_val));
+
+		sprintf(param, "stats.schedmiss.%i.timestamp", sm_index);
+		tracker->notify_fn(ICMAP_TRACK_ADD, param,
+				   old_val, new_val, tracker->user_data);
+
+		new_val.type = ICMAP_VALUETYPE_FLOAT;
+		new_val.data = &schedmiss_event[sm_index].delay;;
+		new_val.len  = icmap_get_valuetype_len(ICMAP_VALUETYPE_FLOAT);
+		memcpy(&old_val, &new_val, sizeof(new_val));
+
+		sprintf(param, "stats.schedmiss.%i.delay", sm_index);
+		tracker->notify_fn(ICMAP_TRACK_ADD, param,
+				   old_val, new_val, tracker->user_data);
+
+	}
+}
+
+/* Called from main.c */
+void stats_add_schedmiss_event(uint64_t timestamp, float delay)
+{
+	char param[ICMAP_KEYNAME_MAXLEN];
+
+	/* If we've not wrapped round then add an entry in the trie */
+	if (schedmiss_event[next_schedmiss_event].timestamp == 0) {
+		sprintf(param, "stats.schedmiss.%i.timestamp", next_schedmiss_event);
+		stats_add_entry(param, &cs_schedmiss_stats[0]);
+		sprintf(param, "stats.schedmiss.%i.delay", next_schedmiss_event);
+		stats_add_entry(param, &cs_schedmiss_stats[1]);
+	}
+
+	schedmiss_event[next_schedmiss_event].timestamp = timestamp;
+	schedmiss_event[next_schedmiss_event].delay = delay;
+
+	/* Send notifications */
+	trigger_schedmiss_trackers(next_schedmiss_event);
+
+	if (++next_schedmiss_event >= MAX_SCHEDMISS_EVENTS) {
+		next_schedmiss_event = 0;
+	}
+
+}
+
+#define STATS_CLEAR           "stats.clear."
+#define STATS_CLEAR_KNET      "stats.clear.knet"
+#define STATS_CLEAR_IPC       "stats.clear.ipc"
+#define STATS_CLEAR_TOTEM     "stats.clear.totem"
+#define STATS_CLEAR_ALL       "stats.clear.all"
+#define STATS_CLEAR_SCHEDMISS "stats.clear.schedmiss"
 
 cs_error_t stats_map_set(const char *key_name,
 			 const void *value,
@@ -394,9 +521,14 @@ cs_error_t stats_map_set(const char *key_name,
 		totempg_stats_clear(TOTEMPG_STATS_CLEAR_TOTEM);
 		cleared = 1;
 	}
+	if (strncmp(key_name, STATS_CLEAR_SCHEDMISS, strlen(STATS_CLEAR_SCHEDMISS)) == 0) {
+		schedmiss_clear_stats();
+		cleared = 1;
+	}
 	if (strncmp(key_name, STATS_CLEAR_ALL, strlen(STATS_CLEAR_ALL)) == 0) {
 		totempg_stats_clear(TOTEMPG_STATS_CLEAR_TRANSPORT | TOTEMPG_STATS_CLEAR_TOTEM);
 		cs_ipcs_clear_stats();
+		schedmiss_clear_stats();
 		cleared = 1;
 	}
 	if (!cleared) {
@@ -497,6 +629,11 @@ static void stats_map_notify_fn(uint32_t event, char *key, void *old_value, void
 	char new_value[64];
 
 	if (value == NULL && old_value == NULL) {
+		return ;
+	}
+
+	/* Ignore schedmiss trackers as the values are read from the circular buffer */
+	if (strncmp(tracker->key_name, "stats.schedmiss", 15) == 0 ) {
 		return ;
 	}
 

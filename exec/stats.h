@@ -69,3 +69,5 @@ void stats_trigger_trackers(void);
 void stats_ipcs_add_connection(int service_id, uint32_t pid, void *ptr);
 void stats_ipcs_del_connection(int service_id, uint32_t pid, void *ptr);
 cs_error_t cs_ipcs_get_conn_stats(int service_id, uint32_t pid, void *conn_ptr, struct ipcs_conn_stats *ipcs_stats);
+
+void stats_add_schedmiss_event(uint64_t, float delay);

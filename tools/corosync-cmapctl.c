@@ -115,7 +115,7 @@ static int print_help(void)
 	printf("    about the networking and IPC traffic in some detail.\n");
 	printf("\n");
 	printf("Clear stats:\n");
-	printf("    corosync-cmapctl -C [knet|ipc|totem|all]\n");
+	printf("    corosync-cmapctl -C [knet|ipc|totem|schedmiss|all]\n");
 	printf("    The 'stats' map is implied\n");
 	printf("\n");
 	printf("Load settings from a file:\n");
@@ -849,6 +849,7 @@ int main(int argc, char *argv[])
 			if (strcmp(optarg, "knet") == 0 ||
 			    strcmp(optarg, "totem") == 0 ||
 			    strcmp(optarg, "ipc") == 0 ||
+			    strcmp(optarg, "schedmiss") == 0 ||
 			    strcmp(optarg, "all") == 0) {
 				action = ACTION_CLEARSTATS;
 				clear_opt = optarg;
@@ -857,7 +858,7 @@ int main(int argc, char *argv[])
 				map = CMAP_MAP_STATS;
 			}
 			else {
-				fprintf(stderr, "argument to -C should be 'knet', 'totem', 'ipc' or 'all'\n");
+				fprintf(stderr, "argument to -C should be 'knet', 'totem', 'ipc', 'schedmiss' or 'all'\n");
 				return (EXIT_FAILURE);
 			}
 			break;
