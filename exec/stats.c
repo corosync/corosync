@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017,2020 Red Hat, Inc.
+ * Copyright (c) 2017-2020 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -67,7 +67,9 @@ struct schedmiss_entry {
 };
 #define MAX_SCHEDMISS_EVENTS 10
 static struct schedmiss_entry schedmiss_event[MAX_SCHEDMISS_EVENTS];
-static unsigned int next_schedmiss_event;
+static unsigned int highest_schedmiss_event;
+
+#define SCHEDMISS_PREFIX "stats.schedmiss"
 
 /* Convert iterator number to text and a stats pointer */
 struct cs_stats_conv {
@@ -320,7 +322,6 @@ cs_error_t stats_map_get(const char *key_name,
 	int link_no;
 	int service_id;
 	uint32_t pid;
-	unsigned int num;
 	unsigned int sm_event;
 	char *sm_type;
 	void *conn_ptr;
@@ -380,14 +381,8 @@ cs_error_t stats_map_get(const char *key_name,
 			stats_map_set_value(statinfo, &ipcs_global_stats, value, value_len, type);
 			break;
 		case STAT_SCHEDMISS:
-			if (sscanf(key_name, "stats.schedmiss.%d", &num) != 1) {
+			if (sscanf(key_name, SCHEDMISS_PREFIX ".%d", &sm_event) != 1) {
 				return CS_ERR_NOT_EXIST;
-			}
-
-			sm_event = num;
-
-			if (schedmiss_event[next_schedmiss_event].timestamp != 0) { /* We've wrapped round */
-				sm_event = (sm_event + next_schedmiss_event) % MAX_SCHEDMISS_EVENTS;
 			}
 
 			sm_type = strrchr(key_name, '.');
@@ -396,9 +391,6 @@ cs_error_t stats_map_get(const char *key_name,
 			}
 			sm_type++;
 
-			if (sm_event > MAX_SCHEDMISS_EVENTS) {
-				sm_event -= MAX_SCHEDMISS_EVENTS;
-			}
 			if (strcmp(sm_type, "timestamp") == 0) {
 				memcpy(value, &schedmiss_event[sm_event].timestamp, sizeof(uint64_t));
 				*value_len = sizeof(uint64_t);
@@ -425,74 +417,41 @@ static void schedmiss_clear_stats(void)
 		schedmiss_event[i].timestamp = (uint64_t)0LL;
 		schedmiss_event[i].delay = 0.0f;
 
-		sprintf(param, "stats.schedmiss.%i.timestamp", i);
-		stats_rm_entry(param);
-		sprintf(param, "stats.schedmiss.%i.delay", i);
-		stats_rm_entry(param);
-	}
-}
-
-static void trigger_schedmiss_trackers(unsigned int sm_index)
-{
-	struct cs_stats_tracker *tracker;
-	struct qb_list_head *iter;
-	struct icmap_notify_value new_val;
-	struct icmap_notify_value old_val;
-	char param[ICMAP_KEYNAME_MAXLEN];
-
-	qb_list_for_each(iter, &stats_tracker_list_head) {
-
-		tracker = qb_list_entry(iter, struct cs_stats_tracker, list);
-		if ( !(tracker->events & ICMAP_TRACK_PREFIX) ||
-		     strncmp(tracker->key_name, "stats.schedmiss",15) ) {
-			continue;
+		if (i < highest_schedmiss_event) {
+			sprintf(param, SCHEDMISS_PREFIX ".%i.timestamp", i);
+			stats_rm_entry(param);
+			sprintf(param, SCHEDMISS_PREFIX ".%i.delay", i);
+			stats_rm_entry(param);
 		}
-
-		fprintf(stderr, "CC: Sending schedmiss tracker\n");
-		new_val.type = ICMAP_VALUETYPE_UINT64;
-		new_val.data = &schedmiss_event[sm_index].timestamp;
-		new_val.len  = icmap_get_valuetype_len(ICMAP_VALUETYPE_UINT64);
-		memcpy(&old_val, &new_val, sizeof(new_val));
-
-		sprintf(param, "stats.schedmiss.%i.timestamp", sm_index);
-		tracker->notify_fn(ICMAP_TRACK_ADD, param,
-				   old_val, new_val, tracker->user_data);
-
-		new_val.type = ICMAP_VALUETYPE_FLOAT;
-		new_val.data = &schedmiss_event[sm_index].delay;;
-		new_val.len  = icmap_get_valuetype_len(ICMAP_VALUETYPE_FLOAT);
-		memcpy(&old_val, &new_val, sizeof(new_val));
-
-		sprintf(param, "stats.schedmiss.%i.delay", sm_index);
-		tracker->notify_fn(ICMAP_TRACK_ADD, param,
-				   old_val, new_val, tracker->user_data);
-
 	}
+	highest_schedmiss_event = 0;
 }
 
 /* Called from main.c */
 void stats_add_schedmiss_event(uint64_t timestamp, float delay)
 {
 	char param[ICMAP_KEYNAME_MAXLEN];
+	int i;
 
-	/* If we've not wrapped round then add an entry in the trie */
-	if (schedmiss_event[next_schedmiss_event].timestamp == 0) {
-		sprintf(param, "stats.schedmiss.%i.timestamp", next_schedmiss_event);
+	/* Move 'em all up */
+	for (i=MAX_SCHEDMISS_EVENTS-2; i>=0; i--) {
+		schedmiss_event[i+1].timestamp = schedmiss_event[i].timestamp;
+		schedmiss_event[i+1].delay = schedmiss_event[i].delay;
+	}
+
+	/* New entries are always at the front */
+	schedmiss_event[0].timestamp = timestamp;
+	schedmiss_event[0].delay = delay;
+
+	/* If we've not run off the end then add an entry in the trie for the new 'end' one */
+	if (highest_schedmiss_event < MAX_SCHEDMISS_EVENTS) {
+		sprintf(param, SCHEDMISS_PREFIX ".%i.timestamp", highest_schedmiss_event);
 		stats_add_entry(param, &cs_schedmiss_stats[0]);
-		sprintf(param, "stats.schedmiss.%i.delay", next_schedmiss_event);
+		sprintf(param, SCHEDMISS_PREFIX ".%i.delay", highest_schedmiss_event);
 		stats_add_entry(param, &cs_schedmiss_stats[1]);
+		highest_schedmiss_event++;
 	}
-
-	schedmiss_event[next_schedmiss_event].timestamp = timestamp;
-	schedmiss_event[next_schedmiss_event].delay = delay;
-
-	/* Send notifications */
-	trigger_schedmiss_trackers(next_schedmiss_event);
-
-	if (++next_schedmiss_event >= MAX_SCHEDMISS_EVENTS) {
-		next_schedmiss_event = 0;
-	}
-
+	/* Notifications get sent by the stats_updater */
 }
 
 #define STATS_CLEAR           "stats.clear."
@@ -631,9 +590,12 @@ static void stats_map_notify_fn(uint32_t event, char *key, void *old_value, void
 	if (value == NULL && old_value == NULL) {
 		return ;
 	}
+	if (!tracker->key_name) {
+		return;
+	}
 
 	/* Ignore schedmiss trackers as the values are read from the circular buffer */
-	if (strncmp(tracker->key_name, "stats.schedmiss", 15) == 0 ) {
+	if (strncmp(tracker->key_name, SCHEDMISS_PREFIX, strlen(SCHEDMISS_PREFIX)) == 0 ) {
 		return ;
 	}
 
@@ -693,7 +655,7 @@ cs_error_t stats_map_track_add(const char *key_name,
 		}
 		/* Get initial value */
 		if (stats_map_get(tracker->key_name,
-				  &tracker->old_value, &value_len, &type) == CS_OK) {
+				  &tracker->old_value, &value_len, &type) != CS_OK) {
 			tracker->old_value = 0ULL;
 		}
 	} else {
