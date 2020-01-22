@@ -414,15 +414,14 @@ static void schedmiss_clear_stats(void)
 	char param[ICMAP_KEYNAME_MAXLEN];
 
 	for (i=0; i<MAX_SCHEDMISS_EVENTS; i++) {
-		schedmiss_event[i].timestamp = (uint64_t)0LL;
-		schedmiss_event[i].delay = 0.0f;
-
 		if (i < highest_schedmiss_event) {
 			sprintf(param, SCHEDMISS_PREFIX ".%i.timestamp", i);
 			stats_rm_entry(param);
 			sprintf(param, SCHEDMISS_PREFIX ".%i.delay", i);
 			stats_rm_entry(param);
 		}
+		schedmiss_event[i].timestamp = (uint64_t)0LL;
+		schedmiss_event[i].delay = 0.0f;
 	}
 	highest_schedmiss_event = 0;
 }
@@ -590,9 +589,6 @@ static void stats_map_notify_fn(uint32_t event, char *key, void *old_value, void
 	if (value == NULL && old_value == NULL) {
 		return ;
 	}
-	if (!tracker->key_name) {
-		return;
-	}
 
 	/* Ignore schedmiss trackers as the values are read from the circular buffer */
 	if (strncmp(tracker->key_name, SCHEDMISS_PREFIX, strlen(SCHEDMISS_PREFIX)) == 0 ) {
@@ -636,6 +632,10 @@ cs_error_t stats_map_track_add(const char *key_name,
 	if ((track_type & ICMAP_TRACK_PREFIX) &&
 	    (!(track_type & ICMAP_TRACK_DELETE) ||
 	     !(track_type & ICMAP_TRACK_ADD))) {
+		return CS_ERR_NOT_SUPPORTED;
+	}
+
+	if (!key_name) {
 		return CS_ERR_NOT_SUPPORTED;
 	}
 
