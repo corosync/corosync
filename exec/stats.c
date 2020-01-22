@@ -591,7 +591,7 @@ static void stats_map_notify_fn(uint32_t event, char *key, void *old_value, void
 	}
 
 	/* Ignore schedmiss trackers as the values are read from the circular buffer */
-	if (strncmp(tracker->key_name, SCHEDMISS_PREFIX, strlen(SCHEDMISS_PREFIX)) == 0 ) {
+	if (strncmp(key, SCHEDMISS_PREFIX, strlen(SCHEDMISS_PREFIX)) == 0 ) {
 		return ;
 	}
 
@@ -632,10 +632,6 @@ cs_error_t stats_map_track_add(const char *key_name,
 	if ((track_type & ICMAP_TRACK_PREFIX) &&
 	    (!(track_type & ICMAP_TRACK_DELETE) ||
 	     !(track_type & ICMAP_TRACK_ADD))) {
-		return CS_ERR_NOT_SUPPORTED;
-	}
-
-	if (!key_name) {
 		return CS_ERR_NOT_SUPPORTED;
 	}
 
