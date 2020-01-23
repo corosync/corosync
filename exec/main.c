@@ -836,7 +836,8 @@ static void timer_function_scheduler_timeout (void *data)
 		    "(threshold is %0.4f ms). Consider token timeout increase.",
 		    (float)tv_diff / QB_TIME_NS_IN_MSEC, (float)timeout_data->max_tv_diff / QB_TIME_NS_IN_MSEC);
 
-		stats_add_schedmiss_event(tv_current / 1000, (float)tv_diff / QB_TIME_NS_IN_MSEC);
+		stats_add_schedmiss_event(qb_util_nano_from_epoch_get() / QB_TIME_NS_IN_MSEC,
+		    (float)tv_diff / QB_TIME_NS_IN_MSEC);
 	}
 
 	/*
