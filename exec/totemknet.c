@@ -479,6 +479,10 @@ static int node_compare(const void *aptr, const void *bptr)
 	return a > b;
 }
 
+#ifndef OWN_INDEX_NONE
+#define OWN_INDEX_NONE -1
+#endif
+
 int totemknet_ifaces_get (void *knet_context,
 	char ***status,
 	unsigned int *iface_count)
@@ -499,6 +503,7 @@ int totemknet_ifaces_get (void *knet_context,
 	 * a count of interfaces.
 	 */
 	if (status) {
+		int own_idx = OWN_INDEX_NONE;
 
 		res = knet_host_get_host_list(instance->knet_handle,
 					      host_list, &num_hosts);
@@ -507,8 +512,18 @@ int totemknet_ifaces_get (void *knet_context,
 		}
 		qsort(host_list, num_hosts, sizeof(uint16_t), node_compare);
 
+		for (j=0; j<num_hosts; j++) {
+			if (host_list[j] == instance->our_nodeid) {
+				own_idx = j;
+				break;
+			}
+		}
+
 		for (i=0; i<INTERFACE_MAX; i++) {
-			memset(instance->link_status[i], 'n', CFG_INTERFACE_STATUS_MAX_LEN-1);
+			memset(instance->link_status[i], 'd', CFG_INTERFACE_STATUS_MAX_LEN-1);
+			if (own_idx != OWN_INDEX_NONE) {
+				instance->link_status[i][own_idx] = 'n';
+			}
 			instance->link_status[i][num_hosts] = '\0';
 		}
 
