@@ -1,5 +1,5 @@
 .\" 
-.\" * Copyright (C) 2010-2018 Red Hat, Inc.
+.\" * Copyright (C) 2010-2020 Red Hat, Inc.
 .\" *
 .\" * All rights reserved.
 .\" *
@@ -31,7 +31,7 @@
 .\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 .\" * THE POSSIBILITY OF SUCH DAMAGE.
 .\" */
-.TH "COROSYNC-CFGTOOL" "8" "2019-07-04" "" ""
+.TH "COROSYNC-CFGTOOL" "8" "2020-02-10" "" ""
 .SH "NAME"
 corosync-cfgtool \- An administrative tool for corosync.
 .SH "SYNOPSIS"
@@ -61,10 +61,13 @@ Displays the brief status of the current links on this node (KNET only) when use
 with "-s". If any interfaces are faulty, 1 is returned by the binary. If all interfaces
 are active 0 is returned to the shell.
 After each link, the nodes on that link are displayed in order with their status
-encoded into a single digit. 1=link enabled, 2=link connected, So a 3 in
-a node position indicates that the link is both enabled and connected.
-The local link (which will only ever be enabled on link 0) shows as enabled but
-not connected for internal reasons.
+encoded into a single digit, or characters 'n', 'd' and '?' with special meaning.
+1=link enabled, 2=link connected, So a 3 in a node position indicates that the
+link is both enabled and connected. Status represented by character 'n' is used for
+localhost link. Character '?' means that Crosync was unable to get status of link from knet (log
+should contain more information). Character 'd' shouldn't appear and it means that Corosync
+was unable to configure a link and it is result of some error which should have been logged.
+
 The output will be:
 LINK ID 0:
     id     = 192.168.100.80
