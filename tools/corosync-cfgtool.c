@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2019 Red Hat, Inc.
+ * Copyright (c) 2006-2020 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -105,6 +105,7 @@ linkstatusget_do (char *interface_name, int brief)
 	size_t value_len;
 	int rc = 0;
 	int len, s = 0, t;
+	char stat_ch;
 
 	printf ("Printing link status.\n");
 	result = corosync_cfg_initialize (&handle, NULL);
@@ -196,11 +197,23 @@ linkstatusget_do (char *interface_name, int brief)
 					printf ("\tstatus:\n");
 					while (s < len) {
 						nodeid = nodeid_list[s];
-						t = interface_status[i][s] - '0';
-						s++;
 						printf("\t\tnodeid %2d:\t", nodeid);
-						printf("link enabled:%d\t", t&1? 1 : 0);
-						printf("link connected:%d\n", t&2? 1: 0);
+						stat_ch = interface_status[i][s];
+
+						if (stat_ch >= '0' && stat_ch <= '9') {
+							t = stat_ch - '0';
+							printf("link enabled:%d\t", t&1? 1 : 0);
+							printf("link connected:%d\n", t&2? 1: 0);
+						} else if (stat_ch == 'n') {
+							printf("localhost\n");
+						} else if (stat_ch == '?') {
+							printf("knet error\n");
+						} else if (stat_ch == 'd') {
+							printf("config error\n");
+						} else {
+							printf("can't decode status character '%c'\n", stat_ch);
+						}
+						s++;
 					}
 				} else {
 					printf ("\tstatus\t= %s\n", interface_status[i]);

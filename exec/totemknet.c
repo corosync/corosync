@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2019 Red Hat, Inc.
+ * Copyright (c) 2016-2020 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -531,6 +531,10 @@ int totemknet_ifaces_get (void *knet_context,
 		 * and knet orders things by host
 		 */
 		for (j=0; j<num_hosts; j++) {
+			if (own_idx != OWN_INDEX_NONE && j == own_idx) {
+				continue ;
+			}
+
 			res = knet_link_get_link_list(instance->knet_handle,
 						      host_list[j], link_list, &num_links);
 			if (res) {
@@ -560,6 +564,8 @@ int totemknet_ifaces_get (void *knet_context,
 							link_status.dynconnected<<2);
 				}
 				else {
+					knet_log_printf (LOGSYS_LEVEL_ERROR,
+					    "totemknet_ifaces_get: Cannot get link status: %s", strerror(errno));
 					ptr[j] = '?';
 				}
 			}
