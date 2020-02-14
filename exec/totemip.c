@@ -297,7 +297,7 @@ int totemip_totemip_to_sockaddr_convert(struct totem_ip_address *ip_addr,
 #endif
 		sin->sin6_family = ip_addr->family;
 		sin->sin6_port = ntohs(port);
-		sin->sin6_scope_id = 2;
+		sin->sin6_scope_id = ip_addr->sin6_scope_id;
 		memcpy(&sin->sin6_addr, ip_addr->addr, sizeof(struct in6_addr));
 
 		*addrlen = sizeof(struct sockaddr_in6);
@@ -409,10 +409,12 @@ int totemip_parse(struct totem_ip_address *totemip, const char *addr,
 	if (ainfo_final->ai_family == AF_INET) {
 		sa = (struct sockaddr_in *)ainfo_final->ai_addr;
 		memcpy(totemip->addr, &sa->sin_addr, sizeof(struct in_addr));
+		totemip->sin6_scope_id = 0;
 		debug_ip_family = 4;
 	} else {
 		sa6 = (struct sockaddr_in6 *)ainfo_final->ai_addr;
 		memcpy(totemip->addr, &sa6->sin6_addr, sizeof(struct in6_addr));
+		totemip->sin6_scope_id = sa6->sin6_scope_id;
 		debug_ip_family = 6;
 	}
 
@@ -437,6 +439,7 @@ int totemip_sockaddr_to_totemip_convert(const struct sockaddr_storage *saddr,
 		const struct sockaddr_in *sin = (const struct sockaddr_in *)saddr;
 
 		memcpy(ip_addr->addr, &sin->sin_addr, sizeof(struct in_addr));
+		ip_addr->sin6_scope_id = 0;
 		ret = 0;
 	}
 
@@ -445,6 +448,7 @@ int totemip_sockaddr_to_totemip_convert(const struct sockaddr_storage *saddr,
 		  = (const struct sockaddr_in6 *)saddr;
 
 		memcpy(ip_addr->addr, &sin->sin6_addr, sizeof(struct in6_addr));
+		ip_addr->sin6_scope_id = sin->sin6_scope_id;
 
 		ret = 0;
 	}
