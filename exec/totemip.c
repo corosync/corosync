@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005-2019 Red Hat, Inc.
+ * Copyright (c) 2005-2020 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -124,14 +124,6 @@ void totemip_copy(struct totem_ip_address *addr1,
 		  const struct totem_ip_address *addr2)
 {
 	memcpy(addr1, addr2, sizeof(struct totem_ip_address));
-}
-
-void totemip_copy_endian_convert(struct totem_ip_address *addr1,
-				 const struct totem_ip_address *addr2)
-{
-	addr1->nodeid = swab32(addr2->nodeid);
-	addr1->family = swab16(addr2->family);
-	memcpy(addr1->addr, addr2->addr, TOTEMIP_ADDRLEN);
 }
 
 /*
