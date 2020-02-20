@@ -573,6 +573,9 @@ int totemip_iface_check(struct totem_ip_address *bindnet,
 		if (addr_len == 0)
 			continue ;
 
+		if (bindnet->sin6_scope_id != 0 && bindnet->sin6_scope_id != if_addr->interface_num)
+			continue;
+
 		totemip_copy(&bn_netaddr, bindnet);
 		totemip_copy(&if_netaddr, &if_addr->ip_addr);
 
