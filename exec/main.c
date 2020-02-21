@@ -852,6 +852,9 @@ static void timer_function_scheduler_timeout (void *data)
 		log_printf (LOGSYS_LEVEL_WARNING, "Corosync main process was not scheduled for %0.4f ms "
 		    "(threshold is %0.4f ms). Consider token timeout increase.",
 		    (float)tv_diff / QB_TIME_NS_IN_MSEC, (float)timeout_data->max_tv_diff / QB_TIME_NS_IN_MSEC);
+
+		icmap_set_float("runtime.schedmiss.delay", (float)tv_diff / QB_TIME_NS_IN_MSEC);
+		icmap_set_uint64("runtime.schedmiss.timestamp", qb_util_nano_from_epoch_get() / QB_TIME_NS_IN_MSEC);
 	}
 
 	/*

@@ -256,6 +256,16 @@ Status of the processor. Can be one of joined and left.
 Config version of the member node.
 
 .TP
+runtime.schedmiss.timestamp
+The timestamp of the last time when corosync failed to be scheduled
+for the required amount of time. The even is warned in syslog but this
+is easier to find. The time is milli-seconds since the epoch.
+
+.B
+runtime.schedmiss.delay
+The amount of time (milliseconds as a float) that corosync was delayed.
+
+.TP
 resources.process.PID.*
 Prefix created by applications using SAM with CMAP integration.
 It contains the following keys:
