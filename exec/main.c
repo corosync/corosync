@@ -817,6 +817,7 @@ static void timer_function_scheduler_timeout (void *data)
 	struct scheduler_pause_timeout_data *timeout_data = (struct scheduler_pause_timeout_data *)data;
 	unsigned long long tv_current;
 	unsigned long long tv_diff;
+	uint64_t schedmiss_event_tstamp;
 
 	tv_current = qb_util_nano_current_get ();
 
@@ -832,12 +833,14 @@ static void timer_function_scheduler_timeout (void *data)
 	timeout_data->tv_prev = tv_current;
 
 	if (tv_diff > timeout_data->max_tv_diff) {
-		log_printf (LOGSYS_LEVEL_WARNING, "Corosync main process was not scheduled for %0.4f ms "
+		schedmiss_event_tstamp = qb_util_nano_from_epoch_get() / QB_TIME_NS_IN_MSEC;
+
+		log_printf (LOGSYS_LEVEL_WARNING, "Corosync main process was not scheduled (@%" PRIu64 ") for %0.4f ms "
 		    "(threshold is %0.4f ms). Consider token timeout increase.",
+		    schedmiss_event_tstamp,
 		    (float)tv_diff / QB_TIME_NS_IN_MSEC, (float)timeout_data->max_tv_diff / QB_TIME_NS_IN_MSEC);
 
-		stats_add_schedmiss_event(qb_util_nano_from_epoch_get() / QB_TIME_NS_IN_MSEC,
-		    (float)tv_diff / QB_TIME_NS_IN_MSEC);
+		stats_add_schedmiss_event(schedmiss_event_tstamp, (float)tv_diff / QB_TIME_NS_IN_MSEC);
 	}
 
 	/*
