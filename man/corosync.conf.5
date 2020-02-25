@@ -1,6 +1,6 @@
 .\"/*
 .\" * Copyright (c) 2005 MontaVista Software, Inc.
-.\" * Copyright (c) 2006-2019 Red Hat, Inc.
+.\" * Copyright (c) 2006-2020 Red Hat, Inc.
 .\" *
 .\" * All rights reserved.
 .\" *
@@ -32,7 +32,7 @@
 .\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 .\" * THE POSSIBILITY OF SUCH DAMAGE.
 .\" */
-.TH COROSYNC_CONF 5 2019-05-24 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
+.TH COROSYNC_CONF 5 2020-02-25 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
 .SH NAME
 corosync.conf - corosync executive configuration file
 
@@ -254,7 +254,7 @@ link_mode
 This specifies the Kronosnet mode, which may be passive, active, or
 rr (round-robin).
 .B passive:
-the active link with the highest priority will be used. If one or more
+the active link with the highest priority (highest number) will be used. If one or more
 links share the same priority the one with the lowest link ID will
 be used.
 .B active:
