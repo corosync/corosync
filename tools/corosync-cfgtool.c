@@ -202,8 +202,22 @@ linkstatusget_do (char *interface_name, int brief)
 
 						if (stat_ch >= '0' && stat_ch <= '9') {
 							t = stat_ch - '0';
-							printf("link enabled:%d\t", t&1? 1 : 0);
-							printf("link connected:%d\n", t&2? 1: 0);
+
+							/*
+							 * bit 0 - enabled
+							 * bit 1 - connected
+							 * bit 2 - dynconnected
+							 */
+							if (t & 0x2) {
+								printf("connected");
+							} else {
+								printf("disconnected");
+							}
+
+							if (!(t & 0x1)) {
+								printf(" (not enabled)");
+							}
+							printf("\n");
 						} else if (stat_ch == 'n') {
 							printf("localhost\n");
 						} else if (stat_ch == '?') {
