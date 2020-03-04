@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009-2015 Red Hat, Inc.
+ * Copyright (c) 2009-2020 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -2688,8 +2688,12 @@ static void message_handler_req_lib_votequorum_setexpected (void *conn, const vo
 	 */
 	newquorum = calculate_quorum(1, req_lib_votequorum_setexpected->expected_votes, &total_votes);
 	allow_downscale = allow_downscale_status;
-	if (newquorum < total_votes / 2 ||
-	    newquorum > total_votes) {
+	/*
+	 * Setting expected_votes < total_votes doesn't make sense.
+	 * For quorate cluster prevent cluster to become unquorate.
+	 */
+	if (req_lib_votequorum_setexpected->expected_votes < total_votes ||
+	    (cluster_is_quorate && (newquorum > total_votes))) {
 		error = CS_ERR_INVALID_PARAM;
 		goto error_exit;
 	}
