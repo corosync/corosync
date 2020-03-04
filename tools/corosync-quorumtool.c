@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009-2019 Red Hat, Inc.
+ * Copyright (c) 2009-2020 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -933,6 +933,7 @@ int main (int argc, char *argv[]) {
 				votes = strtol(optarg, &endptr, 0);
 				if ((votes == 0 && endptr == optarg) || votes <= 0) {
 					fprintf(stderr, "New expected votes value was not valid, try a positive number\n");
+					exit(EXIT_FAILURE);
 				} else {
 					command_opt = CMD_SETEXPECTED;
 				}
