@@ -1009,7 +1009,7 @@ static void are_we_quorate(unsigned int total_votes)
 				   "Waiting for all cluster members. "
 				   "Current votes: %d expected_votes: %d",
 				   total_votes, us->expected_votes);
-			cluster_is_quorate = 0;
+			assert(!cluster_is_quorate);
 			return;
 		}
 		update_wait_for_all_status(0);
@@ -1547,7 +1547,9 @@ static char *votequorum_readconfig(int runtime)
 	update_ev_barrier(us->expected_votes);
 	update_two_node();
 	if (wait_for_all) {
-		update_wait_for_all_status(1);
+		if (!runtime) {
+			update_wait_for_all_status(1);
+		}
 	} else if (wait_for_all_autoset && wait_for_all_status) {
 		/*
 		 * Reset wait for all status for consistency when wfa is auto-unset by 2node.
