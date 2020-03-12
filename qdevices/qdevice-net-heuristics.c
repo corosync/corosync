@@ -94,7 +94,8 @@ qdevice_net_regular_heuristics_exec_result_callback(void *heuristics_instance_pt
 	}
 
 	if (net_instance->latest_heuristics_result != heuristics) {
-		log(LOG_ERR, "Heuristics result changed from %s to %s",
+		log(heuristics == TLV_HEURISTICS_PASS ? LOG_NOTICE : LOG_ERR,
+		    "Heuristics result changed from %s to %s",
 		    tlv_heuristics_to_str(net_instance->latest_heuristics_result),
 		    tlv_heuristics_to_str(heuristics));
 
