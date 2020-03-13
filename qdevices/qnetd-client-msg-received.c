@@ -804,6 +804,7 @@ qnetd_client_msg_received_node_list(struct qnetd_instance *instance, struct qnet
 		memcpy(&client->last_ring_id, &msg->ring_id, sizeof(struct tlv_ring_id));
 		client->last_membership_heuristics = msg->heuristics;
 		client->last_heuristics = msg->heuristics;
+		client->last_regular_heuristics = msg->heuristics;
 		break;
 	case TLV_NODE_LIST_TYPE_QUORUM:
 		case_processed = 1;
