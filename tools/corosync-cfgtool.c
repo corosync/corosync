@@ -200,6 +200,13 @@ linkstatusget_do (char *interface_name, int brief)
 						printf("\t\tnodeid %2d:\t", nodeid);
 						stat_ch = interface_status[i][s];
 
+						/* Set return code to 1 if status is not localhost or connected. */
+						if (rc == 0) {
+							if ((stat_ch != 'n') && (stat_ch != '3')) {
+								rc = 1;
+							}
+						}
+
 						if (stat_ch >= '0' && stat_ch <= '9') {
 							t = stat_ch - '0';
 
@@ -231,6 +238,19 @@ linkstatusget_do (char *interface_name, int brief)
 					}
 				} else {
 					printf ("\tstatus\t= %s\n", interface_status[i]);
+
+					/* Set return code to 1 if status is not localhost or connected. */
+					if (rc == 0) {
+						len = strlen(interface_status[i]);
+						while (s < len) {
+							stat_ch = interface_status[i][s];
+							if ((stat_ch != 'n') && (stat_ch != '3')) {
+								rc = 1;
+								break;
+							}
+							s++;
+						}
+					}
 				}
 			}
 		}
