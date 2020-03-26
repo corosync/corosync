@@ -194,6 +194,10 @@ extern int totempg_reconfigure (void);
 
 extern void totempg_force_gather (void);
 
+extern void totempg_get_config(struct totem_config *config);
+
+extern void totempg_put_config(struct totem_config *config);
+
 #ifdef __cplusplus
 }
 #endif

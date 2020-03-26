@@ -1585,3 +1585,21 @@ void totempg_force_gather (void)
 {
 	totemsrp_force_gather(totemsrp_context);
 }
+
+/* Assumes ->orig_interfaces is already allocated */
+void totempg_get_config(struct totem_config *config)
+{
+	struct totem_interface *temp_if = config->orig_interfaces;
+
+	memcpy(config, totempg_totem_config, sizeof(struct totem_config));
+	config->orig_interfaces = temp_if;
+	memcpy(config->orig_interfaces, totempg_totem_config->interfaces, sizeof(struct totem_interface) * INTERFACE_MAX);
+	config->interfaces = NULL;
+}
+
+void totempg_put_config(struct totem_config *config)
+{
+	/* Free this before we overwite the pointer */
+	free(totempg_totem_config->interfaces);
+	memcpy(totempg_totem_config, config, sizeof(struct totem_config));
+}

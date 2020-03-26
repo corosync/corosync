@@ -87,6 +87,9 @@
 #include "totemsrp.h"
 #include "totemnet.h"
 
+#include "icmap.h"
+#include "totemconfig.h"
+
 #include "cs_queue.h"
 
 #define LOCALHOST_IP				inet_addr("127.0.0.1")
@@ -5056,7 +5059,7 @@ int totemsrp_iface_set (
 	return (res);
 }
 
-
+/* Contrary to its name, this only gets called when the interface is enabled */
 void main_iface_change_fn (
 	void *context,
 	const struct totem_ip_address *iface_addr,
@@ -5094,12 +5097,6 @@ void main_iface_change_fn (
 
 	}
 
-	for (i = 0; i < instance->totem_config->interfaces[iface_no].member_count; i++) {
-		totemsrp_member_add (instance,
-			&instance->totem_config->interfaces[iface_no].member_list[i],
-			iface_no);
-	}
-
 	num_interfaces = 0;
 	for (i = 0; i < INTERFACE_MAX; i++) {
 		if (instance->totem_config->interfaces[i].configured) {
@@ -5108,7 +5105,15 @@ void main_iface_change_fn (
 	}
 
 	if (instance->iface_changes >= num_interfaces) {
+		/* We need to clear orig_interfaces so that 'commit' diffs against nothing */
+		instance->totem_config->orig_interfaces = malloc (sizeof (struct totem_interface) * INTERFACE_MAX);
+		assert(instance->totem_config->orig_interfaces != NULL);
+		memset(instance->totem_config->orig_interfaces, 0, sizeof (struct totem_interface) * INTERFACE_MAX);
+
+		totemconfig_commit_new_params(instance->totem_config, icmap_get_global_map());
+
 		memb_state_gather_enter (instance, TOTEMSRP_GSFROM_INTERFACE_CHANGE);
+		free(instance->totem_config->orig_interfaces);
 	}
 }
 

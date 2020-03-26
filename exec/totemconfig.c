@@ -1,11 +1,12 @@
 /*
  * Copyright (c) 2002-2005 MontaVista Software, Inc.
- * Copyright (c) 2006-2018 Red Hat, Inc.
+ * Copyright (c) 2006-2019 Red Hat, Inc.
  *
  * All rights reserved.
  *
  * Author: Steven Dake (sdake@redhat.com)
  *         Jan Friesse (jfriesse@redhat.com)
+  *        Chrissie Caulfield (ccaulfie@redhat.com)
  *
  * This software licensed under BSD license, the text of which follows:
  *
@@ -149,13 +150,13 @@ static void *totem_get_param_by_name(struct totem_config *totem_config, const ch
  * Read key_name from icmap. If key is not found or key_name == delete_key or if allow_zero is false
  * and readed value is zero, default value is used and stored into totem_config.
  */
-static void totem_volatile_config_set_uint32_value (struct totem_config *totem_config,
+static void totem_volatile_config_set_uint32_value (struct totem_config *totem_config, icmap_map_t map,
 	const char *key_name, const char *deleted_key, unsigned int default_value,
 	int allow_zero_value)
 {
 	char runtime_key_name[ICMAP_KEYNAME_MAXLEN];
 
-	if (icmap_get_uint32(key_name, totem_get_param_by_name(totem_config, key_name)) != CS_OK ||
+	if (icmap_get_uint32_r(map, key_name, totem_get_param_by_name(totem_config, key_name)) != CS_OK ||
 	    (deleted_key != NULL && strcmp(deleted_key, key_name) == 0) ||
 	    (!allow_zero_value && *(uint32_t *)totem_get_param_by_name(totem_config, key_name) == 0)) {
 		*(uint32_t *)totem_get_param_by_name(totem_config, key_name) = default_value;
@@ -174,16 +175,16 @@ static void totem_volatile_config_set_uint32_value (struct totem_config *totem_c
 	strcpy(runtime_key_name, "runtime.config.");
 	strcat(runtime_key_name, key_name);
 
-	icmap_set_uint32(runtime_key_name, *(uint32_t *)totem_get_param_by_name(totem_config, key_name));
+	icmap_set_uint32_r(map, runtime_key_name, *(uint32_t *)totem_get_param_by_name(totem_config, key_name));
 }
 
-static void totem_volatile_config_set_int32_value (struct totem_config *totem_config,
+static void totem_volatile_config_set_int32_value (struct totem_config *totem_config, icmap_map_t map,
 	const char *key_name, const char *deleted_key, int default_value,
 	int allow_zero_value)
 {
 	char runtime_key_name[ICMAP_KEYNAME_MAXLEN];
 
-	if (icmap_get_int32(key_name, totem_get_param_by_name(totem_config, key_name)) != CS_OK ||
+	if (icmap_get_int32_r(map, key_name, totem_get_param_by_name(totem_config, key_name)) != CS_OK ||
 	    (deleted_key != NULL && strcmp(deleted_key, key_name) == 0) ||
 	    (!allow_zero_value && *(int32_t *)totem_get_param_by_name(totem_config, key_name) == 0)) {
 		*(int32_t *)totem_get_param_by_name(totem_config, key_name) = default_value;
@@ -202,10 +203,10 @@ static void totem_volatile_config_set_int32_value (struct totem_config *totem_co
 	strcpy(runtime_key_name, "runtime.config.");
 	strcat(runtime_key_name, key_name);
 
-	icmap_set_int32(runtime_key_name, *(int32_t *)totem_get_param_by_name(totem_config, key_name));
+	icmap_set_int32_r(map, runtime_key_name,  *(int32_t *)totem_get_param_by_name(totem_config, key_name));
 }
 
-static void totem_volatile_config_set_string_value (struct totem_config *totem_config,
+static void totem_volatile_config_set_string_value (struct totem_config *totem_config, icmap_map_t map,
 	const char *key_name, const char *deleted_key, const char *default_value)
 {
 	char runtime_key_name[ICMAP_KEYNAME_MAXLEN];
@@ -214,7 +215,7 @@ static void totem_volatile_config_set_string_value (struct totem_config *totem_c
 
 	config_value = totem_get_param_by_name(totem_config, key_name);
 	old_config_ptr = *config_value;
-	if (icmap_get_string(key_name, (char **)config_value) != CS_OK ||
+	if (icmap_get_string_r(map, key_name, (char **)config_value) != CS_OK ||
 	    (deleted_key != NULL && strcmp(deleted_key, key_name) == 0)) {
 
 		/* Need to strdup() here so that the free() below works for a default and a configured value */
@@ -235,7 +236,7 @@ static void totem_volatile_config_set_string_value (struct totem_config *totem_c
 	strcpy(runtime_key_name, "runtime.config.");
 	strcat(runtime_key_name, key_name);
 
-	icmap_set_string(runtime_key_name, (char *)*config_value);
+	(void)icmap_set_string_r(map, runtime_key_name, (char *)*config_value);
 }
 
 /*
@@ -245,7 +246,7 @@ static void totem_volatile_config_set_string_value (struct totem_config *totem_c
  * If key is not found or key_name == delete_key default value is used
  * and stored into totem_config.
  */
-static void totem_volatile_config_set_boolean_value (struct totem_config *totem_config,
+static void totem_volatile_config_set_boolean_value (struct totem_config *totem_config, icmap_map_t map,
 	const char *key_name, const char *deleted_key, unsigned int default_value)
 {
 	char runtime_key_name[ICMAP_KEYNAME_MAXLEN];
@@ -256,7 +257,7 @@ static void totem_volatile_config_set_boolean_value (struct totem_config *totem_
 	val = default_value;
 
 	if ((deleted_key != NULL && strcmp(deleted_key, key_name) == 0) ||
-	    (icmap_get_string(key_name, &str) != CS_OK)) {
+	    (icmap_get_string_r(map, key_name, &str) != CS_OK)) {
 		/*
 		 * Do nothing. str is NULL (icmap_get_string ether not called or
 		 * not changed str).
@@ -285,7 +286,7 @@ static void totem_volatile_config_set_boolean_value (struct totem_config *totem_
 
 	*(uint32_t *)totem_get_param_by_name(totem_config, key_name) = val;
 
-	icmap_set_uint32(runtime_key_name, val);
+	icmap_set_uint32_r(map, runtime_key_name, val);
 }
 
 /*
@@ -293,73 +294,74 @@ static void totem_volatile_config_set_boolean_value (struct totem_config *totem_
  * default value is stored. deleted_key is name of key beeing processed by delete operation
  * from cmap. It is considered as non existing even if it can be read. Can be NULL.
  */
-static void totem_volatile_config_read (struct totem_config *totem_config, const char *deleted_key)
+void totem_volatile_config_read (struct totem_config *totem_config, icmap_map_t temp_map, const char *deleted_key)
 {
 	uint32_t u32;
 
-	totem_volatile_config_set_uint32_value(totem_config, "totem.token_retransmits_before_loss_const", deleted_key,
+	totem_volatile_config_set_uint32_value(totem_config, temp_map, "totem.token_retransmits_before_loss_const", deleted_key,
 	    TOKEN_RETRANSMITS_BEFORE_LOSS_CONST, 0);
 
-	totem_volatile_config_set_uint32_value(totem_config, "totem.token", deleted_key, TOKEN_TIMEOUT, 0);
+	totem_volatile_config_set_uint32_value(totem_config, temp_map, "totem.token", deleted_key, TOKEN_TIMEOUT, 0);
 
-	totem_volatile_config_set_uint32_value(totem_config, "totem.token_warning", deleted_key, TOKEN_WARNING, 1);
+	totem_volatile_config_set_uint32_value(totem_config, temp_map, "totem.token_warning", deleted_key, TOKEN_WARNING, 1);
 
 	if (totem_config->interfaces[0].member_count > 2) {
 		u32 = TOKEN_COEFFICIENT;
-		icmap_get_uint32("totem.token_coefficient", &u32);
+		icmap_get_uint32_r(temp_map, "totem.token_coefficient", &u32);
 		totem_config->token_timeout += (totem_config->interfaces[0].member_count - 2) * u32;
 
 		/*
 		 * Store totem_config value to cmap runtime section
 		 */
-		icmap_set_uint32("runtime.config.totem.token", totem_config->token_timeout);
+		icmap_set_uint32_r(temp_map, "runtime.config.totem.token", totem_config->token_timeout);
 	}
 
-	totem_volatile_config_set_uint32_value(totem_config, "totem.max_network_delay", deleted_key, MAX_NETWORK_DELAY, 0);
+	totem_volatile_config_set_uint32_value(totem_config, temp_map, "totem.max_network_delay", deleted_key, MAX_NETWORK_DELAY, 0);
 
-	totem_volatile_config_set_uint32_value(totem_config, "totem.window_size", deleted_key, WINDOW_SIZE, 0);
+	totem_volatile_config_set_uint32_value(totem_config, temp_map, "totem.window_size", deleted_key, WINDOW_SIZE, 0);
 
-	totem_volatile_config_set_uint32_value(totem_config, "totem.max_messages", deleted_key, MAX_MESSAGES, 0);
+	totem_volatile_config_set_uint32_value(totem_config, temp_map, "totem.max_messages", deleted_key, MAX_MESSAGES, 0);
 
-	totem_volatile_config_set_uint32_value(totem_config, "totem.miss_count_const", deleted_key, MISS_COUNT_CONST, 0);
-	totem_volatile_config_set_uint32_value(totem_config, "totem.knet_pmtud_interval", deleted_key, KNET_PMTUD_INTERVAL, 0);
+	totem_volatile_config_set_uint32_value(totem_config, temp_map, "totem.miss_count_const", deleted_key, MISS_COUNT_CONST, 0);
+	totem_volatile_config_set_uint32_value(totem_config, temp_map, "totem.knet_pmtud_interval", deleted_key, KNET_PMTUD_INTERVAL, 0);
 
-	totem_volatile_config_set_uint32_value(totem_config, "totem.token_retransmit", deleted_key,
+	totem_volatile_config_set_uint32_value(totem_config, temp_map, "totem.token_retransmit", deleted_key,
 	   (int)(totem_config->token_timeout / (totem_config->token_retransmits_before_loss_const + 0.2)), 0);
 
-	totem_volatile_config_set_uint32_value(totem_config, "totem.hold", deleted_key,
+	totem_volatile_config_set_uint32_value(totem_config, temp_map, "totem.hold", deleted_key,
 	    (int)(totem_config->token_retransmit_timeout * 0.8 - (1000/HZ)), 0);
 
-	totem_volatile_config_set_uint32_value(totem_config, "totem.join", deleted_key, JOIN_TIMEOUT, 0);
+	totem_volatile_config_set_uint32_value(totem_config, temp_map, "totem.join", deleted_key, JOIN_TIMEOUT, 0);
 
-	totem_volatile_config_set_uint32_value(totem_config, "totem.consensus", deleted_key,
+	totem_volatile_config_set_uint32_value(totem_config, temp_map, "totem.consensus", deleted_key,
 	    (int)(float)(1.2 * totem_config->token_timeout), 0);
 
-	totem_volatile_config_set_uint32_value(totem_config, "totem.merge", deleted_key, MERGE_TIMEOUT, 0);
+	totem_volatile_config_set_uint32_value(totem_config, temp_map, "totem.merge", deleted_key, MERGE_TIMEOUT, 0);
 
-	totem_volatile_config_set_uint32_value(totem_config, "totem.downcheck", deleted_key, DOWNCHECK_TIMEOUT, 0);
+	totem_volatile_config_set_uint32_value(totem_config, temp_map, "totem.downcheck", deleted_key, DOWNCHECK_TIMEOUT, 0);
 
-	totem_volatile_config_set_uint32_value(totem_config, "totem.fail_recv_const", deleted_key, FAIL_TO_RECV_CONST, 0);
+	totem_volatile_config_set_uint32_value(totem_config, temp_map, "totem.fail_recv_const", deleted_key, FAIL_TO_RECV_CONST, 0);
 
-	totem_volatile_config_set_uint32_value(totem_config, "totem.seqno_unchanged_const", deleted_key,
+	totem_volatile_config_set_uint32_value(totem_config, temp_map, "totem.seqno_unchanged_const", deleted_key,
 	    SEQNO_UNCHANGED_CONST, 0);
 
-	totem_volatile_config_set_uint32_value(totem_config, "totem.send_join", deleted_key, 0, 1);
+	totem_volatile_config_set_uint32_value(totem_config, temp_map, "totem.send_join", deleted_key, 0, 1);
 
-	totem_volatile_config_set_uint32_value(totem_config, "totem.heartbeat_failures_allowed", deleted_key, 0, 1);
+	totem_volatile_config_set_uint32_value(totem_config, temp_map, "totem.heartbeat_failures_allowed", deleted_key, 0, 1);
 
-	totem_volatile_config_set_uint32_value(totem_config, "totem.knet_compression_threshold", deleted_key, 0, 1);
+	totem_volatile_config_set_uint32_value(totem_config, temp_map, "totem.knet_compression_threshold", deleted_key, 0, 1);
 
-	totem_volatile_config_set_int32_value(totem_config, "totem.knet_compression_level", deleted_key, 0, 1);
+	totem_volatile_config_set_int32_value(totem_config, temp_map, "totem.knet_compression_level", deleted_key, 0, 1);
 
-	totem_volatile_config_set_string_value(totem_config, "totem.knet_compression_model", deleted_key, "none");
+	totem_volatile_config_set_string_value(totem_config, temp_map, "totem.knet_compression_model", deleted_key, "none");
 
-	totem_volatile_config_set_boolean_value(totem_config, "totem.block_unlisted_ips", deleted_key,
+	totem_volatile_config_set_boolean_value(totem_config, temp_map, "totem.block_unlisted_ips", deleted_key,
 	    BLOCK_UNLISTED_IPS);
 }
 
-static int totem_volatile_config_validate (
+int totem_volatile_config_validate (
 	struct totem_config *totem_config,
+	icmap_map_t temp_map,
 	const char **error_string)
 {
 	static char local_error_reason[512];
@@ -391,7 +393,7 @@ static int totem_volatile_config_validate (
 	}
 
 	if (totem_config->token_retransmit_timeout < MINIMUM_TIMEOUT) {
-		if (icmap_get_uint32("totem.token_retransmit", &tmp_config_value) == CS_OK) {
+		if (icmap_get_uint32_r(temp_map, "totem.token_retransmit", &tmp_config_value) == CS_OK) {
 			snprintf (local_error_reason, sizeof(local_error_reason),
 				"The token retransmit timeout parameter (%d ms) may not be less than (%d ms).",
 				totem_config->token_retransmit_timeout, MINIMUM_TIMEOUT);
@@ -465,7 +467,7 @@ static int totem_volatile_config_validate (
 		for (i=0; i < members; i++) {
 			snprintf(name_key, sizeof(name_key), "nodelist.node.%d.name", i);
 
-			if (icmap_get_string(name_key, &name_str) != CS_OK) {
+			if (icmap_get_string_r(temp_map, name_key, &name_str) != CS_OK) {
 				snprintf (local_error_reason, sizeof(local_error_reason),
 					  "for a multi-link configuration, all nodes must have a 'name' attribute");
 				goto parse_error;
@@ -484,9 +486,6 @@ static int totem_volatile_config_validate (
 				goto parse_error;
 			}
 		}
-
-
-
 	}
 
 	return 0;
@@ -590,7 +589,7 @@ static int totem_get_crypto(struct totem_config *totem_config, const char **erro
 	return 0;
 }
 
-static int nodelist_byname(const char *find_name, int strip_domain)
+static int nodelist_byname(icmap_map_t map, const char *find_name, int strip_domain)
 {
 	icmap_iter_t iter;
 	const char *iter_key;
@@ -600,7 +599,7 @@ static int nodelist_byname(const char *find_name, int strip_domain)
 	char *name;
 	unsigned int namelen;
 
-	iter = icmap_iter_init("nodelist.node.");
+	iter = icmap_iter_init_r(map, "nodelist.node.");
 	while ((iter_key = icmap_iter_next(iter, NULL, NULL)) != NULL) {
 		res = sscanf(iter_key, "nodelist.node.%u.%s", &node_pos, name_str);
 		if (res != 2) {
@@ -610,7 +609,7 @@ static int nodelist_byname(const char *find_name, int strip_domain)
 		if (strcmp(name_str, "name") && strcmp(name_str, "ring0_addr")) {
 			continue;
 		}
-		if (icmap_get_string(iter_key, &name) != CS_OK) {
+		if (icmap_get_string_r(map, iter_key, &name) != CS_OK) {
 			continue;
 		}
 		namelen = strlen(name);
@@ -663,7 +662,7 @@ static int ipaddr_equal(const struct sockaddr *addr1, const struct sockaddr *add
 /* Finds the local node and returns its position in the nodelist.
  * Uses nodelist.local_node_pos as a cache to save effort
  */
-static int find_local_node(int use_cache)
+static int find_local_node(icmap_map_t map, int use_cache)
 {
 	char nodename2[PATH_MAX];
 	char name_str[ICMAP_KEYNAME_MAXLEN];
@@ -693,7 +692,7 @@ static int find_local_node(int use_cache)
 	node = utsname.nodename;
 
 	/* 1. Exact match */
-	node_pos = nodelist_byname(node, 0);
+	node_pos = nodelist_byname(map, node, 0);
 	if (node_pos > -1) {
 		found = 1;
 		goto ret_found;
@@ -707,7 +706,7 @@ static int find_local_node(int use_cache)
 	while (dot) {
 		*dot = '\0';
 
-		node_pos = nodelist_byname(nodename2, 0);
+		node_pos = nodelist_byname(map, nodename2, 0);
 		if (node_pos > -1) {
 			found = 1;
 			goto ret_found;
@@ -715,7 +714,7 @@ static int find_local_node(int use_cache)
 		dot = strrchr(nodename2, '.');
 	}
 
-	node_pos = nodelist_byname(nodename2, 1);
+	node_pos = nodelist_byname(map, nodename2, 1);
 	if (node_pos > -1) {
 		found = 1;
 		goto ret_found;
@@ -752,7 +751,7 @@ static int find_local_node(int use_cache)
 				nodename2, sizeof(nodename2),
 				NULL, 0, 0) == 0) {
 
-			node_pos = nodelist_byname(nodename2, 0);
+			node_pos = nodelist_byname(map, nodename2, 0);
 			if (node_pos > -1) {
 				found = 1;
 				goto out;
@@ -763,7 +762,7 @@ static int find_local_node(int use_cache)
 			if (dot) {
 				*dot = '\0';
 
-				node_pos = nodelist_byname(nodename2, 0);
+				node_pos = nodelist_byname(map, nodename2, 0);
 				if (node_pos > -1) {
 					found = 1;
 					goto out;
@@ -777,7 +776,7 @@ static int find_local_node(int use_cache)
 				NULL, 0, NI_NUMERICHOST))
 			continue;
 
-		node_pos = nodelist_byname(nodename2, 0);
+		node_pos = nodelist_byname(map, nodename2, 0);
 		if (node_pos > -1) {
 			found = 1;
 			goto out;
@@ -803,7 +802,7 @@ static int find_local_node(int use_cache)
 	 * and use it as last.
 	 */
 
-	iter = icmap_iter_init("nodelist.node.");
+	iter = icmap_iter_init_r(map, "nodelist.node.");
 	while ((iter_key = icmap_iter_next(iter, NULL, NULL)) != NULL) {
 		char *dbnodename = NULL;
 		struct addrinfo hints;
@@ -819,7 +818,7 @@ static int find_local_node(int use_cache)
 		if (strcmp(name_str, "name") && strcmp(name_str, "ring0_addr")) {
 			continue;
 		}
-		if (icmap_get_string(iter_key, &dbnodename) != CS_OK) {
+		if (icmap_get_string_r(map, iter_key, &dbnodename) != CS_OK) {
 			continue;
 		}
 
@@ -852,7 +851,7 @@ out2:
 
 ret_found:
 	if (found) {
-		res = icmap_set_uint32("nodelist.local_node_pos", node_pos);
+		res = icmap_set_uint32_r(map, "nodelist.local_node_pos", node_pos);
 	}
 
 	return node_pos;
@@ -1098,12 +1097,13 @@ static void calc_knet_ping_timers(struct totem_config *totem_config)
 }
 
 /*
- * Compute difference between two set of totem interface arrays. set1 and set2
+ * Compute difference between two set of totem interface arrays and commit it.
+ * set1 and set2
  * are changed so for same ring, ip existing in both set1 and set2 are cleared
  * (set to 0), and ips which are only in set1 or set2 remains untouched.
  * totempg_node_add/remove is called.
  */
-static void compute_interfaces_diff(struct totem_interface *set1,
+static void compute_and_set_totempg_interfaces(struct totem_interface *set1,
 	struct totem_interface *set2)
 {
 	int ring_no, set1_pos, set2_pos;
@@ -1137,8 +1137,8 @@ static void compute_interfaces_diff(struct totem_interface *set1,
 	for (ring_no = 0; ring_no < INTERFACE_MAX; ring_no++) {
 		for (set1_pos = 0; set1_pos < set1[ring_no].member_count; set1_pos++) {
 			/*
-			 * All items which remained in set1 doesn't exists in set2 any longer so
-			 * node has to be removed.
+			 * All items which remain in set1 and don't exist in set2 any more
+			 * have to be removed.
 			 */
 			if (memcmp(&set1[ring_no].member_list[set1_pos], &empty_ip_address, sizeof(empty_ip_address)) != 0) {
 				log_printf(LOGSYS_LEVEL_DEBUG,
@@ -1154,8 +1154,8 @@ static void compute_interfaces_diff(struct totem_interface *set1,
 		}
 		for (set2_pos = 0; set2_pos < set2[ring_no].member_count; set2_pos++) {
 			/*
-			 * All items which remained in set2 doesn't existed in set1 so this is no node
-			 * and has to be added.
+			 * All items which remain in set2 and don't exist in set1 are new nodes
+			 * and have to be added.
 			 */
 			if (memcmp(&set2[ring_no].member_list[set2_pos], &empty_ip_address, sizeof(empty_ip_address)) != 0) {
 				log_printf(LOGSYS_LEVEL_DEBUG,
@@ -1170,41 +1170,39 @@ static void compute_interfaces_diff(struct totem_interface *set1,
 }
 
 /*
- * Reconfigure links in totempg. Sets new local IP address and adds params for new links.
+ * Configure parameters for links
  */
-static void reconfigure_links(struct totem_config *totem_config)
+static void configure_link_params(struct totem_config *totem_config, icmap_map_t map)
 {
 	int i;
 	char tmp_key[ICMAP_KEYNAME_MAXLEN];
 	char *addr_string;
-	struct totem_ip_address local_ip;
 	int err;
-	int local_node_pos = find_local_node(0);
+	int local_node_pos = find_local_node(map, 0);
 
 	for (i = 0; i<INTERFACE_MAX; i++) {
 		if (!totem_config->interfaces[i].configured) {
 			continue;
 		}
 
-		log_printf(LOGSYS_LEVEL_INFO, "Configuring link %d\n", i);
+		log_printf(LOGSYS_LEVEL_DEBUG, "Configuring link %d params\n", i);
 
 		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "nodelist.node.%u.ring%u_addr", local_node_pos, i);
-		if (icmap_get_string(tmp_key, &addr_string) != CS_OK) {
+		if (icmap_get_string_r(map, tmp_key, &addr_string) != CS_OK) {
 			continue;
 		}
 
-		err = totemip_parse(&local_ip, addr_string, totem_config->ip_version);
+		err = totemip_parse(&totem_config->interfaces[i].local_ip, addr_string, totem_config->ip_version);
 		if (err != 0) {
 			continue;
 		}
-		local_ip.nodeid = totem_config->node_id;
+		totem_config->interfaces[i].local_ip.nodeid = totem_config->node_id;
 
 		/* In case this is a new link, fill in the defaults if there was no interface{} section for it */
 		if (!totem_config->interfaces[i].knet_link_priority)
 			totem_config->interfaces[i].knet_link_priority = 1;
 
 		/* knet_ping_interval & knet_ping_timeout are set later once we know all the other params */
-
 		if (!totem_config->interfaces[i].knet_ping_precision)
 			totem_config->interfaces[i].knet_ping_precision = KNET_PING_PRECISION;
 		if (!totem_config->interfaces[i].knet_pong_count)
@@ -1213,15 +1211,29 @@ static void reconfigure_links(struct totem_config *totem_config)
 			totem_config->interfaces[i].knet_transport = KNET_TRANSPORT_UDP;
 		if (!totem_config->interfaces[i].ip_port)
 			totem_config->interfaces[i].ip_port = DEFAULT_PORT + i;
+	}
+}
 
-		totempg_iface_set(&local_ip, totem_config->interfaces[i].ip_port, i);
+
+static void configure_totem_links(struct totem_config *totem_config, icmap_map_t map)
+{
+	int i;
+
+	for (i = 0; i<INTERFACE_MAX; i++) {
+		if (!totem_config->interfaces[i].configured) {
+			continue;
+		}
+
+		log_printf(LOGSYS_LEVEL_INFO, "Configuring link %d\n", i);
+
+		totempg_iface_set(&totem_config->interfaces[i].local_ip, totem_config->interfaces[i].ip_port, i);
 	}
 }
 
 /* Check for differences in config that can't be done on-the-fly and print an error */
-static void check_things_have_not_changed(struct totem_config *totem_config)
+static int check_things_have_not_changed(struct totem_config *totem_config, const char **error_string)
 {
-	int i,j;
+	int i,j,k;
 	const char *ip_str;
 	char addr_buf[INET6_ADDRSTRLEN];
 	int changed = 0;
@@ -1235,21 +1247,31 @@ static void check_things_have_not_changed(struct totem_config *totem_config)
 					   "New config has different knet transport for link %d. Internal value was NOT changed.\n", i);
 				changed = 1;
 			}
-			for (j=0; j < min(totem_config->interfaces[i].member_count, totem_config->orig_interfaces[i].member_count); j++) {
-				if (memcmp(&totem_config->interfaces[i].member_list[j],
-					   &totem_config->orig_interfaces[i].member_list[j],
-					   sizeof(struct totem_ip_address))) {
 
-					ip_str = totemip_print(&totem_config->orig_interfaces[i].member_list[j]);
+			/* Check each nodeid in the new configuration and make sure its IP address on this link has not changed */
+			for (j=0; j < totem_config->interfaces[i].member_count; j++) {
+				for (k=0; k < totem_config->orig_interfaces[i].member_count; k++) {
 
-					/* if ip_str is NULL then the old address was invalid and is allowed to change */
-					if (ip_str) {
-						strncpy(addr_buf, ip_str, sizeof(addr_buf));
-						addr_buf[sizeof(addr_buf) - 1] = '\0';
-						log_printf(LOGSYS_LEVEL_ERROR,
-							   "new config has different address for link %d (addr changed from %s to %s). Internal value was NOT changed.\n",
-							   i, addr_buf, totemip_print(&totem_config->interfaces[i].member_list[j]));
-						changed = 1;
+					if (totem_config->interfaces[i].member_list[j].nodeid ==
+					    totem_config->orig_interfaces[i].member_list[k].nodeid) {
+
+						/* Found our nodeid - check the IP address */
+						if (memcmp(&totem_config->interfaces[i].member_list[j],
+							   &totem_config->orig_interfaces[i].member_list[k],
+							   sizeof(struct totem_ip_address))) {
+
+							ip_str = totemip_print(&totem_config->orig_interfaces[i].member_list[k]);
+
+							/* if ip_str is NULL then the old address was invalid and is allowed to change */
+							if (ip_str) {
+								strncpy(addr_buf, ip_str, sizeof(addr_buf));
+								addr_buf[sizeof(addr_buf) - 1] = '\0';
+								log_printf(LOGSYS_LEVEL_ERROR,
+									   "new config has different address for link %d (addr changed from %s to %s). Internal value was NOT changed.\n",
+									   i, addr_buf, totemip_print(&totem_config->interfaces[i].member_list[j]));
+								changed = 1;
+							}
+						}
 					}
 				}
 			}
@@ -1257,12 +1279,17 @@ static void check_things_have_not_changed(struct totem_config *totem_config)
 	}
 
 	if (changed) {
-		log_printf(LOGSYS_LEVEL_ERROR, "To reconfigure an interface it must be deleted and recreated. A working interface needs to be available to corosync at all times");
+		snprintf (error_string_response, sizeof(error_string_response),
+			  "To reconfigure an interface it must be deleted and recreated. A working interface needs to be available to corosync at all times");
+		*error_string = error_string_response;
+		return -1;
 	}
+	return 0;
 }
 
 
-static int put_nodelist_members_to_config(struct totem_config *totem_config, int reload, const char **error_string)
+static int put_nodelist_members_to_config(struct totem_config *totem_config, icmap_map_t map,
+					  int reload, const char **error_string)
 {
 	icmap_iter_t iter, iter2;
 	const char *iter_key, *iter_key2;
@@ -1275,17 +1302,6 @@ static int put_nodelist_members_to_config(struct totem_config *totem_config, int
 	unsigned int linknumber = 0;
 	int i, j;
 	int last_node_pos = -1;
-	struct totem_interface *new_interfaces = NULL;
-
-	if (reload) {
-		/*
-		 * We need to compute diff only for reload. Also for initial configuration
-		 * not all totem structures are initialized so corosync will crash during
-		 * member_add/remove
-		 */
-		new_interfaces = malloc (sizeof (struct totem_interface) * INTERFACE_MAX);
-		assert(new_interfaces != NULL);
-	}
 
 	/* Clear out nodelist so we can put the new one in if needed */
 	for (i = 0; i < INTERFACE_MAX; i++) {
@@ -1295,7 +1311,7 @@ static int put_nodelist_members_to_config(struct totem_config *totem_config, int
 		totem_config->interfaces[i].member_count = 0;
 	}
 
-	iter = icmap_iter_init("nodelist.node.");
+	iter = icmap_iter_init_r(map, "nodelist.node.");
 	while ((iter_key = icmap_iter_next(iter, NULL, NULL)) != NULL) {
 		res = sscanf(iter_key, "nodelist.node.%u.%s", &node_pos, tmp_key);
 		if (res != 2) {
@@ -1308,13 +1324,13 @@ static int put_nodelist_members_to_config(struct totem_config *totem_config, int
 		last_node_pos = node_pos;
 
 		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "nodelist.node.%u.", node_pos);
-		iter2 = icmap_iter_init(tmp_key);
+		iter2 = icmap_iter_init_r(map, tmp_key);
 		while ((iter_key2 = icmap_iter_next(iter2, NULL, NULL)) != NULL) {
 			unsigned int nodeid;
 			char *str;
 
 			snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "nodelist.node.%u.nodeid", node_pos);
-			if (icmap_get_uint32(tmp_key, &nodeid) != CS_OK) {
+			if (icmap_get_uint32_r(map, tmp_key, &nodeid) != CS_OK) {
 				nodeid = 0;
 			}
 
@@ -1323,7 +1339,7 @@ static int put_nodelist_members_to_config(struct totem_config *totem_config, int
 				continue;
 			}
 
-			if (icmap_get_string(iter_key2, &node_addr_str) != CS_OK) {
+			if (icmap_get_string_r(map, iter_key2, &node_addr_str) != CS_OK) {
 				continue;
 			}
 
@@ -1332,7 +1348,7 @@ static int put_nodelist_members_to_config(struct totem_config *totem_config, int
 			    (totem_config->transport_number == TOTEM_TRANSPORT_UDP ||
 			     totem_config->transport_number == TOTEM_TRANSPORT_UDPU)) {
 				snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "nodelist.node.%u.ring0_addr", node_pos);
-				if (icmap_get_string(tmp_key, &str) == CS_OK) {
+				if (icmap_get_string_r(map, tmp_key, &str) == CS_OK) {
 					nodeid = generate_nodeid(totem_config, str);
 					if (nodeid == -1) {
 						sprintf(error_string_response,
@@ -1378,22 +1394,18 @@ static int put_nodelist_members_to_config(struct totem_config *totem_config, int
 
 	icmap_iter_finalize(iter);
 
+	configure_link_params(totem_config, map);
 	if (reload) {
 		log_printf(LOGSYS_LEVEL_DEBUG, "About to reconfigure links from nodelist.\n");
-		reconfigure_links(totem_config);
 
-		memcpy(new_interfaces, totem_config->interfaces, sizeof (struct totem_interface) * INTERFACE_MAX);
-
-		check_things_have_not_changed(totem_config);
-
-		compute_interfaces_diff(totem_config->orig_interfaces, new_interfaces);
-
-		free(new_interfaces);
+		if (check_things_have_not_changed(totem_config, error_string) == -1) {
+			return -1;
+		}
 	}
 	return 0;
 }
 
-static void config_convert_nodelist_to_interface(struct totem_config *totem_config)
+static void config_convert_nodelist_to_interface(icmap_map_t map, struct totem_config *totem_config)
 {
 	int res = 0;
 	int node_pos;
@@ -1404,32 +1416,32 @@ static void config_convert_nodelist_to_interface(struct totem_config *totem_conf
 	icmap_iter_t iter;
 	const char *iter_key;
 
-	node_pos = find_local_node(1);
+	node_pos = find_local_node(map, 1);
 	if (node_pos > -1) {
 		/*
 		 * We found node, so create interface section
 		 */
 		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "nodelist.node.%u.", node_pos);
-		iter = icmap_iter_init(tmp_key);
+		iter = icmap_iter_init_r(map, tmp_key);
 		while ((iter_key = icmap_iter_next(iter, NULL, NULL)) != NULL) {
 			res = sscanf(iter_key, "nodelist.node.%u.ring%u%s", &node_pos, &linknumber, tmp_key2);
 			if (res != 3 || strcmp(tmp_key2, "_addr") != 0) {
 				continue ;
 			}
 
-			if (icmap_get_string(iter_key, &node_addr_str) != CS_OK) {
+			if (icmap_get_string_r(map, iter_key, &node_addr_str) != CS_OK) {
 				continue;
 			}
 
 			snprintf(tmp_key2, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.bindnetaddr", linknumber);
-			icmap_set_string(tmp_key2, node_addr_str);
+			icmap_set_string_r(map, tmp_key2, node_addr_str);
 			free(node_addr_str);
 		}
 		icmap_iter_finalize(iter);
 	}
 }
 
-static int get_interface_params(struct totem_config *totem_config,
+static int get_interface_params(struct totem_config *totem_config, icmap_map_t map,
 				const char **error_string, uint64_t *warnings,
 				int reload)
 {
@@ -1463,11 +1475,11 @@ static int get_interface_params(struct totem_config *totem_config,
 			totem_config->interfaces[i].knet_pong_count = KNET_PONG_COUNT;
 		}
 	}
-	if (icmap_get_string("totem.cluster_name", &cluster_name) != CS_OK) {
+	if (icmap_get_string_r(map, "totem.cluster_name", &cluster_name) != CS_OK) {
 		cluster_name = NULL;
 	}
 
-	iter = icmap_iter_init("totem.interface.");
+	iter = icmap_iter_init_r(map, "totem.interface.");
 	while ((iter_key = icmap_iter_next(iter, NULL, NULL)) != NULL) {
 		res = sscanf(iter_key, "totem.interface.%[^.].%s", linknumber_key, tmp_key);
 		if (res != 2) {
@@ -1498,7 +1510,7 @@ static int get_interface_params(struct totem_config *totem_config,
 			 */
 			snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.bindnetaddr", linknumber);
 
-			if (icmap_get_string(tmp_key, &str) == CS_OK) {
+			if (icmap_get_string_r(map, tmp_key, &str) == CS_OK) {
 				res = totemip_parse (&totem_config->interfaces[linknumber].bindnet, str,
 						     totem_config->ip_version);
 
@@ -1518,7 +1530,7 @@ static int get_interface_params(struct totem_config *totem_config,
 			 * Get interface multicast address
 			 */
 			snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.mcastaddr", linknumber);
-			if (icmap_get_string(tmp_key, &str) == CS_OK) {
+			if (icmap_get_string_r(map, tmp_key, &str) == CS_OK) {
 				res = totemip_parse (&totem_config->interfaces[linknumber].mcast_addr, str,
 				    totem_config->ip_version);
 
@@ -1568,7 +1580,7 @@ static int get_interface_params(struct totem_config *totem_config,
 			 * Get mcast port
 			 */
 			snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.mcastport", linknumber);
-			if (icmap_get_uint16(tmp_key, &totem_config->interfaces[linknumber].ip_port) != CS_OK) {
+			if (icmap_get_uint16_r(map, tmp_key, &totem_config->interfaces[linknumber].ip_port) != CS_OK) {
 				if (totem_config->broadcast_use) {
 					totem_config->interfaces[linknumber].ip_port = DEFAULT_PORT + (2 * linknumber);
 				} else {
@@ -1583,13 +1595,13 @@ static int get_interface_params(struct totem_config *totem_config,
 
 			snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.ttl", linknumber);
 
-			if (icmap_get_uint8(tmp_key, &u8) == CS_OK) {
+			if (icmap_get_uint8_r(map, tmp_key, &u8) == CS_OK) {
 				totem_config->interfaces[linknumber].ttl = u8;
 			}
 
 			totem_config->interfaces[linknumber].knet_transport = KNET_DEFAULT_TRANSPORT;
 			snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.knet_transport", linknumber);
-			if (icmap_get_string(tmp_key, &str) == CS_OK) {
+			if (icmap_get_string_r(map, tmp_key, &str) == CS_OK) {
 				if (strcmp(str, "sctp") == 0) {
 					totem_config->interfaces[linknumber].knet_transport = KNET_TRANSPORT_SCTP;
 				}
@@ -1611,33 +1623,33 @@ static int get_interface_params(struct totem_config *totem_config,
 		totem_config->interfaces[linknumber].knet_link_priority = 1;
 		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.knet_link_priority", linknumber);
 
-		if (icmap_get_uint8(tmp_key, &u8) == CS_OK) {
+		if (icmap_get_uint8_r(map, tmp_key, &u8) == CS_OK) {
 			totem_config->interfaces[linknumber].knet_link_priority = u8;
 		}
 
 		totem_config->interfaces[linknumber].knet_ping_interval = 0; /* real default applied later */
 		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.knet_ping_interval", linknumber);
-		if (icmap_get_uint32(tmp_key, &u32) == CS_OK) {
+		if (icmap_get_uint32_r(map, tmp_key, &u32) == CS_OK) {
 			totem_config->interfaces[linknumber].knet_ping_interval = u32;
 		}
 		totem_config->interfaces[linknumber].knet_ping_timeout = 0; /* real default applied later */
 		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.knet_ping_timeout", linknumber);
-		if (icmap_get_uint32(tmp_key, &u32) == CS_OK) {
+		if (icmap_get_uint32_r(map, tmp_key, &u32) == CS_OK) {
 			totem_config->interfaces[linknumber].knet_ping_timeout = u32;
 		}
 		totem_config->interfaces[linknumber].knet_ping_precision = KNET_PING_PRECISION;
 		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.knet_ping_precision", linknumber);
-		if (icmap_get_uint32(tmp_key, &u32) == CS_OK) {
+		if (icmap_get_uint32_r(map, tmp_key, &u32) == CS_OK) {
 			totem_config->interfaces[linknumber].knet_ping_precision = u32;
 		}
 		totem_config->interfaces[linknumber].knet_pong_count = KNET_PONG_COUNT;
 		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.knet_pong_count", linknumber);
-		if (icmap_get_uint32(tmp_key, &u32) == CS_OK) {
+		if (icmap_get_uint32_r(map, tmp_key, &u32) == CS_OK) {
 			totem_config->interfaces[linknumber].knet_pong_count = u32;
 		}
 
 		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.member.", linknumber);
-		member_iter = icmap_iter_init(tmp_key);
+		member_iter = icmap_iter_init_r(map, tmp_key);
 		while ((member_iter_key = icmap_iter_next(member_iter, NULL, NULL)) != NULL) {
 			if (member_count == 0) {
 				if (icmap_get_string("nodelist.node.0.ring0_addr", &str) == CS_OK) {
@@ -1649,7 +1661,7 @@ static int get_interface_params(struct totem_config *totem_config,
 				}
 			}
 
-			if (icmap_get_string(member_iter_key, &str) == CS_OK) {
+			if (icmap_get_string_r(map, member_iter_key, &str) == CS_OK) {
 				res = totemip_parse (&totem_config->interfaces[linknumber].member_list[member_count++],
 						str, totem_config->ip_version);
 				if (res) {
@@ -1759,7 +1771,7 @@ extern int totem_config_read (
 		/*
 		 * We were not able to find ring 0 bindnet addr. Try to use nodelist informations
 		 */
-		config_convert_nodelist_to_interface(totem_config);
+		config_convert_nodelist_to_interface(icmap_get_global_map(), totem_config);
 	} else {
 		if (icmap_get_string("nodelist.node.0.ring0_addr", &ring0_addr_str) == CS_OK) {
 			/*
@@ -1768,7 +1780,7 @@ extern int totem_config_read (
 			 */
 			*warnings |= TOTEM_CONFIG_BINDNETADDR_NODELIST_SET;
 
-			config_convert_nodelist_to_interface(totem_config);
+			config_convert_nodelist_to_interface(icmap_get_global_map(), totem_config);
 
 			free(ring0_addr_str);
 		}
@@ -1782,7 +1794,7 @@ extern int totem_config_read (
 	 */
 	totem_config->broadcast_use = 0;
 
-	res = get_interface_params(totem_config, error_string, warnings, 0);
+	res = get_interface_params(totem_config, icmap_get_global_map(), error_string, warnings, 0);
 	if (res < 0) {
 		return res;
 	}
@@ -1829,7 +1841,7 @@ extern int totem_config_read (
 		/*
 		 * find local node
 		 */
-		local_node_pos = find_local_node(1);
+		local_node_pos = find_local_node(icmap_get_global_map(), 1);
 		if (local_node_pos != -1) {
 
 			snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "nodelist.node.%u.nodeid", local_node_pos);
@@ -1866,7 +1878,7 @@ extern int totem_config_read (
 			icmap_set_ro_access("nodelist.local_node_pos", 0, 1);
 		}
 
-		if (put_nodelist_members_to_config(totem_config, 0, error_string)) {
+		if (put_nodelist_members_to_config(totem_config, icmap_get_global_map(), 0, error_string)) {
 			return -1;
 		}
 	}
@@ -1874,11 +1886,12 @@ extern int totem_config_read (
 	/*
 	 * Get things that might change in the future (and can depend on totem_config->interfaces);
 	 */
-	totem_volatile_config_read(totem_config, NULL);
+	totem_volatile_config_read(totem_config, icmap_get_global_map(), NULL);
 
 	calc_knet_ping_timers(totem_config);
 
-	icmap_set_uint8("config.totemconfig_reload_in_progress", 0);
+	/* This is now done in the totemknet interface callback */
+	/*	configure_totem_links(totem_config, icmap_get_global_map()); */
 
 	add_totem_config_notification(totem_config);
 
@@ -2002,7 +2015,7 @@ int totem_config_validate (
 		goto parse_error;
 	}
 
-	if (totem_volatile_config_validate(totem_config, error_string) == -1) {
+	if (totem_volatile_config_validate(totem_config, icmap_get_global_map(), error_string) == -1) {
 		return (-1);
 	}
 
@@ -2209,6 +2222,7 @@ static void debug_dump_totem_config(const struct totem_config *totem_config)
 	log_printf(LOGSYS_LEVEL_DEBUG, "max_network_delay (%d ms)", totem_config->max_network_delay);
 }
 
+
 static void totem_change_notify(
 	int32_t event,
 	const char *key_name,
@@ -2253,10 +2267,10 @@ static void totem_change_notify(
 		break;
 	}
 
-	totem_volatile_config_read (totem_config, deleted_key);
+	totem_volatile_config_read (totem_config, icmap_get_global_map(), deleted_key);
 	log_printf(LOGSYS_LEVEL_DEBUG, "Totem related config key changed. Dumping actual totem config.");
 	debug_dump_totem_config(totem_config);
-	if (totem_volatile_config_validate(totem_config, &error_string) == -1) {
+	if (totem_volatile_config_validate(totem_config, icmap_get_global_map(), &error_string) == -1) {
 		log_printf (LOGSYS_LEVEL_ERROR, "%s", error_string);
 		/*
 		 * TODO: Consider corosync exit and/or load defaults for volatile
@@ -2265,54 +2279,51 @@ static void totem_change_notify(
 	}
 }
 
-static void totem_reload_notify(
-	int32_t event,
-	const char *key_name,
-	struct icmap_notify_value new_val,
-	struct icmap_notify_value old_val,
-	void *user_data)
+
+int totemconfig_configure_new_params(
+	struct totem_config *totem_config,
+	icmap_map_t map)
 {
-	struct totem_config *totem_config = (struct totem_config *)user_data;
 	const char *error_string;
-	uint64_t warnings = 0;
+	uint64_t warnings = 0LL;
 
-	/* Reload has completed */
-	if (*(uint8_t *)new_val.data == 0) {
-
-		totem_config->orig_interfaces = malloc (sizeof (struct totem_interface) * INTERFACE_MAX);
-		assert(totem_config->orig_interfaces != NULL);
-		memcpy(totem_config->orig_interfaces, totem_config->interfaces, sizeof (struct totem_interface) * INTERFACE_MAX);
-
-		get_interface_params(totem_config, &error_string, &warnings, 1);
-		if (put_nodelist_members_to_config (totem_config, 1, &error_string)) {
-			log_printf (LOGSYS_LEVEL_ERROR, "%s", error_string);
-		}
-		totem_volatile_config_read (totem_config, NULL);
-
-		calc_knet_ping_timers(totem_config);
-
-		log_printf(LOGSYS_LEVEL_DEBUG, "Configuration reloaded. Dumping actual totem config.");
-		debug_dump_totem_config(totem_config);
-		if (totem_volatile_config_validate(totem_config, &error_string) == -1) {
-			log_printf (LOGSYS_LEVEL_ERROR, "%s", error_string);
-			/*
-			 * TODO: Consider corosync exit and/or load defaults for volatile
-			 * values. For now, log error seems to be enough
-			 */
-		}
-
-		/* Reinstate the local_node_pos */
-		(void)find_local_node(0);
-
-		/* Reconfigure network params as appropriate */
-		totempg_reconfigure();
-
-		free(totem_config->orig_interfaces);
-
-		icmap_set_uint8("config.totemconfig_reload_in_progress", 0);
-	} else {
-		icmap_set_uint8("config.totemconfig_reload_in_progress", 1);
+	get_interface_params(totem_config, map, &error_string, &warnings, 1);
+	if (put_nodelist_members_to_config (totem_config, map, 1, &error_string)) {
+		log_printf (LOGSYS_LEVEL_ERROR, "%s", error_string);
+		return -1;
 	}
+
+	calc_knet_ping_timers(totem_config);
+
+	log_printf(LOGSYS_LEVEL_DEBUG, "Configuration reloaded. Dumping actual totem config.");
+	debug_dump_totem_config(totem_config);
+
+	/* Reinstate the local_node_pos */
+	(void)find_local_node(map, 0);
+
+	return 0;
+}
+
+void totemconfig_commit_new_params(
+	struct totem_config *totem_config,
+	icmap_map_t map)
+{
+	struct totem_interface *new_interfaces = NULL;
+
+	new_interfaces = malloc (sizeof (struct totem_interface) * INTERFACE_MAX);
+	assert(new_interfaces != NULL);
+	memcpy(new_interfaces, totem_config->interfaces, sizeof (struct totem_interface) * INTERFACE_MAX);
+
+	/* Set link parameters including local_ip */
+	configure_totem_links(totem_config, map);
+
+	/* Add & remove nodes */
+	compute_and_set_totempg_interfaces(totem_config->orig_interfaces, new_interfaces);
+
+	/* Does basic global params (like compression) */
+	totempg_reconfigure();
+
+	free(new_interfaces);
 }
 
 static void add_totem_config_notification(struct totem_config *totem_config)
@@ -2322,12 +2333,6 @@ static void add_totem_config_notification(struct totem_config *totem_config)
 	icmap_track_add("totem.",
 		ICMAP_TRACK_ADD | ICMAP_TRACK_DELETE | ICMAP_TRACK_MODIFY | ICMAP_TRACK_PREFIX,
 		totem_change_notify,
-		totem_config,
-		&icmap_track);
-
-	icmap_track_add("config.reload_in_progress",
-		ICMAP_TRACK_ADD | ICMAP_TRACK_MODIFY,
-		totem_reload_notify,
 		totem_config,
 		&icmap_track);
 }

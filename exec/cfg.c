@@ -63,6 +63,7 @@
 #include <corosync/icmap.h>
 #include <corosync/corodefs.h>
 
+#include "totemconfig.h"
 #include "service.h"
 #include "main.h"
 
@@ -668,6 +669,7 @@ static void message_handler_req_exec_cfg_reload_config (
 {
 	const struct req_exec_cfg_reload_config *req_exec_cfg_reload_config = message;
 	struct res_lib_cfg_reload_config res_lib_cfg_reload_config;
+	struct totem_config new_config;
 	icmap_map_t temp_map;
 	const char *error_string;
 	int res = CS_OK;
@@ -676,12 +678,13 @@ static void message_handler_req_exec_cfg_reload_config (
 
 	log_printf(LOGSYS_LEVEL_NOTICE, "Config reload requested by node " CS_PRI_NODE_ID, nodeid);
 
+	icmap_set_uint8("config.totemconfig_reload_in_progress", 1);
 	/*
 	 * Set up a new hashtable as a staging area.
 	 */
 	if ((res = icmap_init_r(&temp_map)) != CS_OK) {
 		log_printf(LOGSYS_LEVEL_ERROR, "Unable to create temporary icmap. config file reload cancelled\n");
-		goto reload_fini;
+		goto reload_fini_nomap;
 	}
 
 	/*
@@ -691,10 +694,10 @@ static void message_handler_req_exec_cfg_reload_config (
 	if (res == -1) {
 		log_printf (LOGSYS_LEVEL_ERROR, "Unable to reload config file: %s", error_string);
 		res = CS_ERR_LIBRARY;
-		goto reload_return;
+		goto reload_fini_nofree;
 	}
 
-	/* Tell interested listeners that we have started a reload */
+	/* Signal start of the reload process */
 	icmap_set_uint8("config.reload_in_progress", 1);
 
 	/* Detect deleted entries and remove them from the main icmap hashtable */
@@ -708,23 +711,60 @@ static void message_handler_req_exec_cfg_reload_config (
 	/* Remove entries that cannot be changed */
 	remove_ro_entries(temp_map);
 
+	/* Take a copy of the current setup so we can check what has changed */
+	memset(&new_config, 0, sizeof(new_config));
+	new_config.orig_interfaces = malloc (sizeof (struct totem_interface) * INTERFACE_MAX);
+	assert(new_config.orig_interfaces != NULL);
+
+	totempg_get_config(&new_config);
+
+	new_config.interfaces = malloc (sizeof (struct totem_interface) * INTERFACE_MAX);
+	assert(new_config.interfaces != NULL);
+	memset(new_config.interfaces, 0, sizeof (struct totem_interface) * INTERFACE_MAX);
+
+	/* Calculate new node and interface definitions */
+	if (totemconfig_configure_new_params(&new_config, temp_map) == -1) {
+		log_printf (LOGSYS_LEVEL_ERROR, "Cannot configure new interface definitons: %s\n", error_string);
+		res = -1;
+		goto reload_fini;
+	}
+
+	/* Read from temp_map into new_config */
+	totem_volatile_config_read(&new_config, temp_map, NULL);
+
+	/* Validate dynamic parameters */
+	if (totem_volatile_config_validate(&new_config, temp_map, &error_string) == -1) {
+		log_printf (LOGSYS_LEVEL_ERROR, "Configuration is not valid: %s\n", error_string);
+		res = -1;
+		goto reload_fini;
+	}
+
 	/*
 	 * Copy new keys into live config.
-	 * If this fails we will have a partially loaded config because some keys (above) might
-	 * have been reset to defaults - I'm not sure what to do here, we might have to quit.
 	 */
 	if ( (res = icmap_copy_map(icmap_get_global_map(), temp_map)) != CS_OK) {
 		log_printf (LOGSYS_LEVEL_ERROR, "Error making new config live. cmap database may be inconsistent\n");
+		res = -1;
+		goto reload_fini;
 	}
 
-	/* All done - let clients know */
-	icmap_set_uint8("config.reload_in_progress", 0);
+	/* Copy into live system */
+	totempg_put_config(&new_config);
+
+	totemconfig_commit_new_params(&new_config, temp_map);
 
 reload_fini:
+	/* All done - let clients know */
+	icmap_set_uint8("config.totemconfig_reload_in_progress", 0);
+	icmap_set_uint8("config.reload_in_progress", 0);
+
 	/* Finished with the temporary storage */
+	free(new_config.orig_interfaces);
+
+reload_fini_nofree:
 	icmap_fini_r(temp_map);
 
-reload_return:
+reload_fini_nomap:
 	/* All done, return result to the caller if it was on this system */
 	if (nodeid == api->totem_nodeid_get()) {
 		res_lib_cfg_reload_config.header.size = sizeof(res_lib_cfg_reload_config);

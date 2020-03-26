@@ -82,6 +82,7 @@ struct totem_interface {
 	struct totem_ip_address bindnet;
 	struct totem_ip_address boundto;
 	struct totem_ip_address mcast_addr;
+	struct totem_ip_address local_ip;
 	uint16_t ip_port;
 	uint16_t ttl;
 	uint8_t  configured;
