@@ -210,8 +210,10 @@ cs_error_t icmap_init_r(icmap_map_t *result)
 	}
 
         (*result)->qb_map = qb_trie_create();
-	if ((*result)->qb_map == NULL)
+	if ((*result)->qb_map == NULL) {
+		free(*result);
 		return (CS_ERR_INIT);
+	}
 
 	err = qb_map_notify_add((*result)->qb_map, NULL, icmap_map_free_cb, QB_MAP_NOTIFY_FREE, NULL);
 
