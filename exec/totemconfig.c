@@ -2273,7 +2273,7 @@ int totemconfig_configure_new_params(
 	icmap_map_t map)
 {
 	const char *error_string;
-	uint64_t warnings;
+	uint64_t warnings = 0LL;
 
 	get_interface_params(totem_config, map, &error_string, &warnings, 1);
 	if (put_nodelist_members_to_config (totem_config, map, 1, &error_string)) {
