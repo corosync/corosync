@@ -130,7 +130,7 @@ linkstatusget_do (char *interface_name, int brief)
 			transport_number = TOTEM_TRANSPORT_UDP;
 		}
 		free(str);
-        }
+	}
 
 	/* Get a list of nodes. We do it this way rather than using votequorum as cfgtool
 	 * needs to be independent of quorum type
