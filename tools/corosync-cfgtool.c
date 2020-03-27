@@ -106,6 +106,8 @@ linkstatusget_do (char *interface_name, int brief)
 	int rc = 0;
 	int len, s = 0, t;
 	char stat_ch;
+	char *str;
+        totem_transport_t transport_number = TOTEM_TRANSPORT_KNET;
 
 	printf ("Printing link status.\n");
 	result = corosync_cfg_initialize (&handle, NULL);
@@ -113,12 +115,23 @@ linkstatusget_do (char *interface_name, int brief)
 		printf ("Could not initialize corosync configuration API error %d\n", result);
 		exit (1);
 	}
-
 	result = cmap_initialize (&cmap_handle);
 	if (result != CS_OK) {
 		printf ("Could not initialize corosync cmap API error %d\n", result);
 		exit (1);
 	}
+
+	result = cmap_get_string(cmap_handle, "totem.transport", &str);
+	if (result == CS_OK) {
+		if (strcmp (str, "udpu") == 0) {
+			transport_number = TOTEM_TRANSPORT_UDPU;
+		}
+		if (strcmp (str, "udp") == 0) {
+			transport_number = TOTEM_TRANSPORT_UDP;
+		}
+		free(str);
+        }
+
 	/* Get a list of nodes. We do it this way rather than using votequorum as cfgtool
 	 * needs to be independent of quorum type
 	 */
@@ -192,7 +205,7 @@ linkstatusget_do (char *interface_name, int brief)
 				 * UDP(U) interface_status is always OK and doesn't contain
 				 * detailed information (only knet does).
 				 */
-				if ((!brief) && (strcmp(interface_status[i], "OK") != 0)) {
+				if ((!brief) && (transport_number == TOTEM_TRANSPORT_KNET)) {
 					len = strlen(interface_status[i]);
 					printf ("\tstatus:\n");
 					while (s < len) {
@@ -240,7 +253,7 @@ linkstatusget_do (char *interface_name, int brief)
 					printf ("\tstatus\t= %s\n", interface_status[i]);
 
 					/* Set return code to 1 if status is not localhost or connected. */
-					if (rc == 0) {
+					if ((rc == 0) && (transport_number == TOTEM_TRANSPORT_KNET)) {
 						len = strlen(interface_status[i]);
 						while (s < len) {
 							stat_ch = interface_status[i][s];
