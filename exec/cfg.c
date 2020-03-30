@@ -693,7 +693,7 @@ static void message_handler_req_exec_cfg_reload_config (
 	res = coroparse_configparse(temp_map, &error_string);
 	if (res == -1) {
 		log_printf (LOGSYS_LEVEL_ERROR, "Unable to reload config file: %s", error_string);
-		res = CS_ERR_LIBRARY;
+		res = CS_ERR_INVALID_PARAM;
 		goto reload_fini_nofree;
 	}
 
@@ -725,7 +725,7 @@ static void message_handler_req_exec_cfg_reload_config (
 	/* Calculate new node and interface definitions */
 	if (totemconfig_configure_new_params(&new_config, temp_map) == -1) {
 		log_printf (LOGSYS_LEVEL_ERROR, "Cannot configure new interface definitons: %s\n", error_string);
-		res = -1;
+		res = CS_ERR_INVALID_PARAM;
 		goto reload_fini;
 	}
 
@@ -735,7 +735,7 @@ static void message_handler_req_exec_cfg_reload_config (
 	/* Validate dynamic parameters */
 	if (totem_volatile_config_validate(&new_config, temp_map, &error_string) == -1) {
 		log_printf (LOGSYS_LEVEL_ERROR, "Configuration is not valid: %s\n", error_string);
-		res = -1;
+		res = CS_ERR_INVALID_PARAM;
 		goto reload_fini;
 	}
 
@@ -744,7 +744,7 @@ static void message_handler_req_exec_cfg_reload_config (
 	 */
 	if ( (res = icmap_copy_map(icmap_get_global_map(), temp_map)) != CS_OK) {
 		log_printf (LOGSYS_LEVEL_ERROR, "Error making new config live. cmap database may be inconsistent\n");
-		res = -1;
+		/* Return res from icmap */
 		goto reload_fini;
 	}
 
