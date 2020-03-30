@@ -236,7 +236,7 @@ static void totem_volatile_config_set_string_value (struct totem_config *totem_c
 	strcpy(runtime_key_name, "runtime.config.");
 	strcat(runtime_key_name, key_name);
 
-	icmap_set_string_r(map, runtime_key_name, (char *)*config_value);
+	(void)icmap_set_string_r(map, runtime_key_name, (char *)*config_value);
 }
 
 /*
