@@ -1254,7 +1254,6 @@ static int check_things_have_not_changed(struct totem_config *totem_config, cons
 
 					if (totem_config->interfaces[i].member_list[j].nodeid ==
 					    totem_config->orig_interfaces[i].member_list[k].nodeid) {
-						fprintf(stderr, "CC: Checking nodeid %d (j=%d, k=%d)\n",totem_config->interfaces[i].member_list[j].nodeid, j,k);
 
 						/* Found our nodeid - check the IP address */
 						if (memcmp(&totem_config->interfaces[i].member_list[j],
