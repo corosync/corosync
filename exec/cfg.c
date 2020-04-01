@@ -752,10 +752,10 @@ static void message_handler_req_exec_cfg_reload_config (
 	totempg_put_config(&new_config);
 
 	totemconfig_commit_new_params(&new_config, temp_map);
-	icmap_set_uint8("config.totemconfig_reload_in_progress", 0);
 
 reload_fini:
 	/* All done - let clients know */
+	icmap_set_uint8("config.totemconfig_reload_in_progress", 0);
 	icmap_set_uint8("config.reload_in_progress", 0);
 
 	/* Finished with the temporary storage */

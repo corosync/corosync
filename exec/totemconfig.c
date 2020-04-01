@@ -589,7 +589,7 @@ static int totem_get_crypto(struct totem_config *totem_config, const char **erro
 	return 0;
 }
 
-static int nodelist_byname(const char *find_name, int strip_domain)
+static int nodelist_byname(icmap_map_t map, const char *find_name, int strip_domain)
 {
 	icmap_iter_t iter;
 	const char *iter_key;
@@ -599,7 +599,7 @@ static int nodelist_byname(const char *find_name, int strip_domain)
 	char *name;
 	unsigned int namelen;
 
-	iter = icmap_iter_init("nodelist.node.");
+	iter = icmap_iter_init_r(map, "nodelist.node.");
 	while ((iter_key = icmap_iter_next(iter, NULL, NULL)) != NULL) {
 		res = sscanf(iter_key, "nodelist.node.%u.%s", &node_pos, name_str);
 		if (res != 2) {
@@ -609,7 +609,7 @@ static int nodelist_byname(const char *find_name, int strip_domain)
 		if (strcmp(name_str, "name") && strcmp(name_str, "ring0_addr")) {
 			continue;
 		}
-		if (icmap_get_string(iter_key, &name) != CS_OK) {
+		if (icmap_get_string_r(map, iter_key, &name) != CS_OK) {
 			continue;
 		}
 		namelen = strlen(name);
@@ -662,7 +662,7 @@ static int ipaddr_equal(const struct sockaddr *addr1, const struct sockaddr *add
 /* Finds the local node and returns its position in the nodelist.
  * Uses nodelist.local_node_pos as a cache to save effort
  */
-static int find_local_node(int use_cache)
+static int find_local_node(icmap_map_t map, int use_cache)
 {
 	char nodename2[PATH_MAX];
 	char name_str[ICMAP_KEYNAME_MAXLEN];
@@ -692,7 +692,7 @@ static int find_local_node(int use_cache)
 	node = utsname.nodename;
 
 	/* 1. Exact match */
-	node_pos = nodelist_byname(node, 0);
+	node_pos = nodelist_byname(map, node, 0);
 	if (node_pos > -1) {
 		found = 1;
 		goto ret_found;
@@ -706,7 +706,7 @@ static int find_local_node(int use_cache)
 	while (dot) {
 		*dot = '\0';
 
-		node_pos = nodelist_byname(nodename2, 0);
+		node_pos = nodelist_byname(map, nodename2, 0);
 		if (node_pos > -1) {
 			found = 1;
 			goto ret_found;
@@ -714,7 +714,7 @@ static int find_local_node(int use_cache)
 		dot = strrchr(nodename2, '.');
 	}
 
-	node_pos = nodelist_byname(nodename2, 1);
+	node_pos = nodelist_byname(map, nodename2, 1);
 	if (node_pos > -1) {
 		found = 1;
 		goto ret_found;
@@ -751,7 +751,7 @@ static int find_local_node(int use_cache)
 				nodename2, sizeof(nodename2),
 				NULL, 0, 0) == 0) {
 
-			node_pos = nodelist_byname(nodename2, 0);
+			node_pos = nodelist_byname(map, nodename2, 0);
 			if (node_pos > -1) {
 				found = 1;
 				goto out;
@@ -762,7 +762,7 @@ static int find_local_node(int use_cache)
 			if (dot) {
 				*dot = '\0';
 
-				node_pos = nodelist_byname(nodename2, 0);
+				node_pos = nodelist_byname(map, nodename2, 0);
 				if (node_pos > -1) {
 					found = 1;
 					goto out;
@@ -776,7 +776,7 @@ static int find_local_node(int use_cache)
 				NULL, 0, NI_NUMERICHOST))
 			continue;
 
-		node_pos = nodelist_byname(nodename2, 0);
+		node_pos = nodelist_byname(map, nodename2, 0);
 		if (node_pos > -1) {
 			found = 1;
 			goto out;
@@ -802,7 +802,7 @@ static int find_local_node(int use_cache)
 	 * and use it as last.
 	 */
 
-	iter = icmap_iter_init("nodelist.node.");
+	iter = icmap_iter_init_r(map, "nodelist.node.");
 	while ((iter_key = icmap_iter_next(iter, NULL, NULL)) != NULL) {
 		char *dbnodename = NULL;
 		struct addrinfo hints;
@@ -818,7 +818,7 @@ static int find_local_node(int use_cache)
 		if (strcmp(name_str, "name") && strcmp(name_str, "ring0_addr")) {
 			continue;
 		}
-		if (icmap_get_string(iter_key, &dbnodename) != CS_OK) {
+		if (icmap_get_string_r(map, iter_key, &dbnodename) != CS_OK) {
 			continue;
 		}
 
@@ -851,7 +851,7 @@ out2:
 
 ret_found:
 	if (found) {
-		res = icmap_set_uint32("nodelist.local_node_pos", node_pos);
+		res = icmap_set_uint32_r(map, "nodelist.local_node_pos", node_pos);
 	}
 
 	return node_pos;
@@ -1178,7 +1178,7 @@ static void configure_link_params(struct totem_config *totem_config, icmap_map_t
 	char tmp_key[ICMAP_KEYNAME_MAXLEN];
 	char *addr_string;
 	int err;
-	int local_node_pos = find_local_node(0);
+	int local_node_pos = find_local_node(map, 0);
 
 	for (i = 0; i<INTERFACE_MAX; i++) {
 		if (!totem_config->interfaces[i].configured) {
@@ -1231,9 +1231,9 @@ static void configure_totem_links(struct totem_config *totem_config, icmap_map_t
 }
 
 /* Check for differences in config that can't be done on-the-fly and print an error */
-static int check_things_have_not_changed(struct totem_config *totem_config)
+static int check_things_have_not_changed(struct totem_config *totem_config, const char **error_string)
 {
-	int i,j;
+	int i,j,k;
 	const char *ip_str;
 	char addr_buf[INET6_ADDRSTRLEN];
 	int changed = 0;
@@ -1247,21 +1247,32 @@ static int check_things_have_not_changed(struct totem_config *totem_config)
 					   "New config has different knet transport for link %d. Internal value was NOT changed.\n", i);
 				changed = 1;
 			}
-			for (j=0; j < min(totem_config->interfaces[i].member_count, totem_config->orig_interfaces[i].member_count); j++) {
-				if (memcmp(&totem_config->interfaces[i].member_list[j],
-					   &totem_config->orig_interfaces[i].member_list[j],
-					   sizeof(struct totem_ip_address))) {
 
-					ip_str = totemip_print(&totem_config->orig_interfaces[i].member_list[j]);
+			/* Check each nodeid in the new configuration and make sure its IP address on this link has not changed */
+			for (j=0; j < totem_config->interfaces[i].member_count; j++) {
+				for (k=0; k < totem_config->orig_interfaces[i].member_count; k++) {
 
-					/* if ip_str is NULL then the old address was invalid and is allowed to change */
-					if (ip_str) {
-						strncpy(addr_buf, ip_str, sizeof(addr_buf));
-						addr_buf[sizeof(addr_buf) - 1] = '\0';
-						log_printf(LOGSYS_LEVEL_ERROR,
-							   "new config has different address for link %d (addr changed from %s to %s). Internal value was NOT changed.\n",
-							   i, addr_buf, totemip_print(&totem_config->interfaces[i].member_list[j]));
-						changed = 1;
+					if (totem_config->interfaces[i].member_list[j].nodeid ==
+					    totem_config->orig_interfaces[i].member_list[k].nodeid) {
+						fprintf(stderr, "CC: Checking nodeid %d (j=%d, k=%d)\n",totem_config->interfaces[i].member_list[j].nodeid, j,k);
+
+						/* Found our nodeid - check the IP address */
+						if (memcmp(&totem_config->interfaces[i].member_list[j],
+							   &totem_config->orig_interfaces[i].member_list[k],
+							   sizeof(struct totem_ip_address))) {
+
+							ip_str = totemip_print(&totem_config->orig_interfaces[i].member_list[k]);
+
+							/* if ip_str is NULL then the old address was invalid and is allowed to change */
+							if (ip_str) {
+								strncpy(addr_buf, ip_str, sizeof(addr_buf));
+								addr_buf[sizeof(addr_buf) - 1] = '\0';
+								log_printf(LOGSYS_LEVEL_ERROR,
+									   "new config has different address for link %d (addr changed from %s to %s). Internal value was NOT changed.\n",
+									   i, addr_buf, totemip_print(&totem_config->interfaces[i].member_list[j]));
+								changed = 1;
+							}
+						}
 					}
 				}
 			}
@@ -1269,7 +1280,9 @@ static int check_things_have_not_changed(struct totem_config *totem_config)
 	}
 
 	if (changed) {
-		log_printf(LOGSYS_LEVEL_ERROR, "To reconfigure an interface it must be deleted and recreated. A working interface needs to be available to corosync at all times");
+		snprintf (error_string_response, sizeof(error_string_response),
+			  "To reconfigure an interface it must be deleted and recreated. A working interface needs to be available to corosync at all times");
+		*error_string = error_string_response;
 		return -1;
 	}
 	return 0;
@@ -1386,14 +1399,14 @@ static int put_nodelist_members_to_config(struct totem_config *totem_config, icm
 	if (reload) {
 		log_printf(LOGSYS_LEVEL_DEBUG, "About to reconfigure links from nodelist.\n");
 
-		if (check_things_have_not_changed(totem_config) == -1) {
+		if (check_things_have_not_changed(totem_config, error_string) == -1) {
 			return -1;
 		}
 	}
 	return 0;
 }
 
-static void config_convert_nodelist_to_interface(struct totem_config *totem_config)
+static void config_convert_nodelist_to_interface(icmap_map_t map, struct totem_config *totem_config)
 {
 	int res = 0;
 	int node_pos;
@@ -1404,25 +1417,25 @@ static void config_convert_nodelist_to_interface(struct totem_config *totem_conf
 	icmap_iter_t iter;
 	const char *iter_key;
 
-	node_pos = find_local_node(1);
+	node_pos = find_local_node(map, 1);
 	if (node_pos > -1) {
 		/*
 		 * We found node, so create interface section
 		 */
 		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "nodelist.node.%u.", node_pos);
-		iter = icmap_iter_init(tmp_key);
+		iter = icmap_iter_init_r(map, tmp_key);
 		while ((iter_key = icmap_iter_next(iter, NULL, NULL)) != NULL) {
 			res = sscanf(iter_key, "nodelist.node.%u.ring%u%s", &node_pos, &linknumber, tmp_key2);
 			if (res != 3 || strcmp(tmp_key2, "_addr") != 0) {
 				continue ;
 			}
 
-			if (icmap_get_string(iter_key, &node_addr_str) != CS_OK) {
+			if (icmap_get_string_r(map, iter_key, &node_addr_str) != CS_OK) {
 				continue;
 			}
 
 			snprintf(tmp_key2, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.bindnetaddr", linknumber);
-			icmap_set_string(tmp_key2, node_addr_str);
+			icmap_set_string_r(map, tmp_key2, node_addr_str);
 			free(node_addr_str);
 		}
 		icmap_iter_finalize(iter);
@@ -1759,7 +1772,7 @@ extern int totem_config_read (
 		/*
 		 * We were not able to find ring 0 bindnet addr. Try to use nodelist informations
 		 */
-		config_convert_nodelist_to_interface(totem_config);
+		config_convert_nodelist_to_interface(icmap_get_global_map(), totem_config);
 	} else {
 		if (icmap_get_string("nodelist.node.0.ring0_addr", &ring0_addr_str) == CS_OK) {
 			/*
@@ -1768,7 +1781,7 @@ extern int totem_config_read (
 			 */
 			*warnings |= TOTEM_CONFIG_BINDNETADDR_NODELIST_SET;
 
-			config_convert_nodelist_to_interface(totem_config);
+			config_convert_nodelist_to_interface(icmap_get_global_map(), totem_config);
 
 			free(ring0_addr_str);
 		}
@@ -1829,7 +1842,7 @@ extern int totem_config_read (
 		/*
 		 * find local node
 		 */
-		local_node_pos = find_local_node(1);
+		local_node_pos = find_local_node(icmap_get_global_map(), 1);
 		if (local_node_pos != -1) {
 
 			snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "nodelist.node.%u.nodeid", local_node_pos);
@@ -2287,7 +2300,7 @@ int totemconfig_configure_new_params(
 	debug_dump_totem_config(totem_config);
 
 	/* Reinstate the local_node_pos */
-	(void)find_local_node(0);
+	(void)find_local_node(map, 0);
 
 	return 0;
 }
