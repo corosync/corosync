@@ -723,8 +723,8 @@ static void message_handler_req_exec_cfg_reload_config (
 	memset(new_config.interfaces, 0, sizeof (struct totem_interface) * INTERFACE_MAX);
 
 	/* Calculate new node and interface definitions */
-	if (totemconfig_configure_new_params(&new_config, temp_map) == -1) {
-		log_printf (LOGSYS_LEVEL_ERROR, "Cannot configure new interface definitons: %s\n", error_string);
+	if (totemconfig_configure_new_params(&new_config, temp_map, &error_string) == -1) {
+		log_printf (LOGSYS_LEVEL_ERROR, "Cannot configure new interface definitions: %s\n", error_string);
 		res = CS_ERR_INVALID_PARAM;
 		goto reload_fini;
 	}
@@ -755,6 +755,7 @@ static void message_handler_req_exec_cfg_reload_config (
 
 reload_fini:
 	/* All done - let clients know */
+	icmap_set_int32("config.reload_status", res);
 	icmap_set_uint8("config.totemconfig_reload_in_progress", 0);
 	icmap_set_uint8("config.reload_in_progress", 0);
 

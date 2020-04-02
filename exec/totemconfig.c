@@ -2282,14 +2282,13 @@ static void totem_change_notify(
 
 int totemconfig_configure_new_params(
 	struct totem_config *totem_config,
-	icmap_map_t map)
+	icmap_map_t map,
+	const char **error_string)
 {
-	const char *error_string;
 	uint64_t warnings = 0LL;
 
-	get_interface_params(totem_config, map, &error_string, &warnings, 1);
-	if (put_nodelist_members_to_config (totem_config, map, 1, &error_string)) {
-		log_printf (LOGSYS_LEVEL_ERROR, "%s", error_string);
+	get_interface_params(totem_config, map, error_string, &warnings, 1);
+	if (put_nodelist_members_to_config (totem_config, map, 1, error_string)) {
 		return -1;
 	}
 
