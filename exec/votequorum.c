@@ -1573,6 +1573,7 @@ static void votequorum_refresh_config(
 	int old_votes, old_expected_votes;
 	uint8_t reloading;
 	uint8_t cancel_wfa;
+	int32_t reload_status;
 
 	ENTER();
 
@@ -1581,7 +1582,14 @@ static void votequorum_refresh_config(
 	 * can reconfigure it all atomically
 	 */
 	if (icmap_get_uint8("config.totemconfig_reload_in_progress", &reloading) == CS_OK && reloading) {
-		return ;
+		return;
+	}
+
+	/* If a full reload failed, then don't reconfigure */
+	if ( (strcmp(key_name, "config.totemconfig_reload_in_progress") == 0) &&
+	     (icmap_get_int32("config.reload_status", &reload_status) == CS_OK) &&
+	     (reload_status != CS_OK) ) {
+		return;
 	}
 
 	(void)icmap_get_uint8("quorum.cancel_wait_for_all", &cancel_wfa);
