@@ -210,12 +210,12 @@ static void totem_volatile_config_set_string_value (struct totem_config *totem_c
 	const char *key_name, const char *deleted_key, const char *default_value)
 {
 	char runtime_key_name[ICMAP_KEYNAME_MAXLEN];
-	void **config_value;
+	void **config_value = NULL; /* compiler placation */
 	void *old_config_ptr;
 
 	config_value = totem_get_param_by_name(totem_config, key_name);
 	old_config_ptr = *config_value;
-	if (icmap_get_string_r(map, key_name, (char **)config_value) != CS_OK ||
+	if (icmap_get_string(key_name, (char **)config_value) != CS_OK ||
 	    (deleted_key != NULL && strcmp(deleted_key, key_name) == 0)) {
 
 		/* Need to strdup() here so that the free() below works for a default and a configured value */
@@ -364,11 +364,13 @@ int totem_volatile_config_validate (
 	icmap_map_t temp_map,
 	const char **error_string)
 {
+	/* Static just to keep them off the stack */
 	static char local_error_reason[512];
+	static char addr_str_buf[INET6_ADDRSTRLEN];
 	const char *error_reason = local_error_reason;
 	char name_key[ICMAP_KEYNAME_MAXLEN];
 	char *name_str;
-	int i, num_configured, members;
+	int i, j, num_configured, members;
 	uint32_t tmp_config_value;
 
 	if (totem_config->max_network_delay < MINIMUM_TIMEOUT) {
@@ -484,6 +486,27 @@ int totem_volatile_config_validate (
 				snprintf (local_error_reason, sizeof(local_error_reason),
 					  "Not all nodes have the same number of links");
 				goto parse_error;
+			}
+		}
+	}
+
+	/* Verify that all nodes on the same link have the same IP family */
+	for (i=0; i < INTERFACE_MAX; i++) {
+		for (j=1; j<totem_config->interfaces[i].member_count; j++) {
+			if (totem_config->interfaces[i].configured) {
+				if (totem_config->interfaces[i].member_list[j].family !=
+				    totem_config->interfaces[i].member_list[0].family) {
+					memcpy(addr_str_buf,
+					    totemip_print(&(totem_config->interfaces[i].member_list[j])),
+					    sizeof(addr_str_buf));
+
+					snprintf (local_error_reason, sizeof(local_error_reason),
+						  "Nodes for link %d have different IP families "
+						  "(compared %s with %s)", i,
+						  addr_str_buf,
+						  totemip_print(&(totem_config->interfaces[i].member_list[0])));
+					goto parse_error;
+				}
 			}
 		}
 	}
@@ -1905,9 +1928,8 @@ int totem_config_validate (
 {
 	static char local_error_reason[512];
 	char parse_error[512];
-	static char addr_str_buf[INET6_ADDRSTRLEN];
 	const char *error_reason = local_error_reason;
-	int i,j;
+	int i;
 	uint32_t u32;
 	int num_configured = 0;
 	unsigned int interface_max = INTERFACE_MAX;
@@ -1988,24 +2010,6 @@ int totem_config_validate (
 			if (totemip_is_mcast (&totem_config->interfaces[i].mcast_addr) != 0) {
 				error_reason = "mcastaddr is not a correct multicast address.";
 				goto parse_error;
-			}
-		}
-		/* Verify that all nodes on the same knet link have the same IP family */
-		for (j=1; j<totem_config->interfaces[i].member_count; j++) {
-			if (totem_config->interfaces[i].configured) {
-				if (totem_config->interfaces[i].member_list[j].family !=
-				    totem_config->interfaces[i].member_list[0].family) {
-					memcpy(addr_str_buf,
-					    totemip_print(&(totem_config->interfaces[i].member_list[j])),
-					    sizeof(addr_str_buf));
-
-					snprintf (local_error_reason, sizeof(local_error_reason),
-						  "Nodes for link %d have different IP families "
-						  "(compared %s with %s)", i,
-						  addr_str_buf,
-						  totemip_print(&(totem_config->interfaces[i].member_list[0])));
-					goto parse_error;
-				}
 			}
 		}
 	}
