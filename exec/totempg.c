@@ -1599,7 +1599,10 @@ void totempg_get_config(struct totem_config *config)
 
 void totempg_put_config(struct totem_config *config)
 {
-	/* Free this before we overwite the pointer */
-	free(totempg_totem_config->interfaces);
+	struct totem_interface *temp_if = totempg_totem_config->interfaces;
+
+	/* Preseve the existing interfaces[] array as transports might have pointers saved */
+	memcpy(totempg_totem_config->interfaces, config->interfaces, sizeof(struct totem_interface) * INTERFACE_MAX);
 	memcpy(totempg_totem_config, config, sizeof(struct totem_config));
+	totempg_totem_config->interfaces = temp_if;
 }
