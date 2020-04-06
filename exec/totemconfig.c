@@ -210,18 +210,14 @@ static void totem_volatile_config_set_string_value (struct totem_config *totem_c
 	const char *key_name, const char *deleted_key, const char *default_value)
 {
 	char runtime_key_name[ICMAP_KEYNAME_MAXLEN];
-	void **config_value = NULL; /* compiler placation */
-	void *old_config_ptr;
+	const void **config_value;
 
 	config_value = totem_get_param_by_name(totem_config, key_name);
-	old_config_ptr = *config_value;
 	if (icmap_get_string(key_name, (char **)config_value) != CS_OK ||
 	    (deleted_key != NULL && strcmp(deleted_key, key_name) == 0)) {
 
-		/* Need to strdup() here so that the free() below works for a default and a configured value */
-		*config_value = strdup(default_value);
+		*config_value = default_value;
 	}
-	free(old_config_ptr);
 
 	/*
 	 * Store totem_config value to cmap runtime section
