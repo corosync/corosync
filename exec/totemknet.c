@@ -1477,17 +1477,15 @@ int totemknet_reconfigure (
 	struct knet_handle_compress_cfg compress_cfg;
 	int res = 0;
 
-	if (totem_config->knet_compression_model) {
-		assert(strlen(totem_config->knet_compression_model) < sizeof(compress_cfg.compress_model));
-		strcpy(compress_cfg.compress_model, totem_config->knet_compression_model);
+	assert(strlen(totem_config->knet_compression_model) < sizeof(compress_cfg.compress_model));
+	strcpy(compress_cfg.compress_model, totem_config->knet_compression_model);
 
-		compress_cfg.compress_threshold = totem_config->knet_compression_threshold;
-		compress_cfg.compress_level = totem_config->knet_compression_level;
+	compress_cfg.compress_threshold = totem_config->knet_compression_threshold;
+	compress_cfg.compress_level = totem_config->knet_compression_level;
 
-		res = knet_handle_compress(instance->knet_handle, &compress_cfg);
-		if (res) {
-			KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_ERROR, "knet_handle_compress failed");
-		}
+	res = knet_handle_compress(instance->knet_handle, &compress_cfg);
+	if (res) {
+		KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_ERROR, "knet_handle_compress failed");
 	}
 
 #ifdef HAVE_LIBNOZZLE
