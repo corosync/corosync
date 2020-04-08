@@ -139,7 +139,7 @@ static void *totem_get_param_by_name(struct totem_config *totem_config, const ch
 	if (strcmp(param_name, "totem.knet_compression_level") == 0)
 		return &totem_config->knet_compression_level;
 	if (strcmp(param_name, "totem.knet_compression_model") == 0)
-		return &totem_config->knet_compression_model;
+		return totem_config->knet_compression_model;
 	if (strcmp(param_name, "totem.block_unlisted_ips") == 0)
 		return &totem_config->block_unlisted_ips;
 
@@ -210,13 +210,17 @@ static void totem_volatile_config_set_string_value (struct totem_config *totem_c
 	const char *key_name, const char *deleted_key, const char *default_value)
 {
 	char runtime_key_name[ICMAP_KEYNAME_MAXLEN];
-	const void **config_value;
+	const void *config_value;
+	const char *new_config_value;
 
 	config_value = totem_get_param_by_name(totem_config, key_name);
-	if (icmap_get_string(key_name, (char **)config_value) != CS_OK ||
+
+	if (icmap_get_string_r(map, key_name, (char **)&new_config_value) != CS_OK ||
 	    (deleted_key != NULL && strcmp(deleted_key, key_name) == 0)) {
 
-		*config_value = default_value;
+		strcpy((char *)config_value, default_value);
+	} else {
+		strncpy((char *)config_value, new_config_value, CONFIG_STRING_LEN_MAX);
 	}
 
 	/*
@@ -232,7 +236,7 @@ static void totem_volatile_config_set_string_value (struct totem_config *totem_c
 	strcpy(runtime_key_name, "runtime.config.");
 	strcat(runtime_key_name, key_name);
 
-	(void)icmap_set_string_r(map, runtime_key_name, (char *)*config_value);
+	(void)icmap_set_string_r(map, runtime_key_name, (char *)config_value);
 }
 
 /*
@@ -597,13 +601,9 @@ static int totem_get_crypto(struct totem_config *totem_config, const char **erro
 		return -1;
 	}
 
-	free(totem_config->crypto_cipher_type);
-	free(totem_config->crypto_hash_type);
-	free(totem_config->crypto_model);
-
-	totem_config->crypto_cipher_type = strdup(tmp_cipher);
-	totem_config->crypto_hash_type = strdup(tmp_hash);
-	totem_config->crypto_model = strdup(tmp_model);
+	strncpy(totem_config->crypto_cipher_type, tmp_cipher, CONFIG_STRING_LEN_MAX);
+	strncpy(totem_config->crypto_hash_type, tmp_hash, CONFIG_STRING_LEN_MAX);
+	strncpy(totem_config->crypto_model, tmp_model, CONFIG_STRING_LEN_MAX);
 
 	return 0;
 }

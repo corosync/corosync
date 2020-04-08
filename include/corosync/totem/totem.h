@@ -51,6 +51,7 @@
 
 #define FRAME_SIZE_MAX		KNET_MAX_PACKET_SIZE
 
+#define CONFIG_STRING_LEN_MAX   128
 /*
  * Estimation of required buffer size for totemudp and totemudpu - it should be at least
  *   sizeof(memb_join) + PROCESSOR_MAX * 2 * sizeof(srp_addr))
@@ -212,17 +213,15 @@ struct totem_config {
 
 	unsigned int max_messages;
 
-	const char *vsf_type;
-
 	unsigned int broadcast_use;
 
-	char *crypto_model;
+	char crypto_model[CONFIG_STRING_LEN_MAX];
 
-	char *crypto_cipher_type;
+	char crypto_cipher_type[CONFIG_STRING_LEN_MAX];
 
-	char *crypto_hash_type;
+	char crypto_hash_type[CONFIG_STRING_LEN_MAX];
 
-	char *knet_compression_model;
+	char knet_compression_model[CONFIG_STRING_LEN_MAX];
 
 	uint32_t knet_compression_threshold;
 
