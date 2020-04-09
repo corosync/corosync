@@ -210,17 +210,23 @@ static void totem_volatile_config_set_string_value (struct totem_config *totem_c
 	const char *key_name, const char *deleted_key, const char *default_value)
 {
 	char runtime_key_name[ICMAP_KEYNAME_MAXLEN];
+	int res;
+	char *new_config_value;
 	const void *config_value;
-	const char *new_config_value;
 
 	config_value = totem_get_param_by_name(totem_config, key_name);
 
-	if (icmap_get_string_r(map, key_name, (char **)&new_config_value) != CS_OK ||
+	res = icmap_get_string_r(map, key_name, (char **)&new_config_value);
+	if (res != CS_OK ||
 	    (deleted_key != NULL && strcmp(deleted_key, key_name) == 0)) {
 
-		strcpy((char *)config_value, default_value);
+		/* Slightly pointless use of strncpy but it keeps coverity happy */
+		strncpy((char *)config_value, default_value, CONFIG_STRING_LEN_MAX);
 	} else {
 		strncpy((char *)config_value, new_config_value, CONFIG_STRING_LEN_MAX);
+	}
+	if (res == CS_OK) {
+		free(new_config_value);
 	}
 
 	/*
