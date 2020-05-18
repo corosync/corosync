@@ -303,7 +303,7 @@ int main (int argc, char *argv[]) {
 	int opt;
 	unsigned int nodeid;
 	char *fgets_res;
-	struct cpg_address member_list[64];
+	struct cpg_address member_list[CPG_MEMBERS_MAX];
 	int member_list_entries;
 	int i;
 	int recnt;
