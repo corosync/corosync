@@ -858,7 +858,7 @@ static void timer_function_scheduler_timeout (void *data)
 		    (float)tv_diff / QB_TIME_NS_IN_MSEC, (float)timeout_data->max_tv_diff / QB_TIME_NS_IN_MSEC);
 
 		icmap_set_float("runtime.schedmiss.delay", (float)tv_diff / QB_TIME_NS_IN_MSEC);
-		icmap_set_uint64("runtime.schedmiss.timestamp", qb_util_nano_from_epoch_get() / QB_TIME_NS_IN_MSEC);
+		icmap_set_uint64("runtime.schedmiss.timestamp", schedmiss_event_tstamp);
 	}
 
 	/*

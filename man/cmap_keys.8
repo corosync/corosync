@@ -256,13 +256,15 @@ Status of the processor. Can be one of joined and left.
 Config version of the member node.
 
 .TP
-runtime.schedmiss.timestamp
-The timestamp of the last time when corosync failed to be scheduled
-for the required amount of time. The even is warned in syslog but this
-is easier to find. The time is milli-seconds since the epoch.
+runtime.schedmiss.*
+If corosync is not scheduled after the required period of time it will
+log this event and also write an entry to cmap under following keys:
 
-.B
-runtime.schedmiss.delay
+.B timestamp
+The timestamp of the last time when corosync failed to be scheduled
+for the required amount of time. The time is milli-seconds since the epoch.
+
+.B delay
 The amount of time (milliseconds as a float) that corosync was delayed.
 
 .TP
