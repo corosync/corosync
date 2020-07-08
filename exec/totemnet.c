@@ -153,6 +153,11 @@ struct transport {
 		void *net_context,
 		struct totem_config *totem_config);
 
+	int (*crypto_reconfigure_phase) (
+		void *net_context,
+		struct totem_config *totem_config,
+		cfg_message_crypto_reconfig_phase_t phase);
+
 	void (*stats_clear) (
 		void *net_context);
 };
@@ -179,7 +184,8 @@ struct transport transport_entries[] = {
 		.recv_mcast_empty = totemudp_recv_mcast_empty,
 		.member_add = totemudp_member_add,
 		.member_remove = totemudp_member_remove,
-		.reconfigure = totemudp_reconfigure
+		.reconfigure = totemudp_reconfigure,
+		.crypto_reconfigure_phase = NULL
 	},
 	{
 		.name = "UDP/IP Unicast",
@@ -202,7 +208,8 @@ struct transport transport_entries[] = {
 		.recv_mcast_empty = totemudpu_recv_mcast_empty,
 		.member_add = totemudpu_member_add,
 		.member_remove = totemudpu_member_remove,
-		.reconfigure = totemudpu_reconfigure
+		.reconfigure = totemudpu_reconfigure,
+		.crypto_reconfigure_phase = NULL
 	},
 	{
 		.name = "Kronosnet",
@@ -226,6 +233,7 @@ struct transport transport_entries[] = {
 		.member_add = totemknet_member_add,
 		.member_remove = totemknet_member_remove,
 		.reconfigure = totemknet_reconfigure,
+		.crypto_reconfigure_phase = totemknet_crypto_reconfigure_phase,
 		.stats_clear = totemknet_stats_clear
 	}
 };
@@ -568,6 +576,22 @@ int totemnet_reconfigure (
 			instance->transport_context,
 			totem_config);
 
+	return (res);
+}
+
+int totemnet_crypto_reconfigure_phase (
+	void *net_context,
+	struct totem_config *totem_config,
+	cfg_message_crypto_reconfig_phase_t phase)
+{
+	struct totemnet_instance *instance = (struct totemnet_instance *)net_context;
+	unsigned int res = 0;
+
+	if (instance->transport->crypto_reconfigure_phase) {
+		res = instance->transport->crypto_reconfigure_phase (
+			instance->transport_context,
+			totem_config, phase);
+	}
 	return (res);
 }
 

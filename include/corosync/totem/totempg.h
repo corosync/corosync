@@ -192,6 +192,8 @@ extern void totempg_trans_ack (void);
 
 extern int totempg_reconfigure (void);
 
+extern int totempg_crypto_reconfigure_phase (cfg_message_crypto_reconfig_phase_t phase);
+
 extern void totempg_force_gather (void);
 
 extern void totempg_get_config(struct totem_config *config);

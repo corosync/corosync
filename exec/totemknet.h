@@ -143,6 +143,11 @@ extern int totemknet_reconfigure (
 	void *knet_context,
 	struct totem_config *totem_config);
 
+extern int totemknet_crypto_reconfigure_phase (
+	void *knet_context,
+	struct totem_config *totem_config,
+	cfg_message_crypto_reconfig_phase_t phase);
+
 extern void totemknet_stats_clear (
 	void *knet_context);
 

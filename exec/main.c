@@ -1380,12 +1380,6 @@ int main (int argc, char **argv, char **envp)
 		log_printf (LOGSYS_LEVEL_WARNING, "Please migrate config file to nodelist.");
 	}
 
-	res = totem_config_keyread (&totem_config, &error_string);
-	if (res == -1) {
-		log_printf (LOGSYS_LEVEL_ERROR, "%s", error_string);
-		corosync_exit_error (COROSYNC_DONE_MAINCONFIGREAD);
-	}
-
 	res = totem_config_validate (&totem_config, &error_string);
 	if (res == -1) {
 		log_printf (LOGSYS_LEVEL_ERROR, "%s", error_string);

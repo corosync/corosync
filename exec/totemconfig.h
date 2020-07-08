@@ -58,6 +58,7 @@ extern int totem_config_validate (
 
 extern int totem_config_keyread (
 	struct totem_config *totem_config,
+	icmap_map_t map,
 	const char **error_string);
 
 extern int totem_config_find_local_addr_in_nodelist(
@@ -65,11 +66,15 @@ extern int totem_config_find_local_addr_in_nodelist(
 	const char *ipaddr_key_prefix,
 	unsigned int *node_pos);
 
-
 extern void totem_volatile_config_read(
 	struct totem_config *totem_config,
 	icmap_map_t temp_map,
 	const char *deleted_key);
+
+extern int totem_reread_crypto_config(
+	struct totem_config *totem_config,
+	icmap_map_t map,
+	const char **error_string);
 
 extern int totem_volatile_config_validate(
 	struct totem_config *totem_config,

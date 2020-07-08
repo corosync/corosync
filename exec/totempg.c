@@ -1561,6 +1561,11 @@ extern int totempg_reconfigure (void)
 	return totemsrp_reconfigure (totemsrp_context, totempg_totem_config);
 }
 
+extern int totempg_crypto_reconfigure_phase (cfg_message_crypto_reconfig_phase_t phase)
+{
+	return totemsrp_crypto_reconfigure_phase (totemsrp_context, totempg_totem_config, phase);
+}
+
 extern void totempg_stats_clear (int flags)
 {
 	if (flags & TOTEMPG_STATS_CLEAR_TOTEM) {

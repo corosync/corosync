@@ -527,7 +527,7 @@ parse_error:
 
 }
 
-static int totem_get_crypto(struct totem_config *totem_config, const char **error_string)
+static int totem_get_crypto(struct totem_config *totem_config, icmap_map_t map, const char **error_string)
 {
 	char *str;
 	const char *tmp_cipher;
@@ -538,7 +538,7 @@ static int totem_get_crypto(struct totem_config *totem_config, const char **erro
 	tmp_cipher = "none";
 	tmp_model = "none";
 
-	if (icmap_get_string("totem.crypto_model", &str) == CS_OK) {
+	if (icmap_get_string_r(map, "totem.crypto_model", &str) == CS_OK) {
 		if (strcmp(str, "nss") == 0) {
 			tmp_model = "nss";
 		}
@@ -550,7 +550,7 @@ static int totem_get_crypto(struct totem_config *totem_config, const char **erro
 		tmp_model = "nss";
 	}
 
-	if (icmap_get_string("totem.secauth", &str) == CS_OK) {
+	if (icmap_get_string_r(map, "totem.secauth", &str) == CS_OK) {
 		if (strcmp(str, "on") == 0) {
 			tmp_cipher = "aes256";
 			tmp_hash = "sha256";
@@ -558,7 +558,7 @@ static int totem_get_crypto(struct totem_config *totem_config, const char **erro
 		free(str);
 	}
 
-	if (icmap_get_string("totem.crypto_cipher", &str) == CS_OK) {
+	if (icmap_get_string_r(map, "totem.crypto_cipher", &str) == CS_OK) {
 		if (strcmp(str, "none") == 0) {
 			tmp_cipher = "none";
 		}
@@ -574,7 +574,7 @@ static int totem_get_crypto(struct totem_config *totem_config, const char **erro
 		free(str);
 	}
 
-	if (icmap_get_string("totem.crypto_hash", &str) == CS_OK) {
+	if (icmap_get_string_r(map, "totem.crypto_hash", &str) == CS_OK) {
 		if (strcmp(str, "none") == 0) {
 			tmp_hash = "none";
 		}
@@ -606,6 +606,12 @@ static int totem_get_crypto(struct totem_config *totem_config, const char **erro
 		*error_string = "crypto_model should be 'nss' or 'openssl'";
 		return -1;
 	}
+
+	if (strcmp(tmp_cipher, totem_config->crypto_cipher_type) ||
+	    strcmp(tmp_hash, totem_config->crypto_hash_type) ||
+	    strcmp(tmp_model, totem_config->crypto_model)) {
+		totem_config->crypto_changed = 1;
+	    }
 
 	strncpy(totem_config->crypto_cipher_type, tmp_cipher, CONFIG_STRING_LEN_MAX);
 	strncpy(totem_config->crypto_hash_type, tmp_hash, CONFIG_STRING_LEN_MAX);
@@ -1761,9 +1767,15 @@ extern int totem_config_read (
 
 	icmap_get_uint32("totem.version", (uint32_t *)&totem_config->version);
 
-	if (totem_get_crypto(totem_config, error_string) != 0) {
+	/* initial crypto load */
+	if (totem_get_crypto(totem_config, icmap_get_global_map(), error_string) != 0) {
 		return -1;
 	}
+	if (totem_config_keyread(totem_config, icmap_get_global_map(), error_string) != 0) {
+		return -1;
+	}
+	totem_config->crypto_index = 1;
+	totem_config->crypto_changed = 0;
 
 	if (icmap_get_string("totem.link_mode", &str) == CS_OK) {
 		if (strlen(str) >= TOTEM_LINK_MODE_BYTES) {
@@ -2134,12 +2146,19 @@ parse_error:
 
 int totem_config_keyread (
 	struct totem_config *totem_config,
+	icmap_map_t map,
 	const char **error_string)
 {
 	int got_key = 0;
 	char *key_location = NULL;
 	int res;
 	size_t key_len;
+	char old_key[TOTEM_PRIVATE_KEY_LEN_MAX];
+	size_t old_key_len;
+
+	/* Take a copy so we can see if it has changed */
+	memcpy(old_key, totem_config->private_key, sizeof(totem_config->private_key));
+	old_key_len = totem_config->private_key_len;
 
 	memset (totem_config->private_key, 0, sizeof(totem_config->private_key));
 	totem_config->private_key_len = 0;
@@ -2150,7 +2169,7 @@ int totem_config_keyread (
 	}
 
 	/* cmap may store the location of the key file */
-	if (icmap_get_string("totem.keyfile", &key_location) == CS_OK) {
+	if (icmap_get_string_r(map, "totem.keyfile", &key_location) == CS_OK) {
 		res = read_keyfile(key_location, totem_config, error_string);
 		free(key_location);
 		if (res)  {
@@ -2158,7 +2177,7 @@ int totem_config_keyread (
 		}
 		got_key = 1;
 	} else { /* Or the key itself may be in the cmap */
-		if (icmap_get("totem.key", NULL, &key_len, NULL) == CS_OK) {
+		if (icmap_get_r(map, "totem.key", NULL, &key_len, NULL) == CS_OK) {
 			if (key_len > sizeof(totem_config->private_key)) {
 				sprintf(error_string_response, "key is too long");
 				goto key_error;
@@ -2167,7 +2186,7 @@ int totem_config_keyread (
 				sprintf(error_string_response, "key is too short");
 				goto key_error;
 			}
-			if (icmap_get("totem.key", totem_config->private_key, &key_len, NULL) == CS_OK) {
+			if (icmap_get_r(map, "totem.key", totem_config->private_key, &key_len, NULL) == CS_OK) {
 				totem_config->private_key_len = key_len;
 				got_key = 1;
 			} else {
@@ -2184,12 +2203,28 @@ int totem_config_keyread (
 			goto key_error;
 	}
 
+	if (old_key_len != totem_config->private_key_len ||
+	    memcmp(old_key, totem_config->private_key, sizeof(totem_config->private_key))) {
+		totem_config->crypto_changed = 1;
+	}
+
 	return (0);
 
 key_error:
 	*error_string = error_string_response;
 	return (-1);
 
+}
+
+int totem_reread_crypto_config(struct totem_config *totem_config, icmap_map_t map, const char **error_string)
+{
+	if (totem_get_crypto(totem_config, map, error_string) != 0) {
+		return -1;
+	}
+	if (totem_config_keyread(totem_config, map, error_string) != 0) {
+		return -1;
+	}
+	return 0;
 }
 
 static void debug_dump_totem_config(const struct totem_config *totem_config)
