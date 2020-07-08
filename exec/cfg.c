@@ -590,7 +590,13 @@ static void delete_and_notify_if_changed(icmap_map_t temp_map, const char *key_n
  */
 static void remove_ro_entries(icmap_map_t temp_map)
 {
+#ifndef HAVE_KNET_CRYPTO_RECONF
 	delete_and_notify_if_changed(temp_map, "totem.secauth");
+	delete_and_notify_if_changed(temp_map, "totem.crypto_hash");
+	delete_and_notify_if_changed(temp_map, "totem.crypto_cipher");
+	delete_and_notify_if_changed(temp_map, "totem.keyfile");
+	delete_and_notify_if_changed(temp_map, "totem.key");
+#endif
 	delete_and_notify_if_changed(temp_map, "totem.version");
 	delete_and_notify_if_changed(temp_map, "totem.threads");
 	delete_and_notify_if_changed(temp_map, "totem.ip_version");
@@ -767,7 +773,14 @@ static void message_handler_req_exec_cfg_reload_config (
 
 	/* Save this here so we can get at it for the later phases of crypto change */
 	if (new_config.crypto_changed) {
+#ifdef HAVE_KNET_CRYPTO_RECONF
 		icmap_set_uint32("config.crypto_changed", (uint32_t)1);
+#else
+		new_config.crypto_changed = 0;
+		log_printf (LOGSYS_LEVEL_ERROR, "Crypto reconfiguration is not supported by the linked version of knet\n");
+		res = CS_ERR_INVALID_PARAM;
+		goto reload_fini;
+#endif
 	}
 
 	/*
