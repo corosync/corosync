@@ -267,6 +267,90 @@ const char *totemip_print(const struct totem_ip_address *addr)
 	return (inet_ntop(addr->family, addr->addr, buf, sizeof(buf)));
 }
 
+/* qb_map_t supports only the string keys.
+ * We need a ipv6 keys and scopeid values */
+struct ipv6_scopeid_pair_t
+{
+	char addr[ sizeof(struct in6_addr) ]; /* 16 bytes for the address */
+	int scopeid;
+};
+
+#define IPV6_SCOPEID_MAP_MAX_LEN 10
+struct
+{
+	size_t size;
+	struct ipv6_scopeid_pair_t pairs[IPV6_SCOPEID_MAP_MAX_LEN]; /* 10 should be enough for everithing */
+} ipv6_scopeid_map = {0};
+
+static unsigned char default_bindnet_addr[sizeof(struct in6_addr)] = {0};
+
+static int totemip_ipv6_scopeid_map_get(const unsigned char* addr16, unsigned int *scopeid)
+{
+	int i;
+	for (i = 0; i < ipv6_scopeid_map.size; i++) {
+		if (memcmp(addr16, ipv6_scopeid_map.pairs[i].addr, sizeof(struct in6_addr)) == 0) {
+			*scopeid = ipv6_scopeid_map.pairs[i].scopeid;
+			return (i);
+		}
+	}
+	/* Nothing is found */
+	scopeid = 0;
+	return (-1);
+}
+
+static int totemip_ipv6_scopeid_map_push(const unsigned char* addr16, unsigned int scopeid)
+{
+	unsigned int key_scopeid;
+	int index;
+
+	/* If map overflow error -1*/
+	if (IPV6_SCOPEID_MAP_MAX_LEN - 1 <= ipv6_scopeid_map.size)
+		return (-1);
+
+	/* If the key already exists, it's ok, simply update it's value*/
+	index = totemip_ipv6_scopeid_map_get(addr16, &key_scopeid);
+	if (index != -1) {
+		ipv6_scopeid_map.pairs[index].scopeid = scopeid;
+		return (0);
+	}
+
+	/* If the key doesn't exist, it's ok, simply update it's value */
+	memcpy(ipv6_scopeid_map.pairs[ipv6_scopeid_map.size].addr, addr16, sizeof(struct in6_addr));
+	ipv6_scopeid_map.pairs[ipv6_scopeid_map.size].scopeid = scopeid;
+	ipv6_scopeid_map.size++;
+	return (0);
+}
+
+static int totemip_getif_scopeid(const unsigned char* addr16, unsigned int *scopeid)
+{
+	static struct ifaddrs *ifap = NULL;
+	struct ifaddrs *ifa;
+	const struct sockaddr_in6 *sin;
+	const socklen_t addr_len = sizeof(struct in6_addr);
+
+	if (ifap == NULL && getifaddrs(&ifap) != 0)
+		return (-1);
+
+	for (ifa = ifap; ifa; ifa = ifa->ifa_next) {
+		if (ifa->ifa_addr == NULL || ifa->ifa_netmask == NULL)
+			continue ;
+
+		if ((ifa->ifa_addr->sa_family != AF_INET6) ||
+		    (ifa->ifa_netmask->sa_family != AF_INET6 &&
+		     ifa->ifa_netmask->sa_family != 0))
+			continue ;
+
+		sin = (const struct sockaddr_in6 *)ifa->ifa_addr;
+
+		if (memcmp(&sin->sin6_addr, addr16, addr_len) == 0) {
+			*scopeid = sin->sin6_scope_id;
+			return (0);
+		}
+	}
+
+	return (-1);
+}
+
 /* Make a totem_ip_address into a usable sockaddr_storage */
 int totemip_totemip_to_sockaddr_convert(struct totem_ip_address *ip_addr,
 					uint16_t port, struct sockaddr_storage *saddr, int *addrlen)
@@ -289,6 +373,15 @@ int totemip_totemip_to_sockaddr_convert(struct totem_ip_address *ip_addr,
 
 	if (ip_addr->family == AF_INET6) {
 		struct sockaddr_in6 *sin = (struct sockaddr_in6 *)saddr;
+		unsigned int sin6_scope_id = 0;
+		/* First look on the list from corosync.conf */
+		if (totemip_ipv6_scopeid_map_get(ip_addr->addr, &sin6_scope_id) == -1 || sin6_scope_id == 0) {
+			/* if not, then query devices */
+			if(totemip_getif_scopeid(ip_addr->addr, &sin6_scope_id) != 0) {
+				/* if not, then take the default */
+				totemip_getif_scopeid(default_bindnet_addr, &sin6_scope_id);
+			}
+		}
 
 		memset(sin, 0, sizeof(struct sockaddr_in6));
 #ifdef HAVE_SOCK_SIN6_LEN
@@ -296,7 +389,7 @@ int totemip_totemip_to_sockaddr_convert(struct totem_ip_address *ip_addr,
 #endif
 		sin->sin6_family = ip_addr->family;
 		sin->sin6_port = ntohs(port);
-		sin->sin6_scope_id = 2;
+		sin->sin6_scope_id = sin6_scope_id ? sin6_scope_id : 2;
 		memcpy(&sin->sin6_addr, ip_addr->addr, sizeof(struct in6_addr));
 
 		*addrlen = sizeof(struct sockaddr_in6);
@@ -333,8 +426,10 @@ int totemip_parse(struct totem_ip_address *totemip, const char *addr, int family
 
 	if (ainfo->ai_family == AF_INET)
 		memcpy(totemip->addr, &sa->sin_addr, sizeof(struct in_addr));
-	else
+	else {
 		memcpy(totemip->addr, &sa6->sin6_addr, sizeof(struct in6_addr));
+		totemip_ipv6_scopeid_map_push(totemip->addr, sa6->sin6_scope_id);
+	}
 
 	freeaddrinfo(ainfo);
 	return 0;
@@ -472,6 +567,10 @@ int totemip_iface_check(struct totem_ip_address *bindnet,
 
 	if (totemip_getifaddrs(&addrs) == -1) {
 		return (-1);
+	}
+
+	if (bindnet->family == AF_INET6) {
+		memcpy(default_bindnet_addr, bindnet->addr, sizeof(struct in6_addr));
 	}
 
 	for (list = addrs.next; list != &addrs; list = list->next) {
