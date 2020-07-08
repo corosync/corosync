@@ -267,6 +267,56 @@ const char *totemip_print(const struct totem_ip_address *addr)
 	return (inet_ntop(addr->family, addr->addr, buf, sizeof(buf)));
 }
 
+static int totemip_getif_scopeid(unsigned int *scopeid, const unsigned char* addr16)
+{
+	struct ifaddrs *ifap, *ifa;
+	const struct sockaddr_in6 *sin, *mask;
+	const socklen_t addr_len = sizeof(struct in6_addr);
+	unsigned char bn_netaddr[addr_len], if_netaddr[addr_len], bn_netmask[addr_len];
+
+	if (getifaddrs(&ifap) != 0)
+		return (-1);
+
+	for (ifa = ifap; ifa; ifa = ifa->ifa_next) {
+		if (ifa->ifa_addr == NULL || ifa->ifa_netmask == NULL)
+			continue ;
+
+		if ((ifa->ifa_addr->sa_family != AF_INET6) ||
+		    (ifa->ifa_netmask->sa_family != AF_INET6 &&
+		     ifa->ifa_netmask->sa_family != 0))
+			continue ;
+
+		sin = (const struct sockaddr_in6 *)ifa->ifa_addr;
+		mask = (const struct sockaddr_in6 *)ifa->ifa_netmask;
+
+		memcpy(bn_netaddr, &sin->sin6_addr, addr_len);
+		memcpy(bn_netmask, &mask->sin6_addr, addr_len);
+		memcpy(if_netaddr, addr16, addr_len);
+
+		if (memcmp(bn_netaddr, if_netaddr, addr_len) == 0) {
+			// exact match
+			*scopeid = sin->sin6_scope_id;
+			freeifaddrs(ifap);
+			return (0);
+		} else {
+			// net match
+			socklen_t si;
+			for (si = 0; si < addr_len; si++) {
+				bn_netaddr[si] &= bn_netmask[si];
+				if_netaddr[si] &= bn_netmask[si];
+			}
+			if (memcmp(bn_netaddr, if_netaddr, addr_len) == 0) {
+				*scopeid = sin->sin6_scope_id;
+				freeifaddrs(ifap);
+				return (0);
+			}
+		}
+	}
+
+	freeifaddrs(ifap);
+	return (-1);
+}
+
 /* Make a totem_ip_address into a usable sockaddr_storage */
 int totemip_totemip_to_sockaddr_convert(struct totem_ip_address *ip_addr,
 					uint16_t port, struct sockaddr_storage *saddr, int *addrlen)
@@ -296,7 +346,8 @@ int totemip_totemip_to_sockaddr_convert(struct totem_ip_address *ip_addr,
 #endif
 		sin->sin6_family = ip_addr->family;
 		sin->sin6_port = ntohs(port);
-		sin->sin6_scope_id = 2;
+		if (totemip_getif_scopeid(&sin->sin6_scope_id, ip_addr->addr) != 0)
+		  sin->sin6_scope_id = 2;
 		memcpy(&sin->sin6_addr, ip_addr->addr, sizeof(struct in6_addr));
 
 		*addrlen = sizeof(struct sockaddr_in6);
