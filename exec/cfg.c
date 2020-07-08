@@ -694,6 +694,9 @@ static void message_handler_req_exec_cfg_reload_config (
 	log_printf(LOGSYS_LEVEL_NOTICE, "Config reload requested by node " CS_PRI_NODE_ID, nodeid);
 
 	icmap_set_uint8("config.totemconfig_reload_in_progress", 1);
+
+	/* Make sure there is no rubbish in this that might be checked, even on error */
+	memset(&new_config, 0, sizeof(new_config));
 	/*
 	 * Set up a new hashtable as a staging area.
 	 */
