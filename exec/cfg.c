@@ -74,7 +74,8 @@ enum cfg_message_req_types {
         MESSAGE_REQ_EXEC_CFG_RINGREENABLE = 0,
 	MESSAGE_REQ_EXEC_CFG_KILLNODE = 1,
 	MESSAGE_REQ_EXEC_CFG_SHUTDOWN = 2,
-	MESSAGE_REQ_EXEC_CFG_RELOAD_CONFIG = 3
+	MESSAGE_REQ_EXEC_CFG_RELOAD_CONFIG = 3,
+	MESSAGE_REQ_EXEC_CFG_RELOAD_CRYPTO = 4
 };
 
 #define DEFAULT_SHUTDOWN_TIMEOUT 5
@@ -127,6 +128,10 @@ static void message_handler_req_exec_cfg_shutdown (
         unsigned int nodeid);
 
 static void message_handler_req_exec_cfg_reload_config (
+        const void *message,
+        unsigned int nodeid);
+
+static void message_handler_req_exec_cfg_reload_crypto (
         const void *message,
         unsigned int nodeid);
 
@@ -225,6 +230,9 @@ static struct corosync_exec_handler cfg_exec_engine[] =
 	},
 	{ /* 3 */
 		.exec_handler_fn = message_handler_req_exec_cfg_reload_config,
+	},
+	{ /* 4 */
+		.exec_handler_fn = message_handler_req_exec_cfg_reload_crypto,
 	}
 };
 
@@ -261,6 +269,11 @@ struct req_exec_cfg_ringreenable {
 struct req_exec_cfg_reload_config {
 	struct qb_ipc_request_header header __attribute__((aligned(8)));
 	mar_message_source_t source __attribute__((aligned(8)));
+};
+
+struct req_exec_cfg_reload_crypto {
+	struct qb_ipc_request_header header __attribute__((aligned(8)));
+	mar_uint32_t phase __attribute__((aligned(8)));
 };
 
 struct req_exec_cfg_killnode {
@@ -578,10 +591,6 @@ static void delete_and_notify_if_changed(icmap_map_t temp_map, const char *key_n
 static void remove_ro_entries(icmap_map_t temp_map)
 {
 	delete_and_notify_if_changed(temp_map, "totem.secauth");
-	delete_and_notify_if_changed(temp_map, "totem.crypto_hash");
-	delete_and_notify_if_changed(temp_map, "totem.crypto_cipher");
-	delete_and_notify_if_changed(temp_map, "totem.keyfile");
-	delete_and_notify_if_changed(temp_map, "totem.key");
 	delete_and_notify_if_changed(temp_map, "totem.version");
 	delete_and_notify_if_changed(temp_map, "totem.threads");
 	delete_and_notify_if_changed(temp_map, "totem.ip_version");
@@ -717,6 +726,8 @@ static void message_handler_req_exec_cfg_reload_config (
 	assert(new_config.orig_interfaces != NULL);
 
 	totempg_get_config(&new_config);
+	new_config.crypto_changed = 0;
+	icmap_set_uint32("config.crypto_changed", (uint32_t)0);
 
 	new_config.interfaces = malloc (sizeof (struct totem_interface) * INTERFACE_MAX);
 	assert(new_config.interfaces != NULL);
@@ -740,11 +751,23 @@ static void message_handler_req_exec_cfg_reload_config (
 	/* Read from temp_map into new_config */
 	totem_volatile_config_read(&new_config, temp_map, NULL);
 
+	/* Get updated crypto parameters. Will set a flag in new_config if things have changed */
+	if (totem_reread_crypto_config(&new_config, temp_map, &error_string) == -1) {
+		log_printf (LOGSYS_LEVEL_ERROR, "Crypto configuration is not valid: %s\n", error_string);
+		res = CS_ERR_INVALID_PARAM;
+		goto reload_fini;
+	}
+
 	/* Validate dynamic parameters */
 	if (totem_volatile_config_validate(&new_config, temp_map, &error_string) == -1) {
 		log_printf (LOGSYS_LEVEL_ERROR, "Configuration is not valid: %s\n", error_string);
 		res = CS_ERR_INVALID_PARAM;
 		goto reload_fini;
+	}
+
+	/* Save this here so we can get at it for the later phases of crypto change */
+	if (new_config.crypto_changed) {
+		icmap_set_uint32("config.crypto_changed", (uint32_t)1);
 	}
 
 	/*
@@ -776,6 +799,24 @@ reload_fini_nofree:
 reload_fini_nomap:
 	/* All done, return result to the caller if it was on this system */
 	if (nodeid == api->totem_nodeid_get()) {
+		/* If crypto was changed, now it's loaded on all nodes we can enable it */
+		if (new_config.crypto_changed) {
+			struct req_exec_cfg_reload_crypto req_exec_cfg_reload_crypto;
+			struct iovec iovec;
+
+			req_exec_cfg_reload_crypto.header.size =
+				sizeof (struct req_exec_cfg_reload_crypto);
+			req_exec_cfg_reload_crypto.header.id = SERVICE_ID_MAKE (CFG_SERVICE,
+										MESSAGE_REQ_EXEC_CFG_RELOAD_CRYPTO);
+			req_exec_cfg_reload_crypto.phase = RELOAD_PHASE_ACTIVATE;
+
+			iovec.iov_base = (char *)&req_exec_cfg_reload_crypto;
+			iovec.iov_len = sizeof (struct req_exec_cfg_reload_crypto);
+
+			assert (api->totem_mcast (&iovec, 1, TOTEM_SAFE) == 0);
+			icmap_set_uint32("config.crypto_changed", (uint32_t)0);
+		}
+
 		res_lib_cfg_reload_config.header.size = sizeof(res_lib_cfg_reload_config);
 		res_lib_cfg_reload_config.header.id = MESSAGE_RES_CFG_RELOAD_CONFIG;
 		res_lib_cfg_reload_config.header.error = res;
@@ -787,6 +828,48 @@ reload_fini_nomap:
 
 	LEAVE();
 }
+
+/* Handle the phases of crypto reload
+ * The first time we are called is after the new crypto config has been loaded
+ * but not activated.
+ *
+ * 1 - activate the new crypto configuration
+ * 2 - clear out the old configuration
+ */
+static void message_handler_req_exec_cfg_reload_crypto (
+        const void *message,
+        unsigned int nodeid)
+{
+	const struct req_exec_cfg_reload_crypto *req_exec_cfg_reload_crypto = message;
+
+	log_printf (LOGSYS_LEVEL_DEBUG, "Crypto reconfiguration phase %d", req_exec_cfg_reload_crypto->phase);
+
+	if (req_exec_cfg_reload_crypto->phase) {
+		totempg_reconfigure_phase(req_exec_cfg_reload_crypto->phase);
+	}
+
+	/* We are the config leader, move to the next phase if not finished */
+	if (nodeid == api->totem_nodeid_get() && req_exec_cfg_reload_crypto->phase < RELOAD_PHASE_CLEANUP) {
+		struct req_exec_cfg_reload_crypto req_exec_cfg_reload_crypto2;
+		struct iovec iovec;
+
+		req_exec_cfg_reload_crypto2.header.size =
+			sizeof (struct req_exec_cfg_reload_crypto);
+		req_exec_cfg_reload_crypto2.header.id = SERVICE_ID_MAKE (CFG_SERVICE,
+									MESSAGE_REQ_EXEC_CFG_RELOAD_CRYPTO);
+		req_exec_cfg_reload_crypto2.phase = RELOAD_PHASE_CLEANUP;
+
+		iovec.iov_base = (char *)&req_exec_cfg_reload_crypto2;
+		iovec.iov_len = sizeof (struct req_exec_cfg_reload_crypto);
+
+		assert (api->totem_mcast (&iovec, 1, TOTEM_SAFE) == 0);
+	}
+
+	if (nodeid == api->totem_nodeid_get() && req_exec_cfg_reload_crypto->phase == RELOAD_PHASE_CLEANUP) {
+		icmap_set_uint32("config.crypto_changed", (uint32_t)0);
+	}
+}
+
 
 /*
  * Library Interface Implementation

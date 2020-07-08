@@ -151,6 +151,11 @@ struct memb_ring_id {
 	unsigned long long seq;
 } __attribute__((packed));
 
+enum cfg_message_reload_phase {
+	RELOAD_PHASE_ACTIVATE = 1,
+	RELOAD_PHASE_CLEANUP = 2,
+};
+
 struct totem_config {
 	int version;
 
@@ -220,6 +225,10 @@ struct totem_config {
 	char crypto_cipher_type[CONFIG_STRING_LEN_MAX];
 
 	char crypto_hash_type[CONFIG_STRING_LEN_MAX];
+
+	int crypto_index; /* Num of crypto config currently loaded into knet ( 1 or 2 ) */
+
+	int crypto_changed; /* Has crypto changed since last time? (it's expensive to reload) */
 
 	char knet_compression_model[CONFIG_STRING_LEN_MAX];
 

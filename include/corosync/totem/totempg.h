@@ -192,6 +192,8 @@ extern void totempg_trans_ack (void);
 
 extern int totempg_reconfigure (void);
 
+extern int totempg_reconfigure_phase (uint32_t phase);
+
 extern void totempg_force_gather (void);
 
 extern void totempg_get_config(struct totem_config *config);

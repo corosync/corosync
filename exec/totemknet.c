@@ -195,6 +195,11 @@ struct work_item {
 int totemknet_member_list_rebind_ip (
 	void *knet_context);
 
+
+static int totemknet_configure_compression (
+	void *knet_context,
+	struct totem_config *totem_config);
+
 static void totemknet_start_merge_detect_timeout(
 	void *knet_context);
 
@@ -900,6 +905,43 @@ static void totemknet_add_config_notifications(struct totemknet_instance *instan
 	LEAVE();
 }
 
+static int totemknet_set_knet_crypto(struct totemknet_instance *instance)
+{
+	struct knet_handle_crypto_cfg crypto_cfg;
+	int res;
+
+	knet_log_printf(LOGSYS_LEVEL_DEBUG, "Configuring crypto (index %d)", instance->totem_config->crypto_index);
+
+	strcpy(crypto_cfg.crypto_model, instance->totem_config->crypto_model);
+	strcpy(crypto_cfg.crypto_cipher_type, instance->totem_config->crypto_cipher_type);
+	strcpy(crypto_cfg.crypto_hash_type, instance->totem_config->crypto_hash_type);
+	memcpy(crypto_cfg.private_key, instance->totem_config->private_key, instance->totem_config->private_key_len);
+	crypto_cfg.private_key_len = instance->totem_config->private_key_len;
+
+	/* If crypto is being disabled we need to explicitly allow cleartext traffic in knet */
+	if (strcmp(instance->totem_config->crypto_cipher_type, "none") == 0) {
+		res = knet_handle_crypto_rx_clear_traffic(instance->knet_handle, KNET_CRYPTO_RX_ALLOW_CLEAR_TRAFFIC);
+		if (res) {
+			knet_log_printf(LOGSYS_LEVEL_ERROR, "knet_handle_crypto_rx_clear_traffic(ALLOW) failed %s", strerror(errno));
+		}
+	}
+
+	/* use_config will be called later when all nodes are synced */
+	res = knet_handle_crypto_set_config(instance->knet_handle, &crypto_cfg, instance->totem_config->crypto_index);
+	if (res == -1) {
+		knet_log_printf(LOGSYS_LEVEL_ERROR, "knet_handle_crypto_set_config (index %d) failed: %s", instance->totem_config->crypto_index, strerror(errno));
+		goto exit_error;
+	}
+	if (res == -2) {
+		knet_log_printf(LOGSYS_LEVEL_ERROR, "knet_handle_crypto_set_config (index %d) failed: -2", instance->totem_config->crypto_index);
+		goto exit_error;
+	}
+
+
+exit_error:
+	return res;
+}
+
 /*
  * Create an instance
  */
@@ -1041,35 +1083,35 @@ int totemknet_initialize (
 
 	/* Enable crypto if requested */
 	if (strcmp(instance->totem_config->crypto_cipher_type, "none") != 0) {
-		struct knet_handle_crypto_cfg crypto_cfg;
-
-		assert(strlen(instance->totem_config->crypto_model) < sizeof(crypto_cfg.crypto_model));
-		strcpy(crypto_cfg.crypto_model, instance->totem_config->crypto_model);
-
-		assert(strlen(instance->totem_config->crypto_cipher_type) < sizeof(crypto_cfg.crypto_cipher_type));
-		strcpy(crypto_cfg.crypto_cipher_type, instance->totem_config->crypto_cipher_type);
-
-		assert(strlen(instance->totem_config->crypto_hash_type) < sizeof(crypto_cfg.crypto_hash_type));
-		strcpy(crypto_cfg.crypto_hash_type, instance->totem_config->crypto_hash_type);
-
-		assert(instance->totem_config->private_key_len <= sizeof(crypto_cfg.private_key));
-		memcpy(crypto_cfg.private_key, instance->totem_config->private_key, instance->totem_config->private_key_len);
-		crypto_cfg.private_key_len = instance->totem_config->private_key_len;
-
-		res = knet_handle_crypto(instance->knet_handle, &crypto_cfg);
-		if (res == -1) {
-			knet_log_printf(LOGSYS_LEVEL_ERROR, "knet_handle_crypto failed: %s", strerror(errno));
+		res = totemknet_set_knet_crypto(instance);
+		if (res == 0) {
+			res = knet_handle_crypto_use_config(instance->knet_handle, totem_config->crypto_index);
+			if (res) {
+				knet_log_printf(LOG_DEBUG, "knet_handle_crypto_use_config failed: %s", strerror(errno));
+				goto exit_error;
+			}
+		} else {
+			knet_log_printf(LOG_DEBUG, "Failed to set up knet crypto");
 			goto exit_error;
 		}
-		if (res == -2) {
-			knet_log_printf(LOGSYS_LEVEL_ERROR, "knet_handle_crypto failed: -2");
+		res = knet_handle_crypto_rx_clear_traffic(instance->knet_handle, KNET_CRYPTO_RX_DISALLOW_CLEAR_TRAFFIC);
+		if (res) {
+			knet_log_printf(LOG_DEBUG, "knet_handle_crypto_rx_clear_traffic (DISALLOW) failed: %s", strerror(errno));
 			goto exit_error;
 		}
-		knet_log_printf(LOG_INFO, "kronosnet crypto initialized: %s/%s", crypto_cfg.crypto_cipher_type, crypto_cfg.crypto_hash_type);
+	} else {
+		res = knet_handle_crypto_rx_clear_traffic(instance->knet_handle, KNET_CRYPTO_RX_ALLOW_CLEAR_TRAFFIC);
+		if (res) {
+			knet_log_printf(LOG_DEBUG, "knet_handle_crypto_rx_clear_traffic (ALLOW) failed: %s", strerror(errno));
+			goto exit_error;
+		}
 	}
 
 	/* Set up compression */
-	totemknet_reconfigure(instance, instance->totem_config);
+	if (strcmp(totem_config->knet_compression_model, "none") != 0) {
+		/* Not fatal, but will log */
+		(void)totemknet_configure_compression(knet_context, totem_config);
+	}
 
 	knet_handle_setfwd(instance->knet_handle, 1);
 
@@ -1469,7 +1511,8 @@ int totemknet_member_list_rebind_ip (
 	return (0);
 }
 
-int totemknet_reconfigure (
+
+static int totemknet_configure_compression (
 	void *knet_context,
 	struct totem_config *totem_config)
 {
@@ -1487,16 +1530,91 @@ int totemknet_reconfigure (
 	if (res) {
 		KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_ERROR, "knet_handle_compress failed");
 	}
+	return res;
+}
+
+int totemknet_reconfigure (
+	void *knet_context,
+	struct totem_config *totem_config)
+{
+	struct totemknet_instance *instance = (struct totemknet_instance *)knet_context;
+	int res;
+
+	(void)totemknet_configure_compression(knet_context, totem_config);
 
 #ifdef HAVE_LIBNOZZLE
-	/* Set up nozzle device(s). Return code is ignored, because unability
+	/* Set up nozzle device(s). Return code is ignored, because inability
 	 * configure nozzle is not fatal problem, errors are logged and
 	 * there is not much else we can do */
 	(void)setup_nozzle(instance);
 #endif
+
+	if (totem_config->crypto_changed) {
+		/* Flip crypto_index */
+		totem_config->crypto_index = 3-totem_config->crypto_index;
+		res = totemknet_set_knet_crypto(instance);
+
+		knet_log_printf(LOG_INFO, "kronosnet crypto reconfigured on index %d: %s/%s/%s", totem_config->crypto_index,
+				totem_config->crypto_model,
+				totem_config->crypto_cipher_type,
+				totem_config->crypto_hash_type);
+	}
 	return (res);
 }
 
+
+int totemknet_reconfigure_phase (
+	void *knet_context,
+	struct totem_config *totem_config,
+	uint32_t phase)
+{
+	int res;
+	struct totemknet_instance *instance = (struct totemknet_instance *)knet_context;
+
+	knet_log_printf(LOGSYS_LEVEL_DEBUG, "totemknet_reconfigure_phase %d, index=%d\n", phase, totem_config->crypto_index);
+	if (phase == RELOAD_PHASE_ACTIVATE) {
+		int config_to_use = totem_config->crypto_index;
+		if (strcmp(instance->totem_config->crypto_cipher_type, "none") == 0) {
+			config_to_use = 0; /* we are clearing it */
+		}
+
+		/* Enable the new config on this node */
+		res = knet_handle_crypto_use_config(instance->knet_handle, config_to_use);
+		if (res == -1) {
+			knet_log_printf(LOGSYS_LEVEL_ERROR, "knet_handle_crypto_use_config %d failed: %s", config_to_use, strerror(errno));
+		}
+	}
+	if (phase == RELOAD_PHASE_CLEANUP) {
+		/*
+		 * All nodes should now have the new config. clear the old one out
+		 * OR disable crypto entirely if that's what the new config insists on.
+		 */
+		int config_to_clear = 3-totem_config->crypto_index;
+		struct knet_handle_crypto_cfg crypto_cfg;
+
+		knet_log_printf(LOGSYS_LEVEL_DEBUG, "Clearing old knet crypto config %d\n", config_to_clear);
+
+		strcpy(crypto_cfg.crypto_model, "none");
+		strcpy(crypto_cfg.crypto_cipher_type, "none");
+		strcpy(crypto_cfg.crypto_hash_type, "none");
+		res = knet_handle_crypto_set_config(instance->knet_handle, &crypto_cfg, config_to_clear);
+		if (res == -1) {
+			knet_log_printf(LOGSYS_LEVEL_ERROR, "knet_handle_crypto_set_config to clear index %d failed: %s", config_to_clear, strerror(errno));
+		}
+		if (res == -2) {
+			knet_log_printf(LOGSYS_LEVEL_ERROR, "knet_handle_crypto_set_config to clear index %d failed: -2", config_to_clear);
+		}
+
+		/* If crypto is enabled then disable all cleartext reception */
+		if (strcmp(instance->totem_config->crypto_cipher_type, "none") != 0) {
+			res = knet_handle_crypto_rx_clear_traffic(instance->knet_handle, KNET_CRYPTO_RX_DISALLOW_CLEAR_TRAFFIC);
+			if (res) {
+				knet_log_printf(LOGSYS_LEVEL_ERROR, "knet_handle_crypto_rx_clear_traffic(DISALLOW) failed %s", strerror(errno));
+			}
+		}
+	}
+	return 0;
+}
 
 void totemknet_stats_clear (
 	void *knet_context)

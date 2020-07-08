@@ -5181,6 +5181,15 @@ int totemsrp_reconfigure (void *context, struct totem_config *totem_config)
 	return (res);
 }
 
+int totemsrp_reconfigure_phase (void *context, struct totem_config *totem_config, uint32_t phase)
+{
+	struct totemsrp_instance *instance = (struct totemsrp_instance *)context;
+	int res;
+
+	res = totemnet_reconfigure_phase (instance->totemnet_context, totem_config, phase);
+	return (res);
+}
+
 void totemsrp_stats_clear (void *context, int flags)
 {
 	struct totemsrp_instance *instance = (struct totemsrp_instance *)context;
