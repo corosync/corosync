@@ -192,7 +192,7 @@ extern void totempg_trans_ack (void);
 
 extern int totempg_reconfigure (void);
 
-extern int totempg_reconfigure_phase (uint32_t phase);
+extern int totempg_crypto_reconfigure_phase (cfg_message_crypto_reconfig_phase_t phase);
 
 extern void totempg_force_gather (void);
 

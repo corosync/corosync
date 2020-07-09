@@ -1143,7 +1143,6 @@ int totemknet_initialize (
 	}
 #endif
 
-
 	/* Set up compression */
 	if (strcmp(totem_config->knet_compression_model, "none") != 0) {
 		/* Not fatal, but will log */
@@ -1600,56 +1599,60 @@ int totemknet_reconfigure (
 }
 
 
-int totemknet_reconfigure_phase (
+int totemknet_crypto_reconfigure_phase (
 	void *knet_context,
 	struct totem_config *totem_config,
-	uint32_t phase)
+	cfg_message_crypto_reconfig_phase_t phase)
 {
 #ifdef HAVE_KNET_CRYPTO_RECONF
 	int res;
+	int config_to_use;
+	int config_to_clear;
+	struct knet_handle_crypto_cfg crypto_cfg;
 	struct totemknet_instance *instance = (struct totemknet_instance *)knet_context;
 
-	knet_log_printf(LOGSYS_LEVEL_DEBUG, "totemknet_reconfigure_phase %d, index=%d\n", phase, totem_config->crypto_index);
-	if (phase == RELOAD_PHASE_ACTIVATE) {
-		int config_to_use = totem_config->crypto_index;
-		if (strcmp(instance->totem_config->crypto_cipher_type, "none") == 0) {
-			config_to_use = 0; /* we are clearing it */
-		}
+	knet_log_printf(LOGSYS_LEVEL_DEBUG, "totemknet_crypto_reconfigure_phase %d, index=%d\n", phase, totem_config->crypto_index);
 
-		/* Enable the new config on this node */
-		res = knet_handle_crypto_use_config(instance->knet_handle, config_to_use);
-		if (res == -1) {
-			knet_log_printf(LOGSYS_LEVEL_ERROR, "knet_handle_crypto_use_config %d failed: %s", config_to_use, strerror(errno));
-		}
-	}
-	if (phase == RELOAD_PHASE_CLEANUP) {
-		/*
-		 * All nodes should now have the new config. clear the old one out
-		 * OR disable crypto entirely if that's what the new config insists on.
-		 */
-		int config_to_clear = 3-totem_config->crypto_index;
-		struct knet_handle_crypto_cfg crypto_cfg;
-
-		knet_log_printf(LOGSYS_LEVEL_DEBUG, "Clearing old knet crypto config %d\n", config_to_clear);
-
-		strcpy(crypto_cfg.crypto_model, "none");
-		strcpy(crypto_cfg.crypto_cipher_type, "none");
-		strcpy(crypto_cfg.crypto_hash_type, "none");
-		res = knet_handle_crypto_set_config(instance->knet_handle, &crypto_cfg, config_to_clear);
-		if (res == -1) {
-			knet_log_printf(LOGSYS_LEVEL_ERROR, "knet_handle_crypto_set_config to clear index %d failed: %s", config_to_clear, strerror(errno));
-		}
-		if (res == -2) {
-			knet_log_printf(LOGSYS_LEVEL_ERROR, "knet_handle_crypto_set_config to clear index %d failed: -2", config_to_clear);
-		}
-
-		/* If crypto is enabled then disable all cleartext reception */
-		if (strcmp(instance->totem_config->crypto_cipher_type, "none") != 0) {
-			res = knet_handle_crypto_rx_clear_traffic(instance->knet_handle, KNET_CRYPTO_RX_DISALLOW_CLEAR_TRAFFIC);
-			if (res) {
-				knet_log_printf(LOGSYS_LEVEL_ERROR, "knet_handle_crypto_rx_clear_traffic(DISALLOW) failed %s", strerror(errno));
+	switch (phase) {
+		case CRYPTO_RECONFIG_PHASE_ACTIVATE:
+			config_to_use = totem_config->crypto_index;
+			if (strcmp(instance->totem_config->crypto_cipher_type, "none") == 0) {
+				config_to_use = 0; /* we are clearing it */
 			}
-		}
+
+			/* Enable the new config on this node */
+			res = knet_handle_crypto_use_config(instance->knet_handle, config_to_use);
+			if (res == -1) {
+				knet_log_printf(LOGSYS_LEVEL_ERROR, "knet_handle_crypto_use_config %d failed: %s", config_to_use, strerror(errno));
+			}
+			break;
+
+		case CRYPTO_RECONFIG_PHASE_CLEANUP:
+			/*
+			 * All nodes should now have the new config. clear the old one out
+			 * OR disable crypto entirely if that's what the new config insists on.
+			 */
+			config_to_clear = 3-totem_config->crypto_index;
+			knet_log_printf(LOGSYS_LEVEL_DEBUG, "Clearing old knet crypto config %d\n", config_to_clear);
+
+			strcpy(crypto_cfg.crypto_model, "none");
+			strcpy(crypto_cfg.crypto_cipher_type, "none");
+			strcpy(crypto_cfg.crypto_hash_type, "none");
+			res = knet_handle_crypto_set_config(instance->knet_handle, &crypto_cfg, config_to_clear);
+			if (res == -1) {
+				knet_log_printf(LOGSYS_LEVEL_ERROR, "knet_handle_crypto_set_config to clear index %d failed: %s", config_to_clear, strerror(errno));
+			}
+			if (res == -2) {
+				knet_log_printf(LOGSYS_LEVEL_ERROR, "knet_handle_crypto_set_config to clear index %d failed: -2", config_to_clear);
+			}
+
+			/* If crypto is enabled then disable all cleartext reception */
+			if (strcmp(instance->totem_config->crypto_cipher_type, "none") != 0) {
+				res = knet_handle_crypto_rx_clear_traffic(instance->knet_handle, KNET_CRYPTO_RX_DISALLOW_CLEAR_TRAFFIC);
+				if (res) {
+					knet_log_printf(LOGSYS_LEVEL_ERROR, "knet_handle_crypto_rx_clear_traffic(DISALLOW) failed %s", strerror(errno));
+				}
+			}
 	}
 #endif
 	return 0;

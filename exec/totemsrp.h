@@ -151,10 +151,10 @@ int totemsrp_reconfigure (
 	void *context,
 	struct totem_config *totem_config);
 
-int totemsrp_reconfigure_phase (
+int totemsrp_crypto_reconfigure_phase (
 	void *context,
 	struct totem_config *totem_config,
-	uint32_t phase);
+	cfg_message_crypto_reconfig_phase_t phase);
 
 void totemsrp_stats_clear (
 	void *srp_context, int flags);

@@ -119,7 +119,7 @@ extern int totemnet_net_mtu_adjust (void *net_context, struct totem_config *tote
 
 extern int totemnet_reconfigure (void *net_context, struct totem_config *totem_config);
 
-extern int totemnet_reconfigure_phase (void *net_context, struct totem_config *totem_config, uint32_t phase);
+extern int totemnet_crypto_reconfigure_phase (void *net_context, struct totem_config *totem_config, cfg_message_crypto_reconfig_phase_t phase);
 
 extern void totemnet_stats_clear (void *net_context);
 

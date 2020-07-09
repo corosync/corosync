@@ -151,10 +151,10 @@ struct memb_ring_id {
 	unsigned long long seq;
 } __attribute__((packed));
 
-enum cfg_message_reload_phase {
-	RELOAD_PHASE_ACTIVATE = 1,
-	RELOAD_PHASE_CLEANUP = 2,
-};
+typedef enum {
+	CRYPTO_RECONFIG_PHASE_ACTIVATE = 1,
+	CRYPTO_RECONFIG_PHASE_CLEANUP = 2,
+} cfg_message_crypto_reconfig_phase_t;
 
 struct totem_config {
 	int version;
