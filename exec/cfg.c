@@ -813,26 +813,30 @@ reload_fini_nofree:
 	icmap_fini_r(temp_map);
 
 reload_fini_nomap:
+
+	/* If crypto was changed, now it's loaded on all nodes we can enable it.
+	 * Each node sends its own PHASE message so we're not relying on the leader
+	 * node to survive the transition
+	 */
+	if (new_config.crypto_changed) {
+		struct req_exec_cfg_crypto_reconfig req_exec_cfg_crypto_reconfig;
+		struct iovec iovec;
+
+		req_exec_cfg_crypto_reconfig.header.size =
+			sizeof (struct req_exec_cfg_crypto_reconfig);
+		req_exec_cfg_crypto_reconfig.header.id = SERVICE_ID_MAKE (CFG_SERVICE,
+									  MESSAGE_REQ_EXEC_CFG_CRYPTO_RECONFIG);
+		req_exec_cfg_crypto_reconfig.phase = CRYPTO_RECONFIG_PHASE_ACTIVATE;
+
+		iovec.iov_base = (char *)&req_exec_cfg_crypto_reconfig;
+		iovec.iov_len = sizeof (struct req_exec_cfg_crypto_reconfig);
+
+		assert (api->totem_mcast (&iovec, 1, TOTEM_SAFE) == 0);
+		icmap_set_uint32("config.crypto_changed", (uint32_t)0);
+	}
+
 	/* All done, return result to the caller if it was on this system */
 	if (nodeid == api->totem_nodeid_get()) {
-		/* If crypto was changed, now it's loaded on all nodes we can enable it */
-		if (new_config.crypto_changed) {
-			struct req_exec_cfg_crypto_reconfig req_exec_cfg_crypto_reconfig;
-			struct iovec iovec;
-
-			req_exec_cfg_crypto_reconfig.header.size =
-				sizeof (struct req_exec_cfg_crypto_reconfig);
-			req_exec_cfg_crypto_reconfig.header.id = SERVICE_ID_MAKE (CFG_SERVICE,
-										MESSAGE_REQ_EXEC_CFG_CRYPTO_RECONFIG);
-			req_exec_cfg_crypto_reconfig.phase = CRYPTO_RECONFIG_PHASE_ACTIVATE;
-
-			iovec.iov_base = (char *)&req_exec_cfg_crypto_reconfig;
-			iovec.iov_len = sizeof (struct req_exec_cfg_crypto_reconfig);
-
-			assert (api->totem_mcast (&iovec, 1, TOTEM_SAFE) == 0);
-			icmap_set_uint32("config.crypto_changed", (uint32_t)0);
-		}
-
 		res_lib_cfg_reload_config.header.size = sizeof(res_lib_cfg_reload_config);
 		res_lib_cfg_reload_config.header.id = MESSAGE_RES_CFG_RELOAD_CONFIG;
 		res_lib_cfg_reload_config.header.error = res;
@@ -858,29 +862,34 @@ static void message_handler_req_exec_cfg_reconfig_crypto (
 {
 	const struct req_exec_cfg_crypto_reconfig *req_exec_cfg_crypto_reconfig = message;
 
-	log_printf (LOGSYS_LEVEL_DEBUG, "Crypto reconfiguration phase %d", req_exec_cfg_crypto_reconfig->phase);
+	/* Got our own reconfig message */
+	if (nodeid == api->totem_nodeid_get()) {
+		log_printf (LOGSYS_LEVEL_DEBUG, "Crypto reconfiguration phase %d", req_exec_cfg_crypto_reconfig->phase);
 
-	totempg_crypto_reconfigure_phase(req_exec_cfg_crypto_reconfig->phase);
+		/* Do the deed */
+		totempg_crypto_reconfigure_phase(req_exec_cfg_crypto_reconfig->phase);
 
-	/* We are the config leader, move to the next phase if not finished */
-	if (nodeid == api->totem_nodeid_get() && req_exec_cfg_crypto_reconfig->phase < CRYPTO_RECONFIG_PHASE_CLEANUP) {
-		struct req_exec_cfg_crypto_reconfig req_exec_cfg_crypto_reconfig2;
-		struct iovec iovec;
+		/* Move to the next phase if not finished */
+		if (req_exec_cfg_crypto_reconfig->phase < CRYPTO_RECONFIG_PHASE_CLEANUP) {
+			struct req_exec_cfg_crypto_reconfig req_exec_cfg_crypto_reconfig2;
+			struct iovec iovec;
 
-		req_exec_cfg_crypto_reconfig2.header.size =
-			sizeof (struct req_exec_cfg_crypto_reconfig);
-		req_exec_cfg_crypto_reconfig2.header.id = SERVICE_ID_MAKE (CFG_SERVICE,
-									MESSAGE_REQ_EXEC_CFG_CRYPTO_RECONFIG);
-		req_exec_cfg_crypto_reconfig2.phase = CRYPTO_RECONFIG_PHASE_CLEANUP;
+			req_exec_cfg_crypto_reconfig2.header.size =
+				sizeof (struct req_exec_cfg_crypto_reconfig);
+			req_exec_cfg_crypto_reconfig2.header.id = SERVICE_ID_MAKE (CFG_SERVICE,
+										   MESSAGE_REQ_EXEC_CFG_CRYPTO_RECONFIG);
+			req_exec_cfg_crypto_reconfig2.phase = CRYPTO_RECONFIG_PHASE_CLEANUP;
 
-		iovec.iov_base = (char *)&req_exec_cfg_crypto_reconfig2;
-		iovec.iov_len = sizeof (struct req_exec_cfg_crypto_reconfig);
+			iovec.iov_base = (char *)&req_exec_cfg_crypto_reconfig2;
+			iovec.iov_len = sizeof (struct req_exec_cfg_crypto_reconfig);
 
-		assert (api->totem_mcast (&iovec, 1, TOTEM_SAFE) == 0);
-	}
+			assert (api->totem_mcast (&iovec, 1, TOTEM_SAFE) == 0);
+		}
 
-	if (nodeid == api->totem_nodeid_get() && req_exec_cfg_crypto_reconfig->phase == CRYPTO_RECONFIG_PHASE_CLEANUP) {
-		icmap_set_uint32("config.crypto_changed", (uint32_t)0);
+		/* All done. Reset the crypto_changed flag */
+		if (req_exec_cfg_crypto_reconfig->phase == CRYPTO_RECONFIG_PHASE_CLEANUP) {
+			icmap_set_uint32("config.crypto_changed", (uint32_t)0);
+		}
 	}
 }
 
