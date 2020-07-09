@@ -1774,7 +1774,6 @@ extern int totem_config_read (
 	if (totem_config_keyread(totem_config, icmap_get_global_map(), error_string) != 0) {
 		return -1;
 	}
-	icmap_set_uint32("config.crypto_changed", (uint32_t)0);
 	totem_config->crypto_index = 1;
 	totem_config->crypto_changed = 0;
 

@@ -736,7 +736,6 @@ static void message_handler_req_exec_cfg_reload_config (
 
 	totempg_get_config(&new_config);
 	new_config.crypto_changed = 0;
-	icmap_set_uint32("config.crypto_changed", (uint32_t)0);
 
 	new_config.interfaces = malloc (sizeof (struct totem_interface) * INTERFACE_MAX);
 	assert(new_config.interfaces != NULL);
@@ -776,9 +775,7 @@ static void message_handler_req_exec_cfg_reload_config (
 
 	/* Save this here so we can get at it for the later phases of crypto change */
 	if (new_config.crypto_changed) {
-#ifdef HAVE_KNET_CRYPTO_RECONF
-		icmap_set_uint32("config.crypto_changed", (uint32_t)1);
-#else
+#ifndef HAVE_KNET_CRYPTO_RECONF
 		new_config.crypto_changed = 0;
 		log_printf (LOGSYS_LEVEL_ERROR, "Crypto reconfiguration is not supported by the linked version of knet\n");
 		res = CS_ERR_INVALID_PARAM;
@@ -832,7 +829,6 @@ reload_fini_nomap:
 		iovec.iov_len = sizeof (struct req_exec_cfg_crypto_reconfig);
 
 		assert (api->totem_mcast (&iovec, 1, TOTEM_SAFE) == 0);
-		icmap_set_uint32("config.crypto_changed", (uint32_t)0);
 	}
 
 	/* All done, return result to the caller if it was on this system */
@@ -884,11 +880,6 @@ static void message_handler_req_exec_cfg_reconfig_crypto (
 			iovec.iov_len = sizeof (struct req_exec_cfg_crypto_reconfig);
 
 			assert (api->totem_mcast (&iovec, 1, TOTEM_SAFE) == 0);
-		}
-
-		/* All done. Reset the crypto_changed flag */
-		if (req_exec_cfg_crypto_reconfig->phase == CRYPTO_RECONFIG_PHASE_CLEANUP) {
-			icmap_set_uint32("config.crypto_changed", (uint32_t)0);
 		}
 	}
 }
