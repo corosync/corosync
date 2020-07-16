@@ -31,6 +31,9 @@ Source0: http://build.clusterlabs.org/corosync/releases/%{name}-%{version}%{?git
 # The automatic dependency overridden in favor of explicit version lock
 Requires: corosynclib%{?_isa} = %{version}-%{release}
 
+# Support crypto reload
+Requires: libknet1 >= 1.18
+
 # Build bits
 BuildRequires: gcc
 
@@ -40,7 +43,7 @@ BuildRequires: groff-full
 BuildRequires: groff
 %endif
 BuildRequires: libqb-devel
-BuildRequires: libknet1-devel
+BuildRequires: libknet1-devel >= 1.18
 BuildRequires: zlib-devel
 %if %{with runautogen}
 BuildRequires: autoconf automake libtool
