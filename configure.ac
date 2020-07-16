@@ -43,6 +43,8 @@ else
 fi
 
 dnl Fix default variables - "prefix" variable if not specified
+systemddir=${prefix}/lib/systemd/system
+
 if test "$prefix" = "NONE"; then
 	prefix="/usr"
 
@@ -53,6 +55,9 @@ if test "$prefix" = "NONE"; then
 	dnl Fix "sysconfdir" variable if not specified
 	if test "$sysconfdir" = "\${prefix}/etc"; then
 		sysconfdir="/etc"
+	fi
+	if test "$systemddir" = "NONE/lib/systemd/system"; then
+		systemddir=/lib/systemd/system
 	fi
 	dnl Fix "libdir" variable if not specified
 	if test "$libdir" = "\${exec_prefix}/lib"; then
@@ -389,7 +394,7 @@ AC_ARG_WITH([initddir],
 AC_ARG_WITH([systemddir],
 	[  --with-systemddir=DIR   : path to systemd unit files directory. ],
 	[ SYSTEMDDIR="$withval" ],
-	[ SYSTEMDDIR="/lib/systemd/system" ])
+	[ SYSTEMDDIR="$systemddir" ])
 
 AC_ARG_WITH([logdir],
 	[  --with-logdir=DIR       : the base directory for corosync logging files. ],
