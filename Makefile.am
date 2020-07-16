@@ -124,21 +124,23 @@ clean-generic:
 $(SPEC): $(SPEC).in
 	rm -f $@-t $@
 	date="$(shell LC_ALL=C date "+%a %b %d %Y")" && \
-	if [ -f .tarball-version ]; then \
-		gitver="$(shell cat .tarball-version)" && \
-		rpmver=$$gitver && \
+	gvgver="`cd $(abs_srcdir); build-aux/git-version-gen --fallback $(VERSION) .tarball-version .gitarchivever`" && \
+	if [ "$$gvgver" = "`echo $$gvgver | sed 's/-/./'`" ];then \
+		rpmver="$$gvgver" && \
 		alphatag="" && \
 		dirty="" && \
-		numcomm=""; \
+		numcomm="0"; \
 	else \
-		gitver="$(shell git describe --abbrev=4 --match='v*' HEAD 2>/dev/null)" && \
-		rpmver=`echo $$gitver | $(SED) -e "s/^v//" -e "s/-.*//g"` && \
-		alphatag=`echo $$gitver | $(SED) -e "s/.*-//" -e "s/^g//"` && \
-		vtag=`echo $$gitver | $(SED) -e "s/-.*//g"` && \
-		numcomm=`git rev-list $$vtag..HEAD | wc -l` && \
-		git update-index --refresh > /dev/null 2>&1 || true && \
-		dirty=`git diff-index --name-only HEAD 2>/dev/null`; \
+		gitver="`echo $$gvgver | sed 's/\(.*\)\./\1-/'`" && \
+		rpmver=`echo $$gitver | sed 's/-.*//g'` && \
+		alphatag=`echo $$gvgver | sed 's/[^-]*-\([^-]*\).*/\1/'` && \
+		numcomm=`echo $$gitver | sed 's/[^-]*-\([^-]*\).*/\1/'` && \
+		dirty="" && \
+		if [ "`echo $$gitver | sed 's/^.*-dirty$$//g'`" = "" ];then \
+			dirty="dirty"; \
+		fi \
 	fi && \
+	if [ -n "$$dirty" ]; then dirty="dirty"; else dirty=""; fi && \
 	if [ "$$numcomm" = "0" ]; then numcomm=""; fi && \
 	if [ -n "$$numcomm" ]; then numcomm="%global numcomm $$numcomm"; fi && \
 	if [ "$$alphatag" = "$$gitver" ]; then alphatag=""; fi && \
