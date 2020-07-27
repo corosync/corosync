@@ -97,6 +97,10 @@ extern int totemip_totemip_to_sockaddr_convert(struct totem_ip_address *ip_addr,
 					       uint16_t port, struct sockaddr_storage *saddr, int *addrlen);
 extern int totemip_parse(struct totem_ip_address *totemip, const char *addr,
 			 int family);
+extern int totemip_totemip_to_sockaddr_convert_with_scopeid(const struct totem_ip_address *ip_addr,
+					        uint16_t port, struct sockaddr_storage *saddr, int *addrlen,
+					        int fill_scopeid);
+
 extern int totemip_iface_check(struct totem_ip_address *bindnet,
 			       struct totem_ip_address *boundto,
 			       int *interface_up,
