@@ -50,6 +50,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <ifaddrs.h>
+#include <corosync/logsys.h>
 
 #include <corosync/totem/totemip.h>
 #include <corosync/swab.h>
@@ -267,11 +268,58 @@ const char *totemip_print(const struct totem_ip_address *addr)
 	return (inet_ntop(addr->family, addr->addr, buf, sizeof(buf)));
 }
 
-/* Make a totem_ip_address into a usable sockaddr_storage */
-int totemip_totemip_to_sockaddr_convert(struct totem_ip_address *ip_addr,
-					uint16_t port, struct sockaddr_storage *saddr, int *addrlen)
+static int totemip_getif_scopeid(const unsigned char *addr16, unsigned int *scopeid)
+{
+	struct ifaddrs *ifa;
+	const struct sockaddr_in6 *sin6;
+	const socklen_t addr_len = sizeof(struct in6_addr);
+	int rc = -1; // 0 = found 1 match; -1 = found 0 matches; -2 = found >1 matches
+	struct ifaddrs *totemip_getif_scopeid_ifap;
+
+	if (getifaddrs(&totemip_getif_scopeid_ifap) != 0) {
+		return (-1);
+	}
+
+	for (ifa = totemip_getif_scopeid_ifap; ifa; ifa = ifa->ifa_next) {
+		if (ifa->ifa_addr == NULL || ifa->ifa_netmask == NULL)
+			continue ;
+
+		if ((ifa->ifa_addr->sa_family != AF_INET6) ||
+		    (ifa->ifa_netmask->sa_family != AF_INET6 &&
+		     ifa->ifa_netmask->sa_family != 0))
+			continue ;
+
+		sin6 = (const struct sockaddr_in6 *)ifa->ifa_addr;
+
+		if (memcmp(&sin6->sin6_addr, addr16, addr_len) == 0) {
+			*scopeid = sin6->sin6_scope_id;
+
+			if (rc == -1) {
+				rc = 0;
+			} else {
+				rc = -2;
+			}
+		}
+	}
+
+	if (rc == -2) {
+		log_printf(LOGSYS_LEVEL_WARNING, "(%s) exists on several interfaces."
+		  " Use 'ip a' to see details.",
+		    totemip_sa_print(ifa->ifa_addr));
+	}
+
+	freeifaddrs(totemip_getif_scopeid_ifap);
+
+	return rc;
+}
+
+
+int totemip_totemip_to_sockaddr_convert_with_scopeid(const struct totem_ip_address *ip_addr,
+					uint16_t port, struct sockaddr_storage *saddr, int *addrlen,
+					int fill_scopeid)
 {
 	int ret = -1;
+	unsigned int scopeid;
 
 	if (ip_addr->family == AF_INET) {
 		struct sockaddr_in *sin = (struct sockaddr_in *)saddr;
@@ -296,7 +344,11 @@ int totemip_totemip_to_sockaddr_convert(struct totem_ip_address *ip_addr,
 #endif
 		sin->sin6_family = ip_addr->family;
 		sin->sin6_port = ntohs(port);
-		sin->sin6_scope_id = 2;
+		if (fill_scopeid) {
+			if (totemip_getif_scopeid(ip_addr->addr, &scopeid) == 0) {
+				sin->sin6_scope_id = scopeid;
+			}
+		}
 		memcpy(&sin->sin6_addr, ip_addr->addr, sizeof(struct in6_addr));
 
 		*addrlen = sizeof(struct sockaddr_in6);
@@ -305,6 +357,15 @@ int totemip_totemip_to_sockaddr_convert(struct totem_ip_address *ip_addr,
 
 	return ret;
 }
+
+/* Make a totem_ip_address into a usable sockaddr_storage */
+int totemip_totemip_to_sockaddr_convert(struct totem_ip_address *ip_addr,
+					uint16_t port, struct sockaddr_storage *saddr, int *addrlen)
+{
+
+	return (totemip_totemip_to_sockaddr_convert_with_scopeid(ip_addr, port, saddr, addrlen, 0));
+}
+
 
 /* Converts an address string string into a totem_ip_address.
    family can be AF_INET, AF_INET6 or 0 ("for "don't care")

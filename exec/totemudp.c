@@ -834,8 +834,8 @@ static int totemudp_build_sockets_ip (
 		return (-1);
 	}
 
-	totemip_totemip_to_sockaddr_convert(bound_to, instance->totem_interface->ip_port - 1,
-		&sockaddr, &addrlen);
+	totemip_totemip_to_sockaddr_convert_with_scopeid(bound_to, instance->totem_interface->ip_port - 1,
+		&sockaddr, &addrlen, 1);
 
 	retries = 0;
 	while (1) {
@@ -890,7 +890,8 @@ static int totemudp_build_sockets_ip (
 	 * Bind to unicast socket used for token send/receives
 	 * This has the side effect of binding to the correct interface
 	 */
-	totemip_totemip_to_sockaddr_convert(bound_to, instance->totem_interface->ip_port, &sockaddr, &addrlen);
+	totemip_totemip_to_sockaddr_convert_with_scopeid(bound_to, instance->totem_interface->ip_port,
+	    &sockaddr, &addrlen, 1);
 
 	retries = 0;
 	while (1) {

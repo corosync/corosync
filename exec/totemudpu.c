@@ -824,7 +824,9 @@ static int totemudpu_build_sockets_ip (
 	 * Bind to unicast socket used for token send/receives
 	 * This has the side effect of binding to the correct interface
 	 */
-	totemip_totemip_to_sockaddr_convert(bound_to, instance->totem_interface->ip_port, &sockaddr, &addrlen);
+	totemip_totemip_to_sockaddr_convert_with_scopeid(bound_to, instance->totem_interface->ip_port,
+	    &sockaddr, &addrlen, 1);
+
 	while (1) {
 		res = bind (instance->token_socket, (struct sockaddr *)&sockaddr, addrlen);
 		if (res == 0) {
@@ -1331,7 +1333,7 @@ static int totemudpu_create_sending_socket(
 	/*
 	 * Bind to sending interface
 	 */
-	totemip_totemip_to_sockaddr_convert(&instance->my_id, 0, &sockaddr, &addrlen);
+	totemip_totemip_to_sockaddr_convert_with_scopeid(&instance->my_id, 0, &sockaddr, &addrlen, 1);
 	res = bind (fd, (struct sockaddr *)&sockaddr, addrlen);
 	if (res == -1) {
 		LOGSYS_PERROR (errno, instance->totemudpu_log_level_warning,
