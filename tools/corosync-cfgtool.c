@@ -103,7 +103,7 @@ linkstatusget_do (char *interface_name, int brief)
 	int nodeid_match_guard;
 	cmap_value_types_t type;
 	size_t value_len;
-	int rc = 0;
+	int rc = EXIT_SUCCESS;
 	int len, s = 0, t;
 	char stat_ch;
 	char *str;
@@ -112,13 +112,13 @@ linkstatusget_do (char *interface_name, int brief)
 	printf ("Printing link status.\n");
 	result = corosync_cfg_initialize (&handle, NULL);
 	if (result != CS_OK) {
-		printf ("Could not initialize corosync configuration API error %d\n", result);
-		exit (1);
+		fprintf (stderr, "Could not initialize corosync configuration API error %d\n", result);
+		exit (EXIT_FAILURE);
 	}
 	result = cmap_initialize (&cmap_handle);
 	if (result != CS_OK) {
-		printf ("Could not initialize corosync cmap API error %d\n", result);
-		exit (1);
+		fprintf (stderr, "Could not initialize corosync cmap API error %d\n", result);
+		exit (EXIT_FAILURE);
 	}
 
 	result = cmap_get_string(cmap_handle, "totem.transport", &str);
@@ -137,8 +137,8 @@ linkstatusget_do (char *interface_name, int brief)
 	 */
 	result = cmap_iter_init(cmap_handle, "nodelist.node.", &iter);
 	if (result != CS_OK) {
-		printf ("Could not get nodelist from cmap. error %d\n", result);
-		exit (1);
+		fprintf (stderr, "Could not get nodelist from cmap. error %d\n", result);
+		exit (EXIT_FAILURE);
 	}
 
 	while ((cmap_iter_next(cmap_handle, iter, iter_key, &value_len, &type)) == CS_OK) {
@@ -164,7 +164,7 @@ linkstatusget_do (char *interface_name, int brief)
 
 	result = corosync_cfg_local_get(handle, &nodeid);
 	if (result != CS_OK) {
-		printf ("Could not get the local node id, the error is: %d\n", result);
+		fprintf (stderr, "Could not get the local node id, the error is: %d\n", result);
 	}
 	else {
 		printf ("Local node ID " CS_PRI_NODE_ID "\n", nodeid);
@@ -175,7 +175,7 @@ linkstatusget_do (char *interface_name, int brief)
 				&interface_status,
 				&interface_count);
 	if (result != CS_OK) {
-		printf ("Could not get the link status, the error is: %d\n", result);
+		fprintf (stderr, "Could not get the link status, the error is: %d\n", result);
 	} else {
 		for (i = 0; i < interface_count; i++) {
 			char *cur_iface_name_space = strchr(interface_names[i], ' ');
@@ -214,9 +214,9 @@ linkstatusget_do (char *interface_name, int brief)
 						stat_ch = interface_status[i][s];
 
 						/* Set return code to 1 if status is not localhost or connected. */
-						if (rc == 0) {
+						if (rc == EXIT_SUCCESS) {
 							if ((stat_ch != 'n') && (stat_ch != '3')) {
-								rc = 1;
+								rc = EXIT_FAILURE;
 							}
 						}
 
@@ -253,12 +253,12 @@ linkstatusget_do (char *interface_name, int brief)
 					printf ("\tstatus\t= %s\n", interface_status[i]);
 
 					/* Set return code to 1 if status is not localhost or connected. */
-					if ((rc == 0) && (transport_number == TOTEM_TRANSPORT_KNET)) {
+					if ((rc == EXIT_SUCCESS) && (transport_number == TOTEM_TRANSPORT_KNET)) {
 						len = strlen(interface_status[i]);
 						while (s < len) {
 							stat_ch = interface_status[i][s];
 							if ((stat_ch != 'n') && (stat_ch != '3')) {
-								rc = 1;
+								rc = EXIT_FAILURE;
 								break;
 							}
 							s++;
@@ -287,18 +287,18 @@ static int reload_config_do (void)
 	corosync_cfg_handle_t handle;
 	int rc;
 
-	rc = 0;
+	rc = EXIT_SUCCESS;
 
 	printf ("Reloading corosync.conf...\n");
 	result = corosync_cfg_initialize (&handle, NULL);
 	if (result != CS_OK) {
-		printf ("Could not initialize corosync configuration API error %s\n", cs_strerror(result));
-		exit (1);
+		fprintf (stderr, "Could not initialize corosync configuration API error %s\n", cs_strerror(result));
+		exit (EXIT_FAILURE);
 	}
 
 	result = corosync_cfg_reload_config (handle);
 	if (result != CS_OK) {
-		printf ("Could not reload configuration. Error %s\n", cs_strerror(result));
+		fprintf (stderr, "Could not reload configuration. Error %s\n", cs_strerror(result));
 		rc = (int)result;
 	}
 	else {
@@ -316,12 +316,12 @@ static int reopen_log_files_do (void)
 	corosync_cfg_handle_t handle;
 	int rc;
 
-	rc = 0;
+	rc = EXIT_SUCCESS;
 
 	result = corosync_cfg_initialize (&handle, NULL);
 	if (result != CS_OK) {
 		fprintf (stderr, "Could not initialize corosync configuration API error %s\n", cs_strerror(result));
-		exit (1);
+		exit (EXIT_FAILURE);
 	}
 
 	result = corosync_cfg_reopen_log_files (handle);
@@ -345,14 +345,14 @@ static void shutdown_do(void)
 
 	result = corosync_cfg_initialize (&handle, &callbacks);
 	if (result != CS_OK) {
-		printf ("Could not initialize corosync configuration API error %d\n", result);
-		exit (1);
+		fprintf (stderr, "Could not initialize corosync configuration API error %d\n", result);
+		exit (EXIT_FAILURE);
 	}
 
 	printf ("Shutting down corosync\n");
 	cs_repeat(result, 30, corosync_cfg_try_shutdown (handle, COROSYNC_CFG_SHUTDOWN_FLAG_REQUEST));
 	if (result != CS_OK) {
-		printf ("Could not shutdown (error = %d)\n", result);
+		fprintf (stderr, "Could not shutdown (error = %d)\n", result);
 	}
 
 	(void)corosync_cfg_finalize (handle);
@@ -369,8 +369,8 @@ static void showaddrs_do(unsigned int nodeid)
 
 	result = corosync_cfg_initialize (&handle, NULL);
 	if (result != CS_OK) {
-		printf ("Could not initialize corosync configuration API error %d\n", result);
-		exit (1);
+		fprintf (stderr, "Could not initialize corosync configuration API error %d\n", result);
+		exit (EXIT_FAILURE);
 	}
 
 	if (corosync_cfg_get_node_addrs(handle, nodeid, INTERFACE_MAX, &numaddrs, addrs) == CS_OK) {
@@ -412,12 +412,12 @@ static void killnode_do(unsigned int nodeid)
 	printf ("Killing node " CS_PRI_NODE_ID "\n", nodeid);
 	result = corosync_cfg_initialize (&handle, NULL);
 	if (result != CS_OK) {
-		printf ("Could not initialize corosync configuration API error %d\n", result);
-		exit (1);
+		fprintf (stderr, "Could not initialize corosync configuration API error %d\n", result);
+		exit (EXIT_FAILURE);
 	}
 	result = corosync_cfg_kill_node (handle, nodeid, "Killed by corosync-cfgtool");
 	if (result != CS_OK) {
-		printf ("Could not kill node (error = %d)\n", result);
+		fprintf (stderr, "Could not kill node (error = %d)\n", result);
 	}
 	(void)corosync_cfg_finalize (handle);
 }
@@ -444,7 +444,7 @@ int main (int argc, char *argv[]) {
 	int opt;
 	unsigned int nodeid = 0;
 	char interface_name[128] = "";
-	int rc = 0;
+	int rc = EXIT_SUCCESS;
 	enum user_action action = ACTION_NOOP;
 	int brief = 0;
 
