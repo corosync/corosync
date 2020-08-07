@@ -74,18 +74,18 @@ static int ringstatusget_do (char *interface_name)
 	char **interface_status;
 	unsigned int i;
 	unsigned int nodeid;
-	int rc = 0;
+	int rc = EXIT_SUCCESS;
 
 	printf ("Printing ring status.\n");
 	result = corosync_cfg_initialize (&handle, NULL);
 	if (result != CS_OK) {
-		printf ("Could not initialize corosync configuration API error %d\n", result);
-		exit (1);
+		fprintf (stderr, "Could not initialize corosync configuration API error %d\n", result);
+		exit (EXIT_FAILURE);
 	}
 
 	result = corosync_cfg_local_get(handle, &nodeid);
 	if (result != CS_OK) {
-		printf ("Could not get the local node id, the error is: %d\n", result);
+		fprintf (stderr, "Could not get the local node id, the error is: %d\n", result);
 	}
 	else {
 		printf ("Local node ID %u\n", nodeid);
@@ -96,7 +96,7 @@ static int ringstatusget_do (char *interface_name)
 				&interface_status,
 				&interface_count);
 	if (result != CS_OK) {
-		printf ("Could not get the ring status, the error is: %d\n", result);
+		fprintf (stderr, "Could not get the ring status, the error is: %d\n", result);
 	} else {
 		for (i = 0; i < interface_count; i++) {
 			if ( (interface_name && 
@@ -108,7 +108,7 @@ static int ringstatusget_do (char *interface_name)
 				printf ("\tid\t= %s\n", interface_names[i]);
 				printf ("\tstatus\t= %s\n", interface_status[i]);
 				if (strstr(interface_status[i], "FAULTY")) {
-					rc = 1;
+					rc = EXIT_FAILURE;
 				}
 			}
 		}
@@ -133,13 +133,13 @@ static void ringreenable_do (void)
 	printf ("Re-enabling all failed rings.\n");
 	result = corosync_cfg_initialize (&handle, NULL);
 	if (result != CS_OK) {
-		printf ("Could not initialize corosync configuration API error %d\n", result);
-		exit (1);
+		fprintf (stderr, "Could not initialize corosync configuration API error %d\n", result);
+		exit (EXIT_FAILURE);
 	}
 
 	result = corosync_cfg_ring_reenable (handle);
 	if (result != CS_OK) {
-		printf ("Could not re-enable ring error %d\n", result);
+		fprintf (stderr, "Could not re-enable ring error %d\n", result);
 	}
 
 	(void)corosync_cfg_finalize (handle);
@@ -151,18 +151,18 @@ static int reload_config_do (void)
 	corosync_cfg_handle_t handle;
 	int rc;
 
-	rc = 0;
+	rc = EXIT_SUCCESS;
 
 	printf ("Reloading corosync.conf...\n");
 	result = corosync_cfg_initialize (&handle, NULL);
 	if (result != CS_OK) {
-		printf ("Could not initialize corosync configuration API error %s\n", cs_strerror(result));
-		exit (1);
+		fprintf (stderr, "Could not initialize corosync configuration API error %s\n", cs_strerror(result));
+		exit (EXIT_FAILURE);
 	}
 
 	result = corosync_cfg_reload_config (handle);
 	if (result != CS_OK) {
-		printf ("Could not reload configuration. Error %s\n", cs_strerror(result));
+		fprintf (stderr, "Could not reload configuration. Error %s\n", cs_strerror(result));
 		rc = (int)result;
 	}
 	else {
@@ -184,14 +184,14 @@ static void shutdown_do(void)
 
 	result = corosync_cfg_initialize (&handle, &callbacks);
 	if (result != CS_OK) {
-		printf ("Could not initialize corosync configuration API error %d\n", result);
-		exit (1);
+		fprintf (stderr, "Could not initialize corosync configuration API error %d\n", result);
+		exit (EXIT_FAILURE);
 	}
 
 	printf ("Shutting down corosync\n");
 	cs_repeat(result, 30, corosync_cfg_try_shutdown (handle, COROSYNC_CFG_SHUTDOWN_FLAG_REQUEST));
 	if (result != CS_OK) {
-		printf ("Could not shutdown (error = %d)\n", result);
+		fprintf (stderr, "Could not shutdown (error = %d)\n", result);
 	}
 
 	(void)corosync_cfg_finalize (handle);
@@ -208,8 +208,8 @@ static void showaddrs_do(unsigned int nodeid)
 
 	result = corosync_cfg_initialize (&handle, NULL);
 	if (result != CS_OK) {
-		printf ("Could not initialize corosync configuration API error %d\n", result);
-		exit (1);
+		fprintf (stderr, "Could not initialize corosync configuration API error %d\n", result);
+		exit (EXIT_FAILURE);
 	}
 
 	if (corosync_cfg_get_node_addrs(handle, nodeid, INTERFACE_MAX, &numaddrs, addrs) == CS_OK) {
@@ -247,12 +247,12 @@ static void killnode_do(unsigned int nodeid)
 	printf ("Killing node %d\n", nodeid);
 	result = corosync_cfg_initialize (&handle, NULL);
 	if (result != CS_OK) {
-		printf ("Could not initialize corosync configuration API error %d\n", result);
-		exit (1);
+		fprintf (stderr, "Could not initialize corosync configuration API error %d\n", result);
+		exit (EXIT_FAILURE);
 	}
 	result = corosync_cfg_kill_node (handle, nodeid, "Killed by corosync-cfgtool");
 	if (result != CS_OK) {
-		printf ("Could not kill node (error = %d)\n", result);
+		fprintf (stderr, "Could not kill node (error = %d)\n", result);
 	}
 	(void)corosync_cfg_finalize (handle);
 }
@@ -279,7 +279,7 @@ int main (int argc, char *argv[]) {
 	int opt;
 	unsigned int nodeid;
 	char interface_name[128] = "";
-	int rc=0;
+	int rc = EXIT_SUCCESS;
 
 	if (argc == 1) {
 		usage_do ();
