@@ -46,10 +46,12 @@
 #include <sys/un.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <limits.h>
 
 #include <corosync/corotypes.h>
 #include <corosync/totem/totem.h>
 #include <corosync/cfg.h>
+#include "util.h"
 
 #define cs_repeat(result, max, code)				\
 	do {							\
@@ -280,6 +282,7 @@ int main (int argc, char *argv[]) {
 	unsigned int nodeid;
 	char interface_name[128] = "";
 	int rc = EXIT_SUCCESS;
+	long long int l;
 
 	if (argc == 1) {
 		usage_do ();
@@ -300,14 +303,22 @@ int main (int argc, char *argv[]) {
 			ringreenable_do ();
 			break;
 		case 'k':
-			nodeid = atoi (optarg);
+			if (util_strtonum(optarg, 1, UINT_MAX, &l) == -1) {
+				fprintf(stderr, "The nodeid was not valid, try a positive number\n");
+				exit(EXIT_FAILURE);
+			}
+			nodeid = l;
 			killnode_do(nodeid);
 			break;
 		case 'H':
 			shutdown_do();
 			break;
 		case 'a':
-			nodeid = atoi (optarg);
+			if (util_strtonum(optarg, 1, UINT_MAX, &l) == -1) {
+				fprintf(stderr, "The nodeid was not valid, try a positive number\n");
+				exit(EXIT_FAILURE);
+			}
+			nodeid = l;
 			showaddrs_do(nodeid);
 			break;
 		case 'h':

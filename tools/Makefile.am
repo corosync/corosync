@@ -42,9 +42,15 @@ if INSTALL_XMLCONF
 bin_SCRIPTS		+= corosync-xmlproc
 endif
 
+noinst_HEADERS          = util.h
+
 EXTRA_DIST		= corosync-xmlproc.sh \
 			  corosync-notifyd.sysconfig.example \
                           corosync-blackbox.sh
+
+corosync_cfgtool_SOURCES = corosync-cfgtool.c util.c
+
+corosync_quorumtool_SOURCES = corosync-quorumtool.c util.c
 
 corosync-xmlproc: corosync-xmlproc.sh
 	sed -e 's#@''DATADIR@#${datadir}#g' \
