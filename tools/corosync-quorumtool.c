@@ -48,6 +48,7 @@
 #include <corosync/cmap.h>
 #include <corosync/quorum.h>
 #include <corosync/votequorum.h>
+#include "util.h"
 
 typedef enum {
 	NODEID_FORMAT_DECIMAL,
@@ -883,7 +884,6 @@ static void close_all(void) {
 
 int main (int argc, char *argv[]) {
 	const char *options = "VHaslpmfe:v:hin:o:";
-	char *endptr;
 	int opt;
 	int votes = 0;
 	int ret = 0;
@@ -894,7 +894,7 @@ int main (int argc, char *argv[]) {
 	command_t command_opt = CMD_SHOWSTATUS;
 	sorttype_t sort_opt = SORT_ADDR;
 	char sortchar;
-	long int l;
+	long long int l;
 
 	if (init_all()) {
 		close_all();
@@ -934,11 +934,11 @@ int main (int argc, char *argv[]) {
 			break;
 		case 'e':
 			if (using_votequorum() > 0) {
-				votes = strtol(optarg, &endptr, 0);
-				if ((votes == 0 && endptr == optarg) || votes <= 0) {
+				if (util_strtonum(optarg, 1, INT_MAX, &l) == -1) {
 					fprintf(stderr, "New expected votes value was not valid, try a positive number\n");
 					exit(EXIT_FAILURE);
 				} else {
+					votes = l;
 					command_opt = CMD_SETEXPECTED;
 				}
 			} else {
@@ -947,8 +947,7 @@ int main (int argc, char *argv[]) {
 			}
 			break;
 		case 'n':
-			l = strtol(optarg, &endptr, 0);
-			if ((l == 0 && endptr == optarg) || l < 0) {
+			if (util_strtonum(optarg, 1, UINT_MAX, &l) == -1) {
 				fprintf(stderr, "The nodeid was not valid, try a positive number\n");
 				exit(EXIT_FAILURE);
 			}
@@ -957,11 +956,11 @@ int main (int argc, char *argv[]) {
 			break;
 		case 'v':
 			if (using_votequorum() > 0) {
-				votes = strtol(optarg, &endptr, 0);
-				if ((votes == 0 && endptr == optarg) || votes < 0) {
+				if (util_strtonum(optarg, 0, INT_MAX, &l) == -1) {
 					fprintf(stderr, "New votes value was not valid, try a positive number or zero\n");
 					exit(EXIT_FAILURE);
 				} else {
+					votes = l;
 					command_opt = CMD_SETVOTES;
 				}
 			}
