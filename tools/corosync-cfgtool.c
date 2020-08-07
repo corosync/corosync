@@ -46,11 +46,13 @@
 #include <sys/un.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <limits.h>
 
 #include <corosync/corotypes.h>
 #include <corosync/totem/totem.h>
 #include <corosync/cfg.h>
 #include <corosync/cmap.h>
+#include "util.h"
 
 #define cs_repeat(result, max, code)				\
 	do {							\
@@ -452,6 +454,7 @@ int main (int argc, char *argv[]) {
 	int rc = EXIT_SUCCESS;
 	enum user_action action = ACTION_NOOP;
 	int brief = 0;
+	long long int l;
 
 	while ( (opt = getopt(argc, argv, options)) != -1 ) {
 		switch (opt) {
@@ -472,14 +475,22 @@ int main (int argc, char *argv[]) {
 			action = ACTION_REOPEN_LOG_FILES;
 			break;
 		case 'k':
-			nodeid = atoi (optarg);
+			if (util_strtonum(optarg, 1, UINT_MAX, &l) == -1) {
+				fprintf(stderr, "The nodeid was not valid, try a positive number\n");
+				exit(EXIT_FAILURE);
+			}
+			nodeid = l;
 			action = ACTION_KILL_NODE;
 			break;
 		case 'H':
 			action = ACTION_SHUTDOW;
 			break;
 		case 'a':
-			nodeid = atoi (optarg);
+			if (util_strtonum(optarg, 1, UINT_MAX, &l) == -1) {
+				fprintf(stderr, "The nodeid was not valid, try a positive number\n");
+				exit(EXIT_FAILURE);
+			}
+			nodeid = l;
 			action = ACTION_SHOWADDR;
 			break;
 		case '?':

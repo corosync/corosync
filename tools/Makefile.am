@@ -42,11 +42,17 @@ if INSTALL_XMLCONF
 bin_SCRIPTS		+= corosync-xmlproc
 endif
 
+noinst_HEADERS          = util.h
+
 AM_CFLAGS		= $(knet_CFLAGS)
 
 EXTRA_DIST		= corosync-xmlproc.sh \
 			  corosync-notifyd.sysconfig.example \
                           corosync-blackbox.sh
+
+corosync_cfgtool_SOURCES = corosync-cfgtool.c util.c
+
+corosync_quorumtool_SOURCES = corosync-quorumtool.c util.c
 
 corosync-xmlproc: corosync-xmlproc.sh
 	$(SED) -e 's#@''DATADIR@#${datadir}#g' \
