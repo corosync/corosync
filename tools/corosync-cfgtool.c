@@ -358,12 +358,13 @@ static void shutdown_do(void)
 	(void)corosync_cfg_finalize (handle);
 }
 
-static void showaddrs_do(unsigned int nodeid)
+static int showaddrs_do(unsigned int nodeid)
 {
 	cs_error_t result;
 	corosync_cfg_handle_t handle;
 	int numaddrs;
 	int i;
+	int rc = EXIT_SUCCESS;
 	corosync_cfg_node_address_t addrs[INTERFACE_MAX];
 
 
@@ -397,10 +398,14 @@ static void showaddrs_do(unsigned int nodeid)
 			printf("%s", buf);
 		}
 		printf("\n");
+	} else {
+		fprintf (stderr, "Could not get node address for nodeid %d\n", nodeid);
+		rc = EXIT_FAILURE;
 	}
 
 
 	(void)corosync_cfg_finalize (handle);
+	return rc;
 }
 
 
@@ -502,7 +507,7 @@ int main (int argc, char *argv[]) {
 		shutdown_do();
 		break;
 	case ACTION_SHOWADDR:
-		showaddrs_do(nodeid);
+		rc = showaddrs_do(nodeid);
 		break;
 	case ACTION_NOOP:
 	default:
