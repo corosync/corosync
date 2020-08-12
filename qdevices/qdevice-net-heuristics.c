@@ -197,7 +197,6 @@ qdevice_net_connect_heuristics_exec_result_callback(void *heuristics_instance_pt
 	instance = heuristics_instance->qdevice_instance_ptr;
 	net_instance = instance->model_data;
 
-
 	if (qdevice_heuristics_result_notifier_list_set_active(&heuristics_instance->exec_result_notifier_list,
 	    qdevice_net_connect_heuristics_exec_result_callback, 0) != 0) {
 		log(LOG_ERR, "Can't deactivate net connect heuristics exec callback notifier");
@@ -205,6 +204,13 @@ qdevice_net_connect_heuristics_exec_result_callback(void *heuristics_instance_pt
 		net_instance->disconnect_reason = QDEVICE_NET_DISCONNECT_REASON_CANT_ACTIVATE_HEURISTICS_RESULT_NOTIFIER;
 		net_instance->schedule_disconnect = 1;
 
+		return (0);
+	}
+
+	if (net_instance->state != QDEVICE_NET_INSTANCE_STATE_WAITING_VOTEQUORUM_CMAP_EVENTS) {
+		/*
+		 * Not connected to qnetd -> heuristics will be called again on new connect
+		 */
 		return (0);
 	}
 
