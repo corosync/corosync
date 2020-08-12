@@ -764,9 +764,11 @@ void
 qnetd_algo_ffsplit_client_disconnect(struct qnetd_client *client, int server_going_down)
 {
 
-	(void)qnetd_algo_ffsplit_do(client, 1, &client->last_ring_id,
-	    &client->configuration_node_list, &client->last_membership_node_list,
-	    client->last_heuristics);
+	if (!server_going_down) {
+		(void)qnetd_algo_ffsplit_do(client, 1, &client->last_ring_id,
+		    &client->configuration_node_list, &client->last_membership_node_list,
+		    client->last_heuristics);
+	}
 
 	free(client->algorithm_data);
 
