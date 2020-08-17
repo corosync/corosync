@@ -932,6 +932,7 @@ int main(int argc, char *argv[])
 				print_key(handle, argv[i], value_len, NULL, type);
 			} else {
 				fprintf(stderr, "Can't get key %s. Error %s\n", argv[i], cs_strerror(err));
+				return (EXIT_FAILURE);
 			}
 		}
 		break;
@@ -940,6 +941,7 @@ int main(int argc, char *argv[])
 			err = cmap_delete(handle, argv[i]);
 			if (err != CS_OK) {
 				fprintf(stderr, "Can't delete key %s. Error %s\n", argv[i], cs_strerror(err));
+				return (EXIT_FAILURE);
 			}
 		}
 		break;
