@@ -110,6 +110,7 @@ linkstatusget_do (char *interface_name, int brief)
 	char stat_ch;
 	char *str;
 	totem_transport_t transport_number = TOTEM_TRANSPORT_KNET;
+	int no_match = 1;
 
 	printf ("Printing link status.\n");
 	result = corosync_cfg_initialize (&handle, NULL);
@@ -201,6 +202,7 @@ linkstatusget_do (char *interface_name, int brief)
 			}
 
 			if (show_current_iface) {
+				no_match = 0;
 				printf ("LINK ID %s\n", interface_names[i]);
 				printf ("\taddr\t= %s\n", cur_iface_name_space + 1);
 				/*
@@ -268,6 +270,12 @@ linkstatusget_do (char *interface_name, int brief)
 					}
 				}
 			}
+		}
+
+		/* No match for value of -i option */
+		if (no_match) {
+			rc = EXIT_FAILURE;
+			fprintf(stderr, "Can't match any IP address or link id\n");
 		}
 
 		for (i = 0; i < interface_count; i++) {
