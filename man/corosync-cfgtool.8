@@ -49,12 +49,13 @@ Displays the status of the current links on this node for UDP/UDPU, with extende
 for KNET.
 After each link, the nodes on that link are displayed in order with their status,
 for example there are 3 nodes with KNET transportation:
-LINK ID 0:
-    id     = 192.168.100.80
-    status:
-        node 0: link enabled: 1     link connected: 1
-        node 1: link enabled: 1     link connected: 1
-        node 2: link enabled: 1     link connected: 1
+
+LINK ID 0
+        addr    = 192.168.100.80
+        status:
+                nodeid  1:      localhost
+                nodeid  2:      connected
+                nodeid  3:      connected
 .TP
 .B -b
 Displays the brief status of the current links on this node (KNET only) when used
@@ -69,9 +70,10 @@ should contain more information). Character 'd' shouldn't appear and it means th
 was unable to configure a link and it is result of some error which should have been logged.
 
 The output will be:
-LINK ID 0:
-    id     = 192.168.100.80
-    status = 333
+
+LINK ID 0
+        addr    = 192.168.100.80
+        status  = n33
 .TP
 .B -R
 Tell all instances of corosync in this cluster to reload corosync.conf.
