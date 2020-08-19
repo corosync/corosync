@@ -61,7 +61,6 @@ typedef enum {
 } name_format_t;
 
 typedef enum {
-	CMD_UNKNOWN,
 	CMD_SHOWNODES,
 	CMD_SHOWSTATUS,
 	CMD_SETVOTES,
@@ -892,20 +891,10 @@ int main (int argc, char *argv[]) {
 	char sortchar;
 	long long int l;
 
-	if (init_all()) {
-		close_all();
-		exit(EXIT_FAILURE);
-	}
-
 	while ( (opt = getopt(argc, argv, options)) != -1 ) {
 		switch (opt) {
 		case 'f':
-			if (using_votequorum() > 0) {
-				command_opt = CMD_UNREGISTER_QDEVICE;
-			} else {
-				fprintf(stderr, "You cannot unregister quorum device, corosync is not using votequorum\n");
-				exit(EXIT_FAILURE);
-			}
+			command_opt = CMD_UNREGISTER_QDEVICE;
 			break;
 		case 's':
 			command_opt = CMD_SHOWSTATUS;
@@ -929,18 +918,12 @@ int main (int argc, char *argv[]) {
 			machine_parsable = 1;
 			break;
 		case 'e':
-			if (using_votequorum() > 0) {
-				if (util_strtonum(optarg, 1, INT_MAX, &l) == -1) {
-					fprintf(stderr, "New expected votes value was not valid, try a positive number\n");
-					exit(EXIT_FAILURE);
-				} else {
-					votes = l;
-					command_opt = CMD_SETEXPECTED;
-				}
-			} else {
-				fprintf(stderr, "You cannot change expected votes, corosync is not using votequorum\n");
+			if (util_strtonum(optarg, 1, INT_MAX, &l) == -1) {
+				fprintf(stderr, "New expected votes value was not valid, try a positive number\n");
 				exit(EXIT_FAILURE);
 			}
+			votes = l;
+			command_opt = CMD_SETEXPECTED;
 			break;
 		case 'n':
 			if (util_strtonum(optarg, 1, UINT_MAX, &l) == -1) {
@@ -951,19 +934,12 @@ int main (int argc, char *argv[]) {
 			nodeid_set = 1;
 			break;
 		case 'v':
-			if (using_votequorum() > 0) {
-				if (util_strtonum(optarg, 0, INT_MAX, &l) == -1) {
-					fprintf(stderr, "New votes value was not valid, try a positive number or zero\n");
-					exit(EXIT_FAILURE);
-				} else {
-					votes = l;
-					command_opt = CMD_SETVOTES;
-				}
-			}
-			else {
-				fprintf(stderr, "You cannot change node votes, corosync is not using votequorum\n");
+			if (util_strtonum(optarg, 0, INT_MAX, &l) == -1) {
+				fprintf(stderr, "New votes value was not valid, try a positive number or zero\n");
 				exit(EXIT_FAILURE);
 			}
+			votes = l;
+			command_opt = CMD_SETVOTES;
 			break;
 		case 'o':
 			sortchar = optarg[0];
@@ -982,21 +958,27 @@ int main (int argc, char *argv[]) {
 			break;
 		case 'V':
 			printf("corosync-quorumtool version: %s\n", VERSION);
-			exit(0);
-		case ':':
+			exit(EXIT_SUCCESS);
+			break;
 		case 'h':
+			show_usage(argv[0]);
+			exit(EXIT_SUCCESS);
+			break;
+		case ':':
 		case '?':
 		default:
-			command_opt = CMD_UNKNOWN;
+			show_usage(argv[0]);
+			exit(EXIT_FAILURE);
 			break;
 		}
 	}
 
+	if (init_all()) {
+		close_all();
+		exit(EXIT_FAILURE);
+	}
+
 	switch (command_opt) {
-	case CMD_UNKNOWN:
-		show_usage(argv[0]);
-		ret = EXIT_FAILURE;
-		break;
 	case CMD_SHOWNODES:
 		ret = show_nodes(nodeid_format, address_format, sort_opt);
 		break;
@@ -1004,19 +986,34 @@ int main (int argc, char *argv[]) {
 		ret = show_status(nodeid_format, address_format, sort_opt);
 		break;
 	case CMD_SETVOTES:
-		if (!nodeid_set) {
-			nodeid = our_nodeid;
+		if (using_votequorum() > 0) {
+			if (!nodeid_set) {
+				nodeid = our_nodeid;
+			}
+			ret = set_votes(nodeid, votes);
+		} else {
+			fprintf(stderr, "You cannot change node votes, corosync is not using votequorum\n");
+			ret = EXIT_FAILURE;
 		}
-		ret = set_votes(nodeid, votes);
 		break;
 	case CMD_SETEXPECTED:
-		ret = set_expected(votes);
+		if (using_votequorum() > 0) {
+			ret = set_expected(votes);
+		} else {
+			fprintf(stderr, "You cannot change expected votes, corosync is not using votequorum\n");
+			ret = EXIT_FAILURE;
+		}
 		break;
 	case CMD_MONITOR:
 		ret = monitor_status(nodeid_format, address_format, sort_opt);
 		break;
 	case CMD_UNREGISTER_QDEVICE:
-		ret = unregister_qdevice();
+		if (using_votequorum() > 0) {
+			ret = unregister_qdevice();
+		} else {
+			fprintf(stderr, "You cannot unregister quorum device, corosync is not using votequorum\n");
+			ret = EXIT_FAILURE;
+		}
 		break;
 	}
 
