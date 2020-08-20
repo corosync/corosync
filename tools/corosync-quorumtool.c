@@ -892,7 +892,6 @@ int main (int argc, char *argv[]) {
 	name_format_t address_format = ADDRESS_FORMAT_NAME;
 	command_t command_opt = CMD_SHOWSTATUS;
 	sorttype_t sort_opt = SORT_ADDR;
-	char sortchar;
 	long long int l;
 
 	while ( (opt = getopt(argc, argv, options)) != -1 ) {
@@ -946,18 +945,15 @@ int main (int argc, char *argv[]) {
 			command_opt = CMD_SETVOTES;
 			break;
 		case 'o':
-			sortchar = optarg[0];
-			switch (sortchar) {
-			        case 'a': sort_opt = SORT_ADDR;
-					break;
-			        case 'i': sort_opt = SORT_NODEID;
-					break;
-			        case 'n': sort_opt = SORT_NODENAME;
-					break;
-			        default:
-					fprintf(stderr, "Invalid ordering option. valid orders are a(address), i(node ID) or n(name)\n");
-					exit(EXIT_FAILURE);
-					break;
+			if (strcmp(optarg, "a") == 0) {
+				sort_opt = SORT_ADDR;
+			} else if (strcmp(optarg, "i") == 0) {
+				sort_opt = SORT_NODEID;
+			} else if (strcmp(optarg, "n") == 0) {
+				sort_opt = SORT_NODENAME;
+			} else {
+				fprintf(stderr, "Invalid ordering option. valid orders are a(address), i(node ID) or n(name)\n");
+				exit(EXIT_FAILURE);
 			}
 			break;
 		case 'V':
