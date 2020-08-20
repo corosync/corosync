@@ -417,13 +417,14 @@ static void print_key(cmap_handle_t handle,
 	printf("\n");
 }
 
-static void print_iter(cmap_handle_t handle, const char *prefix)
+static int print_iter(cmap_handle_t handle, const char *prefix)
 {
 	cmap_iter_handle_t iter_handle;
 	char key_name[CMAP_KEYNAME_MAXLEN + 1];
 	size_t value_len;
 	cmap_value_types_t type;
 	cs_error_t err;
+	int no_result = 1;
 
 	err = cmap_iter_init(handle, prefix, &iter_handle);
 	if (err != CS_OK) {
@@ -432,9 +433,12 @@ static void print_iter(cmap_handle_t handle, const char *prefix)
 	}
 
 	while ((err = cmap_iter_next(handle, iter_handle, key_name, &value_len, &type)) == CS_OK) {
+		no_result = 0;
 		print_key(handle, key_name, value_len, NULL, type);
 	}
+
 	cmap_iter_finalize(handle, iter_handle);
+	return no_result;
 }
 
 static void delete_with_prefix(cmap_handle_t handle, const char *prefix)
@@ -818,6 +822,7 @@ int main(int argc, char *argv[])
 	int no_retries;
 	char * clear_opt = NULL;
 	char * settings_file = NULL;
+	int count_of_no_result = 0;
 
 	action = ACTION_PRINT_PREFIX;
 	track_prefix = 1;
@@ -922,11 +927,15 @@ int main(int argc, char *argv[])
 	switch (action) {
 	case ACTION_PRINT_PREFIX:
 		if (argc == 0) {
-			print_iter(handle, NULL);
+			count_of_no_result = print_iter(handle, NULL);
 		} else {
 			for (i = 0; i < argc; i++) {
-				print_iter(handle, argv[i]);
+				count_of_no_result += print_iter(handle, argv[i]);
 			}
+		}
+
+		if (count_of_no_result > 0 && count_of_no_result >= argc) {
+			return (EXIT_FAILURE);
 		}
 		break;
 	case ACTION_GET:
