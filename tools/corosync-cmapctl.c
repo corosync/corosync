@@ -735,6 +735,10 @@ static void read_in_config_file(cmap_handle_t handle, char * filename)
 		} else {
 			key_type_s = strtok(NULL, " \n");
 			key_value_s = strtok(NULL, " \n");
+			if (key_type_s == NULL || key_value_s == NULL) {
+				fprintf(stderr, "Both type and value for key %s are required\n", key_name);
+				exit (EXIT_FAILURE);
+			}
 			set_key(handle, key_name, key_type_s, key_value_s);
 		}
 	}
