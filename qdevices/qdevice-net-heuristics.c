@@ -207,10 +207,12 @@ qdevice_net_connect_heuristics_exec_result_callback(void *heuristics_instance_pt
 		return (0);
 	}
 
-	if (net_instance->state != QDEVICE_NET_INSTANCE_STATE_WAITING_VOTEQUORUM_CMAP_EVENTS) {
+	if (net_instance->state != QDEVICE_NET_INSTANCE_STATE_WAITING_INIT_REPLY) {
 		/*
 		 * Not connected to qnetd -> heuristics will be called again on new connect
 		 */
+		log(LOG_DEBUG, "Received unexpected net connect heuristics in state %u",
+		    net_instance->state);
 		return (0);
 	}
 
