@@ -4053,8 +4053,6 @@ static int message_handler_orf_token (
 		}
 	}
 
-	token_callbacks_execute (instance, TOTEM_CALLBACK_TOKEN_RECEIVED);
-
 	switch (instance->memb_state) {
 	case MEMB_STATE_COMMIT:
 		 /* Discard token */
@@ -4095,6 +4093,12 @@ static int message_handler_orf_token (
 		if (sq_lte_compare (token->token_seq, instance->my_token_seq)) {
 			return (0); /* discard token */
 		}
+
+		/*
+		 * Token is valid so trigger callbacks
+		 */
+		token_callbacks_execute (instance, TOTEM_CALLBACK_TOKEN_RECEIVED);
+
 		last_aru = instance->my_last_aru;
 		instance->my_last_aru = token->aru;
 
