@@ -1747,14 +1747,14 @@ extern int totem_config_read (
 	if (icmap_get_string("totem.transport", &str) == CS_OK) {
 		if (strcmp (str, "udpu") == 0) {
 			totem_config->transport_number = TOTEM_TRANSPORT_UDPU;
-		}
-
-		if (strcmp (str, "udp") == 0) {
+		} else if (strcmp (str, "udp") == 0) {
 			totem_config->transport_number = TOTEM_TRANSPORT_UDP;
-		}
-
-		if (strcmp (str, "knet") == 0) {
+		} else if (strcmp (str, "knet") == 0) {
 			totem_config->transport_number = TOTEM_TRANSPORT_KNET;
+		} else {
+			*error_string = "Invalid transport type. Should be udpu, udp or knet";
+		        free(str);
+			return -1;
 		}
 
 		free(str);
