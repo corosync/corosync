@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2012 Red Hat, Inc.
+ * Copyright (c) 2008-2020 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -40,10 +40,20 @@
 extern "C" {
 #endif
 
+typedef enum {
+	QUORUM_MODEL_V0 = 0,
+	QUORUM_MODEL_V1 = 1,
+} quorum_model_t;
+
 /**
  * @brief quorum_handle_t
  */
 typedef uint64_t quorum_handle_t;
+
+struct quorum_ring_id {
+	uint32_t nodeid;
+	uint64_t seq;
+};
 
 /**
  * @brief The quorum_notification_fn_t callback
@@ -56,12 +66,42 @@ typedef void (*quorum_notification_fn_t) (
 	uint32_t *view_list
 	);
 
+typedef void (*quorum_v1_quorum_notification_fn_t) (
+	quorum_handle_t handle,
+	uint32_t quorate,
+	struct quorum_ring_id ring_id,
+	uint32_t member_list_entries, const uint32_t *member_list
+);
+
+typedef void (*quorum_v1_nodelist_notification_fn_t) (
+	quorum_handle_t handle,
+	struct quorum_ring_id ring_id,
+	uint32_t member_list_entries, const uint32_t *member_list,
+	uint32_t joined_list_entries, const uint32_t *joined_list,
+	uint32_t left_list_entries, const uint32_t *left_list
+);
+
 /**
  * @brief The quorum_callbacks_t struct
  */
 typedef struct {
 	quorum_notification_fn_t quorum_notify_fn;
 } quorum_callbacks_t;
+
+typedef struct {
+	quorum_model_t model;
+} quorum_model_data_t;
+
+typedef struct {
+	quorum_model_t model;
+	quorum_notification_fn_t quorum_notify_fn;
+} quorum_model_v0_data_t;
+
+typedef struct {
+	quorum_model_t model;
+	quorum_v1_quorum_notification_fn_t quorum_notify_fn;
+	quorum_v1_nodelist_notification_fn_t nodelist_notify_fn;
+} quorum_model_v1_data_t;
 
 #define QUORUM_FREE	0
 #define QUORUM_SET	1
@@ -77,6 +117,13 @@ cs_error_t quorum_initialize (
 	quorum_handle_t *handle,
 	quorum_callbacks_t *callbacks,
 	uint32_t *quorum_type);
+
+cs_error_t quorum_model_initialize (
+	quorum_handle_t *handle,
+	quorum_model_t model,
+	quorum_model_data_t *model_data,
+	uint32_t *quorum_type,
+	void *context);
 
 /**
  * @brief Close the quorum handle

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2011 Red Hat, Inc.
+ * Copyright (c) 2008-2020 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -44,7 +44,8 @@ enum req_quorum_types {
 	MESSAGE_REQ_QUORUM_GETQUORATE = 0,
 	MESSAGE_REQ_QUORUM_TRACKSTART,
 	MESSAGE_REQ_QUORUM_TRACKSTOP,
-	MESSAGE_REQ_QUORUM_GETTYPE
+	MESSAGE_REQ_QUORUM_GETTYPE,
+	MESSAGE_REQ_QUORUM_MODEL_GETTYPE
 };
 
 /**
@@ -55,8 +56,24 @@ enum res_quorum_types {
 	MESSAGE_RES_QUORUM_TRACKSTART,
 	MESSAGE_RES_QUORUM_TRACKSTOP,
 	MESSAGE_RES_QUORUM_NOTIFICATION,
-	MESSAGE_RES_QUORUM_GETTYPE
+	MESSAGE_RES_QUORUM_GETTYPE,
+	MESSAGE_RES_QUORUM_MODEL_GETTYPE,
+	MESSAGE_RES_QUORUM_V1_QUORUM_NOTIFICATION,
+	MESSAGE_RES_QUORUM_V1_NODELIST_NOTIFICATION
 };
+
+/*
+ * Must be in sync with definition in quorum.h
+ */
+enum lib_quorum_model {
+	LIB_QUORUM_MODEL_V0 = 0,
+	LIB_QUORUM_MODEL_V1 = 1,
+};
+
+typedef struct {
+	mar_uint32_t nodeid __attribute__((aligned(8)));
+	mar_uint64_t seq __attribute__((aligned(8)));
+} mar_quorum_ring_id_t;
 
 /**
  * @brief The req_lib_quorum_trackstart struct
@@ -85,12 +102,41 @@ struct res_lib_quorum_notification {
 	mar_uint32_t view_list[];
 };
 
+struct res_lib_quorum_v1_quorum_notification {
+	struct qb_ipc_response_header header __attribute__((aligned(8)));
+	mar_int32_t quorate __attribute__((aligned(8)));
+	mar_quorum_ring_id_t ring_id __attribute__((aligned(8)));
+	mar_uint32_t view_list_entries __attribute__((aligned(8)));
+	mar_uint32_t view_list[];
+};
+
+struct res_lib_quorum_v1_nodelist_notification {
+	struct qb_ipc_response_header header __attribute__((aligned(8)));
+	mar_quorum_ring_id_t ring_id __attribute__((aligned(8)));
+	mar_uint32_t member_list_entries __attribute__((aligned(8)));
+	mar_uint32_t joined_list_entries __attribute__((aligned(8)));
+	mar_uint32_t left_list_entries __attribute__((aligned(8)));
+	mar_uint32_t member_list[];
+//	mar_uint32_t joined_list[];
+//	mar_uint32_t left_list[];
+};
+
 /**
  * @brief The res_lib_quorum_gettype struct
  */
 struct res_lib_quorum_gettype {
 	struct qb_ipc_response_header header __attribute__((aligned(8)));
 	mar_uint32_t quorum_type;
+};
+
+struct req_lib_quorum_model_gettype {
+        struct qb_ipc_request_header header __attribute__((aligned(8)));
+        mar_uint32_t model __attribute__((aligned(8)));
+};
+
+struct res_lib_quorum_model_gettype {
+	struct qb_ipc_response_header header __attribute__((aligned(8)));
+	mar_uint32_t quorum_type __attribute__((aligned(8)));
 };
 
 #endif

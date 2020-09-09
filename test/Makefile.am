@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2009 Red Hat, Inc.
+# Copyright (c) 2009-2020 Red Hat, Inc.
 #
 # Authors: Andrew Beekhof
 #	   Steven Dake (sdake@redhat.com)
@@ -37,7 +37,8 @@ EXTRA_DIST		= ploadstart.sh
 noinst_PROGRAMS		= testcpg testcpg2 cpgbench \
 			  testquorum testvotequorum1 testvotequorum2	\
 			  stress_cpgfdget stress_cpgcontext cpgbound testsam \
-			  testcpgzc cpgbenchzc testzcgc stress_cpgzc
+			  testcpgzc cpgbenchzc testzcgc stress_cpgzc \
+			  testquorummodel
 
 noinst_SCRIPTS		= ploadstart
 
@@ -49,6 +50,7 @@ stress_cpgzc_LDADD	= $(LIBQB_LIBS) $(top_builddir)/lib/libcpg.la
 stress_cpgfdget_LDADD	= $(LIBQB_LIBS) $(top_builddir)/lib/libcpg.la
 stress_cpgcontext_LDADD	= $(LIBQB_LIBS) $(top_builddir)/lib/libcpg.la
 testquorum_LDADD	= $(LIBQB_LIBS) $(top_builddir)/lib/libquorum.la
+testquorummodel_LDADD	= $(LIBQB_LIBS) $(top_builddir)/lib/libquorum.la
 testvotequorum1_LDADD	= $(LIBQB_LIBS) $(top_builddir)/lib/libvotequorum.la
 testvotequorum2_LDADD	= $(LIBQB_LIBS) $(top_builddir)/lib/libvotequorum.la
 cpgbound_LDADD		= $(LIBQB_LIBS) $(top_builddir)/lib/libcpg.la

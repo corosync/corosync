@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2012 Red Hat, Inc.
+ * Copyright (c) 2008-2020 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -59,7 +59,11 @@ struct quorum_inst {
 	qb_ipcc_connection_t *c;
 	int finalize;
 	const void *context;
-	quorum_callbacks_t callbacks;
+	union {
+		quorum_model_data_t model_data;
+		quorum_model_v0_data_t model_v0_data;
+		quorum_model_v1_data_t model_v1_data;
+	};
 };
 
 static void quorum_inst_free (void *inst);
@@ -71,11 +75,38 @@ cs_error_t quorum_initialize (
 	quorum_callbacks_t *callbacks,
 	uint32_t *quorum_type)
 {
+	quorum_model_v0_data_t model_v0_data;
+
+	memset (&model_v0_data, 0, sizeof(quorum_model_v0_data_t));
+
+	if (callbacks) {
+		model_v0_data.quorum_notify_fn = callbacks->quorum_notify_fn;
+	}
+
+	return (quorum_model_initialize(handle, QUORUM_MODEL_V0,
+	    (quorum_model_data_t *)&model_v0_data, quorum_type, NULL));
+}
+
+cs_error_t quorum_model_initialize (
+	quorum_handle_t *handle,
+	quorum_model_t model,
+	quorum_model_data_t *model_data,
+	uint32_t *quorum_type,
+	void *context)
+{
 	cs_error_t error;
 	struct quorum_inst *quorum_inst;
 	struct iovec iov;
-	struct qb_ipc_request_header req;
+	struct qb_ipc_request_header quorum_gettype_req;
+	struct req_lib_quorum_model_gettype quorum_model_gettype_req;
 	struct res_lib_quorum_gettype res_lib_quorum_gettype;
+	struct res_lib_quorum_model_gettype res_lib_quorum_model_gettype;
+	uint32_t local_quorum_type;
+
+	if (model != QUORUM_MODEL_V0 && model != QUORUM_MODEL_V1) {
+		error = CS_ERR_INVALID_PARAM;
+		goto error_no_destroy;
+	}
 
 	error = hdb_error_to_cs(hdb_handle_create (&quorum_handle_t_db, sizeof (struct quorum_inst), handle));
 	if (error != CS_OK) {
@@ -95,35 +126,71 @@ cs_error_t quorum_initialize (
 		goto error_put_destroy;
 	}
 
-	req.size = sizeof (req);
-	req.id = MESSAGE_REQ_QUORUM_GETTYPE;
+	switch (model) {
+	case QUORUM_MODEL_V0:
+		quorum_gettype_req.size = sizeof (quorum_gettype_req);
+		quorum_gettype_req.id = MESSAGE_REQ_QUORUM_GETTYPE;
 
-	iov.iov_base = (char *)&req;
-	iov.iov_len = sizeof (req);
+		iov.iov_base = (char *)&quorum_gettype_req;
+		iov.iov_len = sizeof (quorum_gettype_req);
 
-	error = qb_to_cs_error(qb_ipcc_sendv_recv (
-		quorum_inst->c,
-		&iov,
-		1,
-		&res_lib_quorum_gettype,
-		sizeof (struct res_lib_quorum_gettype), -1));
+		error = qb_to_cs_error(qb_ipcc_sendv_recv (
+			quorum_inst->c,
+			&iov,
+			1,
+			&res_lib_quorum_gettype,
+			sizeof(res_lib_quorum_gettype), -1));
 
-	if (error != CS_OK) {
-		goto error_put_destroy;
+		if (error != CS_OK) {
+			goto error_put_destroy;
+		}
+		error = res_lib_quorum_gettype.header.error;
+		local_quorum_type = res_lib_quorum_gettype.quorum_type;
+		break;
+	case QUORUM_MODEL_V1:
+		quorum_model_gettype_req.header.size = sizeof (quorum_model_gettype_req);
+		quorum_model_gettype_req.header.id = MESSAGE_REQ_QUORUM_MODEL_GETTYPE;
+		quorum_model_gettype_req.model = model;
+
+		iov.iov_base = (char *)&quorum_model_gettype_req;
+		iov.iov_len = sizeof (quorum_model_gettype_req);
+
+		error = qb_to_cs_error(qb_ipcc_sendv_recv (
+			quorum_inst->c,
+			&iov,
+			1,
+			&res_lib_quorum_model_gettype,
+			sizeof(res_lib_quorum_model_gettype), -1));
+
+		if (error != CS_OK) {
+			goto error_put_destroy;
+		}
+		error = res_lib_quorum_model_gettype.header.error;
+		local_quorum_type = res_lib_quorum_model_gettype.quorum_type;
+		break;
 	}
 
-	error = res_lib_quorum_gettype.header.error;
+	if (quorum_type != NULL) {
+		*quorum_type = local_quorum_type;
+	}
 
-	*quorum_type = res_lib_quorum_gettype.quorum_type;
+	if (model_data != NULL) {
+		switch (model) {
+		case QUORUM_MODEL_V0:
+			memcpy(&quorum_inst->model_v0_data, model_data, sizeof(quorum_model_v0_data_t));
+			break;
+		case QUORUM_MODEL_V1:
+			memcpy(&quorum_inst->model_v1_data, model_data, sizeof(quorum_model_v1_data_t));
+			break;
+		}
+	}
 
-	if (callbacks)
-		memcpy(&quorum_inst->callbacks, callbacks, sizeof (*callbacks));
-	else
-		memset(&quorum_inst->callbacks, 0, sizeof (*callbacks));
+	quorum_inst->model_data.model = model;
+	quorum_inst->context = context;
 
 	(void)hdb_handle_put (&quorum_handle_t_db, *handle);
 
-	return (CS_OK);
+	return (error);
 
 error_put_destroy:
 	(void)hdb_handle_put (&quorum_handle_t_db, *handle);
@@ -356,10 +423,15 @@ cs_error_t quorum_dispatch (
 	cs_error_t error;
 	int cont = 1; /* always continue do loop except when set to 0 */
 	struct quorum_inst *quorum_inst;
-	quorum_callbacks_t callbacks;
+	struct quorum_inst quorum_inst_copy;
 	struct qb_ipc_response_header *dispatch_data;
 	char dispatch_buf[IPC_DISPATCH_SIZE];
 	struct res_lib_quorum_notification *res_lib_quorum_notification;
+	struct res_lib_quorum_v1_quorum_notification *res_lib_quorum_v1_quorum_notification;
+	struct res_lib_quorum_v1_nodelist_notification *res_lib_quorum_v1_nodelist_notification;
+	struct quorum_ring_id ring_id;
+	mar_uint32_t *joined_list;
+	mar_uint32_t *left_list;
 
 	if (dispatch_types != CS_DISPATCH_ONE &&
 		dispatch_types != CS_DISPATCH_ALL &&
@@ -417,29 +489,82 @@ cs_error_t quorum_dispatch (
 		 * A risk of this dispatch method is that the callback routines may
 		 * operate at the same time that quorum_finalize has been called in another thread.
 		 */
-		memcpy (&callbacks, &quorum_inst->callbacks, sizeof (quorum_callbacks_t));
-		/*
-		 * Dispatch incoming message
-		 */
-		switch (dispatch_data->id) {
+		memcpy (&quorum_inst_copy, quorum_inst, sizeof(quorum_inst_copy));
+		switch (quorum_inst_copy.model_data.model) {
+		case QUORUM_MODEL_V0:
+			/*
+			 * Dispatch incoming message
+			 */
+			switch (dispatch_data->id) {
+			case MESSAGE_RES_QUORUM_NOTIFICATION:
+				if (quorum_inst_copy.model_v0_data.quorum_notify_fn == NULL) {
+					break;
+				}
+				res_lib_quorum_notification = (struct res_lib_quorum_notification *)dispatch_data;
 
-		case MESSAGE_RES_QUORUM_NOTIFICATION:
-			if (callbacks.quorum_notify_fn == NULL) {
+				quorum_inst_copy.model_v0_data.quorum_notify_fn ( handle,
+					res_lib_quorum_notification->quorate,
+					res_lib_quorum_notification->ring_seq,
+					res_lib_quorum_notification->view_list_entries,
+					res_lib_quorum_notification->view_list);
 				break;
-			}
-			res_lib_quorum_notification = (struct res_lib_quorum_notification *)dispatch_data;
+			default:
+				error = CS_ERR_LIBRARY;
+				goto error_put;
+				break;
+			} /* switch (dispatch_data->id) */
+			break; /* case QUORUM_MODEL_V0 */
+		case QUORUM_MODEL_V1:
+			/*
+			 * Dispatch incoming message
+			 */
+			switch (dispatch_data->id) {
+			case MESSAGE_RES_QUORUM_V1_QUORUM_NOTIFICATION:
+				if (quorum_inst_copy.model_v1_data.quorum_notify_fn == NULL) {
+					break;
+				}
+				res_lib_quorum_v1_quorum_notification =
+					(struct res_lib_quorum_v1_quorum_notification *)dispatch_data;
 
-			callbacks.quorum_notify_fn ( handle,
-				res_lib_quorum_notification->quorate,
-				res_lib_quorum_notification->ring_seq,
-				res_lib_quorum_notification->view_list_entries,
-				res_lib_quorum_notification->view_list);
-			break;
+				ring_id.nodeid = res_lib_quorum_v1_quorum_notification->ring_id.nodeid;
+				ring_id.seq = res_lib_quorum_v1_quorum_notification->ring_id.seq;
 
-		default:
-			error = CS_ERR_LIBRARY;
-			goto error_put;
-			break;
+				quorum_inst_copy.model_v1_data.quorum_notify_fn ( handle,
+					res_lib_quorum_v1_quorum_notification->quorate,
+					ring_id,
+					res_lib_quorum_v1_quorum_notification->view_list_entries,
+					res_lib_quorum_v1_quorum_notification->view_list);
+				break;
+			case MESSAGE_RES_QUORUM_V1_NODELIST_NOTIFICATION:
+				if (quorum_inst_copy.model_v1_data.nodelist_notify_fn == NULL) {
+					break;
+				}
+				res_lib_quorum_v1_nodelist_notification =
+					(struct res_lib_quorum_v1_nodelist_notification *)dispatch_data;
+
+				ring_id.nodeid = res_lib_quorum_v1_nodelist_notification->ring_id.nodeid;
+				ring_id.seq = res_lib_quorum_v1_nodelist_notification->ring_id.seq;
+
+				joined_list = res_lib_quorum_v1_nodelist_notification->member_list +
+				    res_lib_quorum_v1_nodelist_notification->member_list_entries;
+				left_list = joined_list +
+				    res_lib_quorum_v1_nodelist_notification->joined_list_entries;
+
+				quorum_inst_copy.model_v1_data.nodelist_notify_fn ( handle,
+					ring_id,
+					res_lib_quorum_v1_nodelist_notification->member_list_entries,
+					res_lib_quorum_v1_nodelist_notification->member_list,
+					res_lib_quorum_v1_nodelist_notification->joined_list_entries,
+					joined_list,
+					res_lib_quorum_v1_nodelist_notification->left_list_entries,
+					left_list);
+				break;
+			default:
+				error = CS_ERR_LIBRARY;
+				goto error_put;
+				break;
+			} /* switch (dispatch_data->id) */
+			break; /* case QUORUM_MODEL_V1 */
 		}
 		if (quorum_inst->finalize) {
 			/*
