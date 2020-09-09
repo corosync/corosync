@@ -1,5 +1,5 @@
 .\"/*
-.\" * Copyright (c) 2008, 2012 Red Hat, Inc.
+.\" * Copyright (c) 2008-2020 Red Hat, Inc.
 .\" *
 .\" * All rights reserved.
 .\" *
@@ -32,7 +32,7 @@
 .\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 .\" * THE POSSIBILITY OF SUCH DAMAGE.
 .\" */
-.TH QUORUM_OVERVIEW 3 2012-02-09 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
+.TH QUORUM_OVERVIEW 3 2020-02-14 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
 .SH NAME
 quorum_overview \- Quorum Library Overview
 .SH OVERVIEW
@@ -46,6 +46,8 @@ The library provides a mechanism to:
 * Query the quorum status
 .PP
 * Receive notifications of quorum state changes
+.PP
+* Receive notifications of membership changes
 .SH BUGS
 No known bugs at the time of writing. The authors are from outerspace. Deal with it.
 .SH "SEE ALSO"
@@ -53,6 +55,7 @@ No known bugs at the time of writing. The authors are from outerspace. Deal with
 .BR corosync.conf (5),
 .BR votequorum (5),
 .BR quorum_initialize (3),
+.BR quorum_model_initialize (3),
 .BR quorum_finalize (3),
 .BR quorum_getquorate (3),
 .BR quorum_trackstart (3),

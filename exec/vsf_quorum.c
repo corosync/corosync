@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2015 Red Hat, Inc.
+ * Copyright (c) 2008-2020 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -77,6 +77,7 @@ struct quorum_pd {
 	int tracking_enabled;
 	struct qb_list_head list;
 	void *conn;
+	enum lib_quorum_model model;
 };
 
 struct internal_callback_pd {
@@ -84,6 +85,19 @@ struct internal_callback_pd {
 	quorum_callback_fn_t callback;
 	void *context;
 };
+
+static void quorum_sync_init (
+	const unsigned int *trans_list,
+	size_t trans_list_entries,
+	const unsigned int *member_list,
+	size_t member_list_entries,
+	const struct memb_ring_id *ring_id);
+
+static int quorum_sync_process (void);
+
+static void quorum_sync_activate (void);
+
+static void quorum_sync_abort (void);
 
 static void message_handler_req_lib_quorum_getquorate (void *conn,
 						       const void *msg);
@@ -93,8 +107,11 @@ static void message_handler_req_lib_quorum_trackstop (void *conn,
 						      const void *msg);
 static void message_handler_req_lib_quorum_gettype (void *conn,
 						       const void *msg);
+static void message_handler_req_lib_quorum_model_gettype (void *conn,
+						       const void *msg);
 static void send_library_notification(void *conn);
 static void send_internal_notification(void);
+static void send_nodelist_library_notification(void *conn, int send_joined_left_list);
 static char *quorum_exec_init_fn (struct corosync_api_v1 *api);
 static int quorum_lib_init_fn (void *conn);
 static int quorum_lib_exit_fn (void *conn);
@@ -105,12 +122,24 @@ static struct corosync_api_v1 *corosync_api;
 static struct qb_list_head lib_trackers_list;
 static struct qb_list_head internal_trackers_list;
 static struct memb_ring_id quorum_ring_id;
+static struct memb_ring_id last_sync_ring_id;
 static size_t quorum_view_list_entries = 0;
 static int quorum_view_list[PROCESSOR_COUNT_MAX];
 struct quorum_services_api_ver1 *quorum_iface = NULL;
+
 static char view_buf[64];
 
-static void log_view_list(const unsigned int *view_list, size_t view_list_entries)
+static unsigned int my_member_list[PROCESSOR_COUNT_MAX];
+static size_t my_member_list_entries;
+static unsigned int my_old_member_list[PROCESSOR_COUNT_MAX];
+static size_t my_old_member_list_entries = 0;
+static unsigned int my_left_list[PROCESSOR_COUNT_MAX];
+static size_t my_left_list_entries;
+static unsigned int my_joined_list[PROCESSOR_COUNT_MAX];
+static size_t my_joined_list_entries;
+
+static void log_view_list(const unsigned int *view_list, size_t view_list_entries,
+    const char *view_list_type_str)
 {
 	int total = (int)view_list_entries;
 	int len, pos, ret;
@@ -127,8 +156,8 @@ static void log_view_list(const unsigned int *view_list, size_t view_list_entrie
 				break;
 			pos += ret;
 		}
-		log_printf (LOGSYS_LEVEL_NOTICE, "Members[%d]:%s%s",
-			    total, view_buf, i < total ? "\\" : "");
+		log_printf (LOGSYS_LEVEL_NOTICE, "%s[%d]:%s%s",
+			    view_list_type_str, total, view_buf, i < total ? "\\" : "");
 
 		if (i == total)
 			break;
@@ -153,7 +182,7 @@ static void quorum_api_set_quorum(const unsigned int *view_list,
 	memcpy(&quorum_ring_id, ring_id, sizeof (quorum_ring_id));
 	memcpy(quorum_view_list, view_list, sizeof(unsigned int)*view_list_entries);
 
-	log_view_list(view_list, view_list_entries);
+	log_view_list(view_list, view_list_entries, "Members");
 
 	/* Tell internal listeners */
 	send_internal_notification();
@@ -179,6 +208,10 @@ static struct corosync_lib_handler quorum_lib_service[] =
 	{ /* 3 */
 		.lib_handler_fn				= message_handler_req_lib_quorum_gettype,
 		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
+	},
+	{ /* 4 */
+		.lib_handler_fn				= message_handler_req_lib_quorum_model_gettype,
+		.flow_control				= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	}
 };
 
@@ -193,6 +226,10 @@ static struct corosync_service_engine quorum_service_handler = {
 	.lib_exit_fn				= quorum_lib_exit_fn,
 	.lib_engine				= quorum_lib_service,
 	.exec_init_fn				= quorum_exec_init_fn,
+	.sync_init				= quorum_sync_init,
+	.sync_process				= quorum_sync_process,
+	.sync_activate				= quorum_sync_activate,
+	.sync_abort				= quorum_sync_abort,
 	.lib_engine_count			= sizeof (quorum_lib_service) / sizeof (struct corosync_lib_handler)
 };
 
@@ -250,6 +287,134 @@ static struct quorum_callin_functions callins = {
 };
 
 /* --------------------------------------------------------------------- */
+
+static void quorum_sync_init (
+	const unsigned int *trans_list,
+	size_t trans_list_entries,
+	const unsigned int *member_list,
+	size_t member_list_entries,
+	const struct memb_ring_id *ring_id)
+{
+	int found;
+	int i, j;
+	int entries;
+	int node_joined;
+
+	memcpy (my_member_list, member_list, member_list_entries *
+	    sizeof (unsigned int));
+	my_member_list_entries = member_list_entries;
+
+	last_sync_ring_id = *ring_id;
+
+	/*
+	 * Determine left list of nodeids
+	 */
+	entries = 0;
+	for (i = 0; i < my_old_member_list_entries; i++) {
+		found = 0;
+		for (j = 0; j < trans_list_entries; j++) {
+			if (my_old_member_list[i] == trans_list[j]) {
+				found = 1;
+				break;
+			}
+		}
+
+		if (found == 0) {
+			my_left_list[entries++] = my_old_member_list[i];
+		} else {
+			/*
+			 * Check it is really in new membership
+			 */
+			found = 0;
+
+			for (j = 0; j < my_member_list_entries; j++) {
+				if (my_old_member_list[i] == my_member_list[j]) {
+					found = 1;
+					break;
+				}
+			}
+
+			/*
+			 * Node is in both old_member_list and trans list but not in my_member_list.
+			 * (This shouldn't really happen).
+			 */
+			if (!found) {
+				my_left_list[entries++] = my_old_member_list[i];
+			}
+		}
+	}
+	my_left_list_entries = entries;
+
+	/*
+	 * Determine joined list of nodeids
+	 */
+	entries = 0;
+	for (i = 0; i < my_member_list_entries; i++) {
+		node_joined = 1;
+		for (j = 0; j < my_old_member_list_entries; j++) {
+			if (my_member_list[i] == my_old_member_list[j]) {
+				/*
+				 * Node is in member list and also in my_old_member list -> check
+				 * if it is in left_list.
+				 */
+				node_joined = 0;
+				break;
+			}
+		}
+
+		if (!node_joined) {
+			/*
+			 * Check if node is in left list.
+			 */
+			for (j = 0; j < my_left_list_entries; j++) {
+				if (my_member_list[i] == my_left_list[j]) {
+					/*
+					 * Node is both in left and also in member list -> joined
+					 */
+					node_joined = 1;
+					break;
+				}
+			}
+		}
+
+		if (node_joined) {
+			my_joined_list[entries++] = my_member_list[i];
+		}
+	}
+	my_joined_list_entries = entries;
+
+	log_view_list(my_member_list, my_member_list_entries, "Sync members");
+
+	if (my_joined_list_entries > 0) {
+		log_view_list(my_joined_list, my_joined_list_entries, "Sync joined");
+	}
+
+	if (my_left_list_entries > 0) {
+		log_view_list(my_left_list, my_left_list_entries, "Sync left");
+	}
+}
+
+static int quorum_sync_process (void)
+{
+
+	return (0);
+}
+
+static void quorum_sync_activate (void)
+{
+
+	memcpy (my_old_member_list, my_member_list,
+	    my_member_list_entries * sizeof (unsigned int));
+	my_old_member_list_entries = my_member_list_entries;
+
+	/* Tell IPC listeners */
+	send_nodelist_library_notification(NULL, 1);
+}
+
+static void quorum_sync_abort (void)
+{
+
+}
 
 static char *quorum_exec_init_fn (struct corosync_api_v1 *api)
 {
@@ -316,6 +481,7 @@ static int quorum_lib_init_fn (void *conn)
 
 	qb_list_init (&pd->list);
 	pd->conn = conn;
+	pd->model = LIB_QUORUM_MODEL_V0;
 
 	return (0);
 }
@@ -346,15 +512,10 @@ static void send_internal_notification(void)
 	}
 }
 
-static void send_library_notification(void *conn)
+static void prepare_library_notification_v0(char *buf, size_t size)
 {
-	int size = sizeof(struct res_lib_quorum_notification) + sizeof(unsigned int)*quorum_view_list_entries;
-	char buf[size];
 	struct res_lib_quorum_notification *res_lib_quorum_notification = (struct res_lib_quorum_notification *)buf;
-	struct qb_list_head *tmp;
 	int i;
-
-	log_printf(LOGSYS_LEVEL_DEBUG, "sending quorum notification to %p, length = %d", conn, size);
 
 	res_lib_quorum_notification->quorate = primary_designated;
 	res_lib_quorum_notification->ring_seq = quorum_ring_id.seq;
@@ -366,21 +527,147 @@ static void send_library_notification(void *conn)
 	res_lib_quorum_notification->header.id = MESSAGE_RES_QUORUM_NOTIFICATION;
 	res_lib_quorum_notification->header.size = size;
 	res_lib_quorum_notification->header.error = CS_OK;
+}
+
+static void prepare_library_notification_v1(char *buf, size_t size)
+{
+	struct res_lib_quorum_v1_quorum_notification *res_lib_quorum_v1_quorum_notification =
+	    (struct res_lib_quorum_v1_quorum_notification *)buf;
+	int i;
+
+	res_lib_quorum_v1_quorum_notification->quorate = primary_designated;
+	res_lib_quorum_v1_quorum_notification->ring_id.nodeid = quorum_ring_id.nodeid;
+	res_lib_quorum_v1_quorum_notification->ring_id.seq = quorum_ring_id.seq;
+	res_lib_quorum_v1_quorum_notification->view_list_entries = quorum_view_list_entries;
+	for (i=0; i<quorum_view_list_entries; i++) {
+		res_lib_quorum_v1_quorum_notification->view_list[i] = quorum_view_list[i];
+	}
+
+	res_lib_quorum_v1_quorum_notification->header.id = MESSAGE_RES_QUORUM_V1_QUORUM_NOTIFICATION;
+	res_lib_quorum_v1_quorum_notification->header.size = size;
+	res_lib_quorum_v1_quorum_notification->header.error = CS_OK;
+}
+
+static void send_library_notification(void *conn)
+{
+	int size_v0 = sizeof(struct res_lib_quorum_notification) +
+	    sizeof(mar_uint32_t) * quorum_view_list_entries;
+	int size_v1 = sizeof(struct res_lib_quorum_v1_quorum_notification) +
+	    sizeof(mar_uint32_t)*quorum_view_list_entries;
+
+	char buf_v0[size_v0];
+	char buf_v1[size_v1];
+
+	struct res_lib_quorum_notification *res_lib_quorum_notification =
+	    (struct res_lib_quorum_notification *)buf_v0;
+	struct res_lib_quorum_v1_quorum_notification *res_lib_quorum_v1_quorum_notification =
+	    (struct res_lib_quorum_v1_quorum_notification *)buf_v1;
+
+	struct quorum_pd *qpd;
+	struct qb_list_head *tmp;
+
+	log_printf(LOGSYS_LEVEL_DEBUG, "sending quorum notification to %p, length = %u/%u", conn, size_v0, size_v1);
+
+	prepare_library_notification_v0(buf_v0, size_v0);
+	prepare_library_notification_v1(buf_v1, size_v1);
 
 	/* Send it to all interested parties */
 	if (conn) {
-		corosync_api->ipc_dispatch_send(conn, res_lib_quorum_notification, size);
+		qpd = (struct quorum_pd *)corosync_api->ipc_private_data_get (conn);
+
+		if (qpd->model == LIB_QUORUM_MODEL_V0) {
+			corosync_api->ipc_dispatch_send(conn, res_lib_quorum_notification, size_v0);
+		} else if (qpd->model == LIB_QUORUM_MODEL_V1) {
+			corosync_api->ipc_dispatch_send(conn, res_lib_quorum_v1_quorum_notification, size_v1);
+		}
 	}
 	else {
-		struct quorum_pd *qpd;
-
 		qb_list_for_each(tmp, &lib_trackers_list) {
 			qpd = qb_list_entry(tmp, struct quorum_pd, list);
 
-			corosync_api->ipc_dispatch_send(qpd->conn,
-			     res_lib_quorum_notification, size);
+			if (qpd->model == LIB_QUORUM_MODEL_V0) {
+				corosync_api->ipc_dispatch_send(qpd->conn,
+				     res_lib_quorum_notification, size_v0);
+			} else if (qpd->model == LIB_QUORUM_MODEL_V1) {
+				corosync_api->ipc_dispatch_send(qpd->conn,
+				     res_lib_quorum_v1_quorum_notification, size_v1);
+			}
 		}
 	}
+	return;
+}
+
+static void send_nodelist_library_notification(void *conn, int send_joined_left_list)
+{
+	int size = sizeof(struct res_lib_quorum_v1_nodelist_notification) +
+	    sizeof(mar_uint32_t) * my_member_list_entries;
+	char *buf;
+	struct res_lib_quorum_v1_nodelist_notification *res_lib_quorum_v1_nodelist_notification;
+	struct quorum_pd *qpd;
+	struct qb_list_head *tmp;
+	mar_uint32_t *ptr;
+	int i;
+
+	if (send_joined_left_list) {
+		size += sizeof(mar_uint32_t) * my_joined_list_entries;
+		size += sizeof(mar_uint32_t) * my_left_list_entries;
+	}
+
+	buf = alloca(size);
+	memset(buf, 0, size);
+
+	res_lib_quorum_v1_nodelist_notification = (struct res_lib_quorum_v1_nodelist_notification *)buf;
+
+	res_lib_quorum_v1_nodelist_notification->ring_id.nodeid = last_sync_ring_id.nodeid;
+	res_lib_quorum_v1_nodelist_notification->ring_id.seq = last_sync_ring_id.seq;
+	res_lib_quorum_v1_nodelist_notification->member_list_entries = my_member_list_entries;
+
+	if (send_joined_left_list) {
+		res_lib_quorum_v1_nodelist_notification->joined_list_entries = my_joined_list_entries;
+		res_lib_quorum_v1_nodelist_notification->left_list_entries = my_left_list_entries;
+	}
+
+	ptr = res_lib_quorum_v1_nodelist_notification->member_list;
+
+	for (i=0; i<my_member_list_entries; i++, ptr++) {
+		*ptr = my_member_list[i];
+	}
+
+	if (send_joined_left_list) {
+		for (i=0; i<my_joined_list_entries; i++, ptr++) {
+			*ptr = my_joined_list[i];
+		}
+
+		for (i=0; i<my_left_list_entries; i++, ptr++) {
+			*ptr = my_left_list[i];
+		}
+	}
+
+	res_lib_quorum_v1_nodelist_notification->header.id = MESSAGE_RES_QUORUM_V1_NODELIST_NOTIFICATION;
+	res_lib_quorum_v1_nodelist_notification->header.size = size;
+	res_lib_quorum_v1_nodelist_notification->header.error = CS_OK;
+
+	log_printf(LOGSYS_LEVEL_DEBUG, "sending nodelist notification to %p, length = %u", conn, size);
+
+	/* Send it to all interested parties */
+	if (conn) {
+		qpd = (struct quorum_pd *)corosync_api->ipc_private_data_get (conn);
+
+		if (qpd->model == LIB_QUORUM_MODEL_V1) {
+			corosync_api->ipc_dispatch_send(conn, res_lib_quorum_v1_nodelist_notification, size);
+		}
+	}
+	else {
+		qb_list_for_each(tmp, &lib_trackers_list) {
+			qpd = qb_list_entry(tmp, struct quorum_pd, list);
+
+			if (qpd->model == LIB_QUORUM_MODEL_V1) {
+				corosync_api->ipc_dispatch_send(qpd->conn,
+				     res_lib_quorum_v1_nodelist_notification, size);
+			}
+		}
+	}
+
 	return;
 }
 
@@ -416,6 +703,7 @@ static void message_handler_req_lib_quorum_trackstart (void *conn,
 	if (req_lib_quorum_trackstart->track_flags & CS_TRACK_CURRENT ||
 	    req_lib_quorum_trackstart->track_flags & CS_TRACK_CHANGES) {
 		log_printf(LOGSYS_LEVEL_DEBUG, "sending initial status to %p", conn);
+		send_nodelist_library_notification(conn, 0);
 		send_library_notification(conn);
 	}
 
@@ -482,3 +770,32 @@ static void message_handler_req_lib_quorum_gettype (void *conn,
 	corosync_api->ipc_response_send(conn, &res_lib_quorum_gettype, sizeof(res_lib_quorum_gettype));
 }
 
+static void message_handler_req_lib_quorum_model_gettype (void *conn,
+						       const void *msg)
+{
+	const struct req_lib_quorum_model_gettype *req_lib_quorum_model_gettype = msg;
+	struct res_lib_quorum_model_gettype res_lib_quorum_model_gettype;
+	struct quorum_pd *quorum_pd = (struct quorum_pd *)corosync_api->ipc_private_data_get (conn);
+	cs_error_t ret_err;
+
+	log_printf(LOGSYS_LEVEL_DEBUG, "got quorum_model_type request on %p", conn);
+
+	ret_err = CS_OK;
+
+	if (req_lib_quorum_model_gettype->model != LIB_QUORUM_MODEL_V0 &&
+	    req_lib_quorum_model_gettype->model != LIB_QUORUM_MODEL_V1) {
+		log_printf(LOGSYS_LEVEL_ERROR, "quorum_model_type request for unsupported model %u",
+		    req_lib_quorum_model_gettype->model);
+
+		ret_err = CS_ERR_INVALID_PARAM;
+	} else {
+		quorum_pd->model = req_lib_quorum_model_gettype->model;
+	}
+
+	/* send status */
+	res_lib_quorum_model_gettype.quorum_type = quorum_type;
+	res_lib_quorum_model_gettype.header.size = sizeof(res_lib_quorum_model_gettype);
+	res_lib_quorum_model_gettype.header.id = MESSAGE_RES_QUORUM_MODEL_GETTYPE;
+	res_lib_quorum_model_gettype.header.error = ret_err;
+	corosync_api->ipc_response_send(conn, &res_lib_quorum_model_gettype, sizeof(res_lib_quorum_model_gettype));
+}

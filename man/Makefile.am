@@ -60,6 +60,7 @@ autogen_man		= cpg_context_get.3 \
 			  cpg_iteration_initialize.3 \
 			  cpg_iteration_next.3 \
 			  quorum_initialize.3 \
+			  quorum_model_initialize.3 \
 			  quorum_finalize.3 \
 			  quorum_fd_get.3 \
 			  quorum_dispatch.3 \

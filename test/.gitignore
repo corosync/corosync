@@ -12,6 +12,7 @@ stress_cpgfdget
 testcpg
 testcpg2
 testquorum
+testquorummodel
 testsam
 testvotequorum1
 testvotequorum2

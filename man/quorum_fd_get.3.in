@@ -1,5 +1,5 @@
 .\"/*
-.\" * Copyright (c) 2012 Red Hat, Inc.
+.\" * Copyright (c) 2012-2020 Red Hat, Inc.
 .\" *
 .\" * All rights reserved.
 .\" *
@@ -58,6 +58,7 @@ This call returns the CS_OK value if successful, otherwise an error is returned.
 .SH "SEE ALSO"
 .BR quorum_overview (3),
 .BR quorum_initialize (3),
+.BR quorum_model_initialize (3),
 .BR quorum_finalize (3),
 .BR quorum_getquorate (3),
 .BR quorum_trackstart (3),

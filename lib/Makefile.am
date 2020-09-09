@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2009 Red Hat, Inc.
+# Copyright (c) 2009-2020 Red Hat, Inc.
 #
 # Authors: Andrew Beekhof
 #	   Steven Dake (sdake@redhat.com)
