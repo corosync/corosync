@@ -432,7 +432,8 @@ static void killnode_do(unsigned int nodeid)
 	}
 	result = corosync_cfg_kill_node (handle, nodeid, "Killed by corosync-cfgtool");
 	if (result != CS_OK) {
-		fprintf (stderr, "Could not kill node (error = %d)\n", result);
+		fprintf (stderr, "Could not kill node (error = %s)\n", cs_strerror(result));
+		exit(EXIT_FAILURE);
 	}
 	(void)corosync_cfg_finalize (handle);
 }
