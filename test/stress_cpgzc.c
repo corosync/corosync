@@ -93,6 +93,7 @@ int main (void)
 	size_t buffer_lens[ALLOCATIONS];
 	void *buffers[ALLOCATIONS];
 	int i, j;
+	char *test_str;
 
 	printf ("stress cpgzc running %d allocations for %d iterations\n",
 		ALLOCATIONS, ITERATIONS);
@@ -119,13 +120,13 @@ int main (void)
 		}
 
 		for (i = 0; i < ALLOCATIONS; i++) {
-			res = cpg_zcb_free (
+/*			res = cpg_zcb_free (
 				handle,
 				buffers[i]);
 			if (res != CS_OK) {
 				printf ("FAIL %d\n", res);
 				exit (-1);
-			}
+			}*/
 		}
 
 		if ((j != 0) &&
@@ -136,6 +137,8 @@ int main (void)
 
 	cpg_finalize (handle);
 
+	test_str[0] = 0;
+	free(test_str);
 	printf ("PASS\n");
 	exit (0);
 }

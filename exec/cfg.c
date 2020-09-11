@@ -982,8 +982,48 @@ static void message_handler_req_lib_cfg_killnode (
 	struct res_lib_cfg_killnode res_lib_cfg_killnode;
 	struct req_exec_cfg_killnode req_exec_cfg_killnode;
 	struct iovec iovec;
+	char key_name[ICMAP_KEYNAME_MAXLEN];
+	char tmp_key[ICMAP_KEYNAME_MAXLEN + 1];
+	icmap_map_t map;
+	icmap_iter_t iter;
+	const char *iter_key;
+	uint32_t nodeid;
+	char *status;
+	int match_nodeid_flag = 0;
+	cs_error_t error = CS_OK;
 
 	ENTER();
+
+	map = icmap_get_global_map();
+	iter = icmap_iter_init_r(map, "runtime.members.");
+	while ((iter_key = icmap_iter_next(iter, NULL, NULL)) != NULL) {
+		if (sscanf(iter_key, "runtime.members.%u.%s", &nodeid, key_name) != 2) {
+			continue;
+		}
+		if (strcmp(key_name, "status") != 0) {
+			continue;
+		}
+		if (nodeid != req_lib_cfg_killnode->nodeid) {
+			continue;
+		}
+		match_nodeid_flag = 1;
+		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "runtime.members.%u.status", nodeid);
+/*		if (icmap_get_string_r(map, tmp_key, &status) != CS_OK) {
+			error = CS_ERR_LIBRARY;
+			goto send_response;
+		}*/
+		if (strcmp(status, "joined") != 0) {
+			error = CS_ERR_NOT_EXIST;
+			goto send_response;
+		}
+		break;
+	}
+
+	if (!match_nodeid_flag) {
+		error = CS_ERR_NOT_EXIST;
+		goto send_response;
+	}
+
 	req_exec_cfg_killnode.header.size =
 		sizeof (struct req_exec_cfg_killnode);
 	req_exec_cfg_killnode.header.id = SERVICE_ID_MAKE (CFG_SERVICE,
@@ -996,13 +1036,16 @@ static void message_handler_req_lib_cfg_killnode (
 
 	(void)api->totem_mcast (&iovec, 1, TOTEM_SAFE);
 
+send_response:
 	res_lib_cfg_killnode.header.size = sizeof(struct res_lib_cfg_killnode);
 	res_lib_cfg_killnode.header.id = MESSAGE_RES_CFG_KILLNODE;
-	res_lib_cfg_killnode.header.error = CS_OK;
+	res_lib_cfg_killnode.header.error = error;
 
 	api->ipc_response_send(conn, &res_lib_cfg_killnode,
 				    sizeof(res_lib_cfg_killnode));
 
+	free(status);
+	icmap_iter_finalize(iter);
 	LEAVE();
 }
 
