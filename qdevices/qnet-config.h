@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016 Red Hat, Inc.
+ * Copyright (c) 2015-2020 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -71,7 +71,7 @@ extern "C" {
 #define QNETD_MIN_HEARTBEAT_INTERVAL			1
 
 #define QNETD_DEFAULT_DPD_ENABLED			1
-#define QNETD_DEFAULT_DPD_INTERVAL			(10*1000)
+#define QNETD_DEFAULT_DPD_INTERVAL			(1*1000)
 #define QNETD_MIN_DPD_INTERVAL				1
 
 #define QNETD_DEFAULT_LOCK_FILE				LOCALSTATEDIR"/run/corosync-qnetd/corosync-qnetd.pid"

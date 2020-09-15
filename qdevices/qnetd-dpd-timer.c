@@ -50,7 +50,7 @@ qnetd_dpd_timer_cb(void *data1, void *data2)
 
 		client->dpd_time_since_last_check += instance->advanced_settings->dpd_interval;
 
-		if (client->dpd_time_since_last_check > (client->heartbeat_interval * 2)) {
+		if (client->dpd_time_since_last_check > client->heartbeat_interval * 1.2) {
 			if (!client->dpd_msg_received_since_last_check) {
 				log(LOG_WARNING, "Client %s doesn't sent any message during "
 				    "%"PRIu32"ms. Disconnecting",
