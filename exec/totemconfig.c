@@ -1980,49 +1980,57 @@ int totem_config_validate (
 		if ((totem_config->transport_number == TOTEM_TRANSPORT_UDP) &&
 			memcmp (&totem_config->interfaces[i].mcast_addr, &null_addr,
 				sizeof (struct totem_ip_address)) == 0) {
-			error_reason = "No multicast address specified";
+		        snprintf (local_error_reason, sizeof(local_error_reason),
+					"No multicast address specified for interface %u", i);
 			goto parse_error;
 		}
 
 		if (totem_config->interfaces[i].ip_port == 0) {
-			error_reason = "No multicast port specified";
+		        snprintf (local_error_reason, sizeof(local_error_reason),
+					"No multicast port specified for interface %u", i);
 			goto parse_error;
 		}
 
 		if (totem_config->interfaces[i].ttl > 255) {
-			error_reason = "Invalid TTL (should be 0..255)";
+		        snprintf (local_error_reason, sizeof(local_error_reason),
+					"Invalid TTL (should be 0..255) for interface %u", i);
 			goto parse_error;
 		}
 		if (totem_config->transport_number != TOTEM_TRANSPORT_UDP &&
 		    totem_config->interfaces[i].ttl != 1) {
-			error_reason = "Can only set ttl on multicast transport types";
+		        snprintf (local_error_reason, sizeof(local_error_reason),
+					"Can only set ttl on multicast transport types for interface %u", i);
 			goto parse_error;
 		}
 		if (totem_config->interfaces[i].knet_link_priority > 255) {
-			error_reason = "Invalid link priority (should be 0..255)";
+		        snprintf (local_error_reason, sizeof(local_error_reason),
+					"Invalid link priority (should be 0..255) for interface %u", i);
 			goto parse_error;
 		}
 		if (totem_config->transport_number != TOTEM_TRANSPORT_KNET &&
 		    totem_config->interfaces[i].knet_link_priority != 1) {
-			error_reason = "Can only set link priority on knet transport type";
+		        snprintf (local_error_reason, sizeof(local_error_reason),
+					"Can only set link priority on knet transport type for interface %u", i);
 			goto parse_error;
 		}
 
 		if (totem_config->interfaces[i].mcast_addr.family == AF_INET6 &&
 			totem_config->node_id == 0) {
-
-			error_reason = "An IPV6 network requires that a node ID be specified.";
+		        snprintf (local_error_reason, sizeof(local_error_reason),
+					"An IPV6 network requires that a node ID be specified for interface %u", i);
 			goto parse_error;
 		}
 
 		if (totem_config->broadcast_use == 0 && totem_config->transport_number == TOTEM_TRANSPORT_UDP) {
 			if (totem_config->interfaces[i].mcast_addr.family != totem_config->interfaces[i].bindnet.family) {
-				error_reason = "Multicast address family does not match bind address family";
+				snprintf (local_error_reason, sizeof(local_error_reason),
+						"Multicast address family does not match bind address family for interface %u", i);
 				goto parse_error;
 			}
 
 			if (totemip_is_mcast (&totem_config->interfaces[i].mcast_addr) != 0) {
-				error_reason = "mcastaddr is not a correct multicast address.";
+				snprintf (local_error_reason, sizeof(local_error_reason),
+						"mcastaddr is not a correct multicast address for interface %u", i);
 				goto parse_error;
 			}
 		}
