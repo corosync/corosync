@@ -1369,6 +1369,16 @@ static int put_nodelist_members_to_config(struct totem_config *totem_config, icm
 			if (res != 3 || strcmp(tmp_key2, "_addr") != 0) {
 				continue;
 			}
+			if (linknumber >= INTERFACE_MAX) {
+				snprintf (error_string_response, sizeof(error_string_response),
+						"parse error in config: interface ring number %u is bigger than allowed maximum %u\n",
+						linknumber, INTERFACE_MAX - 1);
+				*error_string = error_string_response;
+
+				icmap_iter_finalize(iter2);
+				icmap_iter_finalize(iter);
+				return (-1);
+			}
 
 			if (icmap_get_string_r(map, iter_key2, &node_addr_str) != CS_OK) {
 				continue;
