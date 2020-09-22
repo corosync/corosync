@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2017 Red Hat, Inc.
+ * Copyright (c) 2015-2020 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -90,6 +90,7 @@ struct qnetd_client {
 	enum tlv_heuristics last_membership_heuristics; /* Passed in membership node list */
 	enum tlv_heuristics last_regular_heuristics; /* Passed in heuristics change callback */
 	enum tlv_heuristics last_heuristics; /* Latest heuristics both membership and regular */
+	uint8_t keep_active_partition_tie_breaker;
 	TAILQ_ENTRY(qnetd_client) entries;
 	TAILQ_ENTRY(qnetd_client) cluster_entries;
 };

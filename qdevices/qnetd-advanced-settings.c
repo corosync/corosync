@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016 Red Hat, Inc.
+ * Copyright (c) 2015-2020 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -74,6 +74,8 @@ qnetd_advanced_settings_init(struct qnetd_advanced_settings *settings)
 	settings->ipc_max_clients = QNETD_DEFAULT_IPC_MAX_CLIENTS;
 	settings->ipc_max_receive_size = QNETD_DEFAULT_IPC_MAX_RECEIVE_SIZE;
 	settings->ipc_max_send_size = QNETD_DEFAULT_IPC_MAX_SEND_SIZE;
+
+	settings->keep_active_partition_tie_breaker = QNETD_DEFAULT_KEEP_ACTIVE_PARTITION_TIE_BREAKER;
 
 	return (0);
 }
@@ -195,6 +197,12 @@ qnetd_advanced_settings_set(struct qnetd_advanced_settings *settings,
 		}
 
 		settings->ipc_max_send_size = (size_t)tmpll;
+	} else if (strcasecmp(option, "keep_active_partition_tie_breaker") == 0) {
+		if ((tmpll = utils_parse_bool_str(value)) == -1) {
+			return (-2);
+		}
+
+		settings->keep_active_partition_tie_breaker = (uint8_t)tmpll;
 	} else {
 		return (-1);
 	}

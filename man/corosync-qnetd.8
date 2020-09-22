@@ -31,7 +31,7 @@
 .\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 .\" * THE POSSIBILITY OF SUCH DAMAGE.
 .\" */
-.TH COROSYNC-QNETD 8 2020-09-15
+.TH COROSYNC-QNETD 8 2020-09-22
 .SH NAME
 corosync-qnetd \- QNet daemon
 .SH SYNOPSIS
@@ -236,6 +236,10 @@ Maximum size of a message received by IPC client. (4096)
 .TP
 .B ipc_max_send_size
 Maximum size of a message sent to an IPC client. (10485760)
+.TP
+.B keep_active_partition_tie_breaker
+When tie happens prefer partition with members of previously active (quorate) partition.
+This is hard-coded behavior of LMS algorithm so this setting affects only FFSplit algorithm. (off)
 .SH SEE ALSO
 .BR corosync-qnetd-tool (8)
 .BR corosync-qnetd-certutil (8)

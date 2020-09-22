@@ -445,6 +445,14 @@ qnetd_client_msg_received_init(struct qnetd_instance *instance, struct qnetd_cli
 	}
 
 	if (reply_error_code == TLV_REPLY_ERROR_CODE_NO_ERROR) {
+		/*
+		 * Preset keep_active_partition_tie_breaker from default config
+		 */
+		client->keep_active_partition_tie_breaker =
+		    instance->advanced_settings->keep_active_partition_tie_breaker;
+	}
+
+	if (reply_error_code == TLV_REPLY_ERROR_CODE_NO_ERROR) {
 		reply_error_code = qnetd_client_msg_received_init_check_new_client(instance,
 		    client);
 	}
