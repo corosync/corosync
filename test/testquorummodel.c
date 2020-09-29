@@ -93,11 +93,10 @@ int main(int argc, char *argv[])
 	printf("Waiting for quorum events, press ^C to finish\n");
 	printf("-------------------\n");
 
-	while (1)
-		if (quorum_dispatch(g_handle, CS_DISPATCH_ALL) != CS_OK) {
-			fprintf(stderr, "Error from quorum_dispatch\n");
-			return -1;
-		}
+	if (quorum_dispatch(g_handle, CS_DISPATCH_BLOCKING) != CS_OK) {
+		fprintf(stderr, "Error from quorum_dispatch\n");
+		return -1;
+	}
 
 	return 0;
 }
