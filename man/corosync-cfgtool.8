@@ -77,6 +77,10 @@ LINK ID 0
 .TP
 .B -R
 Tell all instances of corosync in this cluster to reload corosync.conf.
+
+Running corosync-cfgtool -R where nodes are running different versions
+of corosync (including minor versions) is unsupported and may result in undefined
+behaviour.
 .TP
 .B -L
 Tell corosync to reopen all logging files. In contrast to other subcommands,
