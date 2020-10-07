@@ -1761,7 +1761,10 @@ static void timer_function_orf_token_timeout (void *data)
 			log_printf (instance->totemsrp_log_level_debug,
 				"The token was lost in the OPERATIONAL state.");
 			log_printf (instance->totemsrp_log_level_notice,
-				"A processor failed, forming new configuration.");
+				"A processor failed, forming new configuration:"
+				" token timed out (%ums), waiting %ums for consensus.",
+				instance->totem_config->token_timeout,
+				instance->totem_config->consensus_timeout);
 			totemrrp_iface_check (instance->totemrrp_context);
 			memb_state_gather_enter (instance, TOTEMSRP_GSFROM_THE_TOKEN_WAS_LOST_IN_THE_OPERATIONAL_STATE);
 			instance->stats.operational_token_lost++;
@@ -1769,7 +1772,8 @@ static void timer_function_orf_token_timeout (void *data)
 
 		case MEMB_STATE_GATHER:
 			log_printf (instance->totemsrp_log_level_debug,
-				"The consensus timeout expired.");
+				"The consensus timeout expired (%ums).",
+				instance->totem_config->consensus_timeout);
 			memb_state_consensus_timeout_expired (instance);
 			memb_state_gather_enter (instance, TOTEMSRP_GSFROM_THE_CONSENSUS_TIMEOUT_EXPIRED);
 			instance->stats.gather_token_lost++;
