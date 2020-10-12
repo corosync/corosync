@@ -66,7 +66,7 @@
 #include "totemconfig.h"
 
 #define TOKEN_RETRANSMITS_BEFORE_LOSS_CONST	4
-#define TOKEN_TIMEOUT				1000
+#define TOKEN_TIMEOUT				3000
 #define TOKEN_WARNING				75
 #define TOKEN_COEFFICIENT			650
 #define JOIN_TIMEOUT				50
