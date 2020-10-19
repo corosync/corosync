@@ -320,6 +320,7 @@ size_t icmap_get_valuetype_len(icmap_value_types_t type)
 	case ICMAP_VALUETYPE_DOUBLE: res = sizeof(double); break;
 	case ICMAP_VALUETYPE_STRING:
 	case ICMAP_VALUETYPE_BINARY:
+	case ICMAP_VALUETYPE_BOOLEAN:
 		res = 0;
 		break;
 	}
@@ -969,6 +970,7 @@ cs_error_t icmap_adjust_int_r(
 	case ICMAP_VALUETYPE_DOUBLE:
 	case ICMAP_VALUETYPE_STRING:
 	case ICMAP_VALUETYPE_BINARY:
+	case ICMAP_VALUETYPE_BOOLEAN:
 		err = CS_ERR_INVALID_PARAM;
 		break;
 	}
@@ -1022,6 +1024,7 @@ cs_error_t icmap_fast_adjust_int_r(
 	case ICMAP_VALUETYPE_DOUBLE:
 	case ICMAP_VALUETYPE_STRING:
 	case ICMAP_VALUETYPE_BINARY:
+	case ICMAP_VALUETYPE_BOOLEAN:
 		err = CS_ERR_INVALID_PARAM;
 		break;
 	}

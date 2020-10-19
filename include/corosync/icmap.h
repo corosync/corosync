@@ -68,6 +68,7 @@ typedef enum {
     ICMAP_VALUETYPE_DOUBLE	= 10,
     ICMAP_VALUETYPE_STRING	= 11,
     ICMAP_VALUETYPE_BINARY	= 12,
+    ICMAP_VALUETYPE_BOOLEAN	= 13,
 } icmap_value_types_t;
 
 /*

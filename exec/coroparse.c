@@ -486,6 +486,7 @@ static int safe_atoq_range(icmap_value_types_t value_type, long long int *min_va
 	case ICMAP_VALUETYPE_UINT16: *min_val = 0; *max_val = UINT16_MAX; break;
 	case ICMAP_VALUETYPE_INT32: *min_val = INT32_MIN; *max_val = INT32_MAX; break;
 	case ICMAP_VALUETYPE_UINT32: *min_val = 0; *max_val = UINT32_MAX; break;
+	case ICMAP_VALUETYPE_BOOLEAN: *min_val = 0; *max_val = 1; break;
 	default:
 		return (-1);
 	}
@@ -645,7 +646,7 @@ static int main_config_parser_cb(const char *path,
 			    (strcmp(path, "quorum.wait_for_all") == 0) ||
 			    (strcmp(path, "quorum.auto_tie_breaker") == 0) ||
 			    (strcmp(path, "quorum.last_man_standing") == 0)) {
-				val_type = ICMAP_VALUETYPE_UINT8;
+				val_type = ICMAP_VALUETYPE_BOOLEAN;
 				if (safe_atoq(value, &val, val_type) != 0) {
 					goto atoi_error;
 				}
