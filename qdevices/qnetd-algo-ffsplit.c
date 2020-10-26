@@ -406,6 +406,9 @@ qnetd_algo_ffsplit_partition_cmp(const struct qnetd_client *client1,
 			res = 0; goto exit_res;
 		}
 
+		/*
+		 * This also handles NULL client (best_client)
+		 */
 		if (part1_active_clients > part2_active_clients) {
 			res = 1; goto exit_res;
 		} else if (part1_active_clients < part2_active_clients) {
@@ -416,7 +419,7 @@ qnetd_algo_ffsplit_partition_cmp(const struct qnetd_client *client1,
 		 * Use keep active partition tie-breaker if enabled for both clients
 		 */
 		if (client1->keep_active_partition_tie_breaker &&
-		    client2->keep_active_partition_tie_breaker) {
+		    client2 != NULL && client2->keep_active_partition_tie_breaker) {
 			qpnl_client1 = node_list_find_node_id(quorate_partition_node_list, client1->node_id);
 			qpnl_client2 = node_list_find_node_id(quorate_partition_node_list, client2->node_id);
 
@@ -433,7 +436,12 @@ qnetd_algo_ffsplit_partition_cmp(const struct qnetd_client *client1,
 		}
 
 		/*
-		 * Number of active clients in both partitions equals. Use tie-breaker.
+		 * All previous metrics failed (client1 and client2 are equal).
+		 * Scores (number of clients + heuristics) are equal,
+		 * number of active clients in both partitions equals
+		 * and keep_active_partition_tie_breaker is either disabled or both clients
+		 * either were or weren't members of previous quorate partition.
+		 * Last step is to use tie-breaker.
 		 */
 
 		if (qnetd_algo_ffsplit_is_preferred_partition(client1, config_node_list1,
