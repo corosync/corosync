@@ -11,6 +11,7 @@ COROSYNC_CFG_0.82 {
 		corosync_cfg_track;
 		corosync_cfg_track_stop;
 		corosync_cfg_ring_status_get;
+		corosync_cfg_node_status_get;
 		corosync_cfg_ring_reenable;
 		corosync_cfg_service_load;
 		corosync_cfg_service_unload;

@@ -92,6 +92,9 @@ extern int totemudp_mcast_noflush_send (
 	const void *msg,
 	unsigned int msg_len);
 
+extern int totemudp_nodestatus_get (void *net_context, unsigned int nodeid,
+				    struct totem_node_status *node_status);
+
 extern int totemudp_ifaces_get (void *net_context,
 	char ***status,
 	unsigned int *iface_count);

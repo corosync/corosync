@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2002-2005 MontaVista Software, Inc.
- * Copyright (c) 2006-2018 Red Hat, Inc.
+ * Copyright (c) 2006-2020 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -362,6 +362,56 @@ error_free_interface_names_array:
 	free (*interface_names);
 
 exit_handle_put:
+	(void)hdb_handle_put (&cfg_hdb, cfg_handle);
+
+	return (error);
+}
+
+cs_error_t
+corosync_cfg_node_status_get (
+	corosync_cfg_handle_t cfg_handle,
+	unsigned int nodeid,
+	struct corosync_knet_node_status *node_status)
+{
+	struct cfg_inst *cfg_inst;
+	struct req_lib_cfg_nodestatusget req_lib_cfg_nodestatusget;
+	struct res_lib_cfg_nodestatusget res_lib_cfg_nodestatusget;
+	cs_error_t error;
+	struct iovec iov;
+
+	if (!node_status) {
+		return (CS_ERR_INVALID_PARAM);
+	}
+
+	error = hdb_error_to_cs(hdb_handle_get (&cfg_hdb, cfg_handle, (void *)&cfg_inst));
+	if (error != CS_OK) {
+		return (error);
+	}
+
+	req_lib_cfg_nodestatusget.header.size = sizeof (struct req_lib_cfg_nodestatusget);
+	req_lib_cfg_nodestatusget.header.id = MESSAGE_REQ_CFG_NODESTATUSGET;
+	req_lib_cfg_nodestatusget.nodeid = nodeid;
+	req_lib_cfg_nodestatusget.version = CFG_NODE_STATUS_STRUCT_VERSION;
+
+	iov.iov_base = (void *)&req_lib_cfg_nodestatusget,
+	iov.iov_len = sizeof (struct req_lib_cfg_nodestatusget),
+
+	error = qb_to_cs_error (qb_ipcc_sendv_recv(cfg_inst->c,
+		&iov,
+		1,
+		&res_lib_cfg_nodestatusget,
+		sizeof (struct res_lib_cfg_nodestatusget), CS_IPC_TIMEOUT_MS));
+
+	if (error == CS_OK) {
+		memcpy(node_status, &res_lib_cfg_nodestatusget.node_status, sizeof(struct corosync_knet_node_status));
+	}
+
+	/* corosync sent us something we don't really understand.
+	   - we might need to revisit this in the case of future structure versions */
+	if (res_lib_cfg_nodestatusget.node_status.version != CFG_NODE_STATUS_STRUCT_VERSION) {
+		error = CS_ERR_NOT_SUPPORTED;
+	}
+
 	(void)hdb_handle_put (&cfg_hdb, cfg_handle);
 
 	return (error);

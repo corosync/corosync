@@ -488,6 +488,83 @@ static int node_compare(const void *aptr, const void *bptr)
 #define OWN_INDEX_NONE -1
 #endif
 
+int totemknet_nodestatus_get (
+	void *knet_context,
+	unsigned int nodeid,
+	struct totem_node_status *node_status)
+{
+	int i;
+	int res = 0;
+	struct knet_link_status link_status;
+	struct totemknet_instance *instance = (struct totemknet_instance *)knet_context;
+	struct knet_host_status knet_host_status;
+	uint8_t link_list[KNET_MAX_LINK];
+	size_t num_links;
+
+	if (!instance->knet_handle) {
+		return CS_ERR_NOT_EXIST; /* Not using knet */
+	}
+
+	if (!node_status) {
+		return CS_ERR_INVALID_PARAM;
+	}
+
+	res = knet_host_get_status(instance->knet_handle,
+				   nodeid,
+				   &knet_host_status);
+	if (res) {
+		knet_log_printf (LOGSYS_LEVEL_WARNING, "knet_handle_get_host_status(%d) failed: %d", nodeid, res);
+		return (-1);
+	}
+	node_status->nodeid = nodeid;
+	node_status->reachable = knet_host_status.reachable;
+	node_status->remote = knet_host_status.remote;
+	node_status->external = knet_host_status.external;
+
+#ifdef HAVE_KNET_ONWIRE_VER
+	res = knet_handle_get_onwire_ver(instance->knet_handle,
+					 nodeid,
+					 &node_status->onwire_min,
+					 &node_status->onwire_max,
+					 &node_status->onwire_ver);
+	if (res) {
+		knet_log_printf (LOGSYS_LEVEL_WARNING, "knet_handle_get_onwire_ver(%d) failed: %d", nodeid, res);
+		return (-1);
+	}
+#endif
+	/* Get link info */
+	res = knet_link_get_link_list(instance->knet_handle,
+				      nodeid, link_list, &num_links);
+	if (res) {
+		knet_log_printf (LOGSYS_LEVEL_WARNING, "knet_link_get_link_list(%d) failed: %d", nodeid, res);
+		return (-1);
+	}
+
+	for (i=0; i < num_links; i++) {
+		if (!instance->totem_config->interfaces[link_list[i]].configured) {
+			continue;
+		}
+		res = knet_link_get_status(instance->knet_handle,
+					   nodeid,
+					   link_list[i],
+					   &link_status,
+					   sizeof(link_status));
+		if (res == 0) {
+			node_status->link_status[i].enabled = link_status.enabled;
+			node_status->link_status[i].connected = link_status.connected;
+			node_status->link_status[i].dynconnected = link_status.dynconnected;
+			node_status->link_status[i].mtu = link_status.mtu;
+			memcpy(node_status->link_status[i].src_ipaddr, link_status.src_ipaddr, KNET_MAX_HOST_LEN);
+			memcpy(node_status->link_status[i].dst_ipaddr, link_status.dst_ipaddr, KNET_MAX_HOST_LEN);
+		} else {
+			knet_log_printf (LOGSYS_LEVEL_WARNING, "knet_link_get_link_status(%d, %d) failed: %d", nodeid, link_list[i], res);
+		}
+	}
+	return res;
+}
+
+
+
 int totemknet_ifaces_get (void *knet_context,
 	char ***status,
 	unsigned int *iface_count)
