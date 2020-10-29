@@ -71,6 +71,7 @@
 enum user_action {
 	ACTION_NOOP=0,
 	ACTION_LINKSTATUS_GET,
+	ACTION_NODESTATUS_GET,
 	ACTION_RELOAD_CONFIG,
 	ACTION_REOPEN_LOG_FILES,
 	ACTION_SHUTDOW,
@@ -87,6 +88,100 @@ static int node_compare(const void *aptr, const void *bptr)
 
 	return a > b;
 }
+
+static int
+nodestatusget_do (void)
+{
+	cs_error_t result;
+	corosync_cfg_handle_t handle;
+	cmap_handle_t cmap_handle;
+	char iter_key[CMAP_KEYNAME_MAXLEN];
+	cmap_iter_handle_t iter;
+	unsigned int nodeid;
+	int nodeid_match_guard;
+	cmap_value_types_t type;
+	size_t value_len;
+	int rc = EXIT_SUCCESS;
+	int i;
+
+	struct corosync_knet_node_status node_status;
+
+	result = corosync_cfg_initialize (&handle, NULL);
+	if (result != CS_OK) {
+		fprintf (stderr, "Could not initialize corosync configuration API error %d\n", result);
+		exit (EXIT_FAILURE);
+	}
+
+	result = cmap_initialize (&cmap_handle);
+	if (result != CS_OK) {
+		fprintf (stderr, "Could not initialize corosync cmap API error %d\n", result);
+		exit (EXIT_FAILURE);
+	}
+
+	/* Get a list of nodes. We do it this way rather than using votequorum as cfgtool
+	 * needs to be independent of quorum type
+	 */
+	result = cmap_iter_init(cmap_handle, "nodelist.node.", &iter);
+	if (result != CS_OK) {
+		fprintf (stderr, "Could not get nodelist from cmap. error %d\n", result);
+		exit (EXIT_FAILURE);
+	}
+
+	while ((cmap_iter_next(cmap_handle, iter, iter_key, &value_len, &type)) == CS_OK) {
+		nodeid_match_guard = 0;
+		if (sscanf(iter_key, "nodelist.node.%*u.nodeid%n", &nodeid_match_guard) != 0) {
+			continue;
+		}
+		/* check for exact match */
+		if (nodeid_match_guard != strlen(iter_key)) {
+			continue;
+		}
+		if (cmap_get_uint32(cmap_handle, iter_key, &nodeid) == CS_OK) {
+			result = corosync_cfg_node_status_get(handle, nodeid, &node_status);
+			if (result == CS_OK) {
+				/* Only display node info if it is reachable */
+				if (node_status.reachable) {
+					printf("nodeid: %d", node_status.nodeid);
+					printf(" reachable");
+					if (node_status.remote) {
+						printf(" remote");
+					}
+					if (node_status.external) {
+						printf(" external");
+					}
+#ifdef HAVE_KNET_ONWIRE_VER
+					printf("   onwire (min/max/cur): %d, %d, %d",
+					       node_status.onwire_min,
+					       node_status.onwire_max,
+					       node_status.onwire_ver);
+#endif
+					printf("\n");
+					for (i=0; i<CFG_MAX_LINKS; i++) {
+						if (node_status.link_status[i].enabled) {
+							printf("   LINK: %d", i);
+							printf(" (%s->%s) ",
+							       node_status.link_status[i].src_ipaddr,
+							       node_status.link_status[i].dst_ipaddr);
+							if (node_status.link_status[i].enabled) {
+								printf(" enabled");
+							}
+							if (node_status.link_status[i].connected) {
+								printf(" connected");
+							}
+							if (node_status.link_status[i].dynconnected) {
+								printf(" dynconnected");
+							}
+							printf("\n");
+						}
+					}
+				}
+				printf("\n");
+			}
+		}
+	}
+	return rc;
+}
+
 
 static int
 linkstatusget_do (char *interface_name, int brief)
@@ -446,6 +541,7 @@ static void usage_do (void)
 	printf ("options:\n");
 	printf ("\t-i\tFinds only information about the specified interface IP address or link id when used with -s..\n");
 	printf ("\t-s\tDisplays the status of the current links on this node(UDP/UDPU), with extended status for KNET.\n");
+	printf ("\t-n\tDisplays the status of the connected nodes (KNET only).\n");
 	printf ("\t-b\tDisplays the brief status of the current links on this node when used with -s.(KNET only)\n");
 	printf ("\t-R\tTell all instances of corosync in this cluster to reload corosync.conf.\n");
 	printf ("\t-L\tTell corosync to reopen all logging files.\n");
@@ -456,7 +552,7 @@ static void usage_do (void)
 }
 
 int main (int argc, char *argv[]) {
-	const char *options = "i:sbrRLk:a:hH";
+	const char *options = "i:snbrRLk:a:hH";
 	int opt;
 	unsigned int nodeid = 0;
 	char interface_name[128] = "";
@@ -473,6 +569,9 @@ int main (int argc, char *argv[]) {
 			break;
 		case 's':
 			action = ACTION_LINKSTATUS_GET;
+			break;
+		case 'n':
+			action = ACTION_NODESTATUS_GET;
 			break;
 		case 'b':
 			brief = 1;
@@ -513,6 +612,9 @@ int main (int argc, char *argv[]) {
 	switch(action) {
 	case ACTION_LINKSTATUS_GET:
 		rc = linkstatusget_do(interface_name, brief);
+		break;
+	case ACTION_NODESTATUS_GET:
+		rc = nodestatusget_do();
 		break;
 	case ACTION_RELOAD_CONFIG:
 		rc = reload_config_do();

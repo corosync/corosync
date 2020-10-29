@@ -102,6 +102,9 @@ extern int totemknet_finalize (void *knet_context);
 
 extern void totemknet_net_mtu_adjust (void *knet_context, struct totem_config *totem_config);
 
+extern int totemknet_nodestatus_get (void *knet_context, unsigned int nodeid,
+				     struct totem_node_status *node_status);
+
 extern int totemknet_ifaces_get (void *net_context,
 	char ***status,
 	unsigned int *iface_count);

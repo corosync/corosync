@@ -253,6 +253,18 @@ struct totem_config {
 	    unsigned int nodeid);
 };
 
+struct totem_node_status {
+	unsigned int nodeid;
+	uint8_t reachable;
+	uint8_t remote;
+	uint8_t external;
+	uint8_t onwire_min;
+	uint8_t onwire_max;
+	uint8_t onwire_ver;
+	struct knet_link_status link_status[KNET_MAX_LINK];
+};
+
+
 #define TOTEM_CONFIGURATION_TYPE
 enum totem_configuration_type {
 	TOTEM_CONFIGURATION_REGULAR,

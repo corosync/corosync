@@ -1039,6 +1039,16 @@ void totemsrp_finalize (
 	free (instance);
 }
 
+int totemsrp_nodestatus_get (
+	void *srp_context,
+	unsigned int nodeid,
+	struct totem_node_status *node_status)
+{
+	struct totemsrp_instance *instance = (struct totemsrp_instance *)srp_context;
+	return totemnet_nodestatus_get(instance->totemnet_context, nodeid, node_status);
+}
+
+
 /*
  * Return configured interfaces. interfaces is array of totem_ip addresses allocated by caller,
  * with interaces_size number of items. iface_count is final number of interfaces filled by this

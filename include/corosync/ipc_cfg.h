@@ -59,7 +59,8 @@ enum req_lib_cfg_types {
 	MESSAGE_REQ_CFG_GET_NODE_ADDRS = 5,
 	MESSAGE_REQ_CFG_LOCAL_GET = 6,
 	MESSAGE_REQ_CFG_RELOAD_CONFIG = 7,
-	MESSAGE_REQ_CFG_REOPEN_LOG_FILES = 8
+	MESSAGE_REQ_CFG_REOPEN_LOG_FILES = 8,
+	MESSAGE_REQ_CFG_NODESTATUSGET = 9
 };
 
 /**
@@ -81,7 +82,8 @@ enum res_lib_cfg_types {
 	MESSAGE_RES_CFG_LOCAL_GET = 12,
 	MESSAGE_RES_CFG_REPLYTOSHUTDOWN = 13,
 	MESSAGE_RES_CFG_RELOAD_CONFIG = 14,
-	MESSAGE_RES_CFG_REOPEN_LOG_FILES = 15
+	MESSAGE_RES_CFG_REOPEN_LOG_FILES = 15,
+	MESSAGE_RES_CFG_NODESTATUSGET = 16
 };
 
 /**
@@ -99,6 +101,22 @@ struct res_lib_cfg_ringstatusget {
 	mar_uint32_t interface_count __attribute__((aligned(8)));
 	char interface_name[CFG_MAX_INTERFACES][CFG_INTERFACE_NAME_MAX_LEN] __attribute__((aligned(8)));
 	char interface_status[CFG_MAX_INTERFACES][CFG_INTERFACE_STATUS_MAX_LEN] __attribute__((aligned(8)));
+};
+
+/**
+ * @brief The req_lib_cfg_nodestatusget struct
+ */
+struct req_lib_cfg_nodestatusget {
+	struct qb_ipc_request_header header __attribute__((aligned(8)));
+	unsigned int nodeid __attribute__((aligned(8)));
+};
+
+/**
+ * @brief The res_lib_cfg_nodestatusget struct
+ */
+struct res_lib_cfg_nodestatusget {
+	struct qb_ipc_response_header header __attribute__((aligned(8)));
+	struct corosync_knet_node_status node_status __attribute__((aligned(8)));
 };
 
 /**

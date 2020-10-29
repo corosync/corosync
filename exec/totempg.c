@@ -1447,6 +1447,12 @@ int totempg_iface_set (
 	return (res);
 }
 
+int totempg_nodestatus_get (unsigned int nodeid,
+			    struct totem_node_status *node_status)
+{
+	return totemsrp_nodestatus_get (totemsrp_context, nodeid, node_status);
+}
+
 int totempg_ifaces_get (
 	unsigned int nodeid,
 	unsigned int *interface_id,

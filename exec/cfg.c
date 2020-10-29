@@ -65,6 +65,7 @@
 #include <corosync/corodefs.h>
 
 #include "totemconfig.h"
+#include "totemknet.h"
 #include "service.h"
 #include "main.h"
 
@@ -141,6 +142,10 @@ static void message_handler_req_lib_cfg_ringstatusget (
 	void *conn,
 	const void *msg);
 
+static void message_handler_req_lib_cfg_nodestatusget (
+	void *conn,
+	const void *msg);
+
 static void message_handler_req_lib_cfg_ringreenable (
 	void *conn,
 	const void *msg);
@@ -212,6 +217,10 @@ static struct corosync_lib_handler cfg_lib_engine[] =
 	},
 	{ /* 8 */
 		.lib_handler_fn		= message_handler_req_lib_cfg_reopen_log_files,
+		.flow_control		= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
+	},
+	{ /* 9 */
+		.lib_handler_fn		= message_handler_req_lib_cfg_nodestatusget,
 		.flow_control		= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
 	}
 };
@@ -956,6 +965,56 @@ send_response:
 
 	LEAVE();
 }
+
+
+static void message_handler_req_lib_cfg_nodestatusget (
+	void *conn,
+	const void *msg)
+{
+	struct res_lib_cfg_nodestatusget res_lib_cfg_nodestatusget;
+	struct req_lib_cfg_nodestatusget *req_lib_cfg_nodestatusget = (struct req_lib_cfg_nodestatusget *)msg;
+	struct totem_node_status node_status;
+	cs_error_t res = CS_OK;
+	int i;
+
+	ENTER();
+
+	res_lib_cfg_nodestatusget.header.id = MESSAGE_RES_CFG_RINGSTATUSGET;
+	res_lib_cfg_nodestatusget.header.size = sizeof (struct res_lib_cfg_nodestatusget);
+
+	memset(&node_status, 0, sizeof(node_status));
+	res = totempg_nodestatus_get(req_lib_cfg_nodestatusget->nodeid,
+				       &node_status);
+	if (res == 0) {
+		res_lib_cfg_nodestatusget.node_status.nodeid = req_lib_cfg_nodestatusget->nodeid;
+		res_lib_cfg_nodestatusget.node_status.reachable = node_status.reachable;
+		res_lib_cfg_nodestatusget.node_status.remote = node_status.remote;
+		res_lib_cfg_nodestatusget.node_status.external = node_status.external;
+		res_lib_cfg_nodestatusget.node_status.onwire_min = node_status.onwire_min;
+		res_lib_cfg_nodestatusget.node_status.onwire_max = node_status.onwire_max;
+		res_lib_cfg_nodestatusget.node_status.onwire_ver= node_status.onwire_ver;
+
+		for (i=0; i < KNET_MAX_LINK; i++) {
+			res_lib_cfg_nodestatusget.node_status.link_status[i].enabled = node_status.link_status[i].enabled;
+			res_lib_cfg_nodestatusget.node_status.link_status[i].connected = node_status.link_status[i].connected;
+			res_lib_cfg_nodestatusget.node_status.link_status[i].dynconnected = node_status.link_status[i].dynconnected;
+			res_lib_cfg_nodestatusget.node_status.link_status[i].mtu = node_status.link_status[i].mtu;
+			memcpy(res_lib_cfg_nodestatusget.node_status.link_status[i].src_ipaddr,
+			       node_status.link_status[i].src_ipaddr, CFG_MAX_HOST_LEN);
+			memcpy(res_lib_cfg_nodestatusget.node_status.link_status[i].dst_ipaddr,
+			       node_status.link_status[i].dst_ipaddr, CFG_MAX_HOST_LEN);
+		}
+	}
+
+	res_lib_cfg_nodestatusget.header.error = res;
+	api->ipc_response_send (
+		conn,
+		&res_lib_cfg_nodestatusget,
+		sizeof (struct res_lib_cfg_nodestatusget));
+
+	LEAVE();
+}
+
 
 static void message_handler_req_lib_cfg_ringreenable (
 	void *conn,

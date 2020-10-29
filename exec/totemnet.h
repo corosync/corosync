@@ -125,6 +125,11 @@ extern void totemnet_stats_clear (void *net_context);
 
 extern const char *totemnet_iface_print (void *net_context);
 
+extern int totemnet_nodestatus_get (
+	void *net_context,
+	unsigned int nodeid,
+	struct totem_node_status *node_status);
+
 extern int totemnet_ifaces_get (
 	void *net_context,
 	char ***status,
