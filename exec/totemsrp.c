@@ -1039,6 +1039,27 @@ void totemsrp_finalize (
 	free (instance);
 }
 
+int totemsrp_nodestatus_get (
+	void *srp_context,
+	unsigned int nodeid,
+	struct totem_node_status *node_status)
+{
+	struct totemsrp_instance *instance = (struct totemsrp_instance *)srp_context;
+	int i;
+
+	node_status->version = TOTEM_NODE_STATUS_STRUCTURE_VERSION;
+
+	/* Fill in 'reachable' here as the lower level UDP[u] layers don't know */
+	for (i = 0; i < instance->my_proc_list_entries; i++) {
+		if (instance->my_proc_list[i].nodeid == nodeid) {
+			node_status->reachable = 1;
+		}
+	}
+
+	return totemnet_nodestatus_get(instance->totemnet_context, nodeid, node_status);
+}
+
+
 /*
  * Return configured interfaces. interfaces is array of totem_ip addresses allocated by caller,
  * with interaces_size number of items. iface_count is final number of interfaces filled by this

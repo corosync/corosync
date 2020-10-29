@@ -146,6 +146,9 @@ extern int totempg_ifaces_get (
 	char ***status,
         unsigned int *iface_count);
 
+extern int totempg_nodestatus_get (unsigned int nodeid,
+				   struct totem_node_status *node_status);
+
 extern void* totempg_get_stats (void);
 
 void totempg_event_signal (enum totem_event_type type, int value);

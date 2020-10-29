@@ -115,6 +115,11 @@ struct transport {
 		char ***status,
 		unsigned int *iface_count);
 
+	int (*nodestatus_get) (
+		void *transport_context,
+		unsigned int nodeid,
+		struct totem_node_status *node_status);
+
 	int (*token_target_set) (
 		void *transport_context,
 		unsigned int nodeid);
@@ -179,6 +184,7 @@ struct transport transport_entries[] = {
 		.finalize = totemudp_finalize,
 		.net_mtu_adjust = totemudp_net_mtu_adjust,
 		.ifaces_get = totemudp_ifaces_get,
+		.nodestatus_get = totemudp_nodestatus_get,
 		.token_target_set = totemudp_token_target_set,
 		.crypto_set = totemudp_crypto_set,
 		.recv_mcast_empty = totemudp_recv_mcast_empty,
@@ -203,6 +209,7 @@ struct transport transport_entries[] = {
 		.finalize = totemudpu_finalize,
 		.net_mtu_adjust = totemudpu_net_mtu_adjust,
 		.ifaces_get = totemudpu_ifaces_get,
+		.nodestatus_get = totemudpu_nodestatus_get,
 		.token_target_set = totemudpu_token_target_set,
 		.crypto_set = totemudpu_crypto_set,
 		.recv_mcast_empty = totemudpu_recv_mcast_empty,
@@ -227,6 +234,7 @@ struct transport transport_entries[] = {
 		.finalize = totemknet_finalize,
 		.net_mtu_adjust = totemknet_net_mtu_adjust,
 		.ifaces_get = totemknet_ifaces_get,
+		.nodestatus_get = totemknet_nodestatus_get,
 		.token_target_set = totemknet_token_target_set,
 		.crypto_set = totemknet_crypto_set,
 		.recv_mcast_empty = totemknet_recv_mcast_empty,
@@ -469,6 +477,19 @@ int totemnet_iface_set (void *net_context,
 	int res;
 
 	res = instance->transport->iface_set (instance->transport_context, interface_addr, ip_port, iface_no);
+
+	return (res);
+}
+
+extern int totemnet_nodestatus_get (
+	void *net_context,
+	unsigned int nodeid,
+	struct totem_node_status *node_status)
+{
+	struct totemnet_instance *instance = (struct totemnet_instance *)net_context;
+	unsigned int res;
+
+	res = instance->transport->nodestatus_get (instance->transport_context, nodeid, node_status);
 
 	return (res);
 }

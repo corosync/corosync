@@ -793,6 +793,34 @@ static int totemudpu_build_sockets_ip (
 	return 0;
 }
 
+int totemudpu_nodestatus_get (void *udpu_context, unsigned int nodeid,
+			      struct totem_node_status *node_status)
+{
+	struct totemudpu_instance *instance = (struct totemudpu_instance *)udpu_context;
+	struct qb_list_head *list;
+	struct totemudpu_member *member;
+
+	qb_list_for_each(list, &(instance->member_list)) {
+		member = qb_list_entry (list,
+			struct totemudpu_member,
+			list);
+
+		if (member->member.nodeid == nodeid) {
+			node_status->nodeid = nodeid;
+			/* reachable is filled in by totemsrp */
+			if (instance->netif_bind_state == BIND_STATE_REGULAR) {
+				node_status->link_status[0].enabled = 1;
+			} else {
+				node_status->link_status[0].enabled = 0;
+			}
+			node_status->link_status[0].connected = node_status->reachable;
+			node_status->link_status[0].mtu = instance->totem_config->net_mtu;
+			strncpy(node_status->link_status[0].src_ipaddr, totemip_print(&member->member), KNET_MAX_HOST_LEN-1);
+		}
+	}
+	return (0);
+}
+
 int totemudpu_ifaces_get (
 	void *net_context,
 	char ***status,

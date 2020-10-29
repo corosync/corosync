@@ -194,6 +194,8 @@ AC_CHECK_LIB([knet],[knet_handle_enable_access_lists],
 	     [AC_DEFINE_UNQUOTED([HAVE_KNET_ACCESS_LIST], 1, [have knet access list])])
 AC_CHECK_LIB([knet],[knet_handle_crypto_set_config],
 	     [AC_DEFINE_UNQUOTED([HAVE_KNET_CRYPTO_RECONF], 1, [have knet crypto reconfig support])])
+AC_CHECK_LIB([knet],[knet_handle_get_onwire_ver],
+	     [AC_DEFINE_UNQUOTED([HAVE_KNET_ONWIRE_VER], 1, [have knet onwire versioning])])
 LIBS="$OLDLIBS"
 
 # Checks for library functions.

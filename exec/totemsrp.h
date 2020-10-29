@@ -101,6 +101,9 @@ void totemsrp_event_signal (void *srp_context, enum totem_event_type type, int v
 
 extern void totemsrp_net_mtu_adjust (struct totem_config *totem_config);
 
+extern int totemsrp_nodestatus_get (void *srp_context, unsigned int nodeid,
+				    struct totem_node_status *node_status);
+
 extern int totemsrp_ifaces_get (
 	void *srp_context,
 	unsigned int nodeid,
