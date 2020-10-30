@@ -1450,6 +1450,7 @@ int totempg_iface_set (
 int totempg_nodestatus_get (unsigned int nodeid,
 			    struct totem_node_status *node_status)
 {
+	memset(node_status, 0, sizeof(struct totem_node_status));
 	return totemsrp_nodestatus_get (totemsrp_context, nodeid, node_status);
 }
 

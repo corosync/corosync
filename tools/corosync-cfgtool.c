@@ -174,8 +174,8 @@ nodestatusget_do (void)
 							printf("\n");
 						}
 					}
+					printf("\n");
 				}
-				printf("\n");
 			}
 		}
 	}

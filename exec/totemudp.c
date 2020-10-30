@@ -1341,7 +1341,6 @@ int totemudp_nodestatus_get (void *udp_context, unsigned int nodeid,
 	struct qb_list_head *list;
 	struct totemudp_member *member;
 
-	memset(node_status, 0, sizeof(struct totem_node_status));
 	qb_list_for_each(list, &(instance->member_list)) {
 		member = qb_list_entry (list,
 			struct totemudp_member,
@@ -1349,7 +1348,7 @@ int totemudp_nodestatus_get (void *udp_context, unsigned int nodeid,
 
 		if (member->member.nodeid == nodeid) {
 			node_status->nodeid = nodeid;
-			node_status->reachable = 1;
+			/* reachable is filled in by totemsrp */
 			node_status->link_status[0].enabled = 1;
 			node_status->link_status[0].connected = 0;
 			node_status->link_status[0].mtu = instance->totem_config->net_mtu;
