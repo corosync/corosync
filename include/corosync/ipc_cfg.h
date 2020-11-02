@@ -109,6 +109,7 @@ struct res_lib_cfg_ringstatusget {
 struct req_lib_cfg_nodestatusget {
 	struct qb_ipc_request_header header __attribute__((aligned(8)));
 	unsigned int nodeid __attribute__((aligned(8)));
+	mar_uint32_t version __attribute__((aligned(8)));
 };
 
 /**

@@ -90,20 +90,27 @@ static int node_compare(const void *aptr, const void *bptr)
 }
 
 static int
-nodestatusget_do (void)
+nodestatusget_do (enum user_action action, int brief)
 {
 	cs_error_t result;
 	corosync_cfg_handle_t handle;
 	cmap_handle_t cmap_handle;
 	char iter_key[CMAP_KEYNAME_MAXLEN];
 	cmap_iter_handle_t iter;
+	unsigned int local_nodeid;
+	unsigned int local_nodeid_index=0;
+	unsigned int other_nodeid_index=0;
 	unsigned int nodeid;
 	int nodeid_match_guard;
 	cmap_value_types_t type;
 	size_t value_len;
+	char *str;
+	char *transport_str = NULL;
+	uint32_t nodeid_list[KNET_MAX_HOST];
+	int s = 0;
 	int rc = EXIT_SUCCESS;
-	int i;
-
+	int transport_number = TOTEM_TRANSPORT_KNET;
+	int i,j;
 	struct corosync_knet_node_status node_status;
 
 	result = corosync_cfg_initialize (&handle, NULL);
@@ -118,12 +125,38 @@ nodestatusget_do (void)
 		exit (EXIT_FAILURE);
 	}
 
+	result = cmap_get_string(cmap_handle, "totem.transport", &str);
+	if (result == CS_OK) {
+		if (strcmp (str, "udpu") == 0) {
+			transport_number = TOTEM_TRANSPORT_UDPU;
+		}
+		if (strcmp (str, "udp") == 0) {
+			transport_number = TOTEM_TRANSPORT_UDP;
+		}
+		transport_str = str;
+	}
+	if (!transport_str) {
+		transport_str = strdup("knet"); /* It's the default */
+	}
+
+	result = corosync_cfg_local_get(handle, &local_nodeid);
+	if (result != CS_OK) {
+		fprintf (stderr, "Could not get the local node id, the error is: %d\n", result);
+		free(transport_str);
+		cmap_finalize(cmap_handle);
+		corosync_cfg_finalize(handle);
+		return EXIT_FAILURE;
+	}
+
 	/* Get a list of nodes. We do it this way rather than using votequorum as cfgtool
 	 * needs to be independent of quorum type
 	 */
 	result = cmap_iter_init(cmap_handle, "nodelist.node.", &iter);
 	if (result != CS_OK) {
 		fprintf (stderr, "Could not get nodelist from cmap. error %d\n", result);
+		free(transport_str);
+		cmap_finalize(cmap_handle);
+		corosync_cfg_finalize(handle);
 		exit (EXIT_FAILURE);
 	}
 
@@ -137,10 +170,31 @@ nodestatusget_do (void)
 			continue;
 		}
 		if (cmap_get_uint32(cmap_handle, iter_key, &nodeid) == CS_OK) {
-			result = corosync_cfg_node_status_get(handle, nodeid, &node_status);
+			if (nodeid == local_nodeid) {
+				local_nodeid_index = s;
+			} else {
+				/* Bit of an odd one this. but local node only uses one link (of course, to itself)
+				   so if we want to know which links are active across the cluster we need to look
+				   at another node (any other) node's link list */
+				other_nodeid_index = s;
+			}
+			nodeid_list[s++] = nodeid;
+		}
+	}
+	/* It's nice to have these in nodeid order */
+	qsort(nodeid_list, s, sizeof(uint32_t), node_compare);
+
+	cmap_finalize(cmap_handle);
+
+	printf ("Local node ID " CS_PRI_NODE_ID ", transport %s\n", local_nodeid, transport_str);
+
+        /* If node status requested then do print node-based info */
+	if (action == ACTION_NODESTATUS_GET) {
+		for (i=0; i<s; i++) {
+			result = corosync_cfg_node_status_get(handle, nodeid_list[i], &node_status);
 			if (result == CS_OK) {
-				/* Only display node info if it is reachable */
-				if (node_status.reachable) {
+				/* Only display node info if it is reachable (and not us) */
+				if (node_status.reachable && node_status.nodeid != local_nodeid) {
 					printf("nodeid: %d", node_status.nodeid);
 					printf(" reachable");
 					if (node_status.remote) {
@@ -150,28 +204,31 @@ nodestatusget_do (void)
 						printf(" external");
 					}
 #ifdef HAVE_KNET_ONWIRE_VER
-					printf("   onwire (min/max/cur): %d, %d, %d",
-					       node_status.onwire_min,
-					       node_status.onwire_max,
-					       node_status.onwire_ver);
+					if (transport_number == TOTEM_TRANSPORT_KNET) {
+						printf("   onwire (min/max/cur): %d, %d, %d",
+						       node_status.onwire_min,
+						       node_status.onwire_max,
+						       node_status.onwire_ver);
+					}
 #endif
 					printf("\n");
-					for (i=0; i<CFG_MAX_LINKS; i++) {
-						if (node_status.link_status[i].enabled) {
-							printf("   LINK: %d", i);
-							printf(" (%s->%s) ",
-							       node_status.link_status[i].src_ipaddr,
-							       node_status.link_status[i].dst_ipaddr);
-							if (node_status.link_status[i].enabled) {
+					for (j=0; j<CFG_MAX_LINKS; j++) {
+						if (node_status.link_status[j].enabled) {
+							printf("   LINK: %d", j);
+							printf(" (%s%s%s)",
+							       node_status.link_status[j].src_ipaddr,
+							       transport_number==TOTEM_TRANSPORT_KNET?"->":"",
+							       node_status.link_status[j].dst_ipaddr);
+							if (node_status.link_status[j].enabled) {
 								printf(" enabled");
 							}
-							if (node_status.link_status[i].connected) {
+							if (node_status.link_status[j].connected) {
 								printf(" connected");
 							}
-							if (node_status.link_status[i].dynconnected) {
+							if (node_status.link_status[j].dynconnected) {
 								printf(" dynconnected");
 							}
-							printf("\n");
+							printf(" mtu: %d\n", node_status.link_status[j].mtu);
 						}
 					}
 					printf("\n");
@@ -179,210 +236,54 @@ nodestatusget_do (void)
 			}
 		}
 	}
-	return rc;
-}
-
-
-static int
-linkstatusget_do (char *interface_name, int brief)
-{
-	cs_error_t result;
-	corosync_cfg_handle_t handle;
-	cmap_handle_t cmap_handle;
-	unsigned int interface_count;
-	char **interface_names;
-	char **interface_status;
-	uint32_t nodeid_list[KNET_MAX_HOST];
-	char iter_key[CMAP_KEYNAME_MAXLEN];
-	unsigned int i;
-	cmap_iter_handle_t iter;
-	unsigned int nodeid;
-	int nodeid_match_guard;
-	cmap_value_types_t type;
-	size_t value_len;
-	int rc = EXIT_SUCCESS;
-	int len, s = 0, t;
-	char stat_ch;
-	char *str;
-	totem_transport_t transport_number = TOTEM_TRANSPORT_KNET;
-	int no_match = 1;
-
-	printf ("Printing link status.\n");
-	result = corosync_cfg_initialize (&handle, NULL);
-	if (result != CS_OK) {
-		fprintf (stderr, "Could not initialize corosync configuration API error %d\n", result);
-		exit (EXIT_FAILURE);
-	}
-	result = cmap_initialize (&cmap_handle);
-	if (result != CS_OK) {
-		fprintf (stderr, "Could not initialize corosync cmap API error %d\n", result);
-		exit (EXIT_FAILURE);
-	}
-
-	result = cmap_get_string(cmap_handle, "totem.transport", &str);
-	if (result == CS_OK) {
-		if (strcmp (str, "udpu") == 0) {
-			transport_number = TOTEM_TRANSPORT_UDPU;
-		}
-		if (strcmp (str, "udp") == 0) {
-			transport_number = TOTEM_TRANSPORT_UDP;
-		}
-		free(str);
-	}
-
-	/* Get a list of nodes. We do it this way rather than using votequorum as cfgtool
-	 * needs to be independent of quorum type
-	 */
-	result = cmap_iter_init(cmap_handle, "nodelist.node.", &iter);
-	if (result != CS_OK) {
-		fprintf (stderr, "Could not get nodelist from cmap. error %d\n", result);
-		exit (EXIT_FAILURE);
-	}
-
-	while ((cmap_iter_next(cmap_handle, iter, iter_key, &value_len, &type)) == CS_OK) {
-		nodeid_match_guard = 0;
-		if (sscanf(iter_key, "nodelist.node.%*u.nodeid%n", &nodeid_match_guard) != 0) {
-			continue;
-		}
-		/* check for exact match */
-		if (nodeid_match_guard != strlen(iter_key)) {
-			continue;
-		}
-		if (cmap_get_uint32(cmap_handle, iter_key, &nodeid) == CS_OK) {
-			nodeid_list[s++] = nodeid;
-		}
-	}
-
-	/* totemknet returns nodes in nodeid order - even though it doesn't tell us
-	   what the nodeid is. So sort our node list and we can then look up
-	   knet node pos to get an actual nodeid.
-	   Yep, I really should have totally rewritten the cfg interface for this.
-	*/
-	qsort(nodeid_list, s, sizeof(uint32_t), node_compare);
-
-	result = corosync_cfg_local_get(handle, &nodeid);
-	if (result != CS_OK) {
-		fprintf (stderr, "Could not get the local node id, the error is: %d\n", result);
-	}
+	/* Print in link order */
 	else {
-		printf ("Local node ID " CS_PRI_NODE_ID "\n", nodeid);
-	}
+		struct corosync_knet_node_status node_info[s];
+		memset(node_info, 0, sizeof(node_info));
 
-	result = corosync_cfg_ring_status_get (handle,
-				&interface_names,
-				&interface_status,
-				&interface_count);
-	if (result != CS_OK) {
-		fprintf (stderr, "Could not get the link status, the error is: %d\n", result);
-	} else {
-		for (i = 0; i < interface_count; i++) {
-			char *cur_iface_name_space = strchr(interface_names[i], ' ');
-			int show_current_iface;
-
-			s = 0;
-			/*
-			 * Interface_name is "<linkid> <IP address>"
-			 * separate them out
-			 */
-			if (!cur_iface_name_space) {
-				continue;
+		for (i=0; i<s; i++) {
+			result = corosync_cfg_node_status_get(handle, nodeid_list[i], &node_info[i]);
+			if (result != CS_OK) {
+				fprintf (stderr, "Could not get the node status for nodeid %d, the error is: %d\n", nodeid_list[i], result);
 			}
-			*cur_iface_name_space = '\0';
+		}
 
-			show_current_iface = 1;
-			if (interface_name != NULL && interface_name[0] != '\0' &&
-			    strcmp(interface_name, interface_names[i]) != 0 &&
-			    strcmp(interface_name, cur_iface_name_space + 1) != 0) {
-				show_current_iface = 0;
-			}
-
-			if (show_current_iface) {
-				no_match = 0;
-				printf ("LINK ID %s\n", interface_names[i]);
-				printf ("\taddr\t= %s\n", cur_iface_name_space + 1);
-				/*
-				 * UDP(U) interface_status is always OK and doesn't contain
-				 * detailed information (only knet does).
-				 */
-				if ((!brief) && (transport_number == TOTEM_TRANSPORT_KNET)) {
-					len = strlen(interface_status[i]);
-					printf ("\tstatus:\n");
-					while (s < len) {
-						nodeid = nodeid_list[s];
-						printf("\t\tnodeid %2d:\t", nodeid);
-						stat_ch = interface_status[i][s];
-
-						/* Set return code to 1 if status is not localhost or connected. */
-						if (rc == EXIT_SUCCESS) {
-							if ((stat_ch != 'n') && (stat_ch != '3')) {
-								rc = EXIT_FAILURE;
-							}
+		for (i=0; i<CFG_MAX_LINKS; i++) {
+			if (node_info[other_nodeid_index].link_status[i].enabled) {
+				printf("LINK ID %d\n", i);
+				printf("\taddr\t= %s\n", node_info[other_nodeid_index].link_status[i].src_ipaddr);
+				if (brief) {
+					printf("\tstatus\t= ");
+					for (j=0; j<s; j++) {
+						char status = (node_info[j].link_status[i].enabled |
+							       (node_info[j].link_status[i].connected << 1)) + '0';
+						if (status == '0') {
+							status = 'n';
 						}
-
-						if (stat_ch >= '0' && stat_ch <= '9') {
-							t = stat_ch - '0';
-
-							/*
-							 * bit 0 - enabled
-							 * bit 1 - connected
-							 * bit 2 - dynconnected
-							 */
-							if (t & 0x2) {
+						printf("%c", status);
+					}
+					printf("\n");
+				} else {
+					printf("\tstatus:\n");
+					for (j=0; j<s; j++) {
+						printf("\t\tnodeid: %3d:\t", node_info[j].nodeid);
+						if (j == local_nodeid_index) {
+							printf("localhost");
+						} else {
+							if (node_info[j].link_status[i].connected) {
 								printf("connected");
 							} else {
 								printf("disconnected");
 							}
-
-							if (!(t & 0x1)) {
-								printf(" (not enabled)");
-							}
-							printf("\n");
-						} else if (stat_ch == 'n') {
-							printf("localhost\n");
-						} else if (stat_ch == '?') {
-							printf("knet error\n");
-						} else if (stat_ch == 'd') {
-							printf("config error\n");
-						} else {
-							printf("can't decode status character '%c'\n", stat_ch);
 						}
-						s++;
-					}
-				} else {
-					printf ("\tstatus\t= %s\n", interface_status[i]);
-
-					/* Set return code to 1 if status is not localhost or connected. */
-					if ((rc == EXIT_SUCCESS) && (transport_number == TOTEM_TRANSPORT_KNET)) {
-						len = strlen(interface_status[i]);
-						while (s < len) {
-							stat_ch = interface_status[i][s];
-							if ((stat_ch != 'n') && (stat_ch != '3')) {
-								rc = EXIT_FAILURE;
-								break;
-							}
-							s++;
-						}
+						printf("\n");
 					}
 				}
 			}
 		}
-
-		/* No match for value of -i option */
-		if (no_match) {
-			rc = EXIT_FAILURE;
-			fprintf(stderr, "Can't match any IP address or link id\n");
-		}
-
-		for (i = 0; i < interface_count; i++) {
-			free(interface_status[i]);
-			free(interface_names[i]);
-		}
-		free(interface_status);
-		free(interface_names);
 	}
-
-	(void)cmap_finalize (cmap_handle);
-	(void)corosync_cfg_finalize (handle);
+	free(transport_str);
+	corosync_cfg_finalize(handle);
 	return rc;
 }
 
@@ -540,8 +441,8 @@ static void usage_do (void)
 	printf ("A tool for displaying and configuring active parameters within corosync.\n");
 	printf ("options:\n");
 	printf ("\t-i\tFinds only information about the specified interface IP address or link id when used with -s..\n");
-	printf ("\t-s\tDisplays the status of the current links on this node(UDP/UDPU), with extended status for KNET.\n");
-	printf ("\t-n\tDisplays the status of the connected nodes (KNET only).\n");
+	printf ("\t-s\tDisplays the status of the current links on this node (UDP/UDPU), with extended status for KNET.\n");
+	printf ("\t-n\tDisplays the status of the connected nodes.\n");
 	printf ("\t-b\tDisplays the brief status of the current links on this node when used with -s.(KNET only)\n");
 	printf ("\t-R\tTell all instances of corosync in this cluster to reload corosync.conf.\n");
 	printf ("\t-L\tTell corosync to reopen all logging files.\n");
@@ -611,10 +512,10 @@ int main (int argc, char *argv[]) {
 	}
 	switch(action) {
 	case ACTION_LINKSTATUS_GET:
-		rc = linkstatusget_do(interface_name, brief);
+		rc = nodestatusget_do(action, brief);
 		break;
 	case ACTION_NODESTATUS_GET:
-		rc = nodestatusget_do();
+		rc = nodestatusget_do(action, brief);
 		break;
 	case ACTION_RELOAD_CONFIG:
 		rc = reload_config_do();

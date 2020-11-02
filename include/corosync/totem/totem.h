@@ -253,7 +253,14 @@ struct totem_config {
 	    unsigned int nodeid);
 };
 
+/*
+ * Node status returned from the API
+ * Usually the same as the cfg version (except for
+ * link_status)
+ */
+#define TOTEM_NODE_STATUS_STRUCTURE_VERSION 1
 struct totem_node_status {
+	uint32_t version; /* Structure version */
 	unsigned int nodeid;
 	uint8_t reachable;
 	uint8_t remote;

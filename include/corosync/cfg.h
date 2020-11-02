@@ -162,6 +162,7 @@ corosync_cfg_ring_status_get (
 	char ***status,
 	unsigned int *interface_count);
 
+#define CFG_NODE_STATUS_STRUCT_VERSION 1
 #define CFG_MAX_HOST_LEN 256
 #define CFG_MAX_LINKS 8
 struct corosync_knet_link_status {
@@ -174,6 +175,7 @@ struct corosync_knet_link_status {
 };
 
 struct corosync_knet_node_status {
+        uint32_t version;
 	unsigned int nodeid;
 	uint8_t reachable;
 	uint8_t remote;

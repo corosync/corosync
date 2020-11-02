@@ -391,6 +391,7 @@ corosync_cfg_node_status_get (
 	req_lib_cfg_nodestatusget.header.size = sizeof (struct req_lib_cfg_nodestatusget);
 	req_lib_cfg_nodestatusget.header.id = MESSAGE_REQ_CFG_NODESTATUSGET;
 	req_lib_cfg_nodestatusget.nodeid = nodeid;
+	req_lib_cfg_nodestatusget.version = CFG_NODE_STATUS_STRUCT_VERSION;
 
 	iov.iov_base = (void *)&req_lib_cfg_nodestatusget,
 	iov.iov_len = sizeof (struct req_lib_cfg_nodestatusget),

@@ -1047,6 +1047,8 @@ int totemsrp_nodestatus_get (
 	struct totemsrp_instance *instance = (struct totemsrp_instance *)srp_context;
 	int i;
 
+	node_status->version = TOTEM_NODE_STATUS_STRUCTURE_VERSION;
+
 	/* Fill in 'reachable' here as the lower level UDP[u] layers don't know */
 	for (i = 0; i < instance->my_proc_list_entries; i++) {
 		if (instance->my_proc_list[i].nodeid == nodeid) {

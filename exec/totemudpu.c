@@ -808,8 +808,12 @@ int totemudpu_nodestatus_get (void *udpu_context, unsigned int nodeid,
 		if (member->member.nodeid == nodeid) {
 			node_status->nodeid = nodeid;
 			/* reachable is filled in by totemsrp */
-			node_status->link_status[0].enabled = 1;
-			node_status->link_status[0].connected = 0;
+			if (instance->netif_bind_state == BIND_STATE_REGULAR) {
+				node_status->link_status[0].enabled = 1;
+			} else {
+				node_status->link_status[0].enabled = 0;
+			}
+			node_status->link_status[0].connected = node_status->reachable;
 			node_status->link_status[0].mtu = instance->totem_config->net_mtu;
 			strncpy(node_status->link_status[0].src_ipaddr, totemip_print(&member->member), KNET_MAX_HOST_LEN-1);
 		}

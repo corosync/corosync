@@ -979,31 +979,38 @@ static void message_handler_req_lib_cfg_nodestatusget (
 
 	ENTER();
 
-	res_lib_cfg_nodestatusget.header.id = MESSAGE_RES_CFG_RINGSTATUSGET;
-	res_lib_cfg_nodestatusget.header.size = sizeof (struct res_lib_cfg_nodestatusget);
+	/* Currently only one structure version supported */
+	if (req_lib_cfg_nodestatusget->version == TOTEM_NODE_STATUS_STRUCTURE_VERSION)
+	{
+		res_lib_cfg_nodestatusget.header.id = MESSAGE_RES_CFG_NODESTATUSGET;
+		res_lib_cfg_nodestatusget.header.size = sizeof (struct res_lib_cfg_nodestatusget);
 
-	memset(&node_status, 0, sizeof(node_status));
-	res = totempg_nodestatus_get(req_lib_cfg_nodestatusget->nodeid,
+		memset(&node_status, 0, sizeof(node_status));
+		res = totempg_nodestatus_get(req_lib_cfg_nodestatusget->nodeid,
 				       &node_status);
-	if (res == 0) {
-		res_lib_cfg_nodestatusget.node_status.nodeid = req_lib_cfg_nodestatusget->nodeid;
-		res_lib_cfg_nodestatusget.node_status.reachable = node_status.reachable;
-		res_lib_cfg_nodestatusget.node_status.remote = node_status.remote;
-		res_lib_cfg_nodestatusget.node_status.external = node_status.external;
-		res_lib_cfg_nodestatusget.node_status.onwire_min = node_status.onwire_min;
-		res_lib_cfg_nodestatusget.node_status.onwire_max = node_status.onwire_max;
-		res_lib_cfg_nodestatusget.node_status.onwire_ver= node_status.onwire_ver;
+		if (res == 0) {
+			res_lib_cfg_nodestatusget.node_status.nodeid = req_lib_cfg_nodestatusget->nodeid;
+			res_lib_cfg_nodestatusget.node_status.version = node_status.version;
+			res_lib_cfg_nodestatusget.node_status.reachable = node_status.reachable;
+			res_lib_cfg_nodestatusget.node_status.remote = node_status.remote;
+			res_lib_cfg_nodestatusget.node_status.external = node_status.external;
+			res_lib_cfg_nodestatusget.node_status.onwire_min = node_status.onwire_min;
+			res_lib_cfg_nodestatusget.node_status.onwire_max = node_status.onwire_max;
+			res_lib_cfg_nodestatusget.node_status.onwire_ver= node_status.onwire_ver;
 
-		for (i=0; i < KNET_MAX_LINK; i++) {
-			res_lib_cfg_nodestatusget.node_status.link_status[i].enabled = node_status.link_status[i].enabled;
-			res_lib_cfg_nodestatusget.node_status.link_status[i].connected = node_status.link_status[i].connected;
-			res_lib_cfg_nodestatusget.node_status.link_status[i].dynconnected = node_status.link_status[i].dynconnected;
-			res_lib_cfg_nodestatusget.node_status.link_status[i].mtu = node_status.link_status[i].mtu;
-			memcpy(res_lib_cfg_nodestatusget.node_status.link_status[i].src_ipaddr,
-			       node_status.link_status[i].src_ipaddr, CFG_MAX_HOST_LEN);
-			memcpy(res_lib_cfg_nodestatusget.node_status.link_status[i].dst_ipaddr,
-			       node_status.link_status[i].dst_ipaddr, CFG_MAX_HOST_LEN);
+			for (i=0; i < KNET_MAX_LINK; i++) {
+				res_lib_cfg_nodestatusget.node_status.link_status[i].enabled = node_status.link_status[i].enabled;
+				res_lib_cfg_nodestatusget.node_status.link_status[i].connected = node_status.link_status[i].connected;
+				res_lib_cfg_nodestatusget.node_status.link_status[i].dynconnected = node_status.link_status[i].dynconnected;
+				res_lib_cfg_nodestatusget.node_status.link_status[i].mtu = node_status.link_status[i].mtu;
+				memcpy(res_lib_cfg_nodestatusget.node_status.link_status[i].src_ipaddr,
+				       node_status.link_status[i].src_ipaddr, CFG_MAX_HOST_LEN);
+				memcpy(res_lib_cfg_nodestatusget.node_status.link_status[i].dst_ipaddr,
+				       node_status.link_status[i].dst_ipaddr, CFG_MAX_HOST_LEN);
+			}
 		}
+	} else {
+		res = CS_ERR_NOT_SUPPORTED;
 	}
 
 	res_lib_cfg_nodestatusget.header.error = res;
