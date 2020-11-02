@@ -248,7 +248,8 @@ This package contains corosync libraries.
 Summary: The Corosync Cluster Engine Development Kit
 Requires: corosynclib%{?_isa} = %{version}-%{release}
 Requires: pkgconfig
-Provides: corosync-devel = %{version}
+Provides: corosync-devel = %{version}-%{release}
+Provides: corosync-devel%{?_isa} = %{version}-%{release}
 
 %description -n corosynclib-devel
 This package contains include files and man pages used to develop using
