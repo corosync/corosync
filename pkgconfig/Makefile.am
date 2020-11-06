@@ -62,6 +62,7 @@ lib%.pc: libtemplate.pc.in Makefile
 		-e 's#@''PREFIX@#$(exec_prefix)#g' \
 		-e 's#@''LIBDIR@#$(libdir)#g' \
 		-e 's#@''LIBVERSION@#$(VERSION)#g' \
+		-e 's#@''LOGDIR@#$(LOGDIR)#g' \
 	    $< > $@-t
 	chmod a-w $@-t
 	mv $@-t $@
