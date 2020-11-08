@@ -640,7 +640,7 @@ static void corosync_ring_id_create_or_load (
 
 	snprintf (filename, sizeof(filename), "%s/ringid_%u",
 		get_state_dir(), nodeid);
-	fd = open (filename, O_RDONLY, 0700);
+	fd = open (filename, O_RDONLY);
 	/*
 	 * If file can be opened and read, read the ring id
 	 */
@@ -653,8 +653,7 @@ static void corosync_ring_id_create_or_load (
 	 */
 	if ((fd == -1) || (res != sizeof (uint64_t))) {
 		memb_ring_id->seq = 0;
-		umask(0);
-		fd = open (filename, O_CREAT|O_RDWR, 0700);
+		fd = creat (filename, 0600);
 		if (fd != -1) {
 			res = write (fd, &memb_ring_id->seq, sizeof (uint64_t));
 			close (fd);
@@ -686,10 +685,7 @@ static void corosync_ring_id_store (
 	snprintf (filename, sizeof(filename), "%s/ringid_%u",
 		get_state_dir(), nodeid);
 
-	fd = open (filename, O_WRONLY, 0700);
-	if (fd == -1) {
-		fd = open (filename, O_CREAT|O_RDWR, 0700);
-	}
+	fd = creat (filename, 0600);
 	if (fd == -1) {
 		LOGSYS_PERROR(errno, LOGSYS_LEVEL_ERROR,
 			"Couldn't store new ring id " CS_PRI_RING_ID_SEQ " to stable storage",
