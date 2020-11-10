@@ -905,6 +905,14 @@ static void totemknet_add_config_notifications(struct totemknet_instance *instan
 	LEAVE();
 }
 
+static int totemknet_is_crypto_enabled(const struct totemknet_instance *instance)
+{
+
+	return (!(strcmp(instance->totem_config->crypto_cipher_type, "none") == 0 &&
+	    strcmp(instance->totem_config->crypto_hash_type, "none") == 0));
+
+}
+
 static int totemknet_set_knet_crypto(struct totemknet_instance *instance)
 {
 	struct knet_handle_crypto_cfg crypto_cfg;
@@ -927,7 +935,7 @@ static int totemknet_set_knet_crypto(struct totemknet_instance *instance)
 		);
 
 	/* If crypto is being disabled we need to explicitly allow cleartext traffic in knet */
-	if (strcmp(instance->totem_config->crypto_cipher_type, "none") == 0) {
+	if (!totemknet_is_crypto_enabled(instance)) {
 		res = knet_handle_crypto_rx_clear_traffic(instance->knet_handle, KNET_CRYPTO_RX_ALLOW_CLEAR_TRAFFIC);
 		if (res) {
 			knet_log_printf(LOGSYS_LEVEL_ERROR, "knet_handle_crypto_rx_clear_traffic(ALLOW) failed %s", strerror(errno));
@@ -1108,7 +1116,7 @@ int totemknet_initialize (
 
 	/* Enable crypto if requested */
 #ifdef HAVE_KNET_CRYPTO_RECONF
-	if (strcmp(instance->totem_config->crypto_cipher_type, "none") != 0) {
+	if (totemknet_is_crypto_enabled(instance)) {
 	        res = totemknet_set_knet_crypto(instance);
 		if (res == 0) {
 			res = knet_handle_crypto_use_config(instance->knet_handle, totem_config->crypto_index);
@@ -1134,7 +1142,7 @@ int totemknet_initialize (
 		}
 	}
 #else
-	if (strcmp(instance->totem_config->crypto_cipher_type, "none") != 0) {
+	if (totemknet_is_crypto_enabled(instance)) {
 		res = totemknet_set_knet_crypto(instance);
 		if (res) {
 			knet_log_printf(LOG_DEBUG, "Failed to set up knet crypto");
@@ -1616,7 +1624,7 @@ int totemknet_crypto_reconfigure_phase (
 	switch (phase) {
 		case CRYPTO_RECONFIG_PHASE_ACTIVATE:
 			config_to_use = totem_config->crypto_index;
-			if (strcmp(instance->totem_config->crypto_cipher_type, "none") == 0) {
+			if (!totemknet_is_crypto_enabled(instance)) {
 				config_to_use = 0; /* we are clearing it */
 			}
 
@@ -1647,7 +1655,7 @@ int totemknet_crypto_reconfigure_phase (
 			}
 
 			/* If crypto is enabled then disable all cleartext reception */
-			if (strcmp(instance->totem_config->crypto_cipher_type, "none") != 0) {
+			if (totemknet_is_crypto_enabled(instance)) {
 				res = knet_handle_crypto_rx_clear_traffic(instance->knet_handle, KNET_CRYPTO_RX_DISALLOW_CLEAR_TRAFFIC);
 				if (res) {
 					knet_log_printf(LOGSYS_LEVEL_ERROR, "knet_handle_crypto_rx_clear_traffic(DISALLOW) failed %s", strerror(errno));
