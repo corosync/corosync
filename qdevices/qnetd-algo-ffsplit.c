@@ -338,7 +338,8 @@ qnetd_algo_ffsplit_partition_cmp(const struct qnetd_client *client1,
     const struct qnetd_client *client2,
     const struct node_list *config_node_list2, const struct node_list *membership_node_list2,
     enum tlv_heuristics heuristics_2,
-    const struct node_list *quorate_partition_node_list)
+    const struct node_list *quorate_partition_node_list,
+    int keep_active_partition_tie_breaker)
 {
 	size_t part1_active_clients, part2_active_clients;
 	size_t part1_no_heuristics_pass, part2_no_heuristics_pass;
@@ -418,8 +419,7 @@ qnetd_algo_ffsplit_partition_cmp(const struct qnetd_client *client1,
 		/*
 		 * Use keep active partition tie-breaker if enabled for both clients
 		 */
-		if (client1->keep_active_partition_tie_breaker &&
-		    client2 != NULL && client2->keep_active_partition_tie_breaker) {
+		if (keep_active_partition_tie_breaker && client2 != NULL) {
 			qpnl_client1 = node_list_find_node_id(quorate_partition_node_list, client1->node_id);
 			qpnl_client2 = node_list_find_node_id(quorate_partition_node_list, client2->node_id);
 
@@ -476,10 +476,20 @@ qnetd_algo_ffsplit_select_partition(const struct qnetd_client *client, int clien
 	const struct node_list *best_config_node_list, *best_membership_node_list;
 	const struct node_list *iter_config_node_list, *iter_membership_node_list;
 	enum tlv_heuristics iter_heuristics, best_heuristics;
+	int keep_active_partition_tie_breaker;
 
 	best_client = NULL;
 	best_config_node_list = best_membership_node_list = NULL;
 	best_heuristics = TLV_HEURISTICS_UNDEFINED;
+
+	keep_active_partition_tie_breaker = 1;
+
+	TAILQ_FOREACH(iter_client, &client->cluster->client_list, cluster_entries) {
+		if (!iter_client->keep_active_partition_tie_breaker) {
+			keep_active_partition_tie_breaker = 0;
+			break;
+		}
+	}
 
 	/*
 	 * Get highest score
@@ -502,7 +512,7 @@ qnetd_algo_ffsplit_select_partition(const struct qnetd_client *client, int clien
 		if (qnetd_algo_ffsplit_partition_cmp(iter_client, iter_config_node_list,
 		    iter_membership_node_list, iter_heuristics, best_client, best_config_node_list,
 		    best_membership_node_list, best_heuristics,
-		    quorate_partition_node_list) > 0) {
+		    quorate_partition_node_list, keep_active_partition_tie_breaker) > 0) {
 			best_client = iter_client;
 			best_config_node_list = iter_config_node_list;
 			best_membership_node_list = iter_membership_node_list;
