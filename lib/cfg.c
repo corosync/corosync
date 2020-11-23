@@ -406,6 +406,12 @@ corosync_cfg_node_status_get (
 		memcpy(node_status, &res_lib_cfg_nodestatusget.node_status, sizeof(struct corosync_knet_node_status));
 	}
 
+	/* corosync sent us something we don't really understand.
+	   - we might need to revisit this in the case of future structure versions */
+	if (res_lib_cfg_nodestatusget.node_status.version != CFG_NODE_STATUS_STRUCT_VERSION) {
+		error = CS_ERR_NOT_SUPPORTED;
+	}
+
 	(void)hdb_handle_put (&cfg_hdb, cfg_handle);
 
 	return (error);
