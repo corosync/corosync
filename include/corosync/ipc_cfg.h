@@ -125,6 +125,11 @@ struct res_lib_cfg_nodestatusget_v1 {
 	struct corosync_cfg_node_status_v1 node_status __attribute__((aligned(8)));
 };
 
+struct res_lib_cfg_nodestatusget_v2 {
+	struct qb_ipc_response_header header __attribute__((aligned(8)));
+	struct corosync_cfg_node_status_v2 node_status __attribute__((aligned(8)));
+};
+
 /**
  * @brief The req_lib_cfg_ringreenable struct
  */

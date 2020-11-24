@@ -164,6 +164,7 @@ corosync_cfg_ring_status_get (
 
 typedef enum {
 	CFG_NODE_STATUS_V1 = 1,
+	CFG_NODE_STATUS_V2 = 2,
 } corosync_cfg_node_status_version_t;
 
 #define CFG_MAX_HOST_LEN 256
@@ -187,6 +188,19 @@ struct corosync_cfg_node_status_v1 {
 	uint8_t onwire_min;
 	uint8_t onwire_max;
 	uint8_t onwire_ver;
+	struct corosync_knet_link_status_v1 link_status[CFG_MAX_LINKS];
+};
+
+struct corosync_cfg_node_status_v2 {
+	corosync_cfg_node_status_version_t version;
+	unsigned int nodeid;
+	uint8_t reachable;
+	uint8_t remote;
+	uint8_t external;
+	uint8_t onwire_min;
+	uint8_t onwire_max;
+	uint8_t onwire_ver;
+	uint8_t foo;
 	struct corosync_knet_link_status_v1 link_status[CFG_MAX_LINKS];
 };
 

@@ -111,7 +111,7 @@ nodestatusget_do (enum user_action action, int brief)
 	int rc = EXIT_SUCCESS;
 	int transport_number = TOTEM_TRANSPORT_KNET;
 	int i,j;
-	struct corosync_cfg_node_status_v1 node_status;
+	struct corosync_cfg_node_status_v2 node_status;
 
 	result = corosync_cfg_initialize (&handle, NULL);
 	if (result != CS_OK) {
@@ -191,8 +191,10 @@ nodestatusget_do (enum user_action action, int brief)
         /* If node status requested then do print node-based info */
 	if (action == ACTION_NODESTATUS_GET) {
 		for (i=0; i<s; i++) {
-			result = corosync_cfg_node_status_get(handle, nodeid_list[i], CFG_NODE_STATUS_V1, &node_status);
+			result = corosync_cfg_node_status_get(handle, nodeid_list[i], CFG_NODE_STATUS_V2, &node_status);
 			if (result == CS_OK) {
+				printf("Foo for nodeid %u is %u\n", nodeid_list[i], node_status.foo);
+
 				/* Only display node info if it is reachable (and not us) */
 				if (node_status.reachable && node_status.nodeid != local_nodeid) {
 					printf("nodeid: %d", node_status.nodeid);
@@ -238,11 +240,11 @@ nodestatusget_do (enum user_action action, int brief)
 	}
 	/* Print in link order */
 	else {
-		struct corosync_cfg_node_status_v1 node_info[s];
+		struct corosync_cfg_node_status_v2 node_info[s];
 		memset(node_info, 0, sizeof(node_info));
 
 		for (i=0; i<s; i++) {
-			result = corosync_cfg_node_status_get(handle, nodeid_list[i], CFG_NODE_STATUS_V1, &node_info[i]);
+			result = corosync_cfg_node_status_get(handle, nodeid_list[i], CFG_NODE_STATUS_V2, &node_info[i]);
 			if (result != CS_OK) {
 				fprintf (stderr, "Could not get the node status for nodeid %d, the error is: %d\n", nodeid_list[i], result);
 			}

@@ -973,6 +973,7 @@ static void message_handler_req_lib_cfg_nodestatusget (
 {
 	struct res_lib_cfg_nodestatusget_version res_lib_cfg_nodestatusget_version;
 	struct res_lib_cfg_nodestatusget_v1 res_lib_cfg_nodestatusget_v1;
+	struct res_lib_cfg_nodestatusget_v2 res_lib_cfg_nodestatusget_v2;
 	void *res_lib_cfg_nodestatusget_ptr = NULL;
 	size_t res_lib_cfg_nodestatusget_size;
 	struct req_lib_cfg_nodestatusget *req_lib_cfg_nodestatusget = (struct req_lib_cfg_nodestatusget *)msg;
@@ -1020,6 +1021,35 @@ static void message_handler_req_lib_cfg_nodestatusget (
 			memcpy(res_lib_cfg_nodestatusget_v1.node_status.link_status[i].src_ipaddr,
 			       node_status.link_status[i].src_ipaddr, CFG_MAX_HOST_LEN);
 			memcpy(res_lib_cfg_nodestatusget_v1.node_status.link_status[i].dst_ipaddr,
+			       node_status.link_status[i].dst_ipaddr, CFG_MAX_HOST_LEN);
+		}
+		break;
+	case CFG_NODE_STATUS_V2:
+		res_lib_cfg_nodestatusget_ptr = &res_lib_cfg_nodestatusget_v2;
+		res_lib_cfg_nodestatusget_size = sizeof(res_lib_cfg_nodestatusget_v2);
+
+		res_lib_cfg_nodestatusget_v2.header.error = CS_OK;
+		res_lib_cfg_nodestatusget_v2.header.id = MESSAGE_RES_CFG_NODESTATUSGET;
+		res_lib_cfg_nodestatusget_v2.header.size = res_lib_cfg_nodestatusget_size;
+
+		res_lib_cfg_nodestatusget_v2.node_status.version = CFG_NODE_STATUS_V2;
+		res_lib_cfg_nodestatusget_v2.node_status.nodeid = req_lib_cfg_nodestatusget->nodeid;
+		res_lib_cfg_nodestatusget_v2.node_status.reachable = node_status.reachable;
+		res_lib_cfg_nodestatusget_v2.node_status.remote = node_status.remote;
+		res_lib_cfg_nodestatusget_v2.node_status.external = node_status.external;
+		res_lib_cfg_nodestatusget_v2.node_status.onwire_min = node_status.onwire_min;
+		res_lib_cfg_nodestatusget_v2.node_status.onwire_max = node_status.onwire_max;
+		res_lib_cfg_nodestatusget_v2.node_status.onwire_ver = node_status.onwire_ver;
+		res_lib_cfg_nodestatusget_v2.node_status.foo = 42;
+
+		for (i=0; i < KNET_MAX_LINK; i++) {
+			res_lib_cfg_nodestatusget_v2.node_status.link_status[i].enabled = node_status.link_status[i].enabled;
+			res_lib_cfg_nodestatusget_v2.node_status.link_status[i].connected = node_status.link_status[i].connected;
+			res_lib_cfg_nodestatusget_v2.node_status.link_status[i].dynconnected = node_status.link_status[i].dynconnected;
+			res_lib_cfg_nodestatusget_v2.node_status.link_status[i].mtu = node_status.link_status[i].mtu;
+			memcpy(res_lib_cfg_nodestatusget_v2.node_status.link_status[i].src_ipaddr,
+			       node_status.link_status[i].src_ipaddr, CFG_MAX_HOST_LEN);
+			memcpy(res_lib_cfg_nodestatusget_v2.node_status.link_status[i].dst_ipaddr,
 			       node_status.link_status[i].dst_ipaddr, CFG_MAX_HOST_LEN);
 		}
 		break;

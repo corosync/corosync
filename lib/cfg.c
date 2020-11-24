@@ -381,6 +381,7 @@ corosync_cfg_node_status_get (
 	size_t cfg_node_status_size;
 	void *res_lib_cfg_nodestatuget_ptr;
 	struct res_lib_cfg_nodestatusget_v1 res_lib_cfg_nodestatusget_v1;
+	struct res_lib_cfg_nodestatusget_v2 res_lib_cfg_nodestatusget_v2;
 	struct res_lib_cfg_nodestatusget_version *res_lib_cfg_nodestatusget_version;
 
 	if (!node_status) {
@@ -391,6 +392,11 @@ corosync_cfg_node_status_get (
 	case CFG_NODE_STATUS_V1:
 		cfg_node_status_size = sizeof(struct res_lib_cfg_nodestatusget_v1);
 		res_lib_cfg_nodestatuget_ptr = &res_lib_cfg_nodestatusget_v1;
+
+		break;
+	case CFG_NODE_STATUS_V2:
+		cfg_node_status_size = sizeof(struct res_lib_cfg_nodestatusget_v2);
+		res_lib_cfg_nodestatuget_ptr = &res_lib_cfg_nodestatusget_v2;
 
 		break;
 	default:
@@ -438,6 +444,10 @@ corosync_cfg_node_status_get (
 	case CFG_NODE_STATUS_V1:
 		memcpy(node_status, &res_lib_cfg_nodestatusget_v1.node_status,
 		    sizeof(struct corosync_cfg_node_status_v1));
+		break;
+	case CFG_NODE_STATUS_V2:
+		memcpy(node_status, &res_lib_cfg_nodestatusget_v2.node_status,
+		    sizeof(struct corosync_cfg_node_status_v2));
 		break;
 	}
 
