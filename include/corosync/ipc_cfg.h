@@ -112,12 +112,17 @@ struct req_lib_cfg_nodestatusget {
 	mar_uint32_t version __attribute__((aligned(8)));
 };
 
+struct res_lib_cfg_nodestatusget_version {
+	struct qb_ipc_response_header header __attribute__((aligned(8)));
+	corosync_cfg_node_status_version_t version __attribute__((aligned(8)));
+};
+
 /**
  * @brief The res_lib_cfg_nodestatusget struct
  */
-struct res_lib_cfg_nodestatusget {
+struct res_lib_cfg_nodestatusget_v1 {
 	struct qb_ipc_response_header header __attribute__((aligned(8)));
-	struct corosync_knet_node_status node_status __attribute__((aligned(8)));
+	struct corosync_cfg_node_status_v1 node_status __attribute__((aligned(8)));
 };
 
 /**
