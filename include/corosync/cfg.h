@@ -162,10 +162,14 @@ corosync_cfg_ring_status_get (
 	char ***status,
 	unsigned int *interface_count);
 
-#define CFG_NODE_STATUS_STRUCT_VERSION 1
+typedef enum {
+	CFG_NODE_STATUS_V1 = 1,
+} corosync_cfg_node_status_version_t;
+
 #define CFG_MAX_HOST_LEN 256
 #define CFG_MAX_LINKS 8
-struct corosync_knet_link_status {
+
+struct corosync_knet_link_status_v1 {
 	uint8_t enabled;	        /* link is configured and admin enabled for traffic */
 	uint8_t connected;              /* link is connected for data (local view) */
 	uint8_t dynconnected;	        /* link has been activated by remote dynip */
@@ -174,8 +178,8 @@ struct corosync_knet_link_status {
 	char dst_ipaddr[CFG_MAX_HOST_LEN];
 };
 
-struct corosync_knet_node_status {
-        uint32_t version;
+struct corosync_cfg_node_status_v1 {
+	corosync_cfg_node_status_version_t version;
 	unsigned int nodeid;
 	uint8_t reachable;
 	uint8_t remote;
@@ -183,7 +187,7 @@ struct corosync_knet_node_status {
 	uint8_t onwire_min;
 	uint8_t onwire_max;
 	uint8_t onwire_ver;
-	struct corosync_knet_link_status link_status[CFG_MAX_LINKS];
+	struct corosync_knet_link_status_v1 link_status[CFG_MAX_LINKS];
 };
 
 /**
@@ -197,7 +201,8 @@ cs_error_t
 corosync_cfg_node_status_get (
 	corosync_cfg_handle_t cfg_handle,
 	unsigned int nodeid,
-	struct corosync_knet_node_status *node_status);
+	corosync_cfg_node_status_version_t version,
+	void *node_status);
 
 /**
  * @brief corosync_cfg_kill_node

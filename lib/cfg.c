@@ -371,16 +371,31 @@ cs_error_t
 corosync_cfg_node_status_get (
 	corosync_cfg_handle_t cfg_handle,
 	unsigned int nodeid,
-	struct corosync_knet_node_status *node_status)
+	corosync_cfg_node_status_version_t version,
+	void *node_status)
 {
 	struct cfg_inst *cfg_inst;
 	struct req_lib_cfg_nodestatusget req_lib_cfg_nodestatusget;
-	struct res_lib_cfg_nodestatusget res_lib_cfg_nodestatusget;
 	cs_error_t error;
 	struct iovec iov;
+	size_t cfg_node_status_size;
+	void *res_lib_cfg_nodestatuget_ptr;
+	struct res_lib_cfg_nodestatusget_v1 res_lib_cfg_nodestatusget_v1;
+	struct res_lib_cfg_nodestatusget_version *res_lib_cfg_nodestatusget_version;
 
 	if (!node_status) {
 		return (CS_ERR_INVALID_PARAM);
+	}
+
+	switch (version) {
+	case CFG_NODE_STATUS_V1:
+		cfg_node_status_size = sizeof(struct res_lib_cfg_nodestatusget_v1);
+		res_lib_cfg_nodestatuget_ptr = &res_lib_cfg_nodestatusget_v1;
+
+		break;
+	default:
+		return (CS_ERR_INVALID_PARAM);
+		break;
 	}
 
 	error = hdb_error_to_cs(hdb_handle_get (&cfg_hdb, cfg_handle, (void *)&cfg_inst));
@@ -391,7 +406,7 @@ corosync_cfg_node_status_get (
 	req_lib_cfg_nodestatusget.header.size = sizeof (struct req_lib_cfg_nodestatusget);
 	req_lib_cfg_nodestatusget.header.id = MESSAGE_REQ_CFG_NODESTATUSGET;
 	req_lib_cfg_nodestatusget.nodeid = nodeid;
-	req_lib_cfg_nodestatusget.version = CFG_NODE_STATUS_STRUCT_VERSION;
+	req_lib_cfg_nodestatusget.version = version;
 
 	iov.iov_base = (void *)&req_lib_cfg_nodestatusget,
 	iov.iov_len = sizeof (struct req_lib_cfg_nodestatusget),
@@ -399,19 +414,34 @@ corosync_cfg_node_status_get (
 	error = qb_to_cs_error (qb_ipcc_sendv_recv(cfg_inst->c,
 		&iov,
 		1,
-		&res_lib_cfg_nodestatusget,
-		sizeof (struct res_lib_cfg_nodestatusget), CS_IPC_TIMEOUT_MS));
-
-	if (error == CS_OK) {
-		memcpy(node_status, &res_lib_cfg_nodestatusget.node_status, sizeof(struct corosync_knet_node_status));
+		res_lib_cfg_nodestatuget_ptr,
+		cfg_node_status_size, CS_IPC_TIMEOUT_MS));
+	if (error != CS_OK) {
+		goto error_put;
 	}
 
-	/* corosync sent us something we don't really understand.
-	   - we might need to revisit this in the case of future structure versions */
-	if (res_lib_cfg_nodestatusget.node_status.version != CFG_NODE_STATUS_STRUCT_VERSION) {
+	res_lib_cfg_nodestatusget_version = res_lib_cfg_nodestatuget_ptr;
+	error = res_lib_cfg_nodestatusget_version->header.error;
+	if (error != CS_OK) {
+		goto error_put;
+	}
+
+	if (res_lib_cfg_nodestatusget_version->version != version) {
+		/*
+		 * corosync sent us something we don't really understand.
+		 */
 		error = CS_ERR_NOT_SUPPORTED;
+		goto error_put;
 	}
 
+	switch (version) {
+	case CFG_NODE_STATUS_V1:
+		memcpy(node_status, &res_lib_cfg_nodestatusget_v1.node_status,
+		    sizeof(struct corosync_cfg_node_status_v1));
+		break;
+	}
+
+error_put:
 	(void)hdb_handle_put (&cfg_hdb, cfg_handle);
 
 	return (error);
