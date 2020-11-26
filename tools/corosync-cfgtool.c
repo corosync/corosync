@@ -441,9 +441,9 @@ static void usage_do (void)
 	printf ("A tool for displaying and configuring active parameters within corosync.\n");
 	printf ("options:\n");
 	printf ("\t-i\tFinds only information about the specified interface IP address or link id when used with -s..\n");
-	printf ("\t-s\tDisplays the status of the current links on this node (UDP/UDPU), with extended status for KNET.\n");
-	printf ("\t-n\tDisplays the status of the connected nodes.\n");
-	printf ("\t-b\tDisplays the brief status of the current links on this node when used with -s.(KNET only)\n");
+	printf ("\t-s\tDisplays the status of the current links on this node.\n");
+	printf ("\t-n\tDisplays the status of the connected nodes and their links.\n");
+	printf ("\t-b\tDisplays the brief status of the current links on this node when used with -s.\n");
 	printf ("\t-R\tTell all instances of corosync in this cluster to reload corosync.conf.\n");
 	printf ("\t-L\tTell corosync to reopen all logging files.\n");
 	printf ("\t-k\tKill a node identified by node id.\n");

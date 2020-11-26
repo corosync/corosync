@@ -58,14 +58,14 @@ LINK ID 0
                 nodeid  3:      connected
 .TP
 .B -b
-Displays the brief status of the current links on this node (KNET only) when used
+Displays the brief status of the current links on this node when used
 with "-s". If any interfaces are faulty, 1 is returned by the binary. If all interfaces
 are active 0 is returned to the shell.
 After each link, the nodes on that link are displayed in order with their status
 encoded into a single digit, or characters 'n', 'd' and '?' with special meaning.
 1=link enabled, 2=link connected, So a 3 in a node position indicates that the
 link is both enabled and connected. Status represented by character 'n' is used for
-localhost link. Character '?' means that Crosync was unable to get status of link from knet (log
+localhost link. Character '?' means that Corosync was unable to get status of link from knet (log
 should contain more information). Character 'd' shouldn't appear and it means that Corosync
 was unable to configure a link and it is result of some error which should have been logged.
 
@@ -81,9 +81,9 @@ Displays the status of the current nodes in the system with their link status(es
 .nf
 Local node ID 1, transport knet
 nodeid: 2 reachable   onwire (min/max/cur): 0, 1, 1
-   LINK: 0 (192.168.1.101->192.168.1.102)  enabled connected
-   LINK: 1 (192.168.4.1->192.168.4.2)  enabled
-   LINK: 2 (192.168.9.1->192.168.9.2)  enabled
+   LINK: 0 (192.168.1.101->192.168.1.102)  enabled connected mtu: 1397
+   LINK: 1 (192.168.4.1->192.168.4.2)  enabled mtu: 469
+   LINK: 2 (192.168.9.1->192.168.9.2)  enabled mtu: 469
 .fi
 .P
 Only reachable nodes are displayed so "reachable" should always be there.
@@ -97,7 +97,9 @@ enabled - means the link has been brought up
 connected - means that the link is connected to the remote node
 .br
 dynconnected - is not currently implemented
-
+.br
+mtu - shows the size of data packets. Should be the link packet size less a small amount
+for protocol overheads and encryption
 .TP
 .B -R
 Tell all instances of corosync in this cluster to reload corosync.conf.
