@@ -480,7 +480,7 @@ corosync_cfg_trackstart (
 
 	(void)hdb_handle_put (&cfg_hdb, cfg_handle);
 
-        return (error == CS_OK ? res_lib_cfg_trackstart.header.error : error);
+	return (error == CS_OK ? res_lib_cfg_trackstart.header.error : error);
 }
 
 cs_error_t
@@ -513,7 +513,7 @@ corosync_cfg_trackstop (
 
 	(void)hdb_handle_put (&cfg_hdb, cfg_handle);
 
-        return (error == CS_OK ? res_lib_cfg_trackstop.header.error : error);
+	return (error == CS_OK ? res_lib_cfg_trackstop.header.error : error);
 }
 
 cs_error_t
@@ -556,7 +556,7 @@ corosync_cfg_kill_node (
 
 	(void)hdb_handle_put (&cfg_hdb, cfg_handle);
 
-        return (error == CS_OK ? res_lib_cfg_killnode.header.error : error);
+	return (error == CS_OK ? res_lib_cfg_killnode.header.error : error);
 }
 
 cs_error_t
@@ -591,7 +591,7 @@ corosync_cfg_try_shutdown (
 
 	(void)hdb_handle_put (&cfg_hdb, cfg_handle);
 
-        return (error == CS_OK ? res_lib_cfg_tryshutdown.header.error : error);
+	return (error == CS_OK ? res_lib_cfg_tryshutdown.header.error : error);
 }
 
 cs_error_t

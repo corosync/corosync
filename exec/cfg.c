@@ -55,6 +55,7 @@
 #include <qb/qbipc_common.h>
 #include <corosync/cfg.h>
 #include <qb/qblist.h>
+#include <qb/qbutil.h>
 #include <corosync/mar_gen.h>
 #include <corosync/totem/totemip.h>
 #include <corosync/totem/totem.h>
@@ -79,7 +80,8 @@ enum cfg_message_req_types {
 	MESSAGE_REQ_EXEC_CFG_CRYPTO_RECONFIG = 4
 };
 
-#define DEFAULT_SHUTDOWN_TIMEOUT 5
+/* in milliseconds */
+#define DEFAULT_SHUTDOWN_TIMEOUT 5000
 
 static struct qb_list_head trackers_list;
 
@@ -1303,7 +1305,7 @@ static void message_handler_req_lib_cfg_tryshutdown (
 		 * Start the timer. If we don't get a full set of replies before this goes
 		 * off we'll cancel the shutdown
 		 */
-		api->timer_add_duration((unsigned long long)shutdown_timeout*1000000000, NULL,
+		api->timer_add_duration((unsigned long long)shutdown_timeout*QB_TIME_NS_IN_MSEC, NULL,
 					shutdown_timer_fn, &shutdown_timer);
 
 		/*
