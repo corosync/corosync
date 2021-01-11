@@ -218,6 +218,30 @@ corosync_cfg_kill_node (
 	const char *reason);
 
 /**
+ * @brief corosync_cfg_trackstart
+ * Track CFG for shutdown requests
+ * @param cfg_handle
+ * @param track_flags (none currently supported)
+ * @param reason
+ * @return
+ */
+cs_error_t
+corosync_cfg_trackstart (
+        corosync_cfg_handle_t cfg_handle,
+        uint8_t track_flags);
+
+/**
+ * @brief corosync_cfg_trackstop
+ * Stop tracking CFG for shutdown requests
+ * @param cfg_handle
+ * @param reason
+ * @return
+ */
+cs_error_t
+corosync_cfg_trackstop (
+        corosync_cfg_handle_t cfg_handle);
+
+/**
  * @brief corosync_cfg_try_shutdown
  * @param cfg_handle
  * @param flags
