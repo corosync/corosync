@@ -35,7 +35,7 @@
 .SH "NAME"
 corosync-cfgtool \- An administrative tool for corosync.
 .SH "SYNOPSIS"
-.B corosync\-cfgtool [[\-i IP_address] [\-b] [\-s] [\-n] [\-R] [\-L] [\-k nodeid] [\-a nodeid] [\-h] [\-H]
+.B corosync\-cfgtool [[\-i IP_address] [\-b] [\-s] [\-n] [\-R] [\-L] [\-k nodeid] [\-a nodeid] [\-h] [\-H] [\--force]
 .SH "DESCRIPTION"
 .B corosync\-cfgtool
 A tool for displaying and configuring active parameters within corosync.
@@ -123,6 +123,12 @@ Print basic usage.
 .TP
 .B -H
 Shutdown corosync cleanly on this node.
+corosync-cfgtool -H will request a shutdown from corosync, which means it will
+consult any interested daemons before shutting down and the shutdown maybe vetoed if a
+daemon regards the shutdown as inappropriate.
+If --force is added to the command line then corosync will shutdown regardless
+of the daemons' opinions on the matter.
+
 .SH "SEE ALSO"
 .BR corosync_overview (7),
 .SH "AUTHOR"

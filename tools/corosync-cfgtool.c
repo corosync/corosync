@@ -47,6 +47,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <limits.h>
+#include <getopt.h>
 
 #include <corosync/corotypes.h>
 #include <corosync/totem/totem.h>
@@ -341,13 +342,19 @@ static int reopen_log_files_do (void)
 	return (rc);
 }
 
-static void shutdown_do(void)
+static void shutdown_do(int force)
 {
 	cs_error_t result;
 	corosync_cfg_handle_t handle;
 	corosync_cfg_callbacks_t callbacks;
+	int flag;
 
 	callbacks.corosync_cfg_shutdown_callback = NULL;
+	if (force) {
+		flag = COROSYNC_CFG_SHUTDOWN_FLAG_REGARDLESS;
+	} else {
+		flag = COROSYNC_CFG_SHUTDOWN_FLAG_REQUEST;
+	}
 
 	result = corosync_cfg_initialize (&handle, &callbacks);
 	if (result != CS_OK) {
@@ -356,7 +363,7 @@ static void shutdown_do(void)
 	}
 
 	printf ("Shutting down corosync\n");
-	cs_repeat(result, 30, corosync_cfg_try_shutdown (handle, COROSYNC_CFG_SHUTDOWN_FLAG_REQUEST));
+	cs_repeat(result, 30, corosync_cfg_try_shutdown (handle, flag));
 	if (result != CS_OK) {
 		fprintf (stderr, "Could not shutdown (error = %d)\n", result);
 	}
@@ -450,10 +457,10 @@ static void usage_do (void)
 	printf ("\t-a\tDisplay the IP address(es) of a node\n");
 	printf ("\t-h\tPrint basic usage.\n");
 	printf ("\t-H\tShutdown corosync cleanly on this node.\n");
+	printf ("\t\t--force will shut down corosync regardless of daemon vetos\n");
 }
 
 int main (int argc, char *argv[]) {
-	const char *options = "i:snbrRLk:a:hH";
 	int opt;
 	unsigned int nodeid = 0;
 	char interface_name[128] = "";
@@ -461,9 +468,30 @@ int main (int argc, char *argv[]) {
 	enum user_action action = ACTION_NOOP;
 	int brief = 0;
 	long long int l;
+	int option_index = 0;
+	int force_shutdown  = 0;
+	const char *options = "i:snbrRLk:a:hH";
+	struct option long_options[] = {
+		{"if",       required_argument, 0, 'i'},
+		{"status",   no_argument,       0, 's'},
+		{"nodes",    no_argument,       0, 'n'},
+		{"brief",    no_argument,       0, 'b'},
+		{"reload",   no_argument,       0, 'R'},
+		{"reopen",   no_argument,       0, 'L'},
+		{"kill",     required_argument, 0, 'k'},
+		{"address",  required_argument, 0, 'a'},
+		{"shutdown", no_argument,       0, 'H'},
+		{"force",    no_argument,       0, 0},
+		{0,          0,                 0, 0}
+	};
 
-	while ( (opt = getopt(argc, argv, options)) != -1 ) {
+		while ( (opt = getopt_long(argc, argv, options, long_options, &option_index)) != -1 ) {
 		switch (opt) {
+			case 0: // options with no short equivalent - just --force ATM
+			if (strcmp(long_options[option_index].name, "force") == 0) {
+				force_shutdown = 1;
+			}
+			break;
 		case 'i':
 			strncpy(interface_name, optarg, sizeof(interface_name));
 			interface_name[sizeof(interface_name) - 1] = '\0';
@@ -527,7 +555,7 @@ int main (int argc, char *argv[]) {
 		killnode_do(nodeid);
 		break;
 	case ACTION_SHUTDOW:
-		shutdown_do();
+		shutdown_do(force_shutdown);
 		break;
 	case ACTION_SHOWADDR:
 		rc = showaddrs_do(nodeid);
