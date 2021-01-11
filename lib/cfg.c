@@ -447,6 +447,75 @@ error_put:
 	return (error);
 }
 
+
+cs_error_t
+corosync_cfg_trackstart (
+	corosync_cfg_handle_t cfg_handle,
+	uint8_t track_flags)
+{
+	struct cfg_inst *cfg_inst;
+	struct req_lib_cfg_trackstart req_lib_cfg_trackstart;
+	struct res_lib_cfg_trackstart res_lib_cfg_trackstart;
+	cs_error_t error;
+	struct iovec iov;
+
+	req_lib_cfg_trackstart.header.size = sizeof (struct req_lib_cfg_trackstart);
+	req_lib_cfg_trackstart.header.id = MESSAGE_REQ_CFG_TRACKSTART;
+	req_lib_cfg_trackstart.track_flags = track_flags;
+
+	error = hdb_error_to_cs(hdb_handle_get (&cfg_hdb, cfg_handle,
+		(void *)&cfg_inst));
+	if (error != CS_OK) {
+		return (error);
+	}
+
+	iov.iov_base = (void *)&req_lib_cfg_trackstart,
+	iov.iov_len = sizeof (struct req_lib_cfg_trackstart),
+
+	error = qb_to_cs_error (qb_ipcc_sendv_recv (cfg_inst->c,
+		&iov,
+		1,
+		&res_lib_cfg_trackstart,
+		sizeof (struct res_lib_cfg_trackstart), CS_IPC_TIMEOUT_MS));
+
+	(void)hdb_handle_put (&cfg_hdb, cfg_handle);
+
+	return (error == CS_OK ? res_lib_cfg_trackstart.header.error : error);
+}
+
+cs_error_t
+corosync_cfg_trackstop (
+	corosync_cfg_handle_t cfg_handle)
+{
+	struct cfg_inst *cfg_inst;
+	struct req_lib_cfg_trackstop req_lib_cfg_trackstop;
+	struct res_lib_cfg_trackstop res_lib_cfg_trackstop;
+	cs_error_t error;
+	struct iovec iov;
+
+	error = hdb_error_to_cs (hdb_handle_get (&cfg_hdb, cfg_handle,
+		(void *)&cfg_inst));
+	if (error != CS_OK) {
+		return (error);
+	}
+
+	req_lib_cfg_trackstop.header.size = sizeof (struct req_lib_cfg_trackstop);
+	req_lib_cfg_trackstop.header.id = MESSAGE_REQ_CFG_TRACKSTOP;
+
+	iov.iov_base = (void *)&req_lib_cfg_trackstop,
+	iov.iov_len = sizeof (struct req_lib_cfg_trackstop),
+
+	error = qb_to_cs_error (qb_ipcc_sendv_recv (cfg_inst->c,
+		&iov,
+		1,
+		&res_lib_cfg_trackstop,
+		sizeof (struct res_lib_cfg_trackstop), CS_IPC_TIMEOUT_MS));
+
+	(void)hdb_handle_put (&cfg_hdb, cfg_handle);
+
+	return (error == CS_OK ? res_lib_cfg_trackstop.header.error : error);
+}
+
 cs_error_t
 corosync_cfg_kill_node (
 	corosync_cfg_handle_t cfg_handle,
@@ -487,7 +556,7 @@ corosync_cfg_kill_node (
 
 	(void)hdb_handle_put (&cfg_hdb, cfg_handle);
 
-        return (error == CS_OK ? res_lib_cfg_killnode.header.error : error);
+	return (error == CS_OK ? res_lib_cfg_killnode.header.error : error);
 }
 
 cs_error_t
@@ -522,7 +591,7 @@ corosync_cfg_try_shutdown (
 
 	(void)hdb_handle_put (&cfg_hdb, cfg_handle);
 
-        return (error == CS_OK ? res_lib_cfg_tryshutdown.header.error : error);
+	return (error == CS_OK ? res_lib_cfg_tryshutdown.header.error : error);
 }
 
 cs_error_t

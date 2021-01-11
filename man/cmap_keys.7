@@ -148,6 +148,11 @@ Tells votequorum to cancel waiting for all nodes at cluster startup. Can be used
 to unblock quorum if notes are known to be down. For pcs use only.
 
 .TP
+cfg.shutdown_timeout
+Sets the timeout within which daemons that are registered for cfg callbacks must respond
+to a corosync_cfg_try_shutdown() request. the default is 5000 mS
+
+.TP
 config.reload_in_progress
 This value will be set to 1 (or created) when a corosync.conf reload is started,
 and set to 0 when the reload is completed. This allows interested subsystems

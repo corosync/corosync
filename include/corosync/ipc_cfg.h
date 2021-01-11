@@ -60,7 +60,9 @@ enum req_lib_cfg_types {
 	MESSAGE_REQ_CFG_LOCAL_GET = 6,
 	MESSAGE_REQ_CFG_RELOAD_CONFIG = 7,
 	MESSAGE_REQ_CFG_REOPEN_LOG_FILES = 8,
-	MESSAGE_REQ_CFG_NODESTATUSGET = 9
+	MESSAGE_REQ_CFG_NODESTATUSGET = 9,
+	MESSAGE_REQ_CFG_TRACKSTART = 10,
+	MESSAGE_REQ_CFG_TRACKSTOP = 11
 };
 
 /**
@@ -254,6 +256,24 @@ struct req_lib_cfg_reopen_log_files {
 struct res_lib_cfg_reopen_log_files {
 	struct qb_ipc_response_header header __attribute__((aligned(8)));
 };
+
+struct req_lib_cfg_trackstart {
+	struct qb_ipc_request_header header;
+	uint8_t track_flags;
+};
+
+struct res_lib_cfg_trackstart {
+	struct qb_ipc_response_header header;
+};
+
+struct req_lib_cfg_trackstop {
+	struct qb_ipc_request_header header;
+};
+
+struct res_lib_cfg_trackstop {
+	struct qb_ipc_response_header header;
+};
+
 
 /**
  * @brief corosync_administrative_target_t enum

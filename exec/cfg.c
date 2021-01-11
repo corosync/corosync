@@ -55,6 +55,7 @@
 #include <qb/qbipc_common.h>
 #include <corosync/cfg.h>
 #include <qb/qblist.h>
+#include <qb/qbutil.h>
 #include <corosync/mar_gen.h>
 #include <corosync/totem/totemip.h>
 #include <corosync/totem/totem.h>
@@ -79,7 +80,8 @@ enum cfg_message_req_types {
 	MESSAGE_REQ_EXEC_CFG_CRYPTO_RECONFIG = 4
 };
 
-#define DEFAULT_SHUTDOWN_TIMEOUT 5
+/* in milliseconds */
+#define DEFAULT_SHUTDOWN_TIMEOUT 5000
 
 static struct qb_list_head trackers_list;
 
@@ -162,6 +164,14 @@ static void message_handler_req_lib_cfg_replytoshutdown (
 	void *conn,
 	const void *msg);
 
+static void message_handler_req_lib_cfg_trackstart (
+	void *conn,
+	const void *msg);
+
+static void message_handler_req_lib_cfg_trackstop (
+	void *conn,
+	const void *msg);
+
 static void message_handler_req_lib_cfg_get_node_addrs (
 	void *conn,
 	const void *msg);
@@ -222,7 +232,16 @@ static struct corosync_lib_handler cfg_lib_engine[] =
 	{ /* 9 */
 		.lib_handler_fn		= message_handler_req_lib_cfg_nodestatusget,
 		.flow_control		= CS_LIB_FLOW_CONTROL_NOT_REQUIRED
-	}
+	},
+	{ /* 10 */
+		.lib_handler_fn		= message_handler_req_lib_cfg_trackstart,
+		.flow_control		= CS_LIB_FLOW_CONTROL_REQUIRED
+	},
+	{ /* 11 */
+		.lib_handler_fn		= message_handler_req_lib_cfg_trackstop,
+		.flow_control		= CS_LIB_FLOW_CONTROL_REQUIRED
+	},
+
 };
 
 static struct corosync_exec_handler cfg_exec_engine[] =
@@ -1045,6 +1064,52 @@ ipc_response_send:
 	LEAVE();
 }
 
+static void message_handler_req_lib_cfg_trackstart (
+	void *conn,
+	const void *msg)
+{
+	struct cfg_info *ci = (struct cfg_info *)api->ipc_private_data_get (conn);
+	struct res_lib_cfg_trackstart res_lib_cfg_trackstart;
+
+	ENTER();
+
+	/*
+	 * We only do shutdown tracking at the moment
+	 */
+	if (qb_list_empty(&ci->list)) {
+		qb_list_add(&ci->list, &trackers_list);
+		ci->tracker_conn = conn;
+
+		if (shutdown_con) {
+			/*
+			 * Shutdown already in progress, ask the newcomer's opinion
+			 */
+			ci->shutdown_reply = SHUTDOWN_REPLY_UNKNOWN;
+			shutdown_expected++;
+			send_test_shutdown(conn, NULL, CS_OK);
+		}
+	}
+
+	res_lib_cfg_trackstart.header.size = sizeof(struct res_lib_cfg_trackstart);
+	res_lib_cfg_trackstart.header.id = MESSAGE_RES_CFG_STATETRACKSTART;
+	res_lib_cfg_trackstart.header.error = CS_OK;
+
+	api->ipc_response_send(conn, &res_lib_cfg_trackstart,
+				    sizeof(res_lib_cfg_trackstart));
+
+	LEAVE();
+}
+
+static void message_handler_req_lib_cfg_trackstop (
+	void *conn,
+	const void *msg)
+{
+	struct cfg_info *ci = (struct cfg_info *)api->ipc_private_data_get (conn);
+
+	ENTER();
+	remove_ci_from_shutdown(ci);
+	LEAVE();
+}
 
 static void message_handler_req_lib_cfg_ringreenable (
 	void *conn,
@@ -1240,7 +1305,7 @@ static void message_handler_req_lib_cfg_tryshutdown (
 		 * Start the timer. If we don't get a full set of replies before this goes
 		 * off we'll cancel the shutdown
 		 */
-		api->timer_add_duration((unsigned long long)shutdown_timeout*1000000000, NULL,
+		api->timer_add_duration((unsigned long long)shutdown_timeout*QB_TIME_NS_IN_MSEC, NULL,
 					shutdown_timer_fn, &shutdown_timer);
 
 		/*
