@@ -9,6 +9,7 @@ logsysrec
 ploadstart
 stress_cpgcontext
 stress_cpgfdget
+testcfg
 testcpg
 testcpg2
 testquorum
