@@ -38,7 +38,7 @@ noinst_PROGRAMS		= testcpg testcpg2 cpgbench \
 			  testquorum testvotequorum1 testvotequorum2	\
 			  stress_cpgfdget stress_cpgcontext cpgbound testsam \
 			  testcpgzc cpgbenchzc testzcgc stress_cpgzc \
-			  testquorummodel
+			  testquorummodel testcfg
 
 noinst_SCRIPTS		= ploadstart
 
@@ -57,6 +57,7 @@ cpgbound_LDADD		= $(LIBQB_LIBS) $(top_builddir)/lib/libcpg.la
 cpgbench_LDADD		= $(LIBQB_LIBS) $(top_builddir)/lib/libcpg.la
 cpgbenchzc_LDADD	= $(LIBQB_LIBS) $(top_builddir)/lib/libcpg.la
 testsam_LDADD		= $(LIBQB_LIBS) $(top_builddir)/lib/libsam.la
+testcfg_LDADD		= $(LIBQB_LIBS) $(top_builddir)/lib/libcfg.la
 
 if HAVE_CRC32
 noinst_PROGRAMS	        += cpghum cpgverify
