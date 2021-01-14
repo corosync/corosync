@@ -176,6 +176,9 @@ stop()
 	! status -p "$prog_pid_file" "$prog" > /dev/null 2>&1 && return
 
 	echo -n "Signaling $desc ($prog) to terminate: "
+	# Call cfgtool to trigger shutdown callbacks
+	corosync-cfgtool -H --force > /dev/null 2>&1
+	# Send TERM signal (if cfgtool -H failed)
 	kill -TERM "$(pid_var_run $prog_pid_file)" > /dev/null 2>&1
 	success
 	echo
