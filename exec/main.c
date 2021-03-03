@@ -167,6 +167,8 @@ static const char *corosync_lock_file = LOCALSTATEDIR"/run/corosync.pid";
 
 static char corosync_config_file[PATH_MAX + 1] = COROSYSCONFDIR "/corosync.conf";
 
+static int lockfile_fd = -1;
+
 qb_loop_t *cs_poll_handle_get (void)
 {
 	return (corosync_poll_handle);
@@ -1082,12 +1084,11 @@ static enum e_corosync_done corosync_flock (const char *lockfile, pid_t pid)
 	enum e_corosync_done err;
 	char pid_s[17];
 	int fd_flag;
-	int lf;
 
 	err = COROSYNC_DONE_EXIT;
 
-	lf = open (lockfile, O_WRONLY | O_CREAT, 0640);
-	if (lf == -1) {
+	lockfile_fd = open (lockfile, O_WRONLY | O_CREAT, 0640);
+	if (lockfile_fd == -1) {
 		log_printf (LOGSYS_LEVEL_ERROR, "Corosync Executive couldn't create lock file.");
 		return (COROSYNC_DONE_ACQUIRE_LOCK);
 	}
@@ -1097,7 +1098,7 @@ retry_fcntl:
 	lock.l_start = 0;
 	lock.l_whence = SEEK_SET;
 	lock.l_len = 0;
-	if (fcntl (lf, F_SETLK, &lock) == -1) {
+	if (fcntl (lockfile_fd, F_SETLK, &lock) == -1) {
 		switch (errno) {
 		case EINTR:
 			goto retry_fcntl;
@@ -1117,7 +1118,7 @@ retry_fcntl:
 		}
 	}
 
-	if (ftruncate (lf, 0) == -1) {
+	if (ftruncate (lockfile_fd, 0) == -1) {
 		log_printf (LOGSYS_LEVEL_ERROR, "Corosync Executive couldn't truncate lock file. Error was %s",
 		    strerror (errno));
 		err = COROSYNC_DONE_ACQUIRE_LOCK;
@@ -1128,7 +1129,7 @@ retry_fcntl:
 	snprintf (pid_s, sizeof (pid_s) - 1, "%u\n", pid);
 
 retry_write:
-	if (write (lf, pid_s, strlen (pid_s)) != strlen (pid_s)) {
+	if (write (lockfile_fd, pid_s, strlen (pid_s)) != strlen (pid_s)) {
 		if (errno == EINTR) {
 			goto retry_write;
 		} else {
@@ -1139,14 +1140,14 @@ retry_write:
 		}
 	}
 
-	if ((fd_flag = fcntl (lf, F_GETFD, 0)) == -1) {
+	if ((fd_flag = fcntl (lockfile_fd, F_GETFD, 0)) == -1) {
 		log_printf (LOGSYS_LEVEL_ERROR, "Corosync Executive couldn't get close-on-exec flag from lock file. "
 			"Error was %s", strerror (errno));
 		err = COROSYNC_DONE_ACQUIRE_LOCK;
 		goto error_close_unlink;
 	}
 	fd_flag |= FD_CLOEXEC;
-	if (fcntl (lf, F_SETFD, fd_flag) == -1) {
+	if (fcntl (lockfile_fd, F_SETFD, fd_flag) == -1) {
 		log_printf (LOGSYS_LEVEL_ERROR, "Corosync Executive couldn't set close-on-exec flag to lock file. "
 			"Error was %s", strerror (errno));
 		err = COROSYNC_DONE_ACQUIRE_LOCK;
@@ -1158,7 +1159,7 @@ retry_write:
 error_close_unlink:
 	unlink (lockfile);
 error_close:
-	close (lf);
+	close (lockfile_fd);
 
 	return (err);
 }
@@ -1215,7 +1216,6 @@ int main (int argc, char **argv, char **envp)
 	struct totem_config totem_config;
 	int res, ch;
 	int background, sched_rr, prio, testonly, move_to_root_cgroup;
-	struct stat stat_out;
 	enum e_corosync_done flock_err;
 	uint64_t totem_config_warnings;
 	struct scheduler_pause_timeout_data scheduler_pause_timeout_data;
@@ -1333,19 +1333,9 @@ int main (int argc, char **argv, char **envp)
 			"totemip.c,totemconfig.c,totemcrypto.c,totemsrp.c,"
 			"totempg.c,totemudp.c,totemudpu.c,totemnet.c,totemknet.c");
 
-	/*
-	 * Make sure required directory is present
-	 */
-	res = stat (get_state_dir(), &stat_out);
-	if ((res == -1) || (res == 0 && !S_ISDIR(stat_out.st_mode))) {
-		log_printf (LOGSYS_LEVEL_ERROR, "State directory %s not present.  Please create it.", get_state_dir());
-		corosync_exit_error (COROSYNC_DONE_DIR_NOT_PRESENT);
-	}
-
 	res = chdir(get_state_dir());
 	if (res == -1) {
-		log_printf (LOGSYS_LEVEL_ERROR, "Cannot chdir to state directory %s.  "
-		    "Please make sure it has correct context and rights.", get_state_dir());
+		log_printf (LOGSYS_LEVEL_ERROR, "Cannot chdir to state directory %s. %s", get_state_dir(), strerror(errno));
 		corosync_exit_error (COROSYNC_DONE_DIR_NOT_PRESENT);
 	}
 
@@ -1576,6 +1566,7 @@ int main (int argc, char **argv, char **envp)
 	/*
 	 * Remove pid lock file
 	 */
+	close (lockfile_fd);
 	unlink (corosync_lock_file);
 
 	corosync_exit_error (COROSYNC_DONE_EXIT);
