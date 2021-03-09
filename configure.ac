@@ -289,11 +289,6 @@ cc_supports_flag() {
 }
 
 ## cleanup
-AC_MSG_NOTICE(Sanitizing prefix: ${prefix})
-case $prefix in
-  NONE) prefix=/usr/local;;
-esac
-
 AC_MSG_NOTICE(Sanitizing exec_prefix: ${exec_prefix})
 case $exec_prefix in
   dnl For consistency with Corosync, map NONE->$prefix
