@@ -475,7 +475,12 @@ static void corosync_mlockall (void)
 #define RLIMIT_MEMLOCK RLIMIT_VMEM
 #endif
 
-	setrlimit (RLIMIT_MEMLOCK, &rlimit);
+	res = setrlimit (RLIMIT_MEMLOCK, &rlimit);
+	if (res == -1) {
+		LOGSYS_PERROR (errno, LOGSYS_LEVEL_WARNING,
+			"Could not increase RLIMIT_MEMLOCK, not locking memory");
+		return;
+	}
 
 	res = mlockall (MCL_CURRENT | MCL_FUTURE);
 	if (res == -1) {
