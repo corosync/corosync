@@ -54,6 +54,7 @@
 #include <qb/qbloop.h>
 #include <qb/qbmap.h>
 #include <qb/qblog.h>
+#include <qb/qbdefs.h>
 
 #include <corosync/corotypes.h>
 #include <corosync/cfg.h>
@@ -108,9 +109,11 @@ static struct notify_callbacks notifiers[MAX_NOTIFIERS];
 static uint32_t g_local_nodeid = 0;
 static char local_nodename[CS_MAX_NAME_LENGTH];
 static qb_loop_t *main_loop;
+static qb_loop_timer_handle timer_handle;
 static quorum_handle_t quorum_handle;
 static qb_map_t *tracker_map;
 
+static void _cs_init(void *data);
 static void _cs_node_membership_event(char *nodename, uint32_t nodeid, char *state, char* ip);
 static void _cs_node_quorum_event(const char *state);
 static void _cs_application_connection_event(char *app_name, const char *state);
@@ -428,12 +431,12 @@ _cs_cmap_dispatch(int fd, int revents, void *data)
 
 	if (err != CS_OK && err != CS_ERR_TRY_AGAIN && err != CS_ERR_TIMEOUT &&
 		err != CS_ERR_QUEUE_FULL) {
-		qb_log(LOG_ERR, "Could not dispatch cmap events. Error %u", err);
-		qb_loop_stop(main_loop);
+		qb_log(LOG_NOTICE, "Could not dispatch cmap events. Error %u", err);
+		qb_loop_poll_del(main_loop, fd);
 
-		exit_code = 1;
-
-		return -1;
+		if (qb_loop_timer_is_running(main_loop, timer_handle) == QB_FALSE) {
+			qb_loop_timer_add(main_loop, QB_LOOP_LOW, QB_TIME_NS_IN_SEC, NULL, _cs_init, &timer_handle);
+		}
 	}
 
 	return 0;
@@ -463,13 +466,14 @@ _cs_quorum_dispatch(int fd, int revents, void *data)
 	err = quorum_dispatch(quorum_handle, CS_DISPATCH_ONE);
 	if (err != CS_OK && err != CS_ERR_TRY_AGAIN && err != CS_ERR_TIMEOUT &&
 		err != CS_ERR_QUEUE_FULL) {
-		qb_log(LOG_ERR, "Could not dispatch quorum events. Error %u", err);
-		qb_loop_stop(main_loop);
+		qb_log(LOG_NOTICE, "Could not dispatch quorum events. Error %u", err);
+		qb_loop_poll_del(main_loop, fd);
 
-		exit_code = 1;
-
-		return -1;
+		if (qb_loop_timer_is_running(main_loop, timer_handle) == QB_FALSE) {
+			qb_loop_timer_add(main_loop, QB_LOOP_LOW, QB_TIME_NS_IN_SEC, NULL, _cs_init, &timer_handle);
+		}
 	}
+
 	return 0;
 }
 
@@ -503,7 +507,10 @@ _cs_quorum_init(void)
 static void
 _cs_quorum_finalize(void)
 {
-	quorum_finalize (quorum_handle);
+	if (quorum_handle) {
+		quorum_finalize (quorum_handle);
+		quorum_handle = 0;
+	}
 }
 
 
@@ -1146,23 +1153,20 @@ static void track_link_updown_events(void)
 	cmap_iter_finalize(stats_handle, iter_handle);
 }
 
-static void
-_cs_cmap_init(void)
+static int
+_cs_cmap_init(void *retry)
 {
 	cs_error_t rc = CS_OK;
 	int cmap_fd = 0;
 	int stats_fd = 0;
 
-	tracker_map = qb_trie_create();
-	if (!tracker_map) {
-		qb_log(LOG_ERR, "Failed to initialize the track map. Error %d", rc);
-		exit (EXIT_FAILURE);
-	}
-
 	rc = cmap_initialize_map (&cmap_handle, CMAP_MAP_ICMAP);
 	if (rc != CS_OK) {
-		qb_log(LOG_ERR, "Failed to initialize the cmap API. Error %d", rc);
-		exit (EXIT_FAILURE);
+		if (!retry) {
+			qb_log(LOG_ERR, "Failed to initialize the cmap API. Error %d", rc);
+		}
+		cmap_finalize (cmap_handle);
+		return -1;
 	}
 	cmap_fd_get(cmap_handle, &cmap_fd);
 
@@ -1214,6 +1218,8 @@ _cs_cmap_init(void)
 		exit (EXIT_FAILURE);
 	}
 	track_link_updown_events();
+
+	return 0;
 }
 
 static void
@@ -1225,15 +1231,22 @@ _cs_cmap_finalize(void)
 	map_iter = qb_map_iter_create(tracker_map);
 	while (qb_map_iter_next(map_iter, (void **)&track_item) != NULL) {
 		cmap_track_delete(stats_handle, track_item->track_handle);
+		qb_map_rm(tracker_map, track_item->key_name);
 		free(track_item);
 	}
 	qb_map_iter_free(map_iter);
 
-	cmap_track_delete(cmap_handle, cmap_track_handle_runtime_members_key_changed);
-	cmap_track_delete(stats_handle, cmap_track_handle_stats_ipcs_key_changed);
-	cmap_track_delete(stats_handle, cmap_track_handle_stats_knet_key_changed);
-	cmap_finalize (cmap_handle);
-	cmap_finalize (stats_handle);
+	if (cmap_handle) {
+		cmap_track_delete(cmap_handle, cmap_track_handle_runtime_members_key_changed);
+		cmap_finalize (cmap_handle);
+		cmap_handle = 0;
+	}
+	if (stats_handle) {
+		cmap_track_delete(stats_handle, cmap_track_handle_stats_ipcs_key_changed);
+		cmap_track_delete(stats_handle, cmap_track_handle_stats_knet_key_changed);
+		cmap_finalize (stats_handle);
+		stats_handle = 0;
+	}
 }
 
 static void
@@ -1282,6 +1295,19 @@ _cs_usage(void)
 		"        -n     : No reverse DNS lookup on cmap member change events.\n"\
 		"        -d     : Send DBUS signals on all events.\n"\
 		"        -h     : Print this help.\n\n");
+}
+
+static void
+_cs_init(void *data)
+{
+	_cs_quorum_finalize();
+	_cs_cmap_finalize();
+
+	if (_cs_cmap_init(data)) {
+		qb_loop_timer_add(main_loop, QB_LOOP_LOW, QB_TIME_NS_IN_SEC, (void *)"retry", _cs_init, &timer_handle);
+		return;
+	}
+	_cs_quorum_init();
 }
 
 int
@@ -1366,8 +1392,13 @@ main(int argc, char *argv[])
 
 	main_loop = qb_loop_create();
 
-	_cs_cmap_init();
-	_cs_quorum_init();
+	tracker_map = qb_trie_create();
+	if (!tracker_map) {
+		qb_log(LOG_ERR, "Failed to initialize the track map.");
+		return EXIT_FAILURE;
+	}
+
+	qb_loop_timer_add(main_loop, QB_LOOP_LOW, QB_TIME_NS_IN_SEC, NULL, _cs_init, &timer_handle);
 
 #ifdef HAVE_DBUS
 	if (conf[CS_NTF_DBUS]) {
