@@ -640,6 +640,7 @@ static void remove_ro_entries(icmap_map_t temp_map)
 	delete_and_notify_if_changed(temp_map, "totem.cluster_name");
 	delete_and_notify_if_changed(temp_map, "quorum.provider");
 	delete_and_notify_if_changed(temp_map, "system.move_to_root_cgroup");
+	delete_and_notify_if_changed(temp_map, "system.allow_knet_handle_fallback");
 	delete_and_notify_if_changed(temp_map, "system.sched_rr");
 	delete_and_notify_if_changed(temp_map, "system.priority");
 	delete_and_notify_if_changed(temp_map, "system.qb_ipc_type");

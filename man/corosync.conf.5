@@ -802,6 +802,17 @@ cgroup. This feature is available only for systems with cgroups with RT
 sched enabled (Linux with CONFIG_RT_GROUP_SCHED kernel option).
 
 .TP
+allow_knet_handle_fallback
+If knet handle creation fails using privileged operations, allow fallback to
+creating knet handle using unprivileged operations. Defaults to no, meaning
+if privileged knet handle creation fails, corosync will refuse to start.
+
+The knet handle will always be created using privileged operations if possible,
+setting this to yes only allows fallback to unprivileged operations. This fallback
+may result in performance issues, but if running in an unprivileged environment,
+e.g. as a normal user or in unprivileged container, this may be required.
+
+.TP
 state_dir
 Existing directory where corosync should chdir into. Corosync stores
 important state files and blackboxes there.
