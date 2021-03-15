@@ -81,6 +81,7 @@
 #define MAX_MESSAGES				17
 #define MISS_COUNT_CONST			5
 #define BLOCK_UNLISTED_IPS			1
+#define NETMTU                                  1500
 
 /* Currently all but PONG_COUNT match the defaults in libknet.h */
 #define KNET_PING_INTERVAL                      1000
@@ -134,6 +135,8 @@ static void *totem_get_param_by_name(struct totem_config *totem_config, const ch
 		return &totem_config->miss_count_const;
 	if (strcmp(param_name, "totem.knet_pmtud_interval") == 0)
 		return &totem_config->knet_pmtud_interval;
+	if (strcmp(param_name, "totem.netmtu") == 0)
+		return &totem_config->net_mtu;
 	if (strcmp(param_name, "totem.knet_compression_threshold") == 0)
 		return &totem_config->knet_compression_threshold;
 	if (strcmp(param_name, "totem.knet_compression_level") == 0)
@@ -330,6 +333,7 @@ void totem_volatile_config_read (struct totem_config *totem_config, icmap_map_t 
 
 	totem_volatile_config_set_uint32_value(totem_config, temp_map, "totem.miss_count_const", deleted_key, MISS_COUNT_CONST, 0);
 	totem_volatile_config_set_uint32_value(totem_config, temp_map, "totem.knet_pmtud_interval", deleted_key, KNET_PMTUD_INTERVAL, 0);
+        totem_volatile_config_set_uint32_value(totem_config, temp_map, "totem.netmtu", deleted_key, NETMTU, 0);
 
 	totem_volatile_config_set_uint32_value(totem_config, temp_map, "totem.token_retransmit", deleted_key,
 	   (int)(totem_config->token_timeout / (totem_config->token_retransmits_before_loss_const + 0.2)), 0);
@@ -2099,7 +2103,7 @@ int totem_config_validate (
 			totem_config->net_mtu = KNET_MAX_PACKET_SIZE;
 		}
 		else {
-			totem_config->net_mtu = 1500;
+			totem_config->net_mtu = NETMTU;
 		}
 	}
 
