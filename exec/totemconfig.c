@@ -81,6 +81,8 @@
 #define MAX_MESSAGES				17
 #define MISS_COUNT_CONST			5
 #define BLOCK_UNLISTED_IPS			1
+/* This constant is not used for knet */
+#define UDP_NETMTU                              1500
 
 /* Currently all but PONG_COUNT match the defaults in libknet.h */
 #define KNET_PING_INTERVAL                      1000
@@ -2099,7 +2101,7 @@ int totem_config_validate (
 			totem_config->net_mtu = KNET_MAX_PACKET_SIZE;
 		}
 		else {
-			totem_config->net_mtu = 1500;
+			totem_config->net_mtu = UDP_NETMTU;
 		}
 	}
 
