@@ -424,7 +424,8 @@ static inline void mcast_sendmsg (
 				 * Transmit multicast message
 				 * An error here is recovered by totemsrp
 				 */
-				res = sendmsg (member->fd, &msg_mcast, MSG_NOSIGNAL);
+//				res = sendmsg (member->fd, &msg_mcast, MSG_NOSIGNAL);
+				res = sendmsg (instance->token_socket, &msg_mcast, MSG_NOSIGNAL);
 				if (res < 0) {
 					LOGSYS_PERROR (errno, instance->totemudpu_log_level_debug,
 						"sendmsg(mcast) failed (non-critical)");
@@ -1366,7 +1367,7 @@ int totemudpu_member_add (
 	list_init (&new_member->list);
 	list_add_tail (&new_member->list, &instance->member_list);
 	memcpy (&new_member->member, member, sizeof (struct totem_ip_address));
-	new_member->fd = totemudpu_create_sending_socket(udpu_context, member);
+	new_member->fd = -1; //totemudpu_create_sending_socket(udpu_context, member);
 	new_member->active = 0;
 
 	return (0);
@@ -1442,7 +1443,7 @@ int totemudpu_member_list_rebind_ip (
 			close (member->fd);
 		}
 
-		member->fd = totemudpu_create_sending_socket(udpu_context, &member->member);
+		member->fd = -1; //totemudpu_create_sending_socket(udpu_context, &member->member);
 	}
 
 	return (0);
