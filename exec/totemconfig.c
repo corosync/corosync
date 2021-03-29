@@ -651,11 +651,11 @@ static int nodelist_byname(icmap_map_t map, const char *find_name, int strip_dom
 			char *dot;
 			dot = strchr(name, '.');
 			if (dot) {
-				namelen = name - dot - 1;
+				namelen = dot - name;
 			}
 		}
 		if (strncmp(find_name, name, namelen) == 0 &&
-		    strlen(find_name) == strlen(name)) {
+		    strlen(find_name) == namelen) {
 			icmap_iter_finalize(iter);
 			return node_pos;
 		}
