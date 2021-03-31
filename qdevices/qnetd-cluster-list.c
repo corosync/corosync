@@ -61,10 +61,23 @@ qnetd_cluster_list_find_by_name(struct qnetd_cluster_list *list,
 	return (NULL);
 }
 
+static int
+client_node_id_cmp(const struct qnetd_client *entry1, const struct qnetd_client *entry2)
+{
+	int res;
+
+	res = 0;
+	if (entry1->node_id < entry2->node_id) res = -1;
+	if (entry1->node_id > entry2->node_id) res = 1;
+
+	return (res);
+}
+
 struct qnetd_cluster *
 qnetd_cluster_list_add_client(struct qnetd_cluster_list *list, struct qnetd_client *client)
 {
 	struct qnetd_cluster *cluster;
+	struct qnetd_client *entry;
 
 	cluster = qnetd_cluster_list_find_by_name(list, client->cluster_name,
 	    client->cluster_name_len);
@@ -84,7 +97,22 @@ qnetd_cluster_list_add_client(struct qnetd_cluster_list *list, struct qnetd_clie
 		TAILQ_INSERT_TAIL(list, cluster, entries);
 	}
 
-	TAILQ_INSERT_TAIL(&cluster->client_list, client, cluster_entries);
+	/*
+	 * Sort by nodeid to keep consistent results when listing clients
+	 */
+	entry = TAILQ_FIRST(&cluster->client_list);
+	while (entry != NULL) {
+		if (client_node_id_cmp(entry, client) > 0) {
+			TAILQ_INSERT_BEFORE(entry, client, cluster_entries);
+			break;
+		}
+
+		entry = TAILQ_NEXT(entry, cluster_entries);
+	}
+
+	if (entry == NULL) {
+		TAILQ_INSERT_TAIL(&cluster->client_list, client, cluster_entries);
+	}
 
 	return (cluster);
 }
