@@ -197,7 +197,7 @@ int totemknet_member_list_rebind_ip (
 
 
 static int totemknet_configure_compression (
-	void *knet_context,
+	struct totemknet_instance *instance,
 	struct totem_config *totem_config);
 
 static void totemknet_start_merge_detect_timeout(
@@ -1247,7 +1247,7 @@ int totemknet_initialize (
 	/* Set up compression */
 	if (strcmp(totem_config->knet_compression_model, "none") != 0) {
 		/* Not fatal, but will log */
-		(void)totemknet_configure_compression(knet_context, totem_config);
+		(void)totemknet_configure_compression(instance, totem_config);
 	}
 
 	knet_handle_setfwd(instance->knet_handle, 1);
@@ -1650,10 +1650,9 @@ int totemknet_member_list_rebind_ip (
 
 
 static int totemknet_configure_compression (
-	void *knet_context,
+	struct totemknet_instance *instance,
 	struct totem_config *totem_config)
 {
-	struct totemknet_instance *instance = (struct totemknet_instance *)knet_context;
 	struct knet_handle_compress_cfg compress_cfg;
 	int res = 0;
 
@@ -1677,7 +1676,7 @@ int totemknet_reconfigure (
 	struct totemknet_instance *instance = (struct totemknet_instance *)knet_context;
 	int res = 0;
 
-	(void)totemknet_configure_compression(knet_context, totem_config);
+	(void)totemknet_configure_compression(instance, totem_config);
 
 #ifdef HAVE_LIBNOZZLE
 	/* Set up nozzle device(s). Return code is ignored, because inability
