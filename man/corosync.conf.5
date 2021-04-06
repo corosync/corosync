@@ -68,8 +68,18 @@ This top level directive contains configuration options for resources.
 .PP
 Within the
 .B totem
-directive, an interface directive is required.  There is also one configuration
-option which is required:
+directive, for UDP transport, an
+.B interface
+section is required.
+
+.PP
+.PP
+For UDPU transport, an
+.B interface
+section is not needed and it is recommended that the
+.B nodelist
+is used to define cluster nodes.
+
 .PP
 .PP
 Within the
