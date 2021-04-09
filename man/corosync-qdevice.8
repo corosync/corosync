@@ -81,7 +81,7 @@ is supported.
 .B timeout
 Specifies how often
 .B corosync-qdevice
-should call the votequorum_poll function. It is also used by the
+should call the votequorum_qdevice_poll function. It is also used by the
 .I net
 model to adjust
 its hearbeat timeout. It is recommended that you don't change this value.
@@ -91,7 +91,7 @@ Default is
 .B sync_timeout
 Specifies how often
 .B corosync-qdevice
-should call the votequorum_poll function during a sync phase. It is recommended that you don't change this value.
+should call the votequorum_qdevice_poll function during a sync phase. It is recommended that you don't change this value.
 Default is
 .IR 30000 .
 .TP
@@ -475,6 +475,7 @@ quorum {
 .BR corosync-qdevice-net-certutil (8)
 .BR corosync-qnetd (8)
 .BR corosync.conf (5)
+.BR votequorum_qdevice_poll (3)
 .SH AUTHOR
 Jan Friesse
 .PP
