@@ -619,9 +619,14 @@ static int totem_get_crypto(struct totem_config *totem_config, icmap_map_t map, 
 		totem_config->crypto_changed = 1;
 	    }
 
-	strncpy(totem_config->crypto_cipher_type, tmp_cipher, CONFIG_STRING_LEN_MAX);
-	strncpy(totem_config->crypto_hash_type, tmp_hash, CONFIG_STRING_LEN_MAX);
-	strncpy(totem_config->crypto_model, tmp_model, CONFIG_STRING_LEN_MAX);
+	strncpy(totem_config->crypto_cipher_type, tmp_cipher, CONFIG_STRING_LEN_MAX - 1);
+	totem_config->crypto_cipher_type[CONFIG_STRING_LEN_MAX - 1] = '\0';
+
+	strncpy(totem_config->crypto_hash_type, tmp_hash, CONFIG_STRING_LEN_MAX - 1);
+	totem_config->crypto_hash_type[CONFIG_STRING_LEN_MAX - 1] = '\0';
+
+	strncpy(totem_config->crypto_model, tmp_model, CONFIG_STRING_LEN_MAX - 1);
+	totem_config->crypto_model[CONFIG_STRING_LEN_MAX - 1] = '\0';
 
 out_free_crypto_model_str:
 	free(crypto_model_str);
