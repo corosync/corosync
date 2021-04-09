@@ -38,11 +38,14 @@ noinst_HEADERS			= vqsim.h
 
 bin_PROGRAMS			= corosync-vqsim
 
+corosync_vqsim_CFLAGS		= $(knet_CFLAGS)
+
 corosync_vqsim_LDADD		= $(top_builddir)/common_lib/libcorosync_common.la \
 				  ../exec/corosync-votequorum.o ../exec/corosync-icmap.o  \
 				  ../exec/corosync-coroparse.o ../exec/corosync-logconfig.o \
 				  ../exec/corosync-util.o ../exec/corosync-logsys.o \
-				$(LIBQB_LIBS)
+				$(LIBQB_LIBS) $(knet_LIBS)
+
 if VQSIM_READLINE
 corosync_vqsim_LDADD		+= -lreadline
 endif

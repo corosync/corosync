@@ -43,6 +43,8 @@
 #include <sys/time.h>
 #include <assert.h>
 
+#include <libknet.h>
+
 #include <corosync/corotypes.h>
 #include <corosync/corodefs.h>
 #include <corosync/icmap.h>
@@ -187,4 +189,155 @@ const char *get_state_dir(void)
 	}
 
 	return (path);
+}
+
+static int safe_strcat(char *dst, size_t dst_len, const char *src)
+{
+
+	if (strlen(dst) + strlen(src) >= dst_len - 1) {
+		return (-1);
+	}
+
+	strcat(dst, src);
+
+	return (0);
+}
+
+/*
+ * val - knet crypto model to find
+ * crypto_list_str - string with concatenated list of available crypto models - can be NULL
+ * machine_parseable_str - 0 - split strings by space, 1 - use human form (split by "," and last item with "or")
+ * error_string_prefix - Prefix to add into error string
+ * error_string - Complete error string
+ */
+int util_is_valid_knet_crypto_model(const char *val,
+	const char **list_str, int machine_parseable_str,
+	const char *error_string_prefix, const char **error_string)
+{
+	size_t entries;
+	struct knet_crypto_info crypto_list[16];
+	size_t zi;
+	static char local_error_str[512];
+	static char local_list_str[256];
+	int model_found = 0;
+
+	if (list_str != NULL) {
+		*list_str = local_list_str;
+	}
+
+	memset(local_error_str, 0, sizeof(local_error_str));
+	memset(local_list_str, 0, sizeof(local_list_str));
+
+	safe_strcat(local_error_str, sizeof(local_error_str), error_string_prefix);
+
+	if (knet_get_crypto_list(NULL, &entries) != 0) {
+		*error_string = "internal error - cannot get knet crypto list";
+		return (-1);
+	}
+
+	if (entries > sizeof(crypto_list) / sizeof(crypto_list[0])) {
+		*error_string = "internal error - too many knet crypto list entries";
+		return (-1);
+	}
+
+	if (knet_get_crypto_list(crypto_list, &entries) != 0) {
+		*error_string = "internal error - cannot get knet crypto list";
+		return (-1);
+	}
+
+	for (zi = 0; zi < entries; zi++) {
+		if (zi == 0) {
+		} else if (zi == entries - 1) {
+			if (machine_parseable_str) {
+				(void)safe_strcat(local_list_str, sizeof(local_list_str), " ");
+			} else {
+				(void)safe_strcat(local_list_str, sizeof(local_list_str), " or ");
+			}
+		} else {
+			if (machine_parseable_str) {
+				(void)safe_strcat(local_list_str, sizeof(local_list_str), " ");
+			} else {
+				(void)safe_strcat(local_list_str, sizeof(local_list_str), ", ");
+			}
+		}
+
+		(void)safe_strcat(local_list_str, sizeof(local_list_str), crypto_list[zi].name);
+
+		if (val != NULL && strcmp(val, crypto_list[zi].name) == 0) {
+			model_found = 1;
+		}
+	}
+
+	if (!model_found) {
+		(void)safe_strcat(local_error_str, sizeof(local_error_str), local_list_str);
+		*error_string = local_error_str;
+	}
+
+	return (model_found);
+}
+
+int util_is_valid_knet_compress_model(const char *val,
+	const char **list_str, int machine_parseable_str,
+	const char *error_string_prefix, const char **error_string)
+{
+	size_t entries;
+	struct knet_compress_info compress_list[16];
+	size_t zi;
+	static char local_error_str[512];
+	static char local_list_str[256];
+	int model_found = 0;
+
+	if (list_str != NULL) {
+		*list_str = local_list_str;
+	}
+
+	memset(local_error_str, 0, sizeof(local_error_str));
+	memset(local_list_str, 0, sizeof(local_list_str));
+
+	safe_strcat(local_error_str, sizeof(local_error_str), error_string_prefix);
+
+	if (knet_get_compress_list(NULL, &entries) != 0) {
+		*error_string = "internal error - cannot get knet compress list";
+		return (-1);
+	}
+
+	if (entries > sizeof(compress_list) / sizeof(compress_list[0])) {
+		*error_string = "internal error - too many knet compress list entries";
+		return (-1);
+	}
+
+	if (knet_get_compress_list(compress_list, &entries) != 0) {
+		*error_string = "internal error - cannot get knet compress list";
+		return (-1);
+	}
+
+	for (zi = 0; zi < entries; zi++) {
+		if (zi == 0) {
+		} else if (zi == entries - 1) {
+			if (machine_parseable_str) {
+				(void)safe_strcat(local_list_str, sizeof(local_list_str), " ");
+			} else {
+				(void)safe_strcat(local_list_str, sizeof(local_list_str), " or ");
+			}
+		} else {
+			if (machine_parseable_str) {
+				(void)safe_strcat(local_list_str, sizeof(local_list_str), " ");
+			} else {
+				(void)safe_strcat(local_list_str, sizeof(local_list_str), ", ");
+			}
+		}
+
+		(void)safe_strcat(local_list_str, sizeof(local_list_str), compress_list[zi].name);
+
+		if (val != NULL && strcmp(val, compress_list[zi].name) == 0) {
+			model_found = 1;
+		}
+	}
+
+	if (!model_found) {
+		(void)safe_strcat(local_error_str, sizeof(local_error_str), local_list_str);
+		*error_string = local_error_str;
+	}
+
+	return (model_found);
 }

@@ -555,6 +555,28 @@ static int str_to_ull(const char *str, unsigned long long int *res)
 	return (0);
 }
 
+static int handle_crypto_model(const char *val, const char **error_string)
+{
+
+	if (util_is_valid_knet_crypto_model(val, NULL, 0,
+	    "Invalid crypto model. Should be ", error_string) == 1) {
+		return (0);
+	} else {
+		return (-1);
+	}
+}
+
+static int handle_compress_model(const char *val, const char **error_string)
+{
+
+	if (util_is_valid_knet_compress_model(val, NULL, 0,
+	    "Invalid compression model. Should be ", error_string) == 1) {
+		return (0);
+	} else {
+		return (-1);
+	}
+}
+
 static int main_config_parser_cb(const char *path,
 			char *key,
 			char *value,
@@ -748,14 +770,11 @@ static int main_config_parser_cb(const char *path,
 				}
 			}
 			if (strcmp(path, "totem.crypto_model") == 0) {
-				if ((strcmp(value, "nss") != 0) &&
-				    (strcmp(value, "openssl") != 0)) {
-					*error_string = "Invalid crypto model. "
-					    "Should be nss or openssl";
-
+				if (handle_crypto_model(value, error_string) != 0) {
 					return (0);
 				}
 			}
+
 			if (strcmp(path, "totem.crypto_cipher") == 0) {
 				if ((strcmp(value, "none") != 0) &&
 				    (strcmp(value, "aes256") != 0) &&
@@ -780,6 +799,13 @@ static int main_config_parser_cb(const char *path,
 					return (0);
 				}
 			}
+
+			if (strcmp(path, "totem.knet_compression_model") == 0) {
+				if (handle_compress_model(value, error_string) != 0) {
+					return (0);
+				}
+			}
+
 			break;
 
 		case MAIN_CP_CB_DATA_STATE_SYSTEM:

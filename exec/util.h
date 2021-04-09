@@ -87,4 +87,12 @@ const char * short_service_name_get(uint32_t service_id,
  */
 const char *get_state_dir(void);
 
+extern int util_is_valid_knet_crypto_model(const char *val,
+	const char **list_str, int machine_parseable_str,
+	const char *error_string_prefix, const char **error_string);
+
+extern int util_is_valid_knet_compress_model(const char *val,
+	const char **list_str, int machine_parseable_str,
+	const char *error_string_prefix, const char **error_string);
+
 #endif /* UTIL_H_DEFINED */
