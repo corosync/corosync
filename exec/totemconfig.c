@@ -535,19 +535,16 @@ static int totem_get_crypto(struct totem_config *totem_config, icmap_map_t map, 
 	const char *tmp_cipher;
 	const char *tmp_hash;
 	const char *tmp_model;
+	char *crypto_model_str;
+	int res = 0;
 
 	tmp_hash = "none";
 	tmp_cipher = "none";
 	tmp_model = "none";
 
-	if (icmap_get_string_r(map, "totem.crypto_model", &str) == CS_OK) {
-		if (strcmp(str, "nss") == 0) {
-			tmp_model = "nss";
-		}
-		if (strcmp(str, "openssl") == 0) {
-			tmp_model = "openssl";
-		}
-		free(str);
+	crypto_model_str = NULL;
+	if (icmap_get_string_r(map, "totem.crypto_model", &crypto_model_str) == CS_OK) {
+		tmp_model = crypto_model_str;
 	} else {
 		tmp_model = "nss";
 	}
@@ -601,12 +598,19 @@ static int totem_get_crypto(struct totem_config *totem_config, icmap_map_t map, 
 	if ((strcmp(tmp_cipher, "none") != 0) &&
 	    (strcmp(tmp_hash, "none") == 0)) {
 		*error_string = "crypto_cipher requires crypto_hash with value other than none";
-		return -1;
+		res = -1;
+
+		goto out_free_crypto_model_str;
 	}
 
 	if (strcmp(tmp_model, "none") == 0) {
-		*error_string = "crypto_model should be 'nss' or 'openssl'";
-		return -1;
+		/*
+		 * Shouldn't happen because it is handled by coroparse
+		 */
+		*error_string = "invalid crypto_model";
+		res = -1;
+
+		goto out_free_crypto_model_str;
 	}
 
 	if (strcmp(tmp_cipher, totem_config->crypto_cipher_type) ||
@@ -619,7 +623,10 @@ static int totem_get_crypto(struct totem_config *totem_config, icmap_map_t map, 
 	strncpy(totem_config->crypto_hash_type, tmp_hash, CONFIG_STRING_LEN_MAX);
 	strncpy(totem_config->crypto_model, tmp_model, CONFIG_STRING_LEN_MAX);
 
-	return 0;
+out_free_crypto_model_str:
+	free(crypto_model_str);
+
+	return (res);
 }
 
 static int nodelist_byname(icmap_map_t map, const char *find_name, int strip_domain)

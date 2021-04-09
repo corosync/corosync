@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2002-2006 MontaVista Software, Inc.
- * Copyright (c) 2006-2018 Red Hat, Inc.
+ * Copyright (c) 2006-2021 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -1214,6 +1214,41 @@ exit_res:
 	 return (res);
 }
 
+static void show_version_info_crypto(void)
+{
+	const char *error_string;
+	const char *list_str;
+
+	if (util_is_valid_knet_crypto_model(NULL, &list_str, 1, "", &error_string) != -1) {
+		printf("Available crypto models: %s\n", list_str);
+	} else {
+		perror(error_string);
+	}
+}
+
+static void show_version_info_compress(void)
+{
+	const char *error_string;
+	const char *list_str;
+
+	if (util_is_valid_knet_compress_model(NULL, &list_str, 1, "", &error_string) != -1) {
+		printf("Available compression models: %s\n", list_str);
+	} else {
+		perror(error_string);
+	}
+}
+
+static void show_version_info(void)
+{
+
+	printf ("Corosync Cluster Engine, version '%s'\n", VERSION);
+	printf ("Copyright (c) 2006-2021 Red Hat, Inc.\n");
+
+	printf ("\nBuilt-in features:" PACKAGE_FEATURES "\n");
+
+	show_version_info_crypto();
+	show_version_info_compress();
+}
 
 int main (int argc, char **argv, char **envp)
 {
@@ -1254,8 +1289,7 @@ int main (int argc, char **argv, char **envp)
 				testonly = 1;
 				break;
 			case 'v':
-				printf ("Corosync Cluster Engine, version '%s'\n", VERSION);
-				printf ("Copyright (c) 2006-2018 Red Hat, Inc.\n");
+				show_version_info();
 				logsys_system_fini();
 				return EXIT_SUCCESS;
 
@@ -1266,7 +1300,7 @@ int main (int argc, char **argv, char **envp)
 					"        -c     : Corosync config file path.\n"\
 					"        -f     : Start application in foreground.\n"\
 					"        -t     : Test configuration and exit.\n"\
-					"        -v     : Display version and SVN revision of Corosync and exit.\n");
+					"        -v     : Display version, git revision and some useful information about Corosync and exit.\n");
 				logsys_system_fini();
 				return EXIT_FAILURE;
 		}

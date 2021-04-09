@@ -1,5 +1,5 @@
 .\"/*
-.\" * Copyright (C) 2010-2018 Red Hat, Inc.
+.\" * Copyright (C) 2010-2021 Red Hat, Inc.
 .\" *
 .\" * All rights reserved.
 .\" *
@@ -31,7 +31,7 @@
 .\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 .\" * THE POSSIBILITY OF SUCH DAMAGE.
 .\" */
-.TH COROSYNC 8 2018-11-12
+.TH COROSYNC 8 2021-04-09
 .SH NAME
 corosync \- The Corosync Cluster Engine.
 .SH SYNOPSIS
@@ -54,7 +54,9 @@ Start application in foreground.
 Test configuration and then exit.
 .TP
 .B -v
-Display version and SVN revision of Corosync and exit.
+Display version, git revision, compiled features and available crypto and compression
+models and exit.
+
 .SH SEE ALSO
 .BR corosync_overview (7),
 .BR corosync.conf (5),
