@@ -1173,6 +1173,7 @@ error_close:
 static int corosync_move_to_root_cgroup(void) {
 	FILE *f;
 	int res = -1;
+	const char *cgroup_task_fname = NULL;
 
 	/*
 	 * /sys/fs/cgroup is hardcoded, because most of Linux distributions are now
@@ -1183,15 +1184,25 @@ static int corosync_move_to_root_cgroup(void) {
 	 */
 	f = fopen("/sys/fs/cgroup/cpu/cpu.rt_runtime_us", "rt");
 	if (f == NULL) {
-		log_printf(LOGSYS_LEVEL_DEBUG, "cpu.rt_runtime_us doesn't exists -> "
-		    "system without cgroup or with disabled CONFIG_RT_GROUP_SCHED");
+		/*
+		 * Try cgroup v2
+		 */
+		f = fopen("/sys/fs/cgroup/cgroup.procs", "rt");
+		if (f == NULL) {
+			log_printf(LOG_DEBUG, "cpu.rt_runtime_us or cgroup.procs doesn't exist -> "
+			    "system without cgroup or with disabled CONFIG_RT_GROUP_SCHED");
 
-		res = 0;
-		goto exit_res;
+			res = 0;
+			goto exit_res;
+		} else {
+			cgroup_task_fname = "/sys/fs/cgroup/cgroup.procs";
+		}
+	} else {
+		cgroup_task_fname = "/sys/fs/cgroup/cpu/tasks";
 	}
 	(void)fclose(f);
 
-	f = fopen("/sys/fs/cgroup/cpu/tasks", "w");
+	f = fopen(cgroup_task_fname, "w");
 	if (f == NULL) {
 		log_printf(LOGSYS_LEVEL_WARNING, "Can't open cgroups tasks file for writing");
 
