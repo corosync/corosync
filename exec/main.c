@@ -169,6 +169,12 @@ static char corosync_config_file[PATH_MAX + 1] = COROSYSCONFDIR "/corosync.conf"
 
 static int lockfile_fd = -1;
 
+enum move_to_root_cgroup_mode {
+	MOVE_TO_ROOT_CGROUP_MODE_OFF = 0,
+	MOVE_TO_ROOT_CGROUP_MODE_ON = 1,
+	MOVE_TO_ROOT_CGROUP_MODE_AUTO = 2,
+};
+
 qb_loop_t *cs_poll_handle_get (void)
 {
 	return (corosync_poll_handle);
@@ -859,7 +865,12 @@ static void timer_function_scheduler_timeout (void *data)
 }
 
 
-static int corosync_set_rr_scheduler (void)
+/*
+ * Set main pid RR scheduler.
+ * silent: don't log sched_get_priority_max and sched_setscheduler errors
+ * Returns: 0 - success, -1 failure, -2 platform doesn't support SCHED_RR
+ */
+static int corosync_set_rr_scheduler (int silent)
 {
 	int ret_val = 0;
 
@@ -871,9 +882,11 @@ static int corosync_set_rr_scheduler (void)
 		global_sched_param.sched_priority = sched_priority;
 		res = sched_setscheduler (0, SCHED_RR, &global_sched_param);
 		if (res == -1) {
-			LOGSYS_PERROR(errno, LOGSYS_LEVEL_WARNING,
-				"Could not set SCHED_RR at priority %d",
-				global_sched_param.sched_priority);
+			if (!silent) {
+				LOGSYS_PERROR(errno, LOGSYS_LEVEL_WARNING,
+					"Could not set SCHED_RR at priority %d",
+					global_sched_param.sched_priority);
+			}
 
 			global_sched_param.sched_priority = 0;
 #ifdef HAVE_QB_LOG_THREAD_PRIORITY_SET
@@ -898,15 +911,17 @@ static int corosync_set_rr_scheduler (void)
 			}
 		}
 	} else {
-		LOGSYS_PERROR (errno, LOGSYS_LEVEL_WARNING,
-			"Could not get maximum scheduler priority");
+		if (!silent) {
+			LOGSYS_PERROR (errno, LOGSYS_LEVEL_WARNING,
+				"Could not get maximum scheduler priority");
+		}
 		sched_priority = 0;
 		ret_val = -1;
 	}
 #else
 	log_printf(LOGSYS_LEVEL_WARNING,
 		"The Platform is missing process priority setting features.  Leaving at default.");
-	ret_val = -1;
+	ret_val = -2;
 #endif
 
 	return (ret_val);
@@ -1173,6 +1188,7 @@ error_close:
 static int corosync_move_to_root_cgroup(void) {
 	FILE *f;
 	int res = -1;
+	const char *cgroup_task_fname = NULL;
 
 	/*
 	 * /sys/fs/cgroup is hardcoded, because most of Linux distributions are now
@@ -1183,15 +1199,29 @@ static int corosync_move_to_root_cgroup(void) {
 	 */
 	f = fopen("/sys/fs/cgroup/cpu/cpu.rt_runtime_us", "rt");
 	if (f == NULL) {
-		log_printf(LOGSYS_LEVEL_DEBUG, "cpu.rt_runtime_us doesn't exists -> "
-		    "system without cgroup or with disabled CONFIG_RT_GROUP_SCHED");
+		/*
+		 * Try cgroup v2
+		 */
+		f = fopen("/sys/fs/cgroup/cgroup.procs", "rt");
+		if (f == NULL) {
+			log_printf(LOG_DEBUG, "cpu.rt_runtime_us or cgroup.procs doesn't exist -> "
+			    "system without cgroup or with disabled CONFIG_RT_GROUP_SCHED");
 
-		res = 0;
-		goto exit_res;
+			res = 0;
+			goto exit_res;
+		} else {
+			log_printf(LOGSYS_LEVEL_DEBUG, "Moving main pid to cgroup v2 root cgroup");
+
+			cgroup_task_fname = "/sys/fs/cgroup/cgroup.procs";
+		}
+	} else {
+		log_printf(LOGSYS_LEVEL_DEBUG, "Moving main pid to cgroup v1 root cgroup");
+
+		cgroup_task_fname = "/sys/fs/cgroup/cpu/tasks";
 	}
 	(void)fclose(f);
 
-	f = fopen("/sys/fs/cgroup/cpu/tasks", "w");
+	f = fopen(cgroup_task_fname, "w");
 	if (f == NULL) {
 		log_printf(LOGSYS_LEVEL_WARNING, "Can't open cgroups tasks file for writing");
 
@@ -1256,7 +1286,8 @@ int main (int argc, char **argv, char **envp)
 	const char *error_string;
 	struct totem_config totem_config;
 	int res, ch;
-	int background, sched_rr, prio, testonly, move_to_root_cgroup;
+	int background, sched_rr, prio, testonly;
+	enum move_to_root_cgroup_mode move_to_root_cgroup;
 	enum e_corosync_done flock_err;
 	uint64_t totem_config_warnings;
 	struct scheduler_pause_timeout_data scheduler_pause_timeout_data;
@@ -1264,6 +1295,7 @@ int main (int argc, char **argv, char **envp)
 	char *ep;
 	char *tmp_str;
 	int log_subsys_id_totem;
+	int silent;
 
 	/* default configuration
 	 */
@@ -1417,21 +1449,19 @@ int main (int argc, char **argv, char **envp)
 	}
 
 
-	move_to_root_cgroup = 1;
+	move_to_root_cgroup = MOVE_TO_ROOT_CGROUP_MODE_AUTO;
 	if (icmap_get_string("system.move_to_root_cgroup", &tmp_str) == CS_OK) {
-		if (strcmp(tmp_str, "yes") != 0) {
-			move_to_root_cgroup = 0;
+		/*
+		 * Validity of move_to_root_cgroup values checked in coroparse.c
+		 */
+		if (strcmp(tmp_str, "yes") == 0) {
+			move_to_root_cgroup = MOVE_TO_ROOT_CGROUP_MODE_ON;
+		} else if (strcmp(tmp_str, "no") == 0) {
+			move_to_root_cgroup = MOVE_TO_ROOT_CGROUP_MODE_OFF;
 		}
 		free(tmp_str);
 	}
 
-	/*
-	 * Try to move corosync into root cpu cgroup. Failure is not fatal and
-	 * error is deliberately ignored.
-	 */
-	if (move_to_root_cgroup) {
-		(void)corosync_move_to_root_cgroup();
-	}
 
 	sched_rr = 1;
 	if (icmap_get_string("system.sched_rr", &tmp_str) == CS_OK) {
@@ -1462,11 +1492,31 @@ int main (int argc, char **argv, char **envp)
 		free(tmp_str);
 	}
 
+	if (move_to_root_cgroup == MOVE_TO_ROOT_CGROUP_MODE_ON) {
+		/*
+		 * Try to move corosync into root cpu cgroup. Failure is not fatal and
+		 * error is deliberately ignored.
+		 */
+		(void)corosync_move_to_root_cgroup();
+	}
+
 	/*
 	 * Set round robin realtime scheduling with priority 99
 	 */
 	if (sched_rr) {
-		if (corosync_set_rr_scheduler () != 0) {
+		silent = (move_to_root_cgroup == MOVE_TO_ROOT_CGROUP_MODE_AUTO);
+		res = corosync_set_rr_scheduler (silent);
+
+		if (res == -1 && move_to_root_cgroup == MOVE_TO_ROOT_CGROUP_MODE_AUTO) {
+			/*
+			 * Try to move process to root cgroup and try set priority again
+			 */
+			(void)corosync_move_to_root_cgroup();
+
+			res = corosync_set_rr_scheduler (0);
+		}
+
+		if (res != 0) {
 			prio = INT_MIN;
 		} else {
 			prio = 0;

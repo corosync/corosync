@@ -828,7 +828,8 @@ static int main_config_parser_cb(const char *path,
 			}
 			if (strcmp(path, "system.move_to_root_cgroup") == 0) {
 				if ((strcmp(value, "yes") != 0) &&
-				    (strcmp(value, "no") != 0)) {
+				    (strcmp(value, "no") != 0) &&
+				    (strcmp(value, "auto") != 0)) {
 					*error_string = "Invalid system.move_to_root_cgroup";
 
 					return (0);
