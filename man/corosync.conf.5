@@ -32,7 +32,7 @@
 .\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 .\" * THE POSSIBILITY OF SUCH DAMAGE.
 .\" */
-.TH COROSYNC_CONF 5 2021-05-03 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
+.TH COROSYNC_CONF 5 2021-05-18 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
 .SH NAME
 corosync.conf - corosync executive configuration file
 
@@ -808,6 +808,16 @@ support control of realtime processes and the cpu controller can only be
 enabled when all RT processes are in the root cgroup. So when move_to_root_cgroup
 is disabled and systemd is used, it may be impossible to make systemd options
 like CPUQuota working correctly until corosync is stopped.
+
+Also when this option is used together with cgroup2 and systemd
+it makes impossible (most of the time) for journald to add systemd specific
+metadata (most importantly _SYSTEMD_UNIT) properly, because corosync is
+moved out of cgroup created by systemd. This means
+it is not possible to filter corosync logged messages based on these metadata
+(for example using -u or _SYSTEMD_UNIT=UNIT pattern) and also running
+systemctl status doesn't display (all) corosync log messages.
+The problem is even worse because journald caches pid for some time
+(approx. 5 sec) so initial corosync messages have correct metadata.
 
 .TP
 allow_knet_handle_fallback
