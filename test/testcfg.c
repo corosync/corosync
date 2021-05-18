@@ -145,5 +145,15 @@ int main (int argc, char *argv[]) {
 		fprintf(stderr, "corosync_cfg_try_shutdown failed: %d\n", res);
 		return 1;
 	}
+
+	/*
+	 * Test bug presented in 3.1.1 and 3.1.2 that makes trackstop blocks forever
+	 */
+	res = corosync_cfg_trackstop(cfg_handle1);
+	if (res != CS_OK) {
+		fprintf(stderr, "corosync_cfg_trackstop failed: %d\n", res);
+		return 1;
+	}
+
 	return 0;
 }
