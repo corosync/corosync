@@ -1106,9 +1106,17 @@ static void message_handler_req_lib_cfg_trackstop (
 	const void *msg)
 {
 	struct cfg_info *ci = (struct cfg_info *)api->ipc_private_data_get (conn);
+	struct res_lib_cfg_trackstop res_lib_cfg_trackstop;
 
 	ENTER();
 	remove_ci_from_shutdown(ci);
+
+	res_lib_cfg_trackstop.header.size = sizeof(struct res_lib_cfg_trackstop);
+	res_lib_cfg_trackstop.header.id = MESSAGE_RES_CFG_STATETRACKSTOP;
+	res_lib_cfg_trackstop.header.error = CS_OK;
+
+	api->ipc_response_send(conn, &res_lib_cfg_trackstop,
+				    sizeof(res_lib_cfg_trackstop));
 	LEAVE();
 }
 
