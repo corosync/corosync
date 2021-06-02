@@ -31,7 +31,7 @@
 .\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 .\" * THE POSSIBILITY OF SUCH DAMAGE.
 .\" */
-.TH "COROSYNC-CFGTOOL" "8" "2020-02-10" "" ""
+.TH "COROSYNC-CFGTOOL" "8" "2020-06-02" "" ""
 .SH "NAME"
 corosync-cfgtool \- An administrative tool for corosync.
 .SH "SYNOPSIS"
@@ -56,6 +56,9 @@ LINK ID 0
                 nodeid  1:      localhost
                 nodeid  2:      connected
                 nodeid  3:      connected
+
+Please note that only one link is returned for a single node cluster configuration,
+no matter how many links are configured.
 .TP
 .B -b
 Displays the brief status of the current links on this node when used
