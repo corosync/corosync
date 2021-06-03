@@ -270,6 +270,17 @@ static void stats_rm_entry(const char *key)
 
 	if (item) {
 		qb_map_rm(stats_map, item->key_name);
+		/* Structures freed in callback below */
+	}
+}
+
+static void stats_map_free_cb(uint32_t event,
+			      char* key, void* old_value,
+			      void* value, void* user_data)
+{
+	struct stats_item *item = (struct stats_item *)old_value;
+
+	if (item) {
 		free(item->key_name);
 		free(item);
 	}
@@ -279,6 +290,7 @@ cs_error_t stats_map_init(const struct corosync_api_v1 *corosync_api)
 {
 	int i;
 	char param[ICMAP_KEYNAME_MAXLEN];
+	int32_t err;
 
 	api = corosync_api;
 
@@ -302,7 +314,12 @@ cs_error_t stats_map_init(const struct corosync_api_v1 *corosync_api)
 	}
 
 	/* KNET, IPCS & SCHEDMISS stats are added when appropriate */
-	return CS_OK;
+
+
+	/* Call us when we can free things */
+	err = qb_map_notify_add(stats_map, NULL, stats_map_free_cb, QB_MAP_NOTIFY_FREE, NULL);
+
+	return (qb_to_cs_error(err));
 }
 
 cs_error_t stats_map_get(const char *key_name,
