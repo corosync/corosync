@@ -540,6 +540,7 @@ int totemknet_nodestatus_get (
 		return (-1);
 	}
 
+	/* node_status[] has been zeroed for us in totempg.c */
 	for (i=0; i < num_links; i++) {
 		if (!instance->totem_config->interfaces[link_list[i]].configured) {
 			continue;
@@ -550,12 +551,12 @@ int totemknet_nodestatus_get (
 					   &link_status,
 					   sizeof(link_status));
 		if (res == 0) {
-			node_status->link_status[i].enabled = link_status.enabled;
-			node_status->link_status[i].connected = link_status.connected;
-			node_status->link_status[i].dynconnected = link_status.dynconnected;
-			node_status->link_status[i].mtu = link_status.mtu;
-			memcpy(node_status->link_status[i].src_ipaddr, link_status.src_ipaddr, KNET_MAX_HOST_LEN);
-			memcpy(node_status->link_status[i].dst_ipaddr, link_status.dst_ipaddr, KNET_MAX_HOST_LEN);
+			node_status->link_status[link_list[i]].enabled = link_status.enabled;
+			node_status->link_status[link_list[i]].connected = link_status.connected;
+			node_status->link_status[link_list[i]].dynconnected = link_status.dynconnected;
+			node_status->link_status[link_list[i]].mtu = link_status.mtu;
+			memcpy(node_status->link_status[link_list[i]].src_ipaddr, link_status.src_ipaddr, KNET_MAX_HOST_LEN);
+			memcpy(node_status->link_status[link_list[i]].dst_ipaddr, link_status.dst_ipaddr, KNET_MAX_HOST_LEN);
 		} else {
 			knet_log_printf (LOGSYS_LEVEL_WARNING, "knet_link_get_link_status(%d, %d) failed: %d", nodeid, link_list[i], res);
 		}
