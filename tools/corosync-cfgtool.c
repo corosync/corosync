@@ -108,6 +108,7 @@ nodestatusget_do (enum user_action action, int brief)
 	char *str;
 	char *transport_str = NULL;
 	uint32_t nodeid_list[KNET_MAX_HOST];
+	const char *link_transport[KNET_MAX_LINK];
 	int s = 0;
 	int rc = EXIT_SUCCESS;
 	int transport_number = TOTEM_TRANSPORT_KNET;
@@ -185,6 +186,35 @@ nodestatusget_do (enum user_action action, int brief)
 	/* It's nice to have these in nodeid order */
 	qsort(nodeid_list, s, sizeof(uint32_t), node_compare);
 
+	/* Get the transport of each link - but set reasonable defaults */
+	if (transport_number == TOTEM_TRANSPORT_KNET) {
+		for (i = 0; i<KNET_MAX_LINK; i++) {
+			link_transport[i] = "udp";
+		}
+	} else {
+		for (i = 0; i<KNET_MAX_LINK; i++) {
+			link_transport[i] = ""; /* No point in displaying "udp" again */
+		}
+	}
+	result = cmap_iter_init(cmap_handle, "totem.interface.", &iter);
+	if (result == CS_OK) { /* it's fine for this to fail, we just use the defaults */
+		while ((cmap_iter_next(cmap_handle, iter, iter_key, &value_len, &type)) == CS_OK) {
+			unsigned int link_number;
+			char *knet_transport;
+			char knet_transport_str[CMAP_KEYNAME_MAXLEN];
+
+			/* transport is (sensibly) indexed by link number */
+			if (sscanf(iter_key, "totem.interface.%u.knet_transport", &link_number) != 1) {
+				continue;
+			}
+			snprintf(knet_transport_str, sizeof(knet_transport_str),
+				 "totem.interface.%u.knet_transport", link_number);
+			if (cmap_get_string(cmap_handle, knet_transport_str, &knet_transport) == CS_OK) {
+				link_transport[link_number] = knet_transport;
+			}
+		}
+	}
+
 	cmap_finalize(cmap_handle);
 
 	printf ("Local node ID " CS_PRI_NODE_ID ", transport %s\n", local_nodeid, transport_str);
@@ -215,7 +245,7 @@ nodestatusget_do (enum user_action action, int brief)
 					printf("\n");
 					for (j=0; j<CFG_MAX_LINKS; j++) {
 						if (node_status.link_status[j].enabled) {
-							printf("   LINK: %d", j);
+							printf("   LINK: %d %s", j, link_transport[j]);
 							printf(" (%s%s%s)",
 							       node_status.link_status[j].src_ipaddr,
 							       transport_number==TOTEM_TRANSPORT_KNET?"->":"",
@@ -251,7 +281,7 @@ nodestatusget_do (enum user_action action, int brief)
 
 		for (i=0; i<CFG_MAX_LINKS; i++) {
 			if (node_info[other_nodeid_index].link_status[i].enabled) {
-				printf("LINK ID %d\n", i);
+				printf("LINK ID %d %s\n", i, link_transport[i]);
 				printf("\taddr\t= %s\n", node_info[other_nodeid_index].link_status[i].src_ipaddr);
 				if (brief) {
 					printf("\tstatus\t= ");
