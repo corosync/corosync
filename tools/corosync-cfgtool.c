@@ -183,6 +183,12 @@ nodestatusget_do (enum user_action action, int brief)
 			nodeid_list[s++] = nodeid;
 		}
 	}
+
+	if (s == 0) {
+		fprintf(stderr, "No nodes found in nodelist\n");
+		exit (EXIT_FAILURE);
+	}
+
 	/* It's nice to have these in nodeid order */
 	qsort(nodeid_list, s, sizeof(uint32_t), node_compare);
 
