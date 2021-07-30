@@ -1416,7 +1416,16 @@ static int put_nodelist_members_to_config(struct totem_config *totem_config, icm
 
 					log_printf(LOGSYS_LEVEL_DEBUG,
 						   "Generated nodeid = " CS_PRI_NODE_ID " for %s", nodeid, str);
+
 					free(str);
+					/*
+					 * Put nodeid back to nodelist to make cfgtool work
+					 */
+					snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "nodelist.node.%u.nodeid", node_pos);
+					/*
+					 * Not critical
+					 */
+					(void)icmap_set_uint32_r(map, tmp_key, nodeid);
 				}
 			}
 
