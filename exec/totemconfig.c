@@ -1755,7 +1755,7 @@ extern int totem_config_read (
 	uint16_t u16;
 	int i;
 	int local_node_pos;
-	int nodeid_set;
+	uint32_t u32;
 
 	*warnings = 0;
 
@@ -1811,7 +1811,9 @@ extern int totem_config_read (
 		free(str);
 	}
 
-	icmap_get_uint32("totem.nodeid", &totem_config->node_id);
+	if (icmap_get_uint32("totem.nodeid", &u32) == CS_OK) {
+		*warnings |= TOTEM_CONFIG_WARNING_TOTEM_NODEID_SET;
+	}
 
 	totem_config->clear_node_high_bit = 0;
 	if (icmap_get_string("totem.clear_node_high_bit", &str) == CS_OK) {
@@ -1904,12 +1906,12 @@ extern int totem_config_read (
 		local_node_pos = find_local_node(icmap_get_global_map(), 1);
 		if (local_node_pos != -1) {
 
-			snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "nodelist.node.%u.nodeid", local_node_pos);
+			assert(totem_config->node_id == 0);
 
-			nodeid_set = (totem_config->node_id != 0);
-			if (icmap_get_uint32(tmp_key, &totem_config->node_id) == CS_OK && nodeid_set) {
-				*warnings |= TOTEM_CONFIG_WARNING_TOTEM_NODEID_IGNORED;
-			}
+			snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "nodelist.node.%u.nodeid", local_node_pos);
+			(void)icmap_get_uint32(tmp_key, &totem_config->node_id);
+
+
 			if ((totem_config->transport_number == TOTEM_TRANSPORT_KNET) && (!totem_config->node_id)) {
 				*error_string = "Knet requires an explicit nodeid for the local node";
 				return -1;
