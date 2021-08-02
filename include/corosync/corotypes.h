@@ -57,6 +57,7 @@ typedef int64_t cs_time_t;
 #define CS_MAX(x, y) (((x) > (y)) ? (x) : (y))
 
 #define CS_PRI_NODE_ID		"%" PRIu32
+#define CS_PRI_NODE_ID_PADDED	"%10" PRIu32
 #define CS_PRI_RING_ID_SEQ	"%" PRIx64
 #define CS_PRI_RING_ID		"%" PRIx32 ".%" PRIx64
 /**

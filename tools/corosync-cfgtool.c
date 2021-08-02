@@ -240,7 +240,7 @@ nodestatusget_do (enum user_action action, int brief)
 			if (result == CS_OK) {
 				/* Only display node info if it is reachable (and not us) */
 				if (node_status.reachable && node_status.nodeid != local_nodeid) {
-					printf("nodeid: %d", node_status.nodeid);
+					printf("nodeid: " CS_PRI_NODE_ID "", node_status.nodeid);
 					printf(" reachable");
 					if (node_status.remote) {
 						printf(" remote");
@@ -311,7 +311,7 @@ nodestatusget_do (enum user_action action, int brief)
 				} else {
 					printf("\tstatus:\n");
 					for (j=0; j<s; j++) {
-						printf("\t\tnodeid: %3d:\t", node_info[j].nodeid);
+						printf("\t\tnodeid: " CS_PRI_NODE_ID_PADDED ":\t", node_info[j].nodeid);
 						if (j == local_nodeid_index) {
 							printf("localhost");
 						} else {
