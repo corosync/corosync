@@ -1438,6 +1438,15 @@ static int put_nodelist_members_to_config(struct totem_config *totem_config, icm
 				return (-1);
 			}
 
+			if (totem_config->transport_number == TOTEM_TRANSPORT_KNET && nodeid >= KNET_MAX_HOST) {
+				sprintf(error_string_response,
+				    "Knet requires nodeid to be less than %u "
+				    "for address '%s'.", KNET_MAX_HOST, node_addr_str);
+				*error_string = error_string_response;
+
+				return (-1);
+			}
+
 			member_count = totem_config->interfaces[linknumber].member_count;
 			res = totemip_parse(&totem_config->interfaces[linknumber].member_list[member_count],
 						node_addr_str, totem_config->ip_version);
