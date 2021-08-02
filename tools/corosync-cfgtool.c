@@ -172,14 +172,6 @@ nodestatusget_do (enum user_action action, int brief)
 			continue;
 		}
 		if (cmap_get_uint32(cmap_handle, iter_key, &nodeid) == CS_OK) {
-			if (nodeid == local_nodeid) {
-				local_nodeid_index = s;
-			} else {
-				/* Bit of an odd one this. but local node only uses one link (of course, to itself)
-				   so if we want to know which links are active across the cluster we need to look
-				   at another node (any other) node's link list */
-				other_nodeid_index = s;
-			}
 			nodeid_list[s++] = nodeid;
 		}
 	}
@@ -191,6 +183,20 @@ nodestatusget_do (enum user_action action, int brief)
 
 	/* It's nice to have these in nodeid order */
 	qsort(nodeid_list, s, sizeof(uint32_t), node_compare);
+
+	/*
+	 * Find local and other nodeid index in nodeid_list
+	 */
+	for (i = 0; i < s; i++) {
+		if (nodeid_list[i] == local_nodeid) {
+			local_nodeid_index = i;
+		} else {
+			/* Bit of an odd one this. but local node only uses one link (of course, to itself)
+			   so if we want to know which links are active across the cluster we need to look
+			   at another node (any other) node's link list */
+			other_nodeid_index = i;
+		}
+	}
 
 	/* Get the transport of each link - but set reasonable defaults */
 	if (transport_number == TOTEM_TRANSPORT_KNET) {
