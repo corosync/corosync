@@ -302,7 +302,7 @@ nodestatusget_do (enum user_action action, int brief)
 					for (j=0; j<s; j++) {
 						char status = (node_info[j].link_status[i].enabled |
 							       (node_info[j].link_status[i].connected << 1)) + '0';
-						if (status == '0') {
+						if (j == local_nodeid_index) {
 							status = 'n';
 						}
 						printf("%c", status);
