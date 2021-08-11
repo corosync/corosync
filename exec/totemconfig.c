@@ -81,6 +81,7 @@
 #define MAX_MESSAGES				17
 #define MISS_COUNT_CONST			5
 #define BLOCK_UNLISTED_IPS			1
+#define CANCEL_TOKEN_HOLD_ON_RETRANSMIT		0
 /* This constant is not used for knet */
 #define UDP_NETMTU                              1500
 
@@ -144,6 +145,8 @@ static void *totem_get_param_by_name(struct totem_config *totem_config, const ch
 		return totem_config->knet_compression_model;
 	if (strcmp(param_name, "totem.block_unlisted_ips") == 0)
 		return &totem_config->block_unlisted_ips;
+	if (strcmp(param_name, "totem.cancel_token_hold_on_retransmit") == 0)
+		return &totem_config->cancel_token_hold_on_retransmit;
 
 	return NULL;
 }
@@ -365,6 +368,9 @@ void totem_volatile_config_read (struct totem_config *totem_config, icmap_map_t 
 
 	totem_volatile_config_set_boolean_value(totem_config, temp_map, "totem.block_unlisted_ips", deleted_key,
 	    BLOCK_UNLISTED_IPS);
+
+	totem_volatile_config_set_boolean_value(totem_config, temp_map, "totem.cancel_token_hold_on_retransmit",
+	    deleted_key, CANCEL_TOKEN_HOLD_ON_RETRANSMIT);
 }
 
 int totem_volatile_config_validate (
