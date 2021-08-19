@@ -4105,8 +4105,9 @@ static int message_handler_orf_token (
 		transmits_allowed = fcc_calculate (instance, token);
 		mcasted_retransmit = orf_token_rtr (instance, token, &transmits_allowed);
 
-		if (instance->my_token_held == 1 &&
-			(token->rtr_list_entries > 0 || mcasted_retransmit > 0)) {
+		if (instance->totem_config->cancel_token_hold_on_retransmit &&
+		    instance->my_token_held == 1 &&
+		    (token->rtr_list_entries > 0 || mcasted_retransmit > 0)) {
 			instance->my_token_held = 0;
 			forward_token = 1;
 		}

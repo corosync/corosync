@@ -32,7 +32,7 @@
 .\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 .\" * THE POSSIBILITY OF SUCH DAMAGE.
 .\" */
-.TH COROSYNC_CONF 5 2019-05-23 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
+.TH COROSYNC_CONF 5 2021-08-19 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
 .SH NAME
 corosync.conf - corosync executive configuration file
 
@@ -538,6 +538,19 @@ an existing cluster may fail if corosync is started on an unlisted node
 with an old configuration.
 
 The default value is yes.
+
+.TP
+cancel_token_hold_on_retransmit
+Allows Corosync to hold token by representative when there is too much
+retransmit messages. This allows network to process increased load without
+overloading it. Used mechanism is same as described for
+.B hold
+directive.
+
+Some deployments may prefer to never hold token when there is
+retransmit messages. If so, option should be set to yes.
+
+The default value is no.
 
 .PP
 Within the
