@@ -78,6 +78,7 @@
 #define RRP_PROBLEM_COUNT_THRESHOLD_MIN		2
 #define RRP_AUTORECOVERY_CHECK_TIMEOUT		1000
 #define BLOCK_UNLISTED_IPS			1
+#define CANCEL_TOKEN_HOLD_ON_RETRANSMIT		0
 
 #define DEFAULT_PORT				5405
 
@@ -133,6 +134,8 @@ static uint32_t *totem_get_param_by_name(struct totem_config *totem_config, cons
 		return &totem_config->miss_count_const;
 	if (strcmp(param_name, "totem.block_unlisted_ips") == 0)
 		return &totem_config->block_unlisted_ips;
+	if (strcmp(param_name, "totem.cancel_token_hold_on_retransmit") == 0)
+		return &totem_config->cancel_token_hold_on_retransmit;
 
 	return NULL;
 }
@@ -293,6 +296,9 @@ static void totem_volatile_config_read (struct totem_config *totem_config, const
 
 	totem_volatile_config_set_boolean_value(totem_config, "totem.block_unlisted_ips", deleted_key,
 	    BLOCK_UNLISTED_IPS);
+
+	totem_volatile_config_set_boolean_value(totem_config, "totem.cancel_token_hold_on_retransmit",
+	    deleted_key, CANCEL_TOKEN_HOLD_ON_RETRANSMIT);
 }
 
 static int totem_volatile_config_validate (
