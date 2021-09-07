@@ -379,6 +379,8 @@ int _logsys_system_setup(
 	qb_log_ctl(QB_LOG_BLACKBOX, QB_LOG_CONF_ENABLED, QB_FALSE);
 
 	if (logsys_format_set(NULL) == -1) {
+		pthread_mutex_unlock (&logsys_config_mutex);
+
 		return -1;
 	}
 
