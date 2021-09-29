@@ -52,6 +52,7 @@ static const char *main_logfile;
 
 #include "util.h"
 #include "logconfig.h"
+#include "totemknet.h"
 
 static char error_string_response[512];
 
@@ -623,6 +624,9 @@ static int corosync_main_config_read_logging (
 #endif
 
 	logsys_config_apply();
+
+	/* Reconfigure knet logging */
+	totemknet_configure_log_level();
 	return 0;
 
 parse_error:

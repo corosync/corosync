@@ -26,6 +26,7 @@
 extern int coroparse_configparse (icmap_map_t config_map, const char **error_string);
 extern int corosync_log_config_read (const char **error_string);
 static int stdin_read_fn(int32_t fd, int32_t revents, void *data);
+void totemknet_configure_log_level(void);
 
 /* 'Keep the compiler happy' time */
 const char *corosync_get_config_file(void);
@@ -270,6 +271,11 @@ static int vq_parent_read_fn(int32_t fd, int32_t revents, void *data)
 	return 0;
 }
 
+/* Dummy routine to keep the linker happy */
+void totemknet_configure_log_level(void)
+{
+
+}
 
 static int read_corosync_conf(void)
 {

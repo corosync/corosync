@@ -885,6 +885,36 @@ static void knet_set_access_list_config(struct totemknet_instance *instance)
 #endif
 }
 
+void totemknet_configure_log_level()
+{
+	int logsys_log_mode;
+	int knet_log_mode = KNET_LOG_INFO;
+	uint8_t s;
+
+	if (!global_instance || !global_instance->knet_handle) {
+		return;
+	}
+
+	/* Reconfigure logging level */
+	logsys_log_mode = logsys_config_debug_get("KNET");
+
+	switch (logsys_log_mode) {
+		case LOGSYS_DEBUG_OFF:
+			knet_log_mode = KNET_LOG_INFO;
+			break;
+		case LOGSYS_DEBUG_ON:
+			knet_log_mode = KNET_LOG_DEBUG;
+			break;
+		case LOGSYS_DEBUG_TRACE:
+			knet_log_mode = KNET_LOG_DEBUG;
+			break;
+	}
+	log_printf (LOGSYS_LEVEL_DEBUG, "totemknet setting log level %s", knet_log_get_loglevel_name(knet_log_mode));
+	for (s = 0; s<KNET_MAX_SUBSYSTEMS; s++) {
+		knet_log_set_loglevel(global_instance->knet_handle, s, knet_log_mode);
+	}
+}
+
 
 /* NOTE: this relies on the fact that totem_reload_notify() is called first */
 static void totemknet_refresh_config(
@@ -958,6 +988,7 @@ static void totemknet_refresh_config(
 		}
 	}
 
+	/* Log levels get reconfigured from logconfig.c as that happens last in the reload */
 	LEAVE();
 }
 
@@ -1199,6 +1230,9 @@ int totemknet_initialize (
 		KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_WARNING, "knet_handle_enable_pmtud_notify failed");
 	}
 	global_instance = instance;
+
+	/* Setup knet logging level */
+	totemknet_configure_log_level();
 
 	/* Get an fd into knet */
 	instance->knet_fd = 0;
