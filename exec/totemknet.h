@@ -154,4 +154,6 @@ extern int totemknet_crypto_reconfigure_phase (
 extern void totemknet_stats_clear (
 	void *knet_context);
 
+extern void totemknet_configure_log_level (void);
+
 #endif /* TOTEMKNET_H_DEFINED */

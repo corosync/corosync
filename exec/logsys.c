@@ -803,6 +803,23 @@ void logsys_config_apply(void)
 	}
 }
 
+extern int logsys_config_debug_get (
+	const char *subsys)
+{
+	int debug_level = logsys_loggers[0].debug;
+	int i;
+
+	if (subsys != NULL) {
+		pthread_mutex_lock (&logsys_config_mutex);
+		i = _logsys_config_subsys_get_unlocked (subsys);
+		if (i >= 0) {
+			debug_level = logsys_loggers[i].debug;
+		}
+		pthread_mutex_unlock (&logsys_config_mutex);
+	}
+	return debug_level;
+}
+
 int logsys_config_debug_set (
 	const char *subsys,
 	unsigned int debug)

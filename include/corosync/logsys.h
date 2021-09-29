@@ -196,6 +196,15 @@ extern int logsys_config_debug_set (
 	const char *subsys,
 	unsigned int value);
 
+/**
+ * @brief Return the debug flag for this subsys
+ *
+ * @param subsys
+ * @return LOGSYS_DEBUG_OFF | LOGSYS_DEBUG_ON | LOGSYS_DEBUG_TRACE
+ */
+extern int logsys_config_debug_get (
+	const char *subsys);
+
 /*
  * External API - helpers
  *
