@@ -431,7 +431,7 @@ static void cpg_flood (
 	}
 }
 
-static void cpg_test (
+static int cpg_test (
 	cpg_handle_t handle_in,
 	int write_size,
 	int delay_time,
@@ -458,6 +458,10 @@ static void cpg_test (
 			send_retries++;
 			goto resend;
 		}
+		if (res == CS_ERR_LIBRARY) {
+			send_counter--;
+			return -1;
+		}
 		if (res != CS_OK) {
 			cpgh_log_printf(CPGH_LOG_ERR, "send failed: %d\n", res);
 			send_fails++;
@@ -478,7 +482,7 @@ static void cpg_test (
 			cpgh_log_printf(CPGH_LOG_RTT, "RTT min/avg/max: %ld/%ld/%ld\n", min_rtt, avg_rtt, max_rtt);
 		}
 	}
-
+	return 0;
 }
 
 static void sigalrm_handler (int num)
@@ -570,6 +574,41 @@ static long parse_bytes(const char *valstring)
 		return 0;
 	}
 	return value * multiplier;
+}
+
+static int connect_and_join(int model, int verbose)
+{
+	int res;
+
+	switch (model) {
+	case 0:
+		res = cpg_initialize (&handle, &callbacks);
+		break;
+	case 1:
+		res = cpg_model_initialize (&handle, CPG_MODEL_V1, (cpg_model_data_t *)&model1_data, NULL);
+		break;
+	default:
+		res=999; // can't get here but it keeps the compiler happy
+		break;
+	}
+
+	if (res != CS_OK) {
+		if (verbose) {
+			cpgh_log_printf(CPGH_LOG_ERR, "cpg_initialize failed with result %d\n", res);
+		}
+		return -1;
+	}
+
+	res = cpg_join (handle, &group_name);
+	if (res != CS_OK) {
+		if (verbose) {
+			cpgh_log_printf(CPGH_LOG_ERR, "cpg_join failed with result %d\n", res);
+		}
+		cpg_finalize(handle);
+		return -1;
+	}
+	pthread_create (&thread, NULL, dispatch_thread, NULL);
+	return CS_OK;
 }
 
 
@@ -707,33 +746,14 @@ int main (int argc, char *argv[]) {
 
 	signal (SIGALRM, sigalrm_handler);
 	signal (SIGINT, sigint_handler);
-	switch (model) {
-	case 0:
-		res = cpg_initialize (&handle, &callbacks);
-		break;
-	case 1:
-		res = cpg_model_initialize (&handle, CPG_MODEL_V1, (cpg_model_data_t *)&model1_data, NULL);
-		break;
-	default:
-		res=999; // can't get here but it keeps the compiler happy
-		break;
+
+	if (connect_and_join(model, 1) != CS_OK) {
+		exit(1);
 	}
 
-	if (res != CS_OK) {
-		cpgh_log_printf(CPGH_LOG_ERR, "cpg_initialize failed with result %d\n", res);
-		exit (1);
-	}
 	res = cpg_local_get(handle, &g_our_nodeid);
 	if (res != CS_OK) {
 		cpgh_log_printf(CPGH_LOG_ERR, "cpg_local_get failed with result %d\n", res);
-		exit (1);
-	}
-
-	pthread_create (&thread, NULL, dispatch_thread, NULL);
-
-	res = cpg_join (handle, &group_name);
-	if (res != CS_OK) {
-		cpgh_log_printf(CPGH_LOG_ERR, "cpg_join failed with result %d\n", res);
 		exit (1);
 	}
 
@@ -786,7 +806,23 @@ int main (int argc, char *argv[]) {
 		else {
 			send_counter = -1; /* So we start from zero to allow listeners to sync */
 			for (i = 0; i < repetitions && !stopped; i++) {
-				cpg_test (handle, write_size, delay_time, print_time);
+				if (cpg_test (handle, write_size, delay_time, print_time) == -1) {
+					/* Try to reconnect when corosync stops */
+					res = -1;
+					cpg_finalize(handle);
+					pthread_cancel(thread);
+					signal (SIGINT, SIG_DFL);
+					printf("Reconnecting...");
+					fflush(stdout);
+					while (res != CS_OK) {
+						sleep(1);
+						printf(".");
+						fflush(stdout);
+						res = connect_and_join(model, 0);
+					}
+					printf("done\n");
+					signal (SIGINT, sigint_handler);
+				}
 				signal (SIGALRM, sigalrm_handler);
 			}
 		}
