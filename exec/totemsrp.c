@@ -1989,12 +1989,26 @@ static void memb_state_operational_enter (struct totemsrp_instance *instance)
 		trans_memb_list_totemip, instance->my_trans_memb_entries,
 		left_list, instance->my_left_memb_entries,
 		0, 0, &instance->my_ring_id);
+	/*
+	 * Switch new totemsrp messages queue. Messages sent from now on are stored
+	 * in different queue so synchronization messages are delivered first. Totempg
+	 * buffers will be switched later.
+	 */
 	instance->waiting_trans_ack = 1;
-	instance->totemsrp_waiting_trans_ack_cb_fn (1);
 
 // TODO we need to filter to ensure we only deliver those
 // messages which are part of instance->my_deliver_memb
 	messages_deliver_to_app (instance, 1, instance->old_ring_state_high_seq_received);
+
+	/*
+	 * Switch totempg buffers. This used to be right after
+	 *   instance->waiting_trans_ack = 1;
+	 * line. This was causing problem, because there may be not yet
+	 * processed parts of messages in totempg buffers.
+	 * So when buffers were switched and recovered messages
+	 * got delivered it was not possible to assemble them.
+	 */
+	instance->totemsrp_waiting_trans_ack_cb_fn (1);
 
 	instance->my_aru = aru_save;
 
