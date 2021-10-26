@@ -1990,11 +1990,12 @@ static void memb_state_operational_enter (struct totemsrp_instance *instance)
 		left_list, instance->my_left_memb_entries,
 		0, 0, &instance->my_ring_id);
 	instance->waiting_trans_ack = 1;
-	instance->totemsrp_waiting_trans_ack_cb_fn (1);
 
 // TODO we need to filter to ensure we only deliver those
 // messages which are part of instance->my_deliver_memb
 	messages_deliver_to_app (instance, 1, instance->old_ring_state_high_seq_received);
+
+	instance->totemsrp_waiting_trans_ack_cb_fn (1);
 
 	instance->my_aru = aru_save;
 
