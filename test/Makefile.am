@@ -55,8 +55,10 @@ testvotequorum1_LDADD	= $(LIBQB_LIBS) $(top_builddir)/lib/libvotequorum.la
 testvotequorum2_LDADD	= $(LIBQB_LIBS) $(top_builddir)/lib/libvotequorum.la
 cpgbound_LDADD		= $(LIBQB_LIBS) $(top_builddir)/lib/libcpg.la
 cpgbench_LDADD		= $(LIBQB_LIBS) $(top_builddir)/lib/libcpg.la
-cpgbenchzc_LDADD	= $(LIBQB_LIBS) $(top_builddir)/lib/libcpg.la
-testsam_LDADD		= $(LIBQB_LIBS) $(top_builddir)/lib/libsam.la
+cpgbenchzc_LDADD	= $(LIBQB_LIBS) $(top_builddir)/lib/libcpg.la \
+			  $(top_builddir)/common_lib/libcorosync_common.la
+testsam_LDADD		= $(LIBQB_LIBS) $(top_builddir)/lib/libsam.la \
+			  $(top_builddir)/lib/libcmap.la
 testcfg_LDADD		= $(LIBQB_LIBS) $(top_builddir)/lib/libcfg.la
 
 if HAVE_CRC32
