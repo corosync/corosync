@@ -599,16 +599,9 @@ static void timer_function_netif_check_timeout (
 		&instance->totem_interface->boundto,
 		&interface_up, &interface_num);
 	/*
-	 * If the network interface isn't back up and we are already
-	 * in loopback mode, add timer to check again and return
+	 * If the network interface isn't back up add timer to check again and return
 	 */
-	if ((instance->netif_bind_state == BIND_STATE_LOOPBACK &&
-		interface_up == 0) ||
-
-	(instance->my_memb_entries == 1 &&
-		instance->netif_bind_state == BIND_STATE_REGULAR &&
-		interface_up == 1)) {
-
+	if (instance->my_memb_entries == 1 && interface_up == 0) {
 		qb_loop_timer_add (instance->totemudpu_poll_handle,
 			QB_LOOP_MED,
 			instance->totem_config->downcheck_timeout*QB_TIME_NS_IN_MSEC,
@@ -629,34 +622,8 @@ static void timer_function_netif_check_timeout (
 		instance->token_socket = -1;
 	}
 
-	if (interface_up == 0) {
-		if (instance->netif_bind_state == BIND_STATE_UNBOUND) {
-			log_printf (instance->totemudpu_log_level_error,
-				"One of your ip addresses are now bound to localhost. "
-				"Corosync would not work correctly.");
-			exit(COROSYNC_DONE_FATAL_ERR);
-		}
+	instance->netif_bind_state = BIND_STATE_REGULAR;
 
-		/*
-		 * Interface is not up
-		 */
-		instance->netif_bind_state = BIND_STATE_LOOPBACK;
-
-		/*
-		 * Add a timer to retry building interfaces and request memb_gather_enter
-		 */
-		qb_loop_timer_add (instance->totemudpu_poll_handle,
-			QB_LOOP_MED,
-			instance->totem_config->downcheck_timeout*QB_TIME_NS_IN_MSEC,
-			(void *)instance,
-			timer_function_netif_check_timeout,
-			&instance->timer_netif_check_timeout);
-	} else {
-		/*
-		 * Interface is up
-		 */
-		instance->netif_bind_state = BIND_STATE_REGULAR;
-	}
 	/*
 	 * Create and bind the multicast and unicast sockets
 	 */
@@ -664,19 +631,17 @@ static void timer_function_netif_check_timeout (
 		&instance->totem_interface->bindnet,
 		&instance->totem_interface->boundto);
 
-	if (instance->netif_bind_state == BIND_STATE_REGULAR) {
-		qb_loop_poll_add (instance->totemudpu_poll_handle,
-			QB_LOOP_MED,
-			instance->token_socket,
-			POLLIN, instance, net_deliver_fn);
-	}
+    qb_loop_poll_add (instance->totemudpu_poll_handle,
+        QB_LOOP_MED,
+        instance->token_socket,
+        POLLIN, instance, net_deliver_fn);
 
 	totemip_copy (&instance->my_id, &instance->totem_interface->boundto);
 
 	/*
 	 * This reports changes in the interface to the user and totemsrp
 	 */
-	if (instance->netif_bind_state == BIND_STATE_REGULAR) {
+	if (instance->netif_bind_state == BIND_STATE_REGULAR && interface_up != 0) {
 		if (instance->netif_state_report & NETIF_STATE_REPORT_UP) {
 			log_printf (instance->totemudpu_log_level_notice,
 				"The network interface [%s] is now up.",
@@ -684,27 +649,21 @@ static void timer_function_netif_check_timeout (
 			instance->netif_state_report = NETIF_STATE_REPORT_DOWN;
 			instance->totemudpu_iface_change_fn (instance->context, &instance->my_id, 0);
 		}
-		/*
-		 * Add a timer to check for interface going down in single membership
-		 */
-		if (instance->my_memb_entries == 1) {
-			qb_loop_timer_add (instance->totemudpu_poll_handle,
-				QB_LOOP_MED,
-				instance->totem_config->downcheck_timeout*QB_TIME_NS_IN_MSEC,
-				(void *)instance,
-				timer_function_netif_check_timeout,
-				&instance->timer_netif_check_timeout);
-		}
-
-	} else {
+	} else if (interface_up == 0) {
 		if (instance->netif_state_report & NETIF_STATE_REPORT_DOWN) {
 			log_printf (instance->totemudpu_log_level_notice,
 				"The network interface is down.");
 			instance->totemudpu_iface_change_fn (instance->context, &instance->my_id, 0);
 		}
 		instance->netif_state_report = NETIF_STATE_REPORT_UP;
-
 	}
+
+	qb_loop_timer_add (instance->totemudpu_poll_handle,
+		QB_LOOP_MED,
+		instance->totem_config->downcheck_timeout*QB_TIME_NS_IN_MSEC,
+		(void *)instance,
+		timer_function_netif_check_timeout,
+		&instance->timer_netif_check_timeout);
 }
 
 /* Set the socket priority to INTERACTIVE to ensure
