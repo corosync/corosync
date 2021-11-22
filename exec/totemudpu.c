@@ -597,6 +597,7 @@ static int net_deliver_fn (
 	}
 
 	if (instance->totem_config->block_unlisted_ips &&
+	    instance->netif_bind_state == BIND_STATE_REGULAR &&
 	    find_member_by_sockaddr(instance, (const struct sockaddr *)&system_from) == NULL) {
 		log_printf(instance->totemudpu_log_level_debug, "Packet rejected from %s",
 		    totemip_sa_print((const struct sockaddr *)&system_from));
