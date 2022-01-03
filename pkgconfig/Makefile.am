@@ -1,4 +1,4 @@
-# Copyright (c) 2009 Red Hat, Inc.
+# Copyright (c) 2009-2022 Red Hat, Inc.
 #
 # All rights reserved.
 #
@@ -63,6 +63,7 @@ lib%.pc: libtemplate.pc.in Makefile
 		-e 's#@''LIBDIR@#$(libdir)#g' \
 		-e 's#@''LIBVERSION@#$(VERSION)#g' \
 		-e 's#@''LOGDIR@#$(LOGDIR)#g' \
+		-e 's#@''COROSYSCONFDIR@#$(COROSYSCONFDIR)#g' \
 	    $< > $@-t
 	chmod a-w $@-t
 	mv $@-t $@
