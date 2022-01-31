@@ -424,7 +424,7 @@ static inline void group_endian_convert (
 	/*
 	 * Align data structure for not i386 or x86_64
 	 */
-	if ((size_t)msg % 4 != 0) {
+	if ((size_t)msg % sizeof(char *) != 0) {
 		aligned_msg = alloca(msg_len);
 		memcpy(aligned_msg, msg, msg_len);
 	} else {
@@ -466,7 +466,7 @@ static inline int group_matches (
 	/*
 	 * Align data structure for not i386 or x86_64
 	 */
-	if ((size_t)iovec->iov_base % 4 != 0) {
+	if ((size_t)iovec->iov_base % sizeof(char *) != 0) {
 		iovec_aligned.iov_base = alloca(iovec->iov_len);
 		memcpy(iovec_aligned.iov_base, iovec->iov_base, iovec->iov_len);
 		iovec_aligned.iov_len = iovec->iov_len;
@@ -551,7 +551,7 @@ static inline void app_deliver_fn (
 			/*
 			 * Align data structure for not i386 or x86_64
 			 */
-			if ((char *)iovec->iov_base + adjust_iovec % 4 != 0) {
+			if ((uintptr_t)((char *)iovec->iov_base + adjust_iovec) % (sizeof(char *)) != 0) {
 				/*
 				 * Deal with misalignment
 				 */
