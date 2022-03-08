@@ -737,7 +737,7 @@ static int find_local_node(icmap_map_t map, int use_cache)
 	}
 
 	res = uname(&utsname);
-	if (res) {
+	if (res < 0) {
 		return -1;
 	}
 	node = utsname.nodename;
