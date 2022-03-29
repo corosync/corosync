@@ -1,3 +1,8 @@
+# This logrotate method has two main problems and it's kept only for reference:
+# 1. It does fail when corosync is not running (solvable by adding "|| true")
+# 2. If (for some reason) cfgtool -L fails, logrotate fails and corosync keeps
+#    logging into old file. Added "|| true" makes situation even worse
+#    because logrotate removes file but corosync keeps logging into it.
 @LOGDIR@/corosync.log {
 	missingok
 	compress
