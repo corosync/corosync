@@ -327,6 +327,16 @@ static int parse_section(FILE *fp,
 			if (strlen (line) > 0 && line[strlen(line) - 1] == '\r')
 				line[strlen(line) - 1] = '\0';
 		}
+		/*
+		 * Clear out white space and tabs
+		 */
+		for (i = strlen (line) - 1; i > -1; i--) {
+			if (line[i] == '\t' || line[i] == ' ') {
+				line[i] = '\0';
+			} else {
+				break;
+			}
+		}
 
 		ignore_line = 1;
 		for (i = 0; i < strlen (line); i++) {
@@ -342,27 +352,6 @@ static int parse_section(FILE *fp,
 		 */
 		if (ignore_line) {
 			continue;
-		}
-
-		/*
-		 * Remove trailing comments
-		 */
-		for (i = 0; i < strlen (line) - 1; i++) {
-			if (line[i] == '#') {
-				line[i] = '\0';
-				break;
-			}
-		}
-
-		/*
-		 * Clear out trailing white space and tabs
-		 */
-		for (i = strlen (line) - 1; i > -1; i--) {
-			if (line[i] == '\t' || line[i] == ' ') {
-				line[i] = '\0';
-			} else {
-				break;
-			}
 		}
 
 		/* New section ? */
