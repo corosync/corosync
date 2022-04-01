@@ -282,7 +282,20 @@ static char *remove_whitespace(char *string, int remove_colon_and_brace)
 	return start;
 }
 
+static char *remove_comment(char *string)
+{
+	char *start;
+	int i;
 
+	start = string;
+	for (i = 0; i <= strlen (start) - 1; i++) {
+		if(start[i] == '#') {
+			start[i] = '\0';
+			break;
+		}
+	}
+	return start;
+}
 
 static int parse_section(FILE *fp,
 			const char *fname,
@@ -405,7 +418,16 @@ static int parse_section(FILE *fp,
 
 			*(loc-1) = '\0';
 			key = remove_whitespace(line, 1);
-			value = remove_whitespace(loc, 0);
+
+			/* remove trailing comments from values unless the key is cluster_name
+			 * which can ligitimately have a '#' as part of the name
+			 */
+			if(strcmp(key, "cluster_name") == 0) {
+				value = remove_whitespace(loc, 0);
+			} else {
+				value = remove_comment(loc);
+				value = remove_whitespace(value, 0);
+			}
 
 			if (strlen(path) + strlen(key) + 1 >= ICMAP_KEYNAME_MAXLEN) {
 				tmp_error_string = "New key makes total cmap path too long";
