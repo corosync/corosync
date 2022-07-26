@@ -2,10 +2,10 @@
 # Process this file with autoconf to produce a configure script.
 
 # bootstrap / init
-AC_PREREQ([2.61])
+AC_PREREQ([2.69])
 
 AC_INIT([corosync],
-	m4_esyscmd([build-aux/git-version-gen .tarball-version .gitarchivever]),
+	[m4_esyscmd([build-aux/git-version-gen .tarball-version .gitarchivever])],
 	[users@clusterlabs.org])
 
 AC_USE_SYSTEM_EXTENSIONS
@@ -18,7 +18,7 @@ LT_INIT
 AM_SILENT_RULES([yes])
 
 AC_CONFIG_SRCDIR([lib/cpg.c])
-AC_CONFIG_HEADER([include/corosync/config.h])
+AC_CONFIG_HEADERS([include/corosync/config.h])
 AC_CONFIG_MACRO_DIR([m4])
 
 AC_CANONICAL_HOST
@@ -29,7 +29,7 @@ AC_SUBST(WITH_LIST, [""])
 
 #Enable inter-library dependencies
 AC_ARG_ENABLE(interlib-deps,
-    [AC_HELP_STRING([--disable-interlib-deps  ],[disable inter-library dependencies (might break builds)])],
+    [AS_HELP_STRING([--disable-interlib-deps  ],[disable inter-library dependencies (might break builds)])],
     [enable_interlib_deps="$enableval"],
     [enable_interlib_deps="yes"])
 
@@ -86,7 +86,7 @@ fi
 sinclude(corosync-default.m4)
 
 AC_PROG_CC
-AC_PROG_CC_C99
+m4_version_prereq([2.70], [:], [AC_PROG_CC_C99])
 if test "x$ac_cv_prog_cc_c99" = "xno"; then
 	AC_MSG_ERROR(["C99 support is required"])
 fi
@@ -111,7 +111,6 @@ AC_C_VOLATILE
 
 # Checks for header files.
 AC_HEADER_DIRENT
-AC_HEADER_STDC
 AC_HEADER_SYS_WAIT
 AC_CHECK_HEADERS([arpa/inet.h fcntl.h limits.h netdb.h netinet/in.h stdint.h \
 		  stdlib.h string.h sys/ioctl.h sys/param.h sys/socket.h \
@@ -647,7 +646,7 @@ if test "x${enable_secure_build}" = xyes; then
     save_LDFLAGS=$LDFLAGS
     CFLAGS="$CFLAGS -fPIE"
     LDFLAGS="$LDFLAGS -pie"
-    AC_TRY_RUN([static int foo[30000]; int main () { return 0; }],
+    AC_RUN_IFELSE([AC_LANG_SOURCE([[static int foo[30000]; int main () { return 0; }]])],
       [ap_cv_cc_pie=yes], [ap_cv_cc_pie=no], [ap_cv_cc_pie=yes])
     CFLAGS=$save_CFLAGS
     LDFLAGS=$save_LDFLAGS
@@ -662,7 +661,7 @@ if test "x${enable_secure_build}" = xyes; then
   AC_CACHE_CHECK([whether $CC accepts RELRO flags], [ap_cv_cc_relro], [
     save_LDFLAGS=$LDFLAGS
     LDFLAGS="$LDFLAGS -Wl,-z,relro"
-    AC_TRY_RUN([static int foo[30000]; int main () { return 0; }],
+    AC_RUN_IFELSE([AC_LANG_SOURCE([[static int foo[30000]; int main () { return 0; }]])],
       [ap_cv_cc_relro=yes], [ap_cv_cc_relro=no], [ap_cv_cc_relro=yes])
     LDFLAGS=$save_LDFLAGS
   ])
@@ -674,7 +673,7 @@ if test "x${enable_secure_build}" = xyes; then
   AC_CACHE_CHECK([whether $CC accepts BINDNOW flags], [ap_cv_cc_bindnow], [
     save_LDFLAGS=$LDFLAGS
     LDFLAGS="$LDFLAGS -Wl,-z,now"
-    AC_TRY_RUN([static int foo[30000]; int main () { return 0; }],
+    AC_RUN_IFELSE([AC_LANG_SOURCE([[static int foo[30000]; int main () { return 0; }]])],
       [ap_cv_cc_bindnow=yes], [ap_cv_cc_bindnow=no], [ap_cv_cc_bindnow=yes])
     LDFLAGS=$save_LDFLAGS
   ])
@@ -687,7 +686,7 @@ fi
 AC_CACHE_CHECK([whether $CC accepts "--as-needed"], [ap_cv_cc_as_needed], [
   save_LDFLAGS=$LDFLAGS
   LDFLAGS="$LDFLAGS -Wl,--as-needed"
-  AC_TRY_RUN([static int foo[30000]; int main () { return 0; }],
+  AC_RUN_IFELSE([AC_LANG_SOURCE([[static int foo[30000]; int main () { return 0; }]])],
     [ap_cv_cc_as_needed=yes], [ap_cv_cc_as_needed=no], [ap_cv_cc_as_needed=yes])
   LDFLAGS=$save_LDFLAGS
 ])
@@ -696,7 +695,7 @@ AC_CACHE_CHECK([whether $CC accepts "--version-script"], [ap_cv_cc_version_scrip
   save_LDFLAGS=$LDFLAGS
   LDFLAGS="$LDFLAGS -Wl,--version-script=conftest.versions"
   echo "CONFTEST { };" >conftest.versions
-  AC_TRY_RUN([static int foo[30000]; int main () { return 0; }],
+  AC_RUN_IFELSE([AC_LANG_SOURCE([[static int foo[30000]; int main () { return 0; }]])],
     [ap_cv_cc_version_script=yes], [ap_cv_cc_version_script=no], [ap_cv_cc_version_script=yes])
   rm -f conftest.versions
   LDFLAGS=$save_LDFLAGS
