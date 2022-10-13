@@ -1,0 +1,21 @@
+// Copyright (C) 2021-2023 Red Hat, Inc.
+//
+// All rights reserved.
+//
+// Author: Christine Caulfield (ccaulfi@redhat.com)
+//
+
+extern crate pkg_config;
+
+fn main() {
+    // Tell the compiler to use the build-tree libs & headers for compiling
+    println!("cargo:rustc-link-search=native=../../../lib/.libs/");
+    println!("cargo:rustc-link-search=native=../../../common_lib/.libs/");
+    println!("cargo:rustc-link-lib=cpg");
+    println!("cargo:rustc-link-lib=cfg");
+    println!("cargo:rustc-link-lib=cmap");
+    println!("cargo:rustc-link-lib=quorum");
+    println!("cargo:rustc-link-lib=votequorum");
+    println!("cargo:rustc-link-lib=corosync_common");
+    println!("cargo:rustc-link-lib=qb");
+}

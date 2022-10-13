@@ -1,0 +1,36 @@
+[package]
+name = "rust-corosync-tests"
+version = "@corosyncrustver@"
+authors = ["Christine Caulfield <ccaulfie@redhat.com>"]
+edition = "2021"
+
+[dependencies]
+rust-corosync = { path = ".." }
+
+[build-dependencies]
+pkg-config = "0.3"
+
+[[bin]]
+name = "cpg-test"
+test = false
+bench = false
+
+[[bin]]
+name = "quorum-test"
+test = false
+bench = false
+
+[[bin]]
+name = "votequorum-test"
+test = false
+bench = false
+
+[[bin]]
+name = "cfg-test"
+test = false
+bench = false
+
+[[bin]]
+name = "cmap-test"
+test = false
+bench = false

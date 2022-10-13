@@ -29,3 +29,14 @@ tags
 ID
 Doxyfile
 test-driver
+Cargo.toml
+build.rs
+Cargo.lock
+bindings/rust/src/sys/cpg.rs
+bindings/rust/src/sys/cfg.rs
+bindings/rust/src/sys/cmap.rs
+bindings/rust/src/sys/quorum.rs
+bindings/rust/src/sys/votequorum.rs
+test-suite.log
+bindings/rust/target/
+bindings/rust/tests/target/
