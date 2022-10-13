@@ -1,0 +1,16 @@
+[package]
+name = "rust-corosync"
+version = "@corosyncrustver@"
+authors = ["Christine Caulfield <ccaulfie@redhat.com>"]
+edition = "2021"
+readme = "README.md"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/corosync/corosync/"
+description = "Rust bindings for corosync libraries"
+categories = ["api-bindings"]
+keywords = ["cluster", "high-availability"]
+
+[dependencies]
+lazy_static = "1.4.0"
+num_enum = "0.5.4"
+bitflags = "1.3.2"

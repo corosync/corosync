@@ -37,6 +37,8 @@ EXTRA_DIST		= autogen.sh $(SPEC).in \
 			  build-aux/git-version-gen \
 			  build-aux/gitlog-to-changelog \
 			  build-aux/release.mk \
+			  build-aux/rust.mk \
+			  build-aux/rust-regen.sh \
 			  .version
 
 ACLOCAL_AMFLAGS		= -I m4
@@ -49,7 +51,7 @@ MAINTAINERCLEANFILES	= Makefile.in aclocal.m4 configure depcomp \
 dist_doc_DATA		= LICENSE INSTALL README.recovery AUTHORS
 
 SUBDIRS			= include common_lib lib exec tools test pkgconfig \
-			  man init conf vqsim
+			  man init conf vqsim bindings
 
 coverity:
 	rm -rf cov
