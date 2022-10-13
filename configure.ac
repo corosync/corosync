@@ -42,6 +42,11 @@ else
     link_all_deplibs_CXX=no
 fi
 
+AC_ARG_ENABLE([rust-bindings],
+	[AS_HELP_STRING([--enable-rust-bindings],[rust bindings support])],,
+	[ enable_rust_bindings="no" ])
+AM_CONDITIONAL([BUILD_RUST_BINDINGS], [test x$enable_rust_bindings = xyes])
+
 dnl Fix default variables - "prefix" variable if not specified
 systemddir=${prefix}/lib/systemd/system
 
@@ -229,9 +234,46 @@ AC_CONFIG_FILES([Makefile
 		 conf/Makefile
 		 vqsim/Makefile
 		 Doxyfile
-		 conf/logrotate/Makefile])
+		 conf/logrotate/Makefile
+		 bindings/Makefile
+		 bindings/rust/Makefile
+ 		 bindings/rust/tests/Makefile
+ 		 bindings/rust/Cargo.toml])
 
 ### Local business
+
+# check for rust tools to build bindings
+if test "x$enable_rust_bindings" = "xyes"; then
+	AC_PATH_PROG([CARGO], [cargo], [no])
+	if test "x$CARGO" = xno; then
+		AC_MSG_ERROR(["cargo command not found"])
+	fi
+
+	AC_PATH_PROG([RUSTC], [rustc], [no])
+	if test "x$RUSTC" = xno; then
+		AC_MSG_ERROR(["rustc command not found"])
+	fi
+
+	AC_PATH_PROG([RUSTDOC], [rustdoc], [no])
+	if test "x$RUSTDOC" = xno; then
+		AC_MSG_ERROR(["rustdoc command not found"])
+	fi
+
+	AC_PATH_PROG([BINDGEN], [bindgen], [no])
+	if test "x$BINDGEN" = xno; then
+		AC_MSG_ERROR(["bindgen command not found"])
+	fi
+
+	AC_PATH_PROG([CLIPPY], [clippy-driver], [no])
+	if test "x$CLIPPY" = xno; then
+		AC_MSG_ERROR(["clippy-driver command not found"])
+	fi
+
+	AC_PATH_PROG([RUSTFMT], [rustfmt], [no])
+	if test "x$RUSTFMT" = xno; then
+		AC_MSG_WARN(["rustfmt command not found (optional)"])
+	fi
+fi
 
 dnl ===============================================
 dnl Functions / global M4 variables
@@ -423,8 +465,12 @@ if test "x${enable_debug}" = xyes; then
 	AC_DEFINE_UNQUOTED([DEBUG], [1], [Compiling Debugging code])
 	OPT_CFLAGS="-O0"
 	PACKAGE_FEATURES="$PACKAGE_FEATURES debug"
+	RUST_FLAGS=""
+	RUST_TARGET_DIR="debug"
 else
 	OPT_CFLAGS="-O3"
+	RUST_FLAGS="--release"
+	RUST_TARGET_DIR="release"
 fi
 
 # gdb flags
@@ -733,6 +779,8 @@ AC_SUBST([SOMAJOR])
 AC_SUBST([SOMINOR])
 AC_SUBST([SOMICRO])
 AC_SUBST([SONAME])
+AC_SUBST([RUST_FLAGS])
+AC_SUBST([RUST_TARGET_DIR])
 
 AM_CONDITIONAL(INSTALL_MIB, test "${do_snmp}" = "1")
 AM_CONDITIONAL(INSTALL_DBUSCONF, test "${enable_dbus}" = "yes")
@@ -770,7 +818,8 @@ AC_MSG_RESULT([  Log directory            = ${LOGDIR}])
 AC_MSG_RESULT([  Log rotate directory     = ${LOGROTATEDIR}])
 AC_MSG_RESULT([  corosync config dir      = ${COROSYSCONFDIR}])
 AC_MSG_RESULT([  init config directory    = ${INITCONFIGDIR}])
-AC_MSG_RESULT([  Features                 =${PACKAGE_FEATURES}])
+AC_MSG_RESULT([  Features                 = ${PACKAGE_FEATURES}])
+AC_MSG_RESULT([  Rust bindings            = ${enable_rust_bindings}])
 AC_MSG_RESULT([])
 AC_MSG_RESULT([$PACKAGE build info:])
 AC_MSG_RESULT([  Library SONAME           = ${SONAME}])
