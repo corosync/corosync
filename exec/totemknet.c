@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2020 Red Hat, Inc.
+ * Copyright (c) 2016-2022 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -925,7 +925,7 @@ static void totemknet_refresh_config(
 	void *user_data)
 {
 	uint8_t reloading;
-	uint32_t value;
+	int after_reload;
 	uint32_t link_no;
 	size_t num_nodes;
 	knet_node_id_t host_ids[KNET_MAX_HOST];
@@ -943,15 +943,24 @@ static void totemknet_refresh_config(
 		return;
 	}
 
+	after_reload = (strcmp(key_name, "config.totemconfig_reload_in_progress") == 0);
+
 	knet_set_access_list_config(instance);
 
-	if (icmap_get_uint32("totem.knet_pmtud_interval", &value) == CS_OK) {
-
-		instance->totem_config->knet_pmtud_interval = value;
-		knet_log_printf (LOGSYS_LEVEL_DEBUG, "knet_pmtud_interval now %d", value);
+	if (strcmp(key_name, "totem.knet_pmtud_interval") == 0 || after_reload) {
+		knet_log_printf (LOGSYS_LEVEL_DEBUG, "knet_pmtud_interval now %u",
+		    instance->totem_config->knet_pmtud_interval);
 		err = knet_handle_pmtud_setfreq(instance->knet_handle, instance->totem_config->knet_pmtud_interval);
 		if (err) {
 			KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_WARNING, "knet_handle_pmtud_setfreq failed");
+		}
+	}
+
+	if (strcmp(key_name, "totem.knet_mtu") == 0 || after_reload) {
+		knet_log_printf (LOGSYS_LEVEL_DEBUG, "knet_mtu now %u", instance->totem_config->knet_mtu);
+		err = knet_handle_pmtud_set(instance->knet_handle, instance->totem_config->knet_mtu);
+		if (err) {
+			KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_WARNING, "knet_handle_pmtud failed");
 		}
 	}
 
@@ -1212,6 +1221,10 @@ int totemknet_initialize (
 	res = knet_handle_pmtud_setfreq(instance->knet_handle, instance->totem_config->knet_pmtud_interval);
 	if (res) {
 		KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_WARNING, "knet_handle_pmtud_setfreq failed");
+	}
+	res = knet_handle_pmtud_set(instance->knet_handle, instance->totem_config->knet_mtu);
+	if (res) {
+		KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_WARNING, "knet_handle_pmtud_set failed");
 	}
 	res = knet_handle_enable_filter(instance->knet_handle, instance, dst_host_filter_callback_fn);
 	if (res) {

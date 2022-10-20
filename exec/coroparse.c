@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2019 Red Hat, Inc.
+ * Copyright (c) 2006-2022 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -121,6 +121,7 @@ struct main_cp_cb_data {
 	int knet_ping_precision;
 	int knet_pong_count;
 	int knet_pmtud_interval;
+	unsigned int knet_mtu;
 	char *knet_transport;
 
 	struct qb_list_head logger_subsys_items_head;
@@ -729,6 +730,7 @@ static int main_config_parser_cb(const char *path,
 			    (strcmp(path, "totem.max_messages") == 0) ||
 			    (strcmp(path, "totem.miss_count_const") == 0) ||
 			    (strcmp(path, "totem.knet_pmtud_interval") == 0) ||
+			    (strcmp(path, "totem.knet_mtu") == 0) ||
 			    (strcmp(path, "totem.knet_compression_threshold") == 0) ||
 			    (strcmp(path, "totem.netmtu") == 0)) {
 				val_type = ICMAP_VALUETYPE_UINT32;
