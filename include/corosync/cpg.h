@@ -36,6 +36,7 @@
 #define COROSYNC_CPG_H_DEFINED
 
 #include <netinet/in.h>
+#include <sys/socket.h>
 #include <corosync/corotypes.h>
 
 #ifdef __cplusplus

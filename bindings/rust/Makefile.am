@@ -37,10 +37,10 @@ RUST_BUILT_SRCS		= \
 			  src/sys/cmap.rs
 
 src/sys/cpg.rs: ../../include/corosync/cpg.h
-	$(top_srcdir)/build-aux/rust-regen.sh $^ $@ CPG -- -I$(top_srcdir)/include
+	$(top_srcdir)/build-aux/rust-regen.sh $^ $@ CPG --blocklist-function=inet6.* --blocklist-function==.*etsourcefilter -- -I$(top_srcdir)/include
 
 src/sys/cfg.rs: ../../include/corosync/cfg.h
-	$(top_srcdir)/build-aux/rust-regen.sh $^ $@ CFG -- -I$(top_srcdir)/include
+	$(top_srcdir)/build-aux/rust-regen.sh $^ $@ CFG --blocklist-function=inet6.* --blocklist-function=.*etsourcefilter -- -I$(top_srcdir)/include
 
 src/sys/quorum.rs: ../../include/corosync/quorum.h
 	$(top_srcdir)/build-aux/rust-regen.sh $^ $@ QUORUM -- -I$(top_srcdir)/include
@@ -49,7 +49,7 @@ src/sys/votequorum.rs: ../../include/corosync/votequorum.h
 	$(top_srcdir)/build-aux/rust-regen.sh $^ $@ VOTEQUORUM -- -I$(top_srcdir)/include
 
 src/sys/cmap.rs: ../../include/corosync/cmap.h
-	$(top_srcdir)/build-aux/rust-regen.sh $^ $@ CMAP -- -I$(top_srcdir)/include
+	$(top_srcdir)/build-aux/rust-regen.sh $^ $@ CMAP -- -I$(top_srcdir)/include $(LIBQB_CFLAGS)
 
 all-local: cargo-tree-prep target/$(RUST_TARGET_DIR)/cpg.rlib \
 	target/$(RUST_TARGET_DIR)/cfg.rlib \

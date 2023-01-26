@@ -11,6 +11,7 @@ fn main() {
     // Tell the compiler to use the build-tree libs & headers for compiling
     println!("cargo:rustc-link-search=native=../../../lib/.libs/");
     println!("cargo:rustc-link-search=native=../../../common_lib/.libs/");
+    println!("cargo:rustc-flags=@LIBQBLIBS@");
     println!("cargo:rustc-link-lib=cpg");
     println!("cargo:rustc-link-lib=cfg");
     println!("cargo:rustc-link-lib=cmap");

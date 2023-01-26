@@ -22,6 +22,7 @@ build.rs: build.rs.in
 	cat $^ | sed \
 		-e 's#@ABSTOPLEVELSRC@#$(abs_top_srcdir)#g' \
 		-e 's#@ABSTOPLEVELBUILD@#$(abs_top_builddir)#g' \
+		-e 's#@LIBQBLIBS@#$(LIBQB_LIBS)#g' \
 		> $@-t
 	chmod a-w $@-t
 	mv $@-t $@
