@@ -18,7 +18,6 @@ shift; shift; shift
 
 bindgen \
 	--size_t-is-usize \
-	--no-recursive-allowlist \
 	--no-prepend-enum-name \
 	--no-layout-tests \
 	--no-doc-comments \
