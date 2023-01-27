@@ -244,18 +244,18 @@ impl fmt::Display for DataType {
 impl fmt::Display for Data {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Data::Int8(v) => write!(f, "{} (Int8)", v),
-            Data::UInt8(v) => write!(f, "{} (UInt8)", v),
-            Data::Int16(v) => write!(f, "{} (Int16)", v),
-            Data::UInt16(v) => write!(f, "{} (UInt16)", v),
-            Data::Int32(v) => write!(f, "{} (Int32)", v),
-            Data::UInt32(v) => write!(f, "{} (UInt32)", v),
-            Data::Int64(v) => write!(f, "{} (Int64)", v),
-            Data::UInt64(v) => write!(f, "{} (UInt64)", v),
-            Data::Float(v) => write!(f, "{} (Float)", v),
-            Data::Double(v) => write!(f, "{} (Double)", v),
-            Data::String(v) => write!(f, "{} (String)", v),
-            Data::Binary(v) => write!(f, "{:?} (Binary)", v),
+            Data::Int8(v) => write!(f, "{v} (Int8)"),
+            Data::UInt8(v) => write!(f, "{v} (UInt8)"),
+            Data::Int16(v) => write!(f, "{v} (Int16)"),
+            Data::UInt16(v) => write!(f, "{v} (UInt16)"),
+            Data::Int32(v) => write!(f, "{v} (Int32)"),
+            Data::UInt32(v) => write!(f, "{v} (UInt32)"),
+            Data::Int64(v) => write!(f, "{v} (Int64)"),
+            Data::UInt64(v) => write!(f, "{v} (UInt64)"),
+            Data::Float(v) => write!(f, "{v} (Float)"),
+            Data::Double(v) => write!(f, "{v} (Double)"),
+            Data::String(v) => write!(f, "{v} (String)"),
+            Data::Binary(v) => write!(f, "{v:?} (Binary)"),
             Data::Unknown => write!(f, "Unknown)"),
         }
     }
