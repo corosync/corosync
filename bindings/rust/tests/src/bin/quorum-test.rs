@@ -9,9 +9,9 @@ fn quorum_fn(
     ring_id: quorum::RingId,
     member_list: Vec<NodeId>,
 ) {
-    println!("TEST quorum_fn called. quorate = {}", quorate);
+    println!("TEST quorum_fn called. quorate = {quorate}");
     println!("  ring_id: {}/{}", ring_id.nodeid, ring_id.seq);
-    println!("  members: {:?}", member_list);
+    println!("  members: {member_list:?}");
 }
 
 fn nodelist_fn(
@@ -25,9 +25,9 @@ fn nodelist_fn(
         "TEST nodelist_fn called for {}/{}",
         ring_id.nodeid, ring_id.seq
     );
-    println!("  members: {:?}", member_list);
-    println!("  joined: {:?}", joined_list);
-    println!("  left: {:?}", left_list);
+    println!("  members: {member_list:?}");
+    println!("  joined: {joined_list:?}");
+    println!("  left: {left_list:?}");
 }
 
 fn main() {
@@ -44,7 +44,7 @@ fn main() {
             h
         }
         Err(e) => {
-            println!("Error in QUORUM init: {}", e);
+            println!("Error in QUORUM init: {e}");
             return;
         }
     };
@@ -52,7 +52,7 @@ fn main() {
     // Test context APIs
     let set_context: u64 = 0xabcdbeefcafe;
     if let Err(e) = quorum::context_set(handle, set_context) {
-        println!("Error in QUORUM context_set: {}", e);
+        println!("Error in QUORUM context_set: {e}");
         return;
     }
 
@@ -60,19 +60,16 @@ fn main() {
     match quorum::context_get(handle) {
         Ok(c) => {
             if c != set_context {
-                println!(
-                    "Error: context_get() returned {:x}, context should be {:x}",
-                    c, set_context
-                );
+                println!("Error: context_get() returned {c:x}, context should be {set_context:x}");
             }
         }
         Err(e) => {
-            println!("Error in QUORUM context_get: {}", e);
+            println!("Error in QUORUM context_get: {e}");
         }
     }
 
     if let Err(e) = quorum::trackstart(handle, corosync::TrackFlags::Changes) {
-        println!("Error in QUORUM trackstart: {}", e);
+        println!("Error in QUORUM trackstart: {e}");
         return;
     }
 

@@ -19,7 +19,7 @@ fn shutdown_check_fn(handle: &cfg::Handle, _flags: u32) {
 
     // DON'T shutdown corosync - we're just testing
     if let Err(e) = cfg::reply_to_shutdown(*handle, cfg::ShutdownReply::No) {
-        println!("Error in CFG replyto_shutdown: {}", e);
+        println!("Error in CFG replyto_shutdown: {e}");
     }
 }
 
@@ -35,7 +35,7 @@ fn main() {
             h
         }
         Err(e) => {
-            println!("Error in CFG init: {}", e);
+            println!("Error in CFG init: {e}");
             return;
         }
     };
@@ -47,7 +47,7 @@ fn main() {
             h
         }
         Err(e) => {
-            println!("Error in CFG init: {}", e);
+            println!("Error in CFG init: {e}");
             return;
         }
     };
@@ -58,18 +58,18 @@ fn main() {
             spawn(move || dispatch_thread(handle2));
         }
         Err(e) => {
-            println!("Error in CFG track_start: {}", e);
+            println!("Error in CFG track_start: {e}");
         }
     };
 
     let local_nodeid = {
         match cfg::local_get(handle) {
             Ok(n) => {
-                println!("Local nodeid is {}", n);
+                println!("Local nodeid is {n}");
                 Some(n)
             }
             Err(e) => {
-                println!("Error in CFG local_get: {}", e);
+                println!("Error in CFG local_get: {e}");
                 None
             }
         }
@@ -84,7 +84,7 @@ fn main() {
         let us_less1 = NodeId::from(u32::from(our_nodeid) - 1);
         let mut res = cfg::node_status_get(handle, us_plus1, cfg::NodeStatusVersion::V1);
         if let Err(e) = res {
-            println!("Error from node_status_get on nodeid {}: {}", us_plus1, e);
+            println!("Error from node_status_get on nodeid {us_plus1}: {e}");
             res = cfg::node_status_get(handle, us_less1, cfg::NodeStatusVersion::V1);
         };
         match res {
@@ -97,7 +97,7 @@ fn main() {
                 println!("   onwire_ver: {}", ns.onwire_ver);
                 for (ls_num, ls) in ns.link_status.iter().enumerate() {
                     if ls.enabled {
-                        println!("   Link {}", ls_num);
+                        println!("   Link {ls_num}");
                         println!("      connected: {}", ls.connected);
                         println!("      mtu: {}", ls.mtu);
                         println!("      src: {}", ls.src_ipaddr);
@@ -107,8 +107,7 @@ fn main() {
             }
             Err(e) => {
                 println!(
-                    "Error in CFG node_status get: {} (tried nodeids {} & {})",
-                    e, us_plus1, us_less1
+                    "Error in CFG node_status get: {e} (tried nodeids {us_plus1} & {us_less1})"
                 );
             }
         }
@@ -121,7 +120,7 @@ fn main() {
         }
         Err(e) => {
             if e != corosync::CsError::CsErrBusy {
-                println!("Error in CFG try_shutdown: {}", e);
+                println!("Error in CFG try_shutdown: {e}");
             }
         }
     }
