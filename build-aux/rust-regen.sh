@@ -17,7 +17,6 @@ filter="$3"
 shift; shift; shift
 
 bindgen \
-	--size_t-is-usize \
 	--no-prepend-enum-name \
 	--no-layout-tests \
 	--no-doc-comments \
