@@ -769,6 +769,13 @@ static int log_deliver_fn (
 					    knet_log_get_subsystem_name(msg->subsystem),
 					    msg->msg);
 			break;
+#ifdef KNET_LOG_TRACE
+		case KNET_LOG_TRACE:
+			libknet_log_printf (LOGSYS_LEVEL_TRACE, "%s: %s",
+					    knet_log_get_subsystem_name(msg->subsystem),
+					    msg->msg);
+			break;
+#endif
 		}
 		bufptr += sizeof(struct knet_log_msg);
 		done += sizeof(struct knet_log_msg);
@@ -890,6 +897,7 @@ void totemknet_configure_log_level()
 	int logsys_log_mode;
 	int knet_log_mode = KNET_LOG_INFO;
 	uint8_t s;
+	int err;
 
 	if (!global_instance || !global_instance->knet_handle) {
 		return;
@@ -906,12 +914,22 @@ void totemknet_configure_log_level()
 			knet_log_mode = KNET_LOG_DEBUG;
 			break;
 		case LOGSYS_DEBUG_TRACE:
+#ifdef KNET_LOG_TRACE
+			knet_log_mode = KNET_LOG_TRACE;
+#else
 			knet_log_mode = KNET_LOG_DEBUG;
+#endif
 			break;
 	}
 	log_printf (LOGSYS_LEVEL_DEBUG, "totemknet setting log level %s", knet_log_get_loglevel_name(knet_log_mode));
+	err = 0;
 	for (s = 0; s<KNET_MAX_SUBSYSTEMS; s++) {
-		knet_log_set_loglevel(global_instance->knet_handle, s, knet_log_mode);
+		err = knet_log_set_loglevel(global_instance->knet_handle, s, knet_log_mode);
+	}
+
+	/* If one fails, they all fail. no point in issuing KNET_MAX_SUBSYSTEMS errors */
+	if (err) {
+		log_printf (LOGSYS_LEVEL_ERROR, "totemknet failed to set log level: %s", strerror(errno));
 	}
 }
 
