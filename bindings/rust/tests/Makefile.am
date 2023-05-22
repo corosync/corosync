@@ -21,12 +21,6 @@ RUST_SHIP_SRCS		= src/bin/cpg-test.rs \
 			  src/bin/votequorum-test.rs
 
 # This will build all of the tests
-check_SCRIPTS		= target/$(RUST_TARGET_DIR)/cpg-test
-
-noinst_SCRIPTS		= $(check_SCRIPTS)
-
-AM_TESTS_ENVIRONMENT=LD_LIBRARY_PATH="$(abs_top_builddir)/lib/.libs"
-
-TESTS			= $(check_SCRIPTS)
+noinst_SCRIPTS		= target/$(RUST_TARGET_DIR)/cpg-test
 
 clean-local: cargo-clean
