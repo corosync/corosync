@@ -36,22 +36,22 @@ RUST_BUILT_SRCS		= \
 			  src/sys/votequorum.rs \
 			  src/sys/cmap.rs
 
-src/sys/cpg.rs: ../../include/corosync/cpg.h
-	$(top_srcdir)/build-aux/rust-regen.sh $^ $@ CPG --blocklist-function=inet6.* --blocklist-function==.*etsourcefilter -- -I$(top_srcdir)/include
+src/sys/cpg.rs: cargo-tree-prep ../../include/corosync/cpg.h
+	$(top_srcdir)/build-aux/rust-regen.sh $(top_srcdir)/include/corosync/cpg.h $@ CPG --blocklist-function=inet6.* --blocklist-function==.*etsourcefilter -- -I$(top_srcdir)/include
 
-src/sys/cfg.rs: ../../include/corosync/cfg.h
-	$(top_srcdir)/build-aux/rust-regen.sh $^ $@ CFG --blocklist-function=inet6.* --blocklist-function=.*etsourcefilter -- -I$(top_srcdir)/include
+src/sys/cfg.rs: cargo-tree-prep ../../include/corosync/cfg.h
+	$(top_srcdir)/build-aux/rust-regen.sh $(top_srcdir)/include/corosync/cfg.h $@ CFG --blocklist-function=inet6.* --blocklist-function=.*etsourcefilter -- -I$(top_srcdir)/include
 
-src/sys/quorum.rs: ../../include/corosync/quorum.h
-	$(top_srcdir)/build-aux/rust-regen.sh $^ $@ QUORUM -- -I$(top_srcdir)/include
+src/sys/quorum.rs: cargo-tree-prep ../../include/corosync/quorum.h
+	$(top_srcdir)/build-aux/rust-regen.sh $(top_srcdir)/include/corosync/quorum.h $@ QUORUM -- -I$(top_srcdir)/include
 
-src/sys/votequorum.rs: ../../include/corosync/votequorum.h
-	$(top_srcdir)/build-aux/rust-regen.sh $^ $@ VOTEQUORUM -- -I$(top_srcdir)/include
+src/sys/votequorum.rs: cargo-tree-prep ../../include/corosync/votequorum.h
+	$(top_srcdir)/build-aux/rust-regen.sh $(top_srcdir)/include/corosync/votequorum.h $@ VOTEQUORUM -- -I$(top_srcdir)/include
 
-src/sys/cmap.rs: ../../include/corosync/cmap.h
-	$(top_srcdir)/build-aux/rust-regen.sh $^ $@ CMAP -- -I$(top_srcdir)/include $(LIBQB_CFLAGS)
+src/sys/cmap.rs: cargo-tree-prep ../../include/corosync/cmap.h
+	$(top_srcdir)/build-aux/rust-regen.sh $(top_srcdir)/include/corosync/cmap.h $@ CMAP -- -I$(top_srcdir)/include $(LIBQB_CFLAGS)
 
-all-local: cargo-tree-prep target/$(RUST_TARGET_DIR)/cpg.rlib \
+all-local: target/$(RUST_TARGET_DIR)/cpg.rlib \
 	target/$(RUST_TARGET_DIR)/cfg.rlib \
 	target/$(RUST_TARGET_DIR)/quorum.rlib \
 	target/$(RUST_TARGET_DIR)/votequorum.rlib \
