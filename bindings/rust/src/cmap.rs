@@ -523,7 +523,7 @@ fn c_to_data(value_size: usize, c_key_type: u32, c_value: *const u8) -> Result<D
         match cmap_to_enum(c_key_type) {
             DataType::UInt8 => {
                 let mut ints = [0u8; 1];
-                copy_nonoverlapping(c_value as *mut u8, ints.as_mut_ptr() as *mut u8, value_size);
+                copy_nonoverlapping(c_value as *mut u8, ints.as_mut_ptr(), value_size);
                 Ok(Data::UInt8(ints[0]))
             }
             DataType::Int8 => {
@@ -574,7 +574,7 @@ fn c_to_data(value_size: usize, c_key_type: u32, c_value: *const u8) -> Result<D
             DataType::String => {
                 let mut ints = Vec::<u8>::new();
                 ints.resize(value_size, 0u8);
-                copy_nonoverlapping(c_value as *mut u8, ints.as_mut_ptr() as *mut u8, value_size);
+                copy_nonoverlapping(c_value as *mut u8, ints.as_mut_ptr(), value_size);
                 // -1 here so CString doesn't see the NUL
                 let cs = match CString::new(&ints[0..value_size - 1_usize]) {
                     Ok(c1) => c1,
@@ -588,7 +588,7 @@ fn c_to_data(value_size: usize, c_key_type: u32, c_value: *const u8) -> Result<D
             DataType::Binary => {
                 let mut ints = Vec::<u8>::new();
                 ints.resize(value_size, 0u8);
-                copy_nonoverlapping(c_value as *mut u8, ints.as_mut_ptr() as *mut u8, value_size);
+                copy_nonoverlapping(c_value as *mut u8, ints.as_mut_ptr(), value_size);
                 Ok(Data::Binary(ints))
             }
             DataType::Unknown => Ok(Data::Unknown),
