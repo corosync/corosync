@@ -1157,11 +1157,12 @@ static void calc_knet_ping_timers(struct totem_config *totem_config)
  * (set to 0), and ips which are only in set1 or set2 remains untouched.
  * totempg_node_add/remove is called.
  */
-static void compute_and_set_totempg_interfaces(struct totem_interface *set1,
+static int compute_and_set_totempg_interfaces(struct totem_interface *set1,
 	struct totem_interface *set2)
 {
 	int ring_no, set1_pos, set2_pos;
 	struct totem_ip_address empty_ip_address;
+	int res = 0;
 
 	memset(&empty_ip_address, 0, sizeof(empty_ip_address));
 
@@ -1217,10 +1218,13 @@ static void compute_and_set_totempg_interfaces(struct totem_interface *set1,
 					totemip_print(&set2[ring_no].member_list[set2_pos]),
 					ring_no);
 
-				totempg_member_add(&set2[ring_no].member_list[set2_pos], ring_no);
+				if (totempg_member_add(&set2[ring_no].member_list[set2_pos], ring_no)) {
+					res = -1;
+				}
 			}
 		}
 	}
+	return res;
 }
 
 /*
@@ -2414,10 +2418,11 @@ int totemconfig_configure_new_params(
 	return 0;
 }
 
-void totemconfig_commit_new_params(
+int totemconfig_commit_new_params(
 	struct totem_config *totem_config,
 	icmap_map_t map)
 {
+	int res;
 	struct totem_interface *new_interfaces = NULL;
 
 	new_interfaces = malloc (sizeof (struct totem_interface) * INTERFACE_MAX);
@@ -2427,13 +2432,14 @@ void totemconfig_commit_new_params(
 	/* Set link parameters including local_ip */
 	configure_totem_links(totem_config, map);
 
-	/* Add & remove nodes */
-	compute_and_set_totempg_interfaces(totem_config->orig_interfaces, new_interfaces);
+	/* Add & remove nodes & link properties */
+	res = compute_and_set_totempg_interfaces(totem_config->orig_interfaces, new_interfaces);
 
 	/* Does basic global params (like compression) */
 	totempg_reconfigure();
 
 	free(new_interfaces);
+	return res; /* On a reload this is ignored */
 }
 
 static void add_totem_config_notification(struct totem_config *totem_config)

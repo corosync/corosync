@@ -86,7 +86,7 @@ extern int totemconfig_configure_new_params(
 	icmap_map_t map,
 	const char **error_string);
 
-extern void totemconfig_commit_new_params(
+extern int totemconfig_commit_new_params(
 	struct totem_config *totem_config,
 	icmap_map_t map);
 

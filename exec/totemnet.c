@@ -56,13 +56,13 @@ struct transport {
 		totemsrp_stats_t *stats,
 		void *context,
 
-		void (*deliver_fn) (
+		int (*deliver_fn) (
 			void *context,
 			const void *msg,
 			unsigned int msg_len,
 			const struct sockaddr_storage *system_from),
 
-		void (*iface_change_fn) (
+		int (*iface_change_fn) (
 			void *context,
 			const struct totem_ip_address *iface_address,
 			unsigned int ring_no),
@@ -321,13 +321,13 @@ int totemnet_initialize (
 	totemsrp_stats_t *stats,
 	void *context,
 
-	void (*deliver_fn) (
+	int (*deliver_fn) (
 		void *context,
 		const void *msg,
 		unsigned int msg_len,
 		const struct sockaddr_storage *system_from),
 
-	void (*iface_change_fn) (
+	int (*iface_change_fn) (
 		void *context,
 		const struct totem_ip_address *iface_address,
 		unsigned int ring_no),
