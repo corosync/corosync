@@ -664,13 +664,13 @@ static void *totemsrp_buffer_alloc (struct totemsrp_instance *instance);
 static void totemsrp_buffer_release (struct totemsrp_instance *instance, void *ptr);
 static const char* gsfrom_to_msg(enum gather_state_from gsfrom);
 
-void main_deliver_fn (
+int main_deliver_fn (
 	void *context,
 	const void *msg,
 	unsigned int msg_len,
 	const struct sockaddr_storage *system_from);
 
-void main_iface_change_fn (
+int main_iface_change_fn (
 	void *context,
 	const struct totem_ip_address *iface_address,
 	unsigned int iface_no);
@@ -5032,7 +5032,7 @@ static int check_message_header_validity(
 }
 
 
-void main_deliver_fn (
+int main_deliver_fn (
 	void *context,
 	const void *msg,
 	unsigned int msg_len,
@@ -5042,7 +5042,7 @@ void main_deliver_fn (
 	const struct totem_message_header *message_header = msg;
 
 	if (check_message_header_validity(context, msg, msg_len, system_from) == -1) {
-		return ;
+		return -1;
 	}
 
 	switch (message_header->type) {
@@ -5071,12 +5071,12 @@ void main_deliver_fn (
 		    (int)message_header->type);
 
 		instance->stats.rx_msg_dropped++;
-		return;
+		return 0;
 	}
 	/*
 	 * Handle incoming message
 	 */
-	totemsrp_message_handlers.handler_functions[(int)message_header->type] (
+	return totemsrp_message_handlers.handler_functions[(int)message_header->type] (
 		instance,
 		msg,
 		msg_len,
@@ -5104,7 +5104,7 @@ int totemsrp_iface_set (
 }
 
 /* Contrary to its name, this only gets called when the interface is enabled */
-void main_iface_change_fn (
+int main_iface_change_fn (
 	void *context,
 	const struct totem_ip_address *iface_addr,
 	unsigned int iface_no)
@@ -5112,6 +5112,7 @@ void main_iface_change_fn (
 	struct totemsrp_instance *instance = context;
 	int num_interfaces;
 	int i;
+	int res = 0;
 
 	if (!instance->my_id.nodeid) {
 		instance->my_id.nodeid = iface_addr->nodeid;
@@ -5154,11 +5155,12 @@ void main_iface_change_fn (
 		assert(instance->totem_config->orig_interfaces != NULL);
 		memset(instance->totem_config->orig_interfaces, 0, sizeof (struct totem_interface) * INTERFACE_MAX);
 
-		totemconfig_commit_new_params(instance->totem_config, icmap_get_global_map());
+		res = totemconfig_commit_new_params(instance->totem_config, icmap_get_global_map());
 
 		memb_state_gather_enter (instance, TOTEMSRP_GSFROM_INTERFACE_CHANGE);
 		free(instance->totem_config->orig_interfaces);
 	}
+	return res;
 }
 
 void totemsrp_net_mtu_adjust (struct totem_config *totem_config) {

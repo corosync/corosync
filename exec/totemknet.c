@@ -101,13 +101,13 @@ struct totemknet_instance {
 
 	void *context;
 
-	void (*totemknet_deliver_fn) (
+	int (*totemknet_deliver_fn) (
 		void *context,
 		const void *msg,
 		unsigned int msg_len,
 		const struct sockaddr_storage *system_from);
 
-	void (*totemknet_iface_change_fn) (
+	int (*totemknet_iface_change_fn) (
 		void *context,
 		const struct totem_ip_address *iface_address,
 		unsigned int link_no);
@@ -865,14 +865,20 @@ static void timer_function_netif_check_timeout (
 {
 	struct totemknet_instance *instance = (struct totemknet_instance *)data;
 	int i;
+	int res = 0;
 
 	for (i=0; i < INTERFACE_MAX; i++) {
 		if (!instance->totem_config->interfaces[i].configured) {
 			continue;
 		}
-		instance->totemknet_iface_change_fn (instance->context,
-						     &instance->my_ids[i],
-						     i);
+		res = instance->totemknet_iface_change_fn (instance->context,
+							   &instance->my_ids[i],
+							   i);
+	}
+	if (res != 0) {
+		/* This is only called at startup, so we can quit here.
+		   Refresh takes a different path */
+		corosync_exit_error(COROSYNC_DONE_MAINCONFIGREAD);
 	}
 }
 
@@ -1121,13 +1127,13 @@ int totemknet_initialize (
 	totemsrp_stats_t *stats,
 	void *context,
 
-	void (*deliver_fn) (
+	int (*deliver_fn) (
 		void *context,
 		const void *msg,
 		unsigned int msg_len,
 		const struct sockaddr_storage *system_from),
 
-	void (*iface_change_fn) (
+	int (*iface_change_fn) (
 		void *context,
 		const struct totem_ip_address *iface_address,
 		unsigned int link_no),
@@ -1634,20 +1640,33 @@ int totemknet_member_add (
 		KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_ERROR, "knet_link_set_priority for nodeid " CS_PRI_NODE_ID ", link %d failed", member->nodeid, link_no);
 	}
 
-	/* ping timeouts maybe 0 here for a newly added interface so we leave this till later, it will
-	   get done in totemknet_refresh_config */
+	/*
+	 * Ping timeouts may be 0 here for a newly added interface (on a reload),
+	 * so we leave this till later, it will get done in totemknet_refresh_config.
+	 * For the initial startup, we are all preset and ready to go from here.
+	 */
 	if (instance->totem_config->interfaces[link_no].knet_ping_interval != 0) {
 		err = knet_link_set_ping_timers(instance->knet_handle, member->nodeid, link_no,
 						instance->totem_config->interfaces[link_no].knet_ping_interval,
 						instance->totem_config->interfaces[link_no].knet_ping_timeout,
 						instance->totem_config->interfaces[link_no].knet_ping_precision);
 		if (err) {
+			/* Flush logs before reporting this error so that the knet message prints before ours */
+			int saved_errno = errno;
+			log_flush_messages(instance);
+			errno = saved_errno;
 			KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_ERROR, "knet_link_set_ping_timers for nodeid " CS_PRI_NODE_ID ", link %d failed", member->nodeid, link_no);
+			return -1;
 		}
 		err = knet_link_set_pong_count(instance->knet_handle, member->nodeid, link_no,
 					       instance->totem_config->interfaces[link_no].knet_pong_count);
 		if (err) {
+			/* Flush logs before reporting this error so that the knet message prints before ours */
+			int saved_errno = errno;
+			log_flush_messages(instance);
+			errno = saved_errno;
 			KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_ERROR, "knet_link_set_pong_count for nodeid " CS_PRI_NODE_ID ", link %d failed", member->nodeid, link_no);
+			return -1;
 		}
 	}
 
