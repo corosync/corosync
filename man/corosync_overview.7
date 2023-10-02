@@ -1,6 +1,6 @@
 .\"/*
 .\" * Copyright (c) 2005 MontaVista Software, Inc.
-.\" * Copyright (c) 2006-2018 Red Hat, Inc.
+.\" * Copyright (c) 2006-2023 Red Hat, Inc.
 .\" *
 .\" * All rights reserved.
 .\" *
@@ -110,20 +110,14 @@ The corosync libraries have header files which must be included in the
 developer's application.  Once the header file is included, the developer can
 reference the corosync interfaces.
 
-The corosync project recommends to distros to place include files in
+The corosync project recommends that distros place include files in
 /usr/include/corosync.
 
 .SH IPv6
-The corosync project supports both IPv4 and IPv6 network addresses.  The entire
-cluster must use either IPv4 or IPv6 for the cluster communication mechanism.
-In order to use IPv6, IPv6 addresses must be specified in the bindnetaddr and
-mcastaddr fields in the configuration file.  The nodeid field must also be
-set.
-
-An example of this is:
-nodeid: 2
-bindnetaddr: fec0::1:a800:4ff:fe00:20
-mcastaddr: ff05::1
+The corosync project supports both IPv4 and IPv6 network addresses.  When using
+knet as the transport each link should have the same IP family, but different links
+can have different families (eg link 0 could be all IPv4, and link 1 all IPv6).
+When using UDP/UDPU the single link should use the same family on all nodes.
 
 To configure a host for IPv6, use the ifconfig program to add interfaces:
 box20: ifconfig eth0 add fec0::1:a800:4ff:fe00:20/64
@@ -136,7 +130,7 @@ IPv6 traffic.
 .SH ARCHITECTURE
 The corosync libraries are a thin IPC interface to the corosync executive.  The
 corosync executive implements the functionality of the corosync APIs for
-distributed coming.
+distributed computing.
 
 The corosync executive uses the Totem extended virtual synchrony protocol.  The
 advantage to the end user is excellent performance characteristics and a proven
@@ -155,12 +149,12 @@ options in the
 
 If membership messages can be captured by intruders, it is possible to execute
 a denial of service attack on the cluster.  In this scenario, the cluster is
-likely already compromised and a DOS attack is the least of the administration's
+likely already compromised and a DoS attack is the least of the administration's
 worries.
 
 The security in corosync does not offer perfect forward secrecy because the keys
-are reused.  It may be possible for an intruder by capturing packets in an
-automated fashion to determine the shared key.  No such automated attack has
+are reused.  It may be possible for an intruder to determine the shared key by
+capturing packets in an automated fashion.  No such automated attack has
 been published as of yet.  In this scenario, the cluster is likely already
 compromised to allow the long-term capture of transmitted data.
 
@@ -173,6 +167,10 @@ None that are known.
 .SH "SEE ALSO"
 .BR corosync.conf (5),
 .BR corosync-keygen (8),
+.BR corosync_quorumtool (8),
+.BR corosync_cfgtool (8),
+.BR corosync_cpgtool (8),
+.BR corosync_cmaptool (8),
 .BR cpg_overview (3),
 .BR sam_overview (3)
 .PP
