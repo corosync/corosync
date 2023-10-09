@@ -256,8 +256,7 @@ impl From<NodeId> for u32 {
 
 // General internal routine to copy bytes from a C array into a Rust String
 fn string_from_bytes(bytes: *const ::std::os::raw::c_char, max_length: usize) -> Result<String> {
-    let mut newbytes = Vec::<u8>::new();
-    newbytes.resize(max_length, 0u8);
+    let mut newbytes = vec![0u8; max_length];
 
     // Get length of the string in old-fashioned style
     let mut length: usize = 0;
