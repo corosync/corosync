@@ -572,8 +572,7 @@ fn c_to_data(value_size: usize, c_key_type: u32, c_value: *const u8) -> Result<D
                 Ok(Data::Double(ints[0]))
             }
             DataType::String => {
-                let mut ints = Vec::<u8>::new();
-                ints.resize(value_size, 0u8);
+                let mut ints = vec![0u8; value_size];
                 copy_nonoverlapping(c_value as *mut u8, ints.as_mut_ptr(), value_size);
                 // -1 here so CString doesn't see the NUL
                 let cs = match CString::new(&ints[0..value_size - 1_usize]) {
@@ -586,8 +585,7 @@ fn c_to_data(value_size: usize, c_key_type: u32, c_value: *const u8) -> Result<D
                 }
             }
             DataType::Binary => {
-                let mut ints = Vec::<u8>::new();
-                ints.resize(value_size, 0u8);
+                let mut ints = vec![0u8; value_size];
                 copy_nonoverlapping(c_value as *mut u8, ints.as_mut_ptr(), value_size);
                 Ok(Data::Binary(ints))
             }
@@ -603,10 +601,9 @@ pub fn get(handle: Handle, key_name: &str) -> Result<Data> {
     let csname = string_to_cstring_validated(key_name, CMAP_KEYNAME_MAXLENGTH)?;
     let mut value_size: usize = 16;
     let mut c_key_type: u32 = 0;
-    let mut c_value = Vec::<u8>::new();
 
     // First guess at a size for Strings and Binaries. Expand if needed
-    c_value.resize(INITIAL_SIZE, 0u8);
+    let mut c_value = vec![0u8; INITIAL_SIZE];
 
     unsafe {
         let res = ffi::cmap_get(
@@ -821,8 +818,7 @@ impl Iterator for CmapIntoIter {
         };
         if res == ffi::CS_OK {
             // Return the Data for this iteration
-            let mut c_value = Vec::<u8>::new();
-            c_value.resize(c_value_len, 0u8);
+            let mut c_value = vec![0u8; c_value_len];
             let res = unsafe {
                 ffi::cmap_get(
                     self.cmap_handle,
