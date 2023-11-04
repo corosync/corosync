@@ -335,8 +335,9 @@ int main (int argc, char *argv[]) {
 			return (1);
 		}
 
-		strcpy(group_name.value, argv[optind]);
-		group_name.length = strlen(argv[optind]);
+		strncpy(group_name.value, argv[optind], sizeof(group_name.value) - 1);
+		group_name.value[sizeof(group_name.value) - 1] = NULL;
+		group_name.length = strlen(group_name.value);
 	}
 	else {
 		strcpy(group_name.value, "GROUP");
