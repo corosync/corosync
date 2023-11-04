@@ -42,11 +42,11 @@
  */
 struct sq {
 	unsigned int head;
-	unsigned int size;
+	size_t size;
 	void *items;
 	unsigned int *items_inuse;
 	unsigned int *items_miss_count;
-	unsigned int size_per_item;
+	size_t size_per_item;
 	unsigned int head_seqid;
 	unsigned int item_count;
 	unsigned int pos_max;
@@ -117,8 +117,8 @@ static inline int sq_lte_compare (unsigned int a, unsigned int b) {
  */
 static inline int sq_init (
 	struct sq *sq,
-	int item_count,
-	int size_per_item,
+	size_t item_count,
+	size_t size_per_item,
 	int head_seqid)
 {
 	sq->head = 0;
