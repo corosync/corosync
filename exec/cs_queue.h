@@ -46,15 +46,15 @@ struct cs_queue {
 	int tail;
 	int used;
 	int usedhw;
-	int size;
+	size_t size;
 	void *items;
-	int size_per_item;
+	size_t size_per_item;
 	int iterator;
 	pthread_mutex_t mutex;
 	int threaded_mode_enabled;
 };
 
-static inline int cs_queue_init (struct cs_queue *cs_queue, int cs_queue_items, int size_per_item, int threaded_mode_enabled) {
+static inline int cs_queue_init (struct cs_queue *cs_queue, size_t cs_queue_items, size_t size_per_item, int threaded_mode_enabled) {
 	cs_queue->head = 0;
 	cs_queue->tail = cs_queue_items - 1;
 	cs_queue->used = 0;
