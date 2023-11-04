@@ -174,12 +174,13 @@ static int uid_determine (const char *req_user)
 	}
 	if (rc != 0) {
 		free (pwdbuffer);
-	        sprintf (error_string_response, "getpwnam_r(): %s", strerror(rc));
+	        snprintf (error_string_response, sizeof (error_string_response), 
+			"getpwnam_r(): %s", strerror(rc));
 	        return (-1);
 	}
 	if (temp_pwd_pt == NULL) {
 		free (pwdbuffer);
-	        sprintf (error_string_response,
+	        snprintf (error_string_response, sizeof (error_string_response),
 	                "The '%s' user is not found in /etc/passwd, please read the documentation.",
 	                req_user);
 	        return (-1);
@@ -228,12 +229,13 @@ static int gid_determine (const char *req_group)
 	}
 	if (rc != 0) {
 		free (grpbuffer);
-	        sprintf (error_string_response, "getgrnam_r(): %s", strerror(rc));
+	        snprintf (error_string_response, sizeof (error_string_response), 
+			"getgrnam_r(): %s", strerror(rc));
 	        return (-1);
 	}
 	if (temp_grp_pt == NULL) {
 		free (grpbuffer);
-	        sprintf (error_string_response,
+	        snprintf (error_string_response, sizeof (error_string_response),
 	                "The '%s' group is not found in /etc/group, please read the documentation.",
 	                req_group);
 		return (-1);
