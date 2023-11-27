@@ -46,7 +46,7 @@ AC_ARG_ENABLE([rust-bindings],
 	[AS_HELP_STRING([--enable-rust-bindings],[rust bindings support])],,
 	[ enable_rust_bindings="no" ])
 AM_CONDITIONAL([BUILD_RUST_BINDINGS], [test x$enable_rust_bindings = xyes])
-corosyncrustver="`echo ${VERSION} | sed 's/\(.*\)\./\1-/'`"
+corosyncrustver=["`echo ${VERSION} | sed 's/\.\([^-\.]*-\)/-\1/'`"]
 AC_SUBST([corosyncrustver])
 
 dnl Fix default variables - "prefix" variable if not specified
