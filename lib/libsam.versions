@@ -2,11 +2,16 @@
 
 COROSYNC_SAM_1.0 {
 	global:
-		sam_initialized;
+		sam_initialize;
 		sam_finalize;
 		sam_start;
 		sam_stop;
 		sam_register;
 		sam_hc_send;
 		sam_hc_callback_register;
+		sam_warn_signal_set;
+		sam_data_getsize;
+		sam_data_restore;
+		sam_data_store;
+		sam_mark_failed;
 };
