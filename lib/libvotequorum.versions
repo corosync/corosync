@@ -4,12 +4,16 @@ COROSYNC_VOTEQUORUM_1.0 {
 	global:
 		votequorum_initialize;
 		votequorum_finalize;
+		votequorum_dispatch;
+		votequorum_fd_get;
 		votequorum_getinfo;
 		votequorum_setexpected;
 		votequorum_setvotes;
 		votequorum_qdevice_register;
 		votequorum_qdevice_unregister;
 		votequorum_qdevice_poll;
+		votequorum_qdevice_update;
+		votequorum_qdevice_master_wins;
 		votequorum_trackstart;
 		votequorum_trackstop;
 		votequorum_context_get;

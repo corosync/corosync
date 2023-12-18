@@ -3,15 +3,23 @@
 COROSYNC_CPG_1.0 {
 	global:
 		cpg_initialize;
+		cpg_model_initialize;
 		cpg_finalize;
 		cpg_fd_get;
+		cpg_max_atomic_msgsize_get;
 		cpg_dispatch;
 		cpg_join;
 		cpg_leave;
 		cpg_mcast_joined;
 		cpg_membership_get;
+		cpg_local_get;
+		cpg_flow_control_state_get;
 		cpg_context_get;
 		cpg_context_set;
 		cpg_zcb_alloc;
 		cpg_zcb_free;
+		cpg_zcb_mcast_joined;
+		cpg_iteration_initialize;
+		cpg_iteration_next;
+		cpg_iteration_finalize;
 };
