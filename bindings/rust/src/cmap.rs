@@ -62,10 +62,33 @@ impl fmt::Display for TrackType {
     }
 }
 
-#[derive(Copy, Clone)]
 /// A handle returned from [initialize], needs to be passed to all other cmap API calls
 pub struct Handle {
     cmap_handle: u64,
+    clone: bool,
+}
+
+impl Clone for Handle {
+    fn clone(&self) -> Handle {
+        Handle {
+            cmap_handle: self.cmap_handle,
+            clone: true,
+        }
+    }
+}
+
+impl Drop for Handle {
+    fn drop(self: &mut Handle) {
+        if !self.clone {
+            let _e = finalize(self);
+        }
+    }
+}
+// Clones count as equivalent
+impl PartialEq for Handle {
+    fn eq(&self, other: &Handle) -> bool {
+        self.cmap_handle == other.cmap_handle
+    }
 }
 
 #[derive(Copy, Clone)]
@@ -97,8 +120,9 @@ pub fn initialize(map: Map) -> Result<Handle> {
         if res == ffi::CS_OK {
             let rhandle = Handle {
                 cmap_handle: handle,
+                clone: false,
             };
-            HANDLE_HASH.lock().unwrap().insert(handle, rhandle);
+            HANDLE_HASH.lock().unwrap().insert(handle, rhandle.clone());
             Ok(rhandle)
         } else {
             Err(CsError::from_c(res))
@@ -108,7 +132,7 @@ pub fn initialize(map: Map) -> Result<Handle> {
 
 /// Finish with a connection to corosync.
 /// Takes a [Handle] as returned from [initialize]
-pub fn finalize(handle: Handle) -> Result<()> {
+pub fn finalize(handle: &Handle) -> Result<()> {
     let res = unsafe { ffi::cmap_finalize(handle.cmap_handle) };
     if res == ffi::CS_OK {
         HANDLE_HASH.lock().unwrap().remove(&handle.cmap_handle);
@@ -121,7 +145,7 @@ pub fn finalize(handle: Handle) -> Result<()> {
 /// Return a file descriptor to use for poll/select on the CMAP handle.
 /// Takes a [Handle] as returned from [initialize],
 /// returns a C file descriptor as i32
-pub fn fd_get(handle: Handle) -> Result<i32> {
+pub fn fd_get(handle: &Handle) -> Result<i32> {
     let c_fd: *mut c_int = &mut 0 as *mut _ as *mut c_int;
     let res = unsafe { ffi::cmap_fd_get(handle.cmap_handle, c_fd) };
     if res == ffi::CS_OK {
@@ -134,7 +158,7 @@ pub fn fd_get(handle: Handle) -> Result<i32> {
 /// Dispatch any/all active CMAP callbacks.
 /// Takes a [Handle] as returned from [initialize],
 /// flags [DispatchFlags] tells it how many items to dispatch before returning
-pub fn dispatch(handle: Handle, flags: DispatchFlags) -> Result<()> {
+pub fn dispatch(handle: &Handle, flags: DispatchFlags) -> Result<()> {
     let res = unsafe { ffi::cmap_dispatch(handle.cmap_handle, flags as u32) };
     if res == ffi::CS_OK {
         Ok(())
@@ -146,7 +170,7 @@ pub fn dispatch(handle: Handle, flags: DispatchFlags) -> Result<()> {
 /// Get the current 'context' value for this handle
 /// The context value is an arbitrary value that is always passed
 /// back to callbacks to help identify the source
-pub fn context_get(handle: Handle) -> Result<u64> {
+pub fn context_get(handle: &Handle) -> Result<u64> {
     let (res, context) = unsafe {
         let mut context: u64 = 0;
         let c_context: *mut c_void = &mut context as *mut _ as *mut c_void;
@@ -164,7 +188,7 @@ pub fn context_get(handle: Handle) -> Result<u64> {
 /// The context value is an arbitrary value that is always passed
 /// back to callbacks to help identify the source.
 /// Normally this is set in [initialize], but this allows it to be changed
-pub fn context_set(handle: Handle, context: u64) -> Result<()> {
+pub fn context_set(handle: &Handle, context: u64) -> Result<()> {
     let res = unsafe {
         let c_context = context as *mut c_void;
         ffi::cmap_context_set(handle.cmap_handle, c_context)
@@ -274,7 +298,7 @@ fn string_to_cstring_validated(key: &str, maxlen: usize) -> Result<CString> {
 }
 
 fn set_value(
-    handle: Handle,
+    handle: &Handle,
     key_name: &str,
     datatype: DataType,
     value: *mut c_void,
@@ -333,7 +357,7 @@ fn is_numeric_type(dtype: DataType) -> bool {
 
 /// Function to set a generic numeric value
 /// This doesn't work for strings or binaries
-pub fn set_number<T: Copy>(handle: Handle, key_name: &str, value: T) -> Result<()> {
+pub fn set_number<T: Copy>(handle: &Handle, key_name: &str, value: T) -> Result<()> {
     let (c_type, c_size) = generic_to_cmap(value);
 
     if is_numeric_type(c_type) {
@@ -345,21 +369,21 @@ pub fn set_number<T: Copy>(handle: Handle, key_name: &str, value: T) -> Result<(
     }
 }
 
-pub fn set_u8(handle: Handle, key_name: &str, value: u8) -> Result<()> {
+pub fn set_u8(handle: &Handle, key_name: &str, value: u8) -> Result<()> {
     let mut tmp = value;
     let c_value: *mut c_void = &mut tmp as *mut _ as *mut c_void;
     set_value(handle, key_name, DataType::UInt8, c_value as *mut c_void, 1)
 }
 
 /// Sets an i8 value into cmap
-pub fn set_i8(handle: Handle, key_name: &str, value: i8) -> Result<()> {
+pub fn set_i8(handle: &Handle, key_name: &str, value: i8) -> Result<()> {
     let mut tmp = value;
     let c_value: *mut c_void = &mut tmp as *mut _ as *mut c_void;
     set_value(handle, key_name, DataType::Int8, c_value as *mut c_void, 1)
 }
 
 /// Sets a u16 value into cmap
-pub fn set_u16(handle: Handle, key_name: &str, value: u16) -> Result<()> {
+pub fn set_u16(handle: &Handle, key_name: &str, value: u16) -> Result<()> {
     let mut tmp = value;
     let c_value: *mut c_void = &mut tmp as *mut _ as *mut c_void;
     set_value(
@@ -372,28 +396,28 @@ pub fn set_u16(handle: Handle, key_name: &str, value: u16) -> Result<()> {
 }
 
 /// Sets an i16 value into cmap
-pub fn set_i16(handle: Handle, key_name: &str, value: i16) -> Result<()> {
+pub fn set_i16(handle: &Handle, key_name: &str, value: i16) -> Result<()> {
     let mut tmp = value;
     let c_value: *mut c_void = &mut tmp as *mut _ as *mut c_void;
     set_value(handle, key_name, DataType::Int16, c_value as *mut c_void, 2)
 }
 
 /// Sets a u32 value into cmap
-pub fn set_u32(handle: Handle, key_name: &str, value: u32) -> Result<()> {
+pub fn set_u32(handle: &Handle, key_name: &str, value: u32) -> Result<()> {
     let mut tmp = value;
     let c_value: *mut c_void = &mut tmp as *mut _ as *mut c_void;
     set_value(handle, key_name, DataType::UInt32, c_value, 4)
 }
 
 /// Sets an i32 value into cmap
-pub fn set_i132(handle: Handle, key_name: &str, value: i32) -> Result<()> {
+pub fn set_i132(handle: &Handle, key_name: &str, value: i32) -> Result<()> {
     let mut tmp = value;
     let c_value: *mut c_void = &mut tmp as *mut _ as *mut c_void;
     set_value(handle, key_name, DataType::Int32, c_value as *mut c_void, 4)
 }
 
 /// Sets a u64 value into cmap
-pub fn set_u64(handle: Handle, key_name: &str, value: u64) -> Result<()> {
+pub fn set_u64(handle: &Handle, key_name: &str, value: u64) -> Result<()> {
     let mut tmp = value;
     let c_value: *mut c_void = &mut tmp as *mut _ as *mut c_void;
     set_value(
@@ -406,14 +430,14 @@ pub fn set_u64(handle: Handle, key_name: &str, value: u64) -> Result<()> {
 }
 
 /// Sets an i64 value into cmap
-pub fn set_i164(handle: Handle, key_name: &str, value: i64) -> Result<()> {
+pub fn set_i164(handle: &Handle, key_name: &str, value: i64) -> Result<()> {
     let mut tmp = value;
     let c_value: *mut c_void = &mut tmp as *mut _ as *mut c_void;
     set_value(handle, key_name, DataType::Int64, c_value as *mut c_void, 8)
 }
 
 /// Sets a string value into cmap
-pub fn set_string(handle: Handle, key_name: &str, value: &str) -> Result<()> {
+pub fn set_string(handle: &Handle, key_name: &str, value: &str) -> Result<()> {
     let v_string = string_to_cstring_validated(value, 0)?;
     set_value(
         handle,
@@ -425,7 +449,7 @@ pub fn set_string(handle: Handle, key_name: &str, value: &str) -> Result<()> {
 }
 
 /// Sets a binary value into cmap
-pub fn set_binary(handle: Handle, key_name: &str, value: &[u8]) -> Result<()> {
+pub fn set_binary(handle: &Handle, key_name: &str, value: &[u8]) -> Result<()> {
     set_value(
         handle,
         key_name,
@@ -436,7 +460,7 @@ pub fn set_binary(handle: Handle, key_name: &str, value: &[u8]) -> Result<()> {
 }
 
 /// Sets a [Data] type into cmap
-pub fn set(handle: Handle, key_name: &str, data: &Data) -> Result<()> {
+pub fn set(handle: &Handle, key_name: &str, data: &Data) -> Result<()> {
     let (datatype, datalen, c_value) = match data {
         Data::Int8(v) => {
             let mut tmp = *v;
@@ -597,7 +621,7 @@ fn c_to_data(value_size: usize, c_key_type: u32, c_value: *const u8) -> Result<D
 const INITIAL_SIZE: usize = 256;
 
 /// Get a value from cmap, returned as a [Data] struct, so could be anything
-pub fn get(handle: Handle, key_name: &str) -> Result<Data> {
+pub fn get(handle: &Handle, key_name: &str) -> Result<Data> {
     let csname = string_to_cstring_validated(key_name, CMAP_KEYNAME_MAXLENGTH)?;
     let mut value_size: usize = 16;
     let mut c_key_type: u32 = 0;
@@ -638,7 +662,7 @@ pub fn get(handle: Handle, key_name: &str) -> Result<Data> {
 }
 
 /// increment the value in a cmap key (must be a numeric type)
-pub fn inc(handle: Handle, key_name: &str) -> Result<()> {
+pub fn inc(handle: &Handle, key_name: &str) -> Result<()> {
     let csname = string_to_cstring_validated(key_name, CMAP_KEYNAME_MAXLENGTH)?;
     let res = unsafe { ffi::cmap_inc(handle.cmap_handle, csname.as_ptr()) };
     if res == ffi::CS_OK {
@@ -649,7 +673,7 @@ pub fn inc(handle: Handle, key_name: &str) -> Result<()> {
 }
 
 /// decrement the value in a cmap key (must be a numeric type)
-pub fn dec(handle: Handle, key_name: &str) -> Result<()> {
+pub fn dec(handle: &Handle, key_name: &str) -> Result<()> {
     let csname = string_to_cstring_validated(key_name, CMAP_KEYNAME_MAXLENGTH)?;
     let res = unsafe { ffi::cmap_dec(handle.cmap_handle, csname.as_ptr()) };
     if res == ffi::CS_OK {
@@ -721,7 +745,7 @@ pub struct NotifyCallback {
 
 /// Track changes in cmap values, multiple [TrackHandle]s per [Handle] are allowed
 pub fn track_add(
-    handle: Handle,
+    handle: &Handle,
     key_name: &str,
     track_type: TrackType,
     notify_callback: &NotifyCallback,
@@ -755,7 +779,7 @@ pub fn track_add(
 }
 
 /// Remove a tracker frm this [Handle]
-pub fn track_delete(handle: Handle, track_handle: TrackHandle) -> Result<()> {
+pub fn track_delete(handle: &Handle, track_handle: TrackHandle) -> Result<()> {
     let res = unsafe { ffi::cmap_track_delete(handle.cmap_handle, track_handle.track_handle) };
     if res == ffi::CS_OK {
         TRACKHANDLE_HASH
@@ -864,7 +888,7 @@ impl Iterator for CmapIntoIter {
 
 impl CmapIterStart {
     /// Create a new [CmapIterStart] object for iterating over a list of cmap keys
-    pub fn new(cmap_handle: Handle, prefix: &str) -> Result<CmapIterStart> {
+    pub fn new(cmap_handle: &Handle, prefix: &str) -> Result<CmapIterStart> {
         let mut iter_handle: u64 = 0;
         let res = unsafe {
             let c_prefix = string_to_cstring_validated(prefix, CMAP_KEYNAME_MAXLENGTH)?;

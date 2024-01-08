@@ -51,13 +51,13 @@ fn main() {
 
     // Test context APIs
     let set_context: u64 = 0xabcdbeefcafe;
-    if let Err(e) = quorum::context_set(handle, set_context) {
+    if let Err(e) = quorum::context_set(&handle, set_context) {
         println!("Error in QUORUM context_set: {e}");
         return;
     }
 
     // NOTE This will fail on 32 bit systems because void* is not u64
-    match quorum::context_get(handle) {
+    match quorum::context_get(&handle) {
         Ok(c) => {
             if c != set_context {
                 println!("Error: context_get() returned {c:x}, context should be {set_context:x}");
@@ -68,14 +68,14 @@ fn main() {
         }
     }
 
-    if let Err(e) = quorum::trackstart(handle, corosync::TrackFlags::Changes) {
+    if let Err(e) = quorum::trackstart(&handle, corosync::TrackFlags::Changes) {
         println!("Error in QUORUM trackstart: {e}");
         return;
     }
 
     // Wait for events
     loop {
-        if quorum::dispatch(handle, corosync::DispatchFlags::One).is_err() {
+        if quorum::dispatch(&handle, corosync::DispatchFlags::One).is_err() {
             break;
         }
     }

@@ -66,12 +66,12 @@ fn main() {
         }
     };
 
-    if let Err(e) = cpg::join(handle, "TEST") {
+    if let Err(e) = cpg::join(&handle, "TEST") {
         println!("Error in CPG join: {e}");
         return;
     }
 
-    match cpg::local_get(handle) {
+    match cpg::local_get(&handle) {
         Ok(n) => {
             println!("Local nodeid is {n}");
         }
@@ -81,7 +81,7 @@ fn main() {
     }
 
     // Test membership_get()
-    match cpg::membership_get(handle, "TEST") {
+    match cpg::membership_get(&handle, "TEST") {
         Ok(m) => {
             println!("  members: {m:?}");
             println!();
@@ -93,13 +93,13 @@ fn main() {
 
     // Test context APIs
     let set_context: u64 = 0xabcdbeefcafe;
-    if let Err(e) = cpg::context_set(handle, set_context) {
+    if let Err(e) = cpg::context_set(&handle, set_context) {
         println!("Error in CPG context_set: {e}");
         return;
     }
 
     // NOTE This will fail on 32 bit systems because void* is not u64
-    match cpg::context_get(handle) {
+    match cpg::context_get(&handle) {
         Ok(c) => {
             if c != set_context {
                 println!("Error: context_get() returned {c:x}, context should be {set_context:x}");
@@ -111,7 +111,7 @@ fn main() {
     }
 
     // Test iterator
-    match cpg::CpgIterStart::new(handle, "", cpg::CpgIterType::All) {
+    match cpg::CpgIterStart::new(&handle, "", cpg::CpgIterType::All) {
         Ok(cpg_iter) => {
             for i in cpg_iter {
                 println!("ITER: {i:?}");
@@ -125,7 +125,7 @@ fn main() {
 
     // We should receive our own message (at least) in the event loop
     if let Err(e) = cpg::mcast_joined(
-        handle,
+        &handle,
         cpg::Guarantee::TypeAgreed,
         &"This is a test".to_string().into_bytes(),
     ) {
@@ -134,7 +134,7 @@ fn main() {
 
     // Wait for events
     loop {
-        if cpg::dispatch(handle, corosync::DispatchFlags::One).is_err() {
+        if cpg::dispatch(&handle, corosync::DispatchFlags::One).is_err() {
             break;
         }
     }

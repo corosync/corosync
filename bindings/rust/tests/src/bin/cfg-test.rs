@@ -5,7 +5,7 @@ use corosync::{cfg, NodeId};
 
 use std::thread::spawn;
 
-fn dispatch_thread(handle: cfg::Handle) {
+fn dispatch_thread(handle: &cfg::Handle) {
     loop {
         if cfg::dispatch(handle, corosync::DispatchFlags::One).is_err() {
             return;
@@ -18,7 +18,7 @@ fn shutdown_check_fn(handle: &cfg::Handle, _flags: u32) {
     println!("in shutdown callback");
 
     // DON'T shutdown corosync - we're just testing
-    if let Err(e) = cfg::reply_to_shutdown(*handle, cfg::ShutdownReply::No) {
+    if let Err(e) = cfg::reply_to_shutdown(handle, cfg::ShutdownReply::No) {
         println!("Error in CFG replyto_shutdown: {e}");
     }
 }
@@ -52,10 +52,10 @@ fn main() {
         }
     };
 
-    match cfg::track_start(handle2, cfg::TrackFlags::None) {
+    match cfg::track_start(&handle2, cfg::TrackFlags::None) {
         Ok(_) => {
             // Run handle2 dispatch in its own thread
-            spawn(move || dispatch_thread(handle2));
+            spawn(move || dispatch_thread(&handle2));
         }
         Err(e) => {
             println!("Error in CFG track_start: {e}");
@@ -63,7 +63,7 @@ fn main() {
     };
 
     let local_nodeid = {
-        match cfg::local_get(handle) {
+        match cfg::local_get(&handle) {
             Ok(n) => {
                 println!("Local nodeid is {n}");
                 Some(n)
@@ -82,10 +82,10 @@ fn main() {
     if let Some(our_nodeid) = local_nodeid {
         let us_plus1 = NodeId::from(u32::from(our_nodeid) + 1);
         let us_less1 = NodeId::from(u32::from(our_nodeid) - 1);
-        let mut res = cfg::node_status_get(handle, us_plus1, cfg::NodeStatusVersion::V1);
+        let mut res = cfg::node_status_get(&handle, us_plus1, cfg::NodeStatusVersion::V1);
         if let Err(e) = res {
             println!("Error from node_status_get on nodeid {us_plus1}: {e}");
-            res = cfg::node_status_get(handle, us_less1, cfg::NodeStatusVersion::V1);
+            res = cfg::node_status_get(&handle, us_less1, cfg::NodeStatusVersion::V1);
         };
         match res {
             Ok(ns) => {
@@ -113,8 +113,8 @@ fn main() {
         }
     }
 
-    // This should not shutdown corosync because the callback on handle2 will refuse it.
-    match cfg::try_shutdown(handle, cfg::ShutdownFlags::Request) {
+    // This should not shutdown corosync because the callback on &handle2 will refuse it.
+    match cfg::try_shutdown(&handle, cfg::ShutdownFlags::Request) {
         Ok(_) => {
             println!("CFG try_shutdown suceeded, should return busy");
         }
@@ -127,7 +127,7 @@ fn main() {
 
     // Wait for events
     loop {
-        if cfg::dispatch(handle, corosync::DispatchFlags::One).is_err() {
+        if cfg::dispatch(&handle, corosync::DispatchFlags::One).is_err() {
             break;
         }
     }
