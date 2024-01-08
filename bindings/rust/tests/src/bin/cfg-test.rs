@@ -23,7 +23,7 @@ fn shutdown_check_fn(handle: &cfg::Handle, _flags: u32) {
     }
 }
 
-fn main() {
+fn main() -> Result<(), corosync::CsError> {
     // Initialise the callbacks data
     let cb = cfg::Callbacks {
         corosync_cfg_shutdown_callback_fn: Some(shutdown_check_fn),
@@ -36,7 +36,7 @@ fn main() {
         }
         Err(e) => {
             println!("Error in CFG init: {e}");
-            return;
+            return Err(e);
         }
     };
 
@@ -48,7 +48,7 @@ fn main() {
         }
         Err(e) => {
             println!("Error in CFG init: {e}");
-            return;
+            return Err(e);
         }
     };
 
@@ -59,6 +59,7 @@ fn main() {
         }
         Err(e) => {
             println!("Error in CFG track_start: {e}");
+            return Err(e);
         }
     };
 
@@ -70,7 +71,7 @@ fn main() {
             }
             Err(e) => {
                 println!("Error in CFG local_get: {e}");
-                None
+                return Err(e);
             }
         }
     };
@@ -109,6 +110,7 @@ fn main() {
                 println!(
                     "Error in CFG node_status get: {e} (tried nodeids {us_plus1} & {us_less1})"
                 );
+                return Err(e);
             }
         }
     }
@@ -121,15 +123,15 @@ fn main() {
         Err(e) => {
             if e != corosync::CsError::CsErrBusy {
                 println!("Error in CFG try_shutdown: {e}");
+                return Err(e);
             }
         }
     }
 
-    // Wait for events
-    loop {
-        if cfg::dispatch(&handle, corosync::DispatchFlags::One).is_err() {
-            break;
-        }
+    // Quick test of dispatch
+    if let Err(e) = cfg::dispatch(&handle, corosync::DispatchFlags::OneNonblocking) {
+        println!("Error in CFG dispatch");
+        return Err(e);
     }
-    println!("ERROR: Corosync quit");
+    Ok(())
 }

@@ -30,7 +30,7 @@ fn nodelist_fn(
     println!("  left: {left_list:?}");
 }
 
-fn main() {
+fn main() -> Result<(), corosync::CsError> {
     // Initialise the model data
     let md = quorum::ModelData::ModelV1(quorum::Model1Data {
         flags: quorum::Model1Flags::None,
@@ -45,7 +45,7 @@ fn main() {
         }
         Err(e) => {
             println!("Error in QUORUM init: {e}");
-            return;
+            return Err(e);
         }
     };
 
@@ -53,7 +53,7 @@ fn main() {
     let set_context: u64 = 0xabcdbeefcafe;
     if let Err(e) = quorum::context_set(&handle, set_context) {
         println!("Error in QUORUM context_set: {e}");
-        return;
+        return Err(e);
     }
 
     // NOTE This will fail on 32 bit systems because void* is not u64
@@ -61,23 +61,24 @@ fn main() {
         Ok(c) => {
             if c != set_context {
                 println!("Error: context_get() returned {c:x}, context should be {set_context:x}");
+                return Err(corosync::CsError::CsErrRustCompat);
             }
         }
         Err(e) => {
             println!("Error in QUORUM context_get: {e}");
+            return Err(e);
         }
     }
 
     if let Err(e) = quorum::trackstart(&handle, corosync::TrackFlags::Changes) {
         println!("Error in QUORUM trackstart: {e}");
-        return;
+        return Err(e);
     }
 
-    // Wait for events
-    loop {
-        if quorum::dispatch(&handle, corosync::DispatchFlags::One).is_err() {
-            break;
-        }
+    // Quick test of dispatch
+    if let Err(e) = quorum::dispatch(&handle, corosync::DispatchFlags::OneNonblocking) {
+        println!("Error in QUORUM dispatch: {e}");
+        return Err(e);
     }
-    println!("ERROR: Corosync quit");
+    Ok(())
 }
