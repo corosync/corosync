@@ -49,7 +49,7 @@ fn totem_confchg_fn(_handle: &cpg::Handle, ring_id: cpg::RingId, member_list: Ve
     println!("  members: {member_list:?}");
 }
 
-fn main() {
+fn main() -> Result<(), corosync::CsError> {
     // Initialise the model data
     let md = cpg::ModelData::ModelV1(cpg::Model1Data {
         flags: cpg::Model1Flags::None,
@@ -62,13 +62,13 @@ fn main() {
         Ok(h) => h,
         Err(e) => {
             println!("Error in CPG init: {e}");
-            return;
+            return Err(e);
         }
     };
 
     if let Err(e) = cpg::join(&handle, "TEST") {
         println!("Error in CPG join: {e}");
-        return;
+        return Err(e);
     }
 
     match cpg::local_get(&handle) {
@@ -77,6 +77,7 @@ fn main() {
         }
         Err(e) => {
             println!("Error in CPG local_get: {e}");
+            return Err(e);
         }
     }
 
@@ -88,6 +89,7 @@ fn main() {
         }
         Err(e) => {
             println!("Error in CPG membership_get: {e}");
+            return Err(e);
         }
     }
 
@@ -95,7 +97,7 @@ fn main() {
     let set_context: u64 = 0xabcdbeefcafe;
     if let Err(e) = cpg::context_set(&handle, set_context) {
         println!("Error in CPG context_set: {e}");
-        return;
+        return Err(e);
     }
 
     // NOTE This will fail on 32 bit systems because void* is not u64
@@ -107,6 +109,7 @@ fn main() {
         }
         Err(e) => {
             println!("Error in CPG context_get: {e}");
+            return Err(e);
         }
     }
 
@@ -120,6 +123,7 @@ fn main() {
         }
         Err(e) => {
             println!("Error in CPG iter start: {e}");
+            return Err(e);
         }
     }
 
@@ -130,13 +134,13 @@ fn main() {
         &"This is a test".to_string().into_bytes(),
     ) {
         println!("Error in CPG mcast_joined: {e}");
+        return Err(e);
     }
 
-    // Wait for events
-    loop {
-        if cpg::dispatch(&handle, corosync::DispatchFlags::One).is_err() {
-            break;
-        }
+    // Quick test of dispatch
+    if let Err(e) = cpg::dispatch(&handle, corosync::DispatchFlags::OneNonblocking) {
+        println!("Error in CPG dispatch: {e}");
+        return Err(e);
     }
-    println!("ERROR: Corosync quit");
+    Ok(())
 }
