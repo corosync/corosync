@@ -93,6 +93,8 @@ static int setup_nozzle(void *knet_context);
 struct totemknet_instance {
 	struct crypto_instance *crypto_inst;
 
+	struct knet_handle_crypto_cfg last_good_crypto_cfg;
+
 	qb_loop_t *poll_handle;
 
         knet_handle_t knet_handle;
@@ -995,6 +997,7 @@ static void totemknet_refresh_config(
 	}
 
 	for (i=0; i<num_nodes; i++) {
+		int linkerr = 0;
 		for (link_no = 0; link_no < INTERFACE_MAX; link_no++) {
 			if (host_ids[i] == instance->our_nodeid || !instance->totem_config->interfaces[link_no].configured) {
 				continue;
@@ -1006,18 +1009,24 @@ static void totemknet_refresh_config(
 							instance->totem_config->interfaces[link_no].knet_ping_precision);
 			if (err) {
 				KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_ERROR, "knet_link_set_ping_timers for node " CS_PRI_NODE_ID " link %d failed", host_ids[i], link_no);
+				linkerr = err;
 			}
 			err = knet_link_set_pong_count(instance->knet_handle, host_ids[i], link_no,
 						       instance->totem_config->interfaces[link_no].knet_pong_count);
 			if (err) {
 				KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_ERROR, "knet_link_set_pong_count for node " CS_PRI_NODE_ID " link %d failed",host_ids[i], link_no);
+				linkerr = err;
 			}
 			err = knet_link_set_priority(instance->knet_handle, host_ids[i], link_no,
 						     instance->totem_config->interfaces[link_no].knet_link_priority);
 			if (err) {
 				KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_ERROR, "knet_link_set_priority for node " CS_PRI_NODE_ID " link %d failed", host_ids[i], link_no);
+				linkerr = err;
 			}
 
+		}
+		if (linkerr) {
+			icmap_set_string("config.reload_error_message", "Failed to set knet ping timers(2)");
 		}
 	}
 
@@ -1086,6 +1095,10 @@ static int totemknet_set_knet_crypto(struct totemknet_instance *instance)
 
 	/* use_config will be called later when all nodes are synced */
 	res = knet_handle_crypto_set_config(instance->knet_handle, &crypto_cfg, instance->totem_config->crypto_index);
+	if (res == 0) {
+		/* Keep a copy in case it fails in future */
+		memcpy(&instance->last_good_crypto_cfg, &crypto_cfg, sizeof(crypto_cfg));
+	}
 	if (res == -1) {
 		knet_log_printf(LOGSYS_LEVEL_ERROR, "knet_handle_crypto_set_config (index %d) failed: %s", instance->totem_config->crypto_index, strerror(errno));
 		goto exit_error;
@@ -1112,8 +1125,24 @@ static int totemknet_set_knet_crypto(struct totemknet_instance *instance)
 	}
 #endif
 
-
 exit_error:
+#ifdef HAVE_KNET_CRYPTO_RECONF
+	if (res) {
+		icmap_set_string("config.reload_error_message", "Failed to set crypto parameters");
+
+		/* Restore the old values in cmap & totem_config */
+		icmap_set_string("totem.crypto_cipher", instance->last_good_crypto_cfg.crypto_cipher_type);
+		icmap_set_string("totem.crypto_hash",  instance->last_good_crypto_cfg.crypto_hash_type);
+		icmap_set_string("totem.crypto_model",  instance->last_good_crypto_cfg.crypto_model);
+
+		memcpy(instance->totem_config->crypto_hash_type, instance->last_good_crypto_cfg.crypto_hash_type,
+		       sizeof(instance->last_good_crypto_cfg.crypto_hash_type));
+		memcpy(instance->totem_config->crypto_cipher_type, instance->last_good_crypto_cfg.crypto_cipher_type,
+		       sizeof(instance->last_good_crypto_cfg.crypto_cipher_type));
+		memcpy(instance->totem_config->crypto_model, instance->last_good_crypto_cfg.crypto_model,
+		       sizeof(instance->last_good_crypto_cfg.crypto_model));
+	}
+#endif
 	return res;
 }
 
@@ -1656,6 +1685,9 @@ int totemknet_member_add (
 			log_flush_messages(instance);
 			errno = saved_errno;
 			KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_ERROR, "knet_link_set_ping_timers for nodeid " CS_PRI_NODE_ID ", link %d failed", member->nodeid, link_no);
+
+			icmap_set_string("config.reload_error_message", "Failed to set knet ping timers");
+
 			return -1;
 		}
 		err = knet_link_set_pong_count(instance->knet_handle, member->nodeid, link_no,
@@ -1666,6 +1698,7 @@ int totemknet_member_add (
 			log_flush_messages(instance);
 			errno = saved_errno;
 			KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_ERROR, "knet_link_set_pong_count for nodeid " CS_PRI_NODE_ID ", link %d failed", member->nodeid, link_no);
+			icmap_set_string("config.reload_error_message", "Failed to set knet pong count");
 			return -1;
 		}
 	}
@@ -1774,11 +1807,14 @@ int totemknet_reconfigure (
 		/* Flip crypto_index */
 		totem_config->crypto_index = 3-totem_config->crypto_index;
 		res = totemknet_set_knet_crypto(instance);
-
-		knet_log_printf(LOG_INFO, "kronosnet crypto reconfigured on index %d: %s/%s/%s", totem_config->crypto_index,
-				totem_config->crypto_model,
-				totem_config->crypto_cipher_type,
-				totem_config->crypto_hash_type);
+		if (res == 0) {
+			knet_log_printf(LOG_INFO, "kronosnet crypto reconfigured on index %d: %s/%s/%s", totem_config->crypto_index,
+					totem_config->crypto_model,
+					totem_config->crypto_cipher_type,
+					totem_config->crypto_hash_type);
+		} else {
+			icmap_set_string("config.reload_error_message", "Failed to set knet crypto");
+		}
 	}
 	return (res);
 }
