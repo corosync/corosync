@@ -2439,7 +2439,13 @@ int totemconfig_commit_new_params(
 	totempg_reconfigure();
 
 	free(new_interfaces);
-	return res; /* On a reload this is ignored */
+
+	/*
+	 * On a reload this return is ignored because it's too late to do anything about it,
+	 * but errors are reported back via cmap.
+	 */
+	return res;
+
 }
 
 static void add_totem_config_notification(struct totem_config *totem_config)

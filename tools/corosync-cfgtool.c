@@ -332,6 +332,33 @@ nodestatusget_do (enum user_action action, int brief)
 	return rc;
 }
 
+
+static int check_for_reload_errors(void)
+{
+	cmap_handle_t cmap_handle;
+	cs_error_t result;
+	char *str;
+	int res;
+
+	result = cmap_initialize (&cmap_handle);
+	if (result != CS_OK) {
+		fprintf (stderr, "Could not initialize corosync cmap API error %d\n", result);
+		exit (EXIT_FAILURE);
+	}
+
+	result = cmap_get_string(cmap_handle, "config.reload_error_message", &str);
+	if (result == CS_OK) {
+		printf("ERROR from reload: %s - see syslog for more information\n", str);
+		free(str);
+		res = 1;
+	}
+	else {
+		res = 0;
+	}
+	cmap_finalize(cmap_handle);
+	return res;
+}
+
 static int reload_config_do (void)
 {
 	cs_error_t result;
@@ -357,6 +384,10 @@ static int reload_config_do (void)
 	}
 
 	(void)corosync_cfg_finalize (handle);
+
+	if ((rc = check_for_reload_errors())) {
+		fprintf(stderr, "Errors in appying config, corosync.conf might not match the running system\n");
+	}
 
 	return (rc);
 }
