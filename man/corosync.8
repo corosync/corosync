@@ -47,6 +47,14 @@ as a base directory for uidgid files.
 
 The default is /etc/corosync/corosync.conf.
 .TP
+.B -l
+This specifies the fully qualified path to the corosync pid lock file.
+
+The default is /var/run/corosync.pid.
+
+WARNING: This option not intended to run multiple instances of Corosync. Only use if
+you know what you are doing.
+.TP
 .B -f
 Start application in foreground.
 .TP
