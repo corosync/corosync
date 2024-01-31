@@ -163,7 +163,7 @@ struct sched_param global_sched_param;
 
 static corosync_timer_handle_t corosync_stats_timer_handle;
 
-static const char *corosync_lock_file = LOCALSTATEDIR"/run/corosync.pid";
+static char corosync_lock_file[PATH_MAX + 1] = LOCALSTATEDIR"/run/corosync.pid";
 
 static char corosync_config_file[PATH_MAX + 1] = COROSYSCONFDIR "/corosync.conf";
 
@@ -1302,7 +1302,7 @@ int main (int argc, char **argv, char **envp)
 	background = 1;
 	testonly = 0;
 
-	while ((ch = getopt (argc, argv, "c:ftv")) != EOF) {
+	while ((ch = getopt (argc, argv, "c:l:ftv")) != EOF) {
 
 		switch (ch) {
 			case 'c':
@@ -1310,6 +1310,16 @@ int main (int argc, char **argv, char **envp)
 				if (res >= sizeof(corosync_config_file)) {
 					fprintf (stderr, "Config file path too long.\n");
 					syslog (LOGSYS_LEVEL_ERROR, "Config file path too long.");
+
+					logsys_system_fini();
+					return EXIT_FAILURE;
+				}
+				break;
+			case 'l':
+				res = snprintf(corosync_lock_file, sizeof(corosync_lock_file), "%s", optarg);
+				if (res >= sizeof(corosync_lock_file)) {
+					fprintf (stderr, "PID lock file path too long.\n");
+					syslog (LOGSYS_LEVEL_ERROR, "PID lock file path too long.");
 
 					logsys_system_fini();
 					return EXIT_FAILURE;
@@ -1331,6 +1341,7 @@ int main (int argc, char **argv, char **envp)
 				fprintf(stderr, \
 					"usage:\n"\
 					"        -c     : Corosync config file path.\n"\
+					"        -l     : Corosync pid lock file path.\n"\
 					"        -f     : Start application in foreground.\n"\
 					"        -t     : Test configuration and exit.\n"\
 					"        -v     : Display version, git revision and some useful information about Corosync and exit.\n");
