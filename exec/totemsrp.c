@@ -35,10 +35,10 @@
 
 /*
  * The first version of this code was based upon Yair Amir's PhD thesis:
- *	http://www.cs.jhu.edu/~yairamir/phd.ps) (ch4,5).
+ *	https://corosync.github.io/corosync/doc/Yair_phd.ps.gz (ch4,5).
  *
  * The current version of totemsrp implements the Totem protocol specified in:
- * 	http://citeseer.ist.psu.edu/amir95totem.html
+ * 	https://corosync.github.io/corosync/doc/tocssrp95.ps.gz
  *
  * The deviations from the above published protocols are:
  * - token hold mode where token doesn't rotate on unused ring - reduces cpu
