@@ -30,7 +30,7 @@ fn expectedvotes_fn(_handle: &votequorum::Handle, _context: u64, expected_votes:
     println!("TEST expected_votes_fn called: value is {expected_votes}");
 }
 
-fn main() {
+fn main() -> Result<(), corosync::CsError> {
     // Initialise the model data
     let cb = votequorum::Callbacks {
         quorum_notification_fn: Some(quorum_fn),
@@ -45,18 +45,19 @@ fn main() {
         }
         Err(e) => {
             println!("Error in VOTEQUORUM init: {e}");
-            return;
+            return Err(e);
         }
     };
 
     // Test context APIs
     let set_context: u64 = 0xabcdbeefcafe;
-    if let Err(e) = votequorum::context_set(handle, set_context) {
+    if let Err(e) = votequorum::context_set(&handle, set_context) {
         println!("Error in VOTEQUORUM context_set: {e}");
+        return Err(e);
     }
 
     // NOTE This will fail on 32 bit systems because void* is not u64
-    match votequorum::context_get(handle) {
+    match votequorum::context_get(&handle) {
         Ok(c) => {
             if c != set_context {
                 println!("Error: context_get() returned {c:x}, context should be {set_context:x}");
@@ -64,16 +65,18 @@ fn main() {
         }
         Err(e) => {
             println!("Error in VOTEQUORUM context_get: {e}");
+            return Err(e);
         }
     }
 
     const QDEVICE_NAME: &str = "RustQdevice";
 
-    if let Err(e) = votequorum::qdevice_register(handle, QDEVICE_NAME) {
+    if let Err(e) = votequorum::qdevice_register(&handle, QDEVICE_NAME) {
         println!("Error in VOTEQUORUM qdevice_register: {e}");
+        return Err(e);
     }
 
-    match votequorum::get_info(handle, corosync::NodeId::from(1u32)) {
+    match votequorum::get_info(&handle, corosync::NodeId::from(1u32)) {
         Ok(i) => {
             println!("Node info for nodeid 1");
             println!("  nodeid: {}", i.node_id);
@@ -91,27 +94,29 @@ fn main() {
                     "qdevice names do not match: s/b: \"{}\"  is: \"{}\"",
                     QDEVICE_NAME, i.qdevice_name
                 );
+                return Err(corosync::CsError::CsErrRustCompat);
             }
         }
         Err(e) => {
             println!("Error in VOTEQUORUM get_info: {e} (check nodeid 1 has been online)");
+            return Err(e);
         }
     }
 
-    if let Err(e) = votequorum::qdevice_unregister(handle, QDEVICE_NAME) {
+    if let Err(e) = votequorum::qdevice_unregister(&handle, QDEVICE_NAME) {
         println!("Error in VOTEQUORUM qdevice_unregister: {e}");
+        return Err(e);
     }
 
-    if let Err(e) = votequorum::trackstart(handle, 99_u64, corosync::TrackFlags::Changes) {
+    if let Err(e) = votequorum::trackstart(&handle, 99_u64, corosync::TrackFlags::Changes) {
         println!("Error in VOTEQUORUM trackstart: {e}");
-        return;
+        return Err(e);
     }
 
-    // Wait for events
-    loop {
-        if votequorum::dispatch(handle, corosync::DispatchFlags::One).is_err() {
-            break;
-        }
+    // Quick test of dispatch
+    if let Err(e) = votequorum::dispatch(&handle, corosync::DispatchFlags::OneNonblocking) {
+        println!("Error in VOTEUORUM dispatch: {e}");
+        return Err(e);
     }
-    println!("ERROR: Corosync quit");
+    Ok(())
 }

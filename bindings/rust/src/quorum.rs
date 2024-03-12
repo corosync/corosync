@@ -137,10 +137,35 @@ pub struct Model1Data {
 }
 
 /// A handle into the quorum library. Returned from [initialize] and needed for all other calls
-#[derive(Copy, Clone)]
 pub struct Handle {
     quorum_handle: u64,
     model_data: ModelData,
+    clone: bool,
+}
+
+impl Clone for Handle {
+    fn clone(&self) -> Handle {
+        Handle {
+            quorum_handle: self.quorum_handle,
+            model_data: self.model_data,
+            clone: true,
+        }
+    }
+}
+
+impl Drop for Handle {
+    fn drop(self: &mut Handle) {
+        if !self.clone {
+            let _e = finalize(self);
+        }
+    }
+}
+
+// Clones count as equivalent
+impl PartialEq for Handle {
+    fn eq(&self, other: &Handle) -> bool {
+        self.quorum_handle == other.quorum_handle
+    }
 }
 
 /// Initialize a connection to the quorum library. You must call this before doing anything
@@ -187,13 +212,14 @@ pub fn initialize(model_data: &ModelData, context: u64) -> Result<(Handle, Quoru
     let rhandle = Handle {
         quorum_handle: handle,
         model_data: *model_data,
+        clone: false,
     };
-    HANDLE_HASH.lock().unwrap().insert(handle, rhandle);
+    HANDLE_HASH.lock().unwrap().insert(handle, rhandle.clone());
     Ok((rhandle, quorum_type))
 }
 
 /// Finish with a connection to corosync
-pub fn finalize(handle: Handle) -> Result<()> {
+pub fn finalize(handle: &Handle) -> Result<()> {
     let res = unsafe { ffi::quorum_finalize(handle.quorum_handle) };
     if res == ffi::CS_OK {
         HANDLE_HASH.lock().unwrap().remove(&handle.quorum_handle);
@@ -205,7 +231,7 @@ pub fn finalize(handle: Handle) -> Result<()> {
 
 // Not sure if an FD is the right thing to return here, but it will do for now.
 /// Return a file descriptor to use for poll/select on the QUORUM handle
-pub fn fd_get(handle: Handle) -> Result<i32> {
+pub fn fd_get(handle: &Handle) -> Result<i32> {
     let c_fd: *mut c_int = &mut 0 as *mut _ as *mut c_int;
     let res = unsafe { ffi::quorum_fd_get(handle.quorum_handle, c_fd) };
     if res == ffi::CS_OK {
@@ -216,7 +242,7 @@ pub fn fd_get(handle: Handle) -> Result<i32> {
 }
 
 /// Display any/all active QUORUM callbacks for this [Handle], see [DispatchFlags] for details
-pub fn dispatch(handle: Handle, flags: DispatchFlags) -> Result<()> {
+pub fn dispatch(handle: &Handle, flags: DispatchFlags) -> Result<()> {
     let res = unsafe { ffi::quorum_dispatch(handle.quorum_handle, flags as u32) };
     if res == ffi::CS_OK {
         Ok(())
@@ -226,7 +252,7 @@ pub fn dispatch(handle: Handle, flags: DispatchFlags) -> Result<()> {
 }
 
 /// Return the quorate status of the cluster
-pub fn getquorate(handle: Handle) -> Result<bool> {
+pub fn getquorate(handle: &Handle) -> Result<bool> {
     let c_quorate: *mut c_int = &mut 0 as *mut _ as *mut c_int;
     let (res, r_quorate) = unsafe {
         let res = ffi::quorum_getquorate(handle.quorum_handle, c_quorate);
@@ -245,7 +271,7 @@ pub fn getquorate(handle: Handle) -> Result<bool> {
 }
 
 /// Track node and quorum changes
-pub fn trackstart(handle: Handle, flags: TrackFlags) -> Result<()> {
+pub fn trackstart(handle: &Handle, flags: TrackFlags) -> Result<()> {
     let res = unsafe { ffi::quorum_trackstart(handle.quorum_handle, flags as u32) };
     if res == ffi::CS_OK {
         Ok(())
@@ -255,7 +281,7 @@ pub fn trackstart(handle: Handle, flags: TrackFlags) -> Result<()> {
 }
 
 /// Stop tracking node and quorum changes
-pub fn trackstop(handle: Handle) -> Result<()> {
+pub fn trackstop(handle: &Handle) -> Result<()> {
     let res = unsafe { ffi::quorum_trackstop(handle.quorum_handle) };
     if res == ffi::CS_OK {
         Ok(())
@@ -267,7 +293,7 @@ pub fn trackstop(handle: Handle) -> Result<()> {
 /// Get the current 'context' value for this handle.
 /// The context value is an arbitrary value that is always passed
 /// back to callbacks to help identify the source
-pub fn context_get(handle: Handle) -> Result<u64> {
+pub fn context_get(handle: &Handle) -> Result<u64> {
     let (res, context) = unsafe {
         let mut context: u64 = 0;
         let c_context: *mut c_void = &mut context as *mut _ as *mut c_void;
@@ -285,7 +311,7 @@ pub fn context_get(handle: Handle) -> Result<u64> {
 /// The context value is an arbitrary value that is always passed
 /// back to callbacks to help identify the source.
 /// Normally this is set in [initialize], but this allows it to be changed
-pub fn context_set(handle: Handle, context: u64) -> Result<()> {
+pub fn context_set(handle: &Handle, context: u64) -> Result<()> {
     let res = unsafe {
         let c_context = context as *mut c_void;
         ffi::quorum_context_set(handle.quorum_handle, c_context)
