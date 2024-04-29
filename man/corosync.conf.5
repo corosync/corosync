@@ -68,10 +68,22 @@ nozzle { }
 This top level directive contains configuration options for a libnozzle device.
 
 .PP
-The
-.B interface sub-directive of totem is optional for UDP and knet transports.
+Corosync supports multiple types of network transports for communication between the nodes in the cluster. There are three types of transports:
+.RS
+.IP 1.
+KNET. This is a default and recommended transport introduced in Corosync 3. It provides several advantages over the UDP and UDPU transports,
+including better performance, link-level redundancy, automatic link recovery, and native IP compression and encryption.
+.IP 2.
+UDPU. This is for unicast communication. This transport is deprecated.
+.IP 3.
+UDP. This is for multicast communication. This transport is deprecated and highly discouraged to use.
+.RE
 
-For knet, multiple interface subsections define parameters for each knet link on the
+The
+.B interface
+sub-directive of totem is optional for UDP and KNET transports.
+
+For KNET, multiple interface subsections define parameters for each KNET link on the
 system.
 
 For UDPU an interface section is not needed and it is recommended that the nodelist
@@ -79,19 +91,19 @@ is used to define cluster nodes.
 
 .TP
 linknumber
-This specifies the link number for the interface.  When using the knet
+This specifies the link number for the interface.  When using the KNET
 protocol, each interface should specify separate link numbers to uniquely
 identify to the membership protocol which interface to use for which link.
 The linknumber must start at 0. For UDP the only supported linknumber is 0.
 
 .TP
 knet_link_priority
-This specifies the priority for the link when knet is used in 'passive'
+This specifies the priority for the link when KNET is used in 'passive'
 mode. (see link_mode below)
 
 .TP
 knet_ping_interval
-This specifies the interval between knet link pings.
+This specifies the interval between KNET link pings.
 knet_ping_interval and knet_ping_timeout
 are a pair, if one is specified the other should be too, otherwise one will be calculated from
 the token timeout and one will be taken from the config file.
@@ -99,7 +111,7 @@ the token timeout and one will be taken from the config file.
 
 .TP
 knet_ping_timeout
-If no ping is received within this time, the knet link is declared dead.
+If no ping is received within this time, the KNET link is declared dead.
 knet_ping_interval and knet_ping_timeout
 are a pair, if one is specified the other should be too, otherwise one will be calculated from
 the token timeout and one will be taken from the config file.
@@ -116,14 +128,14 @@ How many valid ping/pongs before a link is marked UP. (default 2)
 .TP
 
 knet_transport
-Which IP transport knet should use. valid values are "sctp" or "udp". (default: udp)
+Which IP transport KNET should use. valid values are "sctp" or "udp". (default: udp)
 
 .TP
-bindnetaddr (udp only)
+bindnetaddr (UDP only)
 This specifies the network address the corosync executive should bind
-to when using udp.
+to when using UDP transport.
 
-bindnetaddr (udp only)
+bindnetaddr (UDP only)
 should be an IP address configured on the system, or a network
 address.
 
@@ -139,13 +151,13 @@ selection of the network interface within a specific subnet as with IPv4.
 If IPv6 networking is used, the nodeid field in nodelist must be specified.
 
 .TP
-broadcast (udp only)
+broadcast (UDP only)
 This is optional and can be set to yes.  If it is set to yes, the broadcast
 address will be used for communication.  If this option is set, mcastaddr
 should not be set.
 
 .TP
-mcastaddr (udp only)
+mcastaddr (UDP only)
 This is the multicast address used by corosync executive.  The default
 should work for most networks, but the network administrator should be queried
 about a multicast address to use.  Avoid 224.x.x.x because this is a "config"
@@ -159,7 +171,7 @@ It's not necessary to use this option if cluster_name option is used. If both op
 are used, mcastaddr has higher priority.
 
 .TP
-mcastport (udp only)
+mcastport
 This specifies the UDP port number.  It is possible to use the same multicast
 address on a network with the corosync services configured for different
 UDP ports.
@@ -168,8 +180,10 @@ mcastport - 1 (for mcast sends).
 If you have multiple clusters on the same network using the same mcastaddr
 please configure the mcastports with a gap.
 
+The default is 5405.
+
 .TP
-ttl (udp only)
+ttl (UDP only)
 This specifies the Time To Live (TTL). If you run your cluster on a routed
 network then the default of "1" will be too small. This option provides
 a way to increase this up to 255. The valid range is 0..255.
@@ -204,7 +218,7 @@ a subset of the cluster (for example during a rolling upgrade).
 
 .TP
 crypto_model
-This specifies which cryptographic library should be used by knet.
+This specifies which cryptographic library should be used by KNET.
 Supported values depend on the libknet build and on the installed
 cryptography libraries. Typically nss and openssl will be available
 but gcrypt and others could also be allowed.
@@ -216,7 +230,7 @@ crypto_hash
 This specifies which HMAC authentication should be used to authenticate all
 messages. Valid values are none (no authentication), md5, sha1, sha256,
 sha384 and sha512. Encrypted transmission is only supported for
-the knet transport.
+the KNET transport.
 
 The default is none.
 
@@ -225,14 +239,14 @@ crypto_cipher
 This specifies which cipher should be used to encrypt all messages.
 Valid values are none (no encryption), aes256, aes192 and aes128.
 Enabling crypto_cipher, requires also enabling of crypto_hash. Encrypted
-transmission is only supported for the knet transport.
+transmission is only supported for the KNET transport.
 
 The default is none.
 
 .TP
 secauth
 This implies crypto_cipher=aes256 and crypto_hash=sha256, unless those options
-are explicitly set. Encrypted transmission is only supported for the knet
+are explicitly set. Encrypted transmission is only supported for the KNET
 transport.
 
 The default is off.
@@ -276,7 +290,7 @@ netmtu
 This specifies maximum packet length sent by corosync. It's mainly for the UDPU
 (and UDP) transport, where it specifies the network maximum transmit size, but
 can be used also with the KNET transport, where it defines the maximum length of packets
-passed to the knet layer. To specify the network MTU manually for KNET, use the
+passed to the KNET layer. To specify the network MTU manually for KNET, use the
 .B knet_mtu
 option.
 
@@ -305,8 +319,8 @@ The default is 1500 for UDPU (and UDP) and 65536 for the KNET transport.
 .TP
 transport
 This directive controls the transport mechanism used.
-The default is knet.  The transport type can also be set to udpu or udp.
-Only knet allows crypto or multiple interfaces per node.
+The default is knet (for KNET).  The transport type can also be set to udpu (for UDPU) or
+udp (for UDP). Only KNET allows crypto or multiple interfaces per node.
 
 .TP
 cluster_name
@@ -342,11 +356,11 @@ otherwise use first IPv4 address).
 
 Default (if unspecified) is
 .B ipv6-4
-for knet and udpu transports and
+for KNET and UDPU transports and
 .B ipv4
-for udp.
+for UDP transport.
 
-The knet transport supports IPv4 and IPv6 addresses concurrently,
+The KNET transport supports IPv4 and IPv6 addresses concurrently,
 provided they are consistent on each link.
 
 Within the
@@ -417,7 +431,7 @@ but bzip2 and others could also be allowed. The default is 'none'.
 
 .TP
 knet_compression_threshold
-Tells knet to NOT compress any packets that are smaller than the value
+Tells KNET to NOT compress any packets that are smaller than the value
 indicated. Default 100 bytes.
 
 Set to 0 to reset to the default.
@@ -572,7 +586,7 @@ The default is 5 messages.
 
 .TP
 knet_pmtud_interval
-How often the knet PMTUd runs to look for network MTU changes.
+How often the KNET PMTUd runs to look for network MTU changes.
 Value in seconds, default: 30
 
 .TP
@@ -775,11 +789,11 @@ nodeid
 This configuration option is required for each node for Kronosnet mode.
 It is a 32 bit value specifying the node identifier delivered to the
 cluster membership service. The node identifier value of zero is
-reserved and should not be used. If knet is set, this field must be set.
+reserved and should not be used. If KNET is set, this field must be set.
 
 .TP
 name
-This option is used mainly with knet transport to identify local node.
+This option is used mainly with KNET transport to identify local node.
 It's also used by client software (pacemaker).
 Algorithm for identifying local node is following:
 .RS
@@ -862,11 +876,11 @@ The problem is even worse because journald caches pid for some time
 
 .TP
 allow_knet_handle_fallback
-If knet handle creation fails using privileged operations, allow fallback to
-creating knet handle using unprivileged operations. Defaults to no, meaning
-if privileged knet handle creation fails, corosync will refuse to start.
+If KNET handle creation fails using privileged operations, allow fallback to
+creating KNET handle using unprivileged operations. Defaults to no, meaning
+if privileged KNET handle creation fails, corosync will refuse to start.
 
-The knet handle will always be created using privileged operations if possible,
+The KNET handle will always be created using privileged operations if possible,
 setting this to yes only allows fallback to unprivileged operations. This fallback
 may result in performance issues, but if running in an unprivileged environment,
 e.g. as a normal user or in unprivileged container, this may be required.
@@ -903,14 +917,14 @@ the Linux kernel documentation.
 Within the
 .B nozzle
 directive it is possible to specify options for a libnozzle device. This is a pseudo
-ethernet device that routes network traffic through a channel on the corosync knet network
+ethernet device that routes network traffic through a channel on the corosync KNET network
 (NOT cpg or any corosync internal service) to other nodes in the cluster. This allows
-applications to take advantage of knet features such as multipathing, automatic failover,
+applications to take advantage of KNET features such as multipathing, automatic failover,
 link switching etc. Note that libnozzle is not a reliable transport, but you can tunnel TCP
 through it for reliable communications.
 .br
 libnozzle also supports optional interface up/down scripts that are kept under a
-/etc/corosync/updown.d/ directory. See the knet documentation for more information.
+/etc/corosync/updown.d/ directory. See the KNET documentation for more information.
 .br
 Only one nozzle device is allowed.
 .br
