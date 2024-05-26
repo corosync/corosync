@@ -60,7 +60,7 @@ mib_DATA		= COROSYNC-MIB.txt
 endif
 
 if INSTALL_DBUSCONF
-dbusdir			= $(sysconfdir)/dbus-1/system.d
+dbusdir			= $(datadir)/dbus-1/system.d
 dbus_DATA		= corosync-signals.conf
 endif
 

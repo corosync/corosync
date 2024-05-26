@@ -126,7 +126,7 @@ make install DESTDIR=%{buildroot}
 
 %if %{with dbus}
 mkdir -p -m 0700 %{buildroot}/%{_sysconfdir}/dbus-1/system.d
-install -m 644 %{_builddir}/%{name}-%{version}%{?gittarver}/conf/corosync-signals.conf %{buildroot}/%{_sysconfdir}/dbus-1/system.d/corosync-signals.conf
+install -m 644 %{_builddir}/%{name}-%{version}%{?gittarver}/conf/corosync-signals.conf %{buildroot}/%{_datadir}/dbus-1/system.d/corosync-signals.conf
 %endif
 
 ## tree fixup
@@ -195,7 +195,7 @@ fi
 %config(noreplace) %{_sysconfdir}/sysconfig/corosync
 %config(noreplace) %{_sysconfdir}/logrotate.d/corosync
 %if %{with dbus}
-%{_sysconfdir}/dbus-1/system.d/corosync-signals.conf
+%{_datadir}/dbus-1/system.d/corosync-signals.conf
 %endif
 %if %{with snmp}
 %{_datadir}/snmp/mibs/COROSYNC-MIB.txt
