@@ -189,10 +189,35 @@ pub struct Callbacks {
 }
 
 /// A handle into the votequorum library. Returned from [initialize] and needed for all other calls
-#[derive(Copy, Clone)]
 pub struct Handle {
     votequorum_handle: u64,
     callbacks: Callbacks,
+    clone: bool,
+}
+
+impl Clone for Handle {
+    fn clone(&self) -> Handle {
+        Handle {
+            votequorum_handle: self.votequorum_handle,
+            callbacks: self.callbacks,
+            clone: true,
+        }
+    }
+}
+
+impl Drop for Handle {
+    fn drop(self: &mut Handle) {
+        if !self.clone {
+            let _e = finalize(self);
+        }
+    }
+}
+
+// Clones count as equivalent
+impl PartialEq for Handle {
+    fn eq(&self, other: &Handle) -> bool {
+        self.votequorum_handle == other.votequorum_handle
+    }
 }
 
 /// Initialize a connection to the votequorum library. You must call this before doing anything
@@ -213,8 +238,9 @@ pub fn initialize(callbacks: &Callbacks) -> Result<Handle> {
             let rhandle = Handle {
                 votequorum_handle: handle,
                 callbacks: *callbacks,
+                clone: false,
             };
-            HANDLE_HASH.lock().unwrap().insert(handle, rhandle);
+            HANDLE_HASH.lock().unwrap().insert(handle, rhandle.clone());
             Ok(rhandle)
         } else {
             Err(CsError::from_c(res))
@@ -223,7 +249,7 @@ pub fn initialize(callbacks: &Callbacks) -> Result<Handle> {
 }
 
 /// Finish with a connection to corosync
-pub fn finalize(handle: Handle) -> Result<()> {
+pub fn finalize(handle: &Handle) -> Result<()> {
     let res = unsafe { ffi::votequorum_finalize(handle.votequorum_handle) };
     if res == ffi::CS_OK {
         HANDLE_HASH
@@ -238,7 +264,7 @@ pub fn finalize(handle: Handle) -> Result<()> {
 
 // Not sure if an FD is the right thing to return here, but it will do for now.
 /// Return a file descriptor to use for poll/select on the VOTEQUORUM handle
-pub fn fd_get(handle: Handle) -> Result<i32> {
+pub fn fd_get(handle: &Handle) -> Result<i32> {
     let c_fd: *mut c_int = &mut 0 as *mut _ as *mut c_int;
     let res = unsafe { ffi::votequorum_fd_get(handle.votequorum_handle, c_fd) };
     if res == ffi::CS_OK {
@@ -251,7 +277,7 @@ pub fn fd_get(handle: Handle) -> Result<i32> {
 const VOTEQUORUM_QDEVICE_MAX_NAME_LEN: usize = 255;
 
 /// Returns detailed information about a node in a [NodeInfo] structure
-pub fn get_info(handle: Handle, nodeid: NodeId) -> Result<NodeInfo> {
+pub fn get_info(handle: &Handle, nodeid: NodeId) -> Result<NodeInfo> {
     let mut c_info = ffi::votequorum_info {
         node_id: 0,
         node_state: 0,
@@ -293,7 +319,7 @@ pub fn get_info(handle: Handle, nodeid: NodeId) -> Result<NodeInfo> {
 }
 
 /// Call any/all active votequorum callbacks for this [Handle]. see [DispatchFlags] for details
-pub fn dispatch(handle: Handle, flags: DispatchFlags) -> Result<()> {
+pub fn dispatch(handle: &Handle, flags: DispatchFlags) -> Result<()> {
     let res = unsafe { ffi::votequorum_dispatch(handle.votequorum_handle, flags as u32) };
     if res == ffi::CS_OK {
         Ok(())
@@ -303,7 +329,7 @@ pub fn dispatch(handle: Handle, flags: DispatchFlags) -> Result<()> {
 }
 
 /// Track node and votequorum changes
-pub fn trackstart(handle: Handle, context: u64, flags: TrackFlags) -> Result<()> {
+pub fn trackstart(handle: &Handle, context: u64, flags: TrackFlags) -> Result<()> {
     let res =
         unsafe { ffi::votequorum_trackstart(handle.votequorum_handle, context, flags as u32) };
     if res == ffi::CS_OK {
@@ -314,7 +340,7 @@ pub fn trackstart(handle: Handle, context: u64, flags: TrackFlags) -> Result<()>
 }
 
 /// Stop tracking node and votequorum changes
-pub fn trackstop(handle: Handle) -> Result<()> {
+pub fn trackstop(handle: &Handle) -> Result<()> {
     let res = unsafe { ffi::votequorum_trackstop(handle.votequorum_handle) };
     if res == ffi::CS_OK {
         Ok(())
@@ -326,7 +352,7 @@ pub fn trackstop(handle: Handle) -> Result<()> {
 /// Get the current 'context' value for this handle.
 /// The context value is an arbitrary value that is always passed
 /// back to callbacks to help identify the source
-pub fn context_get(handle: Handle) -> Result<u64> {
+pub fn context_get(handle: &Handle) -> Result<u64> {
     let (res, context) = unsafe {
         let mut c_context: *mut c_void = &mut 0u64 as *mut _ as *mut c_void;
         let r = ffi::votequorum_context_get(handle.votequorum_handle, &mut c_context);
@@ -344,7 +370,7 @@ pub fn context_get(handle: Handle) -> Result<u64> {
 /// The context value is an arbitrary value that is always passed
 /// back to callbacks to help identify the source.
 /// Normally this is set in [trackstart], but this allows it to be changed
-pub fn context_set(handle: Handle, context: u64) -> Result<()> {
+pub fn context_set(handle: &Handle, context: u64) -> Result<()> {
     let res = unsafe {
         let c_context = context as *mut c_void;
         ffi::votequorum_context_set(handle.votequorum_handle, c_context)
@@ -358,7 +384,7 @@ pub fn context_set(handle: Handle, context: u64) -> Result<()> {
 
 /// Set the current expected_votes for the cluster, this value must
 /// be valid and not result in an inquorate cluster.
-pub fn set_expected(handle: Handle, expected_votes: u32) -> Result<()> {
+pub fn set_expected(handle: &Handle, expected_votes: u32) -> Result<()> {
     let res = unsafe { ffi::votequorum_setexpected(handle.votequorum_handle, expected_votes) };
     if res == ffi::CS_OK {
         Ok(())
@@ -368,7 +394,7 @@ pub fn set_expected(handle: Handle, expected_votes: u32) -> Result<()> {
 }
 
 /// Set the current votes for a node
-pub fn set_votes(handle: Handle, nodeid: NodeId, votes: u32) -> Result<()> {
+pub fn set_votes(handle: &Handle, nodeid: NodeId, votes: u32) -> Result<()> {
     let res =
         unsafe { ffi::votequorum_setvotes(handle.votequorum_handle, u32::from(nodeid), votes) };
     if res == ffi::CS_OK {
@@ -379,7 +405,7 @@ pub fn set_votes(handle: Handle, nodeid: NodeId, votes: u32) -> Result<()> {
 }
 
 /// Register a quorum device
-pub fn qdevice_register(handle: Handle, name: &str) -> Result<()> {
+pub fn qdevice_register(handle: &Handle, name: &str) -> Result<()> {
     let c_string = {
         match CString::new(name) {
             Ok(cs) => cs,
@@ -397,7 +423,7 @@ pub fn qdevice_register(handle: Handle, name: &str) -> Result<()> {
 }
 
 /// Unregister a quorum device
-pub fn qdevice_unregister(handle: Handle, name: &str) -> Result<()> {
+pub fn qdevice_unregister(handle: &Handle, name: &str) -> Result<()> {
     let c_string = {
         match CString::new(name) {
             Ok(cs) => cs,
@@ -415,7 +441,7 @@ pub fn qdevice_unregister(handle: Handle, name: &str) -> Result<()> {
 }
 
 /// Update the name of a quorum device
-pub fn qdevice_update(handle: Handle, oldname: &str, newname: &str) -> Result<()> {
+pub fn qdevice_update(handle: &Handle, oldname: &str, newname: &str) -> Result<()> {
     let on_string = {
         match CString::new(oldname) {
             Ok(cs) => cs,
@@ -446,7 +472,7 @@ pub fn qdevice_update(handle: Handle, oldname: &str, newname: &str) -> Result<()
 /// Poll a quorum device
 /// This must be done more often than the qdevice timeout (default 10s) while the device is active
 /// and the [RingId] must match the current value returned from the callbacks for it to be accepted.
-pub fn qdevice_poll(handle: Handle, name: &str, cast_vote: bool, ring_id: &RingId) -> Result<()> {
+pub fn qdevice_poll(handle: &Handle, name: &str, cast_vote: bool, ring_id: &RingId) -> Result<()> {
     let c_string = {
         match CString::new(name) {
             Ok(cs) => cs,
@@ -476,7 +502,7 @@ pub fn qdevice_poll(handle: Handle, name: &str, cast_vote: bool, ring_id: &RingI
 }
 
 /// Allow qdevice to tell votequorum if master_wins can be enabled or not
-pub fn qdevice_master_wins(handle: Handle, name: &str, master_wins: bool) -> Result<()> {
+pub fn qdevice_master_wins(handle: &Handle, name: &str, master_wins: bool) -> Result<()> {
     let c_string = {
         match CString::new(name) {
             Ok(cs) => cs,
