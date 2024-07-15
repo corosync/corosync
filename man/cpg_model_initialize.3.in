@@ -1,5 +1,5 @@
 .\"/*
-.\" * Copyright (c) 2010-2019 Red Hat, Inc.
+.\" * Copyright (c) 2010-2024 Red Hat, Inc.
 .\" *
 .\" * All rights reserved.
 .\" *
@@ -32,7 +32,7 @@
 .\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 .\" * THE POSSIBILITY OF SUCH DAMAGE.
 .\" */
-.TH CPG_MODEL_INITIALIZE 3 2019-04-16 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
+.TH CPG_MODEL_INITIALIZE 3 2024-07-15 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
 .SH NAME
 cpg_model_initialize \- Create a new connection to the CPG service
 .SH SYNOPSIS
@@ -126,7 +126,7 @@ typedef struct {
         cpg_deliver_fn_t cpg_deliver_fn;
         cpg_confchg_fn_t cpg_confchg_fn;
         cpg_totem_confchg_fn_t cpg_totem_confchg_fn;
-	unsigned int flags;
+        unsigned int flags;
 } cpg_model_v1_data_t;
 .ta
 .fi
@@ -204,7 +204,9 @@ struct cpg_ring_id {
 .PP
 where
 .I nodeid
-is if of node of current Totem leader and seq is increasing number.
+is the current Totem leader and
+.I seq
+is an increasing number.
 
 .PP
 .SH RETURN VALUE
