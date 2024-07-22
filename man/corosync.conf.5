@@ -1,6 +1,6 @@
 .\"/*
 .\" * Copyright (c) 2005 MontaVista Software, Inc.
-.\" * Copyright (c) 2006-2022 Red Hat, Inc.
+.\" * Copyright (c) 2006-2024 Red Hat, Inc.
 .\" *
 .\" * All rights reserved.
 .\" *
@@ -32,7 +32,7 @@
 .\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 .\" * THE POSSIBILITY OF SUCH DAMAGE.
 .\" */
-.TH COROSYNC_CONF 5 2022-10-20 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
+.TH COROSYNC_CONF 5 2024-07-22 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
 .SH NAME
 corosync.conf - corosync executive configuration file
 
@@ -760,11 +760,12 @@ required.
 .PP
 Within the
 .B quorum
-directive it is possible to specify the quorum algorithm to use with the
+directive it is possible to specify the quorum configuration options. The following
+option is required to activate quorum service:
 
 .TP
 provider
-directive. At the time of writing only corosync_votequorum is supported.
+This specifies algorithm to use. At the time of writing only corosync_votequorum is supported.
 See votequorum(5) for configuration options.
 
 .PP
