@@ -750,6 +750,7 @@ static void read_in_config_file(cmap_handle_t handle, char * filename)
 		 * if no real characters then also ignore.
 		 */
 		ignore = 1;
+		line = NULL;
 		for (c = 0; c < 1024; c++) {
 			if (isblank (buf[c])) {
 				continue;
@@ -763,7 +764,7 @@ static void read_in_config_file(cmap_handle_t handle, char * filename)
 			line = &buf[c];
 			break;
 		}
-		if (ignore == 1) {
+		if (ignore == 1 || line == NULL) {
 			continue;
 		}
 
