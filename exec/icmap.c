@@ -201,6 +201,10 @@ cs_error_t icmap_init_r(icmap_map_t *result)
 	}
 
 	err = qb_map_notify_add((*result)->qb_map, NULL, icmap_map_free_cb, QB_MAP_NOTIFY_FREE, NULL);
+	if (err != 0) {
+		qb_map_destroy((*result)->qb_map);
+		free(*result);
+	}
 
 	return (qb_to_cs_error(err));
 }
