@@ -951,6 +951,8 @@ static int main_config_parser_cb(const char *path,
 				kv_item->key = strdup(key);
 				kv_item->value = strdup(value);
 				if (kv_item->key == NULL || kv_item->value == NULL) {
+					free(kv_item->key);
+					free(kv_item->value);
 					free(kv_item);
 					*error_string = "Can't alloc memory";
 
@@ -988,6 +990,8 @@ static int main_config_parser_cb(const char *path,
 				kv_item->key = strdup(key);
 				kv_item->value = strdup(value);
 				if (kv_item->key == NULL || kv_item->value == NULL) {
+					free(kv_item->key);
+					free(kv_item->value);
 					free(kv_item);
 					*error_string = "Can't alloc memory";
 
@@ -1046,6 +1050,8 @@ static int main_config_parser_cb(const char *path,
 			kv_item->key = strdup(key);
 			kv_item->value = strdup(value);
 			if (kv_item->key == NULL || kv_item->value == NULL) {
+				free(kv_item->key);
+				free(kv_item->value);
 				free(kv_item);
 				*error_string = "Can't alloc memory";
 
