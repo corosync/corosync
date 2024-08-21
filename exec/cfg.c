@@ -827,7 +827,6 @@ static void message_handler_req_exec_cfg_reload_config (
 	/* Copy into live system */
 	totempg_put_config(&new_config);
 	totemconfig_commit_new_params(&new_config, temp_map);
-	free(new_config.interfaces);
 
 reload_fini:
 	/* All done - let clients know */
@@ -836,6 +835,7 @@ reload_fini:
 	icmap_set_uint8("config.reload_in_progress", 0);
 
 	/* Finished with the temporary storage */
+	free(new_config.interfaces);
 	free(new_config.orig_interfaces);
 
 reload_fini_nofree:
