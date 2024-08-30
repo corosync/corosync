@@ -986,6 +986,7 @@ cs_error_t cpg_zcb_alloc (
 		sizeof (struct qb_ipc_response_header));
 
 	if (error != CS_OK) {
+		munmap (buf, map_size);
 		goto error_exit;
 	}
 
