@@ -304,13 +304,11 @@ pub fn get_info(handle: &Handle, nodeid: NodeId) -> Result<NodeInfo> {
             quorum: c_info.quorum,
             flags: NodeInfoFlags { bits: c_info.flags },
             qdevice_votes: c_info.qdevice_votes,
-            qdevice_name: match string_from_bytes(
+            qdevice_name: string_from_bytes(
                 c_info.qdevice_name.as_ptr(),
                 VOTEQUORUM_QDEVICE_MAX_NAME_LEN,
-            ) {
-                Ok(s) => s,
-                Err(_) => String::new(),
-            },
+            )
+            .unwrap_or_default(),
         };
         Ok(info)
     } else {
