@@ -770,10 +770,9 @@ static int pause_flush (struct totemsrp_instance *instance)
 static int token_event_stats_collector (enum totem_callback_token_type type, const void *void_instance)
 {
 	struct totemsrp_instance *instance = (struct totemsrp_instance *)void_instance;
-	uint32_t time_now;
-	unsigned long long nano_secs = qb_util_nano_current_get ();
+	uint64_t time_now;
 
-	time_now = (nano_secs / QB_TIME_NS_IN_MSEC);
+	time_now = (qb_util_nano_current_get() / QB_TIME_NS_IN_MSEC);
 
 	if (type == TOTEM_CALLBACK_TOKEN_RECEIVED) {
 		/* incr latest token the index */
