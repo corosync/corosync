@@ -45,8 +45,8 @@ typedef struct {
 } totemnet_stats_t;
 
 typedef struct {
-	uint32_t rx;
-	uint32_t tx;
+	uint64_t rx;
+	uint64_t tx;
 	int backlog_calc;
 } totemsrp_token_stats_t;
 
