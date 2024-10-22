@@ -3834,7 +3834,9 @@ static int check_token_hold_cancel_sanity(
  * Message Handlers
  */
 
-unsigned long long int tv_old;
+#ifdef GIVEINFO
+uint64_t tv_old;
+#endif
 /*
  * message handler called when TOKEN message type received
  */
@@ -3854,15 +3856,15 @@ static int message_handler_orf_token (
 	unsigned int last_aru;
 
 #ifdef GIVEINFO
-	unsigned long long tv_current;
-	unsigned long long tv_diff;
+	uint64_t tv_current;
+	uint64_t tv_diff;
 
 	tv_current = qb_util_nano_current_get ();
 	tv_diff = tv_current - tv_old;
 	tv_old = tv_current;
 
 	log_printf (instance->totemsrp_log_level_debug,
-	"Time since last token %0.4f ms", ((float)tv_diff) / 1000000.0);
+	    "Time since last token %0.4f ms", tv_diff / (float)QB_TIME_NS_IN_MSEC);
 #endif
 
 	if (check_orf_token_sanity(instance, msg, msg_len, endian_conversion_needed) == -1) {
@@ -4119,7 +4121,7 @@ printf ("token seq %d\n", token->seq);
 			tv_old = tv_current;
 			log_printf (instance->totemsrp_log_level_debug,
 				"I held %0.4f ms",
-				((float)tv_diff) / 1000000.0);
+				tv_diff / (float)QB_TIME_NS_IN_MSEC);
 #endif
 			if (instance->memb_state == MEMB_STATE_OPERATIONAL) {
 				messages_deliver_to_app (instance, 0,
