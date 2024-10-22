@@ -1750,7 +1750,7 @@ static void timer_function_orf_token_warning (void *data)
 		tv_diff = qb_util_nano_current_get () / QB_TIME_NS_IN_MSEC -
 			instance->stats.token[instance->stats.latest_token].rx;
 		log_printf (instance->totemsrp_log_level_notice,
-			"Token has not been received in %d ms ", (unsigned int) tv_diff);
+			"Token has not been received in %"PRIu64" ms", tv_diff);
 		reset_token_warning(instance);
         } else {
 		cancel_token_warning(instance);
