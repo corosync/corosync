@@ -2619,6 +2619,7 @@ static int orf_token_remcast (
 
 	sort_queue_item = ptr;
 
+	instance->stats.orf_token_tx++;
 	totemnet_mcast_noflush_send (
 		instance->totemnet_context,
 		sort_queue_item->mcast,
@@ -2933,6 +2934,7 @@ static int orf_token_rtr (
 
 static void token_retransmit (struct totemsrp_instance *instance)
 {
+	instance->stats.orf_token_tx++;
 	totemnet_token_send (instance->totemnet_context,
 		instance->orf_token_retransmit,
 		instance->orf_token_retransmit_size);
@@ -3017,6 +3019,7 @@ static int token_send (
 		return (0);
 	}
 
+	instance->stats.orf_token_tx++;
 	totemnet_token_send (instance->totemnet_context,
 		orf_token,
 		orf_token_size);
@@ -3071,7 +3074,6 @@ static int orf_token_send_initial (struct totemsrp_instance *instance)
 	orf_token.token_seq = SEQNO_START_TOKEN;
 	orf_token.retrans_flg = 1;
 	instance->my_set_retrans_flg = 1;
-	instance->stats.orf_token_tx++;
 
 	if (cs_queue_is_empty (&instance->retrans_message_queue) == 1) {
 		orf_token.retrans_flg = 0;
