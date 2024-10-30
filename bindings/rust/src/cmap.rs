@@ -716,7 +716,7 @@ extern "C" fn rust_notify_fn(
                 (cb)(
                     r_cmap_handle,
                     h,
-                    TrackType { bits: event },
+                    TrackType::from_bits(event).unwrap_or(TrackType::empty()),
                     &r_keyname,
                     &r_old,
                     &r_new,
@@ -757,7 +757,7 @@ pub fn track_add(
         ffi::cmap_track_add(
             handle.cmap_handle,
             c_name.as_ptr(),
-            track_type.bits,
+            track_type.bits(),
             Some(rust_notify_fn),
             user_data as *mut c_void,
             &mut c_trackhandle,
