@@ -302,7 +302,7 @@ pub fn get_info(handle: &Handle, nodeid: NodeId) -> Result<NodeInfo> {
             node_expected_votes: c_info.node_expected_votes,
             highest_expected: c_info.highest_expected,
             quorum: c_info.quorum,
-            flags: NodeInfoFlags { bits: c_info.flags },
+            flags: NodeInfoFlags::from_bits(c_info.flags).unwrap_or(NodeInfoFlags::empty()),
             qdevice_votes: c_info.qdevice_votes,
             qdevice_name: string_from_bytes(
                 c_info.qdevice_name.as_ptr(),
