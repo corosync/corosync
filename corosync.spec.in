@@ -25,7 +25,7 @@ Version: @version@
 Release: 1%{?gitver}%{?dist}
 License: BSD-3-Clause
 URL: http://corosync.github.io/corosync/
-Source0: http://build.clusterlabs.org/corosync/releases/%{name}-%{version}%{?gittarver}.tar.gz
+Source0: https://github.com/%{name}/%{name}/releases/download/v%{version}/%{name}-%{version}%{?gittarver}.tar.gz
 
 # Runtime bits
 # The automatic dependency overridden in favor of explicit version lock
