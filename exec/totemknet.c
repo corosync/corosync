@@ -795,6 +795,7 @@ static int data_deliver_fn (
 	struct iovec iov_recv;
 	struct sockaddr_storage system_from;
 	ssize_t msg_len;
+	char *data_ptr = instance->iov_buffer;
 	int truncated_packet;
 
 	iov_recv.iov_base = instance->iov_buffer;
@@ -827,6 +828,21 @@ static int data_deliver_fn (
 
 	truncated_packet = 0;
 
+	/*
+	 * If it's from the knet fd then it will have the optional knet header on it
+	 */
+#ifdef KNET_DATAFD_FLAG_RX_RETURN_INFO
+	if (fd == instance->knet_fd) {
+		struct knet_datafd_header *datafd_header = (struct knet_datafd_header *)data_ptr;
+
+/* 		knet_log_printf (LOGSYS_LEVEL_DEBUG, "Packet from knet_fd nodeid: %d\n", datafd_header->src_nodeid); */
+
+		/* Advance past the ACTUAL header size, not the size we think it might be */
+		data_ptr += datafd_header->size;
+		msg_len -= datafd_header->size;
+	}
+#endif
+
 #ifdef HAVE_MSGHDR_FLAGS
 	if (msg_hdr.msg_flags & MSG_TRUNC) {
 		truncated_packet = 1;
@@ -855,7 +871,7 @@ static int data_deliver_fn (
 	 */
 	instance->totemknet_deliver_fn (
 		instance->context,
-		instance->iov_buffer,
+		data_ptr,
 		msg_len,
 		&system_from);
 
@@ -1302,7 +1318,11 @@ int totemknet_initialize (
 
 	/* Get an fd into knet */
 	instance->knet_fd = 0;
+#ifdef KNET_DATAFD_FLAG_RX_RETURN_INFO
+	res = knet_handle_add_datafd(instance->knet_handle, &instance->knet_fd, &channel, KNET_DATAFD_FLAG_RX_RETURN_INFO);
+#else
 	res = knet_handle_add_datafd(instance->knet_handle, &instance->knet_fd, &channel);
+#endif
 	if (res) {
 		knet_log_printf(LOG_DEBUG, "knet_handle_add_datafd failed: %s", strerror(errno));
 		goto exit_error;
@@ -2166,7 +2186,11 @@ static int create_nozzle_device(void *knet_context, const char *name,
 	nozzle_fd = nozzle_get_fd(nozzle_dev);
 	knet_log_printf (LOGSYS_LEVEL_INFO, "Opened '%s' on fd %d", device_name, nozzle_fd);
 
+#ifdef KNET_DATAFD_FLAG_RX_RETURN_INFO
+	res = knet_handle_add_datafd(instance->knet_handle, &nozzle_fd, &channel, 0);
+#else
 	res = knet_handle_add_datafd(instance->knet_handle, &nozzle_fd, &channel);
+#endif
 	if (res != 0) {
 		knet_log_printf (LOGSYS_LEVEL_ERROR, "Unable to add nozzle FD to knet: %s", strerror(errno));
 		goto out_clean;
