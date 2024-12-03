@@ -8,21 +8,21 @@ functions that are registered in the service handler data structure.  They
 are called by the synchronization system whenever a network partitions or
 merges.
 
-- init:
+- **init**:
   Within the init event a service handler should record temporary state variables
   used by the process event.
 
-- process:
+- **process**:
   The process event is responsible for executing synchronization.  This event
   will return a state as to whether it has completed or not.  This allows for
   synchronization to be interrupted and recontinue when the message queue buffer
   is full.  The process event will be called again by the synchronization service
   if requested to do so by the return variable returned in process.
 
-- abort:
+- **abort**:
   The abort event occurs when during synchronization a processor failure occurs.
 
-- activate:
+- **activate**:
   The activate event occurs when process has returned no more processing is
   necessary for any node in the cluster and all messages originated by process
   have completed.
@@ -74,6 +74,7 @@ the process event in the SYNC_CHECKPOINT state
 pseudocode executed by a processor when the synchronization service calls
 the process event in the SYNC_REFCOUNT state
 
+```
 	if lowest processor identifier of old ring in new ring
 		transmit checkpoint reference counts
 	if all checkpoint reference counts could be queued
@@ -90,6 +91,7 @@ sync_refcounts_enter:
 
 on event receipt of foreign ring id message
 	ignore message
+```
 
 pseudocode executed on event receipt of checkpoint update
 
@@ -127,3 +129,4 @@ copy my_saved_ring_id to my_old_ring_id
 pseudocode called when the synchronization service calls the abort event:
 
 	free all temporary checkpoints and temporary sections
+ 
