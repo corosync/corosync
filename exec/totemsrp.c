@@ -3679,11 +3679,19 @@ static int check_orf_token_sanity(
 	const struct totemsrp_instance *instance,
 	const void *msg,
 	size_t msg_len,
+	size_t max_msg_len,
 	int endian_conversion_needed)
 {
 	int rtr_entries;
 	const struct orf_token *token = (const struct orf_token *)msg;
 	size_t required_len;
+
+	if (msg_len > max_msg_len) {
+		log_printf (instance->totemsrp_log_level_security,
+		    "Received orf_token message is too long...  ignoring.");
+
+		return (-1);
+	}
 
 	if (msg_len < sizeof(struct orf_token)) {
 		log_printf (instance->totemsrp_log_level_security,
@@ -3696,6 +3704,13 @@ static int check_orf_token_sanity(
 		rtr_entries = swab32(token->rtr_list_entries);
 	} else {
 		rtr_entries = token->rtr_list_entries;
+	}
+
+	if (rtr_entries > RETRANSMIT_ENTRIES_MAX) {
+		log_printf (instance->totemsrp_log_level_security,
+		    "Received orf_token message rtr_entries is corrupted...  ignoring.");
+
+		return (-1);
 	}
 
 	required_len = sizeof(struct orf_token) + rtr_entries * sizeof(struct rtr_item);
@@ -3868,7 +3883,8 @@ static int message_handler_orf_token (
 	    "Time since last token %0.4f ms", tv_diff / (float)QB_TIME_NS_IN_MSEC);
 #endif
 
-	if (check_orf_token_sanity(instance, msg, msg_len, endian_conversion_needed) == -1) {
+	if (check_orf_token_sanity(instance, msg, msg_len, sizeof(token_storage),
+	    endian_conversion_needed) == -1) {
 		return (0);
 	}
 
