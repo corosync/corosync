@@ -845,6 +845,14 @@ static int main_config_parser_cb(const char *path,
 					return (0);
 				}
 			}
+			if (strcmp(path, "system.allow_knet_asymmetric_routes") == 0) {
+				if ((strcmp(value, "yes") != 0) &&
+				    (strcmp(value, "no") != 0)) {
+					*error_string = "Invalid system.allow_knet_asymmetric_routes";
+
+					return (0);
+				}
+			}
 			break;
 
 		case MAIN_CP_CB_DATA_STATE_INTERFACE:

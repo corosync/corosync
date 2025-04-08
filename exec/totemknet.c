@@ -1194,6 +1194,7 @@ int totemknet_initialize (
 	char *tmp_str;
 	int8_t channel=0;
 	int allow_knet_handle_fallback=0;
+	uint64_t flags = 0;
 	int res;
 	int i;
 
@@ -1265,18 +1266,25 @@ int totemknet_initialize (
 		free(tmp_str);
 	}
 
+	if (icmap_get_string("system.allow_knet_asymmetric_routes", &tmp_str) == CS_OK) {
+		if (strcmp(tmp_str, "yes") == 0) {
+			flags |= KNET_HANDLE_FLAG_ALLOWIFACEMISMATCH;
+		}
+		free(tmp_str);
+	}
+
 #if defined(KNET_API_VER) && (KNET_API_VER == 2)
-	instance->knet_handle = knet_handle_new(instance->totem_config->node_id, instance->logpipes[1], KNET_LOG_DEBUG, KNET_HANDLE_FLAG_PRIVILEGED);
+	instance->knet_handle = knet_handle_new(instance->totem_config->node_id, instance->logpipes[1], KNET_LOG_DEBUG, flags | KNET_HANDLE_FLAG_PRIVILEGED);
 #else
-	instance->knet_handle = knet_handle_new(instance->totem_config->node_id, instance->logpipes[1], KNET_LOG_DEBUG);
+	instance->knet_handle = knet_handle_new_ex(instance->totem_config->node_id, instance->logpipes[1], KNET_LOG_DEBUG, flags);
 #endif
 
 	if (allow_knet_handle_fallback && !instance->knet_handle && errno == ENAMETOOLONG) {
 		KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_WARNING, "knet_handle_new failed, trying unprivileged");
 #if defined(KNET_API_VER) && (KNET_API_VER == 2)
-		instance->knet_handle = knet_handle_new(instance->totem_config->node_id, instance->logpipes[1], KNET_LOG_DEBUG, 0);
+		instance->knet_handle = knet_handle_new(instance->totem_config->node_id, instance->logpipes[1], KNET_LOG_DEBUG, flags);
 #else
-		instance->knet_handle = knet_handle_new_ex(instance->totem_config->node_id, instance->logpipes[1], KNET_LOG_DEBUG, 0);
+		instance->knet_handle = knet_handle_new_ex(instance->totem_config->node_id, instance->logpipes[1], KNET_LOG_DEBUG, flags);
 #endif
 	}
 
