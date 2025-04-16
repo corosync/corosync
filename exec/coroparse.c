@@ -271,6 +271,9 @@ static char *remove_whitespace(char *string, int remove_colon_and_brace)
 	char *end;
 
 	start = string;
+	if (*start == '\0')
+		return start;
+
 	while (*start == ' ' || *start == '\t' || (unsigned char)*start == 0xA0)
 		start++;
 
