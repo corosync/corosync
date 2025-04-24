@@ -291,7 +291,7 @@ static char *remove_whitespace(char *string, int remove_colon_and_brace)
 static int parse_section(FILE *fp,
 			const char *fname,
 			int *line_no,
-			char *path,
+			const char *path,
 			const char **error_string,
 			int depth,
 			enum main_cp_cb_data_state state,
