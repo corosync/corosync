@@ -411,6 +411,11 @@ static int parse_section(FILE *fp,
 			key = remove_whitespace(line, 1);
 			value = remove_whitespace(loc, 0);
 
+			if (strlen(key) == 0) {
+				tmp_error_string = "Key name can't be empty";
+				goto parse_error;
+			}
+
 			if (strlen(path) + strlen(key) + 1 >= ICMAP_KEYNAME_MAXLEN) {
 				tmp_error_string = "New key makes total cmap path too long";
 				goto parse_error;
