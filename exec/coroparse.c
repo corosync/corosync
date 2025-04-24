@@ -1206,6 +1206,13 @@ static int main_config_parser_cb(const char *path,
 	case PARSER_CB_SECTION_END:
 		switch (*state) {
 		case MAIN_CP_CB_DATA_STATE_INTERFACE:
+			if (strcmp(path, "totem.interface") != 0) {
+				/*
+				 * Process only end of totem.interface section, not subsections
+				 */
+				break;
+			}
+
 			/*
 			 * Create new interface section
 			 */
@@ -1336,6 +1343,13 @@ static int main_config_parser_cb(const char *path,
 
 			break;
 		case MAIN_CP_CB_DATA_STATE_LOGGER_SUBSYS:
+			if (strcmp(path, "logging.logger_subsys") != 0) {
+				/*
+				 * Process only end of logging.logger_subsys section, not subsections
+				 */
+				break;
+			}
+
 			if (data->subsys == NULL) {
 				*error_string = "No subsys key in logger_subsys directive";
 
@@ -1369,6 +1383,13 @@ static int main_config_parser_cb(const char *path,
 			}
 			break;
 		case MAIN_CP_CB_DATA_STATE_LOGGING_DAEMON:
+			if (strcmp(path, "logging.logging_daemon") != 0) {
+				/*
+				 * Process only end of logging.logging_daemon section, not subsections
+				 */
+				break;
+			}
+
 			if (data->logging_daemon_name == NULL) {
 				*error_string = "No name key in logging_daemon directive";
 
@@ -1449,6 +1470,13 @@ static int main_config_parser_cb(const char *path,
 			}
 			break;
 		case MAIN_CP_CB_DATA_STATE_NODELIST_NODE:
+			if (strcmp(path, "nodelist.node") != 0) {
+				/*
+				 * Process only end of nodelist.node section, not subsections
+				 */
+				break;
+			}
+
 			data->node_number++;
 			break;
 		case MAIN_CP_CB_DATA_STATE_NORMAL:
