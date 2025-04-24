@@ -981,14 +981,14 @@ static int main_config_parser_cb(const char *path,
 			add_as_string = 0;
 			break;
 		case MAIN_CP_CB_DATA_STATE_LOGGING_DAEMON:
-			if (strcmp(key, "subsys") == 0) {
+			if (strcmp(path, "logging.logging_daemon.subsys") == 0) {
 				data->subsys = strdup(value);
 				if (data->subsys == NULL) {
 					*error_string = "Can't alloc memory";
 
 					return (0);
 				}
-			} else if (strcmp(key, "name") == 0) {
+			} else if (strcmp(path, "logging.logging_daemon.name") == 0) {
 				data->logging_daemon_name = strdup(value);
 				if (data->logging_daemon_name == NULL) {
 					*error_string = "Can't alloc memory";
@@ -996,6 +996,14 @@ static int main_config_parser_cb(const char *path,
 					return (0);
 				}
 			} else {
+				path_prefix = "logging.logging_daemon.";
+				if (strlen(path) < strlen(path_prefix) ||
+				    strncmp(path, path_prefix, strlen(path_prefix)) != 0) {
+					*error_string = "Internal error - incorrect path prefix for logging daemon state";
+
+					return (0);
+				}
+
 				kv_item = malloc(sizeof(*kv_item));
 				if (kv_item == NULL) {
 					*error_string = "Can't alloc memory";
@@ -1004,7 +1012,7 @@ static int main_config_parser_cb(const char *path,
 				}
 				memset(kv_item, 0, sizeof(*kv_item));
 
-				kv_item->key = strdup(key);
+				kv_item->key = strdup(path + strlen(path_prefix));
 				kv_item->value = strdup(value);
 				if (kv_item->key == NULL || kv_item->value == NULL) {
 					free(kv_item->key);
