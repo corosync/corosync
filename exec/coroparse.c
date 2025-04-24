@@ -608,6 +608,7 @@ static int main_config_parser_cb(const char *path,
 	struct qb_list_head *iter, *tmp_iter;
 	int uid, gid;
 	cs_error_t cs_err;
+	const char *path_prefix;
 
 	cs_err = CS_OK;
 
@@ -940,7 +941,7 @@ static int main_config_parser_cb(const char *path,
 			}
 			break;
 		case MAIN_CP_CB_DATA_STATE_LOGGER_SUBSYS:
-			if (strcmp(key, "subsys") == 0) {
+			if (strcmp(path, "logging.logger_subsys.subsys") == 0) {
 				data->subsys = strdup(value);
 				if (data->subsys == NULL) {
 					*error_string = "Can't alloc memory";
@@ -948,6 +949,14 @@ static int main_config_parser_cb(const char *path,
 					return (0);
 				}
 			} else {
+				path_prefix = "logging.logger_subsys.";
+				if (strlen(path) < strlen(path_prefix) ||
+				    strncmp(path, path_prefix, strlen(path_prefix)) != 0) {
+					*error_string = "Internal error - incorrect path prefix for logger subsys state";
+
+					return (0);
+				}
+
 				kv_item = malloc(sizeof(*kv_item));
 				if (kv_item == NULL) {
 					*error_string = "Can't alloc memory";
@@ -956,7 +965,7 @@ static int main_config_parser_cb(const char *path,
 				}
 				memset(kv_item, 0, sizeof(*kv_item));
 
-				kv_item->key = strdup(key);
+				kv_item->key = strdup(path + strlen(path_prefix));
 				kv_item->value = strdup(value);
 				if (kv_item->key == NULL || kv_item->value == NULL) {
 					free(kv_item->key);
