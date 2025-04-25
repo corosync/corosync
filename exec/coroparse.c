@@ -1089,9 +1089,18 @@ static int main_config_parser_cb(const char *path,
 		case MAIN_CP_CB_DATA_STATE_NODELIST:
 			break;
 		case MAIN_CP_CB_DATA_STATE_NODELIST_NODE:
-			snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "nodelist.node.%u.%s", data->node_number, key);
-			if ((strcmp(key, "nodeid") == 0) ||
-			    (strcmp(key, "quorum_votes") == 0)) {
+			path_prefix = "nodelist.node.";
+			if (strlen(path) < strlen(path_prefix) ||
+			    strncmp(path, path_prefix, strlen(path_prefix)) != 0) {
+				*error_string = "Internal error - incorrect path prefix for nodelist node state";
+
+				return (0);
+			}
+
+			snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "nodelist.node.%u.%s", data->node_number,
+			    path + strlen(path_prefix));
+			if ((strcmp(path, "nodelist.node.nodeid") == 0) ||
+			    (strcmp(path, "nodelist.node.quorum_votes") == 0)) {
 				val_type = ICMAP_VALUETYPE_UINT32;
 				if (safe_atoq(value, &val, val_type) != 0) {
 					goto atoi_error;
