@@ -637,6 +637,8 @@ static int main_config_parser_cb(const char *path,
 	switch (type) {
 	case PARSER_CB_START:
 		memset(data, 0, sizeof(struct main_cp_cb_data));
+		qb_list_init(&data->logger_subsys_items_head);
+		qb_list_init(&data->member_items_head);
 		*state = MAIN_CP_CB_DATA_STATE_NORMAL;
 		break;
 	case PARSER_CB_END:
