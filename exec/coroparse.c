@@ -1058,7 +1058,7 @@ static int main_config_parser_cb(const char *path,
 			}
 			break;
 		case MAIN_CP_CB_DATA_STATE_MEMBER:
-			if (strcmp(key, "memberaddr") != 0) {
+			if (strcmp(path, "totem.interface.member.memberaddr") != 0) {
 				*error_string = "Only memberaddr is allowed in member section";
 
 				return (0);
@@ -1222,6 +1222,12 @@ static int main_config_parser_cb(const char *path,
 
 		if (*state == MAIN_CP_CB_DATA_STATE_UIDGID && strcmp(path, "uidgid") != 0) {
 			*error_string = "Subsections are not allowed within uidgid section";
+
+			return (0);
+		};
+
+		if (*state == MAIN_CP_CB_DATA_STATE_MEMBER && strcmp(path, "totem.interface.member") != 0) {
+			*error_string = "Subsections are not allowed within totem.interface.member section";
 
 			return (0);
 		};
