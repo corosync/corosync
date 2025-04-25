@@ -1028,7 +1028,7 @@ static int main_config_parser_cb(const char *path,
 			add_as_string = 0;
 			break;
 		case MAIN_CP_CB_DATA_STATE_UIDGID:
-			if (strcmp(key, "uid") == 0) {
+			if (strcmp(path, "uidgid.uid") == 0) {
 				uid = uid_determine(value);
 				if (uid == -1) {
 					*error_string = error_string_response;
@@ -1040,7 +1040,7 @@ static int main_config_parser_cb(const char *path,
 					goto icmap_set_error;
 				}
 				add_as_string = 0;
-			} else if (strcmp(key, "gid") == 0) {
+			} else if (strcmp(path, "uidgid.gid") == 0) {
 				gid = gid_determine(value);
 				if (gid == -1) {
 					*error_string = error_string_response;
@@ -1219,6 +1219,12 @@ static int main_config_parser_cb(const char *path,
 		if (strcmp(path, "resources.process.memory_used") == 0) {
 			*state = MAIN_CP_CB_DATA_STATE_RESOURCES_PROCESS_MEMUSED;
 		}
+
+		if (*state == MAIN_CP_CB_DATA_STATE_UIDGID && strcmp(path, "uidgid") != 0) {
+			*error_string = "Subsections are not allowed within uidgid section";
+
+			return (0);
+		};
 		break;
 	case PARSER_CB_SECTION_END:
 		switch (*state) {
