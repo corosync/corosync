@@ -681,7 +681,7 @@ static int main_config_parser_cb(const char *path,
 			    (strcmp(path, "pload.size") == 0)) {
 				val_type = ICMAP_VALUETYPE_UINT32;
 				if (safe_atoq(value, &val, val_type) != 0) {
-					goto atoi_error;
+					goto safe_atoq_error;
 				}
 				if ((cs_err = icmap_set_uint32_r(config_map, path, val)) != CS_OK) {
 					goto icmap_set_error;
@@ -696,7 +696,7 @@ static int main_config_parser_cb(const char *path,
 			    (strcmp(path, "quorum.leaving_timeout") == 0)) {
 				val_type = ICMAP_VALUETYPE_UINT32;
 				if (safe_atoq(value, &val, val_type) != 0) {
-					goto atoi_error;
+					goto safe_atoq_error;
 				}
 				if ((cs_err = icmap_set_uint32_r(config_map, path, val)) != CS_OK) {
 					goto icmap_set_error;
@@ -712,7 +712,7 @@ static int main_config_parser_cb(const char *path,
 			    (strcmp(path, "quorum.last_man_standing") == 0)) {
 				val_type = ICMAP_VALUETYPE_UINT8;
 				if (safe_atoq(value, &val, val_type) != 0) {
-					goto atoi_error;
+					goto safe_atoq_error;
 				}
 				if ((cs_err = icmap_set_uint8_r(config_map, path, val)) != CS_OK) {
 					goto icmap_set_error;
@@ -726,7 +726,7 @@ static int main_config_parser_cb(const char *path,
 			    (strcmp(path, "quorum.device.votes") == 0)) {
 				val_type = ICMAP_VALUETYPE_UINT32;
 				if (safe_atoq(value, &val, val_type) != 0) {
-					goto atoi_error;
+					goto safe_atoq_error;
 				}
 				if ((cs_err = icmap_set_uint32_r(config_map, path, val)) != CS_OK) {
 					goto icmap_set_error;
@@ -736,7 +736,7 @@ static int main_config_parser_cb(const char *path,
 			if ((strcmp(path, "quorum.device.master_wins") == 0)) {
 				val_type = ICMAP_VALUETYPE_UINT8;
 				if (safe_atoq(value, &val, val_type) != 0) {
-					goto atoi_error;
+					goto safe_atoq_error;
 				}
 				if ((cs_err = icmap_set_uint8_r(config_map, path, val)) != CS_OK) {
 					goto icmap_set_error;
@@ -777,7 +777,7 @@ static int main_config_parser_cb(const char *path,
 			    (strcmp(path, "totem.netmtu") == 0)) {
 				val_type = ICMAP_VALUETYPE_UINT32;
 				if (safe_atoq(value, &val, val_type) != 0) {
-					goto atoi_error;
+					goto safe_atoq_error;
 				}
 				if ((cs_err = icmap_set_uint32_r(config_map,path, val)) != CS_OK) {
 					goto icmap_set_error;
@@ -787,7 +787,7 @@ static int main_config_parser_cb(const char *path,
 			if (strcmp(path, "totem.knet_compression_level") == 0) {
 				val_type = ICMAP_VALUETYPE_INT32;
 				if (safe_atoq(value, &val, val_type) != 0) {
-					goto atoi_error;
+					goto safe_atoq_error;
 				}
 				if ((cs_err = icmap_set_int32_r(config_map, path, val)) != CS_OK) {
 					goto icmap_set_error;
@@ -796,7 +796,7 @@ static int main_config_parser_cb(const char *path,
 			}
 			if (strcmp(path, "totem.config_version") == 0) {
 				if (str_to_ull(value, &ull) != 0) {
-					goto atoi_error;
+					goto str_to_ull_error;
 				}
 				if ((cs_err = icmap_set_uint64_r(config_map, path, ull)) != CS_OK) {
 					goto icmap_set_error;
@@ -893,7 +893,7 @@ static int main_config_parser_cb(const char *path,
 			if (strcmp(path, "totem.interface.linknumber") == 0) {
 				val_type = ICMAP_VALUETYPE_UINT8;
 				if (safe_atoq(value, &val, val_type) != 0) {
-					goto atoi_error;
+					goto safe_atoq_error;
 				}
 
 				data->linknumber = val;
@@ -917,7 +917,7 @@ static int main_config_parser_cb(const char *path,
 			if (strcmp(path, "totem.interface.mcastport") == 0) {
 				val_type = ICMAP_VALUETYPE_UINT16;
 				if (safe_atoq(value, &val, val_type) != 0) {
-					goto atoi_error;
+					goto safe_atoq_error;
 				}
 				data->mcastport = val;
 				add_as_string = 0;
@@ -925,7 +925,7 @@ static int main_config_parser_cb(const char *path,
 			if (strcmp(path, "totem.interface.ttl") == 0) {
 				val_type = ICMAP_VALUETYPE_UINT8;
 				if (safe_atoq(value, &val, val_type) != 0) {
-					goto atoi_error;
+					goto safe_atoq_error;
 				}
 				data->ttl = val;
 				add_as_string = 0;
@@ -933,7 +933,7 @@ static int main_config_parser_cb(const char *path,
 			if (strcmp(path, "totem.interface.knet_link_priority") == 0) {
 				val_type = ICMAP_VALUETYPE_UINT8;
 				if (safe_atoq(value, &val, val_type) != 0) {
-					goto atoi_error;
+					goto safe_atoq_error;
 				}
 				data->knet_link_priority = val;
 				add_as_string = 0;
@@ -941,7 +941,7 @@ static int main_config_parser_cb(const char *path,
 			if (strcmp(path, "totem.interface.knet_ping_interval") == 0) {
 				val_type = ICMAP_VALUETYPE_UINT32;
 				if (safe_atoq(value, &val, val_type) != 0) {
-					goto atoi_error;
+					goto safe_atoq_error;
 				}
 				data->knet_ping_interval = val;
 				add_as_string = 0;
@@ -949,7 +949,7 @@ static int main_config_parser_cb(const char *path,
 			if (strcmp(path, "totem.interface.knet_ping_timeout") == 0) {
 				val_type = ICMAP_VALUETYPE_UINT32;
 				if (safe_atoq(value, &val, val_type) != 0) {
-					goto atoi_error;
+					goto safe_atoq_error;
 				}
 				data->knet_ping_timeout = val;
 				add_as_string = 0;
@@ -957,7 +957,7 @@ static int main_config_parser_cb(const char *path,
 			if (strcmp(path, "totem.interface.knet_ping_precision") == 0) {
 				val_type = ICMAP_VALUETYPE_UINT32;
 				if (safe_atoq(value, &val, val_type) != 0) {
-					goto atoi_error;
+					goto safe_atoq_error;
 				}
 				data->knet_ping_precision = val;
 				add_as_string = 0;
@@ -965,7 +965,7 @@ static int main_config_parser_cb(const char *path,
 			if (strcmp(path, "totem.interface.knet_pong_count") == 0) {
 				val_type = ICMAP_VALUETYPE_UINT32;
 				if (safe_atoq(value, &val, val_type) != 0) {
-					goto atoi_error;
+					goto safe_atoq_error;
 				}
 				data->knet_pong_count = val;
 				add_as_string = 0;
@@ -1142,7 +1142,7 @@ static int main_config_parser_cb(const char *path,
 			    (strcmp(path, "nodelist.node.quorum_votes") == 0)) {
 				val_type = ICMAP_VALUETYPE_UINT32;
 				if (safe_atoq(value, &val, val_type) != 0) {
-					goto atoi_error;
+					goto safe_atoq_error;
 				}
 
 				if ((cs_err = icmap_set_uint32_r(config_map, key_name, val)) != CS_OK) {
@@ -1162,7 +1162,7 @@ static int main_config_parser_cb(const char *path,
 			if (strcmp(key, "watchdog_timeout") == 0) {
 				val_type = ICMAP_VALUETYPE_UINT32;
 				if (safe_atoq(value, &val, val_type) != 0) {
-					goto atoi_error;
+					goto safe_atoq_error;
 				}
 				if ((cs_err = icmap_set_uint32_r(config_map,path, val)) != CS_OK) {
 					goto icmap_set_error;
@@ -1174,7 +1174,7 @@ static int main_config_parser_cb(const char *path,
 		case MAIN_CP_CB_DATA_STATE_RESOURCES_SYSTEM_MEMUSED:
 			if (strcmp(key, "poll_period") == 0) {
 				if (str_to_ull(value, &ull) != 0) {
-					goto atoi_error;
+					goto str_to_ull_error;
 				}
 				if ((cs_err = icmap_set_uint64_r(config_map,path, ull)) != CS_OK) {
 					goto icmap_set_error;
@@ -1186,7 +1186,7 @@ static int main_config_parser_cb(const char *path,
 		case MAIN_CP_CB_DATA_STATE_RESOURCES_PROCESS_MEMUSED:
 			if (strcmp(key, "poll_period") == 0) {
 				if (str_to_ull(value, &ull) != 0) {
-					goto atoi_error;
+					goto str_to_ull_error;
 				}
 				if ((cs_err = icmap_set_uint64_r(config_map,path, ull)) != CS_OK) {
 					goto icmap_set_error;
@@ -1585,7 +1585,10 @@ static int main_config_parser_cb(const char *path,
 
 	return (1);
 
-atoi_error:
+safe_atoq_error:
+	/*
+	 * For integers supported by safe_atoq display range
+	 */
 	min_val = max_val = 0;
 	/*
 	 * This is really assert, because developer ether doesn't set val_type correctly or
@@ -1596,6 +1599,20 @@ atoi_error:
 	if (snprintf(formated_err, sizeof(formated_err),
 	    "Value of key \"%s\" is expected to be integer in range (%lld..%lld), but \"%s\" was given",
 	    key_name, min_val, max_val, value) >= sizeof(formated_err)) {
+		*error_string = "Can't format parser error message";
+	} else {
+		*error_string = formated_err;
+	}
+
+	return (0);
+
+str_to_ull_error:
+	/*
+	 * For integers not supported by safe_atoq (64-bit int)
+	 */
+	if (snprintf(formated_err, sizeof(formated_err),
+	    "Value of key \"%s\" is expected to be unsigned integer, but \"%s\" was given",
+	    key_name, value) >= sizeof(formated_err)) {
 		*error_string = "Can't format parser error message";
 	} else {
 		*error_string = formated_err;
