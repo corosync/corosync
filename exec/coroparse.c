@@ -651,6 +651,7 @@ static int main_config_parser_cb(const char *path,
 
 		qb_list_for_each_safe(iter, tmp_iter, &(data->logger_subsys_items_head)) {
 			kv_item = qb_list_entry(iter, struct key_value_list_item, list);
+			qb_list_del(&kv_item->list);
 
 			free(kv_item->value);
 			free(kv_item->key);
@@ -662,6 +663,7 @@ static int main_config_parser_cb(const char *path,
 
 		qb_list_for_each_safe(iter, tmp_iter, &(data->member_items_head)) {
 			kv_item = qb_list_entry(iter, struct key_value_list_item, list);
+			qb_list_del(&kv_item->list);
 
 			free(kv_item->value);
 			free(kv_item->key);
@@ -1402,6 +1404,7 @@ static int main_config_parser_cb(const char *path,
 
 			qb_list_for_each_safe(iter, tmp_iter, &(data->member_items_head)) {
 				kv_item = qb_list_entry(iter, struct key_value_list_item, list);
+				qb_list_del(&kv_item->list);
 
 				snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.member.%u",
 						data->linknumber, ii);
@@ -1436,6 +1439,7 @@ static int main_config_parser_cb(const char *path,
 
 			qb_list_for_each_safe(iter, tmp_iter, &(data->logger_subsys_items_head)) {
 				kv_item = qb_list_entry(iter, struct key_value_list_item, list);
+				qb_list_del(&kv_item->list);
 
 				snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "logging.logger_subsys.%s.%s",
 					 data->subsys, kv_item->key);
@@ -1478,6 +1482,7 @@ static int main_config_parser_cb(const char *path,
 
 			qb_list_for_each_safe(iter, tmp_iter, &(data->logger_subsys_items_head)) {
 				kv_item = qb_list_entry(iter, struct key_value_list_item, list);
+				qb_list_del(&kv_item->list);
 
 				if (data->subsys == NULL) {
 					if (strcmp(data->logging_daemon_name, "corosync") == 0) {
