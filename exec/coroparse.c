@@ -70,6 +70,7 @@ enum parser_cb_type {
 	PARSER_CB_SECTION_START,
 	PARSER_CB_SECTION_END,
 	PARSER_CB_ITEM,
+	PARSER_CB_CLEANUP,
 };
 
 enum main_cp_cb_data_state {
@@ -471,6 +472,7 @@ static int parse_section(FILE *fp,
 
 	if (strcmp(path, "") == 0) {
 		parser_cb("", NULL, NULL, &state, PARSER_CB_END, error_string, config_map, user_data);
+		parser_cb("", NULL, NULL, &state, PARSER_CB_CLEANUP, error_string, config_map, user_data);
 	}
 
 	return 0;
@@ -482,6 +484,8 @@ parse_error:
 	} else {
 		*error_string = formated_err;
 	}
+
+	parser_cb("", NULL, NULL, &state, PARSER_CB_CLEANUP, error_string, config_map, user_data);
 
 	return -1;
 }
@@ -636,6 +640,31 @@ static int main_config_parser_cb(const char *path,
 		*state = MAIN_CP_CB_DATA_STATE_NORMAL;
 		break;
 	case PARSER_CB_END:
+		break;
+	case PARSER_CB_CLEANUP:
+		free(data->bindnetaddr);
+		free(data->mcastaddr);
+		free(data->broadcast);
+		free(data->knet_transport);
+
+		qb_list_for_each_safe(iter, tmp_iter, &(data->logger_subsys_items_head)) {
+			kv_item = qb_list_entry(iter, struct key_value_list_item, list);
+
+			free(kv_item->value);
+			free(kv_item->key);
+			free(kv_item);
+		}
+
+		free(data->subsys);
+		free(data->logging_daemon_name);
+
+		qb_list_for_each_safe(iter, tmp_iter, &(data->member_items_head)) {
+			kv_item = qb_list_entry(iter, struct key_value_list_item, list);
+
+			free(kv_item->value);
+			free(kv_item->key);
+			free(kv_item);
+		}
 		break;
 	case PARSER_CB_ITEM:
 		add_as_string = 1;
@@ -867,14 +896,17 @@ static int main_config_parser_cb(const char *path,
 				add_as_string = 0;
 			}
 			if (strcmp(path, "totem.interface.bindnetaddr") == 0) {
+				free(data->bindnetaddr);
 				data->bindnetaddr = strdup(value);
 				add_as_string = 0;
 			}
 			if (strcmp(path, "totem.interface.mcastaddr") == 0) {
+				free(data->mcastaddr);
 				data->mcastaddr = strdup(value);
 				add_as_string = 0;
 			}
 			if (strcmp(path, "totem.interface.broadcast") == 0) {
+				free(data->broadcast);
 				data->broadcast = strdup(value);
 				add_as_string = 0;
 			}
@@ -935,13 +967,14 @@ static int main_config_parser_cb(const char *path,
 				add_as_string = 0;
 			}
 			if (strcmp(path, "totem.interface.knet_transport") == 0) {
-				val_type = ICMAP_VALUETYPE_STRING;
+				free(data->knet_transport);
 				data->knet_transport = strdup(value);
 				add_as_string = 0;
 			}
 			break;
 		case MAIN_CP_CB_DATA_STATE_LOGGER_SUBSYS:
 			if (strcmp(path, "logging.logger_subsys.subsys") == 0) {
+				free(data->subsys);
 				data->subsys = strdup(value);
 				if (data->subsys == NULL) {
 					*error_string = "Can't alloc memory";
@@ -982,6 +1015,7 @@ static int main_config_parser_cb(const char *path,
 			break;
 		case MAIN_CP_CB_DATA_STATE_LOGGING_DAEMON:
 			if (strcmp(path, "logging.logging_daemon.subsys") == 0) {
+				free(data->subsys);
 				data->subsys = strdup(value);
 				if (data->subsys == NULL) {
 					*error_string = "Can't alloc memory";
@@ -989,6 +1023,7 @@ static int main_config_parser_cb(const char *path,
 					return (0);
 				}
 			} else if (strcmp(path, "logging.logging_daemon.name") == 0) {
+				free(data->logging_daemon_name);
 				data->logging_daemon_name = strdup(value);
 				if (data->logging_daemon_name == NULL) {
 					*error_string = "Can't alloc memory";
@@ -1354,6 +1389,7 @@ static int main_config_parser_cb(const char *path,
 						data->linknumber);
 				cs_err = icmap_set_string_r(config_map, key_name, data->knet_transport);
 				free(data->knet_transport);
+				data->knet_transport = NULL;
 
 				if (cs_err != CS_OK) {
 					goto icmap_set_error;
@@ -1378,6 +1414,8 @@ static int main_config_parser_cb(const char *path,
 					goto icmap_set_error;
 				}
 			}
+
+			qb_list_init(&data->member_items_head);
 
 			break;
 		case MAIN_CP_CB_DATA_STATE_LOGGER_SUBSYS:
@@ -1414,7 +1452,9 @@ static int main_config_parser_cb(const char *path,
 					data->subsys);
 			cs_err = icmap_set_string_r(config_map, key_name, data->subsys);
 
+			qb_list_init(&data->logger_subsys_items_head);
 			free(data->subsys);
+			data->subsys = NULL;
 
 			if (cs_err != CS_OK) {
 				goto icmap_set_error;
@@ -1489,9 +1529,6 @@ static int main_config_parser_cb(const char *path,
 					cs_err = icmap_set_string_r(config_map, key_name, data->subsys);
 
 					if (cs_err != CS_OK) {
-						free(data->subsys);
-						free(data->logging_daemon_name);
-
 						goto icmap_set_error;
 					}
 					snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "logging.logging_daemon.%s.%s.name",
@@ -1500,8 +1537,11 @@ static int main_config_parser_cb(const char *path,
 				}
 			}
 
+			qb_list_init(&data->logger_subsys_items_head);
 			free(data->subsys);
+			data->subsys = NULL;
 			free(data->logging_daemon_name);
+			data->logging_daemon_name = NULL;
 
 			if (cs_err != CS_OK) {
 				goto icmap_set_error;
@@ -1586,6 +1626,8 @@ static int uidgid_config_parser_cb(const char *path,
 	case PARSER_CB_START:
 		break;
 	case PARSER_CB_END:
+		break;
+	case PARSER_CB_CLEANUP:
 		break;
 	case PARSER_CB_ITEM:
 		if (strcmp(path, "uidgid.uid") == 0) {
