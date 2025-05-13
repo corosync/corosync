@@ -1,6 +1,6 @@
 .\"/*
 .\" * Copyright (c) 2005 MontaVista Software, Inc.
-.\" * Copyright (c) 2006-2024 Red Hat, Inc.
+.\" * Copyright (c) 2006-2025 Red Hat, Inc.
 .\" *
 .\" * All rights reserved.
 .\" *
@@ -32,7 +32,7 @@
 .\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 .\" * THE POSSIBILITY OF SUCH DAMAGE.
 .\" */
-.TH COROSYNC_CONF 5 2024-07-22 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
+.TH COROSYNC_CONF 5 2025-05-13 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
 .SH NAME
 corosync.conf - corosync executive configuration file
 
@@ -172,7 +172,16 @@ are used, mcastaddr has higher priority.
 
 .TP
 mcastport
-This specifies the UDP port number.  It is possible to use the same multicast
+This specifies the UDP port number. Exact meaning depends on used transport.
+
+For the KNET transport, it is used as both the binding and sending port. For
+additional links, the default value is computed as (mcastport + linknumber).
+
+For the UDPU transport, mcastport specifies the bind port. Corosync also
+allocates and binds a random sending port for each remote node.
+
+For the UDP transport, it is used as a bind port for mcastaddr.
+It is possible to use the same multicast
 address on a network with the corosync services configured for different
 UDP ports.
 Please note corosync uses two UDP ports mcastport (for mcast receives) and
