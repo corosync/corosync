@@ -1936,6 +1936,19 @@ extern int totem_config_read (
 	}
 
 	/*
+	 * Store mcastport value to cmap runtime section for KNET
+	 */
+	if (totem_config->transport_number == TOTEM_TRANSPORT_KNET) {
+		for (i = 0; i < INTERFACE_MAX; i++) {
+			if (!totem_config->interfaces[i].configured) {
+				continue;
+			}
+			snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "runtime.config.totem.interface.%u.mcastport", i);
+			icmap_set_uint16(tmp_key, totem_config->interfaces[i].ip_port);
+		}
+	}
+
+	/*
 	 * Check existence of nodelist
 	 */
 	if ((icmap_get_string("nodelist.node.0.name", &str) == CS_OK) ||
