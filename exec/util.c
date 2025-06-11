@@ -174,13 +174,24 @@ int cs_name_tisEqual (cs_name_t *str1, char *str2) {
 const char *get_state_dir(void)
 {
 	static char path[PATH_MAX] = {'\0'};
-	char *cmap_state_dir;
+	char *state_dir;
 	int res;
 
 	if (path[0] == '\0') {
-		if (icmap_get_string("system.state_dir", &cmap_state_dir) == CS_OK) {
-			res = snprintf(path, PATH_MAX, "%s", cmap_state_dir);
-			free(cmap_state_dir);
+		if (icmap_get_string("system.state_dir", &state_dir) == CS_OK) {
+			res = snprintf(path, PATH_MAX, "%s", state_dir);
+			free(state_dir);
+		} else if ((state_dir = getenv("STATE_DIRECTORY")) != NULL) {
+			/*
+			 * systemd allows multiple directory names that are
+			 * passed to env variable separated by colon. Support for this feature
+			 * is deliberately not implemented because corosync always
+			 * uses just one state directory and it is unclear what behavior should
+			 * be taken for multiple ones. If reasonable need for
+			 * supporting multiple directories appear, it must be implemented also
+			 * for cmap.
+			 */
+			res = snprintf(path, PATH_MAX, "%s", state_dir);
 		} else {
 			res = snprintf(path, PATH_MAX, "%s/%s", LOCALSTATEDIR, "lib/corosync");
 		}
