@@ -9,6 +9,7 @@ After=network-online.target
 EnvironmentFile=-@INITCONFIGDIR@/corosync
 ExecStart=@SBINDIR@/corosync -f $COROSYNC_OPTIONS
 ExecStop=@SBINDIR@/corosync-cfgtool -H --force
+StateDirectory=corosync
 Type=notify
 
 # In typical systemd deployments, both standard outputs are forwarded to
