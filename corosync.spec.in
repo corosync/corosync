@@ -209,8 +209,8 @@ fi
 %endif
 %if %{without systemd}
 %dir %{_localstatedir}/lib/corosync
-%endif
 %dir %{_localstatedir}/log/cluster
+%endif
 %{_mandir}/man7/corosync_overview.7*
 %{_mandir}/man8/corosync.8*
 %{_mandir}/man8/corosync-blackbox.8*
