@@ -52,9 +52,10 @@ Faults occur for various reasons:
 
 The major focus of high availability in the past has been to mask hardware
 faults. Faults in other components of the system have gone unsolved until
-Corosync.  Corosync is designed for applications to replicate their state to
-up to 16 processors.  The processors all contain a replica of the application
-state.
+Corosync.  Corosync is designed for applications to replicate their state
+to multiple processors, with the actual limit determined by factors such as
+CPU performance, network latency, and network bandwidth. The processors all
+contain a replica of the application state.
 
 The corosync project provides a group message API called CPG.
 The project developers recommend CPG be used for most applications.  The CPG
