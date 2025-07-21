@@ -122,7 +122,7 @@ static int logsys_blackbox_enabled = 1;
 
 static int _logsys_config_subsys_get_unlocked (const char *subsys)
 {
-	unsigned int i;
+	int i;
 
 	if (!subsys) {
 		return LOGSYS_MAX_SUBSYS_COUNT;
@@ -468,7 +468,7 @@ int _logsys_subsys_create (const char *subsys, const char *filename)
 
 int _logsys_config_subsys_get (const char *subsys)
 {
-	unsigned int i;
+	int i;
 
 	pthread_mutex_lock (&logsys_config_mutex);
 
