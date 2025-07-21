@@ -527,12 +527,14 @@ cs_error_t cpg_dispatch (
 					assembly_data->assembly_buf_ptr += res_cpg_partial_deliver_callback->fraglen;
 
 					if (res_cpg_partial_deliver_callback->type == LIBCPG_PARTIAL_LAST) {
-						cpg_inst_copy.model_v1_data.cpg_deliver_fn (handle,
-							&group_name,
-							res_cpg_partial_deliver_callback->nodeid,
-							res_cpg_partial_deliver_callback->pid,
-							assembly_data->assembly_buf,
-							res_cpg_partial_deliver_callback->msglen);
+						if (cpg_inst_copy.model_v1_data.cpg_deliver_fn != NULL) {
+							cpg_inst_copy.model_v1_data.cpg_deliver_fn (handle,
+								&group_name,
+								res_cpg_partial_deliver_callback->nodeid,
+								res_cpg_partial_deliver_callback->pid,
+								assembly_data->assembly_buf,
+								res_cpg_partial_deliver_callback->msglen);
+						}
 
 						qb_list_del (&assembly_data->list);
 						free(assembly_data->assembly_buf);
