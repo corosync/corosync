@@ -149,16 +149,23 @@ int main (int argc, char *argv[])
 	 */
 	bytes_read = 0;
 
-retry_read:
-	res = read (random_fd, &key[bytes_read], key_len - bytes_read);
-	if (res == -1) {
-		err (1, "Could not read /dev/random");
-	}
-	bytes_read += res;
-	if (bytes_read != key_len) {
-		printf ("Press keys on your keyboard to generate entropy (%d bits still needed).\n",
-		    (int)((key_len - bytes_read) * 8));
-		goto retry_read;
+	while (bytes_read < key_len) {
+		res = read (random_fd, &key[bytes_read], key_len - bytes_read);
+
+		if (res == -1) {
+			err (1, "Could not read %s", random_dev);
+		}
+
+		if (res == 0) {
+			errx (1, "Unexpected end of %s", random_dev);
+		}
+
+		bytes_read += res;
+
+		if (bytes_read != key_len) {
+			printf ("Press keys on your keyboard to generate entropy (%zu bits still needed).\n",
+			    (size_t)((key_len - bytes_read) * 8));
+		}
 	}
 	close (random_fd);
 
