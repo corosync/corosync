@@ -1103,7 +1103,7 @@ int totempg_callback_token_create (
 	int (*callback_fn) (enum totem_callback_token_type type, const void *),
 	const void *data)
 {
-	unsigned int res;
+	int res;
 	if (totempg_threaded_mode == 1) {
 		pthread_mutex_lock (&callback_token_mutex);
 	}
@@ -1239,7 +1239,7 @@ int totempg_groups_mcast_joined (
 	unsigned short group_len[MAX_GROUPS_PER_MSG + 1];
 	struct iovec iovec_mcast[MAX_GROUPS_PER_MSG + 1 + MAX_IOVECS_FROM_APP];
 	int i;
-	unsigned int res;
+	int res;
 
 	if (totempg_threaded_mode == 1) {
 		pthread_mutex_lock (&totempg_mutex);
@@ -1368,7 +1368,7 @@ int totempg_groups_mcast_groups (
 	unsigned short group_len[MAX_GROUPS_PER_MSG + 1];
 	struct iovec iovec_mcast[MAX_GROUPS_PER_MSG + 1 + MAX_IOVECS_FROM_APP];
 	int i;
-	unsigned int res;
+	int res;
 
 	if (totempg_threaded_mode == 1) {
 		pthread_mutex_lock (&totempg_mutex);
