@@ -499,6 +499,7 @@ cs_error_t cpg_dispatch (
 						qb_list_del (&assembly_data->list);
 						free(assembly_data->assembly_buf);
 						free(assembly_data);
+						// coverity[UNUSED_VALUE:SUPPRESS] defensive programming
 						assembly_data = NULL;
 					}
 

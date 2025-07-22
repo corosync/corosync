@@ -942,6 +942,7 @@ static int mcast_msg (
 			fragment_size += copy_len;
 			mcast_packed_msg_lens[mcast_packed_msg_count] += copy_len;
 			next_fragment = 1;
+			// coverity[UNUSED_VALUE:SUPPRESS] defensive programming
 			copy_len = 0;
 			copy_base = 0;
 			i++;
@@ -1011,6 +1012,7 @@ static int mcast_msg (
 			 * If the iovec all fit, go to the next iovec
 			 */
 			if ((copy_base + copy_len) == iovec[i].iov_len) {
+				// coverity[UNUSED_VALUE:SUPPRESS] defensive programming
 				copy_len = 0;
 				copy_base = 0;
 				i++;
