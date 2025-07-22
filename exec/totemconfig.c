@@ -405,6 +405,7 @@ int totem_volatile_config_validate (
 		goto parse_error;
 	}
 
+	// coverity[NO_EFFECT:SUPPRESS] clarify bounds of token_warning values and defensive programming
 	if (totem_config->token_warning > 100 || totem_config->token_warning < 0) {
 		snprintf (local_error_reason, sizeof(local_error_reason),
 			"The token warning parameter (%d%%) must be between 0 (disabled) and 100.",
