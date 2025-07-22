@@ -998,6 +998,15 @@ cs_error_t cpg_zcb_alloc (
 
 error_exit:
 	hdb_handle_put (&cpg_handle_t_db, handle);
+	/*
+	 * Coverity correctly reports an error here. We cannot safely munmap and unlink the file, because
+	 * the timing of the failure is the key issue: if a failure occurs before the IPC reply,
+	 * the file should be deleted.
+	 * However, if the failure happens during the IPC reply, Corosync has already deleted the file.
+	 * This means the cpg library could attempt to delete a non-existing file (not a problem) or,
+	 * in a theoretical race condition, delete a new file created by another application.
+	 * There are multiple possible solutions, but none of them are ready to be implemented yet.
+	 */
 	return (error);
 }
 
