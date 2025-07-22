@@ -857,6 +857,7 @@ void totempg_finalize (void)
 	if (totempg_threaded_mode == 1) {
 		pthread_mutex_lock (&totempg_mutex);
 	}
+	// coverity[SLEEP:SUPPRESS] sleep is not a problem because it is shutdown
 	totemsrp_finalize (totemsrp_context);
 	if (totempg_threaded_mode == 1) {
 		pthread_mutex_unlock (&totempg_mutex);
