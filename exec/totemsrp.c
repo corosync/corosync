@@ -3374,6 +3374,7 @@ static void memb_join_message_send (struct totemsrp_instance *instance)
 		sizeof (struct srp_addr);
 
 	if (instance->totem_config->send_join_timeout) {
+		// coverity[DC.WEAK_CRYPTO:SUPPRESS] random is not used in a security context
 		usleep (random() % (instance->totem_config->send_join_timeout * 1000));
 	}
 
@@ -3455,6 +3456,7 @@ static void memb_leave_message_send (struct totemsrp_instance *instance)
 
 
 	if (instance->totem_config->send_join_timeout) {
+		// coverity[DC.WEAK_CRYPTO:SUPPRESS] random is not used in a security context
 		usleep (random() % (instance->totem_config->send_join_timeout * 1000));
 	}
 	instance->stats.memb_join_tx++;

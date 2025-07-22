@@ -151,6 +151,7 @@ int main (int argc, char *argv[])
 	 */
 	i = 0;
 	do {
+		// coverity[DC.WEAK_CRYPTO:SUPPRESS] rand is not used in a security context
 		msg.msg_size = 100 + rand() % 100000;
 		iov[1].iov_len = msg.msg_size;
 		for (j = 0; j < msg.msg_size; j++) {
