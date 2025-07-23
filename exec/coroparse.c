@@ -1753,6 +1753,7 @@ static int read_uidgid_files_into_icmap(
 
 			goto error_exit;
 		}
+		// coverity[TOCTOU:SUPPRESS] not really problem
 		res = stat (filename, &stat_buf);
 		if (res == 0 && S_ISREG(stat_buf.st_mode)) {
 
