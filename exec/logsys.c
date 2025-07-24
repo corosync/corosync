@@ -106,8 +106,6 @@ static int logsys_system_needs_init = LOGSYS_LOGGER_NEEDS_INIT;
 
 static struct logsys_logger logsys_loggers[LOGSYS_MAX_SUBSYS_COUNT + 1];
 
-static pthread_mutex_t logsys_config_mutex = PTHREAD_MUTEX_INITIALIZER;
-
 static int32_t _logsys_config_mode_set_unlocked(int32_t subsysid, uint32_t new_mode);
 static void _logsys_config_apply_per_file(int32_t s, const char *filename);
 static void _logsys_config_apply_per_subsys(int32_t s);
@@ -342,8 +340,6 @@ int _logsys_system_setup(
 
 	i = LOGSYS_MAX_SUBSYS_COUNT;
 
-	pthread_mutex_lock (&logsys_config_mutex);
-
 	snprintf(logsys_loggers[i].subsys,
 		 LOGSYS_MAX_SUBSYS_NAMELEN,
 		"%s", mainsystem);
@@ -379,8 +375,6 @@ int _logsys_system_setup(
 	qb_log_ctl(QB_LOG_BLACKBOX, QB_LOG_CONF_ENABLED, QB_FALSE);
 
 	if (logsys_format_set(NULL) == -1) {
-		pthread_mutex_unlock (&logsys_config_mutex);
-
 		return -1;
 	}
 
@@ -403,8 +397,6 @@ int _logsys_system_setup(
 			_logsys_config_apply_per_subsys(i);
 		}
 	}
-
-	pthread_mutex_unlock (&logsys_config_mutex);
 
 	return (0);
 }
@@ -441,12 +433,9 @@ int _logsys_subsys_create (const char *subsys, const char *filename)
 		return -1;
 	}
 
-	pthread_mutex_lock (&logsys_config_mutex);
-
 	i = _logsys_config_subsys_get_unlocked (subsys);
 	if ((i > -1) && (i < LOGSYS_MAX_SUBSYS_COUNT)) {
 		_logsys_subsys_filename_add(i, filename);
-		pthread_mutex_unlock (&logsys_config_mutex);
 		return i;
 	}
 
@@ -462,7 +451,6 @@ int _logsys_subsys_create (const char *subsys, const char *filename)
 		i = -1;
 	}
 
-	pthread_mutex_unlock (&logsys_config_mutex);
 	return i;
 }
 
@@ -470,11 +458,7 @@ int _logsys_config_subsys_get (const char *subsys)
 {
 	int i;
 
-	pthread_mutex_lock (&logsys_config_mutex);
-
 	i = _logsys_config_subsys_get_unlocked (subsys);
-
-	pthread_mutex_unlock (&logsys_config_mutex);
 
 	return i;
 }
@@ -506,7 +490,6 @@ int logsys_config_mode_set (const char *subsys, unsigned int mode)
 {
 	int i;
 
-	pthread_mutex_lock (&logsys_config_mutex);
 	if (subsys != NULL) {
 		i = _logsys_config_subsys_get_unlocked (subsys);
 		if (i >= 0) {
@@ -518,8 +501,6 @@ int logsys_config_mode_set (const char *subsys, unsigned int mode)
 		}
 		i = 0;
 	}
-
-	pthread_mutex_unlock (&logsys_config_mutex);
 
 	return i;
 }
@@ -544,8 +525,6 @@ int logsys_config_file_set (
 	int i;
 	int res;
 
-	pthread_mutex_lock (&logsys_config_mutex);
-
 	if (subsys != NULL) {
 		i = _logsys_config_subsys_get_unlocked (subsys);
 		if (i < 0) {
@@ -562,7 +541,6 @@ int logsys_config_file_set (
 		}
 	}
 
-	pthread_mutex_unlock (&logsys_config_mutex);
 	return res;
 }
 
@@ -667,7 +645,6 @@ int logsys_config_syslog_priority_set (
 {
 	int i;
 
-	pthread_mutex_lock (&logsys_config_mutex);
 	if (subsys != NULL) {
 		i = _logsys_config_subsys_get_unlocked (subsys);
 		if (i >= 0) {
@@ -683,7 +660,6 @@ int logsys_config_syslog_priority_set (
 		}
 		i = 0;
 	}
-	pthread_mutex_unlock (&logsys_config_mutex);
 
 	return i;
 }
@@ -694,7 +670,6 @@ int logsys_config_logfile_priority_set (
 {
 	int i;
 
-	pthread_mutex_lock (&logsys_config_mutex);
 	if (subsys != NULL) {
 		i = _logsys_config_subsys_get_unlocked (subsys);
 		if (i >= 0) {
@@ -709,7 +684,6 @@ int logsys_config_logfile_priority_set (
 		}
 		i = 0;
 	}
-	pthread_mutex_unlock (&logsys_config_mutex);
 
 	return i;
 }
@@ -810,12 +784,10 @@ extern int logsys_config_debug_get (
 	int i;
 
 	if (subsys != NULL) {
-		pthread_mutex_lock (&logsys_config_mutex);
 		i = _logsys_config_subsys_get_unlocked (subsys);
 		if (i >= 0) {
 			debug_level = logsys_loggers[i].debug;
 		}
-		pthread_mutex_unlock (&logsys_config_mutex);
 	}
 	return debug_level;
 }
@@ -826,7 +798,6 @@ int logsys_config_debug_set (
 {
 	int i;
 
-	pthread_mutex_lock (&logsys_config_mutex);
 	if (subsys != NULL) {
 		i = _logsys_config_subsys_get_unlocked (subsys);
 		if (i >= 0) {
@@ -841,7 +812,6 @@ int logsys_config_debug_set (
 		}
 		i = 0;
 	}
-	pthread_mutex_unlock (&logsys_config_mutex);
 
 	return i;
 }
@@ -883,11 +853,7 @@ int logsys_thread_start (void)
 void logsys_blackbox_set(int enable)
 {
 
-	pthread_mutex_lock (&logsys_config_mutex);
-
 	logsys_blackbox_enabled = enable;
-
-	pthread_mutex_unlock (&logsys_config_mutex);
 }
 
 /*
@@ -917,8 +883,6 @@ cs_error_t logsys_reopen_log_files(void)
 
 	res = CS_OK;
 
-	pthread_mutex_lock (&logsys_config_mutex);
-
 	for (i = 0; i <= LOGSYS_MAX_SUBSYS_COUNT; i++) {
 		if (logsys_loggers[i].target_id <= 0 || logsys_loggers[i].logfile == NULL) {
 			continue ;
@@ -942,8 +906,6 @@ cs_error_t logsys_reopen_log_files(void)
 			}
 		}
 	}
-
-	pthread_mutex_unlock (&logsys_config_mutex);
 #else
 	res = CS_ERR_NOT_SUPPORTED;
 #endif
