@@ -1770,7 +1770,7 @@ static inline int zcb_alloc (
 
 static inline int zcb_free (struct zcb_mapped *zcb_mapped)
 {
-	unsigned int res;
+	int res;
 
 	res = munmap (zcb_mapped->addr, zcb_mapped->size);
 	qb_list_del (&zcb_mapped->list);
@@ -1782,7 +1782,7 @@ static inline int zcb_by_addr_free (struct cpg_pd *cpd, void *addr)
 {
 	struct qb_list_head *list, *tmp_iter;
 	struct zcb_mapped *zcb_mapped;
-	unsigned int res = 0;
+	int res = 0;
 
 	qb_list_for_each_safe(list, tmp_iter, &(cpd->zcb_mapped_list_head)) {
 		zcb_mapped = qb_list_entry (list, struct zcb_mapped, list);

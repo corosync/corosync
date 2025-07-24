@@ -499,6 +499,7 @@ cs_error_t cpg_dispatch (
 						qb_list_del (&assembly_data->list);
 						free(assembly_data->assembly_buf);
 						free(assembly_data);
+						// coverity[UNUSED_VALUE:SUPPRESS] defensive programming
 						assembly_data = NULL;
 					}
 
@@ -527,12 +528,14 @@ cs_error_t cpg_dispatch (
 					assembly_data->assembly_buf_ptr += res_cpg_partial_deliver_callback->fraglen;
 
 					if (res_cpg_partial_deliver_callback->type == LIBCPG_PARTIAL_LAST) {
-						cpg_inst_copy.model_v1_data.cpg_deliver_fn (handle,
-							&group_name,
-							res_cpg_partial_deliver_callback->nodeid,
-							res_cpg_partial_deliver_callback->pid,
-							assembly_data->assembly_buf,
-							res_cpg_partial_deliver_callback->msglen);
+						if (cpg_inst_copy.model_v1_data.cpg_deliver_fn != NULL) {
+							cpg_inst_copy.model_v1_data.cpg_deliver_fn (handle,
+								&group_name,
+								res_cpg_partial_deliver_callback->nodeid,
+								res_cpg_partial_deliver_callback->pid,
+								assembly_data->assembly_buf,
+								res_cpg_partial_deliver_callback->msglen);
+						}
 
 						qb_list_del (&assembly_data->list);
 						free(assembly_data->assembly_buf);
@@ -995,6 +998,15 @@ cs_error_t cpg_zcb_alloc (
 
 error_exit:
 	hdb_handle_put (&cpg_handle_t_db, handle);
+	/*
+	 * Coverity correctly reports an error here. We cannot safely munmap and unlink the file, because
+	 * the timing of the failure is the key issue: if a failure occurs before the IPC reply,
+	 * the file should be deleted.
+	 * However, if the failure happens during the IPC reply, Corosync has already deleted the file.
+	 * This means the cpg library could attempt to delete a non-existing file (not a problem) or,
+	 * in a theoretical race condition, delete a new file created by another application.
+	 * There are multiple possible solutions, but none of them are ready to be implemented yet.
+	 */
 	return (error);
 }
 

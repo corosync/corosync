@@ -107,6 +107,7 @@ int main (void)
 
 	for (j = 0; j < ITERATIONS; j++) {
 		for (i = 0; i < ALLOCATIONS; i++) {
+			// coverity[DC.WEAK_CRYPTO:SUPPRESS] random is not used in a security context
 			buffer_lens[i] = (random() % MAX_SIZE) + 1;
 			res = cpg_zcb_alloc (
 				handle,

@@ -355,6 +355,7 @@ static void set_packet(int write_size, int counter)
 
 	header->counter = counter;
 	for (i=0; i<(datalen/4); i++) {
+		// coverity[DC.WEAK_CRYPTO:SUPPRESS] rand is not used in a security context
 		dataint[i] = rand();
 	}
 	crc = crc32(0, NULL, 0);

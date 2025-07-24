@@ -857,6 +857,7 @@ void totempg_finalize (void)
 	if (totempg_threaded_mode == 1) {
 		pthread_mutex_lock (&totempg_mutex);
 	}
+	// coverity[SLEEP:SUPPRESS] sleep is not a problem because it is shutdown
 	totemsrp_finalize (totemsrp_context);
 	if (totempg_threaded_mode == 1) {
 		pthread_mutex_unlock (&totempg_mutex);
@@ -942,6 +943,7 @@ static int mcast_msg (
 			fragment_size += copy_len;
 			mcast_packed_msg_lens[mcast_packed_msg_count] += copy_len;
 			next_fragment = 1;
+			// coverity[UNUSED_VALUE:SUPPRESS] defensive programming
 			copy_len = 0;
 			copy_base = 0;
 			i++;
@@ -1011,6 +1013,7 @@ static int mcast_msg (
 			 * If the iovec all fit, go to the next iovec
 			 */
 			if ((copy_base + copy_len) == iovec[i].iov_len) {
+				// coverity[UNUSED_VALUE:SUPPRESS] defensive programming
 				copy_len = 0;
 				copy_base = 0;
 				i++;
@@ -1103,7 +1106,7 @@ int totempg_callback_token_create (
 	int (*callback_fn) (enum totem_callback_token_type type, const void *),
 	const void *data)
 {
-	unsigned int res;
+	int res;
 	if (totempg_threaded_mode == 1) {
 		pthread_mutex_lock (&callback_token_mutex);
 	}
@@ -1239,7 +1242,7 @@ int totempg_groups_mcast_joined (
 	unsigned short group_len[MAX_GROUPS_PER_MSG + 1];
 	struct iovec iovec_mcast[MAX_GROUPS_PER_MSG + 1 + MAX_IOVECS_FROM_APP];
 	int i;
-	unsigned int res;
+	int res;
 
 	if (totempg_threaded_mode == 1) {
 		pthread_mutex_lock (&totempg_mutex);
@@ -1368,7 +1371,7 @@ int totempg_groups_mcast_groups (
 	unsigned short group_len[MAX_GROUPS_PER_MSG + 1];
 	struct iovec iovec_mcast[MAX_GROUPS_PER_MSG + 1 + MAX_IOVECS_FROM_APP];
 	int i;
-	unsigned int res;
+	int res;
 
 	if (totempg_threaded_mode == 1) {
 		pthread_mutex_lock (&totempg_mutex);
