@@ -1786,6 +1786,41 @@ out:
 	return (ret);
 }
 
+static int get_dscp_value(char *str, int *dscp) {
+	struct dscp_name {const char *name; int dscp;} names[] = {
+		{"cs0", 0}, {"cs1", 8}, {"cs2", 16}, {"cs3", 24},
+		{"cs4", 32}, {"cs5", 40}, {"cs6", 48}, {"cs7", 56},
+		{"af11", 10}, {"af12", 12}, {"af13", 14}, {"af21", 18},
+		{"af22", 20}, {"af23", 22}, {"af31", 26}, {"af32", 28},
+		{"af33", 30}, {"af41", 34}, {"af42", 36}, {"af43", 38},
+		{"ef", 46}, {NULL, 0}
+	};
+	struct dscp_name *n;
+	long val;
+	char *end;
+
+	/*
+	 * allow dscp symbolical names according to
+	 * https://www.iana.org/assignments/dscp-registry/dscp-registry.xhtml
+	 */
+	for (n = names; n->name; n++) {
+		if (strcmp(str, n->name) == 0) {
+			*dscp = n->dscp;
+			return 0;
+		}
+	}
+
+	/* allow dscp as number (decimal, hex, octal) */
+	errno = 0;
+	val = strtol(str, &end, 0);
+	if (errno == 0 && *end == '\0' && val >= 0 && val <= 63) {
+		*dscp = val;
+		return 0;
+	}
+
+	return -1;
+}
+
 extern int totem_config_read (
 	struct totem_config *totem_config,
 	const char **error_string,
@@ -1912,6 +1947,15 @@ extern int totem_config_read (
 			       "255.255.255.255", TOTEM_IP_VERSION_4);
 	}
 
+	totem_config->ip_dscp = 0;
+	if (icmap_get_string("totem.ip_dscp", &str) == CS_OK) {
+		if (get_dscp_value(str, &totem_config->ip_dscp) != 0) {
+			*error_string = "Invalid ip_dscp value, should be 0..63 or symbolical name";
+			free(str);
+			return -1;
+		}
+		free(str);
+	}
 
 	/*
 	 * Store automatically generated items back to icmap only for UDP

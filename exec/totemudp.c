@@ -783,6 +783,14 @@ static int totemudp_build_sockets_ip (
 		return (-1);
 	}
 
+	res = set_socket_dscp(sockets->mcast_send,
+		instance->totem_config->ip_dscp);
+	if (res == -1) {
+		LOGSYS_PERROR (errno, instance->totemudp_log_level_warning,
+			"Could not set IP_TOS bits");
+		return (-1);
+	}
+
 	totemip_totemip_to_sockaddr_convert(bound_to, instance->totem_interface->ip_port - 1,
 		&sockaddr, &addrlen);
 
@@ -832,6 +840,13 @@ static int totemudp_build_sockets_ip (
 	 if ( setsockopt(sockets->token, SOL_SOCKET, SO_REUSEADDR, (char *)&flag, sizeof (flag)) < 0) {
 		LOGSYS_PERROR (errno, instance->totemudp_log_level_warning,
 			"setsockopt(SO_REUSEADDR) failed");
+		return (-1);
+	}
+
+	res = set_socket_dscp(sockets->token, instance->totem_config->ip_dscp);
+	if (res == -1) {
+		LOGSYS_PERROR (errno, instance->totemudp_log_level_warning,
+			"Could not set IP_TOS bits");
 		return (-1);
 	}
 
