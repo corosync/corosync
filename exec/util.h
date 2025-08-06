@@ -95,4 +95,6 @@ extern int util_is_valid_knet_compress_model(const char *val,
 	const char **list_str, int machine_parseable_str,
 	const char *error_string_prefix, const char **error_string);
 
+int set_socket_dscp(int socket, unsigned char dscp);
+
 #endif /* UTIL_H_DEFINED */

@@ -42,6 +42,7 @@
 #include <errno.h>
 #include <sys/time.h>
 #include <assert.h>
+#include <sys/socket.h>
 
 #include <libknet.h>
 
@@ -351,4 +352,19 @@ int util_is_valid_knet_compress_model(const char *val,
 	}
 
 	return (model_found);
+}
+
+int
+set_socket_dscp(int socket, unsigned char dscp)
+{
+	int res = 0;
+	int tos;
+
+	if (dscp) {
+		/* dscp is the upper 6 bits of TOS IP header field, RFC 2474 */
+		tos = (dscp & 0x3f) << 2;
+		res = setsockopt(socket, IPPROTO_IP, IP_TOS, &tos, sizeof(tos));
+	}
+
+	return res;
 }

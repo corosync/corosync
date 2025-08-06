@@ -1912,6 +1912,8 @@ extern int totem_config_read (
 			       "255.255.255.255", TOTEM_IP_VERSION_4);
 	}
 
+	totem_config->ip_dscp = 0;
+	(void)icmap_get_uint8("totem.ip_dscp", &totem_config->ip_dscp);
 
 	/*
 	 * Store automatically generated items back to icmap only for UDP

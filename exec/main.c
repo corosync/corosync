@@ -1065,6 +1065,7 @@ static void set_icmap_ro_keys_flag (void)
 	icmap_set_ro_access("totem.key", CS_FALSE, CS_TRUE);
 	icmap_set_ro_access("totem.secauth", CS_FALSE, CS_TRUE);
 	icmap_set_ro_access("totem.ip_version", CS_FALSE, CS_TRUE);
+	icmap_set_ro_access("totem.ip_dscp", CS_FALSE, CS_TRUE);
 	icmap_set_ro_access("totem.transport", CS_FALSE, CS_TRUE);
 	icmap_set_ro_access("totem.cluster_name", CS_FALSE, CS_TRUE);
 	icmap_set_ro_access("totem.netmtu", CS_FALSE, CS_TRUE);
