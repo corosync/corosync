@@ -247,6 +247,8 @@ struct totem_config {
 
 	unsigned int cancel_token_hold_on_retransmit;
 
+	unsigned char ip_dscp;
+
 	void (*totem_memb_ring_id_create_or_load) (
 	    struct memb_ring_id *memb_ring_id,
 	    unsigned int nodeid);

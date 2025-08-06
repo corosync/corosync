@@ -202,6 +202,8 @@ AC_CHECK_LIB([knet],[knet_handle_crypto_set_config],
 	     [AC_DEFINE_UNQUOTED([HAVE_KNET_CRYPTO_RECONF], 1, [have knet crypto reconfig support])])
 AC_CHECK_LIB([knet],[knet_handle_get_onwire_ver],
 	     [AC_DEFINE_UNQUOTED([HAVE_KNET_ONWIRE_VER], 1, [have knet onwire versioning])])
+AC_CHECK_LIB([knet],[knet_handle_setprio_dscp],
+	     [AC_DEFINE_UNQUOTED([HAVE_KNET_SETPRIO_DSCP], 1, [have knet dscp traffic prioritization])])
 LIBS="$OLDLIBS"
 
 # Checks for library functions.

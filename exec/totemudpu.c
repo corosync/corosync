@@ -791,6 +791,13 @@ static int totemudpu_build_sockets_ip (
 			"Could not set recvbuf size");
 	}
 
+	res = set_socket_dscp(instance->token_socket,
+		instance->totem_config->ip_dscp);
+	if (res == -1) {
+		LOGSYS_PERROR (errno, instance->totemudpu_log_level_notice,
+			"Could not set IP_TOS bits");
+	}
+
 	return 0;
 }
 
@@ -1278,6 +1285,12 @@ static int totemudpu_create_sending_socket(
 		/*
 		 * Fail in setting sendbuf size is not fatal -> don't exit
 		 */
+	}
+
+	res = set_socket_dscp(fd, instance->totem_config->ip_dscp);
+	if (res == -1) {
+		LOGSYS_PERROR (errno, instance->totemudpu_log_level_notice,
+			"Could not set IP_TOS bits");
 	}
 
 	/*

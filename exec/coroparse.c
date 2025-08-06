@@ -568,6 +568,41 @@ static int str_to_ull(const char *str, unsigned long long int *res)
 	return (0);
 }
 
+static int get_dscp_value(char *str, int *dscp) {
+	struct dscp_name {const char *name; int dscp;} names[] = {
+		{"cs0", 0}, {"cs1", 8}, {"cs2", 16}, {"cs3", 24},
+		{"cs4", 32}, {"cs5", 40}, {"cs6", 48}, {"cs7", 56},
+		{"af11", 10}, {"af12", 12}, {"af13", 14}, {"af21", 18},
+		{"af22", 20}, {"af23", 22}, {"af31", 26}, {"af32", 28},
+		{"af33", 30}, {"af41", 34}, {"af42", 36}, {"af43", 38},
+		{"ef", 46}, {NULL, 0}
+	};
+	struct dscp_name *n;
+	long val;
+	char *end;
+
+	/*
+	 * allow dscp symbolical names according to
+	 * https://www.iana.org/assignments/dscp-registry/dscp-registry.xhtml
+	 */
+	for (n = names; n->name; n++) {
+		if (strcmp(str, n->name) == 0) {
+			*dscp = n->dscp;
+			return 0;
+		}
+	}
+
+	/* allow dscp as number (decimal, hex, octal) */
+	errno = 0;
+	val = strtol(str, &end, 0);
+	if (errno == 0 && *end == '\0' && val >= 0 && val <= 63) {
+		*dscp = val;
+		return 0;
+	}
+
+	return -1;
+}
+
 static int handle_crypto_model(const char *val, const char **error_string)
 {
 
@@ -610,7 +645,7 @@ static int main_config_parser_cb(const char *path,
 	struct main_cp_cb_data *data = (struct main_cp_cb_data *)user_data;
 	struct key_value_list_item *kv_item;
 	struct qb_list_head *iter, *tmp_iter;
-	int uid, gid;
+	int uid, gid, dscp;
 	cs_error_t cs_err;
 	const char *path_prefix;
 
@@ -843,6 +878,16 @@ static int main_config_parser_cb(const char *path,
 				if (handle_compress_model(value, error_string) != 0) {
 					return (0);
 				}
+			}
+
+			if (strcmp(path, "totem.ip_dscp") == 0) {
+				if (get_dscp_value(value, &dscp) != 0) {
+					goto str_to_dscp_error;
+				}
+				if ((cs_err = icmap_set_uint8_r(config_map, path, dscp)) != CS_OK) {
+					goto icmap_set_error;
+				}
+				add_as_string = 0;
 			}
 
 			break;
@@ -1608,6 +1653,17 @@ str_to_ull_error:
 	if (snprintf(formated_err, sizeof(formated_err),
 	    "Value of key \"%s\" is expected to be unsigned integer, but \"%s\" was given",
 	    key_name, value) >= sizeof(formated_err)) {
+		*error_string = "Can't format parser error message";
+	} else {
+		*error_string = formated_err;
+	}
+
+	return (0);
+
+str_to_dscp_error:
+	if (snprintf(formated_err, sizeof(formated_err),
+	    "Value of key \"%s\" is expected to be number (0..63) or symbolical dscp value, "
+	    "but \"%s\" was given", key_name, value) >= sizeof(formated_err)) {
 		*error_string = "Can't format parser error message";
 	} else {
 		*error_string = formated_err;
