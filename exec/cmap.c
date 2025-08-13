@@ -976,7 +976,7 @@ static cs_error_t cmap_mcast_send(enum cmap_mcast_reason reason, int argc, char 
 			}
 		}
 
-		req_exec_cmap_iovec[i + 1].iov_base = item;
+		req_exec_cmap_iovec[i + 1].iov_base = (char *)item;
 		req_exec_cmap_iovec[i + 1].iov_len = item_len;
 		msg_len += item_len;
 
@@ -989,7 +989,7 @@ static cs_error_t cmap_mcast_send(enum cmap_mcast_reason reason, int argc, char 
 	req_exec_cmap_mcast.header.size = sizeof(req_exec_cmap_mcast) + msg_len;
 	req_exec_cmap_mcast.reason = reason;
 	req_exec_cmap_mcast.no_items = argc;
-	req_exec_cmap_iovec[0].iov_base = &req_exec_cmap_mcast;
+	req_exec_cmap_iovec[0].iov_base = (char *)&req_exec_cmap_mcast;
 	req_exec_cmap_iovec[0].iov_len = sizeof(req_exec_cmap_mcast);
 
 	qb_log(LOG_TRACE, "Sending %u items (%u iovec) for reason %u", argc, argc + 1, reason);
