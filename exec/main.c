@@ -629,7 +629,7 @@ int main_mcast (
         unsigned int iov_len,
         unsigned int guarantee)
 {
-	const struct qb_ipc_request_header *req = iovec->iov_base;
+	const struct qb_ipc_request_header *req = (struct qb_ipc_request_header *)iovec->iov_base;
 	int32_t service;
 	int32_t fn_id;
 
