@@ -1559,10 +1559,10 @@ extern int totemknet_recv_mcast_empty (
 	msg_hdr.msg_flags = 0;
 #endif
 #ifdef HAVE_MSGHDR_ACCRIGHTS
-	msg_msg_hdr.msg_accrights = NULL;
+	msg_hdr.msg_accrights = NULL;
 #endif
 #ifdef HAVE_MSGHDR_ACCRIGHTSLEN
-	msg_msg_hdr.msg_accrightslen = 0;
+	msg_hdr.msg_accrightslen = 0;
 #endif
 
 	do {
