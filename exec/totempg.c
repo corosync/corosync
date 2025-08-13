@@ -1258,7 +1258,7 @@ int totempg_groups_mcast_joined (
 		iovec_mcast[i + 1].iov_base = (void *) instance->groups[i].group;
 	}
 	iovec_mcast[0].iov_len = (instance->groups_cnt + 1) * sizeof (unsigned short);
-	iovec_mcast[0].iov_base = group_len;
+	iovec_mcast[0].iov_base = (char *)group_len;
 	for (i = 0; i < iov_len; i++) {
 		iovec_mcast[i + instance->groups_cnt + 1].iov_len = iovec[i].iov_len;
 		iovec_mcast[i + instance->groups_cnt + 1].iov_base = iovec[i].iov_base;
@@ -1387,7 +1387,7 @@ int totempg_groups_mcast_groups (
 		iovec_mcast[i + 1].iov_base = (void *) groups[i].group;
 	}
 	iovec_mcast[0].iov_len = (groups_cnt + 1) * sizeof (unsigned short);
-	iovec_mcast[0].iov_base = group_len;
+	iovec_mcast[0].iov_base = (char *)group_len;
 	for (i = 0; i < iov_len; i++) {
 		iovec_mcast[i + groups_cnt + 1].iov_len = iovec[i].iov_len;
 		iovec_mcast[i + groups_cnt + 1].iov_base = iovec[i].iov_base;
