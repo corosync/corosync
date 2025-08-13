@@ -44,7 +44,6 @@
 #include <sys/ioctl.h>
 #include <sys/param.h>
 #include <netinet/in.h>
-#include <net/ethernet.h>
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -63,6 +62,7 @@
 #include <qb/qbloop.h>
 #ifdef HAVE_LIBNOZZLE
 #include <libgen.h>
+#include <net/ethernet.h>
 #include <libnozzle.h>
 #endif
 
