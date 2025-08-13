@@ -35,6 +35,10 @@
 
 #include <config.h>
 
+#ifdef HAVE_ALLOCA_H
+#include <alloca.h>
+#endif
+
 #include <sys/types.h>
 #include <sys/uio.h>
 #include <sys/socket.h>
@@ -1373,15 +1377,14 @@ static void message_handler_req_lib_cfg_get_node_addrs (void *conn,
 {
 	struct totem_ip_address node_ifs[INTERFACE_MAX];
 	unsigned int iface_ids[INTERFACE_MAX];
-	char buf[PIPE_BUF];
 	char **status;
 	unsigned int num_interfaces = 0;
-	struct sockaddr_storage *ss;
 	int ret = CS_OK;
 	int i;
 	int live_addrs = 0;
 	const struct req_lib_cfg_get_node_addrs *req_lib_cfg_get_node_addrs = msg;
-	struct res_lib_cfg_get_node_addrs *res_lib_cfg_get_node_addrs = (struct res_lib_cfg_get_node_addrs *)buf;
+	struct res_lib_cfg_get_node_addrs *res_lib_cfg_get_node_addrs;
+	size_t res_lib_cfg_get_node_addrs_size;
 	unsigned int nodeid = req_lib_cfg_get_node_addrs->nodeid;
 	char *addr_buf;
 
@@ -1393,15 +1396,18 @@ static void message_handler_req_lib_cfg_get_node_addrs (void *conn,
 		num_interfaces = 0;
 	}
 
-	res_lib_cfg_get_node_addrs->header.size = sizeof(struct res_lib_cfg_get_node_addrs) + (num_interfaces * TOTEMIP_ADDRLEN);
+	res_lib_cfg_get_node_addrs_size = sizeof(struct res_lib_cfg_get_node_addrs) + (num_interfaces * TOTEMIP_ADDRLEN);
+	res_lib_cfg_get_node_addrs = alloca(res_lib_cfg_get_node_addrs_size);
+	memset(res_lib_cfg_get_node_addrs, 0, res_lib_cfg_get_node_addrs_size);
+
+	res_lib_cfg_get_node_addrs->header.size = res_lib_cfg_get_node_addrs_size;
 	res_lib_cfg_get_node_addrs->header.id = MESSAGE_RES_CFG_GET_NODE_ADDRS;
 	res_lib_cfg_get_node_addrs->header.error = ret;
 	if (num_interfaces) {
 		res_lib_cfg_get_node_addrs->family = node_ifs[0].family;
 		for (i = 0, addr_buf = (char *)res_lib_cfg_get_node_addrs->addrs;
 		    i < num_interfaces; i++) {
-			ss = (struct sockaddr_storage *)&node_ifs[i].addr;
-			if (ss->ss_family) {
+			if (node_ifs[i].family) {
 				memcpy(addr_buf, node_ifs[i].addr, TOTEMIP_ADDRLEN);
 				live_addrs++;
 				addr_buf += TOTEMIP_ADDRLEN;
