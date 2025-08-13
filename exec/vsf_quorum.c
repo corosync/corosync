@@ -34,6 +34,10 @@
 
 #include <config.h>
 
+#ifdef HAVE_ALLOCA_H
+#include <alloca.h>
+#endif
+
 #include <pwd.h>
 #include <grp.h>
 #include <sys/types.h>
