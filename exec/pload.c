@@ -202,7 +202,7 @@ static int pload_send_message (const void *arg)
 	iov[0].iov_base = (void *)&req_exec_pload_mcast;
 	iov[0].iov_len = sizeof (struct req_exec_pload_mcast);
 	if (msg_size > sizeof (req_exec_pload_mcast)) {
-		iov[1].iov_base = &buffer;
+		iov[1].iov_base = (char *)&buffer;
 		iov[1].iov_len = msg_size - sizeof (req_exec_pload_mcast);
 		iov_len = 2;
 	}
