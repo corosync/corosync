@@ -849,20 +849,24 @@ static int data_deliver_fn (
 	}
 #else
 	/*
-	 * We don't have MSGHDR_FLAGS, but we can (hopefully) safely make assumption that
-	 * if bytes_received == KNET_MAX_PACKET_SIZE then packet is truncated
+	 * Checking of received number of bytes doesn't work as with UDP(U) because knet might
+	 * send KNET_MAX_PACKET_SIZE. It is also bug if message is truncated because
+	 * knet always sends packet with maximum size of KNET_MAX_PACKET_SIZE.
+	 *
+	 * It probably doesn't make too much sense to force having msg_hdr.msg_flags, but
+	 * it is also good to know platform (or configuration) doesn't support them, so
+	 * just issue compiler warning.
 	 */
-	if (bytes_received == KNET_MAX_PACKET_SIZE) {
-		truncated_packet = 1;
-	}
+#warning Platform without msg_hdr.msg_flags
 #endif
 
 	if (truncated_packet) {
+		/*
+		 * It this happens it is real bug, because knet always sends packet with maximum size
+		 * of KNET_MAX_PACKET_SIZE.
+		 */
 		knet_log_printf(instance->totemknet_log_level_error,
-				"Received too big message. This may be because something bad is happening"
-				"on the network (attack?), or you tried join more nodes than corosync is"
-				"compiled with (%u) or bug in the code (bad estimation of "
-				"the KNET_MAX_PACKET_SIZE). Dropping packet.", PROCESSOR_COUNT_MAX);
+				"Received truncated packet. Please report this bug. Dropping packet.");
 		return (0);
 	}
 
