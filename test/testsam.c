@@ -242,8 +242,8 @@ static int test_signal (void) {
 	}
 
 	return 1;
-
 }
+
 
 /*
  * Smoke test. This has no time limit, just restart process
@@ -756,7 +756,7 @@ static int test_warn_signal (void) {
 	return 1;
 }
 
-static void *test_quorum_thread (void *arg)
+static void *test_thread_sleep_exit (void *arg)
 {
 	/* Wait 5s */
 	sleep (5);
@@ -827,9 +827,9 @@ static int test_quorum (void) {
 
 	if (instance_id == 1) {
 		/*
-		 * Sam start should block forever, but 10s for us should be enough
+		 * Sam start should block forever, but 5s for us should be enough
 		 */
-		pthread_create (&kill_thread, NULL, test_quorum_thread, NULL);
+		pthread_create (&kill_thread, NULL, test_thread_sleep_exit, NULL);
 
 		printf ("%s iid %d: start - should block forever (waiting 5s)\n", __FUNCTION__, instance_id);
 		err = sam_start ();
@@ -880,6 +880,57 @@ static int test_quorum (void) {
 	}
 
 	return (2);
+}
+
+static int test_finalize_deadlock (void) {
+	cs_error_t error;
+	unsigned int instance_id;
+	pthread_t kill_thread;
+
+	test_sig_delivered = 0;
+
+	printf ("%s: initialize\n", __FUNCTION__);
+	error = sam_initialize (2000, SAM_RECOVERY_POLICY_RESTART);
+	if (error != CS_OK) {
+		fprintf (stderr, "Can't initialize SAM API. Error %d\n", error);
+		return 1;
+	}
+	printf ("%s: register\n", __FUNCTION__);
+	error = sam_register (&instance_id);
+	if (error != CS_OK) {
+		fprintf (stderr, "Can't register. Error %d\n", error);
+		return 1;
+	}
+
+	if (instance_id == 1) {
+		/*
+		 * Sam finalize might block forever, but 5s for us should be enough
+		 */
+		pthread_create (&kill_thread, NULL, test_thread_sleep_exit, NULL);
+
+		printf ("%s iid %d: start\n", __FUNCTION__, instance_id);
+		error = sam_start ();
+		if (error != CS_OK) {
+			fprintf (stderr, "Can't start hc. Error %d\n", error);
+			return 1;
+		}
+
+		printf ("%s iid %d: call finalize (shouldn't deadlock)\n", __FUNCTION__, instance_id);
+		error = sam_finalize ();
+		if (error != CS_OK) {
+			fprintf (stderr, "Can't finalize sam. Error %d\n", error);
+			return 1;
+		}
+
+		printf ("%s iid %d: finalize succeeded\n", __FUNCTION__, instance_id);
+		return 0;
+	}
+
+	if (instance_id == 2) {
+		printf ("%s iid %d: previous sam_finalize deadlocked\n", __FUNCTION__, instance_id);
+	}
+
+	return 1;
 }
 
 /*
@@ -1384,6 +1435,7 @@ int main(int argc, char *argv[])
 	run_test("hc", test_hc, 0, &all_passed, &no_skipped);
 	run_test("warn_signal", test_warn_signal, 0, &all_passed, &no_skipped);
 	run_test("quorum", test_quorum, 1, &all_passed, &no_skipped);
+	run_test("finalize deadlock", test_finalize_deadlock, 0, &all_passed, &no_skipped);
 	run_cmap_test("cmap quit", test_cmap_quit, 3, &all_passed, &no_skipped);
 	run_cmap_test("cmap restart", test_cmap_restart, 2, &all_passed, &no_skipped);
 
