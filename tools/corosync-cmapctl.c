@@ -802,9 +802,16 @@ static void read_in_config_file(cmap_handle_t handle, char * filename)
 static void clear_stats(cmap_handle_t handle, char *clear_opt)
 {
 	char key_name[CMAP_KEYNAME_MAXLEN + 1];
+	cs_error_t err;
 
 	sprintf(key_name, "stats.clear.%s", clear_opt);
-	cmap_set_uint32(handle, key_name, 1);
+
+	if ((err = cmap_set_uint32(handle, key_name, 1)) != CS_OK) {
+		fprintf(stderr, "Can't set cmap stats clear key %s. Error %s\n",
+		    key_name, cs_strerror(err));
+
+		exit (EXIT_FAILURE);
+	}
 }
 
 int main(int argc, char *argv[])
