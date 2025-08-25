@@ -136,9 +136,9 @@ static struct {
 
 	cmap_handle_t cmap_handle;
 	char cmap_pid_path[CMAP_KEYNAME_MAXLEN];
-} sam_internal_data;
-
-extern const char *__progname;
+} sam_internal_data = {
+	.lock = PTHREAD_MUTEX_INITIALIZER
+};
 
 static cs_error_t sam_cmap_update_key (enum sam_cmap_key_t key, const char *value)
 {
@@ -269,6 +269,7 @@ static void quorum_notification_fn (
         uint32_t view_list_entries,
         uint32_t *view_list)
 {
+
 	sam_internal_data.quorate = quorate;
 }
 
@@ -278,15 +279,20 @@ cs_error_t sam_initialize (
 {
 	quorum_callbacks_t quorum_callbacks;
 	uint32_t quorum_type;
-	cs_error_t err;
+	cs_error_t ret;
 
-	if (sam_internal_data.internal_status != SAM_INTERNAL_STATUS_NOT_INITIALIZED) {
-		return (CS_ERR_BAD_HANDLE);
-	}
+	ret = CS_OK;
 
 	if (SAM_RP_MASK (recovery_policy) != SAM_RECOVERY_POLICY_QUIT &&
 	    SAM_RP_MASK (recovery_policy) != SAM_RECOVERY_POLICY_RESTART) {
 		return (CS_ERR_INVALID_PARAM);
+	}
+
+	pthread_mutex_lock (&sam_internal_data.lock);
+
+	if (sam_internal_data.internal_status != SAM_INTERNAL_STATUS_NOT_INITIALIZED) {
+		ret = CS_ERR_BAD_HANDLE;
+		goto exit_mutex_unlock;
 	}
 
 	if (recovery_policy & SAM_RECOVERY_POLICY_QUORUM) {
@@ -294,22 +300,22 @@ cs_error_t sam_initialize (
 		 * Initialize quorum
 		 */
 		quorum_callbacks.quorum_notify_fn = quorum_notification_fn;
-		if ((err = quorum_initialize (&sam_internal_data.quorum_handle, &quorum_callbacks, &quorum_type)) != CS_OK) {
-			goto exit_error;
+		if ((ret = quorum_initialize (&sam_internal_data.quorum_handle, &quorum_callbacks, &quorum_type)) != CS_OK) {
+			goto exit_mutex_unlock;
 		}
 
-		if ((err = quorum_trackstart (sam_internal_data.quorum_handle, CS_TRACK_CHANGES)) != CS_OK) {
+		if ((ret = quorum_trackstart (sam_internal_data.quorum_handle, CS_TRACK_CHANGES)) != CS_OK) {
 			goto exit_error_quorum;
 		}
 
-		if ((err = quorum_fd_get (sam_internal_data.quorum_handle, &sam_internal_data.quorum_fd)) != CS_OK) {
+		if ((ret = quorum_fd_get (sam_internal_data.quorum_handle, &sam_internal_data.quorum_fd)) != CS_OK) {
 			goto exit_error_quorum;
 		}
 
 		/*
 		 * Dispatch initial quorate state
 		 */
-		if ((err = quorum_dispatch (sam_internal_data.quorum_handle, CS_DISPATCH_ONE)) != CS_OK) {
+		if ((ret = quorum_dispatch (sam_internal_data.quorum_handle, CS_DISPATCH_ONE)) != CS_OK) {
 			goto exit_error_quorum;
 		}
 	}
@@ -327,14 +333,17 @@ cs_error_t sam_initialize (
 	sam_internal_data.user_data_size = 0;
 	sam_internal_data.user_data_allocated = 0;
 
-	pthread_mutex_init (&sam_internal_data.lock, NULL);
+	pthread_mutex_unlock (&sam_internal_data.lock);
 
 	return (CS_OK);
 
 exit_error_quorum:
 	quorum_finalize (sam_internal_data.quorum_handle);
-exit_error:
-	return (err);
+
+exit_mutex_unlock:
+	pthread_mutex_unlock (&sam_internal_data.lock);
+
+	return (ret);
 }
 
 /*
@@ -430,72 +439,77 @@ static cs_error_t sam_read_reply (
 
 cs_error_t sam_data_getsize (size_t *size)
 {
+	cs_error_t ret;
+
+	ret = CS_OK;
+
 	if (size == NULL) {
 		return (CS_ERR_INVALID_PARAM);
 	}
+
+	pthread_mutex_lock (&sam_internal_data.lock);
 
 	if (sam_internal_data.internal_status != SAM_INTERNAL_STATUS_INITIALIZED &&
 		sam_internal_data.internal_status != SAM_INTERNAL_STATUS_REGISTERED &&
 		sam_internal_data.internal_status != SAM_INTERNAL_STATUS_STARTED) {
 
-		return (CS_ERR_BAD_HANDLE);
+		ret = CS_ERR_BAD_HANDLE;
+		goto exit_mutex_unlock;
 	}
 
-	pthread_mutex_lock (&sam_internal_data.lock);
 
 	*size = sam_internal_data.user_data_size;
 
+exit_mutex_unlock:
 	pthread_mutex_unlock (&sam_internal_data.lock);
 
-	return (CS_OK);
+	return (ret);
 }
 
 cs_error_t sam_data_restore (
 	void *data,
 	size_t size)
 {
-	cs_error_t err;
+	cs_error_t ret;
 
-	err = CS_OK;
+	ret = CS_OK;
 
 	if (data == NULL) {
 		return (CS_ERR_INVALID_PARAM);
 	}
 
+	pthread_mutex_lock (&sam_internal_data.lock);
+
 	if (sam_internal_data.internal_status != SAM_INTERNAL_STATUS_INITIALIZED &&
 		sam_internal_data.internal_status != SAM_INTERNAL_STATUS_REGISTERED &&
 		sam_internal_data.internal_status != SAM_INTERNAL_STATUS_STARTED) {
 
-		return (CS_ERR_BAD_HANDLE);
+		ret = CS_ERR_BAD_HANDLE;
+		goto exit_mutex_unlock;
 	}
 
-	pthread_mutex_lock (&sam_internal_data.lock);
 
 	if (sam_internal_data.user_data_size == 0) {
-		err = CS_OK;
+		ret = CS_OK;
 
-		goto error_unlock;
+		goto exit_mutex_unlock;
 	}
 
 	if (size < sam_internal_data.user_data_size) {
-		err = CS_ERR_INVALID_PARAM;
+		ret = CS_ERR_INVALID_PARAM;
 
-		goto error_unlock;
+		goto exit_mutex_unlock;
 	}
 
 	memcpy (data, sam_internal_data.user_data, sam_internal_data.user_data_size);
 
+exit_mutex_unlock:
 	pthread_mutex_unlock (&sam_internal_data.lock);
 
-	return (CS_OK);
-
-error_unlock:
-	pthread_mutex_unlock (&sam_internal_data.lock);
-
-	return (err);
+	return (ret);
 }
 
-cs_error_t sam_data_store (
+static cs_error_t sam_data_store_nolock (
 	const void *data,
 	size_t size)
 {
@@ -503,19 +517,19 @@ cs_error_t sam_data_store (
 	char command;
 	char *new_data;
 
-	if (sam_internal_data.internal_status != SAM_INTERNAL_STATUS_INITIALIZED &&
-		sam_internal_data.internal_status != SAM_INTERNAL_STATUS_REGISTERED &&
-		sam_internal_data.internal_status != SAM_INTERNAL_STATUS_STARTED) {
-
-		return (CS_ERR_BAD_HANDLE);
+	if (size >= SSIZE_MAX) {
+		return (CS_ERR_TOO_BIG);
 	}
 
+	if (sam_internal_data.internal_status != SAM_INTERNAL_STATUS_INITIALIZED &&
+	    sam_internal_data.internal_status != SAM_INTERNAL_STATUS_REGISTERED &&
+	    sam_internal_data.internal_status != SAM_INTERNAL_STATUS_STARTED) {
+		return (CS_ERR_BAD_HANDLE);
+	}
 
 	if (data == NULL) {
 		size = 0;
 	}
-
-	pthread_mutex_lock (&sam_internal_data.lock);
 
 	if (sam_internal_data.am_i_child) {
 		/*
@@ -523,28 +537,22 @@ cs_error_t sam_data_store (
 		 */
 		command = SAM_COMMAND_DATA_STORE;
 		if (sam_safe_write (sam_internal_data.child_fd_out, &command, sizeof (command)) != sizeof (command)) {
-			err = CS_ERR_LIBRARY;
-
-			goto error_unlock;
+			return (CS_ERR_LIBRARY);
 		}
 
 		if (sam_safe_write (sam_internal_data.child_fd_out, &size, sizeof (size)) != sizeof (size)) {
-			err = CS_ERR_LIBRARY;
-
-			goto error_unlock;
+			return (CS_ERR_LIBRARY);
 		}
 
 		if (data != NULL && sam_safe_write (sam_internal_data.child_fd_out, data, size) != size) {
-			err = CS_ERR_LIBRARY;
-
-			goto error_unlock;
+			return (CS_ERR_LIBRARY);
 		}
 
 		/*
 		 * And wait for reply
 		 */
 		if ((err = sam_read_reply (sam_internal_data.child_fd_in)) != CS_OK) {
-			goto error_unlock;
+			return (err);
 		}
 	}
 
@@ -559,9 +567,7 @@ cs_error_t sam_data_store (
 	} else {
 		if (sam_internal_data.user_data_allocated < size) {
 			if ((new_data = realloc (sam_internal_data.user_data, size)) == NULL) {
-				err = CS_ERR_NO_MEMORY;
-
-				goto error_unlock;
+				return (CS_ERR_NO_MEMORY);
 			}
 
 			sam_internal_data.user_data_allocated = size;
@@ -574,68 +580,76 @@ cs_error_t sam_data_store (
 		memcpy (sam_internal_data.user_data, data, size);
 	}
 
-	pthread_mutex_unlock (&sam_internal_data.lock);
-
 	return (CS_OK);
+}
 
-error_unlock:
+cs_error_t sam_data_store (
+	const void *data,
+	size_t size)
+{
+	cs_error_t ret;
+
+	pthread_mutex_lock (&sam_internal_data.lock);
+
+	ret = sam_data_store_nolock (data, size);
+
 	pthread_mutex_unlock (&sam_internal_data.lock);
 
-	return (err);
+	return (ret);
 }
 
 cs_error_t sam_start (void)
 {
 	char command;
-	cs_error_t err;
+	cs_error_t ret;
 	sam_recovery_policy_t recpol;
 
+	ret = CS_OK;
+
+	pthread_mutex_lock (&sam_internal_data.lock);
+
 	if (sam_internal_data.internal_status != SAM_INTERNAL_STATUS_REGISTERED) {
-		return (CS_ERR_BAD_HANDLE);
+		ret = CS_ERR_BAD_HANDLE;
+		goto exit_mutex_unlock;
 	}
 
 	recpol = sam_internal_data.recovery_policy;
 
-	if (recpol & SAM_RECOVERY_POLICY_QUORUM || recpol & SAM_RECOVERY_POLICY_CMAP) {
-		pthread_mutex_lock (&sam_internal_data.lock);
-	}
-
 	command = SAM_COMMAND_START;
 
 	if (sam_safe_write (sam_internal_data.child_fd_out, &command, sizeof (command)) != sizeof (command)) {
-		if (recpol & SAM_RECOVERY_POLICY_QUORUM || recpol & SAM_RECOVERY_POLICY_CMAP) {
-			pthread_mutex_unlock (&sam_internal_data.lock);
-		}
-
-		return (CS_ERR_LIBRARY);
+		ret = CS_ERR_LIBRARY;
+		goto exit_mutex_unlock;
 	}
 
 	if (recpol & SAM_RECOVERY_POLICY_QUORUM || recpol & SAM_RECOVERY_POLICY_CMAP) {
 		/*
 		 * Wait for parent reply
 		 */
-		if ((err = sam_read_reply (sam_internal_data.child_fd_in)) != CS_OK) {
-			pthread_mutex_unlock (&sam_internal_data.lock);
-
-			return (err);
+		if ((ret = sam_read_reply (sam_internal_data.child_fd_in)) != CS_OK) {
+			goto exit_mutex_unlock;
 		}
-
-		pthread_mutex_unlock (&sam_internal_data.lock);
 	}
 
-	if (sam_internal_data.hc_callback)
-		if (sam_safe_write (sam_internal_data.cb_wpipe_fd, &command, sizeof (command)) != sizeof (command))
-			return (CS_ERR_LIBRARY);
+	if (sam_internal_data.hc_callback) {
+		if (sam_safe_write (sam_internal_data.cb_wpipe_fd, &command, sizeof (command)) != sizeof (command)) {
+			ret = CS_ERR_LIBRARY;
+			goto exit_mutex_unlock;
+		}
+	}
 
 	sam_internal_data.internal_status = SAM_INTERNAL_STATUS_STARTED;
 
-	return (CS_OK);
+exit_mutex_unlock:
+	pthread_mutex_unlock (&sam_internal_data.lock);
+
+	return (ret);
 }
 
-cs_error_t sam_stop (void)
+static cs_error_t sam_stop_nolock (void)
 {
 	char command;
-	cs_error_t err;
+	cs_error_t cs_err;
 
 	if (sam_internal_data.internal_status != SAM_INTERNAL_STATUS_STARTED) {
 		return (CS_ERR_BAD_HANDLE);
@@ -643,15 +657,7 @@ cs_error_t sam_stop (void)
 
 	command = SAM_COMMAND_STOP;
 
-	if (sam_internal_data.recovery_policy & SAM_RECOVERY_POLICY_CMAP) {
-		pthread_mutex_lock (&sam_internal_data.lock);
-	}
-
 	if (sam_safe_write (sam_internal_data.child_fd_out, &command, sizeof (command)) != sizeof (command)) {
-		if (sam_internal_data.recovery_policy & SAM_RECOVERY_POLICY_CMAP) {
-			pthread_mutex_unlock (&sam_internal_data.lock);
-		}
-
 		return (CS_ERR_LIBRARY);
 	}
 
@@ -659,97 +665,140 @@ cs_error_t sam_stop (void)
 		/*
 		 * Wait for parent reply
 		 */
-		if ((err = sam_read_reply (sam_internal_data.child_fd_in)) != CS_OK) {
-			pthread_mutex_unlock (&sam_internal_data.lock);
-
-			return (err);
+		if ((cs_err = sam_read_reply (sam_internal_data.child_fd_in)) != CS_OK) {
+			return (cs_err);
 		}
-
-		pthread_mutex_unlock (&sam_internal_data.lock);
 	}
 
-	if (sam_internal_data.hc_callback)
-		if (sam_safe_write (sam_internal_data.cb_wpipe_fd, &command, sizeof (command)) != sizeof (command))
+	if (sam_internal_data.hc_callback) {
+		if (sam_safe_write (sam_internal_data.cb_wpipe_fd, &command, sizeof (command)) != sizeof (command)) {
 			return (CS_ERR_LIBRARY);
+		}
+	}
 
 	sam_internal_data.internal_status = SAM_INTERNAL_STATUS_REGISTERED;
 
 	return (CS_OK);
 }
 
+cs_error_t sam_stop (void)
+{
+	cs_error_t ret;
+
+	pthread_mutex_lock (&sam_internal_data.lock);
+
+	ret = sam_stop_nolock ();
+
+	pthread_mutex_unlock (&sam_internal_data.lock);
+
+	return (ret);
+}
+
 cs_error_t sam_hc_send (void)
 {
 	char command;
+	cs_error_t ret;
+
+	ret = CS_OK;
+
+	pthread_mutex_lock (&sam_internal_data.lock);
 
 	if (sam_internal_data.internal_status != SAM_INTERNAL_STATUS_STARTED) {
-		return (CS_ERR_BAD_HANDLE);
+		ret = CS_ERR_BAD_HANDLE;
+		goto exit_mutex_unlock;
 	}
 
 	command = SAM_COMMAND_HB;
 
-	if (sam_safe_write (sam_internal_data.child_fd_out, &command, sizeof (command)) != sizeof (command))
-		return (CS_ERR_LIBRARY);
+	if (sam_safe_write (sam_internal_data.child_fd_out, &command, sizeof (command)) != sizeof (command)) {
+		ret = CS_ERR_LIBRARY;
+		goto exit_mutex_unlock;
+	}
 
-	return (CS_OK);
+exit_mutex_unlock:
+	pthread_mutex_unlock (&sam_internal_data.lock);
+
+	return (ret);
 }
 
 cs_error_t sam_finalize (void)
 {
-	cs_error_t error;
+	cs_error_t ret;
+
+	ret = CS_OK;
+
+	pthread_mutex_lock (&sam_internal_data.lock);
 
 	if (sam_internal_data.internal_status != SAM_INTERNAL_STATUS_INITIALIZED &&
-		sam_internal_data.internal_status != SAM_INTERNAL_STATUS_REGISTERED &&
-		sam_internal_data.internal_status != SAM_INTERNAL_STATUS_STARTED) {
-		return (CS_ERR_BAD_HANDLE);
+	    sam_internal_data.internal_status != SAM_INTERNAL_STATUS_REGISTERED &&
+	    sam_internal_data.internal_status != SAM_INTERNAL_STATUS_STARTED) {
+		ret = CS_ERR_BAD_HANDLE;
+		goto exit_mutex_unlock;
 	}
 
 	if (sam_internal_data.internal_status == SAM_INTERNAL_STATUS_STARTED) {
-		error = sam_stop ();
-		if (error != CS_OK)
-			goto exit_error;
+		ret = sam_stop_nolock ();
+		if (ret != CS_OK) {
+			goto exit_mutex_unlock;
+		}
 	}
 
 	sam_internal_data.internal_status = SAM_INTERNAL_STATUS_FINALIZED;
 
 	free (sam_internal_data.user_data);
+	sam_internal_data.user_data = NULL;
+	sam_internal_data.user_data_allocated = 0;
+	sam_internal_data.user_data_size = 0;
 
-exit_error:
-	return (CS_OK);
+exit_mutex_unlock:
+	pthread_mutex_unlock (&sam_internal_data.lock);
+
+	return (ret);
 }
 
 cs_error_t sam_mark_failed (void)
 {
 	char command;
+	cs_error_t ret;
+
+	ret = CS_OK;
+
+	pthread_mutex_lock (&sam_internal_data.lock);
 
 	if (sam_internal_data.internal_status != SAM_INTERNAL_STATUS_STARTED &&
 	    sam_internal_data.internal_status != SAM_INTERNAL_STATUS_REGISTERED) {
-		return (CS_ERR_BAD_HANDLE);
+		ret = CS_ERR_BAD_HANDLE;
+		goto exit_mutex_unlock;
 	}
 
 	if (!(sam_internal_data.recovery_policy & SAM_RECOVERY_POLICY_CMAP)) {
-		return (CS_ERR_INVALID_PARAM);
+		ret = CS_ERR_INVALID_PARAM;
+		goto exit_mutex_unlock;
 	}
 
 	command = SAM_COMMAND_MARK_FAILED;
 
-	if (sam_safe_write (sam_internal_data.child_fd_out, &command, sizeof (command)) != sizeof (command))
-		return (CS_ERR_LIBRARY);
+	if (sam_safe_write (sam_internal_data.child_fd_out, &command, sizeof (command)) != sizeof (command)) {
+		ret = CS_ERR_LIBRARY;
+		goto exit_mutex_unlock;
+	}
 
-	return (CS_OK);
+exit_mutex_unlock:
+	pthread_mutex_unlock (&sam_internal_data.lock);
+
+	return (ret);
 }
 
-cs_error_t sam_warn_signal_set (int warn_signal)
+static cs_error_t sam_warn_signal_set_nolock (int warn_signal)
 {
 	char command;
 	cs_error_t err;
 
 	if (sam_internal_data.internal_status != SAM_INTERNAL_STATUS_INITIALIZED &&
-		sam_internal_data.internal_status != SAM_INTERNAL_STATUS_REGISTERED &&
-		sam_internal_data.internal_status != SAM_INTERNAL_STATUS_STARTED) {
+	    sam_internal_data.internal_status != SAM_INTERNAL_STATUS_REGISTERED &&
+	    sam_internal_data.internal_status != SAM_INTERNAL_STATUS_STARTED) {
 		return (CS_ERR_BAD_HANDLE);
 	}
-
-	pthread_mutex_lock (&sam_internal_data.lock);
 
 	if (sam_internal_data.am_i_child) {
 		/*
@@ -757,23 +806,19 @@ cs_error_t sam_warn_signal_set (int warn_signal)
 		 */
 		command = SAM_COMMAND_WARN_SIGNAL_SET;
 		if (sam_safe_write (sam_internal_data.child_fd_out, &command, sizeof (command)) != sizeof (command)) {
-			err = CS_ERR_LIBRARY;
-
-			goto error_unlock;
+			return (CS_ERR_BAD_HANDLE);
 		}
 
 		if (sam_safe_write (sam_internal_data.child_fd_out, &warn_signal, sizeof (warn_signal)) !=
 		   sizeof (warn_signal)) {
-			err = CS_ERR_LIBRARY;
-
-			goto error_unlock;
+			return (CS_ERR_LIBRARY);
 		}
 
 		/*
 		 * And wait for reply
 		 */
 		if ((err = sam_read_reply (sam_internal_data.child_fd_in)) != CS_OK) {
-			goto error_unlock;
+			return (err);
 		}
 	}
 
@@ -782,14 +827,20 @@ cs_error_t sam_warn_signal_set (int warn_signal)
 	 */
 	sam_internal_data.warn_signal = warn_signal;
 
-	pthread_mutex_unlock (&sam_internal_data.lock);
-
 	return (CS_OK);
+}
 
-error_unlock:
+cs_error_t sam_warn_signal_set (int warn_signal)
+{
+	cs_error_t ret;
+
+	pthread_mutex_lock (&sam_internal_data.lock);
+
+	ret = sam_warn_signal_set_nolock (warn_signal);
+
 	pthread_mutex_unlock (&sam_internal_data.lock);
 
-	return (err);
+	return (ret);
 }
 
 static cs_error_t sam_parent_reply_send (
@@ -837,7 +888,7 @@ static cs_error_t sam_parent_warn_signal_set (
 		goto error_reply;
 	}
 
-	err = sam_warn_signal_set (warn_signal);
+	err = sam_warn_signal_set_nolock (warn_signal);
 	if (err != CS_OK) {
 		goto error_reply;
 	}
@@ -1008,6 +1059,11 @@ static cs_error_t sam_parent_data_store (
 		goto error_reply;
 	}
 
+	if (size >= SSIZE_MAX) {
+		err = CS_ERR_TOO_BIG;
+		goto error_reply;
+	}
+
 	if (size > 0) {
 		user_data = malloc (size);
 		if (user_data == NULL) {
@@ -1021,7 +1077,7 @@ static cs_error_t sam_parent_data_store (
 		}
 	}
 
-	err = sam_data_store (user_data, size);
+	err = sam_data_store_nolock (user_data, size);
 	if (err != CS_OK) {
 		goto free_error_reply;
 	}
@@ -1203,16 +1259,21 @@ action_exit:
 cs_error_t sam_register (
 	unsigned int *instance_id)
 {
-	cs_error_t error;
 	pid_t pid;
 	int pipe_error;
 	int pipe_fd_out[2], pipe_fd_in[2];
 	enum sam_parent_action_t action, old_action;
 	int child_status;
 	sam_recovery_policy_t recpol;
+	cs_error_t ret;
+
+	ret = CS_OK;
+
+	pthread_mutex_lock (&sam_internal_data.lock);
 
 	if (sam_internal_data.internal_status != SAM_INTERNAL_STATUS_INITIALIZED) {
-		return (CS_ERR_BAD_HANDLE);
+		ret = CS_ERR_BAD_HANDLE;
+		goto exit_mutex_unlock;
 	}
 
 	recpol = sam_internal_data.recovery_policy;
@@ -1221,30 +1282,29 @@ cs_error_t sam_register (
 		/*
 		 * Register to cmap
 		 */
-		if ((error = sam_cmap_register ()) != CS_OK) {
-			goto error_exit;
+		if ((ret = sam_cmap_register ()) != CS_OK) {
+			ret = CS_ERR_BAD_HANDLE;
+			goto exit_mutex_unlock;
 		}
 	}
 
-	error = CS_OK;
-
 	while (1) {
 		if ((pipe_error = pipe (pipe_fd_out)) != 0) {
-			error = CS_ERR_LIBRARY;
-			goto error_exit;
+			ret = CS_ERR_LIBRARY;
+			goto exit_mutex_unlock;
 		}
 
 		if ((pipe_error = pipe (pipe_fd_in)) != 0) {
 			close (pipe_fd_out[0]);
 			close (pipe_fd_out[1]);
 
-			error = CS_ERR_LIBRARY;
-			goto error_exit;
+			ret = CS_ERR_BAD_HANDLE;
+			goto exit_mutex_unlock;
 		}
 
 		if (recpol & SAM_RECOVERY_POLICY_CMAP) {
-			if ((error = sam_cmap_update_key (SAM_CMAP_KEY_STATE, SAM_CMAP_S_REGISTERED)) != CS_OK) {
-				goto error_exit;
+			if ((ret = sam_cmap_update_key (SAM_CMAP_KEY_STATE, SAM_CMAP_S_REGISTERED)) != CS_OK) {
+				goto exit_mutex_unlock;
 			}
 		}
 
@@ -1260,8 +1320,8 @@ cs_error_t sam_register (
 			 */
 			sam_internal_data.instance_id--;
 
-			error = CS_ERR_LIBRARY;
-			goto error_exit;
+			ret = CS_ERR_BAD_HANDLE;
+			goto exit_mutex_unlock;
 		}
 
 		if (pid == 0) {
@@ -1280,9 +1340,7 @@ cs_error_t sam_register (
 			sam_internal_data.am_i_child = 1;
 			sam_internal_data.internal_status = SAM_INTERNAL_STATUS_REGISTERED;
 
-			pthread_mutex_init (&sam_internal_data.lock, NULL);
-
-			goto error_exit;
+			goto exit_mutex_unlock;
 		} else {
 			/*
 			 *  Parent process
@@ -1296,8 +1354,8 @@ cs_error_t sam_register (
 			close (pipe_fd_in[1]);
 
 			if (action == SAM_PARENT_ACTION_ERROR) {
-				error = CS_ERR_LIBRARY;
-				goto error_exit;
+				ret = CS_ERR_LIBRARY;
+				goto exit_mutex_unlock;
 			}
 
 			/*
@@ -1337,8 +1395,10 @@ cs_error_t sam_register (
 		}
 	}
 
-error_exit:
-	return (error);
+exit_mutex_unlock:
+	pthread_mutex_unlock (&sam_internal_data.lock);
+
+	return (ret);
 }
 
 static void *hc_callback_thread (void *unused_param)
