@@ -53,11 +53,9 @@
 #include <string.h>
 #include <sys/wait.h>
 #include <corosync/cmap.h>
-extern const char *__progname;
 
-static int test2_sig_delivered = 0;
-static int test5_hc_cb_count = 0;
-static int test6_sig_delivered = 0;
+static int test_sig_delivered = 0;
+static int test_hc_cb_count = 0;
 
 /*
  * First test will just register SAM, with policy restart. First instance will
@@ -69,7 +67,7 @@ static int test6_sig_delivered = 0;
  * twice. One should succeed, second should fail. After this, we will call every function
  * (none should succeed).
  */
-static int test1 (void)
+static int test_basics (void)
 {
 	cs_error_t error;
 	unsigned int instance_id;
@@ -113,13 +111,19 @@ static int test1 (void)
 			error = sam_stop ();
 
 			if (error != CS_OK) {
-				fprintf (stderr, "Can't send hc. Error %d\n", error);
+				fprintf (stderr, "Can't stop hc. Error %d\n", error);
 				return 1;
 			}
 		}
 
 		printf ("%s iid %d: sleep 3\n", __FUNCTION__, instance_id);
 		sleep (3);
+
+		if (instance_id == 1) {
+			printf ("%s iid %d: Failed. Wasn't killed.\n", __FUNCTION__, instance_id);
+
+			return 1;
+		}
 
 		printf ("%s iid %d: start\n", __FUNCTION__, instance_id);
 		error = sam_start ();
@@ -178,18 +182,20 @@ static int test1 (void)
 }
 
 
-static void test2_signal (int sig) {
+static void test_signal_handler (int sig) {
 	printf ("%s\n", __FUNCTION__);
 
-	test2_sig_delivered = 1;
+	test_sig_delivered = 1;
 }
 
 /*
  * This tests recovery policy quit and callback.
  */
-static int test2 (void) {
+static int test_signal (void) {
 	cs_error_t error;
 	unsigned int instance_id;
+
+	test_sig_delivered = 0;
 
 	printf ("%s: initialize\n", __FUNCTION__);
 	error = sam_initialize (2000, SAM_RECOVERY_POLICY_QUIT);
@@ -205,7 +211,7 @@ static int test2 (void) {
 	}
 
 	if (instance_id == 1) {
-		signal (SIGTERM, test2_signal);
+		signal (SIGTERM, test_signal_handler);
 
 		printf ("%s iid %d: start\n", __FUNCTION__, instance_id);
 		error = sam_start ();
@@ -226,7 +232,7 @@ static int test2 (void) {
 
 
 		printf ("%s iid %d: wait for delivery of signal\n", __FUNCTION__, instance_id);
-		while (!test2_sig_delivered) {
+		while (!test_sig_delivered) {
 			sleep (1);
 		}
 
@@ -243,7 +249,7 @@ static int test2 (void) {
  * Smoke test. This has no time limit, just restart process
  * when it dies.
  */
-static int test3 (void) {
+static int test_smoke (void) {
 	cs_error_t error;
 	unsigned int instance_id;
 	struct rlimit lim;
@@ -288,7 +294,7 @@ static int test3 (void) {
 /*
  * Test sam_data_store, sam_data_restore and sam_data_getsize
  */
-static int test4 (void)
+static int test_data_store_restore (void)
 {
 	size_t size;
 	cs_error_t err;
@@ -534,16 +540,16 @@ static int test4 (void)
 	return (0);
 }
 
-static int test5_hc_cb (void)
+static int test_hc_cb (void)
 {
 	cs_error_t res;
-	printf ("%s %d\n", __FUNCTION__, ++test5_hc_cb_count);
+	printf ("%s %d\n", __FUNCTION__, ++test_hc_cb_count);
 
-	res = sam_data_store (&test5_hc_cb_count, sizeof (test5_hc_cb_count));
+	res = sam_data_store (&test_hc_cb_count, sizeof (test_hc_cb_count));
 	if (res != CS_OK)
 		return 1;
 
-	if (test5_hc_cb_count > 10)
+	if (test_hc_cb_count > 10)
 		return 1;
 
 	return 0;
@@ -551,7 +557,7 @@ static int test5_hc_cb (void)
 /*
  * Test event driven healtchecking.
  */
-static int test5 (void)
+static int test_hc (void)
 {
 	cs_error_t error;
 	unsigned int instance_id;
@@ -572,7 +578,7 @@ static int test5 (void)
 
 	if (instance_id == 1) {
 		printf ("%s iid %d: hc callback register\n", __FUNCTION__, instance_id);
-		error = sam_hc_callback_register (test5_hc_cb);
+		error = sam_hc_callback_register (test_hc_cb);
 		if (error != CS_OK) {
 			fprintf (stderr, "Can't register hc cb. Error %d\n", error);
 			return 1;
@@ -611,13 +617,13 @@ static int test5 (void)
 	return 1;
 }
 
-static void test6_signal (int sig) {
+static void test_warn_signal_handler (int sig) {
 	cs_error_t error;
 
 	printf ("%s\n", __FUNCTION__);
-	test6_sig_delivered++;
+	test_sig_delivered++;
 
-	if ((error = sam_data_store (&test6_sig_delivered, sizeof (test6_sig_delivered))) != CS_OK) {
+	if ((error = sam_data_store (&test_sig_delivered, sizeof (test_sig_delivered))) != CS_OK) {
 		fprintf (stderr, "Can't store data! Error : %d\n", error);
 	}
 }
@@ -625,10 +631,12 @@ static void test6_signal (int sig) {
 /*
  * Test warn signal set.
  */
-static int test6 (void) {
+static int test_warn_signal (void) {
 	cs_error_t error;
 	unsigned int instance_id;
-	int test6_sig_del;
+	int tmp_sig_delivered;
+
+	test_sig_delivered = 0;
 
 	printf ("%s: initialize\n", __FUNCTION__);
 	error = sam_initialize (2000, SAM_RECOVERY_POLICY_RESTART);
@@ -650,7 +658,7 @@ static int test6 (void) {
 			return 1;
 		}
 
-		signal (SIGUSR1, test6_signal);
+		signal (SIGUSR1, test_warn_signal_handler);
 
 		printf ("%s iid %d: start\n", __FUNCTION__, instance_id);
 		error = sam_start ();
@@ -671,7 +679,7 @@ static int test6 (void) {
 
 
 		printf ("%s iid %d: wait for delivery of signal\n", __FUNCTION__, instance_id);
-		while (!test6_sig_delivered) {
+		while (!test_sig_delivered) {
 			sleep (1);
 		}
 
@@ -684,13 +692,13 @@ static int test6 (void) {
 	}
 
 	if (instance_id == 2) {
-		error = sam_data_restore (&test6_sig_del, sizeof (test6_sig_del));
+		error = sam_data_restore (&tmp_sig_delivered, sizeof (tmp_sig_delivered));
 		if (error != CS_OK) {
 			fprintf (stderr, "Can't restore data. Error %d\n", error);
 			return 1;
 		}
 
-		if (test6_sig_del != 1) {
+		if (tmp_sig_delivered != 1) {
 			fprintf (stderr, "Previous test failed. Signal was not delivered\n");
 			return 1;
 		}
@@ -701,7 +709,7 @@ static int test6 (void) {
 			return 1;
 		}
 
-		signal (SIGUSR1, test6_signal);
+		signal (SIGUSR1, test_warn_signal_handler);
 
 		printf ("%s iid %d: start\n", __FUNCTION__, instance_id);
 		error = sam_start ();
@@ -722,7 +730,7 @@ static int test6 (void) {
 
 
 		printf ("%s iid %d: wait for delivery of signal\n", __FUNCTION__, instance_id);
-		while (!test6_sig_delivered) {
+		while (!test_sig_delivered) {
 			sleep (1);
 		}
 
@@ -731,13 +739,13 @@ static int test6 (void) {
 	}
 
 	if (instance_id == 3) {
-		error = sam_data_restore (&test6_sig_del, sizeof (test6_sig_del));
+		error = sam_data_restore (&tmp_sig_delivered, sizeof (tmp_sig_delivered));
 		if (error != CS_OK) {
 			fprintf (stderr, "Can't restore data. Error %d\n", error);
 			return 1;
 		}
 
-		if (test6_sig_del != 1) {
+		if (tmp_sig_delivered != 1) {
 			fprintf (stderr, "Previous test failed. Signal WAS delivered\n");
 			return 1;
 		}
@@ -748,7 +756,7 @@ static int test6 (void) {
 	return 1;
 }
 
-static void *test7_thread (void *arg)
+static void *test_quorum_thread (void *arg)
 {
 	/* Wait 5s */
 	sleep (5);
@@ -758,7 +766,7 @@ static void *test7_thread (void *arg)
 /*
  * Test quorum
  */
-static int test7 (void) {
+static int test_quorum (void) {
 	cmap_handle_t cmap_handle;
 	cs_error_t err;
 	unsigned int instance_id;
@@ -821,7 +829,7 @@ static int test7 (void) {
 		/*
 		 * Sam start should block forever, but 10s for us should be enough
 		 */
-		pthread_create (&kill_thread, NULL, test7_thread, NULL);
+		pthread_create (&kill_thread, NULL, test_quorum_thread, NULL);
 
 		printf ("%s iid %d: start - should block forever (waiting 5s)\n", __FUNCTION__, instance_id);
 		err = sam_start ();
@@ -877,7 +885,8 @@ static int test7 (void) {
 /*
  * Test cmap integration + quit policy
  */
-static int test8 (pid_t pid, pid_t old_pid, int test_n) {
+static int test_cmap_quit (pid_t pid, pid_t old_pid, int test_n)
+{
 	cmap_handle_t cmap_handle;
 	cs_error_t err;
 	uint64_t tstamp1, tstamp2;
@@ -1100,7 +1109,7 @@ static int test8 (pid_t pid, pid_t old_pid, int test_n) {
 		 * Previous should be FAILED
 		 */
 
-		snprintf(key_name, CMAP_KEYNAME_MAXLEN, "resources.process.%d.state", pid);
+		snprintf(key_name, CMAP_KEYNAME_MAXLEN, "resources.process.%d.state", old_pid);
 		err = cmap_get_string(cmap_handle, key_name, &str);
 		if (err != CS_OK) {
 			printf ("Could not get \"state\" key: %d.\n", err);
@@ -1123,7 +1132,7 @@ static int test8 (pid_t pid, pid_t old_pid, int test_n) {
 /*
  * Test cmap integration + restart policy
  */
-static int test9 (pid_t pid, pid_t old_pid, int test_n) {
+static int test_cmap_restart (pid_t pid, pid_t old_pid, int test_n) {
 	cs_error_t err;
 	cmap_handle_t cmap_handle;
 	unsigned int instance_id;
@@ -1232,7 +1241,7 @@ static int test9 (pid_t pid, pid_t old_pid, int test_n) {
 		/*
 		 * Previous should be FAILED
 		 */
-		snprintf(key_name, CMAP_KEYNAME_MAXLEN, "resources.process.%d.state", pid);
+		snprintf(key_name, CMAP_KEYNAME_MAXLEN, "resources.process.%d.state", old_pid);
 		err = cmap_get_string(cmap_handle, key_name, &str);
 		if (err != CS_OK) {
 			printf ("Could not get \"state\" key: %d.\n", err);
@@ -1252,245 +1261,131 @@ static int test9 (pid_t pid, pid_t old_pid, int test_n) {
 	return (2);
 }
 
-int main(int argc, char *argv[])
+static int run_test(const char *test_name, int (test_func)(void), int skippable, int *all_passed, int *no_skipped)
+{
+	pid_t pid;
+	int err;
+	int stat;
+	const char *res_str;
+
+	fprintf (stderr, "Running %s test\n", test_name);
+	pid = fork ();
+
+	if (pid == -1) {
+		fprintf (stderr, "Can't fork\n");
+
+		exit(1);
+	}
+
+	if (pid == 0) {
+		/*
+		 * Child runs tests and sets exit code to result of test
+		 */
+		err = test_func ();
+
+		/*
+		 * After sam_register this is child of child
+		 */
+		sam_finalize ();
+
+		exit (err);
+	}
+
+	/*
+	 * Parent waits for child to run the test and return exit code
+	 */
+	waitpid (pid, &stat, 0);
+
+	err = WEXITSTATUS (stat);
+
+	if (!skippable) {
+		res_str = (err == 0 ? "passed" : "failed");
+
+		if (err != 0) {
+			(*all_passed) = 0;
+		}
+	} else {
+		res_str = (err == 0 ? "passed" : (err == 1 ? "skipped" : "failed"));
+
+		if (err == 1) {
+			(*no_skipped)++;
+		} else if (err > 1) {
+			(*all_passed) = 0;
+		}
+	}
+
+	fprintf (stderr, "%s test %s\n", test_name, res_str);
+
+	return (err);
+}
+
+static int run_cmap_test(const char *test_name,
+    int (test_func)(pid_t pid, pid_t old_pid, int test_n),
+    int no_tests, int *all_passed, int *no_skipped)
 {
 	pid_t pid, old_pid;
 	int err;
 	int stat;
-	int all_passed = 1;
-	int no_skipped = 0;
+	const char *res_str;
+	int n;
 
-	setlinebuf(stdout);
+	old_pid = 0;
 
-	pid = fork ();
+	fprintf (stderr, "Running %s test\n", test_name);
 
-	if (pid == -1) {
-		fprintf (stderr, "Can't fork\n");
-		return 1;
-	}
-
-	if (pid == 0) {
-		err = test1 ();
-		sam_finalize ();
-		return err;
-	}
-
-	waitpid (pid, &stat, 0);
-
-	fprintf (stderr, "test1 %s\n", (WEXITSTATUS (stat) == 0 ? "passed" : "failed"));
-	if (WEXITSTATUS (stat) != 0)
-		all_passed = 0;
-
-	pid = fork ();
-
-	if (pid == -1) {
-		fprintf (stderr, "Can't fork\n");
-		return 1;
-	}
-
-	if (pid == 0) {
-		err = test2 ();
-
-		sam_finalize ();
-		return (err);
-	}
-
-	waitpid (pid, &stat, 0);
-
-	fprintf (stderr, "test2 %s\n", (WEXITSTATUS (stat) == 0 ? "passed" : "failed"));
-	if (WEXITSTATUS (stat) != 0)
-		all_passed = 0;
-
-	pid = fork ();
-
-	if (pid == -1) {
-		fprintf (stderr, "Can't fork\n");
-		return 1;
-	}
-
-	if (pid == 0) {
-		err = test3 ();
-		sam_finalize ();
-		return (err);
-	}
-
-	waitpid (pid, &stat, 0);
-
-	fprintf (stderr, "test3 %s\n", (WEXITSTATUS (stat) == 0 ? "passed" : "failed"));
-	if (WEXITSTATUS (stat) != 0)
-		all_passed = 0;
-
-	pid = fork ();
-
-	if (pid == -1) {
-		fprintf (stderr, "Can't fork\n");
-		return 1;
-	}
-
-	if (pid == 0) {
-		err = test4 ();
-		sam_finalize ();
-		return (err);
-	}
-
-	waitpid (pid, &stat, 0);
-
-	fprintf (stderr, "test4 %s\n", (WEXITSTATUS (stat) == 0 ? "passed" : "failed"));
-	if (WEXITSTATUS (stat) != 0)
-		all_passed = 0;
-
-	pid = fork ();
-
-	if (pid == -1) {
-		fprintf (stderr, "Can't fork\n");
-		return 1;
-	}
-
-	if (pid == 0) {
-		err = test5 ();
-
-		sam_finalize ();
-		return (err);
-	}
-
-	waitpid (pid, &stat, 0);
-	fprintf (stderr, "test5 %s\n", (WEXITSTATUS (stat) == 0 ? "passed" : "failed"));
-	if (WEXITSTATUS (stat) != 0)
-		all_passed = 0;
-
-	pid = fork ();
-
-	if (pid == -1) {
-		fprintf (stderr, "Can't fork\n");
-		return 1;
-	}
-
-	if (pid == 0) {
-		err = test6 ();
-		sam_finalize ();
-		return (err);
-	}
-
-	waitpid (pid, &stat, 0);
-	fprintf (stderr, "test6 %s\n", (WEXITSTATUS (stat) == 0 ? "passed" : "failed"));
-	if (WEXITSTATUS (stat) != 0)
-		all_passed = 0;
-
-	pid = fork ();
-
-	if (pid == -1) {
-		fprintf (stderr, "Can't fork\n");
-		return 2;
-	}
-
-	if (pid == 0) {
-		err = test7 ();
-		sam_finalize ();
-		return (err);
-	}
-
-	waitpid (pid, &stat, 0);
-	fprintf (stderr, "test7 %s\n", (WEXITSTATUS (stat) == 0 ? "passed" : (WEXITSTATUS (stat) == 1 ? "skipped" : "failed")));
-	if (WEXITSTATUS (stat) == 1)
-		no_skipped++;
-	if (WEXITSTATUS (stat) > 1)
-		all_passed = 0;
-
-	pid = fork ();
-
-	if (pid == -1) {
-		fprintf (stderr, "Can't fork\n");
-		return 2;
-	}
-
-	if (pid == 0) {
-		err = test8 (getpid (), 0, 1);
-		sam_finalize ();
-		return (err);
-	}
-
-	waitpid (pid, &stat, 0);
-	old_pid = pid;
-
-	if (WEXITSTATUS (stat) == 0) {
+	for (n = 1; n <= no_tests; n++) {
 		pid = fork ();
 
 		if (pid == -1) {
 			fprintf (stderr, "Can't fork\n");
-			return 2;
+
+			exit (2);
 		}
 
 		if (pid == 0) {
-			err = test8 (getpid (), old_pid, 2);
+			err = test_func (getpid (), old_pid, n);
 			sam_finalize ();
-			return (err);
+			exit (err);
 		}
 
 		waitpid (pid, &stat, 0);
 		old_pid = pid;
 
-		if (WEXITSTATUS (stat) == 0) {
-			pid = fork ();
-
-			if (pid == -1) {
-				fprintf (stderr, "Can't fork\n");
-				return 2;
-			}
-
-			if (pid == 0) {
-				err = test8 (old_pid, 0, 3);
-				sam_finalize ();
-				return (err);
-			}
-
-			waitpid (pid, &stat, 0);
+		err = WEXITSTATUS (stat);
+		if (err != 0) {
+			break;
 		}
 	}
 
-	fprintf (stderr, "test8 %s\n", (WEXITSTATUS (stat) == 0 ? "passed" : (WEXITSTATUS (stat) == 1 ? "skipped" : "failed")));
-	if (WEXITSTATUS (stat) == 1)
-		no_skipped++;
-	if (WEXITSTATUS (stat) > 1)
-		all_passed = 0;
+	res_str = (err == 0 ? "passed" : (err == 1 ? "skipped" : "failed"));
 
-	pid = fork ();
-
-	if (pid == -1) {
-		fprintf (stderr, "Can't fork\n");
-		return 2;
+	if (err == 1) {
+		(*no_skipped)++;
+	} else if (err > 1) {
+		(*all_passed) = 0;
 	}
 
-	if (pid == 0) {
-		err = test9 (getpid (), 0, 1);
-		sam_finalize ();
-		return (err);
-	}
+	fprintf (stderr, "%s test %s\n", test_name, res_str);
 
-	waitpid (pid, &stat, 0);
-	old_pid = pid;
+	return (err);
+}
 
-	if (WEXITSTATUS (stat) == 0) {
-		pid = fork ();
+int main(int argc, char *argv[])
+{
+	int all_passed = 1;
+	int no_skipped = 0;
 
-		if (pid == -1) {
-			fprintf (stderr, "Can't fork\n");
-			return 2;
-		}
+	setlinebuf(stdout);
 
-		if (pid == 0) {
-			err = test9 (old_pid, 0, 2);
-			sam_finalize ();
-			return (err);
-		}
-
-		waitpid (pid, &stat, 0);
-	}
-	fprintf (stderr, "test9 %s\n", (WEXITSTATUS (stat) == 0 ? "passed" : (WEXITSTATUS (stat) == 1 ? "skipped" : "failed")));
-	if (WEXITSTATUS (stat) == 1)
-		no_skipped++;
-
-	if (WEXITSTATUS (stat) > 1)
-		all_passed = 0;
+	run_test("basics", test_basics, 0, &all_passed, &no_skipped);
+	run_test("signal", test_signal, 0, &all_passed, &no_skipped);
+	run_test("smoke", test_smoke, 0, &all_passed, &no_skipped);
+	run_test("data_store/restore", test_data_store_restore, 0, &all_passed, &no_skipped);
+	run_test("hc", test_hc, 0, &all_passed, &no_skipped);
+	run_test("warn_signal", test_warn_signal, 0, &all_passed, &no_skipped);
+	run_test("quorum", test_quorum, 1, &all_passed, &no_skipped);
+	run_cmap_test("cmap quit", test_cmap_quit, 3, &all_passed, &no_skipped);
+	run_cmap_test("cmap restart", test_cmap_restart, 2, &all_passed, &no_skipped);
 
 	if (all_passed)
 		fprintf (stderr, "All tests passed (%d skipped)\n", no_skipped);
