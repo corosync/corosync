@@ -1269,11 +1269,9 @@ cs_error_t sam_register (
 
 	ret = CS_OK;
 
-	pthread_mutex_lock (&sam_internal_data.lock);
-
 	if (sam_internal_data.internal_status != SAM_INTERNAL_STATUS_INITIALIZED) {
 		ret = CS_ERR_BAD_HANDLE;
-		goto exit_mutex_unlock;
+		goto exit_error;
 	}
 
 	recpol = sam_internal_data.recovery_policy;
@@ -1284,14 +1282,14 @@ cs_error_t sam_register (
 		 */
 		if ((ret = sam_cmap_register ()) != CS_OK) {
 			ret = CS_ERR_BAD_HANDLE;
-			goto exit_mutex_unlock;
+			goto exit_error;
 		}
 	}
 
 	while (1) {
 		if ((pipe_error = pipe (pipe_fd_out)) != 0) {
 			ret = CS_ERR_LIBRARY;
-			goto exit_mutex_unlock;
+			goto exit_error;
 		}
 
 		if ((pipe_error = pipe (pipe_fd_in)) != 0) {
@@ -1299,12 +1297,12 @@ cs_error_t sam_register (
 			close (pipe_fd_out[1]);
 
 			ret = CS_ERR_BAD_HANDLE;
-			goto exit_mutex_unlock;
+			goto exit_error;
 		}
 
 		if (recpol & SAM_RECOVERY_POLICY_CMAP) {
 			if ((ret = sam_cmap_update_key (SAM_CMAP_KEY_STATE, SAM_CMAP_S_REGISTERED)) != CS_OK) {
-				goto exit_mutex_unlock;
+				goto exit_error;
 			}
 		}
 
@@ -1321,7 +1319,7 @@ cs_error_t sam_register (
 			sam_internal_data.instance_id--;
 
 			ret = CS_ERR_BAD_HANDLE;
-			goto exit_mutex_unlock;
+			goto exit_error;
 		}
 
 		if (pid == 0) {
@@ -1340,7 +1338,7 @@ cs_error_t sam_register (
 			sam_internal_data.am_i_child = 1;
 			sam_internal_data.internal_status = SAM_INTERNAL_STATUS_REGISTERED;
 
-			goto exit_mutex_unlock;
+			goto exit_error;
 		} else {
 			/*
 			 *  Parent process
@@ -1355,7 +1353,7 @@ cs_error_t sam_register (
 
 			if (action == SAM_PARENT_ACTION_ERROR) {
 				ret = CS_ERR_LIBRARY;
-				goto exit_mutex_unlock;
+				goto exit_error;
 			}
 
 			/*
@@ -1395,9 +1393,7 @@ cs_error_t sam_register (
 		}
 	}
 
-exit_mutex_unlock:
-	pthread_mutex_unlock (&sam_internal_data.lock);
-
+exit_error:
 	return (ret);
 }
 
