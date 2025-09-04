@@ -372,6 +372,16 @@ for UDP transport.
 The KNET transport supports IPv4 and IPv6 addresses concurrently,
 provided they are consistent on each link.
 
+.TP
+ip_dscp
+This specifies the dscp (differentiated services code point) value to be
+used in the IP header's type of service (TOS) field according to RFC 2474.
+Allowed values are 0-63, 0 disables the dscp support. Use of TOS field
+then depends on the used transport.
+If ip_dscp is set to a value not equal to zero, and an appropriate
+socket option (IP_TOS) is available, the value is put into the upper
+six bits of the TOS header field.
+
 Within the
 .B totem
 directive, there are several configuration options which are used to control

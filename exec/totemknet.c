@@ -1299,6 +1299,12 @@ int totemknet_initialize (
 	if (res) {
 		KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_WARNING, "knet_handle_pmtud_set failed");
 	}
+#ifdef HAVE_KNET_SETPRIO_DSCP
+	res = knet_handle_setprio_dscp(instance->knet_handle, instance->totem_config->ip_dscp);
+	if (res) {
+		KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_WARNING, "knet_handle_setprio_dscp failed");
+	}
+#endif
 	res = knet_handle_enable_filter(instance->knet_handle, instance, dst_host_filter_callback_fn);
 	if (res) {
 		KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_WARNING, "knet_handle_enable_filter failed");
