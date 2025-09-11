@@ -62,7 +62,6 @@
 #include <qb/qbloop.h>
 #ifdef HAVE_LIBNOZZLE
 #include <libgen.h>
-#include <net/ethernet.h>
 #include <libnozzle.h>
 #endif
 
@@ -260,6 +259,27 @@ do {												\
 
 
 #ifdef HAVE_LIBNOZZLE
+static inline uint8_t *ether_get_dst_mac(const unsigned char *packet, ssize_t packet_len)
+{
+	/*
+	 * Packet must be at least as long as one MAC address
+	 */
+	if (packet_len < 6) {
+		return NULL;
+	}
+
+	/*
+	 * To ensure portability, this implementation parses raw packet data directly
+	 * according to the Ethernet II standard.
+	 *
+	 * The system-provided struct ether_header is not used because its definition
+	 * and the location of its header file vary between platforms like Linux, BSD,
+	 * and Illumos. In the Ethernet II standard, the destination MAC address is
+	 * always the first 6 bytes of the frame.
+	 */
+	return (uint8_t *)packet;
+}
+
 static inline int is_ether_addr_multicast(const uint8_t *addr)
 {
 	return (addr[0] & 0x01);
@@ -279,9 +299,12 @@ static int ether_host_filter_fn(void *private_data,
 				knet_node_id_t *dst_host_ids,
 				size_t *dst_host_ids_entries)
 {
-	struct ether_header *eth_h = (struct ether_header *)outdata;
-	uint8_t *dst_mac = (uint8_t *)eth_h->ether_dhost;
+	uint8_t *dst_mac = ether_get_dst_mac(outdata, outdata_len);
 	uint16_t dst_host_id;
+
+	if (dst_mac == NULL) {
+		return -1;
+	}
 
 	if (is_ether_addr_zero(dst_mac))
 		return -1;
