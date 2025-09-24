@@ -296,6 +296,9 @@ nodestatusget_do (enum user_action action, int brief)
 		for (i=0; i<CFG_MAX_LINKS; i++) {
 			if (node_info[other_nodeid_index].link_status[i].enabled) {
 				printf("LINK ID %d %s\n", i, link_transport[i]);
+				if (strcmp(link_transport[i], "sctp") == 0) {
+					printf("**SCTP is deprecated and will be removed in a future release\n");
+				}
 				printf("\taddr\t= %s\n", node_info[other_nodeid_index].link_status[i].src_ipaddr);
 				if (brief) {
 					printf("\tstatus\t= ");

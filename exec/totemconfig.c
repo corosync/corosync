@@ -1700,6 +1700,7 @@ static int get_interface_params(struct totem_config *totem_config, icmap_map_t m
 			if (icmap_get_string_r(map, tmp_key, &str) == CS_OK) {
 				if (strcmp(str, "sctp") == 0) {
 					totem_config->interfaces[linknumber].knet_transport = KNET_TRANSPORT_SCTP;
+					log_printf(LOGSYS_LEVEL_WARNING, "WARNING SCTP transport is deprecated and will be removed in a future release.\n");
 				}
 				else if (strcmp(str, "udp") == 0) {
 					totem_config->interfaces[linknumber].knet_transport = KNET_TRANSPORT_UDP;
