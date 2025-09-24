@@ -870,17 +870,6 @@ static int data_deliver_fn (
 	if (msg_hdr.msg_flags & MSG_TRUNC) {
 		truncated_packet = 1;
 	}
-#else
-	/*
-	 * Checking of received number of bytes doesn't work as with UDP(U) because knet might
-	 * send KNET_MAX_PACKET_SIZE. It is also bug if message is truncated because
-	 * knet always sends packet with maximum size of KNET_MAX_PACKET_SIZE.
-	 *
-	 * It probably doesn't make too much sense to force having msg_hdr.msg_flags, but
-	 * it is also good to know platform (or configuration) doesn't support them, so
-	 * just issue compiler warning.
-	 */
-#warning Platform without msg_hdr.msg_flags
 #endif
 
 	if (truncated_packet) {
