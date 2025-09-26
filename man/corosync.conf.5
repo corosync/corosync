@@ -128,8 +128,10 @@ How many valid ping/pongs before a link is marked UP. (default 2)
 .TP
 
 knet_transport
-Which IP transport KNET should use. valid values are "sctp" or "udp". (default: udp)
-NOTE: sctp is deprecated and will be removed in kronoset v2.0
+Which IP transport KNET should use. valid values are "udp" (or "sctp" if
+supported by the installed version of kronosnet). (default: udp)
+NOTE: even if currently included, sctp is deprecated and will be removed
+in kronoset v2.0
 
 .TP
 bindnetaddr (UDP only)
