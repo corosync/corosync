@@ -1698,15 +1698,21 @@ static int get_interface_params(struct totem_config *totem_config, icmap_map_t m
 			totem_config->interfaces[linknumber].knet_transport = KNET_DEFAULT_TRANSPORT;
 			snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.knet_transport", linknumber);
 			if (icmap_get_string_r(map, tmp_key, &str) == CS_OK) {
+#ifdef KNET_TRANSPORT_SCTP
 				if (strcmp(str, "sctp") == 0) {
 					totem_config->interfaces[linknumber].knet_transport = KNET_TRANSPORT_SCTP;
 					log_printf(LOGSYS_LEVEL_WARNING, "WARNING SCTP transport is deprecated and will be removed in a future release.\n");
-				}
-				else if (strcmp(str, "udp") == 0) {
+				} else
+#endif
+				if (strcmp(str, "udp") == 0) {
 					totem_config->interfaces[linknumber].knet_transport = KNET_TRANSPORT_UDP;
 				}
 				else {
+#ifdef KNET_TRANSPORT_SCTP
 					*error_string = "Unrecognised knet_transport. expected 'udp' or 'sctp'";
+#else
+					*error_string = "Unrecognised knet_transport. only 'udp' is supported";
+#endif
 					ret = -1;
 					goto out;
 				}
