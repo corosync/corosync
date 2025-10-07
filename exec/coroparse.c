@@ -744,7 +744,8 @@ static int main_config_parser_cb(const char *path,
 			    (strcmp(path, "quorum.allow_downscale") == 0) ||
 			    (strcmp(path, "quorum.wait_for_all") == 0) ||
 			    (strcmp(path, "quorum.auto_tie_breaker") == 0) ||
-			    (strcmp(path, "quorum.last_man_standing") == 0)) {
+			    (strcmp(path, "quorum.last_man_standing") == 0) ||
+			    (strcmp(path, "quorum.site_aware") == 0)) {
 				val_type = ICMAP_VALUETYPE_UINT8;
 				if (safe_atoq(value, &val, val_type) != 0) {
 					goto safe_atoq_error;
@@ -1179,7 +1180,8 @@ static int main_config_parser_cb(const char *path,
 			snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "nodelist.node.%u.%s", data->node_number,
 			    path + strlen(path_prefix));
 			if ((strcmp(path, "nodelist.node.nodeid") == 0) ||
-			    (strcmp(path, "nodelist.node.quorum_votes") == 0)) {
+			    (strcmp(path, "nodelist.node.quorum_votes") == 0) ||
+			    (strcmp(path, "nodelist.node.site") == 0)) {
 				val_type = ICMAP_VALUETYPE_UINT32;
 				if (safe_atoq(value, &val, val_type) != 0) {
 					goto safe_atoq_error;
