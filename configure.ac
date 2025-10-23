@@ -637,7 +637,6 @@ WARNLIST="
 	format-security
 	format-nonliteral
 	no-long-long
-	unsigned-char
 	no-strict-aliasing
 	"
 
