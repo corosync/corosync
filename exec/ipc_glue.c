@@ -706,7 +706,7 @@ cs_error_t cs_ipcs_get_conn_stats(int service_id, uint32_t pid, void *conn_ptr, 
 	return CS_OK;
 }
 
-void cs_ipcs_clear_stats()
+void cs_ipcs_clear_stats(void)
 {
 	struct cs_ipcs_conn_context *cnx;
 	struct ipcs_conn_stats ipcs_stats;
