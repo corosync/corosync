@@ -558,7 +558,7 @@ void stats_map_iter_finalize(icmap_iter_t iter)
 }
 
 
-void stats_trigger_trackers()
+void stats_trigger_trackers(void)
 {
 	struct cs_stats_tracker *tracker;
 	struct qb_list_head *iter;

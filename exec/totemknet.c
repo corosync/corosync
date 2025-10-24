@@ -943,7 +943,7 @@ static void knet_set_access_list_config(struct totemknet_instance *instance)
 #endif
 }
 
-void totemknet_configure_log_level()
+void totemknet_configure_log_level(void)
 {
 	int logsys_log_mode;
 	int knet_log_mode = KNET_LOG_INFO;
