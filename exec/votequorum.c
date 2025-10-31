@@ -98,6 +98,16 @@ static uint32_t ev_tracking_barrier = 0;
 static int ev_tracking_fd = -1;
 
 /*
+ * site-aware quorum
+ */
+#define VOTEQUORUM_MAX_SITES 256
+#define VOTEQUORUM_SITE_UNASSIGNED 0xFFFFFFFF
+
+static uint8_t site_aware = 0;
+static uint32_t site_expected_nodes[VOTEQUORUM_MAX_SITES];
+static uint32_t num_sites = 0;
+
+/*
  * votequorum_exec defines/structs/forward definitions
  */
 
@@ -187,6 +197,7 @@ struct cluster_node {
 	uint32_t    votes;
 	uint32_t    expected_votes;
 	uint32_t    flags;
+	uint32_t    site_id;
 	struct      qb_list_head list;
 };
 
@@ -839,6 +850,26 @@ static void update_two_node(void)
 	LEAVE();
 }
 
+static void update_site_aware(void)
+{
+	uint32_t site;
+	char key[ICMAP_KEYNAME_MAXLEN];
+
+	ENTER();
+
+	icmap_set_uint8("runtime.votequorum.site_aware", site_aware);
+	icmap_set_uint32("runtime.votequorum.num_sites", num_sites);
+
+	/* Export site membership info to runtime */
+	for (site = 0; site < num_sites; site++) {
+		snprintf(key, ICMAP_KEYNAME_MAXLEN,
+			"runtime.votequorum.site.%u.expected_nodes", site);
+		icmap_set_uint32(key, site_expected_nodes[site]);
+	}
+
+	LEAVE();
+}
+
 static void update_ev_barrier(uint32_t expected_votes)
 {
 	ENTER();
@@ -903,6 +934,43 @@ static void update_ev_tracking_barrier(uint32_t ev_t_barrier)
  * quorum calculation core bits
  */
 
+static int partition_has_complete_site(void)
+{
+	uint32_t site_current_nodes[VOTEQUORUM_MAX_SITES] = {0};
+	struct qb_list_head *nodelist;
+	struct cluster_node *node;
+	uint32_t site;
+
+	ENTER();
+
+	/* Count current member nodes per site */
+	qb_list_for_each(nodelist, &cluster_members_list) {
+		node = qb_list_entry(nodelist, struct cluster_node, list);
+
+		if (node->state == NODESTATE_MEMBER &&
+		    node->site_id != VOTEQUORUM_SITE_UNASSIGNED &&
+		    node->site_id < VOTEQUORUM_MAX_SITES) {
+			site_current_nodes[node->site_id]++;
+		}
+	}
+
+	/* Check if any site is complete */
+	for (site = 0; site < num_sites; site++) {
+		if (site_expected_nodes[site] > 0 &&
+		    site_current_nodes[site] == site_expected_nodes[site]) {
+			log_printf(LOGSYS_LEVEL_DEBUG,
+				  "Site %u is complete (%u/%u nodes)",
+				  site, site_current_nodes[site],
+				  site_expected_nodes[site]);
+			LEAVE();
+			return 1;
+		}
+	}
+
+	LEAVE();
+	return 0;
+}
+
 static int calculate_quorum(int allow_decrease, unsigned int max_expected, unsigned int *ret_total_votes)
 {
 	struct qb_list_head *nodelist;
@@ -965,6 +1033,17 @@ static int calculate_quorum(int allow_decrease, unsigned int max_expected, unsig
 	 * any damage or confusion.
 	 */
 	if (two_node && total_nodes <= 2) {
+		newquorum = 1;
+	}
+
+	/*
+	 * Site-aware quorum: if we are currently quorate and have all nodes
+	 * from at least one complete site, retain quorum even if we drop below
+	 * 50% total votes. This extends two_node logic to multiple sites.
+	 * Only applies when already quorate to prevent split-brain - an inquorate
+	 * partition must achieve standard majority to regain quorum.
+	 */
+	if (site_aware && cluster_is_quorate && partition_has_complete_site()) {
 		newquorum = 1;
 	}
 
@@ -1143,6 +1222,60 @@ static void recalculate_quorum(int allow_decrease, int by_current_nodes)
  * configuration bits and pieces
  */
 
+static uint32_t get_node_site_id(uint32_t nodeid)
+{
+	icmap_iter_t iter;
+	const char *iter_key;
+	char tmp_key[ICMAP_KEYNAME_MAXLEN];
+	uint32_t node_pos, last_node_pos=-1;
+	uint32_t config_nodeid;
+	uint32_t site_id = VOTEQUORUM_SITE_UNASSIGNED;
+	int res = 0;
+
+	ENTER();
+
+	iter = icmap_iter_init("nodelist.node.");
+
+	while ((iter_key = icmap_iter_next(iter, NULL, NULL)) != NULL) {
+
+		res = sscanf(iter_key, "nodelist.node.%u.%s", &node_pos, tmp_key);
+		if (res != 2) {
+			continue;
+		}
+
+		if (last_node_pos == node_pos) {
+			continue;
+		}
+		last_node_pos = node_pos;
+
+		/* Get this node's ID */
+		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "nodelist.node.%u.nodeid", node_pos);
+		if (icmap_get_uint32(tmp_key, &config_nodeid) != CS_OK) {
+			continue;
+		}
+
+		/* Found our node, get its site */
+		if (config_nodeid == nodeid) {
+			snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "nodelist.node.%u.site", node_pos);
+			if (icmap_get_uint32(tmp_key, &site_id) == CS_OK) {
+				log_printf(LOGSYS_LEVEL_DEBUG,
+					  "Node " CS_PRI_NODE_ID " assigned to site %u",
+					  nodeid, site_id);
+			} else {
+				log_printf(LOGSYS_LEVEL_DEBUG,
+					  "Node " CS_PRI_NODE_ID " has no site assignment",
+					  nodeid);
+			}
+			break;
+		}
+	}
+
+	icmap_iter_finalize(iter);
+
+	LEAVE();
+	return site_id;
+}
+
 static int votequorum_read_nodelist_configuration(uint32_t *votes,
 						  uint32_t *nodes,
 						  uint32_t *expected_votes)
@@ -1154,9 +1287,14 @@ static int votequorum_read_nodelist_configuration(uint32_t *votes,
 	uint32_t nodecount = 0;
 	uint32_t nodelist_expected_votes = 0;
 	uint32_t node_votes = 0;
+	uint32_t node_site_id;
 	int res = 0;
 
 	ENTER();
+
+	/* Initialize site tracking */
+	memset(site_expected_nodes, 0, sizeof(site_expected_nodes));
+	num_sites = 0;
 
 	if (icmap_get_uint32("nodelist.local_node_pos", &our_pos) != CS_OK) {
 		log_printf(LOGSYS_LEVEL_DEBUG,
@@ -1194,6 +1332,21 @@ static int votequorum_read_nodelist_configuration(uint32_t *votes,
 
 		if (node_pos == our_pos) {
 			*votes = node_votes;
+		}
+
+		/* Track site membership for site-aware quorum */
+		snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "nodelist.node.%u.site", node_pos);
+		if (icmap_get_uint32(tmp_key, &node_site_id) == CS_OK) {
+			if (node_site_id < VOTEQUORUM_MAX_SITES) {
+				site_expected_nodes[node_site_id]++;
+				if (node_site_id + 1 > num_sites) {
+					num_sites = node_site_id + 1;
+				}
+			} else {
+				log_printf(LOGSYS_LEVEL_WARNING,
+					  "Node %u site ID %u exceeds maximum %u, ignoring",
+					  node_pos, node_site_id, VOTEQUORUM_MAX_SITES - 1);
+			}
 		}
 	}
 
@@ -1276,6 +1429,7 @@ static char *votequorum_readconfig(int runtime)
 	have_nodelist = votequorum_read_nodelist_configuration(&node_votes, &node_count, &node_expected_votes);
 	have_qdevice = votequorum_qdevice_is_configured(&qdevice_votes);
 	(void)icmap_get_uint8("quorum.two_node", &two_node);
+	(void)icmap_get_uint8("quorum.site_aware", &site_aware);
 
 	/*
 	 * do config verification and enablement
@@ -1376,6 +1530,48 @@ static char *votequorum_readconfig(int runtime)
 	        log_printf(LOGSYS_LEVEL_CRIT, "two_node and auto_tie_breaker are both specified but are not compatible.");
 		log_printf(LOGSYS_LEVEL_CRIT, "two_node has been disabled, please fix your corosync.conf");
 		two_node = 0;
+	}
+
+	/*
+	 * site_aware and two_node are not compatible
+	 */
+	if (site_aware && two_node) {
+		if (!runtime) {
+			error = (char *)"configuration error: site_aware and two_node cannot be configured at the same time!";
+			goto out;
+		} else {
+			log_printf(LOGSYS_LEVEL_CRIT, "configuration error: site_aware and two_node cannot be configured at the same time!");
+			log_printf(LOGSYS_LEVEL_CRIT, "disabling site_aware");
+			site_aware = 0;
+		}
+	}
+
+	/*
+	 * site_aware and qdevice are not compatible
+	 */
+	if (site_aware && have_qdevice) {
+		if (!runtime) {
+			error = (char *)"configuration error: site_aware and quorum device cannot be configured at the same time!";
+			goto out;
+		} else {
+			log_printf(LOGSYS_LEVEL_CRIT, "configuration error: site_aware and quorum device cannot be configured at the same time!");
+			if (us->flags & NODE_FLAGS_QDEVICE_REGISTERED) {
+				log_printf(LOGSYS_LEVEL_CRIT, "quorum device is registered, disabling site_aware");
+				site_aware = 0;
+			} else {
+				log_printf(LOGSYS_LEVEL_CRIT, "quorum device is not registered, allowing site_aware");
+				update_qdevice_can_operate(0);
+			}
+		}
+	}
+
+	/*
+	 * site_aware and auto_tie_breaker are not compatible - similar to two_node
+	 */
+	if (site_aware && auto_tie_breaker != ATB_NONE) {
+		log_printf(LOGSYS_LEVEL_CRIT, "site_aware and auto_tie_breaker are both specified but are not compatible.");
+		log_printf(LOGSYS_LEVEL_CRIT, "site_aware has been disabled, please fix your corosync.conf");
+		site_aware = 0;
 	}
 
 	/* If ATB is set and the cluster has an odd number of nodes then wait_for_all needs
@@ -1546,6 +1742,7 @@ static char *votequorum_readconfig(int runtime)
 
 	update_ev_barrier(us->expected_votes);
 	update_two_node();
+	update_site_aware();
 	if (wait_for_all) {
 		if (!runtime) {
 			update_wait_for_all_status(1);
@@ -2110,6 +2307,8 @@ static void message_handler_req_exec_votequorum_nodeinfo (
 		old_expected = 0;
 		old_state = NODESTATE_DEAD;
 		old_flags = 0;
+		/* Set site ID for new node */
+		node->site_id = get_node_site_id(nodeid);
 	} else {
 		old_votes = node->votes;
 		old_expected = node->expected_votes;
@@ -2318,11 +2517,16 @@ static char *votequorum_exec_init_fn (struct corosync_api_v1 *api)
 	us->state = NODESTATE_MEMBER;
 	us->votes = 1;
 	us->flags |= NODE_FLAGS_FIRST;
+	us->site_id = VOTEQUORUM_SITE_UNASSIGNED;
 
 	error = votequorum_readconfig(VOTEQUORUM_READCONFIG_STARTUP);
 	if (error) {
 		return error;
 	}
+
+	/* Set our site ID from configuration */
+	us->site_id = get_node_site_id(us->node_id);
+
 	recalculate_quorum(0, 0);
 
 	/*
