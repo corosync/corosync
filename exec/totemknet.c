@@ -416,21 +416,6 @@ static inline void ucast_sendmsg (
 	memset(&msg_ucast, 0, sizeof(msg_ucast));
 	msg_ucast.msg_iov = (void *)&iovec;
 	msg_ucast.msg_iovlen = 1;
-#ifdef HAVE_MSGHDR_CONTROL
-	msg_ucast.msg_control = 0;
-#endif
-#ifdef HAVE_MSGHDR_CONTROLLEN
-	msg_ucast.msg_controllen = 0;
-#endif
-#ifdef HAVE_MSGHDR_FLAGS
-	msg_ucast.msg_flags = 0;
-#endif
-#ifdef HAVE_MSGHDR_ACCRIGHTS
-	msg_ucast.msg_accrights = NULL;
-#endif
-#ifdef HAVE_MSGHDR_ACCRIGHTSLEN
-	msg_ucast.msg_accrightslen = 0;
-#endif
 
 	/*
 	 * Transmit unicast message
@@ -466,22 +451,6 @@ static inline void mcast_sendmsg (
 	memset(&msg_mcast, 0, sizeof(msg_mcast));
 	msg_mcast.msg_iov = (void *)&iovec;
 	msg_mcast.msg_iovlen = 1;
-#ifdef HAVE_MSGHDR_CONTROL
-	msg_mcast.msg_control = 0;
-#endif
-#ifdef HAVE_MSGHDR_CONTROLLEN
-	msg_mcast.msg_controllen = 0;
-#endif
-#ifdef HAVE_MSGHDR_FLAGS
-	msg_mcast.msg_flags = 0;
-#endif
-#ifdef HAVE_MSGHDR_ACCRIGHTS
-	msg_mcast.msg_accrights = NULL;
-#endif
-#ifdef HAVE_MSGHDR_ACCRIGHTSLEN
-	msg_mcast.msg_accrightslen = 0;
-#endif
-
 
 //	log_printf (LOGSYS_LEVEL_DEBUG, "totemknet: mcast_sendmsg. only_active=%d, len=%d", only_active, msg_len);
 
@@ -823,25 +792,11 @@ static int data_deliver_fn (
 	iov_recv.iov_base = instance->iov_buffer;
 	iov_recv.iov_len = KNET_MAX_PACKET_SIZE + 1;
 
+	memset(&msg_hdr, 0, sizeof(msg_hdr));
 	msg_hdr.msg_name = &system_from;
 	msg_hdr.msg_namelen = sizeof (struct sockaddr_storage);
 	msg_hdr.msg_iov = &iov_recv;
 	msg_hdr.msg_iovlen = 1;
-#ifdef HAVE_MSGHDR_CONTROL
-	msg_hdr.msg_control = 0;
-#endif
-#ifdef HAVE_MSGHDR_CONTROLLEN
-	msg_hdr.msg_controllen = 0;
-#endif
-#ifdef HAVE_MSGHDR_FLAGS
-	msg_hdr.msg_flags = 0;
-#endif
-#ifdef HAVE_MSGHDR_ACCRIGHTS
-	msg_hdr.msg_accrights = NULL;
-#endif
-#ifdef HAVE_MSGHDR_ACCRIGHTSLEN
-	msg_hdr.msg_accrightslen = 0;
-#endif
 
 	msg_len = recvmsg (fd, &msg_hdr, MSG_NOSIGNAL | MSG_DONTWAIT);
 	if (msg_len <= 0) {
@@ -1557,25 +1512,11 @@ extern int totemknet_recv_mcast_empty (
 	iov_recv.iov_base = instance->iov_buffer;
 	iov_recv.iov_len = KNET_MAX_PACKET_SIZE;
 
+	memset(&msg_hdr, 0, sizeof(msg_hdr));
 	msg_hdr.msg_name = &system_from;
 	msg_hdr.msg_namelen = sizeof (struct sockaddr_storage);
 	msg_hdr.msg_iov = &iov_recv;
 	msg_hdr.msg_iovlen = 1;
-#ifdef HAVE_MSGHDR_CONTROL
-	msg_hdr.msg_control = 0;
-#endif
-#ifdef HAVE_MSGHDR_CONTROLLEN
-	msg_hdr.msg_controllen = 0;
-#endif
-#ifdef HAVE_MSGHDR_FLAGS
-	msg_hdr.msg_flags = 0;
-#endif
-#ifdef HAVE_MSGHDR_ACCRIGHTS
-	msg_hdr.msg_accrights = NULL;
-#endif
-#ifdef HAVE_MSGHDR_ACCRIGHTSLEN
-	msg_hdr.msg_accrightslen = 0;
-#endif
 
 	do {
 		ufd.fd = instance->knet_fd;
