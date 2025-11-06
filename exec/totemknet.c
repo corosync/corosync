@@ -147,7 +147,7 @@ struct totemknet_instance {
 
 	void *knet_context;
 
-	char iov_buffer[KNET_MAX_PACKET_SIZE];
+	char iov_buffer[KNET_MAX_PACKET_SIZE + 1];
 
 	char *link_status[INTERFACE_MAX];
 
@@ -819,10 +819,9 @@ static int data_deliver_fn (
 	struct sockaddr_storage system_from;
 	ssize_t msg_len;
 	char *data_ptr = instance->iov_buffer;
-	int truncated_packet;
 
 	iov_recv.iov_base = instance->iov_buffer;
-	iov_recv.iov_len = KNET_MAX_PACKET_SIZE;
+	iov_recv.iov_len = KNET_MAX_PACKET_SIZE + 1;
 
 	msg_hdr.msg_name = &system_from;
 	msg_hdr.msg_namelen = sizeof (struct sockaddr_storage);
@@ -849,7 +848,17 @@ static int data_deliver_fn (
 		return (0);
 	}
 
-	truncated_packet = 0;
+	if (msg_len >= KNET_MAX_PACKET_SIZE + 1) {
+		/*
+		 * It this happens it is real bug, because knet always sends packet with maximum size
+		 * of KNET_MAX_PACKET_SIZE.
+		 * If received packet is MAX_PACKET_SIZE + 1 it means packet was truncated
+		 * (iov_buffer size and iov_len are intentionally set to KNET_MAX_PACKET_SIZE + 1).
+		 */
+		knet_log_printf(instance->totemknet_log_level_error,
+				"Received truncated packet. Please report this bug. Dropping packet.");
+		return (0);
+	}
 
 	/*
 	 * If it's from the knet fd then it will have the optional knet header on it
@@ -866,32 +875,6 @@ static int data_deliver_fn (
 	}
 #endif
 
-#ifdef HAVE_MSGHDR_FLAGS
-	if (msg_hdr.msg_flags & MSG_TRUNC) {
-		truncated_packet = 1;
-	}
-#else
-	/*
-	 * Checking of received number of bytes doesn't work as with UDP(U) because knet might
-	 * send KNET_MAX_PACKET_SIZE. It is also bug if message is truncated because
-	 * knet always sends packet with maximum size of KNET_MAX_PACKET_SIZE.
-	 *
-	 * It probably doesn't make too much sense to force having msg_hdr.msg_flags, but
-	 * it is also good to know platform (or configuration) doesn't support them, so
-	 * just issue compiler warning.
-	 */
-#warning Platform without msg_hdr.msg_flags
-#endif
-
-	if (truncated_packet) {
-		/*
-		 * It this happens it is real bug, because knet always sends packet with maximum size
-		 * of KNET_MAX_PACKET_SIZE.
-		 */
-		knet_log_printf(instance->totemknet_log_level_error,
-				"Received truncated packet. Please report this bug. Dropping packet.");
-		return (0);
-	}
 
 	/*
 	 * Handle incoming message
