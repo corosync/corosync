@@ -336,47 +336,45 @@ static inline void mcast_sendmsg (
 	 */
 	if (instance->netif_bind_state == BIND_STATE_REGULAR) {
 		qb_list_for_each(list, &(instance->member_list)) {
-			member = qb_list_entry (list,
-				struct totemudpu_member,
-				list);
-				/*
-				 * Do not send multicast message if message is not "flush", member
-				 * is inactive and timeout for sending merge message didn't expired.
-				 */
-				if (only_active && !member->active && !instance->send_merge_detect_message)
-					continue ;
+			member = qb_list_entry (list, struct totemudpu_member, list);
+			/*
+			 * Do not send multicast message if message is not "flush", member
+			 * is inactive and timeout for sending merge message didn't expired.
+			 */
+			if (only_active && !member->active && !instance->send_merge_detect_message)
+				continue ;
 
-				totemip_totemip_to_sockaddr_convert(&member->member,
-					instance->totem_interface->ip_port, &sockaddr, &addrlen);
-				msg_mcast.msg_name = &sockaddr;
-				msg_mcast.msg_namelen = addrlen;
-				msg_mcast.msg_iov = (void *)&iovec;
-				msg_mcast.msg_iovlen = 1;
-			#ifdef HAVE_MSGHDR_CONTROL
-				msg_mcast.msg_control = 0;
-			#endif
-			#ifdef HAVE_MSGHDR_CONTROLLEN
-				msg_mcast.msg_controllen = 0;
-			#endif
-			#ifdef HAVE_MSGHDR_FLAGS
-				msg_mcast.msg_flags = 0;
-			#endif
-			#ifdef HAVE_MSGHDR_ACCRIGHTS
-				msg_mcast.msg_accrights = NULL;
-			#endif
-			#ifdef HAVE_MSGHDR_ACCRIGHTSLEN
-				msg_mcast.msg_accrightslen = 0;
-			#endif
+			totemip_totemip_to_sockaddr_convert(&member->member,
+				instance->totem_interface->ip_port, &sockaddr, &addrlen);
+			msg_mcast.msg_name = &sockaddr;
+			msg_mcast.msg_namelen = addrlen;
+			msg_mcast.msg_iov = (void *)&iovec;
+			msg_mcast.msg_iovlen = 1;
+		#ifdef HAVE_MSGHDR_CONTROL
+			msg_mcast.msg_control = 0;
+		#endif
+		#ifdef HAVE_MSGHDR_CONTROLLEN
+			msg_mcast.msg_controllen = 0;
+		#endif
+		#ifdef HAVE_MSGHDR_FLAGS
+			msg_mcast.msg_flags = 0;
+		#endif
+		#ifdef HAVE_MSGHDR_ACCRIGHTS
+			msg_mcast.msg_accrights = NULL;
+		#endif
+		#ifdef HAVE_MSGHDR_ACCRIGHTSLEN
+			msg_mcast.msg_accrightslen = 0;
+		#endif
 
-				/*
-				 * Transmit multicast message
-				 * An error here is recovered by totemsrp
-				 */
-				res = sendmsg (member->fd, &msg_mcast, MSG_NOSIGNAL);
-				if (res < 0) {
-					LOGSYS_PERROR (errno, instance->totemudpu_log_level_debug,
-						"sendmsg(mcast) failed (non-critical)");
-				}
+			/*
+			 * Transmit multicast message
+			 * An error here is recovered by totemsrp
+			 */
+			res = sendmsg (member->fd, &msg_mcast, MSG_NOSIGNAL);
+			if (res < 0) {
+				LOGSYS_PERROR (errno, instance->totemudpu_log_level_debug,
+					"sendmsg(mcast) failed (non-critical)");
+			}
 		}
 
 		if (!only_active || instance->send_merge_detect_message) {
