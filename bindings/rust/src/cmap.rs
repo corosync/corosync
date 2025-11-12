@@ -149,7 +149,7 @@ pub fn fd_get(handle: &Handle) -> Result<i32> {
     let c_fd: *mut c_int = &mut 0 as *mut _ as *mut c_int;
     let res = unsafe { ffi::cmap_fd_get(handle.cmap_handle, c_fd) };
     if res == ffi::CS_OK {
-        Ok(c_fd as i32)
+        Ok(unsafe { *c_fd })
     } else {
         Err(CsError::from_c(res))
     }
