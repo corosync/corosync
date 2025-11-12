@@ -113,6 +113,23 @@ fn main() -> Result<(), corosync::CsError> {
         return Err(e);
     }
 
+    // Check that fd_get returns a valid FD
+    match votequorum::fd_get(&handle) {
+        Ok(fd) => {
+            println!("FD is {fd}");
+            // Arbitrary upper limit but FDs should always be low
+            // and we're mainly checking addresses being returned
+            if !(0..=0xFFFF).contains(&fd) {
+                println!("Error - bad fd returned from fd_get: {fd}");
+                return Err(corosync::CsError::CsErrRustCompat);
+            }
+        }
+        Err(e) => {
+            println!("Error in VOTEQUORUM fd_get: {e}");
+            return Err(e);
+        }
+    }
+
     // Quick test of dispatch
     if let Err(e) = votequorum::dispatch(&handle, corosync::DispatchFlags::OneNonblocking) {
         println!("Error in VOTEUORUM dispatch: {e}");
