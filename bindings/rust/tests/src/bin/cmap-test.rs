@@ -180,6 +180,23 @@ fn main() -> Result<(), corosync::CsError> {
         }
     };
 
+    // Check that fd_get returns a valid FD
+    match cmap::fd_get(&handle) {
+        Ok(fd) => {
+            println!("FD is {fd}");
+            // Arbitrary upper limit but FDs should always be low
+            // and we're mainly checking addresses being returned
+            if !(0..=0xFFFF).contains(&fd) {
+                println!("Error - bad fd returned from fd_get: {fd}");
+                return Err(corosync::CsError::CsErrRustCompat);
+            }
+        }
+        Err(e) => {
+            println!("Error in CMAP fd_get: {e}");
+            return Err(e);
+        }
+    }
+
     // Wait for some events
     let mut event_num = 0;
     loop {
