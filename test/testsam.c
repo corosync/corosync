@@ -1381,6 +1381,7 @@ static int run_cmap_test(const char *test_name,
 	int n;
 
 	old_pid = 0;
+	err = 0;
 
 	fprintf (stderr, "Running %s test\n", test_name);
 
