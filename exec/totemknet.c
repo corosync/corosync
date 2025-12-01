@@ -2050,7 +2050,7 @@ static int reparse_nozzle_ip_address(struct totemknet_instance *instance,
 				     const char *prefix, int nodeid,
 				     char *output_addr, size_t output_len)
 {
-	char *coloncolon;
+	const char *coloncolon;
 	int bits;
 	int max_prefix = 64;
 	uint32_t nodeid_mask;

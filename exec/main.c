@@ -932,7 +932,7 @@ static int corosync_set_rr_scheduler (int silent)
    thread-safety and portability, hence this */
 static const char *corosync_basename(const char *file_name)
 {
-	char *base;
+	const char *base;
 	base = strrchr (file_name, '/');
 	if (base) {
 		return base + 1;
