@@ -120,7 +120,7 @@ char *corosync_service_link_and_init (
 {
 	struct corosync_service_engine *service_engine;
 	int fn;
-	char *name_sufix;
+	const char *name_sufix;
 	char key_name[ICMAP_KEYNAME_MAXLEN];
 	char *init_result;
 
@@ -155,7 +155,7 @@ char *corosync_service_link_and_init (
 	if (name_sufix)
 		name_sufix++;
 	else
-		name_sufix = (char*)service->name;
+		name_sufix = service->name;
 
 	snprintf(key_name, ICMAP_KEYNAME_MAXLEN, "runtime.services.%s.service_id", name_sufix);
 	icmap_set_uint16(key_name, service_engine->id);
@@ -259,7 +259,7 @@ static unsigned int service_unlink_and_exit (
 	unsigned int service_ver)
 {
 	unsigned short service_id;
-	char *name_sufix;
+	const char *name_sufix;
 	int res;
 	const char *iter_key_name;
 	icmap_iter_t iter;
@@ -272,7 +272,7 @@ static unsigned int service_unlink_and_exit (
 	if (name_sufix)
 		name_sufix++;
 	else
-		name_sufix = (char*)service_name;
+		name_sufix = service_name;
 
 
 	service_found = 0;

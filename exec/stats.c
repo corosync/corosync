@@ -340,7 +340,7 @@ cs_error_t stats_map_get(const char *key_name,
 	int service_id;
 	uint32_t pid;
 	unsigned int sm_event;
-	char *sm_type;
+	const char *sm_type;
 	void *conn_ptr;
 
 	item = qb_map_get(stats_map, key_name);
