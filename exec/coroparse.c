@@ -655,12 +655,8 @@ static int main_config_parser_cb(const char *path,
 	 * Formally this check is not needed because length is checked by parse_section
 	 */
 	if (strlen(path) >= sizeof(key_name)) {
-		if (snprintf(formated_err, sizeof(formated_err),
-		    "Can't store path \"%s\" into key_name", path) >= sizeof(formated_err)) {
-			*error_string = "Can't format path into key_name error message";
-		} else {
-			*error_string = formated_err;
-		}
+		*error_string = "main_config_parser_cb path is longer than key_name";
+
 		return (0);
 	}
 	/*
