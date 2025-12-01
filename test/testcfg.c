@@ -51,7 +51,8 @@ static void shutdown_callback(corosync_cfg_handle_t handle, corosync_cfg_shutdow
 
 static void *dispatch_thread(void *arg)
 {
-	corosync_cfg_handle_t handle = (corosync_cfg_handle_t) arg;
+	corosync_cfg_handle_t handle = *(corosync_cfg_handle_t *)arg;
+
 	int res = CS_OK;
 	while (res == CS_OK) {
 		res = corosync_cfg_dispatch(handle, CS_DISPATCH_ONE);
@@ -90,7 +91,7 @@ int main (int argc, char *argv[]) {
 		fprintf(stderr, "corosync_cfg_initialize(1) failed: %d\n", res);
 		return 1;
 	}
-	res = pthread_create(&thread, NULL, dispatch_thread, (void*)cfg_handle1);
+	res = pthread_create(&thread, NULL, dispatch_thread, (void *)&cfg_handle1);
 	if (res != 0) {
 		perror("pthread_create failed");
 		return 1;
