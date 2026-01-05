@@ -201,35 +201,30 @@ fn string_to_cpg_name(group: &str) -> Result<ffi::cpg_name> {
     if group.len() > CPG_NAMELEN_MAX - 1 {
         return Err(CsError::CsErrInvalidParam);
     }
-    let mut ngroup = group;
 
     // Check for trailing nul in the CPG name and add it manually.
     // CString::new() doesn't allow us to convert strings with NULs in,
     // but lots of C programs using cpg (looking at you Pacemaker)
     // seem to include the trailing nul in the CPG name for some reason.
-    let add_null = if group.ends_with('\0') {
-        ngroup = &group[0..group.len() - 1];
-        1
-    } else {
-        0
+    let (name_str, add_null) = match group.strip_suffix('\0') {
+        Some(stripped) => (stripped, 1),
+        None => (group, 0),
     };
 
-    let c_name = match CString::new(ngroup) {
+    let c_name = match CString::new(name_str) {
         Ok(n) => n,
         Err(_) => return Err(CsError::CsErrLibrary),
     };
+
+    let length = name_str.len() + add_null;
     let mut c_group = ffi::cpg_name {
-        length: (ngroup.len() + add_null) as u32,
+        length: length as u32,
         value: [0; CPG_NAMELEN_MAX],
     };
 
     unsafe {
         // NOTE param order is 'wrong-way round' from C
-        copy_nonoverlapping(
-            c_name.as_ptr(),
-            c_group.value.as_mut_ptr(),
-            ngroup.len() + add_null,
-        );
+        copy_nonoverlapping(c_name.as_ptr(), c_group.value.as_mut_ptr(), length);
     }
 
     Ok(c_group)
