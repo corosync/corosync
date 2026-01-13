@@ -389,7 +389,7 @@ static int reload_config_do (void)
 	(void)corosync_cfg_finalize (handle);
 
 	if ((rc = check_for_reload_errors())) {
-		fprintf(stderr, "Errors in appying config, corosync.conf might not match the running system\n");
+		fprintf(stderr, "Errors in applying config, corosync.conf might not match the running system\n");
 	}
 
 	return (rc);
