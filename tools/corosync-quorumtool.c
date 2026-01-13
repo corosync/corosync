@@ -48,6 +48,7 @@
 #include <corosync/cmap.h>
 #include <corosync/quorum.h>
 #include <corosync/votequorum.h>
+#include <corosync/icmap.h>
 #include "util.h"
 
 typedef enum {
@@ -500,7 +501,13 @@ static void display_nodes_data(nodeid_format_t nodeid_format, name_format_t name
 			print_string_padded("Qdevice");
 		}
 	}
-	printf("Name\n");
+	printf("Name");
+	/* Check if site_aware is enabled to display site column */
+	uint8_t site_aware = 0;
+	if (cmap_get_uint8(cmap_handle, "runtime.votequorum.site_aware", &site_aware) == CS_OK && site_aware) {
+		printf("%*s", 20, "Site");
+	}
+	printf("\n");
 
 	/* corosync sends them already sorted by address */
 	if (sort_type == SORT_NODEID) {
@@ -541,6 +548,28 @@ static void display_nodes_data(nodeid_format_t nodeid_format, name_format_t name
 			printf(" (local)");
 			if (v_handle) {
 				our_flags = info[i].flags;
+			}
+		}
+		/* Display site ID if site_aware is enabled */
+		if (site_aware) {
+			char key[ICMAP_KEYNAME_MAXLEN];
+			uint32_t node_site_id;
+			int site_col_offset;
+
+			/* Calculate padding needed */
+			site_col_offset = 50 - strlen(g_view_list[i].name);
+			if (g_view_list[i].node_id == our_nodeid) {
+				site_col_offset -= 8; /* " (local)" */
+			}
+			if (site_col_offset > 0) {
+				printf("%*s", site_col_offset, "");
+			}
+
+			snprintf(key, ICMAP_KEYNAME_MAXLEN, "nodelist.node.%d.site", i);
+			if (cmap_get_uint32(cmap_handle, key, &node_site_id) == CS_OK) {
+				printf("%u", node_site_id);
+			} else {
+				printf("N/A");
 			}
 		}
 		printf("\n");
@@ -635,6 +664,32 @@ static int display_quorum_data(int is_quorate,
 		if (info.flags & VOTEQUORUM_INFO_ALLOW_DOWNSCALE) printf("AllowDownscale ");
 		if (info.flags & VOTEQUORUM_INFO_QDEVICE_REGISTERED) printf("Qdevice ");
 		printf("\n");
+
+		/* Display site-aware quorum information if enabled */
+		uint8_t site_aware_status = 0;
+		uint32_t num_sites = 0;
+		if (cmap_get_uint8(cmap_handle, "runtime.votequorum.site_aware", &site_aware_status) == CS_OK &&
+		    site_aware_status) {
+			printf("\nSite-aware quorum information\n");
+			printf("-----------------------------\n");
+			printf("Site-aware:       Yes\n");
+
+			if (cmap_get_uint32(cmap_handle, "runtime.votequorum.num_sites", &num_sites) == CS_OK) {
+				uint32_t site;
+				printf("Number of sites:  %u\n", num_sites);
+
+				for (site = 0; site < num_sites; site++) {
+					char key[ICMAP_KEYNAME_MAXLEN];
+					uint32_t expected_nodes = 0;
+
+					snprintf(key, ICMAP_KEYNAME_MAXLEN,
+						"runtime.votequorum.site.%u.expected_nodes", site);
+					if (cmap_get_uint32(cmap_handle, key, &expected_nodes) == CS_OK) {
+						printf("Site %u nodes:     %u\n", site, expected_nodes);
+					}
+				}
+			}
+		}
 	} else {
 		fprintf(stderr, "Unable to get node info: %s\n", cs_strerror(err));
 	}
