@@ -401,4 +401,27 @@ static inline void sq_items_release (struct sq *sq, unsigned int seqid)
 	sq->head_seqid = seqid + 1;
 }
 
+/*
+ * Iter thru all active items. pos should be initialized to 0 before
+ * first call of this function.
+ */
+static inline void *sq_iter_next(const struct sq *sq, unsigned int *pos)
+{
+	char *sq_item;
+
+	for (; *pos < sq->item_count; (*pos)++) {
+		if (sq->items_inuse[*pos] != 0) {
+			sq_item = (char *)sq->items + ((*pos) * sq->size_per_item);
+			/*
+			 * Move to next item so next call doesn't continue on same item
+			 */
+			(*pos)++;
+
+			return (sq_item);
+		}
+	}
+
+	return (NULL);
+}
+
 #endif /* SORTQUEUE_H_DEFINED */
