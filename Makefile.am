@@ -175,6 +175,12 @@ rpm: clean _version
 	$(MAKE) $(SPEC) $(TARFILE)
 	rpmbuild $(WITH_LIST) $(RPMBUILDOPTS) -ba $(SPEC)
 
+if BUILD_WSDISSECTOR
+	sed -i -e "s#@buildwsdissector@#bcond_without#g" $@-t
+else
+	sed -i -e "s#@buildwsdissector@#bcond_with#g" $@-t
+endif
+
 # release/versioning
 BUILT_SOURCES	= .version
 .version:
