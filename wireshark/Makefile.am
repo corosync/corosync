@@ -8,8 +8,6 @@
 
 MAINTAINERCLEANFILES		= Makefile.in
 
-include $(top_srcdir)/build-aux/check.mk
-
 noinst_HEADERS			= packet-corosync-totemknet.h
 
 wsdissectorlibdir		= $(wireshark_INSTALL_PREFIX)/$(wireshark_PLUGINDIR)/epan
@@ -21,6 +19,6 @@ LIBS				=
 
 corosync_totemknet_la_SOURCES		= packet-corosync-totemknet.c
 
-corosync_totemknet_la_CFLAGS		= $(wireshark_CFLAGS) -DPLUGINPATH="\"$(pkglibdir)\"" -DWIRESHARK_BUILD=1
+corosync_totemknet_la_CFLAGS		= $(wireshark_CFLAGS)
 corosync_totemknet_la_LDFLAGS		= -module -avoid-version -export-dynamic
 corosync_totemknet_la_LIBADD		= $(wireshark_LIBS)

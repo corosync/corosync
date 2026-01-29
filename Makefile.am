@@ -53,6 +53,10 @@ dist_doc_DATA		= LICENSE INSTALL README.recovery AUTHORS
 SUBDIRS			= include common_lib lib exec tools test pkgconfig \
 			  man init conf vqsim bindings
 
+if BUILD_WSDISSECTOR
+SUBDIRS			+= wireshark
+endif
+
 coverity:
 	rm -rf cov
 	make clean
@@ -155,6 +159,11 @@ $(SPEC): $(SPEC).in
 		-e "s#@DIRTY@#$$dirty#g" \
 		-e "s#@date@#$$date#g" \
 	$< > $@-t; \
+if BUILD_WSDISSECTOR
+	sed -i -e "s#@buildwsdissector@#bcond_without#g" $@-t \
+else
+	sed -i -e "s#@buildwsdissector@#bcond_with#g" $@-t \
+endif
 	chmod a-w $@-t
 	mv $@-t $@
 
@@ -174,12 +183,6 @@ srpm: clean
 rpm: clean _version
 	$(MAKE) $(SPEC) $(TARFILE)
 	rpmbuild $(WITH_LIST) $(RPMBUILDOPTS) -ba $(SPEC)
-
-if BUILD_WSDISSECTOR
-	sed -i -e "s#@buildwsdissector@#bcond_without#g" $@-t
-else
-	sed -i -e "s#@buildwsdissector@#bcond_with#g" $@-t
-endif
 
 # release/versioning
 BUILT_SOURCES	= .version
