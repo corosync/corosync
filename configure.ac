@@ -49,11 +49,6 @@ AM_CONDITIONAL([BUILD_RUST_BINDINGS], [test x$enable_rust_bindings = xyes])
 corosyncrustver=["`echo ${VERSION} | sed 's/\.\([^-\.]*-\)/-\1/'`"]
 AC_SUBST([corosyncrustver])
 
-AC_ARG_ENABLE([wireshark-dissector],
-	[AS_HELP_STRING([--enable-wireshark-dissector],[libknet wireshark dissector support])],,
-	[ enable_wireshark_dissector="yes" ])
-AM_CONDITIONAL([BUILD_WSDISSECTOR], [test x$enable_wireshark_dissector = xyes])
-
 dnl Fix default variables - "prefix" variable if not specified
 systemddir=${prefix}/lib/systemd/system
 
@@ -195,20 +190,6 @@ AC_CHECK_LIB([knet],[knet_handle_get_onwire_ver],
 AC_CHECK_LIB([knet],[knet_handle_setprio_dscp],
 	     [AC_DEFINE_UNQUOTED([HAVE_KNET_SETPRIO_DSCP], 1, [have knet dscp traffic prioritization])])
 LIBS="$OLDLIBS"
-
-wireshark_INSTALL_PREFIX=""
-# checks for libknet wireshark dissector
-if test "x$enable_wireshark_dissector" = xyes; then
-	PKG_CHECK_MODULES([wireshark], [wireshark >= 4.6.0])
-	PKG_CHECK_VAR([wireshark_PLUGINDIR], [wireshark], [plugindir])
-	PKG_CHECK_VAR([wireshark_PREFIX], [wireshark], [prefix])
-	# workaround to make make distcheck happy
-	if test "x$wireshark_PREFIX" != "x${prefix}"; then
-		wireshark_INSTALL_PREFIX="${prefix}"
-	fi
-	WITH_LIST="$WITH_LIST --with wsdissector"
-fi
-AC_SUBST([wireshark_INSTALL_PREFIX], [$wireshark_INSTALL_PREFIX])
 
 # Checks for library functions.
 AC_FUNC_ALLOCA
@@ -464,6 +445,11 @@ AC_ARG_ENABLE([nozzle],
 	[  --enable-nozzle                 : Support for nozzle ],,
 	[ enable_nozzle="no" ])
 
+AC_ARG_ENABLE([wireshark-dissector],
+	[AS_HELP_STRING([--enable-wireshark-dissector],[libknet wireshark dissector support])],,
+	[ enable_wireshark_dissector="no" ])
+AM_CONDITIONAL([BUILD_WSDISSECTOR], [test x$enable_wireshark_dissector = xyes])
+
 # *FLAGS handling goes here
 
 ENV_CFLAGS="$CFLAGS"
@@ -623,6 +609,21 @@ if test "x${enable_snmp}" = xyes; then
 	fi
 fi
 AM_CONDITIONAL(BUILD_SNMP, test "${do_snmp}" = "1")
+
+wireshark_INSTALL_PREFIX=""
+# checks for libknet wireshark dissector
+if test "x$enable_wireshark_dissector" = xyes; then
+	PKG_CHECK_MODULES([wireshark], [wireshark >= 4.6.0])
+	PKG_CHECK_VAR([wireshark_PLUGINDIR], [wireshark], [plugindir])
+	PKG_CHECK_VAR([wireshark_PREFIX], [wireshark], [prefix])
+	# workaround to make make distcheck happy
+	if test "x$wireshark_PREFIX" != "x${prefix}"; then
+		wireshark_INSTALL_PREFIX="${prefix}"
+	fi
+	PACKAGE_FEATURES="$PACKAGE_FEATURES wireshark-dissector"
+	WITH_LIST="$WITH_LIST --with wsdissector"
+fi
+AC_SUBST([wireshark_INSTALL_PREFIX], [$wireshark_INSTALL_PREFIX])
 
 # extra warnings
 EXTRA_WARNINGS=""
