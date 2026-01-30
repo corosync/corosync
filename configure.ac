@@ -206,6 +206,7 @@ if test "x$enable_wireshark_dissector" = xyes; then
 	if test "x$wireshark_PREFIX" != "x${prefix}"; then
 		wireshark_INSTALL_PREFIX="${prefix}"
 	fi
+	WITH_LIST="$WITH_LIST --with wsdissector"
 fi
 AC_SUBST([wireshark_INSTALL_PREFIX], [$wireshark_INSTALL_PREFIX])
 

@@ -15,6 +15,11 @@
 %bcond_with vqsim
 %bcond_with runautogen
 %bcond_with userflags
+%bcond_with wsdissector
+
+%if %{with wsdissector}
+%define wireshark_plugindir %(pkg-config --variable plugindir wireshark)/epan
+%endif
 
 %global gitver %{?numcomm:.%{numcomm}}%{?alphatag:.%{alphatag}}%{?dirty:.%{dirty}}
 %global gittarver %{?numcomm:.%{numcomm}}%{?alphatag:-%{alphatag}}%{?dirty:-%{dirty}}
@@ -78,6 +83,9 @@ Requires: libxslt
 %if %{with vqsim}
 BuildRequires: readline-devel
 %endif
+%if %{with wsdissector}
+BuildRequires: wireshark-devel >= 4.6
+%endif
 
 %prep
 %setup -q -n %{name}-%{version}%{?gittarver}
@@ -115,6 +123,9 @@ BuildRequires: readline-devel
 %if %{with userflags}
 	--enable-user-flags \
 %endif
+%if %{with wsdissector}
+	--enable-wireshark-dissector \
+%endif
 	--with-initddir=%{_initrddir} \
 	--with-systemddir=%{_unitdir} \
 	--docdir=%{_docdir}
@@ -133,6 +144,8 @@ install -m 644 %{_builddir}/%{name}-%{version}%{?gittarver}/conf/corosync-signal
 # drop static libs
 rm -f %{buildroot}%{_libdir}/*.a
 rm -f %{buildroot}%{_libdir}/*.la
+rm -f %{buildroot}%{wireshark_plugindir}/*.a
+rm -f %{buildroot}%{wireshark_plugindir}/*.la
 # drop docs and html docs for now
 rm -rf %{buildroot}%{_docdir}/*
 # /etc/sysconfig/corosync-notifyd
@@ -300,6 +313,20 @@ network splits)
 %doc LICENSE
 %{_bindir}/corosync-vqsim
 %{_mandir}/man8/corosync-vqsim.8*
+%endif
+
+%if %{with wsdissector}
+%package -n corosync-wireshark
+Summary: Wireshark dissector plugin for corosync
+License: LGPL-2.1-or-later
+Requires: wireshark >= 4.6.0
+Requires: kronosnet-wireshark
+
+%description -n corosync-wireshark
+ Wireshark dissector plugin for better analysis of corosync traffic.
+
+%files -n corosync-wireshark
+%{wireshark_plugindir}/corosync-totemknet.so
 %endif
 
 %changelog
