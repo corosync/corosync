@@ -801,6 +801,9 @@ static void message_handler_req_exec_cfg_reload_config (
 		goto reload_fini;
 	}
 
+	/* knet ping timers when unset depends on token timeout so this needs to be done last of all */
+	totem_calc_knet_ping_timers(&new_config, temp_map);
+
 	/* Validate dynamic parameters */
 	if (totem_volatile_config_validate(&new_config, temp_map, &error_string) == -1) {
 		log_printf (LOGSYS_LEVEL_ERROR, "Configuration is not valid: %s\n", error_string);
