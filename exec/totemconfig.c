@@ -1121,7 +1121,7 @@ static int check_for_duplicate_nodeids(
  * interface params, but the totem params need to have them to be read first. We
  * need both, so this is a way round that circular dependancy.
  */
-static void calc_knet_ping_timers(struct totem_config *totem_config)
+void totem_calc_knet_ping_timers(struct totem_config *totem_config, icmap_map_t temp_map)
 {
 	char runtime_key_name[ICMAP_KEYNAME_MAXLEN];
 	int interface;
@@ -1138,7 +1138,7 @@ static void calc_knet_ping_timers(struct totem_config *totem_config)
 			}
 			snprintf(runtime_key_name, sizeof(runtime_key_name),
 				 "runtime.config.totem.interface.%d.knet_ping_timeout", interface);
-			icmap_set_uint32(runtime_key_name, totem_config->interfaces[interface].knet_ping_timeout);
+			icmap_set_uint32_r(temp_map, runtime_key_name, totem_config->interfaces[interface].knet_ping_timeout);
 
 			if (!totem_config->interfaces[interface].knet_ping_interval) {
 				totem_config->interfaces[interface].knet_ping_interval =
@@ -1146,7 +1146,7 @@ static void calc_knet_ping_timers(struct totem_config *totem_config)
 			}
 			snprintf(runtime_key_name, sizeof(runtime_key_name),
 				 "runtime.config.totem.interface.%d.knet_ping_interval", interface);
-			icmap_set_uint32(runtime_key_name, totem_config->interfaces[interface].knet_ping_interval);
+			icmap_set_uint32_r(temp_map, runtime_key_name, totem_config->interfaces[interface].knet_ping_interval);
 		}
 	}
 }
@@ -2014,7 +2014,7 @@ extern int totem_config_read (
 	 */
 	totem_volatile_config_read(totem_config, icmap_get_global_map(), NULL);
 
-	calc_knet_ping_timers(totem_config);
+	totem_calc_knet_ping_timers(totem_config, icmap_get_global_map());
 
 	/* This is now done in the totemknet interface callback */
 	/*	configure_totem_links(totem_config, icmap_get_global_map()); */
@@ -2429,8 +2429,6 @@ int totemconfig_configure_new_params(
 	if (put_nodelist_members_to_config (totem_config, map, 1, error_string)) {
 		return -1;
 	}
-
-	calc_knet_ping_timers(totem_config);
 
 	log_printf(LOGSYS_LEVEL_DEBUG, "Configuration reloaded. Dumping actual totem config.");
 	debug_dump_totem_config(totem_config);

@@ -90,4 +90,8 @@ extern int totemconfig_commit_new_params(
 	struct totem_config *totem_config,
 	icmap_map_t map);
 
+extern void totem_calc_knet_ping_timers(
+	struct totem_config *totem_config,
+	icmap_map_t temp_map);
+
 #endif /* TOTEMCONFIG_H_DEFINED */
