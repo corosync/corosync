@@ -1,0 +1,13 @@
+#!/sbin/openrc-run
+
+: ${cfgfile:=${CONFIGFILE:="/etc/corosync/corosync.conf"}}
+
+pidfile="/run/$RC_SVCNAME.pid"
+command="/usr/sbin/corosync"
+command_args="-l $pidfile -c $cfgfile"
+
+required_files="$cfgfile"
+
+depend() {
+        need net
+}

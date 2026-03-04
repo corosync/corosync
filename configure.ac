@@ -399,6 +399,11 @@ AC_ARG_ENABLE([systemd],
 	[ enable_systemd="no" ])
 AM_CONDITIONAL(INSTALL_SYSTEMD, test x$enable_systemd = xyes)
 
+AC_ARG_ENABLE([openrc],
+	      [  --enable-openrc                 : Install openrc service files],,
+	[ enable_openrc="no" ])
+AM_CONDITIONAL(INSTALL_OPENRC, test x$enable_openrc = xyes)
+
 AC_ARG_WITH([initconfigdir],
 	[AS_HELP_STRING([--with-initconfigdir=DIR],
 		[configuration directory @<:@SYSCONFDIR/sysconfig@:>@])],

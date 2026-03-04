@@ -34,20 +34,30 @@
 
 MAINTAINERCLEANFILES	= Makefile.in
 
-EXTRA_DIST		= corosync.in corosync-notifyd.in corosync.service.in \
-                          corosync-notifyd.service.in \
-                          corosync.sysconfig.example
+EXTRA_DIST		= other/corosync.in other/corosync-notifyd.in \
+					systemd/corosync.service.in \
+					systemd/corosync-notifyd.service.in \
+					openrc/corosync.in openrc/corosync-notifyd.in \
+					corosync.sysconfig.example
 
 if INSTALL_SYSTEMD
-systemdconfdir	   = $(SYSTEMDDIR)
-systemdconf_DATA   = corosync.service corosync-notifyd.service
+systemdconfdir		= $(SYSTEMDDIR)
+scriptdirpath		= systemd
+systemdconf_DATA	= systemd/corosync.service systemd/corosync-notifyd.service
 else
-initscriptdir	   = $(INITDDIR)
-initscript_SCRIPTS  = corosync corosync-notifyd
+initscriptdir		= $(INITDDIR)
+if INSTALL_OPENRC
+scriptdirpath		= openrc
+initscript_SCRIPTS	= openrc/corosync openrc/corosync-notifyd
+else
+scriptdirpath		= other
+initscript_SCRIPTS	= other/corosync other/corosync-notifyd
+endif
 endif
 
 %: %.in Makefile
 	rm -f $@-t $@
+	$(MKDIR_P) $(scriptdirpath)
 	cat $< | $(SED) \
 		-e 's#@''SBINDIR@#$(sbindir)#g' \
 		-e 's#@''BINDIR@#$(bindir)#g' \
