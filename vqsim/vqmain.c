@@ -5,7 +5,7 @@
 #include <sys/wait.h>
 #include <qb/qblog.h>
 #include <qb/qbloop.h>
-#include <sys/poll.h>
+#include <poll.h>
 #include <netinet/in.h>
 #include <sys/queue.h>
 #ifdef HAVE_READLINE_READLINE_H

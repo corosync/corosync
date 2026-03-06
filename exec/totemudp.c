@@ -55,7 +55,7 @@
 #include <sched.h>
 #include <time.h>
 #include <sys/time.h>
-#include <sys/poll.h>
+#include <poll.h>
 #include <sys/uio.h>
 #include <limits.h>
 
