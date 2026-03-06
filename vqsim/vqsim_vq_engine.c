@@ -9,7 +9,7 @@
 #include <qb/qbloop.h>
 #include <qb/qbipc_common.h>
 #include <netinet/in.h>
-#include <sys/poll.h>
+#include <poll.h>
 #include <sys/socket.h>
 #include <stdio.h>
 

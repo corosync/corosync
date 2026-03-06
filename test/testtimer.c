@@ -37,7 +37,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/time.h>
-#include <sys/poll.h>
+#include <poll.h>
 
 #include "../exec/timer.h"
 
