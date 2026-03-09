@@ -26,6 +26,7 @@ ltmain.sh
 m4
 missing
 tags
+cscope.out
 ID
 Doxyfile
 test-driver
