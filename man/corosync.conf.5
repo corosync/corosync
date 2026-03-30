@@ -99,7 +99,8 @@ The linknumber must start at 0. For UDP the only supported linknumber is 0.
 .TP
 knet_link_priority
 This specifies the priority for the link when KNET is used in 'passive'
-mode. (see link_mode below)
+mode (see link_mode below). Link priority should be a value between 0 and 255
+inclusive. A value of 0 will be treated as if it were 1.
 
 .TP
 knet_ping_interval
