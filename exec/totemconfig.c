@@ -549,8 +549,13 @@ static int totem_get_crypto(struct totem_config *totem_config, icmap_map_t map, 
 	char *crypto_model_str;
 	int res = 0;
 
+#ifdef ENABLE_UNENCRYPTED
 	tmp_hash = "none";
 	tmp_cipher = "none";
+#else
+	tmp_hash = "sha256";
+	tmp_cipher = "aes256";
+#endif
 	tmp_model = "none";
 
 	crypto_model_str = NULL;
@@ -561,6 +566,9 @@ static int totem_get_crypto(struct totem_config *totem_config, icmap_map_t map, 
 	}
 
 	if (icmap_get_string_r(map, "totem.secauth", &str) == CS_OK) {
+		tmp_hash = "none";
+		tmp_cipher = "none";
+
 		if (strcmp(str, "on") == 0) {
 			tmp_cipher = "aes256";
 			tmp_hash = "sha256";
@@ -606,6 +614,7 @@ static int totem_get_crypto(struct totem_config *totem_config, icmap_map_t map, 
 		free(str);
 	}
 
+#ifdef ENABLE_UNENCRYPTED
 	if ((strcmp(tmp_cipher, "none") != 0) &&
 	    (strcmp(tmp_hash, "none") == 0)) {
 		*error_string = "crypto_cipher requires crypto_hash with value other than none";
@@ -613,6 +622,14 @@ static int totem_get_crypto(struct totem_config *totem_config, icmap_map_t map, 
 
 		goto out_free_crypto_model_str;
 	}
+#else
+	if (strcmp(tmp_cipher, "none") == 0 || strcmp(tmp_hash, "none") == 0) {
+		*error_string = "corosync is compiled to require enabled encryption";
+		res = -1;
+
+		goto out_free_crypto_model_str;
+	}
+#endif
 
 	if (strcmp(tmp_model, "none") == 0) {
 		/*
@@ -920,9 +937,11 @@ static enum totem_ip_version_enum totem_config_get_ip_version(struct totem_confi
 
 	res = TOTEM_IP_VERSION_6_4;
 
+#ifdef ENABLE_UDPU
 	if (totem_config->transport_number == TOTEM_TRANSPORT_UDP) {
 		res = TOTEM_IP_VERSION_4;
 	}
+#endif
 
 	if (icmap_get_string("totem.ip_version", &str) == CS_OK) {
 		if (strcmp(str, "ipv4") == 0) {
@@ -943,6 +962,7 @@ static enum totem_ip_version_enum totem_config_get_ip_version(struct totem_confi
 	return (res);
 }
 
+#ifdef ENABLE_UDPU
 static uint16_t generate_cluster_id (const char *cluster_name)
 {
 	int i;
@@ -993,6 +1013,7 @@ static int get_cluster_mcast_addr (
 
 	return (err);
 }
+#endif
 
 static unsigned int generate_nodeid(
 	struct totem_config *totem_config,
@@ -1386,7 +1407,6 @@ static int put_nodelist_members_to_config(struct totem_config *totem_config, icm
 		iter2 = icmap_iter_init_r(map, tmp_key);
 		while ((iter_key2 = icmap_iter_next(iter2, NULL, NULL)) != NULL) {
 			unsigned int nodeid;
-			char *str;
 
 			snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "nodelist.node.%u.nodeid", node_pos);
 			if (icmap_get_uint32_r(map, tmp_key, &nodeid) != CS_OK) {
@@ -1412,10 +1432,13 @@ static int put_nodelist_members_to_config(struct totem_config *totem_config, icm
 				continue;
 			}
 
+#ifdef ENABLE_UDPU
 			/* Generate nodeids if they are not provided and transport is UDP/U */
 			if (!nodeid &&
 			    (totem_config->transport_number == TOTEM_TRANSPORT_UDP ||
 			     totem_config->transport_number == TOTEM_TRANSPORT_UDPU)) {
+				char *str;
+
 				snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "nodelist.node.%u.ring0_addr", node_pos);
 				if (icmap_get_string_r(map, tmp_key, &str) == CS_OK) {
 					nodeid = generate_nodeid(totem_config, str);
@@ -1443,6 +1466,7 @@ static int put_nodelist_members_to_config(struct totem_config *totem_config, icm
 					(void)icmap_set_uint32_r(map, tmp_key, nodeid);
 				}
 			}
+#endif
 
 			if (!nodeid && totem_config->transport_number == TOTEM_TRANSPORT_KNET) {
 				sprintf(error_string_response,
@@ -1554,7 +1578,6 @@ static int get_interface_params(struct totem_config *totem_config, icmap_map_t m
 	uint32_t u32;
 	char *str;
 	char *cluster_name = NULL;
-	enum totem_ip_version_enum tmp_ip_version = TOTEM_IP_VERSION_4;
 	int ret = 0;
 
 	if (reload) {
@@ -1582,9 +1605,11 @@ static int get_interface_params(struct totem_config *totem_config, icmap_map_t m
 			continue;
 		}
 
+#ifdef ENABLE_UDPU
 		if (strcmp(tmp_key, "bindnetaddr") != 0 && totem_config->transport_number == TOTEM_TRANSPORT_UDP) {
 			continue;
 		}
+#endif
 
 		member_count = 0;
 		linknumber = atoi(linknumber_key);
@@ -1640,13 +1665,16 @@ static int get_interface_params(struct totem_config *totem_config, icmap_map_t m
 				}
 
 				free(str);
-			} else if (totem_config->transport_number == TOTEM_TRANSPORT_UDP) {
+			}
+#ifdef ENABLE_UDPU
+			else if (totem_config->transport_number == TOTEM_TRANSPORT_UDP) {
 				/*
 				 * User not specified address -> autogenerate one from cluster_name key
 				 * (if available). Return code is intentionally ignored, because
 				 * udpu doesn't need mcastaddr and validity of mcastaddr for udp is
 				 * checked later anyway.
 				 */
+				enum totem_ip_version_enum tmp_ip_version = TOTEM_IP_VERSION_4;
 
 				if (totem_config->interfaces[0].bindnet.family == AF_INET) {
 					tmp_ip_version = TOTEM_IP_VERSION_4;
@@ -1659,6 +1687,7 @@ static int get_interface_params(struct totem_config *totem_config, icmap_map_t m
 							      tmp_ip_version,
 							      &totem_config->interfaces[linknumber].mcast_addr);
 			}
+#endif
 
 			snprintf(tmp_key, ICMAP_KEYNAME_MAXLEN, "totem.interface.%u.broadcast", linknumber);
 			if (icmap_get_string(tmp_key, &str) == CS_OK) {
@@ -1801,7 +1830,6 @@ extern int totem_config_read (
 	int res = 0;
 	char *str, *ring0_addr_str;
 	char tmp_key[ICMAP_KEYNAME_MAXLEN];
-	uint16_t u16;
 	int i;
 	int local_node_pos;
 	uint32_t u32;
@@ -1817,14 +1845,21 @@ extern int totem_config_read (
 
 	totem_config->transport_number = TOTEM_TRANSPORT_KNET;
 	if (icmap_get_string("totem.transport", &str) == CS_OK) {
+#ifdef ENABLE_UDPU
 		if (strcmp (str, "udpu") == 0) {
 			totem_config->transport_number = TOTEM_TRANSPORT_UDPU;
 		} else if (strcmp (str, "udp") == 0) {
 			totem_config->transport_number = TOTEM_TRANSPORT_UDP;
-		} else if (strcmp (str, "knet") == 0) {
+		} else
+#endif
+		if (strcmp (str, "knet") == 0) {
 			totem_config->transport_number = TOTEM_TRANSPORT_KNET;
 		} else {
+#ifdef ENABLE_UDPU
 			*error_string = "Invalid transport type. Should be udpu, udp or knet";
+#else
+			*error_string = "Invalid transport type. Should be knet";
+#endif
 		        free(str);
 			return -1;
 		}
@@ -1922,10 +1957,13 @@ extern int totem_config_read (
 	totem_config->ip_dscp = 0;
 	(void)icmap_get_uint8("totem.ip_dscp", &totem_config->ip_dscp);
 
+#ifdef ENABLE_UDPU
 	/*
 	 * Store automatically generated items back to icmap only for UDP
 	 */
 	if (totem_config->transport_number == TOTEM_TRANSPORT_UDP) {
+		uint16_t u16;
+
 		for (i = 0; i < INTERFACE_MAX; i++) {
 			if (!totem_config->interfaces[i].configured) {
 				continue;
@@ -1944,6 +1982,7 @@ extern int totem_config_read (
 			}
 		}
 	}
+#endif
 
 	/*
 	 * Store mcastport value to cmap runtime section for KNET
@@ -1981,6 +2020,7 @@ extern int totem_config_read (
 				return -1;
 			}
 
+#ifdef ENABLE_UDPU
 			if ((totem_config->transport_number == TOTEM_TRANSPORT_UDP ||
 			     totem_config->transport_number == TOTEM_TRANSPORT_UDPU) && (!totem_config->node_id)) {
 
@@ -1999,6 +2039,7 @@ extern int totem_config_read (
 
 				free(str);
 			}
+#endif
 
 			/* Users must not change this */
 			icmap_set_ro_access("nodelist.local_node_pos", 0, 1);
@@ -2066,6 +2107,7 @@ int totem_config_validate (
 
 		memset (&null_addr, 0, sizeof (struct totem_ip_address));
 
+#ifdef ENABLE_UDPU
 		if ((totem_config->transport_number == TOTEM_TRANSPORT_UDP) &&
 			memcmp (&totem_config->interfaces[i].mcast_addr, &null_addr,
 				sizeof (struct totem_ip_address)) == 0) {
@@ -2073,6 +2115,7 @@ int totem_config_validate (
 					"No multicast address specified for interface %u", i);
 			goto parse_error;
 		}
+#endif
 
 		if (totem_config->interfaces[i].ip_port == 0) {
 		        snprintf (local_error_reason, sizeof(local_error_reason),
@@ -2085,8 +2128,12 @@ int totem_config_validate (
 					"Invalid TTL (should be 0..255) for interface %u", i);
 			goto parse_error;
 		}
+#ifdef ENABLE_UDPU
 		if (totem_config->transport_number != TOTEM_TRANSPORT_UDP &&
 		    totem_config->interfaces[i].ttl != 1) {
+#else
+		if (totem_config->interfaces[i].ttl != 1) {
+#endif
 		        snprintf (local_error_reason, sizeof(local_error_reason),
 					"Can only set ttl on multicast transport types for interface %u", i);
 			goto parse_error;
@@ -2110,6 +2157,7 @@ int totem_config_validate (
 			goto parse_error;
 		}
 
+#ifdef ENABLE_UDPU
 		if (totem_config->broadcast_use == 0 && totem_config->transport_number == TOTEM_TRANSPORT_UDP) {
 			if (totem_config->interfaces[i].mcast_addr.family != totem_config->interfaces[i].bindnet.family) {
 				snprintf (local_error_reason, sizeof(local_error_reason),
@@ -2123,6 +2171,7 @@ int totem_config_validate (
 				goto parse_error;
 			}
 		}
+#endif
 	}
 
 	if (totem_config->version != 2) {

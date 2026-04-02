@@ -37,8 +37,10 @@
 
 #include <assert.h>
 
+#ifdef ENABLE_UDPU
 #include <totemudp.h>
 #include <totemudpu.h>
+#endif
 #include <totemknet.h>
 #include <totemnet.h>
 #include <qb/qbloop.h>
@@ -168,6 +170,7 @@ struct transport {
 };
 
 struct transport transport_entries[] = {
+#ifdef ENABLE_UDPU
 	{
 		.name = "UDP/IP Multicast",
 		.initialize = totemudp_initialize,
@@ -218,6 +221,14 @@ struct transport transport_entries[] = {
 		.reconfigure = totemudpu_reconfigure,
 		.crypto_reconfigure_phase = NULL
 	},
+#else
+	{
+		.name = "UDP/IP Multicast (disabled - expect crash)",
+	},
+	{
+		.name = "UDP/IP Unicast (disabled - expect crash)",
+	},
+#endif
 	{
 		.name = "Kronosnet",
 		.initialize = totemknet_initialize,
@@ -279,7 +290,6 @@ static void totemnet_instance_initialize (
 
 	instance->totemnet_log_printf = config->totem_logging_configuration.log_printf;
 	instance->totemnet_subsys_id = config->totem_logging_configuration.log_subsys_id;
-
 
 	transport = config->transport_number;
 

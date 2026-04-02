@@ -15,6 +15,8 @@
 %bcond_with vqsim
 %bcond_with runautogen
 %bcond_with userflags
+%bcond_with unencrypted
+%bcond_with udpu
 
 %global gitver %{?numcomm:.%{numcomm}}%{?alphatag:.%{alphatag}}%{?dirty:.%{dirty}}
 %global gittarver %{?numcomm:.%{numcomm}}%{?alphatag:-%{alphatag}}%{?dirty:-%{dirty}}
@@ -111,6 +113,12 @@ BuildRequires: readline-devel
 %endif
 %if %{with vqsim}
 	--enable-vqsim \
+%endif
+%if %{with unencrypted}
+	--enable-unencrypted \
+%endif
+%if %{with udpu}
+	--enable-udpu \
 %endif
 %if %{with userflags}
 	--enable-user-flags \

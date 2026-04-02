@@ -1,6 +1,6 @@
 .\"/*
 .\" * Copyright (c) 2005 MontaVista Software, Inc.
-.\" * Copyright (c) 2006-2025 Red Hat, Inc.
+.\" * Copyright (c) 2006-2026 Red Hat, Inc.
 .\" *
 .\" * All rights reserved.
 .\" *
@@ -32,7 +32,7 @@
 .\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 .\" * THE POSSIBILITY OF SUCH DAMAGE.
 .\" */
-.TH COROSYNC_CONF 5 2025-06-12 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
+.TH COROSYNC_CONF 5 2026-04-07 "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
 .SH NAME
 corosync.conf - corosync executive configuration file
 
@@ -68,11 +68,20 @@ nozzle { }
 This top level directive contains configuration options for a libnozzle device.
 
 .PP
-Corosync supports multiple types of network transports for communication between the nodes in the cluster. There are three types of transports:
+Corosync uses KNET as the standard network transport for communication
+between nodes in the cluster. Legacy unencrypted transports are strictly
+disabled in standard builds for security reasons.
 .RS
 .IP 1.
-KNET. This is a default and recommended transport introduced in Corosync 3. It provides several advantages over the UDP and UDPU transports,
-including better performance, link-level redundancy, automatic link recovery, and native IP compression and encryption.
+KNET. This is a default and recommended transport introduced in Corosync 3.
+It provides several advantages over the UDP and UDPU transports,
+including better performance, link-level redundancy, automatic link recovery,
+and native IP compression and encryption.
+.RE
+
+Legacy unencrypted transports (available only for udpu builds; run
+`corosync -v` and check for "udpu" under "Built-in features"):
+.RS
 .IP 2.
 UDPU. This is for unicast communication. This transport is deprecated.
 .IP 3.
@@ -241,20 +250,21 @@ The default is nss.
 .TP
 crypto_hash
 This specifies which HMAC authentication should be used to authenticate all
-messages. Valid values are none (no authentication), md5, sha1, sha256,
-sha384 and sha512. Encrypted transmission is only supported for
-the KNET transport.
+messages. Valid values are md5, sha1, sha256, sha384, sha512 and
+(for unencrypted builds only) none (no authentication). Encrypted transmission
+is only supported for the KNET transport.
 
-The default is none.
+The default is sha256 (none for unencrypted builds).
 
 .TP
 crypto_cipher
 This specifies which cipher should be used to encrypt all messages.
-Valid values are none (no encryption), aes256, aes192 and aes128.
+Valid values are aes256, aes192, aes128 and
+(for unencrypted builds only) also none (no encryption).
 Enabling crypto_cipher, requires also enabling of crypto_hash. Encrypted
 transmission is only supported for the KNET transport.
 
-The default is none.
+The default is aes256 (none for unencrypted builds).
 
 .TP
 secauth
@@ -262,7 +272,7 @@ This implies crypto_cipher=aes256 and crypto_hash=sha256, unless those options
 are explicitly set. Encrypted transmission is only supported for the KNET
 transport.
 
-The default is off.
+The default is on (off for unencrypted builds).
 
 .TP
 keyfile
