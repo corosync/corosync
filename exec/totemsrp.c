@@ -3811,10 +3811,10 @@ static int check_memb_commit_token_sanity(
 		log_printf (instance->totemsrp_log_level_security,
 		    "Received memb_commit_token message is too short...  ignoring.");
 
-		return (0);
+		return (-1);
 	}
 
-	addr_entries= mct_msg->addr_entries;
+	addr_entries = mct_msg->addr_entries;
 	if (endian_conversion_needed) {
 		addr_entries = swab32(addr_entries);
 	}
