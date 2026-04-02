@@ -3786,7 +3786,17 @@ static int check_memb_join_sanity(
 		failed_list_entries = swab32(failed_list_entries);
 	}
 
-	required_len = sizeof(struct memb_join) + ((proc_list_entries + failed_list_entries) * sizeof(struct srp_addr));
+	if (proc_list_entries > PROCESSOR_COUNT_MAX ||
+	    failed_list_entries > PROCESSOR_COUNT_MAX) {
+		log_printf (instance->totemsrp_log_level_security,
+		    "Received memb_join message list_entries exceeds the maximum "
+		    "allowed value...  ignoring.");
+
+		return (-1);
+	}
+
+	required_len = sizeof(struct memb_join) +
+	  (((size_t)proc_list_entries + (size_t)failed_list_entries) * sizeof(struct srp_addr));
 	if (msg_len < required_len) {
 		log_printf (instance->totemsrp_log_level_security,
 		    "Received memb_join message is too short...  ignoring.");
