@@ -139,6 +139,12 @@ enum {
 
 enum { TOTEM_LINK_MODE_BYTES = 64 };
 
+
+/*
+ * Keep compatibility with old applications. For Corosync 4.0, remove
+ * TOTEM_TRANSPORT_UDP/TOTEM_TRANSPORT_UDPU, set TOTEM_TRANSPORT_KNET to 1
+ * and change totemnet.c
+ */
 typedef enum {
 	TOTEM_TRANSPORT_UDP = 0,
 	TOTEM_TRANSPORT_UDPU = 1,

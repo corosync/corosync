@@ -45,8 +45,7 @@ corosync_SOURCES	= vsf_ykd.c coroparse.c vsf_quorum.c sync.c \
 			  votequorum.c util.c schedwrk.c main.c \
 			  apidef.c quorum.c icmap.c timer.c stats.c \
 			  ipc_glue.c service.c logconfig.c totemconfig.c \
-			  totemip.c totemnet.c totemudp.c \
-			  totemudpu.c totemsrp.c \
+			  totemip.c totemnet.c totemsrp.c \
 			  totempg.c totemknet.c
 
 if BUILD_MONITORING
@@ -55,6 +54,10 @@ endif
 
 if BUILD_WATCHDOG
 corosync_SOURCES	+= wd.c
+endif
+
+if BUILD_UDPU
+corosync_SOURCES	+= totemudp.c totemudpu.c
 endif
 
 corosync_CPPFLAGS	= -DLOGCONFIG_USE_ICMAP=1

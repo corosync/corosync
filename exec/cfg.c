@@ -776,6 +776,7 @@ static void message_handler_req_exec_cfg_reload_config (
 	assert(new_config.interfaces != NULL);
 	memset(new_config.interfaces, 0, sizeof (struct totem_interface) * INTERFACE_MAX);
 
+#ifdef ENABLE_UDPU
 	/* For UDP[U] the configuration on link0 is static (apart from the nodelist) and only read at
 	   startup. So preserve it here */
 	if ( (new_config.transport_number == TOTEM_TRANSPORT_UDP) ||
@@ -783,6 +784,7 @@ static void message_handler_req_exec_cfg_reload_config (
 		memcpy(&new_config.interfaces[0], &new_config.orig_interfaces[0],
 		       sizeof(struct totem_interface));
 	}
+#endif
 
 	/* Calculate new node and interface definitions */
 	if (totemconfig_configure_new_params(&new_config, temp_map, &error_string) == -1) {

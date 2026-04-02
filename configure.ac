@@ -449,6 +449,17 @@ AC_ARG_ENABLE([nozzle],
 	[  --enable-nozzle                 : Support for nozzle ],,
 	[ enable_nozzle="no" ])
 
+AC_ARG_ENABLE([unencrypted],
+	[  --enable-unencrypted            : Enable running Corosync unencrypted ],,
+	[ default="no" ])
+AM_CONDITIONAL(BUILD_UNENCRYPTED, test x$enable_unencrypted = xyes)
+
+AC_ARG_ENABLE([udpu],
+	[  --enable-udpu                   : Enable UDP and UDPU transports for Corosync (requires unencrypted)],,
+	[ default="no" ])
+AM_CONDITIONAL(BUILD_UDPU, test x$enable_udpu = xyes)
+
+
 # *FLAGS handling goes here
 
 ENV_CFLAGS="$CFLAGS"
@@ -560,6 +571,26 @@ if test "x${enable_nozzle}" = xyes; then
 	AC_DEFINE_UNQUOTED([HAVE_LIBNOZZLE], 1, [have nozzle])
 	PACKAGE_FEATURES="$PACKAGE_FEATURES nozzle"
 	WITH_LIST="$WITH_LIST --with nozzle"
+fi
+
+if test "x${enable_unencrypted}" = xyes; then
+	AC_DEFINE([ENABLE_UNENCRYPTED], [1], [Enable running Corosync unencrypted])
+	PACKAGE_FEATURES="$PACKAGE_FEATURES unencrypted"
+	WITH_LIST="$WITH_LIST --with unencrypted"
+else
+	PACKAGE_FEATURES="$PACKAGE_FEATURES enforce_encryption"
+fi
+
+if test "x${enable_udpu}" = xyes; then
+	if test ! "x${enable_unencrypted}" = xyes; then
+		AC_MSG_ERROR([Enabling UDPU requires enabled unencrypted support (--enable-unencrypted)])
+	fi
+
+	AC_DEFINE([ENABLE_UDPU], [1], [Enable UDP/UDPU transports])
+	PACKAGE_FEATURES="$PACKAGE_FEATURES udpu"
+	WITH_LIST="$WITH_LIST --with udpu"
+else
+	PACKAGE_FEATURES="$PACKAGE_FEATURES without_udpu"
 fi
 
 do_snmp=0
