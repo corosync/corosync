@@ -57,6 +57,7 @@ typedef uint64_t votequorum_handle_t;
 #define VOTEQUORUM_INFO_QDEVICE_ALIVE            128
 #define VOTEQUORUM_INFO_QDEVICE_CAST_VOTE        256
 #define VOTEQUORUM_INFO_QDEVICE_MASTER_WINS      512
+#define VOTEQUORUM_INFO_QDEVICE_HAS_EXTRA_INFO  1024
 
 #define VOTEQUORUM_QDEVICE_NODEID                0
 #define VOTEQUORUM_QDEVICE_MAX_NAME_LEN          255
@@ -66,6 +67,8 @@ typedef uint64_t votequorum_handle_t;
 #define VOTEQUORUM_NODESTATE_MEMBER              1
 #define VOTEQUORUM_NODESTATE_DEAD                2
 #define VOTEQUORUM_NODESTATE_LEAVING             3
+
+#define VOTEQUORUM_QDEVICE_EXTRA_NODEINFO_MAXSIZE 4096
 
 /** @} */
 
@@ -127,6 +130,20 @@ typedef void (*votequorum_expectedvotes_notification_fn_t) (
 	uint32_t expected_votes);
 
 /**
+ * @brief Callback to be notified of changes to a node's extra info
+ *
+ * @param node_id the node ID of the node that the extra info is associated with
+ * @param is_set true if the node has extra_info set, false otherwise
+ * @param extra_info pointer to the extra info for the sending node
+ */
+typedef void (*votequorum_qdevice_extra_info_fn_t) (
+	votequorum_handle_t handle,
+	uint64_t context,
+	uint32_t nodeid,
+	uint32_t ei_size,
+	void *extra_info);
+
+/**
  * @brief The votequorum_callbacks_t struct
  */
 typedef struct {
@@ -134,6 +151,28 @@ typedef struct {
 	votequorum_expectedvotes_notification_fn_t votequorum_expectedvotes_notify_fn;
 	votequorum_nodelist_notification_fn_t votequorum_nodelist_notify_fn;
 } votequorum_callbacks_t;
+
+typedef enum {
+	VOTEQUORUM_MODEL_V1 = 1,
+} votequorum_model_t;
+
+typedef struct {
+	votequorum_model_t model;
+	votequorum_quorum_notification_fn_t votequorum_quorum_notify_fn;
+	votequorum_expectedvotes_notification_fn_t votequorum_expectedvotes_notify_fn;
+	votequorum_nodelist_notification_fn_t votequorum_nodelist_notify_fn;
+	votequorum_qdevice_extra_info_fn_t votequorum_qdevice_extra_info_fn;
+} votequorum_model_v1_data_t;
+
+/**
+ * @brief Create a new quorum connection
+ * @param handle
+ * @param model
+ * @return
+ */
+cs_error_t votequorum_model_initialize (
+	votequorum_handle_t *handle,
+	const votequorum_model_v1_data_t *model);
 
 /**
  * @brief Create a new quorum connection
@@ -310,6 +349,30 @@ cs_error_t votequorum_qdevice_master_wins (
 	votequorum_handle_t handle,
 	const char *name,
 	unsigned int allow);
+
+/**
+ * @brief request the current extra_info for a node
+ * @param handle
+ * @param nodeid
+ * @param extra_info pointer to a buffer to fill. Should be of size VOTEQUORUM_QDEVICE_EXTRA_NODEINFO_MAXSIZE
+ * @return
+ */
+cs_error_t votequorum_get_qdevice_extra_info (
+	votequorum_handle_t handle,
+	unsigned int nodeid,
+	uint32_t *ei_size,
+	void *extra_info);
+
+/**
+ * @brief set the current extra_info for this node, should only be used by the qdevice
+ * @param handle
+ * @param extra_info pointer to the extra_info. Should be of size less than VOTEQUORUM_QDEVICE_EXTRA_NODEINFO_MAXSIZE
+ * @return
+ */
+cs_error_t votequorum_set_qdevice_extra_info (
+	votequorum_handle_t handle,
+	uint32_t ei_size,
+	const void *extra_info);
 
 #ifdef __cplusplus
 }

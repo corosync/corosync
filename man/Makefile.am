@@ -76,6 +76,7 @@ autogen_man		= cpg_context_get.3 \
 			  votequorum_finalize.3 \
 			  votequorum_getinfo.3 \
 			  votequorum_initialize.3 \
+			  votequorum_model_initialize.3 \
 			  votequorum_setexpected.3 \
 			  votequorum_setvotes.3 \
 			  votequorum_trackstart.3 \
@@ -85,6 +86,8 @@ autogen_man		= cpg_context_get.3 \
 			  votequorum_qdevice_update.3 \
 			  votequorum_qdevice_master_wins.3 \
 			  votequorum_qdevice_poll.3 \
+			  votequorum_get_qdevice_extra_info.3 \
+			  votequorum_set_qdevice_extra_info.3 \
 			  sam_data_getsize.3 \
 			  sam_data_restore.3 \
 			  sam_data_store.3 \

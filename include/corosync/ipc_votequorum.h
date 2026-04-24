@@ -53,7 +53,9 @@ enum req_votequorum_types {
 	MESSAGE_REQ_VOTEQUORUM_QDEVICE_UNREGISTER,
 	MESSAGE_REQ_VOTEQUORUM_QDEVICE_UPDATE,
 	MESSAGE_REQ_VOTEQUORUM_QDEVICE_POLL,
-	MESSAGE_REQ_VOTEQUORUM_QDEVICE_MASTER_WINS
+	MESSAGE_REQ_VOTEQUORUM_QDEVICE_MASTER_WINS,
+	MESSAGE_REQ_VOTEQUORUM_QDEVICE_SET_EXTRA_INFO,
+	MESSAGE_REQ_VOTEQUORUM_QDEVICE_GET_EXTRA_INFO,
 };
 
 /**
@@ -66,6 +68,8 @@ enum res_votequorum_types {
 	MESSAGE_RES_VOTEQUORUM_QUORUM_NOTIFICATION,
 	MESSAGE_RES_VOTEQUORUM_EXPECTEDVOTES_NOTIFICATION,
 	MESSAGE_RES_VOTEQUORUM_NODELIST_NOTIFICATION,
+	MESSAGE_RES_VOTEQUORUM_QDEVICE_GET_EXTRA_INFO,
+	MESSAGE_RES_VOTEQUORUM_QDEVICE_EXTRA_INFO_NOTIFICATION,
 };
 
 /**
@@ -168,6 +172,23 @@ struct res_lib_votequorum_status {
 	struct qb_ipc_response_header header __attribute__((aligned(8)));
 };
 
+struct req_lib_votequorum_set_qdevice_extra_info {
+	struct qb_ipc_request_header header __attribute__((aligned(8)));
+	uint32_t ei_size;
+	char extra_info[];
+};
+
+struct req_lib_votequorum_get_qdevice_extra_info {
+	struct qb_ipc_request_header header __attribute__((aligned(8)));
+	int nodeid;
+};
+
+struct res_lib_votequorum_get_qdevice_extra_info {
+	struct qb_ipc_response_header header __attribute__((aligned(8)));
+	uint32_t ei_size;
+	char extra_info[];
+};
+
 #define VOTEQUORUM_INFO_TWONODE                 1
 #define VOTEQUORUM_INFO_QUORATE                 2
 #define VOTEQUORUM_INFO_WAIT_FOR_ALL	        4
@@ -234,6 +255,15 @@ struct res_lib_votequorum_expectedvotes_notification {
 	struct qb_ipc_response_header header __attribute__((aligned(8)));
 	mar_uint64_t context __attribute__((aligned(8)));
 	mar_uint32_t expected_votes __attribute__((aligned(8)));
+};
+
+
+struct res_lib_votequorum_qdevice_extra_info_notification {
+	struct qb_ipc_response_header header __attribute__((aligned(8)));
+	mar_uint64_t context __attribute__((aligned(8)));
+	mar_uint32_t nodeid __attribute__((aligned(8)));
+	mar_uint32_t ei_size __attribute__((aligned(8)));
+	char extra_info[] __attribute__((aligned(8)));
 };
 
 /**

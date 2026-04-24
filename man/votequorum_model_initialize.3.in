@@ -31,16 +31,16 @@
 .\" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 .\" * THE POSSIBILITY OF SUCH DAMAGE.
 .\" */
-.TH VOTEQUORUM_INITIALIZE 3 @BUILDDATE@ "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
+.TH VOTEQUORUM_MODEL_INITIALIZE 3 @BUILDDATE@ "corosync Man Page" "Corosync Cluster Engine Programmer's Manual"
 .SH NAME
-votequorum_initialize \- Create a new connection to the VoteQuorum service
+votequorum_model_initialize \- Create a new connection to the VoteQuorum service
 .SH SYNOPSIS
 .B #include <corosync/votequorum.h>
 .sp
-.BI "int votequorum_initialize(votequorum_handle_t *" handle ", votequorum_callbacks_t *" callbacks ");"
+.BI "int votequorum_model_initialize(votequorum_handle_t *" handle ", const votequorum_model_v1_data_t *" model ");"
 .SH DESCRIPTION
 The
-.B votequorum_initialize
+.B votequorum_model_initialize
 function is used to initialize a connection to the vote-based quorum database API.
 .PP
 Each application may have several connections to the votequorum API.  Each application
@@ -85,10 +85,10 @@ typedef void (*votequorum_quorum_notification_fn_t) (
 
 The difference between votequorum_nodelist_notification_t and votequorum_quorum_notification_t is subtle but important.
 The 'nodelist' callback is sent at the start of a cluster state transition and contains the new ring_id and only the list of
-nodes that are included in the sync state - ie only active nodes. No quorum information is included this callback 
+nodes that are included in the sync state - ie only active nodes. No quorum information is included this callback
 because it is not available at that time.
-The 'quorum' callback is sent after the cluster state transition has completed and does contain quorum information. 
-In addition, the nodelist contains a list of all nodes known to votequorum (whether up or down) and their state as well 
+The 'quorum' callback is sent after the cluster state transition has completed and does contain quorum information.
+In addition, the nodelist contains a list of all nodes known to votequorum (whether up or down) and their state as well
 as information about the quorum device attached (if any). Quorum callbacks will not be sent for qdevice up and down
 events unless they affect quorum.
 
@@ -102,17 +102,36 @@ typedef void (*votequorum_expectedvotes_notification_fn_t) (
         uint64_t context,
         uint32_t expected_votes);
 .fi
+
+.PP
+Whenever a node's extra info is altered the callback is called.
+The extra info callback function is described by the following type definitions:
+
+.nf
+typedef void (*votequorum_qdevice_extra_info_fn_t) (
+	votequorum_handle_t handle,
+	uint64_t context,
+	uint32_t nodeid,
+	uint32_t ei_size,
+	void *extra_info);
+.fi
 .PP
 The
-.I callbacks
+.I model
 argument is of the type:
 
 .nf
+typedef enum {
+	VOTEQUORUM_MODEL_V1 = 1,
+} votequorum_model_t;
+
 typedef struct {
+	votequorum_model_t model;
 	votequorum_quorum_notification_fn_t votequorum_quorum_notify_fn;
 	votequorum_expectedvotes_notification_fn_t votequorum_expectedvotes_notify_fn;
 	votequorum_nodelist_notification_fn_t votequorum_nodelist_notify_fn;
-} votequorum_callbacks_t;
+	votequorum_qdevice_extra_info_fn_t votequorum_qdevice_extra_info_fn;
+} votequorum_model_v1_data_t;
 .fi
 .PP
 When a configuration change occurs, the callback
@@ -125,7 +144,7 @@ This call returns the CS_OK value if successful, otherwise an error is returned.
 .SH ERRORS
 @COMMONIPCERRORS@
 .SH "SEE ALSO"
-.BR votequorum_model_initialize (3),
+.BR votequorum_initialize (3),
 .BR votequorum_overview (3),
 .BR votequorum_finalize (3),
 .BR votequorum_getinfo (3),
