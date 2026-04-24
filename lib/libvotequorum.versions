@@ -19,3 +19,10 @@ COROSYNC_VOTEQUORUM_1.0 {
 		votequorum_context_get;
 		votequorum_context_set;
 };
+
+COROSYNC_VOTEQUORUM_1.1 {
+	global:
+		votequorum_model_initialize;
+		votequorum_get_qdevice_extra_info;
+		votequorum_set_qdevice_extra_info;
+} COROSYNC_VOTEQUORUM_1.0;

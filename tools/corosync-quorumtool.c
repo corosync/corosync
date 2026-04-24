@@ -35,6 +35,8 @@
 
 #include <config.h>
 
+#include <ctype.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -66,7 +68,9 @@ typedef enum {
 	CMD_SETVOTES,
 	CMD_SETEXPECTED,
 	CMD_MONITOR,
-	CMD_UNREGISTER_QDEVICE
+	CMD_WATCH_NOTIFICATIONS,
+	CMD_UNREGISTER_QDEVICE,
+	CMD_SET_EXTRA_INFO
 } command_t;
 
 typedef enum {
@@ -74,6 +78,12 @@ typedef enum {
 	SORT_NODEID,
 	SORT_NODENAME
 } sorttype_t;
+
+typedef enum {
+	WATCH_NONE       = 0,
+	WATCH_QUORUM     = (1 << 0),
+	WATCH_EXTRA_INFO = (1 << 1),
+} notification_watchtype_t;
 
 #define EXIT_NOT_QUORATE	2
 
@@ -122,6 +132,8 @@ static uint32_t g_called;
 static uint32_t g_vq_called;
 static uint32_t g_show_all_addrs = 0;
 
+static notification_watchtype_t g_watch_notifications = WATCH_NONE;
+
 /*
  * votequorum bits
  */
@@ -131,11 +143,19 @@ static void votequorum_notification_fn(
 	votequorum_ring_id_t ring_id,
 	uint32_t node_list_entries,
 	uint32_t node_list[]);
+static void votequorum_qdevice_extra_info_notification_fn(
+	votequorum_handle_t handle,
+	uint64_t context,
+	uint32_t nodeid,
+	uint32_t ei_size,
+	void *extra_info);
 static votequorum_handle_t v_handle;
-static votequorum_callbacks_t v_callbacks = {
+static votequorum_model_v1_data_t v_callbacks = {
+	.model = VOTEQUORUM_MODEL_V1,
 	.votequorum_quorum_notify_fn = NULL,
 	.votequorum_expectedvotes_notify_fn = NULL,
 	.votequorum_nodelist_notify_fn = votequorum_notification_fn,
+	.votequorum_qdevice_extra_info_fn = votequorum_qdevice_extra_info_notification_fn,
 };
 static uint32_t our_nodeid = 0;
 
@@ -171,6 +191,9 @@ static void show_usage(const char *name)
 	printf("  -i             show node IP addresses instead of the resolved name\n");
 	printf("  -o <a|n|i>     order by [a] IP address (default), [n] name, [i] nodeid\n");
 	printf("  -f             forcefully unregister a quorum device *DANGEROUS* (*)\n");
+	printf("  -W <q|x|qx>    watch for update messages. q quorum status, x extra info (votequorum only)\n");
+	printf("  -X <string>    set qdevice extra info on the node running the command (votequorum only)\n");
+	printf("  -C             clear qdevice extra info on the node running the command (votequorum only)\n");
 	printf("  -h             show this help text\n");
 	printf("  -V             show version and exit\n");
 	printf("\n");
@@ -381,6 +404,21 @@ static const char *node_name(uint32_t nodeid, name_format_t name_format)
 	return buf;
 }
 
+static void print_extra_info(uint32_t ei_size, const char *extra_info);
+
+static void votequorum_qdevice_extra_info_notification_fn(
+	votequorum_handle_t handle,
+	uint64_t context,
+	uint32_t nodeid,
+	uint32_t ei_size,
+	void *extra_info)
+{
+	if (g_watch_notifications & WATCH_EXTRA_INFO) {
+		printf(CS_PRI_NODE_ID_PADDED " ", nodeid);
+		print_extra_info(ei_size, extra_info);
+		printf("\n");
+	}
+}
 
 static void votequorum_notification_fn(
 	votequorum_handle_t handle,
@@ -416,6 +454,10 @@ static void quorum_notification_fn(
 			g_view_list[i].name = NULL;
 			g_view_list[i].vq_info = NULL;
 		}
+	}
+
+	if(g_watch_notifications & WATCH_QUORUM) {
+		printf("%s\n", (quorate?"Quorate":"Not quorate"));
 	}
 }
 
@@ -461,6 +503,31 @@ static int compare_nodenames(const void *one, const void *two)
       const view_list_entry_t *info2 = two;
 
       return strcmp(info1->name, info2->name);
+}
+
+static void print_extra_info(uint32_t ei_size, const char *extra_info)
+{
+	if (ei_size == 0) {
+		printf("<unset>");
+		return;
+	}
+
+	bool is_printable = extra_info[ei_size-1] == '\0';
+	for (uint32_t i = 0; i < ei_size - 1; i++) {
+		if(!isprint((unsigned char)extra_info[i])) {
+			is_printable = false;
+		}
+	}
+
+	if (is_printable) {
+		printf("%s", extra_info);
+		return;
+	}
+
+	printf("%" PRIu32 " bytes: ", ei_size);
+	for (uint32_t i = 0; i < ei_size; i++) {
+		printf("%02hhX ", (unsigned char)extra_info[i]);
+	}
 }
 
 static void display_nodes_data(nodeid_format_t nodeid_format, name_format_t name_format, sorttype_t sort_type)
@@ -537,6 +604,17 @@ static void display_nodes_data(nodeid_format_t nodeid_format, name_format_t name
 			}
 		}
 		printf("%s", g_view_list[i].name);
+		if (display_qdevice
+			&& (info[i].flags & VOTEQUORUM_INFO_QDEVICE_REGISTERED)
+			    && (info[i].flags & VOTEQUORUM_INFO_QDEVICE_HAS_EXTRA_INFO)) {
+			uint32_t ei_size = 0;
+			char extra_info[VOTEQUORUM_QDEVICE_EXTRA_NODEINFO_MAXSIZE+1] = { 0 };
+			if(votequorum_get_qdevice_extra_info (v_handle, info[i].node_id, &ei_size, extra_info) == CS_OK) {
+				printf(" [");
+				print_extra_info(ei_size, extra_info);
+				printf("]");
+			}
+		}
 		if (g_view_list[i].node_id == our_nodeid) {
 			printf(" (local)");
 			if (v_handle) {
@@ -547,7 +625,7 @@ static void display_nodes_data(nodeid_format_t nodeid_format, name_format_t name
 	}
 
 	if (g_view_list_entries) {
-	        for (i=0; i < g_view_list_entries; i++) {
+	        for (i= 0; i < g_view_list_entries; i++) {
 		        free(g_view_list[i].name);
 		}
 		free(g_view_list);
@@ -760,6 +838,56 @@ quorum_err:
 	return EXIT_FAILURE;
 }
 
+static int watch_notifications(notification_watchtype_t watch) {
+	int err;
+
+	g_watch_notifications = watch;
+
+	if (q_type == QUORUM_FREE) {
+		printf("\nQuorum is not configured - cannot monitor\n");
+		return EXIT_FAILURE;
+	}
+
+	err=quorum_trackstart(q_handle, CS_TRACK_CHANGES);
+	if (err != CS_OK) {
+		fprintf(stderr, "Unable to start quorum status tracking: %s\n", cs_strerror(err));
+		goto quorum_err;
+	}
+
+	if (using_votequorum()) {
+		if ( (err=votequorum_trackstart(v_handle, 0LL, CS_TRACK_CHANGES)) != CS_OK) {
+			fprintf(stderr, "Unable to start votequorum status tracking: %s\n", cs_strerror(err));
+			goto quorum_err;
+		}
+	}
+
+	printf("Watching for updates:\n");
+
+	while (1) {
+		if (using_votequorum()) {
+			err = quorum_dispatch(q_handle, CS_DISPATCH_ALL);
+			if (err != CS_OK) {
+				fprintf(stderr, "Unable to dispatch quorum status: %s\n", cs_strerror(err));
+				goto quorum_err;
+			}
+			err = votequorum_dispatch(v_handle, CS_DISPATCH_ONE);
+			if (err != CS_OK) {
+				fprintf(stderr, "Unable to dispatch votequorum status: %s\n", cs_strerror(err));
+				goto quorum_err;
+			}
+		} else {
+			err = quorum_dispatch(q_handle, CS_DISPATCH_ONE);
+			if (err != CS_OK) {
+				fprintf(stderr, "Unable to dispatch quorum status: %s\n", cs_strerror(err));
+				goto quorum_err;
+			}
+		}
+	}
+
+quorum_err:
+	return EXIT_FAILURE;
+}
+
 static int show_nodes(nodeid_format_t nodeid_format, name_format_t name_format, sorttype_t sort_type)
 {
 	int err;
@@ -817,6 +945,24 @@ err_exit:
 	return result;
 }
 
+static int set_qdevice_extra_info(const char *extra_info)
+{
+	int err;
+
+	uint32_t ei_size = 0;
+	if (extra_info) {
+		ei_size = strlen(extra_info) + 1;
+	}
+
+	err = votequorum_set_qdevice_extra_info(v_handle, ei_size, extra_info);
+	if (err != CS_OK) {
+		fprintf(stderr, "Failed to set extra info %s\n", cs_strerror(err));
+		return EXIT_FAILURE;
+	}
+
+	return EXIT_SUCCESS;
+}
+
 /*
  * return -1 on error
  *         0 if OK
@@ -850,7 +996,7 @@ static int init_all(void) {
 		return 0;
 	}
 
-	if (votequorum_initialize(&v_handle, &v_callbacks) != CS_OK) {
+	if (votequorum_model_initialize(&v_handle, &v_callbacks) != CS_OK) {
 		fprintf(stderr, "Cannot initialise VOTEQUORUM service\n");
 		v_handle = 0;
 		goto out;
@@ -882,7 +1028,7 @@ static void close_all(void) {
 }
 
 int main (int argc, char *argv[]) {
-	const char *options = "VHaslpmfe:v:hin:o:";
+	const char *options = "VHaslpmfe:v:hin:o:W:X:C";
 	int opt;
 	int votes = 0;
 	int ret = 0;
@@ -892,7 +1038,9 @@ int main (int argc, char *argv[]) {
 	name_format_t address_format = ADDRESS_FORMAT_NAME;
 	command_t command_opt = CMD_SHOWSTATUS;
 	sorttype_t sort_opt = SORT_ADDR;
+	notification_watchtype_t watchtype = WATCH_NONE;
 	long long int l;
+	char *extra_info = NULL;
 
 	while ( (opt = getopt(argc, argv, options)) != -1 ) {
 		switch (opt) {
@@ -916,6 +1064,33 @@ int main (int argc, char *argv[]) {
 			break;
 		case 'l':
 			command_opt = CMD_SHOWNODES;
+			break;
+		case 'W':
+			command_opt = CMD_WATCH_NOTIFICATIONS;
+			if (strchr(optarg, 'q')) {
+				watchtype |= WATCH_QUORUM;
+			}
+			if (strchr(optarg, 'x')) {
+				watchtype |= WATCH_EXTRA_INFO;
+			}
+			if(watchtype == WATCH_NONE) {
+				fprintf(stderr, "Invalid watch option. valid watch options are q(quorum) or x(qdevice extra info)\n");
+				exit(EXIT_FAILURE);
+			}
+			break;
+		case 'X':
+			command_opt = CMD_SET_EXTRA_INFO;
+			if (extra_info) {
+				free(extra_info);
+			}
+			extra_info = strdup(optarg);
+			break;
+		case 'C':
+			command_opt = CMD_SET_EXTRA_INFO;
+			if (extra_info) {
+				free(extra_info);
+			}
+			extra_info = NULL;
 			break;
 		case 'p':
 			machine_parsable = 1;
@@ -1007,6 +1182,9 @@ int main (int argc, char *argv[]) {
 	case CMD_MONITOR:
 		ret = monitor_status(nodeid_format, address_format, sort_opt);
 		break;
+	case CMD_WATCH_NOTIFICATIONS:
+		ret = watch_notifications(watchtype);
+		break;
 	case CMD_UNREGISTER_QDEVICE:
 		if (using_votequorum() > 0) {
 			ret = unregister_qdevice();
@@ -1015,6 +1193,18 @@ int main (int argc, char *argv[]) {
 			ret = EXIT_FAILURE;
 		}
 		break;
+	case CMD_SET_EXTRA_INFO:
+		if (using_votequorum() > 0) {
+			ret = set_qdevice_extra_info(extra_info);
+		} else {
+			fprintf(stderr, "You cannot set quorum device extra info, corosync is not using votequorum\n");
+			ret = EXIT_FAILURE;
+		}
+		break;
+	}
+
+	if (extra_info) {
+		free(extra_info);
 	}
 
 	close_all();

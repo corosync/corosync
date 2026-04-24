@@ -38,6 +38,7 @@
 
 #include <config.h>
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -62,7 +63,7 @@ struct votequorum_inst {
 	qb_ipcc_connection_t *c;
 	int finalize;
 	void *context;
-	votequorum_callbacks_t callbacks;
+	votequorum_model_v1_data_t callbacks;
 };
 
 static void votequorum_inst_free (void *inst);
@@ -72,6 +73,20 @@ DECLARE_HDB_DATABASE(votequorum_handle_t_db, votequorum_inst_free);
 cs_error_t votequorum_initialize (
 	votequorum_handle_t *handle,
 	votequorum_callbacks_t *callbacks)
+{
+	votequorum_model_v1_data_t model = {
+		.model                              = VOTEQUORUM_MODEL_V1,
+		.votequorum_quorum_notify_fn        = callbacks->votequorum_quorum_notify_fn,
+		.votequorum_expectedvotes_notify_fn = callbacks->votequorum_expectedvotes_notify_fn,
+		.votequorum_nodelist_notify_fn      = callbacks->votequorum_nodelist_notify_fn,
+		.votequorum_qdevice_extra_info_fn   = NULL,
+	};
+    return votequorum_model_initialize (handle, &model);
+}
+
+cs_error_t votequorum_model_initialize (
+	votequorum_handle_t *handle,
+	const votequorum_model_v1_data_t *model)
 {
 	cs_error_t error;
 	struct votequorum_inst *votequorum_inst;
@@ -93,10 +108,10 @@ cs_error_t votequorum_initialize (
 		goto error_put_destroy;
 	}
 
-	if (callbacks)
-		memcpy(&votequorum_inst->callbacks, callbacks, sizeof (*callbacks));
+	if (model)
+		memcpy(&votequorum_inst->callbacks, model, sizeof (*model));
 	else
-		memset(&votequorum_inst->callbacks, 0, sizeof (*callbacks));
+		memset(&votequorum_inst->callbacks, 0, sizeof (*model));
 
 	hdb_handle_put (&votequorum_handle_t_db, *handle);
 
@@ -433,11 +448,12 @@ cs_error_t votequorum_dispatch (
 	cs_error_t error;
 	int cont = 1; /* always continue do loop except when set to 0 */
 	struct votequorum_inst *votequorum_inst;
-	votequorum_callbacks_t callbacks;
+	votequorum_model_v1_data_t callbacks;
 	struct qb_ipc_response_header *dispatch_data;
 	struct res_lib_votequorum_quorum_notification *res_lib_votequorum_quorum_notification;
 	struct res_lib_votequorum_nodelist_notification *res_lib_votequorum_nodelist_notification;
 	struct res_lib_votequorum_expectedvotes_notification *res_lib_votequorum_expectedvotes_notification;
+	struct res_lib_votequorum_qdevice_extra_info_notification *res_lib_votequorum_qdevice_extra_info_notification;
 	char dispatch_buf[IPC_DISPATCH_SIZE];
 	votequorum_ring_id_t ring_id;
 
@@ -497,7 +513,7 @@ cs_error_t votequorum_dispatch (
 		 * A risk of this dispatch method is that the callback routines may
 		 * operate at the same time that votequorum_finalize has been called in another thread.
 		 */
-		memcpy (&callbacks, &votequorum_inst->callbacks, sizeof (votequorum_callbacks_t));
+		memcpy (&callbacks, &votequorum_inst->callbacks, sizeof (votequorum_model_v1_data_t));
 
 		/*
 		 * Dispatch incoming message
@@ -540,6 +556,19 @@ cs_error_t votequorum_dispatch (
 			callbacks.votequorum_expectedvotes_notify_fn ( handle,
 								       res_lib_votequorum_expectedvotes_notification->context,
 								       res_lib_votequorum_expectedvotes_notification->expected_votes);
+			break;
+
+		case MESSAGE_RES_VOTEQUORUM_QDEVICE_EXTRA_INFO_NOTIFICATION:
+			if (callbacks.votequorum_qdevice_extra_info_fn == NULL) {
+				break;
+			}
+			res_lib_votequorum_qdevice_extra_info_notification = (struct res_lib_votequorum_qdevice_extra_info_notification *)dispatch_data;
+
+			callbacks.votequorum_qdevice_extra_info_fn(handle,
+			                                           res_lib_votequorum_qdevice_extra_info_notification->context,
+			                                           res_lib_votequorum_qdevice_extra_info_notification->nodeid,
+			                                           res_lib_votequorum_qdevice_extra_info_notification->ei_size,
+			                                           res_lib_votequorum_qdevice_extra_info_notification->extra_info);
 			break;
 
 		default:
@@ -807,5 +836,112 @@ cs_error_t votequorum_qdevice_unregister (
 error_exit:
 	hdb_handle_put (&votequorum_handle_t_db, handle);
 
+	return (error);
+}
+
+cs_error_t votequorum_get_qdevice_extra_info (
+	votequorum_handle_t handle,
+	unsigned int nodeid,
+	uint32_t *ei_size,
+	void *extra_info)
+{
+	if (!ei_size || !extra_info) {
+		return CS_ERR_INVALID_PARAM;
+	}
+	cs_error_t error;
+	struct votequorum_inst *inst;
+	struct iovec iov;
+	struct req_lib_votequorum_get_qdevice_extra_info req_lib_votequorum_get_qdevice_extra_info;
+
+	char buf[sizeof(struct res_lib_votequorum_get_qdevice_extra_info) + VOTEQUORUM_QDEVICE_EXTRA_NODEINFO_MAXSIZE];
+	struct res_lib_votequorum_get_qdevice_extra_info *res_lib_votequorum_get_qdevice_extra_info
+		= (struct res_lib_votequorum_get_qdevice_extra_info *)buf;
+
+	error = hdb_error_to_cs(hdb_handle_get (&votequorum_handle_t_db, handle, (void *)&inst));
+	if (error != CS_OK) {
+		return (error);
+	}
+
+	req_lib_votequorum_get_qdevice_extra_info.header.size = sizeof(req_lib_votequorum_get_qdevice_extra_info);
+	req_lib_votequorum_get_qdevice_extra_info.header.id = MESSAGE_REQ_VOTEQUORUM_QDEVICE_GET_EXTRA_INFO;
+	req_lib_votequorum_get_qdevice_extra_info.nodeid = nodeid;
+
+	iov.iov_base = (char *)&req_lib_votequorum_get_qdevice_extra_info;
+	iov.iov_len = sizeof (struct req_lib_votequorum_get_qdevice_extra_info);
+
+	error = qb_to_cs_error(qb_ipcc_sendv_recv (
+	                        inst->c,
+	                        &iov,
+	                        1,
+	                        buf,
+	                        sizeof (buf), CS_IPC_TIMEOUT_MS));
+
+	if (error != CS_OK) {
+		goto error_exit;
+	}
+
+	error = res_lib_votequorum_get_qdevice_extra_info->header.error;
+	*ei_size = res_lib_votequorum_get_qdevice_extra_info->ei_size;
+	memcpy(extra_info,
+	       res_lib_votequorum_get_qdevice_extra_info->extra_info,
+	       res_lib_votequorum_get_qdevice_extra_info->ei_size);
+
+error_exit:
+	hdb_handle_put (&votequorum_handle_t_db, handle);
+	return (error);
+}
+
+
+cs_error_t votequorum_set_qdevice_extra_info (
+	votequorum_handle_t handle,
+	uint32_t ei_size,
+	const void *extra_info)
+{
+	cs_error_t error;
+	struct votequorum_inst *inst;
+	struct iovec iov;
+	struct res_lib_votequorum_status res_lib_votequorum_status;
+	char buf[sizeof(struct req_lib_votequorum_set_qdevice_extra_info) + VOTEQUORUM_QDEVICE_EXTRA_NODEINFO_MAXSIZE];
+	struct req_lib_votequorum_set_qdevice_extra_info *req_lib_votequorum_set_qdevice_extra_info
+		= (struct req_lib_votequorum_set_qdevice_extra_info *)buf;
+
+	error = hdb_error_to_cs(hdb_handle_get (&votequorum_handle_t_db, handle, (void *)&inst));
+	if (error != CS_OK) {
+		return (error);
+	}
+
+	if(!extra_info) { // Force NULL to mean zero size
+		ei_size = 0;
+	}
+
+	if(ei_size > VOTEQUORUM_QDEVICE_EXTRA_NODEINFO_MAXSIZE) {
+		return CS_ERR_INVALID_PARAM;
+	}
+
+	req_lib_votequorum_set_qdevice_extra_info->header.size = sizeof(*req_lib_votequorum_set_qdevice_extra_info) + ei_size;
+	req_lib_votequorum_set_qdevice_extra_info->header.id = MESSAGE_REQ_VOTEQUORUM_QDEVICE_SET_EXTRA_INFO;
+	req_lib_votequorum_set_qdevice_extra_info->ei_size = ei_size;
+	if(extra_info) {
+		memcpy(req_lib_votequorum_set_qdevice_extra_info->extra_info, extra_info, ei_size);
+	}
+
+	iov.iov_base = buf;
+	iov.iov_len = req_lib_votequorum_set_qdevice_extra_info->header.size;
+
+	error = qb_to_cs_error(qb_ipcc_sendv_recv (
+		inst->c,
+		&iov,
+		1,
+		&res_lib_votequorum_status,
+		sizeof (struct res_lib_votequorum_status), CS_IPC_TIMEOUT_MS));
+
+	if (error != CS_OK) {
+		goto error_exit;
+	}
+
+	error = res_lib_votequorum_status.header.error;
+
+error_exit:
+	hdb_handle_put (&votequorum_handle_t_db, handle);
 	return (error);
 }
