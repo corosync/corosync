@@ -67,8 +67,6 @@ typedef uint64_t votequorum_handle_t;
 #define VOTEQUORUM_NODESTATE_DEAD                2
 #define VOTEQUORUM_NODESTATE_LEAVING             3
 
-/** @} */
-
 /**
  * @brief The votequorum_info struct
  */

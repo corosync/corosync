@@ -194,6 +194,7 @@ struct corosync_cfg_node_status_v1 {
  * @brief corosync_cfg_node_status_get
  * @param cfg_handle
  * @param nodeid
+ * @param version
  * @param node_status
  * @return
  */
@@ -222,7 +223,6 @@ corosync_cfg_kill_node (
  * Track CFG for shutdown requests
  * @param cfg_handle
  * @param track_flags (none currently supported)
- * @param reason
  * @return
  */
 cs_error_t
@@ -234,7 +234,6 @@ corosync_cfg_trackstart (
  * @brief corosync_cfg_trackstop
  * Stop tracking CFG for shutdown requests
  * @param cfg_handle
- * @param reason
  * @return
  */
 cs_error_t

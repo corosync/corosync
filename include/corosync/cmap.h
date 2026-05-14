@@ -42,12 +42,6 @@
 extern "C" {
 #endif
 
-/**
- * @addtogroup cmap_corosync
- *
- * @{
- */
-
 /*
  * Handle for cmap service connection
  */
@@ -368,8 +362,6 @@ extern cs_error_t cmap_track_add(
  * @param track_handle Track handle
  */
 extern cs_error_t cmap_track_delete(cmap_handle_t handle, cmap_track_handle_t track_handle);
-
-/** @} */
 
 #ifdef __cplusplus
 }
