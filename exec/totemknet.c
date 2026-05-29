@@ -428,7 +428,7 @@ static inline void ucast_sendmsg (
 	 * An error here is recovered by totemsrp
 	 */
 
-	res = sendmsg (instance->knet_fd, &msg_ucast, MSG_NOSIGNAL);
+	res = sendmsg (instance->knet_fd, &msg_ucast, MSG_NOSIGNAL | MSG_EOR);
 	if (res < 0) {
 		KNET_LOGSYS_PERROR (errno, instance->totemknet_log_level_debug,
 				    "sendmsg(ucast) failed (non-critical)");
@@ -460,7 +460,7 @@ static inline void mcast_sendmsg (
 
 //	log_printf (LOGSYS_LEVEL_DEBUG, "totemknet: mcast_sendmsg. only_active=%d, len=%d", only_active, msg_len);
 
-	res = sendmsg (instance->knet_fd, &msg_mcast, MSG_NOSIGNAL);
+	res = sendmsg (instance->knet_fd, &msg_mcast, MSG_NOSIGNAL | MSG_EOR);
 	if (res < msg_len) {
 		knet_log_printf (LOGSYS_LEVEL_DEBUG, "totemknet: mcast_send sendmsg returned %d", res);
 	}
