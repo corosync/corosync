@@ -89,6 +89,12 @@ static int setup_nozzle(void *knet_context);
 /* Should match that used by cfg */
 #define CFG_INTERFACE_STATUS_MAX_LEN 512
 
+#ifdef KNET_DATAFD_FLAG_RX_RETURN_INFO
+#define KNET_IOV_LEN_MAX KNET_MAX_PACKET_SIZE + 1 + sizeof(struct knet_datafd_header)
+#else
+#define KNET_IOV_LEN_MAX KNET_MAX_PACKET_SIZE + 1
+#endif
+
 struct totemknet_instance {
 	struct crypto_instance *crypto_inst;
 
@@ -147,7 +153,7 @@ struct totemknet_instance {
 
 	void *knet_context;
 
-	char iov_buffer[KNET_MAX_PACKET_SIZE + 1];
+	char iov_buffer[KNET_IOV_LEN_MAX];
 
 	char *link_status[INTERFACE_MAX];
 
@@ -790,7 +796,7 @@ static int data_deliver_fn (
 	char *data_ptr = instance->iov_buffer;
 
 	iov_recv.iov_base = instance->iov_buffer;
-	iov_recv.iov_len = KNET_MAX_PACKET_SIZE + 1;
+	iov_recv.iov_len = KNET_IOV_LEN_MAX;
 
 	memset(&msg_hdr, 0, sizeof(msg_hdr));
 	msg_hdr.msg_name = &system_from;
@@ -803,7 +809,7 @@ static int data_deliver_fn (
 		return (0);
 	}
 
-	if (msg_len >= KNET_MAX_PACKET_SIZE + 1) {
+	if (msg_len >= KNET_IOV_LEN_MAX) {
 		/*
 		 * It this happens it is real bug, because knet always sends packet with maximum size
 		 * of KNET_MAX_PACKET_SIZE.
