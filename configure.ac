@@ -107,8 +107,29 @@ AC_CHECK_PROGS([GROFF], [groff])
 AC_CHECK_PROGS([AUGTOOL], [augtool])
 AC_CHECK_PROGS([DOT], [dot])
 AC_CHECK_PROGS([DOXYGEN], [doxygen])
+AM_CONDITIONAL(HAVE_DOXYGEN, test -n "${DOXYGEN}")
 AC_CHECK_PROGS([AWK], [awk])
 AC_PATH_PROG([BASHPATH], [bash])
+
+AX_PROG_DATE
+AS_IF([test "$ax_cv_prog_date_gnu_date:$ax_cv_prog_date_gnu_utc" = yes:yes],
+	[UTC_DATE_AT="date -u -d@"],
+	[AS_IF([test "x$ax_cv_prog_date_bsd_date" = xyes],
+		[UTC_DATE_AT="date -u -r"],
+		[AC_MSG_ERROR([date utility unable to convert epoch to UTC])])])
+AC_SUBST([UTC_DATE_AT])
+
+AC_ARG_VAR([SOURCE_EPOCH],[last modification date of the source])
+AS_IF([test -n "$SOURCE_EPOCH"], [], SOURCE_EPOCH=0)
+AC_MSG_NOTICE([using source epoch $($UTC_DATE_AT$SOURCE_EPOCH +'%F %T %Z')])
+
+AC_CHECK_PROGS([DOXYGEN2MAN], [doxygen2man])
+if test "x$DOXYGEN2MAN" = "x"; then
+	AM_CONDITIONAL([BUILD_MAN], [false])
+else
+	AM_CONDITIONAL([BUILD_MAN], [true])
+fi
+AC_SUBST(DOXYGEN2MAN)
 
 # Checks for compiler characteristics.
 AC_PROG_GCC_TRADITIONAL
@@ -217,6 +238,8 @@ AC_CONFIG_FILES([Makefile
 		 lib/Makefile
 		 common_lib/Makefile
 		 man/Makefile
+		 docs/Makefile
+		 docs/man.dox
 		 pkgconfig/Makefile
 		 test/Makefile
 		 tools/Makefile
@@ -831,3 +854,4 @@ AC_MSG_RESULT([  Fatal War.   CFLAGS      = ${WERROR_CFLAGS}])
 AC_MSG_RESULT([  Final        CFLAGS      = ${CFLAGS}])
 AC_MSG_RESULT([  Final        CPPFLAGS    = ${CPPFLAGS}])
 AC_MSG_RESULT([  Final        LDFLAGS     = ${LDFLAGS}])
+AC_MSG_RESULT([  doxygen2man path         = ${DOXYGEN2MAN}])

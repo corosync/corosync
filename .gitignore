@@ -23,7 +23,6 @@ depcomp
 install-sh
 libtool
 ltmain.sh
-m4
 missing
 tags
 cscope.out
@@ -41,3 +40,10 @@ bindings/rust/src/sys/votequorum.rs
 test-suite.log
 bindings/rust/target/
 bindings/rust/tests/target/
+docs/man3
+docs/xml
+docs/man.dox
+
+# ignore generated m4 files, but keep our (custom-prefixed) ones
+/m4/*
+!/m4/ax_*.m4

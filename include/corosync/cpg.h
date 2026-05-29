@@ -44,11 +44,6 @@ extern "C" {
 #endif
 
 /**
- * @addtogroup cpg_corosync
- *
- * @{
- */
-/**
  * @brief cpg_handle_t
  */
 typedef uint64_t cpg_handle_t;
@@ -203,9 +198,6 @@ typedef struct {
 	cpg_totem_confchg_fn_t cpg_totem_confchg_fn;
 	unsigned int flags;
 } cpg_model_v1_data_t;
-
-
-/** @} */
 
 /**
  * @brief Create a new cpg connection
