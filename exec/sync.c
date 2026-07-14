@@ -537,6 +537,16 @@ void sync_abort (void)
 	ENTER();
 	if (my_state == SYNC_PROCESS) {
 		schedwrk_destroy (my_schedwrk_handle);
+	}
+
+	/*
+	 * A service waiting for the barrier already ran its process phase,
+	 * so its abort callback must run too or per-round state leaks into
+	 * the next round. Skip when no service is being synchronized, which
+	 * is the case before the first and after a completed round.
+	 */
+	if ((my_state == SYNC_PROCESS || my_state == SYNC_BARRIER) &&
+	    my_processing_idx < my_service_list_entries) {
 		if (my_sync_callbacks_retrieve(my_service_list[my_processing_idx].service_id, NULL) != -1) {
 			my_service_list[my_processing_idx].sync_abort ();
 		}
