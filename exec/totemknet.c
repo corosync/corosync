@@ -1271,6 +1271,11 @@ int totemknet_initialize (
 	if (res) {
 		KNET_LOGSYS_PERROR(errno, LOGSYS_LEVEL_WARNING, "knet_handle_setprio_dscp failed");
 	}
+#else
+	if (instance->totem_config->ip_dscp) {
+		knet_log_printf(LOGSYS_LEVEL_WARNING, "Ignoring 'ip_dscp' option: Corosync was"
+		  " compiled without knet_handle_setprio_dscp support.");
+	}
 #endif
 	res = knet_handle_enable_filter(instance->knet_handle, instance, dst_host_filter_callback_fn);
 	if (res) {
