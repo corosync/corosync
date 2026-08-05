@@ -215,6 +215,67 @@ static int safe_strcat(char *dst, size_t dst_len, const char *src)
 	return (0);
 }
 
+#define UTILS_IS_VALID_KNET_LIST_MAX_ITEMS		256
+
+/*
+ * val - string in items array to find
+ * items - array of const char * of items
+ * no_items - size of array
+ * list_str - string with concatenated list of items - can be NULL
+ * machine_parseable_str - 0 - split strings by space, 1 - use human form (split by "," and last item with "or")
+ * error_string_prefix - Prefix to add into error string
+ * error_string - Complete error string
+ */
+static int util_is_valid_knet_list_helper(const char *val,
+	const char **items, size_t no_items,
+	const char **list_str, int machine_parseable_str,
+	const char *error_string_prefix, const char **error_string)
+{
+	static char local_error_str[512];
+	static char local_list_str[256];
+	size_t zi;
+	int model_found = 0;
+
+	if (list_str != NULL) {
+		*list_str = local_list_str;
+	}
+
+	memset(local_error_str, 0, sizeof(local_error_str));
+	memset(local_list_str, 0, sizeof(local_list_str));
+
+	safe_strcat(local_error_str, sizeof(local_error_str), error_string_prefix);
+
+	for (zi = 0; zi < no_items; zi++) {
+		if (zi == 0) {
+		} else if (zi == no_items - 1) {
+			if (machine_parseable_str) {
+				(void)safe_strcat(local_list_str, sizeof(local_list_str), " ");
+			} else {
+				(void)safe_strcat(local_list_str, sizeof(local_list_str), " or ");
+			}
+		} else {
+			if (machine_parseable_str) {
+				(void)safe_strcat(local_list_str, sizeof(local_list_str), " ");
+			} else {
+				(void)safe_strcat(local_list_str, sizeof(local_list_str), ", ");
+			}
+		}
+
+		(void)safe_strcat(local_list_str, sizeof(local_list_str), items[zi]);
+
+		if (val != NULL && strcmp(val, items[zi]) == 0) {
+			model_found = 1;
+		}
+	}
+
+	if (!model_found) {
+		(void)safe_strcat(local_error_str, sizeof(local_error_str), local_list_str);
+		*error_string = local_error_str;
+	}
+
+	return (model_found);
+}
+
 /*
  * val - knet crypto model to find
  * crypto_list_str - string with concatenated list of available crypto models - can be NULL
@@ -227,20 +288,9 @@ int util_is_valid_knet_crypto_model(const char *val,
 	const char *error_string_prefix, const char **error_string)
 {
 	size_t entries;
-	struct knet_crypto_info crypto_list[16];
+	struct knet_crypto_info crypto_list[UTILS_IS_VALID_KNET_LIST_MAX_ITEMS];
+	const char *items[UTILS_IS_VALID_KNET_LIST_MAX_ITEMS];
 	size_t zi;
-	static char local_error_str[512];
-	static char local_list_str[256];
-	int model_found = 0;
-
-	if (list_str != NULL) {
-		*list_str = local_list_str;
-	}
-
-	memset(local_error_str, 0, sizeof(local_error_str));
-	memset(local_list_str, 0, sizeof(local_list_str));
-
-	safe_strcat(local_error_str, sizeof(local_error_str), error_string_prefix);
 
 	if (knet_get_crypto_list(NULL, &entries) != 0) {
 		*error_string = "internal error - cannot get knet crypto list";
@@ -258,55 +308,24 @@ int util_is_valid_knet_crypto_model(const char *val,
 	}
 
 	for (zi = 0; zi < entries; zi++) {
-		if (zi == 0) {
-		} else if (zi == entries - 1) {
-			if (machine_parseable_str) {
-				(void)safe_strcat(local_list_str, sizeof(local_list_str), " ");
-			} else {
-				(void)safe_strcat(local_list_str, sizeof(local_list_str), " or ");
-			}
-		} else {
-			if (machine_parseable_str) {
-				(void)safe_strcat(local_list_str, sizeof(local_list_str), " ");
-			} else {
-				(void)safe_strcat(local_list_str, sizeof(local_list_str), ", ");
-			}
-		}
-
-		(void)safe_strcat(local_list_str, sizeof(local_list_str), crypto_list[zi].name);
-
-		if (val != NULL && strcmp(val, crypto_list[zi].name) == 0) {
-			model_found = 1;
-		}
+		items[zi] = crypto_list[zi].name;
 	}
 
-	if (!model_found) {
-		(void)safe_strcat(local_error_str, sizeof(local_error_str), local_list_str);
-		*error_string = local_error_str;
-	}
-
-	return (model_found);
+	return (util_is_valid_knet_list_helper(val, items, entries, list_str,
+	    machine_parseable_str, error_string_prefix, error_string));
 }
 
+/*
+ * Similar to util_is_valid_knet_crypto_model
+ */
 int util_is_valid_knet_compress_model(const char *val,
 	const char **list_str, int machine_parseable_str,
 	const char *error_string_prefix, const char **error_string)
 {
 	size_t entries;
-	struct knet_compress_info compress_list[16];
+	struct knet_compress_info compress_list[UTILS_IS_VALID_KNET_LIST_MAX_ITEMS];
+	const char *items[UTILS_IS_VALID_KNET_LIST_MAX_ITEMS];
 	size_t zi;
-	static char local_error_str[512];
-	static char local_list_str[256];
-	int model_found = 0;
-
-	if (list_str != NULL) {
-		*list_str = local_list_str;
-	}
-
-	memset(local_error_str, 0, sizeof(local_error_str));
-	memset(local_list_str, 0, sizeof(local_list_str));
-
-	safe_strcat(local_error_str, sizeof(local_error_str), error_string_prefix);
 
 	if (knet_get_compress_list(NULL, &entries) != 0) {
 		*error_string = "internal error - cannot get knet compress list";
@@ -324,34 +343,11 @@ int util_is_valid_knet_compress_model(const char *val,
 	}
 
 	for (zi = 0; zi < entries; zi++) {
-		if (zi == 0) {
-		} else if (zi == entries - 1) {
-			if (machine_parseable_str) {
-				(void)safe_strcat(local_list_str, sizeof(local_list_str), " ");
-			} else {
-				(void)safe_strcat(local_list_str, sizeof(local_list_str), " or ");
-			}
-		} else {
-			if (machine_parseable_str) {
-				(void)safe_strcat(local_list_str, sizeof(local_list_str), " ");
-			} else {
-				(void)safe_strcat(local_list_str, sizeof(local_list_str), ", ");
-			}
-		}
-
-		(void)safe_strcat(local_list_str, sizeof(local_list_str), compress_list[zi].name);
-
-		if (val != NULL && strcmp(val, compress_list[zi].name) == 0) {
-			model_found = 1;
-		}
+		items[zi] = compress_list[zi].name;
 	}
 
-	if (!model_found) {
-		(void)safe_strcat(local_error_str, sizeof(local_error_str), local_list_str);
-		*error_string = local_error_str;
-	}
-
-	return (model_found);
+	return (util_is_valid_knet_list_helper(val, items, entries, list_str,
+	    machine_parseable_str, error_string_prefix, error_string));
 }
 
 int
