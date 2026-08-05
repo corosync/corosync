@@ -614,6 +614,18 @@ static int handle_crypto_model(const char *val, const char **error_string)
 	}
 }
 
+static int handle_crypto_cipher(const char *val, const char **error_string)
+{
+
+	if (util_is_valid_knet_crypto_cipher(val, NULL, 0,
+	    "Invalid cipher type. Should be ", error_string) == 1) {
+		return (0);
+	} else {
+		return (-1);
+	}
+}
+
+
 static int handle_compress_model(const char *val, const char **error_string)
 {
 
@@ -846,13 +858,7 @@ static int main_config_parser_cb(const char *path,
 			}
 
 			if (strcmp(path, "totem.crypto_cipher") == 0) {
-				if ((strcmp(value, "none") != 0) &&
-				    (strcmp(value, "aes256") != 0) &&
-				    (strcmp(value, "aes192") != 0) &&
-				    (strcmp(value, "aes128") != 0)) {
-					*error_string = "Invalid cipher type. "
-					    "Should be none, aes256, aes192 or aes128";
-
+				if (handle_crypto_cipher(value, error_string) != 0) {
 					return (0);
 				}
 			}
