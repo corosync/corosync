@@ -191,6 +191,8 @@ AC_CHECK_LIB([knet],[knet_handle_setprio_dscp],
 	     [AC_DEFINE_UNQUOTED([HAVE_KNET_SETPRIO_DSCP], 1, [have knet dscp traffic prioritization])])
 AC_CHECK_LIB([knet],[knet_get_crypto_cipher_list],
 	     [AC_DEFINE_UNQUOTED([HAVE_KNET_GET_CRYPTO_CIPHER_LIST], 1, [have knet get crypto cipher list])])
+AC_CHECK_LIB([knet],[knet_get_crypto_hash_list],
+	     [AC_DEFINE_UNQUOTED([HAVE_KNET_GET_CRYPTO_HASH_LIST], 1, [have knet get crypto hash list])])
 LIBS="$OLDLIBS"
 
 # Checks for library functions.

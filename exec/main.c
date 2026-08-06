@@ -1261,6 +1261,12 @@ static void show_version_info_crypto(void)
 	} else {
 		perror(error_string);
 	}
+
+	if (util_is_valid_knet_crypto_hash(NULL, &list_str, 1, "", &error_string) != -1) {
+		printf("Available crypto hashes: %s\n", list_str);
+	} else {
+		perror(error_string);
+	}
 }
 
 static void show_version_info_compress(void)
