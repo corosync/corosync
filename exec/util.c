@@ -398,6 +398,56 @@ int util_is_valid_knet_crypto_cipher(const char *val,
 	    machine_parseable_str, error_string_prefix, error_string));
 }
 
+/*
+ * Similar to util_is_valid_knet_crypto_model
+ */
+int util_is_valid_knet_crypto_hash(const char *val,
+	const char **list_str, int machine_parseable_str,
+	const char *error_string_prefix, const char **error_string)
+{
+	const char *items[UTILS_IS_VALID_KNET_LIST_MAX_ITEMS];
+	size_t items_out_idx = 0;
+#ifdef HAVE_KNET_GET_CRYPTO_HASH_LIST
+	size_t entries;
+	size_t zi;
+	struct knet_crypto_hash_info crypto_hash_list[UTILS_IS_VALID_KNET_LIST_MAX_ITEMS];
+#endif
+
+#ifdef ENABLE_UNENCRYPTED
+	items[items_out_idx++] = "none";
+#endif
+
+#ifdef HAVE_KNET_GET_CRYPTO_HASH_LIST
+	if (knet_get_crypto_hash_list(NULL, &entries) != 0) {
+		*error_string = "internal error - cannot get crypto hash list";
+		return (-1);
+	}
+
+	if (entries > (sizeof(crypto_hash_list) / sizeof(crypto_hash_list[0])) - items_out_idx) {
+		*error_string = "internal error - too many knet crypto hash list entries";
+		return (-1);
+	}
+
+	if (knet_get_crypto_hash_list(crypto_hash_list, &entries) != 0) {
+		*error_string = "internal error - cannot get knet crypto hash list";
+		return (-1);
+	}
+
+	for (zi = 0; zi < entries; zi++) {
+		items[items_out_idx++] = crypto_hash_list[zi].name;
+	}
+#else
+	items[items_out_idx++] = "md5";
+	items[items_out_idx++] = "sha1";
+	items[items_out_idx++] = "sha256";
+	items[items_out_idx++] = "sha384";
+	items[items_out_idx++] = "sha512";
+#endif
+
+	return (util_is_valid_knet_list_helper(val, items, items_out_idx, list_str,
+	    machine_parseable_str, error_string_prefix, error_string));
+}
+
 int
 set_socket_dscp(int socket, unsigned char dscp)
 {

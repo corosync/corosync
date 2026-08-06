@@ -625,6 +625,16 @@ static int handle_crypto_cipher(const char *val, const char **error_string)
 	}
 }
 
+static int handle_crypto_hash(const char *val, const char **error_string)
+{
+
+	if (util_is_valid_knet_crypto_hash(val, NULL, 0,
+	    "Invalid hash type. Should be ", error_string) == 1) {
+		return (0);
+	} else {
+		return (-1);
+	}
+}
 
 static int handle_compress_model(const char *val, const char **error_string)
 {
@@ -863,15 +873,7 @@ static int main_config_parser_cb(const char *path,
 				}
 			}
 			if (strcmp(path, "totem.crypto_hash") == 0) {
-				if ((strcmp(value, "none") != 0) &&
-				    (strcmp(value, "md5") != 0) &&
-				    (strcmp(value, "sha1") != 0) &&
-				    (strcmp(value, "sha256") != 0) &&
-				    (strcmp(value, "sha384") != 0) &&
-				    (strcmp(value, "sha512") != 0)) {
-					*error_string = "Invalid hash type. "
-					    "Should be none, md5, sha1, sha256, sha384 or sha512";
-
+				if (handle_crypto_hash(value, error_string) != 0) {
 					return (0);
 				}
 			}
