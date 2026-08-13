@@ -371,6 +371,9 @@ cs_error_t cpg_flow_control_state_get (
  * @param size
  * @param buffer
  * @return
+ *
+ * This is left here for backward compatibility only
+ * it just calls malloc()
  */
 cs_error_t cpg_zcb_alloc (
 	cpg_handle_t handle,
@@ -382,6 +385,9 @@ cs_error_t cpg_zcb_alloc (
  * @param handle
  * @param buffer
  * @return
+ *
+ * This is left here for backward compatibility only
+ * it just calls free()
  */
 cs_error_t cpg_zcb_free (
 	cpg_handle_t handle,
@@ -394,6 +400,9 @@ cs_error_t cpg_zcb_free (
  * @param msg
  * @param msg_len
  * @return
+ *
+ * This is left here for backward compatibility only
+ * it just calls cpg_mcast_joined()
  */
 cs_error_t cpg_zcb_mcast_joined (
 	cpg_handle_t handle,

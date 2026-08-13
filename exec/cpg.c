@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2019 Red Hat, Inc.
+ * Copyright (c) 2006-2026 Red Hat, Inc.
  *
  * All rights reserved.
  *
@@ -86,11 +86,6 @@ enum cpg_message_req_types {
 	MESSAGE_REQ_EXEC_CPG_PARTIAL_MCAST = 6,
 };
 
-struct zcb_mapped {
-	struct qb_list_head list;
-	void *addr;
-	size_t size;
-};
 /*
  * state`		exec deliver
  * match group name, pid -> if matched deliver for YES:
@@ -153,7 +148,6 @@ struct cpg_pd {
 	uint64_t initial_transition_counter;
 	struct qb_list_head list;
 	struct qb_list_head iteration_instance_list_head;
-	struct qb_list_head zcb_mapped_list_head;
 };
 
 struct cpg_iteration_instance {
@@ -249,6 +243,8 @@ static void exec_cpg_downlist_endian_convert_old (void *msg);
 
 static void exec_cpg_downlist_endian_convert (void *msg);
 
+static void message_handler_req_lib_cpg_null (void *conn, const void *message);
+
 static void message_handler_req_lib_cpg_join (void *conn, const void *message);
 
 static void message_handler_req_lib_cpg_leave (void *conn, const void *message);
@@ -274,18 +270,6 @@ static void message_handler_req_lib_cpg_iteration_next (
 	const void *message);
 
 static void message_handler_req_lib_cpg_iteration_finalize (
-	void *conn,
-	const void *message);
-
-static void message_handler_req_lib_cpg_zc_alloc (
-	void *conn,
-	const void *message);
-
-static void message_handler_req_lib_cpg_zc_free (
-	void *conn,
-	const void *message);
-
-static void message_handler_req_lib_cpg_zc_execute (
 	void *conn,
 	const void *message);
 
@@ -332,9 +316,6 @@ static int notify_lib_totem_membership (
 	int member_list_entries,
 	const unsigned int *member_list);
 
-static inline int zcb_all_free (
-	struct cpg_pd *cpd);
-
 static char *cpg_print_group_name (
 	const mar_cpg_name_t *group);
 
@@ -379,16 +360,16 @@ static struct corosync_lib_handler cpg_lib_engine[] =
 		.lib_handler_fn				= message_handler_req_lib_cpg_finalize,
 		.flow_control				= CS_LIB_FLOW_CONTROL_REQUIRED
 	},
-	{ /* 9 */
-		.lib_handler_fn				= message_handler_req_lib_cpg_zc_alloc,
+	{ /* 9 ZCB handers do nothing now, but we can't remove them from this list */
+		.lib_handler_fn				= message_handler_req_lib_cpg_null,
 		.flow_control				= CS_LIB_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 10 */
-		.lib_handler_fn				= message_handler_req_lib_cpg_zc_free,
+		.lib_handler_fn				= message_handler_req_lib_cpg_null,
 		.flow_control				= CS_LIB_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 11 */
-		.lib_handler_fn				= message_handler_req_lib_cpg_zc_execute,
+		.lib_handler_fn				= message_handler_req_lib_cpg_null,
 		.flow_control				= CS_LIB_FLOW_CONTROL_REQUIRED
 	},
 	{ /* 12 */
@@ -1053,7 +1034,6 @@ static void cpg_pd_finalize (struct cpg_pd *cpd)
 	struct qb_list_head *iter, *tmp_iter;
 	struct cpg_iteration_instance *cpii;
 
-	zcb_all_free(cpd);
 	qb_list_for_each_safe(iter, tmp_iter, &(cpd->iteration_instance_list_head)) {
 		cpii = qb_list_entry (iter, struct cpg_iteration_instance, list);
 
@@ -1547,11 +1527,22 @@ static int cpg_lib_init_fn (void *conn)
 	qb_list_add (&cpd->list, &cpg_pd_list_head);
 
 	qb_list_init (&cpd->iteration_instance_list_head);
-	qb_list_init (&cpd->zcb_mapped_list_head);
 
 	api->ipc_refcnt_inc (conn);
 	log_printf(LOGSYS_LEVEL_DEBUG, "lib_init_fn: conn=%p, cpd=%p", conn, cpd);
 	return (0);
+}
+
+
+/* NULL message so old zcb clients don't crash us */
+static void message_handler_req_lib_cpg_null (void *conn, const void *message)
+{
+	struct res_lib_cpg_null res_lib_cpg_null;
+
+	res_lib_cpg_null.header.size = sizeof(res_lib_cpg_null);
+	res_lib_cpg_null.header.id = MESSAGE_RES_CPG_NULL;
+	res_lib_cpg_null.header.error = CS_ERR_NOT_SUPPORTED;
+	api->ipc_response_send (conn, &res_lib_cpg_null, sizeof(res_lib_cpg_null));
 }
 
 /* Join message from the library */
@@ -1690,195 +1681,6 @@ static void message_handler_req_lib_cpg_finalize (
 		sizeof (res_lib_cpg_finalize));
 }
 
-static int
-memory_map (
-	const char *path,
-	size_t bytes,
-	void **buf)
-{
-	int32_t fd;
-	void *addr;
-	int32_t res;
-
-	fd = open (path, O_RDWR, 0600);
-
-	unlink (path);
-
-	if (fd == -1) {
-		return (-1);
-	}
-
-	res = ftruncate (fd, bytes);
-	if (res == -1) {
-		goto error_close_unlink;
-	}
-
-	addr = mmap (NULL, bytes, PROT_READ | PROT_WRITE,
-		MAP_SHARED, fd, 0);
-
-	if (addr == MAP_FAILED) {
-		goto error_close_unlink;
-	}
-#ifdef MADV_NOSYNC
-	madvise(addr, bytes, MADV_NOSYNC);
-#endif
-
-	res = close (fd);
-	if (res) {
-		munmap (addr, bytes);
-		return (-1);
-	}
-	*buf = addr;
-	return (0);
-
-error_close_unlink:
-	close (fd);
-	unlink(path);
-	return -1;
-}
-
-static inline int zcb_alloc (
-	struct cpg_pd *cpd,
-	const char *path_to_file,
-	size_t size,
-	void **addr)
-{
-	struct zcb_mapped *zcb_mapped;
-	unsigned int res;
-
-	zcb_mapped = malloc (sizeof (struct zcb_mapped));
-	if (zcb_mapped == NULL) {
-		return (-1);
-	}
-
-	res = memory_map (
-		path_to_file,
-		size,
-		addr);
-	if (res == -1) {
-		free (zcb_mapped);
-		return (-1);
-	}
-
-	qb_list_init (&zcb_mapped->list);
-	zcb_mapped->addr = *addr;
-	zcb_mapped->size = size;
-	qb_list_add_tail (&zcb_mapped->list, &cpd->zcb_mapped_list_head);
-	return (0);
-}
-
-
-static inline int zcb_free (struct zcb_mapped *zcb_mapped)
-{
-	int res;
-
-	res = munmap (zcb_mapped->addr, zcb_mapped->size);
-	qb_list_del (&zcb_mapped->list);
-	free (zcb_mapped);
-	return (res);
-}
-
-static inline int zcb_by_addr_free (struct cpg_pd *cpd, void *addr)
-{
-	struct qb_list_head *list, *tmp_iter;
-	struct zcb_mapped *zcb_mapped;
-	int res = 0;
-
-	qb_list_for_each_safe(list, tmp_iter, &(cpd->zcb_mapped_list_head)) {
-		zcb_mapped = qb_list_entry (list, struct zcb_mapped, list);
-
-		if (zcb_mapped->addr == addr) {
-			res = zcb_free (zcb_mapped);
-			break;
-		}
-
-	}
-	return (res);
-}
-
-static inline int zcb_all_free (
-	struct cpg_pd *cpd)
-{
-	struct qb_list_head *list, *tmp_iter;
-	struct zcb_mapped *zcb_mapped;
-
-	qb_list_for_each_safe(list, tmp_iter, &(cpd->zcb_mapped_list_head)) {
-		zcb_mapped = qb_list_entry (list, struct zcb_mapped, list);
-
-		zcb_free (zcb_mapped);
-	}
-	return (0);
-}
-
-union u {
-	uint64_t server_addr;
-	void *server_ptr;
-};
-
-static uint64_t void2serveraddr (void *server_ptr)
-{
-	union u u;
-
-	u.server_ptr = server_ptr;
-	return (u.server_addr);
-}
-
-static void *serveraddr2void (uint64_t server_addr)
-{
-	union u u;
-
-	u.server_addr = server_addr;
-	return (u.server_ptr);
-};
-
-static void message_handler_req_lib_cpg_zc_alloc (
-	void *conn,
-	const void *message)
-{
-	mar_req_coroipcc_zc_alloc_t *hdr = (mar_req_coroipcc_zc_alloc_t *)message;
-	struct qb_ipc_response_header res_header;
-	void *addr = NULL;
-	struct coroipcs_zc_header *zc_header;
-	unsigned int res;
-	struct cpg_pd *cpd = (struct cpg_pd *)api->ipc_private_data_get (conn);
-
-	log_printf(LOGSYS_LEVEL_DEBUG, "path: %s", hdr->path_to_file);
-
-	res = zcb_alloc (cpd, hdr->path_to_file, hdr->map_size,
-		&addr);
-	assert(res == 0);
-
-	zc_header = (struct coroipcs_zc_header *)addr;
-	zc_header->server_address = void2serveraddr(addr);
-
-	res_header.size = sizeof (struct qb_ipc_response_header);
-	res_header.id = 0;
-	api->ipc_response_send (conn,
-		&res_header,
-		res_header.size);
-}
-
-static void message_handler_req_lib_cpg_zc_free (
-	void *conn,
-	const void *message)
-{
-	mar_req_coroipcc_zc_free_t *hdr = (mar_req_coroipcc_zc_free_t *)message;
-	struct qb_ipc_response_header res_header;
-	void *addr = NULL;
-	struct cpg_pd *cpd = (struct cpg_pd *)api->ipc_private_data_get (conn);
-
-	log_printf(LOGSYS_LEVEL_DEBUG, " free'ing");
-
-	addr = serveraddr2void (hdr->server_address);
-
-	zcb_by_addr_free (cpd, addr);
-
-	res_header.size = sizeof (struct qb_ipc_response_header);
-	res_header.id = 0;
-	api->ipc_response_send (
-		conn, &res_header,
-		res_header.size);
-}
 
 /* Fragmented mcast message from the library */
 static void message_handler_req_lib_cpg_partial_mcast (void *conn, const void *message)
@@ -2004,72 +1806,6 @@ static void message_handler_req_lib_cpg_mcast (void *conn, const void *message)
 		log_printf(LOGSYS_LEVEL_ERROR, "*** %p can't mcast to group %s state:%d, error:%d",
 			conn, group_name.value, cpd->cpd_state, error);
 	}
-}
-
-static void message_handler_req_lib_cpg_zc_execute (
-	void *conn,
-	const void *message)
-{
-	mar_req_coroipcc_zc_execute_t *hdr = (mar_req_coroipcc_zc_execute_t *)message;
-	struct qb_ipc_request_header *header;
-	struct res_lib_cpg_mcast res_lib_cpg_mcast;
-	struct cpg_pd *cpd = (struct cpg_pd *)api->ipc_private_data_get (conn);
-	struct iovec req_exec_cpg_iovec[2];
-	struct req_exec_cpg_mcast req_exec_cpg_mcast;
-	struct req_lib_cpg_mcast *req_lib_cpg_mcast;
-	int result;
-	cs_error_t error = CS_ERR_NOT_EXIST;
-
-	log_printf(LOGSYS_LEVEL_TRACE, "got ZC mcast request on %p", conn);
-
-	header = (struct qb_ipc_request_header *)(((char *)serveraddr2void(hdr->server_address) + sizeof (struct coroipcs_zc_header)));
-	req_lib_cpg_mcast = (struct req_lib_cpg_mcast *)header;
-
-	switch (cpd->cpd_state) {
-	case CPD_STATE_UNJOINED:
-		error = CS_ERR_NOT_EXIST;
-		break;
-	case CPD_STATE_LEAVE_STARTED:
-		error = CS_ERR_NOT_EXIST;
-		break;
-	case CPD_STATE_JOIN_STARTED:
-		error = CS_OK;
-		break;
-	case CPD_STATE_JOIN_COMPLETED:
-		error = CS_OK;
-		break;
-	}
-
-	res_lib_cpg_mcast.header.size = sizeof(res_lib_cpg_mcast);
-	res_lib_cpg_mcast.header.id = MESSAGE_RES_CPG_MCAST;
-	if (error == CS_OK) {
-		req_exec_cpg_mcast.header.size = sizeof(req_exec_cpg_mcast) + req_lib_cpg_mcast->msglen;
-		req_exec_cpg_mcast.header.id = SERVICE_ID_MAKE(CPG_SERVICE,
-			MESSAGE_REQ_EXEC_CPG_MCAST);
-		req_exec_cpg_mcast.pid = cpd->pid;
-		req_exec_cpg_mcast.msglen = req_lib_cpg_mcast->msglen;
-		api->ipc_source_set (&req_exec_cpg_mcast.source, conn);
-		memcpy(&req_exec_cpg_mcast.group_name, &cpd->group_name,
-			sizeof(mar_cpg_name_t));
-
-		req_exec_cpg_iovec[0].iov_base = (char *)&req_exec_cpg_mcast;
-		req_exec_cpg_iovec[0].iov_len = sizeof(req_exec_cpg_mcast);
-		req_exec_cpg_iovec[1].iov_base = (char *)header + sizeof(struct req_lib_cpg_mcast);
-		req_exec_cpg_iovec[1].iov_len = req_exec_cpg_mcast.msglen;
-
-		result = api->totem_mcast (req_exec_cpg_iovec, 2, TOTEM_AGREED);
-		if (result == 0) {
-			res_lib_cpg_mcast.header.error = CS_OK;
-		} else {
-			res_lib_cpg_mcast.header.error = CS_ERR_TRY_AGAIN;
-		}
-	} else {
-		res_lib_cpg_mcast.header.error = error;
-	}
-
-	api->ipc_response_send (conn, &res_lib_cpg_mcast,
-		sizeof (res_lib_cpg_mcast));
-
 }
 
 static void message_handler_req_lib_cpg_membership (void *conn,
