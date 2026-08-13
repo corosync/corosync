@@ -59,8 +59,8 @@ struct quorum_inst {
 	qb_ipcc_connection_t *c;
 	int finalize;
 	const void *context;
+	quorum_model_t model;
 	union {
-		quorum_model_data_t model_data;
 		quorum_model_v0_data_t model_v0_data;
 		quorum_model_v1_data_t model_v1_data;
 	};
@@ -185,7 +185,7 @@ cs_error_t quorum_model_initialize (
 		}
 	}
 
-	quorum_inst->model_data.model = model;
+	quorum_inst->model = model;
 	quorum_inst->context = context;
 
 	(void)hdb_handle_put (&quorum_handle_t_db, *handle);
@@ -490,7 +490,7 @@ cs_error_t quorum_dispatch (
 		 * operate at the same time that quorum_finalize has been called in another thread.
 		 */
 		memcpy (&quorum_inst_copy, quorum_inst, sizeof(quorum_inst_copy));
-		switch (quorum_inst_copy.model_data.model) {
+		switch (quorum_inst_copy.model) {
 		case QUORUM_MODEL_V0:
 			/*
 			 * Dispatch incoming message
