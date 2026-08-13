@@ -52,9 +52,6 @@ autogen_man		= cpg_context_get.3 \
 			  cpg_local_get.3 \
 			  cpg_mcast_joined.3 \
 			  cpg_model_initialize.3 \
-			  cpg_zcb_mcast_joined.3 \
-			  cpg_zcb_alloc.3 \
-			  cpg_zcb_free.3 \
 			  cpg_membership_get.3 \
 			  cpg_iteration_finalize.3 \
 			  cpg_iteration_initialize.3 \

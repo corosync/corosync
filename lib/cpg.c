@@ -75,11 +75,6 @@
  */
 #define MAX_RETRIES 100
 
-/*
- * ZCB files have following umask (umask is same as used in libqb)
- */
-#define CPG_MEMORY_MAP_UMASK		077
-
 struct cpg_assembly_data
 {
 	struct qb_list_head list;
@@ -863,150 +858,21 @@ cs_error_t cpg_flow_control_state_get (
 	return (error);
 }
 
-static int
-memory_map (char *path, const char *file, void **buf, size_t bytes)
-{
-	int32_t fd;
-	void *addr;
-	int32_t res;
-	char *buffer;
-	int32_t i;
-	size_t written;
-	size_t page_size; 
-	long int sysconf_page_size;
-	mode_t old_umask;
-
-	snprintf (path, PATH_MAX, "/dev/shm/%s", file);
-
-	old_umask = umask(CPG_MEMORY_MAP_UMASK);
-	fd = mkstemp (path);
-	(void)umask(old_umask);
-	if (fd == -1) {
-		snprintf (path, PATH_MAX, LOCALSTATEDIR "/run/%s", file);
-		old_umask = umask(CPG_MEMORY_MAP_UMASK);
-		fd = mkstemp (path);
-		(void)umask(old_umask);
-		if (fd == -1) {
-			return (-1);
-		}
-	}
-
-	res = ftruncate (fd, bytes);
-	if (res == -1) {
-		goto error_close_unlink;
-	}
-	sysconf_page_size = sysconf(_SC_PAGESIZE);
-	if (sysconf_page_size <= 0) {
-		goto error_close_unlink;
-	}
-	page_size = sysconf_page_size;
-	buffer = malloc (page_size);
-	if (buffer == NULL) {
-		goto error_close_unlink;
-	}
-	memset (buffer, 0, page_size);
-	for (i = 0; i < (bytes / page_size); i++) {
-retry_write:
-		written = write (fd, buffer, page_size);
-		if (written == -1 && errno == EINTR) {
-			goto retry_write;
-		}
-		if (written != page_size) {
-			free (buffer);
-			goto error_close_unlink;
-		}
-	}
-	free (buffer);
-
-	addr = mmap (NULL, bytes, PROT_READ | PROT_WRITE,
-		MAP_SHARED, fd, 0);
-
-	if (addr == MAP_FAILED) {
-		goto error_close_unlink;
-	}
-#ifdef MADV_NOSYNC
-	madvise(addr, bytes, MADV_NOSYNC);
-#endif
-
-	res = close (fd);
-	if (res) {
-		munmap(addr, bytes);
-
-		return (-1);
-	}
-	*buf = addr;
-
-	return 0;
-
-error_close_unlink:
-	close (fd);
-	unlink(path);
-	return -1;
-}
-
+/*
+ * Dummy-ish function that just allocates some memory for the user
+ */
 cs_error_t cpg_zcb_alloc (
 	cpg_handle_t handle,
 	size_t size,
 	void **buffer)
 {
-	void *buf = NULL;
-	char path[PATH_MAX];
-	mar_req_coroipcc_zc_alloc_t req_coroipcc_zc_alloc;
-	struct qb_ipc_response_header res_coroipcs_zc_alloc;
-	size_t map_size;
-	struct iovec iovec;
-	struct coroipcs_zc_header *hdr;
-	cs_error_t error;
-	struct cpg_inst *cpg_inst;
+	int error = CS_OK;
 
-	error = hdb_error_to_cs (hdb_handle_get (&cpg_handle_t_db, handle, (void *)&cpg_inst));
-	if (error != CS_OK) {
-		return (error);
+	*buffer = malloc(size);
+	if (*buffer == NULL) {
+		error = CS_ERR_NO_MEMORY;
 	}
 
-	map_size = size + sizeof (struct req_lib_cpg_mcast) + sizeof (struct coroipcs_zc_header);
-	assert(memory_map (path, "corosync_zerocopy-XXXXXX", &buf, map_size) != -1);
-
-	if (strlen(path) >= CPG_ZC_PATH_LEN) {
-		unlink(path);
-		munmap (buf, map_size);
-		return (CS_ERR_NAME_TOO_LONG);
-	}
-
-	req_coroipcc_zc_alloc.header.size = sizeof (mar_req_coroipcc_zc_alloc_t);
-	req_coroipcc_zc_alloc.header.id = MESSAGE_REQ_CPG_ZC_ALLOC;
-	req_coroipcc_zc_alloc.map_size = map_size;
-	strcpy (req_coroipcc_zc_alloc.path_to_file, path);
-
-	iovec.iov_base = (void *)&req_coroipcc_zc_alloc;
-	iovec.iov_len = sizeof (mar_req_coroipcc_zc_alloc_t);
-
-	error = coroipcc_msg_send_reply_receive (
-		cpg_inst->c,
-		&iovec,
-		1,
-		&res_coroipcs_zc_alloc,
-		sizeof (struct qb_ipc_response_header));
-
-	if (error != CS_OK) {
-		goto error_exit;
-	}
-
-	hdr = (struct coroipcs_zc_header *)buf;
-	hdr->map_size = map_size;
-	*buffer = ((char *)buf) + sizeof (struct coroipcs_zc_header) + sizeof (struct req_lib_cpg_mcast);
-
-error_exit:
-	hdb_handle_put (&cpg_handle_t_db, handle);
-	/*
-	 * Coverity correctly reports an error here. We cannot safely munmap and unlink the file, because
-	 * the timing of the failure is the key issue: if a failure occurs before the IPC reply,
-	 * the file should be deleted.
-	 * However, if the failure happens during the IPC reply, Corosync has already deleted the file.
-	 * This means the cpg library could attempt to delete a non-existing file (not a problem) or,
-	 * in a theoretical race condition, delete a new file created by another application.
-	 * There are multiple possible solutions, but none of them are ready to be implemented yet.
-	 */
 	return (error);
 }
 
@@ -1014,49 +880,8 @@ cs_error_t cpg_zcb_free (
 	cpg_handle_t handle,
 	void *buffer)
 {
-	cs_error_t error;
-	unsigned int res;
-	struct cpg_inst *cpg_inst;
-	mar_req_coroipcc_zc_free_t req_coroipcc_zc_free;
-	struct qb_ipc_response_header res_coroipcs_zc_free;
-	struct iovec iovec;
-	struct coroipcs_zc_header *header = (struct coroipcs_zc_header *)((char *)buffer - sizeof (struct coroipcs_zc_header) - sizeof (struct req_lib_cpg_mcast));
-
-	error = hdb_error_to_cs (hdb_handle_get (&cpg_handle_t_db, handle, (void *)&cpg_inst));
-	if (error != CS_OK) {
-		return (error);
-	}
-
-	req_coroipcc_zc_free.header.size = sizeof (mar_req_coroipcc_zc_free_t);
-	req_coroipcc_zc_free.header.id = MESSAGE_REQ_CPG_ZC_FREE;
-	req_coroipcc_zc_free.map_size = header->map_size;
-	req_coroipcc_zc_free.server_address = header->server_address;
-
-	iovec.iov_base = (void *)&req_coroipcc_zc_free;
-	iovec.iov_len = sizeof (mar_req_coroipcc_zc_free_t);
-
-	error = coroipcc_msg_send_reply_receive (
-		cpg_inst->c,
-		&iovec,
-		1,
-		&res_coroipcs_zc_free,
-		sizeof (struct qb_ipc_response_header));
-
-	if (error != CS_OK) {
-		goto error_exit;
-	}
-
-	res = munmap ((void *)header, header->map_size);
-	if (res == -1) {
-		error = qb_to_cs_error(-errno);
-
-		goto error_exit;
-	}
-
-error_exit:
-	hdb_handle_put (&cpg_handle_t_db, handle);
-
-	return (error);
+	free(buffer);
+	return (CS_OK);
 }
 
 cs_error_t cpg_zcb_mcast_joined (
@@ -1065,58 +890,11 @@ cs_error_t cpg_zcb_mcast_joined (
 	void *msg,
 	size_t msg_len)
 {
-	cs_error_t error;
-	struct cpg_inst *cpg_inst;
-	struct req_lib_cpg_mcast *req_lib_cpg_mcast;
-	struct res_lib_cpg_mcast res_lib_cpg_mcast;
-	mar_req_coroipcc_zc_execute_t req_coroipcc_zc_execute;
-	struct coroipcs_zc_header *hdr;
-	struct iovec iovec;
+	struct iovec iov[1];
+	iov[0].iov_base = msg;
+	iov[0].iov_len = msg_len;
 
-	error = hdb_error_to_cs (hdb_handle_get (&cpg_handle_t_db, handle, (void *)&cpg_inst));
-	if (error != CS_OK) {
-		return (error);
-	}
-
-	if (msg_len > IPC_REQUEST_SIZE) {
-		error = CS_ERR_TOO_BIG;
-		goto error_exit;
-	}
-
-	req_lib_cpg_mcast = (struct req_lib_cpg_mcast *)(((char *)msg) - sizeof (struct req_lib_cpg_mcast));
-	req_lib_cpg_mcast->header.size = sizeof (struct req_lib_cpg_mcast) +
-		msg_len;
-
-	req_lib_cpg_mcast->header.id = MESSAGE_REQ_CPG_MCAST;
-	req_lib_cpg_mcast->guarantee = guarantee;
-	req_lib_cpg_mcast->msglen = msg_len;
-
-	hdr = (struct coroipcs_zc_header *)(((char *)req_lib_cpg_mcast) - sizeof (struct coroipcs_zc_header));
-
-	req_coroipcc_zc_execute.header.size = sizeof (mar_req_coroipcc_zc_execute_t);
-	req_coroipcc_zc_execute.header.id = MESSAGE_REQ_CPG_ZC_EXECUTE;
-	req_coroipcc_zc_execute.server_address = hdr->server_address;
-
-	iovec.iov_base = (void *)&req_coroipcc_zc_execute;
-	iovec.iov_len = sizeof (mar_req_coroipcc_zc_execute_t);
-
-	error = coroipcc_msg_send_reply_receive (
-		cpg_inst->c,
-		&iovec,
-		1,
-		&res_lib_cpg_mcast,
-		sizeof(res_lib_cpg_mcast));
-
-	if (error != CS_OK) {
-		goto error_exit;
-	}
-
-	error = res_lib_cpg_mcast.header.error;
-
-error_exit:
-	hdb_handle_put (&cpg_handle_t_db, handle);
-
-	return (error);
+	return cpg_mcast_joined(handle, guarantee, iov, 1);
 }
 
 static cs_error_t send_fragments (

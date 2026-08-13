@@ -40,8 +40,6 @@
 #include <corosync/corotypes.h>
 #include <corosync/mar_gen.h>
 
-#define CPG_ZC_PATH_LEN				128
-
 /**
  * @brief The req_cpg_types enum
  */
@@ -55,9 +53,9 @@ enum req_cpg_types {
 	MESSAGE_REQ_CPG_ITERATIONNEXT = 6,
 	MESSAGE_REQ_CPG_ITERATIONFINALIZE = 7,
 	MESSAGE_REQ_CPG_FINALIZE = 8,
-	MESSAGE_REQ_CPG_ZC_ALLOC = 9,
-	MESSAGE_REQ_CPG_ZC_FREE = 10,
-	MESSAGE_REQ_CPG_ZC_EXECUTE = 11,
+	MESSAGE_REQ_CPG_NULL = 9,
+	MESSAGE_REQ_CPG_PAD1 = 10,
+	MESSAGE_REQ_CPG_PAD2 = 11,
 	MESSAGE_REQ_CPG_PARTIAL_MCAST = 12,
 };
 
@@ -79,9 +77,9 @@ enum res_cpg_types {
 	MESSAGE_RES_CPG_ITERATIONFINALIZE = 11,
 	MESSAGE_RES_CPG_FINALIZE = 12,
 	MESSAGE_RES_CPG_TOTEM_CONFCHG_CALLBACK = 13,
-	MESSAGE_RES_CPG_ZC_ALLOC = 14,
-	MESSAGE_RES_CPG_ZC_FREE = 15,
-	MESSAGE_RES_CPG_ZC_EXECUTE = 16,
+	MESSAGE_RES_CPG_NULL = 14,
+	MESSAGE_RES_CPG_PAD1 = 15,
+	MESSAGE_RES_CPG_PAD2 = 16,
 	MESSAGE_RES_CPG_PARTIAL_DELIVER_CALLBACK = 17,
 	MESSAGE_RES_CPG_PARTIAL_SEND = 18,
 };
@@ -284,6 +282,13 @@ struct req_lib_cpg_local_get {
 };
 
 /**
+ * @brief The res_lib_cpg_null struct
+ */
+struct res_lib_cpg_null {
+	struct qb_ipc_response_header header __attribute__((aligned(8)));
+};
+
+/**
  * @brief The res_lib_cpg_local_get struct
  */
 struct res_lib_cpg_local_get {
@@ -464,39 +469,5 @@ struct req_lib_cpg_iterationfinalize {
  */
 struct res_lib_cpg_iterationfinalize {
 	struct qb_ipc_response_header header __attribute__((aligned(8)));
-};
-
-/**
- * @brief mar_req_coroipcc_zc_alloc_t struct
- */
-typedef struct {
-        struct qb_ipc_request_header header __attribute__((aligned(8)));
-        size_t map_size __attribute__((aligned(8)));
-        char path_to_file[CPG_ZC_PATH_LEN] __attribute__((aligned(8)));
-} mar_req_coroipcc_zc_alloc_t __attribute__((aligned(8)));
-
-/**
- * @brief mar_req_coroipcc_zc_free_t struct
- */
-typedef struct {
-        struct qb_ipc_request_header header __attribute__((aligned(8)));
-        size_t map_size __attribute__((aligned(8)));
-	uint64_t server_address __attribute__((aligned(8)));
-} mar_req_coroipcc_zc_free_t __attribute__((aligned(8)));
-
-/**
- * @brief mar_req_coroipcc_zc_execute_t struct
- */
-typedef struct {
-        struct qb_ipc_request_header header __attribute__((aligned(8)));
-	uint64_t server_address __attribute__((aligned(8)));
-} mar_req_coroipcc_zc_execute_t __attribute__((aligned(8)));
-
-/**
- * @brief coroipcs_zc_header struct
- */
-struct coroipcs_zc_header {
-	int map_size;
-	uint64_t server_address;
 };
 #endif /* IPC_CPG_H_DEFINED */
