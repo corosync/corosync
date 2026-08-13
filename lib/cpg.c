@@ -88,8 +88,8 @@ struct cpg_inst {
 	qb_ipcc_connection_t *c;
 	int finalize;
 	void *context;
+	cpg_model_t model;
 	union {
-		cpg_model_data_t model_data;
 		cpg_model_v1_data_t model_v1_data;
 	};
 	struct qb_list_head iteration_list_head;
@@ -222,7 +222,7 @@ cs_error_t cpg_model_initialize (
 
 	/* Allow space for corosync internal headers */
 	cpg_inst->max_msg_size = IPC_REQUEST_SIZE - 1024;
-	cpg_inst->model_data.model = model;
+	cpg_inst->model = model;
 	cpg_inst->context = context;
 
 	qb_list_init(&cpg_inst->iteration_list_head);
@@ -439,7 +439,7 @@ cs_error_t cpg_dispatch (
 		 * operate at the same time that cpgFinalize has been called.
 		 */
 		memcpy (&cpg_inst_copy, cpg_inst, sizeof (struct cpg_inst));
-		switch (cpg_inst_copy.model_data.model) {
+		switch (cpg_inst_copy.model) {
 		case CPG_MODEL_V1:
 			/*
 			 * Dispatch incoming message
@@ -615,7 +615,7 @@ cs_error_t cpg_dispatch (
 				break;
 			} /* - switch (dispatch_data->id) */
 			break; /* case CPG_MODEL_V1 */
-		} /* - switch (cpg_inst_copy.model_data.model) */
+		} /* - switch (cpg_inst_copy.model) */
 
 		if (cpg_inst_copy.finalize || cpg_inst->finalize) {
 			/*
@@ -664,7 +664,7 @@ cs_error_t cpg_join (
 	req_lib_cpg_join.pid = getpid();
 	req_lib_cpg_join.flags = 0;
 
-	switch (cpg_inst->model_data.model) {
+	switch (cpg_inst->model) {
 	case CPG_MODEL_V1:
 		req_lib_cpg_join.flags = cpg_inst->model_v1_data.flags;
 		break;
