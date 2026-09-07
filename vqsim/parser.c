@@ -79,6 +79,19 @@ static struct cmd_list_struct {
 static int num_cmds = (sizeof(cmd_list)) / sizeof(struct cmd_list_struct);
 #define MAX_ARGS 1024
 
+/* Check the partition number is within range. Returns 0 if it is, -1 if not */
+static int parse_partition_number(const char *string, int *partition)
+{
+	*partition = atoi(string);
+	if (*partition < 0 || *partition >= MAX_PARTITIONS) {
+		fprintf(stderr, "ERR: partition number must be in range 0..%u\n",
+			MAX_PARTITIONS - 1);
+		return -1;
+	}
+
+	return 0;
+}
+
 /* Takes a <partition>:[<node>[,<node>]...] list and return it
    as a partition and a list of nodes.
    Returns 0 if successful, -1 if not
@@ -96,7 +109,9 @@ static int parse_partition_nodelist(char *string, int *partition, int *num_nodes
 	if (colonptr) {
 		*colonptr = '\0';
 		nodeptr = colonptr+1;
-		*partition = atoi(string);
+		if (parse_partition_number(string, partition) != 0) {
+			return -1;
+		}
 	}
 	else {
 		/* Default to partition 0 */
@@ -276,6 +291,8 @@ static int run_down_cmd(int argc, char **argv)
 static int run_join_cmd(int argc, char **argv)
 {
 	int i;
+	int part1;
+	int part2;
 
 	if (argc < 2) {
 		printf("join needs at least two partition numbers\n");
@@ -285,7 +302,10 @@ static int run_join_cmd(int argc, char **argv)
 	cmd_start_sync_command();
 
 	for (i=2; i<argc; i++) {
-		cmd_join_partitions(atoi(argv[1]), atoi(argv[i]));
+		if (parse_partition_number(argv[1], &part1) == 0 &&
+		    parse_partition_number(argv[i], &part2) == 0) {
+			cmd_join_partitions(part1, part2);
+		}
 	}
 	cmd_update_all_partitions(1);
 	return 1;
