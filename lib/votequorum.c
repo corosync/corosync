@@ -74,14 +74,17 @@ cs_error_t votequorum_initialize (
 	votequorum_handle_t *handle,
 	votequorum_callbacks_t *callbacks)
 {
-	votequorum_model_v1_data_t model = {
-		.model                              = VOTEQUORUM_MODEL_V1,
-		.votequorum_quorum_notify_fn        = callbacks->votequorum_quorum_notify_fn,
-		.votequorum_expectedvotes_notify_fn = callbacks->votequorum_expectedvotes_notify_fn,
-		.votequorum_nodelist_notify_fn      = callbacks->votequorum_nodelist_notify_fn,
-		.votequorum_qdevice_extra_info_fn   = NULL,
+	votequorum_model_v1_data_t model = { 0 };
+
+	model.model = VOTEQUORUM_MODEL_V1;
+
+	if (callbacks) {
+		model.votequorum_quorum_notify_fn = callbacks->votequorum_quorum_notify_fn;
+		model.votequorum_expectedvotes_notify_fn = callbacks->votequorum_expectedvotes_notify_fn;
+		model.votequorum_nodelist_notify_fn = callbacks->votequorum_nodelist_notify_fn;
 	};
-    return votequorum_model_initialize (handle, &model);
+
+	return votequorum_model_initialize(handle, &model);
 }
 
 cs_error_t votequorum_model_initialize (
