@@ -812,7 +812,11 @@ directive it is possible to specify specific information about nodes in cluster.
 can contain only
 .B node
 sub-directive, which specifies every node that should be a member of the membership, and where
-non-default options are needed. Every node must have at least ring0_addr field filled.
+non-default options are needed. Every node must have at least one ringX_addr field filled
+(ring0_addr is required for the legacy UDP/UDPU transports). To let corosync identify the
+local node, every node should also have the
+.B name
+option set.
 
 Every node that should be a member of the membership must be specified.
 
