@@ -781,7 +781,7 @@ static int notify_lib_joinlist(
 		 *  contains exactly one process running on local node or more items
 		 *  but none of them is running on local node)
 		 */
-		for (i = 0; i < joined_list_entries; i++) {
+		for (i = 0; i < left_list_entries; i++) {
 			if (left_list[i].nodeid == api->totem_nodeid_get() &&
 			    left_list[i].reason == CONFCHG_CPG_REASON_LEAVE) {
 				qb_list_for_each(iter, &cpg_pd_list_head) {
