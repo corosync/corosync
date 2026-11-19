@@ -3811,7 +3811,8 @@ static int check_memb_commit_token_sanity(
 	struct totemsrp_instance *instance,
 	const void *msg,
 	size_t msg_len,
-	int endian_conversion_needed)
+	int endian_conversion_needed,
+	size_t max_msg_len)
 {
 	const struct memb_commit_token *mct_msg = (const struct memb_commit_token *)msg;
 	unsigned int addr_entries;
@@ -3820,6 +3821,13 @@ static int check_memb_commit_token_sanity(
 	if (msg_len < sizeof(struct memb_commit_token)) {
 		log_printf (instance->totemsrp_log_level_security,
 		    "Received memb_commit_token message is too short...  ignoring.");
+
+		return (-1);
+	}
+
+	if (msg_len > max_msg_len) {
+		log_printf (instance->totemsrp_log_level_security,
+		    "Received memb_commit_token message exceeds the maximum allowed size...  ignoring.");
 
 		return (-1);
 	}
@@ -4880,7 +4888,7 @@ static int message_handler_memb_commit_token (
 	size_t msg_len,
 	int endian_conversion_needed)
 {
-	struct memb_commit_token *memb_commit_token_convert = alloca (msg_len);
+	struct memb_commit_token *memb_commit_token_convert;
 	struct memb_commit_token *memb_commit_token;
 	struct srp_addr sub[PROCESSOR_COUNT_MAX];
 	int sub_entries;
@@ -4890,9 +4898,12 @@ static int message_handler_memb_commit_token (
 	log_printf (instance->totemsrp_log_level_debug,
 		"got commit token");
 
-	if (check_memb_commit_token_sanity(instance, msg, msg_len, endian_conversion_needed) == -1) {
+	if (check_memb_commit_token_sanity(instance, msg, msg_len, endian_conversion_needed,
+	    sizeof(instance->commit_token_storage)) == -1) {
 		return (0);
 	}
+
+	memb_commit_token_convert = alloca (msg_len);
 
 	if (endian_conversion_needed) {
 		memb_commit_token_endian_convert (msg, memb_commit_token_convert);
