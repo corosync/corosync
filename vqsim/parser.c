@@ -280,7 +280,7 @@ static int run_down_cmd(int argc, char **argv)
 	cmd_start_sync_command();
 
 	for (i=1; i<argc; i++) {
-		nodeid = atoi(argv[1]);
+		nodeid = atoi(argv[i]);
 		if (!cmd_stop_node(nodeid)) {
 			succeeded++;
 		}
